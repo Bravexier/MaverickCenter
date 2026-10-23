@@ -175,9 +175,22 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
             <h3 id="titre-armes">Armes et maîtrises</h3>
             <div class="fiche-etape__corps">
               <div id="armes" class="equipement equipement--armes"></div>
-              {/* quota de maîtrise (décision R32) : points répartis / points des classes et de leurs dons */}
-              <div class="fiche-entete-bloc"><h4 class="fiche-sous-titre">Maîtrises d’armes</h4><span class="budget" id="budget-maitrises"></span></div>
-              <ul id="maitrises" class="maitrises" aria-label="Maîtrise de chaque famille d’armes"></ul>
+              {/* les maîtrises d'armes (décision R148, variante A de la maquette retenue par le propriétaire, « Bloc des sources ») : une carte par source
+                  (lignes des classes, dons acquis, accessoire), ses choix de famille, et à côté le tableau calculé des familles ; dans le coin,
+                  « N points · M à choisir » ; remplis par le script */}
+              <div class="fiche-entete-bloc"><h4 class="fiche-sous-titre">Maîtrises d’armes</h4><span class="budget" id="budget-maitrises" aria-live="polite"></span></div>
+              <div id="maitrises" class="maitrises">
+                <div class="maitrises__grille">
+                  <div class="maitrises__sources">
+                    <h5 class="maitrises__zone" id="titre-maitrises-sources">D’où viennent les points</h5>
+                    <ul id="maitrises-sources" class="maitrises-sources" aria-labelledby="titre-maitrises-sources"></ul>
+                  </div>
+                  <div class="maitrises__resultat">
+                    <h5 class="maitrises__zone" id="titre-maitrises-familles">Résultat, calculé</h5>
+                    <div class="fiche-defile"><table class="fiche-table fiche-table--maitrises" aria-labelledby="titre-maitrises-familles"><caption class="fiche-aide" id="maitrises-legende"></caption><thead><tr><th scope="col">Famille</th><th scope="col" class="nombre">Points</th><th scope="col" class="nombre">Dés</th><th scope="col">Sources</th></tr></thead><tbody id="maitrises-familles"></tbody></table></div>
+                  </div>
+                </div>
+              </div>
             </div>
           </section>
           {/* la ceinture : 3 emplacements d'objets rapides, utilisables en IC (guide « Fiche de personnage : Accessoires et Ceinture ») ; chacun prend un objet

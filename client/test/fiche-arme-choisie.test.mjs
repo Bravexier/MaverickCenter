@@ -551,17 +551,20 @@ test('décision R128 : un bonus à condition est mentionné (raison « situation
 
 // ------------------------------------------------------------------ la page
 
-test('la page (src/scripts/fiche.mjs, lue comme un texte) : l’arme puis sa compétence (refaite en place, gardée d’une arme à l’autre), la résistance au choix sous le tableau, enregistrée ; chaque libellé de raison', () => {
+test('la page (src/scripts/fiche.mjs, lue comme un texte) : l’arme du bonus est la maîtrise au choix (R152, plus de liste de familles), sa compétence refaite en place ; la résistance au choix sous le tableau, enregistrée ; chaque libellé de raison', () => {
   const script = readFileSync(new URL('../src/scripts/fiche.mjs', import.meta.url), 'utf8');
   const acquis = script.slice(script.indexOf('function construireAcquisAChoisir()'), script.indexOf('// ------------------------------------------------------------------ rappel des dons'));
   assert.match(acquis, /if \(c\.arme\) \{/);
-  // la clé de reconstruction d'un choix d'arme ne porte pas ses compétences : la liste est refaite en place (le focus du clavier reste)
-  assert.match(acquis, /c\.arme \? \['arme', c\.familles\] : c\.options \?\? /);
+  // la clé de reconstruction d'un choix d'arme ne porte que la maîtrise qu'il suit : la liste des compétences est refaite en place (le focus du clavier reste)
+  assert.match(acquis, /c\.arme \? \['arme', c\.maitrise\] : c\.options \?\? /);
   assert.match(acquis, /competence\.replaceChildren\(option\('', 'Compétence…'\), \.\.\.x\.options\.map/);
-  // une autre arme garde la compétence choisie si elle l'offre
-  assert.match(acquis, /acquisApresChoixDArme\(regles, fiche, c\.source, c\.rang, ev\.target\.value \|\| null, actuel\(\)\.choisi\)/);
-  assert.match(acquis, /acquisApresChoixDArme\(regles, fiche, c\.source, c\.rang, actuel\(\)\.arme_famille_id, ev\.target\.value \|\| null\)/);
-  assert.match(acquis, /Une arme choisie sans sa compétence n’est pas enregistrée\./);
+  // décision R152 : plus de liste de familles ni de choix d'arme ici, seulement la compétence (acquisApresChoix) ; l'arme vient du bloc Maîtrises
+  assert.doesNotMatch(script, /acquisApresChoixDArme|arme_famille_id: famille|'Arme…'/);
+  assert.match(acquis, /acquisApresChoix\(fiche, c\.source, c\.rang, ev\.target\.value \|\| null\)/);
+  assert.match(acquis, /`Arme : \$\{famille\.nom\} \(maîtrise au choix de \$\{x\.classe\}\)/);
+  assert.match(acquis, /`Choisissez d’abord la maîtrise au choix de \$\{x\.classe\} \(bloc Maîtrises d’armes\)\.`/);
+  assert.match(acquis, /competence\.hidden = x\.options\.length < 2;/, 'une compétence déduite ne se choisit pas');
+  assert.doesNotMatch(acquis, /Une arme choisie sans sa compétence n’est pas enregistrée\./);
   const resistances = script.slice(script.indexOf('function construireResistances()'), script.indexOf('// ------------------------------------------------------------------ classes'));
   assert.match(resistances, /cleDeChoix\.resistance\(c\.source, c\.rang\)/);
   // une altération d'état (R124) ou une magie (R137), parmi ses options

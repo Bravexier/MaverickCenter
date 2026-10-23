@@ -93,8 +93,15 @@ test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options
   assert.ok(!attributs.includes('fiche-aide'), 'pas de texte de calcul');
   const armes = bloc('armes');
   assert.match(armes, /<div id="armes" class="equipement equipement--armes"><\/div>/);
-  assert.match(armes, /<span class="budget" id="budget-maitrises"><\/span>/, 'le quota de maîtrise (décision R32)');
-  assert.match(armes, /<ul id="maitrises" class="maitrises"/);
+  // les maîtrises d'armes (décision R148, variante A de la maquette, « Bloc des sources ») : le compteur « N points · M à choisir » dans le coin, une carte
+  // par source et, à côté, le tableau calculé des familles (remplis par le script) ; plus de curseur de maîtrise ni de quota, pas de points du MJ
+  assert.match(armes, /<span class="budget" id="budget-maitrises" aria-live="polite"><\/span>/, 'le compteur');
+  assert.match(armes, /<div id="maitrises" class="maitrises">\s*<div class="maitrises__grille">\s*<div class="maitrises__sources">/);
+  assert.match(armes, /<ul id="maitrises-sources" class="maitrises-sources" aria-labelledby="titre-maitrises-sources"><\/ul>/, 'une carte par source');
+  assert.match(armes, /<div class="fiche-defile"><table class="fiche-table fiche-table--maitrises" aria-labelledby="titre-maitrises-familles"><caption class="fiche-aide" id="maitrises-legende"><\/caption><thead><tr><th scope="col">Famille<\/th><th scope="col" class="nombre">Points<\/th><th scope="col" class="nombre">Dés<\/th><th scope="col">Sources<\/th><\/tr><\/thead><tbody id="maitrises-familles"><\/tbody><\/table><\/div>/, 'le tableau des familles');
+  assert.ok(armes.indexOf('id="maitrises-sources"') < armes.indexOf('id="maitrises-familles"'), 'les sources, puis le résultat');
+  assert.doesNotMatch(armes, /type="range"|class="maitrise"|Points du MJ|à confirmer/i, 'ni curseur, ni points du MJ, ni « à confirmer »');
+  assert.doesNotMatch(html, /Points du MJ/);
   assert.match(bloc('ceinture'), /<ol id="ceinture" class="ceinture"/, 'les 3 emplacements de la ceinture');
   const dons = bloc('dons');
   assert.ok(dons.indexOf('id="dons-classes"') > dons.indexOf('id="dons-race"'), 'les dons de la race, puis ceux des classes');

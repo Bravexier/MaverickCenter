@@ -13,7 +13,7 @@
 //   - R154 : le don « Maîtrise » de l'Ocultomancien ajoute 4 NM gagnés.
 // Chaque exemple est comparé à la base (une copie vivante, par le service) : v_personnage_maitrise_arme et les règles maitrise_* de v_personnage_controle.
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, test } from 'node:test';
@@ -351,4 +351,120 @@ test('décision R154 : un Ocultomancien de niveau de classe 20 a les 4 NM gagné
   assert.deepEqual(enBase(juste), []);
   assert.deepEqual(enBase(oculto(20, sorts(a20.disponibles + 1))), [`${a20.disponibles + 1} / ${a20.niveaux} + 4 des dons`]);
   assert.deepEqual(enBase(oculto(19, sorts(a20.disponibles))), [`${a20.disponibles} / ${a19.niveaux}`]);
+});
+
+test('décision R148, variante A de la maquette : les cartes du bloc Maîtrises (exemples 1 et 2), le tableau des familles, le compteur « N points · M à choisir » ; pas de points du MJ', () => {
+  const carte = (f, id) => M.carteDeMaitrise(regles, source(f, id));
+  // exemple 1, la maîtrise du Mage Bleu pas encore posée : la carte du Mage saphir attend, celle du Mage Bleu a son sélecteur à choisir (R151)
+  const ex1 = fiche([['barde', 'menestrel'], ['mage-bleu', 'mage-saphir']], { niveau: 20, bi: true, maitrise_choix: [choix(ligne('barde', 1), 1, 'arc')] });
+  assert.deepEqual(M.sourcesDeMaitrise(regles, ex1).map((s) => [s.titre, M.carteDeMaitrise(regles, s).sousTitre, M.carteDeMaitrise(regles, s).etat.libelle]), [
+    ['Barde (maîtrise 1)', 'Classe 1 · ligne de maîtrise 1', 'complète'],
+    ['Barde (maîtrise 2)', 'Classe 1 · ligne de maîtrise 2', 'complète'],
+    ['Ménestrel (Barde)', 'Spécialité · niveau de classe 10', '1 à choisir'],
+    ['Mage Bleu (maîtrise 1)', 'Classe 2 · ligne de maîtrise 1', '1 à choisir'],
+    ['Mage saphir (Mage Bleu)', 'Spécialité · niveau de classe 10', 'en attente d’un choix'],
+  ]);
+  assert.deepEqual(carte(ex1, ligne('barde', 2)).lignes, [{ genre: 'imposee', points: '+1', famille: 'DAGUES', marque: 'imposée' }]);
+  const menestrel = carte(ex1, 'capacites/barde-menestrel').lignes[0];
+  assert.deepEqual([menestrel.etiquette, menestrel.famille, menestrel.options.map((o) => o.id), menestrel.cle], ['Famille', null, A_DISTANCE, M.cleDeChoix.maitrise('capacites/barde-menestrel', 1)]);
+  assert.deepEqual(carte(ex1, 'capacites/mage-bleu-mage-saphir').lignes, [{
+    genre: 'suit', points: '+2', famille: null, retrait: false, marque: 'suit : maîtrise au choix du Mage Bleu', attente: 'Se pose dès que la maîtrise au choix du Mage Bleu est choisie.',
+  }]);
+  // chaque point à choisir de la carte est une tuile du tiroir : sa clé est celle de choixEnAttente
+  const cles = new Set(M.sourcesDeMaitrise(regles, ex1).flatMap((s) => M.carteDeMaitrise(regles, s).lignes.map((l) => l.cle)).filter(Boolean));
+  for (const c of M.choixEnAttente(regles, ex1).filter((x) => x.nature === 'maitrise')) assert.ok(cles.has(c.cle), c.cle);
+  assert.deepEqual(M.presentationDuCompteurDeMaitrise(M.compteurDeMaitrise(regles, ex1), M.sourcesDeMaitrise(regles, ex1)), {
+    texte: '6 points · 4 à choisir', etat: 'manque',
+    infobulle: 'Points de maîtrise des classes, des dons et des accessoires : Barde (maîtrise 1) +1 · Barde (maîtrise 2) +1 · Ménestrel (Barde) +1 · Mage Bleu (maîtrise 1) +1 · Mage saphir (Mage Bleu) +2',
+  });
+  const posee = { ...ex1, ...M.maitriseApresChoix(ex1, ligne('mage-bleu', 1), 1, 'epees') };
+  assert.deepEqual(carte(posee, 'capacites/mage-bleu-mage-saphir').lignes[0].famille, 'ÉPÉES');
+  assert.deepEqual(M.ligneDeMaitrise(famille(posee, 'epees')), { detail: ['Mage Bleu (maîtrise 1) +1', 'Mage saphir (Mage Bleu) +2 (suit un choix)'], alertes: [] });
+
+  // exemple 2 de la maquette, ses choix par défaut : le Mercenaire met 2 points sur ÉPÉES, le second refusé (« sans dépasser 1 dans le même », R150) ; ÉPÉES
+  // à 6 points, 2 au-delà du plafond (R149) ; l'Épéiste retire 1 à HACHE, la maîtrise au choix du Guerrier (R151)
+  const ex2 = fiche([['guerrier', 'epeiste'], ['mercenaire']], {
+    maitrise_choix: [choix(ligne('guerrier', 2), 1, 'hache'), choix(ligne('mercenaire', 1), 1, 'epees'), choix(ligne('mercenaire', 1), 2, 'dagues'), choix(ligne('mercenaire', 1), 3, 'epees')],
+    accessoires: [accessoire('bague-1', 'epees')],
+  });
+  assert.deepEqual(carte(ex2, 'capacites/guerrier-epeiste').lignes, [
+    { genre: 'imposee', points: '+2', famille: 'ÉPÉES', marque: 'imposée' },
+    { genre: 'imposee', points: '+1', famille: 'DAGUES', marque: 'imposée' },
+    { genre: 'suit', points: '−1', famille: 'HACHE', retrait: true, marque: 'retrait · suit : maîtrise au choix du Guerrier', attente: null },
+  ]);
+  const mercenaire = carte(ex2, ligne('mercenaire', 1));
+  assert.deepEqual(mercenaire.etat, { cle: 'refus', libelle: 'limite dépassée' });
+  assert.deepEqual(mercenaire.lignes.map((l) => [l.etiquette, l.famille, l.refus, l.message]), [
+    ['Point 1', 'epees', false, null], ['Point 2', 'dagues', false, null],
+    ['Point 3', 'epees', true, 'Pas plus de 1 point dans la même famille : ÉPÉES en reçoit 2 de cette source.'],
+  ]);
+  // une famille à la limite sort des sélecteurs des autres points ; la famille refusée reste affichée dans le sien
+  assert.deepEqual(mercenaire.lignes.map((l) => [l.options.some((o) => o.id === 'epees'), l.options.some((o) => o.id === 'dagues')]), [[true, false], [false, true], [true, false]]);
+  const bague = carte(ex2, 'accessoire:bague-1');
+  assert.deepEqual([bague.sousTitre, bague.lignes[0].etiquette, bague.lignes[0].options.length, bague.lignes[0].cle], ['Accessoire', 'Famille', MAITRISABLES.length, null],
+    'la tuile du choix de l’accessoire reste sous les accessoires');
+  assert.equal(carte({ ...ex2, accessoires: [accessoire('bague-1', 'epees', 1)] }, 'accessoire:bague-1').sousTitre, 'Accessoire maudit : l’effet contraire');
+  assert.deepEqual(M.ligneDeMaitrise(famille(ex2, 'epees')), {
+    detail: ['Guerrier (maîtrise 1) +1', 'Épéiste (Guerrier) +2', 'Mercenaire (maîtrise 1) +2', 'Accessoire : Bague 1 +1'],
+    alertes: [{ ton: 'trop', texte: '6 points : 2 au-delà du plafond, non comptés' }],
+  });
+  assert.equal(famille(ex2, 'epees').notation, '5D10', '5 dés au plus');
+  assert.deepEqual(M.ligneDeMaitrise(famille(ex2, 'hache')), { detail: ['Guerrier (maîtrise 2) +1', 'Épéiste (Guerrier) −1 (suit un choix)'], alertes: [] });
+  const compteur = M.presentationDuCompteurDeMaitrise(M.compteurDeMaitrise(regles, ex2), M.sourcesDeMaitrise(regles, ex2));
+  assert.deepEqual([compteur.texte, compteur.etat], ['8 points · 0 à choisir', 'trop']);
+  assert.match(compteur.infobulle, /Mercenaire \(maîtrise 1\) \+3 · Accessoire : Bague 1 \+1 ; 1 point au-delà d’une limite écrite$/);
+  // un seul point au-delà du plafond : « non compté » (la phrase de la maquette)
+  const lancier = fiche([['lanceur', 'fantassin'], ['lancier']], { maitrise_choix: [choix(ligne('lanceur', 2), 1, 'hache'), choix('capacites/lanceur-fantassin', 1, 'hache')], accessoires: [accessoire('chef', 'arme-de-jet')] });
+  assert.deepEqual(M.ligneDeMaitrise(famille(lancier, 'arme-de-jet')).alertes, [{ ton: 'trop', texte: '5 points : 1 au-delà du plafond, non compté' }]);
+  // jamais sous 0 (R151) : l'Épéiste et un accessoire maudit sur la maîtrise au choix du Guerrier
+  const sous = fiche([['guerrier', 'epeiste']], { niveau: 10, maitrise_choix: [choix(ligne('guerrier', 2), 1, 'hache')], accessoires: [accessoire('chef', 'hache', 1)] });
+  assert.deepEqual(M.ligneDeMaitrise(famille(sous, 'hache')).alertes, [{ ton: 'info', texte: '−1 en tout : ramené à 0, une famille ne descend jamais sous 0' }]);
+  // sans classe : aucun état, une aide ; aucune source n'est un « point du MJ » (R148)
+  const vide = { ...ficheVide('Essai') };
+  assert.deepEqual(M.presentationDuCompteurDeMaitrise(M.compteurDeMaitrise(regles, vide), []),
+    { texte: '0 point · 0 à choisir', etat: null, infobulle: 'Pas encore de maîtrise : choisissez une classe (ses lignes de maîtrise et celles de ses dons)' });
+  for (const f of [ex1, ex2]) for (const s of M.sourcesDeMaitrise(regles, f)) assert.ok(['classe', 'don', 'accessoire'].includes(s.type) && !/MJ/.test(s.titre), s.titre);
+});
+
+test('décisions R148, R152, R153, R154 : la page (src/scripts/fiche.mjs, lue comme un texte) — le bloc des sources, l’envoi de maitrise_choix, les noms de la ligne des maîtrises d’avant, les NM des dons', () => {
+  const script = readFileSync(new URL('../src/scripts/fiche.mjs', import.meta.url), 'utf8');
+  const bloc = script.slice(script.indexOf('function construireMaitrises()'), script.indexOf('// ------------------------------------------------------------------ sorts'));
+  // plus de curseurs, de quota ni de dés saisis par famille (R148) : les sources, leurs choix, le tableau calculé, le compteur
+  assert.doesNotMatch(script, /quotaDeMaitrise|maitrisesValables|pointsDe\(|desDe\(|acquisApresChoixDArme/);
+  assert.equal(M.acquisApresChoixDArme, undefined, 'R152 : plus de choix d’arme dans les acquis, la fonction est retirée');
+  assert.doesNotMatch(bloc, /type: 'range'|Points du MJ|à confirmer/);
+  assert.match(bloc, /presentationDuCompteurDeMaitrise\(calcul\.maitrises\.compteur, sources\)/);
+  assert.match(bloc, /carteDeMaitrise\(regles, s\)/);
+  assert.match(bloc, /ligneDeMaitrise\(m\)/);
+  // un point à choisir est une tuile du tiroir (sa clé, celle de choixEnAttente) ; vide, il est surligné et dit « à choisir » ; une limite dépassée, en rouge
+  assert.match(bloc, /dataset: l\.cle \? \{ choixCle: l\.cle \} : \{\}/);
+  assert.match(bloc, /attribut\(liste, 'data-vide', !x\.famille\);/);
+  assert.match(bloc, /attribut\(liste, 'aria-invalid', x\.refus \? 'true' : null\);/);
+  assert.match(bloc, /attribut\(li, 'data-a-choisir', x\.etat === 'a_choisir' \|\| x\.etat === 'attente'\);/);
+  assert.match(bloc, /attribut\(li, 'data-erreur', x\.etat === 'refus'\);/);
+  // le choix : maitriseApresChoix, ou la famille de l'accessoire (R151), la même que sous les accessoires
+  assert.match(bloc, /Object\.assign\(fiche, maitriseApresChoix\(fiche, s\.source, rang, familleId\)\)/);
+  assert.match(bloc, /if \(a\) a\.arme_famille_id = familleId;/);
+  assert.match(script, /choixFamille\.hidden = !cibles\.includes\('degats_famille'\) && !cibles\.includes\('maitrise_arme'\);/);
+  // l'envoi : les choix valables dans maitrise_choix, jamais maitrises_armes (le service refuserait les deux ensemble : 409)
+  const envoi = script.slice(script.indexOf('function aEnvoyer()'), script.indexOf('const nomsDesRetraits'));
+  assert.match(envoi, /f\.maitrise_choix = maitriseChoixValables\(regles, f\);\n\s*delete f\.maitrises_armes;/);
+  // R153 : la ligne des maîtrises d'avant nomme les familles ({ nom, de, ordre }) et les dons ({ nom, classe })
+  const noms = script.slice(script.indexOf('const nomsDesRetraits'), script.indexOf('function appliquer('));
+  assert.match(noms, /return i < 0 \? null : \{ nom: regles\.familles_armes\[i\]\.nom, de: regles\.familles_armes\[i\]\.de \?\? null, ordre: i \+ 1 \};/);
+  assert.match(noms, /if \(d\) return \{ nom: d\.nom, classe: c\.nom \};/);
+  // R154 : l'infobulle du décompte des NM détaille ceux des dons
+  assert.match(script, /nm\.dons\.map\(\(d\) => `\+\$\{d\.nm\} \$\{d\.nom\}`\)/);
+});
+
+test('décision R148 : les contrôles maitrise_* de la page nomment leurs sources et leurs familles (src/scripts/fiche.mjs, indexerNoms, lu comme un texte)', () => {
+  const script = readFileSync(new URL('../src/scripts/fiche.mjs', import.meta.url), 'utf8');
+  const index = script.slice(script.indexOf('function indexerNoms()'), script.indexOf('function remplirListesFixes()'));
+  assert.match(index, /\(c\.maitrises \?\? \[\]\)\.forEach\(\(m, i\) => \{ if \(m\.source\) noms\.set\(m\.source, `\$\{c\.nom\} \(maîtrise \$\{i \+ 1\}\)`\); \}\);/);
+  assert.match(index, /for \(const d of c\.dons \?\? \[\]\) if \(!noms\.has\(d\.id\)\) noms\.set\(d\.id, `\$\{d\.nom\} \(\$\{c\.nom\}\)`\);/);
+  assert.match(index, /noms\.set\(`accessoire:\$\{cle\}`, `Accessoire : \$\{nom\}`\)/);
+  assert.match(index, /for \(const f of regles\.familles_armes\) if \(!noms\.has\(f\.id\)\) noms\.set\(f\.id, f\.nom\);/);
+  // les titres sont ceux des cartes (sourcesDeMaitrise) : « Guerrier (maîtrise 2) », « Épéiste (Guerrier) », « Accessoire : Bague 1 »
+  const f = fiche([['guerrier', 'epeiste']], { niveau: 10, accessoires: [accessoire('bague-1', null)] });
+  assert.deepEqual(M.sourcesDeMaitrise(regles, f).map((s) => s.titre), ['Guerrier (maîtrise 1)', 'Guerrier (maîtrise 2)', 'Épéiste (Guerrier)', 'Accessoire : Bague 1']);
 });

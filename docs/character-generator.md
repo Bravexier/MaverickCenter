@@ -219,11 +219,31 @@ abandonne.
   ou la falsification de documents (au MJ : R123) n'est pas compté : listé sous « Bonus d'acquis non comptés », avec sa raison. « Son acquis max en Social
   est augmenté de +20 » (Mort-vivant, « Trompe-mort ») relève le plafond de chaque compétence du Social (`plafondBonus`, décision R125 : 25, le Social
   verrouillé à 1 ; 30 avec le Feu ou l'Eau inné).
-- **Maîtrises d'armes** : un curseur étroit par famille (0 à 4 points), les dés à côté (`notationDesDes`) ; pas de ligne pour « ARME DE MONSTRES », des armes
-  exclusives aux monstres (décision R45, `arme_famille.maitrisable`, `famillesMaitrisables` ; une maîtrise déjà posée n'est ni comptée ni enregistrée : `maitrisesValables`) ; le **Pugilat** montre le seul dé de la Force du
-  personnage, +1 de la magie innée compris (`deDeLaFamille` : « D6 1-2 Force, D8 3-4 Force, D10 5 Force », note de la famille, lue par
-  `lib/maitrise-arme.mjs#desSelonLaForce`) ; dans le coin du bloc, les points répartis sur le **quota** des classes et de leurs dons (décision R32,
-  `quotaDeMaitrise` ; sources en infobulle).
+- **Maîtrises d'armes** (décision R148, variante A de la maquette retenue par le propriétaire, « Bloc des sources » : « tous les choix dans le bloc
+  Maîtrises, une carte par source, à côté du tableau calculé par famille ») : rien ne se saisit par famille, plus de curseur ni de quota.
+  - **Une carte par source** (`sourcesDeMaitrise`, `carteDeMaitrise`), dans l'ordre de la fiche : chaque ligne de `classe_maitrise_arme` des classes prises
+    (« Guerrier (maîtrise 2) », « Classe 1 · ligne de maîtrise 2 »), chaque don acquis qui en donne (« Épéiste (Guerrier) », « Spécialité · niveau de
+    classe 10 »), l'accessoire « Un point de maîtrise d'arme » (« Accessoire : Bague 1 » ; maudit, −1, R54). Elle porte son texte tel qu'écrit, entre
+    guillemets, puis une ligne par part : la famille **imposée** (« +1 ÉPÉES imposée »), la famille **suivie** (« +2 ÉPÉES suit : maîtrise au choix du
+    Mage Bleu », R151 ; tant qu'elle n'est pas choisie, « Se pose dès que la maîtrise au choix du Mage Bleu est choisie. »), le **retrait** de l'Épéiste
+    (« −1 HACHE retrait · suit : maîtrise au choix du Guerrier »), ou **un sélecteur par point à choisir** (« Famille », ou « Point 1 », « Point 2 »…,
+    chacun avec son libellé ; `maitriseApresChoix`). Une famille qui a atteint la limite écrite d'une source sort des autres sélecteurs de cette source
+    (R150) ; un point au-delà (une fiche importée) reste affiché, cerclé de rouge, avec sa raison (« Pas plus de 1 point dans la même famille : ÉPÉES en
+    reçoit 2 de cette source. »). L'état de la carte est écrit en toutes lettres : « complète », « N à choisir », « en attente d'un choix » ou « limite
+    dépassée ». Un point vide est surligné (`data-a-choisir`, « à choisir ») et passe dans le tiroir (`choixEnAttente`, nature `maitrise`, sa tuile par
+    `data-choix-cle`) ; la carte qui attend une maîtrise au choix aussi ; une limite dépassée ne va pas dans le tiroir (`data-erreur`, en rouge).
+    L'accessoire se choisit dans sa carte ou sous les accessoires, la même valeur (`personnage_accessoire.arme_famille_id`).
+  - **À côté, le tableau calculé des familles** (`maitrisesParFamille`, `ligneDeMaitrise`), sous la carte quand la place manque (le bloc mesure sa
+    largeur : `@container`) : famille, points, dés (`notationDesDes`, 5 dés au plus) et d'où viennent les points (« Mage Bleu (maîtrise 1) +1 · Mage saphir
+    (Mage Bleu) +2 (suit un choix) ») ; les points au-delà du plafond sont signalés sur la ligne (« 5 points : 1 au-delà du plafond, non compté », R149),
+    un total des sources sous 0 aussi (« ramené à 0 », R151). Pas de ligne pour « ARME DE MONSTRES », des armes exclusives aux monstres (décision R45,
+    `arme_famille.maitrisable`, `famillesMaitrisables`). Le **Pugilat** montre le seul dé de la Force du personnage, +1 de la magie innée compris
+    (`deDeLaFamille` : « D6 1-2 Force, D8 3-4 Force, D10 5 Force », note de la famille, lue par `lib/maitrise-arme.mjs#desSelonLaForce`), en infobulle.
+    La légende dit la règle depuis les constantes (`maitrise_arme.*`).
+  - **Dans le coin du bloc**, « N points · M à choisir » (`compteurDeMaitrise`, `presentationDuCompteurDeMaitrise` : la somme signée des sources, et les
+    points sans famille ; les points de chaque source en infobulle ; en rouge quand une limite écrite est dépassée).
+  - Pas de « Points du MJ » (R148). Rien de calculé ne s'enregistre : la page envoie `maitrise_choix` (`maitriseChoixValables`), jamais `maitrises_armes`.
+    Les contrôles `maitrise_*` du service nomment la source et la famille (« Mage Bleu (maîtrise 1) = 1 »).
 - **Sorts** : un tableau d'une ligne par emplacement, sans emplacement en plus (décision R27), chacune avec la liste des sorts possibles moins ceux des autres
   lignes (`lignesDeSorts`), groupée par NPM, le nom seul, chaque sort sur la couleur de sa magie comme sur les pages de magie, la liste fermée dans celle du
   sort choisi (`sortsParNpm`, demande du propriétaire) ; le **NM** d'un sort se règle à **un seul curseur, de 0 à 3** (décision R118, qui précise
@@ -231,7 +251,8 @@ abandonne.
   curseur), dont le NM **ne compte pas** dans le décompte ; les **NM du MJ** valent **pour toute la fiche** (`personnage.nm_mj`, migration 0066), notés dans
   un champ « + MJ » juste à côté du décompte des NM (« NM : 9 / 11 », les NM comptés sur ceux gagnés, plus ceux du MJ : `maitriseDesSorts`) ; les NM gagnés
   sont ceux des niveaux et ceux qu'écrit un don acquis (décision R154 : « Gagne 4 niveaux de maîtrise (NM). », le don « Maîtrise » de l'Ocultomancien au
-  niveau de classe 20, `nm_gagnes` ; `maitriseDesSorts` : `niveaux`, `dons`, `disponibles`), qui ne sont pas des NM du MJ ;
+  niveau de classe 20, `nm_gagnes` ; `maitriseDesSorts` : `niveaux`, `dons`, `disponibles` ; l'infobulle du décompte les détaille : « 19 par les
+  niveaux, +4 Maîtrise (Ocultomancien) »), qui ne sont pas des NM du MJ ;
   sur un sort, au plus niveau − 1 NM comptés plus les NM du MJ (le curseur est signalé au-delà, sans bloquer). Colonnes (demandes du propriétaire) : coût, portée et **dégâts/soins/barrière**, à la **valeur du NM du sort** plutôt que
   « (+1/NM) » (`lib/sort-maitrise.mjs#valeurAuNm` : voir `content-guide.md`, « Niveaux de maîtrise ») ; le **coût secondaire** (âmes, Sang, « Par tour » : décisions R105, R106) sous
   le coût de chakra, dans la même case, et dans la case « Coût » de la fiche en tableur les deux en une (« 3 + 1 Sang », « 3 par tour et par cible »,
@@ -337,8 +358,8 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   scores de compétences (10 × caractéristique + naturel + acquis, croix R19), plafonds et budget ; gains de niveau à saisir (`gainsAttendus`,
   `gainsDeNiveau`, R73) ; solidité des armes (`durabiliteDArme`, R74) ; classe magique (R6, R7) ;
   attributs comme la fiche automatique (santé, chakra, barrière, vitesse, armure de base, initiative, 4ᵉ barre, Corruption) et valeurs du moment
-  (`valeursDuMoment`, `ajusterValeurDuMoment`) ; alignement (`alignementDe`) ; dé d'une famille d'armes selon la Force (`deDeLaFamille`) et quota de
-  maîtrise (`quotaDeMaitrise`, R32) ; emplacements de sorts
+  (`valeursDuMoment`, `ajusterValeurDuMoment`) ; alignement (`alignementDe`) ; dé d'une famille d'armes selon la Force (`deDeLaFamille`) et maîtrises
+  d'armes par source (`sourcesDeMaitrise`, `maitrisesParFamille`, `compteurDeMaitrise`, R148 à R151) ; emplacements de sorts
   (conditions × puissance magique, R16), sorts possibles, NM ; dons à choisir selon la classe, la spécialité et le niveau de classe ; dons de classe
   débloqués (`donsAcquis`) et dons de la race (`donsDeRace`) ; résistances et faiblesses (`resistancesDe`).
 - **Accessoires** (demande du propriétaire : « l'accessoire influe sur le reste de la fiche » ; décision R54 ; **six emplacements**, Chef, Collier, Bracelet 1 et 2,
@@ -351,7 +372,8 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   Acquis d'une compétence de cette caractéristique choisie sous l'effet (`personnage_accessoire.competence_id`), rognée au plafond après le métier ;
   santé, chakra, barrière, initiative, vitesse, 4ᵉ barre, AP et AM de base ; dégâts physiques de toutes les armes et dégâts de la famille choisie
   (`arme_famille_id`), portée des armes à distance (infobulle des dégâts) ; « Dégâts magie » et portée sur les sorts (`accessoiresDesSorts` : dégâts des
-  seuls sorts d'attaque, `sort_type`) ; point de maîtrise (`quotaDeMaitrise`) ; tour de Mode Hyper ; un cran de résistance par cible (`resistancesDe`).
+  seuls sorts d'attaque, `sort_type`) ; point de maîtrise (une source du bloc Maîtrises, sa famille au choix parmi les 11 maîtrisables, dans sa carte ou
+  sous l'effet comme celle des dégâts ; « (ne peut changer une fois décidé) » n'est qu'un rappel, R151) ; tour de Mode Hyper ; un cran de résistance par cible (`resistancesDe`).
   Un choix qui manque est dans le tiroir (`choixEnAttente`, nature `accessoire`). Les effets « (Action) » et à usage compté (`accessoire_effet.usage`)
   sont rappelés à la suite des dons de race, sous le même format (`actionsDesAccessoires`). Sous chaque effet, ce qu'il change en quelques mots.
 - **Bouclier** (décision R96 : « Forme + matière », comme l'onglet Boucliers) : la forme, la matière et l'amélioration (+1 à +5) ; le bouclier de la liste

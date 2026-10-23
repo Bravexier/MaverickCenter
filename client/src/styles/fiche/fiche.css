@@ -622,12 +622,53 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .fiche .curseur-saisie { width: 100%; min-width: 3.5rem; padding: 0.05rem 0.3rem; font-variant-numeric: tabular-nums; }
 .des { font-variant-numeric: tabular-nums; white-space: nowrap; }
 
-/* maîtrises d'armes, dans leur bloc (demande du propriétaire) : une ligne par famille, curseur étroit, les dés à côté ; plusieurs colonnes */
-.maitrises { display: grid; gap: 0.1rem 1.5rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); margin: 0; padding: 0; list-style: none; }
-.maitrise { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(3rem, auto); align-items: center; gap: 0.5rem; padding: 0.15rem 0; border-bottom: 1px solid var(--border); font-size: var(--fs-md); }
-.maitrise__nom { overflow-wrap: break-word; }
-.maitrise .curseur { width: 6.5rem; min-width: 0; }
-.maitrise .des { text-align: right; }
+/* maîtrises d'armes (décision R148, variante A de la maquette retenue par le propriétaire, « Bloc des sources ») : une carte par source, et à côté le
+   tableau calculé des familles quand le bloc a la place (sinon dessous) ; un point à choisir surligné (--a-choisir), une limite dépassée en rouge, l'état
+   de chaque carte écrit en toutes lettres (jamais la seule couleur) */
+.maitrises { container-type: inline-size; }
+.maitrises__grille { display: grid; gap: 0.75rem; grid-template-columns: minmax(0, 1fr); }
+@container (min-width: 44rem) {
+  .maitrises__grille { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: start; }
+}
+.maitrises__zone { margin: 0 0 0.3rem; color: var(--muted); font-size: var(--fs-xxs); font-weight: 700; letter-spacing: var(--ls-caps); text-transform: uppercase; }
+.maitrises-sources, .maitrise-parts { display: grid; gap: 0.4rem; margin: 0; padding: 0; list-style: none; min-width: 0; }
+.maitrises-sources__vide { color: var(--muted); font-size: var(--fs-sm); }
+.maitrise-source { min-width: 0; padding: 0.35rem 0.5rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.maitrise-source[data-a-choisir] { border: 2px solid var(--a-choisir); background: color-mix(in srgb, var(--a-choisir) 8%, var(--surface)); }
+.maitrise-source[data-erreur] { border: 2px solid var(--danger); background: color-mix(in srgb, var(--danger) 6%, var(--surface)); }
+.maitrise-source__tete { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.1rem 0.5rem; }
+.maitrise-source__titre { font-size: var(--fs-md); }
+.maitrise-source__type { color: var(--muted); font-size: var(--fs-xxs); letter-spacing: var(--ls-fin); text-transform: uppercase; }
+.maitrise-source__etat { margin-left: auto; color: var(--good); font-size: var(--fs-xs); font-weight: 700; }
+.maitrise-source__etat[data-etat='a_choisir'], .maitrise-source__etat[data-etat='attente'] { color: var(--a-choisir); }
+.maitrise-source__etat[data-etat='refus'] { color: var(--danger); }
+.maitrise-source__etat[data-etat='a_choisir']::before, .maitrise-source__etat[data-etat='attente']::before, .maitrise-source__etat[data-etat='refus']::before { content: '⚠ '; }
+.maitrise-source__texte { margin: 0.15rem 0 0.3rem; font-size: var(--fs-sm); font-style: italic; overflow-wrap: anywhere; }
+.maitrise-source__texte::before { content: '« '; }
+.maitrise-source__texte::after { content: ' »'; }
+.maitrise-parts { gap: 0.25rem; }
+.maitrise-part { display: flex; flex-wrap: wrap; align-items: center; gap: 0.2rem 0.45rem; font-size: var(--fs-sm); }
+.maitrise-part__points { min-width: 1.8rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.maitrise-part__famille { font-weight: 700; }
+.maitrise-part__etiquette { color: var(--muted); font-size: var(--fs-xs); }
+.fiche .maitrise-part select { flex: 1 1 9rem; max-width: 100%; min-width: 0; padding-block: 0.1rem; font-size: var(--fs-sm); }
+.fiche .maitrise-part select[data-vide] { border: 2px solid var(--a-choisir); color: var(--a-choisir); font-weight: 700; }
+.fiche .maitrise-part select[data-refus] { border: 2px solid var(--danger); }
+.maitrise-part option { color: var(--text); font-weight: normal; }
+.maitrise-marque { display: inline-block; padding: 0 0.4rem; border: 1px solid currentColor; border-radius: var(--radius-sm); color: var(--accent); font-size: var(--fs-xxs); font-weight: 700; overflow-wrap: anywhere; }
+.maitrise-marque[data-ton='retrait'] { color: var(--danger); }
+.maitrise-marque[data-ton='choisir'] { color: var(--a-choisir); }
+.maitrise-part__message { flex-basis: 100%; margin: 0; padding-left: 0.5rem; border-left: 3px solid var(--border); color: var(--muted); font-size: var(--fs-xs); }
+.maitrise-part__message[data-ton='choisir'] { border-color: var(--a-choisir); color: var(--a-choisir); }
+.maitrise-part__message[data-ton='erreur'] { border-color: var(--danger); color: var(--danger); }
+.fiche-table--maitrises caption { caption-side: bottom; padding-top: 0.25rem; text-align: left; font-size: var(--fs-xs); }
+.fiche-table--maitrises tbody th { color: var(--text); font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; }
+.fiche .fiche-table--maitrises td, .fiche .fiche-table--maitrises tbody th { vertical-align: top; }
+.fiche-table--maitrises tr[data-nul] > * { color: var(--muted); font-weight: normal; }
+.fiche-table--maitrises tr[data-etat='trop'] > * { background: color-mix(in srgb, var(--danger) 8%, transparent); }
+.maitrise-detail { color: var(--muted); font-size: var(--fs-xs); }
+.maitrise-alerte { display: block; margin-top: 0.1rem; padding-left: 0.4rem; border-left: 3px solid var(--border); }
+.maitrise-alerte[data-ton='trop'] { border-color: var(--danger); color: var(--danger); font-weight: 600; }
 
 /* alignement (demande du propriétaire) : les quatre scores serrés, l'alignement qui en résulte à côté */
 .alignement { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.7rem; margin: 0; padding: 0.25rem 0.55rem 0.4rem; border: 1px solid var(--etape-ligne); border-radius: var(--radius); }
@@ -942,9 +983,6 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .armure__partie[data-cassee] .objet__solidite-nom { color: var(--danger); }
 .objet__details > summary { color: var(--muted); font-size: var(--fs-xs); cursor: pointer; overflow-wrap: anywhere; }
 .objet__details[open] > summary { margin-bottom: 0.35rem; }
-.zp-colonne .maitrises { grid-template-columns: repeat(auto-fill, minmax(min(100%, 13.5rem), 1fr)); gap: 0.1rem 0.9rem; }
-.zp-colonne .maitrise { font-size: var(--fs-xs); gap: 0.35rem; }
-.zp-colonne .maitrise .curseur { width: 3.6rem; }
 /* le bouclier a son bloc : plus de cadre autour */
 #bouclier .objet { padding: 0; border: 0; background: none; }
 
@@ -957,7 +995,6 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
   .fiche-zone { padding: 0.45rem 0.4rem 0.5rem; }
   .fiche-etape__corps { padding: 0.5rem; }
   .fiche-barre { position: static; }
-  .maitrise .curseur { width: 5rem; }
 }
 @media (prefers-reduced-motion: reduce) {
   .pastille, .xp__rempli { transition: none; }

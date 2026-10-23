@@ -30,17 +30,18 @@ import { dessinerVignette, ouvrirRecadrage, reduireImage } from './portrait.mjs'
 import {
   actionsDeLEmplacement, actionsDesAccessoires, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, exemplairesParEmplacement, inventaireDe,
   mettreALaCeinture, objetChoisiDansLaListe, quantiteDuSac, rangerLEmplacement, remplirLEmplacement, suggestionsDeCeinture, utiliserLObjet, ajusterValeurDuMoment, alignementDe, armesApresChoix, armesApresReglage, armesValables, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, choixEnAttente, cleDeChoix, donDeBase, modeHyperDe, niveauDeSpecialite, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
-  choisirObjetDeMetier, choixDeMetierValables, classeImposee, classesDe, classesSelonLaMagieInnee, competencesDe, deDeLaFamille, donsAChoisir, donsAcquis, donsDeRace, donsValables,
-  durabiliteAEcrire, durabiliteDArme, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, famillesMaitrisables, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable, notationDesDes,
-  magiesInneesPermises, maitriseDArme, maitriseDesSorts, maitrisesValables, gainsDeNiveau, niveauGlobal, bornesDuNm, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionXp,
+  choisirObjetDeMetier, choixDeMetierValables, classeImposee, classesDe, classesSelonLaMagieInnee, competencesDe, donsAChoisir, donsAcquis, donsDeRace, donsValables,
+  durabiliteAEcrire, durabiliteDArme, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, famillesMaitrisables, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable,
+  magiesInneesPermises, maitriseDArme, maitriseDesSorts, gainsDeNiveau, niveauGlobal, bornesDuNm, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionXp,
   bornesDuMultiplicateur, livreAuPlafond, multiplicateurDuCout, sortAuNm, sortAvecLivre, sortPourUnLivre, donDePreparation, jetDuSortPrepare, sortPrepare, sortsAEnregistrer, sortsAPreparer, sortsApresLeJet,
   sortsApresChoixDEmplacement, sortsApresPreparation, sortsApresLaSymbiose, nmDuMoment,
-  quotaDeMaitrise, refusClasse, refusMagieAcquise, resistancesDe, sortsParNpm, trouver, ecrireValeurDuMoment, valeursDuMoment,
+  refusClasse, refusMagieAcquise, resistancesDe, sortsParNpm, trouver, ecrireValeurDuMoment, valeursDuMoment,
   armureApresChoix, partiesApresReglage, partiesDeLArmure, partiesValables,
   bouclierApresChoix, bouclierDe, catalogueDuSac, defenseDe, degatsRecus, effetDeCompetence, effetsDAccessoireProposes, PARTIE_PAR_DEFAUT, partiesDuCorps, valeurDeCompetenceBornee,
   propositionsDuCatalogue, soliditeDuBouclierAEcrire, typesDeDegats, valeurDEffetDAccessoire,
-  acquisApresChoix, acquisApresChoixDArme, acquisApresRepartition, acquisChoixValables, acquisDesDons, resistanceApresChoix, resistanceChoixValables, entrainementDe, entrainementsAEnregistrer, batonDuSac, contexteDesSorts, degatsDArmeDuMoment, magiesDesBatons, nomDuBaton, postureDuMoment, sortDuMoment,
+  acquisApresChoix, acquisApresRepartition, acquisChoixValables, acquisDesDons, resistanceApresChoix, resistanceChoixValables, entrainementDe, entrainementsAEnregistrer, batonDuSac, contexteDesSorts, degatsDArmeDuMoment, magiesDesBatons, nomDuBaton, postureDuMoment, sortDuMoment,
   creaturesDuSort, sacrificeDuSort,
+  carteDeMaitrise, compteurDeMaitrise, ligneDeMaitrise, maitriseApresChoix, maitriseChoixValables, maitrisesParFamille, presentationDuCompteurDeMaitrise, sourcesDeMaitrise,
 } from '../lib/fiche-moteur.mjs';
 import { creatureAuNpm, FPVSIA, vautAuNpm } from '../lib/creature-npm.mjs';
 
@@ -675,43 +676,134 @@ function construireMetier() {
 
 // ------------------------------------------------------------------ maîtrises d'armes
 /**
- * Maîtrises d'armes, dans leur bloc (demande du propriétaire). La base garde le nombre de dés (1 sans maîtrise, 5 au plus) ; un curseur étroit de
- * points de maîtrise (4 au plus), un dé de plus chacun, et les dés à côté ; le Pugilat montre le seul dé de la Force du personnage (deDeLaFamille). Dans
- * le coin du bloc, les points répartis sur le quota des classes et de leurs dons (quotaDeMaitrise, décision R32). Pas de ligne pour ARME DE MONSTRES,
- * des armes exclusives aux monstres (famillesMaitrisables, décision R45).
+ * Maîtrises d'armes, dans leur bloc (décision R148, variante A de la maquette retenue par le propriétaire, « Bloc des sources » : « tous les choix dans le
+ * bloc Maîtrises, une carte par source, à côté du tableau calculé par famille »). Une carte par source (lignes des classes prises, dons acquis, accessoire
+ * « Un point de maîtrise d'arme » : sourcesDeMaitrise) : son titre, son texte tel qu'écrit, la famille imposée, la famille suivie ou retirée (R151), un
+ * sélecteur par point à choisir (maitriseApresChoix ; une famille à la limite écrite de la source n'y est plus proposée, R150 ; l'accessoire : sa famille,
+ * la même que sous les accessoires) et son état, en mots (carteDeMaitrise). À côté, le tableau calculé des familles maîtrisables (maitrisesParFamille :
+ * points, dés, d'où ils viennent ; l'excédent au-delà du plafond signalé sur sa ligne, R149 ; jamais ARME DE MONSTRES, R45 ; le Pugilat au dé de la Force,
+ * deDeLaFamille) : rien ne s'y saisit. Dans le coin, « N points · M à choisir » (compteurDeMaitrise). Pas de points du MJ (R148) ; rien de calculé
+ * n'est enregistré. Un point à choisir est surligné et passe dans le tiroir des choix (nature `maitrise`, sa tuile par `data-choix-cle`).
  */
 function construireMaitrises() {
-  const maitrise = maitriseDArme(regles);
-  const quota = quotaDeMaitrise(regles, fiche);
+  const { sources } = calcul.maitrises;
+  const compteur = presentationDuCompteurDeMaitrise(calcul.maitrises.compteur, sources);
   const badge = $('budget-maitrises');
-  etatBudget(badge, quota.utilises, quota.total, 'Maîtrises');
-  badge.title = quota.sources.length
-    ? `Points de maîtrise répartis / quota des classes et de leurs dons : ${quota.sources.map((x) => `${x.nom} ${x.points > 0 ? '+' : ''}${x.points}`).join(' · ')}`
-    : 'Quota de maîtrise : choisissez une classe (ses maîtrises et celles de ses dons)';
-  reconstruire($('maitrises'), 'fixe', () => famillesMaitrisables(regles).map((f) => {
-    const curseur = el('input', {
-      type: 'range', min: '0', max: String(maitrise.pointsMax), step: '1', class: 'curseur', 'aria-label': `Maîtrise : ${f.nom} (points)`,
-      title: `De 0 à ${maitrise.pointsMax} points : ${maitrise.desSansMaitrise} dé sans maîtrise, un de plus par point`,
-      oninput: (ev) => {
-        const points = entier(ev.target.value);
-        retirer('maitrises_armes', (x) => x.arme_famille_id === f.id);
-        if (points > 0) fiche.maitrises_armes.push({ arme_famille_id: f.id, des: maitrise.desDe(points) });
-        changer();
-      },
+  if (badge.textContent !== compteur.texte) badge.textContent = compteur.texte;
+  attribut(badge, 'data-etat', compteur.etat);
+  infobulle(badge, compteur.infobulle);
+  const m = maitriseDArme(regles);
+  const legende = `${m.desSansMaitrise} dé sans maîtrise, un de plus par point ; ${m.pointsMax} points comptés au plus par famille (${m.desMax} dés). Rien ne se saisit ici : tout vient des sources.`;
+  if ($('maitrises-legende').textContent !== legende) $('maitrises-legende').textContent = legende;
+  // la carte est refaite quand ses sources changent (une classe, un niveau, un don, un accessoire) ; un choix de famille ne la refait pas (le focus reste)
+  const cle = JSON.stringify(sources.map((s) => [s.source, s.titre, s.texte, s.parts.map((p) => [p.genre, p.points, p.choisis?.length ?? 0])]));
+  reconstruire($('maitrises-sources'), cle, () => (sources.length
+    ? sources.map(carteDeMaitriseDeLaPage)
+    : el('li', { class: 'maitrises-sources__vide' }, 'Choisissez une classe : ses lignes de maîtrise et celles de ses dons apparaissent ici.')));
+  reconstruire($('maitrises-familles'), 'fixe', () => famillesMaitrisables(regles).map(ligneDeFamilleDeLaPage));
+}
+
+/** La famille `familleId` (null : retirée) pour le point `rang` de la source `s` : dans maitrise_choix, ou sur l'accessoire (son arme_famille_id, R151). */
+function choisirLaMaitrise(s, rang, familleId) {
+  if (s.type === 'accessoire') {
+    const a = (fiche.accessoires ?? []).find((x) => x.emplacement === s.emplacement);
+    if (a) a.arme_famille_id = familleId;
+  } else Object.assign(fiche, maitriseApresChoix(fiche, s.source, rang, familleId));
+  changer();
+}
+
+let numeroDeMaitrise = 0;
+/** La carte d'une source (carteDeMaitrise), relue à chaque rafraîchissement dans calcul.maitrises. */
+function carteDeMaitriseDeLaPage(s) {
+  const actuelle = () => calcul.maitrises.sources.find((x) => x.source === s.source) ?? s;
+  const carte = carteDeMaitrise(regles, s);
+  const etat = el('span', { class: 'maitrise-source__etat' });
+  const lignes = carte.lignes.map((l, i) => {
+    const ligneActuelle = () => carteDeMaitrise(regles, actuelle()).lignes[i] ?? l;
+    const points = el('span', { class: 'maitrise-part__points' }, l.points);
+    if (l.genre === 'imposee') {
+      return el('li', { class: 'maitrise-part' }, points, el('span', { class: 'maitrise-part__famille' }, l.famille), el('span', { class: 'maitrise-marque', title: 'Écrite dans le texte' }, l.marque));
+    }
+    if (l.genre === 'suit') {
+      // « avec l'arme déterminée avant », le −1 de l'Épéiste (décision R151) : la famille de la maîtrise au choix de la classe, sans sélecteur
+      const famille = el('span', { class: 'maitrise-part__famille' });
+      const attente = el('p', { class: 'maitrise-part__message', dataset: { ton: 'choisir' } });
+      const li = el('li', { class: 'maitrise-part' }, points, famille, el('span', { class: 'maitrise-marque', dataset: l.retrait ? { ton: 'retrait' } : {} }, l.marque), attente);
+      synchro(() => {
+        const x = ligneActuelle();
+        famille.textContent = x.famille ?? '…';
+        attente.textContent = x.attente ?? '';
+        attente.hidden = !x.attente;
+      });
+      return li;
+    }
+    // un point à choisir : ses familles (sans celle qu'une limite écrite ferme, R150), « à choisir » tant qu'il est vide, la limite dépassée en rouge
+    numeroDeMaitrise += 1;
+    const id = `maitrise-point-${numeroDeMaitrise}`;
+    const liste = el('select', {
+      id, 'aria-label': `${s.titre} : famille ${l.etiquette === 'Famille' ? 'd’armes' : `du point ${l.rang}`}`,
+      onchange: (ev) => choisirLaMaitrise(s, l.rang, ev.target.value || null),
     });
-    const points = el('output', { class: 'curseur__valeur' });
-    const des = el('strong', { class: 'des' });
+    const marque = el('span', { class: 'maitrise-marque', dataset: { ton: 'choisir' } }, 'à choisir');
+    const message = el('p', { class: 'maitrise-part__message', dataset: { ton: 'erreur' }, role: 'alert' });
+    const li = el('li', { class: 'maitrise-part', dataset: l.cle ? { choixCle: l.cle } : {} },
+      points, el('label', { class: 'maitrise-part__etiquette', for: id }, l.etiquette), liste, marque, message);
     synchro(() => {
-      const l = ligneDe('maitrises_armes', (x) => x.arme_famille_id === f.id);
-      const n = l ? maitrise.pointsDe(l.des) : 0;
-      poser(curseur, n);
-      points.textContent = String(n);
-      const { de, force } = deDeLaFamille(regles, fiche, f);
-      des.textContent = notationDesDes(de, l ? l.des : maitrise.desSansMaitrise);
-      des.title = force === null ? '' : `${de} avec ${force} de Force (${f.de_selon_force.map((p) => `${p.de} pour ${p.min === p.max ? p.min : `${p.min} à ${p.max}`}`).join(', ')} de Force)`;
+      const x = ligneActuelle();
+      // les familles proposées, refaites seulement quand elles changent (la liste garde le focus du clavier)
+      const options = JSON.stringify(x.options.map((o) => o.id));
+      if (liste.dataset.options !== options) {
+        liste.dataset.options = options;
+        liste.replaceChildren(option('', '— à choisir —'), ...x.options.map((o) => option(o.id, o.nom)));
+      }
+      poser(liste, x.famille ?? '');
+      attribut(liste, 'data-vide', !x.famille);
+      attribut(liste, 'data-refus', x.refus);
+      attribut(liste, 'aria-invalid', x.refus ? 'true' : null);
+      marque.hidden = Boolean(x.famille);
+      if (message.textContent !== (x.message ?? '')) message.textContent = x.message ?? '';
+      message.hidden = !x.message;
     });
-    return el('li', { class: 'maitrise' }, el('span', { class: 'maitrise__nom' }, f.nom), el('span', { class: 'curseur-cellule' }, curseur, points), des);
-  }));
+    return li;
+  });
+  const li = el('li', { class: 'maitrise-source', dataset: { type: s.type } },
+    el('div', { class: 'maitrise-source__tete' }, el('strong', { class: 'maitrise-source__titre' }, s.titre), el('span', { class: 'maitrise-source__type' }, carte.sousTitre), etat),
+    s.texte ? el('p', { class: 'maitrise-source__texte' }, s.texte) : null,
+    el('ul', { class: 'maitrise-parts' }, lignes));
+  synchro(() => {
+    const x = actuelle();
+    const c = carteDeMaitrise(regles, x);
+    etat.textContent = c.etat.libelle;
+    etat.dataset.etat = c.etat.cle;
+    attribut(li, 'data-a-choisir', x.etat === 'a_choisir' || x.etat === 'attente');
+    attribut(li, 'data-erreur', x.etat === 'refus');
+  });
+  return li;
+}
+
+/** La ligne d'une famille dans le tableau calculé (maitrisesParFamille, ligneDeMaitrise) : points, dés, sources et alertes. */
+function ligneDeFamilleDeLaPage(f) {
+  const points = el('td', { class: 'nombre' });
+  const des = el('td', { class: 'nombre des' });
+  const detail = el('td', { class: 'maitrise-detail' });
+  const tr = el('tr', {}, el('th', { scope: 'row' }, f.nom), points, des, detail);
+  synchro(() => {
+    const m = calcul.maitrises.familles.find((x) => x.famille === f.id);
+    if (!m) return;
+    const l = ligneDeMaitrise(m);
+    points.textContent = String(m.points);
+    des.textContent = m.notation;
+    infobulle(des, m.force === null ? '' : `${m.de} avec ${m.force} de Force (${f.de_selon_force.map((p) => `${p.de} pour ${p.min === p.max ? p.min : `${p.min} à ${p.max}`}`).join(', ')} de Force)`);
+    const cle = JSON.stringify(l);
+    if (detail.dataset.cle !== cle) {
+      detail.dataset.cle = cle;
+      detail.replaceChildren(el('span', {}, l.detail.length ? l.detail.join(' · ') : 'aucune source'),
+        ...l.alertes.map((a) => el('span', { class: 'maitrise-alerte', dataset: { ton: a.ton } }, a.texte)));
+    }
+    attribut(tr, 'data-nul', !m.detail.length);
+    attribut(tr, 'data-etat', l.alertes.some((a) => a.ton === 'trop') ? 'trop' : null);
+  });
+  return tr;
 }
 
 // ------------------------------------------------------------------ sorts
@@ -747,13 +839,15 @@ function construireSorts() {
     ? `${emplacements.total} emplacement${emplacements.total > 1 ? 's' : ''} (${emplacements.conditions} condition${emplacements.conditions > 1 ? 's' : ''} × puissance ${emplacements.puissance}), sorts jusqu’au NPM ${max}, ${nm.plafond} NM au plus par sort (dont ${Math.min(nm.plafond, nm.maxParSort)} de niveau).`
     : 'Pas encore d’emplacement de sort : choisissez une magie.';
   etatBudget($('budget-sorts'), (fiche.sorts ?? []).length, emplacements.total, 'Sorts', false);
-  // le décompte des NM (décision R118) : ceux des sorts sans leurs livres, sur les NM gagnés par les niveaux plus ceux du MJ, notés juste à côté (la
-  // limite affichée est celle des niveaux : « 9 / 11 + MJ 2 »)
+  // le décompte des NM (décision R118) : ceux des sorts sans leurs livres, sur les NM gagnés plus ceux du MJ, notés juste à côté (la limite affichée est
+  // celle des NM gagnés : « 9 / 11 + MJ 2 ») ; les NM gagnés sont ceux des niveaux et ceux qu'écrit un don acquis (décision R154 : « Maîtrise » de
+  // l'Ocultomancien, +4), détaillés dans l'infobulle
   const badge = $('budget-nm');
   etatBudget(badge, nm.comptes, nm.limite, 'NM');
   badge.textContent = `NM : ${nm.comptes} / ${nm.disponibles}`;
-  infobulle(badge, `NM répartis sur les sorts (sans ceux des livres${nm.livres ? ` : ${nm.livres} en plus` : ''}) / NM gagnés par les niveaux, plus ceux du MJ, `
-    + `notés à côté pour toute la fiche${nm.mj ? ` (${nm.disponibles} + ${nm.mj} = ${nm.limite})` : ''} ; ${nm.plafond} NM au plus sur un sort`);
+  const gagnes = nm.dons.length ? ` (${nm.niveaux} par les niveaux, ${nm.dons.map((d) => `+${d.nm} ${d.nom}`).join(', ')})` : '';
+  infobulle(badge, `NM répartis sur les sorts (sans ceux des livres${nm.livres ? ` : ${nm.livres} en plus` : ''}) / NM gagnés par les niveaux${nm.dons.length ? ' et les dons' : ''}${gagnes}, `
+    + `plus ceux du MJ, notés à côté pour toute la fiche${nm.mj ? ` (${nm.disponibles} + ${nm.mj} = ${nm.limite})` : ''} ; ${nm.plafond} NM au plus sur un sort`);
 
   const lignes = lignesDeSorts(regles, fiche);
   const cle = JSON.stringify([lignes.length, (fiche.sorts ?? []).map((x) => x.sort_id), fiche.magie_innee_id, fiche.magie_acquise_id, max]);
@@ -1233,38 +1327,35 @@ function construireAcquisAChoisir() {
   const listeDesCompetences = (attributs, exclues = new Set()) => el('select', attributs, option('', 'Choisir…'),
     regles.caracteristiques.map((k) => el('optgroup', { label: k.nom },
       regles.competences.filter((c) => c.caracteristique_id === k.id && !exclues.has(c.id)).map((c) => option(c.id, c.nom)))));
-  // (un choix d'arme : ses familles seulement, la liste de ses compétences est refaite en place, sans perdre le focus du clavier)
-  const cle = JSON.stringify(choix.map((c) => [c.source, c.rang, c.arme ? ['arme', c.familles] : c.options ?? c.parts.map((x) => x.competence_id)]));
+  // (un choix d'arme : la maîtrise qu'il suit seulement, la liste de ses compétences est refaite en place, sans perdre le focus du clavier)
+  const cle = JSON.stringify(choix.map((c) => [c.source, c.rang, c.arme ? ['arme', c.maitrise] : c.options ?? c.parts.map((x) => x.competence_id)]));
   reconstruire($('acquis-choix'), cle, () => choix.map((c) => {
     const li = el('li', { class: 'fiche-champ acquis-choix__ligne', dataset: { choixCle: cleDeChoix.acquis(c.source, c.rang) } });
     if (c.arme) {
-      // « de la compétence de l'arme choisie » (décision R119) : l'arme, une des familles de la maîtrise au choix de la classe, puis sa compétence quand ses
-      // armes en donnent plusieurs (R48 ; Arc : Arc ou Arme légère, R126) ; une seule : déduite, la liste la montre sans choix. Une autre arme garde la
-      // compétence déjà choisie quand elle l'offre aussi.
+      // « de la compétence de l'arme choisie » (décisions R119, R152 « Un seul choix ») : l'arme est la famille choisie pour la maîtrise au choix de la
+      // classe du don (dans le bloc Maîtrises), jamais choisie ici ; puis sa compétence, déduite quand ses armes n'en donnent qu'une, au choix sinon (R48 ;
+      // Arc : Arc ou Arme légère, R126), gardée d'une famille à l'autre quand la nouvelle l'offre. Sans la maîtrise au choix, le bonus attend.
       const actuel = () => acquisDesDons(regles, fiche).choix.find((x) => x.source === c.source && x.rang === c.rang) ?? c;
-      const famille = el('select', {
-        'aria-label': `${c.nom} : +${c.valeur} %, l’arme de la maîtrise au choix`,
-        onchange: (ev) => { Object.assign(fiche, acquisApresChoixDArme(regles, fiche, c.source, c.rang, ev.target.value || null, actuel().choisi)); changer(); },
-      }, option('', 'Arme…'), c.familles.map((id) => option(id, trouver(regles.familles_armes, id)?.nom ?? id)));
+      const arme = el('span', { class: 'acquis-choix__arme' });
       const competence = el('select', {
         'aria-label': `${c.nom} : +${c.valeur} %, la compétence de l’arme`,
-        onchange: (ev) => { Object.assign(fiche, acquisApresChoixDArme(regles, fiche, c.source, c.rang, actuel().arme_famille_id, ev.target.value || null)); changer(); },
+        onchange: (ev) => { Object.assign(fiche, acquisApresChoix(fiche, c.source, c.rang, ev.target.value || null)); changer(); },
       });
-      const aide = el('small', { class: 'acquis-choix__reste', 'aria-live': 'polite' }, 'Une arme choisie sans sa compétence n’est pas enregistrée.');
-      li.append(el('span', {}, `${c.nom} : +${c.valeur} % de la compétence de l’arme choisie`), el('div', { class: 'acquis-choix__part' }, famille, competence), aide);
+      li.append(el('span', {}, `${c.nom} : +${c.valeur} % de la compétence de l’arme choisie`), el('div', { class: 'acquis-choix__part' }, arme, competence));
       synchro(() => {
         const x = actuel();
-        // les compétences de l'arme choisie, refaites seulement quand elles changent (la liste garde le focus du clavier)
+        const famille = trouver(regles.familles_armes, x.arme_famille_id);
+        arme.textContent = famille
+          ? `Arme : ${famille.nom} (maîtrise au choix de ${x.classe})${x.deduite ? ` — ${trouver(regles.competences, x.choisi)?.nom ?? x.choisi}` : ''}`
+          : `Choisissez d’abord la maîtrise au choix de ${x.classe} (bloc Maîtrises d’armes).`;
+        // les compétences de l'arme, refaites seulement quand elles changent (la liste garde le focus du clavier)
         const options = JSON.stringify(x.options);
         if (competence.dataset.options !== options) {
           competence.dataset.options = options;
           competence.replaceChildren(option('', 'Compétence…'), ...x.options.map((o) => option(o, trouver(regles.competences, o)?.nom ?? o)));
         }
-        poser(famille, x.arme_famille_id ?? '');
         poser(competence, x.choisi ?? '');
-        competence.hidden = !x.arme_famille_id;
-        competence.disabled = x.options.length < 2;
-        aide.hidden = !x.arme_famille_id || x.fait;
+        competence.hidden = x.options.length < 2;
         li.toggleAttribute('data-a-choisir', !x.fait);
       });
       return li;
@@ -2239,7 +2330,9 @@ function construireEquipement() {
         },
       });
       const maudit = el('input', { type: 'checkbox', 'aria-label': `${nom} : maudit`, onchange: (ev) => { const x = l(); if (x) { x.maudit = ev.target.checked ? 1 : 0; changer(); } } });
-      // l'effet à choix (décision R54) : « Compétence X » → une compétence de cette caractéristique ; « +5 dégâts avec une catégorie d'arme » → une famille
+      // l'effet à choix (décision R54) : « Compétence X » → une compétence de cette caractéristique ; « +5 dégâts avec une catégorie d'arme » et « Un point
+      // de maîtrise d'arme » → une famille maîtrisable (R151 : « (ne peut changer une fois décidé) » n'est qu'un rappel, le choix reste modifiable ; le
+      // point de maîtrise se choisit aussi dans sa carte du bloc Maîtrises, la même valeur)
       const choixCompetence = el('select', { 'aria-label': `${nom} : compétence de l’accessoire`,
         onchange: (ev) => { obtenir().competence_id = ev.target.value || null; changer(); } });
       const choixFamille = el('select', { 'aria-label': `${nom} : famille d’armes de l’accessoire`,
@@ -2286,7 +2379,8 @@ function construireEquipement() {
           choixCompetence.toggleAttribute('data-a-choisir', !choixCompetence.value);
         }
         const cibles = (effet?.effets ?? []).map((c) => c.cible);
-        choixFamille.hidden = !cibles.includes('degats_famille');
+        choixFamille.hidden = !cibles.includes('degats_famille') && !cibles.includes('maitrise_arme');
+        infobulle(choixFamille, choixFamille.hidden ? '' : '« Ne peut changer une fois décidé » : un rappel, le choix reste modifiable');
         if (!choixFamille.hidden) {
           if (!choixFamille.options.length) {
             choixFamille.replaceChildren(el('option', { value: '' }, '— famille d’armes —'), ...regles.familles_armes.filter((f) => f.maitrisable !== false).map((f) => el('option', { value: f.id }, f.nom)));
@@ -2762,6 +2856,13 @@ function rafraichir() {
     contexteSorts: contexteDesSorts(regles, fiche),
   };
   calcul.jauges = valeursDuMoment(regles, fiche, calcul.attributs);
+  // les maîtrises d'armes (décision R148) : les sources une fois, lues par le bloc, son tableau et son compteur
+  const sourcesDesMaitrises = sourcesDeMaitrise(regles, fiche);
+  calcul.maitrises = {
+    sources: sourcesDesMaitrises,
+    familles: maitrisesParFamille(regles, fiche, sourcesDesMaitrises),
+    compteur: compteurDeMaitrise(regles, fiche, sourcesDesMaitrises),
+  };
   calcul.attente = choixEnAttente(regles, fiche);
   for (const champ of racine.querySelectorAll('[data-champ]')) poser(champ, fiche[champ.dataset.champ]);
   // cadres des blocs dans la couleur de la magie innée, en dégradé vers celle de la magie acquise (demande du propriétaire ; fiche.css, « cadres »)
@@ -2825,7 +2926,7 @@ function etatDesBoutons() {
 }
 
 // ------------------------------------------------------------------ enregistrement, chargement
-/** La fiche à envoyer : listes nettoyées (lignes vides retirées, rangs renumérotés, pas de maîtrise sur ARME DE MONSTRES : décision R45). */
+/** La fiche à envoyer : listes nettoyées (lignes vides retirées, rangs renumérotés, choix devenus sans effet retirés : pas de maîtrise sur ARME DE MONSTRES, R45). */
 function aEnvoyer() {
   const f = structuredClone(fiche);
   for (const c of COLONNES_DU_SERVICE) delete f[c];
@@ -2837,7 +2938,10 @@ function aEnvoyer() {
   f.acquis_choix = acquisChoixValables(regles, f);
   // la résistance au choix de la ligne du tableau de la race (décision R124) : celle de la race et de l'ethnie de la fiche, une de ses options
   f.resistance_choix = resistanceChoixValables(regles, f);
-  f.maitrises_armes = maitrisesValables(regles, f);
+  // les maîtrises d'armes (décision R148) : la famille de chaque point à choisir d'une source acquise, parmi ses options ; plus de dés par famille (une
+  // liste maitrises_armes envoyée avec maitrise_choix serait refusée : 409)
+  f.maitrise_choix = maitriseChoixValables(regles, f);
+  delete f.maitrises_armes;
   // solidité du moment de chaque arme bornée à son maximum (décision R74 : à son maximum ou au-delà, rien d'enregistré) ; gains de niveau jamais négatifs (R73)
   f.armes = armesValables(regles, f);
   // de même celle des parties de l'armure (décision R95 : une ligne par partie abîmée, rien sans armure)
@@ -2856,7 +2960,8 @@ function aEnvoyer() {
 
 /**
  * Les noms qui décrivent ce qu'une fiche d'avant perd à sa conversion (sansPartiesRetirees) : une armure, un emplacement d'armure, un matériau de
- * bouclier, un effet d'accessoire.
+ * bouclier, un effet d'accessoire ; pour les maîtrises d'avant la refonte (décision R153, lib/fiche-format.mjs#maitrisesDAvant), une famille d'armes
+ * ({ nom, de, ordre }, comme arme_famille : le bandeau, le dé écrit, son rang) et un don ({ nom, classe }).
  */
 const nomsDesRetraits = () => ({
   armure: (x) => trouver(regles.armures ?? [], x)?.nom ?? null,
@@ -2864,6 +2969,17 @@ const nomsDesRetraits = () => ({
   ressource: (x) => trouver(regles.ressources ?? [], x)?.nom ?? null,
   accessoire: (x) => trouver(regles.accessoires ?? [], x)?.libelle ?? null,
   competence: (x) => trouver(regles.competences ?? [], x)?.nom ?? null,
+  famille: (x) => {
+    const i = (regles.familles_armes ?? []).findIndex((f) => f.id === x);
+    return i < 0 ? null : { nom: regles.familles_armes[i].nom, de: regles.familles_armes[i].de ?? null, ordre: i + 1 };
+  },
+  don: (x) => {
+    for (const c of regles.classes ?? []) {
+      const d = (c.dons ?? []).find((y) => y.id === x);
+      if (d) return { nom: d.nom, classe: c.nom };
+    }
+    return null;
+  },
 });
 
 function appliquer(donnees) {
@@ -3371,7 +3487,13 @@ function indexerNoms() {
   for (const c of regles.classes) {
     for (const s of c.specialites) noms.set(s.id, `${c.nom} · ${s.nom}`);
     for (const g of c.choix) for (const o of g.options) noms.set(o.id, `${o.nom} (${c.nom})`);
+    // les sources de maîtrise d'arme des contrôles maitrise_* (décision R148) : une ligne de classe, un don, comme les titres du bloc Maîtrises
+    (c.maitrises ?? []).forEach((m, i) => { if (m.source) noms.set(m.source, `${c.nom} (maîtrise ${i + 1})`); });
+    for (const d of c.dons ?? []) if (!noms.has(d.id)) noms.set(d.id, `${d.nom} (${c.nom})`);
   }
+  for (const [cle, nom] of EMPLACEMENTS_ACCESSOIRES) noms.set(`accessoire:${cle}`, `Accessoire : ${nom}`);
+  // les familles d'armes (une compétence du même identifiant, « arc », garde son nom)
+  for (const f of regles.familles_armes) if (!noms.has(f.id)) noms.set(f.id, f.nom);
 }
 
 function remplirListesFixes() {

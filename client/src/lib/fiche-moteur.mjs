@@ -547,20 +547,6 @@ export function familleDeLaMaitriseAuChoix(fiche, ligne) {
   return (fiche.maitrise_choix ?? []).find((x) => x.source === ligne.source && entier(x.rang) === 1 && part.options.includes(x.arme_famille_id))?.arme_famille_id ?? null;
 }
 
-/**
- * Obsolète depuis la décision R152 (l'arme du bonus est la maîtrise au choix de la classe : maitriseApresChoix ; la compétence, acquisApresChoix) :
- * gardée tant que la page l'importe (étape 07 de la refonte des maîtrises), retirée ensuite. La fiche après le choix de l'arme d'un choix d'arme
- * (`source`, `rang`) : la famille `familleId` (null : le choix retiré) et, quand ses armes donnent plusieurs compétences, `competenceId` s'il en est une.
- * { acquis_choix }.
- */
-export function acquisApresChoixDArme(regles, fiche, source, rang, familleId, competenceId = null) {
-  const autres = (fiche.acquis_choix ?? []).filter((x) => !(x.source === source && entier(x.rang) === rang));
-  if (!familleId) return { acquis_choix: autres };
-  const competences = trouver(regles.familles_armes, familleId)?.competences ?? [];
-  const competence = competences.length === 1 ? competences[0] : competences.includes(competenceId) ? competenceId : null;
-  return { acquis_choix: [...autres, { source, rang, competence_id: competence, valeur: null, arme_famille_id: familleId }] };
-}
-
 /** La source des choix de la ligne de l'ethnie dans le tableau de dons de la race (« Écaille draconique » du Drakos) : celle de personnage_acquis_choix et de personnage_resistance_choix. */
 export const sourceDuTableau = (fiche) => `${fiche.race_id}#tableau:${fiche.ethnie_id}`;
 
@@ -1466,6 +1452,94 @@ export function maitriseChoixValables(regles, fiche) {
 export function maitriseApresChoix(fiche, source, rang, familleId) {
   const autres = (fiche.maitrise_choix ?? []).filter((x) => !(x.source === source && entier(x.rang) === rang));
   return { maitrise_choix: familleId ? [...autres, { source, rang, arme_famille_id: familleId }] : autres };
+}
+
+// Ce que montre le bloc Maîtrises de la page /fiche/ (décision R148, variante A de la maquette retenue par le propriétaire, « Bloc des sources » : une
+// carte par source, le tableau calculé des familles à côté, le compteur dans le coin) : des textes tirés des calculs ci-dessus, sans rien recalculer.
+
+/** Des points signés comme sur la maquette du bloc Maîtrises : « +2 », « −1 » (le signe moins typographique), « 0 ». */
+export const pointsSignes = (n) => (n > 0 ? `+${n}` : n < 0 ? `−${-n}` : '0');
+const pluriel = (n, mot) => `${n} ${mot}${Math.abs(n) > 1 ? 's' : ''}`;
+/**
+ * « du Mage Bleu », « de l’Archimage » : la classe dont une part suit la maîtrise au choix (R151 : les classes des parts `suit` sont le Guerrier et les
+ * Mages Rouge, Bleu et Vert, toutes au masculin).
+ */
+const duNomDeClasse = (nom) => (/^[aeiouyhàâäéèêëîïôöûüœ]/i.test(nom) ? `de l’${nom}` : `du ${nom}`);
+const NATURES_DE_DON = { specialite: 'Spécialité', choix: 'Don à choix', classe: 'Don de classe' };
+const ETATS_DE_SOURCE = { complete: () => 'complète', a_choisir: (s) => `${s.aChoisir} à choisir`, attente: () => 'en attente d’un choix', refus: () => 'limite dépassée' };
+
+/**
+ * La carte d'une source de maîtrise d'arme (sourcesDeMaitrise) : son sous-titre (la classe et sa ligne ; la nature du don et son niveau de classe ;
+ * l'accessoire, maudit ou non), son état en mots (l'état ne tient jamais à la seule couleur) et une ligne par part imposée ou qui suit, et par point d'une
+ * part à choisir. { sousTitre, etat: { cle, libelle }, lignes } ; une ligne :
+ *   { genre: 'imposee', points, famille (le nom), marque: 'imposée' } ;
+ *   { genre: 'suit', points, famille (le nom, null tant que la maîtrise au choix n'est pas posée), retrait (des points en moins : l'Épéiste), marque
+ *     (« suit : maîtrise au choix du Mage Bleu », « retrait · suit : … »), attente (texte, ou null) } (R151) ;
+ *   { genre: 'choix', points, rang (le numéro du point), famille (id ou null), options [{ id, nom }] (celles du point, R150 : sans une famille à la limite
+ *     écrite ; plus la famille choisie quand elle y est refusée, pour qu'elle reste à l'écran), refus, message (la limite dépassée, ou null), etiquette
+ *     (« Famille », « Point 2 »), cle (la tuile du tiroir, cleDeChoix.maitrise ; null pour l'accessoire, dont la tuile est sous les accessoires) }.
+ */
+export function carteDeMaitrise(regles, s) {
+  const nom = (id) => trouver(regles.familles_armes, id)?.nom ?? id;
+  const ordre = new Map(regles.familles_armes.map((f, i) => [f.id, i]));
+  const sousTitre = s.type === 'classe' ? `Classe ${s.classe.rang} · ligne de maîtrise ${s.ligne}`
+    : s.type === 'don' ? `${NATURES_DE_DON[s.nature] ?? 'Don'} · niveau de classe ${s.niveau}`
+    : s.maudit ? 'Accessoire maudit : l’effet contraire' : 'Accessoire';
+  const choix = s.parts.filter((p) => p.genre === 'choix');
+  const seul = choix.length === 1 && choix[0].choisis.length === 1;
+  const lignes = s.parts.flatMap((p) => {
+    if (p.genre === 'imposee') return [{ genre: 'imposee', points: pointsSignes(p.points), famille: nom(p.famille), marque: 'imposée' }];
+    if (p.genre === 'suit') {
+      const de = duNomDeClasse(p.suit.classe);
+      return [{
+        genre: 'suit', points: pointsSignes(p.points), famille: p.suit.famille ? nom(p.suit.famille) : null, retrait: p.points < 0,
+        marque: `${p.points < 0 ? 'retrait · ' : ''}suit : maîtrise au choix ${de}`,
+        attente: p.suit.famille ? null : `Se pose dès que la maîtrise au choix ${de} est choisie.`,
+      }];
+    }
+    return p.choisis.map((c) => {
+      const options = c.famille && !c.options.includes(c.famille) ? [...c.options, c.famille].sort((a, b) => (ordre.get(a) ?? 99) - (ordre.get(b) ?? 99)) : c.options;
+      const memes = p.choisis.filter((x) => x.famille && x.famille === c.famille).length;
+      return {
+        genre: 'choix', points: pointsSignes(c.valeur), rang: c.rang, famille: c.famille, options: options.map((id) => ({ id, nom: nom(id) })), refus: c.refus,
+        message: c.refus ? `Pas plus de ${pluriel(p.limite, 'point')} dans la même famille : ${nom(c.famille)} en reçoit ${memes} de cette source.` : null,
+        etiquette: seul ? 'Famille' : `Point ${c.rang}`,
+        cle: s.type === 'accessoire' ? null : cleDeChoix.maitrise(s.source, c.rang),
+      };
+    });
+  });
+  return { sousTitre, etat: { cle: s.etat, libelle: (ETATS_DE_SOURCE[s.etat] ?? (() => s.etat))(s) }, lignes };
+}
+
+/**
+ * Une ligne du tableau des familles du bloc Maîtrises (maitrisesParFamille) : d'où viennent ses points, en mots (« Guerrier (maîtrise 1) +1 »,
+ * « Mage saphir (Mage Bleu) +2 (suit un choix) »), et ses alertes : les points au-delà du plafond (R149, « 5 points : 1 au-delà du plafond, non compté »,
+ * ton 'trop') ; un total des sources sous 0, ramené à 0 (R151, ton 'info'). { detail: [texte], alertes: [{ ton, texte }] }.
+ */
+export function ligneDeMaitrise(m) {
+  const detail = m.detail.map((d) => `${d.titre} ${pointsSignes(d.points)}${d.genre === 'suit' ? ' (suit un choix)' : ''}`);
+  const alertes = [];
+  if (m.excedent) alertes.push({ ton: 'trop', texte: `${pluriel(m.points, 'point')} : ${m.excedent} au-delà du plafond, non compté${m.excedent > 1 ? 's' : ''}` });
+  const brut = m.detail.reduce((t, d) => t + d.points, 0);
+  if (brut < 0) alertes.push({ ton: 'info', texte: `${pointsSignes(brut)} en tout : ramené à 0, une famille ne descend jamais sous 0` });
+  return { detail, alertes };
+}
+
+/**
+ * Le compteur du coin du bloc Maîtrises (compteurDeMaitrise, décision R148 : « N points · M à choisir », au lieu de « répartis / quota ») : son texte, son
+ * état ('ok', 'manque' quand il reste des points à choisir, 'trop' quand une limite écrite est dépassée, R150 ; null sans aucune source) et son infobulle,
+ * les points de chaque source. { texte, etat, infobulle }.
+ */
+export function presentationDuCompteurDeMaitrise(compteur, sources) {
+  const total = (s) => s.parts.reduce((t, p) => t + (p.genre === 'choix' ? p.choisis.reduce((u, c) => u + c.valeur, 0) : p.points), 0);
+  const refus = compteur.refus ? ` ; ${pluriel(compteur.refus, 'point')} au-delà d’une limite écrite` : '';
+  return {
+    texte: `${pluriel(compteur.points, 'point')} · ${compteur.aChoisir} à choisir`,
+    etat: !sources.length ? null : compteur.refus ? 'trop' : compteur.aChoisir ? 'manque' : 'ok',
+    infobulle: sources.length
+      ? `Points de maîtrise des classes, des dons et des accessoires : ${sources.map((s) => `${s.titre} ${pointsSignes(total(s))}`).join(' · ')}${refus}`
+      : 'Pas encore de maîtrise : choisissez une classe (ses lignes de maîtrise et celles de ses dons)',
+  };
 }
 
 /**
