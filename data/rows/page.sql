@@ -19271,7 +19271,7 @@ Les nécromanciens sont généralement plus minces que la moyenne, voire maigres
 | Niveau | Nom | Type | Coût | Portée | Zone | D/S/B | Effets secondaires |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1.0 | Tir d''âme | Attaque | 3 + 1 âme | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Tire une âme en direction de la cible. 3NM = Sur un coup critique, force le jet de vigueur pour ne pas prendre poison 1. |
-| 1.0 | Animation de mort | Invocation (IC pour 3 NM) | 5 par NPM de la créature invoquée. +1 Âme par NPM de la créature invoquée. | 3.0 | 1.0 | / | Permet d''invoquer des non-morts (voir invocation) |
+| 1.0 | Animation de mort | Invocation (IC pour 3 NM) | 5 par NPM de la créature invoquée. +1 Âme par NPM de la créature invoquée. | 3.0 | 1.0 | / | Permet d''invoquer des non-morts |
 | 1.0 | Mur d''os | Construction | 4 + 1 âme | 2.0 | 3 cases (+1/NM) | / | Invoque des murs d''os qui possèdent 10 PV chacun. |
 | 1.0 | Corruption d''âme | Attaque/ Entrave | 2 âmes | 1 (+1/NM) | 1.0 | 2d6 dégâts | Si jet de vigueur raté = Inflige "poison 1" |
 | 1.0 | Détection de vie | Amplification | 7 (–1/NM) + 1 âme | Soi-même | 100 mètres | / | Permet de voir distinctement les formes de vie (animaux et végétaux, ces derniers étant plus sombres) |
@@ -19296,25 +19296,11 @@ Les nécromanciens sont généralement plus minces que la moyenne, voire maigres
 
 ## Notes et commentaires des sorts
 
-**Commentaire résolu de la cellule « Coût » du sort « Animation de mort »**
-
-Niveau 1 : 3 CK + 1 âme  
-Niveau 2 : 6 CK + 2 âmes  
-Niveau 3 : 12 CK + 3 âmes  
-Niveau 4 : 24 CK + 4 âmes  
-Niveau 5 : 48 CK + 5 âmes
-
-**Note de la cellule « Effets secondaires » du sort « Animation de mort »**
+**Remarque du sort « Animation de mort »**
 
 Chaque niveau de puissance de la créature invoquée double de le coût précédent pour l''invoquer.
 
 Les familiers et invocations ne peuvent pas utiliser ce sort.
-
-**Commentaire résolu de la cellule « Effets secondaires » du sort « Animation de mort »**
-
-Pour voir les morts-vivants possibles <https://maverick-jdr.fandom.com/fr/wiki/Mort-Vivant_(Invocation)>
-
-Chaque niveau de puissance de la créature invoquée double de le coût précédent pour l''invoquer.
 
 **Note de la cellule « Effets secondaires » du sort « Détection de vie »**
 
@@ -27701,7 +27687,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | Méga fiole beige |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
-| 250 Ro | Expert | Soigne le coma, remonte la santé à 0 et donne 100% de santé |
+| 250 Ro | Expert | Soigne le coma et donne 100% de santé |
 
 | Ultime fiole beige |  |  |
 | :-: | :-: | :-: |
