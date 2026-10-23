@@ -1,6 +1,6 @@
 // Corps de la page « Armes » (page.corps_md de ressources/armes) suivi depuis les tables : l'édition du site de dev (client/serveur/edition.mjs) et le rejeu
 // du journal (recalculerLesPages) y réécrivent la ligne Markdown d'une arme, d'un matériau ou d'une amélioration modifiés, la ligne « TOTAL » et la liste
-// des armes de départ. Ce corps ne s'affiche pas (la page est rendue depuis les tables : components/armes/ArmesPage.astro, demande du propriétaire :
+// des armes de départ, et la section d'une famille renommée ou créée (décision R159). Ce corps ne s'affiche pas (la page est rendue depuis les tables : components/armes/ArmesPage.astro, demande du propriétaire :
 // « Pas de tableau markdown ») ; il sert à la recherche (page_fts, search-index.json) et aux [[liens]].
 //
 // Stratégie : REMPLACEMENT DE LIGNES, comme lib/corps-magies.mjs. Chaque ligne de tableau se rend depuis sa ligne de la base exactement comme
@@ -52,8 +52,31 @@ function section(lignes, estTitre, quoi) {
   return [debut, fin];
 }
 
-/** Le titre « ## » de la section d'une famille d'armes (bandeau : « ## ÉPÉES - D10 », « ## ARME DE MONSTRES - … »), d'après son nom. */
-const titreDeFamille = (nom) => (l) => l === `## ${nom}` || l.startsWith(`## ${nom} `);
+/**
+ * Le titre « ## » de la section d'une famille d'armes : son bandeau tel qu'écrit, échappé comme l'importeur (« ## ÉPÉES - D10 », « ## ARME DE JET - D6
+ * \[Un matériau…\] »). Une comparaison exacte : un nom qui en commence un autre (« ARC », « ARC LONG ») ne désigne jamais l'autre section.
+ * @param {{ libelle_brut: string }} famille
+ */
+export const titreDeSectionDeFamille = (famille) => `## ${echapper(famille.libelle_brut)}`;
+const titreDeFamille = (famille) => (l) => l === titreDeSectionDeFamille(famille);
+
+/** L'en-tête du tableau d'une famille (sa colonne de coût : arme_famille.cout_libelle) et sa ligne de séparation, comme l'importeur les écrit. */
+export const enteteDeFamille = (famille) => `| Nom | ${celluleDArmes(famille.cout_libelle)} | Catégorie | Effet | Description |`;
+const SEPARATEUR_DE_TABLEAU = '| --- | --- | --- | --- | --- |';
+
+/**
+ * Le bandeau écrit d'une famille (arme_famille.libelle_brut) après un changement de nom ou de dé (décision R159) : « NOM - dé », suivi de ce que le
+ * bandeau d'avant écrivait après son dé (la note entre parenthèses ou crochets : « (D6 1-2 Force, …) », « [Un matériau permet d'en faire 10] »), gardé
+ * tel quel ; une famille créée (`avant` null) : « NOM - dé ». null quand le bandeau d'avant ne commence pas par « <nom> - <dé> » (rien n'est deviné).
+ */
+export function libelleDeFamille(avant, { nom, de_brut: de }) {
+  if (!avant) return `${nom} - ${de}`;
+  const debut = `${avant.nom} - ${avant.de_brut}`;
+  const libelle = String(avant.libelle_brut ?? '');
+  if (avant.de_brut === null || avant.de_brut === undefined || !libelle.startsWith(debut)) return null;
+  const suite = libelle.slice(debut.length);
+  return suite === '' || /^\s/.test(suite) ? `${nom} - ${de}${suite}` : null;
+}
 
 /** Remplace, dans la section, la ligne `avant` par `apres` (une seule fois ; `apres` null : la ligne part) ; ErreurCorpsArmes si elle n'y est pas. */
 function remplacerDansSection(corps, bornes, avant, apres, quoi) {
@@ -161,7 +184,7 @@ export function corpsAvecRemarqueDArme(corps, bornes, avant, apres, quoi = '') {
 
 /**
  * La liste des armes de départ (« ## Armes sur fond bleu dans la source ») refaite depuis les armes : une puce par bandeau qui en a, dans l'ordre des
- * bandeaux, ses armes dans l'ordre du bandeau. `familles` : [{ id, nom }] dans l'ordre ; `armes` : [{ famille_id, nom_brut, depart_possible, ordre }].
+ * bandeaux, ses armes dans l'ordre du bandeau. `familles` : [{ id, nom, libelle_brut }] dans l'ordre ; `armes` : [{ famille_id, nom_brut, depart_possible, ordre }].
  * Le libellé du bandeau est repris du titre de sa section (tel qu'écrit dans le corps).
  */
 export function corpsAvecArmesDeDepart(corps, familles, armes) {
@@ -171,7 +194,7 @@ export function corpsAvecArmesDeDepart(corps, familles, armes) {
   for (const f of familles) {
     const noms = armes.filter((a) => a.famille_id === f.id && a.depart_possible === 1).sort((a, b) => a.ordre - b.ordre).map(nomDeDepart);
     if (!noms.length) continue;
-    const titre = lignes.find(titreDeFamille(f.nom));
+    const titre = lignes.find(titreDeFamille(f));
     if (!titre) throw new ErreurCorpsArmes(`section introuvable : ${f.nom}`);
     puces.push(`- Sous « ${titre.slice(3)} » : ${noms.join(', ')}`);
   }
@@ -185,7 +208,8 @@ export function corpsAvecArmesDeDepart(corps, familles, armes) {
 
 /**
  * Le corps après la modification d'une ligne d'une des tables de la page (ressource d'un matériau d'arme renommé, arme, materiau_arme,
- * amelioration_equipement de cible « arme », amelioration_total « arme »). `contexte` : { familles: [{ id, nom }] (ordre des bandeaux), armes: () => lignes arme (pour la liste des armes de départ),
+ * amelioration_equipement de cible « arme », amelioration_total « arme », arme_famille : décision R159). `contexte` : { familles: [{ id, nom, libelle_brut }]
+ * (ordre des bandeaux, tels qu'ils sont après la modification), armes: () => lignes arme (pour la liste des armes de départ),
  * nomDuMateriau: (ressource_id) => nom }.
  */
 export function corpsDesArmesApres(corps, table, avant, apres, contexte) {
@@ -194,11 +218,12 @@ export function corpsDesArmesApres(corps, table, avant, apres, contexte) {
     if (avant.nom === apres.nom) return corps;
     return corpsAvecMateriauRenomme(corps, avant.nom, apres.nom, (lignes) => section(lignes, (l) => l === TITRE_DES_MATERIAUX, 'matériaux'));
   }
+  if (table === 'arme_famille') return corpsAvecFamille(corps, avant, apres);
   if (table === 'arme') {
     const ligne = apres ?? avant;
     const famille = contexte.familles.find((f) => f.id === ligne.famille_id);
     if (!famille) throw new ErreurCorpsArmes(`famille inconnue : ${ligne.famille_id}`);
-    const bornes = (lignes) => section(lignes, titreDeFamille(famille.nom), famille.nom);
+    const bornes = (lignes) => section(lignes, titreDeFamille(famille), famille.nom);
     let sortie;
     if (!avant) sortie = ajouterDansSection(corps, bornes, ligneDArme(apres), `${famille.nom} › ${apres.nom}`); // une arme créée : à la fin de son tableau
     else if (!apres) sortie = remplacerDansSection(corps, bornes, ligneDArme(avant), null, `${famille.nom} › ${avant.nom}`); // supprimée : sa ligne part
@@ -228,8 +253,52 @@ export function corpsDesArmesApres(corps, table, avant, apres, contexte) {
   return corps;
 }
 
-/** Tables dont une ligne touche le corps de la page des armes (recalculerLesPages, dans cet ordre). */
-export const TABLES_DE_LA_PAGE_DES_ARMES = ['ressource', 'arme', 'materiau_arme', 'amelioration_equipement', 'amelioration_total'];
+/**
+ * Le corps après la modification ou la création d'une famille d'armes (décision R159) :
+ *   - créée (`avant` null) : sa section à la fin du corps — elle prend le dernier rang des familles (arme_famille.ordre), et les sections des familles
+ *     sont les dernières du corps (test/corps-armes.test.mjs) —, titre de son bandeau, puis l'en-tête de son tableau, encore sans arme ;
+ *   - renommée ou son dé changé (son bandeau, `libelle_brut`) : le titre de sa section, et sa puce de la liste des armes de départ, qui le recopie ;
+ *   - son en-tête de coût changé : la première ligne du tableau de sa section.
+ * Une famille ne se supprime pas ; un titre ou un en-tête introuvable (corps qui n'a plus la forme de l'importeur) : ErreurCorpsArmes.
+ */
+function corpsAvecFamille(corps, avant, apres) {
+  if (!apres) throw new ErreurCorpsArmes(`une famille d’armes ne se supprime pas : ${avant?.nom}`);
+  const titre = titreDeSectionDeFamille(apres);
+  if (!avant) {
+    if (corps.split('\n').includes(titre)) throw new ErreurCorpsArmes(`section déjà présente : ${apres.nom}`);
+    return `${corps.replace(/\n*$/, '')}\n\n${titre}\n\n${enteteDeFamille(apres)}\n${SEPARATEUR_DE_TABLEAU}\n`;
+  }
+  let sortie = corps;
+  if (avant.libelle_brut !== apres.libelle_brut) {
+    const lignes = sortie.split('\n');
+    const ancien = titreDeSectionDeFamille(avant);
+    const i = lignes.indexOf(ancien);
+    if (i < 0) throw new ErreurCorpsArmes(`section introuvable : ${avant.nom}`);
+    if (lignes.includes(titre)) throw new ErreurCorpsArmes(`section déjà présente : ${apres.nom}`);
+    lignes[i] = titre;
+    // sa puce de la liste des armes de départ (elle seule : les autres familles peuvent être renommées par le même rejeu, dans un autre ordre)
+    const [debut, fin] = section(lignes, (l) => l === TITRE_DE_DEPART, 'armes de départ');
+    const puce = `- Sous « ${ancien.slice(3)} » : `;
+    for (let k = debut + 1; k < fin; k++) if (lignes[k].startsWith(puce)) lignes[k] = `- Sous « ${titre.slice(3)} » : ${lignes[k].slice(puce.length)}`;
+    sortie = lignes.join('\n');
+  }
+  if (avant.cout_libelle !== apres.cout_libelle) {
+    const bornes = (lignes) => section(lignes, titreDeFamille(apres), apres.nom);
+    const lignes = sortie.split('\n');
+    const [debut, fin] = bornes(lignes);
+    const k = lignes.findIndex((l, j) => j > debut && j < fin && l.startsWith('|'));
+    if (k < 0 || lignes[k] !== enteteDeFamille(avant)) throw new ErreurCorpsArmes(`en-tête introuvable : ${apres.nom}`);
+    lignes[k] = enteteDeFamille(apres);
+    sortie = lignes.join('\n');
+  }
+  return sortie;
+}
+
+/**
+ * Tables dont une ligne touche le corps de la page des armes (recalculerLesPages, dans cet ordre) : une famille avant ses armes (la section d'une famille
+ * créée ou renommée doit exister sous son titre avant qu'une arme s'y écrive).
+ */
+export const TABLES_DE_LA_PAGE_DES_ARMES = ['ressource', 'arme_famille', 'arme', 'materiau_arme', 'amelioration_equipement', 'amelioration_total'];
 
 /**
  * Pages qui écrivent les matériaux d'arme dans leurs tableaux, en plus de celle des armes : un matériau est une ressource partagée avec les armures et

@@ -240,7 +240,8 @@ export function verifierSimulation(donnees, essai) {
  * `tablesAvecBalises` : les tables dont le fichier de data/rows contient une balise (une liste, ou une fonction qui la rend, appelée seulement pour un tel
  * lot : tablesAvecBalises), et `page` (les pages typées refaites depuis les lignes ainsi réécrites : recalculerLesPages) ; une ligne page_tag notée avant
  * la migration 0043 (avec sa colonne `libelle`) peut faire créer son mot-clé ; un lot qui touche une classe ou un don (classe, classe_maitrise_arme,
- * capacite) voit ses sources de maîtrise d'arme refaites par le lecteur (serveur/edition-maitrises.mjs#sourcesRefaitesParLeLot : TABLES_DES_SOURCES).
+ * capacite), ou une famille d'armes (arme_famille : décision R159, toutes les sources), voit ses sources de maîtrise d'arme refaites par le lecteur
+ * (serveur/edition-maitrises.mjs#sourcesRefaitesParLeLot : TABLES_DES_SOURCES).
  */
 // serveur/edition-maitrises.mjs#TABLES_DES_SOURCES, recopiée (test/mise-a-jour-github.test.mjs les compare)
 export const TABLES_DES_SOURCES_DE_MAITRISE = Object.freeze(['maitrise_arme_part', 'maitrise_arme_part_famille', 'capacite_nm_gagne']);
@@ -258,7 +259,7 @@ export function tablesDuLot(donnees, { tablesAvecBalises: balises = [] } = {}) {
         motCleRetire = true;
       }
       if (m.table === 'page_tag' && (ancienne(m.avant) || ancienne(m.apres))) tables.add('mot_cle');
-      if (['classe', 'classe_maitrise_arme', 'capacite'].includes(m.table)) for (const t of TABLES_DES_SOURCES_DE_MAITRISE) tables.add(t);
+      if (['classe', 'classe_maitrise_arme', 'capacite', 'arme_famille'].includes(m.table)) for (const t of TABLES_DES_SOURCES_DE_MAITRISE) tables.add(t);
     }
   }
   if (motCleRetire) {

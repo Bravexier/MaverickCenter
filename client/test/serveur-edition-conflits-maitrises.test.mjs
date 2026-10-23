@@ -236,3 +236,38 @@ test('maîtrise illisible (« Refuser à la saisie », choix du propriétaire du
   assert.equal(q(db, 'SELECT effet FROM capacite WHERE id = ?', S.don)[0].effet, TEXTES.effet[2]);
   sourcesJustes(db);
 });
+
+// Décision R159 : un lot qui écrit une famille d'armes touche toutes les sources (le lecteur les lit avec les familles). Ici, le site de dev crée une
+// famille et renomme DAGUES ; les règles livrées renomment DAGUES autrement : le lot est en conflit. Ses options notées pour la famille créée sont
+// retirées (comme un lot qui ne les noterait pas) : la résolution doit refaire toutes les sources, notées dans le nouveau lot.
+test('R159 : la résolution d’un lot en conflit qui écrit une famille d’armes refait toutes les sources (la famille créée entre dans les maîtrises de sa catégorie)', () => {
+  const r0 = `${chemin('regles')}.db`;
+  copyFileSync(cheminBase({ sansExemples: false }), r0);
+  const dossier = chemin('dev-familles');
+  const dev = ouvrirBaseVivante(preparerBaseVivante({ regles: r0, dossier }).chemin);
+  const pid = process.pid;
+  const { lot, crees } = enregistrer(dev, { page: 'ressources/armes/', operations: [
+    { op: 'creer', entite: 'arme_famille', valeurs: { nom: `Fléaux de conflit ${pid}`, de_brut: 'D8', categorie: 'contact', cout_libelle: 'Coût' } },
+    { op: 'modifier', table: 'arme_famille', cle: { id: 'dagues' }, valeurs: { nom: `Poignards du site ${pid}` } },
+  ] });
+  const id = crees[0].id;
+  const retirees = dev.prepare("DELETE FROM modification WHERE lot_id = ? AND table_nom = 'maitrise_arme_part_famille'").run(lot);
+  assert.ok(retirees.changes > 0, 'le lot notait les options de la famille créée');
+  dev.close();
+  const regles = reglesLivrees(r0, [['ressources/armes', [{ op: 'modifier', table: 'arme_famille', cle: { id: 'dagues' }, valeurs: { nom: `Poignards des règles ${pid}` } }]]]);
+  preparerBaseVivante({ regles, dossier });
+  const db = ouvrirBaseVivante(join(dossier, FICHIER_BASE));
+  ouvertes.push(db);
+  assert.equal(q(db, 'SELECT 1 FROM arme_famille WHERE id = ?', id).length, 0, 'le lot est en conflit : rien n’en est rejoué');
+  const d = conflitsDuJournal(db).lots.find((l) => l.lot === lot);
+  const c = d.conflits.find((x) => x.table === 'arme_famille' && x.colonne === 'nom');
+  assert.ok(c, JSON.stringify(d.conflits));
+  const { nouveau_lot: nouveau } = resoudreLeConflit(db, { lot, empreinte: d.empreinte, choix: { [c.id]: { choix: 2 } } });
+  assert.deepEqual(q(db, "SELECT nom FROM arme_famille WHERE id = 'dagues'").map((f) => f.nom), [`Poignards des règles ${pid}`], 'la règle livrée reste');
+  assert.equal(q(db, 'SELECT nom_lecture FROM arme_famille WHERE id = ?', id)[0].nom_lecture, `Fléaux de conflit ${pid}`, 'la famille créée est gardée');
+  const options = q(db, 'SELECT source_id FROM maitrise_arme_part_famille WHERE arme_famille_id = ?', id);
+  assert.ok(options.length > 0, 'elle entre dans les maîtrises au choix de sa catégorie');
+  sourcesJustes(db, 'toutes les sources refaites par le lecteur');
+  const notees = q(db, "SELECT cle FROM modification WHERE lot_id = ? AND table_nom = 'maitrise_arme_part_famille'", nouveau).map((m) => JSON.parse(m.cle).arme_famille_id);
+  assert.ok(notees.length === options.length && notees.every((f) => f === id), 'notées dans le nouveau lot');
+});

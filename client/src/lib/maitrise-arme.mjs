@@ -5,7 +5,8 @@
 //     imposée, des points à choisir parmi des familles, ou la famille suivie de la maîtrise au choix de la classe) ;
 //   - les NM de sorts qu'un don fait gagner (« Gagne 4 niveaux de maîtrise (NM). », décision R154).
 // Rien n'est déduit : seul ce que le texte écrit compte, jamais le nom du don ni celui de la classe. Les balises du glossaire (« {{id|texte}} ») sont
-// lues par leur texte écrit, comme dans les découpages (lib/mots-cles-balises.mjs#texteSansBalises, sans vocabulaire).
+// lues par leur texte écrit, comme dans les découpages (lib/mots-cles-balises.mjs#texteSansBalises, sans vocabulaire). Les familles (`familles`, lignes
+// d'arme_famille dans son ordre) portent leur nom de lecture (`nom_lecture`, décision R159) : chaque appelant le lit avec elles.
 // Pur, sans dépendance (sauf text.mjs et mots-cles-balises.mjs).
 import { texteSansBalises } from './mots-cles-balises.mjs';
 import { normalize } from './text.mjs';
@@ -69,7 +70,16 @@ export function nmGagnesDuDon(texte) {
  */
 export const FAMILLES_DES_SAUF = Object.freeze({ hast: 'lance-arme-dhast', baton: 'baton-de-combat', 'arme-jet': 'arme-de-jet', masse: 'masse-marteau' });
 
-const singulier = (cle) => cle.split('-').map((m) => m.replace(/(?<=[a-z]{3})s$/, '')).join('-');
+/**
+ * Les noms sous lesquels se lit une famille d'armes : chaque nom de son bandeau (`nom`) et de son nom de lecture (`nom_lecture`, décision R159), séparés
+ * par « / » (« MASSE/MARTEAU » : « MASSE », « MARTEAU »), sans doublon.
+ * @param {{ nom: string, nom_lecture?: string|null }} famille
+ */
+export const nomsDeFamille = (famille) =>
+  [...new Set([famille.nom, famille.nom_lecture].filter((n) => typeof n === 'string' && n).flatMap((n) => n.split('/')).map((n) => n.trim()).filter(Boolean))];
+
+/** Une clé de nom au singulier (« epees » → « epee » ; un mot de trois lettres au plus garde son « s ») : la lecture de famillesDuNom. */
+export const singulier = (cle) => cle.split('-').map((m) => m.replace(/(?<=[a-z]{3})s$/, '')).join('-');
 const sansDe = (cle) => cle.split('-').filter((m) => m !== 'de' && m !== 'd').join('-');
 const maitrisables = (familles) => familles.filter((f) => f.maitrisable && f.maitrisable !== '0');
 
@@ -78,14 +88,16 @@ const maitrisables = (familles) => familles.filter((f) => f.maitrisable && f.mai
  * celles dont le bandeau, chaque nom séparé par « / », s'écrit pareil tel quel ou au singulier (« Dague » : DAGUES ; « Épée » : ÉPÉES ; « MASSE/MARTEAU »
  * se lit « Masse » ou « Marteau »), sinon celles qui s'écrivent pareil sans « de » (« Bâton combat » : BÂTON DE COMBAT, la ligne du Frappeur) ; [] quand
  * le nom ne désigne aucune famille (rien n'est rapproché à la place de la source).
- * @param {string} nom @param {{ id: string, nom: string }[]} familles
+ * Le bandeau se lit sous son nom (`nom`) et sous son nom de lecture (`nom_lecture`, figé : migration 0077, décision R159) : une famille renommée sur le
+ * site de dev reste celle que désignent les « sauf » et les lignes nommées écrits avant (« (sauf épée) », « 1 maîtrise Épée » : R138, R151).
+ * @param {string} nom @param {{ id: string, nom: string, nom_lecture?: string|null }[]} familles
  */
 export function famillesDuNom(nom, familles) {
   const cle = normalize(nom ?? '');
   if (!cle) return [];
   const rattachee = FAMILLES_DES_SAUF[cle];
   if (rattachee) return familles.filter((f) => f.id === rattachee).map((f) => f.id);
-  const noms = (f) => String(f.nom).split('/').map((n) => normalize(n));
+  const noms = (f) => nomsDeFamille(f).map((n) => normalize(n));
   const parBandeau = familles.filter((f) => noms(f).some((n) => singulier(n) === singulier(cle)));
   if (parBandeau.length) return parBandeau.map((f) => f.id);
   return familles.filter((f) => noms(f).some((n) => singulier(sansDe(n)) === singulier(sansDe(cle)))).map((f) => f.id);
@@ -96,7 +108,7 @@ export function famillesDuNom(nom, familles) {
  * MONSTRES, R45) de sa catégorie (« arme contact au choix », « arme à distance au choix » : R127 ; aucune catégorie écrite : toutes), sans celle de son
  * « sauf » (« (sauf Dague) », lu par famillesDuNom, R138) ; null quand le « sauf » ne nomme aucune famille de la catégorie (la maîtrise ne se lit pas).
  * @param {{ categorie?: string|null, sauf_cle?: string|null }} ligne
- * @param {{ id: string, nom: string, maitrisable: boolean|number, categorie: string|null }[]} familles arme_famille, dans son ordre
+ * @param {{ id: string, nom: string, nom_lecture?: string|null, maitrisable: boolean|number, categorie: string|null }[]} familles arme_famille, dans son ordre
  */
 export function famillesAuChoix(ligne, familles) {
   const candidates = maitrisables(familles).filter((x) => !ligne.categorie || x.categorie === ligne.categorie);
@@ -142,7 +154,7 @@ const categorieEcrite = (t) => (/\bcontact\b|\bcorps a corps\b/.test(t) ? 'conta
  *     le même », « (1 maximum dans une seule) », R150).
  * null pour une ligne non typée (nombre NULL).
  * @param {{ forme: string|null, nombre: number|null, brut: string, arme?: string|null, arme_cle?: string|null, categorie?: string|null, sauf_cle?: string|null }} ligne
- * @param {{ id: string, nom: string, maitrisable: boolean|number, categorie: string|null }[]} familles arme_famille, dans son ordre
+ * @param {{ id: string, nom: string, nom_lecture?: string|null, maitrisable: boolean|number, categorie: string|null }[]} familles arme_famille, dans son ordre
  */
 export function lireLigneDeClasse(ligne, familles) {
   if (ligne.nombre === null || ligne.nombre === undefined || !ligne.forme) return null;
@@ -205,7 +217,7 @@ const FORMES_DES_DONS = new Map([
  * Chaque « N point(s) de maîtrise <destination> » est une part, dans l'ordre du texte ; la destination est ce qui suit, jusqu'à la virgule, au point
  * ou à la parenthèse ; la limite écrite (entre parenthèses) vaut pour la part qu'elle suit.
  * @param {string} effet capacite.effet
- * @param {{ id: string, nom: string, maitrisable: boolean|number, categorie: string|null }[]} familles arme_famille, dans son ordre
+ * @param {{ id: string, nom: string, nom_lecture?: string|null, maitrisable: boolean|number, categorie: string|null }[]} familles arme_famille, dans son ordre
  */
 export function lireDon(effet, familles) {
   return lectureDuDon(effet, familles)?.source ?? null;

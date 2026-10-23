@@ -2,7 +2,7 @@
 // quelles tables une page peut modifier, avec leur type de champ, et comment une page désigne un champ (attribut `data-ed`). Le service n'accepte
 // que ces colonnes ; tout ce qui en dépend dans la base (colonnes typées, tables de détail, page du wiki) est recalculé par le service, jamais saisi.
 // Entités créables (ENTITES) : métier, race, classe, peuple, spécialité, don de classe, espèce et carte de monstre, capacité de monstre (commune, et sa place
-// sur une carte), arme, composant, gemme, bois, ingrédient, monnaie, événement de la chronologie et bloc de description, catégorie de la chronologie,
+// sur une carte), arme, famille d'armes (R159), composant, gemme, bois, ingrédient, monnaie, événement de la chronologie et bloc de description, catégorie de la chronologie,
 // mot-clé, bloc d'un panneau de règles ; supprimables : métier, spécialité, don de classe, arme (retirés des fiches de personnage qui les ont, avec une
 // note datée : décisions R42, R52, annonceDesFiches), espèce et carte de monstre, capacité d'une carte, capacité de monstre commune, composant, gemme,
 // bois, ingrédient et monnaie (s'ils ne sont cités par aucune autre règle), événement, bloc de description, catégorie (retirée de ses événements),
@@ -86,6 +86,18 @@ export const OUI_NON = [
  * bouclier) : « Oui » vaut '1', l'option vide de la liste (`libelleVide` : « Non ») vaut NULL.
  */
 export const OUI_SEUL = [{ valeur: '1', libelle: 'Oui' }];
+
+/**
+ * Une famille d'armes (décision R159, 3) : son dé, obligatoire, de forme contrôlée — un dé « D<n> » (« D10 »), ou plusieurs séparés par « / » comme le
+ * Pugilat (« D6/D8/D10 ») — et l'en-tête de sa colonne de coût, l'un des trois de la base (arme_famille.cout_libelle).
+ */
+export const DE_DE_FAMILLE = /^D[1-9]\d*(?:\/D[1-9]\d*)*$/;
+export const COUTS_DE_FAMILLE = ['Coût', 'Coût en plus/moins', 'Coût en plus/moins (unité)'].map((c) => ({ valeur: c, libelle: c }));
+/** La catégorie d'une famille d'armes créée (décision R127, R159 : posée à la création, par la barre mêlée ou distance, jamais changée ensuite). */
+export const CATEGORIES_DE_FAMILLE = [
+  { valeur: 'contact', libelle: 'Armes de mêlée (contact)' },
+  { valeur: 'distance', libelle: 'Armes à distance' },
+];
 
 /** Les types d'un matériau (décision R62, table materiau) : ceux de l'armure, et « Autres » pour ce qui n'y entre pas. */
 const TYPES_DE_MATERIAU = ['Léger', 'Intermédiaire', 'Lourd', 'Autres'].map((t) => ({ valeur: t, libelle: t }));
@@ -362,6 +374,20 @@ export const TABLES = {
       // la remarque (décision R91 : « pouvoir modifier la présence ou non de la remarque et en modifier le contenu ») : l'étoile ★ à côté du nom, son
       // texte en infobulle ; vide, pas d'étoile
       remarque: { type: 'texte', libelle: 'Remarque' },
+    },
+  },
+  // Familles d'armes (un onglet de la page des armes, un bandeau de l'onglet « Armes » du classeur ; décision R159, 2026-10-23 : « la possibilité de
+  // changer le nom et leur dés, ou même de créer un nouvel onglet ») : le nom, le dé (forme contrôlée : DE_DE_FAMILLE) et l'en-tête de la colonne de coût
+  // (un des trois de la base : COUTS_DE_FAMILLE). Le service en refait le bandeau écrit (`libelle_brut` : « NOM - dé » et la note gardée), la section du
+  // corps de la page (lib/corps-armes.mjs) et refuse ce qui changerait une source de maîtrise d'arme (serveur/edition-armes.mjs). Hors du modèle : la
+  // catégorie (posée à la création, jamais changée : R159), le nom de lecture (figé, migration 0077), `maitrisable` et l'ordre. ARME DE MONSTRES ne se
+  // modifie pas (R45).
+  arme_famille: {
+    libelle: 'Famille d’armes',
+    colonnes: {
+      nom: { type: 'ligne', libelle: 'Nom (ni virgule ni « : »)', requis: true },
+      de_brut: { type: 'ligne', libelle: 'Dé (« D10 », ou « D6/D8/D10 »)', requis: true },
+      cout_libelle: { type: 'choix', libelle: 'En-tête de la colonne de coût', requis: true, choix: COUTS_DE_FAMILLE },
     },
   },
   // Composants (/ressources/composants/, demande du propriétaire, 2026-10-14 : « chaque élément est modifiable en édition, supprimable, ajoutable ») :
@@ -707,8 +733,22 @@ export const ENTITES = {
     nouveau: 'Nouvelle arme',
     suppression: true,
     champs: {
+      // une famille de la page, ou « @i » : celle créée par l'opération i du même lot (décision R159)
       famille_id: { type: 'choix', libelle: 'Famille (le tableau où l’arme s’ajoute)', requis: true, liste: 'famillesDArmes' },
       ...champsDe('arme', ['nom', 'mains', 'competence_brut', 'type_id', 'cout_brut', 'effet', 'description', 'depart_possible', 'remarque']),
+    },
+  },
+  // une famille d'armes (un onglet de la page des armes, décision R159) : nom, dé, catégorie (contact ou distance, jamais changée ensuite) et en-tête de
+  // coût ; identifiant tiré du nom une fois, puis figé ; à la fin des familles, maîtrisable, son nom de lecture celui de sa création (migration 0077).
+  // Pas de suppression (les fiches et les sources de maîtrise la citeraient).
+  arme_famille: {
+    table: 'arme_famille',
+    libelle: 'famille d’armes',
+    nouveau: 'Nouvelle famille d’armes',
+    champs: {
+      ...champsDe('arme_famille', ['nom', 'de_brut']),
+      categorie: { type: 'choix', libelle: 'Catégorie (ne change plus ensuite)', requis: true, choix: CATEGORIES_DE_FAMILLE },
+      ...champsDe('arme_famille', ['cout_libelle']),
     },
   },
   // Composants : un composant dans un tableau de la page (les matériaux, ou un tableau de l'onglet « Équipement inventaire »), une gemme ou un bois liés à

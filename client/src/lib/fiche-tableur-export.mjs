@@ -1002,6 +1002,10 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
     if (!l) continue;
     for (const adresse of casesDesDes(m).slice(0, Math.max(0, l.des - 1))) remplis[adresse] = REMPLISSAGE_DE_ATTEINT;
   }
+  // une famille que la grille fixe du modèle n'a pas (créée sur le site de dev, décision R159 ; limite du classeur, pas une règle) : ses dés ne vont dans
+  // aucune ligne — jamais dans celle d'une autre famille — et un avertissement le dit quand elle en a au-delà du dé sans maîtrise ; ses choix restent dans
+  // la note (« Maîtrise d'arme au choix »), que l'import relit
+  const horsDeLaGrille = maitrises.filter((l) => !MAITRISES.some((m) => m.famille === l.famille) && l.comptes > 0).map((l) => avertissementDeFamilleHorsDeLaGrille(l.nom, l.des));
 
   // armes
   O.armes.forEach((cases, i) => {
@@ -1238,6 +1242,7 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
   ecrire(O.note, texteNote);
   // une note trop longue pour sa case : alignée en haut, ses premières lignes (celles du joueur, puis ce que le modèle n'a pas de case pour écrire) restent à l'écran
   if (zones?.get(O.note) && !tientDans(cellules[O.note], zones.get(O.note))) alignements[O.note] = { vertical: 'top' };
+  avertissements.push(...horsDeLaGrille);
   // une autre case plus longue que ce qu'une case de tableur garde (sans `zones`, rien n'est coupé ici) : lib/tableur-ecriture.mjs en coupera la fin
   for (const [adresse, valeur] of Object.entries(cellules)) {
     if (adresse !== O.note && typeof valeur === 'string' && valeur.length > LONGUEUR_MAX_D_UNE_CASE) {
@@ -1256,6 +1261,9 @@ const LIMITE_ECRITE = `${enChiffres(LONGUEUR_MAX_D_UNE_CASE)} caractères`;
 export const avertissementDesNotes = (n) => `Notes trop longues pour une case de tableur (${LIMITE_ECRITE}) : les ${enChiffres(n)} derniers caractères ne sont pas dans le classeur.`;
 /** Avertissement : les dernières lignes de données de la case NOTE retirées (texteDeLaNote). */
 export const avertissementDesDonnees = (n) => `Données de la case NOTE trop longues pour une case de tableur (${LIMITE_ECRITE}) : ${n === 1 ? 'la dernière ligne n’est pas' : `les ${enChiffres(n)} dernières lignes ne sont pas`} dans le classeur.`;
+/** Avertissement : une famille d'armes que la grille « Maîtrise d'armes » du modèle n'a pas (créée sur le site de dev, décision R159) : ses dés ne sont pas dans le classeur. */
+export const avertissementDeFamilleHorsDeLaGrille = (nom, des) =>
+  `Maîtrise d’arme ${nom} (${enChiffres(des)} dés) : le modèle du classeur n’a pas de ligne pour cette famille ; ses dés ne sont pas dans le classeur (ses choix sont dans la note).`;
 /** Avertissement : une autre case trop longue (sa fin sera coupée à l'écriture du classeur). */
 export const avertissementDeCase = (adresse, n) => `Case ${adresse} trop longue pour une case de tableur (${LIMITE_ECRITE}) : ses ${enChiffres(n)} derniers caractères ne sont pas dans le classeur.`;
 

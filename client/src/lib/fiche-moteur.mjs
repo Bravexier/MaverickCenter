@@ -1350,7 +1350,7 @@ export function sourcesDeMaitrise(regles, fiche) {
 }
 
 /**
- * Les points de maîtrise de chaque famille maîtrisable (décisions R149, R151, R45 ; les 11 familles, dans leur ordre, jamais ARME DE MONSTRES) : la
+ * Les points de maîtrise de chaque famille maîtrisable (décisions R149, R151, R45 ; les 11 de l'import et celles créées sur le site, R159, dans leur ordre, jamais ARME DE MONSTRES) : la
  * somme de ce que lui donnent les sources (parts imposées, points choisis, parts qui suivent une famille choisie, accessoire), au moins 0 (« sans
  * descendre sous 0 », R151) ; 4 points comptés au plus (`comptes`, plafond maitrise_arme.des_max − maitrise_arme.des_sans_maitrise, R149), `excedent`
  * signalé sans rien refuser ; `des` : 1 + les points comptés ; le dé de la famille, selon la Force pour le Pugilat (deDeLaFamille : `de`, `force`), et sa

@@ -263,7 +263,12 @@ const DEFINITIONS = [
     entite: (r, x) => `${x.nom('monstre_espece', r.espece_id)} › butin ${r.score_brut} (${libelleDeChoix(CATEGORIES_DE_MONSTRE, r.categorie)})`,
     ordre: (r, x) => [x.ordre('monstre_espece', r.espece_id), 3, r.rang, ['ennemi_simple', 'mini_boss', 'boss'].indexOf(r.categorie)],
   },
-  // la page des armes (migration 0034) : une arme sous sa famille, puis les améliorations d'arme (les matériaux : domaine des composants, décision R62)
+  // la page des armes (migration 0034) : les familles (un onglet chacune : renommée, dé ou en-tête de coût changé, créée, décision R159), une arme sous sa
+  // famille, puis les améliorations d'arme (les matériaux : domaine des composants, décision R62)
+  {
+    table: 'arme_famille', domaine: 'armes', cle: ['id'], colonnes: colonnesDe('arme_famille'), genre: 'Famille d’armes',
+    groupe: () => 'Familles d’armes', entite: (r) => r.nom, ordre: (r) => [0, r.ordre ?? 0],
+  },
   {
     table: 'arme', domaine: 'armes', cle: ['id'], colonnes: colonnesDe('arme'), genre: 'Arme',
     groupe: (r, x) => x.nom('arme_famille', r.famille_id), entite: (r) => r.nom, ordre: (r, x) => [1, x.ordre('arme_famille', r.famille_id), r.ordre ?? 0],

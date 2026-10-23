@@ -3,7 +3,9 @@
 // mêlée l'autre pour les armes à distances. Le fonctionnement interne des tableaux reste inchangé ») : sous le filtre, l'onglet d'une famille sans arme
 // affichée se cache, un menu sans aucune famille affichée aussi, l'onglet ouvert qui n'a plus d'arme laisse la place au premier qui en a (évènement
 // « onglets:ouvrir », limité aux menus de l'onglet Armes : `detail.dans`), l'onglet dit « N armes sur M » ; ouvrir une arme (?arme=, clic) ouvre
-// l'onglet de sa famille de la même façon ; en mode modification, aucun onglet ne se cache. Le faux navigateur ne fait pas remonter les évènements :
+// l'onglet de sa famille de la même façon ; en mode modification, aucun onglet ne se cache. L'onglet choisi est écrit dans l'adresse (`#famille-<id>`,
+// par components/Onglets.astro : « On peut retenir l'onglet ouvert #epee par exemple ») : quand le filtre ferme l'onglet que l'adresse désigne, elle
+// suit celui qui s'ouvre ; une famille sans arme (créée sur le site de dev, décision R159) garde son onglet sans filtre. Le faux navigateur ne fait pas remonter les évènements :
 // « onglets:ouvrir » s'écoute sur la famille qui le reçoit (components/Onglets.astro, qui l'écoute sur le document, n'est pas chargé ici).
 // La logique pure (ongletARouvrir, texteDuCompte) : test/armes-filtres.test.mjs ; le HTML construit : test/armes-html.test.mjs.
 //   node --test test/armes-script.test.mjs
@@ -42,14 +44,16 @@ const menu = (categorie, ...familles) =>
  * distance = Arc (un arc, ouvert au départ), Arbalète (une arbalète). Rend les familles, les menus, les boutons du filtre et les « onglets:ouvrir »
  * reçus (`ouvertures` : [id de la famille, detail.dans est la racine]).
  */
-async function charger(recherche = '', { edition = false } = {}) {
+async function charger(recherche = '', { edition = false, vide = false } = {}) {
   const f = {
-    epees: famille('epees', true, arme('espadon', 'arme-lourde', true), arme('glaive', 'arme-lourde')),
+    epees: famille('epees', !vide, arme('espadon', 'arme-lourde', true), arme('glaive', 'arme-lourde')),
     dagues: famille('dagues', false, arme('stylet', 'arme-legere')),
     arc: famille('arc', true, arme('arc-court', 'arc')),
     arbalete: famille('arbalete', false, arme('arbalete-legere', 'arbalete')),
+    // `vide` : une famille sans arme (créée sur le site de dev, R159), ouverte dans le menu des armes de mêlée
+    ...(vide ? { frondes: famille('frondes', true) } : {}),
   };
-  const menus = { contact: menu('contact', f.epees, f.dagues), distance: menu('distance', f.arc, f.arbalete) };
+  const menus = { contact: menu('contact', f.epees, f.dagues, ...(vide ? [f.frondes] : [])), distance: menu('distance', f.arc, f.arbalete) };
   const bouton = (id) => el('button', { class: 'armes-filtre__choix', 'data-competence': id, 'aria-pressed': 'false' });
   const filtre = {
     'arme-lourde': bouton('arme-lourde'), 'arme-legere': bouton('arme-legere'), arc: bouton('arc'), arbalete: bouton('arbalete'),
@@ -110,7 +114,7 @@ test('filtre : l’onglet d’une famille vidée se cache, un menu vide aussi ; 
   p.clic(p.filtre.tout);
   assert.deepEqual(p.caches(), []);
   assert.equal(p.menus.distance.hidden, false);
-  // l'adresse n'écrit que le filtre, jamais l'onglet
+  // l'adresse n'écrit que le filtre : ce script n'écrit pas l'onglet (components/Onglets.astro l'écrit quand on le choisit)
   assert.equal(p.adresse(), '');
   // toutes les compétences choisies : rien d'écarté ; le compte de l'onglet Armes dit « sur » dès que le filtre est actif (comme avant les menus), ceux
   // des tableaux et des onglets le total
@@ -152,4 +156,50 @@ test('mode modification : pas de filtre, aucun onglet ni menu caché, même avec
   q.document.dispatchEvent(new Event('armes:rafraichir'));
   assert.deepEqual(q.caches(), []);
   assert.equal(q.menus.contact.hidden, false);
+});
+
+test('l’adresse retient l’onglet : quand le filtre ferme l’onglet qu’elle désigne, elle suit celui qui s’ouvre ; une autre ancre reste', async () => {
+  // « On peut retenir l'onglet ouvert #epee par exemple » : Épées choisi (#famille-epees), puis « Légère » : Dagues s'ouvre, l'adresse le suit
+  const p = await charger('#famille-epees');
+  p.clic(p.filtre['arme-legere']);
+  assert.deepEqual(p.ouvertures, [['dagues', true]]);
+  assert.equal(p.adresse(), '?competence=arme-legere#famille-dagues');
+  // au chargement aussi : le filtre de l'adresse ferme l'onglet qu'elle retient
+  const q = await charger('?competence=arme-legere#famille-epees');
+  assert.equal(q.adresse(), '?competence=arme-legere#famille-dagues');
+  // une ligne d'arme de l'onglet fermé, que le filtre écarte (elle ne s'ouvre donc pas : ?arme= ne la remplace pas) : l'adresse suit aussi
+  const r = await charger('?competence=arme-legere#arme-glaive');
+  assert.equal(r.adresse(), '?competence=arme-legere#famille-dagues');
+  // l'onglet de la page (#boucliers) ou celui de l'autre menu reste
+  for (const ancre of ['#boucliers', '#famille-arc']) {
+    const s = await charger(ancre);
+    s.clic(s.filtre['arme-legere']);
+    assert.deepEqual(s.ouvertures, [['dagues', true]]);
+    assert.equal(s.adresse(), `?competence=arme-legere${ancre}`, ancre);
+  }
+  // un onglet qui garde ses armes : rien ne bouge
+  const t = await charger('#famille-epees');
+  t.clic(t.filtre['arme-lourde']);
+  assert.deepEqual(t.ouvertures, []);
+  assert.equal(t.adresse(), '?competence=arme-lourde#famille-epees');
+});
+
+test('R159 : une famille sans arme (créée sur le site de dev) garde son onglet et reste ouverte tant qu’aucun filtre n’est actif', async () => {
+  const p = await charger('', { vide: true });
+  assert.deepEqual(p.caches(), [], 'son onglet n’est pas caché');
+  assert.deepEqual(p.ouvertures, [], 'aucun autre onglet ne s’ouvre à sa place');
+  assert.equal(p.comptesDesOnglets().frondes, '0 arme');
+  assert.equal(p.f.frondes.panneau.classList.contains('est-filtree'), false);
+  // après un enregistrement ou une création (« armes:rafraichir ») : rien ne change
+  p.document.dispatchEvent(new Event('armes:rafraichir'));
+  assert.deepEqual(p.caches(), []);
+  assert.deepEqual(p.ouvertures, []);
+  // sous un filtre, elle se cache comme les autres, et le premier onglet qui a des armes s'ouvre
+  p.clic(p.filtre['arme-lourde']);
+  assert.deepEqual(p.caches(), ['dagues', 'arc', 'arbalete', 'frondes']);
+  assert.deepEqual(p.ouvertures, [['epees', true]]);
+  // en mode modification, jamais
+  const q = await charger('?competence=arme-lourde', { vide: true, edition: true });
+  assert.deepEqual(q.caches(), []);
+  assert.deepEqual(q.ouvertures, []);
 });

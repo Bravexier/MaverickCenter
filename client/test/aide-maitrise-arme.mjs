@@ -9,7 +9,7 @@ const q = (base, sql, ...p) => base.prepare(sql).all(...p).map((l) => ({ ...l })
 
 /** Les tables des sources de `base`, et ce que le lecteur rejoué sur toute la base en tire : { tables, lecteur } ({ parts, options, nm } chacun, triés). */
 export function sourcesEtLecteur(base) {
-  const familles = q(base, 'SELECT id, nom, maitrisable, categorie FROM arme_famille ORDER BY ordre');
+  const familles = q(base, 'SELECT id, nom, nom_lecture, maitrisable, categorie FROM arme_famille ORDER BY ordre');
   const parts = [];
   const options = [];
   const ajouter = (sourceId, origine, lu) => {

@@ -103,7 +103,9 @@ test('panneau des armes : les huit blocs de l’import dans l’ordre (tant que 
 
 test('panneaux de règles : leurs balises du glossaire rendues (mode complet « Libellé : définition », gras), aucune brute hors de `data-balise`', options, () => {
   const motsCles = new Map(base.prepare('SELECT id, libelle, description FROM mot_cle').all().map((m) => [m.id, m]));
-  const brutes = main.replace(/ data-balise="[^"]*"/g, '');
+  // sauf dans les modèles d'une famille d'armes créée (décision R159 : `<template data-armes-modele>`, où le middleware ne rend rien ; le site de dev rend
+  // leurs balises une fois posées, src/scripts/edition/mots-cles-vivants.mjs ; test/armes-html.test.mjs)
+  const brutes = main.replace(/<template data-armes-modele="[a-z]+">[\s\S]*?<\/template>/g, '').replace(/ data-balise="[^"]*"/g, '');
   assert.ok(!brutes.includes('{{'), 'aucune balise brute dans la page');
   let completes = 0;
   for (const o of PAGES_SERVIES_PAR_L_EQUIPEMENT) {

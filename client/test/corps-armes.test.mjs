@@ -5,11 +5,14 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
-import { corpsAvecArmesDeDepart, corpsDesArmesApres, ErreurCorpsArmes, ligneDArme, ligneDeRemarque, ligneDuTotal, PAGE_DES_ARMES } from '../src/lib/corps-armes.mjs';
+import {
+  corpsAvecArmesDeDepart, corpsDesArmesApres, enteteDeFamille, ErreurCorpsArmes, libelleDeFamille, ligneDArme, ligneDeRemarque, ligneDuTotal, PAGE_DES_ARMES,
+  titreDeSectionDeFamille,
+} from '../src/lib/corps-armes.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const corps = db.prepare('SELECT corps_md FROM page WHERE id = ?').get(PAGE_DES_ARMES).corps_md;
-const familles = db.prepare('SELECT id, nom FROM arme_famille ORDER BY ordre').all();
+const familles = db.prepare('SELECT id, nom, libelle_brut FROM arme_famille ORDER BY ordre').all();
 const armes = db.prepare('SELECT * FROM arme ORDER BY famille_id, ordre').all();
 const nomDuMateriau = (id) => db.prepare('SELECT nom FROM ressource WHERE id = ?').get(id).nom;
 const contexte = { familles, armes: () => armes, nomDuMateriau };
@@ -55,8 +58,7 @@ const famillesDeLaPage = new Set(db.prepare('SELECT id FROM arme_famille WHERE m
 /** Le nom d'une arme dans l'intitulé d'un commentaire de l'importeur : la première ligne de sa cellule Nom. */
 const intitule = (a) => String(a.nom_brut ?? a.nom).split('\n').map((l) => l.trim().replace(/\s+/g, ' ')).find(Boolean);
 const bornesDe = (a) => (lignes) => {
-  const nom = familles.find((f) => f.id === a.famille_id).nom;
-  const debut = lignes.findIndex((l) => l === `## ${nom}` || l.startsWith(`## ${nom} `));
+  const debut = lignes.indexOf(titreDeSectionDeFamille(familles.find((f) => f.id === a.famille_id)));
   const fin = lignes.findIndex((l, i) => i > debut && /^## /.test(l));
   return [debut, fin < 0 ? lignes.length : fin];
 };
@@ -136,4 +138,69 @@ test('remarque d’une arme : l’entrée de l’importeur (fil ou note de sa ce
   const voisine = armes.find((x) => x.famille_id === a.famille_id && intitule(x) !== intitule(a));
   const avecVoisine = sousLeTableau(`**Note de la cellule « Effet (${intitule(voisine)}) »** : Note voisine.`);
   assert.ok(corpsDesArmesApres(avecVoisine, 'arme', a, neuve, contexte).includes('Note voisine.'));
+});
+
+// Familles d'armes renommées, au dé changé ou créées sur le site de dev (décision R159) : la section de chaque famille porte son bandeau tel qu'écrit
+// (échappé comme l'importeur), son tableau commence par l'en-tête de sa colonne de coût ; les sections des familles sont les dernières du corps (une
+// famille créée prend le dernier rang et sa section s'ajoute à la fin).
+test('R159 : chaque famille a sa section, titrée par son bandeau échappé, son tableau ouvert par l’en-tête de son coût ; les familles ferment le corps', () => {
+  const lignes = corps.split('\n');
+  for (const f of familles) {
+    const complete = db.prepare('SELECT * FROM arme_famille WHERE id = ?').get(f.id);
+    const titre = titreDeSectionDeFamille(f);
+    assert.equal(lignes.filter((l) => l === titre).length, 1, `${f.id} : une section « ${titre} »`);
+    const i = lignes.indexOf(titre);
+    assert.equal(lignes.find((l, k) => k > i && l.startsWith('|')), enteteDeFamille(complete), `${f.id} : l’en-tête de son tableau`);
+  }
+  const titres = lignes.filter((l) => /^## /.test(l));
+  const deFamille = new Set(familles.map(titreDeSectionDeFamille));
+  assert.ok(deFamille.has(titres.at(-1)), 'la dernière section du corps est celle d’une famille');
+  assert.deepEqual(titres.slice(-familles.length), [...titres.slice(-familles.length)].filter((t) => deFamille.has(t)), 'les sections des familles se suivent à la fin');
+});
+
+test('R159 : le bandeau d’une famille refait depuis son nom et son dé, la note d’après le dé gardée ; rien de deviné sinon', () => {
+  for (const f of db.prepare('SELECT * FROM arme_famille WHERE de_brut IS NOT NULL').all()) {
+    assert.equal(libelleDeFamille(f, f), f.libelle_brut, `${f.id} : inchangé, il se refait à l’identique`);
+  }
+  const pugilat = { nom: 'PUGILAT', de_brut: 'D6/D8/D10', libelle_brut: 'PUGILAT - D6/D8/D10 (D6 1-2 Force, D8 3-4 Force, D10 5 Force)' };
+  assert.equal(libelleDeFamille(pugilat, { nom: 'POINGS', de_brut: 'D8' }), 'POINGS - D8 (D6 1-2 Force, D8 3-4 Force, D10 5 Force)');
+  assert.equal(libelleDeFamille(null, { nom: 'FOUETS', de_brut: 'D6' }), 'FOUETS - D6', 'une famille créée');
+  assert.equal(libelleDeFamille({ nom: 'ARME DE MONSTRES', de_brut: null, libelle_brut: 'ARME DE MONSTRES - Se référer à la catégorie d’arme' }, { nom: 'X', de_brut: 'D6' }), null);
+  assert.equal(libelleDeFamille({ nom: 'ARC', de_brut: 'D8', libelle_brut: 'ARCS - D8' }, { nom: 'X', de_brut: 'D6' }), null, 'un bandeau qui ne commence pas par « nom - dé »');
+  assert.equal(libelleDeFamille({ nom: 'ARC', de_brut: 'D1', libelle_brut: 'ARC - D10' }, { nom: 'X', de_brut: 'D6' }), null, '« D1 » n’est pas le dé de « D10 »');
+});
+
+test('R159 : une famille renommée, au dé ou au coût changé : son titre, la liste des armes de départ, l’en-tête de son tableau ; ses armes suivent sous le nouveau titre', () => {
+  const avant = db.prepare("SELECT * FROM arme_famille WHERE id = 'epees'").get();
+  assert.equal(corpsDesArmesApres(corps, 'arme_famille', avant, avant, contexte), corps, 'inchangée : rien ne bouge');
+  const apres = { ...avant, nom: 'LAMES', de_brut: 'D12', libelle_brut: 'LAMES - D12', cout_libelle: 'Coût en plus/moins' };
+  const familles2 = familles.map((f) => (f.id === avant.id ? apres : f));
+  const nouveau = corpsDesArmesApres(corps, 'arme_famille', avant, apres, { ...contexte, familles: familles2 });
+  const lignes = nouveau.split('\n');
+  assert.ok(lignes.includes('## LAMES - D12') && !lignes.includes('## ÉPÉES - D10'));
+  const i = lignes.indexOf('## LAMES - D12');
+  assert.equal(lignes.find((l, k) => k > i && l.startsWith('|')), '| Nom | Coût en plus/moins | Catégorie | Effet | Description |');
+  const depart = armes.filter((a) => a.famille_id === 'epees' && a.depart_possible === 1);
+  if (depart.length) assert.ok(lignes.some((l) => l.startsWith('- Sous « LAMES - D12 » : ')), 'la liste des armes de départ cite le nouveau bandeau');
+  assert.ok(!lignes.some((l) => l.startsWith('- Sous « ÉPÉES')));
+  const epee = armes.find((a) => a.famille_id === 'epees');
+  assert.equal(corpsDesArmesApres(nouveau, 'arme', epee, epee, { ...contexte, familles: familles2 }), nouveau, 'ses armes se retrouvent sous le nouveau titre');
+  assert.equal(nouveau.split('\n').length, corps.split('\n').length, 'aucune ligne ajoutée ni retirée');
+});
+
+test('R159 : une famille créée a sa section à la fin du corps, une arme s’y ajoute ; un titre strict (« ARC » ne prend pas « ARC LONG ») ; pas de suppression', () => {
+  const famille = { id: 'arc-long', nom: 'ARC LONG', de_brut: 'D10', libelle_brut: 'ARC LONG - D10', cout_libelle: 'Coût en plus/moins', ordre: 99 };
+  const familles2 = [...familles, famille];
+  const ctx2 = { ...contexte, familles: familles2 };
+  const cree = corpsDesArmesApres(corps, 'arme_famille', null, famille, ctx2);
+  assert.ok(cree.endsWith('\n\n## ARC LONG - D10\n\n| Nom | Coût en plus/moins | Catégorie | Effet | Description |\n| --- | --- | --- | --- | --- |\n'), JSON.stringify(cree.slice(-200)));
+  assert.equal(cree.slice(0, corps.replace(/\n*$/, '').length), corps.replace(/\n*$/, ''), 'le reste du corps ne change pas');
+  assert.throws(() => corpsDesArmesApres(cree, 'arme_famille', null, famille, ctx2), ErreurCorpsArmes, 'une section déjà là');
+  const arme = { ...armes.find((a) => a.famille_id === 'arc'), id: 'x', famille_id: 'arc-long', nom: 'Arc long d’essai', nom_brut: 'Arc long d’essai', depart_possible: 0, remarque: null };
+  const avecArme = corpsDesArmesApres(cree, 'arme', null, arme, ctx2);
+  assert.ok(avecArme.endsWith(`| --- | --- | --- | --- | --- |\n${ligneDArme(arme)}\n`), 'l’arme à la fin du tableau de la famille créée');
+  // une arme de la famille ARC se trouve toujours dans SA section, pas dans celle d'ARC LONG
+  const arc = armes.find((a) => a.famille_id === 'arc');
+  assert.equal(corpsDesArmesApres(avecArme, 'arme', arc, arc, ctx2), avecArme);
+  assert.throws(() => corpsDesArmesApres(cree, 'arme_famille', famille, null, ctx2), ErreurCorpsArmes, 'une famille ne se supprime pas');
 });

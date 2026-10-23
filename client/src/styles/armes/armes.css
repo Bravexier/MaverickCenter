@@ -7,8 +7,8 @@
    infobulle, puis les matériaux (lignes dans la couleur du matériau) et les améliorations côte à côte (panneau qui suit le défilement ; arrivée au bout
    de son défilement, la molette fait défiler la page ; sur un écran étroit, il passe par-dessus la page une fois une arme choisie). Les tableaux suivent
    le gabarit commun (styles/global/tableaux.css : cadre, titre, en-têtes ; les familles aérées, ceux du panneau serrés et repliables). Mode
-   modification du site de dev (body.ed-mode) : pas de fiche, le panneau de côté sous les menus, colonnes `ed-seul` visibles, ni barres d'onglets : toutes
-   les familles à la suite, chacune sous son titre. */
+   modification du site de dev (body.ed-mode) : pas de fiche, le panneau de côté sous les menus, colonnes `ed-seul` visibles ; les onglets restent, et le
+   titre de la famille ouverte (ses champs : nom, dé) se montre au-dessus de son tableau. */
 main:has(.armes) { max-width: 120rem; }
 .armes {
   --arm: var(--accent);
@@ -109,11 +109,11 @@ html.js .armes-onglets .onglet:not(.is-active):hover { background: var(--arm-sof
   .armes-onglets .onglet__detail { display: none; }
 }
 html.js .armes-bloc > .armes-famille:not(.is-active) { display: none; }
-/* quand les familles d'un menu se suivent (sans JavaScript, en mode modification, à l'impression), l'espace d'avant entre deux tableaux (celui de
-   `.armes-tableaux`) : une famille affichée qui en suit une autre affichée ; jamais en mode onglets, où un seul panneau se voit */
-html:not(.js) .armes-bloc > .armes-famille:not(.est-filtree) ~ .armes-famille:not(.est-filtree),
-body.ed-mode .armes-bloc > .armes-famille:not(.est-filtree) ~ .armes-famille:not(.est-filtree) { margin-top: 1.4rem; }
-/* le titre d'une famille (nom, dé, compte) : celui de son onglet ; sans JavaScript, il sépare les tableaux qui se suivent */
+/* quand les familles d'un menu se suivent (sans JavaScript, à l'impression), l'espace d'avant entre deux tableaux (celui de `.armes-tableaux`) : une
+   famille affichée qui en suit une autre affichée ; jamais en mode onglets (mode modification compris), où un seul panneau se voit */
+html:not(.js) .armes-bloc > .armes-famille:not(.est-filtree) ~ .armes-famille:not(.est-filtree) { margin-top: 1.4rem; }
+/* le titre d'une famille (nom, dé, compte) : celui de son onglet ; sans JavaScript, il sépare les tableaux qui se suivent ; en mode modification, il se
+   montre (plus bas) : il porte les champs de la famille */
 html.js .armes-bloc > .armes-famille > .armes-famille__titre { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* Une famille (le gabarit commun, panneau de son onglet) : le dé de la famille à côté de son nom, dans le titre et dans l'onglet */
@@ -239,13 +239,13 @@ html.js .arme--depart + .arme-suite:hover > * { background: var(--depart-fond-fo
   html.js .armes-vue.est-ouverte .armes-cote { position: fixed; inset: 0; z-index: 60; max-height: none; overflow-y: auto; overscroll-behavior: contain; padding: 0.75rem 1rem 2rem; background: var(--bg); }
 }
 
-/* Mode modification du site de dev (src/scripts/edition/armes.mjs) : ni sélection ni fiche ; tous les tableaux visibles, les uns sous les autres
-   (demande antérieure du propriétaire, qui tient avec les menus : « Quand le mode Edition est lancé, il n'est pas possible de "sélectionner" une arme /
-   matériau / amélioration, mais tous les tableaux sont visibles ») : les barres d'onglets se cachent, chaque famille s'affiche sous son titre (nom, dé,
-   compte), comme sans JavaScript, sous le titre de son menu ; en sortant, les onglets reviennent avec leur panneau ouvert (classes is-active gardées) */
-body.ed-mode .armes-onglets { display: none !important; }
-body.ed-mode .armes-bloc > .armes-famille:not(.is-active) { display: block; }
+/* Mode modification du site de dev (src/scripts/edition/armes.mjs) : ni sélection ni fiche ; les onglets restent affichés (demande du propriétaire,
+   2026-10-23 : « Je veux les onglets aussi », qui remplace pour l'affichage en onglets la demande antérieure « Quand le mode Edition est lancé, il n'est
+   pas possible de "sélectionner" une arme / matériau / amélioration, mais tous les tableaux sont visibles ») : un panneau ouvert par menu, comme hors du
+   mode modification. Le titre de la famille ouverte (nom, dé, compte) se montre au-dessus de son tableau : son nom et son dé s'y modifient (décision
+   R159 ; l'onglet suit). « + Nouvelle famille » sous la barre de chaque menu. */
 body.ed-mode .armes-bloc > .armes-famille > .armes-famille__titre { position: static; width: auto; height: auto; overflow: visible; clip: auto; white-space: normal; }
+body.ed-mode .armes-bloc > .armes-nouvelle-famille { margin: 0 0 0.8rem; }
 body.ed-mode .armes-vue { grid-template-columns: minmax(0, 1fr) !important; }
 body.ed-mode .armes-cote { display: grid !important; position: static !important; max-height: none !important; overflow: visible !important; padding: 0 !important; background: none !important; }
 body.ed-mode .arme-fiche, body.ed-mode .amelioration--aucune, body.ed-mode .armes-outils__boutons .armes-aide { display: none !important; }

@@ -11,20 +11,23 @@
 // Les boutons « Compétence » filtrent les tableaux (« filtrer les armes par compétence arc / arbalète / légère et lourde » : lib/armes-filtres.mjs), le
 // bouton « Arme de départ » n'en garde que les armes de départ ; l'onglet d'une famille sans arme affichée se cache, un menu sans aucune famille
 // affichée aussi, et si l'onglet ouvert d'un menu n'a plus d'arme, le premier qui en a s'ouvre (lib/armes-filtres.mjs#ongletARouvrir) ; l'onglet dit,
-// comme le tableau, « N armes sur M ». Ces deux modules sont les seuls importés ici, et aucun autre script de page ne les importe.
+// comme le tableau, « N armes sur M ». Sans filtre actif, rien ne se cache ni ne se rouvre (une famille sans arme, créée sur le site de dev : décision
+// R159). Ces deux modules sont les seuls importés ici, et aucun autre script de page ne les importe.
 // Une arme tient sur deux lignes du tableau (lib/armes-rendu.mjs#htmlDeLigneDArme) : la sienne (`tr.arme`) et celle de ses effets (`tr.arme-suite`).
 // Les valeurs viennent des cellules telles qu'affichées (attributs `data-…` des rendus de lib/armes-rendu.mjs), lues à chaque sélection : après un
 // enregistrement du mode modification, qui réécrit ces cellules, la fiche suit sans recharger la page (évènement « armes:rafraichir »).
-// En mode modification (body.ed-mode) : rien ne se sélectionne (src/scripts/edition/armes.mjs vide la fiche ; styles/armes/armes.css cache les barres
-// d'onglets et montre toutes les familles à la suite).
+// En mode modification (body.ed-mode) : rien ne se sélectionne (src/scripts/edition/armes.mjs vide la fiche) ; les onglets restent (demande du
+// propriétaire, 2026-10-23 : « Je veux les onglets aussi »).
 // État dans l'adresse : ?arme=<ancre de la ligne>&materiau=<ancre>&amelioration=<niveau>&competence=<ids>&depart=1 (une adresse `#arme-…` ouvre aussi
-// l'arme ; aucun paramètre en commun avec ceux des autres onglets, src/scripts/armures.mjs, accessoires.mjs : la même adresse garde leur état, et
-// l'ancre de l'onglet ouvert reste : lib/armes-filtres.mjs#ancreDesArmes ; l'onglet de famille choisi n'y est pas écrit). Échap ne ferme l'arme que si
-// l'onglet est affiché. En mode modification, pas de filtre : tout s'affiche, aucun onglet ne se cache.
+// l'arme ; aucun paramètre en commun avec ceux des autres onglets, src/scripts/armures.mjs, accessoires.mjs : la même adresse garde leur état), et
+// l'ancre : celle de l'onglet de la page ou de la famille choisie (`#famille-<id>`, écrite par components/Onglets.astro : « On peut retenir l'onglet
+// ouvert #epee par exemple »), que ce script garde (lib/armes-filtres.mjs#ancreDesArmes) et fait suivre quand le filtre ouvre un autre onglet
+// (lib/armes-filtres.mjs#ancreApresLeFiltre). Échap ne ferme l'arme que si l'onglet est affiché. En mode modification, pas de filtre : tout s'affiche,
+// aucun onglet ne se cache.
 import { forgerArme, nombre, piecesDuMontant } from '../lib/arme-forge.mjs';
 import {
-  ancreDesArmes, armeVisible, basculerCompetence, ecrireCompetences, lireCompetences, lireDepart, ongletARouvrir, PARAMETRE_DES_COMPETENCES,
-  PARAMETRE_DU_DEPART, texteDuCompte,
+  ancreApresLeFiltre, ancreDesArmes, armeVisible, basculerCompetence, ecrireCompetences, lireCompetences, lireDepart, ongletARouvrir,
+  PARAMETRE_DES_COMPETENCES, PARAMETRE_DU_DEPART, texteDuCompte,
 } from '../lib/armes-filtres.mjs';
 
 const racine = document.querySelector('[data-armes]');
@@ -62,6 +65,24 @@ if (racine) {
   const ouvrirSonOnglet = (el) => el?.dispatchEvent(new CustomEvent('onglets:ouvrir', { bubbles: true, detail: { dans: racine } }));
   /** L'onglet d'une famille (components/armes/ArmesPage.astro : `onglet-famille-<id>` vers `famille-<id>`). */
   const ongletDe = (famille) => document.getElementById(`onglet-${famille.id}`);
+  /** L'élément que désigne l'ancre de l'adresse (null : aucune, introuvable ou mal formée). */
+  const cibleDeLAncre = () => {
+    try {
+      return location.hash ? document.getElementById(decodeURIComponent(location.hash.slice(1))) : null;
+    } catch {
+      return null;
+    }
+  };
+  /**
+   * Le filtre a fait passer un menu de l'onglet `fermee` à l'onglet `ouverte` (leurs panneaux) : l'adresse, qui retient l'onglet choisi, suit quand elle
+   * désignait celui qui se ferme (lib/armes-filtres.mjs#ancreApresLeFiltre).
+   */
+  function suivreLAdresse(fermee, ouverte) {
+    const cible = cibleDeLAncre();
+    const dansLaFermee = Boolean(fermee && cible && cible !== fermee && fermee.contains(cible));
+    const ancre = ancreApresLeFiltre(location.hash, { fermee: fermee?.id, ouverte: ouverte.id, dansLaFermee });
+    if (ancre !== location.hash) history.replaceState(history.state, '', `${location.pathname}${location.search}${ancre}`);
+  }
   /** Les compétences d'une ligne (lib/armes-rendu.mjs#htmlDeCompetence : data-competences="arc arme-legere"). */
   const competencesDe = (ligne) => (ligne.querySelector('.arme__competence [data-competences]')?.dataset.competences ?? '').split(' ').filter(Boolean);
 
@@ -270,7 +291,8 @@ if (racine) {
   /**
    * Applique le filtre : une arme reste si l'une de ses compétences est choisie (toutes sans choix) et, avec « Arme de départ », si c'en est une (tout
    * reste en mode modification) ; une famille sans arme affichée se cache, et son onglet ; un menu dont aucune famille n'a d'arme affichée se cache ; si
-   * l'onglet ouvert d'un menu n'a plus d'arme, le premier qui en a s'ouvre ; les comptes (tableau, onglet, onglet Armes) disent « N armes sur M ».
+   * l'onglet ouvert d'un menu n'a plus d'arme, le premier qui en a s'ouvre, et l'adresse le suit ; sans filtre actif, rien ne se cache ni ne se rouvre
+   * (une famille sans arme : décision R159) ; les comptes (tableau, onglet, onglet Armes) disent « N armes sur M ».
    * L'arme ouverte, si elle est filtrée, se ferme. La ligne des effets d'une arme la suit (styles/armes/armes.css).
    */
   function filtrer() {
@@ -302,8 +324,12 @@ if (racine) {
         return n;
       });
       bloc.hidden = actif && comptes.every((n) => n === 0);
-      const rouvrir = ongletARouvrir(comptes, familles.findIndex((f) => f.classList.contains('is-active')));
-      if (rouvrir !== null) ouvrirSonOnglet(familles[rouvrir]);
+      const ouvert = familles.findIndex((f) => f.classList.contains('is-active'));
+      const rouvrir = ongletARouvrir(comptes, ouvert, { filtreActif: actif });
+      if (rouvrir !== null) {
+        ouvrirSonOnglet(familles[rouvrir]);
+        suivreLAdresse(familles[ouvert] ?? null, familles[rouvrir]);
+      }
     }
     // le compte de tout l'onglet : « N armes sur M » dès que le filtre est actif (comme avant les menus) ; ceux des tableaux et des onglets, seulement
     // s'il écarte des armes

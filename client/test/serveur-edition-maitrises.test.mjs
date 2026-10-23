@@ -300,3 +300,34 @@ test('rejeu : un lot déjà noté avec une maîtrise illisible (d’avant le ref
   assert.deepEqual(partsDe(ancien.base, id), []);
   sourcesJustes(ancien.base);
 });
+
+// Familles d'armes renommées ou créées sur le site de dev (décision R159) : un renommage ne change aucune source (le lecteur lit aussi le nom de lecture,
+// figé) ; une création les refait toutes — la famille entre dans les options des parts à choisir de sa catégorie et de toutes les familles —, notées au
+// journal ; un lot qui écrit une famille, noté sans ses sources, les reçoit au rejeu (sourcesRefaitesParLeLot : toutes les sources, hors journal).
+test('R159 : une famille renommée ne change aucune source ; une famille créée les refait (notées au journal), et le rejeu d’un lot qui ne les note pas les refait', () => {
+  const source = vivante();
+  const avant = sources(source).tables;
+  enregistrer(source, [{ op: 'modifier', table: 'arme_famille', cle: { id: 'arc' }, valeurs: { nom: `ARCS LONGS ${process.pid}` } }]);
+  assert.deepEqual(sources(source).tables, avant, 'un renommage ne change aucune source');
+  assert.deepEqual(dernierLot(source).map((m) => m.table_nom), ['arme_famille', 'page'], 'ni part ni option au journal');
+  const { crees } = enregistrer(source, [{ op: 'creer', entite: 'arme_famille', valeurs: { nom: `Arbalètes de poing ${process.pid}`, de_brut: 'D8', categorie: 'distance', cout_libelle: 'Coût' } }]);
+  const id = crees[0].id;
+  sourcesJustes(source, 'après la création');
+  const ajoutees = dernierLot(source).filter((m) => m.table_nom === 'maitrise_arme_part_famille');
+  assert.ok(ajoutees.length > 0 && ajoutees.every((m) => m.operation === 'inserer' && JSON.parse(m.cle).arme_famille_id === id), 'les options de la famille créée, notées');
+  assert.deepEqual(sources(source).tables.parts, avant.parts, 'aucune part ne change');
+  for (const l of q(source, "SELECT * FROM classe_maitrise_arme WHERE forme = 'au_choix'")) {
+    assert.equal(optionsDe(source, idDeSourceDeClasse(l.classe_id, l.rang)).includes(id), !l.categorie || l.categorie === 'distance', `${l.classe_id} : ${l.brut}`);
+  }
+  const attendu = sources(source).tables;
+  // tel quel : rien en conflit, rien à refaire hors journal
+  const nouveau = rebatir(source);
+  assert.equal(nouveau.bilan.conflits, 0, JSON.stringify(q(nouveau.base, "SELECT detail FROM modification WHERE etat = 'conflit'")));
+  assert.deepEqual(sources(nouveau.base).tables, attendu);
+  for (const t of TABLES_DES_SOURCES) assert.ok(!nouveau.sortie.tablesCompletees.includes(t), `${t} : déjà dans le journal`);
+  // le lot de la création noté sans ses options : le rejeu refait toutes les sources (la famille touchée), hors journal
+  const sansOptions = rebatir(source, avant0076);
+  assert.equal(sansOptions.bilan.conflits, 0, JSON.stringify(q(sansOptions.base, "SELECT detail FROM modification WHERE etat = 'conflit'")));
+  assert.deepEqual(sources(sansOptions.base).tables, attendu);
+  assert.ok(sansOptions.sortie.tablesCompletees.includes('maitrise_arme_part_famille'), 'écrites au-delà du journal');
+});

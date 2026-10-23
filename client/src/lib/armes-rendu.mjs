@@ -207,3 +207,32 @@ export function menusDesArmes(familles) {
   }
   return MENUS_DES_ARMES.map((m) => ({ ...m, familles: familles.filter((f) => f.categorie === m.categorie) })).filter((m) => m.familles.length > 0);
 }
+
+/**
+ * La famille fictive des modèles d'une famille créée en mode modification (décision R159 : « créer un nouvel onglet donc un nouveau tableau si
+ * besoin ») : components/armes/ArmesPage.astro rend son onglet (OngletDeFamille.astro) et son tableau (TableauArmes.astro) dans deux `<template
+ * data-armes-modele>` ; src/scripts/edition/armes.mjs les remplit (htmlDeFamilleDepuisModele) pour une famille créée, sans autre HTML que celui de la
+ * page construite. Des jetons qu'aucun nom ne donne : un identifiant de famille est `normalize(nom)` (lib/text.mjs : lettres, chiffres et tirets, jamais
+ * de « _ »), d'où des ids uniques dans la page (`famille-__id__`). Ni note ni arme.
+ */
+export const MODELE_DE_FAMILLE = Object.freeze({
+  id: '__id__', nom: '__nom__', de_brut: '__de__', cout_libelle: '__cout__', note_brut: null, categorie: null, armes: Object.freeze([]),
+});
+
+/**
+ * Le HTML d'un modèle (`modele` : le contenu d'un `<template data-armes-modele>`) pour une famille (`famille` : une ligne arme_famille, celle que
+ * renvoie le service à sa création) : chaque jeton de MODELE_DE_FAMILLE remplacé par sa valeur échappée comme Astro l'échappe (test/armes-html.test.mjs
+ * compare le résultat au HTML construit d'une famille de la base), et, pour un coût « à l'unité » (`cout_libelle` « (unité) »), l'attribut
+ * `data-unite="1"` du tableau (TableauArmes.astro, que src/scripts/armes.mjs lit pour le coût de la fiche). Une famille créée n'a pas de note (son bandeau
+ * est « NOM - dé ») : la note du modèle reste vide. Les balises du glossaire du modèle (l'en-tête « {{solidite}} ») restent telles qu'écrites : le
+ * middleware ne rend rien dans un `<template>`, et le site de dev les rend dès que le HTML est posé (src/scripts/edition/mots-cles-vivants.mjs).
+ */
+export function htmlDeFamilleDepuisModele(modele, famille) {
+  const html = String(modele ?? '')
+    .replaceAll(MODELE_DE_FAMILLE.id, e(famille.id))
+    .replaceAll(MODELE_DE_FAMILLE.nom, e(famille.nom))
+    .replaceAll(MODELE_DE_FAMILLE.de_brut, e(famille.de_brut ?? ''))
+    .replaceAll(MODELE_DE_FAMILLE.cout_libelle, e(famille.cout_libelle ?? ''));
+  // la note vide : `data-note` tel qu'Astro l'écrit, `data-note=""` tel qu'un navigateur relit le modèle (innerHTML)
+  return String(famille.cout_libelle ?? '').includes('(unité)') ? html.replace(/ data-note(?:="")?(?=[\s>])/, '$& data-unite="1"') : html;
+}

@@ -9,7 +9,7 @@ import { idDeSourceDeClasse, lireDon, lireLigneDeClasse, nmGagnesDuDon } from '.
 
 const db = ouvrirBase({ sansExemples: false });
 const q = (sql) => db.prepare(sql).all().map((l) => ({ ...l }));
-const familles = q('SELECT id, nom, maitrisable, categorie FROM arme_famille ORDER BY ordre');
+const familles = q('SELECT id, nom, nom_lecture, maitrisable, categorie FROM arme_famille ORDER BY ordre');
 const MAITRISABLES = new Set(familles.filter((f) => f.maitrisable).map((f) => f.id));
 const parCle = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 

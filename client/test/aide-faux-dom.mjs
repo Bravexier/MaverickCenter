@@ -172,7 +172,8 @@ export class Element extends EventTarget {
     this.noeuds = [];
     if (String(v)) this.append(String(v));
   }
-  get innerHTML() { return this.noeuds.map(serialiser).join(''); }
+  /** Le HTML des enfants (celui du contenu d'un `<template>`, comme un navigateur). */
+  get innerHTML() { return (this.content ?? this).noeuds.map(serialiser).join(''); }
   set innerHTML(html) {
     const cible = this.content ?? this;
     cible.textContent = '';

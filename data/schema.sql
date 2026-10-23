@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 76;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 77;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -2502,12 +2502,18 @@ CREATE TABLE arme_famille (
   remarque TEXT,  -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   maitrisable   INTEGER NOT NULL CHECK (maitrisable IN (0, 1)),   -- 1 = une maîtrise d'arme peut s'y mettre (personnage_maitrise_choix) ; 0 = ARME DE MONSTRES :
                                                     -- des armes exclusives aux monstres, pas de maîtrise (décision R45 du propriétaire, migration 0030)
-  categorie     TEXT    CHECK (categorie IS NULL OR (categorie IN ('contact', 'distance') AND maitrisable = 1))   -- R127 (migration 0069) : 'distance' = ARC, ARBALÈTE, ARME DE JET, BOMBES ; 'contact' = les
+  categorie     TEXT    CHECK (categorie IS NULL OR (categorie IN ('contact', 'distance') AND maitrisable = 1)),  -- R127 (migration 0069) : 'distance' = ARC, ARBALÈTE, ARME DE JET, BOMBES ; 'contact' = les
                                                     -- 7 autres familles maîtrisables (ÉPÉES, DAGUES, MASSE/MARTEAU, HACHE, LANCE/ARME D'HAST, PUGILAT, BÂTON DE
                                                     -- COMBAT) ; NULL = ARME DE MONSTRES (maitrisable = 0) : la décision ne classe que les familles maîtrisables, et
                                                     -- le bandeau renvoie chaque arme à sa propre catégorie (« Se référer à la catégorie d'arme ») ; le CHECK
                                                     -- garantit « classée ⇒ maîtrisable », l'inverse est tenu par la garde de 0069 et par
                                                     -- client/test/fiche-arme-choisie.test.mjs (pas de CHECK possible par ADD COLUMN)
+  nom_lecture   TEXT    CHECK (nom_lecture IS NULL OR length(nom_lecture) > 0)   -- R159 (migration 0077) : nom de lecture, figé ; le `nom` du bandeau à l'import
+                                                    -- (les 12 familles), ou à la création sur le site de dev (une famille créée reçoit son nom de création),
+                                                    -- jamais modifié ensuite, même quand le site renomme la famille ; client/src/lib/maitrise-arme.mjs le lit
+                                                    -- en plus de `nom` pour que les « sauf » et les lignes nommées (« 1 maîtrise Épée », « (sauf épée) » :
+                                                    -- R138, R151) désignent toujours la même famille ; jamais NULL ni vide : garde de 0077 et
+                                                    -- client/test/db-arme-famille-nom-lecture.test.mjs (pas de NOT NULL sans DEFAULT par ADD COLUMN)
 ) STRICT;
 
 -- Types d'armes = table BDD!AD2:AF14 de la fiche automatique (13 types) : dé de dégâts et portée par défaut. C'est le « type » que la

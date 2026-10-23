@@ -4,7 +4,8 @@
 // /ressources/equipement/ (section 1, migration 0056 : leur titre, leurs blocs). Les matériaux d'arme, d'armure et de bouclier sont
 // dans le module « artisanat » (décision R62 : la page Composants en est la seule source).
 // Les écritures sont celles que le site de dev sait déjà faire (TABLES, ENTITES de lib/edition-modele.mjs ; serveur/edition-armes.mjs,
-// edition-armures.mjs, edition-panneaux.mjs) : une arme se crée, se modifie et se supprime (décision R52) ; une amélioration d'arme, d'armure ou de
+// edition-armures.mjs, edition-panneaux.mjs) : une arme se crée, se modifie et se supprime (décision R52) ; une famille d'armes se crée et se modifie,
+// sauf ARME DE MONSTRES (décision R159) ; une amélioration d'arme, d'armure ou de
 // bouclier, une armure, une pièce d'armure, une forme, un poids et un bouclier préfabriqué se modifient ; le titre d'un panneau de règles se modifie, un
 // bloc de panneau se crée (après un autre), se modifie et se supprime (pas le dernier) ; rien d'autre. Deux tables sont donc partagées par une condition :
 // `arme` (les armes de monstres, que le service refuse : décision R45, en lecture seule à part) et `amelioration_equipement` (une ressource par cible
@@ -70,11 +71,19 @@ export const RESSOURCES = [
     description:
       'Les bandeaux de l’onglet « Armes » (« ÉPÉES - D10 », « PUGILAT », … « ARME DE MONSTRES »), sous lesquels chaque arme est listée : le bandeau tel ' +
       'qu’écrit, son nom, son ou ses dés, sa note (dé du Pugilat selon la Force…), l’en-tête de sa colonne de coût, si une maîtrise d’arme peut s’y ' +
-      'mettre (décision R45) et sa catégorie, arme de contact ou à distance (décision R127 ; aucune pour ARME DE MONSTRES) ; en lecture seule.',
+      'mettre (décision R45), sa catégorie, arme de contact ou à distance (décision R127 ; aucune pour ARME DE MONSTRES), et son nom de lecture, figé ' +
+      '(le nom sous lequel les maîtrises la désignent toujours, migration 0077) ; le nom, le dé (« D10 », « D6/D8/D10 ») et l’en-tête de coût (un des ' +
+      'trois de la base) se modifient, le service en refait le bandeau ; une famille se crée (décision R159 : nom, dé, catégorie fixée à la création, ' +
+      'en-tête de coût ; identifiant tiré du nom puis figé), maîtrisable, et entre dans les maîtrises au choix de sa catégorie ; un nom déjà pris ou qui ' +
+      'changerait une maîtrise existante est refusé (409) ; aucune ne se supprime ; ARME DE MONSTRES ne se modifie pas (R45).',
     table: 'arme_famille',
-    liste: ['id', 'nom', 'de_brut', 'note_brut', 'maitrisable', 'categorie', 'ordre'],
-    recherche: ['nom', 'libelle_brut'],
+    liste: ['id', 'nom', 'de_brut', 'note_brut', 'maitrisable', 'categorie', 'ordre', 'nom_lecture'],
+    recherche: ['nom', 'libelle_brut', 'nom_lecture'],
     tri: 'ordre',
+    ecriture: { creer: 'arme_famille' },
+    // la famille des armes de monstres (R45) : le service refuse de la modifier
+    colonnesFigees: Object.fromEntries(['nom', 'de_brut', 'cout_libelle']
+      .map((c) => [c, { raison: 'la famille des armes de monstres ne se modifie pas (décision R45)', si: { id: ARMES_DE_MONSTRES } }])),
   },
   {
     cle: 'types-d-armes',

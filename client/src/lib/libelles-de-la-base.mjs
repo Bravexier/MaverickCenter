@@ -71,7 +71,6 @@ export const NOMS_DES_TABLES = Object.freeze({
   ecart_source: 'Écart entre sources',
   note_cellule: 'Note de cellule',
   // les tables citées par une clé étrangère des tables ci-dessus et de TABLES (jamais écrites par l'édition)
-  arme_famille: 'Famille d’armes',
   arme_type: 'Type d’arme',
   caracteristique: 'Caractéristique',
   categorie_classe: 'Catégorie de classe',
@@ -119,12 +118,14 @@ export const NOMS_DES_TABLES = Object.freeze({
   sort_mot_cle: 'Étiquette du sort',
   // les fiches de personnage (section 13) qui citent une table écrite : jamais écrites par l'édition des règles
   personnage: 'Fiche de personnage',
+  personnage_accessoire: 'Accessoire du personnage',
   personnage_arme: 'Arme du personnage',
   personnage_armure_partie: 'Partie d’armure du personnage',
   personnage_capacite: 'Don de classe choisi du personnage',
   personnage_ceinture: 'Objet de la ceinture du personnage',
   personnage_classe: 'Classe du personnage',
   personnage_inventaire: 'Objet de l’inventaire du personnage',
+  personnage_maitrise_choix: 'Maîtrise d’arme choisie du personnage',
   personnage_resistance_choix: 'Résistance choisie du personnage',
   personnage_sort: 'Sort du personnage',
 });
@@ -219,6 +220,11 @@ export const NOMS_DES_COLONNES = geler({
     famille_id: 'Famille d’armes', cout_ro: 'Coût en RO', de: 'Dé', de_faces: 'Faces du dé', de_source: 'Source du dé', portee_min: 'Portée minimale',
     portee_max: 'Portée maximale', ignore_ap: 'AP ignorée', recharge: 'Recharge', solidite_fixee: 'Solidité fixée (crans)',
     solidite_delta: 'Crans de solidité en plus ou en moins', provenance_mot: 'Provenance (telle qu’écrite)', provenance: 'Provenance',
+  },
+  // une famille d'armes (TABLES : nom, dé, en-tête de coût ; décision R159) : le reste se lit sans se saisir
+  arme_famille: {
+    libelle_brut: 'Bandeau (tel qu’écrit)', note_brut: 'Note du bandeau', maitrisable: 'Maîtrise d’arme possible', categorie: 'Catégorie d’arme',
+    nom_lecture: 'Nom de lecture (figé)',
   },
   arme_prerequis: { minimum: 'Minimum', exigence: 'Exigence' },
   armure: { sorte: 'Sorte d’armure', materiau_ligne_id: 'Matière de la ligne', materiau_colonne_id: 'Matière de la colonne', solidite_uni: 'Solidité uni' },
