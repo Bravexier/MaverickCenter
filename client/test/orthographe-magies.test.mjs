@@ -62,10 +62,21 @@ test('base : chaque correction est faite (le texte corrigé est dans la colonne)
   // un coût que le propriétaire a tranché depuis (décision R106, migration 0065 : « 1 à 5 âmes ») ne dit plus ce que la correction a corrigé ; elle était
   // dans l'écriture que la réponse remplace
   const tranches = new Map(JSON.parse(readFileSync(join(dossier, '0065-couts-des-sorts-tranches.json'), 'utf8')).tranches.map((t) => [t.id, t]));
+  // de même, l'effet des 13 sorts « Fer… » réécrit par la migration 0079 (décision R164) : la correction est dans l'effet que 0079 remplace (la valeur
+  // d'avant qui garde chacun de ses UPDATE)
+  const sql0079 = readFileSync(join(dossier, '0079-r164-sorts-fer.sql'), 'utf8');
+  const sansGuillemets = (s) => s.replaceAll("''", "'");
+  const reecrits0079 = new Map([...sql0079.matchAll(/^UPDATE sort SET effets = '(?:[^']|'')*'\nWHERE id = '((?:[^']|'')*)' AND effets = '((?:[^']|'')*)';$/gm)]
+    .map((m) => [sansGuillemets(m[1]), sansGuillemets(m[2])]));
+  assert.equal(reecrits0079.size, 13, 'les 13 effets réécrits par 0079');
   const lire = new Map();
   for (const c of corrections) {
     if (c.table === 'sort' && c.col === 'cout_brut' && tranches.has(c.id)) {
       assert.ok(tranches.get(c.id).avant.includes(c.apres), `${c.id} : « ${c.apres} » absent de l'écriture que 0065 remplace`);
+      continue;
+    }
+    if (c.table === 'sort' && c.col === 'effets' && reecrits0079.has(c.id)) {
+      assert.ok(reecrits0079.get(c.id).includes(c.apres), `${c.id} : « ${c.apres} » absent de l'effet que 0079 remplace`);
       continue;
     }
     const cle = `${c.table}|${c.id}|${c.col}`;

@@ -3203,7 +3203,8 @@ export function sacrificeDuSort(regles, sortId) {
  *   en Défensif, ÷ 2 (`diviseur`). Un accessoire maudit fait le contraire (R54) : un cran de moins, un dé au minimum, un bonus retiré ;
  * - Soin : les dés montés par Focus et par le don qui l'écrit, un dé de plus (accessoire « Augmente de 1d les soins magiques »), les bonus fixes des
  *   dons, du bâton (« Soin magique »), de la Symbiose ;
- * - Amplification : « +N dégâts » + « Sort qui amplifie dégâts » du bâton ; « +NAM », « +NAP » + « ampli am / ap » du bâton ; protection : « −N dégâts »
+ * - Amplification : « +N dégâts » + les bonus écrits pour une étiquette du sort (« ... Brutale » : +2 aux sorts fer en Focus, décision R164) + « Sort qui
+ *   amplifie dégâts » du bâton ; « +NAM », « +NAP » + « ampli am / ap » du bâton ; protection : « −N dégâts »
  *   (D/S/B) et « Bloque N dégâts » (effets) + « protection = +N dégâts bloqués » du bâton (réponse « Compter où c'est chiffré ») ;
  * - Un bonus qui viserait un D/S/B qui ne se lit pas est dit non compté.
  */
@@ -3220,13 +3221,18 @@ export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSo
   // une progression (décision R110) : base + pas × ⌊niveau ÷ niveaux⌋, au niveau de classe ou global (bonusDeSortsDuPersonnage)
   // (`npm` : le niveau de puissance du sort, celui de la créature pour une invocation surchargée : décision R129)
   const valeurEcrite = (b, npm = sort.niveau) => ('parNpm' in b ? b.parNpm * npm : 'pas' in b ? b.base + b.pas * Math.floor((b.niveau ?? 0) / b.niveaux) : b.valeur);
-  // les bonus écrits d'une cible qui visent ce sort ; ceux d'une situation ou d'une autre posture : non comptés (rangés sous leur colonne)
+  // les bonus écrits d'une cible qui visent ce sort (et que `garder` retient) ; ceux d'une situation ou d'une autre posture : non comptés (rangés sous leur
+  // colonne)
   const colonneDe = (cible) => (cible === 'cout' ? 'cout' : cible === 'portee' ? 'portee' : 'dsb');
   // (un bonus « égal à son niveau de puissance » compté : Économe, lu au NPM d'une créature invoquée surchargée, décision R129)
   let parNpmCompte = false;
-  const ecritsPour = (cible, npm = sort.niveau) => {
+  // chaque bonus écrit n'est lu qu'une fois pour ce sort (compté ou dit non compté) : un sort d'amplification et d'attaque dont le D/S/B ne se lit pas
+  // ne redit pas, sous « non chiffré », un bonus de son étiquette déjà lu (décision R164, desEtiquettes)
+  const dejaLus = new Set();
+  const ecritsPour = (cible, npm = sort.niveau, garder = () => true) => {
     const r = [];
-    for (const b of ecrits.filter((x) => x.cible === cible && viseLeSort(x.vises, sort, fiche, auNm.portee, estPrepare))) {
+    for (const b of ecrits.filter((x) => x.cible === cible && !dejaLus.has(x) && garder(x) && viseLeSort(x.vises, sort, fiche, auNm.portee, estPrepare))) {
+      dejaLus.add(b);
       const valeur = valeurEcrite(b, npm);
       if (b.raison) nonComptes.push({ nom: b.nom, valeur, raison: b.raison, cible: colonneDe(cible) });
       else if (b.posture && b.posture !== posture?.posture.nom.toLowerCase()) nonComptes.push({ nom: b.nom, valeur, raison: 'posture', cible: colonneDe(cible) });
@@ -3336,16 +3342,25 @@ export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSo
     if (v.nature === 'degats' && posture?.diviseur > 1) dsb.diviseur = posture.diviseur;
   } else if (sort.types?.includes('amplification') || sort.types?.includes('protection')) {
     // chaque « +N dégâts », « +NAM », « +NAP » d'un sort d'amplification, plus ce que donne le bâton (« Sort qui amplifie dégâts », « ampli am / ap ») ;
-    // les dégâts bloqués d'un sort de protection (« −N dégâts magiques », « Bloque N dégâts »), plus « protection = +N dégâts bloqués »
+    // les dégâts bloqués d'un sort de protection (« −N dégâts magiques », « Bloque N dégâts »), plus « protection = +N dégâts bloqués ». Les « +N dégâts »
+    // d'un sort d'amplification reçoivent aussi les bonus écrits pour une étiquette qu'il porte, et eux seuls (décision R164 : « ... Brutale », +2 aux
+    // sorts fer en posture Focus ; un bonus écrit pour tous les sorts ou pour les sorts d'attaque ne les touche pas) : lus une fois, leurs non comptés aussi
+    const desEtiquettes = sort.types.includes('amplification')
+      ? ecritsPour('degats', sort.niveau, (b) => Boolean(b.vises?.mots_cles?.some((m) => sort.mots_cles?.includes(m)))) : [];
+    let etiquettesComptees = false;
     const amplifier = (texte, cible) => String(texte ?? '').replace(/([+\-−])(\d+)(\s*)(d[ée]g[âa]ts|AM|AP)(?!\p{L})/giu, (tout, signe, n, espace, unite) => {
       const protection = signe !== '+';
       if (protection !== sort.types.includes('protection') || (protection && !/^d/i.test(unite))) return tout;
-      const ampli = duBaton(protection ? 'protection' : /^d/i.test(unite) ? 'ampli_degats' : `ampli_${unite.toLowerCase()}`);
+      const degats = !protection && /^d/i.test(unite);
+      if (degats && desEtiquettes.length) etiquettesComptees = true;
+      const ampli = protection ? duBaton('protection') : degats ? [...desEtiquettes, ...duBaton('ampli_degats')] : duBaton(`ampli_${unite.toLowerCase()}`);
       if (!ampli.length) return tout;
       cible.detail.push(...ampli);
       return `${signe}${Number(n) + somme(ampli)}${espace}${unite}`;
     });
     dsb.texte = amplifier(auNm.dsb, dsb);
+    // sans « +N dégâts » dans son D/S/B, les bonus de son étiquette sont dits non comptés (décision R164)
+    if (!etiquettesComptees) pasCompte(desEtiquettes, 'non_chiffre', 'dsb');
     dsb.lu = dsb.detail.length > 0;
     if (sort.types.includes('protection')) {
       effets.texte = String(auNm.effets ?? '').replace(/(\bbloque\s+)(\d+)(\s+d[ée]g[âa]ts)/i, (tout, debut, n, fin) => {

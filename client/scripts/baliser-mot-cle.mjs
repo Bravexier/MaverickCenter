@@ -15,7 +15,7 @@
 // d'autres exclusions retire donc celles qui ne le sont plus ; avec les mêmes, il ne change rien). Le rapport liste chaque balise retirée sans être
 // reposée et chaque balise nouvelle (`changements`), et ce que l'entrée écrit pour rien (`inutilises` : une exclusion, un contexte qui ne se lit dans
 // aucun texte relu, un texte de `horsDe` ou de `sauf` qui n'en désigne aucun). Les entrées : tools/glossaire/chakra-barriere.json (2026-10-17),
-// tools/glossaire/corruption.json (2026-10-18, qui reprend Chakra et Barrière).
+// tools/glossaire/corruption.json (2026-10-18, qui reprend Chakra et Barrière), tools/glossaire/sort-fer.json (2026-10-23, décision R164).
 // Étapes, comme scripts/mise-a-jour-simulation.mjs : la base des règles est construite depuis data/rows, une base vivante en est tirée, et le service du
 // site de dev (serveur/api.mjs, édition ouverte) y fait les modifications — les mots-clés créés (/recherche/), puis un lot par colonne (au plus LOT_MAX
 // textes chacun) qui réécrit les textes ; tout ce qui en dépend (pages typées, colonnes tirées d'un texte) est refait par le service. Le journal est

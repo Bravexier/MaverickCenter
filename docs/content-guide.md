@@ -1264,7 +1264,9 @@ site se sert pour ranger ses pages (catégories de `/classes/`, « classe », «
 ceux du glossaire (Mordhau, Recharge longue, Recharge très longue, Solidité, Chakra, Barrière, Corruption, CR…). Un mot-clé peut aussi **étiqueter un
 sort** (table `sort_mot_cle`, migration `0067`, décision R114) : « Sort grenade » (défini par le propriétaire « Type particulier de sort provoquant une
 explosion localisée ») est posé sur les 14 sorts « Grenade… », et la fiche de personnage reconnaît un sort grenade à cette étiquette, jamais à son nom ;
-« Sort grenade » est protégé comme les mots-clés qui rangent les pages, et tout mot-clé qui étiquette un sort ne se supprime ni ne se fusionne depuis le
+de même « Sort fer » (migration `0079`, décision R164 : « Type de sort d'amélioration qui s'applique sur une arme. ») sur les 13 sorts « Fer… », que la
+fiche reconnaît pour « ... Brutale » ; « Sort grenade » et « Sort fer » sont protégés comme les mots-clés qui rangent les pages, et tout mot-clé qui
+étiquette un sort ne se supprime ni ne se fusionne depuis le
 site (`409`, avec les sorts : `serveur/edition-chronologie.mjs#verifierSansSort`) ; ces étiquettes se lisent dans l'API (`/api/v1/sorts/<id>/mots-cles/`),
 en lecture seule. « Solidité » (migration `0058`, demande du propriétaire du 2026-10-17 :
 « met donc "solidité" partout à la place de durabilité. Et profite en pour en faire un mot clé ») : l'état de l'équipement, sa définition celle du
@@ -1329,7 +1331,7 @@ clé », puis « Barrière ») : l'outil hors ligne `client/scripts/baliser-mot-
 les balises, que les textes gardent ensuite (le site, lui, ne repère jamais un mot tout seul). Il passe par le service du site de dev, comme le mode
 modification : chaque mot-clé est créé avec sa définition (`mots.json` : `[{ libelle, motif, casse, description, exclus, contextes, horsDe, sauf }]`,
 `motif` = les écritures du mot, « chakras? », avec la casse si `casse` (« CR » n'est pas « cr ») ; ceux des demandes : `tools/glossaire/chakra-barriere.json`,
-puis `tools/glossaire/corruption.json`),
+puis `tools/glossaire/corruption.json`, puis `tools/glossaire/sort-fer.json` (R164)),
 puis chaque texte que le site de dev modifie (champs « texte » et « markdown » de `lib/edition-modele.mjs#TABLES` : le guide et le Codex, les sorts, les
 dons, les races, les cartes de monstre, les potions…, plus quatre phrases d'une ligne : type d'un don, D/S/B d'un sort, artisanat d'un métier, case de
 butin) est réécrit dans sa forme canonique (« {{chakra}} » pour le libellé dans un texte mis en forme, « {{chakra|chakra}} » sinon) ; tout ce qui en

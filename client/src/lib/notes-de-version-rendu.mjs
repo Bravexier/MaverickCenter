@@ -47,7 +47,11 @@ function lcs(a, b) {
 }
 
 const LIMITE_LCS = 1_500_000; // cases du tableau de programmation dynamique au-delà desquelles on renonce au détail
-const mots = (t) => String(t ?? '').match(/\s+|[^\s]+/g) ?? [];
+// Un « mot » : une suite d'espaces, ou une suite sans espace dans laquelle une balise du glossaire ({{id|texte}}, sans accolade ni saut de ligne, comme
+// lib/mots-cles-balises.mjs#BALISE) compte pour un seul morceau, espaces intérieurs compris. Sinon une balise de plusieurs mots posée autour d'un texte
+// qui existait déjà (R164 : « des sorts "fer", » devenu « des {{sort-fer|sorts "fer"}}, ») se coupe à l'espace que la LCS aligne, entre deux <ins>,
+// et le middleware, qui lit nœud de texte par nœud de texte, la laisse brute. Une « { » isolée ou un « {{ » sans « }} » reste un caractère ordinaire.
+const mots = (t) => String(t ?? '').match(/\s+|(?:\{\{[^{}\n]*\}\}|[^\s{]+|\{)+/g) ?? [];
 
 /**
  * Ce qui a changé entre deux textes, mot à mot (ligne par ligne d'abord, pour les longs textes) : [{ type, texte }] ; null si les textes sont trop

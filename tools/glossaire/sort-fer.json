@@ -1,0 +1,7 @@
+[
+  {
+    "libelle": "Sort fer",
+    "motif": "sorts?\\s+(?:\"fer\"|“fer”|de\\s+fer\\s+élémentaire)",
+    "description": "Type de sort d'amélioration qui s'applique sur une arme."
+  }
+]

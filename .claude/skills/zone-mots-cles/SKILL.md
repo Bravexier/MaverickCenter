@@ -11,7 +11,7 @@ user-invocable: false
 - Rendu sur tout le site : `src/middleware.mjs` (build et `astro dev`), CSS `styles/global/mots-cles.css`.
 - Vocabulaire : `lib/mots-cles.mjs` (`MOTS_CLES_PROTEGES`), `lib/mots-cles-db.mjs` (`textesDeLaBase`).
 - Site de dev : `src/scripts/edition/mots-cles-vivants.mjs` (vocabulaire vivant) ; service : `serveur/edition.mjs` (`texteAvecMotsClesCanoniques`, `motCleDe`, `reecrireLesBalises`), `serveur/edition-chronologie.mjs` (`verifierSansSort`, opérations du vocabulaire).
-- Balisage d'un mot : `client/scripts/baliser-mot-cle.mjs`, `lib/glossaire-balisage.mjs`, entrées `tools/glossaire/chakra-barriere.json`, `tools/glossaire/corruption.json`.
+- Balisage d'un mot : `client/scripts/baliser-mot-cle.mjs`, `lib/glossaire-balisage.mjs`, entrées `tools/glossaire/chakra-barriere.json`, `tools/glossaire/corruption.json`, `tools/glossaire/sort-fer.json`.
 - Importeurs : `tools/db/maverick.py` (`mot_cle`, `poser_les_mots_cles`), `tools/db/homonymes.py` (`MAGIES_HOMONYMES`), `tools/docs/codex.py --vocabulaire`.
 - Page `/recherche/`, index de recherche et gestion du vocabulaire en mode modification (`src/scripts/edition/mots-cles.mjs`, `lib/mots-cles-edition.mjs`) : skill `zone-recherche`.
 
@@ -24,7 +24,7 @@ user-invocable: false
 - Migrations `0043`, `0056` (et `0058` pour « Solidité »). Colonnes : `id` figé, `libelle`, `libelle_cle` = `normalize`, `description` (la définition).
 - La définition est NULL tant qu'elle n'est pas écrite, partout (base, service, `mots-cles-db.mjs`) ; elle se lit `?? ''`.
 - La 0056 n'a gardé sur les pages que `MOTS_CLES_PROTEGES` et le glossaire ; les ids des 400 mots-clés retirés peuvent resservir.
-- Une page porte un mot-clé par `page_tag.tag_id` (`ON DELETE CASCADE`) ; un sort, en étiquette, par `sort_mot_cle` (migration 0067, sans cascade : R114).
+- Une page porte un mot-clé par `page_tag.tag_id` (`ON DELETE CASCADE`) ; un sort, en étiquette, par `sort_mot_cle` (migration 0067, sans cascade : R114 ; « Sort fer » sur les 13 sorts « Fer… », migration 0079 : R164).
 - Les événements de la chronologie n'ont pas d'étiquette mais des catégories (`categorie_chronologie`).
 - Un mot-clé renommé garde son id (et ses adresses `?mot-cle=<id>`).
 - Une capacité, un état ou un type homonyme reste ce qu'il est : aucun lien implicite. Seule une balise fait un mot-clé.
@@ -56,8 +56,8 @@ user-invocable: false
 - Les tests du vocabulaire créent leurs mots-clés d'essai (`test/aide-mots-cles.mjs`).
 
 ## Vocabulaire : ce que le service refuse
-- `MOTS_CLES_PROTEGES` : ceux dont le site se sert pour ranger ses pages (catégories de `/classes/`, « classe », « race », « race hybride », « capacité de classe », « métier », « codex ») et « Sort grenade », que la fiche lit (R114). Ils ne se suppriment ni ne changent de clé (`409` avec la raison) ; leur définition se modifie. Sur `/recherche/` : skill `zone-recherche`.
-- Un mot-clé qui étiquette un sort ne se supprime ni ne se fusionne, dans un sens ou l'autre (`409` qui nomme les sorts : `serveur/edition-chronologie.mjs#verifierSansSort`).
+- `MOTS_CLES_PROTEGES` : ceux dont le site se sert pour ranger ses pages (catégories de `/classes/`, « classe », « race », « race hybride », « capacité de classe », « métier », « codex »), « Sort grenade » (R114) et « Sort fer » (R164), que la fiche lit. Ils ne se suppriment ni ne changent de clé (`409` avec la raison) ; leur définition se modifie. Sur `/recherche/` : skill `zone-recherche`.
+- Un mot-clé qui étiquette un sort ne se supprime ni ne se fusionne, dans un sens ou l'autre (`409` qui nomme les sorts : `serveur/edition-chronologie.mjs#verifierSansSort`). Tests : `serveur-edition-chronologie.test.mjs` (R114, R164).
 - Un renommage vers une écriture déjà prise est une fusion explicite (`fusionner_mots_cles`).
 
 ## Importeurs
@@ -69,6 +69,7 @@ user-invocable: false
 
 ## Baliser un mot dans tous les textes
 - Chakra et Barrière, puis seulement là où il est pertinent : Corruption et « CR » (R103, R140 : « CR » balisé partout où il s'écrit) (demandes du propriétaire). Entrées `tools/glossaire/chakra-barriere.json`, `tools/glossaire/corruption.json`.
+- « Sort fer » (R164, « Oui, tous ») : dans les huit textes qui parlent des sorts fer, jamais sur le nom d'un des 13 sorts. Une expression de deux mots se balise entière, guillemets compris (`{{sort-fer|sorts "fer"}}`, `{{sort-fer|sort “fer”}}`, `{{sort-fer|sorts de Fer Élémentaire}}`), comme `{{recharge-longue|recharge longue}}`. Entrée `tools/glossaire/sort-fer.json` (son motif ne se lit que là) pour les cinq textes que le site de dev modifie ; les trois autres (« Immatériel » du Fantôme et du Golem d'arcane, page « Pièces élémentaires ») par la migration 0079 (registre `corrections` de `0079-r164-sorts-fer.json`, que le rapprochement d'un classeur défait). Test : `sorts-fer.test.mjs`.
 - `client/scripts/baliser-mot-cle.mjs` passe par le service du site de dev ; le journal est rapatrié (`historique_modification` : l'import reste lisible).
 - Les balises déjà posées du mot sont relues, celles posées à la main comprises : retirées puis reposées (`sansLesBalisesDuMot`). Un second passage avec d'autres exclusions retire celles qui ne sont plus pertinentes. Le rapport liste chaque balise retirée ou nouvelle, et ce que l'entrée écrit pour rien.
 - Jamais balisé : un nom de la base, une écriture ou un contexte exclu de l'entrée (nom propre du Codex, autre sens du mot : l'énergie du monde, la magie de la Corruption, son élément), un texte hors du balisage (`horsDe` : le récit du Codex et de la chronologie, sauf le glossaire du Codex et, au cas par cas, une page qui écrit la règle : `sauf`), un code, un lien, une adresse, un titre de section, un intitulé en gras seul sur sa ligne, une rubrique de carte découpée.

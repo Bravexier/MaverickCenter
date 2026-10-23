@@ -372,6 +372,37 @@ test('mots-clés qui étiquettent un sort (sort_mot_cle, migration 0067, décisi
   }
 });
 
+test('R164 : « Sort fer » (migration 0079) est protégé : ni supprimé, ni fusionné (dans un sens ou l’autre), ni renommé, 409 avec sa raison ; sa définition se modifie', () => {
+  const fer = ligne("SELECT * FROM mot_cle WHERE id = 'sort-fer'");
+  assert.ok(fer, 'le mot-clé de la migration 0079');
+  assert.equal(fer.libelle, 'Sort fer');
+  assert.match(MOTS_CLES_PROTEGES.get(fer.libelle_cle), /^étiquette les sorts fer, que la fiche de personnage reconnaît par lui \(décision R164/);
+  const etiquetes = () => ligne("SELECT count(*) AS n FROM sort_mot_cle WHERE mot_cle_id = 'sort-fer'").n;
+  assert.equal(etiquetes(), 13, 'les 13 sorts « Fer… » (R164)');
+  const libre = creerMotCle(motLibre('Essai sans sort fer'));
+  const vocabulaireAvant = lignes('SELECT * FROM mot_cle ORDER BY id');
+  for (const [operation, action] of [
+    [{ op: 'supprimer', entite: 'mot_cle', cle: { id: fer.id } }, 'supprime'],
+    [{ op: 'fusionner_mots_cles', mot_cle: fer.id, dans: libre }, 'fusionne'],
+    [{ op: 'fusionner_mots_cles', mot_cle: libre, dans: fer.id }, 'fusionne'],
+    [{ op: 'modifier', table: 'mot_cle', cle: { id: fer.id }, valeurs: { libelle: 'Sort de fer' }, avant: { libelle: fer.libelle } }, 'renomme'],
+  ]) {
+    const r = enregistrer([operation]);
+    assert.equal(r.statut, 409, JSON.stringify(r.corps));
+    assert.match(r.corps.erreur, new RegExp(`^operations\\[0\\] : Le mot-clé « Sort fer » ne se ${action} pas depuis le site : il étiquette les sorts fer, que la fiche de personnage reconnaît par lui \\(décision R164`), action);
+    assert.deepEqual(lignes('SELECT * FROM mot_cle ORDER BY id'), vocabulaireAvant, `${action} : rien n’est écrit`);
+    assert.equal(etiquetes(), 13, `${action} : les étiquettes restent`);
+  }
+  // GET /api/edition/mots-cles/ : la raison de la protection
+  const v = appel('GET', '/api/edition/mots-cles/');
+  ok(v);
+  assert.match(v.corps.motsCles.find((x) => x.id === fer.id).protege, /sorts fer/);
+  // la définition se modifie (la fiche lit l'id, pas le texte)
+  ok(enregistrer([{ op: 'modifier', table: 'mot_cle', cle: { id: fer.id }, valeurs: { description: 'Autre définition.' } }]));
+  assert.equal(ligne("SELECT description FROM mot_cle WHERE id = 'sort-fer'").description, 'Autre définition.');
+  assert.equal(etiquetes(), 13);
+});
+
 test('une page supprimée par le site (métier) : le bloc de description qui la citait garde son texte et perd son lien', () => {
   const nom = (() => {
     let n = 'Métier lié';

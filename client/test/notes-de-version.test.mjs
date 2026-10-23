@@ -11,6 +11,7 @@ import { TABLES } from '../src/lib/edition-modele.mjs';
 import {
   TITRES_DOMAINES, diffMots, echapper, htmlDeLaListe, htmlDeLaNote, htmlDuTexteLibre, lancementAffiche, markdownDeLaNote, neutraliserMarqueur,
 } from '../src/lib/notes-de-version-rendu.mjs';
+import { htmlAvecMotsCles, pageAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
 
 const magies = [
   { id: 'magies/feu', nom: 'Feu', ordre: 1, description: 'Brûle.' },
@@ -462,6 +463,50 @@ test('rendu : un long texte montre ce qui a changé mot à mot', () => {
   const html = htmlDeLaListe([{ domaine: 'guide', groupe: 'Chapitre 1', entite: 'Bienvenue', champ: 'Texte', nature: 'modifie', avant: long, apres: long.replace('fin', '<b>fin</b>'), sens: 'neutre' }]);
   assert.match(html, /<details class="nv-champ nv-champ--long nv-sens nv-sens--neutre"><summary><span class="nv-champ__nom">Texte<\/span> <span class="nv-etat">modifié<\/span><\/summary>/);
   assert.match(html, /<ins>&lt;b&gt;fin&lt;\/b&gt;\.<\/ins>/);
+});
+
+// R164 : la première balise de plusieurs mots posée autour d'un texte qui existait déjà (« Sort fer », lot de la PR #256). Le découpage aux espaces
+// la coupait entre deux <ins> (la LCS alignait son espace intérieur), et le middleware, qui lit nœud de texte par nœud de texte, la laissait brute
+// sur /mise-a-jour/ (site-html, « aucune balise brute »).
+const AVANT_BALISE = 'Lance des sorts "fer", perce les défenses.';
+const APRES_BALISE = 'Lance des {{sort-fer|sorts "fer"}}, perce les défenses.';
+const VOCABULAIRE_SORT_FER = [{ id: 'sort-fer', libelle: 'Sort fer', description: 'Définition d’essai.' }];
+const compte = (t, motif) => t.split(motif).length - 1;
+
+test('diffMots : une balise du glossaire reste entière dans un seul morceau, espaces intérieurs compris (R164)', () => {
+  const d = diffMots(AVANT_BALISE, APRES_BALISE);
+  for (const x of d) assert.equal(compte(x.texte, '{{'), compte(x.texte, '}}'), `morceau coupé : ${JSON.stringify(x)}`);
+  assert.deepEqual(d.filter((x) => x.texte.includes('{{')), [{ type: 'ajoute', texte: '{{sort-fer|sorts "fer"}},' }]);
+  assert.equal(d.filter((x) => x.type !== 'ajoute').map((x) => x.texte).join(''), AVANT_BALISE);
+  assert.equal(d.filter((x) => x.type !== 'retire').map((x) => x.texte).join(''), APRES_BALISE);
+  // retirée : de même, dans un seul morceau « retiré »
+  assert.deepEqual(diffMots(APRES_BALISE, AVANT_BALISE).filter((x) => x.texte.includes('{{')), [{ type: 'retire', texte: '{{sort-fer|sorts "fer"}},' }]);
+  // cas limites : « { » isolée, « {{ » sans « }} », emplacement {N}, balise collée à une ponctuation, texte vide ou absent ; rien n'est perdu
+  for (const [avant, apres] of [
+    ['a { b', 'a { c'], ['x{y z', 'x{y w'], ['un {{ ouvert seul', 'un {{ ouvert seul, modifié'], ['{{a', '{{a b'], ['Inflige {N} dégâts', 'Inflige {N} points'],
+    ['(voir le glossaire)', '({{recharge-longue|recharge longue}}) voir'], ['ligne 1\n{{a|b c}}', 'ligne 1\n{{a|b c}} d'], ['', 'mot'], [null, 'mot'], ['mot', undefined],
+  ]) {
+    const e = diffMots(avant, apres);
+    assert.equal(e.filter((x) => x.type !== 'ajoute').map((x) => x.texte).join(''), String(avant ?? ''), `avant : ${avant}`);
+    assert.equal(e.filter((x) => x.type !== 'retire').map((x) => x.texte).join(''), String(apres ?? ''), `après : ${apres}`);
+  }
+  assert.deepEqual(diffMots('a { b', 'a { c'), [{ type: 'egal', texte: 'a { ' }, { type: 'retire', texte: 'b' }, { type: 'ajoute', texte: 'c' }]);
+  assert.deepEqual(diffMots('un {{ ouvert', 'un {{ fermé'), [{ type: 'egal', texte: 'un {{ ' }, { type: 'retire', texte: 'ouvert' }, { type: 'ajoute', texte: 'fermé' }]);
+  assert.deepEqual(diffMots(null, undefined), []);
+  assert.deepEqual(diffMots('', ''), []);
+});
+
+test('rendu : une balise posée autour d’un texte existant se rend dans le détail mot à mot, aucune « {{ » visible (R164)', () => {
+  const suite = ' Texte d’essai assez long pour être replié et montré mot à mot sur la page des notes de version, au-delà de cent quarante caractères.';
+  const ligne = { domaine: 'classes', groupe: 'Essai', entite: 'Classe d’essai', champ: 'Description', nature: 'modifie', avant: AVANT_BALISE + suite, apres: APRES_BALISE + suite, sens: 'neutre' };
+  const html = htmlDeLaListe([ligne]);
+  assert.match(html, /<ins>\{\{sort-fer\|sorts &quot;fer&quot;\}\},<\/ins>/, 'la balise entière dans un seul <ins>');
+  const rendu = htmlAvecMotsCles(html, VOCABULAIRE_SORT_FER);
+  assert.ok(!rendu.html.replace(/<[^>]+>/g, '').includes('{{'), rendu.html); // le texte visible ; data-balise garde la balise, comme partout
+  assert.match(rendu.html, /<ins><strong class="mot-cle" data-mot-cle="sort-fer"[^>]*>sorts &quot;fer&quot;<\/strong>,<\/ins>/);
+  assert.deepEqual(rendu.employes, ['sort-fer']);
+  const page = pageAvecMotsCles(`<html><body>${html}</body></html>`, VOCABULAIRE_SORT_FER);
+  assert.ok(!page.replace(/<[^>]+>/g, '').includes('{{'), 'aucune balise brute dans le texte visible');
 });
 
 test('champ libre : paragraphes, listes, gras, italique, liens http(s) ; rien d’autre ne passe', () => {

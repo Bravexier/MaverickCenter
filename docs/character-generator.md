@@ -477,7 +477,13 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   de l'armure élémentaire d'une armure à cran uni cassée (décision R158 : « non compté », raison `armure_cassee`, « armure cassée (R158) »). **Sorts
   grenades** (décision R114) : « Pardon ?!? » du Grenadier (niveau de classe 20, passif : « Les bombes et les sorts "grenades" font +11 dégâts. ») ajoute
   +11 aux sorts qui portent l'**étiquette** « Sort grenade » (`sort_mot_cle`, migration 0067 : les 14 sorts « Grenade… », `regles.sorts[].mots_cles` ;
-  jamais un sort par son nom : `ETIQUETTES_DES_SORTS`) et aux armes de la famille BOMBES (`degatsDArme`, `lib/degats-texte.mjs`). **Sorts préparés**
+  jamais un sort par son nom : `ETIQUETTES_DES_SORTS`) et aux armes de la famille BOMBES (`degatsDArme`, `lib/degats-texte.mjs`). **Sorts fer**
+  (décision R164) : « ... Brutale » (Mage Vert, spécialité Mage Émeraude, niveau de classe 10, passif : « (Posture Focus) Les enchantements d'armes sont
+  augmentés de +2 ») ajoute, **en posture Focus seulement**, +2 aux dégâts des sorts qui portent l'étiquette « Sort fer » (`sort_mot_cle`, migration 0079 :
+  les 13 sorts « Fer… ») : « Les enchantements d'armes » se lisent comme ces sorts (`ETIQUETTES_DES_SORTS`, avec « les sorts "fer" » et « les sorts de
+  Fer Élémentaire »), jamais un sort par son nom ni le don par le sien ; leur « +8 dégâts » d'amplification devient « +10 dégâts », « ... Brutale (Mage
+  Vert) » dans l'infobulle, cumulé avec le bâton (« Sort qui amplifie dégâts »). Hors Focus, « +8 dégâts » et le bonus « non compté (dans une autre
+  posture) » ; les autres sorts d'amplification n'ont rien ; les « 5 points de corruption » de Fer corrompu restent du texte. **Sorts préparés**
   (décision R115) : « Charge lente… » (Mage Rouge, spécialité Rubis, niveau de classe 10 : « Les sorts offensifs préparés infligent +5 dégâts. »)
   ajoute +5 au sort préparé, « … ou rapide » (« Les sorts offensifs non préparés infligent +5 dégâts. ») +5 à tous les autres sorts offensifs, lus
   « d'attaque » (`sort_type` `attaque`, comme le sort que « Préparation » permet de préparer ; décision R132) ; sans sort

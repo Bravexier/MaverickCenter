@@ -360,7 +360,7 @@ Des âmes errantes emplies de rancoeur et de rancune hantent les lieux qui furen
 
 ## Capacité(s)
 
-Immatériel. Cette créature est naturellement immunisée aux dégâts physiques (armes) , seules la magie, une arme spectrale ou une arme sous l’effet d’un sort “fer” peuvent la toucher. En plus de ça, son arme naturelle passe à travers les AP.
+Immatériel. Cette créature est naturellement immunisée aux dégâts physiques (armes) , seules la magie, une arme spectrale ou une arme sous l’effet d’un {{sort-fer|sort “fer”}} peuvent la toucher. En plus de ça, son arme naturelle passe à travers les AP.
 
 (NPM 3) Renfermement. Cette créature est capable de renfermer ses blessures au début de son tour. (Regagne toute sa santé)
 
@@ -425,7 +425,7 @@ Le Golem d''Arcane est un être que l''on peut considérer comme fantomatique. S
 
 ## Capacité(s)
 
-Immatériel. Cette créature est naturellement immunisée aux dégâts physiques (armes) , seules la magie, une arme spectrale ou une arme sous l’effet d’un sort “fer” peuvent la toucher.
+Immatériel. Cette créature est naturellement immunisée aux dégâts physiques (armes) , seules la magie, une arme spectrale ou une arme sous l’effet d’un {{sort-fer|sort “fer”}} peuvent la toucher.
 
 (NPM 3) Rune immédiate. Cette créature obtient une résistance à l’élément du dernier sort subi et cela plusieurs fois dans un tour (une résistance à la fois).
 
@@ -2806,7 +2806,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Lanceur »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/lanceur-jongleur', 'capacites', 'lanceur-jongleur', 'Jongleur (Lanceur)', 'jongleur-lanceur', '+2 points de maîtrise Arme de jet, +1 point de maîtrise Arme contact au choix, +10% Arme Légère, Peut faire un spectacle et gagner 1d20 Ro (dans la mesure du possible).', '{"classe": "classes/lanceur", "specialite": "JONGLEUR", "niveau": 10, "nature": "specialite", "rang": 2, "ligne": 22, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/lanceur-fantassin"]}', '+2 points de maîtrise Arme de jet, +1 point de maîtrise Arme contact au choix, +10% Arme Légère, Peut faire un spectacle et gagner 1d20 Ro (dans la mesure du possible).
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Lanceur »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/lanceur-jongleur-magique', 'capacites', 'lanceur-jongleur-magique', 'Jongleur Magique (Lanceur)', 'jongleur-magique-lanceur', 'Permet d''utiliser les sorts de Fer Élémentaire sur toutes les armes de jet du même type en votre possession.', '{"classe": "classes/lanceur", "specialite": "JONGLEUR", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/lanceur-dans-la-manche"]}', 'Permet d''utiliser les sorts de Fer Élémentaire sur toutes les armes de jet du même type en votre possession.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/lanceur-jongleur-magique', 'capacites', 'lanceur-jongleur-magique', 'Jongleur Magique (Lanceur)', 'jongleur-magique-lanceur', 'Permet d''utiliser les {{sort-fer|sorts de Fer Élémentaire}} sur toutes les armes de jet du même type en votre possession.', '{"classe": "classes/lanceur", "specialite": "JONGLEUR", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/lanceur-dans-la-manche"]}', 'Permet d''utiliser les {{sort-fer|sorts de Fer Élémentaire}} sur toutes les armes de jet du même type en votre possession.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Lanceur »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/lanceur-maniement', 'capacites', 'lanceur-maniement', 'Maniement (Lanceur)', 'maniement-lanceur', 'Peut lancer 3 armes de jet légères jusqu''à 3 cibles différentes pendant son attaque. (3 jets de dés sont nécessaires)', '{"classe": "classes/lanceur", "specialite": "JONGLEUR", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Action (3 fois/Combat)", "choix_exclusif_avec": ["capacites/lanceur-acharnement"]}', 'Peut lancer 3 armes de jet légères jusqu''à 3 cibles différentes pendant son attaque. (3 jets de dés sont nécessaires)
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Lanceur »');
@@ -3049,7 +3049,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mage-vert-brutale', 'capacites', 'mage-vert-brutale', '... Brutale (Mage Vert)', 'brutale-mage-vert', '(Posture Focus) Les enchantements d''armes sont augmentés de +2', '{"classe": "classes/mage-vert", "specialite": "MAGE ÉMERAUDE", "niveau": 10, "nature": "choix", "rang": 2, "ligne": 29, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/mage-vert-force"]}', '(Posture Focus)  
 Les enchantements d''armes sont augmentés de +2
 
-Note de cellule : Les sorts "fer"
+Note de cellule : Les {{sort-fer|sorts "fer"}}
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mage Vert »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mage-vert-cest-la-defense', 'capacites', 'mage-vert-cest-la-defense', '... c''est la défense (Mage Vert)', 'cest-la-defense-mage-vert', '(Posture symbiose) L''AM de Symbiose est Doublée', '{"classe": "classes/mage-vert", "specialite": "MAGE JADE", "niveau": 20, "nature": "choix", "rang": 2, "ligne": 43, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/mage-vert-meilleur-attaque"]}', '(Posture symbiose)  
 L''AM de Symbiose est Doublée
@@ -4937,7 +4937,7 @@ Targe en Acier
 
 Le Mage Émeraude ne se contente pas de tirer, il perfectionne chaque coup en exploitant la posture Focus. Maître de son arme et de sa volonté, il canalise son énergie pour transformer chaque projectile en un tir quasi imparable.
 
-Grâce à son expertise, il renforce l’impact des sorts "fer", perce les résistances magiques et ajuste sa visée pour atteindre des points faibles.
+Grâce à son expertise, il renforce l’impact des {{sort-fer|sorts "fer"}}, perce les résistances magiques et ajuste sa visée pour atteindre des points faibles.
 
 ### MAGE JADE
 
@@ -18803,7 +18803,7 @@ Attention, si le {{chakra|chakra}} permet d''obtenir de la {{corruption|corrupti
 | 1.0 | Verrouillage Visible | Entrave | 4.0 | 6.0 | 1.0 | Bloque la posture Vigilance | Dure 2 tours (+1/NM)<br>Si {{cr\|CR}} : Le changement de posture est aléatoire. |
 | 1.0 | Retrait | Soin (IC) | 5.0 | 1.0 | 1.0 | 2d6 {{cr\|CR}} (+1d/NM) | Retire de la {{corruption\|corruption}} d''une cible pour la mettre dans la réserve. |
 | 2.0 | Aiguisage magique | Amplification (IC pour 3 NM) | 6.0 | 1.0 | 1.0 | / | Permet d''augmenter la réussite critique de 2% au prochain sort.<br>Si {{cr\|CR}} : Bonus de +5 dégâts en plus. |
-| 2.0 | Fer corrompu | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Imprègne l''arme d''une énergie mauvaise. Inflige 5 points de {{corruption\|corruption}}. |
+| 2.0 | Fer corrompu | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Imprègne l''arme d''une énergie mauvaise : pendant 3 tours, chacune de ses attaques inflige 5 points de {{corruption\|corruption}} à la cible. |
 | 2.0 | Souffle noir | Entrave | 7.0 | 2 (+1/NM) | Cône | Retire du 2d10 de {{chakra\|chakra}} à la cible | Si {{cr\|CR}} : Inflige 2d6 de {{corruption\|corruption}} en plus. |
 | 2.0 | Pétrole | Entrave (IC pour 3 NM) | 8.0 | 5.0 | 5x3 | Divise par 2 la vitesse et le bonus initiative | Pose une zone qui ralentit ceux qui sont dedans. Capable de brûler.<br>Si {{cr\|CR}} : Bloque entièrement les cibles. |
 | 2.0 | Vague déferlante | Attaque | 9.0 | 5.0 | 1.0 | 5d6 dégâts (+5/NM) | Peut être surchargé (15 {{chakra\|chakra}} en + = 1 dé en +) (maximum 75 {{chakra\|chakra}} en surcharge)<br>Si {{cr\|CR}} = Ignore 50% de l''AM. |
@@ -18907,7 +18907,7 @@ Les utilisateurs de la foudre ont les mèches jaunes, les yeux jaunes lors de l'
 | 1.0 | Affûtage | Amplification<br>(IC) | 2.0 | 1.0 | 1.0 | / | Permet d''augmenter la réussite critique de 2% (+1/NM) à la prochaine attaque avec une arme. |
 | 1.0 | Nerveux | Amplification (IC pour 3 NM) | 3.0 | 1.0 | 1.0 | +2 INI (+1/NM) | Augmente l''initiative au prochain tour. |
 | 1.0 | Tazeur | Attaque/ Entrave | 5.0 | 1.0 | 1.0 | 2d4 dégâts (+2/NM) | Si jet de fermeté raté = Inflige "Couardise" |
-| 2.0 | Fer Foudroyant | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Charge l''arme en électricité, tape dans l''élément foudre pendant 3 tours. |
+| 2.0 | Fer Foudroyant | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Charge l''arme en électricité : pendant 3 tours, ses attaques infligent des dégâts de foudre. |
 | 2.0 | Réflexe Éclair | Amplification (IC pour 3 NM) | 8.0 | 1.0 | 1.0 | +5% Agilité | Augmente de 5% l''agilité pendant 2 tours. |
 | 2.0 | Colonne Tesla | Amplification/ Entrave (IC pour 3 NM) | 7.0 | 4.0 | 1.0 | / | Donne la propriété « paratonnerre » à une cible. |
 | 2.0 | Chargeur | Amplification (IC x 3) | 9 (-1/NM) | Soi-même | 1.0 | +4 dégâts | +4 dégâts de foudre (cumulable 3 fois) pour la prochaine action. |
@@ -19001,7 +19001,7 @@ Les utilisateurs de la glace ont les mèches bleu cyan, des cheveux assez courts
 | 1.0 | Sculpteur glacé | Construction (IC pour 3 NM) | 3 par taille créée | Soi-même | 1.0 | / | Permet de créer un objet fait de glace. Sert 1 fois. Une taille = une épée en taille |
 | 1.0 | Peau verglacée | Amplification (IC) | 4.0 | 1.0 | 1.0 | +2AM (+1AM/NM) | Augmente l''armure magique pendant 3 tours. Peut se cumuler avec Cuirasse arctique. |
 | 1.0 | Rafraîchissement | Soin (IC) | 3.0 | 1.0 | 1.0 | 2d4 soin (+3/NM) | Permet de soigner un état de brûlure. |
-| 2.0 | Fer froid | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Refroidit l’arme au point de la rendre gelée, tape dans l''élément glace pendant 3 tours. |
+| 2.0 | Fer froid | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Refroidit l''arme au point de la rendre gelée : pendant 3 tours, ses attaques infligent des dégâts de glace. |
 | 2.0 | Souffle glacial | Attaque<br>(Imparable) | 8.0 | 3.0 | Cône | 5d6 dégâts (+3/NM) | Si jet de vigueur raté = Inflige gel 1. |
 | 2.0 | Cerveau gelé | Entrave (IC pour 3 NM) | 9.0 | 4.0 | 1.0 | => | Jet de fermeté raté = Croix en I.<br>Jet de fermeté réussi = -10% à tout test d''I / Dure 3 tours pour les deux résultats. |
 | 2.0 | Lien de gel | Entrave | 7.0 | 4.0 | 1.0 | / | Bloque les mains de l''adversaire, au prochain tour, propage le lien de gel aux autres à 2 cases autour. |
@@ -19125,7 +19125,7 @@ Les utilisateurs de la Lumière ont des cheveux avec les mèches beiges, les yeu
 | 1.0 | Champ de Force | Protection | 5.0 | 1.0 | 1.0 | / | Bloque 10 dégâts (+5/NM) (peut être surchargé en {{chakra\|chakra}} +2 dégâts/{{chakra\|chakra}}). |
 | 1.0 | Vitaminé | Amplification (IC) | 4.0 | 3.0 | 1.0 | / | Permet d''infliger un bonus de +2 (+1/NM) dégâts pendant 2 tours. |
 | 1.0 | Premier soin | Soin | 4.0 | 1.0 | 1.0 | 2d6 soin (+1d6/NM) | Redonne des PV, ne soigne pas l''infirmité. |
-| 2.0 | Fer Lumineux | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Rend l''arme parfaitement lumineuse, tape dans l''élément lumière pendant 3 tours. |
+| 2.0 | Fer Lumineux | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Rend l''arme parfaitement lumineuse : pendant 3 tours, ses attaques infligent des dégâts de lumière. |
 | 2.0 | Bénédiction | Amplification (IC) | 7.0 | 3.0 | 1.0 | +1d (+1d/3NM) de dégâts | Augmente les dégâts pendant 3 tours. |
 | 2.0 | Énergie Solaire | Soin | 8.0 | Soi-même | 1 (3NM = Croix 1x1) | / | Permet de récupérer \*10% de {{barriere\|barrière}} lors des météos de soleil. |
 | 2.0 | Panneau Solaire | Soin (IC) | 7.0 | 1.0 | 1.0 | +5PV/Tour | Régénère des PV pendant 3 tours. (3NM permet de le faire sur 2 alliés) |
@@ -19258,7 +19258,7 @@ Les nécromanciens sont généralement plus minces que la moyenne, voire maigres
 | 2.0 | Pieu d''os | Attaque | 7 + 2 âmes | 6 (+1/NM) | Cercle de 2 | 3d8 + 4 dégâts. | Invoque de pieu depuis le sol. Si jet de vigueur raté = Inflige poison 1 |
 | 2.0 | Armure d''os | Amplification (IC pour 3 NM) | 5 + 2 âmes | 4.0 | 1.0 | +2AP (+1/NM) | Augmente les AP ainsi que la résistance aux attaques de taille. Dure 3 tours |
 | 2.0 | Détection de la mort | Amplification | 10 (–1/NM) + 2 âmes | Soi-même | 100 mètres | / | Permet de détecter distinctement les non-morts et les utilisateurs de la nécromancie. |
-| 2.0 | Fer Toxique | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | L''arme suinte une matière toxique, tape dans l''élément Nécromancie pendant 3 tours. |
+| 2.0 | Fer Toxique | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | L''arme suinte une matière toxique : pendant 3 tours, ses attaques infligent des dégâts de nécromancie. |
 | 3.0 | Festin des âmes | Attaque | 12 + 6 âmes | Soi-même | 4 cibles | 3d6 dégâts par tour | Des âmes affamées attaquent les 4 ennemis les plus proches. Dure 2 tours (+1/NM). |
 | 3.0 | Poison de masse | Entrave | 13 (-1/NM) | Soi-même | Cercle de 6 | Inflige poison stade 1 | Si jet de vigueur raté = Inflige Empoisonné stade 1 à tous les ennemis dans la zone. |
 | 3.0 | Prison d''os | Construction | 12 + 3 âmes | 6 (+1/NM) | Carré 3x3 | / | Emprisonne chair comme âme. 20 santé. |
@@ -19374,7 +19374,7 @@ Les utilisateurs de la Terre sont des personnes qui ont des tailles et une muscu
 | 1.0 | Appel aux Golems | Invocation (IC pour 3 NM) | 6 par NPM de la créature invoquée | 3.0 | 1.0 | / | Permet d''invoquer des golems (voir invocation). Sort interdit aux familiers et aux invocations. |
 | 1.0 | Racine soignante | Soin | 3.0 | 4.0 | 1.0 | 2d6 soin (+1d6/NM) | Soigne la cible mais doit être dans environnement lié à la terre pour fonctionner |
 | 2.0 | Explosion rocheuse | Attaque | 7.0 | 3 (+1/NM) | Carré de 3 | 5d6 dégâts (+3/NM) | Une attaque de Terre de Zone. |
-| 2.0 | Fer Raffiné | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Renforce l''arme avec un métal raffiné, tape dans l''élément terre pendant 3 tours. |
+| 2.0 | Fer Raffiné | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Renforce l''arme avec un métal raffiné : pendant 3 tours, ses attaques infligent des dégâts de terre. |
 | 2.0 | Arbre fertilisant | Invocation | 8.0 | 3.0 | Cercle de 3 | Soigne 2d6 (+2/NM) | Pose un arbre, soigne les alliés à 3 cases autour de lui. Possède 20 PV. Un seul à la fois. |
 | 2.0 | Infection | Soin/Entrave (IC pour 3 NM) | 8.0 | 6.0 | 1.0 | 4 dégâts (+1/NM) / tour | Lance une graine qui va aspirer la santé de la cible et la donner au lanceur pendant 3 tours. Les dégâts de l''infection ne sont pas élémentaires. |
 | 2.0 | Cuirasse de roche | Amplification (IC) | 7.0 | 1.0 | 1.0 | +4AP (+2AP/NM) | Augmente l''armure physique pendant 3 tours. Peut se cumuler avec Peau de Pierre. |
@@ -19634,7 +19634,7 @@ Les spécialistes de l''eau ont les mèches bleutées, très longues et mouillé
 | 1.0 | Mucus protecteur | Protection (IC) | 4.0 | 1.0 | 1.0 | -6 dégâts magiques (-2/NM) | Ignore des dégâts magiques. L''effet augmente de +4 si utilisé à 4 cases de l''eau. |
 | 1.0 | Eau purifiante | Soin (IC pour 3 NM) | 3.0 | 1.0 | 1.0 | Soigne une altération d''état | Permet de soigner "Poison 1", "Brûlure 1", "Paralysie 1". |
 | 1.0 | Eau soignante | Soin | 4.0 | 1.0 | 1.0 | 2d6 (+5/NM) de soin | Une eau qui soigne les blessures, si un point d''eau est à 4 cases les Dés passent à 8 au lieu de 6. |
-| 2.0 | Fer Humide | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | L''arme transpire de l''eau, tape dans l''élément Eau pendant 3 tours. |
+| 2.0 | Fer Humide | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | L''arme transpire de l''eau : pendant 3 tours, ses attaques infligent des dégâts d''eau. |
 | 2.0 | Souffle Hydraulique | Attaque/ Entrave (Imparable) | 7.0 | 3.0 | Cône | 5d6 dégâts (+3/NM) | Si jet de fermeté raté = Inflige confus. |
 | 2.0 | Onde de Confusion | Entrave (IC pour 3 NM) | 9.0 | 4.0 | 1.0 | => | Jet de fermeté raté = Inflige "Confusion 1"<br>Jet de fermeté réussi = Inflige 4 dégâts perce AM |
 | 2.0 | Barrière d''eau | Soin | 10.0 | Soi-même | 1.0 | / | Régénère 10% de la {{barriere\|barrière}} (+5% par Niveau de Maîtrise), +10 {{barriere\|barrière}} bonus si jamais fait à 4 cases de l''eau. |
@@ -19758,7 +19758,7 @@ Les utilisateurs de l''Espace/Temps possèdent d''étranges bandages de momies c
 | 1.0 | Portail | Placement (IC x 2) | 2.0 | 5 (+2/NM) | 1.0 | / | Invoque un portail. La liaison se fait selon l''ordre d''apparition des portails. |
 | 1.0 | Substitution | Placement | 6.0 | 6 (+1/NM) | 1.0 | / | Permet d''échanger sa place par rapport à un objet de taille à peu près égale et qui n''est pas "indéplaçable" |
 | 1.0 | Chute | Attaque | 5.0 | 6.0 | Carré 2x2 | 2d4 (+3/NM) dégâts | Invoque un mini portail en dessous d''un objet TP ou P et le fait tomber sur la cible. |
-| 2.0 | Fer Temporel | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Rend l''arme rose et noire, tape dans l''élément Temps/Espace pendant 3 tours. |
+| 2.0 | Fer Temporel | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Rend l''arme rose et noire : pendant 3 tours, ses attaques infligent des dégâts d''espace-temps. |
 | 2.0 | Faille Temporelle | Placement | 8 (-1/NM) | Vue | 1.0 | / | \[Se combine avec une attaque distance\] Envoie le projectile dans une faille qui va aller sur une cible aléatoire |
 | 2.0 | Ralentissement | Entrave (IC) | 5.0 | 4 (+1/NM) | 1.0 | / | Si jet de Fermeté raté = -2 à la vitesse de la cible pour 3 tours. |
 | 2.0 | Inversion | Placement (IC) | 10.0 | 8 (+2/NM) | 1.0 | / | Échange sa place avec celle de la cible |
@@ -19888,7 +19888,7 @@ Les utilisateurs de l''ombre ont des cheveux généralement plus courts et des m
 | 2.0 | Manteau noir | Amplification (IC pour 3 NM) | 7 par NPM de la créature sacrifiée | Soi-même | 1.0 | Variable | Permet de sacrifier l''invocation de l''ombre pour avoir des bonus pendant 3 tours (voir invocation) |
 | 2.0 | Lame d’ombre | Attaque/ Amplification | 9.0 | Soi-même | 1.0 | 3d6 dégâts | Créer 1 (+1/NM) lame(s) autour du lanceur, chaque lame va taper après une attaque du lanceur réussie. |
 | 2.0 | Malédiction | Entrave (IC) | 7.0 | 3.0 | 1.0 | -1d (-1d/3NM) de dégâts | Diminue les dégâts pendant 3 tours. |
-| 2.0 | Fer Obscur | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | L''arme se charge d''une énergie sombre, tape dans l''élément ombre pendant 3 tours. |
+| 2.0 | Fer Obscur | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | L''arme se charge d''une énergie sombre : pendant 3 tours, ses attaques infligent des dégâts d''ombre. |
 | 3.0 | Brouillard Obscur | Météo | 12.0 | Soi-même | Terrain | / | Invoque le brouillard obscur pour 3 tours (+1/NM). |
 | 3.0 | Javelot sombre | Attaque | 16 (-1/NM) | 12.0 | Ligne | 7d6 + 15 dégâts | Une puissante attaque d''ombre en zone. |
 | 3.0 | Amplification sombre | Amplification (IC) (IC x 2 si 3NM) | 5 + 10% santé | 1.0 | 1.0 | +12 dégâts, +5% EC | Augmente dangereusement les dégâts pour 2 tours. |
@@ -20001,7 +20001,7 @@ Les utilisateurs du feu ont certaines mèches rouges vif, les yeux rouges lors d
 | 1.0 | Aura Chaude | Entrave (IC pour 3 NM) | 4.0 | Soi-même | Cercle de 3 | / | Inflige fatigue 1 aux ennemis dans la zone s''ils ratent leur jet de vigueur |
 | 1.0 | Détection du Feu | Amplification | 5 (-1/NM) | Variable | 100 mètres | / | Permet de détecter des sources de chaleur comme le feu ou bien un groupe d''êtres vivants. |
 | 1.0 | Braise magique | Attaque/ Entrave<br>(Imparable) | 3.0 | 20.0 | Tous les ennemis visibles | 4 dégâts (+2/NM) | Permet de toucher tous les ennemis avec une braise faible, Coup critique = inflige brûlure 1. |
-| 2.0 | Fer brûlant | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Chauffe le métal à blanc, l''arme inflige l''élément Feu pendant 3 tours. |
+| 2.0 | Fer brûlant | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Chauffe le métal à blanc : pendant 3 tours, ses attaques infligent des dégâts de feu. |
 | 2.0 | Étincelle | Attaque/ Entrave | 7.0 | Soi-même | Cercle de 2 | 3d6 dégâts (+1d4/NM) | Inflige 2d6 de contrecoup (-1d6 au Niveau 3 de Maîtrise). |
 | 2.0 | Regard ardent | Entrave | 7.0 | 4.0 | 1.0 | / | Si jet de vigueur raté = Inflige brûlure 1. Peut brûler des objets à portée. (3 NM = Inflige brûlure stade 2) |
 | 2.0 | Fournaise | Attaque | 7.0 | 10.0 | Ligne | 4d6 dégâts (+3/NM) | Faire surgir des flammes du sol pour attaquer les ennemis sur la ligne d''attaque. Ne peut être fait que sur un sol. |
@@ -20117,7 +20117,7 @@ La magie du Sang marque beaucoup sur la taille et la musculature qui est plus é
 | 1.0 | Annulation | Entrave/ Soin | 2 Sang | 7.0 | 1.0 | / | Retire TOUS les effets négatifs et positifs sur la cible (3NM = que négatif pour allié, que positif pour ennemi) |
 | 1.0 | Attirance | Placement (IC) (IC x 2 si 3NM) | 2 + 1 Sang | 10.0 | 1.0 | / | La cible est attirée de 3 cases vers le lanceur ne fonctionne qu''en ligne. |
 | 2.0 | Sang Durci | Amplification (IC pour 3 NM) | 2 + 3 Sang | Soi-même | 1.0 | / | +6AP. Dure 3 tours. |
-| 2.0 | Fer Sanglant | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Le sang sur la lame ne sèche pas, permet de taper dans l''élément sang pendant 3 tours. |
+| 2.0 | Fer Sanglant | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Le sang sur la lame ne sèche pas : pendant 3 tours, ses attaques infligent des dégâts de sang. |
 | 2.0 | Sang Garde | Amplification (IC pour 3 NM) | 2 + 3 Sang | Soi-même | 1.0 | / | +15% aux jets de défense. Dure 3 tours. |
 | 2.0 | Sang Magie | Amplification (IC pour 3 NM) | 2 + 3 Sang | Soi-même | 1.0 | / | +6AM. Dure 3 tours. |
 | 2.0 | Sang Gain | Amplification (IC pour 3 NM) | 2 + 3 Sang | Soi-même | 1.0 | / | +2 Vitesse, +2INI. Dure 3 tours. |
@@ -20248,7 +20248,7 @@ Les spécialistes du Vent ont les cheveux mi-longs, mèches vert clair, les yeux
 | 1.0 | Propulsion | Placement (IC) | 6.0 | 10 (+2 / NM) | 1.0 | / | Fait un grand saut, inflige 1 dégât frappe pour 20kg. |
 | 2.0 | Cri faible | Attaque<br>(Imparable) | 8.0 | 6.0 | Cône | 5d6 (+3/NM) dégâts sonores | Si jet de vigueur raté = Inflige surdité 1. |
 | 2.0 | Éternuement | Attaque/ Placement | 7.0 | 1.0 | 1.0 | 5d6 dégâts | Éternue fort sur l''adversaire, permet de le faire reculer d''une case (+1/NM) en arrière. |
-| 2.0 | Fer éolien | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | L''arme crache du vent, tape dans l''élément Vent pendant 3 tours. |
+| 2.0 | Fer éolien | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | L''arme crache du vent : pendant 3 tours, ses attaques infligent des dégâts de vent. |
 | 2.0 | Feuille morte | Placement (IC) | 6.0 | 8 (+2/NM) | 1.0 | / | Permet de ralentir la chute d''une cible. |
 | 2.0 | Recul Forcé | Placement (IC) | 6.0 | 4.0 | 1.0 | / | Fait reculer la cible de 1 case (+1/NM) |
 | 3.0 | Estoc hurlant | Attaque/ Placement | 14.0 | 3 (+1/NM) | 1.0 | 7d6 + 15 dégâts | Le lanceur se déplace jusqu''à sa cible. |
@@ -20330,7 +20330,7 @@ Les utilisateurs du vide ont une pilosité blanche et possèdent une inversion a
 | 1.0 | Silence | Entrave | 5.0 | 5 (+1/NM) | 1.0 | / | La cible ne peut utiliser de sorts pendant 2 tours. Malus de 60% si jamais il est fait sur une cible qui a déjà subi le sort. |
 | 1.0 | Pression | Attaque/ Entrave<br>(Imparable) | 5.0 | 6.0 | Carré 4x4 | 2d4 dégâts (+2/NM) | Si jet d''athlétisme/équilibre raté = Les cibles s’affaissent et sont incapables de bouger pour leur prochain tour. |
 | 1.0 | Injonction du vide | Placement (IC pour 3 NM) | 3.0 | 6.0 | Croix | / | Force un jet de Stabilité/Réflexe ; si les cibles le ratent, elles sont repoussées ou attirées d''une case. |
-| 2.0 | Fer Vide | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Rend l''arme transparente, tape dans l''élément Vide pendant 3 tours. |
+| 2.0 | Fer Vide | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Rend l''arme transparente : pendant 3 tours, ses attaques infligent des dégâts de vide. |
 | 2.0 | Bisou du Vide | Entrave | 6 (-1/NM) | 6.0 | 1.0 | / | Rend la cible « Enragé » |
 | 2.0 | Poing du vide | Attaque/ Placement | 8.0 | 4.0 | 1.0 | 5d6 dégâts (+3/NM) | Frappe du poing vers la cible qui est attirée d''une case, inflige 1d6 dégâts en plus si la cible est déjà au corps à corps du lanceur. |
 | 2.0 | Lien mental | Amplification (IC pour 3 NM) | 3 par personne | 50 m | Vue | / | Permet de communiquer par la pensée. |
@@ -29130,7 +29130,7 @@ Détails selon le type d’équipement
 
 - La métamorphose s’adapte au porteur : l’arme reste utilisable quelle que soit sa catégorie (lourde ou légère).
 - La magie élémentaire influence ses dégâts et parfois ses effets secondaires.
-- Les sorts "fer" sont utilisables sur les armes élémentaires mais il faut évidemment qu''il soit du même élément sinon ça ne marche pas.
+- Les {{sort-fer|sorts "fer"}} sont utilisables sur les armes élémentaires mais il faut évidemment qu''il soit du même élément sinon ça ne marche pas.
 - Il est possible d''utiliser une arme élémentaire dans la posture symbiose, mais il faut évidemment que la magie de l''arme corresponde à la magie symbiose.
 
 ▸ Armures
