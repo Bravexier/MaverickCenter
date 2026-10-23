@@ -28,7 +28,9 @@ const arme = (famille, nom) => {
 function archer(niveau, surcharge = {}) {
   return {
     ...ficheVide('Essai'), race_id: 'races/felfe', ethnie_id: 'races/felfe#ethnie:felfe-forestier', magie_innee_id: 'magies/magie-du-vide', xp: xpDuNiveau(niveau),
-    classes: [{ rang: 1, classe_id: 'classes/archer', specialite_id: null }], ...surcharge,
+    classes: [{ rang: 1, classe_id: 'classes/archer', specialite_id: null }],
+    // sa maîtrise au choix, posée (décision R148 : sinon, un choix à faire)
+    maitrise_choix: [{ source: 'classes/archer#maitrise-arme:2', rang: 1, arme_famille_id: 'dagues' }], ...surcharge,
   };
 }
 

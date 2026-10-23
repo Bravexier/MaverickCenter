@@ -233,7 +233,7 @@ test('R115 : changer le sort d’un emplacement (sortsApresChoixDEmplacement) : 
   assert.deepEqual(avant, gele);
 });
 
-test('R119 : l’arme choisie d’un choix d’acquis (personnage_acquis_choix.arme_famille_id) suit le choix tant que sa compétence ne change pas ; jamais sur une répartition', () => {
+test('R152 : un choix d’acquis n’enregistre plus d’arme (personnage_acquis_choix.arme_famille_id, retirée par la migration 0072 : l’arme est la maîtrise au choix) ; la compétence reste', () => {
   const f = {
     ...ficheVide('Lame'), race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-central', magie_innee_id: 'magies/magie-du-feu', xp: xpDuNiveau(10),
     classes: [{ rang: 1, classe_id: 'classes/guerrier', specialite_id: 'classes/guerrier#specialite:epeiste' }],
@@ -244,16 +244,13 @@ test('R119 : l’arme choisie d’un choix d’acquis (personnage_acquis_choix.a
     ],
   };
   assert.deepEqual(M.acquisChoixValables(regles, f), [
-    { source: 'capacites/guerrier-epeiste', rang: 1, competence_id: 'arme-legere', valeur: null, arme_famille_id: 'epees' },
+    { source: 'capacites/guerrier-epeiste', rang: 1, competence_id: 'arme-legere', valeur: null },
     { source: 'races/humain#don:humain-central', rang: 1, competence_id: 'arc', valeur: 6 },
     { source: 'races/humain#don:humain-central', rang: 1, competence_id: 'calme', valeur: 4 },
   ]);
-  // une autre compétence : un autre choix, sans l'arme
   const change = { ...f, ...M.acquisApresChoix(f, 'capacites/guerrier-epeiste', 1, 'arme-lourde') };
   assert.deepEqual(M.acquisChoixValables(regles, change)[0], { source: 'capacites/guerrier-epeiste', rang: 1, competence_id: 'arme-lourde', valeur: null });
-  // sans arme choisie, la ligne d'avant (aucune clé de plus)
-  const sansArme = { ...f, acquis_choix: f.acquis_choix.map(({ arme_famille_id: _a, ...x }) => x) };
-  assert.ok(M.acquisChoixValables(regles, sansArme).every((x) => !('arme_famille_id' in x)));
+  assert.ok(M.acquisDesDons(regles, f).choix.every((c) => !('arme_famille_id' in c) || c.arme));
 });
 
 test('R115 : le sort préparé se calcule à la posture du moment de sa préparation — préparé en Offensif, ses dégâts maximum même en Défensif ; les autres à la posture cochée', () => {

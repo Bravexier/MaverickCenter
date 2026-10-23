@@ -199,19 +199,18 @@ abandonne.
   score comme la posture) ; les « tests d'artisanat » du Nain de Londolor ouest et de l'Elfe noir Sang purifié s'ajoutent à la compétence d'artisanat du
   métier (R123 : `artisanatDe`, `bonus`), et ne comptent pas sans métier. « +N% de la compétence de l'arme choisie » (Tueur Flétrisseur et Sicaire, Mage
   Bleu Mage saphir), « de l'arme de départ* » (Mage Vert Mage émeraude et Mage jade) et « Arme à distance liée » (Barde Ménestrel) sont un **choix d'arme**
-  (décision R119) : d'abord la famille d'armes de la maîtrise au choix de la classe (la ligne `au_choix` de `classe_maitrise_arme`, une seule par classe :
-  `armeAuChoixDeLaClasse` ; les familles maîtrisables de sa catégorie, contact ou distance, `arme_famille.categorie`, R127 : Arc, Arbalète, Arme de jet et
-  Bombes pour le Mage Vert et le Barde, toutes pour le Tueur et le Mage Bleu ; sans celle de son « sauf » ; jamais ARME DE MONSTRES), puis la compétence,
-  déduite quand les armes de la famille n'en donnent qu'une (Arbalète), au choix sinon (`familles_armes[].competences`, lues au build dans
-  `arme.competence_brut`, R48 : Arme lourde ou Arme légère, l'Arc : Arc ou Arme légère, R126) ; deux listes dans « Acquis à choisir »
-  (`acquisApresChoixDArme`), gardées dans `personnage_acquis_choix` (`competence_id` et `arme_famille_id`) ; une arme sans compétence choisie ne
-  s'enregistre pas (une aide le dit sous les listes ; une autre arme garde la compétence choisie quand elle l'offre aussi). La fiche n'exige pas que la
-  maîtrise soit posée dans cette famille : R119 dit « La classe choisi une maîtrise pour une arme. C'est cette arme qui détermine le bonus », mais ne
-  dit pas ce qu'il advient d'un choix d'arme sans la maîtrise sur la fiche ; ne pas l'exiger est un **arbitrage de Claude, en attente de la question
-  Q45**. Le « sauf » d'une maîtrise au choix est la famille que nomme le bandeau, chaque nom séparé par « / », tel quel ou au singulier (« Épée » :
-  ÉPÉES, « Dague » : DAGUES), ou celle que la décision R138 lui rattache quand il s'écrit autrement (« Hast » : LANCE/ARME D'HAST, « Bâton » : BÂTON DE
-  COMBAT, « Arme jet » : ARME DE JET, « Masse » : MASSE/MARTEAU ; `lib/fiche-regles.mjs#FAMILLES_DES_SAUF`, `famillesAuChoix`). Une classe sans maîtrise
-  au choix lisible (aucune, plusieurs, ou un « sauf » qui ne nommerait aucune famille) laisse le bonus non compté
+  (décisions R119, R152) : l'arme est la famille choisie pour la **maîtrise au choix de la classe** du don (son point 1 dans `maitrise_choix` : la
+  ligne `au_choix` de `classe_maitrise_arme`, une seule par classe, `ligneAuChoixDeLaClasse`, `familleDeLaMaitriseAuChoix` ; ses familles sont les
+  maîtrisables de sa catégorie, contact ou distance, `arme_famille.categorie`, R127 : Arc, Arbalète, Arme de jet et Bombes pour le Mage Vert et le
+  Barde, toutes pour le Tueur et le Mage Bleu ; sans celle de son « sauf » ; jamais ARME DE MONSTRES), sans autre choix de famille (R152, « Un seul
+  choix » : l'écart de Q45, un bonus sur une arme sans maîtrise, ne peut plus arriver) ; puis la compétence, déduite quand les armes de la famille n'en
+  donnent qu'une (Arbalète : rien ne s'enregistre), au choix sinon (`familles_armes[].competences`, lues au build dans `arme.competence_brut`, R48 : Arme
+  lourde ou Arme légère, l'Arc : Arc ou Arme légère, R126), gardée dans `personnage_acquis_choix.competence_id` (`acquisApresChoix`) et d'une famille à
+  l'autre quand la nouvelle l'offre. Tant que la maîtrise au choix n'est pas posée, le bonus attend (« choisissez d'abord la maîtrise au choix de
+  <classe> », dans le tiroir). Le « sauf » d'une maîtrise au choix est la famille que nomme le bandeau, chaque nom séparé par « / », tel quel ou au
+  singulier (« Épée » : ÉPÉES, « Dague » : DAGUES), ou celle que la décision R138 lui rattache quand il s'écrit autrement (« Hast » : LANCE/ARME D'HAST,
+  « Bâton » : BÂTON DE COMBAT, « Arme jet » : ARME DE JET, « Masse » : MASSE/MARTEAU ; `lib/maitrise-arme.mjs#FAMILLES_DES_SAUF`, `famillesAuChoix`).
+  Une classe sans maîtrise au choix lisible (aucune, plusieurs, ou un « sauf » qui ne nommerait aucune famille) laisse le bonus non compté
   (raison « arme choisie »). « 5% parmi les autres » du Drakos orange (décision R124) est un « X ou Y » parmi les compétences des autres lignes du
   tableau « Écaille draconique » (Athlétisme à Sabotage, 14, lues au build), +5, indépendant du choix de sa résistance. Un bonus que la phrase lie à une
   situation, ou dont le don pose la condition dans une autre phrase (« Doit être dans l'eau. » du Namazu, « Roi des Eaux » ; « (Rage) » en tête : décision
@@ -230,7 +229,9 @@ abandonne.
   sort choisi (`sortsParNpm`, demande du propriétaire) ; le **NM** d'un sort se règle à **un seul curseur, de 0 à 3** (décision R118, qui précise
   R26 : plus de cases « livre » ni « MJ » ; `bornesDuNm`, `sortAuNm`), **de 1 à 3** quand l'entraînement note un livre de ce sort (« livre » à côté du
   curseur), dont le NM **ne compte pas** dans le décompte ; les **NM du MJ** valent **pour toute la fiche** (`personnage.nm_mj`, migration 0066), notés dans
-  un champ « + MJ » juste à côté du décompte des NM (« NM : 9 / 11 », les NM comptés sur ceux gagnés par les niveaux, plus ceux du MJ : `maitriseDesSorts`) ;
+  un champ « + MJ » juste à côté du décompte des NM (« NM : 9 / 11 », les NM comptés sur ceux gagnés, plus ceux du MJ : `maitriseDesSorts`) ; les NM gagnés
+  sont ceux des niveaux et ceux qu'écrit un don acquis (décision R154 : « Gagne 4 niveaux de maîtrise (NM). », le don « Maîtrise » de l'Ocultomancien au
+  niveau de classe 20, `nm_gagnes` ; `maitriseDesSorts` : `niveaux`, `dons`, `disponibles`), qui ne sont pas des NM du MJ ;
   sur un sort, au plus niveau − 1 NM comptés plus les NM du MJ (le curseur est signalé au-delà, sans bloquer). Colonnes (demandes du propriétaire) : coût, portée et **dégâts/soins/barrière**, à la **valeur du NM du sort** plutôt que
   « (+1/NM) » (`lib/sort-maitrise.mjs#valeurAuNm` : voir `content-guide.md`, « Niveaux de maîtrise ») ; le **coût secondaire** (âmes, Sang, « Par tour » : décisions R105, R106) sous
   le coût de chakra, dans la même case, et dans la case « Coût » de la fiche en tableur les deux en une (« 3 + 1 Sang », « 3 par tour et par cible »,

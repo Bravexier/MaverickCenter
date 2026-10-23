@@ -1,7 +1,8 @@
 // Les décisions du propriétaire du 2026-10-18 sur les bonus d'acquis que la fiche ne comptait pas encore (docs/decisions-regles.md) :
 //   - R119, R126, R127 : « +N% de la compétence de l'arme choisie », « de l'arme de départ* », « Arme à distance liée » — l'arme de la maîtrise au choix de
 //     la classe (classe_maitrise_arme forme 'au_choix', sa catégorie contact ou distance : arme_famille.categorie, migration 0069), puis sa compétence
-//     (R48 : celles des armes de la famille ; Arc : Arc ou Arme légère, R126) ;
+//     (R48 : celles des armes de la famille ; Arc : Arc ou Arme légère, R126) ; depuis R152 (2026-10-22), l'arme est la famille choisie pour cette
+//     maîtrise au choix (maitrise_choix), sans autre choix de famille ;
 //   - R124 : le Drakos orange, « 5% parmi les autres » et « Au choix parmi les autres » : une compétence et une altération d'état des autres lignes du
 //     tableau « Écaille draconique », deux choix indépendants (personnage_acquis_choix, personnage_resistance_choix) ;
 //   - R137 (2026-10-22) : une magie au choix (Ocultomancien « Résilience ») ou tirée (Anansi d'Arcane, avec son altération d'état), sauf l'Arcane et la
@@ -183,62 +184,66 @@ test('décision R119 : les dons « de l’arme choisie », « de l’arme de dé
   }
 });
 
-test('décision R119 : l’arme parmi les familles de la maîtrise au choix, puis la compétence — déduite quand la famille n’en donne qu’une, au choix sinon ; rien d’autre', () => {
+test('décisions R119, R152 : l’arme est la famille de la maîtrise au choix de la classe, puis la compétence — déduite quand la famille n’en donne qu’une, au choix sinon ; rien d’autre', () => {
   const avecChoix = DONS_D_AUJOURD_HUI.filter((x) => x.don.type === 'passif' && M.armeAuChoixDeLaClasse(x.classe));
   assert.ok(avecChoix.length >= 1);
   for (const x of avecChoix) {
     const { classe, don, bonus } = x;
     const nom = `${don.nom} (${classe.nom})`;
+    const ligne = M.ligneAuChoixDeLaClasse(classe).source;
     const f = ficheDuDon(x);
     const familles = M.armeAuChoixDeLaClasse(classe);
     const c = choixDuDon(regles, f, don);
+    // sans la maîtrise au choix, le bonus l'attend (R152) : aucun choix de famille ici
     assert.deepEqual({ ...c, rang: 1 }, {
-      source: don.id, rang: 1, nom, valeur: bonus.valeur, arme: true, familles, arme_famille_id: null, options: [], choisi: null, fait: false,
+      source: don.id, rang: 1, nom, valeur: bonus.valeur, arme: true, familles, maitrise: ligne, classe: classe.nom, arme_famille_id: null, options: [],
+      deduite: false, choisi: null, fait: false,
     }, don.id);
     assert.ok(!M.acquisDesDons(regles, f).nonComptes.some((n) => n.raison === 'arme_choisie' && n.nom === nom), `${don.id} : plus listé non compté`);
     const attente = (y) => M.choixEnAttente(regles, y).filter((a) => a.cle === M.cleDeChoix.acquis(don.id, c.rang)).map((a) => a.libelle);
-    assert.deepEqual(attente(f), [`Acquis ${nom} : +${bonus.valeur} % arme de la maîtrise au choix (${familles.map((id) => famille(id).nom).join(' ou ')})`]);
+    assert.deepEqual(attente(f), [`Acquis ${nom} : +${bonus.valeur} % — choisissez d’abord la maîtrise au choix de ${classe.nom}`]);
     for (const id of familles) {
       const options = famille(id).competences;
-      let g = { ...f, ...M.acquisApresChoixDArme(regles, f, don.id, c.rang, id) };
-      assert.deepEqual(choixDuDon(regles, g, don).options, options, `${don.id} : ${id}`);
+      let g = { ...f, ...M.maitriseApresChoix(f, ligne, 1, id) };
+      assert.deepEqual([choixDuDon(regles, g, don).arme_famille_id, choixDuDon(regles, g, don).options], [id, options], `${don.id} : ${id}`);
       if (options.length === 1) {
-        // une seule compétence : déduite (« C'est cette arme qui détermine le bonus »)
-        assert.deepEqual(g.acquis_choix, [{ source: don.id, rang: c.rang, competence_id: options[0], valeur: null, arme_famille_id: id }]);
+        // une seule compétence : déduite (« C'est cette arme qui détermine le bonus »), rien d'enregistré
+        assert.deepEqual([choixDuDon(regles, g, don).deduite, choixDuDon(regles, g, don).choisi], [true, options[0]]);
         assert.ok(competence(g, options[0]).donsDetail.some((d) => d.nom === nom && d.valeur === bonus.valeur), `${don.id} : ${id}`);
+        assert.deepEqual(M.acquisChoixValables(regles, g).filter((y) => y.source === don.id), []);
+        assert.deepEqual(attente(g), []);
         continue;
       }
-      // plusieurs (« ça reste au choix ») : rien ne compte ni ne s'enregistre avant la compétence (la base l'exige)
+      // plusieurs (« ça reste au choix ») : rien ne compte ni ne s'enregistre avant la compétence
       assert.deepEqual([choixDuDon(regles, g, don).fait, M.acquisChoixValables(regles, g).filter((y) => y.source === don.id)], [false, []], `${don.id} : ${id}`);
       assert.deepEqual(attente(g), [`Acquis ${nom} : +${bonus.valeur} % ${famille(id).nom} : ${options.map((o) => nomDe('competences', o)).join(' ou ')}`]);
       const choisie = options.at(-1);
-      g = { ...g, ...M.acquisApresChoixDArme(regles, g, don.id, c.rang, id, choisie) };
+      g = { ...g, ...M.acquisApresChoix(g, don.id, c.rang, choisie) };
       assert.ok(competence(g, choisie).donsDetail.some((d) => d.nom === nom && d.valeur === bonus.valeur), `${don.id} : ${id}, ${choisie}`);
       for (const autre of options.slice(0, -1)) assert.ok(!competence(g, autre).donsDetail.some((d) => d.nom === nom), `${don.id} : une seule des compétences`);
-      assert.deepEqual(M.acquisChoixValables(regles, g).filter((y) => y.source === don.id),
-        [{ source: don.id, rang: c.rang, competence_id: choisie, valeur: null, arme_famille_id: id }]);
+      assert.deepEqual(M.acquisChoixValables(regles, g).filter((y) => y.source === don.id), [{ source: don.id, rang: c.rang, competence_id: choisie, valeur: null }]);
       assert.deepEqual(attente(g), []);
-      // une autre arme garde la compétence quand elle l'offre aussi, sinon la compétence est à choisir de nouveau
+      // une autre maîtrise au choix garde la compétence quand sa famille l'offre aussi, sinon la compétence est à choisir de nouveau
       for (const suivante of familles.filter((y) => y !== id)) {
-        const h = { ...g, ...M.acquisApresChoixDArme(regles, g, don.id, c.rang, suivante, choisie) };
+        const h = { ...g, ...M.maitriseApresChoix(g, ligne, 1, suivante) };
         const offertes = famille(suivante).competences;
         const attendue = offertes.length === 1 ? offertes[0] : offertes.includes(choisie) ? choisie : null;
         assert.equal(choixDuDon(regles, h, don).choisi, attendue, `${don.id} : ${id} puis ${suivante}`);
       }
       // une compétence que l'arme ne donne pas (une note reçue telle quelle) : rien ne compte
       const etrangere = regles.competences.find((k) => !options.includes(k.id)).id;
-      const k = { ...f, acquis_choix: [{ source: don.id, rang: c.rang, competence_id: etrangere, valeur: null, arme_famille_id: id }] };
+      const k = { ...f, ...M.maitriseApresChoix(f, ligne, 1, id), acquis_choix: [{ source: don.id, rang: c.rang, competence_id: etrangere, valeur: null }] };
       assert.deepEqual([choixDuDon(regles, k, don).fait, M.acquisChoixValables(regles, k)], [false, []], `${don.id} : ${id}, ${etrangere}`);
     }
-    // une famille hors de sa maîtrise au choix (ARME DE MONSTRES comprise) : rien
+    // une famille hors de sa maîtrise au choix (ARME DE MONSTRES comprise) ne fait pas l'arme
     for (const id of regles.familles_armes.map((y) => y.id).filter((y) => !familles.includes(y))) {
-      const k = { ...f, acquis_choix: [{ source: don.id, rang: c.rang, competence_id: famille(id).competences[0], valeur: null, arme_famille_id: id }] };
-      assert.equal(choixDuDon(regles, k, don).fait, false, `${don.id} : ${id}`);
+      const k = { ...f, ...M.maitriseApresChoix(f, ligne, 1, id), acquis_choix: [{ source: don.id, rang: c.rang, competence_id: famille(id).competences[0], valeur: null }] };
+      assert.deepEqual([choixDuDon(regles, k, don).arme_famille_id, choixDuDon(regles, k, don).fait], [null, false], `${don.id} : ${id}`);
     }
-    // retirer l'arme retire le choix ; avant le niveau du don ou sans sa spécialité : plus rien de gardé
-    assert.deepEqual(M.acquisApresChoixDArme(regles, f, don.id, c.rang, null), { acquis_choix: [] });
-    const fait = { ...f, ...M.acquisApresChoixDArme(regles, f, don.id, c.rang, familles[0], famille(familles[0]).competences[0]) };
-    assert.equal(M.acquisChoixValables(regles, fait).filter((y) => y.source === don.id).length, 1, don.id);
+    // avant le niveau du don ou sans sa spécialité : plus rien de gardé
+    const choisie = famille(familles[0]).competences.at(-1);
+    const fait = { ...f, ...M.maitriseApresChoix(f, ligne, 1, familles[0]), ...M.acquisApresChoix(f, don.id, c.rang, choisie) };
+    assert.equal(M.acquisChoixValables(regles, fait).filter((y) => y.source === don.id).length, famille(familles[0]).competences.length > 1 ? 1 : 0, don.id);
     const avant = regles.niveaux.find((n) => M.niveauxDeClasse(regles, n.niveau, 'mono').classe1 >= don.niveau).niveau - 1;
     if (avant >= 1) assert.deepEqual(M.acquisChoixValables(regles, { ...fait, xp: xpDuNiveau(avant) }).filter((y) => y.source === don.id), [], don.id);
     const autreSpecialite = classe.specialites.find((s) => s.id !== don.specialite_id);
@@ -259,16 +264,20 @@ test('décisions R119, R127 : à l’import, Mage Vert et Barde choisissent une 
   assert.ok(A_DISTANCE.every((id) => famille(id).categorie === 'distance') && !A_DISTANCE.includes('epees'), 'une arme de contact n’est pas à distance');
 });
 
-test('décision R119 : la maîtrise elle-même n’est pas exigée (arbitrage de Claude, en attente de la question Q45) ; une classe sans maîtrise au choix lisible, un don de race : non compté, raison « arme_choisie »', () => {
+test('décision R152 (Q45 : « Un seul choix ») : l’arme du bonus est toujours une famille maîtrisée ; une classe sans maîtrise au choix lisible, un don de race : non compté, raison « arme_choisie »', () => {
   const x = DONS_D_AUJOURD_HUI.find((y) => y.don.type === 'passif' && M.armeAuChoixDeLaClasse(y.classe));
   const { classe, don, bonus } = x;
   const nom = `${don.nom} (${classe.nom})`;
-  // sans aucune maîtrise d'arme sur la fiche, le bonus compte dès que l'arme et la compétence sont choisies (arbitrage, Q45)
+  // le bonus compte dès que la maîtrise au choix et la compétence sont choisies ; la famille a alors au moins le point de cette maîtrise
   const f = ficheDuDon(x);
   const id = M.armeAuChoixDeLaClasse(classe)[0];
   const choisie = famille(id).competences[0];
-  const g = { ...f, maitrises_armes: [], ...M.acquisApresChoixDArme(regles, f, don.id, choixDuDon(regles, f, don).rang, id, choisie) };
+  const g = { ...f, ...M.maitriseApresChoix(f, M.ligneAuChoixDeLaClasse(classe).source, 1, id), ...M.acquisApresChoix(f, don.id, choixDuDon(regles, f, don).rang, choisie) };
   assert.ok(competence(g, choisie).donsDetail.some((d) => d.nom === nom && d.valeur === bonus.valeur));
+  assert.ok(M.maitrisesParFamille(regles, g).find((m) => m.famille === id).points >= 1, 'l’écart de Q45 (un bonus sur une arme sans maîtrise) ne peut plus arriver');
+  // une ancienne arme choisie (personnage_acquis_choix.arme_famille_id, retirée par la migration 0072) ne fait plus l'arme
+  const dAvant = { ...f, acquis_choix: [{ source: don.id, rang: 1, competence_id: choisie, valeur: null, arme_famille_id: id }] };
+  assert.equal(choixDuDon(regles, dAvant, don).arme_famille_id, null);
   // une classe dont la maîtrise au choix ne se lit pas (son « sauf » ne nomme aucune famille) : listé, non compté
   const sansMaitrise = {
     ...regles,
