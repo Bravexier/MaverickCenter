@@ -2,8 +2,9 @@
 // maitrise_arme_part_famille et capacite_nm_gagne, que le lecteur de lib/maitrise-arme.mjs tire des lignes de classe_maitrise_arme (lireLigneDeClasse) et
 // du texte des dons (capacite.effet : lireDon, nmGagnesDuDon). Une écriture de l'édition qui change ce que le lecteur lit les refait
 // (serveur/edition.mjs : maîtrises d'une classe, effet d'un don, don créé ou supprimé), notées au journal par son rédacteur ; le rejeu refait celles des
-// lots notés avant elles (sourcesRefaitesParLeLot, crochet `apresLeLot` de rejouerLeJournal), hors journal. test/maitrise-arme-sources.test.mjs rejoue le
-// lecteur sur toute la base : ces tables doivent toujours être les siennes.
+// lots notés avant elles (sourcesRefaitesParLeLot, crochet `apresLeLot` de rejouerLeJournal), hors journal ; la résolution d'un lot en conflit refait
+// toutes celles qu'il touche, notées dans son nouveau lot (sourcesRefaitesParLaResolution, sourcesAvantLaSuppression).
+// test/maitrise-arme-sources.test.mjs rejoue le lecteur sur toute la base : ces tables doivent toujours être les siennes.
 import { idDeSourceDeClasse, lireDon, lireLigneDeClasse, nmGagnesDuDon } from '../src/lib/maitrise-arme.mjs';
 import { cleDe, ErreurJournal, lireLigne, structure } from './edition-journal.mjs';
 
@@ -159,19 +160,14 @@ function ecrivainHorsJournal(db, { lot, rang }) {
 }
 
 /**
- * Après chaque lot rejoué (serveur/edition.mjs#rejouerLeJournal, crochet `apresLeLot` d'edition-journal.mjs#rejouer, dans le lot et annulé avec lui) :
- * les sources des classes dont le lot touche les maîtrises (classe.maitrise_arme, classe_maitrise_arme) et des dons qu'il crée, modifie ou supprime
- * (capacite), refaites par le lecteur depuis les lignes rejouées. Un lot noté avant la migration 0073 (ses lignes de classe ou l'effet d'un don, sans
- * leurs parts) les reçoit ici, avant le contrôle de ses clés étrangères, et le lot suivant les trouve justes. Une source dont le lot note déjà des
- * lignes de TABLES_DES_SOURCES (un lot noté depuis 0073) suit son journal, sans rien de plus : ses lignes créées puis supprimées par un lot suivant ne
- * sont pas écrites (les « fantômes » du rejeu) ; une source qu'il touche sans en noter (un effet changé qui ne change pas les parts) ne change pas.
- * Rend ces écritures, décodées ({ …, sources: true }) : leurs tables vont dans `tablesCompletees`.
- * @param {object[]} lot les modifications du lot (lignes de `modification`, telles qu'adaptées)
+ * Les sources de maîtrise d'arme qu'un lot touche (`lot` : ses modifications, telles qu'adaptées) : `classes` (dont il écrit classe.maitrise_arme ou une
+ * ligne de classe_maitrise_arme), `dons` (dont il écrit la ligne capacite), `notees` (les sources dont il note des lignes de TABLES_DES_SOURCES : source_id,
+ * ou capacite_id de capacite_nm_gagne). Une écriture sans effet (ancienneEcritureDuGlossaire) n'en touche aucune.
  */
-export function sourcesRefaitesParLeLot(db, lot) {
+function sourcesTouchees(lot) {
   const classes = new Set();
   const dons = new Set();
-  const notees = new Set(); // les sources dont le lot note des lignes (source_id, ou capacite_id de capacite_nm_gagne)
+  const notees = new Set();
   for (const m of lot) {
     if (m.sansEffet) continue;
     let cle;
@@ -185,13 +181,68 @@ export function sourcesRefaitesParLeLot(db, lot) {
     if (m.table_nom === 'classe' && typeof cle?.id === 'string' && m.operation === 'modifier' && 'maitrise_arme' in (JSON.parse(m.apres ?? '{}') ?? {})) classes.add(cle.id);
     if (m.table_nom === 'capacite' && typeof cle?.id === 'string') dons.add(cle.id);
   }
+  return { classes, dons, notees };
+}
+
+/** Refait par `ecrivain` les sources des classes (qui existent) et des dons (qui existent ou non) donnés, lues telles qu'elles sont. */
+function refaire(db, ecrivain, { classes, dons }) {
+  const familles = famillesDuLecteur(db);
+  for (const id of classes) if (lireLigne(db, 'classe', { id })) refaireLaClasse(db, ecrivain, id, familles);
+  for (const id of dons) refaireLeDon(db, ecrivain, id, familles);
+}
+
+/**
+ * Après chaque lot rejoué (serveur/edition.mjs#rejouerLeJournal, crochet `apresLeLot` d'edition-journal.mjs#rejouer, dans le lot et annulé avec lui) :
+ * les sources des classes dont le lot touche les maîtrises (classe.maitrise_arme, classe_maitrise_arme) et des dons qu'il crée, modifie ou supprime
+ * (capacite), refaites par le lecteur depuis les lignes rejouées. Un lot noté avant la migration 0073 (ses lignes de classe ou l'effet d'un don, sans
+ * leurs parts) les reçoit ici, avant le contrôle de ses clés étrangères, et le lot suivant les trouve justes. Une source dont le lot note déjà des
+ * lignes de TABLES_DES_SOURCES (un lot noté depuis 0073) suit son journal, sans rien de plus : ses lignes créées puis supprimées par un lot suivant ne
+ * sont pas écrites (les « fantômes » du rejeu) ; une source qu'il touche sans en noter (un effet changé qui ne change pas les parts) ne change pas.
+ * Rend ces écritures, décodées ({ …, sources: true }) : leurs tables vont dans `tablesCompletees`.
+ * @param {object[]} lot les modifications du lot (lignes de `modification`, telles qu'adaptées)
+ */
+export function sourcesRefaitesParLeLot(db, lot) {
+  const { classes, dons, notees } = sourcesTouchees(lot);
   const deLaClasse = (id) => [...notees].some((s) => s.startsWith(`${id}#maitrise-arme:`));
   const aRefaire = { classes: [...classes].filter((id) => !deLaClasse(id)).sort(), dons: [...dons].filter((id) => !notees.has(id)).sort() };
   if (!aRefaire.classes.length && !aRefaire.dons.length) return [];
   const { lot_id: lotId, rang } = lot.at(-1);
   const ecrivain = ecrivainHorsJournal(db, { lot: lotId, rang });
-  const familles = famillesDuLecteur(db);
-  for (const id of aRefaire.classes) if (lireLigne(db, 'classe', { id })) refaireLaClasse(db, ecrivain, id, familles);
-  for (const id of aRefaire.dons) refaireLeDon(db, ecrivain, id, familles);
+  refaire(db, ecrivain, aRefaire);
   return ecrivain.ecrites;
+}
+
+/**
+ * Résolution d'un lot en conflit (serveur/edition-conflits.mjs, page « Mise à jour ») : ses lignes de TABLES_DES_SOURCES ne sont jamais rejouées telles
+ * quelles (le parcours les saute : elles suivent leur source, comme une ligne de détail, et ne sont pas des conflits à elles), et, une fois les choix
+ * écrits, toutes les sources que le lot touche — ses classes, ses dons, et celles dont il notait des lignes — sont refaites par le lecteur depuis les
+ * lignes résolues, notées par `ecrivain` (le rédacteur du nouveau lot, ctx.w) : un lot noté avant 0073 (un don créé sans ses parts), une ligne gardée
+ * au choix 1 sans l'éditeur (un don créé que les règles ont aussi), une source restée celle des règles, tout finit tel que le lecteur le lit.
+ * @param {object[]} lot les modifications du lot en conflit (telles qu'adaptées)
+ */
+export function sourcesRefaitesParLaResolution(db, lot, ecrivain) {
+  const { classes, dons, notees } = sourcesTouchees(lot);
+  for (const s of notees) {
+    const i = s.indexOf('#maitrise-arme:');
+    if (i > 0) classes.add(s.slice(0, i));
+    else dons.add(s);
+  }
+  refaire(db, ecrivain, { classes: [...classes].sort(), dons: [...dons].sort() });
+}
+
+/**
+ * Avant que la résolution d'un lot en conflit ne supprime un don (capacite) ou une ligne de classe_maitrise_arme : leurs parts, options et NM gagnés,
+ * retirés par `ecrivain` (notés au journal, comme serveur/edition.mjs#retirerDon et CLASSE.deriver) plutôt que par la cascade du schéma, qui ne serait
+ * pas notée. Rien pour une autre table.
+ */
+export function sourcesAvantLaSuppression(db, ecrivain, table, cle) {
+  let sourceId = null;
+  if (table === 'capacite' && typeof cle?.id === 'string') sourceId = cle.id;
+  else if (table === 'classe_maitrise_arme' && typeof cle?.classe_id === 'string' && Number.isInteger(cle?.rang)) sourceId = idDeSourceDeClasse(cle.classe_id, cle.rang);
+  if (!sourceId) return;
+  for (const o of db.prepare('SELECT * FROM maitrise_arme_part_famille WHERE source_id = ?').all(sourceId)) {
+    ecrivain.supprimer('maitrise_arme_part_famille', cleDe(db, 'maitrise_arme_part_famille', o));
+  }
+  for (const p of db.prepare('SELECT * FROM maitrise_arme_part WHERE source_id = ?').all(sourceId)) ecrivain.supprimer('maitrise_arme_part', cleDe(db, 'maitrise_arme_part', p));
+  if (table === 'capacite') ecrireLesNmGagnes(db, ecrivain, sourceId, 0);
 }

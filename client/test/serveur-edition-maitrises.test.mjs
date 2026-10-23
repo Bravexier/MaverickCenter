@@ -14,8 +14,9 @@ import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.
 import { rejouerLeJournal } from '../serveur/edition.mjs';
 import { TABLES_DES_SOURCES } from '../serveur/edition-maitrises.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
-import { idDeSourceDeClasse, lireDon, lireLigneDeClasse, nmGagnesDuDon } from '../src/lib/maitrise-arme.mjs';
+import { idDeSourceDeClasse } from '../src/lib/maitrise-arme.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { sourcesEtLecteur, sourcesJustes } from './aide-maitrise-arme.mjs';
 
 const racine = mkdtempSync(join(tmpdir(), 'maverick-edition-maitrises-'));
 after(() => rmSync(racine, { recursive: true, force: true }));
@@ -36,38 +37,7 @@ const enregistrer = (base, operations) => {
 };
 const q = (base, sql, ...p) => base.prepare(sql).all(...p).map((l) => ({ ...l }));
 
-/** Les tables des sources, et ce que le lecteur rejoué sur toute la base en tire (test/maitrise-arme-sources.test.mjs#relire) : { tables, lecteur }. */
-function sources(base) {
-  const familles = q(base, 'SELECT id, nom, maitrisable, categorie FROM arme_famille ORDER BY ordre');
-  const parts = [];
-  const options = [];
-  const ajouter = (sourceId, origine, lu) => {
-    for (const p of lu?.parts ?? []) {
-      parts.push({ source_id: sourceId, rang: p.rang, ...origine, genre: p.genre, points: p.points, arme_famille_id: p.famille, limite_famille: p.limite });
-      for (const id of p.options) options.push({ source_id: sourceId, rang: p.rang, arme_famille_id: id });
-    }
-  };
-  for (const l of q(base, 'SELECT * FROM classe_maitrise_arme')) ajouter(idDeSourceDeClasse(l.classe_id, l.rang), { capacite_id: null, classe_id: l.classe_id, classe_rang: l.rang }, lireLigneDeClasse(l, familles));
-  const dons = q(base, 'SELECT id, effet FROM capacite');
-  for (const d of dons) ajouter(d.id, { capacite_id: d.id, classe_id: null, classe_rang: null }, lireDon(d.effet, familles));
-  const ordre = (a, b) => (a.source_id < b.source_id ? -1 : a.source_id > b.source_id ? 1 : a.rang - b.rang || String(a.arme_famille_id).localeCompare(String(b.arme_famille_id)));
-  return {
-    tables: {
-      parts: q(base, 'SELECT * FROM maitrise_arme_part').sort(ordre),
-      options: q(base, 'SELECT * FROM maitrise_arme_part_famille').sort(ordre),
-      nm: q(base, 'SELECT capacite_id, nm FROM capacite_nm_gagne ORDER BY capacite_id'),
-    },
-    lecteur: {
-      parts: parts.sort(ordre),
-      options: options.sort(ordre),
-      nm: dons.map((d) => ({ capacite_id: d.id, nm: nmGagnesDuDon(d.effet) })).filter((d) => d.nm > 0).sort((a, b) => (a.capacite_id < b.capacite_id ? -1 : 1)),
-    },
-  };
-}
-const sourcesJustes = (base, message) => {
-  const { tables, lecteur } = sources(base);
-  assert.deepEqual(tables, lecteur, message);
-};
+const sources = sourcesEtLecteur;
 const partsDe = (base, sourceId) => q(base, 'SELECT rang, genre, points, arme_famille_id, limite_famille FROM maitrise_arme_part WHERE source_id = ? ORDER BY rang', sourceId);
 const optionsDe = (base, sourceId) => q(base, 'SELECT arme_famille_id FROM maitrise_arme_part_famille WHERE source_id = ? ORDER BY arme_famille_id', sourceId).map((o) => o.arme_famille_id);
 const maitrisables = (base) => q(base, 'SELECT id FROM arme_famille WHERE maitrisable = 1 ORDER BY id').map((f) => f.id);

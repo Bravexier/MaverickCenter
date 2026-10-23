@@ -16,7 +16,9 @@
 // (serveur/edition.mjs : valeurDuChamp, forme canonique des balises, Markdown sûr, colonnes X_cle et du domaine, dérivations, notées au journal), avec
 // leurs valeurs finales : celles du site de dev qui passent encore, et les choix 1 et 3. Le reste (insertions, suppressions, tables et colonnes hors
 // du modèle, lignes de détail) est rejoué comme le rejeu (colonnes dérivées non écrites), mais noté dans le nouveau lot ; puis, comme rejouerLeJournal,
-// les balises d'un mot-clé retiré, les liens de règle des métiers, les pages typées et leurs colonnes dérivées. Une ligne source gardée au choix 2 est
+// les balises d'un mot-clé retiré, les liens de règle des métiers, les pages typées et leurs colonnes dérivées. Les sources de maîtrise d'arme
+// (maitrise_arme_part, ses options, capacite_nm_gagne) ne sont jamais rejouées : le parcours saute leurs lignes, et celles des classes et des dons que
+// le lot touche sont refaites par le lecteur après les choix (edition-maitrises.mjs#sourcesRefaitesParLaResolution). Une ligne source gardée au choix 2 est
 // re-dérivée (ses lignes de détail suivent la règle livrée ; le corps de sa page, refait par recalculerLesPages, n'est pas touché par cette
 // re-dérivation). Les fiches de personnage perdent ce qu'une suppression gardée leur retire (R42, R52, R60), avec une note datée.
 //
@@ -25,6 +27,7 @@
 import { createHash } from 'node:crypto';
 import { ErreurJournal, lireLigne, modifierSansNoter, nouveauLot, ouvrirLot, parcourirUnLot, rompuesDuLot, rupturesEnPlace, structure } from './edition-journal.mjs';
 import { ErreurEdition, OUTILS_DE_RESOLUTION as OUTILS, adaptateurDuJournal, colonneDerivee, messageSqlite, recalculerLesPages } from './edition.mjs';
+import { TABLES_DES_SOURCES, sourcesAvantLaSuppression, sourcesRefaitesParLaResolution } from './edition-maitrises.mjs';
 import { detacherDesFiches, noterLesRetraits, nouveauxRetraitsDeFiches, retirerDesFiches } from './fiches-retraits.mjs';
 import { TABLES, ligneSansImage } from '../src/lib/edition-modele.mjs';
 import { instant as maintenant } from './instant.mjs';
@@ -86,9 +89,13 @@ const lignesEnConflit = (db, id) => db.prepare("SELECT * FROM modification WHERE
 // Le parcours d'un lot (examen et résolution)
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 
-/** Ce que les fiches perdent quand une ligne de règle part (R42, R52 ; une ressource : R60), avant sa suppression : comme les domaines de l'édition. */
+/**
+ * Ce que les fiches perdent quand une ligne de règle part (R42, R52 ; une ressource : R60), avant sa suppression : comme les domaines de l'édition ; et
+ * les sources de maîtrise d'arme d'un don ou d'une ligne de classe_maitrise_arme, notées avant elle (pas par la cascade du schéma).
+ */
 const RETRAITS_PAR_TABLE = Object.freeze({ metier: 'metiers', specialite: 'specialites', capacite: 'capacites', sort: 'sorts', arme: 'armes' });
 function avantLaSuppression(ctx, table, cle) {
+  sourcesAvantLaSuppression(ctx.db, ctx.w, table, cle);
   if (typeof cle?.id !== 'string') return;
   if (RETRAITS_PAR_TABLE[table]) retirerDesFiches(ctx.db, { [RETRAITS_PAR_TABLE[table]]: [cle.id] }, ctx.retraits);
   if (table === 'ressource') detacherDesFiches(ctx.db, [cle.id], ctx.retraits);
@@ -100,12 +107,14 @@ function contexte(db, { id, instant, pageId }) {
 }
 
 /**
- * Parcourt les modifications en conflit du lot (edition-journal.mjs#parcourirUnLot), chacune notée dans le nouveau lot (ctx.w) quand elle passe. Les
+ * Parcourt les modifications en conflit du lot (edition-journal.mjs#parcourirUnLot), chacune notée dans le nouveau lot (ctx.w) quand elle passe, sauf
+ * celles des sources de maîtrise d'arme (TABLES_DES_SOURCES), sautées : commeLeRejeu les refait par le lecteur. Les
  * colonnes du modèle d'une ligne du modèle sont écrites sans être notées (la suite du parcours voit la ligne telle que le site de dev l'avait), et
  * retenues (`differees` : clé de ligne → { table, cle, original, final, apercu, rangs }) : refaireParLEditeur les remet, puis les refait par l'éditeur.
  */
-function parcourir(ctx, lignes, sauter = new Set()) {
+function parcourir(ctx, lignes, abandons = new Set()) {
   const { db } = ctx;
+  const sauter = new Set([...abandons, ...lignes.filter((m) => TABLES_DES_SOURCES.includes(m.table_nom)).map((m) => m.rang)]);
   const differees = new Map();
   const ecrire = {
     inserer: (_db, table, valeurs) => ctx.w.inserer(table, valeurs),
@@ -200,11 +209,15 @@ function vueSansPages(db) {
   });
 }
 
-/** Comme rejouerLeJournal après le rejeu : balises d'un mot-clé retiré, liens de règle des métiers, pages typées, puis leurs colonnes dérivées. */
+/**
+ * Comme rejouerLeJournal après le rejeu : balises d'un mot-clé retiré, liens de règle des métiers, sources de maîtrise d'arme des classes et des dons que
+ * le lot touche (refaites par le lecteur, notées dans le nouveau lot), pages typées, puis leurs colonnes dérivées.
+ */
 function commeLeRejeu(ctx, entrees, brutes) {
   const { db } = ctx;
   const balises = OUTILS.balisesRetireesParLeLot(db, entrees.filter((e) => e.issue !== 'saute').map((e) => e.m));
   OUTILS.completerLesMetiers(db, new Set(brutes.filter((m) => m.table === 'metier' || m.table === 'metier_bonus').map((m) => m.cle?.metier_id ?? m.cle?.id)));
+  sourcesRefaitesParLaResolution(db, entrees.map((e) => e.m), ctx.w);
   recalculerLesPages(db, [...brutes, ...balises]);
   OUTILS.balisesDesColonnesDerivees(db);
 }

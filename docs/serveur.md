@@ -700,6 +700,8 @@ règles d'aujourd'hui, même après une livraison.
   erreur après le lot : la raison, et seul 2, abandonner l'opération). La version 1 d'un champ est passée par l'éditeur : refusée aujourd'hui
   (Markdown sûr, bloc inconnu, balise d'un mot-clé disparu, titre déjà pris), le choix 1 disparaît et `refus_1` dit pourquoi ; une colonne saine
   que l'éditeur refuse devient un conflit (2 ou 3). Une ligne de détail (bonus d'un métier…) n'est jamais un conflit à elle : elle suit sa source.
+  Les lignes des sources de maîtrise d'arme (`maitrise_arme_part`, `maitrise_arme_part_famille`, `capacite_nm_gagne`) ne sont même pas parcourues :
+  ni conflit ni modification saine, elles sont refaites par le lecteur après les choix (ci-dessous).
   Le `libelle` d'une ligne est la table (son libellé de `TABLES`, sinon son nom) et son nom, son titre ou son libellé, sinon l'id de sa clé (une
   page supprimée : « Page guide/… »), sinon ce que sa clé composée désigne : la ligne citée par sa clé étrangère, par son nom lu dans la base si
   elle existe encore (entre parenthèses avec sa table pour une table hors du modèle), sinon par l'id de sa clé, puis ses autres colonnes, un rang dit
@@ -723,7 +725,12 @@ règles d'aujourd'hui, même après une livraison.
   l'édition avec leurs valeurs finales (valeurDuChamp, forme canonique des balises, Markdown sûr, X_cle, dérivations ; l'aperçu repris pour le
   choix 1 d'une page du guide, aucun pour un texte saisi) ; le reste est rejoué comme le rejeu (colonnes dérivées non écrites), puis les balises
   d'un mot-clé retiré, les liens de règle des métiers, les pages typées et leurs colonnes dérivées comme `rejouerLeJournal`. Une ligne source
-  gardée au choix 2 est re-dérivée : ses lignes de détail suivent la règle livrée. Une suppression gardée retire des fiches ce qu'elle leur ôte
+  gardée au choix 2 est re-dérivée : ses lignes de détail suivent la règle livrée. Les sources de maîtrise d'arme de toutes les classes et de tous
+  les dons que le lot touche (ses lignes de `classe`, `classe_maitrise_arme`, `capacite`, et celles dont il notait des parts) sont refaites par le
+  lecteur de `lib/maitrise-arme.mjs` une fois les choix écrits, notées dans le nouveau lot (`edition-maitrises.mjs#sourcesRefaitesParLaResolution`) :
+  un lot noté avant 0073 (un don créé sans ses parts), un don créé que les règles ont aussi, gardé au choix 1, ou une ligne de maîtrise recopiée
+  au choix 1 finissent tels que le lecteur les lit (décisions R148 à R151, R154) ; un don ou une ligne de maîtrise supprimés perdent leurs parts
+  avant eux, au journal (`sourcesAvantLaSuppression`), pas par la cascade du schéma (`serveur-edition-conflits-maitrises`). Une suppression gardée retire des fiches ce qu'elle leur ôte
   (R42, R52, R60), avec la note datée (`fiches` de la réponse). L'ancien lot est marqué (`resolu_le`, `resolu_par` = le nouveau lot, `resolution`
   = les choix : migration `0072`), jamais effacé : ses lignes restent `conflit`, avec leur `detail`, comme trace ; tout au choix 2 sans rien de
   sain : aucun lot écrit, `resolu_par` reste NULL. Un second appel répond `409`. Le nouveau lot se rejoue sans conflit sur `data/rows` (son
