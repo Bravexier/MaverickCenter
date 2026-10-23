@@ -257,8 +257,12 @@ une boucle à bouclier pour une magie qui résiste à elle-même. Les deux sens 
 Disposition du grand écran (1000 × 440) : le Potentiel Illimité, sans relation, au centre (demande du propriétaire) ; les huit magies liées en anneau autour, symétriques gauche–droite
 (Vent↔Nécromancie, Feu↔Eau, Terre↔Sang, Glace↔Foudre : la symétrie des relations le permet) ; Corruption–Arcane et Espace-Temps–Vide aux coins du haut, Lumière–Ombre en bas.
 Elle est choisie pour qu'**aucun trait ni aucune boucle ne passe sous une autre pastille** et que deux pointes d'une même magie ne se touchent pas : Feu et Eau sont plus bas que Terre
-et Sang parce que le trait Feu–Eau passerait sinon sous eux. Pour déplacer une pastille, vérifier ces conditions (`test/magies-html.test.mjs` les contrôle sur le site construit, de 58 à
-62rem de large). Sous 60rem : deux colonnes, les paires côte à côte reliées par leur pointillé (incompatibles ou opposées), sans relations. Cette disposition est de la mise en page,
+et Sang parce que le trait Feu–Eau passerait sinon sous eux. Pour déplacer une pastille, vérifier ces conditions (`test/magies-html.test.mjs` les contrôle sur le site construit).
+Les tailles des pastilles du grand écran sont en unités de la carte (dans le composant, `LARGEUR_PASTILLE` × `HAUTEUR_PASTILLE` : 150 × 48 ; `TAILLES` : 134 de large pour les
+éléments, 200 pour le Potentiel Illimité), posées en
+`cqw` (`--l`, `--h`) : la géométrie des traits reste juste à toute largeur de carte. Chaque pointe s'arrête à 3 unités de sa pastille, prise comme une pilule (extrémités en
+demi-cercles) ; deux pointes qui sortent par la même extrémité glissent le long d'elle (l'une au-dessus de l'autre) au lieu d'être repoussées le long de leur trait, loin de la
+pastille (défaut signalé par le propriétaire sur Feu et Eau) ; seules celles qui se touchent encore (plus de place pour glisser) sont échelonnées le long de leur trait. Sous 60rem : deux colonnes, les paires côte à côte reliées par leur pointillé (incompatibles ou opposées), sans relations. Cette disposition est de la mise en page,
 pas un classement de règle. `test/magies-html.test.mjs` vérifie aussi qu'aucune pastille n'en touche une autre, du téléphone (320 px) au grand écran, et qu'il n'y a plus d'infobulle ;
 `test/magie-fleches.test.mjs` teste les relations et leur géométrie.
 

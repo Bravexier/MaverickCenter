@@ -11,7 +11,7 @@ import { ORDRE_DES_RACES } from '../src/lib/race-kinds.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { chargerMagies } from '../src/lib/magies-db.mjs';
 import { classeDeMagie, cssDeLaPalette } from '../src/lib/palette-css.mjs';
-import { liaisonsEntreMagies, segmentCoupe } from '../src/lib/magie-fleches.mjs';
+import { ENCOMBREMENT, liaisonsEntreMagies, POINTES, segmentCoupe } from '../src/lib/magie-fleches.mjs';
 import { tuilesDeCapacites } from './aide-bestiaire.mjs';
 
 const dossier = fileURLToPath(new URL('../dist/magies/', import.meta.url));
@@ -62,8 +62,9 @@ test('index des magies : 15 noms courts, sans infobulle (demande du propriétair
 });
 
 // Carte des magies dense (demande du propriétaire : la page était « trop aérée ») : la carte du grand écran est large et basse, et aucune pastille n'en
-// touche une autre, ni sur grand écran (carte de 58 à 62rem de large) ni sur écran étroit (téléphone de 320px à 60rem). Les largeurs reprennent
-// styles/magie/orbit.css (9rem, 8rem pour l'hexagone élémentaire, 12rem pour le Potentiel Illimité ; en cqw sous 60rem), hauteur 2.9rem.
+// touche une autre, ni sur grand écran ni sur écran étroit (téléphone de 320px à 60rem). Grand écran : largeur et hauteur de chaque pastille en cqw
+// (--l, --h, posées par MagiesConstellation.astro depuis TAILLES), donc proportionnelles à la carte ; sous 60rem, styles/magie/orbit.css
+// (9rem, 8rem pour l'hexagone élémentaire, 12rem pour le Potentiel Illimité, plafonnées en cqw), hauteur 2.9rem.
 test('carte des magies : compacte, et aucune pastille ne touche une autre', options, () => {
   const ratio = Number(indexMagies.match(/\.magies-orbite \{[^}]*aspect-ratio: 1000 \/ (\d+);/)?.[1]);
   const hauteurEtroite = Number(indexMagies.match(/\.magies-orbite \{ height: ([\d.]+)rem; aspect-ratio: auto; \}/)?.[1]);
@@ -71,32 +72,32 @@ test('carte des magies : compacte, et aucune pastille ne touche une autre', opti
   assert.ok(hauteurEtroite > 0 && hauteurEtroite <= 40, `carte étroite de ${hauteurEtroite}rem`);
   const noeuds = [...indexMagies.matchAll(/class="magies-orbite__position magies-orbite__position--([\w-]+) couleur-magie-[\w-]+" data-magie="[^"]*" style="([^"]+)"[^]*?aria-label="([^"]+)"/g)].map(([, region, style, nom]) => {
     const v = (axe) => Number(style.match(new RegExp(`--${axe}: ([\\d.]+)%`))[1]) / 100;
-    return { region, nom, x: v('x'), y: v('y'), mx: v('mx'), my: v('my') };
+    const cqw = (axe) => Number(style.match(new RegExp(`--${axe}: ([\\d.]+)cqw`))?.[1]) / 100;
+    return { region, nom, x: v('x'), y: v('y'), mx: v('mx'), my: v('my'), l: cqw('l'), h: cqw('h') };
   });
   assert.equal(noeuds.length, 15);
-  const ecart = (a, b) => Math.max(Math.abs(a.cx - b.cx) - (a.l + b.l) / 2, Math.abs(a.cy - b.cy) - 2.9);
-  const verifier = (boites, ecran) => {
+  const ecart = (a, b) => Math.max(Math.abs(a.cx - b.cx) - (a.l + b.l) / 2, Math.abs(a.cy - b.cy) - (a.h + b.h) / 2);
+  // seuil : 0.25rem entre deux pastilles ; en unités de la carte sur grand écran (une carte de 62rem, la plus large : 1000 / 62 unités par rem)
+  const verifier = (boites, ecran, seuil) => {
     for (const [i, a] of boites.entries()) {
       assert.ok(a.cx - a.l / 2 >= 0 && a.cx + a.l / 2 <= a.largeur + 1e-9, `${ecran} : pastille hors de la carte (${a.nom})`);
-      for (const b of boites.slice(i + 1)) assert.ok(ecart(a, b) >= 0.25, `${ecran} : pastilles qui se touchent (${a.nom} / ${b.nom})`);
+      for (const b of boites.slice(i + 1)) assert.ok(ecart(a, b) >= seuil, `${ecran} : pastilles qui se touchent (${a.nom} / ${b.nom} : ${ecart(a, b).toFixed(2)} < ${seuil.toFixed(2)})`);
     }
   };
-  for (const vue of [60, 64, 90]) {
-    const largeur = Math.min(vue, 64) - 2;
-    const hauteur = (largeur * ratio) / 1000;
-    const l = { potentiel: Math.min(12, 0.32 * vue), elementaire: Math.min(8, 0.16 * vue) };
-    verifier(noeuds.map((n) => ({ ...n, largeur, cx: n.x * largeur, cy: n.y * hauteur, l: l[n.region] ?? Math.min(9, 0.16 * vue) })), `écran de ${vue}rem`);
-  }
+  // grand écran : tout est proportionnel à la carte, une largeur suffit (unités de la carte, 1000 de large)
+  assert.ok(noeuds.every((n) => n.l > 0 && n.h > 0), 'grand écran : --l et --h en cqw sur chaque pastille');
+  verifier(noeuds.map((n) => ({ ...n, largeur: 1000, cx: n.x * 1000, cy: (n.y * 1000 * ratio) / 1000, l: n.l * 1000, h: n.h * 1000 })), 'grand écran', (0.25 * 1000) / 62);
   for (const vue of [20, 22.5, 24.375, 30, 45, 59.9]) {
     const largeur = Math.min(vue, 64) - 2;
     const l = { potentiel: Math.min(12, 0.8 * largeur), elementaire: Math.min(8, 0.36 * largeur) };
-    verifier(noeuds.map((n) => ({ ...n, largeur, cx: n.mx * largeur, cy: n.my * hauteurEtroite, l: l[n.region] ?? Math.min(9, 0.46 * largeur) })), `écran étroit de ${vue}rem`);
+    verifier(noeuds.map((n) => ({ ...n, largeur, cx: n.mx * largeur, cy: n.my * hauteurEtroite, l: l[n.region] ?? Math.min(9, 0.46 * largeur), h: 2.9 })), `écran étroit de ${vue}rem`, 0.25);
   }
 });
 
 // Relations de la carte (lib/magie-fleches.mjs, demandes du propriétaire) : cachées, affichées au survol d'une magie (les siennes seulement), une épée
-// ou un bouclier au bout des traits ; la disposition du grand écran est telle qu'aucun trait ni aucune boucle ne passe sous une autre pastille, pour une
-// carte de 58 à 62rem de large (pastilles de 9rem, 8rem pour les éléments, 12rem pour le Potentiel Illimité, 2.9rem de haut). Sous 60rem : rien.
+// ou un bouclier au bout des traits ; la disposition du grand écran est telle qu'aucun trait ni aucune boucle ne passe sous une autre pastille (tailles
+// des pastilles en cqw, --l et --h : la géométrie est la même à toute largeur de carte), et chaque pointe arrive près de sa pastille (forme de pilule),
+// y compris par une extrémité (gauche ou droite). Sous 60rem : rien.
 test('carte des magies : une relation par paire liée dans la base, au survol seulement, et aucun trait sous une autre pastille', options, () => {
   const { magies } = chargerMagies(ouvrirBase());
   const { liaisons, boucles } = liaisonsEntreMagies([...magies.values()]);
@@ -132,26 +133,67 @@ test('carte des magies : une relation par paire liée dans la base, au survol se
   // géométrie
   const hauteur = Number(indexMagies.match(/class="magies-orbite__relations" viewBox="0 0 1000 (\d+)"/)?.[1]);
   assert.equal(hauteur, Number(indexMagies.match(/\.magies-orbite \{[^}]*aspect-ratio: 1000 \/ (\d+);/)?.[1]), 'SVG aux proportions de la carte');
+  // centre et taille de chaque pastille en unités de la carte (1 unité = 0.1cqw)
   const centres = new Map([...indexMagies.matchAll(/class="magies-orbite__position magies-orbite__position--([\w-]+) couleur-magie-[\w-]+" data-magie="([\w-]+)" style="([^"]+)"/g)].map(([, region, k, style]) => {
     const v = (nom) => Number(style.match(new RegExp(`--${nom}: ([\\d.]+)%`))[1]) / 100;
-    return [k, { region, x: v('x') * 1000, y: v('y') * hauteur }];
+    const cqw = (nom) => Number(style.match(new RegExp(`--${nom}: ([\\d.]+)cqw`))[1]) * 10;
+    return [k, { region, x: v('x') * 1000, y: v('y') * hauteur, w: cqw('l'), h: cqw('h') }];
   }));
-  for (const largeurRem of [58, 62]) {
-    const unite = 1000 / largeurRem;
-    const boite = ({ region, x, y }, marge = 0) => {
-      const w = (region === 'potentiel' ? 12 : region === 'elementaire' ? 8 : 9) * unite;
-      const h = 2.9 * unite;
-      return [x - w / 2 - marge, y - h / 2 - marge, x + w / 2 + marge, y + h / 2 + marge];
-    };
-    for (const { a, b, p, q } of traits) {
-      for (const [k, c] of centres) if (k !== a && k !== b) assert.ok(!segmentCoupe(p, q, boite(c, 4)), `${largeurRem}rem : le trait ${a} – ${b} passe sous ${k}`);
+  const boite = ({ x, y, w, h }, marge = 0) => [x - w / 2 - marge, y - h / 2 - marge, x + w / 2 + marge, y + h / 2 + marge];
+  for (const { a, b, p, q } of traits) {
+    for (const [k, c] of centres) if (k !== a && k !== b) assert.ok(!segmentCoupe(p, q, boite(c, 4)), `le trait ${a} – ${b} passe sous ${k}`);
+  }
+  for (const { k, boite: l } of lacets) {
+    for (const [autre, c] of centres) {
+      if (autre === k) continue;
+      const r = boite(c);
+      assert.ok(!(l[0] < r[2] && r[0] < l[2] && l[1] < r[3] && r[1] < l[3]), `la boucle de ${k} touche ${autre}`);
     }
-    for (const { k, boite: l } of lacets) {
-      for (const [autre, c] of centres) {
-        if (autre === k) continue;
-        const r = boite(c);
-        assert.ok(!(l[0] < r[2] && r[0] < l[2] && l[1] < r[3] && r[1] < l[3]), `${largeurRem}rem : la boucle de ${k} touche ${autre}`);
+  }
+  // Pointes, chacune rattachée à la pastille de son trait (classes avec-… de son groupe ; pour un trait, celle des deux qui est la plus proche).
+  // `tete` : où la pointe touche le trait du côté de la pastille ; `dehors` : direction du trait, de la pastille vers l'extérieur.
+  const pilule = ([px, py], { x, y, w, h }) => Math.hypot(Math.max(0, Math.abs(px - x) - (w / 2 - h / 2)), py - y) - h / 2;
+  const svg = indexMagies.slice(indexMagies.indexOf('class="magies-orbite__relations"'), indexMagies.indexOf('class="magies-orbite__liste"'));
+  const pointes = svg.split('<g class="magies-relation ').slice(1).flatMap((groupe) => {
+    const magiesDuGroupe = [...groupe.slice(0, groupe.indexOf('"')).matchAll(/\bavec-([\w-]+)/g)].map((m) => m[1]);
+    const boucle = groupe.startsWith('magies-relation--boucle');
+    const ligne = groupe.match(/<line x1="([-\d.]+)" y1="([-\d.]+)" x2="([-\d.]+)" y2="([-\d.]+)"/)?.slice(1).map(Number);
+    return [...groupe.matchAll(/<g class="magies-relation__(epee|bouclier)" transform="translate\(([-\d.]+) ([-\d.]+)\)(?: rotate\(([-\d.]+)\))?"/g)].map(([, forme, x, y, angle]) => {
+      const t = [Number(x), Number(y)];
+      const k = magiesDuGroupe.reduce((m, c) => (pilule(t, centres.get(c)) < pilule(t, centres.get(m)) ? c : m));
+      let dehors = null;
+      if (!boucle) {
+        // le bout du trait le plus proche de la pointe est de son côté ; dehors : vers l'autre bout
+        const [p1, p2] = [[ligne[0], ligne[1]], [ligne[2], ligne[3]]];
+        const [pres, loin] = Math.hypot(p1[0] - t[0], p1[1] - t[1]) < Math.hypot(p2[0] - t[0], p2[1] - t[1]) ? [p1, p2] : [p2, p1];
+        const n = Math.hypot(loin[0] - pres[0], loin[1] - pres[1]);
+        dehors = forme === 'epee' ? [-Math.cos((Number(angle) * Math.PI) / 180), -Math.sin((Number(angle) * Math.PI) / 180)] : [(loin[0] - pres[0]) / n, (loin[1] - pres[1]) / n];
       }
+      // épée : translate = sa pointe ; bouclier (droit) : translate = son centre, à POINTES.bouclier.centre de la tête le long du trait
+      const tete = forme === 'epee' || boucle ? t : [t[0] - dehors[0] * POINTES.bouclier.centre, t[1] - dehors[1] * POINTES.bouclier.centre];
+      return { k, forme, t, tete, dehors, boucle };
+    });
+  });
+  assert.equal(pointes.filter((p) => !p.boucle).length, liaisons.reduce((n, l) => n + l.pointes[l.a].length + l.pointes[l.b].length, 0));
+  // chaque pointe près de sa pastille (demande du propriétaire : des épées et boucliers loin de Feu et d'Eau, par le côté) : la tête d'une pointe de
+  // trait à au plus 3 unités de la pilule (la marge, comptée le long du trait) ; le centre du bouclier d'une boucle à au plus 3 + 11
+  for (const { k, forme, t, tete, boucle } of pointes) {
+    const d = pilule(boucle ? t : tete, centres.get(k));
+    const plafond = 3 + (boucle ? POINTES.bouclier.centre : 0) + 0.2;
+    assert.ok(d > 0 && d <= plafond, `${forme} de ${k} à ${d.toFixed(1)} unités de sa pastille (au plus ${plafond})`);
+  }
+  // deux pointes de traits d'une même magie ne se touchent pas (encombrement de lib/magie-fleches.mjs : un disque le long du trait)
+  const disque = ({ forme, tete, dehors }) => {
+    const { milieu, rayon } = ENCOMBREMENT[forme];
+    return { centre: [tete[0] + dehors[0] * milieu, tete[1] + dehors[1] * milieu], rayon };
+  };
+  const deTraits = pointes.filter((p) => !p.boucle);
+  for (const [i, x] of deTraits.entries()) {
+    for (const y of deTraits.slice(i + 1)) {
+      if (x.k !== y.k) continue;
+      const [e, f] = [disque(x), disque(y)];
+      const d = Math.hypot(e.centre[0] - f.centre[0], e.centre[1] - f.centre[1]);
+      assert.ok(d >= e.rayon + f.rayon, `${x.k} : deux pointes qui se touchent (${x.forme}, ${y.forme} : ${d.toFixed(1)} unités)`);
     }
   }
 });

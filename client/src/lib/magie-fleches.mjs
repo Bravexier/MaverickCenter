@@ -13,7 +13,7 @@ export const POINTES = {
   bouclier: { recul: 21, centre: 11, droit: true, dessin: 'M -9 -10 Q 0 -8 9 -10 V 1 Q 8.5 7.5 0 11 Q -8.5 7.5 -9 1 Z', arete: 'M 0 -7.5 V 8.5' },
 };
 // Encombrement d'une pointe, pour que deux pointes d'une même pastille ne se touchent pas : un disque de rayon `rayon`, à `milieu` du bout, le long du trait.
-const ENCOMBREMENT = { epee: { milieu: 15, rayon: 8 }, bouclier: { milieu: 11, rayon: 11 } };
+export const ENCOMBREMENT = { epee: { milieu: 15, rayon: 8 }, bouclier: { milieu: 11, rayon: 11 } };
 
 /**
  * @param {{ id: string, resistances: { resistance: { magies: { id: string }[] }, vulnerabilite: { magies: { id: string }[] } } }[]} magies
@@ -56,10 +56,28 @@ const unitaire = (dx, dy) => {
   return [dx / n, dy / n];
 };
 
-/** Point où la demi-droite partant du centre de la pastille dans la direction (ux, uy) sort de la pastille (rectangle w × h), écarté de `marge`. */
-function bord(p, [ux, uy], marge) {
-  const t = Math.min(ux ? p.w / 2 / Math.abs(ux) : Infinity, uy ? p.h / 2 / Math.abs(uy) : Infinity) + marge;
-  return [p.x + ux * t, p.y + uy * t];
+/**
+ * Point où la demi-droite partant de `origine` (dans la pastille) dans la direction (ux, uy) sort de la pastille, écarté de `marge` le long de la
+ * demi-droite. La pastille est une pilule (w × h, extrémités en demi-cercles de rayon h / 2, comme `border-radius: var(--radius-pill)`), pas un rectangle :
+ * un trait qui arrive par une extrémité ou près d'un coin s'arrête à `marge` du dessin, pas du rectangle qui l'entoure.
+ * `cote` : -1 ou 1 quand la demi-droite sort par l'extrémité gauche ou droite, 0 par le haut ou le bas.
+ * Suppose une pastille plus large que haute (w ≥ h, extrémités à gauche et à droite) : c'est le cas de toutes celles de la carte.
+ */
+export function bord(p, [ux, uy], marge, origine = [p.x, p.y]) {
+  const r = Math.min(p.h, p.w) / 2;
+  const droit = p.w / 2 - r; // demi-longueur de la partie droite
+  const [ox, oy] = origine;
+  if (uy) {
+    const t = (p.y + Math.sign(uy) * r - oy) / uy;
+    const x = ox + ux * t;
+    if (Math.abs(x - p.x) <= droit) return { point: [x + ux * marge, oy + uy * (t + marge)], cote: 0 };
+  }
+  const cote = Math.sign(ux) || 1;
+  const dx = ox - (p.x + cote * droit);
+  const dy = oy - p.y;
+  const b = dx * ux + dy * uy;
+  const t = -b + Math.sqrt(Math.max(0, b * b - (dx * dx + dy * dy - r * r))) + marge;
+  return { point: [ox + ux * t, oy + uy * t], cote };
 }
 
 /** Pointe `forme` posée en `bout`, le trait arrivant selon (ux, uy) (vers la pastille) : attribut transform du dessin de POINTES. */
@@ -130,20 +148,36 @@ function bouclesPossibles(p) {
  *   boucles: { id: string, chemin: string, boite: number[], pointes: { id: string, forme: string, transform: string }[] }[] }}
  */
 export function geometrieDesLiaisons({ liaisons, boucles }, pastilles, { hauteur, marge = 3 }) {
-  // chaque bout : sur le bord de sa pastille, dans la direction de l'autre ; `ecart` l'éloigne le long du trait quand deux pointes d'une même
-  // pastille se toucheraient (traits presque parallèles)
+  // chaque bout : sur le bord de sa pastille, sur le trait qui joint les origines des deux bouts (au départ, les centres des pastilles). Quand deux
+  // pointes d'une même pastille se toucheraient (traits presque parallèles) :
+  //   - si elles sortent par la même extrémité (gauche ou droite), on écarte leurs origines verticalement (`decalage`, borné) : les pointes glissent
+  //     le long de l'extrémité et restent à `marge` de la pastille (sinon, une extrémité n'ayant que h de haut, on les repoussait loin de la pastille) ;
+  //   - ensuite, celles qui se touchent encore (extrémités différentes, ou plus de place pour glisser) : `ecart` éloigne la pointe le long de son trait.
   const bouts = [];
   const liees = liaisons.flatMap((liaison) => {
     const a = pastilles.get(liaison.a);
     const b = pastilles.get(liaison.b);
     if (!a || !b) return [];
-    const u = unitaire(b.x - a.x, b.y - a.y);
-    const v = [-u[0], -u[1]];
-    const deA = { id: liaison.a, bord: bord(a, u, marge), dehors: u, formes: liaison.pointes[liaison.a] ?? [], ecart: 0 };
-    const deB = { id: liaison.b, bord: bord(b, v, marge), dehors: v, formes: liaison.pointes[liaison.b] ?? [], ecart: 0 };
+    const deA = { id: liaison.a, p: a, formes: liaison.pointes[liaison.a] ?? [], ecart: 0, decalage: 0 };
+    const deB = { id: liaison.b, p: b, formes: liaison.pointes[liaison.b] ?? [], ecart: 0, decalage: 0 };
+    deA.autre = deB;
+    deB.autre = deA;
     bouts.push(deA, deB);
     return [{ liaison, deA, deB }];
   });
+  const origine = (bout) => [bout.p.x, bout.p.y + bout.decalage];
+  const placer = (bout) => {
+    const o = origine(bout);
+    const q = origine(bout.autre);
+    bout.dehors = unitaire(q[0] - o[0], q[1] - o[1]);
+    const { point, cote } = bord(bout.p, bout.dehors, marge, o);
+    bout.bord = point;
+    bout.cote = cote;
+  };
+  const placerTout = () => bouts.forEach(placer);
+  placerTout();
+  // décalage vertical maximal d'une origine : la moitié du rayon de l'extrémité
+  const decalageMax = (bout) => Math.min(bout.p.h, bout.p.w) / 4;
   const encombrement = (bout) =>
     bout.formes.map((f) => {
       const { milieu, rayon } = ENCOMBREMENT[f];
@@ -152,13 +186,31 @@ export function geometrieDesLiaisons({ liaisons, boucles }, pastilles, { hauteur
     });
   const seTouchent = (x, y) =>
     encombrement(x).some((e) => encombrement(y).some((f) => Math.hypot(e.centre[0] - f.centre[0], e.centre[1] - f.centre[1]) < e.rayon + f.rayon + 1));
-  for (let tour = 0; tour < 20; tour++) {
+  // 1. glissement le long d'une extrémité commune, jusqu'à ce qu'aucun décalage ne change sur un tour (bilan net : avec trois pointes ou plus, celle du
+  //    milieu est poussée vers le haut par une paire et vers le bas par l'autre)
+  for (let tour = 0; tour < 60; tour++) {
+    const avant = bouts.map((bout) => bout.decalage);
+    for (const [i, x] of bouts.entries()) {
+      for (const y of bouts.slice(i + 1)) {
+        if (x.id !== y.id || !x.cote || x.cote !== y.cote || !seTouchent(x, y)) continue;
+        // le plus haut monte, l'autre descend (à égalité, celui qui part le plus vers le haut)
+        const [haut, bas] = x.bord[1] < y.bord[1] || (x.bord[1] === y.bord[1] && x.dehors[1] <= y.dehors[1]) ? [x, y] : [y, x];
+        haut.decalage = Math.max(-decalageMax(haut), haut.decalage - 1);
+        bas.decalage = Math.min(decalageMax(bas), bas.decalage + 1);
+      }
+    }
+    if (bouts.every((bout, i) => bout.decalage === avant[i])) break;
+    placerTout();
+  }
+  // 2. les pointes qui se touchent encore (extrémités différentes, ou plus de place pour glisser) : on éloigne le long de son trait le bout déjà le
+  //    plus éloigné (le second à égalité), pour qu'il passe devant l'autre ; les éloigner ensemble ne les séparerait pas, les traits étant presque
+  //    parallèles
+  for (let tour = 0; tour < 40; tour++) {
     let bouge = false;
     for (const [i, x] of bouts.entries()) {
       for (const y of bouts.slice(i + 1)) {
         if (x.id !== y.id || !seTouchent(x, y)) continue;
-        // on éloigne le bout le moins éloigné (le second à égalité)
-        (x.ecart < y.ecart ? x : y).ecart += 3;
+        (x.ecart > y.ecart ? x : y).ecart += 3;
         bouge = true;
       }
     }
