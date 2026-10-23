@@ -344,9 +344,9 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   ligne typée de `classes[].maitrises[]` reçoit sa `source` (`<classe>#maitrise-arme:<rang>`, l'identifiant que la fiche enregistre) et ses `parts`,
   chaque don qui en a, `maitrise: { parts }` ; une part est `{ rang, genre: 'imposee' | 'choix' | 'suit', points (signés), famille (imposée, sinon
   null), options (familles d'une part à choisir, dans l'ordre d'`arme_famille`), limite (par famille, R150 ; null) }` ; un don de `capacite_nm_gagne`
-  reçoit `nm_gagnes` (R154). Une famille non maîtrisable (R45) ou un don qui suit la maîtrise au choix d'une classe qui n'en a pas exactement une
-  (R151) arrête le build. `au_choix.familles` reste (l'arme du bonus « de l'arme choisie », R152) ; plus de total de points par don (l'ancien
-  `points_maitrise` du quota de R32) ;
+  reçoit `nm_gagnes` (R154). Une famille non maîtrisable (R45), une source à plus d'une part à choisir (ses choix se rangent par source et numéro
+  du point) ou un don qui suit la maîtrise au choix d'une classe qui n'en a pas exactement une (R151) arrête le build. `au_choix.familles` reste
+  (l'arme du bonus « de l'arme choisie », R152) ; plus de total de points par don (l'ancien `points_maitrise` du quota de R32) ;
   rien de recalculé : les seuls textes lus le sont par `lib/maitrise-arme.mjs` (parts de maîtrise d'un don, paliers du Pugilat ; `test/maitrise-arme.test.mjs`
   le rejoue sur toute la base) et par `lib/resistance-texte.mjs` (crans et immunités d'un don ; `test/resistance-texte.test.mjs` le rejoue sur toute la base et
   vérifie, sur les textes de l'import, l'accord des onglets avec les résistances des ethnies de la fiche auto, `ethnie_resistance`). Les balises du

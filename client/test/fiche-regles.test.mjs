@@ -170,7 +170,7 @@ test('sources de maîtrise d’arme (décisions R148, R151, R154) : les parts de
   assert.deepEqual(accessoire, [{ cible: 'maitrise_arme', cible_id: null, valeur: 1, choix: true }]);
 });
 
-test('sources de maîtrise d’arme incohérentes : le build s’arrête (une famille non maîtrisable, R45 ; un don qui suit une classe sans exactement une maîtrise au choix, R151)', () => {
+test('sources de maîtrise d’arme incohérentes : le build s’arrête (une famille non maîtrisable, R45 ; une source à deux parts à choisir ; un don qui suit une classe sans exactement une maîtrise au choix, R151)', () => {
   const dossier = mkdtempSync(join(tmpdir(), 'maverick-fiche-regles-maitrises-'));
   try {
     const copie = (sql, ...parametres) => {
@@ -185,6 +185,12 @@ test('sources de maîtrise d’arme incohérentes : le build s’arrête (une fa
       SELECT source_id, rang, 'arme-de-monstres' FROM maitrise_arme_part WHERE genre = 'choix' LIMIT 1`);
     assert.throws(() => chargerReglesDeFiche(monstres), /n'est pas maîtrisable \(R45\)/);
     monstres.close();
+    // deux parts à choisir dans une même source : la fiche range ses choix par (source, numéro du point), le point 1 compterait deux fois
+    const deuxChoix = copie(`INSERT INTO maitrise_arme_part (source_id, rang, capacite_id, genre, points)
+      SELECT source_id, (SELECT max(x.rang) + 1 FROM maitrise_arme_part x WHERE x.source_id = m.source_id), capacite_id, 'choix', 1
+      FROM maitrise_arme_part m WHERE genre = 'choix' AND capacite_id IS NOT NULL ORDER BY source_id LIMIT 1`);
+    assert.throws(() => chargerReglesDeFiche(deuxChoix), /maitrise_arme_part : .* a 2 parts à choisir \(\d+, \d+\) : une seule par source/);
+    deuxChoix.close();
     const suit = db.prepare("SELECT k.classe_id FROM maitrise_arme_part m JOIN capacite k ON k.id = m.capacite_id WHERE m.genre = 'suit' LIMIT 1").get();
     const sansChoix = copie(`UPDATE classe_maitrise_arme SET forme = 'nommee', arme = 'Épée', arme_cle = 'epee', categorie = NULL, sauf = NULL, sauf_cle = NULL
       WHERE classe_id = ? AND forme = 'au_choix'`, suit.classe_id);

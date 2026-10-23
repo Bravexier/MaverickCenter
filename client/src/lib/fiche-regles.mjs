@@ -334,9 +334,13 @@ function reglesDeLaBase(db) {
       options: (optionsDesParts.get(p.source_id) ?? []).filter((o) => o.rang === p.rang).map((o) => o.arme_famille_id), limite: p.limite_famille,
     }));
   // une incohérence des tables arrête le build (comme FAMILLES_DES_SAUF) : une famille imposée ou proposée qui n'est pas maîtrisable (jamais ARME DE
-  // MONSTRES, R45) ; un don qui suit la maîtrise au choix de sa classe (R151) quand sa classe n'a pas exactement une ligne `au_choix`
+  // MONSTRES, R45) ; une source qui a plus d'une part à choisir (la fiche range ses choix par source et numéro du point : le point 1 compterait deux
+  // fois ; le site de dev la refuse à la saisie, serveur/edition-maitrises.mjs#illisiblesDuDon) ; un don qui suit la maîtrise au choix de sa classe
+  // (R151) quand sa classe n'a pas exactement une ligne `au_choix`
   const maitrisables = new Set(famillesDArmes.filter((f) => f.maitrisable).map((f) => f.id));
   for (const [source, parts] of partsDesSources) {
+    const aChoisir = parts.filter((p) => p.genre === 'choix').map((p) => p.rang);
+    if (aChoisir.length > 1) throw new Error(`maitrise_arme_part : ${source} a ${aChoisir.length} parts à choisir (${aChoisir.join(', ')}) : une seule par source, la fiche range ses choix par source et numéro du point`);
     for (const p of parts) {
       const nonMaitrisable = [p.famille, ...p.options].find((id) => id !== null && !maitrisables.has(id));
       if (nonMaitrisable) throw new Error(`maitrise_arme_part : ${source}, part ${p.rang} : la famille « ${nonMaitrisable} » n'est pas maîtrisable (R45)`);

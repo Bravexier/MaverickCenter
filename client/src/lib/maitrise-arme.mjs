@@ -208,12 +208,27 @@ const FORMES_DES_DONS = new Map([
  * @param {{ id: string, nom: string, maitrisable: boolean|number, categorie: string|null }[]} familles arme_famille, dans son ordre
  */
 export function lireDon(effet, familles) {
+  return lectureDuDon(effet, familles)?.source ?? null;
+}
+
+/**
+ * Les parts à choisir (genre 'choix') qu'écrit le texte d'un don, chacune telle qu'écrite (« +2 points de maîtrise à répartir »), dans l'ordre du texte ;
+ * [] sans part à choisir. Une source n'en garde qu'une : la fiche range ses choix par (source, numéro du point) (serveur/edition-maitrises.mjs#illisiblesDuDon).
+ */
+export function choixEcritsDuDon(effet, familles) {
+  const lu = lectureDuDon(effet, familles);
+  return lu ? lu.source.parts.flatMap((p, i) => (p.genre === 'choix' ? [lu.ecrits[i]] : [])) : [];
+}
+
+/** lireDon, avec chaque part telle qu'écrite (`ecrits`, dans l'ordre des parts) ; null comme lui. */
+function lectureDuDon(effet, familles) {
   const t = plier(effet);
   const trouvees = occurrences(t);
   if (!trouvees.length) return null;
   const toutes = maitrisables(familles).map((f) => f.id);
   const parts = [];
   const sortes = [];
+  const ecrits = [];
   const nonLues = [];
   trouvees.forEach((m, i) => {
     const points = signe(m) * Number(m[2]);
@@ -237,9 +252,10 @@ export function lireDon(effet, familles) {
     if (part && (part.genre !== 'choix' || points > 0)) {
       parts.push(part);
       sortes.push(sorte);
+      ecrits.push(ecrit());
     } else nonLues.push(ecrit());
   });
   const cle = [...new Set(sortes)].join('+');
   const forme = !parts.length ? null : (FORMES_DES_DONS.get(cle)?.(parts) ?? 'mixte');
-  return avecNonLues({ forme, parts: rangees(parts) }, nonLues);
+  return { source: avecNonLues({ forme, parts: rangees(parts) }, nonLues), ecrits };
 }

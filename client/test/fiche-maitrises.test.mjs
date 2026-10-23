@@ -155,7 +155,7 @@ test('maquette, exemple 1 : Barde Ménestrel et Mage Bleu Mage saphir — Ménes
   const attente = M.choixEnAttente(regles, sans).filter((c) => c.nature === 'maitrise' || (c.nature === 'acquis' && c.cle.includes('capacites/')));
   assert.deepEqual(attente, [
     { nature: 'maitrise', cle: M.cleDeChoix.maitrise(ligne('mage-bleu', 1), 1), libelle: 'Maîtrise à choisir : Mage Bleu (maîtrise 1) (1 point)' },
-    { nature: 'maitrise', cle: M.cleDeChoix.maitrise(ligne('mage-bleu', 1), 1), libelle: 'Maîtrise Mage saphir (Mage Bleu) : +2 suit la maîtrise au choix de Mage Bleu, pas encore choisie' },
+    { nature: 'maitrise', cle: M.cleDeChoix.maitrise(ligne('mage-bleu', 1), 1), libelle: 'Maîtrise Mage saphir (Mage Bleu) : +2 suit la maîtrise au choix du Mage Bleu, pas encore choisie' },
     { nature: 'acquis', cle: M.cleDeChoix.acquis('capacites/barde-menestrel', 1), libelle: 'Acquis Ménestrel (Barde) : +6 % ARC : Arc ou Arme Légère' },
     { nature: 'acquis', cle: M.cleDeChoix.acquis('capacites/mage-bleu-mage-saphir', 1), libelle: 'Acquis Mage saphir (Mage Bleu) : +7 % — choisissez d’abord la maîtrise au choix de Mage Bleu' },
   ]);
@@ -284,7 +284,7 @@ test('décision R151 : Mage Grenat suit la maîtrise au choix du Mage Rouge (HAC
   const attend = { ...epeiste, maitrise_choix: [] };
   assert.equal(source(attend, 'capacites/guerrier-epeiste').etat, 'attente');
   assert.deepEqual(M.compteurDeMaitrise(regles, attend), { points: 4, aChoisir: 2, refus: 0 }, '1 + 1 + (2 + 1 − 1) ; le point du Guerrier et le −1 qui le suit');
-  assert.ok(M.choixEnAttente(regles, attend).some((c) => c.libelle === 'Maîtrise Épéiste (Guerrier) : -1 suit la maîtrise au choix de Guerrier, pas encore choisie'));
+  assert.ok(M.choixEnAttente(regles, attend).some((c) => c.libelle === 'Maîtrise Épéiste (Guerrier) : −1 suit la maîtrise au choix du Guerrier, pas encore choisie'));
   accordAvecLaBase(attend, 'Épéiste sans la maîtrise au choix');
 });
 

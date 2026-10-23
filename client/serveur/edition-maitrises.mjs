@@ -5,7 +5,7 @@
 // lots notés avant elles (sourcesRefaitesParLeLot, crochet `apresLeLot` de rejouerLeJournal), hors journal ; la résolution d'un lot en conflit refait
 // toutes celles qu'il touche, notées dans son nouveau lot (sourcesRefaitesParLaResolution, sourcesAvantLaSuppression).
 // test/maitrise-arme-sources.test.mjs rejoue le lecteur sur toute la base : ces tables doivent toujours être les siennes.
-import { famillesDuNom, idDeSourceDeClasse, lireDon, lireLigneDeClasse, nmGagnesDuDon } from '../src/lib/maitrise-arme.mjs';
+import { choixEcritsDuDon, famillesDuNom, idDeSourceDeClasse, lireDon, lireLigneDeClasse, nmGagnesDuDon } from '../src/lib/maitrise-arme.mjs';
 import { cleDe, ErreurJournal, lireLigne, structure } from './edition-journal.mjs';
 
 /** Les tables que les sources de maîtrise d'arme remplissent (scripts/mise-a-jour-github.mjs#tablesDuLot en recopie la liste). */
@@ -78,12 +78,18 @@ export function illisiblesDeLaClasse(lignes, familles) {
 
 /**
  * Les écritures de points de maîtrise d'arme de l'effet d'un don que le lecteur ne lit pas, une phrase chacune ; [] quand tout se lit ou que l'effet
- * ne parle pas de points de maîtrise d'arme.
+ * ne parle pas de points de maîtrise d'arme. Plus d'une part à choisir (« +2 points de maîtrise à répartir, +1 point de maîtrise d'arme de contact. ») :
+ * une phrase qui les cite, car la fiche range ses choix par (source, numéro du point) et compterait deux fois le point 1 (vue v_personnage_maitrise_arme,
+ * lib/fiche-moteur.mjs). C'est une limite du modèle, pas une règle du jeu (session principale, 2026-10-23, étendant « Refuser à la saisie »).
  */
 export function illisiblesDuDon(nom, effet, familles) {
-  return (lireDon(effet, familles)?.non_lues ?? []).map((ecrit) => `Maîtrise illisible dans « ${ecrit} » (effet de « ${nom} ») : ${/^[-−]/.test(ecrit)
+  const nonLues = (lireDon(effet, familles)?.non_lues ?? []).map((ecrit) => `Maîtrise illisible dans « ${ecrit} » (effet de « ${nom} ») : ${/^[-−]/.test(ecrit)
     ? "un retrait de points ne se lit que sur une famille d'armes nommée ou « l'autre arme choisie »."
     : "le site attend une famille d'armes maîtrisable, une catégorie (contact, distance), « à répartir » ou « l'arme déterminée avant »."}`);
+  const choix = choixEcritsDuDon(effet, familles);
+  return choix.length > 1
+    ? [...nonLues, `Maîtrise illisible dans ${guillemets(choix)} (effet de « ${nom} ») : le site ne sait garder qu'un seul choix de familles par don.`]
+    : nonLues;
 }
 
 const cleDePart = (l) => JSON.stringify([l.source_id, l.rang]);

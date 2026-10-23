@@ -64,7 +64,7 @@ CREATE TABLE capacite_nm_gagne (
   nm           INTEGER NOT NULL CHECK (nm >= 1)
 ) STRICT, WITHOUT ROWID;
 
--- lignes écrites par le lecteur (lib/maitrise-arme.mjs) rejoué sur la base de la version 71
+-- lignes écrites par le lecteur (lib/maitrise-arme.mjs) rejoué sur la base de dev en version 73
 
 INSERT INTO maitrise_arme_part (source_id, rang, capacite_id, classe_id, classe_rang, genre, points, arme_famille_id, limite_famille) VALUES
   ('capacites/anansi-cemies', 1, 'capacites/anansi-cemies', NULL, NULL, 'choix', 2, NULL, NULL),

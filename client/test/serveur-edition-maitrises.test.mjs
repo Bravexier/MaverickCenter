@@ -250,6 +250,33 @@ test('maîtrise illisible dans l’effet d’un don (« Refuser à la saisie »,
   sourcesJustes(base);
 });
 
+test('un don à deux parts à choisir (limite du modèle : un choix de la fiche se range par source et numéro du point) : modifié ou créé, 409 qui les cite, rien n’est écrit ; une part à choisir et une imposée : accepté', () => {
+  const base = vivante();
+  const id = creerDon(base, 'classes/archer', 'Essai deux choix', '+7% Arc.');
+  const nom = q(base, 'SELECT nom FROM capacite WHERE id = ?', id)[0].nom;
+  const avant = etatDesMaitrises(base);
+  const effet = '+2 points de maîtrise à répartir, +1 point de maîtrise d\'arme de contact.';
+  const modifie = appel(base, [{ op: 'modifier', table: 'capacite', cle: { id }, valeurs: { effet } }]);
+  assert.equal(modifie.statut, 409, JSON.stringify(modifie.corps));
+  assert.equal(erreurDe(modifie), `operations[0] : Maîtrise illisible dans « +2 points de maîtrise à répartir », « +1 point de maîtrise d'arme de contact » (effet de « ${nom} ») :`
+    + " le site ne sait garder qu'un seul choix de familles par don.");
+  assert.deepEqual(etatDesMaitrises(base), avant, 'rien n’est écrit');
+  // une écriture illisible et deux parts à choisir : les deux phrases
+  const lesDeux = appel(base, [{ op: 'modifier', table: 'capacite', cle: { id }, valeurs: { effet: '+1 maîtrise Truc, +1 point de maîtrise à répartir, +1 point de maîtrise à distance.' } }]);
+  assert.equal(lesDeux.statut, 409);
+  assert.match(erreurDe(lesDeux), /« \+1 maîtrise Truc » .* Maîtrise illisible dans « \+1 point de maîtrise à répartir », « \+1 point de maîtrise à distance » .*un seul choix de familles par don\.$/);
+  const nouveau = nomLibre(base, 'classes/archer', 'Essai créé deux choix');
+  const cree = appel(base, [{ op: 'creer', entite: 'capacite', valeurs: { classe_id: 'classes/archer', niveau: '20', nom: nouveau, type: 'Passif', effet } }]);
+  assert.equal(cree.statut, 409, JSON.stringify(cree.corps));
+  assert.match(erreurDe(cree), new RegExp(`\\(effet de « ${nouveau} »\\) : le site ne sait garder qu'un seul choix de familles par don\\.`));
+  assert.deepEqual(q(base, 'SELECT id FROM capacite WHERE classe_id = ? AND nom = ?', 'classes/archer', nouveau), [], 'le don n’est pas créé');
+  assert.deepEqual(etatDesMaitrises(base), avant);
+  // une seule part à choisir, avec une imposée (nommee_et_categorie) : accepté comme avant
+  modifierDon(base, id, '+2 points de maîtrise Arcs, +1 point de maîtrise d\'arme de contact.');
+  assert.deepEqual(partsDe(base, id).map((p) => p.genre), ['imposee', 'choix']);
+  sourcesJustes(base);
+});
+
 test('API REST /api/v1/ : un PATCH qui écrirait une maîtrise illisible dans un don est refusé de même (409), par le service d’édition', () => {
   const base = vivante();
   const id = creerDon(base, 'classes/archer', 'Essai API illisible', '+7% Arc.');

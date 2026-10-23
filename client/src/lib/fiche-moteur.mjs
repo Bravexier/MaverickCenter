@@ -1989,8 +1989,8 @@ export function choixEnAttente(regles, fiche) {
     attente.push({ nature: 'accessoire', cle: cleDeChoix.accessoire(e.emplacement), libelle: `Accessoire ${e.nom} : ${quoi} à choisir` });
   }
   // les maîtrises d'armes (décisions R148, R151) : les points sans famille de chaque source (« Maîtrise à choisir : <source> (N point(s)) »), et ce qui
-  // suit une maîtrise au choix pas encore posée (« … suit la maîtrise au choix de <classe>, pas encore choisie ») ; l'accessoire : plus haut
-  const signe = (n) => (n > 0 ? `+${n}` : String(n));
+  // suit une maîtrise au choix pas encore posée (« … −1 suit la maîtrise au choix du Guerrier, pas encore choisie », signe et article comme la carte :
+  // pointsSignes, duNomDeClasse) ; l'accessoire : plus haut
   for (const s of sourcesDeMaitrise(regles, fiche)) {
     if (s.type === 'accessoire') continue;
     const vide = s.parts.flatMap((p) => p.choisis ?? []).find((c) => !c.famille);
@@ -1998,7 +1998,7 @@ export function choixEnAttente(regles, fiche) {
     for (const p of s.parts.filter((x) => x.genre === 'suit' && !x.suit.famille)) {
       attente.push({
         nature: 'maitrise', cle: p.suit.source ? cleDeChoix.maitrise(p.suit.source, 1) : cleDeChoix.maitrise(s.source, p.rang),
-        libelle: `Maîtrise ${s.titre} : ${signe(p.points)} suit la maîtrise au choix de ${p.suit.classe}, pas encore choisie`,
+        libelle: `Maîtrise ${s.titre} : ${pointsSignes(p.points)} suit la maîtrise au choix ${duNomDeClasse(p.suit.classe)}, pas encore choisie`,
       });
     }
   }

@@ -153,7 +153,7 @@ adaptées, jamais leurs noms ; le lot porte la page `api/v1/<ressource>[/<sous-r
 | `403` | Hors du site de dev (tout `/api/v1/`) ; écriture qui vient d'un autre site (`Sec-Fetch-Site`) |
 | `404` | Ressource, sous-ressource ou ligne inconnue (ou hors de la ressource) ; extension absente au `PATCH` |
 | `405` | Méthode que la ressource n'a pas : `Allow` donne la liste exacte, le corps la raison (lecture seule ; ni le service d'édition ni une opération du lot ne le font, et par quelles méthodes la ressource s'écrit) et les `capacites` |
-| `409` | `If-Match` périmé ; refus du service d'édition (élément cité par d'autres règles, mot-clé protégé, dernier bloc d'un événement, maîtrise d'arme illisible dans une classe ou un don…) |
+| `409` | `If-Match` périmé ; refus du service d'édition (élément cité par d'autres règles, mot-clé protégé, dernier bloc d'un événement, maîtrise d'arme illisible dans une classe ou un don, don à plus d'une part de maîtrise à choisir…) |
 | `413` | Corps de plus de 1 Mio |
 | `415` | Écriture sans `Content-Type: application/json` |
 | `422` | Refusé par la base (contrainte CHECK, UNIQUE, NOT NULL, clé étrangère) ou valeur que les importeurs ne sauraient pas relire |

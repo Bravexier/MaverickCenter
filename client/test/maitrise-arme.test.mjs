@@ -7,7 +7,7 @@ import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import {
-  FAMILLES_DES_SAUF, desSelonLaForce, famillesAuChoix, famillesDuNom, idDeSourceDeClasse, lireDon, lireLigneDeClasse, nmGagnesDuDon,
+  FAMILLES_DES_SAUF, choixEcritsDuDon, desSelonLaForce, famillesAuChoix, famillesDuNom, idDeSourceDeClasse, lireDon, lireLigneDeClasse, nmGagnesDuDon,
 } from '../src/lib/maitrise-arme.mjs';
 import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 
@@ -124,6 +124,17 @@ test('don (R150, R151) : une forme par écriture, lue dans le texte ; null sans 
     '+5% Concentration, +10% Dressage, +2D aux dégâts des armes du familier.', 'Maîtrise les armures intermédiaires.', null]) assert.equal(lireDon(texte, FAMILLES), null, String(texte));
   // les balises du glossaire se lisent par leur texte
   assert.deepEqual(lu('+2 points de maîtrise {{arc|Arcs}}'), { forme: 'nommee', parts: [[1, 'imposee', 2, 'arc', null]] });
+});
+
+test('don : ses parts à choisir telles qu’écrites (choixEcritsDuDon, pour le refus du site de dev d’une source à plus d’une part à choisir)', () => {
+  assert.deepEqual(choixEcritsDuDon("+2 points de maîtrise à répartir, +1 point de maîtrise d'arme de contact.", FAMILLES),
+    ['+2 points de maîtrise à répartir', "+1 point de maîtrise d'arme de contact"]);
+  const deux = lireDon("+2 points de maîtrise à répartir, +1 point de maîtrise d'arme de contact.", FAMILLES);
+  assert.deepEqual([deux.forme, deux.non_lues], ['mixte', undefined], 'lisible : rien dans non_lues, d’où le refus à part');
+  assert.deepEqual(choixEcritsDuDon('+2 points de maîtrise Arme de jet, +1 point de maîtrise {{contact|Arme contact}} au choix', FAMILLES), ['+1 point de maîtrise Arme contact au choix'],
+    'l’imposée n’en est pas ; sans balises');
+  assert.deepEqual(choixEcritsDuDon('+1 point de maîtrise Truc, +2 points de maîtrise Arcs.', FAMILLES), [], 'ni une écriture illisible ni une imposée');
+  assert.deepEqual(choixEcritsDuDon('Gagne 4 niveaux de maîtrise (NM).', FAMILLES), []);
 });
 
 test('R154 : les NM de sorts gagnés qu’écrit un don, « Gagne N niveaux de maîtrise (NM) » ; 0 sinon', () => {
