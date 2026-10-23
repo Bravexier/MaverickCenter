@@ -718,7 +718,7 @@ function construireMaitrises() {
 /** Pourquoi un bonus de sort n'est pas compté (sortDuMoment, lib/sort-bonus-texte.mjs). */
 const RAISONS_DES_SORTS = {
   situation: 'selon la situation', progression: 'progression par niveau à préciser', posture: 'dans une autre posture', des: 'pas de dés écrits',
-  non_chiffre: 'valeur écrite non chiffrée', sans_chakra: 'le sort ne consomme pas de chakra',
+  non_chiffre: 'valeur écrite non chiffrée', sans_chakra: 'le sort ne consomme pas de chakra', armure_cassee: 'armure cassée (R158)',
 };
 
 /**
@@ -1220,6 +1220,7 @@ const RAISONS_DE_L_ACQUIS = {
   sans_artisanat: 'sans métier, pas de compétence d’artisanat (décision R123)',
   inconnue: 'aucune compétence nommée',
   element: 'l’armure transformée par un élément perd ses bonus d’origine (décision R99)',
+  armure_cassee: 'armure cassée (R158)',
 };
 
 function construireAcquisAChoisir() {

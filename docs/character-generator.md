@@ -118,6 +118,10 @@ abandonne.
   parties […] a sa propre solidité et son propre compte d'AP / AM en cas d'attaque précise à cet endroit. A 0 de solidité les AP et AM tombent à 0 ») :
   l'AP et l'AM **de l'armure** y tombent à 0, ailleurs ils valent ceux de l'armure portée (l'armure et son amélioration, ou l'élément et la sienne : R99 ;
   `armureParPartie`) ; le reste de la défense demeure (voir « Défense et dégâts reçus ») ; une armure à solidité unifiée à 0 : ses six parties sont cassées.
+  **Une armure à solidité unifiée à 0 ne donne plus aucun de ses effets** jusqu'à sa réparation (décisions R157, R158 : `armureCassee`) : ni son acquis,
+  ni les bonus de sorts de l'armure élémentaire portée, listés « non comptés » (raison `armure_cassee`, « armure cassée (R158) ») ; une armure à six
+  parties ne l'est jamais. Le malus de la catégorie *Lourd* reste (« Non, elle pèse toujours ») ; la fiche ne lit ni l'initiative, ni la vitesse, ni
+  les croix écrites dans l'effet d'une armure.
   Cassée n'est pas détruite : le curseur remonte (réparation). Une fiche d'avant (une armure par emplacement) garde la première pièce
   dans l'ordre des emplacements, l'armure complète d'abord ; une pièce gardée qui devient l'armure complète (ni l'armure complète, ni la même armure sur
   les six parties) et chaque autre pièce deviennent une ligne datée de ses notes (base vivante, JSON reçu : `armureDesArmures`, `retraitsDeLArmure` ;
@@ -180,7 +184,8 @@ abandonne.
 - **Caractéristiques** : les six sur une seule ligne, chacune avec **deux cases de croix** (cochées = le nombre de croix, R19) ; à deux croix, le score des
   compétences est « N/A ». L'**acquis** d'une compétence **se calcule** (décision R104) : l'entraînement, les dons débloqués (race, ethnie, classes) dont le
   texte écrit « +N% Compétence » sans ambiguïté (`lib/acquis-texte.mjs`, lu au build ; dons de classe passifs seulement, ligne de l'ethnie du tableau de
-  la race comprise : « Bonus compétence » du Drakos), l'armure portée (« +25% Stabilité » ; sauf transformée par un élément, R99), le métier (R33) et
+  la race comprise : « Bonus compétence » du Drakos), l'armure portée (« +25% Stabilité » ; sauf transformée par un élément, R99, ou à cran uni et
+  cassée, R157 et R158 : dans « Bonus d'acquis non comptés », son choix gardé pour quand elle sera réparée), le métier (R33) et
   l'accessoire « Compétence X » (R54), dans cet ordre (un arbitrage),
   rognés à 5 par point de la caractéristique **totale**, le +1 de la magie innée compris (décision R41 ; « le plafond prévaut », R38) ; le nombre s'affiche
   en gras, rouge s'il est rogné, son détail en infobulle (`competencesDe` : `entrainement`, `dons`, `metier`, `accessoire` et leurs `…Brut`). Un bonus « X ou Y »
@@ -399,7 +404,8 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   une valeur **par tour** (« 3d6 dégâts par tour », « 5d6 + 10 soin/tour ») se compte comme une autre, ses bonus **à chaque tour** (décision R113 :
   « 3d6 dégâts par tour » avec +5 → « 3d6 + 5 dégâts par tour », la période écrite après la valeur) ;
   chaque valeur changée en gras souligné, le détail, ce qui n'est pas compté et les rappels des bâtons en infobulle. Les bonus de sorts des dons et
-  des armures élémentaires sont lus dans leur texte au build (`lib/sort-bonus-texte.mjs`) ; un bonus lié à une situation n'est jamais compté. **Sorts
+  des armures élémentaires sont lus dans leur texte au build (`lib/sort-bonus-texte.mjs`) ; un bonus lié à une situation n'est jamais compté, ni celui
+  de l'armure élémentaire d'une armure à cran uni cassée (décision R158 : « non compté », raison `armure_cassee`, « armure cassée (R158) »). **Sorts
   grenades** (décision R114) : « Pardon ?!? » du Grenadier (niveau de classe 20, passif : « Les bombes et les sorts "grenades" font +11 dégâts. ») ajoute
   +11 aux sorts qui portent l'**étiquette** « Sort grenade » (`sort_mot_cle`, migration 0067 : les 14 sorts « Grenade… », `regles.sorts[].mots_cles` ;
   jamais un sort par son nom : `ETIQUETTES_DES_SORTS`) et aux armes de la famille BOMBES (`degatsDArme`, `lib/degats-texte.mjs`). **Sorts préparés**
@@ -505,7 +511,8 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   suite dans la note si elle est trop longue) ; chaque ligne de texte libre est une ligne « Entraînement : … » de la note, et chaque choix d'acquis d'un don
   une ligne « Acquis au choix : <don> : <compétence> » (« … : Arc 6, Calme 4 » pour une répartition ; les deux choix du Templier, R121, deux lignes dans
   l'ordre, une compétence répétée n'est pas reprise ; un choix d'arme, R119, la famille entre parenthèses : « Flétrisseur (Tueur) : Arme Légère
-  (ÉPÉES) », relue si la famille est une de la maîtrise au choix de la classe et la compétence une de ses armes), et chaque résistance au choix une
+  (ÉPÉES) », relue si la famille est une de la maîtrise au choix de la classe et la compétence une de ses armes ; celui d'une armure cassée est écrit
+  comme à l'enregistrement, R157 : `acquisChoixGardes`), et chaque résistance au choix une
   ligne « Résistance au choix : <ligne ou don> : <altération ou magie> » (d'une ligne du tableau de la race : « Écaille draconique : Poison », R124 ; d'un
   don qui laisse une magie au choix ou tirée : « Anansi d'Arcane : Feu », « Résilience (Ocultomancien) : Glace », R137 ; relue si c'est une option du choix
   de la fiche) ; le nom et le type du modèle restent. Les dés de maîtrise
