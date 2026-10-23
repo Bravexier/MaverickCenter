@@ -5,15 +5,21 @@
 // La règle est un CHOIX DU SITE, inspiré des gammes du Google Doc « Alchimie » (lu le 2026-10-16 sur l'original : chaque fiole y a sa teinte, ses
 // paliers du clair au foncé ; le Doc ne suit pas une règle unique, voir docs/content-guide.md, « Ceinture ») : une teinte par AFFINITÉ DE L'ESSENCE de la
 // potion, déclinée selon son NIVEAU D'ALCHIMIE. Ici :
-//   1. la base est la couleur de l'affinité de l'essence de la potion (`recette_ingredient`, rôle « essence », de la première variante de sa recette) :
-//      - un attribut a la couleur du site (lib/attributs-couleurs.mjs : santé, chakra, barrière, corruption, 4ᵉ barre) ;
+//   0. une page de potion dont le propriétaire a choisi la couleur prend la magie qu'il a nommée (COULEURS_CHOISIES_PAR_PAGE, ses retours carte par
+//      carte du 2026-10-23), avant la règle de l'affinité ; aucune autre page n'en déduit rien ;
+//   1. sinon, la base est la couleur de l'affinité de l'essence de la potion (`recette_ingredient`, rôle « essence », de la première variante de sa recette) :
+//      - un attribut a la couleur du site (lib/attributs-couleurs.mjs : santé, chakra, barrière, corruption) ;
 //      - une magie, la couleur de la magie sur le site (sort-format.mjs) ;
+//      - la 4ᵉ barre, la couleur de la magie Nécromancie (MAGIE_DE_L_AFFINITE ; demande du propriétaire du 2026-10-23 : « La fiole verte foncée devrai
+//        avoir la couleur verte foncée en s'inspirant de la couleur de la nécromancie. ») : la classe de la magie, sans couleur ajoutée (la 4ᵉ barre
+//        de la fiche, elle, prend la couleur de la magie qui la donne, Sang ou Nécromancie : lib/fiche-moteur.mjs#attributsDe) ;
 //      - une autre affinité, la couleur que le site lui ajoute (COULEURS_DES_AFFINITES), d'après le Doc : la teinte de la fiole de cette affinité au
 //        palier Super (niveau Avancé, le milieu de sa gamme) ;
 //      - l'affinité Démon, essence de tous les philtres, n'a pas de fiole dans le Doc : un philtre prend la couleur de la caractéristique que nomment les
 //        effets de sa page (« compétences de Force » ; l'Ultime, « +1 Force », la reçoit de sa page : lib/ceinture-db.mjs ;
 //        lib/caracteristiques-postures.mjs) ;
-//      - l'affinité Anti (Huile rage, Remède enragé) n'a pas de couleur dans le Doc : la ligne reste neutre ;
+//      - l'affinité Anti n'a pas de couleur dans le Doc : la ligne reste neutre (ses deux pages, Huile rage et Remède enragé, ont depuis le 2026-10-23
+//        la couleur que le propriétaire leur a choisie, le Vide : étape 0) ;
 //   2. la nuance du niveau est calculée depuis la base (NUANCES_DES_NIVEAUX : mêlée de blanc pour Novice et Apprenti, la base à Avancé, mêlée de noir pour
 //      Expert et Maître ; parts choisies par le site) ;
 //   3. le texte est le plus lisible sur le fond (sort-format.mjs#texteSurCouleur) ; un fond qui n'atteint pas un contraste de 4,5:1 avec lui (seuil
@@ -32,8 +38,42 @@ import { COULEURS_CARACTERISTIQUES } from './caracteristiques-postures.mjs';
 /** L'affinité de l'essence de tous les philtres : sans fiole dans le Doc, un philtre prend la couleur de sa caractéristique. */
 export const AFFINITE_DES_PHILTRES = 'demon';
 
-/** L'attribut de la fiche (lib/attributs-couleurs.mjs) que désigne une affinité d'alchimie (`affinite.id`). */
-export const ATTRIBUT_DE_L_AFFINITE = Object.freeze({ sante: 'sante', chakra: 'chakra', barriere: 'barriere', corruption: 'corruption', '4eme-barre': 'barre4' });
+/**
+ * L'attribut de la fiche (lib/attributs-couleurs.mjs) dont une affinité d'alchimie (`affinite.id`) prend la couleur. La 4ᵉ barre n'en est plus : elle
+ * prend celle d'une magie (MAGIE_DE_L_AFFINITE).
+ */
+export const ATTRIBUT_DE_L_AFFINITE = Object.freeze({ sante: 'sante', chakra: 'chakra', barriere: 'barriere', corruption: 'corruption' });
+
+/**
+ * La magie du site (son nom court, sort-format.mjs) dont une affinité d'alchimie qui n'est pas une magie prend la couleur : la 4ᵉ barre, la Nécromancie
+ * (demande du propriétaire du 2026-10-23 : « La fiole verte foncée devrai avoir la couleur verte foncée en s'inspirant de la couleur de la
+ * nécromancie. »). Sa base est la classe de la magie (`couleur-magie-necromancie`) : aucune couleur n'est ajoutée ni recopiée.
+ */
+export const MAGIE_DE_L_AFFINITE = Object.freeze({ '4eme-barre': 'necromancie' });
+
+/**
+ * Les choix du propriétaire, page de potion par page de potion (`ressource.page_id`) : la base que prennent toutes les potions de la page, avant la
+ * règle de l'affinité de leur essence ; la couleur d'une magie du site (sa classe), jamais une couleur ajoutée. Ses retours du 2026-10-23, carte par
+ * carte (une carte non citée suit la règle) :
+ *   - « Le remède enragé est de la couleur du Vide » ;
+ *   - « Le remêde du saignement devrai être couleur sang » (la magie du Sang du site) ;
+ *   - « Le remêde brûlure devrai couleur feu » ;
+ *   - « L'huile rage devrai être couleur du Vide » ;
+ *   - « L'huile séraphine couleur feu ».
+ * (« Le remède du poison couleur nécromancie » et « L'huile toxique devrait être couleur nécromancie », comme la Fiole verte foncée, suivent l'affinité
+ * 4ᵉ barre : MAGIE_DE_L_AFFINITE.)
+ */
+export const COULEURS_CHOISIES_PAR_PAGE = Object.freeze({
+  'ressources/remede-enrage': Object.freeze({ famille: 'magie', cle: 'vide' }),
+  'ressources/remede-saignement': Object.freeze({ famille: 'magie', cle: 'sang' }),
+  'ressources/remede-brulure': Object.freeze({ famille: 'magie', cle: 'feu' }),
+  'ressources/huile-rage': Object.freeze({ famille: 'magie', cle: 'vide' }),
+  'ressources/huile-seraphine': Object.freeze({ famille: 'magie', cle: 'feu' }),
+});
+
+/** La base que le propriétaire a choisie pour une page de potion ({ famille, cle }, une copie), ou null. */
+export const baseChoisieDeLaPage = (page) =>
+  (page && Object.hasOwn(COULEURS_CHOISIES_PAR_PAGE, page) ? baseAvecCouleur({ ...COULEURS_CHOISIES_PAR_PAGE[page] }) : null);
 
 /**
  * Les couleurs que le site ajoute pour les affinités qui n'avaient pas de règle (ni attribut ni magie), d'après le Doc « Alchimie » : la teinte de la
@@ -55,12 +95,13 @@ export const COULEURS_DES_AFFINITES = Object.freeze({
 
 /**
  * La couleur du site que prend une affinité, { famille, cle } (la famille et la clé de sa classe, lib/palette-css.mjs) : son attribut
- * (`attribut`), sa magie (`magie`, le nom court de la magie) ou la couleur que le site lui ajoute (`affinite`) ; null si le site n'en a pas (Anti,
+ * (`attribut`), sa magie (`magie`, le nom court de la magie, ou celle de MAGIE_DE_L_AFFINITE) ou la couleur que le site lui ajoute (`affinite`) ; null si le site n'en a pas (Anti,
  * Démon). Une affinité qui est un attribut ou une magie garde la classe de cet attribut ou de cette magie : aucune couleur n'est recopiée.
  */
 export function baseDAffinite(id) {
   if (!id) return null;
   if (Object.hasOwn(ATTRIBUT_DE_L_AFFINITE, id)) return baseAvecCouleur({ famille: 'attribut', cle: ATTRIBUT_DE_L_AFFINITE[id] });
+  if (Object.hasOwn(MAGIE_DE_L_AFFINITE, id)) return baseAvecCouleur({ famille: 'magie', cle: MAGIE_DE_L_AFFINITE[id] });
   const magie = cleDeMagieConnue(id);
   if (magie) return baseAvecCouleur({ famille: 'magie', cle: magie });
   return baseAvecCouleur({ famille: 'affinite', cle: id });
@@ -152,13 +193,15 @@ export function lisible(fond) {
 }
 
 /**
- * La couleur d'une potion, ou null (ligne neutre) : `essence`, l'affinité de son essence ; `caracteristique`, celle que nomment les effets de sa page, qui
- * ne compte que pour un philtre (essence AFFINITE_DES_PHILTRES) ; `niveau`, le rang de son niveau d'alchimie. Rend { fond, texte, base, niveau } :
+ * La couleur d'une potion, ou null (ligne neutre) : `page`, l'id de sa page (son choix du propriétaire, COULEURS_CHOISIES_PAR_PAGE, passe avant tout) ;
+ * `essence`, l'affinité de son essence ; `caracteristique`, celle que nomment les effets de sa page, qui ne compte que pour un philtre (essence
+ * AFFINITE_DES_PHILTRES) ; `niveau`, le rang de son niveau d'alchimie. Rend { fond, texte, base, niveau } :
  * le fond (« #rrggbb », la base nuancée au niveau puis rendue lisible), le texte le plus lisible dessus, la base ({ famille, cle } : la classe du
  * site d'où la couleur se calcule) et le niveau (null s'il manque) ; la classe de la combinaison : lib/palette-css.mjs#classeDePotion.
  */
-export function couleurDePotion({ essence = null, caracteristique = null, niveau = null } = {}) {
-  const base = baseDAffinite(essence)
+export function couleurDePotion({ page = null, essence = null, caracteristique = null, niveau = null } = {}) {
+  const base = baseChoisieDeLaPage(page)
+    ?? baseDAffinite(essence)
     ?? (essence === AFFINITE_DES_PHILTRES && caracteristique ? baseAvecCouleur({ famille: 'caracteristique', cle: caracteristique }) : null);
   if (!base) return null;
   const fond = lisible(nuanceDuNiveau(couleurDeLaBase(base), niveau));

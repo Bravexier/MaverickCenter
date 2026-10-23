@@ -1632,7 +1632,10 @@ export function attributsDe(regles, fiche) {
   const initiative = regles.initiative.find((i) => i.agilite === agilite?.valeur) ?? null;
   const metier = bonusDuMetier(regles, fiche);
   const initiativeMetier = metier.initiative;
-  const barre4 = magies.find((m) => m.barre4)?.barre4 ?? null;
+  // la magie qui donne la 4ᵉ barre (Sang ou Nécromancie, incompatibles : magie_incompatibilite) : sa couleur est la classe de cette magie (demande du
+  // propriétaire du 2026-10-23 : « La 4eme barre doit être de couleur différente en fonction de la magie qui l'utilise (Sang ou nécromancie) »)
+  const magieDeLaBarre4 = magies.find((m) => m.barre4) ?? null;
+  const barre4 = magieDeLaBarre4?.barre4 ?? null;
   // accessoires (décision R54) : initiative, vitesse (au sol), 4ᵉ barre (« Augmente le maximum de sang ou d'âme »), AP et AM de base
   const acc = (cible) => sommeDesAccessoires(regles, fiche, cible);
   const initiativeAccessoires = acc('initiative');
@@ -1656,7 +1659,10 @@ export function attributsDe(regles, fiche) {
     initiativeBonus: (initiative?.bonus ?? 0) + initiativeMetier + initiativeAccessoires,
     // la posture du moment (décision R100 : Vigilance « +2 initiative ») ; `initiativeBonus` reste celui de la fiche (tableur)
     initiativePosture: postureDuMoment(regles, fiche)?.initiative ?? 0,
-    quatriemeBarre: barre4 && { ressource: barre4.ressource === 'ame' ? 'Âme' : 'Sang', max: barre4.max + acc('barre4_max') },
+    quatriemeBarre: barre4 && {
+      ressource: barre4.ressource === 'ame' ? 'Âme' : 'Sang', max: barre4.max + acc('barre4_max'),
+      magie_id: magieDeLaBarre4.id, classe: magieDeLaBarre4.classe ?? null,
+    },
     corruptionMax: chakra,
   };
 }

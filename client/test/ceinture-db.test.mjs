@@ -99,7 +99,7 @@ test('chargement : un tableau par famille, dans l’ordre ; chaque objet de la v
           JOIN recette_ingredient ri ON ri.recette_id = r.id AND ri.role = 'essence' WHERE rp.ressource_id = ? AND r.genre = 'alchimie'
           ORDER BY r.variante, r.id, ri.rang, ri.option LIMIT 1`).get(x.id)?.affinite_id ?? null;
         assert.equal(x.essence, essence, `${x.id} : l'essence de sa recette`);
-        assert.deepEqual(x.couleur, couleurDePotion({ essence, caracteristique: p.caracteristique, niveau: x.niveau_rang }), x.id);
+        assert.deepEqual(x.couleur, couleurDePotion({ page: p.id, essence, caracteristique: p.caracteristique, niveau: x.niveau_rang }), x.id);
       }
       const dePhiltres = p.potions.every((x) => x.essence === AFFINITE_DES_PHILTRES);
       if (!dePhiltres) assert.equal(p.caracteristique, null, `${p.id} : pas une page de philtres, pas de caractéristique`);

@@ -5,10 +5,11 @@
 // ne porte de texte de recherche.
 // Chaque potion est sur la couleur que lui donne la règle du site (demandes du propriétaire : le 2026-10-16, « récupérer les couleurs utilisé dans les
 // tableaux du GoogleSheet pour les lignes présentes » ; le 2026-10-22, « Partout il faut utiliser Que les couleurs du site. Si le site n'a pas de règle
-// il ajoute une nouvelle couleur au site en se basant sur celle du classeur. Aucune couleur en dur. » ; lib/alchimie-couleurs.mjs : l'affinité de son
-// essence, ou la caractéristique d'un philtre, nuancée selon son niveau) : la ligne colorée du gabarit commun des tableaux (`ligne-couleur`,
-// `--ligne-fond` et `--ligne-texte` : styles/global/tableaux.css), le texte le plus lisible sur le fond (« Privilégé la lisibilité. ») ; une potion
-// sans couleur (essence Anti) reste neutre. Les carquois et sacs n'ont pas de couleur. La ligne ne porte qu'une classe, jamais de couleur ni de style
+// il ajoute une nouvelle couleur au site en se basant sur celle du classeur. Aucune couleur en dur. » ; lib/alchimie-couleurs.mjs : la couleur que le
+// propriétaire a choisie pour sa page (COULEURS_CHOISIES_PAR_PAGE, 2026-10-23), sinon l'affinité de son essence, ou la caractéristique d'un philtre,
+// nuancée selon son niveau) : la ligne colorée du gabarit commun des tableaux (`ligne-couleur`, `--ligne-fond` et `--ligne-texte` :
+// styles/global/tableaux.css), le texte le plus lisible sur le fond (« Privilégé la lisibilité. ») ; une potion sans couleur (essence Anti, hors des
+// pages choisies) resterait neutre, sans classe de couleur. Les carquois et sacs n'ont pas de couleur. La ligne ne porte qu'une classe, jamais de couleur ni de style
 // (choix du propriétaire du 2026-10-22, « Module JS → classe » et « Règle de calcul ») : celle de sa combinaison (base et niveau,
 // lib/palette-css.mjs#classeDePotion), que components/ceinture/CeinturePanneau.astro émet pour les lignes qu'il affiche.
 // Prix et textes : monnaies en icônes (décision R63, lib/monnaies.mjs). Rien n'est calculé : chaque case écrit une valeur de la base, sauf la valeur en

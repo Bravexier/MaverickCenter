@@ -8,15 +8,16 @@ import { existsSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import {
-  AFFINITE_DES_PHILTRES, ATTRIBUT_DE_L_AFFINITE, CONTRASTE_MINIMAL, COULEURS_DES_AFFINITES, NUANCES_DES_NIVEAUX, baseAvecCouleur, baseDAffinite, caracteristiqueDesCompetences,
+  AFFINITE_DES_PHILTRES, ATTRIBUT_DE_L_AFFINITE, CONTRASTE_MINIMAL, COULEURS_CHOISIES_PAR_PAGE, COULEURS_DES_AFFINITES, MAGIE_DE_L_AFFINITE, NUANCES_DES_NIVEAUX, baseAvecCouleur, baseDAffinite,
+  baseChoisieDeLaPage, caracteristiqueDesCompetences,
   contraste, couleurDAffinite, couleurDePotion, lisible, nuanceDuNiveau,
 } from '../src/lib/alchimie-couleurs.mjs';
-import { COULEURS_DES_ATTRIBUTS, cssDesAttributs } from '../src/lib/attributs-couleurs.mjs';
+import { COULEURS_DES_ATTRIBUTS, couleurDAttribut, cssDesAttributs } from '../src/lib/attributs-couleurs.mjs';
 import { COULEURS_CARACTERISTIQUES } from '../src/lib/caracteristiques-postures.mjs';
 import { COULEUR_PAR_DEFAUT, couleurDeMagie, couleurDeMagieConnue, texteSurCouleur } from '../src/lib/sort-format.mjs';
 import { classeDesBatons } from '../src/lib/batons-rendu.mjs';
 import { htmlDeLigneDePotion } from '../src/lib/ceinture-rendu.mjs';
-import { FAMILLES_DE_LA_PALETTE, classeDeCouleur, classeDeMagie, classeDePotion, couleursDeLaPalette } from '../src/lib/palette-css.mjs';
+import { FAMILLES_DE_LA_PALETTE, classeDAffinite, classeDAttribut, classeDeCouleur, classeDeMagie, classeDePotion, couleursDeLaPalette } from '../src/lib/palette-css.mjs';
 import { chargerObjetsDeCeinture } from '../src/lib/ceinture-db.mjs';
 import { chargerBatons } from '../src/lib/batons-db.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
@@ -35,7 +36,7 @@ test('une affinité prend la couleur du site : son attribut, sa magie, ou la cou
   for (const [affinite, couleur] of Object.entries(COULEURS_DES_AFFINITES)) assert.equal(couleurDAffinite(affinite), couleur, affinite);
   // la base d'une affinité : la classe de son attribut, de sa magie, ou la sienne (aucune recopie : « Garder séparées » ne veut pas dire recopier)
   assert.deepEqual(baseDAffinite('sante'), { famille: 'attribut', cle: 'sante' });
-  assert.deepEqual(baseDAffinite('4eme-barre'), { famille: 'attribut', cle: 'barre4' });
+  assert.deepEqual(baseDAffinite('4eme-barre'), { famille: 'magie', cle: 'necromancie' }, 'la 4ᵉ barre : la Nécromancie (demande du propriétaire du 2026-10-23)');
   assert.deepEqual(baseDAffinite('feu'), { famille: 'magie', cle: 'feu' });
   assert.deepEqual(baseDAffinite('coma'), { famille: 'affinite', cle: 'coma' });
   assert.equal(baseDAffinite('anti'), null);
@@ -59,6 +60,43 @@ test('une affinité prend la couleur du site : son attribut, sa magie, ou la cou
     assert.ok(affinites.has(affinite), `${affinite} : une affinité de la base`);
     assert.ok(!Object.hasOwn(ATTRIBUT_DE_L_AFFINITE, affinite) && couleurDeMagieConnue(affinite) === null, `${affinite} : le site n’avait pas de règle`);
   }
+});
+
+test('la 4ᵉ barre prend la couleur de la Nécromancie (sa classe, sans couleur ajoutée) ; l’attribut barre4 n’a plus de couleur à lui', () => {
+  // demande du propriétaire du 2026-10-23 : « La fiole verte foncée devrai avoir la couleur verte foncée en s'inspirant de la couleur de la nécromancie. »
+  assert.deepEqual(MAGIE_DE_L_AFFINITE, { '4eme-barre': 'necromancie' });
+  const affinites = new Set(db.prepare('SELECT id FROM affinite').all().map((a) => a.id));
+  for (const [affinite, magie] of Object.entries(MAGIE_DE_L_AFFINITE)) {
+    assert.ok(affinites.has(affinite), `${affinite} : une affinité de la base`);
+    assert.ok(!Object.hasOwn(ATTRIBUT_DE_L_AFFINITE, affinite) && !Object.hasOwn(COULEURS_DES_AFFINITES, affinite), `${affinite} : une seule règle`);
+    assert.equal(couleurDeMagieConnue(affinite), null, `${affinite} : pas déjà une magie`);
+    assert.ok(couleurDeMagieConnue(magie), `${magie} : une magie connue du site`);
+    assert.deepEqual(baseDAffinite(affinite), { famille: 'magie', cle: magie });
+    assert.equal(couleurDAffinite(affinite), couleurDeMagieConnue(magie), affinite);
+    assert.equal(classeDAffinite(affinite), classeDeMagie(magie), `${affinite} : la classe de la magie`);
+  }
+  for (const niveau of [2, 3, 4, 5]) {
+    const c = couleurDePotion({ essence: '4eme-barre', niveau });
+    assert.deepEqual(c.base, { famille: 'magie', cle: 'necromancie' });
+    assert.equal(classeDePotion(c), `couleur-potion-magie-necromancie-n${niveau}`);
+    assert.equal(c.fond, lisible(nuanceDuNiveau(couleurDeMagieConnue('necromancie'), niveau)), `n${niveau} : la nuance de la Nécromancie`);
+    assert.ok(contraste(c.fond, c.texte) >= CONTRASTE_MINIMAL, `n${niveau}`);
+  }
+  // les pages d'essence 4ᵉ barre sont celles que le propriétaire a demandées en Nécromancie : la Fiole verte foncée, « Le remède du poison couleur
+  // nécromancie », « L'huile toxique devrait être couleur nécromancie » (2026-10-23)
+  const pages = chargerObjetsDeCeinture(db).tableaux.flatMap((t) => t.pages ?? []);
+  const de4emeBarre = pages.filter((p) => p.potions.some((x) => x.essence === '4eme-barre'));
+  assert.deepEqual(de4emeBarre.map((p) => p.id).sort(), ['ressources/fiole-verte-fonce', 'ressources/huile-toxique', 'ressources/remede-poison']);
+  for (const x of de4emeBarre.flatMap((p) => p.potions)) assert.equal(classeDePotion(x.couleur), `couleur-potion-magie-necromancie-n${x.niveau_rang}`, x.id);
+  // la 4ᵉ barre de la fiche n'a plus de couleur d'attribut : elle prend la classe de la magie qui la donne, Sang ou Nécromancie (demande du
+  // propriétaire du 2026-10-23 : « La 4eme barre doit être de couleur différente en fonction de la magie qui l'utilise (Sang ou nécromancie) » ;
+  // test/fiche-moteur.test.mjs) ; plus aucune potion ne la lisait
+  assert.equal(couleurDAttribut('barre4'), null);
+  assert.ok(!Object.hasOwn(FAMILLES_DE_LA_PALETTE.attribut, 'barre4'));
+  assert.equal(classeDAttribut('barre4'), null);
+  assert.ok(!cssDesAttributs().includes('--attribut-barre4'));
+  assert.match(lire('src/styles/fiche/fiche.css'), /\.attribut\[data-a='barre4'\]\[class\*='couleur-magie-'\] \{ --a: var\(--couleur\); \}/);
+  assert.ok(!lire('src/styles/fiche/fiche.css').includes('--attribut-barre4'), 'fiche.css ne lit plus la couleur retirée');
 });
 
 test('chaque essence des recettes d’alchimie a sa couleur, sauf Anti et Démon (les philtres prennent celle de leur caractéristique)', () => {
@@ -160,9 +198,15 @@ test('des potions de la base : l’essence de leur recette et la couleur qui en 
   ]) {
     const x = de(id);
     assert.equal(x.essence, essence, id);
-    assert.deepEqual(x.couleur, couleurDePotion({ essence, caracteristique: x.page.caracteristique, niveau: x.niveau_rang }), id);
+    assert.deepEqual(x.couleur, couleurDePotion({ page: x.page.id, essence, caracteristique: x.page.caracteristique, niveau: x.niveau_rang }), id);
   }
-  assert.equal(de('ressources/remede-enrage#potion:remede-enrage-mineur').couleur, null, 'Anti : neutre');
+  assert.equal(couleurDePotion({ essence: 'anti', niveau: 2 }), null, 'Anti, hors des pages choisies : neutre');
+  // les quatre paliers de la Fiole verte foncée : la Nécromancie, nuancée à leur niveau (demande du propriétaire du 2026-10-23)
+  for (const [palier, rang] of [['fiole-verte-foncee-moyenne', 2], ['super-fiole-verte-foncee', 3], ['mega-fiole-verte-foncee', 4], ['ultime-fiole-verte-foncee', 5]]) {
+    const x = de(`ressources/fiole-verte-fonce#potion:${palier}`);
+    assert.equal(x.niveau_rang, rang, palier);
+    assert.equal(classeDePotion(x.couleur), `couleur-potion-magie-necromancie-n${rang}`, palier);
+  }
   // l'ultime philtre n'écrit pas « compétences de Force » (« +1 Force ») : sa page la lui donne ; à l'import, les autres paliers la nomment
   const historique = historiqueSite(db);
   const caracteristiques = db.prepare('SELECT id, nom FROM caracteristique').all();
@@ -170,6 +214,46 @@ test('des potions de la base : l’essence de leur recette et la couleur qui en 
   const aLImport = (x) => caracteristiqueDesCompetences(historique.valeurDImport('potion', { ressource_id: x.id }, 'effet', x.effet), caracteristiques);
   assert.equal(aLImport(page.potions.find((x) => x.niveau_rang === 5)), null, 'l’ultime ne la nomme pas');
   assert.deepEqual([...new Set(page.potions.filter((x) => x.niveau_rang < 5).map(aLImport))], ['force'], 'les autres paliers nomment la Force');
+});
+
+test('les couleurs choisies par le propriétaire, page par page (2026-10-23) : la magie qu’il nomme, avant l’essence ; une autre page de même essence garde la sienne', () => {
+  // ses retours, carte par carte : « Le remède enragé est de la couleur du Vide » ; « Le remêde du saignement devrai être couleur sang » ; « Le remêde
+  // brûlure devrai couleur feu » ; « L'huile rage devrai être couleur du Vide » ; « L'huile séraphine couleur feu »
+  const attendues = {
+    'ressources/remede-enrage': 'vide', 'ressources/remede-saignement': 'sang', 'ressources/remede-brulure': 'feu',
+    'ressources/huile-rage': 'vide', 'ressources/huile-seraphine': 'feu',
+  };
+  assert.deepEqual(Object.fromEntries(Object.entries(COULEURS_CHOISIES_PAR_PAGE)),
+    Object.fromEntries(Object.entries(attendues).map(([p, m]) => [p, { famille: 'magie', cle: m }])));
+  const pages = new Map(chargerObjetsDeCeinture(db).tableaux.flatMap((t) => t.pages ?? []).map((p) => [p.id, p]));
+  for (const [page, magie] of Object.entries(attendues)) {
+    assert.ok(couleurDeMagieConnue(magie), `${magie} : une magie du site (sa classe, aucune couleur ajoutée)`);
+    assert.deepEqual(baseChoisieDeLaPage(page), { famille: 'magie', cle: magie });
+    const p = pages.get(page) ?? assert.fail(`page absente : ${page}`);
+    assert.ok(p.potions.length >= 3, `${page} : ses paliers`);
+    for (const x of p.potions) {
+      assert.deepEqual(x.couleur.base, { famille: 'magie', cle: magie }, x.id);
+      assert.equal(classeDePotion(x.couleur), `couleur-potion-magie-${magie}-n${x.niveau_rang}`, x.id);
+      assert.equal(x.couleur.fond, lisible(nuanceDuNiveau(couleurDeMagieConnue(magie), x.niveau_rang)), `${x.id} : le dégradé du niveau`);
+      assert.ok(contraste(x.couleur.fond, x.couleur.texte) >= CONTRASTE_MINIMAL, x.id);
+    }
+  }
+  assert.equal(baseChoisieDeLaPage('ressources/fiole-rouge'), null);
+  assert.equal(baseChoisieDeLaPage(null), null);
+  assert.equal(baseChoisieDeLaPage('constructor'), null, 'pas une clé héritée');
+  // le choix ne change pas la règle de l'essence : une page non citée de même essence garde sa couleur (Santé, Régénération santé, Anti)
+  for (const [page, base] of [
+    ['ressources/fiole-rouge', { famille: 'attribut', cle: 'sante' }],
+    ['ressources/alchimie-primitive', { famille: 'attribut', cle: 'sante' }],
+    ['ressources/fiole-bordeaux', { famille: 'affinite', cle: 'regeneration-sante' }],
+    ['ressources/huile-hemophile', { famille: 'affinite', cle: 'regeneration-sante' }],
+  ]) {
+    const x = pages.get(page).potions.find((y) => y.essence === base.cle) ?? assert.fail(`${page} : une potion d’essence ${base.cle}`);
+    assert.deepEqual(x.couleur.base, base, page);
+  }
+  assert.equal(couleurDePotion({ essence: 'anti', niveau: 3 }), null);
+  assert.deepEqual(couleurDePotion({ page: 'ressources/autre', essence: 'sante', niveau: 3 }).base, { famille: 'attribut', cle: 'sante' });
+  assert.deepEqual(couleurDePotion({ page: 'ressources/remede-brulure', essence: 'sante', niveau: 3 }).base, { famille: 'magie', cle: 'feu' }, 'le choix d’abord');
 });
 
 test('les bâtons : la classe de leur magie sur le site (sa couleur et le texte le plus lisible)', () => {
