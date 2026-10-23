@@ -87,8 +87,11 @@ abandonne.
 - **Choix à faire** (`choixEnAttente`) : l'ethnie d'une race choisie, la spécialité d'une classe au niveau de son don de spécialité, chaque groupe de dons à
   choisir, chaque bonus ou objet de départ du métier à choisir, le +1 d'une magie qui le laisse au choix. Leur champ est **surligné** (ambre, `data-a-choisir`),
   et tant qu'il en reste le panneau « Choix » sort en **tiroir** en bas de l'écran, par-dessus la fiche, avec la liste de ce qui manque ; il ne se range que
-  quand la zone 4 est à l'écran ; « Réduire » le replie sur sa poignée (le survol le rouvre), « Aller aux choix » y descend. La spécialité s'y choisit aussi
-  (demande du propriétaire : « le doubler dans le menu de choix »).
+  quand la zone 4 est à l'écran ; « Réduire » le replie sur sa poignée (le survol le rouvre), « Aller aux choix » y descend. Replié, son contenu est caché
+  (`display: none`) : le focus clavier n'y entre pas. Au clavier, on le rouvre par « Déplier », ou l'on passe par « Aller aux choix » ; la bulle d'un
+  choix du tiroir montre sa tuile au focus (sauf l'ethnie, un bouton qui ouvre son menu, sans bulle au clavier), mais ses champs ne se prennent qu'à la
+  souris. Le focus déjà dans le contenu le garde ouvert. La spécialité s'y choisit aussi (demande du propriétaire : « le doubler dans le menu de
+  choix »).
 - **Dégâts des armes** (`degatsDArme`) : une pastille « XDY+Z » par arme — les dés de la maîtrise de sa famille, le dé de l'arme (son effet, sinon son type ;
   le Pugilat selon la Force), plus les bonus qui se cumulent (page « Armes ») : l'arme, sa composition, son amélioration, son élément et l'amélioration de
   l'élément, et les **dons passifs acquis** dont le texte dit quelles armes ils visent (`lib/degats-texte.mjs` : famille, type de dégâts, armes de corps à corps,

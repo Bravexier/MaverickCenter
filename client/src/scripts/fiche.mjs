@@ -1684,7 +1684,9 @@ function construireChoixSpecialites() {
 /**
  * Tant qu'il reste des choix à faire (choixEnAttente), le panneau « Choix » de la zone IV sort en tiroir en bas de l'écran, par-dessus la fiche, avec la
  * liste de ce qui manque ; il ne se range que quand la zone IV est à l'écran (son onglet « Choix » compte alors ce qui manque). « Réduire » le replie sur sa
- * poignée (le survol le rouvre), « Aller aux choix » descend à la zone IV et ouvre l'onglet.
+ * poignée (le survol le rouvre), « Aller aux choix » descend à la zone IV et ouvre l'onglet. Réduit, son corps est en `display: none` (fiche.css) : le
+ * focus clavier n'y entre pas. Au clavier, on passe par « Déplier », « Aller aux choix » ou la bulle d'un choix du tiroir, qui montre sa tuile au focus
+ * (sauf l'ethnie, un bouton qui ouvre son menu, sans bulle au clavier) ; le focus déjà dans le corps le garde ouvert.
  */
 let zoneParametresVisible = false;
 let tiroirReduit = false;
@@ -1723,8 +1725,8 @@ function construireChoixEnAttente() {
  * L'infobulle d'un choix du tiroir (demande du propriétaire : « la tuile correspondant au choix qui apparaît dans la tooltip au survol ») : une copie de
  * la tuile du choix (`data-choix-cle` = la clé de choixEnAttente : pastilles de l'ethnie ou de la spécialité, groupe de dons, choix du métier, +1 de la
  * magie innée), dans une bulle riche de components/Infobulles.astro, remplie juste avant qu'elle s'ouvre. Ses boutons, cases et listes renvoient leur clic
- * ou leur valeur à la tuile de la page : le choix se fait aussi depuis la bulle. Une seule bulle, posée dans la zone IV hors du tiroir (son `transform`
- * fausserait la position fixe).
+ * ou leur valeur à la tuile de la page : le choix se fait aussi depuis la bulle, à la souris (au clavier, elle se ferme quand le focus quitte le choix du
+ * tiroir). Une seule bulle, posée dans la zone IV hors du tiroir (son `transform` fausserait la position fixe).
  */
 const tuileDeChoix = (cle) => (cle ? [...racine.querySelectorAll('[data-choix-cle]')].find((t) => t.dataset.choixCle === cle && !t.closest('#bulle-choix')) ?? null : null);
 const CHAMPS_DE_TUILE = 'button, input, select';
