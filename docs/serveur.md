@@ -704,19 +704,38 @@ règles d'aujourd'hui, même après une livraison.
   que l'éditeur refuse devient un conflit (2 ou 3). Une ligne de détail (bonus d'un métier…) n'est jamais un conflit à elle : elle suit sa source.
   Les lignes des sources de maîtrise d'arme (`maitrise_arme_part`, `maitrise_arme_part_famille`, `capacite_nm_gagne`) ne sont même pas parcourues :
   ni conflit ni modification saine, elles sont refaites par le lecteur après les choix (ci-dessous).
-  Le `libelle` d'une ligne est la table (son libellé de `TABLES`, sinon son nom) et son nom, son titre ou son libellé, sinon l'id de sa clé (une
+  **Les noms** (demande du propriétaire du 2026-10-23, quand « metier_bonus » et « alias » ressortaient sous leur nom technique : « Un vrai nom
+  serai mieux ») : chaque table et chaque colonne est dite par son nom français, celui du registre `lib/libelles-de-la-base.mjs` (`nomDeTable`,
+  `nomDeColonne`) — d'abord le libellé de `TABLES` quand il existe, puis les noms propres à une table (`NOMS_DES_TABLES`, `NOMS_DES_COLONNES`),
+  enfin les noms communs à toutes (`COLONNES_COMMUNES` : identifiant, remarque, clés étrangères par la table citée…) ; « Bonus du métier »,
+  « Autre nom de la page ». Le registre couvre toute table qu'un lot du journal peut porter (celles de `TABLES`, des créations et suppressions, et
+  celles que le service écrit par dérivation : tables de détail, pages, étiquettes, relations, traces), chacune de leurs colonnes, les tables
+  qu'elles citent par une clé étrangère, et celles qui les citent (une suppression du lot peut y rompre une référence, et la raison nomme la table
+  qui cite : « Étiquette du sort : clé étrangère rompue vers Mot-clé … », fiches de personnage comprises), avec les colonnes d'une clé composée
+  (`test/libelles-de-la-base.test.mjs`, contre `data/schema.sql` et le code de `serveur/edition*.mjs`). Hors de `TABLES`, le nom d'une table est
+  celui du registre de l'API REST (`lib/ressources/*.mjs`, `nom`) quand il en a un, sauf les écarts que le test épingle avec leur raison
+  (« Altération d’état », jamais « État » seul). Il ne rend jamais une colonne modifiable : `TABLES` reste la seule liste de ce que l'édition accepte. Seuls les noms changent : identifiants et
+  valeurs restent tels quels. Une version faite d'une ligne (`ligne`, `valeurs`, `suppression`) ne montre ni les clés normalisées (`X_cle`,
+  `alias.cle`) ni la provenance (`origine`, `source_ref`, retirée à la 1.0 : `colonneMasquee`), et nomme chacune de ses autres colonnes
+  (`libelles` : colonne → nom) ; la colonne d'un conflit `hors_modele` a aussi son nom (`colonne_libelle`). Une raison qui cite une clé
+  normalisée (le rejeu la compare aussi : « les règles ont changé nom, nom_cle autrement », « UNIQUE constraint failed: metier.nom_cle ») la dit
+  par sa colonne source (`colonneSource` : « les règles ont changé « Nom » autrement »), la provenance jamais (« cette ligne » si rien ne reste).
+  Le `libelle` d'une ligne est la table (son nom) et son nom, son titre ou son libellé, sinon l'id de sa clé (une
   page supprimée : « Page guide/… »), sinon ce que sa clé composée désigne : la ligne citée par sa clé étrangère, par son nom lu dans la base si
   elle existe encore (entre parenthèses avec sa table pour une table hors du modèle), sinon par l'id de sa clé, puis ses autres colonnes, un rang dit
-  « n° N » (« Capacité de la carte « Amblypyge de brai », n° 1 », « metier_bonus (Métier « Forgeron »), n° 1, option 2 » ;
+  « n° N », une autre colonne par son nom dans le cours de la phrase (« Capacité de la carte « Amblypyge de brai », n° 1 », « Bonus du métier
+  (Métier « Forgeron »), n° 1, option 2 », « Autre nom de la page (Page guide/le-mode-hyper), ordre 900 » ;
   `edition-conflits.mjs#libelleDeLigne`) ; jamais de JSON. La raison d'un conflit est rendue telle quelle (`raison`, une trace) et lisible
-  (`raison_lisible`, `edition-conflits.mjs#raisonLisible`) : colonnes et tables par leur libellé (« les règles ont changé « Texte » autrement »), une
-  clé étrangère rompue par la ligne citée (« alias : clé étrangère rompue vers Page guide/le-mode-hyper »), un refus de la base sans nom qualifié ni
+  (`raison_lisible`, `edition-conflits.mjs#raisonLisible`) : colonnes et tables par leur nom (« les règles ont changé « Texte » autrement »), une
+  clé étrangère rompue par la ligne citée (« Autre nom de la page : clé étrangère rompue vers Page guide/le-mode-hyper »), un refus de la base sans nom qualifié ni
   expression SQL (« valeur déjà utilisée ailleurs (Sort : « Nom ») ») ; une forme inconnue (le texte d'un adaptateur) telle quelle. Une saine
-  partielle porte ses colonnes (`colonnes`, leurs noms) et leurs libellés (`colonnes_libelles`, ceux de `TABLES`, sinon le nom). La page montre
-  `libelle`, `raison_lisible`, `colonnes_libelles` et `detail_lisible`, avec repli sur `raison` et `colonnes` pour une réponse ancienne. La raison du rejeu (`detail`, la trace notée sur les lignes du lot : « lot <id> :
+  partielle porte ses colonnes (`colonnes`, leurs noms techniques) et leurs noms (`colonnes_libelles`). La page montre `libelle`,
+  `raison_lisible`, `colonnes_libelles`, `colonne_libelle`, les `libelles` des versions et `detail_lisible`, avec repli sur `raison`, `colonnes`
+  et le nom de la colonne pour une réponse ancienne ; une version faite d'une ligne ne montre que les colonnes que ses `libelles` nomment (jamais
+  une colonne sous son nom technique quand le service nomme la version). La raison du rejeu (`detail`, la trace notée sur les lignes du lot : « lot <id> :
   <table> <clé JSON> : <raison> ») est rendue telle quelle, et aussi lisible (`detail_lisible`, `edition-conflits.mjs#detailLisible`) : sans l'id du
   lot, la ligne dite par la légende de son conflit (ou de sa modification saine) de même table et même clé, sinon par `libelleDeLigne`, les colonnes
-  et les tables par leur libellé de `TABLES` quand le modèle en a un (« Métier « Forgeron » : les règles ont changé « Bonus » autrement ») ; la
+  et les tables par leur nom (« Métier « Forgeron » : les règles ont changé « Bonus » autrement ») ; la
   colonne `detail` de la base ne change pas. Une empreinte (`empreinte`) couvre le diagnostic.
 - **La résolution** (`POST /api/mise-a-jour/conflits/` `{ lot, empreinte, choix }`, protections d'écriture habituelles) : chaque conflit doit
   avoir son choix (1, 2, ou 3 avec sa `valeur`), sinon `400` ; `404` lot inconnu ou sans conflit ; `409` déjà résolu, empreinte changée, ou une

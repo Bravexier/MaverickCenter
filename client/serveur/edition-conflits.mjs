@@ -30,6 +30,7 @@ import { ErreurEdition, OUTILS_DE_RESOLUTION as OUTILS, adaptateurDuJournal, col
 import { TABLES_DES_SOURCES, sourcesAvantLaSuppression, sourcesRefaitesParLaResolution } from './edition-maitrises.mjs';
 import { detacherDesFiches, noterLesRetraits, nouveauxRetraitsDeFiches, retirerDesFiches } from './fiches-retraits.mjs';
 import { TABLES, ligneSansImage } from '../src/lib/edition-modele.mjs';
+import { colonneMasquee, colonneSource, nomDeColonne, nomDeTable } from '../src/lib/libelles-de-la-base.mjs';
 import { instant as maintenant } from './instant.mjs';
 
 /** Les choix d'un conflit : 1 = la version du site de dev, 2 = la règle livrée (rien n'est écrit), 3 = une valeur saisie qui remplace les deux. */
@@ -226,19 +227,29 @@ function commeLeRejeu(ctx, entrees, brutes) {
 // Diagnostic
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 
+/** Le nom d'une table (lib/libelles-de-la-base.mjs : le libellé de TABLES, sinon celui du registre), ou son nom technique s'il n'en a aucun. */
+const tableLisible = (table) => nomDeTable(table) ?? table;
+/** Le nom d'une colonne (lib/libelles-de-la-base.mjs : le libellé du champ de TABLES, sinon celui du registre), ou son nom technique sinon. */
+const libelleDeColonne = (table, c) => nomDeColonne(table, c) ?? c;
+
 const valeurVue = (table, colonne, v) => ({ genre: 'valeur', valeur: v === undefined || v === null ? null : ligneSansImage(table, { [colonne]: v })[colonne] });
-const ligneVue = (table, l) => (l ? ligneSansImage(table, { ...l }) : null);
-const versionDesRegles = (e) => (e.ligne ? { genre: 'ligne', valeur: ligneVue(e.table, e.ligne) } : { genre: 'absente', valeur: null });
+/** Une ligne pour la page : sans image entière, sans ses colonnes masquées (clés normalisées X_cle, provenance : colonneMasquee). */
+function ligneVue(table, l) {
+  if (!l) return null;
+  return Object.fromEntries(Object.entries(ligneSansImage(table, { ...l })).filter(([c]) => !colonneMasquee(table, c)));
+}
+/** Une version faite d'une ligne (entière, ses valeurs écrites, ou supprimée) : ses colonnes nommées pour la page (`libelles` : colonne → nom). */
+function versionDeLigne(genre, table, l) {
+  const valeur = ligneVue(table, l);
+  return { genre, valeur, libelles: Object.fromEntries(Object.keys(valeur ?? {}).map((c) => [c, libelleDeColonne(table, c)])) };
+}
+const versionDesRegles = (e) => (e.ligne ? versionDeLigne('ligne', e.table, e.ligne) : { genre: 'absente', valeur: null });
 function versionDuSite(e) {
-  if (e.operation === 'supprimer') return { genre: 'suppression', valeur: ligneVue(e.table, e.avant) };
-  return { genre: e.operation === 'inserer' ? 'ligne' : 'valeurs', valeur: ligneVue(e.table, e.apres) };
+  if (e.operation === 'supprimer') return versionDeLigne('suppression', e.table, e.avant);
+  return versionDeLigne(e.operation === 'inserer' ? 'ligne' : 'valeurs', e.table, e.apres);
 }
 /** Le nom (ou titre, libellé) d'une ligne, s'il en a un non vide. */
 const nomDe = (ligne) => [ligne?.nom, ligne?.titre, ligne?.libelle].find((v) => typeof v === 'string' && v) ?? null;
-/** Le libellé d'une table (celui de TABLES), ou son nom quand le modèle n'en a pas. */
-const tableLisible = (table) => TABLES[table]?.libelle ?? table;
-/** Le libellé d'une colonne (celui du champ de TABLES), ou son nom quand le modèle n'en a pas. */
-const libelleDeColonne = (table, c) => TABLES[table]?.colonnes[c]?.libelle ?? c;
 
 /**
  * Les clés étrangères d'une table dont toutes les colonnes sont dans la clé `cle` : [{ parent, colonnes (de la table), cle (de la ligne citée) }],
@@ -275,8 +286,10 @@ function liensDeLaCle(db, table, cle) {
   return liens;
 }
 
-/** Une colonne de clé sans ligne citée : « n° N » pour un rang, sinon son libellé (ou son nom) et sa valeur, jamais du JSON. */
-const colonneDeCle = (table, c, v) => (c === 'rang' ? `n° ${v}` : `${libelleDeColonne(table, c)} ${v === null || v === undefined ? 'vide' : String(v)}`);
+/** Un nom dans le cours d'une phrase : sa première lettre en minuscule, sauf un sigle (« AP », « IC »). */
+const dansLaPhrase = (nom) => (/^\p{Lu}\p{Ll}/u.test(nom) ? `${nom[0].toLowerCase()}${nom.slice(1)}` : nom);
+/** Une colonne de clé sans ligne citée : « n° N » pour un rang, sinon son nom (« ordre 900 », « option 2 ») et sa valeur, jamais du JSON. */
+const colonneDeCle = (table, c, v) => (c === 'rang' ? `n° ${v}` : `${dansLaPhrase(libelleDeColonne(table, c))} ${v === null || v === undefined ? 'vide' : String(v)}`);
 
 /**
  * Une clé composée sans `id`, dite par ce qu'elle désigne : la ligne qu'elle cite par une clé étrangère (son nom si elle existe encore — « « Amblypyge
@@ -307,8 +320,8 @@ function cleLisible(table, cle, db, profondeur) {
 /**
  * Le libellé d'une ligne pour la page : la table et le nom (ou titre, libellé) de la ligne ; une ligne qui n'en a plus (une page supprimée, dont seule
  * la version du site de dev reste) est dite par l'id de sa clé (« Page guide/le-jeu-de-role ») ; une clé composée sans `id`, par ce qu'elle désigne
- * (cleLisible, avec `db` : « Capacité de la carte « Amblypyge de brai », n° 1 », « metier_bonus (Métier « Forgeron »), n° 1, option 2 »). Jamais de
- * JSON. La table par son libellé de TABLES, sinon son nom.
+ * (cleLisible, avec `db` : « Capacité de la carte « Amblypyge de brai », n° 1 », « Bonus du métier (Métier « Forgeron »), n° 1, option 2 »). Jamais
+ * de JSON. La table par son nom (lib/libelles-de-la-base.mjs : le libellé de TABLES, sinon celui du registre).
  */
 export function libelleDeLigne(table, ligne, cle, db = null, profondeur = 0) {
   const nom = nomDe(ligne);
@@ -320,10 +333,14 @@ export function libelleDeLigne(table, ligne, cle, db = null, profondeur = 0) {
 }
 /** Une clé en JSON, ses colonnes triées (deux écritures de la même clé se comparent). */
 const cleCanonique = (cle) => JSON.stringify(Object.fromEntries(Object.entries(cle ?? {}).sort(([a], [b]) => a.localeCompare(b))));
-/** Le libellé d'une colonne (celui du champ de TABLES) entre guillemets, ou son nom quand le modèle n'en a pas. */
+/**
+ * Le nom d'une colonne entre guillemets (lib/libelles-de-la-base.mjs) ; une clé normalisée, par le nom de sa colonne source (« UNIQUE constraint
+ * failed: metier.nom_cle » : « Nom ») ; son nom technique quand le registre ne la connaît pas.
+ */
 const colonneLisible = (table, c) => {
-  const libelle = TABLES[table]?.colonnes[c]?.libelle;
-  return libelle ? `« ${libelle} »` : c;
+  const source = colonneMasquee(table, c) ? colonneSource(table, c) : null;
+  const nom = nomDeColonne(table, c) ?? (source === null ? null : nomDeColonne(table, source));
+  return nom ? `« ${nom} »` : c;
 };
 
 /** « table.colonne, table.colonne » d'un message de la base, par leurs libellés (« Sort : « Nom » »). */
@@ -332,7 +349,8 @@ const colonnesQualifiees = (texte) => {
   for (const q of texte.split(', ')) {
     const m = /^([a-z_][a-z0-9_]*)\.([a-z_][a-z0-9_]*)$/.exec(q.trim());
     if (!m) return texte;
-    parTable.set(m[1], [...(parTable.get(m[1]) ?? []), colonneLisible(m[1], m[2])]);
+    const nom = colonneLisible(m[1], m[2]);
+    if (!(parTable.get(m[1]) ?? []).includes(nom)) parTable.set(m[1], [...(parTable.get(m[1]) ?? []), nom]);
   }
   return [...parTable].map(([t, cs]) => `${tableLisible(t)} : ${cs.join(', ')}`).join(' ; ');
 };
@@ -368,10 +386,24 @@ function ruptureLisible(table, parent, colonnes, valeurs) {
   return `${tableLisible(table)} : clé étrangère rompue vers ${vers}`;
 }
 
+/**
+ * Les colonnes d'une raison « les règles ont changé … autrement », par leur nom : une colonne masquée (colonneMasquee) n'y est jamais dite ; une clé
+ * normalisée l'est par sa colonne source (« nom, nom_cle » → « Nom » ; « nom_cle » seule → « Nom »), la provenance pas du tout. Le rejeu les compare
+ * toutes (edition.mjs#colonneDerivee ne couvre que les colonnes refaites des pages) : la trace `raison` les garde.
+ */
+function colonnesChangees(table, liste) {
+  const colonnes = [];
+  for (const c of liste.split(', ')) {
+    const dite = colonneMasquee(table, c) ? colonneSource(table, c) : c;
+    if (dite !== null && !colonnes.includes(dite)) colonnes.push(dite);
+  }
+  return colonnes.length ? colonnes.map((c) => colonneLisible(table, c)).join(', ') : 'cette ligne';
+}
+
 /** Une partie de la raison d'un conflit (les raisons d'un abandon sont jointes par « ; »), lisible ; une forme inconnue telle quelle. */
 function partieLisible(table, p) {
   let r;
-  if ((r = /^les règles ont changé (.+) autrement$/.exec(p))) return `les règles ont changé ${r[1].split(', ').map((c) => colonneLisible(table, c)).join(', ')} autrement`;
+  if ((r = /^les règles ont changé (.+) autrement$/.exec(p))) return `les règles ont changé ${colonnesChangees(table, r[1])} autrement`;
   if ((r = /^([a-z_][a-z0-9_]*) : clé étrangère rompue vers ([a-z_][a-z0-9_]*) \((.+?) = (.+)\)$/.exec(p))) return ruptureLisible(r[1], r[2], r[3], r[4]) ?? p;
   if ((r = /^([a-z_][a-z0-9_]*) : clé étrangère rompue vers ([a-z_][a-z0-9_]*)$/.exec(p))) return `${tableLisible(r[1])} : clé étrangère rompue vers ${tableLisible(r[2])}`;
   if ((r = /^(écriture refusée|l’édition refuse aujourd’hui cette valeur|après le lot) : (.+)$/.exec(p))) return `${r[1]} : ${messageLisible(r[2])}`;
@@ -379,9 +411,9 @@ function partieLisible(table, p) {
 }
 
 /**
- * La raison d'un conflit telle que la page la lit (`raison_lisible`) : les colonnes et les tables par leur libellé de TABLES (« les règles ont changé
- * « Texte » autrement »), une clé étrangère rompue par la ligne citée (« alias : clé étrangère rompue vers Page guide/le-mode-hyper »), un refus de la
- * base sans nom qualifié ni expression SQL ; une forme inconnue telle quelle. `raison` reste la trace.
+ * La raison d'un conflit telle que la page la lit (`raison_lisible`) : les colonnes et les tables par leur nom (lib/libelles-de-la-base.mjs : « les
+ * règles ont changé « Texte » autrement »), une clé étrangère rompue par la ligne citée (« Autre nom de la page : clé étrangère rompue vers Page
+ * guide/le-mode-hyper »), un refus de la base sans nom qualifié ni expression SQL ; une forme inconnue telle quelle. `raison` reste la trace.
  */
 export function raisonLisible(table, raison) {
   if (typeof raison !== 'string' || !raison) return raison ?? null;
@@ -392,15 +424,15 @@ export function raisonLisible(table, raison) {
  * La raison du rejeu d'un lot (`detail` de ses lignes, une trace écrite par edition-journal.mjs#rejouerUneFois : « lot <id> : <table> <clé JSON> :
  * <raison> », « lot <id> : <table> : clé étrangère rompue vers <table> », « lot <id> : après le lot : … ») telle que la page la lit : sans l'id du
  * lot, la ligne dite par la légende de son conflit (ou de sa modification saine) quand le lot en a une de même table et même clé, sinon par
- * libelleDeLigne (avec `db` : ce que désigne une clé composée), la raison par raisonLisible, les tables par leur libellé (TABLES) quand le modèle en a
- * un. `libelles` : [{ table, cle, libelle }] (les conflits puis les saines du diagnostic). Une forme inconnue est rendue telle quelle, sans l'id du
+ * libelleDeLigne (avec `db` : ce que désigne une clé composée), la raison par raisonLisible, les tables par leur nom (lib/libelles-de-la-base.mjs).
+ * `libelles` : [{ table, cle, libelle }] (les conflits puis les saines du diagnostic). Une forme inconnue est rendue telle quelle, sans l'id du
  * lot. Rien n'est écrit en base : la colonne `detail` reste la trace.
  */
 export function detailLisible(detail, libelles = [], db = null) {
   if (typeof detail !== 'string' || !detail) return null;
   const texte = detail.replace(/^lot \S+ : /, '');
   const rompue = texte.match(/^([a-z_][a-z0-9_]*) : clé étrangère rompue vers ([a-z_][a-z0-9_]*)$/);
-  if (rompue) return `${TABLES[rompue[1]]?.libelle ?? rompue[1]} : clé étrangère rompue vers ${TABLES[rompue[2]]?.libelle ?? rompue[2]}`;
+  if (rompue) return `${tableLisible(rompue[1])} : clé étrangère rompue vers ${tableLisible(rompue[2])}`;
   const table = texte.match(/^([a-z_][a-z0-9_]*) \{/)?.[1];
   if (!table) return texte;
   // la clé JSON finit au premier « } : » après lequel le JSON se lit (une valeur de clé pourrait contenir « } : »)
@@ -436,7 +468,7 @@ function conflitsDeLEntree(e, db) {
       const champ = TABLES[e.table]?.colonnes[c];
       const image = champ?.type === 'image';
       return {
-        ...base, id: `${e.rang}:${c}`, colonne: c, colonne_libelle: champ?.libelle ?? c, genre: champ ? 'champ' : 'hors_modele',
+        ...base, id: `${e.rang}:${c}`, colonne: c, colonne_libelle: libelleDeColonne(e.table, c), genre: champ ? 'champ' : 'hors_modele',
         version_1: valeurVue(e.table, c, e.apres[c]), version_2: valeurVue(e.table, c, e.ligne?.[c]), avant: valeurVue(e.table, c, e.avant?.[c]),
         apercu: e.table === 'page' && c === 'corps_md' ? e.apercu : null,
         choix_possibles: champ && !image ? [1, 2, 3] : [1, 2], saisie: champ && !image ? saisieDe(champ) : null,
@@ -444,7 +476,7 @@ function conflitsDeLEntree(e, db) {
     });
   }
   if (e.genre === 'existe_deja') {
-    return [{ ...base, ...ligneEntiere, id: `${e.rang}`, genre: 'insertion', version_1: { genre: 'ligne', valeur: ligneVue(e.table, e.apres) }, version_2: versionDesRegles(e), choix_possibles: [1, 2] }];
+    return [{ ...base, ...ligneEntiere, id: `${e.rang}`, genre: 'insertion', version_1: versionDeLigne('ligne', e.table, e.apres), version_2: versionDesRegles(e), choix_possibles: [1, 2] }];
   }
   if (e.genre === 'suppression') {
     return [{ ...base, ...ligneEntiere, id: `${e.rang}`, genre: 'suppression', version_1: versionDuSite(e), version_2: versionDesRegles(e), choix_possibles: [1, 2] }];

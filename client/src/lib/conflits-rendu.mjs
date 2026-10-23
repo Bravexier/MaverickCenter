@@ -5,7 +5,8 @@
 //   - rien de technique : le service fournit les textes, la page les affiche (elle n'importe pas lib/edition-modele.mjs#TABLES) ; la légende d'une
 //     ligne (`libelle`, sans JSON même pour une clé composée), la raison d'un conflit (`raison_lisible`, repli sur `raison` pour une réponse
 //     ancienne), les colonnes d'une saine partielle (`colonnes_libelles`, repli sur `colonnes`), les colonnes d'une ligne entière (`libelles` de la
-//     version, repli sur le nom de la colonne) ; aucune valeur n'est montrée en JSON ;
+//     version : seules les colonnes qu'il nomme, par leur vrai nom ; leur nom technique pour une réponse ancienne sans `libelles`) ; aucune valeur
+//     n'est montrée en JSON, aucun nom de table ni de colonne n'est écrit ici (demande du propriétaire du 2026-10-23 : « Un vrai nom serai mieux ») ;
 //   - un lot : sa date, son résumé, la raison du rejeu (`detail_lisible` du service, lue comme la légende de ses conflits ; jamais `detail`, la
 //     trace des lignes du lot, avec son id, sa clé JSON et ses noms de colonnes) ; ses modifications saines (elles repartent telles quelles dans
 //     le nouveau lot) ; puis chaque conflit : la version 1 (ce que le site de dev avait écrit) et la version 2 (ce que disent les règles livrées,
@@ -50,9 +51,17 @@ export function texteDeValeur(v) {
   return String(v);
 }
 
-/** Une ligne entière, en texte : « colonne : valeur » par colonne (les vides omises), la colonne par son libellé (`libelles`) quand le service le donne. */
-const texteDeLigne = (ligne, libelles) =>
-  Object.entries(ligne ?? {}).filter(([, v]) => v !== null && v !== undefined && v !== '').map(([c, v]) => `${libelles?.[c] ?? c} : ${texteDeValeur(v)}`).join('\n') || '(vide)';
+/**
+ * Une ligne entière, en texte : « Nom : valeur » par colonne (les vides omises). Quand le service nomme les colonnes (`libelles` de la version : colonne →
+ * vrai nom, lib/libelles-de-la-base.mjs), seules les colonnes nommées se montrent, par leur nom : une colonne qu'il ne nomme pas n'apparaît jamais sous
+ * son nom technique. Sans `libelles` (réponse ancienne), chaque colonne sous son nom.
+ */
+function texteDeLigne(ligne, libelles) {
+  const nommees = libelles && typeof libelles === 'object';
+  return Object.entries(ligne ?? {})
+    .filter(([c, v]) => v !== null && v !== undefined && v !== '' && (!nommees || (typeof libelles[c] === 'string' && libelles[c])))
+    .map(([c, v]) => `${nommees ? libelles[c] : c} : ${texteDeValeur(v)}`).join('\n') || '(vide)';
+}
 
 /** Une version d'un conflit ({ genre, valeur, libelles? } du service), en texte. */
 export function texteDeLaVersion(version) {

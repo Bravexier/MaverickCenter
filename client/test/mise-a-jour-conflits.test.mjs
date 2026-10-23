@@ -8,12 +8,27 @@
 //   node --test test/mise-a-jour-conflits.test.mjs
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { attendre, el, Element, fauxDocument } from './aide-faux-dom.mjs';
 
 const DIAG = JSON.parse(readFileSync(new URL('./fixtures/conflits-diagnostic.json', import.meta.url), 'utf8'));
 const FORGERON = DIAG.lots.find((l) => l.resume === 'Métier Forgeron : Bonus');
 const HYPER = DIAG.lots.find((l) => l.resume.startsWith('Page Le Mode Hyper'));
+
+const ALIAS = DIAG.lots.find((l) => l.resume === 'Alias d’essai');
+
+/** Les tables et colonnes du schéma (data/schema.sql) à « _ » : aucune ne doit se lire dans la section (demande du 2026-10-23 : « Un vrai nom serai mieux »). */
+const NOMS_DU_SCHEMA = (() => {
+  const db = new DatabaseSync(':memory:');
+  db.exec(readFileSync(new URL('../../data/schema.sql', import.meta.url), 'utf8'));
+  const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all().map((r) => r.name);
+  const noms = new Set([...tables, ...tables.flatMap((t) => db.prepare(`PRAGMA table_info("${t}")`).all().map((c) => c.name))].filter((n) => n.includes('_')));
+  db.close();
+  return noms;
+})();
+/** Les noms du schéma lus dans un texte, même collés au mot d'avant (le texte d'un HTML sans ses balises : « écrit » + « page_id » → « écritpage_id »). */
+const nomsDuSchemaDans = (t) => [...new Set((String(t).match(/[a-z0-9]+(?:_[a-z0-9]+)+/g) ?? []).flatMap((m) => [...NOMS_DU_SCHEMA].filter((n) => m.endsWith(n))))];
 
 const NOTE = { version_cible: '0.4', reference: { disponible: true, version: '0.3.70' }, lignes: [], brouillon: { texte: '' }, lancement: null, occupe: false, liberable: false, confirmation: 'MAJ' };
 
@@ -78,8 +93,8 @@ test('après les listes de la note en préparation, la section des lignes en con
   assert.equal(s.parentElement, dev, 'dans la note en préparation');
   assert.equal(dev.children.at(-1), s, 'après les listes');
   assert.ok(dev.children.indexOf(dev.querySelector('.nv-dev__liste')) < dev.children.indexOf(s));
-  assert.match(dev.querySelector('.nv-dev__bilan').textContent, /6 lots en conflit ne partent pas avec cette mise à jour/);
-  assert.equal(s.querySelectorAll('[data-nv-lot]').length, 6);
+  assert.match(dev.querySelector('.nv-dev__bilan').textContent, /8 lots en conflit ne partent pas avec cette mise à jour/);
+  assert.equal(s.querySelectorAll('[data-nv-lot]').length, 8);
   assert.deepEqual(page.envois.map(([c]) => c), ['GET etat/', 'GET mise-a-jour/', 'GET mise-a-jour/conflits/']);
   // la raison du rejeu : le texte lisible du service (comme la légende), jamais la trace (id du lot, clé JSON, nom de colonne)
   assert.equal(page.lot(FORGERON.lot).querySelector('.nv-conflit-lot__detail').textContent, 'Au rejeu : Métier « Forgeron » : les règles ont changé « Bonus » autrement');
@@ -100,6 +115,39 @@ test('après les listes de la note en préparation, la section des lignes en con
   assert.equal(page.conflit(page.lot(FORGERON.lot), '1:bonus_brut').querySelector('.nv-conflit__raison').textContent, 'les règles ont changé « Bonus » autrement');
   assert.match(s.textContent, /Capacité de la carte « Amblypyge de brai », n° 1/);
   assert.doesNotMatch(s.textContent, /\{"/, 'aucun JSON dans la section');
+});
+
+test('un vrai nom partout dans la section posée (demande du 2026-10-23) : ni nom de table ni nom de colonne du schéma, versions ligne entière comprises', async () => {
+  const page = await monter(routesDeBase());
+  const s = page.section();
+  assert.ok(NOMS_DU_SCHEMA.has('metier_bonus') && NOMS_DU_SCHEMA.has('page_id'), 'les noms cherchés');
+  assert.deepEqual(nomsDuSchemaDans(s.textContent), [], 'toute la section, le contenu des versions compris');
+  assert.doesNotMatch(s.textContent, /\balias\b|metier_bonus|\{"|":/);
+  assert.match(s.textContent, /Bonus du métier \(Métier « Forgeron »\), n° 1, option 2/);
+  // la rupture « enfant » par le nom de la table qui cite, le renommage des deux bords sans sa clé normalisée (relecture du 2026-10-23)
+  assert.match(s.textContent, /Étiquette du sort : clé étrangère rompue vers Mot-clé/);
+  assert.match(s.textContent, /Au rejeu : Métier « Acrobate des règles \(essai des conflits\) » : les règles ont changé « Nom » autrement/);
+  assert.doesNotMatch(s.textContent, /sort_mot_cle|nom_cle|\bmot_cle\b/);
+  // la ligne entière de l'autre nom de page (version 1) : chaque colonne par le nom du service, ni clé normalisée ni provenance
+  const versions = [...page.conflit(page.lot(ALIAS.lot), ALIAS.conflits[0].id).querySelectorAll('.nv-version__texte')].map((v) => v.textContent);
+  assert.equal(versions[0], 'Page : guide/le-mode-hyper\nOrdre : 900\nAutre nom : Alias du site de dev (essai des conflits)');
+  assert.equal(versions[1], 'Ligne supprimée : elle n’existe plus dans les règles livrées.');
+});
+
+test('le script de la page n’importe ni le modèle ni le registre des noms (skill site-version-portable) : les noms viennent du service', () => {
+  /** Les modules importés, directement ou non, par un module (imports relatifs statiques). */
+  const importes = (url, vus = new Set()) => {
+    for (const m of readFileSync(url, 'utf8').matchAll(/\bfrom\s+'(\.{1,2}\/[^']+)'/g)) {
+      const dep = new URL(m[1], url);
+      if (!vus.has(dep.href)) {
+        vus.add(dep.href);
+        importes(dep, vus);
+      }
+    }
+    return vus;
+  };
+  const graphe = [...importes(new URL('../src/scripts/mise-a-jour.mjs', import.meta.url))].map((h) => h.replace(/^.*\/src\//, ''));
+  assert.deepEqual(graphe.sort(), ['lib/conflits-rendu.mjs', 'lib/notes-de-version-rendu.mjs']);
 });
 
 test('le choix 3 ouvre sa saisie ; l’envoi attend un choix par conflit, puis part avec la valeur saisie ; le message dit ce qui est fait', async () => {
@@ -138,7 +186,7 @@ test('le choix 3 ouvre sa saisie ; l’envoi attend un choix par conflit, puis p
   // le message, puis tout est relu : la note (qui compte la nouvelle modification) et les conflits (le lot résolu n'y est plus)
   assert.match(page.section().querySelector('.nv-conflits__message').textContent, /^Conflit résolu : une nouvelle modification du site de dev a été enregistrée \(4 lignes ; lot L-NOUVEAU\)/);
   assert.equal(page.lot(FORGERON.lot), undefined);
-  assert.equal(page.section().querySelectorAll('[data-nv-lot]').length, 5);
+  assert.equal(page.section().querySelectorAll('[data-nv-lot]').length, 7);
 });
 
 test('une page retirée : seul le 2 se choisit ; un choix impossible envoyé ne compte pas', async () => {
@@ -227,7 +275,7 @@ test('avec la case « Version majeure » (PR #224) : la case à côté du titre 
   const caseMajeure = () => dev.querySelector('[data-nv-majeure]');
   assert.equal(dev.querySelector('h2').textContent, 'Mise à jour en préparation : V1.0');
   assert.equal(caseMajeure().hasAttribute('checked'), true);
-  assert.match(dev.querySelector('.nv-dev__bilan').textContent, /6 lots en conflit ne partent pas avec cette mise à jour/);
+  assert.match(dev.querySelector('.nv-dev__bilan').textContent, /8 lots en conflit ne partent pas avec cette mise à jour/);
   const s = page.section();
   assert.equal(dev.children.at(-1), s);
   page.choisir(page.conflit(page.lot(FORGERON.lot), FORGERON.conflits[0].id), 1);
