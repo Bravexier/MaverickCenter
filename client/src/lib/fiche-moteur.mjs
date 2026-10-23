@@ -2092,8 +2092,8 @@ function ameliorationDuBouclier(regles, id) {
 
 /**
  * Le bouclier de la fiche (décision R96) : null sans forme ; sinon { forme, matiere, bouclier (la ligne de la liste, null sans matière), nom,
- * amelioration, ap, am, solidite: { max, actuelle, cassee, detail: [{ nom, valeur }] } | null (sans matière), poids ({ id, nom, force_min, couleur,
- * texte } | null), force (la Force du personnage), forceManquante }.
+ * amelioration, ap, am, solidite: { max, actuelle, cassee, detail: [{ nom, valeur }] } | null (sans matière), poids ({ id, nom, force_min, classe :
+ * la classe de sa couleur } | null), force (la Force du personnage), forceManquante }.
  */
 export function bouclierDe(regles, fiche) {
   const forme = trouver(regles.boucliers ?? [], fiche?.bouclier_classe_id);

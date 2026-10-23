@@ -3,10 +3,12 @@ import armuresCss from '../../styles/armures/armures.css?raw';
 import { attributEd } from '../../lib/edition-modele.mjs';
 import type { chargerArmures, contexteDesArmures } from '../../lib/armures-db.mjs';
 import {
-  COULEURS_DES_TYPES, couleurDuPoids, couleurDuType, htmlDeLigneDAmelioration, htmlDeLigneDAmeliorationDeBouclier, htmlDeLigneDArmure,
+  htmlDeLigneDAmelioration, htmlDeLigneDAmeliorationDeBouclier, htmlDeLigneDArmure,
   htmlDeLigneDeBouclier, htmlDeLigneDeForme, htmlDeLigneDeMateriau, RENDUS_DES_ARMURES,
 } from '../../lib/armures-rendu.mjs';
+import { COULEURS_DES_TYPES } from '../../lib/equipement-couleurs.mjs';
 import { htmlDePiece, MONNAIES_DU_JEU } from '../../lib/monnaies.mjs';
+import { classeDuPoids, classeDuTypeDArmure, cssDesFamilles } from '../../lib/palette-css.mjs';
 import { url } from '../../lib/wiki';
 import PanneauDeRegles from '../equipement/PanneauDeRegles.astro';
 import Tableau from '../Tableau.astro';
@@ -45,6 +47,9 @@ import type { PanneauRendu } from '../equipement/PanneauDeRegles.astro';
 // formes, des boucliers, des poids, des améliorations et le coût de fabrication du bouclier modifiables (l'AP et l'AM d'une armure ou d'un bouclier
 // chacun dans sa case : demande du propriétaire, 2026-10-17) ; celles des matériaux en lecture (R62). CSS : styles/armures/armures.css
 // (?raw, inséré ici seulement).
+// Couleurs (choix du propriétaire, « Module JS → classe ») : le type d'une armure ou d'une matière et le poids d'un bouclier portent leur classe de la
+// palette (lib/palette-css.mjs : classeDuTypeDArmure, classeDuPoids ; valeurs dans lib/equipement-couleurs.mjs), jamais un style ; ce composant émet la
+// feuille de leurs deux familles (`armure`, `poids`), pour la page construite comme pour les cases que le mode modification redessine.
 type Armures = ReturnType<typeof chargerArmures>;
 interface Props {
   armures: Armures;
@@ -63,11 +68,13 @@ const slug = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCa
 const edP = (id: string, colonne: string) => attributEd('bouclier_poids', { id }, colonne);
 const materiauxDesComposants = `${url('ressources/composants/')}#materiaux`;
 const legende = (
-  TYPES_DE_LA_GRILLE.map((t) => `<span class="ptype" style="--t: ${couleurDuType(t)}">${t}</span>`).join(' ')
+  TYPES_DE_LA_GRILLE.map((t) => `<span class="ptype ${classeDuTypeDArmure(t)}">${t}</span>`).join(' ')
 );
+const couleurs = cssDesFamilles(['armure', 'poids']);
 ---
 
 <style is:inline set:html={armuresCss}></style>
+<style is:inline set:html={couleurs}></style>
 {/* components/equipement/EquipementPage.astro pose `html.js` (sans JavaScript, ni fiche ni choix : styles/armures/armures.css) */}
 <div class="armures" data-armures>
   {/* les icônes des monnaies (lib/monnaies.mjs), que le script de la page reprend pour les coûts qu'il écrit (aucun module partagé avec lui) */}
@@ -150,7 +157,7 @@ const legende = (
           {
             parType.map((g) => (
               <Tableau id={`armures-${slug(g.type)}`} compte={`${g.armures.length} armures`} bloc="armures-bloc" class="armures-liste" classeTable="armures-table armures-table--liste">
-                <Fragment slot="titre"><span class="ptype" style={`--t: ${couleurDuType(g.type)}`}>{g.type}</span></Fragment>
+                <Fragment slot="titre"><span class={`ptype ${classeDuTypeDArmure(g.type)}`}>{g.type}</span></Fragment>
                 <thead>
                   <tr>
                     <th scope="col">Nom</th><th scope="col">Matériaux</th><th scope="col">Type</th>
@@ -320,7 +327,7 @@ const legende = (
           <tbody>
             {
               armures.poids.map((p) => (
-                <tr class="poids" data-poids={p.id} style={`--t: ${couleurDuPoids(p.id)}`}>
+                <tr class={`poids ${classeDuPoids(p.id)}`} data-poids={p.id}>
                   <th scope="row" class="poids__nom" data-ed={edP(p.id, 'nom')}>{p.nom}</th>
                   <td data-ed={edP(p.id, 'force_brut')}>{p.force_brut}</td>
                 </tr>

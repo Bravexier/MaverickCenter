@@ -6,7 +6,7 @@ import { ancreDeMateriau, type chargerArmes, type contexteDesArmes } from '../..
 import { COMPETENCES_D_ARME } from '../../lib/arme-champs.mjs';
 import { htmlDuFiltreDeCompetence } from '../../lib/armes-rendu.mjs';
 import { htmlDePiece, MONNAIES_DU_JEU } from '../../lib/monnaies.mjs';
-import { cssDesSecondsRangs } from '../../lib/palette-css.mjs';
+import { CLASSE_DES_ARMES_DE_DEPART, classeDeMateriau, cssDesFamilles, cssDesSecondsRangs } from '../../lib/palette-css.mjs';
 import Tableau from '../Tableau.astro';
 import TableauArmes from './TableauArmes.astro';
 import PanneauDeRegles from '../equipement/PanneauDeRegles.astro';
@@ -44,16 +44,21 @@ const FILTRES = Object.keys(COMPETENCES_D_ARME).map((id) => htmlDuFiltreDeCompet
 // le dégradé d'une arme de deux compétences : les classes de second rang des caractéristiques (--couleur-2), émises par le seul onglet qui les pose
 // (lib/palette-css.mjs#cssDesSecondsRangs ; les classes des caractéristiques sont sur chaque page)
 const secondsRangs = cssDesSecondsRangs('caracteristique');
+// la couleur de chaque matériau (sa ligne, sa pastille dans la fiche de l'arme) et le bleu des armes de départ (`--depart`, tiré de la classe posée sur
+// `.armes`) : les classes de la palette (familles `materiau` et `arme`, valeurs dans lib/materiaux-couleurs.mjs et lib/equipement-couleurs.mjs),
+// émises par cet onglet, jamais un style
+const couleurs = cssDesFamilles(['materiau', 'arme']);
 ---
 
 <style is:inline set:html={armesCss}></style>
 <style is:inline set:html={secondsRangs}></style>
+<style is:inline set:html={couleurs}></style>
 <script is:inline>
   document.documentElement.classList.add('js');
 </script>
 <section class="equipement-panneau is-active" id="armes" aria-labelledby="titre-armes">
 <h2 class="equipement-panneau__titre" id="titre-armes">{armes.page?.titre ?? 'Armes'}</h2>
-<div class="armes" data-armes>
+<div class={`armes ${CLASSE_DES_ARMES_DE_DEPART}`} data-armes>
   {/* l'icône du Ricken d'or (lib/monnaies.mjs), que le script de la page reprend pour les coûts qu'il écrit (aucun module partagé avec lui) */}
   {Object.keys(MONNAIES_DU_JEU).map((abr) => <template data-armes-piece={abr} set:html={htmlDePiece(abr)}></template>)}
   <PanneauDeRegles panneau={regles} />
@@ -91,7 +96,7 @@ const secondsRangs = cssDesSecondsRangs('caracteristique');
           <tbody>
             {
               armes.materiaux.map((m) => (
-                <tr class="materiau ligne-couleur" id={ancreDeMateriau(m.ligne.ressource_id)} data-materiau={m.ligne.ressource_id} data-defaut={m.defaut ? '1' : undefined} style={`--mat: ${m.couleur.fond}; --mat-texte: ${m.couleur.texte}`}>
+                <tr class={`materiau ligne-couleur ${classeDeMateriau(m.ligne.ressource_id)}`} id={ancreDeMateriau(m.ligne.ressource_id)} data-materiau={m.ligne.ressource_id} data-defaut={m.defaut ? '1' : undefined}>
                   <th scope="row" class="materiau__nom">
                     <span data-ed-lecture={attributEd('ressource', { id: m.ligne.ressource_id }, 'nom')} data-ed-cible=".materiau__choisir">
                       <button type="button" class="materiau__choisir" aria-pressed="false">{m.nom}</button>

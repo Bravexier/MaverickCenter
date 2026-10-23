@@ -8,8 +8,6 @@ main:has(.equipement) { max-width: 120rem; }
   --eq: var(--accent);
   --eq-soft: color-mix(in srgb, var(--accent) 9%, var(--surface));
   --eq-line: color-mix(in srgb, var(--accent) 35%, var(--border));
-  --degats-taille: #c0392b;
-  --degats-estoc: #2471a3;
 }
 
 /* Onglets */
@@ -82,7 +80,7 @@ a.acc-gemme:focus-visible { outline: 2px solid var(--mag-texte, var(--gemme)); o
 
 /* Éléments communs aux onglets Armes et Armures (la même présentation : un seul endroit ; leurs tableaux : le gabarit commun, styles/global/tableaux.css) */
 .arme-fiche, .pfiche { padding: 0.9rem 1.1rem 1rem; background: var(--surface); border: 1px solid var(--eq-line); border-radius: var(--radius-lg); font-size: var(--fs-lg);
-  box-shadow: 0 6px 14px -12px rgb(0 0 0 / 0.4); }
+  box-shadow: var(--ombre-fiche); }
 .arme-fiche__vide, .pfiche__vide { margin: 0; color: var(--muted); }
 .arme-dgt, .pdgt { display: inline-block; margin: 0 0.15rem 0.2rem 0; padding: 0 0.55rem; font-size: var(--fs-xs); border-radius: var(--radius-pill);
   border: 1px solid var(--eq-line); background: var(--surface); white-space: nowrap; }

@@ -11,41 +11,16 @@ import { attributEd } from './edition-modele.mjs';
 import { htmlAvecMonnaies, htmlDeMontant } from './monnaies.mjs';
 import { cleDeMateriau } from './materiaux-couleurs.mjs';
 import { RENDUS_DES_ARMES } from './armes-rendu.mjs';
+import { classeDuPoids, classeDuTypeDArmure } from './palette-css.mjs';
 
 const ENTITES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const e = (texte) => String(texte ?? '').replace(/[&<>"']/g, (c) => ENTITES[c]);
 const VIDE = '<span class="vide" aria-label="aucun">—</span>';
 const attribut = (nom, valeur) => (valeur === null || valeur === undefined ? '' : ` data-${nom}="${e(valeur)}"`);
 
-/**
- * Couleur de chaque type d'armure et de matière : le fond des cases « Matière » du tableau MATERIAUX de l'onglet « Armures » (vert léger, jaune
- * intermédiaire, rouge lourd), relevé sur la capture du propriétaire (2026-10-15) ; la légende de la grille de l'onglet nomme ces trois types. Les
- * vêtements, armures de familiers et matériaux « Autres » n'en ont pas dans la source : un gris neutre. Repère visuel sans valeur de règle.
- */
-export const COULEURS_DES_TYPES = {
-  'Léger': '#d9ead3',
-  'Intermédiaire': '#fff2cc',
-  'Lourd': '#f4cccc',
-};
-const COULEUR_NEUTRE = '#eeeeee';
-/** Le fond d'un type (« Léger » → vert) ; neutre pour un type sans couleur dans la source. */
-export const couleurDuType = (type) => COULEURS_DES_TYPES[type] ?? COULEUR_NEUTRE;
-
-/**
- * Couleur de chaque poids de bouclier : le fond de la case du poids dans la liste de l'onglet « Bouclier » du classeur original (B35 Léger vert, B37
- * Moyen jaune, B39 Lourd orange, B41 Très lourd rouge), la même que porte la case de chaque bouclier de la grille, d'où son poids est tiré
- * (bouclier.poids_id : migration 0054, décision R92 ; demande du propriétaire, 2026-10-16 : « base toi sur la couleur du tableau d'orignie et
- * affiche le dans le résultat final », sic). Sur le site, la couleur n'est qu'un repère : la règle est la Force minimum du poids ; un poids sans
- * couleur connue aurait le gris neutre.
- */
-export const COULEURS_DES_POIDS = {
-  'leger': '#93c47d',
-  'moyen': '#ffd966',
-  'lourd': '#f6b26b',
-  'tres-lourd': '#e06666',
-};
-/** Le fond d'un poids de bouclier (« leger » → vert) ; neutre pour un poids sans couleur dans la source. */
-export const couleurDuPoids = (id) => COULEURS_DES_POIDS[id] ?? COULEUR_NEUTRE;
+// Les couleurs des types d'armure (et de matière) et des poids de bouclier sont dans lib/equipement-couleurs.mjs (la règle) ; ce rendu ne pose que leur
+// classe (lib/palette-css.mjs : classeDuTypeDArmure, classeDuPoids ; familles `armure` et `poids`, émises par components/armures/ArmuresPage.astro),
+// jamais une couleur ni un style : le même HTML pour la page construite et le mode modification (choix du propriétaire, « Module JS → classe »).
 
 /** Libellés des types de dégâts (comme ceux des armes). */
 const LIBELLES_DES_DEGATS = { taille: 'Taille', estoc: 'Estoc', frappe: 'Frappe' };
@@ -98,7 +73,7 @@ function htmlDUneDefense(valeur, quoi) {
 export function htmlDuPoids(p) {
   if (!p) return VIDE;
   const force = p.force_min === null || p.force_min === undefined ? null : Number(p.force_min);
-  return `<span class="ppoids" style="--t: ${couleurDuPoids(p.id)}" data-poids="${e(p.id)}"${attribut('force', force)}`
+  return `<span class="ppoids ${classeDuPoids(p.id)}" data-poids="${e(p.id)}"${attribut('force', force)}`
     + `${force === null ? '' : ` title="${e(`Requiert ${force} Force minimum`)}"`}>${e(p.nom)}</span>`;
 }
 
@@ -111,9 +86,9 @@ export function htmlDesDegats(valeur, sens) {
     .join(' ');
 }
 
-/** La pastille d'un matériau dans la couleur de son type (nom et type en infobulle). */
+/** La pastille d'un matériau dans la couleur de son type (sa classe ; nom et type en infobulle). */
 export function htmlDeMateriau(nom, type) {
-  return `<span class="pmat-pastille" style="--t: ${couleurDuType(type)}" title="${e(`${nom} (${type ?? 'Autres'})`)}">${e(nom)}</span>`;
+  return `<span class="pmat-pastille ${classeDuTypeDArmure(type)}" title="${e(`${nom} (${type ?? 'Autres'})`)}">${e(nom)}</span>`;
 }
 
 /** Ancre HTML d'une armure : « armure-armure-cuir-peau » pour « ressources/armures#armure:armure-cuir-peau ». */
@@ -147,7 +122,7 @@ export const RENDUS_DES_ARMURES = {
   'bouclier-poids': (valeur, _ligne, ctx = {}) =>
     (valeur ? htmlDuPoids((ctx.poidsDeBouclier ?? []).find((p) => p.id === valeur) ?? { id: valeur, nom: valeur, force_min: null }) : VIDE),
   'protection-prix': (valeur) => htmlDuPrix(valeur),
-  'armure-type': (valeur) => (valeur ? `<span class="ptype" style="--t: ${couleurDuType(valeur)}">${e(valeur)}</span>` : VIDE),
+  'armure-type': (valeur) => (valeur ? `<span class="ptype ${classeDuTypeDArmure(valeur)}">${e(valeur)}</span>` : VIDE),
   // solidité ; « uni » pour une armure particulière (« Solidité uni : N » ; « Cran de solidité uni = Si un cran de solidité est perdu, c'est TOUTE l'armure
   // qui est abimée. »)
   'armure-solidite': (valeur, ligne = {}) => {
@@ -216,7 +191,7 @@ export function htmlDuPrixPourUneArmure(ro) {
 export function htmlDeLigneDeMateriau(m, role) {
   const id = m.ligne.ressource_id;
   return `<tr class="pmat" data-materiau="${e(m.cle)}" data-type="${e(m.type)}">`
-    + `<th scope="row" class="pmat__nom" style="--t: ${couleurDuType(m.type)}"><span data-ed-lecture="${ed('ressource', { id }, 'nom')}" data-ed-cible=".pmat__choisir">`
+    + `<th scope="row" class="pmat__nom ${classeDuTypeDArmure(m.type)}"><span data-ed-lecture="${ed('ressource', { id }, 'nom')}" data-ed-cible=".pmat__choisir">`
     + `<button type="button" class="pmat__choisir" data-role="${e(role)}" aria-pressed="false"${m.description ? ` title="${e(m.description)}"` : ''}>${e(m.nom)}</button></span></th>`
     + `<td class="pmat__defense">${htmlDeLaDefense(m.ligne.ap, m.ligne.am)}</td>`
     + `<td class="pmat__solidite"><span class="psol" data-solidite="${Number(m.ligne.solidite ?? 0)}">${Number(m.ligne.solidite ?? 0)}</span></td>`

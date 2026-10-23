@@ -7,9 +7,8 @@ import { conversionsDe, milliers, pourquoiPasSupprimable, prixEnRf } from './com
 import { htmlAvecMonnaies, htmlDePiece, MONNAIES_DU_JEU } from './monnaies.mjs';
 import { CATEGORIES_D_INGREDIENTS } from './corps-composants.mjs';
 import { attributEd } from './edition-modele.mjs';
-import { couleurDeMateriau } from './materiaux-couleurs.mjs';
 import { RENDUS_DES_ARMES } from './armes-rendu.mjs';
-import { classeDeMagie } from './palette-css.mjs';
+import { classeDeMagie, classeDeMateriau } from './palette-css.mjs';
 
 const ENTITES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const e = (texte) => String(texte ?? '').replace(/[&<>"']/g, (c) => ENTITES[c]);
@@ -85,8 +84,8 @@ const description = (r) => `<td class="comp-description" data-ed="${ed('ressourc
  * (armes, armures, boucliers, montures).
  */
 export function htmlDeLigneDeMateriau(r) {
-  const c = couleurDeMateriau(r.id);
-  const pastille = `<span class="comp-teinte" style="--c: ${c.fond}" aria-hidden="true"></span>`;
+  // sa couleur : la classe du matériau (lib/palette-css.mjs, famille `materiau`, émise par la page), jamais un style
+  const pastille = `<span class="comp-teinte ${classeDeMateriau(r.id)}" aria-hidden="true"></span>`;
   const usages = (r.usages ?? []).map((u) => `<span class="comp-usage">${e(u)}</span>`).join(' ') || VIDE;
   const arme = r.arme
     ? `<td class="comp-effet" data-ed="${ed('materiau_arme', { ressource_id: r.id }, 'effet_brut')}" data-ed-rendu="materiau-effet">${RENDUS_DES_ARMES['materiau-effet'](r.arme.effet_brut)}</td>`

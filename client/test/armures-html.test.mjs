@@ -13,7 +13,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ancreDArmure, ancreDeBouclier, chargerArmures, coutDeFabrication } from '../src/lib/armures-db.mjs';
 import { prixEnRo } from '../src/lib/arme-champs.mjs';
-import { couleurDuPoids, couleurDuType } from '../src/lib/armures-rendu.mjs';
+import { classeDuPoids, classeDuTypeDArmure, cssDesFamilles } from '../src/lib/palette-css.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
 
@@ -59,7 +59,8 @@ test('armures : deux tableaux des matières de la grille (premier et second mat�
     const table = p.slice(p.indexOf(`data-choix="${role}"`), p.indexOf('</table>', p.indexOf(`data-choix="${role}"`)));
     const cles = [...table.matchAll(/<tr class="pmat" data-materiau="([^"]+)" data-type="([^"]+)">/g)].map((m) => m[1]);
     assert.deepEqual(cles, armures.materiaux.map((m) => m.cle), role);
-    for (const m of armures.materiaux) assert.ok(table.includes(`<th scope="row" class="pmat__nom" style="--t: ${couleurDuType(m.type)}">`), `${role} ${m.cle}`);
+    // la couleur du type : sa classe de la palette (famille `armure`), jamais un style
+    for (const m of armures.materiaux) assert.ok(table.includes(`<th scope="row" class="pmat__nom ${classeDuTypeDArmure(m.type)}">`), `${role} ${m.cle}`);
     assert.equal((table.match(/data-ed-lecture=/g) ?? []).length, armures.materiaux.length * 2, 'nom et prix en lecture (décision R62)');
     // « pour les tableaux des matériaux il faudra rajouter le total pour une armure (le X6) » (demande du propriétaire, 2026-10-16 ; décision R93)
     assert.match(table, /<th scope="col" title="Pour une armure : les 6 unités de ce matériau qu’elle demande \(décision R93\)">Prix ×6<\/th>/, `${role} : l’en-tête`);
@@ -199,8 +200,11 @@ test('boucliers : la forme et, sous elle, les améliorations, la matière à cô
     const q = poidsDe.get(x.poids_id);
     assert.ok(q, `${x.id} : poids ${x.poids_id}`);
     const l = liste.slice(liste.indexOf(`id="${ancreDeBouclier(x.id)}"`), liste.indexOf('</tr>', liste.indexOf(`id="${ancreDeBouclier(x.id)}"`)));
-    assert.ok(l.includes(`<span class="ppoids" style="--t: ${couleurDuPoids(q.id)}" data-poids="${q.id}" data-force="${q.force_min}" title="Requiert ${q.force_min} Force minimum">${q.nom}</span>`), x.id);
+    assert.ok(l.includes(`<span class="ppoids ${classeDuPoids(q.id)}" data-poids="${q.id}" data-force="${q.force_min}" title="Requiert ${q.force_min} Force minimum">${q.nom}</span>`), x.id);
   }
+  // les couleurs des types et des poids : leurs classes, dont l'onglet émet la feuille ; plus de --t en style
+  assert.ok(html.includes(`<style>${cssDesFamilles(['armure', 'poids'])}</style>`), 'la feuille des types et des poids');
+  assert.doesNotMatch(main, /style="[^"]*--t\b/, 'plus de --t en style');
 
   // à côté : la fiche ; la liste des poids reste (mode modification, sans JavaScript), ses champs modifiables, mais plus en lecture (styles/armures/armures.css)
   assert.match(p, /<section class="pfiche" data-fiche="bouclier" aria-label="Fiche du bouclier" aria-live="polite">/);

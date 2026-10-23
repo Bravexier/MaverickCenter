@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { COMPETENCES_D_ARME } from '../src/lib/arme-champs.mjs';
 import { ancreDArme, ancreDeMateriau, chargerArmes } from '../src/lib/armes-db.mjs';
 import { COLONNES_D_UNE_ARME, htmlDesEffets, RENDUS_DES_ARMES } from '../src/lib/armes-rendu.mjs';
-import { couleurDeMateriau } from '../src/lib/materiaux-couleurs.mjs';
+import { CLASSE_DES_ARMES_DE_DEPART, classeDeMateriau, cssDesFamilles } from '../src/lib/palette-css.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
 import { chargerPanneau } from '../src/lib/panneaux-regles-db.mjs';
@@ -35,7 +35,7 @@ const commeLaPage = (h) => htmlAvecMotsCles(h, vocabulaire).html;
 
 test('pas de tableau Markdown : l’onglet est le gabarit des armes, avec son panneau de règles replié et sans phrase au-dessus', options, () => {
   assert.ok(main.length > 1000, 'le panneau de l’onglet Armes');
-  assert.match(main, /<div class="armes" data-armes>(?:<template data-armes-piece="[A-Z]+">[\s\S]*?<\/template>)*<details class="preg" id="regles-armes" data-panneau-regles="armes">/, 'le panneau en tête');
+  assert.match(main, /<div class="armes couleur-arme-depart" data-armes>(?:<template data-armes-piece="[A-Z]+">[\s\S]*?<\/template>)*<details class="preg" id="regles-armes" data-panneau-regles="armes">/, 'le panneau en tête');
   assert.ok(!main.includes('<table>'), 'aucun tableau rendu depuis le Markdown');
   assert.ok(!main.includes('armes__chapo'), 'plus de chapeau (demande du propriétaire, 2026-10-16)');
 });
@@ -160,11 +160,15 @@ test('à côté des tableaux, toujours affiché : la fiche (un seul cadre, vide 
 
 test('matériaux : toute la ligne dans leur couleur, prix en RO, effets en morceaux ; améliorations +1 à +10 sans ligne Total ; le fer est le matériau par défaut', options, () => {
   for (const m of armes.materiaux) {
-    const c = couleurDeMateriau(m.ligne.ressource_id);
-    // la couleur sur la ligne entière (demande du propriétaire, 2026-10-16 : « La ligne tout entière devrait prendre la couleur du matériau »)
-    assert.ok(main.includes(`id="${ancreDeMateriau(m.ligne.ressource_id)}" data-materiau="${m.ligne.ressource_id}"${m.nom === 'Fer' ? ' data-defaut="1"' : ''} style="--mat: ${c.fond}; --mat-texte: ${c.texte}">`), m.nom);
+    // la couleur sur la ligne entière (demande du propriétaire, 2026-10-16 : « La ligne tout entière devrait prendre la couleur du matériau ») : la
+    // classe du matériau (lib/palette-css.mjs, famille `materiau`), jamais un style
+    assert.ok(main.includes(`<tr class="materiau ligne-couleur ${classeDeMateriau(m.ligne.ressource_id)}" id="${ancreDeMateriau(m.ligne.ressource_id)}" data-materiau="${m.ligne.ressource_id}"${m.nom === 'Fer' ? ' data-defaut="1"' : ''}>`), m.nom);
   }
   assert.ok(!main.includes('<th scope="row" class="materiau__nom" style='), 'plus de couleur sur la seule case du nom');
+  assert.doesNotMatch(main, /style="[^"]*--mat\b/, 'plus de --mat en style');
+  // l'onglet émet les familles qu'il pose (les matériaux, le bleu des armes de départ, posé sur `.armes`)
+  assert.ok(html.includes(`<style>${cssDesFamilles(['materiau', 'arme'])}</style>`), 'la feuille des matériaux et des armes de départ');
+  assert.equal(CLASSE_DES_ARMES_DE_DEPART, 'couleur-arme-depart');
   // les effets sur une ligne (styles/armes/armes.css) : le bonus aux dégâts, puis les autres effets, en morceaux frères ; le mot « Dégâts » reste pour
   // les lecteurs d'écran (les effets se modifient sur la page Composants, R62 : le test lit ceux de la base)
   for (const m of armes.materiaux) assert.ok(main.includes(commeLaPage(RENDUS_DES_ARMES['materiau-effet'](m.ligne.effet_brut))), `${m.nom} : ses effets`);

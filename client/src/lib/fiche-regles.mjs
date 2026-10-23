@@ -14,7 +14,6 @@ import { effetDePosture } from './posture-texte.mjs';
 import { CLASS_GROUPS, classCategory } from './class-groups.mjs';
 import { competencesDArme, durabiliteDeLArme, porteeDeLArme } from './arme-champs.mjs';
 import { DURABILITE_MIN } from './arme-forge.mjs';
-import { couleurDuPoids } from './armures-rendu.mjs';
 import { BATON_A_REGLER, contenanceEcrite, effetsDeBaton, exemplairesDeCeintureEcrits, nomDeBaton, sacSansForceEcrit } from './ceinture-texte.mjs';
 import { bonusDeDegatsEcrit } from './degats-texte.mjs';
 import { bonusDeSortsEcrits, preparationEcrite } from './sort-bonus-texte.mjs';
@@ -23,10 +22,9 @@ import { chargerInvocations, tableauxDesSorts } from './bestiaire-db.mjs';
 import { desSelonLaForce, pointsDeMaitriseDArme } from './maitrise-arme.mjs';
 import { ORDRE_DES_RACES, raceKind } from './race-kinds.mjs';
 import { lecteurDeResistances } from './resistance-texte.mjs';
-import { texteSurCouleur } from './sort-format.mjs';
 import {
   CLASSE_NEUTRE, classeDAlignement, classeDUneClasse, classeDeCaracteristique, classeDeMagie, classeDePalier, classeDePosture, classeDeRace,
-  classeDeSecondeMagie, classeDuModeHyper,
+  classeDeSecondeMagie, classeDuModeHyper, classeDuPoids,
 } from './palette-css.mjs';
 import { normalize } from './text.mjs';
 import { chargerVocabulaire } from './mots-cles-db.mjs';
@@ -528,13 +526,14 @@ function reglesDeLaBase(db) {
       });
     })(),
     // le bouclier (décision R96 : « Forme + matière », comme l'onglet Boucliers et R78) : les formes (`boucliers`, bouclier_classe), les matières (leur
-    // solidité, celle du bouclier : R78), les boucliers de la liste (une forme et une matière : AP, AM, poids R92) et les poids (Force minimum, couleur)
+    // solidité, celle du bouclier : R78), les boucliers de la liste (une forme et une matière : AP, AM, poids R92) et les poids (Force minimum ; `classe` : la
+    // classe de la couleur du poids, lib/palette-css.mjs, famille `poids`, émise par pages/fiche/index.astro, jamais un hex)
     boucliers: lignes(db, 'SELECT id, nom, classe FROM bouclier_classe ORDER BY classe'),
     materiaux_bouclier: lignes(db, 'SELECT ressource_id, ap, am, solidite FROM materiau_bouclier ORDER BY ordre')
       .map((m) => ({ id: m.ressource_id, nom: nomDeRessource(m.ressource_id), ap: m.ap, am: m.am, solidite: m.solidite })),
     boucliers_formes_matieres: lignes(db, 'SELECT id, classe_id, materiau_id, nom, ap, am, poids_id FROM bouclier ORDER BY classe_id, materiau_id'),
     poids_bouclier: lignes(db, 'SELECT id, nom, force_min FROM bouclier_poids ORDER BY ordre')
-      .map((p) => ({ ...p, couleur: couleurDuPoids(p.id), texte: texteSurCouleur(couleurDuPoids(p.id)) })),
+      .map((p) => ({ ...p, classe: classeDuPoids(p.id) })),
     // accessoires : l'effet, et ce qu'il change sur la fiche (accessoire_effet_cible, décision R54 : lib/fiche-moteur.mjs#effetsDesAccessoires) ; `usage` : rappelé
     // sous les dons de race (« (Action) » ou usage compté) ; `propriete_nom` : le nom de sa propriété (accessoire_propriete.nom, « Attributs »), écrit par la
     // fiche en tableur

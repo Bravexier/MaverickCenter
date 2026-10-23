@@ -79,7 +79,8 @@ test('panneaux de règles (migration 0056) : un par page servie (onglet ou sous-
     const titre = main.lastIndexOf(`id="titre-${id}">`, debut);
     const finDuTitre = main.slice(titre).search(/<\/h[23]>/) + titre + 5;
     const entre = main.slice(finDuTitre, debut).replace(/<template data-armes-piece="[A-Z]+">[\s\S]*?<\/template>/g, '');
-    assert.match(entre, /^(?:<div class="(?:armes|acc)" data-(?:armes|accessoires)>)?$/, `${id} : rien avant le panneau`);
+    // (l'onglet Armes porte la classe du bleu des armes de départ : lib/palette-css.mjs, famille `arme`)
+    assert.match(entre, /^(?:<div class="(?:armes couleur-arme-depart|acc)" data-(?:armes|accessoires)>)?$/, `${id} : rien avant le panneau`);
   }
   // l'onglet Ceinture (qui ne sert pas de page du wiki) n'a pas de panneau de règles : il garde ses règles tirées du guide (test/ceinture-html.test.mjs)
   assert.ok(!main.includes('data-panneau-regles="ceinture"'));
