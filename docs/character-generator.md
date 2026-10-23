@@ -19,16 +19,17 @@ posée par la page : `docs/content-guide.md`, « Couleurs du site : la palette e
 1. **Identité** : le **portrait** (le logo en attendant une image), le **nom** en grand, le **niveau** seul (dans un médaillon ; l'XP est dans la zone 4),
    surnom, lieu d'origine et **alignement**, puis trois colonnes de menus : race, ethnie et **métier** (facultatif, sous l'ethnie) · magies innée et acquise,
    dieux · case **« Bi-classé »**, classe(s) et spécialités.
-2. **À portée de main** : les attributs et valeurs du moment ; caractéristiques et compétences, à côté la **ceinture** ; puis les **armes** (avec leur
-   **solidité**) **et maîtrises d'armes**, sur toute la largeur de la zone sur grand écran, les cartes des sources à gauche et le tableau des familles à
-   droite (choix du propriétaire du 2026-10-23, « Caractéristiques d'abord ») ; les sorts, à côté les **dons débloqués** (et l'**entraînement**). Plus
-   étroit, les blocs se suivent : attributs, caractéristiques et compétences, armes et maîtrises, ceinture, sorts, dons ; c'est aussi l'ordre du clavier
-   sur grand écran.
+2. **À portée de main** : les attributs et valeurs du moment ; caractéristiques et compétences, à côté les **armes** (avec leur **solidité**) et,
+   dessous, la **ceinture** (choix du propriétaire du 2026-10-23 : « Il faudrai séparer les arme et les maitrises . Garder l'armes visibles à coté des
+   caractéristiques comme avant. », qui remplace « Caractéristiques d'abord » du même jour) ; les sorts, à côté les **dons débloqués** (et
+   l'**entraînement**). Plus étroit, les blocs se suivent : attributs, caractéristiques et compétences, armes, ceinture, sorts, dons ; c'est aussi
+   l'ordre du clavier sur grand écran. Les **maîtrises d'armes** sont dans l'onglet « Choix » de la zone 4 (même demande).
 3. **Selon la situation** : les **postures** (et le Mode Hyper) sur toute la largeur ; l'armure (avec la **défense** totale et les **dégâts reçus**, R98),
    les accessoires et, juste en dessous, l'**inventaire** (sac et bourse ; demande du propriétaire du 2026-10-17) ; à côté l'initiative et les vitesses,
    les résistances et faiblesses, le bouclier.
 4. **Paramètres et suivi**, en **onglets** (`components/Onglets.astro`) : Progression (jauge d'XP, gains de niveau) · Choix (ce que donne le métier et ses
-   choix, le +1 d'une magie au choix, la spécialité, les dons de classe à choisir, ce que donnent la race et les magies) · Notes et événements · Contrôle. L'onglet « Choix » compte les choix qui restent, l'onglet « Contrôle » les règles à revoir ; sans JavaScript et à l'impression,
+   choix, le +1 d'une magie au choix, la spécialité, les dons de classe à choisir, ce que donnent la race et les magies ; dessous, sur toute la largeur du
+   panneau, les **maîtrises d'armes** : « La partie maitrise d'arme vont déscendre dans l'encart des "choix" », 2026-10-23) · Notes et événements · Contrôle. L'onglet « Choix » compte les choix qui restent, l'onglet « Contrôle » les règles à revoir ; sans JavaScript et à l'impression,
    les panneaux se suivent.
 
 La page prend plus de largeur que les autres (100rem au plus) ; sur un écran étroit, les blocs passent l'un sous l'autre. Le panneau d'un menu déroulant
@@ -86,7 +87,8 @@ abandonne.
   restent, signalées en rouge (`inventaireDe`) : rien n'est retiré. Ni le sac trop plein ni une ceinture au-delà du maximum ne sont des règles de
   `v_personnage_controle` : la page les signale seule.
 - **Choix à faire** (`choixEnAttente`) : l'ethnie d'une race choisie, la spécialité d'une classe au niveau de son don de spécialité, chaque groupe de dons à
-  choisir, chaque bonus ou objet de départ du métier à choisir, le +1 d'une magie qui le laisse au choix. Leur champ est **surligné** (ambre, `data-a-choisir`),
+  choisir, chaque bonus ou objet de départ du métier à choisir, le +1 d'une magie qui le laisse au choix, chaque point de maîtrise d'arme à choisir (et
+  l'acquis, l'accessoire, la résistance au choix). Leur champ est **surligné** (ambre, `data-a-choisir`),
   et tant qu'il en reste le panneau « Choix » sort en **tiroir** en bas de l'écran, par-dessus la fiche, avec la liste de ce qui manque ; il ne se range que
   quand la zone 4 est à l'écran ; « Réduire » le replie sur sa poignée (le survol le rouvre), « Aller aux choix » y descend. Replié, son contenu est caché
   (`display: none`) : le focus clavier n'y entre pas. Au clavier, on le rouvre par « Déplier », ou l'on passe par « Aller aux choix », qui met le focus sur
@@ -105,7 +107,7 @@ abandonne.
   défilement alors que le focus y est (un choix, « Réduire », « Aller aux choix », la bulle), le focus va sur l'onglet « Choix », sans défiler ni changer
   d'onglet, sauf quand le panneau « Choix » est ouvert : le focus reste sur le choix. L'ethnie est un bouton qui ouvre son menu, sans bulle. Le focus déjà dans
   le contenu le garde ouvert. La spécialité s'y choisit aussi (demande du propriétaire : « le doubler dans le menu de
-  choix »).
+  choix »), et les maîtrises d'armes, dont le bloc est dans ce panneau : le tiroir, haut de 48 % de l'écran au plus (30rem), défile en lui-même.
 - **Armes élémentaires** (décision R167, migration 0081) : la liste de chaque arme propose les armes du catalogue et, **directement, les armes
   élémentaires des magies du personnage** (innée puis acquise ; jamais le Potentiel Illimité : un personnage au Potentiel Illimité seul n'en a aucune ;
   `armesElementairesProposees`), chacune à la fin du groupe de sa famille (celle dont le type élémentaire est le sien, `familles_armes[].type_elementaire_id`)
@@ -201,6 +203,11 @@ abandonne.
   dans l'ordre des emplacements, l'armure complète d'abord ; une pièce gardée qui devient l'armure complète (ni l'armure complète, ni la même armure sur
   les six parties) et chaque autre pièce deviennent une ligne datée de ses notes (base vivante, JSON reçu : `armureDesArmures`, `retraitsDeLArmure` ;
   import du tableur : une remarque et une ligne de `nonRepris`).
+- **Liste des armes 1 et 2** : les armes groupées par famille ; les familles dans l'ordre de leur maîtrise sur la fiche, la plus haute d'abord, puis par
+  ordre alphabétique (accents et majuscules ignorés) à maîtrise égale (demande du propriétaire du 2026-10-23 : « trier les catégories d'arme dans la
+  dropdown en fonction de leur niveau de maitrise. (les plus hauts d'abord) ensuite parordre alphabétique si même niveau de maitrise. ») ; le niveau est
+  celui des points comptés, 4 au plus (R149 ; `groupesDArmesParMaitrise`), une famille sans maîtrise à 0, les armes sans famille (« Autres ») à la fin.
+  L'ordre suit la fiche en direct (un point de maîtrise choisi, une classe, un don, un accessoire) ; l'arme choisie le reste.
 - **Attaque à deux armes** (décision R46, `attaqueADeuxArmes`) : avec deux armes de mêlée, une **étoile** à côté des dégâts de chaque arme donne son malus en
   infobulle (« −10 % si ambidextre ») : −20 % main directrice (l'arme 1), −40 % main secondaire, moitié pour la main qui tient une dague, moitié pour un
   Bimane, cumulables ; Équilibré et Équilibre s'en retranchent (texte des dons), Directrice, Fausse Patte et Ravageur sont signalés. Plus de case « Ambidextrie ».
@@ -321,7 +328,9 @@ abandonne.
   est augmenté de +20 » (Mort-vivant, « Trompe-mort ») relève le plafond de chaque compétence du Social (`plafondBonus`, décision R125 : 25, le Social
   verrouillé à 1 ; 30 avec le Feu ou l'Eau inné).
 - **Maîtrises d'armes** (décision R148, variante A de la maquette retenue par le propriétaire, « Bloc des sources » : « tous les choix dans le bloc
-  Maîtrises, une carte par source, à côté du tableau calculé par famille ») : rien ne se saisit par famille, plus de curseur ni de quota.
+  Maîtrises, une carte par source, à côté du tableau calculé par famille ») : rien ne se saisit par famille, plus de curseur ni de quota. Le bloc est dans
+  l'onglet « Choix » de la zone 4, sur toute la largeur du panneau, sous ses deux colonnes (demande du propriétaire du 2026-10-23), donc aussi dans le
+  tiroir des choix.
   - **Une carte par source** (`sourcesDeMaitrise`, `carteDeMaitrise`), dans l'ordre de la fiche : chaque ligne de `classe_maitrise_arme` des classes prises
     (« Guerrier (maîtrise 2) », « Classe 1 · ligne de maîtrise 2 »), chaque don acquis qui en donne (« Épéiste (Guerrier) », « Spécialité · niveau de
     classe 10 »), l'accessoire « Un point de maîtrise d'arme » (« Accessoire : Bague 1 » ; maudit, −1, R54). Elle porte son texte tel qu'écrit, entre

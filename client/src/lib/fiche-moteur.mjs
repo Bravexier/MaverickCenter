@@ -1389,6 +1389,27 @@ export function maitrisesParFamille(regles, fiche, sources = sourcesDeMaitrise(r
 }
 
 /**
+ * Les familles de la liste des armes 1 et 2, dans l'ordre de leur maîtrise (demande du propriétaire du 2026-10-23, mot pour mot : « pour les armes il
+ * faudrai trier les catégories d'arme dans la dropdown en fonction de leur niveau de maitrise. (les plus hauts d'abord) ensuite parordre alphabétique si
+ * même niveau de maitrise ») : le niveau d'une famille est celui de la fiche, ses points comptés (`comptes` de maitrisesParFamille : 4 au plus, R149 ;
+ * l'excédent ne départage pas), 0 pour une famille qui n'a pas de ligne de maîtrise (ARME DE MONSTRES, R45) ; à niveau égal, le nom dans l'ordre
+ * alphabétique français, sans tenir compte des accents ni des majuscules. Les armes sans famille connue forment le groupe « Autres », à la fin ; l'ordre des
+ * armes d'une famille est celui des règles. [{ famille (null : « Autres »), nom, niveau, armes }].
+ */
+export function groupesDArmesParMaitrise(regles, fiche, maitrises = maitrisesParFamille(regles, fiche)) {
+  const niveaux = new Map(maitrises.map((m) => [m.famille, m.comptes]));
+  const familles = new Map(regles.familles_armes.map((f) => [f.id, f]));
+  const groupes = new Map();
+  for (const a of regles.armes) {
+    const f = familles.get(a.famille_id) ?? null;
+    const cle = f?.id ?? null;
+    if (!groupes.has(cle)) groupes.set(cle, { famille: cle, nom: f?.nom ?? 'Autres', niveau: f ? niveaux.get(f.id) ?? 0 : 0, armes: [] });
+    groupes.get(cle).armes.push(a);
+  }
+  return [...groupes.values()].sort((a, b) => (a.famille === null) - (b.famille === null) || b.niveau - a.niveau || collation.compare(a.nom, b.nom));
+}
+
+/**
  * Le compteur du bloc Maîtrises (« N points · M à choisir », décision R148, au lieu du quota de R32) : `points`, la somme signée des points de toutes les
  * sources (le −1 de l'Épéiste et d'un accessoire maudit compris) ; `aChoisir`, ceux qui n'ont pas encore de famille (un point à choisir, une part qui
  * suit une famille pas encore choisie) ; `refus`, les points au-delà d'une limite écrite (R150). { points, aChoisir, refus }.

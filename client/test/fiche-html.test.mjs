@@ -68,23 +68,40 @@ test('/fiche/ en quatre zones (demande du propriétaire), sans cadre, titre ni p
   assert.ok(!/class="num"/.test(fiche), 'aucun numéro de bloc');
 });
 
-test('/fiche/, zone II sur grand écran : caractéristiques et compétences avec la ceinture à côté, puis « Armes et maîtrises » sur toute la largeur (choix du propriétaire du 2026-10-23, « Caractéristiques d’abord »)', options, () => {
+test('/fiche/, zone II sur grand écran : les armes à côté des caractéristiques et compétences, la ceinture dessous, comme avant ; les maîtrises dans « Choix » (demande du propriétaire du 2026-10-23)', options, () => {
   const html = lire('fiche/index.html');
   const fiche = html.slice(html.indexOf('<div class="fiche" id="fiche"'));
-  // l'ordre du DOM est celui des écrans moyens et des téléphones, qui ne change pas : attributs, compétences, armes et maîtrises, ceinture, sorts, dons ;
-  // la colonne des armes et de la ceinture reste dans la page, et chaque bloc a son aire sur grand écran
+  // l'ordre du DOM est celui des écrans moyens et des téléphones : attributs, compétences, armes, ceinture, sorts, dons
   const ordre = ['attributs', 'caracteristiques', 'armes', 'ceinture', 'sorts', 'dons'].map((id) => fiche.indexOf(`id="etape-${id}"`));
   assert.ok(ordre.every((i, n) => i > 0 && (n === 0 || i > ordre[n - 1])), `ordre du DOM de la zone II : ${ordre}`);
-  assert.match(fiche, /<div class="zp-colonne">\s*(?:<!--[^]*?-->\s*)?<section class="fiche-etape zp-armes" id="etape-armes"[^]*?<section class="fiche-etape zp-ceinture" id="etape-ceinture"/);
+  // « Garder l'armes visibles à coté des caractéristiques comme avant » : la colonne des armes, puis de la ceinture, dans l'aire `col`
+  assert.match(fiche, /<div class="zp-colonne">\s*(?:<!--[^]*?-->\s*)?<section class="fiche-etape" id="etape-armes" aria-labelledby="titre-armes">\s*<h3 id="titre-armes">Armes<\/h3>[^]*?<section class="fiche-etape" id="etape-ceinture"/);
   const grand = html.match(/@media \(min-width:\s*64rem\)\s*\{([^]*?)\.zone-situation/)?.[1] ?? '';
   const aires = [...(grand.match(/\.zone-portee\s*\{[^}]*grid-template-areas:\s*([^;}]+)/)?.[1] ?? '').matchAll(/["']([^"']+)["']/g)].map((m) => m[1]);
-  assert.deepEqual(aires, ['attr attr', 'car cei', 'arm arm', 'sor don'], 'la ceinture à côté des compétences, puis les armes sur les deux colonnes, au-dessus des sorts');
-  assert.match(grand, /\.zp-colonne\s*\{\s*display:\s*contents/, 'la colonne s’efface sur grand écran');
-  assert.match(grand, /\.zp-armes\s*\{\s*grid-area:\s*arm\b/);
-  assert.match(grand, /\.zp-ceinture\s*\{\s*grid-area:\s*cei\b/);
+  assert.deepEqual(aires, ['attr attr', 'car col', 'sor don'], 'la colonne des armes et de la ceinture à côté des compétences');
+  assert.match(grand, /\.zp-colonne\s*\{\s*grid-area:\s*col\b/);
+  assert.doesNotMatch(html, /\.zp-colonne\s*\{\s*display:\s*contents|\.zp-armes|\.zp-ceinture|'arm arm'/, 'plus d’aires propres aux armes et à la ceinture');
+  // les maîtrises ne sont plus dans la zone II
+  const zone = fiche.slice(fiche.indexOf('id="zone-portee"'), fiche.indexOf('id="zone-situation"'));
+  assert.ok(zone.length > 0 && !/id="(?:maitrises|budget-maitrises|maitrises-sources|maitrises-familles)"|Maîtrises d’armes/.test(zone), 'plus de maîtrises dans la zone II');
   // le tableau des familles à côté des cartes dès que le bloc a la place, dessous sinon (sans défilement horizontal de la page)
   assert.match(html, /\.maitrises\s*\{\s*container-type:\s*inline-size/);
   assert.match(html, /@container \(min-width:\s*44rem\)\s*\{\s*\.maitrises__grille\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1\.1fr\) minmax\(0,\s*1fr\)/);
+});
+
+test('/fiche/, panneau « Choix » : les maîtrises d’armes sur toute sa largeur, sous ses deux piles (demande du propriétaire du 2026-10-23 : « La partie maitrise d’arme vont déscendre dans l’encart des \"choix\" »)', options, () => {
+  const html = lire('fiche/index.html');
+  const debut = html.indexOf('id="etape-choix"');
+  const choix = html.slice(debut, html.indexOf('</section>', debut));
+  // le bloc entier, ids inchangés (le script les lit) : l'en-tête et son compteur, les cartes des sources, puis le tableau calculé
+  const bloc = choix.slice(choix.indexOf('<div class="choix-maitrises">'));
+  assert.ok(bloc.length < choix.length, 'le bloc des maîtrises est dans le panneau « Choix »');
+  assert.match(bloc, /^<div class="choix-maitrises">\s*<div class="fiche-entete-bloc"><h4 class="fiche-sous-titre">Maîtrises d’armes<\/h4><span class="budget" id="budget-maitrises" aria-live="polite"><\/span><\/div>\s*<div id="maitrises" class="maitrises">/);
+  // après les deux piles (spécialités, dons à choisir), sur toute la largeur de la grille du panneau
+  assert.ok(choix.indexOf('<div class="choix-maitrises">') > choix.indexOf('id="dons"'), 'sous les dons de classe à choisir');
+  assert.equal([...choix.matchAll(/class="parametres__pile"/g)].length, 2);
+  assert.match(html, /\.choix-maitrises\s*\{\s*grid-column:\s*1\s*\/\s*-1/, 'une rangée sur toute la largeur');
+  assert.equal([...html.matchAll(/id="maitrises"/g)].length, 1, 'un seul bloc des maîtrises');
 });
 
 test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options, () => {
@@ -115,14 +132,17 @@ test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options
   assert.ok(!attributs.includes('fiche-aide'), 'pas de texte de calcul');
   const armes = bloc('armes');
   assert.match(armes, /<div id="armes" class="equipement equipement--armes"><\/div>/);
-  // les maîtrises d'armes (décision R148, variante A de la maquette, « Bloc des sources ») : le compteur « N points · M à choisir » dans le coin, une carte
-  // par source et, à côté, le tableau calculé des familles (remplis par le script) ; plus de curseur de maîtrise ni de quota, pas de points du MJ
-  assert.match(armes, /<span class="budget" id="budget-maitrises" aria-live="polite"><\/span>/, 'le compteur');
-  assert.match(armes, /<div id="maitrises" class="maitrises">\s*<div class="maitrises__grille">\s*<div class="maitrises__sources">/);
-  assert.match(armes, /<ul id="maitrises-sources" class="maitrises-sources" aria-labelledby="titre-maitrises-sources"><\/ul>/, 'une carte par source');
-  assert.match(armes, /<div class="fiche-defile"><table class="fiche-table fiche-table--maitrises" aria-labelledby="titre-maitrises-familles"><caption class="fiche-aide" id="maitrises-legende"><\/caption><thead><tr><th scope="col">Famille<\/th><th scope="col" class="nombre">Points<\/th><th scope="col" class="nombre">Dés<\/th><th scope="col">Sources<\/th><\/tr><\/thead><tbody id="maitrises-familles"><\/tbody><\/table><\/div>/, 'le tableau des familles');
-  assert.ok(armes.indexOf('id="maitrises-sources"') < armes.indexOf('id="maitrises-familles"'), 'les sources, puis le résultat');
-  assert.doesNotMatch(armes, /type="range"|class="maitrise"|Points du MJ|à confirmer/i, 'ni curseur, ni points du MJ, ni « à confirmer »');
+  assert.doesNotMatch(armes, /maitrise/, 'le bloc des armes n’a plus les maîtrises (panneau « Choix »)');
+  // les maîtrises d'armes, dans le panneau « Choix » (demande du propriétaire du 2026-10-23 ; décision R148, variante A de la maquette, « Bloc des
+  // sources ») : le compteur « N points · M à choisir » dans le coin, une carte par source et, à côté, le tableau calculé des familles (remplis par le
+  // script) ; plus de curseur de maîtrise ni de quota, pas de points du MJ
+  const maitrises = bloc('choix').slice(bloc('choix').indexOf('<div class="choix-maitrises">'));
+  assert.match(maitrises, /<span class="budget" id="budget-maitrises" aria-live="polite"><\/span>/, 'le compteur');
+  assert.match(maitrises, /<div id="maitrises" class="maitrises">\s*<div class="maitrises__grille">\s*<div class="maitrises__sources">/);
+  assert.match(maitrises, /<ul id="maitrises-sources" class="maitrises-sources" aria-labelledby="titre-maitrises-sources"><\/ul>/, 'une carte par source');
+  assert.match(maitrises, /<div class="fiche-defile"><table class="fiche-table fiche-table--maitrises" aria-labelledby="titre-maitrises-familles"><caption class="fiche-aide" id="maitrises-legende"><\/caption><thead><tr><th scope="col">Famille<\/th><th scope="col" class="nombre">Points<\/th><th scope="col" class="nombre">Dés<\/th><th scope="col">Sources<\/th><\/tr><\/thead><tbody id="maitrises-familles"><\/tbody><\/table><\/div>/, 'le tableau des familles');
+  assert.ok(maitrises.indexOf('id="maitrises-sources"') < maitrises.indexOf('id="maitrises-familles"'), 'les sources, puis le résultat');
+  assert.doesNotMatch(maitrises, /type="range"|class="maitrise"|Points du MJ|à confirmer/i, 'ni curseur, ni points du MJ, ni « à confirmer »');
   assert.doesNotMatch(html, /Points du MJ/);
   assert.match(bloc('ceinture'), /<ol id="ceinture" class="ceinture"/, 'les 3 emplacements de la ceinture');
   const dons = bloc('dons');

@@ -12,11 +12,12 @@ import { classeDAlignement, classeDePartie, cssDesFamilles, FAMILLES_DE_LA_FICHE
 
 // Fiche de personnage (demande du propriétaire) : création et modification d'un PRÉTIRÉ sur le même écran (/fiche/, /fiche/?id=<id>). Quatre zones,
 // sans cadre ni titre visibles (demandes du propriétaire) : I. l'identité (portrait, nom, surnom, origine, race, magies, classes, alignement, niveau seul) ; II. ce qu'on veut toujours
-// à portée (attributs, caractéristiques et compétences, sorts et le sort préparé (R115), dons débloqués et entraînement (R71), armes avec leur solidité (R74) et maîtrises, les trois emplacements de la ceinture) ; III. ce qui
+// à portée (attributs, caractéristiques et compétences, sorts et le sort préparé (R115), dons débloqués et entraînement (R71), armes avec leur solidité (R74), les trois emplacements de la ceinture) ; III. ce qui
 // dépend de la situation (posture, initiative et vitesses, armure avec la défense totale et les dégâts reçus (R98), accessoires (R97), inventaire juste en
 // dessous (demande du propriétaire du 2026-10-17), bouclier (R96), résistances et faiblesses) ; IV. ce qui se règle et se suit, en onglets (progression et
-// XP, choix, notes et événements, contrôle des règles). Compacte (demandes du propriétaire) : les choix (race, ethnie,
-// magies, classes, spécialités) dans des menus déroulants, caractéristiques, compétences, maîtrises et valeurs du moment en curseurs. Les règles viennent
+// XP, choix — dont les maîtrises d'armes, demande du propriétaire du 2026-10-23 —, notes et événements, contrôle des règles). Compacte (demandes du
+// propriétaire) : les choix (race, ethnie, magies, classes, spécialités) dans des menus déroulants, caractéristiques, compétences et valeurs du moment
+// en curseurs. Les règles viennent
 // de la base (/fiche/regles.json, lib/fiche-regles.mjs), les calculs de lib/fiche-moteur.mjs, l'enregistrement du service des personnages (/api/,
 // docs/serveur.md). Le formulaire est construit par src/scripts/fiche.mjs. CSS : styles/fiche/fiche.css, inséré ici (?raw) ; onglets de la zone IV :
 // components/Onglets.astro. La barre (demandes du propriétaire, 2026-10-15) : Nouveau, Télécharger (le classeur au modèle V15.2.2, nommé d'après le
@@ -170,36 +171,20 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
           </div>
         </section>
 
-        {/* les armes et maîtrises, puis la ceinture ; sur grand écran, la colonne s'efface (display: contents) : la ceinture va à côté des compétences,
-            et les armes et maîtrises prennent toute la largeur de la zone, sous elles (choix du propriétaire du 2026-10-23, « Caractéristiques d'abord ») ;
-            l'ordre du DOM reste celui des écrans plus étroits (armes, puis ceinture), qui ne changent pas */}
+        {/* les armes, puis la ceinture dessous : la colonne de droite, à côté des caractéristiques et compétences sur grand écran (choix du propriétaire du
+            2026-10-23 : « Garder l'armes visibles à coté des caractéristiques comme avant ») ; plus étroit, elle passe sous les compétences. Les maîtrises
+            d'armes sont dans le panneau « Choix » de la zone IV (même demande) */}
         <div class="zp-colonne">
-          <section class="fiche-etape zp-armes" id="etape-armes" aria-labelledby="titre-armes">
-            <h3 id="titre-armes">Armes et maîtrises</h3>
+          <section class="fiche-etape" id="etape-armes" aria-labelledby="titre-armes">
+            <h3 id="titre-armes">Armes</h3>
             <div class="fiche-etape__corps">
               <div id="armes" class="equipement equipement--armes"></div>
-              {/* les maîtrises d'armes (décision R148, variante A de la maquette retenue par le propriétaire, « Bloc des sources ») : une carte par source
-                  (lignes des classes, dons acquis, accessoire), ses choix de famille, et à côté le tableau calculé des familles ; dans le coin,
-                  « N points · M à choisir » ; remplis par le script */}
-              <div class="fiche-entete-bloc"><h4 class="fiche-sous-titre">Maîtrises d’armes</h4><span class="budget" id="budget-maitrises" aria-live="polite"></span></div>
-              <div id="maitrises" class="maitrises">
-                <div class="maitrises__grille">
-                  <div class="maitrises__sources">
-                    <h5 class="maitrises__zone" id="titre-maitrises-sources">D’où viennent les points</h5>
-                    <ul id="maitrises-sources" class="maitrises-sources" aria-labelledby="titre-maitrises-sources"></ul>
-                  </div>
-                  <div class="maitrises__resultat">
-                    <h5 class="maitrises__zone" id="titre-maitrises-familles">Résultat, calculé</h5>
-                    <div class="fiche-defile"><table class="fiche-table fiche-table--maitrises" aria-labelledby="titre-maitrises-familles"><caption class="fiche-aide" id="maitrises-legende"></caption><thead><tr><th scope="col">Famille</th><th scope="col" class="nombre">Points</th><th scope="col" class="nombre">Dés</th><th scope="col">Sources</th></tr></thead><tbody id="maitrises-familles"></tbody></table></div>
-                  </div>
-                </div>
-              </div>
             </div>
           </section>
           {/* la ceinture : 3 emplacements d'objets rapides, utilisables en IC (guide « Fiche de personnage : Accessoires et Ceinture ») ; chacun prend un objet
               du sac, qui le quitte, et se règle par « Utiliser », « Remplir » et « Ranger » (décision R89) ; l'aide est refaite par le script d'après les règles,
               un nom refusé (absent du sac) dit pourquoi dans #ceinture-refus */}
-          <section class="fiche-etape zp-ceinture" id="etape-ceinture" aria-labelledby="titre-ceinture">
+          <section class="fiche-etape" id="etape-ceinture" aria-labelledby="titre-ceinture">
             <h3 id="titre-ceinture">Ceinture</h3>
             <div class="fiche-etape__corps">
               <div>
@@ -386,6 +371,25 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
               {/* la spécialité de chaque classe qui y a droit, aussi choisie ici (demande du propriétaire : « le doubler dans le menu de choix ») */}
               <div id="choix-specialites" class="choix-specialites" hidden></div>
               <div><h4 class="fiche-sous-titre">Dons de classe à choisir</h4><div id="dons" class="fiche-etape__dons"></div></div>
+            </div>
+            {/* les maîtrises d'armes, sur toute la largeur du panneau, sous les deux piles (demande du propriétaire du 2026-10-23 : « La partie maitrise
+                d'arme vont déscendre dans l'encart des "choix" ») ; leur rendu ne change pas (décision R148, variante A de la maquette retenue par le
+                propriétaire, « Bloc des sources ») : une carte par source (lignes des classes, dons acquis, accessoire), ses choix de famille, et à côté le
+                tableau calculé des familles ; dans le coin, « N points · M à choisir » ; remplis par le script */}
+            <div class="choix-maitrises">
+              <div class="fiche-entete-bloc"><h4 class="fiche-sous-titre">Maîtrises d’armes</h4><span class="budget" id="budget-maitrises" aria-live="polite"></span></div>
+              <div id="maitrises" class="maitrises">
+                <div class="maitrises__grille">
+                  <div class="maitrises__sources">
+                    <h5 class="maitrises__zone" id="titre-maitrises-sources">D’où viennent les points</h5>
+                    <ul id="maitrises-sources" class="maitrises-sources" aria-labelledby="titre-maitrises-sources"></ul>
+                  </div>
+                  <div class="maitrises__resultat">
+                    <h5 class="maitrises__zone" id="titre-maitrises-familles">Résultat, calculé</h5>
+                    <div class="fiche-defile"><table class="fiche-table fiche-table--maitrises" aria-labelledby="titre-maitrises-familles"><caption class="fiche-aide" id="maitrises-legende"></caption><thead><tr><th scope="col">Famille</th><th scope="col" class="nombre">Points</th><th scope="col" class="nombre">Dés</th><th scope="col">Sources</th></tr></thead><tbody id="maitrises-familles"></tbody></table></div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </section>
