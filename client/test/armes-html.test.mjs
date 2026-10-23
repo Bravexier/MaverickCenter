@@ -106,10 +106,16 @@ test('filtre par compétence (Lourde, Légère, Arc, Arbalète, à bascule, dans
   const pastilles = [...main.matchAll(/<span class="arme-comp(?: arme-comp--deux)? (couleur-caracteristique-[\w-]+) (couleur-2-caracteristique-[\w-]+)"/g)];
   assert.ok(pastilles.length > 0, 'des pastilles de compétence');
   for (const m of pastilles) assert.ok(html.includes(`.${m[2]}{`), `${m[2]} : émise par la page`);
-  // une arme de deux compétences (R48 : dégradé Force - Agilité) : un second rang distinct du premier
-  const deux = [...main.matchAll(/<span class="arme-comp arme-comp--deux couleur-caracteristique-([\w-]+) couleur-2-caracteristique-([\w-]+)"/g)];
+  // une arme de deux compétences (R48) : le premier rang est la caractéristique de sa première compétence, le second celle de la seconde
+  // (invariant, quelles que soient les armes du site de dev), et au moins une arme a deux caractéristiques distinctes (le dégradé)
+  const caracDe = Object.fromEntries(boutons.map((m) => [m[1], m[2].replace('couleur-caracteristique-', '')]));
+  const deux = [...main.matchAll(/<span class="arme-comp arme-comp--deux couleur-caracteristique-([\w-]+) couleur-2-caracteristique-([\w-]+)" data-competences="([^"]+)"/g)];
   assert.ok(deux.length > 0, 'des armes de deux compétences');
-  for (const [, premiere, seconde] of deux) assert.deepEqual([premiere, seconde], ['force', 'agilite'], 'Lourde/Légère ou Arc/Légère');
+  for (const [, premiere, seconde, competences] of deux) {
+    const [c1, c2] = competences.split(' ');
+    assert.deepEqual([premiere, seconde], [caracDe[c1], caracDe[c2]], competences);
+  }
+  assert.ok(deux.some(([, premiere, seconde]) => premiere !== seconde), 'au moins un second rang distinct du premier');
   assert.match(filtre, /data-armes-filtre-tout hidden>Toutes</);
   assert.ok(!main.includes('Précision'), 'plus de « Précision »');
   // chaque ligne porte ses compétences, toutes parmi celles du filtre (lib/armes-filtres.mjs les lit)
