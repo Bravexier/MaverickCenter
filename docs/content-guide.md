@@ -171,7 +171,7 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
     (4,5:1). Les autres parties l'atteignent (4,6:1 à 5,6:1). Que faire ? » ; réponse du propriétaire du 2026-10-23 : sans préférence ; option
     recommandée appliquée, au nom de sa règle « Privilégé la lisibilité » : « Vert assombri » : « Sur ces cartes, la couleur de la partie est
     assombrie par le calcul, mêlée de 10 % de noir (environ #297147, 5,0:1). Aucune couleur n'est ajoutée, et le thème sombre ne change pas. »
-    (`.guide-fil-rouge__nom` lit `--guide-texte`, assombri en clair pour toute partie par le choix suivant : le même rendu) ;
+    (`.guide-fil-rouge__nom` lit `--guide-texte`, assombri en clair pour toute partie par le choix du texte coloré, plus bas : le même rendu) ;
   - la marque « préparé » d'un sort de la fiche, en thème sombre : question « Sur la fiche, en thème sombre, la marque « préparé » d'un sort (tableau
     des sorts) est écrite dans la couleur de la zone II, le rouge #b03030, sur le fond sombre (#211b15) : 2,7:1, sous le contraste minimal de
     lisibilité (4,5:1). En thème clair, elle est lisible (6,2:1). Que faire ? » ; réponse du propriétaire du 2026-10-23 : sans préférence ; option
@@ -253,7 +253,17 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   les deux thèmes) `--ombre-evenement` (`0 10px 30px rgb(0 0 0 / 0.05)`, la page d'un événement), `--ombre-barre-du-bas` (`0 -4px 18px rgb(0 0 0 /
   0.08)`, la barre du bas du téléphone), `--ombre-poignee` (`0 1px 4px rgb(0 0 0 / 0.12)`, la poignée de la mini-frise), `--ombre-tiroir` (`10px 0 34px
   rgb(0 0 0 / 0.28)`, le tiroir de la frise) et `--voile-tiroir` (`rgb(24 18 12 / 0.48)`, le voile sous le tiroir ouvert : pas un noir pur) ; le masque
-  des pointillés de « Date inconnue » s'écrit en `currentColor` (un masque ne lit que l'opacité). Un voile noir ou
+  des pointillés de « Date inconnue » s'écrit en `currentColor` (un masque ne lit que l'opacité) ; puis (lot des archives et de la mise à jour, sans
+  famille de la palette, avec les valeurs qu'écrivaient les feuilles, en clair et dans les deux blocs du thème sombre ; aucune n'égale un jeton existant)
+  `--doc-google`, `--doc-google-fond`, `--sheet-google` et `--sheet-google-fond` (le bleu des Docs et le vert des Sheets, ceux des icônes Google, sur
+  les étiquettes des Archives : `#1a56b8` sur `#e3ecfb`, `#1b7340` sur `#e1f3e8` ; en sombre `#9cbcf2` sur `#1d2a40`, `#8fd3a8` sur `#1b3326`),
+  `--amelioration`, `--amelioration-fond`, `--affaiblissement` et `--affaiblissement-fond` (le vert et le rouge des notes de version de la page Mise à
+  jour : R29 fixe le sens, vert = amélioration, rouge = affaiblissement, et les valeurs sont celles du site, d'aucune source : `#1f7a45` sur `#e3f4ea`,
+  `#b3261e` sur `#fbe6e4` ; en sombre `#7fd3a0` sur `#18301f`, `#f2a19a` sur `#3a1d1b` ; de 4,68:1, le vert sur son fond en clair, à 10,3:1) et
+  `--texte-sur-good` (le texte des boutons principaux de la page Mise à jour, sur `--good` : `var(--texte-sur-fonce)` en clair, 6,0:1, `var(--bg)` en
+  sombre, 9,9:1 ; réponse du propriétaire du 2026-10-23 à « Sur la page « Mise à jour » du site de dev, les boutons principaux (« Effectuer la mise à jour », « Lancer la simulation », « Passer en version majeure », « Résoudre ce lot ») ont un texte blanc sur le vert du site. En thème sombre, ce vert est clair (#7fcf9b) : le blanc n'y atteint que 1,9:1, loin du contraste minimal de lisibilité (4,5:1). En thème clair, c'est lisible (6,0:1). Que faire ? » : « Texte foncé en sombre (Recommandé) » ; option : « En thème sombre seulement, le texte de ces boutons prend le fond sombre du site (#17130f, 9,9:1), comme le choisit déjà la règle du texte sur couleur du site pour un fond clair. Aucune couleur ajoutée ; le thème clair ne change pas. ») ; le voile de ses
+  boîtes de dialogue s'écrit `color-mix(in srgb, #000 45%, transparent)`. Le bandeau du site de dev reste à un lot à venir ; les pages Debug gardent leurs
+  copies du vert et du rouge (« Thème reste, Debug à part »). Un voile noir ou
   blanc translucide (le survol d'une ligne, les voiles des champs et du dé posés sur la couleur d'un niveau) s'écrit en noir ou blanc de mélange,
   `color-mix(in srgb, #fff 70%, transparent)`, le même rendu que `rgb(255 255 255 / 0.7)`.
 - **Deux couleurs d'une famille sur un même élément** (le dégradé de l'innée vers l'acquise des cadres de la fiche et des lignes de `/personnages/`,
@@ -299,7 +309,9 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   et palier, de `mode_hyper` et `mode_hyper.cent`, `race_par_nature`, `neutre` : skill `zone-fiche`), car un script de page n'importe pas
   `palette-css.mjs`. La carte de `/magies/` : les règles du survol (écrites par le composant) font lire au trait `--couleur` ou `--couleur-2` de ses
   classes selon la magie survolée ; seule la part de la couleur dans le trait se calcule encore depuis la valeur (luminance, au build).
-  Les autres couleurs (parties du guide, livres, archives, mise à jour…) posent encore leur couleur en style : elles passeront aux classes lot par lot, comme les couleurs encore écrites des feuilles des lots faits (les
+  Restent, pour les lots à venir : le bandeau du site de dev (`.bandeau-test` de `global/site-shell.css`, `#b45309` et `#fff`), les couleurs des
+  cases de tableau (`{couleur:x}`, `[data-couleur]` de `global/wiki.css`, `lib/markdown-couleurs.mjs`) et les couleurs encore écrites des feuilles
+  des lots faits (les
   voiles blancs translucides des bannières, `rgba(255, 255, 255, …)` de `classe/page.css`, `classe/dons.css`, `race/page.css`, `magie/page.css` ;
   l'échelle des relations entre les peuples, `--regard-evitee` de `race/base.css` ; les teintes des genres de sort, `.genre` de
   `styles/magie/sorts.css`, et des types de don, `.don-type` de `classe/dons.css` ; l'ombre des infobulles). La page Debug et l'impression ne

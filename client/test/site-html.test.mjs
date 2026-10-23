@@ -13,7 +13,8 @@ import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { trierVersions } from '../src/lib/notes-de-version.mjs';
 import { ADRESSES_DU_PLAN_PRECEDENT, ANCRES_DES_PAGES_ABSORBEES, PAGES_ABSORBEES, PAR_OU_COMMENCER, partieDeLaPage } from '../src/lib/livres.mjs';
 import { cheminDePage } from '../src/lib/metiers.mjs';
-import { classeDePartie, classesDeLaPalette, cssDesFamilles } from '../src/lib/palette-css.mjs';
+import { classeDePartie, classesDeLaPalette, cssDeLaPalette, cssDesFamilles } from '../src/lib/palette-css.mjs';
+import { cssDesAttributs } from '../src/lib/attributs-couleurs.mjs';
 import { htmlDeLaNote } from '../src/lib/notes-de-version-rendu.mjs';
 
 const dist =fileURLToPath(new URL('../dist/', import.meta.url));
@@ -762,4 +763,34 @@ test('couleurs des parties du guide : jamais en style sur une page construite, t
   assert.ok(autres.every((rel) => /^(?:decouvrir|regles)\/[a-z-]+\/index\.html$/.test(rel) && !rel.startsWith('regles/avancees/')), `ailleurs : ${autres}`);
   assert.equal(parPage.size, 3 + 16, `l’accueil, le sommaire des Bases, la fiche et les ${parPage.size - 3} pages de Découvrir et des Bases`);
   assert.ok(!parPage.has('regles/avancees/meteo/index.html') && !parPage.has('mj/index.html'), 'une page de référence : l’accent du site');
+});
+
+// Lot des archives et de la mise à jour (même demande, mêmes choix de cadrage : skill ui-couleurs) : aucune famille de la palette ; leurs couleurs sont des
+// jetons du thème (styles/global/base.css). Les trois pages n'émettent que la feuille de chaque page (Base.astro), aucune d'une zone, ne posent aucun style,
+// et leur feuille insérée (?raw) n'écrit aucune couleur, hors le noir de mélange du voile des boîtes de dialogue.
+test('/archives/, /mise-a-jour/ et /maintenance/ : aucune feuille de zone de la palette, aucun style, aucune couleur écrite dans leur feuille', options, () => {
+  const palette = cssDeLaPalette();
+  for (const [rel, source] of [['archives/index.html', 'archives/archives.css'], ['mise-a-jour/index.html', 'mise-a-jour/mise-a-jour.css'],
+    ['maintenance/index.html', 'maintenance/maintenance.css']]) {
+    const html = lire(rel);
+    assert.doesNotMatch(html, /\bstyle="/, `${rel} : un style`);
+    assert.equal(html.split(`<style>${palette}</style>`).length - 1, 1, `${rel} : la feuille de chaque page, une fois`);
+    // toute classe de couleur de la page est dans la feuille de chaque page : aucune famille d'une zone, ni second rang des caractéristiques, ni
+    // combinaison de potion, ni événement de la chronologie
+    const classes = [...html.matchAll(/\.(couleur-[a-z0-9-]+)\{/g)].map((m) => m[1]);
+    assert.ok(classes.length > 30, `${rel} : ${classes.length} classes`);
+    for (const c of classes) assert.ok(palette.includes(`.${c}{`), `${rel} : ${c} n’est pas de la feuille de chaque page`);
+    assert.doesNotMatch(html, /data-couleurs-chronologie/, rel);
+    // la feuille de la page, insérée telle quelle : sans hex ni fonction de couleur écrite (le voile : noir de mélange)
+    const feuille = readFileSync(new URL(`../src/styles/${source}`, import.meta.url), 'utf8');
+    assert.ok(html.includes(feuille.trim()), `${rel} : la feuille ${source} insérée`);
+    const autres = [...html.matchAll(/<style>([^<]*)<\/style>/g)].map((m) => m[1]).filter((css) => css !== palette && css !== cssDesAttributs());
+    assert.ok(autres.length >= 1, rel);
+    for (const css of autres) {
+      const sansMelange = css.replace(/color-mix\(in srgb, #000 \d+%, transparent\)/g, '');
+      assert.deepEqual(sansMelange.match(/#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?)\(\s*\d/gi) ?? [], [], `${rel} : une couleur écrite dans la feuille de la page`);
+    }
+  }
+  // les jetons lus par les feuilles
+  assert.ok(lire('archives/index.html').includes('var(--doc-google)') && lire('mise-a-jour/index.html').includes('var(--texte-sur-good)'));
 });

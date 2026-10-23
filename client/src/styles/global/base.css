@@ -27,6 +27,15 @@
   --maudit: #8e44ad;              /* un accessoire maudit, la référence (les deux thèmes) : le cadre de l'encart maudit, et le calcul du violet sur un fond de niveau (styles/accessoires/accessoires.css) */
   --maudit-texte: var(--maudit);  /* le même, en texte sur le fond de la page (ligne « MALÉDICTION », mot « Maudit », titre d'un accessoire détruit) ; plus clair en sombre */
   --maudit-choisi: var(--maudit-texte); /* le même, sur une ligne « MALÉDICTION » choisie ; en sombre, encore éclairci par le calcul */
+  --texte-sur-good: var(--texte-sur-fonce); /* le texte d'un bouton principal posé sur --good (page Mise à jour, ses boîtes de dialogue) ; le fond sombre du site en thème sombre */
+  --amelioration: #1f7a45;        /* une amélioration dans les notes de version (R29 fixe le sens, vert ; la valeur est celle du site : styles/mise-a-jour/mise-a-jour.css) */
+  --amelioration-fond: #e3f4ea;   /* son fond (mot ajouté, pastille « ajout ») */
+  --affaiblissement: #b3261e;     /* un affaiblissement (R29 : rouge) */
+  --affaiblissement-fond: #fbe6e4; /* son fond (mot retiré, pastille « retrait ») */
+  --doc-google: #1a56b8;          /* l'étiquette d'un Google Doc des Archives, le bleu de son icône (styles/archives/archives.css) */
+  --doc-google-fond: #e3ecfb;
+  --sheet-google: #1b7340;        /* l'étiquette d'un Google Sheet des Archives, le vert de son icône */
+  --sheet-google-fond: #e1f3e8;
   --radius: 8px;
   --radius-xs: 4px;
   --radius-sm: 6px;
@@ -77,6 +86,15 @@
     --a-choisir: #f0a14a;
     --maudit-texte: #a86ec0;
     --maudit-choisi: color-mix(in srgb, var(--maudit-texte) 80%, #fff);
+    --texte-sur-good: var(--bg);
+    --amelioration: #7fd3a0;
+    --amelioration-fond: #18301f;
+    --affaiblissement: #f2a19a;
+    --affaiblissement-fond: #3a1d1b;
+    --doc-google: #9cbcf2;
+    --doc-google-fond: #1d2a40;
+    --sheet-google: #8fd3a8;
+    --sheet-google-fond: #1b3326;
   }
 }
 
@@ -96,6 +114,15 @@
   --a-choisir: #f0a14a;
   --maudit-texte: #a86ec0;
   --maudit-choisi: color-mix(in srgb, var(--maudit-texte) 80%, #fff);
+  --texte-sur-good: var(--bg);
+  --amelioration: #7fd3a0;
+  --amelioration-fond: #18301f;
+  --affaiblissement: #f2a19a;
+  --affaiblissement-fond: #3a1d1b;
+  --doc-google: #9cbcf2;
+  --doc-google-fond: #1d2a40;
+  --sheet-google: #8fd3a8;
+  --sheet-google-fond: #1b3326;
 }
 
 * { box-sizing: border-box; }

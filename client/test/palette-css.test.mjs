@@ -669,6 +669,16 @@ const FICHIERS_DU_LOT_DES_PARTIES = [
   'src/lib/livres.mjs', 'src/lib/guide.mjs', 'src/components/guide/PageDuGuide.astro', 'src/components/guide/Sommaire.astro', 'src/pages/index.astro',
   'src/pages/regles/index.astro', 'src/styles/accueil/accueil.css', 'src/styles/guide/blocs.css',
 ];
+/**
+ * Les fichiers du lot des archives et de la mise à jour (/archives/, /mise-a-jour/ et ses boîtes de dialogue, /maintenance/) : contrôlés en entier. Aucune
+ * famille de la palette : leurs couleurs d'interface, sans règle du jeu, sont des jetons du thème (styles/global/base.css).
+ */
+const FICHIERS_DU_LOT_DES_ARCHIVES_ET_DE_LA_MISE_A_JOUR = [
+  'src/styles/archives/archives.css', 'src/pages/archives.astro', 'src/lib/archives.mjs',
+  'src/styles/mise-a-jour/mise-a-jour.css', 'src/pages/mise-a-jour.astro', 'src/scripts/mise-a-jour.mjs', 'src/lib/notes-de-version.mjs',
+  'src/lib/notes-de-version-sens.mjs', 'src/lib/notes-de-version-rendu.mjs', 'src/lib/conflits-rendu.mjs',
+  'src/styles/maintenance/maintenance.css', 'src/pages/maintenance.astro', 'src/scripts/maintenance.mjs', 'src/lib/maintenance-retour.mjs',
+];
 /** Les feuilles où `--c`, `--c1`, `--c2`, `--c-texte` et `--texte-sur-c` sont les variables de la palette (tirées de la classe : `.fiche .teinte-palette`, `.guide-carac`…). */
 const FEUILLES_DES_VARIABLES_DE_LA_PALETTE = new Set(['src/styles/fiche/fiche.css', 'src/styles/guide/blocs.css']);
 /** Les variables que les feuilles des classes et des races tirent de la classe de leur catégorie ou de leur nature (`--cla: var(--couleur…)`, `--rac`…). */
@@ -683,7 +693,8 @@ const FEUILLES_DES_CLASSES_ET_RACES = /^src\/styles\/(?:classe|race)\//;
  * (`var(--depart…)`), les jetons du lot des matériaux, des armes et des armures (`var(--degats-…)`, `var(--defense-ap|am)`, `var(--ombre-fiche)`) et ceux
  * du lot des accessoires (`var(--maudit)`, `var(--maudit-texte)`, `var(--maudit-choisi)`, `var(--ombre-encart)`) et de la chronologie (`var(--ombre-evenement)`,
  * `var(--ombre-barre-du-bas)`, `var(--ombre-poignee)`, `var(--ombre-tiroir)`, `var(--voile-tiroir)`) et des parties du guide (`var(--sommaire-couleur)`,
- * `var(--guide…)`, `var(--etape…)`) ;
+ * `var(--guide…)`, `var(--etape…)`) et des archives et de la mise à jour (`var(--doc-google…)`, `var(--sheet-google…)`, `var(--amelioration…)`,
+ * `var(--affaiblissement…)`, `var(--texte-sur-good)`) ;
  * [{ fichier, selecteur, corps }], commentaires retirés.
  */
 const reglesQuiLisentLaPalette = () => readdirSync(new URL('../src/styles/', import.meta.url), { recursive: true }).filter((n) => n.endsWith('.css'))
@@ -694,7 +705,7 @@ const reglesQuiLisentLaPalette = () => readdirSync(new URL('../src/styles/', imp
     .filter(([, , corps]) => /var\(--(?:couleur(?:-texte|-2)?|mag(?:-[a-z]+)?)[,)]/.test(corps)
       || (FEUILLES_DES_VARIABLES_DE_LA_PALETTE.has(`src/styles/${n}`) && /var\(--(?:c|c1|c2|c-texte|texte-sur-c)[,)]/.test(corps))
       || (FEUILLES_DES_CLASSES_ET_RACES.test(`src/styles/${n}`) && /var\(--(?:cla|rac)(?:-[a-z]+)?[,)]|var\(--hero-[12]\)/.test(corps))
-      || /var\(--(?:texte-sur-fonce|fond-banniere|depart(?:-[a-z]+)*|degats-[a-z]+|defense-a[pm]|ombre-fiche|maudit(?:-texte|-choisi)?|ombre-encart|ombre-evenement|ombre-barre-du-bas|ombre-poignee|ombre-tiroir|voile-tiroir|sommaire-couleur|guide(?:-[a-z]+)?|etape(?:-[a-z]+)?)[,)]/.test(corps))
+      || /var\(--(?:texte-sur-fonce|fond-banniere|depart(?:-[a-z]+)*|degats-[a-z]+|defense-a[pm]|ombre-fiche|maudit(?:-texte|-choisi)?|ombre-encart|ombre-evenement|ombre-barre-du-bas|ombre-poignee|ombre-tiroir|voile-tiroir|sommaire-couleur|guide(?:-[a-z]+)?|etape(?:-[a-z]+)?|(?:doc|sheet)-google(?:-fond)?|(?:amelioration|affaiblissement)(?:-fond)?|texte-sur-good)[,)]/.test(corps))
     .map(([, selecteur, corps]) => ({ fichier: `src/styles/${n}`, selecteur: selecteur.trim().replace(/\s+/g, ' '), corps })));
 /**
  * Hors des lots faits : la seule déclaration de règles choisies qui n'est pas une couleur de ces lots, retirée avant le contrôle (le reste de la règle est
@@ -709,7 +720,7 @@ const HORS_DU_LOT = new Map([
 
 test('aucune couleur écrite dans les fichiers des lots faits (ni dans les règles de ces lots des feuilles partagées), hors le noir et le blanc de mélange', () => {
   for (const f of [...FICHIERS_DU_LOT_DES_MAGIES, ...FICHIERS_DU_LOT_DES_CARACTERISTIQUES, ...FICHIERS_DU_LOT_DES_CLASSES_ET_RACES, ...FICHIERS_DU_LOT_DES_ARMES_ET_ARMURES,
-    ...FICHIERS_DU_LOT_DES_ACCESSOIRES, ...FICHIERS_DU_LOT_DE_LA_CHRONOLOGIE, ...FICHIERS_DU_LOT_DES_PARTIES]) {
+    ...FICHIERS_DU_LOT_DES_ACCESSOIRES, ...FICHIERS_DU_LOT_DE_LA_CHRONOLOGIE, ...FICHIERS_DU_LOT_DES_PARTIES, ...FICHIERS_DU_LOT_DES_ARCHIVES_ET_DE_LA_MISE_A_JOUR]) {
     assert.deepEqual(couleursDuFichier(f), [], f);
   }
   const regles = reglesQuiLisentLaPalette();
@@ -757,7 +768,11 @@ test('aucune couleur écrite dans les fichiers des lots faits (ni dans les règl
     // lot des parties du guide
     "src/styles/global/wiki.css .sommaire[class*='couleur-partie-']", 'src/styles/global/wiki.css .sommaire--couleur > h2',
     "src/styles/guide/blocs.css .guide-reference[class*='couleur-partie-']", 'src/styles/guide/blocs.css .guide-rubriques__lien:hover, .guide-rubriques__lien:focus-visible',
-    "src/styles/fiche/fiche.css .fiche-zone[class*='couleur-partie-']", 'src/styles/fiche/fiche.css .sort-prepare__marque']) {
+    "src/styles/fiche/fiche.css .fiche-zone[class*='couleur-partie-']", 'src/styles/fiche/fiche.css .sort-prepare__marque',
+    // lot des archives et de la mise à jour
+    'src/styles/archives/archives.css .archive__genre--doc', 'src/styles/archives/archives.css .archive__genre--sheet',
+    'src/styles/mise-a-jour/mise-a-jour.css .nv-badge--ajout', 'src/styles/mise-a-jour/mise-a-jour.css .nv-diff del',
+    'src/styles/mise-a-jour/mise-a-jour.css .nv-dev button.nv-principal, .nv-dialogue button.nv-principal']) {
     assert.ok(regles.some((r) => `${r.fichier} ${r.selecteur}` === attendue), `règle choisie : ${attendue}`);
   }
   for (const [h, declaration] of HORS_DU_LOT) {
@@ -1457,4 +1472,127 @@ test('lisibilité des parties du guide dans les deux thèmes : le blanc sur leur
   assert.ok(contraste(COULEURS_DES_PARTIES.creer, surFond(COULEURS_DES_PARTIES.creer, clair.valeur('--surface'), p.soft)) < CONTRASTE_MINIMAL, 'le vert de la partie, non assombri, sur la carte');
   assert.ok(contraste(COULEURS_DES_PARTIES.creer, clair.valeur('--bg')) < CONTRASTE_MINIMAL, 'le vert de la partie, non assombri, sur le fond de la page');
   assert.ok(contraste(COULEURS_DES_PARTIES.jouer, sombres[0].valeur('--surface')) < CONTRASTE_MINIMAL, 'le rouge de la zone II, non éclairci');
+});
+
+// Lot des archives et de la mise à jour (2026-10-23, même demande et mêmes choix de cadrage) : aucune famille de la palette (des couleurs d'interface,
+// sans règle du jeu, qui changent avec le thème) ; le bleu des Docs et le vert des Sheets des Archives, le vert et le rouge des notes de version (R29
+// fixe le sens, pas les valeurs) et le texte des boutons principaux de la page Mise à jour sont des jetons du thème (choix « Thème reste, Debug à part »),
+// avec les valeurs qu'écrivaient les feuilles ; le voile des boîtes de dialogue, en noir de mélange.
+
+/** Les jetons du lot et leurs valeurs, en clair puis en sombre (les deux blocs du thème sombre) : celles qu'écrivaient les feuilles. */
+const JETONS_DES_ARCHIVES_ET_DE_LA_MISE_A_JOUR = {
+  '--amelioration': ['#1f7a45', '#7fd3a0'], '--amelioration-fond': ['#e3f4ea', '#18301f'],
+  '--affaiblissement': ['#b3261e', '#f2a19a'], '--affaiblissement-fond': ['#fbe6e4', '#3a1d1b'],
+  '--doc-google': ['#1a56b8', '#9cbcf2'], '--doc-google-fond': ['#e3ecfb', '#1d2a40'],
+  '--sheet-google': ['#1b7340', '#8fd3a8'], '--sheet-google-fond': ['#e1f3e8', '#1b3326'],
+};
+
+test('les archives et la mise à jour : aucune famille de la palette ; leurs couleurs, des jetons du thème avec les valeurs d’avant ; le texte des boutons principaux, foncé en sombre', () => {
+  const blocs = blocsDuTheme();
+  const clair = blocs.find((b) => b.sel === ':root');
+  const sombres = blocs.filter((b) => b.sel !== ':root' && b.valeur('--bg'));
+  assert.deepEqual(sombres.map((b) => b.sel), [':root:not([data-theme="light"])', ':root[data-theme="dark"]']);
+  // les huit jetons, dans les trois blocs du thème ; aucun n'égale un jeton existant (« Garder séparées » : --good vaut #2f6f47, pas #1f7a45)
+  for (const [nom, [enClair, enSombre]] of Object.entries(JETONS_DES_ARCHIVES_ET_DE_LA_MISE_A_JOUR)) {
+    assert.equal(clair.valeur(nom), enClair, `${nom}, clair`);
+    for (const b of sombres) assert.equal(b.valeur(nom), enSombre, `${nom}, ${b.sel}`);
+  }
+  // dans chaque bloc, aucun des huit n'a la valeur d'une autre variable du bloc (lue dans base.css ; --texte-sur-good, qui renvoie à d'autres jetons, à part)
+  const corpsDesBlocs = new Map([...lire('src/styles/global/base.css').matchAll(/(:root[^{]*)\{([^{}]*)\}/g)].map(([, sel, corps]) => [sel.trim(), corps]));
+  for (const b of [clair, ...sombres]) {
+    const corps = corpsDesBlocs.get(b.sel);
+    const variables = [...corps.matchAll(/\n\s*(--[a-z0-9-]+): ([^;]+);/g)].map(([, nom, v]) => [nom, v.trim().toLowerCase()]);
+    assert.ok(variables.length >= 9, `${b.sel} : ${variables.length} variables`);
+    for (const nom of Object.keys(JETONS_DES_ARCHIVES_ET_DE_LA_MISE_A_JOUR)) {
+      const v = b.valeur(nom).toLowerCase();
+      const egales = variables.filter(([autre, x]) => autre !== nom && autre !== '--texte-sur-good' && x === v).map(([autre]) => autre);
+      assert.deepEqual(egales, [], `${b.sel} : ${nom} (${v}) a la valeur de ${egales}`);
+    }
+  }
+  // le texte des boutons principaux (réponse du propriétaire du 2026-10-23 : « Texte foncé en sombre (Recommandé) ») : le texte sur aplat foncé en clair,
+  // le fond sombre du site dans les deux blocs du thème sombre ; aucune couleur ajoutée
+  assert.equal(clair.valeur('--texte-sur-good'), 'var(--texte-sur-fonce)');
+  for (const b of sombres) assert.equal(b.valeur('--texte-sur-good'), 'var(--bg)', b.sel);
+  // les feuilles ne lisent que les jetons ; plus aucun bloc du thème à elles (le thème est dans base.css), plus de variables --nv-vert…
+  const archives = lire('src/styles/archives/archives.css');
+  assert.ok(archives.includes('\n.archive__genre--doc { background: var(--doc-google-fond); color: var(--doc-google); }'));
+  assert.ok(archives.includes('\n.archive__genre--sheet { background: var(--sheet-google-fond); color: var(--sheet-google); }'));
+  const maj = lire('src/styles/mise-a-jour/mise-a-jour.css');
+  for (const attendu of [
+    '\n.nv-sens--amelioration ins, .nv-sens--amelioration.nv-champ--long > summary, span.nv-sens--amelioration { color: var(--amelioration); }',
+    '\n.nv-sens--affaiblissement ins, .nv-sens--affaiblissement.nv-champ--long > summary, span.nv-sens--affaiblissement { color: var(--affaiblissement); }',
+    '\n.nv-sens--amelioration ins { background: var(--amelioration-fond);', '\n.nv-sens--affaiblissement ins { background: var(--affaiblissement-fond);',
+    '\n.nv-diff ins { color: var(--amelioration); background: var(--amelioration-fond); }', '\n.nv-diff del { color: var(--affaiblissement); background: var(--affaiblissement-fond); }',
+    '\n.nv-badge--ajout { background: var(--amelioration-fond); color: var(--amelioration); }', '\n.nv-badge--retrait { background: var(--affaiblissement-fond); color: var(--affaiblissement); }',
+    '\n.nv-dev button.nv-principal, .nv-dialogue button.nv-principal { background: var(--good); color: var(--texte-sur-good); border-color: var(--good); font-weight: bold; }',
+    '\n.nv-dialogue::backdrop { background: color-mix(in srgb, #000 45%, transparent); }',
+  ]) assert.ok(maj.includes(attendu), attendu);
+  for (const [f, css] of [['archives.css', archives], ['mise-a-jour.css', maj]]) {
+    assert.doesNotMatch(css, /:root|prefers-color-scheme|--nv-(?:vert|rouge)/, `${f} : ni bloc du thème, ni variable locale de couleur`);
+  }
+  // les quatre boutons principaux sont couverts par la règle : trois boîtes ou boutons du script, « Résoudre ce lot » du rendu des conflits ; la page et ses
+  // boîtes de dialogue sont dans .mise-a-jour (les boîtes y sont ajoutées), la section des conflits dans .nv-dev
+  const script = lire('src/scripts/mise-a-jour.mjs');
+  const boutons = [...script.matchAll(/<button type="(?:button|submit)" class="nv-principal"[^>]*>([^<]+)<\/button>/g)].map((m) => m[1]);
+  assert.deepEqual(boutons, ['Effectuer la mise à jour', 'Passer en version majeure', 'Lancer la simulation', 'Effectuer la mise à jour']);
+  assert.ok(lire('src/lib/conflits-rendu.mjs').includes('<div class="nv-dev__actions"><button type="submit" class="nv-principal">Résoudre ce lot</button></div>'));
+  assert.equal((script.match(/dialogue\.className = 'nv-dialogue';/g) ?? []).length, 2);
+  assert.equal((script.match(/racine\.append\(dialogue\);/g) ?? []).length, 2);
+  assert.ok(script.includes("const racine = document.querySelector('[data-mise-a-jour]');") && script.includes("const zone = racine.querySelector('[data-nv-dev]');")
+    && script.includes('zone.append(sectionDesConflits());'));
+  const page = lire('src/pages/mise-a-jour.astro');
+  assert.match(page, /<div class="mise-a-jour" data-mise-a-jour [^>]*>\s*<section class="nv-dev" data-nv-dev /);
+  // aucune famille ajoutée : les pages n'émettent aucune feuille de la palette (celle de chaque page leur vient de Base.astro), le plafond de 4 ko tenu
+  for (const f of ['src/pages/archives.astro', 'src/pages/mise-a-jour.astro', 'src/pages/maintenance.astro']) {
+    assert.doesNotMatch(lire(f), /palette-css|cssDes(?:Familles|SecondsRangs|Potions|Evenements|Parties)|style=/, f);
+  }
+  assert.doesNotMatch(cssDeLaPalette(), /amelioration|affaiblissement|google|texte-sur-good/);
+  assert.ok(cssDeLaPalette().length < 4000, `${cssDeLaPalette().length} octets`);
+});
+
+test('lisibilité des archives et de la mise à jour dans les deux thèmes : chaque texte sur son fond, valeurs lues dans le thème (4,5:1)', () => {
+  const blocs = blocsDuTheme();
+  const clair = blocs.find((b) => b.sel === ':root');
+  const sombres = blocs.filter((b) => b.sel !== ':root' && b.valeur('--bg'));
+  /** La valeur d'un jeton dans un bloc du thème, ses `var(--x)` suivis (dans le bloc, sinon dans le thème clair). */
+  const valeur = (b, nom) => {
+    const v = b.valeur(nom) ?? clair.valeur(nom);
+    const renvoi = v?.match(/^var\((--[a-z-]+)\)$/);
+    if (renvoi) return valeur(b, renvoi[1]);
+    return /^#[0-9a-f]{3}$/i.test(v) ? `#${[...v.slice(1)].map((c) => c + c).join('')}` : v;
+  };
+  // les couples texte / fond des feuilles (règles épinglées par le test précédent) : l'étiquette d'un Doc et d'un Sheet ; le vert et le rouge sur leur fond
+  // (mot ajouté ou retiré, pastilles) et seuls sur le fond de la page ou d'une liste (résumé d'un champ long, sens d'un champ) ; le texte d'un bouton
+  // principal sur --good ; l'étiquette d'une partie, l'encart d'exemple, le texte adouci ; la coche d'une étape faite de la maintenance
+  const COUPLES = [
+    ['--doc-google', '--doc-google-fond'], ['--sheet-google', '--sheet-google-fond'],
+    ['--amelioration', '--amelioration-fond'], ['--amelioration', '--bg'], ['--amelioration', '--surface'],
+    ['--affaiblissement', '--affaiblissement-fond'], ['--affaiblissement', '--bg'], ['--affaiblissement', '--surface'],
+    ['--texte-sur-good', '--good'], ['--accent', '--accent-soft'], ['--warn-text', '--warn-bg'], ['--muted', '--bg'], ['--muted', '--surface'],
+    ['--surface', '--accent'],
+  ];
+  const css = ['src/styles/archives/archives.css', 'src/styles/mise-a-jour/mise-a-jour.css', 'src/styles/maintenance/maintenance.css'].map(lire).join('\n');
+  for (const [texte, fond] of COUPLES) assert.ok(css.includes(`var(${texte})`) && css.includes(`var(${fond})`), `${texte} sur ${fond} : lus par les feuilles`);
+  assert.ok(lire('src/styles/maintenance/maintenance.css').includes("li.fait::before { content: '✓'; border-color: var(--accent); background: var(--accent); color: var(--surface); }"));
+  const mesures = [];
+  for (const b of [clair, ...sombres]) {
+    for (const [texte, fond] of COUPLES) {
+      const [t, f] = [valeur(b, texte), valeur(b, fond)];
+      assert.match(t, /^#[0-9a-f]{6}$/, `${texte}, ${b.sel}`);
+      assert.match(f, /^#[0-9a-f]{6}$/, `${fond}, ${b.sel}`);
+      const r = contraste(t, f);
+      mesures.push([`${b.sel} : ${texte} sur ${fond}`, r]);
+      assert.ok(r >= CONTRASTE_MINIMAL, `${b.sel} : ${texte} (${t}) sur ${fond} (${f}) = ${r.toFixed(2)}:1`);
+    }
+  }
+  assert.equal(mesures.length, COUPLES.length * 3);
+  // le plus juste : le vert d'une amélioration sur son fond, en clair (4,68:1)
+  const [quoi, minimum] = mesures.reduce((m, x) => (x[1] < m[1] ? x : m));
+  assert.equal(quoi, ':root : --amelioration sur --amelioration-fond', `le plus juste : ${quoi} (${minimum.toFixed(2)}:1)`);
+  // le texte foncé des boutons en sombre (environ 9,9:1) : le blanc d'avant n'y était pas lisible (1,9:1), il l'est en clair (6,0:1)
+  for (const b of sombres) {
+    assert.ok(contraste(valeur(b, '--texte-sur-fonce'), valeur(b, '--good')) < CONTRASTE_MINIMAL, `${b.sel} : le blanc sur le vert clair`);
+    assert.ok(contraste(valeur(b, '--texte-sur-good'), valeur(b, '--good')) > 9.5, `${b.sel} : le texte foncé`);
+  }
+  assert.ok(contraste(valeur(clair, '--texte-sur-fonce'), valeur(clair, '--good')) >= CONTRASTE_MINIMAL);
 });
