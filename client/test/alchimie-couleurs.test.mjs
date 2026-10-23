@@ -8,13 +8,13 @@ import { existsSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import {
-  AFFINITE_DES_PHILTRES, ATTRIBUT_DE_L_AFFINITE, CONTRASTE_MINIMAL, COULEURS_CHOISIES_PAR_PAGE, COULEURS_DES_AFFINITES, MAGIE_DE_L_AFFINITE, NUANCES_DES_NIVEAUX, baseAvecCouleur, baseDAffinite,
+  AFFINITE_DES_PHILTRES, ATTRIBUT_DE_L_AFFINITE, CONTRASTE_MINIMAL, COULEURS_CHOISIES_PAR_PAGE, COULEURS_DES_AFFINITES, MAGIE_DE_L_AFFINITE, NUANCES_DES_NIVEAUX, NUANCES_D_UNE_BASE_BLANCHE, baseAvecCouleur, baseDAffinite,
   baseChoisieDeLaPage, caracteristiqueDesCompetences,
   contraste, couleurDAffinite, couleurDePotion, lisible, nuanceDuNiveau,
 } from '../src/lib/alchimie-couleurs.mjs';
 import { COULEURS_DES_ATTRIBUTS, couleurDAttribut, cssDesAttributs } from '../src/lib/attributs-couleurs.mjs';
 import { COULEURS_CARACTERISTIQUES } from '../src/lib/caracteristiques-postures.mjs';
-import { COULEUR_PAR_DEFAUT, couleurDeMagie, couleurDeMagieConnue, texteSurCouleur } from '../src/lib/sort-format.mjs';
+import { COULEURS_DES_MAGIES, COULEUR_PAR_DEFAUT, couleurDeMagie, couleurDeMagieConnue, texteSurCouleur } from '../src/lib/sort-format.mjs';
 import { classeDesBatons } from '../src/lib/batons-rendu.mjs';
 import { htmlDeLigneDePotion } from '../src/lib/ceinture-rendu.mjs';
 import { FAMILLES_DE_LA_PALETTE, classeDAffinite, classeDAttribut, classeDeCouleur, classeDeMagie, classeDePotion, couleursDeLaPalette } from '../src/lib/palette-css.mjs';
@@ -117,6 +117,46 @@ test('la nuance d’un niveau d’alchimie : du plus clair (Novice) au plus fonc
   assert.equal(nuanceDuNiveau('#c62828', 1), '#eebfbf', '70 % de blanc');
   assert.equal(nuanceDuNiveau('#c62828', 5), '#771818', '40 % de noir');
   assert.equal(nuanceDuNiveau('#c62828', 9), '#c62828', 'un rang inconnu : la base');
+});
+
+test('une base blanche (la magie du Vide) : blanche jusqu’à Apprenti, puis un cran plus sombre à chaque palier ; toute autre base inchangée', () => {
+  // réponse du propriétaire du 2026-10-23 à « Faut-il un palier visible entre Apprenti et Avancé ? » (Remède enragé et Huile rage, couleur du Vide) :
+  // « Dégradé visible » ; puis, à « Dégradé visible du Vide (Remède enragé, Huile rage) : Apprenti #ffffff (blanc), Avancé #e6e6e6 (gris très clair),
+  // Expert #cccccc (gris clair) ; et Maître #999999 si une potion en Vide en avait un. Le texte reste foncé et lisible. Ces teintes vous conviennent ? » :
+  // « Oui, les garder » (NUANCES_D_UNE_BASE_BLANCHE ; valeurs écrites ici, validées)
+  const blanc = COULEURS_DES_MAGIES.vide;
+  assert.equal(blanc.toLowerCase(), '#ffffff', 'le Vide est le blanc pur');
+  const rangs = [1, 2, 3, 4, 5];
+  assert.deepEqual(JSON.parse(JSON.stringify(NUANCES_D_UNE_BASE_BLANCHE)),
+    { 1: null, 2: null, 3: { vers: 'noir', part: 0.1 }, 4: { vers: 'noir', part: 0.2 }, 5: { vers: 'noir', part: 0.4 } }, 'une nuance par niveau');
+  const nuances = rangs.map((r) => nuanceDuNiveau(blanc, r));
+  assert.deepEqual(nuances, ['#ffffff', '#ffffff', '#e6e6e6', '#cccccc', '#999999']);
+  // rien n'est plus clair que le blanc : Novice et Apprenti le restent ; d'Apprenti à Maître, chaque palier est plus sombre que le précédent
+  for (let i = 2; i < nuances.length; i++) assert.ok(luminance(nuances[i]) < luminance(nuances[i - 1]), `${rangs[i]} plus sombre que ${rangs[i - 1]}`);
+  for (const r of rangs) {
+    const c = couleurDePotion({ page: 'ressources/huile-rage', niveau: r });
+    assert.equal(c.fond, nuances[r - 1], `n${r} : la nuance reste telle quelle (déjà lisible)`);
+    assert.equal(c.texte, texteSurCouleur('#ffffff'), `n${r} : texte foncé`);
+    assert.ok(contraste(c.fond, c.texte) >= CONTRASTE_MINIMAL, `n${r}`);
+  }
+  // toute autre base suit la règle d'avant, au bit près : ses parts écrites ici (pas lues dans le module), recalculées pour chaque base
+  const PARTS_D_AVANT = { 1: { vers: 'blanc', part: 0.7 }, 2: { vers: 'blanc', part: 0.45 }, 3: null, 4: { vers: 'noir', part: 0.2 }, 5: { vers: 'noir', part: 0.4 } };
+  assert.deepEqual(JSON.parse(JSON.stringify(NUANCES_DES_NIVEAUX)), PARTS_D_AVANT, 'les nuances de toute autre base, inchangées');
+  for (const [base, attendues] of [['#c62828', ['#eebfbf', '#e08989', '#c62828', '#9e2020', '#771818']],
+    ['#1e5bb8', ['#bcceea', '#83a5d8', '#1e5bb8', '#184993', '#12376e']], ['#e0b000', ['#f6e7b3', '#eed473', '#e0b000', '#b38d00', '#866a00']]]) {
+    assert.deepEqual(rangs.map((r) => nuanceDuNiveau(base, r)), attendues, `${base} : ses cinq teintes`);
+  }
+  const avant = (base, rang) => {
+    const n = PARTS_D_AVANT[rang];
+    if (!n) return base;
+    const cible = n.vers === 'blanc' ? 255 : 0;
+    return `#${base.slice(1).match(/.{2}/g).map((c) => Math.round(parseInt(c, 16) * (1 - n.part) + cible * n.part).toString(16).padStart(2, '0')).join('')}`;
+  };
+  const bases = [...Object.values(COULEURS_DES_MAGIES), COULEUR_PAR_DEFAUT, ...Object.values(COULEURS_DES_ATTRIBUTS), ...Object.values(COULEURS_DES_AFFINITES),
+    ...Object.values(COULEURS_CARACTERISTIQUES), ...couleursDeLaPalette().map((c) => c.fond)];
+  const autres = [...new Set(bases.map((b) => b.toLowerCase()))].filter((b) => b !== '#ffffff');
+  assert.ok(autres.length > 40, `${autres.length} bases`);
+  for (const base of autres) for (const r of [...rangs, 9]) assert.equal(nuanceDuNiveau(base, r), avant(base, r), `${base} n${r}`);
 });
 
 test('la caractéristique dont un effet augmente les compétences : son nom exact, rien d’autre', () => {
