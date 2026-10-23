@@ -3,7 +3,9 @@
 // (lib/arme-champs.mjs#COMPETENCES_D_ARME) ; comme les filtres du bestiaire, une arme reste affichée si l'UNE de ses compétences est choisie (« Arc /
 // Arme Légère » sous Arc comme sous Légère), toutes sans choix. Plus un bouton « Arme de départ » (« la possibilité de trier par "arme de départ" »)
 // : seules les armes de départ, combiné aux compétences (les deux filtres à la fois, comme ceux du bestiaire). L'état est dans l'adresse :
-// ?competence=arc,arbalete (ids de la table competence, dans l'ordre des boutons) et ?depart=1.
+// ?competence=arc,arbalete (ids de la table competence, dans l'ordre des boutons) et ?depart=1. Puis les comptes « N armes sur M » (tableau, onglet,
+// onglet Armes) et, dans les deux menus à onglets (mêlée, distance ; demande du propriétaire, 2026-10-23), l'onglet à ouvrir quand le filtre vide
+// l'onglet ouvert.
 // Sans dépendance ni import : importé par le seul script de la page (src/scripts/armes.mjs), qui lit les compétences d'une ligne dans son attribut
 // data-competences (lib/armes-rendu.mjs#htmlDeCompetence) et la liste des compétences connues dans les boutons.
 
@@ -42,3 +44,23 @@ export function basculerCompetence(choisies, id, connues) {
  */
 export const armeVisible = (competences, choisies, { depart = false, seulementDepart = false } = {}) =>
   (!choisies.length || competences.some((c) => choisies.includes(c))) && (!seulementDepart || depart);
+
+/**
+ * Le compte d'un tableau, de l'onglet d'une famille ou de tout l'onglet Armes : « 7 armes », ou « 3 armes sur 7 » quand le filtre (`filtreActif`) en
+ * cache ; `toujoursSur` (le compte de tout l'onglet, comme avant les menus) : « N armes sur M » dès que le filtre est actif, même sans arme écartée.
+ */
+export function texteDuCompte(affichees, toutes, filtreActif, { toujoursSur = false } = {}) {
+  const armes = (n) => `${n} arme${n > 1 ? 's' : ''}`;
+  return filtreActif && (toujoursSur || affichees < toutes) ? `${armes(affichees)} sur ${toutes}` : armes(toutes);
+}
+
+/**
+ * Les deux menus à onglets de l'onglet Armes (mêlée, distance ; demande du propriétaire, 2026-10-23), après le filtre : l'onglet à ouvrir dans un menu.
+ * `comptes` : le nombre d'armes affichées de chaque onglet, dans l'ordre du menu ; `ouvert` : l'index de l'onglet ouvert (-1 si aucun). Rend l'index du
+ * premier onglet qui a des armes quand l'ouvert n'en a plus, sinon null : rien à changer (l'ouvert en a), ou aucun n'en a (le menu se cache).
+ */
+export function ongletARouvrir(comptes, ouvert) {
+  if (ouvert >= 0 && comptes[ouvert] > 0) return null;
+  const premier = comptes.findIndex((n) => n > 0);
+  return premier < 0 || premier === ouvert ? null : premier;
+}

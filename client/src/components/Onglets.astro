@@ -2,18 +2,22 @@
 // Onglets (motif « tabs » de l'ARIA : flèches gauche et droite, Début, Fin), partagés par les spécialités d'une classe (classes/ClasseDons.astro), les
 // magies de la page du Potentiel Illimité (magie/SortsDuPotentiel.astro), le bestiaire, la page Équipement (equipement/EquipementPage.astro), avec les
 // sous-onglets de sa ceinture et les familles de ses consommables (ceinture/CeinturePanneau.astro : des onglets dans un panneau d'onglet, sur trois
-// niveaux ; un lien vers un élément ouvre tous les niveaux qui le contiennent) et les tableaux d'effets des accessoires (accessoires/AccessoiresPage.astro). À poser une fois par page, avant les onglets : un seul script pour toute la page, que le build écrit dans la page
+// niveaux ; un lien vers un élément ouvre tous les niveaux qui le contiennent), les deux menus des familles d'armes (armes/ArmesPage.astro) et les tableaux d'effets des accessoires (accessoires/AccessoiresPage.astro). À poser une fois par page, avant les onglets : un seul script pour toute la page, que le build écrit dans la page
 // (la version portable de tools/build-artifact.mjs refuse un script qui en importe un autre).
 //
 // HTML attendu : un groupe `[data-onglets]` dont les onglets `.onglet` sont des liens vers leur panneau (`href="#id-du-panneau"`), l'onglet ouvert au
 // départ portant `is-active` (de même que son panneau) ; la valeur de `data-onglets`, si elle est donnée, nomme la liste d'onglets. Les rôles ARIA sont
 // posés ici : sans JavaScript, les onglets sont de simples liens et les panneaux se suivent ; le CSS de la page ne cache un panneau fermé que sous
 // `html.js`, classe posée ici avant l'affichage (pas de saut de mise en page au chargement).
-// Une adresse (au chargement, retour arrière) ou un lien de la page vers un panneau ou un élément qu'il contient ouvre son onglet.
+// Une adresse (au chargement, retour arrière) ou un lien de la page vers un panneau ou un élément qu'il contient ouvre son onglet. Choisir un onglet
+// (clic, clavier) écrit son ancre dans l'adresse, sauf dans un groupe `data-onglets-sans-adresse` (les menus des familles d'armes : l'adresse ne garde
+// que l'état de l'onglet Armes, src/scripts/armes.mjs). Les flèches, Début et Fin sautent un onglet caché (`hidden` : une famille d'armes que le filtre vide).
 // Des onglets dessinés après le chargement (mode modification du site de dev, D11 : src/scripts/edition/classes.mjs) se branchent par l'évènement
 // « onglets:brancher » envoyé sur leur groupe (ou un élément qui le contient) : aucun module n'est partagé entre les deux scripts. Un script de page
 // ouvre l'onglet d'un panneau (ou d'un élément qu'il contient) par l'évènement « onglets:ouvrir » envoyé sur cet élément (src/scripts/accessoires.mjs :
-// la propriété choisie), sans toucher à l'adresse ni faire défiler la page.
+// la propriété choisie), sans toucher à l'adresse ni faire défiler la page ; avec `detail.dans` (un élément), seuls les groupes dont les panneaux sont
+// dans cet élément s'ouvrent, pas ceux qui le contiennent (src/scripts/armes.mjs : l'onglet de la famille d'une arme, sans ouvrir l'onglet Armes de la
+// page quand l'adresse en montre un autre).
 ---
 
 <script is:inline>
@@ -48,20 +52,25 @@
         sures[k].classList.toggle('is-active', actif);
       });
     activer(Math.max(0, onglets.findIndex((o) => o.classList.contains('is-active'))));
+    const ecrireLAdresse = !groupe.hasAttribute('data-onglets-sans-adresse');
     onglets.forEach((o, i) => {
       o.addEventListener('click', (e) => {
         e.preventDefault();
         activer(i);
-        history.replaceState(null, '', o.hash);
+        if (ecrireLAdresse) history.replaceState(null, '', o.hash);
       });
       o.addEventListener('keydown', (e) => {
-        const n = onglets.length;
-        const cible = { ArrowRight: (i + 1) % n, ArrowLeft: (i - 1 + n) % n, Home: 0, End: n - 1 }[e.key];
+        // les onglets affichés (un onglet `hidden` est sauté), dans l'ordre
+        const affiches = onglets.flatMap((x, k) => (x.hidden ? [] : [k]));
+        const j = affiches.indexOf(i);
+        const n = affiches.length;
+        if (j < 0) return;
+        const cible = { ArrowRight: affiches[(j + 1) % n], ArrowLeft: affiches[(j - 1 + n) % n], Home: affiches[0], End: affiches[n - 1] }[e.key];
         if (cible === undefined) return;
         e.preventDefault();
         activer(cible);
         onglets[cible].focus();
-        history.replaceState(null, '', onglets[cible].hash);
+        if (ecrireLAdresse) history.replaceState(null, '', onglets[cible].hash);
       });
     });
     groupes.push({ panneaux: sures, activer });
@@ -73,12 +82,16 @@
     for (const g of cible.matches('[data-onglets]') ? [cible] : [...cible.querySelectorAll<HTMLElement>('[data-onglets]')]) brancher(g);
   });
 
-  /** Ouvre l'onglet qui contient l'élément `id` (un panneau, un de ses éléments) ; `defiler` : l'amène à l'écran (adresse au chargement, retour arrière). */
-  function ouvrirPour(id: string, defiler: boolean) {
+  /**
+   * Ouvre l'onglet qui contient l'élément `id` (un panneau, un de ses éléments) ; `defiler` : l'amène à l'écran (adresse au chargement, retour arrière) ;
+   * `dans` : seuls les groupes dont les panneaux sont dans cet élément.
+   */
+  function ouvrirPour(id: string, defiler: boolean, dans: Element | null = null) {
     const cible = id ? document.getElementById(id) : null;
     if (!cible) return;
     for (const g of groupes) {
       if (!g.panneaux[0].isConnected) continue; // groupe redessiné depuis (mode modification)
+      if (dans && !dans.contains(g.panneaux[0])) continue;
       const i = g.panneaux.findIndex((p) => p.contains(cible));
       if (i < 0) continue;
       g.activer(i);
@@ -104,7 +117,8 @@
   });
   document.addEventListener('onglets:ouvrir', (e) => {
     const cible = e.target instanceof HTMLElement ? e.target : null;
-    if (cible?.id) ouvrirPour(cible.id, false);
+    const dans = e instanceof CustomEvent && e.detail?.dans instanceof Element ? e.detail.dans : null;
+    if (cible?.id) ouvrirPour(cible.id, false, dans);
   });
   window.addEventListener('hashchange', depuisAdresse);
   depuisAdresse();

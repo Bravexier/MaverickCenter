@@ -30,14 +30,15 @@ export function contexteDesArmes(db) {
 
 /**
  * Les données de la page :
- *   familles      : les bandeaux (ordre de l'onglet) qui ont des armes à maîtrise, chacun { id, nom, de_brut, note_brut, cout_libelle, armes: [lignes arme] } ;
+ *   familles      : les bandeaux (ordre de l'onglet) qui ont des armes à maîtrise, chacun { id, nom, de_brut, note_brut, cout_libelle, categorie, armes: [lignes arme] } ;
+ *                   categorie : 'contact' ou 'distance' (arme_famille.categorie, décision R127) — les deux menus à onglets de l'onglet Armes la groupent ;
  *   materiaux     : [{ ligne (materiau_arme), nom, prix (celui de la ressource : R62), defaut (le fer) }] dans l'ordre de l'onglet ;
  *   ameliorations : les lignes amelioration_equipement de cible « arme », par niveau ;
  *   page          : { titre, resume, corps_md } de la page « Armes ».
  */
 export function chargerArmes(db) {
   const armes = lignes(db, 'SELECT * FROM arme ORDER BY famille_id, ordre');
-  const familles = lignes(db, 'SELECT id, nom, de_brut, note_brut, cout_libelle FROM arme_famille WHERE maitrisable = 1 ORDER BY ordre')
+  const familles = lignes(db, 'SELECT id, nom, de_brut, note_brut, cout_libelle, categorie FROM arme_famille WHERE maitrisable = 1 ORDER BY ordre')
     .map((f) => ({ ...f, armes: armes.filter((a) => a.famille_id === f.id) }))
     .filter((f) => f.armes.length);
   // le fer : le matériau par défaut (décision R49 : « son matériau (par défaut le fer) »)

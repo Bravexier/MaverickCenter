@@ -1,10 +1,14 @@
-/* Chargé uniquement depuis components/armes/ArmesPage.astro (?raw) : l'onglet Armes de la page /ressources/equipement/. Un tableau repliable par famille, à la manière des
-   tableaux de sorts, aéré (« l'affichage est trop serré »), les effets supplémentaires d'une arme sur une seconde ligne ; à côté, toujours affiché et
+/* Chargé uniquement depuis components/armes/ArmesPage.astro (?raw) : l'onglet Armes de la page /ressources/equipement/. Deux menus à onglets, l'un sous
+   l'autre (demande du propriétaire, 2026-10-23 : « Il faudrai réduire çà en deux menus à onglet. Un pour les armes de mêlée l'autre pour les armes à
+   distances ») : Armes de mêlée, Armes à distance, un onglet par famille, chacun le tableau de sa famille (un panneau fermé caché sous html.js
+   seulement : sans JavaScript, les tableaux se suivent, chacun sous son titre), aéré (« l'affichage est trop serré »), les effets supplémentaires d'une
+   arme sur une seconde ligne ; à côté, toujours affiché et
    de la largeur de celui des armures (styles/armures/armures.css), le panneau de l'arme : sa fiche dans un seul cadre réduit, le détail des tuiles en
    infobulle, puis les matériaux (lignes dans la couleur du matériau) et les améliorations côte à côte (panneau qui suit le défilement ; arrivée au bout
    de son défilement, la molette fait défiler la page ; sur un écran étroit, il passe par-dessus la page une fois une arme choisie). Les tableaux suivent
-   le gabarit commun (styles/global/tableaux.css : cadre, titre repliable, en-têtes ; les familles aérées, ceux du panneau serrés). Mode modification
-   du site de dev (body.ed-mode) : pas de fiche, tout le contenu à la suite, colonnes `ed-seul` visibles. */
+   le gabarit commun (styles/global/tableaux.css : cadre, titre, en-têtes ; les familles aérées, ceux du panneau serrés et repliables). Mode
+   modification du site de dev (body.ed-mode) : pas de fiche, le panneau de côté sous les menus, colonnes `ed-seul` visibles, ni barres d'onglets : toutes
+   les familles à la suite, chacune sous son titre. */
 main:has(.armes) { max-width: 120rem; }
 .armes {
   --arm: var(--accent);
@@ -35,8 +39,8 @@ html:not(.js) .armes :is(.js-seul-ligne, .arme-fiche) { display: none; }
 .armes__phrase-depart { padding: 0.35rem 0.7rem; border-radius: var(--radius-sm); background: var(--depart-fond); box-shadow: inset 4px 0 0 var(--depart);
   color: color-mix(in srgb, var(--depart) 70%, var(--text)); }
 
-/* Filtre par compétence (lib/armes-filtres.mjs : une arme reste si l'une de ses compétences est choisie), légende « Arme de départ », boutons Tout déplier /
-   Tout replier. Choisir une compétence estompe les autres boutons ; « Toutes » efface le choix. En mode modification, pas de filtre : tout s'affiche. */
+/* Filtre par compétence (lib/armes-filtres.mjs : une arme reste si l'une de ses compétences est choisie), légende « Arme de départ ». Choisir une
+   compétence estompe les autres boutons ; « Toutes » efface le choix. En mode modification, pas de filtre : tout s'affiche. */
 .armes-outils { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 1rem; margin: 0 0 0.8rem; }
 html.js .armes .armes-filtre { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; }
 .armes-filtre__titre { font-size: var(--fs-sm); font-weight: 700; color: var(--muted); margin-right: 0.15rem; }
@@ -65,8 +69,6 @@ html.js .armes .sans-js { display: none; }
 .armes-outils__boutons { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin: 0; }
 html.js .armes-outils__boutons { display: flex; }
 .armes-aide { color: var(--muted); font-size: var(--fs-md); margin-right: 0.4rem; }
-.armes-bouton { font: inherit; font-size: var(--fs-sm); padding: 0.15rem 0.7rem; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface); color: var(--text); cursor: pointer; }
-.armes-bouton:hover { border-color: var(--arm); }
 
 /* Vue : les tableaux, et à côté le panneau de l'arme, toujours affiché sur un grand écran, de la largeur de celui des armures (demande du propriétaire,
    2026-10-16 : « Avoir l'endroit de l'arme en permanence visible comme c'est le cas pour l'armure, et avec la même largeur »). Il suit le défilement ;
@@ -86,8 +88,36 @@ html.js .armes-outils__boutons { display: flex; }
 .armes-cote__fermer { font: inherit; font-size: var(--fs-sm); padding: 0.2rem 0.85rem; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface); color: var(--text); cursor: pointer; }
 .armes-cote__fermer:hover { border-color: var(--arm); }
 
-/* Une famille (repliable : le gabarit commun) : le dé de la famille à côté de son nom */
-.armes-famille__de { font-size: var(--fs-xs); font-weight: 700; padding: 0.05rem 0.6rem; border-radius: var(--radius-pill); background: var(--arm); color: var(--surface); }
+/* Les deux menus (components/armes/ArmesPage.astro : `section.armes-bloc`, son titre, sa barre d'onglets, ses panneaux ; components/Onglets.astro) :
+   la barre passe à la ligne sur un écran étroit, comme celles de la page et de la ceinture, et n'y garde que le nom et le dé de chaque famille ; un
+   onglet que le filtre vide, ou un menu entier, se cache (`hidden`) */
+.armes-bloc { min-width: 0; }
+.armes-bloc__titre { margin: 0 0 0.5rem; font-size: var(--fs-xl); }
+.armes-onglets { display: flex; flex-wrap: wrap; gap: 0.35rem; border-bottom: 2px solid var(--arm-line); margin: 0 0 0.8rem; }
+.armes-onglets .onglet { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 0.4rem; row-gap: 0.05rem; padding: 0.4rem 0.9rem 0.45rem;
+  border: 1px solid var(--border); border-bottom: 0; border-radius: var(--radius-lg) var(--radius-lg) 0 0; background: var(--surface); color: var(--text);
+  text-decoration: none; margin-bottom: -2px; }
+.armes-onglets .onglet__nom { font-weight: 700; font-size: var(--fs-lg); }
+.armes-onglets .onglet__detail { flex-basis: 100%; font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
+html.js .armes-onglets .onglet.is-active { background: var(--arm); border-color: var(--arm); color: var(--surface); }
+html.js .armes-onglets .onglet.is-active .onglet__detail { color: inherit; opacity: 0.85; }
+html.js .armes-onglets .onglet.is-active .armes-onglets__de { background: var(--surface); color: var(--arm); }
+html.js .armes-onglets .onglet:not(.is-active):hover { background: var(--arm-soft); }
+.armes-onglets .onglet:focus-visible { outline: 2px solid var(--arm); outline-offset: 2px; }
+@media (max-width: 40rem) {
+  .armes-onglets .onglet { padding: 0.3rem 0.65rem; }
+  .armes-onglets .onglet__detail { display: none; }
+}
+html.js .armes-bloc > .armes-famille:not(.is-active) { display: none; }
+/* quand les familles d'un menu se suivent (sans JavaScript, en mode modification, à l'impression), l'espace d'avant entre deux tableaux (celui de
+   `.armes-tableaux`) : une famille affichée qui en suit une autre affichée ; jamais en mode onglets, où un seul panneau se voit */
+html:not(.js) .armes-bloc > .armes-famille:not(.est-filtree) ~ .armes-famille:not(.est-filtree),
+body.ed-mode .armes-bloc > .armes-famille:not(.est-filtree) ~ .armes-famille:not(.est-filtree) { margin-top: 1.4rem; }
+/* le titre d'une famille (nom, dé, compte) : celui de son onglet ; sans JavaScript, il sépare les tableaux qui se suivent */
+html.js .armes-bloc > .armes-famille > .armes-famille__titre { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Une famille (le gabarit commun, panneau de son onglet) : le dé de la famille à côté de son nom, dans le titre et dans l'onglet */
+.armes-famille__de, .armes-onglets__de { font-size: var(--fs-xs); font-weight: 700; padding: 0.05rem 0.6rem; border-radius: var(--radius-pill); background: var(--arm); color: var(--surface); }
 
 /* la seconde ligne d'une arme : ses effets supplémentaires, sous elle (comme l'effet d'un sort choisi dans la fiche de personnage) ; cachée si elle n'en a pas */
 .armes-table tbody > tr.arme-suite > * { border-top: 0; padding-top: 0; padding-bottom: 0.75rem; }
@@ -209,7 +239,13 @@ html.js .arme--depart + .arme-suite:hover > * { background: var(--depart-fond-fo
   html.js .armes-vue.est-ouverte .armes-cote { position: fixed; inset: 0; z-index: 60; max-height: none; overflow-y: auto; overscroll-behavior: contain; padding: 0.75rem 1rem 2rem; background: var(--bg); }
 }
 
-/* Mode modification du site de dev (src/scripts/edition/armes.mjs) : ni sélection ni fiche ; tous les tableaux visibles, les uns sous les autres */
+/* Mode modification du site de dev (src/scripts/edition/armes.mjs) : ni sélection ni fiche ; tous les tableaux visibles, les uns sous les autres
+   (demande antérieure du propriétaire, qui tient avec les menus : « Quand le mode Edition est lancé, il n'est pas possible de "sélectionner" une arme /
+   matériau / amélioration, mais tous les tableaux sont visibles ») : les barres d'onglets se cachent, chaque famille s'affiche sous son titre (nom, dé,
+   compte), comme sans JavaScript, sous le titre de son menu ; en sortant, les onglets reviennent avec leur panneau ouvert (classes is-active gardées) */
+body.ed-mode .armes-onglets { display: none !important; }
+body.ed-mode .armes-bloc > .armes-famille:not(.is-active) { display: block; }
+body.ed-mode .armes-bloc > .armes-famille > .armes-famille__titre { position: static; width: auto; height: auto; overflow: visible; clip: auto; white-space: normal; }
 body.ed-mode .armes-vue { grid-template-columns: minmax(0, 1fr) !important; }
 body.ed-mode .armes-cote { display: grid !important; position: static !important; max-height: none !important; overflow: visible !important; padding: 0 !important; background: none !important; }
 body.ed-mode .arme-fiche, body.ed-mode .amelioration--aucune, body.ed-mode .armes-outils__boutons .armes-aide { display: none !important; }
@@ -225,7 +261,11 @@ body.ed-mode .armes .arme__effet .ed-saisie { min-width: 22rem; }
 body.ed-mode .armes :is(.arme__competence, .arme__type, .arme__nom) select.ed-saisie { min-width: 10rem; }
 
 @media print {
-  .armes-outils__boutons, .armes-filtre, .arme-fiche { display: none !important; }
+  .armes-outils__boutons, .armes-filtre, .arme-fiche, .armes-onglets { display: none !important; }
+  /* à l'impression, toutes les familles, chacune sous son titre */
+  .armes-bloc > .armes-famille:not(.est-filtree) { display: block !important; }
+  .armes-bloc > .armes-famille:not(.est-filtree) ~ .armes-famille:not(.est-filtree) { margin-top: 1.4rem; }
+  .armes-bloc > .armes-famille > .armes-famille__titre { position: static !important; width: auto !important; height: auto !important; overflow: visible !important; clip: auto !important; }
   .armes-vue { grid-template-columns: minmax(0, 1fr) !important; }
   .armes-cote { display: grid !important; position: static !important; max-height: none !important; }
 }

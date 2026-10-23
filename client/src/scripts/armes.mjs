@@ -4,20 +4,27 @@
 // solidité, les effets (celui du matériau en vert) et le coût total (calcul : lib/arme-forge.mjs). La fiche est réduite à son minimum (demande du
 // propriétaire, 2026-10-16 : « Pas besoin de détailler les calculs en dessous, une tuile en tooltip de la case dégâts / durabilité et coût suffit ») :
 // trois tuiles, le détail de chaque calcul dans l'infobulle de sa tuile (bulles riches de components/Infobulles.astro, écrites dans
-// `[data-armes-bulles]`, hors du panneau qui défile), puis les effets, la description et l'origine. Les boutons « Compétence » filtrent les tableaux (« filtrer les armes par compétence arc / arbalète / légère et
-// lourde » : lib/armes-filtres.mjs), le bouton « Arme de départ » n'en garde que les armes de départ ; une famille sans arme affichée se cache. Ces
-// deux modules sont les seuls importés ici, et aucun autre script de page ne les importe.
+// `[data-armes-bulles]`, hors du panneau qui défile), puis les effets, la description et l'origine.
+// Les tableaux des familles sont les panneaux de deux menus à onglets, mêlée et distance (demande du propriétaire, 2026-10-23 : « Il faudrai réduire çà
+// en deux menus à onglet », components/Onglets.astro) : ouvrir une arme (clic, ?arme=, #arme-…) ouvre l'onglet de sa famille par l'évènement
+// « onglets:ouvrir », limité aux menus de l'onglet Armes (`detail.dans`), sans toucher à l'adresse ni faire défiler.
+// Les boutons « Compétence » filtrent les tableaux (« filtrer les armes par compétence arc / arbalète / légère et lourde » : lib/armes-filtres.mjs), le
+// bouton « Arme de départ » n'en garde que les armes de départ ; l'onglet d'une famille sans arme affichée se cache, un menu sans aucune famille
+// affichée aussi, et si l'onglet ouvert d'un menu n'a plus d'arme, le premier qui en a s'ouvre (lib/armes-filtres.mjs#ongletARouvrir) ; l'onglet dit,
+// comme le tableau, « N armes sur M ». Ces deux modules sont les seuls importés ici, et aucun autre script de page ne les importe.
 // Une arme tient sur deux lignes du tableau (lib/armes-rendu.mjs#htmlDeLigneDArme) : la sienne (`tr.arme`) et celle de ses effets (`tr.arme-suite`).
 // Les valeurs viennent des cellules telles qu'affichées (attributs `data-…` des rendus de lib/armes-rendu.mjs), lues à chaque sélection : après un
 // enregistrement du mode modification, qui réécrit ces cellules, la fiche suit sans recharger la page (évènement « armes:rafraichir »).
-// En mode modification (body.ed-mode) : rien ne se sélectionne (src/scripts/edition/armes.mjs vide la fiche et ouvre tous les tableaux).
+// En mode modification (body.ed-mode) : rien ne se sélectionne (src/scripts/edition/armes.mjs vide la fiche ; styles/armes/armes.css cache les barres
+// d'onglets et montre toutes les familles à la suite).
 // État dans l'adresse : ?arme=<ancre de la ligne>&materiau=<ancre>&amelioration=<niveau>&competence=<ids>&depart=1 (une adresse `#arme-…` ouvre aussi
 // l'arme ; aucun paramètre en commun avec ceux des autres onglets, src/scripts/armures.mjs, accessoires.mjs : la même adresse garde leur état, et
-// l'ancre de l'onglet ouvert reste : lib/armes-filtres.mjs#ancreDesArmes). Échap ne ferme l'arme que si l'onglet est affiché.
-// En mode modification, pas de filtre : tout s'affiche.
+// l'ancre de l'onglet ouvert reste : lib/armes-filtres.mjs#ancreDesArmes ; l'onglet de famille choisi n'y est pas écrit). Échap ne ferme l'arme que si
+// l'onglet est affiché. En mode modification, pas de filtre : tout s'affiche, aucun onglet ne se cache.
 import { forgerArme, nombre, piecesDuMontant } from '../lib/arme-forge.mjs';
 import {
-  ancreDesArmes, armeVisible, basculerCompetence, ecrireCompetences, lireCompetences, lireDepart, PARAMETRE_DES_COMPETENCES, PARAMETRE_DU_DEPART,
+  ancreDesArmes, armeVisible, basculerCompetence, ecrireCompetences, lireCompetences, lireDepart, ongletARouvrir, PARAMETRE_DES_COMPETENCES,
+  PARAMETRE_DU_DEPART, texteDuCompte,
 } from '../lib/armes-filtres.mjs';
 
 const racine = document.querySelector('[data-armes]');
@@ -48,7 +55,13 @@ if (racine) {
   /** La ligne des effets d'une arme (la suivante), et l'arme d'une ligne d'effets. */
   const suiteDe = (ligne) => (ligne?.nextElementSibling?.classList.contains('arme-suite') ? ligne.nextElementSibling : null);
   const armeDeLaSuite = (suite) => (suite?.previousElementSibling?.classList.contains('arme') ? suite.previousElementSibling : null);
-  const armes = (n) => `${n} arme${n > 1 ? 's' : ''}`;
+  /**
+   * Ouvre l'onglet de la famille (son panneau, ou un élément qu'il contient) dans le menu de sa catégorie (components/Onglets.astro), et seulement lui :
+   * pas l'onglet Armes de la page, qu'une adresse (#boucliers) peut laisser caché.
+   */
+  const ouvrirSonOnglet = (el) => el?.dispatchEvent(new CustomEvent('onglets:ouvrir', { bubbles: true, detail: { dans: racine } }));
+  /** L'onglet d'une famille (components/armes/ArmesPage.astro : `onglet-famille-<id>` vers `famille-<id>`). */
+  const ongletDe = (famille) => document.getElementById(`onglet-${famille.id}`);
   /** Les compétences d'une ligne (lib/armes-rendu.mjs#htmlDeCompetence : data-competences="arc arme-legere"). */
   const competencesDe = (ligne) => (ligne.querySelector('.arme__competence [data-competences]')?.dataset.competences ?? '').split(' ').filter(Boolean);
 
@@ -237,8 +250,7 @@ if (racine) {
     vue.classList.add('est-ouverte');
     // le panneau, toujours affiché, garde son défilement d'un choix à l'autre : il remonte à la fiche, qui est en haut
     racine.querySelector('.armes-cote')?.scrollTo({ top: 0 });
-    const famille = ligne.closest('details');
-    if (famille && !famille.open) famille.open = true;
+    ouvrirSonOnglet(ligne.closest('.armes-famille'));
     rendreFiche();
     marquer();
     adresse();
@@ -257,28 +269,45 @@ if (racine) {
 
   /**
    * Applique le filtre : une arme reste si l'une de ses compétences est choisie (toutes sans choix) et, avec « Arme de départ », si c'en est une (tout
-   * reste en mode modification) ; une famille sans arme affichée se cache ; les comptes disent « N armes sur M ». L'arme ouverte, si elle est filtrée,
-   * se ferme. La ligne des effets d'une arme la suit (styles/armes/armes.css).
+   * reste en mode modification) ; une famille sans arme affichée se cache, et son onglet ; un menu dont aucune famille n'a d'arme affichée se cache ; si
+   * l'onglet ouvert d'un menu n'a plus d'arme, le premier qui en a s'ouvre ; les comptes (tableau, onglet, onglet Armes) disent « N armes sur M ».
+   * L'arme ouverte, si elle est filtrée, se ferme. La ligne des effets d'une arme la suit (styles/armes/armes.css).
    */
   function filtrer() {
     const actif = (choisies.length > 0 || seulementDepart) && !enEdition();
     let affichees = 0;
     let toutes = 0;
-    for (const famille of racine.querySelectorAll('.armes-tableaux > .armes-famille')) {
-      const lignes = [...famille.querySelectorAll('tbody tr.arme')];
-      let n = 0;
-      for (const l of lignes) {
-        const visible = !actif || armeVisible(competencesDe(l), choisies, { depart: l.classList.contains('arme--depart'), seulementDepart });
-        l.classList.toggle('est-filtree', !visible);
-        if (visible) n += 1;
-      }
-      famille.classList.toggle('est-filtree', actif && n === 0);
-      const c = famille.querySelector('.armes-famille__compte');
-      if (c) c.textContent = actif && n < lignes.length ? `${armes(n)} sur ${lignes.length}` : armes(lignes.length);
-      affichees += n;
-      toutes += lignes.length;
+    for (const bloc of racine.querySelectorAll('[data-armes-bloc]')) {
+      const familles = [...bloc.querySelectorAll(':scope > .armes-famille')];
+      const comptes = familles.map((famille) => {
+        const lignes = [...famille.querySelectorAll('tbody tr.arme')];
+        let n = 0;
+        for (const l of lignes) {
+          const visible = !actif || armeVisible(competencesDe(l), choisies, { depart: l.classList.contains('arme--depart'), seulementDepart });
+          l.classList.toggle('est-filtree', !visible);
+          if (visible) n += 1;
+        }
+        famille.classList.toggle('est-filtree', actif && n === 0);
+        const texte = texteDuCompte(n, lignes.length, actif);
+        const c = famille.querySelector('.armes-famille__compte');
+        if (c) c.textContent = texte;
+        const onglet = ongletDe(famille);
+        if (onglet) {
+          onglet.hidden = actif && n === 0;
+          const co = onglet.querySelector('[data-armes-onglet-compte]');
+          if (co) co.textContent = texte;
+        }
+        affichees += n;
+        toutes += lignes.length;
+        return n;
+      });
+      bloc.hidden = actif && comptes.every((n) => n === 0);
+      const rouvrir = ongletARouvrir(comptes, familles.findIndex((f) => f.classList.contains('is-active')));
+      if (rouvrir !== null) ouvrirSonOnglet(familles[rouvrir]);
     }
-    if (compte) compte.textContent = actif ? `${armes(affichees)} sur ${toutes}` : armes(toutes);
+    // le compte de tout l'onglet : « N armes sur M » dès que le filtre est actif (comme avant les menus) ; ceux des tableaux et des onglets, seulement
+    // s'il écarte des armes
+    if (compte) compte.textContent = texteDuCompte(affichees, toutes, actif, { toujoursSur: true });
     filtre?.classList.toggle('est-actif', actif && choisies.length > 0);
     for (const b of boutonsDuFiltre) b.setAttribute('aria-pressed', String(actif && choisies.includes(b.dataset.competence)));
     boutonDepart?.setAttribute('aria-pressed', String(actif && seulementDepart));
@@ -290,12 +319,6 @@ if (racine) {
   racine.addEventListener('click', (ev) => {
     const cible = ev.target;
     if (!(cible instanceof Element)) return;
-    const tout = cible.closest('[data-armes-tout]');
-    if (tout) {
-      const ouvrirTout = tout.getAttribute('data-armes-tout') === 'ouvrir';
-      for (const d of racine.querySelectorAll('.armes-tableaux > .armes-famille')) d.open = ouvrirTout;
-      return;
-    }
     const competence = cible.closest('[data-armes-filtre] [data-competence]');
     const depart = cible.closest('[data-armes-filtre-depart]');
     if (competence || depart || cible.closest('[data-armes-filtre-tout]')) {

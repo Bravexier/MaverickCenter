@@ -1,6 +1,6 @@
 // Onglet Armes de la page /ressources/equipement/ construite (dist/ ; avant, la page /ressources/armes/ : test/equipement-html.test.mjs pour la page et
-// ses onglets) : rendu depuis les tables (pas de tableau Markdown), un tableau repliable par famille sans les armes de
-// monstres, les colonnes voulues par le propriétaire, les lignes de départ en bleu avec leur infobulle, la description en infobulle du nom, les compétences
+// ses onglets) : rendu depuis les tables (pas de tableau Markdown), deux menus à onglets, mêlée puis distance (demande du propriétaire, 2026-10-23),
+// un onglet et un tableau par famille sans les armes de monstres, les colonnes voulues par le propriétaire, les lignes de départ en bleu avec leur infobulle, la description en infobulle du nom, les compétences
 // en couleur (décision R48) et leur filtre, le panneau de règles (migration 0056 : ses blocs dans l'ordre de la base, tuiles et leurs titres, la mise
 // en forme du classeur), les matériaux dans leur couleur, les améliorations, les champs du mode modification. Se saute sans dist/ (npm run build) ;
 // la CI le lance après le build.
@@ -32,6 +32,9 @@ const echapper = (t) => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;')
 // les balises du glossaire, rendues par le middleware (src/middleware.mjs) : en gras dans le texte, en texte simple dans un attribut
 const vocabulaire = present ? chargerVocabulaire(base) : [];
 const commeLaPage = (h) => htmlAvecMotsCles(h, vocabulaire).html;
+// la catégorie de chaque famille, lue dans la base (arme_famille.categorie, décision R127) : les deux menus à onglets, mêlée (`contact`) puis distance
+const categorie = present ? Object.fromEntries(base.prepare('SELECT id, categorie FROM arme_famille').all().map((r) => [r.id, r.categorie])) : {};
+const famillesAffichees = present ? ['contact', 'distance'].flatMap((c) => armes.familles.filter((f) => categorie[f.id] === c)) : [];
 
 test('pas de tableau Markdown : l’onglet est le gabarit des armes, avec son panneau de règles replié et sans phrase au-dessus', options, () => {
   assert.ok(main.length > 1000, 'le panneau de l’onglet Armes');
@@ -40,12 +43,45 @@ test('pas de tableau Markdown : l’onglet est le gabarit des armes, avec son pa
   assert.ok(!main.includes('armes__chapo'), 'plus de chapeau (demande du propriétaire, 2026-10-16)');
 });
 
-test('un tableau repliable par famille, sans les armes de monstres ; une ligne par arme, dans l’ordre de l’onglet', options, () => {
-  const familles = [...main.matchAll(/<details class="tableau armes-famille" id="famille-([^"]+)" open/g)].map((m) => m[1]);
-  assert.deepEqual(familles, armes.familles.map((f) => f.id));
-  assert.ok(!familles.includes('arme-de-monstres'));
+test('deux menus à onglets, « Armes de mêlée » puis « Armes à distance » (demande du propriétaire, 2026-10-23), groupés par la catégorie de la base (R127)', options, () => {
+  // « Il faudrai réduire çà en deux menus à onglet. Un pour les armes de mêlée l'autre pour les armes à distances. » : chaque menu, un bloc (son
+  // titre, sa barre seule, ses panneaux) ; l'onglet choisi n'est pas écrit dans l'adresse (data-onglets-sans-adresse)
+  const barres = [...main.matchAll(/<nav class="armes-onglets" aria-label="([^"]+)" data-onglets="([^"]+)" data-onglets-sans-adresse>([\s\S]*?)<\/nav>/g)];
+  assert.deepEqual(barres.map((m) => [m[1], m[2]]), [['Armes de mêlée', 'Armes de mêlée'], ['Armes à distance', 'Armes à distance']]);
+  assert.match(main, /<section class="armes-bloc" id="armes-contact" aria-labelledby="armes-contact-titre" data-armes-bloc="contact"><h3 class="armes-bloc__titre" id="armes-contact-titre">Armes de mêlée<\/h3><nav class="armes-onglets"/);
+  assert.match(main, /<section class="armes-bloc" id="armes-distance" aria-labelledby="armes-distance-titre" data-armes-bloc="distance"><h3 class="armes-bloc__titre" id="armes-distance-titre">Armes à distance<\/h3><nav class="armes-onglets"/);
+  assert.ok(main.indexOf('data-armes-bloc="contact"') < main.indexOf('data-armes-bloc="distance"'), 'mêlée, puis distance');
+  // l'ordre, celui de l'onglet (chargerArmes) dans chaque menu
+  const blocs = { contact: main.slice(main.indexOf('data-armes-bloc="contact"'), main.indexOf('data-armes-bloc="distance"')), distance: main.slice(main.indexOf('data-armes-bloc="distance"'), main.indexOf('<aside class="armes-cote"')) };
+  const vues = [];
+  for (const [i, cat] of ['contact', 'distance'].entries()) {
+    const attendues = armes.familles.filter((f) => categorie[f.id] === cat);
+    assert.ok(attendues.length > 0, cat);
+    const onglets = [...barres[i][3].matchAll(/<a class="onglet( is-active)?" id="onglet-famille-([^"]+)" href="#famille-([^"]+)"><span class="onglet__nom">([^<]+)<\/span>(?:<span class="onglet__de armes-onglets__de" title="[^"]+">([^<]+)<\/span>)?<span class="onglet__detail" data-armes-onglet-compte>([^<]+)<\/span><\/a>/g)];
+    assert.equal(onglets.length, (barres[i][3].match(/class="onglet[ "]/g) ?? []).length, `${cat} : la barre n’a que ses onglets`);
+    // chaque onglet vers le panneau de sa famille, avec son nom, la pastille de son dé et son nombre d'armes
+    assert.deepEqual(onglets.map((m) => m[2]), attendues.map((f) => f.id), `${cat} : l’ordre de la base`);
+    assert.ok(onglets.every((m) => m[2] === m[3]), `${cat} : chaque onglet pointe vers #famille-<id>`);
+    assert.deepEqual(onglets.map((m) => [m[4], m[5] ?? null, m[6]]), attendues.map((f) => [echapper(f.nom), f.de_brut ? echapper(f.de_brut) : null, `${f.armes.length} arme${f.armes.length > 1 ? 's' : ''}`]), cat);
+    assert.deepEqual(onglets.map((m) => Boolean(m[1])), attendues.map((_, k) => k === 0), `${cat} : un seul onglet ouvert, le premier`);
+    // les panneaux : le tableau de chaque famille (gabarit commun, qui ne se replie plus), dans le même ordre, le seul ouvert celui de l'onglet ouvert
+    const panneaux = [...blocs[cat].matchAll(/<(details|section) class="tableau armes-famille( is-active)?" id="famille-([^"]+)"/g)];
+    assert.deepEqual(panneaux.map((m) => m[3]), attendues.map((f) => f.id), `${cat} : les panneaux`);
+    assert.ok(panneaux.every((m) => m[1] === 'section'), `${cat} : plus de tableau repliable`);
+    assert.deepEqual(panneaux.map((m) => Boolean(m[2])), attendues.map((_, k) => k === 0), `${cat} : un seul panneau ouvert`);
+    vues.push(...attendues.map((f) => f.id));
+  }
+  // toutes les familles de l'onglet, sans les armes de monstres (R45)
+  assert.deepEqual(vues, famillesAffichees.map((f) => f.id));
+  assert.deepEqual([...vues].sort(), armes.familles.map((f) => f.id).sort(), 'chaque famille de l’onglet une fois');
+  assert.ok(!vues.includes('arme-de-monstres'));
+  // plus de « Tout déplier » ni « Tout replier » : les tableaux ne se replient plus
+  assert.ok(!main.includes('Tout déplier') && !main.includes('Tout replier') && !main.includes('data-armes-tout'));
+});
+
+test('une ligne par arme, dans l’ordre de l’onglet (mêlée, puis distance) ; identifiants uniques', options, () => {
   const lignes = [...main.matchAll(/<tr class="arme(?: arme--depart)?" id="([^"]+)" data-arme=/g)].map((m) => m[1]);
-  assert.deepEqual(lignes, armes.familles.flatMap((f) => f.armes.map((a) => ancreDArme(a.id))));
+  assert.deepEqual(lignes, famillesAffichees.flatMap((f) => f.armes.map((a) => ancreDArme(a.id))));
   const ids = [...main.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]);
   assert.equal(new Set(ids).size, ids.length, 'identifiants uniques');
 });
@@ -195,4 +231,37 @@ test('le script de la page n’importe que lib/arme-forge.mjs et lib/armes-filtr
     const autres = imports(new URL(nom, scripts)).filter((m) => /\/(arme-forge|armes-filtres)\.mjs$/.test(m));
     assert.deepEqual(autres, [], nom);
   }
+});
+
+test('mode modification : tous les tableaux visibles (demande antérieure du propriétaire) — barres cachées, chaque famille sous son titre, après les règles des onglets', options, () => {
+  // « Quand le mode Edition est lancé, il n'est pas possible de "sélectionner" une arme / matériau / amélioration, mais tous les tableaux sont
+  // visibles » : la règle tient avec les menus. La feuille de l'onglet (styles/armes/armes.css, écrite dans la page) : les règles du mode modification ont
+  // la même spécificité que celles qui cachent un panneau fermé et le titre d'une famille sous html.js, et viennent après elles
+  const regle = (selecteur) => {
+    const i = html.indexOf(`${selecteur} {`);
+    assert.ok(i > 0, selecteur);
+    return [i, html.slice(i, html.indexOf('}', i))];
+  };
+  const [cachePanneau] = regle('html.js .armes-bloc > .armes-famille:not(.is-active)');
+  const [cacheTitre] = regle('html.js .armes-bloc > .armes-famille > .armes-famille__titre');
+  const [iBarres, barres] = regle('body.ed-mode .armes-onglets');
+  const [iPanneaux, panneaux] = regle('body.ed-mode .armes-bloc > .armes-famille:not(.is-active)');
+  const [iTitres, titres] = regle('body.ed-mode .armes-bloc > .armes-famille > .armes-famille__titre');
+  assert.match(barres, /display: none !important/);
+  assert.match(panneaux, /display: block/);
+  assert.match(titres, /position: static;[^}]*clip: auto/);
+  assert.ok(iPanneaux > cachePanneau && iTitres > cacheTitre && iBarres > 0, 'après les règles des onglets');
+  // les titres des menus restent : aucune règle du mode modification ne les cache
+  assert.doesNotMatch(html, /body\.ed-mode[^{]*\.armes-bloc__titre/);
+});
+
+test('les familles d’un menu qui se suivent (sans JavaScript, en mode modification, à l’impression) gardent l’espace d’avant entre deux tableaux, jamais en mode onglets', options, () => {
+  // l'espace entre deux tableaux de familles, celui de `.armes-tableaux` avant les menus (gap: 1.4rem)
+  assert.match(html, /\.armes-tableaux \{[^}]*gap: 1\.4rem/);
+  const suite = '.armes-bloc > .armes-famille:not(.est-filtree) ~ .armes-famille:not(.est-filtree)';
+  assert.ok(html.includes(`html:not(.js) ${suite},\nbody.ed-mode ${suite} { margin-top: 1.4rem; }`), 'sans JavaScript et en mode modification');
+  const impression = html.slice(html.indexOf('@media print {', html.indexOf('.armes-onglets')));
+  assert.ok(impression.slice(0, impression.indexOf('\n}')).includes(`  ${suite} { margin-top: 1.4rem; }`), 'à l’impression');
+  // en mode onglets (html.js), aucune marge entre familles : un seul panneau se voit
+  assert.doesNotMatch(html, /html\.js \.armes-bloc > \.armes-famille[^{]*\{[^}]*margin/);
 });
