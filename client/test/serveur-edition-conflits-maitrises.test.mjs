@@ -217,3 +217,22 @@ test('les lots de la résolution se rejouent sans conflit sur les règles livré
   assert.deepEqual(sourcesEtLecteur(neuve).tables, attendu);
   sourcesJustes(neuve);
 });
+
+test('maîtrise illisible (« Refuser à la saisie », choix du propriétaire du 2026-10-23) : un lot déjà noté qui en écrit une s’examine sans planter (choix 1 retiré, la raison citée) ; une saisie illisible au choix 3 est refusée ; le choix 2 passe', () => {
+  const db = copie();
+  // le lot de l'effet du don, tel qu'un site de dev d'avant le refus l'aurait noté
+  const n = db.prepare('UPDATE modification SET apres = replace(apres, ?, ?) WHERE lot_id = ? AND table_nom = ?')
+    .run(TEXTES.effet[1], '+2 points de maîtrise Truc.', S.effet, 'capacite').changes;
+  assert.equal(n, 1);
+  const d = conflitsDuJournal(db).lots.find((l) => l.lot === S.effet);
+  const c = d.conflits.find((x) => x.table === 'capacite' && x.colonne === 'effet');
+  assert.deepEqual(c.choix_possibles, [2, 3]);
+  assert.match(c.refus_1, /Maîtrise illisible dans « \+2 points de maîtrise Truc »/);
+  const avant = sourcesEtLecteur(db).tables;
+  assert.throws(() => resoudreLeConflit(db, { lot: S.effet, empreinte: d.empreinte, choix: { [c.id]: { choix: 3, valeur: '+1 maîtrise Truc.' } } }),
+    (e) => e.statut === 409 && /Maîtrise illisible dans « \+1 maîtrise Truc »/.test(e.message));
+  assert.deepEqual(sourcesEtLecteur(db).tables, avant, 'rien n’est écrit');
+  resoudreLeConflit(db, { lot: S.effet, empreinte: d.empreinte, choix: { [c.id]: { choix: 2 } } });
+  assert.equal(q(db, 'SELECT effet FROM capacite WHERE id = ?', S.don)[0].effet, TEXTES.effet[2]);
+  sourcesJustes(db);
+});

@@ -5,7 +5,7 @@
 // lots notés avant elles (sourcesRefaitesParLeLot, crochet `apresLeLot` de rejouerLeJournal), hors journal ; la résolution d'un lot en conflit refait
 // toutes celles qu'il touche, notées dans son nouveau lot (sourcesRefaitesParLaResolution, sourcesAvantLaSuppression).
 // test/maitrise-arme-sources.test.mjs rejoue le lecteur sur toute la base : ces tables doivent toujours être les siennes.
-import { idDeSourceDeClasse, lireDon, lireLigneDeClasse, nmGagnesDuDon } from '../src/lib/maitrise-arme.mjs';
+import { famillesDuNom, idDeSourceDeClasse, lireDon, lireLigneDeClasse, nmGagnesDuDon } from '../src/lib/maitrise-arme.mjs';
 import { cleDe, ErreurJournal, lireLigne, structure } from './edition-journal.mjs';
 
 /** Les tables que les sources de maîtrise d'arme remplissent (scripts/mise-a-jour-github.mjs#tablesDuLot en recopie la liste). */
@@ -40,6 +40,50 @@ export function sourcesDuDon(capaciteId, effet, familles) {
   const voulues = { parts: [], options: [] };
   ajouterLaSource(voulues, capaciteId, { capacite_id: capaciteId, classe_id: null, classe_rang: null }, lireDon(effet, familles));
   return { ...voulues, nm: nmGagnesDuDon(effet) };
+}
+
+/*
+ * Maîtrises illisibles (choix du propriétaire du 2026-10-23, « Refuser à la saisie » : « L'enregistrement est refusé avec un message qui dit ce qui ne se
+ * lit pas ; rien d'illisible n'entre dans la base ») : ce qu'une écriture de l'édition laisserait dans `non_lues` du lecteur, expliqué en une phrase par
+ * écriture. serveur/edition.mjs refuse le lot (409) quand la liste n'est pas vide ; le rejeu et la résolution d'un lot en conflit (refaire) ne la
+ * demandent pas : un lot déjà noté se rejoue tel quel.
+ */
+const guillemets = (noms) => noms.map((n) => `« ${n} »`).join(', ');
+const pasDesFamilles = (noms) =>
+  `${guillemets(noms)} ${noms.length > 1 ? "ne sont pas des familles d'armes maîtrisables" : "n'est pas une famille d'armes maîtrisable"}`;
+const maitrisablesDe = (familles) => familles.filter((f) => f.maitrisable && f.maitrisable !== '0');
+
+/** Pourquoi une ligne typée de classe_maitrise_arme ne se lit pas (forme et noms écrits, comme lib/maitrise-arme.mjs#lireLigneDeClasse les lit). */
+function raisonDeLaLigne(l, familles) {
+  if (l.forme === 'nommee') return `${pasDesFamilles([l.arme ?? l.arme_cle])}.`;
+  if (l.forme === 'au_choix') return `« sauf ${l.sauf ?? l.sauf_cle} » ne nomme aucune famille d'armes de ce choix.`;
+  if (l.forme === 'repartie') {
+    const entre = /\bentre\s+([^()]*)/i.exec(l.brut ?? '')?.[1] ?? '';
+    const noms = entre.split(/,|\bet\b|\bou\b/i).map((n) => n.trim()).filter(Boolean)
+      .filter((n) => famillesDuNom(n, maitrisablesDe(familles)).length !== 1);
+    return noms.length ? `${pasDesFamilles(noms)}.` : 'le site ne sait pas la lire.';
+  }
+  return 'le site ne sait pas la lire.';
+}
+
+/**
+ * Les lignes typées (« N maîtrise(s) … ») d'une classe que le lecteur ne lit pas, une phrase chacune : « Maîtrise illisible dans « 1 maîtrise Truc » :
+ * « Truc » n'est pas une famille d'armes maîtrisable. » ; [] quand tout se lit. Une ligne non typée (« Maîtrise toutes les armes ») ne donne aucune
+ * part, comme à l'import (lib/classe-champs.mjs#decouperMaitriseArme) : elle n'est pas illisible.
+ */
+export function illisiblesDeLaClasse(lignes, familles) {
+  return lignes.filter((l) => lireLigneDeClasse(l, familles)?.non_lues?.length)
+    .map((l) => `Maîtrise illisible dans « ${l.brut} » : ${raisonDeLaLigne(l, familles)}`);
+}
+
+/**
+ * Les écritures de points de maîtrise d'arme de l'effet d'un don que le lecteur ne lit pas, une phrase chacune ; [] quand tout se lit ou que l'effet
+ * ne parle pas de points de maîtrise d'arme.
+ */
+export function illisiblesDuDon(nom, effet, familles) {
+  return (lireDon(effet, familles)?.non_lues ?? []).map((ecrit) => `Maîtrise illisible dans « ${ecrit} » (effet de « ${nom} ») : ${/^[-−]/.test(ecrit)
+    ? "un retrait de points ne se lit que sur une famille d'armes nommée ou « l'autre arme choisie »."
+    : "le site attend une famille d'armes maîtrisable, une catégorie (contact, distance), « à répartir » ou « l'arme déterminée avant »."}`);
 }
 
 const cleDePart = (l) => JSON.stringify([l.source_id, l.rang]);

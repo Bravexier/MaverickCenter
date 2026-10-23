@@ -188,3 +188,88 @@ test('rejeu : un lot noté depuis 0073 se rejoue sans conflit ; un lot noté ava
   assert.deepEqual(TABLES_DES_SOURCES.filter((t) => ancien.sortie.tablesCompletees.includes(t)), TABLES_DES_SOURCES, 'tables écrites au-delà du journal');
   assert.deepEqual(q(ancien.base, 'SELECT 1 FROM modification WHERE table_nom IN (?, ?, ?)', ...TABLES_DES_SOURCES), []);
 });
+
+/** Ce qu'un refus doit laisser tel quel : les maîtrises de la classe, ses lignes, les dons, toutes les sources et le journal. */
+const etatDesMaitrises = (base) => ({
+  classes: q(base, 'SELECT id, maitrise_arme FROM classe ORDER BY id'),
+  lignes: q(base, 'SELECT * FROM classe_maitrise_arme ORDER BY classe_id, rang'),
+  dons: q(base, 'SELECT id, effet FROM capacite ORDER BY id'),
+  sources: sources(base).tables,
+  journal: q(base, 'SELECT count(*) AS n FROM modification')[0].n,
+});
+const erreurDe = (r) => r.corps?.erreur ?? JSON.stringify(r.corps);
+
+test('maîtrise illisible d’une classe (choix du propriétaire du 2026-10-23, « Refuser à la saisie ») : 409 qui cite la ligne, rien n’est écrit ; lisible ou non typée : acceptée', () => {
+  const base = vivante();
+  const classe = 'classes/guerrier';
+  const avant = etatDesMaitrises(base);
+  for (const [maitrise, message] of [
+    ['- 1 maîtrise Truc', 'Maîtrise illisible dans « 1 maîtrise Truc » : « Truc » n\'est pas une famille d\'armes maîtrisable.'],
+    ['- 1 maîtrise Épée\n- 1 maîtrise arme contact au choix (sauf Truc)', 'Maîtrise illisible dans « 1 maîtrise arme contact au choix (sauf Truc) » : « sauf Truc » ne nomme aucune famille d\'armes de ce choix.'],
+    ['- 2 maîtrises à répartir entre Masse, Truc et Machin', 'Maîtrise illisible dans « 2 maîtrises à répartir entre Masse, Truc et Machin » : « Truc », « Machin » ne sont pas des familles d\'armes maîtrisables.'],
+  ]) {
+    const r = appel(base, [{ op: 'modifier', table: 'classe', cle: { id: classe }, valeurs: { maitrise_arme: maitrise } }]);
+    assert.equal(r.statut, 409, JSON.stringify(r.corps));
+    assert.equal(erreurDe(r), `operations[0] : ${message}`);
+    assert.deepEqual(etatDesMaitrises(base), avant, `${maitrise} : rien n’est écrit`);
+  }
+  // une ligne non typée ne donne rien, comme à l'import (decouperMaitriseArme) : elle n'est pas illisible
+  enregistrer(base, [{ op: 'modifier', table: 'classe', cle: { id: classe }, valeurs: {
+    maitrise_arme: '- 1 maîtrise Hache\n- 1 maîtrise arme contact au choix (sauf Hache)\n- Maîtrise toutes les armes de Truc',
+  } }]);
+  assert.deepEqual(partsDe(base, idDeSourceDeClasse(classe, 1)), [{ rang: 1, genre: 'imposee', points: 1, arme_famille_id: 'hache', limite_famille: null }]);
+  assert.deepEqual(q(base, 'SELECT forme, nombre FROM classe_maitrise_arme WHERE classe_id = ? AND rang = 3', classe), [{ forme: null, nombre: null }]);
+  assert.deepEqual(partsDe(base, idDeSourceDeClasse(classe, 3)), []);
+  sourcesJustes(base);
+});
+
+test('maîtrise illisible dans l’effet d’un don (« Refuser à la saisie », 2026-10-23) : modifié ou créé, 409 qui la cite, rien n’est écrit ; un don sans maîtrise ou lisible : accepté', () => {
+  const base = vivante();
+  const id = creerDon(base, 'classes/archer', 'Essai illisible', '+7% Arc.');
+  const nom = q(base, 'SELECT nom FROM capacite WHERE id = ?', id)[0].nom;
+  const avant = etatDesMaitrises(base);
+  const modifie = appel(base, [{ op: 'modifier', table: 'capacite', cle: { id }, valeurs: { effet: '+7% Arc, +2 points de maîtrise Frondes, +1 maîtrise Dague.' } }]);
+  assert.equal(modifie.statut, 409, JSON.stringify(modifie.corps));
+  assert.equal(erreurDe(modifie), `operations[0] : Maîtrise illisible dans « +2 points de maîtrise Frondes » (effet de « ${nom} ») : le site attend une famille d'armes`
+    + " maîtrisable, une catégorie (contact, distance), « à répartir » ou « l'arme déterminée avant ».");
+  const retrait = appel(base, [{ op: 'modifier', table: 'capacite', cle: { id }, valeurs: { effet: '-1 point de maîtrise à répartir.' } }]);
+  assert.equal(retrait.statut, 409);
+  assert.match(erreurDe(retrait), /« -1 point de maîtrise à répartir » .* un retrait de points ne se lit que sur une famille d'armes nommée/);
+  assert.deepEqual(etatDesMaitrises(base), avant, 'rien n’est écrit');
+  const nouveau = nomLibre(base, 'classes/archer', 'Essai créé illisible');
+  const cree = appel(base, [{ op: 'creer', entite: 'capacite', valeurs: { classe_id: 'classes/archer', niveau: '20', nom: nouveau, type: 'Passif', effet: '+1 point de maîtrise Truc.' } }]);
+  assert.equal(cree.statut, 409, JSON.stringify(cree.corps));
+  assert.match(erreurDe(cree), new RegExp(`Maîtrise illisible dans « \\+1 point de maîtrise Truc » \\(effet de « ${nouveau} »\\)`));
+  assert.deepEqual(q(base, 'SELECT id FROM capacite WHERE classe_id = ? AND nom = ?', 'classes/archer', nouveau), [], 'le don n’est pas créé');
+  assert.deepEqual(etatDesMaitrises(base), avant);
+  // sans maîtrise d'arme (les NM de sorts ne sont pas des maîtrises d'arme, R154), ou lisible : accepté comme avant
+  modifierDon(base, id, 'Gagne 2 niveaux de maîtrise (NM), +7% Arc.');
+  assert.deepEqual(partsDe(base, id), []);
+  modifierDon(base, id, '+7% Arc, +2 points de maîtrise Arcs.');
+  assert.deepEqual(partsDe(base, id), [{ rang: 1, genre: 'imposee', points: 2, arme_famille_id: 'arc', limite_famille: null }]);
+  sourcesJustes(base);
+});
+
+test('API REST /api/v1/ : un PATCH qui écrirait une maîtrise illisible dans un don est refusé de même (409), par le service d’édition', () => {
+  const base = vivante();
+  const id = creerDon(base, 'classes/archer', 'Essai API illisible', '+7% Arc.');
+  const r = traiter({ methode: 'PATCH', chemin: `/api/v1/dons-de-classe/${encodeURIComponent(id)}/`, entetes: { 'content-type': 'application/json' },
+    corps: JSON.stringify({ effet: '+1 maîtrise Truc.' }) }, { base: () => base, etat: () => ({}), edition: true });
+  assert.equal(r.statut, 409, JSON.stringify(r.corps));
+  assert.match(erreurDe(r), /Maîtrise illisible dans « \+1 maîtrise Truc »/);
+  assert.equal(q(base, 'SELECT effet FROM capacite WHERE id = ?', id)[0].effet, '+7% Arc.');
+});
+
+test('rejeu : un lot déjà noté avec une maîtrise illisible (d’avant le refus) se rejoue sans planter ; ce qui ne se lit pas ne donne aucune part', () => {
+  const source = vivante();
+  const id = creerDon(source, 'classes/archer', 'Essai rejeu illisible', '+1 maîtrise Dague.');
+  // le journal tel qu'un site de dev d'avant le refus l'aurait noté
+  const n = source.prepare("UPDATE modification SET apres = replace(apres, '+1 maîtrise Dague.', '+1 maîtrise Truc.') WHERE table_nom = 'capacite' AND cle = ?")
+    .run(JSON.stringify({ id })).changes;
+  assert.equal(n, 1);
+  const ancien = rebatir(source, avant0073);
+  assert.equal(ancien.bilan.conflits, 0, JSON.stringify(q(ancien.base, "SELECT detail FROM modification WHERE etat = 'conflit'")));
+  assert.equal(q(ancien.base, 'SELECT effet FROM capacite WHERE id = ?', id)[0].effet, '+1 maîtrise Truc.');
+  assert.deepEqual(partsDe(ancien.base, id), []);
+  sourcesJustes(ancien.base);
+});

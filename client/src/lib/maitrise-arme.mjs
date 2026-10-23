@@ -10,7 +10,28 @@
 import { texteSansBalises } from './mots-cles-balises.mjs';
 import { normalize } from './text.mjs';
 
-const plier = (texte) => String(texteSansBalises(texte ?? '') ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[’`]/g, "'").toLowerCase();
+const plierUn = (texte) => texte.normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[’`]/g, "'").toLowerCase();
+const plier = (texte) => plierUn(String(texteSansBalises(texte ?? '') ?? ''));
+
+/**
+ * Un passage du texte plié (`t`, de `debut` à `fin`) tel qu'il est écrit (sans balises, espaces resserrés) : le texte est replié caractère par
+ * caractère pour retrouver la place de chacun ; le passage plié quand ce repli ne redonne pas `t` (aucun cas connu).
+ */
+function telQuEcrit(texte, t, debut, fin) {
+  const brut = String(texteSansBalises(texte ?? '') ?? '');
+  let replie = '';
+  const places = [];
+  let i = 0;
+  for (const c of brut) {
+    const p = plierUn(c);
+    for (let k = 0; k < p.length; k += 1) places.push(i);
+    replie += p;
+    i += c.length;
+  }
+  places.push(brut.length);
+  const passage = replie === t ? brut.slice(places[debut], places[fin]) : t.slice(debut, fin);
+  return passage.replace(/\s+/g, ' ').trim();
+}
 
 /**
  * Paliers du dé selon la Force écrits dans une note (« D6 1-2 Force, D8 3-4 Force, D10 5 Force ») : [{ de: 'D6', min: 1, max: 2 }, …], dans l'ordre
@@ -197,8 +218,9 @@ export function lireDon(effet, familles) {
   trouvees.forEach((m, i) => {
     const points = signe(m) * Number(m[2]);
     const suite = t.slice(m.index + m[0].length, trouvees[i + 1]?.index ?? t.length);
-    const destination = suite.split(/[,.;:\n(]/)[0].trim();
-    const ecrit = (m[0] + (destination ? ` ${destination}` : '')).trim();
+    const avantLaCoupure = suite.split(/[,.;:\n(]/)[0];
+    const destination = avantLaCoupure.trim();
+    const ecrit = () => telQuEcrit(effet, t, m.index, m.index + m[0].length + avantLaCoupure.trimEnd().length);
     if (points === 0) return;
     const limite = /\bplus de\s+(\d+)\s+points?\b[^)]*?\b(?:meme|une)\s+categorie\b/.exec(suite)?.[1];
     let part = null;
@@ -215,7 +237,7 @@ export function lireDon(effet, familles) {
     if (part && (part.genre !== 'choix' || points > 0)) {
       parts.push(part);
       sortes.push(sorte);
-    } else nonLues.push(ecrit);
+    } else nonLues.push(ecrit());
   });
   const cle = [...new Set(sortes)].join('+');
   const forme = !parts.length ? null : (FORMES_DES_DONS.get(cle)?.(parts) ?? 'mixte');

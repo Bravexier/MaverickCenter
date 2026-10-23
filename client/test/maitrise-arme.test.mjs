@@ -115,7 +115,9 @@ test('don (R150, R151) : une forme par écriture, lue dans le texte ; null sans 
   assert.deepEqual(lu('+2 points de maîtrise avec l\'arme déterminée avant, +10% Arme légères OU lourdes'), { forme: 'suit', parts: [[1, 'suit', 2, null, null]] }, 'R151');
   assert.deepEqual(lu("+5% Arme lourde OU légère. 2 points de maîtrise à l'épée, 1 point de maîtrise à la dague, -1 point de maîtrise de l'autre arme choisie"),
     { forme: 'nommee_et_retrait', parts: [[1, 'imposee', 2, 'epees', null], [2, 'imposee', 1, 'dagues', null], [3, 'suit', -1, null, null]] }, 'R151 : l’Épéiste');
-  assert.deepEqual(lu('+2 points de maîtrise Frondes'), { forme: null, parts: [], non_lues: ['+2 points de maitrise frondes'] }, 'un nom qui ne se lit pas reste écrit');
+  assert.deepEqual(lu('+2 points de maîtrise Frondes'), { forme: null, parts: [], non_lues: ['+2 points de maîtrise Frondes'] }, 'un nom qui ne se lit pas reste écrit');
+  assert.deepEqual(lu('+5% Arc, +1 point  de maîtrise {{fronde|Fronde}} (au choix), −1 point de maîtrise à répartir.'),
+    { forme: null, parts: [], non_lues: ['+1 point de maîtrise Fronde', '−1 point de maîtrise à répartir'] }, 'tel qu’écrit : sans balises, espaces resserrés');
   // ce qui ne donne pas de point de maîtrise d'arme
   for (const texte of ['Gagne 4 niveaux de maîtrise (NM).', "Permet d'additionner les dés de maîtrise de l'arme de jet avec les dés de maîtrise de l'arme version cac",
     'Bonus de 2d4 dégâts sournois* avec une arme de cac ou distance (selon la maîtrise d\'arme).', 'Tirer à la main prendra en compte la maîtrise d\'arme et fera +6 dégâts.',

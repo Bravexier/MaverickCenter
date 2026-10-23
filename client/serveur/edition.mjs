@@ -70,7 +70,9 @@ import {
 import { textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { ErreurHttp, jsonOuNull } from './partage.mjs';
 import { ErreurJournal, ORDRE_DE_REJEU, cleDe, lireLigne, nouveauLot, ouvrirLot, rejouer, structure } from './edition-journal.mjs';
-import { ecrireLesNmGagnes, famillesDuLecteur, partsAEcrire, sourcesDeLaClasse, sourcesDuDon, sourcesRefaitesParLeLot } from './edition-maitrises.mjs';
+import {
+  ecrireLesNmGagnes, famillesDuLecteur, illisiblesDeLaClasse, illisiblesDuDon, partsAEcrire, sourcesDeLaClasse, sourcesDuDon, sourcesRefaitesParLeLot,
+} from './edition-maitrises.mjs';
 import {
   ancienneEcritureDesCapacites, ancienneEcritureDesResistances, capacitesDeMonstre, domainesDuBestiaire, especesDeMonstres, groupesDeMonstres, lignesDuBestiaire as lignesRenduesDuBestiaire,
   operationsDuBestiaire,
@@ -891,7 +893,9 @@ const CLASSE = {
       // et les sources de maîtrise d'arme de ces lignes (maitrise_arme_part et ses options, lues par lib/maitrise-arme.mjs : décisions R148 à R151) :
       // celles qui partent avant leurs lignes, les nouvelles après (clés étrangères : serveur/edition-maitrises.mjs#partsAEcrire)
       const lignes = decouperMaitriseArme(apres.maitrise_arme);
-      const parts = partsAEcrire(db, ctx.w, { classeId: apres.id }, sourcesDeLaClasse(apres.id, lignes, famillesDuLecteur(db)));
+      const familles = famillesDuLecteur(db);
+      refuserLesMaitrisesIllisibles(illisiblesDeLaClasse(lignes, familles));
+      const parts = partsAEcrire(db, ctx.w, { classeId: apres.id }, sourcesDeLaClasse(apres.id, lignes, familles));
       parts.retirer();
       detail('classe_maitrise_arme', lignes);
       parts.poser();
@@ -1094,12 +1098,23 @@ function creerDon(ctx, { classe, specialite = null, niveau, nature, ligne, rang,
  * refaites depuis son effet (`effet` : null pour un don qui part), notées au journal ; avant que le don ne parte, après qu'il existe.
  */
 function suivreLesSourcesDuDon(ctx, don, effet) {
-  const voulues = effet === null ? { parts: [], options: [], nm: 0 } : sourcesDuDon(don.id, effet, famillesDuLecteur(ctx.db));
+  const familles = famillesDuLecteur(ctx.db);
+  if (effet !== null) refuserLesMaitrisesIllisibles(illisiblesDuDon(don.nom, effet, familles));
+  const voulues = effet === null ? { parts: [], options: [], nm: 0 } : sourcesDuDon(don.id, effet, familles);
   const parts = partsAEcrire(ctx.db, ctx.w, { capaciteId: don.id }, voulues);
   parts.retirer();
   parts.poser();
   ecrireLesNmGagnes(ctx.db, ctx.w, don.id, voulues.nm);
   if (effet !== null) verifierLesDonsQuiSuivent(ctx.db, don.classe_id);
+}
+
+/**
+ * Une maîtrise d'arme que le lecteur ne lit pas (une ligne typée d'une classe, une écriture de points de maîtrise dans l'effet d'un don) : refus 409,
+ * avant toute écriture des sources, une phrase par écriture illisible (serveur/edition-maitrises.mjs#illisiblesDeLaClasse, #illisiblesDuDon). Choix du
+ * propriétaire du 2026-10-23, « Refuser à la saisie » : « rien d'illisible n'entre dans la base » (test/maitrise-arme-sources.test.mjs l'exige de data/rows).
+ */
+function refuserLesMaitrisesIllisibles(messages) {
+  if (messages.length) throw new ErreurEdition(409, messages.join(' '));
 }
 
 /**
