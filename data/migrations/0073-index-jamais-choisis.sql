@@ -1,4 +1,4 @@
--- 0072-index-jamais-choisis : entretien de la base (sections 1 et 10). Migration de STRUCTURE seule : aucune ligne ne change.
+-- 0073-index-jamais-choisis : entretien de la base (sections 1 et 10). Migration de STRUCTURE seule : aucune ligne ne change.
 -- Retire six index qu'aucun plan ne choisit sur un chemin réel du site, du service, des scripts db:* ou des importeurs (tools/) :
 --   alias_texte          alias (texte)                    : alias se lit par page_id (clé primaire, UNIQUE (page_id, texte)) ou par cle (alias_cle) ;
 --   source_google        source (google_id) partiel       : source se lit par id (clé primaire) ; archives.mjs filtre google_id en JavaScript ;

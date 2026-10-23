@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 72;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 73;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -188,7 +188,7 @@ CREATE TABLE page_entite (
   origine      TEXT    NOT NULL REFERENCES famille(id),
   PRIMARY KEY (entite_table, entite_id)
 ) STRICT;
-CREATE INDEX page_entite_page ON page_entite (page_id);   -- une entité se cherche par la clé primaire (entite_table, entite_id) : pas d'index sur entite_id seul (migration 0072)
+CREATE INDEX page_entite_page ON page_entite (page_id);   -- une entité se cherche par la clé primaire (entite_table, entite_id) : pas d'index sur entite_id seul (migration 0073)
 CREATE UNIQUE INDEX page_entite_principale ON page_entite (page_id) WHERE principale = 1;   -- au plus une entité principale par page
 
 -- Panneaux de règles : l'encart replié en tête de chaque onglet de /ressources/equipement/ (migration 0056). Demandes du propriétaire du 2026-10-16,

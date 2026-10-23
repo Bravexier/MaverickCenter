@@ -1,4 +1,4 @@
-// Migration data/migrations/0072-index-jamais-choisis.sql (entretien de la base) : six index qu'aucun plan ne choisissait sur un chemin réel sont
+// Migration data/migrations/0073-index-jamais-choisis.sql (entretien de la base) : six index qu'aucun plan ne choisissait sur un chemin réel sont
 // retirés du schéma. Le premier test épingle la migration : leur absence, et la migration qui les retire tous et seulement eux. Le second est une
 // garde, pas un test de la migration (qui ne peut pas le faire échouer) : les lectures par clé du service et des importeurs qui touchent ces tables
 // restent des recherches par index (EXPLAIN QUERY PLAN sur une base vierge : la base n'est jamais analysée, ses plans ne dépendent pas des lignes).
@@ -14,9 +14,9 @@ const db = new DatabaseSync(':memory:');
 db.exec(lire('data/schema.sql'));
 const index = new Set(db.prepare("SELECT name FROM sqlite_master WHERE type = 'index'").all().map((i) => i.name));
 
-test('0072 : les six index retirés sont absents du schéma, la migration les retire tous et seulement eux', () => {
+test('0073 : les six index retirés sont absents du schéma, la migration les retire tous et seulement eux', () => {
   assert.deepEqual(RETIRES.filter((i) => index.has(i)), []);
-  const retires = [...lire('data/migrations/0072-index-jamais-choisis.sql').matchAll(/^DROP INDEX (\w+);$/gm)].map((m) => m[1]);
+  const retires = [...lire('data/migrations/0073-index-jamais-choisis.sql').matchAll(/^DROP INDEX (\w+);$/gm)].map((m) => m[1]);
   assert.deepEqual(retires, RETIRES);
   for (const garde of ['alias_cle', 'page_entite_page', 'page_entite_principale', 'page_source_source', 'ecart_source_entite']) assert.ok(index.has(garde), garde);
 });
