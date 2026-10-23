@@ -32,17 +32,15 @@
 .mod { color: var(--muted); font-size: 0.82em; }
 .supplement { font-size: 0.85em; color: var(--muted); }
 .vide { color: var(--muted); opacity: 0.6; }
-.genre { --gh: 30; --gs: 60%; display: inline-block; margin: 0 0.25rem 0.2rem 0; padding: 0.04rem 0.6rem; font-size: var(--fs-xs); border-radius: var(--radius-pill); border: 1px solid color-mix(in srgb, hsl(var(--gh) var(--gs) 50%) 40%, var(--border)); background: color-mix(in srgb, hsl(var(--gh) var(--gs) 50%) 15%, var(--surface)); color: color-mix(in srgb, hsl(var(--gh) var(--gs) var(--gl)) 85%, var(--text)); }
-.genre[data-genre="attaque"] { --gh: 5; }
-.genre[data-genre="entrave"] { --gh: 275; }
-.genre[data-genre="soin"] { --gh: 55; }
-.genre[data-genre="amplification"] { --gh: 120; }
-.genre[data-genre="protection"] { --gh: 185; }
-.genre[data-genre="placement"] { --gh: 42; }
-.genre[data-genre="invocation"] { --gh: 320; }
-.genre[data-genre="construction"] { --gh: 22; }
-.genre[data-genre="meteo"] { --gh: 232; }
-.genre[data-genre="aleatoire"] { --gs: 0%; }
+.genre { display: inline-block; margin: 0 0.25rem 0.2rem 0; padding: 0.04rem 0.6rem; font-size: var(--fs-xs); border-radius: var(--radius-pill); }
+/* la couleur d'un genre : sa classe (lib/genres-couleurs.mjs, famille `genre` émise par MagiePage.astro), lue sur l'étiquette qui la porte ; le texte en est
+   tiré par le noir de mélange (le blanc en sombre), le rendu de l'ancien hsl(… 34 %) et hsl(… 74 %) ; le Soin un peu plus foncé en clair (lisibilité) */
+.genre[class*='couleur-genre-'] { --genre-texte: color-mix(in srgb, var(--couleur) 68%, #000); border: 1px solid color-mix(in srgb, var(--couleur) 40%, var(--border)); background: color-mix(in srgb, var(--couleur) 15%, var(--surface)); color: color-mix(in srgb, var(--genre-texte) 85%, var(--text)); }
+.genre.couleur-genre-soin { --genre-texte: color-mix(in srgb, var(--couleur) 64%, #000); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .genre[class*='couleur-genre-'] { --genre-texte: color-mix(in srgb, var(--couleur) 52%, #fff); }
+}
+:root[data-theme="dark"] .genre[class*='couleur-genre-'] { --genre-texte: color-mix(in srgb, var(--couleur) 52%, #fff); }
 .marque { display: inline-block; margin: 0 0.25rem 0.2rem 0; padding: 0 0.45rem; font-size: var(--fs-xxs); border-radius: var(--radius-xs); border: 1px solid var(--border); color: var(--muted); }
 .marque--ic { border-color: var(--accent); color: var(--accent); }
 .marque--imparable, .marque--inesquivable { border-style: dashed; }

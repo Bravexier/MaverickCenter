@@ -15,7 +15,7 @@
   --regard-appreciee: color-mix(in srgb, var(--good) 70%, var(--surface));
   --regard-acceptee: color-mix(in srgb, var(--good) 40%, var(--surface));
   --regard-neutre: var(--border);
-  --regard-evitee: color-mix(in srgb, #c27a12 70%, var(--surface));
+  --regard-evitee: color-mix(in srgb, var(--regard-evite) 70%, var(--surface));
   --regard-haine: color-mix(in srgb, var(--danger) 70%, var(--surface));
   --regard-ennemie: var(--danger);
 }

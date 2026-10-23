@@ -7,7 +7,7 @@ import { htmlDeLaPortee } from './chronologie-rendu.mjs';
 import { analyserTypeDeDon, decouperInventaire, lignesDeListe } from './classe-champs.mjs';
 import { typeDeDon } from './classe-dons.mjs';
 import { decouperBonus, decouperEquipement } from './metier-champs.mjs';
-import { classeDeCaracteristique } from './palette-css.mjs';
+import { classeDeCaracteristique, classeDeGenre, classeDeTypeDeDon } from './palette-css.mjs';
 import { analyserType, bonusDeMaitrise } from './sort-analyse.mjs';
 import { blocsDeTexte, coutDeSort, marquesDeMode, morceauxAvecEtats, morceauxAvecLiens, valeurDeSort } from './sort-format.mjs';
 import { marquerBonus } from './sort-maitrise.mjs';
@@ -189,7 +189,7 @@ export const RENDUS = {
   // Sorts (components/magie/LigneDeSort.astro) : types, mode et NM du type ; coût (principal + supplément), coût secondaire ; portée, zone, D/S/B
   'sort-type': (valeur) => {
     const a = analyserType(valeur);
-    const types = a.types.map((t) => `<span class="genre" data-genre="${echapperHtml(t.type)}">${echapperHtml(t.libelle)}</span> `);
+    const types = a.types.map((t) => `<span class="genre ${classeDeGenre(t.type)}" data-genre="${echapperHtml(t.type)}">${echapperHtml(t.libelle)}</span> `);
     const marques = marquesDeMode(a.modes).map((m) => `<span class="marque marque--${echapperHtml(m.genre)}">${echapperHtml(m.texte)}</span> `);
     const nm = bonusDeLaCase('type', valeur).map((b) => `<span class="nm">${echapperHtml(b.texteBrut)}</span> `);
     return [...types, ...marques, ...nm].join('');
@@ -230,7 +230,7 @@ export const RENDUS = {
     const connu = (ctx.typesDon ?? []).find((t) => t.id === type);
     const libelle = connu?.nom ?? { passif: 'Passif', actif: 'Actif', action: 'Action', reaction: 'Réaction' }[type] ?? mot;
     const bulle = connu?.definition ? ` title="${echapperHtml(`${libelle} : ${connu.definition}`)}"` : '';
-    return `${type ? `<span class="don-type" data-type="${type}"${bulle}>${echapperHtml(libelle)}</span>` : ''}${precision ? `<span class="don__precision">${echapperHtml(precision)}</span>` : ''}`;
+    return `${type ? `<span class="don-type ${classeDeTypeDeDon(type)}" data-type="${type}"${bulle}>${echapperHtml(libelle)}</span>` : ''}${precision ? `<span class="don__precision">${echapperHtml(precision)}</span>` : ''}`;
   },
   // le coût secondaire (décision R105) : une valeur courte, sans expression de NM (le service les refuse ici)
   // le coût secondaire sous le coût, dans la même case (décision R106) : rien quand il est vide (son cadre se cache en lecture)

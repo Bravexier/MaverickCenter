@@ -11,7 +11,7 @@ user-invocable: false
 - Menu : `client/src/lib/nav.mjs` (`NAV`, `entreesDuMenu`, `activeGroup`, `groupIsCurrent`, `legacyWikiRedirect`, `PAGES_RENOMMEES`, `nouvelleAdresse`), `client/src/layouts/Base.astro`.
 - En-tête : `layouts/Base.astro`, `styles/global/site-shell.css`, `public/logo.webp`, `public/favicon.png`, `public/apple-touch-icon.png`.
 
-`Base.astro` porte aussi des scripts d'autres zones : infobulles (skill `ui-infobulles`), maintenance et bandeau du site de dev (skill `zone-mise-a-jour`), balise des métriques (skill `zone-debug-metriques`).
+`Base.astro` porte aussi des scripts d'autres zones : infobulles (skill `ui-infobulles`), maintenance (skill `zone-maintenance`) et bandeau du site de dev (skill `zone-mise-a-jour`), balise des métriques (skill `zone-debug-metriques`).
 
 ## À lire
 
@@ -33,6 +33,7 @@ user-invocable: false
 - Les rubriques sont sur la même bande, à droite du logo ; les entrées de la rubrique dessous. Sous 60rem, le menu passe sous le logo.
 - Pas de barre de recherche : la recherche est une page du menu Outils, mêlée aux mots-clés (skill `zone-recherche`).
 - La hauteur de la bande est celle du menu, pas du logo : l'image est en absolu dans le lien, qui garde sa largeur, et la pointe de l'épée dépasse sous la bordure (`test/site-html.test.mjs`).
+- Le bandeau du site de dev (`.bandeau-test` de `site-shell.css`) lit les jetons `--bandeau-dev` et `--texte-sur-fonce` (skill `ui-couleurs-theme`).
 - Les icônes `favicon.png` (32 px) et `apple-touch-icon.png` sont tirées du même logo.
 
 ## Tests

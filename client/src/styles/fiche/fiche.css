@@ -293,9 +293,9 @@ main:has(> .fiche) { max-width: 100rem; }
 }
 .parametres .onglet:hover { background: color-mix(in srgb, var(--etape) 18%, var(--surface)); }
 .parametres .onglet.is-active { border-color: var(--etape); border-bottom-color: var(--surface); background: var(--surface); color: color-mix(in srgb, var(--etape) 70%, var(--text)); }
-.onglet__compte { padding: 0 0.4rem; border-radius: var(--radius-pill); background: var(--danger); color: var(--texte-sur-fonce); font-size: var(--fs-xxs); }
-.onglet__compte[data-ok] { background: var(--good); }
-.onglet__compte--attente { background: var(--a-choisir-plein); }
+.onglet__compte { padding: 0 0.4rem; border-radius: var(--radius-pill); background: var(--danger); color: var(--texte-sur-danger); font-size: var(--fs-xxs); }
+.onglet__compte[data-ok] { background: var(--good); color: var(--texte-sur-good); }
+.onglet__compte--attente { background: var(--a-choisir-plein); color: var(--texte-sur-fonce); }
 .parametres__panneau { border-top-left-radius: 0; border-top-right-radius: 0; }
 html.js .parametres[data-onglets] .parametres__panneau:not(.is-active) { display: none; }
 html.js .parametres[data-onglets] .parametres__titre { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

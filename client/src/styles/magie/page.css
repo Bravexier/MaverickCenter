@@ -4,9 +4,9 @@
 .magie-hero__surtitre { margin: 0; font-size: var(--fs-xs); letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.8; }
 .magie-hero__aliases { margin: 0 0 0.4rem; opacity: 0.85; font-style: italic; }
 .magie-hero__roles { display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0; margin: 0.7rem 0 0; list-style: none; }
-.magie-hero__roles li { font-size: var(--fs-xxs); letter-spacing: 0.1em; padding: 0.15rem 0.7rem; border-radius: var(--radius-pill); background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.28); }
+.magie-hero__roles li { font-size: var(--fs-xxs); letter-spacing: 0.1em; padding: 0.15rem 0.7rem; border-radius: var(--radius-pill); background: color-mix(in srgb, #fff 16%, transparent); border: 1px solid color-mix(in srgb, #fff 28%, transparent); }
 .magie-stats { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 1rem 0 0; }
-.magie-stat { min-width: 8.5rem; padding: 0.5rem 0.9rem; border-radius: var(--radius-md); background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.22); }
+.magie-stat { min-width: 8.5rem; padding: 0.5rem 0.9rem; border-radius: var(--radius-md); background: color-mix(in srgb, #fff 12%, transparent); border: 1px solid color-mix(in srgb, #fff 22%, transparent); }
 .magie-stat dt { font-size: var(--fs-xxs); letter-spacing: var(--ls-large); text-transform: uppercase; opacity: 0.8; }
 .magie-stat dd { margin: 0; font-size: 1.6rem; font-weight: 700; line-height: 1.2; }
 .magie-stat--texte dd { font-size: var(--fs-xl); line-height: 1.7; }

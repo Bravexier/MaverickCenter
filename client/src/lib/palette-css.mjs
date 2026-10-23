@@ -44,6 +44,8 @@
 //     progresser, plus-loin), sans `par-defaut` : une page sans partie (Règles avancées, Guide du MJ) ne porte aucune classe et garde l'accent du site ;
 //     les pages de Découvrir et des Bases, leurs cartes « Par où commencer ? » de l'accueil, les groupes du sommaire des Bases, les quatre zones de la
 //     fiche. Un texte blanc est posé sur ces couleurs (aplats du guide et de la fiche) : leur famille porte un texte.
+//   - genre, don : lib/genres-couleurs.mjs (sort_type.type, capacite.type), sans `par-defaut` (listes fermées) : les étiquettes des genres de sort
+//     des pages des magies et des types de don des pages de classe.
 // L'id d'une classe est la clé du module de sa règle passée par text.mjs#normalize (« chakra+sante » → « chakra-sante ») : il ne change pas quand le nom
 // affiché change.
 //
@@ -82,6 +84,7 @@ import { COULEURS_DES_MATERIAUX, cleDeMateriau } from './materiaux-couleurs.mjs'
 import { COULEUR_SANS_TYPE, COULEURS_DES_ARMES, COULEURS_DES_POIDS, COULEURS_DES_TYPES } from './equipement-couleurs.mjs';
 import { COULEURS_DES_NIVEAUX } from './accessoires-couleurs.mjs';
 import { COULEURS_DES_PARTIES } from './parties-couleurs.mjs';
+import { COULEURS_DES_GENRES, COULEURS_DES_TYPES_DE_DON } from './genres-couleurs.mjs';
 import { normalize } from './text.mjs';
 
 /** L'id de la classe d'une couleur inconnue de sa famille (magie : COULEUR_PAR_DEFAUT ; caractéristique, posture, alignement, neutre : COULEUR_NEUTRE). */
@@ -108,6 +111,8 @@ export const FAMILLES_DE_LA_PALETTE = Object.freeze({
   poids: Object.freeze({ ...COULEURS_DES_POIDS, [PAR_DEFAUT]: COULEUR_SANS_TYPE }),
   niveau: COULEURS_DES_NIVEAUX,
   partie: COULEURS_DES_PARTIES,
+  genre: COULEURS_DES_GENRES,
+  don: COULEURS_DES_TYPES_DE_DON,
 });
 
 /** Les familles posées sur chaque page (layouts/Base.astro : cssDeLaPalette), celles que beaucoup de pages posent. */
@@ -117,9 +122,9 @@ export const FAMILLES_DE_CHAQUE_PAGE = Object.freeze(['magie', 'attribut', 'cara
  * `alignement`, `palier`, `mode`, `neutre` (la fiche), `classe` (/classes/, les pages de classe, la fiche, la page d'une classe créée sur le site de
  * dev), `race` (/races/, les pages de race, la fiche, la page d'une race créée), `materiau` (l'onglet Armes, la page Composants), `arme` (l'onglet
  * Armes), `armure` (les onglets Armures et Boucliers), `poids` (l'onglet Boucliers, la fiche), `niveau` (l'onglet Accessoires), `partie` (une page de
- * Découvrir ou des Bases, l'accueil, le sommaire des Bases, la fiche).
+ * Découvrir ou des Bases, l'accueil, le sommaire des Bases, la fiche), `genre` (les pages des magies), `don` (les pages de classe).
  */
-export const FAMILLES_DES_ZONES = Object.freeze(['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre', 'materiau', 'arme', 'armure', 'poids', 'niveau', 'partie']);
+export const FAMILLES_DES_ZONES = Object.freeze(['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre', 'materiau', 'arme', 'armure', 'poids', 'niveau', 'partie', 'genre', 'don']);
 
 /**
  * Les familles d'une zone que la fiche de personnage pose (pages/fiche/index.astro) : toutes, sauf celles des onglets de l'équipement hors le poids (ni
@@ -130,9 +135,11 @@ export const FAMILLES_DE_LA_FICHE = Object.freeze(['posture', 'alignement', 'cla
 /**
  * Les familles sur la couleur desquelles aucun texte n'est posé en fond : `palier` (le trait de 3 px d'une ligne de résistance de la fiche), `arme` (le
  * bleu des armes de départ : une nuance sur la surface, un filet et, mêlé au texte du site, la couleur de la phrase des règles ; styles/armes/armes.css). Le seuil de lisibilité de 4,5:1 vaut pour un texte : leur fond reste la
- * couleur de leur règle, sans correction (test/palette-css.test.mjs ne mesure le contraste que des familles qui portent un texte).
+ * couleur de leur règle, sans correction (test/palette-css.test.mjs ne mesure le contraste que des familles qui portent un texte). `genre` et `don`
+ * (étiquettes des genres de sort et des types de don) : un fond pâle et un texte calculés depuis la couleur (styles/magie/sorts.css,
+ * styles/classe/dons.css), mesurés à part ; jamais un texte sur la couleur pure.
  */
-export const FAMILLES_SANS_TEXTE = Object.freeze(['palier', 'arme']);
+export const FAMILLES_SANS_TEXTE = Object.freeze(['palier', 'arme', 'genre', 'don']);
 
 /**
  * Le fond d'une classe : la couleur de sa règle, rendue lisible (alchimie-couleurs.mjs#lisible) quand sa famille porte un texte : inchangée quand son
@@ -233,6 +240,12 @@ export const FAMILLE_DES_PARTIES = 'partie';
  * l'accent du site).
  */
 export const classeDePartie = (id) => classeDeCouleur(FAMILLE_DES_PARTIES, id ?? '');
+
+/** La classe d'un genre de sort (sort_type.type : « soin » → « couleur-genre-soin ») ; null si inconnu. */
+export const classeDeGenre = (type) => classeDeCouleur('genre', type ?? '');
+
+/** La classe d'un type de don (capacite.type : « reaction » → « couleur-don-reaction ») ; null si inconnu. */
+export const classeDeTypeDeDon = (type) => classeDeCouleur('don', type ?? '');
 
 /** La classe neutre (COULEUR_NEUTRE) : ce que la fiche montre sans couleur de règle (magie acquise « Aucune », objet de départ, ethnie sans race). */
 export const CLASSE_NEUTRE = classeDeCouleur('neutre', PAR_DEFAUT);

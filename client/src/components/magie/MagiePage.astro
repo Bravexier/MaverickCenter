@@ -1,6 +1,6 @@
 ---
 import { nombre, sortsParNpm } from '../../lib/sort-format.mjs';
-import { classeDeMagie } from '../../lib/palette-css.mjs';
+import { classeDeMagie, cssDesFamilles } from '../../lib/palette-css.mjs';
 import magieBaseCss from '../../styles/magie/base.css?raw';
 import magiePageCss from '../../styles/magie/page.css?raw';
 import magieSortsCss from '../../styles/magie/sorts.css?raw';
@@ -80,6 +80,7 @@ const nav = [
 ---
 
 <style is:inline set:html={creatures.length ? `${magieCss}\n${carteCss}` : magieCss}></style>
+<style is:inline set:html={cssDesFamilles(['genre'])}></style>
 <div class={`magie ${classeDeLaMagie}`}>
   <header class="magie-hero">
     <p class="magie-hero__surtitre">Magie</p>

@@ -9,7 +9,7 @@ user-invocable: false
 ## Fichiers
 - `serveur/index.mjs` (point d'entrée livré), `service.mjs` (HTTP, surveillance des fichiers), `api.mjs` (routes), `fiches.mjs` (fiche ↔ lignes de la section 13), `base-vivante.mjs` (création, renouvellement, archives), `fiches-retraits.mjs` (R42), `classeur.mjs` (`POST /api/classeur/`), `tipeee.mjs` (`GET /api/tipeee/`), `livraison.mjs` (intégration Astro), `dev.mjs` (`npm run serveur`, jamais livré).
 - `src/lib/fiche-format.mjs` : format d'une fiche, partagé avec les pages (sans dépendance). `src/lib/tipeee.mjs` : l'extraction du texte de Tipeee (pure).
-- Édition des règles (`/api/edition/`, `serveur/edition*.mjs`) : skill `zone-edition`. Conteneurs, nginx, installateurs : skill `zone-hebergement`. Maintenance et page « Mise à jour » : skill `zone-mise-a-jour`. `/api/v1/` : skill `zone-api-rest`. Métriques et page Debug : skill `zone-debug-metriques`. Tables de la section 13 : skill `zone-fiches-base`.
+- Édition des règles (`/api/edition/`, `serveur/edition*.mjs`) : skill `zone-edition`. Conteneurs, nginx, installateurs : skill `zone-hebergement`. Maintenance : skill `zone-maintenance`. Page « Mise à jour » : skill `zone-mise-a-jour`. `/api/v1/` : skill `zone-api-rest`. Métriques et page Debug : skill `zone-debug-metriques`. Tables de la section 13 : skill `zone-fiches-base`.
 
 ## À lire
 - `docs/serveur.md` : « Le code », « La base vivante (`db/`) » (reconstruction, retraits, conversions, retour sous 0045 / 0055, sauvegarde), « L'API » (routes, format JSON d'une fiche, création, modification, refus, repli sur une base d'avant), « Hébergement » (classeur, surveillance), « Développement » (tests).

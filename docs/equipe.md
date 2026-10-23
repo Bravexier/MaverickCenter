@@ -120,7 +120,7 @@ Les skills :
 - `zone-chronologie`, `zone-guide`, `zone-mots-cles`, `zone-recherche` ;
 - `zone-fiche` (noyau, avec ses sous-skills `zone-fiche-tiroir`, `zone-fiche-acquis`, `zone-fiche-sorts`, `zone-fiche-equipement`, `zone-fiche-armure`, `zone-fiche-situation`), `zone-fiche-tableur`, `zone-fiches-base`, `zone-personnages-liste` ;
 - `zone-menu`, `zone-accueil`, `zone-archives` ;
-- `zone-service`, `zone-edition`, `zone-mise-a-jour`, `zone-api-rest`, `zone-debug-metriques`, `zone-hebergement` ;
+- `zone-service`, `zone-edition`, `zone-mise-a-jour` (et ses sous-skills `zone-mise-a-jour-conflits`, `zone-maintenance`), `zone-api-rest`, `zone-debug-metriques`, `zone-hebergement` ;
 - l'interface commune : `ui-tableaux`, `ui-infobulles`, `ui-defilement`, `ui-monnaies`, `ui-couleurs` (et `ui-couleurs-theme`, jetons du thème et dérogations), `ui-onglets` ;
 - le socle et les données : `site-wiki-liens`, `site-version-portable`, `base-sqlite` (préchargé par `tech-db`, toujours proposé), `base-orthographe`, `sources-codex`, `sources-rapprochement`.
 

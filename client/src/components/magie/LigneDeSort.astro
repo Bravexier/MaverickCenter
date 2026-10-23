@@ -3,6 +3,7 @@ import { coutDeSort, marquesDeMode, valeurDeSort } from '../../lib/sort-format.m
 import { marquerBonus } from '../../lib/sort-maitrise.mjs';
 import type { Magies, SortDb } from '../../lib/magies';
 import { attributEd } from '../../lib/edition-modele.mjs';
+import { classeDeGenre } from '../../lib/palette-css.mjs';
 import Segments from './Segments.astro';
 import SortDetail from './SortDetail.astro';
 
@@ -59,7 +60,7 @@ const ed = (colonne: string) => attributEd('sort', { id: s.id }, colonne);
       }
     </th>
     <td data-label="Type" class="sort__type" data-ed={ed('type_brut')} data-ed-rendu="sort-type">
-      {s.types.map((t) => <><span class="genre" data-genre={t.type}>{t.libelle}</span>{' '}</>)}
+      {s.types.map((t) => <><span class={`genre ${classeDeGenre(t.type)}`} data-genre={t.type}>{t.libelle}</span>{' '}</>)}
       {marques.map((m) => <><span class={`marque marque--${m.genre}`}>{m.texte}</span>{' '}</>)}
       {nmDuType.map((b) => <><span class="nm">{b.texteBrut}</span>{' '}</>)}
     </td>

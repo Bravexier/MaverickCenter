@@ -28,7 +28,7 @@
 .site-header--maintenance .site-nav, html[data-maintenance] .site-nav { opacity: 0.35; filter: grayscale(1); pointer-events: none; }
 .site-header--maintenance .brand, html[data-maintenance] .brand { pointer-events: none; }
 /* Serveur de dev (SITE_MODE=test) : impossible à confondre avec la production. */
-.bandeau-test { margin: 0; padding: 0.4rem 1rem; text-align: center; background: #b45309; color: #fff; font-size: var(--fs-lg); }
+.bandeau-test { margin: 0; padding: 0.4rem 1rem; text-align: center; background: var(--bandeau-dev); color: var(--texte-sur-fonce); font-size: var(--fs-lg); }
 .bandeau-test a { color: inherit; text-decoration: underline; }
 /* Écran plus étroit que le menu sur une ligne : le logo réduit sur la première ligne, le menu dessous sur toute la largeur. */
 @media (max-width: 60rem) {
