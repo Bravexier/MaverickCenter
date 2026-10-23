@@ -137,11 +137,19 @@ function reglesDeLaBase(db) {
   // magie qu'on subit (décision R98 : « L'une des 14 formes de magie hors PI ») ; `alteration` : le cran va aussi à l'altération d'état de la magie
   // choisie (etat_magie, `magies[].etat_id`), que la fiche lit.
   const magiesSubies = lignes(db, "SELECT id FROM magie WHERE id <> 'magies/potentiel-illimite' ORDER BY ordre").map((m) => m.id);
-  const resistancesDuTexte = (texte) => {
-    const { magies_au_choix: magiesAuChoix = [], ...lecture } = lireResistances(texte);
+  // Un don qui vise la magie innée et dont la remarque dit « Dans le cas du potentiel illimité, lancer un D14 pour déterminer une résistance magique
+  // aléatoire » (Flagelleur, « Punis-moi ... » et « ... plus fort ! » ; décision R163 : « A chaque choix de don, tu choisi la résistance / altération
+  // associée », « Les 14 magies ») : pour un personnage de cette magie innée (`si_magie_innee`), une magie tirée par le MJ (`de` : « D14 ») parmi les 14
+  // magies qu'on subit, l'Arcane et la Corruption comprises, qui tient lieu de magie innée pour ce don seulement (`remplace_magie_innee`, sans `crans`) ;
+  // un choix du tiroir (personnage_resistance_choix.magie_id, comme R137), après les magies au choix du don.
+  const resistancesDuTexte = (texte, remarque = null) => {
+    const { magies_au_choix: magiesAuChoix = [], si_magie_innee: siMagieInnee, de, ...lecture } = lireResistances(texte, { remarque });
     const au_choix = magiesAuChoix.map((c, i) => ({
       rang: i + 1, crans: c.crans, magie: true, options: magiesSubies.filter((id) => !c.sauf.includes(id)), ...(c.alteration ? { alteration: true } : {}),
     }));
+    if (siMagieInnee && lecture.effets.some((e) => e.id === null)) {
+      au_choix.push({ rang: au_choix.length + 1, magie: true, options: magiesSubies.filter((id) => id !== siMagieInnee), si_magie_innee: siMagieInnee, de, remplace_magie_innee: true });
+    }
     return au_choix.length ? { ...lecture, au_choix } : lecture;
   };
 
@@ -322,7 +330,7 @@ function reglesDeLaBase(db) {
   const amMagique = db.prepare("SELECT am_base FROM categorie_classe WHERE id = 'classe-magique'").get()?.am_base;
   if (!amMagique) throw new Error('categorie_classe « classe-magique » : am_base absent');
   const alternatives = parCle(lignes(db, 'SELECT capacite_id, autre_id FROM v_capacite_exclusive'), 'capacite_id', (r) => r.autre_id);
-  const capacites = parCle(lignes(db, 'SELECT id, classe_id, specialite_id, niveau, nature, ligne, rang, nom, type, type_brut, effet FROM capacite'), 'classe_id');
+  const capacites = parCle(lignes(db, 'SELECT id, classe_id, specialite_id, niveau, nature, ligne, rang, nom, type, type_brut, effet, remarque FROM capacite'), 'classe_id');
   const specialites = parCle(lignes(db, 'SELECT id, classe_id, rang, nom FROM specialite ORDER BY classe_id, rang'), 'classe_id');
   // Les sources de maîtrise d'arme (décisions R148 à R151), lues dans leurs tables de règles (maitrise_arme_part, maitrise_arme_part_famille : écrites par
   // lib/maitrise-arme.mjs, rejouées par test/maitrise-arme-sources.test.mjs ; rien n'est relu des textes ici) : les parts de chaque source, dans l'ordre
@@ -390,7 +398,7 @@ function reglesDeLaBase(db) {
           id: d.id, nom: d.nom, nature: d.nature, niveau: d.niveau, specialite_id: d.specialite_id, type: d.type, effet: d.effet,
           // ce que la cellule de type écrit entre parenthèses (« 2 fois/combat », « 3 tours de recharge »), tel quel, comme la page de la classe
           precision: typeDeDon(d.type_brut).precision,
-          ...resistancesEcrites(resistancesDuTexte(d.effet)), ...degatsEcrits(d),
+          ...resistancesEcrites(resistancesDuTexte(d.effet, d.remarque)), ...degatsEcrits(d),
           // ses parts de maîtrise d'arme (maitrise_arme_part : décisions R148, R150, R151) et ses NM de sorts gagnés (capacite_nm_gagne : R154), quand il en a
           ...(partsDesSources.has(d.id) ? { maitrise: { parts: partsDesSources.get(d.id) } } : {}),
           ...(nmGagnes.has(d.id) ? { nm_gagnes: nmGagnes.get(d.id) } : {}),

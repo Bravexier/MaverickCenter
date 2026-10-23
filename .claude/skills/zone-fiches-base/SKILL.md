@@ -32,7 +32,7 @@ user-invocable: false
 - `personnage_arme.durabilite` (R74 : NULL = à son maximum, 0 = cassée).
 - Armure dans `personnage` (`armure_id`, `armure_amelioration_id`, `armure_elementaire_id`, `armure_amelioration_elementaire_id`) et `personnage_armure_partie` (R95 : la solidité du moment d'une partie abîmée ; sans ligne, à son maximum).
 - Sort préparé dans `personnage_sort` (`prepare`, `prepare_jet`, `prepare_posture_id`), un seul par fiche (R115, migration 0067).
-- Résistance au choix : `personnage_resistance_choix`, une altération d'une ligne de tableau de race (R124, migration 0069) ou une magie au choix ou tirée d'un don (`magie_id`, R137, migration 0071 ; l'une ou l'autre).
+- Résistance au choix : `personnage_resistance_choix`, une altération d'une ligne de tableau de race (R124, migration 0069) ou une magie au choix ou tirée d'un don (`magie_id`, R137, migration 0071 ; l'une ou l'autre). R163 (Flagelleur au Potentiel Illimité) : source = l'id du don « Punis-moi ... » (`capacites/flagelleur-puni-moi`) ou « ... plus fort ! » (`capacites/flagelleur-plus-fort`), rang 1, `magie_id` parmi les 14 magies hors PI ; aucun cran par elle-même : la magie tient lieu de magie innée pour ces deux dons seulement, et seulement si la magie innée est le Potentiel Illimité (sinon la ligne est retirée par la page et l'import du tableur, ignorée par le moteur).
 - NM du MJ pour toute la fiche : `personnage.nm_mj` (R118, migration 0066). NM gagnés d'un don acquis : `capacite_nm_gagne` × `v_personnage_don_acquis`, comptés par `sorts_nm_total` (R154, migration 0076 ; `sort_nm_max` ne les lit pas).
 
 ## Maîtrises d'armes (décisions R148 à R154, migration 0076)

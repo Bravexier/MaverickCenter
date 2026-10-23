@@ -39,7 +39,7 @@ import {
   armureApresChoix, partiesApresReglage, partiesDeLArmure, partiesValables,
   bouclierApresChoix, bouclierDe, catalogueDuSac, defenseDe, degatsRecus, effetDeCompetence, effetsDAccessoireProposes, PARTIE_PAR_DEFAUT, partiesDuCorps, valeurDeCompetenceBornee,
   propositionsDuCatalogue, soliditeDuBouclierAEcrire, typesDeDegats, valeurDEffetDAccessoire,
-  acquisApresChoix, acquisApresRepartition, acquisChoixValables, acquisDesDons, resistanceApresChoix, resistanceChoixValables, entrainementDe, entrainementsAEnregistrer, batonDuSac, contexteDesSorts, degatsDArmeDuMoment, magiesDesBatons, nomDuBaton, postureDuMoment, sortDuMoment,
+  acquisApresChoix, acquisApresRepartition, acquisChoixValables, acquisDesDons, magieTireeParLeMj, resistanceApresChoix, resistanceChoixValables, entrainementDe, entrainementsAEnregistrer, batonDuSac, contexteDesSorts, degatsDArmeDuMoment, magiesDesBatons, nomDuBaton, postureDuMoment, sortDuMoment,
   creaturesDuSort, sacrificeDuSort,
   carteDeMaitrise, compteurDeMaitrise, ligneDeMaitrise, maitriseApresChoix, maitriseChoixValables, maitrisesParFamille, presentationDuCompteurDeMaitrise, sourcesDeMaitrise,
 } from '../lib/fiche-moteur.mjs';
@@ -386,8 +386,10 @@ function construireResistances() {
   blocDuChoix.hidden = !resistancesAChoisir.length;
   reconstruire(blocDuChoix, JSON.stringify(resistancesAChoisir.map((c) => [c.source, c.rang, c.options])), () => resistancesAChoisir.map((c) => {
     const li = el('li', { class: 'fiche-champ acquis-choix__ligne', dataset: { choixCle: cleDeChoix.resistance(c.source, c.rang) } });
-    // une altération d'état (Drakos orange, R124) ou une magie, choisie ou tirée, et son altération quand le don l'écrit (R137)
-    const quoi = `+${c.crans} cran de résistance${c.magie ? ` à une magie${c.alteration ? ' et à son altération d’état' : ''}` : ''}`;
+    // une altération d'état (Drakos orange, R124) ou une magie, choisie ou tirée, et son altération quand le don l'écrit (R137) ; la magie tirée par le
+    // MJ qui tient lieu de magie innée pour un don du Flagelleur d'un personnage du Potentiel Illimité (R163)
+    const quoi = c.remplaceMagieInnee ? magieTireeParLeMj(c)
+      : `+${c.crans} cran de résistance${c.magie ? ` à une magie${c.alteration ? ' et à son altération d’état' : ''}` : ''}`;
     const liste = el('select', {
       'aria-label': `${c.nom} : ${quoi} à choisir`,
       onchange: (ev) => { Object.assign(fiche, resistanceApresChoix(fiche, c.source, c.rang, ev.target.value || null, c.magie)); changer(); },
@@ -1420,15 +1422,26 @@ function construireAcquisAChoisir() {
 // ------------------------------------------------------------------ rappel des dons
 const TYPES_DE_DON = { passif: 'Passif', actif: 'Actif', action: 'Action', reaction: 'Réaction', variable: 'Variable' };
 
-/** Un don de la liste : son niveau (s'il en a un), son nom, son type et sa précision (limite d'usage « 2 fois/combat », telle qu'écrite), et son texte. */
-function elementDeDon({ niveau = null, nom, type = null, precision = null, texte }) {
+/**
+ * Un don de la liste : son niveau (s'il en a un), son nom, son type et sa précision (limite d'usage « 2 fois/combat », telle qu'écrite), son texte, et
+ * une aide de la fiche sous le texte (`aide`, AIDE_ANNULE_LES_FAIBLESSES).
+ */
+function elementDeDon({ niveau = null, nom, type = null, precision = null, texte, aide = null }) {
   return el('li', { class: 'don' },
     el('span', { class: 'don__tete' },
       niveau !== null ? el('span', { class: 'don__niveau' }, `Niv. ${niveau}`) : null,
       el('strong', { class: 'don__nom' }, nom),
       type || precision ? el('span', { class: 'don__type', dataset: type ? { type } : {} }, [TYPES_DE_DON[type] ?? type, precision ? `(${precision})` : null].filter(Boolean).join(' ')) : null),
-    texte ? el('span', { class: 'don__texte' }, texte) : null);
+    texte ? el('span', { class: 'don__texte' }, texte) : null,
+    aide ? el('small', { class: 'fiche-aide don__aide' }, aide) : null);
 }
+
+/**
+ * L'aide à côté d'un don qui annule les faiblesses aux altérations d'état de la magie innée (« ... plus fort ! » du Flagelleur, décision R163 : « Le texte
+ * d'aide pour les faiblesses que la fiche ne connaît pas ? » : « Oui, à appliquer par le MJ ») : la fiche ne retire que les crans qu'elle compte.
+ */
+const AIDE_ANNULE_LES_FAIBLESSES = 'La fiche retire les faiblesses qu’elle connaît ; le MJ annule aussi en jeu celles qu’elle ne connaît pas (sorts ennemis, météo, armure, états en jeu).';
+const aideDuDon = (d) => ((d.resistances?.effets ?? []).some((e) => e.annule) ? AIDE_ANNULE_LES_FAIBLESSES : null);
 
 /**
  * Sous les sorts, le rappel des dons (demande du propriétaire) : ceux de la race — le don de base d'abord (demande du propriétaire), puis le don de
@@ -1456,7 +1469,7 @@ function construireDons() {
     : classes.map((c) => el('div', { class: ['dons-classe', ...teinteDe(c.classe)].join(' ') },
       el('h4', {}, `${c.classe.nom} · niveau ${c.niveau}`),
       c.dons.length
-        ? el('ul', { class: 'dons-liste' }, c.dons.map((d) => elementDeDon({ niveau: d.niveau, nom: d.nom, type: d.type, precision: d.precision, texte: d.effet })))
+        ? el('ul', { class: 'dons-liste' }, c.dons.map((d) => elementDeDon({ niveau: d.niveau, nom: d.nom, type: d.type, precision: d.precision, texte: d.effet, aide: aideDuDon(d) })))
         : el('p', { class: 'fiche-aide' }, 'Pas encore de don à ce niveau de classe.')))));
 }
 

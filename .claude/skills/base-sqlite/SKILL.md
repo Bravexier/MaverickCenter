@@ -63,9 +63,15 @@ user-invocable: false
 ## Choix du propriétaire
 - Le site tire de la base toutes ses pages (`.md` fabriqués au build) et l'onglet **DB** : `/donnees/` (toutes les tables et vues) et la base en
   téléchargement `/donnees/maverick.db` (absente de la version portable).
+- Le Potentiel Illimité n'a ni gemme, ni bois, ni bâton magique, ni pièce élémentaire (décision R160) : la base elle-même le refuse. `gemme`, `bois`,
+  `baton_magique`, `arme_elementaire` et `armure_elementaire` portent la contrainte nommée `<table>_sans_potentiel_illimite`
+  (`CHECK (magie_id <> 'magies/potentiel-illimite')`, migration 0078) ; une migration ou une édition qui en ajoute une échoue
+  (« CHECK constraint failed: <nom> »). `bois` est couvert par R160 (« Oui, aucun bois du PI ») : contrainte `bois_sans_potentiel_illimite`.
+  Une table reconstruite garde cette contrainte.
 
 ## Tests
 - `client/test/db-donnees.test.mjs` (`data/rows` = les `.md`), `db-schema.test.mjs`, `db-remarque.test.mjs`, `db-appliquer-edition.test.mjs`,
   `donnees.test.mjs` (ancres, liens de clés étrangères de l'onglet DB), `historique-site.test.mjs`, `db-index-retires.test.mjs` (migration 0073 : six
   index qu'aucun plan ne choisissait, retirés ; les lectures par clé restent des recherches par index), `db-arme-famille-nom-lecture.test.mjs` (migration 0077, R159 : `arme_famille.nom_lecture`, figé, jamais NULL ni vide,
-  le nom d'import ou de création).
+  le nom d'import ou de création), `r160-potentiel-illimite-sans-gemme.test.mjs` (migration 0078, R160 : aucune ligne du Potentiel Illimité dans les
+  cinq tables, et une insertion ou une modification qui en pose une refusée, dans une copie).

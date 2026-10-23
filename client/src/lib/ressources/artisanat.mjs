@@ -122,8 +122,8 @@ export const RESSOURCES = [
     description:
       'Les gemmes précieuses, une par magie : nom et description, prix de la gemme entière (onglet Bâton magique) et du quart de gemme (onglet ' +
       'Accessoires, « ce sont des quarts de gemmes ») pour chaque qualité (commune, raffinée, parfaite), tels qu’écrits et en RF (recalculés) ; ' +
-      'une gemme se crée pour une magie qui n’en a pas et ne se supprime que si aucune autre règle ne la cite (effets d’accessoire, recettes des ' +
-      'bâtons magiques).',
+      'une gemme se crée pour une magie qui n’en a pas, jamais pour le Potentiel Illimité (décision R160), et ne se supprime que si aucune autre ' +
+      'règle ne la cite (effets d’accessoire, recettes des bâtons magiques).',
     table: 'ressource',
     condition: { genre: ['gemme'] },
     extensions: [{ table: 'gemme', parent: { ressource_id: 'id' } }],
@@ -140,8 +140,8 @@ export const RESSOURCES = [
     noms: 'Bois',
     description:
       'Les bois de bâton magique, un par magie (onglet Bâton magique › MATÉRIAUX NÉCESSAIRES PAR MAGIE) : nom, description et prix, tel qu’écrit et ' +
-      'en RF (recalculé) ; un bois se crée pour une magie qui n’en a pas et ne se supprime que si aucune autre règle ne le cite (recettes des bâtons ' +
-      'magiques).',
+      'en RF (recalculé) ; un bois se crée pour une magie qui n’en a pas, jamais pour le Potentiel Illimité (décision R160), et ne se supprime que ' +
+      'si aucune autre règle ne le cite (recettes des bâtons magiques).',
     table: 'ressource',
     condition: { genre: ['bois'] },
     extensions: [{ table: 'bois', parent: { ressource_id: 'id' } }],

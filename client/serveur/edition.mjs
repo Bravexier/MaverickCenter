@@ -31,7 +31,8 @@
 // est rejouée : balisesRetireesParLeLot).
 // Node seulement (node:sqlite), sans dépendance.
 import {
-  CHAMPS_DE_TEXTE, colonnesImage, ENTITES, ErreurValeur, ligneSansImage, MOT_CLE_RACE_HYBRIDE, TABLES, texteDePageModifiable, typeDeTexte, valeurDuChamp,
+  CHAMPS_DE_TEXTE, colonnesImage, contrainteR160, ENTITES, ErreurValeur, ligneSansImage, MOT_CLE_RACE_HYBRIDE, OBJETS_PAR_MAGIE, REFUS_R160, TABLES,
+  texteDePageModifiable, typeDeTexte, valeurDuChamp,
 } from '../src/lib/edition-modele.mjs';
 import {
   RIEN, artisanatBrut, corpsDeMetier, decouperBonus, decouperEquipement, famillesDeRecette, testDArtisanat,
@@ -104,10 +105,17 @@ export class ErreurEdition extends ErreurHttp {}
 
 const refus = (message, details) => new ErreurEdition(400, message, details);
 
-/** Message d'une contrainte SQLite refusée, en français (la base reste juge : CHECK, UNIQUE, NOT NULL, clés étrangères). */
+/** Les contraintes de la base qui refusent un objet par magie du Potentiel Illimité (décision R160, migration 0078) : leur refus se dit en clair. */
+const CONTRAINTES_R160 = new Set(OBJETS_PAR_MAGIE.map(contrainteR160));
+
+/**
+ * Message d'une contrainte SQLite refusée, en français (la base reste juge : CHECK, UNIQUE, NOT NULL, clés étrangères). Une contrainte R160
+ * (`<table>_sans_potentiel_illimite`) rend REFUS_R160, toute autre CHECK le message générique.
+ */
 export function messageSqlite(e) {
   const m = String(e?.message ?? e);
   let r;
+  if ((r = /CHECK constraint failed: (\w+)$/.exec(m)) && CONTRAINTES_R160.has(r[1])) return REFUS_R160;
   if ((r = /UNIQUE constraint failed: (.+)$/.exec(m))) return `valeur déjà utilisée ailleurs (${r[1]})`;
   if ((r = /NOT NULL constraint failed: (.+)$/.exec(m))) return `valeur obligatoire (${r[1]})`;
   if (/FOREIGN KEY constraint failed/.test(m)) return 'référence inconnue, ou ligne encore citée ailleurs (clé étrangère)';
@@ -2298,7 +2306,8 @@ export function listes(db) {
     // les familles de la page des armes (formulaire « Nouvelle arme » : pas les armes de monstres, décision R45), celles créées sur le site comprises
     // (R159), avec leur catégorie (la barre mêlée ou distance de leur onglet : R127)
     famillesDArmes: db.prepare('SELECT id AS valeur, nom AS libelle, categorie FROM arme_famille WHERE maitrisable = 1 ORDER BY ordre').all(),
-    // la page des composants : les magies sans gemme ni bois (formulaires « Nouvelle gemme », « Nouveau bois » : une par magie)
+    // la page des composants : les magies sans gemme ni bois (formulaires « Nouvelle gemme », « Nouveau bois » : une par magie), jamais le Potentiel
+    // Illimité (décision R160 : lib/edition-modele.mjs#MAGIES_SANS_OBJET_PAR_MAGIE)
     magiesSansGemme: magiesSansGemme(db),
     magiesSansBois: magiesSansBois(db),
     // les consommables de l'onglet Ceinture : les niveaux d'alchimie (choix « Niveau » d'une potion, rendu « potion-niveau »)

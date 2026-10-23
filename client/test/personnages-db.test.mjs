@@ -328,6 +328,21 @@ test('résistance à une magie au choix (décision R137, migration 0071 : Oculto
   assert.equal(db.prepare("SELECT count(*) AS n FROM personnage_resistance_choix WHERE personnage_id = 'res-2'").get().n, 0, 'cascade');
 });
 
+test('magie tirée d’un don du Flagelleur (décision R163 : « Punis-moi ... », « ... plus fort ! » d’un personnage du Potentiel Illimité) : la voie de R137, source = le don, une des 14 magies, sans migration', () => {
+  personnageValide('res-3');
+  const choix = (l) => inserer('personnage_resistance_choix', { personnage_id: 'res-3', rang: 1, ...l });
+  choix({ source: 'capacites/flagelleur-puni-moi', magie_id: 'magies/magie-du-feu' });
+  choix({ source: 'capacites/flagelleur-plus-fort', magie_id: 'magies/magie-de-larcane' });
+  assert.deepEqual(db.prepare("SELECT source, rang, etat_id, magie_id FROM personnage_resistance_choix WHERE personnage_id = 'res-3' ORDER BY source").all().map((r) => ({ ...r })), [
+    { source: 'capacites/flagelleur-plus-fort', rang: 1, etat_id: null, magie_id: 'magies/magie-de-larcane' },
+    { source: 'capacites/flagelleur-puni-moi', rang: 1, etat_id: null, magie_id: 'magies/magie-du-feu' },
+  ]);
+  // un seul choix par don (clé primaire)
+  assert.throws(() => choix({ source: 'capacites/flagelleur-puni-moi', magie_id: 'magies/magie-de-la-glace' }), /UNIQUE|PRIMARY KEY/);
+  assert.deepEqual(controle('res-3'), [], 'le choix n’est pas une règle de la vue (la page garde les options)');
+  db.prepare("DELETE FROM personnage WHERE id = 'res-3'").run();
+});
+
 test('gains de niveau (décision R73) : santé + chakra = 15 points par niveau à partir du 2, plus 1 à 8 par dé atteint (niveaux 5, 10, 15, 20) ; règle gains_niveau', () => {
   const gains = (id) => controle(id).filter((c) => c.regle === 'gains_niveau').map((c) => c.detail);
   const poser = (id, sante, chakra) => db.prepare('UPDATE personnage SET gains_sante = ?, gains_chakra = ? WHERE id = ?').run(sante, chakra, id);

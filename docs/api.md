@@ -156,7 +156,7 @@ adaptées, jamais leurs noms ; le lot porte la page `api/v1/<ressource>[/<sous-r
 | `409` | `If-Match` périmé ; refus du service d'édition (élément cité par d'autres règles, mot-clé protégé, dernier bloc d'un événement, maîtrise d'arme illisible dans une classe ou un don, don à plus d'une part de maîtrise à choisir, nom de famille d'armes déjà pris ou qui changerait une maîtrise existante, avec la liste dans `sources` : décision R159…) |
 | `413` | Corps de plus de 1 Mio |
 | `415` | Écriture sans `Content-Type: application/json` |
-| `422` | Refusé par la base (contrainte CHECK, UNIQUE, NOT NULL, clé étrangère) ou valeur que les importeurs ne sauraient pas relire |
+| `422` | Refusé par la base (contrainte CHECK, UNIQUE, NOT NULL, clé étrangère) ou valeur que les importeurs ne sauraient pas relire ; une gemme ou un bois du Potentiel Illimité (`POST /api/v1/gemmes/`, `POST /api/v1/bois/`) : « Le Potentiel Illimité n’a ni gemme, ni bois, ni bâton magique, ni pièce élémentaire (décision R160). » |
 | `503` | Base vivante indisponible (`/api/etat/` dit pourquoi) |
 
 Une erreur est toujours `{ "erreur": "<message en français>", … }`, avec les détails utiles (`methodes`, `element`, `version`…).

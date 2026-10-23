@@ -14,9 +14,10 @@
 // améliorations d'armure et de bouclier (page des armures, serveur/edition-armures.mjs ; l'AP et l'AM d'une armure et d'un bouclier sont deux cases, la
 // défense écrite en est refaite : demande du propriétaire, 2026-10-17) ; celles des potions (consommables de l'onglet Ceinture,
 // serveur/edition-consommables.mjs) ; le texte d'une annonce (l'encart « Notre prochaine rencontre IRL » sous le texte de Bienvenue, migration 0068).
-// Fonctions et constantes pures, sans dépendance (sauf lib/dons-edition.mjs, lib/portrait.mjs, lib/arme-champs.mjs et lib/armure-champs.mjs, purs eux aussi) : partagées par le
-// service, les gabarits Astro et le script des pages (src/scripts/edition.mjs).
+// Fonctions et constantes pures, sans dépendance (sauf lib/dons-edition.mjs, lib/portrait.mjs, lib/arme-champs.mjs, lib/armure-champs.mjs et
+// lib/potentiel-illimite.mjs, purs eux aussi) : partagées par le service, les gabarits Astro et le script des pages (src/scripts/edition.mjs).
 import { NIVEAUX_DE_DON, TYPES_DE_DON_SAISIE } from './dons-edition.mjs';
+import { POTENTIEL_ILLIMITE } from './potentiel-illimite.mjs';
 import { dimensionsDuPortrait, empreinte, estUnPortrait, PORTRAIT_MAX, resumeDuPortrait } from './portrait.mjs';
 import { ECRITURES_DE_COMPETENCE, MAINS } from './arme-champs.mjs';
 import { TYPES_D_ARMURE } from './armure-champs.mjs';
@@ -98,6 +99,21 @@ export const CATEGORIES_DE_FAMILLE = [
   { valeur: 'contact', libelle: 'Armes de mêlée (contact)' },
   { valeur: 'distance', libelle: 'Armes à distance' },
 ];
+
+/**
+ * Décision R160 du propriétaire (2026-10-23, docs/decisions-regles.md) : « Il n'existe aucune gemme ni aucune piece élémentaire du PI » ; « Il ne sera
+ * pas possible de rajouter de gemmes du PI directement » ; étendue au bois (« Oui, aucun bois du PI »). La seule liste des magies qui n'ont aucun objet
+ * par magie (gemme, bois, bâton magique, arme et armure élémentaires : OBJETS_PAR_MAGIE, une table chacun). La base les refuse (migration 0078 :
+ * contrainte `<table>_sans_potentiel_illimite`, contrainteR160) ; le service les refuse avant d'écrire (serveur/edition-composants.mjs) et traduit
+ * l'erreur de la base en REFUS_R160 (serveur/edition.mjs#messageSqlite) ; le formulaire ne les propose pas (listes `magiesSansGemme`, `magiesSansBois`
+ * de GET /api/edition/listes/). Ailleurs (classes, races, sorts, fiche, liste `magies`), le Potentiel Illimité reste une magie comme les autres.
+ */
+export const MAGIES_SANS_OBJET_PAR_MAGIE = Object.freeze([POTENTIEL_ILLIMITE]);
+export const OBJETS_PAR_MAGIE = Object.freeze(['gemme', 'bois', 'baton_magique', 'arme_elementaire', 'armure_elementaire']);
+/** Le nom de la contrainte de la base qui refuse le Potentiel Illimité dans la table d'un objet par magie (migration 0078). */
+export const contrainteR160 = (table) => `${table}_sans_potentiel_illimite`;
+/** Le refus (422) d'un objet par magie du Potentiel Illimité, par le service comme par la base. */
+export const REFUS_R160 = 'Le Potentiel Illimité n’a ni gemme, ni bois, ni bâton magique, ni pièce élémentaire (décision R160).';
 
 /** Les types d'un matériau (décision R62, table materiau) : ceux de l'armure, et « Autres » pour ce qui n'y entre pas. */
 const TYPES_DE_MATERIAU = ['Léger', 'Intermédiaire', 'Lourd', 'Autres'].map((t) => ({ valeur: t, libelle: t }));
@@ -1046,6 +1062,25 @@ export function lireAttributEd(texte) {
 /** Clé de regroupement d'une ligne (table + clé primaire), indépendante de l'ordre des colonnes de la clé. */
 export const cleDeLigne = (table, cle) =>
   `${table}\u0000${JSON.stringify(Object.entries(cle ?? {}).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))}`;
+
+/**
+ * Les champs du formulaire de création d'une entité (ENTITES) : ceux de l'entité, sauf les valeurs données d'office (`donnees`, montrées si `montrer`
+ * les nomme, pré-remplies) ; un champ « choix » a ses options, fixes (`choix`) ou celles de sa liste de GET /api/edition/listes/ (`listes`).
+ * Utilisé par le bouton « + Ajouter » de la page des composants (src/scripts/edition/composants.mjs).
+ */
+export const champsDeCreationDe = (entite, donnees = {}, montrer = [], listes = {}) =>
+  Object.entries(ENTITES[entite].champs)
+    .filter(([c]) => !(c in donnees) || montrer.includes(c))
+    .map(([c, champ]) => ({
+      nom: c, libelle: champ.libelle, type: champ.type, requis: champ.requis, valeur: donnees[c] ?? '',
+      ...(champ.type === 'choix' ? { choix: champ.choix ?? listes?.[champ.liste] ?? [] } : {}),
+    }));
+
+/**
+ * Un formulaire qu'on ne peut pas remplir : un champ « choix » obligatoire sans aucune option (« Magie (une gemme par magie) » quand chaque magie a déjà
+ * sa gemme et que le Potentiel Illimité n'en a jamais : décision R160) ; son bouton « + Ajouter » n'est pas proposé, sans autre mention.
+ */
+export const sansChoixPossible = (champs) => champs.some((c) => c.type === 'choix' && c.requis && !(c.choix ?? []).length);
 
 /** Fiches nommées une à une dans l'annonce d'un lot, au plus (les autres sont comptées). */
 const FICHES_ANNONCEES = 5;

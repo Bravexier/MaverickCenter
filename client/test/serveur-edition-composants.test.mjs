@@ -18,14 +18,16 @@ import { ficheVide, TABLES_FICHES } from '../src/lib/fiche-format.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { ENTITES, TABLES } from '../src/lib/edition-modele.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { POTENTIEL_ILLIMITE } from '../src/lib/potentiel-illimite.mjs';
 
 const racine = dossierTemporaire('edition-composants');
 let compteur = 0;
 const vivante = () => ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, `b${(compteur += 1)}`) }).chemin);
 const db = vivante();
 const service = { base: () => db, etat: () => ({}), edition: true };
-const enregistrer = (operations) =>
-  traiter({ methode: 'POST', chemin: '/api/edition/', entetes: { 'content-type': 'application/json' }, corps: JSON.stringify({ page: 'ressources/composants/', operations }) }, service);
+const enregistrer = (operations, base = db) =>
+  traiter({ methode: 'POST', chemin: '/api/edition/', entetes: { 'content-type': 'application/json' }, corps: JSON.stringify({ page: 'ressources/composants/', operations }) },
+    base === db ? service : { base: () => base, etat: () => ({}), edition: true });
 const ligne = (sql, ...p) => db.prepare(sql).get(...p);
 const corps = (id, base = db) => base.prepare('SELECT corps_md FROM page WHERE id = ?').get(id).corps_md;
 const lignesDe = (id, base = db) => corps(id, base).split('\n');
@@ -149,32 +151,94 @@ test('un composant cité par d’autres règles ne se supprime pas (un matériau
   assert.equal(enregistrer([{ op: 'supprimer', entite: 'gemme', cle: grenat }]).statut, 409);
 });
 
-test('gemme et bois créés pour une magie qui n’en a pas, ingrédient créé à la fin de sa catégorie ; puis supprimés', () => {
-  const magie = ligne('SELECT m.id FROM magie m WHERE NOT EXISTS (SELECT 1 FROM gemme g WHERE g.magie_id = m.id) ORDER BY m.ordre LIMIT 1');
-  assert.ok(magie, 'une magie sans gemme (le Potentiel Illimité)');
-  const nomG = nomLibre('Quartz');
-  const g = enregistrer([{ op: 'creer', entite: 'gemme', valeurs: { magie_id: magie.id, nom: nomG, description: 'Une gemme.', prix_commune_brut: '20 RO', quart_commune_brut: '5 Ro' } }]);
-  ok(g);
-  const idG = g.corps.crees[0].id;
-  assert.deepEqual({ ...ligne('SELECT prix_commune_rf, quart_commune_rf FROM gemme WHERE ressource_id = ?', idG) }, { prix_commune_rf: 2000, quart_commune_rf: 500 });
-  assert.equal(enregistrer([{ op: 'creer', entite: 'gemme', valeurs: { magie_id: magie.id, nom: nomLibre('Autre') } }]).statut, 409, 'une gemme par magie');
-  const nomB = nomLibre('Chêne');
-  const b = enregistrer([{ op: 'creer', entite: 'bois', valeurs: { magie_id: magie.id, nom: nomB, prix_brut: '10 RO' } }]);
-  ok(b);
+/**
+ * Une magie d'essai, sans gemme ni bois, ajoutée par SQL à `base` (une copie de la base à part, jamais data/rows ni `db`) : la base n'a
+ * aucune autre magie sans gemme ni bois que le Potentiel Illimité, qui n'en aura jamais (décision R160). Sa page et sa ligne copient celles du Potentiel
+ * Illimité (rien n'en est lu : seule la clé étrangère de gemme.magie_id et bois.magie_id compte).
+ */
+function magieDEssai(base) {
+  const copier = (table, ligne) => {
+    const colonnes = Object.keys(ligne);
+    base.prepare(`INSERT INTO "${table}" (${colonnes.map((c) => `"${c}"`).join(', ')}) VALUES (${colonnes.map(() => '?').join(', ')})`).run(...Object.values(ligne));
+  };
+  const slug = `essai-r160-${process.pid}`;
+  const id = `magies/${slug}`;
+  const nom = `Magie d’essai ${process.pid}`;
+  copier('page', { ...base.prepare('SELECT * FROM page WHERE id = ?').get(POTENTIEL_ILLIMITE), id, slug, titre: nom, titre_cle: `magie-d-essai-${process.pid}` });
+  copier('magie', {
+    ...base.prepare('SELECT * FROM magie WHERE id = ?').get(POTENTIEL_ILLIMITE), id, nom, nom_cle: `magie-d-essai-${process.pid}`,
+    ordre: base.prepare('SELECT max(ordre) AS m FROM magie').get().m + 1,
+  });
+  return id;
+}
+
+/**
+ * Le journal de `base` rejoué sur une base neuve qui a la même magie d'essai (magieDEssai) : mêmes lignes de `tables`, mêmes corps des pages des
+ * bâtons et des accessoires, aucun lot illisible. La base neuve est fermée.
+ */
+function rejouerSurUneBaseNeuve(base, tables) {
+  const neuve = vivante();
+  try {
+    magieDEssai(neuve);
+    neuve.exec('PRAGMA foreign_keys = OFF');
+    neuve.exec('BEGIN');
+    chargerJournal(neuve, journalExporte(base));
+    const sortie = {};
+    rejouerLeJournal(neuve, sortie);
+    neuve.exec('COMMIT');
+    assert.deepEqual(sortie.illisibles, []);
+    for (const id of [PAGE_DES_BATONS, PAGE_DES_ACCESSOIRES]) assert.equal(corps(id, neuve), corps(id, base), id);
+    for (const t of tables) assert.deepEqual(neuve.prepare(`SELECT * FROM ${t} ORDER BY 1, 2`).all(), base.prepare(`SELECT * FROM ${t} ORDER BY 1, 2`).all(), t);
+  } finally {
+    neuve.close();
+  }
+}
+
+test('gemme et bois créés pour une magie qui n’en a pas (jamais le Potentiel Illimité : R160), puis supprimés ; le rejeu de leur journal les refait', () => {
+  // décision R160 : le Potentiel Illimité n'a jamais de gemme ni de bois, et les autres magies de la base en ont déjà ; une magie d'essai dans une base
+  // à part (le rejeu du journal de `db`, plus bas, ne la connaît pas), dont le journal est rejoué ici sur une base neuve qui a la même magie d'essai
+  const base = vivante();
+  try {
+    const enr = (operations) => enregistrer(operations, base);
+    const lire = (sql, ...p) => base.prepare(sql).get(...p);
+    const magie = { id: magieDEssai(base) };
+    const nomG = nomLibre('Quartz');
+    const g = enr([{ op: 'creer', entite: 'gemme', valeurs: { magie_id: magie.id, nom: nomG, description: 'Une gemme.', prix_commune_brut: '20 RO', quart_commune_brut: '5 Ro' } }]);
+    ok(g);
+    const idG = g.corps.crees[0].id;
+    assert.deepEqual({ ...lire('SELECT prix_commune_rf, quart_commune_rf FROM gemme WHERE ressource_id = ?', idG) }, { prix_commune_rf: 2000, quart_commune_rf: 500 });
+    assert.equal(enr([{ op: 'creer', entite: 'gemme', valeurs: { magie_id: magie.id, nom: nomLibre('Autre') } }]).statut, 409, 'une gemme par magie');
+    const nomB = nomLibre('Chêne');
+    const b = enr([{ op: 'creer', entite: 'bois', valeurs: { magie_id: magie.id, nom: nomB, prix_brut: '10 RO' } }]);
+    ok(b);
+    const idB = b.corps.crees[0].id;
+    ok(enr([{ op: 'modifier', table: 'gemme', cle: { ressource_id: idG }, valeurs: { prix_parfaite_brut: '90 RO' } }]));
+    assert.equal(lire('SELECT prix_parfaite_rf FROM gemme WHERE ressource_id = ?', idG).prix_parfaite_rf, 9000);
+    // le rejeu refait la gemme et le bois créés (et le prix modifié)
+    const tables = ['ressource', 'gemme', 'bois', 'page_entite'];
+    rejouerSurUneBaseNeuve(base, tables);
+    ok(enr([
+      { op: 'supprimer', entite: 'gemme', cle: { ressource_id: idG } },
+      { op: 'supprimer', entite: 'bois', cle: { ressource_id: idB } },
+    ]));
+    for (const id of [idG, idB]) assert.equal(lire('SELECT 1 FROM ressource WHERE id = ?', id), undefined);
+    // puis leur suppression
+    rejouerSurUneBaseNeuve(base, tables);
+  } finally {
+    base.close();
+  }
+});
+
+test('ingrédient créé à la fin de sa catégorie (sa ligne de la liste d’ingrédients), puis supprimé', () => {
   const nomI = nomLibre('Mûre');
   const i = enregistrer([{ op: 'creer', entite: 'ingredient', valeurs: { categorie: 'catalyseur', nom: nomI, type_brut: 'Fruit', affinite_brut: 'Santé' } }]);
   ok(i);
   const idI = i.corps.crees[0].id;
   assert.equal(ligne('SELECT affinite_id FROM ingredient_alchimie WHERE ressource_id = ?', idI).affinite_id, 'sante');
   assert.ok(lignesDe(PAGE_DES_INGREDIENTS).includes(`| ${nomI} | Fruit | Santé |`));
-  ok(enregistrer([{ op: 'modifier', table: 'gemme', cle: { ressource_id: idG }, valeurs: { prix_parfaite_brut: '90 RO' } }]));
-  ok(enregistrer([
-    { op: 'supprimer', entite: 'gemme', cle: { ressource_id: idG } },
-    { op: 'supprimer', entite: 'bois', cle: { ressource_id: b.corps.crees[0].id } },
-    { op: 'supprimer', entite: 'ingredient', cle: { ressource_id: idI } },
-  ]));
+  ok(enregistrer([{ op: 'supprimer', entite: 'ingredient', cle: { ressource_id: idI } }]));
   assert.ok(!corps(PAGE_DES_INGREDIENTS).includes(nomI));
-  for (const id of [idG, idI]) assert.equal(ligne('SELECT 1 FROM ressource WHERE id = ?', id), undefined);
+  assert.equal(ligne('SELECT 1 FROM ressource WHERE id = ?', idI), undefined);
 });
 
 test('ni HTML brut ni lien non sûr dans les pages qui écrivent un composant ; le RF et le RO gardent leur abréviation et leur valeur', () => {
