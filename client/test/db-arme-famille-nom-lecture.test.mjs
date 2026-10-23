@@ -15,9 +15,10 @@ const lire = (chemin) => readFileSync(new URL(`../../${chemin}`, import.meta.url
 const db = ouvrirBase({ sansExemples: false });
 const historique = historiqueSite(db);
 
-test('R159 (migration 0077) : nom_lecture est la dernière colonne d’arme_famille, un texte que le CHECK refuse vide', () => {
+test('R159 (migration 0077) : nom_lecture vient après les colonnes d’arme_famille de 0077 (seul type_elementaire_id, migration 0081, le suit), un texte que le CHECK refuse vide', () => {
   const colonnes = db.prepare("SELECT name, type, \"notnull\" FROM pragma_table_info('arme_famille')").all();
-  assert.deepEqual({ ...colonnes.at(-1) }, { name: 'nom_lecture', type: 'TEXT', notnull: 0 });
+  assert.deepEqual({ ...colonnes.at(-2) }, { name: 'nom_lecture', type: 'TEXT', notnull: 0 });
+  assert.equal(colonnes.at(-1).name, 'type_elementaire_id');   // R167 (migration 0081) : ajoutée ensuite, en dernier
   // une base vierge, d'après data/schema.sql (jamais var/maverick.db ni data/rows)
   const vierge = new DatabaseSync(':memory:', { enableForeignKeyConstraints: false });
   vierge.exec(lire('data/schema.sql'));

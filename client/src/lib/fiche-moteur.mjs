@@ -2101,6 +2101,92 @@ export function choixEnAttente(regles, fiche) {
 const estADistance = (regles, arme) => (regles.ambidextrie?.types_a_distance ?? []).includes(arme?.type_id);
 
 /**
+ * L'effet d'une arme élémentaire (décision R167), comme la page « Pièces élémentaires » l'écrit et comme la page des armes l'affiche
+ * (lib/armes-rendu.mjs#htmlDesEffetsElementaires) : sa capacité « Nom (mode) : texte », puis ce que l'en-tête de son type écrit pour toutes (« Ignore 4
+ * AP » de l'arbalète, `ignore_ap` ; la mention de l'arme de jet et de la bombe, en texte, sans aucune logique). Une ligne par partie.
+ */
+export function effetDeLArmeElementaire(element, type) {
+  const capacite = [element.capacite_nom, element.capacite_nom && element.capacite_mode ? `(${element.capacite_mode})` : null].filter(Boolean).join(' ');
+  return [
+    capacite && element.capacite_texte ? `${capacite} : ${element.capacite_texte}` : capacite || element.capacite_texte || null,
+    type?.ignore_ap ? `Ignore ${type.ignore_ap} AP` : null,
+    type?.mention ?? null,
+  ].filter(Boolean);
+}
+
+/**
+ * L'arme d'une ligne de la fiche (personnage_arme), dans une seule forme pour les calculs (décision R167, migration 0081 : une ligne porte soit une arme
+ * du catalogue, `arme_id`, soit une arme élémentaire, `arme_elementaire_id`). Une arme du catalogue : l'entrée de `regles.armes` telle quelle. Une arme
+ * élémentaire : décrite comme une arme de sa famille, avec ce que R167 lui donne et rien de l'arme d'origine — { id, nom, famille_id (la famille dont
+ * le type élémentaire est le sien : regles.familles_armes[].type_elementaire_id, pour la maîtrise et les bonus « des armes de la famille X »), type_id, mains
+ * 'une_ou_deux' (« l'arme s'adapte au porteur » : une ou deux mains, comme une arme du catalogue `mains = 'une_ou_deux'`), de (celui du type ; null pour
+ * le Pugilat, selon la Force, comme ses armes du catalogue), bonus_degats (« +8 Dégâts »), portee (celle du type), types_degats (réponse du
+ * propriétaire, « Les deux » : « Le type physique de sa famille et celui de sa magie », « Estoc + Feu pour un arc de feu par exemple » : les types
+ * physiques de son type élémentaire, regles.types_elementaires[].types_degats — 'taille', 'estoc', 'frappe', comme regles.armes[].types_degats ; vide ou
+ * absente : aucun, rien n'est deviné ; un type « au choix du porteur », `type_degats_au_choix` (Bombe : « Estoc, Frappe ou Taille au choix ») : le seul
+ * type choisi de la ligne, `type_degats_choisi` (typeDegatsChoisi), aucun tant qu'il n'est pas choisi —, puis le type de sa magie, l'identifiant de la
+ * magie, `magie_id`, comme typesDeDegats l'écrit pour une magie : « ses dégâts de magie comptent comme des dégâts de cette magie »), type_degats_au_choix,
+ * types_offerts (les types physiques de son type, même au choix), solidite (constantes['piece_elementaire.solidite_base'] : « 4 crans », sans matériau ni fer, R49 ne s'applique pas), ignore_ap, competences (au
+ * choix du porteur, regles.types_elementaires[].competences), effet (effetDeLArmeElementaire, lignes jointes), elementaire (la ligne de
+ * regles.armes_elementaires : magie_id, classe) } ; null sans arme ou pour un identifiant inconnu.
+ */
+export function armeDeLaLigne(regles, ligne) {
+  if (!ligne) return null;
+  if (ligne.arme_id) return trouver(regles.armes, ligne.arme_id);
+  const element = trouver(regles.armes_elementaires ?? [], ligne.arme_elementaire_id);
+  if (!element) return null;
+  const type = trouver(regles.types_elementaires ?? [], element.type_id);
+  const famille = (regles.familles_armes ?? []).find((f) => f.type_elementaire_id === element.type_id) ?? null;
+  const offerts = type?.types_degats ?? [];
+  const physiques = type?.type_degats_au_choix ? [typeDegatsChoisi(regles, ligne)].filter(Boolean) : offerts;
+  return {
+    id: element.id, nom: element.nom, famille_id: famille?.id ?? null, type_id: element.type_id, mains: 'une_ou_deux', de: type?.de ?? null,
+    bonus_degats: element.bonus_degats, portee: type?.portee ?? null, types_degats: [...physiques, element.magie_id], type_degats_au_choix: Boolean(type?.type_degats_au_choix),
+    types_offerts: offerts, solidite: constante(regles, 'piece_elementaire.solidite_base'),
+    ignore_ap: type?.ignore_ap ?? null, competences: type?.competences ?? [], effet: effetDeLArmeElementaire(element, type).join('\n') || null, elementaire: element,
+  };
+}
+
+/**
+ * Le type physique choisi d'une ligne d'arme (personnage_arme.type_degats_choisi ; décision R167, Bombe : « Estoc, Frappe ou Taille au choix », le choix du
+ * porteur noté sur la fiche) : seulement pour une arme élémentaire dont le type se choisit (`type_degats_au_choix`) et parmi ceux qu'il offre ; null sinon
+ * (pas choisi, ou un choix que la base signale : arme_type_degats_choisi).
+ */
+export function typeDegatsChoisi(regles, ligne) {
+  if (!ligne || ligne.arme_id || !ligne.type_degats_choisi) return null;
+  const element = trouver(regles.armes_elementaires ?? [], ligne.arme_elementaire_id);
+  const type = element ? trouver(regles.types_elementaires ?? [], element.type_id) : null;
+  return type?.type_degats_au_choix && (type.types_degats ?? []).includes(ligne.type_degats_choisi) ? ligne.type_degats_choisi : null;
+}
+
+/** Vrai si l'arme de la ligne laisse son type physique au choix du porteur (décision R167 : la bombe élémentaire). */
+export const typeDegatsAuChoix = (regles, ligne) => Boolean(armeDeLaLigne(regles, ligne)?.type_degats_au_choix);
+
+/**
+ * Les armes élémentaires que la fiche propose (décision R167 : « la liste des armes propose directement les armes élémentaires de ses magies (innée et
+ * acquise, sans le Potentiel Illimité) ») : celles de la magie innée, puis de la magie acquise, dans l'ordre de regles.armes_elementaires ; aucune pour
+ * le Potentiel Illimité (un personnage au Potentiel Illimité seul n'en a aucune).
+ */
+export function armesElementairesProposees(regles, fiche) {
+  const magies = [...new Set([fiche.magie_innee_id, fiche.magie_acquise_id].filter((id) => id && id !== POTENTIEL_ILLIMITE_INNE))];
+  return magies.flatMap((m) => (regles.armes_elementaires ?? []).filter((a) => a.magie_id === m));
+}
+
+/**
+ * Les rappels des sorts « Fer » (décision R167 : « la fiche signale seulement quand le sort et l'arme élémentaire ne sont pas du même élément » ; page
+ * « Pièces élémentaires » : « Les sorts "fer" sont utilisables sur les armes élémentaires mais il faut évidemment qu'il soit du même élément sinon ça ne
+ * marche pas. ») : pour chaque arme élémentaire portée, les sorts « Fer » de la fiche (regles.sorts[].fer, jamais leur nom) d'une autre magie que la
+ * sienne (l'élément d'un sort « Fer » est sa magie). Rien n'est compté ni retiré. [{ rang, arme (la ligne de regles.armes_elementaires), sort }].
+ */
+export function sortsFerDAutreElement(regles, fiche) {
+  const fers = [...new Set((fiche.sorts ?? []).map((s) => s?.sort_id).filter(Boolean))].map((id) => trouver(regles.sorts ?? [], id)).filter((s) => s?.fer);
+  return [1, 2].flatMap((rang) => {
+    const arme = armeDeLaLigne(regles, (fiche.armes ?? []).find((x) => entier(x.rang) === rang))?.elementaire;
+    return arme ? fers.filter((s) => s.magie_id !== arme.magie_id).map((sort) => ({ rang, arme, sort })) : [];
+  });
+}
+
+/**
  * Attaque à deux armes, une dans chaque main (décision R46, regles.ambidextrie) : −20 % à l'attaque de la main directrice (l'arme 1,
  * « arme principale »), −40 % à celle de la main secondaire (l'arme 2) ; réduit de moitié pour une main qui tient une dague, et de moitié en étant de la classe
  * Bimane, les deux se cumulant (« un bimane avec une épée et une dague aura −10 % et −10 % ; avec deux dagues −5 % et −10 % »). Puis les dons acquis qui
@@ -2110,7 +2196,8 @@ const estADistance = (regles, arme) => (regles.ambidextrie?.types_a_distance ?? 
  */
 export function attaqueADeuxArmes(regles, fiche) {
   const a = regles.ambidextrie;
-  const armes = [1, 2].map((rang) => trouver(regles.armes, (fiche.armes ?? []).find((x) => entier(x.rang) === rang)?.arme_id));
+  // une arme élémentaire compte comme une arme de son type (décision R167 : armeDeLaLigne ; une ou deux mains, comme une arme `une_ou_deux`)
+  const armes = [1, 2].map((rang) => armeDeLaLigne(regles, (fiche.armes ?? []).find((x) => entier(x.rang) === rang)));
   if (!a || armes.some((x) => !x || estADistance(regles, x))) return null;
   const acquis = donsAcquis(regles, fiche);
   const bimane = acquis.some((c) => c.classe.id === a.classe);
@@ -2134,29 +2221,44 @@ export function attaqueADeuxArmes(regles, fiche) {
 }
 
 /**
- * Les armes de la fiche après le choix de l'arme `rang` (1 ou 2) : `armeId` vide retire la ligne ; une arme choisie sans matériau prend le matériau par
- * défaut, le fer (décision R49 : « le fait de choisir son arme, son matériau (par défaut le fer), et son amélioration recalcule les dégâts »). Le
- * matériau, l'amélioration et l'élément déjà choisis restent ; pas la solidité du moment (décision R74) : une autre arme est neuve, la clé `durabilite`
- * disparaît (à son maximum).
+ * Les armes de la fiche après le choix de l'arme `rang` (1 ou 2) : `armeId` vide retire la ligne. `armeId` est une arme du catalogue (`arme_id`) ou une
+ * arme élémentaire (`arme_elementaire_id`, décision R167 : la liste propose les deux) ; une ligne ne porte que l'une des deux. Une arme du catalogue
+ * choisie sans matériau prend le matériau par défaut, le fer (décision R49 : « le fait de choisir son arme, son matériau (par défaut le fer), et son
+ * amélioration recalcule les dégâts ») ; une arme élémentaire n'a pas de matériau (R167 : il est vidé, R49 ne s'applique pas). L'amélioration et
+ * l'effet en plus déjà choisis restent (R167 : « Dans la fiche de personnage on ne fait que noter ce que PJ a en sa posession », un seul niveau
+ * d'amélioration pour les deux sortes d'arme), comme le matériau d'une arme du catalogue à l'autre, et le type physique choisi d'une bombe élémentaire à
+ * l'autre (il part avec une arme dont le type ne se choisit pas : typeDegatsAuChoix) ; pas la solidité du moment (décision R74) : une autre
+ * arme est neuve, la clé `durabilite` disparaît (à son maximum).
  */
 export function armesApresChoix(regles, fiche, rang, armeId) {
   const armes = (fiche.armes ?? []).filter((x) => entier(x.rang) !== rang);
   if (!armeId) return armes;
   const avant = (fiche.armes ?? []).find((x) => entier(x.rang) === rang);
-  const ligne = { ...(avant ?? { rang }), arme_id: armeId };
-  if (avant && avant.arme_id !== armeId) delete ligne.durabilite;
-  if (!ligne.materiau_id && regles.materiau_arme_defaut) ligne.materiau_id = regles.materiau_arme_defaut;
+  const elementaire = Boolean(trouver(regles.armes_elementaires ?? [], armeId));
+  const ligne = { ...(avant ?? { rang }) };
+  if (elementaire) Object.assign(ligne, { arme_id: null, arme_elementaire_id: armeId, materiau_id: null });
+  else {
+    ligne.arme_id = armeId;
+    if ('arme_elementaire_id' in ligne) ligne.arme_elementaire_id = null;
+  }
+  if (avant && (avant.arme_id || avant.arme_elementaire_id || null) !== armeId) delete ligne.durabilite;
+  if (!elementaire && !ligne.materiau_id && regles.materiau_arme_defaut) ligne.materiau_id = regles.materiau_arme_defaut;
+  // le type physique choisi (décision R167) ne vaut que pour une arme dont le type se choisit : il part avec une autre arme qui ne se choisit pas
+  if (ligne.type_degats_choisi && !typeDegatsAuChoix(regles, ligne)) ligne.type_degats_choisi = null;
   return [...armes, ligne].sort((a, b) => entier(a.rang) - entier(b.rang));
 }
 
 /**
- * Les armes de la fiche après le réglage d'une autre colonne de l'arme `rang` (composition, amélioration, élément, effet en plus : `champ`, `valeur`) ;
- * sans arme à ce rang, rien ne change. Composition ou amélioration changées, la solidité du moment est ramenée au nouveau maximum (durabiliteAEcrire :
- * une arme à son maximum le reste, une arme abîmée garde ses crans s'ils tiennent sous le nouveau maximum).
+ * Les armes de la fiche après le réglage d'une autre colonne de l'arme `rang` (composition, amélioration, effet en plus : `champ`, `valeur`) ; sans arme
+ * à ce rang, rien ne change ; une arme élémentaire garde son matériau vide (décision R167). Composition ou amélioration changées, la solidité du moment
+ * est ramenée au nouveau maximum (durabiliteAEcrire : une arme à son maximum le reste, une arme abîmée garde ses crans s'ils tiennent sous le nouveau
+ * maximum).
  */
 export function armesApresReglage(regles, fiche, rang, champ, valeur) {
   return (fiche.armes ?? []).map((x) => {
     if (entier(x.rang) !== rang) return x;
+    if (champ === 'materiau_id' && !x.arme_id && x.arme_elementaire_id) return x;
+    if (champ === 'type_degats_choisi' && valeur && !typeDegatsAuChoix(regles, x)) return x;
     const ligne = { ...x, [champ]: valeur };
     if ('durabilite' in ligne) ligne.durabilite = durabiliteAEcrire(regles, ligne, ligne.durabilite);
     return ligne;
@@ -2164,16 +2266,18 @@ export function armesApresReglage(regles, fiche, rang, champ, valeur) {
 }
 
 /**
- * Solidité maximale d'une arme de la fiche, en crans (décision R74 : « Un slider qui va de 0 au max de l'arme ») : l'arme forgée de la page « Armes »
- * (décision R51 : les crans de l'arme nue, `regles.armes[].solidite`, de sa composition et de son amélioration « il faut les cumuler mais il est
- * impossible de descendre à moins de 1 ») — le calcul de lib/arme-forge.mjs#forgerArme, que ce module ne peut pas importer (src/scripts/armes.mjs
- * l'importe ; test/fiche-durabilite.test.mjs compare les deux sur toutes les combinaisons de la base). L'élément n'est pas compté, comme sur la page
- * « Armes » (question Q12 de docs/sql/a-valider.md). null sans arme, ou pour une arme sans solidité (arme de monstre, décision R45).
+ * Solidité maximale d'une arme de la fiche, en crans (décision R74 : « Un slider qui va de 0 au max de l'arme »). Une arme du catalogue : l'arme forgée de
+ * la page « Armes » (décision R51 : les crans de l'arme nue, `regles.armes[].solidite`, de sa composition et de son amélioration « il faut les cumuler
+ * mais il est impossible de descendre à moins de 1 ») — le calcul de lib/arme-forge.mjs#forgerArme. Une arme élémentaire (décision R167 : « Solidité :
+ * 4 crans + les crans de la ligne d'amélioration choisie », 5 au +5, 6 au +10, sans cumul des lignes ; ni matériau ni fer) :
+ * constantes['piece_elementaire.solidite_base'] + `bonus_cran` de la ligne — le calcul de lib/arme-forge.mjs#forgerArmeElementaire. Ce module ne peut pas
+ * importer lib/arme-forge.mjs (src/scripts/armes.mjs l'importe) : test/fiche-durabilite.test.mjs compare les deux sur toutes les combinaisons de la base.
+ * null sans arme, ou pour une arme sans solidité (arme de monstre, décision R45).
  */
 export function durabiliteMaxDArme(regles, ligne) {
-  const arme = trouver(regles.armes, ligne?.arme_id);
+  const arme = armeDeLaLigne(regles, ligne);
   if (!arme || arme.solidite === null || arme.solidite === undefined) return null;
-  const materiau = trouver(regles.materiaux_armes, ligne.materiau_id);
+  const materiau = arme.elementaire ? null : trouver(regles.materiaux_armes, ligne.materiau_id);
   const amelioration = trouver(regles.ameliorations, ligne.amelioration_id);
   return Math.max(constante(regles, 'arme.durabilite_min'), entier(arme.solidite) + entier(materiau?.cran_solidite) + entier(amelioration?.bonus_cran));
 }
@@ -2202,8 +2306,8 @@ export function durabiliteDArme(regles, fiche, rang) {
   const ligne = (fiche.armes ?? []).find((x) => entier(x.rang) === rang);
   const max = durabiliteMaxDArme(regles, ligne);
   if (max === null) return null;
-  const arme = trouver(regles.armes, ligne.arme_id);
-  const materiau = trouver(regles.materiaux_armes, ligne.materiau_id);
+  const arme = armeDeLaLigne(regles, ligne);
+  const materiau = arme.elementaire ? null : trouver(regles.materiaux_armes, ligne.materiau_id);
   const amelioration = trouver(regles.ameliorations, ligne.amelioration_id);
   const detail = [{ nom: arme.nom, valeur: entier(arme.solidite) }];
   if (entier(materiau?.cran_solidite)) detail.push({ nom: `Composition : ${materiau.nom}`, valeur: entier(materiau.cran_solidite) });
@@ -2858,18 +2962,21 @@ export function degatsRecus(regles, fiche, options = {}) {
  * Les dégâts d'une arme (rang 1 ou 2), pour sa pastille (demande du propriétaire : « rajouter les bonus dus aux améliorations et potentiels passifs de
  * classes ») : autant de dés que la maîtrise de sa famille en donne (maitrisesParFamille), le dé de l'arme (« D8 au lieu du D10 » de son effet, sinon celui de son
  * type ; Pugilat : selon la Force, deDeLaFamille), plus les bonus qui se cumulent (page « Armes » : « tous les bonus se cumulent une fois l'arme forgée ») —
- * celui de l'arme, de sa composition, de son amélioration, de son élément et de l'amélioration de l'élément (colonnes bonus_degats de la base ; avec un
- * élément, ceux de la composition et de l'amélioration sont remplacés : décision R99, rendus dans `nonComptes`, raison 'element') — et ceux des
+ * celui de l'arme, de sa composition et de son amélioration (colonnes bonus_degats de la base). Une arme élémentaire (décision R167 : armeDeLaLigne ;
+ * « Dégâts : dé du type + 8 + l'effet de la ligne d'amélioration », Arc de Sang +5 : D8+18) : les dés de la maîtrise de sa famille (celle dont le type
+ * élémentaire est le sien), le dé de son type, son « +8 Dégâts » et l'effet de la ligne d'amélioration, sans matériau ; R99 ne vaut plus pour les armes
+ * (son volet arme est remplacé par R167 : plus de « remplacé par l'élément ») ; les bonus du personnage s'appliquent comme à toute arme de sa famille — et ceux des
  * dons passifs acquis qui visent cette arme (lib/degats-texte.mjs : sa famille, ses types de dégâts, les armes de corps à corps ou toutes les armes ; une
  * formule « 3+x […] x = +2 dégâts/6 niveaux » au niveau de la classe du don ; « Pour chaque cran de solidité perdu, l'arme en question fera +4 Dégâts »,
  * Vieille Branche, `parCranPerdu` : décision R107, sa valeur × les crans perdus de CETTE arme, son maximum moins sa solidité du moment (durabiliteDArme),
  * rien pour une arme intacte, sans solidité ou cassée — à 0, la pastille dit « Cassée » (R74) et sa valeur réparée est celle de l'arme sans cran perdu).
  * Un bonus de don qui ne se compte pas (situation, au choix, armes visées non écrites…) est rendu dans `nonComptes`. null sans arme.
- * { notation, nombre, de, total, texte, bonus: [{ nom, valeur }], nonComptes: [{ nom, valeur, raison }] }.
+ * { notation, nombre, de, total, texte, bonus: [{ nom, valeur }], nonComptes: [{ nom, valeur, raison }], porteeEnPlus, elementaire (l'arme élémentaire
+ * portée, ou null) }.
  */
 export function degatsDArme(regles, fiche, rang) {
   const ligne = (fiche.armes ?? []).find((x) => entier(x.rang) === rang);
-  const arme = trouver(regles.armes, ligne?.arme_id);
+  const arme = armeDeLaLigne(regles, ligne);
   if (!arme) return null;
   const famille = trouver(regles.familles_armes, arme.famille_id);
   // les dés calculés de sa famille (maitrisesParFamille, décisions R148, R149 : 5 au plus) ; une famille sans maîtrise (ARME DE MONSTRES, décision R45)
@@ -2880,21 +2987,11 @@ export function degatsDArme(regles, fiche, rang) {
   const ajouter = (nom, valeur) => { if (valeur) bonus.push({ nom, valeur }); };
   ajouter(arme.nom, arme.bonus_degats);
   const nonComptes = [];
-  const materiau = trouver(regles.materiaux_armes, ligne.materiau_id);
+  // une arme élémentaire n'a pas de matériau (décision R167) ; son niveau d'amélioration est une ligne du même tableau (cible 'arme')
+  const materiau = arme.elementaire ? null : trouver(regles.materiaux_armes, ligne.materiau_id);
   const amelioration = trouver(regles.ameliorations, ligne.amelioration_id);
-  const element = trouver(regles.armes_elementaires, ligne.arme_elementaire_id);
-  // décision R99 (« L'élément remplace tout ») : avec un élément, les bonus du matériau et de l'amélioration sont remplacés par ceux de l'élément
-  const origine = [
-    [materiau && `Composition : ${materiau.nom}`, materiau?.bonus_degats],
-    [amelioration && `Amélioration niveau ${amelioration.niveau}`, amelioration?.bonus_degats],
-  ];
-  for (const [nom, valeur] of origine) {
-    if (element && valeur) nonComptes.push({ nom, valeur, raison: 'element' });
-    else ajouter(nom, valeur);
-  }
-  ajouter(element && `Élément : ${element.nom}`, element?.bonus_degats);
-  const ameliorationElement = element ? trouver(regles.ameliorations, ligne.amelioration_elementaire_id) : null;
-  ajouter(ameliorationElement && `Amélioration de l’élément niveau ${ameliorationElement.niveau}`, ameliorationElement?.bonus_degats);
+  ajouter(materiau && `Composition : ${materiau.nom}`, materiau?.bonus_degats);
+  ajouter(amelioration && `Amélioration niveau ${amelioration.niveau}`, amelioration?.bonus_degats);
   // décision R107 : les crans perdus de cette arme (maximum de l'arme forgée, R51, moins sa solidité du moment) ; une arme cassée n'en compte aucun (R74)
   const solidite = durabiliteDArme(regles, fiche, rang);
   const cransPerdus = solidite && !solidite.cassee ? solidite.max - solidite.actuelle : 0;
@@ -2927,7 +3024,7 @@ export function degatsDArme(regles, fiche, rang) {
   const notation = notationDesDes(de, nombre);
   const total = bonus.reduce((s, b) => s + b.valeur, 0);
   const texte = total > 0 ? `${notation}+${total}` : total < 0 ? `${notation}${total}` : notation;
-  return { notation, nombre, de, total, texte, bonus, nonComptes, porteeEnPlus };
+  return { notation, nombre, de, total, texte, bonus, nonComptes, porteeEnPlus, elementaire: arme.elementaire ?? null };
 }
 
 // ------------------------------------------------------------------------------------------------------------------------------------------------
@@ -3630,7 +3727,10 @@ export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSo
  * Les dégâts d'une arme à son moment (décisions R100, R102), sa pastille : degatsDArme, puis la posture du moment et les accessoires qui touchent les
  * dés — un dé au maximum (« Permet à un dé de dégâts d'être maximum » : « 3D6+4 » → « 2D6+6+4 », réponse « Oui, un dé au max » ; sans effet en
  * Offensif), Offensif « Dégâts maximum » (« 6D6+4 devient alors 40 »), Défensif « Divise par 2 les dégâts infligés » (`diviseur`), Symbiose « Impossible
- * d'utiliser les armes » (`inutilisable`). null sans arme. { ...degatsDArme, texte, moment: [{ nom, valeur }], diviseur, inutilisable }.
+ * d'utiliser les armes » (`inutilisable`) — sauf l'arme élémentaire de la magie de la Symbiose (décision R167, exception à R112 : « l'arme élémentaire de
+ * la magie de la Symbiose reste utilisable et reçoit le bonus de dégâts de la posture », celui de R100, +5 et +2 par NPM au-delà du premier, le NPM
+ * accessible) ; tant que la magie de la Symbiose n'est pas choisie, ou pour le Potentiel Illimité (R109 : sa Symbiose n'a pas de magie), aucune arme
+ * élémentaire ne correspond. null sans arme. { ...degatsDArme, texte, moment: [{ nom, valeur }], diviseur, inutilisable }.
  */
 export function degatsDArmeDuMoment(regles, fiche, rang) {
   const d = degatsDArme(regles, fiche, rang);
@@ -3640,6 +3740,13 @@ export function degatsDArmeDuMoment(regles, fiche, rang) {
   const moment = [];
   let nombre = d.nombre;
   let total = d.total;
+  // décision R167 : l'arme élémentaire de la magie de la Symbiose (postureDuMoment : symbiose.magie, null tant qu'elle n'est pas choisie et pour le
+  // Potentiel Illimité)
+  const symbiose = posture?.armesInutilisables && d.elementaire && posture.symbiose?.magie?.id === d.elementaire.magie_id ? posture.symbiose : null;
+  if (symbiose?.degats) {
+    total += symbiose.degats;
+    moment.push({ nom: `Posture ${posture.posture.nom} (${symbiose.magie.nom})`, valeur: symbiose.degats });
+  }
   const deMax = effetsDesAccessoires(regles, fiche).filter((e) => e.cible === 'de_maximum' && e.valeur).reduce((s, e) => s + e.valeur, 0);
   if (deMax && faces && nombre >= 1 && !posture?.degatsMaximum) {
     // un dé par accessoire ; maudit, au minimum (R54)
@@ -3661,6 +3768,6 @@ export function degatsDArmeDuMoment(regles, fiche, rang) {
   return {
     ...d, texte, moment,
     diviseur: posture?.diviseur > 1 ? posture.diviseur : 1,
-    inutilisable: posture?.armesInutilisables ? posture.posture.nom : null,
+    inutilisable: posture?.armesInutilisables && !symbiose ? posture.posture.nom : null,
   };
 }

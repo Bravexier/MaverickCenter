@@ -98,11 +98,22 @@ const CHANGEES = [
     apres: 'dégâts subis x8', maintenant: 'dégâts subis x4' },
 ];
 const changee = (c) => CHANGEES.find((r) => r.table === c.table && r.col === c.col && JSON.stringify(r.cle) === JSON.stringify(c.cle) && r.apres === c.apres);
+// Corrections d'une ligne fondue depuis dans une autre par une migration, sur décision du propriétaire : décision R167 (« il faudrai mélanger les deux
+// tableaux d'amélioration (dans la DB uniquement) »), migration 0081, qui fond chaque amélioration d'arme élémentaire dans l'amélioration d'arme du même
+// niveau, au même effet (garde de la migration). Le texte corrigé est dans la ligne qui reste.
+const FONDUES = [
+  { migration: '0081-r167-armes-elementaires.sql', table: 'amelioration_equipement', cle: { id: 'ressources/pieces-elementaires#amelioration:arme-elementaire:10' },
+    dans: { id: 'ressources/armes#amelioration:arme:10' } },
+];
+const fondue = (c) => FONDUES.find((r) => r.table === c.table && JSON.stringify(r.cle) === JSON.stringify(c.cle));
 
 test('base : chaque correction est faite (le texte corrigé est dans sa cellule, aux noms corrigés par 0006 près)', () => {
   for (const r of RETIREES) assert.ok(corrections.some((c) => retiree(c) === r), `${r.apres} : une correction du registre`);
   for (const r of CHANGEES) assert.ok(corrections.some((c) => changee(c) === r), `${r.apres} : une correction du registre`);
-  for (const c of corrections) {
+  for (const f of FONDUES) assert.match(readFileSync(join(dossier, f.migration), 'utf8'), /WHERE a\.cible <> 'arme_elementaire';/, `${f.migration} : fond la ligne`);
+  for (const c0 of corrections) {
+    const f = fondue(c0);
+    const c = f ? { ...c0, cle: f.dans } : c0;
     const v = valeur(c);
     assert.ok(typeof v === 'string', `${c.table} ${JSON.stringify(c.cle)} : ligne absente de la base`);
     const r = retiree(c);

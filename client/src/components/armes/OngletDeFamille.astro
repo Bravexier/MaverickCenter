@@ -13,13 +13,14 @@ import type { chargerArmes } from '../../lib/armes-db.mjs';
 // demande du propriétaire, 2026-10-23 : « Juste l'indiquer suffit (en tooltip de la catégorie) ») ; sinon « Dé de la famille, sauf indication contraire ».
 type Armes = ReturnType<typeof chargerArmes>;
 interface Props {
-  famille: Pick<Armes['familles'][number], 'id' | 'nom' | 'de_brut' | 'note_brut'> & { armes: readonly unknown[] };
+  famille: Pick<Armes['familles'][number], 'id' | 'nom' | 'de_brut' | 'note_brut'> & { armes: readonly unknown[]; armes_elementaires?: readonly unknown[] };
   /** l'onglet ouvert au départ dans son menu */
   actif?: boolean;
 }
 const { famille, actif = false } = Astro.props;
 const ed = (colonne: string) => attributEd('arme_famille', { id: famille.id }, colonne);
-const n = famille.armes.length;
+// le nombre d'armes : celles du catalogue et ses armes élémentaires (décision R167 ; aucune pour une famille créée), comme le compte de son tableau
+const n = famille.armes.length + (famille.armes_elementaires?.length ?? 0);
 ---
 
 <a class={`onglet${actif ? ' is-active' : ''}`} id={`onglet-famille-${famille.id}`} href={`#famille-${famille.id}`}>

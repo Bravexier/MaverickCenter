@@ -132,11 +132,10 @@ function ficheRiche() {
       {
         rang: 1, arme_id: 'ressources/armes#arme:epees:epee-longue', materiau_id: trouve('materiaux_armes', (m) => m.nom === 'Acier', 'Acier').id,
         amelioration_id: trouve('ameliorations', (a) => a.cible === 'arme' && a.niveau === 2, 'amélioration 2').id,
-        arme_elementaire_id: 'ressources/pieces-elementaires#arme-elementaire:epee:feu',
-        amelioration_elementaire_id: trouve('ameliorations', (a) => a.cible === 'arme_elementaire' && a.niveau === 1, 'amélioration élémentaire 1').id,
         effet_en_plus: 'Lame chantante\nsur deux lignes', durabilite: 1,
       },
-      { rang: 2, arme_id: 'ressources/armes#arme:dagues:dague', materiau_id: regles.materiau_arme_defaut },
+      // une arme élémentaire de la magie acquise (décision R167) : sans matériau, un seul niveau d'amélioration
+      { rang: 2, arme_elementaire_id: 'ressources/pieces-elementaires#arme-elementaire:dague:feu', amelioration_id: trouve('ameliorations', (a) => a.cible === 'arme' && a.niveau === 5, 'amélioration 5').id },
     ],
     // l'entraînement (décision R104) : des compétences (assez pour ne pas tenir sur une ligne de la case L42) et un texte libre ; un choix d'acquis
     entrainements: [['magie', 2], ['concentration', 10], ['connaissance', 5], ['arc', 3], ['observation', 10], ['distinction', 10], ['survie', 5], ['vigueur', 5]]
@@ -284,7 +283,7 @@ test('fiche riche : armes (nom, dégâts, lignes de l’effet, portée, solidit�
   for (const [i, cases] of ORDINATEUR.armes.entries()) {
     const rang = i + 1;
     const ligne = riche.armes.find((x) => x.rang === rang);
-    const arme = M.trouver(regles.armes, ligne.arme_id);
+    const arme = M.armeDeLaLigne(regles, ligne);
     const degats = M.degatsDArme(regles, riche, rang);
     assert.equal(c[cases.nom], arme.nom);
     assert.equal(c[cases.degats], degats.texte);
@@ -299,17 +298,29 @@ test('fiche riche : armes (nom, dégâts, lignes de l’effet, portée, solidit�
   const l1 = c[ORDINATEUR.armes[0].effet].split('\n');
   const ligne1 = riche.armes[0];
   const amelioration = M.trouver(regles.ameliorations, ligne1.amelioration_id);
-  // d'abord ce que l'import relit (composition, améliorations, élément, effet en plus), puis ce que le site refait (catalogue, deux armes, non comptés)
+  // d'abord ce que l'import relit (composition, amélioration, effet en plus), puis ce que le site refait (catalogue, deux armes, non comptés) ; plus de
+  // lignes « Élément » ni « Amélioration de l'élément » (décision R167)
   assert.equal(l1[0], `Composition : ${nomDe('materiaux_armes', ligne1.materiau_id)}`);
   assert.equal(l1[1], `Amélioration : niv. ${amelioration.niveau} — ${amelioration.effet}`);
-  assert.equal(l1[2], `Élément : ${nomDe('armes_elementaires', ligne1.arme_elementaire_id)}`);
-  assert.match(l1[3], /^Amélioration de l’élément : niv\. 1 — /);
-  assert.deepEqual(l1.slice(4, 6), ['Effet en plus : Lame chantante', 'sur deux lignes'], 'l’effet en plus, après les autres lignes relues');
+  assert.deepEqual(l1.slice(2, 4), ['Effet en plus : Lame chantante', 'sur deux lignes'], 'l’effet en plus, après les autres lignes relues');
+  assert.ok(!l1.some((l) => /^(?:Élément|Amélioration de l’élément) : /.test(l)), 'R167 : plus d’élément posé sur une arme');
   const effetCatalogue = M.trouver(regles.armes, ligne1.arme_id).effet;
   assert.ok(effetCatalogue);
-  assert.equal(l1.slice(6).join('\n').indexOf(effetCatalogue), 0, 'l’effet du catalogue, en tête de ce qui n’est qu’affiché');
+  assert.equal(l1.slice(4).join('\n').indexOf(effetCatalogue), 0, 'l’effet du catalogue, en tête de ce qui n’est qu’affiché');
   const parties = partiesDeLArme(regles, riche, 1);
-  assert.deepEqual(parties.relues, l1.slice(0, 4).concat(['Effet en plus : Lame chantante\nsur deux lignes']));
+  assert.deepEqual(parties.relues, l1.slice(0, 2).concat(['Effet en plus : Lame chantante\nsur deux lignes']));
+  // l'arme élémentaire (décision R167) : son nom dans la case de l'arme, son seul niveau d'amélioration relu, sa capacité « Nom (mode) : texte » affichée
+  // comme l'effet du catalogue d'une arme, la portée de son type, ni composition ni élément
+  const dagueDeFeu = M.trouver(regles.armes_elementaires, riche.armes[1].arme_elementaire_id);
+  const l2 = c[ORDINATEUR.armes[1].effet].split('\n');
+  assert.equal(c[ORDINATEUR.armes[1].nom], dagueDeFeu.nom);
+  const amelioration5 = M.trouver(regles.ameliorations, riche.armes[1].amelioration_id);
+  assert.equal(l2[0], `Amélioration : niv. 5 — ${amelioration5.effet}`);
+  assert.equal(l2[1], `${dagueDeFeu.capacite_nom} (${dagueDeFeu.capacite_mode}) : ${dagueDeFeu.capacite_texte}`);
+  assert.ok(!l2.some((l) => /^(?:Composition|Élément) : /.test(l)));
+  assert.equal(String(c[ORDINATEUR.armes[1].portee]), regles.types_elementaires.find((t) => t.id === 'dague').portee);
+  assert.equal(c[ORDINATEUR.armes[1].solidite], '5 / 5', 'R167 : 4 + le cran de la ligne +5');
+  assert.equal(c[ORDINATEUR.armes[1].degats], M.degatsDArme(regles, riche, 2).texte);
   assert.equal(parties.affichees[0], effetCatalogue);
   const deux = M.attaqueADeuxArmes(regles, riche);
   assert.ok(deux, 'épée et dague : deux armes de mêlée');
@@ -743,7 +754,8 @@ test('textes trop longs pour leur case (zones du modèle) : la case en garde le 
   const fiche = {
     ...riche, evenements: `${riche.evenements}\n`.replace(EVENEMENTS[1], `Rencontre avec Mirada ${long}`),
     inventaire: riche.inventaire.map((o, i) => (i === 5 ? { ...o, nom: `${o.nom}, ${long}` } : o)),
-    armes: riche.armes.map((x) => (x.rang === 1 ? { ...x, effet_en_plus: `${long}\n${long}` } : x)),
+    // (trois fois : depuis la décision R167, la case n'a plus les lignes de l'élément posé sur l'arme)
+    armes: riche.armes.map((x) => (x.rang === 1 ? { ...x, effet_en_plus: `${long}\n${long}\n${long}` } : x)),
   };
   const sans = cellulesDeLaFiche(regles, fiche, { date: DATE }).cellules;
   const avec = cellulesDeLaFiche(regles, fiche, { date: DATE, zones });
@@ -1154,8 +1166,8 @@ test('lignes d’armure, effet d’une arme, choix du métier : relus tels qu’
   // effet d'une arme : les lignes relues ; l'effet en plus jusqu'à la part affichée, entière, coupée dedans ou juste avant ; l'ancien ordre
   const { relues, affichees } = partiesDeLArme(regles, riche, 1);
   const effet = [...relues, ...affichees].join('\n');
-  const attendu = { composition: 'Acier', amelioration: texteDAmelioration(M.trouver(regles.ameliorations, riche.armes[0].amelioration_id)),
-    element: nomDe('armes_elementaires', riche.armes[0].arme_elementaire_id), ameliorationElement: texteDAmelioration(M.trouver(regles.ameliorations, riche.armes[0].amelioration_elementaire_id)),
+  const attendu = { composition: 'Acier', typeDegats: null, amelioration: texteDAmelioration(M.trouver(regles.ameliorations, riche.armes[0].amelioration_id)),
+    element: null, ameliorationElement: null,
     effetEnPlus: 'Lame chantante\nsur deux lignes', libres: [], ecartees: [], affichageRetrouve: true };
   const A = affichees.join('\n');
   assert.deepEqual(lireEffetDArme(effet, { affichees: A }), attendu);
@@ -1174,9 +1186,9 @@ test('lignes d’armure, effet d’une arme, choix du métier : relus tels qu’
   assert.deepEqual(lireEffetDArme(`${relu}\n${affichees[0]}\nautre`, { catalogue: affichees[0] }), { ...attendu, effetEnPlus: `${attendu.effetEnPlus}\nautre`, libres: ['autre'] });
   assert.deepEqual(lireEffetDArme(`${relu}\n${A}\nautre`, { affichees: A }), { ...attendu, effetEnPlus: `${attendu.effetEnPlus}\nautre`, libres: ['autre'] }, 'après le bloc');
   // l'ancien ordre (l'effet en plus en dernier)
-  assert.deepEqual(lireEffetDArme([...relues.slice(0, 4), ...affichees, 'Effet en plus : Lame chantante', 'sur deux lignes'].join('\n'), { affichees: A }), attendu);
+  assert.deepEqual(lireEffetDArme([...relues.slice(0, 2), ...affichees, 'Effet en plus : Lame chantante', 'sur deux lignes'].join('\n'), { affichees: A }), attendu);
   assert.deepEqual(lireEffetDArme('Composition : Fer\nUn effet écrit à la main', { affichees: '' }),
-    { composition: 'Fer', amelioration: null, element: null, ameliorationElement: null, effetEnPlus: 'Un effet écrit à la main', libres: ['Un effet écrit à la main'], ecartees: [], affichageRetrouve: true });
+    { composition: 'Fer', typeDegats: null, amelioration: null, element: null, ameliorationElement: null, effetEnPlus: 'Un effet écrit à la main', libres: ['Un effet écrit à la main'], ecartees: [], affichageRetrouve: true });
   // une ligne « Non compté : » ou « Deux armes : » que la fiche relue n'écrit plus (classeur exporté avant un changement des règles : « Vieille Branche »
   // était un bonus non compté avant la décision R107) : jamais de l'effet en plus, après le bloc retrouvé, dans l'ancien ordre, ou dans une case coupée
   // dedans ; écartée, telle qu'écrite (`ecartees`, que l'import dit) ; une ligne du site que la fiche relue écrit pour cette arme ne l'est pas
@@ -1188,7 +1200,7 @@ test('lignes d’armure, effet d’une arme, choix du métier : relus tels qu’
   const deuxArmes = 'Deux armes : −20 % (main directrice)';
   assert.deepEqual(lireEffetDArme(`${relu}\n${A}\n${deuxArmes}\n${ancienne}`, { affichees: A }), { ...attendu, ecartees: pasEcrites([deuxArmes, ancienne]) }, 'deux lignes du site');
   assert.deepEqual(lireEffetDArme(`${relu}\n${A}\nDeux armes : −99 % (main directrice)`, { affichees: A }), { ...attendu, ecartees: ['Deux armes : −99 % (main directrice)'] }, 'une autre valeur');
-  assert.deepEqual(lireEffetDArme([...relues.slice(0, 4), ...affichees, ancienne, 'Effet en plus : Lame chantante', 'sur deux lignes'].join('\n'), { affichees: A }), { ...attendu, ecartees: [ancienne] }, 'l’ancien ordre');
+  assert.deepEqual(lireEffetDArme([...relues.slice(0, 2), ...affichees, ancienne, 'Effet en plus : Lame chantante', 'sur deux lignes'].join('\n'), { affichees: A }), { ...attendu, ecartees: [ancienne] }, 'l’ancien ordre');
   for (const coupe of [`${relu}\n${A}\n${ancienne.slice(0, ancienne.indexOf(' ', 25))} …`, `${relu}\n${A}\n${ancienne.slice(0, 20)}…`]) {
     assert.deepEqual(lireEffetDArme(coupe, { affichees: A }), { ...attendu, ecartees: [coupe.split('\n').at(-1)] }, coupe.slice(-40));
   }

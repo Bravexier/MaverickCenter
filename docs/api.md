@@ -249,6 +249,7 @@ la ressource ne prend que les lignes de la table qui passent sa condition.
 | `familles-d-armes/` | Familles d’armes | `arme_famille` | créer, modifier | — |
 | `types-d-armes/` | Types d’armes | `arme_type` | lecture seule | — |
 | `armes-elementaires/` | Armes élémentaires | `arme_elementaire` | lecture seule | — |
+| `types-d-armes-elementaires/` | Types d’armes élémentaires | `arme_elementaire_type` | lecture seule | `competences`, `types-de-degats` |
 | `emplacements-d-armure/` | Emplacements d’armure | `armure_emplacement` | modifier | — |
 | `armures/` | Armures | `armure` | modifier | — |
 | `armures-elementaires/` | Armures élémentaires | `armure_elementaire` | lecture seule | — |
@@ -258,7 +259,7 @@ la ressource ne prend que les lignes de la table qui passent sa condition.
 | `ameliorations-d-arme/` | Améliorations d’arme | `amelioration_equipement` (partie) | modifier | — |
 | `ameliorations-d-armure/` | Améliorations d’armure | `amelioration_equipement` (partie) | modifier | — |
 | `ameliorations-de-bouclier/` | Améliorations de bouclier | `amelioration_equipement` (partie) | modifier | — |
-| `autres-ameliorations/` | Améliorations de pièce élémentaire | `amelioration_equipement` (partie) | lecture seule | — |
+| `autres-ameliorations/` | Améliorations d’armure élémentaire | `amelioration_equipement` (partie) | lecture seule | — |
 | `emplacements-d-accessoire/` | Emplacements d’accessoire | `accessoire_emplacement` | lecture seule | — |
 | `proprietes-d-accessoire/` | Propriétés d’accessoire | `accessoire_propriete` | lecture seule | — |
 | `effets-d-accessoire/` | Effets d’accessoire | `accessoire_effet` | lecture seule | — |
@@ -349,7 +350,11 @@ requête) restent sur `POST /api/edition/` : [`serveur.md`](serveur.md), « Édi
 
 Une table partagée par condition peut avoir la même dérivée dans chacune de ses ressources (`amelioration_total`, la ligne TOTAL de chaque cible
 d'amélioration, dans `ameliorations-d-arme`, `ameliorations-d-armure`, `ameliorations-de-bouclier` et `autres-ameliorations`) ; le test du registre exige que chaque ligne d'un enfant, d'une dérivée ou
-d'une extension ait son parent dans une ressource, condition comprise.
+d'une extension ait son parent dans une ressource, condition comprise. Une dérivée peut avoir sa propre `condition` (même forme que celle d'une
+ressource) et un `parent` vide : elle montre alors à chaque élément les lignes qui la satisfont. C'est le cas des deux lignes TOTAL du tableau des
+améliorations d'arme, un seul tableau pour l'arme du catalogue et l'arme élémentaire depuis la décision R167 (migration 0081) : le coût matériel
+(`cible` « arme ») et le coût élémentaire (« arme_elementaire », dont la cible n'a plus de ligne d'amélioration), dans le détail de chaque
+amélioration d'arme ; `autres-ameliorations/` n'a plus que les améliorations d'armure élémentaire.
 
 ## Rendre une ressource modifiable
 

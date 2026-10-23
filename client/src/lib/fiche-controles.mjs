@@ -54,6 +54,12 @@ export const LIBELLES_DES_CONTROLES = Object.freeze({
   armure_manquante: 'Amélioration d’armure sans son armure',
   armure_familier: 'Armure de familier sur une fiche de personnage',
   armure_magie_absente: 'Armure élémentaire d’une magie que le personnage n’a pas',
+  // décision R167 : une arme élémentaire d'une magie que le personnage n'a ni en innée ni en acquise (le Potentiel Illimité n'en ouvre aucune) ; le
+  // détail nomme l'arme et son rang
+  arme_elementaire_hors_magie: 'Arme élémentaire d’une magie que le personnage n’a pas (ni innée ni acquise)',
+  // décision R167 (bombe : « Estoc, Frappe ou Taille au choix ») : un type physique choisi sur une arme dont le type ne se choisit pas, ou qu'elle n'offre
+  // pas ; le détail : « rang : type »
+  arme_type_degats_choisi: 'Type de dégâts physique choisi hors des choix de l’arme (son type ne se choisit pas, ou elle n’offre pas ce type)',
   armure_partie_hors_armure: 'Solidité d’une partie que l’armure n’a pas',
   accessoire_valeur: 'Valeur d’accessoire hors de la fourchette de son effet',
 });

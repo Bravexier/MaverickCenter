@@ -1021,6 +1021,14 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .armure__parties { display: grid; gap: 0.3rem 0.9rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr)); }
 .armure__partie .objet__solidite-nom { min-width: 6.2rem; }
 .armure__partie[data-cassee] .objet__solidite-nom { color: var(--danger); }
+/* une arme élémentaire (décision R167) : sa liste sur le fond de sa magie (la classe de la magie et `teinte-palette`, comme un sort), les groupes et les
+   autres options au fond du site ; sous la liste, son effet (capacité, « Ignore 4 AP », mention) et le rappel des sorts « Fer » d'un autre élément */
+.fiche .objet select[data-couleur] { background-color: var(--c); color: var(--texte-sur-c); font-weight: 600; }
+.fiche .objet select[data-couleur] optgroup, .fiche .objet select[data-couleur] option:not(.teinte-palette) { background-color: var(--surface); color: var(--text); font-weight: normal; }
+.objet__effet { display: grid; gap: 0.15rem; margin: 0; color: var(--muted); font-size: var(--fs-xs); }
+.objet__rappels { margin: 0; padding: 0; list-style: none; color: var(--danger); font-size: var(--fs-xs); }
+.objet__rappels li { cursor: help; }
+.objet__effet[hidden], .objet__rappels[hidden], .objet .fiche-champ[hidden] { display: none; }
 .objet__details > summary { color: var(--muted); font-size: var(--fs-xs); cursor: pointer; overflow-wrap: anywhere; }
 .objet__details[open] > summary { margin-bottom: 0.35rem; }
 /* le bouclier a son bloc : plus de cadre autour */

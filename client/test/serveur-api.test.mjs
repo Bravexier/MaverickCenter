@@ -648,7 +648,7 @@ test('repli sur une base vivante d’avant la migration 0060 (sa reconstruction 
   }
 });
 
-test('colonnes ajoutées par les migrations 0045, 0055, 0060, 0061, 0066, 0067 et 0071 (DEPART_DES_COLONNES_AJOUTEES) : dans les tables d’aujourd’hui, leur valeur de départ est leur défaut du schéma et celle d’une fiche vide', () => {
+test('colonnes ajoutées par les migrations 0045, 0055, 0060, 0061, 0066, 0067, 0071 et 0081 (DEPART_DES_COLONNES_AJOUTEES) : dans les tables d’aujourd’hui, leur valeur de départ est leur défaut du schéma et celle d’une fiche vide', () => {
   assert.deepEqual(DEPART_DES_COLONNES_AJOUTEES, {
     personnage: {
       gains_sante: 0, gains_chakra: 0,
@@ -657,7 +657,7 @@ test('colonnes ajoutées par les migrations 0045, 0055, 0060, 0061, 0066, 0067 e
       symbiose_magie_id: null,
       nm_mj: 0,
     },
-    personnage_arme: { durabilite: null },
+    personnage_arme: { durabilite: null, type_degats_choisi: null },
     personnage_sort: { prepare: 0, prepare_jet: null, prepare_posture_id: null },
     personnage_resistance_choix: { magie_id: null },
   });
@@ -924,6 +924,69 @@ test('l’arme choisie d’un choix d’acquis (décision R119) n’est plus enr
   assert.equal(m.statut, 200, JSON.stringify(m.corps));
   assert.equal(m.corps.personnage.notes, p.notes);
   assert.match(PAGE_D_AVANT, /les maîtrises d’armes se choisissent désormais par source/);
+});
+
+test('armes élémentaires (décision R167, migration 0081) : une arme du catalogue avec son matériau ou une arme élémentaire sans matériau, un seul niveau d’amélioration, enregistrées et relues ; les deux, aucune, un matériau sur une arme élémentaire : refusés en français ; une page d’avant (élément posé, amélioration de l’élément) convertie et notée', () => {
+  const ARC_DE_FEU = 'ressources/pieces-elementaires#arme-elementaire:arc:feu';
+  const ARC_DE_SANG = 'ressources/pieces-elementaires#arme-elementaire:arc:sang';
+  const KATANA = 'ressources/armes#arme:epees:katana';
+  const TITANE = 'ressources/armures#materiau:titane';
+  const niveau = (n) => `ressources/armes#amelioration:arme:${n}`;
+  const armes = [
+    { rang: 1, arme_id: null, materiau_id: null, amelioration_id: niveau(2), arme_elementaire_id: ARC_DE_FEU, effet_en_plus: null, durabilite: 3, type_degats_choisi: null },
+    { rang: 2, arme_id: KATANA, materiau_id: TITANE, amelioration_id: niveau(5), arme_elementaire_id: null, effet_en_plus: 'Gravé', durabilite: null, type_degats_choisi: null },
+  ];
+  const r = appel('POST', '/api/personnages', { ...ficheConforme('Arc de feu'), armes });
+  assert.equal(r.statut, 201, JSON.stringify(r.corps));
+  assert.deepEqual(r.corps.personnage.armes, armes, 'relues telles quelles');
+  assert.ok(!r.corps.controles.some((c) => c.regle === 'arme_elementaire_hors_magie'), 'une arme élémentaire de sa magie (Feu)');
+  // le type de dégâts choisi d'une bombe élémentaire (type_degats_choisi, « Au choix ») : enregistré et relu ; sur un arc (tous ses types s'appliquent),
+  // signalé par la base (arme_type_degats_choisi), jamais refusé
+  const BOMBE_DE_FEU = 'ressources/pieces-elementaires#arme-elementaire:bombe:feu';
+  const bombe = appel('PUT', `/api/personnages/${r.corps.personnage.id}`, { ...lire(r.corps.personnage.id).personnage,
+    armes: [{ ...armes[0], arme_elementaire_id: BOMBE_DE_FEU, type_degats_choisi: 'frappe' }, { ...armes[1], rang: 2, arme_id: null, materiau_id: null, effet_en_plus: null, arme_elementaire_id: ARC_DE_FEU, type_degats_choisi: 'taille' }] });
+  assert.equal(bombe.statut, 200, JSON.stringify(bombe.corps));
+  assert.deepEqual(bombe.corps.personnage.armes.map((a) => a.type_degats_choisi), ['frappe', 'taille']);
+  assert.deepEqual(bombe.corps.controles.filter((c) => c.regle === 'arme_type_degats_choisi'), [{ regle: 'arme_type_degats_choisi', detail: '2 : taille' }]);
+  // une arme élémentaire d'une autre magie : signalée, jamais refusée
+  const id = r.corps.personnage.id;
+  const sang = appel('PUT', `/api/personnages/${id}`, { ...lire(id).personnage, armes: [{ ...armes[0], arme_elementaire_id: ARC_DE_SANG }] });
+  assert.equal(sang.statut, 200, JSON.stringify(sang.corps));
+  assert.deepEqual(sang.corps.controles.filter((c) => c.regle === 'arme_elementaire_hors_magie'), [{ regle: 'arme_elementaire_hors_magie', detail: `1 : ${ARC_DE_SANG}` }]);
+  // aucune arme, un matériau sur une arme élémentaire : refusés, un message en français, rien n'est écrit (les deux à la fois, c'est la forme d'une page
+  // d'avant la migration 0081 : convertie, plus bas)
+  const avant = lire(id);
+  for (const [ligne, message] of [
+    [{ rang: 1, amelioration_id: niveau(1) }, 'armes[0] : une arme est une arme du catalogue (arme_id) ou une arme élémentaire (arme_elementaire_id), l’une des deux (décision R167)'],
+    [{ rang: 1, arme_elementaire_id: ARC_DE_FEU, materiau_id: TITANE }, 'armes[0] : une arme élémentaire n’a pas de matériau (décision R167)'],
+    [{ rang: 1, arme_id: KATANA, type_degats_choisi: 'estoc' }, 'armes[0] : un type de dégâts ne se choisit que sur une arme élémentaire (décision R167)'],
+  ]) {
+    const k = appel('PUT', `/api/personnages/${id}`, { ...avant.personnage, armes: [ligne] });
+    assert.equal(k.statut, 400, JSON.stringify(ligne));
+    assert.deepEqual(k.corps.problemes, [message]);
+    assert.deepEqual(lire(id), avant, 'rien n’est écrit');
+  }
+  // une page d'avant : l'élément posé sur une arme du catalogue et son amélioration (`amelioration_elementaire_id`, colonne retirée)
+  const ARC = 'ressources/armes#arme:arc:arc';
+  const dAvant = appel('POST', '/api/personnages', { ...ficheConforme('Arc d’avant'), notes: 'Mes notes', armes: [
+    { rang: 1, arme_id: ARC, materiau_id: TITANE, amelioration_id: niveau(3), arme_elementaire_id: ARC_DE_FEU,
+      amelioration_elementaire_id: 'ressources/pieces-elementaires#amelioration:arme-elementaire:2', effet_en_plus: null, durabilite: 9 },
+    { rang: 2, arme_id: KATANA, materiau_id: null, amelioration_id: null, arme_elementaire_id: null, amelioration_elementaire_id: null, effet_en_plus: null, durabilite: null },
+  ] });
+  assert.equal(dAvant.statut, 201, JSON.stringify(dAvant.corps));
+  const p = dAvant.corps.personnage;
+  assert.deepEqual(p.armes, [
+    { rang: 1, arme_id: null, materiau_id: null, amelioration_id: niveau(2), arme_elementaire_id: ARC_DE_FEU, effet_en_plus: null, durabilite: null, type_degats_choisi: null },
+    { rang: 2, arme_id: KATANA, materiau_id: null, amelioration_id: null, arme_elementaire_id: null, effet_en_plus: null, durabilite: null, type_degats_choisi: null },
+  ], 'l’arc devenu l’Arc de Feu +2, durabilité au maximum ; le katana tel quel');
+  const [notes, ligne, ...reste] = p.notes.split('\n');
+  assert.deepEqual([notes, reste], ['Mes notes', []], 'une seule ligne : rien n’est perdu du katana');
+  assert.equal(ligne, `[${jourDuRetrait(p.modifie_le)}] Retrait (règles modifiées) : l’arme « Arc » (ARC, arme 1, matériau « Titane », amélioration +3) est devenue l’arme élémentaire « Arc de Feu », avec l’amélioration +2 de son élément : une pièce élémentaire transforme l’arme, qui perd toutes ses caractéristiques d’avant. Adaptez la fiche.`);
+  // un élément d'un autre type sur une arme du catalogue (l'Arc de Feu sur un katana) : l'élément part, noté ; l'arme reste
+  const k = appel('PUT', `/api/personnages/${p.id}`, { ...lire(p.id).personnage, armes: [{ rang: 2, arme_id: KATANA, materiau_id: TITANE, arme_elementaire_id: ARC_DE_FEU }] });
+  assert.equal(k.statut, 200, JSON.stringify(k.corps));
+  assert.deepEqual(k.corps.personnage.armes, [{ rang: 2, arme_id: KATANA, materiau_id: TITANE, amelioration_id: null, arme_elementaire_id: null, effet_en_plus: null, durabilite: null, type_degats_choisi: null }]);
+  assert.match(k.corps.personnage.notes.split('\n').at(-1), /l’élément « Arc de Feu » de l’arme « Katana » \(ÉPÉES, arme 2\) n’est plus posé/);
 });
 
 test('choix de maîtrise d’armes (R148 à R150, R45) : enregistrés et relus tels quels ; hors de la liste de la source, au-delà d’une limite écrite ou du plafond, sur ARME DE MONSTRES : signalés par les contrôles, jamais refusés', () => {

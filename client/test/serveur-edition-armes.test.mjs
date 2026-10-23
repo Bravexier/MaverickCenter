@@ -18,6 +18,7 @@ import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { desSelonLaForce, famillesAuChoix, famillesDuNom, lireLigneDeClasse } from '../src/lib/maitrise-arme.mjs';
 import { titreDeSectionDeFamille } from '../src/lib/corps-armes.mjs';
 import { famillesDuLecteur } from '../serveur/edition-maitrises.mjs';
+import { chargerArmes } from '../src/lib/armes-db.mjs';
 import { sourcesJustes } from './aide-maitrise-arme.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
@@ -120,7 +121,7 @@ test('matériau : ses effets (modifiés depuis la page « Composants », R62) re
   assert.ok(corps().split('\n').includes(ligneDeMateriau(nom, apres)));
 });
 
-test('amélioration d’arme : coût et effet refont RO, matériaux, bonus et crans, et la ligne TOTAL ; celle d’une pièce élémentaire est refusée', () => {
+test('amélioration d’arme : coût et effet refont RO, matériaux, bonus et crans, et la ligne TOTAL ; le coût élémentaire de la ligne (R167) reste ; celle d’une armure élémentaire est refusée', () => {
   const avant = ligne("SELECT * FROM amelioration_equipement WHERE cible = 'arme' AND niveau = 3");
   const r = enregistrer([{ op: 'modifier', table: 'amelioration_equipement', cle: { id: avant.id }, valeurs: { cout_brut: '1 Matériel + 120 RO', effet_brut: '+7 dégâts, +1 cran de solidité' } }]);
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
@@ -135,9 +136,42 @@ test('amélioration d’arme : coût et effet refont RO, matériaux, bonus et cr
     assert.equal(enregistrer([{ op: 'modifier', table: 'amelioration_equipement', cle: { id: avant.id }, valeurs }]).statut, 400, JSON.stringify(valeurs));
   }
   assert.equal(ligne('SELECT cout_ro FROM amelioration_equipement WHERE id = ?', avant.id).cout_ro, 120);
-  // celles d'armure et de bouclier se modifient sur la page des armures (test/serveur-edition-armures.test.mjs) ; celles des pièces élémentaires, nulle part
-  const elementaire = ligne("SELECT * FROM amelioration_equipement WHERE cible = 'arme_elementaire' LIMIT 1");
-  assert.equal(enregistrer([{ op: 'modifier', table: 'amelioration_equipement', cle: { id: elementaire.id }, valeurs: { cout_brut: '1 RO' } }]).statut, 400);
+  // le tableau fondu (décision R167, migration 0081) : le coût élémentaire de la ligne n'est ni recalculé ni saisi, la ligne TOTAL du coût élémentaire non plus
+  const elementaire = ['cout_elementaire_brut', 'cout_gemmes', 'cout_gemmes_qualite', 'cout_pieces_elementaires'];
+  assert.deepEqual(elementaire.map((c) => apres[c]), elementaire.map((c) => avant[c]), 'le coût élémentaire de la ligne reste');
+  assert.ok(avant.cout_elementaire_brut, 'la ligne a son coût élémentaire');
+  assert.equal(enregistrer([{ op: 'modifier', table: 'amelioration_equipement', cle: { id: avant.id }, valeurs: { cout_elementaire_brut: '9 gemmes communes' } }]).statut, 400);
+  assert.equal(ligne('SELECT cout_elementaire_brut FROM amelioration_equipement WHERE id = ?', avant.id).cout_elementaire_brut, avant.cout_elementaire_brut);
+  // celles d'armure et de bouclier se modifient sur la page des armures (test/serveur-edition-armures.test.mjs) ; celles des armures élémentaires, nulle part
+  const armureElementaire = ligne("SELECT * FROM amelioration_equipement WHERE cible = 'armure_elementaire' LIMIT 1");
+  assert.equal(enregistrer([{ op: 'modifier', table: 'amelioration_equipement', cle: { id: armureElementaire.id }, valeurs: { cout_brut: '1 RO' } }]).statut, 400);
+  assert.equal(ligne("SELECT count(*) AS n FROM amelioration_equipement WHERE cible NOT IN ('arme', 'armure', 'bouclier', 'armure_elementaire')").n, 0, 'plus de cible arme_elementaire');
+});
+
+test('armes élémentaires (décision R167) : en lecture seule dans l’éditeur des armes, comme les matériaux (leur source est la page « Pièces élémentaires »)', () => {
+  const e = ligne('SELECT * FROM arme_elementaire ORDER BY ordre LIMIT 1');
+  for (const valeurs of [{ nom: 'Essai' }, { capacite_texte: 'Essai' }, { bonus_degats: '9' }]) {
+    assert.equal(enregistrer([{ op: 'modifier', table: 'arme_elementaire', cle: { id: e.id }, valeurs }]).statut, 400, JSON.stringify(valeurs));
+  }
+  for (const [table, cle] of [['arme_elementaire_type', { type_id: e.type_id }], ['arme_elementaire_type_competence', { type_id: e.type_id, competence_id: 'arme-legere' }],
+    ['arme_elementaire_type_degats', { type_id: 'bombe', type_degats: 'estoc' }]]) {
+    assert.equal(enregistrer([{ op: 'modifier', table, cle, valeurs: { mention: 'Essai' } }]).statut, 400, table);
+  }
+  assert.deepEqual(ligne('SELECT * FROM arme_elementaire WHERE id = ?', e.id), e, 'rien n’est écrit');
+});
+
+test('R167 : une famille créée sur le site de dev n’a aucune arme élémentaire (type élémentaire NULL, page des armes : ni type ni arme élémentaire) ; le type élémentaire d’une famille ne se saisit pas', () => {
+  const r = creerFamille({ nom: `Frondes R167 ${PID}` });
+  assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  const id = r.corps.crees[0].id;
+  assert.equal(famille(id).type_elementaire_id, null);
+  const page = chargerArmes(db).familles.find((f) => f.id === id);
+  assert.deepEqual([page.armes, page.type_elementaire, page.armes_elementaires], [[], null, []], 'son onglet, vide, sans arme élémentaire');
+  // ni à la création, ni en modification (hors de TABLES et de l'entité) ; une famille d'import garde le sien
+  assert.equal(creerFamille({ nom: `Frondes R167 bis ${PID}`, type_elementaire_id: 'arc' }).statut, 400);
+  assert.equal(enregistrer([{ op: 'modifier', table: 'arme_famille', cle: { id }, valeurs: { type_elementaire_id: 'arc' } }]).statut, 400);
+  assert.equal(enregistrer([{ op: 'modifier', table: 'arme_famille', cle: { id: 'arc' }, valeurs: { type_elementaire_id: 'epee' } }]).statut, 400);
+  assert.deepEqual([famille(id).type_elementaire_id, famille('arc').type_elementaire_id], [null, 'arc']);
 });
 
 test('matériau renommé (même ressource que les armures et les boucliers) : le nom suit partout, pages des armures et des boucliers comprises', () => {
@@ -360,6 +394,8 @@ test('R159 : une famille créée — identifiant tiré du nom, dernier rang, ma�
   assert.deepEqual({ ...f, source_ref: f.source_ref.startsWith('Site de dev › édition du ') }, {
     id, libelle_brut: `${nom} - D4`, nom, de_brut: 'D4', note_brut: null, cout_libelle: 'Coût en plus/moins (unité)', ordre: ordre + 1, origine: 'equipement',
     source_ref: true, remarque: null, maitrisable: 1, categorie: 'distance', nom_lecture: nom,
+    // décision R167 : une famille créée sur le site de dev n'a aucune arme élémentaire
+    type_elementaire_id: null,
   });
   assert.ok(ligne("SELECT 1 FROM page_entite WHERE entite_table = 'arme_famille' AND entite_id = ? AND page_id = ?", id, PAGE_DES_ARMES));
   assert.equal(titres().at(-1), `## ${nom} - D4`, 'sa section à la fin du corps');

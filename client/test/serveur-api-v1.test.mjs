@@ -355,6 +355,30 @@ test('condition d’une table partagée : une liste ne montre que ses lignes, un
   assert.equal(ok(appel('GET', `/api/v1/pages-du-guide/${seg(guide.id)}/`)).element.id, guide.id);
 });
 
+test('dérivée restreinte (décision R167, migration 0081) : une amélioration d’arme montre les deux lignes TOTAL de son tableau (coût matériel, coût élémentaire) ; les types d’armes élémentaires et leurs compétences au choix, en lecture seule', () => {
+  const amelioration = ligne("SELECT * FROM amelioration_equipement WHERE cible = 'arme' ORDER BY niveau LIMIT 1");
+  const d = ok(appel('GET', `/api/v1/ameliorations-d-arme/${seg(amelioration.id)}/`));
+  assert.deepEqual(d.element, amelioration);
+  assert.ok(d.element.cout_elementaire_brut, 'le coût élémentaire sur la même ligne');
+  assert.deepEqual(d.derivees.amelioration_total.map((t) => t.cible), ['arme', 'arme_elementaire']);
+  assert.deepEqual(d.derivees.amelioration_total.map((t) => t.total_brut), ['arme', 'arme_elementaire'].map((c) => ligne('SELECT total_brut FROM amelioration_total WHERE cible = ?', c).total_brut));
+  // une amélioration d'armure élémentaire ne montre que la sienne ; plus aucune d'arme élémentaire dans « autres-ameliorations »
+  const autres = ok(appel('GET', '/api/v1/autres-ameliorations/?limite=100'));
+  assert.ok(autres.total > 0 && autres.elements.every((x) => x.cible === 'armure_elementaire'));
+  const armure = ok(appel('GET', `/api/v1/autres-ameliorations/${seg(autres.elements[0].id)}/`));
+  assert.deepEqual(armure.derivees.amelioration_total.map((t) => t.cible), ['armure_elementaire']);
+  // les types d'armes élémentaires et leurs compétences (sous-ressource), en lecture seule
+  const types = ok(appel('GET', '/api/v1/types-d-armes-elementaires/?limite=100'));
+  assert.equal(types.total, ligne('SELECT count(*) AS n FROM arme_elementaire_type').n);
+  const arc = ok(appel('GET', `/api/v1/types-d-armes-elementaires/${seg('arc')}/`));
+  assert.deepEqual(arc.enfants.competences.map((c) => c.competence_id).sort(), lignes("SELECT competence_id FROM arme_elementaire_type_competence WHERE type_id = 'arc'").map((c) => c.competence_id).sort());
+  assert.equal(appel('PATCH', `/api/v1/types-d-armes-elementaires/${seg('arc')}/`, { mention: 'essai' }, { 'if-match': `"${arc.version}"` }).statut, 405);
+  // ses types de dégâts physiques (R167, sous-ressource) ; la Bombe, au choix
+  const bombe = ok(appel('GET', `/api/v1/types-d-armes-elementaires/${seg('bombe')}/`));
+  assert.equal(bombe.element.type_degats_au_choix, 1);
+  assert.deepEqual(bombe.enfants['types-de-degats'].map((d) => d.type_degats).sort(), lignes("SELECT type_degats FROM arme_elementaire_type_degats WHERE type_id = 'bombe'").map((d) => d.type_degats).sort());
+});
+
 test('détail : toutes les colonnes, extensions, enfants et dérivées ; ETag et 304 ; 404 sur une clé inconnue ou illisible', () => {
   const metier = ligne('SELECT * FROM metier WHERE id IN (SELECT metier_id FROM metier_bonus) ORDER BY id LIMIT 1');
   const r = appel('GET', `/api/v1/metiers/${seg(metier.id)}/`);

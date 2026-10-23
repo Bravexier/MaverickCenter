@@ -106,9 +106,36 @@ abandonne.
   d'onglet, sauf quand le panneau « Choix » est ouvert : le focus reste sur le choix. L'ethnie est un bouton qui ouvre son menu, sans bulle. Le focus déjà dans
   le contenu le garde ouvert. La spécialité s'y choisit aussi (demande du propriétaire : « le doubler dans le menu de
   choix »).
+- **Armes élémentaires** (décision R167, migration 0081) : la liste de chaque arme propose les armes du catalogue et, **directement, les armes
+  élémentaires des magies du personnage** (innée puis acquise ; jamais le Potentiel Illimité : un personnage au Potentiel Illimité seul n'en a aucune ;
+  `armesElementairesProposees`), chacune à la fin du groupe de sa famille (celle dont le type élémentaire est le sien, `familles_armes[].type_elementaire_id`)
+  et **sur le fond de sa magie** (la classe de la palette de sa magie et `teinte-palette`, comme un sort ; la liste aussi quand elle est choisie) ; une arme
+  élémentaire déjà posée d'une autre magie reste dans un groupe « Hors des magies du personnage », la liste en rouge. Plus de champ « Élément » ni
+  « Amélioration de l'élément » : une ligne porte soit une arme du catalogue (avec sa composition), soit une arme élémentaire (sans matériau : la
+  composition est grisée), et **un seul niveau d'amélioration**, qui ne sert qu'aux dégâts et à la solidité. Choisir une arme élémentaire vide le
+  matériau mais garde l'amélioration et l'effet en plus (« Dans la fiche de personnage on ne fait que noter ce que PJ a en sa posession ») ; revenir au
+  catalogue reprend le fer (R49) ; une autre arme est neuve (R74). Le moteur la décrit comme une arme de sa famille (`armeDeLaLigne`) : le dé et la portée
+  de son type (`types_elementaires[]` ; le Pugilat selon la Force), « +8 Dégâts », une ou deux mains (comme une arme `une_ou_deux`, deux armes R46 compris),
+  ses compétences au choix (Arme légère ou Arme lourde ; Arc ou Arme légère ; Arbalète : rien n'est enregistré ni affiché, comme pour une arme du catalogue
+  à deux compétences), ses types de dégâts (« Estoc + Feu pour un arc de feu par exemple » : les types physiques de son type, `types_elementaires[].types_degats` —
+  épée taille, dague estoc et taille, masse frappe, hache taille, arme d'hast estoc, pugilat frappe, bâton de combat frappe, arc, arbalète et arme de jet
+  estoc —, puis le type de sa magie, l'identifiant de la magie ; ils comptent partout où la fiche lit un type de dégâts d'arme). **La bombe
+  élémentaire** : « Estoc, Frappe ou Taille au choix » (`type_degats_au_choix`) : un champ « Type de dégâts » sous la composition, qui s'enregistre
+  (`personnage_arme.type_degats_choisi`, `typeDegatsChoisi`) ; tant qu'il n'est pas choisi, seul le type de la magie compte ; il part quand l'arme
+  devient une arme qui ne se choisit pas (`armesApresChoix`) ; un choix hors de ceux de l'arme est signalé (`arme_type_degats_choisi`). **Ses dégâts de
+  magie comptent comme des dégâts de cette magie** : « Tissière » (Anansi : « Les dégâts d'Arcane, Nécromancie et Ombre augmentent de +10. ») compte +10
+  sur une arme élémentaire d'Arcane, de Nécromancie ou d'Ombre (« Tissière (Anansi) » dans le détail), et de même les onze autres dons de cette
+  écriture, « Les dégâts de X, Y et Z augmentent de +N » (R167 : « Oui, tous » ; Orios « Au poil », Fenrir « Magicien », Kitsune « Aisance », Namazu
+  « Hadale », Rokh « Ciel père », Minotaure « Soif », Satyre « Jouet d'enfer », Médusain « Abyssal », Jackalope « Jambière », Marcass, Olwman « Obscure »,
+  dont « Temps » écrit seul est l'Espace/Temps) : lus par leur écriture commune, sans liste (`lib/degats-texte.mjs#degatsDeMagieEcrits`, rendus comme un
+  bonus visant les types de dégâts de magie de l'arme). Une autre écriture n'est pas lue : « Fil conducteur » (Médusain, « quand ils sont faits dans
+  l'eau ») reste non compté (R128). Les sorts ne lisent pas ces dons (rien de compté de ce côté). Sous la liste, son **effet** : sa capacité « Nom (mode) : texte »,
+  « Ignore 4 AP » de l'arbalète, la mention de l'arme de jet et de la bombe, en texte (`effetDeLArmeElementaire`). **Sorts « Fer »** (`regles.sorts[].fer`) :
+  sous une arme élémentaire, un rappel en rouge pour chaque sort « Fer » de la fiche d'un autre élément que l'arme (« Fer brûlant : sort « Fer » d'un autre
+  élément que cette arme », la phrase de la page « Pièces élémentaires » en infobulle ; `sortsFerDAutreElement`) ; rien n'est compté.
 - **Dégâts des armes** (`degatsDArme`) : une pastille « XDY+Z » par arme — les dés de la maîtrise de sa famille, le dé de l'arme (son effet, sinon son type ;
-  le Pugilat selon la Force), plus les bonus qui se cumulent (page « Armes ») : l'arme, sa composition, son amélioration, son élément et l'amélioration de
-  l'élément, et les **dons passifs acquis** dont le texte dit quelles armes ils visent (`lib/degats-texte.mjs` : famille, type de dégâts, armes de corps à corps,
+  le Pugilat selon la Force), plus les bonus qui se cumulent (page « Armes ») : l'arme, sa composition et son amélioration (une arme élémentaire : son
+  « +8 » et l'effet de sa ligne d'amélioration, Arc de Sang +5 = D8+18, décision R167 ; plus de « remplacé par l'élément »), et les **dons passifs acquis** dont le texte dit quelles armes ils visent (`lib/degats-texte.mjs` : famille, type de dégâts, armes de corps à corps,
   toutes les armes ; formule « 3+x […] x = +2 dégâts/6 niveaux » au niveau de la classe). Le détail est en infobulle, avec les bonus de dons qui ne se
   comptent pas (situation, au choix, deux armes, bouclier, armes visées non écrites : « augmente les dégâts de 3 » de Tir renforcé, par exemple).
   « Vieille Branche » du Mage Vert (« Pour chaque cran de solidité perdu, l'arme en question fera +4 Dégâts », décision R107) compte sur **chaque arme
@@ -118,12 +145,14 @@ abandonne.
   dégâts écrits qui départagent deux armes du même nom sont recalculés avec la solidité écrite.
 - **Solidité des armes** (décision R74 : « Un slider qui va de 0 au max de l'arme. A zéro, l'arme est cassée ») : sous chaque arme, un **curseur** de 0 au
   maximum de l'arme forgée et « N / M » à côté (clic droit ou Entrée : saisir le nombre) ; le maximum est celui de la page « Armes » (R51 : crans de l'arme,
-  de sa composition et de son amélioration, au moins 1 ; l'élément n'est pas compté, question Q12), le détail en infobulle (`durabiliteDArme`). La fiche ne
+  de sa composition et de son amélioration, au moins 1 ; une arme élémentaire : `constantes['piece_elementaire.solidite_base']`, 4, plus les crans de sa
+  ligne d'amélioration, sans cumul : 4, 5 du +5 au +9, 6 au +10, décision R167, sans fer ni matériau), le détail en infobulle (`durabiliteDArme`). La fiche ne
   garde que ce qui manque : à son maximum, rien (`personnage_arme.durabilite` NULL, `durabiliteAEcrire`) ; une autre arme est neuve (`armesApresChoix`), une
   autre composition ou amélioration ramène la solidité sous le nouveau maximum (`armesApresReglage`, une arme pleine le reste ; `armesValables` à
   l'enregistrement). À 0, la pastille des dégâts est **grisée** et dit **« Cassée »**, ses dégâts (réparée) en infobulle ; ils restent comptés ailleurs (tableur,
   attaque à deux armes). Pas de curseur pour une arme de monstre (sans solidité, R45). Le moteur recopie le calcul de `lib/arme-forge.mjs`, que son script ne
-  peut pas importer (le script de la page Armes l'importe) : `test/fiche-durabilite.test.mjs` compare les deux sur toutes les combinaisons de la base.
+  peut pas importer (le script de la page Armes l'importe) : `test/fiche-durabilite.test.mjs` compare les deux sur toutes les combinaisons de la base
+  (`forgerArme`, et `forgerArmeElementaire` pour chaque arme élémentaire et chaque niveau).
 - **Armure** (décision R95 : « Les emplacement d'armure restent. L'armure peut casser à certains endroits seulement. (sauf si comme pour les armures
   spéciales, elle disposent de durabilité unifiée) » ; « L'amélioration est pour l'armure complète ») : **une armure complète** (une armure ne se fabrique
   plus pièce par pièce, R93), **de base ou élémentaire, jamais les deux** (décision R165 : une pièce élémentaire **transforme** l'armure), et son
@@ -471,20 +500,22 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   la fiche ne lit pas ces dons) ; la formule du guide (armure, défense partielle, don, palier de résistance à la magie, arrondi à l'inférieur), l'armure
   portée appliquant sa résistance (AP × 2) ou sa faiblesse (AP ÷ 2) au type physique, « x2 » doublant l'effet (pas avec un élément : R99 ; sur sa seule
   part, donc rien sur une partie cassée : R108) ; les étapes en infobulle, rien d'enregistré (ni la partie touchée).
-- **Arme à pièce élémentaire** (décision R99) : les dés restent ; les bonus de dégâts du matériau et de l'amélioration sont remplacés par ceux de
-  l'élément et de son amélioration (`degatsDArme` : ils passent dans « Non comptés », « remplacé par l'élément »).
+- **Arme à pièce élémentaire** : le volet arme de la décision R99 est remplacé par R167 (l'arme transformée est une arme élémentaire, voir plus haut) ;
+  son volet armure ne change pas.
 - **Posture du moment** (décision R100) : la posture cochée recalcule ce que son tableau chiffre (`lib/posture-texte.mjs`, `postureDuMoment`) — le
   score du moment des compétences (`scoreDuMoment` : Neutre +5 Social et Volonté, Focus +10 partout, Vigilance +5 Perception, Offensif −10 aux
   compétences d'attaque ; en vert ou en rouge, le détail en infobulle), l'initiative (Vigilance +2), l'AP et l'AM (Défensif 2 × ⌈N ÷ 4⌉, Symbiose AM
   +4 +2 par puissance magique au-delà de la première), les dégâts des armes (`degatsDArmeDuMoment` : Offensif le maximum, « 6D6+4 » → « 40 » ;
-  Défensif « ÷ 2 » ; Symbiose : pastille grisée), les sorts (ci-dessous) et les dégâts reçus (Symbiose : immunité à sa magie). La magie de la
+  Défensif « ÷ 2 » ; Symbiose : pastille grisée, sauf l'arme élémentaire de la magie de la Symbiose, décision R167, exception à R112 : utilisable,
+  avec le bonus de dégâts de la posture, +5 et +2 par puissance magique au-delà de la première, « Posture Symbiose (Sang) » en infobulle ; tant que
+  la magie de la Symbiose est à choisir, et pour le Potentiel Illimité, aucune arme élémentaire ne correspond), les sorts (ci-dessous) et les dégâts reçus (Symbiose : immunité à sa magie). La magie de la
   Symbiose se choisit à côté des postures quand le personnage en a deux (`personnage.symbiose_magie_id`, migration 0061) ; l'autre magie est
   désactivée : ses sorts grisés et **ses résistances et faiblesses retirées** (décision R111 : « La seule perte de la magie sont ses sorts et ses
   résistances et faiblesses » ; `resistancesDe` ne compte plus ses listes, ni leur part du cumul ou de l'annulation avec l'autre magie (R85), et le dit
   sous le tableau des résistances ; les dons, l'ethnie et les accessoires restent, et les dégâts reçus suivent ; le classeur, lui, les écrit sans la
   posture du moment, comme le reste de l'export : `resistancesDe(…, { avecLaPosture: false })`) ; elle garde son effet de Mode Hyper,
   sa 4ᵉ barre (Sang, âmes…), la santé et le chakra qu'elle donne et le +1 de caractéristique de la magie innée. En Symbiose (décision R112 : « on ne
-  peut que lancer des sorts »), les armes des emplacements sont grisées et « Utiliser » à la ceinture aussi, sauf pour un parchemin ; **tous les effets
+  peut que lancer des sorts »), les armes des emplacements sont grisées (sauf l'arme élémentaire de sa magie : R167) et « Utiliser » à la ceinture aussi, sauf pour un parchemin ; **tous les effets
   passifs restent** : accessoires, bâtons à la ceinture, armure et bouclier (en parade partielle). **Le Potentiel Illimité** (décision R109 : « Le cas du PI est particulier / Il a les bonus de dégâts, d'AM / Mais il
   n'a pas l'immunité à une magie ni même le devoir de choisir une magie ») : en Symbiose, ni magie à choisir ni immunité, l'AM de la posture et son
   bonus de dégâts et de soin (« +5 (+2/NPM) ») sur **tous ses sorts, quelle que soit leur magie** (« Posture Symbiose (Potentiel Illimité) » dans le
@@ -542,7 +573,10 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   les tours des Rages.
 - **Contrôle** : à chaque enregistrement, le service rend les règles de `v_personnage_controle` que la fiche enfreint, affichées en français
   (`lib/fiche-controles.mjs`) : elles signalent, elles n'empêchent jamais d'enregistrer, et toute fiche est contrôlée, même inachevée (une fiche n'a
-  plus de statut brouillon / validé / archivé : demande du propriétaire, migration 0038). Ce que la base ne contrôle pas encore (bonus d'équipement, nombre de
+  plus de statut brouillon / validé / archivé : demande du propriétaire, migration 0038). Une arme élémentaire d'une magie que le personnage n'a pas
+  (`arme_elementaire_hors_magie`, R167) : « Arme élémentaire d'une magie que le personnage n'a pas (ni innée ni acquise) : 1 : Arc de Sang » ; un type
+  physique choisi hors des choix de l'arme (`arme_type_degats_choisi`, R167) : « Type de dégâts physique choisi hors des choix de l'arme (son type ne se
+  choisit pas, ou elle n'offre pas ce type) : 2 : taille ». Ce que la base ne contrôle pas encore (bonus d'équipement, nombre de
   sorts par emplacement, plafond de NPM du Potentiel Illimité) n'est montré que comme compteur.
 - **Enregistrement** : création (`POST`) puis modification (`PUT` avec la version lue : si quelqu'un a modifié la fiche entre-temps, rien n'est écrasé et
   la page propose de la recharger), suppression (`DELETE` avec la version lue). Sans le service (service arrêté), ou quand il refuse
@@ -617,7 +651,15 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   0 cassé : R108, `apAmDuBouclier`) en AN26 et AS26, sa
   solidité du moment « N / M » en AX26, relue. La **solidité de chaque partie de l'armure** (ligne « Sol. » de la grille, AI24:AN24, R95) s'écrit
   « N / M », la même sur les six pour une armure à solidité unifiée. La **solidité d'une arme** (AK17, AX17) s'écrit « N / M » : la solidité du moment et le maximum de
-  l'arme forgée (R74, `durabiliteDArme`, le calcul R51 de la page « Armes ») ; une arme cassée, « 0 / M », garde ses dégâts en AG10 (ils départagent
+  l'arme forgée (R74, `durabiliteDArme`, le calcul R51 de la page « Armes » ; d'une arme élémentaire, 4 + les crans de sa ligne, R167) ; une arme
+  élémentaire s'écrit par son nom (« Arc de Sang ») dans la case de l'arme, son niveau dans la ligne « Amélioration » de la case de l'effet, le type
+  physique choisi d'une bombe élémentaire dans la ligne « Type de dégâts : Taille » (relue ; sur une autre arme, `nonRepris`), sa capacité
+  (et « Ignore 4 AP », la mention de son type) à la place de l'effet du catalogue, la portée de son type ; l'import la relit par son nom (nom, niveau et
+  solidité reviennent ; une composition, un élément ou une amélioration de l'élément écrits avec elle vont dans `nonRepris`). D'un classeur d'avant
+  R167 (une arme, « Élément : X » et « Amélioration de l'élément : niv. N » ; à la fiche auto, l'élément en AI17 / AV17) : un élément du type de la
+  famille de l'arme la transforme en arme élémentaire, au niveau de l'ancienne amélioration de l'élément (aucun sans elle), l'arme d'origine, sa
+  composition et son amélioration dites dans `nonRepris` (son effet du catalogue écrit reconnu, pas repris comme effet en plus), sa solidité écrite
+  bornée au nouveau maximum ; un élément d'un autre type, ou une amélioration de l'élément sans élément, n'est pas repris (`nonRepris`) ; une arme cassée, « 0 / M », garde ses dégâts en AG10 (ils départagent
   deux armes du même nom à l'import) ; une arme de monstre (sans solidité, R45) laisse le « / » du modèle. La case **« Entraînement »** (L42) porte les
   compétences de l'entraînement (R104), « Nom points » jointes par « | » (« Magie 2 | Concentration 10 », la forme de la fiche auto ; une case relue, sa
   suite dans la note si elle est trop longue) ; chaque ligne de texte libre est une ligne « Entraînement : … » de la note, et chaque choix d'acquis d'un don
@@ -658,13 +700,13 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   à la ligne ; une case d'une rangée rapetisse son texte (réduction au besoin, jusqu'à 60 %, comme les noms et types de dons du modèle) ; s'il ne tient
   toujours pas, la case en garde le début, fini par « … », écrit à 60 % (comme ses voisines réduites de la même colonne). Chaque case est **relue**
   (l'import en tire un choix du personnage : noms, sorts et NM, noms des dons, accessoires, ceinture, inventaire, événements, armure et solidité de ses parties,
-  composition, améliorations, élément, effet en plus et solidité d'une arme, choix du métier, entraînement…) ou **affichée** (un texte de règles ou un
+  composition, amélioration, effet en plus et solidité d’une arme ou d’une arme élémentaire, choix du métier, entraînement…) ou **affichée** (un texte de règles ou un
   calcul que le site
   refait : type, coût, portée, zone et description des sorts, type et effets des dons, textes de la race, don de base, artisanat, Mode Hyper,
   résistances, dégâts, effet du catalogue d'une arme, titres…). Une case affichée coupée perd sa fin, **sans rien dans la note** ; seule la part
   relue d'une case coupée a une suite dans la note (« Suite de la case AA51 : … », sauts de ligne en « ⏎ »), que l'import recolle avant de lire la
-  case. Une case à la fois relue et affichée écrit d'abord ses lignes relues : l'effet d'une arme (AA13, AN13) donne la composition, les
-  améliorations, l'élément et l'effet en plus, puis l'effet du catalogue, « Deux armes » et « Non compté » (`partiesDeLArme`) — une ligne « Deux armes :
+  case. Une case à la fois relue et affichée écrit d'abord ses lignes relues : l'effet d'une arme (AA13, AN13) donne la composition, l'amélioration
+  et l'effet en plus (plus de lignes « Élément » ni « Amélioration de l'élément », R167 ; relues encore d'un classeur d'avant), puis l'effet du catalogue, « Deux armes » et « Non compté » (`partiesDeLArme`) — une ligne « Deux armes :
   … » ou « Non compté : … » que la fiche relue n'écrit plus (celle de Vieille Branche d'un classeur exporté avant R107) n'est jamais reprise comme effet
   en plus, hors du bloc « Effet en plus : » (`lireEffetDArme`) ; une telle ligne, qui n'est pas celle que la fiche écrit aujourd'hui pour cette arme,
   est dite par une remarque qui la cite (« … non reprise (recalculée par le site) », `ecartees`), dans tout classeur ; le métier (L41), les
@@ -861,7 +903,7 @@ pas, et la note datée est le seul signal.
 | `personnage_capacite` | Dons de classe **à choix** (options d'une ligne, paliers de l'Archimage) ; les autres se déduisent |
 | `personnage_sort` | Sorts de la liste (AA55:AY74) et leur NM (toutes origines comprises), dont celui d'un livre (`nm_livre`, noté dans l'entraînement : le sort a alors au moins 1 NM ; décision R118) ; les NM du MJ, notés sort par sort jusqu'à la migration 0066 (`nm_cadeau`), sont ceux de la fiche ; le sort préparé (décision R115, migration 0067 : `prepare`, un seul par fiche), son jet de magie (`prepare_jet`, D100) et la posture du moment de sa préparation (`prepare_posture_id`), que les autres sorts n'ont pas ; pas de case dans la fiche auto |
 | `personnage_maitrise_choix` | Maîtrises d'armes (AA2:AV7) : plus rien ne se saisit par famille (décision R148, migration 0076, qui retire `personnage_maitrise_arme` et ses dés par famille) ; une ligne par point à choisir d'une source acquise : la source (`source` : l'id du don, ou `<classe>#maitrise-arme:<rang>` pour une ligne de `classe_maitrise_arme`, sans clé étrangère), le numéro du point dans sa part à choisir (`rang`) et la famille choisie, parmi les options de la part (`maitrise_arme_part_famille`) ; la même famille peut revenir sauf limite écrite (R150) ; jamais ARME DE MONSTRES (R45) ; la famille de la ligne `au_choix` d'une classe est aussi celle des dons qui la suivent (R151) et l'arme du bonus « de l'arme choisie » (R152). L'accessoire « Un point de maîtrise d'arme » garde sa famille dans `personnage_accessoire.arme_famille_id` (R151). Les points et les dés se calculent (`v_personnage_maitrise_arme`) |
-| `personnage_arme`, `personnage_armure_partie`, `personnage_accessoire`, `personnage_inventaire` | Équipement : catalogue de la base (arme, matériau, améliorations, pièces élémentaires, effets d'accessoire et valeur tirée, case « Malédiction » : six emplacements, R97) et sac ; le bouclier dans `personnage` (forme, matière, amélioration, solidité du moment : décision R96, migration 0060, qui remplace `personnage_bouclier_materiau`) ; durabilité du moment d'une arme (`personnage_arme.durabilite`, « Solidité » AK17, AX17 : NULL = à son maximum, 0 = cassée ; décision R74, migration 0045) ; l'armure portée dans `personnage` (une armure complète, son amélioration, son élément et l'amélioration de l'élément) et la solidité du moment de chacune de ses parties abîmées (`personnage_armure_partie` ; décision R95, migration 0055, qui remplace `personnage_armure`, une armure par emplacement) |
+| `personnage_arme`, `personnage_armure_partie`, `personnage_accessoire`, `personnage_inventaire` | Équipement : catalogue de la base (armes, matériaux, améliorations, pièces élémentaires, effets d'accessoire et valeur tirée, case « Malédiction » : six emplacements, R97) et sac ; deux armes (`personnage_arme`, rangs 1 et 2), chacune **un seul modèle** (décision R167, migration 0081) : soit une arme du catalogue (`arme_id`) avec sa composition (`materiau_id`), soit une arme élémentaire (`arme_elementaire_id`, sans matériau : une pièce élémentaire transforme l'arme, qui perd tout), et un seul niveau d'amélioration (`amelioration_id`, une ligne du tableau fondu des armes, cible `arme`), qui ne sert qu'aux dégâts et à la solidité ; plus d'élément posé sur une arme du catalogue ni d'amélioration de l'élément (`amelioration_elementaire_id`, retirée ; la base vivante convertit ses fiches) ; le bouclier dans `personnage` (forme, matière, amélioration, solidité du moment : décision R96, migration 0060, qui remplace `personnage_bouclier_materiau`) ; durabilité du moment d'une arme (`personnage_arme.durabilite`, « Solidité » AK17, AX17 : NULL = à son maximum, 0 = cassée ; décision R74, migration 0045) ; l'armure portée dans `personnage` (une armure complète, son amélioration, son élément et l'amélioration de l'élément) et la solidité du moment de chacune de ses parties abîmées (`personnage_armure_partie` ; décision R95, migration 0055, qui remplace `personnage_armure`, une armure par emplacement) |
 | `personnage_ceinture` | Les 3 emplacements de la ceinture (guide « Fiche de personnage : Accessoires et Ceinture ») : objet et quantité ; demande du propriétaire, migration 0031 |
 | `groupe`, `groupe_membre` | Groupe de jeu (one-shot ou campagne), ses membres (MJ ou joueur) et la fiche que chacun y a inscrite |
 
@@ -891,7 +933,7 @@ pas, et la note datée est le seul signal.
   écrites, `maitrise_plafond` « famille = points / 4 », `maitrise_arme_exclue` sur ARME DE MONSTRES, R45 ; l'accessoire a pour source `accessoire:<emplacement>`), gains de niveau (`gains_niveau`, R73 : santé + chakra gagnés = 15 points par niveau à partir du 2,
   plus 1 à 8 par dé atteint, `niveau_global.de_attributs_min` et `de_attributs_max` ; détail « total / à saisir » ou « total / minimum à maximum »), 2ᵉ classe, spécialité
   avant le niveau de classe 10, dons hors classe ou exclusifs, sorts (magie du personnage, toutes pour le Potentiel Illimité ; NPM au plus la puissance magique
-  du niveau, la 5 au niveau 16 et sans magie acquise, R16 ; 3 NM au plus sur un sort ; NM d'un sort sans celui de son livre au plus niveau global − 1 plus les NM du MJ de la fiche, et en tout au plus ceux gagnés — par les niveaux et par les dons acquis qui l'écrivent, `capacite_nm_gagne`, R154 — plus ceux du MJ, R24, R26, R118), bouclier (forme et matière : R96), armure (R95, R165 : une armure, de base ou élémentaire, jamais les deux, `armure_double` ; une amélioration sans son armure, `armure_manquante` ; une armure « Familier », `armure_familier` ; une armure élémentaire d'une magie que le personnage n'a pas, `armure_magie_absente` ; une partie que l'armure n'a pas, `armure_partie_hors_armure`, une armure élémentaire ayant ses six parties ; le poids portable est au moteur), améliorations, valeur d'un
+  du niveau, la 5 au niveau 16 et sans magie acquise, R16 ; 3 NM au plus sur un sort ; NM d'un sort sans celui de son livre au plus niveau global − 1 plus les NM du MJ de la fiche, et en tout au plus ceux gagnés — par les niveaux et par les dons acquis qui l'écrivent, `capacite_nm_gagne`, R154 — plus ceux du MJ, R24, R26, R118), bouclier (forme et matière : R96), armure (R95, R165 : une armure, de base ou élémentaire, jamais les deux, `armure_double` ; une amélioration sans son armure, `armure_manquante` ; une armure « Familier », `armure_familier` ; une armure élémentaire d'une magie que le personnage n'a pas, `armure_magie_absente` ; une partie que l'armure n'a pas, `armure_partie_hors_armure`, une armure élémentaire ayant ses six parties ; le poids portable est au moteur), améliorations (celle d'une arme, du catalogue ou élémentaire : cible `arme`, R167), arme élémentaire d'une magie que le personnage n'a ni en innée ni en acquise (`arme_elementaire_hors_magie` « rang : arme élémentaire », R167 ; le Potentiel Illimité n'en ouvre aucune), valeur d'un
   accessoire ; une fiche sans race ou sans magie innée (`race_manquante`, `magie_innee_manquante` : contrainte de la table jusqu'à la migration 0038).
   Toute fiche est contrôlée, même inachevée ; une fiche conforme n'y a aucune ligne. Ce qui demande le moteur (bonus de classe, d'équipement et de race, nombre de sorts, plafond de NPM du
   Potentiel Illimité, résistances — calculées par le moteur, `resistancesDe` —, valeurs dérivées) n'y est pas encore.

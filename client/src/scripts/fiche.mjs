@@ -44,6 +44,7 @@ import {
   acquisApresChoix, acquisApresRepartition, acquisChoixValables, acquisDesDons, magieTireeParLeMj, resistanceApresChoix, resistanceChoixValables, entrainementDe, entrainementsAEnregistrer, batonDuSac, contexteDesSorts, degatsDArmeDuMoment, magiesDesBatons, nomDuBaton, postureDuMoment, sortDuMoment,
   creaturesDuSort, sacrificeDuSort,
   carteDeMaitrise, compteurDeMaitrise, ligneDeMaitrise, maitriseApresChoix, maitriseChoixValables, maitrisesParFamille, presentationDuCompteurDeMaitrise, sourcesDeMaitrise,
+  armeDeLaLigne, armesElementairesProposees, effetDeLArmeElementaire, sortsFerDAutreElement,
 } from '../lib/fiche-moteur.mjs';
 import { creatureAuNpm, FPVSIA, vautAuNpm } from '../lib/creature-npm.mjs';
 
@@ -2458,17 +2459,52 @@ function autocompletion(champ, propositions, choisir) {
   return el('span', { class: 'autocompletion' }, champ, liste);
 }
 
+/**
+ * Le rappel d'un sort « Fer » d'un autre élément que l'arme élémentaire portée (décision R167 : « la fiche signale seulement quand le sort et l'arme
+ * élémentaire ne sont pas du même élément » ; sortsFerDAutreElement) ; son infobulle, la phrase de la page « Pièces élémentaires », telle qu'écrite.
+ */
+const RAPPEL_DES_SORTS_FER = Object.freeze({
+  texte: (sort) => `${sort.nom} : sort « Fer » d’un autre élément que cette arme`,
+  source: 'Page « Pièces élémentaires » : « Les sorts "fer" sont utilisables sur les armes élémentaires mais il faut évidemment qu\'il soit du même élément sinon ça ne marche pas. »',
+});
+
 function construireEquipement() {
-  reconstruire($('armes'), 'fixe', () => [1, 2].map((rang) => {
+  // la liste de chaque arme (décision R167) : les armes du catalogue, et directement les armes élémentaires des magies du personnage (innée et acquise,
+  // jamais le Potentiel Illimité : armesElementairesProposees), dans le groupe de leur famille, chacune sur le fond de sa magie ; une arme élémentaire
+  // déjà posée d'une autre magie reste dans un groupe à part (la base la signale : arme_elementaire_hors_magie). Refaite quand les magies changent.
+  const armesProposees = armesElementairesProposees(regles, fiche);
+  const horsDeRang = (rang) => {
+    const id = ligneDe('armes', (x) => x.rang === rang)?.arme_elementaire_id;
+    return id && !armesProposees.some((a) => a.id === id) ? trouver(regles.armes_elementaires, id) : null;
+  };
+  reconstruire($('armes'), JSON.stringify([armesProposees.map((a) => a.id), [1, 2].map((r) => horsDeRang(r)?.id ?? null)]), () => [1, 2].map((rang) => {
     const l = () => ligneDe('armes', (x) => x.rang === rang);
-    // une arme choisie sans matériau prend le fer (armesApresChoix, décision R49) ; une autre arme est neuve, une autre composition ou amélioration ramène
-    // la solidité du moment sous son nouveau maximum (armesApresReglage, décision R74)
+    // une arme du catalogue choisie sans matériau prend le fer (armesApresChoix, décision R49) ; une arme élémentaire n'a pas de matériau (R167) ; une
+    // autre arme est neuve, une autre composition ou amélioration ramène la solidité du moment sous son nouveau maximum (armesApresReglage, décision R74)
     const poserChamp = (cle) => (v) => {
       if (cle === 'arme_id') fiche.armes = armesApresChoix(regles, fiche, rang, v);
       else if (l()) fiche.armes = armesApresReglage(regles, fiche, rang, cle, v);
       changer();
     };
-    const familles = new Map(regles.familles_armes.map((f) => [f.id, f.nom]));
+    const familles = new Map(regles.familles_armes.map((f) => [f.id, f]));
+    const optionDElement = (a) => el('option', { value: a.id, class: teinteDe(a).join(' ') || null, title: trouver(regles.magies, a.magie_id)?.nom ?? null }, a.nom);
+    // les groupes du catalogue, dans son ordre ; les armes élémentaires proposées à la fin du groupe de leur famille (celle de leur type élémentaire)
+    const groupes = new Map();
+    for (const a of regles.armes) {
+      if (!groupes.has(a.famille_id)) groupes.set(a.famille_id, []);
+      groupes.get(a.famille_id).push(option(a.id, a.nom));
+    }
+    for (const a of armesProposees) {
+      const f = regles.familles_armes.find((x) => x.type_elementaire_id === a.type_id);
+      if (!f) continue;
+      if (!groupes.has(f.id)) groupes.set(f.id, []);
+      groupes.get(f.id).push(optionDElement(a));
+    }
+    const hors = horsDeRang(rang);
+    const choixDArme = selecteur(() => l()?.arme_id ?? l()?.arme_elementaire_id, [
+      ...[...groupes].map(([f, options]) => el('optgroup', { label: familles.get(f)?.nom ?? 'Autres' }, options)),
+      hors ? el('optgroup', { label: 'Hors des magies du personnage' }, optionDElement(hors)) : null,
+    ].filter(Boolean), poserChamp('arme_id'), { vide: 'Aucune', etiquette: `Arme ${rang}` });
     const effet = el('input', { 'aria-label': `Arme ${rang} : effet en plus`, oninput: (ev) => { const x = l(); if (x) { x.effet_en_plus = ev.target.value || null; changer(); } } });
     const details = [];
     const champ = (texte, select) => {
@@ -2476,6 +2512,16 @@ function construireEquipement() {
       details.push(select);
       return label;
     };
+    const composition = selecteur(() => l()?.materiau_id, regles.materiaux_armes.map((m) => option(m.id, m.nom)), poserChamp('materiau_id'), { etiquette: `Arme ${rang} : composition` });
+    // le type physique d'une arme élémentaire dont le type se choisit (décision R167, la bombe : « Estoc, Frappe ou Taille au choix », un seul) : ses options,
+    // les types de son type élémentaire (types_offerts) ; tant qu'il n'est pas choisi, seul le type de la magie compte (armeDeLaLigne), rien n'est deviné
+    const nomsDesTypes = new Map(typesDeDegats(regles).filter((t) => t.physique).map((t) => [t.id, t.nom]));
+    const typeDegats = el('select', { 'aria-label': `Arme ${rang} : type de dégâts physique`, onchange: (ev) => poserChamp('type_degats_choisi')(ev.target.value || null) });
+    const typeLigne = el('label', { class: 'fiche-champ' }, el('span', {}, 'Type de dégâts'), typeDegats);
+    // l'effet d'une arme élémentaire (décision R167) : sa capacité « Nom (mode) : texte », « Ignore 4 AP » de l'arbalète, la mention de l'arme de jet et de
+    // la bombe (effetDeLArmeElementaire, comme la page des armes) ; puis le rappel des sorts « Fer » d'un autre élément (sortsFerDAutreElement)
+    const effetDeLArme = el('p', { class: 'objet__effet' });
+    const rappels = el('ul', { class: 'objet__rappels' });
     // les dégâts de l'arme, « XDY+Z » (degatsDArme, demande du propriétaire) : les dés de sa maîtrise et son dé, plus les bonus de l'équipement et des dons
     // passifs qui la visent, le détail en infobulle (avec les bonus de dons qui ne se comptent pas) ; avec deux armes de mêlée, une étoile à côté dit le
     // malus d'attaque de cette main (attaqueADeuxArmes, décision du propriétaire : « −10 % si ambidextre » ; l'arme 1 est l'arme principale)
@@ -2483,8 +2529,8 @@ function construireEquipement() {
     const etoile = el('span', { class: 'objet__etoile', tabindex: '0', role: 'img' }, '★');
     const resume = el('span', { class: 'objet__resume' });
     // la solidité du moment (décision R74 : « Un slider qui va de 0 au max de l'arme. A zéro, l'arme est cassée ») : un curseur de 0 au maximum de l'arme
-    // forgée (durabiliteDArme : arme, composition, amélioration, au moins 1), « N / M » à côté ; clic droit ou Entrée : saisir le nombre. Caché pour une
-    // arme sans solidité (arme de monstre). Le maximum ou plus s'enregistre « à son maximum » (durabiliteAEcrire)
+    // (durabiliteDArme : arme forgée, au moins 1 ; arme élémentaire, 4 + les crans de sa ligne d'amélioration, R167), « N / M » à côté ; clic droit ou
+    // Entrée : saisir le nombre. Caché pour une arme sans solidité (arme de monstre). Le maximum ou plus s'enregistre « à son maximum » (durabiliteAEcrire)
     const solidite = el('input', {
       type: 'range', min: '0', step: '1', class: 'curseur', 'aria-label': `Arme ${rang} : solidité`,
       oninput: (ev) => {
@@ -2500,6 +2546,33 @@ function construireEquipement() {
       const x = l();
       poser(effet, x?.effet_en_plus ?? '');
       for (const d of [effet, ...details]) d.disabled = !x;
+      // une arme élémentaire, sur le fond de sa magie (sa classe de la palette, jamais une couleur) ; sans matériau (R167)
+      const arme = armeDeLaLigne(regles, x);
+      const element = arme?.elementaire ?? null;
+      poserTeinte(choixDArme, teinteDe(element));
+      attribut(choixDArme, 'data-couleur', Boolean(element));
+      attribut(choixDArme, 'title', element ? `${element.nom} (arme élémentaire, ${trouver(regles.magies, element.magie_id)?.nom ?? element.magie_id})` : null);
+      attribut(choixDArme, 'aria-invalid', element && !armesProposees.some((a) => a.id === element.id) ? 'true' : null);
+      composition.disabled = !x || Boolean(element);
+      typeLigne.hidden = !arme?.type_degats_au_choix;
+      const offerts = arme?.type_degats_au_choix ? arme.types_offerts : [];
+      if (typeDegats.dataset.cle !== offerts.join()) {
+        typeDegats.dataset.cle = offerts.join();
+        typeDegats.replaceChildren(option('', '— au choix —'), ...offerts.map((t) => option(t, nomsDesTypes.get(t) ?? t)));
+      }
+      poser(typeDegats, x?.type_degats_choisi ?? '');
+      const lignesDEffet = element ? effetDeLArmeElementaire(element, trouver(regles.types_elementaires ?? [], element.type_id)) : [];
+      if (effetDeLArme.dataset.texte !== lignesDEffet.join('\n')) {
+        effetDeLArme.dataset.texte = lignesDEffet.join('\n');
+        effetDeLArme.replaceChildren(...lignesDEffet.map((t) => el('span', {}, t)));
+      }
+      effetDeLArme.hidden = !lignesDEffet.length;
+      const fer = sortsFerDAutreElement(regles, fiche).filter((r) => r.rang === rang);
+      if (rappels.dataset.cle !== fer.map((r) => r.sort.id).join()) {
+        rappels.dataset.cle = fer.map((r) => r.sort.id).join();
+        rappels.replaceChildren(...fer.map((r) => el('li', { title: RAPPEL_DES_SORTS_FER.source }, RAPPEL_DES_SORTS_FER.texte(r.sort))));
+      }
+      rappels.hidden = !fer.length;
       const dur = durabiliteDArme(regles, fiche, rang);
       soliditeLigne.hidden = !dur;
       soliditeLigne.toggleAttribute('data-cassee', Boolean(dur?.cassee));
@@ -2514,7 +2587,8 @@ function construireEquipement() {
           'À 0, l’arme est cassée. Clic droit ou Entrée sur le curseur : saisir le nombre.',
         ].join('\n');
       }
-      // les dégâts du moment (décisions R100, R102) : la posture (Offensif : le maximum ; Défensif : ÷ 2 ; Symbiose : arme inutilisable) et un dé au maximum
+      // les dégâts du moment (décisions R100, R102) : la posture (Offensif : le maximum ; Défensif : ÷ 2 ; Symbiose : arme inutilisable, sauf l'arme
+      // élémentaire de la magie de la Symbiose, avec le bonus de la posture : R167) et un dé au maximum
       const d = degatsDArmeDuMoment(regles, fiche, rang);
       des.hidden = !d;
       // une arme cassée : la pastille de ses dés grisée, « Cassée » (décision R74) ; ses dégâts, réparée, restent en infobulle ; de même en Symbiose
@@ -2543,18 +2617,20 @@ function construireEquipement() {
         etoile.title = `${texte} (main ${main.main}${pourquoi.length ? ` ; moitié : ${pourquoi.join(', ')}` : ''})${deux.aPreciser.length ? `\nÀ appliquer à la main : ${deux.aPreciser.join(', ')}` : ''}`;
         etoile.setAttribute('aria-label', texte);
       }
-      const choisis = [trouver(regles.materiaux_armes, x?.materiau_id)?.nom, x?.amelioration_id && 'amélioration', trouver(regles.armes_elementaires, x?.arme_elementaire_id)?.nom, x?.effet_en_plus && 'effet en plus'].filter(Boolean);
-      resume.textContent = choisis.length ? choisis.join(' · ') : 'composition, amélioration, élément…';
+      const choisis = [!element && trouver(regles.materiaux_armes, x?.materiau_id)?.nom, arme?.type_degats_au_choix && nomsDesTypes.get(x?.type_degats_choisi),
+        x?.amelioration_id && 'amélioration', x?.effet_en_plus && 'effet en plus'].filter(Boolean);
+      resume.textContent = choisis.length ? choisis.join(' · ') : element ? 'amélioration, effet en plus…' : 'composition, amélioration…';
     });
-    // à portée de main (demande du propriétaire) : l'arme et ses dés ; composition, améliorations, élément et effet en plus repliés
+    // à portée de main (demande du propriétaire) : l'arme et ses dés ; composition (grisée pour une arme élémentaire), amélioration et effet en plus
+    // repliés (décision R167 : plus de champ « Élément » ni « Amélioration de l'élément », un seul niveau d'amélioration)
     return el('div', { class: 'objet' }, el('div', { class: 'objet__tete' }, el('h4', {}, `Arme ${rang}`), el('span', { class: 'objet__degats' }, des, etoile)),
-      el('label', { class: 'fiche-champ' }, el('span', { class: 'visuellement-cache' }, 'Arme'), selecteur(() => l()?.arme_id, optionsGroupees(regles.armes, (a) => familles.get(a.famille_id), (a) => a.nom), poserChamp('arme_id'), { vide: 'Aucune', etiquette: `Arme ${rang}` })),
+      el('label', { class: 'fiche-champ' }, el('span', { class: 'visuellement-cache' }, 'Arme'), choixDArme),
+      effetDeLArme, rappels,
       soliditeLigne,
       el('details', { class: 'objet__details' }, el('summary', {}, resume), el('div', { class: 'fiche-champs' },
-      champ('Composition', selecteur(() => l()?.materiau_id, regles.materiaux_armes.map((m) => option(m.id, m.nom)), poserChamp('materiau_id'), { etiquette: `Arme ${rang} : composition` })),
+      champ('Composition', composition),
+      typeLigne,
       champ('Amélioration', selecteur(() => l()?.amelioration_id, ameliorations('arme'), poserChamp('amelioration_id'), { etiquette: `Arme ${rang} : amélioration` })),
-      champ('Élément', selecteur(() => l()?.arme_elementaire_id, regles.armes_elementaires.map((a) => option(a.id, a.nom)), poserChamp('arme_elementaire_id'), { etiquette: `Arme ${rang} : élément` })),
-      champ('Amélioration de l’élément', selecteur(() => l()?.amelioration_elementaire_id, ameliorations('arme_elementaire'), poserChamp('amelioration_elementaire_id'), { etiquette: `Arme ${rang} : amélioration de l’élément` })),
       el('label', { class: 'fiche-champ' }, el('span', {}, 'Effet en plus'), effet))));
   }));
 
@@ -3438,6 +3514,24 @@ function aEnvoyer() {
  * ({ nom, de, ordre }, comme arme_famille : le bandeau, le dé écrit, son rang) et un don ({ nom, classe }).
  */
 const nomsDesRetraits = () => ({
+  // une arme d'avant la migration 0081, un élément posé sur une arme du catalogue (décision R167, lib/fiche-format.mjs#armeDAvant) : l'arme (son nom, le
+  // bandeau de sa famille et le type élémentaire de celle-ci), l'arme élémentaire (son nom et son type), le niveau d'une amélioration (l'ancienne de
+  // l'élément, absente des règles, se lit dans son identifiant), la ligne d'amélioration d'arme d'un niveau et la solidité de base d'une arme élémentaire
+  arme: (x) => {
+    const a = trouver(regles.armes ?? [], x);
+    const f = a ? trouver(regles.familles_armes ?? [], a.famille_id) : null;
+    return a ? { nom: a.nom, famille: f?.nom ?? null, type_elementaire_id: f?.type_elementaire_id ?? null } : null;
+  },
+  armeElementaire: (x) => {
+    const a = trouver(regles.armes_elementaires ?? [], x);
+    return a ? { nom: a.nom, type_id: a.type_id } : null;
+  },
+  niveau: (x) => trouver(regles.ameliorations ?? [], x)?.niveau ?? null,
+  ameliorationDArme: (n) => {
+    const a = (regles.ameliorations ?? []).find((y) => y.cible === 'arme' && y.niveau === n);
+    return a ? { id: a.id, bonus_cran: a.bonus_cran ?? null } : null;
+  },
+  soliditeElementaire: regles.constantes?.['piece_elementaire.solidite_base'],
   armure: (x) => trouver(regles.armures ?? [], x)?.nom ?? null,
   // une fiche d'avant la décision R165 (une armure et son « élément ») : l'armure élémentaire qu'elle devient et le niveau des améliorations notées
   armureElementaire: (x) => trouver(regles.armures_elementaires ?? [], x)?.nom ?? null,
@@ -3963,7 +4057,8 @@ function preparerImportEnLigne() {
 
 // ------------------------------------------------------------------ démarrage
 function indexerNoms() {
-  for (const cle of ['races', 'ethnies', 'magies', 'dieux', 'metiers', 'classes', 'sorts', 'caracteristiques', 'competences', 'armes', 'armures', 'boucliers', 'accessoires']) {
+  // `armes_elementaires` : le détail de la règle arme_elementaire_hors_magie (décision R167) nomme l'arme
+  for (const cle of ['races', 'ethnies', 'magies', 'dieux', 'metiers', 'classes', 'sorts', 'caracteristiques', 'competences', 'armes', 'armes_elementaires', 'armures', 'boucliers', 'accessoires']) {
     for (const x of regles[cle]) noms.set(x.id, x.nom ?? x.libelle ?? x.id);
   }
   for (const c of regles.classes) {

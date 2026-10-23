@@ -27,7 +27,7 @@ const DEPART_DES_COLONNES_RETIREES_DE_DETAIL = Object.freeze({ personnage_compet
  * Colonnes que les règles ont ajoutées à la section 13, par table, avec leur valeur de départ (celle d'une fiche vide) : celles de la migration 0045
  * (gains de niveau en deux totaux, R73 ; durabilité d'une arme, R74 ; son entraînement en texte, R71, retiré par la migration 0062 :
  * COLONNES_RETIREES), de la migration 0055 (l'armure de la fiche, R95), de la migration 0060 (le bouclier forme + matière, R96) et de la migration
- * 0061 (la magie de la Symbiose, R100), de la migration 0066 (les NM du MJ de la fiche, R118) et de la migration 0067 (le sort préparé, son jet et sa
+ * 0061 (la magie de la Symbiose, R100), de la migration 0081 (le type de dégâts choisi d'une arme élémentaire, R167), de la migration 0066 (les NM du MJ de la fiche, R118) et de la migration 0067 (le sort préparé, son jet et sa
  * posture, R115) et de la migration 0071 (la magie d'une résistance au choix, R137). L'arme choisie d'un choix d'acquis (R119, migration 0067) n'en est
  * plus : la migration 0076 l'a retirée (R152, COLONNES_RETIREES).
  * Quand le service retombe sur sa base d'avant (reconstruction échouée, docs/serveur.md), la page à jour les envoie quand même (ficheVide met les gains à 0) :
@@ -44,7 +44,7 @@ export const DEPART_DES_COLONNES_AJOUTEES = Object.freeze({
     symbiose_magie_id: null,
     nm_mj: 0,
   }),
-  personnage_arme: Object.freeze({ durabilite: null }),
+  personnage_arme: Object.freeze({ durabilite: null, type_degats_choisi: null }),
   personnage_sort: Object.freeze({ prepare: 0, prepare_jet: null, prepare_posture_id: null }),
   personnage_resistance_choix: Object.freeze({ magie_id: null }),
 });
@@ -73,6 +73,7 @@ export class ErreurFiche extends ErreurHttp {}
 export { instant };
 
 const infos = (db, table) => db.prepare(`PRAGMA table_info("${table}")`).all();
+const colonnesDe = (db, table) => infos(db, table).map((c) => c.name);
 const colonnesDeDetail = (db, table) => infos(db, table).map((c) => c.name).filter((c) => c !== 'personnage_id');
 const colonnesModifiables = (db) => infos(db, 'personnage').map((c) => c.name).filter((c) => !COLONNES_DU_SERVICE.includes(c));
 /**
@@ -255,11 +256,25 @@ function valeurDeCellule(v, ou, problemes) {
 /** Index uniques partiels qui ne nomment que la fiche (« UNIQUE constraint failed: <table>.personnage_id ») : ce qu'ils refusent. */
 const UNIQUES_DE_LA_FICHE = Object.freeze({ 'personnage_sort.personnage_id': 'un seul sort préparé par fiche (décision R115)' });
 
+/**
+ * Les CHECK d'une table de la fiche qui disent une règle de forme, par leur texte (tel que SQLite le rend) : ce qu'ils refusent. personnage_arme
+ * (décision R167, migration 0081) : une arme du catalogue ou une arme élémentaire, l'une des deux ; pas de matériau sur une arme élémentaire ; un type de
+ * dégâts choisi (la Bombe) seulement sur une arme élémentaire.
+ */
+const CHECKS_DE_LA_FICHE = Object.freeze({
+  '(arme_id IS NULL) <> (arme_elementaire_id IS NULL)': 'une arme est une arme du catalogue (arme_id) ou une arme élémentaire (arme_elementaire_id), l’une des deux (décision R167)',
+  'materiau_id IS NULL OR arme_id IS NOT NULL': 'une arme élémentaire n’a pas de matériau (décision R167)',
+  'type_degats_choisi IS NULL OR arme_elementaire_id IS NOT NULL': 'un type de dégâts ne se choisit que sur une arme élémentaire (décision R167)',
+});
+
 /** Message d’une contrainte de la base, en français (exporté pour les tests). */
 export function expliquer(message) {
   let m;
   if ((m = /^NOT NULL constraint failed: \w+\.(\w+)$/.exec(message))) return `« ${m[1]} » est obligatoire`;
-  if ((m = /^CHECK constraint failed: ([\s\S]+)$/.exec(message))) return `valeur hors des bornes (${m[1].replace(/\s+/g, ' ').trim()})`;
+  if ((m = /^CHECK constraint failed: ([\s\S]+)$/.exec(message))) {
+    const texte = m[1].replace(/\s+/g, ' ').trim();
+    return CHECKS_DE_LA_FICHE[texte] ?? `valeur hors des bornes (${texte})`;
+  }
   if ((m = /^UNIQUE constraint failed: (.+)$/.exec(message))) {
     // un index unique partiel sur la seule fiche (personnage_sort_prepare, migration 0067) : SQLite ne nomme que personnage_id
     if (UNIQUES_DE_LA_FICHE[m[1].trim()]) return UNIQUES_DE_LA_FICHE[m[1].trim()];
@@ -322,7 +337,9 @@ function verifierForme(db, entree, problemes) {
  * nouvelles clés du bouclier, bouclierAvecMatiere : refus 409), et les accessoires d'avant (nom, effet hors table, Ceinture, Autre) sont convertis (R97).
  * Des sorts qui portent leurs NM du MJ (`nm_cadeau`, avant la migration 0066) donnent les NM du MJ de la fiche (R118) ; avec `nm_mj` et des NM du MJ
  * sur un sort (nmDuMjAvecCadeaux) : refus 409. Des maîtrises d'avant la migration 0076 (`maitrises_armes`, l'arme choisie d'un choix d'acquis) sont notées
- * en une ligne datée, aucun choix posé (R153) ; avec les choix de maîtrise `maitrise_choix` (maitrisesAvecChoix) : refus 409. Les choix de maîtrise
+ * en une ligne datée, aucun choix posé (R153) ; avec les choix de maîtrise `maitrise_choix` (maitrisesAvecChoix) : refus 409. Des armes d'avant la
+ * migration 0081 (un élément posé sur une arme du catalogue, `amelioration_elementaire_id`) prennent la forme de la décision R167 (une arme du catalogue
+ * OU une arme élémentaire, un seul niveau d'amélioration : armesDAvant), ce qu'elles perdent noté, daté. Les choix de maîtrise
  * eux-mêmes ne sont refusés que par les contraintes de la base : un choix hors de sa source, une limite écrite ou le plafond dépassés sont signalés
  * par v_personnage_controle (R148 à R150), jamais refusés.
  * L'armure (décision R165) : la fiche enregistrée (l'envoi, avec ce qu'il ne change pas) qui porte une armure ET une armure élémentaire, l'« élément »
@@ -348,11 +365,21 @@ export function enregistrerFiche(db, recue, { id = null, maintenant = new Date()
   const don = db.prepare('SELECT k.nom, c.nom AS classe FROM capacite k LEFT JOIN classe c ON c.id = k.classe_id WHERE k.id = ?');
   const objet = (l) => (l ? { ...l } : null);
   // (une armure et son « élément », avant la décision R165 : convertie après l'écriture, sur la fiche enregistrée, plus bas)
+  // une arme d'avant la migration 0081 (décision R167 : fiche-format.mjs#armeDAvant) : son type élémentaire, celui de l'élément posé, les niveaux
+  const typeEl = colonnesDe(db, 'arme_famille').includes('type_elementaire_id') ? 'f.type_elementaire_id' : 'NULL';
+  const arme = db.prepare(`SELECT a.nom, f.nom AS famille, ${typeEl} AS type_elementaire_id FROM arme a LEFT JOIN arme_famille f ON f.id = a.famille_id WHERE a.id = ?`);
+  const armeElementaire = db.prepare('SELECT nom, type_id FROM arme_elementaire WHERE id = ?');
+  const niveau = db.prepare('SELECT niveau FROM amelioration_equipement WHERE id = ?');
+  const ameliorationDArme = db.prepare("SELECT id, bonus_cran FROM amelioration_equipement WHERE cible = 'arme' AND niveau = ?");
+  // la solidité de base d'une pièce élémentaire (constante_equipement « piece_elementaire.solidite_base », migration 0080 ; R167 : + les crans de la ligne)
+  const soliditeElementaire = db.prepare("SELECT valeur FROM constante_equipement WHERE id = 'piece_elementaire.solidite_base'").get()?.valeur;
   const entree = sansPartiesRetirees(recue, {
     instant: instant(maintenant), notes, armureDouble: false,
     noms: {
       armure: nomDans('armure'), emplacement: nomDans('armure_emplacement'), ressource: nomDans('ressource'), accessoire: (x) => libelle.get(x)?.libelle ?? null,
       competence: nomDans('competence'), famille: (x) => objet(famille.get(x)), don: (x) => objet(don.get(x)),
+      arme: (x) => objet(arme.get(x)), armeElementaire: (x) => objet(armeElementaire.get(x)), niveau: (x) => niveau.get(x)?.niveau ?? null,
+      ameliorationDArme: (n) => objet(ameliorationDArme.get(n)), soliditeElementaire,
     },
   });
   verifierForme(db, entree, problemes);

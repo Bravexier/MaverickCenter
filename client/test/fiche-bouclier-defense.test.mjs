@@ -354,20 +354,19 @@ test('propositionsDuCatalogue : rien sous deux caractères ; sans accents ni cas
   assert.ok(sac.includes(regles.ceinture.baton_a_regler), 'le bâton magique à régler (décision R101)');
 });
 
-test('degatsDArme (R99, « L’élément remplace tout ») : avec un élément, les dés restent, les bonus du matériau et de l’amélioration sont remplacés par ceux de l’élément', () => {
-  const arme = regles.armes.find((a) => a.de && regles.familles_armes.find((f) => f.id === a.famille_id)?.maitrisable !== false);
-  const materiau = regles.materiaux_armes.find((m) => m.bonus_degats > 0);
+test('degatsDArme (R167, qui remplace le volet arme de R99) : une arme élémentaire compte son « +8 » et sa ligne d’amélioration, sans matériau ; plus rien « remplacé par l’élément »', async () => {
+  const { RAISONS } = await import('../src/lib/degats-texte.mjs');
+  assert.equal(RAISONS.element, undefined, 'plus de raison « remplacé par l’élément » pour les armes (R99, volet arme retiré)');
+  const element = regles.armes_elementaires.find((e) => e.id.endsWith(':epee:feu'));
   const amelioration = regles.ameliorations.find((a) => a.cible === 'arme' && a.bonus_degats > 0);
-  const element = regles.armes_elementaires.find((e) => e.bonus_degats > 0);
-  const ameliorationElement = regles.ameliorations.find((a) => a.cible === 'arme_elementaire' && a.bonus_degats > 0);
-  assert.ok(arme && materiau && amelioration && element && ameliorationElement);
-  const ligne = { rang: 1, arme_id: arme.id, materiau_id: materiau.id, amelioration_id: amelioration.id };
-  const sans = M.degatsDArme(regles, fiche({ armes: [ligne] }), 1);
-  const avec = M.degatsDArme(regles, fiche({ armes: [{ ...ligne, arme_elementaire_id: element.id, amelioration_elementaire_id: ameliorationElement.id }] }), 1);
-  assert.equal(avec.notation, sans.notation, 'les dés restent');
-  assert.equal(avec.total, sans.total - materiau.bonus_degats - amelioration.bonus_degats + element.bonus_degats + ameliorationElement.bonus_degats);
-  assert.deepEqual(avec.nonComptes.filter((n) => n.raison === 'element').map((n) => n.valeur), [materiau.bonus_degats, amelioration.bonus_degats]);
-  // l'amélioration de l'élément ne compte qu'avec un élément
-  const seule = M.degatsDArme(regles, fiche({ armes: [{ ...ligne, amelioration_elementaire_id: ameliorationElement.id }] }), 1);
-  assert.equal(seule.total, sans.total);
+  assert.ok(element && amelioration);
+  assert.ok(!regles.ameliorations.some((a) => a.cible === 'arme_elementaire'), 'un seul tableau d’amélioration des armes (R167)');
+  const d = M.degatsDArme(regles, fiche({ magie_innee_id: element.magie_id, armes: [{ rang: 1, arme_elementaire_id: element.id, amelioration_id: amelioration.id }] }), 1);
+  assert.deepEqual(d.bonus.slice(0, 2), [{ nom: element.nom, valeur: 8 }, { nom: `Amélioration niveau ${amelioration.niveau}`, valeur: amelioration.bonus_degats }]);
+  assert.deepEqual(d.nonComptes.filter((n) => n.raison === 'element'), []);
+  // un matériau resté sur la ligne (fiche faite à la main) ne compte pas : une arme élémentaire n'en a pas
+  const materiau = regles.materiaux_armes.find((m) => m.bonus_degats > 0);
+  const avecMateriau = M.degatsDArme(regles, fiche({ magie_innee_id: element.magie_id, armes: [{ rang: 1, arme_elementaire_id: element.id, materiau_id: materiau.id, amelioration_id: amelioration.id }] }), 1);
+  assert.equal(avecMateriau.total, d.total);
+  // l'armure, elle, reste sous R99 (volet armure inchangé) : voir defenseDe plus haut
 });

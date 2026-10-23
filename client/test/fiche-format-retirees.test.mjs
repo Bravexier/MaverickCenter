@@ -18,7 +18,7 @@ import {
   accessoiresGardes, ARMURE_ENTIERE, armureDesArmures, armuresAvecArmure, bouclierAvecMatiere, COLONNES_DE_L_ARMURE, COLONNES_RETIREES, EMPLACEMENTS_D_ARMURE,
   matiereDuBouclier, nmDuMjAvecCadeaux, nmDuMjDesSorts, PARTIES_DE_FICHE, PARTIES_RETIREES, TABLES_FICHES, TABLES_RETIREES, ficheVide, gainsDeLaProgression,
   lignesDesPiecesRetirees, progressionAvecGains, retraitsDuBouclier, sansPartiesRetirees, desEnNotation, maitrisesDAvant, maitrisesAvecChoix, ligneDeRetrait,
-  ordreDesRetraits, PREFIXE_DES_MAITRISES_D_AVANT,
+  ordreDesRetraits, PREFIXE_DES_MAITRISES_D_AVANT, armeDAvant, armeDAvant0081, armesDAvant,
 } from '../src/lib/fiche-format.mjs';
 import { notationDesDes } from '../src/lib/fiche-moteur.mjs';
 
@@ -301,4 +301,105 @@ test('maitrisesAvecChoix : des maîtrises d’avant (dés ou arme choisie) ET `m
   assert.equal(maitrisesAvecChoix({ maitrises_armes: [], acquis_choix: [{ source: 's', rang: 1, competence_id: 'arc', arme_famille_id: null }], maitrise_choix: [] }), false);
   assert.equal(maitrisesAvecChoix({ maitrises_armes: [{ arme_famille_id: 'arc', des: 2 }] }), false);
   assert.equal(maitrisesAvecChoix(null), false);
+});
+
+// Décision R167 (migration 0081) : une arme d'avant (un élément posé sur une arme du catalogue, l'amélioration de l'élément) prend la forme d'aujourd'hui.
+// Les noms, les familles, les types et les niveaux sont ceux de la base (comme serveur/fiches.mjs et serveur/base-vivante.mjs les donnent).
+const R167 = (() => {
+  const db = new DatabaseSync(cheminBase({ sansExemples: false }), { readOnly: true });
+  const un = (sql) => { const q = db.prepare(sql); return (x) => { const l = q.get(x); return l ? { ...l } : null; }; };
+  const noms = {
+    arme: un('SELECT a.nom, f.nom AS famille, f.type_elementaire_id FROM arme a JOIN arme_famille f ON f.id = a.famille_id WHERE a.id = ?'),
+    armeElementaire: un('SELECT nom, type_id FROM arme_elementaire WHERE id = ?'),
+    ressource: (x) => un('SELECT nom FROM ressource WHERE id = ?')(x)?.nom ?? null,
+    niveau: (x) => un('SELECT niveau FROM amelioration_equipement WHERE id = ?')(x)?.niveau ?? null,
+    ameliorationDArme: un("SELECT id, bonus_cran FROM amelioration_equipement WHERE cible = 'arme' AND niveau = ?"),
+    soliditeElementaire: db.prepare("SELECT valeur FROM constante_equipement WHERE id = 'piece_elementaire.solidite_base'").get().valeur,
+  };
+  const cran = (n) => db.prepare("SELECT bonus_cran FROM amelioration_equipement WHERE cible = 'arme' AND niveau = ?").get(n).bonus_cran ?? 0;
+  return { noms, cran, nom: (t, id) => db.prepare(`SELECT nom FROM ${t} WHERE id = ?`).get(id).nom };
+})();
+const ARC = 'ressources/armes#arme:arc:arc';
+const EPEE = 'ressources/armes#arme:epees:epee-longue';
+const BANNIERE = 'ressources/armes#arme:baton-de-combat:banniere-de-combat';
+const ARC_DE_SANG = 'ressources/pieces-elementaires#arme-elementaire:arc:sang';
+const TITANE = 'ressources/armures#materiau:titane';
+const elementDAvant = (n) => `ressources/pieces-elementaires#amelioration:arme-elementaire:${n}`;
+const ameliorationDArme = (n) => `ressources/armes#amelioration:arme:${n}`;
+
+test('armeDAvant (R167) : un élément du type de l’arme la transforme en arme élémentaire, au niveau de l’ancienne amélioration de l’élément, la durabilité bornée au nouveau maximum ; l’arme, son matériau et son amélioration notés', () => {
+  const ligne = { rang: 1, arme_id: ARC, materiau_id: TITANE, amelioration_id: ameliorationDArme(3), arme_elementaire_id: ARC_DE_SANG, amelioration_elementaire_id: elementDAvant(5),
+    effet_en_plus: 'Gravé', durabilite: 3 };
+  assert.ok(armeDAvant0081(ligne));
+  const c = armeDAvant(ligne, R167.noms);
+  // « la ligne devient arme_id NULL, materiau_id NULL, arme_elementaire_id gardé, amelioration_id = ressources/armes#amelioration:arme:N »
+  assert.deepEqual(c.ligne, { rang: 1, arme_id: null, materiau_id: null, amelioration_id: ameliorationDArme(5), arme_elementaire_id: ARC_DE_SANG, effet_en_plus: 'Gravé', durabilite: 3,
+    type_degats_choisi: null });
+  assert.deepEqual(c.retrait, { nature: 'arme_elementaire', cas: 'devenue', id: ARC, nom: R167.nom('arme', ARC), famille: 'ARC', rang: 1, element: R167.nom('arme_elementaire', ARC_DE_SANG),
+    niveau_element: 5, niveau_garde: true, materiau: R167.nom('ressource', TITANE), amelioration: 3 });
+  // la durabilité bornée à 4 + crans de la nouvelle ligne (R167 : « Solidité : 4 crans + les crans de la ligne d'amélioration choisie ») ; à ce maximum ou
+  // au-delà, NULL (« NULL = à son maximum », R74)
+  const max = R167.noms.soliditeElementaire + R167.cran(5);
+  assert.equal(max, 5, '4 crans + 1 au +5 (exemple de R167 : « 5 au +5 »)');
+  for (const [avant, apres] of [[max - 1, max - 1], [max, null], [max + 3, null], [0, 0], [null, null]]) {
+    assert.equal(armeDAvant({ ...ligne, durabilite: avant }, R167.noms).ligne.durabilite, apres, `durabilité ${avant}`);
+  }
+  // sans amélioration de l'élément : aucun niveau ; le maximum, 4
+  const sans = armeDAvant({ ...ligne, amelioration_elementaire_id: null, durabilite: 6 }, R167.noms);
+  assert.deepEqual([sans.ligne.amelioration_id, sans.ligne.durabilite, sans.retrait.niveau_element], [null, null, null]);
+  assert.equal(armeDAvant({ ...ligne, amelioration_elementaire_id: null, durabilite: 3 }, R167.noms).ligne.durabilite, 3);
+  // les types mixtes suivent la famille sous laquelle l'arme est listée (R167 : « Bannière de combat sous Bâton de combat → Bâton de X »)
+  const baton = armeDAvant({ rang: 2, arme_id: BANNIERE, arme_elementaire_id: 'ressources/pieces-elementaires#arme-elementaire:baton-de-combat:sang' }, R167.noms);
+  assert.equal(baton.retrait.cas, 'devenue');
+  assert.equal(baton.ligne.arme_id, null);
+  // la ligne de retrait, datée
+  assert.equal(ligneDeRetrait(c.retrait, '2026-10-23T09:00:00Z'), `[23/10/2026] Retrait (règles modifiées) : l’arme « ${R167.nom('arme', ARC)} » (ARC, arme 1, matériau « ${R167.nom('ressource', TITANE)} », amélioration +3) est devenue l’arme élémentaire « ${R167.nom('arme_elementaire', ARC_DE_SANG)} », avec l’amélioration +5 de son élément : une pièce élémentaire transforme l’arme, qui perd toutes ses caractéristiques d’avant. Adaptez la fiche.`);
+});
+
+test('armeDAvant (R167) : un élément d’un autre type est retiré avec son amélioration, l’arme garde matériau, amélioration et durabilité ; une amélioration d’élément sans élément est retirée ; chaque perte notée', () => {
+  const ligne = { rang: 1, arme_id: EPEE, materiau_id: TITANE, amelioration_id: ameliorationDArme(3), arme_elementaire_id: ARC_DE_SANG, amelioration_elementaire_id: elementDAvant(2), durabilite: 1 };
+  const autre = armeDAvant(ligne, R167.noms);
+  assert.deepEqual(autre.ligne, { rang: 1, arme_id: EPEE, materiau_id: TITANE, amelioration_id: ameliorationDArme(3), arme_elementaire_id: null, durabilite: 1, type_degats_choisi: null });
+  assert.deepEqual(autre.retrait, { nature: 'arme_elementaire', cas: 'autre_type', id: EPEE, nom: R167.nom('arme', EPEE), famille: 'ÉPÉES', rang: 1,
+    element: R167.nom('arme_elementaire', ARC_DE_SANG), niveau_element: 2 });
+  // l'amélioration de l'élément sans élément
+  const seule = armeDAvant({ rang: 2, arme_id: EPEE, materiau_id: null, amelioration_id: null, arme_elementaire_id: null, amelioration_elementaire_id: elementDAvant(4) }, R167.noms);
+  assert.deepEqual(seule.ligne, { rang: 2, arme_id: EPEE, materiau_id: null, amelioration_id: null, arme_elementaire_id: null });
+  assert.deepEqual(seule.retrait, { nature: 'arme_elementaire', cas: 'amelioration_seule', id: EPEE, nom: R167.nom('arme', EPEE), famille: 'ÉPÉES', rang: 2, niveau_element: 4 });
+  // la clé vide d'une page d'avant : rien ne se perd, rien n'est noté
+  assert.deepEqual(armeDAvant({ rang: 1, arme_id: EPEE, amelioration_elementaire_id: null }, R167.noms), { ligne: { rang: 1, arme_id: EPEE }, retrait: null });
+  // une arme d'aujourd'hui n'est pas d'avant
+  assert.equal(armeDAvant0081({ rang: 1, arme_id: null, arme_elementaire_id: ARC_DE_SANG, amelioration_id: ameliorationDArme(2) }), false);
+  assert.equal(armeDAvant0081({ rang: 1, arme_id: EPEE, materiau_id: TITANE }), false);
+  // sans les noms (type inconnu) : rien n'est deviné, l'élément part comme d'un autre type, noté sous les identifiants ; le niveau lu dans l'identifiant
+  const inconnue = armeDAvant({ rang: 1, arme_id: ARC, arme_elementaire_id: ARC_DE_SANG, amelioration_elementaire_id: elementDAvant(3) });
+  assert.deepEqual(inconnue.retrait, { nature: 'arme_elementaire', cas: 'autre_type', id: ARC, nom: null, famille: null, rang: 1, element: ARC_DE_SANG, niveau_element: 3 });
+  assert.equal(inconnue.ligne.arme_id, ARC);
+});
+
+test('sansPartiesRetirees (R167) : les armes d’avant d’une fiche reçue (JSON exporté, page restée ouverte) prennent la forme d’aujourd’hui, une ligne datée par perte à la fin des notes ; sans arme d’avant, la fiche telle quelle', () => {
+  const fiche = {
+    nom: 'Essai', notes: 'Mes notes',
+    armes: [
+      { rang: 1, arme_id: ARC, materiau_id: TITANE, amelioration_id: null, arme_elementaire_id: ARC_DE_SANG, amelioration_elementaire_id: elementDAvant(2), effet_en_plus: null, durabilite: null },
+      { rang: 2, arme_id: EPEE, materiau_id: null, amelioration_id: ameliorationDArme(1), arme_elementaire_id: null, amelioration_elementaire_id: elementDAvant(1), effet_en_plus: null, durabilite: 2 },
+    ],
+  };
+  const lue = sansPartiesRetirees(fiche, { instant: '2026-10-23T09:00:00Z', noms: R167.noms });
+  assert.deepEqual(lue.armes, [
+    { rang: 1, arme_id: null, materiau_id: null, amelioration_id: ameliorationDArme(2), arme_elementaire_id: ARC_DE_SANG, effet_en_plus: null, durabilite: null, type_degats_choisi: null },
+    { rang: 2, arme_id: EPEE, materiau_id: null, amelioration_id: ameliorationDArme(1), arme_elementaire_id: null, effet_en_plus: null, durabilite: 2 },
+  ]);
+  const lignes = lue.notes.split('\n');
+  assert.equal(lignes[0], 'Mes notes');
+  assert.equal(lignes.length, 3);
+  assert.ok(lignes[1].startsWith('[23/10/2026] Retrait (règles modifiées) : l’arme « ') && lignes[1].includes('est devenue l’arme élémentaire'));
+  assert.ok(lignes[2].startsWith('[23/10/2026] Retrait (règles modifiées) : l’amélioration de l’élément +1 de l’arme « '));
+  assert.equal(fiche.armes[0].arme_id, ARC, 'jamais modifiée en place');
+  // armesDAvant : rien à convertir, null ; une fiche d'aujourd'hui, le même objet
+  assert.equal(armesDAvant(lue.armes, R167.noms), null);
+  const aJour = { nom: 'Aujourd’hui', armes: lue.armes };
+  assert.equal(sansPartiesRetirees(aJour, { instant: '2026-10-23T09:00:00Z', noms: R167.noms }), aJour);
+  // la colonne retirée
+  assert.deepEqual(COLONNES_RETIREES.personnage_arme, ['amelioration_elementaire_id']);
 });

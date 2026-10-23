@@ -42,6 +42,33 @@ const PAS_X = /x\s*=\s*\+?\s*(\d+)\s*d[ée]g[âa]ts?\s*\/\s*(\d+)\s*niveaux?/;
 /** Décision R107 (Vieille Branche) : tout le texte du don, tel qu'écrit (normalisé), et rien d'autre ; « l'arme en question » = chaque arme portée. */
 const PAR_CRAN_PERDU = /^pour chaque cran de solidit[ée] perdu, l'arme en question fera \+\s?(\d+) d[ée]g[âa]ts\.?$/;
 
+/**
+ * Décision R167 : « Ses dégâts de magie comptent comme des dégâts de cette magie » ; le don « Tissière » (Anansi : « Les dégâts d'Arcane, Nécromancie
+ * et Ombre augmentent de +10. ») vaut pour une arme élémentaire d'Arcane, de Nécromancie ou d'Ombre, et les onze autres dons écrits ainsi aussi
+ * (réponse du propriétaire : « Oui, tous »). Le texte entier, tel qu'écrit (normalisé), « Les dégâts de X, Y et Z augmentent (de) +N », lu en
+ * { valeur, portee: { types: [magies] } } : les types de dégâts de magie (l'identifiant de la magie) d'une arme élémentaire
+ * (lib/fiche-moteur.mjs#armeDeLaLigne, `types_degats`) ; aucune liste de noms. Une autre écriture n'est pas lue : « augmentent de 5 quand ils sont faits
+ * dans l'eau » (Médusain « Fil conducteur », une situation : R128) reste non compté. « Temps » écrit seul désigne l'Espace/Temps (réponse du
+ * propriétaire : « Oui, ça sera pareil pour tous les autres dons de ce style »).
+ */
+const DEGATS_DE_MAGIE = /^les d[ée]g[âa]ts (?:d'|de |du |de la |de l')(.+?) augmentent (?:de )?\+\s?(\d+)\.?$/;
+/** Les magies et les mots qui les nomment (identifiants de la table magie, comme lib/sort-bonus-texte.mjs, que ce module sans dépendance n'importe pas). */
+const MAGIES = [
+  ['magies/magie-de-larcane', /arcane/], ['magies/magie-de-la-corruption', /corruption/], ['magies/magie-de-lespace-temps', /espace\s*\/\s*temps|espace-temps|\btemps\b/],
+  ['magies/magie-du-vide', /\bvide\b/], ['magies/magie-de-la-necromancie', /n[ée]cromancie/], ['magies/magie-du-sang', /\bsang\b/],
+  ['magies/magie-du-feu', /\bfeu\b/], ['magies/magie-de-leau', /\beau\b/], ['magies/magie-de-la-glace', /\bglace\b/],
+  ['magies/magie-de-la-terre', /\bterre\b/], ['magies/magie-du-vent', /\bvent\b/], ['magies/magie-de-la-foudre', /\bfoudre\b/],
+  ['magies/magie-de-la-lumiere', /lumi[èe]re/], ['magies/magie-de-lombre', /\bombre\b/],
+];
+
+/** « Les dégâts de X, Y et Z augmentent de +N » (le texte entier) : { valeur, magies } ; null pour une autre écriture. */
+export function degatsDeMagieEcrits(texte) {
+  const m = DEGATS_DE_MAGIE.exec(normaliser(texte).trim());
+  if (!m) return null;
+  const magies = MAGIES.filter(([, re]) => re.test(m[1])).map(([id]) => id);
+  return magies.length ? { valeur: Number(m[2]), magies } : null;
+}
+
 const normaliser = (texte) => String(texte ?? '').toLowerCase().replace(/[’]/g, "'").replace(/\s+/g, ' ');
 /** Le texte sans ce qui est entre guillemets (« Arc » : le nom d'une compétence, pas une arme visée) ni les maîtrises citées (« +1 maîtrise Dague »). */
 const sansCitations = (texte) => texte.replace(/«[^»]*»|"[^"]*"/g, ' ').replace(/ma[îi]trises? (?:d['’]arme )?[a-zà-ÿ]+/g, ' ');
@@ -74,11 +101,15 @@ function valeurDe(texte) {
  * Le bonus de dégâts d'arme qu'écrit le texte d'un don passif, ou null s'il n'en écrit pas (ni « dégâts » ni valeur, ou un bonus des sorts ou d'une magie
  * sans arme citée). { valeur | base, pas, niveaux, portee } quand il se compte ; { valeur | base, pas, niveaux, raison } sinon, `raison` ∈ 'situation',
  * 'au_choix', 'deux_armes', 'bouclier', 'portee' (les armes visées ne sont pas écrites). « Pour chaque cran de solidité perdu, l'arme en question fera +4
- * Dégâts. » (décision R107) : { valeur: 4, portee: { toutes: true }, parCranPerdu: true }, la valeur d'un cran perdu.
+ * Dégâts. » (décision R107) : { valeur: 4, portee: { toutes: true }, parCranPerdu: true }, la valeur d'un cran perdu. « Les dégâts de X, Y et Z
+ * augmentent de +N » (décision R167 : Tissière et les dons de son écriture) : { valeur, portee: { types: [magies] } } (degatsDeMagieEcrits).
  */
 export function bonusDeDegatsEcrit(texte) {
   const t = normaliser(texte);
   if (!/d[ée]g[âa]t/.test(t)) return null;
+  // décision R167 : les dégâts de magie d'une arme élémentaire (« Les dégâts de X, Y et Z augmentent de +N » : degatsDeMagieEcrits)
+  const magie = degatsDeMagieEcrits(texte);
+  if (magie) return { valeur: magie.valeur, portee: { types: magie.magies } };
   // décision R107, avant les situations (« chaque ») : cette écriture seule, le texte entier
   const parCran = PAR_CRAN_PERDU.exec(t.trim());
   if (parCran) return { valeur: Number(parCran[1]), portee: { toutes: true }, parCranPerdu: true };
@@ -107,8 +138,6 @@ export const RAISONS = Object.freeze({
   deux_armes: 'avec deux armes',
   bouclier: 'avec un bouclier',
   portee: 'armes visées non écrites',
-  // décision R99 : avec un élément, les bonus du matériau et de l'amélioration de l'arme sont remplacés par les siens (lib/fiche-moteur.mjs#degatsDArme)
-  element: 'remplacé par l’élément',
 });
 
 /** La valeur d'un bonus lu pour un niveau de classe (une formule « base + pas / N niveaux » s'y calcule). */

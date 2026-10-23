@@ -12,9 +12,13 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { COMPETENCES_D_ARME } from '../src/lib/arme-champs.mjs';
-import { ancreDArme, ancreDeMateriau, chargerArmes } from '../src/lib/armes-db.mjs';
-import { COLONNES_D_UNE_ARME, htmlDeFamilleDepuisModele, htmlDesEffets, MODELE_DE_FAMILLE, RENDUS_DES_ARMES } from '../src/lib/armes-rendu.mjs';
-import { CLASSE_DES_ARMES_DE_DEPART, classeDeMateriau, cssDesFamilles } from '../src/lib/palette-css.mjs';
+import { ancreDArme, ancreDeMateriau, chargerArmes, contexteDesArmes } from '../src/lib/armes-db.mjs';
+import {
+  ancreDArmeElementaire, COLONNES_D_UNE_ARME, htmlDeFamilleDepuisModele, htmlDeLigneDArmeElementaire, htmlDesEffets, htmlDuCoutElementaire, MODELE_DE_FAMILLE,
+  RENDUS_DES_ARMES,
+} from '../src/lib/armes-rendu.mjs';
+import { texteDuCoutElementaire } from '../src/lib/arme-forge.mjs';
+import { CLASSE_DES_ARMES_DE_DEPART, classeDeMagie, classeDeMateriau, cssDesFamilles } from '../src/lib/palette-css.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
 import { desSelonLaForce } from '../src/lib/maitrise-arme.mjs';
@@ -80,7 +84,9 @@ test('deux menus à onglets, « Armes de mêlée » puis « Armes à distance »
     // chaque onglet vers le panneau de sa famille, avec son nom, la pastille de son dé et son nombre d'armes
     assert.deepEqual(onglets.map((m) => m[2]), attendues.map((f) => f.id), `${cat} : l’ordre de la base`);
     assert.ok(onglets.every((m) => m[2] === m[3]), `${cat} : chaque onglet pointe vers #famille-<id>`);
-    assert.deepEqual(onglets.map((m) => [m[4], m[5] ?? null, m[6]]), attendues.map((f) => [echapper(f.nom), f.de_brut ? echapper(f.de_brut) : null, `${f.armes.length} arme${f.armes.length > 1 ? 's' : ''}`]), cat);
+    // le nombre d'armes : toutes les lignes du tableau, ses armes élémentaires comprises (R167)
+    const n = (f) => f.armes.length + f.armes_elementaires.length;
+    assert.deepEqual(onglets.map((m) => [m[4], m[5] ?? null, m[6]]), attendues.map((f) => [echapper(f.nom), f.de_brut ? echapper(f.de_brut) : null, `${n(f)} arme${n(f) > 1 ? 's' : ''}`]), cat);
     assert.deepEqual(onglets.map((m) => Boolean(m[1])), attendues.map((_, k) => k === 0), `${cat} : un seul onglet ouvert, le premier`);
     // les panneaux : le tableau de chaque famille (gabarit commun, qui ne se replie plus), dans le même ordre, le seul ouvert celui de l'onglet ouvert
     const panneaux = [...blocs[cat].matchAll(/<(details|section) class="tableau armes-famille( is-active)?" id="famille-([^"]+)"/g)];
@@ -328,7 +334,9 @@ test('R159 : les modèles d’une famille créée (onglet, tableau vide) donnent
   // la famille fictive : des jetons qu'aucun identifiant ne donne (lib/text.mjs#normalize : jamais de « _ »)
   assert.ok(modeles.famille.includes(`id="famille-${MODELE_DE_FAMILLE.id}"`) && modeles.onglet.includes(`id="onglet-famille-${MODELE_DE_FAMILLE.id}"`));
   for (const f of famillesAffichees) {
-    const n = `${f.armes.length} arme${f.armes.length > 1 ? 's' : ''}`;
+    // le compte construit : ses armes et ses armes élémentaires (R167 ; une famille créée n'en a aucune)
+    const total = f.armes.length + (f.armes_elementaires?.length ?? 0);
+    const n = `${total} arme${total > 1 ? 's' : ''}`;
     // l'onglet construit, fermé, son compte celui d'une famille vide
     const onglet = main.match(new RegExp(`<a class="onglet(?: is-active)?" id="onglet-famille-${f.id}"[\\s\\S]*?</a>`))[0]
       .replace('class="onglet is-active"', 'class="onglet"').replace(`data-armes-onglet-compte>${n}<`, 'data-armes-onglet-compte>0 arme<')
@@ -360,4 +368,51 @@ test('R159 : les modèles d’une famille créée sont posés là où l’édite
   assert.match(page, /const avecModeles = process\.env\.INLINE_CSS !== '1';/);
   const modeles = [...page.matchAll(/^\s*(.*)<template data-armes-modele="(onglet|famille)">/gm)];
   assert.deepEqual(modeles.map((m) => [m[2], m[1]]), [['onglet', '{avecModeles && '], ['famille', '{avecModeles && ']]);
+});
+
+// Armes élémentaires (décision R167 ; design du propriétaire, 2026-10-23 : « Met juste directement l'arme élémentaire dans chaque tableau. » ; « en
+// sélectionnant l'arme élémentaire en question ça affichera ou non la bonne colone du tableau "amélioration" et grisera le "matériau" »).
+
+test('R167 : chaque famille affichée liste ses 14 armes élémentaires, à la suite de ses armes, dans l’ordre de la base, sur le fond de leur magie ; aucune pour ARME DE MONSTRES', options, () => {
+  const contexte = contexteDesArmes(base);
+  for (const f of famillesAffichees) {
+    assert.equal(f.armes_elementaires.length, 14, f.id);
+    const debut = main.indexOf(`id="famille-${f.id}"`);
+    const tableau = main.slice(debut, main.indexOf('</table>', debut));
+    const lignes = [...tableau.matchAll(/<tr class="arme( arme--depart| arme--elementaire [\w-]+)?" id="([^"]+)"/g)].map((m) => [m[2], m[1]?.includes('elementaire') ?? false]);
+    // les armes du catalogue, puis les armes élémentaires (ordre de arme_elementaire.ordre)
+    assert.deepEqual(lignes, [...f.armes.map((a) => [ancreDArme(a.id), false]), ...f.armes_elementaires.map((ae) => [ancreDArmeElementaire(ae.id), true])], f.id);
+    for (const ae of f.armes_elementaires) {
+      // la ligne telle que la rend lib/armes-rendu.mjs (balises du glossaire comprises, comme le middleware), sur la classe de sa magie
+      const attendu = commeLaPage(htmlDeLigneDArmeElementaire(ae, { type: f.type_elementaire, solidite: armes.solidite_elementaire }, contexte));
+      assert.ok(tableau.includes(attendu.slice(0, attendu.indexOf('<td class="arme__competence">'))), `${ae.id} : sa ligne`);
+      assert.ok(tableau.includes(`<tr class="arme-suite arme-suite--elementaire ${classeDeMagie(ae.magie)}" data-arme-suite="${echapper(ae.id)}">`), `${ae.id} : ses effets`);
+    }
+  }
+  assert.ok(!main.includes('famille-arme-de-monstres'));
+  assert.equal((main.match(/<tr class="arme arme--elementaire /g) ?? []).length, famillesAffichees.length * 14);
+  // jamais un style, et chaque classe de magie posée existe sur la page (la palette de chaque page : layouts/Base.astro)
+  assert.doesNotMatch(main, /<tr class="arme(-suite)? arme(-suite)?--elementaire[^>]*style=/);
+  for (const classe of new Set([...main.matchAll(/arme--elementaire (couleur-magie-[\w-]+)/g)].map((m) => m[1]))) assert.ok(html.includes(`.${classe}{`), classe);
+  // le « [Métier à définir] » de la page source n'est pas affiché
+  assert.ok(!main.includes('Métier à définir'));
+});
+
+test('R167 : le tableau des améliorations a ses deux colonnes de coût (matériel, élémentaire), l’une ou l’autre selon l’arme choisie ; le matériau grisé', options, () => {
+  const debut = main.indexOf('id="ameliorations-arme"');
+  const tableau = main.slice(debut, main.indexOf('</details>', debut));
+  assert.ok(tableau.includes('<thead><tr><th scope="col">Niveau</th><th scope="col" class="amelioration__cout">Coût</th><th scope="col" class="amelioration__cout-elementaire">Coût élémentaire</th><th scope="col">Effet</th></tr></thead>'));
+  for (const a of armes.ameliorations) {
+    const cumul = a.niveau > 1 ? texteDuCoutElementaire(armes.couts_elementaires.find((c) => c.niveau === a.niveau), null) : '';
+    assert.ok(tableau.includes(`<td class="amelioration__cout-elementaire">${htmlDuCoutElementaire(a, cumul)}</td>`), `+${a.niveau} : son coût élémentaire, le cumul en infobulle`);
+  }
+  assert.match(tableau, /<p class="tableau__note armes-famille__note js-seul armes-ameliorations__note-elementaire">Arme élémentaire : [^<]+<\/p>/);
+  assert.match(main, /<p class="tableau__note armes-famille__note js-seul armes-materiaux__note-elementaire">Une arme élémentaire n’a pas de matériau\.<\/p>/);
+  // la feuille : une seule colonne de coût avec JavaScript (le coût matériel, ou l'élémentaire avec `armes--elementaire`), les deux sans JavaScript et
+  // en mode modification ; les matériaux grisés
+  assert.ok(html.includes('html.js .armes:not(.armes--elementaire) .armes-ameliorations .amelioration__cout-elementaire,\nhtml.js .armes.armes--elementaire .armes-ameliorations .amelioration__cout { display: none; }'));
+  assert.ok(html.includes('body.ed-mode .armes .armes-ameliorations :is(.amelioration__cout, .amelioration__cout-elementaire) { display: table-cell !important; }'));
+  assert.ok(html.includes('html.js .armes--elementaire .armes-materiaux tbody { opacity: 0.45; }'));
+  // la ligne « Aucune » (avec JavaScript seulement, une colonne de coût visible) couvre le coût et l'effet
+  assert.match(tableau, /<tr class="amelioration amelioration--aucune js-seul-ligne" data-niveau="0">[\s\S]*?<td colspan="2" class="muted">Arme non améliorée<\/td><\/tr>/);
 });

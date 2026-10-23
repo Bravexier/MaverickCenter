@@ -24,7 +24,13 @@
 // ouvert #epee par exemple »), que ce script garde (lib/armes-filtres.mjs#ancreDesArmes) et fait suivre quand le filtre ouvre un autre onglet
 // (lib/armes-filtres.mjs#ancreApresLeFiltre). Échap ne ferme l'arme que si l'onglet est affiché. En mode modification, pas de filtre : tout s'affiche,
 // aucun onglet ne se cache.
-import { forgerArme, nombre, piecesDuMontant } from '../lib/arme-forge.mjs';
+// Armes élémentaires (décision R167) : listées dans le tableau de leur famille (`tr.arme--elementaire`, lib/armes-rendu.mjs#htmlDeLigneDArmeElementaire ;
+// aucune dans une famille créée sur le site de dev) ; en choisir une pose la classe `armes--elementaire` sur `.armes` : le tableau des améliorations
+// montre sa colonne de coût élémentaire (les gemmes de sa magie, dont le nom s'écrit dans `[data-armes-gemme]`) au lieu du coût matériel, et les
+// matériaux sont grisés (aucun ne compte : ni fer par défaut, R49 ne s'applique pas) ; l'amélioration repart de « Aucune » ; la fiche :
+// lib/arme-forge.mjs#forgerArmeElementaire (dé du type + 8 + l'effet de la ligne, solidité 4 + les crans de la ligne, coût en gemmes cumulé, sans RO).
+// Une arme ordinaire : rien ne change. Avec une arme élémentaire, ?materiau= est ignoré et n'est pas écrit.
+import { forgerArme, forgerArmeElementaire, nombre, piecesDuMontant, QUALITES_DES_GEMMES, texteDuCoutElementaire } from '../lib/arme-forge.mjs';
 import {
   ancreApresLeFiltre, ancreDesArmes, armeVisible, basculerCompetence, ecrireCompetences, lireCompetences, lireDepart, ongletARouvrir,
   PARAMETRE_DES_COMPETENCES, PARAMETRE_DU_DEPART, texteDuCompte,
@@ -86,14 +92,24 @@ if (racine) {
   /** Les compétences d'une ligne (lib/armes-rendu.mjs#htmlDeCompetence : data-competences="arc arme-legere"). */
   const competencesDe = (ligne) => (ligne.querySelector('.arme__competence [data-competences]')?.dataset.competences ?? '').split(' ').filter(Boolean);
 
+  /** Une arme élémentaire (R167) : sa ligne. */
+  const estElementaire = (ligne) => Boolean(ligne?.classList.contains('arme--elementaire'));
+
   const lignesDAmelioration = () => [...racine.querySelectorAll('.amelioration[data-niveau]')].filter((l) => Number(l.dataset.niveau) > 0);
 
-  /** Les améliorations telles qu'affichées : { niveau, cout_ro, cout_materiaux, bonus_degats, bonus_cran }. */
+  /**
+   * Les améliorations telles qu'affichées : { niveau, cout_ro, cout_materiaux, cout_gemmes, cout_gemmes_qualite, cout_pieces_elementaires, bonus_degats,
+   * bonus_cran } (le coût matériel et le coût élémentaire de chaque niveau : un seul tableau, R167).
+   */
   const ameliorations = () =>
     lignesDAmelioration().map((l) => {
       const cout = l.querySelector('.amelioration-cout')?.dataset ?? {};
+      const elementaire = l.querySelector('.amelioration-cout-elementaire')?.dataset ?? {};
       const effet = l.querySelector('.amelioration-effet')?.dataset ?? {};
-      return { niveau: Number(l.dataset.niveau), cout_ro: entier(cout.ro), cout_materiaux: entier(cout.materiaux), bonus_degats: entier(effet.bonus), bonus_cran: entier(effet.cran) };
+      return {
+        niveau: Number(l.dataset.niveau), cout_ro: entier(cout.ro), cout_materiaux: entier(cout.materiaux), cout_gemmes: entier(elementaire.gemmes),
+        cout_gemmes_qualite: elementaire.qualite ?? null, cout_pieces_elementaires: entier(elementaire.pieces), bonus_degats: entier(effet.bonus), bonus_cran: entier(effet.cran),
+      };
     });
 
   /** L'icône du Ricken d'or (demande du propriétaire : les monnaies en icônes ; components/armes/ArmesPage.astro la pose dans un <template>). */
@@ -132,6 +148,10 @@ if (racine) {
       origineMot: infobulle(ligne.querySelector('.arme-origine')).split(' ')[0] || 'Origine',
       depart: ligne.classList.contains('arme--depart'),
       remarque: infobulle(ligne.querySelector('.arme__remarque')),
+      // une arme élémentaire (R167) : sa magie, la classe de sa couleur (celle de sa ligne, reprise par sa pastille dans la fiche), la gemme de sa magie
+      elementaire: estElementaire(ligne) ? ligne.dataset.elementaire ?? '' : null,
+      couleur: [...ligne.classList].filter((c) => c.startsWith('couleur-')).join(' '),
+      gemme: ligne.dataset.gemme ?? null,
     };
   }
 
@@ -161,20 +181,93 @@ if (racine) {
     if (bulles) bulles.innerHTML = '';
   }
 
+  /**
+   * L'état des tableaux du panneau selon l'arme choisie (R167) : une arme élémentaire montre la colonne du coût élémentaire (le nom de la gemme de sa
+   * magie dans chaque ligne qui en demande) et grise les matériaux (boutons désactivés) ; une arme ordinaire, ou aucune : le coût matériel.
+   */
+  function etatDesTableaux() {
+    const elementaire = estElementaire(arme) && !enEdition();
+    racine.classList.toggle('armes--elementaire', elementaire);
+    const gemme = elementaire ? arme.dataset.gemme ?? '' : '';
+    for (const g of racine.querySelectorAll('[data-armes-gemme]')) g.textContent = gemme ? ` de ${gemme}` : '';
+    for (const b of racine.querySelectorAll('.materiau__choisir')) b.disabled = elementaire;
+  }
+
+  // le détail de chaque tuile, dans son infobulle (une bulle riche ; styles communs `.eq-bulle` : styles/equipement/equipement.css)
+  const ligne = (nom, valeur, classe = '') => `<span class="eq-bulle__ligne${classe ? ` ${classe}` : ''}"><span>${nom}</span><span>${valeur}</span></span>`;
+  const bulle = (id, titre, lignes, note = '') =>
+    `<span class="bulle bulle--large eq-bulle" role="tooltip" id="${id}" hidden><strong class="bulle__titre">${titre}</strong><span class="eq-bulle__lignes">${lignes}</span>${note ? `<span class="eq-bulle__note">${note}</span>` : ''}</span>`;
+  // une tuile est un bouton (au clic, au toucher et au clavier, components/Infobulles.astro ouvre sa bulle ; la description est lue avec lui)
+  const tuile = (id, nom, valeur, detail = '', classe = '') =>
+    `<button type="button" class="arme-fiche__tuile" data-bulle="${id}" aria-describedby="${id}"><span class="arme-fiche__tuile-nom">${nom}</span><span class="arme-fiche__tuile-val${classe ? ` ${classe}` : ''}">${valeur}</span>${detail ? `<span class="arme-fiche__tuile-detail">${detail}</span>` : ''}</button>`;
+
+  /** Le nom d'une qualité de gemme au pluriel, pour le détail du coût élémentaire. */
+  const QUALITES = { commune: 'Gemmes communes', raffinee: 'Gemmes raffinées', parfaite: 'Gemmes parfaites' };
+
+  /**
+   * La fiche d'une arme élémentaire (décision R167) : son type et sa magie (sans matériau), trois tuiles (dégâts : dé du type + 8 + l'effet de la ligne ;
+   * solidité : 4 + les crans de la ligne ; coût : les gemmes de sa magie cumulées du +1 au +N, sans RO ni « [Métier à définir] »), puis ses effets
+   * (capacité, ce qu'écrit l'en-tête de son type) et sa remarque.
+   */
+  function rendreFicheElementaire() {
+    const a = lireArme(arme);
+    const f = forgerArmeElementaire({ de: a.de, bonus_degats: a.bonus, solidite: a.durabilite }, ameliorations(), niveau);
+    const titreNiveau = niveau ? `Amélioration +${niveau}` : 'Sans amélioration';
+    const degats = [
+      ligne(`${e(a.type)} (dé du type)`, e(a.de)),
+      ...(f.bonus.arme ? [ligne('Arme élémentaire', signe(f.bonus.arme))] : []),
+      ...(niveau && f.bonus.amelioration ? [ligne(titreNiveau, signe(f.bonus.amelioration))] : []),
+      ligne('Total', e(f.degats), 'eq-bulle__total'),
+    ].join('');
+    const durabilite = [
+      ligne('Arme élémentaire', String(f.durabilite.arme)),
+      ...(niveau && f.durabilite.amelioration ? [ligne(titreNiveau, signe(f.durabilite.amelioration))] : []),
+      ligne('Total', `Solidité : ${f.durabilite.total}`, 'eq-bulle__total'),
+    ].join('');
+    const texteCout = texteDuCoutElementaire(f.cout, a.gemme);
+    const gemmes = QUALITES_DES_GEMMES.filter((q) => f.cout.gemmes[q] > 0)
+      .map((q) => ligne(`${QUALITES[q]}${a.gemme ? ` (${e(a.gemme)})` : ''}`, String(f.cout.gemmes[q])));
+    const cout = [
+      ...(niveau ? gemmes : []),
+      ...(f.cout.pieces_elementaires ? [ligne('Pièces élémentaires', String(f.cout.pieces_elementaires))] : []),
+      ligne('Total', texteCout ? e(texteCout) : 'Aucune gemme', 'eq-bulle__total'),
+    ].join('');
+    if (bulles) {
+      bulles.innerHTML = [
+        bulle('arme-bulle-degats', 'Dégâts', degats, a.regle ? `${e(a.regle)}.` : ''),
+        bulle('arme-bulle-durabilite', 'Solidité', durabilite),
+        bulle('arme-bulle-cout', 'Coût', cout, niveau ? `${titreNiveau} : les gemmes des niveaux +1 à +${niveau}.` : ''),
+      ].join('');
+    }
+    const magie = `<span class="arme-fiche__magie ${e(a.couleur)}">${e(a.elementaire)}</span>`;
+    fiche.innerHTML = `
+      <header class="arme-fiche__tete">
+        <h2 id="arme-fiche-titre">${e(a.nom)}</h2>
+        <button type="button" class="armes-cote__fermer" data-armes-fermer>Fermer</button>
+      </header>
+      <p class="arme-fiche__identite"><span class="arme-fiche__sous-titre">${e([a.type, a.mains, 'Arme élémentaire'].filter(Boolean).join(' · '))}</span>${a.competence}</p>
+      <p class="arme-fiche__forge">Magie : ${magie} <span aria-hidden="true">·</span> <span class="arme-fiche__niveau">${titreNiveau}</span></p>
+      <div class="arme-fiche__tuiles">
+        ${tuile('arme-bulle-degats', 'Dégâts', e(f.degats))}
+        ${tuile('arme-bulle-durabilite', 'Solidité', String(f.durabilite.total))}
+        ${tuile('arme-bulle-cout', 'Coût', texteCout ? e(texteCout) : '—', texteCout ? '' : 'Sans amélioration', texteCout ? 'arme-fiche__tuile-val--texte' : '')}
+      </div>
+      <div class="arme-fiche__infos">
+        <p class="arme-fiche__effets"><span class="arme-fiche__types">${a.types}${a.portee ? `<span class="arme-fiche__portee">portée ${e(a.portee)}</span>` : ''}</span>${a.sansEffets ? '' : a.effets}</p>
+        ${a.remarque ? `<p class="arme-fiche__remarque">★ ${e(a.remarque)}</p>` : ''}
+      </div>`;
+    fiche.setAttribute('aria-labelledby', 'arme-fiche-titre');
+  }
+
   function rendreFiche() {
+    etatDesTableaux();
     if (!arme) return viderLaFiche();
+    if (estElementaire(arme)) return rendreFicheElementaire();
     const a = lireArme(arme);
     const m = lireMateriau(materiau);
     const f = forgerArme({ de: a.de, bonus_degats: a.bonus, durabilite: a.durabilite, cout_ro: a.cout }, m, ameliorations(), niveau);
     const titreNiveau = niveau ? `Amélioration +${niveau}` : 'Sans amélioration';
     const mat = m ? `<span class="arme-fiche__materiau ${e(m.couleur)}">${e(m.nom)}</span>` : '';
-    // le détail de chaque tuile, dans son infobulle (une bulle riche ; styles communs `.eq-bulle` : styles/equipement/equipement.css)
-    const ligne = (nom, valeur, classe = '') => `<span class="eq-bulle__ligne${classe ? ` ${classe}` : ''}"><span>${nom}</span><span>${valeur}</span></span>`;
-    const bulle = (id, titre, lignes, note = '') =>
-      `<span class="bulle bulle--large eq-bulle" role="tooltip" id="${id}" hidden><strong class="bulle__titre">${titre}</strong><span class="eq-bulle__lignes">${lignes}</span>${note ? `<span class="eq-bulle__note">${note}</span>` : ''}</span>`;
-    // une tuile est un bouton (au clic, au toucher et au clavier, components/Infobulles.astro ouvre sa bulle ; la description est lue avec lui)
-    const tuile = (id, nom, valeur, detail = '') =>
-      `<button type="button" class="arme-fiche__tuile" data-bulle="${id}" aria-describedby="${id}"><span class="arme-fiche__tuile-nom">${nom}</span><span class="arme-fiche__tuile-val">${valeur}</span>${detail ? `<span class="arme-fiche__tuile-detail">${detail}</span>` : ''}</button>`;
     // dégâts : chaque bonus qui se cumule (« tous les bonus se cumulent une fois l'arme forgée »)
     const degats = [
       ligne(e(a.nom), e(a.bonus ? `${a.de}${a.bonus > 0 ? '+' : '−'}${Math.abs(a.bonus)}` : a.de)),
@@ -236,9 +329,11 @@ if (racine) {
   }
 
   function marquer() {
+    // une arme élémentaire n'a pas de matériau (R167) : aucun ne se marque
+    const sansMateriau = estElementaire(arme);
     for (const l of racine.querySelectorAll('.arme, .materiau, .amelioration')) {
       // le panneau est toujours affiché : le matériau et l'amélioration choisis se voient avant le choix d'une arme
-      const choisie = l === arme || l === materiau || (l.classList.contains('amelioration') && Number(l.dataset.niveau) === niveau);
+      const choisie = l === arme || (l === materiau && !sansMateriau) || (l.classList.contains('amelioration') && Number(l.dataset.niveau) === niveau);
       l.classList.toggle('est-choisie', choisie);
       l.querySelector('.arme__choisir, .materiau__choisir, .amelioration__choisir')?.setAttribute('aria-pressed', String(choisie));
     }
@@ -251,7 +346,7 @@ if (racine) {
     if (competences) p.set(PARAMETRE_DES_COMPETENCES, competences);
     if (seulementDepart) p.set(PARAMETRE_DU_DEPART, '1');
     if (arme) p.set('arme', arme.id);
-    if (materiau && !materiau.hasAttribute('data-defaut')) p.set('materiau', materiau.id);
+    if (materiau && !materiau.hasAttribute('data-defaut') && !estElementaire(arme)) p.set('materiau', materiau.id);
     if (niveau) p.set('amelioration', String(niveau));
     const q = p.toString().replace(/%2C/gi, ','); // ?competence=arc,arbalete
     // l'ancre de l'onglet ouvert reste (une arme rouverte au chargement dans un onglet caché ne l'efface pas), pas celle d'une ligne d'arme
@@ -265,7 +360,9 @@ if (racine) {
     history.replaceState(history.state, '', `${location.pathname}${q ? `?${q}` : ''}${ancre}`);
   }
 
-  function ouvrir(ligne, { defiler = false } = {}) {
+  function ouvrir(ligne, { defiler = false, garderLeNiveau = false } = {}) {
+    // une arme élémentaire choisie repart sans amélioration (R167 : « Elle repart sans amélioration ») ; une adresse garde son niveau
+    if (estElementaire(ligne) && ligne !== arme && !garderLeNiveau) niveau = 0;
     arme = ligne;
     // sur un écran étroit, le panneau passe alors par-dessus la page (styles/armes/armes.css)
     vue.classList.add('est-ouverte');
@@ -281,6 +378,7 @@ if (racine) {
   function fermer() {
     const precedente = arme;
     arme = null;
+    etatDesTableaux();
     vue.classList.remove('est-ouverte');
     viderLaFiche();
     marquer();
@@ -370,6 +468,8 @@ if (racine) {
       return;
     }
     const ligneMateriau = cible.closest('.materiau');
+    // une arme élémentaire : les matériaux sont grisés, aucun ne compte (R167)
+    if (ligneMateriau && estElementaire(arme)) return;
     if (ligneMateriau) {
       materiau = ligneMateriau;
       rendreFiche();
@@ -405,14 +505,15 @@ if (racine) {
   // état de l'adresse au chargement
   const params = new URLSearchParams(location.search);
   const parId = (id) => (id ? document.getElementById(id) : null);
-  const m = parId(params.get('materiau'));
+  const depart = parId(params.get('arme')) ?? parId(decodeURIComponent(location.hash.slice(1)));
+  // ?materiau= posé avec une arme élémentaire : ignoré (elle n'a pas de matériau, R167)
+  const m = estElementaire(depart) ? null : parId(params.get('materiau'));
   if (m?.classList.contains('materiau')) materiau = m;
   const n = Number(params.get('amelioration'));
   if (Number.isInteger(n) && lignesDAmelioration().some((l) => Number(l.dataset.niveau) === n)) niveau = n;
   choisies = lireCompetences(params.get(PARAMETRE_DES_COMPETENCES), connues);
   seulementDepart = lireDepart(params.get(PARAMETRE_DU_DEPART));
   filtrer();
-  const depart = parId(params.get('arme')) ?? parId(decodeURIComponent(location.hash.slice(1)));
-  if (depart?.classList.contains('arme') && !depart.classList.contains('est-filtree')) ouvrir(depart, { defiler: true });
+  if (depart?.classList.contains('arme') && !depart.classList.contains('est-filtree')) ouvrir(depart, { defiler: true, garderLeNiveau: true });
   else marquer();
 }

@@ -13,14 +13,14 @@ import { existsSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { contexteDesArmes, chargerArmes } from '../src/lib/armes-db.mjs';
-import { htmlDeLigneDArme, MODELE_DE_FAMILLE } from '../src/lib/armes-rendu.mjs';
+import { htmlDeLigneDArme, htmlDeLigneDArmeElementaire, MODELE_DE_FAMILLE } from '../src/lib/armes-rendu.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { cleDeLigne } from '../src/lib/edition-modele.mjs';
 import { cliquer, el, Element, fauxDocument } from './aide-faux-dom.mjs';
 
 const db = ouvrirBase();
 const contexte = contexteDesArmes(db);
-const { familles } = chargerArmes(db);
+const { familles, solidite_elementaire: solidite } = chargerArmes(db);
 // une famille de deux armes au moins : la première est sur la page, la seconde est « créée »
 const famille = familles.find((f) => f.armes.length >= 2);
 const [presente, nouvelle] = famille.armes;
@@ -38,12 +38,15 @@ const MODELES_REDUITS = {
 };
 
 /**
- * La page : le menu de la famille (son onglet, son tableau avec une arme), les outils, les modèles d'une famille créée (`modeles`) ; rend la famille, son
- * onglet, sa barre, son menu et l'extension.
+ * La page : le menu de la famille (son onglet, son tableau avec une arme, puis, avec `elementaires`, ses deux premières armes élémentaires : R167), les
+ * outils, les modèles d'une famille créée (`modeles`) ; rend la famille, son onglet, sa barre, son menu et l'extension.
  */
-async function charger({ modeles = MODELES_REDUITS } = {}) {
+async function charger({ modeles = MODELES_REDUITS, elementaires = false } = {}) {
   const tbody = el('tbody', {});
   tbody.insertAdjacentHTML('beforeend', htmlDeLigneDArme(presente, contexte));
+  if (elementaires) {
+    for (const ae of famille.armes_elementaires.slice(0, 2)) tbody.insertAdjacentHTML('beforeend', htmlDeLigneDArmeElementaire(ae, { type: famille.type_elementaire, solidite }, contexte));
+  }
   const panneau = el('section', { class: 'tableau armes-famille is-active', id: `famille-${famille.id}` },
     el('h4', { class: 'armes-famille__titre' }, el('span', { class: 'armes-famille__compte' }, '1 arme')), el('table', {}, tbody));
   const onglet = el('a', { class: 'onglet is-active', id: `onglet-famille-${famille.id}`, href: `#famille-${famille.id}` },
@@ -252,4 +255,25 @@ test('fin() retire les boutons « + Nouvelle famille » et « + Ajouter une arme
   p.extension.fin(ed);
   assert.equal(p.racine.querySelectorAll('.armes-nouvelle-famille').length, 0);
   assert.equal(p.racine.querySelectorAll('.ed-outils-armes').length, 0);
+});
+
+test('R167 : les armes élémentaires en lecture — ni bouton Supprimer ni champ ; une arme créée prend place avant elles, à la fin des armes du catalogue', async () => {
+  const p = await charger({ elementaires: true });
+  const ed = fauxEditeur(nouvelle);
+  p.extension.debut(ed);
+  const elementaires = p.panneau.querySelectorAll('tbody tr.arme--elementaire');
+  assert.equal(elementaires.length, 2);
+  assert.ok(elementaires.every((tr) => !tr.querySelector('.ed-supprimer')), 'aucun bouton Supprimer');
+  assert.ok(elementaires.every((tr) => !tr.querySelector('[data-ed]')), 'aucun champ');
+  assert.ok(p.panneau.querySelector(`tr.arme[data-arme="${presente.id}"] .ed-supprimer`), 'une arme du catalogue garde son bouton');
+  cliquer(p.racine.querySelectorAll('.ed-outils-armes button').find((b) => b.textContent === '+ Ajouter une arme'));
+  await ed.dernierFormulaire.valider({});
+  assert.deepEqual(p.panneau.querySelectorAll('tbody tr.arme').map((tr) => tr.dataset.arme),
+    [presente.id, nouvelle.id, ...famille.armes_elementaires.slice(0, 2).map((ae) => ae.id)], 'avant les armes élémentaires');
+  // la ligne des effets de l'arme créée la suit, avant la première arme élémentaire
+  const nouvelleLigne = p.panneau.querySelector(`tr.arme[data-arme="${nouvelle.id}"]`);
+  assert.ok(nouvelleLigne.nextElementSibling.classList.contains('arme-suite'));
+  assert.ok(nouvelleLigne.nextElementSibling.nextElementSibling.classList.contains('arme--elementaire'));
+  assert.deepEqual(p.comptes(), ['4 armes', '4 armes'], 'toutes les lignes du tableau, élémentaires comprises');
+  p.extension.fin(ed);
 });

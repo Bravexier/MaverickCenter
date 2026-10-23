@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 80 : 198 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 81 : 201 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -18,7 +18,7 @@
 - [7. RACES, ETHNIES, ACCESSIBILITÉS (famille « races »)](#7-races-ethnies-accessibilités-famille--races) : `race`, `race_restriction_carac`, `ethnie`, `ethnie_resistance`, `race_classe`, `race_magie`, `race_onglet`, `race_don`, `race_don_tableau_colonne`, `race_don_tableau_ligne`, `race_don_tableau_cellule`, `race_magie_onglet`, `echelle_relation`, `peuple`, `relation_peuple`
 - [8. BESTIAIRE : invocations et créatures (famille « bestiaire »)](#8-bestiaire--invocations-et-créatures-famille--bestiaire) : `invocation`, `invocation_capacite_commune`, `invocation_resistance`, `invocation_bloc`, `invocation_bloc_magie`, `creature`, `creature_ressource`, `creature_caracteristique`, `creature_bonus_npm`, `creature_attaque`, `creature_attaque_type`, `creature_capacite`, `creature_capacite_sort`, `creature_capacite_resistance`, `creature_effet`
 - [8 bis. BESTIAIRE 2.0 : monstres, butin, échelles de puissance (famille « monstres »)](#8-bis-bestiaire-20--monstres-butin-échelles-de-puissance-famille--monstres) : `monstre_regle`, `monstre_echelle`, `monstre_butin_objet`, `monstre_groupe`, `monstre_espece`, `monstre_espece_lieu`, `monstre_espece_bloc`, `monstre_butin`, `monstre`, `monstre_rubrique`, `monstre_caracteristique`, `monstre_attaque`, `monstre_capacite_commune`, `monstre_capacite`, `monstre_capacite_valeur`, `monstre_defense`
-- [9. ÉQUIPEMENT, RESSOURCES, CRAFT, MÉTIERS (familles « equipement », « craft », « docs_typees »)](#9-équipement-ressources-craft-métiers-familles--equipement---craft---docstypees) : `monnaie`, `constante_equipement`, `niveau_alchimie`, `affinite`, `arme_famille`, `arme_type`, `ressource`, `materiau_arme`, `materiau_armure`, `materiau_bouclier`, `materiau`, `gemme`, `bois`, `ingredient_alchimie`, `potion`, `potion_etat`, `kit_alchimie`, `fiole_verre`, `recette`, `recette_produit`, `recette_ingredient`, `baton_magique`, `metier`, `metier_bonus`, `metier_recette_famille`, `metier_objet_depart`, `arme`, `arme_degats`, `arme_prerequis`, `arme_elementaire`, `armure_emplacement`, `armure`, `armure_degats`, `armure_elementaire`, `armure_elementaire_effet`, `bouclier_classe`, `bouclier_poids`, `bouclier`, `amelioration_equipement`, `amelioration_total`, `accessoire_emplacement`, `accessoire_propriete`, `accessoire_effet`, `accessoire_effet_gemme`, `accessoire_effet_cible`, `accessoire_monture`, `familier`, `familier_effet`, `batiment`, `machine_guerre`, `maladie`, `maladie_methode`
+- [9. ÉQUIPEMENT, RESSOURCES, CRAFT, MÉTIERS (familles « equipement », « craft », « docs_typees »)](#9-équipement-ressources-craft-métiers-familles--equipement---craft---docstypees) : `monnaie`, `constante_equipement`, `niveau_alchimie`, `affinite`, `arme_famille`, `arme_type`, `ressource`, `materiau_arme`, `materiau_armure`, `materiau_bouclier`, `materiau`, `gemme`, `bois`, `ingredient_alchimie`, `potion`, `potion_etat`, `kit_alchimie`, `fiole_verre`, `recette`, `recette_produit`, `recette_ingredient`, `baton_magique`, `metier`, `metier_bonus`, `metier_recette_famille`, `metier_objet_depart`, `arme`, `arme_degats`, `arme_prerequis`, `arme_elementaire`, `arme_elementaire_type`, `arme_elementaire_type_competence`, `arme_elementaire_type_degats`, `armure_emplacement`, `armure`, `armure_degats`, `armure_elementaire`, `armure_elementaire_effet`, `bouclier_classe`, `bouclier_poids`, `bouclier`, `amelioration_equipement`, `amelioration_total`, `accessoire_emplacement`, `accessoire_propriete`, `accessoire_effet`, `accessoire_effet_gemme`, `accessoire_effet_cible`, `accessoire_monture`, `familier`, `familier_effet`, `batiment`, `machine_guerre`, `maladie`, `maladie_methode`
 - [10. TRANSVERSAL : notes de cellule et écarts entre sources](#10-transversal--notes-de-cellule-et-écarts-entre-sources) : `note_cellule`, `ecart_source`, `correction`
 - [11. TABLES DÉRIVÉES (jamais exportées dans data/rows/, recalculées par `npm run db:build`)](#11-tables-dérivées-jamais-exportées-dans-datarows-recalculées-par-npm-run-dbbuild) : `lien`, `lien_candidat`, `page_fts`, `entite_fts`
 - [12. VUES (toujours à jour : rien à recalculer)](#12-vues-toujours-à-jour--rien-à-recalculer) : `cle_page`, `lien_page`, `lien_a_creer`, `v_mot_cle`, `v_magie_incompatible`, `v_sort_bonus_au_nm`, `v_race_carac_borne`, `v_race_classe_accessible`, `v_race_magie_accessible`, `v_regard_peuple`, `v_creature_magie`, `v_creature_resistance`, `v_creature_sort`, `v_creature_cout_invocation`, `v_creature_meme_bloc`, `v_arme`, `v_ingredient_possible`, `v_ressource_recette`, `v_metier_recette`, `v_potion`, `v_objet_ceinture`, `v_arme_composee`, `v_armure_piece`, `v_niveau`, `v_competence`, `v_resistance_combinaison`, `v_mode_hyper_lectures`, `v_classe_capacite`, `v_capacite_exclusive`, `v_capacite_partagee`
@@ -1902,6 +1902,7 @@ Familles d'armes = bandeaux de l'onglet « Armes » (12 : ÉPÉES - D10, DAGUES 
 | `maitrisable` | INTEGER | oui |  | 1 = une maîtrise d'arme peut s'y mettre (personnage_maitrise_choix) ; 0 = ARME DE MONSTRES : des armes exclusives aux monstres, pas de maîtrise (décision R45 du propriétaire, migration 0030) |
 | `categorie` | TEXT | non |  | R127 (migration 0069) : 'distance' = ARC, ARBALÈTE, ARME DE JET, BOMBES ; 'contact' = les 7 autres familles maîtrisables (ÉPÉES, DAGUES, MASSE/MARTEAU, HACHE, LANCE/ARME D'HAST, PUGILAT, BÂTON DE COMBAT) ; NULL = ARME DE MONSTRES (maitrisable = 0) : la décision ne classe que les familles maîtrisables, et le bandeau renvoie chaque arme à sa propre catégorie (« Se référer à la catégorie d'arme ») ; le CHECK garantit « classée ⇒ maîtrisable », l'inverse est tenu par la garde de 0069 et par client/test/fiche-arme-choisie.test.mjs (pas de CHECK possible par ADD COLUMN) |
 | `nom_lecture` | TEXT | non |  | R159 (migration 0077) : nom de lecture, figé ; le `nom` du bandeau à l'import (les 12 familles), ou à la création sur le site de dev (une famille créée reçoit son nom de création), jamais modifié ensuite, même quand le site renomme la famille ; client/src/lib/maitrise-arme.mjs le lit en plus de `nom` pour que les « sauf » et les lignes nommées (« 1 maîtrise Épée », « (sauf épée) » : R138, R151) désignent toujours la même famille ; jamais NULL ni vide : garde de 0077 et client/test/db-arme-famille-nom-lecture.test.mjs (pas de NOT NULL sans DEFAULT par ADD COLUMN) |
+| `type_elementaire_id` | TEXT | non | → arme_elementaire_type.type_id |  |
 
 ### `arme_type`
 
@@ -2313,7 +2314,7 @@ Minimums de caractéristique cités par l'effet : « 4 de Force minimum », « 3
 
 ### `arme_elementaire`
 
-Armes élémentaires (onglet Pièces élémentaires : 11 types d'armes x 14 éléments). La cellule contient 4 lignes : nom / « +8 Dégâts » / « Élément X » / capacité « Nom (mode) : texte ». Les 14 éléments sont les magies sauf le Potentiel Illimité, qui n'a ni élément propre ni pièce élémentaire (décision R160) : contrainte arme_elementaire_sans_potentiel_illimite, migration 0078.
+Armes élémentaires (onglet Pièces élémentaires : 11 types d'armes x 14 éléments). La cellule contient 4 lignes : nom / « +8 Dégâts » / « Élément X » / capacité « Nom (mode) : texte ». Les 14 éléments sont les magies sauf le Potentiel Illimité, qui n'a ni élément propre ni pièce élémentaire (décision R160) : contrainte arme_elementaire_sans_potentiel_illimite, migration 0078. Décision R167 (migration 0081) : une pièce élémentaire TRANSFORME l'arme, quels que soient son matériau, son amélioration et son état : elle devient l'arme élémentaire du type élémentaire de sa famille (arme_famille.type_elementaire_id : la famille sous laquelle l'arme est listée) et de la magie, et perd tout ce qu'elle avait (bonus propre, dé, portée, matériau, amélioration, effets) ; dé et portée de son type (arme_type), dégâts = dé + bonus_degats + l'effet de la ligne d'amélioration (amelioration_equipement, cible 'arme'), solidité = piece_elementaire.solidite_base de constante_equipement (4 crans, celle de toute pièce élémentaire) + bonus_cran de la ligne d'amélioration fondue des armes (rien au +1…+4, 1 au +5…+9, 2 au +10). Les armures élémentaires relèvent de la décision R165 (migration 0080) et de leur propre tableau d'amélioration.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -2332,6 +2333,42 @@ Armes élémentaires (onglet Pièces élémentaires : 11 types d'armes x 14 él�
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
 | `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
+
+### `arme_elementaire_type`
+
+Types élémentaires (décision R167, migration 0081) : les 11 types d'arme qui ont des armes élémentaires, un par en-tête de l'onglet Pièces élémentaires (colonne Q, lignes 8 à 78 : « ÉPÉE », « ARBALETE⏎(Portée : 2-10, ignore 4 AP) », « ARME DE JET⏎(Ces armes sont que en un exemplaire… ») ; les deux types mixtes (« Arme d'Hast/Bâton », « Masse/Hache ») n'en ont pas. Ce que l'en-tête écrit pour toutes les armes élémentaires du type, en colonnes typées (la page des armes et la fiche les lisent sans relire le texte) ; les portées des en-têtes sont celles d'arme_type, rien d'autre n'en est tiré.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `type_id` | TEXT | oui | PK, → arme_type.id |  |
+| `entete_brut` | TEXT | oui |  | l'en-tête tel qu'écrit (« que en », « revienne » de la source gardés) |
+| `ignore_ap` | INTEGER | non |  | « ignore N AP » de l'en-tête (Arbalète, Q64 : 4), comme arme.ignore_ap ; NULL sinon |
+| `exemplaire_unique` | INTEGER | oui |  | 1 : « Ces armes sont que en un exemplaire » (Arme de jet Q71, Bombe Q78 ; R167 : en un seul exemplaire, sans coût à l'unité) ; 0 : l'en-tête ne le dit pas |
+| `mention` | TEXT | non |  | la mention de l'en-tête que la page des armes affiche, dans la forme de la page « Pièces élémentaires » (orthographe corrigée par la migration 0005) : « Ces armes sont qu'en un exemplaire et reviennent toujours dans la main du lanceur (sauf EC) » (Arme de jet, Bombe) ; rien n'en est calculé ; NULL sinon |
+| `ordre` | INTEGER | oui | unique | rang de l'en-tête, de haut en bas |
+| `origine` | TEXT | oui | → famille.id |  |
+| `source_ref` | TEXT | oui |  | « Ressources et Craft › Pièces élémentaires › Q64 » |
+| `type_degats_au_choix` | INTEGER | oui |  |  |
+
+### `arme_elementaire_type_competence`
+
+Compétence d'une arme élémentaire, au choix du porteur parmi celles de son type (décision R167 : « l'arme s'adapte au porteur » ; réponse du propriétaire, migration 0081 : « Mêlée / arme de jets / bombes => Légère / Lourde Arc => Arc / Légère Arbalète => Arbalète ») : les 7 types de mêlée, l'arme de jet et la bombe, Arme légère ou Arme lourde ; l'arc, Arc ou Arme légère ; l'arbalète, Arbalète seule. Une ligne par compétence possible ; rien n'est lu dans arme.competence_brut de l'arme d'origine (elle perd tout).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `type_id` | TEXT | oui | PK 1, → arme_elementaire_type.type_id |  |
+| `competence_id` | TEXT | oui | PK 2, → competence.id |  |
+
+### `arme_elementaire_type_degats`
+
+Type physique d'une arme élémentaire (décision R167 : « Les deux. Exactement pour les sorts de "Fer". Estoc + Feu pour un arc de feu par exemple. » : le type physique de sa famille et celui de sa magie, arme_elementaire.magie_id, qui n'est pas ici). Le type physique de chaque type élémentaire est le plus fréquent dans les armes de sa famille (arme_degats ; réponse du propriétaire au choix « Le plus fréquent » : « Épée = Taille, Dague = Estoc+Taille, Masse = Frappe, Hache = Taille, Lance = Estoc, Pugilat = Frappe, Arme de jet = Estoc » ; Bâton de combat Frappe, Arc et Arbalète Estoc, le seul de leurs armes ; Bombe : « Au choix »), posé par la décision, jamais recalculé depuis arme_degats. Une ligne par type physique possible ; s'appliquent-ils tous (Dague) ou le porteur en choisit-il un (Bombe) : arme_elementaire_type.type_degats_au_choix.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `type_id` | TEXT | oui | PK 1, → arme_elementaire_type.type_id |  |
+| `type_degats` | TEXT | oui | PK 2 | comme arme_degats.type_degats |
+| `origine` | TEXT | oui | → famille.id |  |
+| `source_ref` | TEXT | oui |  | « Décision R167 du propriétaire (2026-10-23) » |
 
 ### `armure_emplacement`
 
@@ -2472,14 +2509,14 @@ Boucliers préfabriqués (100 : 5 classes x 20 matériaux). Le poids de chacun e
 
 ### `amelioration_equipement`
 
-Améliorations (+1 à +10) : armes (Armes), armures (Armures), boucliers (Bouclier), armes et armures élémentaires (Pièces élémentaires). Les coûts sont écrits « 20 RO », « 1 Matériel + 50 RO », « 100 + 1 Matériau », « 100.0 », « 2 gemmes communes », « 1 pièce élémentaire », les effets « +2 dégâts », « +10 dégâts, +1 cran de solidité », « +4 AP/AM », « +2 AP, +1 cran de solidité ».
+Améliorations (+1 à +10) : armes (Armes et Pièces élémentaires), armures (Armures), boucliers (Bouclier), armures élémentaires (Pièces élémentaires). Les coûts sont écrits « 20 RO », « 1 Matériel + 50 RO », « 100 + 1 Matériau », « 100.0 », « 2 gemmes communes », « 1 pièce élémentaire », les effets « +2 dégâts », « +10 dégâts, +1 cran de solidité », « +4 AP/AM », « +2 AP, +1 cran de solidité ». Armes : UN tableau pour l'arme du catalogue et l'arme élémentaire (décision R167, migration 0081 : « il faudrai mélanger les deux tableaux d'amélioration (dans la DB uniquement) pour avoir "Niveau|Coût matériel|Coût élémentaire| effet" ») : une ligne par niveau, de cible 'arme', qui garde l'id de la ligne de l'onglet Armes ; son coût matériel (cout_brut, cout_ro, cout_materiaux : Armes › O35:T53), son coût élémentaire (cout_elementaire_brut, cout_gemmes, cout_gemmes_qualite, cout_pieces_elementaires : Pièces élémentaires › A60:F78, les deux plages dans source_ref) et son effet, le même dans les deux tableaux niveau par niveau (dégâts, crans ; épinglé par client/test/db-armes-elementaires.test.mjs). R167 : le coût est cumulatif (du 0 au +N, les lignes 1 à N), l'effet est celui de la ligne ; les gemmes sont celles de la magie de l'arme élémentaire (gemme.magie_id). Les dix lignes 'arme_elementaire' (ids '…/pieces-elementaires#amelioration:arme-elementaire:N') sont fondues ici.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
 | `id` | TEXT | oui | PK | '<page>#amelioration:<cible>:<niveau>' |
 | `cible` | TEXT | oui |  |  |
 | `niveau` | INTEGER | oui |  |  |
-| `cout_brut` | TEXT | oui |  |  |
+| `cout_brut` | TEXT | oui |  | le coût écrit ; d'une arme : le coût matériel (« 1 Matériel + 50 RO ») |
 | `cout_ro` | INTEGER | non |  | montant en RO écrit dans le coût ; NULL si le coût n'en contient pas |
 | `cout_materiaux` | INTEGER | non |  | nombre de « Matériel(s) » / « Matériau(x) » |
 | `cout_gemmes` | INTEGER | non |  |  |
@@ -2494,10 +2531,11 @@ Améliorations (+1 à +10) : armes (Armes), armures (Armures), boucliers (Boucli
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
 | `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
+| `cout_elementaire_brut` | TEXT | non |  | d'une arme (et d'elle seule) : le coût élémentaire tel qu'écrit dans l'onglet Pièces élémentaires (« 2 gemmes communes », « 1 pièce élémentaire ») |
 
 ### `amelioration_total`
 
-Ligne « TOTAL » de chaque tableau d'améliorations, telle qu'écrite (« 5 matériaux + 1520 RO ») ; celui des armures élémentaires est vide dans la source.
+Ligne « TOTAL » de chaque tableau d'améliorations, telle qu'écrite (« 5 matériaux + 1520 RO ») ; celui des armures élémentaires est vide dans la source. Armes (R167, migration 0081) : 'arme' est le total du coût matériel des lignes de cible 'arme' (Armes › P55:T55) ; 'arme_elementaire' celui de leur coût élémentaire (Pièces élémentaires › B80:F80, « 6 communes + 6 raffinées + 6 parfaites + 1 pièce élémentaire » : le contrôle du coût cumulatif).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -3503,19 +3541,19 @@ Dons de classe choisis (lignes « CLASSE 1 » / « CLASSE 2 », C43:L67) : seule
 
 ### `personnage_arme`
 
-« ARMES » (AA9:AY18) : deux emplacements, chacun une arme du catalogue, sa composition (matériau), ses améliorations et son élément.
+« ARMES » (AA9:AY18) : deux emplacements. Un seul modèle d'arme (décision R167, migration 0081, qui reconstruit la table) : une ligne porte SOIT une arme du catalogue (arme_id, avec sa composition), SOIT une arme élémentaire (arme_elementaire_id, sans matériau : une pièce élémentaire transforme l'arme, qui perd tout ce qu'elle avait), et UN seul niveau d'amélioration (amelioration_id, cible 'arme' : le tableau fondu de R167), qui ne sert dans la fiche qu'aux dégâts et à la solidité. Avant 0081, l'élément (arme_elementaire_id) se posait sur une arme du catalogue, avec sa propre amélioration (amelioration_elementaire_id, cible 'arme_elementaire') : la base vivante convertit ses fiches à sa reconstruction (serveur/base-vivante.mjs : la ligne refusée, LIGNES_ECARTEES, et la colonne retirée, COLONNES_CONVERTIES, réécrites par serveur/base-vivante.mjs#convertirLesArmesDAvant). Les cases de la fiche auto V15.2.2 (client/src/lib/fiche-tableur-cases.mjs) : arme 1 Nom AA10, Composition AE10, Amélioration AI13, Élément AI17 ; arme 2 AN10, AR10, AV13, AV17.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
 | `personnage_id` | TEXT | oui | PK 1, → personnage.id |  |
 | `rang` | INTEGER | oui | PK 2 | arme 1 (AA10) ou 2 (AN10) |
-| `arme_id` | TEXT | oui | → arme.id |  |
-| `materiau_id` | TEXT | non | → materiau_arme.ressource_id | « Composition » (AE10) |
-| `amelioration_id` | TEXT | non | → amelioration_equipement.id | « Amélioration » (AI13) : cible 'arme' |
-| `arme_elementaire_id` | TEXT | non | → arme_elementaire.id | « Elément » (AI16) |
-| `amelioration_elementaire_id` | TEXT | non | → amelioration_equipement.id | amélioration de la pièce élémentaire (AI18) : cible 'arme_elementaire' |
+| `arme_id` | TEXT | non | → arme.id | arme du catalogue (« Nom » AA10) ; NULL pour une arme élémentaire |
+| `materiau_id` | TEXT | non | → materiau_arme.ressource_id | « Composition » (AE10) : d'une arme du catalogue seulement |
+| `amelioration_id` | TEXT | non | → amelioration_equipement.id | « Amélioration » (AI13) : le niveau, cible 'arme', pour l'une ou l'autre arme |
+| `arme_elementaire_id` | TEXT | non | → arme_elementaire.id | l'arme élémentaire (« Élément » AI17 de la fiche auto) ; NULL pour une arme du catalogue |
 | `effet_en_plus` | TEXT | non |  | « Effet en plus » (AA12), texte libre |
 | `durabilite` | INTEGER | non |  |  |
+| `type_degats_choisi` | TEXT | non |  |  |
 
 ### `personnage_armure_partie`
 
@@ -3691,7 +3729,7 @@ Contrôle des inscriptions dans les groupes : une ligne par anomalie (vide = con
 
 *vue*
 
-Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi. Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45, R73, R95, R96, R100, R104, R118, les maîtrises d'armes de R148 à R151, R154, et l'armure de R165) ; ce qui demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité, poids d'armure portable de R165) n'est pas ici. Toute fiche est contrôlée, même inachevée : il n'y a plus de statut (demande du propriétaire, migration 0038) ; une ligne signale, elle n'empêche pas d'enregistrer.
+Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi. Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45, R73, R95, R96, R100, R104, R118, les maîtrises d'armes de R148 à R151, R154, l'armure de R165 et les armes élémentaires de R167) ; ce qui demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité, poids d'armure portable de R165) n'est pas ici. Toute fiche est contrôlée, même inachevée : il n'y a plus de statut (demande du propriétaire, migration 0038) ; une ligne signale, elle n'empêche pas d'enregistrer.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |

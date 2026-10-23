@@ -748,7 +748,10 @@ test('aucune couleur écrite dans les fichiers des lots faits (ni dans les règl
     // lot des matériaux, des armes de départ, des types d'armure et des poids des boucliers
     'src/styles/armes/armes.css .materiau', 'src/styles/armes/armes.css .arme-fiche__materiau', 'src/styles/armes/armes.css .armes',
     'src/styles/armes/armes.css .armes__phrase-depart', 'src/styles/armes/armes.css .arme--depart > .arme__nom, .arme--depart + .arme-suite > .arme-suite__marge',
-    'src/styles/armes/armes.css .arme-dgt--frappe', 'src/styles/armures/armures.css .pmat__nom', 'src/styles/armures/armures.css .ptype, .pmat-pastille, .ppoids',
+    'src/styles/armes/armes.css .arme-dgt--frappe',
+    // les armes élémentaires (R167) : leurs lignes sur le fond de leur magie, sa pastille dans la fiche de l'arme
+    'src/styles/armes/armes.css .arme--elementaire > *, .arme-suite--elementaire > *', 'src/styles/armes/armes.css .arme-fiche__magie',
+    'src/styles/armures/armures.css .pmat__nom', 'src/styles/armures/armures.css .ptype, .pmat-pastille, .ppoids',
     'src/styles/armures/armures.css .poids__nom', 'src/styles/armures/armures.css .pdef__ap', 'src/styles/armures/armures.css .pdef__am',
     'src/styles/armures/armures.css .pdgt--frappe', 'src/styles/composants/composants.css .comp-teinte', 'src/styles/equipement/equipement.css .arme-dgt--taille, .pdgt--taille',
     'src/styles/equipement/equipement.css .arme-fiche, .pfiche', "src/styles/fiche/fiche.css .bouclier__tuile[data-poids]",
@@ -890,6 +893,9 @@ test('les feuilles des matériaux, des armes, des armures et des boucliers lisen
   dans('src/styles/armes/armes.css', '.materiau', `--ligne-fond: var(${fond}); --ligne-texte: var(${texte});`);
   dans('src/styles/armes/armes.css', '.arme-fiche__materiau', `background: var(${fond}); color: var(${texte});`);
   dans('src/styles/armes/armes.css', '.armes', `--depart: var(${fond});`);
+  // les armes élémentaires (R167) : leurs deux lignes et la pastille de leur magie dans la fiche, la classe de la magie (couleur-magie-<id>)
+  dans('src/styles/armes/armes.css', '.arme--elementaire > *, .arme-suite--elementaire > *', `background: var(${fond}); color: var(${texte});`);
+  dans('src/styles/armes/armes.css', '.arme-fiche__magie', `background: var(${fond}); color: var(${texte});`);
   // le bleu des armes de départ (famille sans texte : FAMILLES_SANS_TEXTE) : aucune règle qui le lit ne pose le texte de sa classe, et la classe posée sur
   // `.armes` ne s'hérite pas sous lui (un élément n'a de --couleur que par sa propre classe)
   const armesCss = lire('src/styles/armes/armes.css').replace(/\/\*[\s\S]*?\*\//g, '');

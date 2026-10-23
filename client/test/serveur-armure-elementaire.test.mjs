@@ -6,19 +6,20 @@
 // calcul par défaut, lu dans la base : test/serveur-poids-portable.test.mjs).
 // Tout s'écrit dans des copies de la base construite depuis data/rows.
 import assert from 'node:assert/strict';
-import { copyFileSync, readFileSync } from 'node:fs';
+import { copyFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { enregistrerFiche, lireFiche } from '../serveur/fiches.mjs';
 import { noterLesRetraits, nouveauxRetraitsDeFiches, retirerLesArmuresHorsRegle } from '../serveur/fiches-retraits.mjs';
-import { cheminBase, trouverRacine } from '../src/lib/donnees.mjs';
+import { cheminBase } from '../src/lib/donnees.mjs';
 import {
   armureTransformee, COLONNES_DE_L_ARMURE_DE_BASE, COLONNES_DE_L_ARMURE_ELEMENTAIRE, descriptionDuRetrait, deuxArmures, EMPLACEMENTS_D_ARMURE, ligneDeRetrait,
   NATURES_DE_L_ARMURE, ORDRE_DES_NATURES, partiesEnTexte, POIDS_DES_ARMURES, POIDS_PORTABLE_MAX, retraitsDesNotes, sansPartiesRetirees, TYPE_FAMILIER, valeurDuPoids,
 } from '../src/lib/fiche-format.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { rejouerLaMigration } from './aide-migration-rejouee.mjs';
 
 const dossier = dossierTemporaire('r165-service');
 const REGLES = cheminBase({ sansExemples: false });
@@ -139,7 +140,8 @@ test('R165 : retirerLesArmuresHorsRegle fait ce que fait la migration 0080, aux 
   const parLaMigration = nouvelleCopie('migration.db');
   fichesDAvant(parLaMigration);
   parLaMigration.prepare("DELETE FROM constante_equipement WHERE id = 'piece_elementaire.solidite_base'").run();
-  parLaMigration.exec(readFileSync(join(trouverRacine(), 'data', 'migrations', '0080-armure-elementaire-de-la-fiche.sql'), 'utf8'));
+  // puis ses vues comme les définit data/schema.sql (test/aide-migration-rejouee.mjs : la vue de 0080 lisait une colonne retirée par 0081)
+  rejouerLaMigration(parLaMigration, '0080-armure-elementaire-de-la-fiche.sql');
   // le service, sur une autre copie
   const parLeService = nouvelleCopie('service.db');
   fichesDAvant(parLeService);
@@ -159,6 +161,7 @@ test('R165 : retirerLesArmuresHorsRegle fait ce que fait la migration 0080, aux 
     assert.equal(sansDate(etat(parLeService, 'sans-magie').notes), `[date] Retrait (règles modifiées) : l’armure élémentaire « ${nom('armure_elementaire', EL_FEU)} » `
       + '(amélioration +1, solidité Torse 2) n’est plus portée : le personnage n’a pas la magie de cette armure (Feu). Adaptez la fiche.');
     assert.deepEqual(parLeService.prepare("SELECT personnage_id FROM v_personnage_controle WHERE regle LIKE 'armure%' OR regle = 'amelioration_cible'").all(), []);
+    assert.deepEqual(parLaMigration.prepare("SELECT personnage_id FROM v_personnage_controle WHERE regle LIKE 'armure%' OR regle = 'amelioration_cible'").all(), []);
     // idempotente : une seconde passe ne fait rien
     assert.equal(retirerLesArmuresHorsRegle(parLeService, nouveauxRetraitsDeFiches()).size, 0);
   } finally {

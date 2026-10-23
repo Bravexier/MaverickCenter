@@ -399,8 +399,10 @@ const adresseDeLaListe = (vue, parentSegment = null) =>
 function lignesDe(db, vue, filtres = {}, lues = null, autres = { morceaux: [], valeurs: [] }) {
   const ou = [...autres.morceaux];
   const valeurs = [...autres.valeurs];
-  if (!vue.enfant) {
-    const c = conditionSql(vue, vue.ressource.condition);
+  // la condition d'une ressource ; celle d'une dérivée (lib/ressources.mjs : les deux lignes TOTAL des améliorations d'arme, décision R167)
+  const condition = vue.enfant ? vue.enfant.condition : vue.ressource.condition;
+  if (condition) {
+    const c = conditionSql(vue, condition);
     ou.push(...c.morceaux);
     valeurs.push(...c.valeurs);
   }
@@ -745,7 +747,7 @@ function ressourceDecrite(db, r, { lesListes, exemples }) {
         ...(exemples ? { exemple: exempleDEnfant(db, vue, ve) } : {}),
       };
     }),
-    derivees: (r.derivees ?? []).map((d) => ({ table: d.table, parent: d.parent })),
+    derivees: (r.derivees ?? []).map((d) => ({ table: d.table, parent: d.parent, ...(d.condition ? { condition: d.condition } : {}) })),
     lignes: nombreDeLignes(db, vue),
     ...(exemples ? { exemple: exempleDe(db, vue) } : {}),
   };

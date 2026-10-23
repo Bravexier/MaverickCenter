@@ -1,5 +1,5 @@
 ---
-import { htmlDeLigneDArme } from '../../lib/armes-rendu.mjs';
+import { htmlDeLigneDArme, htmlDeLigneDArmeElementaire } from '../../lib/armes-rendu.mjs';
 import type { chargerArmes, contexteDesArmes } from '../../lib/armes-db.mjs';
 import { attributEd } from '../../lib/edition-modele.mjs';
 import { infobulleDuDeDeFamille } from '../../lib/armes-de-famille.mjs';
@@ -27,6 +27,10 @@ import Tableau from '../Tableau.astro';
 // l'infobulle « Arme de départ ». Cliquer une arme la sélectionne : sa fiche s'ouvre à côté (src/scripts/armes.mjs).
 // La ligne d'une arme est le HTML de lib/armes-rendu.mjs#htmlDeLigneDArme (celui que le mode modification pose pour une arme créée), ses cellules les
 // rendus que le mode modification réécrit après un enregistrement.
+// Les armes élémentaires de la famille (décision R167 : « les armes élémentaires sont listées directement dans le tableau de leur famille » ; les 14, une
+// par magie, sans le Potentiel Illimité) suivent les armes du catalogue, dans l'ordre de arme_elementaire.ordre, chacune sur le fond de sa magie
+// (lib/armes-rendu.mjs#htmlDeLigneDArmeElementaire ; place choisie par l'équipe, la question étant restée sans réponse) ; en lecture sur le site de dev.
+// Le compte du tableau (et de l'onglet) compte toutes ses lignes, élémentaires comprises.
 // Mode modification (site de dev) : chaque champ porte son `data-ed` ; les colonnes tirées de l'effet sont en lecture (`data-ed-lecture`, recalculées
 // par le service) ; cinq colonnes n'apparaissent qu'en mode modification (classe `ed-seul`) : Description, Coût, Effet (le texte de l'onglet, d'où
 // les colonnes tirées viennent), Arme de départ, Remarque (l'étoile ★ à côté du nom ; vidée, l'étoile part).
@@ -36,9 +40,12 @@ interface Props {
   contexte: ReturnType<typeof contexteDesArmes>;
   /** l'onglet ouvert au départ dans son menu */
   actif?: boolean;
+  /** la solidité de base d'une arme élémentaire (chargerArmes().solidite_elementaire, R167) */
+  soliditeElementaire?: number | null;
 }
-const { famille, contexte, actif = false } = Astro.props;
+const { famille, contexte, actif = false, soliditeElementaire = null } = Astro.props;
 const id = `famille-${famille.id}`;
+const n = famille.armes.length + famille.armes_elementaires.length;
 const unite = famille.cout_libelle.includes('(unité)');
 const ed = (colonne: string) => attributEd('arme_famille', { id: famille.id }, colonne);
 ---
@@ -46,7 +53,7 @@ const ed = (colonne: string) => attributEd('arme_famille', { id: famille.id }, c
 <Tableau
   id={id}
   titre={famille.nom}
-  compte={`${famille.armes.length} arme${famille.armes.length > 1 ? 's' : ''}`}
+  compte={`${n} arme${n > 1 ? 's' : ''}`}
   note={famille.note_brut ? famille.note_brut.split('\n').join(' · ') : null}
   repliable={false}
   niveau={4}
@@ -76,5 +83,6 @@ const ed = (colonne: string) => attributEd('arme_famille', { id: famille.id }, c
   </thead>
   <tbody>
     {famille.armes.map((a) => <Fragment set:html={htmlDeLigneDArme(a, contexte)} />)}
+    {famille.armes_elementaires.map((ae) => <Fragment set:html={htmlDeLigneDArmeElementaire(ae, { type: famille.type_elementaire, solidite: soliditeElementaire }, contexte)} />)}
   </tbody>
 </Tableau>

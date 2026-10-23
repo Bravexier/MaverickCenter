@@ -1,0 +1,22 @@
+-- data/rows/arme_elementaire_type_competence.sql : export déterministe, une instruction par ligne, triée par (type_id, competence_id). NE PAS ÉDITER À LA MAIN.
+INSERT INTO arme_elementaire_type_competence (type_id, competence_id) VALUES ('arbalete', 'arbalete');
+INSERT INTO arme_elementaire_type_competence (type_id, competence_id) VALUES ('arc', 'arc');
+INSERT INTO arme_elementaire_type_competence (type_id, competence_id) VALUES ('arc', 'arme-legere');
+INSERT INTO arme_elementaire_type_competence (type_id, competence_id) VALUES ('arme-de-jet', 'arme-legere');
+INSERT INTO arme_elementaire_type_competence (type_id, competence_id) VALUES ('arme-de-jet', 'arme-lourde');
+INSERT INTO arme_elementaire_type_competence (type_id, competence_id) VALUES ('arme-dhast', 'arme-legere');
+INSERT INTO arme_elementaire_type_competence (type_id, competence_id) VALUES ('arme-dhast', 'arme-lourde');
+INSERT INTO arme_elementaire_type_competence (type_id, competence_id) VALUES ('baton-de-combat', 'arme-legere');
+INSERT INTO arme_elementaire_type_competence (type_id, competence_id) VALUES ('baton-de-combat', 'arme-lourde');
+INSERT INTO arme_elementaire_type_competence (type_id, competence_id) VALUES ('bombe', 'arme-legere');
+INSERT INTO arme_elementaire_type_competence (type_id, competence_id) VALUES ('bombe', 'arme-lourde');
+INSERT INTO arme_elementaire_type_competence (type_id, competence_id) VALUES ('dague', 'arme-legere');
+INSERT INTO arme_elementaire_type_competence (type_id, competence_id) VALUES ('dague', 'arme-lourde');
+INSERT INTO arme_elementaire_type_competence (type_id, competence_id) VALUES ('epee', 'arme-legere');
+INSERT INTO arme_elementaire_type_competence (type_id, competence_id) VALUES ('epee', 'arme-lourde');
+INSERT INTO arme_elementaire_type_competence (type_id, competence_id) VALUES ('hache', 'arme-legere');
+INSERT INTO arme_elementaire_type_competence (type_id, competence_id) VALUES ('hache', 'arme-lourde');
+INSERT INTO arme_elementaire_type_competence (type_id, competence_id) VALUES ('masse', 'arme-legere');
+INSERT INTO arme_elementaire_type_competence (type_id, competence_id) VALUES ('masse', 'arme-lourde');
+INSERT INTO arme_elementaire_type_competence (type_id, competence_id) VALUES ('pugilat', 'arme-legere');
+INSERT INTO arme_elementaire_type_competence (type_id, competence_id) VALUES ('pugilat', 'arme-lourde');

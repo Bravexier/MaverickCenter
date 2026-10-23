@@ -99,6 +99,9 @@ function reglesDeLaBase(db) {
   constantes['arme.durabilite_min'] = DURABILITE_MIN;
   const soliditeDeBase = db.prepare("SELECT valeur FROM constante_equipement WHERE id = 'arme.solidite_base'").get();
   if (!soliditeDeBase) throw new Error('constante_equipement « arme.solidite_base » absente de la base');
+  // solidité d'une arme élémentaire (décision R167 : « Solidité : 4 crans + les crans de la ligne d'amélioration choisie » ; Pièces élémentaires › A3) :
+  // celle de toute pièce élémentaire, `piece_elementaire.solidite_base` (migration 0080, lue plus haut), que le moteur lit telle quelle ; la base n'a plus de
+  // constante propre aux armes (migration 0081)
 
   // gains de niveau (décision R73) : les points d'attributs et les bornes du dé de chaque niveau, et leurs cumuls (v_niveau), les mêmes que la règle
   // gains_niveau de v_personnage_controle : la plage à saisir se lit ici, jamais 15 × (N − 1) écrit dans le moteur
@@ -327,10 +330,13 @@ function reglesDeLaBase(db) {
   const rangDeCompetence = new Map(competences.map((k, i) => [k.id, i]));
   const ecrituresDesFamilles = parCle(lignes(db, 'SELECT famille_id, competence_brut FROM arme ORDER BY famille_id, ordre'), 'famille_id', (a) => a.competence_brut);
   // `nom_lecture` : le nom figé sous lequel la famille se lit aussi (décision R159, migration 0077) — par famillesAuChoix (les « sauf », R138) et par
-  // l'import du classeur (une fiche exportée avant un renommage écrit l'ancien nom)
-  const famillesDArmes = lignes(db, 'SELECT id, nom, nom_lecture, de_brut, note_brut, maitrisable, categorie FROM arme_famille ORDER BY ordre')
+  // l'import du classeur (une fiche exportée avant un renommage écrit l'ancien nom) ; `type_elementaire_id` : le type de l'arme élémentaire que devient
+  // une arme de la famille (arme_famille.type_elementaire_id, décision R167 : « la transformation suit la famille sous laquelle l'arme est listée » ; null
+  // pour ARME DE MONSTRES et pour une famille créée sur le site de dev)
+  const famillesDArmes = lignes(db, 'SELECT id, nom, nom_lecture, de_brut, note_brut, maitrisable, categorie, type_elementaire_id FROM arme_famille ORDER BY ordre')
     .map((f) => ({
       id: f.id, nom: f.nom, nom_lecture: f.nom_lecture, de: f.de_brut, de_selon_force: desSelonLaForce(f.note_brut), maitrisable: f.maitrisable === 1, categorie: f.categorie,
+      type_elementaire_id: f.type_elementaire_id,
       competences: [...new Set((ecrituresDesFamilles.get(f.id) ?? []).flatMap((e) => competencesDArme(e).map((k) => k.id)))]
         .sort((a, b) => rangDeCompetence.get(a) - rangDeCompetence.get(b)),
     }));
@@ -460,6 +466,10 @@ function reglesDeLaBase(db) {
       ...(attaques.has(s.id) ? { attaque: true } : {}),
       types: typesDesSorts.get(s.id) ?? [],
       ...(etiquettesDesSorts.has(s.id) ? { mots_cles: etiquettesDesSorts.get(s.id) } : {}),
+      // un sort « Fer » (décision R167 : « la fiche signale seulement quand le sort et l'arme élémentaire ne sont pas du même élément ») : reconnu à son
+      // étiquette « Sort fer » (sort_mot_cle 'sort-fer', migration 0079, décision R164 ; comme « Sort grenade », R114), jamais à son nom ; son élément est sa
+      // magie (`magie_id`)
+      ...(etiquettesDesSorts.get(s.id)?.includes('sort-fer') ? { fer: true } : {}),
     }));
 
   // Postures (sélecteur de la page, demande du propriétaire) : les six, dans l'ordre de la page « Postures », leur couleur et leurs effets du tableau de la fiche.
@@ -535,22 +545,56 @@ function reglesDeLaBase(db) {
           solidite: maitrisable === 1 ? durabiliteDeLArme({ solidite_fixee, solidite_delta }, soliditeDeBase.valeur) : null,
         }));
     })(),
-    // « tous les bonus se cumulent une fois l'arme forgée » (page « Armes ») : celui de la composition, de l'amélioration, de l'élément et de son amélioration ;
-    // de même les crans de solidité de la composition et de l'amélioration (`cran_solidite`, `bonus_cran` : décisions R51, R74)
+    // « tous les bonus se cumulent une fois l'arme forgée » (page « Armes ») : celui de la composition et de l'amélioration ; de même les crans de solidité
+    // de la composition et de l'amélioration (`cran_solidite`, `bonus_cran` : décisions R51, R74)
     materiaux_armes: lignes(db, 'SELECT ressource_id, bonus_degats, cran_solidite FROM materiau_arme ORDER BY ordre')
       .map((m) => ({ id: m.ressource_id, nom: nomDeRessource(m.ressource_id), bonus_degats: m.bonus_degats, cran_solidite: m.cran_solidite })),
     // le matériau d'une arme choisie, par défaut (décision R49 : « son matériau (par défaut le fer) ») : le fer du tableau des matériaux d'arme
     materiau_arme_defaut: db.prepare("SELECT m.ressource_id AS id FROM materiau_arme m JOIN ressource r ON r.id = m.ressource_id WHERE r.nom_cle = 'fer'").get()?.id ?? null,
     // `bonus_ap`, `bonus_am` : l'AP et l'AM d'une amélioration d'armure, d'armure élémentaire ou de bouclier, ceux du niveau choisi (décisions R76, R77)
     // et son coût, tel qu'écrit (`cout`) et en gemmes (cout_gemmes, cout_gemmes_qualite : « commune », « raffinee », « parfaite ») ou en pièces élémentaires
-    // (cout_pieces_elementaires) : le tableau d'amélioration des armures élémentaires (décision R165 (2) ; les gemmes sont celles de la magie, table gemme)
+    // (cout_pieces_elementaires) : le tableau d'amélioration des armures élémentaires (décision R165 (2) ; les gemmes sont celles de la magie, table gemme).
+    // Les armes : UN tableau (cible 'arme') pour l'arme du catalogue et l'arme élémentaire (décision R167, migration 0081 : « le niveau d'amélioration ne sert
+    // que pour les calculs de solidité et de dégâts qui sont les mêmes pour l'amélioration matérielle de l'arme de base et pour l'arme élémentaire ») : son
+    // `bonus_degats` et son `bonus_cran` au niveau choisi ; son coût (matériel ou élémentaire) ne sert pas à la fiche
     ameliorations: lignes(db, `SELECT id, cible, niveau, cout_brut, cout_gemmes, cout_gemmes_qualite, cout_pieces_elementaires, effet_brut, bonus_degats, bonus_ap,
                                       bonus_am, bonus_cran FROM amelioration_equipement ORDER BY cible, niveau`)
       .map((a) => ({
         id: a.id, cible: a.cible, niveau: a.niveau, effet: a.effet_brut, bonus_degats: a.bonus_degats, bonus_ap: a.bonus_ap, bonus_am: a.bonus_am, bonus_cran: a.bonus_cran,
         cout: a.cout_brut, cout_gemmes: a.cout_gemmes, cout_gemmes_qualite: a.cout_gemmes_qualite, cout_pieces_elementaires: a.cout_pieces_elementaires,
       })),
-    armes_elementaires: lignes(db, 'SELECT id, nom, magie_id, bonus_degats FROM arme_elementaire ORDER BY ordre'),
+    // Armes élémentaires (décision R167 : une pièce élémentaire TRANSFORME l'arme, qui devient l'arme élémentaire de sa famille et de la magie et perd tout
+    // ce qu'elle avait ; la fiche propose « les armes élémentaires de ses magies (innée et acquise, sans le Potentiel Illimité) », sur le fond de la magie) :
+    // dans l'ordre de l'onglet Pièces élémentaires (arme_elementaire.ordre), son type (`type_id`, regles.types_elementaires : dé, portée, compétences), sa
+    // magie et la classe de la palette de celle-ci (`classe`, comme regles.magies[].classe, jamais un hex), son bonus de dégâts (« +8 Dégâts » : dégâts = dé
+    // du type + bonus_degats + l'effet de la ligne d'amélioration, R167) et sa capacité telle qu'écrite (nom, mode, texte). Sa solidité :
+    // constantes['piece_elementaire.solidite_base'] + bonus_cran de la ligne d'amélioration fondue des armes (R167 ; les crans des armures ne s'en mêlent pas).
+    // Les clés de la liste d'avant (id, nom, magie_id, bonus_degats) restent.
+    armes_elementaires: lignes(db, `SELECT e.id, e.nom, e.type_id, e.magie_id, m.nom AS magie, e.bonus_degats, e.capacite_nom, e.capacite_mode, e.capacite_texte
+                                    FROM arme_elementaire e JOIN magie m ON m.id = e.magie_id ORDER BY e.ordre`)
+      .map(({ magie, ...e }) => ({ id: e.id, nom: e.nom, type_id: e.type_id, magie_id: e.magie_id, classe: classeDeMagie(magie), bonus_degats: e.bonus_degats,
+        capacite_nom: e.capacite_nom, capacite_mode: e.capacite_mode, capacite_texte: e.capacite_texte })),
+    // Types des armes élémentaires (arme_elementaire_type, décision R167 : « Dé et portée : ceux de son type », arme_type), dans l'ordre des en-têtes de
+    // l'onglet : le dé du type (`de`, null pour le Pugilat) et ses paliers selon la Force (`de_selon_force`, lib/maitrise-arme.mjs#desSelonLaForce sur
+    // arme_type.de_regle, comme regles.familles_armes[].de_selon_force) ; la portée du type (« N » ou « N - M », comme regles.armes[].portee) ; `ignore_ap`
+    // (« ignore 4 AP » de l'Arbalète, null sinon) ; `exemplaire_unique` (Arme de jet, Bombe : « en un seul exemplaire, sans coût à l'unité ») et sa `mention`
+    // telle qu'écrite ; `competences` : celles au choix du porteur (« l'arme s'adapte au porteur », arme_elementaire_type_competence), dans l'ordre de la
+    // table competence ; `types_degats` : ses types physiques (arme_elementaire_type_degats, décision R167 : « Les deux », le type physique de sa famille et
+    // celui de sa magie, `magie_id` de l'arme ; le plus fréquent de la famille), dans l'ordre alphabétique comme regles.armes[].types_degats ;
+    // `type_degats_au_choix` : vrai quand le porteur en choisit un seul (la Bombe, personnage_arme.type_degats_choisi), faux quand tous s'appliquent
+    types_elementaires: (() => {
+      const portee = (min, max) => porteeDeLArme({ portee_min: min, portee_max: max }).replace(/^(\d+)-(\d+)$/, '$1 - $2');
+      const competencesDuType = parCle(lignes(db, `SELECT c.type_id, c.competence_id FROM arme_elementaire_type_competence c JOIN competence k ON k.id = c.competence_id
+                                                   ORDER BY c.type_id, k.ordre`), 'type_id', (r) => r.competence_id);
+      const degatsDuType = parCle(lignes(db, 'SELECT type_id, type_degats FROM arme_elementaire_type_degats ORDER BY type_id, type_degats'), 'type_id', (r) => r.type_degats);
+      return lignes(db, `SELECT e.type_id, t.nom, t.de, t.de_regle, t.portee_min, t.portee_max, e.ignore_ap, e.exemplaire_unique, e.mention, e.type_degats_au_choix
+                         FROM arme_elementaire_type e JOIN arme_type t ON t.id = e.type_id ORDER BY e.ordre`)
+        .map((t) => ({
+          id: t.type_id, nom: t.nom, de: t.de, de_selon_force: desSelonLaForce(t.de_regle), portee: portee(t.portee_min, t.portee_max), ignore_ap: t.ignore_ap,
+          exemplaire_unique: t.exemplaire_unique === 1, mention: t.mention, competences: competencesDuType.get(t.type_id) ?? [],
+          types_degats: degatsDuType.get(t.type_id) ?? [], type_degats_au_choix: t.type_degats_au_choix === 1,
+        }));
+    })(),
     // les parties de l'armure portée (décision R95) : chacune a sa solidité du moment ; « armure-complete », celle d'une armure à solidité unifiée
     emplacements_armure: lignes(db, "SELECT id, nom FROM armure_emplacement WHERE id <> 'bouclier' ORDER BY ordre"),
     // `solidite` et `solidite_uni` : le maximum de chaque partie et l'armure à solidité unifiée (« Solidité uni ») (décision R95 : lib/fiche-moteur.mjs#partiesDeLArmure)

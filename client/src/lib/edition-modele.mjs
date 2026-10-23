@@ -396,8 +396,8 @@ export const TABLES = {
   // changer le nom et leur dés, ou même de créer un nouvel onglet ») : le nom, le dé (forme contrôlée : DE_DE_FAMILLE) et l'en-tête de la colonne de coût
   // (un des trois de la base : COUTS_DE_FAMILLE). Le service en refait le bandeau écrit (`libelle_brut` : « NOM - dé » et la note gardée), la section du
   // corps de la page (lib/corps-armes.mjs) et refuse ce qui changerait une source de maîtrise d'arme (serveur/edition-armes.mjs). Hors du modèle : la
-  // catégorie (posée à la création, jamais changée : R159), le nom de lecture (figé, migration 0077), `maitrisable` et l'ordre. ARME DE MONSTRES ne se
-  // modifie pas (R45).
+  // catégorie (posée à la création, jamais changée : R159), le nom de lecture (figé, migration 0077), le type élémentaire (`type_elementaire_id`, jamais
+  // modifié : décision R167, migration 0081), `maitrisable` et l'ordre. ARME DE MONSTRES ne se modifie pas (R45).
   arme_famille: {
     libelle: 'Famille d’armes',
     colonnes: {
@@ -755,7 +755,8 @@ export const ENTITES = {
     },
   },
   // une famille d'armes (un onglet de la page des armes, décision R159) : nom, dé, catégorie (contact ou distance, jamais changée ensuite) et en-tête de
-  // coût ; identifiant tiré du nom une fois, puis figé ; à la fin des familles, maîtrisable, son nom de lecture celui de sa création (migration 0077).
+  // coût ; identifiant tiré du nom une fois, puis figé ; à la fin des familles, maîtrisable, son nom de lecture celui de sa création (migration 0077),
+  // sans arme élémentaire (type_elementaire_id NULL : décision R167).
   // Pas de suppression (les fiches et les sources de maîtrise la citeraient).
   arme_famille: {
     table: 'arme_famille',
