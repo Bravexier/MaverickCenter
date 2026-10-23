@@ -4,7 +4,9 @@
 // (components/Onglets.astro) : choisir une propriété ouvre le sien. Une ligne du tableau des compétences a son bonus d'acquis au curseur, au dé ou saisi (demande du propriétaire, 2026-10-16), qui en
 // donne le niveau, donc l'effet, la couleur et le prix (`reglerLAcquis`, lib/accessoires-generateur.mjs#effetDuBonus) ; les gemmes au choix se cochent
 // dans la ligne comme dans l'encart, et le prix calculé s'écrit dans la ligne (avec la monture de son niveau, comme les prix écrits) et dans l'encart
-// (avec la monture choisie). L'encart à côté décrit l'accessoire ainsi créé, dans la couleur du niveau de son effet. Modules importés :
+// (avec la monture choisie). L'encart à côté décrit l'accessoire ainsi créé, dans la couleur du niveau de son effet : la classe `couleur-niveau-<n>` de
+// la ligne choisie (lib/palette-css.mjs, émise par la page), reprise par classList (`couleursDe`, `poserCouleurs`), jamais une couleur ni un style ;
+// le script n'importe ni la palette ni le module des couleurs (lib/accessoires-couleurs.mjs). Modules importés :
 // lib/accessoires-generateur.mjs et lib/monnaies.mjs (qu'aucun autre script de page n'importe : test/accessoires-html.test.mjs).
 // Les valeurs viennent des lignes telles qu'affichées (attributs `data-…`) ; état dans l'adresse (lib/accessoires-generateur.mjs#PARAMETRES).
 // Malédiction (règles de la page : « Dans le cas d'une malédiction, on relance les dés au début des étapes et l'effet sera le contraire de ce qui est
@@ -53,9 +55,17 @@ if (racine) {
     if (o.left < b.left || o.right > b.right) bande.scrollLeft += o.left - b.left - (b.width - o.width) / 2;
   }
 
+  /** Les classes de la couleur du niveau d'un élément (`couleur-niveau-<n>` : celles que la page pose), telles quelles. */
+  const couleursDe = (el) => [...(el?.classList ?? [])].filter((c) => c.startsWith('couleur-niveau-'));
+  /** Pose sur un élément les classes de couleur d'un niveau (`classes`, celles d'une ligne ou de data-niveaux), à la place des siennes ; aucune : sans couleur. */
+  function poserCouleurs(el, classes) {
+    el.classList.remove(...couleursDe(el));
+    if (classes.length) el.classList.add(...classes);
+  }
+
   /**
    * Règle le bonus d'acquis d'une ligne du tableau des compétences (curseur, saisie, dé) : borné aux plages écrites, il donne le niveau dont la plage le
-   * contient, et la ligne prend l'effet de ce niveau (data-niveaux : son identifiant, son niveau, sa couleur, son prix écrit ; effetDuBonus). `saisi` :
+   * contient, et la ligne prend l'effet de ce niveau (data-niveaux : son identifiant, son niveau, la classe de sa couleur, son prix écrit ; effetDuBonus). `saisi` :
    * le champ où l'on tape, qui n'est pas réécrit (« 07 » reste tel quel jusqu'à ce qu'on le quitte).
    */
   function reglerLAcquis(x, valeur, saisi = null) {
@@ -68,8 +78,7 @@ if (racine) {
       delete x.dataset.prix;
       delete x.dataset.prixHtml;
     }
-    if (n.style) x.setAttribute('style', n.style);
-    else x.removeAttribute('style');
+    poserCouleurs(x, n.classe ? [n.classe] : []);
     for (const champ of x.querySelectorAll('[data-acc-acquis], [data-acc-acquis-saisie]')) if (champ !== saisi && champ.value !== String(v)) champ.value = String(v);
     x.querySelector('[data-acc-acquis]')?.setAttribute('aria-valuetext', `${v} % : ${n.brut ?? ''}`);
     const niveau = x.querySelector('[data-acc-niveau]');
@@ -329,7 +338,7 @@ if (racine) {
     rendreLesLignes();
     const rien = !etat.emplacement && !etat.propriete && !etat.effet && !etat.monture && !etat.maudit;
     if (rien) {
-      produit.removeAttribute('style');
+      poserCouleurs(produit, []);
       produit.classList.remove('est-maudit', 'est-detruit');
       produit.innerHTML = '<p class="acc-produit__vide">Choisissez une ligne dans les tableaux, ou tirez un accessoire : sa description apparaît ici.</p>';
       ecrire();
@@ -338,9 +347,7 @@ if (racine) {
     const x = etat.effet;
     const { detruit } = etat;
     const niveau = detruit ? null : (x?.dataset.niveau ?? null);
-    const couleur = x && !detruit ? getComputedStyle(x).getPropertyValue('--niv').trim() : '';
-    if (couleur) produit.style.setProperty('--niv', couleur);
-    else produit.style.removeProperty('--niv');
+    poserCouleurs(produit, x && !detruit ? couleursDe(x) : []);
     produit.classList.toggle('est-maudit', etat.maudit);
     produit.classList.toggle('est-detruit', detruit);
 

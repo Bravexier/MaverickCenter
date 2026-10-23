@@ -1,17 +1,28 @@
-// Générateur d'accessoires (lib/accessoires-generateur.mjs) : couleurs des niveaux (celles de l'onglet), qualité de gemme d'un niveau (règles de la
-// page), dés tirés des tables, plages, état dans l'adresse, malédiction (décision R94 : relance depuis l'étape 2, même emplacement ; une seconde
-// malédiction détruit l'accessoire).
+// Générateur d'accessoires (lib/accessoires-generateur.mjs) : couleurs des niveaux (celles de l'onglet, lib/accessoires-couleurs.mjs, et leur classe de la
+// palette), qualité de gemme d'un niveau (règles de la page), dés tirés des tables, plages, état dans l'adresse, malédiction (décision R94 : relance
+// depuis l'étape 2, même emplacement ; une seconde malédiction détruit l'accessoire).
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import {
-  ancreGardee, apresUneMalediction, apresUnJet, bonusBorne, bonusDeLAdresse, cleDEffet, effetDuBonus, COULEURS_DES_NIVEAUX, dansLaPlage, ecrireEtat, etatDeMalediction, facesDuDe, gemmesAuChoix, gemmesCochees, lancer,
-  lireEtat, noteDeMalediction, PARAMETRES, prixDeLAccessoire, qualiteDeGemme, QUALITES_DE_GEMME, styleDeNiveau, tirerUnAccessoire,
+  ancreGardee, apresUneMalediction, apresUnJet, bonusBorne, bonusDeLAdresse, cleDEffet, effetDuBonus, dansLaPlage, ecrireEtat, etatDeMalediction, facesDuDe, gemmesAuChoix, gemmesCochees, lancer,
+  lireEtat, noteDeMalediction, PARAMETRES, prixDeLAccessoire, qualiteDeGemme, QUALITES_DE_GEMME, tirerUnAccessoire,
 } from '../src/lib/accessoires-generateur.mjs';
+import * as generateur from '../src/lib/accessoires-generateur.mjs';
+import { COULEURS_DES_NIVEAUX } from '../src/lib/accessoires-couleurs.mjs';
+import { FAMILLES_DE_LA_PALETTE, classeDeNiveau } from '../src/lib/palette-css.mjs';
 
-test('une couleur par niveau 1 à 5, celles du tableau « Monture » de l’onglet', () => {
+test('une couleur par niveau 1 à 5, celles du tableau « Monture » de l’onglet ; une page n’en pose que la classe', () => {
   assert.deepEqual(COULEURS_DES_NIVEAUX, { 1: '#d9ead3', 2: '#fff2cc', 3: '#fce5cd', 4: '#f4cccc', 5: '#e6b8af' });
-  assert.equal(styleDeNiveau(3), '--niv: #fce5cd');
-  assert.equal(styleDeNiveau(null), undefined, 'niveau absent (« Niveau ? », ligne vide) : pas de couleur');
+  // la règle reste dans son module ; la palette en fait la famille `niveau` (lib/palette-css.mjs ; « Module JS → classe »)
+  assert.equal(FAMILLES_DE_LA_PALETTE.niveau, COULEURS_DES_NIVEAUX);
+  assert.deepEqual([1, 2, 3, 4, 5].map(classeDeNiveau), ['couleur-niveau-1', 'couleur-niveau-2', 'couleur-niveau-3', 'couleur-niveau-4', 'couleur-niveau-5']);
+  assert.equal(classeDeNiveau('3'), 'couleur-niveau-3', 'le niveau lu dans un attribut');
+  for (const absent of [null, undefined, '', 0, 6]) assert.equal(classeDeNiveau(absent), null, `niveau absent ou inconnu (« Niveau ? », ligne vide) : pas de couleur (${absent})`);
+  // le générateur (importé par le script de la page) ne porte plus aucune couleur, ni de style : le navigateur ne reçoit que les noms des classes
+  assert.ok(!('COULEURS_DES_NIVEAUX' in generateur) && !('styleDeNiveau' in generateur));
+  assert.doesNotMatch(readFileSync(new URL('../src/lib/accessoires-generateur.mjs', import.meta.url), 'utf8'), /#[0-9a-f]{3,6}\b|--niv\b/i);
+  assert.doesNotMatch(readFileSync(new URL('../src/lib/accessoires-couleurs.mjs', import.meta.url), 'utf8'), /^import /m, 'le module des couleurs n’importe rien');
 });
 
 test('qualité de gemme : classique aux niveaux 1 et 2, raffinée aux niveaux 3 et 4, parfaite au niveau 5', () => {
