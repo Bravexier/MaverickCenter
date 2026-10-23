@@ -420,7 +420,7 @@ test('/magies/ : le tableau des relations suit la carte, lignes et colonnes dans
   assert.deepEqual(lignes.map((m) => m[2]), ORDRE_DU_CLASSEUR, 'lignes');
   assert.deepEqual(lignes.map((m) => m[1]), ORDRE_DU_CLASSEUR.map(classeDeMagie), 'chaque ligne : la classe de sa magie');
   assert.equal(lignes[6][1], 'couleur-magie-feu', 'la ligne du Feu');
-  assert.ok(cssDeLaPalette().includes('.couleur-magie-feu{--couleur:#ff4500;'), 'rouge orangé (sa classe de la palette ; demande du propriétaire du 2026-10-23)');
+  assert.ok(cssDeLaPalette().includes('.couleur-magie-feu{--couleur:#ff4500;'), 'rouge orangé (sa classe de la palette ; demande du propriétaire du 2026-10-23, valeur validée le 2026-10-23 : « Garder les deux »)');
   assert.doesNotMatch(tableau, /style=/, 'aucun style');
   assert.ok(!tableau.includes('Potentiel Illimité'), 'ni ligne ni colonne pour le Potentiel Illimité');
   assert.ok(!tableau.includes('Une case « – »'), 'plus d’explication des cases « – »');

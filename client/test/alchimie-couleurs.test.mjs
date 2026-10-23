@@ -218,10 +218,11 @@ test('des potions de la base : l’essence de leur recette et la couleur qui en 
 
 test('les couleurs choisies par le propriétaire, page par page (2026-10-23) : la magie qu’il nomme, avant l’essence ; une autre page de même essence garde la sienne', () => {
   // ses retours, carte par carte : « Le remède enragé est de la couleur du Vide » ; « Le remêde du saignement devrai être couleur sang » ; « Le remêde
-  // brûlure devrai couleur feu » ; « L'huile rage devrai être couleur du Vide » ; « L'huile séraphine couleur feu »
+  // brûlure devrai couleur feu » ; « L'huile rage devrai être couleur du Vide » ; « L'huile séraphine couleur feu » ; puis, à « L'Huile hémophile
+  // (inflige saignement, rouge-orangé #cc4125) passe-t-elle en Sang comme le Remède saignement ? » : « Huile hémophile → Sang »
   const attendues = {
     'ressources/remede-enrage': 'vide', 'ressources/remede-saignement': 'sang', 'ressources/remede-brulure': 'feu',
-    'ressources/huile-rage': 'vide', 'ressources/huile-seraphine': 'feu',
+    'ressources/huile-rage': 'vide', 'ressources/huile-seraphine': 'feu', 'ressources/huile-hemophile': 'sang',
   };
   assert.deepEqual(Object.fromEntries(Object.entries(COULEURS_CHOISIES_PAR_PAGE)),
     Object.fromEntries(Object.entries(attendues).map(([p, m]) => [p, { famille: 'magie', cle: m }])));
@@ -246,10 +247,16 @@ test('les couleurs choisies par le propriétaire, page par page (2026-10-23) : l
     ['ressources/fiole-rouge', { famille: 'attribut', cle: 'sante' }],
     ['ressources/alchimie-primitive', { famille: 'attribut', cle: 'sante' }],
     ['ressources/fiole-bordeaux', { famille: 'affinite', cle: 'regeneration-sante' }],
-    ['ressources/huile-hemophile', { famille: 'affinite', cle: 'regeneration-sante' }],
   ]) {
     const x = pages.get(page).potions.find((y) => y.essence === base.cle) ?? assert.fail(`${page} : une potion d’essence ${base.cle}`);
     assert.deepEqual(x.couleur.base, base, page);
+  }
+  // toute page d'essence Régénération santé que le propriétaire n'a pas nommée garde la couleur de l'affinité, à chacun de ses paliers (la Fiole
+  // bordeaux, seule aujourd'hui : le Remède saignement et l'Huile hémophile sont en Sang)
+  const regeneration = [...pages.values()].filter((p) => p.potions.some((x) => x.essence === 'regeneration-sante'));
+  assert.ok(regeneration.some((p) => p.id === 'ressources/fiole-bordeaux'), 'la Fiole bordeaux : essence Régénération santé');
+  for (const p of regeneration.filter((y) => !Object.hasOwn(attendues, y.id))) {
+    for (const x of p.potions) assert.deepEqual(x.couleur.base, { famille: 'affinite', cle: 'regeneration-sante' }, x.id);
   }
   assert.equal(couleurDePotion({ essence: 'anti', niveau: 3 }), null);
   assert.deepEqual(couleurDePotion({ page: 'ressources/autre', essence: 'sante', niveau: 3 }).base, { famille: 'attribut', cle: 'sante' });

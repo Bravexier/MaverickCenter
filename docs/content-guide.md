@@ -758,8 +758,9 @@ L'onglet est rendu depuis la base (`lib/ceinture-db.mjs`, `components/ceinture/C
     l'affinité Anti n'a pas de couleur : une potion d'essence Anti reste neutre ; mais une **page dont le propriétaire a choisi la couleur** prend
     la magie qu'il nomme, avant l'essence (`COULEURS_CHOISIES_PAR_PAGE`, ses retours carte par carte du 2026-10-23 : « Le remède enragé est de la
     couleur du Vide » ; « Le remêde du saignement devrai être couleur sang » ; « Le remêde brûlure devrai couleur feu » ; « L'huile rage devrai être
-    couleur du Vide » ; « L'huile séraphine couleur feu » : Remède enragé et Huile rage en Vide, Remède saignement en Sang, Remède brûlure et Huile
-    séraphine en Feu ; une carte non citée suit la règle, rien n'en est déduit pour les autres) ; puis la **nuance de son niveau d'alchimie**
+    couleur du Vide » ; « L'huile séraphine couleur feu » ; puis, à la question « L'Huile hémophile (inflige saignement, rouge-orangé #cc4125)
+    passe-t-elle en Sang comme le Remède saignement ? » : « Huile hémophile → Sang » ; soit : Remède enragé et Huile rage en Vide, Remède saignement et
+    Huile hémophile en Sang, Remède brûlure et Huile séraphine en Feu ; une carte non citée suit la règle, rien n'en est déduit pour les autres) ; puis la **nuance de son niveau d'alchimie**
     (`NUANCES_DES_NIVEAUX`, parts choisies par le site : plus claire pour Novice et Apprenti, la teinte à Avancé, plus foncée pour Expert et Maître).
     Une potion dont le niveau ou l'effet change sur le site de dev suit la même règle à la construction suivante du site (l'éditeur réécrit ses cases,
     pas la classe de sa ligne, qui existe donc toujours dans la page) ;

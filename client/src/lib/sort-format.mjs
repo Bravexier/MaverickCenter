@@ -215,7 +215,8 @@ export const ancreDeTitre = (titre) =>
  * Couleurs de magie, pour les pastilles et les titres de magie. Clé = le nom court normalisé de la magie (text.mjs#normalize : « Espace-Temps » →
  * « espace-temps ») : l'id de sa classe de couleur sur le site (`.couleur-magie-<clé>`, lib/palette-css.mjs).
  * Feu et Arcane : demande du propriétaire du 2026-10-23, « Profite en pour rendre le Feu un peu plus orangé, et l'arcane un peu plus argenté gris pour
- * mieux différenciers du sang et du vide. » (valeurs choisies par le site : Feu #ff0000 → #ff4500, Arcane #b7b7b7 → #a8adb5).
+ * mieux différenciers du sang et du vide. » (Feu #ff0000 → #ff4500, Arcane #b7b7b7 → #a8adb5 ; ces deux valeurs sont validées par le propriétaire
+ * le 2026-10-23 : « Garder les deux »).
  */
 export const COULEURS_DES_MAGIES = Object.freeze({
   feu: '#ff4500',
