@@ -386,9 +386,9 @@ capacité avec son `nom` et son `texte`, ou le texte de la rubrique « Capacité
 des capacités communes, et à quel rang : 0044 a détaché « Tome de la corruption niv.1. ») : l'adaptateur (`ancienneEcritureDesCapacites`,
 `serveur/edition-bestiaire.mjs`) rend un `conflit`, et le lot passe en conflit avec un message qui dit quoi refaire, au lieu d'un conflit qui ne
 s'explique pas — rien n'en est écrit, ni dans les règles ni dans l'historique. Les autres modifications des monstres notées avant 0044 passent. Un lot
-noté avant la migration 0073 (décision R148 : la « Double résistance » devenue la Grande résistance) : l'adaptateur (`ancienneEcritureDesResistances`,
+noté avant la migration 0075 (décision R155 : la « Double résistance » devenue la Grande résistance) : l'adaptateur (`ancienneEcritureDesResistances`,
 `serveur/edition-bestiaire.mjs`) traduit le sens `double_resistance` en `grande_resistance` (`monstre_defense` : clé, `avant`, `apres` ;
-`monstre_rubrique.rubrique`), et met en conflit explicite un lot qui note un titre d'avant 0073 (« … ÷4 », « … x4 » : seule la suppression d'une carte
+`monstre_rubrique.rubrique`), et met en conflit explicite un lot qui note un titre d'avant 0075 (« … ÷4 », « … x4 » : seule la suppression d'une carte
 en note un). Un lot
 noté avant la migration 0063 qui écrit le coût d'un sort en une case, comme le classeur (« 12 + 3 âmes ») : l'adaptateur (`ancienneEcritureDuCout`,
 `serveur/edition.mjs`, décision R105) le rejoue en deux colonnes, « Coût » et « Coût secondaire », par la règle de la migration

@@ -218,7 +218,7 @@ test('décision R53 : les créatures invoquées n’ont pas d’échelle de puis
   }
 });
 
-test('décision R148 (migration 0073) : les cartes écrivent les multiplicateurs de la base — grande résistance ÷3, grande vulnérabilité x3, sensibilité x4 ; plus de « Double résistance »', () => {
+test('décision R155 (migration 0075) : les cartes écrivent les multiplicateurs de la base — grande résistance ÷3, grande vulnérabilité x3, sensibilité x4 ; plus de « Double résistance »', () => {
   // « Oui là aussi c'est x3 et pas 4... » ; « Pareil remplace double résistance par Grande résistance » ; « Oui x4 aussi » (2026-10-22)
   const titres = (rubrique) => db.prepare('SELECT monstre_id, titre FROM monstre_rubrique WHERE rubrique = ?').all(rubrique);
   const grandesResistances = titres('grande_resistance');
@@ -235,7 +235,7 @@ test('décision R148 (migration 0073) : les cartes écrivent les multiplicateurs
   }
 });
 
-test('décision R148 : les titres par défaut d’une rubrique (carte créée sur le site de dev) écrivent les multiplicateurs de la base ; aucun titre de « Double résistance »', () => {
+test('décision R155 : les titres par défaut d’une rubrique (carte créée sur le site de dev) écrivent les multiplicateurs de la base ; aucun titre de « Double résistance »', () => {
   // le multiplicateur écrit à la fin d'un titre ou d'un effet : « ÷3 », « x3 », « = 0 » -> « ÷3 », « x3 », « =0 »
   const multiplicateur = (texte) => texte.match(/(÷|x|=)\s*(\d+)\s*$/i)?.slice(1, 3).join('').toLowerCase() ?? null;
   const paliers = db.prepare('SELECT id, effet_brut FROM resistance_palier').all();
@@ -247,7 +247,7 @@ test('décision R148 : les titres par défaut d’une rubrique (carte créée su
   assert.equal(RUBRIQUES.grande_vulnerabilite, 'Grande(s) Vulnérabilité(s) Dégâts x3');
   for (const titre of Object.values(RUBRIQUES)) assert.doesNotMatch(titre, /÷\s*4|x\s*[48]\b/i, titre);
   // « Pareil remplace double résistance par Grande résistance » : plus de titre à proposer, ni dans le gabarit d'une carte créée ; le sens reste lu
-  // comme le CHECK du schéma l'admet (le rejeu d'un journal d'avant 0073 le traduit : test/serveur-edition-rejeu-resistances.test.mjs)
+  // comme le CHECK du schéma l'admet (le rejeu d'un journal d'avant 0075 le traduit : test/serveur-edition-rejeu-resistances.test.mjs)
   assert.ok(!('double_resistance' in RUBRIQUES), 'pas de titre « Double(s) Résistance(s) »');
   assert.ok(!GABARIT_DE_CARTE.includes('double_resistance'));
   assert.ok(SENS_DEFENSE.includes('double_resistance'), 'SENS_DEFENSE suit le CHECK de monstre_defense.sens');

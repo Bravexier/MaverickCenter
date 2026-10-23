@@ -1693,7 +1693,7 @@ export function rejouerLeJournal(db, sortie = {}, { horsControleParLot = [] } = 
     // le dictionnaire des sources n'est vidé que de ses orphelins (supprimerPage) : une source encore citée au rejeu reste
     siOrphelines: ['source'],
     // les formes d'avant les migrations 0043 (mots-clés), 0044 (capacités de monstre communes), 0056 (glossaire), 0063 (coût secondaire des sorts) et
-    // 0073 (résistances du bestiaire, décision R148 : serveur/edition-bestiaire.mjs#ancienneEcritureDesResistances),
+    // 0075 (résistances du bestiaire, décision R155 : serveur/edition-bestiaire.mjs#ancienneEcritureDesResistances),
     // et d'avant la saisie de l'AP et de l'AM et des cases d'une amélioration de bouclier (demande du propriétaire du 2026-10-17 :
     // serveur/edition-armures.mjs#ancienneEcritureDesArmures)
     adapter: () => adaptateurDuJournal(db),

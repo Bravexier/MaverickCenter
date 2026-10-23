@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 73 : 195 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 75 : 195 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -615,7 +615,7 @@ Règles de magie qui valent pour toutes les magies (Sommaire!A31 : « Règle sp�
 
 ### `resistance_palier`
 
-Les 6 paliers de la fiche (Personnage!BA2:BA12) : une valeur de résistance V (somme des crans) donne un palier. V >= 3 immunité, 2 grande résistance, 1 résistance, -1 vulnérabilité, -2 grande vulnérabilité, V <= -3 sensibilité ; V = 0 : neutre (aucune ligne). Les bornes sont lues dans les formules BI2:BI12 (BDD!V > 2, = 2, = 1, = -1, = -2, < -2).
+Les 6 paliers de la fiche (Personnage!BA2:BA12) : une valeur de résistance V (somme des crans) donne un palier. V >= 3 immunité, 2 grande résistance, 1 résistance, -1 vulnérabilité, -2 grande vulnérabilité, V <= -3 sensibilité ; V = 0 : neutre (aucune ligne). Les bornes sont lues dans les formules BI2:BI12 (BDD!V > 2, = 2, = 1, = -1, = -2, < -2). Les multiplicateurs sont ceux de la décision R155 (migration 0074, remplace R70) : =0, ÷3, ÷2, x2, x3, x4 ; la fiche auto V15.2.2 écrit ÷4, x4 et x8.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -623,8 +623,8 @@ Les 6 paliers de la fiche (Personnage!BA2:BA12) : une valeur de résistance V (s
 | `libelle` | TEXT | oui | unique | « Grande résistance » |
 | `valeur_min` | INTEGER | non |  | V >= valeur_min ; NULL = pas de borne basse |
 | `valeur_max` | INTEGER | non |  | V <= valeur_max ; NULL = pas de borne haute |
-| `multiplicateur` | REAL | oui |  | « dégâts subits ÷4 » -> 0.25 ; « =0 » -> 0 ; « x8 » -> 8 |
-| `effet_brut` | TEXT | oui |  | « dégâts subits ÷4 » |
+| `multiplicateur` | REAL | oui |  | « dégâts subis ÷3 » -> 1/3 ; « =0 » -> 0 ; « x4 » -> 4 (R155) |
+| `effet_brut` | TEXT | oui |  | « dégâts subis ÷3 » |
 | `ordre` | INTEGER | oui | unique | ordre d'affichage de la fiche (immunité en premier) |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
@@ -1696,14 +1696,14 @@ MONSTRE : une carte « NOM Créature échelle N » ; « Type | Alignement | Cat�
 
 ### `monstre_rubrique`
 
-Rubriques d'une carte, dans l'ordre du doc, TOUT leur texte (rien de la carte n'est perdu) : 'attributs' = la ligne « Santé : … Chakra : … Barrière : … » (ou « [EP3] Santé : 330 … ») ; 'sante' / 'chakra' / 'barriere' = les mêmes, par échelle, sous un titre seul ; les autres rubriques suivent leur titre (`titre` tel qu'écrit, NULL pour 'attributs' qui n'en a pas). Sauf 'capacites', qui n'est qu'un repère (texte vide) : la place et le titre du bloc des capacités de la carte, qui sont dans monstre_capacite -> monstre_capacite_commune (décision R66 ; texte du doc : sources/raw et l'extracteur).
+Rubriques d'une carte, dans l'ordre du doc, TOUT leur texte (rien de la carte n'est perdu) : 'attributs' = la ligne « Santé : … Chakra : … Barrière : … » (ou « [EP3] Santé : 330 … ») ; 'sante' / 'chakra' / 'barriere' = les mêmes, par échelle, sous un titre seul ; les autres rubriques suivent leur titre (`titre` tel qu'écrit, NULL pour 'attributs' qui n'en a pas). Sauf 'capacites', qui n'est qu'un repère (texte vide) : la place et le titre du bloc des capacités de la carte, qui sont dans monstre_capacite -> monstre_capacite_commune (décision R66 ; texte du doc : sources/raw et l'extracteur). 'double_resistance' n'est plus écrite depuis la migration 0075 (R155 : remplacée par 'grande_resistance') ; le CHECK l'admet encore (rien à reconstruire).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
 | `monstre_id` | TEXT | oui | PK 1, → monstre.id |  |
 | `rang` | INTEGER | oui | PK 2 |  |
 | `rubrique` | TEXT | oui |  |  |
-| `titre` | TEXT | non |  | « Vulnérabilité(s) Dégâts x2 », « Grande(s) Résistance(s) Dégâts ÷4 » |
+| `titre` | TEXT | non |  | « Vulnérabilité(s) Dégâts x2 », « Grande(s) Résistance(s) Dégâts ÷3 » |
 | `texte` | TEXT | oui |  | paragraphes séparés par une ligne vide ; '' = rubrique vide |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
@@ -1778,7 +1778,7 @@ Valeur d'un emplacement « {N} » de la description pour une carte qui n'a pas l
 
 ### `monstre_defense`
 
-Cibles des vulnérabilités, résistances, immunités et réflexions : la rubrique quand elle est UNE liste « Brûlure, Paralysie » de noms courts (« Varie selon la magie », un tableau ou plusieurs lignes : aucune ligne ici, la rubrique fait foi). `sens` = la rubrique d'où vient la cible.
+Cibles des vulnérabilités, résistances, immunités et réflexions : la rubrique quand elle est UNE liste « Brûlure, Paralysie » de noms courts (« Varie selon la magie », un tableau ou plusieurs lignes : aucune ligne ici, la rubrique fait foi). `sens` = la rubrique d'où vient la cible. 'double_resistance' n'est plus écrite depuis la migration 0075 (R155 : remplacée par 'grande_resistance') ; le CHECK l'admet encore (rien à reconstruire).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |

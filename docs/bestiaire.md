@@ -345,8 +345,8 @@ Rien n'est déduit : une valeur n'est typée que si son écriture est sans ambig
 le nom d'une carte, écrit en capitales, est remis en minuscules avec la casse que le doc donne à chaque mot ailleurs (`nom_brut` garde l'original) ; et
 quatre graphies que la base a déjà corrigées partout sont corrigées ici aussi (`CORRECTIONS` : « le Démon d'Eau Noire » → « Eaunoire », décision R21 ;
 « Occultomancien » → « Ocultomancien » et « purée de poix » → « purée de pois », migration 0006 ; « ect » → « etc », migration 0005).
-Les multiplicateurs de la décision R148 aussi (« Oui là aussi c'est x3 et pas 4... », « Pareil remplace double résistance par Grande résistance »,
-« Oui x4 aussi », migration `0073-r148-titres-du-bestiaire`), sur la seule ligne entière du titre : « Grande(s) Résistance(s) Dégâts ÷4 » → « ÷3 » (15
+Les multiplicateurs de la décision R155 aussi (« Oui là aussi c'est x3 et pas 4... », « Pareil remplace double résistance par Grande résistance »,
+« Oui x4 aussi », migration `0075-r155-titres-du-bestiaire`), sur la seule ligne entière du titre : « Grande(s) Résistance(s) Dégâts ÷4 » → « ÷3 » (15
 lignes du doc, les deux casses de « résistance »), « Grande(s) Vulnérabilité(s) Dégâts x4 » → « x3 » (22, chaque graphie gardée : « vulnérabilité »,
 « faiblesse », « Grande(s )Vulnérabilité(s) »), « Double(s) Résistance(s) Dégâts(/Effets) ÷4 » → « Grande(s) Résistance(s) Dégâts(/Effets) ÷3 » (10 :
 la correction passe avant le classement, ces cartes et leurs cibles sont rangées en `grande_resistance`) ; et « Sensibilité(s) Dégâts x8 » → « x4 »

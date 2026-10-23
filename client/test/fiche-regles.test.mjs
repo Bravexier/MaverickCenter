@@ -345,7 +345,7 @@ test('résistances (tableau « Résistance / Faiblesse » de la fiche) : les six
   // le Mode Hyper et le Mode Hyper 100 % : la classe de leur mode (famille `mode`)
   assert.deepEqual([regles.mode_hyper.classe, regles.mode_hyper.cent.classe], [classeDuModeHyper('hyper'), classeDuModeHyper('cent')]);
   assert.deepEqual([regles.mode_hyper.classe, regles.mode_hyper.cent.classe], ['couleur-mode-hyper', 'couleur-mode-cent']);
-  // décision R148 (migration 0072, remplace R70 et ses ÷4, x4, x8 de la fiche auto) : « Grande résistance : divisé par 3 (pas 4) Grande faiblesse :
+  // décision R155 (migration 0074, remplace R70 et ses ÷4, x4, x8 de la fiche auto) : « Grande résistance : divisé par 3 (pas 4) Grande faiblesse :
   // multiplier par 3 (pas 4) Sensibilité : multiplier par 4 (pas 8) » ; identifiants, libellés, bornes et ordre inchangés
   assert.deepEqual(regles.resistance_paliers.map((p) => p.effet),
     ['dégâts subis =0', 'dégâts subis ÷3', 'dégâts subis ÷2', 'dégâts subis x2', 'dégâts subis x3', 'dégâts subis x4']);

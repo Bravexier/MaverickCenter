@@ -37,8 +37,8 @@ const LIBELLES_RUBRIQUES = {
   capacites: 'Capacité(s)',
   tactique: 'Tactique de combat',
 };
-// pas de 'double_resistance' (décision R148 : devenue la Grande résistance, migration 0073) : plus aucune cible de ce sens, et le rejeu d'un journal
-// noté avant 0073 la range en grande_resistance (serveur/edition-bestiaire.mjs#ancienneEcritureDesResistances)
+// pas de 'double_resistance' (décision R155 : devenue la Grande résistance, migration 0075) : plus aucune cible de ce sens, et le rejeu d'un journal
+// noté avant 0075 la range en grande_resistance (serveur/edition-bestiaire.mjs#ancienneEcritureDesResistances)
 const SENS_PAR_COLONNE = {
   vulnerabilites: ['vulnerabilite', 'grande_vulnerabilite'],
   resistances: ['resistance', 'grande_resistance'],

@@ -1,8 +1,8 @@
-// Rejeu d'un journal du site de dev noté avant la migration 0073 (décision R148, étendue au bestiaire le 2026-10-22 : « Pareil remplace double
-// résistance par Grande résistance ») : 0073 a rangé les rubriques « Double(s) Résistance(s) » en grande_resistance avec leurs cibles typées
+// Rejeu d'un journal du site de dev noté avant la migration 0075 (décision R155, étendue au bestiaire le 2026-10-22 : « Pareil remplace double
+// résistance par Grande résistance ») : 0075 a rangé les rubriques « Double(s) Résistance(s) » en grande_resistance avec leurs cibles typées
 // (monstre_defense.sens), et passé les titres ÷4 / x4 en ÷3 / x3. serveur/edition-bestiaire.mjs#ancienneEcritureDesResistances traduit le sens
-// 'double_resistance' (équivalent sûr) et met en conflit, avec un message qui dit quoi refaire, un lot qui note un titre d'avant 0073.
-// Les lots « d'avant » sont fabriqués depuis ce que le service note aujourd'hui, remis dans la forme d'avant 0073 (comme dans le journal du site de dev).
+// 'double_resistance' (équivalent sûr) et met en conflit, avec un message qui dit quoi refaire, un lot qui note un titre d'avant 0075.
+// Les lots « d'avant » sont fabriqués depuis ce que le service note aujourd'hui, remis dans la forme d'avant 0075 (comme dans le journal du site de dev).
 import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -11,7 +11,7 @@ import { after, test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { rejouerLeJournal } from '../serveur/edition.mjs';
-import { TITRES_D_AVANT_0073 } from '../serveur/edition-bestiaire.mjs';
+import { TITRES_D_AVANT_0075 } from '../serveur/edition-bestiaire.mjs';
 import { rejouer } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 
@@ -50,17 +50,17 @@ const enregistrer = (base, operations) => {
   return r.corps;
 };
 /**
- * Les titres que 0073 réécrit, lus dans la migration (« UPDATE … SET … titre = 'après' WHERE rubrique = '…' AND titre = 'avant' ») :
+ * Les titres que 0075 réécrit, lus dans la migration (« UPDATE … SET … titre = 'après' WHERE rubrique = '…' AND titre = 'avant' ») :
  * [{ rubrique, avant, apres }] ; deux titres d'avant donnent le même après (« Double(s) Résistance(s) Dégâts ÷4 » et « Grande(s) … ÷4 »).
  */
-const TITRES_DE_0073 = [...readFileSync(new URL('../../data/migrations/0073-r148-titres-du-bestiaire.sql', import.meta.url), 'utf8')
+const TITRES_DE_0075 = [...readFileSync(new URL('../../data/migrations/0075-r155-titres-du-bestiaire.sql', import.meta.url), 'utf8')
   .matchAll(/^UPDATE monstre_rubrique SET [^;]*?titre = '([^']+)'\s*WHERE rubrique = '([a-z_]+)' AND titre = '([^']+)';/gms)]
   .map((m) => ({ apres: m[1], rubrique: m[2], avant: m[3] }));
-const titreDAvant0073 = (rubrique, titre) => TITRES_DE_0073.find((t) => t.rubrique === rubrique && t.apres === titre)?.avant;
-const AVANT_0073 = /noté avant la migration 0073 \(décision R148\) : le titre de la rubrique écrit encore l’ancien multiplicateur/;
+const titreDAvant0075 = (rubrique, titre) => TITRES_DE_0075.find((t) => t.rubrique === rubrique && t.apres === titre)?.avant;
+const AVANT_0075 = /noté avant la migration 0075 \(décision R155\) : le titre de la rubrique écrit encore l’ancien multiplicateur/;
 const conflits = (base) => base.prepare("SELECT DISTINCT detail FROM modification WHERE etat = 'conflit'").all().map((r) => r.detail);
 
-// le Collecteur : sa rubrique 11 était « Double(s) Résistance(s) Dégâts/Effets ÷4 » (Foudre, Paralysie, Confusion) avant 0073
+// le Collecteur : sa rubrique 11 était « Double(s) Résistance(s) Dégâts/Effets ÷4 » (Foudre, Paralysie, Confusion) avant 0075
 const COLLECTEUR = 'monstres/collecteur#carte:collecteur';
 const RANG = 11;
 const ANCIENS_TITRES = { 'Grande(s) Résistance(s) Dégâts/Effets ÷3': 'Double(s) Résistance(s) Dégâts/Effets ÷4' };
@@ -69,8 +69,8 @@ const cibles = (base, sens) => base.prepare('SELECT rang, cible FROM monstre_def
 const doubles = (base) => base.prepare("SELECT count(*) AS n FROM monstre_defense WHERE sens = 'double_resistance'").get().n
   + base.prepare("SELECT count(*) AS n FROM monstre_rubrique WHERE rubrique = 'double_resistance'").get().n;
 
-/** Le journal de `base` remis dans la forme d'avant 0073 : sens et rubrique 'double_resistance', titre « Double(s) … ÷4 » (rubrique 11 du Collecteur). */
-function enFormeDAvant0073(base) {
+/** Le journal de `base` remis dans la forme d'avant 0075 : sens et rubrique 'double_resistance', titre « Double(s) … ÷4 » (rubrique 11 du Collecteur). */
+function enFormeDAvant0075(base) {
   const versDouble = (v) => {
     if (!v) return v;
     const r = { ...v };
@@ -90,10 +90,10 @@ function enFormeDAvant0073(base) {
   }
 }
 
-test('décision R148 : le texte de la Double résistance du Collecteur modifié avant 0073 se rejoue en Grande résistance — aucune cible double_resistance', () => {
+test('décision R155 : le texte de la Double résistance du Collecteur modifié avant 0075 se rejoue en Grande résistance — aucune cible double_resistance', () => {
   const source = vivante();
   const rubrique = source.prepare('SELECT rubrique, texte FROM monstre_rubrique WHERE monstre_id = ? AND rang = ?').get(COLLECTEUR, RANG);
-  assert.equal(rubrique.rubrique, 'grande_resistance', 'la rubrique 11 du Collecteur est rangée en grande_resistance (0073)');
+  assert.equal(rubrique.rubrique, 'grande_resistance', 'la rubrique 11 du Collecteur est rangée en grande_resistance (0075)');
   assert.equal(rubrique.texte, 'Foudre, Paralysie, Confusion');
   // deux lots : une cible ajoutée (inserer dans monstre_defense), puis une changée et deux retirées (modifier, supprimer)
   const modifier = (texte) => enregistrer(source, [{ op: 'modifier', table: 'monstre_rubrique', cle: { monstre_id: COLLECTEUR, rang: RANG }, valeurs: { texte } }]);
@@ -101,11 +101,11 @@ test('décision R148 : le texte de la Double résistance du Collecteur modifié 
   modifier('Foudre, Feu');
   const voulues = cibles(source, 'grande_resistance');
   assert.deepEqual(voulues.map((c) => c.cible), ['Foudre', 'Feu']);
-  enFormeDAvant0073(source);
+  enFormeDAvant0075(source);
   assert.ok(source.prepare("SELECT count(*) AS n FROM modification WHERE table_nom = 'monstre_defense' AND json_extract(cle, '$.sens') = 'double_resistance'").get().n >= 3,
-    'le journal d’avant 0073 note des cibles double_resistance');
+    'le journal d’avant 0075 note des cibles double_resistance');
 
-  // témoin : rejoué sans l'adaptateur, le premier lot remet une cible double_resistance à côté de celles que 0073 a rangées en grande_resistance, et
+  // témoin : rejoué sans l'adaptateur, le premier lot remet une cible double_resistance à côté de celles que 0075 a rangées en grande_resistance, et
   // le second passe en conflit (sa cible double_resistance à modifier n'existe plus)
   const temoin = rebatir(source, (db) => rejouer(db, {}));
   assert.equal(temoin.base.prepare("SELECT count(*) AS n FROM monstre_defense WHERE sens = 'double_resistance'").get().n, 1, 'sans l’adaptateur, une cible double_resistance revient');
@@ -119,19 +119,19 @@ test('décision R148 : le texte de la Double résistance du Collecteur modifié 
   assert.deepEqual(base.prepare('PRAGMA foreign_key_check').all(), []);
 });
 
-test('décision R148 : une carte supprimée avant 0073 (sa rubrique notée « Double(s) Résistance(s) … ÷4 ») : conflit explicite, la carte reste', () => {
+test('décision R155 : une carte supprimée avant 0075 (sa rubrique notée « Double(s) Résistance(s) … ÷4 ») : conflit explicite, la carte reste', () => {
   const source = vivante();
   const rubriques = source.prepare('SELECT count(*) AS n FROM monstre_rubrique WHERE monstre_id = ?').get(COLLECTEUR).n;
   const defenses = cibles(source, 'grande_resistance');
   enregistrer(source, [{ op: 'supprimer', entite: 'monstre', cle: { id: COLLECTEUR } }]);
-  enFormeDAvant0073(source);
+  enFormeDAvant0075(source);
   assert.equal(source.prepare("SELECT count(*) AS n FROM modification WHERE table_nom = 'monstre_rubrique' AND json_extract(avant, '$.titre') = 'Double(s) Résistance(s) Dégâts/Effets ÷4'").get().n, 1);
 
   const { base, bilan } = rebatir(source);
   assert.equal(bilan.appliquees, 0);
   const [detail, ...autres] = conflits(base);
   assert.equal(autres.length, 0, 'un seul lot, un seul conflit');
-  assert.match(detail, /noté avant la migration 0073 \(décision R148\) : le titre de la rubrique écrit encore l’ancien multiplicateur/);
+  assert.match(detail, /noté avant la migration 0075 \(décision R155\) : le titre de la rubrique écrit encore l’ancien multiplicateur/);
   assert.match(detail, /la supprimer de nouveau/);
   assert.equal(base.prepare('SELECT count(*) AS n FROM monstre WHERE id = ?').get(COLLECTEUR).n, 1);
   assert.equal(base.prepare('SELECT count(*) AS n FROM monstre_rubrique WHERE monstre_id = ?').get(COLLECTEUR).n, rubriques);
@@ -139,7 +139,7 @@ test('décision R148 : une carte supprimée avant 0073 (sa rubrique notée « Do
   assert.equal(doubles(base), 0);
 });
 
-test('décision R148 : une carte supprimée après 0073 (titres en ÷3) se rejoue sans conflit', () => {
+test('décision R155 : une carte supprimée après 0075 (titres en ÷3) se rejoue sans conflit', () => {
   const source = vivante();
   enregistrer(source, [{ op: 'supprimer', entite: 'monstre', cle: { id: COLLECTEUR } }]);
   const { base, bilan } = rebatir(source);
@@ -148,22 +148,22 @@ test('décision R148 : une carte supprimée après 0073 (titres en ÷3) se rejou
   assert.equal(base.prepare('SELECT count(*) AS n FROM monstre_defense WHERE monstre_id = ?').get(COLLECTEUR).n, 0);
 });
 
-test('décision R148 : les titres que l’adaptateur reconnaît sont exactement les titres d’avant de la migration 0073', () => {
-  assert.equal(TITRES_DE_0073.length, 8, 'les 8 UPDATE de titre de 0073');
-  assert.deepEqual([...TITRES_D_AVANT_0073].sort(), TITRES_DE_0073.map((t) => t.avant).sort());
+test('décision R155 : les titres que l’adaptateur reconnaît sont exactement les titres d’avant de la migration 0075', () => {
+  assert.equal(TITRES_DE_0075.length, 8, 'les 8 UPDATE de titre de 0075');
+  assert.deepEqual([...TITRES_D_AVANT_0075].sort(), TITRES_DE_0075.map((t) => t.avant).sort());
 });
 
 for (const [carte, rang, rubrique] of [['monstres/loup-garou#carte:loup-garou', 9, 'grande_vulnerabilite'], ['monstres/momie#carte:momie', 8, 'grande_resistance']]) {
-  test(`décision R148 : une carte sans Double résistance supprimée avant 0073 (${carte}, ${rubrique} en ${rubrique === 'grande_resistance' ? '÷4' : 'x4'}) : conflit explicite, la carte reste`, () => {
+  test(`décision R155 : une carte sans Double résistance supprimée avant 0075 (${carte}, ${rubrique} en ${rubrique === 'grande_resistance' ? '÷4' : 'x4'}) : conflit explicite, la carte reste`, () => {
     const source = vivante();
     const r = source.prepare('SELECT rubrique, titre FROM monstre_rubrique WHERE monstre_id = ? AND rang = ?').get(carte, rang);
     assert.equal(r.rubrique, rubrique);
-    const ancien = titreDAvant0073(r.rubrique, r.titre);
-    assert.ok(ancien && !ancien.startsWith('Double'), `« ${r.titre} » : un titre de ${rubrique} réécrit par 0073`);
+    const ancien = titreDAvant0075(r.rubrique, r.titre);
+    assert.ok(ancien && !ancien.startsWith('Double'), `« ${r.titre} » : un titre de ${rubrique} réécrit par 0075`);
     assert.equal(source.prepare("SELECT count(*) AS n FROM monstre_rubrique WHERE monstre_id = ? AND titre LIKE 'Double(s)%'").get(carte).n, 0);
     const rubriques = source.prepare('SELECT count(*) AS n FROM monstre_rubrique WHERE monstre_id = ?').get(carte).n;
     enregistrer(source, [{ op: 'supprimer', entite: 'monstre', cle: { id: carte } }]);
-    // le lot tel que noté avant 0073 : le titre d'avant de la migration
+    // le lot tel que noté avant 0075 : le titre d'avant de la migration
     const m = source.prepare("SELECT lot_id, rang, avant FROM modification WHERE table_nom = 'monstre_rubrique' AND json_extract(cle, '$.monstre_id') = ? AND json_extract(cle, '$.rang') = ?").get(carte, rang);
     source.prepare('UPDATE modification SET avant = ? WHERE lot_id = ? AND rang = ?').run(JSON.stringify({ ...JSON.parse(m.avant), titre: ancien }), m.lot_id, m.rang);
 
@@ -171,7 +171,7 @@ for (const [carte, rang, rubrique] of [['monstres/loup-garou#carte:loup-garou', 
     assert.equal(bilan.appliquees, 0);
     const [detail, ...autres] = conflits(base);
     assert.equal(autres.length, 0, 'un seul lot, un seul conflit');
-    assert.match(detail, AVANT_0073);
+    assert.match(detail, AVANT_0075);
     assert.equal(base.prepare('SELECT count(*) AS n FROM monstre WHERE id = ?').get(carte).n, 1);
     assert.equal(base.prepare('SELECT count(*) AS n FROM monstre_rubrique WHERE monstre_id = ?').get(carte).n, rubriques);
   });

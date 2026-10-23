@@ -105,14 +105,14 @@ test('rien n’est inventé : chaque ligne de texte gardée (rubriques, capacit�
   for (const r of b.regles) assert.ok(doc.has(`* ${r.texte}`), r.texte);
 });
 
-test('corrections : seulement les graphies que la base a déjà corrigées partout et les multiplicateurs de R148, chacune présente dans le doc', () => {
+test('corrections : seulement les graphies que la base a déjà corrigées partout et les multiplicateurs de R155, chacune présente dans le doc', () => {
   assert.deepEqual(CORRECTIONS.map(([, , origine]) => origine.match(/\d{4}-[a-z0-9-]+/)[0]), [
     '0012-eaunoire', '0006-orthographe-noms', '0006-orthographe-noms', '0005-orthographe-base',
     ...Array(4).fill('0039-bestiaire-reponses'),
-    ...Array(4).fill('0073-r148-titres-du-bestiaire'),
+    ...Array(4).fill('0075-r155-titres-du-bestiaire'),
   ]);
   // décision R57 : les fautes du butin, à leur seule place dans le doc (une case, une ligne de trois cases, un nom du glossaire) ; le nom corrigé du
-  // glossaire garde son identifiant. Décision R148 : les lignes entières des titres (Grande résistance ÷4 : 15 ; Grande vulnérabilité x4 : 22 ; Double
+  // glossaire garde son identifiant. Décision R155 : les lignes entières des titres (Grande résistance ÷4 : 15 ; Grande vulnérabilité x4 : 22 ; Double
   // résistance ÷4 : 10) et la sensibilité x8 des golems de verre I à III (3) ; les motifs sont ancrés sur la ligne (drapeau m ici).
   assert.deepEqual(CORRECTIONS.slice(4).map(([motif]) => texte.match(new RegExp(motif.source, 'gm')).length), [1, 1, 1, 3, 15, 22, 10, 3]);
   assert.deepEqual(b.glossaire.filter((g) => g.id === 'peau-du-radrak').map((g) => g.nom), ['Peau de radrak']);
@@ -121,7 +121,7 @@ test('corrections : seulement les graphies que la base a déjà corrigées parto
   assert.equal(compacter('Brouillard,  ect'), 'Brouillard, etc');
 });
 
-test('R148 : les titres des cartes en ÷3 / x3, la Double résistance rangée en Grande résistance, la sensibilité des golems de verre en x4', () => {
+test('R155 : les titres des cartes en ÷3 / x3, la Double résistance rangée en Grande résistance, la sensibilité des golems de verre en x4', () => {
   const rubriques = cartes.flatMap((c) => c.rubriques.map((r) => ({ ...r, carte: c.id })));
   const titres = (cle) => [...new Set(rubriques.filter((r) => r.rubrique === cle).map((r) => r.titre))].sort();
   assert.deepEqual(titres('grande_resistance'), [

@@ -9,14 +9,14 @@ import { normalize } from './text.mjs';
 
 /**
  * Rubriques qui listent des cibles (« Brûlure, Paralysie ») : sens d'une ligne de `monstre_defense`, dans l'ordre ; les valeurs des `CHECK` du schéma.
- * 'double_resistance' reste lue comme le schéma l'admet (décision R148 : la « Double résistance » est devenue la Grande résistance, migration 0073 ; plus
- * aucune donnée ne l'écrit, le rejeu d'un journal d'avant 0073 la traduit : serveur/edition-bestiaire.mjs#ancienneEcritureDesResistances) : une rubrique
+ * 'double_resistance' reste lue comme le schéma l'admet (décision R155 : la « Double résistance » est devenue la Grande résistance, migration 0075 ; plus
+ * aucune donnée ne l'écrit, le rejeu d'un journal d'avant 0075 la traduit : serveur/edition-bestiaire.mjs#ancienneEcritureDesResistances) : une rubrique
  * classée ainsi par l'extracteur (tools/bestiaire/extraire.mjs) garderait ses cibles ; rien ne la propose (RUBRIQUES).
  */
 export const SENS_DEFENSE = ['vulnerabilite', 'grande_vulnerabilite', 'resistance', 'grande_resistance', 'double_resistance', 'immunite', 'reflexion'];
 
 /**
- * Les rubriques d'une carte (colonne `monstre_rubrique.rubrique`), dans l'ordre où le doc les écrit d'habitude, avec leur titre par défaut. Décision R148 :
+ * Les rubriques d'une carte (colonne `monstre_rubrique.rubrique`), dans l'ordre où le doc les écrit d'habitude, avec leur titre par défaut. Décision R155 :
  * les multiplicateurs sont ceux des paliers de la base (`resistance_palier.effet_brut` : grande résistance ÷3, grande vulnérabilité x3), et la
  * « Double résistance » n'a plus de titre (devenue la Grande résistance ; le `CHECK` du schéma garde la valeur, SENS_DEFENSE la lit encore).
  */
