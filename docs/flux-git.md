@@ -72,14 +72,16 @@ résolvent seuls. Même chose si le hotfix modifie `.github/workflows/` et que l
 l'historique des fusions (une refusion faite par *squash* laisserait `master` hors de `dev`, et la livraison suivante serait refusée).
 
 **Une `feature/<nom>` ou `hotfix/<nom>` en conflit avec sa base se rebase, on n'y fusionne jamais la base** (demande du propriétaire) :
-`git fetch --prune origin`, `git rebase origin/dev` (ou `origin/master`), résoudre, puis `git push --force-with-lease`. La PR n'est fusionnée qu'une fois
+`git fetch --prune origin`, `git rebase origin/dev` (ou `origin/master`), résoudre, puis `git push --force-with-lease --force-if-includes`. La PR n'est fusionnée qu'une fois
 sans conflit et la CI verte. Seule exception, la refusion de `master` dans `dev` décrite plus haut : elle doit rester une fusion (le bot vérifie que
 `master` est dans l'historique de `dev`).
 
-**Avant chaque push, on se remet à jour sur la base, par défaut** (demande du propriétaire) : `git fetch --prune origin` ; si `origin/dev` (ou
-`origin/master` pour un hotfix) a bougé depuis le départ de la branche (`git merge-base --is-ancestor origin/dev HEAD` échoue), `git rebase` sur elle,
-relancer les contrôles que le rebase touche, puis pousser (`git push --force-with-lease` si la branche était déjà poussée). Même sans conflit : la PR
-est ainsi toujours testée sur la base du moment.
+**Juste après le dernier commit, et avant chaque push, on se remet à jour sur la base, par défaut** (demande du propriétaire ; skill
+`resoudre-un-conflit`) : `git fetch --prune origin` ; si `origin/dev` (ou `origin/master` pour un hotfix) a bougé depuis le départ de la branche
+(`git merge-base --is-ancestor origin/dev HEAD` échoue), `git rebase` sur elle, résoudre les conflits aussitôt, relancer les contrôles que le rebase
+touche, puis pousser (`git push --force-with-lease --force-if-includes` si la branche était déjà poussée). Même sans conflit : la PR est ainsi
+toujours testée sur la base du moment. Une PR ouverte se corrige ensuite automatiquement jusqu'à sa fusion (CI rouge, conflit, revue ; skill
+`corriger-une-pr`).
 
 Plusieurs fusions rapprochées sont traitées chacune à leur tour par le bot (il relit les branches et recommence si une autre fusion est passée
 entre-temps). Relancer un passage déjà fait (*Re-run*) ne refait rien : le bot reconnaît la PR à ses commits « (PR #n) » et s'arrête ; pour republier
@@ -140,7 +142,8 @@ git push -u origin hotfix/lien-casse             # puis PR hotfix/lien-casse →
 `--prune` : les anciennes branches `dev/…` ont été supprimées pour créer `dev` ; un clone qui garde leurs références (`origin/dev/…`) ne peut pas
 recevoir `origin/dev` tant qu'il ne les a pas oubliées (`git fetch --prune origin`, une fois suffit ; ou `git config fetch.prune true`).
 
-Mettre une `feature` à jour : y fusionner `origin/dev`. Mettre une `hotfix` à jour : y fusionner `origin/master`, jamais `dev` ni une `feature` (refusé).
+Mettre une `feature` à jour : la rebaser sur `origin/dev`. Mettre une `hotfix` à jour : la rebaser sur `origin/master`, jamais sur `dev` ni sur une
+`feature` (refusé). On n'y fusionne jamais la base (seule exception : la refusion de `master` dans `dev`, plus haut).
 
 **Après la fusion, le bot supprime la branche sur GitHub** (`feature/<nom>` ou `hotfix/<nom>`, jamais `dev`), une fois son passage terminé sans erreur,
 et seulement si elle pointe encore sur le commit fusionné : une branche qui a reçu des commits depuis est gardée (avertissement dans le passage).

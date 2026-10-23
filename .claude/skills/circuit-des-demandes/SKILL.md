@@ -53,6 +53,9 @@ Un rapatriement de l'édition du site de dev n'est pas jugé : le site est la so
   Ne pas recopier `CLAUDE.md` : chaque agent le reçoit déjà.
 - **Relayer entre membres.** Les membres d'une équipe se parlent par leur chef : il transmet à l'un ce dont il a besoin du travail de l'autre, ou relance l'un avec la question de l'autre (`SendMessage` à son identifiant : l'agent reprend avec tout son contexte).
 - **Répondre aux doutes.** Un membre bloqué rend un rapport qui finit par ses questions. Le chef y répond par `SendMessage` s'il le peut. Sinon, il pose la question à celui qui lui a fait la demande.
+- **Les membres qui passent en arrière-plan.** Un chef lance ses membres avec `run_in_background: false`. Un travail long passe pourtant en arrière-plan, et son rapport arrive alors à la session principale, pas au chef.
+  - **Le chef** rend un point d'étape court : ce qui est fait, le membre attendu, et ce qu'il fera de son rapport. Il ne devine jamais un rapport qu'il n'a pas reçu.
+  - **La session principale** lui transmet le rapport mot pour mot par `SendMessage`, dès qu'il arrive. Le chef reprend avec tout son contexte, et ainsi de suite jusqu'à la synthèse finale.
 - **Synthétiser.** Le chef rend une synthèse, pas la copie des rapports. Elle contient : ce qui est fait (fichiers, décisions, branche), ce qui reste, les questions ouvertes, et qui doit agir ensuite.
 
 ## Entre chefs
@@ -71,8 +74,9 @@ Seul le propriétaire tranche une règle, un nom ou un choix d'affichage absent 
 
 Tout fichier modifié du dépôt se publie, y compris les registres qu'écrivent les chefs (`docs/decisions-regles.md`, `docs/sql/a-valider.md`, `docs/sql/orthographe-a-valider.md`).
 - **Les fichiers des chefs.** Un chef qui a écrit en donne la liste au `leader-technique`. Ils partent avec le lot technique qui applique la décision, ou seuls si le site ne change pas.
-- **La branche.** `tech-publication` commite et pousse la branche.
-- **La PR.** La session principale ouvre la PR vers `dev`, s'y abonne et la fusionne une fois la CI verte (`publier-une-branche`). Les événements de la PR arrivent à la session principale, qui les confie à `leader-technique`.
+- **La branche.** `tech-publication` commite. Juste après le dernier commit, il rebase sur la base et résout les conflits (`resoudre-un-conflit`), puis pousse.
+- **La PR.** La session principale ouvre la PR vers `dev`, s'y abonne et la fusionne une fois la CI verte (`publier-une-branche`).
+- **Correction automatique.** Les événements de la PR (CI rouge, conflit, revue) arrivent à la session principale, qui les confie aussitôt à `leader-technique`. La PR se corrige sans attendre le propriétaire, jusqu'à la fusion (`corriger-une-pr`).
 
 **Le travail commence sur sa branche.** Avant le premier fichier écrit d'un lot, `tech-publication` crée la `feature/<nom>` depuis `origin/dev` à jour : `db:migrate` part du schéma du dernier commit, et le numéro d'une migration se lit dans l'arbre.
 
