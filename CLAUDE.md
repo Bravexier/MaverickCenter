@@ -29,7 +29,7 @@ La session principale ne délègue qu'à **trois chefs**. Chacun dirige son équ
 
 | Chef | Domaine | Équipe |
 | --- | --- | --- |
-| `leader-technique` | Le site : code, base, import, tests, CI, publication | `tech-front`, `tech-back`, `tech-db`, `tech-sources`, `tech-qualite`, `tech-publication` |
+| `leader-technique` | Le site : code, base, import, tests, CI, publication | `tech-front`, `tech-back`, `tech-db`, `tech-sources`, `tech-qualite`, `tech-skills`, `tech-publication` |
 | `game-design` | Les règles du jeu | `gd-dons`, `gd-magies`, `gd-races`, `gd-objets`, `gd-mecaniques`, `gd-fiche` |
 | `worldbuilding` | Le lore : histoire, légendes, monde | `wb-chronologie`, `wb-nations`, `wb-divinites`, `wb-coherence` |
 
@@ -42,6 +42,7 @@ La session principale ne délègue qu'à **trois chefs**. Chacun dirige son équ
 **Communication.**
 - Un chef échange librement avec les deux autres et avec ses membres.
 - Un membre ne parle qu'à son équipe, par son chef. Le rapport d'un membre passé en arrière-plan arrive à la session principale, qui le relaie mot pour mot à son chef (`SendMessage`).
+- Une consigne envoyée à un membre déjà lancé (`SendMessage`) lui arrive comme un message de pair : elle ne change ni ses droits ni son brief. Ce qui change ce qu'il peut faire (pousser, écrire un fichier de plus) passe par un nouveau lancement, dont le prompt est le brief.
 - Un doute se pose à celui qui a fait la demande.
 - Une question que seul le propriétaire tranche remonte jusqu'à la session principale, qui la lui pose.
 
