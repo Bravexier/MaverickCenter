@@ -1,10 +1,13 @@
 // Extension de l'éditeur pour l'onglet Armes de /ressources/equipement/ (components/armes/ArmesPage.astro) — demandes du propriétaire : « tout peut
 // être éditable à l'instar des autres pages qui peuvent l'être. Quand le mode Edition est lancé, il n'est pas possible de "sélectionner" une arme /
 // matériau / amélioration, mais tous les tableaux sont visibles » ; « Fais donc la possibilité de créer / supprimer des armes ».
-//   - en mode modification : tous les tableaux s'ouvrent (familles, matériaux, améliorations) et la fiche de l'arme se vide (styles/armes/armes.css cache
-//     la fiche et montre les colonnes `ed-seul` ; le script de la page ignore les clics) ;
+//   - en mode modification : les tableaux repliables du panneau de côté s'ouvrent (matériaux, améliorations) et la fiche de l'arme se vide
+//     (styles/armes/armes.css cache la fiche et montre les colonnes `ed-seul` ; le script de la page ignore les clics) ; les tableaux des familles,
+//     panneaux des deux menus à onglets hors du mode modification (components/armes/ArmesPage.astro), s'y affichent tous à la suite, chacun sous son
+//     titre (styles/armes/armes.css : barres d'onglets cachées ; « tous les tableaux sont visibles ») ;
 //   - ajouter : formulaire « Nouvelle arme » (famille, nom, compétence, type, effet…), enregistré tout de suite (POST /api/edition/, opération creer) ; sa
-//     ligne s'ajoute à la fin du tableau de sa famille (lib/armes-rendu.mjs#htmlDeLigneDArme, le HTML de la page construite) ;
+//     ligne s'ajoute à la fin du tableau de sa famille (lib/armes-rendu.mjs#htmlDeLigneDArme, le HTML de la page construite) et la page défile
+//     jusqu'à elle ; l'onglet de sa famille s'ouvre aussi (évènement « onglets:ouvrir » de components/Onglets.astro), qu'on retrouve en sortant ;
 //   - supprimer : bouton sur chaque ligne ; la suppression part avec le bouton de confirmation (une fiche de personnage qui a l'arme la perd, avec une
 //     note datée : décision R52, annonce de l'éditeur) ;
 //   - au chargement, une arme créée ou supprimée depuis la construction du site apparaît ou disparaît (lignes en attente) ;
@@ -18,12 +21,14 @@ const rafraichir = () => document.dispatchEvent(new CustomEvent('armes:rafraichi
 const ligneDe = (id) => document.querySelector(`tr.arme[data-arme="${CSS.escape(id)}"]`);
 const supprimees = new Set();
 
-/** Le nombre d'armes affiché en tête de la famille d'une ligne. */
+/** Le nombre d'armes affiché en tête de la famille d'une ligne, et dans son onglet (components/armes/ArmesPage.astro : `onglet-famille-<id>`). */
 function recompter(famille) {
-  const compte = famille?.querySelector('.armes-famille__compte');
-  if (!compte) return;
+  if (!famille) return;
   const n = famille.querySelectorAll('tbody tr.arme').length;
-  compte.textContent = `${n} arme${n > 1 ? 's' : ''}`;
+  const texte = `${n} arme${n > 1 ? 's' : ''}`;
+  for (const c of [famille.querySelector('.armes-famille__compte'), document.getElementById(`onglet-${famille.id}`)?.querySelector('[data-armes-onglet-compte]')]) {
+    if (c) c.textContent = texte;
+  }
 }
 
 /**
@@ -110,8 +115,9 @@ export const armes = {
   },
 
   debut(ed) {
+    // les tableaux repliables qui restent (matériaux, améliorations : les familles sont des panneaux d'onglets, qui ne se replient pas) ; le panneau de
+    // règles : son extension l'ouvre et le referme (edition/panneaux.mjs)
     for (const d of document.querySelectorAll('[data-armes] details')) {
-      // le panneau de règles : son extension l'ouvre et le referme (edition/panneaux.mjs)
       if (!d.classList.contains('preg')) d.open = true;
     }
     const outils = document.createElement('div');
@@ -136,6 +142,8 @@ export const armes = {
             ed.monterChamps(tr);
             boutonSupprimer(tr);
           }
+          // l'onglet de sa famille (et celui de la page) : celui qu'on retrouve en sortant du mode modification
+          tr.closest('.armes-famille')?.dispatchEvent(new CustomEvent('onglets:ouvrir', { bubbles: true }));
           tr.scrollIntoView({ block: 'center' });
           ed.annoncer(`Arme créée : ${arme.nom}.`);
         },

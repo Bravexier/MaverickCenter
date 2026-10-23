@@ -187,7 +187,8 @@ test('chaque onglet garde son script ; un seul script d’onglets sur la page', 
   // celui des bâtons magiques (src/scripts/batons.mjs), assez court pour qu'Astro l'écrive en ligne, une fois
   assert.equal((html.match(/<script type="module">[^<]*\[data-baton-curseur\]/g) ?? []).length, 1, 'BatonsMagiques');
   assert.equal((html.match(/onglets:brancher/g) ?? []).length, 1, 'components/Onglets.astro, posé une fois');
-  // quatre groupes : la barre de la page, les sous-onglets de la ceinture, les familles des consommables (demande du propriétaire du 2026-10-22) et,
-  // dans l'onglet Accessoires, les tableaux d'effets ; chacun est sa barre seule
-  assert.deepEqual([...main.matchAll(/data-onglets="([^"]+)"/g)].map((m) => m[1]), ['Équipement', 'Ceinture', 'Consommables', 'Effets par propriété']);
+  // six groupes : la barre de la page, les deux menus des familles d'armes (mêlée, distance : demande du propriétaire du 2026-10-23), les sous-onglets
+  // de la ceinture, les familles des consommables (demande du propriétaire du 2026-10-22) et, dans l'onglet Accessoires, les tableaux d'effets ; chacun
+  // est sa barre seule
+  assert.deepEqual([...main.matchAll(/data-onglets="([^"]+)"/g)].map((m) => m[1]), ['Équipement', 'Armes de mêlée', 'Armes à distance', 'Ceinture', 'Consommables', 'Effets par propriété']);
 });

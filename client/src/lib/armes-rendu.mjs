@@ -184,3 +184,26 @@ export function htmlDeLigneDArme(a, ctx = {}) {
     + `<tr class="arme-suite" data-arme-suite="${e(a.id)}"><td class="arme-suite__marge"></td>`
     + `<td class="arme__effets" colspan="${COLONNES_D_UNE_ARME - 1}" data-ed-lecture="${ed('effet')}" data-ed-rendu="arme-effets">${rendu('arme-effets', 'effet')}</td></tr>`;
 }
+
+/**
+ * Les deux menus à onglets de l'onglet Armes (demande du propriétaire, 2026-10-23 : « Il faudrai réduire çà en deux menus à onglet. Un pour les armes
+ * de mêlée l'autre pour les armes à distances. ») : la catégorie de famille que chacun montre (arme_famille.categorie, décision R127) et son intitulé,
+ * dans l'ordre de la page.
+ */
+export const MENUS_DES_ARMES = [
+  { categorie: 'contact', titre: 'Armes de mêlée' },
+  { categorie: 'distance', titre: 'Armes à distance' },
+];
+
+/**
+ * Les familles de l'onglet (lib/armes-db.mjs#chargerArmes, dans l'ordre de l'onglet) rangées dans leurs menus : [{ categorie, titre, familles }], dans
+ * l'ordre de MENUS_DES_ARMES, chaque menu dans l'ordre des familles, un menu sans famille omis. Une famille d'une autre catégorie (ou sans catégorie)
+ * arrête le build : elle n'aurait pas de menu, et la page la perdrait sans rien dire.
+ */
+export function menusDesArmes(familles) {
+  const sansMenu = familles.filter((f) => !MENUS_DES_ARMES.some((m) => m.categorie === f.categorie));
+  if (sansMenu.length) {
+    throw new Error(`familles d'armes sans menu (catégorie ni « contact » ni « distance », décision R127) : ${sansMenu.map((f) => `${f.id} (${f.categorie})`).join(', ')}`);
+  }
+  return MENUS_DES_ARMES.map((m) => ({ ...m, familles: familles.filter((f) => f.categorie === m.categorie) })).filter((m) => m.familles.length > 0);
+}
