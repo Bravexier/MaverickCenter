@@ -170,8 +170,9 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
           </div>
         </section>
 
-        {/* les armes et maîtrises, puis la ceinture ; sur grand écran, la colonne s'efface (display: contents) : les armes et maîtrises prennent toute la
-            largeur de la zone, au-dessus des compétences, et la ceinture va à côté des compétences (choix du propriétaire du 2026-10-23, « Pleine largeur ») */}
+        {/* les armes et maîtrises, puis la ceinture ; sur grand écran, la colonne s'efface (display: contents) : la ceinture va à côté des compétences,
+            et les armes et maîtrises prennent toute la largeur de la zone, sous elles (choix du propriétaire du 2026-10-23, « Caractéristiques d'abord ») ;
+            l'ordre du DOM reste celui des écrans plus étroits (armes, puis ceinture), qui ne changent pas */}
         <div class="zp-colonne">
           <section class="fiche-etape zp-armes" id="etape-armes" aria-labelledby="titre-armes">
             <h3 id="titre-armes">Armes et maîtrises</h3>

@@ -65,14 +65,17 @@ test('/fiche/ en quatre zones (demande du propriétaire), sans cadre, titre ni p
   assert.ok(!/class="num"/.test(fiche), 'aucun numéro de bloc');
 });
 
-test('/fiche/, zone II sur grand écran : « Armes et maîtrises » sur toute la largeur, la ceinture sous elles, à côté des compétences (choix du propriétaire du 2026-10-23, « Pleine largeur »)', options, () => {
+test('/fiche/, zone II sur grand écran : caractéristiques et compétences avec la ceinture à côté, puis « Armes et maîtrises » sur toute la largeur (choix du propriétaire du 2026-10-23, « Caractéristiques d’abord »)', options, () => {
   const html = lire('fiche/index.html');
   const fiche = html.slice(html.indexOf('<div class="fiche" id="fiche"'));
-  // la colonne des armes et de la ceinture reste dans la page (elle se suit ainsi sur écran moyen et téléphone) ; chaque bloc a son aire
+  // l'ordre du DOM est celui des écrans moyens et des téléphones, qui ne change pas : attributs, compétences, armes et maîtrises, ceinture, sorts, dons ;
+  // la colonne des armes et de la ceinture reste dans la page, et chaque bloc a son aire sur grand écran
+  const ordre = ['attributs', 'caracteristiques', 'armes', 'ceinture', 'sorts', 'dons'].map((id) => fiche.indexOf(`id="etape-${id}"`));
+  assert.ok(ordre.every((i, n) => i > 0 && (n === 0 || i > ordre[n - 1])), `ordre du DOM de la zone II : ${ordre}`);
   assert.match(fiche, /<div class="zp-colonne">\s*(?:<!--[^]*?-->\s*)?<section class="fiche-etape zp-armes" id="etape-armes"[^]*?<section class="fiche-etape zp-ceinture" id="etape-ceinture"/);
   const grand = html.match(/@media \(min-width:\s*64rem\)\s*\{([^]*?)\.zone-situation/)?.[1] ?? '';
   const aires = [...(grand.match(/\.zone-portee\s*\{[^}]*grid-template-areas:\s*([^;}]+)/)?.[1] ?? '').matchAll(/["']([^"']+)["']/g)].map((m) => m[1]);
-  assert.deepEqual(aires, ['attr attr', 'arm arm', 'car cei', 'sor don'], 'les armes sur les deux colonnes, sous les attributs ; la ceinture à côté des compétences');
+  assert.deepEqual(aires, ['attr attr', 'car cei', 'arm arm', 'sor don'], 'la ceinture à côté des compétences, puis les armes sur les deux colonnes, au-dessus des sorts');
   assert.match(grand, /\.zp-colonne\s*\{\s*display:\s*contents/, 'la colonne s’efface sur grand écran');
   assert.match(grand, /\.zp-armes\s*\{\s*grid-area:\s*arm\b/);
   assert.match(grand, /\.zp-ceinture\s*\{\s*grid-area:\s*cei\b/);

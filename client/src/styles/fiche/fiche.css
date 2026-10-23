@@ -119,11 +119,12 @@ main:has(> .fiche) { max-width: 100rem; }
 .fiche-zone__grille { display: grid; gap: 0.75rem; align-items: start; }
 .zp-colonne { display: grid; gap: 0.75rem; align-content: start; }
 
-/* II. à portée de main : les attributs sur toute la largeur ; les armes et maîtrises sur toute la largeur aussi, cartes des sources à gauche et tableau
-   des familles à droite (choix du propriétaire du 2026-10-23, « Pleine largeur ») ; caractéristiques et compétences, à côté la ceinture, toujours sous
-   les armes ; les sorts, à côté les dons débloqués. Plus étroit, la colonne des armes et de la ceinture (.zp-colonne) passe sous les compétences. */
+/* II. à portée de main : les attributs sur toute la largeur ; caractéristiques et compétences, à côté la ceinture ; puis les armes et maîtrises sur
+   toute la largeur, cartes des sources à gauche et tableau des familles à droite (choix du propriétaire du 2026-10-23, « Caractéristiques d'abord ») ;
+   les sorts, à côté les dons débloqués. La colonne des armes et de la ceinture (.zp-colonne) s'efface pour que chacune ait son aire ; l'ordre du DOM
+   reste celui des écrans plus étroits (armes, puis ceinture), où la colonne passe sous les compétences. */
 @media (min-width: 64rem) {
-  .zone-portee { grid-template-columns: minmax(0, 5fr) minmax(0, 3fr); grid-template-areas: 'attr attr' 'arm arm' 'car cei' 'sor don'; }
+  .zone-portee { grid-template-columns: minmax(0, 5fr) minmax(0, 3fr); grid-template-areas: 'attr attr' 'car cei' 'arm arm' 'sor don'; }
   .zp-attributs { grid-area: attr; }
   .zp-caracs { grid-area: car; }
   .zp-colonne { display: contents; }
