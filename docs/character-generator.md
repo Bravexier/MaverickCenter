@@ -88,9 +88,20 @@ abandonne.
   choisir, chaque bonus ou objet de départ du métier à choisir, le +1 d'une magie qui le laisse au choix. Leur champ est **surligné** (ambre, `data-a-choisir`),
   et tant qu'il en reste le panneau « Choix » sort en **tiroir** en bas de l'écran, par-dessus la fiche, avec la liste de ce qui manque ; il ne se range que
   quand la zone 4 est à l'écran ; « Réduire » le replie sur sa poignée (le survol le rouvre), « Aller aux choix » y descend. Replié, son contenu est caché
-  (`display: none`) : le focus clavier n'y entre pas. Au clavier, on le rouvre par « Déplier », ou l'on passe par « Aller aux choix » ; la bulle d'un
-  choix du tiroir montre sa tuile au focus (sauf l'ethnie, un bouton qui ouvre son menu, sans bulle au clavier), mais ses champs ne se prennent qu'à la
-  souris. Le focus déjà dans le contenu le garde ouvert. La spécialité s'y choisit aussi (demande du propriétaire : « le doubler dans le menu de
+  (`display: none`) : le focus clavier n'y entre pas. Au clavier, on le rouvre par « Déplier », ou l'on passe par « Aller aux choix », qui met le focus sur
+  l'onglet « Choix ». La bulle d'un choix du tiroir montre sa tuile au focus ; **Entrée** met le focus dans la bulle, où le choix se fait aussi (Tab passe
+  d'un choix à l'autre sans entrer dans les bulles) ; dans la bulle, Échap la ferme et rend le focus au choix, Tab après le dernier champ va au choix
+  suivant, Maj+Tab avant le premier revient au choix. Un choix terminé depuis sa bulle quitte le tiroir et le focus va au choix suivant (un choix en
+  plusieurs parts, comme les points d'une maîtrise, garde le focus dans sa bulle jusqu'au bout) ; au dernier, le tiroir disparaît et le focus va sur la
+  tuile de la page ; quand le choix fait était le dernier du tiroir, le focus va au choix juste avant, et quand il fait apparaître de nouveaux choix à sa
+  place (les dons d'une spécialité), au premier d'entre eux. Ce qui se parcourt aux flèches dans la bulle n'est pris qu'à la validation : une liste
+  déroulante ou un champ nombre (flèches et chiffres tapés), à Entrée ou en le quittant par Tab ou Maj+Tab ; un groupe de dons (boutons ronds), à Entrée,
+  Espace, Tab ou Maj+Tab ; Échap l'annule, et un clic ailleurs aussi (réponses du propriétaire). Tout cela vaut quand on est entré dans la bulle
+  au clavier, par Entrée : entré à la souris, un champ de la bulle prend sa valeur à son changement, comme avant (« la souris ne change pas »). Les mêmes
+  champs sur la page, et la souris dans la bulle (un clic, une valeur prise dans la liste ouverte), prennent la valeur aussitôt ; au toucher, le second
+  appui sur un choix laisse sa bulle ouverte. Le focus du clavier dans la bulle la garde ouverte quand le pointeur
+  passe dessus puis repart. L'ethnie est un bouton qui ouvre son menu, sans bulle. Le focus déjà dans
+  le contenu le garde ouvert. La spécialité s'y choisit aussi (demande du propriétaire : « le doubler dans le menu de
   choix »).
 - **Dégâts des armes** (`degatsDArme`) : une pastille « XDY+Z » par arme — les dés de la maîtrise de sa famille, le dé de l'arme (son effet, sinon son type ;
   le Pugilat selon la Force), plus les bonus qui se cumulent (page « Armes ») : l'arme, sa composition, son amélioration, son élément et l'amélioration de

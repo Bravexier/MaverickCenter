@@ -336,8 +336,8 @@ html:not(.js) .parametres { gap: 0.75rem; }
 /* ----------------------------------------------------------------- le tiroir des choix à faire (demande du propriétaire) : tant qu'il en reste, le
    panneau « Choix » sort en bas de l'écran, par-dessus la fiche ; il se range quand la zone IV est à l'écran. Réduit, il ne montre que sa poignée (la
    liste de ce qui manque) et se rouvre au survol. Son corps est alors en `display: none` : le focus clavier n'y entre pas. Au clavier, on passe par
-   « Déplier », « Aller aux choix » ou la bulle d'un choix du tiroir, qui montre sa tuile au focus (sauf l'ethnie, un bouton qui ouvre son menu, sans bulle
-   au clavier ; src/scripts/fiche.mjs#construireChoixEnAttente). */
+   « Déplier », « Aller aux choix » (le focus va sur l'onglet « Choix ») ou la bulle d'un choix du tiroir : le focus sur le choix montre sa tuile, Entrée met
+   le focus dans la bulle, où le choix se fait aussi (sauf l'ethnie, un bouton qui ouvre son menu, sans bulle ; src/scripts/fiche.mjs#bulleDeChoix). */
 .tiroir__tete {
   display: flex;
   flex-wrap: wrap;
@@ -352,8 +352,13 @@ html:not(.js) .parametres { gap: 0.75rem; }
 .tiroir__attente { display: flex; flex: 1 1 18rem; flex-wrap: wrap; gap: 0.25rem; margin: 0; padding: 0; list-style: none; }
 .tiroir__attente li { padding: 0.05rem 0.55rem; border: 1px dashed color-mix(in srgb, var(--a-choisir) 60%, var(--border)); border-radius: var(--radius-pill); background: var(--surface); font-size: var(--fs-xs); }
 /* un choix du tiroir : sa tuile en infobulle (demande du propriétaire ; src/scripts/fiche.mjs#remplirBulleDeChoix), où le choix se fait aussi */
-.tiroir__attente li[data-bulle] { cursor: help; }
-.tiroir__attente li[data-bulle]:focus-visible { outline: 2px solid var(--a-choisir); outline-offset: 2px; }
+/* son bouton (le focus, la bulle, les rôles ARIA) sans habillage de bouton, qui couvre toute la pastille (le survol et l'appui de la bulle) : la pastille
+   reste le `li`, dont le contour suit le focus visible */
+.tiroir__attente li:has(> .tiroir__choix) { padding: 0; }
+.fiche .tiroir__choix { padding: 0.05rem 0.55rem; border: 0; border-radius: inherit; background: none; color: inherit; font: inherit; text-align: inherit; }
+.fiche .tiroir__choix[data-bulle] { cursor: help; }
+.fiche .tiroir__choix:focus-visible { outline: none; }
+.tiroir__attente li:has(> .tiroir__choix:focus-visible) { outline: 2px solid var(--a-choisir); outline-offset: 2px; }
 .fiche .bulle--tuile { width: min(34rem, calc(100vw - 1rem)); max-width: min(34rem, calc(100vw - 1rem)); padding: 0.55rem 0.7rem; font: inherit; font-size: var(--fs-md); white-space: normal; }
 .fiche .bulle--tuile .fiche-champ { display: grid; gap: 0.2rem; }
 .fiche .tiroir__lien { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-decoration: underline; }
