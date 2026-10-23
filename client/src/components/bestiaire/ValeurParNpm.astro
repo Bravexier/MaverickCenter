@@ -1,0 +1,31 @@
+---
+// Une valeur d'une créature invoquée telle qu'écrite et, si elle change avec le NPM, sa valeur à chaque NPM (décision R130, lib/creature-npm.mjs#parNpm) :
+// un élément par groupe de NPM (`data-npms="1 2"`), que la carte ne montre qu'au NPM choisi (`data-npm` sur la carte : styles/bestiaire/carte.css) ;
+// sans NPM choisi (sans JavaScript, à l'impression), la valeur écrite (`data-npm-ecrit`). Une valeur calculée qui diffère de l'écrite est soulignée,
+// l'écriture en infobulle (`.bcalcul`, comme la défense calculée d'une carte de monstre). `html` : les valeurs sont du HTML (caractéristiques en cases).
+interface Props {
+  ecrit: string | null;
+  groupes: { npms: number[]; valeur: string | null }[] | null;
+  html?: boolean;
+  vide?: string;
+}
+const { ecrit, groupes, html = false, vide = '—' } = Astro.props;
+const texte = (v: string | null) => (v === null || v === undefined || v === '' ? vide : v);
+---
+
+{
+  groupes ? (
+    <>
+      {html ? <span data-npm-ecrit set:html={texte(ecrit)} /> : <span data-npm-ecrit>{texte(ecrit)}</span>}
+      {groupes.map((g) => {
+        const calcule = !html && g.valeur !== ecrit && Boolean(ecrit);
+        const attributs = { 'data-npms': g.npms.join(' '), class: calcule ? 'bcalcul' : undefined, title: calcule ? `Écrit : ${ecrit}` : undefined };
+        return html ? <span {...attributs} set:html={texte(g.valeur)} /> : <span {...attributs}>{texte(g.valeur)}</span>;
+      })}
+    </>
+  ) : html ? (
+    <Fragment set:html={texte(ecrit)} />
+  ) : (
+    texte(ecrit)
+  )
+}

@@ -1,0 +1,83 @@
+/* Gabarit commun des tableaux du site (demande du propriétaire, 2026-10-17 : « De manière générale il faudrait uniformiser tous les tableaux sous le
+   même template commun »). Un tableau = un cadre (`.tableau` : fond, bordure, coins arrondis), un titre facultatif (`.tableau__titre` : le <summary>
+   d'un tableau repliable ou un titre hN ; `.tableau__nom`, en lien vers une page s'il le faut, et `.tableau__compte` à droite), une note
+   (`.tableau__note`), la zone qui défile en largeur (`.tableau__defile`) et la table (`.table-donnees`) : en-têtes en petites capitales sur un fond
+   teinté, un filet entre deux lignes, cases alignées en haut à gauche. components/Tableau.astro écrit ce HTML ; un tableau sans titre peut aussi poser
+   les classes lui-même (`.tableau.tableau--defile` : le cadre défile). Plusieurs tableaux : `.tableaux`, l'un sous l'autre, ou `.tableaux--cote-a-cote`,
+   autant par rangée que la largeur en tient (demande du propriétaire, même jour : « Mettre de coté 2 ou 3 tableaux serai plus lisible ») : la largeur
+   minimale d'un tableau, `--tableau-largeur` (26rem par défaut), en fixe le nombre (30rem pour les potions de la ceinture : deux ou trois dans la
+   page de 120rem). Un tableau dans un autre (un groupe de tableaux) a un nom plus petit que celui du groupe.
+   Teinte (`--tab` : chevron ; `--tab-soft` : fond des en-têtes ; `--tab-line` : filet sous le titre et sous l'en-tête) : l'accent du site, sauf
+   celle qu'une page pose sur son conteneur (magie, race, métier, bestiaire, guide…). Densité : `.table-donnees--serree` (listes où l'on choisit une
+   ligne : matériaux, formes, améliorations, étapes des accessoires ; bestiaire), `.table-donnees--aeree` (armes : « l'affichage est trop serré »). Ligne colorée (`tr.ligne-couleur`, `--ligne-fond`,
+   `--ligne-texte`) : toute la ligne sur la couleur que lui donne sa page, un filet de sa teinte entre deux lignes colorées, un voile au survol.
+   La table, ses cases et la zone qui défile sont sous :where() : la feuille d'une page les précise sans surenchère de sélecteurs, qu'elle soit
+   insérée dans la page (?raw, après celle-ci) ou importée (la page d'un monstre).
+   Les tableaux écrits en Markdown (pages du wiki, chapitres du guide) suivent le même gabarit (fin du fichier). Hors gabarit : les tableaux de saisie
+   de la fiche de personnage, ceux de la page Debug et de l'onglet DB (des outils, pas des règles). */
+:root {
+  --tab: var(--accent);
+  --tab-soft: color-mix(in srgb, var(--accent) 9%, var(--surface));
+  --tab-line: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+
+/* Plusieurs tableaux */
+.tableaux { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.2rem; align-items: start; }
+.tableaux--cote-a-cote { grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--tableau-largeur, 26rem)), 1fr)); gap: 1rem; align-items: start; }
+
+/* Le cadre, son titre, sa note */
+.tableau { min-width: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); scroll-margin-top: 0.75rem; }
+.tableau__titre { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.7rem; margin: 0; padding: 0.55rem 0.9rem; font-size: var(--fs-lg);
+  font-weight: 400; line-height: 1.3; }
+details.tableau > .tableau__titre { cursor: pointer; list-style: none; }
+details.tableau > .tableau__titre::-webkit-details-marker { display: none; }
+details.tableau > .tableau__titre::before { content: '▸'; color: var(--tab); transition: transform var(--duree); }
+details.tableau[open] > .tableau__titre::before { transform: rotate(90deg); }
+details.tableau[open] > .tableau__titre, .tableau:not(details) > .tableau__titre { border-bottom: 1px solid var(--tab-line); }
+.tableau__nom { font-weight: 700; font-size: var(--fs-xl); letter-spacing: 0.02em; }
+.tableau .tableau .tableau__nom { font-size: var(--fs-lg); }
+.tableau__compte { margin-left: auto; font-size: var(--fs-sm); color: var(--muted); font-variant-numeric: tabular-nums; }
+.tableau__note { margin: 0.45rem 0.9rem; font-size: var(--fs-md); color: var(--muted); }
+.tableau__note + .tableau__note { margin-top: -0.2rem; }
+
+/* La zone qui défile : elle garde les coins arrondis du cadre (une ligne colorée n'en déborde pas) */
+:where(.tableau__defile, .tableau--defile) { overflow-x: auto; }
+.tableau > .tableau__defile:last-child { border-radius: 0 0 calc(var(--radius-lg) - 1px) calc(var(--radius-lg) - 1px); }
+.tableau > .tableau__defile:only-child { border-radius: calc(var(--radius-lg) - 1px); }
+
+/* La table */
+:where(.table-donnees) { width: 100%; border-collapse: collapse; font-size: var(--fs-lg); line-height: 1.5; }
+:where(.table-donnees) > caption { caption-side: bottom; padding: 0.4rem 0.75rem; color: var(--muted); font-size: var(--fs-md); text-align: left; }
+:where(.table-donnees) > thead th { padding: 0.55rem 0.75rem; text-align: left; vertical-align: bottom; font-size: var(--fs-xxs); font-weight: 600;
+  letter-spacing: var(--ls-caps); text-transform: uppercase; white-space: nowrap; color: var(--muted); background: var(--tab-soft);
+  border-bottom: 1px solid var(--tab-line); }
+:where(.table-donnees) > tbody > tr > * { padding: 0.5rem 0.75rem; text-align: left; vertical-align: top; }
+:where(.table-donnees) > tbody > tr + tr > *, :where(.table-donnees) > tbody + tbody > tr:first-child > * { border-top: 1px solid var(--border); }
+:where(.table-donnees) > tbody > tr > th { font-weight: 600; }
+:where(.table-donnees--serree) > thead th { padding: 0.45rem 0.65rem; }
+:where(.table-donnees--serree) > tbody > tr > * { padding: 0.35rem 0.65rem; }
+:where(.table-donnees--aeree) > thead th { padding: 0.6rem 0.85rem; }
+:where(.table-donnees--aeree) > tbody > tr > * { padding: 0.7rem 0.85rem; }
+
+/* Une ligne sur la couleur que lui donne sa page (potions de la ceinture, bâtons magiques, matériaux des armes…) */
+:where(.table-donnees) tr.ligne-couleur > * { background: var(--ligne-fond); color: var(--ligne-texte); }
+:where(.table-donnees) tr.ligne-couleur + tr.ligne-couleur > * { border-top-color: color-mix(in srgb, var(--ligne-texte) 22%, var(--ligne-fond)); }
+:where(.table-donnees) tr.ligne-couleur:hover > * { background-image: linear-gradient(color-mix(in srgb, var(--ligne-texte) 10%, transparent),
+  color-mix(in srgb, var(--ligne-texte) 10%, transparent)); }
+
+/* Les tableaux écrits en Markdown (pages du wiki et du guide, dans `.prose`) : le même gabarit, le cadre à la largeur du tableau ; l'alignement que le
+   Markdown écrit (« :---: », attribut align) est gardé */
+:where(.prose) table { display: block; width: fit-content; max-width: 100%; overflow-x: auto; border-collapse: collapse; font-size: var(--fs-lg);
+  line-height: 1.5; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+:where(.prose) :is(th, td) { padding: 0.5rem 0.75rem; vertical-align: top; }
+:where(.prose) :is(th, td):not([align]) { text-align: left; }
+:where(.prose) thead th { vertical-align: bottom; font-size: var(--fs-xxs); font-weight: 600; letter-spacing: var(--ls-caps); text-transform: uppercase;
+  color: var(--muted); background: var(--tab-soft); border-bottom: 1px solid var(--tab-line); }
+:where(.prose) tbody > tr + tr > * { border-top: 1px solid var(--border); }
+/* en mode modification (site de dev), les cases d'un tableau qu'on écrit se voient : un pointillé, sans changer la mise en page */
+body.ed-mode :where(.prose) :is(th, td) { outline: 1px dashed color-mix(in srgb, var(--muted) 45%, transparent); outline-offset: -1px; }
+
+/* À l'impression, un tableau ne défile pas : il s'imprime en entier */
+@media print {
+  .tableau__defile, .tableau--defile, :where(.prose) table { overflow: visible; }
+}

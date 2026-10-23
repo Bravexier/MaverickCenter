@@ -3,27 +3,26 @@
 // écritures refusées pour la bonne raison, rien d'écrit en cas de refus ; la liste (portrait : empreinte et cadrage) et l'image d'un portrait ; puis
 // le serveur HTTP réel (port au hasard) et sa surveillance des fichiers (nouvelles règles, base remplacée, nouvelle version du service).
 import assert from 'node:assert/strict';
-import { copyFileSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { copyFileSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { TABLES_VIVANTES, ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
-import { enregistrerFiche, expliquer, LIGNES_MAX, lireFiche, listerFiches } from '../serveur/fiches.mjs';
+import { DEPART_DES_COLONNES_AJOUTEES, PAGE_D_AVANT, enregistrerFiche, expliquer, LIGNES_MAX, lireFiche, listerFiches, ordreDe } from '../serveur/fiches.mjs';
 import { demarrerService, guetteur } from '../serveur/service.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
-import { COLONNES_DU_SERVICE, COLONNES_RETIREES, HORS_FICHE, PARTIES_DE_FICHE, ficheVide, jourDuRetrait } from '../src/lib/fiche-format.mjs';
+import { COLONNES_DU_SERVICE, COLONNES_RETIREES, HORS_FICHE, PARTIES_DE_FICHE, PARTIES_RETIREES, TABLES_RETIREES, ficheVide, jourDuRetrait } from '../src/lib/fiche-format.mjs';
 import { adresseDuPortrait } from '../src/lib/personnages-liste.mjs';
 import { empreinte } from '../src/lib/portrait.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 /** Images écrites par Chromium (test/portrait.test.mjs) : WebP, JPEG et PNG de 3 × 2 pixels. */
 const IMAGES = JSON.parse(readFileSync(new URL('./fixtures/portraits.json', import.meta.url), 'utf8'));
 /** Les octets d'une data URL, décodés à part (pas par lib/portrait.mjs, que le service utilise). */
 const octetsDe = (dataUrl) => Buffer.from(dataUrl.slice(dataUrl.indexOf(',') + 1), 'base64');
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-api-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('api');
 const REGLES = cheminBase({ sansExemples: false });
 const VERSION_DU_SCHEMA = new DatabaseSync(REGLES, { readOnly: true }).prepare('PRAGMA user_version').get().user_version;
 const { chemin } = preparerBaseVivante({ regles: REGLES, dossier: join(racine, 'db') });
@@ -38,7 +37,10 @@ function appel(methode, chemin_, corps, entetes = JSON_) {
 }
 const lire = (id) => appel('GET', `/api/personnages/${id}`).corps;
 
-/** Prétiré conforme de niveau 1 (comme test/personnages-db.test.mjs) : Humain central, Guerrier, Feu ; 14 points de caractéristiques, 100 de compétences. */
+/**
+ * Prétiré conforme de niveau 1 (comme test/personnages-db.test.mjs) : Humain central, Guerrier, Feu ; 14 points de caractéristiques, 100 de compétences ;
+ * la maîtrise au choix du Guerrier (« 1 maîtrise dans une arme contact au choix (sauf épée) ») sur HACHE, l'ÉPÉE imposée comptant d'elle-même (R148).
+ */
 function ficheConforme(nom = 'Aldric') {
   return {
     ...ficheVide(nom),
@@ -46,7 +48,8 @@ function ficheConforme(nom = 'Aldric') {
     classes: [{ rang: 1, classe_id: 'classes/guerrier', specialite_id: null }],
     caracteristiques: Object.entries({ force: 4, volonte: 2, intelligence: 2, perception: 2, social: 2, agilite: 2 })
       .map(([caracteristique_id, base]) => ({ caracteristique_id, base, croix: 0 })),
-    competences: ['arc', 'arme-lourde', 'athletisme', 'parade', 'stabilite'].map((competence_id) => ({ competence_id, naturel: 20, acquis: 0 })),
+    competences: ['arc', 'arme-lourde', 'athletisme', 'parade', 'stabilite'].map((competence_id) => ({ competence_id, naturel: 20 })),
+    maitrise_choix: [{ source: 'classes/guerrier#maitrise-arme:2', rang: 1, arme_famille_id: 'hache' }],
   };
 }
 
@@ -66,6 +69,13 @@ test('format : chaque table qui cite une fiche est une partie de la fiche ou exp
     for (const c of retirees) assert.ok(!presentes.includes(c), `${table}.${c} : retirée des règles, encore dans la table`);
   }
   for (const c of COLONNES_RETIREES.personnage) assert.ok(!(c in ficheVide()), `${c} : retirée des règles, encore dans ficheVide`);
+  // une table que les règles ont retirée (personnage_progression, migration 0045) : plus dans la base ni dans une fiche, sa clé n'est plus une partie
+  for (const [table, cle] of Object.entries(TABLES_RETIREES)) {
+    assert.equal(PARTIES_RETIREES[cle], table);
+    assert.ok(!(cle in PARTIES_DE_FICHE) && !(cle in ficheVide()), cle);
+    assert.ok(!TABLES_VIVANTES.includes(table), table);
+    assert.equal(db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type = 'table' AND name = ?").get(table).n, 0, `${table} : encore dans la base`);
+  }
 });
 
 test('un choix que les règles n’ont plus (don ou spécialité supprimé depuis le site de dev, D11) : message en français, rien n’est écrit', () => {
@@ -117,6 +127,7 @@ test('une fiche conforme n’enfreint aucune règle ; le résumé donne les noms
   assert.deepEqual(r.corps.controles, []);
   assert.equal(r.corps.personnage.caracteristiques.length, 6);
   assert.deepEqual(r.corps.personnage.classes, [{ rang: 1, classe_id: 'classes/guerrier', specialite_id: null }]);
+  assert.deepEqual(r.corps.personnage.maitrise_choix, [{ source: 'classes/guerrier#maitrise-arme:2', rang: 1, arme_famille_id: 'hache' }], 'R148 : relue telle quelle');
   const resume = appel('GET', '/api/personnages').corps.personnages.find((f) => f.id === r.corps.personnage.id);
   assert.deepEqual({ race: resume.race, ethnie: resume.ethnie, magie_innee: resume.magie_innee, classes: resume.classes.map((c) => c.classe), anomalies: resume.anomalies },
     { race: 'Humain', ethnie: db.prepare("SELECT nom FROM ethnie WHERE id = 'races/humain#ethnie:humain-central'").get().nom, magie_innee: db.prepare("SELECT nom FROM magie WHERE id = 'magies/magie-du-feu'").get().nom, classes: ['Guerrier'], anomalies: 0 });
@@ -177,6 +188,71 @@ test('refus d’écrire : bornes, types, références inconnues, champs inconnus
   assert.equal(r.statut, 400);
   assert.deepEqual(r.corps.problemes, ['« nom » est obligatoire']);
   assert.equal(appel('POST', '/api/personnages', [1, 2]).statut, 400);
+});
+
+test('gains de niveau en deux totaux (R73), entraînement (R71, en lignes depuis R104), durabilité d’une arme (R74) : enregistrés et relus tels quels, bornés ; une `progression` reçue (page d’avant la migration 0045) devient les deux totaux, vide elle est jetée, non vide avec les totaux refusée (409)', () => {
+  const arme = db.prepare('SELECT a.id FROM arme a JOIN arme_famille f ON f.id = a.famille_id WHERE f.maitrisable = 1 ORDER BY a.id LIMIT 1').get().id;
+  const r = appel('POST', '/api/personnages', {
+    ...ficheConforme('Elouan'), gains_sante: 3, gains_chakra: 2, entrainement: 'Arc +5 % (entraîneur de Valbrume) ; livre de magie lu : Boule de feu',
+    armes: [{ rang: 1, arme_id: arme, durabilite: 2 }, { rang: 2, arme_id: arme }],
+  });
+  assert.equal(r.statut, 201, JSON.stringify(r.corps));
+  const p = r.corps.personnage;
+  // (l'entraînement en texte d'une page d'avant la migration 0062 : une ligne de texte libre, décision R104)
+  assert.deepEqual([p.gains_sante, p.gains_chakra, 'entrainement' in p], [3, 2, false]);
+  assert.deepEqual(p.entrainements, [{ rang: 1, competence_id: null, valeur: null, texte: 'Arc +5 % (entraîneur de Valbrume) ; livre de magie lu : Boule de feu' }]);
+  assert.deepEqual(p.armes.map((a) => [a.rang, a.durabilite]), [[1, 2], [2, null]], 'NULL : l’arme à son maximum');
+  assert.deepEqual(r.corps.controles, [{ regle: 'gains_niveau', detail: '5 / 0' }], 'des gains au niveau 1 : signalés, enregistrés quand même');
+  assert.equal('progression' in p, false);
+  assert.deepEqual(lire(p.id), r.corps, 'relue à l’identique');
+
+  // bornes : des totaux positifs, toujours écrits ; une durabilité positive
+  const refus = (corps, motif) => {
+    const avant = lire(p.id);
+    const k = appel('PUT', `/api/personnages/${p.id}`, { version: avant.personnage.version, ...corps });
+    assert.equal(k.statut, 400, JSON.stringify(k.corps));
+    assert.ok(k.corps.problemes.some((x) => motif.test(x)), JSON.stringify(k.corps.problemes));
+    assert.deepEqual(lire(p.id), avant, 'rien n’est écrit');
+  };
+  refus({ gains_sante: -1 }, /valeur hors des bornes/);
+  refus({ gains_chakra: null }, /« gains_chakra » est obligatoire/);
+  refus({ armes: [{ rang: 1, arme_id: arme, durabilite: -1 }] }, /^armes\[0\] : valeur hors des bornes/);
+
+  // une page restée ouverte envoie encore la progression niveau par niveau : sa somme (« les deux » compte sur chacun), pas « champ inconnu »
+  const progression = [
+    { niveau: 2, points_sante: 10, points_chakra: 5, de_choix: null, de_resultat: null },
+    { niveau: 5, points_sante: 0, points_chakra: 15, de_choix: 'les_deux', de_resultat: 3 },
+  ];
+  let m = appel('PUT', `/api/personnages/${p.id}`, { version: lire(p.id).personnage.version, progression });
+  assert.equal(m.statut, 200, JSON.stringify(m.corps));
+  assert.deepEqual([m.corps.personnage.gains_sante, m.corps.personnage.gains_chakra], [13, 23]);
+  assert.equal('progression' in m.corps.personnage, false);
+  // la même page, après cet enregistrement : elle a repris les deux totaux de la réponse, et sa fiche vide d'avant lui laisse une progression vide,
+  // jetée sans rien dire
+  m = appel('PUT', `/api/personnages/${p.id}`, { ...m.corps.personnage, progression: [], surnom: 'l’Ancien' });
+  assert.equal(m.statut, 200, JSON.stringify(m.corps));
+  assert.deepEqual([m.corps.personnage.gains_sante, m.corps.personnage.gains_chakra, m.corps.personnage.surnom], [13, 23, 'l’Ancien']);
+  // puis le gain d'un niveau saisi dans son ancienne interface : une progression non vide AVEC les deux totaux ne se concilie pas avec eux (des gains
+  // nouveaux, ou les anciens saisis de nouveau ?) : refus 409, rien n'est écrit, la page doit être rechargée (pas de `personnage` : ce n'est pas un
+  // conflit de version, que la page proposerait de résoudre en rechargeant la fiche)
+  const avant = lire(p.id);
+  const niveau3 = [{ niveau: 3, points_sante: 15, points_chakra: 0, de_choix: null, de_resultat: null }];
+  const { gains_sante: _gs, gains_chakra: _gc, ...sansTotaux } = m.corps.personnage;
+  for (const totaux of [{ gains_sante: 13, gains_chakra: 23 }, { gains_sante: 13 }, { gains_chakra: 0 }]) {
+    const k = appel('PUT', `/api/personnages/${p.id}`, { ...sansTotaux, ...totaux, progression: niveau3 });
+    assert.deepEqual([k.statut, k.corps], [409, { erreur: PAGE_D_AVANT }], JSON.stringify(totaux));
+    assert.deepEqual(lire(p.id), avant, 'rien n’est écrit');
+  }
+  assert.match(PAGE_D_AVANT, /version précédente du site.*rien n’a été enregistré.*Rechargez-la/);
+  const fiches = appel('GET', '/api/personnages/').corps.personnages.length;
+  const creation = appel('POST', '/api/personnages', { ...ficheConforme('Gaspard'), progression: niveau3 });
+  assert.deepEqual([creation.statut, creation.corps], [409, { erreur: PAGE_D_AVANT }], 'une création aussi');
+  assert.equal(appel('GET', '/api/personnages/').corps.personnages.length, fiches, 'aucune fiche créée');
+  // une création par une page d'avant : sa fiche vide n'avait pas les deux totaux
+  const { gains_sante: _s, gains_chakra: _c, ...davant } = ficheConforme('Fanny');
+  const c = appel('POST', '/api/personnages', { ...davant, progression });
+  assert.equal(c.statut, 201, JSON.stringify(c.corps));
+  assert.deepEqual([c.corps.personnage.gains_sante, c.corps.personnage.gains_chakra], [13, 23]);
 });
 
 test('les contrôles signalent sans bloquer : une fiche qui enfreint des règles s’enregistre (plus de 422) ; un « statut » reçu (fichier exporté avant la migration 0038) est ignoré', () => {
@@ -290,7 +366,7 @@ test('GET /api/personnages/<id>/portrait/ : les octets de l’image, son type et
   assert.equal(traiter({ methode: 'GET', chemin: adresse, entetes: {} }, { base: () => null, etat: () => ({}) }).statut, 503);
 });
 
-test('fiche de joueur : ni listée, ni lue (ni son portrait), ni modifiable sans comptes (avant la 1.0)', () => {
+test('fiche de joueur : ni listée, ni lue (ni son portrait), ni modifiable sans comptes', () => {
   db.exec("INSERT INTO utilisateur (id, nom_affichage, cree_le) VALUES ('alice', 'Alice', '2026-10-10T00:00:00Z')");
   db.prepare(`INSERT INTO personnage (id, nature, proprietaire_id, visibilite, nom, mode_classe, xp, alignement_loyal, alignement_chaotique, alignement_bon,
       alignement_mauvais, bourse_pp, bourse_ro, bourse_rf, ambidextrie, cree_le, modifie_le, portrait)
@@ -458,6 +534,776 @@ test('repli sur une base vivante d’avant la migration 0038 (sa reconstruction 
     assert.deepEqual(listerFiches(base).map((f) => f.nom), ['Repli']);
     const modifiee = enregistrerFiche(base, { version: cree.personnage.version, surnom: 'de secours' }, { id: cree.personnage.id });
     assert.deepEqual([modifiee.personnage.surnom, lireFiche(base, cree.personnage.id).statut], ['de secours', 'brouillon']);
+  } finally {
+    base.close();
+  }
+});
+
+test('une page d’avant la migration 0055 envoie une armure par emplacement (`armures`) : l’armure de la fiche, les autres pièces notées (R95) ; avec les nouvelles clés, refus 409', () => {
+  const [a, b] = db.prepare("SELECT id, nom FROM armure WHERE sorte = 'combinaison' ORDER BY ordre LIMIT 2").all().map((x) => ({ ...x }));
+  const casque = db.prepare("SELECT nom FROM armure_emplacement WHERE id = 'casque'").get().nom;
+  // la fiche vide d'une page d'avant n'a pas les nouvelles clés de l'armure
+  const { armure_parties: _parties, ...davant } = ficheConforme('Ancienne armure');
+  const c = appel('POST', '/api/personnages', { ...davant, armures: [
+    { emplacement_id: 'casque', armure_id: b.id }, { emplacement_id: 'armure-complete', armure_id: a.id },
+  ] });
+  assert.equal(c.statut, 201, JSON.stringify(c.corps));
+  const p = c.corps.personnage;
+  assert.deepEqual([p.armure_id, p.armure_amelioration_id, 'armures' in p], [a.id, null, false]);
+  assert.match(p.notes, new RegExp(`^\\[\\d{2}/\\d{2}/\\d{4}\\] Retrait \\(règles modifiées\\) : la pièce d’armure « ${b.nom.replace(/[/()]/g, '\\$&')} » \\(${casque}\\) n’est plus portée`));
+  // un envoi partiel (sans `notes`) : la ligne s'ajoute aux notes enregistrées, qui ne sont pas effacées
+  const partiel = appel('PUT', `/api/personnages/${p.id}`, { version: p.version, armures: [{ emplacement_id: 'armure-complete', armure_id: a.id }, { emplacement_id: 'torse', armure_id: b.id }] });
+  assert.equal(partiel.statut, 200, JSON.stringify(partiel.corps));
+  const lignes = partiel.corps.personnage.notes.split('\n');
+  assert.deepEqual([lignes.length, lignes[0], /\(Torse\) n’est plus portée/.test(lignes[1])], [2, p.notes, true]);
+  const avant = lire(p.id);
+  const k = appel('PUT', `/api/personnages/${p.id}`, { ...avant.personnage, armures: [{ emplacement_id: 'torse', armure_id: b.id }] });
+  assert.deepEqual([k.statut, k.corps], [409, { erreur: PAGE_D_AVANT }]);
+  assert.deepEqual(lire(p.id), avant, 'rien n’est écrit');
+  assert.match(PAGE_D_AVANT, /l’armure est une seule armure complète/);
+});
+
+test('une page d’avant la migration 0060 envoie des matériaux de bouclier et des accessoires d’avant : la matière du bouclier, les accessoires gardés, le reste noté (R96, R97) ; avec les nouvelles clés du bouclier, refus 409', () => {
+  const [m1, m2] = db.prepare('SELECT m.ressource_id AS id, r.nom FROM materiau_bouclier m JOIN ressource r ON r.id = m.ressource_id ORDER BY m.ordre LIMIT 2').all().map((x) => ({ ...x }));
+  const effet = db.prepare("SELECT id, libelle FROM accessoire_effet WHERE propriete_id = 'attributs' AND bonus_min IS NULL AND malediction = 0 AND libelle IS NOT NULL ORDER BY id LIMIT 1").get();
+  // la fiche vide d'une page d'avant n'a pas les nouvelles clés du bouclier
+  const { bouclier_materiau_id: _m, bouclier_amelioration_id: _a, bouclier_solidite: _s, ...davant } = ficheConforme('Ancien bouclier');
+  const c = appel('POST', '/api/personnages', {
+    ...davant, bouclier_classe_id: 'targe',
+    bouclier_materiaux: [{ rang: 1, materiau_id: m1.id, quantite: 1 }, { rang: 2, materiau_id: m2.id, quantite: 1 }],
+    accessoires: [
+      { emplacement: 'chef', nom: 'Couronne', accessoire_effet_id: effet.id, texte: null, valeur: null, maudit: 0 },
+      { emplacement: 'ceinture', nom: null, accessoire_effet_id: effet.id, texte: null, valeur: null, maudit: 0 },
+      { emplacement: 'collier', nom: null, accessoire_effet_id: null, texte: 'Brille la nuit', valeur: null, maudit: 0 },
+    ],
+  });
+  assert.equal(c.statut, 201, JSON.stringify(c.corps));
+  const p = c.corps.personnage;
+  assert.deepEqual([p.bouclier_classe_id, p.bouclier_materiau_id, 'bouclier_materiaux' in p], ['targe', m1.id, false]);
+  assert.deepEqual(p.accessoires.map((a) => [a.emplacement, a.accessoire_effet_id, 'nom' in a]), [['chef', effet.id, false]]);
+  const notes = p.notes.split('\n');
+  assert.equal(notes.length, 4, p.notes);
+  assert.ok(notes.every((l) => /^\[\d{2}\/\d{2}\/\d{4}\] Retrait \(règles modifiées\) : /.test(l)), p.notes);
+  assert.ok(notes.some((l) => l.includes(`« ${m2.nom} »`) && l.includes(`« ${m1.nom} »`)), 'le matériau qui n’est plus dans le bouclier, et sa matière');
+  assert.ok(notes.some((l) => l.includes('« Couronne »')), 'le nom perdu');
+  assert.ok(notes.some((l) => l.includes('Ceinture')), 'l’accessoire de la Ceinture');
+  assert.ok(notes.some((l) => l.includes('Brille la nuit')), 'l’effet hors table seul');
+  const avant = lire(p.id);
+  const k = appel('PUT', `/api/personnages/${p.id}`, { ...avant.personnage, bouclier_materiaux: [{ rang: 1, materiau_id: m2.id, quantite: 1 }] });
+  assert.deepEqual([k.statut, k.corps], [409, { erreur: PAGE_D_AVANT }]);
+  assert.deepEqual(lire(p.id), avant, 'rien n’est écrit');
+  assert.match(PAGE_D_AVANT, /le bouclier a une forme et une matière/);
+});
+
+test('repli sur une base vivante d’avant la migration 0060 (sa reconstruction a échoué) : le bouclier vide et les accessoires d’aujourd’hui s’enregistrent ; une matière, absente de la base, est refusée ; les matériaux d’avant restent', () => {
+  const { chemin: avant } = preparerBaseVivante({ regles: REGLES, dossier: join(racine, 'db-avant-0060') });
+  const ancienne = new DatabaseSync(avant);
+  // les tables d'avant 0060 : trois matériaux de bouclier, huit emplacements d'accessoire avec un nom et un effet hors table ; la vue des contrôles
+  // d'aujourd'hui lit les nouvelles colonnes du bouclier : une vue vide la remplace (ce test ne porte pas sur les contrôles)
+  ancienne.exec(`DROP VIEW v_personnage_controle;
+    ALTER TABLE personnage DROP COLUMN bouclier_materiau_id;
+    ALTER TABLE personnage DROP COLUMN bouclier_amelioration_id;
+    ALTER TABLE personnage DROP COLUMN bouclier_solidite;
+    CREATE TABLE personnage_bouclier_materiau (
+      personnage_id TEXT NOT NULL REFERENCES personnage(id) ON DELETE CASCADE, rang INTEGER NOT NULL CHECK (rang BETWEEN 1 AND 3),
+      materiau_id TEXT NOT NULL REFERENCES materiau_bouclier(ressource_id), quantite INTEGER NOT NULL CHECK (quantite >= 1),
+      PRIMARY KEY (personnage_id, rang)
+    ) STRICT, WITHOUT ROWID;
+    DROP TABLE personnage_accessoire;
+    CREATE TABLE personnage_accessoire (
+      personnage_id TEXT NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+      emplacement TEXT NOT NULL CHECK (emplacement IN ('chef', 'collier', 'bracelet-1', 'bracelet-2', 'bague-1', 'bague-2', 'ceinture', 'autre')),
+      nom TEXT, accessoire_effet_id TEXT REFERENCES accessoire_effet(id), texte TEXT, valeur INTEGER, maudit INTEGER NOT NULL DEFAULT 0 CHECK (maudit IN (0, 1)),
+      competence_id TEXT REFERENCES competence(id), arme_famille_id TEXT REFERENCES arme_famille(id),
+      PRIMARY KEY (personnage_id, emplacement)
+    ) STRICT, WITHOUT ROWID;
+    CREATE VIEW v_personnage_controle AS SELECT id AS personnage_id, NULL AS regle, NULL AS detail FROM personnage WHERE 0;`);
+  ancienne.close();
+  const base = ouvrirBaseVivante(avant);
+  try {
+    const effet = base.prepare("SELECT id FROM accessoire_effet WHERE propriete_id = 'attributs' AND bonus_min IS NULL AND malediction = 0 AND libelle IS NOT NULL ORDER BY id LIMIT 1").get().id;
+    // ce qu'envoie la page à jour : les clés du bouclier vides (ficheVide n'en a pas, la page pose la solidité) et les accessoires d'aujourd'hui
+    const cree = enregistrerFiche(base, {
+      ...ficheConforme('Repli 0060'), bouclier_classe_id: 'targe', bouclier_materiau_id: null, bouclier_amelioration_id: null, bouclier_solidite: null,
+      accessoires: [{ emplacement: 'chef', accessoire_effet_id: effet, valeur: null, maudit: 0, competence_id: null, arme_famille_id: null }],
+    });
+    const p = cree.personnage;
+    assert.ok(!('bouclier_materiau_id' in p) && !('bouclier_solidite' in p), 'colonnes absentes de la base : ni écrites ni rendues');
+    assert.deepEqual(p.accessoires.map((a) => [a.emplacement, a.accessoire_effet_id]), [['chef', effet]]);
+    // les matériaux que cette base garde encore (sa table d'avant 0060) survivent à un enregistrement : le service n'écrit pas une table qu'il ne connaît plus
+    const m = base.prepare('SELECT ressource_id FROM materiau_bouclier ORDER BY ordre LIMIT 1').get().ressource_id;
+    base.prepare('INSERT INTO personnage_bouclier_materiau VALUES (?, 1, ?, 1)').run(p.id, m);
+    const lue = lireFiche(base, p.id);
+    assert.equal(enregistrerFiche(base, { ...lue, surnom: 'de secours', bouclier_solidite: null }, { id: p.id }).personnage.surnom, 'de secours');
+    assert.equal(base.prepare('SELECT count(*) AS n FROM personnage_bouclier_materiau WHERE personnage_id = ?').get(p.id).n, 1);
+    // une matière porte quelque chose que la base perdrait : « champ inconnu », rien n'est écrit
+    const avantEnvoi = lireFiche(base, p.id);
+    assert.throws(() => enregistrerFiche(base, { version: avantEnvoi.version, bouclier_materiau_id: m }, { id: p.id }), (e) => {
+      assert.deepEqual([e.statut, e.details.problemes], [400, ['champ inconnu « bouclier_materiau_id »']]);
+      return true;
+    });
+    assert.deepEqual(lireFiche(base, p.id), avantEnvoi, 'rien n’est écrit');
+  } finally {
+    base.close();
+  }
+});
+
+test('colonnes ajoutées par les migrations 0045, 0055, 0060, 0061, 0066, 0067, 0071 et 0081 (DEPART_DES_COLONNES_AJOUTEES) : dans les tables d’aujourd’hui, leur valeur de départ est leur défaut du schéma et celle d’une fiche vide', () => {
+  assert.deepEqual(DEPART_DES_COLONNES_AJOUTEES, {
+    personnage: {
+      gains_sante: 0, gains_chakra: 0,
+      armure_id: null, armure_amelioration_id: null, armure_elementaire_id: null, armure_amelioration_elementaire_id: null,
+      bouclier_materiau_id: null, bouclier_amelioration_id: null, bouclier_solidite: null,
+      symbiose_magie_id: null,
+      nm_mj: 0,
+    },
+    personnage_arme: { durabilite: null, type_degats_choisi: null },
+    personnage_sort: { prepare: 0, prepare_jet: null, prepare_posture_id: null },
+    personnage_resistance_choix: { magie_id: null },
+  });
+  for (const [table, departs] of Object.entries(DEPART_DES_COLONNES_AJOUTEES)) {
+    const colonnes = new Map(db.prepare(`PRAGMA table_info("${table}")`).all().map((c) => [c.name, c.dflt_value]));
+    for (const [colonne, depart] of Object.entries(departs)) {
+      assert.ok(colonnes.has(colonne), `${table}.${colonne}`);
+      assert.equal(colonnes.get(colonne), depart === null ? null : String(depart), `${table}.${colonne} : défaut du schéma`);
+      if (table === 'personnage') assert.equal(ficheVide()[colonne] ?? null, depart, `${colonne} : fiche vide`);
+    }
+  }
+});
+
+test('repli sur une base vivante d’avant la migration 0055 (sa reconstruction a échoué) : sans la table de la solidité des parties, la fiche se lit avec une liste vide, s’enregistre avec une liste vide, et une liste non vide est refusée', () => {
+  // la base vivante d'aujourd'hui, ramenée à ses tables d'avant 0055 : une armure par emplacement, pas de solidité des parties
+  const { chemin: avant } = preparerBaseVivante({ regles: REGLES, dossier: join(racine, 'db-avant-0055') });
+  const ancienne = new DatabaseSync(avant);
+  // la vue des contrôles d'avant ne lisait pas la table de la solidité des parties (règle armure_partie_hors_armure, migration 0055)
+  const vue = ancienne.prepare("SELECT sql FROM sqlite_master WHERE name = 'v_personnage_controle'").get().sql;
+  const vueDAvant = vue.replace(/\n  UNION ALL\n  SELECT ap\.personnage_id, 'armure_partie_hors_armure'[\s\S]*?\(ap\.emplacement_id = 'armure-complete'\)/, '');
+  assert.notEqual(vueDAvant, vue);
+  ancienne.exec(`DROP VIEW v_personnage_controle; DROP TABLE personnage_armure_partie; ${vueDAvant};
+    CREATE TABLE personnage_armure (
+      personnage_id TEXT NOT NULL REFERENCES personnage(id) ON DELETE CASCADE, emplacement_id TEXT NOT NULL REFERENCES armure_emplacement(id),
+      armure_id TEXT NOT NULL REFERENCES armure(id), amelioration_id TEXT REFERENCES amelioration_equipement(id),
+      armure_elementaire_id TEXT REFERENCES armure_elementaire(id), amelioration_elementaire_id TEXT REFERENCES amelioration_equipement(id),
+      PRIMARY KEY (personnage_id, emplacement_id)
+    ) STRICT, WITHOUT ROWID;`);
+  ancienne.close();
+  const base = ouvrirBaseVivante(avant);
+  try {
+    const cree = enregistrerFiche(base, { ...ficheConforme('Repli 0055'), armure_parties: [] });
+    assert.deepEqual(cree.personnage.armure_parties, [], 'lue vide');
+    const lue = lireFiche(base, cree.personnage.id);
+    assert.deepEqual(lue.armure_parties, []);
+    // la pièce d'armure que cette base garde encore (sa table d'avant 0055) survit à un enregistrement : le service n'écrit pas une table qu'il ne connaît plus
+    const armure = base.prepare('SELECT id FROM armure ORDER BY ordre LIMIT 1').get().id;
+    base.prepare("INSERT INTO personnage_armure (personnage_id, emplacement_id, armure_id) VALUES (?, 'torse', ?)").run(lue.id, armure);
+    assert.equal(enregistrerFiche(base, { ...lue, surnom: 'de secours' }, { id: lue.id }).personnage.surnom, 'de secours');
+    assert.deepEqual({ ...base.prepare('SELECT emplacement_id, armure_id FROM personnage_armure WHERE personnage_id = ?').get(lue.id) }, { emplacement_id: 'torse', armure_id: armure });
+    const avantEnvoi = lireFiche(base, lue.id);
+    assert.throws(() => enregistrerFiche(base, { version: avantEnvoi.version, armure_parties: [{ emplacement_id: 'torse', solidite: 1 }] }, { id: lue.id }), (e) => {
+      assert.deepEqual([e.statut, e.details.problemes], [400, ['armure_parties : pas encore dans cette base, ses lignes seraient perdues']]);
+      return true;
+    });
+    assert.deepEqual(lireFiche(base, lue.id), avantEnvoi, 'rien n’est écrit');
+  } finally {
+    base.close();
+  }
+});
+
+test('repli sur une base vivante d’avant la migration 0045 (sa reconstruction a échoué, docs/serveur.md) : gains et durabilité, absents de la base, sont ignorés tant qu’ils ne portent rien, refusés sinon ; la fiche se crée, se lit, se liste et se modifie, ses gains niveau par niveau intacts', () => {
+  // les règles d'aujourd'hui, les tables des fiches telles qu'avant 0045 (comme AVANT_0045 de test/serveur-base-vivante.test.mjs), la vue des
+  // contrôles d'aujourd'hui lisant les gains dans personnage_progression
+  const regles = join(racine, 'regles-avant-0045.db');
+  copyFileSync(REGLES, regles);
+  const r = new DatabaseSync(regles, { enableForeignKeyConstraints: false });
+  try {
+    const vue = r.prepare("SELECT sql FROM sqlite_master WHERE type = 'view' AND name = 'v_personnage_controle'").get().sql;
+    const totaux = 'p.gains_sante + p.gains_chakra';
+    assert.equal(vue.split(totaux).length, 3, 'la règle gains_niveau lit les deux totaux, deux fois');
+    r.exec(`DROP VIEW v_personnage_controle;
+      ALTER TABLE personnage DROP COLUMN gains_sante;
+      ALTER TABLE personnage DROP COLUMN gains_chakra;
+      ALTER TABLE personnage_arme DROP COLUMN durabilite;
+      CREATE TABLE personnage_progression (
+        personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+        niveau         INTEGER NOT NULL REFERENCES niveau_global(niveau) CHECK (niveau >= 2),
+        points_sante   INTEGER NOT NULL CHECK (points_sante >= 0),
+        points_chakra  INTEGER NOT NULL CHECK (points_chakra >= 0),
+        de_choix       TEXT    CHECK (de_choix IN ('sante', 'chakra', 'les_deux')),
+        de_resultat    INTEGER CHECK (de_resultat >= 1),
+        PRIMARY KEY (personnage_id, niveau),
+        CHECK ((de_choix IS NULL) = (de_resultat IS NULL))
+      ) STRICT, WITHOUT ROWID;
+      ${vue.replaceAll(totaux, '(SELECT coalesce(sum(g.points_sante + g.points_chakra), 0) FROM personnage_progression g WHERE g.personnage_id = p.id)')};`);
+  } finally {
+    r.close();
+  }
+  const base = ouvrirBaseVivante(preparerBaseVivante({ regles, dossier: join(racine, 'db-avant-0045') }).chemin);
+  try {
+    const arme = base.prepare('SELECT a.id FROM arme a JOIN arme_famille f ON f.id = a.famille_id WHERE f.maitrisable = 1 ORDER BY a.id LIMIT 1').get().id;
+    // ce qu'envoie la page à jour : une fiche vide (gains à 0), l'entraînement vidé, une arme à son maximum (durabilité NULL)
+    const cree = enregistrerFiche(base, { ...ficheConforme('Repli'), entrainement: '', armes: [{ rang: 1, arme_id: arme, durabilite: null }] });
+    const p = cree.personnage;
+    assert.ok(!('gains_sante' in p) && !('gains_chakra' in p) && !('entrainement' in p), 'colonnes absentes de la base : ni écrites ni rendues');
+    assert.deepEqual(p.armes.map((a) => [a.rang, a.arme_id, 'durabilite' in a]), [[1, arme, false]]);
+    assert.deepEqual(cree.controles, [], 'les contrôles de la base');
+    assert.deepEqual(listerFiches(base).map((f) => f.nom), ['Repli']);
+    // ses gains niveau par niveau, tels que le service d'avant les a écrits
+    base.prepare('INSERT INTO personnage_progression VALUES (?, 2, 10, 5, NULL, NULL)').run(p.id);
+
+    // la page relit la fiche (sans gains : la base n'a pas les deux totaux) et l'enregistre telle qu'elle la tient : ficheVide, puis la fiche lue
+    const lue = lireFiche(base, p.id);
+    assert.ok(!('progression' in lue) && !('gains_sante' in lue));
+    const page = { ...ficheVide(''), ...lue, surnom: 'de secours' };
+    for (const c of COLONNES_DU_SERVICE) delete page[c];
+    const modifiee = enregistrerFiche(base, page, { id: p.id });
+    assert.equal(modifiee.personnage.surnom, 'de secours');
+    assert.deepEqual(base.prepare('SELECT niveau, points_sante, points_chakra FROM personnage_progression WHERE personnage_id = ?').all(p.id).map((l) => ({ ...l })),
+      [{ niveau: 2, points_sante: 10, points_chakra: 5 }], 'intacts : la reconstruction suivante les convertira (TABLES_RETIREES)');
+
+    // ce qui porte quelque chose serait perdu : « champ inconnu », rien n'est écrit
+    for (const [envoi, probleme] of [
+      [{ gains_sante: 3 }, 'champ inconnu « gains_sante »'],
+      [{ gains_chakra: 1 }, 'champ inconnu « gains_chakra »'],
+      [{ armes: [{ rang: 1, arme_id: arme, durabilite: 2 }] }, 'armes[0] : champ inconnu « durabilite »'],
+    ]) {
+      const avant = lireFiche(base, p.id);
+      assert.throws(() => enregistrerFiche(base, { version: avant.version, ...envoi }, { id: p.id }), (e) => {
+        assert.deepEqual([e.statut, e.details.problemes], [400, [probleme]], JSON.stringify(envoi));
+        return true;
+      });
+      assert.deepEqual(lireFiche(base, p.id), avant, 'rien n’est écrit');
+    }
+  } finally {
+    base.close();
+  }
+});
+
+test('entraînement en lignes et choix d’acquis (décision R104, migration 0062) : enregistrés et relus tels quels ; une page d’avant — texte d’entraînement, acquis saisi — convertie, ce qu’elle perd noté ; texte et lignes ensemble : 409', () => {
+  const entrainements = [
+    { rang: 1, competence_id: 'arc', valeur: 10, texte: null }, { rang: 2, competence_id: null, valeur: null, texte: 'Béni par la Dame du lac' },
+    { rang: 3, competence_id: 'calme', valeur: 0, texte: null },
+  ];
+  const acquis_choix = [
+    { source: 'races/humain#don:humain-central', rang: 1, competence_id: 'arc', valeur: 6 },
+    { source: 'races/humain#don:humain-central', rang: 1, competence_id: 'calme', valeur: 4 },
+  ];
+  const r = appel('POST', '/api/personnages', { ...ficheConforme('Ysaline'), entrainements, acquis_choix });
+  assert.equal(r.statut, 201, JSON.stringify(r.corps));
+  const p = r.corps.personnage;
+  assert.deepEqual([p.entrainements, p.acquis_choix], [entrainements, acquis_choix]);
+  assert.ok(p.competences.every((c) => !('acquis' in c)), 'plus d’acquis saisi');
+  assert.deepEqual(r.corps.controles, []);
+  assert.deepEqual(lire(p.id), r.corps, 'relue à l’identique');
+  // bornes : 10 points au plus (une règle de la vue, signalée sans bloquer) ; une compétence deux fois, une ligne vide : refusées
+  let m = appel('PUT', `/api/personnages/${p.id}`, { version: lire(p.id).personnage.version, entrainements: [{ rang: 1, competence_id: 'arc', valeur: 11, texte: null }] });
+  assert.equal(m.statut, 200, JSON.stringify(m.corps));
+  assert.deepEqual(m.corps.controles, [{ regle: 'entrainement_valeur', detail: 'arc = 11' }]);
+  for (const [lignes, motif] of [
+    [[{ rang: 1, competence_id: 'arc', valeur: 1, texte: null }, { rang: 2, competence_id: 'arc', valeur: 2, texte: null }], /^entrainements\[1\] : en double \(competence_id\)$/],
+    [[{ rang: 1, competence_id: null, valeur: null, texte: ' ' }], /^entrainements\[0\] : valeur hors des bornes/],
+  ]) {
+    const avant = lire(p.id);
+    const k = appel('PUT', `/api/personnages/${p.id}`, { version: avant.personnage.version, entrainements: lignes });
+    assert.equal(k.statut, 400, JSON.stringify(k.corps));
+    assert.ok(k.corps.problemes.some((x) => motif.test(x)), JSON.stringify(k.corps.problemes));
+    assert.deepEqual(lire(p.id), avant, 'rien n’est écrit');
+  }
+
+  // une page d'avant : le texte libre de l'entraînement devient des lignes de texte, l'acquis saisi n'est plus repris et la fiche le note, daté
+  const { entrainements: _e, acquis_choix: _a, ...sansLignes } = lire(p.id).personnage;
+  m = appel('PUT', `/api/personnages/${p.id}`, {
+    ...sansLignes, entrainement: 'Arc +5 % (entraîneur de Valbrume)\nLivre lu : Boule de feu',
+    competences: sansLignes.competences.map((c) => ({ ...c, acquis: c.competence_id === 'arc' ? 7 : 0 })),
+  });
+  assert.equal(m.statut, 200, JSON.stringify(m.corps));
+  const q = m.corps.personnage;
+  assert.deepEqual(q.entrainements.map((l) => l.texte), ['Arc +5 % (entraîneur de Valbrume)', 'Livre lu : Boule de feu']);
+  assert.ok(q.competences.every((c) => !('acquis' in c)));
+  assert.equal(q.notes, `[${jourDuRetrait(q.modifie_le)}] Retrait (règles modifiées) : l’acquis saisi en Arc (7) n’est plus saisi : l’Acquis se calcule (entraînement, dons, métier, accessoires). Notez l’entraînement dans ses lignes.`);
+  assert.deepEqual(q.acquis_choix, acquis_choix, 'un envoi sans la liste ne la touche pas');
+  // les deux formes à la fois (une page d'avant qui a repris les lignes d'une réponse) : rien ne les concilie
+  const avant = lire(p.id);
+  const k = appel('PUT', `/api/personnages/${p.id}`, { ...avant.personnage, entrainement: 'Arc +5 %' });
+  assert.deepEqual([k.statut, k.corps], [409, { erreur: PAGE_D_AVANT }]);
+  assert.deepEqual(lire(p.id), avant, 'rien n’est écrit');
+  assert.match(PAGE_D_AVANT, /l’entraînement se note en lignes et l’acquis se calcule/);
+});
+
+test('NM du MJ (décision R118, migration 0066) : enregistrés pour la fiche et relus ; une page d’avant qui les note sort par sort donne leur somme ; les deux à la fois : 409', () => {
+  const bdf = 'magies/magie-du-feu#sort:boule-de-feu';
+  const cau = 'magies/magie-du-feu#sort:cauterisation';
+  const r = appel('POST', '/api/personnages', { ...ficheConforme('Ombeline'), nm_mj: 2, sorts: [{ sort_id: bdf, rang: 1, niveau_maitrise: 2, nm_livre: 1 }] });
+  assert.equal(r.statut, 201, JSON.stringify(r.corps));
+  const p = r.corps.personnage;
+  assert.deepEqual([p.nm_mj, p.sorts], [2, [{ sort_id: bdf, rang: 1, niveau_maitrise: 2, nm_livre: 1, prepare: 0, prepare_jet: null, prepare_posture_id: null }]]);
+  assert.deepEqual(r.corps.controles, [], 'niveau 1 : le NM compté vient du MJ, celui du livre ne compte pas');
+  // une page d'avant : les NM du MJ de chaque sort (nm_cadeau), sans nm_mj
+  const { nm_mj: _n, ...sansNmMj } = lire(p.id).personnage;
+  let m = appel('PUT', `/api/personnages/${p.id}`, {
+    ...sansNmMj, sorts: [{ sort_id: bdf, rang: 1, niveau_maitrise: 2, nm_livre: 1, nm_cadeau: 1 }, { sort_id: cau, rang: 2, niveau_maitrise: 1, nm_livre: 0, nm_cadeau: 1 }],
+  });
+  assert.equal(m.statut, 200, JSON.stringify(m.corps));
+  assert.equal(m.corps.personnage.nm_mj, 2, 'leur somme');
+  assert.deepEqual(m.corps.personnage.sorts.map((x) => [x.sort_id, x.niveau_maitrise, x.nm_livre]), [[bdf, 2, 1], [cau, 1, 0]]);
+  assert.ok(m.corps.personnage.sorts.every((x) => !('nm_cadeau' in x)));
+  // les deux formes à la fois (une page d'avant qui a repris nm_mj d'une réponse, puis noté un NM du MJ sur un sort) : rien ne les concilie
+  const avant = lire(p.id);
+  const k = appel('PUT', `/api/personnages/${p.id}`, { ...avant.personnage, sorts: avant.personnage.sorts.map((x) => ({ ...x, nm_cadeau: 1 })) });
+  assert.deepEqual([k.statut, k.corps], [409, { erreur: PAGE_D_AVANT }]);
+  assert.deepEqual(lire(p.id), avant, 'rien n’est écrit');
+  assert.match(PAGE_D_AVANT, /les NM du MJ se notent pour toute la fiche/);
+  // nm_cadeau à 0 avec nm_mj : une page d'avant qui n'a rien noté du MJ sur un sort, ses NM du MJ gardés
+  m = appel('PUT', `/api/personnages/${p.id}`, { ...avant.personnage, sorts: avant.personnage.sorts.map((x) => ({ ...x, nm_cadeau: 0 })) });
+  assert.equal(m.statut, 200, JSON.stringify(m.corps));
+  assert.equal(m.corps.personnage.nm_mj, 2);
+});
+
+test('sort préparé (décision R115, migration 0067) : marque, jet et posture enregistrés et relus ; un seul par fiche, jet de 1 à 100, jet ou posture hors du sort préparé, posture inconnue : refusés, rien n’est écrit', () => {
+  const bdf = 'magies/magie-du-feu#sort:boule-de-feu';
+  const cau = 'magies/magie-du-feu#sort:cauterisation';
+  const offensif = 'guide/postures#posture:offensif';
+  const sorts = [
+    { sort_id: bdf, rang: 1, niveau_maitrise: 0, nm_livre: 0, prepare: 1, prepare_jet: 57, prepare_posture_id: offensif },
+    { sort_id: cau, rang: 2, niveau_maitrise: 0, nm_livre: 0, prepare: 0, prepare_jet: null, prepare_posture_id: null },
+  ];
+  const r = appel('POST', '/api/personnages', { ...ficheConforme('Ombre rouge'), sorts });
+  assert.equal(r.statut, 201, JSON.stringify(r.corps));
+  const p = r.corps.personnage;
+  assert.deepEqual(p.sorts, sorts);
+  assert.deepEqual(lire(p.id), r.corps, 'relue à l’identique');
+  // préparé sans jet (« si réussi ») ni posture (aucune n'était cochée) : enregistré tel quel
+  let m = appel('PUT', `/api/personnages/${p.id}`, { version: p.version, sorts: [{ ...sorts[0], prepare_jet: null, prepare_posture_id: null }, sorts[1]] });
+  assert.equal(m.statut, 200, JSON.stringify(m.corps));
+  assert.deepEqual(m.corps.personnage.sorts[0], { ...sorts[0], prepare_jet: null, prepare_posture_id: null });
+  for (const [liste, motif] of [
+    [[sorts[0], { ...sorts[1], prepare: 1 }], /^sorts\[1\] : un seul sort préparé par fiche \(décision R115\)$/],
+    [[{ ...sorts[0], prepare_jet: 0 }, sorts[1]], /^sorts\[0\] : valeur hors des bornes/],
+    [[{ ...sorts[0], prepare_jet: 101 }, sorts[1]], /^sorts\[0\] : valeur hors des bornes/],
+    [[sorts[0], { ...sorts[1], prepare_jet: 12 }], /^sorts\[1\] : valeur hors des bornes/],
+    [[sorts[0], { ...sorts[1], prepare_posture_id: offensif }], /^sorts\[1\] : valeur hors des bornes/],
+    [[{ ...sorts[0], prepare: 2 }, sorts[1]], /^sorts\[0\] : valeur hors des bornes/],
+    [[{ ...sorts[0], prepare_posture_id: 'guide/postures#posture:inconnue' }, sorts[1]], /^sorts : « prepare_posture_id » = « guide\/postures#posture:inconnue » n’existe pas dans les règles/],
+  ]) {
+    const avant = lire(p.id);
+    const k = appel('PUT', `/api/personnages/${p.id}`, { version: avant.personnage.version, sorts: liste });
+    assert.equal(k.statut, 400, JSON.stringify(k.corps));
+    assert.ok(k.corps.problemes.some((x) => motif.test(x)), JSON.stringify(k.corps.problemes));
+    assert.deepEqual(lire(p.id), avant, 'rien n’est écrit');
+  }
+  // un sort retiré de la fiche part avec sa préparation (sa ligne) ; la marque absente d'un envoi vaut 0
+  const avant = lire(p.id);
+  m = appel('PUT', `/api/personnages/${p.id}`, { version: avant.personnage.version, sorts: [{ sort_id: cau, rang: 1, niveau_maitrise: 0, nm_livre: 0 }] });
+  assert.equal(m.statut, 200, JSON.stringify(m.corps));
+  assert.deepEqual(m.corps.personnage.sorts, [{ sort_id: cau, rang: 1, niveau_maitrise: 0, nm_livre: 0, prepare: 0, prepare_jet: null, prepare_posture_id: null }]);
+  assert.equal(expliquer('UNIQUE constraint failed: personnage_sort.personnage_id'), 'un seul sort préparé par fiche (décision R115)');
+  // un autre index unique sur la seule fiche : sa table, jamais « en double () »
+  assert.equal(expliquer('UNIQUE constraint failed: personnage_ceinture.personnage_id'), 'une seule ligne par fiche (personnage_ceinture)');
+  assert.equal(expliquer('UNIQUE constraint failed: personnage_sort.personnage_id, personnage_sort.rang'), 'en double (rang)');
+});
+
+test('l’arme choisie d’un choix d’acquis (décision R119) n’est plus enregistrée (R152, migration 0076) : une page d’avant qui l’envoie enregistre le choix sans elle, sa compétence gardée, et la note avec ses anciens dés en une ligne datée (R153) ; avec les choix de maîtrise : 409', () => {
+  const choix = { source: 'capacites/tueur-fletrisseur', rang: 1, competence_id: 'arme-legere', valeur: null };
+  const { maitrise_choix: _m, ...dAvant } = ficheConforme('Lame grise');
+  const r = appel('POST', '/api/personnages', { ...dAvant, notes: 'Mes notes', acquis_choix: [{ ...choix, arme_famille_id: 'dagues' }], maitrises_armes: [{ arme_famille_id: 'epees', des: 2 }] });
+  assert.equal(r.statut, 201, JSON.stringify(r.corps));
+  const p = r.corps.personnage;
+  assert.deepEqual(p.acquis_choix, [choix], 'la compétence reste, sans l’arme');
+  assert.deepEqual(p.maitrise_choix, [], 'aucun choix posé');
+  assert.ok(!('maitrises_armes' in p));
+  assert.equal(p.notes, `Mes notes\nMaîtrises d'armes avant la refonte (${p.modifie_le.slice(0, 10)}) : ÉPÉES 2D10 ; arme choisie : Flétrisseur (Tueur) DAGUES`);
+  // une page d'avant qui a repris les choix de maîtrise d'une réponse, puis a posé une arme ou des dés : rien n'est écrit
+  for (const envoi of [{ acquis_choix: [{ ...choix, arme_famille_id: 'dagues' }] }, { maitrises_armes: [{ arme_famille_id: 'arc', des: 3 }] }]) {
+    const avant = lire(p.id);
+    const k = appel('PUT', `/api/personnages/${p.id}`, { ...avant.personnage, ...envoi });
+    assert.deepEqual([k.statut, k.corps], [409, { erreur: PAGE_D_AVANT }]);
+    assert.deepEqual(lire(p.id), avant, 'rien n’est écrit');
+  }
+  // une liste vide d'une page d'avant, avec les choix de maîtrise : jetée, rien de noté
+  const avant = lire(p.id);
+  const m = appel('PUT', `/api/personnages/${p.id}`, { ...avant.personnage, maitrises_armes: [] });
+  assert.equal(m.statut, 200, JSON.stringify(m.corps));
+  assert.equal(m.corps.personnage.notes, p.notes);
+  assert.match(PAGE_D_AVANT, /les maîtrises d’armes se choisissent désormais par source/);
+});
+
+test('armes élémentaires (décision R167, migration 0081) : une arme du catalogue avec son matériau ou une arme élémentaire sans matériau, un seul niveau d’amélioration, enregistrées et relues ; les deux, aucune, un matériau sur une arme élémentaire : refusés en français ; une page d’avant (élément posé, amélioration de l’élément) convertie et notée', () => {
+  const ARC_DE_FEU = 'ressources/pieces-elementaires#arme-elementaire:arc:feu';
+  const ARC_DE_SANG = 'ressources/pieces-elementaires#arme-elementaire:arc:sang';
+  const KATANA = 'ressources/armes#arme:epees:katana';
+  const TITANE = 'ressources/armures#materiau:titane';
+  const niveau = (n) => `ressources/armes#amelioration:arme:${n}`;
+  const armes = [
+    { rang: 1, arme_id: null, materiau_id: null, amelioration_id: niveau(2), arme_elementaire_id: ARC_DE_FEU, effet_en_plus: null, durabilite: 3, type_degats_choisi: null },
+    { rang: 2, arme_id: KATANA, materiau_id: TITANE, amelioration_id: niveau(5), arme_elementaire_id: null, effet_en_plus: 'Gravé', durabilite: null, type_degats_choisi: null },
+  ];
+  const r = appel('POST', '/api/personnages', { ...ficheConforme('Arc de feu'), armes });
+  assert.equal(r.statut, 201, JSON.stringify(r.corps));
+  assert.deepEqual(r.corps.personnage.armes, armes, 'relues telles quelles');
+  assert.ok(!r.corps.controles.some((c) => c.regle === 'arme_elementaire_hors_magie'), 'une arme élémentaire de sa magie (Feu)');
+  // le type de dégâts choisi d'une bombe élémentaire (type_degats_choisi, « Au choix ») : enregistré et relu ; sur un arc (tous ses types s'appliquent),
+  // signalé par la base (arme_type_degats_choisi), jamais refusé
+  const BOMBE_DE_FEU = 'ressources/pieces-elementaires#arme-elementaire:bombe:feu';
+  const bombe = appel('PUT', `/api/personnages/${r.corps.personnage.id}`, { ...lire(r.corps.personnage.id).personnage,
+    armes: [{ ...armes[0], arme_elementaire_id: BOMBE_DE_FEU, type_degats_choisi: 'frappe' }, { ...armes[1], rang: 2, arme_id: null, materiau_id: null, effet_en_plus: null, arme_elementaire_id: ARC_DE_FEU, type_degats_choisi: 'taille' }] });
+  assert.equal(bombe.statut, 200, JSON.stringify(bombe.corps));
+  assert.deepEqual(bombe.corps.personnage.armes.map((a) => a.type_degats_choisi), ['frappe', 'taille']);
+  assert.deepEqual(bombe.corps.controles.filter((c) => c.regle === 'arme_type_degats_choisi'), [{ regle: 'arme_type_degats_choisi', detail: '2 : taille' }]);
+  // une arme élémentaire d'une autre magie : signalée, jamais refusée
+  const id = r.corps.personnage.id;
+  const sang = appel('PUT', `/api/personnages/${id}`, { ...lire(id).personnage, armes: [{ ...armes[0], arme_elementaire_id: ARC_DE_SANG }] });
+  assert.equal(sang.statut, 200, JSON.stringify(sang.corps));
+  assert.deepEqual(sang.corps.controles.filter((c) => c.regle === 'arme_elementaire_hors_magie'), [{ regle: 'arme_elementaire_hors_magie', detail: `1 : ${ARC_DE_SANG}` }]);
+  // aucune arme, un matériau sur une arme élémentaire : refusés, un message en français, rien n'est écrit (les deux à la fois, c'est la forme d'une page
+  // d'avant la migration 0081 : convertie, plus bas)
+  const avant = lire(id);
+  for (const [ligne, message] of [
+    [{ rang: 1, amelioration_id: niveau(1) }, 'armes[0] : une arme est une arme du catalogue (arme_id) ou une arme élémentaire (arme_elementaire_id), l’une des deux (décision R167)'],
+    [{ rang: 1, arme_elementaire_id: ARC_DE_FEU, materiau_id: TITANE }, 'armes[0] : une arme élémentaire n’a pas de matériau (décision R167)'],
+    [{ rang: 1, arme_id: KATANA, type_degats_choisi: 'estoc' }, 'armes[0] : un type de dégâts ne se choisit que sur une arme élémentaire (décision R167)'],
+  ]) {
+    const k = appel('PUT', `/api/personnages/${id}`, { ...avant.personnage, armes: [ligne] });
+    assert.equal(k.statut, 400, JSON.stringify(ligne));
+    assert.deepEqual(k.corps.problemes, [message]);
+    assert.deepEqual(lire(id), avant, 'rien n’est écrit');
+  }
+  // une page d'avant : l'élément posé sur une arme du catalogue et son amélioration (`amelioration_elementaire_id`, colonne retirée)
+  const ARC = 'ressources/armes#arme:arc:arc';
+  const dAvant = appel('POST', '/api/personnages', { ...ficheConforme('Arc d’avant'), notes: 'Mes notes', armes: [
+    { rang: 1, arme_id: ARC, materiau_id: TITANE, amelioration_id: niveau(3), arme_elementaire_id: ARC_DE_FEU,
+      amelioration_elementaire_id: 'ressources/pieces-elementaires#amelioration:arme-elementaire:2', effet_en_plus: null, durabilite: 9 },
+    { rang: 2, arme_id: KATANA, materiau_id: null, amelioration_id: null, arme_elementaire_id: null, amelioration_elementaire_id: null, effet_en_plus: null, durabilite: null },
+  ] });
+  assert.equal(dAvant.statut, 201, JSON.stringify(dAvant.corps));
+  const p = dAvant.corps.personnage;
+  assert.deepEqual(p.armes, [
+    { rang: 1, arme_id: null, materiau_id: null, amelioration_id: niveau(2), arme_elementaire_id: ARC_DE_FEU, effet_en_plus: null, durabilite: null, type_degats_choisi: null },
+    { rang: 2, arme_id: KATANA, materiau_id: null, amelioration_id: null, arme_elementaire_id: null, effet_en_plus: null, durabilite: null, type_degats_choisi: null },
+  ], 'l’arc devenu l’Arc de Feu +2, durabilité au maximum ; le katana tel quel');
+  const [notes, ligne, ...reste] = p.notes.split('\n');
+  assert.deepEqual([notes, reste], ['Mes notes', []], 'une seule ligne : rien n’est perdu du katana');
+  assert.equal(ligne, `[${jourDuRetrait(p.modifie_le)}] Retrait (règles modifiées) : l’arme « Arc » (ARC, arme 1, matériau « Titane », amélioration +3) est devenue l’arme élémentaire « Arc de Feu », avec l’amélioration +2 de son élément : une pièce élémentaire transforme l’arme, qui perd toutes ses caractéristiques d’avant. Adaptez la fiche.`);
+  // un élément d'un autre type sur une arme du catalogue (l'Arc de Feu sur un katana) : l'élément part, noté ; l'arme reste
+  const k = appel('PUT', `/api/personnages/${p.id}`, { ...lire(p.id).personnage, armes: [{ rang: 2, arme_id: KATANA, materiau_id: TITANE, arme_elementaire_id: ARC_DE_FEU }] });
+  assert.equal(k.statut, 200, JSON.stringify(k.corps));
+  assert.deepEqual(k.corps.personnage.armes, [{ rang: 2, arme_id: KATANA, materiau_id: TITANE, amelioration_id: null, arme_elementaire_id: null, effet_en_plus: null, durabilite: null, type_degats_choisi: null }]);
+  assert.match(k.corps.personnage.notes.split('\n').at(-1), /l’élément « Arc de Feu » de l’arme « Katana » \(ÉPÉES, arme 2\) n’est plus posé/);
+});
+
+test('choix de maîtrise d’armes (R148 à R150, R45) : enregistrés et relus tels quels ; hors de la liste de la source, au-delà d’une limite écrite ou du plafond, sur ARME DE MONSTRES : signalés par les contrôles, jamais refusés', () => {
+  // hors de la liste : la maîtrise au choix du Guerrier est « sauf épée »
+  const horsChoix = [{ source: 'classes/guerrier#maitrise-arme:2', rang: 1, arme_famille_id: 'epees' }];
+  let r = appel('POST', '/api/personnages', { ...ficheConforme('Sauf épée'), maitrise_choix: horsChoix });
+  assert.equal(r.statut, 201, JSON.stringify(r.corps));
+  assert.deepEqual(r.corps.personnage.maitrise_choix, horsChoix);
+  assert.deepEqual(r.corps.controles, [{ regle: 'maitrise_hors_choix', detail: 'classes/guerrier#maitrise-arme:2 : 1 = epees' }]);
+  // un Mercenaire Chasseur de primes au niveau de classe 10 : la ligne de classe « sans dépasser 1 dans le même » (R150), ses 5 points du don sur
+  // ÉPÉES (admis, R150) et le plafond de 4 par famille (R149), un point sur ARME DE MONSTRES (R45)
+  const xp = db.prepare('SELECT xp_min AS xp FROM v_niveau WHERE niveau = 5').get().xp;
+  const ligne = 'classes/mercenaire#maitrise-arme:1';
+  const don = 'capacites/mercenaire-chasseur-de-primes';
+  const maitrise_choix = [
+    { source: don, rang: 1, arme_famille_id: 'epees' }, { source: don, rang: 2, arme_famille_id: 'epees' }, { source: don, rang: 3, arme_famille_id: 'epees' },
+    { source: don, rang: 4, arme_famille_id: 'epees' }, { source: don, rang: 5, arme_famille_id: 'epees' },
+    { source: ligne, rang: 1, arme_famille_id: 'epees' }, { source: ligne, rang: 2, arme_famille_id: 'epees' }, { source: ligne, rang: 3, arme_famille_id: 'arme-de-monstres' },
+  ];
+  r = appel('POST', '/api/personnages', {
+    ...ficheConforme('Mercenaire'), xp, classes: [{ rang: 1, classe_id: 'classes/mercenaire', specialite_id: 'classes/mercenaire#specialite:chasseur-de-primes' }], maitrise_choix,
+  });
+  assert.equal(r.statut, 201, JSON.stringify(r.corps));
+  const ordre = (a, b) => a.rang - b.rang || (a.source < b.source ? -1 : 1);
+  assert.deepEqual(r.corps.personnage.maitrise_choix, [...maitrise_choix].sort(ordre), 'relus tels quels, dans l’ordre de lecture (rang, puis source : ordreDe)');
+  assert.deepEqual(r.corps.controles.filter((c) => c.regle.startsWith('maitrise')), [
+    { regle: 'maitrise_arme_exclue', detail: `${ligne} : 3 = arme-de-monstres` },
+    { regle: 'maitrise_meme_famille', detail: `${ligne} : epees = 2 / 1` },
+    { regle: 'maitrise_plafond', detail: 'epees = 7 / 4' },
+  ]);
+  // seules les contraintes de la base refusent : un point de rang 0, une famille inconnue
+  for (const [liste, motif] of [
+    [[{ source: ligne, rang: 0, arme_famille_id: 'epees' }], /^maitrise_choix\[0\] : valeur hors des bornes/],
+    [[{ source: ligne, rang: 1, arme_famille_id: 'famille-inconnue' }], /^maitrise_choix : « arme_famille_id » = « famille-inconnue » n’existe pas dans les règles \(arme_famille\)$/],
+  ]) {
+    const avant = lire(r.corps.personnage.id);
+    const k = appel('PUT', `/api/personnages/${avant.personnage.id}`, { version: avant.personnage.version, maitrise_choix: liste });
+    assert.equal(k.statut, 400, JSON.stringify(k.corps));
+    assert.ok(k.corps.problemes.some((x) => motif.test(x)), JSON.stringify(k.corps.problemes));
+    assert.deepEqual(lire(avant.personnage.id), avant, 'rien n’est écrit');
+  }
+});
+
+test('repli sur une base vivante d’avant la migration 0062 (sa reconstruction a échoué) : sans les tables de l’entraînement et des choix d’acquis, la fiche se lit avec des listes vides, s’enregistre (l’acquis d’avant à 0), et une liste non vide est refusée', () => {
+  const { chemin: avant } = preparerBaseVivante({ regles: REGLES, dossier: join(racine, 'db-avant-0062') });
+  const ancienne = new DatabaseSync(avant);
+  // la vue des contrôles d'avant ne lisait pas l'entraînement (règles entrainement_competences et entrainement_valeur, migration 0062)
+  const vue = ancienne.prepare("SELECT sql FROM sqlite_master WHERE name = 'v_personnage_controle'").get().sql;
+  const vueDAvant = vue.replace(/\n  UNION ALL\n  -- Entraînement \(décision R104\)[\s\S]*?'entrainement\.bonus_max_pct'\)/, '');
+  assert.notEqual(vueDAvant, vue);
+  ancienne.exec(`DROP VIEW v_personnage_controle; ${vueDAvant};
+    DROP TABLE personnage_entrainement; DROP TABLE personnage_acquis_choix; DROP TABLE personnage_resistance_choix;
+    ALTER TABLE personnage ADD COLUMN entrainement TEXT;
+    ALTER TABLE personnage_competence ADD COLUMN acquis INTEGER NOT NULL DEFAULT 0 CHECK (acquis >= 0);`);
+  ancienne.close();
+  const base = ouvrirBaseVivante(avant);
+  try {
+    const cree = enregistrerFiche(base, { ...ficheConforme('Repli 0062'), entrainements: [], acquis_choix: [], resistance_choix: [] });
+    assert.deepEqual([cree.personnage.entrainements, cree.personnage.acquis_choix, cree.personnage.resistance_choix], [[], [], []], 'lues vides');
+    assert.deepEqual(base.prepare('SELECT DISTINCT acquis FROM personnage_competence WHERE personnage_id = ?').all(cree.personnage.id).map((l) => l.acquis), [0]);
+    const lue = lireFiche(base, cree.personnage.id);
+    for (const [cle, liste] of [['entrainements', [{ rang: 1, competence_id: 'arc', valeur: 2, texte: null }]], ['acquis_choix', [{ source: 'x', rang: 1, competence_id: 'arc', valeur: null }]]]) {
+      assert.throws(() => enregistrerFiche(base, { version: lue.version, [cle]: liste }, { id: lue.id }), (e) => {
+        assert.deepEqual([e.statut, e.details.problemes], [400, [`${cle} : pas encore dans cette base, ses lignes seraient perdues`]]);
+        return true;
+      });
+    }
+    assert.deepEqual(lireFiche(base, lue.id), lue, 'rien n’est écrit');
+  } finally {
+    base.close();
+  }
+});
+
+test('repli sur une base vivante d’avant la migration 0066 (sa reconstruction a échoué) : sans `nm_mj`, une fiche à 0 NM du MJ s’enregistre (les sorts à 0 NM du MJ chacun) ; des NM du MJ sont refusés, rien n’est perdu sans le dire', () => {
+  const { chemin: avant } = preparerBaseVivante({ regles: REGLES, dossier: join(racine, 'db-avant-0066') });
+  const ancienne = new DatabaseSync(avant);
+  // la vue et la table d'avant (décision R26 : les NM du MJ sort par sort, personnage_sort.nm_cadeau)
+  const vue = ancienne.prepare("SELECT sql FROM sqlite_master WHERE name = 'v_personnage_controle'").get().sql;
+  const vueDAvant = vue.replaceAll(" || CASE WHEN p.nm_mj > 0 THEN ' + ' || p.nm_mj || ' du MJ' ELSE '' END", '').replaceAll(' + p.nm_mj', '')
+    .replaceAll('ps.niveau_maitrise - ps.nm_livre', 'ps.niveau_maitrise - ps.nm_livre - ps.nm_cadeau');
+  assert.ok(!vueDAvant.includes('p.nm_mj'));
+  ancienne.exec(`DROP VIEW v_personnage_controle;
+    ALTER TABLE personnage DROP COLUMN nm_mj;
+    ALTER TABLE personnage_sort ADD COLUMN nm_cadeau INTEGER NOT NULL DEFAULT 0 CHECK (nm_cadeau >= 0);
+    ${vueDAvant};`);
+  ancienne.close();
+  const base = ouvrirBaseVivante(avant);
+  try {
+    const bdf = 'magies/magie-du-feu#sort:boule-de-feu';
+    const cree = enregistrerFiche(base, { ...ficheConforme('Repli 0066'), sorts: [{ sort_id: bdf, rang: 1, niveau_maitrise: 1, nm_livre: 1 }] });
+    assert.ok(!('nm_mj' in cree.personnage), 'la colonne n’est pas dans cette base');
+    assert.deepEqual(base.prepare('SELECT niveau_maitrise, nm_livre, nm_cadeau FROM personnage_sort WHERE personnage_id = ?').all(cree.personnage.id).map((l) => ({ ...l })),
+      [{ niveau_maitrise: 1, nm_livre: 1, nm_cadeau: 0 }]);
+    const lue = lireFiche(base, cree.personnage.id);
+    assert.throws(() => enregistrerFiche(base, { version: lue.version, nm_mj: 2 }, { id: lue.id }), (e) => {
+      assert.deepEqual([e.statut, e.details.problemes], [400, ['champ inconnu « nm_mj »']]);
+      return true;
+    });
+    assert.deepEqual(lireFiche(base, lue.id), lue, 'rien n’est écrit');
+  } finally {
+    base.close();
+  }
+});
+
+test('résistance au choix (décision R124, migration 0069) : enregistrée et relue ; une altération inconnue, deux pour un même choix : refusées, rien n’est écrit', () => {
+  const choix = { source: 'races/drakos#tableau:races/drakos#ethnie:drakos-orange', rang: 1, etat_id: 'guide/liste-des-alterations-d-etat#etat:poison' };
+  const r = appel('POST', '/api/personnages', { ...ficheConforme('Écaille orange'), resistance_choix: [choix] });
+  assert.equal(r.statut, 201, JSON.stringify(r.corps));
+  const p = r.corps.personnage;
+  // (la magie d'une résistance au choix, migration 0071 : vide pour une altération)
+  assert.deepEqual(p.resistance_choix, [{ ...choix, magie_id: null }]);
+  assert.deepEqual(lire(p.id), r.corps, 'relue à l’identique');
+  for (const [liste, motif] of [
+    [[{ ...choix, etat_id: 'guide/liste-des-alterations-d-etat#etat:inconnue' }], /^resistance_choix : « etat_id » = « guide\/liste-des-alterations-d-etat#etat:inconnue » n’existe pas dans les règles/],
+    [[choix, { ...choix, etat_id: 'guide/liste-des-alterations-d-etat#etat:gel' }], /^resistance_choix\[1\] : en double \(source, rang\)$/],
+    [[{ ...choix, rang: 0 }], /^resistance_choix\[0\] : valeur hors des bornes/],
+  ]) {
+    const avant = lire(p.id);
+    const k = appel('PUT', `/api/personnages/${p.id}`, { version: avant.personnage.version, resistance_choix: liste });
+    assert.equal(k.statut, 400, JSON.stringify(k.corps));
+    assert.ok(k.corps.problemes.some((x) => motif.test(x)), JSON.stringify(k.corps.problemes));
+    assert.deepEqual(lire(p.id), avant, 'rien n’est écrit');
+  }
+  // un envoi sans la liste ne la touche pas
+  const m = appel('PUT', `/api/personnages/${p.id}`, { version: lire(p.id).personnage.version, nom: 'Écaille orange (bis)' });
+  assert.equal(m.statut, 200, JSON.stringify(m.corps));
+  assert.deepEqual(m.corps.personnage.resistance_choix, [{ ...choix, magie_id: null }]);
+});
+
+test('résistance à une magie au choix (décision R137, migration 0071) : la magie enregistrée et relue ; une magie inconnue, ni magie ni altération, ou les deux : refusées, rien n’est écrit', () => {
+  const choix = { source: 'capacites/ocultomancien-resilience', rang: 1, magie_id: 'magies/magie-de-la-glace' };
+  const r = appel('POST', '/api/personnages', { ...ficheConforme('Résiliente'), resistance_choix: [choix] });
+  assert.equal(r.statut, 201, JSON.stringify(r.corps));
+  const p = r.corps.personnage;
+  assert.deepEqual(p.resistance_choix, [{ ...choix, etat_id: null }]);
+  assert.deepEqual(lire(p.id), r.corps, 'relue à l’identique');
+  for (const [liste, motif] of [
+    [[{ ...choix, magie_id: 'magies/inconnue' }], /^resistance_choix : « magie_id » = « magies\/inconnue » n’existe pas dans les règles/],
+    [[{ source: choix.source, rang: 1 }], /^resistance_choix\[0\] : /],
+    [[{ ...choix, etat_id: 'guide/liste-des-alterations-d-etat#etat:poison' }], /^resistance_choix\[0\] : /],
+  ]) {
+    const avant = lire(p.id);
+    const k = appel('PUT', `/api/personnages/${p.id}`, { version: avant.personnage.version, resistance_choix: liste });
+    assert.equal(k.statut, 400, JSON.stringify(k.corps));
+    assert.ok(k.corps.problemes.some((x) => motif.test(x)), JSON.stringify(k.corps.problemes));
+    assert.deepEqual(lire(p.id), avant, 'rien n’est écrit');
+  }
+});
+
+test('magie tirée d’un don du Flagelleur (décision R163) : la magie_id dont la source est le don, enregistrée et relue à l’identique, comme R137', () => {
+  const choix = [
+    { source: 'capacites/flagelleur-plus-fort', rang: 1, magie_id: 'magies/magie-de-la-glace' },
+    { source: 'capacites/flagelleur-puni-moi', rang: 1, magie_id: 'magies/magie-de-la-corruption' },
+  ];
+  const r = appel('POST', '/api/personnages', { ...ficheConforme('Flagelleuse illimitée'), magie_innee_id: 'magies/potentiel-illimite', resistance_choix: choix });
+  assert.equal(r.statut, 201, JSON.stringify(r.corps));
+  assert.deepEqual(r.corps.personnage.resistance_choix, choix.map((c) => ({ ...c, etat_id: null })));
+  assert.deepEqual(lire(r.corps.personnage.id), r.corps, 'relue à l’identique');
+});
+
+test('ordre de lecture des listes : un ordre total — le rang, puis le reste de la clé (choix d’acquis : source, compétence ; résistance au choix et choix de maîtrise : source) ; une fiche relue garde sa version, quel que soit l’ordre d’envoi', () => {
+  const { chemin } = preparerBaseVivante({ regles: REGLES, dossier: join(racine, 'db-ordre') });
+  const base = ouvrirBaseVivante(chemin);
+  try {
+    // l'ordre de chaque liste de la fiche : le rang d'abord quand elle en a un, puis les autres colonnes de sa clé
+    assert.equal(ordreDe(base, 'personnage_acquis_choix'), '"rang", "source", "competence_id"');
+    assert.equal(ordreDe(base, 'personnage_resistance_choix'), '"rang", "source"');
+    assert.equal(ordreDe(base, 'personnage_classe'), '"rang"');
+    assert.equal(ordreDe(base, 'personnage_maitrise_choix'), '"rang", "source"');
+    for (const table of Object.values(PARTIES_DE_FICHE)) {
+      const cols = base.prepare(`PRAGMA table_info("${table}")`).all();
+      const cle = cols.filter((c) => c.pk && c.name !== 'personnage_id').map((c) => `"${c.name}"`);
+      const rang = cols.some((c) => c.name === 'rang') ? ['"rang"'] : [];
+      const ordre = ordreDe(base, table).split(', ');
+      assert.deepEqual(ordre.slice(0, rang.length), rang, `${table} : le rang d'abord`);
+      assert.deepEqual([...new Set(ordre)].sort(), [...new Set([...rang, ...cle])].sort(), `${table} : toutes les colonnes de la clé (le rang en plus), aucune autre`);
+    }
+    // des rangs à égalité, envoyés dans le désordre : relus dans l'ordre (rang, source, compétence)
+    const POISON = 'guide/liste-des-alterations-d-etat#etat:poison';
+    const GEL = 'guide/liste-des-alterations-d-etat#etat:gel';
+    const acquis_choix = [
+      { source: 'races/humain#don:humain-central', rang: 1, competence_id: 'calme', valeur: 4 },
+      { source: 'capacites/tueur-fletrisseur', rang: 2, competence_id: 'arme-legere', valeur: null },
+      { source: 'races/humain#don:humain-central', rang: 1, competence_id: 'arc', valeur: 6 },
+      { source: 'capacites/tueur-fletrisseur', rang: 1, competence_id: 'arme-lourde', valeur: null },
+    ];
+    const resistance_choix = [{ source: 'z-source', rang: 1, etat_id: GEL }, { source: 'a-source', rang: 2, etat_id: POISON }, { source: 'a-source', rang: 1, etat_id: POISON }];
+    // une horloge fixe : un second enregistrement une seconde plus tard changerait `modifie_le`, donc la version, quel que soit l'ordre des listes
+    const maintenant = new Date('2026-01-01T12:00:00Z');
+    const cree = enregistrerFiche(base, { ...ficheConforme('Ordre'), acquis_choix, resistance_choix }, { maintenant });
+    const lue = lireFiche(base, cree.personnage.id);
+    assert.deepEqual(lue.acquis_choix.map((x) => [x.rang, x.source, x.competence_id]), [
+      [1, 'capacites/tueur-fletrisseur', 'arme-lourde'], [1, 'races/humain#don:humain-central', 'arc'], [1, 'races/humain#don:humain-central', 'calme'],
+      [2, 'capacites/tueur-fletrisseur', 'arme-legere'],
+    ]);
+    assert.deepEqual(lue.resistance_choix.map((x) => [x.rang, x.source]), [[1, 'a-source'], [1, 'z-source'], [2, 'a-source']]);
+    // les mêmes lignes envoyées dans un autre ordre : la même fiche, la même version
+    const autre = enregistrerFiche(base, { version: lue.version, acquis_choix: [...acquis_choix].reverse(), resistance_choix: [...resistance_choix].reverse() }, { id: lue.id, maintenant });
+    assert.deepEqual([autre.personnage.acquis_choix, autre.personnage.resistance_choix], [lue.acquis_choix, lue.resistance_choix]);
+    assert.equal(lireFiche(base, lue.id).version, lue.version);
+  } finally {
+    base.close();
+  }
+});
+
+test('repli sur une base vivante d’avant la migration 0069 (sa reconstruction a échoué) : sans la table des résistances au choix, la fiche se lit avec une liste vide, s’enregistre, et une liste non vide est refusée', () => {
+  const { chemin: avant } = preparerBaseVivante({ regles: REGLES, dossier: join(racine, 'db-avant-0069') });
+  const ancienne = new DatabaseSync(avant);
+  ancienne.exec('DROP TABLE personnage_resistance_choix;');
+  ancienne.close();
+  const base = ouvrirBaseVivante(avant);
+  try {
+    const cree = enregistrerFiche(base, { ...ficheConforme('Repli 0069'), resistance_choix: [] });
+    assert.deepEqual(cree.personnage.resistance_choix, [], 'lue vide');
+    const lue = lireFiche(base, cree.personnage.id);
+    const liste = [{ source: 'races/drakos#tableau:races/drakos#ethnie:drakos-orange', rang: 1, etat_id: 'guide/liste-des-alterations-d-etat#etat:poison' }];
+    assert.throws(() => enregistrerFiche(base, { version: lue.version, resistance_choix: liste }, { id: lue.id }), (e) => {
+      assert.deepEqual([e.statut, e.details.problemes], [400, ['resistance_choix : pas encore dans cette base, ses lignes seraient perdues']]);
+      return true;
+    });
+    assert.deepEqual(lireFiche(base, lue.id), lue, 'rien n’est écrit');
+  } finally {
+    base.close();
+  }
+});
+
+test('repli sur une base vivante d’avant la migration 0071 (sa reconstruction a échoué) : sans la magie d’une résistance au choix, une altération s’enregistre ; une magie est refusée, rien n’est perdu sans le dire', () => {
+  const { chemin: avant } = preparerBaseVivante({ regles: REGLES, dossier: join(racine, 'db-avant-0071') });
+  const ancienne = new DatabaseSync(avant);
+  // la table d'avant 0071 : une altération par choix, NOT NULL, sans magie
+  ancienne.exec(`DROP TABLE personnage_resistance_choix;
+    CREATE TABLE personnage_resistance_choix (
+      personnage_id TEXT NOT NULL REFERENCES personnage(id) ON DELETE CASCADE, source TEXT NOT NULL CHECK (length(source) > 0),
+      rang INTEGER NOT NULL CHECK (rang >= 1), etat_id TEXT NOT NULL REFERENCES etat(id), PRIMARY KEY (personnage_id, source, rang)
+    ) STRICT, WITHOUT ROWID;`);
+  ancienne.close();
+  const base = ouvrirBaseVivante(avant);
+  try {
+    const choix = { source: 'races/drakos#tableau:races/drakos#ethnie:drakos-orange', rang: 1, etat_id: 'guide/liste-des-alterations-d-etat#etat:poison' };
+    const cree = enregistrerFiche(base, { ...ficheConforme('Repli 0071'), resistance_choix: [{ ...choix, magie_id: null }] });
+    assert.deepEqual(cree.personnage.resistance_choix, [choix], 'la colonne absente : ni écrite ni rendue');
+    const lue = lireFiche(base, cree.personnage.id);
+    const magie = [{ source: 'capacites/ocultomancien-resilience', rang: 1, magie_id: 'magies/magie-de-la-glace' }];
+    assert.throws(() => enregistrerFiche(base, { version: lue.version, resistance_choix: magie }, { id: lue.id }), (e) => {
+      assert.deepEqual([e.statut, e.details.problemes], [400, ['resistance_choix[0] : champ inconnu « magie_id »']]);
+      return true;
+    });
+    assert.deepEqual(lireFiche(base, lue.id), lue, 'rien n’est écrit');
+  } finally {
+    base.close();
+  }
+});
+
+test('repli sur une base vivante d’avant la migration 0067 (sa reconstruction a échoué) : sans les colonnes du sort préparé, la page à jour (marque à 0, jet et posture vides) s’enregistre ; un sort préparé est refusé, rien n’est perdu sans le dire', () => {
+  const { chemin: avant } = preparerBaseVivante({ regles: REGLES, dossier: join(racine, 'db-avant-0067') });
+  const ancienne = new DatabaseSync(avant);
+  // les tables d'avant 0067 : personnage_sort sans prepare, prepare_jet, prepare_posture_id (personnage_acquis_choix n'avait pas encore l'arme choisie,
+  // que la migration 0076 a retirée : comme aujourd'hui)
+  ancienne.exec(`DROP INDEX personnage_sort_prepare;
+    ALTER TABLE personnage_sort DROP COLUMN prepare_jet; ALTER TABLE personnage_sort DROP COLUMN prepare_posture_id; ALTER TABLE personnage_sort DROP COLUMN prepare;`);
+  ancienne.close();
+  const base = ouvrirBaseVivante(avant);
+  try {
+    const bdf = 'magies/magie-du-feu#sort:boule-de-feu';
+    const sort = { sort_id: bdf, rang: 1, niveau_maitrise: 0, nm_livre: 0, prepare: 0, prepare_jet: null, prepare_posture_id: null };
+    const choix = { source: 'races/humain#don:humain-central', rang: 1, competence_id: 'arc', valeur: 6 };
+    const cree = enregistrerFiche(base, { ...ficheConforme('Repli 0067'), sorts: [sort], acquis_choix: [choix] });
+    const p = cree.personnage;
+    assert.deepEqual([p.sorts, p.acquis_choix], [[{ sort_id: bdf, rang: 1, niveau_maitrise: 0, nm_livre: 0 }], [{ source: choix.source, rang: 1, competence_id: 'arc', valeur: 6 }]],
+      'colonnes absentes de la base : ni écrites ni rendues');
+    for (const [cle, liste, champ] of [
+      ['sorts', [{ ...sort, prepare: 1 }], 'prepare'], ['sorts', [{ ...sort, prepare_jet: 40 }], 'prepare_jet'],
+    ]) {
+      const lue = lireFiche(base, p.id);
+      assert.throws(() => enregistrerFiche(base, { version: lue.version, [cle]: liste }, { id: p.id }), (e) => {
+        assert.deepEqual([e.statut, e.details.problemes], [400, [`${cle}[0] : champ inconnu « ${champ} »`]]);
+        return true;
+      });
+      assert.deepEqual(lireFiche(base, p.id), lue, 'rien n’est écrit');
+    }
+  } finally {
+    base.close();
+  }
+});
+
+test('repli sur une base vivante d’avant la migration 0076 (sa reconstruction a échoué) : sans la table des choix de maîtrise, la fiche se lit avec une liste vide et s’enregistre ; une liste non vide est refusée ; les anciens dés restent intacts', () => {
+  const { chemin: avant } = preparerBaseVivante({ regles: REGLES, dossier: join(racine, 'db-avant-0076') });
+  const ancienne = new DatabaseSync(avant);
+  // les tables d'avant 0076 : les dés par famille, l'arme choisie d'un choix d'acquis (R119), pas de choix de maîtrise ; la vue des contrôles d'avant
+  // lisait les dés (une vue sans ligne en tient lieu : seules les tables comptent ici)
+  ancienne.exec(`DROP VIEW v_personnage_controle; DROP VIEW v_personnage_maitrise_arme; DROP VIEW v_personnage_maitrise_part; DROP TABLE personnage_maitrise_choix;
+    CREATE VIEW v_personnage_controle AS SELECT NULL AS personnage_id, NULL AS regle, NULL AS detail WHERE 0;
+    CREATE TABLE personnage_maitrise_arme (
+      personnage_id TEXT NOT NULL REFERENCES personnage(id) ON DELETE CASCADE, arme_famille_id TEXT NOT NULL REFERENCES arme_famille(id),
+      des INTEGER NOT NULL CHECK (des BETWEEN 1 AND 5), PRIMARY KEY (personnage_id, arme_famille_id)) STRICT, WITHOUT ROWID;
+    ALTER TABLE personnage_acquis_choix ADD COLUMN arme_famille_id TEXT REFERENCES arme_famille(id);`);
+  ancienne.close();
+  const base = ouvrirBaseVivante(avant);
+  try {
+    const { maitrise_choix: _m, ...sansChoix } = ficheConforme('Repli 0076');
+    const choix = { source: 'races/humain#don:humain-central', rang: 1, competence_id: 'arc', valeur: 6 };
+    const cree = enregistrerFiche(base, { ...sansChoix, maitrise_choix: [], acquis_choix: [choix] });
+    const p = cree.personnage;
+    assert.deepEqual(p.maitrise_choix, [], 'lue vide');
+    assert.ok(!('maitrises_armes' in p), 'la table d’avant n’est plus une partie de la fiche');
+    assert.deepEqual(p.acquis_choix, [{ ...choix, arme_famille_id: null }], 'la colonne de la base d’avant, laissée vide');
+    base.prepare("INSERT INTO personnage_maitrise_arme (personnage_id, arme_famille_id, des) VALUES (?, 'epees', 3)").run(p.id);
+    const lue = lireFiche(base, p.id);
+    assert.throws(() => enregistrerFiche(base, { version: lue.version, maitrise_choix: [{ source: 'classes/guerrier#maitrise-arme:2', rang: 1, arme_famille_id: 'hache' }] }, { id: p.id }), (e) => {
+      assert.deepEqual([e.statut, e.details.problemes], [400, ['maitrise_choix : pas encore dans cette base, ses lignes seraient perdues']]);
+      return true;
+    });
+    assert.deepEqual(lireFiche(base, p.id), lue, 'rien n’est écrit');
+    // un enregistrement de la page à jour ne touche pas aux anciens dés : la reconstruction suivante les notera (R153)
+    const m = enregistrerFiche(base, { version: lue.version, nom: 'Repli 0076 bis', maitrise_choix: [] }, { id: p.id });
+    assert.equal(m.personnage.nom, 'Repli 0076 bis');
+    assert.equal(base.prepare('SELECT des FROM personnage_maitrise_arme WHERE personnage_id = ?').get(p.id).des, 3);
   } finally {
     base.close();
   }

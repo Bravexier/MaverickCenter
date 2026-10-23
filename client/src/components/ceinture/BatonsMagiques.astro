@@ -1,0 +1,55 @@
+---
+import type { chargerBatons } from '../../lib/batons-db.mjs';
+import { htmlDeLigneDeBatons } from '../../lib/batons-rendu.mjs';
+import { url } from '../../lib/wiki';
+import PanneauDeRegles from '../equipement/PanneauDeRegles.astro';
+import Tableau from '../Tableau.astro';
+import type { PanneauRendu } from '../equipement/PanneauDeRegles.astro';
+
+// Sous-onglet « Bâtons magiques » de l'onglet « Ceinture » de la page /ressources/equipement/ (components/ceinture/CeinturePanneau.astro ; demandes du
+// propriétaire, 2026-10-16 : d'abord un onglet de « Équipement », puis « On y remettrait à ce moment le tableau Bâton magique », dans la ceinture) :
+// un panneau (`section.ceinture-panneau#batons-magiques`, l'ancre de l'ancien onglet) rendu depuis la base (lib/batons-db.mjs), jamais depuis le
+// Markdown de la page « Bâton magique » ; en tête, son panneau de règles, replié comme ceux des autres onglets
+// (components/equipement/PanneauDeRegles.astro, migration 0056, id `batons-magiques` : l'introduction de la page, et « Comment fabriquer un bâton
+// magique ? » en tuile). Puis le tableau
+// (lib/batons-rendu.mjs ; demande du propriétaire du 2026-10-16) : une ligne par magie, sur la couleur de sa magie sur le site (demande du propriétaire
+// du 2026-10-22 : « Partout il faut utiliser Que les couleurs du site »), sans colonne Magie : sa gemme et son bois (en lien vers « Composants », où leurs prix se modifient, chacun avec
+// son infobulle), le niveau au curseur (src/scripts/batons.mjs, sans import), l'effet et le prix (les matériaux de la recette :
+// lib/batons-db.mjs#prixDuBaton) du niveau choisi. Le tableau suit le gabarit commun (components/Tableau.astro) ; il n'est pas encore modifiable sur
+// le site de dev (le panneau de règles l'est). CSS : styles/ceinture/ceinture.css (la pastille de la gemme et le panneau de règles :
+// styles/equipement/equipement.css).
+type Batons = ReturnType<typeof chargerBatons>;
+interface Props {
+  batons: Batons;
+  /** le panneau de règles du sous-onglet (`batons-magiques`), le Markdown de ses blocs rendu (src/pages/ressources/equipement.astro) */
+  regles: PanneauRendu | null;
+  /** l'id du panneau (lib/equipement.mjs#SOUS_ONGLETS_DE_LA_CEINTURE), son nom, et s'il est le sous-onglet ouvert au départ */
+  id: string;
+  nom: string;
+  actif?: boolean;
+}
+const { batons, regles, id, nom, actif = false } = Astro.props;
+const composants = url('ressources/composants/');
+---
+
+<section class={`ceinture-panneau batons${actif ? ' is-active' : ''}`} id={id} aria-labelledby={`titre-${id}`} data-batons>
+  <h3 class="ceinture-panneau__titre" id={`titre-${id}`}>{nom}</h3>
+  <PanneauDeRegles panneau={regles} />
+  <p class="batons-aide">
+    Un bâton par magie, dans la couleur de sa magie : sa gemme et son bois (leur description et leurs prix en infobulle, et dans{' '}
+    <a href={`${composants}#gemmes`}>Composants</a>), le bonus passif qu’il donne aux sorts au niveau choisi, et le prix de ses matériaux.
+  </p>
+  <Tableau bloc="batons-bloc" classeTable="batons-table" attributsTable={{ 'aria-labelledby': `titre-${id}` }}>
+    <thead>
+      <tr>
+        <th scope="col">Gemme</th><th scope="col">Bois</th><th scope="col">Niveau</th><th scope="col">Effet</th>
+        <th scope="col" title="Prix des matériaux de la recette : la gemme de la qualité du niveau et le bois">Prix</th>
+      </tr>
+    </thead>
+    <tbody set:html={batons.magies.map((m) => htmlDeLigneDeBatons(m, batons.niveaux, composants)).join('')} />
+  </Tableau>
+</section>
+
+<script>
+  import '../../scripts/batons.mjs';
+</script>

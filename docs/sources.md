@@ -34,6 +34,31 @@ et aucun connecteur Discord n'était disponible dans le registre au moment de la
 > Ne pas utiliser le jeton d'un compte personnel (« self-bot ») : c'est contraire aux conditions d'utilisation de Discord
 > et ce jeton donne accès à tout le compte.
 
+## Tipeee — « Maverick JDR »
+
+- Page : <https://fr.tipeee.com/maverickjdr> (donnée par le propriétaire avec son plan du 2026-10-16), écrite par le créateur du jeu.
+- Lue par l'API publique `https://api.tipeee.com/v2.0/projects/maverickjdr` (la page est rendue en JavaScript), champ
+  `contentv2.translations.fr.html`.
+- **Ce qu'en tire le site : la partie « Bienvenue », copiée telle quelle** sur l'accueil (`/` ; sous le texte de Bienvenue jusqu'au 2026-10-23). Réponses du propriétaire
+  du 2026-10-22 : « autant en faire un hook pour que ça reprenne directement le texte au cas où il change sur Tipee », texte repris « La partie
+  « Bienvenue » » (de « Bienvenue sur le Tipeee de MaverickJDR ! » jusqu'à la fin : ce qu'on y trouve et le chapeau virtuel), au moment « En direct
+  par le serveur ». Ce choix tranche G36 (`docs/sql/a-valider.md` §6) et remplace la reformulation de l'ancienne page Liens (`lib/livres.mjs#LIENS`).
+  - Le texte est tiré par le module pur `client/src/lib/tipeee.mjs` (`bienvenueDeTipeee`) : du texte seul, en paragraphes, jamais de HTML de Tipeee ;
+    les emojis, des images chez Tipeee, ne sont pas repris. Ni corrigé, ni réécrit. Le reste de la page (présentation, contreparties, montants,
+    donateurs) n'est pas repris.
+  - **En direct par le service** (`client/serveur/tipeee.mjs`, `GET /api/tipeee/`, en production et sur le site de dev) : il relit l'API avec un cache
+    de quelques heures et garde le dernier texte valide ; si Tipeee ne répond pas ou que le repère manque, il sert le dernier texte connu et le note
+    au journal. Détail : `docs/serveur.md`, « Tipeee ».
+  - **Instantané de repli** : `sources/tipeee/bienvenue.json` (`{ url, lu_le, paragraphes }`), versionné et livré avec le site. La page l'affiche au
+    build (et seul, sans service : version portable), puis le remplace par le texte du service s'il diffère ; c'est aussi le premier repli du
+    service. Premier instantané lu le **2026-10-22** : trois paragraphes, de « Bienvenue sur le Tipeee de MaverickJDR ! » à « … tableau des donateurs
+    du serveur Discord officiel. ».
+  - **Son outil** : `node --no-warnings tools/sources/tipeee.mjs` relit l'API, en tire la partie par le même module et réécrit l'instantané si le
+    texte a changé (sinon le fichier et sa date restent) ; une partie introuvable n'écrit rien. `--verifier` contrôle que l'instantané est valide,
+    dans sa forme stable, et que c'est le texte actuel de Tipeee (sortie 1 sinon). `--depuis <reponse.json>` lit une réponse enregistrée, hors ligne.
+    Test : `client/test/sources-tipeee.test.mjs`. L'instantané n'a pas à suivre chaque changement de Tipeee (le service le fait) : le relancer
+    avant une livraison suffit.
+
 ## Google Docs / Sheets
 
 12 documents distincts (le doc `1vn5Tq11…` avait été cité deux fois), listés dans `sources/sources.json`
@@ -50,6 +75,11 @@ de l'original : les libellés « Google Sheet « … », onglet « … » » res
 aux classeurs « Familiers » et « Prototype » (demande du propriétaire, migration `0019-liens-familiers-prototype`) : leurs copies restent dans le Drive,
 mais ni la base ni la page des archives ne les citent. Pour que l'export et les liens du site marchent pour tous, les copies doivent être
 partagées comme les originaux (« tous les utilisateurs disposant du lien », lecture). La fiche auto corrigée (V1.2), qui lit ces copies : `docs/fiche-auto.md`.
+
+**Les originaux font foi (décision R83 du propriétaire, 2026-10-15).** Les classeurs d'origine (ceux de l'ancien mainteneur) sont toujours tenus
+à jour (Magie V8 et Les races modifiés le 2026-10-12, une grosse mise à jour annoncée pour la fin d'octobre) ; les copies du 2026-10-10 ne le sont pas, et
+le compte Google connecté aux sessions cloud ne les voit pas. La vérification des tables et les mises à jour lisent donc les **originaux** ; les copies
+restent une trace (registre de la migration 0014). Voir « Rapprochement d'un classeur » plus bas.
 
 Export automatique, à lancer **depuis une machine qui a accès à Google** (documents partagés en
 « Toute personne disposant du lien ») :
@@ -128,10 +158,71 @@ une correction périmée (la source a changé), redondante (la source est déjà
 signe ou plus qu'un mot : cela ne serait plus une faute mais une règle, donc une question pour le propriétaire.
 `corriger-dump.py verifier-registre` contrôle le registre seul (testé par `client/test/corrections.test.mjs`).
 
-Les JSON intermédiaires et les `.xlsx` ne font pas partie du dépôt : ils se régénèrent à partir des classeurs.
+Les JSON intermédiaires et les `.xlsx` ne font pas partie du dépôt : ils se régénèrent à partir des classeurs. Exception : l'**instantané** de chaque
+classeur rapproché (`sources/raw/classeurs/`, plus bas), qui est la référence d'une mise à jour et doit donc être gardé.
 Les extracteurs sont relançables, mais **ils écrasent les pages qu'ils génèrent** : retoucher une page à la main
 puis relancer l'extracteur perd la retouche. Passer le statut en `verified` une fois la page relue, et ne plus
 relancer l'extracteur sur ces pages.
+
+### Rapprochement d'un classeur (dans les deux sens)
+
+Demande du propriétaire (2026-10-15) : s'assurer que chaque classeur est intégré dans les tables **dans tous les sens**, puis appliquer à la demande les
+mises à jour du classeur ; ses réponses sont la décision **R83** (`docs/decisions-regles.md`). Outils : `tools/sources/` ; test :
+`client/test/sources-rapprochement.test.mjs`. L'outil vit jusqu'à la 1.0 : il lit la provenance des lignes (`source_ref`), que le propriétaire
+retirera alors (`docs/feuille-de-route.md`, réponses du 2026-10-16) ; d'ici là, une référence incomplète n'est pas réparée.
+
+1. **Instantané** du classeur original : `download_file_content` du connecteur Google Drive avec l'export
+   `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` (la réponse, trop grande pour la conversation, est enregistrée dans un fichier : son
+   champ `content` est le `.xlsx` en base64), puis `python3 -I tools/sheets/xlsx_to_json.py <classeur.xlsx> <dump.json>` et
+   `node --no-warnings tools/sources/instantane.mjs <dump.json> sources/raw/classeurs/<classeur>.json` (forme stable : une cellule par ligne, fusions et
+   validations triées, un diff git montre exactement les cellules changées). Un classeur de plus de 10 Mo (« Les races ») passe par `get_spreadsheet` (voir
+   plus haut). L'instantané est inscrit dans `sources/raw/classeurs/registre.json` (identifiant Drive, date de dernière modification lue dans le Drive,
+   empreinte de l'export, état `rapproche` ou `en_cours`).
+2. **Rapprochement** : `node --no-warnings tools/sources/rapprocher.mjs --classeur "<titre>" --dump sources/raw/classeurs/<classeur>.json
+   --registre tools/sources/ignorer/<classeur>.json [--sortie <rapport.md>] [--json]` (base : `var/maverick.db`, depuis `npm run db:build`). La base est
+   lue dans son **état d'import** (`lib/historique-site.mjs#lignesDImport`) : une ligne supprimée par le site de dev compte encore, une ligne qu'il a créée
+   ne compte pas, une colonne qu'il a modifiée vaut sa valeur d'import (le site est la source de ce qu'il modifie : ce n'est pas un écart). Il vérifie :
+   - **base → classeur** : chaque ligne typée lit, dans les cellules que cite son `source_ref`, chacun de ses textes et nombres, une fois défaites les
+     corrections d'orthographe des migrations (tout `data/migrations/*.json` qui a une liste `corrections` ; celles de la ligne, et celles des lignes dont
+     elle a été tirée : ligne visée par une clé étrangère, entité d'une note, page de l'entité) et appliqué `tools/sheets/corrections.json`. Une ligne qui
+     cite aussi un autre classeur se lit dans les deux instantanés ; si l'autre source n'en a pas (un Google Doc), ce qui ne se lit pas est « à relire »
+     (listé, pas compté). Une colonne typée qui a sa `*_brut` se contrôle par elle ; une énumération (`CHECK … IN (…)`) n'est pas comparée ;
+   - **classeur → base** : chaque cellule non vide est citée par au moins une ligne ou rangée dans le registre (`regles`) ; et **chaque mot d'une cellule
+     citée** se lit dans les valeurs des lignes qui la citent (libellés des lignes visées par leurs clés étrangères compris, jamais leurs identifiants ni
+     leur provenance) : sinon le classeur dit quelque chose que la base n'a pas ;
+   - **notes et fils de commentaires** : les mêmes dans le classeur et dans `note_cellule` (et `commentaire_orphelin`).
+   Une colonne modifiée par le site de dev **et** dont la cellule a changé (ou une ligne supprimée par le site dont la cellule a changé) est un
+   **conflit** : présenté avec les deux valeurs, jamais tranché sans le propriétaire (R83) ; sa réponse s'inscrit dans le registre (`conflits`).
+   Le registre d'un classeur, `tools/sources/ignorer/<classeur>.json` (forme décrite en tête de `rapprocher.mjs` ; une section inconnue est une
+   erreur), ne contient que des entrées **justifiées** (une `raison` chacune) : `regles` (cellules qu'aucune ligne ne cite : titres, statistiques d'usage,
+   consignes de navigation ; `nom_d_onglet` pour une bannière qui écrit le nom de son onglet), `libelles` (intitulés de mise en page d'une cellule citée,
+   bornés par un motif de la cellule : « Lvl » de « Lvl 5 »), `copies` (plage qui recopie une autre plage, de ce classeur ou d'un autre : vérifiée à
+   chaque passage, un écart dès qu'elle diverge), `derivees` (colonnes que l'import calcule, avec le test qui les garantit), `voulus` (écart voulu hors
+   des registres d'orthographe : décision R…, migration de données), `commentaires` (commentaires du classeur que l'import écarte), `conflits`. Une
+   entrée qui ne couvre plus rien est un écart (à retirer). Jamais une cellule qui porte une règle, un chiffre de jeu ou du lore pour faire baisser le
+   compte. Le test fait échouer la CI au moindre écart d'un classeur `rapproche`, avec le relevé complet.
+
+   **Ce que « 0 écart » garantit, et ce qu'il ne garantit pas.** Le contrôle est **par ligne**, pas par colonne : un `source_ref` cite les cellules
+   d'une ligne de la base, pas la case de chaque colonne. Un nombre de la ligne est accepté s'il se lit dans n'importe laquelle de ses cellules, un
+   morceau de texte s'il y est contenu, un mot d'une cellule s'il est dans n'importe laquelle des colonnes de la ligne. « 0 écart » veut donc dire : tout
+   le classeur est dans la base, et toute la base dans le classeur. Il ne voit pas une valeur changée en une autre que la ligne écrit déjà ailleurs (la
+   barrière d'une classe passée de 1 à 5, quand la même classe écrit « Bouclier classe 1 à 5 »), des nombres permutés, ni un ajout fait de mots que la
+   ligne contient déjà. Une formule se lit comme un texte (sans ses blancs), une liste de validation par ses choix écrits (sur une saisie vide), jamais
+   par la plage qu'elle cite. Il ne voit pas non plus une donnée portée par la **mise en forme** d'une cellule, que l'instantané (texte, note, fil)
+   ne garde pas : le poids d'un bouclier est la couleur de fond de sa case dans l'onglet « Bouclier » (décision R92, `bouclier.poids_id`, entrée
+   `derivees` du registre) ; sa référence case par case est `data/migrations/0054-poids-des-boucliers.json`, et une mise à jour du classeur relit les
+   couleurs avec le connecteur Google Sheets de la session (`includeGridData`, `effectiveFormat.backgroundColor`), jamais depuis l'instantané. **Pour
+   une mise à jour, c'est le diff des instantanés qui fait foi** (étape 3), case par case.
+3. **Mise à jour du classeur** (à la demande du propriétaire, jamais d'office) : un nouvel instantané (étape 1), puis
+   `node --no-warnings tools/sources/rapprocher.mjs --classeur "<titre>" --dump <nouvel instantané> --avant sources/raw/classeurs/<classeur>.json
+   [--sortie <changements.md>]` : chaque cellule changée (valeur, note, fil), avant et après, et les lignes de la base qui la citent, avec ce que le site
+   de dev leur a fait (« modifiée par le site : conflit possible »). Cette liste est présentée au propriétaire ; une fois validée, une migration
+   (`ingenieur-donnees`) applique les changements, l'instantané remplace l'ancien, le rapprochement (étape 2) repasse à 0 et le registre suit. Une règle
+   nouvelle ou changée suit la règle d'or : citée, jamais déduite.
+
+État (2026-10-15) : « Classe Maverick V7 » et « Invocation » rapprochés, 0 écart (V7 : 1 228 lignes typées, 3 964 cellules non vides, 43 notes,
+270 cellules ignorées ; Invocation : 1 128 lignes, 1 207 cellules, le tableau des améliorations cadavériques déclaré comme copie de celui de
+« Magie Maverick V8 »). Les cinq autres sont enregistrés `en_cours` (instantané gardé, écarts relevés dans `docs/sql/rapprochement-classeurs.md`).
 
 ## De la source au wiki
 

@@ -1,14 +1,15 @@
-// Extension de l'éditeur pour les pages du guide (chapitres : components/guide/GuideChapitre.astro ; pages de référence : pages/[type]/[slug].astro) —
+// Extension de l'éditeur pour les pages du guide (components/guide/PageDuGuide.astro, toutes rubriques : Découvrir, Les bases, Règles avancées, Guide
+// du MJ) et du Codex (pages/[type]/[slug].astro) —
 // demande du propriétaire : « le texte de chaque page, les liens (ou non), la mise en page, les tableaux et les cases, ainsi que leur couleur ».
 // En mode modification, chaque morceau de texte [data-ed-morceau] devient modifiable en place (contenteditable) ; les blocs tirés de la base (tableaux
 // de la montée de niveau, personnages fil rouge…) restent tels quels. Une barre d'outils pose la mise en page (paragraphe, titres, citation, listes,
 // gras, italique, barré), les liens (vers une page du wiki : [[cible|texte]], ou une adresse web ; retirer un lien) et les tableaux (insérer, ajouter
-// ou supprimer une ligne ou une colonne, couleur des cases). À l'enregistrement, le HTML de chaque morceau modifié est réécrit en Markdown
-// (lib/markdown-edition.mjs) et remis à sa place dans le corps de la page, autour des blocs ; son HTML assaini part avec, comme aperçu montré
-// tant que la page construite ne l'a pas (surcouche).
+// ou supprimer une ligne ou une colonne, couleur des cases), les mots-clés du glossaire (texte-en-place.mjs#outilsDesMotsCles). À l'enregistrement,
+// le HTML de chaque morceau modifié est réécrit en Markdown (lib/markdown-edition.mjs) et remis à sa place dans le corps de la page, autour des blocs ;
+// son HTML assaini part avec, comme aperçu montré tant que la page construite ne l'a pas (surcouche).
 import { cleDeLigne } from '../../lib/edition-modele.mjs';
 import { arbreDuDom, COULEURS_DE_CASE, decouperCorps, htmlSur, recomposerCorps, versMarkdown } from '../../lib/markdown-edition.mjs';
-import { editeurEnPlace } from './texte-en-place.mjs';
+import { editeurEnPlace, outilsDesMotsCles } from './texte-en-place.mjs';
 
 const ETIQUETTES_COULEUR = { rouge: 'Rouge', orange: 'Orange', jaune: 'Jaune', vert: 'Vert', bleu: 'Bleu', violet: 'Violet', gris: 'Gris' };
 
@@ -33,7 +34,11 @@ function assainir(html) {
   return htmlSur(enfantsDe(doc.body));
 }
 
-/** Une adresse du site écrite depuis la racine, comme dans le Markdown (« /races/ ») : sans le préfixe de déploiement. */
+/**
+ * Une adresse du site écrite depuis la racine, comme dans le Markdown (« /races/ ») : sans le préfixe de déploiement. Un lien écrit vers une ancienne
+ * adresse du guide (« /guide/les-postures/ ») n'y passe pas : versMarkdown relit son adresse écrite (`data-lien-ecrit`, lib/guide.mjs#remarkAnciensLiensDuGuide),
+ * jamais celle du plan qu'il montre (« /regles/les-postures/ ») : modifier la page ne réécrit pas ses liens.
+ */
 function lienRelatif(ed) {
   const base = ed.base || '/';
   return (href) => (base !== '/' && href.startsWith(base) ? `/${href.slice(base.length)}` : href);
@@ -143,6 +148,7 @@ const OUTILS = [
     ['Lien web', 'Lien vers une adresse web', lienWeb],
     ['Sans lien', 'Retirer le lien (le texte reste)', retirerLien],
   ]],
+  outilsDesMotsCles(texte),
   ['Tableau', [
     ['Tableau', 'Insérer un tableau', insererTableau],
     ['+ ligne', 'Ajouter une ligne sous la case', ajouterLigne],
@@ -204,7 +210,7 @@ export const guide = {
     document.execCommand('defaultParagraphSeparator', false, 'p');
     etat.abandon = new AbortController();
     const { signal } = etat.abandon;
-    Object.assign(etat, { actif: true, morceaux, original: morceaux.map((m) => m.innerHTML), initial: morceaux.map((m) => markdownDe(ed, m)), envoye: null });
+    Object.assign(etat, { actif: true, morceaux, original: morceaux.map((m) => m.innerHTML), initial: [], envoye: null });
     for (const m of morceaux) {
       // modifiable en place (texte-en-place.mjs : saisie suivie, collage en texte seul, lien qui ne s'ouvre pas au clic)
       texte.rendreModifiable(ed, m, signal);
@@ -216,6 +222,8 @@ export const guide = {
         }
       }, { signal });
     }
+    // le Markdown relu à l'entrée, une fois les mots-clés en balises écrites (rendreModifiable) : un morceau qu'on ne retouche pas n'est pas envoyé
+    etat.initial = morceaux.map((m) => markdownDe(ed, m));
     etat.barre = barreDOutils(ed);
     document.body.append(etat.barre);
   },

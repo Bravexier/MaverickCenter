@@ -2,14 +2,14 @@
 // propriétaire : modifier, créer avec une date et supprimer un événement ; « Date, Titre, Description, Lien » ; plusieurs catégories par événement, « créer,
 // modifier et supprimer une catégorie. Une catégorie supprimée la retire de l'entrée » ; sur /recherche/, ajouter, renommer et supprimer un mot-clé, « une
 // suppression d'un mot clé le supprimera de tous les endroits qui le référencent »). Les tests lisent l'état avant d'écrire et prennent des noms absents
-// de la base : les essais du site de dev peuvent l'avoir modifiée.
+// de la base : les essais du site de dev peuvent l'avoir modifiée. Depuis la migration 0056 (glossaire), le vocabulaire importé n'est presque plus posé
+// sur les pages : les règles des tests ont leurs mots-clés d'essai (test/aide-mots-cles.mjs).
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { cpSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { appliquerJournal } from '../scripts/db-appliquer-edition.mjs';
 import { appliquerMiseAJour } from '../scripts/mise-a-jour-regles.mjs';
@@ -19,21 +19,27 @@ import { rejouerLeJournal } from '../serveur/edition.mjs';
 import { chargerJournal, journalExporte } from '../serveur/edition-journal.mjs';
 import { SANS_CATEGORIE } from '../src/lib/chronologie.mjs';
 import { chargerChronologie } from '../src/lib/chronologie-db.mjs';
-import { cheminBase } from '../src/lib/donnees.mjs';
 import { attributEd, ENTITES, lireAttributEd, TABLES } from '../src/lib/edition-modele.mjs';
 import { MOTS_CLES_PROTEGES } from '../src/lib/mots-cles.mjs';
 import { lirePages } from '../src/lib/pages-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { copieSansNoteEnAttente, versionALaRevision } from './aide-mise-a-jour.mjs';
+import { ajouterLesMotsClesDEssai, DEFINITION_D_ESSAI, ETIQUETTE_D_ESSAI, reglesAvecDesMotsClesDEssai } from './aide-mots-cles.mjs';
+import { formesNonCanoniques, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
-const ROWS = join(RACINE, 'data', 'rows');
 const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
-const racine = mkdtempSync(join(tmpdir(), 'maverick-edition-chronologie-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('edition-chronologie');
 let compteur = 0;
+// les règles des tests : celles de data/rows et des mots-clés d'essai posés sur des pages (avec ou sans les pages d'exemple, comme le site de dev)
+const regles = new Map();
+const reglesDe = (sansExemples) => {
+  if (!regles.has(sansExemples)) regles.set(sansExemples, reglesAvecDesMotsClesDEssai(join(racine, `regles-${sansExemples ? 'site' : 'tout'}`), { sansExemples }));
+  return regles.get(sansExemples);
+};
 const vivante = ({ sansExemples = false } = {}) =>
-  ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples }), dossier: join(racine, `b${(compteur += 1)}`) }).chemin);
+  ouvrirBaseVivante(preparerBaseVivante({ regles: reglesDe(sansExemples).base, dossier: join(racine, `b${(compteur += 1)}`) }).chemin);
 const db = vivante();
 const service = { base: () => db, etat: () => ({}), edition: true };
 const appel = (methode, chemin, corps) => traiter({ methode, chemin, entetes: { 'content-type': 'application/json' }, corps: corps && JSON.stringify(corps) }, service);
@@ -313,6 +319,90 @@ test('mots-clés dont le site se sert : ni renommés (même en casse), ni suppri
   assert.equal(v.corps.motsCles.find((x) => x.id === libre).protege, null);
 });
 
+test('mots-clés qui étiquettent un sort (sort_mot_cle, migration 0067, décision R114) : ni supprimés, ni fusionnés (dans un sens ou l’autre), 409 avec une raison lisible ; « Sort grenade » est protégé ; renommer et définir restent possibles', () => {
+  const etiquette = ligne('SELECT * FROM mot_cle WHERE id = ?', ETIQUETTE_D_ESSAI.id);
+  assert.ok(etiquette, 'le mot-clé d’essai est dans les règles des tests');
+  assert.equal(MOTS_CLES_PROTEGES.has(etiquette.libelle_cle), false, 'il n’est pas protégé : seul son rôle d’étiquette le garde');
+  const etiquettes = () => lignes('SELECT sort_id FROM sort_mot_cle WHERE mot_cle_id = ? ORDER BY sort_id', etiquette.id).map((l) => l.sort_id);
+  assert.deepEqual(etiquettes(), [...ETIQUETTE_D_ESSAI.sorts].sort());
+  const libre = creerMotCle(motLibre('Essai sans étiquette'));
+  const vocabulaireAvant = lignes('SELECT * FROM mot_cle ORDER BY id');
+  for (const [quoi, operation, action] of [
+    ['suppression', { op: 'supprimer', entite: 'mot_cle', cle: { id: etiquette.id } }, 'supprime'],
+    ['fusion du mot-clé dans un autre', { op: 'fusionner_mots_cles', mot_cle: etiquette.id, dans: libre }, 'fusionne'],
+    ['fusion d’un autre dans le mot-clé', { op: 'fusionner_mots_cles', mot_cle: libre, dans: etiquette.id }, 'fusionne'],
+  ]) {
+    const r = enregistrer([operation]);
+    assert.equal(r.statut, 409, `${quoi} : ${JSON.stringify(r.corps)}`);
+    assert.equal(r.corps.erreur, `operations[0] : Le mot-clé « ${etiquette.libelle} » ne se ${action} pas depuis le site : il étiquette 2 sorts (« Boule de feu », « Cautérisation »), une règle posée par décision du propriétaire.`, quoi);
+    assert.deepEqual(lignes('SELECT * FROM mot_cle ORDER BY id'), vocabulaireAvant, `${quoi} : rien n’est écrit`);
+    assert.deepEqual(etiquettes(), [...ETIQUETTE_D_ESSAI.sorts].sort(), `${quoi} : les étiquettes restent`);
+  }
+  // le libellé et la définition se modifient (les sorts citent l'id) ; « Sort grenade », lui, est protégé : la fiche le lit (R114)
+  const nouveau = motLibre(`${etiquette.libelle} renommée`);
+  ok(enregistrer([{ op: 'modifier', table: 'mot_cle', cle: { id: etiquette.id }, valeurs: { libelle: nouveau, description: 'Autre définition.' }, avant: { libelle: etiquette.libelle } }]));
+  assert.deepEqual(etiquettes(), [...ETIQUETTE_D_ESSAI.sorts].sort(), 'renommé : ses étiquettes restent');
+  const grenade = ligne("SELECT * FROM mot_cle WHERE id = 'sort-grenade'");
+  assert.equal(ligne("SELECT count(*) AS n FROM sort_mot_cle WHERE mot_cle_id = 'sort-grenade'").n, 14, 'les 14 sorts « Grenade… » (R114)');
+  for (const operation of [
+    { op: 'supprimer', entite: 'mot_cle', cle: { id: grenade.id } },
+    { op: 'fusionner_mots_cles', mot_cle: grenade.id, dans: libre },
+    { op: 'fusionner_mots_cles', mot_cle: libre, dans: grenade.id },
+    { op: 'modifier', table: 'mot_cle', cle: { id: grenade.id }, valeurs: { libelle: 'Sort explosif' } },
+  ]) {
+    const r = enregistrer([operation]);
+    assert.equal(r.statut, 409, JSON.stringify(r.corps));
+    assert.match(r.corps.erreur, /^operations\[0\] : Le mot-clé « Sort grenade » ne se (?:supprime|fusionne|renomme) pas depuis le site : il étiquette les sorts grenades, que la fiche de personnage reconnaît par lui \(décision R114/);
+  }
+  assert.equal(ligne("SELECT count(*) AS n FROM sort_mot_cle WHERE mot_cle_id = 'sort-grenade'").n, 14);
+  // une base vivante d'avant la migration 0067 (le service y retombe si sa reconstruction échoue) : sans la table des étiquettes, supprimer ou fusionner
+  // un mot-clé passe (aucun n'y étiquette de sort), jamais un 500
+  const avant0067 = vivante();
+  try {
+    avant0067.exec('DROP TABLE sort_mot_cle');
+    const sur = (operations) => traiter({ methode: 'POST', chemin: '/api/edition/', entetes: { 'content-type': 'application/json' },
+      corps: JSON.stringify({ page: 'chronologie/', operations }) }, { base: () => avant0067, etat: () => ({}), edition: true });
+    const autre = sur([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: 'Essai repli 0067' } }]);
+    ok(autre);
+    ok(sur([{ op: 'fusionner_mots_cles', mot_cle: autre.corps.crees[0].id, dans: ETIQUETTE_D_ESSAI.id }]));
+    ok(sur([{ op: 'supprimer', entite: 'mot_cle', cle: { id: ETIQUETTE_D_ESSAI.id } }]));
+    assert.equal(avant0067.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(ETIQUETTE_D_ESSAI.id), undefined);
+  } finally {
+    avant0067.close();
+  }
+});
+
+test('R164 : « Sort fer » (migration 0079) est protégé : ni supprimé, ni fusionné (dans un sens ou l’autre), ni renommé, 409 avec sa raison ; sa définition se modifie', () => {
+  const fer = ligne("SELECT * FROM mot_cle WHERE id = 'sort-fer'");
+  assert.ok(fer, 'le mot-clé de la migration 0079');
+  assert.equal(fer.libelle, 'Sort fer');
+  assert.match(MOTS_CLES_PROTEGES.get(fer.libelle_cle), /^étiquette les sorts fer, que la fiche de personnage reconnaît par lui \(décision R164/);
+  const etiquetes = () => ligne("SELECT count(*) AS n FROM sort_mot_cle WHERE mot_cle_id = 'sort-fer'").n;
+  assert.equal(etiquetes(), 13, 'les 13 sorts « Fer… » (R164)');
+  const libre = creerMotCle(motLibre('Essai sans sort fer'));
+  const vocabulaireAvant = lignes('SELECT * FROM mot_cle ORDER BY id');
+  for (const [operation, action] of [
+    [{ op: 'supprimer', entite: 'mot_cle', cle: { id: fer.id } }, 'supprime'],
+    [{ op: 'fusionner_mots_cles', mot_cle: fer.id, dans: libre }, 'fusionne'],
+    [{ op: 'fusionner_mots_cles', mot_cle: libre, dans: fer.id }, 'fusionne'],
+    [{ op: 'modifier', table: 'mot_cle', cle: { id: fer.id }, valeurs: { libelle: 'Sort de fer' }, avant: { libelle: fer.libelle } }, 'renomme'],
+  ]) {
+    const r = enregistrer([operation]);
+    assert.equal(r.statut, 409, JSON.stringify(r.corps));
+    assert.match(r.corps.erreur, new RegExp(`^operations\\[0\\] : Le mot-clé « Sort fer » ne se ${action} pas depuis le site : il étiquette les sorts fer, que la fiche de personnage reconnaît par lui \\(décision R164`), action);
+    assert.deepEqual(lignes('SELECT * FROM mot_cle ORDER BY id'), vocabulaireAvant, `${action} : rien n’est écrit`);
+    assert.equal(etiquetes(), 13, `${action} : les étiquettes restent`);
+  }
+  // GET /api/edition/mots-cles/ : la raison de la protection
+  const v = appel('GET', '/api/edition/mots-cles/');
+  ok(v);
+  assert.match(v.corps.motsCles.find((x) => x.id === fer.id).protege, /sorts fer/);
+  // la définition se modifie (la fiche lit l'id, pas le texte)
+  ok(enregistrer([{ op: 'modifier', table: 'mot_cle', cle: { id: fer.id }, valeurs: { description: 'Autre définition.' } }]));
+  assert.equal(ligne("SELECT description FROM mot_cle WHERE id = 'sort-fer'").description, 'Autre définition.');
+  assert.equal(etiquetes(), 13);
+});
+
 test('une page supprimée par le site (métier) : le bloc de description qui la citait garde son texte et perd son lien', () => {
   const nom = (() => {
     let n = 'Métier lié';
@@ -325,26 +415,26 @@ test('une page supprimée par le site (métier) : le bloc de description qui la 
   assert.deepEqual({ ...ligne('SELECT page_id, section, texte FROM evenement_extrait WHERE evenement_id = ?', id) }, { page_id: null, section: null, texte: 'Texte.' });
 });
 
-test('mot-clé d’une spécialité créée puis renommée : la fiche du don passe au nouveau nom, l’ancien mot-clé (sans page) quitte le vocabulaire', () => {
+test('spécialité créée puis renommée (migration 0056) : la fiche de son don ne porte que « capacité de classe », aucun mot-clé n’est créé ni retiré', () => {
   const nomClasse = (() => {
     let n = 'Classe des mots-clés';
     for (let i = 2; ligne('SELECT 1 FROM classe WHERE nom = ?', n); i += 1) n = `Classe des mots-clés ${i}`;
     return n;
   })();
   const classe = enregistrer([{ op: 'creer', entite: 'classe', valeurs: { categorie_id: 'classe-magique', nom: nomClasse } }]).corps.crees[0].id;
+  const vocabulaireAvant = lignes('SELECT id FROM mot_cle ORDER BY id').map((m) => m.id);
   const avant = motLibre('Voie première');
   const r = enregistrer([{ op: 'creer', entite: 'specialite', valeurs: { classe_id: classe, nom: avant, don_nom: `${avant} (don)`, don_type: 'Passif' } }]);
   ok(r);
   const specialite = r.corps.crees.find((c) => c.entite === 'specialite').id;
   const don = ligne('SELECT id FROM capacite WHERE specialite_id = ?', specialite).id;
-  const ancien = ligne('SELECT id FROM mot_cle WHERE libelle_cle = ?', normalize(avant)).id;
-  assert.ok(ligne('SELECT 1 FROM page_tag WHERE page_id = ? AND tag_id = ?', don, ancien), 'la fiche du don porte le mot-clé de sa spécialité');
+  const motsClesDuDon = () => lignes('SELECT m.libelle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE t.page_id = ? ORDER BY t.ordre', don).map((m) => m.libelle);
+  assert.deepEqual(motsClesDuDon(), ['capacité de classe'], 'ni la classe ni la spécialité');
+  assert.deepEqual(lignes('SELECT m.libelle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE t.page_id = ?', classe).map((m) => m.libelle).sort(), ['classe', 'magique'], 'la classe : ses mots-clés protégés');
   const apres = motLibre('Voie seconde');
   ok(enregistrer([{ op: 'modifier', table: 'specialite', cle: { id: specialite }, valeurs: { nom: apres } }]));
-  const nouveau = ligne('SELECT * FROM mot_cle WHERE libelle_cle = ?', normalize(apres));
-  assert.equal(nouveau.libelle, apres.toLowerCase());
-  assert.ok(ligne('SELECT 1 FROM page_tag WHERE page_id = ? AND tag_id = ?', don, nouveau.id));
-  assert.equal(ligne('SELECT 1 FROM mot_cle WHERE id = ?', ancien), undefined, 'l’ancien nom ne range plus rien');
+  assert.deepEqual(motsClesDuDon(), ['capacité de classe']);
+  assert.deepEqual(lignes('SELECT id FROM mot_cle ORDER BY id').map((m) => m.id), vocabulaireAvant, 'le vocabulaire ne change pas');
 });
 
 test('rejeu du journal (livraison) : la chronologie et le vocabulaire reviennent à l’identique, sans conflit', () => {
@@ -468,37 +558,50 @@ test('rejeu : une ligne créée puis supprimée, que cite une ligne existante, d
   base.close();
 });
 
-test('lot d’avant la migration 0043 : le mot-clé que le rejeu crée garde son id, même renommé ensuite sur le site (pas de « -2 »)', () => {
+test('lot d’avant la migration 0043 : le mot-clé (dont le site se sert) que le rejeu crée garde son id d’une reconstruction à l’autre ; un mot-clé libre n’est plus créé (0056)', () => {
   const base = vivante();
   const page = base.prepare("SELECT id FROM page WHERE type = 'lore' AND statut <> 'example' ORDER BY id LIMIT 1 OFFSET 3").get().id;
   const ordre = base.prepare('SELECT max(ordre) AS m FROM page_tag WHERE page_id = ?').get(page).m + 1;
-  let libelle = 'Voie oubliée';
-  for (let i = 2; base.prepare('SELECT 1 FROM mot_cle WHERE libelle_cle = ?').get(normalize(libelle)); i += 1) libelle = `Voie oubliée ${i}`;
+  // « race hybride » : un mot-clé dont le site se sert, que les règles n'ont pas encore ; « Voie oubliée » : un mot-clé libre, que la migration 0056 ne garde pas
+  const libelle = 'race hybride';
   const id = normalize(libelle);
+  assert.equal(base.prepare('SELECT 1 FROM mot_cle WHERE libelle_cle = ?').get(id), undefined, 'absent des règles');
+  let libre = 'Voie oubliée';
+  for (let i = 2; base.prepare('SELECT 1 FROM mot_cle WHERE libelle_cle = ?').get(normalize(libre)); i += 1) libre = `Voie oubliée ${i}`;
   base.prepare("INSERT INTO modification_lot (id, fait_le, auteur_id, page_id, resume) VALUES ('2026-10-01T09:00:00.000Z-v', '2026-10-01T09:00:00Z', NULL, 'x', 'avant 0043')").run();
-  base.prepare("INSERT INTO modification (lot_id, rang, table_nom, cle, operation, avant, apres, etat) VALUES ('2026-10-01T09:00:00.000Z-v', 1, 'page_tag', ?, 'inserer', NULL, ?, 'en_attente')")
-    .run(JSON.stringify({ page_id: page, ordre }), JSON.stringify({ page_id: page, ordre, tag_id: id, libelle }));
-  // 1re reconstruction : le mot-clé est créé par le rejeu ; puis renommé sur le site
+  const noter = base.prepare("INSERT INTO modification (lot_id, rang, table_nom, cle, operation, avant, apres, etat) VALUES (?, ?, ?, ?, ?, ?, ?, 'en_attente')");
+  noter.run('2026-10-01T09:00:00.000Z-v', 1, 'page_tag', JSON.stringify({ page_id: page, ordre }), 'inserer', null, JSON.stringify({ page_id: page, ordre, tag_id: id, libelle }));
+  noter.run('2026-10-01T09:00:00.000Z-v', 2, 'page_tag', JSON.stringify({ page_id: page, ordre: ordre + 1 }), 'inserer', null,
+    JSON.stringify({ page_id: page, ordre: ordre + 1, tag_id: normalize(libre), libelle: libre }));
+  // puis, avant 0056, le mot-clé libre renommé sur /recherche/
+  base.prepare("INSERT INTO modification_lot (id, fait_le, auteur_id, page_id, resume) VALUES ('2026-10-02T09:00:00.000Z-w', '2026-10-02T09:00:00Z', NULL, 'recherche/', 'avant 0056')").run();
+  noter.run('2026-10-02T09:00:00.000Z-w', 1, 'mot_cle', JSON.stringify({ id: normalize(libre) }), 'modifier', JSON.stringify({ libelle: libre, libelle_cle: normalize(libre) }),
+    JSON.stringify({ libelle: `${libre} (renommée)`, libelle_cle: normalize(`${libre} (renommée)`) }));
   const premiere = rebatir(base);
   assert.deepEqual(premiere.conflits, []);
-  assert.ok(premiere.base.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(id));
-  serviceDe(premiere.base)([{ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { libelle: `${libelle} (renommée)` }, avant: { libelle } }]);
-  // 2e reconstruction : même id, le renommage passe
+  assert.ok(premiere.base.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(id), 'le mot-clé dont le site se sert est créé');
+  assert.equal(premiere.base.prepare('SELECT tag_id FROM page_tag WHERE page_id = ? AND ordre = ?').get(page, ordre)?.tag_id, id);
+  assert.equal(premiere.base.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(normalize(libre)), undefined, 'le mot-clé libre ne l’est pas (0056)');
+  assert.equal(premiere.base.prepare('SELECT 1 FROM page_tag WHERE page_id = ? AND ordre = ?').get(page, ordre + 1), undefined, 'son étiquette non plus');
+  const etats = premiere.base.prepare("SELECT etat FROM modification WHERE lot_id IN ('2026-10-01T09:00:00.000Z-v', '2026-10-02T09:00:00.000Z-w') ORDER BY lot_id, rang").all().map((m) => m.etat);
+  assert.deepEqual(etats, ['en_attente', 'integree', 'integree'], 'intégrées sans effet, sans mettre leur lot en conflit');
+  // 2e reconstruction : même id, pas de « -2 »
   const seconde = rebatir(premiere.base);
   assert.deepEqual(seconde.conflits, []);
-  assert.equal(seconde.base.prepare('SELECT libelle FROM mot_cle WHERE id = ?').get(id)?.libelle, `${libelle} (renommée)`);
+  assert.ok(seconde.base.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(id));
   assert.equal(seconde.base.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(`${id}-2`), undefined);
   for (const b of [base, premiere.base, seconde.base]) b.close();
 });
 
-test('lots notés avant la migration 0043 (page_tag avec `libelle`, mot-clé neuf) : rejoués sans conflit, le mot-clé retrouvé ou créé ; un lot en conflit ne le laisse pas', () => {
+test('lots notés avant la migration 0043 (page_tag avec `libelle`, mot-clé neuf dont le site se sert) : rejoués sans conflit, le mot-clé retrouvé ou créé ; un lot en conflit ne le laisse pas', () => {
   const base = vivante();
   const page = base.prepare("SELECT id FROM page WHERE type = 'lore' AND statut <> 'example' ORDER BY id LIMIT 1").get().id;
   const ordre = base.prepare('SELECT max(ordre) AS m FROM page_tag WHERE page_id = ?').get(page).m + 1;
   // une autre page (un mot-clé n'est qu'une fois par page)
   const existant = base.prepare("SELECT t.page_id, t.ordre, t.tag_id, m.libelle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id JOIN page p ON p.id = t.page_id WHERE t.page_id <> ? AND p.type = 'lore' AND m.libelle_cle <> 'codex' ORDER BY t.page_id, t.ordre LIMIT 1").get(page);
-  let nouveau = 'Voie ancienne';
-  for (let i = 2; base.prepare('SELECT 1 FROM mot_cle WHERE libelle_cle = ?').get(normalize(nouveau)); i += 1) nouveau = `Voie ancienne ${i}`;
+  // un mot-clé dont le site se sert, que les règles n'ont pas encore (un mot-clé libre n'est plus créé depuis 0056 : test précédent)
+  const nouveau = 'race hybride';
+  assert.equal(base.prepare('SELECT 1 FROM mot_cle WHERE libelle_cle = ?').get(normalize(nouveau)), undefined);
   const lot = (id, fait_le, modifications) => {
     base.prepare("INSERT INTO modification_lot (id, fait_le, auteur_id, page_id, resume) VALUES (?, ?, NULL, 'x', 'avant 0043')").run(id, fait_le);
     modifications.forEach(([table, cle, operation, avant, apres], i) => base.prepare("INSERT INTO modification (lot_id, rang, table_nom, cle, operation, avant, apres, etat) VALUES (?, ?, ?, ?, ?, ?, ?, 'en_attente')")
@@ -523,7 +626,7 @@ test('lots notés avant la migration 0043 (page_tag avec `libelle`, mot-clé neu
   base.exec('COMMIT');
   base.exec('PRAGMA foreign_keys = ON');
   assert.equal(bilan.conflits, 2, 'seul le lot c (ses deux modifications) est en conflit');
-  const cree = base.prepare('SELECT * FROM mot_cle WHERE libelle_cle = ?').get(normalize(nouveau));
+  const cree = base.prepare('SELECT id, libelle, libelle_cle FROM mot_cle WHERE libelle_cle = ?').get(normalize(nouveau));
   assert.deepEqual({ ...cree }, { id: normalize(nouveau), libelle: nouveau, libelle_cle: normalize(nouveau) });
   assert.equal(base.prepare('SELECT tag_id FROM page_tag WHERE page_id = ? AND ordre = ?').get(page, ordre).tag_id, cree.id);
   assert.equal(base.prepare('SELECT tag_id FROM page_tag WHERE page_id = ? AND ordre = ?').get(existant.page_id, existant.ordre).tag_id, cree.id);
@@ -535,6 +638,153 @@ test('lots notés avant la migration 0043 (page_tag avec `libelle`, mot-clé neu
   base.close();
 });
 
+test('lots notés avant la migration 0056 (D4) : un don créé par l’ancien code, avec l’étiquette de sa classe et le mot-clé qu’il créait — le don survit à la reconstruction', () => {
+  const base = vivante();
+  const classe = base.prepare("SELECT id FROM classe WHERE categorie_id = 'classe-magique' ORDER BY id LIMIT 1").get().id;
+  let nom = 'Don d’avant le glossaire';
+  for (let i = 2; base.prepare('SELECT 1 FROM capacite WHERE classe_id = ? AND nom = ?').get(classe, nom); i += 1) nom = `Don d’avant le glossaire ${i}`;
+  const don = serviceDe(base)([{ op: 'creer', entite: 'capacite', valeurs: { classe_id: classe, niveau: '1', nom, type: 'Passif' } }]).crees[0].id;
+  // l'ancien code (avant 0056) : la fiche du don portait aussi l'étiquette de sa classe (un mot-clé que la migration a retiré) et celle d'une
+  // spécialité, mot-clé qu'il créait (sans définition : la colonne n'existait pas) ; puis l'étiquette a été déplacée, le mot-clé renommé
+  const lot = base.prepare("SELECT lot_id AS id, max(rang) AS rang FROM modification WHERE table_nom = 'page' AND json_extract(cle, '$.id') = ? AND operation = 'inserer'").get(don);
+  const ordre = base.prepare('SELECT max(ordre) AS m FROM page_tag WHERE page_id = ?').get(don).m;
+  let libre = 'Spécialité d’avant le glossaire';
+  for (let i = 2; base.prepare('SELECT 1 FROM mot_cle WHERE libelle_cle = ? OR id = ?').get(normalize(libre), normalize(libre)); i += 1) libre = `Spécialité d’avant le glossaire ${i}`;
+  const retire = 'etiquette-de-classe-retiree-d-essai';
+  assert.equal(base.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(retire), undefined);
+  const dernier = base.prepare('SELECT max(rang) AS m FROM modification WHERE lot_id = ?').get(lot.id).m;
+  const noter = base.prepare("INSERT INTO modification (lot_id, rang, table_nom, cle, operation, avant, apres, etat) VALUES (?, ?, ?, ?, ?, ?, ?, 'en_attente')");
+  const motCle = { id: normalize(libre), libelle: libre, libelle_cle: normalize(libre) };
+  noter.run(lot.id, dernier + 1, 'mot_cle', JSON.stringify({ id: motCle.id }), 'inserer', null, JSON.stringify(motCle));
+  noter.run(lot.id, dernier + 2, 'page_tag', JSON.stringify({ page_id: don, ordre: ordre + 1 }), 'inserer', null, JSON.stringify({ page_id: don, ordre: ordre + 1, tag_id: retire }));
+  noter.run(lot.id, dernier + 3, 'page_tag', JSON.stringify({ page_id: don, ordre: ordre + 2 }), 'inserer', null, JSON.stringify({ page_id: don, ordre: ordre + 2, tag_id: motCle.id }));
+  base.prepare("INSERT INTO modification_lot (id, fait_le, auteur_id, page_id, resume) VALUES ('2099-01-01T00:00:00.000Z-d4', '2099-01-01T00:00:00Z', NULL, 'recherche/', 'avant 0056')").run();
+  noter.run('2099-01-01T00:00:00.000Z-d4', 1, 'page_tag', JSON.stringify({ page_id: don, ordre: ordre + 2 }), 'modifier', JSON.stringify({ tag_id: motCle.id }), JSON.stringify({ tag_id: retire }));
+  noter.run('2099-01-01T00:00:00.000Z-d4', 2, 'mot_cle', JSON.stringify({ id: motCle.id }), 'modifier', JSON.stringify({ libelle: libre, libelle_cle: motCle.libelle_cle }),
+    JSON.stringify({ libelle: `${libre} (renommée)`, libelle_cle: normalize(`${libre} (renommée)`) }));
+  const neuve = rebatir(base);
+  assert.deepEqual(neuve.conflits, [], 'aucun lot en conflit');
+  assert.ok(neuve.base.prepare('SELECT 1 FROM capacite WHERE id = ?').get(don), 'le don survit');
+  assert.ok(neuve.base.prepare('SELECT 1 FROM page WHERE id = ?').get(don), 'sa fiche aussi');
+  const tags = neuve.base.prepare('SELECT m.libelle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE t.page_id = ? ORDER BY t.ordre').all(don).map((t) => t.libelle);
+  assert.deepEqual(tags, ['capacité de classe'], 'les étiquettes d’avant 0056 n’ont pas d’effet');
+  assert.equal(neuve.base.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(motCle.id), undefined, 'le mot-clé sans définition n’est pas créé');
+  const sautees = neuve.base.prepare("SELECT etat FROM modification WHERE (lot_id = ? AND rang > ?) OR lot_id = '2099-01-01T00:00:00.000Z-d4' ORDER BY lot_id, rang").all(lot.id, dernier).map((m) => m.etat);
+  assert.deepEqual(sautees, ['integree', 'integree', 'integree', 'integree', 'integree'], 'intégrées sans effet');
+  assert.deepEqual(neuve.base.prepare('PRAGMA foreign_key_check').all(), []);
+  for (const b of [base, neuve.base]) b.close();
+});
+
+test('rejeu (D3) : un mot-clé supprimé ou fusionné sur le site de dev quitte aussi les textes qu’il n’avait pas (pages d’exemple, textes reçus depuis) — retiré ou reciblé, un code gardé', () => {
+  // le site de dev est construit sans les pages d'exemple ; ses lots : « démo » supprimé, « aide » fusionné dans « guide »
+  const site = vivante({ sansExemples: true });
+  const id = (cle) => site.prepare('SELECT id, libelle FROM mot_cle WHERE libelle_cle = ?').get(cle);
+  const demo = id('essai-demo');
+  const aide = id('essai-aide');
+  const guide = id('essai-guide');
+  const lot = serviceDe(site);
+  lot([{ op: 'supprimer', entite: 'mot_cle', cle: { id: demo.id } }]);
+  lot([{ op: 'fusionner_mots_cles', mot_cle: aide.id, dans: guide.id }]);
+  // les règles d'arrivée (pages d'exemple comprises) ont des textes qui les citent, que le site de dev n'avait pas
+  const cible = vivante();
+  const exemple = 'races/exemple-race';
+  assert.ok(cible.prepare('SELECT 1 FROM page WHERE id = ?').get(exemple), 'une page d’exemple dans les règles');
+  cible.prepare('UPDATE page SET corps_md = corps_md || ?, resume = ? WHERE id = ?')
+    .run(`\nVoir {{${demo.id}:}}, {{${aide.id}}} et {{${aide.id}|l’aide}} ; \`{{${demo.id}}}\` reste écrit.\n`, `Résumé {{${aide.id}|aide}} et {{${demo.id}|démo}}`, exemple);
+  const arme = cible.prepare("SELECT id, effet FROM arme WHERE effet IS NOT NULL AND effet NOT LIKE '%{{%' ORDER BY id LIMIT 1").get();
+  cible.prepare('UPDATE arme SET effet = ? WHERE id = ?').run(`${arme.effet}, {{${demo.id}|Démo}}`, arme.id);
+  for (const l of site.prepare('SELECT * FROM modification_lot').all()) {
+    cible.prepare('INSERT INTO modification_lot (id, fait_le, auteur_id, page_id, resume) VALUES (?, ?, ?, ?, ?)').run(l.id, l.fait_le, l.auteur_id, l.page_id, l.resume);
+  }
+  for (const m of site.prepare('SELECT * FROM modification').all()) {
+    cible.prepare('INSERT INTO modification (lot_id, rang, table_nom, cle, operation, avant, apres, etat, detail, apercu) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(m.lot_id, m.rang, m.table_nom, m.cle, m.operation, m.avant, m.apres, m.etat, m.detail, m.apercu);
+  }
+  site.close();
+  cible.exec('PRAGMA foreign_keys = OFF');
+  cible.exec('BEGIN');
+  const sortie = {};
+  const bilan = rejouerLeJournal(cible, sortie);
+  cible.exec('COMMIT');
+  cible.exec('PRAGMA foreign_keys = ON');
+  assert.equal(bilan.conflits, 0);
+  const page = cible.prepare('SELECT corps_md, resume FROM page WHERE id = ?').get(exemple);
+  // le mode complet devient « Libellé : définition » (sa définition notée par la suppression), « aide » cite « guide », le code reste écrit
+  assert.ok(page.corps_md.endsWith(`\nVoir ${demo.libelle} : ${DEFINITION_D_ESSAI}, {{${guide.id}}} et {{${guide.id}|l’aide}} ; \`{{${demo.id}}}\` reste écrit.\n`),
+    page.corps_md.slice(-200));
+  assert.equal(page.resume, `Résumé {{${guide.id}|aide}} et démo`, 'un texte de case : reciblé (son texte gardé) ou retiré (son texte)');
+  assert.equal(cible.prepare('SELECT effet FROM arme WHERE id = ?').get(arme.id).effet, `${arme.effet}, Démo`, 'un texte que le site de dev n’avait pas');
+  assert.ok(sortie.tablesCompletees.includes('page') && sortie.tablesCompletees.includes('arme'), `tables écrites au-delà du journal : ${sortie.tablesCompletees}`);
+  // plus aucune balise orpheline
+  const vocabulaire = vocabulaireDesMotsCles(cible.prepare('SELECT id, libelle FROM mot_cle').all());
+  for (const t of [page.corps_md, page.resume, cible.prepare('SELECT effet FROM arme WHERE id = ?').get(arme.id).effet]) {
+    assert.deepEqual(formesNonCanoniques(t, vocabulaire, { markdown: t === page.corps_md }), [], t.slice(-120));
+  }
+  cible.close();
+});
+
+/** `cible` (des règles, comme une livraison) reçoit le journal de `source` tel quel, puis le rejoue : { sortie, conflits }. */
+function rejouerSur(cible, source) {
+  for (const l of source.prepare('SELECT * FROM modification_lot').all()) {
+    cible.prepare('INSERT INTO modification_lot (id, fait_le, auteur_id, page_id, resume) VALUES (?, ?, ?, ?, ?)').run(l.id, l.fait_le, l.auteur_id, l.page_id, l.resume);
+  }
+  for (const m of source.prepare('SELECT * FROM modification').all()) {
+    cible.prepare('INSERT INTO modification (lot_id, rang, table_nom, cle, operation, avant, apres, etat, detail, apercu) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(m.lot_id, m.rang, m.table_nom, m.cle, m.operation, m.avant, m.apres, m.etat, m.detail, m.apercu);
+  }
+  cible.exec('PRAGMA foreign_keys = OFF');
+  cible.exec('BEGIN');
+  const sortie = {};
+  rejouerLeJournal(cible, sortie);
+  cible.exec('COMMIT');
+  cible.exec('PRAGMA foreign_keys = ON');
+  return { sortie, conflits: cible.prepare("SELECT table_nom, cle, detail FROM modification WHERE etat = 'conflit'").all().map((c) => ({ ...c })) };
+}
+
+test('rejeu (D3) : un texte réécrit hors journal (balises d’un mot-clé supprimé ou fusionné), puis modifié sur le site de dev — le lot suivant passe à la livraison', () => {
+  // 1. le site de dev supprime « démo » et fusionne « aide » dans « guide »
+  const site = vivante();
+  const id = (cle) => site.prepare('SELECT id FROM mot_cle WHERE libelle_cle = ?').get(cle).id;
+  const [demo, aide, guide] = ['essai-demo', 'essai-aide', 'essai-guide'].map(id);
+  serviceDe(site)([{ op: 'supprimer', entite: 'mot_cle', cle: { id: demo } }]);
+  serviceDe(site)([{ op: 'fusionner_mots_cles', mot_cle: aide, dans: guide }]);
+  // 2. les règles livrées ensuite ont des textes qui les citent (reçus depuis : le service ne les a pas réécrits), un bloc de panneau de règles et l'effet
+  // d'un don (sa fiche et la page de sa classe sont refaites depuis les tables)
+  const bloc = site.prepare("SELECT panneau_id, rang, texte FROM panneau_regles_bloc WHERE instr(texte, '{{') = 0 ORDER BY panneau_id, rang LIMIT 1").get();
+  const don = site.prepare("SELECT id, effet FROM capacite WHERE effet IS NOT NULL AND instr(effet, '{{') = 0 ORDER BY id LIMIT 1").get();
+  const recus = (db) => {
+    db.prepare('UPDATE panneau_regles_bloc SET texte = ? WHERE panneau_id = ? AND rang = ?')
+      .run(`${bloc.texte}\n\nVoir {{${demo}|démo}} et {{${aide}|l’aide}}.`, bloc.panneau_id, bloc.rang);
+    db.prepare('UPDATE capacite SET effet = ? WHERE id = ?').run(`${don.effet} {{${demo}|Démo}}`, don.id);
+  };
+  const vivanteRefaite = vivante();
+  recus(vivanteRefaite);
+  const refaite = rejouerSur(vivanteRefaite, site);
+  site.close();
+  assert.deepEqual(refaite.conflits, []);
+  const lu = vivanteRefaite.prepare('SELECT texte FROM panneau_regles_bloc WHERE panneau_id = ? AND rang = ?').get(bloc.panneau_id, bloc.rang).texte;
+  assert.equal(lu, `${bloc.texte}\n\nVoir démo et {{${guide}|l’aide}}.`, 'retiré, ou reciblé : au moment où le lot est rejoué');
+  const effetLu = vivanteRefaite.prepare('SELECT effet FROM capacite WHERE id = ?').get(don.id).effet;
+  assert.equal(effetLu, `${don.effet} Démo`);
+  assert.ok(!vivanteRefaite.prepare('SELECT corps_md FROM page WHERE id = ?').get(don.id).corps_md.includes(`{{${demo}`), 'la fiche du don refaite depuis sa table');
+  assert.ok(['panneau_regles_bloc', 'capacite'].every((t) => refaite.sortie.tablesCompletees.includes(t)), `tables écrites au-delà du journal : ${refaite.sortie.tablesCompletees}`);
+  // 3. sur la base vivante refaite, la personne modifie ces deux textes (le service note avant = ce qu'il lit, réécrit)
+  serviceDe(vivanteRefaite)([
+    { op: 'modifier', table: 'panneau_regles_bloc', cle: { panneau_id: bloc.panneau_id, rang: bloc.rang }, valeurs: { texte: `${lu} Précision du site.` }, avant: { texte: lu } },
+    { op: 'modifier', table: 'capacite', cle: { id: don.id }, valeurs: { effet: `${effetLu} Précision du site.` }, avant: { effet: effetLu } },
+  ]);
+  // 4. la livraison : le journal du site de dev rejoué sur les mêmes règles — le lot de la personne trouve les textes tels qu'elle les a lus
+  const livraison = vivante();
+  recus(livraison);
+  const r = rejouerSur(livraison, vivanteRefaite);
+  vivanteRefaite.close();
+  assert.deepEqual(r.conflits, [], 'aucun lot en conflit');
+  assert.equal(livraison.prepare('SELECT texte FROM panneau_regles_bloc WHERE panneau_id = ? AND rang = ?').get(bloc.panneau_id, bloc.rang).texte, `${lu} Précision du site.`);
+  assert.equal(livraison.prepare('SELECT effet FROM capacite WHERE id = ?').get(don.id).effet, `${effetLu} Précision du site.`);
+  assert.deepEqual(livraison.prepare('PRAGMA foreign_key_check').all(), []);
+  livraison.close();
+});
+
 test('rapatriement et mise à jour sur data/rows : les pages d’exemple (absentes du site de dev) perdent un mot-clé supprimé ou fusionné, rien ne bloque', { skip: sansPython }, () => {
   // le site de dev est construit sans les pages d'exemple (HIDE_EXAMPLES=1) ; data/rows les garde, avec leurs mots-clés
   const site = vivante({ sansExemples: true });
@@ -544,13 +794,15 @@ test('rapatriement et mise à jour sur data/rows : les pages d’exemple (absent
     assert.equal(r.statut, 200, JSON.stringify(r.corps));
   };
   const id = (cle) => site.prepare('SELECT id FROM mot_cle WHERE libelle_cle = ?').get(cle)?.id;
-  // « démo » : seulement sur des exemples (0 page au site de dev) ; « personnage » : une vraie page et deux exemples ; « magie » : renommé ; « aide » : fusionné
-  const demo = id('demo');
-  const personnage = id('personnage');
-  const magie = id('magie');
-  const aide = id('aide');
+  // mots-clés d'essai (test/aide-mots-cles.mjs) : « démo » seulement sur des exemples (0 page au site de dev) ; « personnage » : une vraie page et deux
+  // exemples ; « magie » : renommé ; « aide » : fusionné
+  const demo = id('essai-demo');
+  const personnage = id('essai-personnage');
+  const magie = id('essai-magie');
+  const aide = id('essai-aide');
   assert.ok(demo && personnage && magie && aide, 'mots-clés d’exemple présents dans le vocabulaire');
-  const cible = site.prepare('SELECT id FROM mot_cle WHERE libelle_cle = ?').get('guide').id;
+  assert.equal(site.prepare('SELECT count(*) AS n FROM page_tag WHERE tag_id = ?').get(demo).n, 0, '« démo » : aucune page au site de dev');
+  const cible = site.prepare('SELECT id FROM mot_cle WHERE libelle_cle = ?').get('essai-guide').id;
   lot([{ op: 'supprimer', entite: 'mot_cle', cle: { id: demo } }]);
   lot([{ op: 'supprimer', entite: 'mot_cle', cle: { id: personnage } }]);
   const renomme = `Magie (essai ${process.pid})`;
@@ -573,7 +825,7 @@ test('rapatriement et mise à jour sur data/rows : les pages d’exemple (absent
   };
   // db:appliquer-edition
   const rows = join(racine, 'rapatriement', 'rows');
-  cpSync(ROWS, rows, { recursive: true });
+  cpSync(reglesDe(false).rows, rows, { recursive: true });
   const r = appliquerJournal(journal, { rows });
   assert.deepEqual(r.conflits, []);
   assert.equal(r.ecrit, true);
@@ -582,6 +834,7 @@ test('rapatriement et mise à jour sur data/rows : les pages d’exemple (absent
   appliquee.close();
   // « Effectuer la mise à jour » : page_tag.sql change au-delà du journal (exemples) sans être refusé (code 4)
   const rowsMaj = copieSansNoteEnAttente(join(racine, 'mise-a-jour', 'rows'), { versionProduction: versionALaRevision('HEAD') }).rows;
+  ajouterLesMotsClesDEssai(rowsMaj);
   const maj = appliquerMiseAJour({ format: 'maverick-mise-a-jour/1', id: '22222222-3333-4444-5555-666666666666', cree_le: '2026-10-14T08:00:00Z', version_dev: '0.2.39', version_cible: '0.3', texte: null, journal },
     { rows: rowsMaj, reference: 'HEAD', date: '2026-10-14', versionDev: '0.2.39' });
   assert.ok(maj.fichiers.includes('page_tag.sql') && maj.fichiers.includes('mot_cle.sql'), maj.fichiers.join(', '));

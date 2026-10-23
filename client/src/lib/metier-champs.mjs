@@ -3,8 +3,10 @@
 // règle que la fiche de personnage applique (décisions R33 à R35). Un test les rejoue sur les métiers de la base : ils doivent redonner exactement
 // les lignes en place (test/metier-champs.test.mjs).
 // Le corps de la page (champs « **Libellé :** valeur ») est fabriqué par lib/corps-metiers.mjs : ses fonctions sont réexportées ici.
-// Fonctions pures, sans dépendance (sauf text.mjs, corps-metiers.mjs et classe-champs.mjs) : partagées par le service et par les pages.
+// Un champ se découpe sans les balises du glossaire des mots-clés (lib/mots-cles-balises.mjs : « {{id|texte}} » se lit « texte »).
+// Fonctions pures, sans dépendance (sauf text.mjs, corps-metiers.mjs, classe-champs.mjs et mots-cles-balises.mjs) : partagées par le service et par les pages.
 import { decouperInventaire } from './classe-champs.mjs';
+import { texteSansBalises } from './mots-cles-balises.mjs';
 import { normalize } from './text.mjs';
 
 export { CHAMPS_DU_CORPS, corpsDeMetier, echapperMarkdown, remplacerChampDuCorps } from './corps-metiers.mjs';
@@ -45,6 +47,7 @@ const lignesDeCompetences = (competences) =>
  *   competence_id: string | null, attribut: string | null }[]}
  */
 export function decouperBonus(brut, competences) {
+  brut = texteSansBalises(brut);
   const liste = lignesDeCompetences(competences);
   const parCle = new Map(liste.map((c) => [normalize(c.nom), c]));
   const connues = new Set([...parCle.keys(), ...Object.keys(ATTRIBUT_DE_CIBLE)]);
@@ -106,7 +109,7 @@ export function caracteristiquesDuTest(test, caracteristiques) {
  * @param {{ id: string, nom: string }[]} caracteristiques
  */
 export function decouperArtisanat(brut, caracteristiques) {
-  const texte = String(brut).trim();
+  const texte = String(texteSansBalises(brut)).trim();
   if (texte === RIEN) return { peut_fabriquer: 0, artisanat_texte: null, test_brut: null, test_carac_1_id: null, test_carac_2_id: null };
   const m = /^(.*?)\s*\[([^\]]*)\]$/s.exec(texte);
   if (!m) return { peut_fabriquer: 1, artisanat_texte: texte, test_brut: null, test_carac_1_id: null, test_carac_2_id: null };
@@ -146,7 +149,7 @@ const FAMILLES_DE_RECETTE = [
 
 /** Familles de recettes citées par le champ « Artisanat possible » : [{ famille, mot_source }], dans l'ordre de FAMILLES_DE_RECETTE. */
 export const famillesDeRecette = (brut) =>
-  FAMILLES_DE_RECETTE.filter((f) => new RegExp(`(^|[^\\p{L}])${f.mot}([^\\p{L}]|$)`, 'iu').test(String(brut))).map((f) => ({ famille: f.famille, mot_source: f.mot }));
+  FAMILLES_DE_RECETTE.filter((f) => new RegExp(`(^|[^\\p{L}])${f.mot}([^\\p{L}]|$)`, 'iu').test(String(texteSansBalises(brut)))).map((f) => ({ famille: f.famille, mot_source: f.mot }));
 
 /** Le résumé de la page d'un métier : la première phrase de sa description (jusqu'au premier point suivi d'une espace). */
 export function resumeDeDescription(description) {

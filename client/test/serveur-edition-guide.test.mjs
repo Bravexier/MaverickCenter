@@ -2,18 +2,16 @@
 // visuel, lib/markdown-edition.mjs), seulement pour ces pages (lib/edition-modele.mjs#texteDePageModifiable) ; un bloc tiré de la base inconnu est refusé, un ancien titre devient un alias, l'aperçu
 // HTML de l'éditeur est noté avec le corps et rendu par /api/edition/en-attente/ tant que la page construite ne l'a pas.
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { journalExporte } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
-import { recomposerCorps } from '../src/lib/markdown-edition.mjs';
+import { decouperCorps, recomposerCorps } from '../src/lib/markdown-edition.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-edition-guide-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('edition-guide');
 const { chemin } = preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, 'db') });
 const db = ouvrirBaseVivante(chemin);
 const service = { base: () => db, etat: () => ({}), edition: true };
@@ -23,9 +21,11 @@ const page = (id) => db.prepare('SELECT * FROM page WHERE id = ?').get(id);
 
 test('texte d’un chapitre : morceaux de texte remplacés autour des blocs tirés de la base, aperçu noté et rendu en attente', () => {
   const avant = page('guide/bienvenue').corps_md;
-  const corps = recomposerCorps(avant, ['## MaverickJDR ?\n\nUn texte **neuf** et un lien vers les [[races/nain|nains]].\n']);
-  assert.match(corps, /<!-- guide:sommaire -->/);
-  const apercu = ['<h2>MaverickJDR ?</h2><p>Un texte <strong>neuf</strong>…</p>']; // un seul morceau de texte : le sommaire (bloc) ferme le chapitre
+  // le premier morceau de texte réécrit, les autres (s'il y en a, entre des blocs) tels quels ; plus de bloc « sommaire » dans Bienvenue (2026-10-18)
+  const visibles = decouperCorps(avant).filter((m) => m.visible).length;
+  const corps = recomposerCorps(avant, ['## MaverickJDR ?\n\nUn texte **neuf** et un lien vers les [[races/nain|nains]].\n', ...Array(visibles - 1).fill(null)]);
+  assert.doesNotMatch(corps, /<!-- guide:sommaire -->/);
+  const apercu = ['<h2>MaverickJDR ?</h2><p>Un texte <strong>neuf</strong>…</p>', ...Array.from({ length: visibles - 1 }, (_, i) => `<p>${i}</p>`)];
   const r = enregistrer([{ op: 'modifier', table: 'page', cle: { id: 'guide/bienvenue' }, valeurs: { corps_md: corps }, avant: { corps_md: avant }, apercu }]);
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
   assert.equal(page('guide/bienvenue').corps_md, corps.endsWith('\n') ? corps : `${corps}\n`);
@@ -70,13 +70,14 @@ test('refus : page hors du guide et du Codex, bloc inconnu, texte vide, aperçu 
 });
 
 test('chapitre à plusieurs morceaux de texte : seul celui qui change est réécrit, les blocs restent à leur place', () => {
-  const avant = page('guide/choisir-ses-magies').corps_md;
+  // Créer son personnage (qui absorbe les six étapes de la création) : ses blocs fil rouge, magies, compétences…
+  const avant = page('guide/creer-son-personnage').corps_md;
   const morceaux = avant.split(/<!-- guide:[a-z-]+ -->/).filter((t) => t.trim()).length;
   assert.ok(morceaux >= 2);
   const corps = recomposerCorps(avant, [null, 'Deuxième morceau réécrit.']);
   const apercu = Array.from({ length: morceaux }, (_, i) => `<p>${i}</p>`);
-  assert.equal(enregistrer([{ op: 'modifier', table: 'page', cle: { id: 'guide/choisir-ses-magies' }, valeurs: { corps_md: corps }, apercu }]).statut, 200);
-  const apres = page('guide/choisir-ses-magies').corps_md;
+  assert.equal(enregistrer([{ op: 'modifier', table: 'page', cle: { id: 'guide/creer-son-personnage' }, valeurs: { corps_md: corps }, apercu }]).statut, 200);
+  const apres = page('guide/creer-son-personnage').corps_md;
   assert.deepEqual(apres.match(/<!-- guide:[a-z-]+ -->/g), avant.match(/<!-- guide:[a-z-]+ -->/g));
   assert.match(apres, /Deuxième morceau réécrit\./);
   assert.equal(apres.split(/<!-- guide:[a-z-]+ -->/)[0], avant.split(/<!-- guide:[a-z-]+ -->/)[0]);

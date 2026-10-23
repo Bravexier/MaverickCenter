@@ -10,7 +10,8 @@ import { chargerInvocations } from '../src/lib/bestiaire-db.mjs';
 import { ORDRE_DES_RACES } from '../src/lib/race-kinds.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { chargerMagies } from '../src/lib/magies-db.mjs';
-import { liaisonsEntreMagies, segmentCoupe } from '../src/lib/magie-fleches.mjs';
+import { classeDeMagie, cssDeLaPalette } from '../src/lib/palette-css.mjs';
+import { ENCOMBREMENT, liaisonsEntreMagies, POINTES, segmentCoupe } from '../src/lib/magie-fleches.mjs';
 import { tuilesDeCapacites } from './aide-bestiaire.mjs';
 
 const dossier = fileURLToPath(new URL('../dist/magies/', import.meta.url));
@@ -61,47 +62,49 @@ test('index des magies : 15 noms courts, sans infobulle (demande du propriétair
 });
 
 // Carte des magies dense (demande du propriétaire : la page était « trop aérée ») : la carte du grand écran est large et basse, et aucune pastille n'en
-// touche une autre, ni sur grand écran (carte de 58 à 62rem de large) ni sur écran étroit (téléphone de 320px à 60rem). Les largeurs reprennent
-// styles/magie/orbit.css (9rem, 8rem pour l'hexagone élémentaire, 12rem pour le Potentiel Illimité ; en cqw sous 60rem), hauteur 2.9rem.
+// touche une autre, ni sur grand écran ni sur écran étroit (téléphone de 320px à 60rem). Grand écran : largeur et hauteur de chaque pastille en cqw
+// (--l, --h, posées par MagiesConstellation.astro depuis TAILLES), donc proportionnelles à la carte ; sous 60rem, styles/magie/orbit.css
+// (9rem, 8rem pour l'hexagone élémentaire, 12rem pour le Potentiel Illimité, plafonnées en cqw), hauteur 2.9rem.
 test('carte des magies : compacte, et aucune pastille ne touche une autre', options, () => {
   const ratio = Number(indexMagies.match(/\.magies-orbite \{[^}]*aspect-ratio: 1000 \/ (\d+);/)?.[1]);
   const hauteurEtroite = Number(indexMagies.match(/\.magies-orbite \{ height: ([\d.]+)rem; aspect-ratio: auto; \}/)?.[1]);
   assert.ok(ratio > 0 && ratio <= 450, `carte du grand écran plus large que haute (1000 / ${ratio})`);
   assert.ok(hauteurEtroite > 0 && hauteurEtroite <= 40, `carte étroite de ${hauteurEtroite}rem`);
-  const noeuds = [...indexMagies.matchAll(/class="magies-orbite__position magies-orbite__position--([\w-]+)" data-magie="[^"]*" style="([^"]+)"[^]*?aria-label="([^"]+)"/g)].map(([, region, style, nom]) => {
+  const noeuds = [...indexMagies.matchAll(/class="magies-orbite__position magies-orbite__position--([\w-]+) couleur-magie-[\w-]+" data-magie="[^"]*" style="([^"]+)"[^]*?aria-label="([^"]+)"/g)].map(([, region, style, nom]) => {
     const v = (axe) => Number(style.match(new RegExp(`--${axe}: ([\\d.]+)%`))[1]) / 100;
-    return { region, nom, x: v('x'), y: v('y'), mx: v('mx'), my: v('my') };
+    const cqw = (axe) => Number(style.match(new RegExp(`--${axe}: ([\\d.]+)cqw`))?.[1]) / 100;
+    return { region, nom, x: v('x'), y: v('y'), mx: v('mx'), my: v('my'), l: cqw('l'), h: cqw('h') };
   });
   assert.equal(noeuds.length, 15);
-  const ecart = (a, b) => Math.max(Math.abs(a.cx - b.cx) - (a.l + b.l) / 2, Math.abs(a.cy - b.cy) - 2.9);
-  const verifier = (boites, ecran) => {
+  const ecart = (a, b) => Math.max(Math.abs(a.cx - b.cx) - (a.l + b.l) / 2, Math.abs(a.cy - b.cy) - (a.h + b.h) / 2);
+  // seuil : 0.25rem entre deux pastilles ; en unités de la carte sur grand écran (une carte de 62rem, la plus large : 1000 / 62 unités par rem)
+  const verifier = (boites, ecran, seuil) => {
     for (const [i, a] of boites.entries()) {
       assert.ok(a.cx - a.l / 2 >= 0 && a.cx + a.l / 2 <= a.largeur + 1e-9, `${ecran} : pastille hors de la carte (${a.nom})`);
-      for (const b of boites.slice(i + 1)) assert.ok(ecart(a, b) >= 0.25, `${ecran} : pastilles qui se touchent (${a.nom} / ${b.nom})`);
+      for (const b of boites.slice(i + 1)) assert.ok(ecart(a, b) >= seuil, `${ecran} : pastilles qui se touchent (${a.nom} / ${b.nom} : ${ecart(a, b).toFixed(2)} < ${seuil.toFixed(2)})`);
     }
   };
-  for (const vue of [60, 64, 90]) {
-    const largeur = Math.min(vue, 64) - 2;
-    const hauteur = (largeur * ratio) / 1000;
-    const l = { potentiel: Math.min(12, 0.32 * vue), elementaire: Math.min(8, 0.16 * vue) };
-    verifier(noeuds.map((n) => ({ ...n, largeur, cx: n.x * largeur, cy: n.y * hauteur, l: l[n.region] ?? Math.min(9, 0.16 * vue) })), `écran de ${vue}rem`);
-  }
+  // grand écran : tout est proportionnel à la carte, une largeur suffit (unités de la carte, 1000 de large)
+  assert.ok(noeuds.every((n) => n.l > 0 && n.h > 0), 'grand écran : --l et --h en cqw sur chaque pastille');
+  verifier(noeuds.map((n) => ({ ...n, largeur: 1000, cx: n.x * 1000, cy: (n.y * 1000 * ratio) / 1000, l: n.l * 1000, h: n.h * 1000 })), 'grand écran', (0.25 * 1000) / 62);
   for (const vue of [20, 22.5, 24.375, 30, 45, 59.9]) {
     const largeur = Math.min(vue, 64) - 2;
     const l = { potentiel: Math.min(12, 0.8 * largeur), elementaire: Math.min(8, 0.36 * largeur) };
-    verifier(noeuds.map((n) => ({ ...n, largeur, cx: n.mx * largeur, cy: n.my * hauteurEtroite, l: l[n.region] ?? Math.min(9, 0.46 * largeur) })), `écran étroit de ${vue}rem`);
+    verifier(noeuds.map((n) => ({ ...n, largeur, cx: n.mx * largeur, cy: n.my * hauteurEtroite, l: l[n.region] ?? Math.min(9, 0.46 * largeur), h: 2.9 })), `écran étroit de ${vue}rem`, 0.25);
   }
 });
 
 // Relations de la carte (lib/magie-fleches.mjs, demandes du propriétaire) : cachées, affichées au survol d'une magie (les siennes seulement), une épée
-// ou un bouclier au bout des traits ; la disposition du grand écran est telle qu'aucun trait ni aucune boucle ne passe sous une autre pastille, pour une
-// carte de 58 à 62rem de large (pastilles de 9rem, 8rem pour les éléments, 12rem pour le Potentiel Illimité, 2.9rem de haut). Sous 60rem : rien.
+// ou un bouclier au bout des traits ; la disposition du grand écran est telle qu'aucun trait ni aucune boucle ne passe sous une autre pastille (tailles
+// des pastilles en cqw, --l et --h : la géométrie est la même à toute largeur de carte), et chaque pointe arrive près de sa pastille (forme de pilule),
+// y compris par une extrémité (gauche ou droite). Sous 60rem : rien.
 test('carte des magies : une relation par paire liée dans la base, au survol seulement, et aucun trait sous une autre pastille', options, () => {
   const { magies } = chargerMagies(ouvrirBase());
   const { liaisons, boucles } = liaisonsEntreMagies([...magies.values()]);
-  const traits = [...indexMagies.matchAll(/<g class="magies-relation avec-([\w-]+) avec-([\w-]+)"[^>]*><line x1="([-\d.]+)" y1="([-\d.]+)" x2="([-\d.]+)" y2="([-\d.]+)"/g)]
+  // un trait porte la classe de sa première magie et la classe de second rang de la seconde (lib/palette-css.mjs) : sa couleur, sans couleur écrite
+  const traits = [...indexMagies.matchAll(/<g class="magies-relation avec-([\w-]+) avec-([\w-]+) couleur-magie-\1 couleur-2-magie-\2 seconde-\2"[^>]*><line x1="([-\d.]+)" y1="([-\d.]+)" x2="([-\d.]+)" y2="([-\d.]+)"/g)]
     .map(([, a, b, ...xy]) => ({ a, b, p: xy.slice(0, 2).map(Number), q: xy.slice(2).map(Number) }));
-  const lacets = [...indexMagies.matchAll(/<g class="magies-relation magies-relation--boucle avec-([\w-]+)"[^>]*><path class="magies-relation__boucle" d="M ([^"]+)"/g)]
+  const lacets = [...indexMagies.matchAll(/<g class="magies-relation magies-relation--boucle avec-([\w-]+) couleur-magie-\1"[^>]*><path class="magies-relation__boucle" d="M ([^"]+)"/g)]
     .map(([, k, d]) => {
       const n = d.replace('C', '').trim().split(/\s+/).map(Number);
       const xs = n.filter((_, i) => i % 2 === 0);
@@ -116,32 +119,81 @@ test('carte des magies : une relation par paire liée dans la base, au survol se
   const cles = [...indexMagies.matchAll(/data-magie="([\w-]+)" style=/g)].map((m) => m[1]);
   assert.equal(cles.length, 15);
   // survol, ou focus au clavier seulement : avec :focus-within, un clic (qui donne le focus au lien) laissait les relations affichées au retour arrière
-  for (const k of cles) assert.ok(indexMagies.includes(`.magies-orbite:has([data-magie="${k}"]:hover, [data-magie="${k}"] a:focus-visible) .magies-relation.avec-${k} {`), k);
+  for (const k of cles) {
+    // la couleur de la magie survolée : --couleur (première magie du trait) ou --couleur-2 (la seconde), jamais une couleur écrite
+    const survol = `.magies-orbite:has([data-magie="${k}"]:hover, [data-magie="${k}"] a:focus-visible)`;
+    assert.ok(indexMagies.includes(`${survol} .magies-relation.avec-${k} { --c: var(--couleur); --part: `), k);
+    assert.ok(indexMagies.includes(`${survol} .magies-relation.avec-${k} {`) && indexMagies.indexOf(`${survol} .magies-relation.seconde-${k} { --c: var(--couleur-2); }`)
+      > indexMagies.indexOf(`${survol} .magies-relation.avec-${k} {`), `${k} : la règle du second rang après la première`);
+  }
+  const surbrillance = indexMagies.slice(indexMagies.indexOf('.magies-orbite:has('), indexMagies.lastIndexOf('opacity: 1; }'));
+  assert.doesNotMatch(surbrillance, /#[0-9a-f]{3,6}\b/i, 'aucune couleur écrite dans les règles du survol');
   assert.ok(!indexMagies.includes(':focus-within)) .magies-relation'), 'plus de :focus-within pour les relations');
   assert.match(indexMagies.slice(indexMagies.indexOf('@media (max-width: 60rem)')), /\.magies-orbite__relations, \.magies-legende \{ display: none; \}/);
   // géométrie
   const hauteur = Number(indexMagies.match(/class="magies-orbite__relations" viewBox="0 0 1000 (\d+)"/)?.[1]);
   assert.equal(hauteur, Number(indexMagies.match(/\.magies-orbite \{[^}]*aspect-ratio: 1000 \/ (\d+);/)?.[1]), 'SVG aux proportions de la carte');
-  const centres = new Map([...indexMagies.matchAll(/class="magies-orbite__position magies-orbite__position--([\w-]+)" data-magie="([\w-]+)" style="([^"]+)"/g)].map(([, region, k, style]) => {
+  // centre et taille de chaque pastille en unités de la carte (1 unité = 0.1cqw)
+  const centres = new Map([...indexMagies.matchAll(/class="magies-orbite__position magies-orbite__position--([\w-]+) couleur-magie-[\w-]+" data-magie="([\w-]+)" style="([^"]+)"/g)].map(([, region, k, style]) => {
     const v = (nom) => Number(style.match(new RegExp(`--${nom}: ([\\d.]+)%`))[1]) / 100;
-    return [k, { region, x: v('x') * 1000, y: v('y') * hauteur }];
+    const cqw = (nom) => Number(style.match(new RegExp(`--${nom}: ([\\d.]+)cqw`))[1]) * 10;
+    return [k, { region, x: v('x') * 1000, y: v('y') * hauteur, w: cqw('l'), h: cqw('h') }];
   }));
-  for (const largeurRem of [58, 62]) {
-    const unite = 1000 / largeurRem;
-    const boite = ({ region, x, y }, marge = 0) => {
-      const w = (region === 'potentiel' ? 12 : region === 'elementaire' ? 8 : 9) * unite;
-      const h = 2.9 * unite;
-      return [x - w / 2 - marge, y - h / 2 - marge, x + w / 2 + marge, y + h / 2 + marge];
-    };
-    for (const { a, b, p, q } of traits) {
-      for (const [k, c] of centres) if (k !== a && k !== b) assert.ok(!segmentCoupe(p, q, boite(c, 4)), `${largeurRem}rem : le trait ${a} – ${b} passe sous ${k}`);
+  const boite = ({ x, y, w, h }, marge = 0) => [x - w / 2 - marge, y - h / 2 - marge, x + w / 2 + marge, y + h / 2 + marge];
+  for (const { a, b, p, q } of traits) {
+    for (const [k, c] of centres) if (k !== a && k !== b) assert.ok(!segmentCoupe(p, q, boite(c, 4)), `le trait ${a} – ${b} passe sous ${k}`);
+  }
+  for (const { k, boite: l } of lacets) {
+    for (const [autre, c] of centres) {
+      if (autre === k) continue;
+      const r = boite(c);
+      assert.ok(!(l[0] < r[2] && r[0] < l[2] && l[1] < r[3] && r[1] < l[3]), `la boucle de ${k} touche ${autre}`);
     }
-    for (const { k, boite: l } of lacets) {
-      for (const [autre, c] of centres) {
-        if (autre === k) continue;
-        const r = boite(c);
-        assert.ok(!(l[0] < r[2] && r[0] < l[2] && l[1] < r[3] && r[1] < l[3]), `${largeurRem}rem : la boucle de ${k} touche ${autre}`);
+  }
+  // Pointes, chacune rattachée à la pastille de son trait (classes avec-… de son groupe ; pour un trait, celle des deux qui est la plus proche).
+  // `tete` : où la pointe touche le trait du côté de la pastille ; `dehors` : direction du trait, de la pastille vers l'extérieur.
+  const pilule = ([px, py], { x, y, w, h }) => Math.hypot(Math.max(0, Math.abs(px - x) - (w / 2 - h / 2)), py - y) - h / 2;
+  const svg = indexMagies.slice(indexMagies.indexOf('class="magies-orbite__relations"'), indexMagies.indexOf('class="magies-orbite__liste"'));
+  const pointes = svg.split('<g class="magies-relation ').slice(1).flatMap((groupe) => {
+    const magiesDuGroupe = [...groupe.slice(0, groupe.indexOf('"')).matchAll(/\bavec-([\w-]+)/g)].map((m) => m[1]);
+    const boucle = groupe.startsWith('magies-relation--boucle');
+    const ligne = groupe.match(/<line x1="([-\d.]+)" y1="([-\d.]+)" x2="([-\d.]+)" y2="([-\d.]+)"/)?.slice(1).map(Number);
+    return [...groupe.matchAll(/<g class="magies-relation__(epee|bouclier)" transform="translate\(([-\d.]+) ([-\d.]+)\)(?: rotate\(([-\d.]+)\))?"/g)].map(([, forme, x, y, angle]) => {
+      const t = [Number(x), Number(y)];
+      const k = magiesDuGroupe.reduce((m, c) => (pilule(t, centres.get(c)) < pilule(t, centres.get(m)) ? c : m));
+      let dehors = null;
+      if (!boucle) {
+        // le bout du trait le plus proche de la pointe est de son côté ; dehors : vers l'autre bout
+        const [p1, p2] = [[ligne[0], ligne[1]], [ligne[2], ligne[3]]];
+        const [pres, loin] = Math.hypot(p1[0] - t[0], p1[1] - t[1]) < Math.hypot(p2[0] - t[0], p2[1] - t[1]) ? [p1, p2] : [p2, p1];
+        const n = Math.hypot(loin[0] - pres[0], loin[1] - pres[1]);
+        dehors = forme === 'epee' ? [-Math.cos((Number(angle) * Math.PI) / 180), -Math.sin((Number(angle) * Math.PI) / 180)] : [(loin[0] - pres[0]) / n, (loin[1] - pres[1]) / n];
       }
+      // épée : translate = sa pointe ; bouclier (droit) : translate = son centre, à POINTES.bouclier.centre de la tête le long du trait
+      const tete = forme === 'epee' || boucle ? t : [t[0] - dehors[0] * POINTES.bouclier.centre, t[1] - dehors[1] * POINTES.bouclier.centre];
+      return { k, forme, t, tete, dehors, boucle };
+    });
+  });
+  assert.equal(pointes.filter((p) => !p.boucle).length, liaisons.reduce((n, l) => n + l.pointes[l.a].length + l.pointes[l.b].length, 0));
+  // chaque pointe près de sa pastille (demande du propriétaire : des épées et boucliers loin de Feu et d'Eau, par le côté) : la tête d'une pointe de
+  // trait à au plus 3 unités de la pilule (la marge, comptée le long du trait) ; le centre du bouclier d'une boucle à au plus 3 + 11
+  for (const { k, forme, t, tete, boucle } of pointes) {
+    const d = pilule(boucle ? t : tete, centres.get(k));
+    const plafond = 3 + (boucle ? POINTES.bouclier.centre : 0) + 0.2;
+    assert.ok(d > 0 && d <= plafond, `${forme} de ${k} à ${d.toFixed(1)} unités de sa pastille (au plus ${plafond})`);
+  }
+  // deux pointes de traits d'une même magie ne se touchent pas (encombrement de lib/magie-fleches.mjs : un disque le long du trait)
+  const disque = ({ forme, tete, dehors }) => {
+    const { milieu, rayon } = ENCOMBREMENT[forme];
+    return { centre: [tete[0] + dehors[0] * milieu, tete[1] + dehors[1] * milieu], rayon };
+  };
+  const deTraits = pointes.filter((p) => !p.boucle);
+  for (const [i, x] of deTraits.entries()) {
+    for (const y of deTraits.slice(i + 1)) {
+      if (x.k !== y.k) continue;
+      const [e, f] = [disque(x), disque(y)];
+      const d = Math.hypot(e.centre[0] - f.centre[0], e.centre[1] - f.centre[1]);
+      assert.ok(d >= e.rayon + f.rayon, `${x.k} : deux pointes qui se touchent (${x.forme}, ${y.forme} : ${d.toFixed(1)} unités)`);
     }
   }
 });
@@ -196,7 +248,7 @@ test('règle spéciale du NPM 5 : une seule pastille « i », dans le titre du t
     const infos = [...html.matchAll(/class="info"/g)].length;
     assert.equal(infos, 1, `${slug} : une pastille « i »`);
     const npm5 = html.slice(html.indexOf('id="npm-5"'));
-    assert.ok(npm5.indexOf('class="info"') > 0 && npm5.indexOf('class="info"') < npm5.indexOf('class="sorts-wrap"'), `${slug} : la pastille est dans le titre du tableau 5`);
+    assert.ok(npm5.indexOf('class="info"') > 0 && npm5.indexOf('class="info"') < npm5.indexOf('class="sorts-wrap'), `${slug} : la pastille est dans le titre du tableau 5`);
     // à gauche, après le texte du titre, avant les pastilles de niveau (demande du propriétaire)
     assert.ok(npm5.indexOf('class="npm__nom"') < npm5.indexOf('class="info"') && npm5.indexOf('class="info"') < npm5.indexOf('class="npm__pips"'), `${slug} : la pastille suit le texte du titre`);
     // dans le même bloc que le texte : sur un téléphone étroit, le « i » passe à la ligne avec lui, jamais seul sous le badge
@@ -231,6 +283,37 @@ test('niveaux de maîtrise : plus de colonne « Maîtrise » ; chaque bonus du t
   assert.match(bdf, /<span class="val">2d6 dégâts<\/span> <span class="nm">\+1d6\/NM<\/span>/);
 });
 
+test('coût (décisions R105, R106) : pas de colonne « Coût secondaire » ; le coût secondaire sous le coût, dans sa case, caché quand le sort n’en a pas', options, () => {
+  const sorts = ouvrirBase().prepare('SELECT magie_id, nom, cout_secondaire FROM sort').all();
+  for (const p of avecSorts) {
+    const id = `magies/${p.slug}`;
+    const siens = sorts.filter((s) => s.magie_id === id);
+    const tableaux = [...p.html.matchAll(/<table class="sorts\b[^"]*">\s*<thead>([\s\S]*?)<\/thead>/g)];
+    assert.ok(tableaux.length >= 5, `${p.slug} : un tableau par NPM`);
+    for (const m of tableaux) {
+      const colonnes = [...m[1].matchAll(/<th[^>]*>([^<]*)<\/th>/g)].map((t) => t[1]);
+      assert.deepEqual(colonnes, ['Nom', 'Type', 'Coût', 'Portée', 'Zone', 'D/S/B'], p.slug);
+    }
+    assert.doesNotMatch(p.html, /data-label="Coût secondaire"/, `${p.slug} : plus de case à part`);
+    // chaque case « Coût » : le coût (son champ) puis le coût secondaire (son champ, caché s'il est vide)
+    const cases = [...p.html.matchAll(/<td data-label="Coût" class="sort__cout">([\s\S]*?)<\/td>/g)].map((c) => c[1]);
+    assert.equal(cases.length, siens.length, `${p.slug} : une case par sort`);
+    const secondaires = cases.map((c) => {
+      assert.match(c, /^\s*<div class="sort__cout-chakra"[^>]*data-ed-rendu="sort-cout"/, p.slug);
+      const m = /<div class="sort__cout-secondaire"([^>]*)>([\s\S]*?)<\/div>\s*$/.exec(c.replace(/<div>([\s\S]*?)<\/div>/g, '$1'));
+      assert.ok(m, `${p.slug} : un champ de coût secondaire dans la case`);
+      const texte = m[2].replace(/<[^>]+>/g, '').replace(/&#39;/g, "'").replace(/&amp;/g, '&').trim();
+      assert.equal(/\shidden\b/.test(m[1]), texte === '', `${p.slug} : caché si et seulement si vide (${texte})`);
+      // un cadre de l'éditeur : vide, il se montre en mode modification pour être rempli (src/scripts/edition/editeur.mjs#cadres)
+      assert.match(m[1], /\sdata-ed-cadre\b/, `${p.slug} : champ du coût secondaire sans data-ed-cadre`);
+      return texte;
+    });
+    assert.deepEqual(secondaires.filter(Boolean).sort(), siens.filter((s) => s.cout_secondaire).map((s) => s.cout_secondaire).sort(), p.slug);
+  }
+  const html = (slug) => pages.find((p) => p.slug === slug)?.html ?? '';
+  assert.ok(html('magie-du-sang').includes('1 Sang') && html('magie-du-feu').includes('20% PV') && html('magie-de-larcane').includes('Par tour et par cible'));
+});
+
 test('panneau d’un sort : un seul cadre « Effets » par sort, les règles d’invocation et l’annexe sont repliées par défaut', options, () => {
   for (const { slug, html } of avecSorts) {
     assert.equal([...html.matchAll(/<h5>Effets<\/h5>/g)].length, 23, `${slug} : 23 cadres « Effets »`);
@@ -242,13 +325,21 @@ test('panneau d’un sort : un seul cadre « Effets » par sort, les règles d�
 });
 
 test('créatures invoquées (et celles de « Manteau noir ») : un bouton par créature, sur la couleur de sa ou ses magies, sans lien « Bestiaire » ni lien à bulle ; sa carte du bestiaire en infobulle (demande du propriétaire), une par créature et par page', options, () => {
-  const { lignes } = chargerInvocations(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' }));
+  const db = ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' });
+  const { lignes } = chargerInvocations(db);
   const parSlug = new Map(lignes.map((l) => [l.id.slice(l.id.indexOf('/') + 1), l]));
-  // les créatures citées par page : les sorts d'invocation (Terre, Nécromancie, Ombre), « Manteau noir » (Ombre), et les trois dans le Potentiel Illimité
-  const attendu = { 'magie-de-la-necromancie': [28, 28], 'magie-de-la-terre': [30, 30], 'magie-de-lombre': [5, 10], 'potentiel-illimite': [63, 68] };
+  // les améliorations d'« Amélioration cadavérique » qui portent le nom d'une créature (décision R130 : sa carte en infobulle)
+  const ameliorees = [...chargerMagies(db).sorts.values()].flatMap((s) => s.ameliorations?.lignes ?? []).filter((a) => a.creature).length;
+  assert.ok(ameliorees > 0);
+  // les créatures citées par page : les sorts d'invocation (Terre, Nécromancie, Ombre), « Manteau noir » (Ombre), « Amélioration cadavérique »
+  // (Nécromancie), et tout cela dans le Potentiel Illimité
+  const attendu = { 'magie-de-la-necromancie': [28, 28 + ameliorees], 'magie-de-la-terre': [30, 30], 'magie-de-lombre': [5, 10], 'potentiel-illimite': [63, 68 + ameliorees] };
   for (const { slug, html } of pages) {
     const [cartes, declencheurs] = attendu[slug] ?? [0, 0];
-    const boutons = [...html.matchAll(/<button type="button" class="chip creature__bouton" data-bulle="bulle-creature-([^"]+)" aria-describedby="bulle-creature-\1" title="[^"]+" style="--creature-1: (#[0-9a-f]{6}); --creature-2: (#[0-9a-f]{6})">([^<]+)<\/button>/g)];
+    // la couleur : la classe de la première magie et la classe de second rang de la seconde, ou de la même (lib/palette-css.mjs), jamais un style
+    const boutons = [...html.matchAll(/<button type="button" class="chip creature__bouton creature__bouton--magie couleur-magie-([\w-]+) couleur-2-magie-([\w-]+)" data-bulle="bulle-creature-([^"]+)" aria-describedby="bulle-creature-\3" title="[^"]+">([^<]+)<\/button>/g)]
+      .map(([tout, c1, c2, s, nom]) => [tout, s, c1, c2, nom]);
+    assert.doesNotMatch(html, /class="chip creature__bouton[^"]*"[^>]*style=/, `${slug} : aucun bouton de créature en style`);
     // au toucher, la carte couvre l'écran d'un téléphone : un lien à bulle ne pourrait pas être suivi (le second appui tomberait sur elle)
     assert.doesNotMatch(html, /<a\b[^>]*data-bulle="bulle-creature-/, `${slug} : aucun lien à bulle`);
     assert.equal(boutons.length, declencheurs, `${slug} : déclencheurs (noms des créatures, et « Carte de … » de Manteau noir)`);
@@ -260,7 +351,8 @@ test('créatures invoquées (et celles de « Manteau noir ») : un bouton par cr
       assert.ok(boutons.some(([, , c1, c2]) => c1 === c2), `${slug} : créatures d'une seule magie`);
       assert.ok(boutons.some(([, , c1, c2]) => c1 !== c2), `${slug} : créatures de deux magies en dégradé`);
     }
-    for (const [, s, , , nom] of boutons) assert.equal(nom.replace(/&#39;/g, "'"), parSlug.get(s)?.nom, `${slug} : ${s}`);
+    // (une amélioration d'« Amélioration cadavérique » garde l'écriture de son tableau, « Os Froid », rattachée au nom exact à la casse près : R130)
+    for (const [, s, , , nom] of boutons) assert.equal(nom.replace(/&#39;/g, "'").toLocaleLowerCase('fr'), parSlug.get(s)?.nom.toLocaleLowerCase('fr'), `${slug} : ${s}`);
     // plus de fiche minimale sous les blocs
     assert.doesNotMatch(html, /creature__fiche|creature__rangee/, `${slug} : fiche minimale retirée`);
     // les cartes : une bulle par créature citée, cachée, role="tooltip", posée hors des onglets et des détails de sort (dans .cartes-creatures),
@@ -275,7 +367,8 @@ test('créatures invoquées (et celles de « Manteau noir ») : un bouton par cr
     for (const s of bulles) {
       const debut = reserve.indexOf(`id="bulle-creature-${s}"`);
       const carte = reserve.slice(debut, reserve.indexOf('</article>', debut)).replace(/&#39;/g, "'");
-      assert.ok(carte.includes(`<article class="bcarte" aria-label="Carte de ${parSlug.get(s).nom}">`), `${slug} : carte de ${s}`);
+      // (`data-npm-carte` : une carte qui change avec le NPM, décision R130)
+      assert.ok(carte.includes(`<article class="bcarte" aria-label="Carte de ${parSlug.get(s).nom}"${parSlug.get(s).npmDuBloc === null ? ' data-npm-carte' : ''}>`), `${slug} : carte de ${s}`);
       assert.doesNotMatch(carte, /<(?:a|button|input|select|textarea)\b|\sid="(?!bulle-creature-)/, `${slug} : ${s} sans lien, bouton ni identifiant interne`);
       assert.match(carte, /<p class="bcarte__titre">/);
       // ses capacités en tuiles, propres puis communes (lib/monstre-rendu.mjs#htmlDeCapacite)
@@ -283,6 +376,33 @@ test('créatures invoquées (et celles de « Manteau noir ») : un bouton par cr
     }
     // la CSS de la carte vient avec elle (styles/bestiaire/carte.css)
     assert.match(html, /\.bulle--carte \{ width: min\(30rem, calc\(100vw - 1rem\)\);/);
+  }
+});
+
+// Décision R130 : sur une page de magie, les cartes des golems et des non-morts suivent le NPM choisi au curseur de la liste des créatures (une bulle par
+// créature et par page : tous les curseurs vont ensemble, posés par le script de SortsInteractifs.astro, cachés sans JavaScript) ; « Amélioration
+// cadavérique » montre ses améliorations selon l'invocation sacrifiée (le tableau de l'invocation qui porte son nom).
+test('pages de magie : curseur du NPM des cartes, améliorations d’« Amélioration cadavérique » selon l’invocation sacrifiée (décision R130)', options, () => {
+  const db = ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' });
+  const { sorts } = chargerMagies(db);
+  const page = (slug) => pages.find((p) => p.slug === slug)?.html ?? '';
+  for (const slug of ['magie-de-la-terre', 'magie-de-la-necromancie']) {
+    const curseurs = [...page(slug).matchAll(/<p class="invoque__npm" data-npm-page-bloc hidden>/g)];
+    assert.equal(curseurs.length, 1, `${slug} : un curseur, caché sans JavaScript`);
+    assert.match(page(slug), /<input type="range" min="1" max="5" step="1" value="1" data-npm-page aria-valuetext="NPM 1">/, slug);
+  }
+  // les marionnettes (une créature par NPM) : pas de curseur
+  assert.doesNotMatch(page('magie-de-lombre'), /<input[^>]* data-npm-page/);
+  const amelioration = [...sorts.values()].find((s) => s.ameliorations);
+  assert.ok(amelioration, 'un sort désigne le tableau de son invocation');
+  const html = page(amelioration.magieId.slice(amelioration.magieId.indexOf('/') + 1));
+  const debut = html.indexOf('Règles propres : selon l’invocation sacrifiée');
+  assert.ok(debut > 0, 'la section du sort');
+  const tableau = html.slice(debut, html.indexOf('</table>', debut));
+  assert.equal([...tableau.matchAll(/<tr><th scope="row">/g)].length, amelioration.ameliorations.lignes.length, 'une ligne par amélioration');
+  // une amélioration au nom d'une créature : sa carte en infobulle, sous le nom de la créature
+  for (const a of amelioration.ameliorations.lignes.filter((x) => x.creature)) {
+    assert.ok(tableau.includes(`data-bulle="bulle-creature-${a.creature.id.slice(a.creature.id.indexOf('/') + 1)}"`), a.nom);
   }
 });
 
@@ -295,9 +415,13 @@ test('/magies/ : le tableau des relations suit la carte, lignes et colonnes dans
   assert.ok(debut > indexMagies.indexOf('class="magies-orbite"'), 'sous la carte des magies');
   const tableau = contenu(indexMagies, debut, 'section');
   assert.deepEqual([...tableau.matchAll(/<span class="tableau-magies__vertical">([^<]+)<\/span>/g)].map((m) => m[1]), ORDRE_DU_CLASSEUR, 'colonnes');
-  const lignes = [...tableau.matchAll(/<tr class="tableau-magies__ligne" style="--couleur-magie: (#[0-9a-f]{6})"><th scope="row" class="tableau-magies__nom"><a [^>]*><span[^>]*><\/span>([^<]+)<\/a>/g)];
+  // chaque ligne porte la classe de sa magie (lib/palette-css.mjs), jamais une couleur en style
+  const lignes = [...tableau.matchAll(/<tr class="tableau-magies__ligne (couleur-magie-[\w-]+)"><th scope="row" class="tableau-magies__nom"><a [^>]*><span[^>]*><\/span>([^<]+)<\/a>/g)];
   assert.deepEqual(lignes.map((m) => m[2]), ORDRE_DU_CLASSEUR, 'lignes');
-  assert.equal(lignes[6][1], '#ff0000', 'la ligne du Feu est rouge');
+  assert.deepEqual(lignes.map((m) => m[1]), ORDRE_DU_CLASSEUR.map(classeDeMagie), 'chaque ligne : la classe de sa magie');
+  assert.equal(lignes[6][1], 'couleur-magie-feu', 'la ligne du Feu');
+  assert.ok(cssDeLaPalette().includes('.couleur-magie-feu{--couleur:#ff4500;'), 'rouge orangé (sa classe de la palette ; demande du propriétaire du 2026-10-23, valeur validée le 2026-10-23 : « Garder les deux »)');
+  assert.doesNotMatch(tableau, /style=/, 'aucun style');
   assert.ok(!tableau.includes('Potentiel Illimité'), 'ni ligne ni colonne pour le Potentiel Illimité');
   assert.ok(!tableau.includes('Une case « – »'), 'plus d’explication des cases « – »');
   // Résistance = bouclier, vulnérabilité = épée (demande du propriétaire), plus de triangles.
@@ -314,14 +438,14 @@ test('/races-et-magies/ n’existe plus et aucune page de magie n’y renvoie', 
 // Page du Potentiel Illimité (components/magie/SortsDuPotentiel.astro) : il pioche ses sorts dans les autres magies. Une magie par onglet, dans l'ordre
 // du classeur ; chaque onglet reprend les tableaux de cette magie du NPM 1 au NPM 4 (demande du propriétaire), avec le gabarit de sa page (TableauNpm.astro).
 const ongletsDuPotentiel = () =>
-  [...potentiel.matchAll(/<a class="onglet autre-magie__onglet( is-active)?" id="onglet-([^"]+)" href="#(sorts-[^"]+)" style="--couleur-magie: (#[0-9a-f]{6}); --couleur-texte-magie: (#[0-9a-f]{6})">\s*([^<]+?)\s*<\/a>/g)].map(
-    (m) => ({ actif: Boolean(m[1]), cle: m[2], panneau: m[3], couleur: m[4], nom: m[6] }),
+  [...potentiel.matchAll(/<a class="onglet autre-magie__onglet (couleur-magie-[\w-]+)( is-active)?" id="onglet-([^"]+)" href="#(sorts-[^"]+)">\s*([^<]+?)\s*<\/a>/g)].map(
+    (m) => ({ actif: Boolean(m[2]), cle: m[3], panneau: m[4], couleur: m[1], nom: m[5] }),
   );
 const panneauxDuPotentiel = () =>
-  [...potentiel.matchAll(/<section class="autre-magie magie-teinte( is-active)?" id="(sorts-[^"]+)"[^>]*style="--couleur-magie: (#[0-9a-f]{6});/g)].map((m) => ({
-    actif: Boolean(m[1]),
-    id: m[2],
-    couleur: m[3],
+  [...potentiel.matchAll(/<section class="autre-magie magie-teinte (couleur-magie-[\w-]+)( is-active)?" id="(sorts-[^"]+)"/g)].map((m) => ({
+    actif: Boolean(m[2]),
+    id: m[3],
+    couleur: m[1],
     html: contenu(potentiel, potentiel.lastIndexOf('<section', m.index + 1), 'section'),
   }));
 /** Lignes de sort d'un morceau de page : [{ id, html }] (le <tbody> entier : ligne et détails). */
@@ -331,7 +455,10 @@ test('Potentiel Illimité : 14 onglets, un par autre magie, dans l’ordre du cl
   const onglets = ongletsDuPotentiel();
   assert.deepEqual(onglets.map((o) => o.nom), ORDRE_DU_CLASSEUR);
   assert.deepEqual(onglets.map((o) => o.actif), ORDRE_DU_CLASSEUR.map((_, i) => i === 0), 'seul le premier onglet est ouvert');
-  assert.equal(onglets.find((o) => o.nom === 'Feu').couleur, '#ff0000');
+  // dans la couleur de sa magie : sa classe (lib/palette-css.mjs), sans style
+  assert.deepEqual(onglets.map((o) => o.couleur), ORDRE_DU_CLASSEUR.map(classeDeMagie));
+  assert.equal(onglets.find((o) => o.nom === 'Feu').couleur, 'couleur-magie-feu');
+  assert.doesNotMatch(potentiel, /class="(?:onglet autre-magie__onglet|autre-magie magie-teinte)[^"]*"[^>]*style=/, 'ni onglet ni panneau en style');
   const panneaux = panneauxDuPotentiel();
   assert.deepEqual(panneaux.map((p) => p.id), onglets.map((o) => o.panneau), 'un panneau par onglet, dans le même ordre');
   assert.deepEqual(panneaux.map((p) => p.couleur), onglets.map((o) => o.couleur), 'chaque panneau dans la couleur de sa magie');
@@ -402,7 +529,7 @@ test('« Magie non compatible » : le Potentiel Illimité n’est cité nulle pa
 test('Mode Hyper : plus de texte « Liste des effets mode hyper », un (+) à côté du titre mène à la liste', options, () => {
   for (const { slug, html } of pages) {
     const titre = html.match(/<h2 id="mode-hyper-titre">[\s\S]*?<\/h2>/)?.[0] ?? '';
-    assert.match(titre, /Capacité Mode Hyper\s*<a class="lien-plus no-print" href="[^"]*\/guide\/liste-des-effets-mode-hyper\/" title="Liste des effets mode hyper" aria-label="Liste des effets mode hyper"><span aria-hidden="true">\+<\/span><\/a>/, slug);
+    assert.match(titre, /Capacité Mode Hyper\s*<a class="lien-plus no-print" href="[^"]*\/regles\/avancees\/liste-des-effets-mode-hyper\/" title="Liste des effets mode hyper" aria-label="Liste des effets mode hyper"><span aria-hidden="true">\+<\/span><\/a>/, slug);
     assert.ok(!html.includes('>Liste des effets mode hyper</a>'), `${slug} : le texte du lien est revenu`);
   }
 });
@@ -425,7 +552,7 @@ test('altération d’état liée : un encart après la présentation (et l’ex
     assert.ok(debut < html.indexOf('id="affinites"'), `${slug} : avant les résistances`);
     const encart = contenu(html, debut, 'section');
     assert.equal([...encart.matchAll(/<article class="etat-lie">/g)].length, 1, slug);
-    assert.match(encart, /<a href="[^"]*\/guide\/liste-des-alterations-d-etat\/#[^"]+">[^<]+<\/a> <span class="etat-lie__type">(Physique|Mental)<\/span>/, `${slug} : lien vers sa section, type`);
+    assert.match(encart, /<a href="[^"]*\/regles\/avancees\/liste-des-alterations-d-etat\/#[^"]+">[^<]+<\/a> <span class="etat-lie__type">(Physique|Mental)<\/span>/, `${slug} : lien vers sa section, type`);
     assert.deepEqual([...encart.matchAll(/<span class="etat-lie__stade-nom">([^<]+)<\/span>/g)].map((m) => m[1]), ['Stade 1', 'Stade 2', 'Stade 3'], slug);
     assert.ok(html.indexOf('href="#alteration"') < html.indexOf('href="#affinites"'), `${slug} : entrée de navigation`);
   }

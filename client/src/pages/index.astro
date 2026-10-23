@@ -1,15 +1,34 @@
 ---
 import Base from '../layouts/Base.astro';
 import Carrousel from '../components/galerie/Carrousel.astro';
+import LiensEtRencontre from '../components/accueil/LiensEtRencontre.astro';
 import accueilCss from '../styles/accueil/accueil.css?raw';
-import { url } from '../lib/wiki';
+import { htmlAvecMonnaies } from '../lib/monnaies.mjs';
+import { DECOUVRIR, LIENS_ET_RENCONTRE, PAR_OU_COMMENCER, partieDeLaPage, verifierLePlan } from '../lib/livres.mjs';
+import { classeDePartie, cssDesParties } from '../lib/palette-css.mjs';
+import { entryHref, loadWiki, url } from '../lib/wiki';
 
-// Accueil (demande du propriétaire) : un texte de bienvenue et le défilement des images de la galerie (components/galerie/Carrousel.astro).
-// La présentation du jeu reprend le texte d'accueil du propriétaire (premier chapitre du guide, guide/bienvenue).
+// Accueil (demande du propriétaire ; rubrique Découvrir du menu) : un texte de bienvenue et le défilement des images de la galerie
+// (components/galerie/Carrousel.astro). La présentation du jeu reprend le texte d'accueil du propriétaire (guide/bienvenue, servie à /decouvrir/).
+// Dessous, « Par où commencer ? » (2026-10-18) : quatre cartes, les quatre pages de Découvrir (lib/livres.mjs#PAR_OU_COMMENCER), le titre et le résumé
+// de chaque page tels que la base les écrit, dans la couleur de son groupe (la classe de sa partie, lib/palette-css.mjs#classeDePartie, dont la page
+// émet la feuille). La phrase « Première visite ? » et son bouton ne disent que la navigation.
+// Entre les deux, sous la bienvenue et le carrousel (demande du propriétaire du 2026-10-23 : « Ces 3 blocs auraient plus leur place dans l'onglet
+// d'acceuil. », puis, pour leur place, « Sous la bienvenue et le carrousel ») : le serveur Discord, Tipeee (la partie « Bienvenue » de Tipeee, reprise
+// en direct) et l'encart « Notre prochaine rencontre IRL » (components/accueil/LiensEtRencontre.astro, lib/livres.mjs#LIENS_ET_RENCONTRE), avant sous
+// le texte de Bienvenue. L'annonce de l'encart se modifie en
+// place sur le site de dev : l'accueil propose le mode modification (`edition`, son id LIENS_ET_RENCONTRE.page, noté au journal). Son titre, « Accueil »
+// (LIENS_ET_RENCONTRE.titre), nomme l'encart dans la note de version.
+const { entries } = await loadWiki();
+const parId = new Map(verifierLePlan(entries).map((e) => [e.id, e]));
+const cartes = PAR_OU_COMMENCER.map((id) => parId.get(id)!).map((e) => ({
+  href: entryHref(e), titre: e.data.title, resume: e.data.summary ?? '', classe: classeDePartie(partieDeLaPage(e.id)),
+}));
 ---
 
-<Base title="Accueil">
+<Base title="Accueil" edition={LIENS_ET_RENCONTRE.page}>
   <style is:inline set:html={accueilCss}></style>
+  <style is:inline set:html={cssDesParties()}></style>
   <div class="accueil">
     <section class="accueil__texte" aria-labelledby="titre-accueil">
       <h1 id="titre-accueil">Bienvenue sur Maverick Center</h1>
@@ -20,12 +39,26 @@ import { url } from '../lib/wiki';
         Maverick Center en rassemble les règles et le lore, en pages reliées entre elles par mots-clés, et les outils de vos personnages : la fiche pour
         les créer, la liste pour les retrouver.
       </p>
-      <p>Première visite ? Le guide vous accompagne pas à pas : découvrir le jeu, créer son personnage, jouer, progresser.</p>
+      <p>Première visite ? Commencez par Découvrir : le jeu, son univers, la création d’un personnage et comment rejoindre une partie.</p>
       <p class="accueil__actions">
-        <a class="accueil__bouton accueil__bouton--principal" href={url('guide/')}>Lire le guide</a>
+        <a class="accueil__bouton accueil__bouton--principal" href={url(DECOUVRIR.chemin)}>Découvrir Maverick</a>
         <a class="accueil__bouton" href={url('fiche/')}>Créer un personnage</a>
       </p>
     </section>
     <Carrousel />
   </div>
+  <LiensEtRencontre />
+  <section class="accueil-debut" aria-labelledby="titre-par-ou-commencer">
+    <h2 id="titre-par-ou-commencer">Par où commencer ?</h2>
+    <ul class="accueil-debut__cartes">
+      {
+        cartes.map((c) => (
+          <li class:list={['accueil-debut__carte', c.classe]}>
+            <a class="accueil-debut__lien" href={c.href}>{c.titre}</a>
+            {c.resume && <p class="accueil-debut__resume" set:html={htmlAvecMonnaies(c.resume)} />}
+          </li>
+        ))
+      }
+    </ul>
+  </section>
 </Base>

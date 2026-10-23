@@ -15,9 +15,11 @@
 //     quoi l'image resterait dans la base sans tuile pour la montrer, la recadrer ou la retirer).
 // Chaque écriture passe par le journal (`ctx.w`), suppressions de détail comprises : les tables des monstres n'ont pas de ON DELETE CASCADE.
 // Les outils communs du service (refus, synchroniser, provenance…) sont donnés par serveur/edition.mjs (domainesDuBestiaire), sans import en retour.
+import { jsonOuNull } from './partage.mjs';
 import { chargerMonstres } from '../src/lib/bestiaire-db.mjs';
 import { htmlDeCarteMonstre, htmlDeLigneMonstre, htmlDesCapacitesDeLaCarte } from '../src/lib/bestiaire-rendu.mjs';
-import { bornes, CATEGORIES, echelleDuPrefixe, emplacements, GABARIT_DE_CARTE, lieux, RUBRIQUES, suiteDesEmplacements, valeursDeLaCarte } from '../src/lib/monstre-champs.mjs';
+import { bornes, CATEGORIES, echelleDuPrefixe, EMPLACEMENT, emplacements, GABARIT_DE_CARTE, lieux, RUBRIQUES, suiteDesEmplacements, valeursDeLaCarte } from '../src/lib/monstre-champs.mjs';
+import { lireBalises } from '../src/lib/mots-cles-balises.mjs';
 import { bornerCadrage, CADRAGE_PAR_DEFAUT, cadrageDe, dimensionsDuPortrait, empreinte, ZOOM_MAX, ZOOM_MIN } from '../src/lib/portrait.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { lireLigne } from './edition-journal.mjs';
@@ -34,10 +36,18 @@ const portraitDe = (ligne) => Object.fromEntries(COLONNES_DU_PORTRAIT.map((c) =>
 
 /**
  * Ce qu'une description de capacité commune peut écrire (décision R69) : des accolades seulement autour d'un entier, « {10} » (un emplacement de valeur
- * commune 10) ; renvoie le message du refus, ou null.
+ * commune 10), ou d'une balise du glossaire des mots-clés (« {{id|texte}} », lib/mots-cles-balises.mjs, que le service a déjà contrôlée) ; renvoie le
+ * message du refus, ou null.
  */
 function refusDeDescription(description) {
-  const reste = String(description ?? '').replace(/\{\d+\}/g, '');
+  const texte = String(description ?? '');
+  let reste = '';
+  let fin = 0;
+  for (const b of lireBalises(texte)) {
+    reste += texte.slice(fin, b.debut);
+    fin = b.fin;
+  }
+  reste = (reste + texte.slice(fin)).replace(EMPLACEMENT, '');
   if (/[{}]/.test(reste)) return 'une accolade ne s’écrit qu’autour d’un nombre entier : « {10} » est une valeur que chaque carte peut changer (curseur).';
   if (emplacements(description).length > 20) return 'au plus 20 valeurs « {N} » par description.';
   // au-delà de 2^53, un nombre ne s'écrit plus tel quel (« 1e+21 ») : comme une valeur propre (valeurs_de_capacite)
@@ -408,12 +418,11 @@ export function ancienneEcritureDesCapacites(db) {
   const SANS_EQUIVALENT = 'noté avant la migration 0044 : les capacités d’une carte ne sont plus le texte de sa rubrique « Capacité(s) » mais des '
     + 'capacités communes (décision R66) ; à refaire sur le site de dev (une carte : la supprimer de nouveau ; une capacité : dans son panneau)';
   const capacitesDuJournal = new Set(); // rubriques « Capacité(s) » créées par le journal : « monstre_id\u0000rang »
-  const lire = (v) => (v === null || v === undefined ? null : JSON.parse(v));
   const ancienne = (v) => Boolean(v && ('nom' in v || 'texte' in v));
   return (m) => {
     if (m.table_nom !== 'monstre_rubrique' && m.table_nom !== 'monstre_capacite') return m;
-    const avant = lire(m.avant);
-    const apres = lire(m.apres);
+    const avant = jsonOuNull(m.avant);
+    const apres = jsonOuNull(m.apres);
     if (m.table_nom === 'monstre_capacite') return ancienne(avant) || ancienne(apres) ? { ...m, conflit: SANS_EQUIVALENT } : m;
     const cle = JSON.parse(m.cle);
     const k = `${cle.monstre_id}\u0000${cle.rang}`;
@@ -422,6 +431,43 @@ export function ancienneEcritureDesCapacites(db) {
     if (!(avant?.texte || apres?.texte)) return m;
     const rubrique = apres?.rubrique ?? avant?.rubrique ?? lireLigne(db, 'monstre_rubrique', cle)?.rubrique ?? (capacitesDuJournal.has(k) ? 'capacites' : null);
     return rubrique === 'capacites' ? { ...m, conflit: SANS_EQUIVALENT } : m;
+  };
+}
+
+/**
+ * Les modifications des résistances notées avant la migration 0075 (décision R155, étendue au bestiaire le 2026-10-22 : « Pareil remplace double
+ * résistance par Grande résistance ») : 0075 a rangé les 10 rubriques « Double(s) Résistance(s) » en `grande_resistance`, avec leurs cibles typées
+ * (monstre_defense.sens, qui est la rubrique qui les liste), et passé les titres des grandes résistances et vulnérabilités en ÷3 / x3, le x8 des golems
+ * de verre en x4. Rend l'adaptateur de edition-journal.mjs#rejouer (serveur/edition.mjs#rejouerLeJournal), sur le modèle d'ancienneEcritureDesCapacites :
+ *   - le sens 'double_resistance' a un équivalent sûr, celui de 0075 : dans une modification de monstre_defense (clé, `avant`, `apres`) et dans la
+ *     colonne `rubrique` d'une modification de monstre_rubrique, il devient 'grande_resistance' (la cible rejouée suit sa rubrique) ;
+ *   - un titre écrit comme avant 0075 (TITRES_D_AVANT_0075) n'est pas réécrit d'office : l'éditeur n'ouvre que le texte d'une rubrique
+ *     (lib/edition-modele.mjs), donc seule la suppression d'une carte (ses rubriques notées en entier) a pu le noter, et aucun journal d'après 0075 ne
+ *     l'écrit plus ; le lot passe en conflit avec un message qui dit quoi refaire. Le texte des golems de verre (x8) n'est pas repris : une modification
+ *     notée avant 0075 y est déjà en conflit (« les règles ont changé texte autrement »), et un texte d'après 0075 peut de nouveau écrire « x8 ».
+ */
+export const TITRES_D_AVANT_0075 = new Set([
+  'Grande(s) Résistance(s) Dégâts ÷4', 'Grande(s) résistance(s) Dégâts ÷4', 'Grande(s) Vulnérabilité(s) Dégâts x4', 'Grande(s) faiblesse(s) Dégâts x4',
+  'Grande(s )Vulnérabilité(s) Dégâts x4', 'Grande(s) vulnérabilité(s) Dégâts x4', 'Double(s) Résistance(s) Dégâts ÷4', 'Double(s) Résistance(s) Dégâts/Effets ÷4',
+]);
+export function ancienneEcritureDesResistances() {
+  const AVANT_0075 = 'noté avant la migration 0075 (décision R155) : le titre de la rubrique écrit encore l’ancien multiplicateur (÷4, x4 : aujourd’hui '
+    + '÷3, x3) ou la « Double résistance », devenue la Grande résistance ; à refaire sur le site de dev (la carte : la supprimer de nouveau)';
+  const ANCIEN = 'double_resistance';
+  const NOUVEAU = 'grande_resistance';
+  const traduire = (v, colonne) => (v && v[colonne] === ANCIEN ? { ...v, [colonne]: NOUVEAU } : v);
+  const ecrit = (v) => (v === null ? null : JSON.stringify(v));
+  const ecritAvant0075 = (v) => typeof v?.titre === 'string' && TITRES_D_AVANT_0075.has(v.titre);
+  return (m) => {
+    if (m.conflit || (m.table_nom !== 'monstre_defense' && m.table_nom !== 'monstre_rubrique')) return m;
+    const avant = jsonOuNull(m.avant);
+    const apres = jsonOuNull(m.apres);
+    if (m.table_nom === 'monstre_rubrique' && (ecritAvant0075(avant) || ecritAvant0075(apres))) return { ...m, conflit: AVANT_0075 };
+    const colonne = m.table_nom === 'monstre_defense' ? 'sens' : 'rubrique';
+    const cle = JSON.parse(m.cle);
+    if (cle[colonne] !== ANCIEN && avant?.[colonne] !== ANCIEN && apres?.[colonne] !== ANCIEN) return m;
+    // la clé garde l'ordre de ses colonnes : les autres modifications de la même ligne, traduites de même, restent rangées avec elle
+    return { ...m, cle: JSON.stringify(traduire(cle, colonne)), avant: ecrit(traduire(avant, colonne)), apres: ecrit(traduire(apres, colonne)) };
   };
 }
 

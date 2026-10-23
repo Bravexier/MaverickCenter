@@ -105,18 +105,50 @@ test('rien n’est inventé : chaque ligne de texte gardée (rubriques, capacit�
   for (const r of b.regles) assert.ok(doc.has(`* ${r.texte}`), r.texte);
 });
 
-test('corrections : seulement les graphies que la base a déjà corrigées partout, chacune présente dans le doc', () => {
-  assert.deepEqual(CORRECTIONS.map(([, , origine]) => origine.match(/\d{4}-[a-z-]+/)[0]), [
+test('corrections : seulement les graphies que la base a déjà corrigées partout et les multiplicateurs de R155, chacune présente dans le doc', () => {
+  assert.deepEqual(CORRECTIONS.map(([, , origine]) => origine.match(/\d{4}-[a-z0-9-]+/)[0]), [
     '0012-eaunoire', '0006-orthographe-noms', '0006-orthographe-noms', '0005-orthographe-base',
     ...Array(4).fill('0039-bestiaire-reponses'),
+    ...Array(4).fill('0075-r155-titres-du-bestiaire'),
   ]);
   // décision R57 : les fautes du butin, à leur seule place dans le doc (une case, une ligne de trois cases, un nom du glossaire) ; le nom corrigé du
-  // glossaire garde son identifiant
-  assert.deepEqual(CORRECTIONS.slice(4).map(([motif]) => texte.match(new RegExp(motif.source, 'g')).length), [1, 1, 1, 3]);
+  // glossaire garde son identifiant. Décision R155 : les lignes entières des titres (Grande résistance ÷4 : 15 ; Grande vulnérabilité x4 : 22 ; Double
+  // résistance ÷4 : 10) et la sensibilité x8 des golems de verre I à III (3) ; les motifs sont ancrés sur la ligne (drapeau m ici).
+  assert.deepEqual(CORRECTIONS.slice(4).map(([motif]) => texte.match(new RegExp(motif.source, 'gm')).length), [1, 1, 1, 3, 15, 22, 10, 3]);
   assert.deepEqual(b.glossaire.filter((g) => g.id === 'peau-du-radrak').map((g) => g.nom), ['Peau de radrak']);
-  for (const [motif] of CORRECTIONS) assert.match(texte, new RegExp(motif.source, motif.flags.replace('g', '')), `${motif} : écrit dans le doc`);
+  for (const [motif] of CORRECTIONS) assert.match(texte, new RegExp(motif.source, motif.flags.replace('g', '') + 'm'), `${motif} : écrit dans le doc`);
   assert.ok(b.especes.some((e) => /Eaunoire a sauvé les exilés/.test(e.description ?? '')), 'la déesse de la Corruption s’appelle Eaunoire (R21)');
   assert.equal(compacter('Brouillard,  ect'), 'Brouillard, etc');
+});
+
+test('R155 : les titres des cartes en ÷3 / x3, la Double résistance rangée en Grande résistance, la sensibilité des golems de verre en x4', () => {
+  const rubriques = cartes.flatMap((c) => c.rubriques.map((r) => ({ ...r, carte: c.id })));
+  const titres = (cle) => [...new Set(rubriques.filter((r) => r.rubrique === cle).map((r) => r.titre))].sort();
+  assert.deepEqual(titres('grande_resistance'), [
+    'Grande(s) Résistance(s) Dégâts ÷3', 'Grande(s) Résistance(s) Dégâts/Effets ÷3', 'Grande(s) résistance(s) Dégâts ÷3',
+  ]);
+  assert.equal(rubriques.filter((r) => r.rubrique === 'grande_resistance').length, 25, '15 titres de Grande résistance et 10 de Double résistance');
+  assert.deepEqual(titres('grande_vulnerabilite'), [
+    'Grande(s )Vulnérabilité(s) Dégâts x3', 'Grande(s) Vulnérabilité(s) Dégâts x3', 'Grande(s) faiblesse(s) Dégâts x3', 'Grande(s) vulnérabilité(s) Dégâts x3',
+  ]);
+  assert.equal(rubriques.filter((r) => r.rubrique === 'grande_vulnerabilite').length, 25, '22 titres corrigés et 3 déjà écrits « x3 » dans le doc');
+  assert.deepEqual(rubriques.filter((r) => r.rubrique === 'double_resistance'), [], 'plus aucune rubrique double_resistance');
+  assert.deepEqual(cartes.flatMap((c) => c.defenses).filter((x) => x.sens === 'double_resistance'), [], 'ni cible');
+  // les 10 cartes dont le doc écrit « Double(s) Résistance(s) … ÷4 » (ligne du titre, source_ref) : rangées en grande_resistance, leurs 16 cibles avec elles
+  const L = lignesDuDoc(texte);
+  const doubles = rubriques.filter((r) => /^Double\(s\) Résistance\(s\)/.test(L[Number(r.source_ref.match(/ligne (\d+)$/)[1]) - 1]));
+  assert.deepEqual(doubles.map((r) => [r.rubrique, r.titre.replace(/Dégâts\/Effets/, 'Dégâts')]), Array(10).fill(['grande_resistance', 'Grande(s) Résistance(s) Dégâts ÷3']));
+  assert.deepEqual([...new Set(doubles.map((r) => r.carte.split('#')[0]))].sort(),
+    ['monstres/collecteur', 'monstres/irapullum', 'monstres/masse-empoisonneuse', 'monstres/ogre']);
+  assert.equal(cartes.filter((c) => doubles.some((r) => r.carte === c.id)).flatMap((c) => c.defenses).filter((x) => x.sens === 'grande_resistance').length, 16);
+  assert.ok(!rubriques.some((r) => /÷4|x4/.test(r.titre ?? '')), 'plus aucun titre en ÷4 ni en x4');
+  assert.ok(!rubriques.some((r) => /Dégâts x8/.test(`${r.titre ?? ''}\n${r.texte}`)), 'plus aucune sensibilité x8');
+  assert.deepEqual(rubriques.filter((r) => /Sensibilité\(s\) Dégâts x4/.test(r.texte)).map((r) => `${r.carte}@${r.rang}:${r.rubrique}`), [
+    'monstres/golem-de-verre#carte:golem-de-verre-i@6:competences', 'monstres/golem-de-verre#carte:golem-de-verre-ii@6:competences',
+    'monstres/golem-de-verre#carte:golem-de-verre-iii@6:competences',
+  ]);
+  // la « Double(s) Vulnérabilité(s) Dégâts x2 » (une ligne du doc, gardée dans le texte de la rubrique qui la précède) n'est pas touchée
+  assert.equal(rubriques.filter((r) => r.texte.split('\n').includes('Double(s) Vulnérabilité(s) Dégâts x2')).length, 1);
 });
 
 test('valeurs typées : seulement quand l’écriture est sans ambiguïté, et conformes au texte de la carte', () => {

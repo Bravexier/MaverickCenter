@@ -1,11 +1,10 @@
 // Page « Mise à jour » côté service (serveur/notes-de-version.mjs, routes /api/mise-a-jour/ de api.mjs ; docs/serveur.md, « Mise à jour ») :
 // fermée hors du site de dev, la liste production → dev calculée contre la base de référence, le champ libre (409 si changé entre-temps ou figé),
-// le lancement (mot de confirmation, lot figé avec son empreinte, servi tel quel au workflow, déclenchement et suivi du run GitHub par un faux
+// la case « Version majeure » (version cible X+1.0, figée avec le lot, remise à zéro par la livraison), le lancement (mot de confirmation, lot figé avec son empreinte, servi tel quel au workflow, déclenchement et suivi du run GitHub par un faux
 // GitHub), l'annulation, et le lancement terminé quand sa note arrive dans les règles.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { copyFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { copyFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { after, test } from 'node:test';
@@ -16,10 +15,10 @@ import {
   actualiserLancement, CONFIRMATION, creerGithub, DUREE_MAX_RUN, INTERVALLE_SUIVI, libererLot, lireLancement, lireLot, WORKFLOW,
 } from '../serveur/notes-de-version.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { versionLibre } from './aide-mise-a-jour.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-notes-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('notes');
 const regles = cheminBase({ sansExemples: false });
 const dossier = join(racine, 'db');
 const { chemin } = preparerBaseVivante({ regles, dossier });
@@ -50,7 +49,7 @@ const appel = (methode, chemin_, corps, s = service, entetes = JSON_) =>
 
 test('fermée hors du site de dev : 403 partout, lot compris ; adresses inconnues 404, méthodes 405', () => {
   const ferme = { ...service, edition: false };
-  for (const [m, c] of [['GET', '/api/mise-a-jour/'], ['POST', '/api/mise-a-jour/brouillon/'], ['POST', '/api/mise-a-jour/lancer/'],
+  for (const [m, c] of [['GET', '/api/mise-a-jour/'], ['POST', '/api/mise-a-jour/brouillon/'], ['POST', '/api/mise-a-jour/majeure/'], ['POST', '/api/mise-a-jour/lancer/'],
     ['GET', '/api/mise-a-jour/lots/00000000-0000-0000-0000-000000000000/']]) {
     assert.equal(appel(m, c, m === 'POST' ? {} : undefined, ferme).statut, 403, c);
   }
@@ -69,6 +68,7 @@ test('la note en préparation : production (référence) → dev, version cible,
   const n = r.corps;
   assert.equal(n.version_dev, '0.1.76');
   assert.equal(n.version_cible, '0.2');
+  assert.deepEqual([n.version_mineure, n.version_majeure, n.brouillon.majeure], ['0.2', '1.0', false], 'les deux versions possibles, case décochée');
   assert.deepEqual([n.reference.disponible, n.reference.version], [true, '0.1.0']);
   assert.equal(n.confirmation, CONFIRMATION);
   assert.deepEqual(n.github, { configure: false, depot: 'Bravexier/MaverickCenter' });
@@ -146,6 +146,46 @@ test('adresse publique : celle du service, sinon l’hôte de la requête (https
   appel('POST', '/api/mise-a-jour/liberer/', {});
   assert.equal(appel('POST', '/api/mise-a-jour/lancer/', { confirmation: CONFIRMATION }, sansAdresse, { ...JSON_, host: 'a b' }).statut, 500);
   assert.equal(appel('GET', '/api/mise-a-jour/').corps.brouillon.lot, null, 'refusé : rien de figé');
+});
+
+test('case « Version majeure » : la version cible passe en X+1.0, rien n’est déclenché ; figée avec le lot, gardée s’il est annulé', () => {
+  assert.equal(appel('POST', '/api/mise-a-jour/majeure/', { majeure: 'oui' }).statut, 400);
+  assert.equal(appel('POST', '/api/mise-a-jour/majeure/', {}).statut, 400);
+  assert.equal(appel('GET', '/api/mise-a-jour/majeure/').statut, 405);
+  // la colonne (migration 0070) : 1 (cochée) ou NULL (décochée, par défaut)
+  for (const v of [0, 2]) assert.throws(() => db.prepare('INSERT OR REPLACE INTO note_version_brouillon (id, majeure) VALUES (1, ?)').run(v), /CHECK/);
+  const texte = appel('GET', '/api/mise-a-jour/').corps.brouillon.texte;
+  let r = appel('POST', '/api/mise-a-jour/majeure/', { majeure: true });
+  assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  assert.deepEqual([r.corps.version_cible, r.corps.version_mineure, r.corps.version_majeure], ['1.0', '0.2', '1.0'], 'la note en préparation, rendue entière');
+  assert.deepEqual([r.corps.brouillon.majeure, r.corps.brouillon.texte, r.corps.brouillon.lot], [true, texte, null], 'le champ libre ne change pas');
+  assert.equal(lireLancement(dossier)?.etat, 'annule', 'rien n’est lancé');
+  assert.match(journal.at(-1), /prochaine version majeure/);
+  // le champ libre enregistré garde la case
+  assert.equal(appel('POST', '/api/mise-a-jour/brouillon/', { texte, avant: texte }).corps.brouillon.majeure, true);
+  // un onglet resté sur la V0.2 (case cochée ailleurs) ne fait jamais partir la V1.0 : 409, rien n'est figé
+  const perime = appel('POST', '/api/mise-a-jour/lancer/', { confirmation: CONFIRMATION, version_cible: '0.2' });
+  assert.deepEqual([perime.statut, perime.corps.version_cible], [409, '1.0']);
+  assert.match(perime.corps.erreur, /maintenant la V1\.0 .*la V0\.2/);
+  assert.equal(appel('GET', '/api/mise-a-jour/').corps.brouillon.lot, null, 'rien de figé');
+  // « Effectuer la mise à jour » : le lot et le lancement portent la case et la version X+1.0 (couvertes par l'empreinte)
+  const l = appel('POST', '/api/mise-a-jour/lancer/', { confirmation: CONFIRMATION, version_cible: '1.0' }).corps.lancement;
+  assert.deepEqual([l.version_cible, l.majeure], ['1.0', true]);
+  const lot = JSON.parse(appel('GET', `/api/mise-a-jour/lots/${l.lot}/`).brut);
+  assert.deepEqual([lot.version_cible, lot.majeure], ['1.0', true]);
+  // figée : la case ne se change plus
+  r = appel('POST', '/api/mise-a-jour/majeure/', { majeure: false });
+  assert.equal(r.statut, 409);
+  assert.equal(appel('GET', '/api/mise-a-jour/').corps.version_cible, '1.0');
+  // annulé : la case reste cochée, puis se décoche ; un lot figé ensuite est mineur
+  appel('POST', '/api/mise-a-jour/liberer/', {});
+  assert.equal(appel('GET', '/api/mise-a-jour/').corps.brouillon.majeure, true);
+  r = appel('POST', '/api/mise-a-jour/majeure/', { majeure: false });
+  assert.deepEqual([r.statut, r.corps.version_cible, r.corps.brouillon.majeure], [200, '0.2', false]);
+  const mineure = appel('POST', '/api/mise-a-jour/lancer/', { confirmation: CONFIRMATION }).corps.lancement;
+  assert.deepEqual([mineure.version_cible, mineure.majeure], ['0.2', false]);
+  assert.equal(JSON.parse(appel('GET', `/api/mise-a-jour/lots/${mineure.lot}/`).brut).majeure, false);
+  appel('POST', '/api/mise-a-jour/liberer/', {});
 });
 
 test('GitHub : déclenchement du workflow sur dev, suivi du run, échec, refus d’annuler pendant le run', async () => {
@@ -322,10 +362,13 @@ test('la note livrée arrive dans les règles : lancement terminé, brouillon vi
   actuel = actualiserLancement(db, dossier, { reference: { version: `${version}.0` } });
   assert.deepEqual([actuel.etat, actuel.version_livree], ['termine', version]);
   assert.equal(appel('POST', '/api/mise-a-jour/liberer/', { lot: l.lot }).statut, 409, 'livré : rien à annuler');
+  db.exec('UPDATE note_version_brouillon SET majeure = 1'); // un lot « Version majeure »
   viderBrouillonLivre(db);
   const n = appel('GET', '/api/mise-a-jour/').corps;
   assert.equal(n.brouillon.lot, null);
   assert.equal(n.brouillon.texte, null);
+  assert.equal(n.brouillon.majeure, false, 'livrée : la préparation suivante repart en version mineure');
+  assert.equal(n.version_cible, n.version_mineure);
   assert.equal(n.lancement.etat, 'termine');
   // un brouillon dont le lot n'est pas livré reste
   appel('POST', '/api/mise-a-jour/brouillon/', { texte: 'Suite' });

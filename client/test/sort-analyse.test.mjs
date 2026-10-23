@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { analyserCout, analyserPortee, analyserType, analyserZone, bonusDeMaitrise, COLONNES_NM } from '../src/lib/sort-analyse.mjs';
 import { ORDRE_CHAMPS_NM, texteDeBonus } from '../src/lib/sort-maitrise.mjs';
+import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const sorts = db.prepare('SELECT * FROM sort ORDER BY id').all();
@@ -33,9 +34,9 @@ test('type : types, mode, IC, imparable, inesquivable redonnent sort, sort_type 
   }
 });
 
-test('coût, portée, zone : colonnes typées en place', () => {
+test('coût (et coût secondaire : décision R105), portée, zone : colonnes typées en place', () => {
   for (const s of sorts) {
-    assert.deepEqual(analyserCout(s.cout_brut), { cout_chakra: s.cout_chakra, cout_ressource: s.cout_ressource, cout_ressource_valeur: s.cout_ressource_valeur }, `${s.id} : ${s.cout_brut}`);
+    assert.deepEqual(analyserCout(s.cout_brut, s.cout_secondaire), { cout_chakra: s.cout_chakra, cout_ressource: s.cout_ressource, cout_ressource_valeur: s.cout_ressource_valeur }, `${s.id} : ${s.cout_brut}`);
     assert.deepEqual(analyserPortee(s.portee_brut), { portee_nature: s.portee_nature, portee_valeur: s.portee_valeur }, `${s.id} : ${s.portee_brut}`);
     assert.deepEqual(analyserZone(s.zone_brut), { zone_forme: s.zone_forme, zone_taille: s.zone_taille }, `${s.id} : ${s.zone_brut}`);
   }
@@ -59,7 +60,8 @@ test('bonus de NM des effets et de la remarque : mêmes expressions (nature, tex
       assert.deepEqual(trouves.map(sans), attendus.map(sans), `${s.id} : ${champ}`);
       for (const b of trouves) {
         assert.ok(b.contexte.includes(b.texte_brut), `${s.id} : le contexte contient l’expression (CHECK de la table)`);
-        assert.ok(s[COLONNES_NM[champ]].includes(b.contexte), `${s.id} : le contexte est un passage de la case`);
+        // la case telle qu'elle se lit, sans les balises du glossaire (bonusDeMaitrise la lit ainsi)
+        assert.ok(texteSansBalises(s[COLONNES_NM[champ]]).includes(b.contexte), `${s.id} : le contexte est un passage de la case`);
       }
     }
   }

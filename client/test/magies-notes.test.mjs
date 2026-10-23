@@ -21,8 +21,7 @@
 // les distingue pas). Les caractères Markdown sont échappés, une URL devient un lien automatique <url> : le texte affiché est le même.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -30,6 +29,7 @@ import { createMarkdownProcessor, unified } from '@astrojs/markdown-remark';
 import { nomDeNote, nomPlie } from '../src/lib/corps-magies.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const dossierPages = fileURLToPath(new URL('../src/content/wiki/magies', import.meta.url));
 const racineWiki = fileURLToPath(new URL('../src/content/wiki', import.meta.url));
@@ -405,7 +405,7 @@ const cellule = (dump, nom, { r, c }) => dump.sheets.find((s) => s.name === nom)
 const ajoute = (dump, nom, cell) => { dump.sheets.find((s) => s.name === nom).cells.push(cell); return dump; };
 
 function lancer({ dump = classeur(), args = ['--sans-formats'], sortie, verifier = false } = {}) {
-  const dir = mkdtempSync(join(tmpdir(), 'magies-notes-'));
+  const dir = dossierTemporaire('magies-notes');
   const out = sortie ?? join(dir, 'wiki');
   mkdirSync(out, { recursive: true });
   writeFileSync(join(dir, 'magie-v8.json'), JSON.stringify(dump));
@@ -793,12 +793,12 @@ test('synthétique : les blancs de début ou de fin de ligne que la page ne port
 
 // --- copie de contrôle exportée par l'extracteur ---------------------------------------------------------------------------------------
 
-test('--exporter-commentaires : la copie de contrôle est tirée du dump (lignes, colonne, sort, cellule), sans écrire de page', () => {
+test('--exporter-commentaires : la copie de contrôle est tirée du dump (lignes, colonne, sort, cellule), sans écrire de page', (t) => {
   const dump = classeur();
   cellule(dump, 'Sang', BJ4).note = NOTE_LIGNES;
   cellule(dump, 'Sang', BJ4).threads = [{ text: 'Un fil.', done: true }, { text: NOTE_LIGNES }];
   cellule(dump, 'Feu', BJ7).threads = [{ text: 'Autre fil \n\n\nsuite' }];
-  const dir = mkdtempSync(join(tmpdir(), 'magies-export-'));
+  const dir = dossierTemporaire('magies-export', { t });
   writeFileSync(join(dir, 'magie-v8.json'), JSON.stringify(dump));
   const sortie = join(dir, 'reference.json');
   const r = spawnSync('python3', ['-I', script, '--dump', join(dir, 'magie-v8.json'), '--sans-formats', '--exporter-commentaires', sortie], { encoding: 'utf8' });
@@ -817,10 +817,10 @@ test('--exporter-commentaires : la copie de contrôle est tirée du dump (lignes
   assert.deepEqual(JSON.parse(readFileSync(sortie, 'utf8')).entrees, copie);
 });
 
-test('--exporter-commentaires : une note sans place (cellule vide) est refusée, rien n\'est écrit', () => {
+test('--exporter-commentaires : une note sans place (cellule vide) est refusée, rien n\'est écrit', (t) => {
   const dump = classeur();
   ajoute(dump, 'Sang', { r: 5, c: 62, v: '', note: 'Sans texte à côté' });
-  const dir = mkdtempSync(join(tmpdir(), 'magies-export-'));
+  const dir = dossierTemporaire('magies-export', { t });
   writeFileSync(join(dir, 'magie-v8.json'), JSON.stringify(dump));
   const sortie = join(dir, 'reference.json');
   const r = spawnSync('python3', ['-I', script, '--dump', join(dir, 'magie-v8.json'), '--sans-formats', '--exporter-commentaires', sortie], { encoding: 'utf8' });
@@ -841,8 +841,8 @@ test('magies.py --verifier : les pages du dépôt sont celles que le vrai dump p
   assert.match(r.stdout, /vérification : OK \(15 pages\)/);
 });
 
-test('magies.py --exporter-commentaires sur le vrai dump : la copie de contrôle du dépôt est à jour (MAGIES_DUMP)', { skip: sansDump }, () => {
-  const dir = mkdtempSync(join(tmpdir(), 'magies-reel-'));
+test('magies.py --exporter-commentaires sur le vrai dump : la copie de contrôle du dépôt est à jour (MAGIES_DUMP)', { skip: sansDump }, (t) => {
+  const dir = dossierTemporaire('magies-reel', { t });
   const sortie = join(dir, 'reference.json');
   const r = spawnSync('python3', ['-I', script, '--dump', dumpReel, ...(process.env.MAGIES_XLSX ? ['--xlsx', process.env.MAGIES_XLSX] : []), '--exporter-commentaires', sortie], { encoding: 'utf8' });
   assert.equal(r.status, 0, r.stdout + r.stderr);

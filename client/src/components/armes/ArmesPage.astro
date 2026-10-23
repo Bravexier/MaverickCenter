@@ -3,60 +3,102 @@ import armesCss from '../../styles/armes/armes.css?raw';
 import { attributEd } from '../../lib/edition-modele.mjs';
 import { RENDUS } from '../../lib/edition-rendu.mjs';
 import { ancreDeMateriau, type chargerArmes, type contexteDesArmes } from '../../lib/armes-db.mjs';
-import { COMPETENCES_D_ARME, totalDesAmeliorations } from '../../lib/arme-champs.mjs';
-import { htmlDuFiltreDeCompetence } from '../../lib/armes-rendu.mjs';
-import { htmlAvecMonnaies, htmlDePiece, MONNAIES_DU_JEU } from '../../lib/monnaies.mjs';
+import { COMPETENCES_D_ARME } from '../../lib/arme-champs.mjs';
+import { htmlDuCoutElementaire, htmlDuFiltreDeCompetence, menusDesArmes, MODELE_DE_FAMILLE } from '../../lib/armes-rendu.mjs';
+import { texteDuCoutElementaire } from '../../lib/arme-forge.mjs';
+import { htmlDePiece, MONNAIES_DU_JEU } from '../../lib/monnaies.mjs';
+import { CLASSE_DES_ARMES_DE_DEPART, classeDeMateriau, cssDesFamilles, cssDesSecondsRangs } from '../../lib/palette-css.mjs';
+import Tableau from '../Tableau.astro';
 import TableauArmes from './TableauArmes.astro';
+import OngletDeFamille from './OngletDeFamille.astro';
+import PanneauDeRegles from '../equipement/PanneauDeRegles.astro';
+import type { PanneauRendu } from '../equipement/PanneauDeRegles.astro';
 
-// Page /ressources/armes/ (demande du propriétaire, 2026-10-13 : « refaire intégralement la présentation de l'onglet des armes », « Pas de tableau
-// markdown, inspire-toi des sorts et fais un tableau par type d'arme ») : rendue depuis les tables de la base (lib/armes-db.mjs), jamais depuis son
-// Markdown. Les règles de l'onglet (texte du classeur avec sa mise en forme) en tête, repliées ; un filtre par compétence (Lourde, Légère, Arc,
-// Arbalète, et « Arme de départ » : lib/armes-filtres.mjs) ; un tableau repliable par famille (TableauArmes.astro) ; à côté, dans un panneau large, quand
-// une arme est sélectionnée, sa fiche (un seul cadre, avec son bouton Fermer) et, dessous, les matériaux et les améliorations côte à côte : choisir un
-// matériau et une amélioration ajuste les dégâts, la durabilité, les effets et le coût de la fiche (src/scripts/armes.mjs, calcul : lib/arme-forge.mjs).
-// Sans JavaScript, tout est affiché (ni fiche ni filtre).
-// Mode modification du site de dev : pas de sélection, la fiche est cachée, tous les tableaux sont visibles et leurs champs modifiables
-// (src/scripts/edition/armes.mjs), sauf les matériaux : leur référence est la page « Composants » (décision R62), ils ne sont ici qu'en lecture. CSS : styles/armes/armes.css (?raw, inséré ici seulement).
+// Onglet « Armes » de la page /ressources/equipement/ (components/equipement/EquipementPage.astro ; demande du propriétaire, 2026-10-16 : « J'aimerai
+// fusionner "Armes" et "Armures" dans un seule onglet : "Equipement" […] les "Armes" seront dans un onglet à part » ; avant, la page /ressources/armes/,
+// dont l'adresse mène à l'onglet ; demande du propriétaire, 2026-10-13 : « refaire intégralement la présentation de l'onglet des armes », « Pas de tableau
+// markdown, inspire-toi des sorts et fais un tableau par type d'arme ») : un panneau (`section.equipement-panneau#armes`, ouvert au départ), rendu
+// depuis les tables de la base (lib/armes-db.mjs), jamais depuis le Markdown de la page « Armes ». Le panneau de règles de l'onglet en tête, replié
+// (components/equipement/PanneauDeRegles.astro, migration 0056 ; texte du classeur avec sa mise en forme, et en tuiles Recharge longue, Recharge très
+// longue, Mordhau, Dague, Arme de jet et le prix : demande du propriétaire, 2026-10-16) ; un filtre par compétence (Lourde, Légère, Arc, Arbalète, et
+// « Arme de départ » : lib/armes-filtres.mjs) ; deux menus à onglets l'un sous l'autre (demande du propriétaire, 2026-10-23 : « Il faudrai réduire çà
+// en deux menus à onglet. Un pour les armes de mêlée l'autre pour les armes à distances. Le fonctionnement interne des tableaux reste inchangé ») :
+// « Armes de mêlée » (familles de catégorie `contact`) et « Armes à distance » (`distance`), groupées ici par `familles[].categorie` (décision R127,
+// lib/armes-rendu.mjs#menusDesArmes), dans l'ordre de l'onglet ; chaque menu, un bloc `section.armes-bloc` (son titre, sa barre `nav.armes-onglets
+// [data-onglets]`, puis ses panneaux) : un onglet par famille (OngletDeFamille.astro : nom, pastille du dé, nombre d'armes) vers le tableau de la
+// famille (TableauArmes.astro, id `famille-<id>`), un seul ouvert par menu (components/Onglets.astro, posé une fois par la page). L'onglet choisi est
+// écrit dans l'adresse, `#famille-<id>` (demande du propriétaire, 2026-10-23 : « On peut retenir l'onglet ouvert #epee par exemple » ; forme choisie :
+// « #famille-epees ») : recharger la page ou partager l'adresse rouvre l'onglet Armes puis la famille ; `#boucliers` reste l'onglet Boucliers ; quand le
+// filtre ferme l'onglet ouvert, l'adresse suit celui qui s'ouvre (src/scripts/armes.mjs, lib/armes-filtres.mjs#ancreApresLeFiltre). À côté, toujours
+// affiché et de la
+// largeur de celui des armures (demande du propriétaire, 2026-10-16 : « Avoir l'endroit de l'arme en permanence visible comme c'est le cas pour
+// l'armure, et avec la même largeur »), le panneau de l'arme : sa fiche (vide tant qu'aucune arme n'est choisie ; un seul cadre, réduit à trois tuiles,
+// le détail de leur calcul dans leur infobulle, puis effets, description et origine) et, dessous, les matériaux (chaque ligne dans la couleur du
+// matériau, ses effets sur une ligne) et les améliorations côte à côte : choisir un matériau et une amélioration ajuste les dégâts, la solidité, les
+// effets et le coût de la fiche (src/scripts/armes.mjs, calcul : lib/arme-forge.mjs). Sans JavaScript, tout est affiché (ni fiche ni filtre) : les
+// tableaux se suivent, chacun sous son titre, les onglets ne sont que des liens.
+// Mode modification du site de dev : pas de sélection, la fiche est cachée ; les onglets restent affichés (demande du propriétaire, 2026-10-23 : « Je
+// veux les onglets aussi », qui remplace pour l'affichage en onglets la demande antérieure « tous les tableaux sont visibles ») ; chaque tableau a ses
+// champs modifiables (src/scripts/edition/armes.mjs), sauf les matériaux : leur référence est la page « Composants » (décision R62), ils ne sont ici
+// qu'en lecture. Une famille se renomme, change de dé et d'en-tête de coût dans l'en-tête de son tableau, et se crée par « + Nouvelle famille » sous la
+// barre de son menu, qui fixe sa catégorie (décision R159) : son onglet et son tableau sont les deux `<template data-armes-modele>` de la fin, rendus pour
+// une famille fictive (lib/armes-rendu.mjs#MODELE_DE_FAMILLE), que l'extension remplit (le même HTML que celui de la page : test/armes-html.test.mjs).
+// CSS : styles/armes/armes.css (?raw, inséré ici seulement).
+// Armes élémentaires (décision R167 ; design du propriétaire : « Met juste directement l'arme élémentaire dans chaque tableau. » ; « en sélectionnant
+// l'arme élémentaire en question ça affichera ou non la bonne colone du tableau "amélioration" et grisera le "matériau" ») : les 14 de chaque famille à la
+// suite de ses armes (TableauArmes.astro), aucune pour une famille créée sur le site de dev (R167) ; en choisir une montre la colonne « Coût
+// élémentaire » des améliorations (les gemmes de sa magie) au lieu du coût matériel et grise les matériaux (src/scripts/armes.mjs : classe
+// `armes--elementaire` posée sur `.armes`) ; sans JavaScript et en mode modification, les deux colonnes de coût se voient. En mode modification, elles
+// restent en lecture (leur source est la page « Pièces élémentaires ») : ni champ ni Supprimer, une arme créée s'insère avant elles.
 type Armes = ReturnType<typeof chargerArmes>;
 interface Props {
   armes: Armes;
   contexte: ReturnType<typeof contexteDesArmes>;
-  /** HTML des règles de la page : l'introduction et « Comment déterminer le prix de votre arme ? » (Markdown de la page, lib/armes-db.mjs#reglesDeLaPage). */
-  regles: { introduction: string; prix: string };
-  /** première phrase des règles, affichée sous le titre */
-  resume?: string | null;
+  /** le panneau de règles de l'onglet (`armes`), le Markdown de ses blocs rendu (src/pages/ressources/equipement.astro) */
+  regles: PanneauRendu | null;
 }
-const { armes, contexte, regles, resume } = Astro.props;
-const total = totalDesAmeliorations(armes.ameliorations);
+const { armes, contexte, regles } = Astro.props;
 const edM = (id: string, colonne: string) => attributEd('materiau_arme', { ressource_id: id }, colonne);
 const edA = (id: string, colonne: string) => attributEd('amelioration_equipement', { id }, colonne);
-const nbArmes = armes.familles.reduce((n, f) => n + f.armes.length, 0);
+// les armes d'une famille : celles du catalogue et ses armes élémentaires (R167), toutes des lignes de son tableau
+const armesDe = (f: Armes['familles'][number]) => f.armes.length + f.armes_elementaires.length;
+const nbArmes = armes.familles.reduce((n, f) => n + armesDe(f), 0);
+const menus = menusDesArmes(armes.familles);
 // filtre par compétence (demande du propriétaire ; lib/armes-filtres.mjs) : un bouton par compétence d'arme, dans la couleur de sa caractéristique
 // (décision R48), qui sert aussi de légende aux pastilles des tableaux
 const FILTRES = Object.keys(COMPETENCES_D_ARME).map((id) => htmlDuFiltreDeCompetence(id, contexte));
+// le dégradé d'une arme de deux compétences : les classes de second rang des caractéristiques (--couleur-2), émises par le seul onglet qui les pose
+// (lib/palette-css.mjs#cssDesSecondsRangs ; les classes des caractéristiques sont sur chaque page)
+const secondsRangs = cssDesSecondsRangs('caracteristique');
+// la couleur de chaque matériau (sa ligne, sa pastille dans la fiche de l'arme) et le bleu des armes de départ (`--depart`, tiré de la classe posée sur
+// `.armes`) : les classes de la palette (familles `materiau` et `arme`, valeurs dans lib/materiaux-couleurs.mjs et lib/equipement-couleurs.mjs),
+// émises par cet onglet, jamais un style
+const couleurs = cssDesFamilles(['materiau', 'arme']);
+// les modèles d'une famille créée (décision R159) ne servent qu'au mode modification : posés là où la page peut charger l'éditeur, comme
+// components/edition/Edition.astro (layouts/Base.astro) — jamais dans la version portable (tools/build-artifact.mjs, INLINE_CSS=1 : pas de service) ;
+// le build de production les garde, comme l'éditeur, que le service n'ouvre qu'avec MAVERICK_EDITION=1
+const avecModeles = process.env.INLINE_CSS !== '1';
+// le coût élémentaire cumulé du +1 au +N (R167 : « le coût est cumulatif »), en infobulle de sa case (lib/arme-forge.mjs, le calcul de la fiche ; la
+// gemme : celle de l'arme choisie, inconnue ici ; rien au +1, son cumul est sa ligne) ; les fonds des armes élémentaires : les classes des magies
+// (couleur-magie-<id>), posées sur chaque page par layouts/Base.astro (FAMILLES_DE_CHAQUE_PAGE)
+const coutCumule = (niveau: number) => {
+  const c = niveau > 1 ? armes.couts_elementaires.find((x) => x.niveau === niveau) : null;
+  return c ? texteDuCoutElementaire(c, null) : '';
+};
 ---
 
 <style is:inline set:html={armesCss}></style>
+<style is:inline set:html={secondsRangs}></style>
+<style is:inline set:html={couleurs}></style>
 <script is:inline>
   document.documentElement.classList.add('js');
 </script>
-<div class="armes" data-armes>
+<section class="equipement-panneau is-active" id="armes" aria-labelledby="titre-armes">
+<h2 class="equipement-panneau__titre" id="titre-armes">{armes.page?.titre ?? 'Armes'}</h2>
+<div class={`armes ${CLASSE_DES_ARMES_DE_DEPART}`} data-armes>
   {/* l'icône du Ricken d'or (lib/monnaies.mjs), que le script de la page reprend pour les coûts qu'il écrit (aucun module partagé avec lui) */}
   {Object.keys(MONNAIES_DU_JEU).map((abr) => <template data-armes-piece={abr} set:html={htmlDePiece(abr)}></template>)}
-  <h1>{armes.page?.titre ?? 'Armes'} <span class="badge">Ressource</span></h1>
-  {resume && <p class="armes__chapo" set:html={htmlAvecMonnaies(resume)} />}
-  <details class="armes-regles">
-    <summary>Règles des armes : fabrication, recharge, mordhau, cas particuliers, prix</summary>
-    <div class="armes-regles__corps">
-      <div class="prose armes-regles__texte"><Fragment set:html={regles.introduction} /></div>
-      {regles.prix && (
-        <section class="armes-regles__prix" aria-labelledby="armes-prix-titre">
-          <h2 id="armes-prix-titre">Comment déterminer le prix de votre arme ?</h2>
-          <Fragment set:html={regles.prix} />
-        </section>
-      )}
-    </div>
-  </details>
+  <PanneauDeRegles panneau={regles} />
 
   <div class="armes-outils">
     <div class="armes-filtre js-seul" role="group" aria-labelledby="armes-filtre-titre" data-armes-filtre>
@@ -69,76 +111,83 @@ const FILTRES = Object.keys(COMPETENCES_D_ARME).map((id) => htmlDuFiltreDeCompet
     <p class="armes-legende sans-js"><span class="armes-legende__depart" title="Arme de départ">Arme de départ</span></p>
     <p class="armes-outils__boutons js-seul">
       <span class="armes-aide"><span data-armes-compte>{nbArmes} armes</span>. Cliquez sur une arme pour ouvrir sa fiche et la forger.</span>
-      <button type="button" class="armes-bouton" data-armes-tout="ouvrir">Tout déplier</button>
-      <button type="button" class="armes-bouton" data-armes-tout="fermer">Tout replier</button>
     </p>
   </div>
 
   <div class="armes-vue">
     <div class="armes-tableaux">
-      {armes.familles.map((f) => <TableauArmes famille={f} {contexte} />)}
+      {
+        menus.map((m) => (
+          <section class="armes-bloc" id={`armes-${m.categorie}`} aria-labelledby={`armes-${m.categorie}-titre`} data-armes-bloc={m.categorie}>
+            <h3 class="armes-bloc__titre" id={`armes-${m.categorie}-titre`}>{m.titre}</h3>
+            {/* le groupe d'onglets du menu est sa barre seule (components/Onglets.astro prend tous les `.onglet` d'un groupe) */}
+            <nav class="armes-onglets" aria-label={m.titre} data-onglets={m.titre}>
+              {m.familles.map((f, i) => <OngletDeFamille famille={f} actif={i === 0} />)}
+            </nav>
+            {m.familles.map((f, i) => <TableauArmes famille={f} {contexte} actif={i === 0} soliditeElementaire={armes.solidite_elementaire} />)}
+          </section>
+        ))
+      }
     </div>
 
     <aside class="armes-cote" aria-label="Arme choisie, matériaux et améliorations">
-      <section class="arme-fiche" aria-label="Fiche de l’arme" aria-live="polite" hidden></section>
+      <section class="arme-fiche" aria-label="Fiche de l’arme" aria-live="polite">
+        <p class="arme-fiche__vide">Choisissez une arme dans un tableau : sa fiche s’affiche ici, forgée dans le matériau et avec l’amélioration choisis dessous.</p>
+      </section>
 
       <div class="armes-cote__tables">
-        <details class="armes-famille armes-materiaux" id="materiaux" open>
-          <summary class="armes-famille__titre"><span class="armes-famille__nom">Matériaux</span><span class="armes-famille__compte">{armes.materiaux.length}</span></summary>
-          <p class="armes-famille__note js-seul">Le matériau dont l’arme est forgée (fer par défaut) : son prix et ses bonus s’ajoutent à la fiche.</p>
-          <div class="armes-wrap">
-            <table class="armes-table armes-table--materiaux">
-              <thead><tr><th scope="col">Matière</th><th scope="col">Prix</th><th scope="col">Effets</th></tr></thead>
-              <tbody>
-                {
-                  armes.materiaux.map((m) => (
-                    <tr class="materiau" id={ancreDeMateriau(m.ligne.ressource_id)} data-materiau={m.ligne.ressource_id} data-defaut={m.defaut ? '1' : undefined}>
-                      <th scope="row" class="materiau__nom" style={`--mat: ${m.couleur.fond}; --mat-texte: ${m.couleur.texte}`}>
-                        <span data-ed-lecture={attributEd('ressource', { id: m.ligne.ressource_id }, 'nom')} data-ed-cible=".materiau__choisir">
-                          <button type="button" class="materiau__choisir" aria-pressed="false">{m.nom}</button>
-                        </span>
-                      </th>
-                      <td class="materiau__prix" data-ed-lecture={attributEd('ressource', { id: m.ligne.ressource_id }, 'prix_brut')} data-ed-rendu="materiau-prix" set:html={RENDUS['materiau-prix'](m.prix, m.ligne, contexte)} />
-                      <td class="materiau__effet" data-ed-lecture={edM(m.ligne.ressource_id, 'effet_brut')} data-ed-rendu="materiau-effet" set:html={RENDUS['materiau-effet'](m.ligne.effet_brut, m.ligne, contexte)} />
-                    </tr>
-                  ))
-                }
-              </tbody>
-            </table>
-          </div>
-        </details>
-
-        <details class="armes-famille armes-ameliorations" id="ameliorations" open>
-          <summary class="armes-famille__titre"><span class="armes-famille__nom">Améliorations</span><span class="armes-famille__compte">+1 à +{armes.ameliorations.length}</span></summary>
-          <p class="armes-famille__note">Une amélioration +N demande les coûts des niveaux +1 à +N ; un « Matériel » est une unité du matériau de l’arme.</p>
-          <div class="armes-wrap">
-            <table class="armes-table armes-table--ameliorations">
-              <thead><tr><th scope="col">Niveau</th><th scope="col">Coût</th><th scope="col">Effet</th></tr></thead>
-              <tbody>
-                <tr class="amelioration amelioration--aucune js-seul-ligne" data-niveau="0">
-                  <th scope="row" class="amelioration__niveau"><button type="button" class="amelioration__choisir" aria-pressed="false">Aucune</button></th>
-                  <td colspan="2" class="muted">Arme non améliorée</td>
+        <Tableau id="materiaux-armes" titre="Matériaux" compte={armes.materiaux.length} bloc="armes-famille" class="armes-materiaux" classeTable="armes-table armes-table--materiaux table-donnees--serree">
+          <p slot="avant" class="tableau__note armes-famille__note js-seul armes-materiaux__note">Le matériau dont l’arme est forgée (fer par défaut) : son prix et ses bonus s’ajoutent à la fiche.</p>
+          <p slot="avant" class="tableau__note armes-famille__note js-seul armes-materiaux__note-elementaire">Une arme élémentaire n’a pas de matériau.</p>
+          <thead><tr><th scope="col">Matière</th><th scope="col">Prix</th><th scope="col" title="Le bonus aux dégâts, puis les autres effets">Effets</th></tr></thead>
+          <tbody>
+            {
+              armes.materiaux.map((m) => (
+                <tr class={`materiau ligne-couleur ${classeDeMateriau(m.ligne.ressource_id)}`} id={ancreDeMateriau(m.ligne.ressource_id)} data-materiau={m.ligne.ressource_id} data-defaut={m.defaut ? '1' : undefined}>
+                  <th scope="row" class="materiau__nom">
+                    <span data-ed-lecture={attributEd('ressource', { id: m.ligne.ressource_id }, 'nom')} data-ed-cible=".materiau__choisir">
+                      <button type="button" class="materiau__choisir" aria-pressed="false">{m.nom}</button>
+                    </span>
+                  </th>
+                  <td class="materiau__prix" data-ed-lecture={attributEd('ressource', { id: m.ligne.ressource_id }, 'prix_brut')} data-ed-rendu="materiau-prix" set:html={RENDUS['materiau-prix'](m.prix, m.ligne, contexte)} />
+                  <td class="materiau__effet" data-ed-lecture={edM(m.ligne.ressource_id, 'effet_brut')} data-ed-rendu="materiau-effet" set:html={RENDUS['materiau-effet'](m.ligne.effet_brut, m.ligne, contexte)} />
                 </tr>
-                {
-                  armes.ameliorations.map((a) => (
-                    <tr class="amelioration" id={`amelioration-${a.niveau}`} data-niveau={a.niveau}>
-                      <th scope="row" class="amelioration__niveau"><button type="button" class="amelioration__choisir" aria-pressed="false">+{a.niveau}</button></th>
-                      <td class="amelioration__cout" data-ed={edA(a.id, 'cout_brut')} data-ed-rendu="amelioration-cout" set:html={RENDUS['amelioration-cout'](a.cout_brut, a, contexte)} />
-                      <td class="amelioration__effet" data-ed={edA(a.id, 'effet_brut')} data-ed-rendu="amelioration-effet" set:html={RENDUS['amelioration-effet'](a.effet_brut, a, contexte)} />
-                    </tr>
-                  ))
-                }
-              </tbody>
-              <tfoot>
-                <tr><th scope="row">Total</th><td colspan="2" data-armes-total set:html={htmlAvecMonnaies(total)} /></tr>
-              </tfoot>
-            </table>
-          </div>
-        </details>
+              ))
+            }
+          </tbody>
+        </Tableau>
+
+        <Tableau id="ameliorations-arme" titre="Améliorations" compte={`+1 à +${armes.ameliorations.length}`} bloc="armes-famille" class="armes-ameliorations" classeTable="armes-table armes-table--ameliorations table-donnees--serree"
+          note="Une amélioration +N demande les coûts des niveaux +1 à +N ; un « Matériel » est une unité du matériau de l’arme.">
+          <p slot="avant" class="tableau__note armes-famille__note js-seul armes-ameliorations__note-elementaire">Arme élémentaire : une amélioration +N demande les gemmes des niveaux +1 à +N, celles de la magie de l’arme.</p>
+          <thead><tr><th scope="col">Niveau</th><th scope="col" class="amelioration__cout">Coût</th><th scope="col" class="amelioration__cout-elementaire">Coût élémentaire</th><th scope="col">Effet</th></tr></thead>
+          <tbody>
+            <tr class="amelioration amelioration--aucune js-seul-ligne" data-niveau="0">
+              <th scope="row" class="amelioration__niveau"><button type="button" class="amelioration__choisir" aria-pressed="false">Aucune</button></th>
+              <td colspan="2" class="muted">Arme non améliorée</td>
+            </tr>
+            {
+              armes.ameliorations.map((a) => (
+                <tr class="amelioration" id={`amelioration-${a.niveau}`} data-niveau={a.niveau}>
+                  <th scope="row" class="amelioration__niveau"><button type="button" class="amelioration__choisir" aria-pressed="false">+{a.niveau}</button></th>
+                  <td class="amelioration__cout" data-ed={edA(a.id, 'cout_brut')} data-ed-rendu="amelioration-cout" set:html={RENDUS['amelioration-cout'](a.cout_brut, a, contexte)} />
+                  <td class="amelioration__cout-elementaire" set:html={htmlDuCoutElementaire(a, coutCumule(a.niveau))} />
+                  <td class="amelioration__effet" data-ed={edA(a.id, 'effet_brut')} data-ed-rendu="amelioration-effet" set:html={RENDUS['amelioration-effet'](a.effet_brut, a, contexte)} />
+                </tr>
+              ))
+            }
+          </tbody>
+        </Tableau>
       </div>
     </aside>
   </div>
+  {/* les infobulles des tuiles de la fiche (le détail des dégâts, de la solidité et du coût), écrites par le script hors du panneau de côté, qui défile */}
+  <div class="armes-bulles" data-armes-bulles></div>
+  {/* les modèles de l'onglet et du tableau d'une famille créée en mode modification (décision R159 ; src/scripts/edition/armes.mjs) */}
+  {avecModeles && <template data-armes-modele="onglet"><OngletDeFamille famille={MODELE_DE_FAMILLE} /></template>}
+  {avecModeles && <template data-armes-modele="famille"><TableauArmes famille={MODELE_DE_FAMILLE} {contexte} /></template>}
 </div>
+</section>
 
 <script>
   import '../../scripts/armes.mjs';

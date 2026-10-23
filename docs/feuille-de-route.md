@@ -16,6 +16,13 @@ n'est encore réalisé au-delà de la première étape.
    par rapport à la production, en note de version historisée, et son bouton apporte les modifications du site dans `data/rows` puis livre en
    production (`docs/serveur.md`, « Mise à jour ») ; le propriétaire a décidé que **le site devient la source** des données qu'il modifie (les
    modifications versées dans `historique_modification`, que les tests relisent pour ne plus épingler ce que le site a changé : `client/src/lib/historique-site.mjs`). Relecture (`brouillon / validé`), auteur (connexion Discord) et accès restreint au bouton restent à faire.
+   **API REST et page Debug** (2026-10-15, en place) : sur le site de dev seulement, `/api/v1/` sert chaque élément du jeu rangé dans la base
+   (104 ressources en 8 modules, description OpenAPI pour les outils externes) et écrit, par le journal de l'édition, ce que le service sait déjà
+   modifier ; la page Debug (menu Outils) montre le système, les performances, les journaux du serveur et le schéma de la base, en quatre menus
+   fermés par défaut (son testeur de l'API a été retiré le 2026-10-15, « devenu inutile après le schéma » : [`api.md`](api.md)). Fermée en
+   production (décision du propriétaire : la base n'y est ouverte que par le front). **Le CRUD complet reste à étendre domaine par domaine** : armures, boucliers, potions, accessoires, ethnies,
+   états, postures, dieux, familiers, créatures… sont en lecture seule tant que le service d'édition ne sait pas les écrire (recette :
+   [`api.md`](api.md), « Rendre une ressource modifiable »).
 3. **Simulation de combats** (à long terme) : jouer des combats pour juger l'équilibrage des sorts, des classes et des races.
 
 À côté de ces trois étapes, un axe **communauté de jeu** (comptes Discord, groupes, planning, bot, boîte à idées, statistiques) et l'achèvement du
@@ -34,13 +41,13 @@ d'une source ou d'une décision de [`decisions-regles.md`](decisions-regles.md) 
 | --- | --- | --- | --- | --- |
 | E1 | Galerie : créations humaines / images d'IA | A · V0.3 | — | `/galeries/`, carrousel de l'accueil, `lib/galerie.mjs` (le logo seul) |
 | E2 | Page du Bestiaire | A · V0.3, puis B · V0.5 | réponses du propriétaire (`docs/bestiaire.md`) | **premier jet en place** (2026-10-11) : `/bestiaire/`, monstres du « Bestiaire 2.0 » (section 8 bis) et créatures invoquées à part, tableaux filtrables |
-| E3 | Refonte de l'équipement et intégration à la fiche | A · V0.4 | la liste des ratés de l'intégration | catalogues de la section 9, bloc équipement de `/fiche/`, tables `personnage_arme`, `personnage_armure`… |
+| E3 | Refonte de l'équipement et intégration à la fiche | A · V0.4 | la liste des ratés de l'intégration | catalogues de la section 9, bloc équipement de `/fiche/`, tables `personnage_arme`, `personnage_armure_partie`… |
 | E4 | Générateur d'accessoires magiques | A · V0.4 | E3 pour les accessoires | tables de tirage `accessoire_emplacement`, `accessoire_propriete`, `accessoire_effet` ; `personnage_accessoire` |
 | E5 | Chronologie | B · V0.5 | sources du lore | **premier jet en place** (2026-10-13) : `/chronologie/`, une page par événement daté du Codex et des races, ouverte à droite d'une frise verticale en dégradé, chevrons Haut et Bas ([`chronologie.md`](chronologie.md)) |
 | E6 | Carte interactive et lieux | B · V0.5 | image de la carte, sources | type `cartes` (aucune page), entrée « bientôt » du menu Codex |
 | E7 | Connexion par Discord seulement : touriste ou joueur, puis rôles | C · V0.6, éprouvée avant la V1.0 | application Discord du propriétaire | tables `utilisateur`, `utilisateur_role` ; « Authentification » plus bas |
 | E8 | Fiches de personnage assignées à un compte | C · V0.6 | E7 | `personnage.proprietaire_id`, `personnage_partage`, `v_personnage_visible` |
-| E9 | Groupes (OS, HC hors campagne, campagne) et planning des parties | D · V1.2 | E7, E8 | `groupe`, `groupe_membre`, `v_groupe_controle` ; entrée « bientôt » du menu Personnages |
+| E9 | Groupes (OS, HC hors campagne, campagne) et planning des parties | D · V1.2 | E7, E8 | `groupe`, `groupe_membre`, `v_groupe_controle` ; entrées « bientôt » « Groupes d’aventures » (Espace joueur) et « Groupes de jeu » (Espace MJ) du menu |
 | E10 | Bot Discord : lien site ↔ serveur, notifications | A · V0.3 (annonces), D · V1.3 | E7 pour les notifications ciblées | — |
 | E11 | Boîte à idées, tickets, rapports de bugs | D · V1.1 | E7 | entrée « bientôt » du menu Outils |
 | E12 | Statistiques | E · V1.4 | E8 et des fiches réelles | `v_personnage_niveau`, base vivante du service |
@@ -127,11 +134,13 @@ flowchart LR
 - **Déjà là** : les catalogues typés (section 9 : armes, armures, boucliers, matériaux, améliorations, pièces élémentaires, accessoires, gemmes, bâtons
   magiques…) ; les pages des Ressources, rendues depuis leur Markdown ; dans `/fiche/`, le bloc équipement (armes, armure, bouclier, accessoires,
   inventaire, objets de départ du métier). Manquent ([`character-generator.md`](character-generator.md)) : les effets d'équipement dans les calculs (AP/AM
-  des pièces, bonus des améliorations, résistances des objets), et « Objets à la ceinture » (boucliers, bâtons magiques) est « bientôt ».
+  des pièces, bonus des améliorations, résistances des objets). La ceinture a son onglet dans « Équipement » (d'abord une page, 2026-10-15 ; l'onglet « Ceinture »
+  depuis le 2026-10-16, décisions R81 et R82 : potions, huiles, carquois et sacs, bâtons magiques ; le bouclier n'y va pas, son emplacement est dans l'armure).
 - **Portée** (réponse du propriétaire, 2026-10-11) : une refonte **visuelle** et de l'**intégration à la fiche**, où il y a aujourd'hui des ratés ; les
   règles de l'équipement ne changent pas.
 - **Étapes proposées** : (1) les pages des Ressources refaites et rendues depuis les tables (un tableau par catalogue, comme `/metiers/`), modifiables sur
-  le site de dev ; (2) « Objets à la ceinture » ; (3) dans la fiche, les ratés corrigés un par un (chacun relevé avec le propriétaire, chacun son test), le
+  le site de dev ; (2) la ceinture (en place : l'onglet « Ceinture » de `/ressources/equipement/`, vue `v_objet_ceinture` ; restent la modification sur le site
+  de dev, qui doit faire suivre les pages des potions et du bâton ; dans la fiche, le sac selon la Force et la ceinture tirée du sac : décisions R88, R89) ; (3) dans la fiche, les ratés corrigés un par un (chacun relevé avec le propriétaire, chacun son test), le
   choix dans le catalogue et les effets codés en données, un effet à la fois, cité et testé (`lib/fiche-moteur.mjs`) : un effet non codé reste affiché en
   texte et n'est pas compté ; (4) poids, prix et bourse, si les sources les donnent.
 
@@ -141,7 +150,7 @@ flowchart LR
   propriété (1d100 en 8 plages, dont Malédiction de 96 à 100 : `accessoire_propriete`), effet selon la propriété (`accessoire_effet`, gemmes
   `accessoire_effet_gemme`), montures (`accessoire_monture`) ; une fiche garde un accessoire avec sa valeur tirée et sa case « Malédiction » (`personnage_accessoire`).
 - **À faire** : un module pur `lib/generateur-accessoire.mjs` qui rejoue ces tables avec un tirage à graine (le même tirage se rejoue, comme prévu pour la
-  simulation) et montre chaque jet ; une page (Ressources › Accessoires ou Outils) ; « Ajouter à la fiche » vers `personnage_accessoire`. Une ligne vide
+  simulation) et montre chaque jet ; une page (aujourd'hui l'onglet Accessoires de Règles › Équipement) ; « Ajouter à la fiche » vers `personnage_accessoire`. Une ligne vide
   de la source donne « ligne vide dans la source », jamais un effet inventé ; tests contre les tables.
 
 ### E5 — Chronologie (jalon B)
@@ -170,7 +179,7 @@ La connexion est décidée plus bas (« Authentification : Discord ») ; cette l
 
 - **Discord uniquement** : ni adresse électronique ni mot de passe ; le mot de passe partagé du site disparaît.
 - **Deux statuts d'abord** (réponse du propriétaire, 2026-10-11) : **touriste** — pas connecté, ou connecté sans être membre du serveur Discord —, en
-  lecture seule « en surface » ; **joueur** — membre du serveur Discord. À chaque connexion, le service vérifie l'appartenance au serveur (portée OAuth
+  lecture seule « en surface » (à terme, les rubriques Découvrir et Règles du menu seulement : réponse du propriétaire du 2026-10-18) ; **joueur** — membre du serveur Discord. À chaque connexion, le service vérifie l'appartenance au serveur (portée OAuth
   `guilds.members.read`) ; le bot (E10) la tient à jour entre deux connexions, et qui quitte le serveur redevient touriste.
 - **Rôles MJ, éditeur, administrateur** : plus tard (réponse du propriétaire), d'après des rôles Discord à choisir ; une correspondance de configuration
   (identifiant de rôle Discord → `mj`, `editeur`, `admin`) en tirera `utilisateur_role`.
@@ -184,7 +193,7 @@ La connexion est décidée plus bas (« Authentification : Discord ») ; cette l
 - **Déjà là** : tout le modèle (fiche de joueur ou prétiré, propriétaire, visibilité privée / MJ / tous, partage à des utilisateurs désignés,
   `v_personnage_visible`), voir « Fiches de personnages » plus bas.
 - **À faire** : le service ne lit que les fiches de `v_personnage_visible` et n'écrit que pour leur propriétaire (ou un administrateur) ; « Mes
-  personnages » dans le menu Personnages ; création d'une fiche à son nom ; réglage de la visibilité et du partage ; **assignation** par un administrateur
+  personnages » dans l’Espace joueur du menu ; création d'une fiche à son nom ; réglage de la visibilité et du partage ; **assignation** par un administrateur
   ou un MJ (donner à un joueur une copie d'un prétiré, qui reste prétiré, ou lui transférer une fiche existante) ; `/personnages/` ne liste que les fiches visibles.
 
 ### E9 — Groupes (OS, HC, campagne) et planning des parties (jalon D)
@@ -225,6 +234,8 @@ La connexion est décidée plus bas (« Authentification : Discord ») ; cette l
   dieux ; niveau moyen et répartition des niveaux (`v_personnage_niveau`), en tout et par groupe ; calculées par le service, en agrégats seulement (aucune
   fiche privée n'est montrée), page Outils › Statistiques.
 - **Des règles** (sans comptes, dès le jalon A) : nombre de sorts par magie et par NPM, classes accessibles par race…, tirés de la base au build.
+  Les résistances et faiblesses des combinaisons de deux magies y vont (vue `v_resistance_combinaison`, R85, R86) : « Il seront dans leur onglet
+  statistiques après qu'on ai finalisé toute la fiche de personnages. », puis « Non c'est pour la page du site plus tard » (le propriétaire, 2026-10-16).
 - **Ensuite** : les statistiques de la simulation de combats (étape 3).
 
 ### Ce qui vaut pour chaque évolution
@@ -246,16 +257,100 @@ La connexion est décidée plus bas (« Authentification : Discord ») ; cette l
 5. **Sources** (salons du lore et des cartes, image de la carte, calendrier du monde) : à voir plus tard (E5, E6). Le « CODEX Maverick » et le
    « Bestiaire 2.0 » sont arrivés le 2026-10-11 (copies du propriétaire : [`codex.md`](codex.md), [`bestiaire.md`](bestiaire.md)).
 
+### Réponses du propriétaire (2026-10-15)
+
+1. **Serveur de dev** : il reste, et tout y reste ouvert (le menu « DB » de la page Debug lit toute sa base, fiches et comptes compris ; seule la base
+   du serveur de production est fermée) : « Le serveur dev restera. Il servira toujours pour modifier les règles par ceux qui en auront l'accès. »
+   Qui y a accès se réglera avec la connexion Discord (E7).
+2. **Fiches sur le serveur de dev** : une fiche créée ou supprimée sur le site de dev ne part pas en production (un lot de mise à jour ne porte
+   jamais la section 13) ; « on a juste une copie de la prod vers dev après la MEP » — ce que le serveur de test ne fait pas encore (question 7).
+
+### Réponses du propriétaire (2026-10-16)
+
+1. **Provenance des données** : « à terme je compte virer la table famille et origine. Les documents ne seront référencés que pour l'archive mais plus
+   besoin de garder les liens de l'origine des données et encore moins à la cellule prêt. C'est bien de le garde pour la construction mais dès la 1.0,
+   le lien sera nétoyé » La table `famille`, les colonnes `origine` (152 tables) et `source_ref` (151 tables) servent jusqu'à la 1.0 : importeurs, contrôles
+   `--verifier`, rapprochement des classeurs (`docs/sources.md`) et mises à jour depuis les classeurs ; elles sont retirées à la 1.0, les Google Docs et
+   Sheets n'étant plus cités que par les archives (`/archives/`). **D'ici là, rien n'est investi dans la provenance** : les références incomplètes relevées
+   par le rapprochement (`docs/sql/rapprochement-classeurs.md`) ne sont pas réparées. Ce que le retrait emportera (`note_cellule`, `ecart_source`, les liens
+   des pages vers leurs sources, ce que les archives disent des pages qui citent un document) se décidera avec le propriétaire au moment de le faire.
+
+### Réponses du propriétaire (2026-10-18)
+
+Le guide est éclaté (« éclater le guide pour retravailler pleinement l'organisation des onglets et de la présentation », 2026-10-16) : ses pages sont
+rangées par le plan du site, `client/src/lib/livres.mjs` (« Découvrir », une page par entrée du menu ; sommaires « Les bases », « Règles avancées »
+et « Guide du MJ » : [`content-guide.md`](content-guide.md), « Les pages du guide : rubriques et sommaires »). Les livres lus dans l'ordre (flèches,
+glissement du doigt, pagination) sont retirés le même jour (« refaire toutes les anciennes pages du guide. Retirer le mécanisme de swipe, et les flèches
+suivant / précédent et la pagination ») ; « Le jeu de rôle, comment ça marche ? » rejoint Bienvenue, les six étapes de la création rejoignent « Créer
+son personnage » ; la page Liens gagne la présentation de chaque lien et l'encart « Notre prochaine rencontre IRL » (une annonce modifiable sur le site
+de dev, table `annonce`).
+
+1. **Le menu en six rubriques**, dans cet ordre : **Découvrir** (la vitrine, faite pour être vue même des non-membres : Bienvenue, L'univers, Créer son
+   personnage, Rejoindre une partie, Liens), **Règles** (Les bases, Races, Magies, Classes, Équipement, Métiers, Artisanat, Règles avancées, Pièces
+   élémentaires, Livres & Parchemins), **Espace joueur** (Fiche de personnage, Personnages ; Groupes d'aventures, Table de jeu et Chroniques à venir),
+   **Espace MJ** (Guide du MJ ; Fiches de PNJ et scénarios, Groupes de jeu à venir), **Codex**, **Outils**. La rubrique « Ressources » et l'entrée
+   « Guide » disparaissent (`client/src/lib/nav.mjs`).
+2. **Visibilité** : « Pour l'instant comme les menus ne sont pas prêt rien n'est caché mais tout de même ils ne verront à terme que les 2 premiers
+   onglets » ; « Tu fait comme si de rien n'était pour l'instant. On verra les caches. » (sic ; le site n'est utilisé que par deux personnes avant une
+   version testable en petit comité). À terme, les non-membres (touristes, E7) ne verront que **Découvrir** et **Règles** ; aujourd'hui, rien n'est
+   caché ni filtré, Espace joueur et Espace MJ compris. C'est la réponse à la question ouverte 1 (« Lecture en surface »).
+3. **Ressources** : « Composants en Artisanat ok. Pieces élémentaires seront ammenée directement dans armes et armures . Livre et parchemin seront dans
+   la partie consommable (ceinture) j'ai oublié de les mentionner. Laisse les visible dans le 2 pour l'instant » (sic) : Composants est sous Règles ›
+   Artisanat (`/regles/artisanat/`) ; Pièces élémentaires et Livres & Parchemins restent pour l'instant deux entrées des Règles. **À faire plus tard** : intégrer les Pièces élémentaires
+   aux onglets Armes et Armures de l'Équipement, les Livres & Parchemins aux consommables de l'onglet Ceinture.
+4. **Liens** (`/decouvrir/liens/`) : « https://discord.gg/GMGBnjzfMk », le serveur Discord « L'univers de Maverick » (déjà cité par les sources de
+   « Bienvenue »), et « Maverick JDR sur Tipeee » (https://fr.tipeee.com/maverickjdr), donné par le propriétaire avec son plan du 2026-10-16
+   (« un ensemble de liens, sur le discord […] et le https://fr.tipeee.com/maverickjdr »).
+5. **Pièges, portes, météo, « Donjon pas bon »** : « dans les règles avancées, pour tout le monde » (groupe « Exploration et voyage » des Règles
+   avancées, pas dans l'Espace MJ).
+6. **Refaire les pages du guide** : « refaire toutes les anciennes pages du guide. Retirer le mécanisme de swipe, et les flèches suivant / précédent et
+   la pagination. Prends chaque nouvelle page depuis le début à recommencer entièrement. Dans la page de bienvenue, retire le sommaire. » Les seize
+   pages de Découvrir et des Bases et « Le Mode Hyper et le Mode Super » sont réécrites de zéro d'après la base, les originaux des deux Docs (« Règle du
+   jeu/Guide pour MJ - Maverick », « Créer sa fiche de personnage ») et les décisions ; ce qui diffère entre un original et la base est consigné, rien
+   n'en est appliqué ([`sql/a-valider.md`](sql/a-valider.md) §6, R83).
+7. **Découvrir** : une page par entrée du menu — « Bienvenue absorbe « Le jeu de rôle, comment ça marche » », « L'univers présente race → magie →
+   classe », « Créer son personnage = les six étapes sur une seule page », « Rejoindre une partie = une nouvelle page pour les joueurs » ; « les pages
+   fusionnées disparaissent, leurs adresses renvoient vers la nouvelle page ». « « Campagne » ou « Scénario one shot » ? » passe dans le Guide du MJ.
+8. **Les bases** : « une page par sujet, listées sur un sommaire « Les bases » à /regles/ (comme les Règles avancées) ».
+9. **Liens et rencontres** : « Étoffe un peu la présentation pour les liens Discord et Tipeee. Laisse également un encart « Notre prochaine rencontre
+   IRL » pour faire la place à une annonce dédiée aux prochaines conventions où Maverick sera présent. » L'encart a un titre fixe et une annonce
+   modifiable sur le site de dev (mode modification), qui part en production avec la mise à jour ; vide, il dit « Aucune rencontre annoncée pour le
+   moment. » (table `annonce`, migration `0068-annonces`). Il était posé sur la page Liens ; le 2026-10-22, le propriétaire le veut sur Bienvenue
+   (« Bonne idée. ») et supprime la page Liens (« Plus d'entrée Liens au menu : tout est sur Bienvenue. L'ancienne adresse renverrait vers
+   Bienvenue. ») : les liens Discord et Tipeee et l'encart passent sous le texte de Bienvenue, `/decouvrir/liens/` y mène
+   ([`sql/a-valider.md`](sql/a-valider.md) §6, G34 tranché). Le 2026-10-23, ils vont sur l'accueil (« Ces 3 blocs auraient plus leur place dans
+   l'onglet d'acceuil. », « Sous la bienvenue et le carrousel ») et `/decouvrir/liens/` n'est plus renvoyée (« supprimer ce lien »).
+
+L'**ordre de lecture** change : l'ancien guide (24 pages) faisait lire la règle du D100 (« Réussir une action ») avant la création du
+personnage ; le plan du propriétaire range les règles de base dans Règles › Les bases, dont c'est la première page (`/regles/reussir-une-action/`,
+en tête du sommaire `/regles/`), après Découvrir ; « Créer son personnage » renvoie vers elle.
+
 ### Questions encore ouvertes
 
-1. **Lecture « en surface »** : quelles pages un touriste voit-il, et lesquelles demandent d'être joueur (E7) ?
+1. **Lecture « en surface »** : quelles pages un touriste voit-il, et lesquelles demandent d'être joueur (E7) ? — *Répondue le 2026-10-18* (ci-dessus) :
+   à terme, Découvrir et Règles seulement ; rien n'est caché aujourd'hui.
 2. **Ratés de l'équipement** : lesquels, dans la fiche (E3) ?
 3. **Fiches existantes** : les fiches Google des joueurs (V15.2.2) sont-elles importées automatiquement ou ressaisies dans `/fiche/` (E8) ?
 4. **Visibilité** : tickets (E11) et statistiques (E12) visibles de tous les membres, ou des administrateurs seulement ? Les prétirés et les fiches
    inachevées (celles qui ont des règles à revoir) comptent-ils dans les statistiques ? Les images d'IA passent-elles dans le carrousel de l'accueil (E1) ?
-5. **Discord** : un groupe a-t-il son salon ou son rôle, créé par le bot ? Quels salons pour les annonces ? « Chroniques » (menu Personnages) sert-il aux
+5. **Discord** : un groupe a-t-il son salon ou son rôle, créé par le bot ? Quels salons pour les annonces ? « Chroniques » (Espace joueur du menu) sert-il aux
    comptes rendus des parties jouées (E9, E10) ?
 6. **Ordre** : les jalons A à E et les versions visées vous conviennent-ils ?
+7. **Copie de la production vers le dev après la mise en production** (réponse 2 ci-dessus, 2026-10-15) : aujourd'hui, le serveur de test
+   ne copie la base de la production qu'à sa **première installation** ; ensuite il garde la sienne (`MAVERICK_BASE_TEST=conservee`,
+   [`deploy/vps/README.md`](../deploy/vps/README.md)), parce qu'il est réinstallé à chaque version de `dev` et que la copie effacerait les
+   modifications des règles en cours. Faut-il recopier la base de la production vers le dev **après chaque mise en production** — toute la
+   base, ou seulement les fiches, les comptes et les groupes (section 13), le journal de l'édition du dev gardé ?
+8. **« Rejoindre une partie »** — *Répondue le 2026-10-18* : « « Campagne » ou « Scénario one shot » ? » passe dans le Guide du MJ
+   (`/mj/campagne-ou-scenario-one-shot/`, son ancienne adresse y renvoie) ; « Rejoindre une partie » est une page nouvelle, pour les joueurs
+   (`guide/rejoindre-une-partie`, `/decouvrir/rejoindre-une-partie/`).
+9. **Les textes qui décrivaient l'ancien guide d'un seul livre** — *Répondue le 2026-10-18* (« refaire toutes les anciennes pages du guide ») : les pages
+   de Découvrir et des Bases sont réécrites ; sur l'accueil, la phrase de la première visite et son bouton ne disent plus que la navigation (« Première
+   visite ? Commencez par Découvrir : le jeu, son univers, la création d'un personnage et comment rejoindre une partie. », bouton « Découvrir Maverick ») ;
+   la phrase de « Le jeu de rôle, comment ça marche ? » qui renvoyait à « la partie « Progresser » » disparaît avec la fusion de la page dans Bienvenue.
+10. **Ordre de lecture** : l'ancien guide, validé par vous, faisait lire la règle du D100 (« Réussir une action ») avant la création du personnage ;
+    aujourd'hui, Découvrir présente la création (« Créer son personnage ») avant Les bases, dont « Réussir une action » est la première page, et
+    « Créer son personnage » renvoie vers elle. Cet ordre vous convient-il ?
 
 ## Orthographe : relecture complète à la conversion en SQL
 

@@ -7,9 +7,8 @@ import { conversionsDe, milliers, pourquoiPasSupprimable, prixEnRf } from './com
 import { htmlAvecMonnaies, htmlDePiece, MONNAIES_DU_JEU } from './monnaies.mjs';
 import { CATEGORIES_D_INGREDIENTS } from './corps-composants.mjs';
 import { attributEd } from './edition-modele.mjs';
-import { couleurDeMateriau } from './materiaux-couleurs.mjs';
 import { RENDUS_DES_ARMES } from './armes-rendu.mjs';
-import { couleurDeMagie, texteSurCouleur } from './sort-format.mjs';
+import { classeDeMagie, classeDeMateriau } from './palette-css.mjs';
 
 const ENTITES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const e = (texte) => String(texte ?? '').replace(/[&<>"']/g, (c) => ENTITES[c]);
@@ -28,11 +27,11 @@ const attributsDeLigne = (entite, cle, citations, textes) => {
   return ` data-entite="${entite}" data-cle="${e(JSON.stringify(cle))}"${citee ? ` data-citee="${e(citee)}"` : ''} data-recherche="${recherche(...textes)}"`;
 };
 
-/** Pastille d'une magie dans sa couleur (gemmes, bois). */
-const htmlDeMagie = (magie) => {
-  const fond = couleurDeMagie(magie?.nom);
-  return `<span class="comp-magie" style="--c: ${fond}; --c-texte: ${texteSurCouleur(fond)}">${e(magie?.nom ?? '')}</span>`;
-};
+/** Pastille d'une magie dans sa couleur (gemmes, bois) : la classe de la magie (lib/palette-css.mjs : --couleur, --couleur-texte), jamais un style. */
+const htmlDeMagie = (magie) => `<span class="comp-magie ${classeDeMagie(magie?.nom)}">${e(magie?.nom ?? '')}</span>`;
+
+/** La classe d'une ligne liée à une magie (gemme, bois) : son filet et la teinte de ses infobulles (`--mag`, styles/composants/composants.css). */
+const classeDeLigneDeMagie = (magie) => `composant composant--magie ${classeDeMagie(magie?.nom)}`;
 
 /** Rendus nommés (attribut `data-ed-rendu`), fusionnés dans lib/edition-rendu.mjs#RENDUS : (valeur de la colonne, ligne, contexte) → HTML. */
 export const RENDUS_DES_COMPOSANTS = {
@@ -80,18 +79,21 @@ const description = (r) => `<td class="comp-description" data-ed="${ed('ressourc
 
 /**
  * Un matériau (décision R62 : la page « Composants » en est la seule source) : Nom (dans sa couleur) | Type (d'après l'armure) | Prix | Description |
- * Effets sur une arme (ceux du tableau MATÉRIAUX de l'onglet « Armes », pour un matériau d'arme) | Utilisé pour (armes, armures, boucliers, montures).
+ * Fabrication (la recette du tableau MATÉRIAUX des onglets « Armures » et « Bouclier », en lecture : ce tableau n'est plus sur la page « Équipement »,
+ * demande du propriétaire, 2026-10-16) | Effets sur une arme (ceux du tableau MATÉRIAUX de l'onglet « Armes », pour un matériau d'arme) | Utilisé pour
+ * (armes, armures, boucliers, montures).
  */
 export function htmlDeLigneDeMateriau(r) {
-  const c = couleurDeMateriau(r.id);
-  const pastille = `<span class="comp-teinte" style="--c: ${c.fond}" aria-hidden="true"></span>`;
+  // sa couleur : la classe du matériau (lib/palette-css.mjs, famille `materiau`, émise par la page), jamais un style
+  const pastille = `<span class="comp-teinte ${classeDeMateriau(r.id)}" aria-hidden="true"></span>`;
   const usages = (r.usages ?? []).map((u) => `<span class="comp-usage">${e(u)}</span>`).join(' ') || VIDE;
   const arme = r.arme
     ? `<td class="comp-effet" data-ed="${ed('materiau_arme', { ressource_id: r.id }, 'effet_brut')}" data-ed-rendu="materiau-effet">${RENDUS_DES_ARMES['materiau-effet'](r.arme.effet_brut)}</td>`
     : `<td class="comp-effet">${VIDE}</td>`;
-  return `<tr class="composant" id="${ancreDeComposant(r.id)}"${attributsDeLigne('materiau', { ressource_id: r.id }, r.citations, [r.nom, r.type, r.description])}>`
+  const fabrication = `<td class="comp-fabrication">${r.fabrication ? e(r.fabrication) : VIDE}</td>`;
+  return `<tr class="composant" id="${ancreDeComposant(r.id)}"${attributsDeLigne('materiau', { ressource_id: r.id }, r.citations, [r.nom, r.type, r.description, r.fabrication])}>`
     + `${nom(r, pastille)}<td class="comp-type" data-ed="${ed('materiau', { ressource_id: r.id }, 'type')}">${e(r.type ?? 'Autres')}</td>`
-    + `${prix(r)}${description(r)}${arme}<td class="comp-usages">${usages}</td></tr>`;
+    + `${prix(r)}${description(r)}${fabrication}${arme}<td class="comp-usages">${usages}</td></tr>`;
 }
 
 /** Les prix d'une gemme, par qualité : la gemme entière (bâton magique) puis le quart (accessoires). */
@@ -99,14 +101,14 @@ const PRIX_D_UNE_GEMME = ['prix_commune_brut', 'prix_raffinee_brut', 'prix_parfa
 
 /** Une gemme : Magie | Nom | Description | gemme commune, raffinée, parfaite | quart commune, raffinée, parfaite. */
 export const htmlDeLigneDeGemme = (g) =>
-  `<tr class="composant" id="${ancreDeComposant(g.id)}" style="--mag: ${couleurDeMagie(g.magie?.nom)}"${attributsDeLigne('gemme', { ressource_id: g.id }, g.citations, [g.nom, g.magie?.nom, g.description])}>`
+  `<tr class="${classeDeLigneDeMagie(g.magie)}" id="${ancreDeComposant(g.id)}"${attributsDeLigne('gemme', { ressource_id: g.id }, g.citations, [g.nom, g.magie?.nom, g.description])}>`
   + `<td class="comp-magie-case">${htmlDeMagie(g.magie)}</td>${nom(g)}${description(g)}`
   + PRIX_D_UNE_GEMME.map((c, i) => `<td class="comp-prix-case${i === 3 ? ' comp-quart' : ''}" data-ed="${ed('gemme', { ressource_id: g.id }, c)}" data-ed-rendu="composant-prix">${rendu('composant-prix', g[c])}</td>`).join('')
   + '</tr>';
 
 /** Un bois de bâton magique : Magie | Nom | Description | Prix. */
 export const htmlDeLigneDeBois = (b) =>
-  `<tr class="composant" id="${ancreDeComposant(b.id)}" style="--mag: ${couleurDeMagie(b.magie?.nom)}"${attributsDeLigne('bois', { ressource_id: b.id }, b.citations, [b.nom, b.magie?.nom, b.description])}>`
+  `<tr class="${classeDeLigneDeMagie(b.magie)}" id="${ancreDeComposant(b.id)}"${attributsDeLigne('bois', { ressource_id: b.id }, b.citations, [b.nom, b.magie?.nom, b.description])}>`
   + `<td class="comp-magie-case">${htmlDeMagie(b.magie)}</td>${nom(b)}${description(b)}${prix(b)}</tr>`;
 
 /** Un ingrédient d'alchimie : Nom | (Catégorie, pour un fruit) | Type | Affinité. */

@@ -11,6 +11,7 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
 import { echellesEcrites, objetDuButin } from '../src/lib/monstre-champs.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { ecartsDeLaDescription, tuilesDeCapacites } from './aide-bestiaire.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
@@ -19,6 +20,9 @@ const present = existsSync(fichier);
 const options = present ? {} : { skip: 'site non construit (npm run build)' };
 const html = present ? readFileSync(fichier, 'utf8') : '';
 const main = html.slice(html.indexOf('<main'), html.indexOf('</main>'));
+// les bulles des mots-clés du glossaire : posées par le middleware en fin de page, hors de <main> (src/middleware.mjs)
+const bullesDuGlossaire = [...html.matchAll(/ id="(mot-cle-[a-z0-9-]+)"/g)].map((m) => m[1]);
+const vocabulaire = present ? chargerVocabulaire(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' })) : [];
 const panneau = (id) => {
   const debut = main.indexOf(`<section class="bpanneau${id === 'monstres' ? ' is-active' : ''}" id="${id}"`);
   const fin = id === 'monstres' ? main.indexOf('<section class="bpanneau" id="invoquees"') : main.length;
@@ -43,7 +47,7 @@ test('une case par monstre ou créature, chacune avec sa carte ; les identifiant
   assert.deepEqual([...cases(panneau('invoquees'))].sort(), invocations.lignes.map((l) => l.ancre).sort(), 'chaque créature une fois');
   const ids = [...main.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]);
   assert.equal(new Set(ids).size, ids.length, 'identifiants uniques');
-  const connus = new Set(ids);
+  const connus = new Set([...ids, ...bullesDuGlossaire]);
   for (const [, cible] of main.matchAll(/aria-(?:controls|labelledby|describedby)="([^"]+)"/g)) assert.ok(connus.has(cible), cible);
   for (const ancre of [...lignes(main), ...cases(main)]) assert.ok(connus.has(`carte-${ancre}`), `carte de ${ancre}`);
   // le nom d'un monstre mène à sa page (le script ouvre la carte à côté sur un grand écran) ; celui d'une créature invoquée, à sa carte dans la page
@@ -63,7 +67,7 @@ test('la description : dans l’en-tête de sa carte, sous ses tags, repliée ; 
   for (const l of monstres.lignes) {
     const debut = bloc.indexOf(`<article class="bcarte" id="carte-${l.ancre}"`);
     assert.ok(debut >= 0, l.id);
-    assert.deepEqual(ecartsDeLaDescription(bloc.slice(debut, bloc.indexOf('</article>', debut)), l, attributEd), [], l.id);
+    assert.deepEqual(ecartsDeLaDescription(bloc.slice(debut, bloc.indexOf('</article>', debut)), l, attributEd, vocabulaire), [], l.id);
   }
   assert.doesNotMatch(panneau('invoquees'), /bcarte__description/);
 });
@@ -90,7 +94,7 @@ test('groupe d’espèces (décision R64, « Ottar ») : son nom dans la colonne
       if (!homonyme && normalize(l.espece.nom) !== normalize(g.nom)) assert.ok(!options.includes(normalize(l.espece.nom)), `${l.id} : pas d’option à son nom`);
     } else assert.ok(ligne.includes(`<td class="bligne__espece" ${champ('monstre_espece', l.espece.id, 'nom')}>`), `${l.id} : colonne Espèce`);
     // l'en-tête : la description de l'espèce (son groupe s'il en a un), puis celle de la créature (décision R65)
-    assert.deepEqual(ecartsDeLaDescription(carte, l, attributEd), [], l.id);
+    assert.deepEqual(ecartsDeLaDescription(carte, l, attributEd, vocabulaire), [], l.id);
     // la section de l'espèce (lieu, complément, blocs) : cachée quand elle n'en a pas, comme la recalcule le mode modification (cadres() de
     // src/scripts/edition/editeur.mjs, sur les seuls champs de ses paragraphes et de ses blocs)
     const section = carte.match(/<section class="bcarte__section" aria-label="[^"]*" data-ed-cadre="p \[data-ed-sur-demande\], details \[data-ed-sur-demande\]"( hidden)?>/);
@@ -148,7 +152,7 @@ test('filtres : formulaire caché sans JavaScript, une case par valeur, le préf
 });
 
 test('tableau réduit (demande du propriétaire) : six colonnes pour les monstres ; la carte à côté, avec son portrait', options, () => {
-  const entetes = (bloc) => [...bloc.slice(bloc.indexOf('<table class="btable">'), bloc.indexOf('</thead>', bloc.indexOf('<table class="btable">'))).matchAll(/<th scope="col"[^>]*>\s*([^<]+?)\s*<\/th>/g)].map((m) => m[1]);
+  const entetes = (bloc) => [...bloc.slice(bloc.indexOf('<table class="btable table-donnees table-donnees--serree">'), bloc.indexOf('</thead>', bloc.indexOf('<table class="btable table-donnees table-donnees--serree">'))).matchAll(/<th scope="col"[^>]*>\s*([^<]+?)\s*<\/th>/g)].map((m) => m[1]);
   assert.deepEqual(entetes(panneau('monstres')), ['Espèce', 'Nom', 'Type', 'Catégorie', 'EP', 'Lieux']);
   // l'espèce d'abord, puis le nom, en-tête de ligne et lien vers la carte (une ligne de la base construite : le site de dev peut renommer une carte)
   const l = chargerBestiaire(ouvrirBase()).monstres.lignes.find((x) => x.carte);
@@ -206,7 +210,8 @@ test('créatures invoquées : trois tableaux dépliables (demande du propriétai
     const debut = bloc.indexOf(`id="carte-${l.ancre}"`);
     const carte = bloc.slice(debut, bloc.indexOf('</article>', debut));
     for (const k of l.capacites) {
-      if (k.npm) assert.ok(carte.includes(`<span class="prefixe">NPM ${k.npm}</span>`), `${l.nom} : NPM de ${k.nom}`);
+      // (décision R130 : la tuile porte son NPM minimum, que la carte cache en dessous du NPM choisi, et le préfixe se cache au NPM choisi)
+      if (k.npm) assert.ok(carte.includes(`<span class="prefixe prefixe--npm" title="À partir du NPM ${k.npm}">NPM ${k.npm}</span>`), `${l.nom} : NPM de ${k.nom}`);
       if (k.etiquette) assert.ok(carte.replace(/&#39;/g, "'").includes(`<span class="prefixe">[${k.etiquette}]</span>`), `${l.nom} : [${k.etiquette}]`);
     }
     // une tuile par capacité, puis une par capacité commune de son invocation, chacune avec son nom (comme les dons de classe ; lib/monstre-rendu.mjs#htmlDeCapacite)
@@ -355,4 +360,38 @@ test('règles des échelles de puissance (demande du propriétaire : « retravai
     assert.deepEqual(lis, [...paragraphes(e.regle_brut), ...paragraphes(e.degats_brut)], `EP ${e.ep}`);
   }
   assert.match(bloc, new RegExp(`<p class="bregles__curseur js-seul">\\s*<label>\\s*<span>Échelle</span>\\s*<input type="range" min="${echelles[0].ep}" max="${echelles.at(-1).ep}" step="1" value="${echelles[0].ep}" data-regles-curseur>`));
+});
+
+// Décision R130 (« adapter le monstre invoqué en fonction de ses NPM de la même façon que la fiche des monstres est adaptable par l'échelle de puissance ») :
+// une carte qui change avec le NPM porte `data-npm-carte`, son curseur (NPM 1 à 5) et ses valeurs à chaque NPM (`data-npms`) à côté de l'écrite
+// (`data-npm-ecrit`) ; une marionnette (une créature par NPM, décision R53) n'en a pas. Valeurs : lib/creature-npm.mjs (test/creature-npm.test.mjs).
+test('créatures invoquées au NPM choisi : curseur, valeurs par NPM à côté de l’écrite, capacités « (NPM n) » marquées (décision R130)', options, () => {
+  const { invocations } = chargerBestiaire(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' }));
+  const bloc = panneau('invoquees');
+  for (const l of invocations.lignes) {
+    const debut = bloc.indexOf(`id="carte-${l.ancre}"`);
+    const ouverture = bloc.slice(bloc.lastIndexOf('<article', debut), bloc.indexOf('>', debut) + 1);
+    const carte = bloc.slice(debut, bloc.indexOf('</article>', debut));
+    const marionnette = l.npmDuBloc !== null;
+    assert.equal(/ data-npm-carte\b/.test(ouverture), !marionnette, `${l.nom} : data-npm-carte`);
+    assert.equal(carte.includes('data-npm-curseur'), !marionnette, `${l.nom} : curseur du NPM`);
+    if (marionnette) {
+      assert.doesNotMatch(carte, /data-npms=/, `${l.nom} : rien par NPM`);
+      continue;
+    }
+    // le curseur va du NPM 1 au NPM 5 ; le NPM choisi est rappelé dans l'en-tête, pour chaque NPM
+    assert.match(carte, /<input type="range" min="1" max="5" step="1" value="1" data-npm-curseur aria-valuetext="NPM 1">/, l.nom);
+    for (const n of [1, 2, 3, 4, 5]) assert.ok(carte.includes(`<span class="bcarte__npm-choisi" data-npms="${n}">NPM ${n}</span>`), `${l.nom} : NPM ${n}`);
+    // la santé écrite « N/NPM » : la valeur écrite, puis N × NPM à chaque NPM
+    if (l.donneesNpm.sante.forme === 'par_npm') {
+      assert.ok(carte.includes(`<span data-npm-ecrit>${l.sante}</span>`), `${l.nom} : santé écrite`);
+      for (const n of [2, 5]) assert.match(carte, new RegExp(`<span data-npms="${n}" class="bcalcul" title="Écrit : ${l.sante.replace('/', '\\/')}">${l.donneesNpm.sante.valeur * n}</span>`), `${l.nom} : santé au NPM ${n}`);
+    }
+    // une capacité « (NPM n) » porte son NPM minimum ; une capacité de base n'en porte pas
+    const tuiles = [...carte.matchAll(/<li class="bcapacite(?: bcapacite--commune)?"( data-npm-min="(\d)")?>/g)].map((m) => (m[2] ? Number(m[2]) : null));
+    assert.deepEqual(tuiles, [...l.capacites.map((k) => k.npm ?? null), ...l.communes.map(() => null)], `${l.nom} : NPM minimum des capacités`);
+  }
+  // les règles d'affichage (styles/bestiaire/carte.css) : sans NPM choisi, les valeurs par NPM cachées ; au NPM choisi, l'écrite et les capacités d'un NPM plus haut
+  assert.match(html, /\.bcarte:not\(\[data-npm\]\) \[data-npms\] \{ display: none; \}/);
+  assert.match(html, /\.bcarte\[data-npm="3"\] :is\(\[data-npms\]:not\(\[data-npms~="3"\]\), \[data-npm-min="4"\], \[data-npm-min="5"\]\)/);
 });

@@ -1,0 +1,188 @@
+/* Chargé uniquement depuis components/armures/ArmuresPage.astro (?raw) : les onglets Armures et Boucliers de la page /ressources/equipement/ (les
+   onglets eux-mêmes : styles/equipement/equipement.css). Dans chacun, les tableaux de sélection (deux matériaux ; une forme, ses améliorations sous
+   elle, et une matière) puis la liste classique (les boucliers : un seul tableau replié, triable), et à côté, dans un panneau qui suit le défilement,
+   la fiche de l'armure ou du bouclier choisi (sur un écran étroit, il passe par-dessus la page), avec la pièce et l'amélioration pour une armure. Les
+   cases « Matière » dans la couleur du type (vert léger, jaune intermédiaire, rouge lourd : capture de l'onglet), le poids d'un bouclier dans la
+   couleur de sa case (vert, jaune, orange, rouge : classeur original) : chaque case porte la classe de sa couleur (lib/palette-css.mjs, familles
+   `armure` et `poids`, émises par ArmuresPage.astro), dont elle lit --couleur et --couleur-texte ; aucune couleur écrite ici (« Aucune couleur en
+   dur. »), l'AP, l'AM et les types de dégâts sont des jetons du thème (styles/global/base.css). Les tableaux suivent le gabarit commun (styles/global/tableaux.css : cadre,
+   titre repliable, en-têtes ; les tableaux où l'on choisit une matière, serrés) ; ici, ce qui leur est propre. Mode modification du site de dev (body.ed-mode) : pas de fiche, tout le
+   contenu à la suite, la liste des poids comprise. */
+main:has(.armures) { max-width: 120rem; }
+.armures {
+  --pro: var(--accent);
+  --pro-soft: color-mix(in srgb, var(--accent) 9%, var(--surface));
+  --pro-line: color-mix(in srgb, var(--accent) 35%, var(--border));
+  --tab: var(--pro);
+  --tab-soft: var(--pro-soft);
+  --tab-line: var(--pro-line);
+  margin: 0 0 2rem;
+}
+.armures .js-seul { display: none; }
+html.js .armures .js-seul { display: revert; }
+html:not(.js) .armures :is(.js-seul-ligne, .pfiche) { display: none; }
+.armures .muted { color: var(--muted); }
+.armures .vide { color: var(--muted); opacity: 0.6; }
+.armures [hidden] { display: none !important; }
+
+/* Les panneaux Armures et Boucliers (onglets : components/equipement/EquipementPage.astro) : un autre onglet ouvert, tout le bloc se cache (sa marge
+   ne s'ajoute pas à celle des onglets) */
+html.js .armures:not(:has(> .armures-panneau.is-active)) { display: none; }
+.armures-panneau + .armures-panneau { margin-top: 2rem; }
+
+.armures-aide { margin: 0 0 0.5rem; color: var(--muted); font-size: var(--fs-lg); }
+/* le renvoi vers le tableau des matériaux de la page Composants (description, fabrication), qui a remplacé le tableau MATÉRIAUX des deux onglets :
+   comme une aide, mais affiché aussi en mode modification (les matériaux se modifient là-bas : R62) */
+.armures-renvoi { margin: 0 0 0.6rem; color: var(--muted); font-size: var(--fs-lg); }
+/* le prix d'une armure (décision R93) : une règle, affichée aussi en mode modification (son coût de fabrication s'y modifie) et à l'impression */
+.armures-prix { margin: 0 0 0.6rem; font-size: var(--fs-lg); }
+.armures-legende { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; margin: 0 0 0.8rem; }
+.armures-legende__titre { font-size: var(--fs-sm); font-weight: 700; color: var(--muted); margin-right: 0.15rem; }
+.armures-sous-titre { margin: 1.6rem 0 0.6rem; font-size: 1.2rem; }
+
+/* Vue : les tableaux de sélection et la liste, et à côté le panneau de l'armure (ou du bouclier) choisi, qui suit le défilement */
+.armures-vue { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+@media (min-width: 80rem) { html.js .armures-vue { grid-template-columns: minmax(0, 1fr) minmax(30rem, 38%); } }
+.armures-principal { display: grid; gap: 0.2rem; min-width: 0; align-content: start; }
+.armures-choix { display: grid; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); gap: 1rem; align-items: start; min-width: 0; }
+.armures-listes { display: grid; gap: 1rem; min-width: 0; }
+.armures-cote { display: grid; gap: 1rem; min-width: 0; align-content: start; }
+/* au bout de son défilement, la molette fait défiler la page (pas d'`overscroll-behavior: contain` : demande du propriétaire, 2026-10-16, test/defilement.test.mjs) */
+@media (min-width: 80rem) { html.js .armures-cote { position: sticky; top: 0.75rem; max-height: calc(100vh - 1.5rem); overflow-y: auto; } }
+/* boucliers : la forme et, directement sous elle, les améliorations (demande du propriétaire, 2026-10-16) ; la matière à côté */
+.armures-colonne { display: grid; gap: 1rem; align-content: start; min-width: 0; }
+/* la liste des poids (à côté, sous la fiche) ne s'affiche plus (« Pas besoin de tableau pour l'expliquer ») : le poids est dans la liste et la fiche,
+   sa Force minimum en infobulle ; elle reste sans JavaScript (pas de fiche) et en mode modification (nom et Force se modifient) */
+html.js .armures-poids { display: none; }
+html.js body.ed-mode .armures-poids { display: block; }
+.poids__nom { box-shadow: inset 4px 0 0 var(--couleur); }
+.armures-cote__fermer { font: inherit; font-size: var(--fs-sm); padding: 0.2rem 0.85rem; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface); color: var(--text); cursor: pointer; }
+.armures-cote__fermer:hover { border-color: var(--pro); }
+
+/* Armure élémentaire (décision R165 (4)) : sous les deux tableaux de matériaux, le double choix « Élément » (chaque magie dans sa couleur : sa classe
+   de la palette, famille `magie`) et « Poids » (la couleur du type, Vêtement sans couleur) ; un choix pressé est cerclé, comme une matière choisie.
+   Une fois les deux choisis (`.est-elementaire` sur la vue, posée par le script), le tableau d'amélioration des armures élémentaires remplace celui des
+   armures ; sans JavaScript, les deux se suivent (pas de choix). */
+.pelem { display: grid; gap: 0.45rem; margin: 0.8rem 0 0.4rem; padding: 0.7rem 0.85rem; border: 1px solid var(--pro-line); border-radius: var(--radius-md); background: var(--pro-soft); }
+.pelem__titre { margin: 0; font-size: 1.05rem; }
+.pelem .armures-aide { margin: 0; font-size: var(--fs-md); }
+.pelem__groupe { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; }
+.pelem__nom { font-size: var(--fs-sm); font-weight: 700; color: var(--muted); min-width: 4.5rem; }
+.pelem__choix { font: inherit; font-size: var(--fs-sm); font-weight: 600; padding: 0.15rem 0.65rem; border-radius: var(--radius-sm); cursor: pointer;
+  background: var(--couleur, var(--surface)); color: var(--couleur-texte, var(--text)); border: 1px solid color-mix(in srgb, var(--couleur-texte, var(--text)) 18%, transparent); }
+.pelem__choix:hover { outline: 2px solid var(--pro-line); outline-offset: 1px; }
+.pelem__choix:focus-visible { outline: 2px solid var(--pro); outline-offset: 2px; }
+.pelem__choix[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--surface), 0 0 0 3px var(--pro); }
+.pelem__choix[aria-pressed="true"]::after { content: ' ✓'; }
+html.js .armures-vue:not(.est-elementaire) .armures-ameliorations--elementaire,
+html.js .armures-vue.est-elementaire .armures-ameliorations--base { display: none; }
+.pamelioration__cumul { font-variant-numeric: tabular-nums; }
+.pfiche__effets { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.2rem; }
+/* le coût en gemmes d'une armure élémentaire améliorée : un texte, plus petit qu'un montant */
+.pfiche__tuile-texte { display: block; font-size: var(--fs-sm); font-weight: 600; line-height: 1.3; }
+body.ed-mode .armures .pelem { display: none !important; }
+
+/* un écart relevé entre la grille et les matériaux (lib/armures-db.mjs), sous les deux tableaux de choix */
+.armures-ecart { margin: 0.45rem 0 0.5rem; font-size: var(--fs-md); color: var(--muted); }
+
+/* Les tableaux (gabarit commun) : ceux où l'on choisit une matière ont des lignes centrées */
+.armures-table--choix tbody > tr > * { vertical-align: middle; }
+
+/* Lignes sélectionnables */
+html.js :is(.pmat, .armure, .pamelioration, .forme, .bouclier) { cursor: pointer; }
+html.js :is(.pmat, .armure, .pamelioration, .forme, .bouclier):hover > :not(.pmat__nom) { background: var(--pro-soft); }
+:is(.pmat__choisir, .armure__choisir, .pamelioration__choisir, .forme__choisir, .bouclier__choisir) { all: unset; cursor: pointer; font-weight: 700; line-height: 1.35; }
+:is(.armure__choisir, .pamelioration__choisir, .forme__choisir, .bouclier__choisir):hover { text-decoration: underline dotted; }
+:is(.pmat__choisir, .armure__choisir, .pamelioration__choisir, .forme__choisir, .bouclier__choisir):focus-visible { outline: 2px solid var(--pro); outline-offset: 2px; border-radius: var(--radius-xs); }
+:is(.armure, .pamelioration, .forme, .bouclier).est-choisie > * { background: color-mix(in srgb, var(--pro) 16%, var(--surface)); }
+:is(.armure, .pamelioration, .forme, .bouclier).est-choisie > th { box-shadow: inset 4px 0 0 var(--pro); }
+.armure__nom, .bouclier__nom { min-width: 10rem; }
+.bouclier__forme { white-space: nowrap; }
+.bouclier__classe { font-size: var(--fs-xs); color: var(--muted); }
+.bouclier__ap, .bouclier__am, .armure__ap, .armure__am { white-space: nowrap; }
+/* en-têtes triables de la liste des boucliers (src/scripts/armures.mjs pose le bouton) : croissant, décroissant, puis l'ordre de l'onglet */
+.ptri { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem; }
+.ptri::after { content: '↕'; opacity: 0.45; font-size: 0.85em; }
+th[aria-sort="ascending"] .ptri::after { content: '↑'; opacity: 1; }
+th[aria-sort="descending"] .ptri::after { content: '↓'; opacity: 1; }
+th[aria-sort]:not([aria-sort="none"]) .ptri { color: var(--pro); }
+.ptri:focus-visible { outline: 2px solid var(--pro); outline-offset: 2px; border-radius: var(--radius-xs); }
+.armure__remarque { color: var(--pro); cursor: help; margin-left: 0.2rem; }
+.armure__solidite, .bouclier__solidite, .pmat__solidite { text-align: center !important; font-variant-numeric: tabular-nums; }
+.armure__prix, .bouclier__prix, .forme__prix, .pmat__prix, .pmat__prix-armure, .pamelioration__cout { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.armure__effet { min-width: 14rem; white-space: pre-line; font-size: var(--fs-md); }
+.pamelioration__niveau { white-space: nowrap; }
+/* les cases d'une amélioration de bouclier (coût en matériaux, AP, cran : demande du propriétaire, 2026-10-17) */
+.pamelioration__materiaux, .pamelioration__ap, .pamelioration__cran { white-space: nowrap; text-align: center; font-variant-numeric: tabular-nums; }
+
+/* La matière d'un matériau : la case dans la couleur de son type (comme le tableau MATERIAUX de l'onglet ; la classe de son type) */
+.pmat__nom { background: var(--couleur, var(--surface)) !important; color: var(--couleur-texte); min-width: 6.5rem; }
+.pmat__choisir { display: block; color: var(--couleur-texte); }
+.pmat__choisir:is([title], [data-infobulle]:not([data-infobulle=""])) { text-decoration: underline dotted color-mix(in srgb, var(--couleur-texte) 45%, transparent); text-underline-offset: 3px; }
+.pmat.est-choisie > :not(.pmat__nom) { background: color-mix(in srgb, var(--pro) 16%, var(--surface)); }
+.pmat.est-choisie > .pmat__nom { box-shadow: inset 0 0 0 3px var(--pro), inset 0 0 0 5px var(--surface); }
+.pmat.est-choisie .pmat__choisir::after { content: ' ✓'; }
+
+/* Pastilles : type, matériau, poids d'un bouclier (couleur de sa case : décision R92, « Requiert N Force minimum » en infobulle), défense (AP / AM),
+   résistances et faiblesses */
+.ptype, .pmat-pastille, .ppoids { display: inline-block; padding: 0.05rem 0.6rem; border-radius: var(--radius-sm); background: var(--couleur); color: var(--couleur-texte); font-size: var(--fs-sm); font-weight: 600;
+  border: 1px solid color-mix(in srgb, var(--couleur-texte) 14%, transparent); white-space: nowrap; }
+.ppoids:is([title], [data-infobulle]:not([data-infobulle=""])) { cursor: help; text-decoration: underline dotted color-mix(in srgb, var(--couleur-texte) 45%, transparent); text-underline-offset: 3px; }
+.pmat-plus { margin: 0 0.25rem; color: var(--muted); }
+.armure__materiaux { white-space: nowrap; }
+.pdef { display: inline-flex; flex-wrap: wrap; gap: 0.25rem; }
+.pdef__ap, .pdef__am { display: inline-block; padding: 0 0.5rem; border-radius: var(--radius-pill); font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pdef__ap { background: color-mix(in srgb, var(--defense-ap) 16%, var(--surface)); border: 1px solid color-mix(in srgb, var(--defense-ap) 40%, var(--border)); }
+.pdef__am { background: color-mix(in srgb, var(--defense-am) 14%, var(--surface)); border: 1px solid color-mix(in srgb, var(--defense-am) 40%, var(--border)); }
+.pdef__aucune { color: var(--muted); }
+.pdgt--frappe { border-color: color-mix(in srgb, var(--degats-frappe) 45%, var(--border)); }
+.psol__uni { font-size: var(--fs-xs); color: var(--muted); cursor: help; }
+
+/* Fiche de l'armure ou du bouclier choisi (remplie par src/scripts/armures.mjs) : un seul cadre, son bouton Fermer en haut à droite, réduit à son
+   minimum comme celle des armes (demande du propriétaire, 2026-10-16) : quatre tuiles dont le détail du calcul est l'infobulle (styles/equipement/
+   equipement.css, `.eq-bulle`), puis la résistance et la faiblesse (ou l'effet) d'une armure */
+.pfiche__tete { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.pfiche__tete h2 { margin: 0; font-size: 1.4rem; line-height: 1.2; }
+.pfiche__sous-titre { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; margin: 0.35rem 0 0; color: var(--muted); font-size: var(--fs-md); }
+.pfiche__forge { display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; margin: 0.35rem 0 0; font-size: var(--fs-md); }
+.pfiche__niveau { padding: 0.05rem 0.6rem; border-radius: var(--radius-sm); border: 1px solid var(--pro-line); font-weight: 600; }
+.pfiche__tuiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr)); gap: 0.5rem; margin: 0.7rem 0 0; }
+/* une tuile est un bouton : son infobulle (components/Infobulles.astro) s'ouvre au survol, au clic, au toucher et au clavier */
+.pfiche__tuile { display: grid; justify-items: center; align-content: start; gap: 0.1rem; padding: 0.5rem 0.5rem 0.55rem; border-radius: var(--radius-md); border: 1px solid var(--border);
+  background: var(--bg); text-align: center; cursor: help; font: inherit; color: inherit; min-width: 0; }
+.pfiche__tuile:is(:hover, [data-ouverte]) { border-color: var(--pro); }
+.pfiche__tuile:focus-visible { outline: 2px solid var(--pro); outline-offset: 2px; }
+.pfiche__tuile-nom { font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
+/* la valeur ne déborde pas de sa tuile : un coût en plusieurs monnaies (« 4 [PP] 362 [RO] 50 [RF] ») passe à la ligne entre deux monnaies, jamais entre
+   un nombre et sa monnaie (.montant__part), et la tuile grandit (demande du propriétaire, 2026-10-16) */
+.pfiche__tuile-val { font-size: 1.25rem; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; max-width: 100%; }
+.pfiche__tuile-val .montant { display: inline-flex; flex-wrap: wrap; justify-content: center; column-gap: 0.3em; row-gap: 0.1em; }
+.pfiche__tuile-val .ppoids { font-size: 1rem; }
+.pfiche__tuile-detail { font-size: var(--fs-xs); color: var(--muted); }
+/* résistance et faiblesse (ou effet) d'une armure : à la suite, sans titre */
+.pfiche__infos { display: grid; gap: 0.3rem; margin: 0.7rem 0 0; padding-top: 0.6rem; border-top: 1px solid var(--border); }
+.pfiche__infos > p { margin: 0; }
+.pfiche__etiquette { font-weight: 700; margin-right: 0.25rem; }
+.pfiche__ou { color: var(--muted); }
+
+/* Écran étroit : une fois une armure ou un bouclier choisi, la fiche et ses tableaux passent par-dessus la page */
+@media (max-width: 79.99rem) {
+  html.js .armures-vue:not(.est-ouverte) .armures-cote { display: none; }
+  html.js .armures-vue.est-ouverte .armures-cote { position: fixed; inset: 0; z-index: 60; max-height: none; overflow-y: auto; overscroll-behavior: contain; padding: 0.75rem 1rem 2rem; background: var(--bg); }
+}
+
+/* Mode modification du site de dev (src/scripts/edition/armures.mjs) : ni sélection ni fiche ; tous les tableaux visibles, les uns sous les autres */
+body.ed-mode .armures-vue { grid-template-columns: minmax(0, 1fr) !important; }
+body.ed-mode .armures-cote { display: grid !important; position: static !important; max-height: none !important; overflow: visible !important; padding: 0 !important; background: none !important; }
+body.ed-mode .armures :is(.pfiche, .pamelioration--aucune, .armures-aide) { display: none !important; }
+body.ed-mode .armures :is(.pmat, .armure, .pamelioration, .forme, .bouclier) { cursor: default; }
+body.ed-mode .armures :is(.pmat, .armure, .pamelioration, .forme, .bouclier).est-choisie > :not(.pmat__nom) { background: none; box-shadow: none; }
+body.ed-mode .armures :is(.pmat__choisir, .armure__choisir, .pamelioration__choisir, .forme__choisir, .bouclier__choisir, .ptri) { pointer-events: none; }
+body.ed-mode .armures .armure__effet .ed-saisie { min-width: 18rem; }
+
+@media print {
+  .armures .pfiche, .armures-aide { display: none !important; }
+  .armures-vue { grid-template-columns: minmax(0, 1fr) !important; }
+  .armures-cote { display: grid !important; position: static !important; max-height: none !important; }
+  .armures-panneau { display: block !important; }
+}

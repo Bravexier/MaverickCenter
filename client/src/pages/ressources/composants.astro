@@ -1,16 +1,18 @@
 ---
 import Base from '../../layouts/Base.astro';
 import ComposantsPage from '../../components/composants/ComposantsPage.astro';
-import { chargerComposants, PAGE_DES_COMPOSANTS } from '../../lib/composants-db.mjs';
+import { chargerComposants, DESCRIPTION_DES_COMPOSANTS, PAGE_DES_COMPOSANTS, TITRE_DES_COMPOSANTS } from '../../lib/composants-db.mjs';
 import { ouvrirBase } from '../../lib/donnees.mjs';
+import { ARTISANAT } from '../../lib/livres.mjs';
 import { url } from '../../lib/wiki';
 
-// /ressources/composants/ (menu Ressources, demande du propriétaire) : une page sans page du wiki, rendue depuis les tables (components/composants/) ;
-// modifiable sur le site de dev (`edition` : src/scripts/edition/composants.mjs).
+// /ressources/composants/ (menu Règles › Artisanat, demande du propriétaire) : une page sans page du wiki, rendue depuis les tables (components/composants/) ;
+// modifiable sur le site de dev (`edition` : src/scripts/edition/composants.mjs). Son fil d'Ariane et l'entrée courante du menu : l'Artisanat, son sommaire
+// (lib/livres.mjs#ARTISANAT).
 const composants = chargerComposants(ouvrirBase());
 ---
 
-<Base title="Composants" description="Monnaie, matériaux, gemmes, bois, ingrédients d’alchimie et équipement d’inventaire." edition={PAGE_DES_COMPOSANTS}>
-  <p class="muted"><a href={url()}>Accueil</a> › <a href={url('ressources/')}>Ressources</a></p>
+<Base title={TITRE_DES_COMPOSANTS} description={DESCRIPTION_DES_COMPOSANTS} edition={PAGE_DES_COMPOSANTS} entree={ARTISANAT.chemin}>
+  <p class="muted"><a href={url()}>Accueil</a> › <a href={url(ARTISANAT.chemin)}>{ARTISANAT.titre}</a></p>
   <ComposantsPage composants={composants} />
 </Base>

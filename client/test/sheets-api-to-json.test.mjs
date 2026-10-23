@@ -4,18 +4,18 @@
 // du Médusain portent « Jet de vigueur pour esquiver l'altération d'état ».
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const script = fileURLToPath(new URL('../../tools/sheets/sheets_api_to_json.py', import.meta.url));
 const python = spawnSync('python3', ['-I', '-c', 'pass']);
 const NOTE = "Jet de vigueur pour esquiver l'altération d'état";
 
 function convert(response) {
-  const dir = mkdtempSync(join(tmpdir(), 'sheets-api-'));
+  const dir = dossierTemporaire('sheets-api');
   writeFileSync(join(dir, 'in.json'), JSON.stringify(response));
   const run = spawnSync('python3', ['-I', script, join(dir, 'in.json'), join(dir, 'out.json')], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stderr);

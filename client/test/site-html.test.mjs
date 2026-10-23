@@ -8,7 +8,13 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { htmlAvecMotsCles, pageAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
+import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { trierVersions } from '../src/lib/notes-de-version.mjs';
+import { ADRESSES_DU_PLAN_PRECEDENT, ANCRES_DES_PAGES_ABSORBEES, PAGES_ABSORBEES, PAR_OU_COMMENCER, partieDeLaPage } from '../src/lib/livres.mjs';
+import { cheminDePage } from '../src/lib/metiers.mjs';
+import { classeDePartie, classesDeLaPalette, cssDeLaPalette, cssDesFamilles } from '../src/lib/palette-css.mjs';
+import { cssDesAttributs } from '../src/lib/attributs-couleurs.mjs';
 import { htmlDeLaNote } from '../src/lib/notes-de-version-rendu.mjs';
 
 const dist =fileURLToPath(new URL('../dist/', import.meta.url));
@@ -30,10 +36,50 @@ test('les pages sont à la racine du site, plus sous /wiki/', options, () => {
   assert.match(lire('races/nain/index.html'), /<a href="\/">Accueil<\/a> › <a href="\/races\/">Races<\/a>/, 'fil d’Ariane');
 });
 
+test('plus rien sous /guide/ (éclatement du guide, 2026-10-18) : ni page, ni lien, ni adresse dans l’index de la recherche', options, () => {
+  assert.ok(!existsSync(join(dist, 'guide')), 'dossier dist/guide/');
+  const avecGuide = walk(dist)
+    .filter((f) => f.endsWith('.html') || f.endsWith('.json'))
+    .filter((f) => /(?:href|action|src)="\/guide\/|"path":"guide\//.test(readFileSync(f, 'utf8')));
+  assert.deepEqual(avecGuide.map((f) => relative(dist, f)), [], 'aucun lien vers /guide/');
+  const guide = JSON.parse(lire('search-index.json')).filter((e) => e.type === 'Guide');
+  assert.ok(guide.length > 50 && guide.every((e) => /^(?:decouvrir|regles|mj)\//.test(e.path)), 'les pages du guide à leurs nouvelles adresses');
+});
+
 test('la page 404 renvoie les anciennes adresses /wiki/… vers les nouvelles', options, () => {
   const html = lire('404.html');
-  assert.match(html, /<p id="introuvable" data-base="\/">/);
+  assert.match(html, /<p id="introuvable" data-base="\/" data-renvois="[^"]*">/);
   assert.match(html, /location\.replace/);
+  // les anciennes adresses du guide (/guide/, /guide/<slug>/) : une par page du guide de l'index de la recherche, vers sa nouvelle adresse ; puis, pour
+  // chaque page fusionnée dans une autre (refonte du 2026-10-18), /guide/<slug>/ et /decouvrir/<slug>/, et les adresses du plan précédent qui ont changé
+  const attribut = html.match(/data-renvois="([^"]*)"/)[1].replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+  const renvois = JSON.parse(attribut);
+  assert.equal(renvois['guide/'], 'decouvrir/');
+  const guide = JSON.parse(lire('search-index.json')).filter((e) => e.type === 'Guide');
+  for (const e of guide) {
+    const slug = Object.keys(renvois).find((k) => renvois[k] === e.path);
+    assert.ok(slug && slug.startsWith('guide/'), `${e.path} : renvoi absent`);
+  }
+  assert.equal(Object.keys(renvois).length, guide.length + 1 + 2 * Object.keys(PAGES_ABSORBEES).length + Object.keys(ADRESSES_DU_PLAN_PRECEDENT).length);
+  for (const ancienne of Object.keys(PAGES_ABSORBEES)) {
+    const slug = ancienne.slice('guide/'.length);
+    assert.equal(renvois[`decouvrir/${slug}/`], renvois[`${ancienne}/`], `${ancienne} : ses deux anciennes adresses mènent au même endroit`);
+    // … à l'intertitre de la page qui l'absorbe où se lit son contenu
+    const [chemin, ancre] = renvois[`${ancienne}/`].split('#');
+    assert.equal(ancre, ANCRES_DES_PAGES_ABSORBEES[ancienne], ancienne);
+    assert.match(lire(join(chemin, 'index.html')), new RegExp(`<h[2-6] id="${ancre}"`), `${ancienne} : #${ancre} absent de /${chemin}`);
+    assert.ok(!existsSync(join(dist, 'decouvrir', slug)), `${ancienne} : plus construite`);
+  }
+  assert.equal(renvois['decouvrir/campagne-ou-scenario-one-shot/'], 'mj/campagne-ou-scenario-one-shot/');
+  // la page Liens, supprimée le 2026-10-22 : son ancienne adresse n'est plus renvoyée nulle part (réponse du propriétaire du 2026-10-23 : « supprimer ce
+  // lien ») ; ses blocs, aux mêmes ancres, sont sur l'accueil (« Ces 3 blocs auraient plus leur place dans l'onglet d'acceuil. »), plus sur Bienvenue
+  assert.equal(Object.hasOwn(renvois, 'decouvrir/liens/'), false, 'plus de renvoi de /decouvrir/liens/');
+  assert.ok(!existsSync(join(dist, 'decouvrir', 'liens')), '/decouvrir/liens/ n’est plus construite');
+  for (const ancre of ['lien-discord', 'lien-tipeee', 'prochaine-rencontre']) {
+    assert.match(lire('index.html'), new RegExp(` id="${ancre}"`), `${ancre} : sur l’accueil`);
+    assert.doesNotMatch(lire('decouvrir/index.html'), new RegExp(` id="${ancre}"`), `${ancre} : plus sur Bienvenue`);
+  }
+  assert.ok(Object.values(renvois).every((c) => !c.startsWith('guide/') && existsSync(join(dist, c.split('#')[0], 'index.html'))), 'chaque renvoi mène à une page construite');
 });
 
 test('en-tête : le logo à la place du titre, le menu à côté ; le logo en icône', options, () => {
@@ -52,22 +98,62 @@ test('en-tête : plus de barre de recherche (une page à part, avec les mots-cl�
   const entete = html.slice(html.indexOf('<header'), html.indexOf('</header>'));
   assert.ok(!/<form|type="search"/.test(entete), 'aucun formulaire de recherche dans l’en-tête');
   assert.deepEqual([...entete.matchAll(/class="nav-group__toggle" data-group="([^"]+)"[^>]*>([^<]+)</g)].map((m) => `${m[1]} ${m[2].trim()}`),
-    ['regles Règles', 'ressources Ressources', 'personnages Personnages', 'codex Codex', 'outils Outils']);
+    ['decouvrir Découvrir', 'regles Règles', 'joueur Espace joueur', 'mj Espace MJ', 'codex Codex', 'outils Outils']);
+  assert.match(entete, /data-group="decouvrir" aria-pressed="true"/, 'l’accueil ouvre Découvrir');
   const outils = entete.match(/<ul class="site-nav__items" data-group="outils"[^>]*>([\s\S]*?)<\/ul>/)[1];
-  assert.deepEqual([...outils.matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => `${m[2]} ${m[1]}`), ['Mise à jour /mise-a-jour/', 'Galeries /galeries/', 'Recherche /recherche/', 'Archives /archives/']);
-  assert.match(lire('ressources/alchimie/index.html'), /data-group="ressources" aria-pressed="true" aria-current="true"/, 'une ressource hors menu ouvre les Ressources');
+  // Debug : au menu du site de dev seulement (lib/nav.mjs#entreesDuMenu) ; un build de production (SITE_MODE=prod) a la page réservée, sans menu
+  // (test/debug-page.test.mjs)
+  const production = lire('debug/index.html').includes('class="debug-reservee"');
+  assert.deepEqual([...outils.matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => `${m[2]} ${m[1]}`),
+    ['Mise à jour /mise-a-jour/', 'Galeries /galeries/', 'Recherche /recherche/', 'Archives /archives/', ...(production ? [] : ['Debug /debug/'])]);
+  assert.match(lire('ressources/alchimie/index.html'), /data-group="regles" aria-pressed="true" aria-current="true"/, 'une ressource hors menu ouvre les Règles');
+  assert.ok(!entete.includes('data-group="ressources"'), 'plus de rubrique Ressources');
 });
 
 test('accueil : texte de bienvenue et défilement des images de la galerie (en construction : le logo seul)', options, () => {
   const html = lire('index.html');
   const main = html.slice(html.indexOf('<main'), html.indexOf('</main>'));
   assert.match(main, /<h1 id="titre-accueil">Bienvenue sur Maverick Center<\/h1>/);
-  assert.match(main, /<a class="accueil__bouton accueil__bouton--principal" href="\/guide\/">Lire le guide<\/a>/);
+  // la phrase de la première visite ne dit que la navigation (plus de livre : « Découvrir », la rubrique)
+  assert.match(main, /<p>Première visite \? Commencez par Découvrir : le jeu, son univers, la création d’un personnage et comment rejoindre une partie\.<\/p>/);
+  assert.match(main, /<a class="accueil__bouton accueil__bouton--principal" href="\/decouvrir\/">Découvrir Maverick<\/a>/);
+  assert.doesNotMatch(main, /Lire le guide|pas à pas/);
+  // « Par où commencer ? » : quatre cartes, le titre et le résumé de chaque page tels que la base les écrit, liés à leur adresse, chacune dans la couleur
+  // de son groupe (la classe de sa partie, jamais un style)
+  assert.match(main, /<h2 id="titre-par-ou-commencer">Par où commencer \?<\/h2>/);
+  const cartes = [...main.matchAll(/<li class="accueil-debut__carte (couleur-partie-[a-z-]+)"><a class="accueil-debut__lien" href="([^"]+)">([^<]+)<\/a>(?:<p class="accueil-debut__resume">([\s\S]*?)<\/p>)?<\/li>/g)]
+    .map(([, classe, href, titre, resume]) => Object.assign([undefined, href, titre, resume], { classe }));
+  const base = ouvrirBase();
+  const pages = PAR_OU_COMMENCER.map((id) => base.prepare('SELECT id, titre, resume FROM page WHERE id = ?').get(id));
+  assert.deepEqual(cartes.map((m) => m[1]), pages.map((p) => `/${cheminDePage(p.id)}`));
+  assert.deepEqual(cartes.map((m) => m[2].replace(/&#39;/g, "'")), pages.map((p) => p.titre));
+  assert.ok(cartes.every((m, i) => Boolean(m[3]) === Boolean(pages[i].resume)), 'un résumé quand la page en a un');
+  assert.deepEqual(cartes.map((m) => m.classe), PAR_OU_COMMENCER.map((id) => classeDePartie(partieDeLaPage(id))), 'la classe de la partie de chaque page');
+  assert.doesNotMatch(main, /accueil-debut__carte[^>]*style=/, 'aucune couleur de carte en style');
   assert.match(main, /<section class="carrousel" aria-roledescription="carrousel" aria-label="Galerie"/);
   assert.match(main, /<a href="\/galeries\/#image-logo"><img src="\/logo\.webp" alt="Logo de Maverick[^"]*" width="319" height="320"/, 'l’image mène à sa place sur /galeries/');
   assert.match(main, /class="carrousel__badge">En construction</);
   assert.ok(!main.includes('class="carrousel__commandes"'), 'pas de flèches pour une seule image');
   assert.ok(!main.includes('class="card"'), 'plus la grille des rubriques');
+});
+
+test('plus de sources sous une page : seules les Archives les montrent (réponse du propriétaire du 2026-10-22)', options, () => {
+  // « Plus de sources ailleurs que dans les archives. On va épurer un peu ce qui est redondant. » : ni pied « Sources » (pages du wiki, guide, Codex…)
+  // ni autre gabarit ; les données restent (frontmatter `sources:`, page_source, source), /archives/ les lit
+  const pages = walk(dist).filter((f) => f.endsWith('.html') && relative(dist, f) !== join('archives', 'index.html'));
+  assert.ok(pages.length > 200, `${pages.length} pages`);
+  const avecSources = pages.filter((f) => /<h[1-6][^>]*>\s*Sources\s*<\/h[1-6]>/.test(readFileSync(f, 'utf8')));
+  assert.deepEqual(avecSources.map((f) => relative(dist, f)), []);
+});
+
+test('le retour arrière du navigateur au glissement horizontal est empêché pour tout le site (feuille globale)', options, () => {
+  // réponses du propriétaire du 2026-10-22 (« Supprime juste le swipe. ») : html { overscroll-behavior-x: none } dans la feuille de toutes les pages
+  const feuilles = [...lire('index.html').matchAll(/<link rel="stylesheet" href="([^"]+\.css)"/g)].map((m) => m[1]);
+  assert.ok(feuilles.length, 'la feuille globale de l’accueil');
+  assert.ok(feuilles.some((h) => /html\{overscroll-behavior-x:none\}/.test(lire(h.replace(/^\//, '')))), 'html { overscroll-behavior-x: none }');
+  for (const chemin of ['decouvrir/index.html', 'chronologie/index.html', 'races/nain/index.html']) {
+    for (const h of feuilles) assert.ok(lire(chemin).includes(h), `${chemin} : ${h}`);
+  }
 });
 
 test('/galeries/ : toutes les images ; /archives/ : les documents sources et l’ancien wiki', options, () => {
@@ -96,21 +182,24 @@ test('aucun lien vers les classeurs « Familiers » et « Prototype » (demande 
   assert.deepEqual(avecLien, []);
 });
 
-test('/recherche/ : la recherche et le vocabulaire des mots-clés (liens ?mot-cle=<id>, nombre de pages) ; plus de /tags/ (la page 404 y renvoie) ; les pastilles des pages y mènent', options, () => {
+test('/recherche/ : la recherche et le glossaire des mots-clés (tous, liens ?mot-cle=<id>, nombre de pages, définition en infobulle) ; plus de /tags/ (la page 404 y renvoie) ; les pastilles des pages y mènent', options, () => {
   const html = lire('recherche/index.html');
   assert.match(html, /<form id="search-form" action="\/recherche\/"/);
   assert.match(html, /<div class="recherche" data-recherche data-lien-mot-cle="\/recherche\/\?mot-cle=">/);
   assert.match(html, /<noscript><p class="banner">La recherche [^<]*JavaScript[^<]*<a href="\/pages\/">index de toutes les pages<\/a>/, 'sans JavaScript : l’index des pages');
   // plus de « Sans catégorie (à trier) » ni d'événements dans la vue d'un mot-clé : les événements ont des catégories (filtre de la frise), pas de mot-clé
   for (const reste of ['data-sans-categorie', 'data-libelle-sans-categorie', 'data-reserve', 'badge--sans-categorie', 'mot-cle-evenements']) assert.ok(!html.includes(reste), reste);
-  assert.match(html, /<ul id="mot-cle-pages" class="entry-list" hidden><\/ul>/, 'la vue d’un mot-clé : ses pages');
-  // l'index : chaque page porte les ids de ses mots-clés ; un événement n'en porte aucun, ses `tags` sont les libellés de ses catégories
+  assert.match(html, /<ul id="vue-du-mot-cle-pages" class="entry-list" hidden><\/ul>/, 'la vue d’un mot-clé : ses pages');
+  // l'index : chaque page porte les ids de ses mots-clés (étiquettes, et ceux que citent ses balises) ; un événement n'a pas d'étiquette, ses `tags`
+  // sont les libellés de ses catégories ; aucun texte de l'index n'a de balise brute
   const index = JSON.parse(lire('search-index.json'));
   assert.ok(index.every((e) => Array.isArray(e.motsCles) && !('evenement' in e)), 'motsCles partout, plus de drapeau `evenement`');
   const evenements = index.filter((e) => e.type === 'Événement');
   assert.ok(evenements.length > 50 && evenements.every((e) => e.path.startsWith('chronologie/')), 'les événements de la chronologie');
-  assert.ok(evenements.every((e) => e.motsCles.length === 0), 'aucun mot-clé sur un événement');
   const base = ouvrirBase();
+  const ids = new Set(base.prepare('SELECT id FROM mot_cle').all().map((m) => m.id));
+  assert.ok(evenements.every((e) => e.motsCles.every((id) => ids.has(id))), 'un événement : seulement les mots-clés que citent ses descriptions');
+  assert.ok(index.every((e) => ![e.title, e.summary, e.text, ...e.tags, ...e.aliases].some((t) => /\{\{[^{}\n]+\}\}/.test(t ?? ''))), 'aucune balise brute dans l’index');
   const categories = new Map();
   for (const c of base.prepare('SELECT ec.evenement_id AS id, c.libelle FROM evenement_categorie ec JOIN categorie_chronologie c ON c.id = ec.categorie_id').all()) {
     categories.set(c.id, [...(categories.get(c.id) ?? []), c.libelle]);
@@ -121,21 +210,25 @@ test('/recherche/ : la recherche et le vocabulaire des mots-clés (liens ?mot-cl
   }
   const comptes = new Map();
   for (const e of index) for (const id of new Set(e.motsCles)) comptes.set(id, (comptes.get(id) ?? 0) + 1);
-  // la liste : tout le vocabulaire, un mot-clé qu'aucune page visible ne porte caché
-  const vocabulaire = new Map(base.prepare('SELECT id, libelle, libelle_cle FROM mot_cle').all().map((m) => [m.id, m]));
+  // la liste : le glossaire, tout le vocabulaire (même un mot-clé qu'aucune page visible ne porte), chaque mot-clé décrit avec sa définition en infobulle
+  const vocabulaire = new Map(base.prepare('SELECT id, libelle, libelle_cle, description FROM mot_cle').all().map((m) => [m.id, m]));
   const liste = html.slice(html.indexOf('<ul class="tags" id="liste-mots-cles">'), html.indexOf('id="aucun-mot-cle"'));
-  const motsCles = [...liste.matchAll(/<li data-id="([^"]+)" data-cle="([^"]+)" data-n="(\d+)" data-libelle="[^"]*"( hidden)?>\s*<a class="badge" href="\/recherche\/\?mot-cle=([^"]+)">([^<]+)<\/a>\s*<\/li>/g)];
+  const motsCles = [...liste.matchAll(/<li data-id="([^"]+)" data-cle="([^"]+)" data-n="(\d+)" data-libelle="[^"]*"( data-definition="[^"]*")?>\s*<a class="badge" href="\/recherche\/\?mot-cle=([^"]+)"( data-bulle="mot-cle-[^"]+" aria-describedby="mot-cle-[^"]+")?>([^<]+)<\/a>\s*<\/li>/g)];
   assert.equal(motsCles.length, (liste.match(/<li /g) ?? []).length, 'chaque mot-clé a la forme attendue');
-  assert.ok(motsCles.length > 100, `${motsCles.length} mots-clés`);
-  for (const [, id, cle, n, cache, lien, texte] of motsCles) {
+  assert.ok(motsCles.length > 0, `${motsCles.length} mots-clés`);
+  for (const [, id, cle, n, definition, lien, bulle, texte] of motsCles) {
     assert.equal(lien, id, 'le lien porte l’id (figé), pas l’écriture');
     assert.equal(Number(n), comptes.get(id) ?? 0, `${id} : nombre de pages de l’index`);
-    assert.equal(Boolean(cache), Number(n) === 0, `${id} : caché si aucune page visible ne le porte`);
-    assert.ok(texte.endsWith(` (${n})`), texte);
+    assert.ok(Number(n) > 0 ? texte.endsWith(` (${n})`) : !/\(\d+\)$/.test(texte), texte);
     assert.equal(vocabulaire.get(id)?.libelle_cle, cle, `${id} : son écriture`);
+    const decrit = Boolean(vocabulaire.get(id)?.description);
+    assert.equal(Boolean(definition), decrit, `${id} : sa définition`);
+    assert.equal(Boolean(bulle), decrit, `${id} : l’infobulle de sa définition`);
+    if (decrit) assert.equal((html.match(new RegExp(`<span class="bulle" role="tooltip" id="mot-cle-${id}" hidden>`, 'g')) ?? []).length, 1, `${id} : sa bulle, une fois`);
   }
   assert.deepEqual(motsCles.map((m) => m[1]).sort(), [...vocabulaire.keys()].sort(), 'tout le vocabulaire, rien d’autre');
-  assert.match(html, new RegExp(`<small id="nombre-mots-cles" class="muted">\\(${motsCles.filter((m) => !m[4]).length}\\)</small>`), 'le nombre de mots-clés affichés');
+  assert.match(html, new RegExp(`<small id="nombre-mots-cles" class="muted">\\(${motsCles.length}\\)</small>`), 'le nombre de mots-clés');
+  assert.match(html, /<p id="vue-du-mot-cle-definition" class="recherche-definition" hidden><\/p>/, 'la vue d’un mot-clé : sa définition');
   // plus de pages /tags/ : la page 404 renvoie /tags/<clé>/ vers /recherche/?mot-cle=<clé>
   assert.ok(!existsSync(join(dist, 'tags')), 'dossier dist/tags/');
   // les pastilles d'une page du wiki mènent à la recherche, par l'id du mot-clé
@@ -145,6 +238,83 @@ test('/recherche/ : la recherche et le vocabulaire des mots-clés (liens ?mot-cl
   for (const [, id, libelle] of pastilles) assert.equal(vocabulaire.get(id)?.libelle, libelle.replaceAll('&#39;', "'").replaceAll('&amp;', '&'), id);
   const avecTags = walk(dist).filter((f) => f.endsWith('.html')).filter((f) => /href="\/tags\//.test(readFileSync(f, 'utf8')));
   assert.deepEqual(avecTags, [], 'aucun lien vers /tags/');
+});
+
+/** Éléments dont le texte n'est pas montré tel quel (code, modèles, scripts…) ou garde ses balises (zones brutes) : comme lib/mots-cles-balises.mjs. */
+const ZONES_BRUTES = new Set(['script', 'style', 'textarea', 'template', 'code', 'pre', 'kbd', 'samp', 'svg', 'math']);
+const ATTRIBUTS_VISIBLES = ['title', 'alt', 'placeholder', 'aria-label', 'aria-description', 'data-infobulle'];
+/**
+ * Le texte visible d'une page (nœuds de texte, <title>, attributs montrés ou lus à l'écran), hors zones brutes (ZONES_BRUTES, [data-mots-cles-bruts]) :
+ * ce qu'une balise du glossaire restée brute montrerait. `data-balise` (la balise d'un mot-clé rendu) n'est pas visible.
+ */
+function texteVisible(html) {
+  const morceaux = [];
+  const pile = [];
+  let bruts = 0;
+  let i = 0;
+  const JETON = /<!--[\s\S]*?-->|<![^>]*>|<\?[^>]*>|<\/?([a-zA-Z][^\s/>]*)((?:[^>"']|"[^"]*"|'[^']*')*)>/g;
+  for (let m = JETON.exec(html); m; m = JETON.exec(html)) {
+    if (!bruts) morceaux.push(html.slice(i, m.index));
+    i = JETON.lastIndex;
+    const [jeton, nomBrut, attributs] = m;
+    if (!nomBrut) continue;
+    const nom = nomBrut.toLowerCase();
+    if (jeton[1] === '/') {
+      const k = pile.map((e) => e.nom).lastIndexOf(nom);
+      if (k >= 0) for (const e of pile.splice(k)) bruts -= e.brut ? 1 : 0;
+      continue;
+    }
+    const brut = ZONES_BRUTES.has(nom) || /\sdata-mots-cles-bruts(?=[\s=>/]|$)/i.test(attributs);
+    if (!bruts && !brut) {
+      for (const a of ATTRIBUTS_VISIBLES) {
+        const v = new RegExp(`\\s${a}\\s*=\\s*("([^"]*)"|'([^']*)')`, 'i').exec(attributs);
+        if (v) morceaux.push(v[2] ?? v[3]);
+      }
+    }
+    if (['script', 'style', 'textarea', 'title'].includes(nom)) {
+      const fin = html.toLowerCase().indexOf(`</${nom}`, i);
+      if (nom === 'title' && !bruts) morceaux.push(html.slice(i, fin < 0 ? html.length : fin));
+      i = fin < 0 ? html.length : fin;
+      JETON.lastIndex = i;
+      continue;
+    }
+    if (/^(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)$/.test(nom) || /\/\s*$/.test(attributs)) continue;
+    pile.push({ nom, brut });
+    bruts += brut ? 1 : 0;
+  }
+  if (!bruts) morceaux.push(html.slice(i));
+  return morceaux.join('\n');
+}
+
+test('glossaire des mots-clés : aucune balise brute sur le site construit (le middleware est passé sur chaque page, bulles comprises) ; /donnees/ montre les valeurs telles qu’enregistrées', options, () => {
+  const vocabulaire = chargerVocabulaire(ouvrirBase());
+  const pages = walk(dist).filter((f) => f.endsWith('.html'));
+  const restes = pages.filter((f) => {
+    const html = readFileSync(f, 'utf8');
+    return pageAvecMotsCles(html, vocabulaire) !== html;
+  }).map((f) => relative(dist, f));
+  assert.deepEqual(restes, [], 'une seconde passe du middleware ne change aucune page');
+  // le texte VISIBLE de chaque page (hors zones brutes et data-balise) n'a aucune balise : « {{ » ne s'y lit nulle part
+  const visibles = pages.flatMap((f) => {
+    const t = texteVisible(readFileSync(f, 'utf8'));
+    const k = t.indexOf('{{');
+    return k < 0 ? [] : [`${relative(dist, f)} : « ${t.slice(Math.max(0, k - 40), k + 60).replace(/\s+/g, ' ')} »`];
+  });
+  assert.deepEqual(visibles, [], 'aucune balise brute dans le texte visible');
+  assert.equal(texteVisible('<p title="a">b</p><code>{{x}}</code><div data-mots-cles-bruts><p>{{y}}</p></div><strong data-balise="{{z}}">Z</strong><title>T</title>'),
+    '\na\nb\n\n\n\nZ\n\nT\n\n', 'l’aide du test : ni code, ni zone brute, ni data-balise');
+  // « mot-cle-<id> » : l'id des bulles du glossaire, de nul autre élément (une page qui en aurait un autre le confondrait avec la bulle d'un mot-clé)
+  const autres = pages.flatMap((f) => [...readFileSync(f, 'utf8').matchAll(/<([a-z]+)([^>]*) id="mot-cle-[^"]*"/g)]
+    .filter((m) => !(m[1] === 'span' && / class="bulle"/.test(m[2]))).map((m) => `${relative(dist, f)} : ${m[0]}`));
+  assert.deepEqual(autres, []);
+  // les blocs des panneaux de règles écrivent des balises (migration 0056) : la table brute les garde
+  const brute = 'donnees/panneau_regles_bloc/index.html';
+  if (existsSync(join(dist, brute))) {
+    const html = lire(brute);
+    assert.match(html, /<div class="donnees-wrap" data-mots-cles-bruts>/);
+    assert.match(html, /\{\{recharge-longue:\}\}/, 'la balise telle qu’enregistrée');
+    assert.ok(!html.slice(html.indexOf('data-mots-cles-bruts')).includes('class="mot-cle-definition"'), 'pas rendue dans la table');
+  }
 });
 
 test('en-tête : la bande a la hauteur du menu, pas du logo, dont la pointe de l’épée dépasse dessous ; sur téléphone, le logo reste dans la bande', options, () => {
@@ -189,11 +359,15 @@ test('/mise-a-jour/ : la note de la dernière version, l’historique, la place 
     .map((l) => ({ ...l, parties: l.parties ? JSON.parse(l.parties) : null }));
   const [derniere, ...anciennes] = trierVersions(notes.map((n) => n.version)).map((v) => notes.find((n) => n.version === v));
   assert.ok(derniere, 'data/rows porte au moins une note (d’exemple ou livrée)');
+  // une ligne de note peut citer un texte qui porte une balise du glossaire (« 2 crans de {{solidite|solidité}} ») : le site construit la rend
+  // (le middleware : src/middleware.mjs), comme partout ; on compare donc au rendu pur passé par le même rendu des mots-clés
+  const vocabulaire = chargerVocabulaire(db);
+  const htmlDeLaNoteRendue = (...args) => htmlAvecMotsCles(htmlDeLaNote(...args), vocabulaire).html;
   // la plus récente en premier, telle que le rendu pur la donne ; les autres dans l'historique, de la plus récente à la plus ancienne
-  assert.ok(main.includes(htmlDeLaNote(derniere, lignesDe(derniere.version), { niveau: 2 })), `la note de la V${derniere.version}`);
+  assert.ok(main.includes(htmlDeLaNoteRendue(derniere, lignesDe(derniere.version), { niveau: 2 })), `la note de la V${derniere.version}`);
   assert.equal(main.indexOf('<article class="nv-note"'), main.indexOf(`<article class="nv-note" id="v${derniere.version.replace('.', '-')}">`));
   assert.equal(main.includes('<h2 id="nv-historique">Historique</h2>'), anciennes.length > 0);
-  for (const n of anciennes) assert.ok(main.includes(htmlDeLaNote(n, lignesDe(n.version), { niveau: 3 })), `la V${n.version} dans l’historique`);
+  for (const n of anciennes) assert.ok(main.includes(htmlDeLaNoteRendue(n, lignesDe(n.version), { niveau: 3 })), `la V${n.version} dans l’historique`);
   const positions = [derniere, ...anciennes].map((n) => main.indexOf(`id="v${n.version.replace('.', '-')}"`));
   assert.deepEqual(positions, [...positions].sort((a, b) => a - b));
   assert.equal(/class="nv-exemple" role="note"/.test(main), notes.some((n) => n.exemple === 1), 'le bandeau « donnée d’exemple » sur les seules notes d’exemple');
@@ -251,6 +425,41 @@ test('maintenance pendant une mise à jour : chaque page (sauf /maintenance/) de
   }
 });
 
+test('balise des pages (métriques du navigateur, page Debug) : sur chaque page sauf /maintenance/, production comprise, avec le chemin construit de la page', options, async () => {
+  // décision du propriétaire du 2026-10-15 : « Active-le aussi en prod dans un premier temps » ; SITE_METRIQUES_PAGES=0 au build la retire
+  const pages = walk(dist).filter((f) => f.endsWith('.html')).map((f) => relative(dist, f).split('\\').join('/'));
+  const BALISE = /<script data-metriques-page="([^"]+)" data-metriques-chemin="([^"]+)">([\s\S]*?)<\/script>/;
+  if (process.env.SITE_METRIQUES_PAGES === '0') {
+    assert.deepEqual(pages.filter((rel) => BALISE.test(lire(rel))), [], 'SITE_METRIQUES_PAGES=0 : aucune page ne mesure');
+    return;
+  }
+  assert.deepEqual(pages.filter((rel) => !BALISE.test(lire(rel))), ['maintenance/index.html'], 'toutes les pages, page 404 comprise, sauf la maintenance');
+  for (const rel of pages.filter((r) => r !== 'maintenance/index.html')) {
+    const [, adresse, chemin] = lire(rel).match(BALISE);
+    assert.equal(adresse, '/api/metriques/page/', rel);
+    // le chemin construit : autant de valeurs que de pages construites (une adresse inconnue sert la page 404, qui se dit « 404 »)
+    if (rel.endsWith('index.html')) assert.equal(chemin, `/${rel.slice(0, -'index.html'.length)}`, rel);
+    else assert.match(chemin, /^\/[^?#"]*$/, rel);
+  }
+  assert.match(lire('404.html').match(BALISE)[2], /^\/404\/?$/, 'la page 404 : un seul chemin, quelle que soit l’adresse demandée');
+  // exécutée dans un faux navigateur : une seule mesure, en texte JSON, vers le service de CE serveur
+  const [, adresse, chemin, code] = lire('races/index.html').match(BALISE);
+  const envois = [];
+  const evenements = {};
+  vm.runInNewContext(code, {
+    document: { currentScript: { getAttribute: (n) => ({ 'data-metriques-page': adresse, 'data-metriques-chemin': chemin })[n] }, readyState: 'loading', visibilityState: 'hidden', addEventListener: () => {} },
+    navigator: { sendBeacon: (a, corps) => envois.push([a, corps]) },
+    performance: { getEntriesByType: () => [{ responseStart: 12.345, domContentLoadedEventEnd: 50, loadEventEnd: 80 }] },
+    addEventListener: (type, f) => { evenements[type] = f; },
+    setTimeout: () => 0,
+    clearTimeout: () => {},
+  });
+  evenements.pagehide();
+  evenements.pagehide();
+  assert.equal(envois.length, 1);
+  assert.deepEqual([envois[0][0], JSON.parse(envois[0][1])], ['/api/metriques/page/', { page: '/races/', ttfb_ms: 12.35, dom_ms: 50, charge_ms: 80 }]);
+});
+
 test('/maintenance/ : « En travaux, merci de revenir dans quelques minutes », menus grisés et inertes, les étapes ; hors du menu', options, () => {
   const html = lire('maintenance/index.html');
   assert.match(html, /<title>Maintenance en cours — Maverick Center<\/title>/);
@@ -264,4 +473,328 @@ test('/maintenance/ : « En travaux, merci de revenir dans quelques minutes », 
   const grise = css.match(/\.site-header--maintenance \.site-nav,html\[data-maintenance\] \.site-nav\{([^}]*)\}/);
   assert.ok(grise && /opacity:/.test(grise[1]) && /pointer-events:none/.test(grise[1]), 'menu grisé, sur la page de maintenance et sur une page qui y part');
   assert.ok(!lire('index.html').includes('href="/maintenance/"'), 'pas dans le menu');
+});
+
+// Les couleurs des magies en classes (lot des magies de la palette, demande du propriétaire du 2026-10-22 : « Aucune couleur en dur. », choix « Module JS
+// → classe » : skill ui-couleurs, lib/palette-css.mjs) : sur toute page construite, aucune couleur de magie en style ; chaque classe de couleur posée
+// existe (la palette de chaque page, ou une combinaison que la page émet).
+/** Les éléments que les pages posent sur la couleur d'une magie (lot des magies de la palette). */
+const ELEMENTS_DES_MAGIES = new Set([
+  'magie', 'magie-teinte', 'autre-magie__onglet', 'creature__bouton', 'magies-orbite__position', 'magies-orbite__noeud', 'magies-orbite__pastille', 'magies-relation',
+  'tableau-magies__col-magie', 'tableau-magies__entete', 'tableau-magies__ligne', 'tableau-magies__point', 'race-magie', 'annexe-classe__carte',
+  'guide-magie', 'guide-magie__point', 'bmagie', 'bcible--magie', 'comp-magie', 'composant--magie', 'acc-gemme', 'bulle--gemme', 'perso',
+]);
+
+test('couleurs des magies : jamais en style sur une page construite, toujours par une classe de la palette qui existe', options, () => {
+  const palette = classesDeLaPalette();
+  const VARIABLES_DES_MAGIES = /style="[^"]*(?:--couleur-magie|--couleur-texte-magie|--mag:|--mag-texte:|--m:|--m-texte:|--g:|--g-texte:|--creature-[12]:|--magie-[12]:)/;
+  const avecMagie = new Map();
+  for (const fichier of walk(dist).filter((f) => f.endsWith('.html'))) {
+    const rel = relative(dist, fichier);
+    const html = readFileSync(fichier, 'utf8');
+    assert.doesNotMatch(html, VARIABLES_DES_MAGIES, `${rel} : une couleur de magie en style`);
+    // un élément de la palette, ou un élément d'une magie (même sans sa classe : une régression qui remettrait `style="--c: #…"`), n'a aucune couleur
+    // en style
+    for (const [balise, classe] of html.matchAll(/<[a-z][a-z0-9]*\b[^>]*\bclass="([^"]*)"[^>]*>/g)) {
+      const jetons = classe.split(/\s+/);
+      if (!jetons.some((c) => c.startsWith('couleur-') || ELEMENTS_DES_MAGIES.has(c))) continue;
+      assert.doesNotMatch(balise, /style="[^"]*(?:#[0-9a-f]{3,6}\b|\b(?:rgba?|hsla?)\()/i, `${rel} : une couleur en style sur un élément d'une magie : ${balise}`);
+    }
+    const classes = new Set([...html.matchAll(/\bclass="([^"]*)"/g)].flatMap((m) => m[1].split(/\s+/)).filter((c) => c.startsWith('couleur-')));
+    for (const c of classes) assert.ok(palette.has(c) || html.includes(`.${c}{`), `${rel} : la classe ${c} n’existe pas`);
+    if ([...classes].some((c) => c.startsWith('couleur-magie-'))) avecMagie.set(rel, html);
+  }
+  // chaque zone du lot pose bien les classes de ses magies
+  const zones = {
+    'magies/index.html': /class="magies-orbite__position [^"]* couleur-magie-feu"[\s\S]*<tr class="tableau-magies__ligne couleur-magie-feu">/,
+    'magies/magie-du-feu/index.html': /<div class="magie couleur-magie-feu">/,
+    'magies/potentiel-illimite/index.html': /class="onglet autre-magie__onglet couleur-magie-feu"/,
+    'magies/magie-de-la-terre/index.html': /class="chip creature__bouton creature__bouton--magie couleur-magie-[\w-]+ couleur-2-magie-[\w-]+"[\s\S]*class="bmagie couleur-magie-terre"/,
+    'races/index.html': /<col class="tableau-magies__col-magie couleur-magie-feu">/,
+    'races/nain/index.html': /<a class="chip race-magie couleur-magie-[\w-]+"/,
+    'classes/mage-bleu/index.html': /<article class="annexe-classe__carte annexe-classe__carte--magie couleur-magie-sang">/,
+    'decouvrir/l-univers/index.html': /<li class="couleur-magie-feu">\s*<a class="guide-magie"/,
+    'bestiaire/index.html': /class="bcible bcible--[a-z_]+ bcible--magie(?: bcible--deux)? couleur-magie-[\w-]+ couleur-2-magie-[\w-]+"/,
+    'ressources/composants/index.html': /<tr class="composant composant--magie couleur-magie-[\w-]+"[\s\S]*<span class="comp-magie couleur-magie-[\w-]+">/,
+    'ressources/equipement/index.html': /<span class="acc-gemme couleur-magie-[\w-]+" data-bulle=[\s\S]*<span class="bulle bulle--gemme couleur-magie-[\w-]+"/,
+  };
+  for (const [rel, attendu] of Object.entries(zones)) assert.match(avecMagie.get(rel) ?? '', attendu, rel);
+  assert.ok([...avecMagie.values()].some((html) => /<tr class="couleur-magie-[\w-]+">\s*<th scope="row">\s*<a class="guide-magie guide-magie--ligne"/.test(html)), 'le tableau de ce que donne chaque magie (guide)');
+  // la fiche et les personnages posent leurs classes au navigateur : leurs noms viennent de la page ou de regles.json (test/fiche-html.test.mjs)
+  const regles = JSON.parse(lire('fiche/regles.json'));
+  assert.ok(regles.magies.every((m) => palette.has(m.classe) && palette.has(m.classe_2)), 'regles.json : des classes de la palette');
+});
+
+// Lot des caractéristiques (et de leurs compétences), des postures et des alignements (même demande, mêmes choix de cadrage : skill ui-couleurs) : sur
+// toute page construite, aucune de ces couleurs en style ; chaque classe posée existe (contrôle commun ci-dessus : la palette de chaque page, ou une
+// feuille que la page émet, les familles d'une zone et les seconds rangs des caractéristiques compris).
+/** Les éléments que les pages posent sur la couleur d'une caractéristique, d'une compétence, d'une posture ou d'un alignement. */
+const ELEMENTS_DU_LOT_DES_CARACTERISTIQUES = new Set([
+  'guide-carac', 'guide-competences__groupe', 'guide-posture', 'bcarac', 'arme-comp', 'metier-cible', 'metier-carac', 'alignement__resultat',
+]);
+
+test('couleurs des caractéristiques, compétences, postures et alignements : jamais en style sur une page construite, toujours par une classe qui existe', options, () => {
+  const parZone = new Map();
+  for (const fichier of walk(dist).filter((f) => f.endsWith('.html'))) {
+    const rel = relative(dist, fichier);
+    const html = readFileSync(fichier, 'utf8');
+    // les variables de ces couleurs ne sont plus posées en style, nulle part
+    assert.doesNotMatch(html, /style="[^"]*(?:--c-texte:|--texte-sur-c:|--c1:|--c2:)/, `${rel} : une variable de couleur du lot en style`);
+    for (const [balise, classe] of html.matchAll(/<[a-z][a-z0-9]*\b[^>]*\bclass="([^"]*)"[^>]*>/g)) {
+      const jetons = classe.split(/\s+/);
+      if (!jetons.some((c) => /^couleur-(?:2-)?(?:caracteristique|posture|alignement)-/.test(c) || ELEMENTS_DU_LOT_DES_CARACTERISTIQUES.has(c))) continue;
+      assert.doesNotMatch(balise, /\bstyle="/, `${rel} : un style sur un élément du lot : ${balise}`);
+      for (const c of jetons.filter((x) => /^couleur-(?:2-)?(?:caracteristique|posture|alignement)-/.test(x))) parZone.set(c, [...(parZone.get(c) ?? []), rel]);
+    }
+  }
+  // chaque zone du lot pose bien ses classes
+  const zones = {
+    'regles/les-postures/index.html': /<section class="guide-posture couleur-posture-offensif" aria-labelledby/,
+    'decouvrir/creer-son-personnage/index.html': /<section class="guide-competences__groupe couleur-caracteristique-force" aria-labelledby/,
+    'ressources/equipement/index.html': /<span class="arme-comp couleur-caracteristique-force couleur-2-caracteristique-force" data-competences="arme-lourde"/,
+    'bestiaire/index.html': /<span class="bcarac couleur-caracteristique-force" title="Force">/,
+    'fiche/index.html': /<output class="alignement__resultat teinte-palette couleur-alignement-neutre" id="alignement-resultat"/,
+  };
+  for (const [rel, attendu] of Object.entries(zones)) assert.match(existsSync(join(dist, rel)) ? lire(rel) : '', attendu, rel);
+  assert.ok([...parZone.keys()].some((c) => c.startsWith('couleur-caracteristique-')) && parZone.has('couleur-posture-focus'), 'classes trouvées');
+  assert.ok(!parZone.has('couleur-caracteristique-par-defaut'), `aucune caractéristique inconnue : ${parZone.get('couleur-caracteristique-par-defaut')}`);
+  // la fiche pose ses classes au navigateur, d'après regles.json : des classes de la palette de chaque page (caractéristiques) ou de la feuille de la
+  // fiche (postures, alignements)
+  const regles = JSON.parse(lire('fiche/regles.json'));
+  const palette = classesDeLaPalette();
+  const fiche = lire('fiche/index.html');
+  assert.ok([...regles.caracteristiques, regles.caracteristique_par_defaut].every((k) => palette.has(k.classe)), 'regles.json : caractéristiques');
+  for (const x of [...regles.postures, ...Object.values(regles.alignements), regles.alignement_par_defaut]) assert.ok(fiche.includes(`.${x.classe}{`), `${x.classe} : dans la feuille de la fiche`);
+});
+
+// Lot des catégories de classe, des races et du reste de la fiche (même demande, mêmes choix de cadrage : skill ui-couleurs) : sur toute page construite,
+// aucune de ces couleurs en style ; chaque classe posée existe (contrôle commun des magies ci-dessus : la palette de chaque page, ou une feuille que la
+// page émet, les familles `classe` et `race` comprises).
+/** Les éléments que les pages posent sur la couleur d'une catégorie de classe ou d'une race. */
+const ELEMENTS_DU_LOT_DES_CLASSES_ET_RACES = new Set(['classe', 'classes-groupe', 'race', 'races-groupe']);
+const CLASSE_DU_LOT_DES_CLASSES_ET_RACES = /^couleur-(?:classe|race|palier|mode|neutre)-/;
+
+test('couleurs des catégories de classe, des races, des paliers, du Mode Hyper et neutre : jamais en style sur une page construite, toujours par une classe qui existe', options, () => {
+  const parPage = new Map();
+  for (const fichier of walk(dist).filter((f) => f.endsWith('.html'))) {
+    const rel = relative(dist, fichier);
+    const html = readFileSync(fichier, 'utf8');
+    // les variables de ces couleurs ne sont plus posées en style, nulle part
+    assert.doesNotMatch(html, /style="[^"]*(?:--couleur-classe|--couleur-texte-classe|--couleur-race|--cla:|--rac:|--r:)/, `${rel} : une variable de couleur du lot en style`);
+    for (const [balise, classe] of html.matchAll(/<[a-z][a-z0-9]*\b[^>]*\bclass="([^"]*)"[^>]*>/g)) {
+      const jetons = classe.split(/\s+/);
+      if (!jetons.some((c) => CLASSE_DU_LOT_DES_CLASSES_ET_RACES.test(c) || ELEMENTS_DU_LOT_DES_CLASSES_ET_RACES.has(c))) continue;
+      assert.doesNotMatch(balise, /\bstyle="/, `${rel} : un style sur un élément du lot : ${balise}`);
+      for (const c of jetons.filter((x) => CLASSE_DU_LOT_DES_CLASSES_ET_RACES.test(x))) {
+        assert.ok(html.includes(`.${c}{`), `${rel} : la classe ${c} n’est pas dans une feuille de la page`);
+        parPage.set(rel, [...(parPage.get(rel) ?? []), c]);
+      }
+    }
+  }
+  // chaque zone du lot pose bien ses classes
+  const zones = {
+    'classes/index.html': ['couleur-classe-melee', 'couleur-classe-distance', 'couleur-classe-magiques', 'couleur-classe-raciales', 'couleur-classe-speciales'],
+    'classes/guerrier/index.html': ['couleur-classe-melee'],
+    'races/index.html': ['couleur-race-pure', 'couleur-race-hybride'],
+    'races/humain/index.html': ['couleur-race-pure'],
+  };
+  for (const [rel, attendues] of Object.entries(zones)) {
+    assert.ok(existsSync(join(dist, rel)), `page construite : ${rel}`);
+    assert.deepEqual([...new Set(parPage.get(rel))], attendues, rel);
+  }
+  // la fiche pose ses classes au navigateur, d'après regles.json : toutes dans la feuille de la fiche (familles d'une zone)
+  const regles = JSON.parse(lire('fiche/regles.json'));
+  const fiche = lire('fiche/index.html');
+  const classes = [...regles.races, ...regles.classes, ...Object.values(regles.race_par_nature), regles.neutre, ...regles.resistance_paliers,
+    regles.mode_hyper, regles.mode_hyper.cent].map((x) => x.classe);
+  assert.ok(classes.length > 60, `${classes.length} classes`);
+  for (const c of classes) assert.ok(CLASSE_DU_LOT_DES_CLASSES_ET_RACES.test(c) && fiche.includes(`.${c}{`), `${c} : dans la feuille de la fiche`);
+  assert.ok([...regles.races, ...regles.classes].every((x) => !('couleur' in x) && !('texte' in x)), 'regles.json : aucune couleur de race ni de classe');
+});
+
+// Lot des matériaux, des armes de départ, des types d'armure et des poids des boucliers (même demande, mêmes choix de cadrage : skill ui-couleurs) : sur
+// toute page construite, aucune de ces couleurs en style ; chaque classe posée existe dans une feuille de la page (familles d'une zone, émises par les
+// onglets Armes, Armures et Boucliers, la page Composants et la fiche).
+/** Les éléments que les pages posent sur la couleur d'un matériau, des armes de départ, d'un type d'armure ou d'un poids de bouclier. */
+const ELEMENTS_DU_LOT_DES_ARMES_ET_ARMURES = new Set(['materiau', 'arme-fiche__materiau', 'armes', 'pmat__nom', 'ptype', 'pmat-pastille', 'ppoids', 'poids', 'comp-teinte']);
+const CLASSE_DU_LOT_DES_ARMES_ET_ARMURES = /^couleur-(?:materiau|arme|armure|poids)-/;
+
+test('couleurs des matériaux, des armes de départ, des types d’armure et des poids des boucliers : jamais en style sur une page construite, toujours par une classe qui existe', options, () => {
+  const parPage = new Map();
+  for (const fichier of walk(dist).filter((f) => f.endsWith('.html'))) {
+    const rel = relative(dist, fichier);
+    const html = readFileSync(fichier, 'utf8');
+    // les variables de ces couleurs ne sont plus posées en style, nulle part
+    assert.doesNotMatch(html, /style="[^"]*(?:--mat:|--mat-texte:|--t:|--depart:)/, `${rel} : une variable de couleur du lot en style`);
+    for (const [balise, classe] of html.matchAll(/<[a-z][a-z0-9]*\b[^>]*\bclass="([^"]*)"[^>]*>/g)) {
+      const jetons = classe.split(/\s+/);
+      if (!jetons.some((c) => CLASSE_DU_LOT_DES_ARMES_ET_ARMURES.test(c) || ELEMENTS_DU_LOT_DES_ARMES_ET_ARMURES.has(c))) continue;
+      assert.doesNotMatch(balise, /\bstyle="/, `${rel} : un style sur un élément du lot : ${balise}`);
+      for (const c of jetons.filter((x) => CLASSE_DU_LOT_DES_ARMES_ET_ARMURES.test(x))) {
+        assert.ok(html.includes(`.${c}{`), `${rel} : la classe ${c} n’est pas dans une feuille de la page`);
+        parPage.set(rel, new Set([...(parPage.get(rel) ?? []), c]));
+      }
+    }
+  }
+  // chaque zone du lot pose bien ses classes : la page Équipement (matériaux, armes de départ, types, poids), la page Composants (matériaux)
+  const equipement = parPage.get('ressources/equipement/index.html') ?? new Set();
+  for (const c of ['couleur-arme-depart', 'couleur-materiau-fer', 'couleur-materiau-titane', 'couleur-armure-leger', 'couleur-armure-intermediaire',
+    'couleur-armure-lourd', 'couleur-poids-leger', 'couleur-poids-tres-lourd']) assert.ok(equipement.has(c), `l’équipement : ${c}`);
+  const composants = parPage.get('ressources/composants/index.html') ?? new Set();
+  assert.ok(composants.has('couleur-materiau-fer') && composants.has('couleur-materiau-par-defaut'), 'les composants : un matériau d’arme et un d’armure');
+  assert.ok(![...parPage.keys()].some((rel) => !['ressources/equipement/index.html', 'ressources/composants/index.html'].includes(rel)), `ailleurs : ${[...parPage.keys()]}`);
+  // la fiche pose la classe du poids au navigateur, d'après regles.json : dans la feuille de la fiche, sans couleur
+  const regles = JSON.parse(lire('fiche/regles.json'));
+  const fiche = lire('fiche/index.html');
+  assert.ok(regles.poids_bouclier.length >= 4);
+  for (const p of regles.poids_bouclier) {
+    assert.ok(/^couleur-poids-/.test(p.classe) && fiche.includes(`.${p.classe}{`), `${p.classe} : dans la feuille de la fiche`);
+    assert.ok(!('couleur' in p) && !('texte' in p), `regles.json : aucune couleur de poids (${p.id})`);
+  }
+});
+
+// Lot des niveaux des accessoires (même demande, mêmes choix de cadrage : skill ui-couleurs) : sur toute page construite, aucune couleur de niveau en
+// style (ni `--niv`, en style comme dans data-niveaux) ; chaque classe posée existe dans une feuille de la page (famille d'une zone, émise par l'onglet
+// Accessoires de l'équipement, et seulement là).
+/** Les éléments que l'onglet Accessoires pose sur la couleur d'un niveau. */
+const ELEMENTS_DU_LOT_DES_ACCESSOIRES = new Set(['acc-niveau-pastille', 'acc-effet', 'acc-competence', 'acc-monture', 'acc-produit']);
+const CLASSE_DU_LOT_DES_ACCESSOIRES = /^couleur-niveau-/;
+
+test('couleurs des niveaux des accessoires : jamais en style sur une page construite, toujours par une classe qui existe', options, () => {
+  const parPage = new Map();
+  for (const fichier of walk(dist).filter((f) => f.endsWith('.html'))) {
+    const rel = relative(dist, fichier);
+    const html = readFileSync(fichier, 'utf8');
+    // la variable de ces couleurs n'est plus posée, nulle part (ni en style, ni dans l'attribut data-niveaux d'une ligne de compétence)
+    assert.doesNotMatch(html, /--niv\b/, `${rel} : --niv`);
+    for (const [balise, classe] of html.matchAll(/<[a-z][a-z0-9]*\b[^>]*\bclass="([^"]*)"[^>]*>/g)) {
+      const jetons = classe.split(/\s+/);
+      if (!jetons.some((c) => CLASSE_DU_LOT_DES_ACCESSOIRES.test(c) || ELEMENTS_DU_LOT_DES_ACCESSOIRES.has(c))) continue;
+      assert.doesNotMatch(balise, /\bstyle="/, `${rel} : un style sur un élément du lot : ${balise}`);
+      for (const c of jetons.filter((x) => CLASSE_DU_LOT_DES_ACCESSOIRES.test(x))) {
+        assert.ok(html.includes(`.${c}{`), `${rel} : la classe ${c} n’est pas dans une feuille de la page`);
+        parPage.set(rel, new Set([...(parPage.get(rel) ?? []), c]));
+      }
+    }
+  }
+  // l'onglet Accessoires pose les cinq niveaux (pastilles de l'étape 3, lignes d'effet et de monture), et lui seul
+  assert.deepEqual([...(parPage.get('ressources/equipement/index.html') ?? [])].sort(), [1, 2, 3, 4, 5].map((n) => `couleur-niveau-${n}`));
+  assert.deepEqual([...parPage.keys()], ['ressources/equipement/index.html'], 'ailleurs : aucune');
+  // les classes que le script reprend d'une ligne de compétence (data-niveaux) : des classes de la feuille de la page, jamais une couleur
+  const equipement = lire('ressources/equipement/index.html');
+  const niveaux = [...equipement.matchAll(/data-niveaux="([^"]+)"/g)].flatMap((m) => JSON.parse(m[1].replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&')));
+  assert.ok(niveaux.length >= 20, `${niveaux.length} niveaux de compétence`);
+  for (const n of niveaux) {
+    assert.ok(CLASSE_DU_LOT_DES_ACCESSOIRES.test(n.classe) && equipement.includes(`.${n.classe}{`), `data-niveaux : ${n.classe}`);
+    assert.ok(!('style' in n), 'plus de style dans data-niveaux');
+  }
+});
+
+// Lot de la chronologie (même demande, mêmes choix de cadrage : skill ui-couleurs) : sur toute page construite, aucune couleur d'événement en style (ni
+// `--c`, `--c-avant`, `--c-apres` dans un style des pages de la chronologie, ni `--couleur-evenement`, nulle part) ; chaque classe `couleur-evenement-…` posée existe dans la feuille
+// des couleurs des événements de la page (`<style data-couleurs-chronologie>`), émise par les pages de la chronologie seules.
+/** Les éléments que la chronologie pose sur la couleur d'un événement. */
+const ELEMENTS_DE_LA_CHRONOLOGIE = new Set(['chrono', 'frise__evenement', 'frise__barre', 'frise__morceau']);
+const CLASSE_DE_LA_CHRONOLOGIE = /^couleur-evenement-/;
+
+test('couleurs des événements de la chronologie : jamais en style sur une page construite, toujours par une classe de la feuille de la page', options, () => {
+  const avecFeuille = [];
+  let posees = 0;
+  for (const fichier of walk(dist).filter((f) => f.endsWith('.html'))) {
+    const rel = relative(dist, fichier).split('\\').join('/');
+    const html = readFileSync(fichier, 'utf8');
+    assert.doesNotMatch(html, /--couleur-evenement/, `${rel} : --couleur-evenement`);
+    // (depuis le lot des parties du guide, l'accueil ne pose plus de `--c` en style : le contrôle vaut pour toute page)
+    assert.doesNotMatch(html, /style="[^"]*--c(?:-avant|-apres)?:/, `${rel} : une couleur en style (--c)`);
+    const feuilles = [...html.matchAll(/<style data-couleurs-chronologie>([^<]*)<\/style>/g)].map((m) => m[1]);
+    assert.ok(feuilles.length <= 1, `${rel} : une seule feuille des couleurs des événements`);
+    if (feuilles.length) avecFeuille.push(rel);
+    for (const [balise, classe] of html.matchAll(/<[a-z][a-z0-9]*\b[^>]*\bclass="([^"]*)"[^>]*>/g)) {
+      const jetons = classe.split(/\s+/);
+      if (!jetons.some((c) => CLASSE_DE_LA_CHRONOLOGIE.test(c) || ELEMENTS_DE_LA_CHRONOLOGIE.has(c))) continue;
+      assert.doesNotMatch(balise, /\bstyle="/, `${rel} : un style sur un élément de la chronologie : ${balise.slice(0, 160)}`);
+      for (const c of jetons.filter((x) => CLASSE_DE_LA_CHRONOLOGIE.test(x))) {
+        posees += 1;
+        assert.ok(feuilles[0]?.includes(`.${c}{`), `${rel} : la classe ${c} n’est pas dans la feuille des couleurs des événements de la page`);
+      }
+    }
+  }
+  // la feuille : /chronologie/ et la page de chaque événement, et seulement elles
+  const pagesDeLaChronologie = walk(join(dist, 'chronologie')).filter((f) => f.endsWith('index.html')).map((f) => relative(dist, f).split('\\').join('/')).sort();
+  assert.ok(pagesDeLaChronologie.length > 50, `${pagesDeLaChronologie.length} pages de la chronologie`);
+  assert.deepEqual(avecFeuille.sort(), pagesDeLaChronologie);
+  assert.ok(posees > pagesDeLaChronologie.length * 100, `${posees} classes posées`);
+});
+
+// Lot des parties du guide (même demande, mêmes choix de cadrage : skill ui-couleurs) : sur toute page construite, aucune couleur d'une partie en style
+// (ni `--couleur-partie`, ni `--sommaire-couleur`, ni `--etape`, ni le `--c` des cartes de l'accueil) ; chaque classe `couleur-partie-…` posée existe dans
+// une feuille de la page (famille d'une zone : une page de Découvrir ou des Bases, l'accueil, le sommaire des Bases, la fiche, et seulement elles).
+/** Les éléments que les pages posent sur la couleur d'une partie. */
+const ELEMENTS_DES_PARTIES = new Set(['guide-reference', 'sommaire', 'accueil-debut__carte', 'fiche-zone']);
+const CLASSE_DES_PARTIES = /^couleur-partie-/;
+
+test('couleurs des parties du guide : jamais en style sur une page construite, toujours par une classe d’une feuille de la page', options, () => {
+  const parPage = new Map();
+  const feuille = cssDesFamilles(['partie']);
+  for (const fichier of walk(dist).filter((f) => f.endsWith('.html'))) {
+    const rel = relative(dist, fichier).split('\\').join('/');
+    const html = readFileSync(fichier, 'utf8');
+    assert.doesNotMatch(html, /--couleur-partie|--sommaire-couleur|style="[^"]*--etape/, `${rel} : une couleur de partie en style`);
+    for (const [balise, classe] of html.matchAll(/<[a-z][a-z0-9]*\b[^>]*\bclass="([^"]*)"[^>]*>/g)) {
+      const jetons = classe.split(/\s+/);
+      if (!jetons.some((c) => CLASSE_DES_PARTIES.test(c) || ELEMENTS_DES_PARTIES.has(c))) continue;
+      assert.doesNotMatch(balise, /\bstyle="/, `${rel} : un style sur un élément d’une partie : ${balise.slice(0, 160)}`);
+      for (const c of jetons.filter((x) => CLASSE_DES_PARTIES.test(x))) {
+        assert.ok(html.includes(`.${c}{`), `${rel} : la classe ${c} n’est pas dans une feuille de la page`);
+        parPage.set(rel, new Set([...(parPage.get(rel) ?? []), c]));
+      }
+    }
+    if (/\.couleur-partie-[a-z-]+\{/.test(html)) {
+      assert.ok(parPage.has(rel), `${rel} : la feuille des parties sans aucune classe posée`);
+      // (la fiche l'émet avec ses autres familles d'une zone, FAMILLES_DE_LA_FICHE : test/palette-css.test.mjs)
+      if (rel !== 'fiche/index.html') assert.equal(html.split(`<style>${feuille}</style>`).length - 1, 1, `${rel} : la feuille des parties, une fois`);
+      assert.equal(html.split('.couleur-partie-creer{').length - 1, 1, `${rel} : une seule feuille des parties`);
+    }
+  }
+  // les pages qui les posent : les seize de Découvrir et des Bases, l'accueil, le sommaire des Bases, la fiche ; aucune autre
+  const attendues = { 'index.html': ['decouvrir', 'creer', 'jouer'], 'regles/index.html': ['jouer', 'progresser', 'plus-loin'],
+    'fiche/index.html': ['creer', 'jouer', 'decouvrir', 'progresser'], 'decouvrir/index.html': ['decouvrir'], 'decouvrir/creer-son-personnage/index.html': ['creer'],
+    'regles/les-degats/index.html': ['jouer'], 'regles/la-montee-de-niveau/index.html': ['progresser'], 'regles/lexique/index.html': ['plus-loin'] };
+  for (const [rel, parties] of Object.entries(attendues)) {
+    assert.deepEqual([...(parPage.get(rel) ?? [])].sort(), [...new Set(parties)].map((p) => `couleur-partie-${p}`).sort(), rel);
+  }
+  const autres = [...parPage.keys()].filter((rel) => !(rel in attendues));
+  assert.ok(autres.every((rel) => /^(?:decouvrir|regles)\/[a-z-]+\/index\.html$/.test(rel) && !rel.startsWith('regles/avancees/')), `ailleurs : ${autres}`);
+  assert.equal(parPage.size, 3 + 16, `l’accueil, le sommaire des Bases, la fiche et les ${parPage.size - 3} pages de Découvrir et des Bases`);
+  assert.ok(!parPage.has('regles/avancees/meteo/index.html') && !parPage.has('mj/index.html'), 'une page de référence : l’accent du site');
+});
+
+// Lot des archives et de la mise à jour (même demande, mêmes choix de cadrage : skill ui-couleurs) : aucune famille de la palette ; leurs couleurs sont des
+// jetons du thème (styles/global/base.css). Les trois pages n'émettent que la feuille de chaque page (Base.astro), aucune d'une zone, ne posent aucun style,
+// et leur feuille insérée (?raw) n'écrit aucune couleur, hors le noir de mélange du voile des boîtes de dialogue.
+test('/archives/, /mise-a-jour/ et /maintenance/ : aucune feuille de zone de la palette, aucun style, aucune couleur écrite dans leur feuille', options, () => {
+  const palette = cssDeLaPalette();
+  for (const [rel, source] of [['archives/index.html', 'archives/archives.css'], ['mise-a-jour/index.html', 'mise-a-jour/mise-a-jour.css'],
+    ['maintenance/index.html', 'maintenance/maintenance.css']]) {
+    const html = lire(rel);
+    assert.doesNotMatch(html, /\bstyle="/, `${rel} : un style`);
+    assert.equal(html.split(`<style>${palette}</style>`).length - 1, 1, `${rel} : la feuille de chaque page, une fois`);
+    // toute classe de couleur de la page est dans la feuille de chaque page : aucune famille d'une zone, ni second rang des caractéristiques, ni
+    // combinaison de potion, ni événement de la chronologie
+    const classes = [...html.matchAll(/\.(couleur-[a-z0-9-]+)\{/g)].map((m) => m[1]);
+    assert.ok(classes.length > 30, `${rel} : ${classes.length} classes`);
+    for (const c of classes) assert.ok(palette.includes(`.${c}{`), `${rel} : ${c} n’est pas de la feuille de chaque page`);
+    assert.doesNotMatch(html, /data-couleurs-chronologie/, rel);
+    // la feuille de la page, insérée telle quelle : sans hex ni fonction de couleur écrite (le voile : noir de mélange)
+    const feuille = readFileSync(new URL(`../src/styles/${source}`, import.meta.url), 'utf8');
+    assert.ok(html.includes(feuille.trim()), `${rel} : la feuille ${source} insérée`);
+    const autres = [...html.matchAll(/<style>([^<]*)<\/style>/g)].map((m) => m[1]).filter((css) => css !== palette && css !== cssDesAttributs());
+    assert.ok(autres.length >= 1, rel);
+    for (const css of autres) {
+      const sansMelange = css.replace(/color-mix\(in srgb, #000 \d+%, transparent\)/g, '');
+      assert.deepEqual(sansMelange.match(/#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?)\(\s*\d/gi) ?? [], [], `${rel} : une couleur écrite dans la feuille de la page`);
+    }
+  }
+  // les jetons lus par les feuilles
+  assert.ok(lire('archives/index.html').includes('var(--doc-google)') && lire('mise-a-jour/index.html').includes('var(--texte-sur-good)'));
 });

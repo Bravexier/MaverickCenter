@@ -5,12 +5,16 @@
 // pouvoir créer, modifier et supprimer une catégorie. Une catégorie supprimée la retire de l'entrée » ; sur /recherche/, « en mode édition seulement »,
 // « supprimer / ajouter / Modifier des mots clés. Une suppression d'un mot clé le supprimera de tous les endroits qui le référencent »). Domaines des tables
 // evenement, evenement_extrait (les blocs de description : texte et lien), categorie_chronologie et mot_cle pour serveur/edition.mjs (DOMAINES), et deux
-// opérations du lot : `categories` (les catégories d'un événement) et `fusionner_mots_cles`.
+// opérations du lot : `categories` (les catégories d'un événement) et `fusionner_mots_cles`. Les mots-clés sont un glossaire (migration 0056 ; demande du
+// propriétaire du 2026-10-16) : un libellé et une définition (NULL tant qu'il n'est pas décrit) ; un texte les cite par une balise (lib/mots-cles-balises.mjs) ;
+// un mot-clé supprimé quitte aussi les textes qui le citent, un mot-clé fusionné y est remplacé par l'autre (serveur/edition.mjs#reecrireLesBalises).
 // Rien n'est déduit : un événement n'a que ce qu'on saisit ; l'ordre de lecture suit la date (lib/chronologie.mjs#ordonner), un événement créé vient après
-// ceux de sa date. Les outils communs du service (refus, motCleDe…) sont donnés par serveur/edition.mjs (domainesDeLaChronologie), sans import en retour.
+// ceux de sa date. Les outils communs du service (refus, creerMotCle, reecrireLesBalises…) sont donnés par serveur/edition.mjs (domainesDeLaChronologie),
+// sans import en retour.
 import { dateDansLeTexte, ecritureReservee, erreurDeDate, libelleDeDate, ordonner } from '../src/lib/chronologie.mjs';
 import { fragmentsAjoutes, messageDeRefus } from '../src/lib/markdown-sur.mjs';
 import { raisonDeProtection } from '../src/lib/mots-cles.mjs';
+import { reciblerLeMotCle, retirerLeMotCle } from '../src/lib/mots-cles-balises.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { lireLigne } from './edition-journal.mjs';
 
@@ -64,36 +68,24 @@ export function chronologieVivante(db) {
 }
 
 /**
- * Le vocabulaire des mots-clés pour /recherche/ en mode modification (GET /api/edition/mots-cles/) : [{ id, libelle, libelle_cle, pages, protege }]
- * (`protege` : la raison pour laquelle il ne se renomme, ne se supprime ni ne se fusionne, lib/mots-cles.mjs ; null sinon), triés par libellé.
+ * Le vocabulaire des mots-clés pour /recherche/ en mode modification (GET /api/edition/mots-cles/) : [{ id, libelle, libelle_cle, description, pages,
+ * protege }] (`description` : la définition telle qu'enregistrée, NULL tant qu'il n'est pas décrit ; `protege` : la raison pour laquelle il ne se
+ * renomme, ne se supprime ni ne se fusionne, lib/mots-cles.mjs ; null sinon : sa définition, elle, se modifie toujours), triés par libellé.
  * @param {import('node:sqlite').DatabaseSync} db
  */
 export function vocabulaire(db) {
-  return db.prepare('SELECT id, libelle, libelle_cle, nb_pages AS pages FROM v_mot_cle').all()
+  return db.prepare('SELECT id, libelle, libelle_cle, description, nb_pages AS pages FROM v_mot_cle').all()
     .map((m) => ({ ...m, protege: raisonDeProtection(m.libelle_cle) }))
     .sort((a, b) => a.libelle.localeCompare(b.libelle, 'fr', { sensitivity: 'base' }) || a.id.localeCompare(b.id));
 }
 
 /**
- * Le rang d'un nouveau bloc de description de l'événement `evenementId` : après le plus grand de la table, du journal et de l'historique (un rang n'est
- * jamais redonné, comme un identifiant : un bloc supprimé dont la suppression part en conflit au rejeu revient sous son rang, sans en heurter un autre).
- */
-function rangLibre(db, evenementId) {
-  let plus = db.prepare('SELECT max(rang) AS m FROM evenement_extrait WHERE evenement_id = ?').get(evenementId).m ?? 0;
-  for (const t of ['modification', 'historique_modification']) {
-    if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(t)) continue;
-    const m = db.prepare(`SELECT max(json_extract(cle, '$.rang')) AS m FROM "${t}" WHERE table_nom = 'evenement_extrait' AND json_extract(cle, '$.evenement_id') = ?`).get(evenementId).m;
-    if (m > plus) plus = m;
-  }
-  return plus + 1;
-}
-
-/**
  * Les domaines de la chronologie et des mots-clés ({ table: { colonnes, deriver?, creer, supprimer } }) et les opérations du lot qu'ils ajoutent
  * ({ categories, fusionner_mots_cles }) : voir serveur/edition.mjs#DOMAINES et #OPERATIONS.
- * @param {{ refus: Function, ErreurEdition: Function, provenance: Function, idDejaEmploye: Function, motCleDe: Function }} outils
+ * @param {{ refus: Function, ErreurEdition: Function, provenance: Function, idDejaEmploye: Function, rangLibre: Function, creerMotCle: Function,
+ *   reecrireLesBalises: Function, vocabulaireVivant: Function, tableExiste: Function }} outils
  */
-export function domainesDeLaChronologie({ refus, ErreurEdition, provenance, idDejaEmploye, motCleDe }) {
+export function domainesDeLaChronologie({ refus, ErreurEdition, provenance, idDejaEmploye, rangLibre, creerMotCle, reecrireLesBalises, vocabulaireVivant, tableExiste }) {
   /** Refus d'une date que la table n'accepte pas, avec le message de lib/chronologie.mjs#erreurDeDate. */
   function verifierLaDate(e, quoi) {
     const erreur = erreurDeDate(e);
@@ -212,7 +204,8 @@ export function domainesDeLaChronologie({ refus, ErreurEdition, provenance, idDe
       const evenement = lireLigne(db, 'evenement', { id: valeurs.evenement_id });
       if (!evenement) throw new ErreurEdition(404, `Événement introuvable : ${valeurs.evenement_id}`);
       verifierLeTexte('', valeurs.texte, nomDe(evenement));
-      const rang = rangLibre(db, evenement.id);
+      // un rang jamais employé (table, journal, historique : serveur/edition.mjs#rangLibre)
+      const rang = rangLibre(db, 'evenement_extrait', 'evenement_id', evenement.id);
       w.inserer('evenement_extrait', {
         evenement_id: evenement.id, rang, page_id: pageDuLien(db, valeurs.lien, nomDe(evenement)), section: null, texte: valeurs.texte, date_brut: null,
         origine: ORIGINE, source_ref: `${provenance(instant)} › ${evenement.titre}`,
@@ -276,25 +269,34 @@ export function domainesDeLaChronologie({ refus, ErreurEdition, provenance, idDe
     if (raison) throw new ErreurEdition(409, `Le mot-clé « ${m.libelle} » ne se ${action} pas depuis le site : il ${raison}.`);
   }
 
+  const nombre = (n, un, plusieurs) => `${n} ${n > 1 ? plusieurs : un}`;
+
+  /**
+   * Refus pour un mot-clé qui étiquette un sort (sort_mot_cle, migration 0067 : décision R114, « Sort grenade » sur les sorts grenades ; migration 0079 :
+   * décision R164, « Sort fer » sur les 13 sorts « Fer… ») : une étiquette
+   * est une règle posée par décision, que le site ne pose ni ne retire ; la base, elle, refuserait la suppression par sa clé étrangère (sans cascade),
+   * sans message lisible. Supprimer le mot-clé, ou le fusionner dans un sens ou l'autre (l'un part, l'autre reçoit ses pages et ses balises), changerait
+   * ce que l'étiquette veut dire : 409, avec les sorts. Une base vivante d'avant la migration 0067 (le service y retombe si sa reconstruction échoue)
+   * n'a pas la table : aucun mot-clé n'y étiquette de sort.
+   */
+  function verifierSansSort(db, m, action) {
+    if (!tableExiste(db, 'sort_mot_cle')) return;
+    const sorts = db.prepare('SELECT s.nom FROM sort_mot_cle e JOIN sort s ON s.id = e.sort_id WHERE e.mot_cle_id = ? ORDER BY s.nom_cle, s.id').all(m.id).map((s) => s.nom);
+    if (!sorts.length) return;
+    const noms = sorts.slice(0, 3).map((n) => `« ${n} »`).join(', ') + (sorts.length > 3 ? '…' : '');
+    throw new ErreurEdition(409, `Le mot-clé « ${m.libelle} » ne se ${action} pas depuis le site : il étiquette ${nombre(sorts.length, 'sort', 'sorts')} (${noms}), `
+      + 'une règle posée par décision du propriétaire.');
+  }
+
   const MOT_CLE = {
-    // renommer : l'écriture change partout (les pages citent l'id) ; vers l'écriture d'un autre mot-clé, refusé (la page propose la fusion)
+    // la définition (même d'un mot-clé dont le site se sert) : vidée, NULL ; renommer ne réécrit aucun texte (pages et balises citent l'id : une balise
+    // d'un texte de case garde le texte écrit, une balise d'un texte mis en forme montre le nouveau libellé) ; vers l'écriture d'un autre mot-clé,
+    // refusé (la page propose la fusion)
     colonnes(ctx, ligne, valeurs, avant) {
-      if (!('libelle' in valeurs) || ligne.libelle === avant.libelle) return {};
-      const cle = normalize(ligne.libelle);
-      if (!cle) throw refus(`Mot-clé « ${ligne.libelle} » : il doit contenir au moins une lettre ou un chiffre.`);
-      // l'écriture exacte d'un mot-clé dont le site se sert est lue par ses règles (catégories de /classes/, « capacité de classe », « codex »…) : même
-      // la casse ou un accent ne changent pas
-      verifierNonProtege(avant, 'renomme');
-      const autre = ctx.db.prepare('SELECT * FROM mot_cle WHERE libelle_cle = ? AND id <> ?').get(cle, avant.id);
-      if (autre) {
-        throw new ErreurEdition(409, `« ${ligne.libelle} » s’écrit comme le mot-clé « ${autre.libelle} » : fusionnez-les plutôt.`, { fusion: { mot_cle: avant.id, dans: autre.id } });
-      }
-      if (cle !== avant.libelle_cle && raisonDeProtection(cle)) {
-        throw new ErreurEdition(409, `« ${ligne.libelle} » est l’écriture d’un mot-clé dont le site se sert : choisissez-en une autre.`);
-      }
-      return {};
+      const sortie = 'description' in valeurs ? { description: ligne.description || null } : {};
+      return { ...sortie, ...renommage(ctx, ligne, valeurs, avant) };
     },
-    /** Un mot-clé du vocabulaire, sans page (il se pose ensuite) ; refusé s'il s'écrit comme un mot-clé existant. */
+    /** Un mot-clé du glossaire, son libellé et sa définition, sans page (il se pose ensuite) ; refusé s'il s'écrit comme un mot-clé existant. */
     creer(ctx, valeurs) {
       const { db } = ctx;
       const cle = normalize(valeurs.libelle);
@@ -303,21 +305,45 @@ export function domainesDeLaChronologie({ refus, ErreurEdition, provenance, idDe
       if (existant) throw new ErreurEdition(409, `Le mot-clé « ${existant.libelle} » existe déjà.`);
       // un mot-clé dont le site se sert se pose avec les pages qu'il range (une race hybride, une classe…) : créé seul, il ne se retirerait plus
       if (raisonDeProtection(cle)) throw new ErreurEdition(409, `« ${valeurs.libelle} » est l’écriture d’un mot-clé dont le site se sert : il vient avec ses pages.`);
-      const id = motCleDe(ctx, valeurs.libelle);
+      const id = creerMotCle(ctx, valeurs.libelle, valeurs.description ?? null);
       return { id, resume: `Mot-clé créé : ${valeurs.libelle}` };
     },
-    /** Un mot-clé supprimé : retiré de toutes les pages qui le portent, puis du vocabulaire. */
+    /**
+     * Un mot-clé supprimé : retiré de tous les textes qui le citent (chaque balise devient son texte simple, « Libellé : définition » pour le mode complet),
+     * de toutes les pages qui le portent, puis du vocabulaire ; refusé s'il étiquette un sort (verifierSansSort).
+     */
     supprimer(ctx, cle) {
       const { db, w } = ctx;
       const m = motCle(db, cle?.id);
       if (!m) throw new ErreurEdition(404, `Mot-clé introuvable : ${cle?.id}`);
       verifierNonProtege(m, 'supprime');
+      verifierSansSort(db, m, 'supprime');
+      const avant = vocabulaireVivant(db);
+      const textes = reecrireLesBalises(ctx, m.id, (texte, o) => retirerLeMotCle(texte, avant, m.id, o), { sauf: m.id });
       const pages = db.prepare('SELECT page_id, ordre FROM page_tag WHERE tag_id = ?').all(m.id);
       for (const t of pages) w.supprimer('page_tag', { page_id: t.page_id, ordre: t.ordre });
       w.supprimer('mot_cle', { id: m.id });
-      return { id: m.id, resume: `Mot-clé supprimé : ${m.libelle} (retiré de ${pages.length} page(s))` };
+      return { id: m.id, resume: `Mot-clé supprimé : ${m.libelle} (retiré de ${pages.length} page(s)${textes ? ` et de ${nombre(textes, 'texte', 'textes')}` : ''})` };
     },
   };
+
+  /** Le renommage d'un mot-clé (MOT_CLE.colonnes) : contrôles, rien d'autre à écrire. */
+  function renommage(ctx, ligne, valeurs, avant) {
+    if (!('libelle' in valeurs) || ligne.libelle === avant.libelle) return {};
+    const cle = normalize(ligne.libelle);
+    if (!cle) throw refus(`Mot-clé « ${ligne.libelle} » : il doit contenir au moins une lettre ou un chiffre.`);
+    // l'écriture exacte d'un mot-clé dont le site se sert est lue par ses règles (catégories de /classes/, « capacité de classe », « codex »…) : même
+    // la casse ou un accent ne changent pas
+    verifierNonProtege(avant, 'renomme');
+    const autre = ctx.db.prepare('SELECT * FROM mot_cle WHERE libelle_cle = ? AND id <> ?').get(cle, avant.id);
+    if (autre) {
+      throw new ErreurEdition(409, `« ${ligne.libelle} » s’écrit comme le mot-clé « ${autre.libelle} » : fusionnez-les plutôt.`, { fusion: { mot_cle: avant.id, dans: autre.id } });
+    }
+    if (cle !== avant.libelle_cle && raisonDeProtection(cle)) {
+      throw new ErreurEdition(409, `« ${ligne.libelle} » est l’écriture d’un mot-clé dont le site se sert : choisissez-en une autre.`);
+    }
+    return {};
+  }
 
   /**
    * `{ op: 'categories', evenement, categories: [ids], avant?: [ids] }` : les catégories d'un événement (`avant` : celles que la page a lues ; 409 si
@@ -340,7 +366,8 @@ export function domainesDeLaChronologie({ refus, ErreurEdition, provenance, idDe
 
   /**
    * `{ op: 'fusionner_mots_cles', mot_cle, dans }` : le mot-clé `mot_cle` rejoint `dans` (ses pages passent à `dans`, sans doublon : une
-   * page qui avait les deux perd seulement l'ancien), puis quitte le vocabulaire. Ni l'un ni l'autre ne peut être un mot-clé dont le site se sert.
+   * page qui avait les deux perd seulement l'ancien ; les balises qui le citent citent `dans`, leur texte gardé), puis quitte le vocabulaire. Ni l'un ni
+   * l'autre ne peut être un mot-clé dont le site se sert, ni un mot-clé qui étiquette un sort (verifierSansSort).
    */
   function fusionner(ctx, op) {
     const { db, w } = ctx;
@@ -350,10 +377,16 @@ export function domainesDeLaChronologie({ refus, ErreurEdition, provenance, idDe
     if (source.id === cible.id) throw refus(`« ${source.libelle} » : un mot-clé ne se fusionne pas avec lui-même.`);
     verifierNonProtege(source, 'fusionne');
     verifierNonProtege(cible, 'fusionne');
+    verifierSansSort(db, source, 'fusionne');
+    verifierSansSort(db, cible, 'fusionne');
+    const avant = vocabulaireVivant(db);
+    reecrireLesBalises(ctx, source.id, (texte, o) => reciblerLeMotCle(texte, avant, source.id, cible.id, o), { sauf: source.id });
     for (const t of db.prepare('SELECT page_id, ordre FROM page_tag WHERE tag_id = ?').all(source.id)) {
       if (db.prepare('SELECT 1 FROM page_tag WHERE page_id = ? AND tag_id = ?').get(t.page_id, cible.id)) w.supprimer('page_tag', { page_id: t.page_id, ordre: t.ordre });
       else w.modifier('page_tag', { page_id: t.page_id, ordre: t.ordre }, { tag_id: cible.id });
     }
+    // au rejeu, les textes que le site de dev n'avait pas (pages d'exemple, règles d'une autre base) citent la cible eux aussi : le rejeu la reconnaît
+    // aux étiquettes et aux balises que ce lot reporte (serveur/edition.mjs#cibleReportee, balisesRetireesParLeLot)
     w.supprimer('mot_cle', { id: source.id });
     return `Mot-clé « ${source.libelle} » fusionné dans « ${cible.libelle} »`;
   }

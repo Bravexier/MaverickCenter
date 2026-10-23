@@ -8,10 +8,9 @@
 // capacité s'ajoute à la fin, se retire, change de préfixe (ep_min) ; une valeur propre à une carte se règle (valeurs_de_capacite), la valeur commune l'efface.
 // Le test lit l'état avant d'écrire et crée des noms absents de la base (docs/serveur.md, « Mise à jour »).
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { rejouerLeJournal } from '../serveur/edition.mjs';
@@ -27,9 +26,9 @@ import { comparerBases } from '../src/lib/notes-de-version.mjs';
 import { empreinte, PORTRAIT_MAX, resumeDuPortrait } from '../src/lib/portrait.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { lireTables } from '../serveur/notes-de-version.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-edition-bestiaire-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('edition-bestiaire');
 const REGLES = cheminBase({ sansExemples: false });
 let n = 0;
 const baseNeuve = () => ouvrirBaseVivante(preparerBaseVivante({ regles: REGLES, dossier: join(racine, `b${(n += 1)}`) }).chemin);
@@ -130,7 +129,7 @@ test('groupe d’espèces modifié (décision R64, « Ottar ») : nom et sa clé
   assert.ok(groupe, 'un groupe (Ottar)');
   const membres = tous('SELECT id FROM monstre_espece WHERE groupe_id = ? ORDER BY ordre', groupe.id).map((x) => x.id);
   assert.ok(membres.length > 1);
-  // un nom absent de la base (CLAUDE.md : un test du service prend des noms absents)
+  // un nom absent de la base (skill tests-conventions : un test du service prend des noms absents)
   let nom = `${groupe.nom} essai`;
   for (let n = 2; un('SELECT 1 FROM monstre_groupe WHERE nom_cle = ?', normalize(nom)); n += 1) nom = `${groupe.nom} essai ${n}`;
   const r = enregistrer({ op: 'modifier', table: 'monstre_groupe', cle: { id: groupe.id }, valeurs: { nom, description: 'Texte\n\nsur deux paragraphes.' } });
@@ -390,7 +389,8 @@ test('le portrait suit la tuile : la première carte d’une espèce prend le si
 test('capacités communes (décisions R66, R69) : modifiées pour toutes leurs cartes, valeurs propres réglées, ajoutées et retirées d’une carte ; refus', () => {
   const html = (id) => appel('POST', '/api/edition/bestiaire/', { capacites: [id] }).corps.capacites[id];
   // une capacité à emplacement (« Minus », {10}) portée par plusieurs cartes, dont une à sa valeur propre
-  const gabarit = un("SELECT * FROM monstre_capacite_commune WHERE description LIKE '%{%}%' AND (SELECT count(*) FROM monstre_capacite p WHERE p.capacite_commune_id = id) > 2 ORDER BY id LIMIT 1");
+  // (un emplacement « {N} », jamais une balise du glossaire « {{…}} » : lib/monstre-champs.mjs#emplacements)
+  const gabarit = un("SELECT * FROM monstre_capacite_commune WHERE description GLOB '*{[0-9]*}*' AND (SELECT count(*) FROM monstre_capacite p WHERE p.capacite_commune_id = id) > 2 ORDER BY id LIMIT 1");
   assert.ok(gabarit, 'une capacité à emplacement');
   const porteurs = tous('SELECT * FROM monstre_capacite WHERE capacite_commune_id = ? ORDER BY monstre_id, rang', gabarit.id);
   const [p] = porteurs;

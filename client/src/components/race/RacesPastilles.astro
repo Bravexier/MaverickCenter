@@ -2,11 +2,12 @@
 import listeCss from '../../styles/race/liste.css?raw';
 import magieTooltipsCss from '../../styles/magie/tooltips.css?raw';
 import type { groupRaces } from '../../lib/race-kinds.mjs';
+import { classeDeRace, cssDesFamilles } from '../../lib/palette-css.mjs';
 import { idBulle } from '../../lib/magies';
 import { entryHref } from '../../lib/wiki';
 
 // /races/ : races pures et races hybrides côte à côte (lib/race-kinds.mjs#groupRaces, ordre du propriétaire), chaque groupe dans sa couleur (celle du
-// bandeau des pages de race, RACE_COLORS), et une PASTILLE par race sur le modèle de la carte des magies et de la page des classes
+// bandeau des pages de race : la classe de sa nature, lib/palette-css.mjs, famille `race`, émise ici ; jamais un style), et une PASTILLE par race sur le modèle de la carte des magies et de la page des classes
 // (components/classes/ClassesPastilles.astro) : pilule bordée et teintée de la couleur, point de couleur, nom en gras. L'accroche de la race est dans une
 // infobulle (components/Infobulles.astro ; sans JavaScript, l'attribut `title` du lien en tient lieu). Sur un écran étroit, les groupes passent l'un sous l'autre.
 interface Props {
@@ -17,10 +18,11 @@ const css = [listeCss, magieTooltipsCss].join('\n');
 ---
 
 <style is:inline set:html={css}></style>
+<style is:inline set:html={cssDesFamilles(['race'])}></style>
 <div class="races-pastilles">
   {
     groups.map((group) => (
-      <section class="races-groupe" id={group.key} style={`--couleur-race: ${group.couleur}`}>
+      <section class={`races-groupe ${classeDeRace(group.nature)}`} id={group.key}>
         <h2 class="races-groupe__titre">
           <span class="races-groupe__point" aria-hidden="true" />
           <span class="races-groupe__nom">{group.label}</span>

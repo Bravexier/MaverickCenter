@@ -1,26 +1,34 @@
 ---
 import accessoiresCss from '../../styles/accessoires/accessoires.css?raw';
+import Onglets from '../Onglets.astro';
+import GemmesDeLEffet from './GemmesDeLEffet.astro';
 import { bulleDeGemme, cleDeRessource, consignesDesEtapes, type chargerAccessoires } from '../../lib/accessoires-db.mjs';
-import { cleDEffet, facesDuDe, QUALITES_DE_GEMME, styleDeNiveau } from '../../lib/accessoires-generateur.mjs';
+import { cleDEffet, facesDuDe, gemmesAuChoix, QUALITES_DE_GEMME } from '../../lib/accessoires-generateur.mjs';
 import { htmlAvecMonnaies } from '../../lib/monnaies.mjs';
+import { classeDeNiveau, cssDesFamilles } from '../../lib/palette-css.mjs';
+import PanneauDeRegles from '../equipement/PanneauDeRegles.astro';
+import type { PanneauRendu } from '../equipement/PanneauDeRegles.astro';
 
-// Page /ressources/accessoires/ (demande du propriétaire, 2026-10-14) : « Pas de tableau Markdown. Au lieu de ça, un générateur d'accessoire. La page se
+// Onglet « Accessoires » de la page /ressources/equipement/ (components/equipement/EquipementPage.astro ; demande du propriétaire, 2026-10-16 :
+// « J'aimerai rajouter un 5 onglet pour y déplacer les accessoires » ; avant, la page /ressources/accessoires/, dont l'adresse mène à l'onglet) : un
+// panneau (`section.equipement-panneau#accessoires`). Demande du propriétaire, 2026-10-14 : « Pas de tableau Markdown. Au lieu de ça, un générateur
+// d'accessoire. La page se
 // présente comme celle des armes : un bloc d'explication, plusieurs tableaux et sur le côté un encart pour décrire l'accessoire ainsi créé en fonction de
-// ce qui a été sélectionné dans les différents tableaux. » Rendue depuis les tables (lib/accessoires-db.mjs) : les règles de l'onglet en tête ; les
-// tableaux des étapes (Identité 1d4, Propriété 1d100, un tableau d'effets par propriété), puis la monture ; à côté, l'accessoire créé
-// (src/scripts/accessoires.mjs). Chaque tableau des étapes a une case avec un dé, qui en tire une ligne au hasard (« dans chaque tableau, une case avec une
+// ce qui a été sélectionné dans les différents tableaux. » Rendue depuis les tables (lib/accessoires-db.mjs) : le panneau de règles de l'onglet en
+// tête, déplié au départ (components/equipement/PanneauDeRegles.astro, migration 0056) ; les tableaux des étapes (Identité 1d4, Propriété 1d100, un
+// tableau d'effets par propriété, chacun dans son onglet), puis la monture ; à côté, l'accessoire créé (src/scripts/accessoires.mjs). Chaque tableau des étapes a une case avec un dé, qui en tire une ligne au hasard (« dans chaque tableau, une case avec une
 // icône de dé ») ; pas la Monture (« Pas de random à faire sur la table des Montures ») ; pas de tableau des gemmes, une infobulle sur chaque gemme (écrite une fois par gemme en bas de page), la gemme dans la couleur de sa magie ;
-// les lignes des effets, la monture et l'accessoire créé dans la couleur de leur niveau (lib/accessoires-generateur.mjs#COULEURS_DES_NIVEAUX).
+// les lignes des effets, la monture et l'accessoire créé dans la couleur de leur niveau : la classe du niveau (`couleur-niveau-<n>`, lib/palette-css.mjs ;
+// la valeur : lib/accessoires-couleurs.mjs#COULEURS_DES_NIVEAUX), dont cet onglet émet la feuille (famille d'une zone), jamais une couleur en style ;
+// une ligne sans niveau (« Niveau ? », ligne vide) n'en porte pas.
 // Sans JavaScript : tous les tableaux, ni sélection ni encart. CSS : styles/accessoires/accessoires.css (?raw, inséré ici seulement).
 type Accessoires = ReturnType<typeof chargerAccessoires>;
 interface Props {
   accessoires: Accessoires;
-  /** HTML des règles de la page (Markdown avant « ## CRÉATION D'ACCESSOIRE » : lib/accessoires-db.mjs#reglesDeLaPage) */
-  regles: string;
-  /** première phrase des règles, affichée sous le titre */
-  resume?: string | null;
+  /** le panneau de règles de l'onglet (`accessoires`), le Markdown de ses blocs rendu (src/pages/ressources/equipement.astro) */
+  regles: PanneauRendu | null;
 }
-const { accessoires, regles, resume } = Astro.props;
+const { accessoires, regles } = Astro.props;
 const consignes = consignesDesEtapes(accessoires.page?.corps_md, accessoires.proprietes);
 const proprietesAvecEffets = accessoires.proprietes.filter((p) => p.effets.length);
 const faces = {
@@ -29,188 +37,219 @@ const faces = {
 };
 const facesDeLaPropriete = (p: Accessoires['proprietes'][number]) => facesDuDe(p.effets.map((e) => e.jet));
 const facesDuBonus = facesDuDe(accessoires.competences.colonnes.map((c) => c.max));
+// bornes du curseur du bonus d'acquis : celles des plages écrites (1 % à 20 %)
+const bonus = { min: Math.min(...accessoires.competences.colonnes.map((c) => c.min)), max: Math.max(...accessoires.competences.colonnes.map((c) => c.max)) };
+const deDeLaPropriete = (p: Accessoires['proprietes'][number]) => (p.id === 'competence' ? `1d${facesDeLaPropriete(p)} puis 1d${facesDuBonus}` : `1d${facesDeLaPropriete(p)}`);
 const jets = (p: { jet_min: number; jet_max: number }) => (p.jet_min === p.jet_max ? String(p.jet_min) : `${p.jet_min}–${p.jet_max}`);
-type Gemme = Accessoires['gemmes'][number];
-const styleDeGemme = (g: Gemme) => `--g: ${g.couleur}; --g-texte: ${g.texte}`;
+/** Nombre de gemmes à cocher d'un effet (0 : aucune au choix) ; la ligne le porte en `data-au-choix`. */
+const auChoix = (e: { gemmes: { id: string }[][] }) => gemmesAuChoix(e.gemmes.map((r) => r.map((g) => cleDeRessource(g.id)))).max;
 const ancreDeLaPropriete = (id: string) => `effets-${id}`;
+/** Les classes d'une ligne, celle de la couleur de son niveau comprise s'il en a un. */
+const classes = (...noms: (string | null | false | undefined)[]) => noms.filter(Boolean).join(' ');
+// la feuille des classes des niveaux (lib/palette-css.mjs : une famille d'une zone, émise par cet onglet seulement)
+const couleurs = cssDesFamilles(['niveau']);
 // le dé d'un tableau (icône) ; `de` = « 1d4 », « 1d6 puis 1d20 »
 const DE_SVG =
   '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><rect x="3" y="3" width="18" height="18" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="8" cy="8" r="1.6" fill="currentColor"/><circle cx="16" cy="8" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="8" cy="16" r="1.6" fill="currentColor"/><circle cx="16" cy="16" r="1.6" fill="currentColor"/></svg>';
 ---
 
 <style is:inline set:html={accessoiresCss}></style>
-<script is:inline>
-  document.documentElement.classList.add('js');
-</script>
+<style is:inline set:html={couleurs}></style>
+{/* Onglets pose aussi `html.js` (sans JavaScript, ni dé, ni encart, ni curseur) ; il ne sert qu'une fois par page, même posé aussi par
+   components/equipement/EquipementPage.astro (le groupe des onglets d'effets est le sien, `.acc-effets`) */}
+<Onglets />
+<section class="equipement-panneau" id="accessoires" aria-labelledby="titre-accessoires">
+<h2 class="equipement-panneau__titre" id="titre-accessoires">{accessoires.page?.titre ?? 'Accessoires'}</h2>
 <div class="acc" data-accessoires>
-  {/* les icônes des monnaies (lib/monnaies.mjs), que le script de la page reprend pour les prix qu'il écrit dans l'encart (aucun module partagé avec lui) */}
-  <h1>{accessoires.page?.titre ?? 'Accessoires'} <span class="badge">Ressource</span></h1>
-  {resume && <p class="acc__chapo" set:html={htmlAvecMonnaies(resume)} />}
-  <details class="acc-regles" open>
-    <summary>Règles des accessoires : prix, malédiction, montures, qualité des gemmes</summary>
-    <div class="prose acc-regles__texte"><Fragment set:html={regles} /></div>
-  </details>
+  <PanneauDeRegles panneau={regles} ouvert />
 
   <div class="acc-outils js-seul">
     <button type="button" class="acc-bouton acc-bouton--fort" data-acc-tout-tirer><Fragment set:html={DE_SVG} /> Tirer un accessoire</button>
     <button type="button" class="acc-bouton" data-acc-effacer>Tout effacer</button>
     <span class="acc-aide">Cliquez sur une ligne pour la choisir, ou sur le dé d’un tableau pour en tirer une au hasard.</span>
+    {/* décision R94 : le texte des règles ci-dessus est celui de la source, cette aide dit ce que font les dés */}
+    <span class="acc-aide acc-aide--malediction">Une malédiction tirée fait relancer depuis l’étape 2, avec le même emplacement : l’accessoire est maudit ; une seconde le détruit.</span>
   </div>
 
   <div class="acc-vue">
     <div class="acc-tableaux">
       <div class="acc-etapes">
-        <section class="acc-bloc" data-table="emplacement" aria-labelledby="acc-etape-1">
-          <h2 class="acc-bloc__titre" id="acc-etape-1"><span class="acc-bloc__etape">Étape 1</span> Identité <span class="acc-bloc__de">1d{faces.emplacement}</span></h2>
-          {consignes.emplacement?.map((c) => <p class="acc-bloc__note">{c}</p>)}
-          <table class="acc-table">
-            <thead>
-              <tr>
-                <th scope="col" class="acc-de-case"><button type="button" class="acc-de js-seul" data-de={faces.emplacement} aria-label={`Lancer 1d${faces.emplacement} : identité`} title={`Lancer 1d${faces.emplacement}`}><Fragment set:html={DE_SVG} /><span class="acc-de__resultat" data-de-resultat></span></button><span class="acc-de-case__texte">Jet</span></th>
-                <th scope="col">Emplacement</th>
-              </tr>
-            </thead>
-            <tbody>
-              {accessoires.emplacements.map((e) => (
-                <tr class="acc-ligne" data-choix="emplacement" data-valeur={e.id} data-min={e.jet} data-max={e.jet} data-libelle={e.nom}>
-                  <td class="acc-jet">{e.jet}</td>
-                  <th scope="row"><button type="button" class="acc-choisir" aria-pressed="false">{e.nom}</button></th>
+        <section class="tableau acc-bloc" data-table="emplacement" aria-labelledby="acc-etape-1">
+          <h2 class="tableau__titre acc-bloc__titre" id="acc-etape-1"><span class="acc-bloc__etape">Étape 1</span> <span class="tableau__nom">Identité</span> <span class="acc-bloc__de">1d{faces.emplacement}</span></h2>
+          {consignes.emplacement?.map((c) => <p class="tableau__note acc-bloc__note">{c}</p>)}
+          <div class="tableau__defile">
+            <table class="table-donnees table-donnees--serree acc-table">
+              <thead>
+                <tr>
+                  <th scope="col" class="acc-de-case"><button type="button" class="acc-de js-seul" data-de={faces.emplacement} aria-label={`Lancer 1d${faces.emplacement} : identité`} title={`Lancer 1d${faces.emplacement}`}><Fragment set:html={DE_SVG} /><span class="acc-de__resultat" data-de-resultat></span></button><span class="acc-de-case__texte">Jet</span></th>
+                  <th scope="col">Emplacement</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {accessoires.emplacements.map((e) => (
+                  <tr class="acc-ligne" data-choix="emplacement" data-valeur={e.id} data-min={e.jet} data-max={e.jet} data-libelle={e.nom}>
+                    <td class="acc-jet">{e.jet}</td>
+                    <th scope="row"><button type="button" class="acc-choisir" aria-pressed="false">{e.nom}</button></th>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
 
-        <section class="acc-bloc" data-table="propriete" aria-labelledby="acc-etape-2">
-          <h2 class="acc-bloc__titre" id="acc-etape-2"><span class="acc-bloc__etape">Étape 2</span> Propriété <span class="acc-bloc__de">1d{faces.propriete}</span></h2>
-          {consignes.propriete?.map((c) => <p class="acc-bloc__note">{c}</p>)}
-          <table class="acc-table">
-            <thead>
-              <tr>
-                <th scope="col" class="acc-de-case"><button type="button" class="acc-de js-seul" data-de={faces.propriete} aria-label={`Lancer 1d${faces.propriete} : propriété`} title={`Lancer 1d${faces.propriete}`}><Fragment set:html={DE_SVG} /><span class="acc-de__resultat" data-de-resultat></span></button><span class="acc-de-case__texte">Jet</span></th>
-                <th scope="col">Propriété</th>
-              </tr>
-            </thead>
-            <tbody>
-              {accessoires.proprietes.map((p) => (
-                <tr class={`acc-ligne${p.effets.length ? '' : ' acc-ligne--malediction'}`} data-choix="propriete" data-valeur={p.id} data-min={p.jet_min} data-max={p.jet_max} data-libelle={p.nom} data-malediction={p.effets.length ? undefined : '1'}>
-                  <td class="acc-jet">{jets(p)}</td>
-                  <th scope="row">
-<button type="button" class="acc-choisir" aria-pressed="false" aria-controls={p.effets.length ? ancreDeLaPropriete(p.id) : undefined}>{p.nom}</button>
-                  </th>
+        <section class="tableau acc-bloc" data-table="propriete" aria-labelledby="acc-etape-2">
+          <h2 class="tableau__titre acc-bloc__titre" id="acc-etape-2"><span class="acc-bloc__etape">Étape 2</span> <span class="tableau__nom">Propriété</span> <span class="acc-bloc__de">1d{faces.propriete}</span></h2>
+          {consignes.propriete?.map((c) => <p class="tableau__note acc-bloc__note">{c}</p>)}
+          <div class="tableau__defile">
+            <table class="table-donnees table-donnees--serree acc-table">
+              <thead>
+                <tr>
+                  <th scope="col" class="acc-de-case"><button type="button" class="acc-de js-seul" data-de={faces.propriete} aria-label={`Lancer 1d${faces.propriete} : propriété`} title={`Lancer 1d${faces.propriete}`}><Fragment set:html={DE_SVG} /><span class="acc-de__resultat" data-de-resultat></span></button><span class="acc-de-case__texte">Jet</span></th>
+                  <th scope="col">Propriété</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {accessoires.proprietes.map((p) => (
+                  <tr class={`acc-ligne${p.effets.length ? '' : ' acc-ligne--malediction'}`} data-choix="propriete" data-valeur={p.id} data-min={p.jet_min} data-max={p.jet_max} data-libelle={p.nom} data-malediction={p.effets.length ? undefined : '1'}>
+                    <td class="acc-jet">{jets(p)}</td>
+                    <th scope="row">
+  <button type="button" class="acc-choisir" aria-pressed="false" aria-controls={p.effets.length ? ancreDeLaPropriete(p.id) : undefined}>{p.nom}</button>
+                    </th>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       </div>
 
-      <section class="acc-bloc acc-bloc--effets" aria-labelledby="acc-etape-3">
-        <h2 class="acc-bloc__titre" id="acc-etape-3"><span class="acc-bloc__etape">Étape 3</span> Effet <span class="acc-bloc__niveaux" aria-label="Couleurs des niveaux">{[1, 2, 3, 4, 5].map((n) => <span class="acc-niveau-pastille" style={styleDeNiveau(n)}>Niveau {n}</span>)}</span></h2>
-        <p class="acc-bloc__note js-seul">Le tableau de la propriété choisie s’ouvre. Gemmes : survolez-les pour leur magie et le prix d’un quart de gemme.</p>
-        {proprietesAvecEffets.map((p) => {
-          const competence = p.id === 'competence';
-          const de = competence ? `1d${facesDeLaPropriete(p)} puis 1d${facesDuBonus}` : `1d${facesDeLaPropriete(p)}`;
-          return (
-            <details class="acc-famille" id={ancreDeLaPropriete(p.id)} data-propriete={p.id} data-table="effet" open>
-              <summary class="acc-famille__titre"><span class="acc-famille__nom">Si {p.nom.toLowerCase()}</span><span class="acc-famille__de">{de}</span><span class="acc-famille__compte">{competence ? `${accessoires.competences.lignes.length} × ${accessoires.competences.colonnes.length}` : p.effets.length}</span></summary>
-              {consignes[p.id]?.map((c) => <p class="acc-famille__note">{c}</p>)}
-              <div class="acc-wrap">
-                {competence ? (
-                  <table class="acc-table acc-table--competences">
-                    <thead>
-                      <tr>
-                        <th scope="col" class="acc-de-case"><button type="button" class="acc-de js-seul" data-de={facesDeLaPropriete(p)} data-de-bonus={facesDuBonus} aria-label={`Lancer ${de} : compétence`} title={`Lancer ${de}`}><Fragment set:html={DE_SVG} /><span class="acc-de__resultat" data-de-resultat></span></button><span class="acc-de-case__texte">Jet</span></th>
-                        <th scope="col">Compétence</th>
-                        <th scope="col">Bonus d’acquis</th>
-                        <th scope="col">Niveau</th>
-                        <th scope="col">Gemmes</th>
-                        <th scope="col">Prix</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {/* une ligne par compétence et par niveau (demande du propriétaire : « plusieurs lignes pour chaque niveau et pas des cases »), comme les
-                          autres tableaux d'effets ; le 1d6 donne la compétence (data-jet), le 1d20 le bonus d'acquis, donc la ligne (data-min, data-max) */}
-                      {accessoires.competences.lignes.flatMap((l) => l.effets.map((e, k) => (
-                        <tr class={`acc-ligne acc-effet${k === 0 ? ' acc-ligne--groupe' : ''}`} style={styleDeNiveau(e.niveau)} data-choix="effet" data-valeur={cleDEffet(e.id)} data-propriete="competence" data-jet={l.jet} data-min={e.bonus_min} data-max={e.bonus_max} data-niveau={e.niveau} data-niveau-brut={e.niveau_brut} data-libelle={l.libelle} data-sous={l.caracteristique} data-prix={e.prix_brut ?? undefined} data-prix-html={e.prix_brut ? htmlAvecMonnaies(e.prix_brut) : undefined}>
-                          <td class="acc-jet">{l.jet}</td>
-                          <th scope="row" class="acc-effet__libelle"><button type="button" class="acc-choisir" aria-pressed="false">{l.libelle}</button>{l.caracteristique && <span class="acc-effet__sous">{l.caracteristique}</span>}</th>
-                          <td class="acc-effet__bonus">{e.bonus_min} % à {e.bonus_max} %</td>
-                          <td class="acc-effet__niveau">{e.niveau_brut ?? ''}</td>
-                          <td class="acc-gemmes" data-gemmes>
-                            {l.gemmes.map((rang, i) => (
-                              <>{i > 0 && <span class="acc-gemmes__plus">+</span>}{rang.map((g, j) => (<>{j > 0 && <span class="acc-gemmes__ou">ou</span>}<span class="acc-gemme" style={styleDeGemme(g)} data-bulle={bulleDeGemme(g.id)} data-gemme={cleDeRessource(g.id)} data-rang={i + 1}>{g.nom}</span></>))}</>
-                            ))}
-                          </td>
-                          <td class="acc-effet__prix" set:html={e.prix_brut ? htmlAvecMonnaies(e.prix_brut) : ''} />
+      <section class="tableau acc-bloc acc-bloc--effets" aria-labelledby="acc-etape-3">
+        <h2 class="tableau__titre acc-bloc__titre" id="acc-etape-3"><span class="acc-bloc__etape">Étape 3</span> <span class="tableau__nom">Effet</span> <span class="acc-bloc__niveaux" aria-label="Couleurs des niveaux">{[1, 2, 3, 4, 5].map((n) => <span class={classes('acc-niveau-pastille', classeDeNiveau(n))}>Niveau {n}</span>)}</span></h2>
+        <p class="tableau__note acc-bloc__note js-seul">L’onglet de la propriété choisie s’ouvre. Gemmes : survolez-les pour leur magie et le prix d’un quart de gemme ; celles au choix se cochent, deux en tout, pour en calculer le prix.</p>
+        {/* un onglet par propriété à effets (demande du propriétaire, 2026-10-16 : « Et plutôt que des menus déroulants : ces tableau soient derrière des onglets » ;
+            components/Onglets.astro, que src/scripts/accessoires.mjs ouvre aussi quand une propriété est choisie) ; sans JavaScript, les tableaux se suivent */}
+        <div class="acc-effets" data-onglets="Effets par propriété">
+          <nav class="acc-onglets" aria-label="Effets par propriété">
+            {proprietesAvecEffets.map((p, i) => (
+              <a class={`onglet${i === 0 ? ' is-active' : ''}`} id={`onglet-${ancreDeLaPropriete(p.id)}`} href={`#${ancreDeLaPropriete(p.id)}`} data-onglet-propriete={p.id}>
+                <span class="onglet__nom">{p.nom}</span>
+                <span class="onglet__detail">{deDeLaPropriete(p)}</span>
+              </a>
+            ))}
+          </nav>
+          {proprietesAvecEffets.map((p, i) => {
+            const competence = p.id === 'competence';
+            const de = deDeLaPropriete(p);
+            return (
+              <section class={`tableau acc-famille${i === 0 ? ' is-active' : ''}`} id={ancreDeLaPropriete(p.id)} data-propriete={p.id} data-table="effet">
+                <h3 class="tableau__titre acc-famille__titre"><span class="tableau__nom acc-famille__nom">Si {p.nom.toLowerCase()}</span><span class="acc-famille__de">{de}</span></h3>
+                {consignes[p.id]?.map((c) => <p class="tableau__note acc-famille__note">{c}</p>)}
+                <div class="tableau__defile">
+                  {competence ? (
+                    <table class="table-donnees table-donnees--serree acc-table acc-table--competences">
+                      <thead>
+                        <tr>
+                          <th scope="col" class="acc-de-case"><button type="button" class="acc-de js-seul" data-de={facesDeLaPropriete(p)} data-de-bonus={facesDuBonus} aria-label={`Lancer ${de} : compétence`} title={`Lancer ${de}`}><Fragment set:html={DE_SVG} /><span class="acc-de__resultat" data-de-resultat></span></button><span class="acc-de-case__texte">Jet</span></th>
+                          <th scope="col">Compétence</th>
+                          <th scope="col">Bonus d’acquis</th>
+                          <th scope="col">Niveau</th>
+                          <th scope="col">Gemmes</th>
+                          <th scope="col">Prix</th>
                         </tr>
-                      )))}
-                    </tbody>
-                  </table>
-                ) : (
-                  <table class="acc-table">
-                    <thead>
-                      <tr>
-                        <th scope="col" class="acc-de-case"><button type="button" class="acc-de js-seul" data-de={facesDeLaPropriete(p)} aria-label={`Lancer ${de} : ${p.nom.toLowerCase()}`} title={`Lancer ${de}`}><Fragment set:html={DE_SVG} /><span class="acc-de__resultat" data-de-resultat></span></button><span class="acc-de-case__texte">Jet</span></th>
-                        <th scope="col">{p.id === 'caracteristique' ? 'Caractéristique' : 'Effet'}</th>
-                        <th scope="col">Niveau</th>
-                        <th scope="col">Gemmes</th>
-                        <th scope="col">Prix</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {p.effets.map((e) => {
-                        const bulle = `bulle-remarque-${cleDEffet(e.id).replace(/:/g, '-')}`;
-                        return (
-                          <tr class={`acc-ligne acc-effet${e.malediction ? ' acc-ligne--malediction' : ''}${e.libelle ? '' : ' acc-effet--vide'}`} style={styleDeNiveau(e.niveau)} data-choix="effet" data-valeur={cleDEffet(e.id)} data-propriete={p.id} data-min={e.jet} data-max={e.jet} data-niveau={e.niveau ?? undefined} data-niveau-brut={e.niveau_brut ?? undefined} data-libelle={e.libelle ?? ''} data-prix={e.prix_brut ?? undefined} data-prix-html={e.prix_brut ? htmlAvecMonnaies(e.prix_brut) : undefined} data-malediction={e.malediction ? '1' : undefined} data-remarque={e.remarque ?? undefined}>
-                            <td class="acc-jet">{e.jet}</td>
-                            <th scope="row" class="acc-effet__libelle">
-                              <button type="button" class="acc-choisir" aria-pressed="false">{e.libelle ?? <span class="vide">(ligne vide)</span>}</button>
-                              {e.remarque && (
-                                <span class="bulle-zone"><span class="acc-remarque" data-bulle={bulle} aria-describedby={bulle} title={e.remarque} tabindex="0" aria-label="Remarque">*</span><span class="bulle" role="tooltip" id={bulle} hidden><strong class="bulle__titre">Remarque</strong><span class="bulle__texte">{e.remarque}</span></span></span>
-                              )}
-                            </th>
-                            <td class="acc-effet__niveau">{e.niveau_brut ?? ''}</td>
-                            <td class="acc-gemmes" data-gemmes>
-                              {e.gemmes.length ? e.gemmes.map((rang, i) => (
-                                <>{i > 0 && <span class="acc-gemmes__plus">+</span>}{rang.map((g, j) => (<>{j > 0 && <span class="acc-gemmes__ou">ou</span>}<span class="acc-gemme" style={styleDeGemme(g)} data-bulle={bulleDeGemme(g.id)} data-gemme={cleDeRessource(g.id)} data-rang={i + 1}>{g.nom}</span></>))}</>
-                              )) : (e.gemmes_brut ?? '')}
-                            </td>
-                            <td class="acc-effet__prix" set:html={htmlAvecMonnaies(e.prix_brut ?? '')} />
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </details>
-          );
-        })}
+                      </thead>
+                      <tbody>
+                        {/* une ligne par compétence (demande du propriétaire, 2026-10-16 : « Lignes trop longues et trop nombreuses ») : le bonus d'acquis au
+                            curseur, au dé (1d20) ou saisi, donne le niveau de sa plage écrite, donc l'effet (data-valeur), sa couleur et son prix
+                            (data-niveaux : les effets de la ligne, un par niveau, prix écrits, la classe de la couleur du niveau ; src/scripts/accessoires.mjs#reglerLAcquis ; avant data-prix-html,
+                            dont le « > » couperait la balise pour les tests qui lisent le texte visible) ; la ligne s'affiche au
+                            plus petit bonus. Le 1d6 donne la compétence (data-jet), le 1d20 le bonus. Sans JavaScript : chaque plage du bonus, son niveau et
+                            son prix écrit, dans la case du bonus. */}
+                        {accessoires.competences.lignes.map((l) => {
+                          const e = l.effets[0];
+                          const plage = (x: { bonus_min: number; bonus_max: number }) => `${x.bonus_min} % à ${x.bonus_max} %`;
+                          return (
+                            <tr class={classes('acc-ligne acc-effet acc-competence', classeDeNiveau(e.niveau))} data-choix="effet" data-valeur={cleDEffet(e.id)} data-propriete="competence" data-jet={l.jet} data-acquis={bonus.min} data-niveau={e.niveau} data-niveau-brut={e.niveau_brut} data-libelle={l.titre} data-niveaux={JSON.stringify(l.effets.map((x) => ({ valeur: cleDEffet(x.id), niveau: x.niveau, brut: x.niveau_brut, min: x.bonus_min, max: x.bonus_max, prix: x.prix_brut, classe: classeDeNiveau(x.niveau) })))} data-prix={e.prix_brut ?? undefined} data-prix-html={e.prix_brut ? htmlAvecMonnaies(e.prix_brut) : undefined} data-au-choix={auChoix(e) || undefined}>
+                              <td class="acc-jet">{l.jet}</td>
+                              <th scope="row" class="acc-effet__libelle"><button type="button" class="acc-choisir" aria-pressed="false">{l.titre}</button></th>
+                              <td class="acc-effet__bonus">
+                                <ul class="acc-plages sans-js">{l.effets.map((x) => <li>{plage(x)} : {x.niveau_brut}{x.prix_brut && <>, <Fragment set:html={htmlAvecMonnaies(x.prix_brut)} /></>}</li>)}</ul>
+                                <span class="acc-acquis js-seul">
+                                  <input type="range" class="acc-acquis__curseur" min={bonus.min} max={bonus.max} step="1" value={bonus.min} data-acc-acquis aria-label={`Bonus d’acquis : ${l.titre}`} aria-valuetext={`${bonus.min} % : ${e.niveau_brut}`} />
+                                  <input type="number" class="acc-acquis__saisie" min={bonus.min} max={bonus.max} step="1" value={bonus.min} inputmode="numeric" data-acc-acquis-saisie aria-label={`Bonus d’acquis saisi : ${l.titre}`} /><span class="acc-acquis__unite">%</span>
+                                  <button type="button" class="acc-de acc-de--acquis" data-acc-acquis-de={facesDuBonus} aria-label={`Lancer 1d${facesDuBonus} : bonus d’acquis, ${l.titre}`} title={`Lancer 1d${facesDuBonus}`}><Fragment set:html={DE_SVG} /></button>
+                                </span>
+                              </td>
+                              <td class="acc-effet__niveau"><span class="js-seul" data-acc-niveau title={plage(e)}>{e.niveau_brut ?? ''}</span></td>
+                              <td class="acc-gemmes" data-gemmes><GemmesDeLEffet rangs={l.gemmes} libelle={l.titre} /></td>
+                              <td class="acc-effet__prix"><span class="js-seul" data-acc-prix set:html={e.prix_brut ? htmlAvecMonnaies(e.prix_brut) : ''} /></td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <table class="table-donnees table-donnees--serree acc-table">
+                      <thead>
+                        <tr>
+                          <th scope="col" class="acc-de-case"><button type="button" class="acc-de js-seul" data-de={facesDeLaPropriete(p)} aria-label={`Lancer ${de} : ${p.nom.toLowerCase()}`} title={`Lancer ${de}`}><Fragment set:html={DE_SVG} /><span class="acc-de__resultat" data-de-resultat></span></button><span class="acc-de-case__texte">Jet</span></th>
+                          <th scope="col">{p.id === 'caracteristique' ? 'Caractéristique' : 'Effet'}</th>
+                          <th scope="col">Niveau</th>
+                          <th scope="col">Gemmes</th>
+                          <th scope="col">Prix</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {p.effets.map((e) => {
+                          const bulle = `bulle-remarque-${cleDEffet(e.id).replace(/:/g, '-')}`;
+                          return (
+                            <tr class={classes('acc-ligne acc-effet', e.malediction && 'acc-ligne--malediction', !e.libelle && 'acc-effet--vide', classeDeNiveau(e.niveau))} data-choix="effet" data-valeur={cleDEffet(e.id)} data-propriete={p.id} data-min={e.jet} data-max={e.jet} data-niveau={e.niveau ?? undefined} data-niveau-brut={e.niveau_brut ?? undefined} data-libelle={e.libelle ?? ''} data-prix={e.prix_brut ?? undefined} data-prix-html={e.prix_brut ? htmlAvecMonnaies(e.prix_brut) : undefined} data-malediction={e.malediction ? '1' : undefined} data-remarque={e.remarque ?? undefined} data-au-choix={auChoix(e) || undefined}>
+                              <td class="acc-jet">{e.jet}</td>
+                              <th scope="row" class="acc-effet__libelle">
+                                <button type="button" class="acc-choisir" aria-pressed="false">{e.libelle ?? <span class="vide">(ligne vide)</span>}</button>
+                                {e.remarque && (
+                                  <span class="bulle-zone"><span class="acc-remarque" data-bulle={bulle} aria-describedby={bulle} title={e.remarque} tabindex="0" aria-label="Remarque">*</span><span class="bulle" role="tooltip" id={bulle} hidden><strong class="bulle__titre">Remarque</strong><span class="bulle__texte">{e.remarque}</span></span></span>
+                                )}
+                              </th>
+                              <td class="acc-effet__niveau">{e.niveau_brut ?? ''}</td>
+                              <td class="acc-gemmes" data-gemmes><GemmesDeLEffet rangs={e.gemmes} brut={e.gemmes_brut} libelle={e.libelle ?? ''} /></td>
+                              <td class="acc-effet__prix" data-acc-prix set:html={htmlAvecMonnaies(e.prix_brut ?? '')} />
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </section>
+            );
+          })}
+        </div>
       </section>
 
-      <section class="acc-bloc" data-table="monture" aria-labelledby="acc-monture">
-        <h2 class="acc-bloc__titre" id="acc-monture">Monture</h2>
-        <table class="acc-table">
-          <thead>
-            <tr>
-              <th scope="col">Niveau</th>
-              <th scope="col">Matière</th>
-              <th scope="col">Prix</th>
-              <th scope="col">Effet</th>
-            </tr>
-          </thead>
-          <tbody>
-            {accessoires.montures.map((m) => (
-              <tr class="acc-ligne acc-monture" style={styleDeNiveau(m.niveau)} data-choix="monture" data-valeur={m.niveau} data-min={m.niveau} data-max={m.niveau} data-niveau={m.niveau} data-libelle={m.matiere} data-prix={m.prix_brut} data-prix-html={m.prix_brut ? htmlAvecMonnaies(m.prix_brut) : undefined} data-prix-ro={m.prix_ro ?? undefined} data-effet={m.effet_brut}>
-                <td class="acc-jet">Niveau {m.niveau}</td>
-                <th scope="row"><button type="button" class="acc-choisir" aria-pressed="false">{m.matiere}</button></th>
-                <td set:html={htmlAvecMonnaies(m.prix_brut)} />
-                <td>{m.effet_brut}</td>
+      <section class="tableau acc-bloc" data-table="monture" aria-labelledby="acc-monture">
+        <h2 class="tableau__titre acc-bloc__titre" id="acc-monture"><span class="tableau__nom">Monture</span></h2>
+        <div class="tableau__defile">
+          <table class="table-donnees table-donnees--serree acc-table">
+            <thead>
+              <tr>
+                <th scope="col">Niveau</th>
+                <th scope="col">Matière</th>
+                <th scope="col">Prix</th>
+                <th scope="col">Effet</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {accessoires.montures.map((m) => (
+                <tr class={classes('acc-ligne acc-monture', classeDeNiveau(m.niveau))} data-choix="monture" data-valeur={m.niveau} data-min={m.niveau} data-max={m.niveau} data-niveau={m.niveau} data-libelle={m.matiere} data-prix={m.prix_brut} data-prix-html={m.prix_brut ? htmlAvecMonnaies(m.prix_brut) : undefined} data-prix-ro={m.prix_ro ?? undefined} data-effet={m.effet_brut}>
+                  <td class="acc-jet">Niveau {m.niveau}</td>
+                  <th scope="row"><button type="button" class="acc-choisir" aria-pressed="false">{m.matiere}</button></th>
+                  <td set:html={htmlAvecMonnaies(m.prix_brut)} />
+                  <td>{m.effet_brut}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
     </div>
 
@@ -223,7 +262,7 @@ const DE_SVG =
 
   <div class="acc-bulles" data-acc-qualites={JSON.stringify(QUALITES_DE_GEMME)}>
     {accessoires.gemmes.map((g) => (
-      <span class="bulle" role="tooltip" id={bulleDeGemme(g.id)} hidden style={`--mag: ${g.couleur}`} data-quarts={JSON.stringify(Object.fromEntries(Object.entries(g.quarts).map(([q, t]) => [q, t ? htmlAvecMonnaies(t) : t])))} data-quarts-rf={JSON.stringify(g.quartsRf)} data-nom={g.nom}
+      <span class={`bulle bulle--gemme ${g.classe}`} role="tooltip" id={bulleDeGemme(g.id)} hidden data-quarts={JSON.stringify(Object.fromEntries(Object.entries(g.quarts).map(([q, t]) => [q, t ? htmlAvecMonnaies(t) : t])))} data-quarts-rf={JSON.stringify(g.quartsRf)} data-nom={g.nom}
         ><strong class="bulle__titre">{g.nom}</strong
         ><span class="bulle__sous">Magie : {g.magie.nom}</span
         >{g.description && <span class="bulle__texte">{g.description}</span>}<span class="bulle__texte">Quart de gemme : classique <Fragment set:html={htmlAvecMonnaies(g.quarts.commune ?? '')} /> · raffinée <Fragment set:html={htmlAvecMonnaies(g.quarts.raffinee ?? '')} /> · parfaite <Fragment set:html={htmlAvecMonnaies(g.quarts.parfaite ?? '')} /></span></span
@@ -231,6 +270,7 @@ const DE_SVG =
     ))}
   </div>
 </div>
+</section>
 
 <script>
   import '../../scripts/accessoires.mjs';

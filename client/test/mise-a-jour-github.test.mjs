@@ -5,10 +5,9 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, mkdirSync, readFileSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { after, describe, test } from 'node:test';
+import { describe, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
 import { MARQUEUR_MAJEURE } from '../../tools/flux-git/regles.mjs';
@@ -19,9 +18,11 @@ import {
   changementsNonIndexes, chercherLotDejaFusionne, corpsDePR, creerBundle, enteteAuthentification, enveloppeGit, environnementGit, etatDesChecks,
   fichiersModifies, fusionDansDev, gitLocal, horodatage, horsListe, importerCommit, lireDiffTree, lirePhase, lireStatut, livraisonVersMaster,
   lotsEnAttente, messageAttendu, messageDeFin, neutraliserMarqueur, neutraliserReferences, noteDuCorps, nomDeBranche, pourCommandeDeWorkflow,
-  preparer, sousCommandeGit, tablesDuLot, verifierCommit, verifierEntrees, verifierPreparation, verifierSimulation,
+  preparer, sousCommandeGit, tablesAvecBalises, tablesDuLot, TABLES_DES_SOURCES_DE_MAITRISE, verifierCommit, verifierEntrees, verifierPreparation, verifierSimulation,
 } from '../scripts/mise-a-jour-github.mjs';
+import { TABLES_DES_SOURCES } from '../serveur/edition-maitrises.mjs';
 import { TABLES_DE_LA_NOTE as TABLES_DU_SCRIPT } from '../scripts/mise-a-jour-regles.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const SCRIPT = fileURLToPath(new URL('../scripts/mise-a-jour-github.mjs', import.meta.url));
 const REGLES_FLUX = fileURLToPath(new URL('../../tools/flux-git/regles.mjs', import.meta.url));
@@ -57,9 +58,8 @@ const EMPREINTE = empreinte(LOT_JSON);
 const FICHIERS = ['historique_modification.sql', 'metier.sql', 'note_version.sql', 'note_version_ligne.sql'];
 const CHEMINS = FICHIERS.map((f) => `data/rows/${f}`);
 
-const racineTemp = mkdtempSync(join(tmpdir(), 'mise-a-jour-github-test-'));
-after(() => rmSync(racineTemp, { recursive: true, force: true }));
-const dossierTemp = (prefixe) => mkdtempSync(join(racineTemp, prefixe));
+const racineTemp = dossierTemporaire('mise-a-jour-github');
+const dossierTemp = (prefixe) => dossierTemporaire(prefixe.replace(/-$/, ''), { dans: racineTemp });
 
 /** Checks d'un commit : regles-de-branches sauté (événement create) puis, après `lectures` lectures, les trois checks requis verts. */
 const checksVerts = (lectures = 1) => {
@@ -308,7 +308,7 @@ function monde(options = {}) {
         writeFileSync(resume, JSON.stringify({ erreur: m.erreurRegles, code: m.codeRegles }));
         return { code: m.codeRegles };
       }
-      writeFileSync(resume, JSON.stringify({ version: '0.2', depuis: '0.1', lignes: 1, bilan: { amelioration: 1 }, fichiers: m.fichiersResume, markdown: m.markdown }));
+      writeFileSync(resume, JSON.stringify({ version: m.versionRegles ?? '0.2', depuis: '0.1', lignes: 1, bilan: { amelioration: 1 }, fichiers: m.fichiersResume, markdown: m.markdown }));
       m.modifies = (m.fichiersChanges ?? m.fichiersResume.map((f) => `data/rows/${f}`)).slice().sort();
       return { code: 0 };
     }
@@ -779,6 +779,60 @@ describe('livrer : dev qui bouge, checks, reprise', () => {
     }
   });
 
+  test('version majeure (case « Version majeure » du lot) : seul le titre de la PR de livraison porte [V: X+1], et il le garde jusqu\'à la fusion', async () => {
+    // mise-a-jour-regles écrit la note en V1.0 pour un lot majeur (versionDeLivraison, testé dans mise-a-jour-regles)
+    const m = monde({ texteLot: lotJson({ simulation: false, majeure: true, version_cible: '1.0' }), versionRegles: '1.0' });
+    const r = await m.lancer();
+    assert.deepEqual([r.etat, r.version, r.majeure], ['livre', '1.0', true]);
+    const [prDev, prMaster] = m.pullsCrees();
+    assert.equal(prDev.corps.title, 'Mise à jour des règles V1.0 (site de dev)', 'la PR vers dev ne porte pas le marqueur');
+    assert.equal(prMaster.corps.title, 'Livraison V1.0 (mise à jour du site de dev) [V: X+1]');
+    assert.match(prMaster.corps.title, MARQUEUR_MAJEURE, 'livraison.yml lit le titre de la PR (tools/flux-git/cli.mjs#appliquer)');
+    // le marqueur n'est que dans ce titre (et le message de sa fusion, qui le reprend) : jamais dans un corps, un commentaire, la PR vers dev
+    for (const a of m.ecritures()) {
+      const sansTitre = a.chemin === '/pulls' && a.corps?.base === 'master' ? { ...a.corps, title: '' } : a.chemin === '/pulls/42/merge' ? { ...a.corps, commit_message: '' } : a.corps;
+      assert.doesNotMatch(JSON.stringify(sansTitre ?? {}), MARQUEUR_MAJEURE, `${a.methode} ${a.chemin}`);
+    }
+    assert.deepEqual(m.fusions.map((f) => f.numero), [41, 42]);
+    assert.match(m.journal.join('\n'), /version majeure/);
+    assert.match(messageDeFin('master', r), /^\*\*Terminé\*\* : V1\.0 .*version majeure/);
+  });
+
+  test('version majeure : une PR de livraison déjà ouverte sans [V: X+1] est laissée au propriétaire ; avec, elle est reprise', async () => {
+    const lot = lotJson({ simulation: false, majeure: true, version_cible: '1.0' });
+    const m = monde({ texteLot: lot, versionRegles: '1.0' });
+    m.prs.set(30, { number: 30, title: 'Livraison', body: 'notes', state: 'open', html_url: 'u', head: { ref: 'dev', sha: m.devSha }, base: { ref: 'master' }, lectures: 0 });
+    await assert.rejects(m.lancer(), (e) => e.etape === 'pr-master' && e.pr === 30 && /sans \[V: X\+1\]/.test(e.message));
+    assert.deepEqual(m.fusions.map((f) => f.numero), [41]);
+
+    const reprise = monde({ texteLot: lot, versionRegles: '1.0' });
+    reprise.prs.set(30, { number: 30, title: 'Livraison V1.0 [V: X+1]', body: '', state: 'open', html_url: 'u', head: { ref: 'dev', sha: reprise.devSha }, base: { ref: 'master' }, lectures: 0 });
+    const r = await reprise.lancer();
+    assert.deepEqual([r.prMaster, r.majeure], [30, true]);
+    assert.deepEqual(reprise.fusions.map((f) => f.numero), [41, 30]);
+  });
+
+  test('version majeure : [V: X+1] retiré du titre de la PR de livraison pendant l\'attente → jamais fusionnée (elle ferait une version mineure)', async () => {
+    for (const lecture of [1, 2]) {
+      const m = monde({
+        texteLot: lotJson({ simulation: false, majeure: true, version_cible: '1.0' }), versionRegles: '1.0',
+        surLecturePR: (pr) => { if (pr.base.ref === 'master' && pr.lectures === lecture) pr.title = 'Livraison V1.0'; },
+      });
+      await assert.rejects(m.lancer(), (e) => e.etape === 'pr-master' && e.pr === 42 && /version mineure/.test(e.message), `lecture ${lecture}`);
+      assert.deepEqual(m.fusions.map((f) => f.numero), [41], `lecture ${lecture}`);
+      assert.equal(m.prs.get(42).state, 'open');
+    }
+  });
+
+  test('version majeure : « majeure » du lot est vérifié (true ou false, couvert par l\'empreinte) ; absent, la livraison est mineure', async () => {
+    const m = monde({ texteLot: lotJson({ simulation: false, majeure: 'oui' }) });
+    await assert.rejects(m.preparer(), (e) => e.etape === 'lot' && /« majeure »/.test(e.message));
+    const ancien = monde({ texteLot: lotJson({ simulation: false }) });
+    const r = await ancien.lancer();
+    assert.equal(r.majeure, false);
+    assert.equal(ancien.pullsCrees()[1].corps.title, 'Livraison V0.2 (mise à jour du site de dev)');
+  });
+
   test('livraison : le commit de version n\'arrive pas en 20 min → échec de « Livraison vers master » seule, pas de PR vers master', async () => {
     const m = monde({ versionApres: Infinity });
     await m.preparer();
@@ -914,6 +968,19 @@ describe('simulation de mise à jour : vraie vérification, sans effet de bord',
     sansPoussee(m);
   });
 
+  test('simulation d\'une version majeure : une PR de livraison ouverte sans [V: X+1] ferait échouer la vraie ; sinon, elle le dit', async () => {
+    const lot = lotJson({ simulation: true, majeure: true, version_cible: '1.0' });
+    const m = essai({ texteLot: lot, versionRegles: '1.0' });
+    m.prs.set(30, { number: 30, title: 'Livraison', body: '', state: 'open', html_url: 'u', head: { ref: 'dev', sha: m.devSha }, base: { ref: 'master' }, lectures: 0 });
+    await assert.rejects(m.lancer({ essai: true }), (e) => e.etape === 'pr-master' && /#30/.test(e.message) && /sans \[V: X\+1\]/.test(e.message));
+    sansPoussee(m);
+    const n = essai({ texteLot: lot, versionRegles: '1.0' });
+    const r = await n.lancer({ essai: true });
+    assert.deepEqual([r.etat, r.majeure], ['essai', true]);
+    assert.match(messageDeFin('master', r), /version majeure/);
+    sansPoussee(n);
+  });
+
   test('simulation d\'un lot déjà dans dev : les deux étapes le disent, sans rien écrire', async () => {
     const commit = sha('lot-commit');
     const m = essai({
@@ -976,10 +1043,47 @@ describe('fonctions pures', () => {
     // ce que le rejeu écrit au-delà du journal (serveur/edition.mjs#rejouerLeJournal) : la cascade d'un mot-clé supprimé (pages d'exemple), le mot-clé
     // d'une ligne page_tag notée avant la migration 0043
     const lot = (...modifications) => ({ journal: { lots: [{ modifications }] } });
-    assert.deepEqual(tablesDuLot(lot({ table: 'mot_cle', operation: 'supprimer', avant: { id: 'demo' }, apres: null })), ['mot_cle', 'page_tag']);
+    assert.deepEqual(tablesDuLot(lot({ table: 'mot_cle', operation: 'supprimer', avant: { id: 'demo' }, apres: null })), ['mot_cle', 'page', 'page_tag'],
+      'la cascade de page_tag, et les pages typées refaites depuis les lignes dont les balises sont retirées');
     assert.deepEqual(tablesDuLot(lot({ table: 'mot_cle', operation: 'modifier', avant: { libelle: 'a' }, apres: { libelle: 'b' } })), ['mot_cle']);
     assert.deepEqual(tablesDuLot(lot({ table: 'page_tag', operation: 'inserer', avant: null, apres: { page_id: 'p', ordre: 1, tag_id: 'x', libelle: 'X' } })), ['mot_cle', 'page_tag']);
     assert.deepEqual(tablesDuLot(lot({ table: 'page_tag', operation: 'inserer', avant: null, apres: { page_id: 'p', ordre: 1, tag_id: 'x' } })), ['page_tag']);
+    // les sources de maîtrise d'arme d'une classe ou d'un don touchés, refaites par le lecteur après le lot (sourcesRefaitesParLeLot : un lot noté avant
+    // la migration 0076 ne les écrit pas ; décisions R148 à R151, R154), la même liste que le service
+    assert.deepEqual(TABLES_DES_SOURCES_DE_MAITRISE, TABLES_DES_SOURCES);
+    assert.deepEqual(tablesDuLot(lot({ table: 'capacite', operation: 'modifier', avant: { effet: 'a' }, apres: { effet: 'b' } })), ['capacite', 'capacite_nm_gagne', 'maitrise_arme_part', 'maitrise_arme_part_famille']);
+    assert.deepEqual(tablesDuLot(lot({ table: 'classe_maitrise_arme', operation: 'supprimer', avant: { classe_id: 'c', rang: 2 }, apres: null })), ['capacite_nm_gagne', 'classe_maitrise_arme', 'maitrise_arme_part', 'maitrise_arme_part_famille']);
+    // une famille d'armes créée ou renommée (décision R159) : le lecteur relit toutes les sources avec les familles
+    assert.deepEqual(tablesDuLot(lot({ table: 'arme_famille', operation: 'inserer', avant: null, apres: { id: 'fouets', nom: 'FOUETS' } })),
+      ['arme_famille', 'capacite_nm_gagne', 'maitrise_arme_part', 'maitrise_arme_part_famille']);
+    assert.deepEqual(tablesDuLot(lot({ table: 'metier', operation: 'modifier', avant: { nom: 'a' }, apres: { nom: 'b' } })), ['metier']);
+    // D3 : un mot-clé supprimé (ou fusionné) quitte aussi les balises des textes que le journal n'a pas (balisesRetireesParLeLot,
+    // balisesDesColonnesDerivees) : les tables dont data/rows a une balise, lues seulement pour un tel lot
+    let lues = 0;
+    const balises = () => {
+      lues += 1;
+      return ['arme', 'page'];
+    };
+    assert.deepEqual(tablesDuLot(lot({ table: 'mot_cle', operation: 'supprimer', avant: { id: 'demo' }, apres: null }), { tablesAvecBalises: balises }),
+      ['arme', 'mot_cle', 'page', 'page_tag']);
+    assert.deepEqual(tablesDuLot(lot({ table: 'mot_cle', operation: 'modifier', avant: { libelle: 'a' }, apres: { libelle: 'b' } }), { tablesAvecBalises: balises }), ['mot_cle']);
+    assert.equal(lues, 1, 'git grep seulement pour un lot qui retire un mot-clé');
+    const appels = [];
+    const g = (args, o) => {
+      appels.push([args, o]);
+      return { code: 0, sortie: `${sha}:data/rows/panneau_regles_bloc.sql\n${sha}:data/rows/arme.sql\n${sha}:data/rows/sous/x.sql\n`, erreur: '' };
+    };
+    const sha = 'abc1230000000000000000000000000000000000';
+    assert.deepEqual(tablesAvecBalises(g, sha), ['arme', 'panneau_regles_bloc']);
+    assert.deepEqual(appels, [[['grep', '-l', '-F', '{{', sha, '--', 'data/rows/'], { ok: [0, 1] }]], 'git grep, rien d’autre (code 1 : aucune balise)');
+    assert.deepEqual(tablesAvecBalises(g, null), []);
+    tablesAvecBalises(g, 'origin/dev');
+    assert.deepEqual(appels.at(-1)[0], ['grep', '-l', '-F', '{{', 'origin/dev', '--', 'data/rows/'], 'origin/dev, la base du rejeu de « preparer »');
+    const nombre = appels.length;
+    for (const rev of ['--open-files-in-pager=sh', '-O', 'abc123', 'origin/master', 'HEAD', 'origin/dev --no-index']) {
+      assert.throws(() => tablesAvecBalises(g, rev), /révision refusée/, rev);
+    }
+    assert.equal(appels.length, nombre, 'rien n’est passé à git pour une révision refusée');
   });
 
   test('git diff-tree -z : modes et chemins ; préparation : forme contrôlée', () => {

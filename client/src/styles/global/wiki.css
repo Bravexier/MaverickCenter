@@ -2,8 +2,6 @@
 .entry-list li { padding: 0.5rem 0; border-bottom: 1px solid var(--border); }
 
 .prose { max-width: 46rem; }
-.prose table { border-collapse: collapse; display: block; max-width: 100%; overflow-x: auto; }
-.prose th, .prose td { border: 1px solid var(--border); padding: 0.3rem 0.6rem; }
 .wikilink { text-decoration-style: dotted; }
 .wikilink--missing { color: var(--danger); font-style: normal; text-decoration: underline wavy; cursor: help; }
 .linked-pages { display: grid; gap: 1rem 2rem; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border); }
@@ -19,3 +17,7 @@ main a { overflow-wrap: anywhere; } /* les URLs de la section « Sources » ne d
 [data-couleur="bleu"] { --case: #2a6fb0; }
 [data-couleur="violet"] { --case: #7b4fb0; }
 [data-couleur="gris"] { --case: #8a8a8a; }
+/* Un groupe d'un sommaire dans la couleur de son groupe du plan (components/guide/Sommaire.astro : le sommaire des Bases, lib/livres.mjs#LES_BASES) :
+   --sommaire-couleur tiré de la classe de sa partie (`.couleur-partie-…`, lib/palette-css.mjs#classeDePartie), posée sur le groupe ; jamais un style. */
+.sommaire[class*='couleur-partie-'] { --sommaire-couleur: var(--couleur); }
+.sommaire--couleur > h2 { padding-left: 0.6rem; border-left: 4px solid var(--sommaire-couleur); }

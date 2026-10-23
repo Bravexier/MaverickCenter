@@ -1,11 +1,13 @@
 ---
 import listeCss from '../../styles/classe/liste.css?raw';
 import magieTooltipsCss from '../../styles/magie/tooltips.css?raw';
-import { CLASS_COLORS, type groupClasses } from '../../lib/class-groups.mjs';
+import type { groupClasses } from '../../lib/class-groups.mjs';
+import { classeDeCategorie, cssDesFamilles } from '../../lib/palette-css.mjs';
 import { idBulle } from '../../lib/magies';
 import { entryHref } from '../../lib/wiki';
 
-// /classes/ : les cinq catégories (lib/class-groups.mjs) côte à côte, chacune dans sa couleur (celle des pages de classe), et une PASTILLE par
+// /classes/ : les cinq catégories (lib/class-groups.mjs) côte à côte, chacune dans sa couleur (celle des pages de classe : la classe de sa catégorie,
+// lib/palette-css.mjs, famille `classe`, émise ici ; jamais un style), et une PASTILLE par
 // classe sur le modèle de la carte des magies (components/magie/MagiesConstellation.astro) : pilule bordée et teintée de la couleur, point de couleur,
 // nom en gras (le titre : une classe raciale porte le nom de sa race). Le résumé de la classe est dans une infobulle (components/Infobulles.astro ;
 // sans JavaScript, l'attribut `title` du lien en tient lieu). Sur un écran étroit, les catégories passent à la ligne.
@@ -18,10 +20,11 @@ const compte = (group: Props['groups'][number]) => group.sections.reduce((n, s) 
 ---
 
 <style is:inline set:html={css}></style>
+<style is:inline set:html={cssDesFamilles(['classe'])}></style>
 <div class="classes-pastilles">
   {
     groups.map((group) => (
-      <section class="classes-groupe" id={group.key} style={`--couleur-classe: ${CLASS_COLORS[group.key]}`}>
+      <section class={`classes-groupe ${classeDeCategorie(group.key)}`} id={group.key}>
         <h2 class="classes-groupe__titre">
           <span class="classes-groupe__point" aria-hidden="true" />
           <span class="classes-groupe__nom">{group.label}</span>

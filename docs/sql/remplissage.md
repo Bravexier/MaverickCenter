@@ -44,7 +44,7 @@ qui a sa page dans le wiki porte un lien ↗. La table `page` n'affiche que la l
 
 - **Au build, sans étape préalable** : `src/lib/donnees.mjs` construit la base dans un dossier temporaire avec `db-build.mjs` et `db-derive.mjs` (les mêmes scripts que `npm run db:build`,
   environ 3 s), puis la lit avec `node:sqlite`. `HIDE_EXAMPLES=1` retire les pages d'exemple. Le build doit donc se lancer dans un dépôt complet (`data/` présent) : c'est le cas de la CI,
-  de `livraison.yml` (après chaque fusion : le site avant la 1.0, les installateurs ensuite) et de `deploy/build.sh`.
+  de `livraison.yml` (après chaque fusion : les installateurs) et de `deploy/build.sh`.
 - **Logique testée** (`client/test/donnees.test.mjs`) : ancres uniques et sans collision pour chaque ligne de chaque table, chaque lien de clé étrangère mène à une ligne qui existe,
   un sort renvoie à sa magie, une capacité à sa page. Les gabarits Astro (`src/pages/donnees/`) ne contiennent que des boucles.
 - **Poids** : environ 15 Mo de HTML (la plus grosse page, `relation_peuple`, fait 2,8 Mo avant compression).
@@ -93,7 +93,7 @@ texte dit « Import initial depuis les sources historiques » au lieu de « Pour
 
 ## La colonne `remarque`
 
-Chaque table d'entités (les 60 tables que visent `page_entite`, `note_cellule` et `ecart_source`, hors `page`) a une colonne `remarque` : texte libre, **vide par défaut**. Les notes de cellule des classeurs y sont
+Chaque table d'entités (les 59 tables que visent `page_entite`, `note_cellule` et `ecart_source`, hors `page`) a une colonne `remarque` : texte libre, **vide par défaut**. Les notes de cellule des classeurs y sont
 recopiées dans la ligne qu'elles commentent (sorts, capacités, armes, armes élémentaires, effets d'accessoire, créatures, maladies) ; plusieurs notes sur une ligne sont réunies, séparées par une ligne vide. La table
 `note_cellule` garde chaque note avec sa cellule d'origine et sa nature (note ou commentaire résolu). `npm run db:check` vérifie qu'aucune note n'est absente de la remarque de sa ligne. La remarque est dans le plein
 texte des entités et dans l'explorateur de l'onglet DB.

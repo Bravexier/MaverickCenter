@@ -2,9 +2,8 @@
 // Le gabarit (components/MagiePage.astro) affiche ces données telles quelles : on teste ici ce qui lui arrive (formes, regroupements, liens),
 // sur le contenu RÉEL de la base (data/rows) comme sur des cas limites.
 import assert from 'node:assert/strict';
-import { copyFileSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { copyFileSync, readFileSync, rmSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -33,6 +32,7 @@ import {
 } from '../src/lib/sort-format.mjs';
 import { sansBonus } from '../src/lib/sort-maitrise.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const textes = (segs) => segs.map((s) => (s.modif ? `(${s.texte})` : s.texte)).join(' ');
 
@@ -200,10 +200,12 @@ test('sortsParNpm range les sorts par niveau croissant sans perdre l’ordre de 
   assert.equal(couleurDeMagie('Inconnue'), COULEUR_PAR_DEFAUT);
   assert.equal(couleurDeMagie(undefined), COULEUR_PAR_DEFAUT);
   assert.equal(couleurDeMagie('Espace/Temps'), couleurDeMagie('espace-temps'));
+  // Feu et Arcane : demande du propriétaire du 2026-10-23, « Profite en pour rendre le Feu un peu plus orangé, et l'arcane un peu plus argenté gris pour
+  // mieux différenciers du sang et du vide. » ; ces deux valeurs sont validées par le propriétaire le 2026-10-23 : « Garder les deux »
   const couleursAttendues = {
-    feu: '#ff0000', eau: '#0000ff', glace: '#00ffff', terre: '#996600', vent: '#00ff66',
+    feu: '#ff4500', eau: '#0000ff', glace: '#00ffff', terre: '#996600', vent: '#00ff66',
     foudre: '#ffff00', lumiere: '#fff2cc', ombre: '#cc66ff', sang: '#cc0000', vide: '#ffffff',
-    arcane: '#b7b7b7', corruption: '#000000', necromancie: '#274e13', 'espace-temps': '#ff66cc',
+    arcane: '#a8adb5', corruption: '#000000', necromancie: '#274e13', 'espace-temps': '#ff66cc',
     'potentiel-illimite': '#ff9900',
   };
   for (const [nom, couleur] of Object.entries(couleursAttendues)) assert.equal(couleurDeMagie(nom), couleur);
@@ -267,7 +269,7 @@ test('la remarque du sort (note de cellule) vient de sort.remarque : une remarqu
 });
 
 test('le chargeur ne dépend pas de la table note_cellule (simple trace, appelée à disparaître)', () => {
-  const dossier = mkdtempSync(join(tmpdir(), 'maverick-magies-'));
+  const dossier = dossierTemporaire('magies');
   try {
     const copie = join(dossier, 'sans-note.db');
     copyFileSync(cheminBase({ sansExemples: false }), copie);

@@ -5,6 +5,9 @@
   --met: var(--accent);
   --met-soft: color-mix(in srgb, var(--accent) 9%, var(--surface));
   --met-line: color-mix(in srgb, var(--accent) 35%, var(--border));
+  --tab: var(--met);
+  --tab-soft: var(--met-soft);
+  --tab-line: var(--met-line);
   margin: 1rem 0 2rem;
 }
 .metiers .js-only { display: none; }
@@ -12,41 +15,37 @@ html.js .metiers .js-only { display: inline; }
 /* Filtres (un par colonne) et tri, posés par le script du tableau */
 .metiers-filtres[hidden] { display: none !important; }
 .metiers-filtres { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: 0.5rem 0.75rem; align-items: end; margin: 0 0 0.8rem; padding: 0.7rem 0.8rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
-.metiers-filtres label { display: grid; gap: 0.2rem; font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
-.metiers-filtres input, .metiers-filtres select { font: inherit; font-size: 0.9rem; text-transform: none; letter-spacing: normal; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.3rem 0.5rem; min-width: 0; }
-.metiers-filtres button { justify-self: start; font-size: 0.85rem; padding: 0.3rem 0.8rem; }
+.metiers-filtres label { display: grid; gap: 0.2rem; font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
+.metiers-filtres input, .metiers-filtres select { font: inherit; font-size: var(--fs-lg); text-transform: none; letter-spacing: normal; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.3rem 0.5rem; min-width: 0; }
+.metiers-filtres button { justify-self: start; font-size: var(--fs-md); padding: 0.3rem 0.8rem; }
 .metiers-tri { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 0.3rem; }
 .metiers-tri::after { content: '↕'; opacity: 0.45; font-size: 0.85em; }
 th[aria-sort="ascending"] .metiers-tri::after { content: '↑'; opacity: 1; color: var(--met); }
 th[aria-sort="descending"] .metiers-tri::after { content: '↓'; opacity: 1; color: var(--met); }
 .metiers-tri:hover { color: var(--text); }
-.metiers-tri:focus-visible { outline: 2px solid var(--met); outline-offset: 2px; border-radius: 3px; }
+.metiers-tri:focus-visible { outline: 2px solid var(--met); outline-offset: 2px; border-radius: var(--radius-xxs); }
 .metiers-table tbody.metier[hidden] { display: none; }
 .metier-detail__texte[hidden] { display: none; }
-.metiers-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
-.metiers-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
-.metiers-table thead th { text-align: left; font-size: 0.72rem; letter-spacing: 0.07em; text-transform: uppercase; font-weight: 600; color: var(--muted); padding: 0.55rem 0.75rem; background: var(--met-soft); border-bottom: 1px solid var(--met-line); }
 .metier { scroll-margin-top: 1rem; }
-.metiers-table tbody.metier + tbody.metier > tr:first-child > * { border-top: 1px solid var(--border); }
-.metier__main > * { padding: 0.55rem 0.75rem; vertical-align: top; }
 .metier__main { cursor: pointer; }
 .metier__main:hover { background: var(--met-soft); }
 .metier.is-selected > .metier__main { background: var(--met-soft); box-shadow: inset 4px 0 0 var(--met); }
 .metier__nom { text-align: left; min-width: 9rem; }
 .metier__choisir { all: unset; cursor: pointer; font-weight: 700; color: var(--text); line-height: 1.35; }
-.metier__choisir::before { content: '▸'; display: inline-block; margin-right: 0.35rem; color: var(--met); transition: transform 0.15s; }
+.metier__choisir::before { content: '▸'; display: inline-block; margin-right: 0.35rem; color: var(--met); transition: transform var(--duree); }
 .metier__choisir[aria-expanded="true"]::before { transform: rotate(90deg); }
 .metier__choisir:hover { text-decoration: underline dotted; }
 .metier__choisir:focus-visible { outline: 2px solid var(--met); outline-offset: 2px; border-radius: var(--radius-xs); }
 .metier__bonus { min-width: 10rem; }
 /* Bonus (décision R33) : un rang par ligne ; chaque compétence visée (son Acquis) ou l'initiative est une pastille dans la couleur de sa
-   caractéristique (lib/caracteristiques-postures.mjs, --c / --c-texte posés par lib/edition-rendu.mjs) ; un bonus en texte libre reste en italique */
+   caractéristique (sa classe `.couleur-caracteristique-<id>`, lib/palette-css.mjs, posée par lib/edition-rendu.mjs : --couleur, --couleur-texte) ;
+   un bonus en texte libre reste en italique */
 .metier-bonus + .metier-bonus { margin-top: 0.2rem; }
 .metier-bonus__valeur { font-weight: 700; font-variant-numeric: tabular-nums; }
-.metier-bonus__ou, .metier-objets__ou { font-size: 0.78rem; color: var(--muted); }
+.metier-bonus__ou, .metier-objets__ou { font-size: var(--fs-xs); color: var(--muted); }
 .metier-bonus--texte { font-style: italic; color: var(--muted); }
-.metier-cible, .metier-carac { display: inline-block; padding: 0 0.45rem; border-radius: var(--radius-pill); font-size: 0.82rem; line-height: 1.5; white-space: nowrap;
-  background: var(--c, var(--met-soft)); color: var(--c-texte, var(--text)); }
+.metier-cible, .metier-carac { display: inline-block; padding: 0 0.45rem; border-radius: var(--radius-pill); font-size: var(--fs-sm); line-height: 1.5; white-space: nowrap;
+  background: var(--couleur, var(--met-soft)); color: var(--couleur-texte, var(--text)); }
 .metier-cible--attribut { background: var(--met-soft); color: var(--text); border: 1px solid var(--met-line); }
 /* Caractéristiques de l'artisanat (décision R34) : deux pastilles, « + » entre elles ; « — » quand le métier n'en a pas */
 .metier__caracs { white-space: nowrap; }
@@ -61,10 +60,10 @@ th[aria-sort="descending"] .metiers-tri::after { content: '↓'; opacity: 1; col
 /* Description, sous la ligne */
 .metiers-table .metier__detail[hidden] { display: none; }
 .metiers-table .metier__detail > td { padding: 0; background: var(--met-soft); border-top: 1px dashed var(--met-line); box-shadow: inset 4px 0 0 var(--met); }
-.metier-detail { padding: 0.8rem 1.2rem 0.9rem 1.4rem; display: grid; gap: 0.5rem; font-size: 0.95rem; }
+.metier-detail { padding: 0.8rem 1.2rem 0.9rem 1.4rem; display: grid; gap: 0.5rem; font-size: var(--fs-lg); }
 .metier-detail__tete { display: flex; align-items: center; gap: 0.8rem; }
-.metier-detail__tete h2 { margin: 0; font-size: 1.05rem; }
-.metier-detail__fermer { display: none; margin-left: auto; font-size: 0.8rem; padding: 0.15rem 0.7rem; }
+.metier-detail__tete h2 { margin: 0; font-size: var(--fs-xl); }
+.metier-detail__fermer { display: none; margin-left: auto; font-size: var(--fs-sm); padding: 0.15rem 0.7rem; }
 html.js .metier-detail__fermer { display: inline-block; }
 .metier-detail__texte { margin: 0; max-width: 52rem; white-space: pre-line; }
 .metier-detail__remarque { color: var(--muted); }
@@ -76,7 +75,7 @@ html.js .metier-detail__fermer { display: inline-block; }
   .metiers-table tbody.metier + tbody.metier > tr:first-child > * { border-top: 0; }
   .metiers-table .metier__main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.35rem; padding: 0.6rem 0.8rem; }
   .metiers-table .metier__main > * { padding: 0; }
-  .metiers-table .metier__main td[data-label]::before { content: attr(data-label); display: block; font-size: 0.66rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+  .metiers-table .metier__main td[data-label]::before { content: attr(data-label); display: block; font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
   .metiers-table .metier__main td.metier__caracs::before { content: attr(data-label); }
   .metiers-table .metier__main td.metier__caracs:not(:has(.metier__carac:not(:empty)))::after { content: '—'; color: var(--muted); opacity: 0.6; }
   .metiers-table .metier__detail:not([hidden]), .metiers-table .metier__detail > td { display: block; }

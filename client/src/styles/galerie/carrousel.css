@@ -9,15 +9,15 @@
 .carrousel__diapo { flex: 0 0 100%; scroll-snap-align: center; margin: 0; height: clamp(15rem, 36vw, 23rem);
   display: grid; grid-template-rows: minmax(0, 1fr) auto; justify-items: center; padding: 1.25rem 1rem 0.6rem; }
 .carrousel__diapo a { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; min-height: 0; }
-.carrousel__diapo img { display: block; max-width: 100%; max-height: 100%; width: auto; height: auto; filter: drop-shadow(0 0.4rem 0.8rem rgb(0 0 0 / 0.25)); }
-.carrousel__diapo figcaption { padding-top: 0.4rem; color: var(--muted); font-style: italic; font-size: 0.9rem; text-align: center; }
+.carrousel__diapo img { display: block; max-width: 100%; max-height: 100%; width: auto; height: auto; filter: drop-shadow(0 0.4rem 0.8rem color-mix(in srgb, #000 25%, transparent)); }
+.carrousel__diapo figcaption { padding-top: 0.4rem; color: var(--muted); font-style: italic; font-size: var(--fs-lg); text-align: center; }
 .carrousel__commandes { display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0 1rem 0.75rem; }
 .carrousel__commandes[hidden] { display: none; }
 .carrousel__fleche { width: 2.2rem; height: 2.2rem; padding: 0; border-radius: 50%; font-size: 1.3rem; line-height: 1; }
 .carrousel__points { display: flex; gap: 0.35rem; }
 .carrousel__point { width: 0.75rem; height: 0.75rem; padding: 0; border-radius: 50%; background: var(--border); }
 .carrousel__point[aria-current='true'] { background: var(--accent); border-color: var(--accent); }
-.carrousel__pause { margin-left: 0.5rem; font-size: 0.85rem; padding: 0.2rem 0.7rem; }
-.carrousel__chantier { margin: 0; padding: 0.6rem 1rem; border-top: 1px dashed var(--border); background: var(--surface); color: var(--muted); font-size: 0.9rem; text-align: center; }
+.carrousel__pause { margin-left: 0.5rem; font-size: var(--fs-md); padding: 0.2rem 0.7rem; }
+.carrousel__chantier { margin: 0; padding: 0.6rem 1rem; border-top: 1px dashed var(--border); background: var(--surface); color: var(--muted); font-size: var(--fs-lg); text-align: center; }
 .carrousel__badge { display: inline-block; margin-right: 0.3rem; padding: 0.05rem 0.55rem; border-radius: var(--radius-pill); background: var(--warn-bg); color: var(--warn-text);
-  font-size: 0.75rem; font-weight: bold; letter-spacing: 0.03em; text-transform: uppercase; }
+  font-size: var(--fs-xs); font-weight: bold; letter-spacing: 0.03em; text-transform: uppercase; }

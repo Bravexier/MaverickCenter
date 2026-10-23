@@ -1,17 +1,9 @@
-// Générateur d'accessoires de la page /ressources/accessoires/ (demande du propriétaire, 2026-10-14 : « au lieu d'un tableau Markdown, un générateur
-// d'accessoire ») : fonctions pures, sans dépendance, partagées par le gabarit (components/accessoires/AccessoiresPage.astro) et le script de la page
-// (src/scripts/accessoires.mjs, le seul script de page qui importe ce module). Aucune règle n'est déduite : les dés sont ceux des tables de l'onglet
-// (le plus grand jet écrit d'une table donne ses faces : 1d4, 1d100, 1d6, 1d20), la qualité de gemme d'un niveau est la phrase des règles de la page.
-
-/**
- * Couleurs des niveaux (demande du propriétaire : « coloriser les lignes des effets et du produit final par le niveau de la même manière que l'Excel
- * d'origine ») : fond des cases « Niveau 1 » à « Niveau 5 » du tableau « Monture » de l'onglet « Accessoires » (capture fournie par le propriétaire le
- * 2026-10-14). Repère visuel sans valeur de règle ; le texte reste foncé sur ces fonds clairs, en thème sombre aussi.
- */
-export const COULEURS_DES_NIVEAUX = { 1: '#d9ead3', 2: '#fff2cc', 3: '#fce5cd', 4: '#f4cccc', 5: '#e6b8af' };
-
-/** Variable CSS `--niv` d'une ligne d'un niveau ; rien pour un niveau absent (« Niveau ? », ligne vide). */
-export const styleDeNiveau = (niveau) => (COULEURS_DES_NIVEAUX[niveau] ? `--niv: ${COULEURS_DES_NIVEAUX[niveau]}` : undefined);
+// Générateur d'accessoires de l'onglet Accessoires de /ressources/equipement/ (demande du propriétaire, 2026-10-14 : « au lieu d'un tableau Markdown,
+// un générateur d'accessoire ») : fonctions pures, sans dépendance, partagées par le gabarit (components/accessoires/AccessoiresPage.astro) et le
+// script de la page (src/scripts/accessoires.mjs, le seul script de page qui importe ce module). Aucune règle n'est déduite : les dés sont ceux des
+// tables de l'onglet (le plus grand jet écrit d'une table donne ses faces : 1d4, 1d100, 1d6, 1d20), la qualité de gemme d'un niveau est la phrase des
+// règles de la page. Les couleurs des niveaux ne sont pas ici : lib/accessoires-couleurs.mjs (la règle), lib/palette-css.mjs (leur classe,
+// `couleur-niveau-<n>`, que le gabarit pose et que le script reprend de la ligne choisie).
 
 /**
  * Qualité de gemme d'un niveau d'accessoire, d'après les règles de la page : « Gemme classique = Accessoire niveau 1 et 2 », « Gemme raffinée =
@@ -36,10 +28,122 @@ export const lancer = (faces, alea = Math.random) => 1 + Math.min(faces - 1, Mat
 export const dansLaPlage = (plages, jet) => plages.find((p) => Number(p.min) <= jet && jet <= Number(p.max)) ?? null;
 
 /**
- * Paramètres de l'adresse de la page : ?emplacement=<id>&propriete=<id>&effet=<fin de l'id de l'effet>&acquis=<jet>&monture=<niveau>&gemmes=<clé>,<clé>&maudit=1.
+ * Bonus d'acquis de la propriété Compétence (demande du propriétaire, 2026-10-16 : « La valeur de "Bonus d’acquis" deviendrai un slider (qui peut être
+ * varié par un dé, ou saisi manuellement) En fonction de la valeur, ça changer automatiquement le niveau, donc la couleur et donc le prix. ») : un entier
+ * de `min` à `max`, les bornes des plages écrites (1 % à 20 %) ; une saisie qui n'est pas un nombre donne `min`. Le niveau est celui dont la plage écrite
+ * contient le bonus (`dansLaPlage`) : rien n'est calculé au-delà.
+ */
+export function bonusBorne(valeur, min, max) {
+  const n = Math.round(Number(String(valeur ?? '').replace(',', '.')));
+  return Number.isFinite(n) && String(valeur ?? '').trim() !== '' ? Math.min(max, Math.max(min, n)) : min;
+}
+
+/**
+ * Une ligne du tableau des compétences et son bonus d'acquis : `niveaux` = ses effets, un par niveau ({ valeur, niveau, min, max… }, plages écrites
+ * du 1d20). Rend { bonus, effet } : le bonus borné aux plages de la ligne et l'effet dont la plage le contient (le premier si les plages laissaient un
+ * trou) ; null pour une ligne sans effet.
+ */
+export function effetDuBonus(niveaux, valeur) {
+  if (!niveaux?.length) return null;
+  const bonus = bonusBorne(valeur, Math.min(...niveaux.map((n) => Number(n.min))), Math.max(...niveaux.map((n) => Number(n.max))));
+  return { bonus, effet: dansLaPlage(niveaux, bonus) ?? niveaux[0] };
+}
+
+/**
+ * Le bonus d'acquis d'une ligne des compétences d'après l'adresse (?effet=<clé d'un de ses effets>&acquis=<bonus>) : `acquis` s'il est un entier de la
+ * plage de cet effet, sinon le plus petit bonus de cette plage (l'effet de l'adresse fait foi) ; null si la clé n'est pas un effet de la ligne.
+ */
+export function bonusDeLAdresse(niveaux, cle, acquis) {
+  const n = (niveaux ?? []).find((x) => x.valeur === cle);
+  if (!n) return null;
+  const a = acquis === null || acquis === undefined || String(acquis).trim() === '' ? Number.NaN : Number(acquis);
+  return Number.isInteger(a) && a >= Number(n.min) && a <= Number(n.max) ? a : Number(n.min);
+}
+
+/**
+ * L'ancre gardée dans l'adresse : celle d'un onglet d'effets (#effets-…) ne l'est pas, la propriété de l'adresse dit l'onglet ouvert ; elle laisse sa
+ * place à `ancreDuPanneau`, l'ancre de l'onglet de la page qui contient le générateur (« #accessoires » : l'onglet Accessoires de la page
+ * « Équipement », qu'une adresse sans ancre n'ouvrirait pas).
+ */
+export const ancreGardee = (ancre, ancreDuPanneau = '') => (String(ancre ?? '').startsWith('#effets-') ? String(ancreDuPanneau ?? '') : String(ancre ?? ''));
+
+/**
+ * Malédiction (décision R94, demande du propriétaire du 2026-10-16 : « Si à n'importe quel étape "Malédiction" est choisi, on relance tout l'item à
+ * partir de l'étape 2 (on garde le même emplacement) Dans le 2em roll si on retombe à nouveau sur "Malédiction", l'objet est DETRUIT et tombe en
+ * poussière. ») : un jet qui tombe sur une malédiction (propriété « Malédiction » de l'étape 2, ligne « MALÉDICTION » d'un tableau d'effets de
+ * l'étape 3) rend l'accessoire maudit ; s'il l'était déjà, il est détruit.
+ */
+export const apresUneMalediction = ({ maudit = false, detruit = false } = {}) => ({ maudit: true, detruit: Boolean(maudit || detruit) });
+
+/**
+ * Les drapeaux { maudit, detruit } après un jet de dé de l'étape `etape` (1, 2 ou 3) qui a tiré une ligne (`malediction` : c'en est une), R94. Avant
+ * la transition, le jet commence un **nouvel accessoire** (ni maudit ni détruit) quand il relance l'étape 1 (R94 garde l'emplacement dans la relance :
+ * relancer l'emplacement, c'est un autre accessoire) ou quand l'accessoire est détruit (« sans troisième tirage » : il ne revient pas) ; sinon les
+ * drapeaux restent. Puis une malédiction tirée passe par `apresUneMalediction` ; une autre ligne n'y change rien.
+ * Commun aux deux chemins : « Tirer un accessoire » (`tirerUnAccessoire`) et le dé d'un tableau (src/scripts/accessoires.mjs) passent chaque jet par
+ * cette fonction. Pas commun : « Tirer un accessoire » repart de zéro, ne tire l'étape 1 qu'une fois, ne garde rien d'une manche à l'autre et s'arrête
+ * à la destruction ; un dé de tableau garde ce qu'il ne relance pas (emplacement, effet qui n'est pas une malédiction, monture, gemmes), et celui de
+ * l'étape 2 retire un effet « MALÉDICTION » déjà choisi (relancer l'étape 2, c'est refaire les étapes 2 et 3 : le script). Un clic n'est pas un jet :
+ * il ne passe pas ici (une ligne de malédiction cliquée rend maudit, jamais détruit ; le script).
+ */
+export function apresUnJet({ maudit = false, detruit = false } = {}, { etape, malediction = false } = {}) {
+  const avant = etape === 1 || detruit ? { maudit: false, detruit: false } : { maudit: Boolean(maudit), detruit: false };
+  return malediction ? apresUneMalediction(avant) : avant;
+}
+
+/**
+ * Un accessoire tiré entier (« Tirer un accessoire », R94). `emplacement()`, `propriete()` et `effet(propriete)` tirent chacun leur table (étapes 1, 2
+ * et 3 ; injectés, pour les tests) et rendent la ligne tirée, `{ malediction: booléen, … }`, ou null. L'étape 1 est tirée une seule fois : une
+ * malédiction à l'étape 2 (l'étape 3 n'est alors pas tirée) ou à l'étape 3 rend l'accessoire maudit et fait relancer les étapes 2 et 3, même
+ * emplacement ; une malédiction dans cette relance le détruit, sans troisième tirage (chaque jet passe par `apresUnJet` : au plus deux tours). Une étape
+ * qui ne rend aucune ligne (les tables sont complètes : test/accessoires-db.test.mjs) arrête le tirage là, sans boucler.
+ * Rend { emplacement, propriete, effet, maudit, detruit } : les lignes du dernier tour (`effet` null quand la propriété est la malédiction).
+ */
+export function tirerUnAccessoire({ emplacement, propriete, effet }) {
+  const e = emplacement() ?? null;
+  let etat = apresUnJet({}, { etape: 1, malediction: Boolean(e?.malediction) });
+  const resultat = (p = null, x = null) => ({ emplacement: e, propriete: p, effet: x, ...etat });
+  if (!e) return resultat();
+  for (;;) {
+    const p = propriete() ?? null;
+    if (!p) return resultat();
+    etat = apresUnJet(etat, { etape: 2, malediction: p.malediction });
+    if (etat.detruit) return resultat(p);
+    if (p.malediction) continue;
+    const x = effet(p) ?? null;
+    if (!x) return resultat(p);
+    etat = apresUnJet(etat, { etape: 3, malediction: x.malediction });
+    if (etat.detruit || !x.malediction) return resultat(p, x);
+  }
+}
+
+/**
+ * L'état de malédiction qui tient (R94) : « détruit » ne tient que tant que la propriété ou l'effet choisi est une malédiction (`malediction`), et il
+ * implique « maudit ». Sert à l'adresse (?maudit=1&detruit=1, lue telle quelle, jamais par la transition) et après chaque choix.
+ */
+export function etatDeMalediction({ maudit = false, detruit = false, malediction = false } = {}) {
+  const d = Boolean(detruit && malediction);
+  return { maudit: Boolean(maudit || d), detruit: d };
+}
+
+/**
+ * La note de l'encart sur la malédiction (R94), ou null : détruit ; une ligne de malédiction choisie (relancer depuis l'étape 2) ; maudit (l'effet est le
+ * contraire, R54). Rien n'est inversé ni calculé : la note le dit.
+ */
+export function noteDeMalediction({ maudit = false, detruit = false, malediction = false } = {}) {
+  if (detruit) return 'Seconde malédiction : l’accessoire est détruit et tombe en poussière.';
+  if (malediction) {
+    return 'Malédiction : relancez les dés depuis l’étape 2, avec le même emplacement ; l’accessoire sera maudit (l’effet obtenu sera le contraire de ce qui est indiqué). Une seconde malédiction le détruit : il tombe en poussière.';
+  }
+  if (maudit) return 'Accessoire maudit : l’effet est le contraire de ce qui est indiqué (exemple : +1 force devient -1 force).';
+  return null;
+}
+
+/**
+ * Paramètres de l'adresse de la page : ?emplacement=<id>&propriete=<id>&effet=<fin de l'id de l'effet>&acquis=<jet>&monture=<niveau>&gemmes=<clé>,<clé>&maudit=1&detruit=1.
  * `lireEtat` ne garde que des chaînes non vides ; `ecrireEtat` les remet dans le même ordre (les vides sont retirés).
  */
-export const PARAMETRES = ['emplacement', 'propriete', 'effet', 'acquis', 'monture', 'gemmes', 'maudit'];
+export const PARAMETRES = ['emplacement', 'propriete', 'effet', 'acquis', 'monture', 'gemmes', 'maudit', 'detruit'];
 
 export function lireEtat(recherche) {
   const p = new URLSearchParams(recherche);

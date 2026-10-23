@@ -7,6 +7,7 @@ import { join, relative } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
+import { htmlDeLaBalise, htmlDeLaBulle, lireUneBalise } from '../src/lib/mots-cles-balises.mjs';
 
 const SCRIPT = /<script is:inline data-infobulles>([\s\S]*?)<\/script>/;
 const code = readFileSync(fileURLToPath(new URL('../src/components/Infobulles.astro', import.meta.url)), 'utf8').match(SCRIPT)[1];
@@ -77,6 +78,12 @@ function navigateur(page = () => {}, { tactile = false } = {}) {
       return this.focusVisible;
     }
     getBoundingClientRect() { return { left: 100, top: 100, right: 200, bottom: 120, width: 100, height: 20 }; }
+    /** Le focus : l'élément actif, et son `focusin`, comme dans un navigateur (au clavier : `focusVisible`). */
+    focus(options) {
+      this.optionsDuFocus = options;
+      doc.activeElement = this;
+      emettre({ type: 'focusin', target: this });
+    }
     *tous() { yield this; for (const e of this.enfants) yield* e.tous(); }
   }
   const ecouteurs = { document: {}, window: {} };
@@ -120,18 +127,19 @@ function navigateur(page = () => {}, { tactile = false } = {}) {
     addEventListener: ecouter('window'),
     Date,
   };
+  function emettre(proprietes) {
+    const e = { pointerType: 'mouse', clientX: 150, relatedTarget: null, ...proprietes, arrete: false, stopPropagation() { this.arrete = true; }, preventDefault() {} };
+    const liste = ecouteurs.document[e.type] ?? [];
+    for (const { f } of [...liste.filter((l) => l.capture), ...liste.filter((l) => !l.capture)]) if (!e.arrete) f(e);
+    return e;
+  }
   page(Element, body);
   vm.runInNewContext(code, contexte);
   return {
     Element,
     body,
     /** Un évènement : les écouteurs en capture, puis les autres, tant que personne n'arrête la propagation. */
-    emettre(type, proprietes) {
-      const e = { type, pointerType: 'mouse', clientX: 150, relatedTarget: null, ...proprietes, arrete: false, stopPropagation() { this.arrete = true; }, preventDefault() {} };
-      const liste = ecouteurs.document[type] ?? [];
-      for (const { f } of [...liste.filter((l) => l.capture), ...liste.filter((l) => !l.capture)]) if (!e.arrete) f(e);
-      return e;
-    },
+    emettre: (type, proprietes) => emettre({ type, ...proprietes }),
     /** Fait passer le temps : les minuteries en attente (délai d'ouverture, fermeture différée) se déclenchent. */
     avancer() {
       const enCours = minuteries;
@@ -195,6 +203,7 @@ test('un `title` : sa bulle habillée après un délai, qui reste quand le point
   assert.equal(n.bulle.textContent, 'Dé de la famille');
   assert.equal(n.bulle.getAttribute('role'), 'tooltip');
   assert.equal(n.bulle.getAttribute('class'), 'bulle bulle--simple');
+  assert.ok(n.bulle.hasAttribute('data-mots-cles-bruts'), 'son texte, déjà simple, n’est pas relu par les mots-clés vivants du site de dev');
   // le pointeur passe sur la bulle : elle reste (WCAG 1.4.13)
   n.emettre('pointerout', { target: cible, relatedTarget: n.bulle });
   n.emettre('pointerover', { target: n.bulle });
@@ -300,6 +309,201 @@ test('une bulle riche (`data-bulle`) : son `title` (repli sans JavaScript) retir
   assert.ok(bulle.hidden);
   assert.equal(echap.arrete, true, 'le panneau du sort reste ouvert');
   assert.equal(pastille.getAttribute('title'), null);
+});
+
+test('un mot-clé du glossaire (lib/mots-cles-balises.mjs, posé par le middleware) : sa bulle au survol, au focus clavier et au toucher ; Échap la ferme', () => {
+  const vocabulaire = [{ id: 'recharge-longue', libelle: 'Recharge longue', description: 'Doit utiliser son action ou son mouvement pour recharger.' }];
+  // les attributs que le middleware écrit, lus dans son HTML (le faux navigateur n'analyse pas de HTML)
+  const attributs = (html) => Object.fromEntries([...html.matchAll(/ ([a-z-]+)="([^"]*)"/g)].map((m) => [m[1], m[2]]));
+  const motCle = attributs(htmlDeLaBalise(lireUneBalise('{{recharge-longue}}'), vocabulaire).html.split('>')[0]);
+  const bulleHtml = htmlDeLaBulle('recharge-longue', vocabulaire);
+  assert.equal(motCle['data-bulle'], 'mot-cle-recharge-longue');
+  assert.equal(motCle.tabindex, '0', 'atteint au clavier');
+  for (const tactile of [false, true]) {
+    let declencheur, bulle;
+    const n = navigateur((Element, body) => {
+      const p = body.appendChild(new Element('p'));
+      declencheur = p.appendChild(new Element('strong', motCle));
+      // la bulle, posée avant </body> (hors du paragraphe)
+      bulle = body.appendChild(new Element('span', attributs(bulleHtml.split('>')[0])));
+      bulle.hidden = true;
+    }, { tactile });
+    if (!tactile) {
+      n.emettre('pointerover', { target: declencheur });
+      assert.ok(!bulle.hidden, 'au survol, aussitôt');
+      n.emettre('keydown', { key: 'Escape' });
+      assert.ok(bulle.hidden, 'Échap la ferme');
+      declencheur.focusVisible = true;
+      n.emettre('focusin', { target: declencheur });
+      assert.ok(!bulle.hidden, 'au focus clavier');
+      n.emettre('focusout', { target: declencheur });
+      assert.ok(bulle.hidden);
+    } else {
+      n.emettre('click', { target: declencheur });
+      assert.ok(!bulle.hidden, 'au toucher : un appui l’ouvre');
+      n.emettre('click', { target: n.body });
+      assert.ok(bulle.hidden, 'un appui ailleurs la ferme');
+    }
+  }
+});
+
+test('une bulle à champs (`data-bulle-champs` : la bulle d’un choix du tiroir de la fiche) : ouverte tant que le focus va du déclencheur à la bulle, même quand le pointeur part ; Échap rend le focus au déclencheur sans la rouvrir', () => {
+  let choix, bulle, pastille, liste, ailleurs;
+  const n = navigateur((Element, body) => {
+    choix = body.appendChild(new Element('li', { 'data-bulle': 'bulle-choix', tabindex: '0', 'aria-expanded': 'false' }));
+    bulle = body.appendChild(new Element('span', { class: 'bulle bulle--tuile', role: 'dialog', id: 'bulle-choix', 'data-bulle-champs': '' }));
+    bulle.hidden = true;
+    pastille = bulle.appendChild(new Element('button'));
+    liste = bulle.appendChild(new Element('select'));
+    ailleurs = body.appendChild(new Element('button'));
+  });
+  // au clavier : le focus sur le choix montre la bulle ; son déclencheur dit qu'elle est ouverte
+  choix.focusVisible = true;
+  choix.focus();
+  assert.ok(!bulle.hidden);
+  assert.equal(choix.getAttribute('aria-expanded'), 'true');
+  // le focus entre dans la bulle (la page le donne à son premier champ), puis passe d'un champ à l'autre : elle reste
+  pastille.focus();
+  n.emettre('focusout', { target: choix, relatedTarget: pastille });
+  n.avancer();
+  assert.ok(!bulle.hidden, 'du déclencheur à la bulle');
+  liste.focus();
+  n.emettre('focusout', { target: pastille, relatedTarget: liste });
+  n.avancer();
+  assert.ok(!bulle.hidden, 'd’un champ à l’autre');
+  // un champ retiré (la bulle refaite par la page) perd le focus, que la page lui rend aussitôt : elle reste
+  n.document.activeElement = n.body;
+  n.emettre('focusout', { target: liste, relatedTarget: null });
+  liste.focus();
+  n.avancer();
+  assert.ok(!bulle.hidden, 'le focus rendu dans la bulle');
+  // le pointeur passe sur la bulle puis la quitte, le focus du clavier toujours dedans : elle reste
+  n.emettre('keydown', { key: 'Tab' });
+  n.emettre('pointerover', { target: bulle });
+  n.emettre('pointerout', { target: bulle, relatedTarget: n.body });
+  n.avancer();
+  assert.ok(!bulle.hidden, 'le pointeur qui part ne la ferme pas tant que le focus est dans la bulle');
+  // Échap dans la bulle : elle se ferme seule, le focus revient au choix, sans la rouvrir
+  const echap = n.emettre('keydown', { key: 'Escape' });
+  assert.ok(bulle.hidden);
+  assert.equal(echap.arrete, true);
+  assert.equal(n.document.activeElement, choix, 'le focus revient au choix');
+  assert.equal(choix.optionsDuFocus?.preventScroll, true, 'sans faire défiler');
+  assert.equal(choix.getAttribute('aria-expanded'), 'false');
+  // de nouveau ouverte, le focus dans la bulle : il la quitte pour un élément hors d'elle et du choix, elle se ferme (juste après)
+  n.emettre('focusin', { target: choix });
+  assert.ok(!bulle.hidden);
+  pastille.focus();
+  ailleurs.focus();
+  n.emettre('focusout', { target: pastille, relatedTarget: ailleurs });
+  assert.ok(!bulle.hidden, 'jugé juste après la perte du focus');
+  n.avancer();
+  assert.ok(bulle.hidden, 'le focus hors de la bulle et du choix');
+  // un focus donné par un appui (la souris seule) : le pointeur qui part la ferme, comme avant
+  choix.focus();
+  n.emettre('pointerover', { target: bulle });
+  n.emettre('pointerdown', { target: liste });
+  liste.focus();
+  assert.ok(!bulle.hidden);
+  n.emettre('pointerout', { target: bulle, relatedTarget: n.body });
+  n.avancer();
+  assert.ok(bulle.hidden, 'la souris seule : fermée au départ du pointeur');
+  // Échap sur le choix (le focus n'est pas dans la bulle) : elle se ferme, le focus ne bouge pas
+  n.emettre('keydown', { key: 'Tab' });
+  choix.focus();
+  assert.ok(!bulle.hidden);
+  n.emettre('pointerout', { target: choix, relatedTarget: n.body });
+  n.avancer();
+  assert.ok(!bulle.hidden, 'le focus sur le déclencheur : le pointeur qui part ne la ferme pas non plus');
+  n.emettre('keydown', { key: 'Escape' });
+  assert.ok(bulle.hidden);
+  assert.equal(n.document.activeElement, choix);
+});
+
+test('le focus du clavier dans une bulle à champs : le survol d’un autre déclencheur ne la remplace pas ; après un appui, ou sans l’attribut, comme avant', () => {
+  const page = (champs) => (Element, body) => {
+    body.appendChild(new Element('button', { 'data-bulle': 'b' }));
+    const bulle = body.appendChild(new Element('span', { class: 'bulle', id: 'b', ...(champs ? { 'data-bulle-champs': '' } : {}) }));
+    bulle.hidden = true;
+    bulle.appendChild(new Element('select'));
+    body.appendChild(new Element('button', { 'data-bulle': 'autre' }));
+    const autre = body.appendChild(new Element('span', { class: 'bulle', id: 'autre' }));
+    autre.hidden = true;
+    body.appendChild(new Element('span', { title: 'Un texte' }));
+  };
+  for (const champs of [true, false]) {
+    const n = navigateur(page(champs));
+    const [choix, bulle, voisin, bulleVoisine, texte] = n.body.enfants;
+    choix.focusVisible = true;
+    n.emettre('keydown', { key: 'Enter' });
+    choix.focus();
+    bulle.enfants[0].focus();
+    assert.ok(!bulle.hidden);
+    n.emettre('pointerover', { target: voisin });
+    assert.equal(bulleVoisine.hidden, champs, champs ? 'le survol d’un autre choix n’ouvre pas sa bulle' : 'sans l’attribut : le survol ouvre l’autre bulle, comme avant');
+    assert.equal(bulle.hidden, !champs);
+    if (!champs) continue;
+    n.emettre('pointerover', { target: texte });
+    n.avancer();
+    assert.equal(n.bulle, null, 'ni la bulle d’un `title`');
+    assert.ok(!bulle.hidden);
+    // un appui du pointeur : la souris reprend la main, le survol ouvre l'autre bulle
+    n.emettre('pointerdown', { target: n.body });
+    n.emettre('pointerover', { target: voisin });
+    assert.ok(!bulleVoisine.hidden, 'après un appui, le survol comme avant');
+  }
+});
+
+test('un bouton qui déclenche une bulle à champs : au toucher, pas de bascule au second appui ; à la souris, pas d’ouverture au clic ; un autre bouton garde les deux', () => {
+  const page = (champs) => (Element, body) => {
+    body.appendChild(new Element('button', { 'data-bulle': 'b' }));
+    const bulle = body.appendChild(new Element('span', { class: 'bulle', id: 'b', ...(champs ? { 'data-bulle-champs': '' } : {}) }));
+    bulle.hidden = true;
+    body.appendChild(new Element('p'));
+  };
+  for (const champs of [true, false]) {
+    const t = navigateur(page(champs), { tactile: true });
+    const [bouton, bulle, ailleurs] = t.body.enfants;
+    t.emettre('click', { target: bouton });
+    assert.ok(!bulle.hidden, 'premier appui : la bulle');
+    t.emettre('click', { target: bouton });
+    assert.equal(bulle.hidden, !champs, champs ? 'second appui : elle reste, comme le choix du tiroir avant son bouton' : 'second appui : un autre bouton (le nom d’une créature) la referme');
+    if (champs) {
+      t.emettre('click', { target: ailleurs });
+      assert.ok(bulle.hidden, 'un appui ailleurs la ferme');
+    }
+    const s = navigateur(page(champs));
+    const [b2, bulle2] = s.body.enfants;
+    s.emettre('click', { target: b2 });
+    assert.equal(bulle2.hidden, champs, champs ? 'à la souris, un clic n’ouvre pas la bulle à champs (le survol l’ouvre)' : 'à la souris, un clic ouvre la bulle d’un autre bouton');
+  }
+});
+
+test('une bulle riche sans `data-bulle-champs` : rien ne change — fermée dès que son déclencheur perd le focus ou que le pointeur part, Échap ne déplace pas le focus, pas d’`aria-expanded`', () => {
+  let pastille, bulle, lien;
+  const n = navigateur((Element, body) => {
+    pastille = body.appendChild(new Element('a', { 'data-bulle': 'etat-1' }));
+    bulle = body.appendChild(new Element('span', { class: 'bulle', role: 'tooltip', id: 'etat-1' }));
+    bulle.hidden = true;
+    lien = bulle.appendChild(new Element('a'));
+  });
+  pastille.focusVisible = true;
+  pastille.focus();
+  assert.ok(!bulle.hidden);
+  assert.equal(pastille.getAttribute('aria-expanded'), null, 'une infobulle n’a pas d’état ouvert ou fermé');
+  n.emettre('focusout', { target: pastille, relatedTarget: lien });
+  assert.ok(bulle.hidden, 'aussitôt, même vers un élément de la bulle');
+  // le focus sur la pastille, le pointeur passe puis repart : elle se ferme, comme avant
+  pastille.focus();
+  n.emettre('pointerover', { target: pastille });
+  n.emettre('pointerout', { target: pastille, relatedTarget: n.body });
+  n.avancer();
+  assert.ok(bulle.hidden, 'le pointeur qui part la ferme, même le focus sur la pastille');
+  pastille.focus();
+  n.document.activeElement = lien;
+  n.emettre('keydown', { key: 'Escape' });
+  assert.ok(bulle.hidden);
+  assert.equal(n.document.activeElement, lien, 'Échap ne déplace pas le focus');
 });
 
 test('la carte d’une créature (`data-placement="cote"`, `data-fermer-au-toucher`) : à côté de son nom, pointe de côté ; un clic dedans ne la ferme pas ; elle défile au clavier', () => {

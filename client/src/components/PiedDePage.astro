@@ -1,0 +1,37 @@
+---
+import EntryList from './EntryList.astro';
+import { loadWiki, url, type WikiEntry } from '../lib/wiki';
+import { ouvrirBase } from '../lib/donnees.mjs';
+import { idDuMotCle } from '../lib/mots-cles-db.mjs';
+import { PARAMETRE_MOT_CLE } from '../lib/recherche-mots-cles.mjs';
+
+// Le pied d'une page du wiki (pages/[type]/[slug].astro, components/guide/PageDuGuide.astro) : ses mots-clés, les pages qu'elle mentionne et celles
+// qui la mentionnent (rétroliens, lib/wiki.ts). Plus de sources : elles ne s'affichent que sur /archives/ (réponse du propriétaire du 2026-10-22 :
+// « Plus de sources ailleurs que dans les archives. On va épurer un peu ce qui est redondant. ») ; `sources:` reste dans le front matter et la base
+// (page_source, source), que les Archives lisent.
+interface Props {
+  entry: WikiEntry;
+}
+const { entry } = Astro.props;
+const { outgoing, incoming } = await loadWiki();
+const mentions = outgoing.get(entry.id) ?? [];
+const mentionedBy = incoming.get(entry.id) ?? [];
+---
+
+{
+  /* Chaque mot-clé mène à la liste de ses pages et événements sur /recherche/ (?mot-cle=<id> : l'id figé du vocabulaire, lib/mots-cles-db.mjs) */
+  entry.data.tags.length > 0 && (
+    <ul class="tags" aria-label="Mots-clés">
+      {entry.data.tags.map((tag) => <li><a class="badge" href={`${url('recherche/')}?${PARAMETRE_MOT_CLE}=${encodeURIComponent(idDuMotCle(ouvrirBase(), tag))}`}>{tag}</a></li>)}
+    </ul>
+  )
+}
+
+{
+  (mentions.length > 0 || mentionedBy.length > 0) && (
+    <div class="linked-pages">
+      {mentions.length > 0 && (<section><h2>Cette page mentionne</h2><EntryList entries={mentions} /></section>)}
+      {mentionedBy.length > 0 && (<section><h2>Mentionnée par</h2><EntryList entries={mentionedBy} /></section>)}
+    </div>
+  )
+}

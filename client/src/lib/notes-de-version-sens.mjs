@@ -1,13 +1,19 @@
 // Sens d'une modification sur la page « Mise à jour » : amélioration (vert), affaiblissement (rouge) ou neutre (gris), d'après les critères du
 // propriétaire (docs/decisions-regles.md, R29) et rien d'autre :
-//   amélioration : coût réduit, portée augmentée, zone augmentée, D/S/B augmentés (comparés par leur moyenne), nombre de tours augmenté, effet
-//   secondaire ajouté, plus d'utilisations (dons), plus de santé ou de chakra ; affaiblissement : l'inverse.
+//   amélioration : coût réduit (le chakra, ou le coût secondaire d'une même ressource : décision R105), portée augmentée, zone augmentée, D/S/B
+//   augmentés (comparés par leur moyenne), nombre de tours augmenté, effet secondaire ajouté, plus d'utilisations (dons), plus de santé ou de chakra ;
+//   affaiblissement : l'inverse.
 // Tout le reste est neutre : barrière, vitesses, type, mode (IC, imparable…), forme de zone ou nature de portée changée (et les expressions de NM
 // de cette valeur), textes libres, renommages, entités ajoutées ou retirées, et toute case qui n'est pas lue sans doute possible (lectures de
 // lib/sort-analyse.mjs et lib/classe-champs.mjs).
-// Fonctions pures, sans dépendance hors sort-analyse.mjs et classe-champs.mjs : importables dans le navigateur (test/notes-de-version-sens.test.mjs).
+// Une case se lit sans les balises du glossaire (le texte affiché : lib/mots-cles-balises.mjs#texteSansBalises) : une balise posée ou retirée ne change
+// pas le sens.
+// Fonctions pures, sans dépendance hors sort-analyse.mjs, sort-cout.mjs, classe-champs.mjs et mots-cles-balises.mjs : importables dans le navigateur
+// (test/notes-de-version-sens.test.mjs).
 import { analyserCout, analyserDegats, analyserDuree, analyserPortee, analyserZone, bonusDeMaitrise, sansExpressionsNM } from './sort-analyse.mjs';
+import { repartirLeCout } from './sort-cout.mjs';
 import { analyserTypeDeDon } from './classe-champs.mjs';
+import { texteSansBalises } from './mots-cles-balises.mjs';
 
 /** Les trois sens d'une modification (CHECK de note_version_ligne.sens). */
 export const SENS = ['amelioration', 'affaiblissement', 'neutre'];
@@ -22,7 +28,7 @@ const ENTIERS_PLUS_EST_MIEUX = new Set([
   'magie.sante_offerte', 'magie.chakra_offert',
 ]);
 
-const texte = (v) => (v === null || v === undefined ? '' : String(v));
+const texte = (v) => (v === null || v === undefined ? '' : String(texteSansBalises(String(v))));
 const espaces = (t) => t.replace(/\s+/g, ' ').trim();
 const ouNull = (t) => (t === '' ? null : t);
 
@@ -42,13 +48,27 @@ const entier = (v) => {
 
 // --- Valeur de base d'une case de sort ----------------------------------------------------------------------------------------------------------
 
-/** Coût : chakra plus bas = amélioration, de même pour la quantité de la ressource (Sang, âmes) ; ressources différentes ou illisibles = neutre. */
+/**
+ * Un coût lu comme le service le lit (analyserCout) ; un coût encore écrit en une case comme le classeur (« 3 + 1 Sang », d'avant la décision R105 et
+ * la migration 0063) en ses deux parties, comme la migration l'a réparti (lib/sort-cout.mjs#repartirLeCout).
+ */
+const lireLeCout = (t) => {
+  const r = repartirLeCout(t);
+  return r ? analyserCout(r.cout_brut, r.cout_secondaire) : analyserCout(t);
+};
+
+/**
+ * Coût : chakra plus bas = amélioration, de même pour la quantité de la ressource (Sang, âmes) quand les deux côtés l'écrivent dans la case ;
+ * ressources différentes ou illisibles = neutre. Un côté sans ressource (le coût réparti, décision R105, face à l'écriture du classeur que la production
+ * garde jusqu'à sa livraison : « 3 + 1 Sang » → « 2 ») ne compare que le chakra : la ressource a sa ligne, « Coût secondaire ».
+ */
 function sensDuCout(avant, apres) {
-  const a = analyserCout(avant);
-  const b = analyserCout(apres);
-  if (a.cout_ressource !== b.cout_ressource) return NEUTRE;
+  const a = lireLeCout(avant);
+  const b = lireLeCout(apres);
+  const deuxRessources = a.cout_ressource !== null && b.cout_ressource !== null;
+  if (deuxRessources && a.cout_ressource !== b.cout_ressource) return NEUTRE;
   const sens = [];
-  for (const cle of ['cout_chakra', 'cout_ressource_valeur']) {
+  for (const cle of deuxRessources ? ['cout_chakra', 'cout_ressource_valeur'] : ['cout_chakra']) {
     if (a[cle] !== null && b[cle] !== null) sens.push(comparer(a[cle], b[cle], false));
     else if (a[cle] !== b[cle]) return NEUTRE;
   }
@@ -81,13 +101,27 @@ function sensDesDegats(avant, apres) {
 const SENS_DE_LA_VALEUR = { cout: sensDuCout, portee: sensDeLaPortee, zone: sensDeLaZone, dsb: sensDesDegats };
 
 /**
+ * Coût secondaire (décision R105 : « 2 âmes », « 3 Sang », « 20% PV ») : une quantité suivie de la même ressource des deux côtés (« âme » et « âmes »
+ * sont la même), plus basse = amélioration ; un coût secondaire ajouté, retiré, une autre ressource ou une écriture qui n'est pas lue = neutre.
+ */
+function sensDuCoutSecondaire(avant, apres) {
+  const lire = (t) => {
+    const m = /^(\d+)(%?)\s+(\p{L}+)$/u.exec(espaces(t));
+    return m ? { n: Number(m[1]), unite: `${m[2]}${m[3].toLowerCase().replace(/s$/, '')}` } : null;
+  };
+  const a = lire(avant);
+  const b = lire(apres);
+  return a && b && a.unite === b.unite ? comparer(a.n, b.n, false) : NEUTRE;
+}
+
+/**
  * Les deux valeurs de base sont-elles de même nature (même ressource, portée chiffrée, même forme de zone, même effet de D/S/B) ? Sinon, leurs
  * expressions de NM ne se comparent pas : un NM accroché à une autre forme de zone ou à un autre effet fait partie du changement de nature (neutre).
  */
 const MEME_NATURE = {
   cout: (avant, apres) => {
-    const a = analyserCout(avant);
-    const b = analyserCout(apres);
+    const a = lireLeCout(avant);
+    const b = lireLeCout(apres);
     const forme = (c) => [c.cout_ressource, c.cout_chakra !== null, c.cout_ressource_valeur !== null].join('|');
     return forme(a) === forme(b) && (a.cout_chakra !== null || a.cout_ressource_valeur !== null);
   },
@@ -307,6 +341,7 @@ export function sensDuChangement(table, colonne, avant, apres) {
     const parties = champ === 'effets' ? partiesDesEffets(texte(avant), texte(apres)) : partiesDUneCaseCourte(champ, texte(avant), texte(apres));
     return parties.length ? { sens: accord(parties.map((p) => p.sens)), parties } : neutre;
   }
+  if (table === 'sort' && colonne === 'cout_secondaire') return { sens: sensDuCoutSecondaire(texte(avant), texte(apres)), parties: null };
   if (table === 'capacite' && colonne === 'type_brut') return { sens: sensDuTypeDeDon(texte(avant), texte(apres)), parties: null };
   if (ENTIERS_PLUS_EST_MIEUX.has(`${table}.${colonne}`)) {
     const a = entier(avant);

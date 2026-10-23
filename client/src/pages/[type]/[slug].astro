@@ -1,16 +1,13 @@
 ---
 import { render } from 'astro:content';
 import Base from '../../layouts/Base.astro';
-import EntryList from '../../components/EntryList.astro';
+import PiedDePage from '../../components/PiedDePage.astro';
 import MagiesDeRace from '../../components/magie/MagiesDeRace.astro';
 import RacesDeMagie from '../../components/magie/RacesDeMagie.astro';
 import MagiePage from '../../components/magie/MagiePage.astro';
 import RacePage from '../../components/race/RacePage.astro';
 import ClassePage from '../../components/classes/ClassePage.astro';
 import ChoixDeCapacite from '../../components/classes/ChoixDeCapacite.astro';
-import GuideChapitre from '../../components/guide/GuideChapitre.astro';
-import ArmesPage from '../../components/armes/ArmesPage.astro';
-import AccessoiresPage from '../../components/accessoires/AccessoiresPage.astro';
 import { TYPES } from '../../lib/types.mjs';
 import { classCategory } from '../../lib/class-groups.mjs';
 import { isMagicalClass } from '../../lib/classe-magique.mjs';
@@ -18,26 +15,22 @@ import { loadMagies } from '../../lib/magies';
 import { loadRaces } from '../../lib/races';
 import { loadClasses } from '../../lib/classes';
 import { raceKind, raceOfClass } from '../../lib/race-kinds.mjs';
-import { estUnMetier } from '../../lib/metiers.mjs';
-import { estUnChapitre, PREMIER_CHAPITRE } from '../../lib/guide.mjs';
+import { estServieASonId } from '../../lib/metiers.mjs';
 import { entryHref, loadWiki, slugOf, typeOf, url, type WikiEntry } from '../../lib/wiki';
 import { attributEd, texteDePageModifiable } from '../../lib/edition-modele.mjs';
-import { avecPhraseDesArmesDeDepart, chargerArmes, contexteDesArmes, PAGE_DES_ARMES, reglesDeLaPage } from '../../lib/armes-db.mjs';
-import { chargerAccessoires, PAGE_DES_ACCESSOIRES, reglesDeLaPage as reglesDesAccessoires } from '../../lib/accessoires-db.mjs';
-import { ouvrirBase } from '../../lib/donnees.mjs';
-import { idDuMotCle } from '../../lib/mots-cles-db.mjs';
-import { PARAMETRE_MOT_CLE } from '../../lib/recherche-mots-cles.mjs';
-import { rendreMarkdown } from '../../lib/guide-rendu';
 
 export async function getStaticPaths() {
   const { entries } = await loadWiki();
-  // Les métiers n'ont pas de page : ce sont les lignes du tableau de /metiers/ (lib/metiers.mjs), où mènent leurs liens. Le premier chapitre du guide
-  // est l'accueil de l'onglet, servi par [type]/index.astro à /guide/ (lib/guide.mjs).
-  return entries.filter((entry) => !estUnMetier(entry.id) && entry.id !== PREMIER_CHAPITRE).map((entry) => ({ params: { type: typeOf(entry), slug: slugOf(entry) }, props: { entry } }));
+  // Seules les pages servies à `<id>/` (lib/metiers.mjs#estServieASonId) : les métiers n'ont pas de page, ce sont les lignes du tableau de /metiers/,
+  // où mènent leurs liens ; les pages « Armes », « Armures », « Bouclier », « Bâton magique » et « Accessoires » sont les onglets de la page
+  // « Équipement », pages/ressources/equipement.astro (lib/metiers.mjs#pageSansAdresse) ; les pages du guide sont rangées par lib/livres.mjs et servies
+  // par pages/decouvrir/, pages/regles/ et pages/mj/ (components/guide/PageDuPlan.astro).
+  return entries.filter((entry) => estServieASonId(entry.id))
+    .map((entry) => ({ params: { type: typeOf(entry), slug: slugOf(entry) }, props: { entry } }));
 }
 
 const { entry } = Astro.props as { entry: WikiEntry };
-const { entries, outgoing, incoming } = await loadWiki();
+const { entries } = await loadWiki();
 
 const type = TYPES[typeOf(entry)];
 const category = typeOf(entry) === 'classes' ? classCategory(entry) : null;
@@ -55,38 +48,21 @@ const race = races?.races.get(entry.id) ?? null;
 // Pages de classe : même principe (components/classes/ClassePage.astro, tables classe, specialite, capacite… ; lib/classes-db.mjs) ; la classe d'exemple garde le Markdown.
 const classes = typeOf(entry) === 'classes' ? loadClasses() : null;
 const classe = classes?.classes.get(entry.id) ?? null;
-// Chapitres du guide : une page de livre avec flèches et pagination (components/guide/GuideChapitre.astro), qui rend elle-même son Markdown ; ni mots-clés,
-// ni pages liées, ni sources sous le texte (la lecture continue par la pagination).
-const chapitre = estUnChapitre(entry);
-// Page des armes (demande du propriétaire) : un tableau par famille, la fiche de l'arme choisie, les matériaux et les améliorations, depuis les tables
-// (components/armes/ArmesPage.astro, lib/armes-db.mjs) ; de son Markdown, seules les règles de l'onglet (introduction, prix) sont rendues.
-const armes = entry.id === PAGE_DES_ARMES ? chargerArmes(ouvrirBase()) : null;
-const contexteArmes = armes ? contexteDesArmes(ouvrirBase()) : null;
-const reglesArmes = armes?.page ? reglesDeLaPage(armes.page.corps_md) : null;
-const reglesArmesHtml = reglesArmes
-  ? { introduction: avecPhraseDesArmesDeDepart(await rendreMarkdown(reglesArmes.introduction, entry.id)), prix: reglesArmes.prix ? await rendreMarkdown(reglesArmes.prix, entry.id) : '' }
-  : null;
-// Page des accessoires (demande du propriétaire) : un générateur d'accessoire, depuis les tables (components/accessoires/AccessoiresPage.astro,
-// lib/accessoires-db.mjs) ; de son Markdown, seules les règles de l'onglet (avant la création) sont rendues.
-const accessoires = entry.id === PAGE_DES_ACCESSOIRES ? chargerAccessoires(ouvrirBase()) : null;
-const reglesAccessoiresHtml = accessoires?.page ? await rendreMarkdown(reglesDesAccessoires(accessoires.page.corps_md), entry.id) : null;
-const gabarit = Boolean(magie || race || classe || chapitre || armes || accessoires);
-const Content = gabarit ? null : (await render(entry)).Content; // les gabarits des magies, des races, des classes et du guide ne rendent pas le Markdown
-const mentions = outgoing.get(entry.id) ?? [];
-const mentionedBy = incoming.get(entry.id) ?? [];
+const gabarit = Boolean(magie || race || classe);
+const Content = gabarit ? null : (await render(entry)).Content; // les gabarits des magies, des races et des classes ne rendent pas le Markdown
 // Seules les pages d'exemple ont un bandeau : plus de bandeau « brouillon » sur les pages `draft` (demande du propriétaire).
 const statusNote = entry.data.status === 'example' ? 'Contenu d’exemple : à remplacer par le contenu réel du codex.' : '';
-// Mode modification du site de dev (demande du propriétaire) : les pages du guide, des races, des magies et des classes (les métiers sont sur /metiers/),
-// et celles du Codex (« Exactement comme pour les pages des règles les pages du codex doivent pouvoir être modifiées aussi »).
-const pageDeTexte = texteDePageModifiable(typeOf(entry), entry.data.sources[0]); // le guide et le Codex (lib/edition-modele.mjs)
-const modifiable = (pageDeTexte || ['races', 'magies', 'classes'].includes(typeOf(entry)) || Boolean(armes)) && entry.data.status !== 'example';
-// une page de référence du guide ou une page du Codex : titre et texte modifiables (src/scripts/edition/guide.mjs) ; les autres pages suivent leurs tables
-const texteModifiable = modifiable && pageDeTexte && !chapitre;
+// Mode modification du site de dev (demande du propriétaire) : les pages des races, des magies et des classes (les métiers sont sur /metiers/, les pages
+// du guide sur leurs routes : components/guide/PageDuPlan.astro), et celles du Codex (« Exactement comme pour les pages des règles les pages du codex
+// doivent pouvoir être modifiées aussi »).
+const pageDeTexte = texteDePageModifiable(typeOf(entry), entry.data.sources[0]); // le Codex (lib/edition-modele.mjs)
+const modifiable = (pageDeTexte || ['races', 'magies', 'classes'].includes(typeOf(entry))) && entry.data.status !== 'example';
+// une page du Codex : titre et texte modifiables (src/scripts/edition/guide.mjs) ; les autres pages suivent leurs tables
+const texteModifiable = modifiable && pageDeTexte;
 ---
 
 <Base title={entry.data.title} description={entry.data.summary} edition={modifiable ? entry.id : undefined}>
-  {/* un chapitre du guide n'a pas de fil d'Ariane : la page de livre reste à la même place d'un chapitre à l'autre */}
-  {!chapitre && <p class="muted"><a href={url()}>Accueil</a> › <a href={url(`${typeOf(entry)}/`)}>{type.label}</a>{
+  <p class="muted"><a href={url()}>Accueil</a> › <a href={url(`${typeOf(entry)}/`)}>{type.label}</a>{
     typeOf(entry) === 'capacites' && classOfAbility && (
       <>
         {' › '}
@@ -108,7 +84,7 @@ const texteModifiable = modifiable && pageDeTexte && !chapitre;
         <a href={url(`classes/#${category.key}`)}>{category.label}</a>
       </>
     )
-  }</p>}
+  }</p>
   {
     magie && magies ? (
       <MagiePage entry={entry} entries={entries} magie={magie} magies={magies} statusNote={statusNote} />
@@ -116,12 +92,6 @@ const texteModifiable = modifiable && pageDeTexte && !chapitre;
       <RacePage entry={entry} entries={entries} race={race} races={races} statusNote={statusNote} />
     ) : classe ? (
       <ClassePage entry={entry} classe={classe} statusNote={statusNote} />
-    ) : chapitre ? (
-      <GuideChapitre entry={entry} entries={entries} />
-    ) : armes && contexteArmes && reglesArmesHtml ? (
-      <ArmesPage armes={armes} contexte={contexteArmes} regles={reglesArmesHtml} resume={entry.data.summary} />
-    ) : accessoires && reglesAccessoiresHtml !== null ? (
-      <AccessoiresPage accessoires={accessoires} regles={reglesAccessoiresHtml} resume={entry.data.summary} />
     ) : (
       <>
         <h1>
@@ -154,34 +124,6 @@ const texteModifiable = modifiable && pageDeTexte && !chapitre;
     )
   }
 
-  {
-    /* Chaque mot-clé mène à la liste de ses pages et événements sur /recherche/ (?mot-cle=<id> : l'id figé du vocabulaire, lib/mots-cles-db.mjs) */
-    entry.data.tags.length > 0 && !chapitre && (
-      <ul class="tags" aria-label="Mots-clés">
-        {entry.data.tags.map((tag) => <li><a class="badge" href={`${url('recherche/')}?${PARAMETRE_MOT_CLE}=${encodeURIComponent(idDuMotCle(ouvrirBase(), tag))}`}>{tag}</a></li>)}
-      </ul>
-    )
-  }
-
-  {
-    (mentions.length > 0 || mentionedBy.length > 0) && !chapitre && (
-      <div class="linked-pages">
-        {mentions.length > 0 && (<section><h2>Cette page mentionne</h2><EntryList entries={mentions} /></section>)}
-        {mentionedBy.length > 0 && (<section><h2>Mentionnée par</h2><EntryList entries={mentionedBy} /></section>)}
-      </div>
-    )
-  }
-
-  {
-    /* Les pages de magie, de race et de classe rendues par un gabarit ne citent pas leurs sources (demande du propriétaire pour les magies et les races) ;
-       `sources:` reste dans le front matter pour la traçabilité. */
-    entry.data.sources.length > 0 && !gabarit && (
-      <section>
-        <h2>Sources</h2>
-        <ul>
-          {entry.data.sources.map((s) => <li>{/^https?:\/\//.test(s) ? <a href={s} rel="noopener noreferrer">{s}</a> : s}</li>)}
-        </ul>
-      </section>
-    )
-  }
+  {/* plus de sources sous une page (réponse du propriétaire du 2026-10-22) : seulement sur /archives/ */}
+  <PiedDePage entry={entry} />
 </Base>

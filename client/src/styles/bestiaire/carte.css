@@ -11,13 +11,14 @@
 .bcarte .vide { color: var(--muted); opacity: 0.6; }
 .bcarte .texte { white-space: pre-line; }
 .bcarte [hidden] { display: none !important; }
-.bcible { display: inline-block; padding: 0 0.4rem; border-radius: var(--radius-pill); font-size: 0.78rem; line-height: 1.5; border: 1px solid var(--border); background: var(--bg); }
-.bcible--grande_vulnerabilite, .bcible--grande_resistance, .bcible--double_resistance { font-weight: 700; border-color: var(--bes-line); }
+.bcible { display: inline-block; padding: 0 0.4rem; border-radius: var(--radius-pill); font-size: var(--fs-xs); line-height: 1.5; border: 1px solid var(--border); background: var(--bg); }
+.bcible--grande_vulnerabilite, .bcible--grande_resistance { font-weight: 700; border-color: var(--bes-line); }
 .bcible--reflexion { font-style: italic; }
-/* la couleur de la magie qui va avec la cible (la magie elle-même, ou la magie liée d'une altération d'état ; deux magies : moitié-moitié) */
-.bcible--magie { background: var(--c); color: var(--c-texte); border-color: color-mix(in srgb, var(--c) 55%, var(--text)); }
+/* la couleur de la magie qui va avec la cible (la magie elle-même, ou la magie liée d'une altération d'état) : la classe de la magie et la classe de
+   second rang de la seconde, ou de la même (lib/monstre-rendu.mjs, lib/palette-css.mjs#classesDeDeuxMagies : --couleur, --couleur-texte, --couleur-2) */
+.bcible--magie { background: var(--couleur); color: var(--couleur-texte); border-color: color-mix(in srgb, var(--couleur) 55%, var(--text)); }
 /* deux magies liées (« Surcharge magique » : Arcane et Corruption) : la seconde en bande à droite, le texte sur la première */
-.bcible--deux { padding-right: 0.75rem; box-shadow: inset -0.4rem 0 0 var(--c2); }
+.bcible--deux { padding-right: 0.75rem; box-shadow: inset -0.4rem 0 0 var(--couleur-2); }
 /* à l'impression, le fond d'une pastille de magie s'imprime (sinon son texte blanc devient illisible) */
 @media print { .bcible--magie { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 /* une défense écrite par forme ou sur plusieurs lignes (« Guerrier : … », « Absorbe(s) … ») : une ligne chacune */
@@ -25,14 +26,15 @@
 .bdef-ligne { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem; }
 .bdef-ligne--vide { height: 0.15rem; }
 .bcibles { display: flex; flex-wrap: wrap; gap: 0.25rem; }
-.bcat { display: inline-block; padding: 0 0.45rem; border-radius: var(--radius-pill); font-size: 0.78rem; white-space: nowrap; border: 1px solid var(--border); }
+.bcat { display: inline-block; padding: 0 0.45rem; border-radius: var(--radius-pill); font-size: var(--fs-xs); white-space: nowrap; border: 1px solid var(--border); }
 .bcat--mini_boss { border-color: var(--bes-line); background: var(--bes-soft); }
 .bcat--boss { background: var(--bes); border-color: var(--bes); color: var(--surface); font-weight: 700; }
 .bmagies { display: inline-flex; flex-wrap: wrap; gap: 0.2rem; align-items: center; }
-.bmagie { display: inline-block; padding: 0 0.45rem; border-radius: var(--radius-pill); font-size: 0.78rem; background: var(--m); color: var(--m-texte); border: 1px solid color-mix(in srgb, var(--m) 70%, var(--text)); }
+/* une magie en pastille : la classe de la magie (lib/palette-css.mjs : --couleur, --couleur-texte) */
+.bmagie { display: inline-block; padding: 0 0.45rem; border-radius: var(--radius-pill); font-size: var(--fs-xs); background: var(--couleur); color: var(--couleur-texte); border: 1px solid color-mix(in srgb, var(--couleur) 70%, var(--text)); }
 
 /* La carte */
-.bcarte { padding: 0.9rem 1rem 1.1rem; font-size: 0.92rem; }
+.bcarte { padding: 0.9rem 1rem 1.1rem; font-size: var(--fs-lg); }
 .bcarte__tete { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "titres portrait" "fermer portrait"; gap: 0.3rem 0.9rem; align-items: start;
   padding-bottom: 0.8rem; border-bottom: 2px solid var(--bes-line); }
 .bcarte__titres { grid-area: titres; min-width: 0; }
@@ -40,14 +42,14 @@
 .bcarte__tete h1 { font-size: 1.6rem; }
 .bcarte__espece { margin: 0.15rem 0 0.4rem; color: var(--muted); }
 .bcarte__badges { margin: 0; display: flex; flex-wrap: wrap; gap: 0.3rem; }
-.bbadge { display: inline-block; padding: 0 0.45rem; border-radius: var(--radius-pill); font-size: 0.78rem; border: 1px solid var(--border); background: var(--bg); white-space: nowrap; }
+.bbadge { display: inline-block; padding: 0 0.45rem; border-radius: var(--radius-pill); font-size: var(--fs-xs); border: 1px solid var(--border); background: var(--bg); white-space: nowrap; }
 .bbadge--ep { border-style: dashed; }
 /* la description, repliée sous les tags, au-dessus du filet de l'en-tête (demande du propriétaire ; lib/bestiaire-rendu.mjs#htmlDeCarteMonstre) : entre les
    titres et « Fermer », à gauche du portrait ; sur un téléphone, toute la largeur sous le portrait. Seulement la carte d'un monstre (`:has`) : les
    créatures invoquées et leur infobulle gardent leur en-tête */
 .bcarte__tete:has(> .bcarte__description) { grid-template-areas: "titres portrait" "description portrait" "fermer portrait"; grid-template-rows: auto auto 1fr; }
 .bcarte__description { grid-area: description; min-width: 0; }
-.bcarte__description > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: baseline; gap: 0.3rem; font-size: 0.85rem; color: var(--bes); font-weight: 700; }
+.bcarte__description > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: baseline; gap: 0.3rem; font-size: var(--fs-md); color: var(--bes); font-weight: 700; }
 /* « déroulable » : ▸ repliée, ▾ dépliée, comme les tableaux des créatures invoquées */
 .bcarte__description > summary::-webkit-details-marker { display: none; }
 .bcarte__description > summary::before { content: '▸'; width: 0.8em; }
@@ -59,7 +61,7 @@
 /* en mode modification, les deux champs à la suite, chacun avec son intitulé (demande du propriétaire : « il faut bien qu'on ait les deux champs
    description espèce et description créature à la suite l'un de l'autre ») : la saisie n'a qu'un texte indicatif, qui s'efface une fois remplie. En
    pseudo-élément, l'intitulé n'entre pas dans le texte que lit la recherche */
-body.ed-mode .bcarte__description > p::before { display: block; margin-bottom: 0.2rem; font-size: 0.78rem; font-weight: 700; color: var(--muted); }
+body.ed-mode .bcarte__description > p::before { display: block; margin-bottom: 0.2rem; font-size: var(--fs-xs); font-weight: 700; color: var(--muted); }
 body.ed-mode .bcarte__description > .bcarte__desc-espece::before { content: 'Description de l’espèce'; }
 body.ed-mode .bcarte__description > .bcarte__desc-creature::before { content: 'Description de la créature'; }
 @media (max-width: 30rem) {
@@ -74,8 +76,8 @@ body.ed-mode .bcarte__description > .bcarte__desc-creature::before { content: 'D
 .bcarte__cadre img { position: absolute; display: block; max-width: none; }
 .bcarte__portrait[data-vide] .bcarte__cadre { border-style: dashed; display: grid; place-items: center; }
 .bcarte__portrait[data-vide] .bcarte__cadre img { position: static; width: 70%; height: auto; opacity: 0.55; }
-.bcarte__portrait figcaption { font-size: 0.68rem; color: var(--muted); text-align: center; }
-.bcarte__fermer { grid-area: fermer; justify-self: start; align-self: end; font-size: 0.8rem; padding: 0.15rem 0.7rem; border: 1px solid var(--border); border-radius: var(--radius-pill);
+.bcarte__portrait figcaption { font-size: var(--fs-xxs); color: var(--muted); text-align: center; }
+.bcarte__fermer { grid-area: fermer; justify-self: start; align-self: end; font-size: var(--fs-sm); padding: 0.15rem 0.7rem; border: 1px solid var(--border); border-radius: var(--radius-pill);
   color: var(--text); text-decoration: none; background: var(--bg); }
 .bcarte__fermer:hover { border-color: var(--bes); }
 html:not(.js) .bcarte__fermer { display: none; }
@@ -83,19 +85,20 @@ html:not(.js) .bcarte__fermer { display: none; }
 .bcarte__section + .bcarte__section { margin-top: 0.8rem; border-top: 1px solid var(--border); }
 .bcarte :is(h2, h4) { margin: 0 0 0.35rem; font-size: 0.98rem; }
 .bcarte p { margin: 0 0 0.45rem; }
-.bcarte__bonus { display: block; margin-top: 0.25rem; font-size: 0.8rem; }
+.bcarte__bonus { display: block; margin-top: 0.25rem; font-size: var(--fs-sm); }
 .brubriques { margin: 0; display: grid; gap: 0.5rem; }
 .brubrique { display: grid; gap: 0.15rem; }
-.brubrique dt { font-weight: 700; font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.brubrique dt { font-weight: 700; font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
 .brubrique dd { margin: 0; }
 .brubrique dd ul { margin: 0; padding-left: 1.1rem; }
 .bstats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.4rem; }
 .bstat { display: grid; justify-items: center; padding: 0.35rem 0.3rem; border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--bg); }
-.bstat__nom { font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.bstat__nom { font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
 .bstat__val { font-size: 1.25rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.bstat--sante { border-color: color-mix(in srgb, #c62828 45%, var(--border)); }
-.bstat--chakra { border-color: color-mix(in srgb, #1565c0 45%, var(--border)); }
-.bstat--barriere { border-color: color-mix(in srgb, #f9a825 55%, var(--border)); }
+/* les couleurs des attributs du site (lib/attributs-couleurs.mjs, posées par layouts/Base.astro) */
+.bstat--sante { border-color: color-mix(in srgb, var(--attribut-sante) 45%, var(--border)); }
+.bstat--chakra { border-color: color-mix(in srgb, var(--attribut-chakra) 45%, var(--border)); }
+.bstat--barriere { border-color: color-mix(in srgb, var(--attribut-barriere) 55%, var(--border)); }
 /* santé, chakra, barrière écrites à part (cartes à plusieurs échelles) : une colonne chacune, comme la ligne de tuiles d'une carte à une seule échelle ;
    le titre de chaque rubrique est celui de sa tuile (montré en mode modification, au-dessus de sa saisie) */
 .btrio__cases { margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.4rem; align-items: start; }
@@ -107,9 +110,10 @@ html:not(.js) .bcarte__fermer { display: none; }
 /* sans échelle choisie (sans JavaScript, impression) : « · EP n » à la ligne, les tuiles des trois colonnes gardent la même hauteur */
 .bcarte:not([data-ep]) .btrio .bep-ep { display: block; }
 .bcaracs { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.3rem; }
-.bcarac { display: grid; justify-items: center; padding: 0.2rem 0; border-radius: var(--radius); background: var(--c); color: var(--c-texte); }
-.bcarac__sigle { font-size: 0.7rem; font-weight: 700; }
-.bcarac__val { font-size: 1.05rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+/* une case par caractéristique, dans sa couleur : la classe de la caractéristique (`.couleur-caracteristique-<id>`, lib/palette-css.mjs) */
+.bcarac { display: grid; justify-items: center; padding: 0.2rem 0; border-radius: var(--radius); background: var(--couleur); color: var(--couleur-texte); }
+.bcarac__sigle { font-size: var(--fs-xxs); font-weight: 700; }
+.bcarac__val { font-size: var(--fs-xl); font-weight: 700; font-variant-numeric: tabular-nums; }
 /* Capacités : une tuile chacune, comme les dons de classe (demande du propriétaire : « Les capacités devraient ressortir dans une tuile de la même manière
    que le font les dons de classe » ; lib/monstre-rendu.mjs#htmlDeCapacite) : pastilles pleines ([EP3], NPM 2, commune), nom en gras ; sur une colonne ;
    tailles en em, qui suivent la carte (0,86rem dans l'infobulle d'une page de magie). Toutes celles d'une carte dans le même encadré (demande du
@@ -121,7 +125,7 @@ html:not(.js) .bcarte__fermer { display: none; }
 .bcapacite { min-width: 0; padding: 0.45rem 0.75rem 0.55rem; background: var(--bg); break-inside: avoid; }
 .bcarte .bcapacite__tete { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.4rem; margin: 0 0 0.2rem; }
 .bcapacite__nom { font-size: 1.08em; color: var(--bes); }
-.bcapacite .prefixe { padding: 0.05rem 0.45rem; border-radius: var(--radius-pill); background: var(--bes); color: var(--surface); font-size: 0.7rem; font-weight: 700; white-space: nowrap; }
+.bcapacite .prefixe { padding: 0.05rem 0.45rem; border-radius: var(--radius-pill); background: var(--bes); color: var(--surface); font-size: var(--fs-xxs); font-weight: 700; white-space: nowrap; }
 /* une capacité commune à toutes les créatures d'une invocation : un fond teinté (avec sa pastille « commune ») */
 .bcapacite--commune { background: var(--bes-soft); }
 /* dans l'infobulle d'une page de magie : tout l'encadré dans la couleur de la magie, comme un don de classe (--cla, --cla-readable) : le filet
@@ -133,7 +137,7 @@ html:not(.js) .bcarte__fermer { display: none; }
 .bbloc > summary { cursor: pointer; padding: 0.35rem 0.7rem; font-weight: 600; }
 .bbloc > p { padding: 0 0.7rem 0.5rem; }
 .bbutin__defile { overflow-x: auto; }
-.bbutin { border-collapse: collapse; font-size: 0.82rem; width: 100%; }
+.bbutin { border-collapse: collapse; font-size: var(--fs-sm); width: 100%; }
 .bbutin th, .bbutin td { border: 1px solid var(--border); padding: 0.25rem 0.45rem; text-align: left; vertical-align: top; background: var(--surface); }
 .bbutin thead th { background: var(--bes-soft); }
 .bbutin .est-sienne { box-shadow: inset 0 0 0 2px var(--bes-line); }
@@ -143,7 +147,7 @@ html:not(.js) .bcarte__fermer { display: none; }
    (demande du propriétaire) */
 .battention { display: block; margin-top: 0.5rem; padding: 0.45rem 0.65rem; border: 1px solid color-mix(in srgb, var(--warn-text) 35%, transparent);
   border-left-width: 4px; border-radius: var(--radius); background: var(--warn-bg); }
-.battention__titre { font-weight: 700; font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--warn-text); }
+.battention__titre { font-weight: 700; font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--warn-text); }
 .battention__titre::before { content: '⚠ '; }
 .battention__motif { font-style: italic; color: var(--warn-text); }
 .battention > .texte { display: block; margin-top: 0.35rem; }
@@ -153,10 +157,30 @@ html:not(.js) .bcarte__fermer { display: none; }
   .bcarte__portrait { width: 6rem; }
 }
 
-/* En infobulle (components/Infobulles.astro, habillage commun de styles/global/infobulles.css : filet de la teinte à gauche) : la bulle prend la
-   largeur d'une carte, sans marge à elle ; le texte suit les règles de la carte */
-.bulle--carte { width: min(30rem, calc(100vw - 1rem)); max-width: min(30rem, calc(100vw - 1rem)); padding: 0; white-space: normal; overscroll-behavior: contain; }
-.bulle--carte .bcarte { display: block; font-size: 0.86rem; }
+/* une valeur calculée à l'échelle choisie d'un monstre (« 5 (+2/3EP) », « 2 (+1/EP) », décisions R55, R59) ou au NPM choisi d'une créature invoquée
+   (décision R130) : soulignée, la formule écrite en infobulle */
+.bcalcul { font-weight: 700; text-decoration: underline dotted color-mix(in srgb, var(--bes) 60%, transparent); text-underline-offset: 0.2em; cursor: help; }
+
+/* Une créature invoquée au NPM choisi (décision R130, components/bestiaire/CarteInvoquee.astro) : `data-npm` sur la carte, posé par son curseur (bestiaire)
+   ou par celui de la liste des créatures d'un sort (pages de magie) ; chaque valeur qui change porte ses NPM (`data-npms`), une capacité ou une résistance
+   « (NPM n) » son NPM minimum (`data-npm-min`). Sans NPM choisi (sans JavaScript, à l'impression) : la carte telle qu'écrite. */
+.bcarte:not([data-npm]) [data-npms] { display: none; }
+.bcarte__npm-choisi { margin-left: 0.35rem; padding: 0 0.4rem; border-radius: var(--radius-pill); border: 1px solid var(--bes-line); font-size: var(--fs-xs); font-weight: 700;
+  white-space: nowrap; }
+@media screen {
+  .bcarte[data-npm] :is([data-npm-ecrit], .prefixe--npm) { display: none; }
+  .bcarte[data-npm="1"] :is([data-npms]:not([data-npms~="1"]), [data-npm-min="2"], [data-npm-min="3"], [data-npm-min="4"], [data-npm-min="5"]),
+  .bcarte[data-npm="2"] :is([data-npms]:not([data-npms~="2"]), [data-npm-min="3"], [data-npm-min="4"], [data-npm-min="5"]),
+  .bcarte[data-npm="3"] :is([data-npms]:not([data-npms~="3"]), [data-npm-min="4"], [data-npm-min="5"]),
+  .bcarte[data-npm="4"] :is([data-npms]:not([data-npms~="4"]), [data-npm-min="5"]),
+  .bcarte[data-npm="5"] [data-npms]:not([data-npms~="5"]) { display: none; }
+}
+@media print { .bcarte [data-npms] { display: none; } }
+
+/* En infobulle (components/Infobulles.astro, habillage commun de styles/global/infobulles.css : filet de la teinte à gauche ; l'élément porte aussi
+   `.bulle`, dont il garde `overscroll-behavior: contain`) : la bulle prend la largeur d'une carte, sans marge à elle ; le texte suit les règles de la carte */
+.bulle--carte { width: min(30rem, calc(100vw - 1rem)); max-width: min(30rem, calc(100vw - 1rem)); padding: 0; white-space: normal; }
+.bulle--carte .bcarte { display: block; font-size: var(--fs-md); }
 .bulle--carte .bcarte__titre { margin: 0; font-size: 1.15rem; font-weight: 700; line-height: 1.2; }
 .bulle--carte .bcarte__tete { grid-template-areas: "titres portrait"; }
 .bulle--carte .bcarte__portrait { width: 6.5rem; }

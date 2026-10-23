@@ -18,7 +18,7 @@
   font: inherit;
   cursor: pointer;
   border-radius: var(--radius-pill);
-  box-shadow: 0 4px 14px rgb(0 0 0 / 0.22);
+  box-shadow: 0 4px 14px color-mix(in srgb, #000 22%, transparent);
 }
 .ed-crayon {
   width: 3.2rem;
@@ -41,7 +41,7 @@
   gap: 0.45rem;
   padding: 0.7rem 1.1rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--texte-sur-good);
   background: var(--good);
   border: 0;
 }
@@ -49,7 +49,7 @@
 .ed-confirmer:disabled { opacity: 0.6; cursor: progress; }
 .ed-confirmer svg { width: 1.1rem; height: 1.1rem; }
 .ed-journal {
-  font-size: 0.75rem;
+  font-size: var(--fs-xs);
   color: var(--muted);
   background: var(--surface);
   border: 1px solid var(--border);
@@ -60,7 +60,7 @@
 .ed-journal[hidden] { display: none; }
 
 /* Champs : en mode modification, chaque champ modifiable est encadré et remplacé par sa saisie */
-body.ed-mode [data-ed] { outline: 1px dashed color-mix(in srgb, var(--accent) 60%, transparent); outline-offset: 2px; border-radius: 3px; }
+body.ed-mode [data-ed] { outline: 1px dashed color-mix(in srgb, var(--accent) 60%, transparent); outline-offset: 2px; border-radius: var(--radius-xxs); }
 .ed-saisie {
   display: block;
   width: 100%;
@@ -71,7 +71,7 @@ body.ed-mode [data-ed] { outline: 1px dashed color-mix(in srgb, var(--accent) 60
   color: var(--text);
   background: color-mix(in srgb, var(--warn-bg) 55%, var(--surface));
   border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   padding: 0.25rem 0.4rem;
   text-transform: none;
   letter-spacing: normal;
@@ -81,13 +81,13 @@ textarea.ed-saisie { resize: vertical; min-height: 2.4em; line-height: 1.45; fie
 textarea.ed-saisie--ligne { resize: none; min-height: 0; }
 .ed-saisie:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 .ed-saisie.ed-modifiee { border-color: var(--good); box-shadow: inset 3px 0 0 var(--good); }
-.ed-libelle { display: block; font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.1rem; }
+.ed-libelle { display: block; font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); margin-bottom: 0.1rem; }
 
 /* Outils ajoutés par les extensions (ajouter, supprimer, déplacer) */
 .ed-outils { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.6rem 0; }
 .ed-outil {
   font: inherit;
-  font-size: 0.85rem;
+  font-size: var(--fs-md);
   cursor: pointer;
   color: var(--accent);
   background: var(--surface);
@@ -102,20 +102,20 @@ textarea.ed-saisie--ligne { resize: none; min-height: 0; }
 .ed-supprime .ed-outil--danger { opacity: 1; text-decoration: none; }
 .ed-nouveau { box-shadow: inset 4px 0 0 var(--good); }
 .ed-cible { display: inline-flex; align-items: center; gap: 0.25rem; }
-.ed-cible .ed-niveau, .regards__matrice .ed-niveau { width: auto; min-width: 0; display: inline-block; padding: 0.05rem 0.2rem; font-size: 0.8rem; }
+.ed-cible .ed-niveau, .regards__matrice .ed-niveau { width: auto; min-width: 0; display: inline-block; padding: 0.05rem 0.2rem; font-size: var(--fs-sm); }
 .ed-ajout-relation { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin: 0.5rem 0 0; }
 .ed-ajout-relation .ed-saisie { width: auto; display: inline-block; }
 .ed-magies label { cursor: pointer; }
 .ed-magies input { margin: 0 0.25rem 0 0; }
-.ed-details { margin-top: 0.35rem; font-size: 0.75rem; padding: 0.05rem 0.5rem; }
+.ed-details { margin-top: 0.35rem; font-size: var(--fs-xs); padding: 0.05rem 0.5rem; }
 /* Les catégories d'un événement de la chronologie (formulaire « Nouvel événement », page de l'événement : editeur.mjs#champAPart) : une case chacune */
 .ed-categories { display: flex; flex-wrap: wrap; gap: 0.3rem 1rem; margin: 0; padding: 0; border: 0; min-width: 0; }
-.ed-categorie { display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; font-size: 0.9rem; }
+.ed-categorie { display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; font-size: var(--fs-lg); }
 .ed-categorie input { margin: 0; }
 /* La gestion des catégories (bouton « Catégories » de la chronologie : src/scripts/edition/chronologie.mjs) : une ligne par catégorie */
 .ed-gestion-categories { display: grid; gap: 0.35rem; margin: 0.5rem 0; padding: 0; list-style: none; max-height: 55vh; overflow-y: auto; }
 .ed-gestion-categorie { display: grid; grid-template-columns: minmax(10rem, 1fr) auto auto; align-items: center; gap: 0.5rem; }
-.ed-gestion-categorie__compte { color: var(--muted); font-size: 0.85rem; white-space: nowrap; }
+.ed-gestion-categorie__compte { color: var(--muted); font-size: var(--fs-md); white-space: nowrap; }
 .ed-gestion-categorie.ed-supprime .ed-saisie { text-decoration: line-through; opacity: 0.6; }
 
 /* Formulaire de création (dialog) */
@@ -126,19 +126,19 @@ textarea.ed-saisie--ligne { resize: none; min-height: 0; }
   padding: 0;
   color: var(--text);
   background: var(--surface);
-  box-shadow: 0 18px 50px rgb(0 0 0 / 0.35);
+  box-shadow: 0 18px 50px color-mix(in srgb, #000 35%, transparent);
 }
-.ed-dialogue::backdrop { background: rgb(0 0 0 / 0.45); }
+.ed-dialogue::backdrop { background: color-mix(in srgb, #000 45%, transparent); }
 .ed-dialogue form { display: grid; gap: 0.75rem; padding: 1.1rem 1.3rem 1.2rem; }
 .ed-dialogue h2 { margin: 0; font-size: 1.2rem; }
 .ed-dialogue label { display: grid; gap: 0.2rem; }
-.ed-dialogue .ed-aide { margin: 0; font-size: 0.85rem; color: var(--muted); }
+.ed-dialogue .ed-aide { margin: 0; font-size: var(--fs-md); color: var(--muted); }
 .ed-dialogue .ed-erreur { margin: 0; color: var(--danger); font-weight: 600; }
 .ed-dialogue .ed-boutons { display: flex; justify-content: flex-end; gap: 0.6rem; }
 /* un champ caché selon un autre (« Ajouter une capacité » : nom et description d'une capacité nouvelle seulement) : `display: grid` ne l'emporte pas */
 .ed-dialogue label[hidden] { display: none; }
 .ed-dialogue button { font: inherit; padding: 0.35rem 1rem; border-radius: var(--radius-sm); cursor: pointer; }
-.ed-dialogue button[type='submit'] { color: #fff; background: var(--good); border: 0; font-weight: 700; }
+.ed-dialogue button[type='submit'] { color: var(--texte-sur-good); background: var(--good); border: 0; font-weight: 700; }
 
 /* Annonces (enregistré, fiches adaptées, erreur) */
 .ed-annonce {
@@ -148,13 +148,13 @@ textarea.ed-saisie--ligne { resize: none; min-height: 0; }
   z-index: 70;
   max-width: min(32rem, calc(100vw - 2rem));
   padding: 0.65rem 2.2rem 0.65rem 0.9rem;
-  font-size: 0.92rem;
+  font-size: var(--fs-lg);
   color: var(--text);
   background: var(--surface);
   border: 1px solid var(--border);
   border-left: 4px solid var(--good);
   border-radius: var(--radius);
-  box-shadow: 0 6px 20px rgb(0 0 0 / 0.25);
+  box-shadow: 0 6px 20px color-mix(in srgb, #000 25%, transparent);
   white-space: pre-line;
 }
 .ed-annonce[hidden] { display: none; }
@@ -171,7 +171,7 @@ textarea.ed-saisie--ligne { resize: none; min-height: 0; }
   gap: 0.4rem;
   margin-top: 0.45rem;
   padding: 0.4rem 0.55rem 0.5rem;
-  font-size: 0.85rem;
+  font-size: var(--fs-md);
   line-height: 1.4;
   background: color-mix(in srgb, var(--accent-soft) 40%, var(--surface));
   border: 1px solid var(--border);
@@ -189,10 +189,10 @@ textarea.ed-saisie--ligne { resize: none; min-height: 0; }
 .ed-curseur { flex: 1 1 8rem; min-width: 6rem; margin: 0; accent-color: var(--accent); }
 .ed-saisie.ed-nombre { display: inline-block; width: 5.2rem; min-width: 0; }
 .ed-saisie.ed-invalide { border-color: var(--danger); box-shadow: inset 3px 0 0 var(--danger); }
-.ed-emplacement__commune { font-size: 0.8rem; color: var(--muted); }
+.ed-emplacement__commune { font-size: var(--fs-sm); color: var(--muted); }
 .ed-emplacement.ed-propre .ed-emplacement__commune { font-style: italic; }
 .ed-capacite__apercu { margin: 0; padding: 0.3rem 0.45rem; color: var(--text); background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius-xs); }
-.ed-capacite .ed-outil { font-size: 0.78rem; padding: 0.1rem 0.55rem; }
+.ed-capacite .ed-outil { font-size: var(--fs-xs); padding: 0.1rem 0.55rem; }
 .ed-capacite .ed-outil:disabled { opacity: 0.45; cursor: default; background: var(--surface); }
 .ed-ajout-capacite { display: block; margin-top: 0.45rem; }
 body:not(.ed-mode) :is(.ed-capacite, .ed-ajout-capacite) { display: none; }
@@ -217,7 +217,11 @@ body:not(.ed-mode) :is(.ed-capacite, .ed-ajout-capacite) { display: none; }
   .ed-cote, .ed-annonce { display: none !important; }
 }
 
-/* Guide : texte modifiable en place (src/scripts/edition/guide.mjs) et sa barre d'outils, en haut de l'écran */
+/* Texte modifiable en place (src/scripts/edition/texte-en-place.mjs : guide, Codex, chronologie, panneaux de règles) et sa barre d'outils : à gauche de
+   l'écran, à la hauteur de la zone où est le curseur (son `top` posé par le script, hauteurDeLaBarre ; demande du propriétaire du 2026-10-17), en
+   colonne, la page décalée d'autant (la barre ne cache pas le début des lignes ; la bande de l'en-tête et le bandeau du serveur de dev restent sur toute
+   la largeur) ; plus étroit que 48rem (BARRE_A_GAUCHE du script), en haut de l'écran, sur toute sa largeur. Les mots-clés du glossaire y sont en
+   balises écrites (« {{id}} ») : plus de mot-clé rendu dans une zone modifiable. */
 .ed-texte-guide { outline: 2px dashed color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 6px; border-radius: var(--radius-xs); min-height: 2.5em; cursor: text; }
 .ed-texte-guide:focus { outline-style: solid; }
 .ed-texte-guide a { cursor: text; }
@@ -239,10 +243,32 @@ body:not(.ed-mode) :is(.ed-capacite, .ed-ajout-capacite) { display: none; }
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  box-shadow: 0 6px 20px rgb(0 0 0 / 0.2);
+  box-shadow: 0 6px 20px color-mix(in srgb, #000 20%, transparent);
 }
+/* plusieurs éditeurs en place sur la page (Bienvenue : le texte et l'annonce) : une seule barre se montre (texte-en-place.mjs#choisirLaBarre) */
+.ed-barre-guide[hidden] { display: none; }
 .ed-barre-guide__groupe { display: flex; align-items: center; gap: 0.2rem; }
 .ed-barre-guide__groupe + .ed-barre-guide__groupe { padding-left: 0.6rem; border-left: 1px solid var(--border); }
+@media screen and (min-width: 48rem) {
+  :root { --ed-barre-largeur: 10.5rem; }
+  .ed-barre-guide {
+    top: 5rem;
+    left: 0.5rem;
+    transform: none;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: 0.35rem;
+    width: var(--ed-barre-largeur);
+    max-width: none;
+    max-height: calc(100vh - 1rem);
+    overflow-y: auto;
+  }
+  .ed-barre-guide__groupe { flex-wrap: wrap; }
+  .ed-barre-guide__groupe + .ed-barre-guide__groupe { padding: 0.35rem 0 0; border-left: 0; border-top: 1px solid var(--border); }
+  body:has(> .ed-barre-guide) { padding-left: calc(var(--ed-barre-largeur) + 1rem); }
+  body:has(> .ed-barre-guide) > :is(.site-header, .bandeau-test) { margin-left: calc(-1 * (var(--ed-barre-largeur) + 1rem)); }
+}
 .ed-barre-guide__titre { color: var(--muted); margin-right: 0.15rem; }
 .ed-barre-guide button {
   font: inherit;
@@ -261,21 +287,38 @@ body:not(.ed-mode) :is(.ed-capacite, .ed-ajout-capacite) { display: none; }
 .ed-barre-guide .ed-couleur { min-width: 1.4rem; height: 1.4rem; padding: 0; border-radius: 50%; }
 .ed-barre-guide .ed-couleur[data-couleur] { background: color-mix(in srgb, var(--case) 60%, var(--surface)); }
 
-/* Mots-clés (/recherche/, src/scripts/edition/mots-cles.mjs) : la liste de gestion — le libellé, ce qui le porte, puis les boutons ou la raison de la
-   protection d'un mot-clé dont le site se sert */
+/* Panneaux de règles (src/scripts/edition/panneaux.mjs) : le panneau reste ouvert, son titre est une saisie dans le summary ; sous chaque bloc, ses outils
+   (↑ ↓, Supprimer, + Texte, + Tuile), jamais coupés et jamais séparés de la fin du bloc (break-before: avoid) : un bloc de texte se coupe entre deux
+   colonnes comme hors mode modification (insécable, il mettait un panneau d'un seul bloc dans une seule colonne) */
+.ed-mode .preg > summary { cursor: default; }
+.ed-mode .preg > summary .ed-saisie { width: min(100%, 48rem); }
+.ed-preg-outils { margin: 0.3rem 0 0.7rem; gap: 0.3rem; break-inside: avoid; break-before: avoid; }
+.ed-preg-outils .ed-outil { font-size: var(--fs-xs); padding: 0.1rem 0.55rem; }
+
+/* Mots-clés (/recherche/, src/scripts/edition/mots-cles.mjs) : la liste de gestion du glossaire — la balise à copier, le libellé, ce qui le porte, puis
+   les boutons ou la raison de la protection d'un mot-clé dont le site se sert ; dessous, sur toute la largeur, sa définition */
 .ed-mots-cles { list-style: none; padding: 0; margin: 0.4rem 0; }
 .ed-mots-cles li[hidden] { display: none; }
 .ed-mot-cle {
   display: grid;
-  grid-template-columns: minmax(10rem, 18rem) 11rem 1fr;
+  grid-template-columns: minmax(7rem, 14rem) minmax(10rem, 18rem) 11rem 1fr;
+  grid-template-areas: 'balise nom compte outils' 'definition definition definition definition';
   align-items: center;
   gap: 0.3rem 0.8rem;
   padding: 0.3rem 0.4rem;
   border-bottom: 1px solid var(--border);
 }
-.ed-mot-cle__compte { font-size: 0.85rem; color: var(--muted); }
+.ed-mot-cle__balise { grid-area: balise; overflow-wrap: anywhere; font-size: var(--fs-sm); user-select: all; }
+.ed-mot-cle__nom { grid-area: nom; }
+.ed-mot-cle__compte { grid-area: compte; }
+.ed-mot-cle__outils, .ed-mot-cle__protege { grid-area: outils; }
+.ed-mot-cle__definition { grid-area: definition; }
+@media (max-width: 40rem) {
+  .ed-mot-cle { grid-template-columns: 1fr auto; grid-template-areas: 'nom compte' 'balise balise' 'definition definition' 'outils outils'; }
+}
+.ed-mot-cle__compte { font-size: var(--fs-md); color: var(--muted); }
 .ed-mot-cle__outils { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.4rem; }
-.ed-mot-cle__protege { font-size: 0.85rem; color: var(--muted); font-style: italic; }
+.ed-mot-cle__protege { font-size: var(--fs-md); color: var(--muted); font-style: italic; }
 .ed-mot-cle--protege .ed-mot-cle__nom { font-weight: 600; }
 .ed-fusionne { opacity: 0.55; }
 .ed-fusionne .ed-mot-cle__fusionner { opacity: 1; }

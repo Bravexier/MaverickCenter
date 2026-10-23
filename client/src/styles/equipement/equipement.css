@@ -1,0 +1,88 @@
+/* Chargé uniquement depuis components/equipement/EquipementPage.astro (?raw) : la page /ressources/equipement/. Les cinq onglets (Armes, Armures,
+   Boucliers, Ceinture, Accessoires : components/Onglets.astro), un panneau fermé caché sous html.js seulement (sans JavaScript, les panneaux
+   se suivent, chacun sous son titre) ; les panneaux de règles en tête des onglets (components/equipement/PanneauDeRegles.astro) ; l'infobulle des tuiles
+   des fiches (arme, armure, bouclier) ; la pastille d'une gemme (accessoires, bâtons magiques). Le contenu des onglets a son CSS : styles/armes/armes.css,
+   styles/armures/armures.css, styles/ceinture/ceinture.css, styles/accessoires/accessoires.css. */
+main:has(.equipement) { max-width: 120rem; }
+.equipement {
+  --eq: var(--accent);
+  --eq-soft: color-mix(in srgb, var(--accent) 9%, var(--surface));
+  --eq-line: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+
+/* Onglets */
+.equipement-onglets { display: flex; flex-wrap: wrap; gap: 0.4rem; border-bottom: 2px solid var(--eq-line); margin: 0 0 1rem; }
+.equipement-onglets .onglet { display: flex; flex-direction: column; gap: 0.1rem; padding: 0.5rem 1.1rem 0.55rem; border: 1px solid var(--border);
+  border-bottom: 0; border-radius: var(--radius-lg) var(--radius-lg) 0 0; background: var(--surface); color: var(--text); text-decoration: none; margin-bottom: -2px; }
+.equipement-onglets .onglet__nom { font-weight: 700; font-size: var(--fs-xl); }
+.equipement-onglets .onglet__detail { font-size: var(--fs-xs); color: var(--muted); }
+html.js .equipement-onglets .onglet.is-active { background: var(--eq); border-color: var(--eq); color: var(--surface); }
+html.js .equipement-onglets .onglet.is-active .onglet__detail { color: inherit; opacity: 0.85; }
+html.js .equipement-onglets .onglet:not(.is-active):hover { background: var(--eq-soft); }
+.equipement-onglets .onglet:focus-visible { outline: 2px solid var(--eq); outline-offset: 2px; }
+/* sur un écran étroit, les cinq onglets sans leur détail (nombres) : deux rangées au plus */
+@media (max-width: 40rem) {
+  .equipement-onglets { gap: 0.3rem; }
+  .equipement-onglets .onglet { padding: 0.35rem 0.75rem; }
+  .equipement-onglets .onglet__nom { font-size: var(--fs-lg); }
+  .equipement-onglets .onglet__detail { display: none; }
+}
+html.js .equipement-panneau:not(.is-active) { display: none; }
+/* le titre d'un panneau : celui de son onglet ; sans JavaScript, il sépare les panneaux qui se suivent */
+html.js .equipement-panneau__titre { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+html:not(.js) .equipement-panneau + .equipement-panneau, html:not(.js) .equipement-panneau + .armures { margin-top: 2rem; }
+
+/* ── Panneaux de règles (components/equipement/PanneauDeRegles.astro, lib/panneaux-regles-rendu.mjs ; demande du propriétaire, 2026-10-16 : « Si
+   l'écran est assez large, la zone de texte prendra deux colonnes. Sinon une seule ») : repliés, le titre dans le summary ; à partir de 64rem, le contenu
+   en deux colonnes séparées d'un filet. Un bloc de texte suit les colonnes (ses paragraphes et ses listes ne se coupent pas) ; une tuile, encadrée comme
+   un don de classe ou une capacité du bestiaire (filet de couleur à gauche), ne se coupe jamais entre deux colonnes. La fin d'un bloc de texte suivi
+   d'une tuile reste avec elle (« CAS PARTICULIERS : », dernière ligne d'un bloc des armes, n'est jamais seule en bas d'une colonne, loin des tuiles
+   qu'elle annonce) : `break-after: avoid` sur le bloc et sur son dernier enfant (Chrome, Safari ; Firefox ne l'applique pas aux colonnes). ── */
+.preg { --preg: var(--eq, var(--accent)); margin: 0 0 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+.preg > summary { cursor: pointer; padding: 0.6rem 0.9rem; font-weight: 700; }
+.preg > summary:focus-visible { outline: 2px solid var(--preg); outline-offset: 2px; border-radius: var(--radius-lg); }
+.preg__corps { max-width: none; padding: 0.2rem 1.2rem 1rem; line-height: 1.55; }
+@media (min-width: 64rem) { .preg__corps { columns: 2; column-gap: 2.6rem; column-rule: 1px solid var(--border); } }
+.preg-bloc__texte > *, .preg-bloc--tuile { break-inside: avoid; }
+.preg-bloc--texte:has(+ .preg-bloc--tuile), .preg-bloc--texte:has(+ .preg-bloc--tuile) > .preg-bloc__texte > :last-child { break-after: avoid; }
+.preg__corps > .preg-bloc:first-child, .preg-bloc__texte > :first-child { margin-top: 0; }
+.preg-bloc__texte p { margin: 0 0 0.75rem; }
+.preg-bloc__texte em { color: color-mix(in srgb, var(--text) 82%, var(--preg)); }
+.preg-bloc__texte :is(ul, ol) { margin: 0 0 0.9rem; padding-left: 1.2rem; }
+.preg-bloc__texte li > p { margin: 0 0 0.35rem; }
+.preg-bloc__texte p:has(+ :is(ul, ol)) { margin-bottom: 0.3rem; }
+.preg-bloc--tuile { display: flow-root; margin: 0 0 0.9rem; padding: 0.5rem 0.85rem 0.6rem; background: var(--bg); border: 1px solid var(--border);
+  border-left: 4px solid var(--preg); border-radius: var(--radius-md); }
+.preg-bloc__titre { margin: 0 0 0.3rem; font-weight: 700; color: color-mix(in srgb, var(--preg) 75%, var(--text)); }
+.preg-bloc--tuile .preg-bloc__texte > :last-child, .preg-bloc--tuile .preg-bloc__texte > :last-child > li:last-child > p:last-child { margin-bottom: 0; }
+
+/* ── L'infobulle d'une tuile des fiches (arme, armure, bouclier : src/scripts/armes.mjs, armures.mjs) : le détail de son calcul, une ligne par
+   élément, le total en gras sous un filet, puis les notes (styles/global/infobulles.css pour la bulle elle-même) ── */
+.eq-bulle { white-space: normal; }
+.eq-bulle__lignes { display: grid; gap: 0.1rem; margin-top: 0.35rem; padding-top: 0.35rem; border-top: 1px solid var(--bulle-ligne); }
+.eq-bulle__ligne { display: flex; justify-content: space-between; gap: 1.2rem; }
+.eq-bulle__ligne > :last-child { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.eq-bulle__total { font-weight: 700; border-top: 1px solid var(--bulle-ligne); padding-top: 0.15rem; margin-top: 0.1rem; }
+.eq-bulle__note { display: block; margin-top: 0.35rem; color: var(--muted); font-size: var(--fs-sm); }
+/* dans une tuile, une icône de monnaie (son nom en infobulle : lib/monnaies.mjs) ne prend pas le pas sur l'infobulle de la tuile, au survol comme au
+   toucher (components/Infobulles.astro retient le déclencheur le plus proche du pointeur) */
+:is(.arme-fiche__tuile, .pfiche__tuile) .piece { pointer-events: none; }
+
+/* ── La pastille d'une gemme, dans la couleur de sa magie : la même dans les onglets Accessoires (components/accessoires/GemmesDeLEffet.astro, copiée
+   telle quelle par l'encart de src/scripts/accessoires.mjs) et Ceinture, sous-onglet Bâtons magiques (lib/batons-rendu.mjs, demande du propriétaire du
+   2026-10-16 : « La case des gemmes doit utiliser le même item que pour les accessoire. Une pastille », où elle est un lien vers « Composants ») ; elle
+   porte la classe de la magie (`.couleur-magie-<id>` : --couleur, --couleur-texte, lib/palette-css.mjs) ── */
+.acc-gemme { --gemme: var(--couleur); display: inline-block; margin: 0.05rem 0; padding: 0 0.5rem; border-radius: var(--radius-pill); font-size: var(--fs-sm);
+  font-weight: 600; line-height: 1.45; background: var(--gemme); color: var(--couleur-texte); border: 1px solid color-mix(in srgb, var(--gemme) 65%, #000);
+  cursor: help; }
+a.acc-gemme { text-decoration: none; cursor: pointer; overflow-wrap: normal; white-space: nowrap; }
+a.acc-gemme:focus-visible { outline: 2px solid var(--mag-texte, var(--gemme)); outline-offset: 2px; }
+
+/* Éléments communs aux onglets Armes et Armures (la même présentation : un seul endroit ; leurs tableaux : le gabarit commun, styles/global/tableaux.css) */
+.arme-fiche, .pfiche { padding: 0.9rem 1.1rem 1rem; background: var(--surface); border: 1px solid var(--eq-line); border-radius: var(--radius-lg); font-size: var(--fs-lg);
+  box-shadow: var(--ombre-fiche); }
+.arme-fiche__vide, .pfiche__vide { margin: 0; color: var(--muted); }
+.arme-dgt, .pdgt { display: inline-block; margin: 0 0.15rem 0.2rem 0; padding: 0 0.55rem; font-size: var(--fs-xs); border-radius: var(--radius-pill);
+  border: 1px solid var(--eq-line); background: var(--surface); white-space: nowrap; }
+.arme-dgt--taille, .pdgt--taille { border-color: color-mix(in srgb, var(--degats-taille) 45%, var(--border)); }
+.arme-dgt--estoc, .pdgt--estoc { border-color: color-mix(in srgb, var(--degats-estoc) 45%, var(--border)); }

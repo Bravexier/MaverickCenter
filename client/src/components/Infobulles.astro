@@ -25,6 +25,14 @@
 // téléphone : un appui dans une bulle `data-fermer-au-toucher` (sans lien ni bouton) la ferme. Une bulle plus haute que sa place défile : à la
 // molette, et au clavier tant que son déclencheur a le focus (flèches haut et bas, pages, début, fin). Un clic dans une bulle ne la ferme pas.
 // Une bulle riche peut contenir toute une tuile (la carte d'une créature : un <div class="bulle bulle--carte"> hors de tout paragraphe).
+// Une bulle à champs (`data-bulle-champs` : la tuile d'un choix du tiroir de la fiche, src/scripts/fiche.mjs#bulleDeChoix, `role="dialog"`) se
+// remplit au clavier : elle reste ouverte tant que le focus est dans la bulle ou sur son déclencheur (jugé juste après la perte du focus : un champ
+// retiré quand la bulle est refaite, auquel la page rend le focus, ne la ferme pas), et quand le pointeur la quitte si ce focus est celui du clavier
+// (la dernière interaction est une touche, pas un appui : la souris seule la ferme comme avant) ; Échap, le focus dans la bulle, la ferme et rend le
+// focus au déclencheur, sans la rouvrir ; son déclencheur porte `aria-expanded`, tenu ici ; un bouton qui la déclenche ne la bascule pas au second
+// appui ni ne l'ouvre au clic, comme un déclencheur qui n'est pas un bouton ; tant que le focus du clavier y est, aucune autre bulle ne la remplace
+// (le survol d'un autre déclencheur, un `title`). Entrer dans la bulle et en sortir (Entrée, Tab) est
+// l'affaire du script de la page. Toutes les autres bulles n'en changent pas.
 // Teinte : celle de la page (--mag : magie, classe, race, partie du guide), lue sur le déclencheur pour la bulle partagée ; sinon l'accent du site.
 // Sans JavaScript : les bulles riches restent cachées et l'attribut `title` (texte simple) joue le rôle d'infobulle native.
 // Script en ligne, sans module : la version portable n'a ni import ni module partagé entre pages (tools/build-artifact.mjs).
@@ -42,6 +50,9 @@
     var simple = null, fleche = null; // créées au premier usage
     var TEXTE = 'data-infobulle'; // le texte d'un `title` déplacé
     var HORS_PAGE = /^(STYLE|LINK|SCRIPT|META|IFRAME)$/; // leur `title` n'est pas une infobulle (feuille de style alternative, nom d'un cadre)
+    var CHAMPS = 'data-bulle-champs'; // une bulle à champs, qui se remplit au clavier
+    var sansRouvrir = null; // déclencheur qui reprend le focus à la fermeture de sa bulle à champs (Échap) : sa bulle ne se rouvre pas
+    var clavier = false; // la dernière interaction est une touche (pas un appui) : le focus d'une bulle à champs est celui du clavier
 
     /** Le `title` d'un élément quitte l'attribut que le navigateur affiche : son texte va dans `data-infobulle` (bulle riche : retiré). */
     function deplacer(el) {
@@ -91,9 +102,19 @@
       }
       return null;
     }
+    /** La bulle ouverte est une bulle à champs où se trouve le focus du clavier (la dernière interaction est une touche) : elle reste. */
+    var retenue = function () {
+      return ouverte !== null && clavier && ouverte.bulle.hasAttribute(CHAMPS) && ouverte.bulle.contains(document.activeElement);
+    };
+    /** Le déclencheur `c` ouvre une bulle à champs. */
+    var aDesChamps = function (c) {
+      var b = document.getElementById(c.getAttribute('data-bulle') || '');
+      return b !== null && b.hasAttribute(CHAMPS);
+    };
     var dansBulle = function (n) { return n instanceof Node && ouverte !== null && ouverte.bulle.contains(n); };
 
-    function fermer() {
+    /** Ferme la bulle ouverte ; `rendre` (Échap dans une bulle à champs) : le focus revient à son déclencheur. */
+    function fermer(rendre) {
       clearTimeout(delai);
       if (!ouverte) return;
       var o = ouverte;
@@ -106,6 +127,12 @@
       o.bulle.style.removeProperty('max-height');
       fleche.hidden = true;
       o.cible.removeAttribute('data-ouverte');
+      if (!o.bulle.hasAttribute(CHAMPS)) return;
+      o.cible.setAttribute('aria-expanded', 'false');
+      if (rendre === true && o.cible.isConnected) {
+        sansRouvrir = o.cible;
+        try { o.cible.focus({ preventScroll: true }); } finally { sansRouvrir = null; }
+      }
     }
 
     /** Place la bulle près de son déclencheur, du côté qui a le plus de place, sans sortir de l'écran (zone visible : sans la barre de défilement) ; la pointe vise le déclencheur. */
@@ -162,12 +189,18 @@
       clearTimeout(delai);
       enAttente = null;
       if (ouverte && ouverte.cible === cible) return;
+      if (retenue()) return; // le focus du clavier dans une bulle à champs : aucune autre bulle ne la remplace (le survol, un `title`)
       var estSimple = !cible.hasAttribute('data-bulle');
       var bulle, titre = null;
       if (estSimple) {
         titre = cible.getAttribute(TEXTE);
         if (!titre || !titre.trim()) return;
-        simple = simple || creer('bulle bulle--simple', 'bulle-du-titre');
+        if (!simple) {
+          simple = creer('bulle bulle--simple', 'bulle-du-titre');
+          // son texte est celui d'un attribut, déjà en texte simple (sauf dans une zone brute, où il reste tel qu'écrit) : les mots-clés vivants du site de
+          // dev (src/scripts/edition/mots-cles-vivants.mjs) n'y rendent rien
+          simple.setAttribute('data-mots-cles-bruts', '');
+        }
         bulle = simple;
       } else {
         bulle = document.getElementById(cible.getAttribute('data-bulle') || '');
@@ -193,6 +226,7 @@
       bulle.style.position = 'fixed';
       bulle.style.visibility = 'hidden';
       cible.setAttribute('data-ouverte', '');
+      if (bulle.hasAttribute(CHAMPS)) cible.setAttribute('aria-expanded', 'true');
       var style = getComputedStyle(bulle);
       fleche.style.setProperty('--fleche-fond', style.backgroundColor);
       fleche.style.setProperty('--fleche-ligne', style.borderTopColor);
@@ -233,6 +267,10 @@
       if (suspendu && !suspendu.contains(vers)) suspendu = null;
       if (!ouverte) return;
       if (ouverte.cible.contains(e.target) || dansBulle(e.target)) {
+        // une bulle à champs ne se ferme pas au départ du pointeur tant que le focus du clavier est dans la bulle ou sur son déclencheur (un focus donné
+        // par un appui : la souris seule, qui la ferme comme avant)
+        var ici = document.activeElement;
+        if (clavier && ouverte.bulle.hasAttribute(CHAMPS) && ici instanceof Node && (ouverte.cible.contains(ici) || ouverte.bulle.contains(ici))) return;
         if (!ouverte.cible.contains(vers) && !dansBulle(vers)) fermerBientot();
       }
     });
@@ -240,6 +278,7 @@
     document.addEventListener(
       'pointerdown',
       function (e) {
+        clavier = false;
         clearTimeout(attente);
         enAttente = null;
         if (dansBulle(e.target)) return;
@@ -252,12 +291,23 @@
     // Clavier : seulement le focus visible (un appui au toucher ou un clic de souris donne aussi le focus, mais ne doit pas ouvrir seul la bulle).
     document.addEventListener('focusin', function (e) {
       var c = declencheur(e.target);
-      if (c && c !== suspendu && c.matches(':focus-visible')) ouvrir(c);
+      if (c && c !== suspendu && c !== sansRouvrir && c.matches(':focus-visible')) ouvrir(c);
     });
     // le déclencheur perd le focus : la bulle se ferme, sauf si c'est un clic dans la bulle (pour lire, sélectionner, défiler : le pointeur, qui est
-    // dessus, la fermera en la quittant)
+    // dessus, la fermera en la quittant) ; une bulle à champs reste ouverte tant que le focus va de son déclencheur à la bulle, ou d'un champ à l'autre
     document.addEventListener('focusout', function (e) {
-      if (ouverte && ouverte.cible.contains(e.target) && !ouverte.bulle.matches(':hover')) fermer();
+      if (!ouverte || ouverte.bulle.matches(':hover')) return;
+      if (!ouverte.bulle.hasAttribute(CHAMPS)) {
+        if (ouverte.cible.contains(e.target)) fermer();
+        return;
+      }
+      // décidé après coup : un champ retiré (la bulle refaite par la page) perd le focus, que la page lui rend aussitôt
+      var o = ouverte;
+      if (!o.cible.contains(e.target) && !dansBulle(e.target)) return;
+      setTimeout(function () {
+        var ici = document.activeElement;
+        if (ouverte === o && !o.bulle.matches(':hover') && !(ici instanceof Node && (o.cible.contains(ici) || o.bulle.contains(ici)))) fermer();
+      });
     });
     document.addEventListener('click', function (e) {
       var c = declencheur(e.target);
@@ -267,15 +317,18 @@
       }
       if (!c) return fermer();
       if (!c.hasAttribute('data-bulle')) return;
+      // un bouton qui déclenche une bulle à champs (le choix du tiroir de la fiche) se comporte comme un autre déclencheur : ni bascule au second
+      // appui, ni ouverture au clic
+      var bascule = c.tagName === 'BUTTON' && !aDesChamps(c);
       if (tactile.matches) {
         // premier appui : la bulle ; une pastille d'état (un lien) ne suit son lien qu'au second appui, sur la même pastille
         if (ouverte && ouverte.cible === c) {
-          if (c.tagName === 'BUTTON') fermer();
+          if (bascule) fermer();
         } else {
           if (c.tagName === 'A') e.preventDefault();
           ouvrir(c);
         }
-      } else if (c.tagName === 'BUTTON') ouvrir(c);
+      } else if (bascule) ouvrir(c);
     });
     // Échap ferme une bulle riche seule : on intercepte avant le gestionnaire du panneau d'un sort (SortsInteractifs), qui n'est pas prévenu
     // quand une bulle était ouverte. Une touche (Échap compris, qui garde alors son effet) ferme la bulle d'un `title`, comme l'infobulle du
@@ -284,13 +337,14 @@
     document.addEventListener(
       'keydown',
       function (e) {
+        clavier = true;
         clearTimeout(attente);
         enAttente = null;
         if (!ouverte) return;
         if (ouverte.simple) {
           if (['Shift', 'Control', 'Alt', 'Meta', 'AltGraph'].indexOf(e.key) < 0) fermer();
         } else if (e.key === 'Escape') {
-          fermer();
+          fermer(ouverte.bulle.hasAttribute(CHAMPS) && dansBulle(document.activeElement));
           e.stopPropagation();
         } else if (ouverte.bulle.scrollHeight > ouverte.bulle.clientHeight && document.activeElement === ouverte.cible && !(e.altKey || e.ctrlKey || e.metaKey || e.shiftKey)) {
           var b = ouverte.bulle;

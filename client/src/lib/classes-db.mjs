@@ -6,8 +6,15 @@
 import { assemblerClasse } from './classe-assemblage.mjs';
 import { entreeAnnexe } from './classe-dons.mjs';
 import { blocsDeTexte } from './sort-format.mjs';
+import { avecLeursBalises } from './mots-cles-balises.mjs';
 
 const apres = (id, separateur) => id.slice(id.indexOf(separateur) + separateur.length);
+/** Les emplacements de l'inventaire ([[{ texte, … }]]) dont chaque texte reprend les balises du glossaire que la cellule `brut` écrit. */
+const inventaireAvecBalises = (brut, emplacements) => {
+  const textes = avecLeursBalises(String(brut ?? ''), emplacements.flat().map((o) => o.texte));
+  let i = 0;
+  return emplacements.map((options) => options.map((o) => ({ ...o, texte: textes[i++] })));
+};
 const regrouper = (rows, cle) => {
   const m = new Map();
   for (const r of rows) {
@@ -82,10 +89,11 @@ export function chargerClasses(db) {
       ],
       maitriseArme: (armes.get(c.id) ?? []).map((a) => a.brut),
       maitriseArmure: (armures.get(c.id) ?? []).map((a) => a.brut),
-      // inventaire de départ : un emplacement par objet de la cellule ; « A OU B » = deux options du même emplacement
-      inventaire: [...regrouper(objets.get(c.id) ?? [], 'rang').values()].map((options) =>
+      // inventaire de départ : un emplacement par objet de la cellule ; « A OU B » = deux options du même emplacement ; chaque texte avec les balises du
+      // glossaire que la cellule écrit (classe_objet_depart.texte est lu sans elles : lib/mots-cles-balises.mjs#avecLeursBalises, comme le rendu « inventaire »)
+      inventaire: inventaireAvecBalises(c.inventaire_depart, [...regrouper(objets.get(c.id) ?? [], 'rang').values()].map((options) =>
         options.map((o) => ({ texte: o.texte, objet: o.objet, description: o.description })),
-      ),
+      )),
       armeDepart: c.arme_depart,
       armureDepart: c.armure_depart,
       aSavoir: blocsDeTexte(c.chose_a_savoir),

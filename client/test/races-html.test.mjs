@@ -7,6 +7,8 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { classeDeMagie, cssDeLaPalette, cssDesFamilles } from '../src/lib/palette-css.mjs';
+import { RACE_COLORS } from '../src/lib/race-kinds.mjs';
 
 const dossier = fileURLToPath(new URL('../dist/races/', import.meta.url));
 const present = existsSync(dossier);
@@ -68,7 +70,7 @@ test('relations : Elfe noir en deux blocs (Charbon, Salé), la matrice entre ses
   assert.equal((voit.match(/class="regards__bloc"/g) ?? []).length, 2);
   assert.match(voit, /<h4>Elfe Noir Charbon<\/h4>/);
   assert.match(voit, /<h4>Elfe Noir Salé<\/h4>/);
-  assert.match(html, /class="race-table regards__matrice"/);
+  assert.match(html, /class="race-table regards__matrice table-donnees"/);
   assert.match(page('farfadet'), /n’a pas de peuple dans l’onglet « Relation entre les races »/);
   for (const { slug, html: h } of pages) {
     const niveaux = [...h.matchAll(/class="regard__niveau">([^<]+)</g)].map((m) => m[1]);
@@ -91,7 +93,7 @@ test('race hybride : bandeau « Race hybride » et lien vers sa classe raciale',
 // sur le modèle des classes et de la carte des magies ; l'accroche en infobulle ; ni magies ni classe raciale.
 const liste = present && existsSync(join(dossier, 'index.html')) ? main(readFileSync(join(dossier, 'index.html'), 'utf8')) : '';
 const colonne = (id) => {
-  const debut = liste.indexOf(`<section class="races-groupe" id="${id}"`);
+  const debut = liste.search(new RegExp(`<section class="races-groupe(?: couleur-race-[a-z]+)?" id="${id}"`));
   return debut < 0 ? '' : liste.slice(debut, liste.indexOf('</section>', debut));
 };
 // sans la race d'exemple, présente quand le site est construit sans HIDE_EXAMPLES=1 (c'est le cas de la CI)
@@ -113,11 +115,18 @@ test('liste des races : deux groupes de pastilles, pures puis hybrides, dans l�
 });
 
 test('liste des races : chaque groupe dans la couleur du bandeau des pages de race, avec le nombre de ses races', options, () => {
-  assert.match(colonne('pures'), /^<section class="races-groupe" id="pures" style="--couleur-race: #2f6a6a">/);
-  assert.match(colonne('hybrides'), /^<section class="races-groupe" id="hybrides" style="--couleur-race: #8a5a1c">/);
+  // la couleur : la classe de la nature (lib/palette-css.mjs, famille `race`, émise par la page), jamais un style
+  assert.match(colonne('pures'), /^<section class="races-groupe couleur-race-pure" id="pures">/);
+  assert.match(colonne('hybrides'), /^<section class="races-groupe couleur-race-hybride" id="hybrides">/);
   assert.match(colonne('hybrides'), /<span class="races-groupe__nom">Races hybrides<\/span>\s*<span class="races-groupe__compte">14<\/span>/);
-  assert.match(page('orios'), /<div class="race race--hybride" style="--couleur-race: #8a5a1c">/);
-  assert.match(page('humain'), /<div class="race race--pure" style="--couleur-race: #2f6a6a">/);
+  assert.match(page('orios'), /<div class="race race--hybride couleur-race-hybride">/);
+  assert.match(page('humain'), /<div class="race race--pure couleur-race-pure">/);
+  // les couleurs des deux natures, dans la feuille de la liste et de chaque page de race
+  assert.deepEqual(RACE_COLORS, { pure: '#2f6a6a', hybride: '#8a5a1c' });
+  for (const html of [readFileSync(join(dossier, 'index.html'), 'utf8'), page('orios'), page('humain')]) {
+    assert.ok(html.includes(`<style>${cssDesFamilles(['race'])}</style>`), 'la feuille des races');
+  }
+  assert.ok(cssDesFamilles(['race']).startsWith('.couleur-race-pure{--couleur:#2f6a6a;'));
 });
 
 test('liste des races : l’accroche de chaque race en infobulle ; ni magies ni classe raciale', options, () => {
@@ -136,6 +145,19 @@ test('liste des races : l’accroche de chaque race en infobulle ; ni magies ni 
   assert.match(colonne('hybrides'), /title="Les semi-renards, une race à la beauté et au narcissisme sans égal"/);
 });
 
+test('magies innées d’une race : chaque pastille dans la couleur de sa magie, par la classe de la magie (lib/palette-css.mjs), sans style', options, () => {
+  let pastilles = 0;
+  for (const { slug, html } of pages) {
+    const puces = [...html.matchAll(/<a class="chip race-magie (couleur-magie-[\w-]+)" href="[^"]*\/magies\/[^"]+\/">([^<]+)<\/a>/g)];
+    for (const [, classe, nom] of puces) assert.equal(classe, classeDeMagie(nom), `${slug} : ${nom}`);
+    assert.ok(puces.every(([, classe]) => cssDeLaPalette().includes(`.${classe}{`)), `${slug} : des classes de la palette`);
+    assert.doesNotMatch(html, /class="chip race-magie[^"]*"[^>]*style=/, `${slug} : aucune pastille en style`);
+    pastilles += puces.length;
+  }
+  assert.ok(pastilles > 100, `${pastilles} pastilles`);
+  assert.match(page('nain'), /<a class="chip race-magie couleur-magie-feu" href="\/magies\/magie-du-feu\/">Feu<\/a>/);
+});
+
 // Le tableau des magies innées de toutes les races, en bas de /races/ (components/magie/TableauMagiesInnees.astro) : il remplace /races-et-magies/.
 test('liste des races : tableau des magies innées en bas de page, races dans l’ordre des listes, magies dans l’ordre du classeur et dans leur couleur', options, () => {
   assert.ok(!liste.includes('races-et-magies'), 'plus de lien vers l’ancienne page');
@@ -145,10 +167,15 @@ test('liste des races : tableau des magies innées en bas de page, races dans l�
   assert.deepEqual([...tableau.matchAll(/<span class="tableau-magies__vertical">([^<]+)<\/span>/g)].map((m) => m[1]), [
     'Potentiel Illimité', 'Sang', 'Arcane', 'Corruption', 'Espace/Temps', 'Vide', 'Nécromancie', 'Feu', 'Eau', 'Glace', 'Terre', 'Vent', 'Foudre', 'Lumière', 'Ombre', 'Total',
   ]);
-  assert.equal((tableau.match(/<col class="tableau-magies__col-magie" style="--couleur-magie: #[0-9a-f]{6}">/g) ?? []).length, 15, 'colonnes teintées');
+  // colonnes, en-têtes et pastilles dans la couleur de leur magie : sa classe (lib/palette-css.mjs), jamais un style
+  const colonnes = [...tableau.matchAll(/<col class="tableau-magies__col-magie (couleur-magie-[\w-]+)">/g)].map((m) => m[1]);
+  assert.equal(colonnes.length, 15, 'colonnes teintées');
+  assert.deepEqual([...tableau.matchAll(/<th scope="col" class="tableau-magies__entete (couleur-magie-[\w-]+)">/g)].map((m) => m[1]), colonnes, 'en-têtes');
+  assert.ok(colonnes.every((c) => cssDeLaPalette().includes(`.${c}{`)) && colonnes.includes('couleur-magie-espace-temps'), 'des classes de la palette');
+  assert.doesNotMatch(tableau.slice(0, tableau.indexOf('</table>')), /style=/, 'aucun style dans le tableau');
   const lignes = [...tableau.matchAll(/<th scope="row" class="tableau-magies__nom"><a href="[^"]*\/races\/([^/"]+)\/">([^<]+)<\/a><\/th>(.*?)<\/tr>/g)].filter((m) => m[1] !== 'exemple-race');
   assert.deepEqual(lignes.map((m) => m[2].replace(/&#39;/g, "'")), [...nomsDe(colonne('pures')), ...nomsDe(colonne('hybrides'))]);
-  const pastilles = (slug) => (lignes.find((m) => m[1] === slug)[3].match(/class="tableau-magies__point"/g) ?? []).length;
+  const pastilles = (slug) => (lignes.find((m) => m[1] === slug)[3].match(/class="tableau-magies__point couleur-magie-[\w-]+"/g) ?? []).length;
   assert.equal(pastilles('humain'), 15);
   assert.equal(pastilles('nain'), 5);
   assert.equal(pastilles('drassahthac'), 14);

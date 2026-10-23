@@ -1,0 +1,83 @@
+---
+// Le gabarit commun des tableaux du site (demande du propriétaire, 2026-10-17 : « De manière générale il faudrait uniformiser tous les tableaux sous
+// le même template commun » ; CSS : styles/global/tableaux.css). Écrit le cadre, le titre, la note, la zone qui défile et la <table> ; le contenu de
+// la table (<thead>, <tbody>, <caption>) est le slot par défaut.
+//   - Avec un titre (`titre`, `lien` ou le slot « titre ») : repliable par défaut (<details open> et son <summary>), sinon un <section> et un titre
+//     <hN> (`niveau`) ; la table se rapporte au titre (aria-labelledby `${id}-titre`). Sans titre : un <div>.
+//   - `compte` à droite du titre ; slot « outils » entre le nom et le compte (le dé d'une famille d'armes) ; sous le titre, `note` (un texte) ou
+//     `noteHtml` (du HTML déjà échappé : liens, monnaies en icônes) ; slots
+//     « avant » (entre la note et la table) et « apres » (sous la table).
+//   - `bloc` : le nom de bloc de la page, posé à côté des classes du gabarit (`armes-famille`, `armes-famille__titre`, `__nom`, `__compte`, `__note`) :
+//     les scripts, les tests et la feuille de la page s'y accrochent ; `class` s'ajoute au cadre, `classeTable` à la table ; `attributs` et
+//     `attributsTable` : les autres attributs (data-…) ; `attributsNom` et `attributsNote` : ceux du nom et de la note (le champ du mode modification
+//     qui les écrit : les onglets de la page Composants) — avec `attributsNote`, la note est toujours écrite, cachée tant qu'elle est vide.
+interface Props {
+  id?: string;
+  titre?: string;
+  /** le nom du tableau en lien (la page d'une potion) */
+  lien?: string;
+  compte?: string | number;
+  note?: string | null;
+  noteHtml?: string | null;
+  repliable?: boolean;
+  ouvert?: boolean;
+  niveau?: 2 | 3 | 4 | 5;
+  bloc?: string;
+  class?: string;
+  classeTable?: string;
+  attributs?: Record<string, string | undefined>;
+  attributsTable?: Record<string, string | undefined>;
+  attributsNom?: Record<string, string | boolean | undefined>;
+  attributsNote?: Record<string, string | boolean | undefined>;
+}
+const {
+  id, titre, lien, compte, note, noteHtml, repliable = true, ouvert = true, niveau = 3, bloc, class: classe, classeTable, attributs = {}, attributsTable = {},
+  attributsNom = {}, attributsNote,
+} = Astro.props;
+const aTitre = Boolean(titre || lien || Astro.slots.has('titre'));
+const Cadre = !aTitre ? 'div' : repliable ? 'details' : 'section';
+const Titre = Cadre === 'details' ? 'summary' : `h${niveau}`;
+const idTitre = aTitre && id ? `${id}-titre` : undefined;
+/** une classe du gabarit et, s'il y a un bloc, la sienne (une chaîne : `class` reste le premier attribut de l'élément) */
+const classes = (gabarit: string, element = '', ...autres: (string | undefined)[]) => [gabarit, bloc && `${bloc}${element}`, ...autres].filter(Boolean).join(' ');
+const nom = Astro.slots.has('titre') ? await Astro.slots.render('titre') : null;
+const contenu = await Astro.slots.render('default');
+/** les attributs de la table, sauf son nom (aria-labelledby : celui qu'on donne, sinon le titre ; jamais deux fois) */
+const { 'aria-labelledby': _nom, ...sansNom } = attributsTable;
+---
+
+<Cadre
+  class={classes('tableau', '', classe)}
+  id={id}
+  open={Cadre === 'details' && ouvert ? true : undefined}
+  aria-labelledby={Cadre === 'section' ? idTitre : undefined}
+  {...attributs}
+>
+  {
+    aTitre && (
+      <Titre class={classes('tableau__titre', '__titre')}>
+        {lien ? (
+          <a class={classes('tableau__nom', '__nom')} id={idTitre} href={lien}>{titre}</a>
+        ) : (
+          <span class={classes('tableau__nom', '__nom')} id={idTitre} {...attributsNom}>{nom ? <Fragment set:html={nom} /> : titre}</span>
+        )}
+        <slot name="outils" />
+        {compte !== undefined && compte !== null && <span class={classes('tableau__compte', '__compte')}>{compte}</span>}
+      </Titre>
+    )
+  }
+  {
+    attributsNote ? (
+      <p class={classes('tableau__note', '__note')} hidden={!note} {...attributsNote}>{note ?? ''}</p>
+    ) : noteHtml ? (
+      <p class={classes('tableau__note', '__note')} set:html={noteHtml} />
+    ) : (
+      note && <p class={classes('tableau__note', '__note')}>{note}</p>
+    )
+  }
+  <slot name="avant" />
+  <div class="tableau__defile">
+    <table class={['table-donnees', classeTable].filter(Boolean).join(' ')} aria-labelledby={attributsTable['aria-labelledby'] ?? idTitre} {...sansNom} set:html={contenu} />
+  </div>
+  <slot name="apres" />
+</Cadre>

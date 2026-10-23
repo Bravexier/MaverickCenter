@@ -5,8 +5,7 @@
 // passent ; la recherche (page_fts) trouve la nouvelle valeur et plus l'ancienne.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { cpSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { after, test } from 'node:test';
@@ -23,12 +22,12 @@ import { corpsDeMetier, sansLiens } from '../src/lib/corps-metiers.mjs';
 import { corpsDeRace, corpsDeRaceCreee, etatDeRace } from '../src/lib/corps-races.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { emettrePage, lirePages } from '../src/lib/pages-db.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 const ROWS = join(RACINE, 'data', 'rows');
 const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
-const tmp = mkdtempSync(join(tmpdir(), 'maverick-edition-corps-'));
-after(() => rmSync(tmp, { recursive: true, force: true }));
+const tmp = dossierTemporaire('edition-corps');
 
 // --- modifications par l'API du service (base vivante du site de dev) --------------------------------------------------------------------------
 const vivante = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(tmp, 'db') }).chemin);
@@ -94,7 +93,10 @@ const nouveau = {
   case: 'zorglubcase',
   donElfe: { nom: 'Sang zorglubnom', texte: 'Don racial zorglubdonracial.' },
   hyperElfe: { nom: 'Condamné zorglubhypernom', effet: 'Effet zorglubhyperrace du peuple.' },
-  guerrier: { sante_depart: avant.guerrier.sante_depart + 1, maitrise_arme: '- 1 maîtrise zorglubarme\n- 1 maîtrise Hache', description: 'Le Guerrier zorglubclasse frappe fort. Il ne recule jamais.' },
+  // (une maîtrise au choix gardée : l'Épéiste la suit, décision R151 ; sans elle, le service refuse le lot ; le repère, une ligne non typée : « 1 maîtrise
+  // zorglubarme » serait une maîtrise illisible, refusée à la saisie, choix du propriétaire du 2026-10-23)
+  guerrier: { sante_depart: avant.guerrier.sante_depart + 1, maitrise_arme: '- Maîtrise zorglubarme\n- 1 maîtrise Hache\n- 1 maîtrise arme contact au choix (sauf Hache)',
+    description: 'Le Guerrier zorglubclasse frappe fort. Il ne recule jamais.' },
   maitre: 'MAÎTRE ZORGLUB',
   brave: { effet: 'Totalement zorglubeffet immunisé.', remarque: 'Remarque zorglubremarque ajoutée.' },
   herboristeLong: 'Premier zorglubpara un.\n\nSecond zorglubpara deux.',
@@ -305,7 +307,7 @@ test('classe : santé, maîtrises, présentation (et résumé), spécialité ren
   const g = nouveau.guerrier;
   assert.ok(section(c, 'Don de départ').includes(`| ${g.sante_depart}.0 | ${avant.guerrier.chakra_depart}.0 | ${avant.guerrier.barriere_depart}.0 |`));
   assert.ok(!c.includes(`| ${avant.guerrier.sante_depart}.0 | ${avant.guerrier.chakra_depart}.0 |`));
-  assert.ok(section(c, 'Maîtrise Arme', '###').includes('- 1 maîtrise zorglubarme'));
+  assert.ok(section(c, 'Maîtrise Arme', '###').includes('- Maîtrise zorglubarme'));
   assert.ok(!c.includes(avant.guerrier.maitrise_arme.split('\n')[0]));
   assert.ok(section(c, avant.guerrier.description_titre).includes(g.description));
   assert.ok(!c.includes(debut(avant.guerrier.description)));

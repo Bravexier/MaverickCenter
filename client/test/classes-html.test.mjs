@@ -13,6 +13,8 @@ import { fileURLToPath } from 'node:url';
 import { chargerClasses } from '../src/lib/classes-db.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { CLASS_COLORS } from '../src/lib/class-groups.mjs';
+import { cssDesFamilles } from '../src/lib/palette-css.mjs';
 
 const dossier = fileURLToPath(new URL('../dist/classes/', import.meta.url));
 const present = existsSync(dossier);
@@ -148,7 +150,11 @@ test('inventaire : infobulle de l’objet (glossaire) et « ou » entre deux opt
   const bulle = /<button type="button" class="objet" data-bulle="([^"]+)" aria-describedby="\1"/.exec(html);
   assert.ok(bulle, 'objet avec infobulle');
   assert.match(html, new RegExp(`<span class="bulle" role="tooltip" id="${bulle[1]}" hidden>`));
-  assert.equal(compte(html, /class="annexe-classe__carte"/g), 14);
+  assert.equal(compte(html, /class="annexe-classe__carte[" ]/g), 14);
+  // une entrée liée à une magie : la classe de la magie (lib/palette-css.mjs), jamais une couleur en style
+  assert.equal(compte(html, /<article class="annexe-classe__carte annexe-classe__carte--magie couleur-magie-[a-z0-9-]+">/g), 14);
+  assert.match(html, /<article class="annexe-classe__carte annexe-classe__carte--magie couleur-magie-sang">/);
+  assert.doesNotMatch(html, /<article class="annexe-classe__carte[^>]*style=/);
   assert.match(html, /<h3><a href="[^"]*\/magies\/magie-du-sang\/">SANG<\/a><\/h3>/);
 });
 
@@ -163,17 +169,24 @@ test('fiche d’un don : « Don » dans le bandeau et lien vers le don sur la pa
 
 test('/classes/ : une colonne par catégorie dans sa couleur, une pastille par classe (modèle de la carte des magies) ; noms = titres, description en infobulle', options, () => {
   const html = main(readFileSync(join(dossier, 'index.html'), 'utf8'));
-  const colonnes = [...html.matchAll(/<section class="classes-groupe" id="([^"]+)" style="--couleur-classe: (#[0-9a-f]{6})">\s*<h2 class="classes-groupe__titre">\s*<span class="classes-groupe__point" aria-hidden="true"><\/span>\s*<span class="classes-groupe__nom">([^<]+)</g)];
+  // la couleur d'une colonne : la classe de sa catégorie (lib/palette-css.mjs, famille `classe`, émise par la page), jamais un style
+  const colonnes = [...html.matchAll(/<section class="classes-groupe (couleur-classe-[a-z]+)" id="([^"]+)">\s*<h2 class="classes-groupe__titre">\s*<span class="classes-groupe__point" aria-hidden="true"><\/span>\s*<span class="classes-groupe__nom">([^<]+)</g)];
   assert.deepEqual(
-    colonnes.map(([, id, couleur, titre]) => [id, couleur, titre.trim()]),
+    colonnes.map(([, classe, id, titre]) => [id, classe, titre.trim()]),
     [
-      ['melee', '#c62828', 'Physiques Mêlée'],
-      ['distance', '#2e7d32', 'Physiques Distance'],
-      ['magiques', '#1e5bb8', 'Magiques'],
-      ['raciales', '#7b3fa6', 'Raciales'],
-      ['speciales', '#e3b104', 'Spéciales'],
+      ['melee', 'couleur-classe-melee', 'Physiques Mêlée'],
+      ['distance', 'couleur-classe-distance', 'Physiques Distance'],
+      ['magiques', 'couleur-classe-magiques', 'Magiques'],
+      ['raciales', 'couleur-classe-raciales', 'Raciales'],
+      ['speciales', 'couleur-classe-speciales', 'Spéciales'],
     ],
   );
+  // les couleurs demandées par le propriétaire (rouge, vert, bleu, violet, jaune), dans la feuille de la page
+  const liste = readFileSync(join(dossier, 'index.html'), 'utf8');
+  assert.ok(liste.includes(`<style>${cssDesFamilles(['classe'])}</style>`), 'la feuille des catégories');
+  assert.deepEqual(Object.values(CLASS_COLORS), ['#c62828', '#2e7d32', '#1e5bb8', '#7b3fa6', '#e3b104']);
+  for (const [cle, couleur] of Object.entries(CLASS_COLORS)) assert.ok(liste.includes(`.couleur-classe-${cle}{--couleur:${couleur};`), cle);
+  assert.doesNotMatch(html, /<section class="classes-groupe[^>]*style=/);
   // chaque classe rendue par le gabarit une fois, en pastille (point de couleur + nom), sous son titre (une classe raciale porte le nom de sa race)
   const liens = [...html.matchAll(/<a class="classe-pastille" href="[^"]*\/classes\/([^/"]+)\/"[^>]*>\s*<span class="classe-pastille__point" aria-hidden="true"><\/span>\s*<span class="classe-pastille__nom">([^<]+)<\/span>\s*<\/a>/g)].map(([, slug, nom]) => [slug, nom.trim()]);
   for (const { slug } of pages) assert.equal(liens.filter(([s]) => s === slug).length, 1, `${slug} : une fois dans le tableau`);
@@ -207,4 +220,15 @@ test('« (classe) » supprimé de partout (migration 0009) : aucune page du wiki
   parcourir(wiki);
   assert.deepEqual(fautives, []);
   assert.match(page('orios'), /<h1[^>]*>\s*Orios\s*<\/h1>/);
+});
+
+test('page d’une classe : la couleur de sa catégorie de /classes/ par la classe de la catégorie (lib/palette-css.mjs, famille `classe`, émise par la page), jamais un style', options, () => {
+  const couleurDe = (slug) => page(slug).match(/<div class="classe (couleur-classe-[a-z]+)" data-ed-classe="classes\/[^"]+"/)?.[1];
+  assert.deepEqual(['guerrier', 'archer', 'mage', 'kitsune', 'archimage', 'flagelleur', 'parleur'].map(couleurDe),
+    ['melee', 'distance', 'magiques', 'raciales', 'speciales', 'speciales', 'speciales'].map((k) => `couleur-classe-${k}`), 'le Parleur sous « Spéciales »');
+  for (const p of pages) {
+    assert.ok(couleurDe(p.slug), `${p.slug} : la classe de sa catégorie`);
+    assert.ok(p.html.includes(`<style>${cssDesFamilles(['classe', 'don'])}</style>`), `${p.slug} : la feuille des catégories et des types de don`);
+    assert.doesNotMatch(p.html, /--couleur-(?:classe|texte-classe):/, `${p.slug} : plus de couleur en style`);
+  }
 });

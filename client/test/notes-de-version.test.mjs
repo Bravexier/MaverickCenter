@@ -11,6 +11,7 @@ import { TABLES } from '../src/lib/edition-modele.mjs';
 import {
   TITRES_DOMAINES, diffMots, echapper, htmlDeLaListe, htmlDeLaNote, htmlDuTexteLibre, lancementAffiche, markdownDeLaNote, neutraliserMarqueur,
 } from '../src/lib/notes-de-version-rendu.mjs';
+import { htmlAvecMotsCles, pageAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
 
 const magies = [
   { id: 'magies/feu', nom: 'Feu', ordre: 1, description: 'Brûle.' },
@@ -38,7 +39,8 @@ function bases() {
       echelle_relation: [{ id: 'neutre', libelle: 'Neutre' }, { id: 'haine', libelle: 'Haine' }],
       relation_peuple: [{ ligne_peuple_id: 'peuples/humain', colonne_peuple_id: 'peuples/elfe', echelle_id: 'neutre' }],
       page: [
-        { id: 'guide/combat', type: 'guide', statut: 'canon', titre: 'Combat', corps_md: 'Un tour dure six secondes.', donnees: '{"chapitre":3}' },
+        // une page du livre « Les bases » (lib/livres.mjs) : rangée sous le titre du livre
+        { id: 'guide/le-tour-de-jeu', type: 'guide', statut: 'canon', titre: 'Combat', corps_md: 'Un tour dure six secondes.', donnees: null },
         { id: 'guide/exemple', type: 'guide', statut: 'example', titre: 'Exemple', corps_md: 'a', donnees: null },
         { id: 'races/humain', type: 'races', statut: 'canon', titre: 'Humain', corps_md: 'a', donnees: null },
       ],
@@ -77,7 +79,7 @@ test('comparerBases : un champ par ligne, entités ajoutées et retirées, domai
     'races | Elfe | Elfe | Présentation | ajoute',
     'metiers |  | Alchimiste | (entité) | ajoute',
     'metiers |  | Forgeron | Bonus | modifie',
-    'guide | Chapitre 3 | Combat | Texte | modifie',
+    'guide | Les bases | Combat | Texte | modifie',
   ]);
   assert.deepEqual(lignes.map((l) => l.rang), lignes.map((_, i) => i + 1));
   const flash = lignes.filter((l) => l.entite === 'Flash');
@@ -100,7 +102,7 @@ test('comparerBases : un champ par ligne, entités ajoutées et retirées, domai
   assert.equal(b.total, lignes.length);
   assert.equal(b.amelioration + b.affaiblissement + b.neutre, b.total);
   assert.deepEqual(b.parDomaine, { sorts: 6, races: 3, metiers: 2, guide: 1 });
-  assert.deepEqual(DOMAINES.map((d) => d.id), ['sorts', 'magies', 'classes', 'races', 'metiers', 'guide', 'codex', 'bestiaire', 'armes', 'composants', 'chronologie', 'mots-cles']);
+  assert.deepEqual(DOMAINES.map((d) => d.id), ['sorts', 'magies', 'classes', 'races', 'metiers', 'guide', 'codex', 'bestiaire', 'armes', 'armures', 'equipement', 'composants', 'chronologie', 'mots-cles']);
 });
 
 test('le rendu de la note a le titre de chaque domaine, dans l’ordre de DOMAINES (un domaine sans titre s’afficherait brut, en tête de liste)', () => {
@@ -286,6 +288,32 @@ test('comparerBases : bases identiques → rien ; espaces et fins de ligne ne co
   assert.deepEqual(comparerBases(ref, dev), []);
 });
 
+test('guide : une page fusionnée dans une autre (lib/livres.mjs#PAGES_ABSORBEES), retirée, se range à la place de la page qui l’absorbe, pas dans les Règles avancées', () => {
+  const page = (id, titre) => ({ id, type: 'guide', statut: 'draft', titre, corps_md: 'Texte.', donnees: null });
+  const ref = { tables: { page: [page('guide/creer-son-personnage', 'Créer son personnage'), page('guide/choisir-sa-race', 'Étape 1'), page('guide/le-jeu-de-role', 'Le jeu de rôle'), page('guide/meteo', 'Météo')] } };
+  const dev = { tables: { page: [page('guide/creer-son-personnage', 'Créer son personnage'), page('guide/meteo', 'Météo')] } };
+  const lignes = comparerBases(ref, dev).filter((l) => l.table_nom === 'page');
+  assert.deepEqual(lignes.map((l) => [l.entite, l.nature, l.groupe]), [['Le jeu de rôle', 'retire', 'Découvrir'], ['Étape 1', 'retire', 'Découvrir']],
+    'Bienvenue (rang 0 de Découvrir) puis Créer son personnage (rang 2)');
+  // une page des Règles avancées retirée y reste
+  delete dev.tables.page[1];
+  dev.tables.page = dev.tables.page.filter(Boolean);
+  assert.equal(comparerBases(ref, dev).find((l) => l.entite === 'Météo').groupe, 'Règles avancées');
+});
+
+test('guide : l’annonce de l’encart IRL (migration 0068) vide n’est pas listée ; écrite, vidée ou changée, son texte se lit', () => {
+  const annonce = (texte) => ({ tables: { annonce: [{ id: 'prochaine-rencontre-irl', texte }] } });
+  assert.deepEqual(comparerBases({ tables: {} }, annonce(null)), [], 'production sans la table, annonce vide : rien d’annoncé');
+  assert.deepEqual(comparerBases(annonce(null), annonce(null)), []);
+  assert.deepEqual(comparerBases(annonce('Une annonce.'), { tables: { annonce: [] } }).map((l) => l.nature), ['retire'], 'une annonce écrite, retirée');
+  const ecrite = comparerBases({ tables: {} }, annonce('Une annonce.'));
+  assert.deepEqual(ecrite.map((l) => [l.groupe, l.champ, l.nature]), [['Découvrir', 'Annonce', 'ajoute']], 'production sans la table : ajoutée');
+  const champ = (avant, apres) => comparerBases(annonce(avant), annonce(apres)).map((l) => [l.colonne, l.nature, l.avant, l.apres]);
+  assert.deepEqual(champ(null, 'Une annonce.'), [['texte', 'ajoute', null, 'Une annonce.']], 'écrite : son texte');
+  assert.deepEqual(champ('Une annonce.', null), [['texte', 'retire', 'Une annonce.', null]], 'vidée : l’ancien texte');
+  assert.deepEqual(champ('Une annonce.', 'Une autre.'), [['texte', 'modifie', 'Une annonce.', 'Une autre.']]);
+});
+
 test('comparerBases : schéma plus ancien en production (table ou colonne absente) toléré', () => {
   const { ref, dev } = bases();
   // colonne absente de la production : la valeur de dev est « ajoutée »
@@ -437,6 +465,50 @@ test('rendu : un long texte montre ce qui a changé mot à mot', () => {
   assert.match(html, /<ins>&lt;b&gt;fin&lt;\/b&gt;\.<\/ins>/);
 });
 
+// R164 : la première balise de plusieurs mots posée autour d'un texte qui existait déjà (« Sort fer », lot de la PR #256). Le découpage aux espaces
+// la coupait entre deux <ins> (la LCS alignait son espace intérieur), et le middleware, qui lit nœud de texte par nœud de texte, la laissait brute
+// sur /mise-a-jour/ (site-html, « aucune balise brute »).
+const AVANT_BALISE = 'Lance des sorts "fer", perce les défenses.';
+const APRES_BALISE = 'Lance des {{sort-fer|sorts "fer"}}, perce les défenses.';
+const VOCABULAIRE_SORT_FER = [{ id: 'sort-fer', libelle: 'Sort fer', description: 'Définition d’essai.' }];
+const compte = (t, motif) => t.split(motif).length - 1;
+
+test('diffMots : une balise du glossaire reste entière dans un seul morceau, espaces intérieurs compris (R164)', () => {
+  const d = diffMots(AVANT_BALISE, APRES_BALISE);
+  for (const x of d) assert.equal(compte(x.texte, '{{'), compte(x.texte, '}}'), `morceau coupé : ${JSON.stringify(x)}`);
+  assert.deepEqual(d.filter((x) => x.texte.includes('{{')), [{ type: 'ajoute', texte: '{{sort-fer|sorts "fer"}},' }]);
+  assert.equal(d.filter((x) => x.type !== 'ajoute').map((x) => x.texte).join(''), AVANT_BALISE);
+  assert.equal(d.filter((x) => x.type !== 'retire').map((x) => x.texte).join(''), APRES_BALISE);
+  // retirée : de même, dans un seul morceau « retiré »
+  assert.deepEqual(diffMots(APRES_BALISE, AVANT_BALISE).filter((x) => x.texte.includes('{{')), [{ type: 'retire', texte: '{{sort-fer|sorts "fer"}},' }]);
+  // cas limites : « { » isolée, « {{ » sans « }} », emplacement {N}, balise collée à une ponctuation, texte vide ou absent ; rien n'est perdu
+  for (const [avant, apres] of [
+    ['a { b', 'a { c'], ['x{y z', 'x{y w'], ['un {{ ouvert seul', 'un {{ ouvert seul, modifié'], ['{{a', '{{a b'], ['Inflige {N} dégâts', 'Inflige {N} points'],
+    ['(voir le glossaire)', '({{recharge-longue|recharge longue}}) voir'], ['ligne 1\n{{a|b c}}', 'ligne 1\n{{a|b c}} d'], ['', 'mot'], [null, 'mot'], ['mot', undefined],
+  ]) {
+    const e = diffMots(avant, apres);
+    assert.equal(e.filter((x) => x.type !== 'ajoute').map((x) => x.texte).join(''), String(avant ?? ''), `avant : ${avant}`);
+    assert.equal(e.filter((x) => x.type !== 'retire').map((x) => x.texte).join(''), String(apres ?? ''), `après : ${apres}`);
+  }
+  assert.deepEqual(diffMots('a { b', 'a { c'), [{ type: 'egal', texte: 'a { ' }, { type: 'retire', texte: 'b' }, { type: 'ajoute', texte: 'c' }]);
+  assert.deepEqual(diffMots('un {{ ouvert', 'un {{ fermé'), [{ type: 'egal', texte: 'un {{ ' }, { type: 'retire', texte: 'ouvert' }, { type: 'ajoute', texte: 'fermé' }]);
+  assert.deepEqual(diffMots(null, undefined), []);
+  assert.deepEqual(diffMots('', ''), []);
+});
+
+test('rendu : une balise posée autour d’un texte existant se rend dans le détail mot à mot, aucune « {{ » visible (R164)', () => {
+  const suite = ' Texte d’essai assez long pour être replié et montré mot à mot sur la page des notes de version, au-delà de cent quarante caractères.';
+  const ligne = { domaine: 'classes', groupe: 'Essai', entite: 'Classe d’essai', champ: 'Description', nature: 'modifie', avant: AVANT_BALISE + suite, apres: APRES_BALISE + suite, sens: 'neutre' };
+  const html = htmlDeLaListe([ligne]);
+  assert.match(html, /<ins>\{\{sort-fer\|sorts &quot;fer&quot;\}\},<\/ins>/, 'la balise entière dans un seul <ins>');
+  const rendu = htmlAvecMotsCles(html, VOCABULAIRE_SORT_FER);
+  assert.ok(!rendu.html.replace(/<[^>]+>/g, '').includes('{{'), rendu.html); // le texte visible ; data-balise garde la balise, comme partout
+  assert.match(rendu.html, /<ins><strong class="mot-cle" data-mot-cle="sort-fer"[^>]*>sorts &quot;fer&quot;<\/strong>,<\/ins>/);
+  assert.deepEqual(rendu.employes, ['sort-fer']);
+  const page = pageAvecMotsCles(`<html><body>${html}</body></html>`, VOCABULAIRE_SORT_FER);
+  assert.ok(!page.replace(/<[^>]+>/g, '').includes('{{'), 'aucune balise brute dans le texte visible');
+});
+
 test('champ libre : paragraphes, listes, gras, italique, liens http(s) ; rien d’autre ne passe', () => {
   assert.equal(htmlDuTexteLibre('Ligne 1\nLigne 2\n\n- un\n- *deux*'), '<p>Ligne 1<br>Ligne 2</p><ul><li>un</li><li><em>deux</em></li></ul>');
   assert.equal(htmlDuTexteLibre('[Discord](https://discord.gg/abc)'), '<p><a href="https://discord.gg/abc" rel="noopener noreferrer">Discord</a></p>');
@@ -532,4 +604,106 @@ test('chronologie et mots-clés (migration 0043) : en une ligne tant que la prod
   // les catégories d'abord (avant les événements, dans l'ordre de leur écriture)
   assert.deepEqual(lignes.filter(([d]) => d === 'chronologie').slice(0, 2).map(([, e]) => e), ['Guerres', 'Vieille']);
   assert.deepEqual(lignes.filter(([d]) => d === 'mots-cles'), [['mots-cles', 'Démos', 'Mot-clé', 'modifie', 'Démo', 'Démos'], ['mots-cles', 'Vieux', null, 'retire', 'Vieux', null]]);
+});
+
+test('équipement (migration 0056) : les panneaux de règles en une ligne tant que la production ne les a pas ; puis le titre d’un panneau, un bloc par son titre de tuile ou ses premiers mots', () => {
+  const panneau = (id, titre) => ({ id, titre, page_id: `ressources/${id}` });
+  const bloc = (panneau_id, rang, valeurs = {}) => ({ panneau_id, rang, ordre: rang, tuile: 0, titre: null, texte: 'Texte.', ...valeurs });
+  const neuves = comparerBases({ tables: {} }, { tables: { panneau_regles: [panneau('armes', 'Règles des armes'), panneau('accessoires', 'Règles')], panneau_regles_bloc: [bloc('armes', 1), bloc('accessoires', 1)] } });
+  assert.deepEqual(neuves.map((l) => [l.domaine, l.entite]), [['equipement', '2 panneaux de règles']], 'les blocs d’un panneau nouveau sont dits par lui');
+  const ref = { tables: { panneau_regles: [panneau('armes', 'Règles des armes'), panneau('accessoires', 'Règles')], panneau_regles_bloc: [bloc('armes', 1), bloc('armes', 2, { tuile: 1, titre: 'Dague' }), bloc('accessoires', 1)] } };
+  const dev = {
+    tables: {
+      panneau_regles: [panneau('armes', 'Règles des armes et des projectiles'), panneau('accessoires', 'Règles')],
+      panneau_regles_bloc: [bloc('armes', 1, { texte: 'Texte modifié.' }), bloc('armes', 2, { tuile: 1, titre: 'Dague', ordre: 3 }), bloc('armes', 3, { tuile: 1, ordre: 2 }), bloc('accessoires', 1)],
+    },
+  };
+  // la tuile 3 insérée avant la Dague repousse celle-ci (ordre 2 → 3) : son ajout le dit, la place de la Dague n'est pas une ligne
+  assert.deepEqual(comparerBases(ref, dev).map((l) => [l.domaine, l.groupe, l.entite, l.champ, l.nature, l.avant, l.apres]), [
+    ['equipement', 'Armes', 'Panneau de règles', 'Titre', 'modifie', 'Règles des armes', 'Règles des armes et des projectiles'],
+    ['equipement', 'Armes', 'Panneau de règles › « Texte modifié. »', 'Texte', 'modifie', 'Texte.', 'Texte modifié.'],
+    ['equipement', 'Armes', 'Panneau de règles › « Texte. »', null, 'ajoute', null, 'Panneau de règles › « Texte. »'],
+  ]);
+  // le panneau d'un sous-onglet (les bâtons magiques de l'onglet Ceinture) : son groupe le dit, à la place de l'onglet Ceinture (avant les accessoires)
+  const avant = { tables: { panneau_regles: [panneau('accessoires', 'Règles'), panneau('batons-magiques', 'Règles')], panneau_regles_bloc: [bloc('accessoires', 1), bloc('batons-magiques', 1)] } };
+  const apres = { tables: { panneau_regles: [panneau('accessoires', 'Règles des accessoires'), panneau('batons-magiques', 'Règles des bâtons')], panneau_regles_bloc: [bloc('accessoires', 1), bloc('batons-magiques', 1)] } };
+  assert.deepEqual(comparerBases(avant, apres).map((l) => [l.groupe, l.champ, l.apres]), [
+    ['Ceinture › Bâtons magiques', 'Titre', 'Règles des bâtons'],
+    ['Accessoires', 'Titre', 'Règles des accessoires'],
+  ]);
+  assert.equal(TITRES_DOMAINES.equipement, 'Équipement');
+});
+
+test('composants (migration 0057) : les onglets en une ligne tant que la production ne les a pas ; puis le nom d’un onglet et sa note', () => {
+  const onglet = (id, titre, note = null, ordre = 1) => ({ id, titre, note, ordre });
+  const neuves = comparerBases({ tables: {} }, { tables: { composant_onglet: [onglet('monnaie', 'Monnaie'), onglet('bois', 'Bois', 'Un bois par magie.', 2)] } });
+  assert.deepEqual(neuves.map((l) => [l.domaine, l.entite, l.nature]), [['composants', '2 onglets de la page « Composants »', 'ajoute']]);
+  const ref = { tables: { composant_onglet: [onglet('monnaie', 'Monnaie', 'Une note.'), onglet('bois', 'Bois', 'Un bois par magie.', 2)] } };
+  const dev = { tables: { composant_onglet: [onglet('monnaie', 'Monnaie', null), onglet('bois', 'Bois des bâtons', 'Un bois par magie.', 2)] } };
+  assert.deepEqual(comparerBases(ref, dev).map((l) => [l.domaine, l.groupe, l.entite, l.champ, l.avant, l.apres]), [
+    ['composants', 'Onglets', 'Monnaie', 'Note (au-dessus du tableau)', 'Une note.', null],
+    ['composants', 'Onglets', 'Bois des bâtons', 'Nom de l’onglet', 'Bois', 'Bois des bâtons'],
+  ], 'dans l’ordre de la barre ; une note retirée');
+});
+
+test('équipement : l’ordre des blocs d’un panneau en une ligne au plus, seulement s’il change pour les blocs gardés ; un bloc nommé par ses premiers mots ou son mot-clé, jamais par son rang', () => {
+  const panneau = { id: 'armes', titre: 'Règles des armes', page_id: 'ressources/armes' };
+  const mot_cle = [{ id: 'recharge-longue', libelle: 'Recharge longue', libelle_cle: 'recharge longue', description: 'Doit recharger.' }];
+  const bloc = (rang, ordre, valeurs = {}) => ({ panneau_id: 'armes', rang, ordre, tuile: 0, titre: null, texte: `Texte du bloc ${rang}.`, ...valeurs });
+  const blocs = [
+    bloc(1, 1, { texte: 'Toutes les armes ont de base **2 crans** de solidité, les armes de corps à corps' }),
+    bloc(2, 2, { tuile: 1, texte: '{{recharge-longue:}}' }),
+    bloc(3, 3, { texte: '**Les armes en bleu sont les armes possibles.**\n\n***CAS PARTICULIERS :***' }),
+    bloc(4, 4, { tuile: 1, titre: 'Dague', texte: '- Divise par 2' }),
+    bloc(5, 5, { tuile: 1, titre: 'Arme de jet', texte: '- Lancer 2 armes' }),
+  ];
+  const note = (dev) => comparerBases({ tables: { panneau_regles: [panneau], panneau_regles_bloc: blocs, mot_cle } },
+    { tables: { panneau_regles: [panneau], panneau_regles_bloc: dev, mot_cle } }).map((l) => [l.entite, l.champ, l.nature, l.avant, l.apres]);
+  // une tuile insérée en tête : les sept places repoussées ne font aucune ligne, l'ajout seul est dit
+  const enTete = [bloc(6, 1, { tuile: 1, titre: 'Nouvelle tuile', texte: 'x' }), ...blocs.map((b) => ({ ...b, ordre: b.ordre + 1 }))];
+  assert.deepEqual(note(enTete), [['Panneau de règles › Nouvelle tuile', null, 'ajoute', null, 'Panneau de règles › Nouvelle tuile']]);
+  // un bloc retiré : son retrait seul (les autres gardent leur ordre de lecture)
+  assert.deepEqual(note(blocs.filter((b) => b.rang !== 3)), [['Panneau de règles › « Les armes en bleu sont les… »', null, 'retire', 'Panneau de règles › « Les armes en bleu sont les… »', null]]);
+  // deux voisins échangés (« ↑ ») : une ligne pour le panneau, de la première à la dernière place qui change
+  const echange = blocs.map((b) => (b.rang === 4 ? { ...b, ordre: 5 } : b.rang === 5 ? { ...b, ordre: 4 } : b));
+  assert.deepEqual(note(echange), [['Panneau de règles', 'Ordre des blocs', 'modifie', 'Dague · Arme de jet', 'Arme de jet · Dague']]);
+  // le premier bloc passé en dernier : toute la suite ; la tuile qui n'est qu'une balise du glossaire, par le libellé du mot-clé
+  const auBout = blocs.map((b) => (b.rang === 1 ? { ...b, ordre: 9 } : b));
+  assert.deepEqual(note(auBout), [['Panneau de règles', 'Ordre des blocs', 'modifie',
+    '« Toutes les armes ont de base… » · Recharge longue · « Les armes en bleu sont les… » · Dague · Arme de jet',
+    'Recharge longue · « Les armes en bleu sont les… » · Dague · Arme de jet · « Toutes les armes ont de base… »']]);
+  // le même ordre de lecture avec d'autres valeurs d'ordre (trous, égalités départagées par le rang) : rien
+  assert.deepEqual(note(blocs.map((b) => ({ ...b, ordre: b.rang === 1 ? 3 : b.rang * 10 }))), []);
+  // un texte modifié et un déplacement dans le même lot : deux lignes, le texte sous le nom de son bloc tel qu'il est maintenant
+  const lot = echange.map((b) => (b.rang === 2 ? { ...b, texte: '{{recharge-longue|Recharge}} et la suite' } : b));
+  assert.deepEqual(note(lot), [
+    ['Panneau de règles', 'Ordre des blocs', 'modifie', 'Dague · Arme de jet', 'Arme de jet · Dague'],
+    ['Panneau de règles › « Recharge et la suite »', 'Texte', 'modifie', '{{recharge-longue:}}', '{{recharge-longue|Recharge}} et la suite'],
+  ]);
+});
+
+test('équipement : les consommables de l’onglet Ceinture (2026-10-17) — nom et prix d’une potion, son niveau (par son nom) et son effet, sous le tableau de sa famille', () => {
+  const niveaux = [{ id: 'novice', nom: 'Novice', rang: 1 }, { id: 'apprenti', nom: 'Apprenti', rang: 2 }];
+  const ressource = (id, nom, prix_brut) => ({ id, genre: 'potion', section: null, nom, nom_cle: id, description: null, prix_brut, page_id: 'ressources/fiole-rouge', ordre: 1 });
+  const potion = (ressource_id, famille, rang, niveau_id, effet) => ({ ressource_id, famille, rang, niveau_id, effet });
+  const ref = {
+    tables: {
+      niveau_alchimie: niveaux,
+      ressource: [ressource('fr1', 'Petite fiole rouge', '2 Ro'), ressource('fr2', 'Grande fiole rouge', '5 Ro'), { ...ressource('m', 'Corde', '1 RO'), genre: 'materiel', section: 'MATOS AVENTURES' }],
+      potion: [potion('fr1', 'fiole', 1, 'novice', 'Redonne 5 santé'), potion('fr2', 'fiole', 2, 'novice', 'Redonne 9 santé')],
+    },
+  };
+  const dev = structuredClone(ref);
+  Object.assign(dev.tables.ressource[1], { nom: 'Grande fiole rouge vive', prix_brut: '6 Ro' });
+  Object.assign(dev.tables.potion[0], { niveau_id: 'apprenti', effet: 'Redonne 6 santé' });
+  const cle = (l) => `${l.domaine} | ${l.groupe ?? ''} | ${l.entite} | ${l.champ ?? '(entité)'} | ${l.nature} | ${l.avant ?? ''} → ${l.apres ?? ''}`;
+  // dans l'ordre de l'onglet (le palier dans la page) ; la description, que l'onglet ne montre pas, n'est pas listée
+  assert.deepEqual(comparerBases(ref, dev).map(cle), [
+    'equipement | Ceinture › Fioles | Petite fiole rouge | Niveau | modifie | Novice → Apprenti',
+    'equipement | Ceinture › Fioles | Petite fiole rouge | Effet | modifie | Redonne 5 santé → Redonne 6 santé',
+    'equipement | Ceinture › Fioles | Grande fiole rouge vive | Nom | modifie | Grande fiole rouge → Grande fiole rouge vive',
+    'equipement | Ceinture › Fioles | Grande fiole rouge vive | Prix | modifie | 5 Ro → 6 Ro',
+  ]);
+  dev.tables.ressource[0].description = 'Jamais montrée.';
+  assert.equal(comparerBases(ref, dev).length, 4);
 });

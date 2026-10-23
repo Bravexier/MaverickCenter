@@ -2,16 +2,25 @@
 // quelles tables une page peut modifier, avec leur type de champ, et comment une page désigne un champ (attribut `data-ed`). Le service n'accepte
 // que ces colonnes ; tout ce qui en dépend dans la base (colonnes typées, tables de détail, page du wiki) est recalculé par le service, jamais saisi.
 // Entités créables (ENTITES) : métier, race, classe, peuple, spécialité, don de classe, espèce et carte de monstre, capacité de monstre (commune, et sa place
-// sur une carte), arme, composant, gemme, bois, ingrédient, monnaie, événement de la chronologie et bloc de description, catégorie de la chronologie,
-// mot-clé ; supprimables : métier, spécialité, don de classe, arme (retirés des fiches de personnage qui les ont, avec une note datée : décisions R42,
-// R52, annonceDesFiches), espèce et carte de monstre, capacité d'une carte, capacité de monstre commune, composant, gemme, bois, ingrédient et monnaie
-// (s'ils ne sont cités par aucune autre règle), événement, bloc de description, catégorie (retirée de ses événements), mot-clé (retiré de tout ce qui
-// le porte).
-// Fonctions et constantes pures, sans dépendance (sauf lib/dons-edition.mjs, lib/portrait.mjs et lib/arme-champs.mjs, purs eux aussi) : partagées par le
-// service, les gabarits Astro et le script des pages (src/scripts/edition.mjs).
+// sur une carte), arme, famille d'armes (R159), composant, gemme, bois, ingrédient, monnaie, événement de la chronologie et bloc de description, catégorie de la chronologie,
+// mot-clé, bloc d'un panneau de règles ; supprimables : métier, spécialité, don de classe, arme (retirés des fiches de personnage qui les ont, avec une
+// note datée : décisions R42, R52, annonceDesFiches), espèce et carte de monstre, capacité d'une carte, capacité de monstre commune, composant, gemme,
+// bois, ingrédient et monnaie (s'ils ne sont cités par aucune autre règle), événement, bloc de description, catégorie (retirée de ses événements),
+// mot-clé (retiré de tout ce qui le porte ou le cite), bloc d'un panneau de règles (pas le dernier de son panneau).
+// Un texte (CHAMPS_DE_TEXTE : champ ligne, texte ou markdown) peut citer un mot-clé du glossaire par une balise (« {{id}} », « {{id|texte}} », « {{id:}} » :
+// lib/mots-cles-balises.mjs) : le service l'enregistre sous sa forme canonique, qui dépend de la colonne (typeDeTexte : « {{id}} » dans un texte mis en
+// forme, « {{id|texte}} » toujours dans un texte de case, le mode complet refusé), et refuse une balise qui ne cite aucun mot-clé (serveur/edition.mjs).
+// Colonnes modifiables sans création ni suppression : celles des armures, des pièces d'armure, des formes, des poids et des boucliers préfabriqués, et des
+// améliorations d'armure et de bouclier (page des armures, serveur/edition-armures.mjs ; l'AP et l'AM d'une armure et d'un bouclier sont deux cases, la
+// défense écrite en est refaite : demande du propriétaire, 2026-10-17) ; celles des potions (consommables de l'onglet Ceinture,
+// serveur/edition-consommables.mjs) ; le texte d'une annonce (l'encart « Notre prochaine rencontre IRL » sur l'accueil, migration 0068).
+// Fonctions et constantes pures, sans dépendance (sauf lib/dons-edition.mjs, lib/portrait.mjs, lib/arme-champs.mjs, lib/armure-champs.mjs et
+// lib/potentiel-illimite.mjs, purs eux aussi) : partagées par le service, les gabarits Astro et le script des pages (src/scripts/edition.mjs).
 import { NIVEAUX_DE_DON, TYPES_DE_DON_SAISIE } from './dons-edition.mjs';
+import { POTENTIEL_ILLIMITE } from './potentiel-illimite.mjs';
 import { dimensionsDuPortrait, empreinte, estUnPortrait, PORTRAIT_MAX, resumeDuPortrait } from './portrait.mjs';
 import { ECRITURES_DE_COMPETENCE, MAINS } from './arme-champs.mjs';
+import { TYPES_D_ARMURE } from './armure-champs.mjs';
 import { EPOQUES, PORTEES } from './chronologie.mjs';
 
 export { NIVEAUX_DE_DON, NIVEAU_DES_SPECIALITES, SPECIALITES_MAX, TYPES_DE_DON_SAISIE } from './dons-edition.mjs';
@@ -32,7 +41,7 @@ export { NIVEAUX_DE_DON, NIVEAU_DES_SPECIALITES, SPECIALITES_MAX, TYPES_DE_DON_S
  *            l'édition (lignes lues, en attente, d'un lot, d'un conflit) n'en donnent que l'empreinte (ligneSansImage), l'image entière passe par
  *            POST /api/edition/portrait/ — le journal exporté et le lot figé de la mise à jour la portent en entier (rejouée sur data/rows).
  * Options : `requis` (vide refusé), `vide` (valeur enregistrée pour un champ vidé quand la colonne n'accepte pas NULL : '' ou 'Rien'),
- * `min` / `max` (entier, réel).
+ * `min` / `max` (entier, réel), `libelleVide` (choix non requis : le libellé de l'option vide, « — » par défaut ; « Non » pour OUI_SEUL).
  */
 /** Catégories d'un monstre (colonne `monstre.categorie`) : les libellés de lib/monstre-champs.mjs#CATEGORIES (test/serveur-edition-bestiaire.test.mjs). */
 export const CATEGORIES_DE_MONSTRE = [
@@ -61,11 +70,50 @@ export const EPOQUES_SAISIE = EPOQUES.map((e) => ({ valeur: e.id, libelle: e.id 
 /** La portée d'un Impact de la chronologie (colonne `evenement.portee` : lib/chronologie.mjs#PORTEES ; vide : ni l'un ni l'autre). */
 export const PORTEES_SAISIE = Object.entries(PORTEES).map(([valeur, libelle]) => ({ valeur, libelle }));
 
+/** Le genre d'un bloc de panneau de règles (colonne `panneau_regles_bloc.tuile`, migration 0056) : du texte qui suit les colonnes, ou une tuile. */
+export const GENRES_DE_BLOC = [
+  { valeur: '0', libelle: 'Texte' },
+  { valeur: '1', libelle: 'Tuile' },
+];
+
 /** Une case Oui / Non (colonne entière 0 ou 1 : arme.depart_possible). */
 export const OUI_NON = [
   { valeur: '0', libelle: 'Non' },
   { valeur: '1', libelle: 'Oui' },
 ];
+
+/**
+ * Une case Oui / Non dont « Non » est NULL (colonne entière 1 ou NULL : `amelioration_equipement.cout_materiaux` et `bonus_cran` d'une amélioration de
+ * bouclier) : « Oui » vaut '1', l'option vide de la liste (`libelleVide` : « Non ») vaut NULL.
+ */
+export const OUI_SEUL = [{ valeur: '1', libelle: 'Oui' }];
+
+/**
+ * Une famille d'armes (décision R159, 3) : son dé, obligatoire, de forme contrôlée — un dé « D<n> » (« D10 »), ou plusieurs séparés par « / » comme le
+ * Pugilat (« D6/D8/D10 ») — et l'en-tête de sa colonne de coût, l'un des trois de la base (arme_famille.cout_libelle).
+ */
+export const DE_DE_FAMILLE = /^D[1-9]\d*(?:\/D[1-9]\d*)*$/;
+export const COUTS_DE_FAMILLE = ['Coût', 'Coût en plus/moins', 'Coût en plus/moins (unité)'].map((c) => ({ valeur: c, libelle: c }));
+/** La catégorie d'une famille d'armes créée (décision R127, R159 : posée à la création, par la barre mêlée ou distance, jamais changée ensuite). */
+export const CATEGORIES_DE_FAMILLE = [
+  { valeur: 'contact', libelle: 'Armes de mêlée (contact)' },
+  { valeur: 'distance', libelle: 'Armes à distance' },
+];
+
+/**
+ * Décision R160 du propriétaire (2026-10-23, docs/decisions-regles.md) : « Il n'existe aucune gemme ni aucune piece élémentaire du PI » ; « Il ne sera
+ * pas possible de rajouter de gemmes du PI directement » ; étendue au bois (« Oui, aucun bois du PI »). La seule liste des magies qui n'ont aucun objet
+ * par magie (gemme, bois, bâton magique, arme et armure élémentaires : OBJETS_PAR_MAGIE, une table chacun). La base les refuse (migration 0078 :
+ * contrainte `<table>_sans_potentiel_illimite`, contrainteR160) ; le service les refuse avant d'écrire (serveur/edition-composants.mjs) et traduit
+ * l'erreur de la base en REFUS_R160 (serveur/edition.mjs#messageSqlite) ; le formulaire ne les propose pas (listes `magiesSansGemme`, `magiesSansBois`
+ * de GET /api/edition/listes/). Ailleurs (classes, races, sorts, fiche, liste `magies`), le Potentiel Illimité reste une magie comme les autres.
+ */
+export const MAGIES_SANS_OBJET_PAR_MAGIE = Object.freeze([POTENTIEL_ILLIMITE]);
+export const OBJETS_PAR_MAGIE = Object.freeze(['gemme', 'bois', 'baton_magique', 'arme_elementaire', 'armure_elementaire']);
+/** Le nom de la contrainte de la base qui refuse le Potentiel Illimité dans la table d'un objet par magie (migration 0078). */
+export const contrainteR160 = (table) => `${table}_sans_potentiel_illimite`;
+/** Le refus (422) d'un objet par magie du Potentiel Illimité, par le service comme par la base. */
+export const REFUS_R160 = 'Le Potentiel Illimité n’a ni gemme, ni bois, ni bâton magique, ni pièce élémentaire (décision R160).';
 
 /** Les types d'un matériau (décision R62, table materiau) : ceux de l'armure, et « Autres » pour ce qui n'y entre pas. */
 const TYPES_DE_MATERIAU = ['Léger', 'Intermédiaire', 'Lourd', 'Autres'].map((t) => ({ valeur: t, libelle: t }));
@@ -91,6 +139,21 @@ export const CATEGORIES_D_INGREDIENTS = [
   { valeur: 'catalyseur', libelle: 'Catalyseur' },
   { valeur: 'stabilisateur', libelle: 'Stabilisateur' },
 ];
+
+/**
+ * Types de champ dont la valeur est un texte où une balise du glossaire des mots-clés peut s'écrire (lib/mots-cles-balises.mjs) : le service les met en
+ * forme canonique (serveur/edition.mjs), db:check et le rejeu du journal en lisent les balises. La seule liste : ne pas la recopier.
+ */
+export const CHAMPS_DE_TEXTE = Object.freeze(['ligne', 'texte', 'markdown']);
+
+/**
+ * Le genre d'un texte de la base pour les balises du glossaire : 'markdown' (un texte mis en forme : champ « markdown » de TABLES, et le corps de toute
+ * page, même typée : refait depuis ses tables) ou 'texte' (un texte de case : les autres colonnes, de TABLES ou non). Voir lib/mots-cles-balises.mjs.
+ */
+export function typeDeTexte(table, colonne) {
+  if (table === 'page' && colonne === 'corps_md') return 'markdown';
+  return TABLES[table]?.colonnes[colonne]?.type === 'markdown' ? 'markdown' : 'texte';
+}
 
 export const TABLES = {
   metier: {
@@ -216,7 +279,10 @@ export const TABLES = {
     colonnes: {
       nom: { type: 'ligne', libelle: 'Nom', requis: true },
       type_brut: { type: 'ligne', libelle: 'Type', requis: true },
+      // décision R105 : « Coût », la consommation de chakra (un nombre, « 0 », « X » ou « N/A ») ; « Coût secondaire », le second coût (« 2 âmes »,
+      // « 3 Sang ») ou une précision du coût (décision R106 : « Par tour et par cible », « Pour 1 barrière »)
       cout_brut: { type: 'ligne', libelle: 'Coût', requis: true },
+      cout_secondaire: { type: 'ligne', libelle: 'Coût secondaire' },
       portee_brut: { type: 'ligne', libelle: 'Portée', requis: true },
       zone_brut: { type: 'ligne', libelle: 'Zone', requis: true },
       dsb_brut: { type: 'ligne', libelle: 'D/S/B' },
@@ -307,7 +373,7 @@ export const TABLES = {
       texte: { type: 'ligne', libelle: 'Butin possible', requis: true },
     },
   },
-  // Armes (/ressources/armes/, demande du propriétaire : « tout peut être éditable à l'instar des autres pages ») : les cellules de l'onglet « Armes » ;
+  // Armes (onglet de /ressources/equipement/, demande du propriétaire : « tout peut être éditable à l'instar des autres pages ») : les cellules de l'onglet « Armes » ;
   // le service en tire les colonnes typées (dé, bonus, portée, solidité, provenance…), les types de dégâts et les minimums de caractéristique
   // (lib/arme-champs.mjs), et suit le corps de la page (lib/corps-armes.mjs). Pas les armes de monstres (absentes de la page).
   arme: {
@@ -321,12 +387,30 @@ export const TABLES = {
       effet: { type: 'texte', libelle: 'Effet (dégâts, portée, solidité, origine… : les colonnes en sont tirées)' },
       description: { type: 'texte', libelle: 'Description' },
       depart_possible: { type: 'choix', libelle: 'Arme de départ', requis: true, choix: OUI_NON },
+      // la remarque (décision R91 : « pouvoir modifier la présence ou non de la remarque et en modifier le contenu ») : l'étoile ★ à côté du nom, son
+      // texte en infobulle ; vide, pas d'étoile
+      remarque: { type: 'texte', libelle: 'Remarque' },
+    },
+  },
+  // Familles d'armes (un onglet de la page des armes, un bandeau de l'onglet « Armes » du classeur ; décision R159, 2026-10-23 : « la possibilité de
+  // changer le nom et leur dés, ou même de créer un nouvel onglet ») : le nom, le dé (forme contrôlée : DE_DE_FAMILLE) et l'en-tête de la colonne de coût
+  // (un des trois de la base : COUTS_DE_FAMILLE). Le service en refait le bandeau écrit (`libelle_brut` : « NOM - dé » et la note gardée), la section du
+  // corps de la page (lib/corps-armes.mjs) et refuse ce qui changerait une source de maîtrise d'arme (serveur/edition-armes.mjs). Hors du modèle : la
+  // catégorie (posée à la création, jamais changée : R159), le nom de lecture (figé, migration 0077), le type élémentaire (`type_elementaire_id`, jamais
+  // modifié : décision R167, migration 0081), `maitrisable` et l'ordre. ARME DE MONSTRES ne se modifie pas (R45).
+  arme_famille: {
+    libelle: 'Famille d’armes',
+    colonnes: {
+      nom: { type: 'ligne', libelle: 'Nom (ni virgule ni « : »)', requis: true },
+      de_brut: { type: 'ligne', libelle: 'Dé (« D10 », ou « D6/D8/D10 »)', requis: true },
+      cout_libelle: { type: 'choix', libelle: 'En-tête de la colonne de coût', requis: true, choix: COUTS_DE_FAMILLE },
     },
   },
   // Composants (/ressources/composants/, demande du propriétaire, 2026-10-14 : « chaque élément est modifiable en édition, supprimable, ajoutable ») :
   // une ressource du catalogue — matériau, bois, ingrédient d'alchimie (son nom est aussi celui des armes, des armures et des boucliers : « comme c'est le même pour armure et
-  // bouclier, ça le changera aussi »), gemme (nom, description ; ses prix : table gemme), objet de l'onglet « Équipement inventaire » ; le service
-  // refuse les autres ressources (alchimie, livres…) et recalcule le prix en RF (lib/composants-champs.mjs)
+  // bouclier, ça le changera aussi »), gemme (nom, description ; ses prix : table gemme), objet de l'onglet « Équipement inventaire » — et le nom et
+  // le prix d'une potion (consommables de l'onglet Ceinture : serveur/edition-consommables.mjs) ; le service refuse les autres ressources (livres…) et
+  // recalcule le prix en RF (lib/composants-champs.mjs)
   ressource: {
     libelle: 'Composant',
     colonnes: {
@@ -361,6 +445,17 @@ export const TABLES = {
       affinite_brut: { type: 'ligne', libelle: 'Affinité (« Santé », « Santé + Chakra »)', requis: true },
     },
   },
+  // Consommables (sous-onglet Consommables de l'onglet Ceinture de /ressources/equipement/ ; demande du propriétaire, 2026-10-17 : « Les tableaux des
+  // consommables devrai pouvoir aussi être modifiées . (sauf pour les champ calculés) ») : le niveau et l'effet d'une potion (son nom et son prix : sa
+  // ressource, colonnes de `ressource`) ; le service en refait les altérations d'état de l'effet (potion_etat) et suit le corps de la page de la potion
+  // (serveur/edition-consommables.mjs). Ni création ni suppression.
+  potion: {
+    libelle: 'Potion',
+    colonnes: {
+      niveau_id: { type: 'choix', libelle: 'Niveau', requis: true, liste: 'niveauxDAlchimie' },
+      effet: { type: 'texte', libelle: 'Effet', requis: true },
+    },
+  },
   // les monnaies (MONNAIE et CONVERTISSEUR de l'onglet) : le nom et l'abréviation ; la valeur en RF ne se modifie pas (demande du propriétaire, décision
   // R61 : « Les valeurs ne sont effectivement pas modifiables. Elles servent de valeur utile pour les calculs et de potentiel tooltip »), elle se donne à
   // la création
@@ -371,6 +466,17 @@ export const TABLES = {
       abreviation: { type: 'ligne', libelle: 'Abréviation', requis: true },
     },
   },
+  // les onglets de la page « Composants » (migration 0057 ; demande du propriétaire, 2026-10-17 : « avoir des onglets pour chaque table. Il faudrait aussi
+  // qu'elles soient modifiables et directement liées en base ») : le titre (le nom de l'onglet) et la note au-dessus du tableau ; une note vidée : NULL
+  // (sans note). Rien n'en dépend (pas de domaine dans serveur/edition.mjs) ; ni création ni suppression : un onglet par tableau de la page
+  // (lib/composants-db.mjs#TABLEAUX_DES_COMPOSANTS)
+  composant_onglet: {
+    libelle: 'Onglet des composants',
+    colonnes: {
+      titre: { type: 'ligne', libelle: 'Nom de l’onglet', requis: true },
+      note: { type: 'texte', libelle: 'Note (au-dessus du tableau)' },
+    },
+  },
   // matériaux d'arme (tableau MATERIAUX de l'onglet) : les effets sur une arme, modifiés depuis la page « Composants » (décision R62 : « la seule source de
   // vérité » ; le prix est celui de la ressource, que le service recopie ici)
   materiau_arme: {
@@ -379,12 +485,80 @@ export const TABLES = {
       effet_brut: { type: 'texte', libelle: 'Effets (« Dégâts +N pour l’arme », « ±N cran de solidité », puis les autres effets)', requis: true },
     },
   },
-  // améliorations d'arme (+1 à +10) : coût et effet ; les améliorations d'armure, de bouclier et des pièces élémentaires ne se modifient pas ici
+  // améliorations d'arme (+1 à +10) et d'armure (+1 à +5) : coût et effet écrits ; celles de bouclier (+1 à +5) : quatre cases (demande du propriétaire,
+  // 2026-10-17 : « Le +1matériaux devrai être dans le cout (une 2e collonne cout matériaux boolean) Les effet séparés en deux autres colones aussi, Valeur
+  // d'AP supplémentaire, et Solidité + 1 ou non »), dont le service refait le coût et l'effet écrits (lib/armure-champs.mjs#textesDeBouclierEcrits) ;
+  // chaque cible n'accepte que les siennes (serveur/edition-armes.mjs, serveur/edition-armures.mjs). Celles des pièces élémentaires ne se modifient pas ici
   amelioration_equipement: {
-    libelle: 'Amélioration d’arme',
+    libelle: 'Amélioration',
     colonnes: {
-      cout_brut: { type: 'ligne', libelle: 'Coût (« 1 Matériel + 50 RO »)', requis: true },
-      effet_brut: { type: 'ligne', libelle: 'Effet (« +10 dégâts, +1 cran de solidité »)', requis: true },
+      cout_brut: { type: 'ligne', libelle: 'Coût (arme, armure : « 1 Matériel + 50 RO », « 100 + 1 Matériau »)', requis: true },
+      effet_brut: { type: 'ligne', libelle: 'Effet (arme, armure : « +10 dégâts, +1 cran de solidité », « +4 AP/AM »)', requis: true },
+      cout_ro: { type: 'entier', libelle: 'Coût en RO (bouclier)', requis: true, min: 0 },
+      cout_materiaux: { type: 'choix', libelle: 'Coût en matériaux (bouclier : 1 matériau de sa matière, décision R76)', choix: OUI_SEUL, libelleVide: 'Non' },
+      bonus_ap: { type: 'entier', libelle: 'AP supplémentaire (bouclier ; vide : aucun)' },
+      bonus_cran: { type: 'choix', libelle: '+1 cran de solidité (bouclier)', choix: OUI_SEUL, libelleVide: 'Non' },
+    },
+  },
+  // Armures et boucliers (onglets de /ressources/equipement/, demande du propriétaire, 2026-10-15 : « Modifiable tout de suite ») : les cases des onglets « Armures » et
+  // « Bouclier » ; le service en tire les colonnes typées (prix, AP, AM, coût en RF, Force minimum) et les résistances et faiblesses d'une armure
+  // (lib/armure-champs.mjs), et suit le corps des pages (lib/corps-armures.mjs). Ni création ni suppression (les fiches de personnage citent armures,
+  // pièces, formes et améliorations) ; les matériaux se modifient sur la page « Composants » (décision R62).
+  armure: {
+    libelle: 'Armure',
+    colonnes: {
+      nom: { type: 'ligne', libelle: 'Nom', requis: true },
+      type: { type: 'choix', libelle: 'Type', requis: true, choix: TYPES_D_ARMURE.map((t) => ({ valeur: t, libelle: t })) },
+      // l'armure physique et l'armure magique, deux cases (demande du propriétaire, 2026-10-17 : « C'est en base que les deux devraient être séparées et
+      // donc éditable aussi ») ; vide : pas de bonus. La défense écrite (`stats_brut`) en est refaite par le service (lib/armure-champs.mjs#defenseEcrite)
+      ap: { type: 'entier', libelle: 'AP (armure physique ; vide : aucune)' },
+      am: { type: 'entier', libelle: 'AM (armure magique ; vide : aucune)' },
+      solidite: { type: 'entier', libelle: 'Solidité (crans)', requis: true, min: 0 },
+      // une combinaison de deux matières seulement (la case de la grille) ; une armure particulière écrit son effet
+      resistance_brut: { type: 'ligne', libelle: 'Résistance (« x2 Frappe », « Estoc/Taille »)' },
+      faiblesse_brut: { type: 'ligne', libelle: 'Faiblesse (« x2 Estoc », « Taille/Frappe »)' },
+      effet: { type: 'texte', libelle: 'Effet (armure particulière)' },
+      prix_brut: { type: 'ligne', libelle: 'Prix (RO : « 2 050 », « ???? »)' },
+    },
+  },
+  // une pièce du tableau FABRICATION (Armure Complète, Casque…, Bouclier) : son coût de fabrication ; la page n'affiche plus que celui du bouclier (une
+  // armure ne se fabrique plus pièce par pièce : décision R93), les emplacements restent ceux de la fiche de personnage
+  armure_emplacement: {
+    libelle: 'Pièce d’armure',
+    colonnes: {
+      nom: { type: 'ligne', libelle: 'Pièce', requis: true },
+      cout_brut: { type: 'ligne', libelle: 'Coût de fabrication (« 150 RF / 1,5 RO », « 250 RF / Classe »)', requis: true },
+    },
+  },
+  // une forme (classe) de bouclier : Bocle, Targe, Bouclier Rond, Écu, Pavois (sa classe ne change pas : « classe 4 = 4 matériaux »)
+  bouclier_classe: {
+    libelle: 'Forme de bouclier',
+    colonnes: {
+      nom: { type: 'ligne', libelle: 'Forme', requis: true },
+      prix_brut: { type: 'ligne', libelle: 'Prix (RO : « 2,5 »)', requis: true },
+    },
+  },
+  // un bouclier préfabriqué (une forme et une matière, décision R78) : son nom, sa défense et son prix tels qu'écrits, et son poids (la couleur de sa
+  // case dans l'onglet : décision R92, migration 0054 ; un des poids de la liste, lib/armures-db.mjs#poidsDeBouclier, obligatoire : chaque case de
+  // la source a une couleur)
+  bouclier: {
+    libelle: 'Bouclier',
+    colonnes: {
+      nom: { type: 'ligne', libelle: 'Nom', requis: true },
+      // l'AP et l'AM, deux cases comme pour une armure (demande du propriétaire, 2026-10-17) ; la défense écrite (`defense_brut`) en est refaite
+      ap: { type: 'entier', libelle: 'AP (armure physique ; vide : aucune)' },
+      am: { type: 'entier', libelle: 'AM (armure magique ; vide : aucune)' },
+      prix_brut: { type: 'ligne', libelle: 'Prix (RO : « 202,5 »)' },
+      poids_id: { type: 'choix', libelle: 'Poids', requis: true, liste: 'poidsDeBouclier' },
+    },
+  },
+  // un poids de bouclier (liste de l'onglet « Bouclier », que la source ne relie pas aux formes : chaque bouclier porte le sien, poids_id) : son nom et
+  // sa Force minimum
+  bouclier_poids: {
+    libelle: 'Poids de bouclier',
+    colonnes: {
+      nom: { type: 'ligne', libelle: 'Poids', requis: true },
+      force_brut: { type: 'ligne', libelle: 'Force (« 1 de Force minimum »)', requis: true },
     },
   },
   // Chronologie (migration 0043, demande du propriétaire : « que la page puisse être modifiée […] supprimer une page, ou en créer une nouvelle, lui attribuant
@@ -416,12 +590,40 @@ export const TABLES = {
     libelle: 'Catégorie',
     colonnes: { libelle: { type: 'ligne', libelle: 'Catégorie', requis: true } },
   },
-  // le vocabulaire des mots-clés (/recherche/ en mode modification) : renommer un mot-clé change son écriture partout (son id reste) ; vers l'écriture d'un
-  // autre mot-clé : refusé, la page propose de les fusionner (opération `fusionner_mots_cles`) ; les mots-clés dont le site se sert ne bougent pas
-  // (lib/mots-cles.mjs#MOTS_CLES_PROTEGES)
+  // le vocabulaire des mots-clés, le glossaire (/recherche/ en mode modification ; migration 0056) : renommer un mot-clé ne réécrit aucun texte (son id
+  // reste ; une balise d'un texte de case, « {{id|texte}} », garde le texte écrit, une balise d'un texte mis en forme, « {{id}} », montre le nouveau
+  // libellé) ; vers l'écriture d'un autre mot-clé : refusé, la page propose de les fusionner
+  // (opération `fusionner_mots_cles`) ; les mots-clés dont le site se sert ne se renomment pas (lib/mots-cles.mjs#MOTS_CLES_PROTEGES), mais leur
+  // définition se modifie ; une définition vidée : NULL (pas encore décrit)
   mot_cle: {
     libelle: 'Mot-clé',
-    colonnes: { libelle: { type: 'ligne', libelle: 'Mot-clé', requis: true } },
+    colonnes: {
+      libelle: { type: 'ligne', libelle: 'Mot-clé', requis: true },
+      description: { type: 'texte', libelle: 'Définition' },
+    },
+  },
+  // Panneaux de règles (migration 0056 ; demande du propriétaire, 2026-10-16 : « Il faudrait que ce champ texte soit modifiable sur son titre, et son
+  // contenu. Son contenu peut d'ailleurs inclure des tuiles génériques (toujours insérables / modifiables en mode édition) ») : le titre d'un panneau
+  // (son `<summary>`) ; le texte d'un bloc (Markdown sûr, modifié en place comme le guide), le titre d'une tuile (refusé sur un bloc de texte) et sa place
+  // (`ordre` : « ↑ », « ↓ » ; jamais unique, à égalité le rang départage) : serveur/edition-panneaux.mjs
+  panneau_regles: {
+    libelle: 'Panneau de règles',
+    colonnes: { titre: { type: 'ligne', libelle: 'Titre', requis: true } },
+  },
+  panneau_regles_bloc: {
+    libelle: 'Bloc de règles',
+    colonnes: {
+      titre: { type: 'ligne', libelle: 'Titre de la tuile' },
+      texte: { type: 'markdown', libelle: 'Texte', requis: true },
+      ordre: { type: 'entier', libelle: 'Place (ordre de lecture)', requis: true, min: 1 },
+    },
+  },
+  // Annonces placées par le site (migration 0068 ; demande du propriétaire du 2026-10-18 : l'encart « Notre prochaine rencontre IRL », sur l'accueil,
+  // titre fixe, annonce modifiable sur le site de dev) : son texte (Markdown sûr, modifié en place comme le guide : src/scripts/edition/annonces.mjs ;
+  // serveur/edition.mjs#ANNONCE) ; vidé : NULL, le texte d'attente s'affiche ; ni création ni suppression
+  annonce: {
+    libelle: 'Annonce',
+    colonnes: { texte: { type: 'markdown', libelle: 'Annonce' } },
   },
   // Pages du guide et du Codex (texteDePageModifiable) : titre et texte (Markdown réécrit par l'éditeur visuel, lib/markdown-edition.mjs) ; le service
   // refuse toute autre page (celles des races, magies, classes et métiers suivent leurs tables)
@@ -468,6 +670,7 @@ export const ENTITES = {
   race: {
     table: 'race',
     libelle: 'race',
+    nouveau: 'Nouvelle race',
     champs: {
       nom: { type: 'ligne', libelle: 'Nom', requis: true },
       nature: { type: 'choix', libelle: 'Nature', requis: true, choix: NATURES_DE_RACE },
@@ -478,6 +681,7 @@ export const ENTITES = {
   classe: {
     table: 'classe',
     libelle: 'classe',
+    nouveau: 'Nouvelle classe',
     champs: {
       categorie_id: { type: 'choix', libelle: 'Catégorie', requis: true, liste: 'categories' },
       nom: { type: 'ligne', libelle: 'Nom (une classe raciale prend celui de sa race)' },
@@ -545,8 +749,23 @@ export const ENTITES = {
     nouveau: 'Nouvelle arme',
     suppression: true,
     champs: {
+      // une famille de la page, ou « @i » : celle créée par l'opération i du même lot (décision R159)
       famille_id: { type: 'choix', libelle: 'Famille (le tableau où l’arme s’ajoute)', requis: true, liste: 'famillesDArmes' },
-      ...champsDe('arme', ['nom', 'mains', 'competence_brut', 'type_id', 'cout_brut', 'effet', 'description', 'depart_possible']),
+      ...champsDe('arme', ['nom', 'mains', 'competence_brut', 'type_id', 'cout_brut', 'effet', 'description', 'depart_possible', 'remarque']),
+    },
+  },
+  // une famille d'armes (un onglet de la page des armes, décision R159) : nom, dé, catégorie (contact ou distance, jamais changée ensuite) et en-tête de
+  // coût ; identifiant tiré du nom une fois, puis figé ; à la fin des familles, maîtrisable, son nom de lecture celui de sa création (migration 0077),
+  // sans arme élémentaire (type_elementaire_id NULL : décision R167).
+  // Pas de suppression (les fiches et les sources de maîtrise la citeraient).
+  arme_famille: {
+    table: 'arme_famille',
+    libelle: 'famille d’armes',
+    nouveau: 'Nouvelle famille d’armes',
+    champs: {
+      ...champsDe('arme_famille', ['nom', 'de_brut']),
+      categorie: { type: 'choix', libelle: 'Catégorie (ne change plus ensuite)', requis: true, choix: CATEGORIES_DE_FAMILLE },
+      ...champsDe('arme_famille', ['cout_libelle']),
     },
   },
   // Composants : un composant dans un tableau de la page (les matériaux, ou un tableau de l'onglet « Équipement inventaire »), une gemme ou un bois liés à
@@ -668,14 +887,33 @@ export const ENTITES = {
     suppression: true,
     champs: { libelle: { type: 'ligne', libelle: 'Catégorie', requis: true } },
   },
-  // un mot-clé du vocabulaire (/recherche/) ; supprimé, il est retiré de toutes les pages qui le portent (sauf les mots-clés dont le site se sert :
-  // lib/mots-cles.mjs)
+  // un mot-clé du glossaire (/recherche/), son libellé et sa définition ; supprimé, il est retiré de toutes les pages qui le portent et de tous les textes
+  // qui le citent (sa balise devient son texte simple ; sauf les mots-clés dont le site se sert : lib/mots-cles.mjs)
   mot_cle: {
     table: 'mot_cle',
     libelle: 'mot-clé',
     nouveau: 'Nouveau mot-clé',
     suppression: true,
-    champs: { libelle: { type: 'ligne', libelle: 'Mot-clé', requis: true } },
+    champs: {
+      libelle: { type: 'ligne', libelle: 'Mot-clé', requis: true },
+      description: { type: 'texte', libelle: 'Définition' },
+    },
+  },
+  // un bloc d'un panneau de règles (« + Texte », « + Tuile » sous un bloc, en mode modification) : inséré après le bloc de rang `apres` (les blocs suivants
+  // décalés d'une place), sinon à la fin ; un titre seulement sur une tuile ; rang tiré une fois (le plus grand + 1, journal et historique compris), jamais
+  // redonné ; le dernier bloc d'un panneau ne se supprime pas
+  panneau_regles_bloc: {
+    table: 'panneau_regles_bloc',
+    libelle: 'bloc de règles',
+    nouveau: 'Nouveau bloc de règles',
+    suppression: true,
+    champs: {
+      panneau_id: { type: 'ligne', libelle: 'Panneau', requis: true },
+      tuile: { type: 'choix', libelle: 'Genre (vide : du texte)', choix: GENRES_DE_BLOC },
+      titre: { type: 'ligne', libelle: 'Titre (une tuile seulement)' },
+      texte: { type: 'markdown', libelle: 'Texte', requis: true },
+      apres: { type: 'entier', libelle: 'Après le bloc de rang (vide : à la fin)', min: 1 },
+    },
   },
   // un don de classe (« capacité », D11) : sa place vient du bouton (classe, spécialité, ou le don `avec` dont il devient une option : même ligne, même
   // niveau, même spécialité) ; sans `avec`, une nouvelle ligne à la fin de son niveau (lib/dons-edition.mjs#placeNouvelleLigne). `specialite_id` et
@@ -762,6 +1000,20 @@ export function valeurDuChamp(champ, brute, nom = champ.libelle) {
   return texte;
 }
 
+/**
+ * Les options de la liste d'un champ « choix » dans le mode modification (src/scripts/edition/editeur.mjs) : l'option vide d'un champ non requis (« — »,
+ * ou son `libelleVide` : « Non » d'une case Oui / Non dont « Non » est NULL, OUI_SEUL), les `choix`, puis la valeur de la base (`valeur`) si la liste ne
+ * l'a pas — le « 2 » d'un coût en matériaux qu'un ancien lot aurait écrit, une liste du service pas encore à jour —, telle quelle : la saisie la montre,
+ * et tant que personne n'y touche elle garde sa valeur et rien n'est envoyé (une liste sans elle la remettrait à vide au premier « Enregistrer »).
+ * @returns {{ valeur: string, libelle: string }[]}
+ */
+export function optionsDuChoix(champ, choix, valeur) {
+  const options = [...(champ.requis ? [] : [{ valeur: '', libelle: champ.libelleVide ?? '—' }]), ...choix.map((c) => ({ valeur: String(c.valeur), libelle: c.libelle }))];
+  const actuelle = valeur === null || valeur === undefined ? '' : String(valeur);
+  if (actuelle !== '' && !options.some((o) => o.valeur === actuelle)) options.push({ valeur: actuelle, libelle: actuelle });
+  return options;
+}
+
 /** Les colonnes d'image d'une table du modèle (portrait). */
 export const colonnesImage = (table) => Object.entries(TABLES[table]?.colonnes ?? {}).filter(([, c]) => c.type === 'image').map(([nom]) => nom);
 
@@ -811,6 +1063,25 @@ export function lireAttributEd(texte) {
 /** Clé de regroupement d'une ligne (table + clé primaire), indépendante de l'ordre des colonnes de la clé. */
 export const cleDeLigne = (table, cle) =>
   `${table}\u0000${JSON.stringify(Object.entries(cle ?? {}).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))}`;
+
+/**
+ * Les champs du formulaire de création d'une entité (ENTITES) : ceux de l'entité, sauf les valeurs données d'office (`donnees`, montrées si `montrer`
+ * les nomme, pré-remplies) ; un champ « choix » a ses options, fixes (`choix`) ou celles de sa liste de GET /api/edition/listes/ (`listes`).
+ * Utilisé par le bouton « + Ajouter » de la page des composants (src/scripts/edition/composants.mjs).
+ */
+export const champsDeCreationDe = (entite, donnees = {}, montrer = [], listes = {}) =>
+  Object.entries(ENTITES[entite].champs)
+    .filter(([c]) => !(c in donnees) || montrer.includes(c))
+    .map(([c, champ]) => ({
+      nom: c, libelle: champ.libelle, type: champ.type, requis: champ.requis, valeur: donnees[c] ?? '',
+      ...(champ.type === 'choix' ? { choix: champ.choix ?? listes?.[champ.liste] ?? [] } : {}),
+    }));
+
+/**
+ * Un formulaire qu'on ne peut pas remplir : un champ « choix » obligatoire sans aucune option (« Magie (une gemme par magie) » quand chaque magie a déjà
+ * sa gemme et que le Potentiel Illimité n'en a jamais : décision R160) ; son bouton « + Ajouter » n'est pas proposé, sans autre mention.
+ */
+export const sansChoixPossible = (champs) => champs.some((c) => c.type === 'choix' && c.requis && !(c.choix ?? []).length);
 
 /** Fiches nommées une à une dans l'annonce d'un lot, au plus (les autres sont comptées). */
 const FICHES_ANNONCEES = 5;

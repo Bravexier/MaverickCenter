@@ -1,10 +1,13 @@
 // Filtre des armes par compétence (lib/armes-filtres.mjs ; demande du propriétaire : « filtrer les armes par compétence arc / arbalète / légère et
 // lourde ») : une arme reste si l'une de ses compétences est choisie, toutes sans choix ; l'état de l'adresse se lit et s'écrit dans l'ordre des boutons.
 // Plus « Arme de départ » (« trier par "arme de départ" ») : seules les armes de départ, en même temps que le filtre des compétences.
+// Puis les comptes « N armes sur M » et l'onglet à rouvrir dans un des deux menus à onglets (mêlée, distance ; demande du propriétaire, 2026-10-23),
+// jamais sans filtre actif (une famille sans arme, créée sur le site de dev : décision R159), et l'ancre de l'adresse qui suit l'onglet rouvert (« On
+// peut retenir l'onglet ouvert #epee par exemple »).
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { COMPETENCES_D_ARME, competencesDArme, ECRITURES_DE_COMPETENCE } from '../src/lib/arme-champs.mjs';
-import { armeVisible, basculerCompetence, ecrireCompetences, lireCompetences, lireDepart } from '../src/lib/armes-filtres.mjs';
+import { ancreApresLeFiltre, ancreDesArmes, armeVisible, basculerCompetence, ecrireCompetences, lireCompetences, lireDepart, ongletARouvrir, texteDuCompte } from '../src/lib/armes-filtres.mjs';
 
 const connues = Object.keys(COMPETENCES_D_ARME);
 
@@ -55,4 +58,56 @@ test('« Arme de départ » : seules les armes de départ, en même temps que le
   assert.equal(lireDepart('1'), true);
   assert.equal(lireDepart(null), false);
   assert.equal(lireDepart('oui'), false);
+});
+
+test('l’ancre de l’adresse : celle de l’onglet ouvert reste, même une arme ouverte (page « Équipement ») ; celle d’une ligne d’arme part quand ?arme= la remplace', () => {
+  assert.equal(ancreDesArmes('#boucliers', { armeOuverte: true, ancreDUneArme: false }), '#boucliers', 'une arme rouverte dans l’onglet caché garde l’onglet');
+  assert.equal(ancreDesArmes('#armes', { armeOuverte: true, ancreDUneArme: false }), '#armes');
+  assert.equal(ancreDesArmes('#famille-dagues', { armeOuverte: true, ancreDUneArme: false }), '#famille-dagues', 'l’onglet de famille retenu reste');
+  assert.equal(ancreDesArmes('#arme-epees-espadon', { armeOuverte: true, ancreDUneArme: true }), '', '?arme= la remplace');
+  assert.equal(ancreDesArmes('#arme-epees-espadon', { armeOuverte: false, ancreDUneArme: true }), '#arme-epees-espadon', 'aucune arme ouverte : rien ne change');
+  assert.equal(ancreDesArmes('', { armeOuverte: true, ancreDUneArme: false }), '');
+});
+
+test('les comptes du tableau, de l’onglet et de l’onglet Armes : « N armes sur M » sous un filtre qui en cache, sinon le total', () => {
+  assert.equal(texteDuCompte(18, 18, false), '18 armes');
+  assert.equal(texteDuCompte(3, 18, false), '18 armes', 'sans filtre, le total');
+  assert.equal(texteDuCompte(3, 18, true), '3 armes sur 18');
+  assert.equal(texteDuCompte(0, 7, true), '0 arme sur 7');
+  assert.equal(texteDuCompte(1, 1, true), '1 arme', 'rien de caché : le total');
+  assert.equal(texteDuCompte(1, 2, true), '1 arme sur 2');
+  // le compte de tout l'onglet, comme avant les menus : « N sur M » dès que le filtre est actif
+  assert.equal(texteDuCompte(5, 5, true, { toujoursSur: true }), '5 armes sur 5');
+  assert.equal(texteDuCompte(3, 5, true, { toujoursSur: true }), '3 armes sur 5');
+  assert.equal(texteDuCompte(5, 5, false, { toujoursSur: true }), '5 armes', 'sans filtre, le total');
+});
+
+test('menus à onglets : si l’onglet ouvert n’a plus d’arme affichée, le premier qui en a s’ouvre ; sinon rien ne change', () => {
+  assert.equal(ongletARouvrir([5, 0, 3], 0), null, 'l’onglet ouvert a des armes : il reste');
+  assert.equal(ongletARouvrir([0, 0, 3, 2], 0), 2, 'le premier qui en a');
+  assert.equal(ongletARouvrir([4, 0, 3], 1), 0, 'même avant l’onglet ouvert');
+  assert.equal(ongletARouvrir([0, 0, 0], 1), null, 'aucun n’en a : le menu se cache, rien à ouvrir');
+  assert.equal(ongletARouvrir([0, 2], -1), 1, 'aucun onglet ouvert : le premier qui en a');
+  assert.equal(ongletARouvrir([], -1), null);
+});
+
+test('R159 : sans filtre actif, aucun onglet ne se rouvre — une famille sans arme (créée sur le site de dev) reste ouverte', () => {
+  assert.equal(ongletARouvrir([5, 3, 0], 2, { filtreActif: false }), null, 'la famille créée, vide, reste ouverte');
+  assert.equal(ongletARouvrir([0, 0], 0, { filtreActif: false }), null);
+  assert.equal(ongletARouvrir([5, 3, 0], 2, { filtreActif: true }), 0, 'sous un filtre, l’onglet vidé laisse la place');
+  assert.equal(ongletARouvrir([5, 3, 0], 2), 0, 'filtre actif par défaut');
+});
+
+test('l’adresse suit l’onglet que le filtre ouvre, quand elle désignait celui qui se ferme ; une autre ancre reste', () => {
+  const passage = { fermee: 'famille-epees', ouverte: 'famille-dagues' };
+  assert.equal(ancreApresLeFiltre('#famille-epees', passage), '#famille-dagues', 'le panneau fermé');
+  assert.equal(ancreApresLeFiltre('#arme-epees-espadon', { ...passage, dansLaFermee: true }), '#famille-dagues', 'un élément du panneau fermé');
+  assert.equal(ancreApresLeFiltre('#arme-epees-espadon', passage), '#arme-epees-espadon', 'un élément ailleurs');
+  assert.equal(ancreApresLeFiltre('#famille-arc', passage), '#famille-arc', 'l’onglet de l’autre menu');
+  assert.equal(ancreApresLeFiltre('#boucliers', passage), '#boucliers', 'l’onglet de la page');
+  assert.equal(ancreApresLeFiltre('#armes', passage), '#armes');
+  assert.equal(ancreApresLeFiltre('', passage), '', 'aucune ancre : aucune');
+  assert.equal(ancreApresLeFiltre('#famille-epees', { fermee: 'famille-epees', ouverte: null }), '#famille-epees', 'rien ne s’ouvre');
+  assert.equal(ancreApresLeFiltre('#%E0%A4%A', passage), '#%E0%A4%A', 'ancre mal formée : gardée');
+  assert.equal(ancreApresLeFiltre('#famille-%C3%A9p%C3%A9es', { fermee: 'famille-épées', ouverte: 'famille-dagues' }), '#famille-dagues', 'ancre encodée');
 });

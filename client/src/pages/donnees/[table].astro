@@ -11,14 +11,16 @@ export function getStaticPaths() {
 const { table } = Astro.params;
 const t = preparerTable(ouvrirBase(), table as string);
 const avecPage = t.lignes.some((l) => l.page);
+// les valeurs telles qu'enregistrées : une balise du glossaire (« {{recharge-longue:}} ») reste écrite, sans gras ni bulle (data-mots-cles-bruts,
+// src/middleware.mjs) ; le titre et la description de la page en ont le texte simple
 const nature = t.genre === 'vue' ? 'Vue : calculée à partir d’autres tables, toujours à jour. ' : t.derivee ? 'Table dérivée : recalculée à chaque construction de la base. ' : '';
 ---
 
 <Base title={`Données : ${t.nom}`} description={t.description || `Table ${t.nom} de la base de données`}>
   <p class="donnees-fil"><a href={url('donnees/')}>Données</a> › <code>{t.nom}</code></p>
   <h1><code>{t.nom}</code></h1>
-  <p class="donnees-role">{nature}{t.description}</p>
-  <details class="donnees-colonnes">
+  <p class="donnees-role" data-mots-cles-bruts>{nature}{t.description}</p>
+  <details class="donnees-colonnes" data-mots-cles-bruts>
     <summary>{t.colonnes.length} colonnes</summary>
     <table>
       <thead><tr><th>Colonne</th><th>Type</th><th>Clé</th><th>Description</th></tr></thead>
@@ -41,7 +43,7 @@ const nature = t.genre === 'vue' ? 'Vue : calculée à partir d’autres tables,
     <span id="compte" aria-live="polite">{t.lignes.length.toLocaleString('fr-FR')} lignes</span>
     <span class="donnees-aide">Cliquer sur un titre de colonne pour trier.</span>
   </p>
-  <div class="donnees-wrap">
+  <div class="donnees-wrap" data-mots-cles-bruts>
     <table class="donnees" id="donnees">
       <thead>
         <tr>

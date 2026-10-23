@@ -31,6 +31,16 @@ et `carte.css` — la carte d'un monstre ou d'une créature invoquée, partagée
     et le NPM dans `invocation_bloc.npm` (migration `0036-invocations-npm`) ; tableau, carte (« Marionnette de l'ombre (NPM 3) ») et pages de magie
     écrivent « NPM 3 » (`lib/bestiaire-db.mjs#libelleDuBloc`), comme les pages des marionnettes et de l'invocation.
 
+  **Au NPM choisi** (décision R130, demande du propriétaire : « adapter le monstre invoqué en fonction de ses NPM de la même façon que la fiche des monstres
+  est adaptable par l'échelle de puissance ») : la carte d'un golem ou d'un non-mort a un **curseur du NPM 1 au NPM 5** (`data-npm` sur la carte, posé par
+  `src/scripts/bestiaire.mjs#poserLeNpm`, gardé d'une ouverture à l'autre) ; chaque valeur qui change est écrite à chaque NPM (`ValeurParNpm.astro`,
+  `data-npms`, regroupées quand elles se suivent identiques) à côté de l'écrite (`data-npm-ecrit`, seule montrée sans JavaScript et à l'impression), une
+  valeur calculée soulignée avec l'écriture en infobulle (`.bcalcul`) ; une capacité ou une résistance « (NPM n) » porte `data-npm-min` et se cache en dessous
+  (`styles/bestiaire/carte.css`). Les valeurs : `lib/creature-npm.mjs` (« X/NPM » = X × NPM ; « 2 Armure Physique et Magique/NPM » = 2 × NPM chacune ;
+  « 1d8/NPM » = 3d8 et « 1d6+2/NPM » = 1d6+6 au NPM 3 ; « +1 Force au niveau 2 magique » à partir du NPM 2, la case changée soulignée avec l'écrite et ses
+  bonus en infobulle, les bonus écrits restant sous les cases ; « +1 Force/Agilité » non compté, il reste écrit), d'après les valeurs typées de l'import
+  (`donneesNpm`). Une marionnette (une créature par NPM) n'a pas de curseur ; sa carte garde le coût écrit (« +10% Barrière » : question Q35).
+
   Un clic sur une créature (une **case**) ouvre sa carte à côté (`CarteInvoquee.astro`), comme pour les monstres. La recherche n'allume, dans une ligne,
   que les cases qu'elle trouve (l'autre est estompée), sans lire « Même combinaison » de la carte, qui nomme la voisine (`data-hors-recherche`) ; les
   nombres du filtre comptent des créatures, comme le compte de la page. Les trois tableaux défilent avec la page (sur grand écran, l'en-tête reste en
@@ -47,7 +57,7 @@ filtre = l'une OU l'autre, plusieurs filtres = tous à la fois ; chaque valeur a
 Un clic sur une ligne ouvre sa **carte** à côté du tableau (sur un écran plus étroit, voir « Petit écran » ; Échap ou « Fermer » la referme) : en-tête (nom, espèce, catégorie, type, alignement, échelle,
 puis la **description** du monstre, repliée), **portrait** (le logo en attendant une image ; voir plus
 bas), toute la carte
-rubrique par rubrique (santé, chakra et barrière en tuiles, F.P.V.S.I.A. en cases colorées, cibles des défenses en pastilles dans la couleur de la
+rubrique par rubrique (santé, chakra et barrière en tuiles, F.P.V.S.I.A. en cases colorées, chacune de la classe de sa caractéristique, `couleur-caracteristique-<id>`, cibles des défenses en pastilles dans la couleur de la
 magie qui va avec quand l'écriture s'y prête,
 sinon le texte tel qu'écrit : `lib/monstre-rendu.mjs`), l'espèce (lieu de rencontre, complément, blocs qui suivent les cartes ; cachée quand il n'y en
 a pas) et le butin.
@@ -97,7 +107,8 @@ hauteur de l'écran (en-tête collé en haut), la carte dans le sien ; chacun a 
 d'un écran tactile, n'apparaît qu'au défilement). La carte a la hauteur de la partie visible de sa vue (`--bcartes-max`, recalculée au défilement et
 au redimensionnement : `lib/bestiaire-filtres.mjs#hauteurVisible`) : ni son haut ni son bas ne sortent de l'écran, quelle que soit la position de la
 page. Ouvrir une carte cale la vue en haut de l'écran, et la ligne choisie défile dans son cadre ; la molette sur une vue décalée fait d'abord défiler
-la page jusqu'à l'y caler (`defilementDAbord`), puis le tableau ou la carte. Les créatures invoquées (trois tableaux dépliables) défilent avec la page,
+la page jusqu'à l'y caler (`defilementDAbord`), puis le tableau ou la carte ; au bout du défilement de la carte, la page reprend (pas
+d'`overscroll-behavior: contain` hors du plein écran d'un écran étroit : demande du propriétaire, 2026-10-16, `test/defilement.test.mjs`). Les créatures invoquées (trois tableaux dépliables) défilent avec la page,
 comme avant ; leur carte a la même barre et la même hauteur.
 
 ### Échelles de puissance d'une carte
@@ -193,7 +204,9 @@ communes » ; « Elle change pour tous » ; « corrige les tous et fusionne » ;
 ### Vulnérabilités et résistances
 
 Demande du propriétaire : « rajouter les couleurs des vulnérabilités et résistances selon la couleur de la magie qui va avec ». Chaque cible a la
-couleur de sa magie (`sort-format.mjs#couleurDeMagie`, celle des pastilles de magie du site) : une magie se nomme elle-même (« Feu ») ; une
+couleur de sa magie (la classe de la magie, celle des pastilles de magie du site, et la classe de second rang de la seconde, ou de la même :
+`lib/palette-css.mjs#classesDeDeuxMagies`, jamais un style ; `docs/content-guide.md`, « Couleurs du site : la palette en classes ») : une magie se
+nomme elle-même (« Feu ») ; une
 altération d'état a sa magie liée (table `etat_magie` : « Brûlure » -> Feu, « Poison » -> Nécromancie ; « Surcharge magique », liée à l'Arcane et à
 la Corruption, porte la seconde en bande), écrite en infobulle. Écritures rapprochées : « Temps/Espace » (Espace/Temps), « Pétrification »,
 « Gelé », « Enragée » (les états « Pétrifié », « Gel », « Enragé ») : `lib/monstre-champs.mjs#magiesDesCibles`. Les autres cibles (« Frappe »,
@@ -332,6 +345,12 @@ Rien n'est déduit : une valeur n'est typée que si son écriture est sans ambig
 le nom d'une carte, écrit en capitales, est remis en minuscules avec la casse que le doc donne à chaque mot ailleurs (`nom_brut` garde l'original) ; et
 quatre graphies que la base a déjà corrigées partout sont corrigées ici aussi (`CORRECTIONS` : « le Démon d'Eau Noire » → « Eaunoire », décision R21 ;
 « Occultomancien » → « Ocultomancien » et « purée de poix » → « purée de pois », migration 0006 ; « ect » → « etc », migration 0005).
+Les multiplicateurs de la décision R155 aussi (« Oui là aussi c'est x3 et pas 4... », « Pareil remplace double résistance par Grande résistance »,
+« Oui x4 aussi », migration `0075-r155-titres-du-bestiaire`), sur la seule ligne entière du titre : « Grande(s) Résistance(s) Dégâts ÷4 » → « ÷3 » (15
+lignes du doc, les deux casses de « résistance »), « Grande(s) Vulnérabilité(s) Dégâts x4 » → « x3 » (22, chaque graphie gardée : « vulnérabilité »,
+« faiblesse », « Grande(s )Vulnérabilité(s) »), « Double(s) Résistance(s) Dégâts(/Effets) ÷4 » → « Grande(s) Résistance(s) Dégâts(/Effets) ÷3 » (10 :
+la correction passe avant le classement, ces cartes et leurs cibles sont rangées en `grande_resistance`) ; et « Sensibilité(s) Dégâts x8 » → « x4 »
+(compétences des golems de verre I à III).
 
 Deux brouillons du doc, « Réanimé (EP5) (a continuer) » et « Vouivre squelette (EP8) (a refaire) », ne sont pas repris (décision R58 : « Oui » à
 « Faut-il les retirer ? ») : leur titre borne l'espèce qui les précède (`TITRE_BROUILLON`) ; avant la migration `0039-bestiaire-reponses`, la carte
@@ -357,3 +376,6 @@ L'index « Ennemi par EP » de l'introduction n'est pas repris : il ne liste que
 7. La note « *Parmi Rouge, Jaune, Vert foncé, Brun » retirée du butin du Blob métallique (R58) expliquait l'astérisque de « Gelée aléatoire* » :
    faut-il l'ajouter au glossaire (« Gelée aléatoire : parmi rouge, jaune, vert foncé, brun ») ? Réponse : « Je sais pas » (2026-10-14) ; la note
    reste hors du site.
+8. **Momies** (Momie, Momie royale, Momie surveillante) : « Enragé » est à la fois dans « Vulnérabilité(s) Dégâts x2 » et dans « Immunité(s) »
+   (lignes 20809-20819, 20877-20885 et 20944-20952 de l'export). Laquelle fait foi ? Les deux sont gardées en attendant (relecture de la base du
+   2026-10-15, constat D4).

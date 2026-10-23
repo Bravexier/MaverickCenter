@@ -4,14 +4,14 @@
 // (lib/historique-site.mjs) ; une ligne que le site a créée n'a pas de note.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, readFileSync, writeFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { cheminBase, ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const racine = trouverRacine();
 const client = fileURLToPath(new URL('../', import.meta.url));
@@ -30,16 +30,22 @@ const tablesAvecNotes = db.prepare("SELECT DISTINCT entite_table AS t FROM note_
 // Colonnes ajoutées APRÈS `remarque` par des migrations ultérieures (une colonne ajoutée va en dernier : l'export d'une base migrée = celui d'une base neuve) :
 // table -> colonnes dans l'ordre. Migration 0004 : le mode du sort et ses bonus de niveau de maîtrise ; 0007 : le nom d'une capacité Mode Hyper ;
 // 0010 : mono-magie (R15) ; 0015 : la magie innée qui réserve et impose une classe (R23) ; 0019 : celle qui la ferme (R25) ; 0022 : la race à une seule magie (R28) ;
-// 0030 : la famille d'armes sans maîtrise (R45) ; 0037 : l'usage d'un effet d'accessoire (action, usage compté : R54).
+// 0030 : la famille d'armes sans maîtrise (R45) ; 0037 : l'usage d'un effet d'accessoire (action, usage compté : R54) ; 0063 : le coût secondaire
+// d'un sort (R105) ; 0069 : la catégorie d'une famille d'armes, contact ou à distance (R127) ; 0077 : son nom de lecture figé (R159) ; 0081 (R167) : le
+// type élémentaire d'une famille d'armes, le coût élémentaire d'une amélioration d'arme (tableau fondu, table reconstruite avec sa colonne en dernier).
 const APRES_REMARQUE = {
-  sort: ['mode_brut', 'bonus_maitrise'], mode_hyper_effet: ['nom'], magie: ['mono_magie'], race: ['mono_magie'], classe: ['magie_innee_id', 'magie_innee_exclue_id'],
-  arme_famille: ['maitrisable'], accessoire_effet: ['usage'],
+  sort: ['mode_brut', 'bonus_maitrise', 'cout_secondaire'], mode_hyper_effet: ['nom'], magie: ['mono_magie'], race: ['mono_magie'], classe: ['magie_innee_id', 'magie_innee_exclue_id'],
+  arme_famille: ['maitrisable', 'categorie', 'nom_lecture', 'type_elementaire_id'], accessoire_effet: ['usage'], bouclier: ['poids_id'], amelioration_equipement: ['cout_elementaire_brut'],
 };
 // Tables d'entités créées APRÈS 0002 par une migration qui leur donne directement leur `remarque` (0007 : les dons raciaux de l'onglet de la race).
 const CREEES_APRES_0002 = ['race_don'];
+// Tables d'entités que 0002 a dotées d'une `remarque` puis qu'une migration ultérieure a retirées (0049 : les couples de magies de l'onglet
+// « Statistiques », décisions R85 et R86 : la vue v_resistance_combinaison les remplace ; 0051 : la matrice des résistances de la fiche auto,
+// décision R90 : l'Arcane et la Corruption se résistent l'une à l'autre, comme le disent les listes de magie_resistance).
+const RETIREES_APRES_0002 = ['resistance_duo', 'resistance_magie'];
 
 test('toute table d’entités a une colonne `remarque` TEXT facultative, en dernier (sauf colonnes ajoutées ensuite par migration) ; aucune autre table n’en a (la table page non plus)', () => {
-  assert.ok(entites.length >= 60, `tables d'entités : ${entites.length}`);
+  assert.ok(entites.length >= 59, `tables d'entités : ${entites.length}`);
   for (const t of entites) {
     const cols = colonnes(t);
     const apres = APRES_REMARQUE[t] ?? [];
@@ -91,11 +97,11 @@ test('la remarque est cherchable (plein texte des entités) et visible dans l’
   assert.ok(trouve.includes(s.id), `${s.id} : « ${requete} »`);
 });
 
-test('db:check détecte une remarque qui a perdu une note', () => {
+test('db:check détecte une remarque qui a perdu une note', (t) => {
   // une note d'un sort que le site n'a jamais touché : une ligne de l'historique serait comparée à sa remarque d'import, qui masquerait le défaut injecté
   const note = db.prepare("SELECT entite_id, cellule FROM note_cellule WHERE entite_table = 'sort' ORDER BY entite_id = ? DESC, entite_id").all(LASER_NOIR)
     .find((n) => !historique.touchee('sort', { id: n.entite_id }));
-  const dir = mkdtempSync(join(tmpdir(), 'remarque-'));
+  const dir = dossierTemporaire('remarque', { t });
   const copie = join(dir, 'm.db');
   cpSync(cheminBase({ sansExemples: false }), copie);
   const d = new DatabaseSync(copie);
@@ -106,8 +112,8 @@ test('db:check détecte une remarque qui a perdu une note', () => {
   assert.ok(r.stdout.includes(`remarque : la note sort:${note.entite_id} (${note.cellule}) ne figure pas`), r.stdout);
 });
 
-test('db:migrate : refuse un schéma précédent dont la version ne précède pas celle du schéma courant', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'migrer-'));
+test('db:migrate : refuse un schéma précédent dont la version ne précède pas celle du schéma courant', (t) => {
+  const dir = dossierTemporaire('migrer', { t });
   const rows = join(dir, 'rows');
   cpSync(join(racine, 'data', 'rows'), rows, { recursive: true });
   writeFileSync(join(dir, 'm.sql'), 'ALTER TABLE sort ADD COLUMN x TEXT;\n');
@@ -120,7 +126,8 @@ test('db:migrate : refuse un schéma précédent dont la version ne précède pa
 test('la migration 0002 est additive : colonnes facultatives ajoutées et remplies, rien n’est supprimé ni réécrit', () => {
   const sql = readFileSync(join(racine, 'data', 'migrations', '0002-remarque.sql'), 'utf8');
   const instructions = sql.split('\n').filter((l) => l.trim() && !l.startsWith('--') && !l.startsWith('  WHERE'));
-  assert.equal(instructions.filter((l) => /^ALTER TABLE \w+ ADD COLUMN remarque TEXT;$/.test(l)).length, entites.filter((t) => !CREEES_APRES_0002.includes(t)).length);
+  assert.equal(instructions.filter((l) => /^ALTER TABLE \w+ ADD COLUMN remarque TEXT;$/.test(l)).length, entites.filter((t) => !CREEES_APRES_0002.includes(t)).length + RETIREES_APRES_0002.length);
+  for (const t of RETIREES_APRES_0002) assert.ok(instructions.includes(`ALTER TABLE ${t} ADD COLUMN remarque TEXT;`) && !entites.includes(t), t);
   assert.ok(!/\b(DROP|DELETE|RENAME)\b/i.test(sql), 'migration additive');
   assert.equal(instructions.filter((l) => l.startsWith('UPDATE ')).length, tablesAvecNotes.filter((t) => !CREEES_APRES_0002.includes(t)).length);
 });

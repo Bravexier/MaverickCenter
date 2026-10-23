@@ -1,0 +1,129 @@
+/* Chargé uniquement depuis components/ceinture/CeinturePanneau.astro (?raw) : l'onglet « Ceinture » de la page /ressources/equipement/. Ses règles
+   repliées, ses trois sous-onglets (Consommables, Carquois, Bâtons magiques : components/Onglets.astro), un panneau fermé caché sous html.js seulement
+   (sans JavaScript, ils se suivent, chacun sous son titre) ; dans Consommables, un onglet par famille (Fioles, Remèdes, Philtres, Huiles, Alchimie
+   primitive), un tableau par potion, deux ou trois côte à côte ; le tableau des carquois ; le tableau des bâtons magiques. Aucune couleur écrite ici :
+   les lignes prennent celle de la règle du site par leur classe (lib/palette-css.mjs : `.couleur-potion-…` pour une potion, émise par
+   CeinturePanneau.astro ; `.couleur-magie-…` pour un bâton, posée sur chaque page par layouts/Base.astro), jamais par un style. Les tableaux suivent le gabarit commun (styles/global/tableaux.css : cadre, titre,
+   en-têtes, lignes sur la couleur de leur source) ; ici, ce qui leur est propre. Les onglets de la page et la pastille d'une gemme :
+   styles/equipement/equipement.css. */
+.ceinture {
+  --ctr: var(--accent);
+  --ctr-soft: color-mix(in srgb, var(--accent) 9%, var(--surface));
+  --ctr-line: color-mix(in srgb, var(--accent) 35%, var(--border));
+  --tab: var(--ctr);
+  --tab-soft: var(--ctr-soft);
+  --tab-line: var(--ctr-line);
+  margin: 0 0 2rem;
+}
+.ceinture .vide { color: inherit; opacity: 0.6; }
+.ceinture [hidden] { display: none !important; }
+.ceinture__chapo { margin: -0.3rem 0 0.8rem; color: var(--muted); max-width: 70rem; }
+
+/* Les règles de la ceinture (le guide), repliées comme celles des autres onglets */
+.ceinture-regles { margin: 0 0 0.9rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+.ceinture-regles > summary { cursor: pointer; padding: 0.6rem 0.9rem; font-weight: 700; }
+.ceinture-regles__corps { max-width: 60rem; padding: 0.2rem 1.2rem 1rem; line-height: 1.55; }
+.ceinture-regles__texte > :first-child { margin-top: 0; }
+.ceinture-regles__texte > :last-child { margin-bottom: 0.4rem; }
+.ceinture-regles__source { margin: 0; font-size: var(--fs-md); color: var(--muted); }
+.ceinture-regles__detail { margin: 0 0 0.5rem; font-size: var(--fs-lg); }
+.ceinture-regles__detail > summary { cursor: pointer; color: var(--ctr); font-size: var(--fs-md); }
+.ceinture-regles__detail > .prose { margin-top: 0.4rem; padding-left: 0.8rem; border-left: 2px solid var(--ctr-line); }
+
+/* Les sous-onglets, plus petits que ceux de la page */
+.ceinture-onglets { display: flex; flex-wrap: wrap; gap: 0.35rem; border-bottom: 2px solid var(--ctr-line); margin: 0 0 0.9rem; }
+.ceinture-onglets .onglet { display: flex; flex-direction: column; gap: 0.05rem; padding: 0.4rem 0.9rem 0.45rem; border: 1px solid var(--border); border-bottom: 0;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0; background: var(--surface); color: var(--text); text-decoration: none; margin-bottom: -2px; }
+.ceinture-onglets .onglet__nom { font-weight: 700; font-size: var(--fs-lg); }
+.ceinture-onglets .onglet__detail { font-size: var(--fs-xs); color: var(--muted); }
+html.js .ceinture-onglets .onglet.is-active { background: var(--ctr); border-color: var(--ctr); color: var(--surface); }
+html.js .ceinture-onglets .onglet.is-active .onglet__detail { color: inherit; opacity: 0.85; }
+html.js .ceinture-onglets .onglet:not(.is-active):hover { background: var(--ctr-soft); }
+.ceinture-onglets .onglet:focus-visible { outline: 2px solid var(--ctr); outline-offset: 2px; }
+@media (max-width: 40rem) {
+  .ceinture-onglets .onglet { padding: 0.3rem 0.65rem; }
+  .ceinture-onglets .onglet__detail { display: none; }
+}
+html.js .ceinture-panneau:not(.is-active) { display: none; }
+/* le titre d'un sous-onglet : celui de son onglet ; sans JavaScript, il sépare les panneaux qui se suivent */
+html.js .ceinture-panneau__titre { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.ceinture-panneau__titre { margin: 1.2rem 0 0.6rem; font-size: var(--fs-xl); }
+
+/* Les onglets des familles de consommables (demande du propriétaire, 2026-10-22) : un troisième niveau, en pastilles, plus discret que les deux autres */
+.ceinture-familles { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0 0 0.8rem; }
+.ceinture-familles .onglet { display: flex; align-items: baseline; gap: 0.45rem; padding: 0.2rem 0.8rem; border: 1px solid var(--border); border-radius: var(--radius-pill);
+  background: var(--surface); color: var(--text); text-decoration: none; }
+.ceinture-familles .onglet__nom { font-weight: 700; font-size: var(--fs-md); }
+.ceinture-familles .onglet__detail { font-size: var(--fs-xs); color: var(--muted); }
+html.js .ceinture-familles .onglet.is-active { background: var(--ctr-soft); border-color: var(--ctr); box-shadow: inset 0 0 0 1px var(--ctr); }
+html.js .ceinture-familles .onglet:not(.is-active):hover { border-color: var(--ctr); }
+.ceinture-familles .onglet:focus-visible { outline: 2px solid var(--ctr); outline-offset: 2px; }
+@media (max-width: 40rem) {
+  .ceinture-familles .onglet__detail { display: none; }
+}
+html.js .ceinture-famille:not(.is-active) { display: none; }
+/* le titre d'une famille : celui de son onglet ; sans JavaScript, il sépare les familles qui se suivent */
+html.js .ceinture-famille__titre { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.ceinture-famille__titre { margin: 1rem 0 0.5rem; font-size: var(--fs-lg); }
+.ceinture-aide { margin: 0 0 0.8rem; color: var(--muted); font-size: var(--fs-md); }
+
+/* Une famille de consommables (fioles, remèdes…) : un tableau par potion, deux ou trois côte à côte (demande du propriétaire, 2026-10-17 : « Les
+   tableaux des fioles sont trop larrges Mettre de coté 2 ou 3 tableaux serai plus lisible ») ; au-delà de trois, un tableau serait trop étroit pour
+   l'effet, d'où leur largeur minimale */
+.ceint-potions { --tableau-largeur: 30rem; }
+.ceint-table--potions .ceint-nom { min-width: 8rem; }
+
+.ceint-table tbody > tr.ceint-ligne:not(.ligne-couleur):hover > * { background: var(--ctr-soft); }
+.ceint-nom { font-weight: 600; min-width: 11rem; }
+.ceint-niveau, .ceint-prix { white-space: nowrap; }
+.ceint-effet { min-width: 12rem; }
+.ceint-description { min-width: 16rem; color: color-mix(in srgb, var(--text) 85%, var(--muted)); }
+
+/* ── Sous-onglet Bâtons magiques (components/ceinture/BatonsMagiques.astro ; son panneau de règles : styles/equipement/equipement.css) ── */
+.batons { margin: 0 0 2rem; }
+.batons .vide { color: inherit; opacity: 0.6; }
+.batons-aide { margin: 0 0 0.8rem; color: var(--muted); font-size: var(--fs-lg); }
+/* le curseur du niveau n'existe qu'avec JavaScript ; sans lui, chaque case écrit ses trois niveaux, chacun sous son nom */
+.batons .js-seul { display: none; }
+html.js .batons .sans-js { display: none; }
+
+.batons-table tbody > tr > * { vertical-align: middle; }
+/* toute la ligne sur la couleur de sa magie sur le site (demandes du propriétaire), comme les matériaux de l'onglet Armes : la ligne colorée du gabarit ;
+   la couleur vient de la classe de la magie (`.couleur-magie-<id>` : --couleur, --couleur-texte, lib/palette-css.mjs), qui teinte aussi les infobulles de
+   la ligne (--mag, styles/global/infobulles.css) */
+.batons-table tr.baton { --baton-fond: var(--couleur); --baton-texte: var(--couleur-texte); --ligne-fond: var(--baton-fond); --ligne-texte: var(--baton-texte);
+  --mag: var(--baton-fond); }
+/* la magie n'a plus de colonne (demande du propriétaire) : son nom reste dans l'en-tête de la ligne pour les lecteurs d'écran */
+.baton__magie { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.baton__gemme { min-width: 9rem; font-weight: 400; }
+.baton__bois { min-width: 7rem; }
+/* un nom de gemme ou de bois ne se coupe qu'entre deux mots (main a, styles/global/wiki.css, coupe partout) : le tableau défile en largeur */
+.baton__nom { color: inherit; font-weight: 700; text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--baton-texte) 45%, transparent);
+  text-underline-offset: 0.18em; overflow-wrap: normal; }
+.baton__nom:hover, .baton__nom[data-ouverte] { text-decoration-color: currentColor; }
+.baton__nom:focus-visible { outline: 2px solid var(--baton-texte); outline-offset: 2px; border-radius: var(--radius-xs); }
+.baton__niveau { white-space: nowrap; }
+html.js .batons .baton-curseur { display: inline-flex; align-items: center; gap: 0.5rem; }
+.baton-curseur__champ { width: 5.5rem; margin: 0; padding: 0; border: 0; background: none; accent-color: var(--baton-texte); cursor: pointer; }
+.baton-curseur__champ:focus-visible { outline: 2px solid var(--baton-texte); outline-offset: 3px; border-radius: var(--radius-xs); }
+.baton-curseur__valeur { min-width: 1ch; font-weight: 700; font-variant-numeric: tabular-nums; }
+.baton__effet { min-width: 14rem; }
+.baton__prix { white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* une case par niveau : l'effet, le prix ; seul le niveau de la ligne s'affiche (son curseur, src/scripts/batons.mjs) */
+.baton-niv { display: block; }
+.baton-niv__nom { font-weight: 600; }
+html.js .baton-niv__nom { display: none; }
+html.js .batons-table tr.baton:not([data-niveau='1']) .baton-niv[data-niv='1'],
+html.js .batons-table tr.baton:not([data-niveau='2']) .baton-niv[data-niv='2'],
+html.js .batons-table tr.baton:not([data-niveau='3']) .baton-niv[data-niv='3'] { display: none; }
+/* l'infobulle de la gemme : ses trois qualités, celle du niveau de la ligne en avant ; puis le lien vers « Composants » */
+.bulle--baton .bulle__stade { grid-template-columns: 5.4rem 1fr; }
+.batons-table tr.baton[data-niveau='1'] .bulle__stade[data-niv='1'],
+.batons-table tr.baton[data-niveau='2'] .bulle__stade[data-niv='2'],
+.batons-table tr.baton[data-niveau='3'] .bulle__stade[data-niv='3'] { background: color-mix(in srgb, var(--bulle-teinte) 14%, var(--surface)); font-weight: 600; }
+.bulle--baton .bulle__lien { display: block; margin-top: 0.4rem; color: var(--bulle-lisible); font-weight: 700; }
+.bulle--baton .bulle__lien::after { content: ' ›'; content: ' ›' / ''; }
+/* sur une ligne des bâtons, la pastille de la gemme (styles/equipement/equipement.css) a la couleur du fond, celle de la magie : un liseré dans la
+   couleur du texte de la ligne la détache (Onyx sur le noir) ; son contour au focus aussi */
+.batons-table .acc-gemme { box-shadow: 0 0 0 1px color-mix(in srgb, var(--baton-texte) 45%, transparent); }
+.batons-table a.acc-gemme:focus-visible { outline-color: var(--baton-texte); }

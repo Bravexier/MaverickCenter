@@ -1,8 +1,10 @@
-# Instance posée par un installateur (à partir de la 1.0). Lancement : docker compose up -d   puis   http://<hôte>:8080 (serveur normal) ou :8081 (test)
+# Instance posée par un installateur (serveur normal ou serveur de test). Lancement : docker compose up -d   puis   http://<hôte>:8080 (serveur normal) ou :8081 (test)
 # Prérequis : créer .htpasswd (voir README.md), sinon nginx refuse de démarrer.
 # Port et nom du conteneur : fichier .env de l'instance (posé par l'installateur : 8080 / maverick-center en production,
 # 8081 / maverick-center-test en test). Changez-les dans .env plutôt qu'ici.
 # Deux conteneurs : nginx sert le site (site/) et transmet /api/ au service des personnages, qui écrit dans la base vivante (db/).
+# Journaux des conteneurs (docker logs) : 5 fichiers de 10 Mo au plus par conteneur, les plus anciens effacés (docs/serveur.md, « Métriques et
+# volume ») ; sans ces lignes, le pilote json-file de Docker les garde sans limite.
 services:
   maverick-center:
     image: nginx:1.27-alpine
@@ -14,6 +16,11 @@ services:
       - ./site:/usr/share/nginx/html:ro
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - ./.htpasswd:/etc/nginx/.htpasswd:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   # Service des personnages (docs/serveur.md) : son code arrive avec le site (site/_serveur/) et il se relance seul quand une installation
   # en livre une nouvelle version. Aucun port publié : seul nginx l'atteint.
@@ -38,8 +45,26 @@ services:
       # serveurs lisent. Dossier de l'hôte : maintenance/ de l'instance par défaut ; le serveur de test prend celui du serveur normal
       # (MAVERICK_DOSSIER_MAINTENANCE dans son .env, posé par deploy/vps/instances.sh), sinon la production n'est jamais mise en maintenance.
       MAVERICK_MAINTENANCE: /maintenance
+      # Métriques (docs/serveur.md, « Métriques et volume ») : chaque service écrit SA base <instance>.db (prod.db ou dev.db) dans ce dossier, jamais
+      # dans db/ (l'installateur de test, qui remplace le contenu de db/, ne la copie ni ne l'efface donc jamais), et le site de dev y lit aussi celle
+      # de la production, sans y écrire. Dossier de l'hôte : metriques/ de l'instance par défaut ; sur le VPS, celui du serveur normal pour les deux
+      # instances (MAVERICK_DOSSIER_METRIQUES dans chaque .env, posé par deploy/vps/instances.sh), comme le dossier de la maintenance.
+      MAVERICK_DOSSIER_METRIQUES: /metriques
+      # Nom de l'instance, donc de son fichier : prod ou dev (posé par instances.sh). Vide, le service le déduit de MAVERICK_EDITION (1 : dev).
+      MAVERICK_INSTANCE: ${MAVERICK_INSTANCE:-}
+      # 1 = requêtes brutes aussi gardées sur disque, 30 jours (volume : docs/serveur.md) ; 0 par défaut (seulement en mémoire, site de dev).
+      MAVERICK_METRIQUES_BRUTES: ${MAVERICK_METRIQUES_BRUTES:-0}
+      # Mesures des pages envoyées par le navigateur (POST /api/metriques/page/) : acceptées sur les deux instances (décision du propriétaire du
+      # 2026-10-15 : « Active-le aussi en prod dans un premier temps ») ; MAVERICK_METRIQUES_PAGES=0 dans .env les refuse (403), puis docker compose up -d.
+      MAVERICK_METRIQUES_PAGES: ${MAVERICK_METRIQUES_PAGES:-1}
     volumes:
       - ./site:/site:ro
       - ./db:/db
       - ./secrets:/secrets:ro
       - ${MAVERICK_DOSSIER_MAINTENANCE:-./maintenance}:/maintenance
+      - ${MAVERICK_DOSSIER_METRIQUES:-./metriques}:/metriques
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"

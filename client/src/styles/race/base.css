@@ -1,17 +1,21 @@
 /* Chargé uniquement depuis components/race/RacePage.astro (?raw), pour ne pas alourdir les autres pages du wiki. Même grammaire que les pages de magie. */
 .race {
-  --rac: var(--couleur-race, #2f6a6a); /* lib/race-kinds.mjs#RACE_COLORS, posée par RacePage.astro */
+  --rac: var(--couleur, var(--muted)); /* la classe de la nature de la race (lib/palette-css.mjs, famille `race` ; valeurs dans lib/race-kinds.mjs#RACE_COLORS), posée par RacePage.astro */
   --rac-readable: color-mix(in srgb, var(--rac) 55%, #000);
   --rac-soft: color-mix(in srgb, var(--rac) 9%, var(--surface));
   --rac-line: color-mix(in srgb, var(--rac) 35%, var(--border));
-  --hero-1: color-mix(in srgb, var(--rac) 45%, #111);
-  --hero-2: color-mix(in srgb, var(--rac) 70%, #111);
+  /* les tableaux (gabarit commun : styles/global/tableaux.css) dans la couleur de la race */
+  --tab: var(--rac);
+  --tab-soft: var(--rac-soft);
+  --tab-line: var(--rac-line);
+  --hero-1: color-mix(in srgb, var(--rac) 45%, var(--fond-banniere));
+  --hero-2: color-mix(in srgb, var(--rac) 70%, var(--fond-banniere));
   /* échelle des relations : de l'amitié (vert) à l'animosité (rouge), autour de « Neutre » */
   --regard-alliee: color-mix(in srgb, var(--good) 100%, transparent);
   --regard-appreciee: color-mix(in srgb, var(--good) 70%, var(--surface));
   --regard-acceptee: color-mix(in srgb, var(--good) 40%, var(--surface));
   --regard-neutre: var(--border);
-  --regard-evitee: color-mix(in srgb, #c27a12 70%, var(--surface));
+  --regard-evitee: color-mix(in srgb, var(--regard-evite) 70%, var(--surface));
   --regard-haine: color-mix(in srgb, var(--danger) 70%, var(--surface));
   --regard-ennemie: var(--danger);
 }
@@ -21,5 +25,5 @@
 :root[data-theme="dark"] .race { --rac-readable: color-mix(in srgb, var(--rac) 45%, #fff); }
 
 .race .texte { white-space: pre-line; margin: 0.4rem 0; }
-.race .texte-titre { margin: 0.9rem 0 0.2rem; font-size: 0.85rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
-.race .count { font-size: 0.8rem; font-weight: normal; padding: 0.05rem 0.55rem; border-radius: var(--radius-pill); background: var(--rac-soft); border: 1px solid var(--rac-line); color: var(--muted); vertical-align: middle; }
+.race .texte-titre { margin: 0.9rem 0 0.2rem; font-size: var(--fs-md); letter-spacing: var(--ls-fin); text-transform: uppercase; color: var(--muted); }
+.race .count { font-size: var(--fs-sm); font-weight: normal; padding: 0.05rem 0.55rem; border-radius: var(--radius-pill); background: var(--rac-soft); border: 1px solid var(--rac-line); color: var(--muted); vertical-align: middle; }

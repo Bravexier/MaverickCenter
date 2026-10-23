@@ -3,16 +3,16 @@
 // hotfix → master avec refusion dans dev, conflits, contrôles des créations de branches et des PR.
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { after, describe, test } from 'node:test';
+import { describe, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
   avantHebergement, avantLaUn, brancheASupprimer, comparerVersions, demandeMajeure, etiquette, etiquetteDeVersion, familleDe, incrementer, livrableDe, modeDeEtiquette,
   planifier, poserVersionJson, PREMIERE_VERSION_HEBERGEE, typeDeFusion, verifierCreation, verifierPR,
 } from '../../tools/flux-git/regles.mjs';
 import { modeDuSite } from '../src/lib/mode-site.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const CLI = fileURLToPath(new URL('../../tools/flux-git/cli.mjs', import.meta.url));
 
@@ -157,8 +157,7 @@ describe('règles pures', () => {
 });
 
 // ---------------------------------------------------------------- dépôts temporaires
-const racine = mkdtempSync(join(tmpdir(), 'flux-git-test-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('flux-git');
 const ENV = { ...process.env, GIT_CONFIG_NOSYSTEM: '1', HOME: racine, GIT_AUTHOR_NAME: 'Test', GIT_AUTHOR_EMAIL: 't@example.org', GIT_COMMITTER_NAME: 'Test', GIT_COMMITTER_EMAIL: 't@example.org' };
 delete ENV.GITHUB_ACTIONS;
 delete ENV.GITHUB_OUTPUT;
@@ -282,7 +281,7 @@ describe('le bot sur un vrai dépôt Git', () => {
     assert.equal(l.sorties.a_supprimer, '');
   });
 
-  test('règle 7, à partir de la 1.0 : installateur de test', () => {
+  test('règle 7, une fois hébergé (ici en 1.x) : installateur de test', () => {
     const d = depot('1.2.5');
     const r = feature(d, 'feature/carte');
     assert.equal(versionDistante(d, 'master'), '1.2.5');
@@ -363,7 +362,7 @@ describe('le bot sur un vrai dépôt Git', () => {
     assert.equal(commitDe(d, 'V0.2.0'), git(distantDe(d), 'rev-parse', 'origin/dev'));
   });
 
-  test('règle 6, à partir de la 1.0 : hotfix → master inchangée, refusion dans dev puis patch de dev, installateurs', () => {
+  test('règle 6, une fois hébergé (ici en 1.x) : hotfix → master inchangée, refusion dans dev puis patch de dev, installateurs', () => {
     const d = depot('1.0.0');
     livraison(d); // 1.1.0 partout, étiquette v1.1.0
     feature(d, 'feature/a'); // dev 1.1.1
@@ -518,7 +517,7 @@ describe('le bot sur un vrai dépôt Git', () => {
     assert.deepEqual(tags(d), []);
   });
 
-  test('régénération, à partir de la 1.0 : nouvelle étiquette sans changer la version', () => {
+  test('régénération, une fois hébergé (ici en 1.x) : nouvelle étiquette sans changer la version', () => {
     const d = depot('1.0.0');
     const r1 = bot(d, 'regenerer', '--branche', 'master', '--pousser');
     assert.equal(r1.code, 0, r1.out);

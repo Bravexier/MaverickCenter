@@ -22,9 +22,13 @@
 		# Le contenu appartient à un tiers : accès non référencé (comme les Google Docs actuels), pas d'indexation.
 		X-Robots-Tag "noindex, nofollow"
 		X-Content-Type-Options "nosniff"
-		Referrer-Policy "no-referrer"
+		# same-origin : l'adresse de la page n'est donnée qu'au site lui-même, jamais à un site tiers ; le service en tire la page d'où vient chaque
+		# appel /api/ (métriques, docs/serveur.md, « Métriques et volume »). Même valeur que deploy/nginx.conf.
+		Referrer-Policy "same-origin"
 		# Aucune page du site n'est faite pour être affichée dans le cadre d'un autre site (clickjacking) ni n'utilise ces capteurs.
 		X-Frame-Options "SAMEORIGIN"
+		# Politique de contenu minimale (comme deploy/nginx.conf) : ni cadrage, ni <base>, ni <object>, ni formulaire vers un autre site.
+		Content-Security-Policy "frame-ancestors 'self'; base-uri 'self'; object-src 'none'; form-action 'self'"
 		Permissions-Policy "camera=(), microphone=(), geolocation=()"
 		Strict-Transport-Security "max-age=31536000"
 		-Server

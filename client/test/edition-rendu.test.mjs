@@ -10,11 +10,17 @@ import { fileURLToPath } from 'node:url';
 import { fromHtml } from 'hast-util-from-html';
 import { toHtml } from 'hast-util-to-html';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { htmlDeLigneDArme } from '../src/lib/armes-rendu.mjs';
 import { echellesDesCartes as lesEchelles, magiesDesCibles as lesMagiesDesCibles, renvoisAuxDegatsMoyens as lesRenvois } from '../src/lib/bestiaire-db.mjs';
-import { lireAttributEd } from '../src/lib/edition-modele.mjs';
+import { attributEd, lireAttributEd } from '../src/lib/edition-modele.mjs';
+import { contexteDesArmes } from '../src/lib/armes-db.mjs';
+import { poidsDeBouclier as lesPoidsDeBouclier } from '../src/lib/armures-db.mjs';
 import { CONTEXTE_PASTILLE, echapperHtml, htmlDeBlocs, rendreChamp, RENDUS } from '../src/lib/edition-rendu.mjs';
+import { htmlAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
+import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
+const vocabulaire = chargerVocabulaire(db);
 const competences = db.prepare('SELECT id, nom, caracteristique_id, ordre FROM competence ORDER BY ordre').all().map((c) => ({ ...c }));
 const caracteristiques = db.prepare('SELECT id, nom FROM caracteristique ORDER BY ordre').all().map((c) => ({ ...c }));
 const objets = db.prepare('SELECT id, nom, nom_cle, description FROM objet_depart').all();
@@ -23,15 +29,34 @@ const typesDon = db.prepare('SELECT id, nom, definition FROM type_don ORDER BY o
 const echellesDePuissance = db.prepare('SELECT * FROM monstre_echelle ORDER BY ep').all();
 const objetsDuButin = db.prepare('SELECT id, nom, texte FROM monstre_butin_objet ORDER BY rang').all();
 const magies = db.prepare('SELECT id, nom FROM magie ORDER BY ordre').all();
+// les listes des rendus de l'onglet Armes de la page « Équipement » (types d'armes, solidité de base : lib/armes-db.mjs#contexteDesArmes)
+const { typesDArmes, soliditeDesArmes } = contexteDesArmes(db);
+// les poids de boucliers (rendu « bouclier-poids » de l'onglet Boucliers : lib/armures-db.mjs#poidsDeBouclier, comme serveur/edition.mjs#listes)
+const poidsDeBouclier = lesPoidsDeBouclier(db);
 const renvoisAuxDegatsMoyens = lesRenvois(db);
 const echellesDesCartes = lesEchelles(db);
 const magiesDesCibles = lesMagiesDesCibles(db);
+// les niveaux d'alchimie (rendu « potion-niveau » des consommables de l'onglet Ceinture, comme serveur/edition.mjs#listes)
+const niveauxDAlchimie = db.prepare('SELECT id AS valeur, nom AS libelle FROM niveau_alchimie ORDER BY rang').all();
 
 test('texte échappé, rendu inconnu = texte, champ vide', () => {
   assert.equal(echapperHtml(`<b a="1">'&'</b>`), '&lt;b a=&quot;1&quot;&gt;&#39;&amp;&#39;&lt;/b&gt;');
   assert.equal(rendreChamp(undefined, '<i>x</i>'), '&lt;i&gt;x&lt;/i&gt;');
   assert.equal(rendreChamp('inconnu', 'a & b'), 'a &amp; b');
   assert.equal(rendreChamp('texte', null), '');
+});
+
+test('armes : la remarque (décision R91) en étoile, son texte échappé en infobulle et en aria-label ; rien sans remarque ; la ligne la porte dans sa colonne', () => {
+  const texte = 'Coupe <vraiment> « bien » & "net"';
+  const echappe = 'Coupe &lt;vraiment&gt; « bien » &amp; &quot;net&quot;';
+  assert.equal(RENDUS['arme-remarque'](texte, {}), `<span class="arme__remarque" title="${echappe}" aria-label="Remarque : ${echappe}">★</span>`);
+  for (const vide of [null, undefined, '']) assert.equal(RENDUS['arme-remarque'](vide, {}), '', String(vide));
+  const a = { id: 'ressources/armes#arme:essai:dague', famille_id: 'essai', type_id: 'dague', nom: 'Dague', competence_brut: 'Arme Légère', depart_possible: 0, remarque: texte };
+  const html = htmlDeLigneDArme(a, {});
+  const ed = echapperHtml(attributEd('arme', { id: a.id }, 'remarque'));
+  assert.ok(html.includes(`<span class="arme__note" data-ed-lecture="${ed}" data-ed-rendu="arme-remarque">${RENDUS['arme-remarque'](texte, {})}</span>`), 'l’étoile à côté du nom, en lecture');
+  assert.ok(html.includes(`<td class="arme__remarque-texte ed-seul" data-ed="${ed}">${echappe}</td>`), 'la saisie du mode modification');
+  assert.ok(!htmlDeLigneDArme({ ...a, remarque: null }, {}).includes('class="arme__remarque"'), 'sans remarque, pas d’étoile');
 });
 
 test('blocs d’un texte long : paragraphes, puces, intertitres « ▸ », adresses en liens, pastilles d’état replacées sur leur mot', () => {
@@ -49,13 +74,13 @@ test('métiers : bonus liés en pastilles (R33, R37), texte libre gardé, artisa
   const ctx = { competences, caracteristiques, objets };
   const bonus = RENDUS['metier-bonus']('+1 INI, +2% Athlétisme OU Équilibre, +1 butin pour les ingrédients, +1 Vitesse nage', {}, ctx);
   assert.match(bonus, /^<div class="metier-bonus"><span class="metier-bonus__valeur">\+1<\/span> <span class="metier-cible metier-cible--attribut"[^>]*>Initiative<\/span><\/div>/);
-  assert.match(bonus, /<span class="metier-bonus__valeur">\+2%<\/span> <span class="metier-cible" style="--c: #ff6666; [^"]*" title="Acquis de Athlétisme \(Force\)">Athlétisme<\/span> <span class="metier-bonus__ou">ou<\/span> <span class="metier-cible" style="--c: #99ff66;/);
+  assert.match(bonus, /<span class="metier-bonus__valeur">\+2%<\/span> <span class="metier-cible couleur-caracteristique-force" title="Acquis de Athlétisme \(Force\)">Athlétisme<\/span> <span class="metier-bonus__ou">ou<\/span> <span class="metier-cible couleur-caracteristique-agilite" title/);
   assert.match(bonus, /<div class="metier-bonus metier-bonus--texte" title="[^"]*">\+1 butin pour les ingrédients<\/div>/);
   assert.match(bonus, /<span class="metier-cible metier-cible--attribut" title="Bonus : vitesse de nage \(« Vitesse nage »\)">Vitesse de nage<\/span><\/div>$/, 'vitesse de nage (R37)');
   assert.equal(RENDUS['metier-bonus']('', {}, ctx), '');
   assert.match(RENDUS['metier-artisanat'](null, {}), /class="vide"/);
   assert.equal(RENDUS['metier-artisanat']('Golems <3', {}), 'Golems &lt;3');
-  assert.match(RENDUS['metier-carac']('volonte', {}, ctx), /^<span class="metier-carac" style="--c: #ff99ff; [^"]*" title="10 × Volonté">Volonté<\/span>$/);
+  assert.match(RENDUS['metier-carac']('volonte', {}, ctx), /^<span class="metier-carac couleur-caracteristique-volonte" title="10 × Volonté">Volonté<\/span>$/);
   assert.equal(RENDUS['metier-carac'](null, {}, ctx), '');
   assert.match(RENDUS['metier-equipement']('Rien', {}, ctx), /class="vide"/);
   const equipement = RENDUS['metier-equipement']('Corde, Pelle OU Faux', {}, ctx);
@@ -131,9 +156,9 @@ const ligneDe = (table, cle) => {
   return lignes.get(k);
 };
 
-test('site construit : chaque champ [data-ed] des métiers, des magies, des races, des classes, du bestiaire et de la chronologie redonne le HTML du gabarit', { skip: sansDist && 'dist/ absent (npm run build)' }, () => {
+test('site construit : chaque champ [data-ed] des métiers, des magies, des races, des classes, du bestiaire, de la chronologie et de l’équipement (armes, armures, consommables de la ceinture) redonne le HTML du gabarit', { skip: sansDist && 'dist/ absent (npm run build)' }, () => {
   const sousPages = (type) => readdirSync(join(dist, type), { withFileTypes: true }).filter((d) => d.isDirectory() && !d.name.startsWith('exemple')).map((d) => `${type}/${d.name}`);
-  const pages = ['metiers', 'bestiaire', ...sousPages('magies'), ...sousPages('races'), ...sousPages('classes'), 'chronologie', ...sousPages('chronologie')];
+  const pages = ['metiers', 'bestiaire', ...sousPages('magies'), ...sousPages('races'), ...sousPages('classes'), 'chronologie', ...sousPages('chronologie'), 'ressources/equipement'];
   const parRendu = new Map();
   for (const p of pages) {
     const arbre = fromHtml(readFileSync(join(dist, p, 'index.html'), 'utf8'));
@@ -148,14 +173,21 @@ test('site construit : chaque champ [data-ed] des métiers, des magies, des race
       const attendu = normal(cible.children);
       // les pastilles d'état que la page montre dans le champ, comme le script les relève (src/scripts/edition/editeur.mjs#rendreElement)
       const pastilles = zones(cible).map((z) => ({ forme: texteDe(trouver(z, 'chip--etat')), avant: texteAvant(cible, z), html: toHtml(z) }));
-      const obtenu = fragment(rendreChamp(rendu, ligne[info.colonne], ligne, { competences, caracteristiques, objets, typesDon, echellesDePuissance, objetsDuButin, magies, renvoisAuxDegatsMoyens, echellesDesCartes, magiesDesCibles, pastilles }));
+      // les balises du glossaire, que la page construite montre rendues (le middleware ; dans l'éditeur, src/scripts/edition/mots-cles-vivants.mjs)
+      const obtenu = fragment(htmlAvecMotsCles(rendreChamp(rendu, ligne[info.colonne], ligne, { competences, caracteristiques, objets, typesDon, echellesDePuissance, objetsDuButin, magies, renvoisAuxDegatsMoyens, echellesDesCartes, magiesDesCibles, typesDArmes, soliditeDesArmes, poidsDeBouclier, niveauxDAlchimie, pastilles }), vocabulaire).html);
       assert.equal(obtenu, attendu, `${p} : ${info.table} ${JSON.stringify(info.cle)} ${info.colonne} (rendu ${rendu})`);
       parRendu.set(rendu, (parRendu.get(rendu) ?? 0) + 1);
     }
   }
-  for (const r of ['texte', 'blocs', 'metier-bonus', 'metier-artisanat', 'metier-carac', 'metier-equipement', 'metier-avantage', 'sort-type', 'sort-cout', 'sort-portee', 'sort-zone', 'sort-dsb', 'liste', 'inventaire', 'don-type',
+  for (const r of ['texte', 'blocs', 'metier-bonus', 'metier-artisanat', 'metier-carac', 'metier-equipement', 'metier-avantage', 'sort-type', 'sort-cout', 'sort-cout-secondaire', 'sort-portee', 'sort-zone', 'sort-dsb', 'liste', 'inventaire', 'don-type',
     'monstre-rubrique', 'monstre-categorie', 'monstre-cellule', 'monstre-ep', 'monstre-lieux', 'monstre-variable', 'monstre-butin', 'monstre-echelle',
-    'evenement-date', 'evenement-date-courte', 'evenement-portee']) {
+    'evenement-date', 'evenement-date-courte', 'evenement-portee',
+    'protection-prix', 'armure-type', 'armure-solidite', 'armure-resistance', 'armure-faiblesse', 'armure-effet', 'piece-cout',
+    'protection-amelioration-cout', 'protection-amelioration-effet', 'protection-ap', 'protection-am',
+    'bouclier-amelioration-ro', 'bouclier-amelioration-materiaux', 'bouclier-amelioration-ap', 'bouclier-amelioration-cran',
+    'arme-competence', 'arme-cout', 'arme-degats', 'arme-depart', 'arme-durabilite', 'arme-effets', 'arme-mains', 'arme-origine', 'arme-portee',
+    'arme-type', 'arme-types-degats', 'amelioration-cout', 'amelioration-effet', 'materiau-effet', 'materiau-prix',
+    'composant-prix', 'potion-niveau', 'potion-effet']) {
     assert.ok(parRendu.get(r) > 0, `rendu ${r} vérifié au moins une fois`);
   }
 });

@@ -3,6 +3,7 @@ import { adresseDEvenement, dateCourte, LIBELLE_SANS_CATEGORIE, libelleDeDate, P
 import { choixDuFiltre } from '../../lib/chronologie-db.mjs';
 import { attributEd } from '../../lib/edition-modele.mjs';
 import { modeDuSite } from '../../lib/mode-site.mjs';
+import { classeDEvenement } from '../../lib/palette-css.mjs';
 import { url } from '../../lib/wiki';
 
 // La frise de la chronologie (demande du propriétaire) : sur la gauche, en vertical, la chronologie en une immense barre avec un dégradé ; chaque
@@ -11,7 +12,10 @@ import { url } from '../../lib/wiki';
 // la mini-frise collée à gauche (la barre et ses points, sans texte) ; ouverte, le tiroir par-dessus la page (son en-tête : `.frise__entete`).
 // Un événement par ligne, dans l'ordre de lecture ; la ligne entière est le lien. Le dégradé : chaque ligne peint son morceau de barre, de la
 // couleur mêlée à celle de l'événement précédent (en haut) à celle mêlée au suivant (en bas), en passant par la sienne au niveau de son point
-// (lib/chronologie.mjs#couleursDesEvenements) : la barre change de teinte sans à-coup d'un bout à l'autre. Un Impact majeur de la liste du Codex a
+// (lib/chronologie-couleurs.mjs#couleursDesEvenements) : la barre change de teinte sans à-coup d'un bout à l'autre. Les couleurs sont des classes de
+// la palette (lib/palette-css.mjs#classeDEvenement, émises par Chronologie.astro), jamais un style : la ligne porte la classe de son événement, sa barre
+// (`.frise__barre`) celle de l'événement précédent et le morceau de barre qu'elle contient (`.frise__morceau`, qui peint le dégradé) celle du suivant ;
+// rien au bord (la ligne garde alors sa couleur). Le script qui suit les repose entre les lignes visibles. Un Impact majeur de la liste du Codex a
 // un losange, un Impact mineur un point plus grand ; « Date inconnue » a une barre en pointillés. L'événement affiché (`courant`) est repéré
 // (aria-current). Le nom d'un lien est son texte visible, complété pour les lecteurs d'écran (« An 505 : La Grande Croisade, Impact majeur »).
 // Filtre (demandes du propriétaire : « filtrer la chronologie de façon à ne voir qu'un type d'évènement » ; « Le filtre sera donc sous forme de liste
@@ -22,17 +26,12 @@ import { url } from '../../lib/wiki';
 // La frise défile seule, à hauteur d'écran : le script qui suit garde ses lignes à leur place d'une page à l'autre et y montre l'événement affiché.
 interface Props {
   evenements: any[];
-  couleurs: Map<string, string>;
   /** L'événement affiché ; null sur /chronologie/ (la frise seule et son mode d'emploi). */
   courant: string | null;
 }
-const { evenements, couleurs, courant } = Astro.props;
-const style = (e: any, i: number) => {
-  const c = couleurs.get(e.id);
-  const avant = i > 0 ? couleurs.get(evenements[i - 1].id) : c;
-  const apres = i < evenements.length - 1 ? couleurs.get(evenements[i + 1].id) : c;
-  return `--c: ${c}; --c-avant: ${avant}; --c-apres: ${apres}`;
-};
+const { evenements, courant } = Astro.props;
+/** La classe de couleur de l'événement voisin (précédent : -1, suivant : +1), ou rien au bord de la frise. */
+const voisine = (i: number, pas: number) => (evenements[i + pas] ? classeDEvenement(evenements[i + pas].id) : null);
 const filtre = choixDuFiltre(evenements);
 const aTrier = !modeDuSite(process.env, '').prod;
 const sansCategorie = aTrier ? filtre.sansCategorie : 0;
@@ -70,9 +69,8 @@ const ed = (e: any, colonne: string) => attributEd('evenement', { id: e.id }, co
     {
       evenements.map((e: any, i: number) => (
         <li
-          class={`frise__evenement frise__evenement--${e.epoque}`}
+          class={`frise__evenement frise__evenement--${e.epoque} ${classeDEvenement(e.id)}`}
           id={`evenement-${e.id}`}
-          style={style(e, i)}
           data-categories={e.categories.map((c: any) => c.id).join(' ')}
           data-etiquette={`${libelleDeDate(e)} : ${e.titre}`}
         >
@@ -82,7 +80,8 @@ const ed = (e: any, colonne: string) => attributEd('evenement', { id: e.id }, co
               <span data-ed-lecture={ed(e, 'epoque')} data-ed-rendu="evenement-date-courte">{dateCourte(e)}</span>
               <span class="chrono-invisible"> : </span>
             </span>
-            <span class="frise__barre">
+            <span class:list={['frise__barre', voisine(i, -1)]}>
+              <span class:list={['frise__morceau', voisine(i, 1)]} />
               <span class={['frise__repere', e.portee && `frise__repere--${e.portee}`].filter(Boolean).join(' ')} />
             </span>
             <span class="frise__titre">
@@ -99,7 +98,8 @@ const ed = (e: any, colonne: string) => attributEd('evenement', { id: e.id }, co
   // La frise défile seule (grand écran), à hauteur d'écran sous l'en-tête : sa hauteur est celle de l'écran moins la place de l'en-tête au-dessus
   // d'elle (--frise-haut, mesurée ici et à chaque changement de taille), pour qu'elle tienne tout entière à l'écran en haut de la page.
   // Le filtre par catégorie est appliqué d'abord, avant le premier affichage : l'adresse le donne (?filtre=<id>, ou sans-categorie sur le site de dev) ;
-  // les lignes hors filtre sont cachées (l'événement affiché reste, marqué « hors filtre »), le dégradé se refait entre les lignes visibles, et les liens
+  // les lignes hors filtre sont cachées (l'événement affiché reste, marqué « hors filtre »), le dégradé se refait entre les lignes visibles (la barre
+  // de chaque ligne reprend la classe de couleur de la ligne visible précédente, son morceau celle de la suivante : classList, jamais un style), et les liens
   // de la frise gardent le filtre. Un changement du choix réécrit l'adresse (sans recharger) ; le script des chevrons (Chronologie.astro) suit
   // (évènement « chronologie:frise-filtree ») ; une frise modifiée par le site de dev (évènement « chronologie:frise-changee ») est refiltrée.
   // Au départ d'une page de la chronologie, on note son défilement et la place de son bord haut à l'écran (sessionStorage, une clé par filtre) ; à
@@ -131,6 +131,16 @@ const ed = (e: any, colonne: string) => attributEd('evenement', { id: e.id }, co
       var categories = categoriesDe(li);
       return f === SANS ? categories.length === 0 : categories.indexOf(f) >= 0;
     }
+    // la classe de couleur d'une ligne (couleur-evenement-<id> : la palette du site, émise par Chronologie.astro), posée à la place de l'ancienne
+    var COULEUR = 'couleur-evenement-';
+    function couleurDe(li) {
+      return (li.getAttribute('class') || '').split(/\s+/).filter(function (c) { return c.indexOf(COULEUR) === 0; })[0] || '';
+    }
+    function poserCouleur(el, voulue) {
+      if (!el) return;
+      (el.getAttribute('class') || '').split(/\s+/).forEach(function (c) { if (c.indexOf(COULEUR) === 0 && c !== voulue) el.classList.remove(c); });
+      if (voulue) el.classList.add(voulue);
+    }
     function avecFiltre(href, f) {
       var u = new URL(href, location.href);
       if (f) u.searchParams.set('filtre', f);
@@ -149,11 +159,10 @@ const ed = (e: any, colonne: string) => attributEd('evenement', { id: e.id }, co
         if (lien) lien.href = avecFiltre(lien.getAttribute('href'), f);
         if (!li.hidden) visibles.push(li);
       });
-      // le dégradé entre lignes visibles : chacune prend la couleur de ses voisines à l'écran
+      // le dégradé entre lignes visibles : chacune prend la couleur de ses voisines à l'écran (aucune au bord : la sienne)
       visibles.forEach(function (li, i) {
-        var c = li.style.getPropertyValue('--c');
-        li.style.setProperty('--c-avant', i > 0 ? visibles[i - 1].style.getPropertyValue('--c') : c);
-        li.style.setProperty('--c-apres', i < visibles.length - 1 ? visibles[i + 1].style.getPropertyValue('--c') : c);
+        poserCouleur(li.querySelector('.frise__barre'), i > 0 ? couleurDe(visibles[i - 1]) : '');
+        poserCouleur(li.querySelector('.frise__morceau'), i < visibles.length - 1 ? couleurDe(visibles[i + 1]) : '');
       });
       if (visibles.length) {
         visibles[0].classList.add('est-premier');

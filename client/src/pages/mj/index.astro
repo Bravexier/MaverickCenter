@@ -1,0 +1,16 @@
+---
+import Base from '../../layouts/Base.astro';
+import Sommaire from '../../components/guide/Sommaire.astro';
+import { GUIDE_DU_MJ, verifierLePlan } from '../../lib/livres.mjs';
+import { entryHref, loadWiki } from '../../lib/wiki';
+
+// Le Guide du MJ (rubrique Espace MJ ; lib/livres.mjs#GUIDE_DU_MJ) : le titre et le résumé de chacune de ses pages (tels que la base les écrit), rien d'autre.
+const { entries } = await loadWiki();
+const parId = new Map(verifierLePlan(entries).map((e) => [e.id, e]));
+const elements = GUIDE_DU_MJ.pages.map((id) => parId.get(id)!).map((e) => ({ href: entryHref(e), titre: e.data.title, resume: e.data.summary }));
+---
+
+<Base title={GUIDE_DU_MJ.titre}>
+  <h1>{GUIDE_DU_MJ.titre}</h1>
+  <Sommaire groupes={[{ elements }]} />
+</Base>

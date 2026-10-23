@@ -1,14 +1,14 @@
 // Base vivante du service (client/serveur/base-vivante.mjs, docs/serveur.md) : copie de la base des règles publiée par le site, où le service
 // écrit les fiches (section 13 de data/schema.sql). Quand les règles changent, elle est refaite et ses lignes reprises ; un don, une spécialité, un
 // sort ou un métier disparu est retiré des fiches avec une note datée (décision R42) ; une colonne que les règles ont retirée exprès (COLONNES_RETIREES :
-// le statut des fiches, migration 0038) se perd ; si une autre ligne ne passe pas (race, classe, magie…, colonne, contrainte), rien ne change et l'erreur
-// dit pourquoi. Tout se passe dans des dossiers temporaires, à partir de la base construite depuis data/rows.
+// le statut des fiches, migration 0038) se perd ; une table que les règles ont retirée (TABLES_RETIREES : les gains de niveau par niveau, migration
+// 0045) est convertie (CONVERSIONS), jamais perdue sans le dire ; si une autre ligne ne passe pas (race, classe, magie…, colonne, contrainte), rien ne
+// change et l'erreur dit pourquoi. Tout se passe dans des dossiers temporaires, à partir de la base construite depuis data/rows.
 import assert from 'node:assert/strict';
-import { copyFileSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { copyFileSync, existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { after, test } from 'node:test';
+import { beforeEach, test } from 'node:test';
 import {
   ARCHIVES_GARDEES, DOSSIER_ARCHIVES, ErreurBaseVivante, FICHIER_BASE, FICHIER_ETAT, TABLES_EDITION, TABLES_FICHES, TABLES_VIVANTES, clesRompues, empreinteFichier, lireEtat,
   ouvrirBaseVivante, preparerBaseVivante,
@@ -16,15 +16,19 @@ import {
 import { enregistrer } from '../serveur/edition.mjs';
 import { lireFiche, listerFiches } from '../serveur/fiches.mjs';
 import { cheminBase, trouverRacine } from '../src/lib/donnees.mjs';
-import { COLONNES_RETIREES } from '../src/lib/fiche-format.mjs';
+import { COLONNES_RETIREES, TABLES_RETIREES, gainsDeLaProgression } from '../src/lib/fiche-format.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-vivante-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('vivante');
 const REGLES = cheminBase({ sansExemples: false });
 const INSTANT = '2026-10-10T12:00:00Z';
 
+// chaque cas écrit ses copies de la base dans son propre dossier, supprimé dès qu'il a fini, réussi ou non (toutes gardées jusqu'à la fin du
+// fichier, elles dépassaient 2,3 Go)
+let dossierDuCas = racine;
+beforeEach((t) => { dossierDuCas = dossierTemporaire('vivante-cas', { t }); });
 let compteur = 0;
-const nouveau = (prefixe) => join(racine, `${prefixe}-${(compteur += 1)}`);
+const nouveau = (prefixe) => join(dossierDuCas, `${prefixe}-${(compteur += 1)}`);
 /** Copie des règles modifiée par `sql` (clés étrangères non contrôlées : seules celles de la section 13 comptent ici) : une « nouvelle livraison ». */
 function regles(sql = '') {
   const f = `${nouveau('regles')}.db`;
@@ -92,7 +96,8 @@ test('TABLES_VIVANTES : exactement les tables des sections 13 (fiches) puis 14 (
   const db = lecture(REGLES);
   for (const [i, t] of TABLES_VIVANTES.entries()) {
     for (const f of db.prepare(`PRAGMA foreign_key_list("${t}")`).all()) {
-      if (TABLES_VIVANTES.includes(f.table)) assert.ok(TABLES_VIVANTES.indexOf(f.table) < i, `${t} cite ${f.table}, qui doit venir avant`);
+      // une table qui se cite elle-même (modification_lot.resolu_par, migration 0072) est copiée d'un seul INSERT, clés étrangères coupées puis contrôlées
+      if (TABLES_VIVANTES.includes(f.table) && f.table !== t) assert.ok(TABLES_VIVANTES.indexOf(f.table) < i, `${t} cite ${f.table}, qui doit venir avant`);
     }
   }
   db.close();
@@ -508,7 +513,7 @@ test('schéma changé : une colonne remplie qui disparaît (hors COLONNES_RETIRE
 });
 
 test('migration 0038 : une base vivante d’avant, dont les fiches ont encore leur statut rempli, est reprise sans blocage, la colonne perdue ; une autre colonne remplie disparue bloque toujours', () => {
-  assert.deepEqual(COLONNES_RETIREES, { personnage: ['statut'] });
+  assert.deepEqual(COLONNES_RETIREES.personnage, ['statut', 'entrainement']);
   const aStatut = (f, t) => valeur(f, `SELECT count(*) AS n FROM pragma_table_info('${t}') WHERE name = 'statut'`).n === 1;
   assert.equal(aStatut(REGLES, 'personnage'), false, 'les règles d’aujourd’hui n’ont plus de statut');
   // les règles d'avant 0038 : la colonne et ses contraintes (data/schema.sql d'alors ; une valeur par défaut, qu'ALTER TABLE exige pour NOT NULL) ;
@@ -567,6 +572,609 @@ test('migration 0038 : une base vivante d’avant, dont les fiches ont encore le
   } finally {
     db.close();
   }
+});
+
+// Les règles d'avant la migration 0045 (data/schema.sql d'alors) : la table personnage_progression, sans les gains en deux totaux ni la durabilité des
+// armes (la vue qui les lit d'abord : SQLite refuse de retirer une colonne qu'une vue cite ; l'entraînement en texte, que 0045 ajoutait, a été retiré
+// depuis par la migration 0062).
+const AVANT_0045 = `DROP VIEW v_personnage_controle;
+  ALTER TABLE personnage DROP COLUMN gains_sante;
+  ALTER TABLE personnage DROP COLUMN gains_chakra;
+  ALTER TABLE personnage_arme DROP COLUMN durabilite;
+  CREATE TABLE personnage_progression (
+    personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+    niveau         INTEGER NOT NULL REFERENCES niveau_global(niveau) CHECK (niveau >= 2),
+    points_sante   INTEGER NOT NULL CHECK (points_sante >= 0),
+    points_chakra  INTEGER NOT NULL CHECK (points_chakra >= 0),
+    de_choix       TEXT    CHECK (de_choix IN ('sante', 'chakra', 'les_deux')),
+    de_resultat    INTEGER CHECK (de_resultat >= 1),
+    PRIMARY KEY (personnage_id, niveau),
+    CHECK ((de_choix IS NULL) = (de_resultat IS NULL))
+  ) STRICT, WITHOUT ROWID;`;
+const COLONNES_0045 = { personnage: ['gains_sante', 'gains_chakra'], personnage_arme: ['durabilite'] };
+/** Les lignes de la section 13 sans les colonnes de la migration 0045 : ce qu'une base d'avant doit retrouver à l'identique. */
+const sans0045 = (lignes) => Object.fromEntries(Object.entries(lignes).map(([t, l]) => [t, l.map((x) => {
+  const ligne = JSON.parse(x);
+  for (const c of COLONNES_0045[t] ?? []) delete ligne[c];
+  return JSON.stringify(ligne);
+}).sort()]));
+const gainsDe = (f) => {
+  const db = lecture(f);
+  try {
+    return Object.fromEntries(db.prepare('SELECT id, gains_sante, gains_chakra FROM personnage ORDER BY id').all().map((p) => [p.id, [p.gains_sante, p.gains_chakra]]));
+  } finally {
+    db.close();
+  }
+};
+const aLaTable = (f, t) => valeur(f, "SELECT count(*) AS n FROM sqlite_master WHERE type = 'table' AND name = ?", t).n === 1;
+
+test('migration 0045 : une base vivante d’avant, avec ses gains niveau par niveau, est reprise ; chaque fiche reçoit leur somme (R73), rien d’autre ne change', () => {
+  assert.equal(TABLES_RETIREES.personnage_progression, 'progression');
+  assert.equal(aLaTable(REGLES, 'personnage_progression'), false, 'les règles d’aujourd’hui n’ont plus la table');
+  const anciennes = regles(AVANT_0045);
+  const dossier = nouveau('db');
+  const { chemin } = preparerBaseVivante({ regles: anciennes, dossier });
+  remplir(chemin);
+  const ecrire = new DatabaseSync(chemin);
+  ecrire.exec('PRAGMA foreign_keys = ON');
+  const gain = ecrire.prepare('INSERT INTO personnage_progression (personnage_id, niveau, points_sante, points_chakra, de_choix, de_resultat) VALUES (?, ?, ?, ?, ?, ?)');
+  // p1 : niveaux 2, 3, 4 (10 santé, 5 chakra) et 5 (15 santé, dé « les deux » 3) ; p2 : niveau 2 (15 santé) et 5 (15 chakra, dé chakra 7)
+  for (const n of [2, 3, 4]) gain.run('p1', n, 10, 5, null, null);
+  gain.run('p1', 5, 15, 0, 'les_deux', 3);
+  gain.run('p2', 2, 15, 0, null, null);
+  gain.run('p2', 5, 0, 15, 'chakra', 7);
+  const progression = ecrire.prepare('SELECT * FROM personnage_progression ORDER BY personnage_id, niveau').all().map((l) => ({ ...l }));
+  ecrire.close();
+  const avant = lignesVivantes(chemin);
+
+  // des règles qui ont encore la table (service et règles qui ne vont pas ensemble) : rien ne se perd sans le dire, la base reste en place
+  assert.throws(() => preparerBaseVivante({ regles: regles(`${AVANT_0045} UPDATE race SET nom = 'Humain (bis)' WHERE id = 'races/humain';`), dossier }), (e) => {
+    assert.ok(e instanceof ErreurBaseVivante, e.message);
+    assert.deepEqual(e.problemes, [
+      'personnage_progression : table retirée par les nouvelles règles (TABLES_RETIREES), mais encore dans la base des règles : ses lignes ne seraient pas reprises',
+    ]);
+    return true;
+  });
+  assert.deepEqual(lignesVivantes(chemin), avant, 'la base en place est gardée telle quelle');
+
+  const r = preparerBaseVivante({ regles: REGLES, dossier, instant: new Date('2026-10-15T08:30:00Z') });
+  assert.equal(r.refaite, true);
+  assert.deepEqual(r.fiches, [], 'rien de retiré des fiches (R42), aucune note');
+  assert.equal(r.rejeu.conflits, 0, JSON.stringify(r.rejeu));
+  // 10 × 3 + 15 + 3 = 48 et 5 × 3 + 3 = 18 (« 1d4 pour les deux » compte sur chacun) ; 15 et 15 + 7 = 22
+  assert.deepEqual(gainsDe(chemin), { p1: [48, 18], p2: [15, 22] });
+  // la même somme en JavaScript (une page restée ouverte, un fichier d'avant : sansPartiesRetirees)
+  for (const id of ['p1', 'p2']) {
+    const g = gainsDeLaProgression(progression.filter((l) => l.personnage_id === id));
+    assert.deepEqual([g.gains_sante, g.gains_chakra], gainsDe(chemin)[id], id);
+  }
+  assert.equal(aLaTable(chemin, 'personnage_progression'), false, 'la table n’est plus dans la base vivante');
+  assert.deepEqual(sans0045(lignesVivantes(chemin)), avant, 'le reste de la section 13 repris à l’identique');
+  assert.equal(valeur(r.archive, 'SELECT count(*) AS n FROM personnage_progression').n, 6, 'l’archive garde les gains niveau par niveau');
+  const db = lecture(chemin);
+  try {
+    assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
+    const aldric = lireFiche(db, 'p1');
+    assert.equal('progression' in aldric, false);
+    assert.deepEqual([aldric.gains_sante, aldric.gains_chakra, aldric.entrainements], [48, 18, []]);
+  } finally {
+    db.close();
+  }
+
+  // une reconstruction suivante (d'autres règles) garde les totaux : il n'y a plus rien à convertir
+  const suivante = preparerBaseVivante({ regles: regles("UPDATE race SET nom = 'Humain (suite)' WHERE id = 'races/humain'"), dossier });
+  assert.equal(suivante.refaite, true);
+  assert.deepEqual(gainsDe(chemin), { p1: [48, 18], p2: [15, 22] });
+});
+
+test('migration 0045 : une base vivante d’avant sans gain de niveau saisi : ses fiches reçoivent 0 et 0', () => {
+  const dossier = nouveau('db');
+  const { chemin } = preparerBaseVivante({ regles: regles(AVANT_0045), dossier });
+  remplir(chemin);
+  assert.equal(valeur(chemin, 'SELECT count(*) AS n FROM personnage_progression').n, 0);
+  const avant = lignesVivantes(chemin);
+  const r = preparerBaseVivante({ regles: REGLES, dossier });
+  assert.equal(r.refaite, true);
+  assert.deepEqual(gainsDe(chemin), { p1: [0, 0], p2: [0, 0] });
+  assert.deepEqual(sans0045(lignesVivantes(chemin)), avant);
+});
+
+// Les règles d'avant la migration 0055 (data/schema.sql d'alors) : une armure par emplacement (personnage_armure). Les colonnes de l'armure de
+// personnage et la table de la solidité des parties restent (vides : le service d'aujourd'hui les exige) ; la copie reprend ces colonnes à NULL et la
+// conversion les remplit, comme depuis une base d'avant.
+const AVANT_0055 = `CREATE TABLE personnage_armure (
+    personnage_id                TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+    emplacement_id               TEXT    NOT NULL REFERENCES armure_emplacement(id),
+    armure_id                    TEXT    NOT NULL REFERENCES armure(id),
+    amelioration_id              TEXT    REFERENCES amelioration_equipement(id),
+    armure_elementaire_id        TEXT    REFERENCES armure_elementaire(id),
+    amelioration_elementaire_id  TEXT    REFERENCES amelioration_equipement(id),
+    PRIMARY KEY (personnage_id, emplacement_id)
+  ) STRICT, WITHOUT ROWID;`;
+
+test('migration 0055 : une base vivante d’avant, une armure par emplacement, est reprise ; la fiche garde la première, une pièce devenue l’armure complète et chaque autre pièce sont notées, datées (R95)', () => {
+  assert.equal(TABLES_RETIREES.personnage_armure, 'armures');
+  assert.equal(aLaTable(REGLES, 'personnage_armure'), false, 'les règles d’aujourd’hui n’ont plus la table');
+  const lire = new DatabaseSync(REGLES, { readOnly: true });
+  const [a, b] = lire.prepare("SELECT id, nom FROM armure WHERE sorte = 'combinaison' ORDER BY ordre LIMIT 2").all().map((x) => ({ ...x }));
+  const amelioration = lire.prepare("SELECT id FROM amelioration_equipement WHERE cible = 'armure' AND niveau = 2").get().id;
+  const casque = lire.prepare("SELECT nom FROM armure_emplacement WHERE id = 'casque'").get().nom;
+  const torse = lire.prepare("SELECT nom FROM armure_emplacement WHERE id = 'torse'").get().nom;
+  lire.close();
+  const dossier = nouveau('db');
+  const { chemin } = preparerBaseVivante({ regles: regles(AVANT_0055), dossier });
+  remplir(chemin);
+  const ecrire = new DatabaseSync(chemin);
+  ecrire.exec('PRAGMA foreign_keys = ON');
+  const piece = ecrire.prepare('INSERT INTO personnage_armure (personnage_id, emplacement_id, armure_id, amelioration_id) VALUES (?, ?, ?, ?)');
+  // p1 : l'armure complète A améliorée +2, un casque B (autre armure) et un torse A +2 (la même : rien à noter) ; p2 : un torse B seul
+  piece.run('p1', 'armure-complete', a.id, amelioration);
+  piece.run('p1', 'casque', b.id, null);
+  piece.run('p1', 'torse', a.id, amelioration);
+  piece.run('p2', 'torse', b.id, null);
+  // p2 avec une classe qui porte cette armure (une fiche sans classe ne porte qu'un vêtement : R165 (6), l'armure partirait, trop lourde)
+  ecrire.prepare("INSERT INTO personnage_classe (personnage_id, rang, classe_id) VALUES ('p2', 1, 'classes/guerrier')").run();
+  ecrire.close();
+
+  const r = preparerBaseVivante({ regles: REGLES, dossier, instant: new Date('2026-10-16T18:00:00Z') });
+  assert.equal(r.refaite, true);
+  assert.equal(aLaTable(chemin, 'personnage_armure'), false, 'la table n’est plus dans la base vivante');
+  const db = lecture(chemin);
+  try {
+    assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
+    const p1 = lireFiche(db, 'p1');
+    // p2 est la fiche d'un joueur : lireFiche ne lit que les prétirés
+    const p2 = { ...db.prepare("SELECT * FROM personnage WHERE id = 'p2'").get() };
+    assert.deepEqual([p1.armure_id, p1.armure_amelioration_id, p1.armure_elementaire_id, p1.armure_amelioration_elementaire_id], [a.id, amelioration, null, null]);
+    assert.deepEqual([p2.armure_id, p2.armure_amelioration_id], [b.id, null], 'sans armure complète : la première pièce');
+    assert.equal('armures' in p1, false);
+    assert.deepEqual(p1.armure_parties, [], 'toutes les parties à leur maximum');
+    assert.equal(p1.notes, `[16/10/2026] Retrait (règles modifiées) : la pièce d’armure « ${b.nom} » (${casque}) n’est plus portée : une fiche n’a plus qu’une armure complète (son amélioration et son élément pour l’armure entière). Adaptez la fiche.`);
+    assert.equal(p1.modifie_le, '2026-10-16T18:00:00Z', 'une fiche notée est marquée modifiée');
+    assert.equal(p2.notes, `[16/10/2026] Retrait (règles modifiées) : la pièce d’armure « ${b.nom} » (${torse}) est devenue l’armure complète de la fiche : une fiche n’a plus qu’une armure complète (son amélioration et son élément pour l’armure entière). Adaptez la fiche.`,
+      'une pièce seule devient l’armure complète : la fiche le dit');
+    assert.equal(p2.modifie_le, '2026-10-16T18:00:00Z');
+  } finally {
+    db.close();
+  }
+  assert.equal(valeur(r.archive, 'SELECT count(*) AS n FROM personnage_armure').n, 4, 'l’archive garde les pièces');
+  // les fiches converties sont listées comme celles de la décision R42 (vivante.json, /api/etat) ; le nom d'une fiche de joueur ne sort pas
+  assert.deepEqual(r.fiches.map((f) => f.retraits), [[`la pièce d’armure « ${b.nom} » (${casque})`], [`la pièce d’armure « ${b.nom} » (${torse})`]]);
+  assert.match(r.fiches[1].fiche, /^fiche de joueur n° \d+$/);
+  assert.deepEqual(lireEtat(dossier).retraits, { le: '2026-10-16T18:00:00Z', fiches: r.fiches });
+  // une reconstruction suivante ne convertit plus rien : l'armure et la note restent telles quelles
+  const suivante = preparerBaseVivante({ regles: regles("UPDATE race SET nom = 'Humain (suite)' WHERE id = 'races/humain'"), dossier });
+  assert.equal(suivante.refaite, true);
+  assert.equal(valeur(chemin, "SELECT armure_id FROM personnage WHERE id = 'p1'").armure_id, a.id);
+  assert.equal(valeur(chemin, "SELECT count(*) AS n FROM personnage WHERE notes LIKE '%pièce d’armure%'").n, 2, 'p1 et p2, une fois chacune');
+  assert.equal(valeur(chemin, "SELECT notes FROM personnage WHERE id = 'p2'").notes.split('\n').length, 1, 'rien ajouté à la reconstruction suivante');
+});
+
+// Les règles d'avant la migration 0060 (data/schema.sql d'alors) : les matériaux du bouclier (personnage_bouclier_materiau) et les accessoires à huit
+// emplacements, avec un nom et un effet hors table. Les colonnes du bouclier de personnage restent (vides : le service d'aujourd'hui les exige).
+const AVANT_0060 = `CREATE TABLE personnage_bouclier_materiau (
+    personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+    rang           INTEGER NOT NULL CHECK (rang BETWEEN 1 AND 3),
+    materiau_id    TEXT    NOT NULL REFERENCES materiau_bouclier(ressource_id),
+    quantite       INTEGER NOT NULL CHECK (quantite >= 1),
+    PRIMARY KEY (personnage_id, rang),
+    UNIQUE (personnage_id, materiau_id)
+  ) STRICT, WITHOUT ROWID;
+  DROP TABLE personnage_accessoire;
+  CREATE TABLE personnage_accessoire (
+    personnage_id       TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+    emplacement         TEXT    NOT NULL CHECK (emplacement IN ('chef', 'collier', 'bracelet-1', 'bracelet-2', 'bague-1', 'bague-2', 'ceinture', 'autre')),
+    nom                 TEXT,
+    accessoire_effet_id TEXT    REFERENCES accessoire_effet(id),
+    valeur              INTEGER,
+    texte               TEXT,
+    maudit              INTEGER NOT NULL CHECK (maudit IN (0, 1)),
+    competence_id       TEXT    REFERENCES competence(id),
+    arme_famille_id     TEXT    REFERENCES arme_famille(id),
+    PRIMARY KEY (personnage_id, emplacement),
+    CHECK (accessoire_effet_id IS NOT NULL OR texte IS NOT NULL)
+  ) STRICT, WITHOUT ROWID;`;
+
+test('migration 0060 : une base vivante d’avant est reprise ; le bouclier garde son premier matériau (R96), les accessoires de la Ceinture, d’« Autre » ou hors table sont écartés, un nom perdu ; chaque perte notée, datée (R97)', () => {
+  assert.equal(TABLES_RETIREES.personnage_bouclier_materiau, 'bouclier_materiaux');
+  assert.deepEqual(COLONNES_RETIREES.personnage_accessoire, ['nom', 'texte']);
+  assert.equal(aLaTable(REGLES, 'personnage_bouclier_materiau'), false, 'les règles d’aujourd’hui n’ont plus la table');
+  const lire = new DatabaseSync(REGLES, { readOnly: true });
+  const nomDe = (id) => lire.prepare('SELECT nom FROM ressource WHERE id = ?').get(id).nom;
+  const [m1, m2] = lire.prepare('SELECT ressource_id FROM materiau_bouclier ORDER BY ordre LIMIT 2').all().map((x) => x.ressource_id);
+  const [e1, e2] = lire.prepare("SELECT id, libelle FROM accessoire_effet WHERE propriete_id = 'attributs' AND libelle IS NOT NULL ORDER BY ordre LIMIT 2").all().map((x) => ({ ...x }));
+  const [n1, n2] = [nomDe(m1), nomDe(m2)];
+  lire.close();
+  const dossier = nouveau('db');
+  const { chemin } = preparerBaseVivante({ regles: regles(AVANT_0060), dossier });
+  remplir(chemin);
+  const ecrire = new DatabaseSync(chemin);
+  ecrire.exec('PRAGMA foreign_keys = ON');
+  ecrire.exec("UPDATE personnage SET bouclier_classe_id = 'targe' WHERE id = 'p1'");
+  const materiau = ecrire.prepare('INSERT INTO personnage_bouclier_materiau (personnage_id, rang, materiau_id, quantite) VALUES (?, ?, ?, ?)');
+  materiau.run('p1', 2, m2, 1);
+  materiau.run('p1', 1, m1, 1);
+  const accessoire = ecrire.prepare('INSERT INTO personnage_accessoire (personnage_id, emplacement, nom, accessoire_effet_id, texte, maudit) VALUES (?, ?, ?, ?, ?, 0)');
+  accessoire.run('p1', 'chef', null, e1.id, null);
+  accessoire.run('p1', 'collier', 'Collier du vent', e2.id, null);
+  accessoire.run('p1', 'ceinture', null, e1.id, null);
+  accessoire.run('p1', 'bague-1', null, null, 'Brille la nuit');
+  ecrire.close();
+
+  const r = preparerBaseVivante({ regles: REGLES, dossier, instant: new Date('2026-10-17T18:00:00Z') });
+  assert.equal(r.refaite, true);
+  assert.equal(aLaTable(chemin, 'personnage_bouclier_materiau'), false, 'la table n’est plus dans la base vivante');
+  const db = lecture(chemin);
+  try {
+    assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
+    const p1 = lireFiche(db, 'p1');
+    assert.deepEqual([p1.bouclier_classe_id, p1.bouclier_materiau_id, p1.bouclier_amelioration_id, p1.bouclier_solidite], ['targe', m1, null, null]);
+    assert.equal('bouclier_materiaux' in p1, false);
+    assert.deepEqual(p1.accessoires.map((a) => [a.emplacement, a.accessoire_effet_id, 'nom' in a, 'texte' in a]), [['chef', e1.id, false, false], ['collier', e2.id, false, false]]);
+    // dans l'ordre des retraits (ordreDesRetraits : par nature, le matériau avant les accessoires, puis par nom ou emplacement)
+    assert.deepEqual(p1.notes.split('\n'), [
+      `[17/10/2026] Retrait (règles modifiées) : le matériau de bouclier « ${n2} » (×1) n’est plus dans le bouclier : un bouclier n’a plus qu’une forme et une matière (« ${n1} », son premier matériau). Adaptez la fiche.`,
+      `[17/10/2026] Retrait (règles modifiées) : l’accessoire de l’emplacement Bague 1 (effet hors table « Brille la nuit ») n’est plus porté : la fiche n’a plus d’emplacement Ceinture ni Autre, et un accessoire a toujours un effet de la table des accessoires. Adaptez la fiche.`,
+      `[17/10/2026] Retrait (règles modifiées) : l’accessoire de l’emplacement Ceinture (effet « ${e1.libelle} ») n’est plus porté : la fiche n’a plus d’emplacement Ceinture ni Autre, et un accessoire a toujours un effet de la table des accessoires. Adaptez la fiche.`,
+      `[17/10/2026] Retrait (règles modifiées) : l’accessoire « Collier du vent » (Collier, effet « ${e2.libelle} ») reste porté avec son effet : la fiche ne garde plus le nom d’un accessoire ni son effet hors table.`
+    ]);
+    assert.equal(p1.modifie_le, '2026-10-17T18:00:00Z', 'une fiche notée est marquée modifiée');
+  } finally {
+    db.close();
+  }
+  assert.equal(valeur(r.archive, 'SELECT count(*) AS n FROM personnage_bouclier_materiau').n, 2, 'l’archive garde les matériaux');
+  assert.equal(valeur(r.archive, 'SELECT count(*) AS n FROM personnage_accessoire').n, 4, 'et les accessoires d’avant');
+  // une reconstruction suivante ne convertit plus rien
+  const suivante = preparerBaseVivante({ regles: regles("UPDATE race SET nom = 'Humain (suite)' WHERE id = 'races/humain'"), dossier });
+  assert.equal(suivante.refaite, true);
+  assert.equal(valeur(chemin, "SELECT notes FROM personnage WHERE id = 'p1'").notes.split('\n').length, 4, 'rien ajouté à la reconstruction suivante');
+});
+
+// Une base vivante d'avant la migration 0062 (écrite par le service d'alors) : l'entraînement en texte (personnage.entrainement, R71) et l'acquis saisi
+// des compétences (personnage_competence.acquis), sans les tables de l'entraînement ni des choix d'acquis, ni les règles de la vue qui les lisent. Le
+// service d'aujourd'hui refuse des règles sans ces tables : la base vivante est faite avec les règles d'aujourd'hui, puis ramenée à sa forme d'avant.
+function enBaseDAvant0062(chemin) {
+  const db = new DatabaseSync(chemin);
+  try {
+    const vue = db.prepare("SELECT sql FROM sqlite_master WHERE name = 'v_personnage_controle'").get().sql;
+    const vueDAvant = vue.replace(/\n  UNION ALL\n  -- Entraînement \(décision R104\)[\s\S]*?'entrainement\.bonus_max_pct'\)/, '');
+    assert.notEqual(vueDAvant, vue);
+    db.exec(`DROP VIEW v_personnage_controle; ${vueDAvant};
+      DROP TABLE personnage_entrainement; DROP TABLE personnage_acquis_choix;
+      ALTER TABLE personnage ADD COLUMN entrainement TEXT;
+      ALTER TABLE personnage_competence ADD COLUMN acquis INTEGER NOT NULL DEFAULT 0 CHECK (acquis >= 0);`);
+  } finally {
+    db.close();
+  }
+}
+
+test('migration 0062 : une base vivante d’avant est reprise ; l’entraînement en texte devient des lignes de texte, l’acquis saisi n’est plus repris et chaque fiche le note, daté (R104)', () => {
+  assert.deepEqual(COLONNES_RETIREES.personnage_competence, ['acquis']);
+  const dossier = nouveau('db');
+  const { chemin } = preparerBaseVivante({ regles: regles(), dossier });
+  remplir(chemin);
+  enBaseDAvant0062(chemin);
+  assert.equal(aLaTable(chemin, 'personnage_entrainement'), false);
+  const ecrire = new DatabaseSync(chemin);
+  ecrire.exec('PRAGMA foreign_keys = ON');
+  ecrire.exec(`UPDATE personnage SET entrainement = 'Arc +5 % (entraîneur de Valbrume)\n\n  Livre lu : Boule de feu  ' WHERE id = 'p1';
+    UPDATE personnage SET entrainement = '  ' WHERE id = 'p2';
+    INSERT INTO personnage_competence (personnage_id, competence_id, naturel, acquis) VALUES ('p1', 'arc', 10, 7), ('p1', 'calme', 0, 0), ('p2', 'magie', 5, 3);`);
+  ecrire.close();
+
+  // les règles changent (une livraison) : la base est refaite
+  const r = preparerBaseVivante({ regles: regles("UPDATE race SET nom = 'Humain (0062)' WHERE id = 'races/humain'"), dossier, instant: new Date('2026-10-18T09:00:00Z') });
+  assert.equal(r.refaite, true);
+  const aLaColonne = (f, t, c) => valeur(f, `SELECT count(*) AS n FROM pragma_table_info('${t}') WHERE name = '${c}'`).n === 1;
+  assert.equal(aLaColonne(chemin, 'personnage', 'entrainement') || aLaColonne(chemin, 'personnage_competence', 'acquis'), false, 'les colonnes ne sont plus dans la base vivante');
+  const db = lecture(chemin);
+  try {
+    assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
+    // (p2, fiche de joueur, que lireFiche ne rend pas : ses lignes lues directement)
+    const p1 = lireFiche(db, 'p1');
+    const p2 = { ...db.prepare("SELECT notes, modifie_le FROM personnage WHERE id = 'p2'").get(),
+      entrainements: db.prepare("SELECT * FROM personnage_entrainement WHERE personnage_id = 'p2'").all() };
+    assert.deepEqual(p1.entrainements, [
+      { rang: 1, competence_id: null, valeur: null, texte: 'Arc +5 % (entraîneur de Valbrume)' }, { rang: 2, competence_id: null, valeur: null, texte: 'Livre lu : Boule de feu' },
+    ]);
+    assert.deepEqual(p2.entrainements, [], 'un texte vide : rien');
+    assert.deepEqual(p1.competences, [{ competence_id: 'arc', naturel: 10 }, { competence_id: 'calme', naturel: 0 }]);
+    assert.equal(p1.notes, '[18/10/2026] Retrait (règles modifiées) : l’acquis saisi en Arc (7) n’est plus saisi : l’Acquis se calcule (entraînement, dons, métier, accessoires). Notez l’entraînement dans ses lignes.');
+    assert.equal(p2.notes, '[18/10/2026] Retrait (règles modifiées) : l’acquis saisi en Magie (3) n’est plus saisi : l’Acquis se calcule (entraînement, dons, métier, accessoires). Notez l’entraînement dans ses lignes.');
+    assert.deepEqual([p1.modifie_le, p2.modifie_le], ['2026-10-18T09:00:00Z', '2026-10-18T09:00:00Z'], 'une fiche notée est marquée modifiée');
+  } finally {
+    db.close();
+  }
+  assert.equal(valeur(r.archive, "SELECT group_concat(competence_id || '=' || acquis, ' ') AS s FROM (SELECT * FROM personnage_competence ORDER BY personnage_id, competence_id)").s,
+    'arc=7 calme=0 magie=3', 'l’archive garde l’acquis saisi');
+  // une reconstruction suivante ne convertit plus rien
+  const suivante = preparerBaseVivante({ regles: regles("UPDATE race SET nom = 'Humain (suite)' WHERE id = 'races/humain'"), dossier });
+  assert.equal(suivante.refaite, true);
+  assert.equal(valeur(chemin, "SELECT notes FROM personnage WHERE id = 'p1'").notes.split('\n').length, 1, 'rien ajouté à la reconstruction suivante');
+  assert.equal(valeur(chemin, "SELECT count(*) AS n FROM personnage_entrainement WHERE personnage_id = 'p1'").n, 2);
+});
+
+/** La base vivante comme avant la migration 0066 : les NM du MJ sort par sort (personnage_sort.nm_cadeau, décision R26), pas de personnage.nm_mj. */
+function enBaseDAvant0066(chemin) {
+  const db = new DatabaseSync(chemin);
+  try {
+    const vue = db.prepare("SELECT sql FROM sqlite_master WHERE name = 'v_personnage_controle'").get().sql;
+    const vueDAvant = vue.replaceAll(" || CASE WHEN p.nm_mj > 0 THEN ' + ' || p.nm_mj || ' du MJ' ELSE '' END", '').replaceAll(' + p.nm_mj', '')
+      .replaceAll('ps.niveau_maitrise - ps.nm_livre', 'ps.niveau_maitrise - ps.nm_livre - ps.nm_cadeau');
+    assert.ok(!vueDAvant.includes('p.nm_mj'));
+    db.exec(`DROP VIEW v_personnage_controle;
+      CREATE TABLE personnage_sort_avant (
+        personnage_id    TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+        sort_id          TEXT    NOT NULL REFERENCES sort(id),
+        rang             INTEGER NOT NULL CHECK (rang >= 1),
+        niveau_maitrise  INTEGER NOT NULL CHECK (niveau_maitrise >= 0),
+        nm_livre         INTEGER NOT NULL DEFAULT 0 CHECK (nm_livre IN (0, 1)),
+        nm_cadeau        INTEGER NOT NULL DEFAULT 0 CHECK (nm_cadeau >= 0 AND nm_livre + nm_cadeau <= niveau_maitrise),
+        PRIMARY KEY (personnage_id, sort_id),
+        UNIQUE (personnage_id, rang)
+      ) STRICT, WITHOUT ROWID;
+      INSERT INTO personnage_sort_avant (personnage_id, sort_id, rang, niveau_maitrise, nm_livre) SELECT personnage_id, sort_id, rang, niveau_maitrise, nm_livre FROM personnage_sort;
+      DROP TABLE personnage_sort;
+      ALTER TABLE personnage_sort_avant RENAME TO personnage_sort;
+      CREATE INDEX personnage_sort_sort ON personnage_sort (sort_id);
+      ALTER TABLE personnage DROP COLUMN nm_mj;
+      ${vueDAvant};`);
+  } finally {
+    db.close();
+  }
+}
+
+test('migration 0066 : une base vivante d’avant est reprise ; les NM du MJ de chaque sort deviennent ceux de la fiche, leur somme, et le NM de chaque sort ne change pas (R118)', () => {
+  assert.deepEqual(COLONNES_RETIREES.personnage_sort, ['nm_cadeau']);
+  const dossier = nouveau('db');
+  const { chemin } = preparerBaseVivante({ regles: regles(), dossier });
+  remplir(chemin);
+  enBaseDAvant0066(chemin);
+  const deuxSorts = valeur(REGLES, "SELECT group_concat(id, '|') AS ids FROM (SELECT id FROM sort WHERE magie_id = 'magies/magie-du-feu' AND id <> ? ORDER BY id LIMIT 2)", UN_SORT_DE_FEU).ids.split('|');
+  const ecrire = new DatabaseSync(chemin);
+  ecrire.exec('PRAGMA foreign_keys = ON');
+  ecrire.prepare("UPDATE personnage_sort SET niveau_maitrise = 3, nm_livre = 1, nm_cadeau = 1 WHERE personnage_id = 'p1'").run();
+  ecrire.prepare("INSERT INTO personnage_sort (personnage_id, sort_id, rang, niveau_maitrise, nm_livre, nm_cadeau) VALUES ('p1', ?, 2, 2, 0, 2), ('p2', ?, 1, 1, 0, 0)")
+    .run(deuxSorts[0], deuxSorts[1]);
+  ecrire.close();
+
+  // les règles changent (une livraison) : la base est refaite
+  const r = preparerBaseVivante({ regles: regles("UPDATE race SET nom = 'Humain (0066)' WHERE id = 'races/humain'"), dossier, instant: new Date('2026-10-18T09:00:00Z') });
+  assert.equal(r.refaite, true);
+  assert.equal(valeur(chemin, "SELECT count(*) AS n FROM pragma_table_info('personnage_sort') WHERE name = 'nm_cadeau'").n, 0, 'la colonne n’est plus dans la base vivante');
+  const db = lecture(chemin);
+  try {
+    assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
+    const p1 = lireFiche(db, 'p1');
+    assert.equal(p1.nm_mj, 3, '1 + 2 NM du MJ');
+    assert.deepEqual(p1.sorts.map((x) => [x.sort_id, x.niveau_maitrise, x.nm_livre]), [[UN_SORT_DE_FEU, 3, 1], [deuxSorts[0], 2, 0]], 'le NM de chaque sort ne change pas');
+    assert.ok(p1.sorts.every((x) => !('nm_cadeau' in x)));
+    const p2 = db.prepare("SELECT nm_mj, notes, modifie_le FROM personnage WHERE id = 'p2'").get();
+    assert.deepEqual({ ...p2 }, { nm_mj: 0, notes: null, modifie_le: INSTANT }, 'rien du MJ : 0 ; rien n’est noté');
+    assert.deepEqual([p1.notes, p1.modifie_le], [null, INSTANT], 'une conversion sans perte : ni note ni modification');
+  } finally {
+    db.close();
+  }
+  assert.equal(valeur(r.archive, "SELECT sum(nm_cadeau) AS n FROM personnage_sort").n, 3, 'l’archive garde les NM du MJ sort par sort');
+  // une reconstruction suivante ne convertit plus rien
+  const suivante = preparerBaseVivante({ regles: regles("UPDATE race SET nom = 'Humain (suite)' WHERE id = 'races/humain'"), dossier });
+  assert.equal(suivante.refaite, true);
+  assert.equal(valeur(chemin, "SELECT nm_mj FROM personnage WHERE id = 'p1'").nm_mj, 3);
+});
+
+/**
+ * La base vivante comme avant la migration 0076 : les dés par famille (personnage_maitrise_arme) et l'arme choisie d'un choix d'acquis
+ * (personnage_acquis_choix.arme_famille_id, R119), sans personnage_maitrise_choix ni les vues qui la lisent (les vues d'avant n'importent pas ici : la
+ * reconstruction ne lit que les tables de l'ancienne base).
+ */
+function enBaseDAvant0076(chemin) {
+  const db = new DatabaseSync(chemin);
+  try {
+    db.exec(`DROP VIEW v_personnage_controle; DROP VIEW v_personnage_maitrise_arme; DROP VIEW v_personnage_maitrise_part;
+      DROP TABLE personnage_maitrise_choix;
+      CREATE TABLE personnage_maitrise_arme (
+        personnage_id   TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+        arme_famille_id TEXT    NOT NULL REFERENCES arme_famille(id),
+        des             INTEGER NOT NULL CHECK (des BETWEEN 1 AND 5),
+        PRIMARY KEY (personnage_id, arme_famille_id)
+      ) STRICT, WITHOUT ROWID;
+      CREATE TABLE personnage_acquis_choix_avant (
+        personnage_id   TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+        source          TEXT    NOT NULL CHECK (length(source) > 0),
+        rang            INTEGER NOT NULL CHECK (rang >= 1),
+        competence_id   TEXT    NOT NULL REFERENCES competence(id),
+        valeur          INTEGER CHECK (valeur >= 1),
+        arme_famille_id TEXT    REFERENCES arme_famille(id) CHECK (arme_famille_id IS NULL OR valeur IS NULL),
+        PRIMARY KEY (personnage_id, source, rang, competence_id)
+      ) STRICT, WITHOUT ROWID;
+      INSERT INTO personnage_acquis_choix_avant (personnage_id, source, rang, competence_id, valeur) SELECT personnage_id, source, rang, competence_id, valeur FROM personnage_acquis_choix;
+      DROP TABLE personnage_acquis_choix;
+      ALTER TABLE personnage_acquis_choix_avant RENAME TO personnage_acquis_choix;
+      CREATE INDEX personnage_acquis_choix_arme ON personnage_acquis_choix (arme_famille_id);`);
+  } finally {
+    db.close();
+  }
+}
+
+test('migration 0076 : une base vivante d’avant est reprise ; les anciens dés et l’arme choisie notés en une ligne datée, aucun choix posé, la compétence du choix d’acquis gardée (R153, R152)', () => {
+  assert.equal(TABLES_RETIREES.personnage_maitrise_arme, 'maitrises_armes');
+  assert.deepEqual(COLONNES_RETIREES.personnage_acquis_choix, ['arme_famille_id']);
+  const dossier = nouveau('db');
+  const { chemin } = preparerBaseVivante({ regles: regles(), dossier });
+  remplir(chemin);
+  enBaseDAvant0076(chemin);
+  const ecrire = new DatabaseSync(chemin);
+  ecrire.exec(`PRAGMA foreign_keys = ON;
+    UPDATE personnage_classe SET classe_id = 'classes/tueur', specialite_id = 'classes/tueur#specialite:fletrisseur' WHERE personnage_id = 'p1';
+    UPDATE personnage SET notes = 'Mes notes' WHERE id = 'p1';
+    INSERT INTO personnage_maitrise_arme (personnage_id, arme_famille_id, des) VALUES ('p1', 'arc', 2), ('p1', 'epees', 3), ('p1', 'pugilat', 2);
+    INSERT INTO personnage_acquis_choix (personnage_id, source, rang, competence_id, valeur, arme_famille_id)
+      VALUES ('p1', 'capacites/tueur-fletrisseur', 1, 'arme-legere', NULL, 'epees');`);
+  ecrire.close();
+
+  // les règles changent (une livraison) : la base est refaite, rien ne bloque
+  const r = preparerBaseVivante({ regles: regles("UPDATE race SET nom = 'Humain (0076)' WHERE id = 'races/humain'"), dossier, instant: new Date('2026-10-22T09:00:00Z') });
+  assert.equal(r.refaite, true);
+  assert.equal(aLaTable(chemin, 'personnage_maitrise_arme'), false, 'la table n’est plus dans la base vivante');
+  assert.equal(valeur(chemin, "SELECT count(*) AS n FROM pragma_table_info('personnage_acquis_choix') WHERE name = 'arme_famille_id'").n, 0, 'ni la colonne');
+  const ligne = 'Maîtrises d\'armes avant la refonte (2026-10-22) : ÉPÉES 3D10, PUGILAT 2D6/2D8/2D10, ARC 2D8 ; arme choisie : Flétrisseur (Tueur) ÉPÉES';
+  const db = lecture(chemin);
+  try {
+    assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
+    const p1 = lireFiche(db, 'p1');
+    assert.equal(p1.notes, `Mes notes\n${ligne}`, 'une ligne datée à la fin des notes, les familles dans l’ordre des bandeaux');
+    assert.equal(p1.modifie_le, '2026-10-22T09:00:00Z');
+    assert.deepEqual(p1.maitrise_choix, [], 'aucun choix posé (R153)');
+    assert.ok(!('maitrises_armes' in p1));
+    assert.deepEqual(p1.acquis_choix, [{ source: 'capacites/tueur-fletrisseur', rang: 1, competence_id: 'arme-legere', valeur: null }], 'la compétence du choix reste (R152)');
+    // les familles imposées comptent d'emblée, les choix restent à faire : la base le signale (maitrise_a_choisir)
+    assert.ok(db.prepare("SELECT 1 FROM v_personnage_controle WHERE personnage_id = 'p1' AND regle = 'maitrise_a_choisir' AND detail = 'classes/tueur#maitrise-arme:1 = 1'").get());
+    const p2 = db.prepare("SELECT notes, modifie_le FROM personnage WHERE id = 'p2'").get();
+    assert.deepEqual({ ...p2 }, { notes: null, modifie_le: INSTANT }, 'une fiche sans maîtrise : pas de ligne');
+  } finally {
+    db.close();
+  }
+  assert.deepEqual(r.fiches, [{ fiche: 'Aldric', retraits: [
+    'les maîtrises d’armes d’avant la refonte (ÉPÉES 3D10, PUGILAT 2D6/2D8/2D10, ARC 2D8 ; arme choisie : Flétrisseur (Tueur) ÉPÉES)',
+  ] }], 'listée dans /api/etat avec les retraits');
+  assert.equal(valeur(r.archive, 'SELECT count(*) AS n FROM personnage_maitrise_arme').n, 3, 'l’archive garde les anciens dés');
+  // une reconstruction suivante ne note rien de plus
+  const suivante = preparerBaseVivante({ regles: regles("UPDATE race SET nom = 'Humain (suite)' WHERE id = 'races/humain'"), dossier });
+  assert.equal(suivante.refaite, true);
+  assert.equal(valeur(chemin, "SELECT notes FROM personnage WHERE id = 'p1'").notes, `Mes notes\n${ligne}`);
+});
+
+test('migration 0076 : une base d’avant sans dés, dont une fiche n’a qu’une arme choisie (R119) : la ligne la note seule, une seule fois (R153)', () => {
+  const dossier = nouveau('db');
+  const { chemin } = preparerBaseVivante({ regles: regles(), dossier });
+  remplir(chemin);
+  enBaseDAvant0076(chemin);
+  const ecrire = new DatabaseSync(chemin);
+  ecrire.exec(`PRAGMA foreign_keys = ON;
+    INSERT INTO personnage_acquis_choix (personnage_id, source, rang, competence_id, valeur, arme_famille_id)
+      VALUES ('p1', 'capacites/tueur-fletrisseur', 1, 'arme-legere', NULL, 'epees'), ('p2', 'capacites/tueur-fletrisseur', 1, 'arbalete', NULL, 'arbalete');`);
+  ecrire.close();
+  const r = preparerBaseVivante({ regles: regles("UPDATE race SET nom = 'Humain (0076)' WHERE id = 'races/humain'"), dossier, instant: new Date('2026-10-22T09:00:00Z') });
+  assert.equal(r.refaite, true);
+  assert.equal(valeur(chemin, "SELECT notes FROM personnage WHERE id = 'p1'").notes,
+    'Maîtrises d\'armes avant la refonte (2026-10-22) : arme choisie : Flétrisseur (Tueur) ÉPÉES');
+  assert.equal(valeur(chemin, "SELECT notes FROM personnage WHERE id = 'p2'").notes,
+    'Maîtrises d\'armes avant la refonte (2026-10-22) : arme choisie : Flétrisseur (Tueur) ARBALÈTE');
+  assert.equal(valeur(chemin, 'SELECT count(*) AS n FROM personnage_acquis_choix').n, 2, 'les choix d’acquis recopiés');
+  assert.equal(valeur(chemin, 'SELECT count(*) AS n FROM personnage_maitrise_choix').n, 0);
+});
+
+/**
+ * La base vivante comme avant la migration 0081 : personnage_arme d'alors (une arme du catalogue obligatoire, l'élément posé dessus et l'amélioration de
+ * l'élément, data/schema.sql d'avant), sans la vue des contrôles qui la lit (la reconstruction ne lit que les tables de l'ancienne base). Les anciennes
+ * lignes d'amélioration de pièce élémentaire d'arme n'y sont plus (les règles copiées sont celles d'aujourd'hui) : leur niveau se lit dans leur identifiant.
+ */
+function enBaseDAvant0081(chemin) {
+  const db = new DatabaseSync(chemin);
+  try {
+    db.exec(`DROP VIEW v_personnage_controle; DROP TABLE personnage_arme;
+      CREATE TABLE personnage_arme (
+        personnage_id                TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+        rang                         INTEGER NOT NULL CHECK (rang IN (1, 2)),
+        arme_id                      TEXT    NOT NULL REFERENCES arme(id),
+        materiau_id                  TEXT    REFERENCES materiau_arme(ressource_id),
+        amelioration_id              TEXT    REFERENCES amelioration_equipement(id),
+        arme_elementaire_id          TEXT    REFERENCES arme_elementaire(id),
+        amelioration_elementaire_id  TEXT    REFERENCES amelioration_equipement(id),
+        effet_en_plus                TEXT,
+        durabilite                   INTEGER CHECK (durabilite >= 0),
+        PRIMARY KEY (personnage_id, rang)
+      ) STRICT, WITHOUT ROWID;`);
+  } finally {
+    db.close();
+  }
+}
+
+test('migration 0081 : une base vivante d’avant est reprise ; un élément du type de l’arme la transforme (niveau de l’ancienne amélioration de l’élément, durabilité bornée), un autre type est retiré, une amélioration d’élément seule aussi ; chaque perte notée, datée (R167)', () => {
+  assert.deepEqual(COLONNES_RETIREES.personnage_arme, ['amelioration_elementaire_id']);
+  const dossier = nouveau('db');
+  const { chemin } = preparerBaseVivante({ regles: regles(), dossier });
+  remplir(chemin);
+  enBaseDAvant0081(chemin);
+  const ARC = 'ressources/armes#arme:arc:arc';
+  const EPEE = 'ressources/armes#arme:epees:epee-longue';
+  const ARC_DE_SANG = 'ressources/pieces-elementaires#arme-elementaire:arc:sang';
+  const TITANE = 'ressources/armures#materiau:titane';
+  const element = (n) => `ressources/pieces-elementaires#amelioration:arme-elementaire:${n}`;
+  const amelioration = (n) => `ressources/armes#amelioration:arme:${n}`;
+  const nom = (table, id) => valeur(REGLES, `SELECT nom FROM ${table} WHERE id = ?`, id).nom;
+  const ecrire = new DatabaseSync(chemin, { enableForeignKeyConstraints: false }); // les anciennes améliorations de pièce élémentaire n'existent plus
+  const inserer = ecrire.prepare(`INSERT INTO personnage_arme (personnage_id, rang, arme_id, materiau_id, amelioration_id, arme_elementaire_id, amelioration_elementaire_id,
+    effet_en_plus, durabilite) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+  ecrire.exec("UPDATE personnage SET notes = 'Mes notes' WHERE id = 'p1'");
+  // p1 : un arc de titane +3 porteur de l'élément Sang +5 (du type de l'arme), durabilité 9 ; une épée longue porteuse d'un élément d'arc (un autre type)
+  inserer.run('p1', 1, ARC, TITANE, amelioration(3), ARC_DE_SANG, element(5), 'Gravé', 9);
+  inserer.run('p1', 2, EPEE, null, amelioration(2), ARC_DE_SANG, element(2), null, 1);
+  // p2 : une amélioration d'élément sans élément ; un arc porteur de l'élément Sang sans amélioration de l'élément, durabilité 2
+  inserer.run('p2', 1, EPEE, TITANE, null, null, element(4), null, null);
+  inserer.run('p2', 2, ARC, null, amelioration(1), ARC_DE_SANG, null, null, 2);
+  ecrire.close();
+
+  const r = preparerBaseVivante({ regles: regles("UPDATE race SET nom = 'Humain (0081)' WHERE id = 'races/humain'"), dossier, instant: new Date('2026-10-23T09:00:00Z') });
+  assert.equal(r.refaite, true);
+  assert.equal(valeur(chemin, "SELECT count(*) AS n FROM pragma_table_info('personnage_arme') WHERE name = 'amelioration_elementaire_id'").n, 0, 'la colonne n’est plus là');
+  const db = lecture(chemin);
+  try {
+    assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
+    const armes = db.prepare('SELECT * FROM personnage_arme ORDER BY personnage_id, rang').all().map((l) => ({ ...l }));
+    assert.deepEqual(armes, [
+      // devenue l'arme élémentaire, au niveau de l'ancienne amélioration de l'élément (+5) ; durabilité bornée à 4 + 1 cran = 5, donc NULL (au maximum)
+      { personnage_id: 'p1', rang: 1, arme_id: null, materiau_id: null, amelioration_id: amelioration(5), arme_elementaire_id: ARC_DE_SANG, effet_en_plus: 'Gravé', durabilite: null, type_degats_choisi: null },
+      // un autre type : l'élément part, l'arme garde son amélioration et sa durabilité
+      { personnage_id: 'p1', rang: 2, arme_id: EPEE, materiau_id: null, amelioration_id: amelioration(2), arme_elementaire_id: null, effet_en_plus: null, durabilite: 1, type_degats_choisi: null },
+      { personnage_id: 'p2', rang: 1, arme_id: EPEE, materiau_id: TITANE, amelioration_id: null, arme_elementaire_id: null, effet_en_plus: null, durabilite: null, type_degats_choisi: null },
+      // sans amélioration de l'élément : aucun niveau ; la durabilité 2 reste (maximum 4)
+      { personnage_id: 'p2', rang: 2, arme_id: null, materiau_id: null, amelioration_id: null, arme_elementaire_id: ARC_DE_SANG, effet_en_plus: null, durabilite: 2, type_degats_choisi: null },
+    ]);
+    const [arc, epee, sang, titane] = [nom('arme', ARC), nom('arme', EPEE), nom('arme_elementaire', ARC_DE_SANG), nom('ressource', TITANE)];
+    const transforme = 'une pièce élémentaire transforme l’arme, qui perd toutes ses caractéristiques d’avant. Adaptez la fiche.';
+    const p1 = lireFiche(db, 'p1');
+    assert.equal(p1.notes, ['Mes notes',
+      `[23/10/2026] Retrait (règles modifiées) : l’arme « ${arc} » (ARC, arme 1, matériau « ${titane} », amélioration +3) est devenue l’arme élémentaire « ${sang} », avec l’amélioration +5 de son élément : ${transforme}`,
+      `[23/10/2026] Retrait (règles modifiées) : l’élément « ${sang} » de l’arme « ${epee} » (ÉPÉES, arme 2, amélioration de l’élément +2) n’est plus posé : une pièce élémentaire ne fait d’une arme que l’arme élémentaire du type de sa famille ; l’arme garde son matériau et son amélioration. Adaptez la fiche.`,
+    ].join('\n'));
+    assert.equal(p1.modifie_le, '2026-10-23T09:00:00Z');
+    const p2 = db.prepare("SELECT notes FROM personnage WHERE id = 'p2'").get();
+    // (dans l'ordre des retraits : nature, puis nom ; l'amélioration de l'arc d'origine notée)
+    assert.equal(p2.notes, [
+      `[23/10/2026] Retrait (règles modifiées) : l’arme « ${arc} » (ARC, arme 2, amélioration +1) est devenue l’arme élémentaire « ${sang} », sans amélioration : ${transforme}`,
+      `[23/10/2026] Retrait (règles modifiées) : l’amélioration de l’élément +4 de l’arme « ${epee} » (ÉPÉES, arme 1) est retirée : l’arme n’a pas d’élément, et une arme n’a plus qu’un niveau d’amélioration (le sien est gardé). Adaptez la fiche.`,
+    ].join('\n'), 'une fiche de joueur aussi');
+    // une arme élémentaire du Sang chez un personnage du Feu : signalée par la base (R167), jamais refusée
+    assert.ok(db.prepare("SELECT 1 FROM v_personnage_controle WHERE personnage_id = 'p1' AND regle = 'arme_elementaire_hors_magie' AND detail = ?").get(`1 : ${ARC_DE_SANG}`));
+  } finally {
+    db.close();
+  }
+  assert.deepEqual(r.fiches.map((f) => [f.fiche, f.retraits.length]), [['Aldric', 2], ['fiche de joueur n° 1', 2]], 'listées dans /api/etat avec les retraits');
+  assert.equal(valeur(r.archive, 'SELECT count(*) AS n FROM personnage_arme WHERE amelioration_elementaire_id IS NOT NULL').n, 3, 'l’archive garde les armes d’avant');
+  // une reconstruction suivante ne note rien de plus
+  const notes = valeur(chemin, "SELECT notes FROM personnage WHERE id = 'p1'").notes;
+  const suivante = preparerBaseVivante({ regles: regles("UPDATE race SET nom = 'Humain (suite)' WHERE id = 'races/humain'"), dossier });
+  assert.equal(suivante.refaite, true);
+  assert.equal(valeur(chemin, "SELECT notes FROM personnage WHERE id = 'p1'").notes, notes);
+  assert.equal(valeur(chemin, 'SELECT count(*) AS n FROM personnage_arme').n, 4);
+});
+
+test('migration 0081 : une arme élémentaire (arme_id NULL) n’est pas une arme supprimée du catalogue (R52) : une livraison qui supprime une arme ne la touche pas', () => {
+  const dossier = nouveau('db');
+  const { chemin } = preparerBaseVivante({ regles: regles(), dossier });
+  remplir(chemin);
+  const ecrire = new DatabaseSync(chemin);
+  ecrire.exec(`PRAGMA foreign_keys = ON;
+    INSERT INTO personnage_arme (personnage_id, rang, arme_id, arme_elementaire_id, amelioration_id) VALUES
+      ('p1', 1, NULL, 'ressources/pieces-elementaires#arme-elementaire:arc:feu', 'ressources/armes#amelioration:arme:2'),
+      ('p1', 2, 'ressources/armes#arme:epees:katana', NULL, NULL);`);
+  ecrire.close();
+  const r = preparerBaseVivante({ regles: regles("DELETE FROM page_entite WHERE entite_id = 'ressources/armes#arme:epees:katana'; DELETE FROM arme_degats WHERE arme_id = 'ressources/armes#arme:epees:katana'; DELETE FROM arme_prerequis WHERE arme_id = 'ressources/armes#arme:epees:katana'; DELETE FROM arme WHERE id = 'ressources/armes#arme:epees:katana'"), dossier, instant: new Date('2026-10-23T09:00:00Z') });
+  assert.equal(r.refaite, true);
+  assert.deepEqual(r.fiches.map((f) => f.retraits), [['l’arme « Katana » (ÉPÉES, arme 2)']]);
+  assert.deepEqual({ ...valeur(chemin, 'SELECT arme_elementaire_id, amelioration_id FROM personnage_arme WHERE personnage_id = ? AND rang = 1', 'p1') },
+    { arme_elementaire_id: 'ressources/pieces-elementaires#arme-elementaire:arc:feu', amelioration_id: 'ressources/armes#amelioration:arme:2' });
 });
 
 test('archives : seulement quand la base avait des lignes, les dernières gardées ; règles contenant des fiches ou absentes refusées', () => {

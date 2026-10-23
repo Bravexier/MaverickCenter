@@ -4,17 +4,15 @@
 // ni dans les règles, ni dans l'historique que la mise à jour en tire. Une autre rubrique d'une carte, notée de même, se rejoue toujours.
 // Les lots « d'avant » sont fabriqués depuis ce que le service note aujourd'hui, mis dans la forme de la v43 (comme dans le journal du site de dev).
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { rejouerLeJournal } from '../serveur/edition.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-rejeu-capacites-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('rejeu-capacites');
 let compteur = 0;
 const ouvertes = [];
 after(() => ouvertes.forEach((b) => b.isOpen && b.close()));

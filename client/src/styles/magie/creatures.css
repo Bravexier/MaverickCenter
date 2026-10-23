@@ -1,19 +1,27 @@
 /* Créatures invoquées d'un sort : par bloc (combinaison de magies ou palier), leur nom (sa carte du bestiaire en infobulle : components/Infobulles.astro,
-   styles/bestiaire/carte.css), sur la couleur de leur magie (--creature-1, --creature-2 : SortDetail.astro), en dégradé quand elles en ont deux */
+   styles/bestiaire/carte.css), sur la couleur de leur magie, en dégradé quand elles en ont deux : le bouton porte la classe de la première et la classe
+   de second rang de la seconde (SortDetail.astro, lib/palette-css.mjs#classesDeDeuxMagies : --couleur, --couleur-2) ; sans magie, la couleur de la page */
 .invoque { list-style: none; padding: 0 !important; margin: 0.3rem 0; display: grid; gap: 0.4rem; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); }
 .invoque li { padding: 0.35rem 0.6rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); }
-.invoque__bloc { display: block; font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.invoque__bloc { display: block; font-size: var(--fs-xxs); color: var(--muted); text-transform: uppercase; letter-spacing: var(--ls-caps); }
 .invoque__creatures { display: flex; flex-wrap: wrap; gap: 0.3rem 0.5rem; margin-top: 0.2rem; }
 .creature { display: inline-flex; align-items: baseline; gap: 0.25rem; }
 button.creature__bouton {
   --creature-1: var(--mag); --creature-2: var(--creature-1);
-  cursor: help; font: inherit; font-size: 0.9rem; color: var(--text);
+  cursor: help; font: inherit; font-size: var(--fs-lg); color: var(--text);
   border-color: color-mix(in srgb, var(--creature-1) 55%, var(--border));
   border-right-color: color-mix(in srgb, var(--creature-2) 55%, var(--border));
   background: linear-gradient(90deg, color-mix(in srgb, var(--creature-1) 32%, var(--surface)), color-mix(in srgb, var(--creature-2) 32%, var(--surface)));
 }
+button.creature__bouton--magie { --creature-1: var(--couleur); --creature-2: var(--couleur-2); }
 button.creature__bouton:hover, button.creature__bouton[data-ouverte] {
   border-color: var(--creature-1); border-right-color: var(--creature-2);
   background: linear-gradient(90deg, color-mix(in srgb, var(--creature-1) 50%, var(--surface)), color-mix(in srgb, var(--creature-2) 50%, var(--surface)));
 }
 button.creature__bouton:focus-visible { outline: 2px solid var(--creature-1); outline-offset: 2px; }
+/* le NPM des cartes (décision R130, SortDetail.astro) : son curseur au-dessus de la liste des créatures */
+.invoque__npm { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.7rem; margin: 0.3rem 0; }
+.invoque__npm[hidden] { display: none; }
+.invoque__npm label { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.5rem; font-weight: 600; }
+.invoque__npm input[type=range] { accent-color: var(--mag); width: min(14rem, 50vw); }
+.invoque__npm output { font-weight: 700; font-variant-numeric: tabular-nums; }

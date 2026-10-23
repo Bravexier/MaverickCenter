@@ -8,6 +8,8 @@
 //     Maladie H39 et Fiche de tour L12.
 // Les notes sont citées « **Note de la cellule « <intitulé> »** : <texte> », les fils « **Commentaire de la cellule « … »** : … »
 // (« Commentaire résolu » quand le fil est résolu), sous le tableau (ou le titre) qui porte la cellule, dans la même section.
+// Le site de dev est la source de ce qu'il modifie : les pages se lisent dans leur état d'import (historique_modification, lib/historique-site.mjs).
+// Décision R91 : le site a retiré de la page des armes le fil de QA6 (la remarque de la Bombe perçante, qui datait des armes à feu) ; l'import le garde.
 //
 // Deux familles de tests :
 //   - le contenu RÉEL des 14 pages : textes exacts, page, section, intitulé de la cellule, nombre total ;
@@ -15,11 +17,13 @@
 //     fils, cellule fusionnée, refus (cellule vide, onglet non publié, note sans place), contrôle de couverture et de placement.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const dossierPages = fileURLToPath(new URL('../src/content/wiki/ressources', import.meta.url));
 const equipement = fileURLToPath(new URL('../../tools/sheets/equipement.py', import.meta.url));
@@ -37,6 +41,9 @@ const PAGES_DIVERS = ['familiers', 'maison', 'machine-de-guerresiege', 'fievre-d
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 const lire = (slug) => readFileSync(join(dossierPages, `${slug}.md`), 'utf8');
+const historique = historiqueSite(ouvrirBase({ sansExemples: false }));
+/** Le corps d'une page tel que l'import l'a écrit (avant les modifications du site de dev), sous un en-tête vide : la forme que lit `corps`. */
+const lireDImport = (slug) => `---\n---\n${historique.valeurDImport('page', { id: `ressources/${slug}` }, 'corps_md')}`;
 const corps = (texte) => texte.split('\n---\n').slice(1).join('\n---\n');
 const sansEchappement = (s) => s.replace(/\\([\\`*_[\]<~&>#+\-.)])/g, '$1').replace(/<br>/g, ' ').replace(/<(https?:\/\/[^>\s]+)>/g, '$1');
 const norme = (s) => s.replace(/\s+/g, ' ').trim();
@@ -105,7 +112,7 @@ const ATTENDUS = [
 
 for (const [page, genre, intitule, section, texte, cellule] of ATTENDUS) {
   test(`page ${page} : ${genre.toLowerCase()} de la cellule ${cellule}, texte exact, sous « ${intitule} », section ${section ?? '(sans titre)'}`, () => {
-    const trouves = commentaires(lire(page)).filter((e) => e.texte === texte);
+    const trouves = commentaires(lireDImport(page)).filter((e) => e.texte === texte);
     assert.equal(trouves.length, 1, `${page} : « ${texte.slice(0, 50)}… » doit figurer exactement une fois`);
     const [e] = trouves;
     assert.equal(e.genre, genre);
@@ -130,7 +137,7 @@ test('les 6 fils sont les seuls commentaires « Commentaire » / « Commentaire 
   const genres = { Note: 0, Commentaire: 0, 'Commentaire résolu': 0 };
   for (const slug of [...PAGES_EQUIPEMENT, ...PAGES_DIVERS]) {
     assert.ok(existsSync(join(dossierPages, `${slug}.md`)), `${slug} : page absente`);
-    for (const e of commentaires(lire(slug))) genres[e.genre] += 1;
+    for (const e of commentaires(lireDImport(slug))) genres[e.genre] += 1;
   }
   assert.deepEqual(genres, { Note: 6, Commentaire: 4, 'Commentaire résolu': 2 });
 });
@@ -146,12 +153,18 @@ test('aucun ancien libellé : ni « Note de cellule : », ni « Commentaires de 
 });
 
 test('la cellule fusionnée QA5:QL6 : le fil de QA6 est cité une fois, sous l’effet de la Bombe perçante, pas ailleurs', () => {
-  const armes = lire('armes');
+  const armes = lireDImport('armes');
   assert.equal(armes.split(T.QA6.slice(0, 40)).length - 1, 1);
   const i = armes.indexOf('| Bombe perçante |');
   const j = armes.indexOf('**Commentaire résolu de la cellule « Effet (Bombe perçante) »**');
   assert.ok(i > 0 && j > i, 'le fil doit venir après la ligne de la Bombe perçante');
   assert.doesNotMatch(armes.slice(i, armes.indexOf('\n', i)), /Il faut perdre un bras/, 'le fil n’est plus dans la cellule du tableau');
+});
+
+test('décision R91 : le fil de QA6 n’est plus dans la page des armes depuis que le site de dev a retiré la remarque de la Bombe perçante', () => {
+  const retiree = historique.modifiee('arme', { id: 'ressources/armes#arme:bombes:bombe-percante' }, 'remarque');
+  assert.ok(retiree, 'la remarque modifiée par le site (historique_modification)');
+  assert.doesNotMatch(lire('armes'), /Commentaire résolu de la cellule « Effet \(Bombe perçante\) »/, 'la page construite ne cite plus le fil de l’import');
 });
 
 test('aucune ligne de tableau ne porte plus de commentaire : ils sont déplacés sous le tableau, les cellules gardent la valeur de la source', () => {
@@ -413,7 +426,7 @@ const ONGLETS_EQUIPEMENT = ['Équipement inventaire', 'Armes', 'Armures', 'Boucl
 const ONGLETS_DIVERS = ['Familiers', 'Maison', 'Machine de GuerreSiège', 'Maladie V2', 'Maladie', 'Fiche de tour'];
 
 function lancer(script, feuilles) {
-  const dossier = mkdtempSync(join(tmpdir(), 'equipement-craft-'));
+  const dossier = dossierTemporaire('equipement-craft');
   const dump = join(dossier, 'ressources-craft.json');
   const sortie = join(dossier, 'wiki');
   writeFileSync(dump, JSON.stringify({ sheets: feuilles }));

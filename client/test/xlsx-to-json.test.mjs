@@ -10,11 +10,11 @@
 // Le classeur est fabriqué à la main (fixtures/make-xlsx-notes.py, zipfile) : aucun .xlsx dans le dépôt.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { dossierTemporaire, fichierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const tool = (nom) => fileURLToPath(new URL(`../../tools/sheets/${nom}`, import.meta.url));
 const fabrique = fileURLToPath(new URL('./fixtures/make-xlsx-notes.py', import.meta.url));
@@ -27,7 +27,7 @@ const NOTE_DON = "Jet de vigueur pour esquiver l'altération d'état";
 const NOTE_MULTI = 'Première ligne\nDeuxième ligne & <b> « accents » é\n  indentée ';
 
 function classeur(variante = 'standard') {
-  const dir = mkdtempSync(join(tmpdir(), 'xlsx-notes-'));
+  const dir = dossierTemporaire('xlsx-notes');
   const xlsx = join(dir, 'classeur.xlsx');
   const run = spawnSync('python3', ['-I', fabrique, xlsx, variante], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stderr);
@@ -41,7 +41,7 @@ function commentaires(xlsx) {
 }
 
 /** Conversion complète .xlsx -> dump (openpyxl). */
-function convertir(xlsx, sortie = join(mkdtempSync(join(tmpdir(), 'xlsx-dump-')), 'dump.json')) {
+function convertir(xlsx, sortie = fichierTemporaire('dump.json', 'xlsx-dump')) {
   const run = spawnSync('python3', ['-I', tool('xlsx_to_json.py'), xlsx, sortie], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stderr);
   return { ...run, dump: JSON.parse(readFileSync(sortie, 'utf8')) };
@@ -225,8 +225,8 @@ test('un classeur au contenu refusé (DTD) arrête la conversion au lieu de perd
   assert.match(run.stderr, /DTD/);
 });
 
-test('le .csv reste converti sans openpyxl ni commentaire', { skip: sansPython }, () => {
-  const dir = mkdtempSync(join(tmpdir(), 'xlsx-csv-'));
+test('le .csv reste converti sans openpyxl ni commentaire', { skip: sansPython }, (t) => {
+  const dir = dossierTemporaire('xlsx-csv', { t });
   writeFileSync(join(dir, 'a.csv'), 'a,b\n,c\n');
   const run = spawnSync('python3', ['-I', tool('xlsx_to_json.py'), join(dir, 'a.csv'), join(dir, 'a.json')], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stderr);

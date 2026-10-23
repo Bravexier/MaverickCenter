@@ -3,11 +3,9 @@
 // l'édition (serveur/edition-journal.mjs). Base vivante temporaire ; les données d'essai (classe, spécialité, dons, métier) sont créées ici sous des noms
 // absents de la base, le sort est lu dans la base.
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { enregistrer } from '../serveur/edition.mjs';
 import { ErreurJournal, ouvrirLot, TABLES_INTERDITES } from '../serveur/edition-journal.mjs';
@@ -17,9 +15,9 @@ import {
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { jourDuRetrait, TABLES_FICHES } from '../src/lib/fiche-format.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-fiches-retraits-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('fiches-retraits');
 const { chemin } = preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, 'db') });
 const db = ouvrirBaseVivante(chemin);
 const ligne = (sql, ...p) => db.prepare(sql).get(...p);
@@ -99,7 +97,7 @@ test('retirerDesFiches puis noterLesRetraits : éléments retirés, ligne de cla
   inserer('personnage', { ...FICHE, id: 'p-retraits', nature: 'pretire', nom: 'Témoin des retraits', notes: 'Note du joueur.', metier_id: metier });
   inserer('personnage_classe', { personnage_id: 'p-retraits', rang: 1, classe_id: classe, specialite_id: spec });
   inserer('personnage_capacite', { personnage_id: 'p-retraits', capacite_id: donA });
-  inserer('personnage_sort', { personnage_id: 'p-retraits', sort_id: sort.id, rang: 1, niveau_maitrise: 2, nm_livre: 1, nm_cadeau: 0 });
+  inserer('personnage_sort', { personnage_id: 'p-retraits', sort_id: sort.id, rang: 1, niveau_maitrise: 2, nm_livre: 1 });
   inserer('personnage', { ...FICHE, id: 'j-retraits', nature: 'joueur', proprietaire_id: 'u-retraits', visibilite: 'privee', nom: 'Nom secret du joueur',
     cree_le: '2026-10-12T00:00:00Z', modifie_le: '2026-10-12T00:00:00Z' });
   inserer('personnage_classe', { personnage_id: 'j-retraits', rang: 1, classe_id: classe });

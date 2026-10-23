@@ -1,0 +1,440 @@
+---
+import armuresCss from '../../styles/armures/armures.css?raw';
+import { attributEd } from '../../lib/edition-modele.mjs';
+import type { chargerArmures, contexteDesArmures } from '../../lib/armures-db.mjs';
+import {
+  htmlDeLigneDAmelioration, htmlDeLigneDAmeliorationDeBouclier, htmlDeLigneDArmure,
+  htmlDeLigneDeBouclier, htmlDeLigneDeForme, htmlDeLigneDeMateriau, RENDUS_DES_ARMURES,
+} from '../../lib/armures-rendu.mjs';
+import { COULEURS_DES_TYPES } from '../../lib/equipement-couleurs.mjs';
+import { htmlDePiece, MONNAIES_DU_JEU } from '../../lib/monnaies.mjs';
+import { classeDeMagie, classeDuPoids, classeDuTypeDArmure, cssDesFamilles } from '../../lib/palette-css.mjs';
+import { ameliorationElementaire, coutDeLaLigneElementaire, coutElementaireEcrit } from '../../lib/armure-forge.mjs';
+import { url } from '../../lib/wiki';
+import PanneauDeRegles from '../equipement/PanneauDeRegles.astro';
+import Tableau from '../Tableau.astro';
+import type { PanneauRendu } from '../equipement/PanneauDeRegles.astro';
+
+// Onglets « Armures » et « Boucliers » de la page /ressources/equipement/ (components/equipement/EquipementPage.astro, qui pose les onglets ; demande du
+// propriétaire, 2026-10-16 : « A l'instar de "Armure et bouclier" les "Armes" seront dans un onglet à part » ; avant, la page /ressources/armures/, dont
+// l'adresse mène à l'onglet Armures ; demandes du propriétaire, 2026-10-15 : « Je souhaite faire la refonte de l'onglet armure, de la même manière que
+// les Armes. […] Les deux seront dans la page » ; « les autres armures étant composées de deux matériaux il faut donc deux tables des matériaux à
+// sélectionner pour avoir l'armure ainsi créée. Une liste plus classique est disponible également. Il faut aussi le tableau d'amélioration » ; « Il faut
+// aussi inclure ce fonctionnement pour les boucliers » ; « Pour les bouclier c'est forme + matière ») : rendus depuis les tables de la base
+// (lib/armures-db.mjs), jamais depuis les Markdown des pages « Armures » et « Bouclier » ; en tête de chaque onglet, son panneau de règles, replié
+// (components/equipement/PanneauDeRegles.astro, migration 0056 : le texte avant les tableaux de la page, sans la création par pièces que la
+// décision R95 a retirée, migration 0055).
+// Deux panneaux (`section.equipement-panneau`, components/Onglets.astro ; sans JavaScript, ils se suivent) :
+//   - Armures : deux tableaux des matières de la grille (premier et second matériau) ; choisir un matériau dans chacun donne l'armure de la grille, dont la
+//     fiche s'ouvre à côté, avec l'amélioration à choisir (décision R77) ; une armure ne se fabrique plus pièce par pièce, seulement complète (décision
+//     R93, demande du propriétaire, 2026-10-16 : « Tu peux donc retirer le tableau actuel de "fabrication" »), et son prix est calculé : la fabrication
+//     de l'armure complète (la ligne « Armure Complète » du tableau FABRICATION, modifiable sur le site de dev) + 6 unités de chacun de ses deux
+//     matériaux (« le prix est toujours de 6 unités d'un matériau 1, et 6 d'un matériau 2 », « ça ne remplace pas le prix en Ricken d'or ») ; dessous, la liste des armures : les
+//     armures particulières en premier (« tu met le tableau "Armure particulières" en tout premier de la liste des armures »), puis par type ; une ligne
+//     choisit l'armure ;
+//   - Boucliers (demandes du propriétaire, 2026-10-16) : la forme, et sous elle le tableau des améliorations (« je veux que la table d'amélioration
+//     soit directement sous celui de la forme » ; quatre colonnes depuis le 2026-10-17 : coût en RO, coût en matériaux, AP supplémentaire, +1 cran de
+//     solidité, chacune modifiable), la matière à côté ; une forme et une matière donnent le bouclier préfabriqué (décision R78), sa fiche
+//     à côté, avec son poids (la couleur de sa case dans l'onglet : décision R92, « Requiert N Force minimum » en infobulle) ; dessous, la liste
+//     complète des boucliers en UN tableau, replié par défaut, triable par toutes ses colonnes (AP et AM séparés) ; la liste des poids n'est plus
+//     affichée (« Pas besoin de tableau pour l'expliquer ») : elle reste dans la page pour le mode modification et sans JavaScript.
+// Plus de tableau MATÉRIAUX (prix, description, fabrication) sous les deux panneaux : il est mêlé au tableau des matériaux de la page « Composants », sa
+// seule source (décision R62), où chaque panneau renvoie (demande du propriétaire, 2026-10-16 : « Les onglets Matériaux présent en bas de page de
+// l'Armure et du bouclier […] devraient disparaitre et être mélangés au tableau des matériaux des Composants »).
+// Le script de la page (src/scripts/armures.mjs, calcul : lib/armure-forge.mjs) lit les valeurs dans les cellules rendues (lib/armures-rendu.mjs) ; les
+// fiches sont réduites à quatre tuiles dont le détail du calcul est l'infobulle (demande du propriétaire, 2026-10-16, comme celle des armes), écrite
+// dans `[data-armures-bulles]`, hors du panneau de côté qui défile.
+// Mode modification du site de dev (src/scripts/edition/armures.mjs) : ni sélection ni fiche, tous les tableaux ouverts, les cases des armures, des
+// formes, des boucliers, des poids, des améliorations et le coût de fabrication du bouclier modifiables (l'AP et l'AM d'une armure ou d'un bouclier
+// chacun dans sa case : demande du propriétaire, 2026-10-17) ; celles des matériaux en lecture (R62). CSS : styles/armures/armures.css
+// (?raw, inséré ici seulement).
+// Couleurs (choix du propriétaire, « Module JS → classe ») : le type d'une armure ou d'une matière et le poids d'un bouclier portent leur classe de la
+// palette (lib/palette-css.mjs : classeDuTypeDArmure, classeDuPoids ; valeurs dans lib/equipement-couleurs.mjs), jamais un style ; ce composant émet la
+// feuille de leurs deux familles (`armure`, `poids`), pour la page construite comme pour les cases que le mode modification redessine.
+type Armures = ReturnType<typeof chargerArmures>;
+interface Props {
+  armures: Armures;
+  contexte: ReturnType<typeof contexteDesArmures>;
+  /** les panneaux de règles des deux onglets (`armures`, `boucliers`), le Markdown de leurs blocs rendu (src/pages/ressources/equipement.astro) */
+  regles: { armures: PanneauRendu | null; boucliers: PanneauRendu | null };
+}
+const { armures, contexte, regles } = Astro.props;
+const TYPES_DE_LA_GRILLE = Object.keys(COULEURS_DES_TYPES);
+const parType = TYPES_DE_LA_GRILLE.map((type) => ({ type, armures: armures.combinaisons.filter((a) => a.type === type) }))
+  .concat([{ type: 'Autres', armures: armures.combinaisons.filter((a) => !TYPES_DE_LA_GRILLE.includes(a.type)) }])
+  .filter((g) => g.armures.length);
+const matiereDe = new Map(armures.matieres.map((m) => [m.cle, m]));
+const formeDe = new Map(armures.formes.map((f) => [f.id, f]));
+const slug = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+const edP = (id: string, colonne: string) => attributEd('bouclier_poids', { id }, colonne);
+const materiauxDesComposants = `${url('ressources/composants/')}#materiaux`;
+const legende = (
+  TYPES_DE_LA_GRILLE.map((t) => `<span class="ptype ${classeDuTypeDArmure(t)}">${t}</span>`).join(' ')
+);
+const couleurs = cssDesFamilles(['armure', 'poids']);
+// Armures élémentaires (décision R165 (4)) : sous les deux tableaux de matériaux, le double choix « Élément » (les 14 magies des colonnes de l'onglet,
+// dans leur ordre, jamais le Potentiel Illimité) et « Poids » (Vêtement, Léger, Intermédiaire, Lourd ; jamais Familier) ; les 56 armures, cachées, que
+// le script lit (src/scripts/armures.mjs) ; leur tableau d'amélioration (+1 à +5), à la place de celui des armures une fois les deux choisis.
+// La couleur d'une magie : sa classe de la palette (lib/palette-css.mjs#classeDeMagie, famille `magie`, émise sur chaque page), posée ici, jamais un
+// style (lib/armures-db.mjs, que le service importe, ne la pose pas).
+const elementaires = armures.elementaires;
+const cleDePoids = (poids: string) => slug(poids);
+const cleDeMagie = (id: string) => id.slice(id.lastIndexOf('/') + 1);
+const ameliorationsElementaires = armures.ameliorations.armure_elementaire;
+const cumulElementaire = (niveau: number) => coutElementaireEcrit(ameliorationElementaire(ameliorationsElementaires, niveau)).join(' + ');
+---
+
+<style is:inline set:html={armuresCss}></style>
+<style is:inline set:html={couleurs}></style>
+{/* components/equipement/EquipementPage.astro pose `html.js` (sans JavaScript, ni fiche ni choix : styles/armures/armures.css) */}
+<div class="armures" data-armures>
+  {/* les icônes des monnaies (lib/monnaies.mjs), que le script de la page reprend pour les coûts qu'il écrit (aucun module partagé avec lui) */}
+  {Object.keys(MONNAIES_DU_JEU).map((abr) => <template data-armures-piece={abr} set:html={htmlDePiece(abr)}></template>)}
+
+  {/* ── Armures ───────────────────────────────────────────────────────────────────────────────────────────────────────── */}
+  <section class="armures-panneau equipement-panneau" id="armures" aria-labelledby="titre-armures" data-panneau="armure">
+    <h2 class="equipement-panneau__titre" id="titre-armures">{armures.pages.armures?.titre ?? 'Armures'}</h2>
+    {/* les règles sont le texte de l'onglet, sans les paragraphes sur la création par pièces (décision R95, migration 0055) */}
+    <PanneauDeRegles panneau={regles.armures} />
+    <p class="armures-aide js-seul">
+      Choisissez un matériau dans chacun des deux tableaux : l’armure complète ainsi créée s’ouvre à côté, avec son amélioration. Une armure de la
+      liste, plus bas, se choisit aussi d’un clic.
+    </p>
+    {
+      armures.fabricationDeLArmure && (
+        <p class="armures-prix">
+          Prix d’une armure (décision R93) : sa fabrication,{' '}
+          <span
+            data-armures-fabrication
+            data-ed={attributEd('armure_emplacement', { id: armures.fabricationDeLArmure.id }, 'cout_brut')}
+            data-ed-rendu="piece-cout"
+            set:html={RENDUS_DES_ARMURES['piece-cout'](armures.fabricationDeLArmure.cout_brut, armures.fabricationDeLArmure)}
+          />, et 6 unités de chacun de ses deux matériaux, achetées ou fournies.
+        </p>
+      )
+    }
+    <p class="armures-legende"><span class="armures-legende__titre">Types</span> <Fragment set:html={legende} /></p>
+    <p class="armures-renvoi">La description et la fabrication de chaque matériau sont sur la page <a href={materiauxDesComposants}>Composants</a>, où les matériaux se modifient (décision R62).</p>
+
+    <div class="armures-vue" data-vue="armure">
+      <div class="armures-principal">
+        <div class="armures-choix">
+          {
+            [
+              { role: 'm1', titre: 'Premier matériau', id: 'premier-materiau' },
+              { role: 'm2', titre: 'Second matériau', id: 'second-materiau' },
+            ].map((t) => (
+              <Tableau
+                id={t.id}
+                titre={t.titre}
+                compte={armures.materiaux.length}
+                bloc="armures-bloc"
+                classeTable="armures-table armures-table--choix table-donnees--serree"
+                attributsTable={{ 'data-choix': t.role }}
+              >
+                <thead>
+                  <tr>
+                    <th scope="col">Matière</th><th scope="col">Défense</th><th scope="col" title="Crans de solidité">Sol.</th><th scope="col">Prix</th>
+                    <th scope="col" title="Pour une armure : les 6 unités de ce matériau qu’elle demande (décision R93)">Prix ×6</th>
+                  </tr>
+                </thead>
+                <tbody>{armures.materiaux.map((m) => <Fragment set:html={htmlDeLigneDeMateriau(m, t.role)} />)}</tbody>
+              </Tableau>
+            ))
+          }
+        </div>
+        {/* le double choix des armures élémentaires, juste sous les deux tableaux de matériaux (décision R165 (4)) */}
+        <section class="pelem js-seul" aria-labelledby="armure-elementaire-titre" data-armures-elementaire>
+          <h3 class="pelem__titre" id="armure-elementaire-titre">Armure élémentaire</h3>
+          <p class="armures-aide">
+            Une pièce élémentaire transforme l’armure en celle de sa magie et de son poids, quels que soient ses matériaux. Choisissez un élément et un
+            poids : l’armure élémentaire s’ouvre à côté, avec son amélioration.
+          </p>
+          <div class="pelem__groupe" role="group" aria-labelledby="armure-elementaire-element">
+            <span class="pelem__nom" id="armure-elementaire-element">Élément</span>
+            {
+              elementaires.magies.map((m) => (
+                <button
+                  type="button"
+                  class={`pelem__choix pelem__choix--magie ${classeDeMagie(m.nom)}`}
+                  data-element={cleDeMagie(m.id)}
+                  data-magie={m.id}
+                  data-gemme={m.gemme?.nom}
+                  aria-pressed="false"
+                >{m.nom}</button>
+              ))
+            }
+          </div>
+          <div class="pelem__groupe" role="group" aria-labelledby="armure-elementaire-poids">
+            <span class="pelem__nom" id="armure-elementaire-poids">Poids</span>
+            {
+              elementaires.poids.map((p) => (
+                <button type="button" class={`pelem__choix pelem__choix--poids ${classeDuTypeDArmure(p)}`} data-poids-elementaire={cleDePoids(p)} data-categorie={p} aria-pressed="false">{p}</button>
+              ))
+            }
+          </div>
+          {/* les armures élémentaires (armure_elementaire, armure_elementaire_effet), lues par le script ; jamais affichées telles quelles */}
+          <div hidden data-armures-elementaires data-solidite-base={elementaires.solidite_base}>
+            {
+              elementaires.armures.map((a) => (
+                <div class="pelem-armure" data-magie={a.magie_id} data-categorie={a.categorie} data-ap={a.ap ?? 0} data-am={a.am ?? 0}>
+                  <span class="pelem-armure__nom">{a.nom}</span>
+                  <ul class="pelem-armure__effets">{a.effets.map((t) => <li>{t}</li>)}</ul>
+                </div>
+              ))
+            }
+          </div>
+        </section>
+        {armures.ecarts.map((ecart) => <p class="armures-ecart">{ecart}</p>)}
+
+        <h2 class="armures-sous-titre" id="liste-des-armures">Liste des armures</h2>
+        <div class="armures-listes">
+          {/* les armures particulières en premier (demande du propriétaire, 2026-10-16) */}
+          <Tableau
+            id="armures-particulieres"
+            titre="Armures particulières"
+            compte={`${armures.particulieres.length} armures`}
+            bloc="armures-bloc"
+            class="armures-liste"
+            classeTable="armures-table armures-table--liste"
+            note="Vêtements, cottes de mailles, armure montagne, armures de familiers : un prix pour l’armure entière (décision R80). « Cran de solidité uni = Si un cran de solidité est perdu, c'est TOUTE l'armure qui est abimée. »"
+          >
+            <thead>
+              <tr>
+                <th scope="col">Nom</th><th scope="col">Type</th><th scope="col" title="Armure physique">AP</th><th scope="col" title="Armure magique">AM</th>
+                <th scope="col">{'{{solidite}}'}</th><th scope="col">Effet</th><th scope="col">Prix</th>
+              </tr>
+            </thead>
+            <tbody>{armures.particulieres.map((a) => <Fragment set:html={htmlDeLigneDArmure(a, contexte)} />)}</tbody>
+          </Tableau>
+          {
+            parType.map((g) => (
+              <Tableau id={`armures-${slug(g.type)}`} compte={`${g.armures.length} armures`} bloc="armures-bloc" class="armures-liste" classeTable="armures-table armures-table--liste">
+                <Fragment slot="titre"><span class={`ptype ${classeDuTypeDArmure(g.type)}`}>{g.type}</span></Fragment>
+                <thead>
+                  <tr>
+                    <th scope="col">Nom</th><th scope="col">Matériaux</th><th scope="col">Type</th>
+                    <th scope="col" title="Armure physique">AP</th><th scope="col" title="Armure magique">AM</th>
+                    <th scope="col">{'{{solidite}}'}</th><th scope="col">Résistance</th><th scope="col">Faiblesse</th>
+                    <th scope="col" title="La fabrication de l’armure complète + 6 unités de chaque matériau, achetées (décision R93)">Prix</th>
+                  </tr>
+                </thead>
+                <tbody>{g.armures.map((a) => <Fragment set:html={htmlDeLigneDArmure(a, contexte)} />)}</tbody>
+              </Tableau>
+            ))
+          }
+        </div>
+      </div>
+
+      <aside class="armures-cote" aria-label="Armure choisie et amélioration">
+        <section class="pfiche" data-fiche="armure" aria-label="Fiche de l’armure" aria-live="polite">
+          <p class="pfiche__vide js-seul">Choisissez deux matériaux, ou une armure de la liste.</p>
+        </section>
+        <Tableau
+          id="ameliorations-armure"
+          titre="Améliorations"
+          compte={`+1 à +${armures.ameliorations.armure.length}`}
+          bloc="armures-bloc"
+          class="armures-ameliorations armures-ameliorations--base"
+          classeTable="armures-table armures-table--ameliorations table-donnees--serree"
+          note="« Armures (L'entièreté) » : une amélioration +N demande les coûts des niveaux +1 à +N et donne l’effet écrit au niveau N, pour l’armure entière (décision R77)."
+        >
+          <thead><tr><th scope="col">Niveau</th><th scope="col">Coût</th><th scope="col">Effet</th></tr></thead>
+          <tbody>
+            <tr class="pamelioration pamelioration--aucune js-seul-ligne" data-cible="armure" data-niveau="0">
+              <th scope="row" class="pamelioration__niveau"><button type="button" class="pamelioration__choisir" aria-pressed="false">Aucune</button></th>
+              <td colspan="2" class="muted">Armure non améliorée</td>
+            </tr>
+            {armures.ameliorations.armure.map((a) => <Fragment set:html={htmlDeLigneDAmelioration(a)} />)}
+          </tbody>
+        </Tableau>
+        {/* le tableau « Armure » de l'onglet « Pièces élémentaires » (décision R165 (2)) : à la place du précédent une fois l'élément et le poids choisis ;
+            le coût de la ligne tel qu'écrit, le coût cumulé (atteindre +N coûte les lignes +1 à +N), l'effet de la ligne ; le script nomme les gemmes
+            par celle de la magie choisie ; aucun RO */}
+        <Tableau
+          id="ameliorations-armure-elementaire"
+          titre="Améliorations d’une armure élémentaire"
+          compte={`+1 à +${ameliorationsElementaires.length}`}
+          bloc="armures-bloc"
+          class="armures-ameliorations armures-ameliorations--elementaire"
+          classeTable="armures-table armures-table--ameliorations table-donnees--serree"
+          note="« Chaque cout est cumulatif » : atteindre +N coûte les lignes +1 à +N, en gemmes de la magie de l’armure ; l’effet est celui de la ligne +N (décision R165)."
+        >
+          <thead><tr><th scope="col">Niveau</th><th scope="col">Coût</th><th scope="col" title="Les lignes +1 à +N">Coût cumulé</th><th scope="col">Effet</th></tr></thead>
+          <tbody>
+            <tr class="pamelioration pamelioration--aucune js-seul-ligne" data-cible="armure_elementaire" data-niveau="0">
+              <th scope="row" class="pamelioration__niveau"><button type="button" class="pamelioration__choisir" aria-pressed="false">Aucune</button></th>
+              <td colspan="3" class="muted">Armure élémentaire non améliorée</td>
+            </tr>
+            {
+              ameliorationsElementaires.map((a) => (
+                <tr
+                  class="pamelioration"
+                  data-cible="armure_elementaire"
+                  data-niveau={a.niveau}
+                  data-gemmes={a.cout_gemmes ?? 0}
+                  data-qualite={a.cout_gemmes_qualite ?? ''}
+                  data-pieces={a.cout_pieces_elementaires ?? 0}
+                  data-ap={a.bonus_ap ?? 0}
+                  data-am={a.bonus_am ?? 0}
+                  data-cran={a.bonus_cran ?? 0}
+                >
+                  <th scope="row" class="pamelioration__niveau"><button type="button" class="pamelioration__choisir" aria-pressed="false">+{a.niveau}</button></th>
+                  <td class="pamelioration__cout" data-cout-ligne>{coutElementaireEcrit(coutDeLaLigneElementaire(a)).join(' + ') || a.cout_brut}</td>
+                  <td class="pamelioration__cumul" data-cout-cumule>{cumulElementaire(a.niveau)}</td>
+                  <td class="pamelioration__effet">{a.effet_brut}</td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </Tableau>
+      </aside>
+    </div>
+    {/* les infobulles des tuiles de la fiche (le détail du calcul), écrites par le script hors du panneau de côté, qui défile */}
+    <div class="armures-bulles" data-armures-bulles="armure"></div>
+  </section>
+
+  {/* ── Boucliers ─────────────────────────────────────────────────────────────────────────────────────────────────────── */}
+  <section class="armures-panneau equipement-panneau" id="boucliers" aria-labelledby="titre-boucliers" data-panneau="bouclier">
+    <h2 class="equipement-panneau__titre" id="titre-boucliers">Boucliers</h2>
+    <PanneauDeRegles panneau={regles.boucliers} />
+    <p class="armures-aide js-seul">Choisissez une forme et une matière : le bouclier ainsi créé s’ouvre à côté, avec son amélioration. Un bouclier de la liste, plus bas, se choisit aussi d’un clic.</p>
+    <p class="armures-aide">La page compose un bouclier d’une seule matière (« forme + matière », décision R78) ; les règles ci-dessus permettent d’en mêler jusqu’à 3 différentes.</p>
+    <p class="armures-renvoi">La description et la fabrication de chaque matière sont sur la page <a href={materiauxDesComposants}>Composants</a>, où les matériaux se modifient (décision R62).</p>
+
+    <div class="armures-vue" data-vue="bouclier">
+      <div class="armures-principal">
+        <div class="armures-choix">
+          <div class="armures-colonne">
+            <Tableau
+              id="formes-de-bouclier"
+              titre="Forme"
+              compte={armures.formes.length}
+              bloc="armures-bloc"
+              classeTable="armures-table armures-table--formes table-donnees--serree"
+              note="« Un bouclier a besoin d’autant de matériaux que sa classe indique (classe 4 = 4 matériaux) »."
+            >
+              <thead><tr><th scope="col">Forme</th><th scope="col">Catégorie</th><th scope="col">Prix</th></tr></thead>
+              <tbody>{armures.formes.map((f) => <Fragment set:html={htmlDeLigneDeForme(f)} />)}</tbody>
+              {
+                armures.fabricationDuBouclier && (
+                  <p class="tableau__note armures-bloc__note" slot="apres">
+                    Fabrication :{' '}
+                    <span
+                      data-ed={attributEd('armure_emplacement', { id: armures.fabricationDuBouclier.id }, 'cout_brut')}
+                      data-ed-rendu="piece-cout"
+                      set:html={RENDUS_DES_ARMURES['piece-cout'](armures.fabricationDuBouclier.cout_brut, armures.fabricationDuBouclier)}
+                    />{' '}
+                    (tableau FABRICATION de l’onglet « Armures » du classeur).
+                  </p>
+                )
+              }
+            </Tableau>
+            {/* directement sous la forme (demande du propriétaire, 2026-10-16) */}
+            {/* quatre cases par niveau, chacune modifiable (demande du propriétaire, 2026-10-17) */}
+            <Tableau
+              id="ameliorations-bouclier"
+              titre="Améliorations"
+              compte={`+1 à +${armures.ameliorations.bouclier.length}`}
+              bloc="armures-bloc"
+              classeTable="armures-table armures-table--ameliorations armures-table--ameliorations-bouclier table-donnees--serree"
+              note="Une amélioration +N demande les coûts des niveaux +1 à +N, matériaux compris (1 matériau de la matière du bouclier) ; l’AP est celui écrit au niveau N, les crans de solidité se cumulent (décision R76)."
+            >
+              <thead>
+                <tr>
+                  <th scope="col">Niveau</th><th scope="col" title="Coût en Ricken d’or">Coût</th>
+                  <th scope="col" title="Coût en matériaux : 1 matériau de la matière du bouclier (décision R76)">Matériaux</th>
+                  <th scope="col" title="AP supplémentaire : celui du niveau choisi (décision R76)">AP</th>
+                  <th scope="col" title="+1 cran de solidité : les crans se cumulent (décision R76)">Solidité</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="pamelioration pamelioration--aucune js-seul-ligne" data-cible="bouclier" data-niveau="0">
+                  <th scope="row" class="pamelioration__niveau"><button type="button" class="pamelioration__choisir" aria-pressed="false">Aucune</button></th>
+                  <td colspan="4" class="muted">Bouclier non amélioré</td>
+                </tr>
+                {armures.ameliorations.bouclier.map((a) => <Fragment set:html={htmlDeLigneDAmeliorationDeBouclier(a)} />)}
+              </tbody>
+            </Tableau>
+          </div>
+          <Tableau
+            id="matieres-de-bouclier"
+            titre="Matière"
+            compte={armures.matieres.length}
+            bloc="armures-bloc"
+            classeTable="armures-table armures-table--choix table-donnees--serree"
+            attributsTable={{ 'data-choix': 'matiere' }}
+            note="« Les matériaux n’ont pas les mêmes stats pour les boucliers par rapport aux armures. »"
+          >
+            <thead><tr><th scope="col">Matière</th><th scope="col">Défense</th><th scope="col" title="Crans de solidité">Sol.</th><th scope="col">Prix</th></tr></thead>
+            <tbody>{armures.matieres.map((m) => <Fragment set:html={htmlDeLigneDeMateriau(m, 'matiere')} />)}</tbody>
+          </Tableau>
+        </div>
+
+        {/* la liste complète : un seul tableau, replié par défaut, triable par toutes ses colonnes, AP et AM séparés (demande du propriétaire, 2026-10-16) */}
+        <div class="armures-listes">
+          <Tableau
+            id="liste-des-boucliers"
+            titre="Liste des boucliers"
+            compte={`${armures.boucliers.length} boucliers`}
+            bloc="armures-bloc"
+            class="armures-liste"
+            ouvert={false}
+            classeTable="armures-table armures-table--liste armures-table--boucliers"
+            attributsTable={{ 'data-triable': '' }}
+          >
+            <p slot="avant" class="tableau__note armures-bloc__note js-seul">Un en-tête trie la colonne (croissant, décroissant, puis l’ordre de l’onglet) ; une ligne choisit le bouclier.</p>
+            <thead>
+              <tr>
+                <th scope="col" data-tri="nom">Nom</th>
+                <th scope="col" data-tri="forme" title="Forme et classe : un bouclier de classe N demande N matériaux">Forme</th>
+                <th scope="col" data-tri="matiere">Matière</th>
+                <th scope="col" data-tri="ap" title="Armure physique">AP</th>
+                <th scope="col" data-tri="am" title="Armure magique">AM</th>
+                <th scope="col" data-tri="solidite" title="Crans de solidité : ceux de la matière (décision R78)">Solidité</th>
+                <th scope="col" data-tri="poids" title="Le poids du bouclier : la couleur de sa case dans l’onglet ; sa Force minimum en infobulle">Poids</th>
+                <th scope="col" data-tri="prix">Prix</th>
+              </tr>
+            </thead>
+            <tbody>
+              {armures.boucliers.map((b, i) => <Fragment set:html={htmlDeLigneDeBouclier(b, matiereDe.get(b.matiere), { forme: formeDe.get(b.classe_id), ordre: i }, contexte)} />)}
+            </tbody>
+          </Tableau>
+        </div>
+      </div>
+
+      <aside class="armures-cote" aria-label="Bouclier choisi">
+        <section class="pfiche" data-fiche="bouclier" aria-label="Fiche du bouclier" aria-live="polite">
+          <p class="pfiche__vide js-seul">Choisissez une forme et une matière, ou un bouclier de la liste.</p>
+        </section>
+        {/* la liste des poids : plus affichée (« Pas besoin de tableau pour l'expliquer ») ; reste pour le mode modification (nom, Force) et sans JavaScript */}
+        <Tableau
+          id="poids-de-bouclier"
+          titre="Poids"
+          compte={armures.poids.length}
+          bloc="armures-bloc"
+          class="armures-poids"
+          classeTable="armures-table armures-table--poids"
+          note="« Il existe 4 poids différents pour les boucliers, il est nécessaire d’avoir le score de Force ou plus pour le porter. » Le poids de chaque bouclier est la couleur de sa case dans l’onglet (décision R92)."
+        >
+          <thead><tr><th scope="col">Poids</th><th scope="col">Force</th></tr></thead>
+          <tbody>
+            {
+              armures.poids.map((p) => (
+                <tr class={`poids ${classeDuPoids(p.id)}`} data-poids={p.id}>
+                  <th scope="row" class="poids__nom" data-ed={edP(p.id, 'nom')}>{p.nom}</th>
+                  <td data-ed={edP(p.id, 'force_brut')}>{p.force_brut}</td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </Tableau>
+      </aside>
+    </div>
+    <div class="armures-bulles" data-armures-bulles="bouclier"></div>
+  </section>
+</div>
+
+<script>
+  import '../../scripts/armures.mjs';
+</script>

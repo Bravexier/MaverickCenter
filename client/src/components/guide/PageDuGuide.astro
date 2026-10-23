@@ -1,0 +1,86 @@
+---
+import blocsCss from '../../styles/guide/blocs.css?raw';
+import magieTooltipsCss from '../../styles/magie/tooltips.css?raw';
+import PiedDePage from '../PiedDePage.astro';
+import GuideBloc from './GuideBloc.astro';
+import { morceauxDuChapitre } from '../../lib/guide.mjs';
+import { estDansDecouvrirOuLesBases, filDAriane, partieDeLaPage, RUBRIQUES_SOUS_LA_PAGE } from '../../lib/livres.mjs';
+import { classeDePartie, cssDesParties } from '../../lib/palette-css.mjs';
+import { rendreMarkdown } from '../../lib/guide-rendu';
+import { attributEd } from '../../lib/edition-modele.mjs';
+import { cheminDePage } from '../../lib/metiers.mjs';
+import { TYPES } from '../../lib/types.mjs';
+import { url, type WikiEntry } from '../../lib/wiki';
+
+// Une page du guide, quelle qu'elle soit (lib/livres.mjs : Découvrir, Les bases, Règles avancées, Guide du MJ) : une page simple, comme une page du wiki
+// (demande du propriétaire du 2026-10-18 : « Retirer le mécanisme de swipe, et les flèches suivant / précédent et la pagination »). Fil d'Ariane vers sa
+// rubrique ou son sommaire (et son groupe : lib/livres.mjs#filDAriane), titre, texte coupé à ses blocs tirés de la base (GuideBloc : le tableau de la
+// montée de niveau, les postures, les personnages fil rouge…), sous L'univers les rubriques qu'elle présente (RUBRIQUES_SOUS_LA_PAGE), puis mots-clés
+// et rétroliens (PiedDePage). Les liens Discord et Tipeee et l'encart « Notre prochaine rencontre IRL », sous le texte de Bienvenue jusqu'au 2026-10-23,
+// sont sur l'accueil (components/accueil/LiensEtRencontre.astro ; « Ces 3 blocs auraient plus leur place dans l'onglet d'acceuil. »). Aucune page
+// ne cite ses sources sous le texte (réponse du propriétaire du 2026-10-22 : « Plus de sources ailleurs que dans les archives. ») : `sources:` reste
+// dans le frontmatter, /archives/ le lit. Une page de Découvrir ou des Bases prend la couleur de son groupe, la
+// classe de sa partie (partieDeLaPage, classeDePartie : `.couleur-partie-<id>`, lib/palette-css.mjs, dont la page émet la feuille ; filet du titre,
+// intertitres, blocs) ; les pages de référence (Règles avancées, Guide du MJ) gardent l'accent du site et leur badge « Guide ». Chaque morceau de texte
+// est modifiable sur le site de dev (data-ed-morceau ; src/scripts/edition/guide.mjs), comme le titre (data-ed).
+interface Props {
+  entry: WikiEntry;
+  entries: WikiEntry[];
+  modifiable: boolean;
+}
+const { entry, entries, modifiable } = Astro.props;
+const fil = filDAriane(entry.id);
+const ici = cheminDePage(entry.id);
+const couleur = classeDePartie(partieDeLaPage(entry.id));
+const reference = !estDansDecouvrirOuLesBases(entry.id);
+const morceaux = await Promise.all(
+  morceauxDuChapitre(entry.body ?? '').map(async (m) => ('bloc' in m ? m : { html: await rendreMarkdown(m.markdown, entry.id, entry.data.status) })),
+);
+const rubriques = (RUBRIQUES_SOUS_LA_PAGE as Record<string, readonly string[]>)[entry.id] ?? [];
+// Seules les pages d'exemple ont un bandeau (comme pages/[type]/[slug].astro).
+const statusNote = entry.data.status === 'example' ? 'Contenu d’exemple : à remplacer par le contenu réel du codex.' : '';
+const css = [blocsCss, magieTooltipsCss].join('\n');
+---
+
+<style is:inline set:html={css}></style>
+{/* la feuille des parties du guide (une famille d'une zone de la palette) : seulement sur une page qui en pose la classe */}
+{couleur && <style is:inline set:html={cssDesParties()}></style>}
+<div class:list={['guide-reference', couleur && ['guide-reference--couleur', couleur]]}>
+  <p class="muted guide-fil">
+    <a href={url()}>Accueil</a>{
+      fil.map((m) => (
+        <>
+          {' › '}
+          <a href={url(m.chemin)} aria-current={m.chemin === ici ? 'page' : undefined}>{m.titre}</a>
+        </>
+      ))
+    }
+  </p>
+  <h1 id="guide-titre">
+    {modifiable ? <span data-ed={attributEd('page', { id: entry.id }, 'titre')}>{entry.data.title}</span> : entry.data.title}
+    {reference && <>{' '}<span class="badge">{TYPES.guide.singular}</span></>}
+  </h1>
+  {entry.data.aliases.length > 0 && reference && <p class="muted">Aussi appelé : {entry.data.aliases.join(', ')}</p>}
+  {statusNote && <p class="banner" role="note">{statusNote}</p>}
+  {/* data-ed-corps, data-ed-morceau : morceaux de texte modifiables sur le site de dev (src/scripts/edition/guide.mjs) */}
+  <div class="guide-corps" data-ed-corps={modifiable ? entry.id : undefined}>
+    {
+      morceaux.map((m) =>
+        'bloc' in m ? <GuideBloc bloc={m.bloc} entry={entry} entries={entries} /> : <div class="prose" data-ed-morceau={modifiable ? '' : undefined} set:html={m.html} />,
+      )
+    }
+  </div>
+  {
+    rubriques.length > 0 && (
+      <nav class="guide-rubriques" aria-label="Rubriques">
+        <ul>
+          {rubriques.map((cle) => (
+            <li><a class="guide-rubriques__lien" href={url(`${cle}/`)}>{TYPES[cle as keyof typeof TYPES].label}</a></li>
+          ))}
+        </ul>
+      </nav>
+    )
+  }
+</div>
+
+<PiedDePage entry={entry} />

@@ -147,7 +147,9 @@ const pourComparer = (texte) => String(texte).replace(/[«»“”]/g, '"').repl
 export function morceauxAvecEtats(texte, restantes) {
   const T = String(texte);
   const N = pourComparer(T);
-  const places = [];
+  // une balise du glossaire des mots-clés (« {{id|texte}} », lib/mots-cles-balises.mjs) reste entière : aucune pastille n'y est placée
+  const places = [...T.matchAll(/\{\{[^{}\n]*\}\}/g)].map((m) => [m.index, m.index + m[0].length, null]);
+  const balises = places.length;
   for (const r of [...restantes]) {
     const debut = N.indexOf(pourComparer(r.extrait));
     if (debut < 0) continue;
@@ -166,6 +168,7 @@ export function morceauxAvecEtats(texte, restantes) {
       break;
     }
   }
+  places.splice(0, balises);
   places.sort((x, y) => x[0] - y[0]);
   const out = [];
   let dernier = 0;
@@ -208,9 +211,15 @@ export const ancreDeTitre = (titre) =>
     .replace(/[^\p{L}\p{N}\s_-]/gu, '')
     .replace(/\s/g, '-');
 
-/** Couleurs de magie, pour les pastilles et les titres de magie. */
-const COULEURS = {
-  feu: '#ff0000',
+/**
+ * Couleurs de magie, pour les pastilles et les titres de magie. Clé = le nom court normalisé de la magie (text.mjs#normalize : « Espace-Temps » →
+ * « espace-temps ») : l'id de sa classe de couleur sur le site (`.couleur-magie-<clé>`, lib/palette-css.mjs).
+ * Feu et Arcane : demande du propriétaire du 2026-10-23, « Profite en pour rendre le Feu un peu plus orangé, et l'arcane un peu plus argenté gris pour
+ * mieux différenciers du sang et du vide. » (Feu #ff0000 → #ff4500, Arcane #b7b7b7 → #a8adb5 ; ces deux valeurs sont validées par le propriétaire
+ * le 2026-10-23 : « Garder les deux »).
+ */
+export const COULEURS_DES_MAGIES = Object.freeze({
+  feu: '#ff4500',
   eau: '#0000ff',
   glace: '#00ffff',
   terre: '#996600',
@@ -220,15 +229,25 @@ const COULEURS = {
   ombre: '#cc66ff',
   sang: '#cc0000',
   vide: '#ffffff',
-  arcane: '#b7b7b7',
+  arcane: '#a8adb5',
   corruption: '#000000',
   necromancie: '#274e13',
   'espace-temps': '#ff66cc',
   'potentiel-illimite': '#ff9900',
-};
+});
 
 export const COULEUR_PAR_DEFAUT = '#ad5e29';
-export const couleurDeMagie = (nom) => COULEURS[normalize(nom ?? '')] ?? COULEUR_PAR_DEFAUT;
+
+/** La clé d'une magie connue du site (son nom ou son nom court : « Feu » → « feu »), ou null. */
+export const cleDeMagieConnue = (nom) => {
+  const cle = normalize(nom ?? '');
+  return Object.hasOwn(COULEURS_DES_MAGIES, cle) ? cle : null;
+};
+
+export const couleurDeMagie = (nom) => COULEURS_DES_MAGIES[cleDeMagieConnue(nom)] ?? COULEUR_PAR_DEFAUT;
+
+/** La couleur d'une magie connue du site (son nom ou son nom court : « Feu », « espace-temps »), ou null : sans couleur par défaut. */
+export const couleurDeMagieConnue = (nom) => COULEURS_DES_MAGIES[cleDeMagieConnue(nom)] ?? null;
 
 export const texteSurCouleurDeMagie = (nom) => texteSurCouleur(couleurDeMagie(nom));
 

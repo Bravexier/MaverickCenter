@@ -80,10 +80,54 @@ test('registre : ni adresse ni lien [[…]] touchés ; un nom ne change que d’
   for (const p of db.prepare('SELECT id, titre, titre_cle FROM page').all()) assert.equal(normalize(p.titre), p.titre_cle, `${p.id} : titre et clé désaccordés`);
 });
 
+// Corrections dont le texte a été retiré depuis par une migration de données, sur décision du propriétaire : décision R95 (« Suppression de la création
+// par pièces »), migration 0055, qui retire de la page « Armures » les paragraphes sur la création par pièces. Le texte corrigé est dans ce que la
+// migration retire, et plus dans la base.
+const RETIREES = [
+  { migration: '0055-armure-une-armure-six-parties.sql', table: 'page', cle: { id: 'ressources/armures' }, col: 'corps_md', apres: 'armure en' },
+  { migration: '0055-armure-une-armure-six-parties.sql', table: 'page', cle: { id: 'ressources/armures' }, col: 'corps_md', apres: '2 lingots de fer fassent l' },
+];
+const retiree = (c) => RETIREES.find((r) => r.table === c.table && r.col === c.col && JSON.stringify(r.cle) === JSON.stringify(c.cle) && r.apres === c.apres);
+// Corrections dont la valeur a changé depuis par une migration de données, sur décision du propriétaire : décision R155 (« Grande faiblesse :
+// multiplier par 3 (pas 4) Sensibilité : multiplier par 4 (pas 8) »), migration 0074. La graphie corrigée (« subis ») reste : la migration part du
+// texte corrigé (la garde de son UPDATE) et écrit la nouvelle valeur.
+const CHANGEES = [
+  { migration: '0074-r155-multiplicateurs-des-paliers-de-resistance.sql', table: 'resistance_palier', cle: { id: 'grande_vulnerabilite' }, col: 'effet_brut',
+    apres: 'dégâts subis x4', maintenant: 'dégâts subis x3' },
+  { migration: '0074-r155-multiplicateurs-des-paliers-de-resistance.sql', table: 'resistance_palier', cle: { id: 'sensibilite' }, col: 'effet_brut',
+    apres: 'dégâts subis x8', maintenant: 'dégâts subis x4' },
+];
+const changee = (c) => CHANGEES.find((r) => r.table === c.table && r.col === c.col && JSON.stringify(r.cle) === JSON.stringify(c.cle) && r.apres === c.apres);
+// Corrections d'une ligne fondue depuis dans une autre par une migration, sur décision du propriétaire : décision R167 (« il faudrai mélanger les deux
+// tableaux d'amélioration (dans la DB uniquement) »), migration 0081, qui fond chaque amélioration d'arme élémentaire dans l'amélioration d'arme du même
+// niveau, au même effet (garde de la migration). Le texte corrigé est dans la ligne qui reste.
+const FONDUES = [
+  { migration: '0081-r167-armes-elementaires.sql', table: 'amelioration_equipement', cle: { id: 'ressources/pieces-elementaires#amelioration:arme-elementaire:10' },
+    dans: { id: 'ressources/armes#amelioration:arme:10' } },
+];
+const fondue = (c) => FONDUES.find((r) => r.table === c.table && JSON.stringify(r.cle) === JSON.stringify(c.cle));
+
 test('base : chaque correction est faite (le texte corrigé est dans sa cellule, aux noms corrigés par 0006 près)', () => {
-  for (const c of corrections) {
+  for (const r of RETIREES) assert.ok(corrections.some((c) => retiree(c) === r), `${r.apres} : une correction du registre`);
+  for (const r of CHANGEES) assert.ok(corrections.some((c) => changee(c) === r), `${r.apres} : une correction du registre`);
+  for (const f of FONDUES) assert.match(readFileSync(join(dossier, f.migration), 'utf8'), /WHERE a\.cible <> 'arme_elementaire';/, `${f.migration} : fond la ligne`);
+  for (const c0 of corrections) {
+    const f = fondue(c0);
+    const c = f ? { ...c0, cle: f.dans } : c0;
     const v = valeur(c);
     assert.ok(typeof v === 'string', `${c.table} ${JSON.stringify(c.cle)} : ligne absente de la base`);
+    const r = retiree(c);
+    if (r) {
+      assert.ok(readFileSync(join(dossier, r.migration), 'utf8').includes(c.apres), `${c.apres} : dans le texte que ${r.migration} retire`);
+      assert.ok(!v.includes(c.apres), `${c.apres} : retiré de la base`);
+      continue;
+    }
+    const n = changee(c);
+    if (n) {
+      assert.ok(readFileSync(join(dossier, n.migration), 'utf8').includes(`${c.col} = '${c.apres}'`), `${c.apres} : la valeur d'avant que ${n.migration} garde`);
+      assert.equal(v, n.maintenant, `${c.table} ${JSON.stringify(c.cle)} : la valeur de ${n.migration}`);
+      continue;
+    }
     assert.ok(v.includes(c.apres) || avant0006(c, v).includes(c.apres), `${c.table} ${JSON.stringify(c.cle)} ${c.col} : « ${c.apres} » absent (corrigé à partir de « ${c.avant} »)`);
   }
 });

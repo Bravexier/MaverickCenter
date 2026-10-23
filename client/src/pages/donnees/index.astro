@@ -30,7 +30,7 @@ const nbLignes = sections.reduce((n, s) => n + s.objets.filter((o) => o.genre ==
     sections.map((s) => (
       <section class="donnees-section">
         <h2>{s.titre}</h2>
-        <ul class="donnees-tables">
+        <ul class="donnees-tables" data-mots-cles-bruts>
           {s.objets.map((o) => (
             <li data-nom={o.nom}>
               <a href={url(`donnees/${o.nom}/`)}><code>{o.nom}</code></a>

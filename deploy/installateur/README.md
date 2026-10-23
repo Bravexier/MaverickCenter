@@ -1,9 +1,9 @@
-# Installateurs : serveur normal et serveur de test (à partir de la 0.2.0)
+# Installateurs : serveur normal et serveur de test
 
-À partir de la 0.2.0 (`PREMIERE_VERSION_HEBERGEE`, décision du propriétaire ; la 1.0 est ensuite l'ouverture à tout le Discord), la solution est hébergée hors du NAS et installée par des
-**installateurs** : un script `.sh` autonome par fusion, qui contient le site et l'installe dans le dossier d'une instance, sans téléchargement ni
-jeton. Ils sont publiés en *release* GitHub (privée comme le dépôt) par `.github/workflows/livraison.yml` ; voir [`docs/flux-git.md`](../../docs/flux-git.md).
-Avant la 0.2.0, rien de tout cela ne sert : le NAS a sa propre installation ([`../README.md`](../README.md), branche `site`).
+La solution est hébergée et installée par des **installateurs** : un script `.sh` autonome par fusion, qui contient le site et l'installe dans le
+dossier d'une instance, sans téléchargement ni jeton. Ils sont publiés en *release* GitHub (publique comme le dépôt) par
+`.github/workflows/livraison.yml` ; voir [`docs/flux-git.md`](../../docs/flux-git.md). Le serveur des deux instances se met en place pas à pas avec
+[`../vps/README.md`](../vps/README.md) ; le paquet du NAS a sa propre installation ([`../README.md`](../README.md)).
 
 > Le contenu des pages appartient au propriétaire du jeu. La configuration fournie protège donc l'accès par mot de passe
 > et interdit l'indexation par les moteurs de recherche. Ne la désactivez pas sans son accord.
@@ -24,7 +24,12 @@ du service : utilisateurs, fiches, et ce qu'ils font ; voir [`docs/serveur.md`](
 installé), `installation.log`, et `maintenance/` (créé par Docker : l'annonce « Maintenance en cours » pendant une mise à jour, que le site de dev écrit
 et que chaque serveur lit ; le serveur de test prend celui du serveur normal avec `MAVERICK_DOSSIER_MAINTENANCE=<dossier du serveur normal>/maintenance`
 dans son `.env` — `deploy/vps/instances.sh` le pose —, sinon la production n'est jamais mise en maintenance ; voir [`docs/serveur.md`](../../docs/serveur.md),
-« Maintenance pendant une mise à jour »). Un installateur de test refuse un dossier de production et inversement.
+« Maintenance pendant une mise à jour »), et `metriques/` (créé par Docker : la base des métriques du service, `prod.db` ou `dev.db`, une par
+instance, jamais mêlées ; le serveur de test y lit aussi celle du serveur normal quand son `.env` donne
+`MAVERICK_DOSSIER_METRIQUES=<dossier du serveur normal>/metriques` — `deploy/vps/instances.sh` le pose dans les deux `.env` ; voir
+[`docs/serveur.md`](../../docs/serveur.md), « Métriques et volume »). L'installateur ne touche jamais aux métriques : hors de `db/`, et un
+`db/metriques/` (service sans dossier réglé) n'est ni copié de la production ni effacé du test. Les journaux des conteneurs (`docker logs`)
+tournent : 5 fichiers de 10 Mo au plus par conteneur. Un installateur de test refuse un dossier de production et inversement.
 
 ## Installer une version
 
@@ -53,6 +58,38 @@ la nouvelle version est écrite à côté (`.nouveau`), à reporter à la main.
 
 **Revenir à une version précédente** : créez d'abord un fichier `GELER` dans le dossier de l'instance (sinon la mise à jour automatique réinstalle la
 dernière livraison dans les 5 minutes), puis relancez l'installateur de la version voulue. Supprimez `GELER` une fois une livraison corrigée publiée.
+
+**Revenir sous la migration 0045** (une version d'avant les gains de niveau en deux totaux, l'entraînement et la solidité des armes) : le service
+d'avant ne relit pas la base des fiches refaite en 0045 (toute lecture de fiche échoue) et refuse de la reconstruire. Il faut lui remettre
+l'archive faite à la reconstruction 0045, et **tout ce que la base a reçu depuis est perdu** : fiches créées, modifiées ou supprimées, gains de
+niveau, entraînement et solidité des armes saisis (et, sur le serveur de test, les modifications des règles en attente). Dans le dossier de
+l'instance :
+
+1. `touch GELER`, puis sauvegardez la base en place, hors de `db/` : `sqlite3 db/vivante.db ".backup /root/vivante-avant-retour.db"`.
+2. Trouvez l'archive, la plus récente de `db/archives/` qui a encore la table `personnage_progression`, et **copiez-la à part tout de suite** :
+   seules les 5 dernières archives sont gardées (`ARCHIVES_GARDEES` : au-delà, chaque reconstruction efface la plus ancienne), et l'installateur
+   de test remplace le contenu de `db/`.
+   ```bash
+   for f in db/archives/vivante-*.db; do sqlite3 "$f" ".tables personnage_progression" | grep -q . && echo "$f"; done | tail -1
+   cp db/archives/vivante-AAAA-MM-JJT….db /root/vivante-avant-0045.db     # le fichier affiché par la ligne précédente
+   ```
+   Aucune archive de ce genre : soit la base n'avait ni fiche ni modification en attente à la reconstruction 0045 (à l'étape 4, supprimez alors
+   aussi `db/vivante.db` au lieu d'y copier l'archive : le service en refait une vide), soit elle a déjà été effacée, et les fiches d'avant 0045
+   ne se retrouvent plus que dans une sauvegarde faite à la main.
+3. `docker compose stop serveur`, puis lancez l'installateur de la version voulue.
+4. Remettez l'archive à la place de la base, sans ses fichiers voisins ni `vivante.json` (sans lui, le service refait la base pour les règles
+   installées, en reprenant les fiches de l'archive) :
+   ```bash
+   cp /root/vivante-avant-0045.db db/vivante.db
+   rm -f db/vivante.db-wal db/vivante.db-shm db/vivante.db-journal db/vivante.json
+   ```
+5. `docker compose start serveur`, puis vérifiez `/api/etat` (base refaite, sans erreur).
+
+**Revenir sous la migration 0055** (une version d'avant l'armure complète de la fiche et la solidité de ses parties, décision R95) : la même
+procédure, pour la même raison (le service d'avant ne relit pas la base refaite en 0055 et refuse de la reconstruire). L'archive à remettre est la
+plus récente de `db/archives/` qui a encore la table `personnage_armure` (à l'étape 2, `".tables personnage_armure"` au lieu de
+`".tables personnage_progression"` ; copiée par exemple en `/root/vivante-avant-0055.db`), et l'armure et la solidité des parties saisies depuis
+sont perdues avec le reste. Revenir sous 0045 depuis une version d'après 0055 : l'archive de 0045 (elle a les deux tables).
 
 ## Mise à jour automatique
 
@@ -84,4 +121,3 @@ Un jeton expiré, un problème réseau ou un installateur abîmé n'abîment rie
 
 Les installateurs sont fabriqués et exécutés par `client/test/installateur.test.mjs` (installation, mise à jour, copie d'une vraie base SQLite en cours
 d'écriture, refus) et `mise-a-jour.sh` est testé contre un faux GitHub (`client/test/mise-a-jour.test.mjs`), avec et sans `rsync` et `sqlite3`.
-L'hébergement de la 1.0 n'existe pas encore : son premier lancement sera le vrai test de `docker-compose.yml` et de nginx.

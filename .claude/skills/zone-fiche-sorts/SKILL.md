@@ -1,0 +1,28 @@
+---
+name: zone-fiche-sorts
+description: "Fiche /fiche/ : sorts par emplacement (R27), NM et NM du MJ (R118, R154), sort du moment (coûts, portée, dégâts : R102, R129), sorts grenades et fer (R114, R164), sort préparé (R115), invocations (R130). À charger avant de lire, modifier ou relire ces calculs, sort-bonus-texte.mjs ou leurs tests."
+paths: ["client/src/lib/sort-bonus-texte.mjs", "client/test/sort-bonus-contexte.test.mjs", "client/test/maitrise-sorts.test.mjs", "client/test/fiche-postures-sorts.test.mjs", "client/test/fiche-grenades-et-sort-prepare.test.mjs", "client/test/fiche-invocations.test.mjs", "client/test/fiche-sorts-fer.test.mjs"]
+user-invocable: false
+---
+# Fiche : sorts
+
+Noyau : skill `zone-fiche`. Détail : `docs/character-generator.md`, « Sorts », « Sort préparé », « Invocations », « Sorts du moment ». Valeurs au NM : `docs/content-guide.md`, « Niveaux de maîtrise (NM) des sorts ».
+
+## Fichiers
+- Lecteur des bonus de sorts des dons et des armures élémentaires (au build) : `lib/sort-bonus-texte.mjs` (`preparationEcrite`, `ETIQUETTES_DES_SORTS`), rejoué sur toute la base par `test/sort-bonus-contexte.test.mjs`.
+- Partagés : `lib/sort-maitrise.mjs#valeurAuNm`, `lib/sort-cout.mjs`, `lib/creature-npm.mjs#creatureAuNpm`.
+
+## Choix du propriétaire
+- Une liste par emplacement, sans emplacement en plus (`lignesDeSorts`, R27), groupée par NPM, chaque sort sur la couleur de sa magie (`sortsParNpm`). Sans colonne NPM ; D/S/B ; valeurs au NM du sort (`valeurAuNm`) ; effet secondaire sur sa ligne ; étoile et infobulle pour la remarque.
+- NM : un seul curseur de 0 à 3 (R24, R26, R118 : `bornesDuNm`, `sortAuNm`), de 1 à 3 avec un livre (`personnage_sort.nm_livre`, choisi dans l'entraînement, `sortAvecLivre` ; le tableau n'en montre que la marque), dont le NM ne compte pas dans le décompte.
+- NM du MJ pour toute la fiche : un champ « + MJ » à côté du décompte (`personnage.nm_mj`, migration `0066-nm-mj-fiche`, qui a retiré `personnage_sort.nm_cadeau` : `COLONNES_CONVERTIES`, `nmDuMjDesSorts`).
+- NM gagnés : ceux des niveaux plus ceux qu'écrit un don acquis (R154 : « Maîtrise » de l'Ocultomancien, +4, `nm_gagnes` des règles ; `maitriseDesSorts` : `niveaux`, `dons` [{ nom, nm }], `disponibles` = les deux, `limite` = gagnés + MJ ; comme la règle `sorts_nm_total` ; l'infobulle du décompte « NM : comptés / gagnés » les détaille). Ce ne sont pas des NM du MJ ; `maxParSort` et `maxCompteParSort` (R118, R26) n'en dépendent pas. Le lecteur est `lib/maitrise-arme.mjs#nmGagnesDuDon` (skill `zone-fiche-equipement`).
+- Coût, portée, dégâts et soins recalculés avec les bonus des dons, accessoires, bâtons, armure élémentaire portée (toujours comptés : R165, jamais cassée au sens de R158) et posture (R102, `sortDuMoment`). Un coût par unité : « × N » sous le coût, multiplié avant les réductions (R129, `multiplicateurDuCout`, `bornesDuMultiplicateur`). Un bonus lié à une situation n'est jamais compté.
+- Sorts grenades par leur étiquette « Sort grenade », jamais par leur nom (R114, `sort_mot_cle`, `ETIQUETTES_DES_SORTS`).
+- Sorts fer par leur étiquette « Sort fer » (R164, migration 0079) : « ... Brutale » (Mage Émeraude, niveau 10) écrit « Les enchantements d'armes », lus comme ces sorts (`ETIQUETTES_DES_SORTS` : au pluriel seulement, plus « sorts "fer" » et « sorts de Fer Élémentaire » ; jamais par le nom d'un sort ni du don ; « armes » dans le nom d'une étiquette ne fait pas d'une phrase une phrase sur les armes : `sansEtiquettes`), et « sont augmentés de +2 » (`ETIQUETTE_AUGMENTEE`, pour l'étiquette `sort-fer` seule) : +2 dégâts en posture Focus seulement (« (Posture Focus) » de son texte, R100 ; pas une situation, R128). Le « +8 dégâts » d'amplification d'un sort qui porte l'étiquette reçoit les bonus écrits pour elle, et eux seuls (`sortDuMoment`, `desEtiquettes` ; chaque bonus écrit lu une fois par sort, `dejaLus`) : « +10 dégâts » en Focus, cumulé avec le bâton ; hors Focus, « non compté (dans une autre posture) ». Les « 5 points de corruption » de Fer corrompu restent du texte. Le rappel d'un sort « Fer » sur une arme élémentaire d'un autre élément (R167) : skill `zone-fiche-equipement`.
+- Bloc « Sort préparé » des dons « Préparation » et « Chargement » : un sort d'attaque NPM 1 ou 2, son jet D100, calculé à la posture enregistrée à sa préparation (R115, `personnage_sort.prepare`, `prepare_jet`, `prepare_posture_id`, un seul par fiche, migration 0067), pour tout type d'attaque (R136) ; perdu en Symbiose d'une autre magie (R135 : `sortsApresLaSymbiose`, à chaque rafraîchissement) ; « Soralongé » +2 de portée (R133), « À l'aise » +1 NM sans dépasser 3, lu dans son texte, hors du décompte (R134 : `nmDuMoment`).
+- Sous un sort qui invoque, ses créatures, celles du personnage d'abord, et la carte de la choisie au NPM du « × N » ; sous un sort qui sacrifie, ce que donne l'invocation sacrifiée (R130, `creaturesDuSort`, `sacrificeDuSort`). Choix non enregistré. Une créature à invoquer porte `invocation-choix--magie` et deux magies (`--c1`, `--c2`).
+- La marque « préparé » (`.sort-prepare__marque`, `--marque`) : la couleur de la zone ; en thème sombre, son texte seul éclairci par le calcul (`color-mix(in srgb, var(--etape) 45%, #fff)`), la bordure garde `var(--etape)`. Pas un choix du propriétaire : sans préférence de sa part, l'option recommandée « Plus clair en sombre », au nom de sa règle « Privilégé la lisibilité » (question et réponse : `docs/content-guide.md`, « Les couleurs des parties du guide »).
+
+## Tests
+`test/fiche-postures-sorts.test.mjs` (la posture sur les sorts : skill `zone-fiche-situation`), `fiche-grenades-et-sort-prepare`, `fiche-sorts-fer` (R164), `fiche-invocations`, `maitrise-sorts` et `sort-bonus-contexte` (rejoués sur toute la base).

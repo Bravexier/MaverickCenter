@@ -3,10 +3,8 @@
 // don et le sort qu'un prétiré utilise ne touche pas la fiche (ni ligne, ni note, ni version : une fiche ouverte ailleurs s'enregistre sans 409) ; le
 // nouveau nom se lit dans les règles, sous le même identifiant. Base vivante neuve ; données d'essai sous des noms absents de la base.
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
@@ -14,9 +12,9 @@ import { ficheVide } from '../src/lib/fiche-format.mjs';
 import { donsValables, lignesDeSorts } from '../src/lib/fiche-moteur.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-edition-fiches-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('edition-fiches');
 const { chemin } = preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, 'db') });
 const db = ouvrirBaseVivante(chemin);
 const service = { base: () => db, etat: () => ({}), edition: true, journal: () => {} };
@@ -49,7 +47,7 @@ test('R42 — renommer le métier, la spécialité, le don et le sort d’un pr�
   const cree = appel('POST', '/api/personnages/', {
     ...ficheVide('Témoin des renommages'), notes: 'Notes du joueur.', metier_id: metier, magie_innee_id: sort.magie_id,
     classes: [{ rang: 1, classe_id: classe, specialite_id: spec }], capacites: [{ capacite_id: don }],
-    sorts: [{ sort_id: sort.id, rang: 1, niveau_maitrise: 0, nm_livre: 0, nm_cadeau: 0 }],
+    sorts: [{ sort_id: sort.id, rang: 1, niveau_maitrise: 0, nm_livre: 0 }],
   });
   assert.equal(cree.statut, 201, JSON.stringify(cree.corps));
   const id = cree.corps.personnage.id;

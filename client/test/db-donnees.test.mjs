@@ -5,14 +5,14 @@
 // Ces tests construisent la base dans un dossier temporaire et ne touchent ni data/rows ni var/.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { ORDRE_DES_RACES } from '../src/lib/race-kinds.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const racine = fileURLToPath(new URL('../../', import.meta.url));
 const client = fileURLToPath(new URL('../', import.meta.url));
@@ -23,7 +23,7 @@ const wiki = join(client, 'src', 'content', 'wiki');
 const node = (script, args = []) => spawnSync(process.execPath, ['--no-warnings', join(client, 'scripts', script), ...args], { encoding: 'utf8' });
 const pages = (...args) => spawnSync('python3', ['-I', join(racine, 'tools', 'db', 'pages_md.py'), ...args], { encoding: 'utf8' });
 const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
-const dir = mkdtempSync(join(tmpdir(), 'db-donnees-'));
+const dir = dossierTemporaire('db-donnees');
 
 const fichiersMd = (type) => readdirSync(join(wiki, type)).filter((f) => f.endsWith('.md')).length;
 const nbPagesMd = readdirSync(wiki).reduce((n, type) => n + fichiersMd(type), 0);
@@ -174,7 +174,11 @@ test('db:sync-pages : une page « docs » ajoutée à la main entre dans la base
   const ajout = pages('sync', ...args);
   assert.equal(ajout.status, 0, ajout.stdout + ajout.stderr);
   assert.match(ajout.stdout, /1 page\(s\) mise\(s\) à jour/);
-  assert.equal(pages('check', ...args).status, 0);
+  // le mot-clé « test » n'est pas dans le vocabulaire : il n'est pas posé, et la synchronisation le signale (un import n'en crée pas : migration 0056)
+  assert.match(ajout.stdout, /1 mot\(s\)-clé\(s\) non posé\(s\)[^\n]*\n {4}'test'$/m);
+  assert.doesNotMatch(readFileSync(join(copieRows, 'mot_cle.sql'), 'utf8'), /VALUES \('test'/);
+  assert.doesNotMatch(readFileSync(join(copieRows, 'page_tag.sql'), 'utf8'), /page-ajoutee-a-la-main/);
+  assert.equal(pages('check', ...args).status, 0, 'à jour : une écriture inconnue ne compte pas');
   assert.match(readFileSync(join(copieRows, 'page.sql'), 'utf8'), /guide\/page-ajoutee-a-la-main/);
   assert.match(readFileSync(join(copieRows, 'alias.sql'), 'utf8'), /Alias de test/);
 
@@ -182,9 +186,7 @@ test('db:sync-pages : une page « docs » ajoutée à la main entre dans la base
   const retrait = pages('sync', ...args);
   assert.equal(retrait.status, 0, retrait.stdout + retrait.stderr);
   const touches = readdirSync(rows).filter((f) => readFileSync(join(rows, f), 'utf8') !== readFileSync(join(copieRows, f), 'utf8'));
-  // seul le vocabulaire garde une trace : le mot-clé « test », créé avec la page, y reste (aucun import ne supprime un mot-clé : migration 0043)
-  assert.deepEqual(touches, ['mot_cle.sql'], 'ajout puis retrait : data/rows est revenu à l’identique (alias, mot-clé posé et source de la page retirés avec elle)');
-  assert.match(readFileSync(join(copieRows, 'mot_cle.sql'), 'utf8'), /VALUES \('test', 'test', 'test'\);/);
+  assert.deepEqual(touches, [], 'ajout puis retrait : data/rows est revenu à l’identique (alias et source de la page retirés avec elle ; aucun mot-clé créé)');
 
   // une page de la famille « classes » (importeur typé) ne se crée pas à la main
   const capacite = readdirSync(join(copieWiki, 'capacites'))[0];

@@ -31,8 +31,10 @@
 //        (au plus ESSAIS fois). Fin de l'étape « Fusion dans dev » : le lot est dans dev ;
 //     h. étape « Livraison vers master » (elle repart de dev : chercherLotDejaFusionne) : attend le commit de version de livraison.yml
 //        (« chore: version vX.Y.Z (feature …) (PR #n) ») — la PR de livraison ne part qu'après, sinon la version de la feature s'y mêlerait —,
-//        puis ouvre la PR de livraison dev → master (jamais de [V: X+1] : signal du propriétaire seulement), attend ses checks verts et la
-//        fusionne par commit de fusion avec sha ; livraison.yml pose ensuite la version X.Y.0, les étiquettes et la publication.
+//        puis ouvre la PR de livraison dev → master, attend ses checks verts et la fusionne par commit de fusion avec sha ; livraison.yml pose
+//        ensuite la version X.Y.0, les étiquettes et la publication. Le marqueur [V: X+1] est le signal du propriétaire : le titre de cette PR
+//        ne le porte que si le lot est `majeure` (la case « Version majeure » de la page, couverte par l'empreinte) — livraison.yml fait alors la
+//        X+1.0.0 —, et la livraison s'arrête si la PR le porte sans que le lot le demande, ou l'inverse.
 //   Simulation de mise à jour (entrée « essai ») : preparer fait tout, contrôles compris ; livrer vérifie sans effet de bord : artefact, liste
 //   blanche, application sur origin/dev à blanc (rebase compris), `git push --dry-run` authentifié par le jeton (la découverte receive-pack exige
 //   l'écriture sur Contents), lecture des PR avec le jeton, PR de livraison déjà ouverte ; il ne pousse rien, n'ouvre ni ne ferme aucune PR.
@@ -105,10 +107,12 @@ export const TABLES_DE_LA_NOTE = ['note_version', 'note_version_ligne', 'histori
 export const CONTROLES_DE_LA_CI = [
   'npm test',
   'npm run build',
-  'node --test test/magies-html.test.mjs test/races-html.test.mjs test/classes-html.test.mjs test/metiers-html.test.mjs test/bestiaire-html.test.mjs test/bestiaire-pages-html.test.mjs test/chronologie-html.test.mjs test/armes-html.test.mjs test/accessoires-html.test.mjs test/guide-html.test.mjs test/site-html.test.mjs test/fiche-html.test.mjs test/edition-rendu.test.mjs test/classe-dons-rendu.test.mjs',
+  'node --test test/magies-html.test.mjs test/races-html.test.mjs test/classes-html.test.mjs test/metiers-html.test.mjs test/bestiaire-html.test.mjs test/bestiaire-pages-html.test.mjs test/chronologie-html.test.mjs test/armes-html.test.mjs test/armures-html.test.mjs test/composants-html.test.mjs test/accessoires-html.test.mjs test/equipement-html.test.mjs test/ceinture-html.test.mjs test/accueil-html.test.mjs test/tableaux.test.mjs test/guide-html.test.mjs test/site-html.test.mjs test/fiche-html.test.mjs test/edition-rendu.test.mjs test/classe-dons-rendu.test.mjs test/debug-page.test.mjs test/palette-css.test.mjs',
   'HIDE_EXAMPLES=1 SITE_MODE=test SITE_TAG=v0.0.0-test npm run build',
   'grep -q \'class="bandeau-test"\' dist/index.html',
   'sh "$(node ../deploy/installateur/fabriquer.mjs --mode test --site dist --tag v0.0.0-test --version 0.0.0 --sha local --sortie "$RUNNER_TEMP/installateur")" --verifier',
+  'HIDE_EXAMPLES=1 SITE_MODE=prod SITE_TAG=v0.0.0 npm run build',
+  'node --test test/debug-page.test.mjs test/site-html.test.mjs',
   'node ../tools/build-artifact.mjs --out "$RUNNER_TEMP/artifact"',
 ];
 /** Les contrôles du job preparer, avant le commit : la base reconstruite et vérifiée, puis exactement ce que la CI de la PR fera (client). */
@@ -191,6 +195,7 @@ export function lireLot(octets, { empreinte, lot }, etape = 'lot') {
     throw echec(etape, 'lot illisible (format « maverick-mise-a-jour/1 » et identifiant du lot attendus)');
   }
   if (donnees.simulation !== undefined && typeof donnees.simulation !== 'boolean') throw echec(etape, 'lot illisible (« simulation » doit valoir true ou false)');
+  if (donnees.majeure !== undefined && typeof donnees.majeure !== 'boolean') throw echec(etape, 'lot illisible (« majeure » doit valoir true ou false)');
   return donnees;
 }
 
@@ -230,21 +235,50 @@ export function verifierSimulation(donnees, essai) {
 /**
  * Les tables que le journal du lot modifie (la liste blanche, avec TABLES_DE_LA_NOTE), et celles que son rejeu écrit au-delà du journal — la même
  * règle que serveur/edition.mjs#rejouerLeJournal, recopiée ici (ce job n'importe rien d'autre) : un mot-clé supprimé ou fusionné retire aussi, par la
- * cascade de son schéma, ses lignes page_tag des pages d'exemple (absentes du site de dev, donc du journal) ; une ligne page_tag notée avant la
- * migration 0043 (avec sa colonne `libelle`) peut faire créer son mot-clé.
+ * cascade de son schéma, ses lignes page_tag des pages d'exemple (absentes du site de dev, donc du journal), et ses balises du glossaire de tous les
+ * textes de la base (balisesRetireesParLeLot, balisesDesColonnesDerivees : pages d'exemple, pages typées, textes que le site de dev n'avait pas) —
+ * `tablesAvecBalises` : les tables dont le fichier de data/rows contient une balise (une liste, ou une fonction qui la rend, appelée seulement pour un tel
+ * lot : tablesAvecBalises), et `page` (les pages typées refaites depuis les lignes ainsi réécrites : recalculerLesPages) ; une ligne page_tag notée avant
+ * la migration 0043 (avec sa colonne `libelle`) peut faire créer son mot-clé ; un lot qui touche une classe ou un don (classe, classe_maitrise_arme,
+ * capacite), ou une famille d'armes (arme_famille : décision R159, toutes les sources), voit ses sources de maîtrise d'arme refaites par le lecteur
+ * (serveur/edition-maitrises.mjs#sourcesRefaitesParLeLot : TABLES_DES_SOURCES).
  */
-export function tablesDuLot(donnees) {
+// serveur/edition-maitrises.mjs#TABLES_DES_SOURCES, recopiée (test/mise-a-jour-github.test.mjs les compare)
+export const TABLES_DES_SOURCES_DE_MAITRISE = Object.freeze(['maitrise_arme_part', 'maitrise_arme_part_famille', 'capacite_nm_gagne']);
+
+export function tablesDuLot(donnees, { tablesAvecBalises: balises = [] } = {}) {
   const tables = new Set();
   const ancienne = (v) => Boolean(v && typeof v === 'object' && 'libelle' in v);
+  let motCleRetire = false;
   for (const l of donnees?.journal?.lots ?? []) {
     for (const m of l.modifications ?? []) {
       if (typeof m.table !== 'string' || !/^[A-Za-z0-9_]+$/.test(m.table)) throw echec('lot', 'lot illisible (nom de table invalide dans le journal)');
       tables.add(m.table);
-      if (m.table === 'mot_cle' && m.operation === 'supprimer') tables.add('page_tag');
+      if (m.table === 'mot_cle' && m.operation === 'supprimer') {
+        tables.add('page_tag');
+        motCleRetire = true;
+      }
       if (m.table === 'page_tag' && (ancienne(m.avant) || ancienne(m.apres))) tables.add('mot_cle');
+      if (['classe', 'classe_maitrise_arme', 'capacite', 'arme_famille'].includes(m.table)) for (const t of TABLES_DES_SOURCES_DE_MAITRISE) tables.add(t);
     }
   }
+  if (motCleRetire) {
+    tables.add('page');
+    for (const t of typeof balises === 'function' ? balises() : balises) tables.add(t);
+  }
   return [...tables].sort();
+}
+
+/**
+ * Les tables dont le fichier de data/rows contient, à la révision `rev`, une balise du glossaire des mots-clés (« {{ ») : celles que le rejeu d'un lot
+ * qui supprime ou fusionne un mot-clé peut réécrire (tablesDuLot). Par git seul (git grep), rien du dépôt n'est exécuté ; [] sans révision. `rev` n'est
+ * qu'un commit (SHA) ou `origin/dev` : rien d'autre ne va à git (un argument qui commencerait par « - » serait une option de git grep).
+ */
+export function tablesAvecBalises(g, rev) {
+  if (!rev) return [];
+  if (!SHA.test(String(rev)) && rev !== `origin/${DEV}`) throw echec('git', `révision refusée pour la recherche des balises : ${JSON.stringify(rev)} (un SHA ou origin/${DEV})`);
+  const r = g(['grep', '-l', '-F', '{{', rev, '--', 'data/rows/'], { ok: [0, 1] });
+  return r.sortie.split('\n').map((l) => /^[^:]*:data\/rows\/([A-Za-z0-9_]+)\.sql$/.exec(l.trim())?.[1]).filter(Boolean).sort();
 }
 
 /** Date (AAAA-MM-JJ, note de version) et horodatage (AAAAMMJJ-HHMM, nom de branche) dans le fuseau du propriétaire. */
@@ -303,7 +337,8 @@ export function noteDuCorps(corps) {
 }
 
 const titreDev = (version) => `Mise à jour des règles V${version} (site de dev)`;
-const titreLivraison = (version) => `Livraison V${version} (mise à jour du site de dev)`;
+/** Le titre de la PR de livraison dev → master ; `majeure` (le lot le demande, case « Version majeure ») : il porte [V: X+1], que livraison.yml lit. */
+export const titreLivraison = (version, majeure = false) => `Livraison V${version} (mise à jour du site de dev)${majeure ? ' [V: X+1]' : ''}`;
 const messageDeCommit = (version, lot) => `Mise à jour des règles V${version} (site de dev, lot ${lot.slice(0, 8)})`;
 const corpsDuCommit = (lot, run) => `Lot : ${lot}${run ? `\nRun : ${run}` : ''}\n\nAppliqué par le workflow « Mise à jour des règles » (.github/workflows/mise-a-jour.yml).`;
 /** Le message complet du commit préparé : livrer le recalcule et le compare (aucune ligne « Lot : » d'un autre lot ne peut s'y glisser). */
@@ -505,7 +540,7 @@ export function verifierPreparation(p, { lot, empreinte, essai }) {
 }
 
 /** Relit l'artefact « preparation » (job livrer). Le lot est vérifié par l'empreinte de l'entrée du workflow. Rend { donnees, tables, preparation }. */
-function lireArtefact(dossier, { lot, empreinte, essai }) {
+function lireArtefact(dossier, { g, lot, empreinte, essai }) {
   if (!dossier) throw echec('entrees', 'ARTEFACT manquant (dossier de l\'artefact « preparation »)');
   let octets;
   try {
@@ -515,8 +550,9 @@ function lireArtefact(dossier, { lot, empreinte, essai }) {
   }
   const donnees = lireLot(octets, { empreinte, lot }, 'artefact');
   verifierSimulation(donnees, essai);
-  const tables = tablesDuLot(donnees);
   const preparation = verifierPreparation(lireJson(join(dossier, ARTEFACT.preparation)), { lot, empreinte, essai });
+  // les balises du glossaire de la base du commit préparé (le rejeu d'un lot qui retire un mot-clé les réécrit : tablesDuLot)
+  const tables = tablesDuLot(donnees, { tablesAvecBalises: () => (g && preparation.base ? tablesAvecBalises(g, preparation.base) : []) });
   return { donnees, tables, preparation };
 }
 
@@ -778,7 +814,8 @@ export async function preparer(entrees, outils) {
   journal(`lot ${lot} : téléchargement depuis ${ctx.adresse}`);
   const { octets, donnees } = await telechargerLot(ctx, outils);
   verifierSimulation(donnees, essai);
-  const tables = tablesDuLot(donnees);
+  // le rejeu part de dev : les balises du glossaire de ses fichiers (un lot qui retire un mot-clé les réécrit : tablesDuLot)
+  const tables = tablesDuLot(donnees, { tablesAvecBalises: () => tablesAvecBalises(ctx.g, `origin/${DEV}`) });
   const nbModifications = donnees.journal.lots.reduce((n, l) => n + (l.modifications?.length ?? 0), 0);
   journal(`empreinte vérifiée${essai ? ' (lot de simulation)' : ''} ; ${nbModifications} modification(s) en ${donnees.journal.lots.length} lot(s) ; tables du lot : ${tables.join(', ') || 'aucune'}`);
   rmSync(artefact, { recursive: true, force: true });
@@ -1040,17 +1077,33 @@ async function attendreCommitDeVersion(ctx, numero) {
   }
 }
 
-const MAJEURE_AJOUTEE = 'le titre ou la description porte le marqueur de version majeure (V: X+1) : une version majeure est le signal du '
-  + 'propriétaire, la fusion lui est laissée (à faire à la main, « Create a merge commit »)';
-const MAJEURE_OUVERTE = (numero) => `une PR de livraison dev → master est déjà ouverte avec [V: X+1] (#${numero}) : une version majeure est le signal `
-  + 'du propriétaire, à fusionner (ou fermer) à la main';
+const MAJEURE_AJOUTEE = 'le titre ou la description porte le marqueur de version majeure (V: X+1) alors que ce lot n\'est pas une version majeure '
+  + '(case « Version majeure » décochée) : une version majeure est le signal du propriétaire, la fusion lui est laissée (à faire à la main, « Create '
+  + 'a merge commit »)';
+const MAJEURE_RETIREE = 'le titre ne porte plus le marqueur de version majeure (V: X+1) alors que ce lot est une version majeure (case « Version '
+  + 'majeure » cochée) : la fusion ferait une version mineure, que la note de version du lot contredirait ; remettre le marqueur au titre puis '
+  + 'relancer le workflow, ou fusionner à la main en gardant le marqueur au titre';
+const MAJEURE_OUVERTE = (numero) => `une PR de livraison dev → master est déjà ouverte avec [V: X+1] (#${numero}) alors que ce lot n'est pas une `
+  + 'version majeure : une version majeure est le signal du propriétaire, à fusionner (ou fermer) à la main';
+const MINEURE_OUVERTE = (numero) => `une PR de livraison dev → master est déjà ouverte sans [V: X+1] (#${numero}) alors que ce lot est une version `
+  + 'majeure (case « Version majeure » cochée) : ajouter le marqueur à son titre ou la fermer, puis relancer le workflow (il reprendra à la livraison)';
 
-/** Étape d : la PR de livraison dev → master (ou celle déjà ouverte, sans [V: X+1]), checks verts, fusion par commit de fusion avec sha. */
-async function livrerSurMaster(ctx, dev) {
+/** Le désaccord entre une PR de livraison ouverte et le lot (marqueur [V: X+1] porté ou non, case « Version majeure »), ou null. */
+const desaccordMajeure = (pr, majeure) => {
+  if (demandeMajeure(pr.title, pr.body) === majeure) return null;
+  return majeure ? MINEURE_OUVERTE(pr.number) : MAJEURE_OUVERTE(pr.number);
+};
+
+/**
+ * Étape d : la PR de livraison dev → master (ou celle déjà ouverte, qui porte [V: X+1] si et seulement si le lot le demande), checks verts, fusion
+ * par commit de fusion avec sha. `majeure` : le lot est une version majeure (son titre porte [V: X+1], jamais son corps).
+ */
+async function livrerSurMaster(ctx, dev, { majeure = false } = {}) {
   const { api, outils: { journal }, lot, run } = ctx;
-  const titre = titreLivraison(dev.version);
+  const titre = titreLivraison(dev.version, majeure);
   const corps = corpsDePR(dev.markdown, `Livraison automatique après la fusion de la PR #${dev.pr} dans dev (lot \`${lot}\`, workflow « Mise à jour des règles »${run ? ` : ${run}` : ''}).`);
-  if (demandeMajeure(titre, corps)) throw echec('pr-master', 'le titre ou le corps de la livraison porte [V: X+1]');
+  if (demandeMajeure(titre) !== majeure || demandeMajeure(corps)) throw echec('pr-master', 'le titre ou le corps de la livraison porte [V: X+1] à tort');
+  if (majeure) journal(`version majeure (case « Version majeure » du lot) : le titre de la PR de livraison porte [V: X+1]`);
   let pr;
   const r = await api.post('/pulls', { title: titre, head: DEV, base: MASTER, body: corps });
   if (r.statut === 201) {
@@ -1061,7 +1114,8 @@ async function livrerSurMaster(ctx, dev) {
       'lecture des PR de livraison ouvertes', 'pr-master');
     pr = Array.isArray(ouvertes) ? ouvertes[0] : null;
     if (!pr) throw echec('pr-master', `ouverture de la PR de livraison : GitHub a répondu ${messageGithub(r)}`);
-    if (demandeMajeure(pr.title, pr.body)) throw echec('pr-master', MAJEURE_OUVERTE(pr.number), { pr: pr.number });
+    const desaccord = desaccordMajeure(pr, majeure);
+    if (desaccord) throw echec('pr-master', desaccord, { pr: pr.number });
     journal(`PR de livraison déjà ouverte : #${pr.number} (${pr.html_url}), reprise`);
   } else {
     exiger(r, [201], 'ouverture de la PR de livraison dev → master', 'pr-master');
@@ -1074,7 +1128,7 @@ async function livrerSurMaster(ctx, dev) {
   for (let essai = 1; essai <= ESSAIS; essai += 1) {
     const lue = exiger(await api.get(`/pulls/${pr.number}`), [200], `lecture de la PR #${pr.number}`, 'pr-master');
     if (lue.state !== 'open') throw echec('pr-master', `la PR de livraison #${pr.number} a été fermée`, { pr: pr.number });
-    if (demandeMajeure(lue.title, lue.body)) throw await arreter(MAJEURE_AJOUTEE);
+    if (demandeMajeure(lue.title, lue.body) !== majeure) throw await arreter(majeure ? MAJEURE_RETIREE : MAJEURE_AJOUTEE);
     const sha = lue.head.sha;
     const checks = await attendreChecks(ctx, sha);
     if (!checks.ok) throw await arreter(texteDesChecks(checks, ctx.delais));
@@ -1082,8 +1136,8 @@ async function livrerSurMaster(ctx, dev) {
     const etat = await attendreFusionnable(ctx, pr.number);
     if (etat.etat === 'fermee') throw echec('pr-master', `la PR de livraison #${pr.number} a été fermée`, { pr: pr.number });
     if (etat.etat === 'conflit') throw await arreter('GitHub la dit non fusionnable (conflit entre dev et master)');
-    // Relu juste avant la fusion : le marqueur ajouté entre-temps (titre ou description modifiés) ferait une version majeure.
-    if (etat.pr && demandeMajeure(etat.pr.title, etat.pr.body)) throw await arreter(MAJEURE_AJOUTEE);
+    // Relu juste avant la fusion : le marqueur ajouté (ou retiré) entre-temps (titre ou description modifiés) changerait la version livrée.
+    if (etat.pr && demandeMajeure(etat.pr.title, etat.pr.body) !== majeure) throw await arreter(majeure ? MAJEURE_RETIREE : MAJEURE_AJOUTEE);
     if (etat.pr?.head?.sha && etat.pr.head.sha !== sha) {
       journal(`dev a bougé (${sha.slice(0, 7)} → ${etat.pr.head.sha.slice(0, 7)}) : nouvelle attente des checks`);
       continue;
@@ -1099,14 +1153,19 @@ async function livrerSurMaster(ctx, dev) {
   throw await arreter(`dev a bougé à chacun des ${ESSAIS} essais de fusion`);
 }
 
-/** Simulation de la livraison : lectures seulement (une PR de livraison ouverte avec [V: X+1] arrêterait la vraie). */
-async function verifierLivraisonPossible(ctx) {
+/**
+ * Simulation de la livraison : lectures seulement (une PR de livraison ouverte qui porte [V: X+1] sans que le lot le demande, ou l'inverse,
+ * arrêterait la vraie). `majeure` : le lot est une version majeure.
+ */
+async function verifierLivraisonPossible(ctx, { majeure = false } = {}) {
   const r = await sonder(() => ctx.api.get(`/pulls?state=open&base=${MASTER}&head=${encodeURIComponent(`${ctx.proprietaire}:${DEV}`)}`));
   if (r.statut !== 200 || !Array.isArray(r.donnees)) throw echec('pr-master', `lecture des PR de livraison ouvertes : GitHub a répondu ${messageGithub(r)}`);
-  const majeure = r.donnees.find((p) => demandeMajeure(p.title, p.body));
-  if (majeure) throw echec('pr-master', MAJEURE_OUVERTE(majeure.number), { pr: majeure.number });
-  ctx.outils.journal(`simulation : master est dans dev${r.donnees.length ? `, la PR de livraison #${r.donnees[0].number} déjà ouverte serait reprise` : ', la PR de livraison serait ouverte'} ; `
-    + `non vérifiable sans effet de bord : ${NON_VERIFIABLE.join(' ; ')}. Rien n'est ouvert ni fusionné.`);
+  for (const p of r.donnees) {
+    const desaccord = desaccordMajeure(p, majeure);
+    if (desaccord) throw echec('pr-master', desaccord, { pr: p.number });
+  }
+  ctx.outils.journal(`simulation : master est dans dev${r.donnees.length ? `, la PR de livraison #${r.donnees[0].number} déjà ouverte serait reprise` : ', la PR de livraison serait ouverte'}`
+    + `${majeure ? ' (version majeure : son titre porterait [V: X+1])' : ''} ; non vérifiable sans effet de bord : ${NON_VERIFIABLE.join(' ; ')}. Rien n'est ouvert ni fusionné.`);
 }
 
 /**
@@ -1117,6 +1176,8 @@ export async function livraisonVersMaster(entrees, outils) {
   const ctx = contexte(entrees, outils, { avecJeton: true });
   const { g, outils: { journal }, lot, essai } = ctx;
   const { donnees, preparation: p } = lireArtefact(ctx.artefact, ctx);
+  // la case « Version majeure » de la page, dans le lot (couvert par l'empreinte de l'entrée du workflow) ; absente d'un lot d'avant elle : mineure
+  const majeure = donnees.majeure === true;
   rafraichir(g);
   verifierDepart(g, lot);
   const deja = chercherLotDejaFusionne(g, lot);
@@ -1127,8 +1188,8 @@ export async function livraisonVersMaster(entrees, outils) {
   if (!deja) {
     if (p.etat === 'rien') return { etat: 'rien', version: p.version };
     if (essai) {
-      await verifierLivraisonPossible(ctx);
-      return { etat: 'essai', version: p.version ?? null, nonVerifie: NON_VERIFIABLE };
+      await verifierLivraisonPossible(ctx, { majeure });
+      return { etat: 'essai', version: p.version ?? null, majeure, nonVerifie: NON_VERIFIABLE };
     }
     throw echec('reprise', 'ce lot n\'est pas dans dev : l\'étape « Fusion dans dev » ne l\'a pas fusionné, rien n\'est livré.');
   }
@@ -1136,8 +1197,8 @@ export async function livraisonVersMaster(entrees, outils) {
     throw echec('reprise', `ce lot est déjà dans dev (commit ${deja.commit.slice(0, 7)}) mais sa PR de fusion est introuvable : livrer dev → master à la main.`);
   }
   if (essai) {
-    await verifierLivraisonPossible(ctx);
-    return { etat: 'essai', reprise: true, version: deja.version, pr: deja.pr, nonVerifie: NON_VERIFIABLE };
+    await verifierLivraisonPossible(ctx, { majeure });
+    return { etat: 'essai', reprise: true, version: deja.version, pr: deja.pr, majeure, nonVerifie: NON_VERIFIABLE };
   }
   journal(`le lot est dans dev (PR #${deja.pr}, V${deja.version}) : livraison dev → master`);
   const prDev = exiger(await ctx.api.get(`/pulls/${deja.pr}`), [200], `lecture de la PR #${deja.pr}`, 'reprise');
@@ -1147,8 +1208,8 @@ export async function livraisonVersMaster(entrees, outils) {
   }
   // c. la version de la feature, posée par livraison.yml ; d. la livraison dev → master
   const versionDev = await attendreCommitDeVersion(ctx, dev.pr);
-  const master = await livrerSurMaster(ctx, dev);
-  return { etat: 'livre', version: dev.version, prDev: dev.pr, urlDev: dev.url, versionDev: versionDev.version, prMaster: master.pr, urlMaster: master.url };
+  const master = await livrerSurMaster(ctx, dev, { majeure });
+  return { etat: 'livre', version: dev.version, majeure, prDev: dev.pr, urlDev: dev.url, versionDev: versionDev.version, prMaster: master.pr, urlMaster: master.url };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -1251,8 +1312,9 @@ export function messageDeFin(phase, r) {
     }
     return `**Fusionné dans dev** : V${r.version} — PR #${r.pr}${r.reprise ? ' (passage précédent)' : ''} ; la livraison vers master suit.`;
   }
-  if (r.etat === 'essai') return simulation(r.reprise ? `le lot est dans dev (PR #${r.pr}) ; la livraison dev → master serait ouverte.` : 'la livraison dev → master serait possible.');
-  return `**Terminé** : V${r.version} — PR #${r.prDev} fusionnée dans dev (v${r.versionDev}), puis PR de livraison #${r.prMaster} fusionnée dans master ; `
+  const majeure = r.majeure ? ' (version majeure : [V: X+1])' : '';
+  if (r.etat === 'essai') return simulation(r.reprise ? `le lot est dans dev (PR #${r.pr}) ; la livraison dev → master serait ouverte${majeure}.` : `la livraison dev → master serait possible${majeure}.`);
+  return `**Terminé** : V${r.version} — PR #${r.prDev} fusionnée dans dev (v${r.versionDev}), puis PR de livraison #${r.prMaster}${majeure} fusionnée dans master ; `
     + `livraison.yml pose la version V${r.version}, ses étiquettes et la publication.`;
 }
 

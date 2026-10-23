@@ -1,5 +1,5 @@
 -- data/rows/famille.sql : export déterministe, une instruction par ligne, triée par (id). NE PAS ÉDITER À LA MAIN.
-INSERT INTO famille (id, libelle, importeur, sources, ordre) VALUES ('annexes', 'Annexes des magies : états, météo, modes', 'tools/sheets/annexes-magie.py', 'Magie Maverick V8 (Altération détats, Météo, Statistiques, Mode Hyper (Magie)) ; Mode hyper et co', 3);
+INSERT INTO famille (id, libelle, importeur, sources, ordre) VALUES ('annexes', 'Annexes des magies : états, météo, modes', 'tools/sheets/annexes-magie.py', 'Magie Maverick V8 (Altération détats, Météo, Mode Hyper (Magie)) ; Mode hyper et co', 3);
 INSERT INTO famille (id, libelle, importeur, sources, ordre) VALUES ('bestiaire', 'Bestiaire : invocations et créatures', 'tools/sheets/invocations.py', 'Invocation', 7);
 INSERT INTO famille (id, libelle, importeur, sources, ordre) VALUES ('chronologie', 'Chronologie : événements datés du Codex et des races', 'tools/chronologie/chronologie.mjs', 'Google Doc « CODEX Maverick » ; Les races (texte des pages du wiki)', 13);
 INSERT INTO famille (id, libelle, importeur, sources, ordre) VALUES ('classes', 'Classes, spécialités, capacités', 'tools/sheets/classes.py', 'Classe Maverick V7', 5);

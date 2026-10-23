@@ -1,0 +1,46 @@
+---
+import { attributEd } from '../../lib/edition-modele.mjs';
+import { ancreDuPanneau, htmlDesBlocs } from '../../lib/panneaux-regles-rendu.mjs';
+
+// Un panneau de règles (migration 0056 ; demande du propriétaire, 2026-10-16 : « refaçonner tous les encarts de début des onglets des équipements. La
+// première ligne serait à supprimer et intégrer dans le panneau déroulant. Il faudrait que ce champ texte soit modifiable sur son titre, et son contenu.
+// Son contenu peut d'ailleurs inclure des tuiles génériques (toujours insérables / modifiables en mode édition). Si l'écran est assez large, la zone de
+// texte prendra deux colonnes. Sinon une seule ») : un `<details>` replié (`ouvert` : déplié au départ), le titre dans son `<summary>` (un champ du mode
+// modification), puis ses blocs dans l'ordre de lecture (lib/panneaux-regles-db.mjs#chargerPanneau ; HTML : lib/panneaux-regles-rendu.mjs) — du texte qui
+// suit les colonnes, ou une tuile encadrée au titre facultatif. Deux colonnes à partir de 64rem, un filet entre elles ; une tuile, un paragraphe ou une
+// liste ne se coupe jamais entre deux colonnes. Générique : la page passe le panneau, son Markdown déjà rendu bloc par bloc (`blocs[].html` ; sur
+// /ressources/equipement/ : src/pages/ressources/equipement.astro). Rien sans panneau. Mode modification du site de dev : src/scripts/edition/panneaux.mjs
+// (titre, texte et titre des tuiles, ordre, ajout et retrait de blocs). CSS : styles/equipement/equipement.css (`.preg`), inséré une fois par la page
+// (components/equipement/EquipementPage.astro) ; un autre usage emportera ces règles avec lui.
+export interface BlocRendu {
+  panneau_id: string;
+  rang: number;
+  ordre: number;
+  tuile: number;
+  titre: string | null;
+  texte: string;
+  /** le Markdown du bloc rendu en HTML */
+  html: string;
+}
+export interface PanneauRendu {
+  id: string;
+  titre: string;
+  page_id: string;
+  blocs: BlocRendu[];
+}
+interface Props {
+  panneau: PanneauRendu | null | undefined;
+  /** déplié au départ (l'onglet Accessoires) ; replié sinon */
+  ouvert?: boolean;
+}
+const { panneau, ouvert = false } = Astro.props;
+---
+
+{
+  panneau && (
+    <details class="preg" id={ancreDuPanneau(panneau.id)} data-panneau-regles={panneau.id} open={ouvert}>
+      <summary class="preg__titre"><span data-ed={attributEd('panneau_regles', { id: panneau.id }, 'titre')}>{panneau.titre}</span></summary>
+      <div class="prose preg__corps" data-preg-corps set:html={htmlDesBlocs(panneau.blocs)} />
+    </details>
+  )
+}

@@ -4,7 +4,8 @@
 //   - HIDE_EXAMPLES=1 : sans les pages de démonstration ;
 //   - tous les liens deviennent RELATIFS, et les liens de répertoire pointent vers leur index.html ;
 //   - CSS inline (Astro) et scripts inlinés (aucun fichier JS/CSS externe) ;
-//   - boutons Imprimer / Exporter masqués (inertes dans un cadre sandbox) ;
+//   - boutons Télécharger, Exporter (Google Sheets) et Importer (en ligne) de la fiche masqués (inertes dans un cadre sandbox : ni téléchargement,
+//     ni fenêtre de Google, ni service) ; « Importer (PC) » reste ;
 //   - la page d'accueil est écrite en « fragment » (sans <html>/<head>/<body>), comme l'exige la publication.
 //
 // Usage : node tools/build-artifact.mjs --out <dossier>
@@ -75,8 +76,9 @@ function convert(html, rel) {
   html = html.replace(/\b(href|action)="(\.{1,2}\/[^"#?]*\/)([#?][^"]*)?"/g, (m, attr, target, reste = '') =>
     target === prefix ? m : `${attr}="${target}index.html${reste}"`);
   html = html.replace('data-suffix=""', 'data-suffix="index.html"');
-  // Imprimer / Exporter : sans effet dans un cadre sandbox
-  html = html.replace(/<button type="button" id="(btn-print|btn-export)"/g, '<button type="button" id="$1" hidden');
+  // Télécharger, Exporter, Importer (en ligne) : sans effet dans un cadre sandbox (la fiche de personnage : téléchargement du classeur, feuille
+  // Google Sheets par la fenêtre de connexion de Google, import par le service)
+  html = html.replace(/<button type="button" id="(fiche-telecharger|fiche-exporter|fiche-importer-en-ligne)"/g, '<button type="button" id="$1" hidden');
   return html;
 }
 
@@ -96,6 +98,7 @@ for (const file of walk(raw)) {
   if (rel.startsWith('_astro/')) continue; // inliné
   if (rel.endsWith('.db')) continue; // la base SQLite (téléchargement de /donnees/) n'a pas sa place dans la version portable
   if (rel.startsWith('_serveur/')) continue; // le service des personnages (client/serveur/) ne tourne que derrière nginx, pas dans une page statique
+  if (rel.startsWith('debug/')) continue; // la page Debug (site de dev seulement : système, performances, journaux du service, schéma de la base) n'a rien à montrer sans service
   if (!rel.endsWith('.html')) {
     mkdirSync(dirname(join(files, rel)), { recursive: true });
     writeFileSync(join(files, rel), readFileSync(file));

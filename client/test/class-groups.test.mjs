@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { CLASS_COLORS, CLASS_GROUPS, classCategory, classColor, groupClasses } from '../src/lib/class-groups.mjs';
+import { CLASS_COLORS, CLASS_GROUPS, classCategory, classColor, groupClasses, groupeDeCouleur } from '../src/lib/class-groups.mjs';
 
 const page = (title, ...tags) => ({ id: `classes/${title.toLowerCase()}`, data: { title, tags: ['classe', ...tags] } });
 const titles = (section) => section.entries.map((e) => e.data.title);
@@ -112,4 +112,7 @@ test('couleur d’une classe d’après sa catégorie : rouge (mêlée), vert (d
   assert.equal(classColor(page('Inconnue', 'autre-chose')), CLASS_COLORS.speciales, 'une classe non classée va sous « Spéciales »');
   assert.deepEqual(Object.keys(CLASS_COLORS), keys(CLASS_GROUPS), 'une couleur par catégorie');
   assert.equal(new Set(Object.values(CLASS_COLORS)).size, 5);
+  // la catégorie dont la page pose la classe de couleur (lib/palette-css.mjs#classeDUneClasse) : celle de classColor
+  for (const e of [...sample, page('Inconnue', 'autre-chose')]) assert.equal(CLASS_COLORS[groupeDeCouleur(e)], classColor(e), e.data.title);
+  assert.equal(groupeDeCouleur(sample.find((e) => e.data.title === 'Parleur')), 'speciales');
 });

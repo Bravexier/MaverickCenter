@@ -1,0 +1,8 @@
+{
+  "migration": "0048-ressources-et-craft-mise-a-jour",
+  "corrections": [
+    {"table": "arme_elementaire", "cle": {"id": "ressources/pieces-elementaires#arme-elementaire:arbalete:eau"}, "col": "capacite_brut", "avant": "Munition infini avec", "apres": "Munition infinie avec", "nature": "grammaire", "raison": "Accord avec « munition » (féminin) ; même correction que l'Arc d'Arcane dans 0005-orthographe-base.", "source": "0005-orthographe-base:lot-35:62"},
+    {"table": "arme_elementaire", "cle": {"id": "ressources/pieces-elementaires#arme-elementaire:arbalete:eau"}, "col": "capacite_texte", "avant": "Munition infini avec", "apres": "Munition infinie avec", "nature": "grammaire", "raison": "Accord avec « munition » (féminin) ; même correction que l'Arc d'Arcane dans 0005-orthographe-base.", "source": "0005-orthographe-base:lot-35:62"},
+    {"table": "page", "cle": {"id": "ressources/pieces-elementaires"}, "col": "corps_md", "avant": "Munition infini avec", "apres": "Munition infinie avec", "nature": "grammaire", "raison": "Accord avec « munition » (féminin) ; la ligne de l'Arbalète d'Eau, comme celle de l'Arc d'Arcane (0005-orthographe-base).", "source": "0005-orthographe-base:lot-35:62"}
+  ]
+}

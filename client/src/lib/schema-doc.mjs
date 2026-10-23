@@ -1,7 +1,8 @@
 // Lecture des commentaires de data/schema.sql : sections, tables, vues, description de chaque objet et de chaque colonne.
 // Node seulement (aucune dépendance). Partagé par `scripts/db-doc.mjs` (documents docs/sql/*.md) et par l'explorateur de données du site (`src/pages/donnees/`).
 //
-// Format lu (celui du schéma) : un en-tête de section `-- N. TITRE` (ou `-- N bis. TITRE`) entre deux filets `-- ====` ; un bloc de lignes `--` juste avant un `CREATE` décrit l'objet
+// Format lu (celui du schéma) : un en-tête de section `-- N. TITRE` (ou `-- N bis. TITRE`) entre deux filets `-- ====`, le titre sur UNE ligne (les lignes
+// suivantes de l'en-tête sont son commentaire, jamais la suite du titre : test/debug-schema.test.mjs épingle les titres) ; un bloc de lignes `--` juste avant un `CREATE` décrit l'objet
 // (`-- @derivee <commande>` le marque comme table dérivée) ; le commentaire de fin de ligne d'une colonne la décrit, et des lignes `--` très indentées le prolongent.
 
 /** @returns {{titre: string, objets: {nom: string, genre: 'table'|'vue'|string, description: string, derivee: string|null, colonnes: Map<string,string>}[]}[]} */

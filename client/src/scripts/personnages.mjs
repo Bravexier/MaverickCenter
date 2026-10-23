@@ -1,10 +1,10 @@
 // Page /personnages/ (pages/personnages.astro) : charge les résumés des prétirés auprès du service (GET /api/personnages/), puis filtre et trie la
 // liste dans le navigateur (lib/personnages-liste.mjs) ; filtres et tri sont gardés dans l'adresse de la page. Chaque ligne est un lien vers la fiche
-// (toute la ligne, pas le nom seul : demande du propriétaire), bordée de la couleur de sa magie (couleursDeBordure) ; le portrait vient de
+// (toute la ligne, pas le nom seul : demande du propriétaire), bordée de la couleur de sa magie (classesDeBordure : les classes de la palette, jamais une couleur) ; le portrait vient de
 // GET /api/personnages/<id>/portrait/ (la liste n'en a que l'empreinte et le cadrage), le logo en attendant une image.
 // Script de page (navigateur) : il n'importe qu'un module pur que seule cette page utilise (la version portable refuse un module partagé).
 import {
-  COLONNES, FILTRES_PAR_DEFAUT, adresseDesFiltres, adresseDuPortrait, choixDeFiltres, couleursDeBordure, filtrer, filtresDepuisAdresse, trier,
+  COLONNES, FILTRES_PAR_DEFAUT, adresseDesFiltres, adresseDuPortrait, choixDeFiltres, classesDeBordure, filtrer, filtresDepuisAdresse, trier,
 } from '../lib/personnages-liste.mjs';
 
 const racine = document.getElementById('personnages');
@@ -50,8 +50,8 @@ function portrait(p) {
 function ligne(p) {
   const a = element('a', 'perso');
   a.href = `${racine.dataset.fiche}?id=${encodeURIComponent(p.id)}`;
-  const bordure = couleursDeBordure(p, couleurs);
-  if (bordure) for (const [variable, couleur] of Object.entries(bordure)) a.style.setProperty(variable, couleur);
+  const bordure = classesDeBordure(p, couleurs);
+  if (bordure) a.classList.add('perso--magie', ...bordure);
   for (const c of COLONNES) {
     if (c.cle === 'portrait') {
       a.append(portrait(p));

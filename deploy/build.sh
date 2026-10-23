@@ -3,6 +3,7 @@
 # Résultat : deploy/site/ et deploy/maverick-center-nas.zip (site + docker-compose.yml + nginx.conf + README.md).
 # Prérequis sur la machine qui construit : Node.js >= 22.12.
 # Sous-chemin (proxy inversé sur /maverick/) : SITE_BASE=/maverick/ ./deploy/build.sh
+# « Exporter » de la fiche (feuille Google Sheets) : SITE_GOOGLE_CLIENT_ID=<identifiant client OAuth> ./deploy/build.sh (sans lui, le bouton reste grisé).
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"

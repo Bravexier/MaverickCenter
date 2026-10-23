@@ -5,16 +5,16 @@
 .donnees-filtre { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; align-items: baseline; }
 .donnees-filtre input { padding: 0.3rem 0.5rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font: inherit; min-width: 16rem; }
 .donnees-telechargement { padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
-.donnees-aide { color: var(--muted); font-size: 0.85rem; }
+.donnees-aide { color: var(--muted); font-size: var(--fs-md); }
 .donnees-section[hidden], .donnees-tables li[hidden] { display: none; }
 .donnees-tables { list-style: none; padding: 0; margin: 0 0 1.5rem; }
 .donnees-tables li { padding: 0.3rem 0; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; align-items: baseline; }
-.donnees-compte { color: var(--muted); font-size: 0.85rem; }
-.donnees-tables .donnees-role { flex-basis: 100%; font-size: 0.9rem; }
-.donnees-colonnes table { border-collapse: collapse; font-size: 0.85rem; }
+.donnees-compte { color: var(--muted); font-size: var(--fs-md); }
+.donnees-tables .donnees-role { flex-basis: 100%; font-size: var(--fs-lg); }
+.donnees-colonnes table { border-collapse: collapse; font-size: var(--fs-md); }
 .donnees-colonnes th, .donnees-colonnes td { text-align: left; padding: 0.2rem 0.6rem; border-bottom: 1px solid var(--border); vertical-align: top; }
 .donnees-wrap { overflow: auto; max-height: 75vh; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
-.donnees { border-collapse: collapse; font-size: 0.82rem; line-height: 1.35; }
+.donnees { border-collapse: collapse; font-size: var(--fs-sm); line-height: 1.35; }
 .donnees th { position: sticky; top: 0; background: var(--accent-soft); text-align: left; padding: 0.35rem 0.5rem; cursor: pointer; white-space: nowrap; z-index: 1; }
 .donnees th[data-sens="asc"]::after { content: ' ▲'; }
 .donnees th[data-sens="desc"]::after { content: ' ▼'; }

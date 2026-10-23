@@ -2,7 +2,9 @@
 // d'une case (colonnes typées, types et modes, bonus de niveau de maîtrise). Les mêmes lectures que l'importeur des magies, réécrites pour l'édition
 // depuis le site de dev (client/serveur/edition.mjs) ; test/sort-analyse.test.mjs les rejoue sur les 322 sorts de la base.
 // Rien n'est inventé : une forme qui n'est pas reconnue laisse la colonne typée vide (NULL) et le brut fait foi.
-// Fonctions pures, sans dépendance (sauf text.mjs) : partagées par le service et par les pages (affichage d'une case modifiée).
+// Une case s'analyse sans les balises du glossaire des mots-clés (lib/mots-cles-balises.mjs : « {{id|texte}} » se lit « texte »).
+// Fonctions pures, sans dépendance (sauf text.mjs et mots-cles-balises.mjs) : partagées par le service et par les pages (affichage d'une case modifiée).
+import { texteSansBalises } from './mots-cles-balises.mjs';
 import { normalize } from './text.mjs';
 
 /** Types de sort (CHECK de sort_type.type), par leur écriture normalisée. */
@@ -16,6 +18,9 @@ const CASES_COURTES = new Set(['type', 'cout', 'portee', 'zone', 'dsb']);
 const SANS_NM = /\(([^()]*)\)/g;
 const groupes = (texte) => [...String(texte ?? '').matchAll(SANS_NM)].map((m) => ({ debut: m.index, fin: m.index + m[0].length, interieur: m[1] }));
 const mentionneNM = (texte) => /\d\s?NM|\/\s*NM|\bpar\s+(?:NM|niveau de ma[iî]trise)|niveaux?\s+(?:\d\s+)?de\s+ma[iî]trise|\bNM\b/i.test(texte);
+
+/** La case parle-t-elle de niveaux de maîtrise (« -1/NM », « si 3NM », « par NM ») ? Le coût secondaire n'en écrit pas (décision R105, migration 0063). */
+export const mentionneUnNm = (texte) => mentionneNM(String(texteSansBalises(texte ?? '')));
 
 /** Le texte d'une case sans ses précisions de NM entre parenthèses (« 55 (-5/NM) » → « 55 ») : la valeur de base que les colonnes typées lisent. */
 export const sansExpressionsNM = (texte) =>
@@ -32,7 +37,7 @@ export const sansExpressionsNM = (texte) =>
  *   ic_direct: number, ic_nm_min: number | null, imparable: number, inesquivable: number, inconnus: string[] }}
  */
 export function analyserType(typeBrut) {
-  const texte = String(typeBrut ?? '');
+  const texte = String(texteSansBalises(typeBrut ?? ''));
   const tete = texte.split('(')[0];
   const libelles = tete.split('/').map((t) => t.replace(/\s+/g, ' ').trim()).filter(Boolean);
   const types = [];
@@ -67,27 +72,23 @@ export function analyserType(typeBrut) {
 }
 
 /**
- * Colonne « Coût » : la consommation de chakra quand la forme est « N », « N (k/NM) » ou « N + M Sang/âme(s) » ; la ressource de la 4ème barre
- * citée (« Sang », « âme(s) ») et sa quantité (NULL pour « X »).
+ * Colonnes « Coût » et « Coût secondaire » (décision R105) : la consommation de chakra quand le coût est « N » ou « N (k/NM) » ; la ressource de la
+ * 4ème barre quand le coût secondaire est « M Sang » ou « M âme(s) », et sa quantité (NULL pour « X »).
  */
-export function analyserCout(coutBrut) {
-  const base = sansExpressionsNM(coutBrut);
+export function analyserCout(coutBrut, coutSecondaire = null) {
+  const base = sansExpressionsNM(texteSansBalises(coutBrut));
   const seul = /^(\d+)$/.exec(base);
-  if (seul) return { cout_chakra: Number(seul[1]), cout_ressource: null, cout_ressource_valeur: null };
-  const avec = /^(?:(\d+)\s*\+\s*)?(\d+|X)\s+(Sang|âmes?)$/.exec(base);
-  if (avec) {
-    return {
-      cout_chakra: avec[1] === undefined ? null : Number(avec[1]),
-      cout_ressource: avec[3] === 'Sang' ? 'sang' : 'ame',
-      cout_ressource_valeur: avec[2] === 'X' ? null : Number(avec[2]),
-    };
-  }
-  return { cout_chakra: null, cout_ressource: null, cout_ressource_valeur: null };
+  const second = /^(\d+|X)\s+(Sang|âmes?)$/.exec(String(texteSansBalises(coutSecondaire ?? '')).trim());
+  return {
+    cout_chakra: seul ? Number(seul[1]) : null,
+    cout_ressource: second ? (second[2] === 'Sang' ? 'sang' : 'ame') : null,
+    cout_ressource_valeur: second && second[1] !== 'X' ? Number(second[1]) : null,
+  };
 }
 
 /** Colonne « Portée » : nombre (sa valeur de base), soi, vue, illimitée, variable, ou autre (le brut fait foi). */
 export function analyserPortee(porteeBrut) {
-  const base = sansExpressionsNM(porteeBrut);
+  const base = sansExpressionsNM(texteSansBalises(porteeBrut));
   if (/^\d+$/.test(base)) return { portee_nature: 'nombre', portee_valeur: Number(base) };
   const n = normalize(base);
   const nature = { 'soi-meme': 'soi', vue: 'vue', illimite: 'illimitee', variable: 'variable' }[n] ?? 'autre';
@@ -96,7 +97,7 @@ export function analyserPortee(porteeBrut) {
 
 /** Colonne « Zone » : forme et premier nombre de « Cercle de N », « Ligne de N », « Carré … N », « Croix de N », « N cibles » ; 'autre' sinon. */
 export function analyserZone(zoneBrut) {
-  const base = sansExpressionsNM(zoneBrut);
+  const base = sansExpressionsNM(texteSansBalises(zoneBrut));
   const nombre = (re) => {
     const m = re.exec(base);
     return m ? Number(m[1]) : null;
@@ -163,7 +164,7 @@ function phrases(texte) {
  * l'expression.
  */
 export function bonusDeMaitrise(champ, texteCase) {
-  const texte = String(texteCase ?? '');
+  const texte = String(texteSansBalises(texteCase ?? ''));
   if (!texte.trim()) return [];
   const trouvees = [];
   const lesGroupes = groupes(texte);
@@ -254,7 +255,7 @@ const QUEUE_COMPOSEE = /[+–=,;%]|(?:^|\s)-|-(?:\s|\d|$)|(?:^|\s)(?:et|ou)(?:\s
  */
 export function analyserDegats(dsbBrut) {
   const illisible = { lisible: false, des: [], fixe: 0, pourcent: false, signe: 1, queue: null, moyenne: null };
-  const base = sansExpressionsNM(dsbBrut).replace(/\s+/g, ' ').trim();
+  const base = sansExpressionsNM(texteSansBalises(dsbBrut ?? '')).replace(/\s+/g, ' ').trim();
   const tete = /^([+\-–])?\s*/.exec(base);
   const signe = tete[1] === '-' || tete[1] === '–' ? -1 : 1;
   let reste = base.slice(tete[0].length);
@@ -296,7 +297,7 @@ export function analyserDegats(dsbBrut) {
  * @returns {{ tours: number } | null}
  */
 export function analyserDuree(texte) {
-  const base = sansExpressionsNM(texte).normalize('NFD').replace(/\p{Diacritic}/gu, '');
+  const base = sansExpressionsNM(texteSansBalises(texte ?? '')).normalize('NFD').replace(/\p{Diacritic}/gu, '');
   const durees = [...base.matchAll(/(?<![\p{L}\d])(?:dure|pendant)\s+(\d+)\s+tours?(?!\p{L})/giu)];
   return durees.length === 1 ? { tours: Number(durees[0][1]) } : null;
 }

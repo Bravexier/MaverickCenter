@@ -11,6 +11,7 @@
 // la plus fréquente de chaque valeur dans la base (« Non-mort » réunit « Non-mort » et « Non-Mort »).
 // `chargerBestiaire` reçoit la base ouverte par lib/donnees.mjs (build) ; module sans dépendance navigateur ni Astro.
 import { echellesEcrites, magiesDesCibles as tableDesCibles, RENVOI_AUX_DEGATS_MOYENS } from './monstre-champs.mjs';
+import { coutEnUneCase } from './sort-cout.mjs';
 import { normalize } from './text.mjs';
 
 /** Libellés des catégories de monstre (colonne `categorie`). */
@@ -31,15 +32,16 @@ const LIBELLES_RUBRIQUES = {
   grande_vulnerabilite: 'Grande(s) vulnérabilité(s)',
   resistance: 'Résistance(s)',
   grande_resistance: 'Grande(s) résistance(s)',
-  double_resistance: 'Double(s) résistance(s)',
   immunite: 'Immunité(s)',
   reflexion: 'Réflexion(s)',
   capacites: 'Capacité(s)',
   tactique: 'Tactique de combat',
 };
+// pas de 'double_resistance' (décision R155 : devenue la Grande résistance, migration 0075) : plus aucune cible de ce sens, et le rejeu d'un journal
+// noté avant 0075 la range en grande_resistance (serveur/edition-bestiaire.mjs#ancienneEcritureDesResistances)
 const SENS_PAR_COLONNE = {
   vulnerabilites: ['vulnerabilite', 'grande_vulnerabilite'],
-  resistances: ['resistance', 'grande_resistance', 'double_resistance'],
+  resistances: ['resistance', 'grande_resistance'],
   immunites: ['immunite', 'reflexion'],
 };
 
@@ -313,6 +315,45 @@ const premiereMajuscule = (s) => (s ? s[0].toLocaleUpperCase('fr') + s.slice(1) 
  */
 export const libelleDuBloc = ({ marge_brut, npm }) => (npm === null || npm === undefined ? marge_brut : `NPM ${npm}`);
 
+/** Une valeur de la ligne « Santé » d'une carte ou une ressource, typée (table creature : `*_forme`, `*_valeur`, `*_brut`) ; null quand elle n'est pas écrite. */
+const valeurTypee = (brut, forme, valeur) => (brut === null || brut === undefined ? null : { forme, valeur, brut });
+
+/**
+ * Ce qui change avec le NPM d'une créature invoquée (décision R130, lib/creature-npm.mjs) : ses valeurs typées par l'import (forme « par_npm »,
+ * armures « /NPM », formule des dégâts, bonus « au niveau N magique », capacités et résistances « (NPM n) »). `c` : la ligne de `creature` ; le reste,
+ * ses lignes de détail.
+ */
+export function donneesNpm(c, { fpvsia, bonus, attaques, ressources, capacites, defenses }) {
+  return {
+    sante: valeurTypee(c.sante_brut, c.sante_forme, c.sante_valeur),
+    chakra: valeurTypee(c.chakra_brut, c.chakra_forme, c.chakra_valeur),
+    barriere: valeurTypee(c.barriere_brut, c.barriere_forme, c.barriere_valeur),
+    ressources: ressources.map((r) => ({ libelle: r.libelle, forme: r.forme, valeur: r.valeur, brut: r.brut })),
+    defense: c.defense_forme
+      ? {
+          forme: c.defense_forme,
+          physique: c.armure_physique,
+          physiqueParNpm: c.armure_physique_par_npm === 1,
+          magique: c.armure_magique,
+          magiqueParNpm: c.armure_magique_par_npm === 1,
+          brut: c.defense_brut,
+        }
+      : null,
+    fpvsia,
+    bonus: bonus.map((b) => ({ niveau: b.niveau_magique, increment: b.increment, caracteristique: b.caracteristique_id, texte: b.texte_brut })),
+    attaques: attaques.map((a) => ({
+      brut: a.brut,
+      formule: a.formule_brut,
+      des: a.des_nombre,
+      faces: a.des_faces,
+      bonus: a.bonus_fixe,
+      parNpm: a.par_npm === 1,
+    })),
+    // les « (NPM n) » écrits devant ses capacités et les résistances qu'elles donnent (une carte qui en a change avec le NPM)
+    npmMin: [...capacites.map((x) => x.npm_min), ...defenses.map((x) => x.npm_min)].filter((n) => n !== null && n !== undefined),
+  };
+}
+
 /**
  * Les créatures invoquées (section 8) : { lignes, tableaux, facettes, invocations }. `lignes` : une par créature (sa carte) ; `tableaux` : un par invocation
  * (demande du propriétaire : « Fait 3 tableaux. Un tableau Appel aux Golem et un Animation des morts sous le même modèle, et déroulable. Il faudra mettre
@@ -338,12 +379,18 @@ export function chargerInvocations(db) {
   );
   const magies = regrouper(all('SELECT vm.creature_id, m.id, m.nom, m.nom_cle, m.ordre FROM v_creature_magie vm JOIN magie m ON m.id = vm.magie_id ORDER BY m.ordre'), 'creature_id');
   const caracs = regrouper(all('SELECT creature_id, caracteristique_id, valeur FROM creature_caracteristique ORDER BY creature_id, rang'), 'creature_id');
-  const bonus = regrouper(all('SELECT creature_id, texte_brut FROM creature_bonus_npm ORDER BY creature_id, rang'), 'creature_id');
-  const attaques = regrouper(all('SELECT id, creature_id, nom, brut FROM creature_attaque ORDER BY creature_id, rang'), 'creature_id');
+  const bonus = regrouper(all('SELECT creature_id, niveau_magique, increment, caracteristique_id, texte_brut FROM creature_bonus_npm ORDER BY creature_id, rang'), 'creature_id');
+  const attaques = regrouper(
+    all('SELECT id, creature_id, nom, brut, formule_brut, des_nombre, des_faces, bonus_fixe, par_npm FROM creature_attaque ORDER BY creature_id, rang'),
+    'creature_id',
+  );
   const capacites = regrouper(all('SELECT creature_id, npm_min, etiquette, nom, nom_cle, texte FROM creature_capacite ORDER BY creature_id, rang'), 'creature_id');
-  const effets = regrouper(all('SELECT creature_id, libelle, texte FROM creature_effet ORDER BY creature_id, rang'), 'creature_id');
-  const ressources = regrouper(all('SELECT creature_id, libelle, brut FROM creature_ressource ORDER BY creature_id, ressource'), 'creature_id');
-  const couts = new Map(all('SELECT creature_id, cout_brut FROM v_creature_cout_invocation').map((r) => [r.creature_id, r.cout_brut]));
+  const effets = regrouper(all('SELECT creature_id, libelle, nom, sort_id, texte FROM creature_effet ORDER BY creature_id, rang'), 'creature_id');
+  const ressources = regrouper(all('SELECT creature_id, libelle, brut, forme, valeur FROM creature_ressource ORDER BY creature_id, ressource'), 'creature_id');
+  // le coût du sort qui l'invoque, ses deux colonnes en une écriture (décisions R105, R106 : « 6 par NPM de la créature invoquée » ; lib/sort-cout.mjs#coutEnUneCase)
+  const lignesDesCouts = all('SELECT creature_id, cout_brut, cout_secondaire FROM v_creature_cout_invocation');
+  const couts = new Map(lignesDesCouts.map((r) => [r.creature_id, coutEnUneCase(r.cout_brut, r.cout_secondaire)]));
+  const coutsNpm = new Map(lignesDesCouts.map((r) => [r.creature_id, { cout: r.cout_brut, secondaire: r.cout_secondaire }]));
   const memeBloc = regrouper(all('SELECT v.creature_id, c.id, c.nom FROM v_creature_meme_bloc v JOIN creature c ON c.id = v.autre_creature_id'), 'creature_id');
   const defenses = regrouper(
     all(
@@ -375,10 +422,14 @@ export function chargerInvocations(db) {
       description: c.description,
       invocation: { id: inv.id, nom: inv.nom, sortId: inv.sort_id, sortNom: inv.sort_nom, magieId: inv.sort_magie_id, magie: inv.sort_magie },
       bloc: libelleDuBloc(c),
+      // le NPM d'une marionnette (une créature par NPM, décision R53) ; null pour un golem ou un non-mort
+      npmDuBloc: c.npm,
       blocId: c.bloc_id,
       // 1 = carte de gauche, 2 = carte de droite du bloc (classeur)
       rang: c.rang,
       magiesDuBloc: (magiesDuBloc.get(c.bloc_id) ?? []).map((m) => m.nom),
+      // les mêmes, par identifiant (la fiche : les combinaisons à la portée du personnage)
+      magiesDuBlocIds: (magiesDuBloc.get(c.bloc_id) ?? []).map((m) => m.id),
       magies: sesMagies.map((m) => m.nom),
       sante: c.sante_brut,
       chakra: c.chakra_brut,
@@ -391,8 +442,18 @@ export function chargerInvocations(db) {
       capacites: caps.map((x) => ({ npm: x.npm_min, etiquette: x.etiquette, nom: x.nom, texte: x.texte })),
       communes: communes.get(c.invocation_id) ?? [],
       effets: effets.get(c.id) ?? [],
-      ressources: ressources.get(c.id) ?? [],
+      ressources: (ressources.get(c.id) ?? []).map((r) => ({ libelle: r.libelle, brut: r.brut })),
       cout: couts.get(c.id) ?? null,
+      // ce qui change avec le NPM de la créature, typé (décision R130 : lib/creature-npm.mjs) ; `coutNpm` : le coût du sort qui l'invoque, ses deux colonnes
+      donneesNpm: donneesNpm(c, {
+        fpvsia: FPVSIA.map((k) => fpvsia.get(k.id) ?? null),
+        bonus: bonus.get(c.id) ?? [],
+        attaques: attaques.get(c.id) ?? [],
+        ressources: ressources.get(c.id) ?? [],
+        capacites: caps,
+        defenses: defenses.get(c.id) ?? [],
+      }),
+      coutNpm: coutsNpm.get(c.id) ?? null,
       memeBloc: memeBloc.get(c.id) ?? [],
       defensesEcrites: d.filter((x) => x.provenance !== 'element'),
       defensesParMagie: [...regrouper(d.filter((x) => x.provenance === 'element'), 'via_magie')].map(([magie, liste]) => ({
@@ -441,6 +502,28 @@ export function chargerInvocations(db) {
   const lignesDesTableaux = tableaux.flatMap((t) => t.lignes);
   const facettes = [{ cle: 'magie', libelle: 'Magie', options: optionsDeFacette(lignesDesTableaux, 'magie', ec.magie.m, ordreDesMagies) }];
   return { lignes, tableaux, facettes, invocations: invocations.map(versInvocation) };
+}
+
+/**
+ * Le tableau d'une invocation (invocation.tableau_titre : « TABLEAU "AMÉLIORATION CADAVÉRIQUE" », la table amelioration_cadaverique de la magie de son sort)
+ * est aussi celui du sort de cette magie qui porte le nom écrit entre guillemets (« Amélioration cadavérique » : « Sacrifie l'invocation pour des
+ * amplifications pendant 3 tours (voir invocations) ») : demande du propriétaire, « avoir toutes les améliorations visibles en fonction de l'invocation
+ * sacrifiée » (décision R130). Map(id du sort -> { titre, nom (le nom entre guillemets), invocationId, invocation, magieId, lignes: [{ nom, effet }] }),
+ * pour les pages de magie (lib/magies-db.mjs) et la fiche (lib/fiche-regles.mjs).
+ */
+export function tableauxDesSorts(db) {
+  const tableaux = new Map();
+  const invocations = db
+    .prepare('SELECT i.id, i.nom, i.tableau_titre, s.magie_id FROM invocation i JOIN sort s ON s.id = i.sort_id WHERE i.tableau_titre IS NOT NULL ORDER BY i.ordre')
+    .all();
+  for (const i of invocations) {
+    const nom = /["“«]\s*([^"”»]+?)\s*["”»]/.exec(i.tableau_titre)?.[1];
+    const sort = nom ? db.prepare('SELECT id FROM sort WHERE magie_id = ? AND nom_cle = ?').get(i.magie_id, normalize(nom)) : null;
+    if (!sort) continue;
+    const lignes = db.prepare('SELECT nom, effet FROM amelioration_cadaverique WHERE magie_id = ? ORDER BY rang').all(i.magie_id);
+    tableaux.set(sort.id, { titre: i.tableau_titre, nom, invocationId: i.id, invocation: i.nom, magieId: i.magie_id, lignes });
+  }
+  return tableaux;
 }
 
 /** Le bestiaire entier, pour la page. */

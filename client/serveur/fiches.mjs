@@ -1,38 +1,86 @@
 // Fiches de personnages dans la base vivante, au format de src/lib/fiche-format.mjs (docs/serveur.md, « Une fiche en JSON »).
-// Avant la 1.0, il n'y a pas de comptes : le service ne connaît que les PRÉTIRÉS, qui ne sont à personne et que tout le monde voit
+// Pas de comptes : le service ne connaît que les PRÉTIRÉS, qui ne sont à personne et que tout le monde voit
 // (v_personnage_visible) ; une fiche de joueur n'est ni listée ni lisible ici. Ce que la base contrôle (types, bornes, références aux règles) refuse
 // l'enregistrement ; les règles de v_personnage_controle sont rendues avec la fiche : elles signalent, elles n'empêchent jamais d'enregistrer (la fiche
 // n'a plus de statut « validé » qui les rendait bloquantes : demande du propriétaire, migration 0038).
-import { createHash, randomUUID } from 'node:crypto';
-import { CHAMP_VERSION, COLONNES_DU_SERVICE, COLONNES_RETIREES, PARTIES_DE_FICHE, ficheVide } from '../src/lib/fiche-format.mjs';
+import { randomUUID } from 'node:crypto';
+import {
+  armuresAvecArmure, bouclierAvecMatiere, entrainementAvecLignes, CHAMP_VERSION, COLONNES_DU_SERVICE, COLONNES_RETIREES, PARTIES_DE_FICHE, ficheVide, maitrisesAvecChoix,
+  nmDuMjAvecCadeaux, progressionAvecGains, sansPartiesRetirees,
+} from '../src/lib/fiche-format.mjs';
 import { cadrageDe, dimensionsDuPortrait, empreinte, estUnPortrait, octetsDuPortrait, styleDuCadrage } from '../src/lib/portrait.mjs';
 import { clesRompues } from './base-vivante.mjs';
+import { noterLesRetraits, nouveauxRetraitsDeFiches, retirerLesArmuresHorsRegle } from './fiches-retraits.mjs';
+import { poidsPortableDeLaBase } from '../src/lib/poids-portable-db.mjs';
 import { instant } from './instant.mjs';
+import { ErreurHttp, empreinteCourte } from './partage.mjs';
 
 /**
  * Valeur de départ d'une colonne que les règles ont retirée (COLONNES_RETIREES) quand la base vivante l'a encore : le service retombe sur sa base
  * d'avant si la reconstruction échoue (docs/serveur.md), et cette base exigerait la colonne (NOT NULL) à chaque création.
  */
 const DEPART_DES_COLONNES_RETIREES = Object.freeze({ statut: 'brouillon' });
+/** De même pour une table de détail : l'acquis saisi d'une compétence (décision R104, migration 0062 : il se calcule), NOT NULL dans une base d'avant. */
+const DEPART_DES_COLONNES_RETIREES_DE_DETAIL = Object.freeze({ personnage_competence: Object.freeze({ acquis: 0 }) });
+
+/**
+ * Colonnes que les règles ont ajoutées à la section 13, par table, avec leur valeur de départ (celle d'une fiche vide) : celles de la migration 0045
+ * (gains de niveau en deux totaux, R73 ; durabilité d'une arme, R74 ; son entraînement en texte, R71, retiré par la migration 0062 :
+ * COLONNES_RETIREES), de la migration 0055 (l'armure de la fiche, R95), de la migration 0060 (le bouclier forme + matière, R96) et de la migration
+ * 0061 (la magie de la Symbiose, R100), de la migration 0081 (le type de dégâts choisi d'une arme élémentaire, R167), de la migration 0066 (les NM du MJ de la fiche, R118) et de la migration 0067 (le sort préparé, son jet et sa
+ * posture, R115) et de la migration 0071 (la magie d'une résistance au choix, R137). L'arme choisie d'un choix d'acquis (R119, migration 0067) n'en est
+ * plus : la migration 0076 l'a retirée (R152, COLONNES_RETIREES).
+ * Quand le service retombe sur sa base d'avant (reconstruction échouée, docs/serveur.md), la page à jour les envoie quand même (ficheVide met les gains à 0) :
+ * une de ces colonnes que la base n'a pas est ignorée tant qu'elle ne porte rien (sa valeur de départ, ou vide : null, « "" ») ; autrement, « champ
+ * inconnu » (ce qu'elle porte serait perdu). De même une table de la fiche que la base n'a pas encore (personnage_armure_partie, 0055 ;
+ * personnage_entrainement et personnage_acquis_choix, 0062 ; personnage_resistance_choix, 0069, la résistance au choix du Drakos orange, R124 ;
+ * personnage_maitrise_choix, 0076, les choix de maîtrise d'armes, R148 : partiesDeLaBase) se lit vide, et une liste non vide pour elle est refusée.
+ */
+export const DEPART_DES_COLONNES_AJOUTEES = Object.freeze({
+  personnage: Object.freeze({
+    gains_sante: 0, gains_chakra: 0,
+    armure_id: null, armure_amelioration_id: null, armure_elementaire_id: null, armure_amelioration_elementaire_id: null,
+    bouclier_materiau_id: null, bouclier_amelioration_id: null, bouclier_solidite: null,
+    symbiose_magie_id: null,
+    nm_mj: 0,
+  }),
+  personnage_arme: Object.freeze({ durabilite: null, type_degats_choisi: null }),
+  personnage_sort: Object.freeze({ prepare: 0, prepare_jet: null, prepare_posture_id: null }),
+  personnage_resistance_choix: Object.freeze({ magie_id: null }),
+});
+
+/** Vrai si `valeur`, reçue pour la colonne `colonne` de `table` que la base vivante n'a pas, ne porte rien (DEPART_DES_COLONNES_AJOUTEES). */
+function ajouteeSansRien(table, colonne, valeur) {
+  const departs = DEPART_DES_COLONNES_AJOUTEES[table] ?? {};
+  if (!Object.hasOwn(departs, colonne)) return false;
+  return valeur === null || valeur === undefined || valeur === '' || valeur === departs[colonne];
+}
+
+/** Message d'un envoi qui porte les deux formes des gains de niveau (progressionAvecGains de src/lib/fiche-format.mjs). */
+export const PAGE_D_AVANT = 'La page vient d’une version précédente du site : rien n’a été enregistré. Rechargez-la, puis saisissez de nouveau ce '
+  + 'que vous avez changé depuis le dernier enregistrement (les gains de niveau se saisissent désormais en deux totaux, santé et chakra ; '
+  + 'l’armure est une seule armure complète, avec la solidité de chacune de ses parties ; le bouclier a une forme et une matière ; '
+  + 'les accessoires n’ont plus que six emplacements, sans nom ni effet hors table ; l’entraînement se note en lignes et l’acquis se calcule ; '
+  + 'les NM du MJ se notent pour toute la fiche, à côté de la limite des NM, et plus sort par sort ; les maîtrises d’armes se choisissent '
+  + 'désormais par source, une famille par point à choisir, et leurs dés se calculent).';
 
 /** Au plus tant de lignes par liste (une fiche en a quelques dizaines) : un envoi aberrant est refusé avant d'écrire. */
 export const LIGNES_MAX = 500;
 
-export class ErreurFiche extends Error {
-  /** @param {number} statut code HTTP @param {string} message @param {object} [details] ajoutés à la réponse */
-  constructor(statut, message, details = {}) {
-    super(message);
-    this.name = 'ErreurFiche';
-    this.statut = statut;
-    this.details = details;
-  }
-}
+/** @param {number} statut code HTTP @param {string} message @param {object} [details] ajoutés à la réponse */
+export class ErreurFiche extends ErreurHttp {}
 
 export { instant };
 
 const infos = (db, table) => db.prepare(`PRAGMA table_info("${table}")`).all();
+const colonnesDe = (db, table) => infos(db, table).map((c) => c.name);
 const colonnesDeDetail = (db, table) => infos(db, table).map((c) => c.name).filter((c) => c !== 'personnage_id');
 const colonnesModifiables = (db) => infos(db, 'personnage').map((c) => c.name).filter((c) => !COLONNES_DU_SERVICE.includes(c));
+/**
+ * Les parties de la fiche (PARTIES_DE_FICHE) dont la base a la table : toutes, sauf dans une base vivante d'avant qu'une nouvelle table de la section
+ * 13 ne connaît pas encore (le service y retombe si la reconstruction échoue : DEPART_DES_COLONNES_AJOUTEES).
+ */
+const partiesDeLaBase = (db) => Object.entries(PARTIES_DE_FICHE).filter(([, table]) => infos(db, table).length > 0);
 const annuler = (db) => {
   try {
     db.exec('ROLLBACK');
@@ -41,24 +89,30 @@ const annuler = (db) => {
   }
 };
 
-/** Ordre de lecture d'une liste : son rang quand elle en a un, sinon sa clé (une fiche relue est toujours écrite pareil). */
-function ordreDe(db, table) {
+/**
+ * Ordre de lecture d'une liste (une fiche relue est toujours écrite pareil, sa version aussi) : un ordre total, son rang quand elle en a un, puis les
+ * autres colonnes de sa clé, sans `personnage_id`, dans l'ordre de la clé ; sinon sa clé. Un rang qui n'est pas unique (un choix d'acquis : plusieurs
+ * sources au même rang, une répartition sur plusieurs compétences ; une résistance au choix) est départagé par la clé : `"rang", "source",
+ * "competence_id"`, `"rang", "source"` (exporté pour les tests).
+ */
+export function ordreDe(db, table) {
   const cols = infos(db, table);
-  if (cols.some((c) => c.name === 'rang')) return '"rang"';
-  return cols.filter((c) => c.pk && c.name !== 'personnage_id').sort((a, b) => a.pk - b.pk).map((c) => `"${c.name}"`).join(', ');
+  const cle = cols.filter((c) => c.pk && c.name !== 'personnage_id').sort((a, b) => a.pk - b.pk).map((c) => c.name);
+  const ordre = cols.some((c) => c.name === 'rang') ? ['rang', ...cle.filter((c) => c !== 'rang')] : cle;
+  return ordre.map((c) => `"${c}"`).join(', ');
 }
 
 function versionDe(fiche) {
   const { [CHAMP_VERSION]: _ignoree, ...contenu } = fiche;
-  return createHash('sha256').update(JSON.stringify(contenu)).digest('hex').slice(0, 16);
+  return empreinteCourte(JSON.stringify(contenu));
 }
 
 /** Le prétiré `id` au format d'échange (colonnes à la racine, listes, `version`), ou null. */
 export function lireFiche(db, id) {
   const ligne = db.prepare(`SELECT * FROM personnage WHERE id = ? AND nature = 'pretire'`).get(id);
   if (!ligne) return null;
-  const fiche = { ...ligne };
-  for (const [cle, table] of Object.entries(PARTIES_DE_FICHE)) {
+  const fiche = { ...ligne, ...Object.fromEntries(Object.keys(PARTIES_DE_FICHE).map((cle) => [cle, []])) };
+  for (const [cle, table] of partiesDeLaBase(db)) {
     const cols = colonnesDeDetail(db, table).map((c) => `"${c}"`).join(', ');
     fiche[cle] = db.prepare(`SELECT ${cols} FROM "${table}" WHERE personnage_id = ? ORDER BY ${ordreDe(db, table)}`).all(id).map((r) => ({ ...r }));
   }
@@ -199,13 +253,35 @@ function valeurDeCellule(v, ou, problemes) {
   return null;
 }
 
+/** Index uniques partiels qui ne nomment que la fiche (« UNIQUE constraint failed: <table>.personnage_id ») : ce qu'ils refusent. */
+const UNIQUES_DE_LA_FICHE = Object.freeze({ 'personnage_sort.personnage_id': 'un seul sort préparé par fiche (décision R115)' });
+
+/**
+ * Les CHECK d'une table de la fiche qui disent une règle de forme, par leur texte (tel que SQLite le rend) : ce qu'ils refusent. personnage_arme
+ * (décision R167, migration 0081) : une arme du catalogue ou une arme élémentaire, l'une des deux ; pas de matériau sur une arme élémentaire ; un type de
+ * dégâts choisi (la Bombe) seulement sur une arme élémentaire.
+ */
+const CHECKS_DE_LA_FICHE = Object.freeze({
+  '(arme_id IS NULL) <> (arme_elementaire_id IS NULL)': 'une arme est une arme du catalogue (arme_id) ou une arme élémentaire (arme_elementaire_id), l’une des deux (décision R167)',
+  'materiau_id IS NULL OR arme_id IS NOT NULL': 'une arme élémentaire n’a pas de matériau (décision R167)',
+  'type_degats_choisi IS NULL OR arme_elementaire_id IS NOT NULL': 'un type de dégâts ne se choisit que sur une arme élémentaire (décision R167)',
+});
+
 /** Message d’une contrainte de la base, en français (exporté pour les tests). */
 export function expliquer(message) {
   let m;
   if ((m = /^NOT NULL constraint failed: \w+\.(\w+)$/.exec(message))) return `« ${m[1]} » est obligatoire`;
-  if ((m = /^CHECK constraint failed: (.+)$/.exec(message))) return `valeur hors des bornes (${m[1].trim()})`;
+  if ((m = /^CHECK constraint failed: ([\s\S]+)$/.exec(message))) {
+    const texte = m[1].replace(/\s+/g, ' ').trim();
+    return CHECKS_DE_LA_FICHE[texte] ?? `valeur hors des bornes (${texte})`;
+  }
   if ((m = /^UNIQUE constraint failed: (.+)$/.exec(message))) {
-    const cols = m[1].split(',').map((c) => c.trim().replace(/^\w+\./, '')).filter((c) => c !== 'personnage_id');
+    // un index unique partiel sur la seule fiche (personnage_sort_prepare, migration 0067) : SQLite ne nomme que personnage_id
+    if (UNIQUES_DE_LA_FICHE[m[1].trim()]) return UNIQUES_DE_LA_FICHE[m[1].trim()];
+    const noms = m[1].split(',').map((c) => c.trim());
+    const cols = noms.map((c) => c.replace(/^\w+\./, '')).filter((c) => c !== 'personnage_id');
+    // un autre index sur la seule fiche : sa table, plutôt que « en double () »
+    if (!cols.length) return `une seule ligne par fiche (${/^(\w+)\./.exec(noms[0])?.[1] ?? noms[0]})`;
     return `en double (${cols.join(', ')})`;
   }
   // un choix que les règles n'ont plus (don ou spécialité supprimé depuis le site de dev, D11) : la page a été construite avant
@@ -225,15 +301,21 @@ function verifierForme(db, entree, problemes) {
   for (const cle of Object.keys(entree)) {
     if (modifiables.has(cle) || COLONNES_DU_SERVICE.includes(cle) || cle === CHAMP_VERSION) continue;
     if (COLONNES_RETIREES.personnage.includes(cle)) continue; // colonne que les règles ont retirée (fichier exporté avant, page restée ouverte) : ignorée
+    // colonne ajoutée par les règles, absente d'une base vivante d'avant (le service y retombe si la reconstruction échoue) : ignorée si elle ne porte rien
+    if (ajouteeSansRien('personnage', cle, entree[cle])) continue;
     if (cle in PARTIES_DE_FICHE) {
       const liste = entree[cle];
+      const table = PARTIES_DE_FICHE[cle];
       if (!Array.isArray(liste)) problemes.push(`${cle} : une liste est attendue`);
       else if (liste.length > LIGNES_MAX) problemes.push(`${cle} : ${liste.length} lignes, au plus ${LIGNES_MAX}`);
-      else {
-        const colonnes = new Set(colonnesDeDetail(db, PARTIES_DE_FICHE[cle]));
+      else if (!infos(db, table).length) {
+        // une table que la base vivante n'a pas encore (base d'avant) : une liste vide ne porte rien, une autre serait perdue
+        if (liste.length) problemes.push(`${cle} : pas encore dans cette base, ses lignes seraient perdues`);
+      } else {
+        const colonnes = new Set(colonnesDeDetail(db, table));
         liste.forEach((l, i) => {
           if (!l || typeof l !== 'object' || Array.isArray(l)) problemes.push(`${cle}[${i}] : un objet est attendu`);
-          else for (const c of Object.keys(l)) if (!colonnes.has(c)) problemes.push(`${cle}[${i}] : champ inconnu « ${c} »`);
+          else for (const c of Object.keys(l)) if (!colonnes.has(c) && !ajouteeSansRien(table, c, l[c])) problemes.push(`${cle}[${i}] : champ inconnu « ${c} »`);
         });
       }
       continue;
@@ -246,9 +328,60 @@ function verifierForme(db, entree, problemes) {
  * Crée (sans `id`) ou modifie (avec `id`) un prétiré à partir du JSON `entree`. Une colonne absente du JSON garde sa valeur (création : celle
  * d'une fiche vide) ; une liste présente remplace toute la liste, une liste absente ne change pas. Modifier exige la `version` lue : si la fiche a
  * changé depuis, rien n'est écrit (409). Rend { personnage, controles, niveau }. Erreurs : ErreurFiche (400 forme ou contrainte, 404, 409).
+ * La clé d'une table que les règles ont retirée est convertie d'abord (sansPartiesRetirees de src/lib/fiche-format.mjs) : une page restée ouverte
+ * qui envoie encore `progression` enregistre ses gains de niveau en deux totaux (décision R73), sans « champ inconnu ». Une `progression` non vide
+ * envoyée AVEC les deux totaux (progressionAvecGains : page d'avant 0045 qui a repris les totaux d'une réponse) ne se concilie pas avec eux : refus
+ * 409 (PAGE_D_AVANT), rien n'est écrit, plutôt que d'en jeter une sans le dire. De même une liste `armures` (une armure par emplacement, avant la
+ * migration 0055) donne l'armure de la fiche, chaque autre pièce une ligne datée dans les notes (décision R95) ; envoyée avec les nouvelles clés de
+ * l'armure (armuresAvecArmure) : refus 409. Une liste `bouclier_materiaux` (avant la migration 0060) donne la matière du bouclier (R96 ; avec les
+ * nouvelles clés du bouclier, bouclierAvecMatiere : refus 409), et les accessoires d'avant (nom, effet hors table, Ceinture, Autre) sont convertis (R97).
+ * Des sorts qui portent leurs NM du MJ (`nm_cadeau`, avant la migration 0066) donnent les NM du MJ de la fiche (R118) ; avec `nm_mj` et des NM du MJ
+ * sur un sort (nmDuMjAvecCadeaux) : refus 409. Des maîtrises d'avant la migration 0076 (`maitrises_armes`, l'arme choisie d'un choix d'acquis) sont notées
+ * en une ligne datée, aucun choix posé (R153) ; avec les choix de maîtrise `maitrise_choix` (maitrisesAvecChoix) : refus 409. Des armes d'avant la
+ * migration 0081 (un élément posé sur une arme du catalogue, `amelioration_elementaire_id`) prennent la forme de la décision R167 (une arme du catalogue
+ * OU une arme élémentaire, un seul niveau d'amélioration : armesDAvant), ce qu'elles perdent noté, daté. Les choix de maîtrise
+ * eux-mêmes ne sont refusés que par les contraintes de la base : un choix hors de sa source, une limite écrite ou le plafond dépassés sont signalés
+ * par v_personnage_controle (R148 à R150), jamais refusés.
+ * L'armure (décision R165) : la fiche enregistrée (l'envoi, avec ce qu'il ne change pas) qui porte une armure ET une armure élémentaire, l'« élément »
+ * d'une page d'avant (R95), est convertie comme à la reconstruction de la base vivante (l'élément devient l'armure, avec son amélioration ; l'armure
+ * d'origine notée) plutôt que refusée : c'est la forme d'avant elle-même, que R165 (8) convertit, et non deux formes qu'on ne sait pas concilier
+ * (armuresAvecArmure). Une armure « Familier », une armure élémentaire d'une magie absente et une armure trop lourde pour le poids portable (R165 (6),
+ * (7) : le calcul du moteur de la fiche sur la fiche enregistrée, lib/poids-portable-db.mjs#poidsPortableDeLaBase) ne sont jamais enregistrées : retirées
+ * et notées, datées (serveur/fiches-retraits.mjs#retirerLesArmuresHorsRegle). `poidsPortable` ((db, id) => 0 à 3 ou null) remplace ce calcul (tests) ;
+ * null : pas d'étape du poids.
  */
-export function enregistrerFiche(db, entree, { id = null, maintenant = new Date() } = {}) {
+export function enregistrerFiche(db, recue, { id = null, maintenant = new Date(), poidsPortable = undefined } = {}) {
   const problemes = [];
+  if (progressionAvecGains(recue) || armuresAvecArmure(recue) || bouclierAvecMatiere(recue) || entrainementAvecLignes(recue) || nmDuMjAvecCadeaux(recue)
+    || maitrisesAvecChoix(recue)) {
+    throw new ErreurFiche(409, PAGE_D_AVANT);
+  }
+  const nomDans = (table) => (x) => db.prepare(`SELECT nom FROM "${table}" WHERE id = ?`).get(x)?.nom ?? null;
+  // les notes enregistrées : une ligne de conversion s'y ajoute quand l'envoi (partiel) n'a pas les siennes ; la version, contrôlée plus bas, garantit
+  // qu'elles n'ont pas changé depuis
+  const notes = id === null ? null : db.prepare('SELECT notes FROM personnage WHERE id = ?').get(id)?.notes ?? null;
+  const libelle = db.prepare('SELECT libelle FROM accessoire_effet WHERE id = ?');
+  const famille = db.prepare('SELECT nom, de_brut AS de, ordre FROM arme_famille WHERE id = ?');
+  const don = db.prepare('SELECT k.nom, c.nom AS classe FROM capacite k LEFT JOIN classe c ON c.id = k.classe_id WHERE k.id = ?');
+  const objet = (l) => (l ? { ...l } : null);
+  // (une armure et son « élément », avant la décision R165 : convertie après l'écriture, sur la fiche enregistrée, plus bas)
+  // une arme d'avant la migration 0081 (décision R167 : fiche-format.mjs#armeDAvant) : son type élémentaire, celui de l'élément posé, les niveaux
+  const typeEl = colonnesDe(db, 'arme_famille').includes('type_elementaire_id') ? 'f.type_elementaire_id' : 'NULL';
+  const arme = db.prepare(`SELECT a.nom, f.nom AS famille, ${typeEl} AS type_elementaire_id FROM arme a LEFT JOIN arme_famille f ON f.id = a.famille_id WHERE a.id = ?`);
+  const armeElementaire = db.prepare('SELECT nom, type_id FROM arme_elementaire WHERE id = ?');
+  const niveau = db.prepare('SELECT niveau FROM amelioration_equipement WHERE id = ?');
+  const ameliorationDArme = db.prepare("SELECT id, bonus_cran FROM amelioration_equipement WHERE cible = 'arme' AND niveau = ?");
+  // la solidité de base d'une pièce élémentaire (constante_equipement « piece_elementaire.solidite_base », migration 0080 ; R167 : + les crans de la ligne)
+  const soliditeElementaire = db.prepare("SELECT valeur FROM constante_equipement WHERE id = 'piece_elementaire.solidite_base'").get()?.valeur;
+  const entree = sansPartiesRetirees(recue, {
+    instant: instant(maintenant), notes, armureDouble: false,
+    noms: {
+      armure: nomDans('armure'), emplacement: nomDans('armure_emplacement'), ressource: nomDans('ressource'), accessoire: (x) => libelle.get(x)?.libelle ?? null,
+      competence: nomDans('competence'), famille: (x) => objet(famille.get(x)), don: (x) => objet(don.get(x)),
+      arme: (x) => objet(arme.get(x)), armeElementaire: (x) => objet(armeElementaire.get(x)), niveau: (x) => niveau.get(x)?.niveau ?? null,
+      ameliorationDArme: (n) => objet(ameliorationDArme.get(n)), soliditeElementaire,
+    },
+  });
   verifierForme(db, entree, problemes);
   if (problemes.length) throw new ErreurFiche(400, 'La fiche n’a pas été enregistrée.', { problemes });
 
@@ -293,11 +426,14 @@ export function enregistrerFiche(db, entree, { id = null, maintenant = new Date(
     }
 
     if (!problemes.length) {
-      for (const [cle, table] of Object.entries(PARTIES_DE_FICHE)) {
+      for (const [cle, table] of partiesDeLaBase(db)) {
         if (!(cle in entree)) continue;
         db.prepare(`DELETE FROM "${table}" WHERE personnage_id = ?`).run(id);
         const colonnes = colonnesDeDetail(db, table);
-        entree[cle].forEach((l, i) => {
+        // une colonne que les règles ont retirée et que cette base (d'avant) exige encore : sa valeur de départ
+        const departs = Object.entries(DEPART_DES_COLONNES_RETIREES_DE_DETAIL[table] ?? {}).filter(([c]) => colonnes.includes(c));
+        entree[cle].forEach((l0, i) => {
+          const l = departs.length ? { ...Object.fromEntries(departs), ...l0 } : l0;
           const cols = colonnes.filter((c) => c in l);
           const dejaVus = problemes.length;
           const valeurs = cols.map((c) => valeurDeCellule(l[c], `${cle}[${i}].${c}`, problemes));
@@ -314,13 +450,19 @@ export function enregistrerFiche(db, entree, { id = null, maintenant = new Date(
       for (const r of clesRompues(db, 'personnage', { ou: 't.id = ?', valeurs: [id] })) {
         problemes.push(`« ${r.colonnes.join(', ')} » : « ${r.valeur} » n’existe pas dans les règles (${r.parent})`);
       }
-      for (const [cle, table] of Object.entries(PARTIES_DE_FICHE)) {
+      for (const [cle, table] of partiesDeLaBase(db)) {
         for (const r of clesRompues(db, table, { ou: 't.personnage_id = ?', valeurs: [id] })) {
           problemes.push(`${cle} : « ${r.colonnes.join(', ')} » = « ${r.valeur} » n’existe pas dans les règles (${r.parent})`);
         }
       }
     }
     if (problemes.length) throw new ErreurFiche(400, 'La fiche n’a pas été enregistrée.', { problemes });
+    // décision R165 : jamais deux armures (l'élément d'une fiche d'avant devient l'armure), ni une armure « Familier », ni une armure élémentaire d'une
+    // magie que le personnage n'a pas, ni une armure trop lourde (le poids portable de la fiche enregistrée : classe, niveau, dons, race, magie innée
+    // de l'envoi) : retirées et notées, datées, dans la fiche enregistrée (envoi complet ou partiel, qui garde les colonnes absentes) ; la réponse
+    // rend la fiche et ses notes
+    const portable = poidsPortable === undefined ? poidsPortableDeLaBase(db) : poidsPortable;
+    noterLesRetraits(db, retirerLesArmuresHorsRegle(db, nouveauxRetraitsDeFiches(), { personnage: id, poidsPortable: portable }), t);
 
     const controles = controlesDe(db, id);
     try {

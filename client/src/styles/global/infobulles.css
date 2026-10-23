@@ -7,11 +7,10 @@
   --bulle-teinte: var(--mag, var(--accent));
   --bulle-lisible: color-mix(in srgb, var(--bulle-teinte) 55%, #000);
   --bulle-ligne: color-mix(in srgb, var(--bulle-teinte) 35%, var(--border));
-  --bulle-ombre: rgb(42 33 24 / 0.36);
   z-index: 1100; width: max-content; max-width: min(22rem, calc(100vw - 1rem)); padding: 0.5rem 0.8rem 0.55rem 0.85rem;
   border: 1px solid var(--bulle-ligne); border-left: 3px solid var(--bulle-teinte); border-radius: var(--radius);
   background: color-mix(in srgb, var(--bulle-teinte) 5%, var(--surface)); color: var(--text);
-  box-shadow: 0 12px 28px -10px var(--bulle-ombre), 0 2px 6px -2px var(--bulle-ombre);
+  box-shadow: 0 12px 28px -10px var(--ombre-bulle), 0 2px 6px -2px var(--ombre-bulle);
   font: normal 400 0.82rem/1.45 Georgia, 'Times New Roman', serif; letter-spacing: 0; text-transform: none; text-align: left; text-decoration: none;
   white-space: pre-line; overflow-y: auto; overscroll-behavior: contain;
   animation: bulle-apparition 0.12s ease-out;
@@ -19,15 +18,15 @@
 .bulle[hidden] { display: none; }
 .bulle--large { max-width: min(26rem, calc(100vw - 1rem)); }
 .bulle--simple { position: fixed; top: 0; left: 0; max-width: min(20rem, calc(100vw - 1rem)); }
-.bulle__titre { display: block; color: var(--bulle-lisible); font-size: 0.92rem; font-weight: 700; line-height: 1.3; }
-.bulle__sous { display: block; margin-bottom: 0.15rem; color: var(--muted); font-size: 0.66rem; letter-spacing: 0.08em; text-transform: uppercase; }
+.bulle__titre { display: block; color: var(--bulle-lisible); font-size: var(--fs-lg); font-weight: 700; line-height: 1.3; }
+.bulle__sous { display: block; margin-bottom: 0.15rem; color: var(--muted); font-size: var(--fs-xxs); letter-spacing: var(--ls-large); text-transform: uppercase; }
 .bulle__titre + .bulle__sous { margin: 0.15rem 0 0; }
 .bulle__texte { display: block; margin-top: 0.2rem; }
 /* sous un titre, le texte se détache par un filet, comme le corps d'une carte sous son en-tête */
 :is(.bulle__titre, .bulle__sous) ~ :is(.bulle__texte, .bulle__stades) { margin-top: 0.35rem; padding-top: 0.35rem; border-top: 1px solid var(--bulle-ligne); }
 .bulle__stades { display: grid; margin: 0.2rem 0 0; gap: 0.25rem; }
 .bulle__stade { display: grid; grid-template-columns: 4.4rem 1fr; gap: 0.5rem; padding: 0.1rem 0.3rem; border-radius: var(--radius-xs); }
-.bulle__stade-nom { color: var(--muted); font-size: 0.74rem; letter-spacing: 0.04em; text-transform: uppercase; padding-top: 0.08rem; }
+.bulle__stade-nom { color: var(--muted); font-size: var(--fs-xs); letter-spacing: var(--ls-fin); text-transform: uppercase; padding-top: 0.08rem; }
 .bulle__stade.is-actif { background: color-mix(in srgb, var(--bulle-teinte) 14%, var(--surface)); font-weight: 600; }
 .bulle__stade.is-actif .bulle__stade-nom { color: var(--bulle-lisible); }
 /* la pointe : un carré tourné, du fond et du filet de la bulle, à cheval sur son bord (au-dessus d'elle : elle en couvre le filet) */
@@ -47,9 +46,9 @@
   .bulle, .bulle-fleche { animation: none; }
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .bulle { --bulle-lisible: color-mix(in srgb, var(--bulle-teinte) 55%, #fff); --bulle-ombre: rgb(0 0 0 / 0.6); }
+  :root:not([data-theme="light"]) .bulle { --bulle-lisible: color-mix(in srgb, var(--bulle-teinte) 55%, #fff); }
 }
-:root[data-theme="dark"] .bulle { --bulle-lisible: color-mix(in srgb, var(--bulle-teinte) 55%, #fff); --bulle-ombre: rgb(0 0 0 / 0.6); }
+:root[data-theme="dark"] .bulle { --bulle-lisible: color-mix(in srgb, var(--bulle-teinte) 55%, #fff); }
 @media print {
   .bulle--simple, .bulle-fleche { display: none !important; }
 }

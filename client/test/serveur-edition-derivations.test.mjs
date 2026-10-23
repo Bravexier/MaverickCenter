@@ -3,18 +3,16 @@
 // d'état d'un sort refaites quand une case change (lib/sort-etats.mjs), nom d'un sort suivi par les créatures qui le citent, case diagonale d'un
 // peuple créé, ordre de rejeu de lots enregistrés dans la même seconde.
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { donneesDeRace, ECHELLE_MEME_PEUPLE, enregistrer as enregistrerLot } from '../serveur/edition.mjs';
 import { chargerJournal, journalExporte, nouveauLot, rejouer } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-edition-derivations-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('edition-derivations');
 const vivante = (nom) => ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, nom) }).chemin);
 const db = vivante('db');
 const service = { base: () => db, etat: () => ({}), edition: true };

@@ -1,8 +1,9 @@
-// Champs de l'onglet « Armes » du classeur « Ressources et Craft » et ce que la base en tire (tables arme, arme_degats, arme_prerequis, materiau_arme,
-// amelioration_equipement, amelioration_total) : les découpages de l'importeur, réécrits ici pour l'édition depuis le site de dev (client/serveur/edition.mjs)
-// et pour la page /ressources/armes/ (demande du propriétaire : un tableau par famille, les colonnes Dégâts, Type de dégâts, Durabilité, Effets
-// supplémentaires et Origine tirées de l'effet). Un test les rejoue sur toutes les armes, tous les matériaux et toutes les améliorations d'arme de la base :
-// ils doivent redonner exactement les colonnes typées et les tables de détail en place (test/arme-champs.test.mjs).
+// Champs de l'onglet « Armes » du classeur « Ressources et Craft » et ce que la base en tire (tables arme, arme_degats, arme_prerequis,
+// materiau_arme, amelioration_equipement, amelioration_total) : les découpages de l'importeur, réécrits ici pour l'édition depuis le site de dev
+// (client/serveur/edition.mjs) et pour l'onglet Armes de /ressources/equipement/ (demande du propriétaire : un tableau par famille, les colonnes
+// Dégâts, Type de dégâts, Solidité, Effets supplémentaires et Origine tirées de l'effet). Un test les rejoue sur toutes les armes, tous les
+// matériaux et toutes les améliorations d'arme de la base : ils doivent redonner exactement les colonnes typées et les tables de détail en place
+// (test/arme-champs.test.mjs).
 //
 // L'effet d'une arme est une suite de clauses séparées par des virgules ou des retours à la ligne. Une clause qui n'a pas exactement la forme attendue
 // n'est pas interprétée (« +4 dégâts estoc » n'est PAS un bonus de dégâts : il ne vaut que pour l'estoc). Effet à plusieurs modes (« Ouvert = … » /
@@ -10,7 +11,12 @@
 // « Effets supplémentaires » (demande du propriétaire : « tous les autres effets du tableau effet de l'excel qui ne sont pas extraits ») : l'effet sans
 // les clauses que la page montre dans une autre colonne (types de dégâts, dé, bonus de dégâts, portée, solidité, origine) ; les minimums de
 // caractéristique, « ignore N AP » et la recharge n'ont pas de colonne : ils y restent, tels qu'écrits.
-// Fonctions pures, sans dépendance (sauf text.mjs) : partagées par le service, les gabarits et le rendu du mode modification (lib/edition-rendu.mjs).
+// Les balises du glossaire des mots-clés (« {{recharge-longue|Recharge longue}} », lib/mots-cles-balises.mjs) ne changent rien au découpage : chaque clause
+// est lue sans elles (son texte simple : « Recharge longue » donne la recharge longue), et reste écrite avec elles dans les effets supplémentaires (le mot-clé
+// en gras dans le tableau) ; une virgule dans une balise ne coupe pas la clause.
+// Fonctions pures, sans dépendance (sauf text.mjs et mots-cles-balises.mjs) : partagées par le service, les gabarits et le rendu du mode modification
+// (lib/edition-rendu.mjs).
+import { texteSansBalises } from './mots-cles-balises.mjs';
 import { normalize } from './text.mjs';
 
 /** Types de dégâts (table arme_degats), dans l'ordre où la page les écrit. */
@@ -55,7 +61,7 @@ export const ECRITURES_DE_COMPETENCE = Object.keys(COMPETENCES_PAR_ECRITURE);
  * inconnue.
  */
 export function competencesDArme(competenceBrut) {
-  const ids = COMPETENCES_PAR_ECRITURE[String(competenceBrut ?? '').trim()] ?? [];
+  const ids = COMPETENCES_PAR_ECRITURE[String(texteSansBalises(competenceBrut ?? '')).trim()] ?? [];
   return ids.map((id) => ({ id, ...COMPETENCES_D_ARME[id] }));
 }
 
@@ -85,7 +91,7 @@ export function decouperCategorieDArme(categorieBrut) {
 
 /** Coût d'une arme : N de « N Ro » (arme.cout_ro) ; null si le coût n'a pas cette forme. */
 export function coutEnRo(coutBrut) {
-  const m = /^\s*(\d+)\s*Ro\s*$/i.exec(String(coutBrut ?? ''));
+  const m = /^\s*(\d+)\s*Ro\s*$/i.exec(String(texteSansBalises(coutBrut ?? '')));
   return m ? Number(m[1]) : null;
 }
 
@@ -94,8 +100,10 @@ export function coutEnRo(coutBrut) {
 /** Libellé d'un mode en tête de ligne (« Une main = », « Fermé = ») : quelques mots sans ponctuation (« À l'assaut ! : … = » n'en est pas un). */
 const MODE = /^\s*([\p{L} ]{2,20}?)\s*=\s*/u;
 
-/** Une clause, telle que comparée : sans espaces de bord ni point final, espaces multiples réduits. */
-const clauseNette = (c) => c.replace(/\s+/g, ' ').trim().replace(/\.$/, '').trim();
+/** Une clause, telle que comparée : sans balises du glossaire (leur texte simple), sans espaces de bord ni point final, espaces multiples réduits. */
+const clauseNette = (c) => texteSansBalises(c).replace(/\s+/g, ' ').trim().replace(/\.$/, '').trim();
+/** Les virgules qui séparent les clauses : pas celles d'une balise du glossaire (« {{id|a, b}} »). */
+const ENTRE_CLAUSES = /,(?![^{}]*\}\})/;
 
 const RE = {
   types: /^(?:dégâts?\s+(?:de\s+|d['’]\s*)?)?((?:taille|estoc|frappe)(?:\s*\/\s*(?:taille|estoc|frappe))*)$/i,
@@ -158,7 +166,7 @@ function lignesDEffet(effet, caracteristiques = CARACTERISTIQUES) {
       const m = MODE.exec(ligne);
       const mode = m ? m[1].trim() : null;
       const reste = m ? ligne.slice(m[0].length) : ligne;
-      const clauses = reste.split(',').map((t) => ({ texte: t, lu: t.trim() ? lireClause(t, caracteristiques) : null }));
+      const clauses = reste.split(ENTRE_CLAUSES).map((t) => ({ texte: t, lu: t.trim() ? lireClause(t, caracteristiques) : null }));
       return { mode, prefixe: m ? `${mode} = ` : '', clauses };
     });
 }
@@ -275,7 +283,7 @@ export const porteeDeLArme = (arme) =>
   arme.portee_min === null || arme.portee_min === undefined ? '1' : arme.portee_min === arme.portee_max ? String(arme.portee_min) : `${arme.portee_min}-${arme.portee_max}`;
 
 /**
- * Durabilité de l'arme nue, en crans : « 1 seul cran » de son effet, sinon la base de l'onglet (2) corrigée de « ±N cran » (vue v_arme) ; jamais moins de
+ * Solidité de l'arme nue, en crans : « 1 seul cran » de son effet, sinon la base de l'onglet (2) corrigée de « ±N cran » (vue v_arme) ; jamais moins de
  * 1 (décision R51).
  */
 export const durabiliteDeLArme = (arme, base) => Math.max(1, arme.solidite_fixee ?? base + (arme.solidite_delta ?? 0));
@@ -284,13 +292,13 @@ export const durabiliteDeLArme = (arme, base) => Math.max(1, arme.solidite_fixee
 
 /** Prix d'un matériau en RO (demande du propriétaire : « Ignore le prix en RF, il n'est plus d'actualité ») : N de « … N RO » ; null sans RO. */
 export function prixEnRo(prixBrut) {
-  const m = /(\d+(?:[.,]\d+)?)\s*RO\b/i.exec(String(prixBrut ?? ''));
+  const m = /(\d+(?:[.,]\d+)?)\s*RO\b/i.exec(String(texteSansBalises(prixBrut ?? '')));
   return m ? Number(m[1].replace(',', '.')) : null;
 }
 
 /** materiau_arme.prix_rf, comme l'importeur : RO × 100 ; le RF seul s'il est le seul écrit ; null quand RF et RO sont écrits et se contredisent. */
 export function prixEnRf(prixBrut) {
-  const texte = String(prixBrut ?? '');
+  const texte = String(texteSansBalises(prixBrut ?? ''));
   const rf = /(\d+)\s*RF\b/i.exec(texte);
   const ro = prixEnRo(texte);
   if (rf && ro !== null) return Number(rf[1]) === ro * 100 ? Number(rf[1]) : null;
@@ -305,10 +313,11 @@ export function analyserEffetDeMateriau(effetBrut) {
   const autres = [];
   for (const brute of String(effetBrut ?? '').replace(/\r\n?/g, '\n').split('\n')) {
     const l = brute.trim();
+    const lu = texteSansBalises(l).trim(); // la ligne lue sans balises du glossaire, gardée telle qu'écrite dans l'effet secondaire
     let m;
-    if (!l || /^rien de particulier$/i.test(l)) continue;
-    if (bonus === null && (m = /^Dégâts\s*([+-]\d+)\s*pour l['’]arme$/i.exec(l))) bonus = Number(m[1]);
-    else if (cran === null && (m = /^([+-]\d+) crans? de solidité$/i.exec(l))) cran = Number(m[1]);
+    if (!lu || /^rien de particulier$/i.test(lu)) continue;
+    if (bonus === null && (m = /^Dégâts\s*([+-]\d+)\s*pour l['’]arme$/i.exec(lu))) bonus = Number(m[1]);
+    else if (cran === null && (m = /^([+-]\d+) crans? de solidité$/i.exec(lu))) cran = Number(m[1]);
     else autres.push(l);
   }
   return { bonus_degats: bonus, cran_solidite: cran, effet_secondaire: autres.length ? autres.join('\n') : null };
@@ -316,7 +325,7 @@ export function analyserEffetDeMateriau(effetBrut) {
 
 /** Coût d'une amélioration → { cout_ro, cout_materiaux } : « 1 Matériel + 50 RO » → 50 RO et 1 matériau (null quand non écrit). */
 export function analyserCoutDAmelioration(coutBrut) {
-  const texte = String(coutBrut ?? '');
+  const texte = String(texteSansBalises(coutBrut ?? ''));
   const ro = /(\d+)\s*RO\b/i.exec(texte);
   const mat = /(\d+)\s*Mat[ée]ri(?:el|au)(?:x|s)?\b/i.exec(texte);
   return { cout_ro: ro ? Number(ro[1]) : null, cout_materiaux: mat ? Number(mat[1]) : null };
@@ -324,7 +333,7 @@ export function analyserCoutDAmelioration(coutBrut) {
 
 /** Effet d'une amélioration d'arme → { bonus_degats, bonus_cran } : « +10 dégâts, +1 cran de solidité ». */
 export function analyserEffetDAmelioration(effetBrut) {
-  const texte = String(effetBrut ?? '');
+  const texte = String(texteSansBalises(effetBrut ?? ''));
   const degats = /([+-]\d+)\s*dégâts?\b/i.exec(texte);
   const cran = /([+-]\d+)\s*crans? de solidité/i.exec(texte);
   return { bonus_degats: degats ? Number(degats[1]) : null, bonus_cran: cran ? Number(cran[1]) : null };

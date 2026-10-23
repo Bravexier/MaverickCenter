@@ -1,0 +1,369 @@
+// Les sources de maîtrise d'arme et les NM de sorts gagnés, en tables de règles (migration 0076, décisions R148 à R151, R154) : maitrise_arme_part,
+// maitrise_arme_part_famille et capacite_nm_gagne, que le lecteur de lib/maitrise-arme.mjs tire des lignes de classe_maitrise_arme (lireLigneDeClasse) et
+// du texte des dons (capacite.effet : lireDon, nmGagnesDuDon). Une écriture de l'édition qui change ce que le lecteur lit les refait
+// (serveur/edition.mjs : maîtrises d'une classe, effet d'un don, don créé ou supprimé ; toutes, à la création d'une famille d'armes : décision R159), notées
+// au journal par son rédacteur ; le rejeu refait celles des
+// lots notés avant elles (sourcesRefaitesParLeLot, crochet `apresLeLot` de rejouerLeJournal), hors journal ; la résolution d'un lot en conflit refait
+// toutes celles qu'il touche, notées dans son nouveau lot (sourcesRefaitesParLaResolution, sourcesAvantLaSuppression).
+// test/maitrise-arme-sources.test.mjs rejoue le lecteur sur toute la base : ces tables doivent toujours être les siennes.
+import { choixEcritsDuDon, famillesDuNom, idDeSourceDeClasse, lireDon, lireLigneDeClasse, nmGagnesDuDon } from '../src/lib/maitrise-arme.mjs';
+import { cleDe, ErreurJournal, lireLigne, structure } from './edition-journal.mjs';
+
+/** Les tables que les sources de maîtrise d'arme remplissent (scripts/mise-a-jour-github.mjs#tablesDuLot en recopie la liste). */
+export const TABLES_DES_SOURCES = Object.freeze(['maitrise_arme_part', 'maitrise_arme_part_famille', 'capacite_nm_gagne']);
+
+/** Les familles d'armes telles que le lecteur les lit (arme_famille, dans son ordre ; nom de lecture compris, décision R159). */
+export const famillesDuLecteur = (db) => db.prepare('SELECT id, nom, nom_lecture, maitrisable, categorie FROM arme_famille ORDER BY ordre').all();
+
+/** Ajoute à `voulues` les lignes d'une source lue (`lu` : { parts }, ou null) : une ligne par part, une par option, comme les tables. */
+function ajouterLaSource(voulues, sourceId, origine, lu) {
+  for (const p of lu?.parts ?? []) {
+    voulues.parts.push({ source_id: sourceId, rang: p.rang, ...origine, genre: p.genre, points: p.points, arme_famille_id: p.famille, limite_famille: p.limite });
+    for (const id of p.options) voulues.options.push({ source_id: sourceId, rang: p.rang, arme_famille_id: id });
+  }
+}
+
+/**
+ * Les lignes de maitrise_arme_part et maitrise_arme_part_famille que donnent les lignes de classe_maitrise_arme d'une classe (`lignes`, telles qu'elles
+ * sont ou seront : rang, brut, forme, nombre, arme, arme_cle, categorie, sauf_cle) : { parts, options }. Une ligne non typée ou qui ne se lit pas n'en
+ * donne aucune (le lecteur la rend dans `non_lues`).
+ */
+export function sourcesDeLaClasse(classeId, lignes, familles) {
+  const voulues = { parts: [], options: [] };
+  for (const l of lignes) {
+    ajouterLaSource(voulues, idDeSourceDeClasse(classeId, l.rang), { capacite_id: null, classe_id: classeId, classe_rang: l.rang }, lireLigneDeClasse(l, familles));
+  }
+  return voulues;
+}
+
+/** Les lignes que donne le texte d'un don (`effet`) : { parts, options, nm } (`nm` : ses NM de sorts gagnés, 0 sans ligne de capacite_nm_gagne). */
+export function sourcesDuDon(capaciteId, effet, familles) {
+  const voulues = { parts: [], options: [] };
+  ajouterLaSource(voulues, capaciteId, { capacite_id: capaciteId, classe_id: null, classe_rang: null }, lireDon(effet, familles));
+  return { ...voulues, nm: nmGagnesDuDon(effet) };
+}
+
+/*
+ * Maîtrises illisibles (choix du propriétaire du 2026-10-23, « Refuser à la saisie » : « L'enregistrement est refusé avec un message qui dit ce qui ne se
+ * lit pas ; rien d'illisible n'entre dans la base ») : ce qu'une écriture de l'édition laisserait dans `non_lues` du lecteur, expliqué en une phrase par
+ * écriture. serveur/edition.mjs refuse le lot (409) quand la liste n'est pas vide ; le rejeu et la résolution d'un lot en conflit (refaire) ne la
+ * demandent pas : un lot déjà noté se rejoue tel quel.
+ */
+const guillemets = (noms) => noms.map((n) => `« ${n} »`).join(', ');
+const pasDesFamilles = (noms) =>
+  `${guillemets(noms)} ${noms.length > 1 ? "ne sont pas des familles d'armes maîtrisables" : "n'est pas une famille d'armes maîtrisable"}`;
+const maitrisablesDe = (familles) => familles.filter((f) => f.maitrisable && f.maitrisable !== '0');
+
+/** Pourquoi une ligne typée de classe_maitrise_arme ne se lit pas (forme et noms écrits, comme lib/maitrise-arme.mjs#lireLigneDeClasse les lit). */
+function raisonDeLaLigne(l, familles) {
+  if (l.forme === 'nommee') return `${pasDesFamilles([l.arme ?? l.arme_cle])}.`;
+  if (l.forme === 'au_choix') return `« sauf ${l.sauf ?? l.sauf_cle} » ne nomme aucune famille d'armes de ce choix.`;
+  if (l.forme === 'repartie') {
+    const entre = /\bentre\s+([^()]*)/i.exec(l.brut ?? '')?.[1] ?? '';
+    const noms = entre.split(/,|\bet\b|\bou\b/i).map((n) => n.trim()).filter(Boolean)
+      .filter((n) => famillesDuNom(n, maitrisablesDe(familles)).length !== 1);
+    return noms.length ? `${pasDesFamilles(noms)}.` : 'le site ne sait pas la lire.';
+  }
+  return 'le site ne sait pas la lire.';
+}
+
+/**
+ * Les lignes typées (« N maîtrise(s) … ») d'une classe que le lecteur ne lit pas, une phrase chacune : « Maîtrise illisible dans « 1 maîtrise Truc » :
+ * « Truc » n'est pas une famille d'armes maîtrisable. » ; [] quand tout se lit. Une ligne non typée (« Maîtrise toutes les armes ») ne donne aucune
+ * part, comme à l'import (lib/classe-champs.mjs#decouperMaitriseArme) : elle n'est pas illisible.
+ */
+export function illisiblesDeLaClasse(lignes, familles) {
+  return lignes.filter((l) => lireLigneDeClasse(l, familles)?.non_lues?.length)
+    .map((l) => `Maîtrise illisible dans « ${l.brut} » : ${raisonDeLaLigne(l, familles)}`);
+}
+
+/**
+ * Les écritures de points de maîtrise d'arme de l'effet d'un don que le lecteur ne lit pas, une phrase chacune ; [] quand tout se lit ou que l'effet
+ * ne parle pas de points de maîtrise d'arme. Plus d'une part à choisir (« +2 points de maîtrise à répartir, +1 point de maîtrise d'arme de contact. ») :
+ * une phrase qui les cite, car la fiche range ses choix par (source, numéro du point) et compterait deux fois le point 1 (vue v_personnage_maitrise_arme,
+ * lib/fiche-moteur.mjs). C'est une limite du modèle, pas une règle du jeu (session principale, 2026-10-23, étendant « Refuser à la saisie »).
+ */
+export function illisiblesDuDon(nom, effet, familles) {
+  const nonLues = (lireDon(effet, familles)?.non_lues ?? []).map((ecrit) => `Maîtrise illisible dans « ${ecrit} » (effet de « ${nom} ») : ${/^[-−]/.test(ecrit)
+    ? "un retrait de points ne se lit que sur une famille d'armes nommée ou « l'autre arme choisie »."
+    : "le site attend une famille d'armes maîtrisable, une catégorie (contact, distance), « à répartir » ou « l'arme déterminée avant »."}`);
+  const choix = choixEcritsDuDon(effet, familles);
+  return choix.length > 1
+    ? [...nonLues, `Maîtrise illisible dans ${guillemets(choix)} (effet de « ${nom} ») : le site ne sait garder qu'un seul choix de familles par don.`]
+    : nonLues;
+}
+
+/*
+ * Familles d'armes renommées ou créées sur le site de dev (décision R159). Le lecteur lit chaque famille sous son nom et son nom de lecture (figé) ; une
+ * famille créée entre d'office dans les parts à choisir de sa catégorie, et dans celles qui proposent toutes les familles (R119, R127, R150, R151). Rien
+ * d'autre ne doit bouger : serveur/edition-armes.mjs refuse (409) un renommage ou une création qui changerait la lecture d'une source existante (une
+ * ligne nommée qui désignerait une autre famille ou deviendrait ambiguë, un « sauf » qui changerait…), avec la liste de ces sources.
+ */
+
+/** Les sources que lit le lecteur dans `db` : les classes qui ont des lignes de classe_maitrise_arme, et tous les dons (capacite). */
+export function toutesLesSources(db) {
+  return {
+    classes: db.prepare('SELECT DISTINCT classe_id AS id FROM classe_maitrise_arme ORDER BY classe_id').all().map((r) => r.id),
+    dons: db.prepare('SELECT id FROM capacite ORDER BY id').all().map((r) => r.id),
+  };
+}
+
+/**
+ * La lecture de chaque source de `db` avec ces familles : Map source_id → { titre, lecture } (`lecture` : ses parts et ce qui ne se lit pas, en JSON ;
+ * `titre` : « « 1 maîtrise Épée » (Guerrier) », « don « Ménestrel » (Barde) »). `sans` : une famille retirée des options des parts à choisir (la famille
+ * créée, qui y entre d'office).
+ */
+function lecturesDesSources(db, familles, sans = null) {
+  const sortie = new Map();
+  const classes = new Map(db.prepare('SELECT id, nom FROM classe').all().map((c) => [c.id, c.nom]));
+  const texte = (lu) => JSON.stringify(lu && { ...lu, parts: lu.parts.map((p) => ({ ...p, options: p.options.filter((id) => id !== sans) })) });
+  for (const l of db.prepare('SELECT * FROM classe_maitrise_arme ORDER BY classe_id, rang').all()) {
+    sortie.set(idDeSourceDeClasse(l.classe_id, l.rang), { titre: `« ${l.brut} » (${classes.get(l.classe_id) ?? l.classe_id})`, lecture: texte(lireLigneDeClasse(l, familles)) });
+  }
+  for (const d of db.prepare('SELECT id, nom, classe_id, effet FROM capacite ORDER BY id').all()) {
+    sortie.set(d.id, { titre: `don « ${d.nom} » (${classes.get(d.classe_id) ?? d.classe_id})`, lecture: texte(lireDon(d.effet, familles)) });
+  }
+  return sortie;
+}
+
+/**
+ * Les sources de maîtrise d'arme dont la lecture changerait si les familles d'armes étaient `familles` (la liste d'arme_famille après un renommage ou
+ * une création, dans son ordre, chacune avec son nom de lecture) au lieu de celles de `db` : leurs titres, dans l'ordre des sources ; [] quand rien ne
+ * change. `nouvelle` : l'identifiant de la famille créée, dont l'entrée d'office dans les options ne compte pas comme un changement (R159).
+ */
+export function sourcesChangeesParLesFamilles(db, familles, { nouvelle = null } = {}) {
+  const avant = lecturesDesSources(db, famillesDuLecteur(db));
+  const apres = lecturesDesSources(db, familles, nouvelle);
+  return [...avant].filter(([id, a]) => apres.get(id)?.lecture !== a.lecture).map(([, a]) => a.titre);
+}
+
+/**
+ * Après la création d'une famille d'armes (décision R159) : les sources de toutes les classes et de tous les dons refaites par le lecteur, notées par
+ * `ecrivain` (le rédacteur du lot) — la famille créée entre dans les options des parts à choisir de sa catégorie et de celles qui proposent toutes les
+ * familles ; rien d'autre ne change (sourcesChangeesParLesFamilles l'a vérifié avant).
+ */
+export function sourcesRefaitesPourLesFamilles(db, ecrivain) {
+  refaire(db, ecrivain, toutesLesSources(db));
+}
+
+const cleDePart = (l) => JSON.stringify([l.source_id, l.rang]);
+const cleDOption = (l) => JSON.stringify([l.source_id, l.rang, l.arme_famille_id]);
+
+/** Les parts et options en place d'une classe (lignes de classe) ou d'un don : deux requêtes écrites ici, rien d'interpolé. */
+function enPlace(db, { classeId, capaciteId }) {
+  const [parts, options] = classeId
+    ? ['SELECT * FROM maitrise_arme_part WHERE classe_id = ?',
+      'SELECT o.* FROM maitrise_arme_part_famille o JOIN maitrise_arme_part m ON m.source_id = o.source_id AND m.rang = o.rang WHERE m.classe_id = ?']
+    : ['SELECT * FROM maitrise_arme_part WHERE capacite_id = ?',
+      'SELECT o.* FROM maitrise_arme_part_famille o JOIN maitrise_arme_part m ON m.source_id = o.source_id AND m.rang = o.rang WHERE m.capacite_id = ?'];
+  const id = classeId ?? capaciteId;
+  return { parts: db.prepare(parts).all(id).map((l) => ({ ...l })), options: db.prepare(options).all(id).map((l) => ({ ...l })) };
+}
+
+/**
+ * Remplace par `voulues` ({ parts, options }) les parts d'une classe ({ classeId }) ou d'un don ({ capaciteId }), écrites par `ecrivain` (le rédacteur
+ * du journal, ou ecrivainHorsJournal) ligne par ligne : une ligne absente supprimée, une nouvelle insérée, une présente modifiée seulement si elle change.
+ * En deux temps, à cause des clés étrangères (base de l'édition : foreign_keys = ON ; une cascade ne serait pas notée au journal, et le rejeu, clés
+ * coupées, la verrait rompue) : `retirer()` supprime les options puis les parts qui ne sont plus voulues — avant que leur ligne de classe ou leur don ne
+ * parte ; `poser()` insère ou modifie les parts, puis insère les options — après que leur ligne de classe ou leur don existe.
+ */
+export function partsAEcrire(db, ecrivain, source, voulues) {
+  const avant = enPlace(db, source);
+  const partsVoulues = new Set(voulues.parts.map(cleDePart));
+  const optionsVoulues = new Set(voulues.options.map(cleDOption));
+  const partsEnPlace = new Map(avant.parts.map((l) => [cleDePart(l), l]));
+  const optionsEnPlace = new Set(avant.options.map(cleDOption));
+  return {
+    retirer() {
+      for (const o of avant.options) if (!optionsVoulues.has(cleDOption(o))) ecrivain.supprimer('maitrise_arme_part_famille', cleDe(db, 'maitrise_arme_part_famille', o));
+      for (const p of avant.parts) if (!partsVoulues.has(cleDePart(p))) ecrivain.supprimer('maitrise_arme_part', cleDe(db, 'maitrise_arme_part', p));
+    },
+    poser() {
+      for (const p of voulues.parts) {
+        const ancienne = partsEnPlace.get(cleDePart(p));
+        if (!ancienne) ecrivain.inserer('maitrise_arme_part', p);
+        else {
+          const { source_id: _s, rang: _r, ...reste } = p;
+          ecrivain.modifier('maitrise_arme_part', cleDe(db, 'maitrise_arme_part', ancienne), reste);
+        }
+      }
+      for (const o of voulues.options) if (!optionsEnPlace.has(cleDOption(o))) ecrivain.inserer('maitrise_arme_part_famille', o);
+    },
+  };
+}
+
+/** Écrit par `ecrivain` la ligne de capacite_nm_gagne d'un don : `nm` > 0, insérée ou modifiée ; 0, supprimée (R154). */
+export function ecrireLesNmGagnes(db, ecrivain, capaciteId, nm) {
+  const ligne = lireLigne(db, 'capacite_nm_gagne', { capacite_id: capaciteId });
+  if (nm > 0 && !ligne) ecrivain.inserer('capacite_nm_gagne', { capacite_id: capaciteId, nm });
+  else if (nm > 0) ecrivain.modifier('capacite_nm_gagne', { capacite_id: capaciteId }, { nm });
+  else if (ligne) ecrivain.supprimer('capacite_nm_gagne', { capacite_id: capaciteId });
+}
+
+/**
+ * Refait les sources d'un don qui existe (son effet tel qu'il est) : parts, options et NM gagnés. Un don absent (supprimé) perd les siennes. Pour le
+ * rejeu ; l'édition écrit les mêmes lignes au fil de ses dérivations (serveur/edition.mjs).
+ */
+function refaireLeDon(db, ecrivain, capaciteId, familles) {
+  const don = lireLigne(db, 'capacite', { id: capaciteId });
+  const voulues = don ? sourcesDuDon(capaciteId, don.effet, familles) : { parts: [], options: [], nm: 0 };
+  const ecritures = partsAEcrire(db, ecrivain, { capaciteId }, voulues);
+  ecritures.retirer();
+  ecritures.poser();
+  ecrireLesNmGagnes(db, ecrivain, capaciteId, voulues.nm);
+}
+
+/** Refait les sources des lignes de classe_maitrise_arme d'une classe, telles qu'elles sont (pour le rejeu). */
+function refaireLaClasse(db, ecrivain, classeId, familles) {
+  const lignes = db.prepare('SELECT * FROM classe_maitrise_arme WHERE classe_id = ? ORDER BY rang').all(classeId);
+  const ecritures = partsAEcrire(db, ecrivain, { classeId }, sourcesDeLaClasse(classeId, lignes, familles));
+  ecritures.retirer();
+  ecritures.poser();
+}
+
+/**
+ * Un rédacteur qui écrit sans noter au journal (l'interface de celui d'edition-journal.mjs#ouvrirLot, pour les seules TABLES_DES_SOURCES, colonnes
+ * vérifiées par structure) ; `ecrites` : chaque écriture, décodée comme une modification rejouée ({ lot, rang, table, cle, operation, avant, apres,
+ * sources: true }).
+ */
+function ecrivainHorsJournal(db, { lot, rang }) {
+  const ecrites = [];
+  const colonnes = (table, valeurs) => {
+    if (!TABLES_DES_SOURCES.includes(table)) throw new ErreurJournal(`${table} : pas une table des sources de maîtrise`);
+    const { colonnes: connues } = structure(db, table);
+    const cols = Object.keys(valeurs);
+    for (const c of cols) if (!connues.includes(c)) throw new ErreurJournal(`${table} : colonne inconnue « ${c} »`);
+    return cols;
+  };
+  const ou = (table) => structure(db, table).cle.map((c) => `"${c}" = ?`).join(' AND ');
+  const noter = (table, cle, operation, avant, apres) => ecrites.push({ lot, rang, table, cle, operation, avant, apres, sources: true });
+  return {
+    ecrites,
+    inserer(table, valeurs) {
+      const cols = colonnes(table, valeurs);
+      db.prepare(`INSERT INTO "${table}" (${cols.map((c) => `"${c}"`).join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`).run(...cols.map((c) => valeurs[c] ?? null));
+      noter(table, cleDe(db, table, valeurs), 'inserer', null, lireLigne(db, table, valeurs));
+    },
+    modifier(table, cle, valeurs) {
+      const avant = lireLigne(db, table, cle);
+      const changees = colonnes(table, valeurs).filter((c) => (avant[c] ?? null) !== (valeurs[c] ?? null));
+      if (!changees.length) return;
+      const c = cleDe(db, table, cle);
+      db.prepare(`UPDATE "${table}" SET ${changees.map((k) => `"${k}" = ?`).join(', ')} WHERE ${ou(table)}`).run(...changees.map((k) => valeurs[k] ?? null), ...Object.values(c));
+      noter(table, c, 'modifier', Object.fromEntries(changees.map((k) => [k, avant[k]])), Object.fromEntries(changees.map((k) => [k, valeurs[k] ?? null])));
+    },
+    supprimer(table, cle) {
+      colonnes(table, cle);
+      const avant = lireLigne(db, table, cle);
+      if (!avant) return;
+      const c = cleDe(db, table, cle);
+      db.prepare(`DELETE FROM "${table}" WHERE ${ou(table)}`).run(...Object.values(c));
+      noter(table, c, 'supprimer', avant, null);
+    },
+  };
+}
+
+/**
+ * Les sources de maîtrise d'arme qu'un lot touche (`lot` : ses modifications, telles qu'adaptées) : `classes` (dont il écrit classe.maitrise_arme ou une
+ * ligne de classe_maitrise_arme), `dons` (dont il écrit la ligne capacite), `notees` (les sources dont il note des lignes de TABLES_DES_SOURCES : source_id,
+ * ou capacite_id de capacite_nm_gagne), `toutes` (il écrit une famille d'armes, arme_famille : décision R159 — le lecteur lit toutes les sources avec les
+ * familles). Une écriture sans effet (ancienneEcritureDuGlossaire) n'en touche aucune.
+ */
+function sourcesTouchees(lot) {
+  const classes = new Set();
+  const dons = new Set();
+  const notees = new Set();
+  let toutes = false;
+  for (const m of lot) {
+    if (m.sansEffet) continue;
+    let cle;
+    try {
+      cle = JSON.parse(m.cle);
+    } catch {
+      continue;
+    }
+    if (TABLES_DES_SOURCES.includes(m.table_nom)) notees.add(String(cle?.source_id ?? cle?.capacite_id));
+    if (m.table_nom === 'classe_maitrise_arme' && typeof cle?.classe_id === 'string') classes.add(cle.classe_id);
+    if (m.table_nom === 'classe' && typeof cle?.id === 'string' && m.operation === 'modifier' && 'maitrise_arme' in (JSON.parse(m.apres ?? '{}') ?? {})) classes.add(cle.id);
+    if (m.table_nom === 'capacite' && typeof cle?.id === 'string') dons.add(cle.id);
+    if (m.table_nom === 'arme_famille') toutes = true;
+  }
+  return { classes, dons, notees, toutes };
+}
+
+/** `classes` et `dons` d'un lot (sourcesTouchees), étendus à toutes les sources de `db` quand le lot écrit une famille d'armes (`toutes`). */
+function avecToutesLesSources(db, { classes, dons, toutes }) {
+  if (toutes) {
+    const t = toutesLesSources(db);
+    for (const id of t.classes) classes.add(id);
+    for (const id of t.dons) dons.add(id);
+  }
+}
+
+/** Refait par `ecrivain` les sources des classes (qui existent) et des dons (qui existent ou non) donnés, lues telles qu'elles sont. */
+function refaire(db, ecrivain, { classes, dons }) {
+  const familles = famillesDuLecteur(db);
+  for (const id of classes) if (lireLigne(db, 'classe', { id })) refaireLaClasse(db, ecrivain, id, familles);
+  for (const id of dons) refaireLeDon(db, ecrivain, id, familles);
+}
+
+/**
+ * Après chaque lot rejoué (serveur/edition.mjs#rejouerLeJournal, crochet `apresLeLot` d'edition-journal.mjs#rejouer, dans le lot et annulé avec lui) :
+ * les sources des classes dont le lot touche les maîtrises (classe.maitrise_arme, classe_maitrise_arme) et des dons qu'il crée, modifie ou supprime
+ * (capacite) — de toutes les classes et de tous les dons quand il écrit une famille d'armes (arme_famille, R159) —, refaites par le lecteur depuis les
+ * lignes rejouées. Un lot noté avant la migration 0076 (ses lignes de classe ou l'effet d'un don, sans
+ * leurs parts) les reçoit ici, avant le contrôle de ses clés étrangères, et le lot suivant les trouve justes. Une source dont le lot note déjà des
+ * lignes de TABLES_DES_SOURCES (un lot noté depuis 0076) suit son journal, sans rien de plus : ses lignes créées puis supprimées par un lot suivant ne
+ * sont pas écrites (les « fantômes » du rejeu) ; une source qu'il touche sans en noter (un effet changé qui ne change pas les parts) ne change pas.
+ * Rend ces écritures, décodées ({ …, sources: true }) : leurs tables vont dans `tablesCompletees`.
+ * @param {object[]} lot les modifications du lot (lignes de `modification`, telles qu'adaptées)
+ */
+export function sourcesRefaitesParLeLot(db, lot) {
+  const touchees = sourcesTouchees(lot);
+  avecToutesLesSources(db, touchees);
+  const { classes, dons, notees } = touchees;
+  const deLaClasse = (id) => [...notees].some((s) => s.startsWith(`${id}#maitrise-arme:`));
+  const aRefaire = { classes: [...classes].filter((id) => !deLaClasse(id)).sort(), dons: [...dons].filter((id) => !notees.has(id)).sort() };
+  if (!aRefaire.classes.length && !aRefaire.dons.length) return [];
+  const { lot_id: lotId, rang } = lot.at(-1);
+  const ecrivain = ecrivainHorsJournal(db, { lot: lotId, rang });
+  refaire(db, ecrivain, aRefaire);
+  return ecrivain.ecrites;
+}
+
+/**
+ * Résolution d'un lot en conflit (serveur/edition-conflits.mjs, page « Mise à jour ») : ses lignes de TABLES_DES_SOURCES ne sont jamais rejouées telles
+ * quelles (le parcours les saute : elles suivent leur source, comme une ligne de détail, et ne sont pas des conflits à elles), et, une fois les choix
+ * écrits, toutes les sources que le lot touche — ses classes, ses dons, et celles dont il notait des lignes — sont refaites par le lecteur depuis les
+ * lignes résolues, notées par `ecrivain` (le rédacteur du nouveau lot, ctx.w) : un lot noté avant 0076 (un don créé sans ses parts), une ligne gardée
+ * au choix 1 sans l'éditeur (un don créé que les règles ont aussi), une source restée celle des règles, tout finit tel que le lecteur le lit.
+ * @param {object[]} lot les modifications du lot en conflit (telles qu'adaptées)
+ */
+export function sourcesRefaitesParLaResolution(db, lot, ecrivain) {
+  const touchees = sourcesTouchees(lot);
+  avecToutesLesSources(db, touchees);
+  const { classes, dons, notees } = touchees;
+  for (const s of notees) {
+    const i = s.indexOf('#maitrise-arme:');
+    if (i > 0) classes.add(s.slice(0, i));
+    else dons.add(s);
+  }
+  refaire(db, ecrivain, { classes: [...classes].sort(), dons: [...dons].sort() });
+}
+
+/**
+ * Avant que la résolution d'un lot en conflit ne supprime un don (capacite) ou une ligne de classe_maitrise_arme : leurs parts, options et NM gagnés,
+ * retirés par `ecrivain` (notés au journal, comme serveur/edition.mjs#retirerDon et CLASSE.deriver) plutôt que par la cascade du schéma, qui ne serait
+ * pas notée. Rien pour une autre table.
+ */
+export function sourcesAvantLaSuppression(db, ecrivain, table, cle) {
+  let sourceId = null;
+  if (table === 'capacite' && typeof cle?.id === 'string') sourceId = cle.id;
+  else if (table === 'classe_maitrise_arme' && typeof cle?.classe_id === 'string' && Number.isInteger(cle?.rang)) sourceId = idDeSourceDeClasse(cle.classe_id, cle.rang);
+  if (!sourceId) return;
+  for (const o of db.prepare('SELECT * FROM maitrise_arme_part_famille WHERE source_id = ?').all(sourceId)) {
+    ecrivain.supprimer('maitrise_arme_part_famille', cleDe(db, 'maitrise_arme_part_famille', o));
+  }
+  for (const p of db.prepare('SELECT * FROM maitrise_arme_part WHERE source_id = ?').all(sourceId)) ecrivain.supprimer('maitrise_arme_part', cleDe(db, 'maitrise_arme_part', p));
+  if (table === 'capacite') ecrireLesNmGagnes(db, ecrivain, sourceId, 0);
+}

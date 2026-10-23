@@ -2,13 +2,24 @@
 // sert à l'extraction du doc (tools/bestiaire/extraire.mjs), à la page (lib/bestiaire-db.mjs, rendu de la carte) et au mode modification du site de dev
 // (serveur/edition.mjs : une rubrique modifiée refait les valeurs typées de la carte) ; les capacités, elles, sont des tables à part (décision R66 :
 // emplacements « {N} » des descriptions, `emplacements`, `avecLesValeurs`). Rien n'est déduit : une valeur n'est typée que si son écriture est
-// sans ambiguïté (sinon NULL, le texte de la rubrique fait foi). Fonctions pures ; seule dépendance : lib/text.mjs.
+// sans ambiguïté (sinon NULL, le texte de la rubrique fait foi). Un texte se découpe sans les balises du glossaire des mots-clés (lib/mots-cles-balises.mjs :
+// « {{id|texte}} » se lit « texte ») ; la rubrique les garde, et la carte les affiche. Fonctions pures ; dépendances : lib/text.mjs, lib/mots-cles-balises.mjs.
+import { texteSansBalises } from './mots-cles-balises.mjs';
 import { normalize } from './text.mjs';
 
-/** Rubriques qui listent des cibles (« Brûlure, Paralysie ») : sens d'une ligne de `monstre_defense`, dans l'ordre. */
+/**
+ * Rubriques qui listent des cibles (« Brûlure, Paralysie ») : sens d'une ligne de `monstre_defense`, dans l'ordre ; les valeurs des `CHECK` du schéma.
+ * 'double_resistance' reste lue comme le schéma l'admet (décision R155 : la « Double résistance » est devenue la Grande résistance, migration 0075 ; plus
+ * aucune donnée ne l'écrit, le rejeu d'un journal d'avant 0075 la traduit : serveur/edition-bestiaire.mjs#ancienneEcritureDesResistances) : une rubrique
+ * classée ainsi par l'extracteur (tools/bestiaire/extraire.mjs) garderait ses cibles ; rien ne la propose (RUBRIQUES).
+ */
 export const SENS_DEFENSE = ['vulnerabilite', 'grande_vulnerabilite', 'resistance', 'grande_resistance', 'double_resistance', 'immunite', 'reflexion'];
 
-/** Toutes les rubriques d'une carte (colonne `monstre_rubrique.rubrique`), dans l'ordre où le doc les écrit d'habitude, avec leur titre par défaut. */
+/**
+ * Les rubriques d'une carte (colonne `monstre_rubrique.rubrique`), dans l'ordre où le doc les écrit d'habitude, avec leur titre par défaut. Décision R155 :
+ * les multiplicateurs sont ceux des paliers de la base (`resistance_palier.effet_brut` : grande résistance ÷3, grande vulnérabilité x3), et la
+ * « Double résistance » n'a plus de titre (devenue la Grande résistance ; le `CHECK` du schéma garde la valeur, SENS_DEFENSE la lit encore).
+ */
 export const RUBRIQUES = {
   attributs: 'Santé, chakra, barrière',
   sante: 'Santé',
@@ -20,10 +31,9 @@ export const RUBRIQUES = {
   caracteristiques: 'Caractéristiques (F.P.V.S.I.A.)',
   competences: 'Compétence(s) secondaire(s)',
   vulnerabilite: 'Vulnérabilité(s) Dégâts x2',
-  grande_vulnerabilite: 'Grande(s) Vulnérabilité(s) Dégâts x4',
+  grande_vulnerabilite: 'Grande(s) Vulnérabilité(s) Dégâts x3',
   resistance: 'Résistance(s) Dégâts ÷2',
-  grande_resistance: 'Grande(s) Résistance(s) Dégâts ÷4',
-  double_resistance: 'Double(s) Résistance(s) Dégâts/Effets ÷4',
+  grande_resistance: 'Grande(s) Résistance(s) Dégâts ÷3',
   immunite: 'Immunité(s) Dégâts/Effets = 0',
   reflexion: 'Réflexion(s) Renvoi des dégâts/effets',
   capacites: 'Capacité(s)',
@@ -39,7 +49,7 @@ export const GABARIT_DE_CARTE = ['attributs', 'degats', 'defense', 'vitesse', 'c
 
 /** Lieux de rencontre d'une espèce (`monstre_espece_lieu`) : la ligne « Lieu de rencontre » découpée aux virgules, chaque lieu tel qu'écrit. */
 export const lieux = (texte) =>
-  String(texte ?? '')
+  String(texteSansBalises(texte ?? ''))
     .split(/\s*,\s*/)
     .map((l) => l.trim())
     .filter(Boolean)
@@ -48,7 +58,7 @@ export const lieux = (texte) =>
 /** Catégories d'un monstre : clé de `monstre.categorie` -> libellé ; et lecture de l'écriture du doc (« Mini boss », « Mini-Boss » -> 'mini_boss'). */
 export const CATEGORIES = { ennemi_simple: 'Ennemi simple', mini_boss: 'Mini-boss', boss: 'Boss' };
 const CLES_CATEGORIES = { 'ennemi-simple': 'ennemi_simple', 'mini-boss': 'mini_boss', boss: 'boss' };
-export const categorieDe = (brut) => CLES_CATEGORIES[normalize(brut ?? '')] ?? null;
+export const categorieDe = (brut) => CLES_CATEGORIES[normalize(texteSansBalises(brut ?? ''))] ?? null;
 
 /** Les six caractéristiques, dans l'ordre F.P.V.S.I.A. (même ordre que creature_caracteristique). */
 export const FPVSIA = ['force', 'perception', 'volonte', 'social', 'intelligence', 'agilite'];
@@ -58,7 +68,7 @@ const entiers = (texte) => [...String(texte ?? '').matchAll(/\d+/g)].map((m) => 
 
 /** Échelles couvertes par une écriture (« 2 », « 1-10 », « EP3, 5, 7 ») : [min, max], ou [null, null] sans nombre. */
 export function bornes(texte) {
-  const n = entiers(texte);
+  const n = entiers(texteSansBalises(texte));
   return n.length ? [Math.min(...n), Math.max(...n)] : [null, null];
 }
 
@@ -69,7 +79,7 @@ export function bornes(texte) {
  * plus petit et le plus grand nombre : `ep_min`, `ep_max`, le tri).
  */
 export function echellesEcrites(texte) {
-  const eps = String(texte ?? '')
+  const eps = String(texteSansBalises(texte ?? ''))
     .replace(/^\s*EP\s*/i, '')
     .split(/\s*,\s*/)
     .flatMap((p) => {
@@ -196,18 +206,25 @@ export const echelleDuPrefixe = (prefixe) => {
 };
 
 /**
- * Emplacements de la description d'une capacité commune (décision R69 : « si l'effet ne diffère que d'un chiffre, le mettre modifiable par un
- * slider ») : chaque « {N} », N entier, est un emplacement dont la valeur commune est N. Renvoie ces valeurs communes, dans l'ordre (le 1er emplacement
- * d'abord : c'est son numéro dans monstre_capacite_valeur).
+ * Un emplacement « {N} » (une accolade de chaque côté, pas deux : « {{12}} » est une balise du glossaire des mots-clés, lib/mots-cles-balises.mjs, que
+ * l'id d'un mot-clé « 12 » écrirait ainsi).
  */
-export const emplacements = (description) => [...String(description ?? '').matchAll(/\{(\d+)\}/g)].map((m) => Number(m[1]));
+export const EMPLACEMENT = /(?<!\{)\{(\d+)\}(?!\})/g;
+const EMPLACEMENT_ET_POURCENT = /(?<!\{)\{\d+\}(?!\})(\s?%)?/g;
+
+/**
+ * Emplacements de la description d'une capacité commune (décision R69 : « si l'effet ne diffère que d'un chiffre, le mettre modifiable par un
+ * slider ») : chaque « {N} », N entier, est un emplacement dont la valeur commune est N (EMPLACEMENT : pas une balise « {{N}} »). Renvoie ces valeurs
+ * communes, dans l'ordre (le 1er emplacement d'abord : c'est son numéro dans monstre_capacite_valeur).
+ */
+export const emplacements = (description) => [...String(description ?? '').matchAll(EMPLACEMENT)].map((m) => Number(m[1]));
 
 /**
  * Les emplacements d'une description, pour le curseur du site de dev (décision R69) : [{ numero, commune, pourcent }], dans l'ordre d'`emplacements` ;
  * `pourcent` : un « % » suit l'accolade (« {10}% », ou « {10} % » avec une espace, insécable ou non).
  */
 export function emplacementsDetailles(description) {
-  const pourcents = [...String(description ?? '').matchAll(/\{\d+\}(\s?%)?/g)].map((m) => Boolean(m[1]));
+  const pourcents = [...String(description ?? '').matchAll(EMPLACEMENT_ET_POURCENT)].map((m) => Boolean(m[1]));
   return emplacements(description).map((commune, i) => ({ numero: i + 1, commune, pourcent: pourcents[i] ?? false }));
 }
 
@@ -242,7 +259,7 @@ export function valeursAEnvoyer(description, choisies, propres) {
  */
 export function suiteDesEmplacements(avant, apres) {
   const decoupe = (d) => {
-    const morceaux = String(d ?? '').split(/\{\d+\}/);
+    const morceaux = String(d ?? '').split(EMPLACEMENT).filter((_, k) => k % 2 === 0); // (split rend aussi les nombres capturés)
     const communes = emplacements(d);
     return communes.map((commune, i) => ({ numero: i + 1, commune, avant: morceaux.slice(0, i + 1).join('\u0000'), apres: morceaux.slice(i + 1).join('\u0000') }));
   };
@@ -277,7 +294,7 @@ export function suiteDesEmplacements(avant, apres) {
  */
 export function avecLesValeurs(description, valeurs = {}) {
   let k = 0;
-  return String(description ?? '').replace(/\{(\d+)\}/g, (_, n) => String(valeurs[++k] ?? Number(n)));
+  return String(description ?? '').replace(EMPLACEMENT, (_, n) => String(valeurs[++k] ?? Number(n)));
 }
 
 /**
@@ -430,7 +447,7 @@ export function caracteristiques(texte) {
  * les capacités communes (registre tools/bestiaire/capacites.json, décision R66) ; la base n'a plus ce texte (la rubrique n'y est qu'un repère vide).
  */
 export function valeursDeLaCarte(rubriques) {
-  const de = (cle) => rubriques.find((r) => r.rubrique === cle)?.texte ?? '';
+  const de = (cle) => texteSansBalises(rubriques.find((r) => r.rubrique === cle)?.texte ?? '');
   return {
     ...attributs(de('attributs')),
     ...defense(de('defense')),
@@ -444,7 +461,7 @@ export function valeursDeLaCarte(rubriques) {
     defenses: SENS_DEFENSE.flatMap((sens) =>
       rubriques
         .filter((r) => r.rubrique === sens)
-        .flatMap((r) => cibles(r.texte))
+        .flatMap((r) => cibles(texteSansBalises(r.texte)))
         .map((cible, k) => ({ sens, rang: k + 1, cible, cible_cle: normalize(cible) })),
     ),
   };

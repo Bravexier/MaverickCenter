@@ -1,11 +1,12 @@
 /* Chargé uniquement depuis pages/personnages.astro (?raw) : la recherche des personnages. Filtres en tête, puis la liste : un en-tête dont chaque
    colonne, sauf le portrait, se trie (bouton, flèche du sens), et une ligne par personnage (portrait, nom, race, magies, niveau : demande du
    propriétaire), tout entière un lien vers la fiche (le nom n'a pas l'air d'un lien), bordée de la couleur de la magie innée, en dégradé vers l'acquise
-   en bi-magie (--magie-1, --magie-2, posées par src/scripts/personnages.mjs). L'en-tête et les lignes ont le même gabarit de colonnes (--colonnes,
+   en bi-magie (--magie-1, --magie-2 de .perso--magie, lues dans les classes de la palette que pose src/scripts/personnages.mjs : la classe de
+   l'innée, --couleur, et la classe de second rang de l'acquise, --couleur-2, lib/palette-css.mjs). L'en-tête et les lignes ont le même gabarit de colonnes (--colonnes,
    sans piste qui dépende du contenu) et la même largeur de contenu (marge de l'en-tête = bordure + marge d'une ligne) : leurs colonnes s'alignent.
    Pas de sous-grille : elle reporterait la bordure et la marge de la ligne sur ses colonnes extrêmes (le portrait déborderait de la sienne).
    Couleurs de la partie « Créer son personnage » du guide, comme la fiche. */
-.personnages { --vert: #2e7d4f; display: grid; gap: 1rem; }
+.personnages { --vert: var(--vert-action); display: grid; gap: 1rem; }
 .personnages h1 { margin: 0; }
 .personnages-filtres {
   display: grid;
@@ -16,7 +17,7 @@
   border-radius: calc(var(--radius) + 4px);
   background: color-mix(in srgb, var(--vert) 6%, var(--surface));
 }
-.personnages-filtres label { display: grid; gap: 0.2rem; font-size: 0.85rem; color: var(--muted); }
+.personnages-filtres label { display: grid; gap: 0.2rem; font-size: var(--fs-md); color: var(--muted); }
 .personnages-filtres input, .personnages-filtres select { width: 100%; color: var(--text); }
 .personnages-filtres .large { grid-column: span 2; }
 .personnages-filtres .niveaux { display: flex; gap: 0.4rem; }
@@ -37,7 +38,7 @@
   align-items: end;
   padding: 0 calc(var(--marge) + var(--bord));
   border-bottom: 1px solid var(--border);
-  font-size: 0.85rem;
+  font-size: var(--fs-md);
   font-weight: 700;
 }
 .personnages-tete span.col { padding: 0.35rem 0; }
@@ -58,7 +59,7 @@
   cursor: pointer;
 }
 .personnages-tete button:hover, .personnages-tete button:focus-visible { background: color-mix(in srgb, var(--vert) 14%, var(--surface)); }
-.personnages-tete .fleche { color: var(--muted); font-size: 0.75rem; }
+.personnages-tete .fleche { color: var(--muted); font-size: var(--fs-xs); }
 .personnages-tete button[data-actif] .fleche { color: var(--vert); }
 .personnages-tete .col--niveau { justify-self: end; flex-direction: row-reverse; text-align: right; }
 .personnages-tete .col--portrait { color: var(--muted); font-weight: normal; }
@@ -77,8 +78,9 @@
     linear-gradient(90deg, var(--magie-1, var(--border)), var(--magie-2, var(--magie-1, var(--border)))) border-box;
   color: var(--text);
   text-decoration: none;
-  transition: box-shadow 0.15s, transform 0.15s;
+  transition: box-shadow var(--duree), transform 0.15s;
 }
+.perso--magie { --magie-1: var(--couleur); --magie-2: var(--couleur-2); }
 .perso:hover, .perso:focus-visible {
   color: var(--text);
   text-decoration: none;
@@ -119,7 +121,7 @@
   .perso { grid-template-columns: var(--portrait) minmax(0, 1fr) auto; grid-template-rows: auto auto auto; column-gap: 0.7rem; row-gap: 0.05rem; }
   .perso__portrait { grid-column: 1; grid-row: 1 / span 3; }
   .perso .col--nom { grid-column: 2; grid-row: 1; }
-  .perso .col--race { grid-column: 2; grid-row: 2; font-size: 0.85rem; }
-  .perso .col--magies { grid-column: 2; grid-row: 3; font-size: 0.85rem; }
+  .perso .col--race { grid-column: 2; grid-row: 2; font-size: var(--fs-md); }
+  .perso .col--magies { grid-column: 2; grid-row: 3; font-size: var(--fs-md); }
   .perso .col--niveau { grid-column: 3; grid-row: 1 / span 3; }
 }

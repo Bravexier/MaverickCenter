@@ -13,9 +13,11 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
 import { echellesEcrites } from '../src/lib/monstre-champs.mjs';
 import { idDeBulleDuButin } from '../src/lib/monstre-rendu.mjs';
+import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { ecartsDeLaDescription } from './aide-bestiaire.mjs';
 
 const db = ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' });
+const vocabulaire = chargerVocabulaire(db);
 const { monstres } = chargerBestiaire(db);
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const present = existsSync(join(dist, 'index.html'));
@@ -68,7 +70,7 @@ test('la page : la carte seule (le nom en titre, sans « Fermer »), le retour a
     const meta = l.carte ? `${l.nom} (${espece}) : la carte du bestiaire.` : l.espece.groupe ? `${l.nom} (${espece}) : sans carte de combat, dans le bestiaire.` : `${l.nom} : l’espèce du bestiaire.`;
     assert.ok(html.includes(`<meta name="description" content="${meta.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"`), `${l.id} : ${meta}`);
     // la description dans l'en-tête, sous les tags, repliée
-    assert.deepEqual(ecartsDeLaDescription(main.slice(main.indexOf(`<article class="bcarte bcarte--seule" id="${id}"`)), l, attributEd), [], `${l.id} : description`);
+    assert.deepEqual(ecartsDeLaDescription(main.slice(main.indexOf(`<article class="bcarte bcarte--seule" id="${id}"`)), l, attributEd, vocabulaire), [], `${l.id} : description`);
     assert.match(main, new RegExp(`<a href="[^"]*/bestiaire/#${l.ancre}" data-retour>`), `${l.id} : le retour à sa ligne du tableau`);
     // les autres cartes de l'espèce, chacune vers sa page
     const especeDe = (x) => (x.espece.groupe ? `groupe:${x.espece.groupe.id}` : `espece:${x.espece.id}`);
@@ -76,13 +78,16 @@ test('la page : la carte seule (le nom en titre, sans « Fermer »), le retour a
     for (const v of voisines) assert.match(main, new RegExp(`<a href="[^"#]*/${cheminDeMonstre(v.id)}">`), `${l.id} -> ${v.id}`);
     assert.equal(main.includes('bmonstre__voisines'), voisines.length > 0, l.id);
     // les bulles du butin : celles que cite la carte, chacune une fois, et toute case de butin y renvoie
+    // (les bulles des mots-clés du glossaire, posées par le middleware en fin de page hors de <main>, à part : chacune existe)
+    const duGlossaire = (id) => id.startsWith('mot-cle-');
+    const bullesDuGlossaire = [...html.matchAll(/ id="(mot-cle-[a-z0-9-]+)"/g)].map((m) => m[1]);
     const bulles = [...main.matchAll(/<span class="bulle" role="tooltip" id="([^"]+)"/g)].map((m) => m[1]);
     assert.deepEqual(bulles, objetsDuButinDe(l, monstres.glossaire, monstres.elements).map((o) => idDeBulleDuButin(o.id)), l.id);
-    for (const [, cible] of main.matchAll(/data-bulle="([^"]+)"/g)) assert.ok(bulles.includes(cible), `${l.id} : ${cible}`);
+    for (const [, cible] of main.matchAll(/data-bulle="([^"]+)"/g)) assert.ok(duGlossaire(cible) ? bullesDuGlossaire.includes(cible) : bulles.includes(cible), `${l.id} : ${cible}`);
     // identifiants uniques, renvois résolus
     const ids = [...main.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]);
     assert.equal(new Set(ids).size, ids.length, `${l.id} : identifiants uniques`);
-    for (const [, cible] of main.matchAll(/aria-(?:controls|labelledby|describedby)="([^"]+)"/g)) assert.ok(ids.includes(cible), `${l.id} : ${cible}`);
+    for (const [, cible] of main.matchAll(/aria-(?:controls|labelledby|describedby)="([^"]+)"/g)) assert.ok(ids.includes(cible) || bullesDuGlossaire.includes(cible), `${l.id} : ${cible}`);
     // le curseur d'échelle d'une carte qui en écrit plusieurs ; le script du bestiaire (le même fichier que /bestiaire/)
     assert.equal(/data-echelles=/.test(main), Boolean(l.carte && echellesEcrites(l.carte.echelle).length >= 2), `${l.id} : curseur`);
     assert.ok(html.includes(`<script type="module" src="${scriptDuBestiaire}"`), `${l.id} : script du bestiaire`);

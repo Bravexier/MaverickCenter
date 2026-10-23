@@ -101,19 +101,23 @@ function navigateur(adresse, construire) {
   return { document, racine, historique, executer: (code) => vm.runInContext(code, contexte) };
 }
 
-// Cinq événements et leurs catégories : a (guerre), b (guerre, paix), c (aucune), d (paix), e (guerre).
+// Cinq événements et leurs catégories : a (guerre), b (guerre, paix), c (aucune), d (paix), e (guerre). Chaque ligne porte la classe de couleur de son
+// événement (couleur-evenement-<id> : lib/palette-css.mjs#classeDEvenement), sa barre celle du précédent et son morceau de barre celle du suivant, aucune
+// au bord (Frise.astro) ; jamais un style.
 const EVENEMENTS = [
-  { id: 'a', categories: 'guerre', c: '#111111' }, { id: 'b', categories: 'guerre paix', c: '#222222' }, { id: 'c', categories: '', c: '#333333' },
-  { id: 'd', categories: 'paix', c: '#444444' }, { id: 'e', categories: 'guerre', c: '#555555' },
+  { id: 'a', categories: 'guerre' }, { id: 'b', categories: 'guerre paix' }, { id: 'c', categories: '' }, { id: 'd', categories: 'paix' }, { id: 'e', categories: 'guerre' },
 ];
+const couleur = (id) => (id ? `couleur-evenement-${id}` : null);
 function page(courant, adresse) {
   const nav = navigateur(new URL(adresse), (h) => h('div', { class: 'chrono', 'data-chrono': '' },
     h('nav', { class: 'frise', 'data-frise': '' },
       h('small', { 'data-frise-compte-tiroir': '' }),
       h('div', { class: 'frise__tete' }, h('select', { 'data-frise-choix': '' }, ...['', 'guerre', 'paix', 'sans-categorie'].map((v) => h('option', { value: v })))),
       h('p', { 'data-frise-compte': '' }),
-      h('ol', { class: 'frise__liste' }, ...EVENEMENTS.map((e) => h('li', { class: 'frise__evenement', id: `evenement-${e.id}`, style: `--c: ${e.c}; --c-avant: ${e.c}; --c-apres: ${e.c}`, 'data-categories': e.categories, 'data-etiquette': `An ${e.id} : ${e.id.toUpperCase()}` },
+      h('ol', { class: 'frise__liste' }, ...EVENEMENTS.map((e, i) => h('li', { class: `frise__evenement ${couleur(e.id)}`, id: `evenement-${e.id}`, 'data-categories': e.categories, 'data-etiquette': `An ${e.id} : ${e.id.toUpperCase()}` },
         h('a', { class: 'frise__lien', href: `/chronologie/${e.id}/`, ...(e.id === courant ? { 'aria-current': 'page' } : {}) },
+          h('span', { class: ['frise__barre', couleur(EVENEMENTS[i - 1]?.id)].filter(Boolean).join(' ') },
+            h('span', { class: ['frise__morceau', couleur(EVENEMENTS[i + 1]?.id)].filter(Boolean).join(' ') }), h('span', { class: 'frise__repere' })),
           h('span', { class: 'frise__titre' }, h('span', { 'data-ed-lecture': '' })))))),
     ),
     h('a', { class: 'chrono-commencer', 'data-chrono-commencer': '', href: '/chronologie/a/' }, h('span', { 'data-chrono-commencer-titre': '' })),
@@ -127,6 +131,15 @@ function page(courant, adresse) {
   return nav;
 }
 const lignes = (nav) => nav.document.querySelectorAll('.frise__evenement');
+/** Les classes de couleur d'un élément (celles de la palette : couleur-…). */
+const couleursDe = (el) => (el.getAttribute('class') ?? '').split(/\s+/).filter((c) => c.startsWith('couleur-'));
+/** Les voisines posées sur chaque ligne visible : { id: [classe de la barre (précédente), classe du morceau (suivante)] }, chaque ligne gardant la sienne. */
+const voisines = (nav) => Object.fromEntries(lignes(nav).filter((l) => !l.hidden).map((l) => {
+  const id = l.getAttribute('id').replace('evenement-', '');
+  assert.deepEqual(couleursDe(l), [couleur(id)], `${id} : la ligne garde sa couleur`);
+  assert.equal(l.getAttribute('style'), null, `${id} : aucun style`);
+  return [id, [couleursDe(l.querySelector('.frise__barre')).join(' ') || null, couleursDe(l.querySelector('.frise__morceau')).join(' ') || null]];
+}));
 const visibles = (nav) => lignes(nav).filter((l) => !l.hidden).map((l) => l.getAttribute('id').replace('evenement-', ''));
 const chevron = (nav, sens) => {
   const a = nav.document.querySelector(`[data-chrono-chevron="${sens}"]`);
@@ -139,6 +152,9 @@ test('sans filtre : tout est affiché, les chevrons vont aux voisins de la frise
   assert.deepEqual(chevron(nav, 'precedent'), { href: '/chronologie/b/', titre: 'An b : B', clavier: true });
   assert.deepEqual(chevron(nav, 'suivant'), { href: '/chronologie/d/', titre: 'An d : D', clavier: true });
   assert.ok(lignes(nav)[0].classList.contains('est-premier') && lignes(nav)[4].classList.contains('est-dernier'));
+  assert.deepEqual(voisines(nav), {
+    a: [null, couleur('b')], b: [couleur('a'), couleur('c')], c: [couleur('b'), couleur('d')], d: [couleur('c'), couleur('e')], e: [couleur('d'), null],
+  }, 'les voisines de la frise entière, rien aux bords');
 });
 
 test('?filtre=guerre : seules les lignes de la catégorie restent (et l’événement affiché, « hors filtre ») ; dégradé, bouts de barre, liens et chevrons suivent', () => {
@@ -148,9 +164,8 @@ test('?filtre=guerre : seules les lignes de la catégorie restent (et l’évén
   const d = nav.document.querySelector('#evenement-d');
   assert.ok(d.classList.contains('est-hors-filtre'));
   assert.ok(!nav.document.querySelector('#evenement-b').classList.contains('est-hors-filtre'));
-  // le dégradé entre lignes visibles : b → d (c est caché)
-  assert.equal(nav.document.querySelector('#evenement-b').style.getPropertyValue('--c-apres'), '#444444');
-  assert.equal(d.style.getPropertyValue('--c-avant'), '#222222');
+  // le dégradé entre lignes visibles : b → d (c est caché) ; la classe de la voisine reprise par classList, l'ancienne retirée, rien aux bords
+  assert.deepEqual(voisines(nav), { a: [null, couleur('b')], b: [couleur('a'), couleur('d')], d: [couleur('b'), couleur('e')], e: [couleur('d'), null] });
   assert.ok(nav.document.querySelector('#evenement-a').classList.contains('est-premier'));
   assert.ok(nav.document.querySelector('#evenement-e').classList.contains('est-dernier'));
   // les liens de la frise gardent le filtre ; les chevrons vont aux voisins visibles
@@ -185,12 +200,14 @@ test('changer le choix réécrit l’adresse (sans recharger), refiltre et réé
   assert.deepEqual(visibles(nav), ['b', 'd']);
   assert.deepEqual(chevron(nav, 'suivant'), { href: '/chronologie/d/?filtre=paix', titre: 'An d : D', clavier: true });
   assert.deepEqual(chevron(nav, 'precedent'), { grise: 'true', clavier: false });
-  // le site de dev retire d de la frise (supprimé) : la frise est refiltrée, le chevron suit
+  assert.deepEqual(voisines(nav), { b: [null, couleur('d')], d: [couleur('b'), null] });
+  // le site de dev retire d de la frise (supprimé) : la frise est refiltrée, le chevron et les voisines suivent
   const d = nav.document.querySelector('#evenement-d');
   d.parentElement.enfants.splice(d.parentElement.enfants.indexOf(d), 1);
   nav.document.dispatchEvent({ type: 'chronologie:frise-changee' });
   assert.deepEqual(visibles(nav), ['b']);
   assert.deepEqual(chevron(nav, 'suivant'), { grise: 'true', clavier: false });
+  assert.deepEqual(voisines(nav), { b: [null, null] }, 'seule visible : ni précédente ni suivante');
 });
 
 test('la frise refaite par le site de dev sans la catégorie choisie (supprimée) : son choix revenu à « Toutes », la frise et l’adresse suivent', () => {
@@ -200,6 +217,9 @@ test('la frise refaite par le site de dev sans la catégorie choisie (supprimée
   nav.document.querySelector('[data-frise-choix]').value = '';
   nav.document.dispatchEvent({ type: 'chronologie:frise-changee' });
   assert.deepEqual(visibles(nav), ['a', 'b', 'c', 'd', 'e']);
+  assert.deepEqual(voisines(nav), {
+    a: [null, couleur('b')], b: [couleur('a'), couleur('c')], c: [couleur('b'), couleur('d')], d: [couleur('c'), couleur('e')], e: [couleur('d'), null],
+  }, 'toute la frise : les voisines d’avant le filtre reviennent');
   assert.equal(new URL(nav.historique.at(-1)).search, '');
   assert.deepEqual(chevron(nav, 'suivant'), { href: '/chronologie/c/', titre: 'An c : C', clavier: true });
 });
@@ -234,4 +254,10 @@ test('/chronologie/ (aucun événement affiché) : « Suivant » et « Commencer
   assert.deepEqual(chevron(nav, 'precedent'), { grise: 'true', clavier: false });
   assert.deepEqual(chevron(nav, 'suivant'), { href: '/chronologie/b/?filtre=paix', titre: 'An b : B', clavier: true });
   assert.equal(new URL(nav.document.querySelector('[data-chrono-commencer]').getAttribute('href')).pathname, '/chronologie/b/');
+});
+
+test('le script de la frise ne lit ni n’écrit aucun style de couleur : il reprend les classes des lignes (classList)', () => {
+  assert.doesNotMatch(scriptDeLaFrise, /--c\b|--c-avant|--c-apres|getPropertyValue|style\.setProperty\('--(?!frise-haut)/);
+  assert.match(scriptDeLaFrise, /poserCouleur\(li\.querySelector\('\.frise__barre'\), i > 0 \? couleurDe\(visibles\[i - 1\]\) : ''\);/);
+  assert.match(scriptDeLaFrise, /poserCouleur\(li\.querySelector\('\.frise__morceau'\), i < visibles\.length - 1 \? couleurDe\(visibles\[i \+ 1\]\) : ''\);/);
 });

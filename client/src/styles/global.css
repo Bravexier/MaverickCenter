@@ -2,8 +2,11 @@
 @import './global/site-shell.css';
 @import './global/common.css';
 @import './global/wiki.css';
+@import './global/tableaux.css';
 @import './global/relations.css';
 @import './global/capacities.css';
 @import './global/data-browser.css';
 @import './global/infobulles.css';
 @import './global/monnaies.css';
+@import './global/pastille.css';
+@import './global/mots-cles.css';

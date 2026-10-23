@@ -1,63 +1,60 @@
-/* Chargé uniquement depuis components/armes/ArmesPage.astro (?raw) : la page /ressources/armes/. Un tableau repliable par famille, à la manière des
-   tableaux de sorts, aéré (« l'affichage est trop serré »), les effets supplémentaires d'une arme sur une seconde ligne ; à côté, la fiche de l'arme
-   choisie dans un seul cadre large, puis les matériaux et les améliorations côte à côte (panneau qui suit le défilement ; sur un écran étroit, il
-   passe par-dessus la page). Mode modification du site de dev (body.ed-mode) : pas de fiche, tout le contenu à la suite, colonnes `ed-seul` visibles. */
+/* Chargé uniquement depuis components/armes/ArmesPage.astro (?raw) : l'onglet Armes de la page /ressources/equipement/. Deux menus à onglets, l'un sous
+   l'autre (demande du propriétaire, 2026-10-23 : « Il faudrai réduire çà en deux menus à onglet. Un pour les armes de mêlée l'autre pour les armes à
+   distances ») : Armes de mêlée, Armes à distance, un onglet par famille, chacun le tableau de sa famille (un panneau fermé caché sous html.js
+   seulement : sans JavaScript, les tableaux se suivent, chacun sous son titre), aéré (« l'affichage est trop serré »), les effets supplémentaires d'une
+   arme sur une seconde ligne ; à côté, toujours affiché et
+   de la largeur de celui des armures (styles/armures/armures.css), le panneau de l'arme : sa fiche dans un seul cadre réduit, le détail des tuiles en
+   infobulle, puis les matériaux (lignes dans la couleur du matériau) et les améliorations côte à côte (panneau qui suit le défilement ; arrivée au bout
+   de son défilement, la molette fait défiler la page ; sur un écran étroit, il passe par-dessus la page une fois une arme choisie). Les tableaux suivent
+   le gabarit commun (styles/global/tableaux.css : cadre, titre, en-têtes ; les familles aérées, ceux du panneau serrés et repliables). Mode
+   modification du site de dev (body.ed-mode) : pas de fiche, le panneau de côté sous les menus, colonnes `ed-seul` visibles ; les onglets restent, et le
+   titre de la famille ouverte (ses champs : nom, dé) se montre au-dessus de son tableau. */
 main:has(.armes) { max-width: 120rem; }
 .armes {
   --arm: var(--accent);
   --arm-soft: color-mix(in srgb, var(--accent) 9%, var(--surface));
   --arm-line: color-mix(in srgb, var(--accent) 35%, var(--border));
-  /* lignes des armes de départ : « Les armes en bleu sont les armes possibles en arme de départ » */
-  --depart: #3c78d8;
+  --tab: var(--arm);
+  --tab-soft: var(--arm-soft);
+  --tab-line: var(--arm-line);
+  /* lignes des armes de départ : « Les armes en bleu sont les armes possibles en arme de départ » ; le bleu est la classe des armes de départ
+     (`couleur-arme-depart`, lib/palette-css.mjs, posée sur cet élément par ArmesPage.astro), jamais écrit ici */
+  --depart: var(--couleur);
   --depart-fond: color-mix(in srgb, var(--depart) 16%, var(--surface));
   --depart-fond-fort: color-mix(in srgb, var(--depart) 26%, var(--surface));
   margin: 0 0 2rem;
 }
+/* la classe du bleu posée sur `.armes` ne s'hérite pas : `--depart` est résolu ici ; sous lui, un élément n'a de --couleur que par sa propre classe
+   (une pastille de compétence, une gemme, un matériau), jamais celle des armes de départ (spécificité nulle : une classe de la palette l'emporte) */
+:where(.armes) > * { --couleur: initial; --couleur-texte: initial; }
 .armes .js-seul { display: none; }
 html.js .armes .js-seul { display: revert; }
-html:not(.js) .armes .js-seul-ligne { display: none; }
+html:not(.js) .armes :is(.js-seul-ligne, .arme-fiche) { display: none; }
 .armes .muted { color: var(--muted); }
 .armes .vide { color: var(--muted); opacity: 0.6; }
 .armes [hidden] { display: none !important; }
-.armes__chapo { margin: -0.3rem 0 0.8rem; color: var(--muted); }
 
-/* Règles de l'onglet (texte de la cellule du classeur, avec sa mise en forme : définitions en italique, sous-titres en gras), repliées ; sur un grand
-   écran, le texte en deux colonnes ; le prix d'une arme à part, sa formule encadrée */
-.armes-regles { margin: 0 0 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
-.armes-regles > summary { cursor: pointer; padding: 0.6rem 0.9rem; font-weight: 700; }
-.armes-regles__corps { display: grid; gap: 0.9rem; padding: 0.2rem 1.2rem 1rem; }
-.armes-regles__texte { max-width: none; line-height: 1.55; }
-@media (min-width: 64rem) { .armes-regles__texte { columns: 2; column-gap: 2.6rem; column-rule: 1px solid var(--border); } }
-.armes-regles__texte > * { break-inside: avoid; }
-.armes-regles__texte > :first-child { margin-top: 0; }
-.armes-regles__texte p { margin: 0 0 0.75rem; }
-.armes-regles__texte em { color: color-mix(in srgb, var(--text) 82%, var(--arm)); }
-.armes-regles__texte ul { margin: 0 0 0.9rem; padding-left: 1.2rem; }
-.armes-regles__texte li > p { margin: 0 0 0.35rem; }
-.armes-regles__texte p:has(+ ul) { margin-bottom: 0.3rem; }
-/* « Les armes en bleu sont les armes possibles en arme de départ » : en gras et en bleu dans le classeur, le bleu des lignes des armes de départ ici */
-.armes-regles__depart { padding: 0.35rem 0.7rem; border-radius: var(--radius-sm); background: var(--depart-fond); box-shadow: inset 4px 0 0 var(--depart);
+/* « Les armes en bleu sont les armes possibles en arme de départ » (panneau de règles de l'onglet : lib/armes-rendu.mjs#avecPhraseDesArmesDeDepart) :
+   en gras et en bleu dans le classeur, le bleu des lignes des armes de départ ici */
+.armes__phrase-depart { padding: 0.35rem 0.7rem; border-radius: var(--radius-sm); background: var(--depart-fond); box-shadow: inset 4px 0 0 var(--depart);
   color: color-mix(in srgb, var(--depart) 70%, var(--text)); }
-.armes-regles__prix { border-top: 1px solid var(--border); padding-top: 0.7rem; }
-.armes-regles__prix h2 { margin: 0 0 0.45rem; font-size: 1rem; }
-.armes-regles__prix p { display: inline-block; margin: 0; padding: 0.4rem 0.85rem; border: 1px solid var(--arm-line); border-radius: var(--radius); background: var(--arm-soft); font-weight: 600; }
 
-/* Filtre par compétence (lib/armes-filtres.mjs : une arme reste si l'une de ses compétences est choisie), légende « Arme de départ », boutons Tout déplier /
-   Tout replier. Choisir une compétence estompe les autres boutons ; « Toutes » efface le choix. En mode modification, pas de filtre : tout s'affiche. */
+/* Filtre par compétence (lib/armes-filtres.mjs : une arme reste si l'une de ses compétences est choisie), légende « Arme de départ ». Choisir une
+   compétence estompe les autres boutons ; « Toutes » efface le choix. En mode modification, pas de filtre : tout s'affiche. */
 .armes-outils { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 1rem; margin: 0 0 0.8rem; }
 html.js .armes .armes-filtre { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; }
-.armes-filtre__titre { font-size: 0.82rem; font-weight: 700; color: var(--muted); margin-right: 0.15rem; }
-.armes-filtre__choix { display: inline-block; min-width: 0; font: inherit; font-size: 0.82rem; font-weight: 600; border: 2px solid transparent; cursor: pointer; }
+.armes-filtre__titre { font-size: var(--fs-sm); font-weight: 700; color: var(--muted); margin-right: 0.15rem; }
+.armes-filtre__choix { display: inline-block; min-width: 0; font: inherit; font-size: var(--fs-sm); font-weight: 600; border: 2px solid transparent; cursor: pointer; }
 .armes-filtre__choix:hover { border-color: color-mix(in srgb, var(--text) 35%, transparent); }
 .armes-filtre__choix:focus-visible { outline: 2px solid var(--arm); outline-offset: 2px; }
 .armes-filtre__choix[aria-pressed="true"] { border-color: var(--text); }
 .armes-filtre__choix[aria-pressed="true"]::before { content: '✓ '; }
 .armes-filtre.est-actif .armes-filtre__choix[aria-pressed="false"] { opacity: 0.45; }
-.armes-filtre__tout { font: inherit; font-size: 0.8rem; padding: 0.1rem 0.6rem; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface); color: var(--text); cursor: pointer; }
+.armes-filtre__tout { font: inherit; font-size: var(--fs-sm); padding: 0.1rem 0.6rem; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface); color: var(--text); cursor: pointer; }
 .armes-filtre__tout:hover { border-color: var(--arm); }
 .armes-filtre__sep { width: 1px; align-self: stretch; margin: 0 0.35rem; background: var(--border); }
 /* « Arme de départ » (« trier par "arme de départ" ») : seules les armes de départ, en même temps que les compétences */
-.armes-filtre__depart { font: inherit; font-size: 0.82rem; font-weight: 600; padding: 0.12rem 0.65rem; border: 2px solid transparent; border-radius: var(--radius-sm); cursor: pointer;
+.armes-filtre__depart { font: inherit; font-size: var(--fs-sm); font-weight: 600; padding: 0.12rem 0.65rem; border: 2px solid transparent; border-radius: var(--radius-sm); cursor: pointer;
   background: var(--depart-fond-fort); box-shadow: inset 4px 0 0 var(--depart); color: var(--text); }
 .armes-filtre__depart:hover { border-color: color-mix(in srgb, var(--depart) 55%, transparent); }
 .armes-filtre__depart:focus-visible { outline: 2px solid var(--arm); outline-offset: 2px; }
@@ -68,53 +65,65 @@ body.ed-mode .armes-filtre { display: none !important; }
 body.ed-mode .armes .est-filtree { display: revert; }
 html.js .armes .sans-js { display: none; }
 .armes-legende { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; margin: 0; }
-.armes-legende__depart { display: inline-block; padding: 0.05rem 0.6rem; font-size: 0.8rem; border-radius: var(--radius-sm); background: var(--depart-fond-fort); box-shadow: inset 4px 0 0 var(--depart); }
+.armes-legende__depart { display: inline-block; padding: 0.05rem 0.6rem; font-size: var(--fs-sm); border-radius: var(--radius-sm); background: var(--depart-fond-fort); box-shadow: inset 4px 0 0 var(--depart); }
 .armes-outils__boutons { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin: 0; }
 html.js .armes-outils__boutons { display: flex; }
-.armes-aide { color: var(--muted); font-size: 0.88rem; margin-right: 0.4rem; }
-.armes-bouton { font: inherit; font-size: 0.82rem; padding: 0.15rem 0.7rem; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface); color: var(--text); cursor: pointer; }
-.armes-bouton:hover { border-color: var(--arm); }
+.armes-aide { color: var(--muted); font-size: var(--fs-md); margin-right: 0.4rem; }
 
-/* Vue : les tableaux, et à côté le panneau de l'arme choisie (ouvert par le script), large (« laisser plus de place pour l'arme sur la droite ») */
+/* Vue : les tableaux, et à côté le panneau de l'arme, toujours affiché sur un grand écran, de la largeur de celui des armures (demande du propriétaire,
+   2026-10-16 : « Avoir l'endroit de l'arme en permanence visible comme c'est le cas pour l'armure, et avec la même largeur »). Il suit le défilement ;
+   arrivée au bout du sien, la molette fait défiler la page (pas d'`overscroll-behavior: contain` : « qu'elle descende la fenêtre entière si le max
+   est atteint sur l'intermédiaire »). */
 .armes-vue { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; align-items: start; }
-html.js .armes-vue.est-ouverte { grid-template-columns: minmax(0, 1fr) minmax(38rem, 46%); }
-html.js .armes-vue:not(.est-ouverte) .armes-cote { display: none; }
+@media (min-width: 80rem) {
+  html.js .armes-vue { grid-template-columns: minmax(0, 1fr) minmax(30rem, 38%); }
+  html.js .armes-cote { position: sticky; top: 0.75rem; max-height: calc(100vh - 1.5rem); overflow-y: auto; }
+  /* le panneau prend de la place : les cases des tableaux se resserrent un peu sur les côtés */
+  html.js .armes-tableaux .armes-table :is(thead th, tbody > tr > *) { padding-left: 0.6rem; padding-right: 0.6rem; }
+}
 .armes-tableaux { display: grid; gap: 1.4rem; min-width: 0; }
-html.js .armes-cote { position: sticky; top: 0.75rem; max-height: calc(100vh - 1.5rem); overflow-y: auto; overscroll-behavior: contain; }
 .armes-cote { display: grid; gap: 1rem; min-width: 0; align-content: start; }
 /* les matériaux et les améliorations côte à côte, sous la fiche */
 .armes-cote__tables { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: 1rem; align-items: start; min-width: 0; }
-.armes-cote__fermer { font: inherit; font-size: 0.8rem; padding: 0.2rem 0.85rem; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface); color: var(--text); cursor: pointer; }
+.armes-cote__fermer { font: inherit; font-size: var(--fs-sm); padding: 0.2rem 0.85rem; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface); color: var(--text); cursor: pointer; }
 .armes-cote__fermer:hover { border-color: var(--arm); }
 
-/* Une famille (repliable) */
-.armes-famille { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); min-width: 0; }
-.armes-famille__titre { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.7rem; padding: 0.55rem 0.9rem; cursor: pointer; list-style: none; }
-.armes-famille__titre::-webkit-details-marker { display: none; }
-.armes-famille__titre::before { content: '▸'; color: var(--arm); transition: transform 0.15s; }
-.armes-famille[open] > .armes-famille__titre::before { transform: rotate(90deg); }
-.armes-famille__nom { font-weight: 700; font-size: 1.05rem; letter-spacing: 0.02em; }
-.armes-famille__de { font-size: 0.78rem; font-weight: 700; padding: 0.05rem 0.6rem; border-radius: var(--radius-pill); background: var(--arm); color: var(--surface); }
-.armes-famille__compte { margin-left: auto; font-size: 0.8rem; color: var(--muted); }
-.armes-famille__note { margin: -0.2rem 0.9rem 0.5rem; font-size: 0.85rem; color: var(--muted); }
-.armes-famille[open] > .armes-famille__titre { border-bottom: 1px solid var(--arm-line); }
-.armes-famille[open] > .armes-famille__note { margin-top: 0.45rem; }
+/* Les deux menus (components/armes/ArmesPage.astro : `section.armes-bloc`, son titre, sa barre d'onglets, ses panneaux ; components/Onglets.astro) :
+   la barre passe à la ligne sur un écran étroit, comme celles de la page et de la ceinture, et n'y garde que le nom et le dé de chaque famille ; un
+   onglet que le filtre vide, ou un menu entier, se cache (`hidden`) */
+.armes-bloc { min-width: 0; }
+.armes-bloc__titre { margin: 0 0 0.5rem; font-size: var(--fs-xl); }
+.armes-onglets { display: flex; flex-wrap: wrap; gap: 0.35rem; border-bottom: 2px solid var(--arm-line); margin: 0 0 0.8rem; }
+.armes-onglets .onglet { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 0.4rem; row-gap: 0.05rem; padding: 0.4rem 0.9rem 0.45rem;
+  border: 1px solid var(--border); border-bottom: 0; border-radius: var(--radius-lg) var(--radius-lg) 0 0; background: var(--surface); color: var(--text);
+  text-decoration: none; margin-bottom: -2px; }
+.armes-onglets .onglet__nom { font-weight: 700; font-size: var(--fs-lg); }
+.armes-onglets .onglet__detail { flex-basis: 100%; font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
+html.js .armes-onglets .onglet.is-active { background: var(--arm); border-color: var(--arm); color: var(--surface); }
+html.js .armes-onglets .onglet.is-active .onglet__detail { color: inherit; opacity: 0.85; }
+html.js .armes-onglets .onglet.is-active .armes-onglets__de { background: var(--surface); color: var(--arm); }
+html.js .armes-onglets .onglet:not(.is-active):hover { background: var(--arm-soft); }
+.armes-onglets .onglet:focus-visible { outline: 2px solid var(--arm); outline-offset: 2px; }
+@media (max-width: 40rem) {
+  .armes-onglets .onglet { padding: 0.3rem 0.65rem; }
+  .armes-onglets .onglet__detail { display: none; }
+}
+html.js .armes-bloc > .armes-famille:not(.is-active) { display: none; }
+/* quand les familles d'un menu se suivent (sans JavaScript, à l'impression), l'espace d'avant entre deux tableaux (celui de `.armes-tableaux`) : une
+   famille affichée qui en suit une autre affichée ; jamais en mode onglets (mode modification compris), où un seul panneau se voit */
+html:not(.js) .armes-bloc > .armes-famille:not(.est-filtree) ~ .armes-famille:not(.est-filtree) { margin-top: 1.4rem; }
+/* le titre d'une famille (nom, dé, compte) : celui de son onglet ; sans JavaScript, il sépare les tableaux qui se suivent ; en mode modification, il se
+   montre (plus bas) : il porte les champs de la famille */
+html.js .armes-bloc > .armes-famille > .armes-famille__titre { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-/* Tableaux (inspirés des tableaux de sorts : styles/magie/sorts.css) */
-.armes-wrap { overflow-x: auto; }
-.armes-table { width: 100%; border-collapse: collapse; font-size: 0.93rem; line-height: 1.5; }
-.armes-table thead th { text-align: left; font-size: 0.7rem; letter-spacing: 0.07em; text-transform: uppercase; font-weight: 600; color: var(--muted);
-  padding: 0.6rem 0.85rem; background: var(--arm-soft); border-bottom: 1px solid var(--arm-line); white-space: nowrap; }
-.armes-table tbody > tr + tr > * { border-top: 1px solid var(--border); }
-.armes-table tbody > tr > * { padding: 0.7rem 0.85rem; vertical-align: top; text-align: left; }
-.armes-table tfoot th, .armes-table tfoot td { padding: 0.6rem 0.85rem; border-top: 1px solid var(--arm-line); font-weight: 600; background: var(--arm-soft); text-align: left; }
+/* Une famille (le gabarit commun, panneau de son onglet) : le dé de la famille à côté de son nom, dans le titre et dans l'onglet */
+.armes-famille__de, .armes-onglets__de { font-size: var(--fs-xs); font-weight: 700; padding: 0.05rem 0.6rem; border-radius: var(--radius-pill); background: var(--arm); color: var(--surface); }
+
 /* la seconde ligne d'une arme : ses effets supplémentaires, sous elle (comme l'effet d'un sort choisi dans la fiche de personnage) ; cachée si elle n'en a pas */
 .armes-table tbody > tr.arme-suite > * { border-top: 0; padding-top: 0; padding-bottom: 0.75rem; }
 .armes-table tbody > tr.arme-suite:has(> .arme__effets > .vide:only-child) { display: none; }
-.arme__effets { color: color-mix(in srgb, var(--text) 78%, var(--muted)); font-size: 0.88rem; }
+.arme__effets { color: color-mix(in srgb, var(--text) 78%, var(--muted)); font-size: var(--fs-md); }
 .arme-suite__marge { position: sticky; left: 0; z-index: 1; background: var(--surface); }
-/* la fiche ouverte prend de la place : les cases se resserrent un peu sur les côtés */
-html.js .armes-vue.est-ouverte .armes-tableaux .armes-table :is(thead th, tbody > tr > *) { padding-left: 0.6rem; padding-right: 0.6rem; }
 .ed-seul { display: none; }
 
 /* Une arme */
@@ -122,7 +131,7 @@ html.js .armes-vue.est-ouverte .armes-tableaux .armes-table :is(thead th, tbody 
 html.js .arme, html.js .arme-suite, html.js .materiau, html.js .amelioration { cursor: pointer; }
 .arme__nom { min-width: 10rem; position: sticky; left: 0; z-index: 1; background: var(--surface); }
 html.js :is(.arme:hover, .arme:has(+ .arme-suite:hover)) > *, html.js .arme:hover + .arme-suite > *, html.js .arme-suite:hover > *,
-html.js .materiau:hover > :not(.materiau__nom), html.js .amelioration:hover > * { background: var(--arm-soft); }
+html.js .amelioration:hover > * { background: var(--arm-soft); }
 .arme--depart > *, .arme--depart + .arme-suite > * { background: var(--depart-fond); }
 .arme--depart > .arme__nom, .arme--depart + .arme-suite > .arme-suite__marge { box-shadow: inset 4px 0 0 var(--depart); }
 html.js :is(.arme--depart:hover, .arme--depart:has(+ .arme-suite:hover)) > *, html.js .arme--depart:hover + .arme-suite > *,
@@ -131,17 +140,30 @@ html.js .arme--depart + .arme-suite:hover > * { background: var(--depart-fond-fo
 .arme.est-choisie > .arme__nom, .arme.est-choisie + .arme-suite > .arme-suite__marge { box-shadow: inset 4px 0 0 var(--arm); }
 .arme.ed-supprime + .arme-suite { opacity: 0.45; text-decoration: line-through; }
 .arme__libelle { display: block; }
+/* Une arme élémentaire (décision R167 : les 14 de la famille à la suite de ses armes, lib/armes-rendu.mjs#htmlDeLigneDArmeElementaire) : ses deux lignes
+   sur le fond de sa magie, la classe de la magie posée sur chacune (`couleur-magie-<id>`, lib/palette-css.mjs : --couleur, et --couleur-texte de
+   texteSurCouleur), jamais un style ; au survol, un filet dans la couleur du texte ; choisie, un filet plus large (le fond reste celui de la magie) */
+.arme--elementaire > *, .arme-suite--elementaire > * { background: var(--couleur); color: var(--couleur-texte); }
+.arme--elementaire :is(.arme__mains, .vide, .arme__remarque), .arme-suite--elementaire .arme__effets { color: inherit; }
+html.js :is(.arme--elementaire:hover, .arme--elementaire:has(+ .arme-suite:hover)) > *, html.js .arme--elementaire:hover + .arme-suite > *,
+html.js .arme-suite--elementaire:hover > *, html.js .arme--elementaire.est-choisie > *, html.js .arme--elementaire.est-choisie + .arme-suite > * { background: var(--couleur); }
+html.js :is(.arme--elementaire:hover, .arme--elementaire:has(+ .arme-suite:hover)) > .arme__nom, html.js .arme--elementaire:hover + .arme-suite > .arme-suite__marge,
+html.js .arme-suite--elementaire:hover > .arme-suite__marge { box-shadow: inset 3px 0 0 var(--couleur-texte); }
+html.js .arme--elementaire.est-choisie > .arme__nom, html.js .arme--elementaire.est-choisie + .arme-suite > .arme-suite__marge { box-shadow: inset 6px 0 0 var(--couleur-texte); }
+.arme-capacite__nom { font-weight: 700; }
+.arme-capacite__mode { font-style: italic; }
+
 .arme__choisir, .materiau__choisir, .amelioration__choisir { all: unset; cursor: pointer; font-weight: 700; line-height: 1.35; }
 .arme__choisir:hover, .amelioration__choisir:hover { text-decoration: underline dotted; }
 .arme__choisir:focus-visible, .materiau__choisir:focus-visible, .amelioration__choisir:focus-visible { outline: 2px solid var(--arm); outline-offset: 2px; border-radius: var(--radius-xs); }
-.arme__mains { display: block; font-size: 0.78rem; font-weight: 400; color: var(--muted); }
+.arme__mains { display: block; font-size: var(--fs-xs); font-weight: 400; color: var(--muted); }
 .arme__mains:empty { display: none; }
 .arme__remarque { color: var(--arm); cursor: help; margin-left: 0.2rem; }
 .arme__competence { min-width: 7.5rem; }
 .arme__degats, .arme__durabilite { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .arme-degats { font-weight: 700; }
 .arme__durabilite { text-align: center !important; }
-.arme__description { min-width: 18rem; white-space: pre-line; font-size: 0.86rem; }
+.arme__description, .arme__remarque-texte { min-width: 18rem; white-space: pre-line; font-size: var(--fs-md); }
 /* la description de l'arme est l'infobulle de son nom */
 .arme__choisir:is([title], [data-infobulle]:not([data-infobulle=""])) { text-decoration: underline dotted color-mix(in srgb, var(--muted) 60%, transparent); text-underline-offset: 3px; }
 .arme__portee { white-space: nowrap; text-align: center !important; font-variant-numeric: tabular-nums; }
@@ -149,74 +171,119 @@ html.js .arme--depart + .arme-suite:hover > * { background: var(--depart-fond-fo
 .arme-effet { display: block; }
 .arme-effet + .arme-effet { margin-top: 0.2rem; }
 
-/* Compétence (décision R48) : couleur de la caractéristique de la compétence (Arme Lourde et Arc : Force, Arme Légère : Agilité, Arbalète : Perception), dégradé pour deux */
-.arme-comp { display: block; padding: 0.12rem 0.6rem; border-radius: var(--radius-sm); text-align: center; font-size: 0.82rem; font-weight: 600; white-space: nowrap;
-  background: linear-gradient(90deg, var(--c1), var(--c2)); color: var(--c-texte, #171210); }
+/* Compétence (décision R48) : couleur de la caractéristique de la compétence (Arme Lourde et Arc : Force, Arme Légère : Agilité, Arbalète : Perception), dégradé pour deux ;
+   la classe de la première caractéristique (--couleur, --couleur-texte) et la classe de second rang de la seconde, ou de la même (--couleur-2 :
+   lib/palette-css.mjs, posées par lib/armes-rendu.mjs), jamais un style */
+.arme-comp { display: block; padding: 0.12rem 0.6rem; border-radius: var(--radius-sm); text-align: center; font-size: var(--fs-sm); font-weight: 600; white-space: nowrap;
+  background: linear-gradient(90deg, var(--couleur), var(--couleur-2, var(--couleur))); color: var(--couleur-texte); }
 .arme-comp--texte { background: none; color: inherit; font-weight: 400; }
 
 /* Types de dégâts */
-.arme-dgt { display: inline-block; margin: 0 0.15rem 0.2rem 0; padding: 0 0.55rem; font-size: 0.78rem; border-radius: var(--radius-pill); border: 1px solid var(--arm-line); background: var(--surface); }
-.arme-dgt--taille { border-color: color-mix(in srgb, #c0392b 45%, var(--border)); }
-.arme-dgt--estoc { border-color: color-mix(in srgb, #2471a3 45%, var(--border)); }
-.arme-dgt--frappe { border-color: color-mix(in srgb, #7d6608 45%, var(--border)); }
+.arme-dgt--frappe { border-color: color-mix(in srgb, var(--degats-frappe) 45%, var(--border)); }
 
-/* Matériaux : la case Matière dans la couleur du matériau (comme l'onglet du classeur) */
-.materiau__nom { background: var(--mat) !important; color: var(--mat-texte); min-width: 6.5rem; }
+/* Les tableaux du panneau (matériaux, améliorations) : des lignes basses, serrées (« réduire la hauteur des lignes des matériaux ») */
+.armes-cote .armes-table tbody > tr > * { vertical-align: middle; }
+/* Matériaux : toute la ligne dans la couleur du matériau (comme l'onglet du classeur), ses effets sur une seule ligne, séparés par « | », le bonus aux
+   dégâts sans le mot « Dégâts » (demande du propriétaire, 2026-10-16 : « La ligne tout entière devrait prendre la couleur du matériau et les effets
+   devraient être sur la même ligne. (exemple : +2 / +7 | dégats doubles sur la barrière / +10 | Casse barrière.) ») ; la ligne choisie : un double
+   filet (accent puis fond) tout autour, et une coche après son nom ; la couleur est la classe du matériau (`couleur-materiau-<id>`,
+   lib/palette-css.mjs, valeur dans lib/materiaux-couleurs.mjs), posée sur la ligne et, par le script de la page, sur sa pastille dans la fiche */
+.materiau { --ligne-fond: var(--couleur); --ligne-texte: var(--couleur-texte); }
+.materiau__nom { min-width: 6.5rem; }
 .materiau__prix { white-space: nowrap; font-variant-numeric: tabular-nums; }
-.materiau-effet { display: grid; gap: 0.1rem; }
-.materiau-effet__rien { color: var(--muted); }
-.materiau.est-choisie > :not(.materiau__nom) { background: color-mix(in srgb, var(--arm) 16%, var(--surface)); }
-.materiau.est-choisie > .materiau__nom { box-shadow: inset 0 0 0 3px var(--arm), inset 0 0 0 5px var(--surface); }
+.materiau-effet { display: inline; }
+.materiau-effet > * + *::before { content: ' | '; content: ' | ' / ''; opacity: 0.6; font-weight: 400; }
+.materiau-effet__bonus { font-weight: 700; }
+.materiau-effet__mot { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.materiau-effet__rien { opacity: 0.7; }
+.materiau.est-choisie > * { box-shadow: inset 0 3px 0 var(--arm), inset 0 5px 0 var(--surface), inset 0 -3px 0 var(--arm), inset 0 -5px 0 var(--surface); }
+.materiau.est-choisie > :first-child { box-shadow: inset 3px 0 0 var(--arm), inset 5px 0 0 var(--surface), inset 0 3px 0 var(--arm), inset 0 5px 0 var(--surface),
+  inset 0 -3px 0 var(--arm), inset 0 -5px 0 var(--surface); }
+.materiau.est-choisie > :last-child { box-shadow: inset -3px 0 0 var(--arm), inset -5px 0 0 var(--surface), inset 0 3px 0 var(--arm), inset 0 5px 0 var(--surface),
+  inset 0 -3px 0 var(--arm), inset 0 -5px 0 var(--surface); }
+.materiau.est-choisie .materiau__choisir::after { content: ' ✓'; content: ' ✓' / ''; }
 .amelioration__niveau { white-space: nowrap; }
 .amelioration.est-choisie > * { background: color-mix(in srgb, var(--arm) 16%, var(--surface)); }
 .amelioration.est-choisie > .amelioration__niveau { box-shadow: inset 4px 0 0 var(--arm); }
 .amelioration__cout { white-space: nowrap; }
+/* Armes élémentaires (décision R167 : « en sélectionnant l'arme élémentaire en question ça affichera ou non la bonne colone du tableau "amélioration" et
+   grisera le "matériau" ») : la colonne du coût élémentaire (les gemmes de sa magie) au lieu du coût matériel quand une arme élémentaire est choisie
+   (classe `armes--elementaire` sur `.armes`, src/scripts/armes.mjs), et les matériaux grisés ; sans JavaScript et en mode modification, les deux colonnes */
+.amelioration__cout-elementaire { white-space: nowrap; }
+html.js .armes:not(.armes--elementaire) .armes-ameliorations .amelioration__cout-elementaire,
+html.js .armes.armes--elementaire .armes-ameliorations .amelioration__cout { display: none; }
+html.js .armes:not(.armes--elementaire) :is(.armes-materiaux__note-elementaire, .armes-ameliorations__note-elementaire),
+html.js .armes.armes--elementaire :is(.armes-materiaux__note, .armes-ameliorations > .tableau__note:not(.armes-ameliorations__note-elementaire)) { display: none; }
+html.js .armes--elementaire .armes-materiaux tbody { opacity: 0.45; }
+html.js .armes--elementaire .armes-materiaux :is(.materiau, .materiau__choisir) { cursor: not-allowed; }
 
-/* Fiche de l'arme choisie (remplie par src/scripts/armes.mjs) : un seul cadre, son bouton Fermer en haut à droite, le détail sur deux colonnes */
-.arme-fiche { padding: 1.1rem 1.3rem 1.2rem; background: var(--surface); border: 1px solid var(--arm-line); border-radius: var(--radius-lg); font-size: 0.94rem;
-  box-shadow: 0 6px 14px -12px rgb(0 0 0 / 0.4); }
-.arme-fiche__tete { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+
+/* Fiche de l'arme choisie (remplie par src/scripts/armes.mjs) : un seul cadre, son bouton Fermer en haut à droite, réduit à son minimum (demande du
+   propriétaire, 2026-10-16) : l'arme, ce dont elle est forgée, trois tuiles dont le détail du calcul est l'infobulle, puis effets, description, origine.
+   Sans arme choisie : une phrase. */
+.arme-fiche__tete { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .arme-fiche__tete h2 { margin: 0; font-size: 1.4rem; line-height: 1.2; }
-.arme-fiche__sous-titre { margin: 0.2rem 0 0.6rem; color: var(--muted); }
-.arme-fiche__badges { display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; margin: 0 0 0.6rem; }
-.arme-fiche__badges .arme-comp { display: inline-block; }
-.arme-fiche__depart { display: inline-block; padding: 0.05rem 0.6rem; font-size: 0.78rem; border-radius: var(--radius-sm); background: var(--depart-fond-fort); box-shadow: inset 4px 0 0 var(--depart); }
-.arme-fiche__forge { display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; margin: 0 0 0.6rem; font-size: 0.85rem; }
-.arme-fiche__materiau { padding: 0.05rem 0.6rem; border-radius: var(--radius-sm); background: var(--mat); color: var(--mat-texte); border: 1px solid var(--border); font-weight: 600; }
+.arme-fiche__identite, .arme-fiche__forge { display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; margin: 0.35rem 0 0; font-size: var(--fs-md); }
+.arme-fiche__sous-titre { color: var(--muted); margin-right: 0.2rem; }
+.arme-fiche__identite .arme-comp { display: inline-block; }
+.arme-fiche__depart { display: inline-block; padding: 0.05rem 0.6rem; font-size: var(--fs-xs); border-radius: var(--radius-sm); background: var(--depart-fond-fort); box-shadow: inset 4px 0 0 var(--depart); }
+.arme-fiche__materiau { padding: 0.05rem 0.6rem; border-radius: var(--radius-sm); background: var(--couleur); color: var(--couleur-texte); border: 1px solid var(--border); font-weight: 600; }
+/* la magie d'une arme élémentaire, dans la fiche : la classe de sa magie (reprise de sa ligne par le script de la page), jamais un style */
+.arme-fiche__magie { padding: 0.05rem 0.6rem; border-radius: var(--radius-sm); background: var(--couleur); color: var(--couleur-texte); border: 1px solid var(--border); font-weight: 600; }
 .arme-fiche__niveau { padding: 0.05rem 0.6rem; border-radius: var(--radius-sm); border: 1px solid var(--arm-line); font-weight: 600; }
-.arme-fiche__tuiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); gap: 0.6rem; margin: 0 0 0.2rem; }
-.arme-fiche__tuile { display: grid; justify-items: center; align-content: start; gap: 0.15rem; padding: 0.6rem 0.5rem; border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--bg); text-align: center; }
-.arme-fiche__tuile-nom { font-size: 0.68rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
-.arme-fiche__tuile-val { font-size: 1.3rem; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.arme-fiche__tuile-detail { font-size: 0.74rem; color: var(--muted); }
-.arme-fiche__sections { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 0 1.6rem; }
-.arme-fiche__section { padding-top: 0.75rem; margin-top: 0.75rem; border-top: 1px solid var(--border); min-width: 0; }
-.arme-fiche__section h3 { margin: 0 0 0.3rem; font-size: 0.95rem; }
-.arme-fiche__section p { margin: 0 0 0.35rem; }
-.arme-fiche__lignes { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.15rem; }
-.arme-fiche__lignes li { display: flex; justify-content: space-between; gap: 0.8rem; }
-.arme-fiche__lignes li > :last-child { font-variant-numeric: tabular-nums; white-space: nowrap; }
-.arme-fiche__lignes .arme-fiche__total { font-weight: 700; border-top: 1px solid var(--border); padding-top: 0.15rem; }
 .arme-fiche__ou { color: var(--muted); }
-.arme-fiche__effets { display: grid; gap: 0.2rem; }
+/* les tuiles : leur détail est leur infobulle (components/Infobulles.astro), d'où le curseur d'aide et le soulignement au survol */
+.arme-fiche__tuiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); gap: 0.5rem; margin: 0.7rem 0 0; }
+.arme-fiche__tuile { display: grid; justify-items: center; align-content: start; gap: 0.1rem; padding: 0.5rem 0.5rem 0.55rem; border-radius: var(--radius-md); border: 1px solid var(--border);
+  background: var(--bg); text-align: center; cursor: help; font: inherit; color: inherit; }
+.arme-fiche__tuile:is(:hover, [data-ouverte]) { border-color: var(--arm); }
+.arme-fiche__tuile:focus-visible { outline: 2px solid var(--arm); outline-offset: 2px; }
+.arme-fiche__tuile-nom { font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
+/* la valeur ne déborde pas de sa tuile : un coût en plusieurs monnaies passe à la ligne entre deux monnaies, jamais entre un nombre et sa monnaie
+   (.montant__part), et la tuile grandit (comme la fiche des armures : demande du propriétaire, 2026-10-16) */
+.arme-fiche__tuile-val { font-size: 1.25rem; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; max-width: 100%; }
+.arme-fiche__tuile-val .montant { display: inline-flex; flex-wrap: wrap; justify-content: center; column-gap: 0.3em; row-gap: 0.1em; }
+/* le coût en gemmes d'une arme élémentaire (« 6 communes + 3 raffinées de Grenat ») : un texte, plus petit qu'un montant */
+.arme-fiche__tuile-val--texte { font-size: var(--fs-md); line-height: 1.3; }
+.arme-fiche__tuile-detail { font-size: var(--fs-xs); color: var(--muted); }
+/* effets (types de dégâts, portée, effets de l'arme et du matériau), description, origine : à la suite, sans titre */
+.arme-fiche__infos { display: grid; gap: 0.35rem; margin: 0.7rem 0 0; padding-top: 0.6rem; border-top: 1px solid var(--border); }
+.arme-fiche__infos > p { margin: 0; }
+.arme-fiche__effets { display: grid; gap: 0.15rem; }
+.arme-fiche__types { display: flex; flex-wrap: wrap; align-items: center; gap: 0.1rem 0.3rem; }
+.arme-fiche__types .arme-dgt { margin: 0; }
+.arme-fiche__portee { font-size: var(--fs-md); }
+.arme-fiche__portee:not(:first-child)::before { content: '· '; color: var(--muted); }
 /* l'effet du matériau, dans la fiche : en vert (demande du propriétaire) */
 .arme-fiche__effet-materiau { color: var(--good); font-weight: 600; }
-.arme-fiche__note { font-size: 0.8rem; color: var(--muted); }
-.arme-fiche__description { color: var(--muted); white-space: pre-line; }
+.arme-fiche__remarque { font-size: var(--fs-sm); color: var(--muted); }
+.arme-fiche__description { color: var(--muted); white-space: pre-line; font-size: var(--fs-md); line-height: 1.5; }
+.arme-fiche__etiquette { font-weight: 700; margin-right: 0.25rem; }
+/* l'infobulle d'une tuile (son calcul) : styles/equipement/equipement.css (`.eq-bulle`, commune aux fiches de la page) */
 
-/* Écran étroit : la fiche et ses tableaux passent par-dessus la page */
-@media (max-width: 80rem) {
-  html.js .armes-vue.est-ouverte { grid-template-columns: minmax(0, 1fr); }
-  html.js .armes-vue.est-ouverte .armes-cote { position: fixed; inset: 0; z-index: 60; max-height: none; padding: 0.75rem 1rem 2rem; background: var(--bg); }
+/* Écran étroit (comme les armures) : une fois une arme choisie, la fiche et ses tableaux passent par-dessus la page */
+@media (max-width: 79.99rem) {
+  html.js .armes-vue:not(.est-ouverte) .armes-cote { display: none; }
+  html.js .armes-vue.est-ouverte .armes-cote { position: fixed; inset: 0; z-index: 60; max-height: none; overflow-y: auto; overscroll-behavior: contain; padding: 0.75rem 1rem 2rem; background: var(--bg); }
 }
 
-/* Mode modification du site de dev (src/scripts/edition/armes.mjs) : ni sélection ni fiche ; tous les tableaux visibles, les uns sous les autres */
+/* Mode modification du site de dev (src/scripts/edition/armes.mjs) : ni sélection ni fiche ; les onglets restent affichés (demande du propriétaire,
+   2026-10-23 : « Je veux les onglets aussi », qui remplace pour l'affichage en onglets la demande antérieure « Quand le mode Edition est lancé, il n'est
+   pas possible de "sélectionner" une arme / matériau / amélioration, mais tous les tableaux sont visibles ») : un panneau ouvert par menu, comme hors du
+   mode modification. Le titre de la famille ouverte (nom, dé, compte) se montre au-dessus de son tableau : son nom et son dé s'y modifient (décision
+   R159 ; l'onglet suit). « + Nouvelle famille » sous la barre de chaque menu. */
+body.ed-mode .armes-bloc > .armes-famille > .armes-famille__titre { position: static; width: auto; height: auto; overflow: visible; clip: auto; white-space: normal; }
+body.ed-mode .armes-bloc > .armes-nouvelle-famille { margin: 0 0 0.8rem; }
 body.ed-mode .armes-vue { grid-template-columns: minmax(0, 1fr) !important; }
 body.ed-mode .armes-cote { display: grid !important; position: static !important; max-height: none !important; overflow: visible !important; padding: 0 !important; background: none !important; }
 body.ed-mode .arme-fiche, body.ed-mode .amelioration--aucune, body.ed-mode .armes-outils__boutons .armes-aide { display: none !important; }
 body.ed-mode .ed-seul { display: table-cell; }
+body.ed-mode .armes .armes-ameliorations :is(.amelioration__cout, .amelioration__cout-elementaire) { display: table-cell !important; }
+body.ed-mode .armes :is(.armes-materiaux__note-elementaire, .armes-ameliorations__note-elementaire) { display: none !important; }
 body.ed-mode .armes .arme, body.ed-mode .armes .materiau, body.ed-mode .armes .amelioration { cursor: default; }
-body.ed-mode .armes :is(.arme, .materiau, .amelioration).est-choisie > * { background: none; box-shadow: none; }
+body.ed-mode .armes :is(.arme, .amelioration).est-choisie > * { background: none; box-shadow: none; }
+body.ed-mode .armes .materiau.est-choisie > * { box-shadow: none; }
+body.ed-mode .armes .materiau.est-choisie .materiau__choisir::after { content: none; }
 body.ed-mode .armes .arme--depart > *, body.ed-mode .armes .arme--depart + .arme-suite > * { background: var(--depart-fond); }
 body.ed-mode .armes :is(.arme__choisir, .materiau__choisir, .amelioration__choisir) { pointer-events: none; }
 body.ed-mode .armes .arme__nom { position: static; }
@@ -224,8 +291,11 @@ body.ed-mode .armes .arme__effet .ed-saisie { min-width: 22rem; }
 body.ed-mode .armes :is(.arme__competence, .arme__type, .arme__nom) select.ed-saisie { min-width: 10rem; }
 
 @media print {
-  .armes-outils__boutons, .armes-filtre, .arme-fiche { display: none !important; }
+  .armes-outils__boutons, .armes-filtre, .arme-fiche, .armes-onglets { display: none !important; }
+  /* à l'impression, toutes les familles, chacune sous son titre */
+  .armes-bloc > .armes-famille:not(.est-filtree) { display: block !important; }
+  .armes-bloc > .armes-famille:not(.est-filtree) ~ .armes-famille:not(.est-filtree) { margin-top: 1.4rem; }
+  .armes-bloc > .armes-famille > .armes-famille__titre { position: static !important; width: auto !important; height: auto !important; overflow: visible !important; clip: auto !important; }
   .armes-vue { grid-template-columns: minmax(0, 1fr) !important; }
   .armes-cote { display: grid !important; position: static !important; max-height: none !important; }
-  .armes-wrap { overflow: visible; }
 }

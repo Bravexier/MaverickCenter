@@ -20,22 +20,20 @@ dans la section de la page qui reçoit sa cellule, juste après l'élément qui 
 tableau), sous la forme « **Note de la cellule « <intitulé de la cellule> »** : <texte> » (une note sur plusieurs lignes : le
 libellé seul, puis le texte en paragraphes et en listes), comme tools/sheets/races.py. L'intitulé est celui de la colonne (« Type »,
 « Stade 2 », « Description »…), suivi entre parenthèses de la ligne du tableau (« Effet (Sang + Eau) ») ; un texte libre sans
-intitulé prend son adresse (« AA1 ») ; une cellule de nom du tableau « Résistance Faiblesse », fondue avec ses voisines dans une
-cellule de la page, ajoute sa valeur (« Résistance (Sang + Eau) : Terre »). Cellules qui peuvent porter une note, par page :
+intitulé prend son adresse (« AA1 »). Cellules qui peuvent porter une note, par page :
   * Altération détats : Nom (juste sous l'intertitre), Magie Liée, Type, Stade 1 à 3 (ou la cellule fusionnée des stades), libellé
     et effet de chaque paire Résistances/Vulnérabilités ;
   * Météo : nom, Description, Effet(s) ;
   * Mode Hyper (Magie) : texte général et cases Mono magie / Bi magie de « Avantages de base », nom et effet de chaque ligne des
     deux tableaux ;
-  * Statistiques : les trois cellules de magies de chaque combinaison et les cellules de noms (colonnes T à AM) du tableau
-    « Résistance Faiblesse » ; les compteurs (le reste de l'onglet) ne sont pas publiés ;
   * Mode Hyper et Mode Super (classeur « Mode hyper et co ») : les textes explicatifs et les cellules des tableaux.
 Le script S'ARRÊTE, sans rien écrire, avec un message qui nomme l'onglet et la cellule, si une note :
   * est sur une cellule vide (le dump garde alors v = "" ; la note d'une cellule fusionnée autre que celle en haut à gauche est dans
     ce cas) : aucune place dans la page ;
-  * est dans un onglet que ce script ne publie pas (Sommaire, onglet inconnu, compteurs de « Statistiques ») : sa justification de
-    non-publication n'est plus vraie. Seules exceptions : les 15 onglets de magie du classeur V8 (MAGIES_TABS), dont les notes sont
-    rendues par tools/sheets/magies.py ; elles sont comptées et annoncées, pas rendues ici ;
+  * est dans un onglet que ce script ne publie pas (Sommaire, onglet inconnu) : sa justification de non-publication n'est plus
+    vraie. Exceptions : les 15 onglets de magie du classeur V8 (MAGIES_TABS), dont les notes sont rendues par tools/sheets/magies.py,
+    et les onglets ignorés par décision du propriétaire (IGNORED_TABS : « Statistiques », décision R86) ; leurs notes sont comptées et
+    annoncées, pas rendues ici ;
   * est sur une cellule que la page ne reprend pas (« sans place prévue ») ;
   * n'est pas retrouvée dans sa page, ou y figure plus d'une fois, ou y figure tronquée (contrôle de couverture, refait sur le TEXTE
     des pages avant toute écriture) : chaque note du dump doit figurer dans la page de son onglet exactement une fois (autant de
@@ -46,7 +44,7 @@ rendus par ce mécanisme. Le script les dénombre sur la sortie standard avec le
 qu'aucun ne soit perdu en silence. État des classeurs au moment de l'import des notes : AUCUNE note dans les onglets de cette famille
 (ni dans Sommaire, Altération détats, Météo, Statistiques et Mode Hyper (Magie) de « Magie V8 », ni dans « Mode hyper et co »). Les
 quatre cellules commentées sont : Sommaire!A1 (26 fils orphelins, onglet non publié), Statistiques!BH27 et AR52 (fils sur des
-compteurs, non publiés), Mode Hyper (Magie)!M43 (fil repris dans CELL_COMMENTS). Les pages sont donc inchangées par ce mécanisme.
+compteurs, onglet ignoré), Mode Hyper (Magie)!M43 (fil repris dans CELL_COMMENTS). Les pages sont donc inchangées par ce mécanisme.
 
 Option --verifier : n'écrit rien. Relit les dumps, recalcule les notes attendues directement dans le JSON brut (sans le code de
 rendu), les cherche dans les pages écrites (texte déséchappé, une occurrence par note, aucune de plus), compare chaque page à ce
@@ -74,21 +72,12 @@ Sources (classeurs Google, copies du Drive du propriétaire, migration 0014) et 
         Un commentaire de cellule (M43, effet de « Vide + Nécromancie ») est ajouté en fin de page : c'est un FIL de
         commentaires (non une note) ; les anciens dumps ne le portaient pas, il est donc recopié depuis le .xlsx dans la
         constante CELL_COMMENTS (--verifier le recoupe avec le champ `threads` des dumps récents).
-    - onglet « Statistiques »       -> guide/statistiques-resistance-faiblesse.md (PUBLIÉ EN PARTIE)
-        L'onglet contient deux sortes de données.
-        (1) Le tableau « Résistance Faiblesse » (en-tête en F40), à partir de la ligne 41, colonnes B à AM :
-        73 blocs de 6 lignes (4 lignes de données, 2 lignes vides), un par combinaison de deux magies (B : magie,
-        G : « + », H : magie). Dans chaque bloc, la colonne N porte D.Résistance / Résistance / Faiblesse /
-        D.Faiblesse, la colonne S un « = », puis, en T, Y, AD, AI, de un à quatre noms de magie (ou « AUCUNE »).
-        Ces valeurs sont écrites telles quelles dans le classeur (aucune formule en dehors des « + » et « = ») :
-        elles sont reprises mot pour mot, sans être recalculées ni comparées à la matrice publiée dans
-        guide/resistance-faiblesse-magie.md. « D. » n'est pas développé : la source ne le fait pas.
-        (2) Tout le reste de l'onglet (lignes 1 à 40, et les colonnes AR et suivantes) : compteurs, c'est-à-dire
-        nombre de fois que chaque magie ou chaque combinaison a été prise, classement, et répartition « TR R E TE »
-        (« Résultat combien de fois la magie est très résisté, résisté, efficace, très efficace », AR38). Ce ne sont
-        pas des règles de jeu mais des décomptes : NON PUBLIÉS. Les deux commentaires de cellule de l'onglet
-        (BH27 « augmentation a 39 ducoup :3 » et AR52 « c'est 22 pour les 2 », tous deux résolus) portent sur ces
-        compteurs et ne sont donc pas repris non plus.
+    - onglet « Statistiques » : IGNORÉ (décision R86 du propriétaire, 2026-10-15 : « tu peux ignorer l'onglet "Statistiques"
+        c'est des données mise à la main il y a longtemps »). Ni ses compteurs ni son tableau « Résistance Faiblesse » (les
+        résistances et faiblesses des couples de deux magies, au plus quatre magies par palier) ne sont lus : depuis la
+        décision R85, celles d'un couple se calculent depuis les listes de chaque magie (vue v_resistance_combinaison de
+        data/schema.sql, migration 0049, qui a retiré la page guide/statistiques-resistance-faiblesse que ce script en tirait).
+        Une note ou un fil de commentaires de l'onglet n'arrête rien : il est compté et annoncé.
 
   « Mode hyper et co » (1AjQyT-IZMULq6FlgnmVmn2QiQ9AWhhbOgjr-COgMyMo)
     - onglet « Mode Hyper » -> guide/liste-des-effets-mode-hyper.md
@@ -127,6 +116,13 @@ MAGIES_TABS = (
     "Potentiel illimité (magie diffi", "Sang", "Arcane", "Corruption", "TempsEspace", "Vide", "Nécromancie", "Feu",
     "Eau", "Glace", "Terre", "Vent", "Foudre", "Lumière", "Ombre",
 )
+
+# Onglets ignorés par décision du propriétaire, par classeur : rien n'en est lu ; leurs notes et leurs fils de commentaires n'arrêtent rien, ils sont
+# comptés et annoncés. « Statistiques » (décision R86) : des compteurs et le tableau « Résistance Faiblesse » des couples de magies, écrits à la main il
+# y a longtemps ; les résistances d'un couple se calculent depuis les listes de chaque magie (décision R85, vue v_resistance_combinaison).
+IGNORED_TABS = {
+    "magie-v8": ("Statistiques",),
+}
 
 # Titres des pages qui se renvoient l'une à l'autre (deux classeurs, deux listes d'effets du mode hyper).
 TITLE_HYPER_MAGIE = "Mode Hyper (Magie)"
@@ -609,74 +605,6 @@ def page_hyper_magie(sh, wb):
     }
 
 
-def page_statistiques(sh, wb):
-    """Tableau « Résistance Faiblesse » de l'onglet « Statistiques » (les compteurs ne sont pas repris)."""
-    title = "Statistiques : Résistance Faiblesse"
-    head = sh.find("Résistance Faiblesse")
-    if head is None:
-        raise SystemExit("tableau « Résistance Faiblesse » introuvable dans « %s »" % sh.name)
-    c_a, c_plus, c_b = col_to_num("B"), col_to_num("G"), col_to_num("H")
-    c_level, c_eq, c_last = col_to_num("N"), col_to_num("S"), col_to_num("AM")
-    starts = sorted(r for (r, c) in sh.cells if c == c_a and r > head[0])
-    if not starts:
-        raise SystemExit("aucune combinaison dans le tableau « Résistance Faiblesse » de « %s »" % sh.name)
-    last_row = max(r for (r, c) in sh.cells if c <= c_last)
-    levels = None
-    rows = []
-    note_targets = []
-    for i, r in enumerate(starts):
-        end = (starts[i + 1] - 1) if i + 1 < len(starts) else last_row
-        plus = sh.get(r, c_plus)
-        label = "%s %s %s" % (esc(one_line(sh.get(r, c_a))), esc(one_line(plus)) if plus is not None else "", esc(one_line(sh.get(r, c_b))))
-        combo = " ".join(
-            ("%s %s %s" % (one_line(sh.get(r, c_a)), one_line(plus) if plus is not None else "", one_line(sh.get(r, c_b)))).split()
-        )
-        note_targets += [((r, c), "Magies (%s)" % combo) for c in (c_a, c_plus, c_b)]
-        names = []
-        cells_by_level = []
-        for rr in range(r, end + 1):
-            lab = sh.get(rr, c_level)
-            if lab is None:
-                continue
-            names.append(one_line(lab))
-            vals = [sh.get(rr, c) for c in range(c_eq + 1, c_last + 1) if sh.get(rr, c) is not None]
-            cells_by_level.append(", ".join(esc(one_line(v)) for v in vals))
-            note_targets += [
-                ((rr, c), "%s (%s) : %s" % (one_line(lab), combo, one_line(sh.get(rr, c))))
-                for c in range(c_eq + 1, c_last + 1)
-                if sh.get(rr, c) is not None
-            ]
-        if levels is None:
-            levels = names
-        elif names != levels:
-            raise SystemExit("niveaux inattendus à la ligne %d de « %s » : %r" % (r, sh.name, names))
-        rows.append([" ".join(label.split())] + cells_by_level)
-    body = [
-        "*Seul le tableau « Résistance Faiblesse » de l'onglet est repris ici ; les compteurs qu'il contient "
-        "par ailleurs ne le sont pas.*",
-        table(["Magies"] + [esc(n) for n in levels], rows),
-    ]
-    body += sh.note_blocks(note_targets)
-    return {
-        "slug": "statistiques-resistance-faiblesse",
-        "title": title,
-        "tags": ["résistance", "faiblesse"],
-        "summary": None,
-        "tab": sh.name,
-        "body": "\n\n".join(body),
-        "why_untaken": lambda r, c: (
-            "cellule du tableau « Résistance Faiblesse » que la page ne reprend pas"
-            if stats_in_table(head, r, c, c_last)
-            else "hors du tableau « Résistance Faiblesse » : compteurs, non publiés"
-        ),
-    }
-
-
-def stats_in_table(head, r, c, c_last):
-    """Vrai si (r, c) est dans la partie publiée de « Statistiques » : en-tête F40 et lignes suivantes, colonnes jusqu'à AM."""
-    return (r, c) == head or (r > head[0] and c <= c_last)
-
-
 def first_sentence(value, start):
     m = re.search(re.escape(start) + r"[^.]*\.", fmt(value))
     return " ".join(m.group(0).split()) if m else None
@@ -791,7 +719,6 @@ BUILDERS = {
         ("Altération détats", page_alterations),
         ("Météo", page_meteo),
         ("Mode Hyper (Magie)", page_hyper_magie),
-        ("Statistiques", page_statistiques),
     ],
     "mode-hyper": [
         ("Mode Hyper", page_mode_hyper),
@@ -805,7 +732,6 @@ PAGE_OF_TAB = {
     "Altération détats": "liste-des-alterations-d-etat",
     "Météo": "meteo",
     "Mode Hyper (Magie)": "mode-hyper-magie",
-    "Statistiques": "statistiques-resistance-faiblesse",
     "Mode Hyper": "liste-des-effets-mode-hyper",
     "Mode Super": "liste-des-effets-mode-super",
 }
@@ -825,14 +751,16 @@ def shorten(text, limit=40):
 
 def refuse_unpublished_notes(sheets, wb):
     """Une note dans un onglet que ce script ne publie pas arrête le script (sa justification de non-publication n'est plus vraie),
-    sauf dans les onglets de magie du classeur V8 (rendus par magies.py) : -> [(onglet, nombre de notes)] de ces derniers."""
+    sauf dans les onglets de magie du classeur V8 (rendus par magies.py) et dans les onglets ignorés (IGNORED_TABS, décision du
+    propriétaire) : -> [(onglet, nombre de notes)] de ces derniers, annoncés."""
     published = [tab for tab, _builder in BUILDERS[wb["key"]]]
+    ignored = IGNORED_TABS.get(wb["key"], ())
     elsewhere = []
     for name, sh in sheets.items():
         found = {**sh.empty_notes, **sh.notes}
         if name in published or not found:
             continue
-        if wb["key"] == "magie-v8" and name in MAGIES_TABS:
+        if (wb["key"] == "magie-v8" and name in MAGIES_TABS) or name in ignored:
             elsewhere.append((name, len(found)))
             continue
         cells = ", ".join("%s (« %s »)" % (a1(r, c), shorten(t)) for (r, c), t in sorted(found.items())[:5])
@@ -985,19 +913,19 @@ def threads_report(sheets, wb):
     """Lignes d'information : fils de commentaires (champ `threads`, ce ne sont pas des notes) et leur sort, pour qu'aucun ne se
     perde en silence. Les onglets de magie relèvent de magies.py."""
     published = {tab for tab, _builder in BUILDERS[wb["key"]]}
+    ignored = IGNORED_TABS.get(wb["key"], ())
     known = {(tab, coord) for tab, items in CELL_COMMENTS.get(wb["key"], {}).items() for coord, *_rest in items}
     lines = []
     for name, sh in sheets.items():
         if not sh.threads or (wb["key"] == "magie-v8" and name in MAGIES_TABS):
             continue
-        head = sh.find("Résistance Faiblesse") if name == "Statistiques" else None
         for (r, c), n in sorted(sh.threads.items()):
-            if name not in published:
+            if name in ignored:
+                fate = "onglet ignoré (décision du propriétaire)"
+            elif name not in published:
                 fate = "onglet non publié par ce script"
             elif (name, a1(r, c)) in known:
                 fate = "repris (section « Commentaire de cellule »)"
-            elif head is not None and not stats_in_table(head, r, c, col_to_num("AM")):
-                fate = "compteurs, non publiés"
             else:
                 fate = "NON REPRIS : aucune place prévue pour un fil de commentaires"
             lines.append("  « %s » %s : %d fil(s) de commentaires, %s" % (name, a1(r, c), n, fate))
@@ -1078,9 +1006,6 @@ def anchor(data, tab):
         return first(col_to_num("B"), 1)
     if tab == "Mode Hyper (Magie)":
         return first(col_to_num("H"), 0, alone_of=col_to_num("B"))
-    if tab == "Statistiques":
-        head = where("Résistance Faiblesse")
-        return first(col_to_num("B"), head[0]) if head else None
     if tab == "Mode Hyper":
         return first(col_to_num("AA"))
     if tab == "Mode Super":
@@ -1161,6 +1086,12 @@ def replay_errors(data, wb):
             with_cell(data, "Sommaire", {"r": FAR[0], "c": FAR[1], "v": "x", "note": CONTROL_NOTE}),
             "ne publie pas",
         )
+    # Une note dans un onglet ignoré (décision du propriétaire) n'arrête rien : elle est annoncée.
+    for tab in IGNORED_TABS.get(wb["key"], ()):
+        count += 1
+        message = stop_message(with_cell(data, tab, {"r": FAR[0], "c": FAR[1], "v": "x", "note": CONTROL_NOTE}), wb)
+        if message is not None:
+            failures.append("rejeu « note dans l'onglet ignoré %s » : le script s'arrête : %s" % (tab, message[:200]))
     return count, failures
 
 
@@ -1200,7 +1131,8 @@ def verify(dumps, out_dir):
         problems += comment_problems(data, wb)
         notes_total += len(expected_notes(data, wb))
         if elsewhere:
-            info.append("%s : notes d'onglets de magie (rendues par magies.py) : %s" % (label, ", ".join("%s %d" % e for e in elsewhere)))
+            info.append("%s : notes d'onglets non rendus ici (onglets de magie : magies.py ; onglets ignorés : décision du propriétaire) : %s"
+                        % (label, ", ".join("%s %d" % e for e in elsewhere)))
         info += threads_report(sheets, wb)
         saved = list(WARNINGS)
         count, failures = replay_errors(data, wb)
@@ -1256,7 +1188,8 @@ def main(argv=None):
     print("notes de cellule : %d dans les dumps (onglets publiés), %d rendues dans les pages (contrôle de couverture passé)" % (notes_total, notes_total))
     for _wb, _pages, _count, elsewhere, _threads in built:
         if elsewhere:
-            print("notes d'onglets de magie (rendues par magies.py, pas ici) : " + ", ".join("%s %d" % e for e in elsewhere))
+            print("notes d'onglets non rendus ici (onglets de magie : magies.py ; onglets ignorés : décision du propriétaire) : "
+                  + ", ".join("%s %d" % e for e in elsewhere))
     lines = [ln for _wb, _pages, _count, _elsewhere, threads in built for ln in threads]
     if lines:
         print("fils de commentaires (champ `threads`, ce ne sont pas des notes ; non rendus par ce mécanisme) :")

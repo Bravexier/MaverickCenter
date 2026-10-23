@@ -12,14 +12,19 @@
 //     déplacés par leur date, titres, catégories, choix du filtre), et l'événement affiché aussi (catégories, descriptions) ; un événement créé depuis la
 //     construction n'a pas de page : il s'affiche sur /chronologie/?evenement=<id> (la page 404 de /chronologie/<id>/ y renvoie : nouvelles.mjs).
 // Le script de la frise (Frise.astro) et celui des chevrons (Chronologie.astro) suivent par l'évènement « chronologie:frise-changee ».
-import { couleursDesEvenements, dateCourte, LIBELLE_SANS_CATEGORIE, libelleDeDate, operationsDesCategories, PORTEES, SANS_CATEGORIE } from '../../lib/chronologie.mjs';
+// Couleurs (skill ui-couleurs) : un événement créé ou supprimé décale toutes les teintes ; la feuille des classes de la page (`<style
+// data-couleurs-chronologie>`, Chronologie.astro) est réécrite d'après la base vivante (lib/chronologie-couleurs.mjs, lib/palette-css.mjs, que l'éditeur
+// peut importer : hors version portable), puis les classes sont posées (ligne, barre, morceau de barre, `.chrono`), jamais une couleur en style.
+import { dateCourte, LIBELLE_SANS_CATEGORIE, libelleDeDate, operationsDesCategories, PORTEES, SANS_CATEGORIE } from '../../lib/chronologie.mjs';
+import { couleursDesEvenements } from '../../lib/chronologie-couleurs.mjs';
 import { choixDuFiltre } from '../../lib/chronologie-db.mjs';
 import { htmlDesBlocs, htmlDesCategories } from '../../lib/chronologie-rendu.mjs';
 import { attributEd, ENTITES } from '../../lib/edition-modele.mjs';
 import { echapperHtml } from '../../lib/edition-rendu.mjs';
 import { arbreDuDom, versMarkdown } from '../../lib/markdown-edition.mjs';
 import { cheminDePage } from '../../lib/metiers.mjs';
-import { editeurEnPlace, libelleDePage, pageChoisie, pagesDuWiki } from './texte-en-place.mjs';
+import { classeDEvenement, cssDesEvenements } from '../../lib/palette-css.mjs';
+import { editeurEnPlace, libelleDePage, outilsDesMotsCles, pageChoisie, pagesDuWiki } from './texte-en-place.mjs';
 
 const etat = {
   id: null, // l'événement affiché
@@ -58,11 +63,33 @@ const TABLES_DE_LA_CHRONOLOGIE = ['evenement', 'evenement_extrait', 'evenement_c
 
 // --- Surcouche : la frise et l'événement affiché d'après la base vivante ------------------------------------------------------------------------
 
+const COULEUR = 'couleur-evenement-';
+/** Pose sur un élément la classe de couleur d'un événement (`voulue`), à la place de la sienne ; aucune (null) : sans couleur propre. */
+export function poserCouleur(el, voulue) {
+  if (!el) return;
+  el.classList.remove(...[...el.classList].filter((c) => c.startsWith(COULEUR) && c !== voulue));
+  if (voulue) el.classList.add(voulue);
+}
+
+/**
+ * Réécrit la feuille des couleurs des événements d'après la base vivante. La couleur de `.chrono` dont l'événement n'est plus dans la base (la page
+ * construite d'un événement supprimé depuis, ou le premier de /chronologie/) garde sa dernière règle : la page ne change pas de teinte. Un événement qui
+ * existe toujours prend la teinte recalculée, celle de sa ligne. Exportée pour test/chronologie-editeur.test.mjs (faux navigateur).
+ */
+export function ecrireLesCouleurs(evenements) {
+  const feuille = document.querySelector('style[data-couleurs-chronologie]');
+  if (!feuille) return;
+  const couleurs = couleursDesEvenements(evenements);
+  const garde = [...(document.querySelector('[data-chrono]')?.classList ?? [])].filter((c) => c.startsWith(COULEUR) && !evenements.some((e) => classeDEvenement(e.id) === c))
+    .map((c) => feuille.textContent.match(new RegExp(`\\.${c}\\{[^}]*\\}`))?.[0] ?? '').join('');
+  feuille.textContent = cssDesEvenements(couleurs) + garde;
+}
+
 /** Refait la frise : une ligne par événement vivant, dans l'ordre de lecture ; les lignes construites gardent leur adresse, les nouvelles mènent à ?evenement=. */
-function refaireLaFrise(ed, evenements) {
+export function refaireLaFrise(ed, evenements) {
   const liste = document.querySelector('.frise__liste');
   if (!liste) return;
-  const couleurs = couleursDesEvenements(evenements);
+  ecrireLesCouleurs(evenements);
   const actuel = idAffiche() ?? new URLSearchParams(location.search).get('evenement');
   const lignes = new Map([...liste.querySelectorAll('.frise__evenement')].map((li) => [li.id.replace(/^evenement-/, ''), li]));
   for (const [id, li] of lignes) if (!evenements.some((e) => e.id === id)) li.remove();
@@ -73,15 +100,14 @@ function refaireLaFrise(ed, evenements) {
       li.id = `evenement-${e.id}`;
       li.dataset.cree = '';
       li.innerHTML = `<a class="frise__lien"><span class="frise__date"><span data-ed-lecture="${echapperHtml(attributEd('evenement', { id: e.id }, 'epoque'))}" data-ed-rendu="evenement-date-courte"></span></span>`
-        + '<span class="frise__barre"><span class="frise__repere"></span></span>'
+        + '<span class="frise__barre"><span class="frise__morceau"></span><span class="frise__repere"></span></span>'
         + `<span class="frise__titre"><span data-ed-lecture="${echapperHtml(attributEd('evenement', { id: e.id }, 'titre'))}"></span></span></a>`;
       li.querySelector('.frise__lien').setAttribute('href', adresseEvenement(ed, e.id, false));
     }
-    li.className = `frise__evenement frise__evenement--${e.epoque}`;
-    const c = couleurs.get(e.id);
-    li.style.setProperty('--c', c);
-    li.style.setProperty('--c-avant', couleurs.get(evenements[i - 1]?.id) ?? c);
-    li.style.setProperty('--c-apres', couleurs.get(evenements[i + 1]?.id) ?? c);
+    // la classe de l'événement sur la ligne, celle du précédent sur la barre, du suivant sur le morceau de barre (aucune au bord), comme au build
+    li.className = `frise__evenement frise__evenement--${e.epoque} ${classeDEvenement(e.id)}`;
+    poserCouleur(li.querySelector('.frise__barre'), evenements[i - 1] ? classeDEvenement(evenements[i - 1].id) : null);
+    poserCouleur(li.querySelector('.frise__morceau'), evenements[i + 1] ? classeDEvenement(evenements[i + 1].id) : null);
     li.dataset.categories = e.categories.map((c) => c.id).join(' ');
     li.dataset.etiquette = `${libelleDeDate(e)} : ${e.titre}`;
     li.querySelector('.frise__date [data-ed-lecture]').textContent = dateCourte(e);
@@ -192,7 +218,7 @@ async function surcoucheVivante(ed) {
         const position = vivante.evenements.findIndex((e) => e.id === id) + 1;
         if (page) page.outerHTML = articleProvisoire(ed, donnees, position, vivante.evenements.length);
         document.title = document.title.replace(/^Chronologie\b/, `Chronologie : ${donnees.evenement.titre}`);
-        document.querySelector('[data-chrono]')?.style.setProperty('--couleur-evenement', couleursDesEvenements(vivante.evenements).get(id));
+        poserCouleur(document.querySelector('[data-chrono]'), classeDEvenement(id));
         ed.page = `chronologie/?evenement=${id}`;
       }
       refaireLArticle(ed, donnees);
@@ -222,6 +248,7 @@ const OUTILS = [
     ['Lien web', 'Lien vers une adresse web', texte.lienWeb],
     ['Sans lien', 'Retirer le lien (le texte reste)', texte.retirerLien],
   ]],
+  outilsDesMotsCles(texte),
 ];
 
 function bouton(libelle, { classe = 'ed-outil', titre = null, action }) {
@@ -461,8 +488,9 @@ function saisieDuLien(ed, bloc) {
 function monterLeBloc(ed, el, ligne) {
   for (const m of el.querySelectorAll('mark.chrono-surligne')) m.replaceWith(...m.childNodes);
   el.normalize();
-  const bloc = { el, rang: ligne.rang, ligne, initial: markdownDe(ed, el), lien: { valeur: ligne.page_id ?? null, invalide: false, el: null }, retire: false };
+  const bloc = { el, rang: ligne.rang, ligne, initial: '', lien: { valeur: ligne.page_id ?? null, invalide: false, el: null }, retire: false };
   texte.rendreModifiable(ed, el, etat.abandon.signal);
+  bloc.initial = markdownDe(ed, el); // relu une fois les mots-clés en balises écrites (rendreModifiable)
   etat.blocs.push(bloc);
   el.after(saisieDuLien(ed, bloc));
   return bloc;

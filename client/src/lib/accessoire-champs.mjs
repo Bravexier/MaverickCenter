@@ -10,9 +10,12 @@
 //   - Attributs : « +N Santé / Barrière / Chakra / Initiative / Vitesse » (colonnes bonus_valeur, bonus_cible) ; « Augmente le maximum de sang ou d'âme de
 //     N » : la 4ᵉ barre ;
 //   - « Dégâts physiques +N » (toutes les armes) et « Dégâts magie +N » (les sorts d'attaque, R54) ; « +N dégâts avec une catégorie d'arme » : une famille
-//     d'armes choisie dans la fiche (`choix`) ; « Augmente la portée des armes à distance / des sorts de +N » ; « Un point de maîtrise d'arme » ;
+//     d'armes choisie dans la fiche (`choix`) ; « Augmente la portée des armes à distance / des sorts de +N » ; « Un point de maîtrise d'arme » : sur
+//     une famille choisie dans la fiche (`choix` ; décision R151, migration 0076 : « (ne peut changer une fois décidé) » n'est qu'un rappel) ;
 //     « +N tour de Mode Hyper » ; « Les AM / AP de base augmentent de N » ;
-//   - « Résistance X et Y » : un cran de résistance à chaque magie ou altération d'état nommée.
+//   - « Résistance X et Y » : un cran de résistance à chaque magie ou altération d'état nommée ;
+//   - « Augmente le dé de dégâts des sorts » (un cran, comme la posture Focus), « Permet à un dé de dégâts d'être maximum » (réponse du propriétaire
+//     « Oui, un dé au max »), « Augmente de 1d les soins magiques » (R102, migration 0061).
 // Usage (R54 : « (Action) + usages limités », rappelés sous les dons de race) : `action` pour un effet écrit « (Action) … », `limite` pour un usage compté
 // (« 1 fois par combat », « l'objet se brise », « recharge »…).
 
@@ -20,6 +23,7 @@
 export const CIBLES = [
   'caracteristique', 'competence', 'sante', 'chakra', 'barriere', 'initiative', 'vitesse', 'barre4_max', 'armure_ap', 'armure_am',
   'degats_physiques', 'degats_magie', 'degats_famille', 'portee_distance', 'portee_sorts', 'maitrise_arme', 'mode_hyper_tours', 'resistance',
+  'cran_des_sorts', 'de_maximum', 'des_soins',
 ];
 
 /** bonus_cible de la propriété « Attributs » → cible. */
@@ -34,10 +38,14 @@ const MOTIFS = [
   [/^\+(\d+) degats avec une categorie d'arme\b/, (m) => [{ cible: 'degats_famille', valeur: Number(m[1]), choix: 1 }]],
   [/^augmente la portee des armes a distance de \+(\d+)$/, (m) => [{ cible: 'portee_distance', valeur: Number(m[1]) }]],
   [/^augmente la portee des sorts de \+(\d+)$/, (m) => [{ cible: 'portee_sorts', valeur: Number(m[1]) }]],
-  [/^un point de maitrise d'arme\b/, () => [{ cible: 'maitrise_arme', valeur: 1 }]],
+  [/^un point de maitrise d'arme\b/, () => [{ cible: 'maitrise_arme', valeur: 1, choix: 1 }]],
   [/^\+(\d+) tours? de mode hyper\b/, (m) => [{ cible: 'mode_hyper_tours', valeur: Number(m[1]) }]],
   [/^les (am|ap) de base augmentent de (\d+)$/, (m) => [{ cible: `armure_${m[1]}`, valeur: Number(m[2]) }]],
   [/^augmente le maximum de sang ou d'ame de (\d+)$/, (m) => [{ cible: 'barre4_max', valeur: Number(m[1]) }]],
+  // décision R102 (migration 0061) : le dé des sorts d'un cran (comme la posture Focus), un dé de dégâts au maximum (armes et sorts), un dé de plus aux soins
+  [/^augmente le de de degats des sorts$/, () => [{ cible: 'cran_des_sorts', valeur: 1 }]],
+  [/^permet a un de de degats d'etre maximum$/, () => [{ cible: 'de_maximum', valeur: 1 }]],
+  [/^augmente de 1d les soins magiques$/, () => [{ cible: 'des_soins', valeur: 1 }]],
 ];
 
 /** L'usage d'un effet : « (Action) … » ; un usage compté ; sinon null. */

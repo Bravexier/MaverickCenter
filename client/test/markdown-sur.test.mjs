@@ -1,18 +1,26 @@
 // Markdown écrit par le site de dev (lib/markdown-sur.mjs) : ni HTML brut ni lien à schéma exécutable ajouté. Le processeur Markdown du site recopie le
 // HTML brut tel quel et garde l'adresse d'un lien : chaque cas refusé est montré dangereux au rendu, chaque cas permis inoffensif. Puis les trois
-// barrières : le service (POST /api/edition/, page du guide), le lot reçu par le workflow (verifierLot) et le corps des pages après le rejeu (pageNonSure).
+// barrières : le service (POST /api/edition/, page du guide), le lot reçu par le workflow (verifierLot) et le corps des pages après le rejeu (pageNonSure) ;
+// de même pour les blocs de description de la chronologie et ceux des panneaux de règles (blocNonSur), et après le rejeu du rapatriement
+// (db:appliquer-edition : texteNonSurApresLeRejeu).
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { cpSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { createMarkdownProcessor } from '@astrojs/markdown-remark';
-import { blocNonSur, ErreurMiseAJour, pageNonSure, textesDesBlocs, verifierLot } from '../scripts/mise-a-jour-regles.mjs';
+import { fileURLToPath } from 'node:url';
+import { appliquerJournal } from '../scripts/db-appliquer-edition.mjs';
+import {
+  BLOCS_EN_MARKDOWN, blocNonSur, ErreurMiseAJour, pageNonSure, TEXTES_EN_MARKDOWN, textesAvantLeRejeu, textesDesBlocs, texteNonSurApresLeRejeu, verifierLot,
+} from '../scripts/mise-a-jour-regles.mjs';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
+import { journalExporte } from '../serveur/edition-journal.mjs';
+import { chargerPanneau } from '../src/lib/panneaux-regles-db.mjs';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { adresseDangereuse, fragmentsAjoutes, fragmentsDangereux, messageDeRefus } from '../src/lib/markdown-sur.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const processeur = await createMarkdownProcessor({ syntaxHighlight: false });
 const rendre = async (md) => (await processeur.render(md)).code;
@@ -89,8 +97,7 @@ test('les pages de la base : seul le bout de code de « Utiliser ce wiki » cont
 
 // --- service -------------------------------------------------------------------------------------------------------------------------------
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-markdown-sur-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('markdown-sur');
 
 test('service : un texte du guide qui ajoute du HTML brut ou un lien non sûr est refusé (400), la page ne change pas ; le texte échappé passe', () => {
   const db = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, 'db') }).chemin);
@@ -166,4 +173,67 @@ test('après le rejeu : la première page dont le corps a gagné un fragment est
   db.exec("UPDATE page SET corps_md = 'C' WHERE id = 'c'");
   assert.deepEqual(pageNonSure(db, avant), { id: 'd', fragments: ['<b>', '</b>'] });
   db.close();
+});
+
+test('lot reçu : un bloc de panneau de règles (panneau_regles_bloc.texte) qui gagne du HTML brut ou un lien non sûr est refusé ; après le rejeu aussi', () => {
+  assert.deepEqual(Object.keys(TEXTES_EN_MARKDOWN).sort(), ['annonce', 'evenement_extrait', 'page', 'panneau_regles_bloc']);
+  assert.deepEqual(Object.keys(BLOCS_EN_MARKDOWN).sort(), ['evenement_extrait', 'panneau_regles_bloc']);
+  const lot = (modification) => ({
+    format: 'maverick-mise-a-jour/1', id: '11111111-2222-3333-4444-555555555555', texte: null,
+    journal: { format: 'maverick-edition/1', lots: [{ id: 'l', fait_le: 'x', resume: 'r', modifications: [{ rang: 1, ...modification }] }] },
+  });
+  const cle = { panneau_id: 'armes', rang: 3 };
+  assert.throws(() => verifierLot(lot({ table: 'panneau_regles_bloc', cle, operation: 'modifier', avant: { texte: 'Texte.' }, apres: { texte: 'Texte <script>alert(1)</script>' } })),
+    (e) => e instanceof ErreurMiseAJour && e.code === 2 && /bloc de règles armes#3 : HTML brut/.test(e.message));
+  assert.throws(() => verifierLot(lot({ table: 'panneau_regles_bloc', cle, operation: 'inserer', avant: null, apres: { ...cle, ordre: 1, tuile: 1, titre: null, texte: '[a](javascript:alert(1))' } })),
+    (e) => e instanceof ErreurMiseAJour && e.code === 2 && /bloc de règles armes#3/.test(e.message));
+  assert.doesNotThrow(() => verifierLot(lot({ table: 'panneau_regles_bloc', cle, operation: 'modifier', avant: { texte: 'Texte.' }, apres: { texte: 'Texte, un chevron \\< écrit.' } })));
+  // le titre d'une tuile est du texte simple (échappé au rendu) : pas du Markdown
+  assert.doesNotThrow(() => verifierLot(lot({ table: 'panneau_regles_bloc', cle, operation: 'modifier', avant: { titre: null }, apres: { titre: 'Arme <de> jet' } })));
+
+  const db = new DatabaseSync(':memory:');
+  db.exec(`CREATE TABLE page (id TEXT PRIMARY KEY, corps_md TEXT); INSERT INTO page VALUES ('p', 'P');
+    CREATE TABLE evenement_extrait (evenement_id TEXT, rang INTEGER, texte TEXT); INSERT INTO evenement_extrait VALUES ('e', 1, 'E');
+    CREATE TABLE panneau_regles_bloc (panneau_id TEXT, rang INTEGER, texte TEXT); INSERT INTO panneau_regles_bloc VALUES ('armes', 1, 'A'), ('armes', 2, 'B \`<x>\`')`);
+  const avant = textesDesBlocs(db, 'panneau_regles_bloc');
+  assert.deepEqual([...avant.keys()], ['armes#1', 'armes#2']);
+  db.exec("UPDATE panneau_regles_bloc SET texte = 'B `<x>` encore' WHERE rang = 2");
+  assert.equal(blocNonSur(db, avant, 'panneau_regles_bloc'), null, 'un fragment déjà là reste permis');
+  const tous = textesAvantLeRejeu(db);
+  assert.equal(texteNonSurApresLeRejeu(db, tous), null);
+  db.exec("INSERT INTO panneau_regles_bloc VALUES ('armes', 3, 'Nouveau <iframe src=x>')");
+  assert.deepEqual(blocNonSur(db, avant, 'panneau_regles_bloc'), { id: 'armes#3', fragments: ['<iframe src=x>'] });
+  assert.deepEqual(texteNonSurApresLeRejeu(db, tous), { quoi: 'bloc de règles', id: 'armes#3', fragments: ['<iframe src=x>'] });
+  db.exec("UPDATE evenement_extrait SET texte = 'E <b>x</b>'");
+  assert.equal(texteNonSurApresLeRejeu(db, tous).quoi, 'description', 'la chronologie avant les panneaux');
+  db.exec("UPDATE page SET corps_md = 'P <img src=x>'");
+  assert.equal(texteNonSurApresLeRejeu(db, tous).quoi, 'page', 'les pages d’abord');
+  db.close();
+});
+
+test('rapatriement (db:appliquer-edition) : un journal retouché à la main qui ajoute du HTML brut à un bloc de panneau est refusé après le rejeu, rien n’est écrit', () => {
+  const vivante = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, 'rapatriement-db') }).chemin);
+  const service = { base: () => vivante, etat: () => ({}), edition: true };
+  // l'état avant d'écrire : le premier bloc du panneau des armes, tel que la base l'a
+  const bloc = chargerPanneau(vivante, 'armes').blocs[0];
+  const cle = { panneau_id: 'armes', rang: bloc.rang };
+  const r = traiter({
+    methode: 'POST', chemin: '/api/edition/', entetes: { 'content-type': 'application/json' },
+    corps: JSON.stringify({ page: 'ressources/equipement/', operations: [{ op: 'modifier', table: 'panneau_regles_bloc', cle, valeurs: { texte: `${bloc.texte}\n\nUne phrase sûre.` } }] }),
+  }, service);
+  assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  const journal = journalExporte(vivante);
+  vivante.close();
+  // le journal retouché : le service l'aurait refusé
+  const m = journal.lots.flatMap((l) => l.modifications).find((x) => x.table === 'panneau_regles_bloc' && x.cle.rang === bloc.rang);
+  m.apres.texte = `${bloc.texte}\n\nUne phrase <script>alert(1)</script>.`;
+  assert.throws(() => verifierLot({ format: 'maverick-mise-a-jour/1', id: '11111111-2222-3333-4444-555555555555', texte: null, journal }),
+    (e) => e instanceof ErreurMiseAJour && e.code === 2 && new RegExp(`bloc de règles armes#${bloc.rang} : HTML brut`).test(e.message));
+  const rows = join(racine, 'rapatriement-rows');
+  cpSync(fileURLToPath(new URL('../../data/rows/', import.meta.url)), rows, { recursive: true });
+  const lire = () => Object.fromEntries(readdirSync(rows).map((f) => [f, readFileSync(join(rows, f), 'utf8')]));
+  const avant = lire();
+  assert.throws(() => appliquerJournal(journal, { rows }), new RegExp(`journal refusé : bloc de règles armes#${bloc.rang} après le rejeu : HTML brut`));
+  assert.throws(() => appliquerJournal(journal, { rows, ignorerConflits: true }), /journal refusé/, 'même en écrivant les lots sans conflit');
+  assert.deepEqual(lire(), avant, 'data/rows inchangé');
 });

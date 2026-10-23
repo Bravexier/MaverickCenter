@@ -1,6 +1,7 @@
 ---
 import { geometrieDesLiaisons, liaisonsEntreMagies, POINTES } from '../../lib/magie-fleches.mjs';
 import { couleurDeMagie } from '../../lib/sort-format.mjs';
+import { classeDeMagie, classeDeSecondeMagie } from '../../lib/palette-css.mjs';
 import { normalize } from '../../lib/text.mjs';
 import { entryHref, type WikiEntry } from '../../lib/wiki';
 import type { MagieDb } from '../../lib/magies';
@@ -17,7 +18,8 @@ const { magies } = Astro.props;
 // les relations ont la même symétrie) ; Feu et Eau plus bas que Terre et Sang, sinon le trait Feu – Eau passerait sous eux ; Corruption – Arcane et
 // Espace-Temps – Vide aux coins du haut, Lumière – Ombre en bas. Écran étroit, sous 60rem (mx, my sur 1000 × HAUTEUR_ETROITE) : deux colonnes, sans
 // relations, les paires côte à côte (demande du propriétaire) reliées par leur trait. Pas d'infobulle (demande du propriétaire) : le survol ne montre que
-// les relations. Les proportions sont reprises par styles/magie/orbit.css (aspect-ratio du grand écran, hauteur de l'écran étroit) ;
+// les relations. Les proportions sont reprises par styles/magie/orbit.css (aspect-ratio du grand écran, hauteur de l'écran étroit ; tailles des
+// pastilles du grand écran : TAILLES, plus bas) ;
 // test/magies-html.test.mjs vérifie qu'aucune pastille n'en touche une autre et qu'aucun trait ne passe sous une pastille.
 const HAUTEUR_GRANDE = 440;
 const HAUTEUR_ETROITE = 590;
@@ -46,7 +48,8 @@ const index = new Map(magies.map((item) => [normalize(item.magie.nom), item]));
 
 const noeuds = disposition.flatMap((place, ordre) => {
   const item = index.get(normalize(place.cle));
-  return item ? [{ ...place, ...item, ordre, couleur: couleurDeMagie(item.magie.nom) }] : [];
+  // `classe` : la couleur de la pastille (lib/palette-css.mjs) ; `couleur` ne sert qu'au calcul de la part de la couleur dans le trait (luminance)
+  return item ? [{ ...place, ...item, ordre, classe: classeDeMagie(item.magie.nom), couleur: couleurDeMagie(item.magie.nom) }] : [];
 });
 const parNom = new Map(noeuds.map((noeud) => [normalize(noeud.cle), noeud]));
 const liens: { a: any; b: any; type: string }[] = [];
@@ -69,13 +72,22 @@ if (lumiere && ombre && (vulnérableÀ(lumiere, ombre) || vulnérableÀ(ombre, l
 // Grand écran : ces traits ne sont pas dessinés ; au survol d'une magie SEULEMENT (demande du propriétaire : toutes à la fois, la carte est trop chargée),
 // ses relations (lib/magie-fleches.mjs), dans sa couleur : un trait par magie liée, une ÉPÉE au bout de la magie contre laquelle l'autre est efficace,
 // un BOUCLIER au bout de celle qui résiste à l'autre, une boucle à bouclier si elle résiste à elle-même.
-// Tailles des pastilles en unités de la carte (1000 × HAUTEUR_GRANDE), pour une carte de 60rem : 9rem, 8rem (éléments), 12rem (Potentiel), 3rem de haut.
+// Tailles des pastilles du grand écran en unités de la carte (1000 × HAUTEUR_GRANDE) : la seule source. Elles sont posées sur chaque pastille en cqw
+// (--l, --h : 1 unité = 0.1cqw, la carte est un conteneur), donc justes à toute largeur de carte : le calcul des traits et des pointes
+// (lib/magie-fleches.mjs) suppose ces tailles. Une carte de 62rem (largeur du contenu) donne 9.3rem, 8.3rem (éléments), 12.4rem (Potentiel), 2.98rem de haut.
 const TAILLES = { potentiel: 200, elementaire: 134 } as Record<string, number>;
+const LARGEUR_PASTILLE = 150;
+const HAUTEUR_PASTILLE = 48;
+const largeurDe = (noeud: any) => TAILLES[noeud.region] ?? LARGEUR_PASTILLE;
 const cleCss = (noeud: any) => normalize(noeud.nom);
 const parId = new Map(noeuds.map((noeud) => [noeud.magie.id, noeud]));
-const pastilles = new Map(noeuds.map((noeud) => [noeud.magie.id, { x: noeud.x, y: noeud.y, w: TAILLES[noeud.region] ?? 150, h: 48 }]));
+const pastilles = new Map(noeuds.map((noeud) => [noeud.magie.id, { x: noeud.x, y: noeud.y, w: largeurDe(noeud), h: HAUTEUR_PASTILLE }]));
 const relations = geometrieDesLiaisons(liaisonsEntreMagies(noeuds.map((noeud) => noeud.magie)), pastilles, { hauteur: HAUTEUR_GRANDE });
 const avec = (...ids: string[]) => ids.map((id) => `avec-${cleCss(parId.get(id))}`).join(' ');
+// La couleur d'un trait est celle de la magie survolée, sans couleur écrite : le trait porte la classe de sa première magie (--couleur) et la classe de
+// second rang de la seconde (--couleur-2, lib/palette-css.mjs#classeDeSecondeMagie) ; `seconde-<magie>` dit laquelle lire quand on survole la seconde.
+const couleursDuTrait = (a: string, b: string) =>
+  `${parId.get(a).classe} ${classeDeSecondeMagie(parId.get(b).magie.nom)} seconde-${cleCss(parId.get(b))}`;
 // Part de la couleur de la magie dans le trait (le reste : couleur du texte), selon sa luminance : une magie claire (Vide, Lumière, Foudre) est assombrie
 // davantage sur fond clair, une magie sombre (Corruption, Nécromancie) éclaircie davantage sur fond sombre.
 const luminance = (hex: string) => {
@@ -93,7 +105,9 @@ const surbrillance = noeuds
     const sombre = l < 0.1 ? 40 : l < 0.25 ? 55 : 70;
     // survol, ou focus au clavier seulement (:focus-visible) : un clic donne aussi le focus au lien, et le retour arrière le restaure ; avec :focus-within,
     // les relations restaient affichées sans la souris (bogue signalé par le propriétaire)
-    return `.magies-orbite:has([data-magie="${k}"]:hover, [data-magie="${k}"] a:focus-visible) .magies-relation.avec-${k} { --c: ${noeud.couleur}; --part: ${clair}%; --part-sombre: ${sombre}%; opacity: 1; }`;
+    const survol = `.magies-orbite:has([data-magie="${k}"]:hover, [data-magie="${k}"] a:focus-visible)`;
+    return `${survol} .magies-relation.avec-${k} { --c: var(--couleur); --part: ${clair}%; --part-sombre: ${sombre}%; opacity: 1; }\n`
+      + `${survol} .magies-relation.seconde-${k} { --c: var(--couleur-2); }`;
   })
   .join('\n');
 ---
@@ -111,7 +125,7 @@ const surbrillance = noeuds
   <svg class="magies-orbite__relations" viewBox={`0 0 1000 ${HAUTEUR_GRANDE}`} aria-hidden="true">
     {
       relations.traits.map((trait) => (
-        <g class={`magies-relation ${avec(trait.a, trait.b)}`}>
+        <g class={`magies-relation ${avec(trait.a, trait.b)} ${couleursDuTrait(trait.a, trait.b)}`}>
           <line x1={trait.x1} y1={trait.y1} x2={trait.x2} y2={trait.y2} />
           {trait.pointes.map((pointe) => (
             <g class={`magies-relation__${pointe.forme}`} transform={pointe.transform}>
@@ -124,7 +138,7 @@ const surbrillance = noeuds
     }
     {
       relations.boucles.map((boucle) => (
-        <g class={`magies-relation magies-relation--boucle ${avec(boucle.id)}`}>
+        <g class={`magies-relation magies-relation--boucle ${avec(boucle.id)} ${parId.get(boucle.id).classe}`}>
           <path class="magies-relation__boucle" d={boucle.chemin} />
           {boucle.pointes.map((pointe) => (
             <g class={`magies-relation__${pointe.forme}`} transform={pointe.transform}>
@@ -140,9 +154,9 @@ const surbrillance = noeuds
     {
       noeuds.map((noeud) => (
         <li
-          class={`magies-orbite__position magies-orbite__position--${noeud.region}`}
+          class={`magies-orbite__position magies-orbite__position--${noeud.region} ${noeud.classe}`}
           data-magie={cleCss(noeud)}
-          style={`--x: ${noeud.x / 10}%; --y: ${pourcent(noeud.y, HAUTEUR_GRANDE)}%; --mx: ${noeud.mx / 10}%; --my: ${pourcent(noeud.my, HAUTEUR_ETROITE)}%; --couleur-magie: ${noeud.couleur}; --ordre: ${noeud.ordre}`}
+          style={`--x: ${noeud.x / 10}%; --y: ${pourcent(noeud.y, HAUTEUR_GRANDE)}%; --mx: ${noeud.mx / 10}%; --my: ${pourcent(noeud.my, HAUTEUR_ETROITE)}%; --l: ${largeurDe(noeud) / 10}cqw; --h: ${HAUTEUR_PASTILLE / 10}cqw; --ordre: ${noeud.ordre}`}
         >
           <a
             class="magies-orbite__noeud"

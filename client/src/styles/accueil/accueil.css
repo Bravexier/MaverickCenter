@@ -11,3 +11,36 @@
 @media (max-width: 52rem) {
   .accueil { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* « Par où commencer ? » : quatre cartes sous le texte et la galerie, les quatre pages de Découvrir, chacune dans la couleur de son groupe (lib/livres.mjs) ; toute la carte est cliquable
+   (le lien couvre la carte) ; quatre de front, puis deux, puis une seule sur un écran étroit, jamais de défilement de côté. */
+.accueil-debut { margin-top: 2rem; }
+.accueil-debut h2 { margin: 0 0 0.8rem; }
+.accueil-debut__cartes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.8rem; margin: 0; padding: 0; list-style: none; }
+@media (max-width: 60rem) {
+  .accueil-debut__cartes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 32rem) {
+  .accueil-debut__cartes { grid-template-columns: minmax(0, 1fr); }
+}
+/* une carte dans la couleur de son groupe : --c tiré de la classe de sa partie (`.couleur-partie-…`, lib/palette-css.mjs#classeDePartie), posée sur
+   la carte ; jamais un style */
+.accueil-debut__carte[class*='couleur-partie-'] { --c: var(--couleur); }
+.accueil-debut__carte {
+  position: relative;
+  display: grid;
+  gap: 0.35rem;
+  align-content: start;
+  padding: 0.8rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--c) 40%, var(--border));
+  border-left: 4px solid var(--c);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--c) 7%, var(--surface));
+}
+.accueil-debut__lien { color: var(--text); font-size: 1.1rem; font-weight: 700; text-decoration: none; }
+.accueil-debut__lien::after { content: ''; position: absolute; inset: 0; border-radius: inherit; }
+.accueil-debut__carte:hover { border-color: var(--c); }
+.accueil-debut__carte:hover .accueil-debut__lien { text-decoration: underline; }
+.accueil-debut__lien:focus-visible { outline: none; }
+.accueil-debut__carte:has(.accueil-debut__lien:focus-visible) { outline: 2px solid var(--c); outline-offset: 2px; }
+.accueil-debut__resume { margin: 0; color: var(--muted); font-size: var(--fs-md, 0.95rem); line-height: 1.45; }

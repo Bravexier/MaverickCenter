@@ -64,6 +64,12 @@ for (const r of db.prepare('SELECT id, empreinte, texte, occurrence FROM comment
 for (const r of db.prepare(`SELECT c.id, c.bouclier_classe_max AS stocke, (SELECT max(m.classe_max) FROM classe_maitrise_armure m WHERE m.classe_id = c.id) AS calcule FROM classe c`).all()) {
   if ((r.stocke ?? null) !== (r.calcule ?? null)) problemes.push(`classe ${r.id} : bouclier_classe_max=${r.stocke} != max(classe_maitrise_armure.classe_max)=${r.calcule}`);
 }
+// La liste des boucliers (onglet Boucliers, R78) a un bouclier pour chaque forme et chaque matière : la fiche de personnage en tire celui qu'elle porte
+// (décision R96, forme + matière ; une fiche dont le couple manque est signalée par la règle bouclier_inconnu de v_personnage_controle).
+for (const r of db.prepare(`SELECT c.id AS classe, m.ressource_id AS matiere FROM bouclier_classe c CROSS JOIN materiau_bouclier m
+  WHERE NOT EXISTS (SELECT 1 FROM bouclier b WHERE b.classe_id = c.id AND b.materiau_id = m.ressource_id)`).all()) {
+  problemes.push(`bouclier : pas de bouclier pour la forme ${r.classe} et la matière ${r.matiere} (la fiche ne pourrait pas le porter : R96)`);
+}
 
 // Complétude de page_entite : une table dont TOUS les id sont des ids de page (ou '<id de page>#…') est une table d'entités rattachées à une page ;
 // chacune de ses lignes doit avoir sa ligne page_entite (principale = 1 si l'id est celui de la page, sinon 0).
@@ -161,8 +167,12 @@ if (correctionsLignesSupprimees) bilan.corrections_lignes_supprimees = correctio
 
 // Niveaux de maîtrise (NM) : chaque bonus de sort_bonus_maitrise recopie une expression EXACTE de la cellule de son sort (texte_brut, puis le passage qui la contient), et la colonne
 // `sort.bonus_maitrise` (« Bonus Maîtrise ») est la recopie lisible de ces lignes. Rien n'est calculé : un bonus qui ne figure pas dans sa cellule est une invention.
+// La cellule se lit sans les balises du glossaire, comme son découpage (lib/sort-analyse.mjs#bonusDeMaitrise : texteSansBalises, un texte de case).
 {
   const { texteDeBonus, ORDRE_CHAMPS_NM } = await import(pathToFileURL(`${LIB}/sort-maitrise.mjs`).href);
+  const { texteSansBalises } = await import(pathToFileURL(`${LIB}/mots-cles-balises.mjs`).href);
+  const { analyserCout, mentionneUnNm } = await import(pathToFileURL(`${LIB}/sort-analyse.mjs`).href);
+  const { repartirLeCout } = await import(pathToFileURL(`${LIB}/sort-cout.mjs`).href);
   const COLONNE = { type: 'type_brut', cout: 'cout_brut', portee: 'portee_brut', zone: 'zone_brut', dsb: 'dsb_brut', effets: 'effets', remarque: 'remarque' };
   const bonus = new Map();
   for (const l of db.prepare('SELECT sort_id, champ, rang, texte_brut, contexte FROM sort_bonus_maitrise').all()) {
@@ -172,10 +182,20 @@ if (correctionsLignesSupprimees) bilan.corrections_lignes_supprimees = correctio
   for (const s of db.prepare('SELECT * FROM sort').all()) {
     const lignes = (bonus.get(s.id) ?? []).sort((a, b) => ORDRE_CHAMPS_NM.indexOf(a.champ) - ORDRE_CHAMPS_NM.indexOf(b.champ) || a.rang - b.rang);
     for (const l of lignes) {
-      const cellule = s[COLONNE[l.champ]];
+      const cellule = texteSansBalises(s[COLONNE[l.champ]]);
       if (typeof cellule !== 'string' || !cellule.includes(l.contexte) || !l.contexte.includes(l.texte_brut)) problemes.push(`bonus de maîtrise ${s.id} (${l.champ} #${l.rang}) : « ${l.texte_brut} » ne figure pas dans la cellule`);
     }
     if ((s.bonus_maitrise ?? null) !== texteDeBonus(lignes)) problemes.push(`bonus de maîtrise ${s.id} : la colonne bonus_maitrise ne suit pas les lignes de sort_bonus_maitrise`);
+    // décision R105 (migration 0063) : le bonus de NM du coût est dans « Coût », jamais dans « Coût secondaire », qui n'a pas de champ dans sort_bonus_maitrise ;
+    // et le second coût n'est plus écrit dans « Coût » (une écriture qui se répartit sans doute possible : lib/sort-cout.mjs#repartirLeCout)
+    if (s.cout_secondaire !== null && mentionneUnNm(s.cout_secondaire)) problemes.push(`coût secondaire ${s.id} : « ${s.cout_secondaire} » écrit un niveau de maîtrise (il va dans « Coût »)`);
+    const reparti = repartirLeCout(s.cout_brut);
+    if (reparti) problemes.push(`coût ${s.id} : « ${s.cout_brut} » écrit deux coûts (Coût « ${reparti.cout_brut} », Coût secondaire « ${reparti.cout_secondaire} »)`);
+    // les colonnes typées du coût suivent les deux cases (la lecture du service : lib/sort-analyse.mjs#analyserCout)
+    const lu = analyserCout(s.cout_brut, s.cout_secondaire);
+    if (['cout_chakra', 'cout_ressource', 'cout_ressource_valeur'].some((c) => (s[c] ?? null) !== lu[c])) {
+      problemes.push(`coût ${s.id} : colonnes typées (${s.cout_chakra}, ${s.cout_ressource}, ${s.cout_ressource_valeur}) au lieu de la lecture de « ${s.cout_brut} » et « ${s.cout_secondaire ?? '—'} »`);
+    }
   }
   bilan.sorts_avec_bonus_maitrise = bonus.size;
 }
@@ -188,6 +208,34 @@ const iTypes = process.argv.indexOf('--types');
   const reels = db.prepare('SELECT id, libelle, singulier, salon_discord, description, ordre FROM type_page ORDER BY ordre').all().map((r) => Object.values(r));
   if (JSON.stringify(attendus) !== JSON.stringify(reels)) problemes.push('type_page diffère de client/src/lib/types.mjs (même ordre, mêmes libellés) : relancer l\'importeur des types');
   bilan.types_page = reels.length;
+}
+
+// Glossaire des mots-clés (migration 0056, lib/mots-cles-balises.mjs) : la base ne garde que des ids. Toute balise « {{…}} » d'un texte de la base vise
+// un mot-clé du vocabulaire PAR SON ID (aucune orpheline : un mot-clé supprimé quitte les textes qui le citent, serveur/edition.mjs ; aucune écriture : le
+// service met chaque texte en forme canonique) et est écrite comme formeCanonique l'écrirait pour sa colonne (formesNonCanoniques, la même règle :
+// dans un texte de case, son texte écrit, « | », jamais le mode complet ; dans un texte mis en forme, « \| » sur une ligne de tableau et « | »
+// ailleurs, ni espace autour de la ref ou du texte ; une seule tolérance, le libellé écrit en texte dans un texte mis en forme, « {{id|Libellé}} »,
+// que formeCanonique ramène à « {{id}} » : le corps d'une page typée l'écrit, un renommage peut en faire un) — toutes les colonnes de texte des règles et des pages
+// (lib/mots-cles-db.mjs#textesDeLaBase : ni les sections 13 à 15, ni les tables dérivées, ni les traces gardées telles quelles, ni la recherche plein
+// texte ; lib/tables-de-la-base.mjs). Une balise dans un code d'un texte mis en forme est une écriture littérale : ni lue ni contrôlée.
+if (noms.has('mot_cle')) {
+  const { formesNonCanoniques, lireBalises, vocabulaireDesMotsCles } = await import(pathToFileURL(`${LIB}/mots-cles-balises.mjs`).href);
+  const { textesDeLaBase } = await import(pathToFileURL(`${LIB}/mots-cles-db.mjs`).href);
+  const vocabulaire = vocabulaireDesMotsCles(db.prepare('SELECT id, libelle, libelle_cle FROM mot_cle').all());
+  const q = (c) => (c === 'rowid' ? 'rowid' : `"${c}"`);
+  let balises = 0;
+  let colonnesLues = 0;
+  for (const { table, colonne, cle, markdown } of textesDeLaBase(db)) {
+    colonnesLues += 1;
+    for (const r of db.prepare(`SELECT ${cle.map((c) => `${q(c)} AS "k_${c}"`).join(', ')}, ${q(colonne)} AS texte__ FROM "${table}" WHERE instr(${q(colonne)}, '{{') > 0`).all()) {
+      balises += lireBalises(r.texte__, { markdown }).length;
+      for (const f of formesNonCanoniques(r.texte__, vocabulaire, { markdown })) {
+        problemes.push(`${table}.${colonne} ${cle.map((c) => r[`k_${c}`]).join('|')} : la balise « ${f.balise} » n'est pas sous sa forme canonique (${f.raison})`);
+      }
+    }
+  }
+  bilan.balises_mots_cles = balises;
+  bilan.colonnes_de_texte = colonnesLues;
 }
 
 // Tables dérivées cohérentes avec leurs sources.

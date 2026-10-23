@@ -52,7 +52,11 @@ const marqueeHybride = (race) => (race.data?.tags ?? []).some((t) => normalize(t
 export const raceKind = (entries, race) =>
   HYBRIDES_SANS_CLASSE_RACIALE.has(race.id) || marqueeHybride(race) || racialClassOf(entries, race) ? 'hybride' : 'pure';
 
-/** Couleur des races pures et des races hybrides : celle de la liste /races/ et du bandeau des pages de race (repère visuel sans valeur de règle). */
+/**
+ * Couleur des races pures et des races hybrides : celle de la liste /races/, du bandeau des pages de race et des pastilles de la fiche (repère visuel
+ * sans valeur de règle). La valeur est ici (la règle) ; une page n'en pose que la classe (lib/palette-css.mjs, famille `race` : `couleur-race-pure`,
+ * `couleur-race-hybride` ; choix du propriétaire du 2026-10-22, « Module JS → classe »).
+ */
 export const RACE_COLORS = { pure: '#2f6a6a', hybride: '#8a5a1c' };
 
 const RACE_GROUPS = [
@@ -70,7 +74,8 @@ const byOrdre = (a, b) => rang(a) - rang(b) || a.data.title.localeCompare(b.data
 export const dansLOrdreDesRaces = (races) => [...races].sort(byOrdre);
 
 /**
- * Range les races en groupes (pures puis hybrides, chacun avec sa couleur), chacun dans l'ordre de ORDRE_DES_RACES ; un groupe vide est omis.
+ * Range les races en groupes (pures puis hybrides, chacun avec sa nature, dont la page pose la classe de couleur), chacun dans l'ordre de
+ * ORDRE_DES_RACES ; un groupe vide est omis.
  * `entries` contient les pages de races ET de classes (les classes servent à reconnaître les hybrides).
  */
 export function groupRaces(entries) {
@@ -78,7 +83,7 @@ export function groupRaces(entries) {
   return RACE_GROUPS.map((g) => ({
     key: g.key,
     label: g.label,
-    couleur: RACE_COLORS[g.kind],
+    nature: g.kind,
     entries: races.filter((r) => raceKind(entries, r) === g.kind).sort(byOrdre),
   })).filter((g) => g.entries.length > 0);
 }

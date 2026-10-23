@@ -1,9 +1,10 @@
-// La gestion du vocabulaire des mots-clés sur /recherche/ en mode modification (site de dev ; demande du propriétaire : « en mode édition seulement »,
+// La gestion du glossaire des mots-clés sur /recherche/ en mode modification (site de dev ; demande du propriétaire : « en mode édition seulement »,
 // « supprimer / ajouter / Modifier des mots clés. Une suppression d'un mot clé le supprimera de tous les endroits qui le référencent ») : ce que
 // l'extension de l'éditeur (src/scripts/edition/mots-cles.mjs) décide avant d'envoyer le lot, en fonctions pures (sans dépendance navigateur ni Astro).
-// Le vocabulaire est celui du service (GET /api/edition/mots-cles/ : [{ id, libelle, libelle_cle, pages, protege }], `pages` = le nombre de pages qui le
-// portent, `protege` = la raison pour laquelle un mot-clé dont le site se sert ne bouge pas, lib/mots-cles.mjs ; les événements de la chronologie n'ont pas
-// de mot-clé, mais des catégories). Le service refait tous les contrôles (serveur/edition-chronologie.mjs) : ici, de quoi proposer la fusion avant l'envoi,
+// Le vocabulaire est celui du service (GET /api/edition/mots-cles/ : [{ id, libelle, libelle_cle, description, pages, protege }], `pages` = le nombre de
+// pages qui le portent, `protege` = la raison pour laquelle un mot-clé dont le site se sert ne bouge pas, lib/mots-cles.mjs ; les événements de la
+// chronologie ont des catégories). Un mot-clé supprimé quitte aussi les textes qui le citent (sa balise devient son texte simple), un mot-clé fusionné y
+// est remplacé par l'autre (serveur/edition.mjs#reecrireLesBalises). Le service refait tous les contrôles (serveur/edition-chronologie.mjs) : ici, de quoi proposer la fusion avant l'envoi,
 // dire ce qu'une suppression retire et ranger les opérations du lot.
 import { normalize } from './text.mjs';
 
@@ -139,11 +140,11 @@ export function confirmationDesRetraits(vocabulaire, { suppressions = new Set(),
   const lignes = [];
   for (const id of suppressions) {
     const m = parId.get(id);
-    lignes.push(`- ${nom(id)} sera retiré de ${compteDesElements(m)}, puis supprimé.`);
+    lignes.push(`- ${nom(id)} sera retiré de ${compteDesElements(m)} et des textes qui le citent (sa balise y devient son texte), puis supprimé.`);
   }
   for (const [source, cible] of fusions) {
     const m = parId.get(source);
-    lignes.push(`- ${nom(source)} sera fusionné dans ${nom(cible)} : ses pages (${compteDesElements(m)}) porteront ${nom(cible)}, puis ${nom(source)} disparaîtra.`);
+    lignes.push(`- ${nom(source)} sera fusionné dans ${nom(cible)} : ses pages (${compteDesElements(m)}) et les textes qui le citent porteront ${nom(cible)}, puis ${nom(source)} disparaîtra.`);
   }
   if (!lignes.length) return null;
   return `Enregistrer ces changements de mots-clés ?\n${lignes.join('\n')}`;

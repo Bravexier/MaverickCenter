@@ -2,9 +2,10 @@
 // les notes de cellule du classeur sont dans la colonne `remarque` de la ligne qu'elles commentent (la table note_cellule n'est qu'une trace).
 // le gabarit des pages de magie (components/MagiePage.astro) n'interprète aucun Markdown, il affiche ces lignes.
 // Node seulement (la base est ouverte par lib/donnees.mjs au build). Une requête par table, puis assemblage en mémoire.
-import { libelleDuBloc } from './bestiaire-db.mjs';
+import { libelleDuBloc, tableauxDesSorts } from './bestiaire-db.mjs';
 import { blocsDeTexte, elementsDeTexte } from './sort-format.mjs';
 import { ORDRE_CHAMPS_NM } from './sort-maitrise.mjs';
+import { normalize } from './text.mjs';
 
 const apres = (id, separateur) => id.slice(id.indexOf(separateur) + separateur.length);
 const regrouper = (rows, cle) => {
@@ -177,6 +178,20 @@ export function chargerMagies(db) {
     'sort_id',
   );
 
+  // Le tableau d'invocation que désigne un sort par son nom (« Amélioration cadavérique », décision R130 : bestiaire-db.mjs#tableauxDesSorts) : une amélioration
+  // qui porte exactement le nom d'une créature de l'invocation (normalize) montre sa carte en infobulle ; une autre (« S. de pierre », « S. rayonnant »,
+  // « Zombi obscur ») reste un nom : la rapprocher d'une créature serait deviner.
+  const tableauxParSort = new Map(
+    [...tableauxDesSorts(db)].map(([sortId, t]) => {
+      const creatures = new Map((creaturesDeInvocation.get(t.invocationId) ?? []).map((c) => [normalize(c.nom), c]));
+      const lignes = t.lignes.map((a) => {
+        const c = creatures.get(normalize(a.nom));
+        return { nom: a.nom, effets: elementsDeTexte(a.effet), creature: c ? { id: c.id, nom: c.nom, magies: magiesDeCreature(c.id) } : null };
+      });
+      return [sortId, { titre: t.titre, nom: t.nom, invocation: t.invocation, lignes }];
+    }),
+  );
+
   const sorts = new Map();
   const memeNom = regrouper(all('SELECT id, magie_id, nom_cle FROM sort'), 'nom_cle');
   for (const s of all('SELECT s.* FROM sort s JOIN magie m ON m.id = s.magie_id ORDER BY m.ordre, s.niveau, s.ordre')) {
@@ -206,6 +221,8 @@ export function chargerMagies(db) {
         seuilNm: b.seuil_nm,
       })),
       coutBrut: s.cout_brut,
+      // décision R105 : le second coût (âmes, Sang…), NULL quand le sort n'en a pas
+      coutSecondaire: s.cout_secondaire,
       porteeBrut: s.portee_brut,
       zoneBrut: s.zone_brut,
       dsbBrut: s.dsb_brut,
@@ -225,6 +242,8 @@ export function chargerMagies(db) {
         creatures: (creaturesDeInvocation.get(i.id) ?? []).map((c) => ({ id: c.id, nom: c.nom, bloc: libelleDuBloc(c), magies: magiesDeCreature(c.id) })),
       })),
       effetsDeCarte: (effetsDeCarte.get(s.id) ?? []).map((e) => ({ id: e.creature_id, nom: e.creature, magies: magiesDeCreature(e.creature_id), libelle: e.libelle, blocs: blocsDeTexte(e.texte) })),
+      // le tableau d'invocation que ce sort désigne par son nom (« Amélioration cadavérique », décision R130) ; null pour tout autre sort
+      ameliorations: tableauxParSort.get(s.id) ?? null,
       memeNom: (memeNom.get(s.nom_cle) ?? []).filter((o) => o.id !== s.id).map((o) => o.id),
     };
     sorts.set(s.id, modele);

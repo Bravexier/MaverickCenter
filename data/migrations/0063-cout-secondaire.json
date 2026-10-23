@@ -1,0 +1,467 @@
+{
+ "$comment": "Registre de la migration 0063-cout-secondaire (décision R105 du propriétaire, 2026-10-18) : « repartis », les coûts que le classeur écrivait en une seule case et que la migration répartit entre « Coût » (sort.cout_brut, la consommation de chakra) et « Coût secondaire » (sort.cout_secondaire), par la règle de lib/sort-cout.mjs#repartirLeCout (avant = l'écriture du classeur, orthographe des migrations 0003 et 0005 comprise) ; « en_attente », les sorts dont le coût ne se répartit pas sans doute possible : ils gardent l'écriture du classeur jusqu'à la décision du propriétaire (questions : docs/sql/a-valider.md, « Coût secondaire des sorts »). test/sort-cout-secondaire.test.mjs compare ce registre à la règle et à la base dans son état d'import (src/lib/historique-site.mjs).",
+ "repartis": [
+  {
+   "id": "magies/magie-du-sang#sort:boule-de-sang",
+   "magie": "Sang",
+   "nom": "Boule de sang",
+   "avant": "3 + 1 Sang",
+   "cout_brut": "3",
+   "cout_secondaire": "1 Sang"
+  },
+  {
+   "id": "magies/magie-du-sang#sort:clou",
+   "magie": "Sang",
+   "nom": "Clou",
+   "avant": "3 + 2 Sang",
+   "cout_brut": "3",
+   "cout_secondaire": "2 Sang"
+  },
+  {
+   "id": "magies/magie-du-sang#sort:marquage",
+   "magie": "Sang",
+   "nom": "Marquage",
+   "avant": "2 Sang",
+   "cout_brut": "0",
+   "cout_secondaire": "2 Sang"
+  },
+  {
+   "id": "magies/magie-du-sang#sort:annulation",
+   "magie": "Sang",
+   "nom": "Annulation",
+   "avant": "2 Sang",
+   "cout_brut": "0",
+   "cout_secondaire": "2 Sang"
+  },
+  {
+   "id": "magies/magie-du-sang#sort:attirance",
+   "magie": "Sang",
+   "nom": "Attirance",
+   "avant": "2 + 1 Sang",
+   "cout_brut": "2",
+   "cout_secondaire": "1 Sang"
+  },
+  {
+   "id": "magies/magie-du-sang#sort:sang-durci",
+   "magie": "Sang",
+   "nom": "Sang Durci",
+   "avant": "2 + 3 Sang",
+   "cout_brut": "2",
+   "cout_secondaire": "3 Sang"
+  },
+  {
+   "id": "magies/magie-du-sang#sort:sang-garde",
+   "magie": "Sang",
+   "nom": "Sang Garde",
+   "avant": "2 + 3 Sang",
+   "cout_brut": "2",
+   "cout_secondaire": "3 Sang"
+  },
+  {
+   "id": "magies/magie-du-sang#sort:sang-magie",
+   "magie": "Sang",
+   "nom": "Sang Magie",
+   "avant": "2 + 3 Sang",
+   "cout_brut": "2",
+   "cout_secondaire": "3 Sang"
+  },
+  {
+   "id": "magies/magie-du-sang#sort:sang-gain",
+   "magie": "Sang",
+   "nom": "Sang Gain",
+   "avant": "2 + 3 Sang",
+   "cout_brut": "2",
+   "cout_secondaire": "3 Sang"
+  },
+  {
+   "id": "magies/magie-du-sang#sort:saignee-forcee",
+   "magie": "Sang",
+   "nom": "Saignée forcée",
+   "avant": "9 + 4 Sang",
+   "cout_brut": "9",
+   "cout_secondaire": "4 Sang"
+  },
+  {
+   "id": "magies/magie-du-sang#sort:coagulation",
+   "magie": "Sang",
+   "nom": "Coagulation",
+   "avant": "10 + X Sang",
+   "cout_brut": "10",
+   "cout_secondaire": "X Sang"
+  },
+  {
+   "id": "magies/magie-du-sang#sort:renfermement",
+   "magie": "Sang",
+   "nom": "Renfermement",
+   "avant": "10 + 4 Sang",
+   "cout_brut": "10",
+   "cout_secondaire": "4 Sang"
+  },
+  {
+   "id": "magies/magie-du-sang#sort:deflagration-sanguine",
+   "magie": "Sang",
+   "nom": "Déflagration sanguine",
+   "avant": "X Sang",
+   "cout_brut": "0",
+   "cout_secondaire": "X Sang"
+  },
+  {
+   "id": "magies/magie-du-sang#sort:damocles",
+   "magie": "Sang",
+   "nom": "Damoclès",
+   "avant": "18 + 5 Sang",
+   "cout_brut": "18",
+   "cout_secondaire": "5 Sang"
+  },
+  {
+   "id": "magies/magie-du-sang#sort:douleur-partagee",
+   "magie": "Sang",
+   "nom": "Douleur partagée",
+   "avant": "20 + 5 Sang",
+   "cout_brut": "20",
+   "cout_secondaire": "5 Sang"
+  },
+  {
+   "id": "magies/magie-du-sang#sort:autel-sanglant",
+   "magie": "Sang",
+   "nom": "Autel Sanglant",
+   "avant": "18 + 6 Sang",
+   "cout_brut": "18",
+   "cout_secondaire": "6 Sang"
+  },
+  {
+   "id": "magies/magie-du-sang#sort:sang-perfection",
+   "magie": "Sang",
+   "nom": "Sang Perfection",
+   "avant": "40 + 10 Sang",
+   "cout_brut": "40",
+   "cout_secondaire": "10 Sang"
+  },
+  {
+   "id": "magies/magie-du-sang#sort:proportion-demesuree",
+   "magie": "Sang",
+   "nom": "Proportion démesurée",
+   "avant": "60 + 10 Sang",
+   "cout_brut": "60",
+   "cout_secondaire": "10 Sang"
+  },
+  {
+   "id": "magies/magie-de-la-necromancie#sort:tir-dame",
+   "magie": "Nécromancie",
+   "nom": "Tir d'âme",
+   "avant": "3 + 1 âme",
+   "cout_brut": "3",
+   "cout_secondaire": "1 âme"
+  },
+  {
+   "id": "magies/magie-de-la-necromancie#sort:mur-dos",
+   "magie": "Nécromancie",
+   "nom": "Mur d'os",
+   "avant": "4 + 1 âme",
+   "cout_brut": "4",
+   "cout_secondaire": "1 âme"
+  },
+  {
+   "id": "magies/magie-de-la-necromancie#sort:corruption-dame",
+   "magie": "Nécromancie",
+   "nom": "Corruption d'âme",
+   "avant": "2 âmes",
+   "cout_brut": "0",
+   "cout_secondaire": "2 âmes"
+  },
+  {
+   "id": "magies/magie-de-la-necromancie#sort:detection-de-vie",
+   "magie": "Nécromancie",
+   "nom": "Détection de vie",
+   "avant": "7 (–1/NM) + 1 âme",
+   "cout_brut": "7 (–1/NM)",
+   "cout_secondaire": "1 âme"
+  },
+  {
+   "id": "magies/magie-de-la-necromancie#sort:pieu-dos",
+   "magie": "Nécromancie",
+   "nom": "Pieu d'os",
+   "avant": "7 + 2 âmes",
+   "cout_brut": "7",
+   "cout_secondaire": "2 âmes"
+  },
+  {
+   "id": "magies/magie-de-la-necromancie#sort:armure-dos",
+   "magie": "Nécromancie",
+   "nom": "Armure d'os",
+   "avant": "5 + 2 âmes",
+   "cout_brut": "5",
+   "cout_secondaire": "2 âmes"
+  },
+  {
+   "id": "magies/magie-de-la-necromancie#sort:detection-de-la-mort",
+   "magie": "Nécromancie",
+   "nom": "Détection de la mort",
+   "avant": "10 (–1/NM) + 2 âmes",
+   "cout_brut": "10 (–1/NM)",
+   "cout_secondaire": "2 âmes"
+  },
+  {
+   "id": "magies/magie-de-la-necromancie#sort:festin-des-ames",
+   "magie": "Nécromancie",
+   "nom": "Festin des âmes",
+   "avant": "12 + 6 âmes",
+   "cout_brut": "12",
+   "cout_secondaire": "6 âmes"
+  },
+  {
+   "id": "magies/magie-de-la-necromancie#sort:prison-dos",
+   "magie": "Nécromancie",
+   "nom": "Prison d'os",
+   "avant": "12 + 3 âmes",
+   "cout_brut": "12",
+   "cout_secondaire": "3 âmes"
+  },
+  {
+   "id": "magies/magie-de-la-necromancie#sort:forge-de-ses-morts",
+   "magie": "Nécromancie",
+   "nom": "Forge de ses morts",
+   "avant": "9 + 2 âmes",
+   "cout_brut": "9",
+   "cout_secondaire": "2 âmes"
+  },
+  {
+   "id": "magies/magie-de-la-necromancie#sort:calin-putrefie",
+   "magie": "Nécromancie",
+   "nom": "Câlin putréfié",
+   "avant": "13 + 3 âmes",
+   "cout_brut": "13",
+   "cout_secondaire": "3 âmes"
+  },
+  {
+   "id": "magies/magie-de-la-necromancie#sort:amelioration-cadaverique",
+   "magie": "Nécromancie",
+   "nom": "Amélioration Cadavérique",
+   "avant": "20 + 4 âmes",
+   "cout_brut": "20",
+   "cout_secondaire": "4 âmes"
+  },
+  {
+   "id": "magies/magie-de-la-necromancie#sort:vague-de-cadavre",
+   "magie": "Nécromancie",
+   "nom": "Vague de cadavres",
+   "avant": "20 + 4 âmes",
+   "cout_brut": "20",
+   "cout_secondaire": "4 âmes"
+  },
+  {
+   "id": "magies/magie-de-la-necromancie#sort:grenade-caustique",
+   "magie": "Nécromancie",
+   "nom": "Grenade caustique",
+   "avant": "25 + 4 âmes",
+   "cout_brut": "25",
+   "cout_secondaire": "4 âmes"
+  },
+  {
+   "id": "magies/magie-de-la-necromancie#sort:cimetiere-ouvert",
+   "magie": "Nécromancie",
+   "nom": "Cimetière ouvert",
+   "avant": "18 + 4 âmes",
+   "cout_brut": "18",
+   "cout_secondaire": "4 âmes"
+  },
+  {
+   "id": "magies/magie-de-la-necromancie#sort:repar-os",
+   "magie": "Nécromancie",
+   "nom": "Répar'Os",
+   "avant": "20 + 5 âmes",
+   "cout_brut": "20",
+   "cout_secondaire": "5 âmes"
+  },
+  {
+   "id": "magies/magie-de-la-necromancie#sort:reanimation",
+   "magie": "Nécromancie",
+   "nom": "Réanimation",
+   "avant": "45 (-2/NM) + 10 âmes",
+   "cout_brut": "45 (-2/NM)",
+   "cout_secondaire": "10 âmes"
+  },
+  {
+   "id": "magies/magie-de-la-necromancie#sort:resurrection-noir",
+   "magie": "Nécromancie",
+   "nom": "Résurrection Noire",
+   "avant": "35 (-2/NM) + 10 âmes",
+   "cout_brut": "35 (-2/NM)",
+   "cout_secondaire": "10 âmes"
+  },
+  {
+   "id": "magies/magie-du-feu#sort:bucher-purifiant",
+   "magie": "Feu",
+   "nom": "Bûcher purifiant",
+   "avant": "50 + 20% PV",
+   "cout_brut": "50",
+   "cout_secondaire": "20% PV"
+  },
+  {
+   "id": "magies/magie-de-lombre#sort:amplification-sombre",
+   "magie": "Ombre",
+   "nom": "Amplification sombre",
+   "avant": "5 + 10% santé",
+   "cout_brut": "5",
+   "cout_secondaire": "10% santé"
+  }
+ ],
+ "en_attente": [
+  {
+   "id": "magies/magie-du-sang#sort:perfusion",
+   "magie": "Sang",
+   "nom": "Perfusion",
+   "cout": "Variable"
+  },
+  {
+   "id": "magies/magie-de-larcane#sort:charge-denergie",
+   "magie": "Arcane",
+   "nom": "Charge d'énergie",
+   "cout": "2=1 dégâts"
+  },
+  {
+   "id": "magies/magie-de-larcane#sort:rune-arcane",
+   "magie": "Arcane",
+   "nom": "Rune Arcane",
+   "cout": "3xN/tour"
+  },
+  {
+   "id": "magies/magie-de-larcane#sort:forge-magie",
+   "magie": "Arcane",
+   "nom": "Forge-Magie",
+   "cout": "2/taille"
+  },
+  {
+   "id": "magies/magie-de-larcane#sort:inhalation-magique",
+   "magie": "Arcane",
+   "nom": "Inhalation magique",
+   "cout": "5% santé/tour"
+  },
+  {
+   "id": "magies/magie-de-larcane#sort:souffle-magique",
+   "magie": "Arcane",
+   "nom": "Souffle magique",
+   "cout": "Choix"
+  },
+  {
+   "id": "magies/magie-de-larcane#sort:echange",
+   "magie": "Arcane",
+   "nom": "Échange",
+   "cout": "Choix"
+  },
+  {
+   "id": "magies/magie-de-larcane#sort:vision-magique",
+   "magie": "Arcane",
+   "nom": "Vision magique",
+   "cout": "8xN/heure"
+  },
+  {
+   "id": "magies/magie-de-larcane#sort:rune-arcane-multiple",
+   "magie": "Arcane",
+   "nom": "Rune Arcane multiple",
+   "cout": "10xN/tour"
+  },
+  {
+   "id": "magies/magie-de-larcane#sort:peau-de-chakra",
+   "magie": "Arcane",
+   "nom": "Peau de Chakra",
+   "cout": "13xN/tour"
+  },
+  {
+   "id": "magies/magie-de-larcane#sort:pluie-de-chakra",
+   "magie": "Arcane",
+   "nom": "Pluie de Chakra",
+   "cout": "25%"
+  },
+  {
+   "id": "magies/magie-de-larcane#sort:voile-chakratique",
+   "magie": "Arcane",
+   "nom": "Voile Chakratique",
+   "cout": "15% santé/tour"
+  },
+  {
+   "id": "magies/magie-de-la-corruption#sort:pluie-huileuse",
+   "magie": "Corruption",
+   "nom": "Pluie huileuse",
+   "cout": "50% CR max"
+  },
+  {
+   "id": "magies/magie-de-la-corruption#sort:sapeur",
+   "magie": "Corruption",
+   "nom": "Sapeur",
+   "cout": "x CR"
+  },
+  {
+   "id": "magies/magie-de-lespace-temps#sort:image-diffuse",
+   "magie": "Espace/Temps",
+   "nom": "Image diffuse",
+   "cout": "10/Clones"
+  },
+  {
+   "id": "magies/magie-du-vide#sort:telekinesie",
+   "magie": "Vide",
+   "nom": "Télékinésie",
+   "cout": "4/taille"
+  },
+  {
+   "id": "magies/magie-du-vide#sort:lien-mental",
+   "magie": "Vide",
+   "nom": "Lien mental",
+   "cout": "3/perso"
+  },
+  {
+   "id": "magies/magie-du-vide#sort:metronome",
+   "magie": "Vide",
+   "nom": "Métronome",
+   "cout": "Variable"
+  },
+  {
+   "id": "magies/magie-de-la-necromancie#sort:animation-de-mort",
+   "magie": "Nécromancie",
+   "nom": "Animation de mort",
+   "cout": "5 + 1 âme (xNPM de créature)"
+  },
+  {
+   "id": "magies/magie-de-la-necromancie#sort:forces-des-ames",
+   "magie": "Nécromancie",
+   "nom": "Forces des âmes",
+   "cout": "1 âme pour +3 dégâts"
+  },
+  {
+   "id": "magies/magie-de-la-glace#sort:sculpteur-glace",
+   "magie": "Glace",
+   "nom": "Sculpteur glacé",
+   "cout": "3 / Taille"
+  },
+  {
+   "id": "magies/magie-de-la-glace#sort:execution-froide",
+   "magie": "Glace",
+   "nom": "Exécution froide",
+   "cout": "20/tour"
+  },
+  {
+   "id": "magies/magie-de-la-terre#sort:appel-aux-golems",
+   "magie": "Terre",
+   "nom": "Appel aux Golems",
+   "cout": "6 (xNP de créature)"
+  },
+  {
+   "id": "magies/magie-de-la-terre#sort:sable-changeant",
+   "magie": "Terre",
+   "nom": "Sable changeant",
+   "cout": "10/3x3"
+  },
+  {
+   "id": "magies/magie-de-lombre#sort:marionnette-de-lombre",
+   "magie": "Ombre",
+   "nom": "Marionnette de l'ombre",
+   "cout": "5 + 10% BA (xNPM de créature)"
+  },
+  {
+   "id": "magies/magie-de-lombre#sort:manteau-noir",
+   "magie": "Ombre",
+   "nom": "Manteau noir",
+   "cout": "7 (xNP de créature)"
+  }
+ ]
+}

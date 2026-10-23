@@ -72,6 +72,50 @@ Restent à tester avec l'accès autorisé (ils lisent les classeurs) : 6, 15, 16
 | 13 | Armure élémentaire : `Armures!Q2:T5` (AP, AM, effet par type) n'a que ses intitulés | Les valeurs ne sont écrites nulle part : à fournir par le propriétaire |
 | 18 | Les 3 armures de familier du classeur (colonne HC) ne sont pas dans la liste | La fiche n'a pas de section familier : les ajouter à la liste du personnage les rendrait portables par lui |
 | 25 (magies) | Capacités Mode Hyper de 8 magies différentes du classeur « Mode hyper et co » | Choix de la source à faire (fiche, « Mode hyper et co » ou onglet « Mode Hyper (Magie) » du classeur de magie) |
-| 26 | Matrice des résistances Arcane/Corruption (`Magie!F2:S16`) | Question ouverte, `docs/sql/a-valider.md` §2 |
+| 26 | Matrice des résistances Arcane/Corruption (`Magie!F2:S16`) | **Tranché** (R90) : chacune résiste à l'autre, comme les listes de « Magie Maverick V8 » (aucune ne s'y cite elle-même) ; la base ne garde plus la matrice (migration 0051). La V1.2 n'est pas corrigée : les règles de la fiche auto sont ignorées (R87) |
 | — | Ambidextrie : « Fausse Patte » et « Ravageur » (−5 % avec les armes légères ou lourdes), « Directrice » (main directrice) | La fiche ne distingue ni la catégorie d'arme ni la main directrice |
 | R23 | `BDD!B27` propose l'Archimage d'après la race (les 10 races qui ont le Potentiel Illimité en magie innée), sans regarder la magie innée choisie | Le propriétaire se concentre désormais sur la fiche du site (`/fiche/`), qui suit R23 |
+
+## Importer une fiche auto sur le site
+
+Demande du propriétaire (2026-10-15) : une fiche auto se reprend sur la page `/fiche/` (détail dans [`character-generator.md`](character-generator.md),
+« Tableur ») : **« Importer (en ligne) »** avec le lien de la feuille, partagée par lien (« Partager », Accès général « Tous les utilisateurs
+disposant du lien ») ; ou, dans Google Sheets, **Fichier › Télécharger › Microsoft Excel (.xlsx)**, puis **« Importer (PC) »** (la lecture sait
+aussi un `.ods`, ou l'onglet « Personnage » en `.csv`, que le sélecteur ne propose plus). L'import (`client/src/lib/fiche-tableur-import.mjs`) reconnaît l'onglet à ses libellés
+(« COMPÉTENCES » en B21, « AP Base » en AA20) : l'onglet « Personnage » d'abord, sinon le premier onglet qui les porte (un onglet renommé ou déplacé
+est retrouvé, et le message de la page le nomme) ; les adresses sont dans `lib/fiche-tableur-cases.mjs#AUTO`.
+
+- **Repris** : identité, race, ethnie (parmi celles de la race), magies, dieu choisi (« Démon d'Eau Noire » mène à Eaunoire, R21 : la migration
+  0012 a changé le nom, pas l'identifiant `demon-deau-noire` ; depuis la migration 0006, un nom corrigé garde son identifiant), alignement (L5:O5), bourse, XP, classes et spécialités, caractéristiques et croix (cases à cocher), naturel des
+  compétences (les maîtrises, « Nd » en AI et AN, ne le sont pas : la fiche les calcule depuis ses choix, R148 ; s'ils dépassent ce calcul, ils sont
+  notés, « Maîtrises d'armes avant la refonte : « ÉPÉES 3D10, … » », sans choix posé, R153), armes (nom sans la mention de ses mains, composition, amélioration, élément ; le fer quand la
+  composition manque, R49), armure (AD21, AT20, AS21, AX21), bouclier et ses trois matériaux, accessoires (propriété, effet, valeur — « 18% » ou
+  0,18 : 18 —, malédiction), ceinture (AQ29, AQ32, AQ35, et leur quantité en AX), inventaire, sorts et NM, dons à choix, métier, événements
+  (jusqu'à la dernière ligne écrite ; le type, colonne I, entre dans le texte : « titre (type) : texte »), notes, et l'**entraînement** (L42, lu
+  ligne par ligne en compétences et points, décision R104 ; une ligne qui ne se lit pas ainsi, une ligne de texte libre ; Lucien : « 2 Magie |
+  10 Concentration | 10 Observation | 10 Distinction »).
+- **Déduit**, et dit dans les notes : l'**acquis** n'est plus repris, il se calcule (décision R104 : entraînement, dons, armure, métier,
+  accessoires) ; l'acquis écrit, le bonus du métier **que la fiche comptait** (celui qu'écrit sa case L41 — décision R72, « Le métier suit la
+  base » ; Lucien, « 4% Connaissance » ; Louise, « +2% Reflexe, Esquive et Ruse » ; une remarque de synthèse quand il diffère de la base ; L41
+  illisible : le bonus de la base, à vérifier) remplacé par celui de la base, est comparé au calcul : plus, une ligne de `nonRepris` ; moins, une
+  remarque ; un choix « X ou Y » d'un don, quand une seule option l'explique ; les gains de niveau (deux totaux, décision R73 : les maximums de santé et de chakra, F14 et M14, moins ce que la fiche calcule
+  sans gains ; Lucien : santé 41, chakra 121 ; Louise : santé 61, chakra 99 ; « à vérifier » quand un maximum est sous ce calcul ou que le total
+  sort de ce que donnent les niveaux atteints), la compétence d'un accessoire « Compétence X » (d'après les bonus d'entraînement de la case L42 :
+  guide « Fiche de personnage : Capacités/Dons »), l'élément d'une armure écrit par le nom de sa magie (l'armure élémentaire
+  de cette magie et de la catégorie de l'armure), la caractéristique de la magie au choix du Potentiel Illimité, les NM des sorts (tous comptés de
+  niveau : la fiche ne dit pas lesquels viennent d'un livre ou du MJ, R26 ; dit quand ils dépassent ceux du niveau). Déduits sans remarque : le
+  mode bi-classe (deux classes au niveau global, sous le niveau 20 : R2) et la spécialité d'après un don de spécialité. Un nombre décimal là où la
+  fiche veut un entier est arrondi vers le bas, avec une remarque.
+- **Pas repris**, et dit dans les notes : un nom introuvable dans les règles ou qui en désigne plusieurs sans rien pour les départager, la case
+  « Ambidextrie » cochée (AU8 : l'attaque à deux armes est calculée, décision R46), ce que les règles du site retirent. Les valeurs calculées
+  (totaux, dégâts, AP, AM, paliers de résistance, « Solidité » des armes en AK15 et AX15…) ne sont pas relues : le site les recalcule. La solidité
+  des armes est un maximum (sur les deux fiches du propriétaire, celui de l'arme forgée, décision R51), pas la solidité du moment : une arme importée
+  est à son maximum (décision R74). L'image en A1 (le logo de la fiche auto) est ignorée.
+- « Effet en plus » (AA13, AN13) n'est pas relu : dans les fiches du propriétaire, c'est une formule (`=BDD!AJ36`, relevée le 2026-10-15), qui ne
+  porte aucune saisie du joueur ; on y lit l'effet du catalogue de l'arme, puis celui de son matériau (Lucien, Laiton : « dégâts doublés contre la
+  barrière » ; Louise, Mythril : « Passe barrière »). L'effet en plus de la fiche importée reste vide.
+
+Les deux fiches du propriétaire servent d'essai (`client/test/fixtures/fiche-auto-lucien.json`, `fiche-auto-louise.json` : valeurs affichées,
+lues par l'API Google) : `test/fiche-tableur-import.test.mjs` vérifie ce qui est repris et ce qui part dans les notes, `test/fiche-tableur-aller-retour.test.mjs`
+qu'une fois importées, exportées au modèle ordinateur puis réimportées, elles ne changent plus, et `test/fiche-tableur-page.test.mjs` que la fiche de
+Lucien se retrouve dans un onglet renommé, rangé après d'autres.

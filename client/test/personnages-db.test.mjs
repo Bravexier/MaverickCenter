@@ -1,31 +1,49 @@
 // Fiches de personnages dans la base (section 13 de data/schema.sql, migration 0011-personnages) : les tables gardent les CHOIX du joueur, les
 // vues v_personnage_niveau (décision R2) et v_personnage_controle (règles de la base) en tirent niveaux et erreurs ; fiches de joueur et prétirés,
 // groupes de jeu et visibilité (demande du propriétaire) : v_personnage_visible, v_groupe_controle. Une fiche n'a plus de statut (migration
-// 0038-personnage-sans-statut) : toute fiche, même inachevée, est contrôlée, et une ligne de contrôle signale sans empêcher d'enregistrer. Les tests
-// écrivent dans une COPIE de la base construite : data/rows garde ces tables vides.
+// 0038-personnage-sans-statut) : toute fiche, même inachevée, est contrôlée, et une ligne de contrôle signale sans empêcher d'enregistrer. Gains de
+// niveau en deux totaux, entraînement et durabilité des armes : migration 0045 (décisions R71, R73, R74). Les tests écrivent dans une COPIE de la base
+// construite : data/rows garde ces tables vides.
 import assert from 'node:assert/strict';
-import { copyFileSync, mkdtempSync, readFileSync } from 'node:fs';
+import { copyFileSync, existsSync, readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { cheminBase, trouverRacine } from '../src/lib/donnees.mjs';
+import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const racine = trouverRacine();
-const copie = join(mkdtempSync(join(tmpdir(), 'maverick-personnages-')), 'maverick.db');
+const copie = fichierTemporaire('maverick.db', 'personnages');
 copyFileSync(cheminBase({ sansExemples: false }), copie);
 const db = new DatabaseSync(copie);
 db.exec('PRAGMA foreign_keys = ON');
 
 const TABLES = [
   'utilisateur', 'utilisateur_role', 'personnage', 'personnage_partage', 'personnage_classe', 'personnage_caracteristique', 'personnage_competence',
-  'personnage_metier_bonus', 'personnage_progression', 'personnage_capacite', 'personnage_sort', 'personnage_maitrise_arme', 'personnage_arme', 'personnage_armure',
-  'personnage_bouclier_materiau', 'personnage_accessoire', 'personnage_inventaire', 'personnage_ceinture', 'groupe', 'groupe_membre',
+  'personnage_entrainement', 'personnage_acquis_choix', 'personnage_resistance_choix', 'personnage_metier_bonus', 'personnage_capacite', 'personnage_sort',
+  'personnage_maitrise_choix', 'personnage_arme', 'personnage_armure_partie', 'personnage_accessoire', 'personnage_inventaire', 'personnage_ceinture', 'groupe',
+  'groupe_membre',
 ];
 const INSTANT = '2026-10-09T12:00:00Z';
 const controle = (id) => db.prepare('SELECT regle, detail FROM v_personnage_controle WHERE personnage_id = ? ORDER BY regle, detail').all(id).map((r) => ({ ...r }));
 const regles = (id) => [...new Set(controle(id).map((r) => r.regle))].sort();
 const niveau = (id) => ({ ...db.prepare('SELECT niveau_global, niveau_classe_1, niveau_classe_2 FROM v_personnage_niveau WHERE personnage_id = ?').get(id) });
+
+// Maîtrises d'armes (décisions R148 à R151, migration 0076) : points calculés par famille, règles de la vue, l'accessoire « Un point de maîtrise d'arme »
+const maitrises = (id) => Object.fromEntries(db.prepare('SELECT arme_famille_id, points FROM v_personnage_maitrise_arme WHERE personnage_id = ? ORDER BY arme_famille_id')
+  .all(id).map((r) => [r.arme_famille_id, r.points]));
+const REGLES_DE_MAITRISE = ['maitrise_a_choisir', 'maitrise_arme_exclue', 'maitrise_hors_choix', 'maitrise_meme_famille', 'maitrise_plafond', 'maitrise_source_perdue'];
+const controleMaitrise = (id) => controle(id).filter((c) => REGLES_DE_MAITRISE.includes(c.regle));
+const POINT_DE_MAITRISE = db.prepare("SELECT effet_id FROM accessoire_effet_cible WHERE cible = 'maitrise_arme'").get().effet_id;
+/** Après un changement de classe : retire les choix de maîtrise de la fiche et pose une famille (ses options dans l'ordre) sur chaque point à choisir des
+ * lignes de classe acquises (R148), pour que la fiche reste conforme sur ce point. */
+function maitrisesDeClasseChoisies(id) {
+  db.prepare('DELETE FROM personnage_maitrise_choix WHERE personnage_id = ?').run(id);
+  for (const a of db.prepare("SELECT source_id, rang, points FROM v_personnage_maitrise_part WHERE personnage_id = ? AND genre = 'choix' AND capacite_id IS NULL").all(id)) {
+    const options = db.prepare('SELECT arme_famille_id AS id FROM maitrise_arme_part_famille WHERE source_id = ? AND rang = ? ORDER BY arme_famille_id').all(a.source_id, a.rang);
+    for (let r = 1; r <= a.points; r += 1) inserer('personnage_maitrise_choix', { personnage_id: id, source: a.source_id, rang: r, arme_famille_id: options[(r - 1) % options.length].id });
+  }
+}
 
 function inserer(table, ligne) {
   const cols = Object.keys(ligne);
@@ -44,7 +62,8 @@ for (const [i, [id, roles]] of Object.entries(UTILISATEURS).entries()) {
 const voit = (utilisateur, personnage) => db.prepare('SELECT motif FROM v_personnage_visible WHERE utilisateur_id = ? AND personnage_id = ? ORDER BY motif').all(utilisateur, personnage).map((r) => r.motif);
 const spectateurs = (personnage) => [...new Set(db.prepare('SELECT utilisateur_id FROM v_personnage_visible WHERE personnage_id = ?').all(personnage).map((r) => r.utilisateur_id))].sort();
 
-/** Personnage de niveau 1 conforme : Humain central, Guerrier, Feu inné ; 14 points de caractéristiques, 100 points de compétences (5 × 20). */
+/** Personnage de niveau 1 conforme : Humain central, Guerrier, Feu inné ; 14 points de caractéristiques, 100 points de compétences (5 × 20) ; la maîtrise
+ * au choix du Guerrier (« 1 maîtrise dans une arme contact au choix (sauf épée) ») sur HACHE (R148). */
 function personnageValide(id, surcharge = {}) {
   inserer('personnage', {
     id, nature: 'joueur', proprietaire_id: 'alice', visibilite: 'privee',
@@ -56,10 +75,11 @@ function personnageValide(id, surcharge = {}) {
   inserer('personnage_classe', { personnage_id: id, rang: 1, classe_id: 'classes/guerrier' });
   const bases = { force: 4, volonte: 2, intelligence: 2, perception: 2, social: 2, agilite: 2 };
   for (const [c, base] of Object.entries(bases)) inserer('personnage_caracteristique', { personnage_id: id, caracteristique_id: c, base, croix: 0 });
-  for (const c of ['arc', 'arme-lourde', 'athletisme', 'parade', 'stabilite']) inserer('personnage_competence', { personnage_id: id, competence_id: c, naturel: 20, acquis: 0 });
+  for (const c of ['arc', 'arme-lourde', 'athletisme', 'parade', 'stabilite']) inserer('personnage_competence', { personnage_id: id, competence_id: c, naturel: 20 });
+  inserer('personnage_maitrise_choix', { personnage_id: id, source: 'classes/guerrier#maitrise-arme:2', rang: 1, arme_famille_id: 'hache' });
 }
 
-test('les 20 tables des fiches et des groupes existent et data/rows les garde vides (les fiches réelles vivent dans la base du serveur)', () => {
+test('les 21 tables des fiches et des groupes existent et data/rows les garde vides (les fiches réelles vivent dans la base du serveur)', () => {
   for (const t of TABLES) {
     assert.equal(LIGNES_AU_DEPART[t], 0, t);
     const lignes = readFileSync(join(racine, 'data', 'rows', `${t}.sql`), 'utf8').trim().split('\n');
@@ -100,7 +120,7 @@ test('migration 0038 : plus de statut, toute fiche est contrôlée, même inache
   // un métier dont un rang est un choix entre deux compétences (le Coursier à l'import), lu dans la base ; texte de sa première option
   const choix = db.prepare('SELECT metier_id, rang FROM metier_bonus WHERE option = 2 AND competence_id IS NOT NULL ORDER BY metier_id, rang LIMIT 1').get();
   const texte = db.prepare('SELECT texte FROM metier_bonus WHERE metier_id = ? AND rang = ? AND option = 1').get(choix.metier_id, choix.rang).texte;
-  // niveau 11 en mono-classe (classe 2 au niveau 2, décision R2), ni classe, ni caractéristiques, ni compétences, ni gain de niveau, ni choix du métier :
+  // niveau 11 en mono-classe (classe 2 au niveau 2, décision R2), ni classe, ni caractéristiques, ni compétences, ni gains de niveau, ni choix du métier :
   // ce qu'on enregistrait en « brouillon », sans aucun contrôle de complétude
   assert.doesNotThrow(() => inserer('personnage', {
     id: 'inachevee', nature: 'joueur', proprietaire_id: 'alice', visibilite: 'privee', nom: 'inachevee', race_id: 'races/humain',
@@ -111,7 +131,7 @@ test('migration 0038 : plus de statut, toute fiche est contrôlée, même inache
   assert.equal(niveau('inachevee').niveau_global, 11);
   const details = (regle) => controle('inachevee').filter((c) => c.regle === regle).map((c) => c.detail);
   assert.deepEqual(regles('inachevee'), [
-    'caracteristique_manquante', 'classe_1_manquante', 'classe_2_manquante', 'competences_total', 'metier_bonus_manquant', 'progression_manquante',
+    'caracteristique_manquante', 'classe_1_manquante', 'classe_2_manquante', 'competences_total', 'gains_niveau', 'metier_bonus_manquant',
   ]);
   assert.deepEqual(details('caracteristique_manquante'), db.prepare('SELECT id FROM caracteristique ORDER BY id').all().map((r) => r.id), 'les six');
   assert.deepEqual(details('classe_1_manquante'), [null]);
@@ -119,12 +139,17 @@ test('migration 0038 : plus de statut, toute fiche est contrôlée, même inache
   const budget = db.prepare('SELECT points_competences_cumul FROM v_niveau WHERE niveau = 11').get().points_competences_cumul;
   assert.deepEqual(details('competences_total'), [`0 / ${budget}`]);
   assert.ok(details('metier_bonus_manquant').includes(texte), details('metier_bonus_manquant').join());
-  assert.deepEqual(details('progression_manquante').map(Number).sort((a, b) => a - b), [2, 3, 4, 5, 6, 7, 8, 9, 10, 11], 'un gain par niveau, du 2 au 11');
+  // gains de niveau (décision R73) : 15 points par niveau du 2 au 11, plus les dés des niveaux 5 et 10 (1 à 8 chacun), lus dans v_niveau
+  const plage = db.prepare(`SELECT points_attributs_cumul + de_attributs_min_cumul AS min, points_attributs_cumul + de_attributs_max_cumul AS max
+    FROM v_niveau WHERE niveau = 11`).get();
+  assert.deepEqual(details('gains_niveau'), [`0 / ${plage.min} à ${plage.max}`], 'rien de saisi sur le total à saisir');
 
   // chaque ligne tient à ce qui manque : la classe 1 choisie, la sienne disparaît, les autres restent
   inserer('personnage_classe', { personnage_id: 'inachevee', rang: 1, classe_id: 'classes/guerrier' });
   assert.deepEqual(details('classe_1_manquante'), []);
-  assert.deepEqual(regles('inachevee'), ['caracteristique_manquante', 'classe_2_manquante', 'competences_total', 'metier_bonus_manquant', 'progression_manquante']);
+  assert.deepEqual(details('maitrise_a_choisir'), ['classes/guerrier#maitrise-arme:2 = 1'], 'la maîtrise au choix de la classe (R148)');
+  maitrisesDeClasseChoisies('inachevee');
+  assert.deepEqual(regles('inachevee'), ['caracteristique_manquante', 'classe_2_manquante', 'competences_total', 'gains_niveau', 'metier_bonus_manquant']);
 });
 
 test('migration 0038 : race et magie innée ne sont plus une contrainte de la table ; une fiche sans l’une ou l’autre s’enregistre et la vue le signale', () => {
@@ -177,15 +202,17 @@ test('race, ethnie, magies : classe et magie innée hors matrice, ethnie d’une
   assert.deepEqual(regles('race-5'), ['caracteristique_magie', 'classe_imposee'], 'Potentiel Illimité : le point de caractéristique est à choisir, l’Archimage imposée (R23)');
   db.prepare("UPDATE personnage SET caracteristique_magie_id = 'force' WHERE id = 'race-5'").run();
   db.prepare("UPDATE personnage_classe SET classe_id = 'classes/archimage' WHERE personnage_id = 'race-5'").run();
+  maitrisesDeClasseChoisies('race-5');
   assert.deepEqual(regles('race-5'), []);
 
   const classeInterdite = db.prepare("SELECT classe_id FROM race_classe WHERE race_id = 'races/humain' AND accessible = 0 LIMIT 1").get();
   personnageValide('race-6');
   db.prepare('UPDATE personnage_classe SET classe_id = ? WHERE personnage_id = ?').run(classeInterdite.classe_id, 'race-6');
+  maitrisesDeClasseChoisies('race-6');
   assert.deepEqual(regles('race-6'), ['classe_inaccessible']);
 });
 
-test('caractéristiques et compétences : bornes, totaux exacts (décision R3), plafonds du naturel et de l’acquis', () => {
+test('caractéristiques et compétences : bornes, totaux exacts (décision R3), plafond du naturel (l’acquis se calcule : décision R104)', () => {
   personnageValide('carac-1');
   db.prepare("UPDATE personnage_caracteristique SET base = 3 WHERE personnage_id = 'carac-1' AND caracteristique_id = 'force'").run();
   assert.deepEqual(controle('carac-1'), [{ regle: 'caracteristiques_total', detail: '13 / 14' }]);
@@ -195,17 +222,13 @@ test('caractéristiques et compétences : bornes, totaux exacts (décision R3), 
 
   personnageValide('comp-1');
   db.prepare("UPDATE personnage_competence SET naturel = 25 WHERE personnage_id = 'comp-1' AND competence_id = 'arc'").run();
-  db.prepare("UPDATE personnage_competence SET acquis = 11 WHERE personnage_id = 'comp-1' AND competence_id = 'parade'").run();   // Force 4 : au plus 20
-  db.prepare("UPDATE personnage_competence SET acquis = 11 WHERE personnage_id = 'comp-1' AND competence_id = 'stabilite'").run();
-  inserer('personnage_competence', { personnage_id: 'comp-1', competence_id: 'calme', naturel: 0, acquis: 11 });   // Volonté 2 : au plus 10
   assert.deepEqual(controle('comp-1'), [
-    { regle: 'competence_acquis_max', detail: 'calme = 11' },
     { regle: 'competence_naturel_max', detail: 'arc = 25' },
     { regle: 'competences_total', detail: '105 / 100' },
   ]);
 });
 
-test('métier (décisions R33, R38) : bonus d’acquis et d’initiative, rang à choix à choisir parmi ses options, acquis plafonné, le plafond prévalant sur le bonus', () => {
+test('métier (décisions R33, R38) : bonus d’acquis et d’initiative, rang à choix à choisir parmi ses options', () => {
   const bonus = (id) => db.prepare('SELECT rang, competence_id, attribut, valeur FROM v_personnage_metier_bonus WHERE personnage_id = ? ORDER BY rang').all(id).map((r) => ({ ...r }));
   // un métier dont un rang est « +N INI » et un autre un choix entre deux compétences (le Coursier à l'import), lu dans la base
   const metier = db.prepare(`SELECT b.metier_id FROM metier_bonus b WHERE b.attribut = 'initiative'
@@ -225,60 +248,206 @@ test('métier (décisions R33, R38) : bonus d’acquis et d’initiative, rang �
   assert.deepEqual(regles('metier-1'), ['metier_bonus_hors_choix'], 'sans métier, le choix noté est en trop');
   assert.deepEqual(bonus('metier-1'), []);
 
-  // l'acquis compte le bonus du métier : un métier qui donne +N à une compétence d'Intelligence, avec 2 en Intelligence (plafond 10)
-  const savant = db.prepare(`SELECT b.metier_id, b.competence_id, b.valeur FROM metier_bonus b JOIN competence c ON c.id = b.competence_id
-    WHERE c.caracteristique_id = 'intelligence' AND (SELECT count(*) FROM metier_bonus o WHERE o.metier_id = b.metier_id AND o.rang = b.rang) = 1
-    ORDER BY b.valeur DESC, b.metier_id LIMIT 1`).get();
-  personnageValide('metier-2', { metier_id: savant.metier_id });
-  inserer('personnage_competence', { personnage_id: 'metier-2', competence_id: savant.competence_id, naturel: 0, acquis: 10 - savant.valeur });
-  assert.ok(!regles('metier-2').includes('competence_acquis_max'), 'au plafond : permis');
-  db.prepare('UPDATE personnage_competence SET acquis = acquis + 1 WHERE personnage_id = ? AND competence_id = ?').run('metier-2', savant.competence_id);
-  assert.deepEqual(controle('metier-2').filter((c) => c.regle === 'competence_acquis_max'), [{ regle: 'competence_acquis_max', detail: `${savant.competence_id} = 11` }]);
-
-  // le plafond prévaut sur le bonus (décision R38) : avec 1 en Intelligence (plafond 5), un bonus plus grand est rogné, sans erreur ; un point saisi en plus en est une
-  personnageValide('metier-3', { metier_id: savant.metier_id });
-  db.prepare("UPDATE personnage_caracteristique SET base = base + 1 WHERE personnage_id = 'metier-3' AND caracteristique_id = 'force'").run();
-  db.prepare("UPDATE personnage_caracteristique SET base = 1 WHERE personnage_id = 'metier-3' AND caracteristique_id = 'intelligence'").run();
-  db.prepare("UPDATE metier_bonus SET valeur = 9 WHERE metier_id = ? AND competence_id = ?").run(savant.metier_id, savant.competence_id);
-  assert.ok(!regles('metier-3').includes('competence_acquis_max'), regles('metier-3').join());
-  inserer('personnage_competence', { personnage_id: 'metier-3', competence_id: savant.competence_id, naturel: 0, acquis: 1 });
-  assert.deepEqual(controle('metier-3').filter((c) => c.regle === 'competence_acquis_max'), [{ regle: 'competence_acquis_max', detail: `${savant.competence_id} = 6` }]);
-  db.prepare("UPDATE metier_bonus SET valeur = ? WHERE metier_id = ? AND competence_id = ?").run(savant.valeur, savant.metier_id, savant.competence_id);
+  // l'acquis (bonus du métier compris, rogné au plafond : décisions R38, R41) se calcule par la page depuis la migration 0062 (décision R104), plus par
+  // la vue : test/fiche-moteur.test.mjs
 });
 
-test('décision R41 : l’acquis au plus 5 par point de la caractéristique totale, le +1 de la magie innée compris (fixé par la magie ou choisi)', () => {
-  const social = db.prepare("SELECT id FROM competence WHERE caracteristique_id = 'social' ORDER BY ordre LIMIT 1").get().id;
-  personnageValide('r41-1');   // Feu inné : +1 Social ; Social 2 + 1 = 3, au plus 15 d'acquis
-  inserer('personnage_competence', { personnage_id: 'r41-1', competence_id: social, naturel: 0, acquis: 15 });
-  assert.deepEqual(controle('r41-1'), []);
-  db.prepare('UPDATE personnage_competence SET acquis = 16 WHERE personnage_id = ? AND competence_id = ?').run('r41-1', social);
-  assert.deepEqual(controle('r41-1'), [{ regle: 'competence_acquis_max', detail: `${social} = 16` }]);
-  // le Potentiel Illimité laisse le point au choix (caracteristique_magie_id) : Volonté 2 + 1, au plus 15
-  personnageValide('r41-2', { magie_innee_id: 'magies/potentiel-illimite', caracteristique_magie_id: 'volonte' });
-  db.prepare("UPDATE personnage_classe SET classe_id = 'classes/archimage' WHERE personnage_id = 'r41-2'").run();
-  inserer('personnage_competence', { personnage_id: 'r41-2', competence_id: 'calme', naturel: 0, acquis: 15 });
-  inserer('personnage_competence', { personnage_id: 'r41-2', competence_id: social, naturel: 0, acquis: 11 });
-  assert.deepEqual(controle('r41-2'), [{ regle: 'competence_acquis_max', detail: `${social} = 11` }], 'Social 2 sans bonus : au plus 10');
+test('entraînement en lignes (décision R104, migration 0062) : une compétence et ses points, ou un texte libre ; 15 compétences au plus, 10 points au plus chacune ; plus d’acquis saisi', () => {
+  const colonnes = (table) => db.prepare(`SELECT name FROM pragma_table_info('${table}')`).all().map((c) => c.name);
+  assert.ok(!colonnes('personnage_competence').includes('acquis'), 'l’acquis se calcule');
+  assert.ok(!colonnes('personnage').includes('entrainement'), 'le texte libre de R71 est devenu une ligne');
+  const constante = (id) => db.prepare('SELECT valeur FROM regle_constante WHERE id = ?').get(id).valeur;
+  assert.deepEqual([constante('entrainement.competences_max'), constante('entrainement.bonus_max_pct')], [15, 10]);
+  personnageValide('entr-1');
+  const ligne = (rang, l) => inserer('personnage_entrainement', { personnage_id: 'entr-1', rang, competence_id: null, valeur: null, texte: null, ...l });
+  ligne(1, { competence_id: 'arc', valeur: 10 });
+  ligne(2, { texte: 'Don évènementiel : béni par la Dame du lac' });
+  ligne(3, { competence_id: 'calme', valeur: 0 });
+  assert.deepEqual(controle('entr-1'), [], '10 points, un texte, une ligne à 0');
+  db.prepare("UPDATE personnage_entrainement SET valeur = 11 WHERE personnage_id = 'entr-1' AND rang = 1").run();
+  assert.deepEqual(controle('entr-1'), [{ regle: 'entrainement_valeur', detail: 'arc = 11' }]);
+  db.prepare("UPDATE personnage_entrainement SET valeur = 10 WHERE personnage_id = 'entr-1' AND rang = 1").run();
+  const autres = db.prepare("SELECT id FROM competence WHERE id NOT IN ('arc', 'calme') ORDER BY ordre LIMIT 14").all().map((c) => c.id);
+  autres.forEach((c, i) => ligne(10 + i, { competence_id: c, valeur: 1 }));
+  assert.deepEqual(controle('entr-1'), [], '15 compétences montées : la ligne à 0 ne monte rien');
+  db.prepare("UPDATE personnage_entrainement SET valeur = 1 WHERE personnage_id = 'entr-1' AND rang = 3").run();
+  assert.deepEqual(controle('entr-1'), [{ regle: 'entrainement_competences', detail: '16 / 15' }]);
+  // une compétence une fois, une ligne compétence ou texte, jamais les deux ni aucun
+  assert.throws(() => ligne(40, { competence_id: 'arc', valeur: 2 }), /UNIQUE/);
+  assert.throws(() => ligne(41, { competence_id: 'arc', valeur: 2, texte: 'x' }), /CHECK/);
+  assert.throws(() => ligne(42, { texte: '  ' }), /CHECK/);
+  assert.throws(() => ligne(43, { competence_id: 'parade' }), /CHECK/);
+  assert.throws(() => ligne(44, { competence_id: 'parade', valeur: -1 }), /CHECK/);
+  // les choix d'acquis d'un don (personnage_acquis_choix) : « X ou Y », une compétence (valeur NULL : le bonus du don) ; « à répartir au choix », chaque
+  // compétence et ses points, une fois par choix (la somme et l'option, c'est la page qui les garde : le texte du don n'est pas dans la base)
+  inserer('personnage_acquis_choix', { personnage_id: 'entr-1', source: 'capacites/x', rang: 1, competence_id: 'arc', valeur: null });
+  inserer('personnage_acquis_choix', { personnage_id: 'entr-1', source: 'races/humain#don:humain-central', rang: 1, competence_id: 'arc', valeur: 6 });
+  inserer('personnage_acquis_choix', { personnage_id: 'entr-1', source: 'races/humain#don:humain-central', rang: 1, competence_id: 'calme', valeur: 4 });
+  assert.throws(() => inserer('personnage_acquis_choix', { personnage_id: 'entr-1', source: 'races/humain#don:humain-central', rang: 1, competence_id: 'calme', valeur: 1 }), /UNIQUE|PRIMARY/);
+  assert.throws(() => inserer('personnage_acquis_choix', { personnage_id: 'entr-1', source: 'capacites/x', rang: 2, competence_id: 'calme', valeur: 0 }), /CHECK/);
+  assert.deepEqual(controle('entr-1'), [{ regle: 'entrainement_competences', detail: '16 / 15' }], 'les choix d’acquis ne sont pas des règles de la vue');
+  db.prepare("DELETE FROM personnage WHERE id = 'entr-1'").run();
+  assert.equal(db.prepare("SELECT count(*) AS n FROM personnage_entrainement WHERE personnage_id = 'entr-1'").get().n, 0, 'cascade');
+  assert.equal(db.prepare("SELECT count(*) AS n FROM personnage_acquis_choix WHERE personnage_id = 'entr-1'").get().n, 0, 'cascade');
 });
 
-test('progression : un gain par niveau, 15 points d’attributs exactement, le dé aux niveaux 5, 10, 15 et 20 seulement', () => {
-  personnageValide('prog', { xp: 1650 });   // niveau 5
+test('résistance au choix (décision R124, migration 0069 : « Au choix parmi les autres » du Drakos orange) : une altération d’état par choix, source et rang contrôlés, supprimée avec la fiche', () => {
+  personnageValide('res-1');
+  const SOURCE = 'races/drakos#tableau:races/drakos#ethnie:drakos-orange';
+  const POISON = 'guide/liste-des-alterations-d-etat#etat:poison';
+  const choix = (l) => inserer('personnage_resistance_choix', { personnage_id: 'res-1', source: SOURCE, rang: 1, etat_id: POISON, ...l });
+  choix({});
+  assert.deepEqual(db.prepare("SELECT source, rang, etat_id FROM personnage_resistance_choix WHERE personnage_id = 'res-1'").all().map((r) => ({ ...r })),
+    [{ source: SOURCE, rang: 1, etat_id: POISON }]);
+  // une seule altération par choix (clé primaire : la fiche, la source, le rang) ; un second choix de la source, à son rang
+  assert.throws(() => choix({ etat_id: 'guide/liste-des-alterations-d-etat#etat:gel' }), /UNIQUE|PRIMARY/);
+  choix({ rang: 2, etat_id: 'guide/liste-des-alterations-d-etat#etat:gel' });
+  // une altération inconnue (clé étrangère vers etat), une source vide, un rang à 0 : refusés
+  assert.throws(() => choix({ rang: 3, etat_id: 'guide/liste-des-alterations-d-etat#etat:inconnue' }), /FOREIGN KEY/);
+  assert.throws(() => choix({ rang: 3, source: '' }), /CHECK/);
+  assert.throws(() => choix({ rang: 0 }), /CHECK/);
+  assert.throws(() => inserer('personnage_resistance_choix', { personnage_id: 'res-inconnu', source: SOURCE, rang: 1, etat_id: POISON }), /FOREIGN KEY/);
+  assert.deepEqual(controle('res-1'), [], 'le choix n’est pas une règle de la vue (la page garde les options)');
+  db.prepare("DELETE FROM personnage WHERE id = 'res-1'").run();
+  assert.equal(db.prepare("SELECT count(*) AS n FROM personnage_resistance_choix WHERE personnage_id = 'res-1'").get().n, 0, 'cascade');
+});
+
+test('résistance à une magie au choix (décision R137, migration 0071 : Ocultomancien « Résilience », Anansi d’Arcane) : une altération OU une magie par choix, jamais les deux ni aucune', () => {
+  personnageValide('res-2');
+  const RESILIENCE = 'capacites/ocultomancien-resilience';
+  const choix = (l) => inserer('personnage_resistance_choix', { personnage_id: 'res-2', source: RESILIENCE, rang: 1, ...l });
+  choix({ magie_id: 'magies/magie-de-la-glace' });
+  assert.deepEqual(db.prepare("SELECT source, rang, etat_id, magie_id FROM personnage_resistance_choix WHERE personnage_id = 'res-2'").all().map((r) => ({ ...r })),
+    [{ source: RESILIENCE, rang: 1, etat_id: null, magie_id: 'magies/magie-de-la-glace' }]);
+  // une magie inconnue (clé étrangère vers magie), ni l'une ni l'autre, les deux : refusés
+  assert.throws(() => choix({ rang: 2, magie_id: 'magies/inconnue' }), /FOREIGN KEY/);
+  assert.throws(() => choix({ rang: 2 }), /CHECK/);
+  assert.throws(() => choix({ rang: 2, magie_id: 'magies/magie-du-feu', etat_id: 'guide/liste-des-alterations-d-etat#etat:brulure' }), /CHECK/);
+  assert.deepEqual(controle('res-2'), [], 'le choix n’est pas une règle de la vue');
+  db.prepare("DELETE FROM personnage WHERE id = 'res-2'").run();
+  assert.equal(db.prepare("SELECT count(*) AS n FROM personnage_resistance_choix WHERE personnage_id = 'res-2'").get().n, 0, 'cascade');
+});
+
+test('magie tirée d’un don du Flagelleur (décision R163 : « Punis-moi ... », « ... plus fort ! » d’un personnage du Potentiel Illimité) : la voie de R137, source = le don, une des 14 magies, sans migration', () => {
+  personnageValide('res-3');
+  const choix = (l) => inserer('personnage_resistance_choix', { personnage_id: 'res-3', rang: 1, ...l });
+  choix({ source: 'capacites/flagelleur-puni-moi', magie_id: 'magies/magie-du-feu' });
+  choix({ source: 'capacites/flagelleur-plus-fort', magie_id: 'magies/magie-de-larcane' });
+  assert.deepEqual(db.prepare("SELECT source, rang, etat_id, magie_id FROM personnage_resistance_choix WHERE personnage_id = 'res-3' ORDER BY source").all().map((r) => ({ ...r })), [
+    { source: 'capacites/flagelleur-plus-fort', rang: 1, etat_id: null, magie_id: 'magies/magie-de-larcane' },
+    { source: 'capacites/flagelleur-puni-moi', rang: 1, etat_id: null, magie_id: 'magies/magie-du-feu' },
+  ]);
+  // un seul choix par don (clé primaire)
+  assert.throws(() => choix({ source: 'capacites/flagelleur-puni-moi', magie_id: 'magies/magie-de-la-glace' }), /UNIQUE|PRIMARY KEY/);
+  assert.deepEqual(controle('res-3'), [], 'le choix n’est pas une règle de la vue (la page garde les options)');
+  db.prepare("DELETE FROM personnage WHERE id = 'res-3'").run();
+});
+
+test('gains de niveau (décision R73) : santé + chakra = 15 points par niveau à partir du 2, plus 1 à 8 par dé atteint (niveaux 5, 10, 15, 20) ; règle gains_niveau', () => {
+  const gains = (id) => controle(id).filter((c) => c.regle === 'gains_niveau').map((c) => c.detail);
+  const poser = (id, sante, chakra) => db.prepare('UPDATE personnage SET gains_sante = ?, gains_chakra = ? WHERE id = ?').run(sante, chakra, id);
+  const xp = (n) => db.prepare('SELECT xp_min FROM niveau_global WHERE niveau = ?').get(n).xp_min;
+  // la plage de chaque niveau : points d'attributs cumulés, plus les bornes des dés atteints (v_niveau), celle que la page affiche
+  const plages = Object.fromEntries(db.prepare(`SELECT niveau, points_attributs_cumul + de_attributs_min_cumul AS min, points_attributs_cumul + de_attributs_max_cumul AS max
+    FROM v_niveau`).all().map((v) => [v.niveau, [v.min, v.max]]));
+  assert.deepEqual([1, 2, 4, 5, 10, 11, 20].map((n) => plages[n]), [[0, 0], [15, 15], [45, 45], [61, 68], [137, 151], [152, 166], [289, 317]]);
+
+  // niveau 1 : rien à saisir ; une fiche neuve a 0 et 0
+  personnageValide('gains-1');
+  assert.deepEqual({ ...db.prepare("SELECT gains_sante, gains_chakra FROM personnage WHERE id = 'gains-1'").get() }, { gains_sante: 0, gains_chakra: 0 });
+  assert.deepEqual(gains('gains-1'), []);
+  poser('gains-1', 3, 0);
+  assert.deepEqual(gains('gains-1'), ['3 / 0'], 'des gains au niveau 1 sont signalés');
+
+  // niveau 2 : exactement 15, répartis comme le joueur veut
+  personnageValide('gains-2', { xp: xp(2) });
+  assert.deepEqual(gains('gains-2'), ['0 / 15']);
+  poser('gains-2', 10, 5);
+  assert.deepEqual(gains('gains-2'), []);
+  poser('gains-2', 0, 15);
+  assert.deepEqual(gains('gains-2'), []);
+  poser('gains-2', 10, 6);
+  assert.deepEqual(gains('gains-2'), ['16 / 15']);
+
+  // niveau 5, fiche conforme par ailleurs : 60 points et un dé, de 61 à 68
+  personnageValide('prog', { xp: xp(5) });
   db.prepare("DELETE FROM personnage_competence WHERE personnage_id = 'prog'").run();
   for (const [c, n] of [['arc', 30], ['arme-lourde', 30], ['athletisme', 30], ['parade', 30], ['stabilite', 30], ['calme', 30], ['concentration', 20]]) {
-    inserer('personnage_competence', { personnage_id: 'prog', competence_id: c, naturel: n, acquis: 0 });   // 100 + 20 + 20 + 20 + 40 = 200
+    inserer('personnage_competence', { personnage_id: 'prog', competence_id: c, naturel: n });   // 100 + 20 + 20 + 20 + 40 = 200
   }
   db.prepare("UPDATE personnage_caracteristique SET base = 3 WHERE personnage_id = 'prog' AND caracteristique_id = 'volonte'").run();   // total 15 au niveau 5
-  for (const n of [2, 3, 4]) inserer('personnage_progression', { personnage_id: 'prog', niveau: n, points_sante: 10, points_chakra: 5 });
-  assert.deepEqual(controle('prog'), [{ regle: 'progression_manquante', detail: '5' }]);
-  inserer('personnage_progression', { personnage_id: 'prog', niveau: 5, points_sante: 15, points_chakra: 0 });
-  assert.deepEqual(controle('prog'), [{ regle: 'progression_de', detail: '5' }]);
-  db.prepare("UPDATE personnage_progression SET de_choix = 'sante', de_resultat = 6 WHERE personnage_id = 'prog' AND niveau = 5").run();
-  db.prepare("UPDATE personnage_progression SET points_chakra = 6 WHERE personnage_id = 'prog' AND niveau = 2").run();
-  inserer('personnage_progression', { personnage_id: 'prog', niveau: 6, points_sante: 15, points_chakra: 0 });
-  assert.deepEqual(controle('prog'), [
-    { regle: 'progression_niveau_non_atteint', detail: '6' },
-    { regle: 'progression_points', detail: '2 : 16 / 15' },
-  ]);
+  assert.deepEqual(controle('prog'), [{ regle: 'gains_niveau', detail: '0 / 61 à 68' }]);
+  poser('prog', 40, 20);
+  assert.deepEqual(controle('prog'), [{ regle: 'gains_niveau', detail: '60 / 61 à 68' }], 'le dé donne au moins 1');
+  for (const [sante, chakra] of [[41, 20], [48, 20], [0, 68], [61, 0]]) {
+    poser('prog', sante, chakra);
+    assert.deepEqual(controle('prog'), [], `${sante} + ${chakra}`);
+  }
+  poser('prog', 49, 20);
+  assert.deepEqual(controle('prog'), [{ regle: 'gains_niveau', detail: '69 / 61 à 68' }], 'le dé donne au plus 8 (1d8, ou 1d4 sur les deux)');
+  // l'XP baissée au niveau 4 : plus de dé, 45 exactement ; rien n'est rogné d'office
+  poser('prog', 41, 20);
+  db.prepare("UPDATE personnage SET xp = ? WHERE id = 'prog'").run(xp(4));
+  assert.deepEqual(gains('prog'), ['61 / 45']);
+
+  // niveaux 11 et 20 : deux et quatre dés
+  personnageValide('gains-11', { xp: xp(11) });
+  assert.deepEqual(gains('gains-11'), ['0 / 152 à 166']);
+  for (const [sante, chakra, attendu] of [[100, 51, ['151 / 152 à 166']], [100, 52, []], [100, 66, []], [100, 67, ['167 / 152 à 166']]]) {
+    poser('gains-11', sante, chakra);
+    assert.deepEqual(gains('gains-11'), attendu, `${sante} + ${chakra}`);
+  }
+  personnageValide('gains-20', { xp: xp(20) });
+  assert.deepEqual(gains('gains-20'), ['0 / 289 à 317']);
+  for (const [sante, chakra, attendu] of [[200, 88, ['288 / 289 à 317']], [200, 89, []], [200, 117, []], [200, 118, ['318 / 289 à 317']]]) {
+    poser('gains-20', sante, chakra);
+    assert.deepEqual(gains('gains-20'), attendu, `${sante} + ${chakra}`);
+  }
+
+  // deux totaux positifs, toujours écrits
+  assert.throws(() => poser('gains-1', -1, 0), /CHECK/);
+  assert.throws(() => poser('gains-1', 0, -1), /CHECK/);
+  assert.throws(() => db.prepare("UPDATE personnage SET gains_sante = NULL WHERE id = 'gains-1'").run(), /NOT NULL/);
+});
+
+test('bornes du dé bonus des niveaux (décision R73) : 1 et 8 aux niveaux dont le dé est écrit, rien ailleurs ; cumuls de v_niveau', () => {
+  const niveaux = db.prepare('SELECT niveau, de_attributs_bonus, de_attributs_min, de_attributs_max FROM niveau_global ORDER BY niveau').all();
+  for (const n of niveaux) {
+    assert.deepEqual([n.de_attributs_min, n.de_attributs_max], n.de_attributs_bonus === null ? [null, null] : [1, 8], `niveau ${n.niveau}`);
+  }
+  assert.deepEqual(niveaux.filter((n) => n.de_attributs_bonus !== null).map((n) => n.niveau), [5, 10, 15, 20]);
+  for (const v of db.prepare('SELECT niveau, des_attributs_cumul, de_attributs_min_cumul, de_attributs_max_cumul FROM v_niveau ORDER BY niveau').all()) {
+    assert.deepEqual([v.de_attributs_min_cumul, v.de_attributs_max_cumul], [v.des_attributs_cumul, 8 * v.des_attributs_cumul], `niveau ${v.niveau}`);
+  }
+  assert.throws(() => db.prepare('UPDATE niveau_global SET de_attributs_min = 0 WHERE niveau = 5').run(), /CHECK/);
+});
+
+test('migration 0045 : plus de table personnage_progression ; entraînement en texte libre (R71 ; une ligne depuis 0062), jamais compté ; durabilité d’une arme (R74) : NULL = à son maximum, 0 = cassée', () => {
+  assert.equal(db.prepare("SELECT 1 FROM sqlite_master WHERE name = 'personnage_progression'").get(), undefined);
+  assert.equal(existsSync(join(racine, 'data', 'rows', 'personnage_progression.sql')), false);
+  personnageValide('m45');
+  inserer('personnage_entrainement', { personnage_id: 'm45', rang: 1, competence_id: null, valeur: null, texte: 'Arc +5 % (entraîneur de Lunastre) ; livre de magie lu : Boule de feu' });
+  assert.deepEqual(controle('m45'), [], 'une ligne de texte de l’entraînement n’est pas comptée (R104 ; R71 avant la migration 0062)');
+  const arme = db.prepare('SELECT a.id FROM arme a JOIN arme_famille f ON f.id = a.famille_id WHERE f.maitrisable = 1 ORDER BY a.id LIMIT 1').get().id;
+  inserer('personnage_arme', { personnage_id: 'm45', rang: 1, arme_id: arme });
+  const durabilite = () => db.prepare("SELECT durabilite FROM personnage_arme WHERE personnage_id = 'm45' AND rang = 1").get().durabilite;
+  assert.equal(durabilite(), null, 'à son maximum');
+  for (const v of [0, 3]) {
+    db.prepare("UPDATE personnage_arme SET durabilite = ? WHERE personnage_id = 'm45' AND rang = 1").run(v);
+    assert.equal(durabilite(), v);
+  }
+  assert.throws(() => db.prepare("UPDATE personnage_arme SET durabilite = -1 WHERE personnage_id = 'm45' AND rang = 1").run(), /CHECK/);
+  assert.deepEqual(controle('m45'), [], 'une arme cassée n’est pas une règle enfreinte');
+});
+
+test('migration 0052 : un emplacement de ceinture admet 0 (un carquois vide, décision R89), jamais moins ; le sac, au moins 1', () => {
+  personnageValide('m51');
+  const carquois = db.prepare("SELECT r.id, r.nom FROM v_objet_ceinture v JOIN ressource r ON r.id = v.ressource_id WHERE v.famille = 'contenant' ORDER BY r.id LIMIT 1").get();
+  inserer('personnage_ceinture', { personnage_id: 'm51', rang: 1, nom: carquois.nom, quantite: 0, ressource_id: carquois.id });
+  assert.equal(db.prepare("SELECT quantite FROM personnage_ceinture WHERE personnage_id = 'm51' AND rang = 1").get().quantite, 0);
+  assert.throws(() => db.prepare("UPDATE personnage_ceinture SET quantite = -1 WHERE personnage_id = 'm51' AND rang = 1").run(), /CHECK/);
+  assert.throws(() => inserer('personnage_inventaire', { personnage_id: 'm51', rang: 1, nom: carquois.nom, quantite: 0, ressource_id: carquois.id }), /CHECK/);
+  assert.deepEqual(controle('m51'), [], 'un carquois vide n’est pas une règle enfreinte');
 });
 
 test('classes, spécialités et dons : 2e classe selon R2, spécialité au niveau de classe 10, dons de la classe et jamais deux options exclusives', (t) => {
@@ -308,37 +477,80 @@ test('classes, spécialités et dons : 2e classe selon R2, spécialité au nivea
   assert.throws(() => db.prepare('UPDATE personnage_classe SET specialite_id = ? WHERE personnage_id = ? AND rang = 1').run(autre, 'classe-2'), /FOREIGN KEY/, 'une spécialité d’une autre classe');
 });
 
-test('sorts : de la magie du personnage ; NM de niveau au plus niveau global − 1 et au plus ceux gagnés, ceux d’un livre ou du MJ en plus, 3 au plus sur un sort (R24, R26)', () => {
+test('sorts : de la magie du personnage ; NM de niveau au plus niveau global − 1 et au plus ceux gagnés, celui d’un livre en plus, ceux du MJ pour toute la fiche, 3 au plus sur un sort (R24, R26, R118)', () => {
   personnageValide('sorts', { xp: 550 });   // niveau 3 : 2 NM gagnés, NM max 2
   db.prepare("UPDATE personnage_competence SET naturel = 20 WHERE personnage_id = 'sorts'").run();
-  for (const c of ['calme', 'concentration']) inserer('personnage_competence', { personnage_id: 'sorts', competence_id: c, naturel: 20, acquis: 0 });   // 100 + 20 + 20
-  for (const n of [2, 3]) inserer('personnage_progression', { personnage_id: 'sorts', niveau: n, points_sante: 15, points_chakra: 0 });
+  for (const c of ['calme', 'concentration']) inserer('personnage_competence', { personnage_id: 'sorts', competence_id: c, naturel: 20 });   // 100 + 20 + 20
+  db.prepare("UPDATE personnage SET gains_sante = 30 WHERE id = 'sorts'").run();   // gains des niveaux 2 et 3 (R73)
   inserer('personnage_sort', { personnage_id: 'sorts', sort_id: 'magies/magie-du-feu#sort:boule-de-feu', rang: 1, niveau_maitrise: 2 });
   assert.deepEqual(controle('sorts'), []);
-  inserer('personnage_sort', { personnage_id: 'sorts', sort_id: 'magies/magie-du-feu#sort:cauterisation', rang: 2, niveau_maitrise: 2, nm_livre: 1, nm_cadeau: 1 });
-  assert.deepEqual(controle('sorts'), [], '4 NM pour 2 gagnés : les 2 en plus viennent d’un livre et du MJ (R24, R26)');
+  db.prepare("UPDATE personnage SET nm_mj = 1 WHERE id = 'sorts'").run();
+  inserer('personnage_sort', { personnage_id: 'sorts', sort_id: 'magies/magie-du-feu#sort:cauterisation', rang: 2, niveau_maitrise: 2, nm_livre: 1 });
+  assert.deepEqual(controle('sorts'), [], '4 NM pour 2 gagnés : les 2 en plus viennent d’un livre et du MJ (R24, R26, R118)');
+  db.prepare("UPDATE personnage SET nm_mj = 0 WHERE id = 'sorts'").run();
+  assert.deepEqual(controle('sorts'), [{ regle: 'sorts_nm_total', detail: '3 / 2' }], 'sans NM du MJ, un NM au-delà de ceux gagnés');
+  db.prepare("UPDATE personnage SET nm_mj = 2 WHERE id = 'sorts'").run();
   db.prepare("UPDATE personnage_sort SET nm_livre = 0 WHERE personnage_id = 'sorts' AND rang = 2").run();
-  assert.deepEqual(controle('sorts'), [{ regle: 'sorts_nm_total', detail: '3 / 2' }], 'un NM en plus non offert : de niveau, au-delà de ceux gagnés');
-  db.prepare("UPDATE personnage_sort SET niveau_maitrise = 4, nm_livre = 1, nm_cadeau = 3 WHERE personnage_id = 'sorts' AND rang = 2").run();
+  assert.deepEqual(controle('sorts'), [], 'les NM du MJ valent pour toute la fiche, sur n’importe quel sort');
+  db.prepare("UPDATE personnage SET nm_mj = 1 WHERE id = 'sorts'").run();
+  assert.deepEqual(controle('sorts'), [{ regle: 'sorts_nm_total', detail: '4 / 2 + 1 du MJ' }], 'le détail cite les NM du MJ');
+  db.prepare("UPDATE personnage_sort SET niveau_maitrise = 4, nm_livre = 1 WHERE personnage_id = 'sorts' AND rang = 2").run();
+  db.prepare("UPDATE personnage SET nm_mj = 3 WHERE id = 'sorts'").run();
   assert.deepEqual(controle('sorts'), [{ regle: 'sort_nm_plafond', detail: 'magies/magie-du-feu#sort:cauterisation = 4' }], 'jamais plus de 3 NM sur un sort');
   assert.throws(() => db.prepare("UPDATE personnage_sort SET nm_livre = 2 WHERE personnage_id = 'sorts' AND rang = 2").run(), /CHECK/, 'un seul NM de livre par sort');
-  assert.throws(() => db.prepare("UPDATE personnage_sort SET niveau_maitrise = 1 WHERE personnage_id = 'sorts' AND rang = 2").run(), /CHECK/, 'les NM offerts font partie du NM du sort');
+  assert.throws(() => db.prepare("UPDATE personnage_sort SET niveau_maitrise = 0 WHERE personnage_id = 'sorts' AND rang = 2").run(), /CHECK/, 'le NM du livre fait partie du NM du sort');
+  assert.throws(() => db.prepare("UPDATE personnage SET nm_mj = -1 WHERE id = 'sorts'").run(), /CHECK/, 'pas de NM du MJ négatif');
+  assert.ok(!db.prepare("SELECT 1 FROM pragma_table_info('personnage_sort') WHERE name = 'nm_cadeau'").get(), 'plus de NM du MJ sort par sort (migration 0066)');
+  db.prepare("UPDATE personnage SET nm_mj = 0 WHERE id = 'sorts'").run();
   db.prepare("DELETE FROM personnage_sort WHERE personnage_id = 'sorts' AND rang = 2").run();
   inserer('personnage_sort', { personnage_id: 'sorts', sort_id: 'magies/magie-du-feu#sort:cauterisation', rang: 2, niveau_maitrise: 3 });
   const glace = db.prepare("SELECT id FROM sort WHERE magie_id = 'magies/magie-de-la-glace' AND niveau = 1 LIMIT 1").get().id;
   inserer('personnage_sort', { personnage_id: 'sorts', sort_id: glace, rang: 3, niveau_maitrise: 0 });
   assert.deepEqual(regles('sorts'), ['sort_hors_magie', 'sort_nm_max', 'sorts_nm_total']);
+  db.prepare("UPDATE personnage SET nm_mj = 1 WHERE id = 'sorts'").run();
+  assert.deepEqual(regles('sorts'), ['sort_hors_magie', 'sorts_nm_total'], 'un sort à 3 NM au niveau 3 : un NM du MJ (R118)');
 });
 
-test('équipement : matériaux du bouclier au plus sa classe, améliorations du bon genre, valeur d’accessoire dans la fourchette', () => {
+test('posture Symbiose (R100, migration 0061) : sa magie est la magie innée ou acquise du personnage, jamais le Potentiel Illimité', () => {
+  personnageValide('symbiose', { symbiose_magie_id: 'magies/magie-du-feu', posture_id: 'guide/postures#posture:symbiose' });
+  assert.deepEqual(controle('symbiose'), [], 'sa magie innée');
+  db.prepare("UPDATE personnage SET symbiose_magie_id = 'magies/magie-de-la-glace' WHERE id = 'symbiose'").run();
+  assert.deepEqual(controle('symbiose'), [{ regle: 'symbiose_magie', detail: 'magies/magie-de-la-glace' }], 'une magie que le personnage n’a pas');
+  db.prepare("UPDATE personnage SET magie_acquise_id = 'magies/magie-de-la-glace' WHERE id = 'symbiose'").run();
+  assert.ok(!controle('symbiose').some((c) => c.regle === 'symbiose_magie'), 'sa magie acquise');
+  db.prepare("UPDATE personnage SET magie_innee_id = 'magies/potentiel-illimite', magie_acquise_id = NULL, symbiose_magie_id = 'magies/potentiel-illimite' WHERE id = 'symbiose'").run();
+  assert.ok(controle('symbiose').some((c) => c.regle === 'symbiose_magie' && c.detail === 'magies/potentiel-illimite'), 'pas le Potentiel Illimité (R109 : il fait la symbiose sans magie)');
+  assert.throws(() => db.prepare("UPDATE personnage SET symbiose_magie_id = 'magies/inconnue' WHERE id = 'symbiose'").run(), /FOREIGN KEY/);
+  db.prepare("DELETE FROM personnage WHERE id = 'symbiose'").run();
+});
+
+test('équipement : bouclier forme et matière (R96), améliorations du bon genre, valeur d’accessoire dans la fourchette, six emplacements (R97)', () => {
+  const [m1] = db.prepare('SELECT ressource_id FROM materiau_bouclier ORDER BY ordre LIMIT 1').all().map((r) => r.ressource_id);
   personnageValide('equipement', { bouclier_classe_id: 'targe' });
-  const classe = db.prepare("SELECT classe FROM bouclier_classe WHERE id = 'targe'").get().classe;
-  const [m1, m2] = db.prepare('SELECT ressource_id FROM materiau_bouclier ORDER BY ordre LIMIT 2').all().map((r) => r.ressource_id);
-  inserer('personnage_bouclier_materiau', { personnage_id: 'equipement', rang: 1, materiau_id: m1, quantite: classe });
+  assert.deepEqual(controle('equipement'), [{ regle: 'bouclier_matiere_manquante', detail: 'targe' }], 'une forme sans matière');
+  db.prepare("UPDATE personnage SET bouclier_materiau_id = ?, bouclier_solidite = 0 WHERE id = 'equipement'").run(m1);
   assert.deepEqual(controle('equipement'), []);
-  inserer('personnage_bouclier_materiau', { personnage_id: 'equipement', rang: 2, materiau_id: m2, quantite: 1 });
-  assert.deepEqual(controle('equipement'), [{ regle: 'bouclier_quantite', detail: `${classe + 1} / ${classe}` }]);
-  db.prepare("DELETE FROM personnage_bouclier_materiau WHERE personnage_id = 'equipement' AND rang = 2").run();
+  // un couple forme + matière que la liste des boucliers n'écrit pas (la base les a tous : db:check)
+  db.exec('SAVEPOINT bouclier_retire');
+  db.prepare("DELETE FROM bouclier WHERE classe_id = 'targe' AND materiau_id = ?").run(m1);
+  assert.deepEqual(controle('equipement'), [{ regle: 'bouclier_inconnu', detail: `targe + ${m1}` }]);
+  db.exec('ROLLBACK TO bouclier_retire; RELEASE bouclier_retire');
+  assert.deepEqual(controle('equipement'), []);
+  db.prepare("UPDATE personnage SET bouclier_classe_id = NULL WHERE id = 'equipement'").run();
+  assert.deepEqual(controle('equipement'), [{ regle: 'bouclier_manquant', detail: m1 }], 'une matière sans forme');
+  const amelioBouclier = db.prepare("SELECT id FROM amelioration_equipement WHERE cible = 'bouclier' LIMIT 1").get().id;
+  const amelioArme = db.prepare("SELECT id FROM amelioration_equipement WHERE cible = 'arme' LIMIT 1").get().id;
+  db.prepare("UPDATE personnage SET bouclier_classe_id = 'targe', bouclier_amelioration_id = ? WHERE id = 'equipement'").run(amelioBouclier);
+  assert.deepEqual(controle('equipement'), []);
+  db.prepare("UPDATE personnage SET bouclier_amelioration_id = ? WHERE id = 'equipement'").run(amelioArme);
+  assert.deepEqual(controle('equipement'), [{ regle: 'amelioration_cible', detail: `bouclier : ${amelioArme}` }]);
+  assert.throws(() => db.prepare("UPDATE personnage SET bouclier_solidite = -1 WHERE id = 'equipement'").run(), /CHECK/);
+  db.prepare("UPDATE personnage SET bouclier_classe_id = NULL, bouclier_materiau_id = NULL, bouclier_amelioration_id = NULL, bouclier_solidite = NULL WHERE id = 'equipement'").run();
+  const unEffet = db.prepare('SELECT id FROM accessoire_effet LIMIT 1').get().id;
+  for (const emplacement of ['ceinture', 'autre']) {
+    assert.throws(() => inserer('personnage_accessoire', { personnage_id: 'equipement', emplacement, accessoire_effet_id: unEffet, maudit: 0 }), /CHECK/, emplacement);
+  }
+  assert.throws(() => inserer('personnage_accessoire', { personnage_id: 'equipement', emplacement: 'chef', accessoire_effet_id: null, maudit: 0 }), /NOT NULL/, 'un effet de la table');
 
   const arme = db.prepare('SELECT id FROM arme LIMIT 1').get().id;
   const amelioArmure = db.prepare("SELECT id FROM amelioration_equipement WHERE cible = 'armure' LIMIT 1").get().id;
@@ -348,13 +560,69 @@ test('équipement : matériaux du bouclier au plus sa classe, améliorations du 
   assert.deepEqual(regles('equipement'), ['accessoire_valeur', 'amelioration_cible']);
 });
 
+test('armure (décisions R95, R165) : une armure, de base ou élémentaire, jamais les deux ; améliorations du bon genre, jamais sans leur armure ; ni armure « Familier » ni armure élémentaire d’une autre magie ; une partie que l’armure a', () => {
+  const grille = db.prepare('SELECT id FROM armure WHERE solidite_uni IS NULL ORDER BY ordre LIMIT 1').get().id;
+  const uni = db.prepare("SELECT id FROM armure WHERE solidite_uni = 1 AND type <> 'Familier' ORDER BY ordre LIMIT 1").get().id;
+  const familier = db.prepare("SELECT id FROM armure WHERE type = 'Familier' ORDER BY ordre LIMIT 1").get().id;
+  const amelioration = (cible) => db.prepare('SELECT id FROM amelioration_equipement WHERE cible = ? ORDER BY niveau LIMIT 1').get(cible).id;
+  const elementaire = (magie) => db.prepare("SELECT id FROM armure_elementaire WHERE magie_id = ? AND categorie = 'Léger'").get(magie).id;
+  const feu = elementaire('magies/magie-du-feu');
+  const vent = elementaire('magies/magie-du-vent');
+  // les règles de l'armure seulement (une magie acquise ajoutée plus bas peut en déclencher d'autres)
+  const armure = () => controle('armure').filter((c) => c.regle.startsWith('armure') || c.regle === 'amelioration_cible');
+  const majs = (x) => db.prepare(`UPDATE personnage SET ${Object.keys(x).map((c) => `${c} = ?`).join(', ')} WHERE id = 'armure'`).run(...Object.values(x));
+  personnageValide('armure', { armure_id: grille, armure_amelioration_id: amelioration('armure') });
+  inserer('personnage_armure_partie', { personnage_id: 'armure', emplacement_id: 'torse', solidite: 0 });
+  assert.deepEqual(controle('armure'), [], 'une armure de la grille, son amélioration, une partie cassée');
+  // R165 : l'armure élémentaire est l'armure de la fiche, avec son amélioration (cible armure_elementaire) et ses six parties
+  majs({ armure_id: null, armure_amelioration_id: null, armure_elementaire_id: feu, armure_amelioration_elementaire_id: amelioration('armure_elementaire') });
+  assert.deepEqual(controle('armure'), [], 'une armure élémentaire de la magie innée, son amélioration, une partie cassée');
+  // jamais les deux armures
+  majs({ armure_id: grille });
+  assert.deepEqual(armure(), [{ regle: 'armure_double', detail: `${grille} / ${feu}` }]);
+  // chaque amélioration du bon genre : l'amélioration d'une arme sur l'armure de base, celle d'une armure de base sur l'élémentaire
+  majs({ armure_elementaire_id: null, armure_amelioration_elementaire_id: null, armure_amelioration_id: amelioration('arme') });
+  assert.deepEqual(armure(), [{ regle: 'amelioration_cible', detail: `armure : ${amelioration('arme')}` }]);
+  majs({ armure_id: null, armure_amelioration_id: null, armure_elementaire_id: feu, armure_amelioration_elementaire_id: amelioration('armure') });
+  assert.deepEqual(armure(), [{ regle: 'amelioration_cible', detail: `armure élémentaire : ${amelioration('armure')}` }]);
+  // une amélioration sans son armure : celle de l'armure de base avec une armure élémentaire, et l'inverse
+  majs({ armure_amelioration_elementaire_id: null, armure_amelioration_id: amelioration('armure') });
+  assert.deepEqual(armure(), [{ regle: 'armure_manquante', detail: amelioration('armure') }]);
+  majs({ armure_elementaire_id: null, armure_id: grille, armure_amelioration_id: null, armure_amelioration_elementaire_id: amelioration('armure_elementaire') });
+  assert.deepEqual(armure(), [{ regle: 'armure_manquante', detail: amelioration('armure_elementaire') }]);
+  // sans armure : aucune amélioration, aucune partie
+  majs({ armure_id: null, armure_amelioration_elementaire_id: null });
+  assert.deepEqual(armure(), [{ regle: 'armure_partie_hors_armure', detail: 'torse' }]);
+  // une armure élémentaire d'une magie que le personnage n'a pas, ni innée ni acquise ; avec la magie acquise, elle se porte
+  majs({ armure_elementaire_id: vent });
+  assert.deepEqual(armure(), [{ regle: 'armure_magie_absente', detail: vent }]);
+  majs({ magie_acquise_id: 'magies/magie-du-vent' });
+  assert.deepEqual(armure(), []);
+  majs({ magie_acquise_id: null, armure_elementaire_id: feu });
+  // une armure élémentaire a toujours ses six parties, jamais l'armure entière (pas de cran uni)
+  db.prepare("UPDATE personnage_armure_partie SET emplacement_id = 'armure-complete' WHERE personnage_id = 'armure'").run();
+  assert.deepEqual(armure(), [{ regle: 'armure_partie_hors_armure', detail: 'armure-complete' }]);
+  // une armure de base à solidité unifiée n'a que l'armure entière ; une armure de la grille jamais l'armure entière
+  majs({ armure_elementaire_id: null, armure_id: uni });
+  assert.deepEqual(controle('armure'), []);
+  majs({ armure_id: grille });
+  assert.deepEqual(controle('armure'), [{ regle: 'armure_partie_hors_armure', detail: 'armure-complete' }]);
+  // une armure « Familier » n'est jamais portée par un personnage (R165 : gardée pour de futures fiches de familier)
+  majs({ armure_id: familier });
+  assert.deepEqual(controle('armure'), [{ regle: 'armure_familier', detail: familier }]);
+  // la base refuse le bouclier (une autre partie de la fiche) et une solidité négative
+  assert.throws(() => inserer('personnage_armure_partie', { personnage_id: 'armure', emplacement_id: 'bouclier', solidite: 0 }), /CHECK/);
+  assert.throws(() => inserer('personnage_armure_partie', { personnage_id: 'armure', emplacement_id: 'casque', solidite: -1 }), /CHECK/);
+});
+
 test('contraintes : magie acquise ≠ magie innée, valeurs bornées, suppression en cascade', () => {
   assert.throws(() => personnageValide('ko-1', { magie_acquise_id: 'magies/magie-du-feu' }), /CHECK/);
   assert.throws(() => personnageValide('ko-3', { modifie_le: '2026-10-08T12:00:00Z' }), /CHECK/, 'modifié avant d’être créé');
   assert.throws(() => personnageValide('ko-4', { cree_le: '9 octobre 2026', modifie_le: '9 octobre 2026' }), /CHECK/);
   personnageValide('cascade');
-  assert.throws(() => inserer('personnage_maitrise_arme', { personnage_id: 'cascade', arme_famille_id: 'epees', des: 6 }), /CHECK/);
-  inserer('personnage_maitrise_arme', { personnage_id: 'cascade', arme_famille_id: 'epees', des: 2 });
+  assert.throws(() => inserer('personnage_maitrise_choix', { personnage_id: 'cascade', source: 'classes/guerrier#maitrise-arme:2', rang: 0, arme_famille_id: 'epees' }), /CHECK/);
+  assert.throws(() => inserer('personnage_maitrise_choix', { personnage_id: 'cascade', source: 'classes/guerrier#maitrise-arme:2', rang: 1, arme_famille_id: 'dagues' }), /UNIQUE|PRIMARY/,
+    'une famille par point');
   inserer('personnage_inventaire', { personnage_id: 'cascade', rang: 1, nom: 'Corde (5m)', quantite: 1 });
   db.prepare("DELETE FROM personnage WHERE id = 'cascade'").run();
   for (const t of TABLES.filter((t) => t.startsWith('personnage_'))) {
@@ -429,9 +697,11 @@ test('décision R23 : l’Archimage est réservée au Potentiel Illimité inné,
   // Sans le Potentiel Illimité, pas d'Archimage, ni en classe 1 ni en classe 2
   personnageValide('r23-feu');
   db.prepare("UPDATE personnage_classe SET classe_id = 'classes/archimage' WHERE personnage_id = 'r23-feu'").run();
+  maitrisesDeClasseChoisies('r23-feu');
   assert.deepEqual(controle('r23-feu'), [{ regle: 'classe_reservee', detail: 'classes/archimage' }]);
   personnageValide('r23-feu-bi', { mode_classe: 'bi' });
   inserer('personnage_classe', { personnage_id: 'r23-feu-bi', rang: 2, classe_id: 'classes/archimage' });
+  maitrisesDeClasseChoisies('r23-feu-bi');
   assert.deepEqual(controle('r23-feu-bi'), [{ regle: 'classe_reservee', detail: 'classes/archimage' }]);
 
   // Avec lui, l'Archimage en classe 1 ; la seconde classe reste libre
@@ -439,13 +709,16 @@ test('décision R23 : l’Archimage est réservée au Potentiel Illimité inné,
   personnageValide('r23-pi', pi);
   assert.deepEqual(controle('r23-pi'), [{ regle: 'classe_imposee', detail: 'classes/archimage' }]);
   db.prepare("UPDATE personnage_classe SET classe_id = 'classes/archimage' WHERE personnage_id = 'r23-pi'").run();
+  maitrisesDeClasseChoisies('r23-pi');
   assert.deepEqual(controle('r23-pi'), []);
   personnageValide('r23-pi-bi', { ...pi, mode_classe: 'bi' });
   inserer('personnage_classe', { personnage_id: 'r23-pi-bi', rang: 2, classe_id: 'classes/archimage' });
+  maitrisesDeClasseChoisies('r23-pi-bi');
   assert.deepEqual(controle('r23-pi-bi'), [{ regle: 'classe_imposee', detail: 'classes/archimage' }], 'Archimage en classe 2 : la classe 1 doit l’être');
   db.prepare("DELETE FROM personnage_classe WHERE personnage_id = 'r23-pi-bi'").run();
   inserer('personnage_classe', { personnage_id: 'r23-pi-bi', rang: 1, classe_id: 'classes/archimage' });
   inserer('personnage_classe', { personnage_id: 'r23-pi-bi', rang: 2, classe_id: 'classes/guerrier' });
+  maitrisesDeClasseChoisies('r23-pi-bi');
   assert.deepEqual(controle('r23-pi-bi'), []);
 
   // Fiche sans classe : la classe 1 manque (contrôle de toute fiche, migration 0038), mais rien n'est imposé tant qu'aucune classe 1 n'est choisie
@@ -464,11 +737,14 @@ test('décision R25 : le Mage Bleu est fermé au Potentiel Illimité, à tous le
   personnageValide('r25-pi', pi);
   db.prepare("UPDATE personnage_classe SET classe_id = 'classes/archimage' WHERE personnage_id = 'r25-pi'").run();
   inserer('personnage_classe', { personnage_id: 'r25-pi', rang: 2, classe_id: 'classes/mage-bleu' });
+  maitrisesDeClasseChoisies('r25-pi');
   assert.deepEqual(controle('r25-pi'), [{ regle: 'classe_exclue', detail: 'classes/mage-bleu' }]);
   db.prepare("UPDATE personnage_classe SET classe_id = 'classes/mage' WHERE personnage_id = 'r25-pi' AND rang = 2").run();
+  maitrisesDeClasseChoisies('r25-pi');
   assert.deepEqual(controle('r25-pi'), [], 'toute autre seconde classe');
   personnageValide('r25-feu');
   db.prepare("UPDATE personnage_classe SET classe_id = 'classes/mage-bleu' WHERE personnage_id = 'r25-feu'").run();
+  maitrisesDeClasseChoisies('r25-feu');
   assert.deepEqual(controle('r25-feu'), [], 'sans Potentiel Illimité, le Mage Bleu reste ouvert');
 });
 
@@ -489,14 +765,232 @@ test('décision R45 : pas de maîtrise d’arme sur ARME DE MONSTRES (des armes 
   assert.deepEqual(db.prepare('SELECT id FROM arme_famille WHERE maitrisable = 0').all().map((r) => r.id), ['arme-de-monstres']);
   assert.match(db.prepare("SELECT libelle_brut FROM arme_famille WHERE id = 'arme-de-monstres'").get().libelle_brut, /^ARME DE MONSTRES/);
   assert.ok(db.prepare("SELECT count(*) AS n FROM arme WHERE famille_id = 'arme-de-monstres'").get().n > 0, 'ses armes restent dans la base');
+  // migration 0076 : la règle lit les choix de famille (personnage_maitrise_choix) et l'accessoire ; un choix exclu ne ressort pas aussi hors de la liste
   personnageValide('r45-monstres');
-  inserer('personnage_maitrise_arme', { personnage_id: 'r45-monstres', arme_famille_id: 'arme-de-monstres', des: 2 });
-  assert.deepEqual(controle('r45-monstres'), [{ regle: 'maitrise_arme_exclue', detail: 'arme-de-monstres' }]);
-  personnageValide('r45-epees');
-  for (const f of db.prepare('SELECT id FROM arme_famille WHERE maitrisable = 1').all()) {
-    inserer('personnage_maitrise_arme', { personnage_id: 'r45-epees', arme_famille_id: f.id, des: 2 });
+  db.prepare("UPDATE personnage_maitrise_choix SET arme_famille_id = 'arme-de-monstres' WHERE personnage_id = 'r45-monstres'").run();
+  inserer('personnage_accessoire', { personnage_id: 'r45-monstres', emplacement: 'chef', accessoire_effet_id: POINT_DE_MAITRISE, maudit: 0, arme_famille_id: 'arme-de-monstres' });
+  assert.deepEqual(controle('r45-monstres'), [
+    { regle: 'maitrise_arme_exclue', detail: 'accessoire:chef : 1 = arme-de-monstres' },
+    { regle: 'maitrise_arme_exclue', detail: 'classes/guerrier#maitrise-arme:2 : 1 = arme-de-monstres' },
+  ]);
+  assert.deepEqual(maitrises('r45-monstres'), { epees: 1 }, 'ni le choix ni l’accessoire ne comptent');
+  // chacune des autres familles de contact (les options du Guerrier, sauf ÉPÉES) : aucune règle
+  for (const f of db.prepare("SELECT id FROM arme_famille WHERE maitrisable = 1 AND categorie = 'contact' AND id <> 'epees'").all()) {
+    personnageValide(`r45-${f.id}`);
+    db.prepare('UPDATE personnage_maitrise_choix SET arme_famille_id = ? WHERE personnage_id = ?').run(f.id, `r45-${f.id}`);
+    assert.deepEqual(controle(`r45-${f.id}`), [], f.id);
   }
-  assert.deepEqual(controle('r45-epees'), [], 'une maîtrise sur chacune des autres familles');
+});
+
+// ——— Maîtrises d'armes (décisions R148 à R154, migration 0076-refonte-maitrises-armes) ———
+
+/** Une fiche d'un Humain central de Feu inné, ses classes [classe, spécialité ?] (niveau 10 en bi-classe par défaut : les deux classes au niveau 10). */
+function ficheDeClasses(id, classes, { mode = 'bi', xp = 11450 } = {}) {
+  inserer('personnage', {
+    id, nature: 'joueur', proprietaire_id: 'alice', visibilite: 'privee', nom: id, race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-central',
+    magie_innee_id: 'magies/magie-du-feu', mode_classe: mode, xp, alignement_loyal: 0, alignement_chaotique: 0, alignement_bon: 0, alignement_mauvais: 0,
+    bourse_pp: 0, bourse_ro: 0, bourse_rf: 0, ambidextrie: 0, cree_le: INSTANT, modifie_le: INSTANT,
+  });
+  classes.forEach(([classe, specialite], i) => inserer('personnage_classe', {
+    personnage_id: id, rang: i + 1, classe_id: `classes/${classe}`, specialite_id: specialite ? `classes/${classe}#specialite:${specialite}` : null,
+  }));
+}
+const ligneDeClasse = (classe, rang) => `classes/${classe}#maitrise-arme:${rang}`;
+/** Les choix de famille d'une source, point par point (rang 1, 2…). */
+const choisir = (id, source, familles) => familles.forEach((f, i) => inserer('personnage_maitrise_choix', { personnage_id: id, source, rang: i + 1, arme_famille_id: f }));
+
+test('v_personnage_don_acquis (miroir de donsAcquis) : la classe prise au niveau atteint, la spécialité de la fiche, les dons à choix choisis ; rien d’une classe sans niveau', () => {
+  ficheDeClasses('acquis-1', [['guerrier', 'maitre-darme']], { mode: 'mono' });   // niveau 10 en mono-classe : Guerrier au niveau de classe 20, pas de 2e classe
+  const dons = (id) => db.prepare('SELECT classe_rang, classe_id, capacite_id FROM v_personnage_don_acquis WHERE personnage_id = ? ORDER BY capacite_id').all(id).map((r) => ({ ...r }));
+  const attendus = db.prepare(`SELECT id FROM capacite WHERE classe_id = 'classes/guerrier' AND niveau <= 20 AND nature <> 'choix'
+    AND (specialite_id IS NULL OR specialite_id = 'classes/guerrier#specialite:maitre-darme') ORDER BY id`).all().map((r) => r.id);
+  assert.deepEqual(dons('acquis-1').map((d) => d.capacite_id), attendus);
+  assert.ok(attendus.includes('capacites/guerrier-maitre-darme') && !attendus.includes('capacites/guerrier-epeiste'), 'la spécialité de la fiche, pas l’autre');
+  const aChoix = db.prepare("SELECT id FROM capacite WHERE classe_id = 'classes/guerrier' AND nature = 'choix' AND specialite_id = 'classes/guerrier#specialite:maitre-darme' ORDER BY id LIMIT 1").get();
+  if (aChoix) {
+    inserer('personnage_capacite', { personnage_id: 'acquis-1', capacite_id: aChoix.id });
+    assert.ok(dons('acquis-1').some((d) => d.capacite_id === aChoix.id), 'un don à choix choisi');
+  }
+  assert.ok(dons('acquis-1').every((d) => d.classe_rang === 1 && d.classe_id === 'classes/guerrier'));
+  // mono-classe au niveau 5 : Guerrier au niveau 10, la 2e classe sans niveau (R2) ne donne rien
+  ficheDeClasses('acquis-2', [['guerrier', 'maitre-darme'], ['lancier', 'myrmidon']], { mode: 'mono', xp: 1650 });
+  assert.ok(dons('acquis-2').length > 0 && dons('acquis-2').every((d) => d.classe_id === 'classes/guerrier'));
+});
+
+test('R148 : une fiche sans choix n’a de points que sur ses familles imposées ; chaque point à choisir manque ; un choix compte une fois posé', () => {
+  ficheDeClasses('r148', [['guerrier']]);
+  assert.deepEqual(maitrises('r148'), { epees: 1 }, '« 1 maîtrise Épée »');
+  assert.deepEqual(controleMaitrise('r148'), [{ regle: 'maitrise_a_choisir', detail: `${ligneDeClasse('guerrier', 2)} = 1` }]);
+  choisir('r148', ligneDeClasse('guerrier', 2), ['hache']);
+  assert.deepEqual(maitrises('r148'), { epees: 1, hache: 1 });
+  assert.deepEqual(controleMaitrise('r148'), []);
+  // dés : 1 + les points (constantes maitrise_arme.des_sans_maitrise, maitrise_arme.des_max)
+  assert.deepEqual({ ...db.prepare("SELECT points, points_comptes, des FROM v_personnage_maitrise_arme WHERE personnage_id = 'r148' AND arme_famille_id = 'hache'").get() },
+    { points: 1, points_comptes: 1, des: 2 });
+  // une part de plusieurs points : un choix par point ; « N » = les points qui restent à choisir
+  ficheDeClasses('r148-merc', [['mercenaire']]);
+  choisir('r148-merc', ligneDeClasse('mercenaire', 1), ['arc']);
+  assert.deepEqual(controleMaitrise('r148-merc'), [{ regle: 'maitrise_a_choisir', detail: `${ligneDeClasse('mercenaire', 1)} = 2` }]);
+  // l'accessoire « Un point de maîtrise d'arme » sans famille (R151)
+  inserer('personnage_accessoire', { personnage_id: 'r148-merc', emplacement: 'collier', accessoire_effet_id: POINT_DE_MAITRISE, maudit: 0 });
+  assert.ok(controleMaitrise('r148-merc').some((c) => c.regle === 'maitrise_a_choisir' && c.detail === 'accessoire:collier = 1'));
+});
+
+test('R148 : un choix d’une source perdue (spécialité changée, niveau baissé) ou d’un point que la source n’a pas est signalé et ne compte plus', () => {
+  ficheDeClasses('perdue', [['guerrier', 'maitre-darme']]);
+  choisir('perdue', ligneDeClasse('guerrier', 2), ['hache']);
+  choisir('perdue', 'capacites/guerrier-maitre-darme', ['epees', 'epees', 'dagues', 'arc', 'arc']);
+  assert.deepEqual(controleMaitrise('perdue'), []);
+  assert.deepEqual(maitrises('perdue'), { arc: 2, dagues: 1, epees: 3, hache: 1 });
+  // spécialité changée : les cinq choix du Maître d'arme ne valent plus
+  db.prepare("UPDATE personnage_classe SET specialite_id = 'classes/guerrier#specialite:epeiste' WHERE personnage_id = 'perdue'").run();
+  const perdus = ['1 = epees', '2 = epees', '3 = dagues', '4 = arc', '5 = arc'].map((x) => ({ regle: 'maitrise_source_perdue', detail: `capacites/guerrier-maitre-darme : ${x}` }));
+  assert.deepEqual(controleMaitrise('perdue'), perdus);
+  assert.equal(maitrises('perdue').arc, undefined, 'ses points ne comptent plus');
+  // niveau baissé : niveau 5, Guerrier au niveau de classe 5, sous la spécialité
+  db.prepare("UPDATE personnage_classe SET specialite_id = 'classes/guerrier#specialite:maitre-darme' WHERE personnage_id = 'perdue'").run();
+  db.prepare("UPDATE personnage SET xp = 1650 WHERE id = 'perdue'").run();
+  assert.deepEqual(controleMaitrise('perdue'), perdus);
+  // un point que la part n'a pas (la maîtrise au choix du Guerrier n'en a qu'un)
+  inserer('personnage_maitrise_choix', { personnage_id: 'perdue', source: ligneDeClasse('guerrier', 2), rang: 2, arme_famille_id: 'pugilat' });
+  assert.ok(controleMaitrise('perdue').some((c) => c.regle === 'maitrise_source_perdue' && c.detail === `${ligneDeClasse('guerrier', 2)} : 2 = pugilat`));
+  assert.equal(maitrises('perdue').pugilat, undefined);
+});
+
+test('R149 : les sources s’additionnent jusqu’à 4 points (5 dés) ; au-delà, maitrise_plafond, sans rien refuser ; l’accessoire maudit retire un point (R54)', () => {
+  // Lancier (« 1 maîtrise Arme de jet ») + Lanceur (« 1 maîtrise Arme de jet ») Fantassin (« +2 points de maîtrise Arme de jet ») = 4 points
+  ficheDeClasses('r149', [['lancier'], ['lanceur', 'fantassin']]);
+  choisir('r149', ligneDeClasse('lanceur', 2), ['epees']);
+  choisir('r149', 'capacites/lanceur-fantassin', ['hache']);
+  assert.equal(maitrises('r149')['arme-de-jet'], 4);
+  assert.deepEqual(controleMaitrise('r149'), []);
+  // avec l'accessoire sur ARME DE JET : 5 points, 1 au-delà du plafond, toujours 5 dés
+  inserer('personnage_accessoire', { personnage_id: 'r149', emplacement: 'chef', accessoire_effet_id: POINT_DE_MAITRISE, maudit: 0, arme_famille_id: 'arme-de-jet' });
+  assert.deepEqual({ ...db.prepare("SELECT points, points_comptes, des FROM v_personnage_maitrise_arme WHERE personnage_id = 'r149' AND arme_famille_id = 'arme-de-jet'").get() },
+    { points: 5, points_comptes: 4, des: 5 });
+  assert.deepEqual(controleMaitrise('r149'), [{ regle: 'maitrise_plafond', detail: 'arme-de-jet = 5 / 4' }]);
+  // maudit : l'effet contraire (R54)
+  db.prepare("UPDATE personnage_accessoire SET maudit = 1 WHERE personnage_id = 'r149'").run();
+  assert.equal(maitrises('r149')['arme-de-jet'], 3);
+  assert.deepEqual(controleMaitrise('r149'), []);
+  // le plafond vient des constantes, pas d'un 4 écrit dans la vue
+  assert.deepEqual(db.prepare("SELECT id, valeur FROM regle_constante WHERE id LIKE 'maitrise_arme.%' ORDER BY id").all().map((r) => [r.id, r.valeur]),
+    [['maitrise_arme.des_max', 5], ['maitrise_arme.des_sans_maitrise', 1]]);
+  // R150 : les 5 points du Chasseur de primes sur ÉPÉES, admis ; seul le plafond est signalé
+  ficheDeClasses('r149-chasseur', [['mercenaire', 'chasseur-de-primes']]);
+  choisir('r149-chasseur', ligneDeClasse('mercenaire', 1), ['arc', 'dagues', 'hache']);
+  choisir('r149-chasseur', 'capacites/mercenaire-chasseur-de-primes', ['epees', 'epees', 'epees', 'epees', 'epees']);
+  assert.deepEqual(controleMaitrise('r149-chasseur'), [{ regle: 'maitrise_plafond', detail: 'epees = 5 / 4' }]);
+});
+
+test('R150 : répartition libre sauf limite écrite (Maître d’arme 2, Combattant libre 3, lignes Mercenaire et Bimane 1), qui ne compte que les points de sa source', () => {
+  // « 2 points de maîtrise à répartir » (Myrmidon) : les deux sur une même famille
+  ficheDeClasses('r150-libre', [['lancier', 'myrmidon']]);
+  choisir('r150-libre', 'capacites/lancier-myrmidon', ['hache', 'hache']);
+  assert.deepEqual(controleMaitrise('r150-libre'), []);
+  assert.equal(maitrises('r150-libre').hache, 2);
+  // Maître d'arme : 2 sur une famille admis, 3 signalés ; ÉPÉES de la classe (« 1 maîtrise Épée ») ne compte pas dans sa limite
+  ficheDeClasses('r150-maitre', [['guerrier', 'maitre-darme']]);
+  choisir('r150-maitre', ligneDeClasse('guerrier', 2), ['hache']);
+  choisir('r150-maitre', 'capacites/guerrier-maitre-darme', ['epees', 'epees', 'hache', 'hache', 'arc']);
+  assert.deepEqual(controleMaitrise('r150-maitre'), []);
+  db.prepare("UPDATE personnage_maitrise_choix SET arme_famille_id = 'epees' WHERE personnage_id = 'r150-maitre' AND source = 'capacites/guerrier-maitre-darme' AND rang = 5").run();
+  assert.deepEqual(controleMaitrise('r150-maitre'), [{ regle: 'maitrise_meme_famille', detail: 'capacites/guerrier-maitre-darme : epees = 3 / 2' }]);
+  // Combattant libre : 3 admis, 4 signalés
+  ficheDeClasses('r150-libre-3', [['mercenaire', 'combattant-libre']]);
+  choisir('r150-libre-3', ligneDeClasse('mercenaire', 1), ['arc', 'dagues', 'hache']);
+  choisir('r150-libre-3', 'capacites/mercenaire-combattant-libre', ['pugilat', 'pugilat', 'pugilat', 'arc', 'bombes']);
+  assert.deepEqual(controleMaitrise('r150-libre-3'), []);
+  db.prepare("UPDATE personnage_maitrise_choix SET arme_famille_id = 'pugilat' WHERE personnage_id = 'r150-libre-3' AND source = 'capacites/mercenaire-combattant-libre' AND rang = 4").run();
+  assert.deepEqual(controleMaitrise('r150-libre-3'), [{ regle: 'maitrise_meme_famille', detail: 'capacites/mercenaire-combattant-libre : pugilat = 4 / 3' }]);
+  // deux points de Mercenaire ou de Bimane sur une famille : signalés
+  ficheDeClasses('r150-merc', [['mercenaire'], ['bimane']]);
+  choisir('r150-merc', ligneDeClasse('mercenaire', 1), ['arc', 'arc', 'hache']);
+  choisir('r150-merc', ligneDeClasse('bimane', 1), ['dagues', 'dagues']);
+  assert.deepEqual(controleMaitrise('r150-merc'), [
+    { regle: 'maitrise_meme_famille', detail: `${ligneDeClasse('bimane', 1)} : dagues = 2 / 1` },
+    { regle: 'maitrise_meme_famille', detail: `${ligneDeClasse('mercenaire', 1)} : arc = 2 / 1` },
+  ]);
+});
+
+test('R151 : « l’arme déterminée avant » suit la maîtrise au choix de la classe ; Épéiste −1 sans descendre sous 0 ; Ménestrel parmi les familles à distance', () => {
+  // Mage Grenat avec la maîtrise au choix du Mage Rouge sur HACHE : HACHE = 1 + 2 ; rien tant qu'elle n'est pas choisie
+  ficheDeClasses('r151-grenat', [['mage-rouge', 'mage-grenat']]);
+  assert.deepEqual(maitrises('r151-grenat'), {});
+  assert.deepEqual(controleMaitrise('r151-grenat'), [{ regle: 'maitrise_a_choisir', detail: `${ligneDeClasse('mage-rouge', 1)} = 1` }]);
+  choisir('r151-grenat', ligneDeClasse('mage-rouge', 1), ['hache']);
+  assert.deepEqual(maitrises('r151-grenat'), { hache: 3 });
+  assert.deepEqual(controleMaitrise('r151-grenat'), []);
+  // Épéiste (+2 ÉPÉES, +1 DAGUES, −1 sur la maîtrise au choix du Guerrier) avec DAGUES au choix : DAGUES = 1, ÉPÉES = 1 + 2
+  ficheDeClasses('r151-epeiste', [['guerrier', 'epeiste']]);
+  assert.deepEqual(maitrises('r151-epeiste'), { dagues: 1, epees: 3 }, 'sans maîtrise au choix, le retrait attend');
+  choisir('r151-epeiste', ligneDeClasse('guerrier', 2), ['dagues']);
+  assert.deepEqual(maitrises('r151-epeiste'), { dagues: 1, epees: 3 });
+  // sur HACHE : 1 − 1 = 0, jamais moins
+  db.prepare("UPDATE personnage_maitrise_choix SET arme_famille_id = 'hache' WHERE personnage_id = 'r151-epeiste'").run();
+  assert.deepEqual(maitrises('r151-epeiste'), { dagues: 1, epees: 3, hache: 0 });
+  inserer('personnage_accessoire', { personnage_id: 'r151-epeiste', emplacement: 'chef', accessoire_effet_id: POINT_DE_MAITRISE, maudit: 1, arme_famille_id: 'hache' });
+  assert.equal(maitrises('r151-epeiste').hache, 0, 'au moins 0');
+  assert.deepEqual(controleMaitrise('r151-epeiste'), []);
+  // Ménestrel : les quatre familles à distance, indépendamment de la maîtrise du Barde
+  ficheDeClasses('r151-menestrel', [['barde', 'menestrel']]);
+  choisir('r151-menestrel', ligneDeClasse('barde', 1), ['arc']);
+  choisir('r151-menestrel', 'capacites/barde-menestrel', ['epees']);
+  assert.deepEqual(controleMaitrise('r151-menestrel'), [{ regle: 'maitrise_hors_choix', detail: 'capacites/barde-menestrel : 1 = epees' }]);
+  assert.deepEqual(maitrises('r151-menestrel'), { arc: 1, dagues: 1 }, 'un choix hors de la liste ne compte pas');
+  db.prepare("UPDATE personnage_maitrise_choix SET arme_famille_id = 'arc' WHERE personnage_id = 'r151-menestrel' AND source = 'capacites/barde-menestrel'").run();
+  assert.deepEqual(controleMaitrise('r151-menestrel'), []);
+  assert.deepEqual(maitrises('r151-menestrel'), { arc: 2, dagues: 1 });
+});
+
+test('R154 : les NM gagnés d’un don acquis (Ocultomancien « Maîtrise », niveau de classe 20) s’ajoutent à sorts_nm_total ; sort_nm_max ne les lit pas', () => {
+  assert.deepEqual(db.prepare('SELECT capacite_id, nm FROM capacite_nm_gagne').all().map((r) => [r.capacite_id, r.nm]), [['capacites/ocultomancien-maitrise', 4]],
+    'aucun autre don n’a de NM gagnés');
+  const sorts = db.prepare("SELECT id FROM sort WHERE magie_id = 'magies/magie-du-feu' ORDER BY id").all().map((r) => r.id);
+  const cumul = (niveau) => db.prepare('SELECT niveaux_maitrise_cumul AS n FROM v_niveau WHERE niveau = ?').get(niveau).n;
+  /** Une fiche bi-classe au niveau global `niveau` (ses deux classes à ce niveau), Ocultomancien en classe 1, et `total` NM répartis, 3 au plus par sort. */
+  const fiche = (id, niveau, total) => {
+    ficheDeClasses(id, [['ocultomancien'], ['guerrier']], { xp: db.prepare('SELECT xp_min FROM niveau_global WHERE niveau = ?').get(niveau).xp_min });
+    for (let reste = total, i = 0; reste > 0; reste -= 3, i += 1) {
+      inserer('personnage_sort', { personnage_id: id, sort_id: sorts[i], rang: i + 1, niveau_maitrise: Math.min(3, reste) });
+    }
+    return controle(id).filter((c) => c.regle === 'sorts_nm_total' || c.regle === 'sort_nm_max');
+  };
+  // niveau de classe 19 : le don n'est pas acquis, la limite est celle des niveaux
+  assert.deepEqual(fiche('r154-19-ok', 19, cumul(19)), []);
+  assert.deepEqual(fiche('r154-19-ko', 19, cumul(19) + 1), [{ regle: 'sorts_nm_total', detail: `${cumul(19) + 1} / ${cumul(19)}` }]);
+  // niveau de classe 20 : 4 NM gagnés de plus que les niveaux, montrés dans le détail
+  assert.deepEqual(fiche('r154-20-ok', 20, cumul(20) + 4), []);
+  assert.deepEqual(fiche('r154-20-ko', 20, cumul(20) + 5), [{ regle: 'sorts_nm_total', detail: `${cumul(20) + 5} / ${cumul(20)} + 4 des dons` }]);
+  db.prepare("UPDATE personnage SET nm_mj = 1 WHERE id = 'r154-20-ko'").run();
+  assert.deepEqual(controle('r154-20-ko').filter((c) => c.regle === 'sorts_nm_total'), []);
+  db.prepare("UPDATE personnage SET nm_mj = 0 WHERE id = 'r154-20-ko'").run();
+  // sort_nm_max (niveau global − 1, plus les NM du MJ) ne lit ni capacite_nm_gagne ni les dons acquis
+  const vue = db.prepare("SELECT sql FROM sqlite_master WHERE name = 'v_personnage_controle'").get().sql;
+  const bloc = vue.slice(vue.indexOf("'sort_nm_max'"), vue.indexOf("'sorts_nm_total'")).replace(/--[^\n]*/g, '');   // sa requête, sans les commentaires
+  assert.ok(bloc.length > 0 && !/capacite_nm_gagne|v_personnage_don_acquis/.test(bloc));
+});
+
+test('migration 0076 : les sources de maîtrise en tables, un choix par point, plus de dés saisis par famille ni d’arme dans les choix d’acquis (R148, R152)', () => {
+  const colonnes = (t) => db.prepare('SELECT name FROM pragma_table_info(?) ORDER BY cid').all(t).map((r) => r.name);
+  assert.equal(db.prepare("SELECT 1 FROM sqlite_master WHERE name = 'personnage_maitrise_arme'").get(), undefined, 'personnage_maitrise_arme retirée');
+  assert.equal(db.prepare("SELECT 1 FROM sqlite_master WHERE name = 'personnage_acquis_choix_arme'").get(), undefined, 'son index retiré');
+  assert.deepEqual(colonnes('personnage_acquis_choix'), ['personnage_id', 'source', 'rang', 'competence_id', 'valeur'], 'R152 : plus d’arme_famille_id');
+  assert.deepEqual(colonnes('personnage_maitrise_choix'), ['personnage_id', 'source', 'rang', 'arme_famille_id']);
+  assert.deepEqual(colonnes('maitrise_arme_part'), ['source_id', 'rang', 'capacite_id', 'classe_id', 'classe_rang', 'genre', 'points', 'arme_famille_id', 'limite_famille']);
+  assert.deepEqual(colonnes('maitrise_arme_part_famille'), ['source_id', 'rang', 'arme_famille_id']);
+  assert.deepEqual(colonnes('capacite_nm_gagne'), ['capacite_id', 'nm']);
+  for (const v of ['v_personnage_don_acquis', 'v_personnage_maitrise_part', 'v_personnage_maitrise_arme']) assert.ok(db.prepare('SELECT 1 FROM sqlite_master WHERE type = ? AND name = ?').get('view', v), v);
+  // R151 : la famille du point de l'accessoire se choisit
+  assert.deepEqual(db.prepare("SELECT cible, valeur, choix FROM accessoire_effet_cible WHERE cible = 'maitrise_arme'").all().map((r) => ({ ...r })), [{ cible: 'maitrise_arme', valeur: 1, choix: 1 }]);
+  // les clés : une source est un don ou une ligne de classe, son identifiant suit (lib/maitrise-arme.mjs#idDeSourceDeClasse)
+  const part = { rang: 1, genre: 'imposee', points: 1, arme_famille_id: 'epees', limite_famille: null };
+  assert.throws(() => inserer('maitrise_arme_part', { ...part, source_id: 'classes/guerrier#maitrise-arme:9', classe_id: 'classes/guerrier', classe_rang: 1 }), /CHECK/);
+  assert.throws(() => inserer('maitrise_arme_part', { ...part, source_id: 'x', capacite_id: 'capacites/guerrier-epeiste' }), /CHECK/);
+  assert.throws(() => inserer('maitrise_arme_part', { ...part, source_id: 'capacites/guerrier-epeiste', rang: 9, capacite_id: 'capacites/guerrier-epeiste', genre: 'choix' }), /CHECK/,
+    'une part à choisir n’a pas de famille imposée');
+  assert.throws(() => inserer('maitrise_arme_part', { ...part, source_id: 'capacites/guerrier-epeiste', rang: 9, capacite_id: 'capacites/guerrier-epeiste', points: 0 }), /CHECK/);
+  assert.throws(() => inserer('personnage_maitrise_choix', { personnage_id: 'conforme', source: 'x', rang: 1, arme_famille_id: 'inconnue' }), /FOREIGN KEY/);
 });
 
 test('décision R19 : jusqu’à deux croix par caractéristique, la règle du guide et les malus de la fiche', () => {

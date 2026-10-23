@@ -7,11 +7,10 @@
 // ces tests (code 7) ; ce refus a son propre test, sur une note posée par le test.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { appendFileSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { appliquerMiseAJour, ErreurMiseAJour, TABLES_DE_LA_NOTE, verifierLot } from '../scripts/mise-a-jour-regles.mjs';
 import { traiter } from '../serveur/api.mjs';
@@ -20,6 +19,7 @@ import { journalExporte } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { versionDeLivraison } from '../src/lib/notes-de-version.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { copieSansNoteEnAttente, versionALaRevision } from './aide-mise-a-jour.mjs';
 
 // les versions, comme dans le workflow : celle de dev (package.json) et celle de la production (ici HEAD) ; jamais écrites en dur, pour que le test
@@ -27,8 +27,7 @@ import { copieSansNoteEnAttente, versionALaRevision } from './aide-mise-a-jour.m
 const VERSION_DEV = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 const VERSION_HEAD = versionALaRevision('HEAD');
 const ATTENDUE = versionDeLivraison(VERSION_DEV, VERSION_HEAD);
-const racine = mkdtempSync(join(tmpdir(), 'maverick-maj-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('maj');
 
 // un journal réel : une modification faite par le service du site de dev (un bonus différent de celui en place : le site a pu le changer déjà)
 const { chemin } = preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, 'db') });
@@ -63,10 +62,13 @@ function baseDe(rows) {
   };
 }
 
-test('verifierLot : format, identifiant, journal, texte', () => {
+test('verifierLot : format, identifiant, journal, texte, case « Version majeure »', () => {
   assert.doesNotThrow(() => verifierLot(lot()));
+  assert.doesNotThrow(() => verifierLot({ ...lot(), majeure: true }));
+  assert.doesNotThrow(() => verifierLot({ ...lot(), majeure: false }));
   const touche = (table) => ({ journal: { format: 'maverick-edition/1', lots: [{ id: 'l', fait_le: 'x', resume: 'r', modifications: [{ rang: 1, table, cle: {}, operation: 'modifier', avant: {}, apres: {} }] }] } });
-  for (const casse of [{ format: 'x' }, { id: '../x' }, { journal: { format: 'x', lots: [] } }, { texte: 3 }, touche('personnage'), touche('utilisateur_role'),
+  for (const casse of [{ format: 'x' }, { id: '../x' }, { journal: { format: 'x', lots: [] } }, { texte: 3 }, { majeure: 'oui' }, { majeure: 1 },
+    touche('personnage'), touche('utilisateur_role'),
     touche('note_version'), touche('modification')]) {
     assert.throws(() => verifierLot({ ...lot(), ...casse }), (e) => e instanceof ErreurMiseAJour && e.code === 2, JSON.stringify(casse));
   }
@@ -105,6 +107,17 @@ test('le lot appliqué : la note écrite, le journal historisé, seuls les fichi
   assert.equal(encore.version, ATTENDUE);
   assert.match(readFileSync(join(rows, 'note_version.sql'), 'utf8'), /Texte corrigé\./);
   assert.doesNotMatch(readFileSync(join(rows, 'note_version.sql'), 'utf8'), /gagne/);
+});
+
+test('un lot « majeure » (case « Version majeure » de la page) : la note est la version X+1.0', () => {
+  const rows = copie('rows-majeure');
+  const majeure = versionDeLivraison(VERSION_DEV, VERSION_HEAD, { majeure: true });
+  assert.match(majeure, /^\d+\.0$/);
+  assert.equal(Number(majeure.split('.')[0]), Math.max(...[VERSION_DEV, VERSION_HEAD].map((v) => Number(String(v).split('.')[0]))) + 1);
+  const res = appliquerMiseAJour({ ...lot('Ouverture.'), majeure: true, version_cible: majeure }, { rows, reference: 'HEAD', date: '2026-10-22', versionDev: VERSION_DEV });
+  assert.equal(res.version, majeure);
+  assert.ok(res.markdown.startsWith(`## Version ${majeure}`), res.markdown.slice(0, 80));
+  assert.deepEqual(baseDe(rows)(`SELECT version, texte FROM note_version WHERE lot = '${lot().id}'`), [{ version: majeure, texte: 'Ouverture.' }]);
 });
 
 test('conflit avec dev : rien n’est écrit (code 3)', () => {

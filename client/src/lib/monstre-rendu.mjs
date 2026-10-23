@@ -8,9 +8,9 @@
 // échelle selon les décisions R55 (« +2 tous les 3 EP ») et R59 (« on ne compte pas le EP1 ») ; une capacité « [EPN] » n'est montrée qu'à partir de l'EP N
 // (décision R56) ; le texte qui suit un trait du doc est signalé par un panneau « Attention » (htmlDAttention). Fonctions pures, chaîne HTML en sortie,
 // tout texte échappé.
-import { couleurDeCaracteristique, styleDeCouleur } from './caracteristiques-postures.mjs';
-import { couleurDeMagie, texteSurCouleur } from './sort-format.mjs';
 import { htmlAvecMonnaies } from './monnaies.mjs';
+import { classeDeCaracteristique, classesDeDeuxMagies } from './palette-css.mjs';
+import { avecLeursBalises } from './mots-cles-balises.mjs';
 import { normalize } from './text.mjs';
 import {
   attributs,
@@ -38,11 +38,19 @@ const SIGLES = { force: ['F', 'Force'], perception: ['P', 'Perception'], volonte
 /** Un texte tel qu'écrit (retours à la ligne gardés par la feuille de style), ou « — » s'il est vide. */
 const htmlDeTexte = (texte) => (String(texte ?? '').trim() ? `<span class="texte">${htmlAvecMonnaies(texte)}</span>` : '<span class="vide">—</span>');
 
-/** Les six caractéristiques en cases colorées (valeurs F.P.V.S.I.A. dans l'ordre ; null = inconnue). */
-export const htmlDesCaracteristiques = (valeurs) =>
+/**
+ * Les six caractéristiques en cases colorées (valeurs F.P.V.S.I.A. dans l'ordre ; null = inconnue). `ecrites` (une créature invoquée au NPM choisi,
+ * décision R130) : les valeurs écrites, et `bonus`, les bonus comptés de chaque case ; une valeur qui en diffère est soulignée, l'écrite et ses bonus en
+ * infobulle (`.bcalcul`).
+ */
+export const htmlDesCaracteristiques = (valeurs, { ecrites = null, bonus = [] } = {}) =>
   `<span class="bcaracs">${FPVSIA.map((id, k) => {
     const [sigle, nom] = SIGLES[id];
-    return `<span class="bcarac" style="${styleDeCouleur(couleurDeCaracteristique(id))}" title="${e(nom)}"><span class="bcarac__sigle">${sigle}</span><span class="bcarac__val">${valeurs[k] ?? '—'}</span></span>`;
+    const calcule = ecrites && ecrites[k] !== valeurs[k];
+    const valeur = calcule
+      ? `<span class="bcarac__val bcalcul" title="${e(`Écrit : ${ecrites[k] ?? '—'}${bonus[k]?.length ? `, ${bonus[k].join(', ')}` : ''}`)}">${valeurs[k] ?? '—'}</span>`
+      : `<span class="bcarac__val">${valeurs[k] ?? '—'}</span>`;
+    return `<span class="bcarac ${classeDeCaracteristique(id)}" title="${e(nom)}"><span class="bcarac__sigle">${sigle}</span>${valeur}</span>`;
   }).join('')}</span>`;
 
 const epsDe = (s) => ` data-eps="${s.eps.join(' ')}"`;
@@ -112,14 +120,14 @@ function htmlParEchelle(rubrique, texte) {
 /**
  * Une cible de vulnérabilité ou de résistance, dans la couleur de la magie qui va avec (lib/monstre-champs.mjs#magiesDesCibles : la magie elle-même, ou
  * la magie liée de l'altération d'état ; deux magies : la seconde en bande) ; la magie liée d'une altération en infobulle ; sans magie, la pastille neutre.
+ * La couleur : la classe de la première magie et la classe de second rang de la seconde, ou de la même (lib/palette-css.mjs#classesDeDeuxMagies).
  */
 function htmlDeCible(rubrique, cible, magiesDesCibles) {
   const noms = magiesDesCibles[normalize(cible)] ?? [];
   if (!noms.length) return `<span class="bcible bcible--${rubrique}">${e(cible)}</span>`;
-  const [c1, c2 = c1] = noms.map(couleurDeMagie);
-  const style = `--c:${c1};--c2:${c2};--c-texte:${texteSurCouleur(c1)}`;
+  const classes = classesDeDeuxMagies(noms[0], noms[1]).join(' ');
   const titre = normalize(noms[0]) === normalize(cible) ? '' : ` title="${e(`Magie liée : ${noms.join(', ')}`)}"`;
-  return `<span class="bcible bcible--${rubrique} bcible--magie${noms.length > 1 ? ' bcible--deux' : ''}" style="${e(style)}"${titre}>${e(cible)}</span>`;
+  return `<span class="bcible bcible--${rubrique} bcible--magie${noms.length > 1 ? ' bcible--deux' : ''} ${classes}"${titre}>${e(cible)}</span>`;
 }
 
 /**
@@ -213,7 +221,7 @@ export function htmlDeRubrique(rubrique, texte, options = {}) {
  * classe ») : l'en-tête (ses pastilles : « [EP3] », « NPM 2 », « [Gauche] », « commune », et son nom), puis son texte. Pour un monstre
  * (htmlDesCapacitesDuMonstre, page construite et mode modification) et une créature invoquée (components/bestiaire/CarteInvoquee.astro, carte et infobulle
  * des pages de magie).
- * `prefixes` : [{ texte, titre }] ; `corps` : le HTML du texte (sinon `texte`, écrit tel quel) ; `attributs` : ` data-eps="…"` (décision R56) ;
+ * `prefixes` : [{ texte, titre, classe }] (`classe` : « prefixe--npm », que la carte cache au NPM choisi) ; `corps` : le HTML du texte (sinon `texte`, écrit tel quel) ; `attributs` : ` data-eps="…"` (décision R56) ;
  * `commune` : une capacité commune à toutes les créatures d'une invocation. Ni lien ni titre hN : la carte d'une créature invoquée sert d'infobulle.
  * Le nom s'écrit sans le point qui le suit dans le doc (`capacites`, lib/monstre-champs.mjs, le retire), comme un don de classe ; pas d'en-tête vide.
  */
@@ -221,7 +229,7 @@ export const htmlDeCapacite = ({ prefixes = [], nom = null, texte = '', corps = 
   `<li class="bcapacite${commune ? ' bcapacite--commune' : ''}"${attributs}>`
   + (prefixes.length || nom
     ? '<p class="bcapacite__tete">'
-      + prefixes.map((p) => `<span class="prefixe"${p.titre ? ` title="${e(p.titre)}"` : ''}>${e(p.texte)}</span>`).join(' ')
+      + prefixes.map((p) => `<span class="prefixe${p.classe ? ` ${e(p.classe)}` : ''}"${p.titre ? ` title="${e(p.titre)}"` : ''}>${e(p.texte)}</span>`).join(' ')
       + (nom ? `${prefixes.length ? ' ' : ''}<strong class="bcapacite__nom">${e(nom)}</strong>` : '')
       // l'espace sépare le nom du texte dans textContent, que lit la recherche du bestiaire (« Haine mutuelle Cette créature… ») ; sans effet à l'écran
       + '</p> '
@@ -331,8 +339,9 @@ export const RENDUS_DU_BESTIAIRE = {
   'monstre-cellule': (valeur) => (String(valeur ?? '').trim() ? e(valeur) : '<span class="vide">—</span>'),
   // l'échelle d'une espèce sans carte, dans la colonne EP (« EP1 - 10 » -> « 1 - 10 »)
   'monstre-ep': (valeur) => e(String(valeur ?? '').replace(/^EP\s*/, '')),
+  // les lieux découpés sans les balises du glossaire, affichés avec (lib/mots-cles-balises.mjs#avecLeursBalises : le middleware les met en gras)
   'monstre-lieux': (valeur) => {
-    const l = lieux(valeur).map((x) => x.lieu);
+    const l = avecLeursBalises(String(valeur ?? ''), lieux(valeur).map((x) => x.lieu));
     return l.length ? e(l.join(', ')) : '<span class="vide">—</span>';
   },
   'monstre-variable': (valeur) => (Number(valeur) === 1 ? e(PHRASE_VARIABLE) : ''),

@@ -8,11 +8,10 @@
 //   - après une livraison, le journal déjà livré est « intégré » (aller-retour A → B → A, saisies successives, création puis suppression) : rien
 //     ne reste en attente ni en conflit, aucune valeur annulée ne revient.
 import assert from 'node:assert/strict';
-import { copyFileSync, existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { copyFileSync, existsSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { integrerLivrees, ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { journalExporte } from '../serveur/edition-journal.mjs';
@@ -21,10 +20,10 @@ import {
   LANCEMENTS_PAR_JOUR, libererLot, lireLancement, lireLot, occupe,
 } from '../serveur/notes-de-version.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { versionLibre } from './aide-mise-a-jour.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-etats-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('etats');
 const regles = cheminBase({ sansExemples: false });
 let n = 0;
 /** Une base vivante neuve et son dossier. */
@@ -212,6 +211,19 @@ test('lancement annulé dont le lot entre quand même dans dev : « fusionne »,
   noteArrivee(db, l.lot, 'Texte A');
   assert.equal(actualiserLancement(db, dossier, { reference: { version: '0.1.25' } }).etat, 'fusionne');
   assert.equal(db.prepare('SELECT count(*) AS n FROM note_version_brouillon').get().n, 0, 'le texte déjà publié ne repart pas dans la note suivante');
+  db.close();
+});
+
+test('case « Version majeure » cochée pour la mise à jour suivante, après la livraison d’une note sans texte : elle reste cochée à chaque visite', () => {
+  const { db, dossier } = nouvelle();
+  const l = figer(db, dossier); // brouillon sans texte : la note livrée n'en aura pas
+  noteArrivee(db, l.lot, null);
+  db.exec('DELETE FROM note_version_brouillon'); // la base vivante refaite par la nouvelle version (viderBrouillonLivre)
+  assert.equal(actualiserLancement(db, dossier, { reference: { version: '0.1.25' } }).etat, 'fusionne');
+  // la mise à jour suivante se prépare : case cochée, sans texte
+  db.prepare('INSERT INTO note_version_brouillon (id, majeure) VALUES (1, 1)').run();
+  for (let i = 0; i < 2; i += 1) actualiserLancement(db, dossier, { reference: { version: '0.1.25' } }); // chaque visite de la page
+  assert.deepEqual({ ...db.prepare('SELECT texte, lot, majeure FROM note_version_brouillon').get() }, { texte: null, lot: null, majeure: 1 });
   db.close();
 });
 

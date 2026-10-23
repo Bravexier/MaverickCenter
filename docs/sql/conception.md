@@ -79,13 +79,13 @@ JSON seulement pour une structure irrégulière : `page.donnees`, `source.onglet
 | `ecart_source.nature` | 12 valeurs (`valeur_differente`, `texte_different`, `nom_different`, `valeur_absente`, `calcul_different`, `coquille_rapprochee`, `prix_incoherent`, `doublon_de_nom`, `ecart_entre_onglets`, `ecart_avec_fiche`, `forme_non_reconnue`, `conflit_entre_sources`) |
 
 **Provenance.** Toute table importée (125 tables) a `origine` (FK vers `famille`) et `source_ref` : « classeur › onglet › plage » (ex. `Classe Maverick V7 › Mercenaire › AA22:AG27`).
-Exceptions : `famille`, `type_page`, `source`, le vocabulaire des mots-clés (`mot_cle`, migration 0043 : il vit sur le site de dev), les enfants d'une page (`alias`, `page_tag`, `page_source`), les catégories de la chronologie et celles d'un événement (`categorie_chronologie`, `evenement_categorie`) et les tables dérivées.
+Exceptions : `famille`, `type_page`, `source`, le vocabulaire des mots-clés (`mot_cle`, migration 0043 : il vit sur le site de dev ; glossaire et jamais créé par un import depuis 0056), les panneaux de règles de la page Équipement (`panneau_regles`, `panneau_regles_bloc`, migration 0056 : modifiés sur le site de dev), les onglets de la page Composants (`composant_onglet`, migration 0057 : de même), les annonces que le site place (`annonce`, migration 0068 : de même), les enfants d'une page (`alias`, `page_tag`, `page_source`), les catégories de la chronologie et celles d'un événement (`categorie_chronologie`, `evenement_categorie`), les étiquettes des sorts (`sort_mot_cle`, migration 0067 : une décision du propriétaire, R114 ; « Sort fer », migration 0079 : R164) et les tables dérivées.
 
 **Absent = NULL.** Une valeur typée n'est écrite que si la forme est sans ambiguïté ; sinon `NULL` et la colonne `*_brut` fait foi. Les faits « constatés mais non tranchés »
 (deux sources qui se contredisent, une coquille, un prix incohérent) vont dans `ecart_source`, **sans rien corriger**. Les corrections voulues par le propriétaire passent par le registre (§4.4).
 
 **Index, clés étrangères.** `PRAGMA foreign_keys = ON` à **chaque** connexion (SQLite ne le mémorise pas). Index sur toute colonne servant de filtre ; index partiel `WHERE col IS NOT NULL`
-pour les clés étrangères clairsemées (l'API les reconnaît). `ON DELETE CASCADE` seulement pour les enfants d'une page (10 cas) et les porteurs d'un mot-clé ou d'une catégorie (`page_tag`, `evenement_categorie` : en supprimer un le retire de partout, migration 0043). Plus de 300 index.
+pour les clés étrangères clairsemées (l'API les reconnaît). `ON DELETE CASCADE` seulement pour les enfants d'une page (10 cas) et les porteurs d'un mot-clé ou d'une catégorie (`page_tag`, `evenement_categorie` : en supprimer un le retire de partout, migration 0043). Pas de cascade pour les étiquettes des sorts (`sort_mot_cle`, migration 0067) : une étiquette est une règle posée par décision (R114), un mot-clé qui étiquette un sort ne se supprime pas. Plus de 300 index.
 
 **Tables dérivées et vues.** Une table dérivée est précédée d'une ligne `-- @derivee <commande>` : l'export l'ignore, `db:build` la remplit (§4.3). Quatre tables dérivées, 26 vues (toujours à jour).
 
@@ -121,7 +121,7 @@ vierge (Python et Node). Les 131 tables de base sont **toutes non vides** une fo
 
 | Décision | Pourquoi |
 | --- | --- |
-| **Une seule `page_entite`**, avec `origine` et un index sur `entite_id` (les analystes l'avaient chacun redéfinie) | Une requête dit à quelle page appartient n'importe quelle entité (`GET /entites/{id}`) |
+| **Une seule `page_entite`**, avec `origine` et la clé primaire `(entite_table, entite_id)` (les analystes l'avaient chacun redéfinie ; l'index sur `entite_id` seul, qu'aucun plan ne choisissait, est retiré par la migration 0072) | La page d'une entité se lit par la clé primaire (entite_table, entite_id) ; GET /entites/{id} (§7, jamais réalisé) parcourrait la table, et le filtre `entite_id=` seul de `GET /donnees/page_entite` y serait refusé (colonne sans index) |
 | **Une seule `entite_fts`** remplace `sort_fts`, `capacite_fts`, `ethnie_fts`, `creature_fts`, `equipement_fts`, `regle_fts` | Un seul `MATCH` pour toute la base ; plus de six index à tenir à jour |
 | **Une seule `note_cellule`** (+ `repond_a` pour les fils) remplace `sort_commentaire`, `creature_note`, `equipement.note_cellule` et la colonne `capacite.note_cellule` | Notes d'une entité en une requête ; l'importeur des commentaires `.xlsx` n'écrit qu'un endroit |
 | **Une seule `ecart_source`** remplace `ecart_source` (fiche) et `anomalie_source` (équipement) ; `id` = clé naturelle en clair (CHECK) | Les écarts entre sources s'interrogent partout pareil |
@@ -282,7 +282,7 @@ Un fichier inutilisable (corrompu, autre version, absent) laisse **l'ancienne ba
 - `client/src/lib/db.mjs` : `openDb()` (lecture seule, `query_only`), chemin par `MAVERICK_DB` (défaut `var/maverick.db`), `pagesForIndex(db)` (entrées `{id, type, slug, title, aliases}` de l'index des liens). Aucune dépendance Astro ni navigateur.
 - `client/src/loaders/wiki-db.mjs` : chargeur `{name, load({store, parseData, renderMarkdown, generateDigest})}` : pour chaque page, `data` = `{title, aliases, tags, summary?, ...page.donnees, sources, status}`, `body = corps_md`, `rendered = renderMarkdown(corps_md)`, `digest` ; `store.clear()` d'abord.
   `content.config.ts` : `loader: wikiDb()` à la place de `glob(...)` ; le schéma `zod` ne change pas.
-- `astro.config.mjs` : l'index des `[[liens]]` vient de `pagesForIndex(openDb())` au lieu de `scanContent`. **Le piège « Astro 7 + plugin remark `unified()` » de CLAUDE.md reste valable** (rien ne change côté rendu).
+- `astro.config.mjs` : l'index des `[[liens]]` vient de `pagesForIndex(openDb())` au lieu de `scanContent`. **Le piège « Astro 7 + plugin remark `unified()` » (skill `site-wiki-liens`) reste valable** (rien ne change côté rendu).
 - `client/src/lib/wiki.ts` (graphe : liens sortants, rétroliens, mots-clés) lit toujours la collection : inchangé, donc le site est identique. Lire `lien_page` (dérivée) est une optimisation ultérieure.
 - `npm run build` = `npm run db:build && astro build`. Le dev (`npm run dev`) relit la base au démarrage : relancer `db:build` puis `dev` après un import.
 
@@ -306,7 +306,7 @@ Le fichier est généré **et commité** ; la CI relance l'export et échoue s'i
 
 ### 8.4 Déploiement (conteneur, rien de spécifique au NAS hors de `deploy/`)
 
-- **Publication** (`.github/workflows/livraison.yml`, job « Site », après chaque fusion qui change `dev`, jusqu'à la 1.0 ; voir `docs/flux-git.md`) : `npm ci`, tests (Node + `unittest` de `tools/db`), `HIDE_EXAMPLES=1 npm run build` (qui reconstruit la base sans exemples), puis la branche `site` (une seule révision, réécrite) contient : `html/` (site statique), `data/maverick.db`, `api/` (le fichier `server.mjs` et ses modules), `MANIFEST` (empreintes SHA-256). À partir de la 1.0, ce même contenu part dans les installateurs de `deploy/installateur/` (hébergement de la 1.0).
+- **Publication** (`.github/workflows/livraison.yml`, après chaque fusion ; voir `docs/flux-git.md`) : `npm ci`, tests (Node + `unittest` de `tools/db`), `HIDE_EXAMPLES=1 npm run build` (qui reconstruit la base sans exemples), puis le site construit part dans les installateurs de `deploy/installateur/` (serveur normal et serveur de test) ; le job « Site », qui le publiait sur la branche `site` (une seule révision, réécrite : `html/` (site statique), `data/maverick.db`, `api/` (le fichier `server.mjs` et ses modules), `MANIFEST` (empreintes SHA-256)), ne tourne plus.
 - **Conteneurs** : `deploy/docker-compose.yml` passe à deux services : `nginx` (site statique, `auth_basic` conservé, `location /api/ { proxy_pass http://api:3000; }`) et `api` (`node:22-alpine`, `read_only: true`, utilisateur non root, volume `./data:/data:ro`, variables `MAVERICK_DB=/data/maverick.db`, `PORT=3000`, `SCHEMA_VERSION=<N>`, bilan de santé sur `/api/v1/sante`).
   Un hébergeur sans nginx lance le même `server.mjs` et met l'authentification devant (variables d'environnement seulement).
 - **`update-site.sh`** : installe `html/` → `site/`, `api/` → `api/`, et `data/maverick.db` par copie vers un fichier temporaire **puis `mv` atomique** (l'API le rouvre toute seule) ; garde-fous : `MIN_PAGES` conservé, empreintes du `MANIFEST` vérifiées, taille minimale de la base. Le NAS n'a besoin ni de Python ni de Node (Node tourne dans le conteneur `api`).
@@ -370,7 +370,8 @@ NULL avant la connexion Discord) et `modification` (une ligne touchée : table, 
 `integree` / `conflit`, aperçu HTML d'une page du guide). Le service d'écriture (`client/serveur/edition.mjs`) les écrit **dans la même transaction
 que la modification**, sans déclencheur SQL caché ; elles restent **vides dans `data/rows`** et ne vivent que dans la base vivante du site de dev.
 Quand de nouvelles règles arrivent, le journal est rejoué sur elles (une modification déjà présente est « intégrée », un lot contredit passe
-« conflit » en entier) ; `npm run db:appliquer-edition` le rejoue de même sur `data/rows`, que l'export déterministe réécrit (relecture et
+« conflit » en entier ; il se résout sur `/mise-a-jour/`, migration `0072-resolution-des-conflits` : `resolu_le`, `resolu_par` — le nouveau lot normal
+qui reprend ce qui est gardé — et `resolution` — les choix 1, 2 ou 3 —, ses lignes restant « conflit » comme trace) ; `npm run db:appliquer-edition` le rejoue de même sur `data/rows`, que l'export déterministe réécrit (relecture et
 comparaison par git). Voir `docs/serveur.md`, « Édition ». Restent à décider avec le propriétaire : l'état `brouillon / validé` (relecture avant
 publication), l'auteur (connexion Discord) et le moment où la base devient canonique (les classeurs, une archive).
 
@@ -381,11 +382,12 @@ publication), l'auteur (connexion Discord) et le moment où la base devient cano
 | `STRICT`, `WITHOUT ROWID` | 133 / 49 | retirer les mots-clés (PostgreSQL type déjà strictement) |
 | `GLOB` dans des `CHECK` | 20 | `~` (expression rationnelle) |
 | `json_valid(...)`, `json_type(...)` | 3 / 2 | colonne `jsonb`, `jsonb_typeof` |
+| `json_extract(col, '$.cle')` | hors schéma : requêtes du service et du site (`json_extract(cle, '$.rang')`, `'$.id'` sur `modification` et `historique_modification`) | `(cle::jsonb->>'rang')::int` (`->>` rend du texte : convertir quand la valeur est un nombre) |
 | `instr(...)` | 3 | `position(... in ...)` |
 | FTS5 (`page_fts`, `entite_fts`) | 2 tables **dérivées** | `tsvector` + index GIN, requêtes `@@` / `ts_rank` ; seule la route `/recherche` change |
 | `group_concat(...)` | 1 vue (+ `data/derive.sql`, dérivé) | `string_agg(...)` |
 | `PRAGMA user_version`, `PRAGMA foreign_keys` | 2 | table `schema_version` ; clés étrangères toujours actives |
-| `char(n)` dans l'export (caractères de contrôle) | à l'export | `chr(n)` |
+| `char(n)` dans l'export (caractères de contrôle) et les migrations de données (retours à la ligne : 0056) | à l'export, migrations | `chr(n)` |
 | Ordre binaire de `ORDER BY` (clé de l'export, curseurs) | partout | `COLLATE "C"` pour garder le même ordre |
 
 Le reste (index partiels, index d'expression `COALESCE`, comparaisons de tuples, `ON DELETE CASCADE`, `CHECK ... IN`, clés composites) est portable tel quel. Les booléens `INTEGER 0/1` se convertissent ou restent des entiers.
@@ -447,7 +449,7 @@ Détail et exemples dans les documents par domaine livrés avec la conception (`
 | --- | --- | --- |
 | Règles | « Calme » ou « Prouesse » (compétence de Volonté) ; puissance magique 5 au niveau 16 ou 17 ; plafond de caractéristique aux niveaux 5, 10, 15 ; total à répartir = égalité ou maximum ; sens des deux « croix » ; entraînement 10 % par compétence ou au total | Les deux sources gardées (`ecart_source`) ; aucune règle appliquée |
 | Règles | Quelle version du mode hyper fait foi (classeur « Mode hyper et co », onglet masqué V8, fiche, onglets de magie ; +15 / +7 ou +10 / +5) | Cinq lectures dans `mode_hyper_effet`, aucune préférée |
-| Magies | ~~Corruption : la phrase « mono magie uniquement » est-elle la règle, ou la liste de la fiche (Arcane, Sang, Espace/Temps)~~ (**tranché**, décision R15 : mono-magie, excepté Elfe Noir Charbon et Felfe Noir) ; Arcane/Corruption : résistance à elles-mêmes (fiche) ou à l'autre (V8, guide) | Les paires de la fiche + la phrase (`incompatibilite_note`, gardée comme trace) ; `magie.mono_magie` (migration 0010) ; résistances V8 ; écart signalé |
+| Magies | ~~Corruption : la phrase « mono magie uniquement » est-elle la règle, ou la liste de la fiche (Arcane, Sang, Espace/Temps)~~ (**tranché**, décision R15 : mono-magie, excepté Elfe Noir Charbon et Felfe Noir) ; ~~Arcane/Corruption : résistance à elles-mêmes (fiche) ou à l'autre (V8, guide)~~ (**tranché**, décision R90 : chacune résiste à l'autre, la matrice de la fiche est retirée par la migration 0051) | Les paires de la fiche + la phrase (`incompatibilite_note`, gardée comme trace) ; `magie.mono_magie` (migration 0010) ; résistances V8 seules (R90 ; la matrice de la fiche et ses écarts retirés par 0051) |
 | Magies | « D/S/B » non développé dans les sources ; coût nu = chakra (lecture du guide) ; noms d'états (« Gelé » / « Gel ») | `dsb_brut` seul ; 32 sorts sans chakra écrit = `NULL` ; table d'alias explicite dans l'importeur |
 | Magies | 26 fils de commentaires orphelins (cellules supprimées, certains textes sont des règles) ; dieux : 28 noms, 16 reliés à une magie | `commentaire_orphelin` sans rattachement ; 16 dieux chargés |
 | Classes | Valeurs par niveau absentes (seul le niveau 1 est donné) ; « Don de départ » = niveau 1 ? ; les choix 10/15/20 dépendent-ils de la spécialité ? | `*_depart` ; rattachement à la spécialité si les colonnes sont sous sa bannière ; Archimage : cartouches = choix, spécialité `NULL` (décision du propriétaire) |

@@ -1,19 +1,19 @@
 /* En-tête, navigation et sections de la page d'une race */
-.race-hero { color: #fff; background: linear-gradient(135deg, var(--hero-1), var(--hero-2)); border-radius: var(--radius-xl); padding: 1.4rem 1.5rem 1.5rem; }
+.race-hero { color: var(--texte-sur-fonce); background: linear-gradient(135deg, var(--hero-1), var(--hero-2)); border-radius: var(--radius-xl); padding: 1.4rem 1.5rem 1.5rem; }
 .race-hero h1 { margin: 0.1rem 0 0.2rem; font-size: clamp(1.7rem, 4vw, 2.4rem); }
-.race-hero__surtitre { margin: 0; font-size: 0.75rem; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.8; }
+.race-hero__surtitre { margin: 0; font-size: var(--fs-xs); letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.8; }
 .race-hero__aliases { margin: 0 0 0.4rem; opacity: 0.85; font-style: italic; }
-.race-hero__accroche { margin: 0.2rem 0 0; font-size: 1.05rem; font-style: italic; opacity: 0.92; }
-.race-hero__classe { margin: 0.9rem 0 0; font-size: 0.95rem; }
-.race-hero__classe a { color: #fff; }
+.race-hero__accroche { margin: 0.2rem 0 0; font-size: var(--fs-xl); font-style: italic; opacity: 0.92; }
+.race-hero__classe { margin: 0.9rem 0 0; font-size: var(--fs-lg); }
+.race-hero__classe a { color: var(--texte-sur-fonce); }
 .race-stats { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 1rem 0 0; }
-.race-stat { min-width: 7.5rem; padding: 0.5rem 0.9rem; border-radius: var(--radius-md); background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.22); }
-.race-stat dt { font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.8; }
+.race-stat { min-width: 7.5rem; padding: 0.5rem 0.9rem; border-radius: var(--radius-md); background: color-mix(in srgb, #fff 12%, transparent); border: 1px solid color-mix(in srgb, #fff 22%, transparent); }
+.race-stat dt { font-size: var(--fs-xxs); letter-spacing: var(--ls-large); text-transform: uppercase; opacity: 0.8; }
 .race-stat dd { margin: 0; font-size: 1.6rem; font-weight: 700; line-height: 1.2; }
 .race-stat--nul dd { opacity: 0.6; }
 
 .race-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.5rem; margin: 0.8rem 0 0; padding: 0.5rem 0; border-bottom: 1px solid var(--border); }
-.race-nav a { text-decoration: none; font-size: 0.9rem; padding: 0.15rem 0.7rem; border-radius: var(--radius-pill); border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+.race-nav a { text-decoration: none; font-size: var(--fs-lg); padding: 0.15rem 0.7rem; border-radius: var(--radius-pill); border: 1px solid var(--border); background: var(--surface); color: var(--text); }
 .race-nav a:hover { border-color: var(--rac); color: var(--rac-readable); }
 
 .race-section { margin: 1.6rem 0; scroll-margin-top: 1rem; }
@@ -25,11 +25,11 @@
 .race-presentation__texte { display: grid; gap: 1.2rem; min-width: 0; }
 .race-presentation__texte > section { scroll-margin-top: 1rem; }
 .race-card--description { border-left: 4px solid var(--rac); background: var(--rac-soft); }
-.race-card--description h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.race-card--description h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: var(--ls-caps); color: var(--muted); }
 
 .race-traits { display: grid; gap: 0.9rem; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); }
 .race-trait { background: var(--surface); border: 1px solid var(--border); border-top-width: 4px; border-radius: var(--radius-lg); padding: 0.8rem 1rem 0.9rem; }
-.race-trait h3 { margin: 0 0 0.2rem; font-size: 1.05rem; }
+.race-trait h3 { margin: 0 0 0.2rem; font-size: var(--fs-xl); }
 .race-trait ul { padding-left: 1.2rem; }
 .race-trait--avantage { border-top-color: var(--good); }
 .race-trait--inconvenient { border-top-color: var(--danger); }
@@ -38,27 +38,23 @@
 .race-dons { display: grid; gap: 0.9rem; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); }
 .race-dons--seul { grid-template-columns: minmax(0, 1fr); }
 .race-don { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--rac); border-radius: var(--radius-lg); padding: 0.7rem 1rem 0.9rem; scroll-margin-top: 1rem; }
-.race-don h3 { margin: 0; font-size: 1.05rem; color: var(--rac-readable); }
-.race-don__rubrique { margin: 0; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.race-don h3 { margin: 0; font-size: var(--fs-xl); color: var(--rac-readable); }
+.race-don__rubrique { margin: 0; font-size: var(--fs-xxs); letter-spacing: var(--ls-large); text-transform: uppercase; color: var(--muted); }
 .race-don__nom { margin: 0.1rem 0 0.3rem; font-style: italic; }
-.race-don__remarque { margin: 0.6rem 0 0; padding: 0.4rem 0.6rem; border-radius: var(--radius-sm); background: var(--rac-soft); font-size: 0.9rem; }
+.race-don__remarque { margin: 0.6rem 0 0; padding: 0.4rem 0.6rem; border-radius: var(--radius-sm); background: var(--rac-soft); font-size: var(--fs-lg); }
 
 .race-tableau { margin-top: 1rem; }
-.race-tableau h3 { margin: 0 0 0.5rem; font-size: 1.05rem; }
-.race-tableau__defile { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
-.race-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
-.race-table thead th { text-align: left; font-size: 0.72rem; letter-spacing: 0.07em; text-transform: uppercase; font-weight: 600; color: var(--muted); padding: 0.55rem 0.75rem; background: var(--rac-soft); border-bottom: 1px solid var(--rac-line); white-space: pre-line; }
-.race-table tbody th, .race-table td { padding: 0.45rem 0.75rem; vertical-align: top; text-align: left; border-top: 1px solid var(--border); }
-.race-table tbody th { font-weight: 600; }
+.race-tableau h3 { margin: 0 0 0.5rem; font-size: var(--fs-xl); }
+/* tableaux : le gabarit commun (styles/global/tableaux.css) ; un en-tête de la source sur plusieurs lignes le reste */
+.race-table thead th { white-space: pre-line; }
 .race-table .texte { margin: 0; }
 .race-table ul { margin: 0; padding-left: 1.1rem; }
-.race-table caption { caption-side: bottom; padding: 0.4rem 0.75rem; color: var(--muted); font-size: 0.85rem; text-align: left; }
 
 .race-hyper { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--rac); border-radius: var(--radius-lg); padding: 0.7rem 1rem 0.9rem; }
-.race-hyper h3 { margin: 0 0 0.2rem; font-size: 1.05rem; color: var(--rac-readable); }
+.race-hyper h3 { margin: 0 0 0.2rem; font-size: var(--fs-xl); color: var(--rac-readable); }
 
-.race-magie { border-color: color-mix(in srgb, var(--couleur-magie, var(--border)) 55%, var(--border)); }
-.race-magie::before { content: ''; display: inline-block; width: 0.6rem; height: 0.6rem; margin-right: 0.4rem; border-radius: 50%; background: var(--couleur-magie, var(--muted)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--text) 25%, transparent); }
+.race-magie { border-color: color-mix(in srgb, var(--couleur, var(--border)) 55%, var(--border)); }
+.race-magie::before { content: ''; display: inline-block; width: 0.6rem; height: 0.6rem; margin-right: 0.4rem; border-radius: 50%; background: var(--couleur, var(--muted)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--text) 25%, transparent); }
 .race-card details { margin-top: 0.7rem; }
 .race-card summary { cursor: pointer; color: var(--muted); }
 

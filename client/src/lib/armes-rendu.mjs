@@ -1,8 +1,9 @@
-// Rendu HTML des cellules de la page /ressources/armes/ (components/armes/) : le même HTML sert à la page construite et au mode modification du site de
-// dev (lib/edition-rendu.mjs : une cellule modifiée, ou tirée d'une cellule modifiée, se réaffiche depuis sa ligne de la base). Les colonnes Dégâts,
-// Type de dégâts, Portée, Durabilité, Effets supplémentaires et Origine sont tirées de l'effet (lib/arme-champs.mjs). Les valeurs dont la fiche de l'arme
-// forgée a besoin (dé, bonus, portée, durabilité, coût, prix) sont posées en attributs `data-…` sur l'élément rendu : le script de la page les lit au moment de la
-// sélection (src/scripts/armes.mjs), si bien qu'une cellule réécrite après un enregistrement donne aussitôt les bonnes valeurs.
+// Rendu HTML des cellules de l'onglet Armes de /ressources/equipement/ (components/armes/) : le même HTML sert à la page construite et au mode
+// modification du site de dev (lib/edition-rendu.mjs : une cellule modifiée, ou tirée d'une cellule modifiée, se réaffiche depuis sa ligne de la
+// base). Les colonnes Dégâts, Type de dégâts, Portée, Solidité, Effets supplémentaires et Origine sont tirées de l'effet (lib/arme-champs.mjs). Les
+// valeurs dont la fiche de l'arme forgée a besoin (dé, bonus, portée, solidité, coût, prix) sont posées en attributs `data-…` sur l'élément rendu :
+// le script de la page les lit au moment de la sélection (src/scripts/armes.mjs), si bien qu'une cellule réécrite après un enregistrement donne
+// aussitôt les bonnes valeurs.
 // Contexte (`ctx`, les mêmes listes que celles du service : serveur/edition.mjs#listes, lib/armes-db.mjs#contexteDesArmes) : competences (id,
 // caracteristique_id), caracteristiques (id, nom), typesDArmes ({ valeur, libelle, de, de_regle, portee_min, portee_max }), soliditeDesArmes (2).
 // Fonctions pures, chaîne HTML en sortie, tout texte échappé.
@@ -10,10 +11,9 @@ import {
   analyserCoutDAmelioration, analyserEffetDAmelioration, analyserEffetDArme, analyserEffetDeMateriau, COMPETENCES_D_ARME, competencesDArme, coutEnRo,
   durabiliteDeLArme, LIBELLES_DES_DEGATS, MAINS, porteeDeLArme, prixEnRo,
 } from './arme-champs.mjs';
-import { couleurDeCaracteristique } from './caracteristiques-postures.mjs';
 import { attributEd } from './edition-modele.mjs';
 import { htmlAvecMonnaies, htmlDeMontant } from './monnaies.mjs';
-import { texteSurCouleur } from './sort-format.mjs';
+import { classeDeMagie, classesDeDeuxCaracteristiques } from './palette-css.mjs';
 
 const ENTITES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const e = (texte) => String(texte ?? '').replace(/[&<>"']/g, (c) => ENTITES[c]);
@@ -21,6 +21,15 @@ const VIDE = '<span class="vide" aria-label="aucun">—</span>';
 const attribut = (nom, valeur) => (valeur === null || valeur === undefined ? '' : ` data-${nom}="${e(valeur)}"`);
 /** La première lettre en capitale (« naine » → « Naine ») : la forme, jamais le fond. */
 const capitale = (t) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : t);
+
+/**
+ * La phrase « Les armes en bleu sont les armes possibles en arme de départ » du panneau de règles de l'onglet (en gras et en bleu dans la cellule du
+ * classeur ; en gras dans le Markdown du bloc : migration 0056) prend le bleu des lignes des armes de départ : son paragraphe, rendu en HTML (par remark au
+ * build, par lib/chronologie-rendu.mjs#htmlDuTexte dans le navigateur du site de dev), reçoit la classe `armes__phrase-depart` (styles/armes/armes.css).
+ * Rien d'autre ne change.
+ */
+export const avecPhraseDesArmesDeDepart = (html) =>
+  String(html ?? '').replace(/<p>(<strong>Les armes en bleu [^<]*<\/strong>)<\/p>/, '<p class="armes__phrase-depart">$1</p>');
 
 /** Le type d'arme d'après son id (« Épée »), dans la liste du contexte. */
 const typeDe = (id, ctx) => (ctx.typesDArmes ?? []).find((t) => t.valeur === id) ?? null;
@@ -40,15 +49,30 @@ function deAffiche(ligne, ctx = {}) {
 
 /**
  * Pastille de la compétence (décision R48) : la couleur de la caractéristique de chaque compétence (Arme Lourde et Arc : Force, Arme Légère : Agilité,
- * Arbalète : Perception), en dégradé pour deux ; la compétence et sa caractéristique en infobulle.
+ * Arbalète : Perception), en dégradé pour deux ; la compétence et sa caractéristique en infobulle. La couleur : la classe de la première
+ * caractéristique et la classe de second rang de la seconde, ou de la même (lib/palette-css.mjs#classesDeDeuxCaracteristiques ; les seconds rangs sont
+ * émis par components/armes/ArmesPage.astro), jamais un style.
  */
 export function htmlDeCompetence(competenceBrut, ctx = {}) {
   const comps = competencesDArme(competenceBrut);
   if (!comps.length) return competenceBrut ? `<span class="arme-comp arme-comp--texte">${e(competenceBrut)}</span>` : VIDE;
+  return pastilleDesCompetences(comps, ctx);
+}
+
+/**
+ * La pastille des compétences d'une arme élémentaire (décision R167 : « l'arme s'adapte au porteur », la compétence au choix parmi celles de son type,
+ * arme_elementaire_type_competence : Lourde / Légère, Arc / Légère, Arbalète) : la même que celle d'une arme du catalogue, d'après les ids.
+ */
+export function htmlDeCompetencesElementaires(ids, ctx = {}) {
+  const comps = (ids ?? []).filter((id) => id in COMPETENCES_D_ARME).map((id) => ({ id, ...COMPETENCES_D_ARME[id] }));
+  return comps.length ? pastilleDesCompetences(comps, ctx) : VIDE;
+}
+
+function pastilleDesCompetences(comps, ctx) {
   const carac = new Map((ctx.caracteristiques ?? []).map((c) => [c.id, c.nom]));
-  const [c1, c2 = c1] = comps.map((c) => couleurDeCaracteristique(c.caracteristique_id));
+  const couleurs = classesDeDeuxCaracteristiques(comps[0].caracteristique_id, comps[1]?.caracteristique_id).join(' ');
   const titre = comps.map((c) => `${c.nom} (${carac.get(c.caracteristique_id) ?? c.caracteristique_id})`).join(' et ');
-  return `<span class="arme-comp${comps.length > 1 ? ' arme-comp--deux' : ''}" data-competences="${comps.map((c) => c.id).join(' ')}" style="--c1: ${c1}; --c2: ${c2}; --c-texte: ${texteSurCouleur(c1)}" title="${e(titre)}">${e(comps.map((c) => c.libelle).join(' / '))}</span>`;
+  return `<span class="arme-comp${comps.length > 1 ? ' arme-comp--deux' : ''} ${couleurs}" data-competences="${comps.map((c) => c.id).join(' ')}" title="${e(titre)}">${e(comps.map((c) => c.libelle).join(' / '))}</span>`;
 }
 
 /**
@@ -59,8 +83,8 @@ export function htmlDuFiltreDeCompetence(id, ctx = {}) {
   const c = COMPETENCES_D_ARME[id];
   if (!c) return '';
   const carac = new Map((ctx.caracteristiques ?? []).map((x) => [x.id, x.nom])).get(c.caracteristique_id) ?? c.caracteristique_id;
-  const fond = couleurDeCaracteristique(c.caracteristique_id);
-  return `<button type="button" class="arme-comp armes-filtre__choix" data-competence="${e(id)}" aria-pressed="false" style="--c1: ${fond}; --c2: ${fond}; --c-texte: ${texteSurCouleur(fond)}" title="${e(`${c.nom} (${carac})`)}">${e(c.libelle)}</button>`;
+  const couleurs = classesDeDeuxCaracteristiques(c.caracteristique_id).join(' ');
+  return `<button type="button" class="arme-comp armes-filtre__choix ${couleurs}" data-competence="${e(id)}" aria-pressed="false" title="${e(`${c.nom} (${carac})`)}">${e(c.libelle)}</button>`;
 }
 
 /** Les types de dégâts en pastilles (Taille, Estoc, Frappe), d'après l'effet. */
@@ -103,7 +127,12 @@ export const RENDUS_DES_ARMES = {
     ligne.provenance ? `<span class="arme-origine" title="${e(`${ligne.provenance_mot} ${ligne.provenance}`)}">${e(capitale(ligne.provenance))}</span>` : VIDE,
   'arme-cout': (valeur) => `<span class="arme-cout"${attribut('ro', coutEnRo(valeur))}>${valeur ? htmlAvecMonnaies(valeur) : '—'}</span>`,
   'arme-depart': (valeur) => (Number(valeur) === 1 ? 'Oui' : 'Non'),
-  // matériaux : le prix en RO seulement (« Ignore le prix en RF, il n'est plus d'actualité »), l'effet en lignes typées
+  // la remarque : une étoile à côté du nom, son texte en infobulle (lu par le script de la page pour la fiche de l'arme) ; rien sans remarque
+  'arme-remarque': (valeur) =>
+    (valeur ? `<span class="arme__remarque" title="${e(valeur)}" aria-label="${e(`Remarque : ${valeur}`)}">★</span>` : ''),
+  // matériaux : le prix en RO seulement (« Ignore le prix en RF, il n'est plus d'actualité »), l'effet en morceaux typés (le bonus aux dégâts, les crans,
+  // puis chaque autre effet) : un par ligne sur la page Composants, sur une seule ligne dans l'onglet Armes, le bonus sans le mot « Dégâts » (demande
+  // du propriétaire, 2026-10-16 : « +2 / +7 | dégats doubles sur la barrière / +10 | Casse barrière » ; le mot reste pour les lecteurs d'écran)
   'materiau-prix': (valeur) => {
     const ro = prixEnRo(valeur);
     return `<span class="materiau-prix"${attribut('ro', ro)} title="${e(`Prix écrit : ${valeur ?? ''}`)}">${ro === null ? htmlAvecMonnaies(valeur ?? '—') : htmlDeMontant(String(ro), 'RO', valeur ?? '')}</span>`;
@@ -111,7 +140,7 @@ export const RENDUS_DES_ARMES = {
   'materiau-effet': (valeur) => {
     const m = analyserEffetDeMateriau(valeur);
     const lignes = [];
-    if (m.bonus_degats) lignes.push(`<span class="materiau-effet__bonus">Dégâts ${m.bonus_degats > 0 ? '+' : '−'}${Math.abs(m.bonus_degats)}</span>`);
+    if (m.bonus_degats) lignes.push(`<span class="materiau-effet__bonus"><span class="materiau-effet__mot">Dégâts </span>${m.bonus_degats > 0 ? '+' : '−'}${Math.abs(m.bonus_degats)}</span>`);
     if (m.cran_solidite) lignes.push(`<span class="materiau-effet__cran">${m.cran_solidite > 0 ? '+' : '−'}${Math.abs(m.cran_solidite)} cran${Math.abs(m.cran_solidite) > 1 ? 's' : ''} de solidité</span>`);
     for (const l of String(m.effet_secondaire ?? '').split('\n').filter(Boolean)) lignes.push(`<span class="materiau-effet__secondaire">${e(l)}</span>`);
     return `<span class="materiau-effet"${attribut('bonus', m.bonus_degats ?? 0)}${attribut('cran', m.cran_solidite ?? 0)}>${lignes.length ? lignes.join('') : '<span class="materiau-effet__rien">Rien de particulier</span>'}</span>`;
@@ -130,7 +159,7 @@ export const RENDUS_DES_ARMES = {
 /** Ancre HTML d'une arme : « arme-epees-flamberge » pour « ressources/armes#arme:epees:flamberge ». */
 export const ancreDArme = (id) => `arme-${String(id).slice(String(id).indexOf('#arme:') + 6).replace(/:/g, '-')}`;
 
-/** Colonnes de la ligne d'une arme hors mode modification (Nom, Compétence, Type, Dégâts, Type de dégâts, Portée, Durabilité, Origine). */
+/** Colonnes de la ligne d'une arme hors mode modification (Nom, Compétence, Type, Dégâts, Type de dégâts, Portée, Solidité, Origine). */
 export const COLONNES_D_UNE_ARME = 8;
 
 /**
@@ -138,7 +167,8 @@ export const COLONNES_D_UNE_ARME = 8;
  * construction du site : src/scripts/edition/armes.mjs) : un seul HTML, deux `<tr>`. La première porte les colonnes ; la seconde (`arme-suite`), sous
  * elle, ses effets supplémentaires, comme l'effet d'un sort choisi sous sa ligne dans la fiche de personnage (demande du propriétaire) ; vide, elle se
  * cache (styles/armes/armes.css). Chaque champ porte son `data-ed` ; les colonnes tirées de l'effet sont en lecture (`data-ed-lecture`) ; Description,
- * Coût, Effet et Arme de départ ne s'affichent qu'en mode modification (`ed-seul`). `a` : la ligne de la table arme.
+ * Coût, Effet, Arme de départ et Remarque ne s'affichent qu'en mode modification (`ed-seul`) ; l'étoile de la remarque, à côté du nom, est en lecture
+ * (refaite depuis la ligne après un enregistrement : elle part avec une remarque vidée, apparaît avec une remarque saisie). `a` : la ligne de la table arme.
  */
 export function htmlDeLigneDArme(a, ctx = {}) {
   const ed = (colonne) => e(attributEd('arme', { id: a.id }, colonne));
@@ -149,7 +179,7 @@ export function htmlDeLigneDArme(a, ctx = {}) {
     + '<th scope="row" class="arme__nom">'
     + `<span class="arme__libelle" data-ed="${ed('nom')}" data-ed-cible=".arme__choisir"><button type="button" class="arme__choisir" aria-pressed="false"${a.description ? ` title="${e(a.description)}"` : ''}>${e(a.nom)}</button></span>`
     + `<span class="arme__mains" data-ed="${ed('mains')}" data-ed-rendu="arme-mains">${rendu('arme-mains', 'mains')}</span>`
-    + (a.remarque ? `<span class="arme__remarque" title="${e(a.remarque)}" aria-label="${e(`Remarque : ${a.remarque}`)}">★</span>` : '')
+    + `<span class="arme__note" data-ed-lecture="${ed('remarque')}" data-ed-rendu="arme-remarque">${rendu('arme-remarque', 'remarque')}</span>`
     + '</th>'
     + `<td class="arme__competence" data-ed="${ed('competence_brut')}" data-ed-rendu="arme-competence">${rendu('arme-competence', 'competence_brut')}</td>`
     + `<td class="arme__type" data-ed="${ed('type_id')}" data-ed-rendu="arme-type">${rendu('arme-type', 'type_id')}</td>`
@@ -162,7 +192,161 @@ export function htmlDeLigneDArme(a, ctx = {}) {
     + `<td class="arme__cout ed-seul" data-ed="${ed('cout_brut')}" data-ed-rendu="arme-cout">${rendu('arme-cout', 'cout_brut')}</td>`
     + `<td class="arme__effet ed-seul" data-ed="${ed('effet')}">${e(a.effet ?? '')}</td>`
     + `<td class="arme__depart ed-seul" data-ed="${ed('depart_possible')}" data-ed-rendu="arme-depart">${rendu('arme-depart', 'depart_possible')}</td>`
+    + `<td class="arme__remarque-texte ed-seul" data-ed="${ed('remarque')}">${e(a.remarque ?? '')}</td>`
     + '</tr>'
     + `<tr class="arme-suite" data-arme-suite="${e(a.id)}"><td class="arme-suite__marge"></td>`
     + `<td class="arme__effets" colspan="${COLONNES_D_UNE_ARME - 1}" data-ed-lecture="${ed('effet')}" data-ed-rendu="arme-effets">${rendu('arme-effets', 'effet')}</td></tr>`;
+}
+
+// ------------------------------------------------------------------------------------------------------------------------------- armes élémentaires
+
+/**
+ * Les types de dégâts d'une arme élémentaire (réponse du propriétaire, à l'option « Les deux », « Le type physique de sa famille et celui de sa magie » :
+ * « Les deux. Exactement pour les sorts de "Fer". Estoc + Feu pour un arc de feu par exemple. ») : les types physiques de son type élémentaire
+ * (`type.types_degats` ; vide ou absente : aucun, rien n'est deviné) — tous (la dague : Estoc et Taille), ou, quand le porteur en choisit un
+ * (`type.type_degats_au_choix`, la bombe : « Estoc, Frappe ou Taille au choix »), « Estoc, Frappe ou Taille (au choix) » —, puis « + » et le type de
+ * sa magie (son élément : `ae.magie_id`, libellé du nom de la magie, `arme-dgt--magie`, sans couleur à lui : la ligne porte déjà celle de la magie). Les
+ * pastilles physiques gardent les jetons du thème (`arme-dgt--<type>` : --degats-*).
+ */
+export function htmlDesTypesDeDegatsElementaires(ae, type) {
+  const physiques = (type?.types_degats ?? []).filter((t) => LIBELLES_DES_DEGATS[t]).map((t) => `<span class="arme-dgt arme-dgt--${t}">${LIBELLES_DES_DEGATS[t]}</span>`);
+  const auChoix = Boolean(type?.type_degats_au_choix) && physiques.length > 1;
+  const physique = auChoix
+    ? `<span class="arme-dgt-choix" title="Un seul type, au choix du porteur">${physiques.slice(0, -1).join(', ')} ou ${physiques.at(-1)} <small>(au choix)</small></span>`
+    : physiques.join(' ');
+  const magie = `<span class="arme-dgt arme-dgt--magie" data-magie="${e(ae.magie_id)}">${e(ae.magie)}</span>`;
+  return physique ? `${physique} + ${magie}` : magie;
+}
+
+/** Les mains d'une arme élémentaire (décision R167 : « Mains et compétence : l'arme s'adapte au porteur (une ou deux mains) ») : celles d'une arme `une_ou_deux`. */
+export const MAINS_D_UNE_ARME_ELEMENTAIRE = 'une_ou_deux';
+
+/** Ancre HTML d'une arme élémentaire : « arme-elementaire-arc-sang » pour « ressources/pieces-elementaires#arme-elementaire:arc:sang ». */
+export const ancreDArmeElementaire = (id) => {
+  const i = String(id).indexOf('#arme-elementaire:');
+  return `arme-elementaire-${String(id).slice(i < 0 ? 0 : i + 18).replace(/[:/#]/g, '-')}`;
+};
+
+/**
+ * Les effets d'une arme élémentaire, sur la ligne de ses effets : sa capacité (« Pointe bordeaux (actif) : … », comme la page « Pièces élémentaires »
+ * l'écrit), ce que l'en-tête de son type écrit pour toutes (« ignore 4 AP » de l'Arbalète ; la mention de l'Arme de jet et de la Bombe, en un seul
+ * exemplaire). `ae` : la ligne de lib/armes-db.mjs (familles[].armes_elementaires) ; `type` : familles[].type_elementaire.
+ */
+export function htmlDesEffetsElementaires(ae, type) {
+  const lignes = [];
+  if (ae.capacite_nom || ae.capacite_texte) {
+    const nom = ae.capacite_nom ? `<strong class="arme-capacite__nom">${e(ae.capacite_nom)}</strong>${ae.capacite_mode ? ` <span class="arme-capacite__mode">(${e(ae.capacite_mode)})</span>` : ''}` : '';
+    lignes.push(`<span class="arme-effet arme-capacite">${nom}${nom && ae.capacite_texte ? ' : ' : ''}${e(ae.capacite_texte ?? '')}</span>`);
+  }
+  if (type?.ignore_ap) lignes.push(`<span class="arme-effet arme-effet--type" data-ignore-ap="${e(type.ignore_ap)}">Ignore ${e(type.ignore_ap)} AP</span>`);
+  if (type?.mention) lignes.push(`<span class="arme-effet arme-effet--type">${e(type.mention)}</span>`);
+  return lignes.length ? lignes.join('') : VIDE;
+}
+
+/**
+ * Les lignes d'une arme élémentaire dans le tableau de sa famille (décision R167 : « les armes élémentaires sont listées directement dans le tableau de
+ * leur famille ») : deux `<tr>`, comme une arme du catalogue (htmlDeLigneDArme : `tr.arme`, puis `tr.arme-suite`), qui portent la classe de leur magie
+ * (lib/palette-css.mjs#classeDeMagie : le fond, et le texte de texteSurCouleur ; jamais un style). Ses valeurs sont celles de R167 : son nom, le dé et la
+ * portée de son type (« rien de l'arme d'origine » ; Pugilat selon la Force), « +8 Dégâts » (`bonus_degats`), la solidité de base d'une arme élémentaire
+ * (4), sa compétence au choix du porteur, ses types de dégâts (physiques de son type, puis sa magie : htmlDesTypesDeDegatsElementaires), sa capacité ;
+ * ni origine, ni prix (ni le « [Métier à définir] » de la page source).
+ * En lecture sur le site de dev (sa source est la page « Pièces élémentaires ») : aucun `data-ed`, les colonnes du mode modification vides.
+ * Le script de la page lit `data-elementaire` (sa magie), `data-gemme` (la gemme de sa magie, celle du coût élémentaire) et les `data-…` des cellules.
+ * `ae` : la ligne (familles[].armes_elementaires) ; `type` : familles[].type_elementaire ; `solidite` : chargerArmes().solidite_elementaire.
+ */
+export function htmlDeLigneDArmeElementaire(ae, { type, solidite }, ctx = {}) {
+  const couleur = classeDeMagie(ae.magie);
+  const de = type?.de ?? (desDeLaRegle(type?.de_regle) || '—');
+  const regle = type?.de ? null : type?.de_regle ?? null;
+  const bonus = ae.bonus_degats ?? 0;
+  const portee = porteeDeLArme(type ?? {});
+  const crans = Number(solidite ?? 0);
+  const titreDe = regle ? ` title="${e(`Dé selon la Force : ${regle}`)}"` : '';
+  const remarque = RENDUS_DES_ARMES['arme-remarque'](ae.remarque);
+  return `<tr class="arme arme--elementaire ${couleur}" id="${ancreDArmeElementaire(ae.id)}" data-arme="${e(ae.id)}" data-elementaire="${e(ae.magie)}"${attribut('gemme', ae.gemme?.nom)}>`
+    + '<th scope="row" class="arme__nom">'
+    + `<span class="arme__libelle"><button type="button" class="arme__choisir" aria-pressed="false" title="${e(`Arme élémentaire : ${ae.magie}`)}">${e(ae.nom)}</button></span>`
+    // « l'arme s'adapte au porteur » (R167) : une ou deux mains, écrites comme une arme du catalogue `mains = 'une_ou_deux'`, à la même place (choix du
+    // leader-technique), sans `data-ed`
+    + `<span class="arme__mains">${RENDUS_DES_ARMES['arme-mains'](MAINS_D_UNE_ARME_ELEMENTAIRE)}</span>`
+    + `<span class="arme__note">${remarque}</span>`
+    + '</th>'
+    + `<td class="arme__competence">${htmlDeCompetencesElementaires(type?.competences, ctx)}</td>`
+    + `<td class="arme__type">${e(type?.nom ?? '')}</td>`
+    + `<td class="arme__degats"><span class="arme-degats"${attribut('de', de)}${attribut('bonus', bonus)}${titreDe}>${e(bonus ? `${de}+${bonus}` : de)}</span></td>`
+    + `<td class="arme__types">${htmlDesTypesDeDegatsElementaires(ae, type)}</td>`
+    + `<td class="arme__portee"><span class="arme-portee" data-portee="${e(portee)}">${e(portee)}</span></td>`
+    + `<td class="arme__durabilite"><span class="arme-durabilite" data-durabilite="${crans}" title="${crans} cran${crans > 1 ? 's' : ''} de solidité">${crans}</span></td>`
+    + `<td class="arme__origine">${VIDE}</td>`
+    + '<td class="arme__description ed-seul"></td><td class="arme__cout ed-seul"></td><td class="arme__effet ed-seul"></td>'
+    + '<td class="arme__depart ed-seul"></td><td class="arme__remarque-texte ed-seul"></td>'
+    + '</tr>'
+    + `<tr class="arme-suite arme-suite--elementaire ${couleur}" data-arme-suite="${e(ae.id)}"><td class="arme-suite__marge"></td>`
+    + `<td class="arme__effets" colspan="${COLONNES_D_UNE_ARME - 1}">${htmlDesEffetsElementaires(ae, type)}</td></tr>`;
+}
+
+/**
+ * La case du coût élémentaire d'une ligne d'amélioration (décision R167 : la colonne « Coût élémentaire » du tableau fondu, affichée à la place du coût
+ * matériel quand une arme élémentaire est choisie) : le coût tel que la ligne l'écrit (« 2 gemmes communes », « 1 pièce élémentaire »), puis le nom de la
+ * gemme de la magie de l'arme choisie (`[data-armes-gemme]`, écrit par le script de la page) ; ses valeurs en attributs (lib/arme-forge.mjs cumule) ;
+ * `cumul` (facultatif) : le texte du coût cumulé du +1 au niveau, en infobulle. `a` : la ligne amelioration_equipement.
+ */
+export function htmlDuCoutElementaire(a, cumul = '') {
+  const titre = cumul ? ` title="${e(`Du +1 au +${a.niveau} : ${cumul}`)}"` : '';
+  const gemme = a.cout_gemmes ? '<span class="amelioration-cout__gemme" data-armes-gemme></span>' : '';
+  return `<span class="amelioration-cout-elementaire"${attribut('gemmes', a.cout_gemmes)}${attribut('qualite', a.cout_gemmes_qualite)}${attribut('pieces', a.cout_pieces_elementaires)}${titre}>${e(a.cout_elementaire_brut ?? '')}${gemme}</span>`;
+}
+
+/**
+ * Les deux menus à onglets de l'onglet Armes (demande du propriétaire, 2026-10-23 : « Il faudrai réduire çà en deux menus à onglet. Un pour les armes
+ * de mêlée l'autre pour les armes à distances. ») : la catégorie de famille que chacun montre (arme_famille.categorie, décision R127) et son intitulé,
+ * dans l'ordre de la page.
+ */
+export const MENUS_DES_ARMES = [
+  { categorie: 'contact', titre: 'Armes de mêlée' },
+  { categorie: 'distance', titre: 'Armes à distance' },
+];
+
+/**
+ * Les familles de l'onglet (lib/armes-db.mjs#chargerArmes, dans l'ordre de l'onglet) rangées dans leurs menus : [{ categorie, titre, familles }], dans
+ * l'ordre de MENUS_DES_ARMES, chaque menu dans l'ordre des familles, un menu sans famille omis. Une famille d'une autre catégorie (ou sans catégorie)
+ * arrête le build : elle n'aurait pas de menu, et la page la perdrait sans rien dire.
+ */
+export function menusDesArmes(familles) {
+  const sansMenu = familles.filter((f) => !MENUS_DES_ARMES.some((m) => m.categorie === f.categorie));
+  if (sansMenu.length) {
+    throw new Error(`familles d'armes sans menu (catégorie ni « contact » ni « distance », décision R127) : ${sansMenu.map((f) => `${f.id} (${f.categorie})`).join(', ')}`);
+  }
+  return MENUS_DES_ARMES.map((m) => ({ ...m, familles: familles.filter((f) => f.categorie === m.categorie) })).filter((m) => m.familles.length > 0);
+}
+
+/**
+ * La famille fictive des modèles d'une famille créée en mode modification (décision R159 : « créer un nouvel onglet donc un nouveau tableau si
+ * besoin ») : components/armes/ArmesPage.astro rend son onglet (OngletDeFamille.astro) et son tableau (TableauArmes.astro) dans deux `<template
+ * data-armes-modele>` ; src/scripts/edition/armes.mjs les remplit (htmlDeFamilleDepuisModele) pour une famille créée, sans autre HTML que celui de la
+ * page construite. Des jetons qu'aucun nom ne donne : un identifiant de famille est `normalize(nom)` (lib/text.mjs : lettres, chiffres et tirets, jamais
+ * de « _ »), d'où des ids uniques dans la page (`famille-__id__`). Ni note ni arme.
+ */
+export const MODELE_DE_FAMILLE = Object.freeze({
+  id: '__id__', nom: '__nom__', de_brut: '__de__', cout_libelle: '__cout__', note_brut: null, categorie: null, armes: Object.freeze([]),
+  // une famille créée sur le site de dev n'a aucune arme élémentaire (décision R167 : ni sur la page ni sur la fiche) ni type élémentaire
+  type_elementaire: null, armes_elementaires: Object.freeze([]),
+});
+
+/**
+ * Le HTML d'un modèle (`modele` : le contenu d'un `<template data-armes-modele>`) pour une famille (`famille` : une ligne arme_famille, celle que
+ * renvoie le service à sa création) : chaque jeton de MODELE_DE_FAMILLE remplacé par sa valeur échappée comme Astro l'échappe (test/armes-html.test.mjs
+ * compare le résultat au HTML construit d'une famille de la base), et, pour un coût « à l'unité » (`cout_libelle` « (unité) »), l'attribut
+ * `data-unite="1"` du tableau (TableauArmes.astro, que src/scripts/armes.mjs lit pour le coût de la fiche). Une famille créée n'a pas de note (son bandeau
+ * est « NOM - dé ») : la note du modèle reste vide. Les balises du glossaire du modèle (l'en-tête « {{solidite}} ») restent telles qu'écrites : le
+ * middleware ne rend rien dans un `<template>`, et le site de dev les rend dès que le HTML est posé (src/scripts/edition/mots-cles-vivants.mjs).
+ */
+export function htmlDeFamilleDepuisModele(modele, famille) {
+  const html = String(modele ?? '')
+    .replaceAll(MODELE_DE_FAMILLE.id, e(famille.id))
+    .replaceAll(MODELE_DE_FAMILLE.nom, e(famille.nom))
+    .replaceAll(MODELE_DE_FAMILLE.de_brut, e(famille.de_brut ?? ''))
+    .replaceAll(MODELE_DE_FAMILLE.cout_libelle, e(famille.cout_libelle ?? ''));
+  // la note vide : `data-note` tel qu'Astro l'écrit, `data-note=""` tel qu'un navigateur relit le modèle (innerHTML)
+  return String(famille.cout_libelle ?? '').includes('(unité)') ? html.replace(/ data-note(?:="")?(?=[\s>])/, '$& data-unite="1"') : html;
 }

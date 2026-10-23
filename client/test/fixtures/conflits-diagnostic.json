@@ -1,0 +1,524 @@
+{
+ "lots": [
+  {
+   "lot": "2026-10-21T08:00:00.000Z-000000-essai-alias",
+   "fait_le": "2026-10-21T08:00:00Z",
+   "page_id": "guide/le-mode-hyper",
+   "resume": "Alias d’essai",
+   "detail": "lot 2026-10-21T08:00:00.000Z-000000-essai-alias : alias : clé étrangère rompue vers page",
+   "detail_lisible": "Autre nom de la page : clé étrangère rompue vers Page",
+   "empreinte": "e5d6274f641acb0fe9712cfdec9a3b57",
+   "saines": [],
+   "conflits": [
+    {
+     "rang": 1,
+     "table": "alias",
+     "cle": {
+      "page_id": "guide/le-mode-hyper",
+      "ordre": 900
+     },
+     "operation": "inserer",
+     "libelle": "Autre nom de la page guide/le-mode-hyper, ordre 900",
+     "raison": "alias : clé étrangère rompue vers page (page_id = \"guide/le-mode-hyper\")",
+     "raison_lisible": "Autre nom de la page : clé étrangère rompue vers Page guide/le-mode-hyper",
+     "colonne": null,
+     "colonne_libelle": null,
+     "avant": null,
+     "apercu": null,
+     "saisie": null,
+     "id": "1",
+     "genre": "sans_valeur",
+     "version_1": {
+      "genre": "ligne",
+      "valeur": {
+       "page_id": "guide/le-mode-hyper",
+       "ordre": 900,
+       "texte": "Alias du site de dev (essai des conflits)"
+      },
+      "libelles": {
+       "page_id": "Page",
+       "ordre": "Ordre",
+       "texte": "Autre nom"
+      }
+     },
+     "version_2": {
+      "genre": "absente",
+      "valeur": null
+     },
+     "choix_possibles": [
+      2
+     ]
+    }
+   ]
+  },
+  {
+   "lot": "2026-10-21T08:00:01.000Z-000000-essai-ancien",
+   "fait_le": "2026-10-21T08:00:01Z",
+   "page_id": "bestiaire/",
+   "resume": "avant 0044",
+   "detail": "lot 2026-10-21T08:00:01.000Z-000000-essai-ancien : monstre_capacite {\"monstre_id\":\"monstres/amblypyge-noir#carte:amblypyge-de-brai\",\"rang\":1} : noté avant la migration 0044 : les capacités d’une carte ne sont plus le texte de sa rubrique « Capacité(s) » mais des capacités communes (décision R66) ; à refaire sur le site de dev (une carte : la supprimer de nouveau ; une capacité : dans son panneau)",
+   "detail_lisible": "Capacité de la carte « Amblypyge de brai », n° 1 : noté avant la migration 0044 : les capacités d’une carte ne sont plus le texte de sa rubrique « Capacité(s) » mais des capacités communes (décision R66) ; à refaire sur le site de dev (une carte : la supprimer de nouveau ; une capacité : dans son panneau)",
+   "empreinte": "7459aff9c6f691ec1e558572992488c4",
+   "saines": [],
+   "conflits": [
+    {
+     "rang": 1,
+     "table": "monstre_capacite",
+     "cle": {
+      "monstre_id": "monstres/amblypyge-noir#carte:amblypyge-de-brai",
+      "rang": 1
+     },
+     "operation": "modifier",
+     "libelle": "Capacité de la carte « Amblypyge de brai », n° 1",
+     "raison": "noté avant la migration 0044 : les capacités d’une carte ne sont plus le texte de sa rubrique « Capacité(s) » mais des capacités communes (décision R66) ; à refaire sur le site de dev (une carte : la supprimer de nouveau ; une capacité : dans son panneau)",
+     "raison_lisible": "noté avant la migration 0044 : les capacités d’une carte ne sont plus le texte de sa rubrique « Capacité(s) » mais des capacités communes (décision R66) ; à refaire sur le site de dev (une carte : la supprimer de nouveau ; une capacité : dans son panneau)",
+     "colonne": null,
+     "colonne_libelle": null,
+     "avant": null,
+     "apercu": null,
+     "saisie": null,
+     "id": "1",
+     "genre": "sans_valeur",
+     "version_1": {
+      "genre": "valeurs",
+      "valeur": {
+       "texte": "vole très haut."
+      },
+      "libelles": {
+       "texte": "Texte"
+      }
+     },
+     "version_2": {
+      "genre": "ligne",
+      "valeur": {
+       "monstre_id": "monstres/amblypyge-noir#carte:amblypyge-de-brai",
+       "rang": 1,
+       "prefixe": null,
+       "ep_min": null,
+       "capacite_commune_id": "carapace-huileuse",
+       "sorts": null
+      },
+      "libelles": {
+       "monstre_id": "Monstre",
+       "rang": "Rang",
+       "prefixe": "Préfixe (« [EP3] », « [Gauche] »)",
+       "ep_min": "Échelle de puissance minimale",
+       "capacite_commune_id": "Capacité",
+       "sorts": "Sorts de cette carte (séparés par des virgules)"
+      }
+     },
+     "choix_possibles": [
+      2
+     ]
+    }
+   ]
+  },
+  {
+   "lot": "2026-10-23T13:46:38.780Z-000000-8817bca8-b35d-4476-a6fc-a4fc81f405ae",
+   "fait_le": "2026-10-23T13:46:38Z",
+   "page_id": "guide/la-magie-en-jeu",
+   "resume": "Page La magie en jeu : Texte ; Métier Forgeron : Description",
+   "detail": "lot 2026-10-23T13:46:38.780Z-000000-8817bca8-b35d-4476-a6fc-a4fc81f405ae : page {\"id\":\"guide/la-magie-en-jeu\"} : les règles ont changé corps_md autrement",
+   "detail_lisible": "Page « La magie en jeu » : les règles ont changé « Texte » autrement",
+   "empreinte": "efcc002cd0fb4228893592cdca8dd1f2",
+   "saines": [
+    {
+     "rang": 2,
+     "table": "metier",
+     "cle": {
+      "id": "metiers/forgeron"
+     },
+     "operation": "modifier",
+     "libelle": "Métier « Forgeron »",
+     "issue": "reappliquee"
+    },
+    {
+     "rang": 3,
+     "table": "page",
+     "cle": {
+      "id": "metiers/forgeron"
+     },
+     "operation": "modifier",
+     "libelle": "Page « Forgeron »",
+     "issue": "derivee"
+    }
+   ],
+   "conflits": [
+    {
+     "rang": 1,
+     "table": "page",
+     "cle": {
+      "id": "guide/la-magie-en-jeu"
+     },
+     "operation": "modifier",
+     "libelle": "Page « La magie en jeu »",
+     "raison": "les règles ont changé corps_md autrement",
+     "raison_lisible": "les règles ont changé « Texte » autrement",
+     "id": "1:corps_md",
+     "colonne": "corps_md",
+     "colonne_libelle": "Texte",
+     "genre": "champ",
+     "version_1": {
+      "genre": "valeur",
+      "valeur": "Tout personnage a au moins une magie, et donc au moins un sort : comment les choisir est expliqué dans [[guide/creer-son-personnage|Créer son personnage]]. Cette page explique comment s’en servir en partie.\n\n## Lire un sort\n\nLes sorts de chaque magie sont sur sa page (voir [les magies](/magies/)), u\n…\nuations avancées]] (« Rater ses sortilèges ») et [[guide/la-montee-de-niveau|La montée de niveau]].\n\nParagraphe ajouté sur le site de dev (essai des conflits).\n"
+     },
+     "version_2": {
+      "genre": "valeur",
+      "valeur": "Page guide/la-magie-en-jeu réécrite par les règles livrées (essai des conflits).\n"
+     },
+     "avant": {
+      "genre": "valeur",
+      "valeur": "Tout personnage a au moins une magie, et donc au moins un sort : comment les choisir est expliqué dans [[guide/creer-son-personnage|Créer son personnage]]. Cette page explique comment s’en servir en partie.\n\n## Lire un sort\n\nLes sorts de chaque magie sont sur sa page (voir [les magies](/magies/)), u\n…\n\n\nPour aller plus loin : [[guide/situations-avancees|Les situations avancées]] (« Rater ses sortilèges ») et [[guide/la-montee-de-niveau|La montée de niveau]].\n"
+     },
+     "apercu": [
+      "<p>aperçu 0</p>"
+     ],
+     "choix_possibles": [
+      1,
+      2,
+      3
+     ],
+     "saisie": {
+      "type": "markdown",
+      "libelle": "Texte",
+      "requis": true
+     }
+    }
+   ]
+  },
+  {
+   "lot": "2026-10-23T13:46:38.808Z-000000-3e1387d5-47a5-4c58-9ea4-a8ff62c9c3d5",
+   "fait_le": "2026-10-23T13:46:38Z",
+   "page_id": "guide/le-mode-hyper",
+   "resume": "Page Le Mode Hyper et le Mode Super : Texte",
+   "detail": "lot 2026-10-23T13:46:38.808Z-000000-3e1387d5-47a5-4c58-9ea4-a8ff62c9c3d5 : page {\"id\":\"guide/le-mode-hyper\"} : la ligne n’existe plus dans les règles",
+   "detail_lisible": "Page guide/le-mode-hyper : la ligne n’existe plus dans les règles",
+   "empreinte": "48415acbe0d369f12063fbcaee2c9e06",
+   "saines": [],
+   "conflits": [
+    {
+     "rang": 1,
+     "table": "page",
+     "cle": {
+      "id": "guide/le-mode-hyper"
+     },
+     "operation": "modifier",
+     "libelle": "Page guide/le-mode-hyper",
+     "raison": "la ligne n’existe plus dans les règles",
+     "raison_lisible": "la ligne n’existe plus dans les règles",
+     "colonne": null,
+     "colonne_libelle": null,
+     "avant": null,
+     "apercu": [
+      "<p>aperçu 0</p>"
+     ],
+     "saisie": null,
+     "id": "1",
+     "genre": "ligne_supprimee",
+     "version_1": {
+      "genre": "valeurs",
+      "valeur": {
+       "corps_md": "> « Ne plus faire qu’un avec soi-même. »\n\nLe **Mode Hyper** est un état de surpuissance, qui s’ouvre au **niveau 2** du personnage. Le personnage libère alors la puissance cachée en lui : sa magie ne fait plus qu’un avec lui, son aura magique déferle, et son apparence change profondément sous l’effe\n…\niste ne compte pas, ce sont les valeurs données plus haut (+15, et +7 avec deux magies) qui valent.\n\nParagraphe ajouté sur le site de dev (essai des conflits).\n"
+      },
+      "libelles": {
+       "corps_md": "Texte"
+      }
+     },
+     "version_2": {
+      "genre": "absente",
+      "valeur": null
+     },
+     "choix_possibles": [
+      2
+     ]
+    }
+   ]
+  },
+  {
+   "lot": "2026-10-23T13:46:38.812Z-000000-7e7c927d-0c46-4393-95be-66a4a8415864",
+   "fait_le": "2026-10-23T13:46:38Z",
+   "page_id": "guide/s-entrainer-et-exercer-un-metier",
+   "resume": "Page S’entraîner et exercer un métier : Texte",
+   "detail": "lot 2026-10-23T13:46:38.812Z-000000-7e7c927d-0c46-4393-95be-66a4a8415864 : page {\"id\":\"guide/s-entrainer-et-exercer-un-metier\"} : les règles ont changé corps_md autrement",
+   "detail_lisible": "Page « S’entraîner et exercer un métier » : les règles ont changé « Texte » autrement",
+   "empreinte": "df9975e9d4387490d442ee67db010919",
+   "saines": [],
+   "conflits": [
+    {
+     "rang": 1,
+     "table": "page",
+     "cle": {
+      "id": "guide/s-entrainer-et-exercer-un-metier"
+     },
+     "operation": "modifier",
+     "libelle": "Page « S’entraîner et exercer un métier »",
+     "raison": "les règles ont changé corps_md autrement",
+     "raison_lisible": "les règles ont changé « Texte » autrement",
+     "id": "1:corps_md",
+     "colonne": "corps_md",
+     "colonne_libelle": "Texte",
+     "genre": "champ",
+     "version_1": {
+      "genre": "valeur",
+      "valeur": "Les niveaux ne sont pas la seule façon de progresser. Entre deux niveaux, un personnage peut **s’entraîner** pour améliorer une compétence ; et son **métier** lui donne, tout au long de l’aventure, un savoir-faire que les autres n’ont pas.\n\n## S’entraîner\n\n### Trouver un entraîneur\n\nLes entraînement\n…\nps.\n\nEt, quoi qu’il arrive, le MJ a toujours raison. Les règles complètes : [[Règles des métiers]].\n\nParagraphe ajouté sur le site de dev (essai des conflits).\n"
+     },
+     "version_2": {
+      "genre": "valeur",
+      "valeur": "Page guide/s-entrainer-et-exercer-un-metier réécrite par les règles livrées (essai des conflits).\n"
+     },
+     "avant": {
+      "genre": "valeur",
+      "valeur": "Les niveaux ne sont pas la seule façon de progresser. Entre deux niveaux, un personnage peut **s’entraîner** pour améliorer une compétence ; et son **métier** lui donne, tout au long de l’aventure, un savoir-faire que les autres n’ont pas.\n\n## S’entraîner\n\n### Trouver un entraîneur\n\nLes entraînement\n…\nnus, ni trop peu, d’autant qu’ils ne servent pas tout le temps.\n\nEt, quoi qu’il arrive, le MJ a toujours raison. Les règles complètes : [[Règles des métiers]].\n"
+     },
+     "apercu": [
+      "<p>aperçu 0</p>",
+      "<p>aperçu 1</p>"
+     ],
+     "choix_possibles": [
+      1,
+      2,
+      3
+     ],
+     "saisie": {
+      "type": "markdown",
+      "libelle": "Texte",
+      "requis": true
+     }
+    }
+   ]
+  },
+  {
+   "lot": "2026-10-23T13:46:38.821Z-000000-cfd1bf41-f489-4a12-a498-2fc469870d01",
+   "fait_le": "2026-10-23T13:46:38Z",
+   "page_id": "metiers/forgeron",
+   "resume": "Métier Forgeron : Bonus",
+   "detail": "lot 2026-10-23T13:46:38.821Z-000000-cfd1bf41-f489-4a12-a498-2fc469870d01 : metier {\"id\":\"metiers/forgeron\"} : les règles ont changé bonus_brut autrement",
+   "detail_lisible": "Métier « Forgeron » : les règles ont changé « Bonus » autrement",
+   "empreinte": "6340ed3cfcd2afbb9fc2c40233d687b4",
+   "saines": [
+    {
+     "rang": 2,
+     "table": "metier_bonus",
+     "cle": {
+      "metier_id": "metiers/forgeron",
+      "rang": 1,
+      "option": 2
+     },
+     "operation": "supprimer",
+     "libelle": "Bonus du métier « Forgeron », n° 1, option 2",
+     "issue": "reappliquee"
+    },
+    {
+     "rang": 3,
+     "table": "metier_bonus",
+     "cle": {
+      "metier_id": "metiers/forgeron",
+      "rang": 1,
+      "option": 1
+     },
+     "operation": "modifier",
+     "libelle": "Bonus du métier « Forgeron », n° 1, option 1",
+     "issue": "reappliquee"
+    },
+    {
+     "rang": 4,
+     "table": "page",
+     "cle": {
+      "id": "metiers/forgeron"
+     },
+     "operation": "modifier",
+     "libelle": "Page « Forgeron »",
+     "issue": "derivee"
+    }
+   ],
+   "conflits": [
+    {
+     "rang": 1,
+     "table": "metier",
+     "cle": {
+      "id": "metiers/forgeron"
+     },
+     "operation": "modifier",
+     "libelle": "Métier « Forgeron »",
+     "raison": "les règles ont changé bonus_brut autrement",
+     "raison_lisible": "les règles ont changé « Bonus » autrement",
+     "id": "1:bonus_brut",
+     "colonne": "bonus_brut",
+     "colonne_libelle": "Bonus",
+     "genre": "champ",
+     "version_1": {
+      "genre": "valeur",
+      "valeur": "+3% Esquive"
+     },
+     "version_2": {
+      "genre": "valeur",
+      "valeur": "+5% Parade"
+     },
+     "avant": {
+      "genre": "valeur",
+      "valeur": "+3% Arme lourde OU Arme légère"
+     },
+     "apercu": null,
+     "choix_possibles": [
+      1,
+      2,
+      3
+     ],
+     "saisie": {
+      "type": "ligne",
+      "libelle": "Bonus",
+      "vide": ""
+     }
+    }
+   ]
+  },
+  {
+   "lot": "2026-10-23T13:46:38.834Z-000000-0d603e33-f43b-49d0-b02d-928908313490",
+   "fait_le": "2026-10-23T13:46:38Z",
+   "page_id": "recherche/",
+   "resume": "Mot-clé supprimé : Essai conflits étiquette (retiré de 0 page(s))",
+   "detail": "lot 2026-10-23T13:46:38.834Z-000000-0d603e33-f43b-49d0-b02d-928908313490 : sort_mot_cle : clé étrangère rompue vers mot_cle",
+   "detail_lisible": "Étiquette du sort : clé étrangère rompue vers Mot-clé",
+   "empreinte": "a09d077a9271950ae04900ed757658d4",
+   "saines": [],
+   "conflits": [
+    {
+     "rang": 1,
+     "table": "mot_cle",
+     "cle": {
+      "id": "essai-conflits-etiquette"
+     },
+     "operation": "supprimer",
+     "libelle": "Mot-clé « Essai conflits étiquette »",
+     "raison": "sort_mot_cle : clé étrangère rompue vers mot_cle (mot_cle_id = \"essai-conflits-etiquette\")",
+     "raison_lisible": "Étiquette du sort : clé étrangère rompue vers Mot-clé essai-conflits-etiquette",
+     "colonne": null,
+     "colonne_libelle": null,
+     "avant": null,
+     "apercu": null,
+     "saisie": null,
+     "id": "1",
+     "genre": "sans_valeur",
+     "version_1": {
+      "genre": "suppression",
+      "valeur": {
+       "id": "essai-conflits-etiquette",
+       "libelle": "Essai conflits étiquette",
+       "description": "Mot-clé d’essai des conflits (test/serveur-edition-conflits.test.mjs)."
+      },
+      "libelles": {
+       "id": "Identifiant",
+       "libelle": "Mot-clé",
+       "description": "Définition"
+      }
+     },
+     "version_2": {
+      "genre": "ligne",
+      "valeur": {
+       "id": "essai-conflits-etiquette",
+       "libelle": "Essai conflits étiquette",
+       "description": "Mot-clé d’essai des conflits (test/serveur-edition-conflits.test.mjs)."
+      },
+      "libelles": {
+       "id": "Identifiant",
+       "libelle": "Mot-clé",
+       "description": "Définition"
+      }
+     },
+     "choix_possibles": [
+      2
+     ]
+    }
+   ]
+  },
+  {
+   "lot": "2026-10-23T13:46:38.863Z-000000-19ed5663-c6c9-48ee-bb30-7d4a6b9bf978",
+   "fait_le": "2026-10-23T13:46:38Z",
+   "page_id": "metiers/acrobate",
+   "resume": "Métier Acrobate : Nom",
+   "detail": "lot 2026-10-23T13:46:38.863Z-000000-19ed5663-c6c9-48ee-bb30-7d4a6b9bf978 : metier {\"id\":\"metiers/acrobate\"} : les règles ont changé nom, nom_cle autrement",
+   "detail_lisible": "Métier « Acrobate des règles (essai des conflits) » : les règles ont changé « Nom » autrement",
+   "empreinte": "e3090aa3112e7f2ef8565b507394cfb7",
+   "saines": [],
+   "conflits": [
+    {
+     "rang": 1,
+     "table": "metier",
+     "cle": {
+      "id": "metiers/acrobate"
+     },
+     "operation": "modifier",
+     "libelle": "Métier « Acrobate des règles (essai des conflits) »",
+     "raison": "les règles ont changé nom autrement",
+     "raison_lisible": "les règles ont changé « Nom » autrement",
+     "id": "1:nom",
+     "colonne": "nom",
+     "colonne_libelle": "Nom",
+     "genre": "champ",
+     "version_1": {
+      "genre": "valeur",
+      "valeur": "Acrobate du site (essai des conflits)"
+     },
+     "version_2": {
+      "genre": "valeur",
+      "valeur": "Acrobate des règles (essai des conflits)"
+     },
+     "avant": {
+      "genre": "valeur",
+      "valeur": "Acrobate"
+     },
+     "apercu": null,
+     "choix_possibles": [
+      1,
+      2,
+      3
+     ],
+     "saisie": {
+      "type": "ligne",
+      "libelle": "Nom",
+      "requis": true
+     }
+    },
+    {
+     "rang": 2,
+     "table": "page",
+     "cle": {
+      "id": "metiers/acrobate"
+     },
+     "operation": "modifier",
+     "libelle": "Page « Acrobate des règles (essai des conflits) »",
+     "raison": "les règles ont changé titre autrement",
+     "raison_lisible": "les règles ont changé « Titre » autrement",
+     "id": "2:titre",
+     "colonne": "titre",
+     "colonne_libelle": "Titre",
+     "genre": "champ",
+     "version_1": {
+      "genre": "valeur",
+      "valeur": "Acrobate du site (essai des conflits)"
+     },
+     "version_2": {
+      "genre": "valeur",
+      "valeur": "Acrobate des règles (essai des conflits)"
+     },
+     "avant": {
+      "genre": "valeur",
+      "valeur": "Acrobate"
+     },
+     "apercu": null,
+     "choix_possibles": [
+      2,
+      3
+     ],
+     "saisie": {
+      "type": "ligne",
+      "libelle": "Titre",
+      "requis": true
+     },
+     "refus_1": "metiers/acrobate : seules les pages du guide et du Codex se modifient ici (les autres pages suivent leurs tables)"
+    }
+   ]
+  }
+ ],
+ "resolus": []
+}

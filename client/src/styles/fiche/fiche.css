@@ -1,31 +1,33 @@
 /* Chargé uniquement depuis pages/fiche/index.astro (?raw) : la fiche de personnage (création et modification d'un prétiré).
    Quatre zones (demande du propriétaire) : I. identité, II. à portée de main, III. selon la situation, IV. paramètres et suivi (en onglets), chacune
-   teintée de sa couleur (--etape : une partie du guide, lib/guide.mjs#PARTIES) ; dans une zone, des blocs dont le cadre prend la couleur de la magie
-   innée, en dégradé vers l'acquise (demande du propriétaire) ; races, magies et classes en PASTILLES comme sur /races/, /magies/ et /classes/ (pilule
-   bordée et teintée de la couleur, point de couleur, nom en gras), la choisie pleine, celles que les règles ferment grisées et barrées.
+   teintée de sa couleur (--etape : une partie du guide, la classe de sa partie `.couleur-partie-…` posée sur la zone,
+   lib/palette-css.mjs#classeDePartie) ; dans une zone, des blocs dont le cadre prend la couleur de la magie innée, en dégradé vers l'acquise
+   (demande du propriétaire) ; races, magies et classes en PASTILLES comme sur /races/, /magies/ et /classes/ (pilule bordée et teintée de la couleur,
+   point de couleur, nom en gras), la choisie pleine, celles que les règles ferment grisées et barrées.
    Compacte (demande du propriétaire : « c'est TROP GROS ») : texte et marges réduits, choix dans des menus déroulants, curseurs. */
 /* les zones ont besoin de place : la fiche prend plus que la largeur des autres pages */
 main:has(> .fiche) { max-width: 100rem; }
 /* lu par les lecteurs d'écran, pas affiché (le titre de la page : le nom, déjà en grand dans l'identité) */
 .fiche .visuellement-cache { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .fiche {
-  --vert: #2e7d4f;
-  --a-choisir: #b45309;   /* un choix qui reste à faire : champ surligné, tiroir des choix */
+  /* couleurs d'interface du thème (styles/global/base.css) : l'action principale ; --a-choisir (un choix qui reste à faire : champ surligné, tiroir des
+     choix) y est aussi, avec sa valeur du thème sombre */
+  --vert: var(--vert-action);
+  /* la couleur de la magie innée (sa classe, posée sur la fiche par le script), lue ici, avant les zones : les enfants d'une zone la retrouvent (zones,
+     plus bas) */
+  --couleur-de-la-fiche: var(--couleur);
+  --couleur-texte-de-la-fiche: var(--couleur-texte);
   display: grid;
   gap: 0.75rem;
-  font-size: 0.9rem;
+  font-size: var(--fs-lg);
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .fiche { --a-choisir: #f0a14a; }
-}
-:root[data-theme='dark'] .fiche { --a-choisir: #f0a14a; }
 /* l'attribut hidden l'emporte sur les display des blocs (un champ caché par le script reste caché) */
 .fiche [hidden] { display: none !important; }
-.fiche input:not([type='range'], [type='checkbox'], [type='radio']), .fiche select, .fiche textarea, .fiche button { padding: 0.22rem 0.45rem; font-size: 0.85rem; }
+.fiche input:not([type='range'], [type='checkbox'], [type='radio']), .fiche select, .fiche textarea, .fiche button { padding: 0.22rem 0.45rem; font-size: var(--fs-md); }
 
 /* ----------------------------------------------------------------- en-tête : titre */
 .fiche-entete { display: grid; gap: 0.1rem; }
-.fiche-surtitre { margin: 0; color: var(--vert); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.fiche-surtitre { margin: 0; color: var(--vert); font-size: var(--fs-xxs); font-weight: 700; letter-spacing: var(--ls-caps); text-transform: uppercase; }
 .fiche-surtitre a { color: inherit; }
 
 /* jauge d'XP, en tête du bloc de progression (demande du propriétaire) */
@@ -34,7 +36,7 @@ main:has(> .fiche) { max-width: 100rem; }
 .xp__niveau { margin-right: auto; color: var(--vert); }
 .fiche .xp__ligne input { width: 6.5rem; text-align: right; font-variant-numeric: tabular-nums; }
 .xp__objectif { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.fiche .xp__plus { width: 1.8rem; padding: 0.1rem 0; font-weight: 700; color: #fff; background: var(--vert); border-color: var(--vert); border-radius: var(--radius-pill); }
+.fiche .xp__plus { width: 1.8rem; padding: 0.1rem 0; font-weight: 700; color: var(--texte-sur-fonce); background: var(--vert); border-color: var(--vert); border-radius: var(--radius-pill); }
 .xp__jauge { height: 0.5rem; overflow: hidden; border: 1px solid color-mix(in srgb, var(--vert) 45%, var(--border)); border-radius: var(--radius-pill); background: color-mix(in srgb, var(--vert) 8%, var(--surface)); }
 .xp__rempli { display: block; width: 0; height: 100%; background: var(--vert); transition: width 200ms ease; }
 .xp__ajout { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; }
@@ -57,8 +59,8 @@ main:has(> .fiche) { max-width: 100rem; }
   backdrop-filter: blur(6px);
   box-shadow: 0 3px 10px color-mix(in srgb, var(--text) 9%, transparent);
 }
-.fiche-barre label { display: flex; align-items: center; gap: 0.35rem; font-size: 0.85rem; }
-.fiche .fiche-barre__principal { font-weight: 700; color: #fff; background: var(--vert); border-color: var(--vert); padding-inline: 0.9rem; }
+.fiche-barre label { display: flex; align-items: center; gap: 0.35rem; font-size: var(--fs-md); }
+.fiche .fiche-barre__principal { font-weight: 700; color: var(--texte-sur-fonce); background: var(--vert); border-color: var(--vert); padding-inline: 0.9rem; }
 .fiche-barre__principal:hover:not(:disabled) { filter: brightness(1.1); }
 .fiche .fiche-barre__danger { color: var(--danger); background: none; border-color: color-mix(in srgb, var(--danger) 50%, var(--border)); }
 .fiche .fiche-barre__danger:hover { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, var(--surface)); }
@@ -70,8 +72,8 @@ main:has(> .fiche) { max-width: 100rem; }
   cursor: pointer;
 }
 .fiche-bouton-fichier span:hover, .fiche-bouton-fichier span:focus-visible { border-color: var(--accent); }
-.fiche-barre > button:not(.fiche-barre__principal), .fiche-bouton-fichier span { padding: 0.2rem 0.55rem; font-size: 0.8rem; }
-.fiche-message { flex: 1 1 12rem; margin: 0; font-size: 0.85rem; }
+.fiche-barre > button:not(.fiche-barre__principal), .fiche-bouton-fichier span { padding: 0.2rem 0.55rem; font-size: var(--fs-sm); }
+.fiche-message { flex: 1 1 12rem; margin: 0; font-size: var(--fs-md); }
 .fiche-message:empty { display: none; }
 .fiche-message[data-ton='ok'] { color: var(--good); }
 .fiche-message[data-ton='erreur'] { color: var(--danger); }
@@ -81,15 +83,16 @@ main:has(> .fiche) { max-width: 100rem; }
   border-radius: var(--radius-pill);
   background: color-mix(in srgb, var(--vert) 14%, var(--surface));
   border: 1px solid color-mix(in srgb, var(--vert) 50%, var(--border));
-  font-size: 0.85rem;
+  font-size: var(--fs-md);
   font-weight: 700;
 }
 
 .fiche-barre__outils { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; margin-left: auto; }
-.fiche-barre__outils > button, .fiche-barre__outils .fiche-bouton-fichier span { padding: 0.2rem 0.55rem; font-size: 0.8rem; }
+.fiche-barre__outils > button, .fiche-barre__outils .fiche-bouton-fichier span { padding: 0.2rem 0.55rem; font-size: var(--fs-sm); }
 
 /* cadres des blocs (bordure, bandeau du titre), portrait et niveau : la couleur de la magie innée, en dégradé vers celle de la magie acquise (demande du
-   propriétaire ; --magie-1 et --magie-2 posées par le script) ; sans magie innée, celle de la zone (--etape). Seuls les cadres changent :
+   propriétaire ; le script pose sur la fiche la classe de l'innée et la classe de second rang de l'acquise : --couleur, --couleur-2,
+   lib/palette-css.mjs) ; sans magie innée, celle de la zone (--etape). Seuls les cadres changent :
    caractéristiques, attributs, pastilles et curseurs gardent leurs couleurs. --cadre-trait : la couleur mêlée d'un peu de texte, pour qu'un trait
    blanc (Vide) ou noir (Corruption) reste visible. */
 .fiche-etape {
@@ -98,11 +101,23 @@ main:has(> .fiche) { max-width: 100rem; }
   --cadre-trait: color-mix(in srgb, var(--cadre) 80%, var(--text));
   --cadre-trait-2: color-mix(in srgb, var(--cadre-2) 80%, var(--text));
 }
-.fiche[data-magie] .fiche-etape { --cadre: var(--magie-1); --cadre-2: var(--magie-2, var(--magie-1)); }
+.fiche[data-magie] .fiche-etape { --cadre: var(--couleur); --cadre-2: var(--couleur-2, var(--couleur)); }
+/* la couleur d'une magie, d'une caractéristique (et de ses compétences), d'une posture, d'un alignement, d'une race, d'une classe, du Mode Hyper ou
+   la classe neutre sur un élément de la fiche (pastille, groupe de pastilles, résistance, sort, liste, carte, tableau des compétences, case de posture
+   ou du Mode Hyper, alignement, dons d'une classe) : sa classe (lib/palette-css.mjs, nom transmis par regles.json) et `teinte-palette`, qui la fait lire
+   dans les variables de la fiche (src/scripts/fiche.mjs#teinteDe) ; jamais une couleur en style */
+.fiche .teinte-palette { --c: var(--couleur); --c-texte: var(--couleur-texte); --texte-sur-c: var(--couleur-texte); }
+.fiche option.teinte-palette { background-color: var(--c); color: var(--c-texte); }
 
 /* ----------------------------------------------------------------- zones (demande du propriétaire) : I. identité, II. à portée de main, III. selon la
    situation, IV. paramètres et suivi ; sans cadre ni titre visibles (demande du propriétaire : « retirer les grands cadres ») : les blocs se suivent, la
-   couleur de la zone (--etape) reste celle de leurs accents. position : le panneau d'un menu déroulant s'étend sur sa rangée de menus. */
+   couleur de la zone (--etape) reste celle de leurs accents. position : le panneau d'un menu déroulant s'étend sur sa rangée de menus.
+   --etape : tirée de la classe de la partie de la zone (`.couleur-partie-…`, posée par pages/fiche/index.astro), lue sur la zone seule. La classe
+   pose aussi --couleur et --couleur-texte, que la fiche lit déjà pour la magie innée (sa classe est sur .fiche : cadres des blocs, et tout élément sans
+   classe propre) : les enfants de la zone retrouvent celles de la fiche (--couleur-de-la-fiche, --couleur-texte-de-la-fiche, calculées sur .fiche ;
+   sans magie innée, aucune, comme avant). Une classe propre (teinte-palette, magie, palier…), d'un poids plus fort que :where(), l'emporte toujours. */
+.fiche-zone[class*='couleur-partie-'] { --etape: var(--couleur); }
+:where(.fiche-zone[class*='couleur-partie-']) > * { --couleur: var(--couleur-de-la-fiche); --couleur-texte: var(--couleur-texte-de-la-fiche); }
 .fiche-zone {
   --etape-doux: color-mix(in srgb, var(--etape) 9%, var(--surface));
   --etape-ligne: color-mix(in srgb, var(--etape) 40%, var(--border));
@@ -113,10 +128,11 @@ main:has(> .fiche) { max-width: 100rem; }
 }
 .fiche-zone__titre { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .fiche-zone__grille { display: grid; gap: 0.75rem; align-items: start; }
-.zp-colonne { display: grid; gap: 0.75rem; align-content: start; }
+.zp-colonne { display: grid; gap: 0.75rem; align-content: start; min-width: 0; }
 
-/* II. à portée de main : les attributs sur toute la largeur ; caractéristiques et compétences, à côté les armes, les maîtrises et la ceinture ; les
-   sorts, à côté les dons débloqués */
+/* II. à portée de main : les attributs sur toute la largeur ; caractéristiques et compétences, à côté la colonne des armes et, dessous, de la ceinture
+   (choix du propriétaire du 2026-10-23 : « Garder l'armes visibles à coté des caractéristiques comme avant » ; les maîtrises d'armes sont dans le
+   panneau « Choix » de la zone IV) ; les sorts, à côté les dons débloqués. Plus étroit, la colonne passe sous les compétences. */
 @media (min-width: 64rem) {
   .zone-portee { grid-template-columns: minmax(0, 5fr) minmax(0, 3fr); grid-template-areas: 'attr attr' 'car col' 'sor don'; }
   .zp-attributs { grid-area: attr; }
@@ -156,11 +172,11 @@ main:has(> .fiche) { max-width: 100rem; }
   background: linear-gradient(90deg, color-mix(in srgb, var(--cadre) 16%, var(--surface)), color-mix(in srgb, var(--cadre-2) 16%, var(--surface)));
   border-bottom: 2px solid var(--cadre-trait);
   border-image: linear-gradient(90deg, var(--cadre-trait), var(--cadre-trait-2)) 1;
-  font-size: 0.92rem;
+  font-size: var(--fs-lg);
 }
 .fiche-etape__corps { display: grid; align-content: start; gap: 0.6rem; padding: 0.55rem 0.7rem 0.7rem; }
-.fiche-sous-titre { margin: 0 0 0.25rem; font-size: 0.86rem; color: color-mix(in srgb, var(--etape) 65%, var(--text)); }
-.fiche-aide { margin: 0; color: var(--muted); font-size: 0.82rem; }
+.fiche-sous-titre { margin: 0 0 0.25rem; font-size: var(--fs-md); color: color-mix(in srgb, var(--etape) 65%, var(--text)); }
+.fiche-aide { margin: 0; color: var(--muted); font-size: var(--fs-sm); }
 .fiche-aide a { color: inherit; }
 
 /* ----------------------------------------------------------------- I. identité : le portrait à gauche, le nom en grand et le niveau à droite,
@@ -203,7 +219,7 @@ main:has(> .fiche) { max-width: 100rem; }
   line-height: 1;
   cursor: help;
 }
-.identite__niveau small { color: var(--muted); font-size: 0.62rem; letter-spacing: 0.06em; text-transform: uppercase; }
+.identite__niveau small { color: var(--muted); font-size: 0.62rem; letter-spacing: var(--ls-caps); text-transform: uppercase; }
 .identite__niveau strong { font-size: 1.75rem; font-variant-numeric: tabular-nums; }
 .identite__ligne { display: grid; gap: 0.5rem 0.75rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); align-items: end; }
 .identite__ligne .alignement { grid-column: span 2; }
@@ -214,8 +230,8 @@ main:has(> .fiche) { max-width: 100rem; }
 .identite__colonne { display: grid; gap: 0.35rem; align-content: start; min-width: 0; }
 .identite__dieux { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.75rem; align-items: start; }
 .identite__dieux p { margin: 0; }
-.identite__dieux strong { font-size: 0.85rem; line-height: 2rem; }
-.identite__bi { justify-self: start; font-size: 0.82rem; font-weight: 700; }
+.identite__dieux strong { font-size: var(--fs-md); line-height: 2rem; }
+.identite__bi { justify-self: start; font-size: var(--fs-sm); font-weight: 700; }
 
 /* le portrait (demande du propriétaire) : un carré arrondi cerclé du dégradé des magies ; sans image, le logo sur un fond teinté */
 .portrait { display: grid; gap: 0.35rem; justify-items: center; margin: 0; }
@@ -236,9 +252,25 @@ main:has(> .fiche) { max-width: 100rem; }
 .portrait__image { display: block; width: 100%; height: 100%; object-fit: cover; }
 .portrait[data-vide] .portrait__image { padding: 14%; object-fit: contain; opacity: 0.55; filter: grayscale(0.35); }
 .portrait__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.25rem; }
-.portrait__actions button, .portrait__actions .fiche-bouton-fichier span { padding: 0.15rem 0.5rem; font-size: 0.76rem; }
+.portrait__actions button, .portrait__actions .fiche-bouton-fichier span { padding: 0.15rem 0.5rem; font-size: var(--fs-xs); }
 
 /* le recadrage : styles/portrait/recadrage.css, inséré par src/scripts/portrait.mjs (partagé avec le portrait d'un monstre, mode modification du bestiaire) */
+
+/* où va une fiche importée quand un prétiré est ouvert (src/scripts/fiche.mjs#cibleDeLImport) : le dialogue sur le modèle du recadrage */
+.import-cible { width: min(30rem, calc(100vw - 2rem)); padding: 0; border: 1px solid var(--border); border-radius: var(--radius-xl); background: var(--surface); color: var(--text); }
+.import-cible::backdrop { background: color-mix(in srgb, #000 55%, transparent); }
+.import-cible__corps { display: grid; gap: 0.5rem; padding: 0.9rem; }
+.import-cible h2 { margin: 0; font-size: var(--fs-xl); }
+.import-cible p { margin: 0; }
+.import-cible__perte { color: var(--danger); }
+.import-cible__boutons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.4rem; margin-top: 0.3rem; }
+/* « Importer (en ligne) » : le lien de la feuille Google Sheets (même dialogue, caché à l'impression avec .import-cible) */
+.import-en-ligne__champ { display: grid; gap: 0.2rem; }
+.fiche .import-en-ligne__champ input { width: 100%; }
+.import-cible .import-en-ligne__aide { color: var(--muted); font-size: var(--fs-md); }
+.import-cible .import-en-ligne__erreur { color: var(--danger); }
+/* le lien « Ouvrir dans Google Sheets » après un export, dans le message de la barre */
+.fiche-message a { margin-left: 0.35rem; }
 
 /* ----------------------------------------------------------------- IV. paramètres et suivi : des onglets (components/Onglets.astro) ; sans
    JavaScript et à l'impression, les panneaux se suivent, chacun avec son titre */
@@ -255,15 +287,15 @@ main:has(> .fiche) { max-width: 100rem; }
   border-radius: var(--radius) var(--radius) 0 0;
   background: var(--etape-doux);
   color: var(--text);
-  font-size: 0.85rem;
+  font-size: var(--fs-md);
   font-weight: 700;
   text-decoration: none;
 }
 .parametres .onglet:hover { background: color-mix(in srgb, var(--etape) 18%, var(--surface)); }
 .parametres .onglet.is-active { border-color: var(--etape); border-bottom-color: var(--surface); background: var(--surface); color: color-mix(in srgb, var(--etape) 70%, var(--text)); }
-.onglet__compte { padding: 0 0.4rem; border-radius: var(--radius-pill); background: var(--danger); color: #fff; font-size: 0.7rem; }
-.onglet__compte[data-ok] { background: var(--good); }
-.onglet__compte--attente { background: #b45309; }
+.onglet__compte { padding: 0 0.4rem; border-radius: var(--radius-pill); background: var(--danger); color: var(--texte-sur-danger); font-size: var(--fs-xxs); }
+.onglet__compte[data-ok] { background: var(--good); color: var(--texte-sur-good); }
+.onglet__compte--attente { background: var(--a-choisir-plein); color: var(--texte-sur-fonce); }
 .parametres__panneau { border-top-left-radius: 0; border-top-right-radius: 0; }
 html.js .parametres[data-onglets] .parametres__panneau:not(.is-active) { display: none; }
 html.js .parametres[data-onglets] .parametres__titre { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -276,6 +308,8 @@ html:not(.js) .parametres { gap: 0.75rem; }
   .parametres__deux--large { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
 }
 .bourse { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+/* les maîtrises d'armes dans le panneau « Choix » (demande du propriétaire du 2026-10-23) : une rangée sur toute la largeur, sous les deux piles */
+.choix-maitrises { grid-column: 1 / -1; min-width: 0; }
 
 /* ----------------------------------------------------------------- un choix qui reste à faire (choixEnAttente) : son champ surligné (demande du
    propriétaire : « mettre en surbrillance le champ à saisir ») — menu de la spécialité ou de l'ethnie, groupe de dons, bonus ou objet du métier, +1 de la
@@ -311,7 +345,9 @@ html:not(.js) .parametres { gap: 0.75rem; }
 
 /* ----------------------------------------------------------------- le tiroir des choix à faire (demande du propriétaire) : tant qu'il en reste, le
    panneau « Choix » sort en bas de l'écran, par-dessus la fiche ; il se range quand la zone IV est à l'écran. Réduit, il ne montre que sa poignée (la
-   liste de ce qui manque) et se rouvre au survol. */
+   liste de ce qui manque) et se rouvre au survol. Son corps est alors en `display: none` : le focus clavier n'y entre pas. Au clavier, on passe par
+   « Déplier », « Aller aux choix » (le focus va sur l'onglet « Choix ») ou la bulle d'un choix du tiroir : le focus sur le choix montre sa tuile, Entrée met
+   le focus dans la bulle, où le choix se fait aussi (sauf l'ethnie, un bouton qui ouvre son menu, sans bulle ; src/scripts/fiche.mjs#bulleDeChoix). */
 .tiroir__tete {
   display: flex;
   flex-wrap: wrap;
@@ -321,18 +357,23 @@ html:not(.js) .parametres { gap: 0.75rem; }
   border-bottom: 1px solid color-mix(in srgb, var(--a-choisir) 40%, var(--border));
   background: color-mix(in srgb, var(--a-choisir) 10%, var(--surface));
 }
-.tiroir__titre { color: color-mix(in srgb, var(--a-choisir) 75%, var(--text)); font-size: 0.88rem; }
+.tiroir__titre { color: color-mix(in srgb, var(--a-choisir) 75%, var(--text)); font-size: var(--fs-md); }
 .tiroir__titre::before { content: '⚠ '; }
 .tiroir__attente { display: flex; flex: 1 1 18rem; flex-wrap: wrap; gap: 0.25rem; margin: 0; padding: 0; list-style: none; }
-.tiroir__attente li { padding: 0.05rem 0.55rem; border: 1px dashed color-mix(in srgb, var(--a-choisir) 60%, var(--border)); border-radius: var(--radius-pill); background: var(--surface); font-size: 0.76rem; }
+.tiroir__attente li { padding: 0.05rem 0.55rem; border: 1px dashed color-mix(in srgb, var(--a-choisir) 60%, var(--border)); border-radius: var(--radius-pill); background: var(--surface); font-size: var(--fs-xs); }
 /* un choix du tiroir : sa tuile en infobulle (demande du propriétaire ; src/scripts/fiche.mjs#remplirBulleDeChoix), où le choix se fait aussi */
-.tiroir__attente li[data-bulle] { cursor: help; }
-.tiroir__attente li[data-bulle]:focus-visible { outline: 2px solid var(--a-choisir); outline-offset: 2px; }
-.fiche .bulle--tuile { width: min(34rem, calc(100vw - 1rem)); max-width: min(34rem, calc(100vw - 1rem)); padding: 0.55rem 0.7rem; font: inherit; font-size: 0.85rem; white-space: normal; }
+/* son bouton (le focus, la bulle, les rôles ARIA) sans habillage de bouton, qui couvre toute la pastille (le survol et l'appui de la bulle) : la pastille
+   reste le `li`, dont le contour suit le focus visible */
+.tiroir__attente li:has(> .tiroir__choix) { padding: 0; }
+.fiche .tiroir__choix { padding: 0.05rem 0.55rem; border: 0; border-radius: inherit; background: none; color: inherit; font: inherit; text-align: inherit; }
+.fiche .tiroir__choix[data-bulle] { cursor: help; }
+.fiche .tiroir__choix:focus-visible { outline: none; }
+.tiroir__attente li:has(> .tiroir__choix:focus-visible) { outline: 2px solid var(--a-choisir); outline-offset: 2px; }
+.fiche .bulle--tuile { width: min(34rem, calc(100vw - 1rem)); max-width: min(34rem, calc(100vw - 1rem)); padding: 0.55rem 0.7rem; font: inherit; font-size: var(--fs-md); white-space: normal; }
 .fiche .bulle--tuile .fiche-champ { display: grid; gap: 0.2rem; }
 .fiche .tiroir__lien { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-decoration: underline; }
 .tiroir__boutons { display: inline-flex; gap: 0.3rem; margin-left: auto; }
-.tiroir__boutons button { padding: 0.15rem 0.55rem; font-size: 0.78rem; }
+.tiroir__boutons button { padding: 0.15rem 0.55rem; font-size: var(--fs-xs); }
 /* en tiroir : fixé en bas, par-dessus la fiche, quel que soit l'onglet ouvert */
 html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__panneau.est-tiroir {
   position: fixed;
@@ -346,13 +387,14 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
   transform: translateX(-50%);
   border: 2px solid var(--a-choisir);
   border-bottom: 0;
-  border-radius: 14px 14px 0 0;
+  border-radius: var(--radius-xl) 14px 0 0;
   background: var(--surface);
   box-shadow: 0 -8px 30px color-mix(in srgb, var(--text) 25%, transparent);
   animation: tiroir-sort 260ms ease-out;
 }
 .parametres__panneau.est-tiroir .tiroir__tete { position: sticky; top: 0; z-index: 1; }
-/* le focus sur la poignée (le bouton « Déplier ») ne le rouvre pas ; le focus dans le panneau, si (clavier) */
+/* réduit, le corps est en `display: none` : le focus clavier n'y entre pas (on passe par « Déplier »). Le focus déjà dans le corps le garde ouvert : une
+   liste ouverte au survol puis le pointeur qui sort, ou le focus dans le panneau quand la zone IV sort de l'écran. */
 .parametres__panneau.est-tiroir[data-reduit]:not(:hover, :has(.fiche-etape__corps :focus)) { max-height: none; overflow: hidden; }
 .parametres__panneau.est-tiroir[data-reduit]:not(:hover, :has(.fiche-etape__corps :focus)) > :not(.tiroir__tete) { display: none; }
 @keyframes tiroir-sort { from { transform: translate(-50%, 100%); } to { transform: translate(-50%, 0); } }
@@ -361,10 +403,12 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 }
 
 /* ----------------------------------------------------------------- la ceinture : trois emplacements d'objets rapides */
+/* un emplacement : son numéro, l'objet et sa quantité ; plein, ses boutons dessous (« Utiliser », « Remplir », « Ranger » : décision R89) */
 .ceinture { display: grid; gap: 0.35rem; margin: 0; padding: 0; list-style: none; counter-reset: ceinture; }
 .ceinture__emplacement {
   display: grid;
-  grid-template-columns: 1.5rem minmax(0, 1fr) 4rem auto;
+  grid-template-columns: 1.5rem minmax(0, 1fr) auto;
+  grid-template-areas: 'numero nom quantite';
   align-items: center;
   gap: 0.35rem;
   padding: 0.25rem 0.35rem;
@@ -372,29 +416,54 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
   border-radius: var(--radius);
   background: var(--surface);
 }
-.ceinture__emplacement[data-plein] { border-style: solid; background: var(--etape-doux); }
+.ceinture__emplacement[data-plein] { grid-template-areas: 'numero nom quantite' '. actions actions'; border-style: solid; background: var(--etape-doux); }
 .ceinture__numero {
+  grid-area: numero;
   display: grid;
   place-items: center;
   width: 1.4rem;
   height: 1.4rem;
   border-radius: 50%;
   background: var(--etape);
-  color: #fff;
-  font-size: 0.72rem;
+  color: var(--texte-sur-fonce);
+  font-size: var(--fs-xxs);
   font-weight: 700;
 }
-.fiche .ceinture__emplacement input { width: 100%; max-width: none; }
+.fiche .ceinture__emplacement input { grid-area: nom; width: 100%; max-width: none; }
+.ceinture__quantite { grid-area: quantite; min-width: 3.2rem; font-variant-numeric: tabular-nums; font-weight: 600; text-align: center; white-space: nowrap; }
+/* au-delà du maximum (un import, un don perdu) : signalé comme un champ invalide */
+.ceinture__quantite[data-invalide] { color: var(--danger); }
+.ceinture__actions { grid-area: actions; display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.fiche .ceinture__actions button { padding: 0.1rem 0.5rem; font-size: var(--fs-xs); }
+/* « Remplir » quand le sac n'en a plus : grisé comme un bouton désactivé (common.css), mais il garde le focus (src/scripts/fiche.mjs) */
+.fiche .ceinture__actions button[aria-disabled='true'] { opacity: 0.45; cursor: not-allowed; }
+/* la raison d'un nom refusé, sous les emplacements (vide, elle ne prend pas de place) */
+.ceinture__refus { color: var(--danger); }
+.ceinture__refus:not(:empty) { margin-top: 0.35rem; }
+
+/* ----------------------------------------------------------------- le sac : emplacements selon la Force (décision R88) */
+#inventaire-place { margin: -0.2rem 0 0.4rem; }
+#inventaire-place[data-trop] { color: var(--danger); font-weight: 600; }
+/* une ligne au-delà de la place (une Force qui baisse, un import) : gardée, signalée */
+#inventaire tr[data-au-dela] > td { background: color-mix(in srgb, var(--danger) 10%, transparent); }
+#inventaire tr[data-au-dela] > td:first-child { box-shadow: inset 3px 0 0 var(--danger); }
+/* l'emplacement libre suivant : un champ sur toute la ligne ; puis les emplacements vides, la place qui reste */
+#inventaire .inventaire__libre input { width: 100%; max-width: none; border-style: dashed; }
+#inventaire .inventaire__libre > td, #inventaire .inventaire__vide > td { height: 1.6rem; }
+#inventaire .inventaire__vide > td { border-bottom: 1px dashed var(--etape-ligne); }
+/* une quantité de 1 dans le sac ne se voit qu'au survol de sa ligne ou au focus (décision R88 : « Maxé à 99 pour l'inventaire (si ce nombre = 1, ne le
+   voir que au survol) ») : le nombre reste dans le champ (lecteurs d'écran, clavier) */
+#inventaire tr:not(:hover) input[data-un]:not(:focus) { color: transparent; }
 
 /* champs */
 .fiche-champs { display: grid; gap: 0.5rem 0.75rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 11rem), 1fr)); }
-.fiche-champ { display: grid; gap: 0.15rem; font-size: 0.85rem; }
-.fiche-champ > span { color: var(--muted); font-size: 0.78rem; }
+.fiche-champ { display: grid; gap: 0.15rem; font-size: var(--fs-md); }
+.fiche-champ > span { color: var(--muted); font-size: var(--fs-xs); }
 .fiche-champ input, .fiche-champ select, .fiche-champ textarea { width: 100%; }
 .fiche-champ--large { grid-column: 1 / -1; }
 .fiche-champ--ligne { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
 .fiche-champ textarea { min-height: 4.5rem; resize: vertical; }
-.fiche-coche { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; }
+.fiche-coche { display: flex; align-items: center; gap: 0.4rem; font-size: var(--fs-md); }
 .fiche input[type='number'] { max-width: 6.5rem; }
 .fiche input[aria-invalid='true'], .fiche select[aria-invalid='true'] { border-color: var(--danger); box-shadow: 0 0 0 1px var(--danger); }
 
@@ -417,7 +486,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .choix[open] > summary { border-color: var(--etape); box-shadow: 0 0 0 1px var(--etape); }
 .choix[open] > summary::after { content: '▴'; }
 .choix > summary:hover, .choix > summary:focus-visible { border-color: var(--etape); outline: none; }
-.choix__etiquette { flex: none; color: var(--muted); font-size: 0.78rem; }
+.choix__etiquette { flex: none; color: var(--muted); font-size: var(--fs-xs); }
 /* une liste simple présentée comme les menus des choix (le métier, facultatif, sous l'ethnie : demande du propriétaire) */
 .choix-liste {
   display: flex;
@@ -438,8 +507,8 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
   padding: 0.05rem 0.6rem;
   border-radius: var(--radius-pill);
   background: var(--c);
-  color: var(--texte-sur-c, #fff);
-  font-size: 0.84rem;
+  color: var(--texte-sur-c, var(--texte-sur-fonce));
+  font-size: var(--fs-md);
   font-weight: 700;
 }
 .choix__pastille[data-refus] { outline: 2px dashed var(--danger); outline-offset: 1px; }
@@ -467,7 +536,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 /* classes : les cinq colonnes de /classes/ côte à côte, pastilles plus serrées */
 .groupes-pastilles.groupes-pastilles--classes { grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr)); gap: 0.6rem; }
 .groupes-pastilles--classes .pastilles { grid-template-columns: 1fr; gap: 0.3rem; }
-.groupes-pastilles--classes .pastille { min-height: 1.75rem; font-size: 0.8rem; padding-block: 0.15rem; }
+.groupes-pastilles--classes .pastille { min-height: 1.75rem; font-size: var(--fs-sm); padding-block: 0.15rem; }
 .groupe-pastilles { --c: var(--etape); display: grid; gap: 0.35rem; }
 .groupe-pastilles > h4 {
   display: flex;
@@ -477,7 +546,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
   padding-bottom: 0.2rem;
   border-bottom: 2px solid var(--c);
   color: color-mix(in srgb, var(--c) 60%, var(--text));
-  font-size: 0.82rem;
+  font-size: var(--fs-sm);
 }
 .groupes-pastilles { display: grid; gap: 0.6rem 1rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); align-items: start; }
 .pastille {
@@ -495,7 +564,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
   background: color-mix(in srgb, var(--c) 10%, var(--surface));
   box-shadow: 0 1px 5px color-mix(in srgb, var(--text) 8%, transparent);
   color: var(--text);
-  font-size: 0.82rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
   line-height: 1.2;
   text-align: center;
@@ -518,7 +587,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .pastille[aria-pressed='true'] {
   background: var(--c);
   border-color: var(--c);
-  color: var(--texte-sur-c, #fff);
+  color: var(--texte-sur-c, var(--texte-sur-fonce));
   box-shadow: 0 2px 8px color-mix(in srgb, var(--c) 40%, transparent);
 }
 .pastille[aria-pressed='true'] .pastille__point { background: var(--surface); border-color: var(--surface); }
@@ -531,7 +600,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .pastille small { font-weight: normal; opacity: 0.85; }
 
 /* fiche résumé d'un choix (race, magie, classe) */
-.fiche-resume { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0; padding: 0; list-style: none; font-size: 0.8rem; }
+.fiche-resume { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0; padding: 0; list-style: none; font-size: var(--fs-sm); }
 .fiche-resume li {
   padding: 0.05rem 0.5rem;
   border: 1px solid var(--etape-ligne);
@@ -557,14 +626,12 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
   border-radius: var(--radius-pill);
   border: 1px solid var(--border);
   font-variant-numeric: tabular-nums;
-  font-size: 0.82rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
 }
 .budget[data-etat='ok'] { border-color: color-mix(in srgb, var(--good) 60%, var(--border)); color: var(--good); }
-.budget[data-etat='manque'] { border-color: color-mix(in srgb, var(--a-choisir) 60%, var(--border)); color: #b45309; }
+.budget[data-etat='manque'] { border-color: color-mix(in srgb, var(--a-choisir) 60%, var(--border)); color: var(--a-choisir); }
 .budget[data-etat='trop'] { border-color: var(--danger); color: var(--danger); }
-/* NM donnés par le MJ en plus de ceux gagnés : permis (décision R24), signalés sans alarme */
-.budget[data-etat='info'] { border-color: color-mix(in srgb, var(--accent) 60%, var(--border)); color: var(--accent); }
 .fiche-entete-bloc { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.4rem; }
 .fiche-budgets { display: inline-flex; flex-wrap: wrap; gap: 0.35rem; }
 
@@ -577,34 +644,75 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .fiche .curseur-saisie { width: 100%; min-width: 3.5rem; padding: 0.05rem 0.3rem; font-variant-numeric: tabular-nums; }
 .des { font-variant-numeric: tabular-nums; white-space: nowrap; }
 
-/* maîtrises d'armes, dans leur bloc (demande du propriétaire) : une ligne par famille, curseur étroit, les dés à côté ; plusieurs colonnes */
-.maitrises { display: grid; gap: 0.1rem 1.5rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); margin: 0; padding: 0; list-style: none; }
-.maitrise { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(3rem, auto); align-items: center; gap: 0.5rem; padding: 0.15rem 0; border-bottom: 1px solid var(--border); font-size: 0.84rem; }
-.maitrise__nom { overflow-wrap: break-word; }
-.maitrise .curseur { width: 6.5rem; min-width: 0; }
-.maitrise .des { text-align: right; }
+/* maîtrises d'armes (décision R148, variante A de la maquette retenue par le propriétaire, « Bloc des sources »), dans le panneau « Choix » (et son
+   tiroir) : une carte par source, et à côté le tableau calculé des familles quand le bloc a la place (sinon dessous, @container) ; un point à choisir surligné (--a-choisir), une limite dépassée en rouge, l'état
+   de chaque carte écrit en toutes lettres (jamais la seule couleur) */
+.maitrises { container-type: inline-size; }
+.maitrises__grille { display: grid; gap: 0.75rem; grid-template-columns: minmax(0, 1fr); }
+@container (min-width: 44rem) {
+  .maitrises__grille { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: start; }
+}
+.maitrises__zone { margin: 0 0 0.3rem; color: var(--muted); font-size: var(--fs-xxs); font-weight: 700; letter-spacing: var(--ls-caps); text-transform: uppercase; }
+.maitrises-sources, .maitrise-parts { display: grid; gap: 0.4rem; margin: 0; padding: 0; list-style: none; min-width: 0; }
+.maitrises-sources__vide { color: var(--muted); font-size: var(--fs-sm); }
+.maitrise-source { min-width: 0; padding: 0.35rem 0.5rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.maitrise-source[data-a-choisir] { border: 2px solid var(--a-choisir); background: color-mix(in srgb, var(--a-choisir) 8%, var(--surface)); }
+.maitrise-source[data-erreur] { border: 2px solid var(--danger); background: color-mix(in srgb, var(--danger) 6%, var(--surface)); }
+.maitrise-source__tete { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.1rem 0.5rem; }
+.maitrise-source__titre { font-size: var(--fs-md); }
+.maitrise-source__type { color: var(--muted); font-size: var(--fs-xxs); letter-spacing: var(--ls-fin); text-transform: uppercase; }
+.maitrise-source__etat { margin-left: auto; color: var(--good); font-size: var(--fs-xs); font-weight: 700; }
+.maitrise-source__etat[data-etat='a_choisir'], .maitrise-source__etat[data-etat='attente'] { color: var(--a-choisir); }
+.maitrise-source__etat[data-etat='refus'] { color: var(--danger); }
+.maitrise-source__etat[data-etat='a_choisir']::before, .maitrise-source__etat[data-etat='attente']::before, .maitrise-source__etat[data-etat='refus']::before { content: '⚠ '; }
+.maitrise-source__texte { margin: 0.15rem 0 0.3rem; font-size: var(--fs-sm); font-style: italic; overflow-wrap: anywhere; }
+.maitrise-source__texte::before { content: '« '; }
+.maitrise-source__texte::after { content: ' »'; }
+.maitrise-parts { gap: 0.25rem; }
+.maitrise-part { display: flex; flex-wrap: wrap; align-items: center; gap: 0.2rem 0.45rem; font-size: var(--fs-sm); }
+.maitrise-part__points { min-width: 1.8rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.maitrise-part__famille { font-weight: 700; }
+.maitrise-part__etiquette { color: var(--muted); font-size: var(--fs-xs); }
+.fiche .maitrise-part select { flex: 1 1 9rem; max-width: 100%; min-width: 0; padding-block: 0.1rem; font-size: var(--fs-sm); }
+.fiche .maitrise-part select[data-vide] { border: 2px solid var(--a-choisir); color: var(--a-choisir); font-weight: 700; }
+.fiche .maitrise-part select[data-refus] { border: 2px solid var(--danger); }
+.maitrise-part option { color: var(--text); font-weight: normal; }
+.maitrise-marque { display: inline-block; padding: 0 0.4rem; border: 1px solid currentColor; border-radius: var(--radius-sm); color: var(--accent); font-size: var(--fs-xxs); font-weight: 700; overflow-wrap: anywhere; }
+.maitrise-marque[data-ton='retrait'] { color: var(--danger); }
+.maitrise-marque[data-ton='choisir'] { color: var(--a-choisir); }
+.maitrise-part__message { flex-basis: 100%; margin: 0; padding-left: 0.5rem; border-left: 3px solid var(--border); color: var(--muted); font-size: var(--fs-xs); }
+.maitrise-part__message[data-ton='choisir'] { border-color: var(--a-choisir); color: var(--a-choisir); }
+.maitrise-part__message[data-ton='erreur'] { border-color: var(--danger); color: var(--danger); }
+.fiche-table--maitrises caption { caption-side: bottom; padding-top: 0.25rem; text-align: left; font-size: var(--fs-xs); }
+.fiche-table--maitrises tbody th { color: var(--text); font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; }
+.fiche .fiche-table--maitrises td, .fiche .fiche-table--maitrises tbody th { vertical-align: top; }
+.fiche-table--maitrises tr[data-nul] > * { color: var(--muted); font-weight: normal; }
+.fiche-table--maitrises tr[data-etat='trop'] > * { background: color-mix(in srgb, var(--danger) 8%, transparent); }
+.maitrise-detail { color: var(--muted); font-size: var(--fs-xs); }
+.maitrise-alerte { display: block; margin-top: 0.1rem; padding-left: 0.4rem; border-left: 3px solid var(--border); }
+.maitrise-alerte[data-ton='trop'] { border-color: var(--danger); color: var(--danger); font-weight: 600; }
 
 /* alignement (demande du propriétaire) : les quatre scores serrés, l'alignement qui en résulte à côté */
 .alignement { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.7rem; margin: 0; padding: 0.25rem 0.55rem 0.4rem; border: 1px solid var(--etape-ligne); border-radius: var(--radius); }
-.alignement legend { padding: 0 0.3rem; color: var(--muted); font-size: 0.78rem; }
+.alignement legend { padding: 0 0.3rem; color: var(--muted); font-size: var(--fs-xs); }
 .alignement__axe { display: inline-flex; gap: 0.25rem; }
-.alignement__axe label { display: inline-flex; align-items: center; gap: 0.15rem; color: var(--muted); font-size: 0.78rem; font-weight: 700; }
+.alignement__axe label { display: inline-flex; align-items: center; gap: 0.15rem; color: var(--muted); font-size: var(--fs-xs); font-weight: 700; }
 .fiche .alignement input { width: 3.3rem; padding-inline: 0.3rem; text-align: right; font-variant-numeric: tabular-nums; }
 .alignement__resultat {
   margin-left: auto;
   padding: 0.05rem 0.7rem;
   border-radius: var(--radius-pill);
   background: var(--c, var(--etape));
-  color: var(--c-texte, #fff);
-  font-size: 0.88rem;
+  color: var(--c-texte);
+  font-size: var(--fs-md);
   font-weight: 700;
   white-space: nowrap;
 }
 
 /* ----------------------------------------------------------------- tableaux de saisie */
-.fiche-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+.fiche-table { width: 100%; border-collapse: collapse; font-size: var(--fs-md); }
 .fiche-table th, .fiche-table td { padding: 0.18rem 0.35rem; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
-.fiche-table th { color: var(--muted); font-weight: normal; font-size: 0.76rem; }
+.fiche-table th { color: var(--muted); font-weight: normal; font-size: var(--fs-xs); }
 .fiche-table td.nombre, .fiche-table th.nombre { text-align: right; font-variant-numeric: tabular-nums; }
 .fiche-table input[type='number'] { width: 4.5rem; }
 .fiche-table select { width: 100%; min-width: 0; }
@@ -612,57 +720,75 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .fiche-table--fixe th:first-child, .fiche-table--fixe td:first-child { width: 7rem; }
 .fiche-table--fixe .etroite { width: 5rem; }
 .fiche-table--sorts td:nth-child(2) { width: 30%; }
-.fiche-table--sorts td.sort-valeur { font-size: 0.8rem; }
+.fiche-table--sorts td.sort-valeur { font-size: var(--fs-sm); }
+/* le coût secondaire d'un sort (âmes, Sang… : décision R105), sous son coût de chakra */
+/* sous le coût, sans le gras ni le soulignement d'un coût calculé (td[data-calcule]) : un bloc atomique ne reçoit pas la décoration de sa case */
+.fiche-table--sorts .sort-cout-secondaire { display: inline-block; width: 100%; font-size: var(--fs-xs); font-weight: 400; color: var(--muted); }
+/* combien de fois le coût d'un sort qui augmente avec l'utilisation (décision R129) : « × N » sous le coût secondaire */
+.fiche-table--sorts .sort-fois { display: inline-flex; align-items: center; gap: 0.2rem; margin-top: 0.15rem; font-size: var(--fs-xs); font-weight: 400; color: var(--muted); }
+.fiche-table--sorts .sort-fois[hidden] { display: none; }
+.fiche .fiche-table--sorts .sort-fois__nombre { width: 3.2rem; padding: 0 0.25rem; font-size: var(--fs-xs); }
 /* l'indication IC (et imparable, inesquivable) au NM du sort, comme les marques des pages de magie ; une condition pas encore atteinte en grisé, en pointillés */
 .sort-modes { white-space: nowrap; }
-.sort-mode { display: inline-block; margin: 0.05rem 0.2rem 0.05rem 0; padding: 0 0.4rem; border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--muted); font-size: 0.7rem; }
+.sort-mode { display: inline-block; margin: 0.05rem 0.2rem 0.05rem 0; padding: 0 0.4rem; border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--muted); font-size: var(--fs-xxs); }
 .sort-mode[data-mode='ic'] { border-color: var(--accent); color: var(--accent); font-weight: 600; }
 .sort-mode[data-mode='imparable'], .sort-mode[data-mode='inesquivable'] { border-style: dashed; }
 .sort-mode[data-attente] { border-color: var(--border); border-style: dotted; color: var(--muted); font-weight: normal; cursor: help; }
 /* l'effet secondaire d'un sort, sur sa propre ligne sous le sort (demande du propriétaire) */
 .fiche-table--sorts tr.avec-effet td { border-bottom: 0; }
-.fiche-table--sorts tr.sort-effet td { padding-top: 0; color: var(--muted); font-size: 0.76rem; line-height: 1.3; white-space: pre-line; }
+.fiche-table--sorts tr.sort-effet td { padding-top: 0; color: var(--muted); font-size: var(--fs-xs); line-height: 1.3; white-space: pre-line; }
 /* la remarque d'un sort : une étoile, son texte en infobulle (demande du propriétaire ; son `title`, montré en position fixe par components/Infobulles.astro : le cadre défilant ne la coupe pas) */
 .sort-choix { display: flex; min-width: 9rem; align-items: center; gap: 0.3rem; }
 .sort-choix select { flex: 1; min-width: 0; }
-.sort-remarque { flex: none; color: #c99a06; font-size: 0.95rem; line-height: 1; cursor: help; }
-.sort-remarque:focus-visible { outline: 2px solid var(--etape); outline-offset: 2px; border-radius: 3px; }
+.sort-remarque { flex: none; color: var(--etoile); font-size: var(--fs-lg); line-height: 1; cursor: help; }
+.sort-remarque:focus-visible { outline: 2px solid var(--etape); outline-offset: 2px; border-radius: var(--radius-xxs); }
 /* liste d'un emplacement : un groupe par NPM, chaque sort sur la couleur de sa magie (demande du propriétaire) ; fermée, la couleur du sort choisi */
-.fiche .fiche-table--sorts select[data-couleur] { background-color: var(--c); color: var(--texte-sur-c, #fff); font-weight: 600; }
+.fiche .fiche-table--sorts select[data-couleur] { background-color: var(--c); color: var(--texte-sur-c); font-weight: 600; } /* la classe de la magie du sort (teinte-palette) */
 .fiche-table--sorts optgroup, .fiche-table--sorts option.option-vide { background-color: var(--surface); color: var(--text); font-weight: normal; }
 .fiche-table--sorts optgroup { color: var(--muted); font-style: normal; }
 /* un sort au-delà des emplacements (XP baissée, magie retirée) : pas d'emplacement en plus (décision R27), à retirer */
 .fiche-table--sorts tr.en-trop td { background: color-mix(in srgb, var(--danger) 8%, var(--surface)); }
-/* NM d'un sort par origine : niveau · livre · MJ = total (3 au plus, décision R26) */
-.nm-origines { white-space: nowrap; }
-.nm-origines > * { vertical-align: middle; }
-.fiche .nm-origines input[type='number'] { width: 3.2rem; padding-inline: 0.3rem; }
-.nm-livre { display: inline-flex; align-items: center; gap: 0.15rem; margin-inline: 0.35rem; color: var(--muted); font-size: 0.78rem; }
-/* gains de niveau, compacts (demande du propriétaire) : une petite carte par niveau, plusieurs par ligne ; santé bordée de rouge, chakra de bleu */
-.gains { display: grid; gap: 0.3rem 0.45rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 12.5rem), 1fr)); align-items: start; }
-.gain {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.2rem 0.4rem;
-  border: 1px solid var(--etape-ligne);
-  border-radius: var(--radius);
-  background: var(--etape-doux);
-  font-size: 0.8rem;
+/* le NM d'un sort (décision R118) : un curseur de 0 à 3, sa valeur, et « livre » quand l'entraînement en note un */
+.nm-sort { white-space: nowrap; }
+.nm-sort .curseur-cellule { display: inline-flex; vertical-align: middle; }
+.nm-sort .curseur { width: 5rem; min-width: 5rem; }
+.nm-livre { display: inline-flex; align-items: center; gap: 0.15rem; margin-inline: 0.35rem; color: var(--muted); font-size: var(--fs-xs); }
+/* le sort préparé (décision R115) : sa marque dans le tableau des sorts (la posture de sa préparation en infobulle), puis son bloc sous le tableau — le
+   sort, sur la couleur de sa magie, le jet de magie (D100), la posture de la préparation sur sa couleur, « Lâcher le sort » */
+/* la marque « préparé » : dans la couleur de la zone ; en thème sombre, cette couleur éclaircie par le calcul, comme les intertitres colorés du guide (la
+   couleur de la zone II, #b03030, n'atteignait que 2,7:1 sur le fond sombre ; réponse du propriétaire du 2026-10-23 : sans préférence ; option
+   recommandée appliquée, au nom de sa règle « Privilégé la lisibilité », « Plus clair en sombre » : skill zone-fiche) ; le texte seul : la bordure, qui
+   ne porte pas de texte, garde la couleur de la zone */
+.sort-prepare__marque { --marque: var(--etape); flex: none; padding: 0 0.3rem; border: 1px solid var(--etape); border-radius: var(--radius-xxs); color: var(--marque); font-size: var(--fs-xs); font-weight: 600; cursor: help; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .sort-prepare__marque { --marque: color-mix(in srgb, var(--etape) 45%, #fff); }
 }
-.gain__niveau { min-width: 2.7rem; font-weight: 700; color: color-mix(in srgb, var(--etape) 65%, var(--text)); white-space: nowrap; }
-.fiche .gain input[type='number'] { width: 3.1rem; padding-inline: 0.25rem; text-align: right; font-variant-numeric: tabular-nums; }
-.fiche .gain .gain__sante { border-color: #c62828; }
-.fiche .gain .gain__chakra { border-color: #1e5bb8; }
-.gain__total { margin-left: auto; color: var(--good); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.gain__total[data-hors] { color: var(--danger); }
-.gain__de { display: flex; flex: 1 1 100%; gap: 0.25rem; }
-.fiche .gain__de select { flex: 1; min-width: 0; padding-inline: 0.25rem; }
+:root[data-theme='dark'] .sort-prepare__marque { --marque: color-mix(in srgb, var(--etape) 45%, #fff); }
+.sort-prepare__marque[hidden] { display: none; }
+.sort-prepare { margin-top: 0.6rem; }
+.sort-prepare__champs { display: flex; flex-wrap: wrap; align-items: end; gap: 0.5rem 0.75rem; }
+.sort-prepare__sort { flex: 1 1 14rem; min-width: 0; }
+.fiche .sort-prepare__jet { width: 5.5rem; }
+/* la magie du sort (teinte-palette) ; la posture, sa couleur et son texte en style jusqu'à leur lot */
+.fiche .sort-prepare select[data-couleur], .sort-prepare__posture[data-couleur] { background-color: var(--c); color: var(--texte-sur-c); font-weight: 600; }
+.sort-prepare option { background-color: var(--surface); color: var(--text); font-weight: normal; }
+.sort-prepare__posture { display: inline-block; padding: 0.15rem 0.5rem; border-radius: var(--radius-xxs); }
+/* les NM du MJ, pour toute la fiche (décision R118) : à côté du décompte des NM */
+.budget--mj { align-items: center; color: var(--muted); }
+.fiche .budget--mj input { width: 3.2rem; padding: 0 0.25rem; font-size: var(--fs-sm); }
+/* gains de niveau (décision R73) : deux totaux sur une ligne, santé bordée de rouge, chakra de bleu, puis le total attribué et le total à saisir, en rouge
+   hors de la plage */
+.gains { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.9rem; margin-top: 0.3rem; }
+.gains__champ { display: inline-flex; align-items: center; gap: 0.3rem; font-size: var(--fs-sm); font-weight: 600; }
+.fiche .gains__champ input { width: 4.4rem; padding-inline: 0.3rem; text-align: right; font-variant-numeric: tabular-nums; }
+.fiche .gains__champ--sante input { border-color: var(--attribut-sante); }
+.fiche .gains__champ--chakra input { border-color: var(--attribut-chakra); }
+.gains__total { color: var(--good); font-size: var(--fs-sm); font-weight: 700; font-variant-numeric: tabular-nums; }
+.gains__total[data-hors] { color: var(--danger); }
 .fiche-defile { overflow-x: auto; }
 
-/* caractéristiques : six cartes sur une seule ligne (demande du propriétaire ; trois par ligne sur un petit écran), chacune dans sa couleur (--c,
-   --c-texte posées par le script : lib/caracteristiques-postures.mjs, demande du propriétaire). Couleurs claires : le nom est un aplat au texte foncé,
+/* caractéristiques : six cartes sur une seule ligne (demande du propriétaire ; trois par ligne sur un petit écran), chacune dans sa couleur (la classe
+   de la caractéristique et teinte-palette, posées par le script : --c, --c-texte ; lib/caracteristiques-postures.mjs, demande du propriétaire). Couleurs claires : le nom est un aplat au texte foncé,
    bordé de --text pour qu'un gris clair (Social) reste visible sur la feuille ; trop long pour la carte, il se termine par « … » (son nom en infobulle). */
 .caracs { display: grid; gap: 0.35rem; grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .carac {
@@ -684,18 +810,18 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
   border: 1px solid color-mix(in srgb, var(--text) 25%, var(--c));
   border-radius: var(--radius-pill);
   background: var(--c);
-  color: var(--c-texte, #fff);
-  font-size: 0.76rem;
+  color: var(--c-texte);
+  font-size: var(--fs-xs);
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .carac__valeur { font-size: 1.3rem; font-weight: 700; line-height: 1; color: color-mix(in srgb, var(--c) 35%, var(--text)); }
 .carac__valeur[data-hors] { color: var(--danger); }
-.carac__bonus { font-size: 0.66rem; line-height: 1.2; color: var(--muted); }
+.carac__bonus { font-size: var(--fs-xxs); line-height: 1.2; color: var(--muted); }
 .carac .curseur { min-width: 0; }
 /* les deux croix (R19) : deux cases à cocher, comme sur la feuille */
-.croix { display: inline-flex; align-items: center; gap: 0.25rem; color: var(--muted); font-size: 0.7rem; }
+.croix { display: inline-flex; align-items: center; gap: 0.25rem; color: var(--muted); font-size: var(--fs-xxs); }
 .croix__case { margin: 0; accent-color: var(--danger); }
 @media (max-width: 40rem) {
   .caracs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -715,8 +841,8 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
   background: color-mix(in srgb, var(--c) 7%, var(--surface));
   overflow: hidden;
 }
-.competences__groupe thead th { background: var(--c); color: var(--c-texte, #fff); }
-.competences__groupe thead th:first-child { font-size: 0.82rem; font-weight: 700; }
+.competences__groupe thead th { background: var(--c); color: var(--c-texte); }
+.competences__groupe thead th:first-child { font-size: var(--fs-sm); font-weight: 700; }
 .competences__groupe tbody tr:last-child td { border-bottom: 0; }
 .competences .fiche-table td:first-child { width: 30%; }
 .competences .fiche-table td.curseur-td { width: 30%; }
@@ -724,7 +850,8 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .score[data-hors] { color: var(--danger); }
 
 /* ----------------------------------------------------------------- attributs et valeurs du moment, fusionnés (demande du propriétaire)
-   Une carte par attribut, bordée à gauche de sa couleur : santé rouge, barrière jaune, chakra bleu, corruption noire (demande du propriétaire). Une valeur
+   Une carte par attribut, bordée à gauche de sa couleur : santé rouge, barrière jaune, chakra bleu, corruption noire (demande du propriétaire ; les couleurs :
+   les propriétés --attribut-<clé> de lib/attributs-couleurs.mjs, posées par la page, la seule source du site). Une valeur
    du moment : « actuelle / maximum », un curseur entre − et +, qui ouvrent la case du nombre à retirer ou à ajouter. */
 .attributs { display: grid; gap: 0.45rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr)); }
 .attribut {
@@ -741,7 +868,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
   background: color-mix(in srgb, var(--a) 7%, var(--surface));
 }
 .attribut__tete { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 0.5rem; }
-.attribut__nom { color: var(--a-nom); font-size: 0.78rem; font-weight: 700; }
+.attribut__nom { color: var(--a-nom); font-size: var(--fs-xs); font-weight: 700; }
 .attribut__valeur { font-size: 1.15rem; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .attribut__valeur[data-hors] { color: var(--danger); }
 .attribut__curseur { display: flex; align-items: center; gap: 0.3rem; }
@@ -760,15 +887,16 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 }
 .fiche .ajuster:hover, .fiche .ajuster[aria-expanded='true'] { border-color: var(--a); background: color-mix(in srgb, var(--a) 18%, var(--surface)); }
 .ajout { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem; }
-.ajout label { display: flex; align-items: center; gap: 0.25rem; color: var(--muted); font-size: 0.78rem; }
+.ajout label { display: flex; align-items: center; gap: 0.25rem; color: var(--muted); font-size: var(--fs-xs); }
 .fiche .ajout input { width: 3.6rem; }
-.fiche .ajout button { padding: 0.1rem 0.45rem; font-size: 0.78rem; }
+.fiche .ajout button { padding: 0.1rem 0.45rem; font-size: var(--fs-xs); }
 .fiche .ajout .retirer { padding-inline: 0.3rem; }
-.attribut[data-a='sante'] { --a: #c62828; }
-.attribut[data-a='barriere'] { --a: #e0b000; }
-.attribut[data-a='chakra'] { --a: #1e5bb8; }
-.attribut[data-a='corruption'] { --a: #111; }
-.attribut[data-a='barre4'] { --a: #8a1c1c; }
+.attribut[data-a='sante'] { --a: var(--attribut-sante); }
+.attribut[data-a='barriere'] { --a: var(--attribut-barriere); }
+.attribut[data-a='chakra'] { --a: var(--attribut-chakra); }
+.attribut[data-a='corruption'] { --a: var(--attribut-corruption); }
+/* la 4ᵉ barre : la couleur de la magie qui la donne, Sang ou Nécromancie (sa classe couleur-magie-<id>, posée par le script ; demande du propriétaire du 2026-10-23) */
+.attribut[data-a='barre4'][class*='couleur-magie-'] { --a: var(--couleur); }
 /* santé, barrière, chakra (et 4ᵉ barre) puis la corruption, sur une ligne */
 .attributs-ligne { display: grid; gap: 0.45rem; grid-template-columns: minmax(0, 1fr); }
 @media (min-width: 48rem) {
@@ -790,9 +918,10 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
   text-align: center;
   cursor: help;
 }
-.fiche .attributs-pastilles strong { color: var(--muted); font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; }
-/* les six postures (demande du propriétaire) : une case chacune, dans sa couleur, avec ses effets toujours lisibles ; la choisie pleine. Puis le Mode
-   Hyper et le Mode Hyper 100 % une fois débloqués, sur deux colonnes (leurs effets sont plus longs) */
+.fiche .attributs-pastilles strong { color: var(--muted); font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; }
+/* les six postures (demande du propriétaire) : une case chacune, dans sa couleur (la classe de la posture et teinte-palette), avec ses effets toujours lisibles ; la choisie pleine. Puis le Mode
+   Hyper et le Mode Hyper 100 % une fois débloqués, sur deux colonnes (leurs effets sont plus longs), chacun dans la classe de son mode (famille `mode`
+   de lib/palette-css.mjs) et teinte-palette */
 .postures { display: grid; gap: 0.45rem; align-items: start; }
 .postures__cartes { display: grid; gap: 0.45rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 12rem), 1fr)); align-items: stretch; }
 .postures__hyper { display: grid; gap: 0.45rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); align-items: start; }
@@ -814,30 +943,18 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
   font: inherit;
   text-align: left;
 }
-.posture-carte__nom { padding: 0.2rem 0.55rem; background: color-mix(in srgb, var(--c, var(--etape)) 30%, var(--surface)); font-size: 0.85rem; font-weight: 700; }
+.posture-carte__nom { padding: 0.2rem 0.55rem; background: color-mix(in srgb, var(--c, var(--etape)) 30%, var(--surface)); font-size: var(--fs-md); font-weight: 700; }
 .posture-carte__nom small { font-weight: normal; color: var(--muted); }
-.posture-carte__effets { display: grid; gap: 0.15rem; margin: 0; padding: 0.1rem 0.6rem 0.45rem 1.4rem; font-size: 0.76rem; line-height: 1.3; }
+.posture-carte__effets { display: grid; gap: 0.15rem; margin: 0; padding: 0.1rem 0.6rem 0.45rem 1.4rem; font-size: var(--fs-xs); line-height: 1.3; }
 .fiche .posture-carte:hover { border-color: var(--c); }
 .fiche .posture-carte[aria-pressed='true'] { border-color: var(--c); box-shadow: 0 0 0 2px var(--c), 0 2px 8px color-mix(in srgb, var(--c) 40%, transparent); }
 .fiche .posture-carte[aria-pressed='true'] .posture-carte__nom { background: var(--c); color: var(--c-texte); }
 .fiche .posture-carte[aria-pressed='true'] .posture-carte__nom::after { content: ' ✓'; }
-.posture-carte--hyper { --c: #7c3aed; }
-.posture-carte--cent { --c: #c026d3; }
-.posture-carte__magie { list-style: none; margin-left: -0.8rem; padding-left: 0.5rem; border-left: 3px solid var(--m); }
+.posture-carte__magie { list-style: none; margin-left: -0.8rem; padding-left: 0.5rem; border-left: 3px solid var(--couleur); } /* la classe de la magie */
 .posture-carte__race, .posture-carte__suite { list-style: none; margin-left: -0.8rem; }
 /* avantages en vert, inconvénients en rouge (décision du propriétaire) */
 .posture-carte__effets li.est-avantage { color: var(--good); }
 .posture-carte__effets li.est-inconvenient { color: var(--danger); font-weight: 600; }
-.fiche .posture {
-  padding: 0.15rem 0.75rem;
-  border: 1px solid color-mix(in srgb, var(--c) 70%, var(--text));
-  border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--c) 18%, var(--surface));
-  color: var(--text);
-  font-size: 0.8rem;
-  font-weight: 700;
-}
-.fiche .posture[aria-pressed='true'] { background: var(--c); color: var(--c-texte); box-shadow: 0 1px 6px color-mix(in srgb, var(--c) 45%, transparent); }
 /* la corruption reste noire en mode sombre : son nom et ses boutons prennent alors la couleur du texte pour rester lisibles */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) .attribut[data-a='corruption'] { --a-trait: var(--muted); --a-nom: var(--text); }
@@ -845,49 +962,79 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 :root[data-theme='dark'] .attribut[data-a='corruption'] { --a-trait: var(--muted); --a-nom: var(--text); }
 
 /* listes ajoutables (sac…) */
-.fiche-ligne-ajout { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
 .fiche .retirer { padding: 0.1rem 0.4rem; background: none; color: var(--danger); border-color: transparent; }
 .retirer:hover { border-color: var(--danger) !important; }
 
 /* dons à choix */
 /* rappel des dons sous les sorts (demande du propriétaire) : don de base et don de race, puis les dons débloqués de chaque classe */
 .dons-liste { display: grid; gap: 0.3rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr)); margin: 0; padding: 0; list-style: none; }
-.don { display: grid; gap: 0.1rem; align-content: start; padding: 0.25rem 0.45rem; border: 1px solid var(--etape-ligne); border-left: 3px solid var(--c, var(--etape)); border-radius: var(--radius); background: var(--etape-doux); font-size: 0.8rem; }
+.don { display: grid; gap: 0.1rem; align-content: start; padding: 0.25rem 0.45rem; border: 1px solid var(--etape-ligne); border-left: 3px solid var(--c, var(--etape)); border-radius: var(--radius); background: var(--etape-doux); font-size: var(--fs-sm); }
 .don__tete { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.15rem 0.4rem; }
-.don__niveau { color: var(--muted); font-size: 0.72rem; white-space: nowrap; }
-.don__type { margin-left: auto; padding: 0 0.4rem; border: 1px solid var(--border); border-radius: var(--radius-pill); color: var(--muted); font-size: 0.68rem; }
+.don__niveau { color: var(--muted); font-size: var(--fs-xxs); white-space: nowrap; }
+.don__type { margin-left: auto; padding: 0 0.4rem; border: 1px solid var(--border); border-radius: var(--radius-pill); color: var(--muted); font-size: var(--fs-xxs); }
 .don__type:not([data-type='passif']) { border-color: color-mix(in srgb, var(--c, var(--etape)) 60%, var(--border)); color: var(--text); font-weight: 700; }
-.don__texte { color: var(--muted); font-size: 0.76rem; line-height: 1.3; white-space: pre-line; }
+.don__texte { color: var(--muted); font-size: var(--fs-xs); line-height: 1.3; white-space: pre-line; }
+/* l'aide de la fiche sous le texte d'un don (« ... plus fort ! » du Flagelleur, décision R163) */
+.don__aide { font-size: var(--fs-xs); font-style: italic; line-height: 1.3; }
+/* « Entraînement » (décision R71) : texte libre, entre les dons de la race et ceux des classes */
+.dons-entrainement textarea { display: block; width: 100%; min-height: 2.6rem; resize: vertical; }
+.dons-entrainement .fiche-aide { margin-top: 0.2rem; font-size: var(--fs-xs); }
 .dons-classes { display: grid; gap: 0.5rem; }
-.dons-classe > h4 { margin: 0 0 0.25rem; padding-bottom: 0.15rem; border-bottom: 2px solid var(--c); font-size: 0.82rem; }
+.dons-classe > h4 { margin: 0 0 0.25rem; padding-bottom: 0.15rem; border-bottom: 2px solid var(--c); font-size: var(--fs-sm); }
 
 .dons-groupe { display: grid; gap: 0.25rem; padding: 0.4rem 0.6rem; border: 1px solid var(--etape-ligne); border-radius: var(--radius); }
-.dons-groupe legend { padding: 0 0.3rem; font-size: 0.8rem; color: var(--muted); }
+.dons-groupe legend { padding: 0 0.3rem; font-size: var(--fs-sm); color: var(--muted); }
 .dons-options { display: flex; flex-wrap: wrap; gap: 0.3rem 0.9rem; }
 .dons-options label { display: flex; align-items: center; gap: 0.3rem; }
 
 /* équipement */
 .equipement { display: grid; gap: 0.6rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr)); }
 .objet { display: grid; gap: 0.4rem; padding: 0.5rem 0.6rem; border: 1px solid var(--etape-ligne); border-radius: var(--radius); background: var(--etape-doux); }
-.objet h4 { margin: 0; font-size: 0.88rem; }
+.objet h4 { margin: 0; font-size: var(--fs-md); }
 .objet .fiche-champs { grid-template-columns: 1fr; gap: 0.35rem; }
 .objet .fiche-champs--paire { grid-template-columns: minmax(0, 1fr) 5.5rem; align-items: end; }
 .equipement--armes { grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr)); gap: 0.45rem; }
+/* deux armes côte à côte : celle dont les réglages sont repliés garde ses lignes en haut, sans s'étirer à la hauteur de l'autre */
+.equipement--armes .objet { align-content: start; }
 .objet__tete { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
 .objet__degats { display: inline-flex; align-items: center; gap: 0.2rem; }
-.objet__des { padding: 0 0.5rem; border-radius: var(--radius-pill); background: var(--etape); color: #fff; font-size: 0.85rem; font-variant-numeric: tabular-nums; cursor: help; }
-.objet__etoile { color: #c99a06; font-size: 1rem; line-height: 1; cursor: help; }
-.objet__etoile:focus-visible { outline: 2px solid var(--etape); outline-offset: 2px; border-radius: 3px; }
-.objet__details > summary { color: var(--muted); font-size: 0.76rem; cursor: pointer; overflow-wrap: anywhere; }
+.objet__des { padding: 0 0.5rem; border-radius: var(--radius-pill); background: var(--etape); color: var(--texte-sur-fonce); font-size: var(--fs-md); font-variant-numeric: tabular-nums; cursor: help; }
+.objet__etoile { color: var(--etoile); font-size: 1rem; line-height: 1; cursor: help; }
+.objet__etoile:focus-visible { outline: 2px solid var(--etape); outline-offset: 2px; border-radius: var(--radius-xxs); }
+/* une arme cassée (décision R74 : « La tuile des dés de dégâts devra alors être grisée et indiquée "Cassée" ») : seule la pastille des dés est grisée */
+.objet__des[data-cassee] { background: var(--border); color: var(--muted); }
+/* solidité du moment : un curseur de 0 au maximum de l'arme, « N / M » à côté */
+.objet__solidite { display: flex; align-items: center; gap: 0.35rem; font-size: var(--fs-xs); }
+.objet__solidite[hidden] { display: none; }
+.objet__solidite-nom { color: var(--muted); }
+.objet__solidite .curseur { flex: 1; min-width: 0; }
+.objet__solidite .curseur__valeur { min-width: 2.6rem; }
+.objet__solidite[data-cassee] .curseur__valeur { color: var(--danger); }
+/* la liste unique des armures (décision R165 (5)) : chaque armure élémentaire sur la couleur de sa magie (sa classe et teinte-palette, comme les sorts) ;
+   fermée, la couleur de l'armure élémentaire choisie ; le poids portable dessous */
+.fiche .armure__choix select[data-couleur] { background-color: var(--c); color: var(--texte-sur-c); font-weight: 600; }
+.armure__choix optgroup, .armure__choix option.option-vide, .armure__choix option:not(.teinte-palette) { background-color: var(--surface); color: var(--text); font-weight: normal; }
+.armure__choix optgroup { color: var(--muted); font-style: normal; }
+.armure__poids { margin: 0; cursor: help; }
+/* l'armure portée (décision R95) : la solidité de chacune de ses parties, sur deux colonnes quand la place le permet ; une partie cassée en rouge */
+.armure__parties { display: grid; gap: 0.3rem 0.9rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr)); }
+.armure__partie .objet__solidite-nom { min-width: 6.2rem; }
+.armure__partie[data-cassee] .objet__solidite-nom { color: var(--danger); }
+/* une arme élémentaire (décision R167) : sa liste sur le fond de sa magie (la classe de la magie et `teinte-palette`, comme un sort), les groupes et les
+   autres options au fond du site ; sous la liste, son effet (capacité, « Ignore 4 AP », mention) et le rappel des sorts « Fer » d'un autre élément */
+.fiche .objet select[data-couleur] { background-color: var(--c); color: var(--texte-sur-c); font-weight: 600; }
+.fiche .objet select[data-couleur] optgroup, .fiche .objet select[data-couleur] option:not(.teinte-palette) { background-color: var(--surface); color: var(--text); font-weight: normal; }
+.objet__effet { display: grid; gap: 0.15rem; margin: 0; color: var(--muted); font-size: var(--fs-xs); }
+.objet__rappels { margin: 0; padding: 0; list-style: none; color: var(--danger); font-size: var(--fs-xs); }
+.objet__rappels li { cursor: help; }
+.objet__effet[hidden], .objet__rappels[hidden], .objet .fiche-champ[hidden] { display: none; }
+.objet__details > summary { color: var(--muted); font-size: var(--fs-xs); cursor: pointer; overflow-wrap: anywhere; }
 .objet__details[open] > summary { margin-bottom: 0.35rem; }
-.zp-colonne .maitrises { grid-template-columns: repeat(auto-fill, minmax(min(100%, 13.5rem), 1fr)); gap: 0.1rem 0.9rem; }
-.zp-colonne .maitrise { font-size: 0.78rem; gap: 0.35rem; }
-.zp-colonne .maitrise .curseur { width: 3.6rem; }
 /* le bouclier a son bloc : plus de cadre autour */
 #bouclier .objet { padding: 0; border: 0; background: none; }
 
 /* contrôles de la base */
-.controles { margin: 0; padding-left: 1.1rem; font-size: 0.85rem; }
+.controles { margin: 0; padding-left: 1.1rem; font-size: var(--fs-md); }
 .controles li { margin: 0.1rem 0; }
 .controles[data-vide] { list-style: none; padding: 0; color: var(--good); }
 
@@ -895,14 +1042,13 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
   .fiche-zone { padding: 0.45rem 0.4rem 0.5rem; }
   .fiche-etape__corps { padding: 0.5rem; }
   .fiche-barre { position: static; }
-  .maitrise .curseur { width: 5rem; }
 }
 @media (prefers-reduced-motion: reduce) {
   .pastille, .xp__rempli { transition: none; }
 }
 @media print {
-  .site-header, .site-footer, .fiche-barre, .fiche-ligne-ajout, .retirer, .fiche-indisponible, .fiche-retraits, .xp__plus, .xp__ajout, .ajuster, .ajout,
-  .portrait__actions, .parametres__onglets, .recadrage, .tiroir__tete { display: none !important; }
+  .site-header, .site-footer, .fiche-barre, .retirer, .fiche-indisponible, .fiche-retraits, .xp__plus, .xp__ajout, .ajuster, .ajout,
+  .portrait__actions, .ceinture__actions, .ceinture__refus, .parametres__onglets, .recadrage, .import-cible, .tiroir__tete { display: none !important; }
   .parametres__panneau.est-tiroir { position: static; transform: none; max-height: none; box-shadow: none; animation: none; }
   .fiche-etape { break-inside: avoid-page; }
   .fiche-zone { break-inside: auto; background: none; }
@@ -915,18 +1061,15 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 /* résistances et faiblesses (bloc des magies, sur le modèle du tableau de la fiche auto) : un palier par ligne, son effet en petit ; les magies dans leur
    couleur, les altérations d'état cerclées de la couleur de leur magie ; un trait vert pour les résistances, rouge pour les faiblesses */
 .resistances { margin-top: 0.6rem; }
-.resistances__table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.resistances__table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
 .resistances__table th, .resistances__table td { padding: 0.2rem 0.35rem; border-top: 1px solid var(--etape-ligne); vertical-align: middle; text-align: left; }
 .resistances__table th { width: 8.5rem; font-weight: 600; border-left: 3px solid var(--r, var(--etape-ligne)); line-height: 1.15; }
-.resistances__table th small { display: block; font-weight: normal; color: var(--muted); font-size: 0.72rem; }
-.resistances__table tr[data-palier='immunite'] { --r: #1b5e20; }
-.resistances__table tr[data-palier='grande_resistance'] { --r: #2e7d32; }
-.resistances__table tr[data-palier='resistance'] { --r: #66bb6a; }
-.resistances__table tr[data-palier='vulnerabilite'] { --r: #ef9a9a; }
-.resistances__table tr[data-palier='grande_vulnerabilite'] { --r: #e53935; }
-.resistances__table tr[data-palier='sensibilite'] { --r: #8e0000; }
+.resistances__table th small { display: block; font-weight: normal; color: var(--muted); font-size: var(--fs-xxs); }
+/* le trait d'un palier : la classe de son palier (lib/palette-css.mjs, famille `palier`, posée par le script d'après regles.json), seulement là où la
+   ligne la porte (la fiche porte la classe de sa magie innée : --couleur s'hériterait) */
+.resistances__table tr[class*='couleur-palier-'] { --r: var(--couleur); }
 .resistances__cibles { display: flex; flex-wrap: wrap; gap: 0.25rem; margin: 0; padding: 0; list-style: none; }
-.resistance { padding: 0 0.45rem; border: 1.5px solid var(--c, var(--border)); border-radius: var(--radius-pill); font-size: 0.75rem; line-height: 1.5; cursor: help; }
+.resistance { padding: 0 0.45rem; border: 1.5px solid var(--c, var(--border)); border-radius: var(--radius-pill); font-size: var(--fs-xs); line-height: 1.5; cursor: help; }
 .resistance--magie { background: var(--c, var(--etape-doux)); color: var(--c-texte, var(--text)); }
 .resistance--etat { background: var(--surface); color: var(--text); }
 .resistances__vide { color: var(--muted); }
@@ -936,6 +1079,142 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 /* Accessoires (décision R54) : sous l'effet, le choix qu'il demande (compétence, famille d'armes) et ce qu'il change sur la fiche */
 .accessoire-cellule { display: grid; gap: 0.25rem; }
 .accessoire-cellule > select[hidden] { display: none; }
-.accessoire-effet { font-size: 0.8rem; color: var(--good, #2e7d32); }
+.accessoire-effet { font-size: var(--fs-sm); color: var(--good); }
 .accessoire-effet:empty { display: none; }
 .accessoire-cellule > select[data-a-choisir] { outline: 2px solid var(--a-choisir); outline-offset: 1px; }
+
+/* ----------------------------------------------------------------- défense et dégâts reçus (décision R98) : l'AP et l'AM totaux en deux tuiles (le
+   détail en infobulle), le bouclier à part, puis une ligne de calcul : dégâts entrants, type, « Dégâts réduits » (et « Au bouclier »), le résultat */
+.defense { display: grid; gap: 0.4rem; margin-bottom: 0.6rem; }
+.defense__tuiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.4rem; margin: 0; padding: 0; list-style: none; }
+.defense__tuile, .bouclier__tuile {
+  display: grid;
+  justify-items: center;
+  gap: 0.1rem;
+  padding: 0.3rem;
+  border: 1px solid var(--etape-ligne);
+  border-radius: var(--radius);
+  background: var(--etape-doux);
+  font-size: 1.3rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  cursor: help;
+}
+.defense__tuile small, .bouclier__tuile small { color: var(--muted); font-size: var(--fs-xxs); font-weight: 600; letter-spacing: var(--ls-caps); text-transform: uppercase; }
+.defense__bouclier { margin: 0; }
+.defense__bouclier[hidden] { display: none; }
+.defense__degats { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.6rem; padding-top: 0.4rem; border-top: 1px dashed var(--etape-ligne); }
+.defense__titre { color: var(--muted); font-size: var(--fs-xs); letter-spacing: var(--ls-caps); text-transform: uppercase; }
+.fiche .defense__degats input[type='number'] { width: 5.5rem; }
+.defense__degats label[hidden], .defense__degats select[hidden] { display: none; }
+.defense__recus { margin-left: auto; font-size: 1.2rem; font-weight: 700; font-variant-numeric: tabular-nums; cursor: help; }
+
+/* le bouclier (décision R96) : forme, matière, amélioration ; AP, AM et poids en tuiles (le poids dans la couleur de sa case de l'onglet, R92 ; trop
+   lourd pour la Force : en rouge), puis la solidité du moment */
+.bouclier__tuiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.4rem; margin: 0.5rem 0; padding: 0; list-style: none; }
+.bouclier__tuiles[hidden] { display: none; }
+.bouclier__tuile { font-size: 1.1rem; }
+.bouclier__tuile[data-poids] { background: var(--c); color: var(--texte-sur-c); border-color: var(--c); }
+.bouclier__tuile[data-poids] small { color: inherit; opacity: 0.8; }
+.bouclier__tuile[data-trop] { outline: 2px solid var(--danger); outline-offset: 1px; }
+/* un bouclier cassé (décision R108 : ses AP et AM ne comptent plus) : ses tuiles AP et AM grisées, comme la pastille d'une arme cassée (R74) */
+.bouclier__tuile[data-cassee] { background: var(--border); border-color: var(--border); color: var(--muted); }
+
+/* la saisie d'un objet du sac et sa liste qui se filtre (demande du propriétaire : à partir de deux caractères) : la liste sous le champ, par-dessus la
+   suite du tableau ; l'option parcourue au clavier surlignée */
+.autocompletion { position: relative; display: block; }
+.fiche .autocompletion input { width: 100%; max-width: none; }
+.autocompletion__liste {
+  position: absolute;
+  z-index: 20;
+  top: 100%;
+  left: 0;
+  min-width: 100%;
+  max-height: 15rem;
+  margin: 0.1rem 0 0;
+  padding: 0.2rem 0;
+  overflow-y: auto;
+  border: 1px solid var(--etape-ligne);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 4px 14px color-mix(in srgb, #000 18%, transparent);
+  list-style: none;
+}
+.autocompletion__liste[hidden] { display: none; }
+.autocompletion__liste li { padding: 0.25rem 0.6rem; cursor: pointer; white-space: nowrap; }
+.autocompletion__liste li:hover, .autocompletion__liste li[aria-selected='true'] { background: var(--etape-doux); color: var(--text); }
+/* l'inventaire, sous les accessoires (zone III) : le sac puis la bourse ; la liste qui se filtre déborde du tableau qui défile */
+.inventaire { display: grid; gap: 0.6rem; }
+#etape-inventaire .fiche-defile { overflow: visible; }
+/* sans défilement, le tableau du sac tient dans sa colonne, même sur un téléphone : le nom prend la place que laissent la quantité et le bouton */
+#inventaire { width: 100%; table-layout: fixed; }
+#inventaire th:nth-child(2) { width: 5.5rem; }
+#inventaire th:nth-child(3) { width: 2.5rem; }
+
+/* la posture du moment et les bonus des sorts (décisions R100, R102) : une valeur recalculée en gras, soulignée d'un pointillé (son détail en
+   infobulle) ; un score qu'une posture change, en vert ou en rouge ; les sorts de la magie que la Symbiose désactive, grisés */
+.score[data-posture][data-sens='plus'] { color: var(--good); }
+.score[data-posture][data-sens='moins'] { color: var(--danger); }
+.fiche-table--sorts td[data-calcule] { font-weight: 700; text-decoration: underline dotted; text-underline-offset: 0.2em; cursor: help; }
+.fiche-table--sorts tr[data-inactif] td { opacity: 0.45; }
+.objet__des[data-posture] { outline: 2px dashed currentColor; outline-offset: 1px; }
+/* sous la case Symbiose, la dernière de la grille des postures (une colonne de plus à droite qu'à gauche n'en change pas la place) */
+.posture-symbiose { align-self: start; grid-column: -2 / -1; }
+.posture-symbiose[hidden] { display: none; }
+/* le réglage d'un bâton magique dans le sac (décision R101) : sa magie puis son niveau, sous le nom */
+.baton-reglage { display: flex; gap: 0.3rem; margin-top: 0.2rem; }
+.baton-reglage[hidden] { display: none; }
+.baton-reglage select { flex: 1 1 0; min-width: 0; }
+.baton-reglage[data-a-choisir] select { border-color: var(--a-choisir); }
+/* un bâton de la ceinture dont un effet n'est pas compté (un autre bâton a le même, plus fort : décision R101) */
+.ceinture__emplacement[data-ecarte] input { text-decoration: line-through dotted; }
+
+/* l'entraînement (décision R104) : une ligne par compétence (curseur), livre de sort ou texte libre ; les boutons d'ajout dessous */
+.entrainement { display: grid; gap: 0.3rem; margin: 0 0 0.4rem; padding: 0; list-style: none; }
+.entrainement__ligne { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
+.entrainement__ligne > select, .entrainement__ligne > input:not([type='range']) { flex: 1 1 6rem; min-width: 0; }
+.entrainement__type { min-width: 6.5rem; color: var(--muted); font-size: var(--fs-xs); font-weight: 600; letter-spacing: var(--ls-caps); text-transform: uppercase; }
+.entrainement__ajouts { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0 0 0.4rem; }
+/* l'Acquis calculé (décision R104) : sa valeur, rognée au plafond signalée */
+.acquis-calcule { font-weight: 600; cursor: help; }
+.acquis-calcule[data-rogne] { color: var(--danger); }
+.nm-livre[hidden] { display: none; }
+.acquis-choix { display: grid; gap: 0.3rem; margin: 0; padding: 0; list-style: none; }
+/* « à répartir au choix » (décision R104) : chaque compétence et ses points, ce qui reste à répartir */
+.acquis-choix__reste { display: block; color: var(--muted); font-size: var(--fs-xs); }
+.acquis-choix__part { display: flex; align-items: center; gap: 0.3rem; min-width: 0; }
+.acquis-choix__part select { flex: 1 1 0; min-width: 0; }
+.acquis-choix__points { width: 4.5rem; }
+/* la liste des résistances à choisir (décision R124) sans choix à faire, l'aide d'un choix d'arme fait (décision R119) : cachées */
+.acquis-choix[hidden], .acquis-choix__reste[hidden] { display: none; }
+/* les bonus d'acquis écrits dans un don ou l'armure que la fiche ne compte pas (décision R104) : chacun avec sa raison */
+.acquis-non-comptes { margin: 0; padding-left: 1.1rem; color: var(--muted); font-size: var(--fs-sm); }
+/* les créatures d'un sort qui invoque, ou ce que donne l'invocation sacrifiée (décision R130) : repliées sous le sort ; un bouton par créature, sur la
+   couleur de sa magie (en dégradé vers la seconde), celle montrée appuyée ; sa carte resserrée au NPM du sort */
+.fiche-table--sorts tr.sort-invocations td { padding-top: 0; font-size: var(--fs-sm); }
+.invocations > summary { cursor: pointer; color: var(--muted); font-size: var(--fs-xs); }
+.invocations[open] > summary { margin-bottom: 0.3rem; }
+.invocations__groupe { margin: 0.25rem 0; }
+.invocations__titre { margin: 0 0 0.15rem; font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
+.invocations__choix { display: flex; flex-wrap: wrap; gap: 0.25rem 0.35rem; }
+.fiche .invocation-choix { padding: 0.05rem 0.45rem; border: 1px solid color-mix(in srgb, var(--c1) 55%, var(--border)); border-right-color: color-mix(in srgb, var(--c2) 55%, var(--border));
+  border-radius: var(--radius-pill); background: linear-gradient(90deg, color-mix(in srgb, var(--c1) 22%, var(--surface)), color-mix(in srgb, var(--c2) 22%, var(--surface)));
+  color: var(--text); font: inherit; font-size: var(--fs-xs); cursor: pointer; }
+.fiche .invocation-choix[aria-pressed='true'] { border-color: var(--c1); border-right-color: var(--c2); font-weight: 700;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--c1) 50%, var(--surface)), color-mix(in srgb, var(--c2) 50%, var(--surface))); }
+.fiche .invocation-choix:focus-visible { outline: 2px solid var(--etape); outline-offset: 2px; }
+/* ses magies : la classe de la première et la classe de second rang de la seconde, ou de la même (lib/palette-css.mjs#classesDeDeuxMagies) */
+.fiche .invocation-choix--magie { --c1: var(--couleur); --c2: var(--couleur-2); }
+.invocation-choix__npm { color: var(--muted); }
+.invocations__aide { margin: 0.3rem 0 0; font-size: var(--fs-xs); }
+.invocation-carte { margin-top: 0.35rem; padding: 0.4rem 0.6rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); }
+.invocation-carte__titre { margin: 0 0 0.3rem; }
+.invocation-carte dl, .invocations__tableau { display: grid; gap: 0.2rem; margin: 0; }
+.invocation-carte__rubrique, .invocations__tableau > div { display: grid; grid-template-columns: minmax(6rem, max-content) 1fr; gap: 0.6rem; }
+.invocation-carte dt, .invocations__tableau dt { font-weight: 600; color: var(--muted); }
+.invocation-carte dd, .invocations__tableau dd { margin: 0; }
+.invocation-carte ul { margin: 0; padding-left: 1rem; }
+.invocation-carte__caracs { display: inline-flex; flex-wrap: wrap; gap: 0.2rem; }
+.invocation-carte__carac { padding: 0 0.35rem; border-radius: var(--radius-xxs); background: var(--c); color: var(--c-texte); font-variant-numeric: tabular-nums; font-weight: 600; }
+.invocations__effet { margin: 0.35rem 0 0; white-space: pre-line; }

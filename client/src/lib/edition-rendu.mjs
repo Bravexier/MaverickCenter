@@ -6,15 +6,18 @@ import { dateCourte, libelleDeDate } from './chronologie.mjs';
 import { htmlDeLaPortee } from './chronologie-rendu.mjs';
 import { analyserTypeDeDon, decouperInventaire, lignesDeListe } from './classe-champs.mjs';
 import { typeDeDon } from './classe-dons.mjs';
-import { styleDeCouleur, couleurDeCaracteristique } from './caracteristiques-postures.mjs';
 import { decouperBonus, decouperEquipement } from './metier-champs.mjs';
+import { classeDeCaracteristique, classeDeGenre, classeDeTypeDeDon } from './palette-css.mjs';
 import { analyserType, bonusDeMaitrise } from './sort-analyse.mjs';
 import { blocsDeTexte, coutDeSort, marquesDeMode, morceauxAvecEtats, morceauxAvecLiens, valeurDeSort } from './sort-format.mjs';
 import { marquerBonus } from './sort-maitrise.mjs';
 import { RENDUS_DU_BESTIAIRE } from './monstre-rendu.mjs';
 import { RENDUS_DES_ARMES } from './armes-rendu.mjs';
+import { RENDUS_DES_ARMURES } from './armures-rendu.mjs';
 import { RENDUS_DES_COMPOSANTS } from './composants-rendu.mjs';
+import { RENDUS_DE_LA_CEINTURE } from './ceinture-rendu.mjs';
 import { htmlAvecMonnaies } from './monnaies.mjs';
+import { avecLeursBalises } from './mots-cles-balises.mjs';
 
 const ENTITES_HTML = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 export const echapperHtml = (texte) => String(texte ?? '').replace(/[&<>"']/g, (c) => ENTITES_HTML[c]);
@@ -98,7 +101,7 @@ const valeurDeCase = (champ, liste) => (valeur, _ligne, ctx = {}) => {
 const ATTRIBUTS_DE_LA_FICHE = { initiative: 'Initiative', vitesse: 'Vitesse', vitesse_nage: 'Vitesse de nage' };
 
 /**
- * Pastille d'une compétence que vise un bonus de métier, dans la couleur de sa caractéristique (lib/caracteristiques-postures.mjs), ou d'un attribut
+ * Pastille d'une compétence que vise un bonus de métier, dans la couleur de sa caractéristique (sa classe : lib/palette-css.mjs), ou d'un attribut
  * (initiative, vitesse, vitesse de nage : la cible telle qu'écrite en titre, « Vitesse au sol pour le sprint »).
  */
 function pastilleDeCible(option, ctx) {
@@ -109,21 +112,23 @@ function pastilleDeCible(option, ctx) {
   const competence = (ctx.competences ?? []).find((c) => typeof c === 'object' && c.id === option.competence_id);
   const carac = (ctx.caracteristiques ?? []).find((c) => c.id === competence?.caracteristique_id);
   const nom = competence?.nom ?? option.cible;
-  return `<span class="metier-cible" style="${styleDeCouleur(couleurDeCaracteristique(competence?.caracteristique_id))}" title="${echapperHtml(`Acquis de ${nom}${carac ? ` (${carac.nom})` : ''}`)}">${echapperHtml(nom)}</span>`;
+  return `<span class="metier-cible ${classeDeCaracteristique(competence?.caracteristique_id)}" title="${echapperHtml(`Acquis de ${nom}${carac ? ` (${carac.nom})` : ''}`)}">${echapperHtml(nom)}</span>`;
 }
 
 /**
  * Les bonus d'un métier (lignes de lib/metier-champs.mjs#decouperBonus), un rang par ligne : un rang lié (décisions R33, R37 : chaque option vise une compétence
- * ou un attribut) s’écrit « valeur » puis la pastille de chaque cible, reliées par « ou » (un choix, fait dans la fiche) ; un autre rang garde son texte.
+ * ou un attribut) s’écrit « valeur » puis la pastille de chaque cible, reliées par « ou » (un choix, fait dans la fiche) ; un autre rang garde son texte, avec
+ * les balises du glossaire que `brut` (le champ « Bonus ») y écrit (lib/mots-cles-balises.mjs#avecLeursBalises : en gras, avec leur bulle, par le middleware).
  */
-function htmlDesBonus(lignes, ctx = {}) {
+function htmlDesBonus(lignes, ctx = {}, brut = '') {
   const rangs = [];
   for (const l of lignes) (rangs[l.rang - 1] ??= []).push(l);
-  return rangs
-    .filter(Boolean)
-    .map((options) => {
+  const presents = rangs.filter(Boolean);
+  const textes = avecLeursBalises(brut, presents.map((options) => options[0].texte));
+  return presents
+    .map((options, i) => {
       const lie = options.every((o) => o.competence_id || o.attribut);
-      if (!lie) return `<div class="metier-bonus metier-bonus--texte" title="Texte libre : sans effet automatique sur la fiche">${echapperHtml(options[0].texte)}</div>`;
+      if (!lie) return `<div class="metier-bonus metier-bonus--texte" title="Texte libre : sans effet automatique sur la fiche">${echapperHtml(textes[i])}</div>`;
       const { valeur, unite } = options[0];
       const cibles = options.map((o) => pastilleDeCible(o, ctx)).join(' <span class="metier-bonus__ou">ou</span> ');
       return `<div class="metier-bonus"><span class="metier-bonus__valeur">${valeur >= 0 ? '+' : '−'}${Math.abs(valeur)}${unite ?? ''}</span> ${cibles}</div>`;
@@ -135,10 +140,13 @@ function htmlDesBonus(lignes, ctx = {}) {
 function htmlDeCaracteristique(id, ctx = {}) {
   if (!id) return '';
   const nom = (ctx.caracteristiques ?? []).find((c) => c.id === id)?.nom ?? id;
-  return `<span class="metier-carac" style="${styleDeCouleur(couleurDeCaracteristique(id))}" title="${echapperHtml(`10 × ${nom}`)}">${echapperHtml(nom)}</span>`;
+  return `<span class="metier-carac ${classeDeCaracteristique(id)}" title="${echapperHtml(`10 × ${nom}`)}">${echapperHtml(nom)}</span>`;
 }
 
-/** Les objets de départ d'un métier (décision R35), un par puce, les options d'un choix reliées par « ou » ; un objet du glossaire a sa description en titre. */
+/**
+ * Les objets de départ d'un métier (décision R35), un par puce, les options d'un choix reliées par « ou » ; un objet du glossaire a sa description en titre.
+ * `objets` : lus par avecSesBalises (chaque texte avec les balises du glossaire de la case).
+ */
 function htmlDesObjets(objets, ctx = {}) {
   if (!objets.length) return VIDE;
   const glossaire = new Map((ctx.objets ?? []).map((o) => [o.id, o]));
@@ -157,6 +165,15 @@ function htmlDesObjets(objets, ctx = {}) {
 }
 
 /**
+ * Les lignes d'un découpage (objets de départ : { texte, … }, dans l'ordre de la case) dont le texte reprend les balises du glossaire que la case `brut`
+ * écrit (lib/mots-cles-balises.mjs#avecLeursBalises) : le découpage les lit sans balises, l'affichage les garde.
+ */
+const avecSesBalises = (brut, lignes) => {
+  const textes = avecLeursBalises(String(brut ?? ''), lignes.map((l) => l.texte));
+  return lignes.map((l, i) => ({ ...l, texte: textes[i] }));
+};
+
+/**
  * Rendus nommés (attribut `data-ed-rendu` ; sans attribut : `texte`). Chacun reçoit la valeur de la colonne, la ligne entière et le contexte de la page
  * ({ competences } : listes du service ; { pastilles } : celles que le champ montrait, voir htmlDeBlocs) et rend du HTML.
  */
@@ -164,15 +181,15 @@ export const RENDUS = {
   texte: (valeur) => echapperHtml(valeur ?? ''),
   blocs: (valeur, _ligne, ctx = {}) => htmlDeBlocs(valeur, ctx.pastilles),
   // Métiers (components/metier/MetiersTableau.astro, qui affiche ces mêmes rendus) : ctx.competences, ctx.caracteristiques, ctx.objets (listes du service)
-  'metier-bonus': (valeur, _ligne, ctx = {}) => htmlDesBonus(decouperBonus(valeur ?? '', ctx.competences ?? []), ctx),
+  'metier-bonus': (valeur, _ligne, ctx = {}) => htmlDesBonus(decouperBonus(valeur ?? '', ctx.competences ?? []), ctx, valeur ?? ''),
   'metier-artisanat': (valeur) => (valeur ? echapperHtml(valeur) : VIDE),
   'metier-carac': (valeur, _ligne, ctx = {}) => htmlDeCaracteristique(valeur, ctx),
-  'metier-equipement': (valeur, _ligne, ctx = {}) => htmlDesObjets(decouperEquipement(valeur, ctx.objets ?? []), ctx),
+  'metier-equipement': (valeur, _ligne, ctx = {}) => htmlDesObjets(avecSesBalises(valeur, decouperEquipement(valeur, ctx.objets ?? [])), ctx),
   'metier-avantage': (valeur) => (valeur && valeur.trim() !== '…' ? echapperHtml(valeur) : ''),
-  // Sorts (components/magie/LigneDeSort.astro) : types, mode et NM du type ; coût (principal + supplément) ; portée, zone, D/S/B
+  // Sorts (components/magie/LigneDeSort.astro) : types, mode et NM du type ; coût (principal + supplément), coût secondaire ; portée, zone, D/S/B
   'sort-type': (valeur) => {
     const a = analyserType(valeur);
-    const types = a.types.map((t) => `<span class="genre" data-genre="${echapperHtml(t.type)}">${echapperHtml(t.libelle)}</span> `);
+    const types = a.types.map((t) => `<span class="genre ${classeDeGenre(t.type)}" data-genre="${echapperHtml(t.type)}">${echapperHtml(t.libelle)}</span> `);
     const marques = marquesDeMode(a.modes).map((m) => `<span class="marque marque--${echapperHtml(m.genre)}">${echapperHtml(m.texte)}</span> `);
     const nm = bonusDeLaCase('type', valeur).map((b) => `<span class="nm">${echapperHtml(b.texteBrut)}</span> `);
     return [...types, ...marques, ...nm].join('');
@@ -190,7 +207,7 @@ export const RENDUS = {
   inventaire: (valeur, _ligne, ctx = {}) => {
     const glossaire = new Map((ctx.objets ?? []).map((o) => [o.id, o]));
     const emplacements = [];
-    for (const o of decouperInventaire(valeur, ctx.objets ?? [])) (emplacements[o.rang - 1] ??= []).push(o);
+    for (const o of avecSesBalises(valeur, decouperInventaire(valeur, ctx.objets ?? []))) (emplacements[o.rang - 1] ??= []).push(o);
     const objet = (o) => {
       const g = glossaire.get(o.objet_depart_id);
       if (!g?.description) return `<span class="objet objet--seul">${echapperHtml(o.texte)}</span>`;
@@ -213,7 +230,13 @@ export const RENDUS = {
     const connu = (ctx.typesDon ?? []).find((t) => t.id === type);
     const libelle = connu?.nom ?? { passif: 'Passif', actif: 'Actif', action: 'Action', reaction: 'Réaction' }[type] ?? mot;
     const bulle = connu?.definition ? ` title="${echapperHtml(`${libelle} : ${connu.definition}`)}"` : '';
-    return `${type ? `<span class="don-type" data-type="${type}"${bulle}>${echapperHtml(libelle)}</span>` : ''}${precision ? `<span class="don__precision">${echapperHtml(precision)}</span>` : ''}`;
+    return `${type ? `<span class="don-type ${classeDeTypeDeDon(type)}" data-type="${type}"${bulle}>${echapperHtml(libelle)}</span>` : ''}${precision ? `<span class="don__precision">${echapperHtml(precision)}</span>` : ''}`;
+  },
+  // le coût secondaire (décision R105) : une valeur courte, sans expression de NM (le service les refuse ici)
+  // le coût secondaire sous le coût, dans la même case (décision R106) : rien quand il est vide (son cadre se cache en lecture)
+  'sort-cout-secondaire': (valeur) => {
+    const v = valeurDeSort(valeur);
+    return v.vide ? '' : v.lignes.map((l) => `<div>${segmentsHtml(l)}</div>`).join('');
   },
   'sort-portee': valeurDeCase('portee', false),
   'sort-zone': valeurDeCase('zone', false),
@@ -224,11 +247,17 @@ export const RENDUS = {
   'evenement-date': (_valeur, ligne) => echapperHtml(libelleDeDate(ligne)),
   'evenement-date-courte': (_valeur, ligne) => echapperHtml(dateCourte(ligne)),
   'evenement-portee': (valeur) => htmlDeLaPortee(valeur),
-  // Armes (lib/armes-rendu.mjs : les cellules des tableaux de /ressources/armes/, des matériaux et des améliorations) : ctx.competences,
+  // Armes (lib/armes-rendu.mjs : les cellules des tableaux de l'onglet Armes de /ressources/equipement/, des matériaux et des améliorations) : ctx.competences,
   // ctx.caracteristiques, ctx.typesDArmes, ctx.soliditeDesArmes (listes du service)
   ...RENDUS_DES_ARMES,
+  // Armures et boucliers (lib/armures-rendu.mjs : les cellules des tableaux des onglets Armures et Boucliers de /ressources/equipement/) : défense, prix, type, solidité, résistances,
+  // coût d'une pièce, coût et effet d'une amélioration
+  ...RENDUS_DES_ARMURES,
   // Composants (lib/composants-rendu.mjs : les cellules des tableaux de /ressources/composants/) : prix, description, valeur d'une monnaie, catégorie d'un fruit
   ...RENDUS_DES_COMPOSANTS,
+  // Consommables de l'onglet Ceinture de /ressources/equipement/ (lib/ceinture-rendu.mjs : les cases d'une potion ; son prix : « composant-prix ») : niveau
+  // d'alchimie (ctx.niveauxDAlchimie, liste du service), effet
+  ...RENDUS_DE_LA_CEINTURE,
 };
 
 /** HTML d'un champ d'après son rendu ; un rendu inconnu retombe sur le texte. */

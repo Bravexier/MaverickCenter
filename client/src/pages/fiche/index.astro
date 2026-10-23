@@ -2,32 +2,54 @@
 import Base from '../../layouts/Base.astro';
 import Onglets from '../../components/Onglets.astro';
 import ficheCss from '../../styles/fiche/fiche.css?raw';
-import { PARTIES } from '../../lib/guide.mjs';
 import { url } from '../../lib/wiki';
 import { htmlDePiece } from '../../lib/monnaies.mjs';
+import { ouvrirBase } from '../../lib/donnees.mjs';
+import { aideDeLEntrainement } from '../../lib/fiche-regles.mjs';
+import { clientGoogle } from '../../lib/google-sheets.mjs';
+import { INFOBULLES_DES_EXPORTS } from '../../lib/fiche-tableur-export.mjs';
+import { classeDAlignement, classeDePartie, cssDesFamilles, FAMILLES_DE_LA_FICHE } from '../../lib/palette-css.mjs';
 
 // Fiche de personnage (demande du propriétaire) : création et modification d'un PRÉTIRÉ sur le même écran (/fiche/, /fiche/?id=<id>). Quatre zones,
 // sans cadre ni titre visibles (demandes du propriétaire) : I. l'identité (portrait, nom, surnom, origine, race, magies, classes, alignement, niveau seul) ; II. ce qu'on veut toujours
-// à portée (attributs, caractéristiques et compétences, sorts, dons débloqués, armes et maîtrises, les trois emplacements de la ceinture) ; III. ce qui
-// dépend de la situation (posture, initiative et vitesses, armure, bouclier, résistances et faiblesses, accessoires) ; IV. ce qui se règle et se suit, en
-// onglets (progression et XP, choix, inventaire, notes et événements, contrôle des règles). Compacte (demandes du propriétaire) : les choix (race, ethnie,
-// magies, classes, spécialités) dans des menus déroulants, caractéristiques, compétences, maîtrises et valeurs du moment en curseurs. Les règles viennent
+// à portée (attributs, caractéristiques et compétences, sorts et le sort préparé (R115), dons débloqués et entraînement (R71), armes avec leur solidité (R74), les trois emplacements de la ceinture) ; III. ce qui
+// dépend de la situation (posture, initiative et vitesses, armure avec la défense totale et les dégâts reçus (R98), accessoires (R97), inventaire juste en
+// dessous (demande du propriétaire du 2026-10-17), bouclier (R96), résistances et faiblesses) ; IV. ce qui se règle et se suit, en onglets (progression et
+// XP, choix — dont les maîtrises d'armes, demande du propriétaire du 2026-10-23 —, notes et événements, contrôle des règles). Compacte (demandes du
+// propriétaire) : les choix (race, ethnie, magies, classes, spécialités) dans des menus déroulants, caractéristiques, compétences et valeurs du moment
+// en curseurs. Les règles viennent
 // de la base (/fiche/regles.json, lib/fiche-regles.mjs), les calculs de lib/fiche-moteur.mjs, l'enregistrement du service des personnages (/api/,
 // docs/serveur.md). Le formulaire est construit par src/scripts/fiche.mjs. CSS : styles/fiche/fiche.css, inséré ici (?raw) ; onglets de la zone IV :
-// components/Onglets.astro.
-const couleur = Object.fromEntries(PARTIES.map((p) => [p.id, p.couleur]));
+// components/Onglets.astro. La barre (demandes du propriétaire, 2026-10-15) : Nouveau, Télécharger (le classeur au modèle V15.2.2, nommé d'après le
+// personnage ; le modèle est servi à /fiche/modele.xlsx : data-modele, pages/fiche/modele.xlsx.ts), Exporter (le même classeur, en feuille Google
+// Sheets créée dans le Drive de la personne : lib/google-sheets.mjs ; identifiant client OAuth de la variable de build SITE_GOOGLE_CLIENT_ID, sans
+// lequel le bouton reste grisé), Importer (PC) (un .xlsx), Importer (en ligne) (le lien d'une feuille Google Sheets partagée par lien, dialogue
+// « import-en-ligne », lue par le service : POST /api/classeur/), Supprimer ; plus de JSON ni d'impression (Ctrl+P reste possible). Le dialogue
+// « import-cible » demande où va une fiche importée quand un prétiré est ouvert.
+// chaque zone dans la couleur d'une partie du guide (lib/livres.mjs#PARTIES) : la classe de la partie (`.couleur-partie-<id>`, émise avec les familles
+// de la fiche), dont styles/fiche/fiche.css tire --etape ; jamais un style
 const ZONES = [
   { id: 'identite', numero: 'I', titre: 'Identité', court: 'Identité', partie: 'creer' },
   { id: 'portee', numero: 'II', titre: 'À portée de main', court: 'À portée', partie: 'jouer' },
   { id: 'situation', numero: 'III', titre: 'Selon la situation', court: 'Situation', partie: 'decouvrir' },
   { id: 'parametres', numero: 'IV', titre: 'Paramètres et suivi', court: 'Paramètres', partie: 'progresser' },
 ];
-const style = (id: string) => `--etape: ${couleur[ZONES.find((z) => z.id === id)!.partie]}`;
+const classeDeZone = (id: string) => classeDePartie(ZONES.find((z) => z.id === id)!.partie);
+// l'aide du champ « Entraînement » (décision R71) : le paragraphe du guide qui en dit les limites, tel que la base l'écrit (null s'il n'y est plus)
+const entrainement = aideDeLEntrainement(ouvrirBase());
+// « Exporter » (Google Sheets) : l'identifiant client OAuth du build ; vide (absent ou mal formé), le bouton reste grisé
+const client = clientGoogle(process.env);
+if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] SITE_GOOGLE_CLIENT_ID n’a pas la forme d’un identifiant client OAuth de Google : « Exporter » reste grisé.');
 ---
 
 <Base title="Fiche de personnage" description="Créer et modifier un personnage prétiré, avec les règles de Maverick">
+  {/* la connexion à Google (« Exporter ») : la fenêtre de Google reçoit l'origine du site (le reste du site garde Referrer-Policy same-origin) */}
+  <meta slot="tete" name="referrer" content="strict-origin-when-cross-origin" />
   <style is:inline set:html={ficheCss}></style>
-  <div class="fiche" id="fiche" data-regles={url('fiche/regles.json')} data-api={url('api/')} data-personnages={url('personnages/')} data-fiche={url('fiche/')}>
+  {/* les classes des familles d'une zone que la fiche pose : postures, alignements, races, classes, paliers, Mode Hyper, neutre, poids des boucliers
+      (lib/palette-css.mjs#FAMILLES_DE_LA_FICHE ; le script les pose d'après regles.json), parties du guide (les quatre zones, posées par la page) */}
+  <style is:inline set:html={cssDesFamilles(FAMILLES_DE_LA_FICHE)}></style>
+  <div class="fiche" id="fiche" data-regles={url('fiche/regles.json')} data-modele={url('fiche/modele.xlsx')} data-api={url('api/')} data-personnages={url('personnages/')} data-fiche={url('fiche/')}>
     <header class="fiche-entete">
       <p class="fiche-surtitre">Fiche de personnage · prétiré · <a href={url('personnages/')}>tous les personnages</a></p>
       <h1 class="visuellement-cache" id="fiche-titre">Nouveau prétiré</h1>
@@ -39,9 +61,13 @@ const style = (id: string) => `--etape: ${couleur[ZONES.find((z) => z.id === id)
       <p class="fiche-message" id="fiche-message" role="status" aria-live="polite"></p>
       <span class="fiche-barre__outils">
         <button type="button" id="fiche-nouvelle">Nouveau</button>
-        <button type="button" id="fiche-exporter">Exporter</button>
-        <label class="fiche-bouton-fichier"><input type="file" id="fiche-importer" accept="application/json,.json" hidden /><span role="button" tabindex="0">Importer</span></label>
-        <button type="button" id="fiche-imprimer">Imprimer</button>
+        {/* Télécharger et Exporter : grisés tant que la fiche n'est pas enregistrée telle qu'elle est (src/scripts/fiche.mjs#etatDesBoutons,
+            lib/fiche-tableur-export.mjs#etatDesExports) ; Exporter aussi sans identifiant client Google (data-client-google vide). `id` juste après
+            `type="button"` : la version portable (tools/build-artifact.mjs) les masque, avec Importer (en ligne). */}
+        <button type="button" id="fiche-telecharger" disabled title={INFOBULLES_DES_EXPORTS.telechargerGrise}>Télécharger</button>
+        <button type="button" id="fiche-exporter" data-client-google={client} disabled title={client ? INFOBULLES_DES_EXPORTS.exporterGrise : INFOBULLES_DES_EXPORTS.exporterSansClient}>Exporter</button>
+        <label class="fiche-bouton-fichier"><input type="file" id="fiche-importer" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden /><span role="button" tabindex="0" title="Un classeur .xlsx au modèle de la fiche V15.2.2, ordinateur ou auto (depuis Google Sheets : Fichier › Télécharger › Microsoft Excel)">Importer (PC)</span></label>
+        <button type="button" id="fiche-importer-en-ligne" title="Le lien d’une feuille Google Sheets partagée à « Tous les utilisateurs disposant du lien »">Importer (en ligne)</button>
         <button type="button" class="fiche-barre__danger" id="fiche-supprimer" hidden>Supprimer</button>
       </span>
     </div>
@@ -52,7 +78,7 @@ const style = (id: string) => `--etape: ${couleur[ZONES.find((z) => z.id === id)
     <noscript><p class="banner">Cette page a besoin de JavaScript pour construire la fiche et l’enregistrer.</p></noscript>
 
     {/* ===================================================================== I. Identité */}
-    <section class="fiche-zone fiche-zone--identite" id="zone-identite" style={style('identite')} aria-labelledby="titre-zone-identite">
+    <section class:list={['fiche-zone fiche-zone--identite', classeDeZone('identite')]} id="zone-identite" aria-labelledby="titre-zone-identite">
       <h2 class="fiche-zone__titre" id="titre-zone-identite"><span class="fiche-zone__numero" aria-hidden="true">I</span>Identité</h2>
       <div class="fiche-etape identite" id="etape-identite">
         {/* portrait (demande du propriétaire) : le logo en attendant une image ; une image choisie se recadre (src/scripts/fiche.mjs#construirePortrait) */}
@@ -87,7 +113,7 @@ const style = (id: string) => `--etape: ${couleur[ZONES.find((z) => z.id === id)
                 <label title="Bon"><span aria-hidden="true">B</span><input type="number" min="0" step="1" data-champ="alignement_bon" data-entier aria-label="Bon" /></label>
                 <label title="Mauvais"><span aria-hidden="true">M</span><input type="number" min="0" step="1" data-champ="alignement_mauvais" data-entier aria-label="Mauvais" /></label>
               </span>
-              <output class="alignement__resultat" id="alignement-resultat" aria-live="polite">Neutre</output>
+              <output class={`alignement__resultat teinte-palette ${classeDAlignement('Neutre')}`} id="alignement-resultat" aria-live="polite">Neutre</output>
             </fieldset>
           </div>
 
@@ -121,7 +147,7 @@ const style = (id: string) => `--etape: ${couleur[ZONES.find((z) => z.id === id)
     </section>
 
     {/* ===================================================================== II. À portée de main */}
-    <section class="fiche-zone" id="zone-portee" style={style('portee')} aria-labelledby="titre-zone-portee">
+    <section class:list={['fiche-zone', classeDeZone('portee')]} id="zone-portee" aria-labelledby="titre-zone-portee">
       <h2 class="fiche-zone__titre" id="titre-zone-portee"><span class="fiche-zone__numero" aria-hidden="true">II</span>À portée de main</h2>
       <div class="fiche-zone__grille zone-portee">
         <section class="fiche-etape zp-attributs" id="etape-attributs" aria-labelledby="titre-attributs">
@@ -145,22 +171,27 @@ const style = (id: string) => `--etape: ${couleur[ZONES.find((z) => z.id === id)
           </div>
         </section>
 
+        {/* les armes, puis la ceinture dessous : la colonne de droite, à côté des caractéristiques et compétences sur grand écran (choix du propriétaire du
+            2026-10-23 : « Garder l'armes visibles à coté des caractéristiques comme avant ») ; plus étroit, elle passe sous les compétences. Les maîtrises
+            d'armes sont dans le panneau « Choix » de la zone IV (même demande) */}
         <div class="zp-colonne">
           <section class="fiche-etape" id="etape-armes" aria-labelledby="titre-armes">
-            <h3 id="titre-armes">Armes et maîtrises</h3>
+            <h3 id="titre-armes">Armes</h3>
             <div class="fiche-etape__corps">
               <div id="armes" class="equipement equipement--armes"></div>
-              {/* quota de maîtrise (décision R32) : points répartis / points des classes et de leurs dons */}
-              <div class="fiche-entete-bloc"><h4 class="fiche-sous-titre">Maîtrises d’armes</h4><span class="budget" id="budget-maitrises"></span></div>
-              <ul id="maitrises" class="maitrises" aria-label="Maîtrise de chaque famille d’armes"></ul>
             </div>
           </section>
-          {/* la ceinture : 3 emplacements d'objets rapides, utilisables en IC (guide « Fiche de personnage : Accessoires et Ceinture ») */}
+          {/* la ceinture : 3 emplacements d'objets rapides, utilisables en IC (guide « Fiche de personnage : Accessoires et Ceinture ») ; chacun prend un objet
+              du sac, qui le quitte, et se règle par « Utiliser », « Remplir » et « Ranger » (décision R89) ; l'aide est refaite par le script d'après les règles,
+              un nom refusé (absent du sac) dit pourquoi dans #ceinture-refus */}
           <section class="fiche-etape" id="etape-ceinture" aria-labelledby="titre-ceinture">
             <h3 id="titre-ceinture">Ceinture</h3>
             <div class="fiche-etape__corps">
-              <ol id="ceinture" class="ceinture" aria-label="Emplacements d’objets rapides"></ol>
-              <p class="fiche-aide" id="ceinture-aide">3 objets rapides au plus, utilisables en IC. Carquois, sac de bombes ou de pierres : à la ceinture pour servir.</p>
+              <div>
+                <ol id="ceinture" class="ceinture" aria-label="Emplacements d’objets rapides"></ol>
+                <p class="fiche-aide ceinture__refus" id="ceinture-refus" role="status" aria-live="polite"></p>
+              </div>
+              <p class="fiche-aide" id="ceinture-aide">3 emplacements d’objets rapides, utilisables en IC ; les carquois, sacs de bombes ou de pierres doivent être à la ceinture pour servir.</p>
             </div>
           </section>
         </div>
@@ -168,8 +199,15 @@ const style = (id: string) => `--etape: ${couleur[ZONES.find((z) => z.id === id)
         <section class="fiche-etape zp-sorts" id="etape-sorts" aria-labelledby="titre-sorts">
           <h3 id="titre-sorts">Sorts</h3>
           <div class="fiche-etape__corps">
-            <div class="fiche-entete-bloc"><p class="fiche-aide" id="emplacements-detail"></p><span class="fiche-budgets"><span class="budget" id="budget-sorts"></span><span class="budget" id="budget-nm"></span></span></div>
+            <div class="fiche-entete-bloc"><p class="fiche-aide" id="emplacements-detail"></p><span class="fiche-budgets"><span class="budget" id="budget-sorts"></span><span class="budget" id="budget-nm"></span><label class="budget budget--mj" title="NM donnés par le MJ : ils valent pour toute la fiche et s’ajoutent aux NM gagnés par les niveaux (décision R118)"><span aria-hidden="true">+ MJ</span><input type="number" min="0" step="1" inputmode="numeric" data-champ="nm_mj" data-entier id="nm-mj" aria-label="NM donnés par le MJ, pour toute la fiche" /></label></span></div>
             <div class="fiche-defile"><table class="fiche-table fiche-table--sorts" id="sorts"></table></div>
+            {/* le sort préparé (décision R115, présentation validée par le propriétaire) : avec « Préparation » (Mage Rouge) ou « Chargement » (Mage
+                Vert), un seul des sorts que le don autorise, le jet de magie (D100), la posture du moment enregistrée à la préparation, et « Lâcher le
+                sort » qui remet tout à zéro ; refait par src/scripts/fiche.mjs#construireSortPrepare */}
+            <div class="sort-prepare" id="sort-prepare-bloc" hidden>
+              <div class="fiche-entete-bloc"><h4 class="fiche-sous-titre" id="titre-sort-prepare">Sort préparé</h4><p class="fiche-aide" id="sort-prepare-aide"></p></div>
+              <div class="sort-prepare__champs" id="sort-prepare" role="group" aria-labelledby="titre-sort-prepare"></div>
+            </div>
           </div>
         </section>
 
@@ -178,14 +216,25 @@ const style = (id: string) => `--etape: ${couleur[ZONES.find((z) => z.id === id)
           <h3 id="titre-dons">Dons débloqués</h3>
           <div class="fiche-etape__corps">
             <div><h4 class="fiche-sous-titre">Dons raciaux</h4><ul id="dons-race" class="dons-liste" aria-label="Dons de la race"></ul></div>
+            {/* « Entraînement » (décision R104) : des lignes qu'on ajoute — une compétence et ses points (dans l'Acquis), un livre de sort (son NM), un
+                texte libre (« dons évènementiels ») */}
+            <div class="dons-entrainement">
+              <h4 class="fiche-sous-titre" id="titre-entrainement">Entraînement</h4>
+              <ul id="entrainement" class="entrainement" aria-labelledby="titre-entrainement"></ul>
+              <p class="entrainement__ajouts" id="entrainement-ajouts"></p>
+              <p class="fiche-aide" id="entrainement-aide">{entrainement && <Fragment><cite>{entrainement.titre}</cite> : « {entrainement.texte} » </Fragment>}Les points d’une compétence s’ajoutent à son acquis ; un livre de sort lui donne un NM, qui ne compte pas dans le décompte des NM ; un texte libre note un don évènementiel ou ce que le MJ accorde.</p>
+            </div>
             <div><h4 class="fiche-sous-titre">Dons de classe</h4><div id="dons-classes" class="dons-classes"></div></div>
+            {/* les bonus d'acquis « X ou Y » des dons débloqués (décision R104) : la compétence se choisit ici */}
+            <div id="acquis-choix-bloc" hidden><h4 class="fiche-sous-titre" id="titre-acquis-choix">Acquis à choisir</h4><ul id="acquis-choix" class="acquis-choix" aria-labelledby="titre-acquis-choix"></ul></div>
+            <div id="acquis-non-comptes-bloc" hidden><h4 class="fiche-sous-titre" id="titre-acquis-non-comptes">Bonus d’acquis non comptés</h4><ul id="acquis-non-comptes" class="acquis-non-comptes" aria-labelledby="titre-acquis-non-comptes"></ul></div>
           </div>
         </section>
       </div>
     </section>
 
     {/* ===================================================================== III. Selon la situation */}
-    <section class="fiche-zone" id="zone-situation" style={style('situation')} aria-labelledby="titre-zone-situation">
+    <section class:list={['fiche-zone', classeDeZone('situation')]} id="zone-situation" aria-labelledby="titre-zone-situation">
       <h2 class="fiche-zone__titre" id="titre-zone-situation"><span class="fiche-zone__numero" aria-hidden="true">III</span>Selon la situation</h2>
       <div class="fiche-zone__grille zone-situation">
         {/* les six postures, chacune dans sa case avec ses effets (demande du propriétaire), sur deux lignes : Offensif, Neutre, Défensif, puis Focus,
@@ -202,13 +251,31 @@ const style = (id: string) => `--etape: ${couleur[ZONES.find((z) => z.id === id)
           <section class="fiche-etape" id="etape-armure" aria-labelledby="titre-armure">
             <h3 id="titre-armure">Armure</h3>
             <div class="fiche-etape__corps">
-              <div class="fiche-defile"><table class="fiche-table fiche-table--fixe" id="armures"></table></div>
+              {/* la défense totale (AP, AM ; le bouclier à part : compté en parade partielle) et les dégâts reçus (décision R98 : src/scripts/fiche.mjs#construireDefense) */}
+              <div id="defense" class="defense"></div>
+              {/* une armure complète, son amélioration et son élément, puis la solidité de chacune de ses parties (décision R95) */}
+              <div id="armures" class="equipement"></div>
             </div>
           </section>
+          {/* six emplacements, un effet de la table chacun (décision R97 : ni Ceinture ni Autre, ni nom, ni effet hors table) */}
           <section class="fiche-etape" id="etape-accessoires" aria-labelledby="titre-accessoires">
             <h3 id="titre-accessoires">Accessoires</h3>
             <div class="fiche-etape__corps">
               <div class="fiche-defile"><table class="fiche-table fiche-table--fixe" id="accessoires"></table></div>
+            </div>
+          </section>
+          {/* l'inventaire, juste sous les accessoires (demande du propriétaire du 2026-10-17) : le sac, autant d'emplacements que la Force en donne (décision
+              R88), une ligne par emplacement, proposée par la liste qui se filtre à la frappe (deux caractères au moins) ou saisie librement ; la bourse */}
+          <section class="fiche-etape" id="etape-inventaire" aria-labelledby="titre-inventaire">
+            <h3 id="titre-inventaire">Inventaire</h3>
+            <div class="fiche-etape__corps inventaire">
+              <div><div class="fiche-entete-bloc"><h4 class="fiche-sous-titre">Sac</h4><p class="fiche-aide" id="inventaire-place" aria-live="polite"></p></div>
+                <div class="fiche-defile"><table class="fiche-table" id="inventaire"></table></div></div>
+              <div><h4 class="fiche-sous-titre">Bourse</h4><div class="fiche-champs bourse">
+                <label class="fiche-champ"><span><Fragment set:html={htmlDePiece('PP')} /> Pierres précieuses</span><input type="number" min="0" step="1" data-champ="bourse_pp" data-entier /></label>
+                <label class="fiche-champ"><span><Fragment set:html={htmlDePiece('RO')} /> Ricken d’or</span><input type="number" min="0" step="1" data-champ="bourse_ro" data-entier /></label>
+                <label class="fiche-champ"><span><Fragment set:html={htmlDePiece('RF')} /> Ricken de fer</span><input type="number" min="0" step="1" data-champ="bourse_rf" data-entier /></label>
+              </div></div>
             </div>
           </section>
         </div>
@@ -224,6 +291,7 @@ const style = (id: string) => `--etape: ${couleur[ZONES.find((z) => z.id === id)
             <h3 id="titre-resistances">Résistances et faiblesses</h3>
             <div class="fiche-etape__corps">
               <table class="resistances__table" aria-labelledby="titre-resistances"><tbody id="resistances"></tbody></table>
+              <ul id="resistances-a-choisir" class="acquis-choix" aria-label="Résistance à choisir" hidden></ul>
               <p class="fiche-aide" id="resistances-choix" hidden></p>
             </div>
           </section>
@@ -236,14 +304,13 @@ const style = (id: string) => `--etape: ${couleur[ZONES.find((z) => z.id === id)
     </section>
 
     {/* ===================================================================== IV. Paramètres et suivi, en onglets */}
-    <section class="fiche-zone" id="zone-parametres" style={style('parametres')} aria-labelledby="titre-zone-parametres">
+    <section class:list={['fiche-zone', classeDeZone('parametres')]} id="zone-parametres" aria-labelledby="titre-zone-parametres">
       <h2 class="fiche-zone__titre" id="titre-zone-parametres"><span class="fiche-zone__numero" aria-hidden="true">IV</span>Paramètres et suivi</h2>
       <Onglets />
       <div class="parametres" data-onglets="Paramètres et suivi">
         <div class="parametres__onglets">
           <a class="onglet is-active" id="onglet-progression" href="#etape-progression">Progression</a>
           <a class="onglet" id="onglet-choix" href="#etape-choix">Choix <span class="onglet__compte onglet__compte--attente" id="choix-compte" hidden></span></a>
-          <a class="onglet" id="onglet-inventaire" href="#etape-inventaire">Inventaire</a>
           <a class="onglet" id="onglet-jeu" href="#etape-jeu">Notes et événements</a>
           <a class="onglet" id="onglet-controles" href="#etape-controles">Contrôle <span class="onglet__compte" id="controles-compte" hidden></span></a>
         </div>
@@ -265,7 +332,14 @@ const style = (id: string) => `--etape: ${couleur[ZONES.find((z) => z.id === id)
                 <button type="button" id="xp-annuler">Annuler</button>
               </form>
             </div>
-            <div><h4 class="fiche-sous-titre">Gains de niveau</h4><p class="fiche-aide" id="progression-aide"></p><div id="progression" class="gains"></div></div>
+            {/* gains de niveau (décision R73) : deux totaux, santé et chakra ; le total attribué et le total à saisir, l'aide (src/scripts/fiche.mjs#construireProgression) */}
+            <div><h4 class="fiche-sous-titre">Gains de niveau</h4><p class="fiche-aide" id="progression-aide"></p>
+              <div id="progression" class="gains">
+                <label class="gains__champ gains__champ--sante"><span>Santé</span><input type="number" min="0" step="1" inputmode="numeric" data-champ="gains_sante" data-entier id="gains-sante" /></label>
+                <label class="gains__champ gains__champ--chakra"><span>Chakra</span><input type="number" min="0" step="1" inputmode="numeric" data-champ="gains_chakra" data-entier id="gains-chakra" /></label>
+                <output class="gains__total" id="gains-total" for="gains-sante gains-chakra"></output>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -298,19 +372,25 @@ const style = (id: string) => `--etape: ${couleur[ZONES.find((z) => z.id === id)
               <div id="choix-specialites" class="choix-specialites" hidden></div>
               <div><h4 class="fiche-sous-titre">Dons de classe à choisir</h4><div id="dons" class="fiche-etape__dons"></div></div>
             </div>
-          </div>
-        </section>
-
-        <section class="fiche-etape parametres__panneau" id="etape-inventaire">
-          <h3 class="parametres__titre">Inventaire</h3>
-          <div class="fiche-etape__corps parametres__deux parametres__deux--large">
-            <div><h4 class="fiche-sous-titre">Sac</h4><div class="fiche-defile"><table class="fiche-table" id="inventaire"></table></div>
-              <div class="fiche-ligne-ajout"><button type="button" id="bouton-ajout-objet">Ajouter un objet</button></div></div>
-            <div><h4 class="fiche-sous-titre">Bourse</h4><div class="fiche-champs bourse">
-              <label class="fiche-champ"><span><Fragment set:html={htmlDePiece('PP')} /> Pierres précieuses</span><input type="number" min="0" step="1" data-champ="bourse_pp" data-entier /></label>
-              <label class="fiche-champ"><span><Fragment set:html={htmlDePiece('RO')} /> Ricken d’or</span><input type="number" min="0" step="1" data-champ="bourse_ro" data-entier /></label>
-              <label class="fiche-champ"><span><Fragment set:html={htmlDePiece('RF')} /> Ricken de fer</span><input type="number" min="0" step="1" data-champ="bourse_rf" data-entier /></label>
-            </div></div>
+            {/* les maîtrises d'armes, sur toute la largeur du panneau, sous les deux piles (demande du propriétaire du 2026-10-23 : « La partie maitrise
+                d'arme vont déscendre dans l'encart des "choix" ») ; leur rendu ne change pas (décision R148, variante A de la maquette retenue par le
+                propriétaire, « Bloc des sources ») : une carte par source (lignes des classes, dons acquis, accessoire), ses choix de famille, et à côté le
+                tableau calculé des familles ; dans le coin, « N points · M à choisir » ; remplis par le script */}
+            <div class="choix-maitrises">
+              <div class="fiche-entete-bloc"><h4 class="fiche-sous-titre">Maîtrises d’armes</h4><span class="budget" id="budget-maitrises" aria-live="polite"></span></div>
+              <div id="maitrises" class="maitrises">
+                <div class="maitrises__grille">
+                  <div class="maitrises__sources">
+                    <h5 class="maitrises__zone" id="titre-maitrises-sources">D’où viennent les points</h5>
+                    <ul id="maitrises-sources" class="maitrises-sources" aria-labelledby="titre-maitrises-sources"></ul>
+                  </div>
+                  <div class="maitrises__resultat">
+                    <h5 class="maitrises__zone" id="titre-maitrises-familles">Résultat, calculé</h5>
+                    <div class="fiche-defile"><table class="fiche-table fiche-table--maitrises" aria-labelledby="titre-maitrises-familles"><caption class="fiche-aide" id="maitrises-legende"></caption><thead><tr><th scope="col">Famille</th><th scope="col" class="nombre">Points</th><th scope="col" class="nombre">Dés</th><th scope="col">Sources</th></tr></thead><tbody id="maitrises-familles"></tbody></table></div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -331,6 +411,37 @@ const style = (id: string) => `--etape: ${couleur[ZONES.find((z) => z.id === id)
         </section>
       </div>
     </section>
+
+    {/* import d'un fichier quand un prétiré enregistré est ouvert : le mettre à jour (il garde son identifiant), en créer un nouveau, ou annuler */}
+    <dialog class="import-cible" id="import-cible" aria-labelledby="titre-import-cible">
+      <form method="dialog" class="import-cible__corps">
+        <h2 id="titre-import-cible">Importer la fiche</h2>
+        <p>La fiche du classeur remplace celle de la page.</p>
+        <p class="import-cible__perte" id="import-cible-perte" hidden>Les modifications non enregistrées seront perdues.</p>
+        <div class="import-cible__boutons">
+          <button type="submit" class="fiche-barre__principal" id="import-cible-maj" value="mettre-a-jour">Mettre à jour le prétiré</button>
+          <button type="submit" id="import-cible-creer" value="creer">Créer un nouveau prétiré</button>
+          <button type="submit" id="import-cible-annuler" value="annuler">Annuler</button>
+        </div>
+      </form>
+    </dialog>
+
+    {/* « Importer (en ligne) » : le lien d'une feuille Google Sheets partagée par lien ; le service la télécharge (POST /api/classeur/), puis le même
+        chemin qu'un classeur choisi sur l'ordinateur (dialogue « import-cible »). Annuler : formnovalidate (le champ est requis). */}
+    <dialog class="import-cible import-en-ligne" id="import-en-ligne" aria-labelledby="titre-import-en-ligne">
+      <form method="dialog" class="import-cible__corps" id="import-en-ligne-formulaire">
+        <h2 id="titre-import-en-ligne">Importer une feuille Google Sheets</h2>
+        <label class="import-en-ligne__champ"><span>Lien de la feuille</span>
+          <input type="url" id="import-en-ligne-adresse" name="adresse" required inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://docs.google.com/spreadsheets/d/…" />
+        </label>
+        <p class="import-en-ligne__aide">Dans Google Sheets : « Partager », Accès général « Tous les utilisateurs disposant du lien », puis « Copier le lien ». La feuille suit le modèle de la fiche V15.2.2 (ordinateur ou auto).</p>
+        <p class="import-en-ligne__erreur" id="import-en-ligne-erreur" role="alert" hidden></p>
+        <div class="import-cible__boutons">
+          <button type="submit" class="fiche-barre__principal" id="import-en-ligne-importer" value="importer">Importer</button>
+          <button type="submit" id="import-en-ligne-annuler" value="annuler" formnovalidate>Annuler</button>
+        </div>
+      </form>
+    </dialog>
 
     {/* recadrage du portrait : l'image se déplace au doigt ou à la souris, le curseur (ou la molette) zoome */}
     <dialog class="recadrage" id="recadrage" aria-labelledby="titre-recadrage">

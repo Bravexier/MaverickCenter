@@ -11,6 +11,34 @@
   --warn-text: #5c4400;
   --danger: #a12020;
   --good: #2f6f47;
+  /* couleurs d'interface sans règle du jeu, reprises des feuilles qui les écrivaient (demande du propriétaire du 2026-10-22 : « Aucune couleur en
+     dur. » ; choix « Thème reste, Debug à part » : une copie ailleurs passe par ces variables) */
+  --texte-sur-fonce: #fff;        /* texte posé sur un aplat foncé : bannières des classes, des races et des magies, boutons et pastilles pleins de la fiche */
+  --fond-banniere: #111;          /* le noir où se fond la couleur des bannières des classes, des races et des magies (styles/classe/base.css, race/base.css, magie/base.css) */
+  --vert-action: #2e7d4f;         /* l'action principale de la fiche (Enregistrer, + de l'XP) et son surtitre */
+  --a-choisir: #b45309;           /* un choix qui reste à faire (fiche : champ surligné, tiroir des choix) */
+  --a-choisir-plein: #b45309;     /* le même, en aplat sous un texte clair, dans les deux thèmes (compte des choix en attente) */
+  --etoile: #c99a06;              /* l'étoile d'une remarque (sort, arme de la fiche) */
+  --degats-taille: #c0392b;       /* les types de dégâts Taille, Estoc et Frappe : le liseré de leurs pastilles (armes, armures : equipement.css, armes.css, armures.css) */
+  --degats-estoc: #2471a3;
+  --degats-frappe: #7d6608;
+  --defense-ap: #7d6608;          /* l'armure physique : la pastille « AP » des armures et des boucliers (styles/armures/armures.css) */
+  --defense-am: #2471a3;          /* l'armure magique : la pastille « AM » */
+  --maudit: #8e44ad;              /* un accessoire maudit, la référence (les deux thèmes) : le cadre de l'encart maudit, et le calcul du violet sur un fond de niveau (styles/accessoires/accessoires.css) */
+  --maudit-texte: var(--maudit);  /* le même, en texte sur le fond de la page (ligne « MALÉDICTION », mot « Maudit », titre d'un accessoire détruit) ; plus clair en sombre */
+  --maudit-choisi: var(--maudit-texte); /* le même, sur une ligne « MALÉDICTION » choisie ; en sombre, encore éclairci par le calcul */
+  --texte-sur-good: var(--texte-sur-fonce); /* le texte posé sur un aplat --good (boutons principaux de la page Mise à jour et de ses boîtes de dialogue ; « Enregistrer » et validation des boîtes du mode modification ; compteur « ✓ » de l'onglet Contrôle de la fiche) ; le fond sombre du site en thème sombre */
+  --texte-sur-danger: var(--texte-sur-fonce); /* le texte posé sur un aplat --danger (compteur des règles à revoir de l'onglet Contrôle de la fiche) ; le fond sombre du site en thème sombre */
+  --amelioration: #1f7a45;        /* une amélioration dans les notes de version (R29 fixe le sens, vert ; la valeur est celle du site : styles/mise-a-jour/mise-a-jour.css) */
+  --amelioration-fond: #e3f4ea;   /* son fond (mot ajouté, pastille « ajout ») */
+  --affaiblissement: #b3261e;     /* un affaiblissement (R29 : rouge) */
+  --affaiblissement-fond: #fbe6e4; /* son fond (mot retiré, pastille « retrait ») */
+  --doc-google: #1a56b8;          /* l'étiquette d'un Google Doc des Archives, le bleu de son icône (styles/archives/archives.css) */
+  --doc-google-fond: #e3ecfb;
+  --sheet-google: #1b7340;        /* l'étiquette d'un Google Sheet des Archives, le vert de son icône */
+  --sheet-google-fond: #e1f3e8;
+  --bandeau-dev: #b45309;         /* le bandeau du site de dev (styles/global/site-shell.css), le même dans les deux thèmes ; la valeur de --a-choisir, un autre sens (« Garder séparées ») */
+  --regard-evite: #c27a12;        /* le niveau `evitee` de l'échelle des relations entre les peuples (styles/race/base.css : --regard-evitee, mêlé à la surface), le même dans les deux thèmes */
   --radius: 8px;
   --radius-xs: 4px;
   --radius-sm: 6px;
@@ -20,7 +48,28 @@
   --radius-pill: 999px;
   --ombre-douce: 0 2px 10px color-mix(in srgb, var(--text) 10%, transparent);
   --ombre-flottante: 0 3px 12px rgb(0 0 0 / 0.18);
-  --duree: var(--duree);
+  --ombre-fiche: 0 6px 14px -12px rgb(0 0 0 / 0.4);   /* la fiche d'une arme, d'une armure ou d'un bouclier (styles/equipement/equipement.css) */
+  --ombre-encart: 0 6px 12px -10px rgb(0 0 0 / 0.35); /* l'encart de l'accessoire créé (styles/accessoires/accessoires.css) */
+  --ombre-evenement: 0 10px 30px rgb(0 0 0 / 0.05);   /* la page d'un événement de la chronologie, sous son filet (styles/chronologie/chronologie.css) */
+  --ombre-barre-du-bas: 0 -4px 18px rgb(0 0 0 / 0.08); /* la barre du bas de la chronologie sur téléphone (chevrons, événement affiché) */
+  --ombre-poignee: 0 1px 4px rgb(0 0 0 / 0.12);       /* la poignée de la mini-frise de la chronologie (téléphone) */
+  --ombre-tiroir: 10px 0 34px rgb(0 0 0 / 0.28);      /* le tiroir de la frise de la chronologie, ouvert par-dessus la page (téléphone) */
+  --voile-tiroir: rgb(24 18 12 / 0.48);               /* le voile sur le reste de l'écran quand ce tiroir est ouvert */
+  --ombre-bulle: rgb(42 33 24 / 0.36);                /* la couleur de l'ombre d'une infobulle (styles/global/infobulles.css : deux ombres) ; noire en sombre */
+  --duree: 0.15s;
+  --duree-lente: 0.2s;
+  --radius-xxs: 3px;
+  /* échelle typographique : un seul jeu de tailles pour tout le site */
+  --fs-xxs: 0.7rem;
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.8rem;
+  --fs-md: 0.85rem;
+  --fs-lg: 0.92rem;
+  --fs-xl: 1.05rem;
+  /* petites capitales : crénage des intitulés */
+  --ls-fin: 0.04em;
+  --ls-caps: 0.06em;
+  --ls-large: 0.08em;
   --max: 64rem;
 }
 
@@ -38,6 +87,20 @@
     --warn-text: #f0d98a;
     --danger: #ef8a8a;
     --good: #7fcf9b;
+    --a-choisir: #f0a14a;
+    --maudit-texte: #a86ec0;
+    --maudit-choisi: color-mix(in srgb, var(--maudit-texte) 80%, #fff);
+    --texte-sur-good: var(--bg);
+    --texte-sur-danger: var(--bg);
+    --amelioration: #7fd3a0;
+    --amelioration-fond: #18301f;
+    --affaiblissement: #f2a19a;
+    --affaiblissement-fond: #3a1d1b;
+    --doc-google: #9cbcf2;
+    --doc-google-fond: #1d2a40;
+    --sheet-google: #8fd3a8;
+    --sheet-google-fond: #1b3326;
+    --ombre-bulle: rgb(0 0 0 / 0.6);
   }
 }
 
@@ -54,9 +117,29 @@
   --warn-text: #f0d98a;
   --danger: #ef8a8a;
   --good: #7fcf9b;
+  --a-choisir: #f0a14a;
+  --maudit-texte: #a86ec0;
+  --maudit-choisi: color-mix(in srgb, var(--maudit-texte) 80%, #fff);
+  --texte-sur-good: var(--bg);
+  --texte-sur-danger: var(--bg);
+  --amelioration: #7fd3a0;
+  --amelioration-fond: #18301f;
+  --affaiblissement: #f2a19a;
+  --affaiblissement-fond: #3a1d1b;
+  --doc-google: #9cbcf2;
+  --doc-google-fond: #1d2a40;
+  --sheet-google: #8fd3a8;
+  --sheet-google-fond: #1b3326;
+  --ombre-bulle: rgb(0 0 0 / 0.6);
 }
 
 * { box-sizing: border-box; }
+
+/* Glisser le doigt à l'horizontale ne fait jamais revenir le navigateur à la page d'avant, sur tout le site (réponses du propriétaire du 2026-10-22 :
+   « Le slide du doigt devrai faire changer d'onglet », puis « Laisse tomber. Trop de cas spécifiques compliquées. Supprime juste le swipe. ») : aucune
+   page n'a de glissement du doigt (test/defilement.test.mjs). Seul l'axe horizontal : le vertical n'est jamais retenu (skill ui-defilement). Sur iOS,
+   le geste qui part du bord de l'écran est celui du système : aucune règle CSS ne le bloque. */
+html { overscroll-behavior-x: none; }
 
 /* Champ vide d'une page modifiable (mode modification du site de dev, components/edition/Edition.astro) : caché en lecture, quel que soit son affichage */
 [data-ed-cadre][hidden] { display: none !important; }

@@ -1,0 +1,12 @@
+{
+  "migration": "0079-r164-sorts-fer",
+  "decision": "R164",
+  "description": "Les balises du mot-clé « Sort fer » (`sort-fer`) que la migration pose dans les trois textes que le site de dev ne modifie pas (R164, « Oui, tous » : les « Immatériel » du Fantôme et du Golem d'arcane, la page « Pièces élémentaires »), avec le paragraphe de la page de chaque créature qui recopie sa capacité. `avant` : le texte d'import ; `apres` : le même texte balisé (lib/mots-cles-balises.mjs, forme canonique de la colonne) ; le texte affiché ne change pas. Le rapprochement d'un classeur les défait (tools/sources/rapprocher.mjs, registres `corrections` des migrations). Les 13 effets réécrits ne sont pas ici : entrées `voulus` de tools/sources/ignorer/magie-maverick-v8.json. Les cinq autres balises de R164 passent par le service du site de dev (historique_modification).",
+  "corrections": [
+    {"table": "creature_capacite", "id": "bestiaire/fantome#capacite:immateriel", "col": "texte", "avant": "sort “fer”", "apres": "{{sort-fer|sort “fer”}}", "nature": "balise", "raison": "R164 : « Immatériel » du Fantôme parle des sorts fer."},
+    {"table": "creature_capacite", "id": "bestiaire/golem-darcane#capacite:immateriel", "col": "texte", "avant": "sort “fer”", "apres": "{{sort-fer|sort “fer”}}", "nature": "balise", "raison": "R164 : « Immatériel » du Golem d'arcane parle des sorts fer."},
+    {"table": "page", "id": "bestiaire/fantome", "col": "corps_md", "avant": "sort “fer”", "apres": "{{sort-fer|sort “fer”}}", "nature": "balise", "raison": "R164 : le paragraphe « Immatériel » de la page du Fantôme, qui recopie sa capacité."},
+    {"table": "page", "id": "bestiaire/golem-darcane", "col": "corps_md", "avant": "sort “fer”", "apres": "{{sort-fer|sort “fer”}}", "nature": "balise", "raison": "R164 : le paragraphe « Immatériel » de la page du Golem d'arcane, qui recopie sa capacité."},
+    {"table": "page", "id": "ressources/pieces-elementaires", "col": "corps_md", "avant": "sorts \"fer\"", "apres": "{{sort-fer|sorts \"fer\"}}", "nature": "balise", "raison": "R164 : la page « Pièces élémentaires » parle des sorts fer."}
+  ]
+}

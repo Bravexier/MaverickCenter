@@ -2,14 +2,14 @@
 // (lancé avant dev, build et test). Ici : le format écrit est celui que lit le site (analyse YAML réelle), sans perte, et le script d'export se vérifie lui-même.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { emettrePage, lirePages } from '../src/lib/pages-db.mjs';
+import { dossierTemporaire, variablesTemporaires } from './aide-dossier-temporaire.mjs';
 
 const client = fileURLToPath(new URL('../', import.meta.url));
 const wiki = join(client, 'src', 'content', 'wiki');
@@ -61,7 +61,7 @@ test('aller-retour sans perte pour toutes les pages : l’analyse YAML du site r
 });
 
 test('db-export-pages : fabrique un fichier par page, --verifier dit ce qui diffère, ne touche ni data/rows ni le dépôt', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'pages-db-'));
+  const dir = dossierTemporaire('pages-db');
   const sortie = join(dir, 'wiki');
   const ecrit = exporter(['--out', sortie]);
   assert.equal(ecrit.status, 0, ecrit.stderr);
@@ -86,11 +86,11 @@ test('db-export-pages : fabrique un fichier par page, --verifier dit ce qui diff
 });
 
 test('db-export-pages : la base temporaire est supprimée quelle que soit la sortie (écriture, --verifier propre, --verifier avec écarts)', () => {
-  // un dossier temporaire propre au test (TMPDIR de l'export) : les autres suites, lancées en parallèle, écrivent dans le tmpdir() commun
-  const dir = mkdtempSync(join(tmpdir(), 'pages-db-'));
+  // un dossier temporaire propre au test (TMPDIR de l'export) : les autres suites, lancées en parallèle, écrivent dans le dossier temporaire commun
+  const dir = dossierTemporaire('pages-db');
   const temporaire = join(dir, 'tmp');
   mkdirSync(temporaire);
-  const env = { ...process.env, TMPDIR: temporaire, TMP: temporaire, TEMP: temporaire };
+  const env = { ...process.env, ...variablesTemporaires(temporaire) };
   const restes = () => readdirSync(temporaire).filter((f) => f.startsWith('maverick-pages-'));
   try {
     const sortie = join(dir, 'wiki');

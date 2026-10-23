@@ -1,10 +1,12 @@
-// Page /ressources/accessoires/ (demande du propriétaire, 2026-10-14 : « refaire la page des accessoires. Pas de tableau Markdown. Au lieu de ça, un
-// générateur d'accessoire », présenté comme la page des armes) : chargée depuis les tables de la base (accessoire_emplacement, accessoire_propriete,
-// accessoire_effet, accessoire_effet_gemme, gemme, accessoire_monture), jamais depuis les tableaux de son Markdown, qui ne sert plus qu'à la recherche
-// et aux [[liens]] ; de ce Markdown, seules les règles (avant « ## CRÉATION D'ACCESSOIRE ») et les consignes écrites sous chaque étape s'affichent.
+// Onglet Accessoires de la page /ressources/equipement/ (avant, la page /ressources/accessoires/ ; demande du propriétaire, 2026-10-14 : « refaire la
+// page des accessoires. Pas de tableau Markdown. Au lieu de ça, un générateur d'accessoire », présenté comme la page des armes) : chargée depuis les
+// tables de la base (accessoire_emplacement, accessoire_propriete, accessoire_effet, accessoire_effet_gemme, gemme, accessoire_monture), jamais
+// depuis les tableaux de son Markdown, qui ne sert plus qu'à la recherche et aux [[liens]] ; de ce Markdown, seules les consignes écrites sous chaque
+// étape s'affichent (les règles, avant « ## CRÉATION D'ACCESSOIRE », copiées par la migration 0056, sont le panneau de règles `accessoires` :
+// lib/panneaux-regles-db.mjs).
 // Sans dépendance (sauf les modules purs ci-dessous) : `chargerAccessoires` reçoit la base ouverte par lib/donnees.mjs.
 import { normalize } from './text.mjs';
-import { couleurDeMagie, texteSurCouleur } from './sort-format.mjs';
+import { classeDeMagie } from './palette-css.mjs';
 
 export const PAGE_DES_ACCESSOIRES = 'ressources/accessoires';
 
@@ -18,11 +20,15 @@ export const cleDeRessource = (id) => String(id).slice(String(id).lastIndexOf(':
 /** Identifiant de l'infobulle d'une gemme (écrite une fois dans la page, partagée par toutes ses mentions). */
 export const bulleDeGemme = (id) => `bulle-gemme-${cleDeRessource(id)}`;
 
-/** Les règles de la page : son corps Markdown avant « ## CRÉATION D'ACCESSOIRE » (le texte de l'onglet). */
-export function reglesDeLaPage(corps) {
-  const l = String(corps ?? '').split('\n');
-  const i = l.findIndex((x) => x.trim() === TITRE_DE_LA_CREATION);
-  return (i < 0 ? l : l.slice(0, i)).join('\n').trim();
+/**
+ * Titre d'une ligne du tableau des compétences (demande du propriétaire, 2026-10-16 : « ne pas avoir le nom de la caractéristique en dessous mais
+ * directement dans le titre. Compétence F => Compétence Force ») : l'initiale écrite par l'onglet remplacée par le nom de la caractéristique de l'effet
+ * (`caracteristique_id`) ; tel quel si l'écriture n'est pas « Compétence » suivi de l'initiale de cette caractéristique.
+ */
+export function titreDeCompetence(libelle, caracteristique) {
+  const m = /^(Compétence)\s+(\p{L})$/u.exec(String(libelle ?? '').trim());
+  if (!m || !caracteristique || normalize(caracteristique)[0] !== normalize(m[2])) return libelle;
+  return `${m[1]} ${caracteristique}`;
 }
 
 /**
@@ -53,7 +59,9 @@ export function consignesDesEtapes(corps, proprietes) {
  * Les données de la page :
  *   emplacements : étape 1, [{ id, nom, jet }] ;
  *   proprietes   : étape 2, [{ id, nom, jet_min, jet_max, effets: [effet] }] dans l'ordre de l'onglet ; la Malédiction n'a pas d'effets ;
- *   competences  : la propriété Compétence par compétence (le tableau en fait une ligne par niveau), { colonnes: [{ niveau, min, max }], lignes: [{ jet, libelle, caracteristique, gemmes, effets: [effet par niveau] }] } ;
+ *   competences  : la propriété Compétence par compétence (le tableau en fait une ligne par compétence, le bonus d'acquis au curseur), { colonnes: [{ niveau, min, max }],
+ *                  lignes: [{ jet, libelle, titre, caracteristique, gemmes, effets: [effet par niveau] }] } ; `titre` = « Compétence Force » pour « Compétence F »
+ *                  (demande du propriétaire, 2026-10-16 : la caractéristique dans le titre, pas dessous ; affichage seulement, `libelle` reste celui de la base) ;
  *   gemmes       : les 14 gemmes, [{ id, nom, description, magie, couleur, texte, quarts: { commune, raffinee, parfaite }, quartsRf }] (infobulles) ;
  *   montures     : [{ niveau, matiere, prix_brut, prix_ro, effet_brut }] ;
  *   page         : { titre, resume, corps_md }.
@@ -71,8 +79,8 @@ export function chargerAccessoires(db) {
     nom: g.nom,
     description: g.description,
     magie: { id: g.magie_id, nom: g.magie },
-    couleur: couleurDeMagie(g.magie),
-    texte: texteSurCouleur(couleurDeMagie(g.magie)),
+    // sa couleur : la classe de sa magie (lib/palette-css.mjs : --couleur, --couleur-texte), posée sur sa pastille et son infobulle
+    classe: classeDeMagie(g.magie),
     quarts: { commune: g.quart_commune_brut, raffinee: g.quart_raffinee_brut, parfaite: g.quart_parfaite_brut },
     // en RF (1 RO = 100 RF) : le prix d'un effet aux gemmes au choix (lib/accessoires-generateur.mjs#prixDeLAccessoire)
     quartsRf: { commune: g.quart_commune_rf, raffinee: g.quart_raffinee_rf, parfaite: g.quart_parfaite_rf },
@@ -103,7 +111,8 @@ export function chargerAccessoires(db) {
     colonnes,
     lignes: jets.map((jet) => {
       const ligne = deCompetence.filter((e) => e.jet === jet).sort((a, b) => a.niveau - b.niveau);
-      return { jet, libelle: ligne[0].libelle, caracteristique: caracteristiques.get(ligne[0].caracteristique_id) ?? null, gemmes: ligne[0].gemmes, effets: ligne };
+      const caracteristique = caracteristiques.get(ligne[0].caracteristique_id) ?? null;
+      return { jet, libelle: ligne[0].libelle, titre: titreDeCompetence(ligne[0].libelle, caracteristique), caracteristique, gemmes: ligne[0].gemmes, effets: ligne };
     }),
   };
 

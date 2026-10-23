@@ -1,0 +1,70 @@
+---
+import liensCss from '../../styles/accueil/liens-et-rencontre.css?raw';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { LIENS_ET_RENCONTRE } from '../../lib/livres.mjs';
+import { chargerAnnonce, contenuDeLAnnonce, empreinteDeLAnnonce } from '../../lib/annonces.mjs';
+import { ouvrirBase, trouverRacine } from '../../lib/donnees.mjs';
+import { rendreMarkdown } from '../../lib/guide-rendu';
+import { CHEMIN_INSTANTANE, instantaneValide, URL_PAGE } from '../../lib/tipeee.mjs';
+import { url } from '../../lib/wiki';
+
+// Sur l'accueil, sous la bienvenue et le carrousel, avant « Par où commencer ? » (pages/index.astro ; lib/livres.mjs#LIENS_ET_RENCONTRE ; demandes du
+// propriétaire du 2026-10-23 : « Ces 3 blocs auraient plus leur place dans l'onglet d'acceuil. », « Sous la bienvenue et le carrousel » ; avant, sous
+// le texte de Bienvenue, et d'abord sur la page Liens, supprimée le 2026-10-22) : le serveur Discord et la page Tipeee du jeu, chacun sous un titre (h2, au niveau de l'encart : la navigation par titres les trouve) avec
+// sa présentation, puis l'encart « Notre prochaine rencontre IRL » (titre fixe ; l'annonce de la base, table annonce, migration 0068, lib/annonces.mjs,
+// ou, vide, le texte d'attente).
+//   - Discord : sa présentation, du Markdown écrit dans le plan, rendu comme celui des pages du guide (lib/guide-rendu.ts : [[liens]], monnaies ;
+//     balises du glossaire par le middleware).
+//   - Tipeee : la partie « Bienvenue » de la page Tipeee, reprise telle quelle et en direct (« autant en faire un hook pour que ça reprenne directement
+//     le texte au cas où il change sur Tipee », « La partie « Bienvenue » », « En direct par le serveur ») : au build, les paragraphes de l'instantané
+//     livré avec le site (sources/tipeee/bienvenue.json, lib/tipeee.mjs#CHEMIN_INSTANTANE, en texte seul) ; puis le script (src/scripts/tipeee.mjs)
+//     les remplace par ceux du service (GET /api/tipeee/) s'ils diffèrent, en textContent seulement. Sans service (version portable : script absent ;
+//     service injoignable), l'instantané reste. Un retour à la ligne de Tipeee (« \n » d'un paragraphe) reste un retour à la ligne (white-space: pre-line).
+//   - L'encart : sur le site de dev, l'annonce se modifie en place en mode modification (src/scripts/edition/annonces.mjs ; l'accueil propose le mode
+//     modification, `edition` de layouts/Base.astro), et part en production avec la mise à jour.
+// Les ancres (lien-discord, lien-tipeee, prochaine-rencontre) sont celles de l'ancienne page Liens, figées : les liens écrits dans Bienvenue et
+// Rejoindre une partie y mènent (« /#lien-discord », « /#prochaine-rencontre »). L'ancienne adresse /decouvrir/liens/ n'est plus renvoyée nulle part
+// (réponse du propriétaire du 2026-10-23 : « supprimer ce lien »).
+const CONTEXTE = LIENS_ET_RENCONTRE.page; // le nom de la page dans les avertissements des [[liens]] cassés
+const portable = process.env.INLINE_CSS === '1';
+const instantane = instantaneValide(JSON.parse(readFileSync(join(trouverRacine(), ...CHEMIN_INSTANTANE.split('/')), 'utf8')));
+if (!instantane) throw new Error(`${CHEMIN_INSTANTANE} : instantané de Tipeee illisible (tools/sources/tipeee.mjs --verifier)`);
+const liens = await Promise.all(LIENS_ET_RENCONTRE.liens.map(async (l) => ({ ...l, html: l.presentation ? await rendreMarkdown(l.presentation, CONTEXTE) : '' })));
+const { rencontre } = LIENS_ET_RENCONTRE;
+const annonce = chargerAnnonce(ouvrirBase(), rencontre.annonce);
+const texte = annonce?.texte ?? null;
+const contenu = contenuDeLAnnonce(texte, texte ? await rendreMarkdown(texte, CONTEXTE) : '', rencontre.vide);
+---
+
+<style is:inline set:html={liensCss}></style>
+<div class="accueil-liens">
+  {
+    liens.map((l) => (
+      <section class="accueil-liens__element" id={`lien-${l.id}`} aria-labelledby={`lien-${l.id}-titre`}>
+        <h2 class="accueil-liens__titre" id={`lien-${l.id}-titre`}><a class="accueil-liens__lien" href={l.url} rel="noopener">{l.libelle}</a></h2>
+        {l.html && <div class="prose accueil-liens__presentation" set:html={l.html} />}
+        {
+          l.tipeee && (
+            <blockquote class="prose accueil-liens__presentation accueil-tipeee" cite={URL_PAGE} data-tipeee data-tipeee-api={url('api/tipeee/')} data-tipeee-lu-le={instantane.lu_le}>
+              {instantane.paragraphes.map((p) => <p>{p}</p>)}
+            </blockquote>
+          )
+        }
+      </section>
+    ))
+  }
+</div>
+<section class="annonce" id={rencontre.id} aria-labelledby={`${rencontre.id}-titre`}>
+  <h2 class="annonce__titre" id={`${rencontre.id}-titre`}>{rencontre.titre}</h2>
+  {/* data-annonce, data-annonce-texte : l'annonce modifiable sur le site de dev (src/scripts/edition/annonces.mjs) ; data-annonce-vide : le texte d'attente */}
+  <div
+    class="prose annonce__texte"
+    data-annonce={annonce ? annonce.id : undefined}
+    data-annonce-texte
+    data-annonce-vide={rencontre.vide}
+    data-annonce-empreinte={empreinteDeLAnnonce(texte)}
+    set:html={contenu}
+  />
+</section>
+{!portable && <script>import '../../scripts/tipeee.mjs';</script>}

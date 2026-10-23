@@ -3,10 +3,10 @@ import Icone from './IconeRelation.astro';
 import tableauxCss from '../../styles/magie/tableaux.css?raw';
 import { entriesAvecRelationsDeLaBase, relationMatrix } from '../../lib/magie-relations.mjs';
 import { loadMagies, ordreDesMagies } from '../../lib/magies';
-import { couleurDeMagie } from '../../lib/sort-format.mjs';
+import { classeDeMagie } from '../../lib/palette-css.mjs';
 import { entryHref, type WikiEntry } from '../../lib/wiki';
 
-// Tableau des relations entre magies, sous la carte de /magies/ : ligne = la magie décrite, teintée de sa couleur (lib/sort-format.mjs#couleurDeMagie),
+// Tableau des relations entre magies, sous la carte de /magies/ : ligne = la magie décrite, teintée de sa couleur (la classe de la magie, lib/palette-css.mjs),
 // colonne = l'autre magie, toutes deux dans l'ordre du classeur. Résistances, vulnérabilités et incompatibilités sont celles de la base, comme sur les pages
 // de magie (entriesAvecRelationsDeLaBase). En-têtes verticaux et largeur fixe : le tableau tient sans défilement horizontal (styles/magie/tableaux.css).
 // Le Potentiel Illimité n'y a ni ligne ni colonne (demande du propriétaire : « ne sert pas vraiment ») ; sa page de magie garde ses relations.
@@ -20,7 +20,7 @@ const relations = relationMatrix(
   entriesAvecRelationsDeLaBase(entries, loadMagies()).filter((e) => !HORS_DU_TABLEAU.has(e.id)),
   ordreDesMagies(),
 );
-const couleur = (m: WikiEntry) => `--couleur-magie: ${couleurDeMagie(m.data.nom_court)}`;
+const classe = (m: WikiEntry) => classeDeMagie(m.data.nom_court);
 const MARQUES = [
   { cle: 'fort', icone: 'bouclier', texte: 'résiste face à' },
   { cle: 'faible', icone: 'epee', texte: 'vulnérable face à' },
@@ -47,7 +47,7 @@ const MARQUES = [
             <tr>
               <th scope="col" class="tableau-magies__coin">Magie</th>
               {relations.magies.map((m) => (
-                <th scope="col" class="tableau-magies__entete" style={couleur(m)}>
+                <th scope="col" class={`tableau-magies__entete ${classe(m)}`}>
                   <a href={entryHref(m)} title={m.data.title}><span class="tableau-magies__vertical">{m.data.nom_court}</span></a>
                 </th>
               ))}
@@ -55,7 +55,7 @@ const MARQUES = [
           </thead>
           <tbody>
             {relations.magies.map((ligne, i) => (
-              <tr class="tableau-magies__ligne" style={couleur(ligne)}>
+              <tr class={`tableau-magies__ligne ${classe(ligne)}`}>
                 <th scope="row" class="tableau-magies__nom">
                   <a href={entryHref(ligne)}><span class="tableau-magies__point" aria-hidden="true" />{ligne.data.nom_court}</a>
                 </th>

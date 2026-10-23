@@ -1,24 +1,24 @@
-// deploy/installateur/mise-a-jour.sh, la mise à jour automatique des instances posées par un installateur (à partir de la 1.0 ; le NAS d'avant
-// a la sienne, testée par update-site.test.mjs).
+// deploy/installateur/mise-a-jour.sh, la mise à jour automatique des instances posées par un installateur (le paquet du NAS a la sienne,
+// testée par update-site.test.mjs).
 // Contre un faux GitHub (API des livraisons, aucun accès réseau réel, aucun NAS) : il choisit la dernière livraison de son mode
 // (production : « latest » ; test : la plus récente étiquette de version complète, VX.Y.Z), télécharge son installateur (fabriqué pour de vrai par
 // deploy/installateur/fabriquer.mjs) et l'exécute. Nécessite sh, curl, tar et gzip ; sinon ignoré.
 import assert from 'node:assert/strict';
 import { execFile, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
-import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { after, before, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { fabriquer } from '../../deploy/installateur/fabriquer.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const SCRIPT = fileURLToPath(new URL('../../deploy/installateur/mise-a-jour.sh', import.meta.url));
 const have = (cmd) => spawnSync(cmd, ['--version'], { stdio: 'ignore' }).status === 0;
 const skip = !(have('curl') && have('tar') && have('gzip')) && 'sh, curl, tar ou gzip indisponible';
 
 const TOKEN = 'github_pat_TESTTOKEN123';
-const root = mkdtempSync(join(tmpdir(), 'mise-a-jour-test-'));
+const root = dossierTemporaire('mise-a-jour');
 /** Les livraisons publiées, de la plus récente à la plus ancienne : { tag, installateur (octets) ou null }. */
 const state = { livraisons: [], token: TOKEN, telechargements: 0, auth: [], latest: null };
 /** Mode d'une étiquette, d'après sa forme (tools/flux-git/regles.mjs) : VX.Y.Z… = serveur de test, VX.Y… = production. */
@@ -216,6 +216,21 @@ test('test : la version complète la plus récente (VX.Y.Z ou sa régénération
   assert.match(refus.out, /V1\.3\.1 est une livraison de test, pas de production/);
   assert.equal(prod.tag(), 'V1.3');
   assert.equal(prod.read('site/index.html'), '<h1>accueil prod</h1>');
+});
+
+test('test : la plus haute version gagne même si GitHub liste V0.3.99 avant V0.3.100 (trois chiffres)', { skip }, async () => {
+  // L'ordre observé de l'API (releases?per_page=30) : V0.3.99 en tête, puis V0.3.98, V0.3.112, V0.3.100, V0.3.85, et une production au milieu.
+  publier(livraison('V0.3.99', { label: 'v99' }), livraison('V0.3.98'), livraison('V0.3.112', { label: 'v112' }), livraison('V0.3.3'),
+    livraison('V0.4', { label: 'prod' }), livraison('V0.3.100'), livraison('V0.3.85'));
+  const t = nas('ordre-github', { mode: 'test', env: { SANS_BASE_PROD: '1' } });
+  const res = await t.run();
+  assert.equal(res.code, 0, res.out);
+  assert.equal(t.tag(), 'V0.3.112');
+  assert.equal(t.read('site/index.html'), '<h1>accueil v112</h1>');
+
+  // Déjà à jour : la liste dans le même ordre ne ramène pas en arrière.
+  const encore = await t.run();
+  assert.match(encore.out, /À jour \(V0\.3\.112\)/);
 });
 
 test('test : la livraison de test la plus récente, avec copie de la base de la production', { skip }, async () => {

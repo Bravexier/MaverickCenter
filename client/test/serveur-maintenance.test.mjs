@@ -4,11 +4,10 @@
 // une mise à jour arrêtée avant d'être livrée, « Lever la maintenance » et le plafond de durée rouvrent les deux ; la minuterie du site de dev suit
 // la mise à jour sans personne sur la page ; l'adresse de retour de la page de maintenance ne mène jamais hors du site.
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync, copyFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, mkdirSync, rmSync, writeFileSync, copyFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { FICHIER_BASE, ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import {
@@ -18,10 +17,10 @@ import { CONFIRMATION, lireLancement } from '../serveur/notes-de-version.mjs';
 import { demarrerService } from '../serveur/service.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { adresseDeRetour } from '../src/lib/maintenance-retour.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { versionLibre } from './aide-mise-a-jour.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-maintenance-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('maintenance');
 const regles = cheminBase({ sansExemples: false });
 
 const LOT = '0f6d3c2a-1b2c-4d5e-8f90-123456789abc';

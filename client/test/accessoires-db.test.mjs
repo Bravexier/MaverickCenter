@@ -3,10 +3,11 @@
 // Markdown de la page sans ses tableaux.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { bulleDeGemme, chargerAccessoires, consignesDesEtapes, reglesDeLaPage } from '../src/lib/accessoires-db.mjs';
+import { bulleDeGemme, chargerAccessoires, consignesDesEtapes, titreDeCompetence } from '../src/lib/accessoires-db.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { facesDuDe, gemmesAuChoix, prixDeLAccessoire, qualiteDeGemme, QUALITES_DE_GEMME } from '../src/lib/accessoires-generateur.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
-import { couleurDeMagie } from '../src/lib/sort-format.mjs';
+import { classeDeMagie } from '../src/lib/palette-css.mjs';
 
 const db = ouvrirBase();
 const a = chargerAccessoires(db);
@@ -26,7 +27,7 @@ test('étape 2 : les plages des propriétés couvrent le dé sans trou ni chevau
   assert.equal(attendu - 1, facesDuDe(a.proprietes.map((p) => p.jet_max)));
 });
 
-test('étape 3 : chaque tableau d’effets a une ligne par jet ; la compétence, une case par caractéristique et par niveau', () => {
+test('étape 3 : chaque tableau d’effets a une ligne par jet ; la compétence, une ligne par caractéristique et un effet par niveau', () => {
   for (const p of a.proprietes.filter((x) => x.effets.length && x.id !== 'competence')) {
     const jets = p.effets.map((e) => e.jet).sort((x, y) => x - y);
     assert.deepEqual(jets, suite(facesDuDe(jets)), p.id);
@@ -44,10 +45,22 @@ test('étape 3 : chaque tableau d’effets a une ligne par jet ; la compétence,
   assert.equal(a.proprietes.find((p) => p.id === 'malediction').effets.length, 0);
 });
 
+test('compétence : « Compétence Force » pour « Compétence F » (la caractéristique dans le titre, demande du propriétaire)', () => {
+  for (const l of a.competences.lignes) assert.equal(l.titre, `Compétence ${l.caracteristique}`, l.libelle);
+  assert.equal(titreDeCompetence('Compétence F', 'Force'), 'Compétence Force');
+  assert.equal(titreDeCompetence('Compétence A', 'Agilité'), 'Compétence Agilité');
+  assert.equal(titreDeCompetence('Compétence V', 'Volonté'), 'Compétence Volonté');
+  // une écriture qui n'est pas « Compétence » + l'initiale de la caractéristique reste telle quelle
+  assert.equal(titreDeCompetence('Compétence F', 'Agilité'), 'Compétence F');
+  assert.equal(titreDeCompetence('Compétence Force', 'Force'), 'Compétence Force');
+  assert.equal(titreDeCompetence('Compétence F', null), 'Compétence F');
+});
+
 test('gemmes : une par magie, dans la couleur de sa magie ; les gemmes d’un effet sont celles de la base', () => {
   assert.equal(new Set(a.gemmes.map((g) => g.magie.id)).size, a.gemmes.length);
   for (const g of a.gemmes) {
-    assert.equal(g.couleur, couleurDeMagie(g.magie.nom), g.nom);
+    assert.equal(g.classe, classeDeMagie(g.magie.nom), g.nom);
+    assert.ok(!('couleur' in g) && !('texte' in g), `${g.nom} : la classe de sa magie, jamais une couleur`);
     assert.ok(g.quarts.commune && g.quarts.raffinee && g.quarts.parfaite, g.nom);
   }
   assert.equal(new Set(a.gemmes.map(({ id }) => bulleDeGemme(id))).size, a.gemmes.length, 'identifiants d’infobulle distincts');
@@ -61,8 +74,8 @@ test('montures : une par niveau, du niveau 1 au niveau 5', () => {
   assert.ok(a.montures.every((m) => m.matiere && m.prix_brut && m.effet_brut));
 });
 
-test('règles : le texte avant la création, sans tableau ; la qualité de gemme de chaque niveau y est écrite', () => {
-  const regles = reglesDeLaPage(a.page.corps_md);
+test('règles (le panneau de l’onglet tel que la migration 0056 l’a copié du texte avant la création) : sans tableau ; la qualité de gemme de chaque niveau y est écrite', () => {
+  const regles = historiqueSite(db).lignesDImport('panneau_regles_bloc').filter((b) => b.panneau_id === 'accessoires').map((b) => b.texte).join('\n\n');
   assert.ok(regles.includes('Les accessoires maudits'));
   assert.ok(!regles.includes('|'), 'aucun tableau');
   assert.ok(!regles.includes('CRÉATION'));

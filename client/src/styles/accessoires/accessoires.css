@@ -1,93 +1,115 @@
-/* Chargé uniquement depuis components/accessoires/AccessoiresPage.astro (?raw) : la page /ressources/accessoires/, générateur d'accessoire. Les tableaux
+/* Chargé uniquement depuis components/accessoires/AccessoiresPage.astro (?raw) : l'onglet Accessoires de la page /ressources/equipement/, générateur d'accessoire. Les tableaux
    des étapes à gauche (à la manière de la page des armes), l'accessoire créé à droite (panneau qui suit le défilement ; sur un écran étroit, il passe
-   sous les tableaux). Les lignes d'effet, la monture et l'accessoire créé prennent la couleur de leur niveau (--niv, posé par le gabarit ou le script),
-   texte foncé sur ces fonds clairs, en thème sombre aussi ; une gemme, la couleur de sa magie (--g, --g-texte). */
+   sous les tableaux). Les pastilles des niveaux, les lignes d'effet, la monture et l'accessoire créé prennent la couleur de leur niveau : la classe du
+   niveau (`.couleur-niveau-<n>` : --couleur, --couleur-texte, lib/palette-css.mjs, émise par le gabarit ; posée par le gabarit, reprise par le script),
+   lue seulement sur l'élément qui la porte ([class*='couleur-niveau-'] : une gemme porte la classe de sa magie), en thème sombre aussi ; le texte
+   adouci (colonne du jet, intitulés de l'encart) et les liserés sont tirés du texte de la classe (color-mix), les voiles des champs et du dé d'une
+   ligne sont le blanc de mélange. Une gemme, la couleur de sa magie (la classe de la magie, `.couleur-magie-<id>` : --couleur, --couleur-texte ; sa
+   pastille dans styles/equipement/equipement.css). Couleurs d'interface : le thème (styles/global/base.css : --maudit, la référence du violet d'un
+   accessoire maudit, que lit le cadre de l'encart maudit ; --maudit-texte, ce violet en texte sur le fond de la page, plus clair en sombre ;
+   --maudit-choisi, sur une ligne « MALÉDICTION » choisie, encore éclairci en sombre ; sur un fond
+   de niveau, la référence assombrie par color-mix ; --ombre-encart) ; aucune
+   couleur écrite, hors le noir et le blanc de mélange d'un color-mix (test/palette-css.test.mjs). Blocs et tableaux : le gabarit commun
+   (styles/global/tableaux.css : cadre, titre, en-têtes) ; ici, ce qui leur est propre. */
 main:has(.acc) { max-width: 120rem; }
 .acc {
   --acc: var(--accent);
   --acc-soft: color-mix(in srgb, var(--accent) 9%, var(--surface));
   --acc-line: color-mix(in srgb, var(--accent) 35%, var(--border));
-  --sur-niveau: #171210;
-  --sur-niveau-doux: rgb(23 18 16 / 0.68);
-  --maudit: #8e44ad;
+  --tab: var(--acc);
+  --tab-soft: var(--acc-soft);
+  --tab-line: var(--acc-line);
   margin: 0 0 2rem;
 }
 .acc .js-seul { display: none; }
 html.js .acc .js-seul { display: revert; }
+html.js .acc .sans-js { display: none; }
 .acc [hidden] { display: none !important; }
 .acc .vide { color: var(--muted); font-style: italic; }
-.acc__chapo { margin: -0.3rem 0 0.8rem; color: var(--muted); }
-
-/* Règles de l'onglet (texte de la page avant la création) : sur un grand écran, en deux colonnes */
-.acc-regles { margin: 0 0 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
-.acc-regles > summary { cursor: pointer; padding: 0.6rem 0.9rem; font-weight: 700; }
-.acc-regles__texte { max-width: none; padding: 0.2rem 1.2rem 1rem; line-height: 1.55; }
-@media (min-width: 64rem) { .acc-regles__texte { columns: 2; column-gap: 2.6rem; column-rule: 1px solid var(--border); } }
-.acc-regles__texte > * { break-inside: avoid; }
-.acc-regles__texte > :first-child { margin-top: 0; }
-.acc-regles__texte p { margin: 0 0 0.75rem; }
-.acc-regles__texte ul { margin: 0 0 0.9rem; padding-left: 1.2rem; }
 
 /* Outils : tirer tout l'accessoire, tout effacer */
 html.js .acc .acc-outils { display: flex; }
 .acc-outils { flex-wrap: wrap; align-items: center; gap: 0.5rem 0.8rem; margin: 0 0 0.9rem; }
-.acc-bouton { display: inline-flex; align-items: center; gap: 0.4rem; font: inherit; font-size: 0.88rem; padding: 0.25rem 0.85rem; border: 1px solid var(--border); border-radius: var(--radius-pill);
+.acc-bouton { display: inline-flex; align-items: center; gap: 0.4rem; font: inherit; font-size: var(--fs-md); padding: 0.25rem 0.85rem; border: 1px solid var(--border); border-radius: var(--radius-pill);
   background: var(--surface); color: var(--text); cursor: pointer; }
 .acc-bouton:hover { border-color: var(--acc); }
 .acc-bouton--fort { font-weight: 700; border-color: var(--acc); background: var(--acc); color: var(--surface); }
 .acc-bouton--fort:hover { background: color-mix(in srgb, var(--acc) 85%, #000); }
 .acc-bouton:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
-.acc-aide { color: var(--muted); font-size: 0.88rem; }
+.acc-aide { color: var(--muted); font-size: var(--fs-md); }
 
 /* Vue : les tableaux, et à côté l'accessoire créé */
 .acc-vue { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; align-items: start; }
 html.js .acc-vue { grid-template-columns: minmax(0, 1fr) minmax(20rem, 26rem); }
 .acc-tableaux { display: grid; gap: 0.9rem; min-width: 0; }
-html.js .acc .acc-cote { display: block; position: sticky; top: 0.75rem; max-height: calc(100vh - 1.5rem); overflow-y: auto; overscroll-behavior: contain; min-width: 0; }
+/* au bout du défilement de l'encart, la molette fait défiler la page (pas d'`overscroll-behavior: contain` : demande du propriétaire, 2026-10-16, test/defilement.test.mjs) */
+html.js .acc .acc-cote { display: block; position: sticky; top: 0.75rem; max-height: calc(100vh - 1.5rem); overflow-y: auto; min-width: 0; }
 .acc-etapes { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 0.9rem; align-items: start; }
 
 /* Un bloc (une étape) et une famille d'effets (repliable) */
-.acc-bloc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); min-width: 0; }
 .acc-bloc--effets { display: grid; gap: 0.7rem; padding-bottom: 0.8rem; }
-.acc-bloc__titre { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.6rem; margin: 0; padding: 0.55rem 0.9rem; font-size: 1.05rem; border-bottom: 1px solid var(--acc-line); }
-.acc-bloc__etape { font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
-.acc-bloc__de, .acc-famille__de { font-size: 0.76rem; font-weight: 700; padding: 0.05rem 0.6rem; border-radius: var(--radius-pill); background: var(--acc); color: var(--surface); }
+.acc-bloc__etape { font-size: var(--fs-xxs); letter-spacing: var(--ls-large); text-transform: uppercase; color: var(--muted); }
+.acc-bloc__de, .acc-famille__de { font-size: var(--fs-xs); font-weight: 700; padding: 0.05rem 0.6rem; border-radius: var(--radius-pill); background: var(--acc); color: var(--surface); }
 .acc-bloc__niveaux { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-left: auto; }
-.acc-niveau-pastille { font-size: 0.72rem; font-weight: 600; padding: 0.05rem 0.5rem; border-radius: var(--radius-sm); background: var(--niv); color: var(--sur-niveau); }
-.acc-bloc__note { margin: 0.5rem 0.9rem 0; font-size: 0.86rem; color: var(--muted); }
-.acc-bloc > .acc-table { margin-top: 0.4rem; }
-.acc-bloc--effets > .acc-famille { margin: 0 0.8rem; }
-.acc-famille { border: 1px solid var(--border); border-radius: var(--radius-md); min-width: 0; background: var(--surface); }
-.acc-famille__titre { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.7rem; padding: 0.5rem 0.85rem; cursor: pointer; list-style: none; }
-.acc-famille__titre::-webkit-details-marker { display: none; }
-.acc-famille__titre::before { content: '▸'; color: var(--acc); transition: transform 0.15s; }
-.acc-famille[open] > .acc-famille__titre::before { transform: rotate(90deg); }
-.acc-famille[open] > .acc-famille__titre { border-bottom: 1px solid var(--acc-line); }
-.acc-famille__nom { font-weight: 700; }
+.acc-niveau-pastille { font-size: var(--fs-xxs); font-weight: 600; padding: 0.05rem 0.5rem; border-radius: var(--radius-sm); }
+.acc-niveau-pastille[class*='couleur-niveau-'] { background: var(--couleur); color: var(--couleur-texte); }
+.acc-bloc__note { margin-bottom: 0.4rem; }
+/* Les tableaux d'effets, un onglet par propriété (components/Onglets.astro : sans JavaScript, les tableaux se suivent ; sous html.js, seul l'onglet
+   ouvert s'affiche, et son titre, que l'onglet répète, se cache) */
+.acc-effets { display: grid; gap: 0.7rem; margin: 0 0.8rem; min-width: 0; }
+/* une seule rangée d'onglets, qui défile sur un écran étroit */
+.acc-onglets { display: flex; gap: 0.35rem; border-bottom: 2px solid var(--acc-line); overflow-x: auto; scrollbar-width: thin; }
+.acc-onglets .onglet { flex: none; display: flex; flex-direction: column; gap: 0.05rem; padding: 0.4rem 0.9rem 0.45rem; border: 1px solid var(--border); border-bottom: 0;
+  border-radius: var(--radius-md) var(--radius-md) 0 0; background: var(--surface); color: var(--text); text-decoration: none; }
+.acc-onglets .onglet__nom { font-weight: 700; font-size: var(--fs-lg); }
+.acc-onglets .onglet__detail { font-size: var(--fs-xs); color: var(--muted); }
+html.js .acc-onglets .onglet.is-active { background: var(--acc); border-color: var(--acc); color: var(--surface); }
+html.js .acc-onglets .onglet.is-active .onglet__detail { color: inherit; opacity: 0.85; }
+html.js .acc-onglets .onglet:not(.is-active):hover { background: var(--acc-soft); }
+.acc-onglets .onglet:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+html.js .acc-famille:not(.is-active) { display: none; }
+html.js .acc-famille__titre { display: none; }
 .acc-famille__nom::first-letter { text-transform: uppercase; }
-.acc-famille__compte { margin-left: auto; font-size: 0.8rem; color: var(--muted); }
-.acc-famille__note { margin: 0.45rem 0.85rem 0; font-size: 0.85rem; color: var(--muted); }
 
-/* Tableaux */
-.acc-wrap { overflow-x: auto; }
-.acc-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-.acc-table thead th { text-align: left; font-size: 0.7rem; letter-spacing: 0.07em; text-transform: uppercase; font-weight: 600; color: var(--muted);
-  padding: 0.4rem 0.65rem; background: var(--acc-soft); border-bottom: 1px solid var(--acc-line); white-space: nowrap; vertical-align: middle; }
-.acc-table tbody > tr + tr > * { border-top: 1px solid var(--border); }
-.acc-table tbody > tr > * { padding: 0.45rem 0.65rem; vertical-align: top; text-align: left; }
+/* Tableaux (gabarit commun) : l'en-tête centré sur la hauteur du dé */
+.acc-table thead th { vertical-align: middle; }
 .acc-jet { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--muted); width: 1%; }
 .acc-effet__niveau, .acc-effet__prix { white-space: nowrap; }
 .acc-effet__libelle { min-width: 14rem; }
-.acc-effet__sous { display: block; font-size: 0.78rem; font-weight: 400; color: var(--muted); }
 .acc-remarque { margin-left: 0.25rem; font-weight: 700; color: var(--acc); cursor: help; }
-/* Compétences : une ligne par compétence et par niveau, un filet plus marqué entre deux compétences */
-.acc-table--competences tbody > tr.acc-ligne--groupe:not(:first-child) > * { border-top: 2px solid var(--acc-line); }
+/* Compétences : une ligne par compétence, le bonus d'acquis au curseur, au dé ou saisi (il en donne le niveau, la couleur et le prix) ; sans
+   JavaScript, les plages, niveaux et prix de la ligne, sans couleur */
+.acc-table--competences tbody > tr > * { vertical-align: middle; }
+.acc-table--competences :is(thead, tbody) > tr > * { padding-inline: 0.5rem; }
+.acc-table--competences .acc-effet__libelle { min-width: 0; white-space: nowrap; }
+/* les quatre gemmes au choix de l'Intelligence, deux par ligne si la place manque */
+.acc-table--competences tr[data-au-choix] .acc-gemmes { white-space: normal; min-width: 12.5rem; }
+.acc-table--competences .acc-gemme-choix { white-space: nowrap; }
 .acc-effet__bonus { white-space: nowrap; font-variant-numeric: tabular-nums; }
+html.js .acc .acc-acquis { display: inline-flex; align-items: center; gap: 0.35rem; }
+.acc-acquis__curseur { width: 6rem; height: 1rem; margin: 0; padding: 0; border: 0; background: none; cursor: pointer; }
+.acc-acquis__saisie { width: 3.2rem; padding: 0 0.25rem; font: inherit; font-size: var(--fs-md); line-height: 1.5; font-variant-numeric: tabular-nums; text-align: right;
+  border: 1px solid; border-radius: var(--radius-xs); }
+/* sur la couleur du niveau de la ligne (sa classe, lue sur la ligne qui la porte ; :where garde le poids des règles d'avant) : le texte de la classe, un
+   liseré qui en est tiré, un voile de blanc de mélange */
+:where(.acc-ligne[class*='couleur-niveau-']) .acc-acquis__curseur { accent-color: var(--couleur-texte); }
+:where(.acc-ligne[class*='couleur-niveau-']) .acc-acquis__saisie { border-color: color-mix(in srgb, var(--couleur-texte) 35%, transparent);
+  background: color-mix(in srgb, #fff 70%, transparent); color: var(--couleur-texte); }
+.acc-acquis__unite { margin-left: -0.2rem; }
+.acc-acquis input:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+/* le dé d'une ligne (1d20 : son bonus d'acquis), sur la couleur du niveau, thème sombre compris */
+.acc .acc-de--acquis { padding: 0.05rem 0.2rem; }
+.acc :where(.acc-ligne[class*='couleur-niveau-']) .acc-de--acquis { background: color-mix(in srgb, #fff 55%, transparent); color: var(--couleur-texte);
+  border-color: color-mix(in srgb, var(--couleur-texte) 35%, transparent); }
+.acc :where(.acc-ligne[class*='couleur-niveau-']) .acc-de--acquis:hover { background: color-mix(in srgb, #fff 85%, transparent); }
+.acc-de--acquis svg { width: 1.05rem; height: 1.05rem; }
+html:not(.js) .acc-ligne.acc-competence > * { background: none; color: inherit; }
+.acc-plages { margin: 0; padding: 0; list-style: none; font-size: var(--fs-md); }
 
 /* La case du dé (en-tête de la première colonne) : l'icône et le dernier jet */
 .acc-de-case { width: 1%; }
 html.js .acc-de-case__texte { display: none; }
-.acc-de { display: inline-flex; align-items: center; gap: 0.3rem; font: inherit; font-size: 0.82rem; font-weight: 700; letter-spacing: 0; text-transform: none; padding: 0.15rem 0.45rem;
+.acc-de { display: inline-flex; align-items: center; gap: 0.3rem; font: inherit; font-size: var(--fs-sm); font-weight: 700; letter-spacing: 0; text-transform: none; padding: 0.15rem 0.45rem;
   border: 1px solid var(--acc-line); border-radius: var(--radius); background: var(--surface); color: var(--acc); cursor: pointer; }
 .acc-de:hover { background: var(--acc-soft); border-color: var(--acc); }
 .acc-de:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
@@ -97,46 +119,68 @@ html.js .acc-de-case__texte { display: none; }
 
 /* Lignes et cases à choisir ; couleur du niveau (lignes d'effet, cases des compétences, montures) */
 html.js .acc [data-choix] { cursor: pointer; }
-html.js .acc tr.acc-ligne:hover > * { box-shadow: inset 0 0 0 999px rgb(0 0 0 / 0.05); }
-.acc-ligne[data-niveau] > * { background: var(--niv); color: var(--sur-niveau); }
-.acc-ligne[data-niveau] > .acc-jet, .acc-ligne[data-niveau] .acc-effet__sous { color: var(--sur-niveau-doux); }
-.acc-ligne[data-niveau] .acc-remarque { color: var(--sur-niveau); }
-.acc-ligne--malediction > * { color: var(--maudit); font-weight: 700; letter-spacing: 0.04em; }
+html.js .acc tr.acc-ligne:hover > * { box-shadow: inset 0 0 0 999px color-mix(in srgb, #000 5%, transparent); }
+/* la couleur du niveau : la classe de la ligne (`couleur-niveau-<n>`), lue sur la ligne qui la porte ; le jet en texte adouci (68 % du texte de la
+   classe, 4,9:1 au moins sur chaque niveau : test/palette-css.test.mjs) */
+.acc-ligne[class*='couleur-niveau-'] > * { background: var(--couleur); color: var(--couleur-texte); }
+.acc-ligne[class*='couleur-niveau-'] > .acc-jet { color: color-mix(in srgb, var(--couleur-texte) 68%, transparent); }
+.acc-ligne[class*='couleur-niveau-'] .acc-remarque { color: var(--couleur-texte); }
+.acc-ligne--malediction > * { color: var(--maudit-texte); font-weight: 700; letter-spacing: var(--ls-fin); }
 .acc-effet--vide .acc-choisir { font-weight: 400; }
 .acc-choisir { all: unset; cursor: pointer; font-weight: 700; line-height: 1.35; }
 .acc-effet .acc-choisir { font-weight: 600; }
 .acc-choisir:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; border-radius: var(--radius-xs); }
 .acc tr[data-choix].est-choisi > * { box-shadow: inset 0 3px 0 var(--acc), inset 0 -3px 0 var(--acc); }
 .acc tr[data-choix].est-choisi > :first-child { box-shadow: inset 4px 0 0 var(--acc), inset 0 3px 0 var(--acc), inset 0 -3px 0 var(--acc); }
-.acc tr[data-choix]:not([data-niveau]).est-choisi > * { background: color-mix(in srgb, var(--acc) 14%, var(--surface)); }
+.acc tr[data-choix]:not([class*='couleur-niveau-']).est-choisi > * { background: color-mix(in srgb, var(--acc) 14%, var(--surface)); }
+/* une ligne « MALÉDICTION » choisie, sur ce fond : le violet de la ligne choisie (--maudit-choisi : en sombre, le violet clair encore éclairci par le
+   calcul, 4,8:1 ; en clair, inchangé) ; réponse du propriétaire du 2026-10-23 : « Plus clair sur la ligne choisie (Recommandé) » */
+.acc tr.acc-ligne--malediction[data-choix]:not([class*='couleur-niveau-']).est-choisi > * { color: var(--maudit-choisi); }
 .acc [data-choix].est-choisi .acc-choisir::before { content: '✓ '; }
 
-/* Gemmes : la couleur de leur magie, l'infobulle (magie, description, prix d'un quart) au survol */
+/* Gemmes : la pastille dans la couleur de leur magie (`.acc-gemme`, commune avec le sous-onglet Bâtons magiques de la ceinture : styles/equipement/equipement.css),
+   l'infobulle (magie, description, prix d'un quart) au survol */
 .acc-gemmes { white-space: nowrap; }
-.acc-gemme { display: inline-block; margin: 0.05rem 0; padding: 0 0.5rem; border-radius: var(--radius-pill); font-size: 0.8rem; font-weight: 600; line-height: 1.45;
-  background: var(--g); color: var(--g-texte); border: 1px solid color-mix(in srgb, var(--g) 65%, #000); cursor: help; }
-.acc-gemmes__plus, .acc-gemmes__ou { margin: 0 0.25rem; font-size: 0.78rem; }
+.acc-gemmes__plus, .acc-gemmes__ou { margin: 0 0.25rem; font-size: var(--fs-xs); }
+/* une gemme au choix dans sa ligne : sa case à cocher devant elle, à côté et non autour (un appui sur la gemme ouvre son infobulle) ; deux en tout,
+   les autres cases grisées une fois le compte atteint */
+.acc-gemme-choix { display: inline-flex; align-items: center; gap: 0.2rem; margin-right: 0.4rem; }
+.acc-gemme-choix input { width: 1rem; height: 1rem; margin: 0; cursor: pointer; }
+:where(.acc-ligne[class*='couleur-niveau-']) .acc-gemme-choix input { accent-color: var(--couleur-texte); }
+.acc-gemme-choix:has(input:disabled) { opacity: 0.5; }
+.acc-gemme-choix input:disabled { cursor: not-allowed; }
 .acc-gemmes__ou { font-style: italic; }
 .acc-bulles { display: contents; }
+/* l'infobulle d'une gemme, teintée de sa magie (styles/global/infobulles.css lit --mag) : la classe de la magie (lib/palette-css.mjs : --couleur) */
+.bulle--gemme { --mag: var(--couleur); }
 
 /* L'accessoire créé (rempli par src/scripts/accessoires.mjs) : dans la couleur du niveau de son effet */
-.acc-produit { padding: 0.9rem 1rem 1rem; background: var(--surface); border: 1px solid var(--acc-line); border-radius: var(--radius-lg); font-size: 0.92rem; box-shadow: 0 6px 12px -10px rgb(0 0 0 / 0.35); }
-.acc-produit[style*="--niv"] { background: var(--niv); color: var(--sur-niveau); border-color: color-mix(in srgb, var(--niv) 60%, #000); }
-.acc-produit[style*="--niv"] :is(.acc-produit__sur, .acc-produit__sous, dt, .acc-produit__note) { color: var(--sur-niveau-doux); }
+.acc-produit { padding: 0.9rem 1rem 1rem; background: var(--surface); border: 1px solid var(--acc-line); border-radius: var(--radius-lg); font-size: var(--fs-lg); box-shadow: var(--ombre-encart); }
+/* la classe du niveau de l'effet choisi, reprise de sa ligne par le script ; le liseré, la couleur mêlée au noir de mélange ; le texte adouci, 68 % du
+   texte de la classe */
+.acc-produit[class*='couleur-niveau-'] { background: var(--couleur); color: var(--couleur-texte); border-color: color-mix(in srgb, var(--couleur) 60%, #000); }
+.acc-produit[class*='couleur-niveau-'] :is(.acc-produit__sur, .acc-produit__sous, dt, .acc-produit__note) { color: color-mix(in srgb, var(--couleur-texte) 68%, transparent); }
 .acc-produit.est-maudit { border: 2px dashed var(--maudit); }
+/* Accessoire détruit (décision R94 : une seconde malédiction tirée, « il tombe en poussière ») : pas de couleur de niveau, un fond terne, l'effet grisé */
+.acc-produit.est-detruit { background: color-mix(in srgb, var(--muted) 12%, var(--surface)); color: var(--text); }
+.acc-produit.est-detruit .acc-produit__titre { color: color-mix(in srgb, var(--maudit-texte) 70%, var(--text)); }
+.acc-produit.est-detruit .acc-produit__liste dd { color: var(--muted); }
 .acc-produit__vide { margin: 0; color: var(--muted); }
-.acc-produit__sur { margin: 0; font-size: 0.74rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
-.acc-produit__sur strong { color: var(--maudit); }
+.acc-produit__sur { margin: 0; font-size: var(--fs-xs); letter-spacing: var(--ls-large); text-transform: uppercase; color: var(--muted); }
+.acc-produit__sur strong { color: var(--maudit-texte); }
+/* sur la couleur d'un niveau (un fond clair dans les deux thèmes) : le violet de référence assombri par le calcul, 4,5:1 au moins sur les cinq niveaux
+   (réponse du propriétaire du 2026-10-23 : « Violet assombri (Recommandé) » ; test/palette-css.test.mjs) */
+.acc-produit[class*='couleur-niveau-'] .acc-produit__sur strong { color: color-mix(in srgb, var(--maudit) 80%, #000); }
 .acc-produit__titre { margin: 0.15rem 0 0.6rem; font-size: 1.25rem; line-height: 1.25; }
 .acc-produit__liste { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.35rem 0.8rem; margin: 0; }
-.acc-produit__liste dt { font-size: 0.72rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); padding-top: 0.15rem; }
+.acc-produit__liste dt { font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); padding-top: 0.15rem; }
 .acc-produit__liste dd { margin: 0; }
-.acc-produit__sous { display: block; font-size: 0.8rem; color: var(--muted); }
-.acc-produit__remarque { display: block; margin-top: 0.25rem; font-size: 0.8rem; font-style: italic; }
+.acc-produit__sous { display: block; font-size: var(--fs-sm); color: var(--muted); }
+.acc-produit__remarque { display: block; margin-top: 0.25rem; font-size: var(--fs-sm); font-style: italic; }
 .acc-produit__manque { color: var(--muted); font-style: italic; }
 .acc-produit__gemmes .acc-gemme { cursor: help; }
-.acc-produit__note { margin: 0.7rem 0 0; font-size: 0.84rem; color: var(--muted); }
-.acc-produit__maudit { display: inline-flex; align-items: center; gap: 0.35rem; margin-top: 0.7rem; font-size: 0.86rem; cursor: pointer; }
+.acc-produit__note { margin: 0.7rem 0 0; font-size: var(--fs-md); color: var(--muted); }
+.acc-produit__maudit { display: inline-flex; align-items: center; gap: 0.35rem; margin-top: 0.7rem; font-size: var(--fs-md); cursor: pointer; }
 
 /* Écran étroit : l'accessoire créé passe sous les tableaux, collé au bas de l'écran */
 @media (max-width: 64rem) {
@@ -150,5 +194,7 @@ html.js .acc tr.acc-ligne:hover > * { box-shadow: inset 0 0 0 999px rgb(0 0 0 / 
 
 /* Gemmes au choix dans l'accessoire créé (demande du propriétaire : « laisser la possibilité d'en cocher 2 ») : une case par gemme au choix */
 .acc-produit__choix { display: inline-flex; flex-wrap: wrap; gap: 0.25rem 0.6rem; }
-.acc-produit__gemme-choix { display: inline-flex; align-items: center; gap: 0.25rem; cursor: pointer; }
-.acc-produit__gemme-choix:has(input:disabled) { opacity: 0.5; cursor: not-allowed; }
+.acc-produit__gemme-choix { display: inline-flex; align-items: center; gap: 0.25rem; }
+.acc-produit__gemme-choix input { width: 1rem; height: 1rem; margin: 0; cursor: pointer; }
+.acc-produit__gemme-choix:has(input:disabled) { opacity: 0.5; }
+.acc-produit__gemme-choix input:disabled { cursor: not-allowed; }

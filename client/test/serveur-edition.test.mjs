@@ -4,10 +4,8 @@
 // La base vivante part des règles de data/rows, où le site de dev a pu créer, modifier ou supprimer des métiers : les essais portent sur des métiers
 // créés par le test (noms absents de la base) ou lus dans la base, jamais sur une valeur écrite en dur.
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { messageSqlite } from '../serveur/edition.mjs';
@@ -17,9 +15,9 @@ import { decouperBonus } from '../src/lib/metier-champs.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { annonceDesFiches, attributEd, lireAttributEd, valeurDuChamp } from '../src/lib/edition-modele.mjs';
 import { jourDuRetrait, TABLES_FICHES } from '../src/lib/fiche-format.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-edition-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('edition');
 const { chemin } = preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, 'db') });
 const db = ouvrirBaseVivante(chemin);
 const journal = [];
@@ -158,7 +156,7 @@ test('refus : lot entier annulé ; colonne hors du modèle, valeur obligatoire, 
     [[{ op: 'modifier', table: 'metier', cle, valeurs: { description: 'Nouvelle' } },
       { op: 'modifier', table: 'metier', cle, valeurs: { nom: METIER_B.nom } }], 422, /déjà utilisée/],
     [[{ op: 'modifier', table: 'metier', cle, valeurs: { description: 'X' }, avant: { description: 'pas ça' } }], 409, /entre-temps/],
-    [[{ op: 'modifier', table: 'armure', cle: { id: 'x' }, valeurs: { nom: 'X' } }], 400, /pas modifiable/],
+    [[{ op: 'modifier', table: 'armure_elementaire', cle: { id: 'x' }, valeurs: { nom: 'X' } }], 400, /pas modifiable/],
     [[{ op: 'modifier', table: 'race', cle: { id: 'races/humain' }, valeurs: { nom: 'X' } }], 400, /ne se modifie pas/],
     [[{ op: 'inconnue' }], 400, /opération inconnue/],
     [[], 400, /Aucune/],

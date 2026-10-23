@@ -32,11 +32,11 @@ test('descriptionDuRetrait : don, spécialité (et ses dons choisis), sort (NPM,
   assert.equal(descriptionDuRetrait({ ...lame, dons: ['A', 'B', 'C'] }), 'la spécialité « LAME COURBE » (classe Bretteur des dunes, avec les dons choisis « A », « B » et « C »)');
 
   const boule = { nature: 'sort', id: 'magies/magie-du-feu#sort:boule-de-feu', nom: 'Boule de feu', magie: 'Feu', npm: 2 };
-  assert.equal(descriptionDuRetrait({ ...boule, nm: 0, nm_livre: 0, nm_cadeau: 0 }), 'le sort « Boule de feu » (magie Feu, NPM 2)');
-  assert.equal(descriptionDuRetrait({ ...boule, nm: 2, nm_livre: 0, nm_cadeau: 0 }), 'le sort « Boule de feu » (magie Feu, NPM 2, 2 NM sur cette fiche)');
-  assert.equal(descriptionDuRetrait({ ...boule, nm: 2, nm_livre: 1, nm_cadeau: 1 }), 'le sort « Boule de feu » (magie Feu, NPM 2, 2 NM sur cette fiche dont 1 de livre et 1 du MJ)');
-  assert.equal(descriptionDuRetrait({ ...boule, nm: 3, nm_livre: 0, nm_cadeau: 2 }), 'le sort « Boule de feu » (magie Feu, NPM 2, 3 NM sur cette fiche dont 2 du MJ)');
-  assert.equal(descriptionDuRetrait({ ...boule, nm: 1, nm_livre: 1, nm_cadeau: 0 }), 'le sort « Boule de feu » (magie Feu, NPM 2, 1 NM sur cette fiche dont 1 de livre)');
+  assert.equal(descriptionDuRetrait({ ...boule, nm: 0, nm_livre: 0 }), 'le sort « Boule de feu » (magie Feu, NPM 2)');
+  assert.equal(descriptionDuRetrait({ ...boule, nm: 2, nm_livre: 0 }), 'le sort « Boule de feu » (magie Feu, NPM 2, 2 NM sur cette fiche)');
+  // les NM du MJ sont ceux de la fiche (décision R118) : ils restent quand le sort part, la description ne les cite pas
+  assert.equal(descriptionDuRetrait({ ...boule, nm: 2, nm_livre: 1 }), 'le sort « Boule de feu » (magie Feu, NPM 2, 2 NM sur cette fiche dont 1 de livre)');
+  assert.equal(descriptionDuRetrait({ ...boule, nm: 1, nm_livre: 1 }), 'le sort « Boule de feu » (magie Feu, NPM 2, 1 NM sur cette fiche dont 1 de livre)');
 
   assert.equal(descriptionDuRetrait({ nature: 'metier', id: 'metiers/forgeron', nom: 'Forgeron' }), 'le métier « Forgeron »');
   assert.equal(descriptionDuRetrait({ nature: 'metier', id: 'metiers/forgeron', nom: null }), 'le métier « metiers/forgeron »');
@@ -110,8 +110,57 @@ test('objet supprimé de la base (décision R60) : la fiche le garde sous son no
     `[14/10/2026] ${PREFIXE_DE_RETRAIT}l’objet « Corde (1m) » (ceinture) a été supprimé de la base ; il reste dans la fiche sous son nom : veuillez la mettre à jour.`);
 });
 
-test('ordreDesRetraits : métier, spécialité, don, sort, puis par nom', () => {
-  assert.deepEqual([...ORDRE_DES_NATURES], ['metier', 'specialite', 'capacite', 'sort', 'arme', 'objet']);
+test('pièce d’armure (décision R95) : une pièce que la fiche ne porte plus, ou devenue l’armure complète de la fiche', () => {
+  const d = { nature: 'piece_armure', id: 'ressources/armures#armure:cuir-peau', nom: 'Armure Cuir/Peau', emplacement: 'Torse' };
+  assert.equal(descriptionDuRetrait(d), 'la pièce d’armure « Armure Cuir/Peau » (Torse)');
+  const fin = 'une fiche n’a plus qu’une armure complète (son amélioration et son élément pour l’armure entière). Adaptez la fiche.';
+  assert.equal(ligneDeRetrait(d, '2026-10-16T12:00:00Z'), `[16/10/2026] ${PREFIXE_DE_RETRAIT}la pièce d’armure « Armure Cuir/Peau » (Torse) n’est plus portée : ${fin}`);
+  assert.equal(ligneDeRetrait({ ...d, devenue: true }, '2026-10-16T12:00:00Z'),
+    `[16/10/2026] ${PREFIXE_DE_RETRAIT}la pièce d’armure « Armure Cuir/Peau » (Torse) est devenue l’armure complète de la fiche : ${fin}`);
+  assert.equal(ligneDeRetrait({ ...d, armureGardee: true }, '2026-10-16T12:00:00Z'),
+    `[16/10/2026] ${PREFIXE_DE_RETRAIT}la pièce d’armure « Armure Cuir/Peau » (Torse) reste l’armure de la fiche, sans l’amélioration ni l’élément propres à cette pièce : ${fin}`);
+});
+
+test('matériau de bouclier (R96) et accessoire (R97) : la description, puis la fin de la ligne', () => {
+  const m = { nature: 'materiau_bouclier', id: 'ressources/armures#materiau:bois', nom: 'Bois', quantite: 2, matiere: 'Fer' };
+  assert.equal(descriptionDuRetrait(m), 'le matériau de bouclier « Bois » (×2)');
+  assert.equal(ligneDeRetrait(m, '2026-10-17T12:00:00Z'),
+    `[17/10/2026] ${PREFIXE_DE_RETRAIT}le matériau de bouclier « Bois » (×2) n’est plus dans le bouclier : un bouclier n’a plus qu’une forme et une matière (« Fer », son premier matériau). Adaptez la fiche.`);
+  const a = { nature: 'accessoire', id: 'collier', nom: 'Collier du vent', emplacement: 'Collier', effet: '+5 Santé', texte: 'Brille', ecarte: false };
+  assert.equal(descriptionDuRetrait(a), 'l’accessoire « Collier du vent » (Collier, effet « +5 Santé », effet hors table « Brille »)');
+  assert.equal(ligneDeRetrait(a, '2026-10-17T12:00:00Z'),
+    `[17/10/2026] ${PREFIXE_DE_RETRAIT}l’accessoire « Collier du vent » (Collier, effet « +5 Santé », effet hors table « Brille ») reste porté avec son effet : la fiche ne garde plus le nom d’un accessoire ni son effet hors table.`);
+  assert.equal(descriptionDuRetrait({ nature: 'accessoire', id: 'ceinture', nom: null, emplacement: 'Ceinture', effet: null, texte: null, ecarte: true }),
+    'l’accessoire de l’emplacement Ceinture');
+});
+
+test('arme d’avant la migration 0081 (décision R167) : devenue l’arme élémentaire, élément d’un autre type retiré, amélioration de l’élément seule retirée', () => {
+  const d = { nature: 'arme_elementaire', cas: 'devenue', id: 'ressources/armes#arme:arc:arc-long', nom: 'Arc long', famille: 'ARC', rang: 1, element: 'Arc de Sang',
+    niveau_element: 2, niveau_garde: true, materiau: 'Titane', amelioration: 3 };
+  const jour = '2026-10-23T12:00:00Z';
+  assert.equal(descriptionDuRetrait(d), 'l’arme « Arc long » (ARC, arme 1, matériau « Titane », amélioration +3)');
+  const transforme = 'une pièce élémentaire transforme l’arme, qui perd toutes ses caractéristiques d’avant. Adaptez la fiche.';
+  assert.equal(ligneDeRetrait(d, jour),
+    `[23/10/2026] ${PREFIXE_DE_RETRAIT}l’arme « Arc long » (ARC, arme 1, matériau « Titane », amélioration +3) est devenue l’arme élémentaire « Arc de Sang », avec l’amélioration +2 de son élément : ${transforme}`);
+  assert.equal(ligneDeRetrait({ ...d, niveau_element: null, niveau_garde: false, materiau: null, amelioration: null }, jour),
+    `[23/10/2026] ${PREFIXE_DE_RETRAIT}l’arme « Arc long » (ARC, arme 1) est devenue l’arme élémentaire « Arc de Sang », sans amélioration : ${transforme}`);
+  assert.equal(ligneDeRetrait({ ...d, niveau_garde: false }, jour),
+    `[23/10/2026] ${PREFIXE_DE_RETRAIT}l’arme « Arc long » (ARC, arme 1, matériau « Titane », amélioration +3) est devenue l’arme élémentaire « Arc de Sang », sans l’amélioration +2 de son élément (niveau absent des règles) : ${transforme}`);
+  const autre = { ...d, cas: 'autre_type', element: 'Épée de Sang' };
+  assert.equal(descriptionDuRetrait(autre), 'l’élément « Épée de Sang » de l’arme « Arc long » (ARC, arme 1, amélioration de l’élément +2)');
+  assert.equal(ligneDeRetrait(autre, jour), `[23/10/2026] ${PREFIXE_DE_RETRAIT}l’élément « Épée de Sang » de l’arme « Arc long » (ARC, arme 1, amélioration de l’élément +2) n’est plus posé : une pièce élémentaire ne fait d’une arme que l’arme élémentaire du type de sa famille ; l’arme garde son matériau et son amélioration. Adaptez la fiche.`);
+  const seule = { nature: 'arme_elementaire', cas: 'amelioration_seule', id: 'ressources/armes#arme:arc:arc-long', nom: 'Arc long', famille: 'ARC', rang: 2, niveau_element: 4 };
+  assert.equal(ligneDeRetrait(seule, jour), `[23/10/2026] ${PREFIXE_DE_RETRAIT}l’amélioration de l’élément +4 de l’arme « Arc long » (ARC, arme 2) est retirée : l’arme n’a pas d’élément, et une arme n’a plus qu’un niveau d’amélioration (le sien est gardé). Adaptez la fiche.`);
+  // un nom inconnu : l'identifiant ; la nature vient juste après celle des armes supprimées (R52)
+  assert.equal(descriptionDuRetrait({ ...seule, nom: null, famille: null, niveau_element: null }), 'l’amélioration de l’élément de l’arme « ressources/armes#arme:arc:arc-long » (arme 2)');
+  assert.ok(retraitsDesNotes(ligneDeRetrait(d, jour)).length === 1, 'une ligne de retrait, comptée par la page');
+});
+
+test('ordreDesRetraits : métier, spécialité, don, sort, puis par nom ; l’arme élémentaire de R167 après les armes de R52 ; l’armure de R165 après les pièces d’armure de R95 ; les maîtrises d’armes d’avant la refonte en dernier (R153)', () => {
+  assert.deepEqual([...ORDRE_DES_NATURES], [
+    'metier', 'specialite', 'capacite', 'sort', 'arme', 'arme_elementaire', 'objet', 'piece_armure', 'armure_transformee', 'armure_familier', 'armure_magie_absente',
+    'armure_trop_lourde', 'materiau_bouclier', 'accessoire', 'acquis', 'maitrises_armes',
+  ]);
   const elements = [
     { nature: 'sort', id: 's2', nom: 'Zéphyr' }, { nature: 'sort', id: 's1', nom: 'Aura' }, { nature: 'capacite', id: 'k2', nom: 'Don 10' },
     { nature: 'capacite', id: 'k1', nom: 'Don 9' }, { nature: 'specialite', id: 'sp', nom: 'LAME' }, { nature: 'metier', id: 'm', nom: 'Forgeron' },

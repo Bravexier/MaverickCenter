@@ -3,33 +3,35 @@
 // tous la même chose : le conteneur « serveur » exécute _serveur/serveur/index.mjs sur le port 8787, nginx lui transmet /api/ et refuse /_serveur/.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { after, test } from 'node:test';
+import { DatabaseSync } from 'node:sqlite';
+import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
 import { CLIENT, DOSSIER_LIVRE, ENTREE, livrerServeur, modulesDuServeur } from '../serveur/livraison.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-livraison-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('livraison');
 const depot = fileURLToPath(new URL('../../', import.meta.url));
 const lire = (chemin) => readFileSync(join(depot, chemin), 'utf8');
 const ENTREE_LIVREE = `/site/${DOSSIER_LIVRE}/${ENTREE}`;
 
-test('modules livrés : l’entrée, le service, le format des fiches et l’édition (modèle, découpages et rendus du bestiaire, des armes et des composants partagés avec les pages) ; ni le lanceur de développement, ni cette livraison, ni un paquet npm', () => {
+test('modules livrés : l’entrée, le service, son journal, ses métriques (collecteur, mesure SQL), le contenu des tables pour la page Debug, l’import en ligne d’une feuille Google Sheets, la partie « Bienvenue » de Tipeee relue en direct, le format des fiches et le poids portable de chacune (moteur de la fiche, R165), l’édition (modèle, balises du glossaire des mots-clés et textes de la base qui peuvent en porter, découpages et rendus du bestiaire, des armes, des armures — et leurs listes, les poids de boucliers —, des composants et des consommables de la ceinture partagés avec les pages ; l’ordre des blocs des panneaux de règles ; le lecteur des sources de maîtrise d’arme ; les noms d’affichage des tables et des colonnes) et l’API REST v1 (registre des ressources et ses modules, description OpenAPI) ; ni le lanceur de développement, ni cette livraison, ni un paquet npm', () => {
   assert.deepEqual(modulesDuServeur(), [
-    'serveur/api.mjs', 'serveur/base-vivante.mjs', 'serveur/edition-armes.mjs', 'serveur/edition-bestiaire.mjs', 'serveur/edition-chronologie.mjs',
-    'serveur/edition-composants.mjs', 'serveur/edition-journal.mjs', 'serveur/edition.mjs', 'serveur/fiches-retraits.mjs', 'serveur/fiches.mjs', 'serveur/index.mjs', 'serveur/instant.mjs',
-    'serveur/maintenance.mjs', 'serveur/notes-de-version.mjs', 'serveur/service.mjs', 'src/lib/arme-champs.mjs', 'src/lib/armes-db.mjs', 'src/lib/armes-rendu.mjs',
-    'src/lib/bestiaire-db.mjs', 'src/lib/bestiaire-rendu.mjs', 'src/lib/caracteristiques-postures.mjs', 'src/lib/chronologie.mjs', 'src/lib/class-groups.mjs',
-    'src/lib/classe-champs.mjs', 'src/lib/composants-champs.mjs', 'src/lib/composants-db.mjs', 'src/lib/corps-armes.mjs', 'src/lib/corps-classes.mjs',
-    'src/lib/corps-composants.mjs', 'src/lib/corps-magies.mjs', 'src/lib/corps-metiers.mjs', 'src/lib/corps-races.mjs', 'src/lib/dons-edition.mjs',
-    'src/lib/edition-modele.mjs', 'src/lib/fiche-format.mjs', 'src/lib/guide.mjs', 'src/lib/json-python.mjs', 'src/lib/markdown-edition.mjs', 'src/lib/markdown-sur.mjs',
+    'serveur/api.mjs', 'serveur/base-vivante.mjs', 'serveur/classeur.mjs', 'serveur/debug-tables.mjs', 'serveur/edition-armes.mjs', 'serveur/edition-armures.mjs', 'serveur/edition-bestiaire.mjs', 'serveur/edition-chronologie.mjs',
+    'serveur/edition-composants.mjs', 'serveur/edition-conflits.mjs', 'serveur/edition-consommables.mjs', 'serveur/edition-corps.mjs', 'serveur/edition-journal.mjs', 'serveur/edition-maitrises.mjs', 'serveur/edition-panneaux.mjs', 'serveur/edition.mjs', 'serveur/fiches-retraits.mjs', 'serveur/fiches.mjs', 'serveur/index.mjs', 'serveur/instant.mjs',
+    'serveur/journal-du-service.mjs', 'serveur/maintenance.mjs', 'serveur/metriques-sql.mjs', 'serveur/metriques.mjs', 'serveur/notes-de-version.mjs', 'serveur/openapi.mjs', 'serveur/partage.mjs', 'serveur/ressources.mjs', 'serveur/service.mjs', 'serveur/tipeee.mjs', 'src/lib/accessoires-couleurs.mjs', 'src/lib/alchimie-couleurs.mjs', 'src/lib/arme-champs.mjs', 'src/lib/armes-db.mjs', 'src/lib/armes-de-famille.mjs', 'src/lib/armes-rendu.mjs', 'src/lib/armure-champs.mjs',
+    'src/lib/armure-forge.mjs', 'src/lib/armures-db.mjs', 'src/lib/armures-rendu.mjs', 'src/lib/attributs-couleurs.mjs', 'src/lib/bestiaire-db.mjs', 'src/lib/bestiaire-rendu.mjs', 'src/lib/caracteristiques-postures.mjs', 'src/lib/ceinture-db.mjs', 'src/lib/chronologie.mjs', 'src/lib/class-groups.mjs',
+    'src/lib/classe-champs.mjs', 'src/lib/composants-champs.mjs', 'src/lib/composants-db.mjs', 'src/lib/corps-armes.mjs', 'src/lib/corps-armures.mjs', 'src/lib/corps-classes.mjs',
+    'src/lib/corps-composants.mjs', 'src/lib/corps-magies.mjs', 'src/lib/corps-metiers.mjs', 'src/lib/corps-potions.mjs', 'src/lib/corps-races.mjs', 'src/lib/dons-edition.mjs',
+    'src/lib/edition-modele.mjs', 'src/lib/equipement-couleurs.mjs', 'src/lib/equipement.mjs', 'src/lib/fiche-couleurs.mjs', 'src/lib/fiche-format.mjs', 'src/lib/fiche-moteur.mjs', 'src/lib/genres-couleurs.mjs', 'src/lib/google-sheets.mjs', 'src/lib/guide.mjs', 'src/lib/json-python.mjs', 'src/lib/libelles-de-la-base.mjs', 'src/lib/livres.mjs', 'src/lib/maitrise-arme.mjs', 'src/lib/markdown-edition.mjs', 'src/lib/markdown-sur.mjs',
     'src/lib/materiaux-couleurs.mjs', 'src/lib/metier-champs.mjs', 'src/lib/monnaies.mjs', 'src/lib/monstre-champs.mjs', 'src/lib/monstre-rendu.mjs',
-    'src/lib/mots-cles.mjs', 'src/lib/notes-de-version-sens.mjs',
-    'src/lib/notes-de-version.mjs', 'src/lib/portrait.mjs', 'src/lib/race-kinds.mjs', 'src/lib/sort-analyse.mjs', 'src/lib/sort-etats.mjs', 'src/lib/sort-format.mjs', 'src/lib/sort-maitrise.mjs', 'src/lib/text.mjs',
+    'src/lib/mots-cles-balises.mjs', 'src/lib/mots-cles-db.mjs', 'src/lib/mots-cles.mjs', 'src/lib/notes-de-version-sens.mjs',
+    'src/lib/notes-de-version.mjs', 'src/lib/palette-css.mjs', 'src/lib/panneaux-regles-db.mjs', 'src/lib/parties-couleurs.mjs', 'src/lib/poids-portable-db.mjs', 'src/lib/portrait.mjs', 'src/lib/potentiel-illimite.mjs', 'src/lib/potion-etats.mjs', 'src/lib/race-kinds.mjs', 'src/lib/ressources.mjs', 'src/lib/ressources/artisanat.mjs',
+    'src/lib/ressources/bestiaire.mjs', 'src/lib/ressources/creation.mjs', 'src/lib/ressources/equipement.mjs', 'src/lib/ressources/magie.mjs',
+    'src/lib/ressources/regles.mjs', 'src/lib/ressources/univers.mjs', 'src/lib/ressources/wiki.mjs', 'src/lib/sort-analyse.mjs', 'src/lib/sort-cout.mjs', 'src/lib/sort-etats.mjs', 'src/lib/sort-format.mjs', 'src/lib/sort-maitrise.mjs', 'src/lib/tables-de-la-base.mjs', 'src/lib/text.mjs', 'src/lib/tipeee.mjs',
   ]);
   const faux = join(racine, 'faux-client');
   mkdirSync(join(faux, 'serveur'), { recursive: true });
@@ -75,6 +77,14 @@ test('le service livré démarre tel quel depuis dist/_serveur/ (variables d’e
     enfant.kill('SIGTERM');
     assert.equal(await fin, 0, sortie);
   }
+  // métriques (serveur/metriques.mjs) : sans MAVERICK_EDITION, l'instance « prod », dans db/metriques/ ; versées à l'arrêt (SIGTERM)
+  const metriques = new DatabaseSync(join(racine, 'db', 'metriques', 'prod.db'), { readOnly: true });
+  try {
+    assert.deepEqual(metriques.prepare("SELECT type FROM evenement WHERE type IN ('demarrage', 'arret') ORDER BY id").all().map((e) => e.type), ['demarrage', 'arret']);
+    assert.deepEqual({ ...metriques.prepare("SELECT route, methode, n FROM agregat_heure WHERE route = '/api/etat/'").get() }, { route: '/api/etat/', methode: 'GET', n: 1 });
+  } finally {
+    metriques.close();
+  }
 });
 
 test('docker-compose.yml du NAS et des installateurs : un conteneur « serveur » qui exécute le service livré, sans port publié', () => {
@@ -92,13 +102,17 @@ test('docker-compose.yml du NAS et des installateurs : un conteneur « serveur �
     const installateur = fichier.includes('installateur');
     // maintenance pendant une mise à jour (docs/serveur.md) : un dossier d'annonce monté, celui de l'instance sauf réglage (serveur de test : celui du
     // serveur normal) ; le NAS d'avant la 0.2.0 n'a qu'un site, sans mise à jour depuis la page
+    // métriques (serveur/metriques.mjs ; docs/serveur.md, « Métriques et volume ») : un dossier monté hors de db/ (partagé par les deux instances du
+    // VPS), le nom de l'instance (vide : déduit de l'édition), requêtes brutes gardées sur disque seulement à la demande, balise des pages ouverte par
+    // défaut (décision du propriétaire du 2026-10-15) et fermée par MAVERICK_METRIQUES_PAGES=0
     const edition = installateur
       ? { MAVERICK_EDITION: '${MAVERICK_EDITION:-0}', MAVERICK_ADRESSE_PUBLIQUE: '${MAVERICK_ADRESSE_PUBLIQUE:-}', MAVERICK_GITHUB_JETON_FICHIER: '/secrets/github-actions-token',
-        MAVERICK_MAINTENANCE: '/maintenance' }
+        MAVERICK_MAINTENANCE: '/maintenance', MAVERICK_DOSSIER_METRIQUES: '/metriques', MAVERICK_INSTANCE: '${MAVERICK_INSTANCE:-}',
+        MAVERICK_METRIQUES_BRUTES: '${MAVERICK_METRIQUES_BRUTES:-0}', MAVERICK_METRIQUES_PAGES: '${MAVERICK_METRIQUES_PAGES:-1}' }
       : {};
     assert.deepEqual(serveur.environment, { HOST: '0.0.0.0', PORT: '8787', MAVERICK_REGLES: '/site/donnees/maverick.db', MAVERICK_DB: '/db', ...edition }, fichier);
     assert.deepEqual(serveur.volumes, ['./site:/site:ro', './db:/db',
-      ...(installateur ? ['./secrets:/secrets:ro', '${MAVERICK_DOSSIER_MAINTENANCE:-./maintenance}:/maintenance'] : [])], fichier);
+      ...(installateur ? ['./secrets:/secrets:ro', '${MAVERICK_DOSSIER_MAINTENANCE:-./maintenance}:/maintenance', '${MAVERICK_DOSSIER_METRIQUES:-./metriques}:/metriques'] : [])], fichier);
     assert.ok(compose.services['maverick-center'].volumes.includes('./site:/usr/share/nginx/html:ro'), fichier);
   }
   assert.match(YAML.parse(lire('deploy/installateur/docker-compose.yml')).services.serveur.container_name, /^\$\{MAVERICK_CONTENEUR:-maverick-center\}-serveur$/,

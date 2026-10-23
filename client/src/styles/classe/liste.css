@@ -1,5 +1,6 @@
 /* Chargé uniquement depuis components/classes/ClassesPastilles.astro (?raw) : les classes de /classes/.
-   Une colonne par catégorie, dans sa couleur (--couleur-classe, lib/class-groups.mjs#CLASS_COLORS) : rouge (physiques mêlée), vert (physiques distance),
+   Une colonne par catégorie, dans sa couleur (la classe de la catégorie, lib/palette-css.mjs, famille `classe` : --couleur ; valeurs dans
+   lib/class-groups.mjs#CLASS_COLORS) : rouge (physiques mêlée), vert (physiques distance),
    bleu (magiques), violet (raciales), jaune (spéciales), comme les pages de classe. Chaque classe est une pastille sur le modèle de la carte des magies
    (styles/magie/orbit.css, .magies-orbite__noeud) : pilule bordée et teintée de la couleur, point de couleur, nom en gras, légère élévation au survol. */
 .classes-pastilles {
@@ -10,7 +11,7 @@
 }
 
 .classes-groupe {
-  --cla: var(--couleur-classe, #6b5a45);
+  --cla: var(--couleur, var(--muted));
   --cla-readable: color-mix(in srgb, var(--cla) 60%, #000);
   --cla-line: color-mix(in srgb, var(--cla) 40%, var(--border));
   /* infobulles (styles/magie/tooltips.css) : mêmes variables que les pages de magie */
@@ -37,7 +38,7 @@
   padding-bottom: 0.45rem;
   border-bottom: 3px solid var(--cla);
   color: var(--cla-readable);
-  font-size: 1.05rem;
+  font-size: var(--fs-xl);
   line-height: 1.25;
 }
 .classes-groupe__point {
@@ -56,59 +57,18 @@
   border-radius: var(--radius-pill);
   background: color-mix(in srgb, var(--cla) 12%, var(--surface));
   color: var(--muted);
-  font-size: 0.75rem;
+  font-size: var(--fs-xs);
   font-weight: 600;
 }
 .classes-groupe__corps { margin-bottom: 1.5rem; }
 .classes-groupe h3 {
   margin: 0.9rem 0 0.4rem;
   color: var(--muted);
-  font-size: 0.78rem;
-  letter-spacing: 0.04em;
+  font-size: var(--fs-xs);
+  letter-spacing: var(--ls-fin);
   text-transform: uppercase;
 }
 
 .classes-groupe__liste { display: flex; flex-direction: column; gap: 0.55rem; margin: 0; padding: 0; list-style: none; }
 .classes-groupe .bulle-zone { display: block; }
 
-.classe-pastille {
-  position: relative;
-  display: flex;
-  min-height: 2.6rem;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.9rem;
-  border: 1px solid color-mix(in srgb, var(--cla) 68%, var(--border));
-  border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--cla) 10%, var(--surface));
-  box-shadow: var(--ombre-douce);
-  color: var(--text);
-  font-size: 0.95rem;
-  font-weight: 700;
-  line-height: 1.2;
-  text-align: center;
-  text-decoration: none;
-  transition: transform var(--duree) ease, box-shadow var(--duree) ease;
-}
-.classe-pastille__point {
-  flex: 0 0 0.65rem;
-  width: 0.65rem;
-  height: 0.65rem;
-  border: 1px solid color-mix(in srgb, var(--text) 28%, var(--cla));
-  border-radius: 50%;
-  background: var(--cla);
-}
-.classe-pastille__nom { overflow-wrap: anywhere; }
-.classe-pastille:hover,
-.classe-pastille:focus-visible,
-.classe-pastille[data-ouverte] {
-  outline: 2px solid var(--cla);
-  outline-offset: 3px;
-  box-shadow: 0 5px 18px color-mix(in srgb, var(--cla) 25%, transparent);
-  transform: translateY(-2px);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .classe-pastille { transition: none; }
-}

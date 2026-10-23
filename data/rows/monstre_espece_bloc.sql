@@ -8,7 +8,7 @@ Carapace déformée. N’est plus vulnérable aux dégâts physiques.
 
 Grimoire déformé. A accès aux sorts de son niveau mais ne peut pas les utiliser deux fois de suite dans le même tour.
 
-Rituel souillé. Capable d’utiliser les sorts sang, nécromancie et corruption sans la 4ème barre mais augmente de 50% le coût chakra.
+Rituel souillé. Capable d’utiliser les sorts sang, nécromancie et corruption sans la 4ème barre mais augmente de 50% le coût {{chakra|chakra}}.
 
 Semi-complet. Peut utiliser les sorts de lvl4 de puissance (si il a le niveau)', 'monstres', 'Bestiaire 2.0 › lignes 22836-22857');
 INSERT INTO monstre_espece_bloc (espece_id, rang, titre, texte, origine, source_ref) VALUES ('monstres/presque-ottar', 2, 'SANG', 'DESCRIPTION
@@ -53,8 +53,8 @@ Pollution. Chaque attaque qui touche oblige un jet de vigueur qui donne ces effe
 - Si échec : aggrave une vulnérabilité aléatoirement.
 (Dans le cas de l''arcane et corruption, ça ne fonctionne pas)
 
-Cicatrices pétrolières. Chaque attaque réussit empêche la cible de récupérer de la barrière pendant 1 tour.
-Poison Noir. Les attaques de cette créature ajoutent 10% des dégâts infligés en corruption.
+Cicatrices pétrolières. Chaque attaque réussit empêche la cible de récupérer de la {{barriere|barrière}} pendant 1 tour.
+Poison Noir. Les attaques de cette créature ajoutent 10% des dégâts infligés en {{corruption|corruption}}.
 
 Contestation. Chaque malus qui lui est infligé deviendra un bonus.', 'monstres', 'Bestiaire 2.0 › lignes 22904-22927');
 INSERT INTO monstre_espece_bloc (espece_id, rang, titre, texte, origine, source_ref) VALUES ('monstres/presque-ottar', 5, 'ESPACE/TEMPS', 'DESCRIPTION
@@ -69,7 +69,7 @@ Diagonale incohérente. Les diagonales comptent pour 1 case de déplacement au l
 
 En tête. L''une des initiatives de cette créature sera toujours au dessus de toutes les autres (Joueurs compris)
 
-25h. Cette créature est capable d''utiliser un sortilège du Temps et de l''Espace qui est capable de placement, ce sort n''infligera aucun dégâts ni aucun effet secondaire, juste elle fera son effet de déplacement. Cette action peut se faire avant ou après le tour réel de la créature. (Ne demande pas de chakra)
+25h. Cette créature est capable d''utiliser un sortilège du Temps et de l''Espace qui est capable de placement, ce sort n''infligera aucun dégâts ni aucun effet secondaire, juste elle fera son effet de déplacement. Cette action peut se faire avant ou après le tour réel de la créature. (Ne demande pas de {{chakra|chakra}})
 
 Redémarrage. Permet de relancer un échec (hors échec critique) (réaction 1 fois/3 tours)', 'monstres', 'Bestiaire 2.0 › lignes 22928-22950');
 INSERT INTO monstre_espece_bloc (espece_id, rang, titre, texte, origine, source_ref) VALUES ('monstres/presque-ottar', 6, 'VIDE', 'DESCRIPTION
@@ -85,7 +85,7 @@ Corps vide. Le torse de cette créature est totalement invulnérable aux dégât
 Lévitation. N''est pas affecté par les effets qui impliquent le sol.
 Attaque vide. L''attaque de cette créature bloque l''utilisation de la magie de la victime pour 1 tour.
 
-Migraine chakratique. Les ennemis à 3 cases autour de la créature voient leur coût en chakra augmenter de 25% pour leur sort.', 'monstres', 'Bestiaire 2.0 › lignes 22951-22971');
+Migraine chakratique. Les ennemis à 3 cases autour de la créature voient leur coût en {{chakra|chakra}} augmenter de 25% pour leur sort.', 'monstres', 'Bestiaire 2.0 › lignes 22951-22971');
 INSERT INTO monstre_espece_bloc (espece_id, rang, titre, texte, origine, source_ref) VALUES ('monstres/presque-ottar', 7, 'NÉCROMANCIE', 'DESCRIPTION
 Les excroissances osseuses se surdéveloppent et suintent un liquide vert foncé. Certaines parties du corps tombent comme le nez, pour donner un aspect plus macabre.
 Compétence mono magie
@@ -114,7 +114,7 @@ Moteur thermique. Cette créature absorbe les dégâts de l’élément feu, si 
 Jet de Magma. Cette créature lance du magma et diminue de 2 la résistance au Feu de la cible.
 Déflagration. Sacrifie les AP ou AM pour les ajouter à ses dégâts pendant 2 tours.
 
-Crache feu. Contre 3IC, cette créature peut cracher une gerbe de flamme qui va à 3 PO en ligne droite et touché toutes les créatures dans la zone, inflige 3d6 dégâts. Coût 5 chakra.', 'monstres', 'Bestiaire 2.0 › lignes 22995-23015');
+Crache feu. Contre 3IC, cette créature peut cracher une gerbe de flamme qui va à 3 PO en ligne droite et touché toutes les créatures dans la zone, inflige 3d6 dégâts. Coût 5 {{chakra|chakra}}.', 'monstres', 'Bestiaire 2.0 › lignes 22995-23015');
 INSERT INTO monstre_espece_bloc (espece_id, rang, titre, texte, origine, source_ref) VALUES ('monstres/presque-ottar', 9, 'EAU', 'DESCRIPTION
 Le corps libère une eau putride presque gélatineuse. Du sel est secrété sur ses mains, pieds et yeux.
 Compétence mono magie
@@ -209,7 +209,7 @@ Compétence bi-magie
 +7% compétence de perception
 Don
 Don mono-magie
-Destructeur. 25% des dégâts des attaques sont infligés également au Chakra.
+Destructeur. 25% des dégâts des attaques sont infligés également au {{chakra|Chakra}}.
 
 Dégénérer des ténèbres. Impose un malus de 10% aux jets de parade/esquive/fermeté/vigueur aux ennemis à 2 cases.
 

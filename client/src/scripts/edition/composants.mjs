@@ -1,15 +1,18 @@
 // Extension de l'éditeur pour /ressources/composants/ (components/composants/ComposantsPage.astro) — demande du propriétaire : « chaque élément est
 // modifiable en édition, supprimable, ajoutable » :
-//   - en mode modification : tous les tableaux s'ouvrent, la recherche s'efface (styles/composants/composants.css la cache) ;
+//   - en mode modification : la recherche s'efface (styles/composants/composants.css la cache) ; le titre et la note de chaque onglet (table
+//     composant_onglet, migration 0057) sont des champs communs (`data-ed` du titre du panneau et de sa note ; le nom de l'onglet, `data-ed-lecture`,
+//     suit à l'enregistrement) ;
 //   - ajouter : un bouton « + Ajouter … » sous chaque tableau (`data-ajout` du tableau : l'entité et les valeurs données d'office, le tableau d'un objet,
 //     la catégorie d'un ingrédient), formulaire, création tout de suite (POST /api/edition/, opération creer) ; sa ligne s'ajoute à la fin du tableau
-//     (lib/composants-rendu.mjs, le HTML de la page construite) ;
+//     (lib/composants-rendu.mjs, le HTML de la page construite) ; pas de bouton quand un choix obligatoire du formulaire n'a aucune option (Gemmes,
+//     Bois : chaque magie a déjà le sien, le Potentiel Illimité n'en a pas, décision R160 : « Ne rien afficher ») ;
 //   - supprimer : un bouton sur chaque ligne que rien d'autre ne cite (`data-citee` : la raison, en infobulle d'un bouton grisé) ; la suppression part
 //     avec le bouton de confirmation ;
 //   - au chargement, un composant créé ou supprimé depuis la construction du site apparaît ou disparaît (lignes en attente) ;
 //   - une monnaie enregistrée : les conversions de toutes les monnaies sont refaites ;
 //   - à chaque étape, l'évènement « composants:rafraichir » redemande au script de la page son filtre et ses comptes (aucun module partagé).
-import { cleDeLigne, ENTITES } from '../../lib/edition-modele.mjs';
+import { champsDeCreationDe, cleDeLigne, ENTITES, sansChoixPossible } from '../../lib/edition-modele.mjs';
 import {
   htmlDeLigneDeBois, htmlDeLigneDeGemme, htmlDeLigneDeMateriau, htmlDeLigneDeMonnaie, htmlDeLigneDIngredient, htmlDeLigneDObjet, htmlDesConversions,
 } from '../../lib/composants-rendu.mjs';
@@ -103,14 +106,8 @@ function boutonSupprimer(tr) {
   cellule.append(bouton);
 }
 
-/** Les champs du formulaire de création : ceux de l'entité, les valeurs données par le tableau prises d'office (montrées si `montrer` les nomme, pré-remplies). */
-const champsDeCreation = (ed, entite, donnees, montrer = []) =>
-  Object.entries(ENTITES[entite].champs)
-    .filter(([c]) => !(c in donnees) || montrer.includes(c))
-    .map(([c, champ]) => ({
-      nom: c, libelle: champ.libelle, type: champ.type, requis: champ.requis, valeur: donnees[c] ?? '',
-      ...(champ.type === 'choix' ? { choix: champ.choix ?? ed.listes?.[champ.liste] ?? [] } : {}),
-    }));
+/** Les champs du formulaire de création (lib/edition-modele.mjs#champsDeCreationDe), avec les listes de la page. */
+const champsDeCreation = (ed, entite, donnees, montrer = []) => champsDeCreationDe(entite, donnees, montrer, ed.listes);
 
 /** La clé de la ligne créée d'une entité, d'après son identifiant. */
 const cleCreee = (entite, id) => (['materiau', 'gemme', 'bois', 'ingredient'].includes(entite) ? { ressource_id: id } : { id });
@@ -174,9 +171,9 @@ export const composants = {
     const r = racine();
     const recherche = r?.querySelector('[data-composants-recherche]');
     if (recherche) recherche.value = '';
-    for (const d of r?.querySelectorAll('.comp-tableau') ?? []) d.open = true;
     for (const table of r?.querySelectorAll('table[data-ajout]') ?? []) {
       const ajout = JSON.parse(table.dataset.ajout);
+      if (sansChoixPossible(champsDeCreation(ed, ajout.entite, ajout.valeurs ?? {}, ajout.montrer))) continue;
       const bouton = document.createElement('button');
       bouton.type = 'button';
       bouton.className = 'ed-outil comp-ajouter';
@@ -207,7 +204,7 @@ export const composants = {
           },
         });
       });
-      table.closest('.comp-tableau')?.append(bouton);
+      table.closest('.composants-panneau')?.append(bouton);
     }
     for (const tr of r?.querySelectorAll('tr[data-entite]') ?? []) boutonSupprimer(tr);
     rafraichir();

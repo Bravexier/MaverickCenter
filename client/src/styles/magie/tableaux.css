@@ -1,5 +1,5 @@
 /* Chargé uniquement depuis components/magie/TableauMagiesInnees.astro (bas de /races/) et TableauRelationsMagies.astro (/magies/), en ?raw.
-   Les magies sont dans leur couleur (--couleur-magie, lib/sort-format.mjs#couleurDeMagie) : colonnes teintées et pastilles dans le tableau des races,
+   Les magies sont dans leur couleur (la classe de la magie, `.couleur-magie-<id>` : --couleur, lib/palette-css.mjs) : colonnes teintées et pastilles dans le tableau des races,
    lignes teintées dans celui des relations. Largeur fixe (table-layout: fixed) et en-têtes verticaux : 15 colonnes tiennent sans défilement horizontal,
    d'un écran de téléphone (390 px) à la largeur du site. */
 .tableau-magies { margin: 0.75rem 0 2rem; }
@@ -9,15 +9,15 @@
   table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
-  font-size: 0.85rem;
+  font-size: var(--fs-md);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
 }
 
 .tableau-magies__col-nom { width: 9.5rem; }
 .tableau-magies__col-total { width: 2.75rem; }
-.tableau-magies__col-magie { background: color-mix(in srgb, var(--couleur-magie) 12%, transparent); }
+.tableau-magies__col-magie { background: color-mix(in srgb, var(--couleur) 12%, transparent); }
 
 .tableau-magies th,
 .tableau-magies td { padding: 0.3rem 0; text-align: center; vertical-align: middle; border-bottom: 1px solid var(--border); line-height: 1.15; }
@@ -26,10 +26,10 @@
 /* en-têtes : nom de la magie à la verticale, pastille de sa couleur dessous */
 .tableau-magies thead th { vertical-align: bottom; padding: 0.55rem 0 0.45rem; font-weight: 600; background: var(--surface); }
 .tableau-magies thead .tableau-magies__coin { text-align: left; padding-inline: 0.5rem; }
-.tableau-magies thead .tableau-magies__entete { background: color-mix(in srgb, var(--couleur-magie) 12%, var(--surface)); }
+.tableau-magies thead .tableau-magies__entete { background: color-mix(in srgb, var(--couleur) 12%, var(--surface)); }
 .tableau-magies thead .tableau-magies__entete--total { background: var(--surface); color: var(--muted); font-weight: normal; }
 .tableau-magies__entete a { display: inline-flex; flex-direction: column; align-items: center; gap: 0.4rem; color: var(--text); text-decoration: none; }
-.tableau-magies__entete a::after { content: ''; width: 0.7rem; height: 0.7rem; border-radius: 50%; background: var(--couleur-magie); box-shadow: 0 0 0 1px color-mix(in srgb, var(--text) 30%, transparent); }
+.tableau-magies__entete a::after { content: ''; width: 0.7rem; height: 0.7rem; border-radius: 50%; background: var(--couleur); box-shadow: 0 0 0 1px color-mix(in srgb, var(--text) 30%, transparent); }
 .tableau-magies__entete a:hover .tableau-magies__vertical,
 .tableau-magies__entete a:focus-visible .tableau-magies__vertical { text-decoration: underline; }
 .tableau-magies__vertical { writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; line-height: 1; }
@@ -42,14 +42,14 @@
   width: 0.75rem;
   height: 0.75rem;
   border-radius: 50%;
-  background: var(--couleur-magie);
+  background: var(--couleur);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--text) 30%, transparent);
   vertical-align: middle;
 }
 .tableau-magies__total { color: var(--muted); font-variant-numeric: tabular-nums; }
 
 /* relations : chaque ligne dans la couleur de la magie décrite */
-.tableau-magies__ligne { background: color-mix(in srgb, var(--couleur-magie) 12%, transparent); }
+.tableau-magies__ligne { background: color-mix(in srgb, var(--couleur) 12%, transparent); }
 .tableau-magies__ligne .tableau-magies__nom .tableau-magies__point { margin-right: 0.4rem; vertical-align: -0.05em; }
 .tableau-magies__marque { font-size: 0.95em; }
 .tableau-magies__marque--fort { color: var(--good); }
@@ -71,7 +71,7 @@
 /* téléphone : colonnes resserrées, plus petite police ; filet de sécurité si l'écran est plus étroit encore */
 @media (max-width: 40rem) {
   .tableau-magies { overflow-x: auto; }
-  .tableau-magies__table { font-size: 0.72rem; }
+  .tableau-magies__table { font-size: var(--fs-xxs); }
   .tableau-magies__col-nom { width: 5.4rem; }
   .tableau-magies__col-total { width: 1.7rem; }
   .tableau-magies tbody .tableau-magies__nom,
