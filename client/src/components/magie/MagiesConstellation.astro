@@ -18,7 +18,8 @@ const { magies } = Astro.props;
 // les relations ont la même symétrie) ; Feu et Eau plus bas que Terre et Sang, sinon le trait Feu – Eau passerait sous eux ; Corruption – Arcane et
 // Espace-Temps – Vide aux coins du haut, Lumière – Ombre en bas. Écran étroit, sous 60rem (mx, my sur 1000 × HAUTEUR_ETROITE) : deux colonnes, sans
 // relations, les paires côte à côte (demande du propriétaire) reliées par leur trait. Pas d'infobulle (demande du propriétaire) : le survol ne montre que
-// les relations. Les proportions sont reprises par styles/magie/orbit.css (aspect-ratio du grand écran, hauteur de l'écran étroit) ;
+// les relations. Les proportions sont reprises par styles/magie/orbit.css (aspect-ratio du grand écran, hauteur de l'écran étroit ; tailles des
+// pastilles du grand écran : TAILLES, plus bas) ;
 // test/magies-html.test.mjs vérifie qu'aucune pastille n'en touche une autre et qu'aucun trait ne passe sous une pastille.
 const HAUTEUR_GRANDE = 440;
 const HAUTEUR_ETROITE = 590;
@@ -71,11 +72,16 @@ if (lumiere && ombre && (vulnérableÀ(lumiere, ombre) || vulnérableÀ(ombre, l
 // Grand écran : ces traits ne sont pas dessinés ; au survol d'une magie SEULEMENT (demande du propriétaire : toutes à la fois, la carte est trop chargée),
 // ses relations (lib/magie-fleches.mjs), dans sa couleur : un trait par magie liée, une ÉPÉE au bout de la magie contre laquelle l'autre est efficace,
 // un BOUCLIER au bout de celle qui résiste à l'autre, une boucle à bouclier si elle résiste à elle-même.
-// Tailles des pastilles en unités de la carte (1000 × HAUTEUR_GRANDE), pour une carte de 60rem : 9rem, 8rem (éléments), 12rem (Potentiel), 3rem de haut.
+// Tailles des pastilles du grand écran en unités de la carte (1000 × HAUTEUR_GRANDE) : la seule source. Elles sont posées sur chaque pastille en cqw
+// (--l, --h : 1 unité = 0.1cqw, la carte est un conteneur), donc justes à toute largeur de carte : le calcul des traits et des pointes
+// (lib/magie-fleches.mjs) suppose ces tailles. Une carte de 62rem (largeur du contenu) donne 9.3rem, 8.3rem (éléments), 12.4rem (Potentiel), 2.98rem de haut.
 const TAILLES = { potentiel: 200, elementaire: 134 } as Record<string, number>;
+const LARGEUR_PASTILLE = 150;
+const HAUTEUR_PASTILLE = 48;
+const largeurDe = (noeud: any) => TAILLES[noeud.region] ?? LARGEUR_PASTILLE;
 const cleCss = (noeud: any) => normalize(noeud.nom);
 const parId = new Map(noeuds.map((noeud) => [noeud.magie.id, noeud]));
-const pastilles = new Map(noeuds.map((noeud) => [noeud.magie.id, { x: noeud.x, y: noeud.y, w: TAILLES[noeud.region] ?? 150, h: 48 }]));
+const pastilles = new Map(noeuds.map((noeud) => [noeud.magie.id, { x: noeud.x, y: noeud.y, w: largeurDe(noeud), h: HAUTEUR_PASTILLE }]));
 const relations = geometrieDesLiaisons(liaisonsEntreMagies(noeuds.map((noeud) => noeud.magie)), pastilles, { hauteur: HAUTEUR_GRANDE });
 const avec = (...ids: string[]) => ids.map((id) => `avec-${cleCss(parId.get(id))}`).join(' ');
 // La couleur d'un trait est celle de la magie survolée, sans couleur écrite : le trait porte la classe de sa première magie (--couleur) et la classe de
@@ -150,7 +156,7 @@ const surbrillance = noeuds
         <li
           class={`magies-orbite__position magies-orbite__position--${noeud.region} ${noeud.classe}`}
           data-magie={cleCss(noeud)}
-          style={`--x: ${noeud.x / 10}%; --y: ${pourcent(noeud.y, HAUTEUR_GRANDE)}%; --mx: ${noeud.mx / 10}%; --my: ${pourcent(noeud.my, HAUTEUR_ETROITE)}%; --ordre: ${noeud.ordre}`}
+          style={`--x: ${noeud.x / 10}%; --y: ${pourcent(noeud.y, HAUTEUR_GRANDE)}%; --mx: ${noeud.mx / 10}%; --my: ${pourcent(noeud.my, HAUTEUR_ETROITE)}%; --l: ${largeurDe(noeud) / 10}cqw; --h: ${HAUTEUR_PASTILLE / 10}cqw; --ordre: ${noeud.ordre}`}
         >
           <a
             class="magies-orbite__noeud"

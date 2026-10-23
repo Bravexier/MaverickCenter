@@ -1,7 +1,8 @@
 /* Carte des magies de /magies/ (components/magie/MagiesConstellation.astro). Grand écran : 1000 × 440 (HAUTEUR_GRANDE), disposée pour que les
    relations d'une magie, affichées à son survol, ne passent sous aucune autre pastille. Sous 60rem : la carte étroite, sur deux colonnes
    (HAUTEUR_ETROITE, 590 → 36.875rem), sans relations. Pas d'infobulle (demande du propriétaire). La carte est un conteneur (100cqw = sa largeur) :
-   les pastilles de la carte étroite sont dimensionnées en cqw. */
+   toutes les pastilles sont dimensionnées en cqw. Grand écran : --l et --h, posées par le composant depuis TAILLES (1 unité de la carte = 0.1cqw),
+   pour que les pointes calculées par lib/magie-fleches.mjs touchent presque la pastille à toute largeur de carte. */
 .magies-orbite {
   position: relative;
   width: 100%;
@@ -57,16 +58,14 @@
   left: var(--x);
   top: var(--y);
   z-index: var(--ordre);
-  width: min(9rem, 16vw);
+  width: var(--l);
   transform: translate(-50%, -50%);
 }
 
-.magies-orbite__position--potentiel { width: min(12rem, 32vw); }
-.magies-orbite__position--elementaire { width: min(8rem, 16vw); }
 .magies-orbite__position:hover,
 .magies-orbite__position:focus-within { z-index: 1000; }
 
-.magies-orbite__noeud { min-height: 2.9rem; padding: 0.45rem 0.6rem; }
+.magies-orbite__noeud { min-height: var(--h); padding: 0.45rem 0.6rem; }
 .magies-orbite__noeud:hover,
 .magies-orbite__noeud:focus-visible { z-index: 6; }
 
@@ -78,6 +77,7 @@
   .magies-orbite__position { left: var(--mx); top: var(--my); width: min(9rem, 46cqw); }
   .magies-orbite__position--potentiel { width: min(12rem, 80cqw); }
   .magies-orbite__position--elementaire { width: min(8rem, 36cqw); }
+  .magies-orbite__noeud { min-height: 2.9rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
