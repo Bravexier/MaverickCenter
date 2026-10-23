@@ -2,18 +2,16 @@
 // visuel, lib/markdown-edition.mjs), seulement pour ces pages (lib/edition-modele.mjs#texteDePageModifiable) ; un bloc tiré de la base inconnu est refusé, un ancien titre devient un alias, l'aperçu
 // HTML de l'éditeur est noté avec le corps et rendu par /api/edition/en-attente/ tant que la page construite ne l'a pas.
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { journalExporte } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { decouperCorps, recomposerCorps } from '../src/lib/markdown-edition.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-edition-guide-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('edition-guide');
 const { chemin } = preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, 'db') });
 const db = ouvrirBaseVivante(chemin);
 const service = { base: () => db, etat: () => ({}), edition: true };

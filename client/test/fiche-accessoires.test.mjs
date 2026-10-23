@@ -3,10 +3,9 @@
 // résistances, Mode Hyper, malédiction (effet contraire), choix en attente, effets « (Action) » et usages comptés rappelés sous les dons de race, et
 // l'enregistrement des choix dans la base.
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { enregistrerFiche } from '../serveur/fiches.mjs';
 import { CIBLES } from '../src/lib/accessoire-champs.mjs';
@@ -17,11 +16,11 @@ import {
   compteurDeMaitrise, resistancesDe,
 } from '../src/lib/fiche-moteur.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db)));
-const racine = mkdtempSync(join(tmpdir(), 'maverick-accessoires-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('accessoires');
 const vivante = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: racine }).chemin);
 
 const E = (id) => `ressources/accessoires#effet:${id}`;

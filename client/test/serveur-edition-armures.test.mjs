@@ -8,10 +8,8 @@
 // d'une amélioration de bouclier, se saisissent ; la défense écrite et le coût et l'effet écrits en sont refaits ; un lot noté avant se rejoue s'il se
 // lit exactement dans ces cases, sinon il passe en conflit avec son explication (serveur/edition-armures.mjs#ancienneEcritureDesArmures).
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { rejouerLeJournal } from '../serveur/edition.mjs';
@@ -24,9 +22,9 @@ import {
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { optionsDuChoix, TABLES } from '../src/lib/edition-modele.mjs';
 import { comparerBases } from '../src/lib/notes-de-version.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-edition-armures-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('edition-armures');
 let compteur = 0;
 const vivante = () => ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, `b${(compteur += 1)}`) }).chemin);
 const db = vivante();

@@ -6,19 +6,18 @@
 // production, éclairci au-delà de 14 jours.
 //   node --test test/serveur-metriques-disque.test.mjs
 import assert from 'node:assert/strict';
-import { lstatSync, mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { lstatSync, mkdirSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import {
   alertesDu, CATEGORIES_COMPTEES, CATEGORIES_HOTE, categorieDuFichierDuSite, colonnesImagesDe, comptesAvecLHote, creerMetriques, disqueDe, lireReleveDeLHote,
   octetsDesImages, octetsSurDisque, PARCOURS, RELEVE_HOTE, releverRepartition, REPARTITION, REPARTITION_HOTE, repartitionDu, RETENTION, SCHEMA_METRIQUES,
 } from '../serveur/metriques.mjs';
 import { dossierDuSite } from '../serveur/service.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-metriques-disque-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('metriques-disque');
 let compteur = 0;
 const dossierNeuf = () => {
   const d = join(racine, `d${++compteur}`);

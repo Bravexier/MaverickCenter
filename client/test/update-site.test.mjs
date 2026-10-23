@@ -2,12 +2,12 @@
 // Nécessite sh, curl et tar ; sinon les tests sont ignorés.
 import assert from 'node:assert/strict';
 import { execFile, spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
-import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { after, before, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const SCRIPT = process.env.UPDATE_SITE_SCRIPT ?? fileURLToPath(new URL('../../deploy/update-site.sh', import.meta.url));
 const have = (cmd) => spawnSync(cmd, ['--version'], { stdio: 'ignore' }).status === 0;
@@ -16,14 +16,14 @@ const skip = !(have('curl') && have('tar')) && 'sh, curl ou tar indisponible';
 const TOKEN = 'github_pat_TESTTOKEN123';
 const SHA_A = 'a'.repeat(40);
 const SHA_B = 'b'.repeat(40);
-const root = mkdtempSync(join(tmpdir(), 'update-site-test-'));
+const root = dossierTemporaire('update-site');
 const state = { sha: SHA_A, tarball: null, token: TOKEN, tarballRequests: 0, auth: [] };
 let server;
 let apiUrl;
 
 /** Archive au format GitHub : un unique dossier racine « owner-repo-<sha7> ». */
 function tarball(files, sha) {
-  const dir = mkdtempSync(join(root, 'tar-'));
+  const dir = dossierTemporaire('tar', { dans: root });
   const top = `o-r-${sha.slice(0, 7)}`;
   for (const [path, content] of Object.entries(files)) {
     mkdirSync(dirname(join(dir, top, path)), { recursive: true });

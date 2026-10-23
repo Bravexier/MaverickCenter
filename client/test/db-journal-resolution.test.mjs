@@ -3,16 +3,15 @@
 // resolu_par (le nouveau lot normal qui le reprend, jamais lui-même) et resolution (les choix, tableau JSON), NULL tant que le lot n'est pas résolu.
 // Les lignes d'un lot résolu restent 'conflit', comme trace. Une base vivante d'avant 0072 est reprise : ses lots en conflit deviennent « à résoudre ».
 import assert from 'node:assert/strict';
-import { copyFileSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { copyFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-resolution-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('resolution');
 const REGLES = cheminBase({ sansExemples: false });
 let compteur = 0;
 const nouveau = (prefixe) => join(racine, `${prefixe}-${(compteur += 1)}`);

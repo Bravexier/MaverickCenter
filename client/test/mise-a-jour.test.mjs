@@ -5,20 +5,20 @@
 // deploy/installateur/fabriquer.mjs) et l'exécute. Nécessite sh, curl, tar et gzip ; sinon ignoré.
 import assert from 'node:assert/strict';
 import { execFile, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
-import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { after, before, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { fabriquer } from '../../deploy/installateur/fabriquer.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const SCRIPT = fileURLToPath(new URL('../../deploy/installateur/mise-a-jour.sh', import.meta.url));
 const have = (cmd) => spawnSync(cmd, ['--version'], { stdio: 'ignore' }).status === 0;
 const skip = !(have('curl') && have('tar') && have('gzip')) && 'sh, curl, tar ou gzip indisponible';
 
 const TOKEN = 'github_pat_TESTTOKEN123';
-const root = mkdtempSync(join(tmpdir(), 'mise-a-jour-test-'));
+const root = dossierTemporaire('mise-a-jour');
 /** Les livraisons publiées, de la plus récente à la plus ancienne : { tag, installateur (octets) ou null }. */
 const state = { livraisons: [], token: TOKEN, telechargements: 0, auth: [], latest: null };
 /** Mode d'une étiquette, d'après sa forme (tools/flux-git/regles.mjs) : VX.Y.Z… = serveur de test, VX.Y… = production. */

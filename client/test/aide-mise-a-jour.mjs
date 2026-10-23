@@ -5,13 +5,13 @@
 // 2026-10-11) a échoué parce que des tests supposaient le contraire : refus « code 7 » d'un second lot, version « 0.2 » déjà prise.
 // Rien n'est supposé de data/rows : les notes en attente et les versions prises sont lues. Module sans test (n'est pas un *.test.mjs).
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { cpSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { notesEnAttente } from '../scripts/mise-a-jour-regles.mjs';
 import { trierVersions } from '../src/lib/notes-de-version.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 /** data/rows du dépôt. */
@@ -28,11 +28,8 @@ const modeles = new Map(); // `${rows}\0${version}` -> { rows, retirees } : pré
 let dossierDesModeles = null;
 
 function preparerModele(rows, versionProduction) {
-  if (!dossierDesModeles) {
-    dossierDesModeles = mkdtempSync(join(tmpdir(), 'maverick-sans-note-en-attente-'));
-    process.on('exit', () => rmSync(dossierDesModeles, { recursive: true, force: true }));
-  }
-  const dossier = mkdtempSync(join(dossierDesModeles, 'modele-'));
+  dossierDesModeles ??= dossierTemporaire('sans-note-en-attente'); // supprimé à la sortie du processus (les modèles servent à tout le fichier)
+  const dossier = dossierTemporaire('modele', { dans: dossierDesModeles });
   const base = join(dossier, 'base.db');
   const b = spawnSync(process.execPath, ['--no-warnings', join(RACINE, 'client', 'scripts', 'db-build.mjs'), '--out', base, '--rows', rows], { encoding: 'utf8' });
   if (b.status !== 0) throw new Error(`${rows} ne se reconstruit pas : ${b.stderr || b.stdout}`);

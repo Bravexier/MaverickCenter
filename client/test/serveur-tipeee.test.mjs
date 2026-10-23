@@ -5,10 +5,9 @@
 // absent, réponse trop grosse, redémarrage (dernier texte relu), repli sur l'instantané livré avec le site, alertes au journal ; la route ; le vrai
 // serveur HTTP ; la livraison de l'instantané avec le service.
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { niveauDuMessage } from '../serveur/journal-du-service.mjs';
 import { DOSSIER_LIVRE, FICHIERS_JOINTS, livrerServeur } from '../serveur/livraison.mjs';
@@ -17,9 +16,9 @@ import { demarrerService } from '../serveur/service.mjs';
 import { CACHE_MS, DELAI_MS, FICHIER, OCTETS_MAX, REESSAI_MS, creerTipeee, reglagesTipeee } from '../serveur/tipeee.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { CHEMIN_INSTANTANE, REPERE, URL_API } from '../src/lib/tipeee.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-tipeee-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('tipeee');
 let n = 0;
 const dossierNeuf = () => {
   n += 1;

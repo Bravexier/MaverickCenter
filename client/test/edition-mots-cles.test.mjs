@@ -7,15 +7,14 @@
 // chaîne, noms échangés, fusions en chaîne — le lot que la page envoie est accepté, ou refusé avant toute question.
 //   node --test test/edition-mots-cles.test.mjs
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { cleDeLigne, lireAttributEd } from '../src/lib/edition-modele.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { attendre, cliquer, el, Element, fauxDocument } from './aide-faux-dom.mjs';
 
 // GET /api/edition/mots-cles/ : [{ id, libelle, libelle_cle, description, pages, protege }] (description : NULL tant qu'il n'est pas décrit)
@@ -225,8 +224,7 @@ test('refus : renommage vers l’écriture d’un autre sans accepter la fusion 
 // Le service (serveur/edition-chronologie.mjs) refuse un renommage vers une écriture encore prise (409) et une fusion ou une suppression d'un mot-clé déjà
 // parti (404) : le lot que la page envoie doit libérer chaque écriture avant de la donner. Une copie de la base par test ; des mots-clés créés pour
 // l'essai, à des noms absents de la base (les essais du site de dev peuvent l'avoir modifiée).
-const racine = mkdtempSync(join(tmpdir(), 'maverick-edition-mots-cles-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('edition-mots-cles');
 let copies = 0;
 
 /** Le service sur une copie neuve de la base, la page montée dessus en mode modification, et des mots-clés d'essai créés ({ nom: libellé }). */

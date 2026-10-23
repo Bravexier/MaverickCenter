@@ -3,12 +3,12 @@
 // Le document docs/sql/structure.md est généré depuis le schéma (`npm run db:doc`) et doit rester à jour ; `npm run db:init` crée la base vide.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const racine = fileURLToPath(new URL('../../', import.meta.url));
 const client = fileURLToPath(new URL('../', import.meta.url));
@@ -151,8 +151,8 @@ test('docs/sql/structure.md et docs/sql/apercu.md sont ceux que le schéma produ
   assert.equal(r.status, 0, r.stderr);
 });
 
-test('npm run db:init crée une base vide, refuse d’écraser sans --force, et ne laisse rien si le schéma est refusé', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'db-init-'));
+test('npm run db:init crée une base vide, refuse d’écraser sans --force, et ne laisse rien si le schéma est refusé', (t) => {
+  const dir = dossierTemporaire('db-init', { t });
   const fichier = join(dir, 'maverick.db');
   const cree = node('db-init.mjs', ['--out', fichier]);
   assert.equal(cree.status, 0, cree.stderr);

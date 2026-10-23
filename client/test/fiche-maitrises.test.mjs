@@ -13,21 +13,20 @@
 //   - R154 : le don « Maîtrise » de l'Ocultomancien ajoute 4 NM gagnés.
 // Chaque exemple est comparé à la base (une copie vivante, par le service) : v_personnage_maitrise_arme et les règles maitrise_* de v_personnage_controle.
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { enregistrerFiche } from '../serveur/fiches.mjs';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que la page le reçoit
-const racine = mkdtempSync(join(tmpdir(), 'maverick-maitrises-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('maitrises');
 const vivante = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: racine }).chemin);
 
 const xpDuNiveau = (n) => regles.niveaux.find((l) => l.niveau === n).xp_min;

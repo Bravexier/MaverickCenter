@@ -5,10 +5,9 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, mkdirSync, readFileSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { after, describe, test } from 'node:test';
+import { describe, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
 import { MARQUEUR_MAJEURE } from '../../tools/flux-git/regles.mjs';
@@ -23,6 +22,7 @@ import {
 } from '../scripts/mise-a-jour-github.mjs';
 import { TABLES_DES_SOURCES } from '../serveur/edition-maitrises.mjs';
 import { TABLES_DE_LA_NOTE as TABLES_DU_SCRIPT } from '../scripts/mise-a-jour-regles.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const SCRIPT = fileURLToPath(new URL('../scripts/mise-a-jour-github.mjs', import.meta.url));
 const REGLES_FLUX = fileURLToPath(new URL('../../tools/flux-git/regles.mjs', import.meta.url));
@@ -58,9 +58,8 @@ const EMPREINTE = empreinte(LOT_JSON);
 const FICHIERS = ['historique_modification.sql', 'metier.sql', 'note_version.sql', 'note_version_ligne.sql'];
 const CHEMINS = FICHIERS.map((f) => `data/rows/${f}`);
 
-const racineTemp = mkdtempSync(join(tmpdir(), 'mise-a-jour-github-test-'));
-after(() => rmSync(racineTemp, { recursive: true, force: true }));
-const dossierTemp = (prefixe) => mkdtempSync(join(racineTemp, prefixe));
+const racineTemp = dossierTemporaire('mise-a-jour-github');
+const dossierTemp = (prefixe) => dossierTemporaire(prefixe.replace(/-$/, ''), { dans: racineTemp });
 
 /** Checks d'un commit : regles-de-branches sauté (événement create) puis, après `lectures` lectures, les trois checks requis verts. */
 const checksVerts = (lectures = 1) => {

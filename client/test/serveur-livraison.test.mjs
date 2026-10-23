@@ -3,18 +3,17 @@
 // tous la même chose : le conteneur « serveur » exécute _serveur/serveur/index.mjs sur le port 8787, nginx lui transmet /api/ et refuse /_serveur/.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
 import { CLIENT, DOSSIER_LIVRE, ENTREE, livrerServeur, modulesDuServeur } from '../serveur/livraison.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-livraison-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('livraison');
 const depot = fileURLToPath(new URL('../../', import.meta.url));
 const lire = (chemin) => readFileSync(join(depot, chemin), 'utf8');
 const ENTREE_LIVREE = `/site/${DOSSIER_LIVRE}/${ENTREE}`;

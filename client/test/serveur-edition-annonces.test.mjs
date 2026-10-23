@@ -7,11 +7,10 @@
 //   node --test test/serveur-edition-annonces.test.mjs
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { cpSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { appliquerJournal } from '../scripts/db-appliquer-edition.mjs';
 import { appliquerMiseAJour, TEXTES_EN_MARKDOWN, verifierLot } from '../scripts/mise-a-jour-regles.mjs';
@@ -26,6 +25,7 @@ import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { ENTITES, TABLES, typeDeTexte } from '../src/lib/edition-modele.mjs';
 import { RESSOURCES } from '../src/lib/ressources.mjs';
 import { SOUS_BIENVENUE } from '../src/lib/livres.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { copieSansNoteEnAttente, versionALaRevision } from './aide-mise-a-jour.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
@@ -33,8 +33,7 @@ const ROWS = join(RACINE, 'data', 'rows');
 const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
 const ID = SOUS_BIENVENUE.rencontre.annonce;
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-edition-annonces-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('edition-annonces');
 let compteur = 0;
 /** Une base vivante neuve et son service d'édition. */
 function nouvelle() {

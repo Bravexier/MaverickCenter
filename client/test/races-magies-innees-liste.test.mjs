@@ -3,21 +3,20 @@
 // plus faire échouer tools/db/races_onglet.py --verifier (donc la mise à jour) ; une race que le site n'a pas touchée reste contrôlée comme à l'import.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { cpSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { appliquerJournal } from '../scripts/db-appliquer-edition.mjs';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { journalExporte } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
-const tmp = mkdtempSync(join(tmpdir(), 'maverick-r31-'));
-after(() => rmSync(tmp, { recursive: true, force: true }));
+const tmp = dossierTemporaire('r31');
 const verifier = (rows) => spawnSync('python3', ['-I', join(RACINE, 'tools', 'db', 'races_onglet.py'), '--verifier', '--rows', rows], { encoding: 'utf8', cwd: RACINE });
 
 test('R31 : liste changée sans la phrase, phrase réécrite sans la liste (même illisible) : races_onglet.py --verifier passe après rapatriement', { skip: sansPython }, () => {

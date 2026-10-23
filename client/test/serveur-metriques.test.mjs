@@ -5,20 +5,19 @@
 //   node --test test/serveur-metriques.test.mjs
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import {
   alertesDu, BALISE, BORNES_MS, CLASSES, classeDe, creerMetriques, empreinteDePile, estUnSuivi, instanceDuService, methodeNormalisee, navigateurDe,
   PAGES_PAR_HEURE, pageDuReferent, quantile, quantileDetaille, RETENTION, ROUTE_INCONNUE, routeNormalisee, SEUILS, statistiques,
 } from '../serveur/metriques.mjs';
 import { creerMesureSql, normaliserSql } from '../serveur/metriques-sql.mjs';
 import { RESSOURCES } from '../src/lib/ressources.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-metriques-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('metriques');
 let compteur = 0;
 const dossierNeuf = () => join(racine, `m${++compteur}`);
 const JOUR = 86_400_000;

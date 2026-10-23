@@ -6,10 +6,9 @@
 // Base vivante neuve dans un dossier temporaire ; les essais d'écriture portent sur des éléments créés ici (noms absents de la base) et lisent l'état
 // avant d'écrire.
 import assert from 'node:assert/strict';
-import { copyFileSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { copyFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { creerJournalDuService } from '../serveur/journal-du-service.mjs';
@@ -20,13 +19,13 @@ import { ENTITES, TABLES } from '../src/lib/edition-modele.mjs';
 import { ficheVide, TABLES_FICHES } from '../src/lib/fiche-format.mjs';
 import { capacitesDe, MODULES, RESSOURCES, segmentDeCle, tablesDe } from '../src/lib/ressources.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { operationsDe, requeteDe } from './aide-openapi.mjs';
 
 /** Images écrites par Chromium (test/portrait.test.mjs) : WebP, JPEG et PNG de 3 × 2 pixels. */
 const IMAGES = JSON.parse(readFileSync(new URL('./fixtures/portraits.json', import.meta.url), 'utf8'));
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-api-v1-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('api-v1');
 const REGLES = cheminBase({ sansExemples: false });
 const { chemin } = preparerBaseVivante({ regles: REGLES, dossier: join(racine, 'db') });
 const db = ouvrirBaseVivante(chemin);

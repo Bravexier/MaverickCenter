@@ -7,11 +7,10 @@
 // propre copie de la base vivante.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { cpSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { appliquerJournal } from '../scripts/db-appliquer-edition.mjs';
 import { appliquerMiseAJour } from '../scripts/mise-a-jour-regles.mjs';
@@ -24,14 +23,14 @@ import { cheminBase } from '../src/lib/donnees.mjs';
 import { attributEd, ENTITES, lireAttributEd, TABLES } from '../src/lib/edition-modele.mjs';
 import { PAGES_SERVIES_PAR_L_EQUIPEMENT } from '../src/lib/equipement.mjs';
 import { chargerPanneau, ordonnerBlocs, ordresApresDeplacement } from '../src/lib/panneaux-regles-db.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { copieSansNoteEnAttente, versionALaRevision } from './aide-mise-a-jour.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 const ROWS = join(RACINE, 'data', 'rows');
 const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-edition-panneaux-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('edition-panneaux');
 let compteur = 0;
 /** Une base vivante neuve et son service d'édition. */
 function nouvelle() {

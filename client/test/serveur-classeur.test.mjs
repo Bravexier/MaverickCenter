@@ -5,10 +5,8 @@
 // l'identifiant de la feuille au journal ou aux métriques ; la route (garde des écritures, réponse binaire, promesse) ; puis le vrai serveur HTTP.
 import assert from 'node:assert/strict';
 import { request } from 'node:http';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import {
   ANNULE, ErreurClasseur, GOOGLE_INJOIGNABLE, GOOGLE_LENT, GOOGLE_LIMITE, INTROUVABLE, LIEN_ATTENDU, NOM_PAR_DEFAUT, NON_PARTAGEE, OCTETS_MAX, PAR_MINUTE,
@@ -19,9 +17,9 @@ import { demarrerService } from '../serveur/service.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { modeleXlsx } from '../src/lib/fiche-modele.mjs';
 import { TYPE_XLSX } from '../src/lib/google-sheets.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-classeur-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('classeur');
 
 const ID = '1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-abcd';
 const LIEN = `https://docs.google.com/spreadsheets/d/${ID}/edit?usp=sharing#gid=0`;

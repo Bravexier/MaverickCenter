@@ -4,11 +4,10 @@
 // des lots enregistrés dans la même seconde sont rejoués dans leur ordre par db:appliquer-edition comme par la mise à jour des règles.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { appendFileSync, cpSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { appliquerJournal } from '../scripts/db-appliquer-edition.mjs';
 import { appliquerMiseAJour } from '../scripts/mise-a-jour-regles.mjs';
@@ -18,13 +17,13 @@ import { journalExporte } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { jsonCommePython } from '../src/lib/json-python.mjs';
 import { emettrePage, lirePages } from '../src/lib/pages-db.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { copieSansNoteEnAttente, versionALaRevision } from './aide-mise-a-jour.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 const ROWS = join(RACINE, 'data', 'rows');
 const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
-const tmp = mkdtempSync(join(tmpdir(), 'maverick-rapatriement-pages-'));
-after(() => rmSync(tmp, { recursive: true, force: true }));
+const tmp = dossierTemporaire('rapatriement-pages');
 
 /** La base reconstruite depuis un dossier de lignes (scripts/db-build.mjs). */
 function construire(rows, nom) {

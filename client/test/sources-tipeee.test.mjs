@@ -4,13 +4,13 @@
 // testée par tipeee.test.mjs.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { instantaneAEcrire, problemesDInstantane, texteDInstantane } from '../../tools/sources/tipeee.mjs';
 import { CHEMIN_INSTANTANE, REPERE, URL_API, bienvenueDeTipeee, instantaneValide } from '../src/lib/tipeee.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 const OUTIL = join(RACINE, 'tools', 'sources', 'tipeee.mjs');
@@ -20,8 +20,7 @@ const avecHtml = (html) => JSON.stringify({ contentv2: { translations: { fr: { h
 const AUTRE = avecHtml(`<p>${REPERE}</p><p>Un texte changé.</p>`);
 const SANS_REPERE = avecHtml('<p>Une présentation sans la partie.</p>');
 
-const dossier = mkdtempSync(join(tmpdir(), 'sources-tipeee-'));
-after(() => rmSync(dossier, { recursive: true, force: true }));
+const dossier = dossierTemporaire('sources-tipeee');
 let n = 0;
 const fichier = (contenu) => { const chemin = join(dossier, `f-${(n += 1)}.json`); if (contenu !== undefined) writeFileSync(chemin, contenu); return chemin; };
 const outil = (...args) => spawnSync(process.execPath, ['--no-warnings', OUTIL, ...args], { encoding: 'utf8', cwd: RACINE });

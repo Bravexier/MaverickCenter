@@ -4,14 +4,14 @@
 // (lib/historique-site.mjs) ; une ligne que le site a créée n'a pas de note.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, readFileSync, writeFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { cheminBase, ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const racine = trouverRacine();
 const client = fileURLToPath(new URL('../', import.meta.url));
@@ -96,11 +96,11 @@ test('la remarque est cherchable (plein texte des entités) et visible dans l’
   assert.ok(trouve.includes(s.id), `${s.id} : « ${requete} »`);
 });
 
-test('db:check détecte une remarque qui a perdu une note', () => {
+test('db:check détecte une remarque qui a perdu une note', (t) => {
   // une note d'un sort que le site n'a jamais touché : une ligne de l'historique serait comparée à sa remarque d'import, qui masquerait le défaut injecté
   const note = db.prepare("SELECT entite_id, cellule FROM note_cellule WHERE entite_table = 'sort' ORDER BY entite_id = ? DESC, entite_id").all(LASER_NOIR)
     .find((n) => !historique.touchee('sort', { id: n.entite_id }));
-  const dir = mkdtempSync(join(tmpdir(), 'remarque-'));
+  const dir = dossierTemporaire('remarque', { t });
   const copie = join(dir, 'm.db');
   cpSync(cheminBase({ sansExemples: false }), copie);
   const d = new DatabaseSync(copie);
@@ -111,8 +111,8 @@ test('db:check détecte une remarque qui a perdu une note', () => {
   assert.ok(r.stdout.includes(`remarque : la note sort:${note.entite_id} (${note.cellule}) ne figure pas`), r.stdout);
 });
 
-test('db:migrate : refuse un schéma précédent dont la version ne précède pas celle du schéma courant', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'migrer-'));
+test('db:migrate : refuse un schéma précédent dont la version ne précède pas celle du schéma courant', (t) => {
+  const dir = dossierTemporaire('migrer', { t });
   const rows = join(dir, 'rows');
   cpSync(join(racine, 'data', 'rows'), rows, { recursive: true });
   writeFileSync(join(dir, 'm.sql'), 'ALTER TABLE sort ADD COLUMN x TEXT;\n');

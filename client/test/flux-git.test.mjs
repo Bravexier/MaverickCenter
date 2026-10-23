@@ -3,16 +3,16 @@
 // hotfix → master avec refusion dans dev, conflits, contrôles des créations de branches et des PR.
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { after, describe, test } from 'node:test';
+import { describe, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
   avantHebergement, avantLaUn, brancheASupprimer, comparerVersions, demandeMajeure, etiquette, etiquetteDeVersion, familleDe, incrementer, livrableDe, modeDeEtiquette,
   planifier, poserVersionJson, PREMIERE_VERSION_HEBERGEE, typeDeFusion, verifierCreation, verifierPR,
 } from '../../tools/flux-git/regles.mjs';
 import { modeDuSite } from '../src/lib/mode-site.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const CLI = fileURLToPath(new URL('../../tools/flux-git/cli.mjs', import.meta.url));
 
@@ -157,8 +157,7 @@ describe('règles pures', () => {
 });
 
 // ---------------------------------------------------------------- dépôts temporaires
-const racine = mkdtempSync(join(tmpdir(), 'flux-git-test-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('flux-git');
 const ENV = { ...process.env, GIT_CONFIG_NOSYSTEM: '1', HOME: racine, GIT_AUTHOR_NAME: 'Test', GIT_AUTHOR_EMAIL: 't@example.org', GIT_COMMITTER_NAME: 'Test', GIT_COMMITTER_EMAIL: 't@example.org' };
 delete ENV.GITHUB_ACTIONS;
 delete ENV.GITHUB_OUTPUT;

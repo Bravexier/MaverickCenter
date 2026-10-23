@@ -4,10 +4,8 @@
 // La base vivante part des règles de data/rows, où le site de dev a pu créer des races : les données d'essai ont des noms absents de la base, et les
 // effectifs attendus (ordre, matrices) sont lus avant d'écrire.
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { A_COMPLETER } from '../serveur/edition.mjs';
@@ -16,9 +14,9 @@ import { chargerRaces } from '../src/lib/races-db.mjs';
 import { relationsDeRace } from '../src/lib/race-relations.mjs';
 import { raceKind } from '../src/lib/race-kinds.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-edition-races-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('edition-races');
 const { chemin } = preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, 'db') });
 const db = ouvrirBaseVivante(chemin);
 const service = { base: () => db, etat: () => ({}), edition: true };

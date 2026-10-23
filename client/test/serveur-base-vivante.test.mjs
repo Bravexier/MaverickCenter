@@ -5,11 +5,10 @@
 // 0045) est convertie (CONVERSIONS), jamais perdue sans le dire ; si une autre ligne ne passe pas (race, classe, magie…, colonne, contrainte), rien ne
 // change et l'erreur dit pourquoi. Tout se passe dans des dossiers temporaires, à partir de la base construite depuis data/rows.
 import assert from 'node:assert/strict';
-import { copyFileSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { copyFileSync, existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { after, test } from 'node:test';
+import { beforeEach, test } from 'node:test';
 import {
   ARCHIVES_GARDEES, DOSSIER_ARCHIVES, ErreurBaseVivante, FICHIER_BASE, FICHIER_ETAT, TABLES_EDITION, TABLES_FICHES, TABLES_VIVANTES, clesRompues, empreinteFichier, lireEtat,
   ouvrirBaseVivante, preparerBaseVivante,
@@ -18,14 +17,18 @@ import { enregistrer } from '../serveur/edition.mjs';
 import { lireFiche, listerFiches } from '../serveur/fiches.mjs';
 import { cheminBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { COLONNES_RETIREES, TABLES_RETIREES, gainsDeLaProgression } from '../src/lib/fiche-format.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-vivante-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('vivante');
 const REGLES = cheminBase({ sansExemples: false });
 const INSTANT = '2026-10-10T12:00:00Z';
 
+// chaque cas écrit ses copies de la base dans son propre dossier, supprimé dès qu'il a fini, réussi ou non (toutes gardées jusqu'à la fin du
+// fichier, elles dépassaient 2,3 Go)
+let dossierDuCas = racine;
+beforeEach((t) => { dossierDuCas = dossierTemporaire('vivante-cas', { t }); });
 let compteur = 0;
-const nouveau = (prefixe) => join(racine, `${prefixe}-${(compteur += 1)}`);
+const nouveau = (prefixe) => join(dossierDuCas, `${prefixe}-${(compteur += 1)}`);
 /** Copie des règles modifiée par `sql` (clés étrangères non contrôlées : seules celles de la section 13 comptent ici) : une « nouvelle livraison ». */
 function regles(sql = '') {
   const f = `${nouveau('regles')}.db`;

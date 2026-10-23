@@ -5,10 +5,9 @@
 // Docker n'est pas lancé ici : les fichiers sont lus et comparés ; volume.sh est exécuté pour de bon sur une arborescence factice.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { chmodSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
 import { ARCHIVES_GARDEES } from '../serveur/base-vivante.mjs';
@@ -16,6 +15,7 @@ import {
   categorieDuFichierDuSite, CATEGORIES_HOTE, creerMetriques, ORIGINES_PAR_HEURE, PAGES_PAR_HEURE, PLAFOND_METRIQUES_OCTETS, REPARTITION, REPARTITION_HOTE,
 } from '../serveur/metriques.mjs';
 import { LANCEMENTS_PAR_JOUR } from '../serveur/notes-de-version.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const lire = (chemin) => readFileSync(fileURLToPath(new URL(`../../${chemin}`, import.meta.url)), 'utf8');
 const COMPOSES = ['deploy/docker-compose.yml', 'deploy/installateur/docker-compose.yml'];
@@ -127,8 +127,7 @@ const skipVolume = !(sait('bash', ['--version']) && sait('du', ['-s', '-B1', '.'
 /** Clés que seul l'hôte voit : entre les catégories comptées par le service et « Système et autres » (serveur/metriques.mjs#REPARTITION_HOTE). */
 const CLES_DE_L_HOTE = CATEGORIES_HOTE;
 
-const racine = mkdtempSync(join(tmpdir(), 'deploy-volume-test-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('deploy-volume');
 let n = 0;
 
 /** Un fichier de `octets` octets non nuls (alloués pour de bon, comme un vrai fichier). */
@@ -329,12 +328,12 @@ test('volume.sh : sans dossier partagé (NAS, une instance), les métriques de d
   assert.equal(somme(elements(k, { instance: 'maverick-center' })), du(lien) - du(join(lien, 'metriques')) + du(join(a.d, 'ailleurs', 'db') + '/'));
 });
 
-test('volume.sh : une mesure sur un autre disque va dans hors_disque, jamais dans la jauge ; sortie introuvable refusée sans rien écrire', { skip: skipVolume }, () => {
+test('volume.sh : une mesure sur un autre disque va dans hors_disque, jamais dans la jauge ; sortie introuvable refusée sans rien écrire', { skip: skipVolume }, (t) => {
   const a = arborescence();
   // /dev/shm (tmpfs) : un autre disque que le dossier temporaire, quand la machine en a un
   let ailleurs = null;
   try {
-    if (statSync('/dev/shm').dev !== statSync(a.d).dev) ailleurs = mkdtempSync('/dev/shm/deploy-volume-');
+    if (statSync('/dev/shm').dev !== statSync(a.d).dev) ailleurs = dossierTemporaire('deploy-volume', { t, dans: '/dev/shm' });
   } catch {
     ailleurs = null;
   }

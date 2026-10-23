@@ -3,11 +3,9 @@
 // l'édition (serveur/edition-journal.mjs). Base vivante temporaire ; les données d'essai (classe, spécialité, dons, métier) sont créées ici sous des noms
 // absents de la base, le sort est lu dans la base.
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { enregistrer } from '../serveur/edition.mjs';
 import { ErreurJournal, ouvrirLot, TABLES_INTERDITES } from '../serveur/edition-journal.mjs';
@@ -17,9 +15,9 @@ import {
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { jourDuRetrait, TABLES_FICHES } from '../src/lib/fiche-format.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-fiches-retraits-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('fiches-retraits');
 const { chemin } = preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, 'db') });
 const db = ouvrirBaseVivante(chemin);
 const ligne = (sql, ...p) => db.prepare(sql).get(...p);
