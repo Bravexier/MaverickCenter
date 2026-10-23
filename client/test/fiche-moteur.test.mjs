@@ -2,10 +2,9 @@
 // les vues de la base (v_personnage_niveau, v_personnage_controle, par le service sur une base vivante temporaire), les personnages fil rouge du
 // guide (lib/guide-fil-rouge.mjs) et les décisions du propriétaire (R2, R3, R6, R7, R15, R16, R19, R20, R23, R24, R25, R26, R27, R28, R32, R33, R34, R35, R37, R38, R39, R41, R45) ; les résistances, contre les tables de la base (magie_resistance, resistance_palier).
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { enregistrerFiche } from '../serveur/fiches.mjs';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
@@ -23,11 +22,11 @@ import { FIL_ROUGE, chargerFilRouge } from '../src/lib/guide-fil-rouge.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que la page le reçoit
-const racine = mkdtempSync(join(tmpdir(), 'maverick-moteur-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('moteur');
 const vivante = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: racine }).chemin);
 
 /**

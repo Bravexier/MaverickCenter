@@ -4,10 +4,9 @@
 // propriétaire (décision R106, migration 0065, registre 0065-couts-des-sorts-tranches.json), la case « Coût » du corps Markdown des pages de magie, le
 // service (refus d'un second coût dans « Coût », d'un NM dans « Coût secondaire ») et le rejeu d'un lot noté avant 0063.
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { rejouerLeJournal } from '../serveur/edition.mjs';
@@ -17,6 +16,7 @@ import { cheminBase, ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { analyserCout, mentionneUnNm } from '../src/lib/sort-analyse.mjs';
 import { coutEnUneCase, ecritUnSecondCout, repartirLeCout } from '../src/lib/sort-cout.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const RACINE = trouverRacine();
 const registre = JSON.parse(readFileSync(join(RACINE, 'data', 'migrations', '0063-cout-secondaire.json'), 'utf8'));
@@ -165,8 +165,7 @@ test('corps Markdown des pages de magie : la case « Coût » écrit les deux co
 
 // --- Service (site de dev) et rejeu du journal ------------------------------------------------------------------------------------------------
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-cout-secondaire-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('cout-secondaire');
 let compteur = 0;
 const vivante = () => ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, `b${(compteur += 1)}`) }).chemin);
 const base = vivante();

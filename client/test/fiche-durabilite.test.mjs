@@ -6,10 +6,8 @@
 // arme cassée, les crans perdus dans les dégâts avec Vieille Branche (décision R107), choix d'une autre arme, d'une autre composition ou amélioration,
 // et l'aller-retour par le service.
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { enregistrerFiche, lireFiche } from '../serveur/fiches.mjs';
 import { durabiliteDeLArme } from '../src/lib/arme-champs.mjs';
@@ -21,6 +19,7 @@ import {
   armesApresChoix, armesApresReglage, armesValables, degatsDArme, degatsDArmeDuMoment, donsAcquis, durabiliteAEcrire, durabiliteDArme, durabiliteMaxDArme,
 } from '../src/lib/fiche-moteur.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que la page le reçoit
@@ -205,8 +204,7 @@ test('à l’enregistrement : chaque solidité bornée à son maximum (armesVala
   assert.deepEqual(armesValables(regles, {}), []);
 });
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-durabilite-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('durabilite');
 
 test('le service garde la solidité du moment : 0 (cassée), un cran, ou rien (à son maximum)', () => {
   const vivante = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: racine }).chemin);

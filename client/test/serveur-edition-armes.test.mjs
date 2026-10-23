@@ -3,10 +3,8 @@
 // effet d'une amélioration, ligne TOTAL) et la ligne du corps Markdown de la page ; le rejeu du journal (livraison) refait le même corps. Les tests lisent
 // l'état avant d'écrire : les essais du site de dev peuvent avoir modifié ces lignes.
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { rejouerLeJournal } from '../serveur/edition.mjs';
@@ -21,9 +19,9 @@ import { desSelonLaForce, famillesAuChoix, famillesDuNom, lireLigneDeClasse } fr
 import { titreDeSectionDeFamille } from '../src/lib/corps-armes.mjs';
 import { famillesDuLecteur } from '../serveur/edition-maitrises.mjs';
 import { sourcesJustes } from './aide-maitrise-arme.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-edition-armes-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('edition-armes');
 let compteur = 0;
 const vivante = () => ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, `b${(compteur += 1)}`) }).chemin);
 const db = vivante();

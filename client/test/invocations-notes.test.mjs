@@ -9,11 +9,11 @@
 // des autres classeurs (Magie V8, Classes V7).
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { cpSync, existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const script = fileURLToPath(new URL('../../tools/sheets/invocations.py', import.meta.url));
 const bestiaire = fileURLToPath(new URL('../src/content/wiki/bestiaire', import.meta.url));
@@ -90,8 +90,8 @@ test('invocations.py --verifier : les pages du dépôt sont celles que le vrai d
 // de la page sans rapport avec la note, altérée, est vue par --verifier.
 test('invocations.py sur le vrai dump et une copie des vraies pages : dump sans notes refusé (G127 conservée), ligne altérée vue par --verifier (INVOCATION_DUMP)', {
   skip: sansPython || (!dumpReel && 'INVOCATION_DUMP non défini (dump hors dépôt)'),
-}, () => {
-  const dir = mkdtempSync(join(tmpdir(), 'invocations-reel-'));
+}, (t) => {
+  const dir = dossierTemporaire('invocations-reel', { t });
   const out = join(dir, 'wiki');
   cpSync(bestiaire, join(out, 'bestiaire'), { recursive: true });
   const pages = join(out, 'bestiaire');
@@ -302,7 +302,7 @@ const PAR_PAGE = {
 };
 
 function preparer(dump = avecNotes()) {
-  const dir = mkdtempSync(join(tmpdir(), 'invocations-notes-'));
+  const dir = dossierTemporaire('invocations-notes');
   writeFileSync(join(dir, 'invocation.json'), JSON.stringify(dump));
   return { dir, out: join(dir, 'wiki'), pages: join(dir, 'wiki', 'bestiaire'), dump: join(dir, 'invocation.json') };
 }

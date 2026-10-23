@@ -5,15 +5,15 @@
 // niveau en deux totaux, entraînement et durabilité des armes : migration 0045 (décisions R71, R73, R74). Les tests écrivent dans une COPIE de la base
 // construite : data/rows garde ces tables vides.
 import assert from 'node:assert/strict';
-import { copyFileSync, existsSync, mkdtempSync, readFileSync } from 'node:fs';
+import { copyFileSync, existsSync, readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { cheminBase, trouverRacine } from '../src/lib/donnees.mjs';
+import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const racine = trouverRacine();
-const copie = join(mkdtempSync(join(tmpdir(), 'maverick-personnages-')), 'maverick.db');
+const copie = fichierTemporaire('maverick.db', 'personnages');
 copyFileSync(cheminBase({ sansExemples: false }), copie);
 const db = new DatabaseSync(copie);
 db.exec('PRAGMA foreign_keys = ON');

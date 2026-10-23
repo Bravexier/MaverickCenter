@@ -2,9 +2,8 @@
 // Le gabarit (components/MagiePage.astro) affiche ces données telles quelles : on teste ici ce qui lui arrive (formes, regroupements, liens),
 // sur le contenu RÉEL de la base (data/rows) comme sur des cas limites.
 import assert from 'node:assert/strict';
-import { copyFileSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { copyFileSync, readFileSync, rmSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -33,6 +32,7 @@ import {
 } from '../src/lib/sort-format.mjs';
 import { sansBonus } from '../src/lib/sort-maitrise.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const textes = (segs) => segs.map((s) => (s.modif ? `(${s.texte})` : s.texte)).join(' ');
 
@@ -269,7 +269,7 @@ test('la remarque du sort (note de cellule) vient de sort.remarque : une remarqu
 });
 
 test('le chargeur ne dépend pas de la table note_cellule (simple trace, appelée à disparaître)', () => {
-  const dossier = mkdtempSync(join(tmpdir(), 'maverick-magies-'));
+  const dossier = dossierTemporaire('magies');
   try {
     const copie = join(dossier, 'sans-note.db');
     copyFileSync(cheminBase({ sansExemples: false }), copie);

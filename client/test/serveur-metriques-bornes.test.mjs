@@ -6,20 +6,19 @@
 // SQLite et gardées une minute, images de la base vivante de l'autre instance.
 //   node --test test/serveur-metriques-bornes.test.mjs
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync, StatementSync } from 'node:sqlite';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import {
   BORNES_MS, BORNES_PAGE_MS, classeDe, creerMetriques, disqueDe, EXPORT_LIGNES_MAX, LIGNES_LUES_MAX, lireReleveDeLHote, METHODES, ORIGINES_PAR_HEURE, PAGE_AUTRES,
   pageDuSite, pagesDuSite, quantileDetaille, RELEVE_HOTE, ROUTE_INCONNUE, routeGardee, routeNormalisee, SCHEMA_METRIQUES,
 } from '../serveur/metriques.mjs';
 import { creerMesureSql } from '../serveur/metriques-sql.mjs';
 import { RESSOURCES } from '../src/lib/ressources.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-metriques-bornes-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('metriques-bornes');
 let compteur = 0;
 const dossierNeuf = () => join(racine, `m${++compteur}`);
 const CHROME = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36';

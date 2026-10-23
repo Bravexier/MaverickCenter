@@ -4,10 +4,8 @@
 // La base vivante part des règles de data/rows, où le site de dev a pu créer ou renommer : les données d'essai ont des noms absents de la base, et
 // l'état attendu (ordre, races hybrides sans classe raciale) est lu avant d'écrire.
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { enregistrer as enregistrerLot, racesHybridesSansClasse } from '../serveur/edition.mjs';
@@ -19,9 +17,9 @@ import { alternativesDe, placeNouvelleLigne } from '../src/lib/dons-edition.mjs'
 import { resumeDeDon } from '../src/lib/corps-classes.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { ficheVide, jourDuRetrait, TABLES_FICHES } from '../src/lib/fiche-format.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-edition-classes-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('edition-classes');
 const { chemin } = preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, 'db') });
 const db = ouvrirBaseVivante(chemin);
 const service = { base: () => db, etat: () => ({}), edition: true };

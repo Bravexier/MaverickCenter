@@ -5,16 +5,16 @@
 // copie (MAVERICK_ROOT : la base qu'ils construisent par lib/donnees.mjs vient de ses lignes).
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, cpSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { copyFileSync, cpSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { appliquerJournal } from '../scripts/db-appliquer-edition.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { enregistrer } from '../serveur/edition.mjs';
 import { journalExporte } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 const CLIENT = join(RACINE, 'client');
@@ -23,8 +23,7 @@ const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' 
 const FICHIERS = ['corps-classes', 'serveur-edition-corps', 'serveur-edition-classes', 'classes-dons', 'potentiel-illimite', 'serveur-edition-rejeu-corps']
   .map((f) => `test/${f}.test.mjs`);
 
-const tmp = mkdtempSync(join(tmpdir(), 'maverick-suppressions-d11-'));
-after(() => rmSync(tmp, { recursive: true, force: true }));
+const tmp = dossierTemporaire('suppressions-d11');
 
 test('une spécialité et un don de chaque forme supprimés depuis le site puis rapatriés : les tests qui lisent la base restent verts', { skip: sansPython, timeout: 900_000 }, () => {
   const vivante = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(tmp, 'db') }).chemin);

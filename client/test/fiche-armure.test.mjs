@@ -6,10 +6,8 @@
 // (le script de la page l'importe : deux scripts de page ne partagent jamais un module) : comparé ici sur TOUTES les armures × améliorations 0 à 5. Puis :
 // parties, bornage, partie cassée, choix d'une autre armure ou amélioration, et l'aller-retour par le service.
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { enregistrerFiche, lireFiche } from '../serveur/fiches.mjs';
 import { forgerArmure } from '../src/lib/armure-forge.mjs';
@@ -19,6 +17,7 @@ import {
   ARMURE_ENTIERE, armureApresChoix, partiesApresReglage, partiesDeLArmure, partiesValables, soliditeMaxDeLArmure,
 } from '../src/lib/fiche-moteur.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que la page le reçoit
@@ -103,8 +102,7 @@ test('R95 (« Suppression de la création par pièces ») : la page « Armures �
   for (const garde of ['Une armure a besoin de 2 matériaux pour être fabriquée', 'Cran de solidité uni', 'perdre un seul morceau de l\'armure']) assert.ok(corps.includes(garde), garde);
 });
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-armure-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('armure');
 
 test('aller-retour par le service : l’armure, son amélioration et la solidité de ses parties s’enregistrent et se relisent telles quelles', () => {
   const vivante = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, 'db') }).chemin);

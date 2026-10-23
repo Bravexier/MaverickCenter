@@ -5,14 +5,14 @@
 // d'avant toute édition (lib/historique-site.mjs, et pages_du_site pour le vérificateur) ; le reste contrôle l'état courant.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { cpSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { NAV } from '../src/lib/nav.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const racine = trouverRacine();
 const db = ouvrirBase({ sansExemples: false });
@@ -36,9 +36,8 @@ test('chaque ligne du document est dans une page, et les pages sont celles du d�
   assert.match(r.stdout, /^116 pages du Codex conformes au document( \(\d+ modifiées depuis par le site de dev, contrôlées dans leur état d'import\))?$/m);
 });
 
-test('une page modifiée par le site de dev : contrôlée dans son état d’import (historique), gardée telle quelle par une nouvelle écriture', () => {
-  const tmp = mkdtempSync(join(tmpdir(), 'maverick-codex-'));
-  after(() => rmSync(tmp, { recursive: true, force: true }));
+test('une page modifiée par le site de dev : contrôlée dans son état d’import (historique), gardée telle quelle par une nouvelle écriture', (t) => {
+  const tmp = dossierTemporaire('codex', { t });
   cpSync(join(racine, 'client', 'src', 'content', 'wiki', 'lore'), join(tmp, 'lore'), { recursive: true });
   const fichier = join(tmp, 'lore', 'les-divinites.md');
   const original = readFileSync(fichier, 'utf8');
@@ -86,9 +85,8 @@ test('une page modifiée par le site de dev : contrôlée dans son état d’imp
   assert.equal(readFileSync(fichier, 'utf8'), modifiee);
 });
 
-test('mots-clés du Codex : seuls ceux du vocabulaire, dans son écriture (un import n’en crée pas : migration 0056) ; un mot-clé renommé, fusionné ou retiré par le site (migration 0043) : ses pages comptent comme modifiées, sans comparer leurs mots-clés', () => {
-  const tmp = mkdtempSync(join(tmpdir(), 'maverick-codex-mots-'));
-  after(() => rmSync(tmp, { recursive: true, force: true }));
+test('mots-clés du Codex : seuls ceux du vocabulaire, dans son écriture (un import n’en crée pas : migration 0056) ; un mot-clé renommé, fusionné ou retiré par le site (migration 0043) : ses pages comptent comme modifiées, sans comparer leurs mots-clés', (t) => {
+  const tmp = dossierTemporaire('codex-mots', { t });
   cpSync(join(racine, 'client', 'src', 'content', 'wiki', 'lore'), join(tmp, 'lore'), { recursive: true });
   const sql = (v) => (v === null ? 'NULL' : `'${String(v).replace(/'/g, "''")}'`);
   const ligne = (rang, table, cle, operation, avant, apres) =>

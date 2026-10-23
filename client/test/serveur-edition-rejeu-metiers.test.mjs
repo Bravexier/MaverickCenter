@@ -3,17 +3,15 @@
 // départ. Rejoué sur les règles d'aujourd'hui (livraison dans la base vivante, db:appliquer-edition, mise à jour des règles), ces liens sont refaits
 // depuis les champs du métier, et la sortie dit quelles tables ont ainsi été complétées.
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { rejouerLeJournal } from '../serveur/edition.mjs';
 import { chargerJournal, journalExporte, ouvrirLot } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-rejeu-metiers-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('rejeu-metiers');
 let compteur = 0;
 const base = () => ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, `b${(compteur += 1)}`) }).chemin);
 

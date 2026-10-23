@@ -6,11 +6,10 @@
 // sur les pages : les règles des tests ont leurs mots-clés d'essai (test/aide-mots-cles.mjs).
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { cpSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { appliquerJournal } from '../scripts/db-appliquer-edition.mjs';
 import { appliquerMiseAJour } from '../scripts/mise-a-jour-regles.mjs';
@@ -24,14 +23,14 @@ import { attributEd, ENTITES, lireAttributEd, TABLES } from '../src/lib/edition-
 import { MOTS_CLES_PROTEGES } from '../src/lib/mots-cles.mjs';
 import { lirePages } from '../src/lib/pages-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { copieSansNoteEnAttente, versionALaRevision } from './aide-mise-a-jour.mjs';
 import { ajouterLesMotsClesDEssai, DEFINITION_D_ESSAI, ETIQUETTE_D_ESSAI, reglesAvecDesMotsClesDEssai } from './aide-mots-cles.mjs';
 import { formesNonCanoniques, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
-const racine = mkdtempSync(join(tmpdir(), 'maverick-edition-chronologie-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('edition-chronologie');
 let compteur = 0;
 // les règles des tests : celles de data/rows et des mots-clés d'essai posés sur des pages (avec ou sans les pages d'exemple, comme le site de dev)
 const regles = new Map();

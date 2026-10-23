@@ -2,17 +2,16 @@
 // ses valeurs avant et après ; quand une livraison refait la base vivante, les modifications en attente sont rejouées sur les nouvelles règles, celles
 // que les règles contiennent déjà passent « integree », celles que les règles contredisent passent « conflit » (le lot entier est alors annulé).
 import assert from 'node:assert/strict';
-import { copyFileSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { copyFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { FICHIER_BASE, ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { ErreurJournal, chargerJournal, journalExporte, lignesEnAttente, ouvrirLot, rejouer } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-journal-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('journal');
 const REGLES = cheminBase({ sansExemples: false });
 let compteur = 0;
 const nouveau = (prefixe) => join(racine, `${prefixe}-${(compteur += 1)}`);

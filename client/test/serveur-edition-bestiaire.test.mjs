@@ -8,10 +8,9 @@
 // capacité s'ajoute à la fin, se retire, change de préfixe (ep_min) ; une valeur propre à une carte se règle (valeurs_de_capacite), la valeur commune l'efface.
 // Le test lit l'état avant d'écrire et crée des noms absents de la base (docs/serveur.md, « Mise à jour »).
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { rejouerLeJournal } from '../serveur/edition.mjs';
@@ -27,9 +26,9 @@ import { comparerBases } from '../src/lib/notes-de-version.mjs';
 import { empreinte, PORTRAIT_MAX, resumeDuPortrait } from '../src/lib/portrait.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { lireTables } from '../serveur/notes-de-version.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-edition-bestiaire-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('edition-bestiaire');
 const REGLES = cheminBase({ sansExemples: false });
 let n = 0;
 const baseNeuve = () => ouvrirBaseVivante(preparerBaseVivante({ regles: REGLES, dossier: join(racine, `b${(n += 1)}`) }).chemin);

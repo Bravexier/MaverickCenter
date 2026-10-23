@@ -4,11 +4,10 @@
 // de même pour les blocs de description de la chronologie et ceux des panneaux de règles (blocNonSur), et après le rejeu du rapatriement
 // (db:appliquer-edition : texteNonSurApresLeRejeu).
 import assert from 'node:assert/strict';
-import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { cpSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { createMarkdownProcessor } from '@astrojs/markdown-remark';
 import { fileURLToPath } from 'node:url';
 import { appliquerJournal } from '../scripts/db-appliquer-edition.mjs';
@@ -21,6 +20,7 @@ import { journalExporte } from '../serveur/edition-journal.mjs';
 import { chargerPanneau } from '../src/lib/panneaux-regles-db.mjs';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { adresseDangereuse, fragmentsAjoutes, fragmentsDangereux, messageDeRefus } from '../src/lib/markdown-sur.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const processeur = await createMarkdownProcessor({ syntaxHighlight: false });
 const rendre = async (md) => (await processeur.render(md)).code;
@@ -97,8 +97,7 @@ test('les pages de la base : seul le bout de code de « Utiliser ce wiki » cont
 
 // --- service -------------------------------------------------------------------------------------------------------------------------------
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-markdown-sur-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('markdown-sur');
 
 test('service : un texte du guide qui ajoute du HTML brut ou un lien non sûr est refusé (400), la page ne change pas ; le texte échappé passe', () => {
   const db = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, 'db') }).chemin);

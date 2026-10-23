@@ -17,8 +17,7 @@
 //     arrête le script).
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -26,6 +25,7 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const script = fileURLToPath(new URL('../../tools/sheets/classes.py', import.meta.url));
 const wiki = fileURLToPath(new URL('../src/content/wiki', import.meta.url));
@@ -405,7 +405,7 @@ const TOTAL = NOTES_SYNTH.length;
 const SANS_NOTE = ['troubadour-menestrel', 'troubadour-prestation', 'troubadour-son-perturbant', 'troubadour-chant-double'];
 
 function preparer(dump = avecNotes()) {
-  const dir = mkdtempSync(join(tmpdir(), 'classes-notes-'));
+  const dir = dossierTemporaire('classes-notes');
   const chemin = join(dir, 'classes-v7.json');
   writeFileSync(chemin, JSON.stringify(dump));
   const out = join(dir, 'wiki');

@@ -5,14 +5,14 @@
 // Ces tests construisent la base dans un dossier temporaire et ne touchent ni data/rows ni var/.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { ORDRE_DES_RACES } from '../src/lib/race-kinds.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const racine = fileURLToPath(new URL('../../', import.meta.url));
 const client = fileURLToPath(new URL('../', import.meta.url));
@@ -23,7 +23,7 @@ const wiki = join(client, 'src', 'content', 'wiki');
 const node = (script, args = []) => spawnSync(process.execPath, ['--no-warnings', join(client, 'scripts', script), ...args], { encoding: 'utf8' });
 const pages = (...args) => spawnSync('python3', ['-I', join(racine, 'tools', 'db', 'pages_md.py'), ...args], { encoding: 'utf8' });
 const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
-const dir = mkdtempSync(join(tmpdir(), 'db-donnees-'));
+const dir = dossierTemporaire('db-donnees');
 
 const fichiersMd = (type) => readdirSync(join(wiki, type)).filter((f) => f.endsWith('.md')).length;
 const nbPagesMd = readdirSync(wiki).reduce((n, type) => n + fichiersMd(type), 0);

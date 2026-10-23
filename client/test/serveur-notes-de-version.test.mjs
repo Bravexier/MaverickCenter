@@ -4,8 +4,7 @@
 // GitHub), l'annulation, et le lancement terminé quand sa note arrive dans les règles.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { copyFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { copyFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { after, test } from 'node:test';
@@ -16,10 +15,10 @@ import {
   actualiserLancement, CONFIRMATION, creerGithub, DUREE_MAX_RUN, INTERVALLE_SUIVI, libererLot, lireLancement, lireLot, WORKFLOW,
 } from '../serveur/notes-de-version.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { versionLibre } from './aide-mise-a-jour.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-notes-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('notes');
 const regles = cheminBase({ sansExemples: false });
 const dossier = join(racine, 'db');
 const { chemin } = preparerBaseVivante({ regles, dossier });

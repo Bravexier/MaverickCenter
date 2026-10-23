@@ -4,11 +4,11 @@
 // cellule, et l'outil refuse tout ce qui changerait un chiffre, un signe ou plus qu'un mot.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const script = fileURLToPath(new URL('../../tools/sheets/corriger-dump.py', import.meta.url));
 const registreReel = fileURLToPath(new URL('../../tools/sheets/corrections.json', import.meta.url));
@@ -31,7 +31,7 @@ const dumpDe = () => ({
 const correction = (extra = {}) => ({ onglet: 'Mercenaire', cellule: 'AC22', avant: 'Chasseur prime', apres: 'Chasseur de primes', nature: 'grammaire', note: 'La bannière dit « CHASSEUR DE PRIMES ».', ...extra });
 
 function lancer(corrections, dump = dumpDe(), { id = 'classes-v7', extra = [] } = {}) {
-  const dir = mkdtempSync(join(tmpdir(), 'corr-'));
+  const dir = dossierTemporaire('corr');
   mkdirSync(dir, { recursive: true });
   const ledger = join(dir, 'corrections.json');
   const entree = join(dir, 'classes-v7.json');

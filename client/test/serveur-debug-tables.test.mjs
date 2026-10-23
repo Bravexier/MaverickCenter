@@ -12,11 +12,10 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { copyFileSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { copyFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import {
@@ -32,6 +31,7 @@ import { demarrerService } from '../serveur/service.mjs';
 import { cheminBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { empreinte } from '../src/lib/portrait.mjs';
 import { lireSchema } from '../src/lib/schema-doc.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 /** Images écrites par Chromium (test/portrait.test.mjs) : WebP, JPEG et PNG de 3 × 2 pixels. */
 const IMAGES = JSON.parse(readFileSync(new URL('./fixtures/portraits.json', import.meta.url), 'utf8'));
@@ -40,8 +40,7 @@ const octetsDe = (dataUrl) => Buffer.from(dataUrl.slice(dataUrl.indexOf(',') + 1
 /** Un morceau du base64 d'une image (40 à 120 caractères après la virgule) : jamais dans une réponse. */
 const morceauDe = (image) => image.slice(image.indexOf(',') + 41, image.indexOf(',') + 121);
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-debug-tables-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('debug-tables');
 const REGLES = cheminBase({ sansExemples: false });
 const { chemin } = preparerBaseVivante({ regles: REGLES, dossier: join(racine, 'db') });
 const db = ouvrirBaseVivante(chemin);

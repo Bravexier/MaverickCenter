@@ -4,10 +4,8 @@
 // liste des niveaux ; l'API REST ; le rejeu du journal (livraison) refait les mêmes lignes et les mêmes corps. Les tests lisent l'état avant d'écrire et
 // prennent des noms absents de la base.
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { rejouerLeJournal } from '../serveur/edition.mjs';
@@ -17,9 +15,9 @@ import { celluleDePotion, tableauDuPalier } from '../src/lib/corps-potions.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { ENTITES, TABLES } from '../src/lib/edition-modele.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-edition-consommables-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('edition-consommables');
 let compteur = 0;
 const vivante = () => ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, `b${(compteur += 1)}`) }).chemin);
 const db = vivante();

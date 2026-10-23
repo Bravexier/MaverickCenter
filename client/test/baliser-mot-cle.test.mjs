@@ -6,10 +6,9 @@
 // la Corruption (tools/glossaire/corruption.json : « CR », décisions R103 et R140 ; définitions selon R141 à R143 et R146).
 //   node --test test/baliser-mot-cle.test.mjs
 import assert from 'node:assert/strict';
-import { cpSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { cpSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { baliseDans, baliser, nomsAvecLeMot, PHRASES_D_UNE_LIGNE, RUBRIQUES_DECOUPEES, TEXTES } from '../scripts/baliser-mot-cle.mjs';
 import { appliquerJournal } from '../scripts/db-appliquer-edition.mjs';
@@ -19,10 +18,10 @@ import { TABLES, typeDeTexte } from '../src/lib/edition-modele.mjs';
 import { formesNonCanoniques, texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { GABARIT_DE_CARTE, SENS_DEFENSE } from '../src/lib/monstre-champs.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const ROWS = fileURLToPath(new URL('../../data/rows', import.meta.url));
-const tmp = mkdtempSync(join(tmpdir(), 'maverick-baliser-test-'));
-after(() => rmSync(tmp, { recursive: true, force: true }));
+const tmp = dossierTemporaire('baliser');
 
 test('textes réécrits : les champs « texte » et « markdown » du site de dev et quatre phrases d’une ligne ; ni nom, ni titre, ni définition', () => {
   for (const [table, colonne] of PHRASES_D_UNE_LIGNE) assert.equal(TABLES[table]?.colonnes[colonne]?.type, 'ligne', `${table}.${colonne}`);

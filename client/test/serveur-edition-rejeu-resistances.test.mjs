@@ -4,8 +4,7 @@
 // 'double_resistance' (équivalent sûr) et met en conflit, avec un message qui dit quoi refaire, un lot qui note un titre d'avant 0075.
 // Les lots « d'avant » sont fabriqués depuis ce que le service note aujourd'hui, remis dans la forme d'avant 0075 (comme dans le journal du site de dev).
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { after, test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
@@ -14,9 +13,9 @@ import { rejouerLeJournal } from '../serveur/edition.mjs';
 import { TITRES_D_AVANT_0075 } from '../serveur/edition-bestiaire.mjs';
 import { rejouer } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-rejeu-resistances-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('rejeu-resistances');
 let compteur = 0;
 const ouvertes = [];
 after(() => ouvertes.forEach((b) => b.isOpen && b.close()));

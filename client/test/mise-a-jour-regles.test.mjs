@@ -7,11 +7,10 @@
 // ces tests (code 7) ; ce refus a son propre test, sur une note posée par le test.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { appendFileSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { appliquerMiseAJour, ErreurMiseAJour, TABLES_DE_LA_NOTE, verifierLot } from '../scripts/mise-a-jour-regles.mjs';
 import { traiter } from '../serveur/api.mjs';
@@ -20,6 +19,7 @@ import { journalExporte } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { versionDeLivraison } from '../src/lib/notes-de-version.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { copieSansNoteEnAttente, versionALaRevision } from './aide-mise-a-jour.mjs';
 
 // les versions, comme dans le workflow : celle de dev (package.json) et celle de la production (ici HEAD) ; jamais écrites en dur, pour que le test
@@ -27,8 +27,7 @@ import { copieSansNoteEnAttente, versionALaRevision } from './aide-mise-a-jour.m
 const VERSION_DEV = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 const VERSION_HEAD = versionALaRevision('HEAD');
 const ATTENDUE = versionDeLivraison(VERSION_DEV, VERSION_HEAD);
-const racine = mkdtempSync(join(tmpdir(), 'maverick-maj-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('maj');
 
 // un journal réel : une modification faite par le service du site de dev (un bonus différent de celui en place : le site a pu le changer déjà)
 const { chemin } = preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, 'db') });

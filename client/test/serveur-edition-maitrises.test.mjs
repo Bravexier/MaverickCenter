@@ -5,8 +5,6 @@
 // (sourcesRefaitesParLeLot, hors journal). La base vivante part des règles de data/rows, où le site de dev a pu modifier ou supprimer : les dons d'essai
 // sont créés, les lignes modifiées sont lues avant d'écrire.
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
@@ -16,10 +14,10 @@ import { TABLES_DES_SOURCES } from '../serveur/edition-maitrises.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { idDeSourceDeClasse } from '../src/lib/maitrise-arme.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { sourcesEtLecteur, sourcesJustes } from './aide-maitrise-arme.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-edition-maitrises-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('edition-maitrises');
 let compteur = 0;
 const ouvertes = [];
 after(() => ouvertes.forEach((b) => b.isOpen && b.close()));

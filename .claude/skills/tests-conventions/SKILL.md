@@ -19,4 +19,11 @@ user-invocable: false
 - **Textes balisés.** Un test qui compare un texte « tel qu'écrit » à une sortie qui retire les balises du glossaire lit ce texte sans elles (`texteSansBalises`), ou rend ses balises comme le middleware (`htmlAvecMotsCles`) (`zone-mots-cles`).
 - **Vocabulaire.** Les tests du vocabulaire créent leurs mots-clés d'essai (`test/aide-mots-cles.mjs`).
 - **Base d'essai.** Un test écrit dans une copie de la base, jamais dans `var/maverick.db` ni dans `data/rows`.
+- **Dossiers temporaires.** Un test fait le ménage quand il a fini, même en cas d'échec (demande du propriétaire, 2026-10-23). Ses dossiers et fichiers temporaires (copies de base, exports, faux dépôts) viennent de `test/aide-dossier-temporaire.mjs` :
+  - `dossierTemporaire(prefixe, { t })` le supprime à la fin du test `t` (contexte d'un test, ou de `beforeEach` pour un dossier par cas) ;
+  - sans `t`, il est supprimé à la sortie du processus du fichier, après ses hooks `after` ;
+  - `fichierTemporaire(nom, prefixe, options)` donne un chemin dans un dossier neuf, `dans` place le dossier sous un autre ;
+  - `variablesTemporaires(dossier)` donne le dossier de l'aide à un script, un outil ou un service lancé par le test (`TMPDIR`).
+  - Le garde-fou `test/dossiers-temporaires.test.mjs` refuse dans `client/test/` tout `mkdtemp`, `os.tmpdir()`, chemin `/tmp`, `/var/tmp` ou `/dev/shm`, lecture de `TMPDIR` (destructuration comprise), `tempfile` dans un `.py` ou `mktemp` dans un `.sh` hors de l'aide. Une exception s'y inscrit avec sa raison.
+  - Un fichier qui crée beaucoup de copies (`serveur-base-vivante`) en prend un dossier par cas.
 - **Jamais** sauter, désactiver ni mettre en quarantaine un test pour obtenir du vert.

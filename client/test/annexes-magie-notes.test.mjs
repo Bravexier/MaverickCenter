@@ -11,11 +11,11 @@
 // pour le jour où une note apparaîtra dans l'un de ces onglets.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const script = fileURLToPath(new URL('../../tools/sheets/annexes-magie.py', import.meta.url));
 const wikiGuide = fileURLToPath(new URL('../src/content/wiki/guide', import.meta.url));
@@ -211,7 +211,7 @@ function section(texte, intertitre) {
 }
 
 function preparer({ v8 = magieV8(), hyper = modeHyper() } = {}) {
-  const dir = mkdtempSync(join(tmpdir(), 'annexes-notes-'));
+  const dir = dossierTemporaire('annexes-notes');
   writeFileSync(join(dir, 'magie-v8.json'), JSON.stringify(v8));
   writeFileSync(join(dir, 'mode-hyper.json'), JSON.stringify(hyper));
   return { dir, out: join(dir, 'wiki'), dumps: [join(dir, 'magie-v8.json'), join(dir, 'mode-hyper.json')] };

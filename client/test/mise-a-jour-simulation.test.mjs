@@ -6,25 +6,24 @@
 // Chaque cas part d'une copie de data/rows sans note en attente : le test tient pendant une mise à jour comme hors mise à jour.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
 import { CONTROLES } from '../scripts/mise-a-jour-github.mjs';
 import { appliquerMiseAJour, ErreurMiseAJour, notesEnAttente, TABLES_DE_LA_NOTE, verifierLot } from '../scripts/mise-a-jour-regles.mjs';
 import { fabriquerLot, notesEnAttenteDans, PHRASE_DU_GUIDE, TEXTE_DE_LA_SIMULATION } from '../scripts/mise-a-jour-simulation.mjs';
 import { trierVersions } from '../src/lib/notes-de-version.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { copieSansNoteEnAttente, versionALaRevision, versionLibre } from './aide-mise-a-jour.mjs';
 
 const SCRIPT = fileURLToPath(new URL('../scripts/mise-a-jour-simulation.mjs', import.meta.url));
 const CI = fileURLToPath(new URL('../../.github/workflows/ci.yml', import.meta.url));
 const VERSION_DEV = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 const VERSION_HEAD = versionALaRevision('HEAD');
-const racine = mkdtempSync(join(tmpdir(), 'maverick-simulation-test-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('simulation');
 
 const copie = (nom) => copieSansNoteEnAttente(join(racine, nom), { versionProduction: VERSION_HEAD }).rows;
 /** La base reconstruite depuis des lignes (scripts/db-build.mjs), ouverte en lecture. */

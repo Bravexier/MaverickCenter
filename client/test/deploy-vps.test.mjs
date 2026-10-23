@@ -3,11 +3,11 @@
 // bon dans des dossiers temporaires, avec de faux « caddy » et « systemctl ». Le premier vrai lancement est celui du serveur.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const vps = fileURLToPath(new URL('../../deploy/vps/', import.meta.url));
 const installateur = readFileSync(fileURLToPath(new URL('../../deploy/installateur/installateur.sh', import.meta.url)), 'utf8');
@@ -16,8 +16,7 @@ const have = (cmd, arg = '--version') => spawnSync(cmd, [arg], { stdio: 'ignore'
 const skipBash = !have('bash') && 'bash indisponible';
 const skipExec = (!(have('bash') && have('openssl', 'version')) && 'bash ou openssl indisponible') || false;
 
-const racine = mkdtempSync(join(tmpdir(), 'deploy-vps-test-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('deploy-vps');
 
 test('les scripts sont de la syntaxe bash valide', { skip: skipBash }, () => {
   for (const f of ['durcir.sh', 'outils.sh', 'instances.sh', 'volume.sh']) {

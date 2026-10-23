@@ -5,11 +5,10 @@
 // différent de celui en place, un conflit fabriqué sur la valeur en place.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { cpSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { appliquerJournal } from '../scripts/db-appliquer-edition.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
@@ -17,10 +16,10 @@ import { enregistrer } from '../serveur/edition.mjs';
 import { journalExporte } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
-const tmp = mkdtempSync(join(tmpdir(), 'maverick-rapatriement-'));
-after(() => rmSync(tmp, { recursive: true, force: true }));
+const tmp = dossierTemporaire('rapatriement');
 const rows = join(tmp, 'data', 'rows');
 cpSync(join(RACINE, 'data', 'rows'), rows, { recursive: true });
 const lire = (dossier) => Object.fromEntries(readdirSync(dossier).map((f) => [f, readFileSync(join(dossier, f), 'utf8')]));

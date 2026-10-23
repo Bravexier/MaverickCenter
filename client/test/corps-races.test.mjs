@@ -4,16 +4,16 @@
 //   - tools/db/races_onglet.py (le --verifier de test/races-onglet.test.mjs) relit exactement les tables modifiées dans le corps recalculé.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { copyFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import {
   celluleMd, corpsDeRace, corpsDeRaceCreee, escInline, etatAvecLigne, etatDeRace, magiesInneesDeRace, mdTexte, raceConcernee, resumeDeRace, valeurCanonique,
 } from '../src/lib/corps-races.mjs';
 import { cheminBase, ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { TABLES } from '../src/lib/edition-modele.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const executer = (sql, ...p) => db.prepare(sql).all(...p).map((l) => ({ ...l }));
@@ -272,8 +272,7 @@ test('état d’avant refait depuis celui d’après et la ligne d’avant du jo
 });
 
 // --- relecture par tools/db/races_onglet.py : les tables modifiées se relisent dans les corps recalculés ------------------------------------------
-const dossier = mkdtempSync(join(tmpdir(), 'corps-races-'));
-after(() => rmSync(dossier, { recursive: true, force: true }));
+const dossier = dossierTemporaire('corps-races');
 const HARNAIS = `
 import sys, json, sqlite3
 sys.dont_write_bytecode = True

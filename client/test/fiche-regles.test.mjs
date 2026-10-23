@@ -2,8 +2,7 @@
 // pages ; les dons à choix sont les groupes de v_capacite_exclusive (comme la page de chaque classe), les classes et spécialités magiques celles des
 // décisions R6 et R7 (corrections de la fiche auto, docs/fiche-auto.md, point 4).
 import assert from 'node:assert/strict';
-import { cpSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { cpSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
@@ -22,6 +21,7 @@ import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { porteeDeLArme } from '../src/lib/arme-champs.mjs';
 import { desSelonLaForce } from '../src/lib/maitrise-arme.mjs';
 import { ORDRE_DES_RACES } from '../src/lib/race-kinds.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const regles = chargerReglesDeFiche(db);
@@ -171,7 +171,7 @@ test('sources de maîtrise d’arme (décisions R148, R151, R154) : les parts de
 });
 
 test('sources de maîtrise d’arme incohérentes : le build s’arrête (une famille non maîtrisable, R45 ; une source à deux parts à choisir ; un don qui suit une classe sans exactement une maîtrise au choix, R151)', () => {
-  const dossier = mkdtempSync(join(tmpdir(), 'maverick-fiche-regles-maitrises-'));
+  const dossier = dossierTemporaire('fiche-regles-maitrises');
   try {
     const copie = (sql, ...parametres) => {
       const chemin = join(dossier, `${Math.random().toString(36).slice(2)}.db`);
@@ -451,7 +451,7 @@ test('résistances (tableau « Résistance / Faiblesse » de la fiche) : les six
 });
 
 test('glossaire des mots-clés (D2) : les règles de la fiche lisent les textes comme les découpages — le texte écrit, sinon le libellé, jamais une balise ni une définition', () => {
-  const dossier = mkdtempSync(join(tmpdir(), 'maverick-fiche-balises-'));
+  const dossier = dossierTemporaire('fiche-balises');
   try {
     const chemin = join(dossier, 'maverick.db');
     cpSync(cheminBase({ sansExemples: false }), chemin);

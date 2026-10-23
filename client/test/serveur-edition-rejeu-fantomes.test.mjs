@@ -5,8 +5,7 @@
 // aucune clé étrangère rompue, une création dont la suppression est en conflit existe entière, et il ne dépend pas d'une reconstruction intermédiaire.
 // Les tests lisent l'état avant d'écrire et prennent des noms absents de la base (le site de dev peut l'avoir modifiée).
 import assert from 'node:assert/strict';
-import { cpSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { cpSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { after, test } from 'node:test';
 import { appliquerJournal } from '../scripts/db-appliquer-edition.mjs';
@@ -16,10 +15,10 @@ import { rejouerLeJournal } from '../serveur/edition.mjs';
 import { journalExporte } from '../serveur/edition-journal.mjs';
 import { MOTS_CLES_PROTEGES } from '../src/lib/mots-cles.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { dossierTemporaire, fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { reglesAvecDesMotsClesDEssai } from './aide-mots-cles.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-rejeu-fantomes-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('rejeu-fantomes');
 let compteur = 0;
 // les règles : data/rows et les mots-clés d'essai posés sur des pages (test/aide-mots-cles.mjs : depuis la migration 0056, le vocabulaire importé n'est
 // presque plus posé sur les pages)
@@ -157,7 +156,7 @@ test('sans citation : un événement créé puis supprimé dans un lot en confli
   assert.equal(existe(premiere.base, 'SELECT 1 FROM evenement WHERE id = ?', e), true, '1re reconstruction');
   const seconde = rebatir(premiere.base, corrigerLeBloc(bloc));
   assert.equal(existe(seconde.base, 'SELECT 1 FROM evenement WHERE id = ?', e), true, '2e reconstruction');
-  const rows = join(mkdtempSync(join(racine, 'rows-')), 'rows');
+  const rows = fichierTemporaire('rows', 'rows', { dans: racine });
   cpSync(REGLES.rows, rows, { recursive: true });
   const res = appliquerJournal(journalExporte(seconde.base), { rows });
   assert.equal(res.ecrit, true, JSON.stringify(res.conflits));
@@ -196,7 +195,7 @@ test('fusions en chaîne (S dans N créé, puis N dans M) que les règles neuves
 });
 
 const rapatrier = (base) => {
-  const rows = join(mkdtempSync(join(racine, 'rows-')), 'rows');
+  const rows = fichierTemporaire('rows', 'rows', { dans: racine });
   cpSync(REGLES.rows, rows, { recursive: true });
   return { ...appliquerJournal(journalExporte(base), { rows }), rows };
 };

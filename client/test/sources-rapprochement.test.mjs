@@ -4,17 +4,17 @@
 // ignorée avec sa raison, chaque mot d'une cellule citée est dans la base, et les notes de cellule sont les mêmes de part et d'autre. Un écart fait
 // échouer le test avec le relevé complet.
 import assert from 'node:assert/strict';
-import { copyFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { copyFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import {
   adresse, avecCorrections, changements, citations, comparable, enA1, feuillesJson, formuleLisible, instantanesDuRegistre, lireRegistre, morceaux, nombreDEcarts, nombresDe,
   plage, rapport, rapprocher, remplacer, sansCorrections,
 } from '../../tools/sources/rapprocher.mjs';
 import { texteDInstantane } from '../../tools/sources/instantane.mjs';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
+import { dossierTemporaire, fichierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const racine = new URL('../../', import.meta.url);
 const lire = (chemin) => JSON.parse(readFileSync(new URL(chemin, racine), 'utf8'));
@@ -64,7 +64,7 @@ test('corrections d’orthographe dans les deux sens : occurrence par occurrence
     'Une race mêlant araignée');
 });
 
-test('chaque classeur du registre est rapproché ou en cours, avec son instantané et son registre', () => {
+test('chaque classeur du registre est rapproché ou en cours, avec son instantané et son registre', (t) => {
   for (const c of registre.classeurs) {
     assert.ok(['rapproche', 'en_cours'].includes(c.etat), `${c.titre} : état « ${c.etat} »`);
     const reg = lireRegistre(cheminDe(c.ignorer));
@@ -78,7 +78,7 @@ test('chaque classeur du registre est rapproché ou en cours, avec son instantan
   }
   assert.ok(registre.classeurs.some((c) => c.etat === 'rapproche'));
   assert.throws(() => lireRegistre(cheminDe('tools/sources/ignorer/absent.json')), /registre introuvable/);
-  const inconnu = join(mkdtempSync(join(tmpdir(), 'registre-')), 'r.json');
+  const inconnu = fichierTemporaire('r.json', 'registre', { t });
   writeFileSync(inconnu, JSON.stringify({ regles: [], ignores: [] }));
   assert.throws(() => lireRegistre(inconnu), /section\(s\) inconnue\(s\) : ignores/);
 });
@@ -126,8 +126,7 @@ test('le rapprochement voit un mot changé, un nombre changé et une cellule ajo
 });
 
 // Le site de dev est la source de ce qu'il modifie : une copie de la base où le site a supprimé ou modifié un don.
-const dossier = mkdtempSync(join(tmpdir(), 'rapprochement-'));
-after(() => rmSync(dossier, { recursive: true, force: true }));
+const dossier = dossierTemporaire('rapprochement');
 const copieAvec = (nom, ecrire) => {
   const fichier = join(dossier, `${nom}.db`);
   copyFileSync(cheminBase({ sansExemples: false }), fichier);

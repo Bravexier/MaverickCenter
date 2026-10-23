@@ -6,8 +6,7 @@
 // (sourcesAvantLaSuppression). Le scénario : une base vivante, ses lots écrits par le vrai service d'édition (dont un noté comme avant 0076, sans ses
 // parts), puis des règles livrées qui changent les mêmes lignes autrement, écrites par le même service sur une autre base et recopiées table par table.
 import assert from 'node:assert/strict';
-import { copyFileSync, cpSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { copyFileSync, cpSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { after, before, test } from 'node:test';
@@ -17,9 +16,10 @@ import { conflitsDuJournal, resoudreLeConflit } from '../serveur/edition-conflit
 import { TABLES_DES_SOURCES } from '../serveur/edition-maitrises.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { idDeSourceDeClasse } from '../src/lib/maitrise-arme.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { sourcesEtLecteur, sourcesJustes } from './aide-maitrise-arme.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-conflits-maitrises-'));
+const racine = dossierTemporaire('conflits-maitrises');
 const ouvertes = [];
 after(() => {
   for (const b of ouvertes) if (b.isOpen) b.close();

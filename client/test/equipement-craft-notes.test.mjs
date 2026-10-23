@@ -17,13 +17,13 @@
 //     fils, cellule fusionnée, refus (cellule vide, onglet non publié, note sans place), contrôle de couverture et de placement.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const dossierPages = fileURLToPath(new URL('../src/content/wiki/ressources', import.meta.url));
 const equipement = fileURLToPath(new URL('../../tools/sheets/equipement.py', import.meta.url));
@@ -426,7 +426,7 @@ const ONGLETS_EQUIPEMENT = ['Équipement inventaire', 'Armes', 'Armures', 'Boucl
 const ONGLETS_DIVERS = ['Familiers', 'Maison', 'Machine de GuerreSiège', 'Maladie V2', 'Maladie', 'Fiche de tour'];
 
 function lancer(script, feuilles) {
-  const dossier = mkdtempSync(join(tmpdir(), 'equipement-craft-'));
+  const dossier = dossierTemporaire('equipement-craft');
   const dump = join(dossier, 'ressources-craft.json');
   const sortie = join(dossier, 'wiki');
   writeFileSync(dump, JSON.stringify({ sheets: feuilles }));

@@ -4,11 +4,10 @@
 // sur des règles qui ont changé la page autrement (une livraison), il n'est jamais écarté pour cela ; un lot noté avant que l'édition ne suive le corps
 // (sans modification de page) voit le corps de ses pages refait au rejeu, dans data/rows comme dans la base vivante.
 import assert from 'node:assert/strict';
-import { copyFileSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { copyFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { FICHIER_BASE, ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { colonneDerivee, enregistrer, rejouerLeJournal } from '../serveur/edition.mjs';
 import { chargerJournal, journalExporte, ouvrirLot } from '../serveur/edition-journal.mjs';
@@ -16,9 +15,9 @@ import { morceauxDuCorpsDeMagie } from '../src/lib/corps-magies.mjs';
 import { corpsDeRace, etatDeRace } from '../src/lib/corps-races.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-rejeu-corps-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('rejeu-corps');
 const REGLES = cheminBase({ sansExemples: false });
 let compteur = 0;
 const dossier = () => join(racine, `b${(compteur += 1)}`);

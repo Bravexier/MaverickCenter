@@ -7,18 +7,17 @@
 //   node --test test/serveur-metriques-http.test.mjs
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { REPARTITION } from '../serveur/metriques.mjs';
 import { demarrerService } from '../serveur/service.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { RESSOURCES } from '../src/lib/ressources.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-metriques-http-'));
-after(() => rmSync(racine, { recursive: true, force: true }));
+const racine = dossierTemporaire('metriques-http');
 const REGLES = cheminBase({ sansExemples: false });
 const CHROME = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36';
 const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';

@@ -3,10 +3,8 @@
 // avec une dague, moitié pour un Bimane, cumulables), les dégâts d’une arme avec ses bonus (équipement et dons passifs) et sa solidité (décision R74 ; le détail : test/fiche-durabilite.test.mjs), le Mode Hyper, les avantages et
 // inconvénients des postures (décision R47) ; le portrait et la ceinture enregistrés par le service (migration 0031).
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { enregistrerFiche, lireFiche } from '../serveur/fiches.mjs';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
@@ -14,6 +12,7 @@ import { ficheVide } from '../src/lib/fiche-format.mjs';
 import { armesApresChoix, attaqueADeuxArmes, choixEnAttente, degatsDArme, donDeBase, durabiliteDArme, durabiliteMaxDArme, maitrisesParFamille, modeHyperDe } from '../src/lib/fiche-moteur.mjs';
 import { forgerArme } from '../src/lib/arme-forge.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que la page le reçoit
@@ -184,9 +183,8 @@ test('choix à faire : l’ethnie d’une race choisie qui en a', () => {
   assert.deepEqual(choixEnAttente(regles, { ...ficheVide('Vide') }), [], 'une fiche neuve n’a encore rien à choisir');
 });
 
-test('portrait et ceinture (migration 0031) : enregistrés par le service avec la fiche, relus tels quels ; la base borne le cadrage et la ceinture', () => {
-  const racine = mkdtempSync(join(tmpdir(), 'maverick-refonte-'));
-  after(() => rmSync(racine, { recursive: true, force: true }));
+test('portrait et ceinture (migration 0031) : enregistrés par le service avec la fiche, relus tels quels ; la base borne le cadrage et la ceinture', (t) => {
+  const racine = dossierTemporaire('refonte', { t });
   const vivante = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: racine }).chemin);
   const image = `data:image/webp;base64,${'A'.repeat(2000)}`;
   const fiche = {

@@ -6,8 +6,7 @@
 //   node --test test/tables-de-la-base.test.mjs
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { cpSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
@@ -23,6 +22,7 @@ import { lireSchema } from '../src/lib/schema-doc.mjs';
 import {
   TABLES_DERIVEES, TABLES_DES_NOTES, TABLES_DU_JOURNAL, TABLES_HORS_REGLES, TRACES_TELLES_QUELLES,
 } from '../src/lib/tables-de-la-base.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 const SECTIONS = lireSchema(readFileSync(join(RACINE, 'data', 'schema.sql'), 'utf8'));
@@ -58,7 +58,7 @@ test('textesDeLaBase : ni les sections 13 à 15, ni les tables dérivées, ni le
 });
 
 test('db:check : une balise d’un lien du Markdown reprise dans `lien.ancre`, ou d’un écart entre sources, n’est pas contrôlée ; la même dans une case des règles est refusée', () => {
-  const dossier = mkdtempSync(join(tmpdir(), 'maverick-tables-de-la-base-'));
+  const dossier = dossierTemporaire('tables-de-la-base');
   try {
     const copie = join(dossier, 'maverick.db');
     cpSync(cheminBase({ sansExemples: false }), copie);

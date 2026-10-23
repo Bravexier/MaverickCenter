@@ -5,8 +5,7 @@
 // supprimées. Le site de dev réel n'est pas joignable : tout se prouve ici sur une copie, le journal écrit par le vrai service d'édition, puis une
 // livraison (des règles changées) qui refait la base vivante et met ses lots en conflit.
 import assert from 'node:assert/strict';
-import { copyFileSync, cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { copyFileSync, cpSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { after, before, test } from 'node:test';
@@ -23,8 +22,9 @@ import { cheminBase } from '../src/lib/donnees.mjs';
 import { colonneMasquee, nomDeColonne, nomDeTable } from '../src/lib/libelles-de-la-base.mjs';
 import { decouperCorps } from '../src/lib/markdown-edition.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
-const racine = mkdtempSync(join(tmpdir(), 'maverick-conflits-'));
+const racine = dossierTemporaire('conflits');
 const ouvertes = [];
 after(() => {
   for (const b of ouvertes) if (b.isOpen) b.close();
