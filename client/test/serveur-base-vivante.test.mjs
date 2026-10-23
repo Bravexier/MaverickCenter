@@ -1064,6 +1064,119 @@ test('migration 0076 : une base d’avant sans dés, dont une fiche n’a qu’u
   assert.equal(valeur(chemin, 'SELECT count(*) AS n FROM personnage_maitrise_choix').n, 0);
 });
 
+/**
+ * La base vivante comme avant la migration 0081 : personnage_arme d'alors (une arme du catalogue obligatoire, l'élément posé dessus et l'amélioration de
+ * l'élément, data/schema.sql d'avant), sans la vue des contrôles qui la lit (la reconstruction ne lit que les tables de l'ancienne base). Les anciennes
+ * lignes d'amélioration de pièce élémentaire d'arme n'y sont plus (les règles copiées sont celles d'aujourd'hui) : leur niveau se lit dans leur identifiant.
+ */
+function enBaseDAvant0081(chemin) {
+  const db = new DatabaseSync(chemin);
+  try {
+    db.exec(`DROP VIEW v_personnage_controle; DROP TABLE personnage_arme;
+      CREATE TABLE personnage_arme (
+        personnage_id                TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+        rang                         INTEGER NOT NULL CHECK (rang IN (1, 2)),
+        arme_id                      TEXT    NOT NULL REFERENCES arme(id),
+        materiau_id                  TEXT    REFERENCES materiau_arme(ressource_id),
+        amelioration_id              TEXT    REFERENCES amelioration_equipement(id),
+        arme_elementaire_id          TEXT    REFERENCES arme_elementaire(id),
+        amelioration_elementaire_id  TEXT    REFERENCES amelioration_equipement(id),
+        effet_en_plus                TEXT,
+        durabilite                   INTEGER CHECK (durabilite >= 0),
+        PRIMARY KEY (personnage_id, rang)
+      ) STRICT, WITHOUT ROWID;`);
+  } finally {
+    db.close();
+  }
+}
+
+test('migration 0081 : une base vivante d’avant est reprise ; un élément du type de l’arme la transforme (niveau de l’ancienne amélioration de l’élément, durabilité bornée), un autre type est retiré, une amélioration d’élément seule aussi ; chaque perte notée, datée (R167)', () => {
+  assert.deepEqual(COLONNES_RETIREES.personnage_arme, ['amelioration_elementaire_id']);
+  const dossier = nouveau('db');
+  const { chemin } = preparerBaseVivante({ regles: regles(), dossier });
+  remplir(chemin);
+  enBaseDAvant0081(chemin);
+  const ARC = 'ressources/armes#arme:arc:arc';
+  const EPEE = 'ressources/armes#arme:epees:epee-longue';
+  const ARC_DE_SANG = 'ressources/pieces-elementaires#arme-elementaire:arc:sang';
+  const TITANE = 'ressources/armures#materiau:titane';
+  const element = (n) => `ressources/pieces-elementaires#amelioration:arme-elementaire:${n}`;
+  const amelioration = (n) => `ressources/armes#amelioration:arme:${n}`;
+  const nom = (table, id) => valeur(REGLES, `SELECT nom FROM ${table} WHERE id = ?`, id).nom;
+  const ecrire = new DatabaseSync(chemin, { enableForeignKeyConstraints: false }); // les anciennes améliorations de pièce élémentaire n'existent plus
+  const inserer = ecrire.prepare(`INSERT INTO personnage_arme (personnage_id, rang, arme_id, materiau_id, amelioration_id, arme_elementaire_id, amelioration_elementaire_id,
+    effet_en_plus, durabilite) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+  ecrire.exec("UPDATE personnage SET notes = 'Mes notes' WHERE id = 'p1'");
+  // p1 : un arc de titane +3 porteur de l'élément Sang +5 (du type de l'arme), durabilité 9 ; une épée longue porteuse d'un élément d'arc (un autre type)
+  inserer.run('p1', 1, ARC, TITANE, amelioration(3), ARC_DE_SANG, element(5), 'Gravé', 9);
+  inserer.run('p1', 2, EPEE, null, amelioration(2), ARC_DE_SANG, element(2), null, 1);
+  // p2 : une amélioration d'élément sans élément ; un arc porteur de l'élément Sang sans amélioration de l'élément, durabilité 2
+  inserer.run('p2', 1, EPEE, TITANE, null, null, element(4), null, null);
+  inserer.run('p2', 2, ARC, null, amelioration(1), ARC_DE_SANG, null, null, 2);
+  ecrire.close();
+
+  const r = preparerBaseVivante({ regles: regles("UPDATE race SET nom = 'Humain (0081)' WHERE id = 'races/humain'"), dossier, instant: new Date('2026-10-23T09:00:00Z') });
+  assert.equal(r.refaite, true);
+  assert.equal(valeur(chemin, "SELECT count(*) AS n FROM pragma_table_info('personnage_arme') WHERE name = 'amelioration_elementaire_id'").n, 0, 'la colonne n’est plus là');
+  const db = lecture(chemin);
+  try {
+    assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
+    const armes = db.prepare('SELECT * FROM personnage_arme ORDER BY personnage_id, rang').all().map((l) => ({ ...l }));
+    assert.deepEqual(armes, [
+      // devenue l'arme élémentaire, au niveau de l'ancienne amélioration de l'élément (+5) ; durabilité bornée à 4 + 1 cran = 5, donc NULL (au maximum)
+      { personnage_id: 'p1', rang: 1, arme_id: null, materiau_id: null, amelioration_id: amelioration(5), arme_elementaire_id: ARC_DE_SANG, effet_en_plus: 'Gravé', durabilite: null, type_degats_choisi: null },
+      // un autre type : l'élément part, l'arme garde son amélioration et sa durabilité
+      { personnage_id: 'p1', rang: 2, arme_id: EPEE, materiau_id: null, amelioration_id: amelioration(2), arme_elementaire_id: null, effet_en_plus: null, durabilite: 1, type_degats_choisi: null },
+      { personnage_id: 'p2', rang: 1, arme_id: EPEE, materiau_id: TITANE, amelioration_id: null, arme_elementaire_id: null, effet_en_plus: null, durabilite: null, type_degats_choisi: null },
+      // sans amélioration de l'élément : aucun niveau ; la durabilité 2 reste (maximum 4)
+      { personnage_id: 'p2', rang: 2, arme_id: null, materiau_id: null, amelioration_id: null, arme_elementaire_id: ARC_DE_SANG, effet_en_plus: null, durabilite: 2, type_degats_choisi: null },
+    ]);
+    const [arc, epee, sang, titane] = [nom('arme', ARC), nom('arme', EPEE), nom('arme_elementaire', ARC_DE_SANG), nom('ressource', TITANE)];
+    const transforme = 'une pièce élémentaire transforme l’arme, qui perd toutes ses caractéristiques d’avant. Adaptez la fiche.';
+    const p1 = lireFiche(db, 'p1');
+    assert.equal(p1.notes, ['Mes notes',
+      `[23/10/2026] Retrait (règles modifiées) : l’arme « ${arc} » (ARC, arme 1, matériau « ${titane} », amélioration +3) est devenue l’arme élémentaire « ${sang} », avec l’amélioration +5 de son élément : ${transforme}`,
+      `[23/10/2026] Retrait (règles modifiées) : l’élément « ${sang} » de l’arme « ${epee} » (ÉPÉES, arme 2, amélioration de l’élément +2) n’est plus posé : une pièce élémentaire ne fait d’une arme que l’arme élémentaire du type de sa famille ; l’arme garde son matériau et son amélioration. Adaptez la fiche.`,
+    ].join('\n'));
+    assert.equal(p1.modifie_le, '2026-10-23T09:00:00Z');
+    const p2 = db.prepare("SELECT notes FROM personnage WHERE id = 'p2'").get();
+    // (dans l'ordre des retraits : nature, puis nom ; l'amélioration de l'arc d'origine notée)
+    assert.equal(p2.notes, [
+      `[23/10/2026] Retrait (règles modifiées) : l’arme « ${arc} » (ARC, arme 2, amélioration +1) est devenue l’arme élémentaire « ${sang} », sans amélioration : ${transforme}`,
+      `[23/10/2026] Retrait (règles modifiées) : l’amélioration de l’élément +4 de l’arme « ${epee} » (ÉPÉES, arme 1) est retirée : l’arme n’a pas d’élément, et une arme n’a plus qu’un niveau d’amélioration (le sien est gardé). Adaptez la fiche.`,
+    ].join('\n'), 'une fiche de joueur aussi');
+    // une arme élémentaire du Sang chez un personnage du Feu : signalée par la base (R167), jamais refusée
+    assert.ok(db.prepare("SELECT 1 FROM v_personnage_controle WHERE personnage_id = 'p1' AND regle = 'arme_elementaire_hors_magie' AND detail = ?").get(`1 : ${ARC_DE_SANG}`));
+  } finally {
+    db.close();
+  }
+  assert.deepEqual(r.fiches.map((f) => [f.fiche, f.retraits.length]), [['Aldric', 2], ['fiche de joueur n° 1', 2]], 'listées dans /api/etat avec les retraits');
+  assert.equal(valeur(r.archive, 'SELECT count(*) AS n FROM personnage_arme WHERE amelioration_elementaire_id IS NOT NULL').n, 3, 'l’archive garde les armes d’avant');
+  // une reconstruction suivante ne note rien de plus
+  const notes = valeur(chemin, "SELECT notes FROM personnage WHERE id = 'p1'").notes;
+  const suivante = preparerBaseVivante({ regles: regles("UPDATE race SET nom = 'Humain (suite)' WHERE id = 'races/humain'"), dossier });
+  assert.equal(suivante.refaite, true);
+  assert.equal(valeur(chemin, "SELECT notes FROM personnage WHERE id = 'p1'").notes, notes);
+  assert.equal(valeur(chemin, 'SELECT count(*) AS n FROM personnage_arme').n, 4);
+});
+
+test('migration 0081 : une arme élémentaire (arme_id NULL) n’est pas une arme supprimée du catalogue (R52) : une livraison qui supprime une arme ne la touche pas', () => {
+  const dossier = nouveau('db');
+  const { chemin } = preparerBaseVivante({ regles: regles(), dossier });
+  remplir(chemin);
+  const ecrire = new DatabaseSync(chemin);
+  ecrire.exec(`PRAGMA foreign_keys = ON;
+    INSERT INTO personnage_arme (personnage_id, rang, arme_id, arme_elementaire_id, amelioration_id) VALUES
+      ('p1', 1, NULL, 'ressources/pieces-elementaires#arme-elementaire:arc:feu', 'ressources/armes#amelioration:arme:2'),
+      ('p1', 2, 'ressources/armes#arme:epees:katana', NULL, NULL);`);
+  ecrire.close();
+  const r = preparerBaseVivante({ regles: regles("DELETE FROM page_entite WHERE entite_id = 'ressources/armes#arme:epees:katana'; DELETE FROM arme_degats WHERE arme_id = 'ressources/armes#arme:epees:katana'; DELETE FROM arme_prerequis WHERE arme_id = 'ressources/armes#arme:epees:katana'; DELETE FROM arme WHERE id = 'ressources/armes#arme:epees:katana'"), dossier, instant: new Date('2026-10-23T09:00:00Z') });
+  assert.equal(r.refaite, true);
+  assert.deepEqual(r.fiches.map((f) => f.retraits), [['l’arme « Katana » (ÉPÉES, arme 2)']]);
+  assert.deepEqual({ ...valeur(chemin, 'SELECT arme_elementaire_id, amelioration_id FROM personnage_arme WHERE personnage_id = ? AND rang = 1', 'p1') },
+    { arme_elementaire_id: 'ressources/pieces-elementaires#arme-elementaire:arc:feu', amelioration_id: 'ressources/armes#amelioration:arme:2' });
+});
+
 test('archives : seulement quand la base avait des lignes, les dernières gardées ; règles contenant des fiches ou absentes refusées', () => {
   const dossier = nouveau('db');
   preparerBaseVivante({ regles: REGLES, dossier });

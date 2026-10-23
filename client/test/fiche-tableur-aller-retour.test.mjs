@@ -195,11 +195,11 @@ function ficheRiche() {
       {
         rang: 1, arme_id: 'ressources/armes#arme:epees:epee-longue', materiau_id: trouve('materiaux_armes', (m) => m.nom === 'Acier', 'Acier').id,
         amelioration_id: trouve('ameliorations', (a) => a.cible === 'arme' && a.niveau === 3, 'amélioration 3').id,
-        arme_elementaire_id: 'ressources/pieces-elementaires#arme-elementaire:epee:feu',
-        amelioration_elementaire_id: trouve('ameliorations', (a) => a.cible === 'arme_elementaire' && a.niveau === 2, 'amélioration élémentaire 2').id,
         effet_en_plus: `Gravée au nom de sa mère\nTranchant : comme au premier jour\n${LONG}\n\n${LONG}`, durabilite: 1,
       },
-      { rang: 2, arme_id: 'ressources/armes#arme:dagues:dague', materiau_id: regles.materiau_arme_defaut, durabilite: 0 },
+      // une arme élémentaire de la magie acquise (décision R167), cassée, au +5 : son nom, son niveau et sa solidité reviennent
+      { rang: 2, arme_elementaire_id: 'ressources/pieces-elementaires#arme-elementaire:dague:glace',
+        amelioration_id: trouve('ameliorations', (a) => a.cible === 'arme' && a.niveau === 5, 'amélioration 5').id, durabilite: 0 },
     ],
     // l'entraînement (décision R104) : quinze compétences, le maximum (trop pour la case L42, la suite dans la note), deux textes libres
     entrainements: [...[['magie', 2], ['concentration', 10], ['observation', 10], ['distinction', 10], ['survie', 5], ['vigueur', 5], ['fermete', 5],
@@ -408,6 +408,30 @@ test('sort préparé (décision R115) : le sort, son jet de magie et sa posture 
   assert.deepEqual(lireSortPrepare('Boule de feu'), { nom: 'Boule de feu', jet: null, posture: null });
 });
 
+
+test('armes élémentaires (décision R167) : nom, niveau, solidité et type physique choisi de la bombe reviennent tels quels, point fixe', async () => {
+  const bombe = regles.armes_elementaires.find((a) => a.type_id === 'bombe' && a.magie_id === 'magies/magie-du-feu');
+  const arc = regles.armes_elementaires.find((a) => a.type_id === 'arc' && a.magie_id === 'magies/magie-du-feu');
+  const niveau = (n) => regles.ameliorations.find((a) => a.cible === 'arme' && a.niveau === n).id;
+  const f = {
+    ...ficheVide('Ignis R167'), race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-toundra', magie_innee_id: 'magies/magie-du-feu',
+    armes: [{ rang: 1, arme_elementaire_id: arc.id, amelioration_id: niveau(5), durabilite: 3 }, { rang: 2, arme_elementaire_id: bombe.id, amelioration_id: niveau(2), type_degats_choisi: 'taille' }],
+  };
+  const r = await allerRetour(commeLaPage(f));
+  assert.deepEqual(r.nonRepris, []);
+  assert.equal(r.cellules[ORDINATEUR.armes[1].nom], bombe.nom);
+  assert.ok(r.cellules[ORDINATEUR.armes[1].effet].split('\n').includes('Type de dégâts : Taille'));
+  assert.deepEqual(canonique(r.fiche).armes, canonique(f).armes);
+  assert.deepEqual(r.fiche.armes.map((a) => [a.arme_elementaire_id, a.amelioration_id, a.durabilite ?? null, a.type_degats_choisi ?? null]),
+    [[arc.id, niveau(5), 3, null], [bombe.id, niveau(2), null, 'taille']]);
+  assert.deepEqual(M.armeDeLaLigne(regles, r.fiche.armes[1]).types_degats, ['taille', 'magies/magie-du-feu']);
+  // point fixe
+  const encore = await allerRetour(commeLaPage(r.fiche));
+  assert.deepEqual(canonique(encore.fiche).armes, canonique(r.fiche).armes);
+  // sans choix : rien n'est écrit ni deviné
+  const sans = await allerRetour(commeLaPage({ ...f, armes: [{ rang: 2, arme_elementaire_id: bombe.id }] }));
+  assert.equal(sans.fiche.armes[0].type_degats_choisi ?? null, null);
+});
 
 test('entraînement (décision R104) : ses lignes reviennent compétences d’abord, puis textes, chacune telle quelle ; les choix d’acquis aussi', async () => {
   const f = { ...ficheRiche(), entrainements: [

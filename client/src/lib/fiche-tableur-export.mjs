@@ -42,7 +42,7 @@ import {
   EMPLACEMENTS_ACCESSOIRES, accessoiresDesSorts, acquisChoixGardes, alignementDe, artisanatDe, bouclierDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, budgetCaracteristiques,
   caracteristiquesCompletes, caracteristiquesDe, choixEnAttente, classesDe, competencesDe, degatsDArme, donDeBase, donsAcquis, donsDeRace, durabiliteDArme,
   armureParPartie, emplacementsDeSorts, maitriseDesSorts, maitrisesParFamille, modeHyperDe, nmDuSort, npmMax, partiesDeLArmure, progressionXp, resistancesDe, sortPrepare,
-  sourcesDeMaitrise, trouver, valeursDuMoment,
+  sourcesDeMaitrise, trouver, valeursDuMoment, armeDeLaLigne, typeDegatsChoisi, typesDeDegats,
 } from './fiche-moteur.mjs';
 import {
   CASES_CARACTERISTIQUES, CASES_COMPETENCES, CASES_POSTURES, CASES_RESISTANCES, DONS, EMPLACEMENTS_DU_MODELE, LONGUEUR_MAX_D_UNE_CASE, MAITRISES,
@@ -153,14 +153,18 @@ export const TITRES_DES_POSTURES = Object.freeze({
 });
 
 /**
- * Préfixes des lignes de la case de l'effet d'une arme (AA13, AN13) : composition, améliorations, élément et effet en plus, que l'import relit, avant
- * celles qui ne sont qu'affichées (l'effet du catalogue, puis deux armes et non comptés).
+ * Préfixes des lignes de la case de l'effet d'une arme (AA13, AN13) : composition, amélioration et effet en plus, que l'import relit, avant celles qui ne
+ * sont qu'affichées (l'effet du catalogue ou de l'arme élémentaire, puis deux armes et non comptés). « Élément » et « Amélioration de l'élément » ne
+ * s'écrivent plus (décision R167 : une arme élémentaire s'écrit par son nom, avec un seul niveau d'amélioration) ; l'import les relit encore dans un
+ * classeur d'avant.
  */
 export const LIGNES_D_ARME = Object.freeze({
   composition: 'Composition',
   amelioration: 'Amélioration',
   element: 'Élément',
   ameliorationElement: 'Amélioration de l’élément',
+  // décision R167 : le type physique choisi d'une arme élémentaire dont le type se choisit (la bombe) : « Type de dégâts : Taille »
+  typeDegats: 'Type de dégâts',
   deuxArmes: 'Deux armes',
   nonCompte: 'Non compté',
   effetEnPlus: 'Effet en plus',
@@ -567,24 +571,23 @@ export function lireAccessoire(regles, lignes) {
 // ------------------------------------------------------------------ armes et armure
 
 /**
- * La case de l'effet d'une arme (AA13, AN13) : { relues, affichees } — relues : la composition, l'amélioration, l'élément, l'amélioration de l'élément
- * (chacune si présente) et, en dernier (il peut tenir sur plusieurs lignes), l'effet en plus saisi ; affichées : l'effet du catalogue (armes[].effet),
- * le malus d'attaque à deux armes de sa main (attaqueADeuxArmes, décision R46), les bonus de dons non comptés (degatsDArme). L'import relit les unes
+ * La case de l'effet d'une arme (AA13, AN13) : { relues, affichees } — relues : la composition (d'une arme du catalogue), l'amélioration (chacune si
+ * présente) et, en dernier (il peut tenir sur plusieurs lignes), l'effet en plus saisi ; affichées : l'effet du catalogue (armes[].effet) ou celui
+ * d'une arme élémentaire (décision R167 : sa capacité « Nom (mode) : texte », « Ignore 4 AP », la mention de son type : armeDeLaLigne), le malus
+ * d'attaque à deux armes de sa main (attaqueADeuxArmes, décision R46), les bonus de dons non comptés (degatsDArme). L'import relit les unes
  * (lireEffetDArme), le site refait les autres.
  */
 export function partiesDeLArme(regles, fiche, rang) {
   const ligne = (fiche.armes ?? []).find((x) => entier(x.rang) === rang);
-  if (!ligne || vide(ligne.arme_id)) return { relues: [], affichees: [] };
-  const arme = trouver(regles.armes, ligne.arme_id);
+  const arme = armeDeLaLigne(regles, ligne);
+  if (!ligne || (vide(ligne.arme_id) && !arme)) return { relues: [], affichees: [] };
   const relues = [];
-  const materiau = ligne.materiau_id && nomDe(regles.materiaux_armes, ligne.materiau_id);
+  const materiau = !arme?.elementaire && ligne.materiau_id && nomDe(regles.materiaux_armes, ligne.materiau_id);
   if (materiau) relues.push(`${LIGNES_D_ARME.composition}${SEPARATEUR_DE_CLE}${materiau}`);
+  const choisi = arme?.type_degats_au_choix ? typeDegatsChoisi(regles, ligne) : null;
+  if (choisi) relues.push(`${LIGNES_D_ARME.typeDegats}${SEPARATEUR_DE_CLE}${typesDeDegats(regles).find((t) => t.id === choisi)?.nom ?? choisi}`);
   const amelioration = trouver(regles.ameliorations ?? [], ligne.amelioration_id);
   if (amelioration) relues.push(`${LIGNES_D_ARME.amelioration}${SEPARATEUR_DE_CLE}${texteDAmelioration(amelioration)}`);
-  const element = ligne.arme_elementaire_id && nomDe(regles.armes_elementaires, ligne.arme_elementaire_id);
-  if (element) relues.push(`${LIGNES_D_ARME.element}${SEPARATEUR_DE_CLE}${element}`);
-  const ameliorationElement = trouver(regles.ameliorations ?? [], ligne.amelioration_elementaire_id);
-  if (ameliorationElement) relues.push(`${LIGNES_D_ARME.ameliorationElement}${SEPARATEUR_DE_CLE}${texteDAmelioration(ameliorationElement)}`);
   if (!vide(ligne.effet_en_plus)) relues.push(`${LIGNES_D_ARME.effetEnPlus}${SEPARATEUR_DE_CLE}${ligne.effet_en_plus}`);
   const affichees = [];
   if (!vide(arme?.effet)) affichees.push(String(arme.effet));
@@ -605,7 +608,7 @@ export function lignesDArme(regles, fiche, rang) {
 }
 
 /**
- * Ce que la case de l'effet d'une arme écrit des choix du joueur : { composition, amelioration, element, ameliorationElement, effetEnPlus, libres }
+ * Ce que la case de l'effet d'une arme écrit des choix du joueur : { composition, typeDegats, amelioration, element, ameliorationElement, effetEnPlus, libres }
  * (textes, null pour une ligne absente). Chaque ligne de la case est :
  *   - de la part affichée, que le site refait (l'effet du catalogue, « Deux armes : », « Non compté : ») : `affichees`, ces lignes telles que l'export
  *     les écrit (partiesDeLArme sur la fiche relue, jointes par « \n » ; '' : aucune), reconnues d'un bloc où qu'elles soient, ou au bout d'une case coupée
@@ -624,8 +627,8 @@ export function lignesDArme(regles, fiche, rang) {
  * `entier` : le texte n'est que la part relue (recollée à sa suite dans la note), sans part affichée.
  */
 export function lireEffetDArme(texte, { affichees = null, catalogue = null, entier: seul = false } = {}) {
-  const lu = { composition: null, amelioration: null, element: null, ameliorationElement: null, effetEnPlus: null, libres: [], ecartees: [], affichageRetrouve: true };
-  const champs = new Map([[cle(LIGNES_D_ARME.composition), 'composition'], [cle(LIGNES_D_ARME.amelioration), 'amelioration'],
+  const lu = { composition: null, typeDegats: null, amelioration: null, element: null, ameliorationElement: null, effetEnPlus: null, libres: [], ecartees: [], affichageRetrouve: true };
+  const champs = new Map([[cle(LIGNES_D_ARME.composition), 'composition'], [cle(LIGNES_D_ARME.typeDegats), 'typeDegats'], [cle(LIGNES_D_ARME.amelioration), 'amelioration'],
     [cle(LIGNES_D_ARME.element), 'element'], [cle(LIGNES_D_ARME.ameliorationElement), 'ameliorationElement']]);
   const { lignes, affichage, retrouvee, coupee } = seul
     ? { lignes: String(texte ?? '').replace(/\r\n?/g, '\n').split('\n'), affichage: null, retrouvee: true, coupee: false }
@@ -1013,8 +1016,9 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
   O.armes.forEach((cases, i) => {
     const rang = i + 1;
     const ligne = f.armes.find((x) => entier(x.rang) === rang);
-    if (!ligne || vide(ligne.arme_id)) return;
-    const arme = trouver(regles.armes, ligne.arme_id);
+    // une arme du catalogue ou une arme élémentaire (décision R167 : son nom, « Arc de Sang », dans la case de l'arme ; sa portée, celle de son type)
+    const arme = armeDeLaLigne(regles, ligne);
+    if (!ligne || (vide(ligne.arme_id) && !arme)) return;
     ecrire(cases.nom, arme?.nom ?? ligne.arme_id, RELUE);
     const degats = degatsDArme(regles, f, rang);
     if (degats) ecrire(cases.degats, degats.texte);

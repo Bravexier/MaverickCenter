@@ -203,3 +203,150 @@ test('R159 : une famille sans arme (créée sur le site de dev) garde son onglet
   assert.deepEqual(q.caches(), []);
   assert.deepEqual(q.ouvertures, []);
 });
+
+// Armes élémentaires (décision R167 ; design du propriétaire : « en sélectionnant l'arme élémentaire en question ça affichera ou non la bonne colone du
+// tableau "amélioration" et grisera le "matériau" ») : la page avec ses matériaux (fer par défaut, titane) et ses améliorations (coût matériel et coût
+// élémentaire de chaque niveau, comme components/armes/ArmesPage.astro), une arme du catalogue (Arc court) et une arme élémentaire (Arc de Sang).
+const NIVEAUX = [
+  [1, 20, null, 1, 'commune', null, 2, null], [2, 50, 1, 2, 'commune', null, 4, null], [3, 100, null, 3, 'commune', null, 6, null],
+  [4, 150, 1, 1, 'raffinee', null, 8, null], [5, 200, null, 2, 'raffinee', null, 10, 1], [6, 200, 1, 3, 'raffinee', null, 12, 1],
+  [7, 200, null, 1, 'parfaite', null, 14, 1], [8, 200, 1, 2, 'parfaite', null, 16, 1], [9, 200, null, 3, 'parfaite', null, 18, 1],
+  [10, 200, 1, null, null, 1, 20, 2],
+];
+
+async function chargerLaForge(recherche = '') {
+  const sans = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== null));
+  const materiau = (id, defaut, bonus, cran, prix) =>
+    el('tr', sans({ class: `materiau ligne-couleur couleur-materiau-${id}`, id: `materiau-${id}`, 'data-materiau': id, 'data-defaut': defaut ? '1' : null }),
+      el('th', {}, el('button', { class: 'materiau__choisir' }, id)),
+      el('td', {}, el('span', { class: 'materiau-prix', 'data-ro': String(prix) })),
+      el('td', {}, el('span', { class: 'materiau-effet', 'data-bonus': String(bonus), 'data-cran': String(cran) })));
+  const materiaux = [materiau('fer', true, 0, 0, 10), materiau('titane', false, 9, 1, 200)];
+  const ameliorations = [
+    el('tr', { class: 'amelioration amelioration--aucune', 'data-niveau': '0' }, el('th', {}, el('button', { class: 'amelioration__choisir' }, 'Aucune'))),
+    ...NIVEAUX.map(([niveau, ro, mat, gemmes, qualite, pieces, bonus, cran]) => el('tr', { class: 'amelioration', id: `amelioration-${niveau}`, 'data-niveau': String(niveau) },
+      el('th', {}, el('button', { class: 'amelioration__choisir' }, `+${niveau}`)),
+      el('td', { class: 'amelioration__cout' }, el('span', { class: 'amelioration-cout', 'data-ro': String(ro), 'data-materiaux': String(mat ?? 0) })),
+      el('td', { class: 'amelioration__cout-elementaire' }, el('span', sans({ class: 'amelioration-cout-elementaire', 'data-gemmes': gemmes && String(gemmes), 'data-qualite': qualite, 'data-pieces': pieces && String(pieces) }),
+        ...(gemmes ? [el('span', { class: 'amelioration-cout__gemme', 'data-armes-gemme': '' })] : []))),
+      el('td', {}, el('span', sans({ class: 'amelioration-effet', 'data-bonus': String(bonus), 'data-cran': cran && String(cran) }))))),
+  ];
+  // les mains (lib/armes-rendu.mjs) : une arme élémentaire, « une ou deux mains », comme une arme `une_ou_deux` du catalogue (R167)
+  const ligneDArme = (id, classes, attrs, de, bonus, durabilite, competences, mains = 'deux mains') => [
+    el('tr', { class: `arme ${classes}`.trim(), id, 'data-arme': id, ...attrs },
+      el('th', { class: 'arme__nom' }, el('button', { class: 'arme__choisir' }, id), el('span', { class: 'arme__mains' }, mains)),
+      el('td', { class: 'arme__competence' }, el('span', { class: 'arme-comp', 'data-competences': competences })),
+      el('td', { class: 'arme__type' }, 'Arc'),
+      el('td', {}, el('span', { class: 'arme-degats', 'data-de': de, 'data-bonus': String(bonus) })),
+      el('td', {}, el('span', { class: 'arme-portee', 'data-portee': '2-10' })),
+      el('td', {}, el('span', { 'data-durabilite': String(durabilite) })),
+      el('td', {}, el('span', { class: 'arme-cout', 'data-ro': '15' }))),
+    el('tr', { class: `arme-suite${classes ? ' arme-suite--elementaire couleur-magie-sang' : ''}` }, el('td', { class: 'arme__effets' }, el('span', { class: 'arme-effet' }, 'Pointe bordeaux'))),
+  ];
+  const famille = el('section', { class: 'tableau armes-famille is-active', id: 'famille-arc' },
+    el('h4', { class: 'armes-famille__titre' }, el('span', { class: 'armes-famille__compte' }, '2 armes')),
+    el('table', {}, el('tbody', {},
+      ...ligneDArme('arme-arc-arc-court', '', {}, 'D8', 0, 2, 'arc'),
+      ...ligneDArme('arme-elementaire-arc-sang', 'arme--elementaire couleur-magie-sang', { 'data-elementaire': 'Sang', 'data-gemme': 'Grenat' }, 'D8', 8, 4, 'arc arme-legere', 'une ou deux mains'))));
+  const racine = el('div', { class: 'armes', 'data-armes': '' },
+    el('div', { 'data-armes-filtre': '' }, el('button', { class: 'armes-filtre__choix', 'data-competence': 'arc', 'aria-pressed': 'false' })),
+    el('div', { class: 'armes-vue' },
+      el('div', { class: 'armes-tableaux' }, el('section', { class: 'armes-bloc', 'data-armes-bloc': 'distance' },
+        el('nav', { class: 'armes-onglets' }, el('a', { class: 'onglet is-active', id: 'onglet-famille-arc', href: '#famille-arc' })), famille)),
+      el('aside', { class: 'armes-cote' }, el('section', { class: 'arme-fiche' }, el('p', { class: 'arme-fiche__vide' }, 'Choisissez une arme')),
+        el('details', { class: 'tableau armes-materiaux' }, el('table', {}, el('tbody', {}, ...materiaux))),
+        el('details', { class: 'tableau armes-ameliorations' }, el('table', {}, el('tbody', {}, ...ameliorations))))),
+    el('div', { 'data-armes-bulles': '' }));
+  racine.querySelector('.armes-cote').scrollTo = () => {};
+  let url = new URL(`/ressources/equipement/${recherche}`, 'http://site/');
+  const document = fauxDocument(el('section', { class: 'equipement-panneau', id: 'armes' }, racine));
+  Object.assign(globalThis, {
+    document,
+    Element,
+    location: { get pathname() { return url.pathname; }, get search() { return url.search; }, get hash() { return url.hash; } },
+    history: { state: null, replaceState: (_, __, a) => (url = new URL(a, url)) },
+  });
+  await import(`../src/scripts/armes.mjs?page=${(numero += 1)}`);
+  const q = (s) => racine.querySelector(s);
+  return {
+    racine, document, q,
+    clic: (x) => cliquer(typeof x === 'string' ? q(x) : x, racine),
+    adresse: () => `${url.search}${url.hash}`,
+    elementaire: () => racine.classList.contains('armes--elementaire'),
+    materiauxGrises: () => racine.querySelectorAll('.materiau__choisir').every((b) => b.disabled),
+    gemmes: () => racine.querySelectorAll('[data-armes-gemme]').map((g) => g.textContent),
+    tuiles: () => racine.querySelectorAll('.arme-fiche__tuile-val').map((t) => t.textContent),
+    fiche: () => q('.arme-fiche').textContent,
+    choisi: (s) => q(s).classList.contains('est-choisie'),
+  };
+}
+
+test('R167 : choisir une arme élémentaire montre la colonne des gemmes de sa magie et grise le matériau ; une arme ordinaire, non', async () => {
+  const p = await chargerLaForge();
+  assert.equal(p.elementaire(), false);
+  assert.ok(p.gemmes().every((g) => g === ''));
+  // une arme ordinaire : le coût matériel, le fer par défaut (R49)
+  p.clic('#arme-arc-arc-court .arme__choisir');
+  assert.equal(p.elementaire(), false, 'arme ordinaire : la colonne du coût matériel');
+  assert.equal(p.materiauxGrises(), false);
+  assert.ok(p.choisi('#materiau-fer'), 'le fer par défaut');
+  // l'arme élémentaire : la colonne du coût élémentaire, le nom de la gemme de sa magie, les matériaux grisés et aucun marqué
+  p.clic('#arme-elementaire-arc-sang .arme__choisir');
+  assert.equal(p.elementaire(), true);
+  assert.equal(p.materiauxGrises(), true);
+  assert.ok(!p.choisi('#materiau-fer'), 'aucun matériau ne compte (pas de fer par défaut)');
+  assert.deepEqual(p.gemmes(), Array(9).fill(' de Grenat'), 'le nom de la gemme dans chaque ligne qui en demande');
+  // le matériau grisé ne se choisit pas
+  p.clic('#materiau-titane .materiau__choisir');
+  assert.ok(!p.choisi('#materiau-titane'));
+  assert.equal(p.adresse(), '?arme=arme-elementaire-arc-sang');
+  // sans amélioration : dé du type + 8, solidité 4, pas de coût
+  assert.deepEqual(p.tuiles(), ['D8+8', '4', '—']);
+  assert.ok(p.fiche().includes('Arme élémentaire') && p.fiche().includes('Sang'));
+  // ses mains, à la place de celles d'une arme du catalogue (après le type ; choix du leader-technique, R167 : « l'arme s'adapte au porteur »)
+  assert.equal(p.q('.arme-fiche__sous-titre').textContent, 'Arc · une ou deux mains · Arme élémentaire');
+  assert.ok(!p.fiche().includes('Forgée en'), 'pas de matériau');
+  // au +5 : D8+18, solidité 5, 6 communes + 3 raffinées de Grenat, sans RO
+  p.clic('#amelioration-5 .amelioration__choisir');
+  assert.deepEqual(p.tuiles(), ['D8+18', '5', '6 communes + 3 raffinées de Grenat']);
+  assert.ok(!p.q('.arme-fiche').innerHTML.includes('piece'), 'pas de RO');
+  assert.equal(p.adresse(), '?arme=arme-elementaire-arc-sang&amelioration=5');
+  p.clic('#amelioration-10 .amelioration__choisir');
+  assert.deepEqual(p.tuiles(), ['D8+28', '6', '6 communes + 6 raffinées + 6 parfaites de Grenat + 1 pièce élémentaire']);
+  // retour à l'arme ordinaire : la colonne du coût matériel, les matériaux, le fer
+  p.clic('#arme-arc-arc-court .arme__choisir');
+  assert.equal(p.elementaire(), false);
+  assert.equal(p.materiauxGrises(), false);
+  assert.ok(p.choisi('#materiau-fer'));
+  assert.ok(p.gemmes().every((g) => g === ''));
+  // fermer : plus d'arme, plus de colonne élémentaire
+  p.clic('#arme-elementaire-arc-sang .arme__choisir');
+  p.clic('#arme-elementaire-arc-sang .arme__choisir');
+  assert.equal(p.elementaire(), false, 'fermée');
+});
+
+test('R167 : une arme élémentaire choisie repart de « Aucune » ; l’adresse fait l’aller-retour, ?materiau= est ignoré', async () => {
+  const p = await chargerLaForge('?arme=arme-arc-arc-court&materiau=materiau-titane&amelioration=3');
+  assert.ok(p.choisi('#materiau-titane') && p.choisi('#amelioration-3'));
+  p.clic('#arme-elementaire-arc-sang .arme__choisir');
+  assert.ok(p.choisi('.amelioration--aucune'), 'l’amélioration repart de « Aucune »');
+  assert.equal(p.adresse(), '?arme=arme-elementaire-arc-sang', 'ni matériau ni amélioration');
+  // l'adresse d'une arme élémentaire améliorée, avec un matériau : le matériau est ignoré, le niveau gardé
+  const q = await chargerLaForge('?arme=arme-elementaire-arc-sang&materiau=materiau-titane&amelioration=5');
+  assert.equal(q.elementaire(), true);
+  assert.ok(q.choisi('#amelioration-5'));
+  assert.ok(!q.choisi('#materiau-titane'));
+  assert.deepEqual(q.tuiles(), ['D8+18', '5', '6 communes + 3 raffinées de Grenat']);
+  assert.equal(q.adresse(), '?arme=arme-elementaire-arc-sang&amelioration=5', '?materiau= retiré');
+  // en revenant à l'arme ordinaire, le fer (le titane de l'adresse a été ignoré)
+  q.clic('#arme-arc-arc-court .arme__choisir');
+  assert.ok(q.choisi('#materiau-fer'));
+  assert.equal(q.adresse(), '?arme=arme-arc-arc-court&amelioration=5');
+});
+
+test('R167 : le filtre garde une arme élémentaire sous chacune de ses compétences, jamais sous « Arme de départ »', async () => {
+  const p = await chargerLaForge('?competence=arc');
+  assert.equal(p.q('#arme-elementaire-arc-sang').classList.contains('est-filtree'), false);
+  const q = await chargerLaForge('?depart=1');
+  assert.equal(q.q('#arme-elementaire-arc-sang').classList.contains('est-filtree'), true);
+});

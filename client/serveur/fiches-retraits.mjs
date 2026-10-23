@@ -32,7 +32,8 @@ export const RETRAITS = Object.freeze([
   }),
   Object.freeze({ table: 'personnage_capacite', colonnes: Object.freeze(['capacite_id']), vise: 'capacite', action: 'supprimer', cle: Object.freeze(['personnage_id', 'capacite_id']) }),
   Object.freeze({ table: 'personnage_sort', colonnes: Object.freeze(['sort_id']), vise: 'sort', action: 'supprimer', cle: Object.freeze(['personnage_id', 'sort_id']) }),
-  // une arme supprimée (décision R52, comme R42) : son emplacement (arme 1 ou 2) part, avec sa composition, son amélioration et son élément
+  // une arme supprimée (décision R52, comme R42) : son emplacement (arme 1 ou 2) part, avec sa composition et son amélioration ; une arme élémentaire
+  // (arme_id NULL, décision R167, migration 0081) n'est jamais visée : elle ne se supprime pas sur le site de dev (sa source est la page « Pièces élémentaires »)
   Object.freeze({ table: 'personnage_arme', colonnes: Object.freeze(['arme_id']), vise: 'arme', action: 'supprimer', cle: Object.freeze(['personnage_id', 'rang']) }),
 ]);
 
@@ -258,12 +259,13 @@ export function retirerLesManquants(db, acc = nouveauxRetraitsDeFiches()) {
     ORDER BY p.id`).all()) {
     aRetirer.push({ ...m, vise: 'metier', cle: [m.personnage], descripteur: { nature: 'metier', id: m.id, nom: m.nom ?? null } });
   }
-  // armes : absentes des nouvelles règles (décision R52) ; nom et famille lus dans l'ancienne base
+  // armes : absentes des nouvelles règles (décision R52) ; nom et famille lus dans l'ancienne base ; une arme élémentaire (arme_id NULL, décision R167)
+  // n'est pas une arme du catalogue : une arme élémentaire disparue reste une clé rompue, qui bloque (comme une magie)
   for (const a of db.prepare(`SELECT ${champsDeFiche}, pa.rang, pa.arme_id AS id, x.nom AS nom, f.nom AS famille
     FROM main.personnage_arme pa JOIN main.personnage p ON p.id = pa.personnage_id
     LEFT JOIN ancienne.arme x ON x.id = pa.arme_id
     LEFT JOIN ancienne.arme_famille f ON f.id = x.famille_id
-    WHERE NOT EXISTS (SELECT 1 FROM main.arme y WHERE y.id = pa.arme_id)
+    WHERE pa.arme_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM main.arme y WHERE y.id = pa.arme_id)
     ORDER BY p.id, pa.rang`).all()) {
     aRetirer.push({ ...a, vise: 'arme', cle: [a.personnage, a.rang], descripteur: { nature: 'arme', id: a.id, nom: a.nom ?? null, famille: a.famille ?? null, rang: a.rang } });
   }

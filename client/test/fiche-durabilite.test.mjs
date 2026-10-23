@@ -11,7 +11,7 @@ import { test } from 'node:test';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { enregistrerFiche, lireFiche } from '../serveur/fiches.mjs';
 import { durabiliteDeLArme } from '../src/lib/arme-champs.mjs';
-import { DURABILITE_MIN, forgerArme } from '../src/lib/arme-forge.mjs';
+import { DURABILITE_MIN, forgerArme, forgerArmeElementaire } from '../src/lib/arme-forge.mjs';
 import { chargerArmes, contexteDesArmes } from '../src/lib/armes-db.mjs';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
@@ -75,6 +75,32 @@ test('maximum de la fiche = durabilité de l’arme forgée de la page Armes (li
   assert.equal(combinaisons, armesDeLaPage.length * (page.materiaux.length + 1) * 11);
   assert.ok(Math.min(...totaux) >= DURABILITE_MIN);
   assert.ok(plancher > 0, 'des combinaisons ramenées au minimum (Fonte sur une arme à 1 cran…)');
+});
+
+test('R167 : maximum d’une arme élémentaire = celui de lib/arme-forge.mjs#forgerArmeElementaire (4 + les crans de la ligne), sur toutes les armes élémentaires et tous les niveaux', () => {
+  assert.equal(regles.constantes['piece_elementaire.solidite_base'], page.solidite_elementaire);
+  let combinaisons = 0;
+  for (const f of page.familles) {
+    for (const ae of f.armes_elementaires ?? []) {
+      for (let niveau = 0; niveau <= 10; niveau += 1) {
+        const attendu = forgerArmeElementaire({ de: f.type_elementaire?.de, bonus_degats: ae.bonus_degats, solidite: page.solidite_elementaire }, page.ameliorations, niveau);
+        const amelioration = page.ameliorations.find((x) => x.niveau === niveau);
+        const l = { rang: 1, arme_elementaire_id: ae.id, amelioration_id: niveau ? amelioration.id : null };
+        assert.equal(durabiliteMaxDArme(regles, l), attendu.durabilite.total, `${ae.nom}, +${niveau}`);
+        const d = durabiliteDArme(regles, { armes: [l] }, 1);
+        assert.deepEqual([d.max, d.actuelle, d.cassee], [attendu.durabilite.total, attendu.durabilite.total, false]);
+        assert.equal(d.detail.reduce((s, c) => s + c.valeur, 0), attendu.durabilite.arme + attendu.durabilite.amelioration, 'le détail : l’arme, la ligne d’amélioration');
+        // ses dégâts (sans maîtrise ni don) : « +8 » et l'effet de la ligne, comme la page des armes
+        assert.equal(degatsDArme(regles, { armes: [l] }, 1).total, attendu.bonus.total, `${ae.nom}, +${niveau} : dégâts`);
+        combinaisons += 1;
+      }
+    }
+  }
+  assert.equal(combinaisons, regles.armes_elementaires.length * 11);
+  // pas de cumul des lignes : 4, puis 5 du +5 au +9, puis 6 au +10
+  const arc = regles.armes_elementaires.find((a) => a.nom === 'Arc de Sang');
+  const max = (n) => durabiliteMaxDArme(regles, { arme_elementaire_id: arc.id, amelioration_id: n ? regles.ameliorations.find((a) => a.cible === 'arme' && a.niveau === n).id : null });
+  assert.deepEqual([0, 4, 5, 9, 10].map(max), [4, 4, 5, 5, 6]);
 });
 
 test('arme de monstre, pas d’arme : pas de solidité, rien d’enregistré', () => {

@@ -16,8 +16,8 @@
 // élémentaire d'une magie absente ou trop lourde pour le poids portable est retirée et notée (décision R165 : retirerLesArmuresHorsRegle de
 // serveur/fiches-retraits.mjs, à chaque reconstruction ; le poids, lib/poids-portable-db.mjs),
 // et les lignes qu'une table garde mais que ses nouvelles règles refusent ne sont pas recopiées (LIGNES_ECARTEES : un accessoire de la Ceinture ou
-// d'« Autre », un effet hors table seul, décision R97), notées dans la fiche comme ce que perd une ligne gardée (son nom, son effet hors table) ; jamais
-// perdues sans le dire. Une base remplacée qui avait des lignes est d'abord archivée (db/archives/, les ARCHIVES_GARDEES
+// d'« Autre », un effet hors table seul, décision R97), notées dans la fiche comme ce que perd une ligne gardée (son nom, son effet hors table) ; une
+// arme du catalogue qui porte un élément (décision R167, migration 0081) est écrite convertie (COLONNES_CONVERTIES) ; jamais perdues sans le dire. Une base remplacée qui avait des lignes est d'abord archivée (db/archives/, les ARCHIVES_GARDEES
 // dernières) : l'archive garde donc la base d'avant les retraits et les conversions.
 // Métriques : `evenement` (facultatif, serveur/metriques.mjs) reçoit la durée du rejeu du journal, des retraits des fiches et de l'archivage.
 // Node seulement (node:sqlite), sans dépendance.
@@ -25,7 +25,7 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameS
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import {
-  accessoiresGardes, acquisRetires, armureDesArmures, COLONNES_DE_L_ARMURE, COLONNES_RETIREES, entrainementEnLignes, maitrisesDAvant, matiereDuBouclier,
+  accessoiresGardes, acquisRetires, armeDAvant, armureDesArmures, COLONNES_DE_L_ARMURE, COLONNES_RETIREES, entrainementEnLignes, maitrisesDAvant, matiereDuBouclier,
   retraitsDeLArmure, retraitsDuBouclier, TABLES_FICHES, TABLES_RETIREES,
 } from '../src/lib/fiche-format.mjs';
 import { TABLES_DU_JOURNAL } from '../src/lib/tables-de-la-base.mjs';
@@ -157,6 +157,9 @@ function noterLesMaitrisesDAvant(db, retraits) {
  * sur l'ancienne et la nouvelle forme de la table), noter (db, retraits) : range dans `retraits` ce que la copie perd, lu dans `ancienne` avant elle }.
  * personnage_accessoire (décision R97, migration 0060) : un accessoire de la Ceinture ou d'« Autre », ou sans effet de la table (effet hors table seul),
  * n'est pas recopié ; il est noté, comme le nom ou l'effet hors table qu'un accessoire gardé perd (COLONNES_RETIREES), par accessoiresGardes.
+ * personnage_arme (décision R167, migration 0081 : CHECK « une arme du catalogue OU une arme élémentaire ») : une arme du catalogue qui porte un
+ * élément n'est pas recopiée telle quelle ; la conversion de la colonne retirée amelioration_elementaire_id (COLONNES_CONVERTIES, juste après la copie)
+ * l'écrit dans sa nouvelle forme et note ce qu'elle perd (convertirLesArmesDAvant) : rien n'est noté ici.
  */
 export const LIGNES_ECARTEES = Object.freeze({
   personnage_accessoire: Object.freeze({
@@ -177,7 +180,56 @@ export const LIGNES_ECARTEES = Object.freeze({
       ajouterLesRetraits(db, retraits, [...parFiche].map(([id, lignes]) => [id, accessoiresGardes(lignes, noms).retraits]));
     },
   }),
+  personnage_arme: Object.freeze({
+    ou: 'arme_id IS NOT NULL AND arme_elementaire_id IS NOT NULL',
+    noter: () => {},
+  }),
 });
+
+/**
+ * Décision R167 (migration 0081) : les armes des fiches d'une base vivante d'avant (un élément posé sur une arme du catalogue, l'amélioration de
+ * l'élément) dans la forme d'aujourd'hui, par armeDAvant de src/lib/fiche-format.mjs (même type : l'arme élémentaire, au niveau de l'ancienne
+ * amélioration de l'élément, durabilité bornée ; autre type : l'arme sans l'élément ; amélioration de l'élément sans élément : retirée). Les lignes
+ * écartées de la copie (LIGNES_ECARTEES) sont écrites converties ; chaque perte est rangée dans `retraits` (une ligne datée par arme : noterLesRetraits).
+ * Noms, familles et types lus dans les nouvelles règles, sinon dans l'ancienne base ; le type élémentaire d'une famille (arme_famille.type_elementaire_id)
+ * et la solidité de base d'une arme élémentaire (constante_equipement) dans les nouvelles seulement.
+ */
+function convertirLesArmesDAvant(db, retraits) {
+  const premier = (requetes) => (x) => {
+    for (const r of requetes) {
+      const l = r.get(x);
+      if (l) return { ...l };
+    }
+    return null;
+  };
+  const arme = premier(['main', 'ancienne'].map((b) => db.prepare(`SELECT a.nom, coalesce(mf.nom, af.nom) AS famille, mf.type_elementaire_id
+    FROM ${b}.arme a LEFT JOIN main.arme_famille mf ON mf.id = a.famille_id LEFT JOIN ancienne.arme_famille af ON af.id = a.famille_id WHERE a.id = ?`)));
+  const armeElementaire = premier(['main', 'ancienne'].map((b) => db.prepare(`SELECT nom, type_id FROM ${b}.arme_elementaire WHERE id = ?`)));
+  const ressource = premier(['main', 'ancienne'].map((b) => db.prepare(`SELECT nom FROM ${b}.ressource WHERE id = ?`)));
+  const niveau = premier(['main', 'ancienne'].map((b) => db.prepare(`SELECT niveau FROM ${b}.amelioration_equipement WHERE id = ?`)));
+  const ameliorationDArme = db.prepare("SELECT id, bonus_cran FROM main.amelioration_equipement WHERE cible = 'arme' AND niveau = ?");
+  // la solidité de base d'une pièce élémentaire (migration 0080), + les crans de la ligne d'amélioration d'arme (R167)
+  const solidite = db.prepare("SELECT valeur FROM main.constante_equipement WHERE id = 'piece_elementaire.solidite_base'").get();
+  if (!solidite) throw new Error('constante_equipement « piece_elementaire.solidite_base » absente des nouvelles règles');
+  const noms = {
+    arme, armeElementaire, ressource: (x) => ressource(x)?.nom ?? null, niveau: (x) => niveau(x)?.niveau ?? null,
+    ameliorationDArme: (n) => premier([ameliorationDArme])(n), soliditeElementaire: solidite.valeur,
+  };
+  const cibles = colonnes(db, 'main', 'personnage_arme');
+  const ecartee = db.prepare(`SELECT 1 FROM ancienne.personnage_arme WHERE personnage_id = ? AND rang = ? AND (${LIGNES_ECARTEES.personnage_arme.ou})`);
+  const parFiche = new Map();
+  for (const l of db.prepare('SELECT * FROM ancienne.personnage_arme ORDER BY personnage_id, rang').all()) {
+    const { ligne, retrait } = armeDAvant({ ...l }, noms);
+    if (ecartee.get(l.personnage_id, l.rang)) {
+      const cols = cibles.filter((c) => c in ligne);
+      db.prepare(`INSERT INTO main.personnage_arme (${cols.map((c) => `"${c}"`).join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`).run(...cols.map((c) => ligne[c]));
+    }
+    if (!retrait) continue;
+    if (!parFiche.has(l.personnage_id)) parFiche.set(l.personnage_id, []);
+    parFiche.get(l.personnage_id).push(retrait);
+  }
+  ajouterLesRetraits(db, retraits, [...parFiche]);
+}
 
 /**
  * Range des descripteurs de retrait par fiche (`parFiche` : [[id, descripteurs]]) dans `retraits` (nouveauxRetraitsDeFiches), nom et nature lus dans
@@ -201,7 +253,9 @@ function ajouterLesRetraits(db, retraits, parFiche) {
  * noté, daté, dans la fiche (acquisRetires). Décision R118 (migration 0066) : les NM du MJ d'un sort (`personnage_sort.nm_cadeau`) deviennent ceux de
  * la fiche, `personnage.nm_mj`, leur somme (comme la migration et nmDuMjDesSorts) ; le NM de chaque sort, recopié, ne change pas. Décisions R152 et R153
  * (migration 0076) : l'arme choisie d'un choix d'acquis (`personnage_acquis_choix.arme_famille_id`) se perd, notée sur la ligne des anciennes maîtrises
- * (noterLesMaitrisesDAvant, une seule fois avec la conversion de personnage_maitrise_arme) ; la compétence du choix reste.
+ * (noterLesMaitrisesDAvant, une seule fois avec la conversion de personnage_maitrise_arme) ; la compétence du choix reste. Décision R167 (migration
+ * 0081) : l'amélioration de l'élément d'une arme (`personnage_arme.amelioration_elementaire_id`) devient le niveau de l'arme élémentaire, ou part, notée
+ * (convertirLesArmesDAvant, qui écrit aussi les armes écartées de la copie : LIGNES_ECARTEES).
  */
 export const COLONNES_CONVERTIES = Object.freeze({
   personnage: Object.freeze({
@@ -234,6 +288,9 @@ export const COLONNES_CONVERTIES = Object.freeze({
   }),
   personnage_acquis_choix: Object.freeze({
     arme_famille_id: (db, { retraits }) => noterLesMaitrisesDAvant(db, retraits),
+  }),
+  personnage_arme: Object.freeze({
+    amelioration_elementaire_id: (db, { retraits }) => convertirLesArmesDAvant(db, retraits),
   }),
 });
 

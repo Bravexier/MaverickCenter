@@ -1551,7 +1551,7 @@ INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/aide-memoire'
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/aide-memoire', 17, 'ref:google-sheet-mode-hyper-et-co-onglet-mode-super');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/aide-memoire', 18, 'ref:google-doc-metier');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/aide-memoire', 19, 'google-doc:1EK51ZTpXfzZNhRm-uINaRqkMz_RjBW0r-wir4pAg6uc');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/aide-memoire', 20, 'ref:decisions-du-proprietaire-r2-r3-r4-r5-r6-r7-r18-r19-r24-r26-r27-r33-r34-r35-r37-r41-r44-r46-r47-r48-r49-r54-r73-r74-r78-r82-r85-r88-r89-r92-r95-r96-r97-r98-r100-r102-r103-r104-r165-et-r166-docs-decisions-regles-md');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/aide-memoire', 20, 'ref:decisions-du-proprietaire-r2-r3-r4-r5-r6-r7-r18-r19-r24-r26-r27-r33-r34-r35-r37-r41-r44-r46-r47-r48-r49-r54-r73-r74-r78-r82-r85-r88-r89-r92-r95-r96-r97-r98-r100-r102-r103-r104-r165-r166-et-r167-docs-decisions-regles-md');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/alignement', 0, 'ref:google-doc-regle-du-jeu-guide-pour-mj-maverick');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/alignement', 1, 'google-doc:17VxGUwjzEZWElwIYVaXvaaumqFM4yKnO1C7uhVyc9iM');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/alterations-d-etats-et-mode-hyper', 0, 'ref:google-doc-regle-du-jeu-guide-pour-mj-maverick');
@@ -1661,7 +1661,7 @@ INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/l-equipement'
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/l-equipement', 7, 'google-sheet:1Pyg4GSUlFrvNaTg3bi6uXlehg1MuRHmkyfPO6s5K72I');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/l-equipement', 8, 'ref:google-sheet-fiche-personnage-maverick-auto-v15-2-2-onglet-personnage');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/l-equipement', 9, 'google-sheet:1tDuJpoVVqMtRXBi0WKgH6lwzdQXVdNWPZVLFbdbFqY0');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/l-equipement', 10, 'ref:decisions-du-proprietaire-r45-r49-r50-r51-r54-r62-r74-r76-r77-r78-r80-r82-r88-r89-r92-r93-r94-r95-r96-r97-r98-r99-r101-r165-et-r166-docs-decisions-regles-md');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/l-equipement', 10, 'ref:decisions-du-proprietaire-r45-r49-r50-r51-r54-r62-r74-r76-r77-r78-r80-r82-r88-r89-r92-r93-r94-r95-r96-r97-r98-r99-r101-r165-r166-et-r167-docs-decisions-regles-md');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/l-univers', 0, 'ref:google-doc-creer-sa-fiche-de-personnage');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/l-univers', 1, 'google-doc:1PMmFVmKZspSTXJp-y_on5LoprFu_KHxCp34a9kSTFgA');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/l-univers', 2, 'ref:presentation-de-lunivers-par-le-proprietaire-du-projet');
@@ -1746,7 +1746,7 @@ INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/les-postures'
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/les-postures', 5, 'google-sheet:1tDuJpoVVqMtRXBi0WKgH6lwzdQXVdNWPZVLFbdbFqY0');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/les-postures', 6, 'ref:google-sheet-mode-hyper-et-co-onglet-mode-hyper');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/les-postures', 7, 'google-sheet:1AjQyT-IZMULq6FlgnmVmn2QiQ9AWhhbOgjr-COgMyMo');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/les-postures', 8, 'ref:decisions-du-proprietaire-r47-et-r100-docs-decisions-regles-md');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/les-postures', 8, 'ref:decisions-du-proprietaire-r47-r100-r112-et-r167-docs-decisions-regles-md');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/lexique', 0, 'ref:google-doc-creer-sa-fiche-de-personnage');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/lexique', 1, 'google-doc:1PMmFVmKZspSTXJp-y_on5LoprFu_KHxCp34a9kSTFgA');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/lexique', 2, 'ref:google-doc-regle-du-jeu-guide-pour-mj-maverick');

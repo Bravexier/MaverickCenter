@@ -5965,7 +5965,7 @@ Chacun déclare sa posture au début de son tour, avant tout le reste. Elle dit 
 - **Neutre** : un bonus aux jets de Social et de Volonté ; un nombre limité de défenses.
 - **Focus** : un bonus à la réussite de tous les jets, plus de tour de charge, des dés de sorts plus forts ; ni parade ni esquive.
 - **Vigilance** : un bonus en Perception et à l’initiative ; anticiper l’adversaire ; en action rapide, estimer la position d’un ennemi invisible ou discret, ou repérer une résistance ou une vulnérabilité de l’ennemi, prise au hasard ; déjouer une embuscade ; un nombre limité de défenses.
-- **Symbiose** : un bonus aux dégâts et aux soins des sorts de sa magie, de l’AM en plus, l’immunité à cette magie ; ni armes ni objets (la Forgemagie et les bâtons magiques restent permis), une seule magie active, un nombre limité de défenses.
+- **Symbiose** : un bonus aux dégâts et aux soins des sorts de sa magie, de l’AM en plus, l’immunité à cette magie ; ni armes ni objets (la Forgemagie et les bâtons magiques restent permis, et l’arme élémentaire de sa magie, qui reçoit le bonus de dégâts de la posture : décision R167), une seule magie active, un nombre limité de défenses.
 
 Les chiffres de chaque posture sont dans le tableau de [[guide/les-postures|Les postures]].
 
@@ -7430,7 +7430,7 @@ Posée sur une arme, une armure ou un vêtement, une [[ressources/pieces-element
 
 ### L’arme transformée
 
-Une arme garde ses dés et son propre bonus, mais ceux de son matériau et de son amélioration sont remplacés par ceux de l’élément et de son amélioration. Ce que l’élément change à la solidité d’une arme n’est pas encore fixé.
+Une arme devient l’arme élémentaire de sa famille et de la magie (tout arc et le Sang donnent l’Arc de Sang) : elle a le dé et la portée de son type et +8 aux dégâts, et elle perd tout le reste, son bonus, son dé, sa portée, son matériau et son amélioration (décision R167). Une arme élémentaire a une {{solidite|solidité}} de 4 crans, plus les crans de la ligne d’amélioration choisie : 5 du +5 au +9, 6 au +10 (décision R167).
 
 ## Le bouclier
 
@@ -8272,6 +8272,7 @@ Une posture étrange : le personnage fusionne avec sa magie et devient presque u
 - **Immunité à la magie de la symbiose** : elle vous envahit, et vous y devenez totalement immunisé.
 - Le Doc « Guide pour MJ » ajoute **un tour d’effet gratuit** aux effets de vos sorts qui durent plusieurs tours ; le Doc « Créer sa fiche de personnage » ne le dit pas.
 - *Inconvénient* : **ni armes ni objets**, sauf la Forgemagie (un sort qui crée des armes faites de magie) ; les bâtons magiques restent permis ; le Doc « Guide pour MJ » permet aussi la « Forge de ses morts » et les parchemins.
+- Exception (décision R167) : l’arme élémentaire de la magie de la symbiose reste utilisable et reçoit le bonus de dégâts de la posture ; les autres armes restent interdites (décision R112).
 - *Inconvénient* : **une seule parade ou esquive par tour**.
 - *Inconvénient* : **une seule magie active** : avec deux magies, l’autre est désactivée le temps de la posture, et tous ses avantages et ses inconvénients avec elle.
 

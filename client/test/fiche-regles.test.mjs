@@ -34,7 +34,7 @@ test('tout est sérialisable et chaque liste a toutes les lignes de sa table', (
     caracteristiques: 'caracteristique', competences: 'competence', armes: 'arme', familles_armes: 'arme_famille', armures: 'armure', boucliers: 'bouclier_classe',
     accessoires: 'accessoire_effet', ressources: 'ressource', ameliorations: 'amelioration_equipement', armes_elementaires: 'arme_elementaire',
     armures_elementaires: 'armure_elementaire', materiaux_armes: 'materiau_arme', materiaux_bouclier: 'materiau_bouclier', resistance_paliers: 'resistance_palier',
-    etats: 'etat' };
+    etats: 'etat', types_elementaires: 'arme_elementaire_type' };
   for (const [cle, table] of Object.entries(tables)) assert.equal(regles[cle].length, compte(table), cle);
   assert.equal(regles.emplacements_armure.length, compte('armure_emplacement') - 1, 'le bouclier a sa propre ligne sur la fiche');
   assert.equal(regles.am_classe_magique, 4);
@@ -416,6 +416,76 @@ test('fiche en tableur : type d’un sort, effet et portée d’une arme, nom de
   assert.deepEqual([sante.libelle, sante.propriete, sante.propriete_nom], ['+25 Santé', 'attributs', 'Attributs']);
   assert.deepEqual([...new Set(regles.accessoires.map((a) => a.propriete_nom))].sort((a, b) => a.localeCompare(b, 'fr')),
     ['Attaque', 'Attributs', 'Autre', 'Caractéristique', 'Compétence', 'Défense', 'Jet de dé']);
+});
+
+test('armes élémentaires (décision R167, migration 0081) : chaque arme élémentaire, son type, sa magie et sa classe, sa capacité ; les types (dé, portée, AP ignorée, exemplaire unique, compétences au choix) ; le type de chaque famille ; la solidité de base ; les sorts « Fer » ; le tableau d’amélioration fondu — tout lu dans la base', () => {
+  // les armes élémentaires, dans l'ordre de l'onglet, telles que la base les écrit ; la classe de leur magie, celle des magies de regles.json (la palette)
+  const enBase = db.prepare(`SELECT e.id, e.nom, e.type_id, e.magie_id, m.nom AS magie, e.bonus_degats, e.capacite_nom, e.capacite_mode, e.capacite_texte
+    FROM arme_elementaire e JOIN magie m ON m.id = e.magie_id ORDER BY e.ordre`).all();
+  assert.deepEqual(regles.armes_elementaires.map((a) => a.id), enBase.map((a) => a.id), 'l’ordre de arme_elementaire.ordre');
+  for (const [i, a] of regles.armes_elementaires.entries()) {
+    const b = enBase[i];
+    assert.deepEqual(a, { id: b.id, nom: texteSansBalises(b.nom), type_id: b.type_id, magie_id: b.magie_id, classe: classeDeMagie(b.magie), bonus_degats: b.bonus_degats,
+      capacite_nom: b.capacite_nom === null ? null : texteSansBalises(b.capacite_nom), capacite_mode: b.capacite_mode,
+      capacite_texte: b.capacite_texte === null ? null : texteSansBalises(b.capacite_texte) }, b.id);
+    assert.equal(a.classe, regles.magies.find((m) => m.id === a.magie_id).classe, `${a.id} : la classe de sa magie`);
+  }
+  assert.ok(!regles.armes_elementaires.some((a) => a.magie_id === 'magies/potentiel-illimite'), 'pas d’arme élémentaire du Potentiel Illimité');
+  assert.ok(!regles.armes_elementaires.some((a) => 'element' in a || 'amelioration' in a), 'plus rien de l’élément posé sur une arme');
+
+  // les types : arme_elementaire_type, avec le dé et la portée de arme_type (R167 : « Dé et portée : ceux de son type »), dans l'ordre des en-têtes
+  const types = db.prepare(`SELECT e.type_id, t.nom, t.de, t.de_regle, t.portee_min, t.portee_max, e.ignore_ap, e.exemplaire_unique, e.mention, e.type_degats_au_choix
+    FROM arme_elementaire_type e JOIN arme_type t ON t.id = e.type_id ORDER BY e.ordre`).all();
+  const degats = (type) => db.prepare('SELECT type_degats FROM arme_elementaire_type_degats WHERE type_id = ? ORDER BY type_degats').all(type).map((r) => r.type_degats);
+  const competences = (type) => db.prepare(`SELECT c.competence_id FROM arme_elementaire_type_competence c JOIN competence k ON k.id = c.competence_id
+    WHERE c.type_id = ? ORDER BY k.ordre`).all(type).map((r) => r.competence_id);
+  assert.deepEqual(regles.types_elementaires, types.map((t) => ({
+    id: t.type_id, nom: t.nom, de: t.de, de_selon_force: desSelonLaForce(t.de_regle), portee: porteeDeLArme(t).replace('-', ' - '), ignore_ap: t.ignore_ap,
+    exemplaire_unique: t.exemplaire_unique === 1, mention: t.mention, competences: competences(t.type_id),
+    types_degats: degats(t.type_id), type_degats_au_choix: t.type_degats_au_choix === 1,
+  })));
+  // le type physique (R167 : « Les deux », le type de sa famille et celui de sa magie) : au moins un par type, un seul à choisir quand il y en a plusieurs
+  // au choix (la Bombe) ; l'ordre, celui des types de dégâts d'une arme (regles.armes[].types_degats : alphabétique)
+  assert.ok(regles.types_elementaires.every((t) => t.types_degats.length > 0 && t.types_degats.every((x) => ['estoc', 'frappe', 'taille'].includes(x))));
+  assert.ok(regles.types_elementaires.every((t) => t.types_degats.join() === [...t.types_degats].sort().join()));
+  assert.ok(regles.types_elementaires.filter((t) => t.type_degats_au_choix).every((t) => t.types_degats.length > 1), 'un choix entre plusieurs types');
+  const type = (id) => regles.types_elementaires.find((t) => t.id === id);
+  for (const a of regles.armes_elementaires) assert.ok(type(a.type_id), `${a.id} : son type`);
+  // le Pugilat : le dé selon la Force, comme sa famille (ses paliers de la même écriture)
+  assert.deepEqual(type('pugilat').de_selon_force, regles.familles_armes.find((f) => f.id === 'pugilat').de_selon_force);
+  assert.equal(type('pugilat').de, null);
+  assert.ok(regles.types_elementaires.every((t) => t.competences.length > 0), 'chaque type a sa compétence au choix');
+
+  // le type élémentaire de chaque famille (arme_famille.type_elementaire_id) : un type de la liste pour une famille maîtrisable, aucun pour ARME DE MONSTRES
+  const typesDesFamilles = new Map(db.prepare('SELECT id, type_elementaire_id FROM arme_famille').all().map((r) => [r.id, r.type_elementaire_id]));
+  for (const f of regles.familles_armes) {
+    assert.equal(f.type_elementaire_id, typesDesFamilles.get(f.id), f.id);
+    if (f.type_elementaire_id) assert.ok(f.maitrisable && type(f.type_elementaire_id), `${f.id} : un type de la liste, famille maîtrisable`);
+  }
+  assert.equal(regles.familles_armes.find((f) => !f.maitrisable).type_elementaire_id, null, 'ARME DE MONSTRES : aucune arme élémentaire');
+
+  // la solidité de base d'une arme élémentaire (constante_equipement) ; les crans de chaque niveau d'amélioration d'arme
+  // (celle de toute pièce élémentaire, migration 0080, que lit le moteur ; plus de constante propre aux armes ni d'alias : migration 0081)
+  const constante = db.prepare("SELECT valeur FROM constante_equipement WHERE id = 'piece_elementaire.solidite_base'").get().valeur;
+  assert.equal(regles.constantes['piece_elementaire.solidite_base'], constante);
+  assert.ok(!('arme_elementaire.solidite_base' in regles.constantes), 'plus de clé d’alias');
+  assert.equal(db.prepare("SELECT count(*) AS n FROM constante_equipement WHERE id = 'arme_elementaire.solidite_base'").get().n, 0);
+
+  // le tableau d'amélioration des armes fondu : une ligne de cible 'arme' par niveau, pour les deux armes ; plus de cible 'arme_elementaire'
+  assert.ok(!regles.ameliorations.some((a) => a.cible === 'arme_elementaire'));
+  const ameliorations = db.prepare("SELECT id, niveau, bonus_degats, bonus_cran FROM amelioration_equipement WHERE cible = 'arme' ORDER BY niveau").all();
+  assert.deepEqual(regles.ameliorations.filter((a) => a.cible === 'arme').map((a) => ({ id: a.id, niveau: a.niveau, bonus_degats: a.bonus_degats, bonus_cran: a.bonus_cran })),
+    ameliorations.map((a) => ({ ...a })));
+
+  // les sorts « Fer » : l'étiquette « Sort fer » (sort_mot_cle 'sort-fer', comme « Sort grenade » de R114), jamais le nom ; chacun d'une magie qui a ses
+  // armes élémentaires
+  const fer = db.prepare("SELECT sort_id FROM sort_mot_cle WHERE mot_cle_id = 'sort-fer' ORDER BY sort_id").all().map((r) => r.sort_id);
+  assert.ok(fer.length > 0);
+  assert.deepEqual(regles.sorts.filter((x) => x.fer).map((x) => x.id).sort(), fer);
+  assert.ok(regles.sorts.filter((x) => x.fer).every((x) => x.mots_cles.includes('sort-fer')));
+  assert.ok(regles.sorts.every((x) => x.fer === true || !('fer' in x)));
+  const magiesElementaires = new Set(regles.armes_elementaires.map((a) => a.magie_id));
+  for (const x of regles.sorts.filter((y) => y.fer)) assert.ok(magiesElementaires.has(x.magie_id), `${x.id} : une magie qui a ses armes élémentaires`);
 });
 
 test('résistances (tableau « Résistance / Faiblesse » de la fiche) : les six paliers, les listes de chaque magie et l’altération qui lui est liée, ce que les dons écrivent', () => {

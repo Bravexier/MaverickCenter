@@ -4,7 +4,8 @@ import { attributEd } from '../../lib/edition-modele.mjs';
 import { RENDUS } from '../../lib/edition-rendu.mjs';
 import { ancreDeMateriau, type chargerArmes, type contexteDesArmes } from '../../lib/armes-db.mjs';
 import { COMPETENCES_D_ARME } from '../../lib/arme-champs.mjs';
-import { htmlDuFiltreDeCompetence, menusDesArmes, MODELE_DE_FAMILLE } from '../../lib/armes-rendu.mjs';
+import { htmlDuCoutElementaire, htmlDuFiltreDeCompetence, menusDesArmes, MODELE_DE_FAMILLE } from '../../lib/armes-rendu.mjs';
+import { texteDuCoutElementaire } from '../../lib/arme-forge.mjs';
 import { htmlDePiece, MONNAIES_DU_JEU } from '../../lib/monnaies.mjs';
 import { CLASSE_DES_ARMES_DE_DEPART, classeDeMateriau, cssDesFamilles, cssDesSecondsRangs } from '../../lib/palette-css.mjs';
 import Tableau from '../Tableau.astro';
@@ -43,6 +44,12 @@ import type { PanneauRendu } from '../equipement/PanneauDeRegles.astro';
 // barre de son menu, qui fixe sa catégorie (décision R159) : son onglet et son tableau sont les deux `<template data-armes-modele>` de la fin, rendus pour
 // une famille fictive (lib/armes-rendu.mjs#MODELE_DE_FAMILLE), que l'extension remplit (le même HTML que celui de la page : test/armes-html.test.mjs).
 // CSS : styles/armes/armes.css (?raw, inséré ici seulement).
+// Armes élémentaires (décision R167 ; design du propriétaire : « Met juste directement l'arme élémentaire dans chaque tableau. » ; « en sélectionnant
+// l'arme élémentaire en question ça affichera ou non la bonne colone du tableau "amélioration" et grisera le "matériau" ») : les 14 de chaque famille à la
+// suite de ses armes (TableauArmes.astro), aucune pour une famille créée sur le site de dev (R167) ; en choisir une montre la colonne « Coût
+// élémentaire » des améliorations (les gemmes de sa magie) au lieu du coût matériel et grise les matériaux (src/scripts/armes.mjs : classe
+// `armes--elementaire` posée sur `.armes`) ; sans JavaScript et en mode modification, les deux colonnes de coût se voient. En mode modification, elles
+// restent en lecture (leur source est la page « Pièces élémentaires ») : ni champ ni Supprimer, une arme créée s'insère avant elles.
 type Armes = ReturnType<typeof chargerArmes>;
 interface Props {
   armes: Armes;
@@ -53,7 +60,9 @@ interface Props {
 const { armes, contexte, regles } = Astro.props;
 const edM = (id: string, colonne: string) => attributEd('materiau_arme', { ressource_id: id }, colonne);
 const edA = (id: string, colonne: string) => attributEd('amelioration_equipement', { id }, colonne);
-const nbArmes = armes.familles.reduce((n, f) => n + f.armes.length, 0);
+// les armes d'une famille : celles du catalogue et ses armes élémentaires (R167), toutes des lignes de son tableau
+const armesDe = (f: Armes['familles'][number]) => f.armes.length + f.armes_elementaires.length;
+const nbArmes = armes.familles.reduce((n, f) => n + armesDe(f), 0);
 const menus = menusDesArmes(armes.familles);
 // filtre par compétence (demande du propriétaire ; lib/armes-filtres.mjs) : un bouton par compétence d'arme, dans la couleur de sa caractéristique
 // (décision R48), qui sert aussi de légende aux pastilles des tableaux
@@ -69,6 +78,13 @@ const couleurs = cssDesFamilles(['materiau', 'arme']);
 // components/edition/Edition.astro (layouts/Base.astro) — jamais dans la version portable (tools/build-artifact.mjs, INLINE_CSS=1 : pas de service) ;
 // le build de production les garde, comme l'éditeur, que le service n'ouvre qu'avec MAVERICK_EDITION=1
 const avecModeles = process.env.INLINE_CSS !== '1';
+// le coût élémentaire cumulé du +1 au +N (R167 : « le coût est cumulatif »), en infobulle de sa case (lib/arme-forge.mjs, le calcul de la fiche ; la
+// gemme : celle de l'arme choisie, inconnue ici ; rien au +1, son cumul est sa ligne) ; les fonds des armes élémentaires : les classes des magies
+// (couleur-magie-<id>), posées sur chaque page par layouts/Base.astro (FAMILLES_DE_CHAQUE_PAGE)
+const coutCumule = (niveau: number) => {
+  const c = niveau > 1 ? armes.couts_elementaires.find((x) => x.niveau === niveau) : null;
+  return c ? texteDuCoutElementaire(c, null) : '';
+};
 ---
 
 <style is:inline set:html={armesCss}></style>
@@ -108,7 +124,7 @@ const avecModeles = process.env.INLINE_CSS !== '1';
             <nav class="armes-onglets" aria-label={m.titre} data-onglets={m.titre}>
               {m.familles.map((f, i) => <OngletDeFamille famille={f} actif={i === 0} />)}
             </nav>
-            {m.familles.map((f, i) => <TableauArmes famille={f} {contexte} actif={i === 0} />)}
+            {m.familles.map((f, i) => <TableauArmes famille={f} {contexte} actif={i === 0} soliditeElementaire={armes.solidite_elementaire} />)}
           </section>
         ))
       }
@@ -121,7 +137,8 @@ const avecModeles = process.env.INLINE_CSS !== '1';
 
       <div class="armes-cote__tables">
         <Tableau id="materiaux-armes" titre="Matériaux" compte={armes.materiaux.length} bloc="armes-famille" class="armes-materiaux" classeTable="armes-table armes-table--materiaux table-donnees--serree">
-          <p slot="avant" class="tableau__note armes-famille__note js-seul">Le matériau dont l’arme est forgée (fer par défaut) : son prix et ses bonus s’ajoutent à la fiche.</p>
+          <p slot="avant" class="tableau__note armes-famille__note js-seul armes-materiaux__note">Le matériau dont l’arme est forgée (fer par défaut) : son prix et ses bonus s’ajoutent à la fiche.</p>
+          <p slot="avant" class="tableau__note armes-famille__note js-seul armes-materiaux__note-elementaire">Une arme élémentaire n’a pas de matériau.</p>
           <thead><tr><th scope="col">Matière</th><th scope="col">Prix</th><th scope="col" title="Le bonus aux dégâts, puis les autres effets">Effets</th></tr></thead>
           <tbody>
             {
@@ -142,7 +159,8 @@ const avecModeles = process.env.INLINE_CSS !== '1';
 
         <Tableau id="ameliorations-arme" titre="Améliorations" compte={`+1 à +${armes.ameliorations.length}`} bloc="armes-famille" class="armes-ameliorations" classeTable="armes-table armes-table--ameliorations table-donnees--serree"
           note="Une amélioration +N demande les coûts des niveaux +1 à +N ; un « Matériel » est une unité du matériau de l’arme.">
-          <thead><tr><th scope="col">Niveau</th><th scope="col">Coût</th><th scope="col">Effet</th></tr></thead>
+          <p slot="avant" class="tableau__note armes-famille__note js-seul armes-ameliorations__note-elementaire">Arme élémentaire : une amélioration +N demande les gemmes des niveaux +1 à +N, celles de la magie de l’arme.</p>
+          <thead><tr><th scope="col">Niveau</th><th scope="col" class="amelioration__cout">Coût</th><th scope="col" class="amelioration__cout-elementaire">Coût élémentaire</th><th scope="col">Effet</th></tr></thead>
           <tbody>
             <tr class="amelioration amelioration--aucune js-seul-ligne" data-niveau="0">
               <th scope="row" class="amelioration__niveau"><button type="button" class="amelioration__choisir" aria-pressed="false">Aucune</button></th>
@@ -153,6 +171,7 @@ const avecModeles = process.env.INLINE_CSS !== '1';
                 <tr class="amelioration" id={`amelioration-${a.niveau}`} data-niveau={a.niveau}>
                   <th scope="row" class="amelioration__niveau"><button type="button" class="amelioration__choisir" aria-pressed="false">+{a.niveau}</button></th>
                   <td class="amelioration__cout" data-ed={edA(a.id, 'cout_brut')} data-ed-rendu="amelioration-cout" set:html={RENDUS['amelioration-cout'](a.cout_brut, a, contexte)} />
+                  <td class="amelioration__cout-elementaire" set:html={htmlDuCoutElementaire(a, coutCumule(a.niveau))} />
                   <td class="amelioration__effet" data-ed={edA(a.id, 'effet_brut')} data-ed-rendu="amelioration-effet" set:html={RENDUS['amelioration-effet'](a.effet_brut, a, contexte)} />
                 </tr>
               ))

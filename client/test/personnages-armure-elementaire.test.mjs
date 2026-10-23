@@ -4,17 +4,17 @@
 // l'armure élémentaire repart à son maximum. Puis une armure « Familier » et une armure élémentaire d'une magie que le personnage n'a pas sont retirées
 // et notées de même. Les tables des fiches sont vides dans data/rows : le test rejoue la migration sur une COPIE de la base construite, où il pose des
 // fiches au format d'avant (les colonnes n'ont pas changé, seule la vue de contrôle est refaite, et la constante qu'elle ajoute est retirée d'abord).
+// La copie est à la version courante : après la migration, ses vues reprennent leur définition de data/schema.sql (test/aide-migration-rejouee.mjs ;
+// la vue de 0080 lisait personnage_arme.amelioration_elementaire_id, que la migration 0081 a retirée, décision R167).
 import assert from 'node:assert/strict';
-import { copyFileSync, readFileSync } from 'node:fs';
+import { copyFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
-import { join } from 'node:path';
 import { test } from 'node:test';
-import { cheminBase, trouverRacine } from '../src/lib/donnees.mjs';
+import { cheminBase } from '../src/lib/donnees.mjs';
 import { retraitsDesNotes } from '../src/lib/fiche-format.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
+import { rejouerLaMigration, vuesCourantes } from './aide-migration-rejouee.mjs';
 
-const racine = trouverRacine();
-const migration = readFileSync(join(racine, 'data', 'migrations', '0080-armure-elementaire-de-la-fiche.sql'), 'utf8');
 const copie = fichierTemporaire('maverick.db', 'maverick-0080-');
 copyFileSync(cheminBase({ sansExemples: false }), copie);
 const db = new DatabaseSync(copie);
@@ -66,7 +66,7 @@ fiche('acquise', { magie_acquise_id: 'magies/magie-du-vent', armure_elementaire_
 const AVANT = { 'de-base': etat('de-base'), acquise: etat('acquise') };
 
 db.prepare("DELETE FROM constante_equipement WHERE id = 'piece_elementaire.solidite_base'").run();
-db.exec(migration);
+const vuesRefaites = rejouerLaMigration(db, '0080-armure-elementaire-de-la-fiche.sql');
 
 test('R165 : l’élément devient l’armure, avec son amélioration ; l’armure d’origine, son amélioration et ses parties notées ; à son maximum', () => {
   const e = etat('transformee');
@@ -103,4 +103,11 @@ test('R165 : une fiche déjà au nouveau format ne change pas', () => {
   assert.deepEqual(etat('acquise'), AVANT.acquise);
   assert.equal(un("SELECT valeur FROM constante_equipement WHERE id = 'piece_elementaire.solidite_base'").valeur, 4, '4 crans de solidité (R165)');
   assert.equal(un("SELECT count(*) AS n FROM sqlite_master WHERE name = 'note_0080'").n, 0, 'la table de travail est retirée');
+});
+
+test('après la migration rejouée, la copie a les vues de data/schema.sql (seule v_personnage_controle, que 0080 recrée, est refaite)', () => {
+  assert.deepEqual(vuesRefaites, ['v_personnage_controle']);
+  assert.deepEqual(db.prepare("SELECT name, sql FROM sqlite_master WHERE type = 'view' ORDER BY name").all().map((v) => ({ ...v })),
+    vuesCourantes().sort((a, b) => a.name.localeCompare(b.name)));
+  assert.ok(un('SELECT count(*) AS n FROM v_personnage_controle').n >= 0, 'la vue se lit');
 });

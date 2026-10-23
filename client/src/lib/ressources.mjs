@@ -44,8 +44,10 @@
 //              [{ cle, nom, description, op }] → POST /api/v1/<cle>/<id>/<action.cle>/ (ressources seulement, pas les enfants)
 //   lectureSeule facultatif : true = aucune écriture, même si la table est dans TABLES (pages typées, produits de leurs tables)
 //   derivees   facultatif : tables refaites par le service quand la ligne change (jamais écrites par l'API), montrées en lecture dans le détail :
-//              [{ table, parent: {...} }] — comme des enfants en lecture seule, sans sous-ressource ; une table partagée par condition peut avoir la
-//              même dérivée dans chacune de ses ressources (chacune n'en montre que les lignes de ses éléments : `amelioration_total`)
+//              [{ table, parent: {...}, condition? }] — comme des enfants en lecture seule, sans sous-ressource ; une table partagée par condition peut
+//              avoir la même dérivée dans chacune de ses ressources (chacune n'en montre que les lignes de ses éléments : `amelioration_total`) ;
+//              `condition` (même forme que celle d'une ressource) restreint les lignes montrées, et un `parent` vide les montre toutes à chaque élément
+//              (les deux lignes TOTAL du tableau des améliorations d'arme, coût matériel et coût élémentaire : décision R167)
 //
 // Les tables qui ne sont pas des éléments (tables dérivées, journal, fiches de personnages servies par /api/personnages/…) sont dans HORS_RESSOURCE
 // de leur module avec la raison ; test/ressources-registre.test.mjs exige que chaque table de data/schema.sql soit rangée une fois et une seule (une

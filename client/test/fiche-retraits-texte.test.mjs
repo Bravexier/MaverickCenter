@@ -134,10 +134,32 @@ test('matériau de bouclier (R96) et accessoire (R97) : la description, puis la 
     'l’accessoire de l’emplacement Ceinture');
 });
 
-test('ordreDesRetraits : métier, spécialité, don, sort, puis par nom ; l’armure de R165 après les pièces d’armure de R95 ; les maîtrises d’armes d’avant la refonte en dernier (R153)', () => {
+test('arme d’avant la migration 0081 (décision R167) : devenue l’arme élémentaire, élément d’un autre type retiré, amélioration de l’élément seule retirée', () => {
+  const d = { nature: 'arme_elementaire', cas: 'devenue', id: 'ressources/armes#arme:arc:arc-long', nom: 'Arc long', famille: 'ARC', rang: 1, element: 'Arc de Sang',
+    niveau_element: 2, niveau_garde: true, materiau: 'Titane', amelioration: 3 };
+  const jour = '2026-10-23T12:00:00Z';
+  assert.equal(descriptionDuRetrait(d), 'l’arme « Arc long » (ARC, arme 1, matériau « Titane », amélioration +3)');
+  const transforme = 'une pièce élémentaire transforme l’arme, qui perd toutes ses caractéristiques d’avant. Adaptez la fiche.';
+  assert.equal(ligneDeRetrait(d, jour),
+    `[23/10/2026] ${PREFIXE_DE_RETRAIT}l’arme « Arc long » (ARC, arme 1, matériau « Titane », amélioration +3) est devenue l’arme élémentaire « Arc de Sang », avec l’amélioration +2 de son élément : ${transforme}`);
+  assert.equal(ligneDeRetrait({ ...d, niveau_element: null, niveau_garde: false, materiau: null, amelioration: null }, jour),
+    `[23/10/2026] ${PREFIXE_DE_RETRAIT}l’arme « Arc long » (ARC, arme 1) est devenue l’arme élémentaire « Arc de Sang », sans amélioration : ${transforme}`);
+  assert.equal(ligneDeRetrait({ ...d, niveau_garde: false }, jour),
+    `[23/10/2026] ${PREFIXE_DE_RETRAIT}l’arme « Arc long » (ARC, arme 1, matériau « Titane », amélioration +3) est devenue l’arme élémentaire « Arc de Sang », sans l’amélioration +2 de son élément (niveau absent des règles) : ${transforme}`);
+  const autre = { ...d, cas: 'autre_type', element: 'Épée de Sang' };
+  assert.equal(descriptionDuRetrait(autre), 'l’élément « Épée de Sang » de l’arme « Arc long » (ARC, arme 1, amélioration de l’élément +2)');
+  assert.equal(ligneDeRetrait(autre, jour), `[23/10/2026] ${PREFIXE_DE_RETRAIT}l’élément « Épée de Sang » de l’arme « Arc long » (ARC, arme 1, amélioration de l’élément +2) n’est plus posé : une pièce élémentaire ne fait d’une arme que l’arme élémentaire du type de sa famille ; l’arme garde son matériau et son amélioration. Adaptez la fiche.`);
+  const seule = { nature: 'arme_elementaire', cas: 'amelioration_seule', id: 'ressources/armes#arme:arc:arc-long', nom: 'Arc long', famille: 'ARC', rang: 2, niveau_element: 4 };
+  assert.equal(ligneDeRetrait(seule, jour), `[23/10/2026] ${PREFIXE_DE_RETRAIT}l’amélioration de l’élément +4 de l’arme « Arc long » (ARC, arme 2) est retirée : l’arme n’a pas d’élément, et une arme n’a plus qu’un niveau d’amélioration (le sien est gardé). Adaptez la fiche.`);
+  // un nom inconnu : l'identifiant ; la nature vient juste après celle des armes supprimées (R52)
+  assert.equal(descriptionDuRetrait({ ...seule, nom: null, famille: null, niveau_element: null }), 'l’amélioration de l’élément de l’arme « ressources/armes#arme:arc:arc-long » (arme 2)');
+  assert.ok(retraitsDesNotes(ligneDeRetrait(d, jour)).length === 1, 'une ligne de retrait, comptée par la page');
+});
+
+test('ordreDesRetraits : métier, spécialité, don, sort, puis par nom ; l’arme élémentaire de R167 après les armes de R52 ; l’armure de R165 après les pièces d’armure de R95 ; les maîtrises d’armes d’avant la refonte en dernier (R153)', () => {
   assert.deepEqual([...ORDRE_DES_NATURES], [
-    'metier', 'specialite', 'capacite', 'sort', 'arme', 'objet', 'piece_armure', 'armure_transformee', 'armure_familier', 'armure_magie_absente', 'armure_trop_lourde',
-    'materiau_bouclier', 'accessoire', 'acquis', 'maitrises_armes',
+    'metier', 'specialite', 'capacite', 'sort', 'arme', 'arme_elementaire', 'objet', 'piece_armure', 'armure_transformee', 'armure_familier', 'armure_magie_absente',
+    'armure_trop_lourde', 'materiau_bouclier', 'accessoire', 'acquis', 'maitrises_armes',
   ]);
   const elements = [
     { nature: 'sort', id: 's2', nom: 'Zéphyr' }, { nature: 'sort', id: 's1', nom: 'Aura' }, { nature: 'capacite', id: 'k2', nom: 'Don 10' },

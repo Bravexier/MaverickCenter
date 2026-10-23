@@ -62,7 +62,7 @@ import {
   degatsDArme, donsValables, durabiliteAEcrire, durabiliteMaxDArme, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, ethnieImposee, ethniesDeLaRace,
   famillesMaitrisables, gainsDeNiveau, magieAcquiseValable, maitriseChoixValables, maitriseDArme, maitrisesParFamille, maitriseDesSorts, minimumDeLEmplacement,
   partiesApresReglage, sourcesDeMaitrise,
-  armureParPartie, bouclierDe, jetDuSortPrepare, partiesDeLArmure, refusMagieAcquise, soliditeDuBouclierAEcrire, sortPrepare, trouver,
+  armureParPartie, bouclierDe, jetDuSortPrepare, partiesDeLArmure, refusMagieAcquise, soliditeDuBouclierAEcrire, sortPrepare, trouver, armeDeLaLigne, typesDeDegats,
 } from './fiche-moteur.mjs';
 import { coutEnUneCase } from './sort-cout.mjs';
 import { valeurAuNm } from './sort-maitrise.mjs';
@@ -1174,39 +1174,91 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     const lue = auto ? null : lireEffetDArme(effet);
     const composition = auto ? texte(cases.composition) : lue.composition;
     const degatsEcrits = texte(cases.degats);
+    // une arme élémentaire s'écrit par son nom dans la case de l'arme (décision R167 : « Arc de Sang » ; aucun nom n'est celui d'une arme du catalogue)
+    const nommees = retrouver(regles.armes, nom).length ? [] : retrouver(regles.armes_elementaires ?? [], nom, { autres: () => [] });
+    const nommee = nommees.length === 1 ? nommees[0] : null;
     // ce qui va avec l'arme, lu avant elle : ses dégâts départagent deux armes du même nom
-    const ligne = { rang, arme_id: null, materiau_id: null, amelioration_id: null, arme_elementaire_id: null, amelioration_elementaire_id: null, effet_en_plus: null };
-    if (composition) ligne.materiau_id = unSeul(retrouver(regles.materiaux_armes, composition), `${quoi}, composition`, composition)?.id ?? null;
+    const ligne = { rang, arme_id: null, materiau_id: null, amelioration_id: null, arme_elementaire_id: null, effet_en_plus: null };
+    if (composition && !nommee) ligne.materiau_id = unSeul(retrouver(regles.materiaux_armes, composition), `${quoi}, composition`, composition)?.id ?? null;
     ligne.amelioration_id = amelioration(auto ? texte(cases.amelioration) : lue.amelioration, 'arme', `${quoi}, amélioration`);
-    const element = auto ? texte(cases.element) : lue.element;
-    if (element) ligne.arme_elementaire_id = unSeul(retrouver(regles.armes_elementaires, element, { autres: () => [] }), `${quoi}, élément`, element)?.id ?? null;
-    if (!auto) ligne.amelioration_elementaire_id = amelioration(lue.ameliorationElement, 'arme_elementaire', `${quoi}, amélioration de l’élément`);
-    const avecLArme = (armeId) => (composition ? [...f.armes.filter((x) => x.rang !== rang), { ...ligne, arme_id: armeId }].sort((a, b) => a.rang - b.rang)
-      // une composition absente : le fer (décision R49, armesApresChoix) ; écrite mais introuvable : rien
-      : armesApresChoix(regles, { ...f, armes: [...f.armes.filter((x) => x.rang !== rang), ligne] }, rang, armeId));
-    // la solidité du moment écrite, pour les dégâts écrits : les crans perdus y comptent (décision R107, Vieille Branche)
-    const actuelleEcrite = solidite ? paireDe(cellule(cases.solidite))[0] : null;
-    const avecSaSolidite = (armes) => (actuelleEcrite === null ? armes
-      : armes.map((x) => (x.rang === rang ? { ...x, durabilite: durabiliteAEcrire(regles, x, Math.floor(actuelleEcrite)) } : x)));
-    const departager = (candidats) => {
-      // homonymes d'une famille à l'autre (« Étendard de guerre », « Crochet grappin ») : l'effet du catalogue écrit (son début, dans une case coupée
-      // par la page), puis les dégâts écrits
-      const ecrites = lignesDe(effet);
-      const parEffet = candidats.filter((a) => a.effet && ecrites.some((l, k) => (k === ecrites.length - 1 ? ecritComme(l, lignesDe(a.effet)[0]) : cle(l) === cle(lignesDe(a.effet)[0]))));
-      if (parEffet.length === 1) return parEffet;
-      return (parEffet.length ? parEffet : candidats)
-        .filter((a) => degatsEcrits && ecritComme(degatsEcrits, degatsDArme(regles, { ...f, armes: avecSaSolidite(avecLArme(a.id)) }, rang)?.texte));
-    };
-    const arme = unSeul(retrouver(regles.armes, nom), quoi, nom, {
-      departager, nom: (a) => `${a.nom} (${nomDe(regles.familles_armes, a.famille_id)})`, precisions: [composition, degatsEcrits].filter(Boolean).join(', '),
-    });
-    if (!arme) {
-      if (solidite) perdu(`${quoi}, solidité : « ${solidite} » sans arme reconnue`);
-      continue;
+    // un classeur d'avant la décision R167 : un élément posé sur une arme du catalogue (« Élément : … » de la case de l'effet, AI17 de la fiche auto) et,
+    // au modèle ordinateur, l'amélioration de l'élément (« Amélioration de l'élément : niv. N — … », son niveau seul : les effets des deux anciens
+    // tableaux sont les mêmes niveau par niveau, R167)
+    const elementEcrit = auto ? texte(cases.element) : lue.element;
+    const element = elementEcrit ? unSeul(retrouver(regles.armes_elementaires ?? [], elementEcrit, { autres: () => [] }), `${quoi}, élément`, elementEcrit) : null;
+    const ameliorationElementEcrite = auto || !lue.ameliorationElement || ['aucune', 'aucun'].includes(cle(lue.ameliorationElement)) ? null : lue.ameliorationElement;
+    const niveauElement = ameliorationElementEcrite === null ? null
+      : Number(lireNiveauDAmelioration(ameliorationElementEcrite) ?? /^\+?\s*(\d+)/.exec(ameliorationElementEcrite.trim())?.[1] ?? Number.NaN);
+    const autres = f.armes.filter((x) => x.rang !== rang);
+    let arme;
+    // l'effet du catalogue écrit dans la case : celui de l'arme, ou de l'arme d'origine d'une arme devenue élémentaire (classeur d'avant R167), qui n'est
+    // pas de l'effet en plus
+    let catalogue = null;
+    if (nommee) {
+      // l'arme élémentaire (décision R167) : ni matériau, ni autre élément, un seul niveau d'amélioration
+      if (composition) perdu(`${quoi} (${nommee.nom}), composition : « ${composition} » : une arme élémentaire n’a pas de matériau (décision R167)`);
+      if (elementEcrit) perdu(`${quoi} (${nommee.nom}), élément : « ${elementEcrit} » : une arme élémentaire n’en porte pas d’autre (décision R167)`);
+      if (ameliorationElementEcrite) perdu(`${quoi} (${nommee.nom}), amélioration de l’élément : « ${ameliorationElementEcrite} » : une arme n’a plus qu’un niveau d’amélioration (décision R167)`);
+      f.armes = [...autres, { ...ligne, arme_elementaire_id: nommee.id }].sort((x, y) => x.rang - y.rang);
+      arme = armeDeLaLigne(regles, f.armes.find((x) => x.rang === rang));
+      // le type physique choisi (décision R167, la bombe : « Estoc, Frappe ou Taille au choix ») : « Type de dégâts : Taille », parmi ceux de son type
+      const typeEcrit = lue?.typeDegats ?? null;
+      if (typeEcrit) {
+        const t = arme.type_degats_au_choix ? typesDeDegats(regles).find((x) => x.physique && arme.types_offerts.includes(x.id) && (cle(x.nom) === cle(typeEcrit) || x.id === cle(typeEcrit))) : null;
+        if (t) f.armes.find((x) => x.rang === rang).type_degats_choisi = t.id;
+        else perdu(`${quoi} (${nommee.nom}), type de dégâts : « ${typeEcrit} » : ${arme.type_degats_au_choix ? 'pas un des types au choix de l’arme' : 'le type de cette arme ne se choisit pas'} (décision R167)`);
+      }
+    } else {
+      const avecLArme = (armeId) => (composition ? [...autres, { ...ligne, arme_id: armeId }].sort((x, y) => x.rang - y.rang)
+        // une composition absente : le fer (décision R49, armesApresChoix) ; écrite mais introuvable : rien
+        : armesApresChoix(regles, { ...f, armes: [...autres, ligne] }, rang, armeId));
+      // la solidité du moment écrite, pour les dégâts écrits : les crans perdus y comptent (décision R107, Vieille Branche)
+      const actuelleEcrite = solidite ? paireDe(cellule(cases.solidite))[0] : null;
+      const avecSaSolidite = (armes) => (actuelleEcrite === null ? armes
+        : armes.map((x) => (x.rang === rang ? { ...x, durabilite: durabiliteAEcrire(regles, x, Math.floor(actuelleEcrite)) } : x)));
+      const departager = (candidats) => {
+        // homonymes d'une famille à l'autre (« Étendard de guerre », « Crochet grappin ») : l'effet du catalogue écrit (son début, dans une case coupée
+        // par la page), puis les dégâts écrits
+        const ecrites = lignesDe(effet);
+        const parEffet = candidats.filter((a) => a.effet && ecrites.some((l, k) => (k === ecrites.length - 1 ? ecritComme(l, lignesDe(a.effet)[0]) : cle(l) === cle(lignesDe(a.effet)[0]))));
+        if (parEffet.length === 1) return parEffet;
+        return (parEffet.length ? parEffet : candidats)
+          .filter((a) => degatsEcrits && ecritComme(degatsEcrits, degatsDArme(regles, { ...f, armes: avecSaSolidite(avecLArme(a.id)) }, rang)?.texte));
+      };
+      arme = unSeul(retrouver(regles.armes, nom), quoi, nom, {
+        departager, nom: (a) => `${a.nom} (${nomDe(regles.familles_armes, a.famille_id)})`, precisions: [composition, degatsEcrits].filter(Boolean).join(', '),
+      });
+      if (!arme) {
+        if (solidite) perdu(`${quoi}, solidité : « ${solidite} » sans arme reconnue`);
+        continue;
+      }
+      if (lue?.typeDegats) perdu(`${quoi} (${arme.nom}), type de dégâts : « ${lue.typeDegats} » : seul celui d’une arme élémentaire au type au choix se note (décision R167)`);
+      f.armes = avecLArme(arme.id);
+      // l'élément d'un classeur d'avant (décision R167 : « l'élément gagne s'il est du type de l'arme ; sinon il est retiré et noté ») : du type élémentaire
+      // de la famille de l'arme, l'arme devient l'arme élémentaire, avec pour niveau celui de l'amélioration de l'élément (aucun sans elle) ; l'arme, son
+      // matériau et son amélioration sont dits. D'un autre type : l'élément n'est pas repris, l'arme garde matériau et amélioration. Une amélioration de
+      // l'élément sans élément n'est pas reprise.
+      const finale = f.armes.find((x) => x.rang === rang);
+      const famille = trouver(regles.familles_armes, arme.famille_id);
+      if (element && famille?.type_elementaire_id && famille.type_elementaire_id === element.type_id) {
+        const niveau = Number.isInteger(niveauElement) ? (regles.ameliorations ?? []).find((a) => a.cible === 'arme' && a.niveau === niveauElement) ?? null : null;
+        const avant = trouver(regles.ameliorations ?? [], finale.amelioration_id)?.niveau;
+        const perdus = [composition && ligne.materiau_id ? `composition « ${nomDe(regles.materiaux_armes, ligne.materiau_id)} »` : null, avant ? `amélioration +${avant}` : null].filter(Boolean);
+        Object.assign(finale, { arme_id: null, materiau_id: null, arme_elementaire_id: element.id, amelioration_id: niveau?.id ?? null });
+        const suite = !ameliorationElementEcrite ? ', sans amélioration' : niveau ? `, avec l’amélioration +${niveauElement} de son élément`
+          : `, sans l’amélioration de son élément « ${ameliorationElementEcrite} » (niveau absent des règles)`;
+        perdu(`${quoi} : « ${arme.nom} »${perdus.length ? ` (${perdus.join(', ')})` : ''} est devenue l’arme élémentaire « ${element.nom} »${suite} : une pièce élémentaire transforme l’arme, qui perd toutes ses caractéristiques d’avant (décision R167)`);
+        catalogue = arme.effet;
+        arme = armeDeLaLigne(regles, finale);
+      } else if (element) {
+        perdu(`${quoi} (${arme.nom}), élément : « ${element.nom} »${ameliorationElementEcrite ? ` (amélioration de l’élément « ${ameliorationElementEcrite} »)` : ''} : pas l’arme élémentaire du type de sa famille, non repris (décision R167)`);
+      } else if (ameliorationElementEcrite) {
+        perdu(`${quoi} (${arme.nom}), amélioration de l’élément : « ${ameliorationElementEcrite} » sans élément : une arme n’a plus qu’un niveau d’amélioration (décision R167)`);
+      }
     }
-    if (!auto) effetsEnPlus.push({ rang, effet, arme, entier: recollees.has(cases.effet) });
-    f.armes = avecLArme(arme.id);
-    // la solidité du moment (décision R74), sur la ligne finale (matériau et amélioration relus : ils font le maximum)
+    if (!auto) effetsEnPlus.push({ rang, effet, arme, catalogue: catalogue ?? arme.effet, entier: recollees.has(cases.effet) });
+    // la solidité du moment (décision R74), sur la ligne finale (matériau et amélioration relus : ils font le maximum ; d'une arme élémentaire, 4 + les
+    // crans de sa ligne d'amélioration, R167)
     if (solidite) {
       const finale = f.armes.find((x) => x.rang === rang);
       const max = durabiliteMaxDArme(regles, finale);
@@ -1216,7 +1268,7 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
       else {
         const crans = durabiliteAEcrire(regles, finale, entierDe(actuelle, solidite, `${quoi}, solidité`));
         if (crans !== null) finale.durabilite = crans;
-        if (maxEcrit !== null && maxEcrit !== max) remarques.push(`${quoi} (${arme.nom}) : solidité maximale écrite ${maxEcrit}, le site calcule ${max} (décision R51)`);
+        if (maxEcrit !== null && maxEcrit !== max) remarques.push(`${quoi} (${arme.nom}) : solidité maximale écrite ${maxEcrit}, le site calcule ${max} (décision ${arme.elementaire ? 'R167' : 'R51'})`);
       }
     }
   }
@@ -1481,10 +1533,10 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   // armes : » ou « Non compté : » qu'elle n'écrit plus (seul le site les écrit : celle de Vieille Branche d'un classeur exporté avant la décision R107) ;
   // celles écrites sans « Effet en plus : » sont dites dans un classeur qui ne vient pas de la page ; une ligne du site écartée qui n'est pas celle que
   // la fiche écrit aujourd'hui pour cette arme est dite aussi (« rien ne se perd sans être dit »), dans tout classeur, sans être reprise
-  for (const { rang, effet, arme, entier } of effetsEnPlus) {
+  for (const { rang, effet, arme, catalogue, entier } of effetsEnPlus) {
     const ligne = f.armes.find((x) => x.rang === rang);
     if (!ligne) continue;
-    const lue = lireEffetDArme(effet, { affichees: partiesDeLArme(regles, f, rang).affichees.join('\n'), catalogue: arme.effet, entier });
+    const lue = lireEffetDArme(effet, { affichees: partiesDeLArme(regles, f, rang).affichees.join('\n'), catalogue, entier });
     ligne.effet_en_plus = lue.effetEnPlus;
     // (dans un classeur de la page aussi quand la case ne porte plus ce que le site y écrit : l'effet du catalogue a pu changer depuis l'export)
     if (lue.libres.length && (!deLaPage || !lue.affichageRetrouve)) {

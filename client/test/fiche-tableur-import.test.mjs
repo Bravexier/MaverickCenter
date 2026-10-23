@@ -489,7 +489,7 @@ test('fiche auto de Louise : bi-magie, amélioration écrite « +N (effet) », a
   assert.equal(v('AA13').split('\n').length, 2);
   assert.deepEqual(f.armes, rasoir.length === 1 ? [{
     rang: 1, arme_id: rasoir[0].id, materiau_id: selon(regles.materiaux_armes, v('AE10'))[0].id, amelioration_id: amelioration('arme', Number(v('AI13').replace('+', ''))).id,
-    arme_elementaire_id: null, amelioration_elementaire_id: null, effet_en_plus: null,
+    arme_elementaire_id: null, effet_en_plus: null,
   }] : []);
   // armure : « Armure Vif Argent complet », l'ancienne graphie retrouvée par l'identifiant ; « +4 (+8 AP/AM) » : l'amélioration de niveau 4, si c'est son effet
   const vifArgent = selon(regles.armures, v('AD21'));
@@ -630,7 +630,7 @@ test('modèle ordinateur : une fiche écrite par la page dans l’ancienne écri
     C43: 'Contact', C45: 'Brave', C47: 'Épéiste', C49: 'Duelliste',
     AA10: epeeLongue.nom, AG10: '1D10+2',
     AA13: ['Composition : Acier', `Amélioration : niv. 2 — ${amelioration('arme', 2).effet}`, `Élément : ${epeeDeFeu.nom}`,
-      `Amélioration de l’élément : niv. 1 — ${amelioration('arme_elementaire', 1).effet}`, epeeLongue.effet, 'Effet en plus : Première ligne', 'Seconde ligne'].join('\n'),
+      `Amélioration de l’élément : niv. 1 — ${amelioration('arme', 1).effet}`, epeeLongue.effet, 'Effet en plus : Première ligne', 'Seconde ligne'].join('\n'),
     AQ21: [`Torse : ${torse.nom} (AP ${torse.ap}, AM ${torse.am}) · Amélioration : niv. 1 — ${amelioration('armure', 1).effet}`,
       `Casque : ${casque.nom} (AP ${casque.ap}, AM ${casque.am}) · Élément : ${elementaire.nom} (AP ${elementaire.ap}, AM ${elementaire.am}) · Amélioration de l’élément : niv. 2 — ${amelioration('armure_elementaire', 2).effet}`].join('\n'),
     AD22: `${torse.nom}, ${casque.nom}`,
@@ -655,6 +655,8 @@ test('modèle ordinateur : une fiche écrite par la page dans l’ancienne écri
     'Accessoire Ceinture : « Ceinture de force / Caractéristique : Force » (la fiche n’a plus d’emplacement Ceinture ni Autre : décision R97)',
     'Accessoire Autre : « Effet : Un porte-clé » (la fiche n’a plus d’emplacement Ceinture ni Autre : décision R97)',
     'Acquis Équilibre : « 12 » dans le classeur, 9 calculé (l’acquis se calcule : entraînement, dons, métier, accessoires ; décision R104)',
+    // décision R167 : l'élément du type de l'arme (ÉPÉES → Épée) la transforme ; son ancienne amélioration de l'élément devient son niveau
+    `Arme 1 : « ${epeeLongue.nom} » (composition « Acier », amélioration +2) est devenue l’arme élémentaire « ${epeeDeFeu.nom} », avec l’amélioration +1 de son élément : une pièce élémentaire transforme l’arme, qui perd toutes ses caractéristiques d’avant (décision R167)`,
     `Armure (Torse : ${torse.nom}) : une fiche ne porte plus qu’une armure complète (décision R95)`,
     'Bouclier, matériau : « Fer » (un bouclier n’a plus qu’une forme et une matière : décision R96)',
   ]);
@@ -692,9 +694,11 @@ test('modèle ordinateur : une fiche écrite par la page dans l’ancienne écri
     { sort_id: sortDe('Feu', 'Cautérisation').id, rang: 3, niveau_maitrise: 2, nm_livre: 0 },
   ]);
   assert.equal(f.nm_mj, 1);
+  // R167 : l'arme élémentaire, sans matériau, au niveau de l'ancienne amélioration de l'élément ; l'effet en plus gardé, l'effet du catalogue de l'arme
+  // d'origine reconnu (pas de l'effet en plus)
   assert.deepEqual(f.armes, [{
-    rang: 1, arme_id: epeeLongue.id, materiau_id: parNom(regles.materiaux_armes, 'Acier').id, amelioration_id: amelioration('arme', 2).id,
-    arme_elementaire_id: epeeDeFeu.id, amelioration_elementaire_id: amelioration('arme_elementaire', 1).id, effet_en_plus: 'Première ligne\nSeconde ligne',
+    rang: 1, arme_id: null, materiau_id: null, amelioration_id: amelioration('arme', 1).id,
+    arme_elementaire_id: epeeDeFeu.id, effet_en_plus: 'Première ligne\nSeconde ligne',
   }]);
   assert.deepEqual([f.armure_id, f.armure_amelioration_id, f.armure_elementaire_id, f.armure_amelioration_elementaire_id, f.armure_parties],
     [casque.id, null, elementaire.id, amelioration('armure_elementaire', 2).id, []]);

@@ -6,7 +6,7 @@ user-invocable: false
 # Base SQLite (`data/schema.sql`, `data/rows/`)
 
 ## Fichiers
-- `data/schema.sql` : la structure. 198 tables STRICT, FTS5, 38 vues, rangées en sections numérotées (en-têtes `-- N. …` du fichier) :
+- `data/schema.sql` : la structure. 201 tables STRICT, FTS5, 38 vues, rangées en sections numérotées (en-têtes `-- N. …` du fichier) :
   0 familles d'import ; 1 pages, liens, mots-clés, sources ; 2 règles de la fiche ; 3 magies et sorts ; 4 annexes des magies ; 5 dieux ;
   5 bis chronologie ; 6 classes, spécialités, capacités ; 7 races ; 8 bestiaire (invocations et créatures) ; 8 bis monstres du Bestiaire 2.0 et leurs
   capacités communes ; 9 équipement, ressources, craft, métiers ; 10 notes de cellule et écarts entre sources ; 11 tables dérivées ; 12 vues ;
@@ -57,6 +57,7 @@ user-invocable: false
   absente de la remarque de sa ligne.
 - Provenance (`famille`, `origine`, `source_ref`) : ne sert que jusqu'à la 1.0, puis retirée (décision du propriétaire, `docs/feuille-de-route.md`). N'y rien
   investir, ne pas réparer les références incomplètes.
+- Améliorations d'arme (R167, migration 0081) : un seul tableau pour l'arme du catalogue et l'arme élémentaire. Les lignes de cible `arme` portent le coût matériel (`cout_brut`…) et le coût élémentaire (`cout_elementaire_brut`, `cout_gemmes`…) ; la cible `arme_elementaire` ne reste que dans `amelioration_total`. Type d'une famille : `arme_famille.type_elementaire_id` (NULL pour ARME DE MONSTRES et pour une famille créée sur le site de dev, R159 : aucune arme élémentaire ; le site ne le modifie pas) ; `arme_elementaire_type` et ses `_competence` et `_degats` (types physiques posés par la décision, jamais recalculés depuis `arme_degats` ; tous appliqués sauf `type_degats_au_choix` = 1, la bombe, dont le choix est `personnage_arme.type_degats_choisi`). Solidité de base : `constante_equipement` `piece_elementaire.solidite_base` (migration 0080) + `bonus_cran` de la ligne d'amélioration.
 - Le site de dev est la source de ce qu'il modifie : une valeur de l'import se lit par `client/src/lib/historique-site.mjs` (`valeurDImport`, `lignesDImport`,
   `effectifDImport`, table `historique_modification`).
 
@@ -74,4 +75,4 @@ user-invocable: false
   `donnees.test.mjs` (ancres, liens de clés étrangères de l'onglet DB), `historique-site.test.mjs`, `db-index-retires.test.mjs` (migration 0073 : six
   index qu'aucun plan ne choisissait, retirés ; les lectures par clé restent des recherches par index), `db-arme-famille-nom-lecture.test.mjs` (migration 0077, R159 : `arme_famille.nom_lecture`, figé, jamais NULL ni vide,
   le nom d'import ou de création), `r160-potentiel-illimite-sans-gemme.test.mjs` (migration 0078, R160 : aucune ligne du Potentiel Illimité dans les
-  cinq tables, et une insertion ou une modification qui en pose une refusée, dans une copie).
+  cinq tables, et une insertion ou une modification qui en pose une refusée, dans une copie), `db-armes-elementaires.test.mjs` (R167, migration 0081 : tableau fondu prouvé sur l'export du classeur, type, compétences et types physiques des 11 familles maîtrisables, aucun pour une famille créée, solidité de base, `personnage_arme` à un seul modèle, règles des armes élémentaires).

@@ -5,7 +5,11 @@
 // TOTAL) est recalculé par les découpages de l'importeur (lib/arme-champs.mjs, rejoués sur toute la base par test/arme-champs.test.mjs), jamais saisi ; le
 // corps de la page suit (lib/corps-armes.mjs), remarque de l'arme comprise. Une arme se crée et se supprime (décision R52) ; une famille d'armes se
 // renomme, change de dé ou d'en-tête de coût et se crée (décision R159), sans suppression ; matériaux et améliorations ni l'un ni l'autre : la fiche de
-// personnage les cite.
+// personnage les cite. Les armes élémentaires (décision R167, migration 0081 : listées dans le tableau de leur famille) sont en lecture seule ici,
+// comme les matériaux (choix du leader-technique : leur source est la page « Pièces élémentaires ») : arme_elementaire n'est pas dans TABLES
+// (lib/edition-modele.mjs), ni le type élémentaire d'une famille (arme_famille.type_elementaire_id : une famille créée sur le site de dev n'a aucune arme
+// élémentaire, il reste NULL, R167). Une amélioration d'arme est la ligne du tableau fondu (coût matériel et coût élémentaire) : seuls son coût matériel
+// et son effet se modifient ; son coût élémentaire (cout_elementaire_brut, cout_gemmes…) n'est ni saisi ni recalculé.
 // Les outils communs du service (refus, synchroniser…) sont donnés par serveur/edition.mjs (domainesDesArmes), sans import en retour.
 import {
   analyserCoutDAmelioration, analyserEffetDAmelioration, analyserEffetDArme, analyserEffetDeMateriau, colonnesDeLArme, totalDesAmeliorations,
@@ -267,8 +271,8 @@ export function domainesDesArmes({ refus, ErreurEdition, synchroniser, provenanc
 
   const AMELIORATION_EQUIPEMENT = {
     colonnes(_ctx, ligne, valeurs = {}) {
-      // celles d'armure et de bouclier vont au domaine de la page des armures (serveur/edition-armures.mjs#ameliorationsParCible) ; celles des pièces
-      // élémentaires sont sur une page qui ne se modifie pas (Markdown)
+      // celles d'armure et de bouclier vont au domaine de la page des armures (serveur/edition-armures.mjs#ameliorationsParCible) ; celles des armures
+      // élémentaires sont sur une page qui ne se modifie pas (Markdown) ; celles des armes élémentaires sont les lignes de cible 'arme' (R167)
       if (ligne.cible !== 'arme') throw refus('Seules les améliorations d’arme, d’armure et de bouclier se modifient ici.');
       // les cases d'une amélioration de bouclier (coût en RO, matériaux, AP, cran : demande du propriétaire, 2026-10-17) : ici, elles sont tirées du coût
       // et de l'effet écrits, seuls saisis

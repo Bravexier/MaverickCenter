@@ -71,6 +71,7 @@ export const NOMS_DES_TABLES = Object.freeze({
   ecart_source: 'Écart entre sources',
   note_cellule: 'Note de cellule',
   // les tables citées par une clé étrangère des tables ci-dessus et de TABLES (jamais écrites par l'édition)
+  arme_elementaire_type: 'Type d’arme élémentaire',
   arme_type: 'Type d’arme',
   caracteristique: 'Caractéristique',
   categorie_classe: 'Catégorie de classe',
@@ -213,7 +214,7 @@ export const NOMS_DES_COLONNES = geler({
   alias: { texte: 'Autre nom' },
   amelioration_equipement: {
     cible: 'Équipement', niveau: 'Niveau d’amélioration', cout_gemmes: 'Coût en gemmes', cout_gemmes_qualite: 'Qualité des gemmes',
-    cout_pieces_elementaires: 'Coût en pièces élémentaires', bonus_am: 'AM supplémentaire',
+    cout_pieces_elementaires: 'Coût en pièces élémentaires', bonus_am: 'AM supplémentaire', cout_elementaire_brut: 'Coût élémentaire (tel qu’écrit)',
   },
   amelioration_total: { cible: 'Équipement', total_brut: 'Total (tel qu’écrit)' },
   arme: {
@@ -221,10 +222,12 @@ export const NOMS_DES_COLONNES = geler({
     portee_max: 'Portée maximale', ignore_ap: 'AP ignorée', recharge: 'Recharge', solidite_fixee: 'Solidité fixée (crans)',
     solidite_delta: 'Crans de solidité en plus ou en moins', provenance_mot: 'Provenance (telle qu’écrite)', provenance: 'Provenance',
   },
+  // un type d'arme élémentaire (migration 0081, décision R167 : citée par arme_famille.type_elementaire_id) : sa clé
+  arme_elementaire_type: { type_id: 'Type d’arme' },
   // une famille d'armes (TABLES : nom, dé, en-tête de coût ; décision R159) : le reste se lit sans se saisir
   arme_famille: {
     libelle_brut: 'Bandeau (tel qu’écrit)', note_brut: 'Note du bandeau', maitrisable: 'Maîtrise d’arme possible', categorie: 'Catégorie d’arme',
-    nom_lecture: 'Nom de lecture (figé)',
+    nom_lecture: 'Nom de lecture (figé)', type_elementaire_id: 'Type d’arme élémentaire',
   },
   arme_prerequis: { minimum: 'Minimum', exigence: 'Exigence' },
   armure: { sorte: 'Sorte d’armure', materiau_ligne_id: 'Matière de la ligne', materiau_colonne_id: 'Matière de la colonne', solidite_uni: 'Solidité uni' },

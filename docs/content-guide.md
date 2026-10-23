@@ -673,6 +673,31 @@ ne sert qu'à la recherche et aux `[[liens]]`, et suit les tables à chaque modi
   + un matériau pour forger et ceux des niveaux, payés en RO ou fournis ; l'effet du matériau en vert. État dans l'adresse (`?arme=…&materiau=…&amelioration=N`,
   avec `competence=…` et `depart=1` du filtre ; le matériau et l'amélioration y restent sans arme).
   Sans JavaScript, tous les tableaux s'affichent, l'un après l'autre, sans fiche.
+- **Armes élémentaires** (décision R167 ; design du propriétaire, 2026-10-23 : « Met juste directement l'arme élémentaire dans chaque tableau. » ;
+  « en sélectionnant l'arme élémentaire en question ça affichera ou non la bonne colone du tableau "amélioration" et grisera le "matériau" ») : pas
+  d'option « Élément » ni de transformation d'une arme choisie. Les **14 armes élémentaires de chaque famille** (une par magie, sans le Potentiel
+  Illimité ; `familles[].armes_elementaires` de `chargerArmes`) suivent ses armes dans son tableau, dans l'ordre de `arme_elementaire.ordre` (place
+  choisie par l'équipe), **chacune sur le fond de sa magie** (aucune pour une famille créée sur le site de dev, R167 ; ses deux lignes portent la classe `couleur-magie-<id>`, jamais un style ; texte de
+  `texteSurCouleur`) : `lib/armes-rendu.mjs#htmlDeLigneDArmeElementaire`. Une famille dont le type est mixte montre celles du type où elle mène
+  (`arme_famille.type_elementaire_id` : « Lance de X » sous Lance/Arme d'hast). Colonnes : son nom (« Arc de Sang ») et ses mains (« une ou deux mains », écrites comme une arme `une_ou_deux` du catalogue, à la même place :
+  « l'arme s'adapte au porteur », choix du leader-technique), sa compétence au choix du porteur
+  (Lourde / Légère ; Arc / Légère pour l'arc ; Arbalète seule : `type_elementaire.competences`), son type, **le dé et la portée de son type** (rien de
+  l'arme d'origine ; Pugilat selon la Force) **+ 8** (`bonus_degats`), ses **types de dégâts** (réponse du propriétaire, « Les deux » : « Estoc + Feu pour un arc de feu par exemple » : les
+  types physiques de son type, `type_elementaire.types_degats`, en pastilles aux jetons `--degats-*`, la dague « Estoc Taille », la bombe « Estoc,
+  Frappe ou Taille (au choix) » (`type_degats_au_choix`), puis « + » et le type de sa magie, son nom, `arme-dgt--magie` ;
+  `htmlDesTypesDeDegatsElementaires`), pas d'origine (« — »), solidité **4**
+  (`solidite_elementaire`) ; sur la ligne des effets, sa capacité (« Nom (mode) : texte »), « Ignore 4 AP » pour l'arbalète, la mention de l'arme de jet
+  et de la bombe (en un seul exemplaire, sans coût à l'unité) ; sa remarque en étoile. Jamais arme de départ ; le filtre Compétence la garde sous chacune
+  de ses compétences ; les comptes (onglets, tableaux, onglet Armes) comptent toutes les lignes, armes élémentaires comprises. **La choisir** pose
+  `armes--elementaire` sur `.armes` : le tableau des améliorations montre sa colonne **« Coût élémentaire »** (le coût tel que la ligne l'écrit, suivi
+  du nom de la gemme de sa magie, `[data-armes-gemme]` ; le cumul du +1 au +N en infobulle) au lieu du coût matériel, **les matériaux sont grisés**
+  (boutons désactivés, aucun marqué, une note le dit), l'amélioration repart de « Aucune » (une adresse garde son niveau). Sa fiche
+  (`lib/arme-forge.mjs#forgerArmeElementaire`) : type, mains et « Arme élémentaire », ses types de dégâts et sa portée, sa magie en pastille (sa classe), Dégâts = dé du type + 8 + l'effet de la
+  ligne (Arc de Sang +5 : D8+18), Solidité = 4 + les crans de la ligne (4, 5 du +5 au +9, 6 au +10), Coût = les gemmes de sa magie cumulées
+  (« 6 communes + 3 raffinées de Grenat » au +5), sans RO ni « [Métier à définir] » ; pas de fer (R49 ne s'applique pas). Adresse :
+  `?arme=arme-elementaire-<type>-<magie>&amelioration=N` (l'ancre de sa ligne) ; un `?materiau=` posé avec elle est ignoré et n'est pas réécrit. Sans
+  JavaScript et en mode modification, les deux colonnes de coût se voient ; en mode modification, ses lignes sont en lecture (leur source est la page
+  « Pièces élémentaires ») : ni champ, ni Supprimer, et une arme créée prend place avant elles.
 - **Mode modification** (site de dev) : rien ne se sélectionne ; **les onglets restent affichés** (demande du propriétaire, 2026-10-23 : « Je veux les
   onglets aussi », qui remplace pour l'affichage en onglets la demande antérieure « Quand le mode Edition est lancé, il n'est pas possible de
   "sélectionner" une arme / matériau / amélioration, mais tous les tableaux sont visibles ») : un panneau ouvert par menu, le titre de la famille ouverte
@@ -695,7 +720,10 @@ ne sert qu'à la recherche et aux `[[liens]]`, et suit les tables à chaque modi
   `#famille-…` écrit au choix, chargement par `#famille-…` puis `#boucliers`, option sans adresse, onglet caché sauté, `detail.dans`, re-branchement),
   `armes-edition.test.mjs` (l'extension du mode modification dans un faux navigateur : comptes du tableau et de l'onglet après un ajout et une
   suppression, `onglets:ouvrir` à la création, « + Nouvelle famille » et la surcouche des familles créées), `serveur-edition-armes.test.mjs`, `armes-html.test.mjs` (site construit : les deux menus et
-  leurs onglets, filtre, seconde ligne des effets, panneau, règles mises en forme, champs d'une famille, modèles d'une famille créée).
+  leurs onglets, filtre, seconde ligne des effets, panneau, règles mises en forme, champs d'une famille, modèles d'une famille créée, armes élémentaires et colonnes de coût) ; armes élémentaires (R167) :
+  `armes-elementaires-db.test.mjs` (les données), `armes-elementaires-rendu.test.mjs` (leurs lignes), `arme-forge.test.mjs` (Arc de Sang +5 = D8+18,
+  solidité 5, 6 communes + 3 raffinées de Grenat ; +10 : le total B80:F80), `armes-script.test.mjs` (colonne des gemmes, matériau grisé, adresse),
+  `armes-edition.test.mjs` (en lecture, arme créée avant elles).
 
 
 ## Armures et boucliers (onglets Armures et Boucliers de `/ressources/equipement/`) : deux matériaux pour une armure, une forme et une matière pour un bouclier

@@ -9,10 +9,12 @@
 // bouclier, une armure, une pièce d'armure, une forme, un poids et un bouclier préfabriqué se modifient ; le titre d'un panneau de règles se modifie, un
 // bloc de panneau se crée (après un autre), se modifie et se supprime (pas le dernier) ; rien d'autre. Deux tables sont donc partagées par une condition :
 // `arme` (les armes de monstres, que le service refuse : décision R45, en lecture seule à part) et `amelioration_equipement` (une ressource par cible
-// modifiable ; le service refuse celles des pièces élémentaires : en lecture seule à part). Les tables tirées d'un texte de la ligne (types de dégâts et minimums d'une arme, résistances
-// d'une armure, effets d'une armure élémentaire, gemmes et cibles d'un effet d'accessoire, ligne TOTAL des tableaux d'amélioration) sont des
-// `derivees`, jamais écrites par l'API ; la ligne TOTAL (`amelioration_total`, une par cible) est la dérivée des deux ressources d'amélioration, chacune
-// pour ses cibles.
+// modifiable ; le service refuse celles des armures élémentaires : en lecture seule à part ; depuis la décision R167, migration 0081, les améliorations
+// d'arme sont un seul tableau pour l'arme du catalogue et l'arme élémentaire, coût matériel et coût élémentaire sur la même ligne). Les tables tirées
+// d'un texte de la ligne (types de dégâts et minimums d'une arme, résistances d'une armure, effets d'une armure élémentaire, gemmes et cibles d'un effet
+// d'accessoire, ligne TOTAL des tableaux d'amélioration) sont des `derivees`, jamais écrites par l'API ; la ligne TOTAL (`amelioration_total`, une par
+// cible) est la dérivée des ressources d'amélioration, chacune pour ses cibles : celle des armes a les deux lignes TOTAL de son tableau, celle du coût
+// matériel (« arme ») et celle du coût élémentaire (« arme_elementaire », Pièces élémentaires › B80:F80).
 import { CASES_D_AMELIORATION_DE_BOUCLIER } from '../armure-champs.mjs';
 
 /** La famille des armes de monstres (arme_famille.maitrisable = 0, décision R45) : ses armes ne se créent, ne se modifient ni ne se suppriment. */
@@ -71,13 +73,15 @@ export const RESSOURCES = [
     description:
       'Les bandeaux de l’onglet « Armes » (« ÉPÉES - D10 », « PUGILAT », … « ARME DE MONSTRES »), sous lesquels chaque arme est listée : le bandeau tel ' +
       'qu’écrit, son nom, son ou ses dés, sa note (dé du Pugilat selon la Force…), l’en-tête de sa colonne de coût, si une maîtrise d’arme peut s’y ' +
-      'mettre (décision R45), sa catégorie, arme de contact ou à distance (décision R127 ; aucune pour ARME DE MONSTRES), et son nom de lecture, figé ' +
-      '(le nom sous lequel les maîtrises la désignent toujours, migration 0077) ; le nom, le dé (« D10 », « D6/D8/D10 ») et l’en-tête de coût (un des ' +
-      'trois de la base) se modifient, le service en refait le bandeau ; une famille se crée (décision R159 : nom, dé, catégorie fixée à la création, ' +
-      'en-tête de coût ; identifiant tiré du nom puis figé), maîtrisable, et entre dans les maîtrises au choix de sa catégorie ; un nom déjà pris ou qui ' +
-      'changerait une maîtrise existante est refusé (409) ; aucune ne se supprime ; ARME DE MONSTRES ne se modifie pas (R45).',
+      'mettre (décision R45), sa catégorie, arme de contact ou à distance (décision R127 ; aucune pour ARME DE MONSTRES), son nom de lecture, figé ' +
+      '(le nom sous lequel les maîtrises la désignent toujours, migration 0077), et le type de l’arme élémentaire que devient une arme de la famille ' +
+      'transformée par une pièce élémentaire (décision R167 ; aucun pour ARME DE MONSTRES ni pour une famille créée sur le site, jamais modifié) ; le ' +
+      'nom, le dé (« D10 », « D6/D8/D10 ») et l’en-tête de coût (un des trois de la base) se modifient, le service en refait le bandeau ; une famille se ' +
+      'crée (décision R159 : nom, dé, catégorie fixée à la création, en-tête de coût ; identifiant tiré du nom puis figé), maîtrisable, sans arme ' +
+      'élémentaire, et entre dans les maîtrises au choix de sa catégorie ; un nom déjà pris ou qui changerait une maîtrise existante est refusé (409) ; ' +
+      'aucune ne se supprime ; ARME DE MONSTRES ne se modifie pas (R45).',
     table: 'arme_famille',
-    liste: ['id', 'nom', 'de_brut', 'note_brut', 'maitrisable', 'categorie', 'ordre', 'nom_lecture'],
+    liste: ['id', 'nom', 'de_brut', 'note_brut', 'maitrisable', 'categorie', 'type_elementaire_id', 'ordre', 'nom_lecture'],
     recherche: ['nom', 'libelle_brut', 'nom_lecture'],
     tri: 'ordre',
     ecriture: { creer: 'arme_famille' },
@@ -103,10 +107,37 @@ export const RESSOURCES = [
     noms: 'Armes élémentaires',
     description:
       'Les armes élémentaires de l’onglet « Pièces élémentaires » (un type d’arme × un élément) : nom, bonus de dégâts (« +8 Dégâts »), élément tel ' +
-      'qu’écrit et capacité (nom, mode actif, passif ou action, texte) ; en lecture seule.',
+      'qu’écrit et capacité (nom, mode actif, passif ou action, texte) ; une pièce élémentaire transforme une arme en l’arme élémentaire du type de sa ' +
+      'famille et de la magie (décision R167), améliorée par le tableau des améliorations d’arme ; en lecture seule (sa source est la page « Pièces ' +
+      'élémentaires »).',
     table: 'arme_elementaire',
     liste: ['id', 'nom', 'type_id', 'magie_id', 'bonus_degats', 'capacite_nom', 'capacite_mode'],
     recherche: ['nom', 'capacite_nom'],
+    tri: 'ordre',
+  },
+  {
+    cle: 'types-d-armes-elementaires',
+    nom: 'Type d’arme élémentaire',
+    noms: 'Types d’armes élémentaires',
+    description:
+      'Les en-têtes de type de l’onglet « Pièces élémentaires » (« ÉPÉE », « ARBALETE (Portée : 2-10, ignore 4 AP) »…), un par type d’arme qui a ses ' +
+      'armes élémentaires (décision R167 : dé et portée du type d’arme) : l’en-tête tel qu’écrit, l’AP ignorée, l’exemplaire unique (Arme de jet, ' +
+      'Bombe) et sa mention, les compétences au choix du porteur et les types de dégâts physiques (sous-ressources ; « type_degats_au_choix » : le ' +
+      'porteur en choisit un, la Bombe, sinon tous s’appliquent ; le type de la magie s’y ajoute) ; en lecture seule.',
+    table: 'arme_elementaire_type',
+    libelle: 'entete_brut',
+    enfants: [{
+      cle: 'competences', nom: 'Compétence au choix', noms: 'Compétences au choix', table: 'arme_elementaire_type_competence', parent: { type_id: 'type_id' },
+      lectureSeule: true,
+      description: 'Les compétences entre lesquelles le porteur choisit (« l’arme s’adapte au porteur », décision R167).',
+    }, {
+      cle: 'types-de-degats', nom: 'Type de dégâts', noms: 'Types de dégâts', table: 'arme_elementaire_type_degats', parent: { type_id: 'type_id' },
+      lectureSeule: true,
+      description: 'Les types de dégâts physiques du type d’arme élémentaire, le plus fréquent de sa famille (décision R167 : « Les deux », avec le type ' +
+        'de la magie) ; la Bombe : au choix du porteur.',
+    }],
+    liste: ['type_id', 'entete_brut', 'ignore_ap', 'exemplaire_unique', 'type_degats_au_choix', 'ordre'],
+    recherche: ['entete_brut', 'mention'],
     tri: 'ordre',
   },
 
@@ -204,16 +235,18 @@ export const RESSOURCES = [
     nom: 'Amélioration d’arme',
     noms: 'Améliorations d’arme',
     description:
-      'Les améliorations d’arme (+1 à +10) du tableau AMÉLIORATION de l’onglet « Armes » : le coût (« 1 Matériel + 50 RO » ; un « Matériel » est une ' +
-      'unité du matériau de l’arme : décisions R49, R51) et l’effet (« +10 dégâts, +1 cran de solidité ») se modifient ; le service en tire le coût en ' +
-      'RO, le nombre de matériaux, le bonus de dégâts et les crans de solidité, et refait la ligne TOTAL du tableau (dans le détail) ; ni création ni ' +
-      'suppression.',
+      'Les améliorations d’arme (+1 à +10), un seul tableau pour l’arme du catalogue et l’arme élémentaire (décision R167) : le coût matériel du ' +
+      'tableau AMÉLIORATION de l’onglet « Armes » (« 1 Matériel + 50 RO » ; un « Matériel » est une unité du matériau de l’arme : décisions R49, R51), ' +
+      'le coût élémentaire de l’onglet « Pièces élémentaires » (« 2 gemmes communes », les gemmes de la magie de l’arme ; cumulatif du 0 au +N) et ' +
+      'l’effet (« +10 dégâts, +1 cran de solidité »), le même pour les deux. Le coût matériel et l’effet se modifient ; le service en tire le coût en ' +
+      'RO, le nombre de matériaux, le bonus de dégâts et les crans de solidité, et refait la ligne TOTAL du coût matériel ; le coût élémentaire est en ' +
+      'lecture seule ; les deux lignes TOTAL (coût matériel, coût élémentaire) sont dans le détail ; ni création ni suppression.',
     table: 'amelioration_equipement',
     libelle: 'effet_brut',
     condition: { cible: ['arme'] },
     colonnesFigees: casesDuBouclierFigees('d’arme'),
-    derivees: [{ table: 'amelioration_total', parent: { cible: 'cible' } }],
-    liste: ['id', 'niveau', 'cout_brut', 'effet_brut', 'cout_ro', 'bonus_degats', 'bonus_cran'],
+    derivees: [{ table: 'amelioration_total', parent: {}, condition: { cible: ['arme', 'arme_elementaire'] } }],
+    liste: ['id', 'niveau', 'cout_brut', 'cout_elementaire_brut', 'effet_brut', 'cout_ro', 'bonus_degats', 'bonus_cran'],
     recherche: ['effet_brut', 'cout_brut'],
     tri: 'niveau',
   },
@@ -257,20 +290,20 @@ export const RESSOURCES = [
   },
   {
     cle: 'autres-ameliorations',
-    nom: 'Amélioration de pièce élémentaire',
-    noms: 'Améliorations de pièce élémentaire',
+    nom: 'Amélioration d’armure élémentaire',
+    noms: 'Améliorations d’armure élémentaire',
     description:
-      'Les améliorations des armes et armures élémentaires (onglet « Pièces élémentaires »), une ligne par niveau : coût (« 2 gemmes communes », « 1 ' +
-      'pièce élémentaire ») et effet tels qu’écrits, avec leurs valeurs typées, et la ligne TOTAL du tableau de leur cible (dans le détail) ; le site ' +
-      'de dev ne les modifie pas : en lecture seule.',
+      'Les améliorations des armures élémentaires (onglet « Pièces élémentaires »), une ligne par niveau : coût (« 2 gemmes communes », « 1 pièce ' +
+      'élémentaire ») et effet tels qu’écrits, avec leurs valeurs typées, et la ligne TOTAL de leur tableau (dans le détail) ; celles des armes ' +
+      'élémentaires sont dans le tableau des améliorations d’arme (décision R167) ; le site de dev ne les modifie pas : en lecture seule.',
     table: 'amelioration_equipement',
     libelle: 'effet_brut',
-    condition: { cible: { sauf: ['arme', 'armure', 'bouclier'] } },
+    condition: { cible: ['armure_elementaire'] },
     lectureSeule: true,
     derivees: [{ table: 'amelioration_total', parent: { cible: 'cible' } }],
-    liste: ['id', 'cible', 'niveau', 'cout_brut', 'effet_brut'],
+    liste: ['id', 'cible', 'niveau', 'cout_brut', 'effet_brut', 'bonus_ap', 'bonus_am', 'bonus_cran'],
     recherche: ['effet_brut', 'cout_brut'],
-    tri: 'cible',
+    tri: 'niveau',
   },
 
   // ▸ Accessoires (générateur de l'onglet « Accessoires » de /ressources/equipement/, non modifiable sur le site de dev)

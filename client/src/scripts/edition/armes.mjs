@@ -23,7 +23,10 @@
 //   - une arme enregistrée : sa ligne suit la case « Arme de départ » (fond bleu, infobulle) et sa description (infobulle du nom) ; une famille
 //     enregistrée : la pastille de son dé dans l'onglet, son coût « à l'unité » (`data-unite`, lu par la fiche) et son nom dans la liste des familles ;
 //   - à chaque étape, l'évènement « armes:rafraichir » redemande au script de la page la fiche ouverte et le filtre (aucun module partagé
-//     entre les deux scripts).
+//     entre les deux scripts) ;
+//   - les armes élémentaires (décision R167 ; `tr.arme--elementaire`, à la suite des armes de leur famille) sont en lecture : leur source est la page
+//     « Pièces élémentaires » (le service ne les modifie pas : serveur/edition-armes.mjs) ; leurs lignes n'ont aucun champ (`data-ed`), pas de bouton
+//     Supprimer, et une arme créée prend place avant elles, à la fin des armes du catalogue.
 import { cleDeLigne, ENTITES } from '../../lib/edition-modele.mjs';
 import { htmlDeFamilleDepuisModele, htmlDeLigneDArme } from '../../lib/armes-rendu.mjs';
 
@@ -31,7 +34,10 @@ const rafraichir = () => document.dispatchEvent(new CustomEvent('armes:rafraichi
 const ligneDe = (id) => document.querySelector(`tr.arme[data-arme="${CSS.escape(id)}"]`);
 const supprimees = new Set();
 
-/** Le nombre d'armes affiché en tête de la famille d'une ligne, et dans son onglet (components/armes/ArmesPage.astro : `onglet-famille-<id>`). */
+/**
+ * Le nombre d'armes affiché en tête de la famille d'une ligne, et dans son onglet (components/armes/ArmesPage.astro : `onglet-famille-<id>`) : toutes les
+ * lignes de son tableau, armes élémentaires comprises (comme la page construite).
+ */
 function recompter(famille) {
   if (!famille) return;
   const n = famille.querySelectorAll('tbody tr.arme').length;
@@ -42,15 +48,17 @@ function recompter(famille) {
 }
 
 /**
- * Les lignes d'une arme que la page n'a pas (la sienne et celle de ses effets : lib/armes-rendu.mjs#htmlDeLigneDArme), ajoutées à la fin du tableau de
- * sa famille (rien si la famille n'est pas sur la page) ; rend la ligne de l'arme.
+ * Les lignes d'une arme que la page n'a pas (la sienne et celle de ses effets : lib/armes-rendu.mjs#htmlDeLigneDArme), ajoutées à la fin des armes du
+ * tableau de sa famille, avant ses armes élémentaires (rien si la famille n'est pas sur la page) ; rend la ligne de l'arme.
  */
 function ajouter(ed, ligne) {
   if (ligneDe(ligne.id)) return ligneDe(ligne.id);
   const famille = document.getElementById(`famille-${ligne.famille_id}`);
   const corps = famille?.querySelector('tbody');
   if (!corps) return null;
-  corps.insertAdjacentHTML('beforeend', htmlDeLigneDArme(ligne, ed.listes));
+  const elementaire = corps.querySelector('tr.arme--elementaire');
+  if (elementaire) elementaire.insertAdjacentHTML('beforebegin', htmlDeLigneDArme(ligne, ed.listes));
+  else corps.insertAdjacentHTML('beforeend', htmlDeLigneDArme(ligne, ed.listes));
   const tr = ligneDe(ligne.id);
   tr?.classList.add('ed-nouveau');
   recompter(famille);
@@ -144,6 +152,8 @@ function retirer(id) {
 }
 
 function boutonSupprimer(tr) {
+  // une arme élémentaire ne se supprime pas ici (R167 : en lecture)
+  if (tr.classList.contains('arme--elementaire')) return;
   const cellule = tr.querySelector('.arme__nom');
   if (!cellule || cellule.querySelector('.ed-supprimer')) return;
   const bouton = document.createElement('button');

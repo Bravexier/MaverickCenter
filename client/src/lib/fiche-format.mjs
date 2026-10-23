@@ -58,11 +58,14 @@ export const CHAMP_VERSION = 'version';
  * sort : décision R26) : les NM du MJ sont ceux de la fiche, personnage.nm_mj, la somme de ses nm_cadeau (décision R118, migration 0066 : nmDuMjDesSorts) ;
  * le NM de chaque sort ne change pas. `arme_famille_id` d'un choix d'acquis (l'arme choisie du bonus « de l'arme choisie », décision R119) : l'arme du
  * bonus est la famille de la maîtrise au choix de la classe (décision R152, migration 0076) ; l'ancienne est notée, datée, avec les anciens dés
- * (décision R153 : maitrisesDAvant) ; la compétence du choix reste.
+ * (décision R153 : maitrisesDAvant) ; la compétence du choix reste. `amelioration_elementaire_id` d'une arme (l'amélioration de l'élément posé sur une
+ * arme du catalogue) : une pièce élémentaire transforme l'arme, qui n'a plus qu'un niveau d'amélioration (décision R167, migration 0081 : armeDAvant) ;
+ * le niveau passe à l'arme élémentaire, ou il est noté, daté, dans la fiche.
  */
 export const COLONNES_RETIREES = Object.freeze({
   personnage: Object.freeze(['statut', 'entrainement']), personnage_accessoire: Object.freeze(['nom', 'texte']), personnage_competence: Object.freeze(['acquis']),
   personnage_sort: Object.freeze(['nm_cadeau']), personnage_acquis_choix: Object.freeze(['arme_famille_id']),
+  personnage_arme: Object.freeze(['amelioration_elementaire_id']),
 });
 
 /**
@@ -417,6 +420,97 @@ export function maitrisesAvecChoix(fiche) {
 }
 
 /**
+ * Le niveau écrit dans l'identifiant d'une amélioration (« <page>#amelioration:<cible>:<niveau> », identifiants figés : data/schema.sql), celui d'une
+ * ancienne amélioration de pièce élémentaire d'arme compris (« ressources/pieces-elementaires#amelioration:arme-elementaire:3 », fondue par la migration 0081).
+ */
+const NIVEAU_DE_L_AMELIORATION = /#amelioration:[a-z_-]+:(\d+)$/;
+
+/**
+ * Vrai si une ligne d'arme de la fiche (personnage_arme) a la forme d'avant la migration 0081 : une arme du catalogue ET un élément posé dessus, ou
+ * l'amélioration de cet élément (`amelioration_elementaire_id`, même vide : la clé d'une page d'avant).
+ */
+export const armeDAvant0081 = (l) => Boolean(l) && typeof l === 'object' && !Array.isArray(l)
+  && ('amelioration_elementaire_id' in l || (!vide(l.arme_id) && !vide(l.arme_elementaire_id)));
+
+/**
+ * Une arme de la fiche d'avant la migration 0081 (une arme du catalogue, son matériau, son amélioration, l'élément posé dessus et l'amélioration de
+ * l'élément) dans la forme de la décision R167 (une arme du catalogue OU une arme élémentaire, un seul niveau d'amélioration), avec ce qu'elle perd. La
+ * spécification de la conversion (cahier des charges de R167, mot pour mot) : « une arme avec un élément posé du type de l'arme (type élémentaire de sa
+ * famille) devient l'arme élémentaire, avec pour niveau celui de l'ancienne "amélioration de l'élément" (aucun s'il n'y en avait pas) ; l'arme, le
+ * matériau et l'amélioration d'origine sont notés, datés, dans la note de la fiche ; la durabilité est gardée, bornée au nouveau maximum. Élément
+ * d'un autre type : l'élément et son amélioration sont retirés et notés ; l'arme garde matériau et amélioration. Amélioration d'élément sans élément :
+ * retirée et notée. »
+ *   - même type : arme_elementaire.type_id = arme_famille.type_elementaire_id de la famille de l'arme ; la ligne devient arme_id NULL, materiau_id NULL,
+ *     amelioration_id = la ligne de cible 'arme' du niveau de l'ancienne amélioration de l'élément ; durabilité bornée au maximum de l'arme élémentaire
+ *     (soliditeElementaire + bonus_cran de la nouvelle ligne : R167), NULL à ce maximum ou au-delà (« NULL = à son maximum », R74) ; type inconnu (arme ou
+ *     arme élémentaire introuvable) : traité comme un autre type, rien n'est deviné ; aucun type de dégâts choisi (type_degats_choisi NULL, migration
+ *     0081 : la Bombe se choisit sur la fiche) ;
+ *   - une ligne qui n'a pas d'arme du catalogue et d'élément à la fois ne perd que l'amélioration de l'élément, notée si elle en avait une.
+ * Rend { ligne (sans `amelioration_elementaire_id`), retrait (un descripteur de nature « arme_elementaire » : ligneDeRetrait ; null quand rien ne se
+ * perd) }. `noms` : arme(id) → { nom, famille, type_elementaire_id } ; armeElementaire(id) → { nom, type_id } ; ressource(id) → nom (le matériau) ;
+ * niveau(id) → le niveau d'une amélioration (l'ancienne de l'élément, sinon lu dans son identifiant) ; ameliorationDArme(niveau) → { id, bonus_cran } ;
+ * soliditeElementaire : constante_equipement « piece_elementaire.solidite_base » (la solidité de base d'une pièce élémentaire). La même règle pour la base vivante (serveur/base-vivante.mjs,
+ * COLONNES_CONVERTIES) et pour une fiche reçue d'une page d'avant ou importée d'un fichier exporté avant (sansPartiesRetirees).
+ */
+export function armeDAvant(ligne, noms = {}) {
+  const { amelioration_elementaire_id: ameliorationElement = null, ...reste } = ligne;
+  const armeId = vide(reste.arme_id) ? null : reste.arme_id;
+  const elementId = vide(reste.arme_elementaire_id) ? null : reste.arme_elementaire_id;
+  const niveauDe = (id) => {
+    if (vide(id)) return null;
+    const lu = noms.niveau?.(id);
+    if (Number.isInteger(lu)) return lu;
+    const m = NIVEAU_DE_L_AMELIORATION.exec(String(id));
+    return m ? Number(m[1]) : null;
+  };
+  const niveauElement = niveauDe(ameliorationElement);
+  const arme = armeId ? noms.arme?.(armeId) ?? null : null;
+  const element = elementId ? noms.armeElementaire?.(elementId) ?? null : null;
+  const rang = reste.rang ?? null;
+  const situe = { id: armeId ?? elementId ?? 'arme', nom: armeId ? arme?.nom ?? null : element?.nom ?? null, famille: arme?.famille ?? null, rang };
+  if (!armeId || !elementId) {
+    const avait = !vide(ameliorationElement);
+    return { ligne: reste, retrait: avait ? { nature: 'arme_elementaire', cas: 'amelioration_seule', ...situe, niveau_element: niveauElement } : null };
+  }
+  const memeType = Boolean(arme?.type_elementaire_id) && arme.type_elementaire_id === element?.type_id;
+  if (!memeType) {
+    return {
+      ligne: { ...reste, arme_elementaire_id: null, type_degats_choisi: null },
+      retrait: { nature: 'arme_elementaire', cas: 'autre_type', ...situe, element: element?.nom ?? elementId, niveau_element: niveauElement },
+    };
+  }
+  const nouvelle = niveauElement === null ? null : noms.ameliorationDArme?.(niveauElement) ?? null;
+  const max = Number.isFinite(noms.soliditeElementaire) ? noms.soliditeElementaire + entierPositif(nouvelle?.bonus_cran) : null;
+  const d = vide(reste.durabilite) || !Number.isFinite(Number(reste.durabilite)) ? null : Math.max(0, Math.trunc(Number(reste.durabilite)));
+  return {
+    ligne: {
+      ...reste, arme_id: null, materiau_id: null, amelioration_id: nouvelle?.id ?? null, durabilite: d === null || (max !== null && d >= max) ? null : d,
+      type_degats_choisi: null,
+    },
+    retrait: {
+      nature: 'arme_elementaire', cas: 'devenue', ...situe, element: element?.nom ?? elementId, niveau_element: niveauElement, niveau_garde: Boolean(nouvelle),
+      materiau: vide(reste.materiau_id) ? null : noms.ressource?.(reste.materiau_id) ?? reste.materiau_id, amelioration: niveauDe(reste.amelioration_id),
+    },
+  };
+}
+
+/**
+ * Les armes d'une fiche dans la forme de la décision R167 (armeDAvant pour chaque ligne d'avant la migration 0081, les autres telles quelles) :
+ * { lignes, retraits } ; null quand aucune ligne n'est d'avant (rien à convertir).
+ */
+export function armesDAvant(lignes, noms = {}) {
+  if (!Array.isArray(lignes) || !lignes.some(armeDAvant0081)) return null;
+  const retraits = [];
+  const converties = lignes.map((l) => {
+    if (!armeDAvant0081(l)) return l;
+    const c = armeDAvant(l, noms);
+    if (c.retrait) retraits.push(c.retrait);
+    return c.ligne;
+  });
+  return { lignes: converties, retraits };
+}
+
+/**
  * La fiche sans les clés des tables retirées (PARTIES_RETIREES), converties sans rien perdre : une `progression` reçue (page restée ouverte, fichier
  * exporté avant la migration 0045) donne gains_sante et gains_chakra (gainsDeLaProgression) quand la fiche ne les a pas. Si elle les a, ils sont
  * gardés et la progression est jetée : une progression vide n'est que le reste de la fiche vide d'une page d'avant, qui a repris les deux totaux d'une
@@ -435,12 +529,17 @@ export function maitrisesAvecChoix(fiche) {
  * Une fiche qui porte une armure ET une armure élémentaire (l'« élément » de R95, avant la décision R165) : l'élément devient l'armure, avec son
  * amélioration, ses parties à leur maximum (armure_parties vide), l'armure d'origine notée (armureTransformee) ; sauf avec `armureDouble: false` (le
  * service, qui fait cette conversion après l'écriture, sur la fiche enregistrée : serveur/fiches-retraits.mjs#retirerLesArmuresHorsRegle).
+ * Des armes d'avant la migration 0081 (un élément posé sur une arme du catalogue, `amelioration_elementaire_id`) prennent la forme de la décision R167
+ * (armesDAvant : l'arme élémentaire, ou l'arme sans l'élément), ce qu'elles perdent noté (`noms` : ceux d'armeDAvant).
  * Une fiche sans rien à convertir est rendue telle quelle (le même objet) ; jamais modifiée en place.
  * @param {object} fiche
  * @param {{ instant?: string, noms?: { armure?: (id: string) => string | null, emplacement?: (id: string) => string | null,
  *   ressource?: (id: string) => string | null, accessoire?: (id: string) => string | null, competence?: (id: string) => string | null,
  *   famille?: (id: string) => { nom: string, de: string | null, ordre: number } | null, don?: (id: string) => { nom: string, classe: string | null } | null,
- *   armureElementaire?: (id: string) => string | null, amelioration?: (id: string) => number | null },
+ *   armureElementaire?: (id: string) => string | null, amelioration?: (id: string) => number | null,
+ *   arme?: (id: string) => { nom: string, famille: string | null, type_elementaire_id: string | null } | null,
+ *   armeElementaire?: (id: string) => { nom: string, type_id: string } | null, niveau?: (id: string) => number | null,
+ *   ameliorationDArme?: (niveau: number) => { id: string, bonus_cran: number | null } | null, soliditeElementaire?: number },
  *   notes?: string | null, armureDouble?: boolean }} [options]
  *   `instant` : ISO 8601 UTC à la seconde (la date des lignes ajoutées aux notes) ; sans lui, une pièce retirée n'est pas notée ; `notes` : celles de
  *   la fiche enregistrée, auxquelles les lignes s'ajoutent quand la fiche reçue n'a pas de `notes` (un envoi partiel ne les efface pas)
@@ -457,7 +556,10 @@ export function sansPartiesRetirees(fiche, { instant = null, noms = {}, notes = 
   const armesChoisies = Array.isArray(fiche.acquis_choix) && fiche.acquis_choix.some((a) => a && typeof a === 'object' && !Array.isArray(a) && 'arme_famille_id' in a);
   // décision R165 : une armure et son « élément » (R95)
   const transformee = armureDouble && deuxArmures(fiche);
-  if (!Object.keys(PARTIES_RETIREES).some((cle) => cle in fiche) && !accessoires && !entrainement && !acquis && !cadeaux && !armesChoisies && !transformee) return fiche;
+  // décision R167 : un élément posé sur une arme du catalogue, l'amélioration de l'élément
+  const armesElementaires = Array.isArray(fiche.armes) && fiche.armes.some(armeDAvant0081);
+  if (!Object.keys(PARTIES_RETIREES).some((cle) => cle in fiche) && !accessoires && !entrainement && !acquis && !cadeaux && !armesChoisies && !transformee
+    && !armesElementaires) return fiche;
   const { progression, armures, bouclier_materiaux, maitrises_armes, ...reste } = fiche;
   const retraits = [];
   if (progression !== undefined && !('gains_sante' in reste) && !('gains_chakra' in reste)) Object.assign(reste, gainsDeLaProgression(progression));
@@ -507,6 +609,12 @@ export function sansPartiesRetirees(fiche, { instant = null, noms = {}, notes = 
     reste.armure_parties = [];
     retraits.push(conversionR165.retrait);
   }
+  if (armesElementaires) {
+    // décision R167 : l'élément du type de l'arme la transforme en arme élémentaire, sinon il part ; l'amélioration de l'élément devient le niveau ou part
+    const conversion = armesDAvant(reste.armes, noms);
+    reste.armes = conversion.lignes;
+    retraits.push(...conversion.retraits);
+  }
   if (retraits.length && instant) reste.notes = ajouterAuxNotes('notes' in reste ? reste.notes : notes, retraits.map((d) => ligneDeRetrait(d, instant)));
   return reste;
 }
@@ -546,7 +654,7 @@ export const PREFIXE_DE_RETRAIT = 'Retrait (règles modifiées) : ';
 
 /**
  * Natures d'un élément retiré, dans l'ordre des lignes d'une fiche : métier, spécialité, don, sort, arme (décision R52 : une arme supprimée, comme R42),
- * objet (R60), pièce d'armure (R95 : une fiche ne porte plus qu'une armure complète), matériau de bouclier (R96 : un bouclier n'a plus qu'une forme et une
+ * arme élémentaire (R167 : un élément posé sur une arme d'avant la migration 0081, qui la transforme ou part ; l'amélioration de l'élément), objet (R60), pièce d'armure (R95 : une fiche ne porte plus qu'une armure complète), matériau de bouclier (R96 : un bouclier n'a plus qu'une forme et une
  * matière), accessoire (R97 : plus d'emplacement Ceinture ni Autre, ni de nom, ni d'effet hors table), acquis saisi (R104), maîtrises d'armes d'avant la
  * refonte (R153 : la dernière ligne, une par fiche). L'armure de la décision R165 (NATURES_DE_L_ARMURE), après les pièces d'armure de R95.
  */
@@ -557,7 +665,8 @@ export const PREFIXE_DE_RETRAIT = 'Retrait (règles modifiées) : ';
  */
 export const NATURES_DE_L_ARMURE = Object.freeze(['armure_transformee', 'armure_familier', 'armure_magie_absente', 'armure_trop_lourde']);
 export const ORDRE_DES_NATURES = Object.freeze([
-  'metier', 'specialite', 'capacite', 'sort', 'arme', 'objet', 'piece_armure', ...NATURES_DE_L_ARMURE, 'materiau_bouclier', 'accessoire', 'acquis', 'maitrises_armes',
+  'metier', 'specialite', 'capacite', 'sort', 'arme', 'arme_elementaire', 'objet', 'piece_armure', ...NATURES_DE_L_ARMURE, 'materiau_bouclier', 'accessoire', 'acquis',
+  'maitrises_armes',
 ]);
 
 /** Le jour (UTC) d'un instant au format des colonnes `*_le` (« 2026-10-11T08:30:00Z » → « 11/10/2026 ») ; lève une Error sur un instant mal formé. */
@@ -582,6 +691,9 @@ const positif = (n) => typeof n === 'number' && n > 0;
  *                du MJ sont ceux de la fiche, décision R118 : ils restent quand le sort part) ;
  *   métier     : « le métier « Forgeron » » ;
  *   arme       : « l'arme « Katana » (ÉPÉES, arme 1) » (décision R52) ;
+ *   arme élém. : une arme d'avant la migration 0081 (décision R167, armeDAvant ; `cas`) : devenue l'arme élémentaire, « l'arme « Arc long » (ARC, arme 1,
+ *                matériau « Titane », amélioration +3) » ; élément d'un autre type, « l'élément « Épée de Sang » de l'arme « Arc long » (ARC, arme 1,
+ *                amélioration de l'élément +2) » ; amélioration de l'élément seule, « l'amélioration de l'élément +2 de l'arme « Arc long » (ARC, arme 1) » ;
  *   objet      : « l'objet « Corde (1m) » (inventaire) » : un composant supprimé de la base, que la fiche garde sous son nom (décision R60) ;
  *   pièce      : « la pièce d'armure « Armure Cuir/Peau » (Torse) » : une pièce que la fiche ne porte plus, elle n'a plus qu'une armure (décision R95) ;
  *                avec `devenue`, la pièce gardée, devenue l'armure complète de la fiche (armureDesArmures : « transformee ») ; avec `armureGardee`, une
@@ -597,11 +709,12 @@ const positif = (n) => typeof n === 'number' && n > 0;
  *                `amelioration` : le niveau ; `parties` : partiesEnTexte. « armure_transformee » : `devenue` (le nom de l'armure élémentaire) et
  *                `amelioration_devenue` ; « armure_magie_absente » : `magie` ; « armure_trop_lourde » : `poids` (celui de l'armure) et `portable` (le poids
  *                portable du personnage), en mots (POIDS_DES_ARMURES).
- * @param {{ nature: 'metier' | 'specialite' | 'capacite' | 'sort' | 'arme' | 'objet' | 'piece_armure' | 'armure_transformee' | 'armure_familier' | 'armure_magie_absente' | 'armure_trop_lourde' | 'materiau_bouclier' | 'accessoire' | 'acquis' | 'maitrises_armes', id: string, emplacement?: string | null, famille?: string | null, rang?: number | null, nom?: string | null, classe?: string | null, specialite?: string | null,
+ * @param {{ nature: 'metier' | 'specialite' | 'capacite' | 'sort' | 'arme' | 'objet' | 'arme_elementaire' | 'piece_armure' | 'armure_transformee' | 'armure_familier' | 'armure_magie_absente' | 'armure_trop_lourde' | 'materiau_bouclier' | 'accessoire' | 'acquis' | 'maitrises_armes', id: string, emplacement?: string | null, famille?: string | null, rang?: number | null, nom?: string | null, classe?: string | null, specialite?: string | null,
  *   niveau?: number | null, magie?: string | null, npm?: number | null, nm?: number | null, nm_livre?: number | null,
  *   dons?: string[], devenue?: boolean | string, armureGardee?: boolean, quantite?: number | null, matiere?: string | null, effet?: string | null, texte?: string | null,
  *   ecarte?: boolean, valeur?: number, amelioration?: number | string | null, parties?: string | null, amelioration_devenue?: number | string | null,
- *   elementaire?: boolean, poids?: string, portable?: string }} d
+ *   elementaire?: boolean, poids?: string, portable?: string, cas?: 'devenue' | 'autre_type' | 'amelioration_seule', element?: string,
+ *   niveau_element?: number | null, niveau_garde?: boolean, materiau?: string | null }} d
  */
 export function descriptionDuRetrait(d) {
   const nom = d.nom ?? d.id;
@@ -630,6 +743,16 @@ export function descriptionDuRetrait(d) {
     tete = `l’arme « ${nom} »`;
     if (d.famille) parties.push(d.famille);
     if (d.rang !== null && d.rang !== undefined) parties.push(`arme ${d.rang}`);
+  } else if (d.nature === 'arme_elementaire') {
+    const arme = `l’arme « ${d.nom ?? d.id} »`;
+    tete = d.cas === 'devenue' ? arme
+      : d.cas === 'autre_type' ? `l’élément « ${d.element} » de ${arme}`
+        : `l’amélioration de l’élément${positif(d.niveau_element) ? ` +${d.niveau_element}` : ''} de ${arme}`;
+    if (d.famille) parties.push(d.famille);
+    if (d.rang !== null && d.rang !== undefined) parties.push(`arme ${d.rang}`);
+    if (d.cas === 'devenue' && d.materiau) parties.push(`matériau « ${d.materiau} »`);
+    if (d.cas === 'devenue' && positif(d.amelioration)) parties.push(`amélioration +${d.amelioration}`);
+    if (d.cas === 'autre_type' && positif(d.niveau_element)) parties.push(`amélioration de l’élément +${d.niveau_element}`);
   } else if (d.nature === 'objet') {
     tete = `l’objet « ${nom} »`;
     if (d.emplacement) parties.push(d.emplacement);
@@ -709,6 +832,14 @@ export const ligneDeRetrait = (d, instant) => (d.nature === 'maitrises_armes'
       : NATURES_DE_L_ARMURE.includes(d.nature)
         // décision R165 : les textes de la migration 0080 (les mêmes pour la base vivante, une fiche reçue et la page /fiche/)
         ? suiteDuRetraitDArmure(d)
+      : d.nature === 'arme_elementaire'
+        // décision R167 : une pièce élémentaire transforme l'arme en l'arme élémentaire du type de sa famille, qui n'a qu'un niveau d'amélioration
+        ? (d.cas === 'devenue'
+          ? `est devenue l’arme élémentaire « ${d.element} »${!positif(d.niveau_element) ? ', sans amélioration'
+            : d.niveau_garde ? `, avec l’amélioration +${d.niveau_element} de son élément` : `, sans l’amélioration +${d.niveau_element} de son élément (niveau absent des règles)`} : une pièce élémentaire transforme l’arme, qui perd toutes ses caractéristiques d’avant. Adaptez la fiche.`
+          : d.cas === 'autre_type'
+            ? 'n’est plus posé : une pièce élémentaire ne fait d’une arme que l’arme élémentaire du type de sa famille ; l’arme garde son matériau et son amélioration. Adaptez la fiche.'
+            : 'est retirée : l’arme n’a pas d’élément, et une arme n’a plus qu’un niveau d’amélioration (le sien est gardé). Adaptez la fiche.')
       : d.nature === 'materiau_bouclier'
         // décision R96 : le bouclier de la liste, une forme et une matière (le matériau du premier rang)
         ? `n’est plus dans le bouclier : un bouclier n’a plus qu’une forme et une matière${d.matiere ? ` (« ${d.matiere} », son premier matériau)` : ''}. Adaptez la fiche.`

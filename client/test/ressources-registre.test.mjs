@@ -32,18 +32,20 @@ test('registre : chaque table du schéma est rangée une fois et une seule (ress
   const places = new Map();
   const liees = new Map(); // table → [{ r, parent }] : ses places d'extension, d'enfant ou de dérivée
   const noter = (t, ou) => (places.get(t) ?? places.set(t, []).get(t)).push(ou);
-  const lier = (t, r, parent) => (liees.get(t) ?? liees.set(t, []).get(t)).push({ r, parent });
+  const lier = (t, r, parent, condition = null) => (liees.get(t) ?? liees.set(t, []).get(t)).push({ r, parent, condition });
   for (const r of RESSOURCES) {
     noter(r.table, `${r.module}/${r.cle} (principale)`);
     for (const e of r.extensions ?? []) { noter(e.table, `${r.module}/${r.cle} (extension)`); lier(e.table, r, e.parent); }
     for (const e of r.enfants ?? []) { noter(e.table, `${r.module}/${r.cle}/${e.cle} (enfant)`); lier(e.table, r, e.parent); }
-    for (const d of r.derivees ?? []) { noter(d.table, `${r.module}/${r.cle} (dérivée)`); lier(d.table, r, d.parent); }
+    for (const d of r.derivees ?? []) { noter(d.table, `${r.module}/${r.cle} (dérivée)`); lier(d.table, r, d.parent, d.condition ?? null); }
   }
-  // une table liée répétée n'est permise que dans les ressources qui se partagent une même table principale par condition, au même lien : chacune n'en
-  // voit que les lignes de ses éléments (amelioration_total, ligne TOTAL de chaque cible d'amélioration)
+  // une table liée répétée n'est permise que dans les ressources qui se partagent une même table principale par condition, au même lien, ou par un lien
+  // qui a sa propre condition : chacune n'en voit que les lignes de ses éléments (amelioration_total, ligne TOTAL de chaque cible d'amélioration ; les
+  // deux lignes TOTAL du tableau des améliorations d'arme, décision R167)
   const partageeParCondition = (t) => {
     const l = liees.get(t) ?? [];
-    return l.length > 1 && l.every((x) => x.r.table === l[0].r.table && x.r.condition && JSON.stringify(x.parent) === JSON.stringify(l[0].parent));
+    return l.length > 1 && l.every((x) => x.r.table === l[0].r.table && x.r.condition)
+      && new Set(l.filter((x) => !x.condition).map((x) => JSON.stringify(x.parent))).size <= 1;
   };
   for (const m of MODULES) for (const t of Object.keys(m.horsRessource)) noter(t, `${m.cle} (hors ressource)`);
   const defauts = [];
@@ -74,7 +76,7 @@ test('registre : chaque colonne citée existe dans la base (clé, libellé, list
     verifier(r.table, [r.libelle, ...(r.liste ?? []), ...(r.recherche ?? []), r.tri?.replace(/^-/, ''), ...Object.keys(r.condition ?? {})], ou);
     for (const e of r.extensions ?? []) { verifier(e.table, Object.keys(e.parent), `${ou} extension ${e.table}`); verifier(r.table, Object.values(e.parent), `${ou} extension ${e.table}`); }
     for (const e of [...(r.enfants ?? []), ...(r.derivees ?? [])]) {
-      verifier(e.table, [...Object.keys(e.parent), e.tri?.replace(/^-/, '')], `${ou} enfant ${e.table}`);
+      verifier(e.table, [...Object.keys(e.parent), e.tri?.replace(/^-/, ''), ...Object.keys(e.condition ?? {})], `${ou} enfant ${e.table}`);
       verifier(r.table, Object.values(e.parent), `${ou} enfant ${e.table}`);
     }
   }
@@ -98,25 +100,29 @@ test('registre : chaque ligne d’une table partagée appartient à une ressourc
 });
 
 test('registre : chaque ligne d’un enfant, d’une dérivée ou d’une extension a son parent dans une ressource, condition comprise (rien n’est hors d’atteinte)', () => {
-  const satisfait = (r, l) => Object.entries(r.condition ?? {}).every(([c, v]) => (Array.isArray(v) ? v.includes(l[c]) : !v.sauf.includes(l[c])));
+  const satisfaite = (condition, l) => Object.entries(condition ?? {}).every(([c, v]) => (Array.isArray(v) ? v.includes(l[c]) : !v.sauf.includes(l[c])));
+  const satisfait = (r, l) => satisfaite(r.condition, l);
   const liens = new Map();
   for (const r of ressourcesVues) {
-    for (const x of [...(r.extensions ?? []), ...(r.enfants ?? []), ...(r.derivees ?? [])]) (liens.get(x.table) ?? liens.set(x.table, []).get(x.table)).push({ r, parent: x.parent });
+    for (const x of [...(r.extensions ?? []), ...(r.enfants ?? []), ...(r.derivees ?? [])]) (liens.get(x.table) ?? liens.set(x.table, []).get(x.table)).push({ r, parent: x.parent, condition: x.condition });
   }
   // toutes les ressources d'une table liée (un module seul : celles des autres modules comptent aussi)
   for (const r of RESSOURCES) {
     for (const x of [...(r.extensions ?? []), ...(r.enfants ?? []), ...(r.derivees ?? [])]) {
       const l = liens.get(x.table);
-      if (l && !l.some((y) => y.r === r && y.parent === x.parent)) l.push({ r, parent: x.parent });
+      if (l && !l.some((y) => y.r === r && y.parent === x.parent)) l.push({ r, parent: x.parent, condition: x.condition });
     }
   }
   const orphelines = [];
   for (const [table, l] of liens) {
-    const parents = l.map(({ r, parent }) => {
+    // une ligne liée est servie par un lien quand son parent est une ligne de la ressource (condition de la ressource comprise) et qu'elle satisfait la
+    // condition du lien (une dérivée restreinte : lib/ressources.mjs)
+    const parents = l.map(({ r, parent, condition }) => {
       const cles = new Set(db.prepare(`SELECT * FROM "${r.table}"`).all().filter((p) => satisfait(r, p)).map((p) => JSON.stringify(Object.values(parent).map((c) => p[c]))));
-      return { parent, cles };
+      return { parent, cles, condition };
     });
-    const sans = db.prepare(`SELECT * FROM "${table}"`).all().filter((ligne) => !parents.some(({ parent, cles }) => cles.has(JSON.stringify(Object.keys(parent).map((c) => ligne[c])))));
+    const sans = db.prepare(`SELECT * FROM "${table}"`).all()
+      .filter((ligne) => !parents.some(({ parent, cles, condition }) => satisfaite(condition, ligne) && cles.has(JSON.stringify(Object.keys(parent).map((c) => ligne[c])))));
     if (sans.length) orphelines.push(`${table} : ${sans.length} ligne(s) sans parent servi (${sans.slice(0, 4).map((x) => JSON.stringify(Object.values(x).slice(0, 2))).join(', ')})`);
   }
   assert.deepEqual(orphelines, []);

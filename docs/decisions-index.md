@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 166 décisions, de R1 à R166, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 168 décisions, de R1 à R168, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
 
 | Réf. | Sujet | Décision |
 | --- | --- | --- |
@@ -172,3 +172,5 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R164 | Les sorts « Fer » : 13 sorts de NPM 2, un par magie sauf l'Arcane et le Po… | Le mot-clé « Sort fer » (`sort-fer`) du glossaire, déf… |
 | R165 | Pièce élémentaire posée sur une armure : l'onglet « Pièces élémentaires »… | (1) Transformation. Quels que soient son matériau, son… |
 | R166 | Crans de résistance des armures élémentaires (suite de R165) : chaque armu… | Les crans de résistance de l'armure élémentaire portée… |
+| R167 | Armes élémentaires (« dans un premier temps que pour les armes » ; les arm… | Une pièce élémentaire transforme l'arme : quels que so… |
+| R168 | Mage Vert (Mage jade), don de niveau 20 « Meilleure attaque ... » : « (Pos… | Le don complète l'un des deux dons de niveau 15 qui co… |
