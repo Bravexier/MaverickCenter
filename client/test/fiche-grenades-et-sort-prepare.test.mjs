@@ -233,7 +233,7 @@ test('R115 : changer le sort d’un emplacement (sortsApresChoixDEmplacement) : 
   assert.deepEqual(avant, gele);
 });
 
-test('R152 : un choix d’acquis n’enregistre plus d’arme (personnage_acquis_choix.arme_famille_id, retirée par la migration 0073 : l’arme est la maîtrise au choix) ; la compétence reste', () => {
+test('R152 : un choix d’acquis n’enregistre plus d’arme (personnage_acquis_choix.arme_famille_id, retirée par la migration 0074 : l’arme est la maîtrise au choix) ; la compétence reste', () => {
   const f = {
     ...ficheVide('Lame'), race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-central', magie_innee_id: 'magies/magie-du-feu', xp: xpDuNiveau(10),
     classes: [{ rang: 1, classe_id: 'classes/guerrier', specialite_id: 'classes/guerrier#specialite:epeiste' }],

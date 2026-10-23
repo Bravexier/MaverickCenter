@@ -503,7 +503,7 @@ export function acquisChoixGardes(regles, fiche) {
 /**
  * Les choix d'acquis de la fiche qui restent valables (un don débloqué, le même rang, une option de son texte, des points répartis) : ceux qu'on enregistre.
  * Un choix d'arme (décisions R119, R152) : sa compétence quand la famille de la maîtrise au choix en offre plusieurs et qu'elle est choisie ; déduite (une
- * seule compétence), rien ne s'enregistre ; la famille n'est jamais enregistrée ici (personnage_acquis_choix n'a plus arme_famille_id, migration 0073 :
+ * seule compétence), rien ne s'enregistre ; la famille n'est jamais enregistrée ici (personnage_acquis_choix n'a plus arme_famille_id, migration 0074 :
  * elle est le choix de maîtrise, maitrise_choix).
  * Les choix d'une armure cassée (décisions R157, R158) sont gardés : acquisChoixGardes.
  */
@@ -1263,7 +1263,7 @@ export function donsDeRace(regles, fiche) {
 }
 
 // ------------------------------------------------------------------------------------------------------------------------------------------------
-// Maîtrises d'armes (décisions R148 à R152, R54, R45 ; migration 0073) : les points de chaque famille se calculent depuis leurs sources — les lignes de
+// Maîtrises d'armes (décisions R148 à R152, R54, R45 ; migration 0074) : les points de chaque famille se calculent depuis leurs sources — les lignes de
 // classe_maitrise_arme des classes prises, les dons acquis, l'accessoire « Un point de maîtrise d'arme » — et les choix de la fiche (`maitrise_choix` :
 // la famille de chaque point à choisir) ; rien de calculé n'est enregistré. Les parts de chaque source viennent de la base au build (regles.json :
 // `classes[].maitrises[].parts`, `classes[].dons[].maitrise.parts`). Pendant SQL : v_personnage_maitrise_part, v_personnage_maitrise_arme et les règles

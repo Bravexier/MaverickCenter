@@ -1,5 +1,5 @@
 // Les maîtrises d'armes calculées par la fiche (lib/fiche-moteur.mjs : sourcesDeMaitrise, maitrisesParFamille, compteurDeMaitrise,
-// maitriseChoixValables, maitriseApresChoix ; refonte des maîtrises, migration 0073) sur les vraies règles (lib/fiche-regles.mjs, la base construite),
+// maitriseChoixValables, maitriseApresChoix ; refonte des maîtrises, migration 0074) sur les vraies règles (lib/fiche-regles.mjs, la base construite),
 // selon les décisions du propriétaire :
 //   - R148 : les points de chaque famille se calculent depuis leurs sources (lignes des classes prises, dons acquis, accessoire), la fiche ne garde que
 //     la famille de chaque point à choisir (maitrise_choix) ; pas de points du MJ ; une source perdue perd ses choix ;
@@ -309,7 +309,7 @@ test('décisions R119, R152 : l’arme du bonus est la maîtrise au choix de la 
   assert.deepEqual(attente(epees), ['Acquis Flétrisseur (Tueur) : +5 % ÉPÉES : Arme Lourde ou Arme Légère']);
   const legere = { ...epees, ...M.acquisApresChoix(epees, don, 1, 'arme-legere') };
   assert.equal(bonus(legere, 'arme-legere'), 5);
-  assert.deepEqual(M.acquisChoixValables(regles, legere).filter((c) => c.source === don), [{ source: don, rang: 1, competence_id: 'arme-legere', valeur: null }], 'sans arme_famille_id (migration 0073)');
+  assert.deepEqual(M.acquisChoixValables(regles, legere).filter((c) => c.source === don), [{ source: don, rang: 1, competence_id: 'arme-legere', valeur: null }], 'sans arme_famille_id (migration 0074)');
   // la maîtrise au choix change : le bonus la suit ; la compétence est gardée quand la nouvelle famille l'offre
   const arc = { ...legere, ...M.maitriseApresChoix(legere, ligne('tueur', 1), 1, 'arc') };
   assert.deepEqual([choixArme(arc).arme_famille_id, choixArme(arc).choisi, bonus(arc, 'arme-legere')], ['arc', 'arme-legere', 5]);

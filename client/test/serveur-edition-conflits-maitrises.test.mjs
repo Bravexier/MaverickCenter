@@ -1,9 +1,9 @@
 // La résolution d'un lot en conflit (serveur/edition-conflits.mjs, page « Mise à jour ») et les sources de maîtrise d'arme (décisions R148 à R151, R154 ;
-// migration 0073) : maitrise_arme_part, maitrise_arme_part_famille et capacite_nm_gagne restent celles que le lecteur de lib/maitrise-arme.mjs tire de
+// migration 0074) : maitrise_arme_part, maitrise_arme_part_famille et capacite_nm_gagne restent celles que le lecteur de lib/maitrise-arme.mjs tire de
 // toute la base, quel que soit le choix (1, 2 ou 3) sur une ligne de classe_maitrise_arme ou l'effet d'un don. Les lignes de ces tables notées dans un
 // lot ne sont jamais rejouées telles quelles, ni montrées comme des conflits : elles suivent leur source, refaite par le lecteur après les choix et
 // notée dans le nouveau lot (edition-maitrises.mjs#sourcesRefaitesParLaResolution) ; un don supprimé perd les siennes avant lui, au journal
-// (sourcesAvantLaSuppression). Le scénario : une base vivante, ses lots écrits par le vrai service d'édition (dont un noté comme avant 0073, sans ses
+// (sourcesAvantLaSuppression). Le scénario : une base vivante, ses lots écrits par le vrai service d'édition (dont un noté comme avant 0074, sans ses
 // parts), puis des règles livrées qui changent les mêmes lignes autrement, écrites par le même service sur une autre base et recopiées table par table.
 import assert from 'node:assert/strict';
 import { copyFileSync, cpSync, mkdtempSync, rmSync } from 'node:fs';
@@ -95,17 +95,17 @@ before(() => {
   for (const nom of [CREE.nom, SUPPRIME.nom]) assert.equal(q(dev, 'SELECT 1 FROM capacite WHERE classe_id = ? AND nom = ?', S.autre, nom).length, 0, nom);
   assert.equal(q(dev, 'SELECT 1 FROM capacite WHERE classe_id = ? AND nom = ?', ARCHER, DOUBLE).length, 0, DOUBLE);
   const lot = (page, operations) => enregistrer(dev, { page, operations });
-  // notés depuis 0073 (avec leurs parts) : les maîtrises d'une classe, l'effet d'un don, un don créé (que les règles créent aussi)
+  // notés depuis 0074 (avec leurs parts) : les maîtrises d'une classe, l'effet d'un don, un don créé (que les règles créent aussi)
   S.classe = lot(GUERRIER, [maitrises(GUERRIER, TEXTES.classe[1])]).lot;
   S.effet = lot(S.don, [effet(S.don, TEXTES.effet[1])]).lot;
   S.double = lot(ARCHER, [creation(ARCHER, DOUBLE, TEXTES.double[1])]).lot;
-  // un don créé (sain au rejeu), puis un lot noté comme avant 0073 (sans ses parts) : un don créé, le premier supprimé, les maîtrises de la classe
+  // un don créé (sain au rejeu), puis un lot noté comme avant 0074 (sans ses parts) : un don créé, le premier supprimé, les maîtrises de la classe
   S.supprime = lot(S.autre, [creation(S.autre, SUPPRIME.nom, SUPPRIME.effet)]).crees[0].id;
   const ancien = lot(S.autre, [creation(S.autre, CREE.nom, CREE.effet), { op: 'supprimer', entite: 'capacite', cle: { id: S.supprime } }, maitrises(S.autre, AUTRE_SITE)]);
   S.ancien = ancien.lot;
   S.cree = ancien.crees[0].id;
   const retirees = dev.prepare(`DELETE FROM modification WHERE lot_id = ? AND table_nom IN (${TABLES_DES_SOURCES.map(() => '?').join(', ')})`).run(S.ancien, ...TABLES_DES_SOURCES);
-  assert.ok(retirees.changes > 0, 'le lot notait des parts, retirées comme avant 0073');
+  assert.ok(retirees.changes > 0, 'le lot notait des parts, retirées comme avant 0074');
   dev.close();
   S.regles = reglesLivrees(r0, [
     [GUERRIER, [maitrises(GUERRIER, TEXTES.classe[2])]],
@@ -164,7 +164,7 @@ function resoudreTout(n, autres) {
 }
 
 for (const n of [1, 2, 3]) {
-  test(`résolution au choix ${n} (maîtrises d’une classe, effet d’un don, don créé des deux côtés, lot noté avant 0073) : les sources sont celles du lecteur (R148 à R151, R154)`, () => {
+  test(`résolution au choix ${n} (maîtrises d’une classe, effet d’un don, don créé des deux côtés, lot noté avant 0074) : les sources sont celles du lecteur (R148 à R151, R154)`, () => {
     for (const autres of [1, 2]) {
       const { db, nouveaux } = resoudreTout(n, autres);
       assert.equal(q(db, 'SELECT maitrise_arme FROM classe WHERE id = ?', GUERRIER)[0].maitrise_arme, TEXTES.classe[n]);
@@ -177,7 +177,7 @@ for (const n of [1, 2, 3]) {
       const double = q(db, 'SELECT id, effet FROM capacite WHERE classe_id = ? AND nom = ?', ARCHER, DOUBLE)[0];
       assert.equal(double.effet, TEXTES.double[n === 1 ? 1 : 2]);
       assert.deepEqual(partsDe(db, double.id).map((p) => p.genre), n === 1 ? ['imposee'] : ['imposee', 'choix']);
-      // le lot noté avant 0073 : le don qu'il crée reçoit ses parts et ses NM, celui qu'il supprime n'en laisse aucune
+      // le lot noté avant 0074 : le don qu'il crée reçoit ses parts et ses NM, celui qu'il supprime n'en laisse aucune
       assert.deepEqual(partsDe(db, S.cree), [{ rang: 1, genre: 'imposee', points: 2, arme_famille_id: 'arc', limite_famille: null }]);
       assert.deepEqual(nmDe(db, S.cree), [2]);
       assert.equal(q(db, 'SELECT 1 FROM capacite WHERE id = ?', S.supprime).length, 0);

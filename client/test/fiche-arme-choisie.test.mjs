@@ -275,7 +275,7 @@ test('décision R152 (Q45 : « Un seul choix ») : l’arme du bonus est toujour
   const g = { ...f, ...M.maitriseApresChoix(f, M.ligneAuChoixDeLaClasse(classe).source, 1, id), ...M.acquisApresChoix(f, don.id, choixDuDon(regles, f, don).rang, choisie) };
   assert.ok(competence(g, choisie).donsDetail.some((d) => d.nom === nom && d.valeur === bonus.valeur));
   assert.ok(M.maitrisesParFamille(regles, g).find((m) => m.famille === id).points >= 1, 'l’écart de Q45 (un bonus sur une arme sans maîtrise) ne peut plus arriver');
-  // une ancienne arme choisie (personnage_acquis_choix.arme_famille_id, retirée par la migration 0073) ne fait plus l'arme
+  // une ancienne arme choisie (personnage_acquis_choix.arme_famille_id, retirée par la migration 0074) ne fait plus l'arme
   const dAvant = { ...f, acquis_choix: [{ source: don.id, rang: 1, competence_id: choisie, valeur: null, arme_famille_id: id }] };
   assert.equal(choixDuDon(regles, dAvant, don).arme_famille_id, null);
   // une classe dont la maîtrise au choix ne se lit pas (son « sauf » ne nomme aucune famille) : listé, non compté

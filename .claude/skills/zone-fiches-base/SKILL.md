@@ -1,13 +1,13 @@
 ---
 name: zone-fiches-base
 description: "Section 13 de data/schema.sql : tables des fiches de personnages (personnage, personnage_*), utilisateurs, groupes, vues v_personnage_*, v_groupe_controle ; rien de calculé stocké, visibilité, retraits R42. À charger avant de lire, modifier ou relire ces tables, leurs migrations ou leurs tests."
-paths: ["data/migrations/0011-personnages.sql", "data/migrations/0073-refonte-maitrises-armes.sql", "data/migrations/0031-fiche-zones.sql", "data/migrations/0038-personnage-sans-statut.sql", "data/migrations/0045-gains-entrainement-durabilite.sql", "data/migrations/0055-armure-une-armure-six-parties.sql", "data/migrations/0060-fiche-bouclier-accessoires.sql", "data/migrations/0062-fiche-entrainement-acquis.sql", "data/migrations/0066-nm-mj-fiche.sql", "data/migrations/0067-grenades-sort-prepare-arme-choisie.sql", "data/migrations/0069-armes-a-distance-resistance-du-drakos-orange.sql", "data/migrations/0071-sort-prepare-resistances-a-une-magie.sql", "client/serveur/fiches-retraits.mjs", "client/test/personnages-db.test.mjs", "client/test/serveur-fiches-retraits.test.mjs", "client/test/fiche-format-retirees.test.mjs", "docs/character-generator.md"]
+paths: ["data/migrations/0011-personnages.sql", "data/migrations/0074-refonte-maitrises-armes.sql", "data/migrations/0031-fiche-zones.sql", "data/migrations/0038-personnage-sans-statut.sql", "data/migrations/0045-gains-entrainement-durabilite.sql", "data/migrations/0055-armure-une-armure-six-parties.sql", "data/migrations/0060-fiche-bouclier-accessoires.sql", "data/migrations/0062-fiche-entrainement-acquis.sql", "data/migrations/0066-nm-mj-fiche.sql", "data/migrations/0067-grenades-sort-prepare-arme-choisie.sql", "data/migrations/0069-armes-a-distance-resistance-du-drakos-orange.sql", "data/migrations/0071-sort-prepare-resistances-a-une-magie.sql", "client/serveur/fiches-retraits.mjs", "client/test/personnages-db.test.mjs", "client/test/serveur-fiches-retraits.test.mjs", "client/test/fiche-format-retirees.test.mjs", "docs/character-generator.md"]
 user-invocable: false
 ---
 # Fiches de personnages dans la base (section 13)
 
 ## Fichiers
-- Tables et vues : section 13 de `data/schema.sql` (migration `0011-personnages`, puis 0031, 0038, 0045, 0055, 0060, 0062, 0066, 0067, 0069, 0071, 0073).
+- Tables et vues : section 13 de `data/schema.sql` (migration `0011-personnages`, puis 0031, 0038, 0045, 0055, 0060, 0062, 0066, 0067, 0069, 0071, 0074).
 - Retraits R42 : `client/serveur/fiches-retraits.mjs` (`RETRAITS`) ; texte de la ligne : `client/src/lib/fiche-format.mjs#ligneDeRetrait`.
 - Format JSON d'une fiche, `TABLES_FICHES`, `PARTIES_DE_FICHE`, `HORS_FICHE`, `TABLES_RETIREES`, `COLONNES_RETIREES` : `client/src/lib/fiche-format.mjs` (le service et la base vivante : skill `zone-service`).
 - Calculs de la fiche à partir de ces choix : skill `zone-fiche`. Écrire une migration : skill `ecrire-une-migration`.
@@ -28,14 +28,14 @@ user-invocable: false
 
 ## Colonnes et tables à connaître
 - Gains de niveau : deux totaux, `personnage.gains_sante` et `gains_chakra` (R73, migration `0045-gains-entrainement-durabilite` : plus de table `personnage_progression`), contrôlés par la règle `gains_niveau` (15 points par niveau à partir du 2, plus 1 à 8 par dé atteint : `niveau_global.de_attributs_min`, `de_attributs_max`, cumuls de `v_niveau`).
-- Entraînement : des lignes de `personnage_entrainement` (R104, migration 0062 ; le texte libre `personnage.entrainement` de R71 est retiré). Choix d'acquis des dons : `personnage_acquis_choix` ; l'arme du bonus « de l'arme choisie » (R119) est la famille de la maîtrise au choix de la classe (R152 : `arme_famille_id` retirée par 0073).
+- Entraînement : des lignes de `personnage_entrainement` (R104, migration 0062 ; le texte libre `personnage.entrainement` de R71 est retiré). Choix d'acquis des dons : `personnage_acquis_choix` ; l'arme du bonus « de l'arme choisie » (R119) est la famille de la maîtrise au choix de la classe (R152 : `arme_famille_id` retirée par 0074).
 - `personnage_arme.durabilite` (R74 : NULL = à son maximum, 0 = cassée).
 - Armure dans `personnage` (`armure_id`, `armure_amelioration_id`, `armure_elementaire_id`, `armure_amelioration_elementaire_id`) et `personnage_armure_partie` (R95 : la solidité du moment d'une partie abîmée ; sans ligne, à son maximum).
 - Sort préparé dans `personnage_sort` (`prepare`, `prepare_jet`, `prepare_posture_id`), un seul par fiche (R115, migration 0067).
 - Résistance au choix : `personnage_resistance_choix`, une altération d'une ligne de tableau de race (R124, migration 0069) ou une magie au choix ou tirée d'un don (`magie_id`, R137, migration 0071 ; l'une ou l'autre).
-- NM du MJ pour toute la fiche : `personnage.nm_mj` (R118, migration 0066). NM gagnés d'un don acquis : `capacite_nm_gagne` × `v_personnage_don_acquis`, comptés par `sorts_nm_total` (R154, migration 0073 ; `sort_nm_max` ne les lit pas).
+- NM du MJ pour toute la fiche : `personnage.nm_mj` (R118, migration 0066). NM gagnés d'un don acquis : `capacite_nm_gagne` × `v_personnage_don_acquis`, comptés par `sorts_nm_total` (R154, migration 0074 ; `sort_nm_max` ne les lit pas).
 
-## Maîtrises d'armes (décisions R148 à R154, migration 0073)
+## Maîtrises d'armes (décisions R148 à R154, migration 0074)
 - Plus rien ne se saisit par famille : `personnage_maitrise_arme` est retirée. Une ligne de `personnage_maitrise_choix` par point à choisir : `source` (id du don, ou `<classe>#maitrise-arme:<rang>` : `lib/maitrise-arme.mjs#idDeSourceDeClasse`, sans clé étrangère), `rang` (le numéro du point dans la part à choisir de la source), `arme_famille_id`.
 - Les règles, section 6 : `maitrise_arme_part` (parts `imposee`, `choix` avec `limite_famille` écrite, `suit`), `maitrise_arme_part_famille` (options), `capacite_nm_gagne`. Écrites par le lecteur `lib/maitrise-arme.mjs` ; `test/maitrise-arme-sources.test.mjs` le rejoue sur toute la base : un texte de don ou de ligne de classe modifié demande de réécrire ces lignes.
 - Vues : `v_personnage_don_acquis` (miroir de `donsAcquis`), `v_personnage_maitrise_part` (parts des sources acquises), `v_personnage_maitrise_arme` (`points` au moins 0, `points_comptes` au plus 4, `des`, constantes `maitrise_arme.*` ; jamais un 4 écrit).

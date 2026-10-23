@@ -84,7 +84,7 @@ texte : `entrainementEnLignes`), et l'acquis saisi de `personnage_competence` (a
 calcule). Sur une base d'avant 0062 (reconstruction échouée), une fiche se lit avec des listes `entrainements` et `acquis_choix` vides et s'enregistre
 sans elles (une liste non vide est refusée), l'acquis d'avant à 0. Depuis la migration 0066 (décision R118), les NM du MJ de chaque sort
 (`personnage_sort.nm_cadeau`) deviennent ceux de la fiche, `personnage.nm_mj`, leur somme ; le NM de chaque sort ne change pas, rien n'est noté.
-Depuis la migration 0073 (refonte des maîtrises d'armes, décisions R148 à R153), `personnage_maitrise_arme` (les dés par famille) et l'arme choisie
+Depuis la migration 0074 (refonte des maîtrises d'armes, décisions R148 à R153), `personnage_maitrise_arme` (les dés par famille) et l'arme choisie
 d'un choix d'acquis (`personnage_acquis_choix.arme_famille_id`, R119, retirée par R152) ne sont plus recopiées : **« Tout remettre à choisir »**
 (R153), aucun choix de maîtrise n'est posé (`personnage_maitrise_choix` reste vide ; les familles imposées par les classes et les dons comptent
 d'emblée), et chaque fiche qui avait des dés ou une arme choisie reçoit **une seule ligne datée** à la fin de ses notes, après celles de R42
@@ -142,7 +142,7 @@ bouclier : `409`) ; des accessoires avec un nom, un effet hors table ou un empla
 un texte `entrainement` (avant la migration 0062) devient des lignes de texte de `entrainements` (une par ligne du texte ; avec des lignes déjà là :
 `409`) et l'`acquis` d'une compétence n'est plus repris, noté, daté, dans les notes (décision R104 : l'Acquis se calcule) ; des `sorts[].nm_cadeau`
 (avant la migration 0066) donnent leur somme à `nm_mj` (décision R118 : les NM du MJ valent pour toute la fiche ; avec `nm_mj` et un `nm_cadeau`
-positif : `409`, `nmDuMjAvecCadeaux`) ; une liste `maitrises_armes` (les dés par famille, avant la migration 0073) et l'`arme_famille_id` d'un choix
+positif : `409`, `nmDuMjAvecCadeaux`) ; une liste `maitrises_armes` (les dés par famille, avant la migration 0074) et l'`arme_famille_id` d'un choix
 d'acquis sont retirées et notées en une ligne datée (R153, comme la base vivante ; aucun choix posé), et, envoyées avec `maitrise_choix` (une page
 d'avant qui a repris une réponse), refusées : `409`, `maitrisesAvecChoix`. Rien de calculé n'y est
 stocké. Les maîtrises d'armes sont des choix : `maitrise_choix`, une ligne par point à choisir d'une source (`source` : l'id du don, ou
@@ -165,7 +165,7 @@ colonne de sa ligne (`armes[].durabilite`, R74) ; l'entraînement, des lignes (u
 - **Refus** (`400`, rien n'est écrit) : `{ erreur, problemes: [...] }`, un message par problème, en français (« caracteristiques[0] : valeur
   hors des bornes (base >= 1) », « « race_id » : « races/x » n'existe pas dans les règles (race) », champ inconnu…). Une colonne que les règles ont
   retirée (`COLONNES_RETIREES` de `fiche-format.mjs` : `statut`, migration 0038 ; `entrainement` et `competences[].acquis`, 0062 ; `sorts[].nm_cadeau`,
-  0066 ; `acquis_choix[].arme_famille_id`, 0073 ; convertis plus haut)
+  0066 ; `acquis_choix[].arme_famille_id`, 0074 ; convertis plus haut)
 n'est pas un champ inconnu : elle est ignorée (fichier exporté avant).
   La clé d'une table retirée non plus (`TABLES_RETIREES`, `sansPartiesRetirees`) : une `progression` reçue (page restée ouverte, fichier d'avant la
   migration 0045) devient `gains_sante` et `gains_chakra` quand la fiche ne les porte pas. Avec eux, une `progression` vide est jetée sans rien
@@ -184,13 +184,13 @@ n'est pas un champ inconnu : elle est ignorée (fichier exporté avant).
   refusée ; la page convertissant elle-même les `nm_cadeau` lus en `nm_mj`, une fiche qui a des NM du MJ ne s'enregistre pas sur cette base) ; sur une
   base d'avant 0060, la page convertit elle-même la fiche lue (accessoires d'avant, matériaux du bouclier) et note, datés, ce qu'elle perd. Une table de la fiche que la base n'a pas encore
   (`personnage_armure_partie`, 0055 ; `personnage_entrainement` et `personnage_acquis_choix`, 0062 ; `personnage_resistance_choix`, 0069, la
-  résistance au choix du Drakos orange, liste `resistance_choix` ; `personnage_maitrise_choix`, 0073, liste `maitrise_choix`, les anciens dés laissés
+  résistance au choix du Drakos orange, liste `resistance_choix` ; `personnage_maitrise_choix`, 0074, liste `maitrise_choix`, les anciens dés laissés
   intacts pour la reconstruction suivante) se lit vide, et une liste non vide pour elle est
   refusée (« pas encore dans cette base, ses lignes seraient perdues ») ; une colonne retirée qu'une base d'avant exige encore (`statut`,
   `competences[].acquis`) y prend sa valeur de départ.
 - **Contrôles** : les règles de `v_personnage_controle` enfreintes sont rendues avec chaque fiche ; toute fiche est contrôlée, même inachevée, et
   les contrôles n'empêchent jamais d'enregistrer (une fiche n'a plus de statut brouillon / validé / archivé : demande du propriétaire, migration 0038).
-  Pour les maîtrises d'armes (migration 0073) : `maitrise_a_choisir` (un point d'une source acquise sans famille), `maitrise_hors_choix` (une famille
+  Pour les maîtrises d'armes (migration 0074) : `maitrise_a_choisir` (un point d'une source acquise sans famille), `maitrise_hors_choix` (une famille
   que la source ne propose pas), `maitrise_meme_famille` (une limite écrite dépassée, R150), `maitrise_plafond` (plus de 4 points sur une famille,
   R149), `maitrise_source_perdue` (le choix d'une source qui n'est plus acquise) et `maitrise_arme_exclue` (ARME DE MONSTRES, R45) : signalés, jamais
   refusés ; seules les contraintes de la base refusent (un rang de point sous 1, une famille inconnue).
@@ -420,11 +420,11 @@ réécrite, et un lot noté avant que l'édition ne suive le corps voit le corps
 **liens de règle des métiers** (décisions R33, R35) qu'un lot noté avant la migration `0024-metiers-fiche` n'écrivait pas — compétence ou initiative d'un
 bonus, objets de départ d'un équipement — sont refaits depuis les champs des métiers touchés (`completerLesMetiers`) ; la mise à jour des règles compte
 ces tables parmi celles qu'elle a le droit d'écrire (`tablesCompletees`). Les **sources de maîtrise d'arme** (`maitrise_arme_part`,
-`maitrise_arme_part_famille`, `capacite_nm_gagne` : migration 0073, décisions R148 à R151, R154) sont des tables de règles que le lecteur de
+`maitrise_arme_part_famille`, `capacite_nm_gagne` : migration 0074, décisions R148 à R151, R154) sont des tables de règles que le lecteur de
 `lib/maitrise-arme.mjs` tire des lignes de `classe_maitrise_arme` et du texte des dons : l'édition les refait, notées au journal, à chaque écriture qui
 change ce qu'il lit (les maîtrises d'une classe, l'effet d'un don, un don créé ou supprimé : `serveur/edition-maitrises.mjs`, les parts qui partent
 avant leur ligne de classe ou leur don, les nouvelles après, à cause des clés étrangères) ; après chaque lot rejoué qui touche une classe ou un don, le
-rejeu les refait par le même lecteur, hors journal (`sourcesRefaitesParLeLot`, crochet `apresLeLot`) : un lot noté avant 0073, qui ne les écrivait
+rejeu les refait par le même lecteur, hors journal (`sourcesRefaitesParLeLot`, crochet `apresLeLot`) : un lot noté avant 0074, qui ne les écrivait
 pas, laisse des parts justes, et ces tables comptent dans `tablesCompletees` (et dans `tablesDuLot` dès qu'un lot touche `classe`,
 `classe_maitrise_arme` ou `capacite`). Le rejeu ne refuse pas une maîtrise que le lecteur ne lit pas (l'édition la refuse à la saisie depuis le
 2026-10-23) : un lot déjà noté se rejoue, ce qui ne se lit pas n'y donne aucune part, et une valeur ainsi notée perd son choix 1 à l'examen d'un lot
@@ -730,7 +730,7 @@ règles d'aujourd'hui, même après une livraison.
   gardée au choix 2 est re-dérivée : ses lignes de détail suivent la règle livrée. Les sources de maîtrise d'arme de toutes les classes et de tous
   les dons que le lot touche (ses lignes de `classe`, `classe_maitrise_arme`, `capacite`, et celles dont il notait des parts) sont refaites par le
   lecteur de `lib/maitrise-arme.mjs` une fois les choix écrits, notées dans le nouveau lot (`edition-maitrises.mjs#sourcesRefaitesParLaResolution`) :
-  un lot noté avant 0073 (un don créé sans ses parts), un don créé que les règles ont aussi, gardé au choix 1, ou une ligne de maîtrise recopiée
+  un lot noté avant 0074 (un don créé sans ses parts), un don créé que les règles ont aussi, gardé au choix 1, ou une ligne de maîtrise recopiée
   au choix 1 finissent tels que le lecteur les lit (décisions R148 à R151, R154) ; un don ou une ligne de maîtrise supprimés perdent leurs parts
   avant eux, au journal (`sourcesAvantLaSuppression`), pas par la cascade du schéma (`serveur-edition-conflits-maitrises`). Une suppression gardée retire des fiches ce qu'elle leur ôte
   (R42, R52, R60), avec la note datée (`fiches` de la réponse). L'ancien lot est marqué (`resolu_le`, `resolu_par` = le nouveau lot, `resolution`

@@ -902,7 +902,7 @@ test('sort préparé (décision R115, migration 0067) : marque, jet et posture e
   assert.equal(expliquer('UNIQUE constraint failed: personnage_sort.personnage_id, personnage_sort.rang'), 'en double (rang)');
 });
 
-test('l’arme choisie d’un choix d’acquis (décision R119) n’est plus enregistrée (R152, migration 0073) : une page d’avant qui l’envoie enregistre le choix sans elle, sa compétence gardée, et la note avec ses anciens dés en une ligne datée (R153) ; avec les choix de maîtrise : 409', () => {
+test('l’arme choisie d’un choix d’acquis (décision R119) n’est plus enregistrée (R152, migration 0074) : une page d’avant qui l’envoie enregistre le choix sans elle, sa compétence gardée, et la note avec ses anciens dés en une ligne datée (R153) ; avec les choix de maîtrise : 409', () => {
   const choix = { source: 'capacites/tueur-fletrisseur', rang: 1, competence_id: 'arme-legere', valeur: null };
   const { maitrise_choix: _m, ...dAvant } = ficheConforme('Lame grise');
   const r = appel('POST', '/api/personnages', { ...dAvant, notes: 'Mes notes', acquis_choix: [{ ...choix, arme_famille_id: 'dagues' }], maitrises_armes: [{ arme_famille_id: 'epees', des: 2 }] });
@@ -1171,7 +1171,7 @@ test('repli sur une base vivante d’avant la migration 0067 (sa reconstruction 
   const { chemin: avant } = preparerBaseVivante({ regles: REGLES, dossier: join(racine, 'db-avant-0067') });
   const ancienne = new DatabaseSync(avant);
   // les tables d'avant 0067 : personnage_sort sans prepare, prepare_jet, prepare_posture_id (personnage_acquis_choix n'avait pas encore l'arme choisie,
-  // que la migration 0073 a retirée : comme aujourd'hui)
+  // que la migration 0074 a retirée : comme aujourd'hui)
   ancienne.exec(`DROP INDEX personnage_sort_prepare;
     ALTER TABLE personnage_sort DROP COLUMN prepare_jet; ALTER TABLE personnage_sort DROP COLUMN prepare_posture_id; ALTER TABLE personnage_sort DROP COLUMN prepare;`);
   ancienne.close();
@@ -1199,10 +1199,10 @@ test('repli sur une base vivante d’avant la migration 0067 (sa reconstruction 
   }
 });
 
-test('repli sur une base vivante d’avant la migration 0073 (sa reconstruction a échoué) : sans la table des choix de maîtrise, la fiche se lit avec une liste vide et s’enregistre ; une liste non vide est refusée ; les anciens dés restent intacts', () => {
-  const { chemin: avant } = preparerBaseVivante({ regles: REGLES, dossier: join(racine, 'db-avant-0073') });
+test('repli sur une base vivante d’avant la migration 0074 (sa reconstruction a échoué) : sans la table des choix de maîtrise, la fiche se lit avec une liste vide et s’enregistre ; une liste non vide est refusée ; les anciens dés restent intacts', () => {
+  const { chemin: avant } = preparerBaseVivante({ regles: REGLES, dossier: join(racine, 'db-avant-0074') });
   const ancienne = new DatabaseSync(avant);
-  // les tables d'avant 0073 : les dés par famille, l'arme choisie d'un choix d'acquis (R119), pas de choix de maîtrise ; la vue des contrôles d'avant
+  // les tables d'avant 0074 : les dés par famille, l'arme choisie d'un choix d'acquis (R119), pas de choix de maîtrise ; la vue des contrôles d'avant
   // lisait les dés (une vue sans ligne en tient lieu : seules les tables comptent ici)
   ancienne.exec(`DROP VIEW v_personnage_controle; DROP VIEW v_personnage_maitrise_arme; DROP VIEW v_personnage_maitrise_part; DROP TABLE personnage_maitrise_choix;
     CREATE VIEW v_personnage_controle AS SELECT NULL AS personnage_id, NULL AS regle, NULL AS detail WHERE 0;
@@ -1213,7 +1213,7 @@ test('repli sur une base vivante d’avant la migration 0073 (sa reconstruction 
   ancienne.close();
   const base = ouvrirBaseVivante(avant);
   try {
-    const { maitrise_choix: _m, ...sansChoix } = ficheConforme('Repli 0073');
+    const { maitrise_choix: _m, ...sansChoix } = ficheConforme('Repli 0074');
     const choix = { source: 'races/humain#don:humain-central', rang: 1, competence_id: 'arc', valeur: 6 };
     const cree = enregistrerFiche(base, { ...sansChoix, maitrise_choix: [], acquis_choix: [choix] });
     const p = cree.personnage;
@@ -1228,8 +1228,8 @@ test('repli sur une base vivante d’avant la migration 0073 (sa reconstruction 
     });
     assert.deepEqual(lireFiche(base, p.id), lue, 'rien n’est écrit');
     // un enregistrement de la page à jour ne touche pas aux anciens dés : la reconstruction suivante les notera (R153)
-    const m = enregistrerFiche(base, { version: lue.version, nom: 'Repli 0073 bis', maitrise_choix: [] }, { id: p.id });
-    assert.equal(m.personnage.nom, 'Repli 0073 bis');
+    const m = enregistrerFiche(base, { version: lue.version, nom: 'Repli 0074 bis', maitrise_choix: [] }, { id: p.id });
+    assert.equal(m.personnage.nom, 'Repli 0074 bis');
     assert.equal(base.prepare('SELECT des FROM personnage_maitrise_arme WHERE personnage_id = ?').get(p.id).des, 3);
   } finally {
     base.close();

@@ -93,7 +93,7 @@ test('maîtrise d’arme : 1 dé sans maîtrise (guide, cité mot pour mot), 5 d
   // citée dans le texte du guide tel que l'import l'a écrit (le site de dev peut le réécrire depuis)
   assert.ok(historique.valeurDImport('page', { id: guide.page_id }, 'corps_md').includes(guide.texte), guide.texte);
   assert.equal(db.prepare("SELECT texte FROM regle_constante WHERE id = 'maitrise_arme.des_max'").get().texte, '1d, 2d, 3d, 4d, 5d');
-  // depuis la migration 0073 (R148, R149), la base calcule les dés de chaque famille de ces deux constantes (v_personnage_maitrise_arme), sans les stocker
+  // depuis la migration 0074 (R148, R149), la base calcule les dés de chaque famille de ces deux constantes (v_personnage_maitrise_arme), sans les stocker
   const vue = db.prepare("SELECT sql FROM sqlite_master WHERE name = 'v_personnage_maitrise_arme'").get().sql;
   for (const id of ['maitrise_arme.des_max', 'maitrise_arme.des_sans_maitrise']) assert.ok(vue.includes(`'${id}'`), `la vue lit ${id}`);
 });
@@ -165,7 +165,7 @@ test('sources de maîtrise d’arme (décisions R148, R151, R154) : les parts de
   const nm = dons.filter((d) => d.nm_gagnes !== undefined).map((d) => [d.id, d.nm_gagnes]);
   assert.deepEqual(nm, db.prepare('SELECT capacite_id, nm FROM capacite_nm_gagne').all().map((r) => [r.capacite_id, r.nm]));
   if (don('capacites/ocultomancien-maitrise')?.effet === 'Gagne 4 niveaux de maîtrise (NM).') assert.deepEqual(nm, [['capacites/ocultomancien-maitrise', 4]]);
-  // l'accessoire « Un point de maîtrise d'arme » : un choix (accessoire_effet_cible.choix, migration 0073), sa famille dans personnage_accessoire
+  // l'accessoire « Un point de maîtrise d'arme » : un choix (accessoire_effet_cible.choix, migration 0074), sa famille dans personnage_accessoire
   const accessoire = regles.accessoires.flatMap((a) => a.effets).filter((e) => e.cible === 'maitrise_arme');
   assert.deepEqual(accessoire, [{ cible: 'maitrise_arme', cible_id: null, valeur: 1, choix: true }]);
 });

@@ -11,7 +11,7 @@
 //     N » : la 4ᵉ barre ;
 //   - « Dégâts physiques +N » (toutes les armes) et « Dégâts magie +N » (les sorts d'attaque, R54) ; « +N dégâts avec une catégorie d'arme » : une famille
 //     d'armes choisie dans la fiche (`choix`) ; « Augmente la portée des armes à distance / des sorts de +N » ; « Un point de maîtrise d'arme » : sur
-//     une famille choisie dans la fiche (`choix` ; décision R151, migration 0073 : « (ne peut changer une fois décidé) » n'est qu'un rappel) ;
+//     une famille choisie dans la fiche (`choix` ; décision R151, migration 0074 : « (ne peut changer une fois décidé) » n'est qu'un rappel) ;
 //     « +N tour de Mode Hyper » ; « Les AM / AP de base augmentent de N » ;
 //   - « Résistance X et Y » : un cran de résistance à chaque magie ou altération d'état nommée ;
 //   - « Augmente le dé de dégâts des sorts » (un cran, comme la posture Focus), « Permet à un dé de dégâts d'être maximum » (réponse du propriétaire

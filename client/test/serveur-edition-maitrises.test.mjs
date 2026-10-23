@@ -1,7 +1,7 @@
-// Les sources de maîtrise d'arme quand le site de dev modifie les règles (décisions R148 à R151, R154 ; migration 0073) : maitrise_arme_part,
+// Les sources de maîtrise d'arme quand le site de dev modifie les règles (décisions R148 à R151, R154 ; migration 0074) : maitrise_arme_part,
 // maitrise_arme_part_famille et capacite_nm_gagne restent celles que le lecteur de lib/maitrise-arme.mjs tire de la base (comme
 // test/maitrise-arme-sources.test.mjs sur data/rows) après chaque écriture qui change ce qu'il lit — maîtrises d'une classe, effet d'un don, don créé ou
-// supprimé (serveur/edition-maitrises.mjs, notées au journal) — et après le rejeu d'un lot noté avant 0073, qui ne les écrivait pas
+// supprimé (serveur/edition-maitrises.mjs, notées au journal) — et après le rejeu d'un lot noté avant 0074, qui ne les écrivait pas
 // (sourcesRefaitesParLeLot, hors journal). La base vivante part des règles de data/rows, où le site de dev a pu modifier ou supprimer : les dons d'essai
 // sont créés, les lignes modifiées sont lues avant d'écrire.
 import assert from 'node:assert/strict';
@@ -79,8 +79,8 @@ function rebatir(source, garder = () => true) {
   neuve.exec('PRAGMA foreign_keys = ON');
   return { base: neuve, bilan, sortie };
 }
-/** Un journal comme le notait le service avant la migration 0073 : sans les sources de maîtrise d'arme. */
-const avant0073 = (m) => !TABLES_DES_SOURCES.includes(m.table_nom);
+/** Un journal comme le notait le service avant la migration 0074 : sans les sources de maîtrise d'arme. */
+const avant0074 = (m) => !TABLES_DES_SOURCES.includes(m.table_nom);
 
 test('un don dont l’effet passe de « +2 points de maîtrise à répartir » à « +2 points de maîtrise Arcs » change de parts (R150, R151) ; notées au journal', () => {
   const base = vivante();
@@ -160,7 +160,7 @@ test('un don qui suit la maîtrise au choix de sa classe (R151) : une classe san
   sourcesJustes(base);
 });
 
-test('rejeu : un lot noté depuis 0073 se rejoue sans conflit ; un lot noté avant (sans les parts) laisse des parts justes, refaites hors journal', () => {
+test('rejeu : un lot noté depuis 0074 se rejoue sans conflit ; un lot noté avant (sans les parts) laisse des parts justes, refaites hors journal', () => {
   const source = vivante();
   const classe = 'classes/guerrier';
   const id = creerDon(source, 'classes/archer', 'Essai de rejeu', '+2 points de maîtrise à répartir.');
@@ -180,8 +180,8 @@ test('rejeu : un lot noté depuis 0073 se rejoue sans conflit ; un lot noté ava
   sourcesJustes(nouveau.base);
   for (const t of TABLES_DES_SOURCES) assert.ok(!nouveau.sortie.tablesCompletees.includes(t), `${t} : déjà dans le journal`);
 
-  // le même journal noté avant 0073 (classe_maitrise_arme et capacite seulement) : les parts refaites lot par lot, hors journal
-  const ancien = rebatir(source, avant0073);
+  // le même journal noté avant 0074 (classe_maitrise_arme et capacite seulement) : les parts refaites lot par lot, hors journal
+  const ancien = rebatir(source, avant0074);
   assert.equal(ancien.bilan.conflits, 0, JSON.stringify(q(ancien.base, "SELECT detail FROM modification WHERE etat = 'conflit'")));
   assert.deepEqual(sources(ancien.base).tables, attendu);
   sourcesJustes(ancien.base);
@@ -267,7 +267,7 @@ test('rejeu : un lot déjà noté avec une maîtrise illisible (d’avant le ref
   const n = source.prepare("UPDATE modification SET apres = replace(apres, '+1 maîtrise Dague.', '+1 maîtrise Truc.') WHERE table_nom = 'capacite' AND cle = ?")
     .run(JSON.stringify({ id })).changes;
   assert.equal(n, 1);
-  const ancien = rebatir(source, avant0073);
+  const ancien = rebatir(source, avant0074);
   assert.equal(ancien.bilan.conflits, 0, JSON.stringify(q(ancien.base, "SELECT detail FROM modification WHERE etat = 'conflit'")));
   assert.equal(q(ancien.base, 'SELECT effet FROM capacite WHERE id = ?', id)[0].effet, '+1 maîtrise Truc.');
   assert.deepEqual(partsDe(ancien.base, id), []);

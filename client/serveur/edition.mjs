@@ -1760,7 +1760,7 @@ export function rejouerLeJournal(db, sortie = {}, { horsControleParLot = [] } = 
     // serveur/edition-armures.mjs#ancienneEcritureDesArmures)
     adapter: () => adaptateurDuJournal(db),
     // les balises d'un mot-clé supprimé ou fusionné, dans les textes que le lot n'a pas réécrits : au moment où il est rejoué, dans son lot ; puis les
-    // sources de maîtrise d'arme des classes et des dons que le lot touche, refaites par le lecteur (un lot noté avant la migration 0073 ne les écrit pas :
+    // sources de maîtrise d'arme des classes et des dons que le lot touche, refaites par le lecteur (un lot noté avant la migration 0074 ne les écrit pas :
     // serveur/edition-maitrises.mjs#sourcesRefaitesParLeLot)
     apresLeLot: (lot) => [...balisesRetireesParLeLot(db, lot), ...sourcesRefaitesParLeLot(db, lot)],
   });

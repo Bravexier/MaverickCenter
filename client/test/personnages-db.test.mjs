@@ -29,7 +29,7 @@ const controle = (id) => db.prepare('SELECT regle, detail FROM v_personnage_cont
 const regles = (id) => [...new Set(controle(id).map((r) => r.regle))].sort();
 const niveau = (id) => ({ ...db.prepare('SELECT niveau_global, niveau_classe_1, niveau_classe_2 FROM v_personnage_niveau WHERE personnage_id = ?').get(id) });
 
-// Maîtrises d'armes (décisions R148 à R151, migration 0073) : points calculés par famille, règles de la vue, l'accessoire « Un point de maîtrise d'arme »
+// Maîtrises d'armes (décisions R148 à R151, migration 0074) : points calculés par famille, règles de la vue, l'accessoire « Un point de maîtrise d'arme »
 const maitrises = (id) => Object.fromEntries(db.prepare('SELECT arme_famille_id, points FROM v_personnage_maitrise_arme WHERE personnage_id = ? ORDER BY arme_famille_id')
   .all(id).map((r) => [r.arme_famille_id, r.points]));
 const REGLES_DE_MAITRISE = ['maitrise_a_choisir', 'maitrise_arme_exclue', 'maitrise_hors_choix', 'maitrise_meme_famille', 'maitrise_plafond', 'maitrise_source_perdue'];
@@ -725,7 +725,7 @@ test('décision R45 : pas de maîtrise d’arme sur ARME DE MONSTRES (des armes 
   assert.deepEqual(db.prepare('SELECT id FROM arme_famille WHERE maitrisable = 0').all().map((r) => r.id), ['arme-de-monstres']);
   assert.match(db.prepare("SELECT libelle_brut FROM arme_famille WHERE id = 'arme-de-monstres'").get().libelle_brut, /^ARME DE MONSTRES/);
   assert.ok(db.prepare("SELECT count(*) AS n FROM arme WHERE famille_id = 'arme-de-monstres'").get().n > 0, 'ses armes restent dans la base');
-  // migration 0073 : la règle lit les choix de famille (personnage_maitrise_choix) et l'accessoire ; un choix exclu ne ressort pas aussi hors de la liste
+  // migration 0074 : la règle lit les choix de famille (personnage_maitrise_choix) et l'accessoire ; un choix exclu ne ressort pas aussi hors de la liste
   personnageValide('r45-monstres');
   db.prepare("UPDATE personnage_maitrise_choix SET arme_famille_id = 'arme-de-monstres' WHERE personnage_id = 'r45-monstres'").run();
   inserer('personnage_accessoire', { personnage_id: 'r45-monstres', emplacement: 'chef', accessoire_effet_id: POINT_DE_MAITRISE, maudit: 0, arme_famille_id: 'arme-de-monstres' });
@@ -742,7 +742,7 @@ test('décision R45 : pas de maîtrise d’arme sur ARME DE MONSTRES (des armes 
   }
 });
 
-// ——— Maîtrises d'armes (décisions R148 à R154, migration 0073-refonte-maitrises-armes) ———
+// ——— Maîtrises d'armes (décisions R148 à R154, migration 0074-refonte-maitrises-armes) ———
 
 /** Une fiche d'un Humain central de Feu inné, ses classes [classe, spécialité ?] (niveau 10 en bi-classe par défaut : les deux classes au niveau 10). */
 function ficheDeClasses(id, classes, { mode = 'bi', xp = 11450 } = {}) {
@@ -931,7 +931,7 @@ test('R154 : les NM gagnés d’un don acquis (Ocultomancien « Maîtrise », ni
   assert.ok(bloc.length > 0 && !/capacite_nm_gagne|v_personnage_don_acquis/.test(bloc));
 });
 
-test('migration 0073 : les sources de maîtrise en tables, un choix par point, plus de dés saisis par famille ni d’arme dans les choix d’acquis (R148, R152)', () => {
+test('migration 0074 : les sources de maîtrise en tables, un choix par point, plus de dés saisis par famille ni d’arme dans les choix d’acquis (R148, R152)', () => {
   const colonnes = (t) => db.prepare('SELECT name FROM pragma_table_info(?) ORDER BY cid').all(t).map((r) => r.name);
   assert.equal(db.prepare("SELECT 1 FROM sqlite_master WHERE name = 'personnage_maitrise_arme'").get(), undefined, 'personnage_maitrise_arme retirée');
   assert.equal(db.prepare("SELECT 1 FROM sqlite_master WHERE name = 'personnage_acquis_choix_arme'").get(), undefined, 'son index retiré');
