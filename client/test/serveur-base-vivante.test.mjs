@@ -93,7 +93,8 @@ test('TABLES_VIVANTES : exactement les tables des sections 13 (fiches) puis 14 (
   const db = lecture(REGLES);
   for (const [i, t] of TABLES_VIVANTES.entries()) {
     for (const f of db.prepare(`PRAGMA foreign_key_list("${t}")`).all()) {
-      if (TABLES_VIVANTES.includes(f.table)) assert.ok(TABLES_VIVANTES.indexOf(f.table) < i, `${t} cite ${f.table}, qui doit venir avant`);
+      // une table qui se cite elle-même (modification_lot.resolu_par, migration 0072) est copiée d'un seul INSERT, clés étrangères coupées puis contrôlées
+      if (TABLES_VIVANTES.includes(f.table) && f.table !== t) assert.ok(TABLES_VIVANTES.indexOf(f.table) < i, `${t} cite ${f.table}, qui doit venir avant`);
     }
   }
   db.close();

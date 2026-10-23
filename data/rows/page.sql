@@ -6280,7 +6280,7 @@ Ses races, ses magies et ses classes vous attendent dans [[guide/l-univers|L’u
 
 L’activité JDR se fait principalement sur le Discord officiel : <https://discord.gg/GMGBnjzfMk>.
 
-Le Discord, la page Tipeee du jeu et l’annonce de notre prochaine rencontre IRL sont réunis sur la page [Liens](/decouvrir/liens/).
+Le Discord, la page Tipeee du jeu et l’annonce de notre prochaine rencontre IRL sont réunis [en bas de cette page](#lien-discord).
 
 ## Le jeu de rôle, comment ça marche ?
 
@@ -9265,9 +9265,9 @@ Côté MJ, la préparation de chacune est expliquée dans [[guide/campagne-ou-sc
 
 ## Trouver une table
 
-L’activité de jeu de rôle se fait principalement sur le serveur Discord officiel, « L’univers de Maverick » : rejoignez-le par son [lien d’invitation](https://discord.gg/GMGBnjzfMk), que vous retrouverez aussi sur la page [Liens](/decouvrir/liens/).
+L’activité de jeu de rôle se fait principalement sur le serveur Discord officiel, « L’univers de Maverick » : rejoignez-le par son [lien d’invitation](https://discord.gg/GMGBnjzfMk), que vous retrouverez aussi en bas de la page [Bienvenue](/decouvrir/#lien-discord).
 
-Maverick se joue aussi autour d’une vraie table : la page [Liens](/decouvrir/liens/) annonce, dans son encart « Notre prochaine rencontre IRL », les prochaines conventions où Maverick sera présent.
+Maverick se joue aussi autour d’une vraie table : la page [Bienvenue](/decouvrir/#prochaine-rencontre) annonce, dans son encart « Notre prochaine rencontre IRL », les prochaines conventions où Maverick sera présent.
 
 ## Avant votre première partie
 

@@ -16,6 +16,7 @@ import { bilan, comparerBases, TABLES_LUES, versionDeLivraison } from '../src/li
 import { signature } from './base-vivante.mjs';
 import { ErreurHttp, sha256 } from './partage.mjs';
 import { journalExporte } from './edition-journal.mjs';
+import { compterLesConflits } from './edition-conflits.mjs';
 
 const DOSSIER_LOTS = 'mise-a-jour';
 const FICHIER_LANCEMENT = 'etat.json';
@@ -116,9 +117,12 @@ export function noteEnPreparation(db, { reference, versionDev }) {
   const versionMajeure = versionDeLivraison(versionDev, ref.version, { majeure: true });
   // modifications du site en attente : ce que le lot emporterait
   const enAttente = db.prepare("SELECT count(*) AS n FROM modification WHERE etat = 'en_attente'").get().n;
+  // les lots en conflit à résoudre ne partent pas avec la mise à jour (figerLot → journalExporte : en attente et intégrées seulement) ; ils restent sur le
+  // site de dev, non bloquants, et se résolvent sur la page (GET /api/mise-a-jour/conflits/) ; le compte est celui de /api/etat, écrit une seule fois
+  const enConflit = compterLesConflits(db);
   const commun = {
     reference: ref, version_dev: versionDev, version_cible: brouillon.majeure ? versionMajeure : versionMineure, version_mineure: versionMineure,
-    version_majeure: versionMajeure, en_attente: enAttente, brouillon,
+    version_majeure: versionMajeure, en_attente: enAttente, en_conflit: enConflit, brouillon,
   };
   if (!ref.disponible) return { ...commun, lignes: null, bilan: null };
   const lignes = comparerBases(tablesDeReference(ref.chemin), lireTables(db));

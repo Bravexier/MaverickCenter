@@ -315,8 +315,10 @@ de dev, table `annonce`).
 9. **Liens et rencontres** : « Étoffe un peu la présentation pour les liens Discord et Tipeee. Laisse également un encart « Notre prochaine rencontre
    IRL » pour faire la place à une annonce dédiée aux prochaines conventions où Maverick sera présent. » L'encart a un titre fixe et une annonce
    modifiable sur le site de dev (mode modification), qui part en production avec la mise à jour ; vide, il dit « Aucune rencontre annoncée pour le
-   moment. » (table `annonce`, migration `0068-annonces`). Il est posé sur la page Liens : la demande se lit aussi pour Bienvenue
-   ([`sql/a-valider.md`](sql/a-valider.md) §6, G34).
+   moment. » (table `annonce`, migration `0068-annonces`). Il était posé sur la page Liens ; le 2026-10-22, le propriétaire le veut sur Bienvenue
+   (« Bonne idée. ») et supprime la page Liens (« Plus d'entrée Liens au menu : tout est sur Bienvenue. L'ancienne adresse renverrait vers
+   Bienvenue. ») : les liens Discord et Tipeee et l'encart sont sous le texte de Bienvenue, `/decouvrir/liens/` y mène
+   ([`sql/a-valider.md`](sql/a-valider.md) §6, G34 tranché).
 
 L'**ordre de lecture** change : l'ancien guide (24 pages) faisait lire la règle du D100 (« Réussir une action ») avant la création du
 personnage ; le plan du propriétaire range les règles de base dans Règles › Les bases, dont c'est la première page (`/regles/reussir-une-action/`,

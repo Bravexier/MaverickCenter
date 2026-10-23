@@ -6,14 +6,13 @@ import { idDuMotCle } from '../lib/mots-cles-db.mjs';
 import { PARAMETRE_MOT_CLE } from '../lib/recherche-mots-cles.mjs';
 
 // Le pied d'une page du wiki (pages/[type]/[slug].astro, components/guide/PageDuGuide.astro) : ses mots-clés, les pages qu'elle mentionne et celles
-// qui la mentionnent (rétroliens, lib/wiki.ts), puis ses sources (`sources` faux : les pages rendues par un gabarit de magie, de race ou de classe ne
-// citent pas leurs sources, demande du propriétaire ; les pages de Découvrir et des Bases non plus, comme leurs anciennes pages de livre ; `sources:` reste
-// dans le front matter pour la traçabilité).
+// qui la mentionnent (rétroliens, lib/wiki.ts). Plus de sources : elles ne s'affichent que sur /archives/ (réponse du propriétaire du 2026-10-22 :
+// « Plus de sources ailleurs que dans les archives. On va épurer un peu ce qui est redondant. ») ; `sources:` reste dans le front matter et la base
+// (page_source, source), que les Archives lisent.
 interface Props {
   entry: WikiEntry;
-  sources?: boolean;
 }
-const { entry, sources = true } = Astro.props;
+const { entry } = Astro.props;
 const { outgoing, incoming } = await loadWiki();
 const mentions = outgoing.get(entry.id) ?? [];
 const mentionedBy = incoming.get(entry.id) ?? [];
@@ -34,16 +33,5 @@ const mentionedBy = incoming.get(entry.id) ?? [];
       {mentions.length > 0 && (<section><h2>Cette page mentionne</h2><EntryList entries={mentions} /></section>)}
       {mentionedBy.length > 0 && (<section><h2>Mentionnée par</h2><EntryList entries={mentionedBy} /></section>)}
     </div>
-  )
-}
-
-{
-  sources && entry.data.sources.length > 0 && (
-    <section>
-      <h2>Sources</h2>
-      <ul>
-        {entry.data.sources.map((s) => <li>{/^https?:\/\//.test(s) ? <a href={s} rel="noopener noreferrer">{s}</a> : s}</li>)}
-      </ul>
-    </section>
   )
 }

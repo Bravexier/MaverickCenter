@@ -37,6 +37,7 @@ user-invocable: false
 
 - Plus de préfixe `/wiki/`. Une page est à `/<type>/<slug>/` (`src/pages/[type]/`). Un métier n'a pas de page : sa ligne de `/metiers/` (skill `zone-metiers`, `cheminDePage`).
 - L'index alphabétique (« Index du wiki », « Pages à créer ») est à `/pages/`. Le dossier `src/content/wiki/`, la collection `wiki` et `lib/wiki.ts` gardent leur nom.
+- Le pied d'une page (`components/PiedDePage.astro`) : mots-clés, pages mentionnées, rétroliens ; plus de sources (seulement sur `/archives/`, réponse du propriétaire du 2026-10-22).
 - Une ancienne adresse `/wiki/…` est renvoyée vers la nouvelle par la page 404 (`legacyWikiRedirect`, `lib/nav.mjs`, testé dans `test/nav.test.mjs`).
 - Une page `guide/…` est à l'adresse que lui donne le plan du site (`lib/livres.mjs`, skill `zone-guide`), jamais sous `/guide/`. Ses anciennes adresses `/guide/…` sont renvoyées par la page 404 : renvois calculés au build (`lib/metiers.mjs#renvoisDuGuide`), passés au script par `data-renvois` (`nav.mjs` n'importe pas le plan).
 

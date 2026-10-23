@@ -70,6 +70,10 @@ test('la page 404 renvoie les anciennes adresses /wiki/… vers les nouvelles', 
     assert.ok(!existsSync(join(dist, 'decouvrir', slug)), `${ancienne} : plus construite`);
   }
   assert.equal(renvois['decouvrir/campagne-ou-scenario-one-shot/'], 'mj/campagne-ou-scenario-one-shot/');
+  // la page Liens, supprimée le 2026-10-22 (« L'ancienne adresse renverrait vers Bienvenue. ») : vers Bienvenue, qui a ses ancres
+  assert.equal(renvois['decouvrir/liens/'], 'decouvrir/');
+  assert.ok(!existsSync(join(dist, 'decouvrir', 'liens')), '/decouvrir/liens/ n’est plus construite');
+  for (const ancre of ['lien-discord', 'lien-tipeee', 'prochaine-rencontre']) assert.match(lire('decouvrir/index.html'), new RegExp(` id="${ancre}"`), ancre);
   assert.ok(Object.values(renvois).every((c) => !c.startsWith('guide/') && existsSync(join(dist, c.split('#')[0], 'index.html'))), 'chaque renvoi mène à une page construite');
 });
 
@@ -122,6 +126,25 @@ test('accueil : texte de bienvenue et défilement des images de la galerie (en c
   assert.match(main, /class="carrousel__badge">En construction</);
   assert.ok(!main.includes('class="carrousel__commandes"'), 'pas de flèches pour une seule image');
   assert.ok(!main.includes('class="card"'), 'plus la grille des rubriques');
+});
+
+test('plus de sources sous une page : seules les Archives les montrent (réponse du propriétaire du 2026-10-22)', options, () => {
+  // « Plus de sources ailleurs que dans les archives. On va épurer un peu ce qui est redondant. » : ni pied « Sources » (pages du wiki, guide, Codex…)
+  // ni autre gabarit ; les données restent (frontmatter `sources:`, page_source, source), /archives/ les lit
+  const pages = walk(dist).filter((f) => f.endsWith('.html') && relative(dist, f) !== join('archives', 'index.html'));
+  assert.ok(pages.length > 200, `${pages.length} pages`);
+  const avecSources = pages.filter((f) => /<h[1-6][^>]*>\s*Sources\s*<\/h[1-6]>/.test(readFileSync(f, 'utf8')));
+  assert.deepEqual(avecSources.map((f) => relative(dist, f)), []);
+});
+
+test('le retour arrière du navigateur au glissement horizontal est empêché pour tout le site (feuille globale)', options, () => {
+  // réponses du propriétaire du 2026-10-22 (« Supprime juste le swipe. ») : html { overscroll-behavior-x: none } dans la feuille de toutes les pages
+  const feuilles = [...lire('index.html').matchAll(/<link rel="stylesheet" href="([^"]+\.css)"/g)].map((m) => m[1]);
+  assert.ok(feuilles.length, 'la feuille globale de l’accueil');
+  assert.ok(feuilles.some((h) => /html\{overscroll-behavior-x:none\}/.test(lire(h.replace(/^\//, '')))), 'html { overscroll-behavior-x: none }');
+  for (const chemin of ['decouvrir/index.html', 'chronologie/index.html', 'races/nain/index.html']) {
+    for (const h of feuilles) assert.ok(lire(chemin).includes(h), `${chemin} : ${h}`);
+  }
 });
 
 test('/galeries/ : toutes les images ; /archives/ : les documents sources et l’ancien wiki', options, () => {

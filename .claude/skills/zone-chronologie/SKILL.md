@@ -9,7 +9,7 @@ user-invocable: false
 ## Fichiers
 - Logique pure : `client/src/lib/chronologie.mjs` (`ordonner`, `couleursDesEvenements`, `surlignerLaDate`, `SANS_CATEGORIE`).
 - Chargeur et choix du filtre : `lib/chronologie-db.mjs`. Rendu d'un événement (build et éditeur) : `lib/chronologie-rendu.mjs`.
-- Composants : `components/chronologie/Chronologie.astro` (mise en page, chevrons, gestes, mini-frise et tiroir), `Frise.astro` (frise, filtre et son script), `ChronologieEvenement.astro`.
+- Composants : `components/chronologie/Chronologie.astro` (mise en page, chevrons, clavier, mini-frise et tiroir), `Frise.astro` (frise, filtre et son script), `ChronologieEvenement.astro`.
 - Pages : `pages/chronologie/index.astro`, `[slug].astro`. CSS : `styles/chronologie/chronologie.css` (inséré en `?raw`).
 - Site de dev : `serveur/edition-chronologie.mjs` (service ; il porte aussi les opérations du vocabulaire des mots-clés : skill `zone-mots-cles`), `src/scripts/edition/chronologie.mjs`.
 - Import : `tools/chronologie/chronologie.mjs`, registre `tools/chronologie/evenements.json`.
@@ -46,7 +46,9 @@ user-invocable: false
 - La frise (`Frise.astro`, `[data-frise]`) défile seule à hauteur d'écran. Son script, en ligne juste après elle, la remet où on l'a laissée (`sessionStorage`) avant le premier affichage.
 - Chaque ligne porte sa couleur et celles de ses voisines (`--c`, `--c-avant`, `--c-apres` : `couleursDesEvenements`) ; chaque morceau de barre fait son dégradé.
 - D'une page de la chronologie à l'autre, transition entre documents (`@view-transition`), dans `chronologie.css` seulement.
-- Les scripts sont en ligne. `Chronologie.astro` : ← →, glissement du doigt (propres à la chronologie : les pages du guide n'en ont pas, skill `zone-guide`), mini-frise et tiroir du téléphone.
+- Les scripts sont en ligne. `Chronologie.astro` : ← → (propres à la chronologie : les pages du guide n'en ont pas, skill `zone-guide`), mini-frise et tiroir du téléphone.
+- Plus de glissement du doigt (réponses du propriétaire du 2026-10-22 : « Le slide du doigt devrai faire changer d'onglet », puis « Laisse tomber. Trop de cas spécifiques compliquées. Supprime juste le swipe. ») : sur écran tactile, les chevrons. Le retour arrière au glissement horizontal est empêché pour tout le site par la feuille globale (skill `ui-defilement`), plus par `chronologie.css`.
+- Site de dev : le panneau du crayon (`.ed-cote`, skill `zone-edition`) descend en bas à droite (`body:has(.chrono)`) ; sur la page d'un événement en téléphone, il se pose au-dessus de la barre du bas (`bottom` plus grand que sa hauteur, couché compris), jamais sur le chevron Bas, seul moyen d'avancer sans glissement (essai réel en 390 px du 2026-10-22, `chronologie-html.test.mjs`).
 - Téléphone : la même liste de `Frise.astro` sert de page (`/chronologie/`), de mini-frise (`.frise:not(.est-ouverte)`, inerte, le bouton `.frise-ouvrir` posé dessus) et de tiroir (`.frise.est-ouverte`, le reste de la page inerte). Tout cela sous `html.js`, posée par `Chronologie.astro` avant la frise. Le script de la frise d'ordinateur ne s'occupe que d'une frise qui défile (`overflow-y: auto`).
 - La date d'un extrait est surlignée par deux marqueurs de la zone d'usage privé posés dans le Markdown, puis changés en `<mark class="chrono-surligne">` (`surlignerLaDate`).
 - Les descriptions peuvent citer des mots-clés (balises du glossaire, forme canonique d'un texte mis en forme) ; le récit de la chronologie est hors de l'outil qui balise un mot dans tous les textes (`horsDe`) : skill `zone-mots-cles`.

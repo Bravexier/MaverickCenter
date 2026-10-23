@@ -6,3 +6,5 @@ deploy/** text eol=lf
 client/src/modeles/** text eol=lf
 client/src/modeles/**/*.png binary
 sources/raw/classeurs/*.json text eol=lf
+# Instantané Tipeee (tools/sources/tipeee.mjs --verifier lit sa forme stable ; livré avec le site, il compte dans l'empreinte de la livraison)
+sources/tipeee/*.json text eol=lf

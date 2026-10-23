@@ -24,13 +24,13 @@ export const NAV = [
     key: 'decouvrir',
     label: 'Découvrir',
     // une page par entrée (choix du propriétaire du 2026-10-18) : les quatre pages de Découvrir, celles des cartes « Par où commencer ? » de l'accueil
-    // (lib/livres.mjs#DECOUVRIR, PAR_OU_COMMENCER), puis les liens (Discord, Tipeee, rencontre IRL)
+    // (lib/livres.mjs#DECOUVRIR, PAR_OU_COMMENCER) ; plus d'entrée « Liens » (réponse du 2026-10-22, « Supprimer la page » : « Plus d'entrée Liens au
+    // menu : tout est sur Bienvenue. ») : Discord, Tipeee et la rencontre IRL sont sous le texte de Bienvenue
     items: [
       { label: 'Bienvenue', path: 'decouvrir/' },
       { label: 'L’univers', path: 'decouvrir/l-univers/' },
       { label: 'Créer son personnage', path: 'decouvrir/creer-son-personnage/' },
       { label: 'Rejoindre une partie', path: 'decouvrir/rejoindre-une-partie/' },
-      { label: 'Liens', path: 'decouvrir/liens/' },
     ],
   },
   {

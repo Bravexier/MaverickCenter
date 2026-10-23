@@ -9,7 +9,7 @@ user-invocable: false
 ## Fichiers
 - Registre pur : `client/src/lib/ressources.mjs` (son en-tête est le contrat du format ; `HORS_RESSOURCE`, `OPERATIONS_DU_LOT`, `capacitesDe`) et ses 8 modules `src/lib/ressources/<module>.mjs` (`creation`, `regles`, `magie`, `equipement`, `artisanat`, `univers`, `bestiaire`, `wiki`).
 - Routeur générique : `client/serveur/ressources.mjs` (`TRADUCTIONS` : une requête traduite en opération du lot).
-- Description OpenAPI 3.1 : `client/serveur/openapi.mjs`, servie à `/api/v1/openapi.json`.
+- Description OpenAPI 3.1 : `client/serveur/openapi.mjs`, servie à `/api/v1/openapi.json`. Elle décrit tout le service : une route ajoutée à `serveur/api.mjs` (et à son en-tête) y est décrite avec ses méthodes (`cheminsDuService`, test `serveur-api-v1` qui lit l'en-tête).
 
 ## À lire
 - `docs/api.md` : « Principes », « Adresses », « Lire », « Écrire » (opérations du lot), « Codes de réponse », « Ressources par module », « Rendre une ressource modifiable » (la recette), « Tests ».
@@ -32,5 +32,5 @@ user-invocable: false
 
 ## Tests
 - `ressources-registre` (chaque table rangée une fois, registre cohérent ; `RESSOURCES_MODULE=<module>` pour un seul module).
-- `serveur-api-v1` (fermeture en production, catalogue, OpenAPI et ses exemples via `test/aide-openapi.mjs`, listes, détail et ETag, sous-ressources, `405`, écritures par le journal, `If-Match`, R42, images).
+- `serveur-api-v1` (fermeture en production, catalogue, OpenAPI — chaque route de l'en-tête de `serveur/api.mjs` décrite avec sa méthode — et ses exemples via `test/aide-openapi.mjs`, listes, détail et ETag, sous-ressources, `405`, écritures par le journal, `If-Match`, R42, images).
 - `api-doc` (le tableau des ressources de `docs/api.md`).

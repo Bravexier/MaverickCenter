@@ -19,11 +19,11 @@ user-invocable: false
 ## Ce que couvre le mode modification (demande du propriétaire)
 - Site de dev seulement (`MAVERICK_EDITION=1`, sinon `/api/edition/` répond 403 et la page ne charge pas l'éditeur), sur tous les écrans, téléphone compris.
 - Crayon à cocher, bouton « Enregistrer » flottant : toutes les modifications de la page partent d'un bloc.
-- Champs `data-ed` : pages du guide, du Codex, races, magies, classes, métiers, bestiaire, armes, armures et boucliers, composants, consommables de la ceinture (nom, niveau, prix, effet d'une potion), chronologie, panneaux de règles (titre, texte, titre des tuiles), annonce de l'encart « Notre prochaine rencontre IRL » de la page Liens (`edition/annonces.mjs`).
+- Champs `data-ed` : pages du guide, du Codex, races, magies, classes, métiers, bestiaire, armes, armures et boucliers, composants, consommables de la ceinture (nom, niveau, prix, effet d'une potion), chronologie, panneaux de règles (titre, texte, titre des tuiles), annonce de l'encart « Notre prochaine rencontre IRL » sous le texte de Bienvenue (`edition/annonces.mjs`).
 - Création : races, peuples, classes, métiers, spécialités, dons, espèces, cartes de monstre, événements, catégories de la chronologie, mots-clés, blocs de panneau de règles.
 - Suppression : métiers, spécialités, dons, cartes de monstre, espèces sans carte, événements, catégories, mots-clés, blocs de panneau de règles. Supprimer un don, une spécialité ou un métier qu'une fiche utilise l'en retire (R42, réponse `fiches` du lot).
 - Vocabulaire des mots-clés sur `/recherche/` (renommer, fusionner, supprimer, créer) : skill `zone-recherche`.
-- Éditeur en place (`edition/texte-en-place.mjs`, HTML → Markdown) : texte du guide, descriptions de la chronologie, blocs des panneaux de règles, annonce de la page Liens. Barre d'outils à gauche de l'écran, à la hauteur de la zone où est le curseur (`hauteurDeLaBarre`, demande du propriétaire).
+- Éditeur en place (`edition/texte-en-place.mjs`, HTML → Markdown) : texte du guide, descriptions de la chronologie, blocs des panneaux de règles, annonce sous Bienvenue. Barre d'outils à gauche de l'écran, à la hauteur de la zone où est le curseur (`hauteurDeLaBarre`, demande du propriétaire). Plusieurs éditeurs en place sur une page (Bienvenue : le texte, `edition/guide.mjs`, et l'annonce) : une seule barre se montre, celle de l'éditeur où est le curseur, sinon la dernière qui l'a eu, sinon la première posée (`texte-en-place.mjs#choisirLaBarre`, `test/texte-en-place-barres.test.mjs`).
 - Surcouche : chaque page réaffiche les lignes modifiées depuis sa construction (`GET /api/edition/en-attente/`).
 
 ## Invariants
@@ -43,6 +43,8 @@ user-invocable: false
 - Il réécrit les textes de toute la base qui citent un mot-clé supprimé ou fusionné, au moment où son lot est rejoué (`balisesRetireesParLeLot`, crochet `apresLeLot` de `rejouer`, dans le lot) : un lot suivant qui modifie un texte ainsi réécrit le retrouve tel que le site de dev l'a lu. Cela couvre pages d'exemple et textes reçus depuis ; la cible d'une fusion est reconnue aux étiquettes ou balises que le lot reporte (`cibleReportee`).
 - Puis les colonnes dérivées après les pages refaites (`balisesDesColonnesDerivees`), les pages typées que ces textes refont (`page`) et `mot_cle` pour un lot d'avant la 0043 (un mot-clé protégé seulement).
 - Tables autorisées : `rejouerLeJournal` (`tablesCompletees`) et `scripts/mise-a-jour-github.mjs#tablesDuLot` (même règle, recopiée ; les tables dont `data/rows` a une balise : `tablesAvecBalises`, `git grep`).
+- `rejouerUne` est la forme courte d'`evaluerUne` (issue structurée : genre du conflit, colonnes) ; `parcourirUnLot` rejoue UN lot sans s'arrêter au premier conflit (colonnes saines écrites), pour l'examen et la résolution d'un lot en conflit (`serveur/edition-conflits.mjs`, skill `zone-mise-a-jour`). L'adaptateur est le même (`adaptateurDuJournal`) ; une forme ancienne de plus s'y ajoute une fois pour les deux.
+- Résolution : les colonnes du modèle passent par l'opération « modifier » (`OUTILS_DE_RESOLUTION` de `serveur/edition.mjs`), jamais par du SQL direct ; le reste comme le rejeu, noté dans le nouveau lot.
 - Les lots d'avant la 0043 et la 0056 que le glossaire rejoue sans effet (`ancienneEcritureDuGlossaire`) : skill `zone-mots-cles`, « Rejeu du journal ».
 
 ## Spécialités et dons créés ou supprimés (D11)
@@ -58,11 +60,11 @@ user-invocable: false
 
 ## Markdown sûr et aller-retour
 - Guide : `data-ed-morceau` = un morceau de texte visible du corps (`decouperCorps`).
-- Ni HTML brut ni lien non sûr ajouté au Markdown d'une page, d'un bloc de la chronologie, d'un panneau de règles ou de l'annonce de la page Liens (`serveur/edition.mjs#ANNONCE`). Contrôle par `lib/markdown-sur.mjs` : au service, au lot reçu, puis sur les textes après le rejeu de la mise à jour et du rapatriement (`scripts/mise-a-jour-regles.mjs#TEXTES_EN_MARKDOWN`, `texteNonSurApresLeRejeu`).
+- Ni HTML brut ni lien non sûr ajouté au Markdown d'une page, d'un bloc de la chronologie, d'un panneau de règles ou de l'annonce sous Bienvenue (`serveur/edition.mjs#ANNONCE`). Contrôle par `lib/markdown-sur.mjs` : au service, au lot reçu, puis sur les textes après le rejeu de la mise à jour et du rapatriement (`scripts/mise-a-jour-regles.mjs#TEXTES_EN_MARKDOWN`, `texteNonSurApresLeRejeu`).
 - Les liens du wiki portent `data-cible` (`wikilinks.mjs`), que l'éditeur réécrit en `[[cible|texte]]`.
 - La couleur d'une case s'écrit `{couleur:x}` (`markdown-couleurs.mjs`) ; le plugin est déclaré dans `astro.config.mjs` ET `lib/guide-rendu.ts`, qui doivent rester d'accord.
 
 ## Tests
 - `markdown-edition` : l'aller-retour Markdown → HTML → Markdown sur toutes les pages du guide.
-- `serveur-edition*` (chaque domaine, journal, rejeu, corps, dérivations, rapatriement, fiches), `edition-rendu`, `edition-tous-ecrans`, `edition-annonces`, `edition-panneaux`, `edition-mots-cles`, `dons-edition`, `tables-de-la-base`, `db-appliquer-edition`.
+- `serveur-edition*` (chaque domaine, journal, rejeu, corps, dérivations, rapatriement, fiches, conflits), `edition-rendu`, `edition-tous-ecrans`, `edition-annonces`, `edition-panneaux`, `edition-mots-cles`, `dons-edition`, `tables-de-la-base`, `db-appliquer-edition`.
 - `markdown-sur` (les barrières du Markdown sûr : service, lot reçu, pages après le rejeu), `suppressions-d11` (les tests qui lisent des spécialités et des dons importés tiennent quand le site de dev en supprime).

@@ -179,6 +179,12 @@ test('la mise en page demandée, dans la feuille de la page : frise au quart gau
   assert.match(regleTel('html.js .chrono--evenement .frise.est-ouverte'), /position: fixed;[\s\S]*inset: 0 auto 0 0;/, 'le tiroir, par-dessus la page, depuis la gauche');
   assert.match(regleTel('.chrono--evenement .chrono-chevrons'), /bottom: 0;[\s\S]*grid-template-columns: 3rem minmax\(0, 1fr\) 3rem;/, 'la barre du bas : chevron, événement, chevron');
   assert.match(regleTel('body:has(.chrono--evenement)'), /padding-bottom: calc\(4\.25rem/, 'la page réserve la place de la barre du bas');
+  // le panneau du site de dev (.ed-cote) au-dessus de la barre du bas, plus haut qu'elle (4.25rem, 3.5rem couché) : il ne couvre plus le chevron
+  // « suivant », seul moyen d'avancer sans le glissement du doigt (essai réel en 390 px du 2026-10-22)
+  const basDuPanneau = (bloc) => Number(bloc.match(/\n {2}body:has\(\.chrono--evenement\) \.ed-cote \{ bottom: calc\(([\d.]+)rem \+ env\(safe-area-inset-bottom\)\); \}/)?.[1]);
+  const couche = html.slice(html.indexOf('@media (max-width: 56rem) and (max-height: 30rem)'));
+  assert.ok(basDuPanneau(telephone) >= 4.25 + 0.5, 'téléphone : le panneau du site de dev au-dessus de la barre du bas');
+  assert.ok(basDuPanneau(couche.slice(0, couche.indexOf('\n}'))) >= 3.5 + 0.5, 'téléphone couché : le panneau au-dessus de la barre plus basse');
   for (const [, attributs] of html.matchAll(/<a class="chrono-chevron" href=([^>]*)>/g)) {
     assert.match(attributs, / title="[^"]+" data-placement="cote"/, 'l’infobulle d’un chevron dit l’événement visé, à sa gauche (dessous, celle du Haut couvrirait le Bas)');
   }
@@ -231,7 +237,10 @@ test('scripts en ligne sans import (version portable) ; le menu Codex mène à l
   for (const chemin of ['chronologie', adresseDEvenement(evenements[0].id)]) {
     const html = lireChemin(chemin);
     for (const [, code] of html.matchAll(/<script>([\s\S]*?)<\/script>/g)) assert.ok(!/(^|[;}\n])\s*import[\s{*"']|\bimport\(/.test(code), `${chemin} : script de page sans import`);
-    assert.match(html, /html \{ overscroll-behavior-x: none; \}/, 'le glissement du doigt ne fait pas un retour dans l’historique');
+    // plus de glissement du doigt (réponse du propriétaire du 2026-10-22 : « Supprime juste le swipe. ») : les chevrons et ← → restent ; le retour
+    // arrière au glissement horizontal est empêché pour tout le site, par la feuille globale (test/defilement.test.mjs, test/site-html.test.mjs)
+    assert.doesNotMatch(html, /touchstart|touchmove|touchend|translateX\(/, `${chemin} : plus de glissement du doigt`);
+    assert.match(html, /ArrowLeft/, `${chemin} : ← → au clavier`);
     assert.match(html, /@view-transition \{ navigation: auto; \}/, 'la page glisse d’un événement à l’autre (navigateurs qui le savent)');
   }
   assert.match(lireChemin('chronologie'), /<a href="\/chronologie\/" aria-current="page">Chronologie<\/a>/);

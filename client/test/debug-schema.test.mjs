@@ -100,7 +100,7 @@ test('structure : chaque clé étrangère de la base (PRAGMA foreign_key_list), 
       }
     }
   }
-  assert.equal(total, 414);
+  assert.equal(total, 415);
   assert.equal(structure.tables.filter((t) => t.genre === 'vue').reduce((n, t) => n + t.cles_etrangeres.length, 0), 0, 'une vue n’a pas de clé étrangère');
   const cellule = structure.tables.find((t) => t.nom === 'race_don_tableau_cellule');
   const multiples = cellule.cles_etrangeres.filter((c) => c.colonnes.length > 1).map((c) => [c.colonnes, c.table, c.vers]);
@@ -111,6 +111,9 @@ test('structure : chaque clé étrangère de la base (PRAGMA foreign_key_list), 
   assert.deepEqual(cellule.colonnes.find((c) => c.nom === 'ligne').fk, { table: 'race_don_tableau_ligne', colonne: 'rang' });
   const note = structure.tables.find((t) => t.nom === 'note_cellule');
   assert.ok(note.cles_etrangeres.some((c) => c.table === 'note_cellule'), 'auto-référence');
+  // migration 0072 : un lot en conflit résolu cite le lot normal qui le reprend (modification_lot.resolu_par → modification_lot.id)
+  assert.deepEqual(structure.tables.find((t) => t.nom === 'modification_lot').cles_etrangeres.filter((c) => c.table === 'modification_lot').map((c) => [c.colonnes, c.vers]),
+    [[['resolu_par'], ['id']]], 'auto-référence de modification_lot');
   // `fks` : TOUTES les clés qui contiennent la colonne (une colonne dans deux clés, une clé à plusieurs colonnes, l'auto-référence)
   for (const t of tablesSeules) {
     for (const col of t.colonnes) {
@@ -223,7 +226,7 @@ test('empiler (ligne d’horizon) : dans l’ordre, au plus haut puis au plus à
 
 test('liens : un et un seul par clé étrangère du schéma, du bord de la table source (ligne de la colonne) au bord de la table visée, flèche à l’arrivée', () => {
   const attendus = tablesSeules.flatMap((t) => t.cles_etrangeres.map((c, i) => `${t.nom}#${i}`));
-  assert.equal(plan.liens.length, 414);
+  assert.equal(plan.liens.length, 415);
   assert.deepEqual(plan.liens.map((l) => l.id), attendus);
   assert.equal(new Set(plan.liens.map((l) => l.id)).size, plan.liens.length);
   const boiteDe = new Map(plan.boites.map((b) => [b.nom, b]));
@@ -250,13 +253,14 @@ test('liens : un et un seul par clé étrangère du schéma, du bord de la table
     else assert.ok(cx > b.x + b.largeur - 0.1, `${l.id} : arrive par la droite`);
   }
   const soi = plan.liens.filter((l) => l.soi);
-  assert.deepEqual(soi.map((l) => l.de), ['note_cellule'], 'l’auto-référence du schéma');
-  assert.equal(soi[0].cote, 'boucle');
+  assert.deepEqual(soi.map((l) => l.de), ['note_cellule', 'modification_lot'], 'les auto-références du schéma (modification_lot.resolu_par : migration 0072)');
+  assert.deepEqual(soi.map((l) => l.cote), ['boucle', 'boucle'], 'chacune dessinée en boucle');
   // une clé à plusieurs colonnes part de la colonne qui la distingue, et arrive à la colonne visée au même rang
   const ligneDe = (table, y) => (y - boiteDe.get(table).y - GEOMETRIE.entete - GEOMETRIE.ligne / 2) / GEOMETRIE.ligne;
   const colonnesDe = (table) => tableDe.get(table).colonnes.map((c) => c.nom);
   const parcours = (l) => [colonnesDe(l.de)[ligneDe(l.de, l.depart.y)], colonnesDe(l.vers)[ligneDe(l.vers, l.arrivee.y)]];
   assert.deepEqual(parcours(soi[0]), ['repond_a', 'rang'], 'note_cellule : repond_a → rang (pas entite_table → entite_table)');
+  assert.deepEqual(parcours(soi[1]), ['resolu_par', 'id'], 'modification_lot : resolu_par → id');
   const cellule = plan.liens.filter((l) => l.de === 'race_don_tableau_cellule' && l.colonnes.length > 1);
   assert.deepEqual(cellule.map(parcours), [['ligne', 'rang'], ['colonne', 'rang']], 'ses deux clés partent de ligne et de colonne, pas toutes deux de race_id');
   assert.deepEqual(parcours(plan.liens.find((l) => l.de === 'capacite' && l.colonnes.length > 1)), ['specialite_id', 'id']);
@@ -440,7 +444,7 @@ test('clavier et recherche : table voisine dans chaque direction ; recherche exa
 test('rendu : une boîte HTML focalisable et étiquetée par table, une ligne par colonne, un chemin SVG par lien ; tout échappé ; jamais d’infobulle native', () => {
   const html = htmlDuSchema(structure, plan);
   assert.equal((html.match(/<div class="schema-table /g) ?? []).length, structure.tables.length);
-  assert.equal((html.match(/ data-lien="/g) ?? []).length, 414);
+  assert.equal((html.match(/ data-lien="/g) ?? []).length, 415);
   assert.equal((html.match(/<div class="schema-col[ "]/g) ?? []).length, structure.tables.reduce((n, t) => n + t.colonnes.length, 0));
   assert.equal((html.match(/ tabindex="-1" role="button" aria-haspopup="dialog"/g) ?? []).length, structure.tables.length);
   assert.ok(html.includes('aria-label="table sort, '), 'étiquette');
@@ -461,6 +465,7 @@ test('rendu : une boîte HTML focalisable et étiquetée par table, une ligne pa
   const entite = caseDe('note_cellule', 'entite_table');
   assert.match(entite, /\(entite_table, entite_id, repond_a\) → note_cellule\(entite_table, entite_id, rang\) \(auto-référence\)/);
   assert.doesNotMatch(entite, /→ note_cellule\.entite_table/, 'une colonne qui semblerait se viser elle-même');
+  assert.match(caseDe('modification_lot', 'resolu_par'), /data-vers="modification_lot" data-infobulle="resolu_par : TEXT\n→ modification_lot\.id \(auto-référence\)/);
   // de loin, le titre court du bloc ; son titre entier en infobulle
   assert.match(html, /<span class="schema-section__titre-loin" aria-hidden="true" data-infobulle="15\. NOTES DE VERSION : ce que chaque version[^"]*site de dev">15\. NOTES DE VERSION<\/span>/);
   assert.equal(titreCourt('MAGIES ET SORTS (famille « magies »)'), 'MAGIES ET SORTS');
@@ -521,7 +526,7 @@ test('textes : nombres, lignes, étiquettes, infobulles (section et description 
   assert.deepEqual(clesASuivre(cellule, 'race_id').map((c) => c.table), ['race_don_tableau_ligne', 'race_don_tableau_colonne']);
   assert.equal(htmlDesCles([{ table: 'a"<', libelle: 'x <b>' }]),
     '<li role="none"><button type="button" role="menuitem" tabindex="-1" class="schema-cles__cle" data-cle-vers="a&quot;&lt;">x &lt;b&gt;</button></li>');
-  assert.equal(resumeDuSchema(structure), '195 tables, 35 vues, 414 clés étrangères');
+  assert.equal(resumeDuSchema(structure), '195 tables, 35 vues, 415 clés étrangères');
 });
 
 test('fenêtre du contenu : adresse (nom encodé, pages de 100, tri), en-têtes triables, valeurs telles que le service les rend, messages d’erreur', () => {

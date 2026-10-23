@@ -3,8 +3,9 @@
 // utilisateurs disposant du lien » (POST /api/classeur/ { url }, serveur/api.mjs), et la page l'importe comme un classeur choisi sur l'ordinateur.
 // Une page ne peut pas le faire seule : Google ne permet pas à un autre site de lire la feuille (CORS).
 //
-// C'est la seule route qui fait sortir le service sur Internet à la demande de n'importe quel visiteur (le site est public), et, en production, sa
-// seule sortie (le site de dev joint aussi l'API GitHub pour la page « Mise à jour » : serveur/notes-de-version.mjs#creerGithub) ; d'où ses bornes :
+// C'est la seule route qui fait sortir le service sur Internet vers une adresse que donne n'importe quel visiteur (le site est public) ; en
+// production, l'autre sortie est la relecture de Tipeee, à adresse fixe et avec un cache (serveur/tipeee.mjs, GET /api/tipeee/) ; le site de dev
+// joint aussi l'API GitHub pour la page « Mise à jour » (serveur/notes-de-version.mjs#creerGithub) ; d'où ses bornes :
 //   - seulement un lien https://docs.google.com/spreadsheets/d/<id>… (lib/google-sheets.mjs#idDeFeuille) : l'adresse téléchargée est construite
 //     d'après l'identifiant (adresseDExport), jamais recopiée ;
 //   - redirections suivies une à une (REDIRECTIONS_MAX), vers docs.google.com ou un hôte de googleusercontent.com seulement (redirectionPermise) ;

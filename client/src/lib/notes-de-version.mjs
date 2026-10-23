@@ -19,7 +19,7 @@ import { TABLES_DES_NOTES } from './tables-de-la-base.mjs';
 import { sensDuChangement } from './notes-de-version-sens.mjs';
 import { resumeDuPortrait } from './portrait.mjs';
 import { ORDRE_DES_RACES } from './race-kinds.mjs';
-import { DECOUVRIR, LIENS, PAGES_ABSORBEES, placeDansLeGuide } from './livres.mjs';
+import { DECOUVRIR, PAGES_ABSORBEES, placeDansLeGuide, SOUS_BIENVENUE } from './livres.mjs';
 
 /**
  * La page du plan où se range une page du guide : elle-même, ou celle qui l'absorbe (lib/livres.mjs#PAGES_ABSORBEES) — une page fusionnée dans une autre
@@ -187,11 +187,11 @@ const DEFINITIONS = [
     },
   },
   {
-    // l'annonce de l'encart « Notre prochaine rencontre IRL » de la page Liens (migration 0068) : avec les pages de Découvrir, après elles
+    // l'annonce de l'encart « Notre prochaine rencontre IRL » sous le texte de Bienvenue (migration 0068 ; sur la page Liens jusqu'au 2026-10-22) : avec les pages de Découvrir, après elles
     // une annonce vide (texte NULL : « Aucune rencontre annoncée pour le moment. ») qui n'existe pas de l'autre côté n'est pas listée (`vide`) : rien
     // n'est annoncé ; écrite ou vidée, son texte se lit comme tout champ modifié
     table: 'annonce', domaine: 'guide', cle: ['id'], colonnes: colonnesDe('annonce'), genre: 'Annonce', vide: (r) => r.texte === null,
-    groupe: () => DECOUVRIR.titre, entite: (r) => (r.id === LIENS.rencontre.annonce ? `${LIENS.titre} › ${LIENS.rencontre.titre}` : `Annonce ${r.id}`),
+    groupe: () => DECOUVRIR.titre, entite: (r) => (r.id === SOUS_BIENVENUE.rencontre.annonce ? `${SOUS_BIENVENUE.titre} › ${SOUS_BIENVENUE.rencontre.titre}` : `Annonce ${r.id}`),
     ordre: (r) => [0, 900, r.id],
   },
   {

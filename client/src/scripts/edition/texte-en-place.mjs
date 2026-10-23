@@ -85,6 +85,23 @@ const motCleChoisi = (vocabulaire, saisie) =>
   vocabulaire.liste.find((m) => libelleDeMotCle(m) === saisie) ?? motCleDeLaRef(vocabulaire, saisie.replace(/\s+—\s+[a-z0-9-]+$/, '')) ?? null;
 
 /**
+ * Les barres d'outils de la page, une par éditeur en place (`{ el, aLeCurseur }`) : quand une page en a plusieurs (le texte de Bienvenue,
+ * edition/guide.mjs, et l'annonce de l'encart « Notre prochaine rencontre IRL » sous lui, edition/annonces.mjs), une seule se montre — celle de l'éditeur
+ * où est le curseur, sinon la dernière qui l'a eu, sinon la première posée — : les autres sont cachées (`hidden`), sans quoi elles se poseraient
+ * l'une sur l'autre à gauche de l'écran.
+ */
+const BARRES = new Set();
+let barreMontree = null;
+export function choisirLaBarre(barres = BARRES) {
+  const presentes = [...barres].filter((b) => b.el.isConnected);
+  const ici = presentes.find((b) => b.aLeCurseur());
+  if (ici) barreMontree = ici;
+  else if (!presentes.includes(barreMontree)) barreMontree = presentes[0] ?? null;
+  for (const b of presentes) b.el.hidden = presentes.length > 1 && b !== barreMontree;
+  return barreMontree;
+}
+
+/**
  * Un éditeur en place sur les zones que rend `zones()` (éléments contenteditable) : la sélection n'est prise en compte que dans une zone. Rend les outils
  * de mise en forme et de lien, et `barre(ed, groupes, etiquette)` qui dessine une barre d'outils (groupes : [[nom, [[etiquette, titre, action(ed),
  * classe?]]]]).
@@ -364,13 +381,24 @@ export function editeurEnPlace(zones) {
     const arret = new AbortController();
     let posee = false; // la barre a été dans la page : sortie (fin du mode modification), elle ne suit plus rien
     let prevue = false;
+    const inscrite = { el, aLeCurseur: () => {
+      const sel = getSelection();
+      return Boolean(sel?.rangeCount && dansUneZone(sel.getRangeAt(0).startContainer));
+    } };
+    BARRES.add(inscrite);
     const placer = () => {
       prevue = false;
       if (!el.isConnected) {
-        if (posee) arret.abort();
+        if (posee) {
+          arret.abort();
+          BARRES.delete(inscrite);
+          choisirLaBarre();
+        }
         return;
       }
       posee = true;
+      choisirLaBarre();
+      if (el.hidden) return; // une autre barre se montre : celle-ci attend le curseur dans ses zones
       const zone = large.matches ? zoneSuivie() : null;
       if (!zone) el.style.removeProperty('top');
       else el.style.top = `${Math.round(hauteurDeLaBarre(zone.getBoundingClientRect(), el.offsetHeight, innerHeight))}px`;

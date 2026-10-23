@@ -119,6 +119,33 @@ print(json.dumps({"objets": objets, "colonnes": cols}))
   }
 });
 
+// Les commentaires du schéma (recopiés dans docs/sql par db:doc) citent du code du site : `chemin.mjs#Nom(.propriété)`, un fichier .mjs, .astro, .css
+// (les outils Python cités, tools/…/*.py, ne sont pas contrôlés ici : tools/db/classes_maitrise.py, cité par les maîtrises de départ depuis le premier schéma, n'a jamais existé).
+// Un renvoi périmé (la page Liens supprimée, livres.mjs#LIENS.rencontre devenu SOUS_BIENVENUE.rencontre) passerait db:doc --check : la doc suit le schéma.
+test('les commentaires du schéma ne citent que du code qui existe : fichiers, noms et propriétés (`fichier.mjs#Nom.prop`)', async () => {
+  const commentaires = schema.split('\n').map((l) => (l.includes('--') ? l.slice(l.indexOf('--') + 2) : '')).join('\n');
+  const trouver = (chemin) => ['', 'client/', 'client/src/', 'client/src/lib/'].map((b) => join(racine, b, chemin)).find((f) => existsSync(f));
+  const fichiers = [...commentaires.matchAll(/(?:client|tools|lib|serveur|components|scripts|pages)\/[\w./[\]-]*\.(?:mjs|astro|css)\b/g)].map((m) => m[0]);
+  assert.ok(fichiers.length > 10, 'le schéma cite des fichiers');
+  for (const f of fichiers) assert.ok(trouver(f), `${f} : fichier cité introuvable`);
+  const renvois = [...commentaires.matchAll(/([\w./-]+\.mjs)#([A-Za-z_]\w*)((?:\.\w+)*)/g)];
+  assert.ok(renvois.length >= 9, 'le schéma cite des noms du code');
+  for (const [cite, chemin, nom, proprietes] of renvois) {
+    const fichier = trouver(chemin);
+    assert.ok(fichier, `${cite} : fichier introuvable`);
+    const texte = readFileSync(fichier, 'utf8');
+    assert.match(texte, new RegExp(`(?:function\\*? |const |let |class )${nom}\\b|export \\{[^}]*\\b${nom}\\b`), `${cite} : ${nom} n’est pas défini dans le fichier`);
+    if (proprietes) {
+      assert.ok(fichier.includes(join('client', 'src', 'lib')), `${cite} : une propriété ne se vérifie que dans un module pur de lib/`);
+      let valeur = (await import(fichier))[nom];
+      for (const p of proprietes.slice(1).split('.')) {
+        assert.ok(valeur != null && p in Object(valeur), `${cite} : ${p} absent`);
+        valeur = valeur[p];
+      }
+    }
+  }
+});
+
 test('docs/sql/structure.md et docs/sql/apercu.md sont ceux que le schéma produit (npm run db:doc)', () => {
   const r = node('db-doc.mjs', ['--check']);
   assert.equal(r.status, 0, r.stderr);

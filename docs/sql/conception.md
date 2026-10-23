@@ -370,7 +370,8 @@ NULL avant la connexion Discord) et `modification` (une ligne touchée : table, 
 `integree` / `conflit`, aperçu HTML d'une page du guide). Le service d'écriture (`client/serveur/edition.mjs`) les écrit **dans la même transaction
 que la modification**, sans déclencheur SQL caché ; elles restent **vides dans `data/rows`** et ne vivent que dans la base vivante du site de dev.
 Quand de nouvelles règles arrivent, le journal est rejoué sur elles (une modification déjà présente est « intégrée », un lot contredit passe
-« conflit » en entier) ; `npm run db:appliquer-edition` le rejoue de même sur `data/rows`, que l'export déterministe réécrit (relecture et
+« conflit » en entier ; il se résout sur `/mise-a-jour/`, migration `0072-resolution-des-conflits` : `resolu_le`, `resolu_par` — le nouveau lot normal
+qui reprend ce qui est gardé — et `resolution` — les choix 1, 2 ou 3 —, ses lignes restant « conflit » comme trace) ; `npm run db:appliquer-edition` le rejoue de même sur `data/rows`, que l'export déterministe réécrit (relecture et
 comparaison par git). Voir `docs/serveur.md`, « Édition ». Restent à décider avec le propriétaire : l'état `brouillon / validé` (relecture avant
 publication), l'auteur (connexion Discord) et le moment où la base devient canonique (les classeurs, une archive).
 

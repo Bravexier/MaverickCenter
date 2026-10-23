@@ -28,7 +28,7 @@
 | `panneau_regles` | Panneaux de règles : l'encart replié en tête de chaque onglet de /ressources/equipement/ (migration 0056). | **id**, titre, page_id→page |
 | `panneau_regles_bloc` | Un bloc d'un panneau, dans l'ordre de lecture : du texte (tuile = 0), qui suit les colonnes du panneau, ou une tuile (tuile = 1 : encadrée, titre facultatif). | **panneau_id**→panneau_regles, **rang**, ordre, tuile, titre?, texte |
 | `composant_onglet` | Onglets de la page « Composants » (/ressources/composants/, migration 0057) : un onglet par tableau de la page. | **id**, titre, note?, ordre |
-| `annonce` | Annonces placées par le site (migration 0068) : aujourd'hui l'encart « Notre prochaine rencontre IRL » de la page « Liens » (/decouvrir/liens/). | **id**, texte? |
+| `annonce` | Annonces placées par le site (migration 0068) : aujourd'hui l'encart « Notre prochaine rencontre IRL » sous le texte de Bienvenue (/decouvrir/, components/guide/SousBienvenue.astro ; sur la page Liens | **id**, texte? |
 
 ## 2. RÈGLES DE LA FICHE : caractéristiques, compétences, niveaux, constantes, postures (famille « fiche »)
 
@@ -361,13 +361,13 @@
 
 ## 14. ÉDITION : le journal des modifications faites depuis le site de dev (saisie, jamais importée ; migration 0017)
 
-**Relations dans cette section** : `modification→modification_lot`
+**Relations dans cette section** : `modification_lot→modification_lot`, `modification→modification_lot`
 
 **Vers d'autres sections** : `modification_lot→utilisateur (§13)`
 
 | Table | Rôle | Colonnes |
 | --- | --- | --- |
-| `modification_lot` | Un enregistrement fait depuis une page (le bouton de confirmation) : toutes ses modifications passent ou aucune. | **id**, fait_le, auteur_id→utilisateur?, page_id?, resume |
+| `modification_lot` | Un enregistrement fait depuis une page (le bouton de confirmation) : toutes ses modifications passent ou aucune. | **id**, fait_le, auteur_id→utilisateur?, page_id?, resume, resolu_le?, resolu_par→modification_lot?, resolution? |
 | `modification` | Une ligne de table touchée par un lot. | **lot_id**→modification_lot, **rang**, table_nom, cle, operation, avant?, apres?, etat, detail?, apercu? |
 | `note_version_brouillon` | La note de version en préparation sur le site de dev (page /mise-a-jour/ : le champ libre que les admins remplissent, en plus de la liste calculée ; migration 0023). | **id**, texte?, modifie_le?, lot?, majeure? |
 

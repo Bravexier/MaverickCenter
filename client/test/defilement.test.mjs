@@ -8,6 +8,9 @@
 //     reconnue à son fichier, à ses `@media` et à son sélecteur exacts (le même sélecteur hors de son `@media` retiendrait la molette sur grand écran) ;
 //   - un écouteur de la molette (`wheel`) qui l'empêche (`preventDefault`) : seuls ceux de la liste ÉCOUTEURS, chacun avec sa raison.
 // `overscroll-behavior-x` / `-inline` (glissement horizontal : retour arrière du navigateur, carrousel) n'est pas concerné.
+// À part : plus aucun glissement du doigt sur le site (réponse du propriétaire du 2026-10-22 : « Supprime juste le swipe. »), et le retour arrière du
+// navigateur au glissement horizontal empêché pour tout le site, une seule fois : `html { overscroll-behavior-x: none; }` dans styles/global/base.css
+// (l'axe horizontal seul : le vertical reste libre).
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
@@ -139,4 +142,18 @@ test('l’analyse : commentaires et chaînes, @media, raccourci à deux valeurs,
   const js = sansCommentaires("input.accept = 'image/*';\nel.style.overscrollBehavior = 'contain'; // */\nel.style.setProperty('overscroll-behavior-y', 'none');\nObject.assign(el.style, { overscrollBehavior: 'auto contain' });\nfetch('https://exemple.org/x'); el.style.overscrollBehaviorX = 'contain';", false);
   assert.equal(ecrituresHorsCss(js).length, 3);
   assert.deepEqual(ecrituresHorsCss(sansCommentaires('// el.style.overscrollBehavior = "contain"\n/* el.style.overscrollBehavior = "none" */', false)), []);
+});
+
+test('aucun glissement du doigt sur le site ; le retour arrière au glissement horizontal est empêché pour tout le site, dans la feuille globale', () => {
+  // un geste du doigt suit touchmove ou touchend (touchstart seul ne fait qu'annoncer un appui : le chargement anticipé de « Exporter » de la fiche)
+  const gestes = fichiers.filter((nom) => /addEventListener\(\s*['"`]touch(?:move|end|cancel)['"`]|\bontouch(?:move|end|cancel)\s*=/.test(sansCommentaires(lire(nom), nom.endsWith('.css'))));
+  assert.deepEqual(gestes, [], 'un glissement du doigt : le propriétaire n’en veut plus');
+  const regle = /(?:^|[\s}])html\s*\{\s*overscroll-behavior-x:\s*none;?\s*\}/;
+  assert.match(sansCommentaires(lire('styles/global/base.css'), true), regle);
+  assert.ok(lire('styles/global.css').includes("@import './global/base.css';"), 'la feuille globale, sur toutes les pages (layouts/Base.astro)');
+  // une seule fois : aucune autre source ne la pose (ni ne la retire) sur html
+  const ailleurs = fichiers.filter((nom) => nom !== 'styles/global/base.css' && /(?:^|[\s},])(?:html|:root)\s*\{[^}]*overscroll-behavior/.test(sansCommentaires(lire(nom), nom.endsWith('.css'))));
+  assert.deepEqual(ailleurs, []);
+  // l'axe vertical n'est pas retenu par elle (le premier test de ce fichier : reglesCss ne la relève pas)
+  assert.deepEqual(reglesCss('html { overscroll-behavior-x: none; }'), []);
 });
