@@ -218,6 +218,21 @@ test('test : la version complète la plus récente (VX.Y.Z ou sa régénération
   assert.equal(prod.read('site/index.html'), '<h1>accueil prod</h1>');
 });
 
+test('test : la plus haute version gagne même si GitHub liste V0.3.99 avant V0.3.100 (trois chiffres)', { skip }, async () => {
+  // L'ordre observé de l'API (releases?per_page=30) : V0.3.99 en tête, puis V0.3.98, V0.3.112, V0.3.100, V0.3.85, et une production au milieu.
+  publier(livraison('V0.3.99', { label: 'v99' }), livraison('V0.3.98'), livraison('V0.3.112', { label: 'v112' }), livraison('V0.3.3'),
+    livraison('V0.4', { label: 'prod' }), livraison('V0.3.100'), livraison('V0.3.85'));
+  const t = nas('ordre-github', { mode: 'test', env: { SANS_BASE_PROD: '1' } });
+  const res = await t.run();
+  assert.equal(res.code, 0, res.out);
+  assert.equal(t.tag(), 'V0.3.112');
+  assert.equal(t.read('site/index.html'), '<h1>accueil v112</h1>');
+
+  // Déjà à jour : la liste dans le même ordre ne ramène pas en arrière.
+  const encore = await t.run();
+  assert.match(encore.out, /À jour \(V0\.3\.112\)/);
+});
+
 test('test : la livraison de test la plus récente, avec copie de la base de la production', { skip }, async () => {
   publier(livraison('v1.2', { label: 'prod' }));
   const prod = nas('maverick-center');

@@ -104,6 +104,18 @@ champ() { grep -o "\"$1\": *\"[^\"]*\"" | sed 's/^.*: *"//; s/"$//'; }
 # serveur de test ; VX.Y (puis VX.Y-hotfix.N) pour la production.
 FORME_TEST='^[vV][0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'
 FORME_PROD='^[vV][0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'
+# L'étiquette de version la plus haute parmi celles lues sur l'entrée (une par ligne). L'ordre de la liste de GitHub n'est pas celui des
+# versions (V0.3.99 avant V0.3.100) : on compare X, Y, Z puis le numéro final de la régénération (VX.Y.Z-rebuild.N ; sans suffixe : 0).
+la_plus_haute() {
+  awk '{
+    s = $0; sub(/^[vV]/, "", s)
+    split(s, p, /[^0-9]+/)
+    x = p[1] + 0; y = p[2] + 0; z = p[3] + 0; w = p[4] + 0
+    if (!ok || x > bx || (x == bx && (y > by || (y == by && (z > bz || (z == bz && w > bw)))))) {
+      ok = 1; best = $0; bx = x; by = y; bz = z; bw = w
+    }
+  } END { if (ok) print best }'
+}
 mode_de_etiquette() {
   if printf '%s\n' "$1" | grep -Eq "$FORME_TEST"; then echo test
   elif printf '%s\n' "$1" | grep -Eq "$FORME_PROD"; then echo prod
@@ -117,7 +129,7 @@ if [ "$MODE" = prod ]; then
 else
   gh_curl -H 'Accept: application/vnd.github+json' -o "$TMP/liste.json" "$GITHUB_API/repos/$REPO/releases?per_page=30" ||
     die "impossible de lire les livraisons de $REPO (jeton invalide ou expiré, réseau ?)"
-  TAG_TEST=$(champ tag_name < "$TMP/liste.json" | grep -E "$FORME_TEST" | head -n 1 || true)
+  TAG_TEST=$(champ tag_name < "$TMP/liste.json" | grep -E "$FORME_TEST" | la_plus_haute || true)
   [ -n "$TAG_TEST" ] || die "aucune livraison de test publiée pour l'instant"
   gh_curl -H 'Accept: application/vnd.github+json' -o "$TMP/livraison.json" "$GITHUB_API/repos/$REPO/releases/tags/$TAG_TEST" ||
     die "impossible de lire la livraison $TAG_TEST"
