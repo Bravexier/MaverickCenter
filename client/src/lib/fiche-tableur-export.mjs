@@ -38,7 +38,7 @@
 import { RAISONS } from './degats-texte.mjs';
 import { ARMURE_ENTIERE, PARTIES_DE_FICHE, gainsDeLaProgression } from './fiche-format.mjs';
 import {
-  EMPLACEMENTS_ACCESSOIRES, accessoiresDesSorts, acquisDesDons, alignementDe, artisanatDe, bouclierDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, budgetCaracteristiques,
+  EMPLACEMENTS_ACCESSOIRES, accessoiresDesSorts, acquisChoixGardes, alignementDe, artisanatDe, bouclierDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, budgetCaracteristiques,
   caracteristiquesCompletes, caracteristiquesDe, choixEnAttente, classesDe, competencesDe, degatsDArme, donDeBase, donsAcquis, donsDeRace, durabiliteDArme,
   armureParPartie, emplacementsDeSorts, maitriseDesSorts, maitrisesValables, modeHyperDe, nmDuSort, npmMax, partiesDeLArmure, progressionXp, resistancesDe, sortPrepare,
   trouver, valeursDuMoment,
@@ -1169,7 +1169,8 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
   noter(K.inventaire, inventaireEnSuite.join(SEPARATEUR_DE_LISTE));
   for (const ligne of evenements.slice(PLACES_EVENEMENTS)) noter(K.evenement, ligne);
   for (const l of [...(f.entrainements ?? [])].sort((a, b) => a.rang - b.rang)) if (!l.competence_id && String(l.texte ?? '').trim()) noter(K.entrainementTexte, uneLigne(l.texte));
-  for (const c of acquisDesDons(regles, f).choix) {
+  // ceux d'une armure cassée compris (décisions R157, R158) : gardés comme à l'enregistrement (acquisChoixGardes)
+  for (const c of acquisChoixGardes(regles, f)) {
     const choisi = c.repartition ? c.parts.map((x) => `${nomDe(regles.competences, x.competence_id)} ${x.valeur}`).join(', ') : c.choisi && nomDe(regles.competences, c.choisi);
     // un choix d'arme (décision R119) : la famille d'armes entre parenthèses, après la compétence (déduite ou choisie)
     const arme = c.arme && c.choisi ? ` (${nomDe(regles.familles_armes, c.arme_famille_id)})` : '';

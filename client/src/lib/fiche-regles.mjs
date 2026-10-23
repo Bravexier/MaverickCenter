@@ -509,6 +509,9 @@ function reglesDeLaBase(db) {
         (r) => ({ sens: r.sens, type: r.type_degats, multiplicateur: r.multiplicateur ?? 1 }));
       // les bonus d'acquis qu'écrit son effet (« +25% Stabilité », « +5% Magie ou Concentration » : « Les bonus de race/classe/don/équipement vont dans la
       // case Acquis », guide « Fiche de personnage : Compétences » ; décision R104)
+      // (décisions R157, R158 : « Cassée, l'armure ne donne plus aucun de ses effets, bonus comme malus, jusqu'à sa réparation » — l'initiative, la vitesse et
+      // les croix qu'écrit l'effet, « +3 INI », « -5 INI, 1 Croix en AGI », ne sont pas lus ; un effet qu'on lira un jour devra cesser, comme l'acquis, quand
+      // l'armure à cran uni est à 0 : lib/fiche-moteur.mjs#armureCassee. Le malus de la catégorie Lourd, lui, reste : « Non, elle pèse toujours », R158)
       return lignes(db, 'SELECT id, nom, type, ap, am, solidite, solidite_uni, effet FROM armure ORDER BY ordre').map(({ effet, ...a }) => {
         const acquis = horsDuTableau(lireAcquis(effet));
         return { ...a, degats: degats.get(a.id) ?? [], ...(acquis.length ? { acquis } : {}) };

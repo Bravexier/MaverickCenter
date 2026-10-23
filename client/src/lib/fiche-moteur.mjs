@@ -368,7 +368,8 @@ export function entrainementsAEnregistrer(fiche) {
  * passifs (donsAcquis ; guide « Capacités/Dons » : « Passif : Don qui est toujours effectif », un don actif se déclare), dons de race de son ethnie et
  * la ligne de son ethnie dans le tableau de la race (donsDeRace : « Bonus compétence » du Drakos) — et dans l'effet de l'armure portée (« Les bonus de
  * race/classe/don/équipement vont dans la case Acquis », guide « Fiche de personnage : Compétences » ; une armure transformée par un élément a perdu ses
- * bonus d'origine : décision R99) : { parCompetence: Map(competence_id → [{ nom, valeur }]), plafonds: Map(caracteristique_id → [{ nom, valeur }])
+ * bonus d'origine : décision R99 ; une armure à cran uni tombée à 0 n'en donne plus aucun : décisions R157, R158, armureCassee, raison 'armure_cassee') :
+ * { parCompetence: Map(competence_id → [{ nom, valeur }]), plafonds: Map(caracteristique_id → [{ nom, valeur }])
  * (« Son acquis max en Social est augmenté de +20 »), jets: Map(caracteristique_id → [{ nom, valeur }]) (« +5% à tout jet impliquant la Perception » :
  * un bonus au jet de chaque compétence de la caractéristique, hors acquis et hors plafond, décision R122 : competencesDe), artisanat: [{ nom, valeur }]
  * (« +10% à tous les tests d'artisanat » : la compétence d'artisanat du métier, décision R123 : artisanatDe), choix, nonComptes: [{ nom, valeur, raison,
@@ -407,13 +408,16 @@ export function acquisDesDons(regles, fiche) {
     ...donsAcquis(regles, fiche).flatMap((c) => c.dons.filter((d) => d.type === 'passif').map((d) => ({ id: d.id, nom: `${d.nom} (${c.classe.nom})`, acquis: d.acquis, classe: c.classe }))),
     ...race.dons.map((d) => ({ id: d.id, nom: d.nom ?? d.etiquette ?? 'Don de race', acquis: d.acquis })),
     ...(race.tableau ? [{ id: sourceDuTableau(fiche), nom: race.tableau.titre ?? 'Selon l’ethnie', acquis: race.tableau.acquis }] : []),
-    ...(armure ? [{ id: armure.id, nom: `${armure.nom} (armure)`, acquis: armure.acquis, element: Boolean(fiche.armure_elementaire_id) }] : []),
+    ...(armure ? [{ id: armure.id, nom: `${armure.nom} (armure)`, acquis: armure.acquis, element: Boolean(fiche.armure_elementaire_id), cassee: armureCassee(regles, fiche) }] : []),
   ];
   for (const source of sources) {
     let rang = 0;
     for (const b of source.acquis ?? []) {
       // décision R99 : l'armure transformée par un élément perd ses bonus d'origine
       if (source.element) nonComptes.push({ nom: source.nom, valeur: b.valeur ?? b.plafond, raison: 'element', texte: b.texte ?? null });
+      // décisions R157, R158 : une armure à cran de solidité uni tombée à 0 ne donne plus aucun de ses effets (« Le bonus ne marche plus tant que l'armure
+      // n'est pas réparée ») — valeurs, choix, plafonds, jets, artisanat ; le choix enregistré reste (acquisChoixValables) et recompte une fois réparée
+      else if (source.cassee) nonComptes.push({ nom: source.nom, valeur: b.valeur ?? b.plafond, raison: 'armure_cassee', texte: b.texte ?? null });
       else if (b.plafond) {
         if (!plafonds.has(b.caracteristique_id)) plafonds.set(b.caracteristique_id, []);
         plafonds.get(b.caracteristique_id).push({ nom: source.nom, valeur: b.plafond });
@@ -486,13 +490,22 @@ export function acquisDesDons(regles, fiche) {
 }
 
 /**
+ * Les choix d'acquis des dons et de l'armure de la fiche (acquisDesDons(…).choix), ceux d'une armure cassée compris (décisions R157, R158 :
+ * armureCassee) : lus comme si elle était réparée, ils sont gardés (enregistrés, exportés) et recomptent dès qu'elle l'est.
+ */
+export function acquisChoixGardes(regles, fiche) {
+  return acquisDesDons(regles, armureCassee(regles, fiche) ? { ...fiche, armure_parties: [] } : fiche).choix;
+}
+
+/**
  * Les choix d'acquis de la fiche qui restent valables (un don débloqué, le même rang, une option de son texte, des points répartis) : ceux qu'on enregistre.
  * Un choix d'arme (décision R119) : sa famille (`arme_famille_id`, une de la maîtrise au choix de la classe) et sa compétence, déduite ou choisie ; une
  * famille sans compétence encore choisie n'est pas gardée (la base exige la compétence). L'arme gardée avec un autre choix le suit tant que la
  * compétence choisie reste la même ; une répartition n'en a jamais (la base la refuse avec des points : CHECK de personnage_acquis_choix).
+ * Les choix d'une armure cassée (décisions R157, R158) sont gardés : acquisChoixGardes.
  */
 export function acquisChoixValables(regles, fiche) {
-  return acquisDesDons(regles, fiche).choix.flatMap((c) => (c.repartition
+  return acquisChoixGardes(regles, fiche).flatMap((c) => (c.repartition
     ? c.parts.map((x) => ({ source: c.source, rang: c.rang, competence_id: x.competence_id, valeur: x.valeur }))
     : c.choisi ? [{ source: c.source, rang: c.rang, competence_id: c.choisi, valeur: null, ...(c.arme_famille_id ? { arme_famille_id: c.arme_famille_id } : {}) }] : []));
 }
@@ -1942,6 +1955,17 @@ export function partiesDeLArmure(regles, fiche) {
 }
 
 /**
+ * Vrai si l'armure de la fiche est cassée au sens des décisions R157 et R158 (« Cassée, l'armure ne donne plus aucun de ses effets, bonus comme malus,
+ * jusqu'à sa réparation ») : une armure à cran de solidité uni (`regles.armures[].solidite_uni = 1`) dont la solidité du moment vaut 0
+ * (partiesDeLArmure : `uni` et `parties[0].cassee`). Une armure élémentaire se juge sur l'armure portée (fiche.armure_id), dont elle prend la solidité
+ * (R95). Une armure à six parties ne l'est jamais : seules ses parties à 0 perdent leur AP et leur AM (R108 : armureParPartie). Faux sans armure.
+ */
+export function armureCassee(regles, fiche) {
+  const a = partiesDeLArmure(regles, fiche);
+  return Boolean(a?.uni && a.parties[0]?.cassee);
+}
+
+/**
  * La solidité du moment des parties de l'armure à enregistrer (personnage_armure_partie, décision R95) : une ligne par partie abîmée, de 0 (cassée) à
  * moins que le maximum ; une partie à son maximum (ou au-delà), sans valeur ou illisible n'a pas de ligne, ni une partie que l'armure n'a pas (une
  * armure à solidité unifiée n'a que « armure-complete », une autre que ses six parties) ; rien sans armure. Dans l'ordre des emplacements.
@@ -2723,7 +2747,8 @@ function viseLeSort(vises, sort, fiche, portee, estPrepare = false) {
 
 /**
  * Les bonus de sorts écrits qui valent pour ce personnage (décision R102) : ceux des dons de classe débloqués, des dons de race de son ethnie et de
- * l'armure élémentaire portée, chacun avec son nom. [{ nom, cible, valeur | parNpm | base/pas/niveaux, vises, raison?, posture?, niveau? }] — `niveau` :
+ * l'armure élémentaire portée, chacun avec son nom ; ceux de l'armure élémentaire d'une armure cassée portent la raison 'armure_cassee' (décision
+ * R158 : armureCassee). [{ nom, cible, valeur | parNpm | base/pas/niveaux, vises, raison?, posture?, niveau? }] — `niveau` :
  * celui d'une progression « base + pas × ⌊niveau ÷ niveaux⌋ » (décision R110) : le niveau de la classe pour un don de classe (« 3+x […] x = +2/6
  * niveaux »), sauf s'il écrit « niveaux globaux » ; le niveau global pour un don de race ou d'ethnie.
  */
@@ -2735,7 +2760,10 @@ export function bonusDeSortsDuPersonnage(regles, fiche) {
   }
   for (const d of donsDeRace(regles, fiche).dons) for (const b of d.sorts ?? []) bonus.push({ ...b, nom: d.nom ?? d.etiquette ?? 'Don de race', niveau: global });
   const element = fiche.armure_id ? trouver(regles.armures_elementaires ?? [], fiche.armure_elementaire_id) : null;
-  for (const b of element?.sorts ?? []) bonus.push({ ...b, nom: `${element.nom} (armure élémentaire)` });
+  // décision R158 : « Cassée, l'armure ne donne plus aucun de ses effets » ; les effets de l'armure élémentaire portée sont ceux de l'armure (lecture
+  // de R158) : cassée (armureCassee), ses bonus ne comptent plus (sortDuMoment les range dans « non compté »)
+  const cassee = element ? armureCassee(regles, fiche) : false;
+  for (const b of element?.sorts ?? []) bonus.push({ ...b, nom: `${element.nom} (armure élémentaire)`, ...(cassee ? { raison: 'armure_cassee' } : {}) });
   return bonus;
 }
 

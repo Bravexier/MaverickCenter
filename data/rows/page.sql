@@ -6001,7 +6001,7 @@ Le détail : [[guide/blessures-et-etats|Blessures et états]].
 ## L’équipement
 
 - **Les armes** : deux équipées au plus. Sans maîtrise de sa catégorie, une arme lance 1 dé de dégâts, et chaque point de maîtrise en ajoute un. Le dé est celui de l’arme ; le bonus additionne celui de l’arme, de son matériau et de son amélioration.
-- **La {{solidite|solidité}}** : à 0, l’objet est cassé jusqu’à sa réparation, avec un kit de réparation ou une compétence d’artisanat adaptée, et le même matériau. Une armure en a une par partie (le casque, le torse, chaque bras, chaque jambe), sauf une armure à cran de solidité uni, qui n’en a qu’une.
+- **La {{solidite|solidité}}** : à 0, l’objet est cassé. Une arme cassée est inutilisable jusqu’à sa réparation (un kit de réparation d’arme lui rend un cran) ; un bouclier cassé ne compte plus ses AP ni son AM. Une armure a une solidité par partie (le casque, le torse, chaque bras, chaque jambe), sauf une armure à cran de solidité uni, qui n’en a qu’une : une partie cassée ne compte plus l’AP ni l’AM de l’armure et se répare à part, avec un métier adapté et le matériau ; un kit de réparation d’armure, sans matériau, rend un cran à toute l’armure. Cassée, une armure à cran uni ne donne plus aucun de ses effets, bonus comme malus ; le poids d’une armure lourde, lui, demeure.
 - **L’AP et l’AM** : la base (race, ethnie, 4 AM par classe magique, l’Archimage comprise, et 4 AM pour la seconde spécialité d’une classe raciale ou du Flagelleur), les accessoires, l’armure portée et son amélioration ; la posture défensive en ajoute. Une armure de la catégorie *Lourd* retire 1 point de vitesse et rend la vitesse de nage nulle.
 - **Le bouclier** : une forme et une matière ; ses AP et son AM ne comptent que sur une parade partielle faite avec lui, et son poids demande une Force minimum.
 - **Les accessoires** : six emplacements (le chef, le collier, deux bracelets, deux bagues) ; un accessoire maudit a l’effet contraire de celui qui est écrit.
@@ -7346,9 +7346,9 @@ Le prix d’une arme forgée additionne le coût de l’arme, une unité de son 
 
 ### La solidité d’une arme
 
-- La {{solidite|solidité}} est le nombre de mauvais coups qu’une arme peut encaisser avant de se briser.
+- La {{solidite|solidité}} est le nombre de mauvais coups qu’une arme peut encaisser avant de casser.
 - Elle additionne les crans de l’arme, de son matériau (la fonte en retire un, le bronze et le titane en ajoutent un…) et de son amélioration, sans jamais descendre sous 1.
-- À 0, l’arme est cassée : inutilisable jusqu’à sa réparation, avec un kit de réparation ou une compétence d’artisanat adaptée, et le même matériau que l’arme.
+- À 0, l’arme est cassée : inutilisable jusqu’à sa réparation. Un kit de réparation d’arme lui rend un cran de solidité (usage unique).
 - Se battre en {{mordhau}} (l’arme prise par la lame, on frappe avec le manche) permet à certaines armes, notamment les épées, de faire des dégâts de frappe, mais l’arme a alors 30 % de risque de s’abîmer : au-delà de 70 au jet d’attaque, elle perd un cran de solidité.
 
 Pour se battre avec une arme dans chaque main, voir [[guide/attaquer-et-se-defendre|Attaquer et se défendre]].
@@ -7392,11 +7392,12 @@ Chaque armure se comporte à sa façon contre les trois types de dégâts physiq
 
 ### Les six parties de l’armure
 
-- La {{solidite|solidité}} d’une armure est le nombre de mauvais coups qu’elle peut encaisser avant d’être détruite.
+- La {{solidite|solidité}} d’une armure est le nombre de mauvais coups qu’elle peut encaisser avant de casser. Cassée n’est pas forcément détruite : une armure à 0 se répare.
 - Elle se compte partie par partie : le casque, le torse, le bras gauche, le bras droit, la jambe gauche et la jambe droite. Chacune a sa solidité du moment, de 0 (cassée) au maximum de l’armure, c’est-à-dire sa solidité et les crans de son amélioration : une armure peut donc casser à certains endroits seulement.
-- Chaque partie se répare à part, avec un kit de réparation ou un métier adapté, et le matériau.
-- Une armure à **cran de solidité uni** n’a qu’une solidité : si elle perd un cran, c’est toute l’armure qui est abîmée.
-- Le bonus de compétence des armures spécifiques demande que l’armure ait tous ses morceaux : en perdre un seul, et le bonus ne marche plus.
+- Chaque partie compte, contre une attaque qui la vise, l’AP et l’AM de l’armure, ou 0 quand elle est cassée : seuls l’AP et l’AM de l’armure tombent à 0, le reste (la base, les accessoires, la posture) demeure. Une attaque qui ne vise aucune partie touche le torse, sauf indication contraire du MJ.
+- Chaque partie se répare à part, avec un métier adapté et le matériau. Un kit de réparation d’armure suffit, lui, sans matériau : il rend un cran de solidité à l’ensemble de l’armure, à chacune de ses parties.
+- Une armure à **cran de solidité uni** n’a qu’une solidité : si elle perd un cran, c’est toute l’armure qui est abîmée. À 0, toutes ses parties sont cassées, et elle ne donne plus aucun de ses effets, bonus comme malus, jusqu’à sa réparation ; le poids d’une armure lourde, lui, demeure.
+- Les armures spécifiques qui donnent un bonus de compétence (robe de mage, tenue du Flagelleur, armure montagne) ont un cran de solidité uni : elles n’ont pas de morceaux à perdre, et cassées, elles perdent leur bonus de compétence comme leurs autres effets.
 
 ### Améliorer son armure
 
@@ -7406,8 +7407,10 @@ Une armure s’améliore de +1 à +5, toujours entière, une étape après l’a
 
 Posée sur une arme, une armure ou un vêtement, une [[ressources/pieces-elementaires|pièce élémentaire]] le transforme pour toujours en un équipement chargé de la magie de la pièce. Ses bonus d’origine sont perdus, remplacés par ceux de l’élément :
 
-- une **armure** perd l’AP, l’AM, l’amélioration et les résistances ou faiblesses aux coups de l’armure d’origine : seuls comptent ceux de l’armure élémentaire et de son amélioration ;
+- une **armure** perd l’AP, l’AM et les résistances ou faiblesses aux coups de l’armure d’origine et de son amélioration : seuls comptent ceux de l’armure élémentaire et de son amélioration ;
 - une **arme** garde ses dés et son propre bonus, mais ceux de son matériau et de son amélioration sont remplacés par ceux de l’élément et de son amélioration.
+
+Ce que l’élément change à la solidité d’une arme ou d’une armure n’est pas encore fixé.
 
 ## Le bouclier
 
@@ -7416,6 +7419,7 @@ Posée sur une arme, une armure ou un vêtement, une [[ressources/pieces-element
 - Ses AP et son AM s’ajoutent à ceux de l’armure, mais **seulement lors d’une parade partielle** (voir [[guide/attaquer-et-se-defendre|Attaquer et se défendre]]).
 - Son **poids** demande une Force minimum : 1 pour un bouclier léger, 2 pour un moyen, 3 pour un lourd, 4 pour un très lourd. Il faut au moins ce score de Force pour le porter.
 - Il s’améliore de +1 à +5 : l’AP du niveau choisi, de +2 au +1 à +10 au +5, un cran de solidité dès le +1 et un second au +5.
+- À 0 de {{solidite|solidité}}, le bouclier est cassé : ses AP et son AM ne comptent plus.
 - Le bouclier ne va pas à la ceinture : il a son emplacement dans l’armure.
 
 Tous les boucliers, avec leur poids et leur prix, sont dans l’onglet [Boucliers](/ressources/equipement/#boucliers).
