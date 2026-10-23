@@ -137,10 +137,10 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   affinités) et les seconds rangs des magies sur chaque page, par `layouts/Base.astro` (`cssDeLaPalette` : environ 3,4 ko, 38 classes et 16 de second
   rang ; version portable comprise ; plafond testé : 4 ko, que toutes les familles sur chaque page dépasseraient) ; les familles d'une zone
   (`FAMILLES_DES_ZONES` : postures, alignements, catégories de classe, races, paliers de résistance, Mode Hyper, neutre, matériaux, armes de départ,
-  types d'armure, poids des boucliers) et les seconds rangs des caractéristiques par le composant des seules pages qui les posent (`cssDesFamilles`,
+  types d'armure, poids des boucliers, niveaux des accessoires) et les seconds rangs des caractéristiques par le composant des seules pages qui les posent (`cssDesFamilles`,
   `cssDesSecondsRangs` : le bloc `postures` du guide, `pages/fiche/index.astro` (`FAMILLES_DE_LA_FICHE` : celles d'une zone, sans les matériaux, les
-  armes de départ ni les types d'armure), l'onglet Armes (seconds rangs des caractéristiques, `materiau`, `arme`), `ArmuresPage.astro` (`armure`,
-  `poids`), `ComposantsPage.astro` (`materiau`), `ClassesPastilles.astro` et `ClassePage.astro` (`classe`),
+  armes de départ, les types d'armure ni les niveaux des accessoires), l'onglet Armes (seconds rangs des caractéristiques, `materiau`, `arme`), `ArmuresPage.astro` (`armure`,
+  `poids`), `AccessoiresPage.astro` (`niveau`), `ComposantsPage.astro` (`materiau`), `ClassesPastilles.astro` et `ClassePage.astro` (`classe`),
   `RacesPastilles.astro` et `RacePage.astro` (`race`), et le mode modification avec la page d'une race ou d'une classe créée,
   `scripts/edition/nouvelles.mjs`, car la page 404 où il la dessine ne les a pas), comme les combinaisons des potions (`cssDesPotions`). Chaque classe
   posée existe dans une feuille de sa page (testé sur le site construit).
@@ -165,7 +165,11 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   `classeDeMateriau`), `arme` (`lib/equipement-couleurs.mjs#COULEURS_DES_ARMES` : `couleur-arme-depart`, le bleu des armes de départ du classeur,
   `CLASSE_DES_ARMES_DE_DEPART`), `armure` (`COULEURS_DES_TYPES`, le type d'une armure ou d'une matière : `Léger` → `couleur-armure-leger` ;
   `par-defaut` = `COULEUR_SANS_TYPE`, le gris `#eeeeee` d'un type sans couleur dans la source : `classeDuTypeDArmure`) et `poids`
-  (`COULEURS_DES_POIDS`, `bouclier_poids.id`, R92 : `couleur-poids-tres-lourd` ; `par-defaut` = `COULEUR_SANS_TYPE` : `classeDuPoids`). Le texte
+  (`COULEURS_DES_POIDS`, `bouclier_poids.id`, R92 : `couleur-poids-tres-lourd` ; `par-defaut` = `COULEUR_SANS_TYPE` : `classeDuPoids`), puis `niveau`
+  (`lib/accessoires-couleurs.mjs#COULEURS_DES_NIVEAUX`, les cases « Niveau 1 » à « Niveau 5 » du tableau Monture de l'onglet « Accessoires » du
+  classeur : `couleur-niveau-1` à `couleur-niveau-5`, `classeDeNiveau` ; pas de `par-defaut` : un niveau absent, « Niveau ? » ou ligne vide, n'a pas de
+  couleur ; des fonds clairs inchangés par la règle de lisibilité, texte foncé ; les niveaux 1, 2 et 4 ont la valeur des types d'armure Léger,
+  Intermédiaire et Lourd, le 2 celle de la magie Lumière, chacun garde sa famille). Le texte
   d'un matériau suit la règle du site (`texteSurCouleur`) et non plus celle du classeur (noir, sauf Fer noir et Fonte en blanc) : blanc sur Bronze et Maverium, où le noir
   n'atteignait que 3,6:1.
   Une caractéristique, une posture ou un alignement inconnu reçoit la classe `par-defaut` de sa famille (`COULEUR_NEUTRE`, comme
@@ -190,7 +194,16 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   matériaux, des armes et des armures) `--degats-taille` (`#c0392b`), `--degats-estoc` (`#2471a3`), `--degats-frappe` (`#7d6608`), le liseré des
   pastilles des types de dégâts des armes et des armures, `--defense-ap` (`#7d6608`) et `--defense-am` (`#2471a3`), les pastilles AP et AM, et
   `--ombre-fiche` (`0 6px 14px -12px rgb(0 0 0 / 0.4)`, l'ombre des fiches d'une arme, d'une armure ou d'un bouclier) ; l'onglet Équipement n'écrit
-  plus ses `--degats-taille` et `--degats-estoc`.
+  plus ses `--degats-taille` et `--degats-estoc` ; puis (lot des niveaux des accessoires) `--maudit` (`#8e44ad`, le violet d'un accessoire maudit,
+  qu'aucune source ne donne : la référence, la même dans les deux thèmes, que lit le cadre pointillé de l'encart maudit, sans texte), `--maudit-texte`
+  (ce violet en texte sur le fond de la page, la ligne « MALÉDICTION », le mot « Maudit », le titre d'un accessoire détruit : `var(--maudit)` en
+  clair, `#a86ec0` en sombre, 4,6:1 ; réponse du propriétaire du 2026-10-23 à « Le violet d'un accessoire maudit (#8e44ad : ligne « MALÉDICTION », mot « Maudit ») n'atteint que 2,9:1 sur le fond du thème sombre, et 3,3:1 sur le niveau 5 dans l'encart, alors que le minimal de lisibilité est 4,5:1. Que faire ? » : « Plus clair en sombre (Recommandé) » ; option : « Un violet plus clair en thème sombre seulement (#a86ec0, 4,6:1) ; le thème clair ne change pas. ») ;
+  sur la couleur d'un niveau, clair dans les deux thèmes, le mot « Maudit » prend la référence assombrie, `color-mix(in srgb, var(--maudit) 80%,
+  #000)` (environ `#72368a`, 4,5:1 au moins sur les cinq niveaux ; réponse du propriétaire du 2026-10-23 à « Sur l'encart d'un accessoire, le mot « Maudit » est en violet sur la couleur du niveau, un fond clair dans les deux thèmes. Le violet actuel (#8e44ad) n'atteint pas le contraste minimal de lisibilité (4,5:1) aux niveaux 4 et 5 (4,0:1 et 3,3:1). Le violet plus clair choisi pour le thème sombre (#a86ec0) y descendrait de 2,1:1 à 3,3:1. Quel violet sur les fonds de niveau ? » : « Violet assombri (Recommandé) » ; option : « Sur un fond de niveau, dans les deux thèmes, le violet du site est assombri par le calcul (environ #72368a), au moins 4,5:1 sur les cinq niveaux ; aucune couleur ajoutée. ») ; `--maudit-choisi` (le violet d'une ligne « MALÉDICTION » choisie :
+  `var(--maudit-texte)` en clair, 4,6:1 ; en sombre, `color-mix(in srgb, var(--maudit-texte) 80%, #fff)`, environ `#b98bcd`, 4,8:1 sur le fond
+  `#3c2e1f` de la ligne choisie ; réponse du propriétaire du 2026-10-23 à « Sur l'onglet Accessoires, en thème sombre, une ligne « MALÉDICTION » choisie (surlignée après un tirage ou un clic) a un fond brun foncé (#3c2e1f). Le violet clair choisi pour le thème sombre (#a86ec0) n'y atteint que 3,5:1, sous le contraste minimal de lisibilité (4,5:1). En thème clair, cette ligne est lisible (4,6:1). Que faire ? » : « Plus clair sur la ligne choisie (Recommandé) » ; option : « En thème sombre seulement, sur une ligne choisie, le violet clair est encore éclairci par le calcul (environ #b98bcd), 4,8:1 ; aucune couleur ajoutée, le thème clair ne change pas. ») ; et `--ombre-encart` (`0 6px 12px -10px rgb(0 0 0 / 0.35)`, l'ombre de l'encart de l'accessoire créé). Un voile noir ou
+  blanc translucide (le survol d'une ligne, les voiles des champs et du dé posés sur la couleur d'un niveau) s'écrit en noir ou blanc de mélange,
+  `color-mix(in srgb, #fff 70%, transparent)`, le même rendu que `rgb(255 255 255 / 0.7)`.
 - **Deux couleurs d'une famille sur un même élément** (le dégradé de l'innée vers l'acquise des cadres de la fiche et des lignes de `/personnages/`,
   une créature ou une cible de défense à deux magies, le trait d'une relation de la carte de `/magies/`, une arme de deux compétences) : une classe ne
   pose qu'une `--couleur`. La première est la classe de sa couleur (`--couleur`, `--couleur-texte`) ; la seconde, sa **classe de second rang**
@@ -219,14 +232,19 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
     du matériau dans la fiche de l'arme, lignes, filtre, légende et phrase des armes de départ (`--depart` de `styles/armes/armes.css`, tiré de la
     classe posée sur `.armes`), cases des matières, pastilles des types et des matériaux, légende et titres des listes des onglets Armures et Boucliers,
     pastille et liste des poids, tuile du poids de la fiche de personnage, pastille d'un matériau de la page Composants ; les scripts des onglets
-    reprennent la classe de la ligne affichée (`classList`) dans la fiche qu'ils écrivent, `regles.json` donne `classe` de chaque poids.
+    reprennent la classe de la ligne affichée (`classList`) dans la fiche qu'ils écrivent, `regles.json` donne `classe` de chaque poids ;
+  - **les niveaux des accessoires** (lot 6) : pastilles des niveaux de l'étape 3, lignes d'effet, de compétence et de monture, encart de l'accessoire
+    créé (`styles/accessoires/accessoires.css`, qui ne lit `--couleur` et `--couleur-texte` que sur l'élément qui porte la classe d'un niveau,
+    `[class*='couleur-niveau-']` ; le texte adouci de la colonne du jet et des intitulés de l'encart, 68 % du texte de la classe, atteint 4,9:1 au
+    moins sur chaque niveau, testé) ; le script de l'onglet reprend la classe de la ligne de l'effet choisi dans l'encart et, sur une ligne de
+    compétence, celle du niveau du bonus d'acquis (`data-niveaux` : `classe`).
   Une feuille garde ses variables locales (`--mag`, `--creature-1`, `--cadre`, `--magie-1`…) mais les tire des propriétés de la classe, jamais d'un
   style. Les scripts du navigateur posent des classes (`classList`), jamais une couleur : ils reçoivent leurs noms de la page (`data-couleurs` de
   `/personnages/`) ou de `regles.json` (`classe` et `classe_2` de chaque magie, `classe` de chaque caractéristique, posture, alignement, race, classe
   et palier, de `mode_hyper` et `mode_hyper.cent`, `race_par_nature`, `neutre` : skill `zone-fiche`), car un script de page n'importe pas
   `palette-css.mjs`. La carte de `/magies/` : les règles du survol (écrites par le composant) font lire au trait `--couleur` ou `--couleur-2` de ses
   classes selon la magie survolée ; seule la part de la couleur dans le trait se calcule encore depuis la valeur (luminance, au build).
-  Les autres couleurs (parties du guide, niveaux des accessoires, chronologie, livres, archives, mise à jour…) posent encore leur couleur en style : elles passeront aux classes lot par lot, comme les couleurs encore écrites des feuilles des lots faits (les
+  Les autres couleurs (parties du guide, chronologie, livres, archives, mise à jour…) posent encore leur couleur en style : elles passeront aux classes lot par lot, comme les couleurs encore écrites des feuilles des lots faits (les
   voiles blancs translucides des bannières, `rgba(255, 255, 255, …)` de `classe/page.css`, `classe/dons.css`, `race/page.css`, `magie/page.css` ;
   l'échelle des relations entre les peuples, `--regard-evitee` de `race/base.css` ; les teintes des genres de sort, `.genre` de
   `styles/magie/sorts.css`, et des types de don, `.don-type` de `classe/dons.css` ; l'ombre des infobulles). La page Debug et l'impression ne
@@ -238,11 +256,12 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   `var(--couleur…)` ou `var(--mag…)`, ou, dans `fiche.css` et `guide/blocs.css`, les variables qui en sont tirées (`--c`, `--c1`, `--c2`, `--c-texte`,
   `--texte-sur-c`), ou, dans `styles/classe/` et `styles/race/`, celles de la catégorie ou de la nature (`--cla…`, `--rac…`, `--hero-1`, `--hero-2`),
   ou, partout, les jetons du thème des lots faits et le bleu des armes de départ (`--texte-sur-fonce`, `--fond-banniere`, `--depart…`, `--degats-…`,
-  `--defense-ap`, `--defense-am`, `--ombre-fiche`), choisie d'après ce qu'elle lit (hors du lot, nommées : l'ombre de l'infobulle et `--regard-evitee` de la page d'une race) ; le script de la fiche ne
+  `--defense-ap`, `--defense-am`, `--ombre-fiche`, `--maudit`, `--maudit-texte`, `--maudit-choisi`, `--ombre-encart`), choisie d'après ce qu'elle lit (hors du lot, nommées : l'ombre de l'infobulle et `--regard-evitee` de la page d'une race) ; le script de la fiche ne
   lit ni ne pose aucune de ces couleurs ; jetons du thème ; poids borné),
   `test/alchimie-couleurs.test.mjs`, `test/ceinture-html.test.mjs`, `test/equipement-html.test.mjs` ; sur le site construit, `test/site-html.test.mjs`
   (sur toute page, aucune couleur de magie, de caractéristique, de posture, d'alignement, de catégorie de classe, de race, de palier, du Mode Hyper,
-  neutre, de matériau, des armes de départ, de type d'armure ni de poids en style, et chaque classe `couleur-…` posée existe) et les
+  neutre, de matériau, des armes de départ, de type d'armure, de poids ni de niveau d'accessoire en style, ni `--niv`, et chaque classe `couleur-…`
+  posée existe) et les
   tests de chaque zone (`magies-html`, `races-html`, `classes-html`, `composants-html`, `accessoires-html`, `fiche-html`, `guide-html`, `armes-html`,
   `armures-html`, `equipement-html`, `metiers-html`, `edition-rendu`, `fiche-regles`, `caracteristiques-postures`, `materiaux-couleurs`,
   `boucliers-poids`).
@@ -898,7 +917,8 @@ qu'à la recherche et aux `[[liens]]`. Seul le panneau de règles se modifie sur
   Recliquer une ligne choisie la retire. État dans l'adresse (`?emplacement=…&propriete=…&effet=…&acquis=…&monture=…&gemmes=…&maudit=1&detruit=1`),
   lu tel quel (aucune transition à la lecture ; `detruit=1` n'est retenu qu'avec une malédiction choisie, et il implique `maudit`).
 - **Couleurs** : les lignes d'effet, les montures et l'encart dans la couleur de leur niveau, celle des cases « Niveau 1 » à
-  « Niveau 5 » du tableau Monture de l'onglet (`lib/accessoires-generateur.mjs#COULEURS_DES_NIVEAUX`) ; une gemme dans la couleur de sa magie
+  « Niveau 5 » du tableau Monture de l'onglet (`lib/accessoires-couleurs.mjs#COULEURS_DES_NIVEAUX`), posée par sa classe (`couleur-niveau-<n>`, que
+  l'onglet émet ; l'encart reprend celle de la ligne de l'effet choisi : « Couleurs du site : la palette en classes ») ; une gemme dans la couleur de sa magie
   (la classe de la magie, sur sa pastille comme sur son infobulle, `bulle--gemme` : `--mag` ; l'encart copie la pastille telle quelle). **Pas de tableau des gemmes** : une infobulle par gemme (magie, description, prix d'un quart classique, raffiné, parfait).
 - Sans JavaScript : tous les tableaux, l'un après l'autre, sans encart, dé, curseur ni case à cocher. `test/accessoires-generateur.test.mjs`, `accessoires-db.test.mjs` (tables complètes :
   chaque jet a sa ligne), `accessoires-html.test.mjs` (site construit), `accessoires-script.test.mjs` (le script dans un faux navigateur : malédiction,

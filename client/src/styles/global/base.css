@@ -24,6 +24,9 @@
   --degats-frappe: #7d6608;
   --defense-ap: #7d6608;          /* l'armure physique : la pastille « AP » des armures et des boucliers (styles/armures/armures.css) */
   --defense-am: #2471a3;          /* l'armure magique : la pastille « AM » */
+  --maudit: #8e44ad;              /* un accessoire maudit, la référence (les deux thèmes) : le cadre de l'encart maudit, et le calcul du violet sur un fond de niveau (styles/accessoires/accessoires.css) */
+  --maudit-texte: var(--maudit);  /* le même, en texte sur le fond de la page (ligne « MALÉDICTION », mot « Maudit », titre d'un accessoire détruit) ; plus clair en sombre */
+  --maudit-choisi: var(--maudit-texte); /* le même, sur une ligne « MALÉDICTION » choisie ; en sombre, encore éclairci par le calcul */
   --radius: 8px;
   --radius-xs: 4px;
   --radius-sm: 6px;
@@ -34,6 +37,7 @@
   --ombre-douce: 0 2px 10px color-mix(in srgb, var(--text) 10%, transparent);
   --ombre-flottante: 0 3px 12px rgb(0 0 0 / 0.18);
   --ombre-fiche: 0 6px 14px -12px rgb(0 0 0 / 0.4);   /* la fiche d'une arme, d'une armure ou d'un bouclier (styles/equipement/equipement.css) */
+  --ombre-encart: 0 6px 12px -10px rgb(0 0 0 / 0.35); /* l'encart de l'accessoire créé (styles/accessoires/accessoires.css) */
   --duree: 0.15s;
   --duree-lente: 0.2s;
   --radius-xxs: 3px;
@@ -66,6 +70,8 @@
     --danger: #ef8a8a;
     --good: #7fcf9b;
     --a-choisir: #f0a14a;
+    --maudit-texte: #a86ec0;
+    --maudit-choisi: color-mix(in srgb, var(--maudit-texte) 80%, #fff);
   }
 }
 
@@ -83,6 +89,8 @@
   --danger: #ef8a8a;
   --good: #7fcf9b;
   --a-choisir: #f0a14a;
+  --maudit-texte: #a86ec0;
+  --maudit-choisi: color-mix(in srgb, var(--maudit-texte) 80%, #fff);
 }
 
 * { box-sizing: border-box; }

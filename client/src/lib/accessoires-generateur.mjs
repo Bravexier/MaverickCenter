@@ -2,17 +2,8 @@
 // un générateur d'accessoire ») : fonctions pures, sans dépendance, partagées par le gabarit (components/accessoires/AccessoiresPage.astro) et le
 // script de la page (src/scripts/accessoires.mjs, le seul script de page qui importe ce module). Aucune règle n'est déduite : les dés sont ceux des
 // tables de l'onglet (le plus grand jet écrit d'une table donne ses faces : 1d4, 1d100, 1d6, 1d20), la qualité de gemme d'un niveau est la phrase des
-// règles de la page.
-
-/**
- * Couleurs des niveaux (demande du propriétaire : « coloriser les lignes des effets et du produit final par le niveau de la même manière que l'Excel
- * d'origine ») : fond des cases « Niveau 1 » à « Niveau 5 » du tableau « Monture » de l'onglet « Accessoires » (capture fournie par le propriétaire le
- * 2026-10-14). Repère visuel sans valeur de règle ; le texte reste foncé sur ces fonds clairs, en thème sombre aussi.
- */
-export const COULEURS_DES_NIVEAUX = { 1: '#d9ead3', 2: '#fff2cc', 3: '#fce5cd', 4: '#f4cccc', 5: '#e6b8af' };
-
-/** Variable CSS `--niv` d'une ligne d'un niveau ; rien pour un niveau absent (« Niveau ? », ligne vide). */
-export const styleDeNiveau = (niveau) => (COULEURS_DES_NIVEAUX[niveau] ? `--niv: ${COULEURS_DES_NIVEAUX[niveau]}` : undefined);
+// règles de la page. Les couleurs des niveaux ne sont pas ici : lib/accessoires-couleurs.mjs (la règle), lib/palette-css.mjs (leur classe,
+// `couleur-niveau-<n>`, que le gabarit pose et que le script reprend de la ligne choisie).
 
 /**
  * Qualité de gemme d'un niveau d'accessoire, d'après les règles de la page : « Gemme classique = Accessoire niveau 1 et 2 », « Gemme raffinée =

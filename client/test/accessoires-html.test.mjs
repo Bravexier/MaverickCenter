@@ -1,7 +1,8 @@
 // Onglet Accessoires de la page /ressources/equipement/ construite (dist/ ; avant, la page /ressources/accessoires/ : test/equipement-html.test.mjs pour
 // la page et ses onglets) : le générateur d'accessoire (demande du propriétaire) — pas de tableau Markdown, les règles en tête,
 // un tableau par étape avec une case au dé, un tableau d'effets par propriété dans son onglet, la compétence en une ligne par compétence (bonus d'acquis
-// au curseur), la monture, l'encart de l'accessoire créé ; les lignes d'effet et de monture dans la couleur de leur niveau ; pas de tableau des gemmes,
+// au curseur), la monture, l'encart de l'accessoire créé ; les lignes d'effet et de monture dans la couleur de leur niveau (la classe du niveau, émise
+// par l'onglet) ; pas de tableau des gemmes,
 // une infobulle par gemme, la gemme dans la couleur de sa magie, une case à cocher par gemme au choix. Se saute sans dist/ (npm run build) ; la CI le
 // lance après le build.
 import assert from 'node:assert/strict';
@@ -10,9 +11,9 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { bulleDeGemme, chargerAccessoires, cleDeRessource } from '../src/lib/accessoires-db.mjs';
-import { cleDEffet, COULEURS_DES_NIVEAUX, gemmesAuChoix } from '../src/lib/accessoires-generateur.mjs';
+import { cleDEffet, gemmesAuChoix } from '../src/lib/accessoires-generateur.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
-import { classeDeMagie, cssDeLaPalette } from '../src/lib/palette-css.mjs';
+import { classeDeMagie, classeDeNiveau, cssDeLaPalette, cssDesFamilles } from '../src/lib/palette-css.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const fichier = join(dist, 'ressources', 'equipement', 'index.html');
@@ -56,7 +57,7 @@ test('une case au dé par tableau des étapes : identité, propriété, chaque p
   assert.ok(des.some((d) => d[1] === '6' && d[2] === '20'), 'compétence : 1d6 puis 1d20');
 });
 
-test('une ligne à choisir par emplacement, propriété, effet (une par compétence) et monture ; effets et montures dans la couleur de leur niveau', options, () => {
+test('une ligne à choisir par emplacement, propriété, effet (une par compétence) et monture ; effets et montures dans la couleur de leur niveau (sa classe)', options, () => {
   const choix = [...main.matchAll(/data-choix="(\w+)" data-valeur="([^"]+)"/g)];
   const compte = (s) => choix.filter((c) => c[1] === s).length;
   assert.equal(compte('emplacement'), a.emplacements.length);
@@ -68,10 +69,19 @@ test('une ligne à choisir par emplacement, propriété, effet (une par compéte
     const i = main.indexOf(`data-valeur="${cleDEffet(e.id)}"`);
     const debut = main.lastIndexOf('<t', i);
     const balise = main.slice(debut, main.indexOf('>', i));
-    if (e.niveau) assert.ok(balise.includes(`--niv: ${COULEURS_DES_NIVEAUX[e.niveau]}`), e.id);
-    else assert.ok(!balise.includes('--niv'), e.id);
+    const classes = (balise.match(/ class="([^"]*)"/)?.[1] ?? '').split(' ');
+    assert.deepEqual(classes.filter((c) => c.startsWith('couleur-')), e.niveau ? [classeDeNiveau(e.niveau)] : [], `${e.id} : la classe de son niveau, aucune sans niveau`);
+    assert.ok(!balise.includes('style='), `${e.id} : aucun style`);
   }
-  for (const m of a.montures) assert.match(main, new RegExp(`style="--niv: ${COULEURS_DES_NIVEAUX[m.niveau]}" data-choix="monture" data-valeur="${m.niveau}"`));
+  for (const m of a.montures) assert.match(main, new RegExp(`<tr class="acc-ligne acc-monture ${classeDeNiveau(m.niveau)}" data-choix="monture" data-valeur="${m.niveau}"`));
+  // les pastilles des niveaux de l'étape 3 : une par niveau, de sa classe
+  assert.deepEqual([...main.matchAll(/<span class="acc-niveau-pastille ([\w-]+)">Niveau (\d)<\/span>/g)].map((m) => [m[1], m[2]]),
+    [1, 2, 3, 4, 5].map((n) => [classeDeNiveau(n), String(n)]));
+  // la feuille des niveaux : émise par l'onglet (une famille d'une zone), jamais par la palette de chaque page ; plus aucune couleur de niveau en style
+  assert.equal(html.split(`<style>${cssDesFamilles(['niveau'])}</style>`).length, 2, 'la feuille des niveaux, une fois');
+  assert.ok(!cssDeLaPalette().includes('.couleur-niveau-'));
+  assert.doesNotMatch(main, /--niv\b/, 'plus de --niv, ni en style ni dans data-niveaux');
+  assert.doesNotMatch(main, /<(?:tr|span) class="[^"]*\b(?:acc-ligne|acc-niveau-pastille)\b[^"]*"[^>]*\bstyle="/, 'aucune ligne ni pastille en style');
 });
 
 test('gemmes : une infobulle par gemme, chaque mention dans la couleur de sa magie et reliée à son infobulle', options, () => {
@@ -99,9 +109,12 @@ test('le script de la page n’importe que lib/accessoires-generateur.mjs et lib
   assert.deepEqual(imports(new URL('../src/scripts/accessoires.mjs', import.meta.url)), ['../lib/accessoires-generateur.mjs', '../lib/monnaies.mjs']);
   assert.deepEqual(imports(new URL('../src/lib/accessoires-generateur.mjs', import.meta.url)), [], 'module sans import');
   assert.deepEqual(imports(new URL('../src/lib/monnaies.mjs', import.meta.url)), [], 'module sans import');
+  // les couleurs des niveaux : leur module (lib/accessoires-couleurs.mjs) n'est importé que par la palette (au build), jamais par un script de page ;
+  // le script reprend la classe de la ligne choisie
+  assert.deepEqual(imports(new URL('../src/lib/accessoires-couleurs.mjs', import.meta.url)), [], 'module sans import');
   const scripts = new URL('../src/scripts/', import.meta.url);
   for (const nom of readdirSync(scripts, { recursive: true }).filter((n) => n.endsWith('.mjs') && n !== 'accessoires.mjs')) {
-    assert.deepEqual(imports(new URL(nom, scripts)).filter((m) => /(accessoires-generateur|monnaies)\.mjs$/.test(m)), [], nom);
+    assert.deepEqual(imports(new URL(nom, scripts)).filter((m) => /(accessoires-generateur|monnaies|accessoires-couleurs)\.mjs$/.test(m)), [], nom);
   }
 });
 
@@ -111,10 +124,10 @@ test('compétences : une ligne par compétence (« Compétence Force »), le bon
   const debut = main.indexOf('<table class="table-donnees table-donnees--serree acc-table acc-table--competences">');
   const table = main.slice(debut, main.indexOf('</table>', debut));
   // une ligne : ses attributs (les valeurs ne contiennent pas de « " », échappé) et son contenu
-  const lignes = table.split('<tr class="acc-ligne acc-effet acc-competence"').slice(1).map((t) => {
+  const lignes = table.split('<tr class="acc-ligne acc-effet acc-competence').slice(1).map((t) => {
     const fin = t.indexOf('><td class="acc-jet">');
     const attributs = Object.fromEntries([...t.slice(0, fin).matchAll(/ ([\w-]+)="([^"]*)"/g)].map((m) => [m[1], decoder(m[2])]));
-    return { ...attributs, contenu: t.slice(fin, t.indexOf('</tr>')) };
+    return { ...attributs, classe: t.slice(0, t.indexOf('"')).trim(), contenu: t.slice(fin, t.indexOf('</tr>')) };
   });
   assert.equal(lignes.length, a.competences.lignes.length, 'une ligne par compétence, et non plus une par niveau');
   assert.equal((table.match(/<tr class="acc-ligne/g) ?? []).length, a.competences.lignes.length);
@@ -122,16 +135,16 @@ test('compétences : une ligne par compétence (« Compétence Force »), le bon
   const max = Math.max(...a.competences.colonnes.map((c) => c.max));
   assert.deepEqual([min, max], [1, 20]);
   a.competences.lignes.forEach((l, i) => {
-    const { style, 'data-valeur': valeur, 'data-jet': jet, 'data-acquis': acquis, 'data-libelle': libelle, 'data-niveaux': niveaux, contenu } = lignes[i];
+    const { style, classe, 'data-valeur': valeur, 'data-jet': jet, 'data-acquis': acquis, 'data-libelle': libelle, 'data-niveaux': niveaux, contenu } = lignes[i];
     assert.equal(lignes[i]['data-choix'], 'effet');
     assert.equal(libelle, `Compétence ${l.caracteristique}`, 'la caractéristique dans le titre');
     assert.ok(contenu.includes(`>Compétence ${l.caracteristique}</button>`));
     assert.ok(!contenu.includes('acc-effet__sous'), 'plus de caractéristique sous le titre');
-    // la ligne telle que construite : le plus petit bonus, son niveau, sa couleur, son prix
-    assert.deepEqual([valeur, jet, acquis, style], [cleDEffet(l.effets[0].id), String(l.jet), String(min), `--niv: ${COULEURS_DES_NIVEAUX[l.effets[0].niveau]}`]);
-    // les effets de ses niveaux : plages et prix écrits, couleur du niveau
-    assert.deepEqual(JSON.parse(niveaux).map((n) => [n.valeur, n.niveau, n.min, n.max, n.prix, n.style]),
-      l.effets.map((e) => [cleDEffet(e.id), e.niveau, e.bonus_min, e.bonus_max, e.prix_brut, `--niv: ${COULEURS_DES_NIVEAUX[e.niveau]}`]));
+    // la ligne telle que construite : le plus petit bonus, son niveau, la classe de sa couleur (aucun style), son prix
+    assert.deepEqual([valeur, jet, acquis, classe, style], [cleDEffet(l.effets[0].id), String(l.jet), String(min), classeDeNiveau(l.effets[0].niveau), undefined]);
+    // les effets de ses niveaux : plages et prix écrits, la classe de la couleur du niveau (le script la pose : scripts/accessoires.mjs#reglerLAcquis)
+    assert.deepEqual(JSON.parse(niveaux).map((n) => [n.valeur, n.niveau, n.min, n.max, n.prix, n.classe, n.style]),
+      l.effets.map((e) => [cleDEffet(e.id), e.niveau, e.bonus_min, e.bonus_max, e.prix_brut, classeDeNiveau(e.niveau), undefined]));
     assert.match(contenu, new RegExp(`<input type="range" class="acc-acquis__curseur" min="${min}" max="${max}" step="1" value="${min}" data-acc-acquis`));
     assert.match(contenu, new RegExp(`<input type="number" class="acc-acquis__saisie" min="${min}" max="${max}" step="1" value="${min}"`));
     assert.match(contenu, /data-acc-acquis-de="20"/, 'un dé (1d20) par ligne');

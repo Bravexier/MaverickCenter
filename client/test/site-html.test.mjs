@@ -643,3 +643,40 @@ test('couleurs des matériaux, des armes de départ, des types d’armure et des
     assert.ok(!('couleur' in p) && !('texte' in p), `regles.json : aucune couleur de poids (${p.id})`);
   }
 });
+
+// Lot des niveaux des accessoires (même demande, mêmes choix de cadrage : skill ui-couleurs) : sur toute page construite, aucune couleur de niveau en
+// style (ni `--niv`, en style comme dans data-niveaux) ; chaque classe posée existe dans une feuille de la page (famille d'une zone, émise par l'onglet
+// Accessoires de l'équipement, et seulement là).
+/** Les éléments que l'onglet Accessoires pose sur la couleur d'un niveau. */
+const ELEMENTS_DU_LOT_DES_ACCESSOIRES = new Set(['acc-niveau-pastille', 'acc-effet', 'acc-competence', 'acc-monture', 'acc-produit']);
+const CLASSE_DU_LOT_DES_ACCESSOIRES = /^couleur-niveau-/;
+
+test('couleurs des niveaux des accessoires : jamais en style sur une page construite, toujours par une classe qui existe', options, () => {
+  const parPage = new Map();
+  for (const fichier of walk(dist).filter((f) => f.endsWith('.html'))) {
+    const rel = relative(dist, fichier);
+    const html = readFileSync(fichier, 'utf8');
+    // la variable de ces couleurs n'est plus posée, nulle part (ni en style, ni dans l'attribut data-niveaux d'une ligne de compétence)
+    assert.doesNotMatch(html, /--niv\b/, `${rel} : --niv`);
+    for (const [balise, classe] of html.matchAll(/<[a-z][a-z0-9]*\b[^>]*\bclass="([^"]*)"[^>]*>/g)) {
+      const jetons = classe.split(/\s+/);
+      if (!jetons.some((c) => CLASSE_DU_LOT_DES_ACCESSOIRES.test(c) || ELEMENTS_DU_LOT_DES_ACCESSOIRES.has(c))) continue;
+      assert.doesNotMatch(balise, /\bstyle="/, `${rel} : un style sur un élément du lot : ${balise}`);
+      for (const c of jetons.filter((x) => CLASSE_DU_LOT_DES_ACCESSOIRES.test(x))) {
+        assert.ok(html.includes(`.${c}{`), `${rel} : la classe ${c} n’est pas dans une feuille de la page`);
+        parPage.set(rel, new Set([...(parPage.get(rel) ?? []), c]));
+      }
+    }
+  }
+  // l'onglet Accessoires pose les cinq niveaux (pastilles de l'étape 3, lignes d'effet et de monture), et lui seul
+  assert.deepEqual([...(parPage.get('ressources/equipement/index.html') ?? [])].sort(), [1, 2, 3, 4, 5].map((n) => `couleur-niveau-${n}`));
+  assert.deepEqual([...parPage.keys()], ['ressources/equipement/index.html'], 'ailleurs : aucune');
+  // les classes que le script reprend d'une ligne de compétence (data-niveaux) : des classes de la feuille de la page, jamais une couleur
+  const equipement = lire('ressources/equipement/index.html');
+  const niveaux = [...equipement.matchAll(/data-niveaux="([^"]+)"/g)].flatMap((m) => JSON.parse(m[1].replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&')));
+  assert.ok(niveaux.length >= 20, `${niveaux.length} niveaux de compétence`);
+  for (const n of niveaux) {
+    assert.ok(CLASSE_DU_LOT_DES_ACCESSOIRES.test(n.classe) && equipement.includes(`.${n.classe}{`), `data-niveaux : ${n.classe}`);
+    assert.ok(!('style' in n), 'plus de style dans data-niveaux');
+  }
+});

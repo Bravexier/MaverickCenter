@@ -19,7 +19,8 @@ let pageOuverte = null;
 const tableau = (de, ...lignes) =>
   el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, el('button', de, el('span', { 'data-de-resultat': '' }))))), el('tbody', {}, ...lignes));
 const ligne = (attributs, ...cases) => el('tr', attributs, el('th', {}, el('button', { class: 'acc-choisir' })), ...cases);
-const NIVEAU = { 1: '--niv: #d9ead3', 2: '--niv: #fff2cc' };
+// la classe de la couleur d'un niveau, telle que la page la pose (lib/palette-css.mjs#classeDeNiveau) : le script la reprend, jamais une couleur
+const NIVEAU = { 1: 'couleur-niveau-1', 2: 'couleur-niveau-2' };
 
 /**
  * La page à l'adresse `recherche` : Identité 1d4 (Anneau 1-2, Collier 3-4) ; Propriété 1d100 (Attaque 1-60, Compétence 61-95, Malédiction 96-100) ;
@@ -31,8 +32,8 @@ async function charger(recherche = '') {
   // la page d'avant écrit son adresse et oublie son écriture en attente (sinon elle écrirait dans celle-ci)
   pageOuverte?.dispatchEvent(new Event('pagehide'));
   const niveaux = [
-    { valeur: 'competence:force:1', niveau: 1, min: 1, max: 10, brut: 'Niveau 1', prix: '10 Ro', style: NIVEAU[1] },
-    { valeur: 'competence:force:2', niveau: 2, min: 11, max: 20, brut: 'Niveau 2', prix: '20 Ro', style: NIVEAU[2] },
+    { valeur: 'competence:force:1', niveau: 1, min: 1, max: 10, brut: 'Niveau 1', prix: '10 Ro', classe: NIVEAU[1] },
+    { valeur: 'competence:force:2', niveau: 2, min: 11, max: 20, brut: 'Niveau 2', prix: '20 Ro', classe: NIVEAU[2] },
   ];
   const acquisDe = el('button', { 'data-acc-acquis-de': '20' });
   const r = {
@@ -41,15 +42,15 @@ async function charger(recherche = '') {
     attaque: ligne({ 'data-choix': 'propriete', 'data-valeur': 'attaque', 'data-min': '1', 'data-max': '60', 'data-libelle': 'Attaque' }),
     competence: ligne({ 'data-choix': 'propriete', 'data-valeur': 'competence', 'data-min': '61', 'data-max': '95', 'data-libelle': 'Compétence' }),
     malediction: ligne({ 'data-choix': 'propriete', 'data-valeur': 'malediction', 'data-min': '96', 'data-max': '100', 'data-libelle': 'Malédiction', 'data-malediction': '1' }),
-    degats: ligne({ 'data-choix': 'effet', 'data-valeur': 'attaque:1', 'data-propriete': 'attaque', 'data-min': '1', 'data-max': '9', 'data-niveau': '1', 'data-niveau-brut': 'Niveau 1',
+    degats: ligne({ class: NIVEAU[1], 'data-choix': 'effet', 'data-valeur': 'attaque:1', 'data-propriete': 'attaque', 'data-min': '1', 'data-max': '9', 'data-niveau': '1', 'data-niveau-brut': 'Niveau 1',
       'data-libelle': 'Dégâts physiques +2', 'data-prix': '29 Ro' }),
     maudite: ligne({ 'data-choix': 'effet', 'data-valeur': 'attaque:10', 'data-propriete': 'attaque', 'data-min': '10', 'data-max': '20', 'data-libelle': 'MALÉDICTION', 'data-malediction': '1' }),
-    force: ligne({ style: NIVEAU[1], 'data-choix': 'effet', 'data-valeur': 'competence:force:1', 'data-propriete': 'competence', 'data-jet': '1', 'data-acquis': '1', 'data-niveau': '1',
+    force: ligne({ class: NIVEAU[1], 'data-choix': 'effet', 'data-valeur': 'competence:force:1', 'data-propriete': 'competence', 'data-jet': '1', 'data-acquis': '1', 'data-niveau': '1',
       'data-niveau-brut': 'Niveau 1', 'data-libelle': 'Compétence Force', 'data-prix': '10 Ro', 'data-niveaux': JSON.stringify(niveaux) },
     el('td', {}, el('input', { 'data-acc-acquis': '' }), el('input', { 'data-acc-acquis-saisie': '' }), acquisDe),
     el('td', {}, el('span', { 'data-acc-niveau': '' })), el('td', {}, el('span', { 'data-acc-prix': '' }))),
-    monture1: ligne({ 'data-choix': 'monture', 'data-valeur': '1', 'data-niveau': '1', 'data-libelle': 'Cuivre', 'data-prix': '5 Ro', 'data-prix-ro': '5', 'data-effet': 'Aucun' }),
-    monture2: ligne({ 'data-choix': 'monture', 'data-valeur': '2', 'data-niveau': '2', 'data-libelle': 'Argent', 'data-prix': '15 Ro', 'data-prix-ro': '15', 'data-effet': 'Aucun' }),
+    monture1: ligne({ class: NIVEAU[1], 'data-choix': 'monture', 'data-valeur': '1', 'data-niveau': '1', 'data-libelle': 'Cuivre', 'data-prix': '5 Ro', 'data-prix-ro': '5', 'data-effet': 'Aucun' }),
+    monture2: ligne({ class: NIVEAU[2], 'data-choix': 'monture', 'data-valeur': '2', 'data-niveau': '2', 'data-libelle': 'Argent', 'data-prix': '15 Ro', 'data-prix-ro': '15', 'data-effet': 'Aucun' }),
   };
   const sections = {
     emplacements: el('section', { 'data-table': 'emplacement' }, tableau({ 'data-de': '4' }, r.anneau, r.collier)),
@@ -58,8 +59,8 @@ async function charger(recherche = '') {
     competences: el('section', { class: 'acc-famille', 'data-propriete': 'competence', 'data-table': 'effet' }, tableau({ 'data-de': '6', 'data-de-bonus': '20' }, r.force)),
     montures: el('section', { 'data-table': 'monture' }, el('table', {}, el('tbody', {}, r.monture1, r.monture2))),
   };
+  // ni `style` ni getComputedStyle : le script ne lit ni ne pose aucune couleur, seulement les classes des lignes
   const produit = el('div', { class: 'acc-produit', 'data-acc-produit': '' });
-  produit.style = { setProperty() {}, removeProperty() {} };
   const tirerTout = el('button', { 'data-acc-tout-tirer': '' });
   const effacer = el('button', { 'data-acc-effacer': '' });
   const racine = el('div', { 'data-accessoires': '' }, tirerTout, effacer, ...Object.values(sections), produit);
@@ -71,7 +72,6 @@ async function charger(recherche = '') {
     Element,
     HTMLInputElement: Element,
     addEventListener: fenetre.addEventListener.bind(fenetre),
-    getComputedStyle: () => ({ getPropertyValue: () => '' }),
     location: { get pathname() { return url.pathname; }, get search() { return url.search; }, get hash() { return url.hash; } },
     history: { state: null, replaceState: (_, __, a) => (url = new URL(a, url)) },
   });
@@ -79,11 +79,14 @@ async function charger(recherche = '') {
   const de = (section) => section.querySelector('[data-de]');
   const clic = (x) => cliquer(x, racine);
   const classes = () => ({ maudit: produit.classList.contains('est-maudit'), detruit: produit.classList.contains('est-detruit') });
+  /** Les classes de couleur d'un élément (`couleur-…`). */
+  const couleurs = (x) => [...x.classList].filter((c) => c.startsWith('couleur-'));
   return {
     ...r,
     sections,
     produit,
     classes,
+    couleurs,
     encart: () => produit.innerHTML,
     jet: (section) => de(section).querySelector('[data-de-resultat]').textContent,
     /** Le dé d'un tableau (`de1`, `de2`, `de3` : Attaque, `deCompetence`), le dé d'acquis de la ligne Compétence Force. */
@@ -302,6 +305,37 @@ test('compétences : le dé du tableau (1d6 puis 1d20) et le dé d’acquis choi
   avecLesJets([0.9], p.deAcquis);
   assert.deepEqual(p.classes(), { maudit: false, detruit: false });
   assert.equal(p.adresse(), '?propriete=competence&effet=competence%3Aforce%3A2&acquis=19');
+});
+
+test('couleurs des niveaux : la ligne et l’encart portent la classe du niveau (reprise de la ligne choisie, ou de data-niveaux), jamais un style', async () => {
+  let p = await charger();
+  assert.deepEqual(p.couleurs(p.produit), [], 'rien de choisi : pas de couleur');
+  p.cliquer(p.degats);
+  assert.deepEqual(p.couleurs(p.produit), [NIVEAU[1]], 'l’encart : la classe de la ligne de l’effet');
+  // la monture d'office ne colore pas l'encart : la couleur est celle de l'effet
+  p.cliquer(p.monture2);
+  assert.deepEqual(p.couleurs(p.produit), [NIVEAU[1]]);
+  // une compétence : le bonus d'acquis donne le niveau, la ligne prend la classe de ce niveau (data-niveaux), à la place de la sienne, et l'encart la suit
+  avecLesJets([0, 0.6], p.deCompetence);
+  assert.deepEqual([p.couleurs(p.force), p.couleurs(p.produit)], [[NIVEAU[2]], [NIVEAU[2]]], '13 % : niveau 2');
+  avecLesJets([0.2], p.deAcquis);
+  assert.deepEqual([p.couleurs(p.force), p.couleurs(p.produit)], [[NIVEAU[1]], [NIVEAU[1]]], '5 % : niveau 1');
+  assert.ok(p.force.classList.contains('est-choisi'), 'les autres classes de la ligne restent');
+  // un effet sans niveau (la ligne MALÉDICTION) : l'encart sans couleur ; un accessoire détruit aussi ; « Tout effacer » aussi
+  p.cliquer(p.maudite);
+  assert.deepEqual(p.couleurs(p.produit), [], 'un effet sans niveau');
+  p = await charger();
+  p.cliquer(p.degats);
+  avecLesJets([D20.malediction], p.de3);
+  avecLesJets([D20.malediction], p.de3);
+  assert.deepEqual(p.classes(), { maudit: true, detruit: true });
+  assert.deepEqual(p.couleurs(p.produit), [], 'détruit : pas de couleur de niveau');
+  p.cliquer(p.degats);
+  assert.deepEqual(p.couleurs(p.produit), [NIVEAU[1]]);
+  p.effacer();
+  assert.deepEqual(p.couleurs(p.produit), []);
+  for (const x of [p.produit, p.force, p.degats]) assert.equal(x.getAttribute('style'), null, 'aucun style');
+  pageOuverte.dispatchEvent(new Event('pagehide'));
 });
 
 test('l’adresse est lue telle quelle : « détruit » seulement avec une malédiction choisie, et il implique « maudit »', async () => {

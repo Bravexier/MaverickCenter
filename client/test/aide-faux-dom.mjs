@@ -117,6 +117,8 @@ export class Element extends EventTarget {
         else soi.classList.remove(c);
         return oui;
       },
+      // `[...el.classList]`, comme un DOMTokenList (la classe de couleur reprise d'une ligne : scripts/accessoires.mjs#couleursDe)
+      [Symbol.iterator]: () => classes()[Symbol.iterator](),
     };
     this.append(...enfants);
   }

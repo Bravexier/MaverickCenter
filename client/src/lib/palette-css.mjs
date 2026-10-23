@@ -36,17 +36,20 @@
 //   - armure : lib/equipement-couleurs.mjs#COULEURS_DES_TYPES (le type d'une armure ou d'une matière : « Léger » → leger), plus `par-defaut`
 //     (COULEUR_SANS_TYPE) ;
 //   - poids : lib/equipement-couleurs.mjs#COULEURS_DES_POIDS (bouclier_poids.id, décision R92), plus `par-defaut` (COULEUR_SANS_TYPE) ; la pastille du
-//     poids d'un bouclier et sa tuile dans la fiche de personnage.
+//     poids d'un bouclier et sa tuile dans la fiche de personnage ;
+//   - niveau : lib/accessoires-couleurs.mjs#COULEURS_DES_NIVEAUX (le niveau d'un effet ou d'une monture de l'onglet Accessoires, 1 à 5), sans
+//     `par-defaut` : un niveau absent (« Niveau ? », ligne vide) ne porte aucune classe ; les pastilles des niveaux, les lignes d'effet et de monture,
+//     l'encart de l'accessoire créé.
 // L'id d'une classe est la clé du module de sa règle passée par text.mjs#normalize (« chakra+sante » → « chakra-sante ») : il ne change pas quand le nom
 // affiché change.
 //
 // Où la feuille est émise (le poids de chaque page) : les familles que beaucoup de pages posent (FAMILLES_DE_CHAQUE_PAGE : magies, attributs,
 // caractéristiques, affinités) et les seconds rangs des magies sont posés sur chaque page par layouts/Base.astro (cssDeLaPalette) ; les familles d'une
 // zone (FAMILLES_DES_ZONES : postures, alignements, catégories de classe, races, paliers, Mode Hyper, neutre, matériaux, armes de départ, types
-// d'armure, poids des boucliers) et les seconds rangs des caractéristiques ne le sont que par le composant des pages qui les posent (cssDesFamilles,
-// cssDesSecondsRangs : le bloc « postures » du guide, la fiche (FAMILLES_DE_LA_FICHE), l'onglet Armes, les onglets Armures et Boucliers, la page
-// Composants, /classes/ et les pages de classe, /races/ et les pages de race, et le mode modification qui dessine une race ou une classe créée), comme
-// les combinaisons des potions (cssDesPotions).
+// d'armure, poids des boucliers, niveaux des accessoires) et les seconds rangs des caractéristiques ne le sont que par le composant des pages qui les
+// posent (cssDesFamilles, cssDesSecondsRangs : le bloc « postures » du guide, la fiche (FAMILLES_DE_LA_FICHE), l'onglet Armes, les onglets Armures et
+// Boucliers, l'onglet Accessoires, la page Composants, /classes/ et les pages de classe, /races/ et les pages de race, et le mode modification qui
+// dessine une race ou une classe créée), comme les combinaisons des potions (cssDesPotions).
 //
 // Deux couleurs d'une même famille sur un même élément (dégradé de l'innée vers l'acquise, créature ou cible à deux magies, trait d'une relation entre
 // deux magies, arme de deux compétences) : la première est la classe de sa couleur (`--couleur`, `--couleur-texte`), la seconde sa classe de second
@@ -67,6 +70,7 @@ import { RACE_COLORS } from './race-kinds.mjs';
 import { COULEURS_DES_PALIERS, COULEURS_DU_MODE_HYPER } from './fiche-couleurs.mjs';
 import { COULEURS_DES_MATERIAUX, cleDeMateriau } from './materiaux-couleurs.mjs';
 import { COULEUR_SANS_TYPE, COULEURS_DES_ARMES, COULEURS_DES_POIDS, COULEURS_DES_TYPES } from './equipement-couleurs.mjs';
+import { COULEURS_DES_NIVEAUX } from './accessoires-couleurs.mjs';
 import { normalize } from './text.mjs';
 
 /** L'id de la classe d'une couleur inconnue de sa famille (magie : COULEUR_PAR_DEFAUT ; caractéristique, posture, alignement, neutre : COULEUR_NEUTRE). */
@@ -91,6 +95,7 @@ export const FAMILLES_DE_LA_PALETTE = Object.freeze({
   arme: COULEURS_DES_ARMES,
   armure: Object.freeze({ ...COULEURS_DES_TYPES, [PAR_DEFAUT]: COULEUR_SANS_TYPE }),
   poids: Object.freeze({ ...COULEURS_DES_POIDS, [PAR_DEFAUT]: COULEUR_SANS_TYPE }),
+  niveau: COULEURS_DES_NIVEAUX,
 });
 
 /** Les familles posées sur chaque page (layouts/Base.astro : cssDeLaPalette), celles que beaucoup de pages posent. */
@@ -99,11 +104,11 @@ export const FAMILLES_DE_CHAQUE_PAGE = Object.freeze(['magie', 'attribut', 'cara
  * Les familles d'une zone, émises par le composant des pages qui les posent (cssDesFamilles) : `posture` (le bloc « postures » du guide, la fiche),
  * `alignement`, `palier`, `mode`, `neutre` (la fiche), `classe` (/classes/, les pages de classe, la fiche, la page d'une classe créée sur le site de
  * dev), `race` (/races/, les pages de race, la fiche, la page d'une race créée), `materiau` (l'onglet Armes, la page Composants), `arme` (l'onglet
- * Armes), `armure` (les onglets Armures et Boucliers), `poids` (l'onglet Boucliers, la fiche).
+ * Armes), `armure` (les onglets Armures et Boucliers), `poids` (l'onglet Boucliers, la fiche), `niveau` (l'onglet Accessoires).
  */
-export const FAMILLES_DES_ZONES = Object.freeze(['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre', 'materiau', 'arme', 'armure', 'poids']);
+export const FAMILLES_DES_ZONES = Object.freeze(['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre', 'materiau', 'arme', 'armure', 'poids', 'niveau']);
 
-/** Les familles d'une zone que la fiche de personnage pose (pages/fiche/index.astro) : toutes, sauf celles des onglets de l'équipement hors le poids. */
+/** Les familles d'une zone que la fiche de personnage pose (pages/fiche/index.astro) : toutes, sauf celles des onglets de l'équipement hors le poids (ni les niveaux des accessoires). */
 export const FAMILLES_DE_LA_FICHE = Object.freeze(['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre', 'poids']);
 
 /**
@@ -199,6 +204,9 @@ export const classeDuTypeDArmure = (type) => classeOuParDefaut('armure', type);
 
 /** La classe d'un poids de bouclier (bouclier_poids.id : « tres-lourd » → « couleur-poids-tres-lourd ») ; `par-defaut` pour un poids sans couleur. */
 export const classeDuPoids = (id) => classeOuParDefaut('poids', id);
+
+/** La classe du niveau d'un effet ou d'une monture de l'onglet Accessoires (1 → « couleur-niveau-1 ») ; null pour un niveau absent ou inconnu (aucune couleur). */
+export const classeDeNiveau = (niveau) => classeDeCouleur('niveau', String(niveau ?? ''));
 
 /** La classe neutre (COULEUR_NEUTRE) : ce que la fiche montre sans couleur de règle (magie acquise « Aucune », objet de départ, ethnie sans race). */
 export const CLASSE_NEUTRE = classeDeCouleur('neutre', PAR_DEFAUT);
