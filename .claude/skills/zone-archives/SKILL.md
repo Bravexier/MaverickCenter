@@ -17,9 +17,11 @@ user-invocable: false
 - Ni « Familiers » ni « Prototype » (`DOCUMENTS_RETIRES`, demande du propriétaire) ; la migration 0019 retire aussi leurs liens de la base.
 - Le CODEX Maverick et le Bestiaire 2.0 passent par les copies que le propriétaire en a faites depuis (entrée du manifeste dont `original` cite l'identifiant d'origine), l'original en second lien.
 - `lib/archives.mjs` lit les fichiers par `node:fs` (`lireArchives`) : ne pas l'importer côté navigateur.
+- Les étiquettes de genre (`.archive__genre--doc`, `--sheet`) lisent les jetons du thème `--doc-google…` et `--sheet-google…` (skill `ui-couleurs-theme`) : aucune couleur n'est écrite dans `styles/archives/`.
 - Seule page du site qui montre des sources (réponse du propriétaire du 2026-10-22 : « Plus de sources ailleurs que dans les archives. On va épurer un peu ce qui est redondant. ») : plus de pied « Sources » sous les pages (`components/PiedDePage.astro`) ; les données (`sources:` du frontmatter, `page_source`, `source`) restent, les Archives les lisent (`test/site-html.test.mjs`).
 
 ## Tests
 
 - `test/archives.test.mjs`.
-- `test/site-html.test.mjs` : `/archives/`, les documents sources et l'ancien wiki (site construit, CI après le build).
+- `test/palette-css.test.mjs` : la page, `lib/archives.mjs` et la feuille sans couleur écrite ; les jetons.
+- `test/site-html.test.mjs` : `/archives/`, les documents sources et l'ancien wiki, sans `style=` ni feuille de palette (site construit, CI après le build).
