@@ -7,10 +7,19 @@
 import { texteSansBalises } from './mots-cles-balises.mjs';
 import { normalize } from './text.mjs';
 
-/** Rubriques qui listent des cibles (« Brûlure, Paralysie ») : sens d'une ligne de `monstre_defense`, dans l'ordre. */
+/**
+ * Rubriques qui listent des cibles (« Brûlure, Paralysie ») : sens d'une ligne de `monstre_defense`, dans l'ordre ; les valeurs des `CHECK` du schéma.
+ * 'double_resistance' reste lue comme le schéma l'admet (décision R155 : la « Double résistance » est devenue la Grande résistance, migration 0075 ; plus
+ * aucune donnée ne l'écrit, le rejeu d'un journal d'avant 0075 la traduit : serveur/edition-bestiaire.mjs#ancienneEcritureDesResistances) : une rubrique
+ * classée ainsi par l'extracteur (tools/bestiaire/extraire.mjs) garderait ses cibles ; rien ne la propose (RUBRIQUES).
+ */
 export const SENS_DEFENSE = ['vulnerabilite', 'grande_vulnerabilite', 'resistance', 'grande_resistance', 'double_resistance', 'immunite', 'reflexion'];
 
-/** Toutes les rubriques d'une carte (colonne `monstre_rubrique.rubrique`), dans l'ordre où le doc les écrit d'habitude, avec leur titre par défaut. */
+/**
+ * Les rubriques d'une carte (colonne `monstre_rubrique.rubrique`), dans l'ordre où le doc les écrit d'habitude, avec leur titre par défaut. Décision R155 :
+ * les multiplicateurs sont ceux des paliers de la base (`resistance_palier.effet_brut` : grande résistance ÷3, grande vulnérabilité x3), et la
+ * « Double résistance » n'a plus de titre (devenue la Grande résistance ; le `CHECK` du schéma garde la valeur, SENS_DEFENSE la lit encore).
+ */
 export const RUBRIQUES = {
   attributs: 'Santé, chakra, barrière',
   sante: 'Santé',
@@ -22,10 +31,9 @@ export const RUBRIQUES = {
   caracteristiques: 'Caractéristiques (F.P.V.S.I.A.)',
   competences: 'Compétence(s) secondaire(s)',
   vulnerabilite: 'Vulnérabilité(s) Dégâts x2',
-  grande_vulnerabilite: 'Grande(s) Vulnérabilité(s) Dégâts x4',
+  grande_vulnerabilite: 'Grande(s) Vulnérabilité(s) Dégâts x3',
   resistance: 'Résistance(s) Dégâts ÷2',
-  grande_resistance: 'Grande(s) Résistance(s) Dégâts ÷4',
-  double_resistance: 'Double(s) Résistance(s) Dégâts/Effets ÷4',
+  grande_resistance: 'Grande(s) Résistance(s) Dégâts ÷3',
   immunite: 'Immunité(s) Dégâts/Effets = 0',
   reflexion: 'Réflexion(s) Renvoi des dégâts/effets',
   capacites: 'Capacité(s)',

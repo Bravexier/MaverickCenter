@@ -71,7 +71,7 @@ import { textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { ErreurHttp, jsonOuNull } from './partage.mjs';
 import { ErreurJournal, ORDRE_DE_REJEU, cleDe, lireLigne, nouveauLot, ouvrirLot, rejouer, structure } from './edition-journal.mjs';
 import {
-  ancienneEcritureDesCapacites, capacitesDeMonstre, domainesDuBestiaire, especesDeMonstres, groupesDeMonstres, lignesDuBestiaire as lignesRenduesDuBestiaire,
+  ancienneEcritureDesCapacites, ancienneEcritureDesResistances, capacitesDeMonstre, domainesDuBestiaire, especesDeMonstres, groupesDeMonstres, lignesDuBestiaire as lignesRenduesDuBestiaire,
   operationsDuBestiaire,
 } from './edition-bestiaire.mjs';
 import { contexteDuCorpsDesArmes, domainesDesArmes } from './edition-armes.mjs';
@@ -1653,9 +1653,10 @@ export function adaptateurDuJournal(db) {
   const motsCles = ancienneEcritureDesMotsCles(db);
   const glossaire = ancienneEcritureDuGlossaire(db);
   const capacites = ancienneEcritureDesCapacites(db);
+  const resistances = ancienneEcritureDesResistances();
   const armures = ancienneEcritureDesArmures(db);
   const couts = ancienneEcritureDuCout();
-  return (m) => couts(armures(capacites(glossaire(motsCles(m)))));
+  return (m) => couts(armures(resistances(capacites(glossaire(motsCles(m))))));
 }
 
 /**
@@ -1691,7 +1692,8 @@ export function rejouerLeJournal(db, sortie = {}, { horsControleParLot = [] } = 
     derivee: colonneDerivee, applique: (m) => appliquees.push(m), horsControleParLot,
     // le dictionnaire des sources n'est vidé que de ses orphelins (supprimerPage) : une source encore citée au rejeu reste
     siOrphelines: ['source'],
-    // les formes d'avant les migrations 0043 (mots-clés), 0044 (capacités de monstre communes), 0056 (glossaire) et 0063 (coût secondaire des sorts),
+    // les formes d'avant les migrations 0043 (mots-clés), 0044 (capacités de monstre communes), 0056 (glossaire), 0063 (coût secondaire des sorts) et
+    // 0075 (résistances du bestiaire, décision R155 : serveur/edition-bestiaire.mjs#ancienneEcritureDesResistances),
     // et d'avant la saisie de l'AP et de l'AM et des cases d'une amélioration de bouclier (demande du propriétaire du 2026-10-17 :
     // serveur/edition-armures.mjs#ancienneEcritureDesArmures)
     adapter: () => adaptateurDuJournal(db),

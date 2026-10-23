@@ -32,15 +32,16 @@ const LIBELLES_RUBRIQUES = {
   grande_vulnerabilite: 'Grande(s) vulnérabilité(s)',
   resistance: 'Résistance(s)',
   grande_resistance: 'Grande(s) résistance(s)',
-  double_resistance: 'Double(s) résistance(s)',
   immunite: 'Immunité(s)',
   reflexion: 'Réflexion(s)',
   capacites: 'Capacité(s)',
   tactique: 'Tactique de combat',
 };
+// pas de 'double_resistance' (décision R155 : devenue la Grande résistance, migration 0075) : plus aucune cible de ce sens, et le rejeu d'un journal
+// noté avant 0075 la range en grande_resistance (serveur/edition-bestiaire.mjs#ancienneEcritureDesResistances)
 const SENS_PAR_COLONNE = {
   vulnerabilites: ['vulnerabilite', 'grande_vulnerabilite'],
-  resistances: ['resistance', 'grande_resistance', 'double_resistance'],
+  resistances: ['resistance', 'grande_resistance'],
   immunites: ['immunite', 'reflexion'],
 };
 

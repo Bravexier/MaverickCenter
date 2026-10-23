@@ -125,6 +125,41 @@ test('degatsRecus (R98) : la formule du guide (« Les dégâts ») — armure, d
   assert.equal(M.degatsRecus(regles, feu, { entrants: 10, type: 'magies/potentiel-illimite' }), null);
 });
 
+test('degatsRecus (R98, R155) : grande résistance ÷ 3 exactement, puis arrondi à l’inférieur ; grande vulnérabilité × 3, sensibilité × 4', () => {
+  // Fenrir de glace, Glace innée : 1 cran de la page de la Glace + 1 cran de l'ethnie, grande résistance à la Glace (« dégâts subis ÷3 »)
+  const fenrir = fiche({ race_id: 'races/fenrir', ethnie_id: 'races/fenrir#ethnie:fenrir-de-glace', magie_innee_id: 'magies/magie-de-la-glace' });
+  const glace = 'magies/magie-de-la-glace';
+  assert.equal(M.resistancesDe(regles, fenrir).paliers.find((p) => p.cibles.some((c) => c.id === glace))?.id, 'grande_resistance');
+  const am = M.defenseDe(regles, fenrir).am.total;
+  const recus = (f, type, entrants, x = {}) => M.degatsRecus(regles, f, { entrants: entrants + am, type, ...x });
+  // le quotient exact, jamais un point perdu par 30 × 0,333… = 9,999… : 9 → 3, 30 → 10, 300 → 100, 31 → 10
+  for (const [entrants, attendu] of [[9, 3], [30, 10], [300, 100], [31, 10], [2, 0]]) assert.equal(recus(fenrir, glace, entrants).recus, attendu, `${entrants} ÷ 3`);
+  // défense partielle : 7 → 3,5, puis ÷ 3 → 1,166… → 1
+  const partielle = recus(fenrir, glace, 7, { reduits: true });
+  assert.equal(partielle.recus, 1);
+  assert.deepEqual(partielle.etapes.slice(-2).map((e) => e.texte), ['Défense partielle : ÷ 2', 'Grande résistance (dégâts subis ÷3)']);
+  // toute somme de 0 à 3000 (et sa défense partielle) : l'arrondi à l'inférieur du quotient exact
+  for (let n = 0; n <= 3000; n += 1) {
+    assert.equal(recus(fenrir, glace, n).recus, Math.floor(n / 3), `${n}`);
+    assert.equal(recus(fenrir, glace, n, { reduits: true }).recus, Math.floor(n / 6), `${n} en défense partielle`);
+  }
+  // Glace innée, Terre acquise : grande vulnérabilité au Feu (« dégâts subis x3 »)
+  const terre = fiche({ magie_innee_id: glace, magie_acquise_id: 'magies/magie-de-la-terre' });
+  const feu = 'magies/magie-du-feu';
+  assert.equal(M.resistancesDe(regles, terre).paliers.find((p) => p.cibles.some((c) => c.id === feu))?.id, 'grande_vulnerabilite');
+  const amTerre = M.defenseDe(regles, terre).am.total;
+  assert.equal(M.degatsRecus(regles, terre, { entrants: 10 + amTerre, type: feu }).recus, 30);
+  assert.equal(M.degatsRecus(regles, terre, { entrants: 7 + amTerre, type: feu, reduits: true }).recus, 10, '3,5 × 3 = 10,5 → 10');
+  // chaque palier de la base appliqué à 30 dégâts (la sensibilité, −3 crans et moins, ne s'atteint pas avec deux magies seules)
+  const mult = Object.fromEntries(regles.resistance_paliers.map((p) => [p.id, p.multiplicateur]));
+  assert.deepEqual(Object.entries(mult).map(([id, m]) => [id, M.appliquerMultiplicateur(30, m)]),
+    [['immunite', 0], ['grande_resistance', 10], ['resistance', 15], ['vulnerabilite', 60], ['grande_vulnerabilite', 90], ['sensibilite', 120]]);
+  // un tiers écrit avec moins de chiffres divise aussi par 3 ; un multiplicateur qui n'est pas l'inverse d'un entier multiplie
+  assert.equal(M.appliquerMultiplicateur(30, 0.333333333333333), 10);
+  assert.equal(Math.floor(30 * 0.333333333333333), 9, 'ce que la multiplication aurait donné');
+  assert.equal(M.appliquerMultiplicateur(30, 0.4), 12);
+});
+
 test('R108 : un bouclier cassé (solidité 0) ne compte plus, même en parade partielle au bouclier ; réparé, il compte de nouveau', () => {
   const b = fiche({ bouclier_classe_id: 'ecu', bouclier_materiau_id: 'ressources/armures#materiau:fer' });
   const casse = { ...b, bouclier_solidite: 0 };

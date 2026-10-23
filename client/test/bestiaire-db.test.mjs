@@ -5,7 +5,7 @@ import { normalize } from '../src/lib/text.mjs';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { CATEGORIES, chargerBestiaire, libelleDuBloc, optionsDeFacette, tableauDuButin } from '../src/lib/bestiaire-db.mjs';
-import { echellesEcrites } from '../src/lib/monstre-champs.mjs';
+import { echellesEcrites, GABARIT_DE_CARTE, RUBRIQUES, SENS_DEFENSE } from '../src/lib/monstre-champs.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 
@@ -216,4 +216,41 @@ test('décision R53 : les créatures invoquées n’ont pas d’échelle de puis
     const corps = db.prepare('SELECT corps_md FROM page WHERE id = ?').get(l.id)?.corps_md;
     assert.ok(corps?.includes(`**Libellé du bloc** : ${l.bloc}\n`), `${l.id} : ${l.bloc} dans sa page`);
   }
+});
+
+test('décision R155 (migration 0075) : les cartes écrivent les multiplicateurs de la base — grande résistance ÷3, grande vulnérabilité x3, sensibilité x4 ; plus de « Double résistance »', () => {
+  // « Oui là aussi c'est x3 et pas 4... » ; « Pareil remplace double résistance par Grande résistance » ; « Oui x4 aussi » (2026-10-22)
+  const titres = (rubrique) => db.prepare('SELECT monstre_id, titre FROM monstre_rubrique WHERE rubrique = ?').all(rubrique);
+  const grandesResistances = titres('grande_resistance');
+  assert.ok(grandesResistances.length > 0, 'des grandes résistances');
+  for (const r of grandesResistances) assert.doesNotMatch(r.titre, /÷\s*4/, `${r.monstre_id} : « ${r.titre} »`);
+  for (const r of titres('grande_vulnerabilite')) assert.doesNotMatch(r.titre, /x\s*4/i, `${r.monstre_id} : « ${r.titre} »`);
+  // « Double(s) Résistance(s) » est devenue « Grande(s) Résistance(s) » : rubrique et cibles typées (le sens d'une cible est sa rubrique)
+  assert.equal(n("SELECT count(*) AS n FROM monstre_rubrique WHERE rubrique = 'double_resistance'"), 0, 'aucune rubrique « Double résistance »');
+  assert.equal(n("SELECT count(*) AS n FROM monstre_defense WHERE sens = 'double_resistance'"), 0, 'aucune cible « Double résistance »');
+  assert.equal(n("SELECT count(*) AS n FROM monstre_rubrique WHERE titre LIKE 'Double(s)%'"), 0, 'aucun titre « Double(s) … »');
+  // la sensibilité x8 (compétences des golems de verre I à III) est x4
+  for (const r of db.prepare("SELECT monstre_id, rubrique, coalesce(titre, '') || char(10) || texte AS t FROM monstre_rubrique").all()) {
+    assert.doesNotMatch(r.t, /Dégâts\s*x\s*8/i, `${r.monstre_id} (${r.rubrique}) : x8`);
+  }
+});
+
+test('décision R155 : les titres par défaut d’une rubrique (carte créée sur le site de dev) écrivent les multiplicateurs de la base ; aucun titre de « Double résistance »', () => {
+  // le multiplicateur écrit à la fin d'un titre ou d'un effet : « ÷3 », « x3 », « = 0 » -> « ÷3 », « x3 », « =0 »
+  const multiplicateur = (texte) => texte.match(/(÷|x|=)\s*(\d+)\s*$/i)?.slice(1, 3).join('').toLowerCase() ?? null;
+  const paliers = db.prepare('SELECT id, effet_brut FROM resistance_palier').all();
+  const communs = paliers.filter((p) => p.id in RUBRIQUES);
+  assert.deepEqual(communs.map((p) => p.id).sort(), ['grande_resistance', 'grande_vulnerabilite', 'immunite', 'resistance', 'vulnerabilite']);
+  for (const p of communs) assert.equal(multiplicateur(RUBRIQUES[p.id]), multiplicateur(p.effet_brut), `${p.id} : « ${RUBRIQUES[p.id]} » / « ${p.effet_brut} »`);
+  // « Oui là aussi c'est x3 et pas 4... » (2026-10-22)
+  assert.equal(RUBRIQUES.grande_resistance, 'Grande(s) Résistance(s) Dégâts ÷3');
+  assert.equal(RUBRIQUES.grande_vulnerabilite, 'Grande(s) Vulnérabilité(s) Dégâts x3');
+  for (const titre of Object.values(RUBRIQUES)) assert.doesNotMatch(titre, /÷\s*4|x\s*[48]\b/i, titre);
+  // « Pareil remplace double résistance par Grande résistance » : plus de titre à proposer, ni dans le gabarit d'une carte créée ; le sens reste lu
+  // comme le CHECK du schéma l'admet (le rejeu d'un journal d'avant 0075 le traduit : test/serveur-edition-rejeu-resistances.test.mjs)
+  assert.ok(!('double_resistance' in RUBRIQUES), 'pas de titre « Double(s) Résistance(s) »');
+  assert.ok(!GABARIT_DE_CARTE.includes('double_resistance'));
+  assert.ok(SENS_DEFENSE.includes('double_resistance'), 'SENS_DEFENSE suit le CHECK de monstre_defense.sens');
+  const check = db.prepare("SELECT sql FROM sqlite_schema WHERE name = 'monstre_defense'").get().sql;
+  for (const sens of SENS_DEFENSE) assert.ok(check.includes(`'${sens}'`), `${sens} dans le CHECK`);
 });

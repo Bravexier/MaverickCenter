@@ -12,7 +12,7 @@
 .bcarte .texte { white-space: pre-line; }
 .bcarte [hidden] { display: none !important; }
 .bcible { display: inline-block; padding: 0 0.4rem; border-radius: var(--radius-pill); font-size: var(--fs-xs); line-height: 1.5; border: 1px solid var(--border); background: var(--bg); }
-.bcible--grande_vulnerabilite, .bcible--grande_resistance, .bcible--double_resistance { font-weight: 700; border-color: var(--bes-line); }
+.bcible--grande_vulnerabilite, .bcible--grande_resistance { font-weight: 700; border-color: var(--bes-line); }
 .bcible--reflexion { font-style: italic; }
 /* la couleur de la magie qui va avec la cible (la magie elle-même, ou la magie liée d'une altération d'état) : la classe de la magie et la classe de
    second rang de la seconde, ou de la même (lib/monstre-rendu.mjs, lib/palette-css.mjs#classesDeDeuxMagies : --couleur, --couleur-texte, --couleur-2) */

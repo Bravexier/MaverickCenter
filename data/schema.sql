@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 73;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 75;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -830,13 +830,14 @@ CREATE TABLE regle_magie (
 -- Les 6 paliers de la fiche (Personnage!BA2:BA12) : une valeur de résistance V (somme des crans) donne un palier.
 -- V >= 3 immunité, 2 grande résistance, 1 résistance, -1 vulnérabilité, -2 grande vulnérabilité, V <= -3 sensibilité ; V = 0 : neutre
 -- (aucune ligne). Les bornes sont lues dans les formules BI2:BI12 (BDD!V > 2, = 2, = 1, = -1, = -2, < -2).
+-- Les multiplicateurs sont ceux de la décision R155 (migration 0074, remplace R70) : =0, ÷3, ÷2, x2, x3, x4 ; la fiche auto V15.2.2 écrit ÷4, x4 et x8.
 CREATE TABLE resistance_palier (
   id             TEXT    NOT NULL PRIMARY KEY CHECK (id IN ('immunite', 'grande_resistance', 'resistance', 'vulnerabilite', 'grande_vulnerabilite', 'sensibilite')),
   libelle        TEXT    NOT NULL UNIQUE,                    -- « Grande résistance »
   valeur_min     INTEGER,                                    -- V >= valeur_min ; NULL = pas de borne basse
   valeur_max     INTEGER,                                    -- V <= valeur_max ; NULL = pas de borne haute
-  multiplicateur REAL    NOT NULL CHECK (multiplicateur >= 0),   -- « dégâts subits ÷4 » -> 0.25 ; « =0 » -> 0 ; « x8 » -> 8
-  effet_brut     TEXT    NOT NULL,                           -- « dégâts subits ÷4 »
+  multiplicateur REAL    NOT NULL CHECK (multiplicateur >= 0),   -- « dégâts subis ÷3 » -> 1/3 ; « =0 » -> 0 ; « x4 » -> 4 (R155)
+  effet_brut     TEXT    NOT NULL,                           -- « dégâts subis ÷3 »
   ordre          INTEGER NOT NULL UNIQUE CHECK (ordre >= 1), -- ordre d'affichage de la fiche (immunité en premier)
   origine        TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'fiche'),
   source_ref     TEXT    NOT NULL CHECK (length(source_ref) > 0),
@@ -2253,13 +2254,14 @@ CREATE INDEX monstre_ep ON monstre (ep_min, ep_max);
 -- (ou « [EP3] Santé : 330 … ») ; 'sante' / 'chakra' / 'barriere' = les mêmes, par échelle, sous un titre seul ; les autres rubriques suivent leur titre
 -- (`titre` tel qu'écrit, NULL pour 'attributs' qui n'en a pas). Sauf 'capacites', qui n'est qu'un repère (texte vide) : la place et le titre du bloc des
 -- capacités de la carte, qui sont dans monstre_capacite -> monstre_capacite_commune (décision R66 ; texte du doc : sources/raw et l'extracteur).
+-- 'double_resistance' n'est plus écrite depuis la migration 0075 (R155 : remplacée par 'grande_resistance') ; le CHECK l'admet encore (rien à reconstruire).
 CREATE TABLE monstre_rubrique (
   monstre_id TEXT    NOT NULL REFERENCES monstre(id),
   rang       INTEGER NOT NULL CHECK (rang >= 1),
   rubrique   TEXT    NOT NULL CHECK (rubrique IN ('attributs', 'sante', 'chakra', 'barriere', 'degats', 'defense', 'vitesse', 'caracteristiques', 'competences',
                                                   'vulnerabilite', 'grande_vulnerabilite', 'resistance', 'grande_resistance', 'double_resistance', 'immunite',
                                                   'reflexion', 'capacites', 'tactique')),
-  titre      TEXT,                                               -- « Vulnérabilité(s) Dégâts x2 », « Grande(s) Résistance(s) Dégâts ÷4 »
+  titre      TEXT,                                               -- « Vulnérabilité(s) Dégâts x2 », « Grande(s) Résistance(s) Dégâts ÷3 »
   texte      TEXT    NOT NULL,                                   -- paragraphes séparés par une ligne vide ; '' = rubrique vide
   origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
   source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
@@ -2349,6 +2351,7 @@ CREATE TABLE monstre_capacite_valeur (
 
 -- Cibles des vulnérabilités, résistances, immunités et réflexions : la rubrique quand elle est UNE liste « Brûlure, Paralysie » de noms courts
 -- (« Varie selon la magie », un tableau ou plusieurs lignes : aucune ligne ici, la rubrique fait foi). `sens` = la rubrique d'où vient la cible.
+-- 'double_resistance' n'est plus écrite depuis la migration 0075 (R155 : remplacée par 'grande_resistance') ; le CHECK l'admet encore (rien à reconstruire).
 CREATE TABLE monstre_defense (
   monstre_id TEXT    NOT NULL REFERENCES monstre(id),
   sens       TEXT    NOT NULL CHECK (sens IN ('vulnerabilite', 'grande_vulnerabilite', 'resistance', 'grande_resistance', 'double_resistance', 'immunite', 'reflexion')),

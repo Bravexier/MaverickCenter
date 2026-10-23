@@ -253,6 +253,10 @@ test('/fiche/regles.json : les règles de la base que lit la page (races et clas
   assert.ok(regles.sorts.length > 300);
   assert.ok(regles.classes.every((c) => /^couleur-classe-[a-z]+$/.test(c.classe) && !('couleur' in c) && Number.isInteger(c.groupe.ordre)));
   assert.equal(regles.resistance_paliers.length, 6);
+  // décision R155 : les multiplicateurs et les effets que la page applique et affiche
+  assert.deepEqual(regles.resistance_paliers.map((p) => [p.id, p.multiplicateur, p.effet]), [['immunite', 0, 'dégâts subis =0'],
+    ['grande_resistance', 1 / 3, 'dégâts subis ÷3'], ['resistance', 0.5, 'dégâts subis ÷2'], ['vulnerabilite', 2, 'dégâts subis x2'],
+    ['grande_vulnerabilite', 3, 'dégâts subis x3'], ['sensibilite', 4, 'dégâts subis x4']]);
   assert.ok(regles.magies.some((m) => m.resistances.length) && regles.etats.length > 0);
   // la couleur d'une magie : les noms de ses classes de la palette (lib/palette-css.mjs), que la page porte ; jamais une couleur
   const palette = classesDeLaPalette();

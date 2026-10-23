@@ -11,7 +11,7 @@
 // quand l'écriture est sans ambiguïté (sinon NULL, le texte reste). Seule exception, les capacités (décisions R66 à R69) : chaque capacité écrite sur une
 // carte est rangée sous une capacité commune par le registre tools/bestiaire/capacites.json (monstre_capacite_commune, monstre_capacite,
 // monstre_capacite_valeur), et la rubrique « Capacité(s) » ne garde que sa place (texte vide).
-// Transformations : les quatre graphies que la base a déjà corrigées partout (CORRECTIONS) ; et le nom d'une carte, écrit en capitales dans le doc (« AMBLYPYGE DE BRAI ») ; `nom` le remet en minuscules en gardant la
+// Transformations : les graphies que la base a déjà corrigées partout et les multiplicateurs de la décision R155 (CORRECTIONS) ; et le nom d'une carte, écrit en capitales dans le doc (« AMBLYPYGE DE BRAI ») ; `nom` le remet en minuscules en gardant la
 // casse que le doc donne ailleurs à chaque mot (titre de l'espèce, puis texte courant : « Amblypyge de brai », « Élémentaire de l'Eau ») et les chiffres romains
 // en capitales (« Golem de fer II ») ; `nom_brut` garde l'original.
 import { readFileSync } from 'node:fs';
@@ -34,6 +34,7 @@ export const RUBRIQUES = [
   ['competences', /^Compétence\(s\) secondaire\(s\)/],
   ['grande_vulnerabilite', /^Grande\(s\s*\)\s*(vulnérabilité|faiblesse)\(s\)/i],
   ['vulnerabilite', /^Vulnérabilité\(s\)\s*Dégâts/i],
+  // R155 : depuis 0075, plus aucune ligne du doc n'y tombe (les CORRECTIONS ancrées la mènent en grande_resistance) ; repli gardé, SENS_DEFENSE l'admet.
   ['double_resistance', /^Double\(s\)\s*Résistance\(s\)/i],
   ['grande_resistance', /^Grande\(s\)\s*résistance\(s\)/i],
   ['resistance', /^Résistance\(s\)\s*Dégâts/i],
@@ -65,8 +66,11 @@ const TITRE_DE_BLOC = (l) => /\p{Lu}.*\p{Lu}.*\p{Lu}/u.test(l) && !/\p{Ll}/u.tes
 
 /**
  * Corrections déjà décidées pour toute la base (une graphie corrigée l'est partout où elle est écrite : skill base-orthographe) et que le doc écrit
- * encore à l'ancienne : [motif, remplacement, origine]. Rien d'autre n'est corrigé ; sources/raw garde le texte du doc. Les quatre dernières, du butin
- * (décision R57 : « Corrige et rapproche les. Les fautes de frappe ça arrive. »), sont écrites une seule fois dans le doc.
+ * encore à l'ancienne : [motif, remplacement, origine]. Rien d'autre n'est corrigé ; sources/raw garde le texte du doc. Les quatre du butin
+ * (décision R57 : « Corrige et rapproche les. Les fautes de frappe ça arrive. ») sont écrites une seule fois dans le doc. Les quatre dernières (décision
+ * R155 : « Oui là aussi c'est x3 et pas 4... », « Pareil remplace double résistance par Grande résistance », « Oui x4 aussi ») ne touchent qu'une ligne
+ * entière, compactée : un titre de résistance ou de vulnérabilité (15, 22 et 10 lignes du doc), « Sensibilité(s) Dégâts x8 » (3) ; seul le
+ * multiplicateur change (et « Double » -> « Grande »), et la correction passe avant le classement de la rubrique (RUBRIQUES, sur le titre corrigé).
  */
 export const CORRECTIONS = [
   [/le Démon d'Eau Noire/g, 'Eaunoire', 'décision R21, migration 0012-eaunoire'],
@@ -81,6 +85,14 @@ export const CORRECTIONS = [
   [/\b4 os moyen\b/g, 'Os moyen x 4', 'décision R57, migration 0039-bestiaire-reponses'],
   // la chair du blob blanc (« blobs argents ») : « Gelée blanche » dans le glossaire et le doc « Alchimie », « Gelée argent » nulle part ailleurs
   [/\bGelée argent\b/g, 'Gelée blanche', 'décision R57, migration 0039-bestiaire-reponses'],
+  // les titres de Grande résistance en ÷3 (« Grande(s) Résistance(s) » et « Grande(s) résistance(s) », chaque casse gardée)
+  [/^(Grande\(s\) [Rr]ésistance\(s\) Dégâts) ÷4$/, '$1 ÷3', 'décision R155, migration 0075-r155-titres-du-bestiaire'],
+  // les titres de Grande vulnérabilité en x3 (« Vulnérabilité », « vulnérabilité », « faiblesse » et l'espace de « Grande(s )Vulnérabilité(s) » gardés)
+  [/^(Grande\(s ?\) ?(?:[Vv]ulnérabilité|faiblesse)\(s\) Dégâts) x4$/, '$1 x3', 'décision R155, migration 0075-r155-titres-du-bestiaire'],
+  // la Double résistance devient la Grande résistance, en ÷3 (« Dégâts/Effets » gardé) : la carte est rangée en grande_resistance (RUBRIQUES)
+  [/^Double\(s\) (Résistance\(s\) Dégâts(?:\/Effets)?) ÷4$/, 'Grande(s) $1 ÷3', 'décision R155, migration 0075-r155-titres-du-bestiaire'],
+  // la sensibilité des golems de verre I à III, x4 (compétences)
+  [/^(Sensibilité\(s\) Dégâts) x8$/, '$1 x4', 'décision R155, migration 0075-r155-titres-du-bestiaire'],
 ];
 /** Une ligne du doc, blancs de mise en page (espaces, insécables) réduits et corrections déjà décidées appliquées. */
 export const compacter = (l) => CORRECTIONS.reduce((t, [motif, par]) => t.replace(motif, par), l.replace(/[ \u00a0]+/g, ' ').trim());
