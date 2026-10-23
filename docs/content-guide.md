@@ -142,8 +142,16 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   armes de départ, les types d'armure ni les niveaux des accessoires), l'onglet Armes (seconds rangs des caractéristiques, `materiau`, `arme`), `ArmuresPage.astro` (`armure`,
   `poids`), `AccessoiresPage.astro` (`niveau`), `ComposantsPage.astro` (`materiau`), `ClassesPastilles.astro` et `ClassePage.astro` (`classe`),
   `RacesPastilles.astro` et `RacePage.astro` (`race`), et le mode modification avec la page d'une race ou d'une classe créée,
-  `scripts/edition/nouvelles.mjs`, car la page 404 où il la dessine ne les a pas), comme les combinaisons des potions (`cssDesPotions`). Chaque classe
-  posée existe dans une feuille de sa page (testé sur le site construit).
+  `scripts/edition/nouvelles.mjs`, car la page 404 où il la dessine ne les a pas), comme les combinaisons des potions (`cssDesPotions`) et les couleurs
+  des événements de la chronologie (`cssDesEvenements`, ci-dessous). Chaque classe posée existe dans une feuille de sa page (testé sur le site construit).
+- **Les couleurs des événements de la chronologie** (lot 7) : une couleur calculée, pas une famille fixe (elle dépend de la liste des événements). La
+  règle est celle du site, `lib/chronologie-couleurs.mjs#couleursDesEvenements` (aucune source ne donne de couleur à un événement : une teinte par
+  événement sur la roue des couleurs dans l'ordre de lecture, gris pour « Date inconnue », vert sombre pour « Aujourd'hui », chacune assez foncée pour un
+  texte blanc) ; la classe `.couleur-evenement-<id>` (`classeDEvenement`) pose `--couleur` et `--couleur-texte` (le blanc pour chaque événement : 4,61:1
+  au plus juste). `components/chronologie/Chronologie.astro` émet la feuille de tous les événements (`cssDesEvenements`) dans un `<style
+  data-couleurs-chronologie>` à part, sur les pages de la chronologie seules ; la page (`.chrono`) porte la classe de l'événement affiché, chaque ligne de
+  la frise la sienne, sa barre celle de l'événement visible précédent et le morceau de barre qu'elle contient celle du suivant (le dégradé) ; le script
+  du filtre les repose entre les lignes visibles, et l'éditeur du site de dev réécrit la feuille d'après la base vivante avant de poser les classes.
 - **Les familles** : `magie` (`sort-format.mjs#COULEURS_DES_MAGIES` ; id = le nom court normalisé de la magie, `feu`, `espace-temps`, et
   `par-defaut` pour une magie inconnue), `attribut` (`lib/attributs-couleurs.mjs` : `sante`, `barriere`, `chakra`, `corruption` ; la 4ᵉ barre de la fiche prend la classe de sa magie, Sang
   ou Nécromancie, depuis le 2026-10-23),
@@ -201,7 +209,11 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   sur la couleur d'un niveau, clair dans les deux thèmes, le mot « Maudit » prend la référence assombrie, `color-mix(in srgb, var(--maudit) 80%,
   #000)` (environ `#72368a`, 4,5:1 au moins sur les cinq niveaux ; réponse du propriétaire du 2026-10-23 à « Sur l'encart d'un accessoire, le mot « Maudit » est en violet sur la couleur du niveau, un fond clair dans les deux thèmes. Le violet actuel (#8e44ad) n'atteint pas le contraste minimal de lisibilité (4,5:1) aux niveaux 4 et 5 (4,0:1 et 3,3:1). Le violet plus clair choisi pour le thème sombre (#a86ec0) y descendrait de 2,1:1 à 3,3:1. Quel violet sur les fonds de niveau ? » : « Violet assombri (Recommandé) » ; option : « Sur un fond de niveau, dans les deux thèmes, le violet du site est assombri par le calcul (environ #72368a), au moins 4,5:1 sur les cinq niveaux ; aucune couleur ajoutée. ») ; `--maudit-choisi` (le violet d'une ligne « MALÉDICTION » choisie :
   `var(--maudit-texte)` en clair, 4,6:1 ; en sombre, `color-mix(in srgb, var(--maudit-texte) 80%, #fff)`, environ `#b98bcd`, 4,8:1 sur le fond
-  `#3c2e1f` de la ligne choisie ; réponse du propriétaire du 2026-10-23 à « Sur l'onglet Accessoires, en thème sombre, une ligne « MALÉDICTION » choisie (surlignée après un tirage ou un clic) a un fond brun foncé (#3c2e1f). Le violet clair choisi pour le thème sombre (#a86ec0) n'y atteint que 3,5:1, sous le contraste minimal de lisibilité (4,5:1). En thème clair, cette ligne est lisible (4,6:1). Que faire ? » : « Plus clair sur la ligne choisie (Recommandé) » ; option : « En thème sombre seulement, sur une ligne choisie, le violet clair est encore éclairci par le calcul (environ #b98bcd), 4,8:1 ; aucune couleur ajoutée, le thème clair ne change pas. ») ; et `--ombre-encart` (`0 6px 12px -10px rgb(0 0 0 / 0.35)`, l'ombre de l'encart de l'accessoire créé). Un voile noir ou
+  `#3c2e1f` de la ligne choisie ; réponse du propriétaire du 2026-10-23 à « Sur l'onglet Accessoires, en thème sombre, une ligne « MALÉDICTION » choisie (surlignée après un tirage ou un clic) a un fond brun foncé (#3c2e1f). Le violet clair choisi pour le thème sombre (#a86ec0) n'y atteint que 3,5:1, sous le contraste minimal de lisibilité (4,5:1). En thème clair, cette ligne est lisible (4,6:1). Que faire ? » : « Plus clair sur la ligne choisie (Recommandé) » ; option : « En thème sombre seulement, sur une ligne choisie, le violet clair est encore éclairci par le calcul (environ #b98bcd), 4,8:1 ; aucune couleur ajoutée, le thème clair ne change pas. ») ; et `--ombre-encart` (`0 6px 12px -10px rgb(0 0 0 / 0.35)`, l'ombre de l'encart de l'accessoire créé) ; puis (lot de la chronologie, la même valeur dans
+  les deux thèmes) `--ombre-evenement` (`0 10px 30px rgb(0 0 0 / 0.05)`, la page d'un événement), `--ombre-barre-du-bas` (`0 -4px 18px rgb(0 0 0 /
+  0.08)`, la barre du bas du téléphone), `--ombre-poignee` (`0 1px 4px rgb(0 0 0 / 0.12)`, la poignée de la mini-frise), `--ombre-tiroir` (`10px 0 34px
+  rgb(0 0 0 / 0.28)`, le tiroir de la frise) et `--voile-tiroir` (`rgb(24 18 12 / 0.48)`, le voile sous le tiroir ouvert : pas un noir pur) ; le masque
+  des pointillés de « Date inconnue » s'écrit en `currentColor` (un masque ne lit que l'opacité). Un voile noir ou
   blanc translucide (le survol d'une ligne, les voiles des champs et du dé posés sur la couleur d'un niveau) s'écrit en noir ou blanc de mélange,
   `color-mix(in srgb, #fff 70%, transparent)`, le même rendu que `rgb(255 255 255 / 0.7)`.
 - **Deux couleurs d'une famille sur un même élément** (le dégradé de l'innée vers l'acquise des cadres de la fiche et des lignes de `/personnages/`,
@@ -237,14 +249,17 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
     créé (`styles/accessoires/accessoires.css`, qui ne lit `--couleur` et `--couleur-texte` que sur l'élément qui porte la classe d'un niveau,
     `[class*='couleur-niveau-']` ; le texte adouci de la colonne du jet et des intitulés de l'encart, 68 % du texte de la classe, atteint 4,9:1 au
     moins sur chaque niveau, testé) ; le script de l'onglet reprend la classe de la ligne de l'effet choisi dans l'encart et, sur une ligne de
-    compétence, celle du niveau du bonus d'acquis (`data-niveaux` : `classe`).
+    compétence, celle du niveau du bonus d'acquis (`data-niveaux` : `classe`) ;
+  - **la chronologie** (lot 7) : la page d'un événement et `/chronologie/` (`--chrono`, et `--chrono-sur` pour le texte de ses aplats, tirés de la classe
+    posée sur `.chrono`), lignes de la frise, barre en dégradé (`--c`, `--c-avant`, `--c-apres` lus sur la ligne, sa barre et son morceau de barre, qui
+    portent leur classe), mini-frise et tiroir du téléphone, éditeur du site de dev (`styles/chronologie/chronologie.css`).
   Une feuille garde ses variables locales (`--mag`, `--creature-1`, `--cadre`, `--magie-1`…) mais les tire des propriétés de la classe, jamais d'un
   style. Les scripts du navigateur posent des classes (`classList`), jamais une couleur : ils reçoivent leurs noms de la page (`data-couleurs` de
   `/personnages/`) ou de `regles.json` (`classe` et `classe_2` de chaque magie, `classe` de chaque caractéristique, posture, alignement, race, classe
   et palier, de `mode_hyper` et `mode_hyper.cent`, `race_par_nature`, `neutre` : skill `zone-fiche`), car un script de page n'importe pas
   `palette-css.mjs`. La carte de `/magies/` : les règles du survol (écrites par le composant) font lire au trait `--couleur` ou `--couleur-2` de ses
   classes selon la magie survolée ; seule la part de la couleur dans le trait se calcule encore depuis la valeur (luminance, au build).
-  Les autres couleurs (parties du guide, chronologie, livres, archives, mise à jour…) posent encore leur couleur en style : elles passeront aux classes lot par lot, comme les couleurs encore écrites des feuilles des lots faits (les
+  Les autres couleurs (parties du guide, livres, archives, mise à jour…) posent encore leur couleur en style : elles passeront aux classes lot par lot, comme les couleurs encore écrites des feuilles des lots faits (les
   voiles blancs translucides des bannières, `rgba(255, 255, 255, …)` de `classe/page.css`, `classe/dons.css`, `race/page.css`, `magie/page.css` ;
   l'échelle des relations entre les peuples, `--regard-evitee` de `race/base.css` ; les teintes des genres de sort, `.genre` de
   `styles/magie/sorts.css`, et des types de don, `.don-type` de `classe/dons.css` ; l'ombre des infobulles). La page Debug et l'impression ne

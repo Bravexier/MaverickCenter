@@ -30,7 +30,9 @@ entrées à trier. » Les catégories sont un vocabulaire **à part**, propre à
 | Contenu | la date (« An 505 », « An -400 à -350 »), le titre, la portée et le lieu d'un Impact (lien vers la page du Codex qui porte exactement ce nom), ses **catégories** (une pastille chacune, qui mène à la frise filtrée sur elle : `/chronologie/?filtre=<id>` ; aucune : « Sans catégorie (à trier) » sur le site de dev, rien en production), puis sa **description** : un ou plusieurs blocs de texte, chacun avec son **lien** (une page du wiki) en légende. Pour un événement des sources, les blocs sont les **extraits** : chaque passage copié tel quel, la date qu'il écrit surlignée, regroupés par page source |
 | Recherche | les événements sont dans l'index de `/recherche/` (type « Événement »), avec le nom de leurs catégories et le texte de leurs descriptions ; ils ne portent pas de mots-clés |
 
-Code : `client/src/lib/chronologie.mjs` (pur : dates, ordre, voisins, adresses, couleurs du dégradé, date surlignée, contrôle d'une date), `lib/chronologie-db.mjs`
+Code : `client/src/lib/chronologie.mjs` (pur : dates, ordre, voisins, adresses, date surlignée, contrôle d'une date), `lib/chronologie-couleurs.mjs` (la règle
+des couleurs du dégradé, une teinte par événement, posée par les classes de la palette `couleur-evenement-<id>` : `docs/content-guide.md`, « Couleurs du
+site : la palette en classes »), `lib/chronologie-db.mjs`
 (chargeur, choix du filtre), `components/chronologie/Chronologie.astro` (la mise en page, les chevrons et leur script qui suit le filtre, les gestes),
 `Frise.astro` (la frise, le filtre et son script, le défilement) et `ChronologieEvenement.astro` (la page d'un événement), `styles/chronologie/chronologie.css`
 (inséré en `?raw`), `pages/chronologie/index.astro` et `[slug].astro`. Site de dev : `serveur/edition-chronologie.mjs` (service), `src/scripts/edition/chronologie.mjs`

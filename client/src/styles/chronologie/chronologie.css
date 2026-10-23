@@ -1,10 +1,14 @@
 /* Chargé uniquement depuis components/chronologie/Chronologie.astro (?raw) : les pages de la chronologie (/chronologie/ et /chronologie/<événement>/).
    Demande du propriétaire : sur la gauche, en vertical, la chronologie en une immense barre avec un dégradé, la date à gauche de la barre, le titre à
    droite ; un clic fait apparaître la page de l'événement à côté (75 % de la largeur) ; tout à l'extrémité droite, deux chevrons, Haut et Bas.
-   Couleur de l'événement affiché (lib/chronologie.mjs#couleursDesEvenements), posée par `--couleur-evenement` : --chrono pour les aplats (texte blanc
-   dessus), --chrono-texte pour un texte coloré (éclairci en thème sombre). Chaque ligne de la frise porte la sienne (--c) et celles de ses voisines. */
+   Couleurs (skill ui-couleurs : « Aucune couleur en dur. ») : la teinte de chaque événement (lib/chronologie-couleurs.mjs#couleursDesEvenements) est la
+   classe de la palette `.couleur-evenement-<id>` (--couleur, --couleur-texte ; lib/palette-css.mjs#classeDEvenement), lue sur l'élément qui la porte.
+   `.chrono` porte celle de l'événement affiché : --chrono pour les aplats, --chrono-sur pour leur texte (celui de la classe : le blanc),
+   --chrono-texte pour un texte coloré (éclairci en thème sombre) ; sans classe, l'accent du site. Chaque ligne de la frise porte la sienne (--c), sa
+   barre celle de l'événement précédent, le morceau de barre celle du suivant (Frise.astro). Ombres et voile : les jetons du thème (styles/global/base.css). */
 .chrono {
-  --chrono: var(--couleur-evenement, var(--accent));
+  --chrono: var(--accent);
+  --chrono-sur: var(--texte-sur-fonce);
   /* texte coloré sur la feuille : la couleur assombrie en thème clair, éclaircie en sombre */
   --chrono-texte: color-mix(in srgb, var(--chrono) 82%, #000);
   --chrono-soft: color-mix(in srgb, var(--chrono) 12%, var(--surface));
@@ -12,6 +16,7 @@
   /* teinte des infobulles (styles/global/infobulles.css) : celle de l'événement */
   --mag: var(--chrono);
 }
+.chrono[class*='couleur-evenement-'] { --chrono: var(--couleur); --chrono-sur: var(--couleur-texte); }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .chrono { --chrono-texte: color-mix(in srgb, var(--chrono) 45%, #fff); }
 }
@@ -92,17 +97,17 @@ html.js .frise__filtre:not([hidden]) { display: flex; align-items: center; gap: 
 .frise__legende .frise__repere { position: static; display: inline-block; translate: none; }
 .frise__liste { margin: 0; padding: 0; list-style: none; }
 
-/* Couleurs d'une ligne : la sienne (--c) et celles de ses voisines, éclaircies en thème sombre (--vif) pour rester visibles sur le fond. */
+/* Couleurs d'une ligne : la sienne (--c, la classe de son événement ; la légende, sans classe : --muted), éclaircie en thème sombre (--vif) pour rester
+   visible sur le fond ; celles de ses voisines se lisent sur la barre et son morceau, qui portent leur classe (plus bas). */
 .frise__evenement,
 .frise__legende-item {
   --vif: 0%;
   --trait: color-mix(in srgb, var(--c, var(--muted)), #fff var(--vif));
-  --trait-avant: color-mix(in srgb, var(--c-avant, var(--c)), #fff var(--vif));
-  --trait-apres: color-mix(in srgb, var(--c-apres, var(--c)), #fff var(--vif));
   --texte: color-mix(in srgb, var(--c, var(--muted)) 82%, #000);
   /* hauteur du point : le milieu de la première ligne du titre */
   --y: 1.1rem;
 }
+.frise__evenement[class*='couleur-evenement-'] { --c: var(--couleur); }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .frise__evenement { --vif: 42%; --texte: color-mix(in srgb, var(--c) 45%, #fff); }
 }
@@ -130,9 +135,20 @@ html.js .frise__filtre:not([hidden]) { display: flex; align-items: center; gap: 
   line-height: 1.3;
 }
 /* La barre : chaque ligne en peint un morceau, du mélange avec la couleur précédente (en haut) au mélange avec la suivante (en bas) en passant par
-   la sienne au niveau du point ; les morceaux se raccordent sans à-coup (le bas de l'un est le haut du suivant). */
-.frise__barre { position: relative; }
-.frise__barre::before {
+   la sienne au niveau du point ; les morceaux se raccordent sans à-coup (le bas de l'un est le haut du suivant). La barre porte la classe de
+   l'événement visible précédent (--c-avant), son morceau celle du suivant (--c-apres) ; au bord, aucune : la couleur de la ligne. */
+.frise__barre {
+  position: relative;
+  --trait-avant: color-mix(in srgb, var(--c-avant, var(--c)), #fff var(--vif));
+}
+.frise__barre[class*='couleur-evenement-'] { --c-avant: var(--couleur); }
+.frise__morceau {
+  position: absolute;
+  inset: 0;
+  --trait-apres: color-mix(in srgb, var(--c-apres, var(--c)), #fff var(--vif));
+}
+.frise__morceau[class*='couleur-evenement-'] { --c-apres: var(--couleur); }
+.frise__morceau::before {
   content: '';
   position: absolute;
   /* un demi-pixel de chevauchement : à une échelle d'affichage de 125 % ou 150 %, le bord lissé de deux morceaux ne laisse pas voir le fond */
@@ -149,18 +165,19 @@ html.js .frise__filtre:not([hidden]) { display: flex; align-items: center; gap: 
   );
 }
 /* les bouts de la barre : la première et la dernière ligne (visibles, une fois la frise filtrée : classes posées par le script de Frise.astro) */
-.frise__evenement:first-child .frise__barre::before,
-.frise__evenement.est-premier .frise__barre::before { top: calc(var(--y) - 0.6rem); border-radius: 0.3rem 0.3rem 0 0; }
-.frise__evenement:last-child .frise__barre::before,
-.frise__evenement.est-dernier .frise__barre::before { bottom: auto; height: calc(var(--y) + 0.6rem); border-radius: 0 0 0.3rem 0.3rem; }
-.frise__evenement.est-premier.est-dernier .frise__barre::before { top: calc(var(--y) - 0.6rem); height: 1.2rem; border-radius: 0.3rem; }
+.frise__evenement:first-child .frise__morceau::before,
+.frise__evenement.est-premier .frise__morceau::before { top: calc(var(--y) - 0.6rem); border-radius: 0.3rem 0.3rem 0 0; }
+.frise__evenement:last-child .frise__morceau::before,
+.frise__evenement.est-dernier .frise__morceau::before { bottom: auto; height: calc(var(--y) + 0.6rem); border-radius: 0 0 0.3rem 0.3rem; }
+.frise__evenement.est-premier.est-dernier .frise__morceau::before { top: calc(var(--y) - 0.6rem); height: 1.2rem; border-radius: 0.3rem; }
 /* l'événement affiché quand le filtre ne le retient pas : il reste (on lit sa page), en retrait */
 .frise__evenement.est-hors-filtre .frise__lien { opacity: 0.6; }
 .frise__evenement.est-hors-filtre .frise__titre::after { content: ' (hors du filtre)'; color: var(--muted); font-size: 0.8em; font-weight: 400; }
 /* « Date inconnue » : la barre en pointillés */
-.frise__evenement--inconnue .frise__barre::before {
-  -webkit-mask: repeating-linear-gradient(to bottom, #000 0 0.4rem, transparent 0.4rem 0.7rem);
-  mask: repeating-linear-gradient(to bottom, #000 0 0.4rem, transparent 0.4rem 0.7rem);
+.frise__evenement--inconnue .frise__morceau::before {
+  /* un masque ne lit que l'opacité : la partie pleine, la couleur du texte de la ligne (opaque) */
+  -webkit-mask: repeating-linear-gradient(to bottom, currentColor 0 0.4rem, transparent 0.4rem 0.7rem);
+  mask: repeating-linear-gradient(to bottom, currentColor 0 0.4rem, transparent 0.4rem 0.7rem);
 }
 /* Le point : rond ; plus grand pour un Impact mineur ; un losange pour un Impact majeur. */
 .frise__repere {
@@ -203,7 +220,7 @@ html.js .frise__filtre:not([hidden]) { display: flex; align-items: center; gap: 
   border-top: 4px solid var(--chrono);
   border-radius: calc(var(--radius) * 1.5);
   background: var(--surface);
-  box-shadow: 0 1px 0 var(--border), 0 10px 30px rgb(0 0 0 / 0.05);
+  box-shadow: 0 1px 0 var(--border), var(--ombre-evenement);
 }
 .chrono-numero {
   margin: 0;
@@ -235,7 +252,7 @@ html.js .frise__filtre:not([hidden]) { display: flex; align-items: center; gap: 
   font-size: var(--fs-md);
   font-weight: 600;
 }
-.chrono-portee--majeur { border-color: var(--chrono); background: var(--chrono); color: #fff; }
+.chrono-portee--majeur { border-color: var(--chrono); background: var(--chrono); color: var(--chrono-sur); }
 .chrono-portee--mineur { background: var(--chrono-soft); color: var(--chrono-texte); }
 .chrono-lieu { color: var(--text); text-decoration: none; }
 a.chrono-lieu:hover, a.chrono-lieu:focus-visible { border-color: var(--chrono); background: var(--chrono-soft); }
@@ -316,7 +333,7 @@ mark.chrono-surligne {
   padding: 0.45rem 1rem;
   border-radius: var(--radius-pill);
   background: var(--chrono);
-  color: #fff;
+  color: var(--chrono-sur);
   font-weight: 700;
   text-decoration: none;
 }
@@ -348,7 +365,7 @@ mark.chrono-surligne {
 .chrono-chevron svg { width: 1.45rem; height: 1.45rem; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; transition: translate var(--duree); }
 /* un chevron grisé (au bord de la frise ou de la catégorie choisie) est aussi un <a>, sans adresse : il ne s'allume pas */
 a.chrono-chevron:not([aria-disabled='true']):hover,
-a.chrono-chevron:not([aria-disabled='true']):focus-visible { border-color: var(--chrono); background: var(--chrono); color: #fff; }
+a.chrono-chevron:not([aria-disabled='true']):focus-visible { border-color: var(--chrono); background: var(--chrono); color: var(--chrono-sur); }
 a.chrono-chevron:focus-visible { outline: 2px solid var(--chrono-texte); outline-offset: 3px; }
 a.chrono-chevron[rel='prev']:not([aria-disabled='true']):hover svg { translate: 0 -2px; }
 a.chrono-chevron[rel='next']:not([aria-disabled='true']):hover svg { translate: 0 2px; }
@@ -431,7 +448,7 @@ html.frise-ouverte .chrono-page { view-transition-name: none; }
     background: color-mix(in srgb, var(--surface) 94%, transparent);
     -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
-    box-shadow: 0 -4px 18px rgb(0 0 0 / 0.08);
+    box-shadow: var(--ombre-barre-du-bas);
   }
   /* en haut de la barre, un filet : la place de l'événement dans la frise (rang / nombre d'événements) */
   .chrono--evenement .chrono-chevrons::before {
@@ -444,7 +461,7 @@ html.frise-ouverte .chrono-page { view-transition-name: none; }
     background: linear-gradient(to right, var(--chrono) var(--progression), color-mix(in srgb, var(--chrono) 18%, transparent) var(--progression));
   }
   .chrono--evenement .chrono-chevron { width: 3rem; height: 3rem; box-shadow: none; }
-  .chrono--evenement a.chrono-chevron:not([aria-disabled='true']):active { border-color: var(--chrono); background: var(--chrono); color: #fff; }
+  .chrono--evenement a.chrono-chevron:not([aria-disabled='true']):active { border-color: var(--chrono); background: var(--chrono); color: var(--chrono-sur); }
   /* au milieu, l'événement affiché (une ligne pour la date et le rang, une pour le titre, coupé au besoin : il est en entier en haut de la page) */
   .chrono-barre__frise {
     display: flex;
@@ -530,7 +547,7 @@ html.frise-ouverte .chrono-page { view-transition-name: none; }
     clip-path: inset(50%);
     white-space: nowrap;
   }
-  html.js .chrono--evenement .frise:not(.est-ouverte) .frise__barre::before { width: 0.42rem; margin-left: -0.21rem; }
+  html.js .chrono--evenement .frise:not(.est-ouverte) .frise__morceau::before { width: 0.42rem; margin-left: -0.21rem; }
   html.js .chrono--evenement .frise:not(.est-ouverte) .frise__repere { width: 0.55rem; height: 0.55rem; border-width: 2px; }
   html.js .chrono--evenement .frise:not(.est-ouverte) .frise__repere--mineur { width: 0.7rem; height: 0.7rem; border-width: 2.5px; }
   html.js .chrono--evenement .frise:not(.est-ouverte) .frise__repere--majeur { width: 0.62rem; height: 0.62rem; border-width: 2.5px; }
@@ -580,7 +597,7 @@ html.frise-ouverte .chrono-page { view-transition-name: none; }
     border: 1.5px solid var(--chrono-line);
     border-radius: 50%;
     background: var(--surface);
-    box-shadow: 0 1px 4px rgb(0 0 0 / 0.12);
+    box-shadow: var(--ombre-poignee);
   }
   .frise-ouvrir__poignee svg { width: 1.05rem; height: 1.05rem; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
   html.js .chrono--evenement .frise-ouvrir:focus-visible { outline: 2px solid var(--chrono-texte); outline-offset: -3px; }
@@ -597,7 +614,7 @@ html.frise-ouverte .chrono-page { view-transition-name: none; }
     padding: 0 0 0 env(safe-area-inset-left);
     border-right: 1px solid var(--border);
     background: var(--bg);
-    box-shadow: 10px 0 34px rgb(0 0 0 / 0.28);
+    box-shadow: var(--ombre-tiroir);
     animation: frise-tiroir 0.22s ease-out;
   }
   html.js .chrono--evenement .frise.est-ouverte .frise__liste {
@@ -625,7 +642,7 @@ html.frise-ouverte .chrono-page { view-transition-name: none; }
   }
   html.js .frise.est-ouverte .frise__legende { justify-content: flex-start; gap: 0.2rem 0.8rem; }
   /* le voile sur le reste de l'écran : un appui ferme le tiroir */
-  html.js .frise-voile:not([hidden]) { position: fixed; z-index: 40; inset: 0; display: block; background: rgb(24 18 12 / 0.48); animation: frise-voile 0.22s ease-out; }
+  html.js .frise-voile:not([hidden]) { position: fixed; z-index: 40; inset: 0; display: block; background: var(--voile-tiroir); animation: frise-voile 0.22s ease-out; }
   @keyframes frise-voile { from { opacity: 0; } }
   html.frise-ouverte { overflow: hidden; }
 }

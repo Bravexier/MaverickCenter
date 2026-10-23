@@ -1,12 +1,13 @@
-// Chronologie (/chronologie/, docs/chronologie.md) : la logique pure de lib/chronologie.mjs (dates, ordre, voisins, adresses, couleurs du dégradé de
-// la frise, date surlignée) et les tables `evenement` / `evenement_extrait` de la base, rejouées depuis le registre tools/chronologie/evenements.json sur les pages
+// Chronologie (/chronologie/, docs/chronologie.md) : la logique pure de lib/chronologie.mjs (dates, ordre, voisins, adresses, date surlignée), la règle
+// des couleurs du dégradé de la frise (lib/chronologie-couleurs.mjs) et les tables `evenement` / `evenement_extrait` de la base, rejouées depuis le registre tools/chronologie/evenements.json sur les pages
 // telles que l'import les a laissées (le site de dev peut réécrire une page du Codex ou d'une race : l'extrait, lui, reste celui de l'import).
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  adresseDEvenement, contraste, couleursDesEvenements, dateCourte, dateDansLeTexte, erreurDeDate, extraitsParPage, libelleDeDate, marquerLaDate, ordonner,
-  operationsDesCategories, surlignerLaDate, voisins,
+  adresseDEvenement, dateCourte, dateDansLeTexte, erreurDeDate, extraitsParPage, libelleDeDate, marquerLaDate, ordonner, operationsDesCategories,
+  surlignerLaDate, voisins,
 } from '../src/lib/chronologie.mjs';
+import { contraste, couleursDesEvenements } from '../src/lib/chronologie-couleurs.mjs';
 import { chargerChronologie } from '../src/lib/chronologie-db.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';

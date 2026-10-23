@@ -60,6 +60,11 @@
 // Une potion (onglet Ceinture de la page Équipement) : sa classe de combinaison `.couleur-potion-<famille>-<id>-n<rang>` (classeDePotion) pose
 // `--ligne-fond` et `--ligne-texte` (la ligne colorée du gabarit commun, styles/global/tableaux.css), calculés par lib/alchimie-couleurs.mjs#couleurDePotion
 // depuis la couleur de sa classe de base ; components/ceinture/CeinturePanneau.astro n'émet que celles de ses lignes (cssDesPotions).
+//
+// Un événement de la chronologie : sa classe `.couleur-evenement-<id>` (classeDEvenement, id = l'id de l'événement normalisé) pose `--couleur` et
+// `--couleur-texte`, la teinte que lui donne la règle du site (lib/chronologie-couleurs.mjs#couleursDesEvenements, d'après la liste des événements : ce
+// n'est pas une famille fixe) ; components/chronologie/Chronologie.astro émet celles de la frise (cssDesEvenements), à part, et l'éditeur du site de
+// dev les réécrit d'après la base vivante. Ce module n'importe pas la règle : il reçoit ses couleurs.
 // Sans dépendance (modules purs) : importé au build (layouts/Base.astro, composants et modules de rendu) et par les tests.
 import { COULEUR_PAR_DEFAUT, COULEURS_DES_MAGIES, cleDeMagieConnue, texteSurCouleur } from './sort-format.mjs';
 import { COULEURS_DES_ATTRIBUTS } from './attributs-couleurs.mjs';
@@ -276,3 +281,14 @@ export function cssDesPotions(couleurs) {
   }
   return [...regles.values()].join('');
 }
+
+/** La classe de la couleur d'un événement de la chronologie, d'après son id (« flammes-bleues » → « couleur-evenement-flammes-bleues »). */
+export const classeDEvenement = (id) => `couleur-evenement-${idDeCouleur(id)}`;
+
+/**
+ * La feuille des couleurs des événements de la chronologie (`couleurs` : la Map id → « #rrggbb » de lib/chronologie-couleurs.mjs#couleursDesEvenements) :
+ * une règle par événement, `.couleur-evenement-<id>{--couleur:…;--couleur-texte:…}`, dans l'ordre de la Map ; le texte est celui de la règle du site
+ * (texteSurCouleur). La règle donne à chaque teinte 4,5:1 avec le blanc : aucune n'est corrigée (test/palette-css.test.mjs).
+ */
+export const cssDesEvenements = (couleurs) =>
+  [...(couleurs ?? [])].map(([id, fond]) => `.${classeDEvenement(id)}{--couleur:${fond};--couleur-texte:${texteSurCouleur(fond)}}`).join('');

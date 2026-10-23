@@ -3,7 +3,8 @@
 // côté (75 % de la largeur), et deux chevrons, tout à droite, passent au précédent ou au suivant. Les événements sont les lignes de `evenement`
 // (data/schema.sql, section 5 bis), dans l'ordre de `rang`, chacun à /chronologie/<id>/ ; /chronologie/ montre la frise seule et son mode d'emploi.
 // Module pur, sans dépendance (ni node:, ni Astro ; seulement lib/text.mjs, pur) : importé par les pages, le chargeur (chronologie-db.mjs), l'outil
-// du registre (tools/chronologie/chronologie.mjs), le service, l'éditeur et les tests.
+// du registre (tools/chronologie/chronologie.mjs), le service, l'éditeur et les tests. Il n'écrit aucune couleur : la teinte de chaque événement est la
+// règle de lib/chronologie-couleurs.mjs, posée par sa classe de la palette (lib/palette-css.mjs#classeDEvenement).
 import { normalize } from './text.mjs';
 
 /**
@@ -114,53 +115,6 @@ export const adresseDEvenement = (id) => `chronologie/${id}/`;
 /** La date d'un événement dans la colonne de gauche de la frise : l'année sans « An » (« 505 », « -400 à -350 »), ou le nom de son époque hors des années. */
 export function dateCourte(evenement) {
   return evenement.epoque === 'datee' ? libelleDeDate(evenement).replace(/^An /, '') : libelleDeDate(evenement);
-}
-
-/** Contraste WCAG entre deux couleurs « #rrggbb » (1 à 21). */
-export function contraste(a, b) {
-  const luminance = (hex) => {
-    const [r, g, v] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
-    return 0.2126 * r + 0.7152 * g + 0.0722 * v;
-  };
-  const [x, y] = [luminance(a), luminance(b)].sort((m, n) => n - m);
-  return (x + 0.05) / (y + 0.05);
-}
-
-/** « #rrggbb » d'une teinte TSL (t en degrés, s et l de 0 à 1). */
-function hexDeTsl(t, s, l) {
-  const f = (n) => {
-    const k = (n + t / 30) % 12;
-    return l - s * Math.min(l, 1 - l) * Math.max(-1, Math.min(k - 3, 9 - k, 1));
-  };
-  return `#${[f(0), f(8), f(4)].map((c) => Math.round(c * 255).toString(16).padStart(2, '0')).join('')}`;
-}
-
-const COULEUR_INCONNUE = '#5a6470';
-const COULEUR_AUJOURDHUI = '#24715a';
-const TEINTE_DU_DEBUT = 285;
-const TEINTE_DE_LA_FIN = 5;
-
-/**
- * Couleurs de la frise et des pages, une par événement (demande du propriétaire : la chronologie en une immense barre verticale avec un dégradé).
- * Les événements « Au début » et datés suivent la roue des couleurs dans l'ordre de lecture, du violet (les origines) au rouge (les derniers siècles),
- * en passant par le bleu, le vert et l'or ; « Date inconnue » est gris, « Aujourd'hui » vert sombre. Chaque teinte est assez foncée pour un texte blanc
- * dessus (4,5:1). Pur repère visuel : aucune époque du lore n'en est déduite. Rend une Map(id -> « #rrggbb »).
- */
-export function couleursDesEvenements(evenements) {
-  const roue = evenements.filter((e) => e.epoque === 'debut' || e.epoque === 'datee');
-  const couleurs = new Map();
-  roue.forEach((e, i) => {
-    const t = TEINTE_DU_DEBUT - (roue.length > 1 ? i / (roue.length - 1) : 0) * (TEINTE_DU_DEBUT - TEINTE_DE_LA_FIN);
-    // la plus claire des teintes qui gardent 4,5:1 (marge : 4,6) avec le blanc
-    let l = 0.4;
-    while (contraste(hexDeTsl(t, 0.58, l), '#ffffff') < 4.6) l -= 0.01;
-    couleurs.set(e.id, hexDeTsl(t, 0.58, l));
-  });
-  for (const e of evenements) {
-    if (e.epoque === 'inconnue') couleurs.set(e.id, COULEUR_INCONNUE);
-    if (e.epoque === 'aujourdhui') couleurs.set(e.id, COULEUR_AUJOURDHUI);
-  }
-  return couleurs;
 }
 
 /**

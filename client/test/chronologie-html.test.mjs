@@ -8,7 +8,9 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { chargerChronologie, choixDuFiltre } from '../src/lib/chronologie-db.mjs';
-import { adresseDEvenement, couleursDesEvenements, dateCourte, LIBELLE_SANS_CATEGORIE, libelleDeDate, SANS_CATEGORIE } from '../src/lib/chronologie.mjs';
+import { adresseDEvenement, dateCourte, LIBELLE_SANS_CATEGORIE, libelleDeDate, SANS_CATEGORIE } from '../src/lib/chronologie.mjs';
+import { couleursDesEvenements } from '../src/lib/chronologie-couleurs.mjs';
+import { classeDEvenement, cssDesEvenements } from '../src/lib/palette-css.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { lireAttributEd } from '../src/lib/edition-modele.mjs';
 import { cheminDePage } from '../src/lib/metiers.mjs';
@@ -26,22 +28,24 @@ const hrefDe = (e) => `/${adresseDEvenement(e.id)}`;
 const visible = (html = '') => decoder(html.replace(/<span class="chrono-invisible">[^<]*<\/span>/g, '').replace(/<[^>]+>/g, '')).replace(/\s+/g, ' ').trim();
 
 /**
- * Les lignes de la frise d'une page : [{ id, style, categories, etiquette, href, courant, date, titre (affichés), nom (lu par un lecteur d'écran), repere }],
- * dans l'ordre.
+ * Les lignes de la frise d'une page : [{ id, couleur (la classe de la ligne), avant (celle de sa barre), apres (celle du morceau de barre), categories,
+ * etiquette, href, courant, date, titre (affichés), nom (lu par un lecteur d'écran), repere }], dans l'ordre.
  */
 function frise(main) {
   const nav = main.match(/<nav class="frise" id="frise" aria-label="Frise chronologique" data-frise>([\s\S]*?)<\/nav>/)?.[1];
   assert.ok(nav, 'une frise');
   // un attribut vide s'écrit sans valeur (`data-categories` : aucune catégorie)
-  const lignes = /<li class="frise__evenement frise__evenement--[a-z]+" id="evenement-([^"]+)" style="([^"]+)" data-categories(?:="([^"]*)")? data-etiquette="([^"]*)">([\s\S]*?)<\/li>/g;
-  return [...nav.matchAll(lignes)].map(([, id, style, categories, etiquette, ligne]) => ({
+  const lignes = /<li class="frise__evenement frise__evenement--[a-z]+ ([\w-]+)" id="evenement-([^"]+)" data-categories(?:="([^"]*)")? data-etiquette="([^"]*)">([\s\S]*?)<\/li>/g;
+  return [...nav.matchAll(lignes)].map(([, couleur, id, categories, etiquette, ligne]) => ({
     id,
-    style,
+    couleur,
+    avant: ligne.match(/<span class="frise__barre(?: ([\w-]+))?"><span class="frise__morceau(?: [\w-]+)?"><\/span>/)?.[1] ?? null,
+    apres: ligne.match(/<span class="frise__morceau(?: ([\w-]+))?"><\/span>/)?.[1] ?? null,
     categories: categories ?? '',
     etiquette: decoder(etiquette),
     href: ligne.match(/<a class="frise__lien" href="([^"]+)"/)?.[1],
     courant: / aria-current="page"/.test(ligne),
-    date: visible(ligne.match(/<span class="frise__date">([\s\S]*?)<\/span>\s*<span class="frise__barre">/)?.[1]),
+    date: visible(ligne.match(/<span class="frise__date">([\s\S]*?)<\/span>\s*<span class="frise__barre[^"]*">/)?.[1]),
     titre: visible(ligne.match(/<span class="frise__titre">([\s\S]*?)<\/span>\s*<\/a>/)?.[1]),
     nom: decoder((ligne.match(/<a class="frise__lien"[^>]*>([\s\S]*?)<\/a>/)?.[1] ?? '').replace(/<[^>]+>/g, '')).replace(/\s+/g, ' ').trim(),
     repere: ligne.match(/<span class="(frise__repere[^"]*)"/)?.[1],
@@ -93,17 +97,26 @@ test('la frise, à gauche : tous les événements dans l’ordre, la date à gau
   });
 });
 
-test('le dégradé : chaque ligne porte sa couleur et celles de ses voisines (le bas d’une ligne est le haut de la suivante) ; losange et gros point des Impacts', options, () => {
+test('le dégradé : chaque ligne porte la classe de sa couleur, sa barre celle du précédent, son morceau de barre celle du suivant (le bas d’une ligne est le haut de la suivante), jamais un style ; losange et gros point des Impacts', options, () => {
   const couleurs = couleursDesEvenements(evenements);
-  const lignes = frise(principal(lireChemin('chronologie')));
-  const variable = (style, nom) => style.match(new RegExp(`--${nom}: (#[0-9a-f]{6})`))?.[1];
-  lignes.forEach((l, i) => {
-    const e = evenements[i];
-    assert.equal(variable(l.style, 'c'), couleurs.get(e.id), `${e.id} : sa couleur`);
-    assert.equal(variable(l.style, 'c-avant'), couleurs.get((evenements[i - 1] ?? e).id), `${e.id} : couleur du précédent`);
-    assert.equal(variable(l.style, 'c-apres'), couleurs.get((evenements[i + 1] ?? e).id), `${e.id} : couleur du suivant`);
-    assert.equal(l.repere, ['frise__repere', e.portee && `frise__repere--${e.portee}`].filter(Boolean).join(' '), `${e.id} : repère`);
-  });
+  for (const chemin of ['chronologie', ...evenements.map((e) => adresseDEvenement(e.id))]) {
+    const html = lireChemin(chemin);
+    const main = principal(html);
+    frise(main).forEach((l, i) => {
+      const e = evenements[i];
+      assert.equal(l.couleur, classeDEvenement(e.id), `${chemin}, ${e.id} : sa couleur`);
+      assert.equal(l.avant, evenements[i - 1] ? classeDEvenement(evenements[i - 1].id) : null, `${chemin}, ${e.id} : couleur du précédent (aucune au bord)`);
+      assert.equal(l.apres, evenements[i + 1] ? classeDEvenement(evenements[i + 1].id) : null, `${chemin}, ${e.id} : couleur du suivant (aucune au bord)`);
+      assert.equal(l.repere, ['frise__repere', e.portee && `frise__repere--${e.portee}`].filter(Boolean).join(' '), `${chemin}, ${e.id} : repère`);
+    });
+    // la feuille des couleurs des événements : la règle du site (lib/chronologie-couleurs.mjs), émise une fois, à part, par la page de la chronologie
+    const feuilles = [...html.matchAll(/<style data-couleurs-chronologie>([^<]*)<\/style>/g)].map((m) => m[1]);
+    assert.deepEqual(feuilles, [cssDesEvenements(couleurs)], `${chemin} : la feuille des couleurs des événements, une fois`);
+    // la page prend la couleur de l'événement affiché (sur /chronologie/, celle du premier), par sa classe
+    const affiche = chemin === 'chronologie' ? evenements[0] : evenements.find((e) => adresseDEvenement(e.id) === chemin);
+    assert.match(main, new RegExp(`<div class="chrono chrono--(?:evenement|accueil) ${classeDEvenement(affiche.id)}" data-chrono>`), `${chemin} : la couleur de la page`);
+    assert.doesNotMatch(main, /<li class="frise__evenement[^>]* style=|<div class="chrono[^>]* style=/, `${chemin} : aucune couleur en style`);
+  }
 });
 
 test('les chevrons, tout à droite : Haut = précédent, Bas = suivant, grisés au premier et au dernier événement', options, () => {
@@ -160,9 +173,9 @@ test('la mise en page demandée, dans la feuille de la page : frise au quart gau
   assert.match(regle('.frise'), /scroll-padding-block: 5\.5rem/, 'la ligne qui reçoit le focus n’est pas cachée par l’en-tête de la frise (filtre et légende)');
   assert.match(regle('.frise__tete'), /position: sticky;/, 'le filtre et la légende restent en haut de la frise');
   assert.match(regle('html.js .frise__filtre:not([hidden])'), /display: flex;/, 'le filtre, avec JavaScript seulement (et s’il y a de quoi choisir)');
-  assert.match(html, /\n\.frise__evenement\.est-premier \.frise__barre::before \{/, 'les bouts de la barre suivent le filtre (première et dernière lignes visibles)');
+  assert.match(html, /\n\.frise__evenement\.est-premier \.frise__morceau::before \{/, 'les bouts de la barre suivent le filtre (première et dernière lignes visibles)');
   assert.match(regle('body:has(.chrono) .ed-cote'), /top: auto;[\s\S]*bottom: 1rem;/, 'le crayon du site de dev ne couvre pas les chevrons');
-  assert.match(regle('.frise__barre::before'), /linear-gradient\([\s\S]*var\(--trait-avant\)[\s\S]*var\(--trait\) var\(--y\)[\s\S]*var\(--trait-apres\)/, 'le dégradé de chaque morceau de barre');
+  assert.match(regle('.frise__morceau::before'), /linear-gradient\([\s\S]*var\(--trait-avant\)[\s\S]*var\(--trait\) var\(--y\)[\s\S]*var\(--trait-apres\)/, 'le dégradé de chaque morceau de barre');
   assert.match(regle('.chrono-chevrons'), /position: fixed;[\s\S]*top: 50%;[\s\S]*right: max\(0\.75rem/, 'les chevrons, fixés tout à droite');
   assert.match(html, /\.frise__evenement:target > \.frise__lien/, 'la ligne où mène le milieu de la barre du bas sans JavaScript est marquée');
   // téléphone (demande du propriétaire : « la mini-frise, en plus du tiroir ») : les règles du bloc @media (max-width: 56rem)

@@ -38,6 +38,11 @@
   --ombre-flottante: 0 3px 12px rgb(0 0 0 / 0.18);
   --ombre-fiche: 0 6px 14px -12px rgb(0 0 0 / 0.4);   /* la fiche d'une arme, d'une armure ou d'un bouclier (styles/equipement/equipement.css) */
   --ombre-encart: 0 6px 12px -10px rgb(0 0 0 / 0.35); /* l'encart de l'accessoire créé (styles/accessoires/accessoires.css) */
+  --ombre-evenement: 0 10px 30px rgb(0 0 0 / 0.05);   /* la page d'un événement de la chronologie, sous son filet (styles/chronologie/chronologie.css) */
+  --ombre-barre-du-bas: 0 -4px 18px rgb(0 0 0 / 0.08); /* la barre du bas de la chronologie sur téléphone (chevrons, événement affiché) */
+  --ombre-poignee: 0 1px 4px rgb(0 0 0 / 0.12);       /* la poignée de la mini-frise de la chronologie (téléphone) */
+  --ombre-tiroir: 10px 0 34px rgb(0 0 0 / 0.28);      /* le tiroir de la frise de la chronologie, ouvert par-dessus la page (téléphone) */
+  --voile-tiroir: rgb(24 18 12 / 0.48);               /* le voile sur le reste de l'écran quand ce tiroir est ouvert */
   --duree: 0.15s;
   --duree-lente: 0.2s;
   --radius-xxs: 3px;
