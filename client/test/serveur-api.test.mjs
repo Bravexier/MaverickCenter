@@ -1073,6 +1073,17 @@ test('résistance à une magie au choix (décision R137, migration 0071) : la ma
   }
 });
 
+test('magie tirée d’un don du Flagelleur (décision R163) : la magie_id dont la source est le don, enregistrée et relue à l’identique, comme R137', () => {
+  const choix = [
+    { source: 'capacites/flagelleur-plus-fort', rang: 1, magie_id: 'magies/magie-de-la-glace' },
+    { source: 'capacites/flagelleur-puni-moi', rang: 1, magie_id: 'magies/magie-de-la-corruption' },
+  ];
+  const r = appel('POST', '/api/personnages', { ...ficheConforme('Flagelleuse illimitée'), magie_innee_id: 'magies/potentiel-illimite', resistance_choix: choix });
+  assert.equal(r.statut, 201, JSON.stringify(r.corps));
+  assert.deepEqual(r.corps.personnage.resistance_choix, choix.map((c) => ({ ...c, etat_id: null })));
+  assert.deepEqual(lire(r.corps.personnage.id), r.corps, 'relue à l’identique');
+});
+
 test('ordre de lecture des listes : un ordre total — le rang, puis le reste de la clé (choix d’acquis : source, compétence ; résistance au choix et choix de maîtrise : source) ; une fiche relue garde sa version, quel que soit l’ordre d’envoi', () => {
   const { chemin } = preparerBaseVivante({ regles: REGLES, dossier: join(racine, 'db-ordre') });
   const base = ouvrirBaseVivante(chemin);

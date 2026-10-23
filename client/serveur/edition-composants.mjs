@@ -15,6 +15,7 @@ import {
 } from '../src/lib/corps-composants.mjs';
 import { citationsDeRessource } from '../src/lib/composants-db.mjs';
 import { fragmentsAjoutes, messageDeRefus } from '../src/lib/markdown-sur.mjs';
+import { MAGIES_SANS_OBJET_PAR_MAGIE, REFUS_R160 } from '../src/lib/edition-modele.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { lireLigne } from './edition-journal.mjs';
 import { corpsOuRefus } from './edition-corps.mjs';
@@ -190,8 +191,8 @@ export function domainesDesComposants({ refus, ErreurEdition, synchroniser, prov
   };
 
   /**
-   * Une ressource liée à une magie qui n'en a pas (« une par magie ») : gemme (ses prix dans la table gemme) ou bois (son prix dans la ressource).
-   * Créée sans ligne dans les pages des bâtons et des accessoires (rien ne change dans leur corps) ; supprimée si aucune autre règle ne la cite.
+   * Une ressource liée à une magie qui n'en a pas (« une par magie ») : gemme (ses prix dans la table gemme) ou bois (son prix dans la ressource) ;
+   * jamais pour une magie de MAGIES_SANS_OBJET_PAR_MAGIE (décision R160 : le Potentiel Illimité, refus 422 avant d'écrire). Créée sans ligne dans les pages des bâtons et des accessoires (rien ne change dans leur corps) ; supprimée si aucune autre règle ne la cite.
    */
   function lieeAUneMagie(table, { libelle, feminin, colonnes, detail }) {
     const cree = feminin ? 'créée' : 'créé';
@@ -202,6 +203,7 @@ export function domainesDesComposants({ refus, ErreurEdition, synchroniser, prov
         const { db, w, instant } = ctx;
         const magie = lireLigne(db, 'magie', { id: valeurs.magie_id });
         if (!magie) throw refus(`${valeurs.nom} : magie inconnue (${valeurs.magie_id}).`);
+        if (MAGIES_SANS_OBJET_PAR_MAGIE.includes(magie.id)) throw new ErreurEdition(422, REFUS_R160);
         if (db.prepare(`SELECT 1 FROM "${table}" WHERE magie_id = ?`).get(magie.id)) throw new ErreurEdition(409, `La magie ${magie.nom} a déjà ${feminin ? 'sa' : 'son'} ${libelle}.`);
         const cle = cleDuNom(valeurs.nom);
         if (db.prepare('SELECT 1 FROM ressource WHERE genre = ? AND nom_cle = ?').get(table, cle)) throw new ErreurEdition(409, `${valeurs.nom} : ce nom est déjà pris.`);
@@ -362,10 +364,16 @@ export function domainesDesComposants({ refus, ErreurEdition, synchroniser, prov
   return { ressource: RESSOURCE, materiau: MATERIAU, gemme: GEMME, bois: BOIS, ingredient_alchimie: INGREDIENT, monnaie: MONNAIE };
 }
 
-/** Les magies qui n'ont pas de gemme (formulaire « Nouvelle gemme », liste `magiesSansGemme` de GET /api/edition/listes/), dans l'ordre des magies. */
-export const magiesSansGemme = (db) =>
-  db.prepare('SELECT m.id AS valeur, m.nom AS libelle FROM magie m WHERE NOT EXISTS (SELECT 1 FROM gemme g WHERE g.magie_id = m.id) ORDER BY m.ordre').all();
+/**
+ * Les magies qui peuvent recevoir l'objet de `table` (gemme ou bois) : celles qui n'en ont pas encore, hors MAGIES_SANS_OBJET_PAR_MAGIE (décision R160 :
+ * le Potentiel Illimité n'en a jamais), dans l'ordre des magies. `table` est l'une des deux constantes ci-dessous, jamais une saisie.
+ */
+const magiesSansObjet = (db, table) =>
+  db.prepare(`SELECT m.id AS valeur, m.nom AS libelle FROM magie m WHERE NOT EXISTS (SELECT 1 FROM "${table}" o WHERE o.magie_id = m.id)
+    AND m.id NOT IN (${MAGIES_SANS_OBJET_PAR_MAGIE.map(() => '?').join(', ')}) ORDER BY m.ordre`).all(...MAGIES_SANS_OBJET_PAR_MAGIE);
 
-/** Les magies qui n'ont pas de bois (formulaire « Nouveau bois », liste `magiesSansBois`), dans l'ordre des magies. */
-export const magiesSansBois = (db) =>
-  db.prepare('SELECT m.id AS valeur, m.nom AS libelle FROM magie m WHERE NOT EXISTS (SELECT 1 FROM bois b WHERE b.magie_id = m.id) ORDER BY m.ordre').all();
+/** Les magies qui n'ont pas de gemme (formulaire « Nouvelle gemme », liste `magiesSansGemme` de GET /api/edition/listes/), hors R160. */
+export const magiesSansGemme = (db) => magiesSansObjet(db, 'gemme');
+
+/** Les magies qui n'ont pas de bois (formulaire « Nouveau bois », liste `magiesSansBois`), hors R160. */
+export const magiesSansBois = (db) => magiesSansObjet(db, 'bois');

@@ -573,6 +573,28 @@ test('fiche riche : résistances, posture du moment, Mode Hyper', () => {
   assert.equal(c[ORDINATEUR.modeHyper.magieAcquise], h.magies.find((x) => x.magie.id === riche.magie_acquise_id).effet);
 });
 
+test('résistances des dons du Flagelleur (décision R163) : les paliers exportés sont ceux du calcul — Feu inné et « Punis-moi ... » : Brûlure, Gel et Pétrifié en Grande résistance ; Glace innée et « ... plus fort ! » : ni Brûlure ni Surdité', () => {
+  const flagelleur = (magie, don) => ({
+    ...ficheVide('Essai'), race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-central', magie_innee_id: magie, xp: xpDuNiveau(5),
+    classes: [{ rang: 1, classe_id: 'classes/flagelleur', specialite_id: 'classes/flagelleur#specialite:masochiste' }], capacites: [{ capacite_id: don }],
+  });
+  const cases = (f) => {
+    const v = cellulesDeLaFiche(regles, f, { date: DATE }).cellules;
+    return Object.fromEntries(CASES_RESISTANCES.map((k) => [k.palier, (v[k.cibles] ?? '').split(', ').filter(Boolean)]));
+  };
+  // l'export écrit les paliers de resistancesDe, sans posture
+  const attendu = (f) => Object.fromEntries(M.resistancesDe(regles, f, { avecLaPosture: false }).paliers.map((p) => [p.id, p.cibles.map((c) => c.nom)]));
+  const punis = flagelleur('magies/magie-du-feu', 'capacites/flagelleur-puni-moi');
+  assert.deepEqual(cases(punis), attendu(punis));
+  for (const nom of ['Brûlure', 'Gel', 'Pétrifié']) assert.ok(cases(punis).grande_resistance.includes(nom), nom);
+  const plusFort = flagelleur('magies/magie-de-la-glace', 'capacites/flagelleur-plus-fort');
+  assert.deepEqual(cases(plusFort), attendu(plusFort));
+  const ecrites = Object.values(cases(plusFort)).flat();
+  assert.ok(!ecrites.includes('Brûlure') && !ecrites.includes('Surdité') && cases(plusFort).vulnerabilite.includes('Feu'), JSON.stringify(cases(plusFort)));
+  // hors du Potentiel Illimité, aucun choix dans la note
+  assert.ok(!cellulesDeLaFiche(regles, punis, { date: DATE }).cellules[ORDINATEUR.note].includes('Résistance au choix'));
+});
+
 test('résistances (décision R111) : exportées sans la posture du moment — en Symbiose, la magie désactivée garde ses listes dans le classeur ; la page les retire', () => {
   const POSTURE_SYMBIOSE = 'guide/postures#posture:symbiose';
   assert.ok(CASES_POSTURES.some((p) => p.id === POSTURE_SYMBIOSE));

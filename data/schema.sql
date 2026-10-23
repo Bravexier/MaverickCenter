@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 77;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 78;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -2626,7 +2626,8 @@ CREATE TABLE materiau (
   source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0)
 ) STRICT;
 
--- Gemmes précieuses (14, une par magie) : onglet Bâton magique (prix de la gemme entière) et onglet Accessoires (prix d'un QUART de gemme,
+-- Gemmes précieuses (14, une par magie sauf le Potentiel Illimité : décision R160, « Il n'existe aucune gemme ni aucune piece élémentaire du PI » ;
+-- la contrainte gemme_sans_potentiel_illimite le refuse, migration 0078) : onglet Bâton magique (prix de la gemme entière) et onglet Accessoires (prix d'un QUART de gemme,
 -- « Chaque accessoire possède des morceaux de gemmes, ce sont des quarts de gemmes »). Qualités : commune (= « normal » / « classique »),
 -- raffinée, parfaite (= « Prix (Parfait) » / « parfaite »).
 CREATE TABLE gemme (
@@ -2639,15 +2640,19 @@ CREATE TABLE gemme (
   quart_raffinee_brut    TEXT,  quart_raffinee_rf    INTEGER CHECK (quart_raffinee_rf IS NULL OR quart_raffinee_rf >= 0),
   quart_parfaite_brut    TEXT,  quart_parfaite_rf    INTEGER CHECK (quart_parfaite_rf IS NULL OR quart_parfaite_rf >= 0),
   origine                TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
-  source_ref             TEXT    NOT NULL CHECK (length(source_ref) > 0)
+  source_ref             TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  CONSTRAINT gemme_sans_potentiel_illimite CHECK (magie_id <> 'magies/potentiel-illimite')   -- R160 : aucune gemme du Potentiel Illimité
 ) STRICT;
 
 -- Bois pour bâton magique (14, un par magie) : onglet Bâton magique › MATERIAUX NECESSAIRE PAR MAGIE (Bois : Matière, Description, Prix).
+-- Aucun bois du Potentiel Illimité (décision R160, étendue au bois par le propriétaire : « Oui, aucun bois du PI » ; « Même garde-fou que les
+-- gemmes : la base refuse un bois du PI et le site de dev ne le propose plus. ») : contrainte bois_sans_potentiel_illimite, migration 0078.
 CREATE TABLE bois (
   ressource_id  TEXT    NOT NULL PRIMARY KEY REFERENCES ressource(id),
   magie_id      TEXT    NOT NULL UNIQUE REFERENCES magie(id),
   origine       TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
-  source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0)
+  source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  CONSTRAINT bois_sans_potentiel_illimite CHECK (magie_id <> 'magies/potentiel-illimite')   -- R160 : aucun bois du Potentiel Illimité
 ) STRICT;
 
 -- Ingrédients d'alchimie (Google Doc « Alchimie » › Liste d'ingrédient : 5 tables Solvant, Essence, Amplificateur, Catalyseur, Stabilisateur).
@@ -2789,6 +2794,8 @@ CREATE INDEX recette_ingredient_ressource ON recette_ingredient (ressource_id) W
 CREATE INDEX recette_ingredient_affinite  ON recette_ingredient (affinite_id, role) WHERE affinite_id IS NOT NULL;
 
 -- Bâtons magiques (onglet Bâton magique › « Bonus passifs » : 14 magies x 3 niveaux). La source ne leur donne pas de nom propre.
+-- Aucun bâton du Potentiel Illimité (décision R160 : il « n'a pas d'élement propre », ni gemme ni pièce élémentaire) : contrainte
+-- baton_magique_sans_potentiel_illimite, migration 0078.
 CREATE TABLE baton_magique (
   id            TEXT    NOT NULL PRIMARY KEY,         -- 'ressources/baton-magique#baton:feu:2'
   magie_id      TEXT    NOT NULL REFERENCES magie(id),
@@ -2798,7 +2805,8 @@ CREATE TABLE baton_magique (
   origine       TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
   source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0),
   remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
-  UNIQUE (magie_id, niveau)
+  UNIQUE (magie_id, niveau),
+  CONSTRAINT baton_magique_sans_potentiel_illimite CHECK (magie_id <> 'magies/potentiel-illimite')   -- R160 : aucun bâton du Potentiel Illimité
 ) STRICT;
 
 -- Métiers (Google Doc « MÉTIER » : une page par métier, 72). `bonus_brut`, `artisanat_brut`, `equipement_brut`, `avantage_brut` sont les
@@ -2973,7 +2981,8 @@ CREATE TABLE arme_prerequis (
 CREATE INDEX arme_prerequis_carac ON arme_prerequis (caracteristique_id, minimum);
 
 -- Armes élémentaires (onglet Pièces élémentaires : 11 types d'armes x 14 éléments). La cellule contient 4 lignes :
--- nom / « +8 Dégâts » / « Élément X » / capacité « Nom (mode) : texte ».
+-- nom / « +8 Dégâts » / « Élément X » / capacité « Nom (mode) : texte ». Les 14 éléments sont les magies sauf le Potentiel Illimité, qui n'a ni
+-- élément propre ni pièce élémentaire (décision R160) : contrainte arme_elementaire_sans_potentiel_illimite, migration 0078.
 CREATE TABLE arme_elementaire (
   id               TEXT    NOT NULL PRIMARY KEY,      -- 'ressources/pieces-elementaires#arme-elementaire:epee:sang'
   type_id          TEXT    NOT NULL REFERENCES arme_type(id),
@@ -2990,7 +2999,8 @@ CREATE TABLE arme_elementaire (
   origine          TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
   source_ref       TEXT    NOT NULL CHECK (length(source_ref) > 0),
   remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
-  UNIQUE (type_id, magie_id)
+  UNIQUE (type_id, magie_id),
+  CONSTRAINT arme_elementaire_sans_potentiel_illimite CHECK (magie_id <> 'magies/potentiel-illimite')   -- R160 : aucune arme élémentaire du Potentiel Illimité
 ) STRICT;
 
 CREATE INDEX arme_elementaire_magie ON arme_elementaire (magie_id);
@@ -3061,6 +3071,8 @@ CREATE TABLE armure_degats (
 CREATE INDEX armure_degats_type ON armure_degats (sens, type_degats);
 
 -- Armures élémentaires (onglet Pièces élémentaires : 4 catégories x 14 éléments = 56) : vêtement, armure légère, intermédiaire, lourde.
+-- Les 14 éléments sont les magies sauf le Potentiel Illimité (décision R160 : aucune pièce élémentaire du PI) : contrainte
+-- armure_elementaire_sans_potentiel_illimite, migration 0078.
 CREATE TABLE armure_elementaire (
   id            TEXT    NOT NULL PRIMARY KEY,         -- 'ressources/pieces-elementaires#armure-elementaire:leger:sang'
   categorie     TEXT    NOT NULL CHECK (categorie IN ('Vêtement', 'Léger', 'Intermédiaire', 'Lourd')),
@@ -3074,7 +3086,8 @@ CREATE TABLE armure_elementaire (
   origine       TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
   source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0),
   remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
-  UNIQUE (categorie, magie_id)
+  UNIQUE (categorie, magie_id),
+  CONSTRAINT armure_elementaire_sans_potentiel_illimite CHECK (magie_id <> 'magies/potentiel-illimite')   -- R160 : aucune armure élémentaire du Potentiel Illimité
 ) STRICT;
 
 CREATE INDEX armure_elementaire_magie ON armure_elementaire (magie_id);
@@ -4158,6 +4171,10 @@ CREATE TABLE personnage_acquis_choix (
 -- résistance sur une magie aléatoire (sauf arcane et corruption) et son altération d'état », source = race_don.id) : la magie choisie ou tirée
 -- (`magie_id`), dont l'altération d'état (etat_magie) se lit dans les règles quand le don l'écrit, jamais gardée ici. Une ligne retient une altération
 -- (`etat_id`) ou une magie (`magie_id`), jamais les deux ni aucune.
+-- Flagelleur au Potentiel Illimité (décision R163 : « A chaque choix de don, tu choisi la résistance / altération associée », « Les 14 magies ») :
+-- « Punis-moi ... » et « ... plus fort ! » (source = capacite.id, rang 1) retiennent une magie hors PI (`magie_id`), qui tient lieu de magie innée
+-- pour ces deux dons seulement ; le choix est retiré par la page et l'import du tableur quand la magie innée n'est plus le Potentiel Illimité
+-- (lib/fiche-moteur.mjs#resistanceChoixValables), ni la base ni le service ne le retirent : une ligne restée est ignorée par le moteur (comme R137).
 CREATE TABLE personnage_resistance_choix (
   personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
   source         TEXT    NOT NULL CHECK (length(source) > 0),

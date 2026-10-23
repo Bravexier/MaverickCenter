@@ -187,7 +187,20 @@ abandonne.
   du guide ; l'Arcane et la Corruption se résistent l'une à l'autre, décision R90), et ceux que les dons écrivent
   (`lib/resistance-texte.mjs` : dons de la race et de l'ethnie de l'onglet, R13 — « 1 cran de résistance en plus à la magie innée et son altération d'état »,
   « Résistance à la magie du Sang », colonne « +1 cran de résistance » du Drakos —, dons de classe débloqués — « Augmente d'un cran la résistance à la magie
-  innée et à son altération d'état » du Clerc). Une immunité écrite (« Immunisé contre le poison » du Mort-Vivant) range la cible en immunité ; une autre
+  innée et à son altération d'état » du Clerc). Les deux dons du Flagelleur Masochiste (décision R163) : « Punis-moi ... » (« Augmente d'un cran la
+  résistance aux altérations d'état lié à la magie innée ») donne +1 cran à **chaque altération de la liste de résistances** de la magie innée, en plus
+  des crans de la magie (« + ça rajoute en plus de ce qui est déjà présent par la magie » : Feu inné, Brûlure, Gel et Pétrifié à +2, rien de plus sur
+  la magie Feu ; type `etats_resistes_magie_innee`) ; « ... plus fort ! » (« Annule les faiblesses aux altérations d'état liées à la magie innée »)
+  retire, après tous les autres crans (magies, dons, accessoires maudits), les **crans négatifs** des altérations de la liste de faiblesses de la magie
+  innée et garde les positifs (« Retirer les crans négatifs » : +1 et −2 donnent +1 ; Glace innée : Brûlure et Surdité ; les faiblesses aux magies
+  restent ; type `faiblesses_etats_magie_innee`) ; une ligne ramenée à 0 disparaît, sans mention ; l'infobulle garde les crans retirés et le don les
+  rend. Sous ce don, dans les dons débloqués, une aide : la fiche retire les faiblesses qu'elle connaît, le MJ annule aussi en jeu celles qu'elle ne
+  connaît pas (sorts ennemis, météo, armure, états en jeu). Les deux s'appliquent aussi en Symbiose, magie innée désactivée (R111). Pour un personnage
+  du **Potentiel Illimité**, leur remarque (« Dans le cas du potentiel illimité, lancer un D14 pour déterminer une résistance magique aléatoire »,
+  `capacite.remarque`, lue par `lib/resistance-texte.mjs` : `si_magie_innee`) devient un choix du tiroir : la magie tirée au D14 par le MJ, parmi les 14
+  magies (Arcane et Corruption comprises), « tient lieu de magie innée pour ce don » seulement (`remplace_magie_innee` de `resistances.au_choix` ; le
+  PI n'hérite pas de ses listes : R139, R160) ; table `personnage_resistance_choix` (`source` = le don, `magie_id`) ; le choix part quand la magie
+  innée n'est plus le PI (`resistanceChoixValables`) ; rien ne compte tant qu'il n'est pas fait. Une immunité écrite (« Immunisé contre le poison » du Mort-Vivant) range la cible en immunité ; une autre
   résistance au choix (« Réduit de 1 cran une vulnérabilité magique… ») n'est pas comptée et la fiche le signale sous le tableau. Une **magie au choix ou
   tirée** (décision R137 : Ocultomancien « Résilience », « une magie au choix, à l'exception de l'arcane et de la corruption » ; Anansi d'Arcane, « une magie
   aléatoire (sauf arcane et corruption) et son altération d'état ») est un choix du tiroir : une liste des magies sous le tableau, les 12 sans l'Arcane, la
@@ -304,7 +317,9 @@ abandonne.
   l'écrit « 1+1 », l'infobulle dit d'où vient le NM ajouté, qui ne compte pas dans le décompte ni ne s'enregistre.
 - **Dons débloqués**, à côté des sorts : les **dons raciaux** — le don de base d'abord, puis le don de l'ethnie (`race_don`) et la ligne de l'ethnie dans le
   tableau de dons de la race (Drakos, Mort-vivant) : `donsDeRace` — puis les **dons de classe débloqués**, classe par classe : dons de la classe et de la
-  spécialité choisie jusqu'au niveau de classe, dons à choix choisis (`donsAcquis`), avec leur niveau et leur type (passif, actif, action, réaction).
+  spécialité choisie jusqu'au niveau de classe, dons à choix choisis (`donsAcquis`), avec leur niveau et leur type (passif, actif, action, réaction) ;
+  sous « ... plus fort ! » du Flagelleur, l'aide de la décision R163 (« Oui, à appliquer par le MJ ») : « La fiche retire les faiblesses qu'elle
+  connaît ; le MJ annule aussi en jeu celles qu'elle ne connaît pas (sorts ennemis, météo, armure, états en jeu). »
   Entre les deux, l'**entraînement** (décision R104, table `personnage_entrainement` ; avant, un texte libre jamais compté : R71) : des **lignes** qu'on
   ajoute (« + Compétence », « + Livre de sort », « + Texte »), chacune une **compétence** et ses points (un curseur de 0 à 10, comptés dans l'acquis ; 15
   compétences au plus : règles `entrainement_valeur`, `entrainement_competences` de la vue, qui signalent sans bloquer ; deux lignes de la même compétence n'en
@@ -569,8 +584,8 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   famille de chaque point dans l'ordre, « ? » pour un point pas encore choisi, jusqu'au dernier choisi ; l'accessoire « Un point de maîtrise d'arme »
   garde sa famille dans sa case, « → ÉPÉES »), et chaque résistance au choix une
   ligne « Résistance au choix : <ligne ou don> : <altération ou magie> » (d'une ligne du tableau de la race : « Écaille draconique : Poison », R124 ; d'un
-  don qui laisse une magie au choix ou tirée : « Anansi d'Arcane : Feu », « Résilience (Ocultomancien) : Glace », R137 ; relue si c'est une option du choix
-  de la fiche) ; le nom et le type du modèle restent. Les dés de maîtrise
+  don qui laisse une magie au choix ou tirée : « Anansi d'Arcane : Feu », « Résilience (Ocultomancien) : Glace », R137 ; la magie tirée d'un don du
+  Flagelleur d'un personnage du Potentiel Illimité : « Punis-moi ... (Flagelleur) : Feu », R163 ; relue si c'est une option du choix de la fiche) ; le nom et le type du modèle restent. Les dés de maîtrise
   calculés (`maitrisesParFamille`, R148, R149 : 5 au plus) sont remplis de gris (`REMPLISSAGE_DE_ATTEINT`), la posture du moment marquée « ✔ ». Ce qui n'a pas de case (bi-classe, caractéristique du
   Potentiel Illimité, gains de niveau — deux totaux, R73 : « Gains de niveau : santé X, chakra Y » ; la note d'un classeur exporté avant, niveau par
   niveau, se relit sommée, le dé « les deux » sur chacun —, NM offerts de livre (« NM offerts : Boule de feu (livre 1) »), NM du MJ de la fiche (R118 :
@@ -793,7 +808,7 @@ pas, et la note datée est le seul signal.
 | `personnage_competence` | Points « Nat. » de chaque compétence (G22…) ; l'**Acquis** n'y est plus écrit depuis la migration 0062 : il se calcule (décision R104) |
 | `personnage_entrainement` | Les lignes de l'entraînement (L42 ; décision R104, migration 0062) : une compétence et ses points (0 à 10, 15 compétences au plus : règles de la vue), ou un texte libre |
 | `personnage_acquis_choix` | Les choix d'acquis des dons (décision R104) : pour un bonus « X ou Y », la compétence retenue ; pour « à répartir au choix », chaque compétence et ses points (`valeur`) ; `source` = le don (pour la ligne de l'ethnie du tableau de la race, `<race>#tableau:<ethnie>` : « 5% parmi les autres » du Drakos orange, R124), `rang` = le rang du choix dans son texte ; pour « de la compétence de l'arme choisie » (décision R119), la compétence qui reçoit le bonus : l'arme est la famille choisie pour la maîtrise au choix de la classe (`personnage_maitrise_choix`, décision R152) ; la colonne `arme_famille_id` (migration 0067), qui doublait ce choix, est retirée par la migration 0076 |
-| `personnage_resistance_choix` | Une résistance au choix : d'une ligne du tableau de la race (« Au choix parmi les autres » du Drakos orange, décision R124, migration 0069), ou d'un don qui laisse une magie au choix ou tirée (Ocultomancien « Résilience », Anansi d'Arcane : décision R137, migration 0071) : `source` (celle du choix d'acquis de la ligne, ou l'identifiant du don), `rang` (1 = le premier) et l'altération d'état (`etat_id`) ou la magie (`magie_id`) retenue, l'une ou l'autre, +1 cran (l'altération de la magie de l'Anansi se lit dans `etat_magie`) ; une de ses options (la page les lit, la base ne les écrit pas) ; un choix d'une autre ethnie ou d'un don qui n'est plus débloqué part à l'enregistrement (`resistanceChoixValables`) ; ligne « Résistance au choix » de la note du tableur |
+| `personnage_resistance_choix` | Un choix de résistance : `source` (celle du choix d'acquis de la ligne, ou l'identifiant du don), `rang` (1 = le premier) et l'altération d'état (`etat_id`) ou la magie (`magie_id`) retenue, l'une ou l'autre. Trois sortes : une altération d'une ligne du tableau de la race (« Au choix parmi les autres » du Drakos orange, décision R124, migration 0069), +1 cran ; une magie au choix ou tirée d'un don (Ocultomancien « Résilience », Anansi d'Arcane : décision R137, migration 0071), +1 cran à cette magie (et, pour l'Anansi, à son altération, lue dans `etat_magie`) ; la magie tirée au D14 par le MJ pour « Punis-moi ... » ou « ... plus fort ! » d'un personnage du Potentiel Illimité (une des 14 magies : décision R163, sans migration), sans cran par elle-même : elle tient lieu de magie innée pour ce don seulement (ses listes de résistances et de faiblesses aux altérations servent au don, le PI n'en hérite pas) ; une de ses options (la page les lit, la base ne les écrit pas) ; un choix d'une autre ethnie ou d'un don qui n'est plus débloqué part à l'enregistrement (`resistanceChoixValables`) ; ligne « Résistance au choix » de la note du tableur |
 | `personnage_metier_bonus` | Pour chaque rang de bonus du métier qui propose plusieurs compétences, celle que le joueur retient (décision R33) |
 | `personnage_capacite` | Dons de classe **à choix** (options d'une ligne, paliers de l'Archimage) ; les autres se déduisent |
 | `personnage_sort` | Sorts de la liste (AA55:AY74) et leur NM (toutes origines comprises), dont celui d'un livre (`nm_livre`, noté dans l'entraînement : le sort a alors au moins 1 NM ; décision R118) ; les NM du MJ, notés sort par sort jusqu'à la migration 0066 (`nm_cadeau`), sont ceux de la fiche ; le sort préparé (décision R115, migration 0067 : `prepare`, un seul par fiche), son jet de magie (`prepare_jet`, D100) et la posture du moment de sa préparation (`prepare_posture_id`), que les autres sorts n'ont pas ; pas de case dans la fiche auto |

@@ -18,7 +18,7 @@ import { modeleXlsx, partiesDuModele } from '../src/lib/fiche-modele.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import {
-  casesDesDes, casesDuDon, DONS, lettresDeColonne, LONGUEUR_MAX_D_UNE_CASE, MAITRISES, MARQUEUR_DES_NOTES, ORDINATEUR, REMPLISSAGE_DE_ATTEINT,
+  CASES_RESISTANCES, casesDesDes, casesDuDon, DONS, lettresDeColonne, LONGUEUR_MAX_D_UNE_CASE, MAITRISES, MARQUEUR_DES_NOTES, ORDINATEUR, REMPLISSAGE_DE_ATTEINT,
 } from '../src/lib/fiche-tableur-cases.mjs';
 import { cellulesDeLaFiche, CLES_DE_LA_NOTE, enChiffres, lireLigneDeNote, lireSortPrepare, MODE_HYPER_CENT_DEBLOQUE } from '../src/lib/fiche-tableur-export.mjs';
 import { feuilleDeGrille, ficheDuClasseur, REMARQUE_MAITRISES_CSV } from '../src/lib/fiche-tableur-import.mjs';
@@ -589,6 +589,31 @@ test('résistances à une magie (décision R137) : l’Anansi d’Arcane (une ma
   const relu = ficheDuClasseur(regles, classeur.feuille('Personnage'), { nomFichier: 'essai.xlsx', date: DATE, logo: LOGO, empreintePortrait: null });
   assert.ok(relu.nonRepris.includes('Résistance au choix « Résilience (Ocultomancien) : Arcane » : pas une option de ce choix'), relu.nonRepris.join('\n'));
   assert.deepEqual(relu.fiche.resistance_choix, f.resistance_choix.slice(0, 1));
+});
+
+test('magie tirée d’un don du Flagelleur (décision R163) : Potentiel Illimité, Archimage et Flagelleur Masochiste, « Punis-moi ... » : « Punis-moi ... (Flagelleur) : Feu » dans la note, relue telle quelle, point fixe ; les paliers exportés la comptent', async () => {
+  const PUNIS = 'capacites/flagelleur-puni-moi';
+  const f = {
+    ...ficheVide('Flagelleuse'), race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-central', magie_innee_id: 'magies/potentiel-illimite',
+    caracteristique_magie_id: 'intelligence', xp: xpDuNiveau(13), mode_classe: 'bi',
+    caracteristiques: regles.caracteristiques.map((k) => ({ caracteristique_id: k.id, base: 3, croix: 0 })),
+    resistance_choix: [{ source: PUNIS, rang: 1, magie_id: 'magies/magie-du-feu' }],
+  };
+  f.classes = [...M.classesSelonLaMagieInnee(regles, f), { rang: 2, classe_id: 'classes/flagelleur', specialite_id: 'classes/flagelleur#specialite:masochiste' }];
+  f.classes = f.classes.map((c) => ({ ...c, specialite_id: c.specialite_id ?? M.trouver(regles.classes, c.classe_id).specialites[0]?.id ?? null }));
+  f.capacites = M.donsAChoisir(regles, f).flatMap((d) => d.groupes.map((g) => ({ capacite_id: g.options.find((o) => o.id === PUNIS)?.id ?? g.options[0].id })));
+  assert.ok(f.capacites.some((c) => c.capacite_id === PUNIS), 'le don débloqué et choisi');
+  assert.deepEqual(commeLaPage(f).resistance_choix, f.resistance_choix, 'le choix fait');
+  const r = await verifier(f, 'magie tirée du Flagelleur');
+  assert.deepEqual(r.fiche.resistance_choix, f.resistance_choix);
+  assert.deepEqual(lignesDeLaNote(r.cellules).filter((l) => l.nom === 'resistanceChoix').map((l) => l.valeur), ['Punis-moi ... (Flagelleur) : Feu']);
+  // les paliers écrits : Brûlure, Gel et Pétrifié en Résistance (+1 du don, rien de la magie Feu : le PI n'hérite pas de ses listes)
+  const resistance = CASES_RESISTANCES.find((k) => k.palier === 'resistance');
+  assert.deepEqual(r.cellules[resistance.cibles].split(', ').sort(), ['Brûlure', 'Gel', 'Pétrifié'].sort());
+  // sans le choix, rien dans la note ni dans les paliers
+  const sans = await allerRetour({ ...f, resistance_choix: [] });
+  assert.deepEqual(lignesDeLaNote(sans.cellules).filter((l) => l.nom === 'resistanceChoix'), []);
+  assert.ok(!sans.cellules[resistance.cibles]);
 });
 
 test('fiche riche (mono-classe, tout rempli, débordements dans la note) : relue telle quelle, point fixe', async () => {

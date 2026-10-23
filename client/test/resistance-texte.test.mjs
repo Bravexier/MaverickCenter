@@ -22,7 +22,8 @@ test('crans écrits : la magie innée et son altération, l’altération seule,
   const inneeEtAlteration = { effets: [{ type: 'magie_innee', id: null, crans: 1 }, { type: 'etat_magie_innee', id: null, crans: 1 }], choix: false };
   assert.deepEqual(lire("- Distinction, Observation et Magie = 5% en acquis\n- 1 cran de résistance en plus à la magie innée et son altération d'état."), inneeEtAlteration);
   assert.deepEqual(lire("Augmente d'un cran la résistance à la magie innée et à son altération d'état."), inneeEtAlteration);
-  assert.deepEqual(lire("Augmente d'un cran la résistance aux altérations d'état lié à la magie innée."), { effets: [{ type: 'etat_magie_innee', id: null, crans: 1 }], choix: false });
+  // « Punis-moi ... » (Flagelleur, décision R163) : chaque altération de la liste de résistances de la magie innée, plus seulement la sienne
+  assert.deepEqual(lire("Augmente d'un cran la résistance aux altérations d'état lié à la magie innée."), { effets: [{ type: 'etats_resistes_magie_innee', id: null, crans: 1 }], choix: false });
   assert.deepEqual(lire('- +1 santé, +1 chakra\n- 1 cran de résistance au gel et à la brûlure.'),
     { effets: [{ type: 'etat', id: etat('gel'), crans: 1 }, { type: 'etat', id: etat('brulure'), crans: 1 }], choix: false });
   assert.deepEqual(lire('- Résistance à la magie du Sang\n- Vulnérabilité à la magie de la Nécromancie'),
@@ -50,6 +51,28 @@ test('décision R137 : une magie au choix (Ocultomancien « Résilience ») ou t
   // sans exception écrite, rien n'est exclu ; sur un autre (« un adversaire ») : rien
   assert.deepEqual(lire('Augmente de 2 crans la résistance à une magie au choix.'), { effets: [], choix: false, magies_au_choix: [{ crans: 2, sauf: [], alteration: false, aleatoire: false }] });
   assert.deepEqual(lire('Inflige 1 cran de faiblesse à une magie au choix sur un adversaire au corps à corps pendant 3 tours'), rien);
+});
+
+test('décision R163 : « Punis-moi ... » (les altérations auxquelles la magie innée résiste), « ... plus fort ! » (les faiblesses aux altérations de la magie innée annulées) et la remarque du D14 du Potentiel Illimité', () => {
+  const D14 = 'Dans le cas du potentiel illimité, lancer un D14 pour déterminer une résistance magique aléatoire';
+  // les deux textes et leur remarque, tels que l'import les a écrits (le site de dev modifie les dons)
+  const dImport = new Map(historique.lignesDImport('capacite').map((c) => [c.id, c]));
+  assert.deepEqual(['capacites/flagelleur-puni-moi', 'capacites/flagelleur-plus-fort'].map((id) => [dImport.get(id).effet, dImport.get(id).remarque]), [
+    ["Augmente d'un cran la résistance aux altérations d'état lié à la magie innée.", D14],
+    ["Annule les faiblesses aux altérations d'état liées à la magie innée.", D14],
+  ]);
+  const PI = 'magies/potentiel-illimite';
+  assert.deepEqual(lire("Augmente d'un cran la résistance aux altérations d'état lié à la magie innée.", { remarque: D14 }),
+    { effets: [{ type: 'etats_resistes_magie_innee', id: null, crans: 1 }], choix: false, si_magie_innee: PI, de: 'D14' });
+  assert.deepEqual(lire("Annule les faiblesses aux altérations d'état liées à la magie innée.", { remarque: D14 }),
+    { effets: [{ type: 'faiblesses_etats_magie_innee', id: null, annule: true }], choix: false, si_magie_innee: PI, de: 'D14' });
+  assert.deepEqual(lire("Annule les faiblesses aux altérations d'état liées à la magie innée."), { effets: [{ type: 'faiblesses_etats_magie_innee', id: null, annule: true }], choix: false });
+  // la remarque seule ne donne aucun effet ; une remarque qui ne nomme pas une magie connue, rien
+  assert.deepEqual(lire('Prend 50% de dégâts en moins des altérations d\'états.', { remarque: D14 }), { effets: [], choix: false, si_magie_innee: PI, de: 'D14' });
+  assert.deepEqual(lire('', { remarque: 'Dans le cas du truc, lancer un D14 pour déterminer une résistance magique aléatoire' }), rien);
+  // « Punition ! » (Sadique) vise la cible : toujours rien ; le Clerc et les ethnies hybrides (au singulier) : inchangés plus haut
+  assert.deepEqual(lire("Diminue d'un cran la résistance aux altérations d'état lié à la magie innée au cible. (S'il est neutre ou plus bas, ça aggrave l'altération d'état)"), rien);
+  assert.deepEqual(lire("Annule les faiblesses aux altérations d'état liées à la magie innée de la cible."), rien);
 });
 
 test('pas compté : au choix ou aléatoire (signalé), passager, visant un autre, partiel ; ni ce qui ne parle pas de résistance', () => {
@@ -81,7 +104,7 @@ function textesDesDons() {
     ...db.prepare('SELECT id, texte FROM race_don').all().map((d) => ({ id: d.id, texte: d.texte })),
     ...db.prepare(`SELECT c.race_id || ' L' || c.ligne || ' C' || c.colonne AS id, c.valeur AS texte, k.libelle AS colonne FROM race_don_tableau_cellule c
                    JOIN race_don_tableau_colonne k ON k.race_id = c.race_id AND k.rang = c.colonne`).all(),
-    ...db.prepare('SELECT id, effet AS texte FROM capacite').all(),
+    ...db.prepare('SELECT id, effet AS texte, remarque FROM capacite').all(),
   ];
 }
 
@@ -91,12 +114,18 @@ test('toute la base : un don qui parle de cran de résistance ou d’immunité d
   let comptes = 0;
   let auChoix = 0;
   const magiesAuChoix = [];
+  const siMagieInnee = [];
   for (const d of textesDesDons()) {
-    const lecture = lire(d.texte, d.colonne === undefined ? {} : { colonne: d.colonne });
+    const lecture = lire(d.texte, d.colonne === undefined ? { remarque: d.remarque } : { colonne: d.colonne });
     for (const e of lecture.effets) {
-      assert.ok(['magie', 'etat', 'magie_innee', 'etat_magie_innee'].includes(e.type), d.id);
-      assert.ok(e.immunite === true || (Number.isInteger(e.crans) && e.crans !== 0), `${d.id} : ${JSON.stringify(e)}`);
+      assert.ok(['magie', 'etat', 'magie_innee', 'etat_magie_innee', 'etats_resistes_magie_innee', 'faiblesses_etats_magie_innee'].includes(e.type), d.id);
+      // « ... plus fort ! » (décision R163) : une annulation, sans crans
+      assert.ok(e.immunite === true || (e.annule === true && e.type === 'faiblesses_etats_magie_innee') || (Number.isInteger(e.crans) && e.crans !== 0), `${d.id} : ${JSON.stringify(e)}`);
       assert.equal(e.id === null, e.type.endsWith('innee'), d.id);
+    }
+    if (lecture.si_magie_innee) {
+      siMagieInnee.push(d.id);
+      assert.ok(lecture.effets.some((e) => e.id === null), `${d.id} : la remarque du D14 sur un don qui vise la magie innée`);
     }
     comptes += lecture.effets.length ? 1 : 0;
     auChoix += lecture.choix ? 1 : 0;
@@ -111,6 +140,8 @@ test('toute la base : un don qui parle de cran de résistance ou d’immunité d
   assert.ok(comptes > 0 && auChoix > 0);
   // une magie au choix ou tirée (décision R137) : les deux dons de la décision, aucun autre
   assert.deepEqual(magiesAuChoix.sort(), ['capacites/ocultomancien-resilience', 'races/anansi#don:arcane-en-innee']);
+  // la remarque du D14 (décision R163) : les dons dont la remarque la porte, aujourd'hui « Punis-moi ... » et « ... plus fort ! »
+  assert.deepEqual(siMagieInnee.sort(), db.prepare("SELECT id FROM capacite WHERE remarque LIKE '%lancer un D14 pour déterminer une résistance magique aléatoire%' ORDER BY id").all().map((r) => r.id));
 });
 
 test('import : chaque ethnie a, d’après son onglet, les crans que la fiche auto lui donne (ethnie_resistance), plus l’altération de sa magie quand l’onglet l’écrit', () => {

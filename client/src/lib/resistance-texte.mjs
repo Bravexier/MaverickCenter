@@ -2,8 +2,14 @@
 // lues au build (lib/fiche-regles.mjs) pour le tableau « Résistance / Faiblesse » de la fiche de personnage (lib/fiche-moteur.mjs#resistancesDe).
 // Rien n'est déduit : seul ce que le texte écrit compte.
 //   « 1 cran de résistance en plus à la magie innée et son altération d'état » (ethnies des races hybrides), « Augmente d'un cran la résistance à la
-//   magie innée et à son altération d'état » (Clerc) : +1 à la magie innée du personnage et +1 à l'altération d'état liée à cette magie ; « … la
-//   résistance aux altérations d'état lié à la magie innée » : +1 à l'altération seule ;
+//   magie innée et à son altération d'état » (Clerc) : +1 à la magie innée du personnage et +1 à l'altération d'état liée à cette magie ;
+//   « Augmente d'un cran la résistance aux altérations d'état lié à la magie innée » (Flagelleur, « Punis-moi ... ») : +1 à chaque altération de la
+//   liste de résistances de la magie innée (décision R163 : « Feu en inné => +1 brûlure +1 Gelé et +1 pétrification », « + ça rajoute en plus de ce
+//   qui est déjà présent par la magie »), type `etats_resistes_magie_innee` ; « Annule les faiblesses aux altérations d'état liées à la magie innée »
+//   (Flagelleur, « ... plus fort ! ») : les crans négatifs des altérations de la liste de faiblesses de la magie innée sont retirés (R163 : « Retirer
+//   les crans négatifs »), type `faiblesses_etats_magie_innee`, `annule: true` ; la remarque « Dans le cas du potentiel illimité, lancer un D14 pour
+//   déterminer une résistance magique aléatoire » (capacite.remarque, lue par `remarque`) : `si_magie_innee` (la magie nommée) et `de` (« D14 ») —
+//   pour un personnage de cette magie innée, une magie tirée tient lieu de magie innée pour le don (R163) ; lib/fiche-regles.mjs en fait un choix ;
 //   « 1 cran de résistance au gel et à la brûlure » : +1 à chaque cible nommée ; « Résistance à la magie du Sang », « Vulnérabilité à la magie de la
 //   Nécromancie » (tableau du Mort-Vivant) : +1, −1 ; une cellule sous la colonne « +1 cran de résistance » (tableau du Drakos) : +1 à ce qu'elle nomme ;
 //   « Immunisé contre le poison et la maladie », « Totalement immunisé à l'aveuglement » : immunité (seules les cibles connues comptent : une magie ou
@@ -35,6 +41,10 @@ const AU_CHOIX = /\bau choix\b|\baleatoire\b|\bune (?:magie|vulnerabilite|altera
  * (textes pliés) ; [, crans, « au choix » | « aleatoire », la suite].
  */
 const MAGIE_AU_CHOIX = /^-?\s*(?:augmente de )?(\d+) crans? (?:de |la )resistance (?:a|sur) une magie (au choix|aleatoire)\b(.*)$/;
+/** « Annule les faiblesses aux altérations d'état liées à la magie innée » (texte plié ; décision R163) : les crans négatifs de ces altérations retirés. */
+const ANNULE_LES_FAIBLESSES = /\bannule\w* (?:les |toutes les )?(?:faiblesses|vulnerabilites) aux alterations d'etat liee?s? a la magie innee\b/;
+/** Remarque « Dans le cas du potentiel illimité, lancer un D14 pour déterminer une résistance magique aléatoire » (pliée ; décision R163) : [, la magie, le dé]. */
+const SI_MAGIE_INNEE = /\bdans le cas d[eu] (?:la )?(.+?),\s*lancer un (d\d+) pour determiner une resistance magique aleatoire\b/;
 
 /**
  * Lecteur des résistances écrites dans un texte, pour un jeu de cibles connues.
@@ -60,6 +70,11 @@ export function lecteurDeResistances(cibles) {
   /** Une phrase : ce qu'elle donne au porteur. */
   const phrase = (texte, lecture) => {
     const t = plier(texte).trim();
+    // « Annule les faiblesses aux altérations d'état liées à la magie innée » (« ... plus fort ! », décision R163) : les crans négatifs retirés
+    if (ANNULE_LES_FAIBLESSES.test(t) && !PASSAGER_OU_AUTRUI.test(t)) {
+      lecture.effets.push({ type: 'faiblesses_etats_magie_innee', id: null, annule: true });
+      return;
+    }
     if (!PARLE_DE_RESISTANCE.test(t) || PASSAGER_OU_AUTRUI.test(t)) return;
     // une magie au choix ou tirée, sauf celles que la phrase exclut (« à l'exception de… », « (sauf …) ») : un choix de la fiche (décision R137)
     const magie = MAGIE_AU_CHOIX.exec(t);
@@ -86,6 +101,11 @@ export function lecteurDeResistances(cibles) {
     const inverse = /\b(?:diminue|reduit|baisse|retire)\b/.test(t) ? -1 : 1;
     const crans = (nombre ? Number(nombre[1]) : 1) * sens * inverse;
     if (/magie innee/.test(t)) {
+      // « aux altérations d'état lié(es) à la magie innée » (pluriel, « Punis-moi ... ») : chaque altération à laquelle la magie innée résiste (R163)
+      if (/\baux alterations d'etat liee?s? a la magie innee/.test(t) && !/a la magie innee et/.test(t)) {
+        lecture.effets.push({ type: 'etats_resistes_magie_innee', id: null, crans });
+        return;
+      }
       const alterationSeule = /alterations? d'etat liee?s? a la magie innee/.test(t) && !/a la magie innee et/.test(t);
       if (!alterationSeule) lecture.effets.push({ type: 'magie_innee', id: null, crans });
       if (alterationSeule || /magie innee et (?:a )?son alteration d'etat/.test(t)) lecture.effets.push({ type: 'etat_magie_innee', id: null, crans });
@@ -97,14 +117,20 @@ export function lecteurDeResistances(cibles) {
 
   /**
    * Ce que donne un texte : `effets` comptés ({ type: 'magie' | 'etat', id, crans } ou { …, immunite: true } ; `magie_innee` et `etat_magie_innee`,
-   * sans id, désignent la magie innée du personnage et l'altération qui lui est liée), et `choix` quand une résistance est laissée au choix ; `autres`
+   * sans id, désignent la magie innée du personnage et l'altération qui lui est liée ; `etats_resistes_magie_innee` (avec ses crans), sans id, chaque
+   * altération de la liste de résistances de la magie innée ; `faiblesses_etats_magie_innee` ({ annule: true }, sans crans), les altérations de sa
+   * liste de faiblesses, dont les crans négatifs sont retirés : décision R163), et `choix` quand une résistance est laissée au choix ; `autres`
    * (une cellule « Au choix parmi les autres », décision R124) : les crans de ce choix, à prendre parmi les autres lignes de la colonne ;
    * `magies_au_choix` (une magie au choix ou aléatoire, décision R137) : [{ crans, sauf (ids des magies exclues), alteration, aleatoire }], absent sinon.
    * `colonne` : en-tête de la colonne d'une cellule de tableau de dons ; sous « +1 cran de résistance », la cellule nomme la cible (ou un choix),
-   * sous un autre en-tête elle se lit comme un texte.
+   * sous un autre en-tête elle se lit comme un texte. `remarque` : la remarque du don (capacite.remarque) ; « Dans le cas du <magie>, lancer un D14
+   * pour déterminer une résistance magique aléatoire » donne `si_magie_innee` (l'id de cette magie, une seule nommée) et `de` (« D14 ») : décision R163.
    */
-  return (texte, { colonne } = {}) => {
+  return (texte, { colonne, remarque } = {}) => {
     const lecture = { effets: [], choix: false };
+    const si = SI_MAGIE_INNEE.exec(plier(remarque));
+    const magie = si ? nommees(si[1]).filter((c) => c.type === 'magie') : [];
+    if (magie.length === 1) Object.assign(lecture, { si_magie_innee: magie[0].id, de: si[2].toUpperCase() });
     const entete = colonne === undefined ? null : /([+\-−]?)\s*(\d+)\s+crans? de (resistance|vulnerabilite|faiblesse)/.exec(plier(colonne));
     if (entete) {
       const crans = Number(entete[2]) * (entete[1] && entete[1] !== '+' ? -1 : 1) * (entete[3] === 'resistance' ? 1 : -1);

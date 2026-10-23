@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 77 : 198 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 78 : 198 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -2008,7 +2008,7 @@ La fiche d'un matériau sur la page « Composants » (décision R62, migration 0
 
 ### `gemme`
 
-Gemmes précieuses (14, une par magie) : onglet Bâton magique (prix de la gemme entière) et onglet Accessoires (prix d'un QUART de gemme, « Chaque accessoire possède des morceaux de gemmes, ce sont des quarts de gemmes »). Qualités : commune (= « normal » / « classique »), raffinée, parfaite (= « Prix (Parfait) » / « parfaite »).
+Gemmes précieuses (14, une par magie sauf le Potentiel Illimité : décision R160, « Il n'existe aucune gemme ni aucune piece élémentaire du PI » ; la contrainte gemme_sans_potentiel_illimite le refuse, migration 0078) : onglet Bâton magique (prix de la gemme entière) et onglet Accessoires (prix d'un QUART de gemme, « Chaque accessoire possède des morceaux de gemmes, ce sont des quarts de gemmes »). Qualités : commune (= « normal » / « classique »), raffinée, parfaite (= « Prix (Parfait) » / « parfaite »).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -2031,7 +2031,7 @@ Gemmes précieuses (14, une par magie) : onglet Bâton magique (prix de la gemme
 
 ### `bois`
 
-Bois pour bâton magique (14, un par magie) : onglet Bâton magique › MATERIAUX NECESSAIRE PAR MAGIE (Bois : Matière, Description, Prix).
+Bois pour bâton magique (14, un par magie) : onglet Bâton magique › MATERIAUX NECESSAIRE PAR MAGIE (Bois : Matière, Description, Prix). Aucun bois du Potentiel Illimité (décision R160, étendue au bois par le propriétaire : « Oui, aucun bois du PI » ; « Même garde-fou que les gemmes : la base refuse un bois du PI et le site de dev ne le propose plus. ») : contrainte bois_sans_potentiel_illimite, migration 0078.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -2168,7 +2168,7 @@ Produits d'une recette (une page de potions : tous les paliers Petite … Ultime
 
 ### `baton_magique`
 
-Bâtons magiques (onglet Bâton magique › « Bonus passifs » : 14 magies x 3 niveaux). La source ne leur donne pas de nom propre.
+Bâtons magiques (onglet Bâton magique › « Bonus passifs » : 14 magies x 3 niveaux). La source ne leur donne pas de nom propre. Aucun bâton du Potentiel Illimité (décision R160 : il « n'a pas d'élement propre », ni gemme ni pièce élémentaire) : contrainte baton_magique_sans_potentiel_illimite, migration 0078.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -2313,7 +2313,7 @@ Minimums de caractéristique cités par l'effet : « 4 de Force minimum », « 3
 
 ### `arme_elementaire`
 
-Armes élémentaires (onglet Pièces élémentaires : 11 types d'armes x 14 éléments). La cellule contient 4 lignes : nom / « +8 Dégâts » / « Élément X » / capacité « Nom (mode) : texte ».
+Armes élémentaires (onglet Pièces élémentaires : 11 types d'armes x 14 éléments). La cellule contient 4 lignes : nom / « +8 Dégâts » / « Élément X » / capacité « Nom (mode) : texte ». Les 14 éléments sont les magies sauf le Potentiel Illimité, qui n'a ni élément propre ni pièce élémentaire (décision R160) : contrainte arme_elementaire_sans_potentiel_illimite, migration 0078.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -2392,7 +2392,7 @@ Résistances et faiblesses d'une armure : « Résistance : x2 Frappe », « Faib
 
 ### `armure_elementaire`
 
-Armures élémentaires (onglet Pièces élémentaires : 4 catégories x 14 éléments = 56) : vêtement, armure légère, intermédiaire, lourde.
+Armures élémentaires (onglet Pièces élémentaires : 4 catégories x 14 éléments = 56) : vêtement, armure légère, intermédiaire, lourde. Les 14 éléments sont les magies sauf le Potentiel Illimité (décision R160 : aucune pièce élémentaire du PI) : contrainte armure_elementaire_sans_potentiel_illimite, migration 0078.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -3446,7 +3446,7 @@ Acquis à choisir (décision R104 : « Armes légères ou lourdes » dans le tex
 
 ### `personnage_resistance_choix`
 
-Résistance à choisir (décision R124, migration 0069) : Drakos orange, tableau « Écaille draconique » de l'onglet de la race, colonne « +1 cran de résistance » : « Au choix parmi les autres » = « au choix entre les bonus de compétence listés des autres possiblité, pareil pour les résistance » ; les deux choix de la ligne sont indépendants (« Tu peux en avoir un avec +5% Ruse et résisstance Poison »). La compétence (« 5% parmi les autres ») est un choix d'acquis (personnage_acquis_choix) ; la résistance, un choix à part, sur le même modèle : la source du choix (`source` : celle de personnage_acquis_choix, pour la ligne d'une ethnie dans le tableau de dons de sa race l'identifiant que la fiche lui donne, `<race>#tableau:<ethnie>` ; pas de clé étrangère, une source disparue laisse un choix sans effet, que la page retire), le rang de ce choix de résistance dans la source (1 = le premier) et l'altération d'état retenue, +1 cran. Les options sont les résistances des autres lignes du tableau (race_don_tableau_cellule, que ethnie_resistance type déjà pour leurs ethnies : 13 altérations, de Saignement à Peur), lues par la fiche, jamais écrites ici ; une seule résistance par choix (clé primaire). Résistance à une magie au choix (décision R137, migration 0071 : « Q43: Oui ») : Ocultomancien « Résilience » (« Augmente de 1 cran la résistance à une magie au choix, à l'exception de l'arcane et de la corruption », source = l'identifiant du don, capacite.id) et Anansi d'Arcane (« 1 cran de résistance sur une magie aléatoire (sauf arcane et corruption) et son altération d'état », source = race_don.id) : la magie choisie ou tirée (`magie_id`), dont l'altération d'état (etat_magie) se lit dans les règles quand le don l'écrit, jamais gardée ici. Une ligne retient une altération (`etat_id`) ou une magie (`magie_id`), jamais les deux ni aucune.
+Résistance à choisir (décision R124, migration 0069) : Drakos orange, tableau « Écaille draconique » de l'onglet de la race, colonne « +1 cran de résistance » : « Au choix parmi les autres » = « au choix entre les bonus de compétence listés des autres possiblité, pareil pour les résistance » ; les deux choix de la ligne sont indépendants (« Tu peux en avoir un avec +5% Ruse et résisstance Poison »). La compétence (« 5% parmi les autres ») est un choix d'acquis (personnage_acquis_choix) ; la résistance, un choix à part, sur le même modèle : la source du choix (`source` : celle de personnage_acquis_choix, pour la ligne d'une ethnie dans le tableau de dons de sa race l'identifiant que la fiche lui donne, `<race>#tableau:<ethnie>` ; pas de clé étrangère, une source disparue laisse un choix sans effet, que la page retire), le rang de ce choix de résistance dans la source (1 = le premier) et l'altération d'état retenue, +1 cran. Les options sont les résistances des autres lignes du tableau (race_don_tableau_cellule, que ethnie_resistance type déjà pour leurs ethnies : 13 altérations, de Saignement à Peur), lues par la fiche, jamais écrites ici ; une seule résistance par choix (clé primaire). Résistance à une magie au choix (décision R137, migration 0071 : « Q43: Oui ») : Ocultomancien « Résilience » (« Augmente de 1 cran la résistance à une magie au choix, à l'exception de l'arcane et de la corruption », source = l'identifiant du don, capacite.id) et Anansi d'Arcane (« 1 cran de résistance sur une magie aléatoire (sauf arcane et corruption) et son altération d'état », source = race_don.id) : la magie choisie ou tirée (`magie_id`), dont l'altération d'état (etat_magie) se lit dans les règles quand le don l'écrit, jamais gardée ici. Une ligne retient une altération (`etat_id`) ou une magie (`magie_id`), jamais les deux ni aucune. Flagelleur au Potentiel Illimité (décision R163 : « A chaque choix de don, tu choisi la résistance / altération associée », « Les 14 magies ») : « Punis-moi ... » et « ... plus fort ! » (source = capacite.id, rang 1) retiennent une magie hors PI (`magie_id`), qui tient lieu de magie innée pour ces deux dons seulement ; le choix est retiré par la page et l'import du tableur quand la magie innée n'est plus le Potentiel Illimité (lib/fiche-moteur.mjs#resistanceChoixValables), ni la base ni le service ne le retirent : une ligne restée est ignorée par le moteur (comme R137).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |

@@ -29,7 +29,7 @@ test('modules livrés : l’entrée, le service, son journal, ses métriques (co
     'src/lib/edition-modele.mjs', 'src/lib/equipement-couleurs.mjs', 'src/lib/equipement.mjs', 'src/lib/fiche-couleurs.mjs', 'src/lib/fiche-format.mjs', 'src/lib/google-sheets.mjs', 'src/lib/guide.mjs', 'src/lib/json-python.mjs', 'src/lib/libelles-de-la-base.mjs', 'src/lib/livres.mjs', 'src/lib/maitrise-arme.mjs', 'src/lib/markdown-edition.mjs', 'src/lib/markdown-sur.mjs',
     'src/lib/materiaux-couleurs.mjs', 'src/lib/metier-champs.mjs', 'src/lib/monnaies.mjs', 'src/lib/monstre-champs.mjs', 'src/lib/monstre-rendu.mjs',
     'src/lib/mots-cles-balises.mjs', 'src/lib/mots-cles-db.mjs', 'src/lib/mots-cles.mjs', 'src/lib/notes-de-version-sens.mjs',
-    'src/lib/notes-de-version.mjs', 'src/lib/palette-css.mjs', 'src/lib/panneaux-regles-db.mjs', 'src/lib/portrait.mjs', 'src/lib/potion-etats.mjs', 'src/lib/race-kinds.mjs', 'src/lib/ressources.mjs', 'src/lib/ressources/artisanat.mjs',
+    'src/lib/notes-de-version.mjs', 'src/lib/palette-css.mjs', 'src/lib/panneaux-regles-db.mjs', 'src/lib/portrait.mjs', 'src/lib/potentiel-illimite.mjs', 'src/lib/potion-etats.mjs', 'src/lib/race-kinds.mjs', 'src/lib/ressources.mjs', 'src/lib/ressources/artisanat.mjs',
     'src/lib/ressources/bestiaire.mjs', 'src/lib/ressources/creation.mjs', 'src/lib/ressources/equipement.mjs', 'src/lib/ressources/magie.mjs',
     'src/lib/ressources/regles.mjs', 'src/lib/ressources/univers.mjs', 'src/lib/ressources/wiki.mjs', 'src/lib/sort-analyse.mjs', 'src/lib/sort-cout.mjs', 'src/lib/sort-etats.mjs', 'src/lib/sort-format.mjs', 'src/lib/sort-maitrise.mjs', 'src/lib/tables-de-la-base.mjs', 'src/lib/text.mjs', 'src/lib/tipeee.mjs',
   ]);

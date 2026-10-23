@@ -1526,6 +1526,10 @@ export function presentationDuCompteurDeMaitrise(compteur, sources) {
  * « Résilience », Anansi d'Arcane, sans l'Arcane ni la Corruption), la magie choisie de même, avec l'altération d'état de cette magie quand le don
  * l'écrit ; `aChoisir` : [{ source, rang, nom, crans, options (etat_id, ou magie_id quand `magie`), magie, alteration, choisi, fait }]. Les
  * accessoires portés aussi (« Résistance X et Y » : un cran chacune, décision R54) ; pas encore le reste de l'équipement.
+ * Flagelleur (décision R163) : « Punis-moi ... » donne +1 cran à chaque altération de la liste de résistances de la magie innée, en plus des crans de
+ * la magie ; « ... plus fort ! » retire, après tous les autres crans, les crans négatifs des altérations de sa liste de faiblesses (les positifs
+ * restent, une ligne ramenée à 0 disparaît) ; pour un personnage du Potentiel Illimité, la magie tirée au D14 par le MJ (un choix de `aChoisir`,
+ * `remplaceMagieInnee`, sans `crans`, parmi les 14 magies) tient lieu de magie innée pour ces deux dons seulement, rien tant qu'elle n'est pas choisie.
  * En posture Symbiose avec deux magies, la magie désactivée (postureDuMoment, `symbiose.inactive`) perd ses résistances et faiblesses (décision R111 :
  * « La seule perte de la magie sont ses sorts et ses résistances et faiblesses ») : ses listes ne comptent plus, ni dans le cumul ni dans l'annulation
  * avec l'autre magie (R85) ; les dons (ceux qui visent « la magie innée » compris), l'ethnie et les accessoires restent. `desactivee` : cette magie
@@ -1539,10 +1543,23 @@ export function resistancesDe(regles, fiche, { avecLaPosture = true } = {}) {
   const desactivee = avecLaPosture ? postureDuMoment(regles, fiche)?.symbiose?.inactive ?? null : null;
   const cibles = new Map();
   const auChoix = [];
-  const compter = (effet, origine) => {
-    // « la magie innée et son altération d'état » : celles du personnage (etat_magie)
+  // les altérations dont « ... plus fort ! » retire les crans négatifs (décision R163), appliqué après tous les crans : id → origine (la première)
+  const annulees = new Map();
+  const compter = (effet, origine, magieInnee = innee) => {
+    // « la magie innée et son altération d'état » : celles du personnage (etat_magie) ; pour un don du Potentiel Illimité, la magie tirée (R163)
+    if (effet.type === 'etats_resistes_magie_innee') {
+      // « Punis-moi ... » (décision R163) : +crans à chaque altération à laquelle la magie innée résiste, en plus des crans de la magie (« + ça rajoute
+      // en plus de ce qui est déjà présent par la magie »)
+      for (const e of magieInnee?.resistances ?? []) if (e.type === 'etat' && e.crans > 0) compter({ type: 'etat', id: e.id, crans: effet.crans }, origine);
+      return;
+    }
+    if (effet.type === 'faiblesses_etats_magie_innee') {
+      // « ... plus fort ! » (décision R163 : « Les faiblesses de la magie », « Retirer les crans négatifs ») : noté, appliqué après tous les crans
+      for (const e of magieInnee?.resistances ?? []) if (e.type === 'etat' && e.crans < 0 && !annulees.has(e.id)) annulees.set(e.id, origine);
+      return;
+    }
     const type = effet.type === 'magie_innee' ? 'magie' : effet.type === 'etat_magie_innee' ? 'etat' : effet.type;
-    const id = effet.type === 'magie_innee' ? innee?.id : effet.type === 'etat_magie_innee' ? innee?.etat_id : effet.id;
+    const id = effet.type === 'magie_innee' ? magieInnee?.id : effet.type === 'etat_magie_innee' ? magieInnee?.etat_id : effet.id;
     if (!id) return;
     const cle = `${type}:${id}`;
     if (!cibles.has(cle)) cibles.set(cle, { type, id, crans: 0, immunite: false, origines: [] });
@@ -1553,24 +1570,31 @@ export function resistancesDe(regles, fiche, { avecLaPosture = true } = {}) {
   };
   const aChoisir = [];
   const lire = (resistances, origine, source) => {
-    for (const e of resistances?.effets ?? []) compter(e, origine);
-    if (resistances?.choix) auChoix.push(origine);
+    // la magie qui tient lieu de magie innée pour ce don (décision R163 : « Punis-moi ... », « ... plus fort ! » d'un personnage du Potentiel Illimité,
+    // la magie tirée au D14 par le MJ, `remplace_magie_innee`) ; sans elle, la magie innée ; tirée mais pas encore choisie : aucune
+    let magieDuDon = innee;
     // « Au choix parmi les autres » (Drakos orange, décision R124 : « Tu peux en avoir un avec +5% Ruse et résisstance Poison ») : l'altération choisie,
     // une des options (les autres lignes du tableau), reçoit ses crans ; une magie au choix ou tirée (décision R137 : Ocultomancien « Résilience »,
-    // Anansi d'Arcane), la magie choisie, et l'altération d'état de cette magie quand le don l'écrit (`alteration` : etat_magie)
+    // Anansi d'Arcane), la magie choisie, et l'altération d'état de cette magie quand le don l'écrit (`alteration` : etat_magie) ; la magie tirée d'un
+    // don qui vise la magie innée (R163), seulement quand la magie innée est celle que nomme sa remarque (`si_magie_innee` : le Potentiel Illimité)
     for (const c of resistances?.au_choix ?? []) {
+      if (c.remplace_magie_innee && fiche.magie_innee_id !== c.si_magie_innee) continue;
       const choisiDe = (x) => (c.magie ? x.magie_id : x.etat_id);
       const fait = (fiche.resistance_choix ?? []).find((x) => x.source === source && entier(x.rang) === c.rang && c.options.includes(choisiDe(x))) ?? null;
-      if (fait && c.magie) {
+      if (c.remplace_magie_innee) magieDuDon = fait ? trouver(regles.magies, fait.magie_id) : null;
+      else if (fait && c.magie) {
         compter({ type: 'magie', id: fait.magie_id, crans: c.crans }, origine);
         const etat = c.alteration ? trouver(regles.magies, fait.magie_id)?.etat_id : null;
         if (etat) compter({ type: 'etat', id: etat, crans: c.crans }, origine);
       } else if (fait) compter({ type: 'etat', id: fait.etat_id, crans: c.crans }, origine);
       aChoisir.push({
-        source, rang: c.rang, nom: origine, crans: c.crans, options: c.options, magie: Boolean(c.magie), alteration: Boolean(c.alteration),
+        source, rang: c.rang, nom: origine, crans: c.crans ?? null, options: c.options, magie: Boolean(c.magie), alteration: Boolean(c.alteration),
+        ...(c.remplace_magie_innee ? { remplaceMagieInnee: true, de: c.de ?? null } : {}),
         choisi: fait ? choisiDe(fait) : null, fait: Boolean(fait),
       });
     }
+    for (const e of resistances?.effets ?? []) compter(e, origine, magieDuDon);
+    if (resistances?.choix) auChoix.push(origine);
   };
   for (const [magie, role] of [[innee, 'magie innée'], [acquise, 'magie acquise']]) {
     // la magie que la Symbiose désactive : ni ses résistances ni ses faiblesses (décision R111)
@@ -1586,6 +1610,17 @@ export function resistancesDe(regles, fiche, { avecLaPosture = true } = {}) {
   for (const e of effetsDesAccessoires(regles, fiche)) {
     if (e.cible !== 'resistance' || !e.valeur) continue;
     compter({ type: trouver(regles.magies, e.cible_id) ? 'magie' : 'etat', id: e.cible_id, crans: e.valeur }, `${e.nom} (accessoire)`);
+  }
+
+  // « ... plus fort ! » (décision R163) : après tous les crans (magies, dons, accessoires maudits compris), une altération de la liste de faiblesses de la
+  // magie innée (ou tirée) perd ses crans négatifs, quelle qu'en soit l'origine, et garde les positifs (« +1 et −2 donnent +1 ») ; une origine de plus,
+  // le don, rend ce qu'il retire (l'infobulle reste juste) ; une ligne ramenée à 0 disparaît (aucun palier) ; une immunité reste
+  for (const [id, origine] of annulees) {
+    const c = cibles.get(`etat:${id}`);
+    const negatifs = (c?.origines ?? []).reduce((s, o) => s + (o.crans < 0 ? o.crans : 0), 0);
+    if (!negatifs) continue;
+    c.crans -= negatifs;
+    c.origines.push({ nom: origine, crans: -negatifs });
   }
 
   const rang = (c) => (c.type === 'magie' ? regles.magies : regles.etats ?? []).findIndex((x) => x.id === c.id);
@@ -1937,6 +1972,12 @@ export function donDeBase(texte) {
 /** Le niveau de classe où se choisit la spécialité : celui de son don de spécialité (le plus bas des dons `specialite` de la classe, 10). */
 export const niveauDeSpecialite = (classe) => Math.min(...(classe?.dons ?? []).filter((d) => d.nature === 'specialite').map((d) => d.niveau));
 
+/**
+ * Le libellé d'une magie tirée qui tient lieu de magie innée pour un don (décision R163 : « Punis-moi ... », « ... plus fort ! » d'un personnage du
+ * Potentiel Illimité ; un choix de resistancesDe().aChoisir, `remplaceMagieInnee`) : le tiroir et la liste sous le tableau des résistances.
+ */
+export const magieTireeParLeMj = (c) => `magie tirée${c.de ? ` au ${c.de}` : ''} par le MJ (tient lieu de magie innée pour ce don)`;
+
 /** La clé d'un choix à faire (choixEnAttente), la même sur sa tuile dans la page (`data-choix-cle`). */
 export const cleDeChoix = {
   specialite: (rang) => `specialite:${rang}`,
@@ -2026,13 +2067,15 @@ export function choixEnAttente(regles, fiche) {
     });
   }
   // la résistance « Au choix parmi les autres » de la ligne du tableau de la race (Drakos orange, décision R124), une magie au choix ou tirée d'un don
-  // (décision R137 : Ocultomancien « Résilience », Anansi d'Arcane)
+  // (décision R137 : Ocultomancien « Résilience », Anansi d'Arcane), la magie tirée par le MJ qui tient lieu de magie innée pour un don du Flagelleur
+  // d'un personnage du Potentiel Illimité (décision R163)
   for (const c of resistancesDe(regles, fiche, { avecLaPosture: false }).aChoisir) {
     if (c.fait) continue;
     const noms = c.options.map((o) => trouver((c.magie ? regles.magies : regles.etats) ?? [], o)?.nom ?? o).join(' ou ');
     attente.push({
       nature: 'resistance', cle: cleDeChoix.resistance(c.source, c.rang),
-      libelle: `Résistance ${c.nom} : +${c.crans} cran ${c.magie ? `à une magie (${noms})${c.alteration ? ' et son altération d’état' : ''}` : noms}`,
+      libelle: c.remplaceMagieInnee ? `${c.nom} : ${magieTireeParLeMj(c)}`
+        : `Résistance ${c.nom} : +${c.crans} cran ${c.magie ? `à une magie (${noms})${c.alteration ? ' et son altération d’état' : ''}` : noms}`,
     });
   }
   // la magie de la posture Symbiose prise avec deux magies (décision R100)
