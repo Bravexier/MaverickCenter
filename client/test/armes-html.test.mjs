@@ -3,7 +3,8 @@
 // un onglet et un tableau par famille sans les armes de monstres, les colonnes voulues par le propriétaire, les lignes de départ en bleu avec leur infobulle, la description en infobulle du nom, les compétences
 // en couleur (décision R48) et leur filtre, le panneau de règles (migration 0056 : ses blocs dans l'ordre de la base, tuiles et leurs titres, la mise
 // en forme du classeur), les matériaux dans leur couleur, les améliorations, les champs du mode modification (une famille : nom, dé, en-tête de coût,
-// décision R159), les onglets gardés en mode modification, les modèles d'une famille créée (le même HTML que celui d'une famille de la base). Se saute
+// décision R159), les onglets gardés en mode modification, les modèles d'une famille créée (le même HTML que celui d'une famille de la base), l'infobulle
+// du dé d'une famille (les paliers selon la Force que sa note écrit : PUGILAT ; demande du propriétaire, 2026-10-23). Se saute
 // sans dist/ (npm run build) ; la CI le lance après le build.
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
@@ -16,6 +17,7 @@ import { COLONNES_D_UNE_ARME, htmlDeFamilleDepuisModele, htmlDesEffets, MODELE_D
 import { CLASSE_DES_ARMES_DE_DEPART, classeDeMateriau, cssDesFamilles } from '../src/lib/palette-css.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
+import { desSelonLaForce } from '../src/lib/maitrise-arme.mjs';
 import { chargerPanneau } from '../src/lib/panneaux-regles-db.mjs';
 import { htmlAvecMotsCles, texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
@@ -33,6 +35,13 @@ const echapper = (t) => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;')
 // les balises du glossaire, rendues par le middleware (src/middleware.mjs) : en gras dans le texte, en texte simple dans un attribut
 const vocabulaire = present ? chargerVocabulaire(base) : [];
 const commeLaPage = (h) => htmlAvecMotsCles(h, vocabulaire).html;
+// l'infobulle de la pastille du dé d'une famille : les paliers selon la Force que sa note écrit, lus dans la base (PUGILAT : « D6 1-2 Force, D8 3-4
+// Force, D10 5 Force »), écrits comme le refus du dé du service ; sinon celle de toute famille
+const INFOBULLE_PAR_DEFAUT = 'Dé de la famille, sauf indication contraire';
+const infobulleDuDe = (f) => {
+  const paliers = desSelonLaForce(f.note_brut);
+  return paliers ? `Dé selon la Force : ${paliers.map((p) => `${p.de} ${p.min === p.max ? p.min : `${p.min}-${p.max}`} Force`).join(', ')}` : INFOBULLE_PAR_DEFAUT;
+};
 // la catégorie de chaque famille, lue dans la base (arme_famille.categorie, décision R127) : les deux menus à onglets, mêlée (`contact`) puis distance
 const categorie = present ? Object.fromEntries(base.prepare('SELECT id, categorie FROM arme_famille').all().map((r) => [r.id, r.categorie])) : {};
 const famillesAffichees = present ? ['contact', 'distance'].flatMap((c) => armes.familles.filter((f) => categorie[f.id] === c)) : [];
@@ -281,11 +290,34 @@ test('R159 : une famille se modifie dans l’en-tête de son tableau — son nom
     const debut = main.indexOf(`id="famille-${f.id}"`);
     const tableau = main.slice(debut, main.indexOf('</thead>', debut));
     assert.ok(tableau.includes(`<span class="tableau__nom armes-famille__nom" id="famille-${f.id}-titre" data-ed="${ed(f.id, 'nom')}">${echapper(f.nom)}</span>`), `${f.id} : son nom`);
-    assert.ok(tableau.includes(`<span class="armes-famille__de" title="Dé de la famille, sauf indication contraire" data-ed="${ed(f.id, 'de_brut')}" data-ed-cadre${f.de_brut ? '' : ' hidden'}>${echapper(f.de_brut ?? '')}</span>`), `${f.id} : son dé`);
+    assert.ok(tableau.includes(`<span class="armes-famille__de" title="${echapper(infobulleDuDe(f))}" data-ed="${ed(f.id, 'de_brut')}" data-ed-cadre${f.de_brut ? '' : ' hidden'}>${echapper(f.de_brut ?? '')}</span>`), `${f.id} : son dé`);
     assert.ok(tableau.includes(`<th scope="col" class="ed-seul"><span data-ed="${ed(f.id, 'cout_libelle')}">${echapper(f.cout_libelle)}</span></th>`), `${f.id} : l’en-tête de son coût`);
   }
   // ARME DE MONSTRES reste hors de la page (R45) : aucun champ pour elle
   assert.ok(!main.includes('&quot;arme-de-monstres&quot;'));
+});
+
+test('le dé d’une famille dont la note écrit des dés selon la Force (PUGILAT) : ses paliers en infobulle, dans l’onglet et le titre du tableau, la note gardée ; les autres familles inchangées (demande du propriétaire, 2026-10-23)', options, () => {
+  // « Inutile dans l'onglet des armes de changer ça. Juste l'indiquer suffit (en tooltip de la catégorie) » : la pastille du dé (« D6/D8/D10 »)
+  const pugilat = famillesAffichees.find((f) => f.id === 'pugilat');
+  assert.ok(pugilat && desSelonLaForce(pugilat.note_brut), 'PUGILAT : des paliers selon la Force dans sa note');
+  assert.match(infobulleDuDe(pugilat), /^Dé selon la Force : D\d+ \d+(?:-\d+)? Force(?:, D\d+ \d+(?:-\d+)? Force)+$/);
+  assert.ok(famillesAffichees.some((f) => !desSelonLaForce(f.note_brut)), 'des familles sans paliers');
+  for (const f of famillesAffichees) {
+    const attendu = `title="${echapper(infobulleDuDe(f))}"`;
+    const onglet = main.match(new RegExp(`<a class="onglet(?: is-active)?" id="onglet-famille-${f.id}"[\\s\\S]*?</a>`))[0];
+    assert.ok(onglet.includes(`<span class="onglet__de armes-onglets__de" ${attendu} `), `${f.id} : l’infobulle du dé de l’onglet`);
+    const debut = main.indexOf(`id="famille-${f.id}"`);
+    const titre = main.slice(debut, main.indexOf('</thead>', debut));
+    assert.ok(titre.includes(`<span class="armes-famille__de" ${attendu} `), `${f.id} : l’infobulle du dé du titre du tableau`);
+    if (desSelonLaForce(f.note_brut)) {
+      assert.ok(!titre.includes(INFOBULLE_PAR_DEFAUT) && !onglet.includes(INFOBULLE_PAR_DEFAUT), f.id);
+      // la note reste écrite sous le titre du tableau
+      assert.ok(titre.includes(`<p class="tableau__note armes-famille__note">${echapper(f.note_brut.split('\n').join(' · '))}</p>`), `${f.id} : sa note`);
+    } else {
+      assert.ok(onglet.includes(`title="${INFOBULLE_PAR_DEFAUT}"`) && titre.includes(`title="${INFOBULLE_PAR_DEFAUT}"`), `${f.id} : l’infobulle de toute famille`);
+    }
+  }
 });
 
 test('R159 : les modèles d’une famille créée (onglet, tableau vide) donnent le HTML construit de chaque famille de la base, sans armes ; ids uniques', options, () => {
@@ -299,13 +331,15 @@ test('R159 : les modèles d’une famille créée (onglet, tableau vide) donnent
     const n = `${f.armes.length} arme${f.armes.length > 1 ? 's' : ''}`;
     // l'onglet construit, fermé, son compte celui d'une famille vide
     const onglet = main.match(new RegExp(`<a class="onglet(?: is-active)?" id="onglet-famille-${f.id}"[\\s\\S]*?</a>`))[0]
-      .replace('class="onglet is-active"', 'class="onglet"').replace(`data-armes-onglet-compte>${n}<`, 'data-armes-onglet-compte>0 arme<');
+      .replace('class="onglet is-active"', 'class="onglet"').replace(`data-armes-onglet-compte>${n}<`, 'data-armes-onglet-compte>0 arme<')
+      .replace(` title="${echapper(infobulleDuDe(f))}"`, ` title="${INFOBULLE_PAR_DEFAUT}"`);
     assert.equal(htmlDeFamilleDepuisModele(modeles.onglet, f), onglet, `${f.id} : l’onglet`);
-    // le tableau construit, fermé, sans armes ni note (une famille créée n'en a pas)
+    // le tableau construit, fermé, sans armes ni note (une famille créée n'en a pas : l'infobulle de son dé est celle de toute famille)
     const debut = main.indexOf(`<section class="tableau armes-famille`, main.indexOf(`id="famille-${f.id}"`) - 60);
     const tableau = main.slice(debut, main.indexOf('</section>', debut) + '</section>'.length)
       .replace('class="tableau armes-famille is-active"', 'class="tableau armes-famille"')
       .replace(/ data-note="[^"]*"/, ' data-note')
+      .replace(` title="${echapper(infobulleDuDe(f))}"`, ` title="${INFOBULLE_PAR_DEFAUT}"`)
       .replace(/<p class="tableau__note armes-famille__note">[^<]*<\/p>/, '')
       .replace(`armes-famille__compte">${n}<`, 'armes-famille__compte">0 arme<')
       .replace(/<tbody>[\s\S]*<\/tbody>/, '<tbody></tbody>');

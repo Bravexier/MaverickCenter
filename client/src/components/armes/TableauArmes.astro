@@ -2,6 +2,7 @@
 import { htmlDeLigneDArme } from '../../lib/armes-rendu.mjs';
 import type { chargerArmes, contexteDesArmes } from '../../lib/armes-db.mjs';
 import { attributEd } from '../../lib/edition-modele.mjs';
+import { infobulleDuDeDeFamille } from '../../lib/armes-de-famille.mjs';
 import Tableau from '../Tableau.astro';
 
 // Le tableau d'UNE famille d'armes (bandeau de l'onglet « Armes »), panneau de son onglet dans le menu de sa catégorie (ArmesPage.astro : deux menus
@@ -17,6 +18,8 @@ import Tableau from '../Tableau.astro';
 // toujours écrite, cachée si elle est vide hors du mode modification : `data-ed-cadre`) et l'en-tête de sa colonne de coût (en mode modification) ;
 // l'onglet suit (OngletDeFamille.astro, `data-ed-lecture`). Rendu aussi pour la famille fictive du modèle d'une famille créée
 // (lib/armes-rendu.mjs#MODELE_DE_FAMILLE : un `<template>` d'ArmesPage.astro, que src/scripts/edition/armes.mjs remplit).
+// L'infobulle du dé, comme celle de l'onglet : les paliers selon la Force quand la note en écrit (PUGILAT ; lib/armes-de-famille.mjs#infobulleDuDeDeFamille),
+// la note restant écrite sous le titre.
 // Nom (la description en infobulle : « La description prend trop de place dans le tableau. Mets-la en tooltip »), Compétence (pastille dans la couleur
 // de sa caractéristique : Force pour l'Arme Lourde et l'Arc, Agilité pour l'Arme Légère, Perception pour l'Arbalète, dégradé pour deux ; décision R48),
 // Type, Dégâts, Type de dégâts, Portée (1 par défaut, décision R50), Solidité (le mot-clé du glossaire, migration 0058), Origine ; les effets supplémentaires sur une seconde ligne, sous l'arme
@@ -53,7 +56,7 @@ const ed = (colonne: string) => attributEd('arme_famille', { id: famille.id }, c
   attributs={{ 'data-note': famille.note_brut ?? '', 'data-unite': unite ? '1' : undefined }}
   attributsNom={{ 'data-ed': ed('nom') }}
 >
-  <span slot="outils" class="armes-famille__de" title="Dé de la famille, sauf indication contraire" data-ed={ed('de_brut')} data-ed-cadre hidden={!famille.de_brut}>{famille.de_brut ?? ''}</span>
+  <span slot="outils" class="armes-famille__de" title={infobulleDuDeDeFamille(famille.note_brut)} data-ed={ed('de_brut')} data-ed-cadre hidden={!famille.de_brut}>{famille.de_brut ?? ''}</span>
   <thead>
     <tr>
       <th scope="col">Nom</th>
