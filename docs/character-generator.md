@@ -491,7 +491,7 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   correction 9 de [`fiche-auto.md`](fiche-auto.md)), acquis d'une compétence = l'acquis calculé (R104 : entraînement, dons, métier, accessoires, rognés
   au plafond) ; dégâts de l'arme forgée (R49) ; portée d'une arme, celle de la page
   « Armes » (R50 : la portée écrite, 1 par défaut), plus celle des accessoires ; « Deux armes : −N % » dans l'effet de l'arme (R46) ; sorts au NM du
-  sort ; paliers de résistance et leur effet tels que la base les écrit (R147), sans la posture du moment (en Symbiose, la magie désactivée garde ses
+  sort ; paliers de résistance et leur effet tels que la base les écrit (R148), sans la posture du moment (en Symbiose, la magie désactivée garde ses
   listes dans le classeur : R111 ne vaut que sur la page). **L'AP et l'AM de la grille de l'armure** (AI22:AN23, une colonne par
   partie, R108) : ceux de l'armure portée sur chaque partie, 0 sur une partie cassée (`armureParPartie` ; l'« AP Base » et l'« AM Base », AA22 et AA24,
   restent la base : race, ethnie, classes magiques, accessoires), calculés et non relus. Le **bouclier** (R96) : la forme en AA26, la matière et
@@ -647,7 +647,7 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   `test/fiche-tableur-page.test.mjs`. `lib/google-sheets.mjs` (Google : identifiant client, lien d'une feuille, envoi à l'API Drive) suit la même
   règle (seul script de page : `src/scripts/fiche.mjs` ; le service et la page Astro l'importent aussi), sans aucun import (`test/google-sheets.test.mjs`).
 - **Décisions du 2026-10-15** (questions Q6 à Q11 de [`sql/a-valider.md`](sql/a-valider.md)) : les paliers de résistance sont =0, ÷3, ÷2, x2,
-  x3, x4 (R147 du 2026-10-22, qui remplace R70 et ses ÷4, x4, x8 de la fiche auto : les valeurs du modèle ordinateur ; l'export écrit ceux de la base,
+  x3, x4 (R148 du 2026-10-22, qui remplace R70 et ses ÷4, x4, x8 de la fiche auto : les valeurs du modèle ordinateur ; l'export écrit ceux de la base,
   les dégâts reçus divisent par 3 exactement, arrondi à l'inférieur) ; la case « Entraînement » est
   un texte libre de la fiche (R71, remplacée le 2026-10-17 par des lignes : R104) ; à l'import, le métier suit la base (R72) ; les gains de niveau sont deux totaux (R73) ; la durabilité d'une arme se
   note (R74) ; un texte de règles trop long est coupé par « … » (Q11).

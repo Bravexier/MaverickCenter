@@ -91,7 +91,7 @@ user-invocable: false
 
 ### Armure, bouclier, défense
 - Armure (R95) : une armure complète, son amélioration, son élément et l'amélioration de l'élément, puis un curseur de solidité par partie (casque, torse, bras, jambes ; un seul pour une armure à solidité unifiée), de 0 (« Cassée ») au maximum = solidité de l'armure + crans de son amélioration (R77 : `soliditeMaxDeLArmure`, recopie de `lib/armure-forge.mjs#forgerArmure`). Seules les parties abîmées sont gardées (`partiesValables`) ; une autre armure est neuve (`armureApresChoix`).
-- Défense totale AP/AM de la partie touchée, le torse par défaut ; l'armure d'une partie cassée et le bouclier cassé ne comptent pas (R108 : `defenseDe`, `armureParPartie`). Calcul des dégâts reçus (R98, `degatsRecus`), rien d'enregistré ; contre une magie, le multiplicateur du palier de la base (R147 : =0, ÷3, ÷2, x2, x3, x4), un inverse d'entier divisant exactement avant l'arrondi à l'inférieur (`appliquerMultiplicateur` : 30 ÷ 3 = 10, jamais 9,999…).
+- Défense totale AP/AM de la partie touchée, le torse par défaut ; l'armure d'une partie cassée et le bouclier cassé ne comptent pas (R108 : `defenseDe`, `armureParPartie`). Calcul des dégâts reçus (R98, `degatsRecus`), rien d'enregistré ; contre une magie, le multiplicateur du palier de la base (R148 : =0, ÷3, ÷2, x2, x3, x4), un inverse d'entier divisant exactement avant l'arrondi à l'inférieur (`appliquerMultiplicateur` : 30 ÷ 3 = 10, jamais 9,999…).
 - Bouclier forme + matière (R96 : `bouclierDe`, `bouclierApresChoix`, calcul de `lib/armure-forge.mjs#forgerBouclier` recopié).
 
 ### Situation

@@ -34,7 +34,7 @@ test('décision R85 : Nécromancie + Feu a 5 résistances (Sang, Nécromancie, F
     vulnerabilite: ['Vent'],
     grande_vulnerabilite: ['Eau'],
   });
-  // l'effet de la grande vulnérabilité à l'Eau : x3 (décision R147 ; x4 avant elle)
+  // l'effet de la grande vulnérabilité à l'Eau : x3 (décision R148 ; x4 avant elle)
   assert.deepEqual({ ...db.prepare(`SELECT p.multiplicateur, p.effet_brut FROM v_resistance_combinaison v JOIN resistance_palier p ON p.id = v.palier_id
                                     WHERE v.magie_a_id = ? AND v.magie_b_id = ? AND v.cible_magie_id = 'magies/magie-de-leau'`).get(NECROMANCIE, FEU) },
     { multiplicateur: 3, effet_brut: 'dégâts subis x3' });

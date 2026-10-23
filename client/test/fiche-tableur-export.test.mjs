@@ -550,7 +550,7 @@ test('fiche riche : résistances, posture du moment, Mode Hyper', () => {
     assert.equal(c[k.libelle], `${p.libelle}\n(${p.effet})`, 'le libellé et l’effet de la base');
     assert.equal(c[k.cibles], p.cibles.map((x) => x.nom).join(', ') || undefined, k.palier);
   }
-  // décision R147 : les multiplicateurs de la base sont désormais ceux du modèle ordinateur (« dégâts subits ÷3 », « x3 », « x4 » ; R70 les disait faux)
+  // décision R148 : les multiplicateurs de la base sont désormais ceux du modèle ordinateur (« dégâts subits ÷3 », « x3 », « x4 » ; R70 les disait faux)
   const effets = Object.fromEntries(CASES_RESISTANCES.map((k) => [k.palier, c[k.libelle]]));
   assert.deepEqual([effets.grande_resistance, effets.grande_vulnerabilite, effets.sensibilite],
     ['Grande résistance\n(dégâts subis ÷3)', 'Grande vulnérabilité\n(dégâts subis x3)', 'Sensibilité\n(dégâts subis x4)']);

@@ -2196,7 +2196,7 @@ export function defenseDe(regles, fiche, attributs = attributsDe(regles, fiche),
 }
 
 /**
- * Un palier de résistance appliqué à des dégâts (décisions R98, R147) : un multiplicateur inverse d'un entier (1/3, 0,5, 0,25) divise par cet entier,
+ * Un palier de résistance appliqué à des dégâts (décisions R98, R148) : un multiplicateur inverse d'un entier (1/3, 0,5, 0,25) divise par cet entier,
  * pour que l'arrondi à l'inférieur tombe sur le quotient exact (le double de 1/3 n'est pas exactement 1/3 : 30 × 0,333… pourrait valoir 9,999… si le
  * multiplicateur était écrit avec moins de chiffres) ; les autres (0, 2, 3, 4) multiplient.
  */
@@ -2218,7 +2218,7 @@ export function appliquerMultiplicateur(valeur, mult) {
  * un dégât physique, la résistance de l'armure portée à ce type double ses AP (guide : « elle résiste aux dégâts de frappe donc elle double son capital
  * d'AP ») ; réponse du propriétaire du 2026-10-17 (« Sur les AP ») : sa faiblesse les divise par 2, et « x2 » double l'effet (AP × 4, AP ÷ 4) ; seulement
  * la part de l'armure (rien sur une partie cassée). Contre une magie, le palier de résistance du personnage à cette magie multiplie le résultat
- * (resistancesDe ; décision R147 : immunité 0, grande résistance ÷ 3, résistance ÷ 2, vulnérabilité × 2, grande vulnérabilité × 3, sensibilité × 4 ;
+ * (resistancesDe ; décision R148 : immunité 0, grande résistance ÷ 3, résistance ÷ 2, vulnérabilité × 2, grande vulnérabilité × 3, sensibilité × 4 ;
  * un multiplicateur inverse d'un entier divise : appliquerMultiplicateur). `don` : l'étape « ÷ 2 si un don divise les dégâts » de la formule, cochée par le
  * joueur (un tel don dépend de la situation : la fiche ne le lit pas). null sans type connu.
  * { recus, etapes: [{ texte, valeur }], armure, type, partie }

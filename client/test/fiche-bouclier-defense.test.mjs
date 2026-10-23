@@ -125,7 +125,7 @@ test('degatsRecus (R98) : la formule du guide (« Les dégâts ») — armure, d
   assert.equal(M.degatsRecus(regles, feu, { entrants: 10, type: 'magies/potentiel-illimite' }), null);
 });
 
-test('degatsRecus (R98, R147) : grande résistance ÷ 3 exactement, puis arrondi à l’inférieur ; grande vulnérabilité × 3, sensibilité × 4', () => {
+test('degatsRecus (R98, R148) : grande résistance ÷ 3 exactement, puis arrondi à l’inférieur ; grande vulnérabilité × 3, sensibilité × 4', () => {
   // Fenrir de glace, Glace innée : 1 cran de la page de la Glace + 1 cran de l'ethnie, grande résistance à la Glace (« dégâts subis ÷3 »)
   const fenrir = fiche({ race_id: 'races/fenrir', ethnie_id: 'races/fenrir#ethnie:fenrir-de-glace', magie_innee_id: 'magies/magie-de-la-glace' });
   const glace = 'magies/magie-de-la-glace';

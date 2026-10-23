@@ -88,13 +88,13 @@ const RETIREES = [
   { migration: '0055-armure-une-armure-six-parties.sql', table: 'page', cle: { id: 'ressources/armures' }, col: 'corps_md', apres: '2 lingots de fer fassent l' },
 ];
 const retiree = (c) => RETIREES.find((r) => r.table === c.table && r.col === c.col && JSON.stringify(r.cle) === JSON.stringify(c.cle) && r.apres === c.apres);
-// Corrections dont la valeur a changé depuis par une migration de données, sur décision du propriétaire : décision R147 (« Grande faiblesse :
+// Corrections dont la valeur a changé depuis par une migration de données, sur décision du propriétaire : décision R148 (« Grande faiblesse :
 // multiplier par 3 (pas 4) Sensibilité : multiplier par 4 (pas 8) »), migration 0072. La graphie corrigée (« subis ») reste : la migration part du
 // texte corrigé (la garde de son UPDATE) et écrit la nouvelle valeur.
 const CHANGEES = [
-  { migration: '0072-r147-multiplicateurs-des-paliers-de-resistance.sql', table: 'resistance_palier', cle: { id: 'grande_vulnerabilite' }, col: 'effet_brut',
+  { migration: '0072-r148-multiplicateurs-des-paliers-de-resistance.sql', table: 'resistance_palier', cle: { id: 'grande_vulnerabilite' }, col: 'effet_brut',
     apres: 'dégâts subis x4', maintenant: 'dégâts subis x3' },
-  { migration: '0072-r147-multiplicateurs-des-paliers-de-resistance.sql', table: 'resistance_palier', cle: { id: 'sensibilite' }, col: 'effet_brut',
+  { migration: '0072-r148-multiplicateurs-des-paliers-de-resistance.sql', table: 'resistance_palier', cle: { id: 'sensibilite' }, col: 'effet_brut',
     apres: 'dégâts subis x8', maintenant: 'dégâts subis x4' },
 ];
 const changee = (c) => CHANGEES.find((r) => r.table === c.table && r.col === c.col && JSON.stringify(r.cle) === JSON.stringify(c.cle) && r.apres === c.apres);

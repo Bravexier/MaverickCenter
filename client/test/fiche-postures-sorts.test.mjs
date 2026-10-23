@@ -197,7 +197,7 @@ test('Symbiose à deux magies (R111) : la magie désactivée perd ses résistanc
   const r = M.degatsRecus(regles, enGlace, { entrants: 60, type: feu.id });
   const palier = regles.resistance_paliers.find((p) => p.id === cible(apres, feu.id).palier);
   assert.ok(r.etapes.some((e) => e.texte.startsWith(palier.libelle)), JSON.stringify(r.etapes));
-  // une vulnérabilité (1 cran) : x2, inchangé par la décision R147 ; arrondi à l'inférieur (R98)
+  // une vulnérabilité (1 cran) : x2, inchangé par la décision R148 ; arrondi à l'inférieur (R98)
   assert.deepEqual([palier.id, palier.multiplicateur, palier.effet], ['vulnerabilite', 2, 'dégâts subis x2']);
   assert.equal(r.recus, Math.floor(Math.max(0, 60 - M.defenseDe(regles, enGlace).am.total) * 2));
   assert.ok(!M.degatsRecus(regles, sans, { entrants: 60, type: feu.id }).etapes.some((e) => e.texte.startsWith(palier.libelle)));

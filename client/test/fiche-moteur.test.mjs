@@ -930,7 +930,7 @@ test('résistances (fiche auto Personnage!BA2:BI12) : les crans de la magie inn�
   const feu = resistancesDe(regles, ficheConforme());
   assert.deepEqual(feu.paliers.find((p) => p.id === 'resistance').cibles.map((c) => c.nom), ['Feu', 'Glace', 'Terre', 'Brûlure', 'Gel', 'Pétrifié'],
     'la page de la magie du Feu : résiste au Feu, à la Glace, à la Terre et à leurs altérations');
-  // l'effet de chaque palier, celui de la base (décision R147 : =0, ÷3, ÷2, x2, x3, x4)
+  // l'effet de chaque palier, celui de la base (décision R148 : =0, ÷3, ÷2, x2, x3, x4)
   assert.deepEqual(feu.paliers.map((p) => p.effet), ['dégâts subis =0', 'dégâts subis ÷3', 'dégâts subis ÷2', 'dégâts subis x2', 'dégâts subis x3', 'dégâts subis x4']);
   assert.deepEqual(resistancesDe(regles, ficheVide()).paliers.flatMap((p) => p.cibles), [], 'fiche vide');
 });

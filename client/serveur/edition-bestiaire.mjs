@@ -435,6 +435,43 @@ export function ancienneEcritureDesCapacites(db) {
 }
 
 /**
+ * Les modifications des résistances notées avant la migration 0073 (décision R148, étendue au bestiaire le 2026-10-22 : « Pareil remplace double
+ * résistance par Grande résistance ») : 0073 a rangé les 10 rubriques « Double(s) Résistance(s) » en `grande_resistance`, avec leurs cibles typées
+ * (monstre_defense.sens, qui est la rubrique qui les liste), et passé les titres des grandes résistances et vulnérabilités en ÷3 / x3, le x8 des golems
+ * de verre en x4. Rend l'adaptateur de edition-journal.mjs#rejouer (serveur/edition.mjs#rejouerLeJournal), sur le modèle d'ancienneEcritureDesCapacites :
+ *   - le sens 'double_resistance' a un équivalent sûr, celui de 0073 : dans une modification de monstre_defense (clé, `avant`, `apres`) et dans la
+ *     colonne `rubrique` d'une modification de monstre_rubrique, il devient 'grande_resistance' (la cible rejouée suit sa rubrique) ;
+ *   - un titre écrit comme avant 0073 (TITRES_D_AVANT_0073) n'est pas réécrit d'office : l'éditeur n'ouvre que le texte d'une rubrique
+ *     (lib/edition-modele.mjs), donc seule la suppression d'une carte (ses rubriques notées en entier) a pu le noter, et aucun journal d'après 0073 ne
+ *     l'écrit plus ; le lot passe en conflit avec un message qui dit quoi refaire. Le texte des golems de verre (x8) n'est pas repris : une modification
+ *     notée avant 0073 y est déjà en conflit (« les règles ont changé texte autrement »), et un texte d'après 0073 peut de nouveau écrire « x8 ».
+ */
+export const TITRES_D_AVANT_0073 = new Set([
+  'Grande(s) Résistance(s) Dégâts ÷4', 'Grande(s) résistance(s) Dégâts ÷4', 'Grande(s) Vulnérabilité(s) Dégâts x4', 'Grande(s) faiblesse(s) Dégâts x4',
+  'Grande(s )Vulnérabilité(s) Dégâts x4', 'Grande(s) vulnérabilité(s) Dégâts x4', 'Double(s) Résistance(s) Dégâts ÷4', 'Double(s) Résistance(s) Dégâts/Effets ÷4',
+]);
+export function ancienneEcritureDesResistances() {
+  const AVANT_0073 = 'noté avant la migration 0073 (décision R148) : le titre de la rubrique écrit encore l’ancien multiplicateur (÷4, x4 : aujourd’hui '
+    + '÷3, x3) ou la « Double résistance », devenue la Grande résistance ; à refaire sur le site de dev (la carte : la supprimer de nouveau)';
+  const ANCIEN = 'double_resistance';
+  const NOUVEAU = 'grande_resistance';
+  const traduire = (v, colonne) => (v && v[colonne] === ANCIEN ? { ...v, [colonne]: NOUVEAU } : v);
+  const ecrit = (v) => (v === null ? null : JSON.stringify(v));
+  const ecritAvant0073 = (v) => typeof v?.titre === 'string' && TITRES_D_AVANT_0073.has(v.titre);
+  return (m) => {
+    if (m.conflit || (m.table_nom !== 'monstre_defense' && m.table_nom !== 'monstre_rubrique')) return m;
+    const avant = jsonOuNull(m.avant);
+    const apres = jsonOuNull(m.apres);
+    if (m.table_nom === 'monstre_rubrique' && (ecritAvant0073(avant) || ecritAvant0073(apres))) return { ...m, conflit: AVANT_0073 };
+    const colonne = m.table_nom === 'monstre_defense' ? 'sens' : 'rubrique';
+    const cle = JSON.parse(m.cle);
+    if (cle[colonne] !== ANCIEN && avant?.[colonne] !== ANCIEN && apres?.[colonne] !== ANCIEN) return m;
+    // la clé garde l'ordre de ses colonnes : les autres modifications de la même ligne, traduites de même, restent rangées avec elle
+    return { ...m, cle: JSON.stringify(traduire(cle, colonne)), avant: ecrit(traduire(avant, colonne)), apres: ecrit(traduire(apres, colonne)) };
+  };
+}
+
+/**
  * Les capacités de monstre communes, pour le choix « Capacité » (liste `capacitesDeMonstre` de GET /api/edition/listes/) : par nom ; deux capacités du
  * même nom (« Les textes doivent rester différents », R68) se distinguent par le début de leur description. `description`, `listeDeSorts`, `cartes` :
  * ce que le mode modification montre de chacune.
