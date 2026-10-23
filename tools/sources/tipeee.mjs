@@ -1,5 +1,5 @@
 // L'instantané de la partie « Bienvenue » de la page Tipeee de MaverickJDR (docs/sources.md, « Tipeee »), gardé dans sources/tipeee/bienvenue.json
-// (lib/tipeee.mjs#CHEMIN_INSTANTANE) : le texte que la page Bienvenue affiche au build et le premier repli du service (serveur/tipeee.mjs), qui relit
+// (lib/tipeee.mjs#CHEMIN_INSTANTANE) : le texte que l'accueil affiche au build et le premier repli du service (serveur/tipeee.mjs), qui relit
 // ensuite Tipeee en direct (réponses du propriétaire du 2026-10-22 : « La partie « Bienvenue » », « En direct par le serveur »).
 //
 // L'outil relit l'API publique (lib/tipeee.mjs#URL_API, une adresse fixe), en tire la partie par le module pur du site (bienvenueDeTipeee : texte seul,

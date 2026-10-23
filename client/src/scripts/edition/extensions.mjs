@@ -19,6 +19,6 @@ import { races } from './races.mjs';
 
 // `nouvelles` d'abord : sur la page d'une entité créée, elle dessine la page que les autres extensions complètent (`classes` : ses spécialités et ses dons).
 // `panneaux` (les panneaux de règles) après `armes` et `armures`, qui ouvrent les tableaux de leurs onglets et laissent les panneaux à `panneaux`.
-// `annonces` : l'encart « Notre prochaine rencontre IRL » sous le texte de Bienvenue (table annonce, migration 0068) ; après `guide`, qui rend le
-// texte de la même page modifiable (chacun sa barre d'outils : texte-en-place.mjs n'en montre qu'une, celle des zones où est le curseur).
+// `annonces` : l'encart « Notre prochaine rencontre IRL » sur l'accueil (table annonce, migration 0068) ; après `guide`, au cas où une page
+// aurait les deux (chacun sa barre d'outils : texte-en-place.mjs n'en montre qu'une, celle des zones où est le curseur).
 export const EXTENSIONS = [nouvelles, classes, metiers, magies, races, guide, bestiaire, armes, armures, panneaux, composants, chronologie, motsCles, annonces];

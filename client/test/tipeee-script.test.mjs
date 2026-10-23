@@ -1,4 +1,4 @@
-// Le script de Bienvenue qui reprend la partie « Bienvenue » de Tipeee (src/scripts/tipeee.mjs ; réponses du propriétaire du 2026-10-22 : « autant en
+// Le script de l'accueil qui reprend la partie « Bienvenue » de Tipeee (src/scripts/tipeee.mjs ; réponses du propriétaire du 2026-10-22 : « autant en
 // faire un hook pour que ça reprenne directement le texte au cas où il change sur Tipee », « La partie « Bienvenue » », « En direct par le serveur »),
 // exécuté dans un faux navigateur : la page construite montre l'instantané ; le texte du service (GET /api/tipeee/) le remplace s'il diffère, en texte
 // seul (jamais de HTML) ; une réponse vide, mal formée, hors des bornes, une erreur ou un service absent laissent l'instantané.
@@ -12,9 +12,9 @@ import { attendre, el, fauxDocument } from './aide-faux-dom.mjs';
 const INSTANTANE = JSON.parse(readFileSync(new URL(`../../${CHEMIN_INSTANTANE}`, import.meta.url), 'utf8'));
 
 let numero = 0;
-/** La citation telle que components/guide/SousBienvenue.astro l'écrit (les paragraphes de l'instantané), le script chargé à neuf ; `repondre` : le faux service. */
+/** La citation telle que components/accueil/LiensEtRencontre.astro l'écrit (les paragraphes de l'instantané), le script chargé à neuf ; `repondre` : le faux service. */
 async function monter(repondre) {
-  const citation = el('blockquote', { class: 'bienvenue-tipeee', 'data-tipeee': '', 'data-tipeee-api': '/api/tipeee/', 'data-tipeee-lu-le': INSTANTANE.lu_le },
+  const citation = el('blockquote', { class: 'accueil-tipeee', 'data-tipeee': '', 'data-tipeee-api': '/api/tipeee/', 'data-tipeee-lu-le': INSTANTANE.lu_le },
     ...INSTANTANE.paragraphes.map((p) => el('p', {}, p)));
   const appels = [];
   Object.assign(globalThis, {

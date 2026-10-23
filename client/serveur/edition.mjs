@@ -1377,7 +1377,7 @@ function apercuDe(op, corps) {
 }
 
 /**
- * L'annonce d'un encart du site (table annonce, migration 0068 : « Notre prochaine rencontre IRL » sous le texte de Bienvenue) : son texte, Markdown sûr comme celui
+ * L'annonce d'un encart du site (table annonce, migration 0068 : « Notre prochaine rencontre IRL » sur l'accueil) : son texte, Markdown sûr comme celui
  * d'une page du guide (ni HTML brut ni lien non sûr ajouté : lib/markdown-sur.mjs ; le texte part tel quel dans la page construite, puis en
  * production) ; vidé, NULL (le texte d'attente s'affiche). Ni création ni suppression : le site place ses annonces.
  */
@@ -1424,7 +1424,7 @@ const DOMAINES = {
   ...CHRONOLOGIE.domaines,
   // les blocs des panneaux de règles en tête des onglets de /ressources/equipement/ (serveur/edition-panneaux.mjs, migration 0056)
   ...domainesDesPanneaux({ refus, ErreurEdition, rangLibre }),
-  // l'annonce de l'encart « Notre prochaine rencontre IRL » (sous le texte de Bienvenue, migration 0068)
+  // l'annonce de l'encart « Notre prochaine rencontre IRL » (sur l'accueil, migration 0068)
   annonce: ANNONCE,
 };
 

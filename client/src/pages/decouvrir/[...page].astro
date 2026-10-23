@@ -2,9 +2,10 @@
 import PageDuPlan from '../../components/guide/PageDuPlan.astro';
 import { loadWiki, pagesSous, type WikiEntry } from '../../lib/wiki';
 
-// Les pages de Découvrir (lib/livres.mjs#DECOUVRIR) : Bienvenue à /decouvrir/ (avec, sous son texte, les liens Discord et Tipeee et l'encart « Notre
-// prochaine rencontre IRL » : components/guide/SousBienvenue.astro), les autres à /decouvrir/<slug>/. Plus de page « Liens » (supprimée le 2026-10-22 :
-// /decouvrir/liens/ mène à Bienvenue par la page 404).
+// Les pages de Découvrir (lib/livres.mjs#DECOUVRIR) : Bienvenue à /decouvrir/, les autres à /decouvrir/<slug>/. Les liens Discord et Tipeee et l'encart
+// « Notre prochaine rencontre IRL », sous le texte de Bienvenue jusqu'au 2026-10-23, sont sur l'accueil (components/accueil/LiensEtRencontre.astro).
+// Plus de page « Liens » (supprimée le 2026-10-22) ; son ancienne adresse /decouvrir/liens/ n'est plus renvoyée nulle part (réponse du propriétaire
+// du 2026-10-23 : « supprimer ce lien »).
 export async function getStaticPaths() {
   const { entries } = await loadWiki();
   return pagesSous(entries, 'decouvrir/').map(({ entry, reste }) => ({ params: { page: reste }, props: { entry } }));

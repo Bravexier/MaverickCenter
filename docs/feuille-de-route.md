@@ -317,8 +317,9 @@ de dev, table `annonce`).
    modifiable sur le site de dev (mode modification), qui part en production avec la mise à jour ; vide, il dit « Aucune rencontre annoncée pour le
    moment. » (table `annonce`, migration `0068-annonces`). Il était posé sur la page Liens ; le 2026-10-22, le propriétaire le veut sur Bienvenue
    (« Bonne idée. ») et supprime la page Liens (« Plus d'entrée Liens au menu : tout est sur Bienvenue. L'ancienne adresse renverrait vers
-   Bienvenue. ») : les liens Discord et Tipeee et l'encart sont sous le texte de Bienvenue, `/decouvrir/liens/` y mène
-   ([`sql/a-valider.md`](sql/a-valider.md) §6, G34 tranché).
+   Bienvenue. ») : les liens Discord et Tipeee et l'encart passent sous le texte de Bienvenue, `/decouvrir/liens/` y mène
+   ([`sql/a-valider.md`](sql/a-valider.md) §6, G34 tranché). Le 2026-10-23, ils vont sur l'accueil (« Ces 3 blocs auraient plus leur place dans
+   l'onglet d'acceuil. », « Sous la bienvenue et le carrousel ») et `/decouvrir/liens/` n'est plus renvoyée (« supprimer ce lien »).
 
 L'**ordre de lecture** change : l'ancien guide (24 pages) faisait lire la règle du D100 (« Réussir une action ») avant la création du
 personnage ; le plan du propriétaire range les règles de base dans Règles › Les bases, dont c'est la première page (`/regles/reussir-une-action/`,

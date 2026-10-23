@@ -25,7 +25,8 @@ export const NAV = [
     label: 'Découvrir',
     // une page par entrée (choix du propriétaire du 2026-10-18) : les quatre pages de Découvrir, celles des cartes « Par où commencer ? » de l'accueil
     // (lib/livres.mjs#DECOUVRIR, PAR_OU_COMMENCER) ; plus d'entrée « Liens » (réponse du 2026-10-22, « Supprimer la page » : « Plus d'entrée Liens au
-    // menu : tout est sur Bienvenue. ») : Discord, Tipeee et la rencontre IRL sont sous le texte de Bienvenue
+    // menu : tout est sur Bienvenue. ») : Discord, Tipeee et la rencontre IRL sont sur l'accueil depuis le 2026-10-23 (« Ces 3 blocs auraient
+    // plus leur place dans l'onglet d'acceuil. »)
     items: [
       { label: 'Bienvenue', path: 'decouvrir/' },
       { label: 'L’univers', path: 'decouvrir/l-univers/' },

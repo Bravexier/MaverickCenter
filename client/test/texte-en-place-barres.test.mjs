@@ -1,5 +1,5 @@
-// Plusieurs éditeurs en place sur une même page (Bienvenue : le texte de la page, src/scripts/edition/guide.mjs, et l'annonce de l'encart « Notre
-// prochaine rencontre IRL » sous lui, src/scripts/edition/annonces.mjs ; la page Liens qui portait l'encart est supprimée le 2026-10-22) : une seule barre
+// Plusieurs éditeurs en place sur une même page (le cas de Bienvenue jusqu'au 2026-10-23 : le texte de la page, src/scripts/edition/guide.mjs, et
+// l'annonce de l'encart « Notre prochaine rencontre IRL » sous lui, src/scripts/edition/annonces.mjs, aujourd'hui sur l'accueil) : une seule barre
 // d'outils se montre, celle de l'éditeur où est le curseur, sinon la dernière qui l'a eu, sinon la première posée (texte-en-place.mjs#choisirLaBarre).
 //   node --test test/texte-en-place-barres.test.mjs
 import assert from 'node:assert/strict';

@@ -1,9 +1,10 @@
 ---
 import Base from '../layouts/Base.astro';
 import Carrousel from '../components/galerie/Carrousel.astro';
+import LiensEtRencontre from '../components/accueil/LiensEtRencontre.astro';
 import accueilCss from '../styles/accueil/accueil.css?raw';
 import { htmlAvecMonnaies } from '../lib/monnaies.mjs';
-import { DECOUVRIR, PAR_OU_COMMENCER, partieDeLaPage, verifierLePlan } from '../lib/livres.mjs';
+import { DECOUVRIR, LIENS_ET_RENCONTRE, PAR_OU_COMMENCER, partieDeLaPage, verifierLePlan } from '../lib/livres.mjs';
 import { classeDePartie, cssDesParties } from '../lib/palette-css.mjs';
 import { entryHref, loadWiki, url } from '../lib/wiki';
 
@@ -12,6 +13,12 @@ import { entryHref, loadWiki, url } from '../lib/wiki';
 // Dessous, « Par où commencer ? » (2026-10-18) : quatre cartes, les quatre pages de Découvrir (lib/livres.mjs#PAR_OU_COMMENCER), le titre et le résumé
 // de chaque page tels que la base les écrit, dans la couleur de son groupe (la classe de sa partie, lib/palette-css.mjs#classeDePartie, dont la page
 // émet la feuille). La phrase « Première visite ? » et son bouton ne disent que la navigation.
+// Entre les deux, sous la bienvenue et le carrousel (demande du propriétaire du 2026-10-23 : « Ces 3 blocs auraient plus leur place dans l'onglet
+// d'acceuil. », puis, pour leur place, « Sous la bienvenue et le carrousel ») : le serveur Discord, Tipeee (la partie « Bienvenue » de Tipeee, reprise
+// en direct) et l'encart « Notre prochaine rencontre IRL » (components/accueil/LiensEtRencontre.astro, lib/livres.mjs#LIENS_ET_RENCONTRE), avant sous
+// le texte de Bienvenue. L'annonce de l'encart se modifie en
+// place sur le site de dev : l'accueil propose le mode modification (`edition`, son id LIENS_ET_RENCONTRE.page, noté au journal). Son titre, « Accueil »
+// (LIENS_ET_RENCONTRE.titre), nomme l'encart dans la note de version.
 const { entries } = await loadWiki();
 const parId = new Map(verifierLePlan(entries).map((e) => [e.id, e]));
 const cartes = PAR_OU_COMMENCER.map((id) => parId.get(id)!).map((e) => ({
@@ -19,7 +26,7 @@ const cartes = PAR_OU_COMMENCER.map((id) => parId.get(id)!).map((e) => ({
 }));
 ---
 
-<Base title="Accueil">
+<Base title="Accueil" edition={LIENS_ET_RENCONTRE.page}>
   <style is:inline set:html={accueilCss}></style>
   <style is:inline set:html={cssDesParties()}></style>
   <div class="accueil">
@@ -40,6 +47,7 @@ const cartes = PAR_OU_COMMENCER.map((id) => parId.get(id)!).map((e) => ({
     </section>
     <Carrousel />
   </div>
+  <LiensEtRencontre />
   <section class="accueil-debut" aria-labelledby="titre-par-ou-commencer">
     <h2 id="titre-par-ou-commencer">Par où commencer ?</h2>
     <ul class="accueil-debut__cartes">

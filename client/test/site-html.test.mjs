@@ -71,10 +71,14 @@ test('la page 404 renvoie les anciennes adresses /wiki/… vers les nouvelles', 
     assert.ok(!existsSync(join(dist, 'decouvrir', slug)), `${ancienne} : plus construite`);
   }
   assert.equal(renvois['decouvrir/campagne-ou-scenario-one-shot/'], 'mj/campagne-ou-scenario-one-shot/');
-  // la page Liens, supprimée le 2026-10-22 (« L'ancienne adresse renverrait vers Bienvenue. ») : vers Bienvenue, qui a ses ancres
-  assert.equal(renvois['decouvrir/liens/'], 'decouvrir/');
+  // la page Liens, supprimée le 2026-10-22 : son ancienne adresse n'est plus renvoyée nulle part (réponse du propriétaire du 2026-10-23 : « supprimer ce
+  // lien ») ; ses blocs, aux mêmes ancres, sont sur l'accueil (« Ces 3 blocs auraient plus leur place dans l'onglet d'acceuil. »), plus sur Bienvenue
+  assert.equal(Object.hasOwn(renvois, 'decouvrir/liens/'), false, 'plus de renvoi de /decouvrir/liens/');
   assert.ok(!existsSync(join(dist, 'decouvrir', 'liens')), '/decouvrir/liens/ n’est plus construite');
-  for (const ancre of ['lien-discord', 'lien-tipeee', 'prochaine-rencontre']) assert.match(lire('decouvrir/index.html'), new RegExp(` id="${ancre}"`), ancre);
+  for (const ancre of ['lien-discord', 'lien-tipeee', 'prochaine-rencontre']) {
+    assert.match(lire('index.html'), new RegExp(` id="${ancre}"`), `${ancre} : sur l’accueil`);
+    assert.doesNotMatch(lire('decouvrir/index.html'), new RegExp(` id="${ancre}"`), `${ancre} : plus sur Bienvenue`);
+  }
   assert.ok(Object.values(renvois).every((c) => !c.startsWith('guide/') && existsSync(join(dist, c.split('#')[0], 'index.html'))), 'chaque renvoi mène à une page construite');
 });
 
