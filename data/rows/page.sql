@@ -6001,8 +6001,10 @@ Le détail : [[guide/blessures-et-etats|Blessures et états]].
 ## L’équipement
 
 - **Les armes** : deux équipées au plus. Sans maîtrise de sa catégorie, une arme lance 1 dé de dégâts, et chaque point de maîtrise en ajoute un, jusqu’à 4 points au plus par catégorie, donc 5 dés. Les points de toutes les sources s’additionnent, jusqu’à ce plafond ; au-delà, la fiche le signale, et les points en trop ne donnent pas de dé. Le dé est celui de l’arme ; le bonus additionne celui de l’arme, de son matériau et de son amélioration.
-- **La {{solidite|solidité}}** : à 0, l’objet est cassé. Une arme cassée est inutilisable jusqu’à sa réparation (un kit de réparation d’arme lui rend un cran) ; un bouclier cassé ne compte plus ses AP ni son AM. Une armure a une solidité par partie (le casque, le torse, chaque bras, chaque jambe), sauf une armure à cran de solidité uni, qui n’en a qu’une : une partie cassée ne compte plus l’AP ni l’AM de l’armure et se répare à part, avec un métier adapté et le matériau ; un kit de réparation d’armure, sans matériau, rend un cran à toute l’armure. Cassée, une armure à cran uni ne donne plus aucun de ses effets, bonus comme malus ; le poids d’une armure lourde, lui, demeure.
+- **La {{solidite|solidité}}** : à 0, l’objet est cassé. Une arme cassée est inutilisable jusqu’à sa réparation (un kit de réparation d’arme lui rend un cran) ; un bouclier cassé ne compte plus ses AP ni son AM. Une armure a une solidité par partie (le casque, le torse, chaque bras, chaque jambe), sauf une armure à cran de solidité uni, qui n’en a qu’une : une partie cassée ne compte plus l’AP ni l’AM de l’armure et se répare à part, avec un métier adapté et le matériau ; un kit de réparation d’armure, sans matériau, rend un cran à toute l’armure. Cassée, une armure à cran uni ne donne plus aucun de ses effets, bonus comme malus ; le poids d’une armure lourde, lui, demeure. Une armure élémentaire a 4 crans, plus un au +4 et un autre au +5, sur ses six parties.
 - **L’AP et l’AM** : la base (race, ethnie, 4 AM par classe magique, l’Archimage comprise, et 4 AM pour la seconde spécialité d’une classe raciale ou du Flagelleur), les accessoires, l’armure portée et son amélioration ; la posture défensive en ajoute. Une armure de la catégorie *Lourd* retire 1 point de vitesse et rend la vitesse de nage nulle.
+- **Le poids portable** (*Vêtement*, *Léger*, *Intermédiaire* ou *Lourd*) : la maîtrise d’armures la plus large de ses classes (aucune, donc des vêtements, pour le Mage, le Mage Vert, l’Ocultomancien, le Flagelleur et l’Archimage), relevée par les dons débloqués qui écrivent un poids ; une catégorie de plus pour le Nain, dons compris ; au moins *Léger* pour la Lamia ; jamais plus que *Lourd*, et jamais *Lourd* pour un Potentiel Illimité inné. La fiche ne propose que les armures jusqu’à ce poids ; une armure trop lourde en est retirée et notée.
+- **L’armure élémentaire** : une pièce élémentaire transforme l’armure, quelle qu’elle soit, en l’armure élémentaire de sa magie et de son poids ; elle perd tout et repart sans amélioration (+1 à +5, avec les gemmes de sa magie). Elle ne se porte qu’avec sa magie, innée ou acquise. Portée, elle donne son cran de résistance à sa magie, tel qu’écrit (celle de l’Arcane à la Corruption, celle de la Corruption à l’Arcane ; le Vêtement de Glace aussi au Feu, avec l’immunité à la Brûlure), que la fiche compte avec les autres crans. Les armures de familier ne se portent pas sur une fiche de personnage.
 - **Le bouclier** : une forme et une matière ; ses AP et son AM ne comptent que sur une parade partielle faite avec lui, et son poids demande une Force minimum.
 - **Les accessoires** : six emplacements (le chef, le collier, deux bracelets, deux bagues) ; un accessoire maudit a l’effet contraire de celui qui est écrit.
 - **La ceinture** : trois emplacements, au plus 3 exemplaires du même objet dans chacun (4 avec le don *Organisé*) ; les carquois et les sacs de bombes ou de pierres doivent y être pour servir ; ni les armes ni le bouclier n’y vont.
@@ -7376,8 +7378,17 @@ Le bouclier compte à part (voir plus bas), et la posture défensive ajoute de l
 - Elle est faite de deux matériaux, dont les bonus s’additionnent : cuir et cuir donnent 4 AP, écailles et bois 8 AP et 1 AM. La grille de l’onglet [Armures](/ressources/equipement/#armures) donne chaque combinaison : sa catégorie (léger, intermédiaire ou lourd), son AP et son AM, sa {{solidite|solidité}}, et les coups auxquels elle résiste ou contre lesquels elle est faible.
 - Son prix : 10 RO de fabrication, plus 6 unités de chacun de ses deux matériaux, au prix de la page Composants (12 unités pour une armure d’un seul matériau). *Exemple : l’armure Cuir/Peau coûte 10 + 6 × 2 + 6 × 1 = 28 RO.* Avec ses propres matériaux, il ne reste que les 10 RO.
 - Les armures particulières (vêtements, cottes de mailles, armures de familiers…) ont leur propre prix, pour l’armure entière, et s’améliorent comme les autres.
-- La maîtrise d’armures de chaque classe est sur sa page (voir [les classes](/classes/)). La plupart disent quelles armures elles savent porter : légères seulement, jusqu’aux intermédiaires, ou jusqu’aux lourdes. Le [[classes/flagelleur|Flagelleur]] écrit « Aucun », l’[[classes/archimage|Archimage]] « Comment ça une armure ? », et quelques classes n’y citent qu’un bouclier.
 - Une armure de la catégorie *Lourd* retire 1 point de vitesse et rend la vitesse de nage nulle.
+
+### Le poids qu’on peut porter
+
+- Chaque armure a un poids, sa catégorie : *Vêtement*, *Léger*, *Intermédiaire* ou *Lourd*. Un personnage porte une armure de son **poids portable** ou plus légère, jamais plus lourde : la fiche ne lui propose que celles-là, armures élémentaires comprises.
+- Ce poids est celui de la **maîtrise d’armures** de ses classes, sur leur page (voir [les classes](/classes/)) : légères seulement, jusqu’aux intermédiaires, ou jusqu’aux lourdes ; pour un personnage bi-classé, la plus large des deux. Le [[classes/mage|Mage]], le [[classes/mage-vert|Mage Vert]] et l’[[classes/ocultomancien|Ocultomancien]] n’y citent qu’un bouclier, le [[classes/flagelleur|Flagelleur]] écrit « Aucun » et l’[[classes/archimage|Archimage]] « Comment ça une armure ? » : ils ne portent que des vêtements.
+- Un **don** débloqué qui écrit un poids le relève : « Maîtrise les armures intermédiaires », « Peut porter une armure lourde »… Le Templier, qui « Maîtrise les 3 armures », va jusqu’aux lourdes.
+- Le **Nain** porte une catégorie de plus, dons compris : rien devient léger, léger devient intermédiaire, intermédiaire devient lourd. La **Lamia** peut porter une armure légère même si sa classe l’interdit.
+- Jamais plus lourd que *Lourd*. Un personnage dont la magie innée est le **Potentiel Illimité** ne porte jamais d’armure lourde, même si sa classe le permet.
+- Une armure devenue trop lourde, parce qu’une classe ou un don a changé, est retirée de la fiche et notée, datée, dans ses notes.
+- Les armures de familier sont à part : elles ne se portent pas sur une fiche de personnage, et serviront aux fiches de familier.
 
 ### Résister aux coups
 
@@ -7405,12 +7416,21 @@ Une armure s’améliore de +1 à +5, toujours entière, une étape après l’a
 
 ## Les pièces élémentaires
 
-Posée sur une arme, une armure ou un vêtement, une [[ressources/pieces-elementaires|pièce élémentaire]] le transforme pour toujours en un équipement chargé de la magie de la pièce. Ses bonus d’origine sont perdus, remplacés par ceux de l’élément :
+Posée sur une arme, une armure ou un vêtement, une [[ressources/pieces-elementaires|pièce élémentaire]] le transforme pour toujours en un équipement chargé de la magie de la pièce. Ses bonus d’origine sont perdus, remplacés par ceux de l’élément.
 
-- une **armure** perd l’AP, l’AM et les résistances ou faiblesses aux coups de l’armure d’origine et de son amélioration : seuls comptent ceux de l’armure élémentaire et de son amélioration ;
-- une **arme** garde ses dés et son propre bonus, mais ceux de son matériau et de son amélioration sont remplacés par ceux de l’élément et de son amélioration.
+### L’armure transformée
 
-Ce que l’élément change à la solidité d’une arme ou d’une armure n’est pas encore fixé.
+- Quels que soient son matériau, son amélioration et son état, cassée ou non, l’armure **devient l’armure élémentaire** de la magie de la pièce et de son poids : *Vêtement*, *Léger*, *Intermédiaire* ou *Lourd*. Seul le poids compte. Chacune des 14 magies a ses quatre armures élémentaires ; le Potentiel Illimité n’a pas de pièce élémentaire.
+- Elle perd tout ce qu’elle avait : l’AP, l’AM, les résistances ou faiblesses aux coups de l’armure d’origine, et son amélioration. Elle **repart sans amélioration** : seuls comptent l’AP, l’AM et les effets de l’armure élémentaire, puis ceux de sa nouvelle amélioration.
+- Elle s’améliore de +1 à +5, avec les gemmes de sa magie (le rubis pour le Feu, le saphir pour l’Eau…), selon le tableau de la page [[ressources/pieces-elementaires|Pièces élémentaires]] : +2 AP et AM au +1, jusqu’à +10 au +5. Chaque étape se paie à son tour : passer de 0 à +2 coûte 2 gemmes communes, puis 2 gemmes raffinées.
+- Sa {{solidite|solidité}} est de **4 crans**, plus un au +4 et un autre au +5. Elle se compte sur les **six parties**, comme celle de toute armure : chacune de 0 au maximum.
+- Il faut posséder sa magie pour la porter : la fiche ne propose que les armures élémentaires de la magie innée et de la magie acquise du personnage, dans la même liste que les autres armures et jusqu’à son poids portable, avec l’amélioration qu’elles ont déjà. Une armure élémentaire dont le personnage n’a plus la magie est retirée de la fiche et notée, datée, dans ses notes.
+- Portée, elle donne le **cran de résistance** qu’écrivent ses effets : +1 cran à sa magie, tel qu’écrit (l’armure de l’Arcane le donne à la Corruption, celle de la Corruption à l’Arcane) ; le Vêtement de Glace, *Tissu du froid*, donne aussi +1 cran au Feu et l’immunité à la Brûlure. La fiche les compte dans son tableau « Résistances et faiblesses » : ils s’additionnent aux crans des magies du personnage et à ceux de ses accessoires, et une immunité écrite l’emporte. Seule l’armure portée compte ; elle les donne même quand ses parties sont à 0, et même quand sa magie est celle que la posture de symbiose laisse inactive. Ses autres effets (sur les ennemis, pour un temps, selon la situation) et son amélioration ne donnent aucune résistance.
+- Les armures de familier ne se transforment pas.
+
+### L’arme transformée
+
+Une arme garde ses dés et son propre bonus, mais ceux de son matériau et de son amélioration sont remplacés par ceux de l’élément et de son amélioration. Ce que l’élément change à la solidité d’une arme n’est pas encore fixé.
 
 ## Le bouclier
 
@@ -7866,7 +7886,7 @@ Contre un coup physique, l’armure portée réagit aussi à son type, **estoc**
 
 Chaque magie résiste à certaines magies et craint certaines autres : la page de chaque [magie](/magies/) les donne, et le tableau [Relations entre magies](/magies/#relations) les réunit toutes. Une cible prend deux fois plus de dégâts d’une magie à laquelle elle est vulnérable, et deux fois moins d’une magie à laquelle elle résiste.
 
-Les résistances et les faiblesses se comptent en crans, qui s’additionnent : chaque résistance à une magie en ajoute un, chaque faiblesse en retire un. Un personnage à deux magies cumule ainsi celles de ses deux magies : deux résistances à la même magie font une grande résistance, deux faiblesses une grande vulnérabilité, et une résistance et une faiblesse s’annulent. L’Arcane et la Corruption résistent l’une à l’autre. Certains objets et équipements changent aussi ces crans.
+Les résistances et les faiblesses se comptent en crans, qui s’additionnent : chaque résistance à une magie en ajoute un, chaque faiblesse en retire un. Un personnage à deux magies cumule ainsi celles de ses deux magies : deux résistances à la même magie font une grande résistance, deux faiblesses une grande vulnérabilité, et une résistance et une faiblesse s’annulent. L’Arcane et la Corruption résistent l’une à l’autre. Certains objets et équipements changent aussi ces crans : un accessoire de résistance, ou l’armure élémentaire portée, qui donne un cran de résistance à sa magie (voir [[guide/l-equipement|L’équipement]]).
 
 Le tableau « Résistances et faiblesses » de la [fiche de personnage](/fiche/) donne chaque palier avec son effet sur les dégâts subis, et y range les magies de votre personnage : il fait le compte pour vous.
 

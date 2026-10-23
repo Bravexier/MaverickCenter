@@ -1011,6 +1011,12 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .objet__solidite .curseur { flex: 1; min-width: 0; }
 .objet__solidite .curseur__valeur { min-width: 2.6rem; }
 .objet__solidite[data-cassee] .curseur__valeur { color: var(--danger); }
+/* la liste unique des armures (décision R165 (5)) : chaque armure élémentaire sur la couleur de sa magie (sa classe et teinte-palette, comme les sorts) ;
+   fermée, la couleur de l'armure élémentaire choisie ; le poids portable dessous */
+.fiche .armure__choix select[data-couleur] { background-color: var(--c); color: var(--texte-sur-c); font-weight: 600; }
+.armure__choix optgroup, .armure__choix option.option-vide, .armure__choix option:not(.teinte-palette) { background-color: var(--surface); color: var(--text); font-weight: normal; }
+.armure__choix optgroup { color: var(--muted); font-style: normal; }
+.armure__poids { margin: 0; cursor: help; }
 /* l'armure portée (décision R95) : la solidité de chacune de ses parties, sur deux colonnes quand la place le permet ; une partie cassée en rouge */
 .armure__parties { display: grid; gap: 0.3rem 0.9rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr)); }
 .armure__partie .objet__solidite-nom { min-width: 6.2rem; }

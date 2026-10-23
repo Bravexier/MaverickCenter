@@ -25,10 +25,16 @@
 // Pas compté : une autre résistance au choix ou aléatoire (« une vulnérabilité magique », signalée par `choix`), ce qui ne dure
 // qu'un temps (« pendant 2 tours », « le temps de la téléportation ») ou vise un autre que le personnage (« la cible », « un allié », « un
 // adversaire », « le lanceur » d'un piège), une immunité partielle (« à 95% »). Pur, sans dépendance.
+// Option `immunites` (les effets des armures élémentaires seulement, décisions R165, R166 : Vêtement Glace « Tissu du froid », « +1 cran de résistance
+// au Feu et immunité à la brûlure ») : la phrase se coupe à « et immunité », et « immunité (à|aux|au|contre) X » est une immunité à X. Sans elle (les
+// dons : « Immunité au saignement » du Minotaure et de l'Orios, « Immunité à la paralysie » du Rokh, l'immunité du Tueur), rien ne change : ces
+// immunités restent non comptées (un lot à part, réponse du propriétaire « Oui, dans un lot à part »).
 
 const plier = (texte) => String(texte ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/[’`]/g, "'");
 const echapper = (texte) => texte.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+/** « immunité à la brûlure » (texte plié), seulement avec l'option `immunites` : [, la suite, où sont nommées les cibles]. */
+const IMMUNITE_NOMMEE = /^-?\s*immunite\s+(?:a|aux|au|contre)\b(.*)$/;
 /** Une phrase qui parle de résistance, de vulnérabilité ou d'immunité du porteur. */
 const PARLE_DE_RESISTANCE = /\bcrans?\b.*\b(?:resistance|vulnerabilite|faiblesse)\b|\bimmunise|^-?\s*(?:resistance|vulnerabilite|faiblesse) a\b/;
 /** Ce qui ne vaut qu'un temps, vise un autre que le porteur, ou n'est que partiel : jamais compté. */
@@ -67,13 +73,26 @@ export function lecteurDeResistances(cibles) {
     return trouvees.sort((a, b) => a.position - b.position).map(({ type, id }) => ({ type, id }));
   };
 
-  /** Une phrase : ce qu'elle donne au porteur. */
-  const phrase = (texte, lecture) => {
+  /** Une phrase : ce qu'elle donne au porteur. `immunites` : lire aussi « … et immunité à X » (les armures élémentaires seulement). */
+  const phrase = (texte, lecture, immunites = false) => {
     const t = plier(texte).trim();
     // « Annule les faiblesses aux altérations d'état liées à la magie innée » (« ... plus fort ! », décision R163) : les crans négatifs retirés
     if (ANNULE_LES_FAIBLESSES.test(t) && !PASSAGER_OU_AUTRUI.test(t)) {
       lecture.effets.push({ type: 'faiblesses_etats_magie_innee', id: null, annule: true });
       return;
+    }
+    if (immunites && !PASSAGER_OU_AUTRUI.test(t)) {
+      const [avant, ...apres] = t.split(/\s+et\s+(?=immunite\b)/);
+      if (apres.length) {
+        phrase(avant, lecture);
+        for (const bout of apres) phrase(bout, lecture, true);
+        return;
+      }
+      const immunite = IMMUNITE_NOMMEE.exec(t);
+      if (immunite) {
+        for (const c of nommees(immunite[1])) lecture.effets.push({ ...c, immunite: true });
+        return;
+      }
     }
     if (!PARLE_DE_RESISTANCE.test(t) || PASSAGER_OU_AUTRUI.test(t)) return;
     // une magie au choix ou tirée, sauf celles que la phrase exclut (« à l'exception de… », « (sauf …) ») : un choix de la fiche (décision R137)
@@ -125,8 +144,9 @@ export function lecteurDeResistances(cibles) {
    * `colonne` : en-tête de la colonne d'une cellule de tableau de dons ; sous « +1 cran de résistance », la cellule nomme la cible (ou un choix),
    * sous un autre en-tête elle se lit comme un texte. `remarque` : la remarque du don (capacite.remarque) ; « Dans le cas du <magie>, lancer un D14
    * pour déterminer une résistance magique aléatoire » donne `si_magie_innee` (l'id de cette magie, une seule nommée) et `de` (« D14 ») : décision R163.
+   * `immunites` : voir l'en-tête (les armures élémentaires seulement).
    */
-  return (texte, { colonne, remarque } = {}) => {
+  return (texte, { colonne, remarque, immunites = false } = {}) => {
     const lecture = { effets: [], choix: false };
     const si = SI_MAGIE_INNEE.exec(plier(remarque));
     const magie = si ? nommees(si[1]).filter((c) => c.type === 'magie') : [];
@@ -139,7 +159,7 @@ export function lecteurDeResistances(cibles) {
       else for (const c of nommees(texte)) lecture.effets.push({ ...c, crans });
       return lecture;
     }
-    for (const morceau of String(texte ?? '').split(/\n|(?<=[a-zà-ÿ)"»])\.\s+/i)) phrase(morceau, lecture);
+    for (const morceau of String(texte ?? '').split(/\n|(?<=[a-zà-ÿ)"»])\.\s+/i)) phrase(morceau, lecture, immunites);
     return lecture;
   };
 }

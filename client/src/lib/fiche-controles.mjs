@@ -50,7 +50,10 @@ export const LIBELLES_DES_CONTROLES = Object.freeze({
   maitrise_plafond: 'Maîtrise au-delà du plafond de 4 points (5 dés) : les points en trop ne comptent pas',
   maitrise_source_perdue: 'Choix de maîtrise d’une source qui n’est plus valable',
   amelioration_cible: 'Amélioration d’un autre genre d’objet',
-  armure_manquante: 'Amélioration ou élément d’armure sans armure',
+  armure_double: 'Armure de base et armure élémentaire à la fois',
+  armure_manquante: 'Amélioration d’armure sans son armure',
+  armure_familier: 'Armure de familier sur une fiche de personnage',
+  armure_magie_absente: 'Armure élémentaire d’une magie que le personnage n’a pas',
   armure_partie_hors_armure: 'Solidité d’une partie que l’armure n’a pas',
   accessoire_valeur: 'Valeur d’accessoire hors de la fourchette de son effet',
 });

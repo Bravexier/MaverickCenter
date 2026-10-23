@@ -12,6 +12,7 @@ import { cleDeMateriau } from './materiaux-couleurs.mjs';
 import { prixEnRo } from './arme-champs.mjs';
 import { coutDeLaPiece } from './armure-champs.mjs';
 import { prixDeLArmure, UNITES_PAR_MATERIAU } from './armure-forge.mjs';
+import { POIDS_DES_ARMURES, valeurDuPoids } from './fiche-format.mjs';
 
 export { PAGE_DES_ARMURES, PAGE_DES_BOUCLIERS };
 
@@ -72,7 +73,17 @@ export const poidsDeBouclier = (db) => lignes(db, 'SELECT * FROM bouclier_poids 
  *                     le prix écrit dans la grille, `prix_brut`, n'est plus affiché) ;
  *   particulieres   : les armures particulières (vêtements, cottes de mailles, armure montagne, armures de familiers) ;
  *   fabricationDeLArmure, fabricationDuBouclier : les lignes « Armure Complète » et « Bouclier » du tableau FABRICATION (armure_emplacement) ;
- *   ameliorations   : { armure: [...], bouclier: [...] } (amelioration_equipement, par niveau) ; totaux : { armure, bouclier } (amelioration_total) ;
+ *   ameliorations   : { armure: [...], bouclier: [...], armure_elementaire: [...] } (amelioration_equipement, par niveau, toutes ses colonnes : pour une
+ *                     armure élémentaire, +1 à +5, cout_brut tel qu'écrit, cout_gemmes et cout_gemmes_qualite — « commune », « raffinee », « parfaite » —
+ *                     ou cout_pieces_elementaires, effet_brut, bonus_ap, bonus_am, bonus_cran ; décision R165 (2) : coût cumulé, effet de la ligne) ;
+ *                     totaux : { armure, bouclier, armure_elementaire } (amelioration_total ; vide dans la source pour l'armure élémentaire) ;
+ *   elementaires    : les armures élémentaires (décision R165 : une armure transformée par une pièce élémentaire devient celle de sa magie et de son poids,
+ *                     sans prix) : { poids (POIDS_DES_ARMURES : « Vêtement », « Léger », « Intermédiaire », « Lourd »), magies (les 14 magies des
+ *                     colonnes de l'onglet, dans leur ordre — Sang, Arcane… Ombre —, jamais le Potentiel Illimité : [{ id, nom, ordre, gemme ({ id, nom },
+ *                     la gemme de la magie, table gemme : ses gemmes paient l'amélioration ; null sans gemme) }]), armures ([{ id, nom, categorie, magie_id,
+ *                     ap, am, effets (les lignes de la cellule « Effet(s) », armure_elementaire_effet), effets_brut, ordre }], par magie puis par poids),
+ *                     solidite_base (constante 'piece_elementaire.solidite_base' : « Chaque pièce élémentaire possède 4 crans de solidité/durabilité »,
+ *                     plus les crans de l'amélioration : R165 (3)) } ;
  *   formes          : les classes de boucliers (Bocle … Pavois), par classe ;
  *   matieres        : les matières des boucliers (materiau_bouclier), dans l'ordre de l'onglet : [{ ligne, cle, nom, type, prix }] ;
  *   boucliers       : les boucliers préfabriqués, par forme puis dans l'ordre des matières, chacun avec `poids_id` (la couleur de sa case : R92) ;
@@ -105,6 +116,21 @@ export function chargerArmures(db) {
   const particulieres = armures.filter((a) => a.sorte === 'particuliere');
   const ameliorations = (cible) => lignes(db, 'SELECT * FROM amelioration_equipement WHERE cible = ? ORDER BY niveau', cible);
   const total = (cible) => db.prepare('SELECT total_brut FROM amelioration_total WHERE cible = ?').get(cible)?.total_brut ?? null;
+  // les armures élémentaires (décision R165), par magie (armure_elementaire.ordre : l'ordre des colonnes de l'onglet) puis par poids
+  const effetsElementaires = new Map();
+  for (const e of lignes(db, 'SELECT armure_elementaire_id, texte FROM armure_elementaire_effet ORDER BY armure_elementaire_id, rang')) {
+    if (!effetsElementaires.has(e.armure_elementaire_id)) effetsElementaires.set(e.armure_elementaire_id, []);
+    effetsElementaires.get(e.armure_elementaire_id).push(e.texte);
+  }
+  const armuresElementaires = lignes(db, 'SELECT id, nom, categorie, magie_id, ap, am, effets_brut, ordre FROM armure_elementaire ORDER BY ordre, id')
+    .sort((a, b) => a.ordre - b.ordre || valeurDuPoids(a.categorie) - valeurDuPoids(b.categorie))
+    .map((a) => ({ ...a, effets: effetsElementaires.get(a.id) ?? [] }));
+  const magiesElementaires = lignes(db, `SELECT m.id, m.nom, min(e.ordre) AS ordre, g.ressource_id AS gemme_id, r.nom AS gemme_nom
+    FROM armure_elementaire e JOIN magie m ON m.id = e.magie_id LEFT JOIN gemme g ON g.magie_id = m.id LEFT JOIN ressource r ON r.id = g.ressource_id
+    GROUP BY m.id ORDER BY min(e.ordre), m.ordre`)
+    .map(({ gemme_id, gemme_nom, ...m }) => ({ ...m, gemme: gemme_id ? { id: gemme_id, nom: gemme_nom } : null }));
+  const solidite = db.prepare("SELECT valeur FROM constante_equipement WHERE id = 'piece_elementaire.solidite_base'").get();
+  if (!solidite) throw new Error('constante_equipement « piece_elementaire.solidite_base » absente de la base');
   const matieres = lignes(db, `SELECT m.*, r.nom, r.prix_brut AS prix_ressource, r.description, t.type AS type_materiau FROM materiau_bouclier m
     JOIN ressource r ON r.id = m.ressource_id LEFT JOIN materiau t ON t.ressource_id = m.ressource_id ORDER BY m.ordre`).map(materiau);
   const ordreDesMatieres = new Map(matieres.map((m, i) => [m.ligne.ressource_id, i]));
@@ -123,8 +149,9 @@ export function chargerArmures(db) {
     particulieres,
     fabricationDeLArmure,
     fabricationDuBouclier: emplacement(PIECE_DU_BOUCLIER),
-    ameliorations: { armure: ameliorations('armure'), bouclier: ameliorations('bouclier') },
-    totaux: { armure: total('armure'), bouclier: total('bouclier') },
+    ameliorations: { armure: ameliorations('armure'), bouclier: ameliorations('bouclier'), armure_elementaire: ameliorations('armure_elementaire') },
+    totaux: { armure: total('armure'), bouclier: total('bouclier'), armure_elementaire: total('armure_elementaire') },
+    elementaires: { poids: [...POIDS_DES_ARMURES], magies: magiesElementaires, armures: armuresElementaires, solidite_base: solidite.valeur },
     formes,
     matieres,
     boucliers,

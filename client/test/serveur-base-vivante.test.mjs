@@ -712,6 +712,8 @@ test('migration 0055 : une base vivante d’avant, une armure par emplacement, e
   piece.run('p1', 'casque', b.id, null);
   piece.run('p1', 'torse', a.id, amelioration);
   piece.run('p2', 'torse', b.id, null);
+  // p2 avec une classe qui porte cette armure (une fiche sans classe ne porte qu'un vêtement : R165 (6), l'armure partirait, trop lourde)
+  ecrire.prepare("INSERT INTO personnage_classe (personnage_id, rang, classe_id) VALUES ('p2', 1, 'classes/guerrier')").run();
   ecrire.close();
 
   const r = preparerBaseVivante({ regles: REGLES, dossier, instant: new Date('2026-10-16T18:00:00Z') });

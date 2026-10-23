@@ -54,7 +54,7 @@
 // skill site-version-portable ; jamais lib/text.mjs, partagé par la recherche).
 
 import {
-  ajouterAuxNotes, armureDesArmures, entrainementEnLignes, ficheVide, maitrisesDAvant, NOMS_DES_EMPLACEMENTS_D_ACCESSOIRE, PREFIXE_DES_MAITRISES_D_AVANT,
+  ajouterAuxNotes, armureDesArmures, deuxArmures, entrainementEnLignes, ficheVide, maitrisesDAvant, NOMS_DES_EMPLACEMENTS_D_ACCESSOIRE, PREFIXE_DES_MAITRISES_D_AVANT,
   texteDesMaitrisesDAvant,
 } from './fiche-format.mjs';
 import {
@@ -1239,8 +1239,11 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     perdu(`${quoi} : « ${t} » introuvable dans les règles`);
     return null;
   };
-  // l'armure de la fiche (décision R95 : une armure complète, son amélioration, son élément et l'amélioration de l'élément) : écrite même vide, pour
-  // qu'un classeur sans armure en retire une au prétiré mis à jour
+  // l'armure de la fiche (décision R95 : une armure complète et son amélioration ; R165 : de base OU élémentaire) : écrite même vide, pour qu'un
+  // classeur sans armure en retire une au prétiré mis à jour. Un classeur d'avant la décision R165 (l'armure, son « élément » et l'amélioration de
+  // l'élément ; la fiche auto : l'élément écrit par le nom de sa magie) donne une fiche d'avant, qui porte les deux : la page la convertit comme la base
+  // vivante (lib/fiche-format.mjs#sansPartiesRetirees : l'élément devient l'armure, avec son amélioration ; l'armure d'origine notée, datée), puis retire
+  // et note une armure hors de la liste (lib/fiche-moteur.mjs#retraitsDeLArmureHorsListe : trop lourde, « Familier », magie absente)
   Object.assign(f, { armure_id: null, armure_amelioration_id: null, armure_elementaire_id: null, armure_amelioration_elementaire_id: null, armure_parties: [] });
   if (auto) {
     const nomArmure = texte(d.armure.nom);
@@ -1249,7 +1252,8 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
       f.armure_id = armure.id;
       f.armure_amelioration_id = amelioration(texte(d.armure.amelioration), 'armure', `Armure (${armure.nom}), amélioration`);
       if (texte(d.armure.element)) f.armure_elementaire_id = armureElementaire(texte(d.armure.element), armure, `Armure (${armure.nom}), élément`);
-      f.armure_amelioration_elementaire_id = amelioration(texte(d.armure.ameliorationElement), 'armure_elementaire', `Armure (${armure.nom}), amélioration de l’élément`);
+      if (f.armure_elementaire_id) f.armure_amelioration_elementaire_id = amelioration(texte(d.armure.ameliorationElement), 'armure_elementaire', `Armure (${armure.nom}), amélioration de l’élément`);
+      else if (texte(d.armure.ameliorationElement)) perdu(`Armure (${armure.nom}), amélioration de l’élément : « ${texte(d.armure.ameliorationElement)} » sans élément reconnu`);
     }
   } else {
     // « Bonus/ Malus » (AQ21) : la ligne de l'armure (lib/fiche-tableur-export.mjs#lireLigneDArmure) ; un classeur d'avant la décision R95 en écrit une
@@ -1257,10 +1261,25 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     // base vivante), une remarque quand c'est une pièce qui devient l'armure complète, les autres pièces vont dans les notes. Une ligne qui ne nomme pas d'armure n'a pas de place sur le site. « Nom Armure » (AD22) :
     // l'armure quand aucune ligne n'en écrit, sinon comparé aux lignes
     const portees = [];
+    // une armure élémentaire (décision R165 : la ligne la nomme, avec son amélioration du tableau élémentaire) ; une seule par fiche
+    let elementaireLue = null;
     for (const l of lignesDe(texte(d.armure.bonus))) {
       const lu = lireLigneDArmure(regles, l);
       if (!lu.emplacementEcrit && !retrouver(regles.armures, lu.armure).length) {
-        perdu(`Bonus/Malus de l'armure : « ${l} » sans place sur le site`);
+        const elementaires = retrouver(regles.armures_elementaires, lu.armure, { autres: () => [] });
+        if (!elementaires.length) {
+          perdu(`Bonus/Malus de l'armure : « ${l} » sans place sur le site`);
+          continue;
+        }
+        const x = unSeul(elementaires, 'Armure élémentaire', lu.armure);
+        if (!x) continue;
+        const quoi = `Armure élémentaire (${x.nom})`;
+        if (elementaireLue) {
+          perdu(`${quoi} : une fiche ne porte qu’une armure (décision R165)`);
+          continue;
+        }
+        elementaireLue = { id: x.id, amelioration: amelioration(lu.amelioration ?? lu.ameliorationElement, 'armure_elementaire', `${quoi}, amélioration`) };
+        for (const partie of [...(lu.element ? [`élément ${lu.element}`] : []), ...lu.autres]) perdu(`${quoi} : « ${partie} » sans place sur la fiche`);
         continue;
       }
       const emplacement = lu.emplacementEcrit ? trouver(regles.emplacements_armure, lu.emplacement_id)?.nom ?? lu.emplacement_id : null;
@@ -1285,9 +1304,19 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
         ? `${quoi} : son amélioration et son élément ne sont pas repris, une fiche ne porte plus qu’une armure complète (décision R95)`
         : `${quoi} : une fiche ne porte plus qu’une armure complète (décision R95)`);
     }
+    if (elementaireLue) Object.assign(f, { armure_elementaire_id: elementaireLue.id, armure_amelioration_elementaire_id: elementaireLue.amelioration });
     const nomAD22 = texte(d.armure.nom);
-    if (!portees.length && nomAD22) f.armure_id = unSeul(retrouver(regles.armures, nomAD22), 'Armure', nomAD22)?.id ?? null;
-    else if (nomAD22 && portees.length && !nommeLesPieces(regles, nomAD22, portees.map((x) => x.ligne))) {
+    if (!portees.length && !elementaireLue && nomAD22) {
+      // « Nom Armure » seul : une armure de base, ou élémentaire (R165), à son nom
+      const deBase = retrouver(regles.armures, nomAD22);
+      const elementaires = deBase.length ? [] : retrouver(regles.armures_elementaires, nomAD22, { autres: () => [] });
+      if (elementaires.length) f.armure_elementaire_id = unSeul(elementaires, 'Armure élémentaire', nomAD22)?.id ?? null;
+      else f.armure_id = unSeul(deBase, 'Armure', nomAD22)?.id ?? null;
+    } else if (nomAD22 && elementaireLue && !portees.length) {
+      if (!retrouver(regles.armures_elementaires, nomAD22, { autres: () => [] }).some((x) => x.id === elementaireLue.id)) {
+        remarques.push(`Armure : « ${nomAD22} » (Nom Armure) ne correspond pas à la case Bonus/Malus (${nomDe(regles.armures_elementaires, elementaireLue.id)}) : celle-ci est reprise`);
+      }
+    } else if (nomAD22 && portees.length && !nommeLesPieces(regles, nomAD22, portees.map((x) => x.ligne))) {
       remarques.push(`Armure : « ${nomAD22} » (Nom Armure) ne correspond pas à la case Bonus/Malus (${nomDe(regles.armures, f.armure_id)}) : celle-ci est reprise`);
     }
     // la solidité de chaque partie (décision R95) : la ligne « Sol. » de la grille (AI24:AN24), « N / M » comme celle d'une arme ; une armure à
@@ -1298,7 +1327,7 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
       const t = texte(adresse);
       if (!t) continue;
       const nom = nomDe(regles.emplacements_armure, emplacement);
-      if (!f.armure_id) {
+      if (!f.armure_id && !f.armure_elementaire_id) {
         perdu(`Armure, ${nom} (solidité) : « ${t} » sans armure reconnue`);
         continue;
       }
@@ -1306,12 +1335,14 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
       if (actuelle === null) perdu(`Armure, ${nom} (solidité) : « ${t} » illisible`);
       else lues.push({ emplacement, crans: entierDe(actuelle, t, `Armure, ${nom} (solidité)`), maxEcrit });
     }
-    const a = partiesDeLArmure(regles, f);
+    // une fiche d'avant (l'armure et son « élément ») : la solidité est celle de l'armure d'origine, que la conversion note (R165 (8))
+    const sol = deuxArmures(f) ? { ...f, armure_elementaire_id: null, armure_amelioration_elementaire_id: null } : f;
+    const a = partiesDeLArmure(regles, sol);
     if (a && lues.length) {
-      if (a.uni) f.armure_parties = partiesApresReglage(regles, f, a.parties[0].emplacement_id, Math.min(...lues.map((x) => x.crans)));
-      else for (const x of lues) f.armure_parties = partiesApresReglage(regles, f, x.emplacement, x.crans);
+      if (a.uni) f.armure_parties = partiesApresReglage(regles, sol, a.parties[0].emplacement_id, Math.min(...lues.map((x) => x.crans)));
+      else for (const x of lues) f.armure_parties = partiesApresReglage(regles, { ...sol, armure_parties: f.armure_parties }, x.emplacement, x.crans);
       const ecrits = [...new Set(lues.map((x) => x.maxEcrit).filter((m) => m !== null && m !== a.max))];
-      if (ecrits.length) remarques.push(`Armure (${a.armure.nom}) : solidité maximale écrite ${ecrits.join(', ')}, le site calcule ${a.max} (décisions R77, R95)`);
+      if (ecrits.length) remarques.push(`Armure (${a.armure.nom}) : solidité maximale écrite ${ecrits.join(', ')}, le site calcule ${a.max} (décisions R77, R95${a.elementaire ? ', R165' : ''})`);
     }
   }
 

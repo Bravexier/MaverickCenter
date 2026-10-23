@@ -560,31 +560,56 @@ test('équipement : bouclier forme et matière (R96), améliorations du bon genr
   assert.deepEqual(regles('equipement'), ['accessoire_valeur', 'amelioration_cible']);
 });
 
-test('armure (décision R95) : améliorations de l’armure entière du bon genre ; ni amélioration ni élément sans armure ; une partie que l’armure a', () => {
+test('armure (décisions R95, R165) : une armure, de base ou élémentaire, jamais les deux ; améliorations du bon genre, jamais sans leur armure ; ni armure « Familier » ni armure élémentaire d’une autre magie ; une partie que l’armure a', () => {
   const grille = db.prepare('SELECT id FROM armure WHERE solidite_uni IS NULL ORDER BY ordre LIMIT 1').get().id;
-  const uni = db.prepare('SELECT id FROM armure WHERE solidite_uni = 1 ORDER BY ordre LIMIT 1').get().id;
+  const uni = db.prepare("SELECT id FROM armure WHERE solidite_uni = 1 AND type <> 'Familier' ORDER BY ordre LIMIT 1").get().id;
+  const familier = db.prepare("SELECT id FROM armure WHERE type = 'Familier' ORDER BY ordre LIMIT 1").get().id;
   const amelioration = (cible) => db.prepare('SELECT id FROM amelioration_equipement WHERE cible = ? ORDER BY niveau LIMIT 1').get(cible).id;
-  const element = db.prepare('SELECT id FROM armure_elementaire ORDER BY id LIMIT 1').get().id;
-  personnageValide('armure', { armure_id: grille, armure_amelioration_id: amelioration('armure'), armure_elementaire_id: element,
-    armure_amelioration_elementaire_id: amelioration('armure_elementaire') });
-  inserer('personnage_armure_partie', { personnage_id: 'armure', emplacement_id: 'torse', solidite: 0 });
-  assert.deepEqual(controle('armure'), [], 'une armure de la grille, ses améliorations, une partie cassée');
-  // l'amélioration d'une arme sur l'armure, celle de l'armure sur l'élément
+  const elementaire = (magie) => db.prepare("SELECT id FROM armure_elementaire WHERE magie_id = ? AND categorie = 'Léger'").get(magie).id;
+  const feu = elementaire('magies/magie-du-feu');
+  const vent = elementaire('magies/magie-du-vent');
+  // les règles de l'armure seulement (une magie acquise ajoutée plus bas peut en déclencher d'autres)
+  const armure = () => controle('armure').filter((c) => c.regle.startsWith('armure') || c.regle === 'amelioration_cible');
   const majs = (x) => db.prepare(`UPDATE personnage SET ${Object.keys(x).map((c) => `${c} = ?`).join(', ')} WHERE id = 'armure'`).run(...Object.values(x));
-  majs({ armure_amelioration_id: amelioration('arme'), armure_amelioration_elementaire_id: amelioration('armure') });
-  assert.deepEqual(controle('armure'), [
-    { regle: 'amelioration_cible', detail: `armure : ${amelioration('arme')}` }, { regle: 'amelioration_cible', detail: `élément de l’armure : ${amelioration('armure')}` },
-  ]);
-  // sans armure : ni amélioration ni élément, aucune partie
-  majs({ armure_id: null, armure_amelioration_id: null, armure_amelioration_elementaire_id: null });
-  assert.deepEqual(controle('armure'), [{ regle: 'armure_manquante', detail: element }, { regle: 'armure_partie_hors_armure', detail: 'torse' }]);
-  // une armure à solidité unifiée n'a que l'armure entière ; une armure de la grille jamais l'armure entière
-  majs({ armure_id: uni, armure_elementaire_id: null });
-  assert.deepEqual(controle('armure'), [{ regle: 'armure_partie_hors_armure', detail: 'torse' }]);
+  personnageValide('armure', { armure_id: grille, armure_amelioration_id: amelioration('armure') });
+  inserer('personnage_armure_partie', { personnage_id: 'armure', emplacement_id: 'torse', solidite: 0 });
+  assert.deepEqual(controle('armure'), [], 'une armure de la grille, son amélioration, une partie cassée');
+  // R165 : l'armure élémentaire est l'armure de la fiche, avec son amélioration (cible armure_elementaire) et ses six parties
+  majs({ armure_id: null, armure_amelioration_id: null, armure_elementaire_id: feu, armure_amelioration_elementaire_id: amelioration('armure_elementaire') });
+  assert.deepEqual(controle('armure'), [], 'une armure élémentaire de la magie innée, son amélioration, une partie cassée');
+  // jamais les deux armures
+  majs({ armure_id: grille });
+  assert.deepEqual(armure(), [{ regle: 'armure_double', detail: `${grille} / ${feu}` }]);
+  // chaque amélioration du bon genre : l'amélioration d'une arme sur l'armure de base, celle d'une armure de base sur l'élémentaire
+  majs({ armure_elementaire_id: null, armure_amelioration_elementaire_id: null, armure_amelioration_id: amelioration('arme') });
+  assert.deepEqual(armure(), [{ regle: 'amelioration_cible', detail: `armure : ${amelioration('arme')}` }]);
+  majs({ armure_id: null, armure_amelioration_id: null, armure_elementaire_id: feu, armure_amelioration_elementaire_id: amelioration('armure') });
+  assert.deepEqual(armure(), [{ regle: 'amelioration_cible', detail: `armure élémentaire : ${amelioration('armure')}` }]);
+  // une amélioration sans son armure : celle de l'armure de base avec une armure élémentaire, et l'inverse
+  majs({ armure_amelioration_elementaire_id: null, armure_amelioration_id: amelioration('armure') });
+  assert.deepEqual(armure(), [{ regle: 'armure_manquante', detail: amelioration('armure') }]);
+  majs({ armure_elementaire_id: null, armure_id: grille, armure_amelioration_id: null, armure_amelioration_elementaire_id: amelioration('armure_elementaire') });
+  assert.deepEqual(armure(), [{ regle: 'armure_manquante', detail: amelioration('armure_elementaire') }]);
+  // sans armure : aucune amélioration, aucune partie
+  majs({ armure_id: null, armure_amelioration_elementaire_id: null });
+  assert.deepEqual(armure(), [{ regle: 'armure_partie_hors_armure', detail: 'torse' }]);
+  // une armure élémentaire d'une magie que le personnage n'a pas, ni innée ni acquise ; avec la magie acquise, elle se porte
+  majs({ armure_elementaire_id: vent });
+  assert.deepEqual(armure(), [{ regle: 'armure_magie_absente', detail: vent }]);
+  majs({ magie_acquise_id: 'magies/magie-du-vent' });
+  assert.deepEqual(armure(), []);
+  majs({ magie_acquise_id: null, armure_elementaire_id: feu });
+  // une armure élémentaire a toujours ses six parties, jamais l'armure entière (pas de cran uni)
   db.prepare("UPDATE personnage_armure_partie SET emplacement_id = 'armure-complete' WHERE personnage_id = 'armure'").run();
+  assert.deepEqual(armure(), [{ regle: 'armure_partie_hors_armure', detail: 'armure-complete' }]);
+  // une armure de base à solidité unifiée n'a que l'armure entière ; une armure de la grille jamais l'armure entière
+  majs({ armure_elementaire_id: null, armure_id: uni });
   assert.deepEqual(controle('armure'), []);
   majs({ armure_id: grille });
   assert.deepEqual(controle('armure'), [{ regle: 'armure_partie_hors_armure', detail: 'armure-complete' }]);
+  // une armure « Familier » n'est jamais portée par un personnage (R165 : gardée pour de futures fiches de familier)
+  majs({ armure_id: familier });
+  assert.deepEqual(controle('armure'), [{ regle: 'armure_familier', detail: familier }]);
   // la base refuse le bouclier (une autre partie de la fiche) et une solidité négative
   assert.throws(() => inserer('personnage_armure_partie', { personnage_id: 'armure', emplacement_id: 'bouclier', solidite: 0 }), /CHECK/);
   assert.throws(() => inserer('personnage_armure_partie', { personnage_id: 'armure', emplacement_id: 'casque', solidite: -1 }), /CHECK/);

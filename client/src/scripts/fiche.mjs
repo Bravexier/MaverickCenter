@@ -14,7 +14,9 @@
 // choix et le recadrage du portrait (src/scripts/portrait.mjs, lib/portrait.mjs), partagés avec le mode modification du bestiaire, absent de la version
 // portable.
 import { libelleDuControle } from '../lib/fiche-controles.mjs';
-import { CHAMP_VERSION, COLONNES_DU_SERVICE, PARTIES_DE_FICHE, ajouterAuxNotes, ficheVide, nouveauxRetraits, resumeDesRetraits, sansPartiesRetirees } from '../lib/fiche-format.mjs';
+import {
+  CHAMP_VERSION, COLONNES_DU_SERVICE, PARTIES_DE_FICHE, ajouterAuxNotes, ficheVide, ligneDeRetrait, nouveauxRetraits, resumeDesRetraits, sansPartiesRetirees,
+} from '../lib/fiche-format.mjs';
 import { RAISONS } from '../lib/degats-texte.mjs';
 import { modesAuNm, valeurAuNm } from '../lib/sort-maitrise.mjs';
 import { cadrageDe, empreinte, octetsDuPortrait } from '../lib/portrait.mjs';
@@ -36,7 +38,7 @@ import {
   bornesDuMultiplicateur, livreAuPlafond, multiplicateurDuCout, sortAuNm, sortAvecLivre, sortPourUnLivre, donDePreparation, jetDuSortPrepare, sortPrepare, sortsAEnregistrer, sortsAPreparer, sortsApresLeJet,
   sortsApresChoixDEmplacement, sortsApresPreparation, sortsApresLaSymbiose, nmDuMoment,
   refusClasse, refusMagieAcquise, resistancesDe, sortsParNpm, trouver, ecrireValeurDuMoment, valeursDuMoment,
-  armureApresChoix, partiesApresReglage, partiesDeLArmure, partiesValables,
+  armureApresChoix, armuresProposees, partiesApresReglage, partiesDeLArmure, partiesValables, poidsPortableDe, retraitsDeLArmureHorsListe,
   bouclierApresChoix, bouclierDe, catalogueDuSac, defenseDe, degatsRecus, effetDeCompetence, effetsDAccessoireProposes, PARTIE_PAR_DEFAUT, partiesDuCorps, valeurDeCompetenceBornee,
   propositionsDuCatalogue, soliditeDuBouclierAEcrire, typesDeDegats, valeurDEffetDAccessoire,
   acquisApresChoix, acquisApresRepartition, acquisChoixValables, acquisDesDons, magieTireeParLeMj, resistanceApresChoix, resistanceChoixValables, entrainementDe, entrainementsAEnregistrer, batonDuSac, contexteDesSorts, degatsDArmeDuMoment, magiesDesBatons, nomDuBaton, postureDuMoment, sortDuMoment,
@@ -64,6 +66,18 @@ let serviceJoignable = true;
 let enregistrementRefuse = false;
 /** Un téléchargement, un export ou un import en ligne en cours : Télécharger et Exporter attendent (etatDesBoutons). */
 let occupe = false;
+/**
+ * L'armure sortie de la liste par un geste en cours (décision R165 (7), retrait différé jusqu'au choix arrêté : arreterLeChoix) : { groupe } — le
+ * contrôle du geste (groupeDuControle : le menu de pastilles, le groupe de boutons radio, la liste ou le champ) —, ou null. Un changement fait par un
+ * geste (changer) ne retire pas l'armure : elle reste dans le groupe « Hors de la liste » tant que le geste reste dans son contrôle (l'XP tapée chiffre
+ * à chiffre, une liste parcourue aux flèches, des boutons radio, une classe retirée puis remplacée dans le même menu), et revenir au choix d'origine ne
+ * retire ni ne note rien.
+ */
+let armureEnSuspens = null;
+/** Un rafraîchissement demandé par un geste de l'utilisateur (changer) : rafraichir ne retire pas l'armure hors de la liste, il la met en suspens. */
+let parUnGeste = false;
+/** La cible du dernier geste (pointerdown, keydown, focusin : demarrer), d'où vient le groupe d'une armure mise en suspens. */
+let derniereCible = null;
 const noms = new Map();
 /** Fonctions qui alignent les champs et les états sur la fiche, par conteneur (remplacées quand le conteneur est reconstruit). */
 const synchros = new Map();
@@ -177,7 +191,12 @@ function reconstruire(conteneur, cle, construire) {
 
 function changer() {
   modifie = true;
-  rafraichir();
+  parUnGeste = true;
+  try {
+    rafraichir();
+  } finally {
+    parUnGeste = false;
+  }
 }
 
 const ligneDe = (cle, critere) => (fiche[cle] ?? []).find(critere);
@@ -812,7 +831,7 @@ function ligneDeFamilleDeLaPage(f) {
 /** Pourquoi un bonus de sort n'est pas compté (sortDuMoment, lib/sort-bonus-texte.mjs). */
 const RAISONS_DES_SORTS = {
   situation: 'selon la situation', progression: 'progression par niveau à préciser', posture: 'dans une autre posture', des: 'pas de dés écrits',
-  non_chiffre: 'valeur écrite non chiffrée', sans_chakra: 'le sort ne consomme pas de chakra', armure_cassee: 'armure cassée (R158)',
+  non_chiffre: 'valeur écrite non chiffrée', sans_chakra: 'le sort ne consomme pas de chakra',
 };
 
 /**
@@ -1315,7 +1334,6 @@ const RAISONS_DE_L_ACQUIS = {
   mj: 'à voir avec le MJ (décision R123 : un cas très particulier de la Ruse)',
   sans_artisanat: 'sans métier, pas de compétence d’artisanat (décision R123)',
   inconnue: 'aucune compétence nommée',
-  element: 'l’armure transformée par un élément perd ses bonus d’origine (décision R99)',
   armure_cassee: 'armure cassée (R158)',
 };
 
@@ -2540,26 +2558,58 @@ function construireEquipement() {
       el('label', { class: 'fiche-champ' }, el('span', {}, 'Effet en plus'), effet))));
   }));
 
-  // l'armure portée (décision R95 : « L'amélioration est pour l'armure complète », l'élément aussi) : UNE armure complète, son amélioration, son élément
-  // et l'amélioration de l'élément (armureApresChoix : une autre armure est neuve) ; puis la solidité du moment de chacune de ses six parties
+  // l'armure portée (décision R95 : « L'amélioration est pour l'armure complète ») : UNE armure, de base ou élémentaire (décision R165 (5) : « une seule
+  // liste d'armures », celle d'armuresProposees — les armures de base au plus du poids portable, jamais « Familier », par poids ; les armures élémentaires
+  // des magies innée et acquise, au plus du poids portable, un groupe par magie, chaque option sur la couleur de sa magie comme les sorts : Safari iOS
+  // ignore le fond d'une option, le nom de la magie est donc celui de son groupe ; fermée, la liste prend la couleur de l'armure élémentaire choisie),
+  // puis son amélioration, du tableau de son genre (une armure élémentaire : +1 à +5 du tableau élémentaire) ; armureApresChoix : une autre armure est
+  // neuve. Sous la liste, le poids portable (poidsPortableDe, son calcul en infobulle). Puis la solidité du moment de chacune de ses six parties
   // (« L'armure peut casser à certains endroits seulement »), ou de l'armure entière pour une armure à solidité unifiée : un curseur de 0 au maximum
-  // (partiesDeLArmure : la solidité de l'armure et les crans de son amélioration), « N / M » à côté, « Cassée » à 0 ; clic droit ou Entrée : saisir le
-  // nombre. Chaque partie se répare individuellement (« kit de réparation ou métier adapté + matériau ») : rien n'en est calculé, sa solidité remonte au curseur
-  reconstruire($('armures'), 'fixe', () => {
+  // (partiesDeLArmure : la solidité de l'armure, ou 4 crans pour une armure élémentaire, et les crans de son amélioration), « N / M » à côté, « Cassée »
+  // à 0 ; clic droit ou Entrée : saisir le nombre. Chaque partie se répare individuellement (« kit de réparation ou métier adapté + matériau ») : rien n'en
+  // est calculé, sa solidité remonte au curseur. Une armure hors de la liste est retirée et notée (retirerLArmureHorsListe) ; sortie de la liste par un
+  // geste en cours (armureEnSuspens), elle reste dans un groupe « Hors de la liste » jusqu'à ce que le choix soit arrêté (arreterLeChoix)
+  const proposees = armuresProposees(regles, fiche);
+  const armurePortee = () => trouver(regles.armures_elementaires ?? [], fiche.armure_elementaire_id) ?? trouver(regles.armures ?? [], fiche.armure_id);
+  const portee = armurePortee();
+  const proposee = (a) => proposees.base.some((g) => g.armures.includes(a)) || proposees.elementaires.some((g) => g.armures.includes(a));
+  const horsListe = portee && !proposee(portee) ? portee : null;
+  const elementaire = Boolean(fiche.armure_elementaire_id);
+  const cleDesArmures = JSON.stringify([proposees.portable, proposees.elementaires.map((g) => g.magie.id), horsListe?.id ?? null, elementaire]);
+  reconstruire($('armures'), cleDesArmures, () => {
     const choisir = (champ) => (v) => {
       Object.assign(fiche, armureApresChoix(regles, fiche, champ, v));
       changer();
     };
-    const armure = selecteur(() => fiche.armure_id, optionsGroupees(regles.armures, (a) => a.type, (a) => `${a.nom}${stats(a) ? ` (${stats(a)})` : ''}`),
-      choisir('armure_id'), { vide: 'Aucune', etiquette: 'Armure' });
-    const suite = [
-      ['Amélioration', selecteur(() => fiche.armure_amelioration_id, ameliorations('armure'), choisir('armure_amelioration_id'), { etiquette: 'Armure : amélioration' })],
-      ['Élément', selecteur(() => fiche.armure_elementaire_id, optionsGroupees(regles.armures_elementaires, (a) => a.categorie, (a) => a.nom + (stats(a) ? ` (${stats(a)})` : '')),
-        choisir('armure_elementaire_id'), { etiquette: 'Armure : élément' })],
-      ['Amélioration de l’élément', selecteur(() => fiche.armure_amelioration_elementaire_id, ameliorations('armure_elementaire'), choisir('armure_amelioration_elementaire_id'),
-        { etiquette: 'Armure : amélioration de l’élément' })],
-    ];
-    synchro(() => { for (const [, sel] of suite) sel.disabled = !fiche.armure_id; });
+    const libelle = (a) => `${a.nom} (${[a.categorie, stats(a)].filter(Boolean).join(', ')})`;
+    const optionDArmure = (a, magie = null) => el('option', { value: a.id, class: teinteDe(magie).join(' ') || null, title: magie ? `${magie.nom} : armure élémentaire` : null },
+      magie ? libelle(a) : `${a.nom}${stats(a) ? ` (${stats(a)})` : ''}`);
+    const armure = el('select', { 'aria-label': 'Armure', onchange: (ev) => choisir('armure')(ev.target.value || null) },
+      el('option', { value: '', class: 'option-vide' }, 'Aucune'),
+      proposees.base.map((g) => el('optgroup', { label: g.poids }, g.armures.map((a) => optionDArmure(a)))),
+      proposees.elementaires.map((g) => el('optgroup', { label: `Armures élémentaires : ${g.magie.nom}` }, g.armures.map((a) => optionDArmure(a, g.magie)))),
+      horsListe ? el('optgroup', { label: 'Hors de la liste (retirée une fois le choix arrêté)' }, optionDArmure(horsListe, trouver(regles.magies, horsListe.magie_id))) : null);
+    synchro(() => {
+      poser(armure, fiche.armure_elementaire_id ?? fiche.armure_id ?? '');
+      const a = trouver(regles.armures_elementaires ?? [], fiche.armure_elementaire_id);
+      const magie = trouver(regles.magies, a?.magie_id);
+      poserTeinte(armure, teinteDe(magie));
+      armure.toggleAttribute('data-couleur', Boolean(magie));
+      attribut(armure, 'title', a ? `${a.nom} : armure élémentaire (${magie?.nom ?? a.magie_id}, ${a.categorie})` : null);
+    });
+    const poids = el('p', { class: 'fiche-aide armure__poids' });
+    synchro(() => {
+      const p = poidsPortableDe(regles, fiche);
+      const texte = `Poids portable : ${p.poids}`;
+      if (poids.textContent !== texte) poids.textContent = texte;
+      infobulle(poids, [`Poids portable : ${p.poids} (${p.valeur})`, ...p.etapes.map((e) => e.texte),
+        'La liste ne propose que les armures de ce poids au plus (décision R165).'].join('\n'));
+    });
+    // l'amélioration de l'armure portée, du tableau de son genre (R77 ; R165 (2) pour une armure élémentaire)
+    const champ = elementaire ? 'armure_amelioration_elementaire_id' : 'armure_amelioration_id';
+    const amelioration = selecteur(() => fiche[champ], ameliorations(elementaire ? 'armure_elementaire' : 'armure'), choisir(champ),
+      { etiquette: elementaire ? 'Armure élémentaire : amélioration' : 'Armure : amélioration' });
+    synchro(() => { amelioration.disabled = !armurePortee(); });
     // un rang par emplacement (les six parties, et l'armure entière pour une armure à solidité unifiée) : ceux que l'armure n'a pas sont cachés
     const rangs = regles.emplacements_armure.map((e) => {
       const curseur = el('input', {
@@ -2585,17 +2635,18 @@ function construireEquipement() {
         valeur.textContent = partie.cassee ? 'Cassée' : `${partie.actuelle} / ${a.max}`;
         rang.title = [
           `${partie.nom} : ${partie.actuelle} / ${a.max} cran${a.max > 1 ? 's' : ''}${partie.cassee ? ' : cassée' : ''}`,
-          ...a.detail.map((c, i) => (i ? `${c.nom} ${signe(c.valeur)}` : `${c.nom} : ${c.valeur}${a.uni ? ' (solidité unifiée : toute l’armure)' : ''}`)),
+          ...a.detail.map((c, i) => (i ? `${c.nom} ${signe(c.valeur)}` : `${c.nom} : ${c.valeur}${a.uni ? ' (solidité unifiée : toute l’armure)' : a.elementaire ? ' (pièce élémentaire, décision R165)' : ''}`)),
           'À 0, la partie est cassée ; chaque partie se répare individuellement (kit de réparation ou métier adapté + matériau). Clic droit ou Entrée sur le curseur : saisir le nombre.',
         ].join('\n');
       });
       return rang;
     });
     const parties = el('div', { class: 'armure__parties', role: 'group', 'aria-label': 'Solidité des parties de l’armure' }, rangs);
-    synchro(() => { parties.hidden = !fiche.armure_id; });
+    synchro(() => { parties.hidden = !armurePortee(); });
     return el('div', { class: 'objet' },
-      el('label', { class: 'fiche-champ' }, el('span', {}, 'Armure'), armure),
-      el('div', { class: 'fiche-champs' }, suite.map(([t, sel]) => el('label', { class: 'fiche-champ' }, el('span', {}, t), sel))),
+      el('label', { class: 'fiche-champ armure__choix' }, el('span', {}, 'Armure'), armure),
+      poids,
+      el('div', { class: 'fiche-champs' }, el('label', { class: 'fiche-champ' }, el('span', {}, 'Amélioration'), amelioration)),
       parties);
   });
 
@@ -2936,7 +2987,6 @@ function construireDefense() {
         ...(d.cassees.length ? [`Parties cassées (l’armure n’y compte pas, décision R108) : ${d.cassees.map((x) => x.nom).join(', ')}`] : []),
       ];
       const detail = (x, nom) => [`${nom} : ${x.total}`, ...x.detail.map((l) => `${l.nom} : ${signe(l.valeur)}`),
-        ...(d.element ? [`Élément ${d.element.nom} : l’armure d’origine et son amélioration ne comptent plus (« Tous les bonus d’origine […] sont perdus »)`] : []),
         ...parPartie].join('\n');
       ap.valeur.textContent = String(d.ap.total);
       am.valeur.textContent = String(d.am.total);
@@ -3210,7 +3260,56 @@ function construireRetraits() {
   if (r) banniere.append(`${r.texte} `, el('a', { href: '#etape-jeu' }, 'Voir les notes'));
 }
 
+/** L'instant des lignes ajoutées aux notes (ISO 8601 UTC à la seconde, le format des colonnes `*_le` : lib/fiche-format.mjs#ligneDeRetrait). */
+const instantDesNotes = () => new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+
+/**
+ * Décision R165 (7) (« Retirer et noter ») : l'armure qui sort de la liste de la fiche — trop lourde pour le poids portable (y compris quand il baisse :
+ * classe, spécialité, niveau, don, race changés), élémentaire d'une magie que le personnage n'a plus, « Familier » — en est retirée, une ligne datée
+ * dans les notes, au texte du service (lib/fiche-moteur.mjs#retraitsDeLArmureHorsListe, lib/fiche-format.mjs#ligneDeRetrait) : au chargement (appliquer,
+ * nouvelle), une fois arrêté le choix qui l'a fait sortir de la liste (arreterLeChoix), et avant chaque enregistrement, téléchargement ou export.
+ * Vrai si elle l'a été.
+ */
+function retirerLArmureHorsListe() {
+  const r = retraitsDeLArmureHorsListe(regles, fiche);
+  if (!r) return false;
+  Object.assign(fiche, r.colonnes);
+  fiche.notes = ajouterAuxNotes(fiche.notes, r.retraits.map((d) => ligneDeRetrait(d, instantDesNotes())));
+  modifie = true;
+  return true;
+}
+
+/**
+ * Le contrôle d'un geste, pour le retrait différé de l'armure (armureEnSuspens) : le menu de pastilles (race, ethnie, magies, classe, spécialité : un
+ * <details class="choix">, son résumé compris, pour retirer une classe puis en choisir une autre dans le même menu), sinon le groupe de boutons radio
+ * (un <fieldset> : les dons à choisir, que les flèches parcourent en déclenchant « change » à chaque bouton), sinon le groupe de pastilles (les
+ * spécialités du tiroir), sinon l'élément même (une liste, que les flèches parcourent de même sous Windows ; le champ de l'XP ; la case « Bi-classé »).
+ */
+function groupeDuControle(cible) {
+  if (!(cible instanceof Element)) return null;
+  return cible.closest('details.choix') ?? cible.closest('fieldset') ?? cible.closest('.groupe-pastilles') ?? cible;
+}
+
+/**
+ * Le choix arrêté (décision R165 (7), retrait différé) : l'armure mise en suspens par un geste est retirée et notée si elle est toujours hors de la liste
+ * (revenue dans la liste, elle ne l'est pas, et rien n'est noté). Appelé quand le geste quitte son contrôle (un clic ou le focus ailleurs, hors du bloc
+ * de l'armure, où l'on peut choisir une autre armure : demarrer), et avant d'enregistrer, de télécharger ou d'exporter (jamais une fiche envoyée avec
+ * une armure hors de sa liste). Vrai si elle l'a été.
+ */
+function arreterLeChoix() {
+  armureEnSuspens = null;
+  if (!retirerLArmureHorsListe()) return false;
+  rafraichir();
+  return true;
+}
+
 function rafraichir() {
+  // un geste en cours met l'armure sortie de la liste en suspens (le groupe de son contrôle) ; revenue dans la liste, le suspens tombe ; hors d'un geste
+  // (chargement, nouvelle fiche, réponse du service), elle est retirée aussitôt, sauf en suspens (arreterLeChoix la retirera)
+  if (parUnGeste) {
+    if (!retraitsDeLArmureHorsListe(regles, fiche)) armureEnSuspens = null;
+    else armureEnSuspens ??= { groupe: groupeDuControle(derniereCible) };
+  } else if (!armureEnSuspens) retirerLArmureHorsListe();
   // les six caractéristiques sont toujours là, au minimum de la race (1) tant qu'on ne les a pas montées (demande du propriétaire)
   fiche.caracteristiques = caracteristiquesCompletes(regles, fiche);
   // la magie de la Symbiose (décision R100) : une magie du personnage, jamais le Potentiel Illimité ; une autre (magies changées) est oubliée
@@ -3340,6 +3439,9 @@ function aEnvoyer() {
  */
 const nomsDesRetraits = () => ({
   armure: (x) => trouver(regles.armures ?? [], x)?.nom ?? null,
+  // une fiche d'avant la décision R165 (une armure et son « élément ») : l'armure élémentaire qu'elle devient et le niveau des améliorations notées
+  armureElementaire: (x) => trouver(regles.armures_elementaires ?? [], x)?.nom ?? null,
+  amelioration: (x) => trouver(regles.ameliorations ?? [], x)?.niveau ?? null,
   emplacement: (x) => trouver(regles.emplacements_armure ?? [], x)?.nom ?? null,
   ressource: (x) => trouver(regles.ressources ?? [], x)?.nom ?? null,
   accessoire: (x) => trouver(regles.accessoires ?? [], x)?.libelle ?? null,
@@ -3370,12 +3472,15 @@ function appliquer(donnees) {
   controles = donnees.controles ?? null;
   modifie = convertie !== brute && (convertie?.notes ?? null) !== (brute?.notes ?? null);
   enregistrementRefuse = false;
+  armureEnSuspens = null;   // une autre fiche (ou la fiche enregistrée) : son armure hors de la liste est retirée aussitôt (rafraichir)
   rafraichir();
 }
 
 async function enregistrer() {
   const bouton = $('fiche-enregistrer');
   bouton.disabled = true;
+  // jamais une armure hors de la liste (décision R165 (7)) : celle qu'un geste laissait en suspens est retirée et notée
+  arreterLeChoix();
   message('Enregistrement…', 'attente');
   try {
     const adresse = id ? `${API}personnages/${encodeURIComponent(id)}/` : `${API}personnages/`;
@@ -3485,6 +3590,7 @@ function nouvelle() {
   controles = null;
   modifie = false;
   enregistrementRefuse = false;
+  armureEnSuspens = null;
   history.replaceState(null, '', racine.dataset.fiche);
   rafraichir();
   message('', '');
@@ -3549,6 +3655,7 @@ async function logoDuModele() {
  * case de tableur (notes de plus de 32 767 caractères…), que le message dit (messageDExport). « Télécharger » et « Exporter » en font le même fichier.
  */
 async function classeurDeLaFiche() {
+  arreterLeChoix();   // jamais une armure hors de la liste dans le classeur (décision R165 (7))
   const f = aEnvoyer();
   const { cellules, remplis, alignements, avertissements } = cellulesDeLaFiche(regles, f, { date: aujourdhui(), zones: await zonesDesCases() });
   let image = null;
@@ -3903,6 +4010,23 @@ async function demarrer() {
     else fiche[t.dataset.champ] = t.value === '' ? null : t.value;
     changer();
   });
+  // le retrait différé de l'armure hors de la liste (décision R165 (7), armureEnSuspens) : la cible de chaque geste, d'où vient le groupe du suspens ;
+  // le choix est arrêté quand un clic ou le focus quitte ce groupe (hors du bloc de l'armure, où choisir une autre armure la remplace sans retrait),
+  // après l'action du geste (un clic dans le même menu, une classe retirée puis remplacée, garde l'armure). Pas à « change » : Chrome et Firefox le
+  // déclenchent à chaque option d'une liste parcourue aux flèches sous Windows, à chaque bouton radio, à chaque clic sur les flèches d'un nombre
+  for (const type of ['pointerdown', 'keydown', 'focusin']) document.addEventListener(type, (ev) => { derniereCible = ev.target; }, { capture: true });
+  const quitteLeGroupe = (ev) => {
+    if (!armureEnSuspens) return;
+    const cible = ev.target;
+    // le groupe et le bloc de l'armure lus avant le geste (son action peut reconstruire la cible)
+    const groupe = groupeDuControle(cible);
+    const dansLArmure = cible instanceof Node && $('armures').contains(cible);
+    setTimeout(() => {
+      if (armureEnSuspens && !dansLArmure && groupe !== armureEnSuspens.groupe) arreterLeChoix();
+    });
+  };
+  document.addEventListener('click', quitteLeGroupe, { capture: true });
+  document.addEventListener('focusin', quitteLeGroupe, { capture: true });
   $('fiche-enregistrer').addEventListener('click', enregistrer);
   $('fiche-nouvelle').addEventListener('click', nouvelle);
   $('fiche-telecharger').addEventListener('click', telechargerClasseur);

@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 79 : 198 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 80 : 198 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -3519,7 +3519,7 @@ Dons de classe choisis (lignes « CLASSE 1 » / « CLASSE 2 », C43:L67) : seule
 
 ### `personnage_armure_partie`
 
-« ARMURE / DÉFENSE » (AA19:AX23) : la solidité du moment des parties de l'armure portée (personnage.armure_id ; décision R95, migration 0055 : « L'armure peut casser à certains endroits seulement. (sauf si comme pour les armures spéciales, elle disposent de durabilité unifiée) . Chaque partie est à réparer individuellement pour remonter (utilisation d'un kit de réparation ou métier adapté + matériau) » ; ligne « Sol. » de la grille T C BG BD JG JD du modèle ordinateur, AI24:AN24) : une ligne par partie abîmée (casque, torse, bras, jambes), de 0 (cassée) au maximum de l'armure (sa solidité et les crans de son amélioration, calculé par la page, pas ici) ; une partie sans ligne est à son maximum. Une armure à solidité unifiée (armure.solidite_uni) n'a qu'une solidité, sous l'emplacement « armure-complete ». Avant 0055, personnage_armure portait une armure par emplacement : la base vivante la convertit à sa reconstruction (serveur/base-vivante.mjs, CONVERSIONS).
+« ARMURE / DÉFENSE » (AA19:AX23) : la solidité du moment des parties de l'armure portée, de base (personnage.armure_id) ou élémentaire (personnage.armure_elementaire_id, décision R165) ; décision R95, migration 0055 : « L'armure peut casser à certains endroits seulement. (sauf si comme pour les armures spéciales, elle disposent de durabilité unifiée) . Chaque partie est à réparer individuellement pour remonter (utilisation d'un kit de réparation ou métier adapté + matériau) » ; ligne « Sol. » de la grille T C BG BD JG JD du modèle ordinateur, AI24:AN24) : une ligne par partie abîmée (casque, torse, bras, jambes), de 0 (cassée) au maximum de l'armure, calculé par la page, pas ici : pour une armure de base, sa solidité et les crans de son amélioration ; pour une armure élémentaire, 4 crans (« Chaque pièce élémentaire possède 4 crans de solidité/durabilité », constante_equipement 'piece_elementaire.solidite_base') et les crans de son amélioration (+1 au +4 et au +5, R165). Une partie sans ligne est à son maximum. Une armure de base à solidité unifiée (armure.solidite_uni) n'a qu'une solidité, sous l'emplacement « armure-complete » ; une armure élémentaire a toujours ses six parties (R165). Avant 0055, personnage_armure portait une armure par emplacement : la base vivante la convertit à sa reconstruction (serveur/base-vivante.mjs, CONVERSIONS).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -3691,7 +3691,7 @@ Contrôle des inscriptions dans les groupes : une ligne par anomalie (vide = con
 
 *vue*
 
-Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi. Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45, R73, R95, R96, R100, R104, R118, et les maîtrises d'armes de R148 à R151, R154) ; ce qui demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité) n'est pas ici. Toute fiche est contrôlée, même inachevée : il n'y a plus de statut (demande du propriétaire, migration 0038) ; une ligne signale, elle n'empêche pas d'enregistrer.
+Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi. Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45, R73, R95, R96, R100, R104, R118, les maîtrises d'armes de R148 à R151, R154, et l'armure de R165) ; ce qui demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité, poids d'armure portable de R165) n'est pas ici. Toute fiche est contrôlée, même inachevée : il n'y a plus de statut (demande du propriétaire, migration 0038) ; une ligne signale, elle n'empêche pas d'enregistrer.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |

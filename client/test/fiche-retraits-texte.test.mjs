@@ -134,9 +134,10 @@ test('matériau de bouclier (R96) et accessoire (R97) : la description, puis la 
     'l’accessoire de l’emplacement Ceinture');
 });
 
-test('ordreDesRetraits : métier, spécialité, don, sort, puis par nom ; les maîtrises d’armes d’avant la refonte en dernier (R153)', () => {
+test('ordreDesRetraits : métier, spécialité, don, sort, puis par nom ; l’armure de R165 après les pièces d’armure de R95 ; les maîtrises d’armes d’avant la refonte en dernier (R153)', () => {
   assert.deepEqual([...ORDRE_DES_NATURES], [
-    'metier', 'specialite', 'capacite', 'sort', 'arme', 'objet', 'piece_armure', 'materiau_bouclier', 'accessoire', 'acquis', 'maitrises_armes',
+    'metier', 'specialite', 'capacite', 'sort', 'arme', 'objet', 'piece_armure', 'armure_transformee', 'armure_familier', 'armure_magie_absente', 'armure_trop_lourde',
+    'materiau_bouclier', 'accessoire', 'acquis', 'maitrises_armes',
   ]);
   const elements = [
     { nature: 'sort', id: 's2', nom: 'Zéphyr' }, { nature: 'sort', id: 's1', nom: 'Aura' }, { nature: 'capacite', id: 'k2', nom: 'Don 10' },

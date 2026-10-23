@@ -26,7 +26,7 @@ import {
 import {
   cellulesDeLaFiche, enChiffres, lignesDArmure, lireGains, partiesDeLArme, partiesDuMetier, SEPARATEUR_EN_LIGNE,
 } from '../src/lib/fiche-tableur-export.mjs';
-import { entrainementEnLignes, ficheVide } from '../src/lib/fiche-format.mjs';
+import { entrainementEnLignes, ficheVide, ligneDeRetrait, PREFIXE_DE_RETRAIT, sansPartiesRetirees } from '../src/lib/fiche-format.mjs';
 import { analyserXml, enfantNomme, enfantsNommes, texteDe } from '../src/lib/xml-mini.mjs';
 
 const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(ouvrirBase({ sansExemples: false })))); // tel que la page le reçoit
@@ -774,6 +774,40 @@ test('modèle ordinateur : l’écriture de la page — accessoires sur une lign
   for (const options of [{}, { stats: false }, { stats: false, effets: false }]) {
     f = ficheDuClasseur(regles, feuille({ AQ21: lignesDArmure(regles, portee, options).join('\n') })).fiche;
     assert.deepEqual(armure(f), [torse.id, amelioration('armure', 1).id, null, null], JSON.stringify(options));
+  }
+});
+
+test('R165 : modèle ordinateur — la ligne d’une armure élémentaire (son nom, son amélioration du tableau élémentaire), « Nom Armure » seul ; un classeur d’avant (armure + élément) se convertit comme la base vivante, puis les retraits', () => {
+  const e = regles.armures_elementaires.find((x) => x.magie_id === magie('Feu').id && x.categorie === 'Léger');
+  const base = { I2: 'Humain', S2: 'Feu', A9: 'Lanceur' };
+  const armure = (x) => [x.armure_id, x.armure_amelioration_id, x.armure_elementaire_id, x.armure_amelioration_elementaire_id];
+  // l'écriture de la page (lignesDArmure), avec ou sans statistiques et effet ; la solidité de ses six parties (4 crans, 5 au +4)
+  const portee = { armure_elementaire_id: e.id, armure_amelioration_elementaire_id: amelioration('armure_elementaire', 4).id };
+  for (const options of [{}, { stats: false }, { stats: false, effets: false }]) {
+    const r = ficheDuClasseur(regles, ordinateur({ ...base, AQ21: lignesDArmure(regles, portee, options).join('\n'), AD22: e.nom, AJ24: '0 / 5', AI24: '3 / 5' }));
+    assert.deepEqual(armure(r.fiche), [null, null, e.id, amelioration('armure_elementaire', 4).id], JSON.stringify(options));
+    assert.deepEqual(r.fiche.armure_parties, [{ emplacement_id: 'casque', solidite: 3 }, { emplacement_id: 'torse', solidite: 0 }]);
+    assert.deepEqual([r.nonRepris, r.remarques], [[], []], JSON.stringify(options));
+  }
+  // « Nom Armure » seul : une armure élémentaire à son nom
+  assert.deepEqual(armure(ficheDuClasseur(regles, ordinateur({ ...base, AD22: e.nom })).fiche), [null, null, e.id, null]);
+  // un classeur d'avant la décision R165 : l'armure, son élément et l'amélioration de l'élément, relus tels quels (une fiche d'avant)…
+  const cuir = regles.armures.find((a) => a.type === 'Léger' && Number(a.solidite_uni) !== 1 && a.solidite >= 2);
+  const lourde = regles.armures_elementaires.find((x) => x.magie_id === magie('Feu').id && x.categorie === 'Lourd');
+  for (const [element, garde] of [[e, true], [lourde, false]]) {
+    const r = ficheDuClasseur(regles, ordinateur({ ...base, AQ21: `${cuir.nom} · amél. niv. 1 · élément ${element.nom} · amél. élément niv. 2`, AJ24: `1 / ${cuir.solidite + 0}` }));
+    assert.deepEqual(armure(r.fiche), [cuir.id, amelioration('armure', 1).id, element.id, amelioration('armure_elementaire', 2).id]);
+    assert.deepEqual(r.fiche.armure_parties, [{ emplacement_id: 'torse', solidite: 1 }], 'la solidité de l’armure d’origine');
+    // … que la page convertit comme la base vivante (sansPartiesRetirees : l'élément devient l'armure, l'armure d'origine notée avec sa solidité), puis
+    // dont elle retire une armure hors de la liste (retraitsDeLArmureHorsListe : ici, l'armure élémentaire Lourde d'un Lanceur, qui porte du Léger)
+    const noms = { armure: (x) => trouver(regles.armures, x)?.nom ?? null, armureElementaire: (x) => trouver(regles.armures_elementaires, x)?.nom ?? null,
+      amelioration: (x) => trouver(regles.ameliorations, x)?.niveau ?? null, emplacement: (x) => trouver(regles.emplacements_armure, x)?.nom ?? null };
+    const f = sansPartiesRetirees(r.fiche, { instant: '2026-10-23T08:00:00Z', noms });
+    assert.deepEqual([...armure(f), f.armure_parties], [null, null, element.id, amelioration('armure_elementaire', 2).id, []]);
+    assert.ok(f.notes.endsWith(`[23/10/2026] ${PREFIXE_DE_RETRAIT}l’armure « ${cuir.nom} » (amélioration +1, solidité Torse 1) est devenue l’armure élémentaire « ${element.nom} » (amélioration +2) de la fiche, remise à sa solidité maximum : une armure transformée par une pièce élémentaire n’a plus rien de l’armure d’origine. Adaptez la fiche.`), f.notes);
+    const retraits = M.retraitsDeLArmureHorsListe(regles, f);
+    if (garde) assert.equal(retraits, null, element.nom);
+    else assert.deepEqual(retraits.retraits.map((d) => ligneDeRetrait(d, '2026-10-23T08:00:00Z')), [`[23/10/2026] ${PREFIXE_DE_RETRAIT}l’armure élémentaire « ${element.nom} » (amélioration +2) n’est plus portée : elle est trop lourde pour le personnage (Lourd, au plus Léger). Adaptez la fiche.`]);
   }
 });
 

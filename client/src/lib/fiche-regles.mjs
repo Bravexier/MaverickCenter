@@ -29,6 +29,7 @@ import {
 import { normalize } from './text.mjs';
 import { chargerVocabulaire } from './mots-cles-db.mjs';
 import { texteSansBalises, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
+import { valeurDuPoids } from './fiche-format.mjs';
 
 const vocabulaires = new WeakMap(); // base -> vocabulaire des mots-clés
 const vocabulaireDe = (db) => {
@@ -88,6 +89,11 @@ function reglesDeLaBase(db) {
   const accessoireMax = db.prepare("SELECT valeur FROM constante_equipement WHERE id = 'accessoire.caracteristique_max'").get();
   if (!accessoireMax) throw new Error('constante_equipement « accessoire.caracteristique_max » absente de la base');
   constantes['accessoire.caracteristique_max'] = accessoireMax.valeur;
+  // solidité d'une armure élémentaire (décision R165 (3) : « Chaque pièce élémentaire possède 4 crans de solidité/durabilité », sur les six parties, plus
+  // les crans de son amélioration : lib/fiche-moteur.mjs)
+  const soliditePiece = db.prepare("SELECT valeur FROM constante_equipement WHERE id = 'piece_elementaire.solidite_base'").get();
+  if (!soliditePiece) throw new Error('constante_equipement « piece_elementaire.solidite_base » absente de la base');
+  constantes['piece_elementaire.solidite_base'] = soliditePiece.valeur;
   // solidité d'une arme forgée (décisions R51, R74) : les crans de l'arme, de son matériau et de son amélioration se cumulent, « impossible de descendre à
   // moins de 1 » ; le plancher vient de lib/arme-forge.mjs (page Armes), que le moteur de la fiche ne peut pas importer (un module par script de page)
   constantes['arme.durabilite_min'] = DURABILITE_MIN;
@@ -228,7 +234,7 @@ function reglesDeLaBase(db) {
   const rangDeRace = (id) => (ORDRE_DES_RACES.includes(id) ? ORDRE_DES_RACES.indexOf(id) : ORDRE_DES_RACES.length);
   const races = lignes(db, `
     SELECT r.id, r.nom, r.ap, r.am, r.mono_magie, o.sante_depart, o.chakra_depart, o.barriere_bonus, o.vitesse_sol, o.vitesse_nage, o.don_base,
-           o.dons_tableau_titre
+           o.dons_tableau_titre, o.avantages
     FROM race r JOIN race_onglet o ON o.race_id = r.id`)
     .sort((a, b) => rangDeRace(a.id) - rangDeRace(b.id) || a.nom.localeCompare(b.nom, 'fr'))
     .map((r) => {
@@ -244,6 +250,9 @@ function reglesDeLaBase(db) {
         bornes: Object.fromEntries((bornes.get(r.id) ?? []).map((b) => [b.caracteristique_id, [b.minimum, b.maximum]])),
         dons: donsDeRace.get(r.id) ?? [],
         dons_tableau: tableauDeDons(r.id, r.dons_tableau_titre),
+        // les avantages de l'onglet de la race, tels qu'écrits (race_onglet.avantages ; null sinon) : le moteur y lit ce qui change le poids portable
+        // (décision R165 (6), Lamia : « peut porter une armure légère même si la classe l'interdit »), dans le texte, jamais par le nom de la race
+        avantages: r.avantages ?? null,
       };
     });
 
@@ -263,7 +272,7 @@ function reglesDeLaBase(db) {
     (r) => ({ type: r.cible_type, id: r.cible_id, crans: r.sens === 'resistance' ? 1 : -1 }));
   const etatDeMagie = new Map(lignes(db, 'SELECT magie_id, etat_id FROM etat_magie').map((r) => [r.magie_id, r.etat_id]));
   const magies = lignes(db, `
-    SELECT id, nom, caracteristique_id, caracteristique_brut, sante_offerte, chakra_offert, mono_magie, barre4_ressource, barre4_max FROM magie ORDER BY ordre`)
+    SELECT id, nom, caracteristique_id, caracteristique_brut, sante_offerte, chakra_offert, mono_magie, barre4_ressource, barre4_max, explication FROM magie ORDER BY ordre`)
     .map((m) => ({
       // sa couleur : les classes de la palette (lib/palette-css.mjs, posées sur chaque page), jamais un hex : `classe` (--couleur, --couleur-texte) et
       // `classe_2`, la classe de second rang (--couleur-2 : la magie acquise du dégradé des cadres)
@@ -273,6 +282,9 @@ function reglesDeLaBase(db) {
       barre4: m.barre4_ressource ? { ressource: m.barre4_ressource, max: m.barre4_max } : null,
       dieux: dieuxDeMagie.get(m.id) ?? [], incompatibles: incompatibles.get(m.id) ?? [], ethnies_secondaires: secondaires.get(m.id) ?? [],
       resistances: resistancesDeMagie.get(m.id) ?? [], etat_id: etatDeMagie.get(m.id) ?? null,
+      // l'explication de la magie, telle qu'écrite (magie.explication ; null sinon) : le moteur y lit ce qui borne le poids portable (décision R165 (6),
+      // Potentiel Illimité : « Impossible de porter des armures lourdes ou boucliers lourds même si la classe vous le permet »), dans le texte
+      explication: m.explication ?? null,
     }));
 
   const dieux = lignes(db, 'SELECT id, nom FROM dieu ORDER BY ordre_choix IS NULL, ordre_choix, nom');
@@ -369,6 +381,12 @@ function reglesDeLaBase(db) {
       brut: r.brut, nombre: r.nombre, ...(r.forme === 'au_choix' ? { au_choix: { familles: famillesAuChoix(r, famillesDArmes) } } : {}),
       source: idDeSourceDeClasse(r.classe_id, r.rang), parts: partsDesSources.get(idDeSourceDeClasse(r.classe_id, r.rang)) ?? [],
     }));
+  // « Maîtrise Armures » de la classe (classe_maitrise_armure, objet 'armure' : Classe Maverick V7 › A11:F13), lue nulle part avant la décision R165 (6) :
+  // ses lignes d'armure telles qu'écrites, { rang, brut, poids_min, poids_max (« Légère », « Intermédiaire », « Lourde »), valeur_max (la valeur de
+  // poids_max, 0 = Vêtement … 3 = Lourd : lib/fiche-format.mjs#valeurDuPoids) } ; [] pour une classe dont la case ne nomme aucune armure (Mage, Mage Vert,
+  // Ocultomancien, Flagelleur, Archimage). Le poids portable (le maximum des classes, puis les dons, la race, le Potentiel Illimité) est au moteur
+  const maitrisesArmures = parCle(lignes(db, "SELECT classe_id, rang, brut, poids_min, poids_max FROM classe_maitrise_armure WHERE objet = 'armure' ORDER BY classe_id, rang"),
+    'classe_id', (r) => ({ rang: r.rang, brut: r.brut, poids_min: r.poids_min, poids_max: r.poids_max, valeur_max: valeurDuPoids(r.poids_max) }));
   const classes = lignes(db, `
     SELECT c.id, c.nom, c.sante_depart, c.chakra_depart, c.barriere_depart, c.categorie_id, c.magie_innee_id, c.magie_innee_exclue_id, k.libelle AS categorie, k.am_base
     FROM classe c JOIN categorie_classe k ON k.id = c.categorie_id ORDER BY c.ordre`)
@@ -394,6 +412,7 @@ function reglesDeLaBase(db) {
         specialites: specialitesDeLaClasse,
         choix: [null, ...specialitesDeLaClasse.map((s) => s.id)].flatMap(parSpecialite).sort((a, b) => a.niveau - b.niveau),
         maitrises: maitrises.get(c.id) ?? [],
+        maitrise_armures: maitrisesArmures.get(c.id) ?? [],
         dons: [...dons].sort((a, b) => a.niveau - b.niveau || a.ligne - b.ligne || a.rang - b.rang).map((d) => ({
           id: d.id, nom: d.nom, nature: d.nature, niveau: d.niveau, specialite_id: d.specialite_id, type: d.type, effet: d.effet,
           // ce que la cellule de type écrit entre parenthèses (« 2 fois/combat », « 3 tours de recharge »), tel quel, comme la page de la classe
@@ -523,8 +542,14 @@ function reglesDeLaBase(db) {
     // le matériau d'une arme choisie, par défaut (décision R49 : « son matériau (par défaut le fer) ») : le fer du tableau des matériaux d'arme
     materiau_arme_defaut: db.prepare("SELECT m.ressource_id AS id FROM materiau_arme m JOIN ressource r ON r.id = m.ressource_id WHERE r.nom_cle = 'fer'").get()?.id ?? null,
     // `bonus_ap`, `bonus_am` : l'AP et l'AM d'une amélioration d'armure, d'armure élémentaire ou de bouclier, ceux du niveau choisi (décisions R76, R77)
-    ameliorations: lignes(db, 'SELECT id, cible, niveau, effet_brut, bonus_degats, bonus_ap, bonus_am, bonus_cran FROM amelioration_equipement ORDER BY cible, niveau')
-      .map((a) => ({ id: a.id, cible: a.cible, niveau: a.niveau, effet: a.effet_brut, bonus_degats: a.bonus_degats, bonus_ap: a.bonus_ap, bonus_am: a.bonus_am, bonus_cran: a.bonus_cran })),
+    // et son coût, tel qu'écrit (`cout`) et en gemmes (cout_gemmes, cout_gemmes_qualite : « commune », « raffinee », « parfaite ») ou en pièces élémentaires
+    // (cout_pieces_elementaires) : le tableau d'amélioration des armures élémentaires (décision R165 (2) ; les gemmes sont celles de la magie, table gemme)
+    ameliorations: lignes(db, `SELECT id, cible, niveau, cout_brut, cout_gemmes, cout_gemmes_qualite, cout_pieces_elementaires, effet_brut, bonus_degats, bonus_ap,
+                                      bonus_am, bonus_cran FROM amelioration_equipement ORDER BY cible, niveau`)
+      .map((a) => ({
+        id: a.id, cible: a.cible, niveau: a.niveau, effet: a.effet_brut, bonus_degats: a.bonus_degats, bonus_ap: a.bonus_ap, bonus_am: a.bonus_am, bonus_cran: a.bonus_cran,
+        cout: a.cout_brut, cout_gemmes: a.cout_gemmes, cout_gemmes_qualite: a.cout_gemmes_qualite, cout_pieces_elementaires: a.cout_pieces_elementaires,
+      })),
     armes_elementaires: lignes(db, 'SELECT id, nom, magie_id, bonus_degats FROM arme_elementaire ORDER BY ordre'),
     // les parties de l'armure portée (décision R95) : chacune a sa solidité du moment ; « armure-complete », celle d'une armure à solidité unifiée
     emplacements_armure: lignes(db, "SELECT id, nom FROM armure_emplacement WHERE id <> 'bouclier' ORDER BY ordre"),
@@ -547,12 +572,24 @@ function reglesDeLaBase(db) {
     // la magie de chaque armure élémentaire (armure_elementaire.magie_id) : la fiche auto écrit l'élément d'une armure par le nom de sa magie, l'import en
     // tableur la retrouve par la magie et la catégorie de l'armure (lib/fiche-tableur-import.mjs)
     // les bonus de sorts qu'écrivent ses effets (« +4 dégâts avec les sorts d'Arcane » : lib/sort-bonus-texte.mjs, décision R102)
+    // l'armure de la fiche quand une pièce élémentaire l'a transformée (décision R165 : une seule liste d'armures, celles des magies innée et acquise, sur
+    // le fond de leur magie, `magies[].classe`) : `categorie`, son poids (« Vêtement » … « Lourd » : lib/fiche-format.mjs#valeurDuPoids) ; `ordre`,
+    // celui des colonnes de l'onglet (une par magie : Sang, Arcane… Ombre ; le même pour les quatre poids) ; `effets`, les lignes de sa cellule « Effet(s) »
+    // telles qu'écrites (armure_elementaire_effet). Rangées par magie (`ordre`), puis par identifiant (l'ordre des poids est à la page : valeurDuPoids)
+    // `resistances` (décisions R165, R166 : « Le compter dans ce lot ») : les crans et immunités qu'écrivent ses effets, lus comme ceux des dons
+    // (lib/resistance-texte.mjs, avec l'option `immunites` des armures élémentaires seulement : « … et immunité à la brûlure ») ; l'Arcane et la
+    // Corruption tels qu'écrits (la colonne Arcane donne la Corruption, et l'inverse) ; absent quand ses effets n'en écrivent pas
     armures_elementaires: (() => {
       const effets = parCle(lignes(db, 'SELECT armure_elementaire_id, texte FROM armure_elementaire_effet ORDER BY armure_elementaire_id, rang'), 'armure_elementaire_id', (r) => r.texte);
-      return lignes(db, 'SELECT id, nom, categorie, magie_id, ap, am FROM armure_elementaire ORDER BY ordre').map((a) => {
-        const sorts = (effets.get(a.id) ?? []).flatMap(bonusDeSortsEcrits);
-        return { ...a, ...(sorts.length ? { sorts } : {}) };
-      });
+      return lignes(db, 'SELECT id, nom, categorie, magie_id, ap, am, ordre FROM armure_elementaire ORDER BY ordre, id')
+        .map((a) => {
+          const sorts = (effets.get(a.id) ?? []).flatMap(bonusDeSortsEcrits);
+          const lues = (effets.get(a.id) ?? []).map((t) => lireResistances(t, { immunites: true }));
+          return {
+            ...a, effets: effets.get(a.id) ?? [], ...(sorts.length ? { sorts } : {}),
+            ...resistancesEcrites({ effets: lues.flatMap((l) => l.effets), choix: lues.some((l) => l.choix) }),
+          };
+        });
     })(),
     // le bouclier (décision R96 : « Forme + matière », comme l'onglet Boucliers et R78) : les formes (`boucliers`, bouclier_classe), les matières (leur
     // solidité, celle du bouclier : R78), les boucliers de la liste (une forme et une matière : AP, AM, poids R92) et les poids (Force minimum ; `classe` : la

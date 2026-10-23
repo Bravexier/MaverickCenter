@@ -8,7 +8,8 @@ import {
 } from '../../lib/armures-rendu.mjs';
 import { COULEURS_DES_TYPES } from '../../lib/equipement-couleurs.mjs';
 import { htmlDePiece, MONNAIES_DU_JEU } from '../../lib/monnaies.mjs';
-import { classeDuPoids, classeDuTypeDArmure, cssDesFamilles } from '../../lib/palette-css.mjs';
+import { classeDeMagie, classeDuPoids, classeDuTypeDArmure, cssDesFamilles } from '../../lib/palette-css.mjs';
+import { ameliorationElementaire, coutDeLaLigneElementaire, coutElementaireEcrit } from '../../lib/armure-forge.mjs';
 import { url } from '../../lib/wiki';
 import PanneauDeRegles from '../equipement/PanneauDeRegles.astro';
 import Tableau from '../Tableau.astro';
@@ -71,6 +72,16 @@ const legende = (
   TYPES_DE_LA_GRILLE.map((t) => `<span class="ptype ${classeDuTypeDArmure(t)}">${t}</span>`).join(' ')
 );
 const couleurs = cssDesFamilles(['armure', 'poids']);
+// Armures élémentaires (décision R165 (4)) : sous les deux tableaux de matériaux, le double choix « Élément » (les 14 magies des colonnes de l'onglet,
+// dans leur ordre, jamais le Potentiel Illimité) et « Poids » (Vêtement, Léger, Intermédiaire, Lourd ; jamais Familier) ; les 56 armures, cachées, que
+// le script lit (src/scripts/armures.mjs) ; leur tableau d'amélioration (+1 à +5), à la place de celui des armures une fois les deux choisis.
+// La couleur d'une magie : sa classe de la palette (lib/palette-css.mjs#classeDeMagie, famille `magie`, émise sur chaque page), posée ici, jamais un
+// style (lib/armures-db.mjs, que le service importe, ne la pose pas).
+const elementaires = armures.elementaires;
+const cleDePoids = (poids: string) => slug(poids);
+const cleDeMagie = (id: string) => id.slice(id.lastIndexOf('/') + 1);
+const ameliorationsElementaires = armures.ameliorations.armure_elementaire;
+const cumulElementaire = (niveau: number) => coutElementaireEcrit(ameliorationElementaire(ameliorationsElementaires, niveau)).join(' + ');
 ---
 
 <style is:inline set:html={armuresCss}></style>
@@ -132,6 +143,48 @@ const couleurs = cssDesFamilles(['armure', 'poids']);
             ))
           }
         </div>
+        {/* le double choix des armures élémentaires, juste sous les deux tableaux de matériaux (décision R165 (4)) */}
+        <section class="pelem js-seul" aria-labelledby="armure-elementaire-titre" data-armures-elementaire>
+          <h3 class="pelem__titre" id="armure-elementaire-titre">Armure élémentaire</h3>
+          <p class="armures-aide">
+            Une pièce élémentaire transforme l’armure en celle de sa magie et de son poids, quels que soient ses matériaux. Choisissez un élément et un
+            poids : l’armure élémentaire s’ouvre à côté, avec son amélioration.
+          </p>
+          <div class="pelem__groupe" role="group" aria-labelledby="armure-elementaire-element">
+            <span class="pelem__nom" id="armure-elementaire-element">Élément</span>
+            {
+              elementaires.magies.map((m) => (
+                <button
+                  type="button"
+                  class={`pelem__choix pelem__choix--magie ${classeDeMagie(m.nom)}`}
+                  data-element={cleDeMagie(m.id)}
+                  data-magie={m.id}
+                  data-gemme={m.gemme?.nom}
+                  aria-pressed="false"
+                >{m.nom}</button>
+              ))
+            }
+          </div>
+          <div class="pelem__groupe" role="group" aria-labelledby="armure-elementaire-poids">
+            <span class="pelem__nom" id="armure-elementaire-poids">Poids</span>
+            {
+              elementaires.poids.map((p) => (
+                <button type="button" class={`pelem__choix pelem__choix--poids ${classeDuTypeDArmure(p)}`} data-poids-elementaire={cleDePoids(p)} data-categorie={p} aria-pressed="false">{p}</button>
+              ))
+            }
+          </div>
+          {/* les armures élémentaires (armure_elementaire, armure_elementaire_effet), lues par le script ; jamais affichées telles quelles */}
+          <div hidden data-armures-elementaires data-solidite-base={elementaires.solidite_base}>
+            {
+              elementaires.armures.map((a) => (
+                <div class="pelem-armure" data-magie={a.magie_id} data-categorie={a.categorie} data-ap={a.ap ?? 0} data-am={a.am ?? 0}>
+                  <span class="pelem-armure__nom">{a.nom}</span>
+                  <ul class="pelem-armure__effets">{a.effets.map((t) => <li>{t}</li>)}</ul>
+                </div>
+              ))
+            }
+          </div>
+        </section>
         {armures.ecarts.map((ecart) => <p class="armures-ecart">{ecart}</p>)}
 
         <h2 class="armures-sous-titre" id="liste-des-armures">Liste des armures</h2>
@@ -182,6 +235,7 @@ const couleurs = cssDesFamilles(['armure', 'poids']);
           titre="Améliorations"
           compte={`+1 à +${armures.ameliorations.armure.length}`}
           bloc="armures-bloc"
+          class="armures-ameliorations armures-ameliorations--base"
           classeTable="armures-table armures-table--ameliorations table-donnees--serree"
           note="« Armures (L'entièreté) » : une amélioration +N demande les coûts des niveaux +1 à +N et donne l’effet écrit au niveau N, pour l’armure entière (décision R77)."
         >
@@ -192,6 +246,46 @@ const couleurs = cssDesFamilles(['armure', 'poids']);
               <td colspan="2" class="muted">Armure non améliorée</td>
             </tr>
             {armures.ameliorations.armure.map((a) => <Fragment set:html={htmlDeLigneDAmelioration(a)} />)}
+          </tbody>
+        </Tableau>
+        {/* le tableau « Armure » de l'onglet « Pièces élémentaires » (décision R165 (2)) : à la place du précédent une fois l'élément et le poids choisis ;
+            le coût de la ligne tel qu'écrit, le coût cumulé (atteindre +N coûte les lignes +1 à +N), l'effet de la ligne ; le script nomme les gemmes
+            par celle de la magie choisie ; aucun RO */}
+        <Tableau
+          id="ameliorations-armure-elementaire"
+          titre="Améliorations d’une armure élémentaire"
+          compte={`+1 à +${ameliorationsElementaires.length}`}
+          bloc="armures-bloc"
+          class="armures-ameliorations armures-ameliorations--elementaire"
+          classeTable="armures-table armures-table--ameliorations table-donnees--serree"
+          note="« Chaque cout est cumulatif » : atteindre +N coûte les lignes +1 à +N, en gemmes de la magie de l’armure ; l’effet est celui de la ligne +N (décision R165)."
+        >
+          <thead><tr><th scope="col">Niveau</th><th scope="col">Coût</th><th scope="col" title="Les lignes +1 à +N">Coût cumulé</th><th scope="col">Effet</th></tr></thead>
+          <tbody>
+            <tr class="pamelioration pamelioration--aucune js-seul-ligne" data-cible="armure_elementaire" data-niveau="0">
+              <th scope="row" class="pamelioration__niveau"><button type="button" class="pamelioration__choisir" aria-pressed="false">Aucune</button></th>
+              <td colspan="3" class="muted">Armure élémentaire non améliorée</td>
+            </tr>
+            {
+              ameliorationsElementaires.map((a) => (
+                <tr
+                  class="pamelioration"
+                  data-cible="armure_elementaire"
+                  data-niveau={a.niveau}
+                  data-gemmes={a.cout_gemmes ?? 0}
+                  data-qualite={a.cout_gemmes_qualite ?? ''}
+                  data-pieces={a.cout_pieces_elementaires ?? 0}
+                  data-ap={a.bonus_ap ?? 0}
+                  data-am={a.bonus_am ?? 0}
+                  data-cran={a.bonus_cran ?? 0}
+                >
+                  <th scope="row" class="pamelioration__niveau"><button type="button" class="pamelioration__choisir" aria-pressed="false">+{a.niveau}</button></th>
+                  <td class="pamelioration__cout" data-cout-ligne>{coutElementaireEcrit(coutDeLaLigneElementaire(a)).join(' + ') || a.cout_brut}</td>
+                  <td class="pamelioration__cumul" data-cout-cumule>{cumulElementaire(a.niveau)}</td>
+                  <td class="pamelioration__effet">{a.effet_brut}</td>
+                </tr>
+              ))
+            }
           </tbody>
         </Tableau>
       </aside>

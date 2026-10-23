@@ -13,7 +13,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
-import { ficheVide, PARTIES_DE_FICHE } from '../src/lib/fiche-format.mjs';
+import { ficheVide, PARTIES_DE_FICHE, PREFIXE_DE_RETRAIT, sansPartiesRetirees } from '../src/lib/fiche-format.mjs';
 import { modeleXlsx, partiesDuModele } from '../src/lib/fiche-modele.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
@@ -212,10 +212,9 @@ function ficheRiche() {
       { source: 'capacites/guerrier-epeiste', rang: 1, competence_id: 'arme-legere', valeur: null },
       { source: 'races/humain#don:humain-central', rang: 1, competence_id: 'arc', valeur: 6 }, { source: 'races/humain#don:humain-central', rang: 1, competence_id: 'calme', valeur: 4 },
     ],
-    // l'armure portée (décision R95) : une armure complète, son amélioration, son élément et l'amélioration de l'élément ; deux parties abîmées
-    armure_id: trouve('armures', (a) => a.solidite >= 3 && Number(a.solidite_uni) !== 1, 'armure de solidité 3').id,
-    armure_amelioration_id: trouve('ameliorations', (a) => a.cible === 'armure' && a.niveau === 2, 'armure 2').id,
-    armure_elementaire_id: regles.armures_elementaires[1].id,
+    // l'armure portée (décisions R95, R165) : une armure élémentaire de sa magie innée, au poids qu'il peut porter (Guerrier : Intermédiaire), et son
+    // amélioration du tableau élémentaire ; deux parties abîmées
+    armure_elementaire_id: trouve('armures_elementaires', (a) => a.magie_id === 'magies/magie-du-feu' && a.categorie === 'Intermédiaire', 'armure élémentaire du Feu, intermédiaire').id,
     armure_amelioration_elementaire_id: trouve('ameliorations', (a) => a.cible === 'armure_elementaire' && a.niveau === 1, 'armure élémentaire 1').id,
     armure_parties: [{ emplacement_id: 'torse', solidite: 0 }, { emplacement_id: 'jambe-droit', solidite: 2 }],
     // le bouclier (décision R96) : une forme, une matière, son amélioration, la solidité du moment
@@ -685,7 +684,19 @@ test('fiches auto du propriétaire (Lucien, Louise) : importées, exportées, re
     const values = JSON.parse(readFileSync(new URL(`./fixtures/fiche-auto-${qui}.json`, import.meta.url), 'utf8')).values;
     const auto = ficheDuClasseur(regles, feuilleDeGrille(values));
     assert.equal(auto.disposition, 'auto');
-    const r = await verifier(auto.fiche, qui);
+    // une fiche auto porte l'armure et son « élément » (avant la décision R165) : la page la convertit comme la base vivante (sansPartiesRetirees : l'élément
+    // devient l'armure, avec son amélioration ; l'armure d'origine notée, datée), puis la relit telle quelle
+    const noms = {
+      armure: (x) => M.trouver(regles.armures, x)?.nom ?? null, armureElementaire: (x) => M.trouver(regles.armures_elementaires, x)?.nom ?? null,
+      amelioration: (x) => M.trouver(regles.ameliorations, x)?.niveau ?? null, emplacement: (x) => M.trouver(regles.emplacements_armure, x)?.nom ?? null,
+    };
+    const fiche = sansPartiesRetirees(auto.fiche, { instant: '2026-10-23T08:00:00Z', noms });
+    if (auto.fiche.armure_id && auto.fiche.armure_elementaire_id) {
+      assert.deepEqual([fiche.armure_id, fiche.armure_elementaire_id], [null, auto.fiche.armure_elementaire_id], `${qui} : l’élément devient l’armure (R165 (8))`);
+      assert.ok(fiche.notes.split('\n').some((l) => l.startsWith(`[23/10/2026] ${PREFIXE_DE_RETRAIT}l’armure « ${noms.armure(auto.fiche.armure_id)} »`)
+        && l.includes(`est devenue l’armure élémentaire « ${noms.armureElementaire(auto.fiche.armure_elementaire_id)} »`)), `${qui} : la note de la conversion`);
+    }
+    const r = await verifier(fiche, qui);
     // l'entraînement (L42) et les gains de niveau de la fiche auto reviennent tels quels (verifier) ; la note : bi-classe, gains de niveau, Mode Hyper
     // 100 %, et au plus deux suites (un libellé d'accessoire, un événement trop longs pour leur case)
     const lues = lignesDeLaNote(r.cellules);

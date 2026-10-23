@@ -19,12 +19,21 @@
 // (attributs `data-…` des rendus de lib/armures-rendu.mjs), lues à chaque choix : après un enregistrement du mode modification, qui réécrit ces cellules,
 // la fiche suit sans recharger la page (évènement « armures:rafraichir »). En mode modification (body.ed-mode) : rien ne se choisit
 // (src/scripts/edition/armures.mjs ferme les fiches et ouvre tous les tableaux).
-// État dans l'adresse : ?materiau1=<clé>&materiau2=<clé>&amelioration-armure=<niveau> (ou ?armure=<ancre d'une armure particulière>),
+//   - Armure élémentaire (décision R165 (4)) : sous les deux tableaux de matériaux, « Élément » (les 14 magies) et « Poids » (les 4 poids) ; les deux
+//     choisis, les matériaux se désélectionnent et la fiche montre l'armure élémentaire (nom, AP, AM, effets écrits, solidité 4 ou 5 au +4 et au +5,
+//     aucun prix : « inestimable ») ; le tableau d'amélioration devient celui des armures élémentaires (coût cumulé en gemmes de la magie choisie et
+//     en pièce élémentaire, effet de la ligne : lib/armure-forge.mjs#forgerArmureElementaire). Choisir de nouveau un matériau (ou une armure de la
+//     liste) vide le choix élément/poids. Les armures sont lues dans `[data-armures-elementaires]` (components/armures/ArmuresPage.astro).
+// État dans l'adresse : ?materiau1=<clé>&materiau2=<clé>&amelioration-armure=<niveau> (ou ?armure=<ancre d'une armure particulière>, ou
+// ?element-armure=<magie>&poids-armure=<poids>&amelioration-elementaire=<niveau>),
 // &forme=<id>&matiere=<clé>&amelioration-bouclier=<niveau> (aucun paramètre en commun avec ceux de l'onglet Armes, src/scripts/armes.mjs : la même
 // adresse garde les deux) ; l'onglet ouvert dans l'ancre (#armures, #boucliers : components/Onglets.astro) ; une ancre `#armure-…` ou `#bouclier-…`
 // choisit aussi cette armure ou ce bouclier. Un ancien `piece=<id>` (le tableau FABRICATION, retiré : décision R93) est ignoré, et quitte l'adresse au choix suivant.
 // Seuls imports : lib/armure-forge.mjs (le calcul) et lib/armures-tri.mjs (le tri de la liste des boucliers), qu'aucun autre script de page n'importe.
-import { forgerArmure, forgerBouclier, nombre, piecesDuMontant, prixDeLArmure, UNITES_PAR_MATERIAU } from '../lib/armure-forge.mjs';
+import {
+  choixDArmureApres, coutDeLaLigneElementaire, coutElementaireEcrit, estElementaire, forgerArmure, forgerArmureElementaire, forgerBouclier, nombre,
+  piecesDuMontant, prixDeLArmure, UNITES_PAR_MATERIAU,
+} from '../lib/armure-forge.mjs';
 import { ordonner, triSuivant } from '../lib/armures-tri.mjs';
 
 const racine = document.querySelector('[data-armures]');
@@ -109,7 +118,12 @@ if (racine) {
   }
 
   // ───────────────────────────────────────────── Armures ─────────────────────────────────────────────
-  const A = { vue: racine.querySelector('[data-vue="armure"]'), fiche: racine.querySelector('[data-fiche="armure"]'), m1: null, m2: null, particuliere: null, niveau: 0, derniere: null };
+  const A = {
+    vue: racine.querySelector('[data-vue="armure"]'), fiche: racine.querySelector('[data-fiche="armure"]'), m1: null, m2: null, particuliere: null, niveau: 0,
+    derniere: null,
+    // l'armure élémentaire (décision R165 (4)) : les boutons « Élément » et « Poids » choisis, et son amélioration (tableau élémentaire)
+    element: null, poids: null, niveauElementaire: 0,
+  };
   const ligneDeMateriau = (role, cle) => (cle ? racine.querySelector(`[data-choix="${role}"] tr.pmat[data-materiau="${CSS.escape(cle)}"]`) : null);
   const videDeLArmure = A.fiche?.innerHTML ?? '';
 
@@ -139,6 +153,92 @@ if (racine) {
       const prix = [tr.dataset.m1, tr.dataset.m2].map((cle) => lireMateriau(ligneDeMateriau('m1', cle))?.prix_ro ?? null);
       ecrirePrix(cellule, prixDeLArmure(fabrication, prix).achetes);
     }
+  }
+
+  // ── Armure élémentaire (décision R165) ──
+  const boutonDElement = (cle) => (cle ? racine.querySelector(`.pelem__choix[data-element="${CSS.escape(cle)}"]`) : null);
+  const boutonDePoids = (cle) => (cle ? racine.querySelector(`.pelem__choix[data-poids-elementaire="${CSS.escape(cle)}"]`) : null);
+  const soliditeDeBase = () => entier(racine.querySelector('[data-armures-elementaires]')?.dataset.soliditeBase);
+  /** L'armure élémentaire de l'élément et du poids choisis (son bloc caché), null s'il en manque un. */
+  const armureElementaireChoisie = () => (estElementaire(A)
+    ? racine.querySelector(`.pelem-armure[data-magie="${CSS.escape(A.element.dataset.magie)}"][data-categorie="${CSS.escape(A.poids.dataset.categorie)}"]`)
+    : null);
+  /** Les lignes du tableau d'amélioration élémentaire telles qu'affichées (attributs `data-…` de la ligne : ArmuresPage.astro). */
+  const ameliorationsElementaires = () =>
+    lignesDAmelioration('armure_elementaire').map((l) => ({
+      niveau: Number(l.dataset.niveau), cout_gemmes: nombreOuNul(l.dataset.gemmes), cout_gemmes_qualite: l.dataset.qualite || null,
+      cout_pieces_elementaires: nombreOuNul(l.dataset.pieces), bonus_ap: nombreOuNul(l.dataset.ap), bonus_am: nombreOuNul(l.dataset.am),
+      bonus_cran: nombreOuNul(l.dataset.cran),
+    }));
+  /** Le coût cumulé de +N, écrit : « 2 gemmes communes de Rubis + 2 gemmes raffinées de Rubis » ; « — » au niveau 0. */
+  const coutCumuleEcrit = (f, gemme) => coutElementaireEcrit(f.cout, gemme).join(' + ') || '—';
+  /** Les coûts du tableau élémentaire : chaque gemme nommée par celle de la magie choisie (sa qualité telle qu'écrite), réécrits quand l'élément change. */
+  function coutsDuTableauElementaire() {
+    const gemme = A.element?.dataset.gemme || null;
+    const lignes = ameliorationsElementaires();
+    for (const tr of lignesDAmelioration('armure_elementaire')) {
+      const n = Number(tr.dataset.niveau);
+      const ligne = tr.querySelector('[data-cout-ligne]');
+      const cumul = tr.querySelector('[data-cout-cumule]');
+      const texteLigne = coutElementaireEcrit(coutDeLaLigneElementaire(lignes.find((x) => x.niveau === n)), gemme).join(' + ');
+      if (ligne && texteLigne && ligne.textContent !== texteLigne) ligne.textContent = texteLigne;
+      const texteCumul = coutCumuleEcrit(forgerArmureElementaire({}, lignes, n), gemme);
+      if (cumul && cumul.textContent !== texteCumul) cumul.textContent = texteCumul;
+    }
+  }
+
+  function rendreArmureElementaire(bloc) {
+    const nom = bloc.querySelector('.pelem-armure__nom')?.textContent.trim() ?? '';
+    const magie = A.element.textContent.trim();
+    const poids = A.poids.dataset.categorie;
+    const gemme = A.element.dataset.gemme || null;
+    const f = forgerArmureElementaire({ ap: entier(bloc.dataset.ap), am: entier(bloc.dataset.am) }, ameliorationsElementaires(), A.niveauElementaire, soliditeDeBase());
+    const n = A.niveauElementaire;
+    const niveau = n ? `Amélioration +${n}` : 'Sans amélioration';
+    const ligneDeLaLigne = `${niveau} (effet de la ligne +${n})`;
+    const defense = (cle, abr) => [
+      ligneDeFiche(e(nom), `${signe(f[cle].armure)}&#8239;${abr}`),
+      ...(n ? [ligneDeFiche(ligneDeLaLigne, `${signe(f[cle].amelioration)}&#8239;${abr}`)] : []),
+      ligneDeFiche('Total', `${f[cle].total}&#8239;${abr}`, 'eq-bulle__total'),
+    ].join('');
+    const soliditeLignes = [
+      ligneDeFiche('Pièce élémentaire', String(f.solidite.base)),
+      ...(n && f.solidite.amelioration ? [ligneDeFiche(ligneDeLaLigne, signe(f.solidite.amelioration))] : []),
+      ligneDeFiche('Total', `Solidité : ${f.solidite.total}`, 'eq-bulle__total'),
+    ].join('');
+    const cout = coutElementaireEcrit(f.cout, gemme);
+    const coutLignes = [
+      ligneDeFiche(e(nom), 'inestimable'),
+      ...(n ? [ligneDeFiche(`${niveau} (lignes +1 à +${n})`, cout.map(e).join(' + '))] : []),
+    ].join('');
+    const bulles = bullesDe('armure');
+    if (bulles) {
+      bulles.innerHTML = [
+        bulle('armure-bulle-ap', 'Armure physique', defense('ap', 'AP')),
+        bulle('armure-bulle-am', 'Armure magique', defense('am', 'AM')),
+        bulle('armure-bulle-solidite', 'Solidité', soliditeLignes, ['« Chaque pièce élémentaire possède 4 crans de solidité/durabilité », plus le cran de la ligne de l’amélioration (décision R165).']),
+        bulle('armure-bulle-cout', 'Coût', coutLignes, [
+          'Aucun prix : une armure élémentaire est « inestimable » (décision R165).',
+          n ? 'Chaque coût est cumulatif : atteindre +N coûte les lignes +1 à +N, en gemmes de la magie de l’armure.' : '',
+        ]),
+      ].join('');
+    }
+    const effets = [...bloc.querySelectorAll('.pelem-armure__effets > li')].map((li) => `<li>${li.innerHTML}</li>`).join('');
+    A.fiche.innerHTML = `
+      <header class="pfiche__tete">
+        <h2 id="armure-fiche-titre">${e(nom)}</h2>
+        <button type="button" class="armures-cote__fermer" data-armures-fermer="armure">Fermer</button>
+      </header>
+      <p class="pfiche__sous-titre">Armure élémentaire · <span class="ptype ${e(couleurDe(A.poids))}">${e(poids)}</span></p>
+      <p class="pfiche__forge"><span class="pmat-pastille ${e(couleurDe(A.element))}">${e(magie)}</span><span>·</span><span class="pfiche__niveau">${niveau}</span></p>
+      <div class="pfiche__tuiles">
+        ${tuile('armure-bulle-ap', 'Armure physique', `${f.ap.total}&#8239;AP`)}
+        ${tuile('armure-bulle-am', 'Armure magique', `${f.am.total}&#8239;AM`)}
+        ${tuile('armure-bulle-solidite', 'Solidité', String(f.solidite.total), 'pièce élémentaire')}
+        ${tuile('armure-bulle-cout', 'Coût', n ? `<span class="pfiche__tuile-texte">${cout.map(e).join(' + ')}</span>` : '—', n ? 'de l’amélioration' : 'inestimable')}
+      </div>
+      <div class="pfiche__infos"><p><span class="pfiche__etiquette">Effets :</span></p><ul class="pfiche__effets">${effets}</ul></div>`;
+    A.fiche.setAttribute('aria-labelledby', 'armure-fiche-titre');
   }
 
   /** L'armure choisie : l'armure particulière, ou la combinaison des deux matériaux (dans un ordre ou dans l'autre) ; null sinon. */
@@ -171,7 +271,10 @@ if (racine) {
 
   function rendreArmure() {
     if (!A.fiche) return;
-    const ligne = armureChoisie();
+    coutsDuTableauElementaire();
+    const elementaire = armureElementaireChoisie();
+    A.vue?.classList.toggle('est-elementaire', Boolean(elementaire));
+    const ligne = elementaire ?? armureChoisie();
     if (ligne !== A.derniere) remonter(A.vue);
     A.derniere = ligne;
     if (!ligne) {
@@ -179,12 +282,19 @@ if (racine) {
       A.fiche.removeAttribute('aria-labelledby');
       if (bullesDe('armure')) bullesDe('armure').innerHTML = '';
       const seul = A.m1 ?? A.m2;
+      const unElementaire = A.element ?? A.poids;
       A.fiche.innerHTML = seul
         ? `<p class="pfiche__vide">${pastille(lireMateriau(seul))} choisi : choisissez le second matériau dans l’autre tableau.</p>`
-        : videDeLArmure;
+        : unElementaire
+          ? `<p class="pfiche__vide">${e(unElementaire.textContent.trim())} choisi : choisissez ${A.element ? 'le poids' : 'l’élément'} de l’armure élémentaire.</p>`
+          : videDeLArmure;
       return;
     }
     A.vue?.classList.add('est-ouverte');
+    if (elementaire) {
+      rendreArmureElementaire(elementaire);
+      return;
+    }
     const a = lireArmure(ligne);
     const mats = a.particuliere ? [] : [lireMateriau(A.m1), lireMateriau(A.m2)].filter(Boolean);
     const composition = a.particuliere ? null : { fabrication: fabricationDeLArmure(), materiaux: mats };
@@ -397,7 +507,9 @@ if (racine) {
   // ───────────────────────────────────────────── Commun ─────────────────────────────────────────────
   function marquer() {
     const armure = armureChoisie();
+    const elementaire = armureElementaireChoisie();
     const bouclier = bouclierChoisi();
+    for (const b of racine.querySelectorAll('.pelem__choix')) b.setAttribute('aria-pressed', String(b === A.element || b === A.poids));
     const choisie = (l) => {
       if (l.matches('[data-choix="m1"] tr.pmat')) return l === A.m1;
       if (l.matches('[data-choix="m2"] tr.pmat')) return l === A.m2;
@@ -406,6 +518,7 @@ if (racine) {
       if (l.matches('tr.forme')) return l === B.forme;
       if (l.matches('tr.bouclier')) return l === bouclier;
       if (l.matches('tr.pamelioration[data-cible="armure"]')) return Boolean(armure) && Number(l.dataset.niveau) === A.niveau;
+      if (l.matches('tr.pamelioration[data-cible="armure_elementaire"]')) return Boolean(elementaire) && Number(l.dataset.niveau) === A.niveauElementaire;
       if (l.matches('tr.pamelioration[data-cible="bouclier"]')) return Boolean(bouclier) && Number(l.dataset.niveau) === B.niveau;
       return false;
     };
@@ -419,13 +532,17 @@ if (racine) {
   function adresse() {
     const p = new URLSearchParams(location.search);
     // `piece` : le paramètre du tableau FABRICATION, retiré (décision R93), effacé d'une ancienne adresse
-    for (const k of ['materiau1', 'materiau2', 'armure', 'piece', 'amelioration-armure', 'forme', 'matiere', 'amelioration-bouclier']) p.delete(k);
+    for (const k of ['materiau1', 'materiau2', 'armure', 'piece', 'amelioration-armure', 'element-armure', 'poids-armure', 'amelioration-elementaire',
+      'forme', 'matiere', 'amelioration-bouclier']) p.delete(k);
     if (A.particuliere) p.set('armure', A.particuliere.id);
     else {
       if (A.m1) p.set('materiau1', A.m1.dataset.materiau);
       if (A.m2) p.set('materiau2', A.m2.dataset.materiau);
     }
     if (armureChoisie() && A.niveau) p.set('amelioration-armure', String(A.niveau));
+    if (A.element) p.set('element-armure', A.element.dataset.element);
+    if (A.poids) p.set('poids-armure', A.poids.dataset.poidsElementaire);
+    if (armureElementaireChoisie() && A.niveauElementaire) p.set('amelioration-elementaire', String(A.niveauElementaire));
     if (B.forme) p.set('forme', B.forme.dataset.forme);
     if (B.matiere) p.set('matiere', B.matiere.dataset.materiau);
     if (bouclierChoisi() && B.niveau) p.set('amelioration-bouclier', String(B.niveau));
@@ -443,12 +560,12 @@ if (racine) {
 
   function fermer(quoi) {
     // le focus revient au tableau d'où vient le choix (le bouton « Fermer » disparaît avec la fiche)
-    const retour = quoi === 'armure' ? (A.particuliere ?? A.m1) : B.forme;
-    if (quoi === 'armure') Object.assign(A, { m1: null, m2: null, particuliere: null });
+    const retour = quoi === 'armure' ? (A.particuliere ?? A.m1 ?? A.element) : B.forme;
+    if (quoi === 'armure') Object.assign(A, choixDArmureApres(A, { genre: 'fermer' }));
     else Object.assign(B, { forme: null, matiere: null });
     rendre();
     adresse();
-    retour?.querySelector('button')?.focus({ preventScroll: true });
+    (retour?.matches('button') ? retour : retour?.querySelector('button'))?.focus({ preventScroll: true });
   }
 
   /** Un choix fait : la fiche, les marques, l'adresse ; sur un écran étroit, la fiche passe par-dessus la page (styles/armures/armures.css). */
@@ -466,11 +583,18 @@ if (racine) {
       return;
     }
     if (enEdition() || cible.closest('a, input, textarea, select, summary, .ptri')) return;
+    // l'élément ou le poids d'une armure élémentaire (décision R165 (4)) : les deux choisis, les matériaux se désélectionnent
+    const choixElementaire = cible.closest('.pelem__choix');
+    if (choixElementaire) {
+      Object.assign(A, choixDArmureApres(A, { genre: choixElementaire.hasAttribute('data-element') ? 'element' : 'poids', valeur: choixElementaire }));
+      apresChoix();
+      return;
+    }
     const mat = cible.closest('tr.pmat');
     const role = mat?.closest('[data-choix]')?.getAttribute('data-choix');
     if (mat && (role === 'm1' || role === 'm2')) {
-      A.particuliere = null;
-      A[role] = A[role] === mat ? null : mat;
+      // choisir de nouveau un matériau vide le choix élément/poids
+      Object.assign(A, choixDArmureApres(A, { genre: role, valeur: mat }));
       apresChoix();
       return;
     }
@@ -483,8 +607,9 @@ if (racine) {
     if (armure) {
       if (armure === armureChoisie()) fermer('armure');
       else {
-        if (armure.hasAttribute('data-particuliere')) Object.assign(A, { particuliere: armure, m1: null, m2: null });
-        else Object.assign(A, { particuliere: null, m1: ligneDeMateriau('m1', armure.dataset.m1), m2: ligneDeMateriau('m2', armure.dataset.m2) });
+        Object.assign(A, choixDArmureApres(A, armure.hasAttribute('data-particuliere')
+          ? { genre: 'particuliere', valeur: armure }
+          : { genre: 'armure', m1: ligneDeMateriau('m1', armure.dataset.m1), m2: ligneDeMateriau('m2', armure.dataset.m2) }));
         apresChoix();
       }
       return;
@@ -506,9 +631,12 @@ if (racine) {
     }
     const amelioration = cible.closest('tr.pamelioration');
     if (amelioration) {
-      const etat = amelioration.dataset.cible === 'bouclier' ? B : A;
       const n = Number(amelioration.dataset.niveau);
-      etat.niveau = etat.niveau === n ? 0 : n;
+      if (amelioration.dataset.cible === 'armure_elementaire') A.niveauElementaire = A.niveauElementaire === n ? 0 : n;
+      else {
+        const etat = amelioration.dataset.cible === 'bouclier' ? B : A;
+        etat.niveau = etat.niveau === n ? 0 : n;
+      }
       apresChoix();
     }
   });
@@ -516,7 +644,7 @@ if (racine) {
   document.addEventListener('keydown', (ev) => {
     if (ev.key !== 'Escape' || enEdition() || ev.defaultPrevented) return;
     const panneau = racine.querySelector('.armures-panneau.is-active')?.dataset.panneau;
-    if (panneau === 'armure' && armureChoisie()) fermer('armure');
+    if (panneau === 'armure' && (armureChoisie() || armureElementaireChoisie())) fermer('armure');
     else if (panneau === 'bouclier' && bouclierChoisi()) fermer('bouclier');
   });
 
@@ -540,6 +668,11 @@ if (racine) {
     A.m2 = ligneDeMateriau('m2', params.get('materiau2'));
   }
   A.niveau = n(params.get('amelioration-armure'), 'armure');
+  // l'armure élémentaire (décision R165 (4)) : les deux choisis, les matériaux de l'adresse ne comptent pas
+  A.element = boutonDElement(params.get('element-armure'));
+  A.poids = boutonDePoids(params.get('poids-armure'));
+  if (estElementaire(A)) Object.assign(A, { m1: null, m2: null, particuliere: null });
+  A.niveauElementaire = n(params.get('amelioration-elementaire'), 'armure_elementaire');
   B.forme = ligneDeForme(params.get('forme'));
   B.matiere = ligneDeMateriau('matiere', params.get('matiere'));
   B.niveau = n(params.get('amelioration-bouclier'), 'bouclier');
@@ -551,6 +684,7 @@ if (racine) {
     // ancre mal formée : ignorée
   }
   if (ancre?.matches('tr.armure')) {
+    Object.assign(A, { element: null, poids: null });
     if (ancre.hasAttribute('data-particuliere')) Object.assign(A, { particuliere: ancre, m1: null, m2: null });
     else Object.assign(A, { particuliere: null, m1: ligneDeMateriau('m1', ancre.dataset.m1), m2: ligneDeMateriau('m2', ancre.dataset.m2) });
     ancre.scrollIntoView({ block: 'center' });
