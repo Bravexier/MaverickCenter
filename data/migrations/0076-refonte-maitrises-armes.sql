@@ -1,4 +1,4 @@
--- 0074-refonte-maitrises-armes : refonte des maîtrises d'armes de la fiche de personnage (décisions R148 à R154 du propriétaire, 2026-10-22 ; cahier des
+-- 0076-refonte-maitrises-armes : refonte des maîtrises d'armes de la fiche de personnage (décisions R148 à R154 du propriétaire, 2026-10-22 ; cahier des
 -- charges de game-design, variante A « Bloc des sources »). Migration de STRUCTURE et de DONNÉES.
 --   * Les sources de maîtrise en données (R148, R150, R151), section 6 : maitrise_arme_part (ce que donne chaque ligne de classe_maitrise_arme et chaque
 --     don, en parts : une famille imposée, des points à choisir avec leur limite écrite, ou la famille suivie de la maîtrise au choix de la classe),
@@ -1190,7 +1190,7 @@ DROP TABLE personnage_maitrise_arme;
 -- R152 : personnage_acquis_choix sans arme_famille_id (reconstruite ; les autres colonnes et la clé ne changent pas)
 DROP INDEX personnage_acquis_choix_arme;
 
-CREATE TABLE personnage_acquis_choix_0074 (
+CREATE TABLE personnage_acquis_choix_0076 (
   personnage_id   TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
   source          TEXT    NOT NULL CHECK (length(source) > 0),
   rang            INTEGER NOT NULL CHECK (rang >= 1),
@@ -1199,11 +1199,11 @@ CREATE TABLE personnage_acquis_choix_0074 (
   PRIMARY KEY (personnage_id, source, rang, competence_id)
 ) STRICT, WITHOUT ROWID;
 
-INSERT INTO personnage_acquis_choix_0074 (personnage_id, source, rang, competence_id, valeur)
+INSERT INTO personnage_acquis_choix_0076 (personnage_id, source, rang, competence_id, valeur)
   SELECT personnage_id, source, rang, competence_id, valeur FROM personnage_acquis_choix;
 
 DROP TABLE personnage_acquis_choix;
-ALTER TABLE personnage_acquis_choix_0074 RENAME TO personnage_acquis_choix;
+ALTER TABLE personnage_acquis_choix_0076 RENAME TO personnage_acquis_choix;
 
 -- Vues : copiées de data/schema.sql
 
@@ -1475,7 +1475,7 @@ CREATE VIEW v_personnage_controle AS
   WHERE ps.niveau_maitrise - ps.nm_livre > n.niveau_global - (SELECT r.valeur FROM regle_constante r WHERE r.id = 'sort.nm_ecart_niveau_global') + p.nm_mj
   UNION ALL
   -- NM gagnés : ceux des niveaux (v_niveau.niveaux_maitrise_cumul), plus ceux qu'écrit un don acquis (« Gagne 4 niveaux de maîtrise (NM). » de
-  -- l'Ocultomancien : capacite_nm_gagne, v_personnage_don_acquis ; décision R154, migration 0074), plus ceux du MJ ; sort_nm_max ne les lit pas.
+  -- l'Ocultomancien : capacite_nm_gagne, v_personnage_don_acquis ; décision R154, migration 0076), plus ceux du MJ ; sort_nm_max ne les lit pas.
   -- Détail : « comptés / des niveaux », puis « + N des dons » et « + N du MJ » quand il y en a
   SELECT n.personnage_id, 'sorts_nm_total', (SELECT SUM(ps.niveau_maitrise - ps.nm_livre) FROM personnage_sort ps WHERE ps.personnage_id = n.personnage_id) || ' / '
          || v.niveaux_maitrise_cumul || CASE WHEN d.nm > 0 THEN ' + ' || d.nm || ' des dons' ELSE '' END
@@ -1507,7 +1507,7 @@ CREATE VIEW v_personnage_controle AS
   WHERE p.symbiose_magie_id IS NOT NULL
     AND (p.symbiose_magie_id = 'magies/potentiel-illimite' OR p.symbiose_magie_id NOT IN (coalesce(p.magie_innee_id, ''), coalesce(p.magie_acquise_id, '')))
   UNION ALL
-  -- Maîtrises d'armes (décisions R148 à R151, migration 0074) : chaque point à choisir d'une source acquise (v_personnage_maitrise_part) a sa famille
+  -- Maîtrises d'armes (décisions R148 à R151, migration 0076) : chaque point à choisir d'une source acquise (v_personnage_maitrise_part) a sa famille
   -- (personnage_maitrise_choix), parmi les options de sa part ; une ligne de choix relève d'une seule de ces règles : sur une famille sans maîtrise,
   -- maitrise_arme_exclue (ARME DE MONSTRES, R45) ; sinon, d'une source qui n'est plus acquise ou d'un point qu'elle n'a pas, maitrise_source_perdue ;
   -- sinon, hors des options, maitrise_hors_choix. Détail d'une ligne de choix : « source : point = famille ».

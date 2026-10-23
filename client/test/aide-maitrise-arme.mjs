@@ -1,4 +1,4 @@
-// Aide des tests du service sur les sources de maîtrise d'arme (décisions R148 à R151, R154 ; migration 0074) : les tables maitrise_arme_part,
+// Aide des tests du service sur les sources de maîtrise d'arme (décisions R148 à R151, R154 ; migration 0076) : les tables maitrise_arme_part,
 // maitrise_arme_part_famille et capacite_nm_gagne d'une base, et ce que le lecteur de lib/maitrise-arme.mjs rejoué sur toute la base en tire (comme
 // test/maitrise-arme-sources.test.mjs#relire sur data/rows). test/serveur-edition-maitrises.test.mjs et test/serveur-edition-conflits-maitrises.test.mjs
 // les comparent après chaque écriture.

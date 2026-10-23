@@ -11,7 +11,7 @@
 // converties (CONVERSIONS : personnage_progression, migration 0045, devient la somme des gains de niveau, personnage.gains_sante et gains_chakra,
 // décision R73 ; personnage_armure, migration 0055, devient l'armure de la fiche, la pièce devenue l'armure complète et chaque autre pièce notées
 // dans la fiche, décision R95 ; personnage_bouclier_materiau, migration 0060, devient la matière du bouclier, chaque autre matériau noté, décision R96 ;
-// personnage_maitrise_arme, migration 0074, ses dés notés avec l'arme choisie de R119 en une ligne datée, aucun choix posé, décision R153),
+// personnage_maitrise_arme, migration 0076, ses dés notés avec l'arme choisie de R119 en une ligne datée, aucun choix posé, décision R153),
 // et les lignes qu'une table garde mais que ses nouvelles règles refusent ne sont pas recopiées (LIGNES_ECARTEES : un accessoire de la Ceinture ou
 // d'« Autre », un effet hors table seul, décision R97), notées dans la fiche comme ce que perd une ligne gardée (son nom, son effet hors table) ; jamais
 // perdues sans le dire. Une base remplacée qui avait des lignes est d'abord archivée (db/archives/, les ARCHIVES_GARDEES
@@ -196,7 +196,7 @@ function ajouterLesRetraits(db, retraits, parFiche) {
  * R71, devient une ligne de texte de l'entraînement (entrainementEnLignes) ; l'acquis saisi d'une compétence (`personnage_competence.acquis`) se perd,
  * noté, daté, dans la fiche (acquisRetires). Décision R118 (migration 0066) : les NM du MJ d'un sort (`personnage_sort.nm_cadeau`) deviennent ceux de
  * la fiche, `personnage.nm_mj`, leur somme (comme la migration et nmDuMjDesSorts) ; le NM de chaque sort, recopié, ne change pas. Décisions R152 et R153
- * (migration 0074) : l'arme choisie d'un choix d'acquis (`personnage_acquis_choix.arme_famille_id`) se perd, notée sur la ligne des anciennes maîtrises
+ * (migration 0076) : l'arme choisie d'un choix d'acquis (`personnage_acquis_choix.arme_famille_id`) se perd, notée sur la ligne des anciennes maîtrises
  * (noterLesMaitrisesDAvant, une seule fois avec la conversion de personnage_maitrise_arme) ; la compétence du choix reste.
  */
 export const COLONNES_CONVERTIES = Object.freeze({

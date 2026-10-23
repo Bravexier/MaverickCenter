@@ -317,7 +317,7 @@ test('maîtrise d’arme : 1 dé sans maîtrise, un de plus par point, 4 points 
   assert.deepEqual(personnage.maitrise_choix, fiche.maitrise_choix);
   assert.deepEqual(vivante.prepare('SELECT arme_famille_id, points, des FROM v_personnage_maitrise_arme WHERE personnage_id = ? ORDER BY arme_famille_id').all(personnage.id).map((r) => ({ ...r })),
     [{ arme_famille_id: 'epees', points: 1, des: 2 }, { arme_famille_id: 'hache', points: 1, des: 2 }]);
-  // une fiche d'avant la migration 0074 qui envoie des dés avec les choix : refusée (409, décision R153), rien d'enregistré
+  // une fiche d'avant la migration 0076 qui envoie des dés avec les choix : refusée (409, décision R153), rien d'enregistré
   assert.throws(() => enregistrerFiche(vivante, { ...fiche, maitrises_armes: [{ arme_famille_id: 'epees', des: 5 }] }), (e) => e.statut === 409);
 });
 

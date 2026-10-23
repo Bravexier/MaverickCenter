@@ -1,4 +1,4 @@
-// Les sources de maîtrise d'arme et les NM de sorts gagnés, en tables de règles (migration 0074, décisions R148 à R151, R154) : maitrise_arme_part,
+// Les sources de maîtrise d'arme et les NM de sorts gagnés, en tables de règles (migration 0076, décisions R148 à R151, R154) : maitrise_arme_part,
 // maitrise_arme_part_famille et capacite_nm_gagne, que le lecteur de lib/maitrise-arme.mjs tire des lignes de classe_maitrise_arme (lireLigneDeClasse) et
 // du texte des dons (capacite.effet : lireDon, nmGagnesDuDon). Une écriture de l'édition qui change ce que le lecteur lit les refait
 // (serveur/edition.mjs : maîtrises d'une classe, effet d'un don, don créé ou supprimé), notées au journal par son rédacteur ; le rejeu refait celles des
@@ -244,9 +244,9 @@ function refaire(db, ecrivain, { classes, dons }) {
 /**
  * Après chaque lot rejoué (serveur/edition.mjs#rejouerLeJournal, crochet `apresLeLot` d'edition-journal.mjs#rejouer, dans le lot et annulé avec lui) :
  * les sources des classes dont le lot touche les maîtrises (classe.maitrise_arme, classe_maitrise_arme) et des dons qu'il crée, modifie ou supprime
- * (capacite), refaites par le lecteur depuis les lignes rejouées. Un lot noté avant la migration 0074 (ses lignes de classe ou l'effet d'un don, sans
+ * (capacite), refaites par le lecteur depuis les lignes rejouées. Un lot noté avant la migration 0076 (ses lignes de classe ou l'effet d'un don, sans
  * leurs parts) les reçoit ici, avant le contrôle de ses clés étrangères, et le lot suivant les trouve justes. Une source dont le lot note déjà des
- * lignes de TABLES_DES_SOURCES (un lot noté depuis 0074) suit son journal, sans rien de plus : ses lignes créées puis supprimées par un lot suivant ne
+ * lignes de TABLES_DES_SOURCES (un lot noté depuis 0076) suit son journal, sans rien de plus : ses lignes créées puis supprimées par un lot suivant ne
  * sont pas écrites (les « fantômes » du rejeu) ; une source qu'il touche sans en noter (un effet changé qui ne change pas les parts) ne change pas.
  * Rend ces écritures, décodées ({ …, sources: true }) : leurs tables vont dans `tablesCompletees`.
  * @param {object[]} lot les modifications du lot (lignes de `modification`, telles qu'adaptées)
@@ -266,7 +266,7 @@ export function sourcesRefaitesParLeLot(db, lot) {
  * Résolution d'un lot en conflit (serveur/edition-conflits.mjs, page « Mise à jour ») : ses lignes de TABLES_DES_SOURCES ne sont jamais rejouées telles
  * quelles (le parcours les saute : elles suivent leur source, comme une ligne de détail, et ne sont pas des conflits à elles), et, une fois les choix
  * écrits, toutes les sources que le lot touche — ses classes, ses dons, et celles dont il notait des lignes — sont refaites par le lecteur depuis les
- * lignes résolues, notées par `ecrivain` (le rédacteur du nouveau lot, ctx.w) : un lot noté avant 0074 (un don créé sans ses parts), une ligne gardée
+ * lignes résolues, notées par `ecrivain` (le rédacteur du nouveau lot, ctx.w) : un lot noté avant 0076 (un don créé sans ses parts), une ligne gardée
  * au choix 1 sans l'éditeur (un don créé que les règles ont aussi), une source restée celle des règles, tout finit tel que le lecteur le lit.
  * @param {object[]} lot les modifications du lot en conflit (telles qu'adaptées)
  */

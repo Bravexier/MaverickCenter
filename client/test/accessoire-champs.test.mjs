@@ -29,7 +29,7 @@ test('décision R54 : caractéristique +1, compétence au choix de la valeur tir
   assert.deepEqual(de('competence:agilite:3'), [{ rang: 1, cible: 'competence', cible_id: 'agilite', valeur: null, choix: 1 }]);
   assert.deepEqual(de('attributs:7'), [{ rang: 1, cible: 'initiative', cible_id: null, valeur: 5, choix: 0 }]);
   assert.deepEqual(de('attaque:15').map((b) => [b.cible, b.valeur, b.choix]), [['degats_famille', 5, 1]]);
-  // « Un point de maîtrise d'arme » : sa famille se choisit dans la fiche (décision R151, migration 0074)
+  // « Un point de maîtrise d'arme » : sa famille se choisit dans la fiche (décision R151, migration 0076)
   assert.deepEqual(de('attaque:7'), [{ rang: 1, cible: 'maitrise_arme', cible_id: null, valeur: 1, choix: 1 }]);
   assert.deepEqual(de('defense:14').map((b) => [b.cible, b.valeur]), [['armure_ap', 5]]);
   assert.deepEqual(de('defense:1').map((b) => b.cible_id), ['magies/magie-du-sang', q("SELECT id FROM etat WHERE nom = 'Saignement'")[0].id]);
