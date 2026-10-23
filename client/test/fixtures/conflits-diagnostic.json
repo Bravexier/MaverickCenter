@@ -18,8 +18,9 @@
       "ordre": 900
      },
      "operation": "inserer",
-     "libelle": "alias {\"page_id\":\"guide/le-mode-hyper\",\"ordre\":900}",
+     "libelle": "alias (Page guide/le-mode-hyper), ordre 900",
      "raison": "alias : clé étrangère rompue vers page (page_id = \"guide/le-mode-hyper\")",
+     "raison_lisible": "alias : clé étrangère rompue vers Page guide/le-mode-hyper",
      "colonne": null,
      "colonne_libelle": null,
      "avant": null,
@@ -52,7 +53,7 @@
    "page_id": "bestiaire/",
    "resume": "avant 0044",
    "detail": "lot 2026-10-21T08:00:01.000Z-000000-essai-ancien : monstre_capacite {\"monstre_id\":\"monstres/amblypyge-noir#carte:amblypyge-de-brai\",\"rang\":1} : noté avant la migration 0044 : les capacités d’une carte ne sont plus le texte de sa rubrique « Capacité(s) » mais des capacités communes (décision R66) ; à refaire sur le site de dev (une carte : la supprimer de nouveau ; une capacité : dans son panneau)",
-   "detail_lisible": "Capacité de la carte {\"monstre_id\":\"monstres/amblypyge-noir#carte:amblypyge-de-brai\",\"rang\":1} : noté avant la migration 0044 : les capacités d’une carte ne sont plus le texte de sa rubrique « Capacité(s) » mais des capacités communes (décision R66) ; à refaire sur le site de dev (une carte : la supprimer de nouveau ; une capacité : dans son panneau)",
+   "detail_lisible": "Capacité de la carte « Amblypyge de brai », n° 1 : noté avant la migration 0044 : les capacités d’une carte ne sont plus le texte de sa rubrique « Capacité(s) » mais des capacités communes (décision R66) ; à refaire sur le site de dev (une carte : la supprimer de nouveau ; une capacité : dans son panneau)",
    "empreinte": "1379935af82da42ec06453f34959a284",
    "saines": [],
    "conflits": [
@@ -64,8 +65,9 @@
       "rang": 1
      },
      "operation": "modifier",
-     "libelle": "Capacité de la carte {\"monstre_id\":\"monstres/amblypyge-noir#carte:amblypyge-de-brai\",\"rang\":1}",
+     "libelle": "Capacité de la carte « Amblypyge de brai », n° 1",
      "raison": "noté avant la migration 0044 : les capacités d’une carte ne sont plus le texte de sa rubrique « Capacité(s) » mais des capacités communes (décision R66) ; à refaire sur le site de dev (une carte : la supprimer de nouveau ; une capacité : dans son panneau)",
+     "raison_lisible": "noté avant la migration 0044 : les capacités d’une carte ne sont plus le texte de sa rubrique « Capacité(s) » mais des capacités communes (décision R66) ; à refaire sur le site de dev (une carte : la supprimer de nouveau ; une capacité : dans son panneau)",
      "colonne": null,
      "colonne_libelle": null,
      "avant": null,
@@ -99,13 +101,13 @@
    ]
   },
   {
-   "lot": "2026-10-22T20:52:05.004Z-000000-ad679d27-83a6-456a-b5b8-57364f6f3c75",
-   "fait_le": "2026-10-22T20:52:05Z",
+   "lot": "2026-10-22T23:50:33.829Z-000000-1db60532-cf90-4a1b-9d29-0d4b6d30e644",
+   "fait_le": "2026-10-22T23:50:33Z",
    "page_id": "guide/la-magie-en-jeu",
    "resume": "Page La magie en jeu : Texte ; Métier Forgeron : Description",
-   "detail": "lot 2026-10-22T20:52:05.004Z-000000-ad679d27-83a6-456a-b5b8-57364f6f3c75 : page {\"id\":\"guide/la-magie-en-jeu\"} : les règles ont changé corps_md autrement",
+   "detail": "lot 2026-10-22T23:50:33.829Z-000000-1db60532-cf90-4a1b-9d29-0d4b6d30e644 : page {\"id\":\"guide/la-magie-en-jeu\"} : les règles ont changé corps_md autrement",
    "detail_lisible": "Page « La magie en jeu » : les règles ont changé « Texte » autrement",
-   "empreinte": "6bda9c25731fbfddabaab245114ba087",
+   "empreinte": "4e8557267759037d81cd7f285e20e945",
    "saines": [
     {
      "rang": 2,
@@ -138,6 +140,7 @@
      "operation": "modifier",
      "libelle": "Page « La magie en jeu »",
      "raison": "les règles ont changé corps_md autrement",
+     "raison_lisible": "les règles ont changé « Texte » autrement",
      "id": "1:corps_md",
      "colonne": "corps_md",
      "colonne_libelle": "Texte",
@@ -171,13 +174,13 @@
    ]
   },
   {
-   "lot": "2026-10-22T20:52:05.052Z-000000-6cf613b2-bcff-40e2-8388-5ca98513d6f1",
-   "fait_le": "2026-10-22T20:52:05Z",
+   "lot": "2026-10-22T23:50:33.879Z-000000-32dd6ab2-7528-4657-890c-03f4c15a592b",
+   "fait_le": "2026-10-22T23:50:33Z",
    "page_id": "guide/le-mode-hyper",
    "resume": "Page Le Mode Hyper et le Mode Super : Texte",
-   "detail": "lot 2026-10-22T20:52:05.052Z-000000-6cf613b2-bcff-40e2-8388-5ca98513d6f1 : page {\"id\":\"guide/le-mode-hyper\"} : la ligne n’existe plus dans les règles",
+   "detail": "lot 2026-10-22T23:50:33.879Z-000000-32dd6ab2-7528-4657-890c-03f4c15a592b : page {\"id\":\"guide/le-mode-hyper\"} : la ligne n’existe plus dans les règles",
    "detail_lisible": "Page guide/le-mode-hyper : la ligne n’existe plus dans les règles",
-   "empreinte": "f9cd0eddc492684a390eb6fb92cb7259",
+   "empreinte": "30c16ae46aaa9e7d11f3b3647cd62bf2",
    "saines": [],
    "conflits": [
     {
@@ -189,6 +192,7 @@
      "operation": "modifier",
      "libelle": "Page guide/le-mode-hyper",
      "raison": "la ligne n’existe plus dans les règles",
+     "raison_lisible": "la ligne n’existe plus dans les règles",
      "colonne": null,
      "colonne_libelle": null,
      "avant": null,
@@ -215,13 +219,13 @@
    ]
   },
   {
-   "lot": "2026-10-22T20:52:05.057Z-000000-2353b9d6-58f0-4da7-b31f-e30513dde380",
-   "fait_le": "2026-10-22T20:52:05Z",
+   "lot": "2026-10-22T23:50:33.883Z-000000-8731190a-e124-44d0-82be-83622442a1c8",
+   "fait_le": "2026-10-22T23:50:33Z",
    "page_id": "guide/s-entrainer-et-exercer-un-metier",
    "resume": "Page S’entraîner et exercer un métier : Texte",
-   "detail": "lot 2026-10-22T20:52:05.057Z-000000-2353b9d6-58f0-4da7-b31f-e30513dde380 : page {\"id\":\"guide/s-entrainer-et-exercer-un-metier\"} : les règles ont changé corps_md autrement",
+   "detail": "lot 2026-10-22T23:50:33.883Z-000000-8731190a-e124-44d0-82be-83622442a1c8 : page {\"id\":\"guide/s-entrainer-et-exercer-un-metier\"} : les règles ont changé corps_md autrement",
    "detail_lisible": "Page « S’entraîner et exercer un métier » : les règles ont changé « Texte » autrement",
-   "empreinte": "4767a40f8dca1b8932768adf769a557c",
+   "empreinte": "840716d368bb54dbd20654c61ecc7d9b",
    "saines": [],
    "conflits": [
     {
@@ -233,6 +237,7 @@
      "operation": "modifier",
      "libelle": "Page « S’entraîner et exercer un métier »",
      "raison": "les règles ont changé corps_md autrement",
+     "raison_lisible": "les règles ont changé « Texte » autrement",
      "id": "1:corps_md",
      "colonne": "corps_md",
      "colonne_libelle": "Texte",
@@ -267,13 +272,13 @@
    ]
   },
   {
-   "lot": "2026-10-22T20:52:05.062Z-000000-401d12f4-cc5c-4c5d-baf9-d08d94769822",
-   "fait_le": "2026-10-22T20:52:05Z",
+   "lot": "2026-10-22T23:50:33.887Z-000000-8d44f920-e9df-4054-b36a-ca7e69ac26a6",
+   "fait_le": "2026-10-22T23:50:33Z",
    "page_id": "metiers/forgeron",
    "resume": "Métier Forgeron : Bonus",
-   "detail": "lot 2026-10-22T20:52:05.062Z-000000-401d12f4-cc5c-4c5d-baf9-d08d94769822 : metier {\"id\":\"metiers/forgeron\"} : les règles ont changé bonus_brut autrement",
+   "detail": "lot 2026-10-22T23:50:33.887Z-000000-8d44f920-e9df-4054-b36a-ca7e69ac26a6 : metier {\"id\":\"metiers/forgeron\"} : les règles ont changé bonus_brut autrement",
    "detail_lisible": "Métier « Forgeron » : les règles ont changé « Bonus » autrement",
-   "empreinte": "295b9b9135b626d2dca750dcedb96270",
+   "empreinte": "9179708469a01ff59e6d5646f2834b36",
    "saines": [
     {
      "rang": 2,
@@ -284,7 +289,7 @@
       "option": 2
      },
      "operation": "supprimer",
-     "libelle": "metier_bonus {\"metier_id\":\"metiers/forgeron\",\"rang\":1,\"option\":2}",
+     "libelle": "metier_bonus (Métier « Forgeron »), n° 1, option 2",
      "issue": "reappliquee"
     },
     {
@@ -296,7 +301,7 @@
       "option": 1
      },
      "operation": "modifier",
-     "libelle": "metier_bonus {\"metier_id\":\"metiers/forgeron\",\"rang\":1,\"option\":1}",
+     "libelle": "metier_bonus (Métier « Forgeron »), n° 1, option 1",
      "issue": "reappliquee"
     },
     {
@@ -320,6 +325,7 @@
      "operation": "modifier",
      "libelle": "Métier « Forgeron »",
      "raison": "les règles ont changé bonus_brut autrement",
+     "raison_lisible": "les règles ont changé « Bonus » autrement",
      "id": "1:bonus_brut",
      "colonne": "bonus_brut",
      "colonne_libelle": "Bonus",

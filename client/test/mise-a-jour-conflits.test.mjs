@@ -84,6 +84,22 @@ test('après les listes de la note en préparation, la section des lignes en con
   // la raison du rejeu : le texte lisible du service (comme la légende), jamais la trace (id du lot, clé JSON, nom de colonne)
   assert.equal(page.lot(FORGERON.lot).querySelector('.nv-conflit-lot__detail').textContent, 'Au rejeu : Métier « Forgeron » : les règles ont changé « Bonus » autrement');
   for (const l of DIAG.lots) assert.doesNotMatch(page.lot(l.lot).querySelector('.nv-conflit-lot__detail').textContent, /^Au rejeu : lot |bonus_brut|corps_md/, l.lot);
+  // la légende et la raison de chaque conflit, les saines : les textes lisibles du service (sans JSON, sans nom de colonne qui a un libellé)
+  for (const l of DIAG.lots) {
+    const form = page.lot(l.lot);
+    for (const c of l.conflits) {
+      const f = page.conflit(form, c.id);
+      assert.ok(f.querySelector('legend').textContent.startsWith(c.libelle), `${l.lot} ${c.id}`);
+      assert.doesNotMatch(f.querySelector('legend').textContent, /[{}"]/, `${l.lot} ${c.id} : légende sans JSON`);
+      assert.equal(f.querySelector('.nv-conflit__raison').textContent, c.raison_lisible, `${l.lot} ${c.id} : la raison lisible`);
+      assert.doesNotMatch(f.querySelector('.nv-conflit__raison').textContent, /bonus_brut|corps_md|page_id = /, `${l.lot} ${c.id}`);
+    }
+    const saines = form.querySelector('.nv-conflit-lot__saines').textContent;
+    assert.doesNotMatch(saines, /[{}"]/, `${l.lot} : saines sans JSON`);
+  }
+  assert.equal(page.conflit(page.lot(FORGERON.lot), '1:bonus_brut').querySelector('.nv-conflit__raison').textContent, 'les règles ont changé « Bonus » autrement');
+  assert.match(s.textContent, /Capacité de la carte « Amblypyge de brai », n° 1/);
+  assert.doesNotMatch(s.textContent, /\{"/, 'aucun JSON dans la section');
 });
 
 test('le choix 3 ouvre sa saisie ; l’envoi attend un choix par conflit, puis part avec la valeur saisie ; le message dit ce qui est fait', async () => {

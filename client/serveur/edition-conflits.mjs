@@ -23,7 +23,7 @@
 // Exception assumée à « lecture seule quand rien n'est écrit » : l'examen (GET) écrit dans un savepoint annulé, sur la connexion du service (traiter
 // est synchrone : rien d'autre ne s'intercale). Node seulement, sans dépendance.
 import { createHash } from 'node:crypto';
-import { ErreurJournal, lireLigne, modifierSansNoter, nouveauLot, ouvrirLot, parcourirUnLot, rompuesDuLot, rupturesEnPlace } from './edition-journal.mjs';
+import { ErreurJournal, lireLigne, modifierSansNoter, nouveauLot, ouvrirLot, parcourirUnLot, rompuesDuLot, rupturesEnPlace, structure } from './edition-journal.mjs';
 import { ErreurEdition, OUTILS_DE_RESOLUTION as OUTILS, adaptateurDuJournal, colonneDerivee, messageSqlite, recalculerLesPages } from './edition.mjs';
 import { detacherDesFiches, noterLesRetraits, nouveauxRetraitsDeFiches, retirerDesFiches } from './fiches-retraits.mjs';
 import { TABLES, ligneSansImage } from '../src/lib/edition-modele.mjs';
@@ -220,16 +220,90 @@ function versionDuSite(e) {
   if (e.operation === 'supprimer') return { genre: 'suppression', valeur: ligneVue(e.table, e.avant) };
   return { genre: e.operation === 'inserer' ? 'ligne' : 'valeurs', valeur: ligneVue(e.table, e.apres) };
 }
+/** Le nom (ou titre, libellé) d'une ligne, s'il en a un non vide. */
+const nomDe = (ligne) => [ligne?.nom, ligne?.titre, ligne?.libelle].find((v) => typeof v === 'string' && v) ?? null;
+/** Le libellé d'une table (celui de TABLES), ou son nom quand le modèle n'en a pas. */
+const tableLisible = (table) => TABLES[table]?.libelle ?? table;
+/** Le libellé d'une colonne (celui du champ de TABLES), ou son nom quand le modèle n'en a pas. */
+const libelleDeColonne = (table, c) => TABLES[table]?.colonnes[c]?.libelle ?? c;
+
+/**
+ * Les clés étrangères d'une table dont toutes les colonnes sont dans la clé `cle` : [{ parent, colonnes (de la table), cle (de la ligne citée) }],
+ * dans l'ordre du schéma (PRAGMA foreign_key_list, table vérifiée par edition-journal.mjs#structure ; sans `to`, la clé primaire de la ligne citée).
+ */
+function liensDeLaCle(db, table, cle) {
+  let fks;
+  try {
+    structure(db, table);
+    fks = db.prepare(`PRAGMA foreign_key_list("${table}")`).all();
+  } catch {
+    return [];
+  }
+  const groupes = new Map();
+  for (const f of [...fks].sort((a, b) => a.id - b.id || a.seq - b.seq)) {
+    if (!groupes.has(f.id)) groupes.set(f.id, { parent: f.table, de: [], vers: [] });
+    groupes.get(f.id).de.push(f.from);
+    groupes.get(f.id).vers.push(f.to);
+  }
+  const liens = [];
+  for (const { parent, de, vers } of groupes.values()) {
+    if (!de.every((c) => c in cle)) continue;
+    let colonnes = vers;
+    if (colonnes.some((c) => c === null || c === undefined)) {
+      try {
+        colonnes = structure(db, parent).cle;
+      } catch {
+        continue;
+      }
+    }
+    if (colonnes.length !== de.length) continue;
+    liens.push({ parent, colonnes: de, cle: Object.fromEntries(colonnes.map((c, i) => [c, cle[de[i]]])) });
+  }
+  return liens;
+}
+
+/** Une colonne de clé sans ligne citée : « n° N » pour un rang, sinon son libellé (ou son nom) et sa valeur, jamais du JSON. */
+const colonneDeCle = (table, c, v) => (c === 'rang' ? `n° ${v}` : `${libelleDeColonne(table, c)} ${v === null || v === undefined ? 'vide' : String(v)}`);
+
+/**
+ * Une clé composée sans `id`, dite par ce qu'elle désigne : la ligne qu'elle cite par une clé étrangère (son nom si elle existe encore — « « Amblypyge
+ * de brai » », précédé de sa table entre parenthèses pour une table hors du modèle —, sinon son propre libellé, l'id de sa clé), puis ses autres
+ * colonnes (« n° 1 », « option 2 ») ; sans `db`, ses colonnes seules. Jamais un nom inventé.
+ */
+function cleLisible(table, cle, db, profondeur) {
+  const colonnes = Object.keys(cle ?? {});
+  const parties = [];
+  const couvertes = new Set();
+  for (const lien of db && profondeur < 2 ? liensDeLaCle(db, table, cle) : []) {
+    if (lien.colonnes.every((c) => couvertes.has(c))) continue;
+    for (const c of lien.colonnes) couvertes.add(c);
+    let ligne = null;
+    try {
+      ligne = lireLigne(db, lien.parent, lien.cle);
+    } catch {
+      ligne = null;
+    }
+    const nom = nomDe(ligne);
+    const texte = nom && TABLES[table] ? `« ${nom} »` : `(${libelleDeLigne(lien.parent, ligne, lien.cle, db, profondeur + 1)})`;
+    parties.push({ place: Math.min(...lien.colonnes.map((c) => colonnes.indexOf(c))), texte });
+  }
+  for (const c of colonnes) if (!couvertes.has(c)) parties.push({ place: colonnes.indexOf(c), texte: colonneDeCle(table, c, cle[c]) });
+  return parties.sort((a, b) => a.place - b.place).map((p) => p.texte).join(', ');
+}
+
 /**
  * Le libellé d'une ligne pour la page : la table et le nom (ou titre, libellé) de la ligne ; une ligne qui n'en a plus (une page supprimée, dont seule
- * la version du site de dev reste) est dite par l'id de sa clé (« Page guide/le-jeu-de-role »), jamais par du JSON brut ; une clé composée sans `id`
- * reste écrite en entier (aucune de ses colonnes ne nomme la ligne seule).
+ * la version du site de dev reste) est dite par l'id de sa clé (« Page guide/le-jeu-de-role ») ; une clé composée sans `id`, par ce qu'elle désigne
+ * (cleLisible, avec `db` : « Capacité de la carte « Amblypyge de brai », n° 1 », « metier_bonus (Métier « Forgeron »), n° 1, option 2 »). Jamais de
+ * JSON. La table par son libellé de TABLES, sinon son nom.
  */
-export function libelleDeLigne(table, ligne, cle) {
-  const nom = ligne?.nom ?? ligne?.titre ?? ligne?.libelle ?? null;
+export function libelleDeLigne(table, ligne, cle, db = null, profondeur = 0) {
+  const nom = nomDe(ligne);
+  if (nom) return `${tableLisible(table)} « ${nom} »`;
   const id = cle?.id;
-  const sansNom = (typeof id === 'string' && id) || typeof id === 'number' ? String(id) : JSON.stringify(cle);
-  return `${TABLES[table]?.libelle ?? table} ${typeof nom === 'string' && nom ? `« ${nom} »` : sansNom}`;
+  if ((typeof id === 'string' && id) || typeof id === 'number') return `${tableLisible(table)} ${id}`;
+  const reste = cleLisible(table, cle, db, profondeur);
+  return reste ? `${tableLisible(table)} ${reste}` : tableLisible(table);
 }
 /** Une clé en JSON, ses colonnes triées (deux écritures de la même clé se comparent). */
 const cleCanonique = (cle) => JSON.stringify(Object.fromEntries(Object.entries(cle ?? {}).sort(([a], [b]) => a.localeCompare(b))));
@@ -238,19 +312,78 @@ const colonneLisible = (table, c) => {
   const libelle = TABLES[table]?.colonnes[c]?.libelle;
   return libelle ? `« ${libelle} »` : c;
 };
-/** La raison d'un conflit, ses noms de colonnes dits par leur libellé (« les règles ont changé « Bonus » autrement »). */
-const raisonLisible = (table, raison) => raison.replace(/^les règles ont changé (.+) autrement$/,
-  (_t, colonnes) => `les règles ont changé ${colonnes.split(', ').map((c) => colonneLisible(table, c)).join(', ')} autrement`);
+
+/** « table.colonne, table.colonne » d'un message de la base, par leurs libellés (« Sort : « Nom » »). */
+const colonnesQualifiees = (texte) => {
+  const parTable = new Map();
+  for (const q of texte.split(', ')) {
+    const m = /^([a-z_][a-z0-9_]*)\.([a-z_][a-z0-9_]*)$/.exec(q.trim());
+    if (!m) return texte;
+    parTable.set(m[1], [...(parTable.get(m[1]) ?? []), colonneLisible(m[1], m[2])]);
+  }
+  return [...parTable].map(([t, cs]) => `${tableLisible(t)} : ${cs.join(', ')}`).join(' ; ');
+};
+const TYPES_LISIBLES = Object.freeze({ INTEGER: 'nombre entier', INT: 'nombre entier', REAL: 'nombre', TEXT: 'texte', BLOB: 'donnée binaire', ANY: 'valeur' });
+/**
+ * Un message d'écriture refusée (de la base, déjà traduit ou non par edition.mjs#messageSqlite) sans nom de table ni de colonne qualifié : « valeur
+ * déjà utilisée ailleurs (Sort : « Nom ») », « valeur obligatoire (…) », « valeur refusée par une règle de la base » (sans l'expression SQL),
+ * « valeur d’un type que la colonne refuse (… : nombre entier attendu) ». Un autre message est rendu tel quel.
+ */
+function messageLisible(message) {
+  const m = messageSqlite(message);
+  let r;
+  if ((r = /^(valeur déjà utilisée ailleurs|valeur obligatoire) \((.+)\)$/.exec(m))) return `${r[1]} (${colonnesQualifiees(r[2])})`;
+  if (/^valeur refusée par une règle de la base \(/.test(m)) return 'valeur refusée par une règle de la base';
+  if ((r = /^valeur d’un type que la colonne refuse \((.+) : (\S+) attendu\)$/.exec(m))) {
+    return `valeur d’un type que la colonne refuse (${colonnesQualifiees(r[1])} : ${TYPES_LISIBLES[r[2].toUpperCase()] ?? r[2]} attendu)`;
+  }
+  return m;
+}
+
+/** « table : clé étrangère rompue vers parent (colonnes = valeurs JSON) » (edition-journal.mjs#rompuesDuLot), lisible. */
+function ruptureLisible(table, parent, colonnes, valeurs) {
+  let vals;
+  try {
+    vals = JSON.parse(`[${valeurs}]`);
+  } catch {
+    return null;
+  }
+  const cols = colonnes.split(', ');
+  if (cols.length !== vals.length) return null;
+  const vers = cols.length === 1 ? `${tableLisible(parent)} ${String(vals[0])}`
+    : `${tableLisible(parent)} (${cols.map((c, i) => colonneDeCle(table, c, vals[i])).join(', ')})`;
+  return `${tableLisible(table)} : clé étrangère rompue vers ${vers}`;
+}
+
+/** Une partie de la raison d'un conflit (les raisons d'un abandon sont jointes par « ; »), lisible ; une forme inconnue telle quelle. */
+function partieLisible(table, p) {
+  let r;
+  if ((r = /^les règles ont changé (.+) autrement$/.exec(p))) return `les règles ont changé ${r[1].split(', ').map((c) => colonneLisible(table, c)).join(', ')} autrement`;
+  if ((r = /^([a-z_][a-z0-9_]*) : clé étrangère rompue vers ([a-z_][a-z0-9_]*) \((.+?) = (.+)\)$/.exec(p))) return ruptureLisible(r[1], r[2], r[3], r[4]) ?? p;
+  if ((r = /^([a-z_][a-z0-9_]*) : clé étrangère rompue vers ([a-z_][a-z0-9_]*)$/.exec(p))) return `${tableLisible(r[1])} : clé étrangère rompue vers ${tableLisible(r[2])}`;
+  if ((r = /^(écriture refusée|l’édition refuse aujourd’hui cette valeur|après le lot) : (.+)$/.exec(p))) return `${r[1]} : ${messageLisible(r[2])}`;
+  return p;
+}
+
+/**
+ * La raison d'un conflit telle que la page la lit (`raison_lisible`) : les colonnes et les tables par leur libellé de TABLES (« les règles ont changé
+ * « Texte » autrement »), une clé étrangère rompue par la ligne citée (« alias : clé étrangère rompue vers Page guide/le-mode-hyper »), un refus de la
+ * base sans nom qualifié ni expression SQL ; une forme inconnue telle quelle. `raison` reste la trace.
+ */
+export function raisonLisible(table, raison) {
+  if (typeof raison !== 'string' || !raison) return raison ?? null;
+  return raison.split(' ; ').map((p) => partieLisible(table, p)).join(' ; ');
+}
 
 /**
  * La raison du rejeu d'un lot (`detail` de ses lignes, une trace écrite par edition-journal.mjs#rejouerUneFois : « lot <id> : <table> <clé JSON> :
  * <raison> », « lot <id> : <table> : clé étrangère rompue vers <table> », « lot <id> : après le lot : … ») telle que la page la lit : sans l'id du
  * lot, la ligne dite par la légende de son conflit (ou de sa modification saine) quand le lot en a une de même table et même clé, sinon par
- * libelleDeLigne (l'id de la clé), les colonnes et les tables par leur libellé (TABLES) quand le modèle en a un. `libelles` : [{ table, cle,
- * libelle }] (les conflits puis les saines du diagnostic). Une forme inconnue est rendue telle quelle, sans l'id du lot. Rien n'est écrit en base :
- * la colonne `detail` reste la trace.
+ * libelleDeLigne (avec `db` : ce que désigne une clé composée), la raison par raisonLisible, les tables par leur libellé (TABLES) quand le modèle en a
+ * un. `libelles` : [{ table, cle, libelle }] (les conflits puis les saines du diagnostic). Une forme inconnue est rendue telle quelle, sans l'id du
+ * lot. Rien n'est écrit en base : la colonne `detail` reste la trace.
  */
-export function detailLisible(detail, libelles = []) {
+export function detailLisible(detail, libelles = [], db = null) {
   if (typeof detail !== 'string' || !detail) return null;
   const texte = detail.replace(/^lot \S+ : /, '');
   const rompue = texte.match(/^([a-z_][a-z0-9_]*) : clé étrangère rompue vers ([a-z_][a-z0-9_]*)$/);
@@ -267,7 +400,7 @@ export function detailLisible(detail, libelles = []) {
     }
     if (cle === null || typeof cle !== 'object' || Array.isArray(cle)) break;
     const connue = libelles.find((l) => l.table === table && cleCanonique(l.cle) === cleCanonique(cle));
-    return `${connue?.libelle ?? libelleDeLigne(table, null, cle)} : ${raisonLisible(table, texte.slice(i + 4))}`;
+    return `${connue?.libelle ?? libelleDeLigne(table, null, cle, db)} : ${raisonLisible(table, texte.slice(i + 4))}`;
   }
   return texte;
 }
@@ -275,9 +408,15 @@ export function detailLisible(detail, libelles = []) {
 /** Le champ de TABLES, tel que la page le saisit (type, libellé, requis, min, max, choix ou liste de GET /api/edition/listes/, vide). */
 const saisieDe = (champ) => JSON.parse(JSON.stringify(champ));
 
-/** Les conflits d'une modification du parcours, sous la forme de la page (sans `refus_1` ni les rattachements des clés étrangères). */
-function conflitsDeLEntree(e) {
-  const base = { rang: e.rang, table: e.table, cle: e.cle, operation: e.operation, libelle: libelleDeLigne(e.table, e.ligne ?? e.apres ?? e.avant, e.cle), raison: e.raison };
+/**
+ * Les conflits d'une modification du parcours, sous la forme de la page (sans `refus_1` ni les rattachements des clés étrangères) : `libelle` et
+ * `raison_lisible` (raisonLisible) pour la page, `raison` comme trace.
+ */
+function conflitsDeLEntree(e, db) {
+  const base = {
+    rang: e.rang, table: e.table, cle: e.cle, operation: e.operation, libelle: libelleDeLigne(e.table, e.ligne ?? e.apres ?? e.avant, e.cle, db), raison: e.raison,
+    raison_lisible: raisonLisible(e.table, e.raison),
+  };
   const ligneEntiere = { colonne: null, colonne_libelle: null, avant: null, apercu: null, saisie: null };
   if (e.genre === 'colonnes') {
     return e.colonnes.map((c) => {
@@ -307,8 +446,9 @@ function conflitsDeLEntree(e) {
 }
 
 /** Le conflit d'une modification abandonnée faute de pouvoir l'écrire (clé étrangère rompue, refus) : sa raison, et le seul choix 2. */
-const abandon = (e, raison) => ({
-  rang: e.rang, table: e.table, cle: e.cle, operation: e.operation, libelle: libelleDeLigne(e.table, e.ligne ?? e.apres ?? e.avant, e.cle), raison,
+const abandon = (e, raison, db) => ({
+  rang: e.rang, table: e.table, cle: e.cle, operation: e.operation, libelle: libelleDeLigne(e.table, e.ligne ?? e.apres ?? e.avant, e.cle, db), raison,
+  raison_lisible: raisonLisible(e.table, raison),
   colonne: null, colonne_libelle: null, avant: null, apercu: null, saisie: null, id: `${e.rang}`, genre: 'sans_valeur',
   version_1: versionDuSite(e), version_2: versionDesRegles(e), choix_possibles: [2],
 });
@@ -353,7 +493,7 @@ function refaireParLEditeur(ctx, operations, valeursDe, refus = null) {
 function examiner(db, lot, lignes, instant, abandons, deja) {
   const ctx = contexte(db, { id: nouveauLot().id, instant, pageId: lot.page_id });
   const { entrees, differees } = parcourir(ctx, lignes, new Set(abandons.keys()));
-  const duParcours = entrees.filter((e) => e.issue === 'conflit').flatMap(conflitsDeLEntree);
+  const duParcours = entrees.filter((e) => e.issue === 'conflit').flatMap((e) => conflitsDeLEntree(e, db));
   const idsDuParcours = duParcours.map((c) => c.id);
   const sortants = new Map(abandons);
   for (const c of duParcours) if (c.genre === 'sans_valeur') sortants.set(c.rang, c);
@@ -369,8 +509,9 @@ function examiner(db, lot, lignes, instant, abandons, deja) {
       const e = entrees.find((x) => x.rang === rang);
       const champ = TABLES[d.table].colonnes[colonne];
       const image = champ.type === 'image';
+      const texte = `l’édition refuse aujourd’hui cette valeur : ${raison}`;
       conflits.push({
-        rang, table: d.table, cle: d.cle, operation: 'modifier', libelle: libelleDeLigne(d.table, e.ligne, d.cle), raison: `l’édition refuse aujourd’hui cette valeur : ${raison}`,
+        rang, table: d.table, cle: d.cle, operation: 'modifier', libelle: libelleDeLigne(d.table, e.ligne, d.cle, db), raison: texte, raison_lisible: raisonLisible(d.table, texte),
         id: `${rang}:${colonne}`, colonne, colonne_libelle: champ.libelle, genre: 'champ', version_1: valeurVue(d.table, colonne, d.final[colonne]),
         version_2: valeurVue(d.table, colonne, d.original[colonne]), avant: valeurVue(d.table, colonne, d.original[colonne]),
         apercu: colonne === 'corps_md' ? d.apercu : null, choix_possibles: image ? [2] : [2, 3], refus_1: raison, saisie: image ? null : saisieDe(champ),
@@ -408,13 +549,14 @@ function examiner(db, lot, lignes, instant, abandons, deja) {
     const rangs = parcourues.filter((e) => e.table === 'mot_cle' && e.operation === 'supprimer').map((e) => e.rang);
     for (const rang of rangs.length ? rangs : parcourues.slice(0, 1).map((e) => e.rang)) raisons.set(rang, [...(raisons.get(rang) ?? []), `après le lot : ${apres.message}`]);
   }
-  for (const [rang, rs] of raisons) sortants.set(rang, abandon(entrees.find((x) => x.rang === rang), [...new Set(rs)].join(' ; ')));
+  for (const [rang, rs] of raisons) sortants.set(rang, abandon(entrees.find((x) => x.rang === rang), [...new Set(rs)].join(' ; '), db));
   conflits = [...conflits.filter((c) => !sortants.has(c.rang)), ...sortants.values()];
   conflits.sort((a, b) => a.rang - b.rang || String(a.colonne ?? '').localeCompare(String(b.colonne ?? '')));
   const saines = entrees.filter((e) => e.issue !== 'saute' && !sortants.has(e.rang) && (e.issue !== 'conflit' || (e.genre === 'colonnes' && e.ecrites?.length)))
     .map((e) => ({
-      rang: e.rang, table: e.table, cle: e.cle, operation: e.operation, libelle: libelleDeLigne(e.table, e.ligne ?? e.apres ?? e.avant, e.cle),
-      issue: e.issue === 'conflit' ? 'reappliquee' : ISSUES[e.issue], ...(e.issue === 'conflit' ? { colonnes: e.ecrites } : {}),
+      rang: e.rang, table: e.table, cle: e.cle, operation: e.operation, libelle: libelleDeLigne(e.table, e.ligne ?? e.apres ?? e.avant, e.cle, db),
+      issue: e.issue === 'conflit' ? 'reappliquee' : ISSUES[e.issue],
+      ...(e.issue === 'conflit' ? { colonnes: e.ecrites, colonnes_libelles: e.ecrites.map((c) => libelleDeColonne(e.table, c)) } : {}),
     }));
   const empreinte = createHash('sha256').update(JSON.stringify({
     lot: lot.id, saines: saines.map((s) => [s.rang, s.issue, s.colonnes ?? null]), conflits: conflits.map((c) => [c.id, c.genre, c.version_1, c.version_2, c.choix_possibles]),
@@ -422,7 +564,7 @@ function examiner(db, lot, lignes, instant, abandons, deja) {
   return {
     public: {
       lot: lot.id, fait_le: lot.fait_le, page_id: lot.page_id, resume: lot.resume, detail: lignes[0]?.detail ?? null,
-      detail_lisible: detailLisible(lignes[0]?.detail ?? null, [...conflits, ...saines]), empreinte, saines, conflits,
+      detail_lisible: detailLisible(lignes[0]?.detail ?? null, [...conflits, ...saines], db), empreinte, saines, conflits,
     },
     interne: { idsDuParcours, abandons: sortants },
   };
@@ -520,7 +662,7 @@ export function resoudreLeConflit(db, corps, { instant, id } = {}) {
     const ctx = contexte(db, { id, instant, pageId: lot.page_id });
     const lignes = lignesEnConflit(db, lot.id);
     const { entrees, differees } = parcourir(ctx, lignes, new Set(diag.interne.abandons.keys()));
-    const ids = entrees.filter((e) => e.issue === 'conflit').flatMap(conflitsDeLEntree).map((c) => c.id);
+    const ids = entrees.filter((e) => e.issue === 'conflit').flatMap((e) => conflitsDeLEntree(e, db)).map((c) => c.id);
     if (JSON.stringify(ids) !== JSON.stringify(diag.interne.idsDuParcours)) throw erreur(409, 'Une modification de ce lot ne passe plus avec ces choix : relisez les conflits.', { lot: diag.public });
     const parRang = new Map(entrees.map((e) => [e.rang, e]));
     const brutes = ecritesSansLEditeur(entrees, differees);

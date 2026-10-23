@@ -2,6 +2,10 @@
 // modifications, montrer les lignes en conflits. 1. Pour chaque conflit, montrer les deux versions 2. Laisser le choix entre 1, 2, ou 3 pour saisir à
 // la main ce qui remplace les deux. »). Le service examine chaque lot en conflit (GET /api/mise-a-jour/conflits/, serveur/edition-conflits.mjs) ; ce
 // module en fait le HTML et le corps de la résolution (POST), le script de la page (src/scripts/mise-a-jour.mjs) le pose et l'envoie.
+//   - rien de technique : le service fournit les textes, la page les affiche (elle n'importe pas lib/edition-modele.mjs#TABLES) ; la légende d'une
+//     ligne (`libelle`, sans JSON même pour une clé composée), la raison d'un conflit (`raison_lisible`, repli sur `raison` pour une réponse
+//     ancienne), les colonnes d'une saine partielle (`colonnes_libelles`, repli sur `colonnes`), les colonnes d'une ligne entière (`libelles` de la
+//     version, repli sur le nom de la colonne) ; aucune valeur n'est montrée en JSON ;
 //   - un lot : sa date, son résumé, la raison du rejeu (`detail_lisible` du service, lue comme la légende de ses conflits ; jamais `detail`, la
 //     trace des lignes du lot, avec son id, sa clé JSON et ses noms de colonnes) ; ses modifications saines (elles repartent telles quelles dans
 //     le nouveau lot) ; puis chaque conflit : la version 1 (ce que le site de dev avait écrit) et la version 2 (ce que disent les règles livrées,
@@ -32,25 +36,31 @@ export function instantLisible(iso) {
   return Number.isNaN(d.getTime()) ? String(iso ?? '') : INSTANT.format(d);
 }
 
-/** Une valeur d'un champ, en texte : vide → « (vide) » ; image → son résumé ; liste → « a, b » ; objet → JSON. */
+/**
+ * Une valeur d'un champ, en texte, jamais en JSON : vide → « (vide) » ; image → son résumé ; liste → « a, b » ; objet → « clé : valeur, … » (les
+ * vides omis).
+ */
 export function texteDeValeur(v) {
   if (v === null || v === undefined || v === '') return '(vide)';
-  if (Array.isArray(v)) return v.length ? v.map(String).join(', ') : '(vide)';
-  if (typeof v === 'object') return v.image ? `image ${v.resume ?? v.empreinte ?? ''}`.trim() : JSON.stringify(v);
+  if (Array.isArray(v)) return v.length ? v.map(texteDeValeur).join(', ') : '(vide)';
+  if (typeof v === 'object') {
+    if (v.image) return `image ${v.resume ?? v.empreinte ?? ''}`.trim();
+    return Object.entries(v).filter(([, x]) => x !== null && x !== undefined && x !== '').map(([k, x]) => `${k} : ${texteDeValeur(x)}`).join(', ') || '(vide)';
+  }
   return String(v);
 }
 
-/** Une ligne entière, en texte : « colonne : valeur » par colonne (les vides omises). */
-const texteDeLigne = (ligne) =>
-  Object.entries(ligne ?? {}).filter(([, v]) => v !== null && v !== undefined && v !== '').map(([c, v]) => `${c} : ${texteDeValeur(v)}`).join('\n') || '(vide)';
+/** Une ligne entière, en texte : « colonne : valeur » par colonne (les vides omises), la colonne par son libellé (`libelles`) quand le service le donne. */
+const texteDeLigne = (ligne, libelles) =>
+  Object.entries(ligne ?? {}).filter(([, v]) => v !== null && v !== undefined && v !== '').map(([c, v]) => `${libelles?.[c] ?? c} : ${texteDeValeur(v)}`).join('\n') || '(vide)';
 
-/** Une version d'un conflit ({ genre, valeur } du service), en texte. */
+/** Une version d'un conflit ({ genre, valeur, libelles? } du service), en texte. */
 export function texteDeLaVersion(version) {
   switch (version?.genre) {
     case 'valeur': return texteDeValeur(version.valeur);
     case 'ligne':
-    case 'valeurs': return texteDeLigne(version.valeur);
-    case 'suppression': return `Ligne supprimée par le site de dev. Elle était :\n${texteDeLigne(version.valeur)}`;
+    case 'valeurs': return texteDeLigne(version.valeur, version.libelles);
+    case 'suppression': return `Ligne supprimée par le site de dev. Elle était :\n${texteDeLigne(version.valeur, version.libelles)}`;
     case 'absente': return 'Ligne supprimée : elle n’existe plus dans les règles livrées.';
     default: return '(inconnue)';
   }
@@ -151,6 +161,12 @@ function htmlDesVersions(c) {
   return `<div class="nv-conflit__versions">${version(1, 'Version 1 : ce que le site de dev avait écrit', v1)}${version(2, 'Version 2 : ce que disent les règles livrées', v2)}</div>${differences}${avant}`;
 }
 
+/** La raison d'un conflit sous sa légende : le texte lisible du service (`raison_lisible`), sinon la trace (`raison`, réponse ancienne). */
+export const raisonDuConflit = (c) => c?.raison_lisible ?? c?.raison ?? null;
+
+/** Les colonnes écrites d'une modification saine partielle : leurs libellés (`colonnes_libelles`), sinon leurs noms (réponse ancienne). */
+export const colonnesDeLaSaine = (s) => (s?.colonnes_libelles?.length ? s.colonnes_libelles : s?.colonnes ?? []);
+
 /** Un conflit d'un lot : ses deux versions et ses trois choix (`k` : son rang dans la page, pour les identifiants des champs). */
 export function htmlDuConflit(c, k, { listes = {} } = {}) {
   const nom = `nv-conflit-${k}`;
@@ -164,7 +180,7 @@ export function htmlDuConflit(c, k, { listes = {} } = {}) {
   const saisie = c.saisie && (c.choix_possibles ?? []).includes(3) ? `<div class="nv-conflit__saisie" data-nv-saisie hidden>${htmlDeLaSaisie(c, `${nom}-valeur`, listes)}</div>` : '';
   return `<fieldset class="nv-conflit" data-nv-conflit="${echapper(c.id)}" data-nv-nom="${nom}">
     <legend>${echapper(titre)} <span class="nv-conflit__operation">${echapper(OPERATIONS[c.operation] ?? c.operation ?? '')}</span></legend>
-    ${c.raison ? `<p class="nv-conflit__raison">${echapper(c.raison)}</p>` : ''}
+    ${raisonDuConflit(c) ? `<p class="nv-conflit__raison">${echapper(raisonDuConflit(c))}</p>` : ''}
     ${htmlDesVersions(c)}
     <ul class="nv-choix-liste">${choix}</ul>${saisie}
     <p class="nv-message nv-message--erreur" data-nv-erreur hidden></p>
@@ -175,7 +191,7 @@ export function htmlDuConflit(c, k, { listes = {} } = {}) {
 export function htmlDuLot(lot, { listes = {}, debut = 0 } = {}) {
   const saines = lot.saines?.length
     ? `<details class="nv-conflit-lot__saines"><summary>${lot.saines.length} modification${lot.saines.length > 1 ? 's' : ''} saine${lot.saines.length > 1 ? 's' : ''} de ce lot (sans conflit)</summary><ul>${lot.saines
-      .map((s) => `<li>${echapper(s.libelle)}${s.colonnes?.length ? ` (${echapper(s.colonnes.join(', '))})` : ''} <span class="nv-conflit__operation">${echapper(OPERATIONS[s.operation] ?? s.operation)}</span> : ${echapper(ISSUES_SAINES[s.issue] ?? s.issue)}</li>`).join('')}</ul></details>`
+      .map((s) => `<li>${echapper(s.libelle)}${colonnesDeLaSaine(s).length ? ` (${echapper(colonnesDeLaSaine(s).join(', '))})` : ''} <span class="nv-conflit__operation">${echapper(OPERATIONS[s.operation] ?? s.operation)}</span> : ${echapper(ISSUES_SAINES[s.issue] ?? s.issue)}</li>`).join('')}</ul></details>`
     : '<p class="nv-conflit-lot__saines">Aucune modification saine dans ce lot : seulement les conflits ci-dessous.</p>';
   const n = lot.conflits?.length ?? 0;
   return `<form class="nv-conflit-lot" data-nv-lot="${echapper(lot.lot)}" data-nv-empreinte="${echapper(lot.empreinte)}">
