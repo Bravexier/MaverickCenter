@@ -28,7 +28,7 @@ Les instructions générales (`CLAUDE.md`, agents, skills de procédure, ce docu
 | Technique | `tech-db` | La base : schéma, migrations, `data/rows` par les outils, pages du wiki (`db:sync-pages`), vues, index, intégrité, optimisation | `data/`, `tools/db/`, `docs/sql/` (hors questions des chefs et rapprochement), ses tests | opus, high |
 | Technique | `tech-sources` | Import des sources : originaux Google (R83), exports bruts, importeurs et extracteurs, rapprochement des classeurs | `sources/`, `tools/` (hors `db/`, `flux-git/`, `build-artifact.mjs`), `docs/sources.md`, `codex.md`, `fiche-auto.md`, `sql/rapprochement-classeurs.md`, ses tests | opus, high |
 | Technique | `tech-qualite` | Tests et qualité : relecture indépendante de chaque lot et des instructions, couverture, contrôles, diagnostic de la CI | `client/test/` : aides, tests transverses (`site-html`, `defilement`, `tableaux`, `infobulles`), tests manquants | opus, high |
-| Technique | `tech-publication` | Git : branche, commits, rebase, push | git seulement | sonnet, medium |
+| Technique | `tech-publication` | Git : branche, commits, rebase automatique juste après le dernier commit et résolution des conflits, push | git, et la résolution des conflits mécaniques | sonnet, medium |
 | Game Design | `gd-dons` | Classes, spécialités, dons de classe ; monstres et leurs capacités | rien (rapport) | sonnet, high |
 | Game Design | `gd-magies` | Magies, sorts, NM, NPM, coûts, résistances entre magies, invocations | rien (rapport) | sonnet, high |
 | Game Design | `gd-races` | Races, ethnies, peuples, magies innées ; combinaisons race × classe × magie | rien (rapport) | sonnet, high |
@@ -47,8 +47,8 @@ Chaque agent n'a que les outils de son rôle :
 - **Analystes.** Les membres de Game Design et de WorldBuilding ont Read, Grep, Glob, Bash (pour lire la base en lecture seule : `interroger-la-base`) et Skill. Ils n'écrivent aucun fichier.
 - **Équipe technique.** Read, Grep, Glob, Edit, Write, Bash, Skill.
   - `tech-sources` a en plus `ToolSearch` et les outils Google en lecture seule (Drive, Sheets, Docs), pour les originaux.
-  - `tech-publication` n'a que Read, Grep, Glob et Bash.
-- **Skills préchargés.** Tous les membres préchargent `format-de-rapport`. Les analystes préchargent aussi `verifier-une-source`, l'équipe technique `tests-conventions`. Quelques membres préchargent en plus le skill de leur rôle : `base-sqlite`, `revue-de-diff`, `publier-une-branche`.
+  - `tech-publication` n'a que Read, Grep, Glob, Edit (pour résoudre un conflit mécanique) et Bash.
+- **Skills préchargés.** Tous les membres préchargent `format-de-rapport`. Les analystes préchargent aussi `verifier-une-source`, l'équipe technique `tests-conventions`. Quelques membres préchargent en plus le skill de leur rôle : `base-sqlite`, `revue-de-diff`, `publier-une-branche` et `resoudre-un-conflit`.
 
 ## Choix des modèles
 
@@ -71,7 +71,7 @@ Le détail est dans le skill `circuit-des-demandes`.
    - le site et les événements des PR à `leader-technique`.
 2. **Le travail d'équipe.** Le chef cadre et ne lance que les membres concernés, en parallèle si leurs tâches sont indépendantes. Il fait circuler entre eux ce qui touche plusieurs domaines, puis rend une synthèse.
 3. **Une règle qui change le site.** `game-design` lance `leader-technique` avec sa spécification comme cahier des charges. Il vérifie ensuite que le livré dit bien la règle. À l'inverse, un lot technique qui change une règle ou le lore sans spécification passe, avant publication, au chef du domaine pour un verdict.
-4. **Côté technique.** `tech-qualite` relit chaque lot une fois, en dernier, puis `tech-publication` pousse la branche. La session principale ouvre la PR vers `dev`, la suit et la fusionne dès que la CI est verte.
+4. **Côté technique.** `tech-qualite` relit chaque lot une fois, en dernier. Juste après le dernier commit, `tech-publication` rebase sur la base et résout les conflits (ceux de données ou de sens par leur auteur), puis pousse. La session principale ouvre la PR vers `dev`, la corrige automatiquement avec le `leader-technique` (CI rouge, conflit, revue) et la fusionne dès que la CI est verte.
 5. **Les doutes.** Un doute se pose à celui qui a fait la demande. Ce que seul le propriétaire peut trancher remonte jusqu'à la session principale, qui le lui demande. La réponse est consignée (`consigner-une-decision`).
 
 Les membres d'une équipe se parlent par leur chef : il relaie, ou relance un membre avec `SendMessage`. Les chefs se lancent et se relancent librement. La profondeur est de trois niveaux sous la session principale : un chef lancé par un chef ne lance aucun chef, pas même celui qui l'a lancé, et met sa demande dans son rapport.
@@ -99,6 +99,8 @@ Un seul lot écrit à la fois dans l'arbre de travail, sur sa branche créée d'
 | `revue-sql` | Juger du SQL et la base | `tech-db`, `tech-qualite` |
 | `diagnostiquer-la-ci` | Une CI rouge | `tech-qualite`, `leader-technique` |
 | `publier-une-branche` | Branche, push, PR, fusion | `tech-publication`, session principale |
+| `resoudre-un-conflit` | Rebase automatique après le dernier commit et résolution des conflits selon leur nature | `tech-publication`, auteurs appelés sur un conflit |
+| `corriger-une-pr` | Correction automatique d'une PR ouverte jusqu'à sa fusion | session principale, `leader-technique` |
 | `relecture-db` | Relire toute la base, section par section | `leader-technique` (avec `tech-db`) |
 
 **Connaissance d'une zone du site.** Ces skills ne sont pas proposés dans le menu `/`, et chacun déclare les fichiers de sa zone (`paths`) :

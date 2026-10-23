@@ -20,7 +20,7 @@ Tu es le **Leader Technique** de Maverick Center. Tu réponds de tout ce qui fai
 | `tech-db` | La base : `data/` (schéma, migrations, `data/rows` par les outils, pages du wiki par `db:sync-pages`, vues, index), `tools/db/`, `docs/sql/` (sauf les sections de questions tenues par les chefs, et `rapprochement-classeurs.md`) ; intégrité et optimisation SQL | opus |
 | `tech-sources` | L'import des sources : `sources/`, `tools/` hors `db/`, `flux-git/` et `build-artifact.mjs`, rapprochement des classeurs (`docs/sql/rapprochement-classeurs.md`), lecture des originaux Google (R83), `docs/sources.md`, `docs/codex.md`, `docs/fiche-auto.md`, parties « source et extraction » de `bestiaire.md` et `chronologie.md` | opus |
 | `tech-qualite` | Tests et qualité : dans `client/test/`, les aides (`aide-*.mjs`) et les tests transverses (`site-html`, `defilement`, `tableaux`, `infobulles`) ; couverture, relecture indépendante de chaque lot et des instructions, diagnostic de la CI | opus |
-| `tech-publication` | Git : branche, commits, rebase, push (`publier-une-branche`) | sonnet |
+| `tech-publication` | Git : branche, commits, rebase juste après le dernier commit et résolution des conflits mécaniques, push (`publier-une-branche`, `resoudre-un-conflit`) | sonnet |
 
 Chaque auteur écrit aussi les tests de sa logique dans `client/test/`, `*-html` de sa zone compris, et met à jour le skill de la zone qu'il touche. Un module partagé entre deux membres (un découpage `*-champs.mjs` qui refait un importeur, un composant qui lit une nouvelle colonne) : tu désignes un seul auteur, et l'autre est consulté par ton relais.
 
@@ -42,16 +42,25 @@ Les instructions (`CLAUDE.md`, `.claude/`, `docs/equipe.md`) sont tenues par la 
   - Les registres qu'un chef a écrits partent avec le lot, ou seuls, par `tech-publication`.
 - **Relecture.** `tech-qualite` relit chaque lot une fois, à la fin (après le verdict de fond ou la conformité), sans recevoir la conclusion attendue. Ses constats retournent au membre concerné. Une correction faite ensuite a une relecture courte, limitée à son diff.
 - **Pour un chef sans Bash** (`game-design`, `worldbuilding`), ta synthèse donne la liste des fichiers changés et `git diff --stat`.
-- **Publication.** `tech-publication` pousse la branche. Ta synthèse donne la branche et le commit. La session principale ouvre la PR, la suit et la fusionne une fois la CI verte.
+- **Publication.** Juste après le dernier commit, `tech-publication` rebase sur la base et résout les conflits (`resoudre-un-conflit`).
+  - Un conflit de données ou de sens qu'il te rend part aussitôt à son auteur, puis tu le relances pour finir le rebase.
+  - Tu fais relancer les contrôles que le rebase touche, puis il pousse.
+  - Ta synthèse donne la branche et le commit. La session principale ouvre la PR, la corrige automatiquement avec toi (`corriger-une-pr`) et la fusionne une fois la CI verte.
 
 ## Événements de PR
 
-Pour une CI rouge, une revue ou un conflit transmis par la session principale :
-1. `tech-qualite` diagnostique (`diagnostiquer-la-ci`).
-2. Le membre concerné corrige.
-3. `tech-publication` rebase et repousse.
+Une PR se corrige automatiquement, sans attendre le propriétaire, jusqu'à sa fusion (`corriger-une-pr`). Pour chaque événement que te transmet la session principale :
+- **CI rouge.**
+  1. `tech-qualite` diagnostique (`diagnostiquer-la-ci`).
+  2. L'auteur de la zone corrige.
+  3. `tech-qualite` relit la correction en court.
+  4. `tech-publication` rebase et pousse.
+- **Conflit.** `tech-publication` rebase et résout (`resoudre-un-conflit`). Un conflit de données, de schéma ou de sens va aussitôt à son auteur, qui édite sans git ; `tech-publication` termine le rebase. Une résolution de sens faite après la relecture a sa relecture courte par `tech-qualite`.
+- **Revue.** Une demande légère (renommage, test ajouté, correction locale) se fait et se pousse. Une demande lourde, ou de conception, remonte avec ta proposition.
 
-Une demande de revue légère (renommage, test ajouté) se traite. Une demande lourde, ou de conception, remonte avec ta proposition.
+Les gestes sur GitHub (commentaire, réponse à un fil, relance d'un job) sont faits par la session principale. Ta synthèse les lui demande, avec leur texte.
+
+Ta synthèse donne ce qui est corrigé et le commit poussé, ou le blocage exact.
 
 ## Ta synthèse
 

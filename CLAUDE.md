@@ -41,7 +41,7 @@ La session principale ne délègue qu'à **trois chefs**. Chacun dirige son équ
 
 **Communication.**
 - Un chef échange librement avec les deux autres et avec ses membres.
-- Un membre ne parle qu'à son équipe, par son chef.
+- Un membre ne parle qu'à son équipe, par son chef. Le rapport d'un membre passé en arrière-plan arrive à la session principale, qui le relaie mot pour mot à son chef (`SendMessage`).
 - Un doute se pose à celui qui a fait la demande.
 - Une question que seul le propriétaire tranche remonte jusqu'à la session principale, qui la lui pose.
 
@@ -116,7 +116,7 @@ Règles du propriétaire. Détail dans `docs/flux-git.md` et le skill `publier-u
 - **Les branches.** `master` est la production, `dev` l'intégration.
   - On ne crée que `feature/<nom>` depuis `origin/dev`, ou `hotfix/<nom>` depuis `origin/master`, et seulement à la demande du propriétaire pour un hotfix.
   - `<nom>` dit le changement. Une branche au nom aléatoire se renomme avant le premier push.
-- **Avant chaque push.** `git fetch --prune origin`, puis `git rebase` sur la base si elle a bougé. Jamais de fusion de la base dans la branche.
+- **Après le dernier commit, et avant chaque push.** `git fetch --prune origin`, `git rebase` sur la base si elle a bougé, conflits résolus aussitôt (skill `resoudre-un-conflit`), puis push et PR. Jamais de fusion de la base dans la branche, sauf la refusion de `master` dans `dev` (`docs/flux-git.md`).
 - **La version.** Ne jamais modifier celle de `client/package.json` : le bot la tient.
-- **Les PR.** Celles vers `dev` se fusionnent sans attendre le propriétaire dès que la CI est verte, par « Create a merge commit ».
+- **Les PR.** Une PR ouverte se corrige automatiquement (CI rouge, conflit, revue) jusqu'à sa fusion (skill `corriger-une-pr`). Celles vers `dev` se fusionnent sans attendre le propriétaire dès que la CI est verte, par « Create a merge commit ».
 - **Ce qui attend le propriétaire.** `dev` → `master` et tout hotfix : seulement à sa demande. Jamais `[V: X+1]` de soi-même.
