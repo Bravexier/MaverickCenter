@@ -1,7 +1,6 @@
 // Maîtrises d'armes écrites en toutes lettres dans la base, lues pour la fiche de personnage (lib/fiche-regles.mjs, au build) et pour les tables de
 // règles des sources de maîtrise :
 //   - le dé d'une famille d'armes qui dépend de la Force (Pugilat : « D6 1-2 Force, D8 3-4 Force, D10 5 Force », arme_famille.note_brut) ;
-//   - les points de maîtrise qu'un don donne (« +2 points de maîtrise à répartir », « +1 maîtrise Dague », capacite.effet), en total (R32) ;
 //   - les sources de maîtrise d'arme (décisions R148 à R151) : ce que donne chaque ligne de classe_maitrise_arme et chaque don, en parts (une famille
 //     imposée, des points à choisir parmi des familles, ou la famille suivie de la maîtrise au choix de la classe) ;
 //   - les NM de sorts qu'un don fait gagner (« Gagne 4 niveaux de maîtrise (NM). », décision R154).
@@ -23,19 +22,12 @@ export function desSelonLaForce(note) {
   return paliers.length ? paliers : null;
 }
 
-// « N point(s) de maîtrise … », « N maîtrise(s) … », avec son signe ; une limite (« pas plus de 2 points de maîtrise répartis… ») n'en est pas une
+// « N point(s) de maîtrise … », « N maîtrise(s) … », avec son signe (« -1 point de maîtrise de l'autre arme choisie » de l'Épéiste en retire un) ; une
+// limite (« pas plus de 2 points de maîtrise répartis… ») n'en est pas une ; un niveau de maîtrise de sort (« 4 niveaux de maîtrise (NM) ») ne s'écrit
+// pas ainsi (lireDon)
 const POINTS_DE_MAITRISE = /([+\-−]?)\s*(\d+)\s+(?:points?\s+de\s+)?maitrises?\b/g;
 const occurrences = (t) => [...t.matchAll(POINTS_DE_MAITRISE)].filter((m) => !/plus de\s*$/.test(t.slice(0, m.index)));
 const signe = (m) => (m[1] && m[1] !== '+' ? -1 : 1);
-
-/**
- * Points de maîtrise d'arme que donne le texte d'un don : la somme de ses « N point(s) de maîtrise … » et « N maîtrise(s) … », chacun avec son signe
- * (« -1 point de maîtrise de l'autre arme choisie » de l'Épéiste en retire un). Une limite (« pas plus de 2 points de maîtrise répartis dans la même
- * catégorie ») n'est pas un gain ; un niveau de maîtrise de sort (« 4 niveaux de maîtrise (NM) ») ne s'écrit pas ainsi. 0 quand le texte n'en donne pas.
- */
-export function pointsDeMaitriseDArme(texte) {
-  return occurrences(plier(texte)).reduce((total, m) => total + signe(m) * Number(m[2]), 0);
-}
 
 /**
  * NM de sorts gagnés qu'écrit le texte d'un don (décision R154) : le N de « Gagne N niveaux de maîtrise (NM) » (Ocultomancien « Maîtrise » : « Gagne 4

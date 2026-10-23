@@ -17,7 +17,9 @@ import { ficheVide, PARTIES_DE_FICHE } from '../src/lib/fiche-format.mjs';
 import { modeleXlsx, partiesDuModele } from '../src/lib/fiche-modele.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
-import { casesDuDon, DONS, lettresDeColonne, LONGUEUR_MAX_D_UNE_CASE, MARQUEUR_DES_NOTES, ORDINATEUR } from '../src/lib/fiche-tableur-cases.mjs';
+import {
+  casesDesDes, casesDuDon, DONS, lettresDeColonne, LONGUEUR_MAX_D_UNE_CASE, MAITRISES, MARQUEUR_DES_NOTES, ORDINATEUR, REMPLISSAGE_DE_ATTEINT,
+} from '../src/lib/fiche-tableur-cases.mjs';
 import { cellulesDeLaFiche, CLES_DE_LA_NOTE, enChiffres, lireLigneDeNote, lireSortPrepare, MODE_HYPER_CENT_DEBLOQUE } from '../src/lib/fiche-tableur-export.mjs';
 import { feuilleDeGrille, ficheDuClasseur, REMARQUE_MAITRISES_CSV } from '../src/lib/fiche-tableur-import.mjs';
 import { chargerFilRouge, FIL_ROUGE } from '../src/lib/guide-fil-rouge.mjs';
@@ -49,7 +51,9 @@ function commeLaPage(fiche) {
   f.entrainements = M.entrainementsAEnregistrer(f);
   f.acquis_choix = M.acquisChoixValables(regles, f);
   f.resistance_choix = M.resistanceChoixValables(regles, f);
-  f.maitrises_armes = M.maitrisesValables(regles, f);
+  // les maîtrises d'armes (décision R148) : la famille de chaque point à choisir d'une source acquise, parmi ses options ; plus de dés par famille
+  f.maitrise_choix = M.maitriseChoixValables(regles, f);
+  delete f.maitrises_armes;
   f.armes = M.armesValables(regles, f);
   // rangés dans l'ordre ; le sort préparé garde sa marque, son jet et sa posture, les autres n'en ont pas (décision R115)
   f.sorts = M.sortsAEnregistrer(regles, f);
@@ -92,7 +96,6 @@ function canonique(fiche) {
   }
   const caracs = ordre(regles.caracteristiques.map((c) => c.id));
   const competences = ordre(regles.competences.map((c) => c.id));
-  const familles = ordre(regles.familles_armes.map((c) => c.id));
   const emplacementsArmure = ordre(regles.emplacements_armure.map((e) => e.id));
   const emplacementsAccessoire = ordre(M.EMPLACEMENTS_ACCESSOIRES.map(([e]) => e));
   const tri = {
@@ -101,7 +104,7 @@ function canonique(fiche) {
     competences: parCle('competence_id', competences),
     metier_bonus: (a, b) => a.rang - b.rang,
     capacites: (a, b) => a.capacite_id.localeCompare(b.capacite_id),
-    maitrises_armes: parCle('arme_famille_id', familles),
+    maitrise_choix: (a, b) => a.source.localeCompare(b.source) || a.rang - b.rang,
     armes: (a, b) => a.rang - b.rang,
     armure_parties: parCle('emplacement_id', emplacementsArmure),
     accessoires: parCle('emplacement', emplacementsAccessoire),
@@ -186,7 +189,8 @@ function ficheRiche() {
       { competence_id: 'connaissance', naturel: 15 }, { competence_id: 'concentration', naturel: 5 }, { competence_id: 'esquive', naturel: 10 },
     ],
     metier_bonus: [{ rang: 2, competence_id: 'magie' }],
-    maitrises_armes: [{ arme_famille_id: 'epees', des: 4 }, { arme_famille_id: 'arc', des: 2 }, { arme_famille_id: 'pugilat', des: 3 }],
+    // la maîtrise au choix du Guerrier (décision R148), que suit le retrait de l'Épéiste (R151)
+    maitrise_choix: [{ source: 'classes/guerrier#maitrise-arme:2', rang: 1, arme_famille_id: 'hache' }],
     armes: [
       {
         rang: 1, arme_id: 'ressources/armes#arme:epees:epee-longue', materiau_id: trouve('materiaux_armes', (m) => m.nom === 'Acier', 'Acier').id,
@@ -292,12 +296,15 @@ function ficheDesArmes() {
 const TUEUR = 'capacites/tueur-fletrisseur';
 const MAGE_VERT = 'capacites/mage-vert-mage-emeraude';
 const familleDArmes = (id) => regles.familles_armes.find((x) => x.id === id);
-/** Le choix d'arme fait du don `source` de la fiche : { source, rang, competence_id, valeur, arme_famille_id }. */
+/**
+ * Le choix d'arme du don `source` de la fiche (décision R152 : l'arme est la famille de la maîtrise au choix de la classe du don) : la famille posée sur
+ * cette maîtrise et la compétence choisie. { maitrise: { source, rang, arme_famille_id }, acquis: { source, rang, competence_id, valeur } }.
+ */
 function armeChoisie(f, source) {
   const c = M.acquisDesDons(regles, f).choix.find((x) => x.source === source && x.arme);
   assert.ok(c, `${source} : un choix d'arme`);
   const id = c.familles.find((x) => familleDArmes(x).competences.length > 1) ?? c.familles[0];
-  return { source, rang: c.rang, competence_id: familleDArmes(id).competences.at(-1), valeur: null, arme_famille_id: id };
+  return { maitrise: { source: c.maitrise, rang: 1, arme_famille_id: id }, acquis: { source, rang: c.rang, competence_id: familleDArmes(id).competences.at(-1), valeur: null } };
 }
 function ficheDeLArmeChoisie() {
   const f = {
@@ -310,7 +317,9 @@ function ficheDeLArmeChoisie() {
     caracteristiques: regles.caracteristiques.map((k) => ({ caracteristique_id: k.id, base: 3, croix: 0 })),
   };
   f.capacites = M.donsAChoisir(regles, f).flatMap((d) => d.groupes.map((g) => ({ capacite_id: g.options[0].id })));
-  f.acquis_choix = [armeChoisie(f, TUEUR), armeChoisie(f, MAGE_VERT)];
+  const choix = [armeChoisie(f, TUEUR), armeChoisie(f, MAGE_VERT)];
+  f.maitrise_choix = choix.map((c) => c.maitrise);
+  f.acquis_choix = choix.map((c) => c.acquis);
   return f;
 }
 
@@ -434,11 +443,11 @@ test('choix d’acquis des compétences d’arme (décisions R120, R121) : une c
   assert.ok(relu.remarques.includes('Acquis au choix de Templier (Moine) (+5 %) déduit : Arc (l\'acquis du classeur)'), relu.remarques.join('\n'));
 });
 
-test('l’arme choisie (décisions R119, R126) : la compétence et la famille d’armes de chaque choix dans la note (« Acquis au choix »), relues telles quelles, point fixe ; une famille hors de la maîtrise au choix n’est pas reprise', async () => {
+test('l’arme choisie (décisions R119, R126, R152) : la compétence de chaque choix et la famille de la maîtrise au choix (calculée, entre parenthèses) dans la note (« Acquis au choix »), relues telles quelles, point fixe ; une famille hors de la maîtrise au choix n’est pas reprise, une autre que la sienne est dite', async () => {
   const f = ficheDeLArmeChoisie();
-  assert.deepEqual(commeLaPage(f).acquis_choix, f.acquis_choix, 'deux choix d’arme faits');
+  assert.deepEqual([commeLaPage(f).acquis_choix, commeLaPage(f).maitrise_choix], [f.acquis_choix, f.maitrise_choix], 'deux choix d’arme faits');
   const r = await verifier(f, 'arme choisie');
-  assert.deepEqual(r.fiche.acquis_choix, f.acquis_choix);
+  assert.deepEqual([r.fiche.acquis_choix, r.fiche.maitrise_choix], [f.acquis_choix, f.maitrise_choix]);
   // une ligne par choix : « <don> : <compétence> (<famille d'armes>) »
   const choix = M.acquisDesDons(regles, f).choix.filter((c) => c.arme);
   const ligneDe = (c, familleId) => `${c.nom} : ${regles.competences.find((k) => k.id === c.choisi).nom} (${familleDArmes(familleId).nom})`;
@@ -452,7 +461,89 @@ test('l’arme choisie (décisions R119, R126) : la compétence et la famille d�
   const classeur = await lireClasseur(await ecrireXlsx(MODELE, { cellules, remplis: r.remplis, alignements: r.alignements, descriptionImage: 'logo', titre: f.nom }), { nom: 'essai.xlsx' });
   const relu = ficheDuClasseur(regles, classeur.feuille('Personnage'), { nomFichier: 'essai.xlsx', date: DATE, logo: LOGO, empreintePortrait: null });
   assert.ok(relu.nonRepris.includes(`Acquis au choix « ${ligneDe(mageVert, hors.id)} » : pas une option de ce don`), relu.nonRepris.join('\n'));
-  assert.deepEqual(relu.fiche.acquis_choix, f.acquis_choix.filter((x) => x.source !== MAGE_VERT));
+  // la maîtrise au choix du Mage Vert est relue (R152 : c'est elle, l'arme) : sa compétence se déduit de l'acquis écrit (R104), une remarque le dit
+  assert.deepEqual(relu.fiche.acquis_choix, f.acquis_choix);
+  const competence = regles.competences.find((k) => k.id === mageVert.choisi).nom;
+  assert.ok(relu.remarques.includes(`Acquis au choix de ${mageVert.nom} (+${mageVert.valeur} %) déduit : ${competence} (l'acquis du classeur)`), relu.remarques.join('\n'));
+  // une autre famille de la maîtrise au choix du Mage Vert, qui offre la même compétence : la famille se calcule (R152), la compétence est gardée, et
+  // l'import dit la famille écrite
+  const autre = mageVert.familles.find((x) => x !== mageVert.arme_famille_id && familleDArmes(x).competences.includes(mageVert.choisi));
+  assert.ok(autre, 'une autre famille du Mage Vert avec la même compétence');
+  const cellulesAutre = { ...r.cellules, [ORDINATEUR.note]: r.cellules[ORDINATEUR.note].replace(ligneDe(mageVert, mageVert.arme_famille_id), ligneDe(mageVert, autre)) };
+  const classeurAutre = await lireClasseur(await ecrireXlsx(MODELE, { cellules: cellulesAutre, remplis: r.remplis, alignements: r.alignements, descriptionImage: 'logo', titre: f.nom }), { nom: 'essai.xlsx' });
+  const reluAutre = ficheDuClasseur(regles, classeurAutre.feuille('Personnage'), { nomFichier: 'essai.xlsx', date: DATE, logo: LOGO, empreintePortrait: null });
+  assert.deepEqual(reluAutre.nonRepris, [`Maîtrises d'armes du classeur : « arme choisie : ${mageVert.nom} ${familleDArmes(autre).nom} » (non reprises : la fiche les calcule d’après ses choix ; décision R148)`]);
+  assert.deepEqual([reluAutre.fiche.acquis_choix, reluAutre.fiche.maitrise_choix], [f.acquis_choix, f.maitrise_choix]);
+});
+
+/**
+ * Bi-classe Guerrier (Maître d'arme) et Mercenaire (Chasseur de primes), niveau 10, et l'accessoire « Un point de maîtrise d'arme » (R54) : des choix
+ * de maîtrise de chaque genre (décision R148) — la maîtrise au choix du Guerrier, la ligne à répartir du Mercenaire (1 au plus par famille), les
+ * 5 points limités du Maître d'arme (2 au plus par famille, R150 : le 3e sur ÉPÉES dépasse, il reste), les 5 points sans limite du Chasseur de primes,
+ * l'accessoire — avec des points laissés à choisir entre deux points choisis.
+ */
+const POINT_DE_MAITRISE = regles.accessoires.find((a) => a.effets.some((e) => e.cible === 'maitrise_arme')).id;
+function ficheDesMaitrises() {
+  const f = {
+    ...ficheVide('Brennus'), race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-toundra', magie_innee_id: 'magies/magie-du-feu',
+    xp: xpDuNiveau(10), mode_classe: 'bi',
+    classes: [
+      { rang: 1, classe_id: 'classes/guerrier', specialite_id: 'classes/guerrier#specialite:maitre-darme' },
+      { rang: 2, classe_id: 'classes/mercenaire', specialite_id: 'classes/mercenaire#specialite:chasseur-de-primes' },
+    ],
+    caracteristiques: regles.caracteristiques.map((k) => ({ caracteristique_id: k.id, base: 3, croix: 0 })),
+    accessoires: [{ emplacement: 'bague-1', accessoire_effet_id: POINT_DE_MAITRISE, maudit: 0, arme_famille_id: 'arc' }],
+  };
+  f.capacites = M.donsAChoisir(regles, f).flatMap((d) => d.groupes.map((g) => ({ capacite_id: g.options[0].id })));
+  const points = (source, familles) => familles.map((x, i) => x && { source, rang: i + 1, arme_famille_id: x }).filter(Boolean);
+  f.maitrise_choix = [
+    ...points('classes/guerrier#maitrise-arme:2', ['hache']),
+    ...points('classes/mercenaire#maitrise-arme:1', ['arc', null, 'dagues']),
+    ...points('capacites/guerrier-maitre-darme', ['epees', 'epees', 'epees', null, 'arc']),
+    ...points('capacites/mercenaire-chasseur-de-primes', ['arc', 'arc', 'pugilat']),
+  ];
+  return f;
+}
+
+test('maîtrises d’armes (décisions R148 à R151) : les choix de chaque genre dans la note (« Maîtrise d’arme au choix »), les points à choisir marqués « ? », la famille de l’accessoire dans sa case ; les dés calculés dans la grille ; relus tels quels, point fixe', async () => {
+  const f = ficheDesMaitrises();
+  assert.deepEqual(canonique(f).maitrise_choix, [...f.maitrise_choix].sort((a, b) => a.source.localeCompare(b.source) || a.rang - b.rang),
+    'tous les choix sont valables, le point refusé du Maître d’arme compris (R150)');
+  const sources = M.sourcesDeMaitrise(regles, f);
+  assert.ok(sources.some((s) => s.etat === 'refus') && sources.some((s) => s.type === 'accessoire' && s.etat === 'complete'));
+  const r = await verifier(f, 'maîtrises');
+  assert.deepEqual([canonique(r.fiche).maitrise_choix, r.fiche.accessoires.map((a) => a.arme_famille_id)], [canonique(f).maitrise_choix, ['arc']]);
+  const titre = (source) => sources.find((s) => s.source === source).titre;
+  const lignes = lignesDeLaNote(r.cellules).filter((l) => l.nom === 'maitriseChoix').map((l) => l.valeur);
+  assert.deepEqual(lignes, [
+    `${titre('classes/guerrier#maitrise-arme:2')} : HACHE`,
+    `${titre('capacites/guerrier-maitre-darme')} : ÉPÉES, ÉPÉES, ÉPÉES, ?, ARC`,
+    `${titre('classes/mercenaire#maitrise-arme:1')} : ARC, ?, DAGUES`,
+    `${titre('capacites/mercenaire-chasseur-de-primes')} : ARC, ARC, PUGILAT`,
+  ]);
+  assert.deepEqual(lignes.slice(0, 2), ['Guerrier (maîtrise 2) : HACHE', 'Maître d\'arme (Guerrier) : ÉPÉES, ÉPÉES, ÉPÉES, ?, ARC']);
+  // la grille : les dés calculés (R149 : 5 au plus ; ARC 1 + 1 + 2 + l'accessoire = 5 points, 4 comptés), le 2e dé et les suivants remplis
+  for (const m of M.maitrisesParFamille(regles, f)) {
+    const ligne = MAITRISES.find((x) => x.famille === m.famille);
+    assert.deepEqual(casesDesDes(ligne).map((a) => r.remplis[a] ?? null), casesDesDes(ligne).map((_, i) => (i < m.des - 1 ? REMPLISSAGE_DE_ATTEINT : null)), m.famille);
+  }
+  assert.deepEqual(M.maitrisesParFamille(regles, f).filter((m) => m.points).map((m) => [m.famille, m.points, m.des]),
+    [['epees', 4, 5], ['dagues', 1, 2], ['hache', 1, 2], ['pugilat', 1, 2], ['arc', 5, 5]]);
+  // une ligne que la fiche ne peut pas reprendre : chaque point est dit, les autres sont gardés
+  const note = r.cellules[ORDINATEUR.note].replace('ARC, ?, DAGUES', 'ARC, ARME DE MONSTRES, DAGUES, ÉPÉES').replace('Guerrier (maîtrise 2) : HACHE', 'Guerrier (maîtrise 2) : HACHES');
+  const classeur = await lireClasseur(await ecrireXlsx(MODELE, { cellules: { ...r.cellules, [ORDINATEUR.note]: note }, remplis: r.remplis, alignements: r.alignements, descriptionImage: 'logo', titre: f.nom }), { nom: 'essai.xlsx' });
+  const relu = ficheDuClasseur(regles, classeur.feuille('Personnage'), { nomFichier: 'essai.xlsx', date: DATE, logo: LOGO, empreintePortrait: null });
+  const mercenaire = titre('classes/mercenaire#maitrise-arme:1');
+  assert.deepEqual(relu.nonRepris.slice(0, 3), [
+    `Maîtrise d'arme au choix « Guerrier (maîtrise 2) : HACHES » : « HACHES » introuvable parmi les familles d’armes`,
+    `Maîtrise d'arme au choix « ${mercenaire} : ARC, ARME DE MONSTRES, DAGUES, ÉPÉES » : ARME DE MONSTRES n’est pas proposée par ${mercenaire}`,
+    `Maîtrise d'arme au choix « ${mercenaire} : ARC, ARME DE MONSTRES, DAGUES, ÉPÉES » : ${mercenaire} n’a pas de point 4 à choisir`,
+  ]);
+  assert.deepEqual(canonique(relu.fiche).maitrise_choix, canonique(f).maitrise_choix.filter((x) => x.source !== 'classes/guerrier#maitrise-arme:2'));
+  // les dés de la grille, écrits pour la HACHE, ne sont plus ceux du calcul : dits avec les autres (la ligne de la note montre que le classeur vient d'après la refonte)
+  const desEcrits = M.maitrisesParFamille(regles, f).filter((m) => m.des > 1).map((m) => `${m.nom} ${M.notationDesDes(familleDArmes(m.famille).de, m.des)}`);
+  assert.ok(desEcrits.includes('HACHE 2D10') && desEcrits.includes('PUGILAT 2D6/2D8/2D10'), desEcrits.join(', '));
+  assert.deepEqual(relu.nonRepris.slice(3), [`Maîtrises d'armes du classeur : « ${desEcrits.join(', ')} » (non reprises : la fiche les calcule d’après ses choix ; décision R148)`]);
 });
 
 test('Drakos orange (décision R124) : la compétence (« Acquis au choix ») et la résistance (« Résistance au choix ») des autres lignes du tableau, relues telles quelles, point fixe ; l’altération d’aucune autre ligne : non reprise', async () => {
@@ -608,15 +699,22 @@ function enCsv(feuille) {
   return `${lignes.join('\r\n')}\r\n`;
 }
 
-test('par un .csv (Fichier › Télécharger) : la fiche relue, sauf les maîtrises que portaient les couleurs ; une remarque le dit', async () => {
+test('par un .csv (Fichier › Télécharger) : la fiche relue, maîtrises comprises (décision R148 : les choix sont dans la note, les dés que portaient les couleurs se calculent) ; sans choix dans la note, une remarque dit que les dés ne se lisent pas', async () => {
+  const enCsvRelu = async (fiche) => {
+    const { octets } = await allerRetour(fiche);
+    const classeur = await lireClasseur(new TextEncoder().encode(enCsv((await lireClasseur(octets)).feuille('Personnage'))), { nom: 'essai.csv' });
+    assert.equal(classeur.format, 'csv');
+    return ficheDuClasseur(regles, classeur.feuille('Personnage'), { nomFichier: 'essai.csv', date: DATE, logo: LOGO, format: classeur.format });
+  };
   const f = ficheRiche();
-  const { octets } = await allerRetour(f);
-  const classeur = await lireClasseur(new TextEncoder().encode(enCsv((await lireClasseur(octets)).feuille('Personnage'))), { nom: 'essai.csv' });
-  assert.equal(classeur.format, 'csv');
-  const r = ficheDuClasseur(regles, classeur.feuille('Personnage'), { nomFichier: 'essai.csv', date: DATE, logo: LOGO, format: classeur.format });
-  assert.ok(f.maitrises_armes.length > 0);
-  assert.deepEqual([r.nonRepris, r.remarques, r.fiche.maitrises_armes], [[], [REMARQUE_MAITRISES_CSV], []]);
-  assert.deepEqual(canonique({ ...r.fiche, maitrises_armes: f.maitrises_armes }), canonique(f));
+  assert.ok(commeLaPage(f).maitrise_choix.length > 0);
+  const r = await enCsvRelu(f);
+  assert.deepEqual([r.nonRepris, r.remarques], [[], []]);
+  assert.deepEqual(canonique(r.fiche), canonique(f));
+  // sans choix de maîtrise dans la note (un classeur d'avant la refonte, ou une fiche sans choix) : les dés d'un classeur d'avant ne seraient pas notés
+  const sansChoix = await enCsvRelu({ ...f, maitrise_choix: [] });
+  assert.deepEqual([sansChoix.nonRepris, sansChoix.remarques], [[], [REMARQUE_MAITRISES_CSV]]);
+  assert.deepEqual(canonique(sansChoix.fiche), canonique({ ...f, maitrise_choix: [] }));
 });
 
 test('portrait : la vignette à la place du logo, marquée « portrait:<empreinte> », est relue comme le portrait ; gardé quand l’empreinte est celle de la fiche ouverte', async () => {

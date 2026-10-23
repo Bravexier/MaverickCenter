@@ -1,14 +1,15 @@
-// Maîtrises d'armes écrites dans les textes de la base (lib/maitrise-arme.mjs) : le dé du Pugilat selon la Force, les points de maîtrise que donnent
-// les dons (quota de la fiche, décision R32), les sources de maîtrise d'arme lues en parts (décisions R148 à R151 : lignes de classe_maitrise_arme et
-// dons), et les NM de sorts gagnés d'un don (R154). Entrées synthétiques qui imitent le classeur, puis toute la base : les effectifs et les formes de
+// Maîtrises d'armes écrites dans les textes de la base (lib/maitrise-arme.mjs) : le dé du Pugilat selon la Force, les sources de maîtrise d'arme lues
+// en parts (décisions R148 à R151 : lignes de classe_maitrise_arme et dons ; leurs points, ceux que le texte écrit, R32), et les NM de sorts gagnés
+// d'un don (R154). Entrées synthétiques qui imitent le classeur, puis toute la base : les effectifs et les formes de
 // l'import se lisent dans son état d'import (lib/historique-site.mjs), l'état courant se contrôle par des invariants.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import {
-  FAMILLES_DES_SAUF, desSelonLaForce, famillesAuChoix, famillesDuNom, idDeSourceDeClasse, lireDon, lireLigneDeClasse, nmGagnesDuDon, pointsDeMaitriseDArme,
+  FAMILLES_DES_SAUF, desSelonLaForce, famillesAuChoix, famillesDuNom, idDeSourceDeClasse, lireDon, lireLigneDeClasse, nmGagnesDuDon,
 } from '../src/lib/maitrise-arme.mjs';
+import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const historique = historiqueSite(db);
@@ -34,35 +35,6 @@ test('dé selon la Force dans la base : chaque palier est un dé de la famille, 
       assert.equal(p.min, i === 0 ? 1 : paliers[i - 1].max + 1, `${f.id} : ${p.de} suit le palier d’avant`);
     });
   }
-});
-
-test('points de maîtrise d’un don : chaque « N point(s) de maîtrise » et « N maîtrise(s) » avec son signe ; ni une limite, ni un NM de sort', () => {
-  assert.equal(pointsDeMaitriseDArme('+7% Magie, 7% Concentration, +2 points de maîtrise à répartir, considérer comme classe magique.'), 2);
-  assert.equal(pointsDeMaitriseDArme('+2 dégâts, +1 maîtrise Dague, +6% arme légère, +5% Esquive.'), 1);
-  assert.equal(pointsDeMaitriseDArme('+2 points de maîtrise Arme de jet, +1 point de maîtrise Arme contact au choix, +8% Arme Lourdes'), 3);
-  assert.equal(pointsDeMaitriseDArme('2 points de maitrise à répartir, +10% Arme Lourde, +5% Fermeté.'), 2, 'écrit sans accent');
-  assert.equal(pointsDeMaitriseDArme("+5% Arme lourde OU légère. 2 points de maîtrise à l'épée, 1 point de maîtrise à la dague, -1 point de maîtrise de l'autre arme choisie"), 2,
-    'l’Épéiste : 2 + 1 − 1');
-  assert.equal(pointsDeMaitriseDArme("+5 points de maîtrise d'arme à répartir (Pas plus de 2 points de maîtrise répartis dans la même catégorie), Maîtrise les armures lourdes."), 5,
-    'la limite n’est pas un gain');
-  assert.equal(pointsDeMaitriseDArme('Gagne 4 niveaux de maîtrise (NM).'), 0, 'des NM de sort');
-  assert.equal(pointsDeMaitriseDArme('Le sort influé aura toujours au minimum un Niveau de Maîtrise.'), 0);
-  assert.equal(pointsDeMaitriseDArme("Permet d'additionner les dés de maîtrise de l'arme de jet avec les dés de maîtrise de l'arme cac"), 0);
-  assert.equal(pointsDeMaitriseDArme('Maîtrise les armures intermédiaires.'), 0);
-  assert.equal(pointsDeMaitriseDArme(null), 0);
-});
-
-test('points de maîtrise sur toute la base : un don qui écrit « N point(s) de maîtrise » en donne, jamais moins de 0 ; les autres n’en donnent pas', () => {
-  const plier = (t) => String(t ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
-  const dons = db.prepare('SELECT id, nature, effet FROM capacite').all();
-  let avec = 0;
-  for (const d of dons) {
-    const points = pointsDeMaitriseDArme(d.effet);
-    const ecrit = /\d+\s+(?:points?\s+de\s+)?maitrises?\b/.test(plier(d.effet));
-    if (ecrit) avec += 1;
-    assert.equal(points > 0, ecrit, `${d.id} : ${points}`);
-  }
-  assert.ok(avec > 0);
 });
 
 // ——— Sources de maîtrise d'arme (décisions R148 à R151) ———
@@ -165,6 +137,34 @@ const famillesDe = (lignes) => [...lignes].sort((a, b) => a.ordre - b.ordre).map
 const famillesActuelles = famillesDe(db.prepare('SELECT id, nom, maitrisable, categorie, ordre FROM arme_famille').all());
 const MAITRISABLES = new Set(famillesActuelles.filter((f) => f.maitrisable).map((f) => f.id));
 const parId = (lignes) => [...lignes].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+/**
+ * Les points de maîtrise d'arme qu'écrit un texte (décision R32), lus ici sans le lecteur : la somme signée de ses « N point(s) de maîtrise » et
+ * « N maîtrise(s) » (le « -1 point de maîtrise de l'autre arme choisie » de l'Épéiste en retire un), sauf une limite (« pas plus de 2 points de
+ * maîtrise répartis… ») ; un NM de sort (« 4 niveaux de maîtrise (NM) ») ne s'écrit pas ainsi.
+ */
+const ECRITURE_DE_POINTS = /([+\-−]?)\s*(\d+)\s+(?:points?\s+de\s+)?maitrises?\b/g;
+const plierLeTexte = (t) => String(texteSansBalises(t ?? '') ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[’`]/g, "'").toLowerCase();
+const pointsEcrits = (texte) => {
+  const t = plierLeTexte(texte);
+  return [...t.matchAll(ECRITURE_DE_POINTS)].filter((m) => !/plus de\s*$/.test(t.slice(0, m.index)))
+    .reduce((n, m) => n + (m[1] && m[1] !== '+' ? -1 : 1) * Number(m[2]), 0);
+};
+const pointsLus = (texte) => (lireDon(texte, famillesActuelles)?.parts ?? []).reduce((n, p) => n + p.points, 0);
+
+test('points de maîtrise d’un don (R32, R148) : la somme signée de ses parts — chaque « N point(s) de maîtrise » et « N maîtrise(s) » ; ni une limite, ni un NM de sort', () => {
+  assert.equal(pointsLus('+7% Magie, 7% Concentration, +2 points de maîtrise à répartir, considérer comme classe magique.'), 2);
+  assert.equal(pointsLus('+2 dégâts, +1 maîtrise Dague, +6% arme légère, +5% Esquive.'), 1);
+  assert.equal(pointsLus('+2 points de maîtrise Arme de jet, +1 point de maîtrise Arme contact au choix, +8% Arme Lourdes'), 3);
+  assert.equal(pointsLus('2 points de maitrise à répartir, +10% Arme Lourde, +5% Fermeté.'), 2, 'écrit sans accent');
+  assert.equal(pointsLus("+5% Arme lourde OU légère. 2 points de maîtrise à l'épée, 1 point de maîtrise à la dague, -1 point de maîtrise de l'autre arme choisie"), 2,
+    'l’Épéiste : 2 + 1 − 1');
+  assert.equal(pointsLus("+5 points de maîtrise d'arme à répartir (Pas plus de 2 points de maîtrise répartis dans la même catégorie), Maîtrise les armures lourdes."), 5,
+    'la limite n’est pas un gain');
+  for (const t of ['Gagne 4 niveaux de maîtrise (NM).', 'Le sort influé aura toujours au minimum un Niveau de Maîtrise.',
+    "Permet d'additionner les dés de maîtrise de l'arme de jet avec les dés de maîtrise de l'arme cac", 'Maîtrise les armures intermédiaires.', null]) {
+    assert.equal(lireDon(t, famillesActuelles), null, String(t));
+  }
+});
 
 test('les 66 lignes typées de classe_maitrise_arme à l’import (R148, R151) : 29 nommées sur une famille maîtrisable, 34 au choix, 3 réparties à 1 par famille', () => {
   const familles = famillesDe(historique.lignesDImport('arme_famille'));
@@ -267,12 +267,13 @@ test('dons de la base : chaque écriture se lit, autant de points que le texte e
   let lus = 0;
   for (const d of db.prepare('SELECT id, classe_id, effet FROM capacite ORDER BY id').all()) {
     const r = lireDon(d.effet, famillesActuelles);
-    assert.equal(r === null, pointsDeMaitriseDArme(d.effet) === 0 && !/\d+\s+(?:points?\s+de\s+)?ma[iî]trises?\b/i.test(d.effet ?? ''), d.id);
+    assert.equal(r === null, !/\d+\s+(?:points?\s+de\s+)?ma[iî]trises?\b/i.test(d.effet ?? ''), d.id);
     if (!r) continue;
     lus += 1;
     assert.equal(r.non_lues, undefined, d.id);
     assert.notEqual(r.forme, 'mixte', d.id);
-    assert.equal(r.parts.reduce((n, p) => n + p.points, 0), pointsDeMaitriseDArme(d.effet), `${d.id} : R32`);
+    assert.equal(r.parts.reduce((n, p) => n + p.points, 0), pointsEcrits(d.effet), `${d.id} : R32`);
+    assert.ok(pointsEcrits(d.effet) >= 0, `${d.id} : jamais moins de 0`);
     assert.ok(r.parts.filter((p) => p.genre === 'choix').length <= 1, `${d.id} : une part à choisir au plus`);
     r.parts.forEach((p, i) => {
       assert.equal(p.rang, i + 1);

@@ -40,18 +40,28 @@
 //     Aucune expression régulière ne revient sur ses pas sur une longue suite d'espaces (pas de préfixe paresseux suivi de blancs) : une case de
 //     32 767 caractères se lit en un temps proportionnel à sa longueur ;
 //   - puis la même chaîne que la page (caracteristiquesCompletes, ethnieImposee, magieAcquiseValable, classesSelonLaMagieInnee, donsValables,
-//     choixDeMetierValables, maitrisesValables) ; ce qu'elle retire est dit dans `nonRepris` ;
+//     choixDeMetierValables, maitriseChoixValables) ; ce qu'elle retire est dit dans `nonRepris` ;
+//   - les maîtrises d'armes (décisions R148, R152, R153) : les choix de chaque source se relisent dans la note (lignes « Maîtrise d'arme au choix »,
+//     lireChoixDeMaitrise), la famille de l'accessoire dans sa case ; les dés de la grille (couleurs du modèle ordinateur, « Nd » de la fiche auto) et
+//     la famille d'une arme choisie (« Acquis au choix », entre parenthèses) se calculent : ils ne sont pas relus, mais comparés au calcul ; ce qui en
+//     diffère est dit dans `nonRepris`, en une ligne au texte de la note datée de la base vivante (« Maîtrises d'armes avant la refonte : « ÉPÉES 3D10 ;
+//     arme choisie : Flétrisseur (Tueur) DAGUES » », lib/fiche-format.mjs#texteDesMaitrisesDAvant) ; un classeur d'avant la refonte ne pose aucun choix
+//     (R153), la compétence d'une arme choisie reste un choix d'acquis (R152) ;
 //   - les listes ont la forme qu'envoie la page (aEnvoyer de src/scripts/fiche.mjs) : compétences non nulles dans l'ordre des règles, sorts, inventaire et
 //     matériaux du bouclier numérotés, ceinture à son emplacement.
 // N'importe que lib/fiche-moteur.mjs, lib/fiche-format.mjs, lib/sort-maitrise.mjs et les modules du tableur (lib/fiche-tableur-cases.mjs,
 // lib/fiche-tableur-export.mjs, lib/tableur-mesure.mjs) : réservé au script de la page /fiche/ (deux scripts de page n'importent jamais le même module,
 // skill site-version-portable ; jamais lib/text.mjs, partagé par la recherche).
 
-import { ajouterAuxNotes, armureDesArmures, entrainementEnLignes, ficheVide, NOMS_DES_EMPLACEMENTS_D_ACCESSOIRE } from './fiche-format.mjs';
+import {
+  ajouterAuxNotes, armureDesArmures, entrainementEnLignes, ficheVide, maitrisesDAvant, NOMS_DES_EMPLACEMENTS_D_ACCESSOIRE, PREFIXE_DES_MAITRISES_D_AVANT,
+  texteDesMaitrisesDAvant,
+} from './fiche-format.mjs';
 import {
   acquisApresChoix, acquisApresRepartition, acquisChoixValables, acquisDesDons, armesApresChoix, resistanceChoixValables, resistancesDe, attributsDe, bonusDuMetier, caracteristiquesCompletes, caracteristiquesDe, choixDeMetierValables, classesSelonLaMagieInnee, competencesDe,
   degatsDArme, donsValables, durabiliteAEcrire, durabiliteMaxDArme, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, ethnieImposee, ethniesDeLaRace,
-  famillesMaitrisables, gainsDeNiveau, magieAcquiseValable, maitriseDArme, maitrisesValables, maitriseDesSorts, minimumDeLEmplacement, partiesApresReglage,
+  famillesMaitrisables, gainsDeNiveau, magieAcquiseValable, maitriseChoixValables, maitriseDArme, maitrisesParFamille, maitriseDesSorts, minimumDeLEmplacement,
+  partiesApresReglage, sourcesDeMaitrise,
   armureParPartie, bouclierDe, jetDuSortPrepare, partiesDeLArmure, refusMagieAcquise, soliditeDuBouclierAEcrire, sortPrepare, trouver,
 } from './fiche-moteur.mjs';
 import { coutEnUneCase } from './sort-cout.mjs';
@@ -64,14 +74,18 @@ import {
 } from './fiche-tableur-cases.mjs';
 import {
   ARMURE_COMPLETE, FLECHE, NON, OUI, SEPARATEUR_D_ACCESSOIRE, SEPARATEUR_D_ARMURE, SUITE_DE_LA_CASE, apAmDuBouclier, enChiffres, lireAccessoire, lireChoixDuMetier, lireEffetDAmelioration,
-  lireEffetDArme, lireGains, lireLigneDArmure, lireLigneDeNote, lireListe, lireNiveauDAmelioration, lireNmOfferts, lireObjet, lireSortEnSuite, lireSortPrepare, partiesDeLArme,
+  lireChoixDeMaitrise, lireEffetDArme, lireGains, lireLigneDArmure, lireLigneDeNote, lireListe, lireNiveauDAmelioration, lireNmOfferts, lireObjet, lireSortEnSuite,
+  lireSortPrepare, partiesDeLArme,
 } from './fiche-tableur-export.mjs';
 
 /** Message d'un onglet qui ne suit aucune des deux dispositions (dispositionDe). */
 export const ERREUR_DISPOSITION = 'Ce classeur ne suit ni le modèle « Fiche-de-personnage-Maverick-V15.2.2 ordinateur » ni la fiche auto V15.2.2 (onglet « Personnage »).';
 
-/** Remarque d'un .csv au modèle ordinateur sans marque de dé : les dés atteints s'y écrivent par la couleur des cases, qu'un .csv ne garde pas. */
-export const REMARQUE_MAITRISES_CSV = 'Les maîtrises d\'armes ne se lisent pas dans un .csv (les couleurs ne s\'y gardent pas) : importez le .xlsx ou le .ods.';
+/**
+ * Remarque d'un .csv au modèle ordinateur sans marque de dé ni choix de maîtrise dans la note : les dés atteints s'y écrivent par la couleur des cases,
+ * qu'un .csv ne garde pas ; ceux d'un classeur d'avant la refonte (décision R153) ne peuvent donc pas être notés.
+ */
+export const REMARQUE_MAITRISES_CSV = 'Les dés des maîtrises d\'armes ne se lisent pas dans un .csv (les couleurs ne s\'y gardent pas) : ceux d\'un classeur d\'avant la refonte ne sont pas notés ; importez le .xlsx ou le .ods pour les garder dans les notes.';
 
 /** Le Potentiel Illimité prend ses sorts dans toutes les magies (sortsPossibles de lib/fiche-moteur.mjs, même identifiant). */
 const POTENTIEL_ILLIMITE = 'magies/potentiel-illimite';
@@ -157,7 +171,7 @@ const segmentsDe = (texte) => String(texte ?? '').split(/\n| · /).map((l) => l.
 
 /**
  * La case NOTE : { marqueur (la page l'a écrite), notes (le texte avant le dernier marqueur, sans ses lignes vides de fin ; null s'il est vide), valeurs:
- * { nom: [valeur] } (lignes reconnues par lireLigneDeNote : biClasse, gains, sorts…, CLES_DE_LA_NOTE ; une seule par clé, sauf les événements, les textes de l’entraînement, les acquis au choix,
+ * { nom: [valeur] } (lignes reconnues par lireLigneDeNote : biClasse, gains, sorts…, CLES_DE_LA_NOTE ; une seule par clé, sauf les événements, les textes de l’entraînement, les maîtrises et les acquis au choix,
  * les résistances au choix et le sort préparé (un seul par fiche, mais l'import dit pourquoi le second ne l'est pas : décision R115) ;
  * accessoires : [{ emplacement, valeur }], un par emplacement), suites: Map<adresse, { valeur, ligne }> (la suite d'un texte coupé, la première par case),
  * autres: [ligne] (lignes après le marqueur que rien ne reconnaît : elles reviennent dans les notes), doubles: [ligne] (une clé déjà lue) }. Les lignes
@@ -185,7 +199,7 @@ export function lireLaNote(texte) {
     } else if (lue.nom === 'accessoire') {
       if ((valeurs.accessoires ??= []).some((a) => a.emplacement === lue.emplacement)) doubles.push(ligne);
       else valeurs.accessoires.push({ emplacement: lue.emplacement, valeur: lue.valeur });
-    } else if (['evenement', 'entrainementTexte', 'acquisChoix', 'resistanceChoix', 'sortPrepare'].includes(lue.nom)) (valeurs[lue.nom] ??= []).push(lue.valeur);
+    } else if (['evenement', 'entrainementTexte', 'maitriseChoix', 'acquisChoix', 'resistanceChoix', 'sortPrepare'].includes(lue.nom)) (valeurs[lue.nom] ??= []).push(lue.valeur);
     else if (valeurs[lue.nom]) doubles.push(ligne);
     else valeurs[lue.nom] = [lue.valeur];
   }
@@ -553,7 +567,8 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     });
   }
 
-  // ---- maîtrises d'armes
+  // ---- les dés des maîtrises d'armes, lus pour être comparés au calcul (décisions R148, R153 : ils se calculent, plus bas) : famille → dés écrits, au-delà
+  // du dé sans maîtrise ; null quand la grille ne se lit pas (un .csv sans marque)
   const maitrise = maitriseDArme(regles);
   // modèle ordinateur : un dé atteint est une case remplie ou marquée ; un fond commun à toutes les cases de dés est celui du bloc (mise en forme), pas un
   // dé atteint — sauf le gris de la page (REMPLISSAGE_DE_ATTEINT : cinq dés partout)
@@ -561,18 +576,16 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   const fonds = casesDeDes.map((a) => cellule(a)?.remplissage ?? null);
   const fondDuBloc = fonds[0] && fonds[0] !== REMPLISSAGE_DE_ATTEINT && fonds.every((x) => x === fonds[0]) ? fonds[0] : null;
   const atteint = (a) => (Boolean(cellule(a)?.remplissage) && cellule(a).remplissage !== fondDuBloc) || porteUneMarque(texte(a));
-  for (const m of MAITRISES) {
+  const desIllisibles = !auto && format === 'csv' && !casesDeDes.some((a) => porteUneMarque(texte(a)));
+  const desLus = desIllisibles ? null : new Map();
+  for (const m of desIllisibles ? [] : MAITRISES) {
     const famille = nomDe(regles.familles_armes, m.famille);
     let des;
     if (auto) des = entierLu(`${m.cote === 'gauche' ? d.maitrises.gauche : d.maitrises.droite}${m.ligne}`, `Maîtrise ${famille}`);
     else des = maitrise.desSansMaitrise + casesDesDes(m).filter(atteint).length;
-    if (des === null || des <= maitrise.desSansMaitrise) continue;
-    if (des > maitrise.desMax) perdu(`Maîtrise ${famille} : ${des} dés, ramenés à ${maitrise.desMax} (le maximum)`);
-    f.maitrises_armes.push({ arme_famille_id: m.famille, des: Math.min(des, maitrise.desMax) });
+    if (des !== null && des > maitrise.desSansMaitrise) desLus.set(m.famille, des);
   }
-  if (!auto && format === 'csv' && !casesDeDes.some((a) => porteUneMarque(texte(a)))) remarques.push(REMARQUE_MAITRISES_CSV);
-  const ordreDesFamilles = famillesMaitrisables(regles).map((x) => x.id);
-  f.maitrises_armes.sort((a, b) => ordreDesFamilles.indexOf(a.arme_famille_id) - ordreDesFamilles.indexOf(b.arme_famille_id));
+  if (desIllisibles && !notee('maitriseChoix').length) remarques.push(REMARQUE_MAITRISES_CSV);
 
   // ---- accessoires
   const proprietes = [...new Map(regles.accessoires.map((a) => [a.propriete, a.propriete_nom ?? a.propriete])).entries()];
@@ -594,7 +607,8 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
       const k = unSeul(retrouver(regles.competences.filter((x) => x.caracteristique_id === competence.cible_id), choix), quoi, choix,
         { ou: `parmi les compétences ${nomDe(regles.caracteristiques, competence.cible_id)}` });
       if (k) ligne.competence_id = k.id;
-    } else if (effet.effets.some((c) => c.cible === 'degats_famille')) {
+    } else if (effet.effets.some((c) => c.cible === 'degats_famille' || c.cible === 'maitrise_arme')) {
+      // « +5 dégâts avec une catégorie d'arme », « Un point de maîtrise d'arme » (décisions R54, R151 : sa famille se choisit, jamais ARME DE MONSTRES)
       const fam = unSeul(retrouver(famillesMaitrisables(regles), choix), quoi, choix, { ou: 'parmi les familles d’armes' });
       if (fam) ligne.arme_famille_id = fam.id;
     } else perdu(`${quoi} : « ${choix} » sans choix à faire pour cet effet`);
@@ -767,7 +781,31 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   const metierLus = f.metier_bonus;
   f.metier_bonus = choixDeMetierValables(regles, f);
   for (const c of metierLus) if (!f.metier_bonus.includes(c)) perdu(`Métier : choix « ${nomDe(regles.competences, c.competence_id)} » du rang ${c.rang} hors des options`);
-  f.maitrises_armes = maitrisesValables(regles, f);
+
+  // ---- les choix de maîtrise d'arme (décision R148), lignes « Maîtrise d'arme au choix » de la note : « <source> : <famille>, <famille>, ? »
+  // (lireChoixDeMaitrise) ; la source par son titre parmi celles de la fiche (lignes des classes prises, dons acquis), chaque famille par son bandeau
+  // parmi les options de son point ; un point que la source n'a pas, ou une famille qu'elle ne propose pas (ARME DE MONSTRES comprise, R45), n'est pas
+  // repris. La famille de l'accessoire « Un point de maîtrise d'arme » est dans sa case (« → ÉPÉES »), déjà lue.
+  const sourcesAChoisir = sourcesDeMaitrise(regles, f).filter((s) => s.type !== 'accessoire');
+  for (const ligne of notee('maitriseChoix')) {
+    const quoi = `Maîtrise d'arme au choix « ${ligne} »`;
+    const lu = lireChoixDeMaitrise(ligne);
+    const source = lu && sourcesAChoisir.find((s) => cle(s.titre) === cle(lu.titre) && !f.maitrise_choix.some((x) => x.source === s.source));
+    if (!source) {
+      perdu(`${quoi} : ${lu ? 'aucune source de maîtrise de ce nom dans les classes et les dons de la fiche' : 'illisible (une source, puis une famille par point)'}`);
+      continue;
+    }
+    const part = source.parts.find((p) => p.genre === 'choix');
+    lu.familles.forEach((nom, i) => {
+      if (nom === null) return;
+      const famille = regles.familles_armes.find((x) => cle(x.nom) === cle(nom));
+      if (!famille) perdu(`${quoi} : « ${nom} » introuvable parmi les familles d’armes`);
+      else if (!part || i >= part.points) perdu(`${quoi} : ${source.titre} n’a pas de point ${i + 1} à choisir`);
+      else if (!part.options.includes(famille.id)) perdu(`${quoi} : ${famille.nom} n’est pas proposée par ${source.titre}`);
+      else f.maitrise_choix.push({ source: source.source, rang: i + 1, arme_famille_id: famille.id });
+    });
+  }
+  f.maitrise_choix = maitriseChoixValables(regles, f);
 
   // ---- l'entraînement (décision R104) : ses compétences dans la case L42 (« Magie 2 | Concentration 10 », bonusDEntrainement) ; la case est lue ligne
   // par ligne : une ligne qui se lit ainsi en entier donne ses compétences, une autre (le texte libre d'avant, R71) une ligne de texte, puis les
@@ -788,8 +826,13 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   // ---- les choix d'acquis des dons (décision R104), lignes « Acquis au choix » de la note : « <don> : <compétence> » (« X ou Y », « pour les compétences
   // d'arme » (R120) : une de ses options), « <don> : Arc 6, Calme 4 » (« à répartir au choix »), « <don> : <compétence> (<famille d'armes>) » (l'arme
   // choisie, R119 : une famille de la maîtrise au choix de la classe, une compétence de ses armes) ; un don qui a deux choix est relu dans l'ordre de ses
-  // lignes (« choisir 2 sur les 3 » (R121) : une ligne par compétence, deux compétences différentes)
+  // lignes (« choisir 2 sur les 3 » (R121) : une ligne par compétence, deux compétences différentes). L'arme choisie (décision R152) : la famille entre
+  // parenthèses est celle de la maîtrise au choix de la classe, calculée, pas relue ; une autre (un classeur d'avant la refonte, où rien n'est encore
+  // choisi, R153) va dans `armesEcrites`, dite avec les dés ; la compétence est gardée tant que la maîtrise au choix n'est pas posée (`armesEnAttente` :
+  // la page la compte dès que la famille choisie l'offre), reprise si la famille calculée l'offre, dite sinon.
   f.acquis_choix = [];
+  const armesEcrites = [];
+  const armesEnAttente = [];
   const choixDesDons = acquisDesDons(regles, f).choix;
   const competenceNommee = (nom) => regles.competences.find((k) => cle(k.nom) === cle(nom)) ?? null;
   /** « Arme Légère (DAGUES) » d'un choix d'arme : { competence_id, arme_famille_id } quand la famille est une des siennes et la compétence une de ses armes. */
@@ -810,7 +853,13 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
       continue;
     }
     if (choix.arme) {
-      f.acquis_choix.push({ source: choix.source, rang: choix.rang, valeur: null, ...armeNommee(choix, valeur) });
+      const arme = armeNommee(choix, valeur);
+      if (arme.arme_famille_id !== choix.arme_famille_id) armesEcrites.push({ source: choix.source, arme_famille_id: arme.arme_famille_id });
+      const gardee = { source: choix.source, rang: choix.rang, competence_id: arme.competence_id, valeur: null };
+      if (!choix.arme_famille_id) armesEnAttente.push(gardee);
+      else if (!choix.options.includes(arme.competence_id)) {
+        perdu(`${quoi} : ${nomDe(regles.competences, arme.competence_id)} n’est pas une compétence de ${nomDe(regles.familles_armes, choix.arme_famille_id)}, la maîtrise au choix de ${choix.classe} (décision R152)`);
+      } else if (!choix.deduite) f.acquis_choix.push(gardee);
       continue;
     }
     if (!choix.repartition) {
@@ -937,7 +986,35 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     Object.assign(f, acquisApresChoix(f, choix.source, choix.rang, options[0]));
     remarques.push(`Acquis au choix de ${choix.nom} (+${choix.valeur} %) déduit : ${nomDe(regles.competences, options[0])} (l'acquis du classeur)`);
   }
-  f.acquis_choix = acquisChoixValables(regles, f);
+  f.acquis_choix = [...acquisChoixValables(regles, f), ...armesEnAttente];
+
+  // ---- les dés des maîtrises (décisions R148, R149) se calculent : ceux du classeur (desLus) sont comparés au calcul, comme l'AP et l'AM de la grille
+  // (R108) ; si une famille a plus de dés écrits que calculés (ce que la fiche ne garde pas), ou qu'une arme choisie écrit une autre famille que la
+  // maîtrise au choix de sa classe (R152), une ligne de `nonRepris` les dit — tous les dés écrits, comme l'ancien tableau — au texte de la note datée de
+  // la base vivante (texteDesMaitrisesDAvant) : un classeur d'avant la refonte (sans ligne « Maîtrise d'arme au choix » dans la note) « Maîtrises
+  // d'armes avant la refonte : … » (décision R153 : ses dés sont notés, aucun choix n'est posé), un autre « Maîtrises d'armes du classeur : … ». Une
+  // famille sans dé écrit a le dé sans maîtrise ; moins de dés écrits que calculés (une grille laissée vide, des familles imposées) : rien n'est perdu.
+  const desCalcules = new Map(maitrisesParFamille(regles, f).map((m) => [m.famille, m.des]));
+  const desDe = (carte, id) => carte.get(id) ?? maitrise.desSansMaitrise;
+  const autresDes = desLus !== null && MAITRISES.some((m) => desDe(desLus, m.famille) > desDe(desCalcules, m.famille));
+  if (autresDes || armesEcrites.length) {
+    const ordre = famillesMaitrisables(regles).map((x) => x.id);
+    const noms = {
+      famille: (id) => {
+        const x = trouver(regles.familles_armes, id);
+        return x ? { nom: x.nom, de: x.de ?? null, ordre: ordre.includes(id) ? ordre.indexOf(id) : ordre.length } : null;
+      },
+      don: (id) => {
+        const [don, classe] = nomDuDon(id);
+        return don ? { nom: don.nom, classe: classe?.nom ?? null } : null;
+      },
+    };
+    const ecrites = maitrisesDAvant(autresDes ? [...desLus].map(([arme_famille_id, des]) => ({ arme_famille_id, des })) : [], armesEcrites, noms);
+    const avant = !notee('maitriseChoix').length;
+    perdu(`${avant ? PREFIXE_DES_MAITRISES_D_AVANT : 'Maîtrises d\'armes du classeur'} : « ${texteDesMaitrisesDAvant(ecrites)} » (non reprises : ${avant
+      ? 'aucun choix n’est posé, les maîtrises se choisissent sur la fiche ; décision R153'
+      : 'la fiche les calcule d’après ses choix ; décision R148'})`);
+  }
   for (const { k, ecrit, calcule, ecart } of ecarts()) {
     // plus que le calcul : des points saisis que la fiche n'a plus (non repris) ; moins : la fiche en compte davantage (dons, métier…), une remarque
     if (ecart > 0) perdu(`Acquis ${k.nom} : « ${ecrit} » dans le classeur, ${calcule} calculé (l’acquis se calcule : entraînement, dons, métier, accessoires ; décision R104)`);

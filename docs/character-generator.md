@@ -342,8 +342,9 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   chaque don qui en a, `maitrise: { parts }` ; une part est `{ rang, genre: 'imposee' | 'choix' | 'suit', points (signés), famille (imposée, sinon
   null), options (familles d'une part à choisir, dans l'ordre d'`arme_famille`), limite (par famille, R150 ; null) }` ; un don de `capacite_nm_gagne`
   reçoit `nm_gagnes` (R154). Une famille non maîtrisable (R45) ou un don qui suit la maîtrise au choix d'une classe qui n'en a pas exactement une
-  (R151) arrête le build. `au_choix.familles` et `points_maitrise` restent tant que la page les lit ;
-  rien de recalculé : les seuls textes lus le sont par `lib/maitrise-arme.mjs` (points de maîtrise d'un don, paliers du Pugilat ; `test/maitrise-arme.test.mjs`
+  (R151) arrête le build. `au_choix.familles` reste (l'arme du bonus « de l'arme choisie », R152) ; plus de total de points par don (l'ancien
+  `points_maitrise` du quota de R32) ;
+  rien de recalculé : les seuls textes lus le sont par `lib/maitrise-arme.mjs` (parts de maîtrise d'un don, paliers du Pugilat ; `test/maitrise-arme.test.mjs`
   le rejoue sur toute la base) et par `lib/resistance-texte.mjs` (crans et immunités d'un don ; `test/resistance-texte.test.mjs` le rejoue sur toute la base et
   vérifie, sur les textes de l'import, l'accord des onglets avec les résistances des ethnies de la fiche auto, `ethnie_resistance`). Les balises du
   glossaire des mots-clés (« {{recharge-longue}} », `docs/content-guide.md`, « Mots-clés (glossaire) ») sont retirées de tout texte lu dans la base,
@@ -541,12 +542,15 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   suite dans la note si elle est trop longue) ; chaque ligne de texte libre est une ligne « Entraînement : … » de la note, et chaque choix d'acquis d'un don
   une ligne « Acquis au choix : <don> : <compétence> » (« … : Arc 6, Calme 4 » pour une répartition ; les deux choix du Templier, R121, deux lignes dans
   l'ordre, une compétence répétée n'est pas reprise ; un choix d'arme, R119, la famille entre parenthèses : « Flétrisseur (Tueur) : Arme Légère
-  (ÉPÉES) », relue si la famille est une de la maîtrise au choix de la classe et la compétence une de ses armes ; celui d'une armure cassée est écrit
-  comme à l'enregistrement, R157 : `acquisChoixGardes`), et chaque résistance au choix une
+  (ÉPÉES) » — la famille de la maîtrise au choix de la classe, calculée (R152), pas relue ; la compétence relue si cette famille l'offre ;
+  celui d'une armure cassée est écrit comme à l'enregistrement, R157 : `acquisChoixGardes`), et chaque choix de maîtrise d'arme (R148) une ligne « Maîtrise d'arme au choix : <source> : <famille>, <famille>, ? » avant eux (`texteDesChoixDeMaitrise`,
+  `lireChoixDeMaitrise` : le titre de la source comme sur la page, « Guerrier (maîtrise 2) », « Maître d'arme (Guerrier) », puis le bandeau de la
+  famille de chaque point dans l'ordre, « ? » pour un point pas encore choisi, jusqu'au dernier choisi ; l'accessoire « Un point de maîtrise d'arme »
+  garde sa famille dans sa case, « → ÉPÉES »), et chaque résistance au choix une
   ligne « Résistance au choix : <ligne ou don> : <altération ou magie> » (d'une ligne du tableau de la race : « Écaille draconique : Poison », R124 ; d'un
   don qui laisse une magie au choix ou tirée : « Anansi d'Arcane : Feu », « Résilience (Ocultomancien) : Glace », R137 ; relue si c'est une option du choix
   de la fiche) ; le nom et le type du modèle restent. Les dés de maîtrise
-  atteints sont remplis de gris (`REMPLISSAGE_DE_ATTEINT`), la posture du moment marquée « ✔ ». Ce qui n'a pas de case (bi-classe, caractéristique du
+  calculés (`maitrisesParFamille`, R148, R149 : 5 au plus) sont remplis de gris (`REMPLISSAGE_DE_ATTEINT`), la posture du moment marquée « ✔ ». Ce qui n'a pas de case (bi-classe, caractéristique du
   Potentiel Illimité, gains de niveau — deux totaux, R73 : « Gains de niveau : santé X, chakra Y » ; la note d'un classeur exporté avant, niveau par
   niveau, se relit sommée, le dé « les deux » sur chacun —, NM offerts de livre (« NM offerts : Boule de feu (livre 1) »), NM du MJ de la fiche (R118 :
   « NM du MJ : 2 » ; un classeur d'avant les écrit sort par sort, « Boule de feu (livre 1, MJ 1) », relus comme NM du MJ de la fiche), magie de la symbiose (R100 : « Magie de la symbiose : Glace », relue si c'est une magie du personnage), sort
@@ -603,7 +607,7 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   spécialités : la classe ; ethnie : la race…), par sa clé puis par l'ancienne graphie gardée dans l'identifiant (depuis la migration 0006, un nom
   corrigé garde son identifiant : « Démon d'Eau Noire » mène à Eaunoire, R21, migration 0012) ; rien n'est rapproché par vraisemblance. Puis la même chaîne que la
   page (caractéristiques complètes, ethnie imposée, magie acquise valable, classes selon la magie innée, dons et choix de métier valables,
-  maîtrises). Les écritures de la page (lignes de la note, objets, accessoires, armure, effet d'une arme, choix du métier) se relisent par les
+  choix de maîtrise valables, `maitriseChoixValables`). Les écritures de la page (lignes de la note, objets, accessoires, armure, effet d'une arme, choix du métier) se relisent par les
   lecteurs de `lib/fiche-tableur-export.mjs`, qui les écrit (un seul jeu de lecteurs ; la fiche auto a les siens). Ce que la fiche calcule n'est
   pas relu, sauf pour retrouver un choix que le classeur n'écrit pas, dit dans `remarques` (sauf le mode bi-classe et la spécialité tirée d'un don
   de spécialité) :
@@ -634,6 +638,15 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
     total sort de ce que donnent les niveaux atteints (« : hors du total à saisir (152 à 166), à vérifier » : `gainsDeNiveau`, la règle
     `gains_niveau`) ;
   - **NM** : une fiche auto ne dit pas lesquels viennent d'un livre ou du MJ (R26, R118) : tous comptés, et dit si cela dépasse les NM gagnés ;
+  - **maîtrises d'armes** (R148, R152, R153) : les choix se relisent dans les lignes « Maîtrise d'arme au choix » de la note (la source par son titre
+    parmi celles de la fiche, chaque famille parmi les options de son point ; un point que la source n'a pas, une famille qu'elle ne propose pas : dits),
+    la famille de l'accessoire dans sa case. Les dés de la grille (couleurs ou marques du modèle ordinateur, « Nd » de la fiche auto) se calculent : ils
+    sont comparés au calcul, comme l'AP et l'AM ; une famille qui a plus de dés écrits que calculés, ou une arme choisie écrite avec une autre famille
+    que la maîtrise au choix de sa classe, donne une ligne de `nonRepris` au texte de la note datée de la base vivante (`texteDesMaitrisesDAvant`) :
+    pour un classeur d'avant la refonte (sans ligne « Maîtrise d'arme au choix »), « Maîtrises d'armes avant la refonte : « ÉPÉES 2D10, DAGUES 3D6 ;
+    arme choisie : Flétrisseur (Tueur) DAGUES » (non reprises : aucun choix n'est posé, les maîtrises se choisissent sur la fiche ; décision R153) »,
+    sinon « Maîtrises d'armes du classeur : « … » (non reprises : la fiche les calcule d'après ses choix ; décision R148) ». Aucun choix n'est déduit
+    des dés ; la compétence d'une ancienne arme choisie est gardée comme choix d'acquis (R152) et compte dès que la maîtrise au choix posée l'offre ;
   - élément d'armure écrit par sa magie (fiche auto) : l'armure élémentaire de cette magie et de la catégorie de l'armure ; caractéristique du
     Potentiel Illimité d'après le bonus ; compétence d'un accessoire « Compétence X » de la fiche auto d'après la case « Entraînement » ; sans
     remarque, la composition d'une arme absente : le fer (R49), comme sur la page.
@@ -653,7 +666,7 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   calculé, jamais relu. Remarques encore : un maximum de solidité écrit autre que celui du site (R51) ; « Nom Armure » (AD22, toujours lu) qui ne
   nomme pas l'armure de AQ21 (ou, d'un classeur d'avant R95, ses pièces) ; un maximum de solidité de l'armure écrit autre que celui du site (R77, R95) ; lignes libres sous « Effet en
   plus » (AA13) reprises comme effet en plus de l'arme ; case relue finie par « … » sans sa suite dans la note, quand la page a dû retirer des lignes de données (sinon le « … » est celui du joueur) ; case NOTE pleine ; un `.csv` du
-  modèle ordinateur ne porte pas les couleurs des maîtrises (`REMARQUE_MAITRISES_CSV`). Le type d'un événement (colonne I, rangées 71 à 74) entre
+  modèle ordinateur sans choix de maîtrise dans la note ne porte pas les couleurs des dés, que la page ne peut donc pas noter (`REMARQUE_MAITRISES_CSV`). Le type d'un événement (colonne I, rangées 71 à 74) entre
   dans son texte, « titre (type) : texte ». Dans la note, c'est le **dernier** marqueur qui compte (des notes collées peuvent en contenir un). Le
   tout s'ajoute à la fin des notes, sous une ligne « [JJ/MM/AAAA] Import du classeur « <fichier> » : » ; pour un fichier exporté par la page, il
   n'y a rien.
@@ -674,7 +687,9 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   l'export de la fiche relue redonne les mêmes cases, pour une fiche riche (débordements et textes coupés compris, une arme abîmée et une arme cassée,
   des gains de niveau, un entraînement long sur trois lignes, coupé, sa suite dans la note), une bi-classe au Potentiel
   Illimité, les personnages fil rouge du guide et les deux fiches auto du propriétaire ; des notes trop longues reviennent raccourcies, avec toutes
-  leurs données ; par un `.csv`, tout revient sauf les maîtrises (une remarque le dit). L'aller-retour exact vaut pour le `.xlsx` ; les blancs d'une
+  leurs données ; par un `.csv`, tout revient, maîtrises comprises (les choix sont dans la note, les dés se calculent) ; une fiche des choix de
+  maîtrise de chaque genre (maîtrise au choix, ligne à répartir, dons limité et sans limite, points laissés à choisir, accessoire) revient à
+  l'identique, `maitrise_choix` compris. L'aller-retour exact vaut pour le `.xlsx` ; les blancs d'une
   case d'un `.ods` se lisent comme LibreOffice les relit (`test/tableur-lecture.test.mjs`).
 - **Modules** : `zip.mjs`, `xml-mini.mjs`, `tableur-lecture.mjs`, `tableur-ecriture.mjs`, `tableur-mesure.mjs`, `fiche-tableur-cases.mjs`,
   `fiche-tableur-export.mjs`, `fiche-tableur-import.mjs` (dans `client/src/lib/`) : purs, sans DOM ; parmi les scripts de page, seul

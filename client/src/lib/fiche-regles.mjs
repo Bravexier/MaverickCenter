@@ -19,7 +19,7 @@ import { bonusDeDegatsEcrit } from './degats-texte.mjs';
 import { bonusDeSortsEcrits, preparationEcrite } from './sort-bonus-texte.mjs';
 import { lecteurDAcquis } from './acquis-texte.mjs';
 import { chargerInvocations, tableauxDesSorts } from './bestiaire-db.mjs';
-import { FAMILLES_DES_SAUF, desSelonLaForce, famillesAuChoix, idDeSourceDeClasse, pointsDeMaitriseDArme } from './maitrise-arme.mjs';
+import { FAMILLES_DES_SAUF, desSelonLaForce, famillesAuChoix, idDeSourceDeClasse } from './maitrise-arme.mjs';
 import { ORDRE_DES_RACES, raceKind } from './race-kinds.mjs';
 import { lecteurDeResistances } from './resistance-texte.mjs';
 import {
@@ -290,9 +290,8 @@ function reglesDeLaBase(db) {
   // son don de niveau 10 dit « considérer comme classe magique » (R7) ; dons à choix rangés en groupes (v_capacite_exclusive, comme la page de la classe) ;
   // magie innée qui réserve et impose la classe (classe.magie_innee_id : l'Archimage et le Potentiel Illimité, décision R23), ou qui la ferme
   // (classe.magie_innee_exclue_id : le Mage Bleu et le Potentiel Illimité, décision R25) ; maîtrises d'armes de la classe (classe_maitrise_arme, avec
-  // leur source et leurs parts : décisions R148 à R151) ; ses dons, pour le rappel des dons débloqués (demande du propriétaire), avec les points de
-  // maîtrise que donne chacun (texte du don, lib/maitrise-arme.mjs), pour le quota de maîtrise de la fiche (décision R32), ses parts de maîtrise
-  // (`maitrise`) et ses NM de sorts gagnés (`nm_gagnes`, R154).
+  // leur source et leurs parts : décisions R148 à R151) ; ses dons, pour le rappel des dons débloqués (demande du propriétaire), avec les parts de
+  // maîtrise d'arme que donne chacun (`maitrise`, maitrise_arme_part : ses points, R32, R148) et ses NM de sorts gagnés (`nm_gagnes`, R154).
   // bonus de dégâts d'arme qu'écrit un don passif (lib/degats-texte.mjs : pastille des dégâts des armes, demande du propriétaire) ; rien sinon
   // et ses bonus de sorts (coût, dégâts, soin, portée : lib/sort-bonus-texte.mjs, décision R102)
   const degatsEcrits = (d) => {
@@ -385,7 +384,7 @@ function reglesDeLaBase(db) {
           id: d.id, nom: d.nom, nature: d.nature, niveau: d.niveau, specialite_id: d.specialite_id, type: d.type, effet: d.effet,
           // ce que la cellule de type écrit entre parenthèses (« 2 fois/combat », « 3 tours de recharge »), tel quel, comme la page de la classe
           precision: typeDeDon(d.type_brut).precision,
-          points_maitrise: pointsDeMaitriseDArme(d.effet), ...resistancesEcrites(resistancesDuTexte(d.effet)), ...degatsEcrits(d),
+          ...resistancesEcrites(resistancesDuTexte(d.effet)), ...degatsEcrits(d),
           // ses parts de maîtrise d'arme (maitrise_arme_part : décisions R148, R150, R151) et ses NM de sorts gagnés (capacite_nm_gagne : R154), quand il en a
           ...(partsDesSources.has(d.id) ? { maitrise: { parts: partsDesSources.get(d.id) } } : {}),
           ...(nmGagnes.has(d.id) ? { nm_gagnes: nmGagnes.get(d.id) } : {}),

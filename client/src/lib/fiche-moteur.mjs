@@ -1187,12 +1187,12 @@ export function actionsDesAccessoires(regles, fiche) {
 /**
  * Maîtrise d'une famille d'armes : sans maîtrise, 1 dé, et chaque point de maîtrise en ajoute un (guide « Maîtrise d'arme ») ; 4 points comptés au plus,
  * donc 5 dés (décision R149 ; liste « 1d » à « 5d » de la fiche auto V15.2.2) : les constantes maitrise_arme.des_sans_maitrise et maitrise_arme.des_max.
- * `pointsDe` (des dés aux points) ne sert plus qu'aux fiches d'avant la migration 0073 (le tableur, jusqu'à l'étape 08 de la refonte).
+ * Les dés d'une famille se calculent depuis ses sources (maitrisesParFamille) ; le tableur lit ceux d'un classeur pour les comparer au calcul.
  */
 export function maitriseDArme(regles) {
   const sans = constante(regles, 'maitrise_arme.des_sans_maitrise');
   const max = constante(regles, 'maitrise_arme.des_max');
-  return { desSansMaitrise: sans, desMax: max, pointsMax: max - sans, desDe: (points) => sans + points, pointsDe: (des) => Math.max(0, des - sans) };
+  return { desSansMaitrise: sans, desMax: max, pointsMax: max - sans };
 }
 
 /**
@@ -1201,12 +1201,6 @@ export function maitriseDArme(regles) {
  */
 export function famillesMaitrisables(regles) {
   return regles.familles_armes.filter((f) => f.maitrisable);
-}
-
-/** Les maîtrises de la fiche sur une famille qui en a (famillesMaitrisables) : une maîtrise sur ARME DE MONSTRES n'est ni montrée, ni comptée, ni enregistrée. */
-export function maitrisesValables(regles, fiche) {
-  const familles = new Set(famillesMaitrisables(regles).map((f) => f.id));
-  return (fiche.maitrises_armes ?? []).filter((l) => familles.has(l.arme_famille_id));
 }
 
 /**
@@ -1265,29 +1259,6 @@ export function donsDeRace(regles, fiche) {
     dons: (race.dons ?? []).filter(pourLEthnie),
     tableau: ligne && { titre: race.dons_tableau.titre, cellules: ligne.cellules, resistances: ligne.resistances ?? null, acquis: ligne.acquis ?? [] },
     ethnieAChoisir: parEthnie && !fiche.ethnie_id,
-  };
-}
-
-/**
- * Quota de maîtrise d'arme (décision R32 : « le cota max de maîtrise (déterminé par les classes et leurs dons choisis) ») : les maîtrises de chaque classe
- * prise (classe_maitrise_arme : « 1 maîtrise Épée », « 2 maîtrises à répartir… ») et les points de maîtrise des dons acquis (donsAcquis ; texte du don :
- * « +2 points de maîtrise à répartir »). `utilises` : les points de maîtrise répartis sur la fiche (maitriseDArme ; maitrisesValables : jamais ceux d'ARME DE
- * MONSTRES, décision R45). { total, utilises, sources: [{ nom, points }] }.
- */
-export function quotaDeMaitrise(regles, fiche) {
-  const sources = [];
-  for (const c of donsAcquis(regles, fiche)) {
-    const deLaClasse = (c.classe.maitrises ?? []).reduce((s, m) => s + m.nombre, 0);
-    if (deLaClasse) sources.push({ nom: c.classe.nom, points: deLaClasse });
-    for (const d of c.dons) if (d.points_maitrise) sources.push({ nom: d.nom, points: d.points_maitrise });
-  }
-  // accessoire « Un point de maîtrise d'arme » (décision R54)
-  for (const e of effetsDesAccessoires(regles, fiche)) if (e.cible === 'maitrise_arme' && e.valeur) sources.push({ nom: e.nom, points: e.valeur });
-  const m = maitriseDArme(regles);
-  return {
-    total: sources.reduce((s, x) => s + x.points, 0),
-    utilises: maitrisesValables(regles, fiche).reduce((s, l) => s + m.pointsDe(entier(l.des)), 0),
-    sources,
   };
 }
 

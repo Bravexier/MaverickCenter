@@ -571,9 +571,10 @@ export function descriptionDuRetrait(d) {
 
 /**
  * Le texte des maîtrises d'une fiche d'avant la refonte (descripteur de maitrisesDAvant) : « ÉPÉES 3D10, ARC 2D8 ; arme choisie : Flétrisseur (Tueur)
- * ÉPÉES » ; une partie absente est omise (pas de dés, pas d'arme choisie, la classe d'un don inconnue).
+ * ÉPÉES » ; une partie absente est omise (pas de dés, pas d'arme choisie, la classe d'un don inconnue). Le même texte dit, à l'import d'un classeur,
+ * les dés et l'arme choisie qu'il écrit et que la fiche ne reprend pas (lib/fiche-tableur-import.mjs, `nonRepris`).
  */
-const texteDesMaitrisesDAvant = (d) => {
+export const texteDesMaitrisesDAvant = (d) => {
   const armes = (d.armes ?? []).map((a) => [a.don, a.classe ? `(${a.classe})` : null, a.famille].filter(Boolean).join(' '));
   return [
     (d.familles ?? []).map((f) => `${f.nom} ${f.des}`).join(', '),

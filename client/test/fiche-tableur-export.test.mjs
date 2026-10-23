@@ -23,8 +23,8 @@ import {
   MODE_HYPER_CENT_DEBLOQUE, NON, OUI, SEPARATEUR_DE_CLE, SEPARATEUR_DE_LISTE, SEPARATEUR_EN_LIGNE, SUITE_DE_LA_CASE, TITRES_DES_POSTURES, TYPES_DE_DON,
   avertissementDeCase, avertissementDesDonnees, avertissementDesNotes, cellulesDeLaFiche, decouperEvenement, ligneDExport, ligneDeNote, lignesDAccessoire,
   lignesDArme, lignesDArmure, lireAccessoire, lireChoixDuMetier, lireEffetDAmelioration, lireEffetDArme, lireGains, lireLigneDArmure, lireLigneDeNote,
-  lireListe, lireNiveauDAmelioration, lireNmOfferts, lireObjet, lireSortEnSuite, partiesDeLArme, partiesDuMetier, texteDAmelioration, texteDObjet,
-  texteDeLaNote, texteDeSortEnSuite, texteDesGains, texteDesNmOfferts,
+  lireChoixDeMaitrise, lireListe, lireNiveauDAmelioration, lireNmOfferts, lireObjet, lireSortEnSuite, partiesDeLArme, partiesDuMetier, texteDAmelioration,
+  texteDObjet, texteDeLaNote, texteDeSortEnSuite, texteDesChoixDeMaitrise, texteDesGains, texteDesNmOfferts,
 } from '../src/lib/fiche-tableur-export.mjs';
 import { modeleXlsx } from '../src/lib/fiche-modele.mjs';
 import { coutEnUneCase } from '../src/lib/sort-cout.mjs';
@@ -122,8 +122,11 @@ function ficheRiche() {
       { competence_id: 'esquive', naturel: 10 },
     ],
     metier_bonus: [{ rang: 2, competence_id: 'magie' }],
-    maitrises_armes: [
-      { arme_famille_id: 'epees', des: 3 }, { arme_famille_id: 'dagues', des: 2 }, { arme_famille_id: 'arc', des: 5 }, { arme_famille_id: 'arme-de-monstres', des: 2 },
+    // les choix de maîtrise (décision R148) : la maîtrise au choix du Guerrier (que suit le retrait de l'Épéiste, R151), celle du Mage ; un choix sur
+    // ARME DE MONSTRES n'est pas une option (R45) : il ne compte pas
+    maitrise_choix: [
+      { source: 'classes/guerrier#maitrise-arme:2', rang: 1, arme_famille_id: 'dagues' }, { source: 'classes/mage#maitrise-arme:1', rang: 1, arme_famille_id: 'arc' },
+      { source: 'capacites/mage-mage-noir', rang: 1, arme_famille_id: 'arme-de-monstres' },
     ],
     armes: [
       {
@@ -267,14 +270,15 @@ test('fiche riche : caractéristiques (base, bonus, croix), compétences (nature
   assert.ok(concentration.accessoire > 0, 'l’accessoire « Compétence V » compte en Acquis de Concentration');
   assert.ok(competences.find((x) => x.id === 'magie').metier > 0, 'le bonus de métier choisi compte en Acquis de Magie');
   assert.equal(c[CASES_COMPETENCES.find((k) => k.id === 'esquive').total], 'N/A', 'Agilité à deux croix');
-  // maîtrises : les dés au-delà du premier, remplis ; ARME DE MONSTRES n'a pas de ligne (R45)
+  // maîtrises : les dés calculés (décisions R148, R149 : maitrisesParFamille) au-delà du premier, remplis ; ARME DE MONSTRES n'a pas de ligne (R45)
   const attendus = {};
+  const maitrises = M.maitrisesParFamille(regles, riche);
   for (const m of MAITRISES) {
-    const l = riche.maitrises_armes.find((x) => x.arme_famille_id === m.famille);
-    for (const adresse of l ? casesDesDes(m).slice(0, l.des - 1) : []) attendus[adresse] = REMPLISSAGE_DE_ATTEINT;
+    const l = maitrises.find((x) => x.famille === m.famille);
+    for (const adresse of casesDesDes(m).slice(0, l.des - 1)) attendus[adresse] = REMPLISSAGE_DE_ATTEINT;
   }
   assert.deepEqual(exportRiche.remplis, attendus);
-  assert.equal(Object.keys(attendus).length, 2 + 1 + 4);
+  assert.ok(maitrises.filter((m) => m.des > 1).length >= 3, 'des familles maîtrisées');
   for (const adresse of Object.keys(exportRiche.remplis)) assert.equal(c[adresse], undefined, `${adresse} : le « 2d »… du modèle reste écrit`);
 });
 
@@ -609,6 +613,8 @@ test('fiche riche : la note — notes du joueur, marqueur, puis ce qui n’a pas
   assert.ok(livres.length);
   assert.deepEqual(lireNmOfferts(note.valeur(K.nmOfferts)[0]), livres.map((s) => ({ nom: nomDe('sorts', s.sort_id), livre: 1, cadeau: 0 })));
   assert.deepEqual(note.valeur(K.nmMj), [String(riche.nm_mj)]);
+  // les choix de maîtrise (décision R148) : la maîtrise au choix du Guerrier et celle du Mage ; ARME DE MONSTRES n'est pas une option (R45) : pas écrite
+  assert.deepEqual(note.valeur(K.maitriseChoix), ['Guerrier (maîtrise 2) : DAGUES', 'Mage (maîtrise 1) : ARC']);
   // plus d'accessoire de la Ceinture ni d'« Autre » (décision R97) : aucun accessoire dans la note
   assert.deepEqual(CLES_DES_ACCESSOIRES_SANS_CASE, {});
   assert.ok(!note.lues.some((l) => l.nom === 'accessoire'));
@@ -632,6 +638,67 @@ test('fiche riche : la note — notes du joueur, marqueur, puis ce qui n’a pas
   const ordre = Object.values(K);
   const rangs = note.lues.filter((l) => l.nom !== 'export').map((l) => ordre.indexOf(l.cle));
   assert.deepEqual(rangs, [...rangs].sort((a, b) => a - b));
+});
+
+test('maîtrises d’armes (décisions R148, R149, R152) : la grille des dés calculés, plafonnée à 5 ; une ligne « Maîtrise d’arme au choix » par source choisie ; l’arme choisie avec la famille calculée entre parenthèses', () => {
+  // Tueur Flétrisseur et Mercenaire Chasseur de primes, niveau 10 : ÉPÉES en maîtrise au choix du Tueur et 5 fois au Chasseur de primes (6 points, 4
+  // comptés : 5 dés, R149) ; la ligne à répartir du Mercenaire, son 2e point à choisir ; « +5% de la compétence de l'arme choisie » du Flétrisseur
+  const f = {
+    ...ficheVide('Vaskar'), race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-toundra', magie_innee_id: 'magies/magie-du-feu',
+    xp: xpDuNiveau(10), mode_classe: 'bi',
+    classes: [
+      { rang: 1, classe_id: 'classes/tueur', specialite_id: 'classes/tueur#specialite:fletrisseur' },
+      { rang: 2, classe_id: 'classes/mercenaire', specialite_id: 'classes/mercenaire#specialite:chasseur-de-primes' },
+    ],
+    caracteristiques: regles.caracteristiques.map((k) => ({ caracteristique_id: k.id, base: 3, croix: 0 })),
+    maitrise_choix: [
+      { source: 'classes/tueur#maitrise-arme:1', rang: 1, arme_famille_id: 'epees' },
+      ...[1, 2, 3, 4, 5].map((rang) => ({ source: 'capacites/mercenaire-chasseur-de-primes', rang, arme_famille_id: 'epees' })),
+      { source: 'classes/mercenaire#maitrise-arme:1', rang: 1, arme_famille_id: 'arc' }, { source: 'classes/mercenaire#maitrise-arme:3', rang: 1, arme_famille_id: 'hache' },
+      { source: 'classes/mercenaire#maitrise-arme:1', rang: 3, arme_famille_id: 'hache' },
+    ],
+  };
+  const arme = M.acquisDesDons(regles, f).choix.find((x) => x.source === 'capacites/tueur-fletrisseur' && x.arme);
+  assert.ok(arme && arme.arme_famille_id === 'epees' && arme.options.length > 1, 'l’arme du Flétrisseur : la maîtrise au choix du Tueur (R152)');
+  f.acquis_choix = [{ source: arme.source, rang: arme.rang, competence_id: arme.options.at(-1), valeur: null }];
+  const e = cellulesDeLaFiche(regles, f, { date: DATE });
+  verifierLesAdresses(e);
+  // la grille : les dés du calcul, 5 au plus (ÉPÉES : 6 points, 4 comptés)
+  const maitrises = M.maitrisesParFamille(regles, f);
+  const epees = maitrises.find((m) => m.famille === 'epees');
+  assert.deepEqual([epees.points, epees.comptes, epees.excedent, epees.des], [6, 4, 2, 5]);
+  for (const m of MAITRISES) {
+    const l = maitrises.find((x) => x.famille === m.famille);
+    assert.deepEqual(casesDesDes(m).map((a) => e.remplis[a] ?? null), casesDesDes(m).map((_, i) => (i < l.des - 1 ? REMPLISSAGE_DE_ATTEINT : null)), m.famille);
+  }
+  assert.deepEqual(casesDesDes(MAITRISES.find((m) => m.famille === 'epees')).map((a) => e.remplis[a]), Array(4).fill(REMPLISSAGE_DE_ATTEINT), 'le 5e dé, pas au-delà');
+  // la note : une ligne par source qui a un point choisi, dans l'ordre des sources (classe 1, ses lignes puis ses dons ; classe 2) ; un point sans famille avant un point choisi : « ? » ; un choix sur
+  // une ligne que la classe n'a pas (« maitrise-arme:3 ») n'est pas valable : pas écrit
+  const note = lireLaNote(e.cellules[ORDINATEUR.note]);
+  assert.deepEqual(note.valeur(CLES_DE_LA_NOTE.maitriseChoix), [
+    'Tueur (maîtrise 1) : ÉPÉES', 'Mercenaire (maîtrise 1) : ARC, ?, HACHE', 'Chasseur de primes (Mercenaire) : ÉPÉES, ÉPÉES, ÉPÉES, ÉPÉES, ÉPÉES',
+  ]);
+  // l'arme choisie (R152) : la compétence, puis la famille de la maîtrise au choix du Tueur, calculée, entre parenthèses
+  assert.deepEqual(note.valeur(CLES_DE_LA_NOTE.acquisChoix), [`${arme.nom} : ${nomDe('competences', arme.options.at(-1))} (ÉPÉES)`]);
+  // les choix de maîtrise avant les acquis au choix (l'ordre de CLES_DE_LA_NOTE)
+  const ordre = Object.values(CLES_DE_LA_NOTE);
+  assert.ok(ordre.indexOf(CLES_DE_LA_NOTE.maitriseChoix) < ordre.indexOf(CLES_DE_LA_NOTE.acquisChoix));
+  // sans choix de maîtrise : la famille de l'arme choisie attend (R152), la ligne n'a pas de parenthèses ; la grille, les familles imposées seules
+  const sans = cellulesDeLaFiche(regles, { ...f, maitrise_choix: [] }, { date: DATE });
+  assert.deepEqual(lireLaNote(sans.cellules[ORDINATEUR.note]).valeur(CLES_DE_LA_NOTE.maitriseChoix), []);
+  assert.deepEqual(lireLaNote(sans.cellules[ORDINATEUR.note]).valeur(CLES_DE_LA_NOTE.acquisChoix), []);
+  assert.deepEqual(sans.remplis, {});
+  // l'écriture et la lecture d'une ligne
+  assert.deepEqual(lireChoixDeMaitrise('Mercenaire (maîtrise 1) : ARC, ?, HACHE'), { titre: 'Mercenaire (maîtrise 1)', familles: ['ARC', null, 'HACHE'] });
+  assert.deepEqual(lireChoixDeMaitrise('Maître d\'arme (Guerrier) : ÉPÉES'), { titre: 'Maître d\'arme (Guerrier)', familles: ['ÉPÉES'] });
+  assert.equal(lireChoixDeMaitrise('Mercenaire (maîtrise 1) : ?, ?'), null);
+  assert.equal(lireChoixDeMaitrise('sans deux-points'), null);
+  const sources = M.sourcesDeMaitrise(regles, f);
+  for (const s of sources) {
+    const t = texteDesChoixDeMaitrise(regles, s);
+    if (t) assert.equal(lireChoixDeMaitrise(t).titre, s.titre, s.source);
+  }
+  assert.equal(texteDesChoixDeMaitrise(regles, sources.find((s) => s.source === 'classes/tueur#maitrise-arme:1')), 'Tueur (maîtrise 1) : ÉPÉES');
 });
 
 test('textes trop longs pour leur case (zones du modèle) : la case en garde le début ; seule la part relue a une suite dans la note, avant les informations', async () => {

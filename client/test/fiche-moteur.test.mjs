@@ -12,7 +12,7 @@ import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import {
   ajusterValeurDuMoment, alignementDe, artisanatDe, attributsDe, bonusDuMetier, borner, choisirObjetDeMetier, choixDeMetierValables, inventaireSelonLeMetier,
-  objetChoisi, objetDInventaire, objetsDuMetier, deDeLaFamille, donsAcquis, donsDeRace, famillesMaitrisables, maitriseChoixValables, maitrisesParFamille, quotaDeMaitrise, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, classeImposee, lignesDeSorts, magieAcquiseValable, nmDuSort,
+  objetChoisi, objetDInventaire, objetsDuMetier, deDeLaFamille, donsAcquis, donsDeRace, compteurDeMaitrise, famillesMaitrisables, maitriseChoixValables, maitrisesParFamille, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, classeImposee, lignesDeSorts, magieAcquiseValable, nmDuSort,
   bornesDuNm, livreAuPlafond, sortAuNm, sortAvecLivre, sortPourUnLivre,
   progressionXp, classeMagique, classesPermises, classesSelonLaMagieInnee,
   competencesDe, donsAChoisir, donsValables, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, magiesInneesPermises, maitriseDesSorts, niveauGlobal,
@@ -307,7 +307,6 @@ test('décision R23 : choisir le Potentiel Illimité met l’Archimage en classe
 test('maîtrise d’arme : 1 dé sans maîtrise, un de plus par point, 4 points comptés au plus (5 dés, R149) ; calculée, comme v_personnage_maitrise_arme (R148)', () => {
   const m = maitriseDArme(regles);
   assert.deepEqual({ desSansMaitrise: m.desSansMaitrise, desMax: m.desMax, pointsMax: m.pointsMax }, { desSansMaitrise: 1, desMax: 5, pointsMax: 4 });
-  assert.deepEqual([0, 1, 2, 3, 4].map(m.desDe), [1, 2, 3, 4, 5]);
   // Guerrier : ÉPÉES (sa ligne), HACHE (sa maîtrise au choix) ; rien n'est enregistré que le choix
   const fiche = ficheConforme();
   const parFamille = maitrisesParFamille(regles, fiche);
@@ -666,36 +665,36 @@ test('dé de la famille d’armes : le Pugilat selon la Force (« D6 1-2 Force, 
   for (const f of regles.familles_armes.filter((x) => !x.de_selon_force)) assert.deepEqual(deDeLaFamille(regles, ficheConforme(), f), { de: f.de, force: null }, f.id);
 });
 
-test('décision R32 : quota de maîtrise = maîtrises des classes prises + points des dons acquis (classe, spécialité au niveau, dons à choix choisis)', () => {
+test('décisions R32, R148 : les points de maîtrise = ceux des classes prises + ceux des dons acquis (classe, spécialité au niveau, dons à choix choisis) ; le compteur « N points · M à choisir »', () => {
   const classe = (id) => regles.classes.find((c) => c.id === id);
   const deLaClasse = (id) => classe(id).maitrises.reduce((s, m) => s + m.nombre, 0);
+  const duDon = (d) => (d.maitrise?.parts ?? []).reduce((s, p) => s + p.points, 0);
   const xp = (niveau) => regles.niveaux.find((n) => n.niveau === niveau).xp_min;
+  const points = (f) => compteurDeMaitrise(regles, f).points;
   assert.ok(deLaClasse('classes/guerrier') > 0);
-  // niveau 1 : les maîtrises du Guerrier, rien de réparti
-  const debut = quotaDeMaitrise(regles, ficheConforme());
-  assert.deepEqual(debut, { total: deLaClasse('classes/guerrier'), utilises: 0, sources: [{ nom: 'Guerrier', points: deLaClasse('classes/guerrier') }] });
-  assert.deepEqual(quotaDeMaitrise(regles, ficheVide()), { total: 0, utilises: 0, sources: [] }, 'sans classe');
-  // les points répartis sur la fiche
-  assert.equal(quotaDeMaitrise(regles, ficheConforme({ maitrises_armes: [{ arme_famille_id: 'epees', des: 3 }, { arme_famille_id: 'dagues', des: 2 }] })).utilises, 3);
-  // la spécialité au niveau de classe 10 : l'Épéiste (« 2 points de maîtrise à l'épée, 1 point de maîtrise à la dague, -1 point… »)
+  // niveau 1 : les maîtrises du Guerrier, sa maîtrise au choix posée (ficheConforme : HACHE) ; à choisir sans elle
+  assert.deepEqual(compteurDeMaitrise(regles, ficheConforme()), { points: deLaClasse('classes/guerrier'), aChoisir: 0, refus: 0 });
+  assert.deepEqual(compteurDeMaitrise(regles, ficheConforme({ maitrise_choix: [] })), { points: deLaClasse('classes/guerrier'), aChoisir: 1, refus: 0 });
+  assert.deepEqual(compteurDeMaitrise(regles, ficheVide()), { points: 0, aChoisir: 0, refus: 0 }, 'sans classe');
+  // la spécialité au niveau de classe 10 : l'Épéiste (« 2 points de maîtrise à l'épée, 1 point de maîtrise à la dague, -1 point… » : 2, R151)
   const epeiste = classe('classes/guerrier').dons.find((d) => d.id === 'capacites/guerrier-epeiste');
-  assert.deepEqual({ nature: epeiste.nature, niveau: epeiste.niveau, points: epeiste.points_maitrise }, { nature: 'specialite', niveau: 10, points: 2 });
+  assert.deepEqual({ nature: epeiste.nature, niveau: epeiste.niveau, points: duDon(epeiste) }, { nature: 'specialite', niveau: 10, points: 2 });
   const guerrier10 = (specialite_id) => ficheConforme({ xp: xp(5), classes: [{ rang: 1, classe_id: 'classes/guerrier', specialite_id }] });
-  assert.equal(quotaDeMaitrise(regles, guerrier10('classes/guerrier#specialite:epeiste')).total, deLaClasse('classes/guerrier') + 2);
-  assert.equal(quotaDeMaitrise(regles, guerrier10(null)).total, deLaClasse('classes/guerrier'), 'sans spécialité');
+  assert.equal(points(guerrier10('classes/guerrier#specialite:epeiste')), deLaClasse('classes/guerrier') + 2);
+  assert.equal(points(guerrier10(null)), deLaClasse('classes/guerrier'), 'sans spécialité');
   // deux classes : les maîtrises de chacune ; en mono-classe, la seconde ne compte qu'une fois prise (niveau global 11, décision R2)
   const deux = [{ rang: 1, classe_id: 'classes/guerrier', specialite_id: null }, { rang: 2, classe_id: 'classes/mage', specialite_id: null }];
-  assert.equal(quotaDeMaitrise(regles, ficheConforme({ mode_classe: 'bi', classes: deux })).total, deLaClasse('classes/guerrier') + deLaClasse('classes/mage'));
-  assert.equal(quotaDeMaitrise(regles, ficheConforme({ xp: xp(10), classes: deux })).total, deLaClasse('classes/guerrier'), 'mono-classe, niveau 10 : pas encore de seconde classe');
-  assert.equal(quotaDeMaitrise(regles, ficheConforme({ xp: xp(11), classes: deux })).total, deLaClasse('classes/guerrier') + deLaClasse('classes/mage'));
+  assert.equal(points(ficheConforme({ mode_classe: 'bi', classes: deux })), deLaClasse('classes/guerrier') + deLaClasse('classes/mage'));
+  assert.equal(points(ficheConforme({ xp: xp(10), classes: deux })), deLaClasse('classes/guerrier'), 'mono-classe, niveau 10 : pas encore de seconde classe');
+  assert.equal(points(ficheConforme({ xp: xp(11), classes: deux })), deLaClasse('classes/guerrier') + deLaClasse('classes/mage'));
   // un don à choix : seulement choisi (Archimage, niveau de classe 10 : « +1 point de maîtrise d'arme de contact »)
-  const archimage = (capacites) => ficheConforme({ xp: xp(5), magie_innee_id: 'magies/potentiel-illimite', classes: [{ rang: 1, classe_id: 'classes/archimage', specialite_id: null }], capacites });
-  assert.equal(quotaDeMaitrise(regles, archimage([])).total, deLaClasse('classes/archimage'));
-  assert.equal(quotaDeMaitrise(regles, archimage([{ capacite_id: 'capacites/archimage-elementaliste' }])).total, deLaClasse('classes/archimage') + 1);
-  assert.equal(quotaDeMaitrise(regles, { ...archimage([{ capacite_id: 'capacites/archimage-elementaliste' }]), xp: xp(4) }).total, deLaClasse('classes/archimage'), 'pas avant son niveau');
-  // chaque classe a ses maîtrises ; chaque don qui en donne est d'une classe, avec ses points
+  const archimage = (capacites) => ficheConforme({ xp: xp(5), magie_innee_id: 'magies/potentiel-illimite', classes: [{ rang: 1, classe_id: 'classes/archimage', specialite_id: null }], capacites, maitrise_choix: [] });
+  assert.equal(points(archimage([])), deLaClasse('classes/archimage'));
+  assert.equal(points(archimage([{ capacite_id: 'capacites/archimage-elementaliste' }])), deLaClasse('classes/archimage') + 1);
+  assert.equal(points({ ...archimage([{ capacite_id: 'capacites/archimage-elementaliste' }]), xp: xp(4) }), deLaClasse('classes/archimage'), 'pas avant son niveau');
+  // chaque classe a ses maîtrises ; chaque don qui en donne est d'une classe, avec ses points (un retrait seulement dans une part qui suit, R151)
   assert.ok(regles.classes.every((c) => c.maitrises.length > 0 && c.maitrises.every((m) => m.nombre > 0 && m.brut)));
-  assert.ok(regles.classes.every((c) => c.dons.every((d) => d.points_maitrise >= 0 && ['classe', 'specialite', 'choix'].includes(d.nature))));
+  assert.ok(regles.classes.every((c) => c.dons.every((d) => duDon(d) >= 0 && ['classe', 'specialite', 'choix'].includes(d.nature))));
 });
 
 test('boutons + et − des valeurs du moment (demande du propriétaire) : la valeur affichée plus ou moins le nombre saisi, bornée comme le curseur', () => {

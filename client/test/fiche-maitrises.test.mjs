@@ -432,6 +432,10 @@ test('décisions R148, R152, R153, R154 : la page (src/scripts/fiche.mjs, lue co
   // plus de curseurs, de quota ni de dés saisis par famille (R148) : les sources, leurs choix, le tableau calculé, le compteur
   assert.doesNotMatch(script, /quotaDeMaitrise|maitrisesValables|pointsDe\(|desDe\(|acquisApresChoixDArme/);
   assert.equal(M.acquisApresChoixDArme, undefined, 'R152 : plus de choix d’arme dans les acquis, la fonction est retirée');
+  // le quota (R32) et les dés saisis par famille d'avant la refonte : retirés du moteur (plus aucun lecteur, ni la page ni le tableur)
+  assert.deepEqual([M.quotaDeMaitrise, M.maitrisesValables], [undefined, undefined]);
+  assert.deepEqual(Object.keys(M.maitriseDArme(regles)).sort(), ['desMax', 'desSansMaitrise', 'pointsMax']);
+  assert.ok(regles.classes.every((c) => c.dons.every((d) => !('points_maitrise' in d))), 'les règles ne portent plus le total de points d’un don');
   assert.doesNotMatch(bloc, /type: 'range'|Points du MJ|à confirmer/);
   assert.match(bloc, /presentationDuCompteurDeMaitrise\(calcul\.maitrises\.compteur, sources\)/);
   assert.match(bloc, /carteDeMaitrise\(regles, s\)/);

@@ -20,7 +20,7 @@ import { PAGE_DE_L_ENTRAINEMENT, aideDeLEntrainement, chargerReglesDeFiche, limi
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { porteeDeLArme } from '../src/lib/arme-champs.mjs';
-import { desSelonLaForce, pointsDeMaitriseDArme } from '../src/lib/maitrise-arme.mjs';
+import { desSelonLaForce } from '../src/lib/maitrise-arme.mjs';
 import { ORDRE_DES_RACES } from '../src/lib/race-kinds.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
@@ -111,10 +111,11 @@ test('maîtrises d’armes (décision R32) : celles de chaque classe (classe_mai
   for (const c of regles.classes) {
     for (const d of c.dons) {
       assert.equal(capacites.get(d.id).classe_id, c.id, `${d.id} : un don de ${c.id}`);
-      assert.equal(d.points_maitrise, pointsDeMaitriseDArme(capacites.get(d.id).effet), d.id);
+      // plus de total de points par don (décision R148 : ses parts, `maitrise`, test suivant ; le quota de R32 n'est plus calculé)
+      assert.ok(!('points_maitrise' in d), d.id);
     }
   }
-  assert.ok(regles.classes.some((c) => c.dons.some((d) => d.points_maitrise)), 'des dons donnent des points de maîtrise');
+  assert.ok(regles.classes.some((c) => c.dons.some((d) => d.maitrise)), 'des dons donnent des points de maîtrise');
   const notes = new Map(db.prepare('SELECT id, note_brut FROM arme_famille').all().map((r) => [r.id, r.note_brut]));
   for (const f of regles.familles_armes) assert.deepEqual(f.de_selon_force, desSelonLaForce(notes.get(f.id)), `${f.id} : les paliers de sa note`);
   assert.equal(regles.constantes['alignement.ecart_axe'], 5);
@@ -146,7 +147,7 @@ test('sources de maîtrise d’arme (décisions R148, R151, R154) : les parts de
   const epeiste = don('capacites/guerrier-epeiste');
   if (epeiste) {
     assert.deepEqual(epeiste.maitrise, { parts: [part(1, 'imposee', 2, { famille: 'epees' }), part(2, 'imposee', 1, { famille: 'dagues' }), part(3, 'suit', -1)] });
-    assert.equal(epeiste.points_maitrise, 2);
+    assert.equal(epeiste.maitrise.parts.reduce((n, p) => n + p.points, 0), 2);
   }
   // le Ménestrel : un point parmi les 4 familles à distance seulement (R151, R127)
   const menestrel = don('capacites/barde-menestrel');

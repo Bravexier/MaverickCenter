@@ -17,7 +17,7 @@ import { attributsDe, competencesDe, degatsDArme, maitriseDArme, trouver } from 
 import { valeurAuNm } from '../src/lib/sort-maitrise.mjs';
 import {
   AUTO, CASES_CARACTERISTIQUES, CASES_COMPETENCES, casesDesDes, casesDuDon, cle, DONS, LONGUEUR_MAX_D_UNE_CASE, MAITRISES, MARQUEUR_DES_NOTES,
-  CASES_AP_AM_DE_L_ARMURE, MODELE_DE_LA_SOLIDITE, ORDINATEUR, TITRE_DE_L_INVENTAIRE,
+  CASES_AP_AM_DE_L_ARMURE, MODELE_DE_LA_SOLIDITE, ORDINATEUR, REMPLISSAGE_DE_ATTEINT, TITRE_DE_L_INVENTAIRE,
 } from '../src/lib/fiche-tableur-cases.mjs';
 import {
   bonusDEntrainement, bonusDuMetierEcrit, ERREUR_DISPOSITION, estCoche, feuilleDeGrille, ficheDuClasseur, gainsDesMaximums, lireLaNote, nombreDe, paireDe,
@@ -116,6 +116,15 @@ const effetDAccessoire = (proprieteNom, libelle) => {
 };
 const sortDe = (nomDeMagie, nom) => parNom(regles.sorts.filter((s) => s.magie_id === magie(nomDeMagie).id), nom);
 const amelioration = (cible, niveau) => regles.ameliorations.find((a) => a.cible === cible && a.niveau === niveau);
+/**
+ * La ligne de nonRepris des maîtrises d'un classeur d'avant la refonte (décision R153 : notées, pas reprises), au texte de la note datée de la base
+ * vivante : les dés écrits [[famille, dés]] dans l'ordre des familles, puis les armes choisies écrites (« arme choisie : Flétrisseur (Tueur) DAGUES »).
+ */
+const ligneDAvant = (des, armes = '') => {
+  const famille = (id) => M.trouver(regles.familles_armes, id);
+  const texte = [des.map(([id, n]) => `${famille(id).nom} ${M.notationDesDes(famille(id).de, n)}`).join(', '), armes].filter(Boolean).join(' ; ');
+  return `Maîtrises d'armes avant la refonte : « ${texte} » (non reprises : aucun choix n’est posé, les maîtrises se choisissent sur la fiche ; décision R153)`;
+};
 
 // ------------------------------------------------------------------ lecture des cases
 
@@ -332,11 +341,17 @@ function verifierLeCommun(values, r) {
     // le total du classeur compte l'acquis écrit ; le site, l'acquis calculé (R104)
     if (k.score !== null) assert.equal(k.score, Number(v(c.total)) - Number(v(c.acquis) || 0) + k.acquis, `score ${c.id}`);
   }
-  // maîtrises : « Nd » → N dés, seules celles qui ajoutent un dé
-  const attendues = MAITRISES.map((m) => ({ arme_famille_id: m.famille, des: Number(v(`${m.cote === 'gauche' ? 'AI' : 'AN'}${m.ligne}`).replace('d', '')) }))
-    .filter((m) => m.des > maitriseDArme(regles).desSansMaitrise);
-  assert.deepEqual([...f.maitrises_armes].sort((a, b) => a.arme_famille_id.localeCompare(b.arme_famille_id)),
-    attendues.sort((a, b) => a.arme_famille_id.localeCompare(b.arme_famille_id)));
+  // maîtrises (décision R153) : aucun choix posé ; les dés « Nd » de la fiche auto, plus que ceux du calcul (les familles imposées), sont notés en une
+  // ligne de nonRepris, tous, dans l'ordre des familles, au texte de la note datée de la base vivante
+  assert.deepEqual(f.maitrise_choix, []);
+  const ecritsDes = new Map(MAITRISES.map((m) => [m.famille, Number(v(`${m.cote === 'gauche' ? 'AI' : 'AN'}${m.ligne}`).replace('d', ''))]));
+  const calcules = M.maitrisesParFamille(regles, f);
+  const notees = calcules.filter((m) => ecritsDes.get(m.famille) > maitriseDArme(regles).desSansMaitrise)
+    .map((m) => `${m.nom} ${M.notationDesDes(M.trouver(regles.familles_armes, m.famille).de, ecritsDes.get(m.famille))}`);
+  const ligne = `Maîtrises d'armes avant la refonte : « ${notees.join(', ')} » (non reprises : aucun choix n’est posé, les maîtrises se choisissent sur la fiche ; décision R153)`;
+  const enTrop = calcules.some((m) => ecritsDes.get(m.famille) > m.des);
+  assert.ok(notees.length && enTrop, 'la fiche auto a des dés que le calcul sans choix ne donne pas');
+  assert.deepEqual(r.nonRepris.filter((x) => x.startsWith('Maîtrises d')), [ligne]);
   // sorts : chaque ligne écrite, retrouvée parmi les sorts des magies du personnage, avec son NM (rien d'offert : la fiche auto ne le dit pas) ; un sort
   // que les règles n'ont plus part dans nonRepris (verifierNonRepris)
   const magies = [f.magie_innee_id, f.magie_acquise_id].filter(Boolean);
@@ -563,7 +578,8 @@ test('modèle ordinateur vierge : une fiche vide, ses libellés figés ne sont p
   assert.equal(r.disposition, 'ordinateur');
   assert.deepEqual([r.nonRepris, r.remarques, r.image, r.portraitGarde], [[], [], null, false]);
   assert.equal(r.fiche.metier_id, null);
-  assert.deepEqual(r.fiche.maitrises_armes, [], 'les cases « 2d » à « 5d » du modèle ne sont pas des dés atteints');
+  // les cases « 2d » à « 5d » du modèle ne sont pas des dés atteints : rien à dire (nonRepris vide), aucun choix de maîtrise
+  assert.deepEqual(r.fiche.maitrise_choix, []);
   assert.equal(r.fiche.posture_id, null);
   assert.deepEqual(r.fiche.caracteristiques.map((c) => c.base), [1, 1, 1, 1, 1, 1]);
   for (const cle_ of ['classes', 'competences', 'capacites', 'sorts', 'armes', 'armure_parties', 'accessoires', 'inventaire', 'ceinture']) assert.deepEqual(r.fiche[cle_], [], cle_);
@@ -579,8 +595,10 @@ test('modèle ordinateur : maîtrises par remplissage et par marque, posture mar
   const feuille = ordinateur({
     I2: 'Humain', S2: 'Feu', [a2]: 'x', [a3]: '3d ✔', [a4]: '4d', BI23: '✔ VIGILANCE', D14: '30 / 41', K14: '20 / 38', R14: '23 / 23', K15: '5 / 43', D15: '',
   }, { remplis: { [e2]: '808080', [e3]: 'FF0000' } });
-  const f = ficheDuClasseur(regles, feuille).fiche;
-  assert.deepEqual(f.maitrises_armes, [{ arme_famille_id: 'epees', des: 3 }, { arme_famille_id: 'arbalete', des: 3 }]);
+  const lu = ficheDuClasseur(regles, feuille);
+  const f = lu.fiche;
+  // les dés lus, ÉPÉES par remplissage, ARBALÈTE par marques : un classeur d'avant la refonte, ses dés notés, pas repris (décision R153)
+  assert.deepEqual([f.maitrise_choix, lu.nonRepris], [[], [ligneDAvant([['epees', 3], ['arbalete', 3]])]]);
   assert.equal(f.posture_id, 'guide/postures#posture:vigilance');
   assert.deepEqual([f.sante_actuelle, f.chakra_actuel, f.barriere_actuelle, f.corruption, f.barre4_actuelle], [30, 20, null, 5, null]);
   const deux = ficheDuClasseur(regles, ordinateur({ BA16: '✔ OFFENSIF', BR16: 'X DEFENSIF' }));
@@ -919,14 +937,18 @@ test('homonymes : un don cherché dans sa classe, « Vague déferlante » dépar
   }
   const crochets = regles.armes.filter((a) => a.nom === 'Crochet grappin');
   assert.deepEqual([crochets.length, crochets[0].effet === crochets[1].effet], [2, true]);
-  const hache = MAITRISES.find((m) => m.famille === 'hache');
+  // les deux familles ont le même dé : seuls les dés de maîtrise, calculés (décision R148), les distinguent — un Tueur à la maîtrise au choix HACHE (la
+  // ligne de la note), deux dés de hache, un de masse
   const avecHache = { AA10: 'Crochet grappin', AA13: crochets[0].effet };
-  const remplis = Object.fromEntries(casesDesDes(hache).slice(0, 2).map((a) => [a, '808080']));
   const dHache = crochets.find((a) => a.famille_id === 'hache');
-  const fiche = { ...ficheDuClasseur(regles, ordinateur({}, { remplis })).fiche };
-  const degats = degatsDArme(regles, { ...fiche, armes: [{ rang: 1, arme_id: dHache.id, materiau_id: regles.materiau_arme_defaut }] }, 1).texte;
-  r = ficheDuClasseur(regles, ordinateur({ ...avecHache, AG10: degats }, { remplis }));
+  const tueur = {
+    ...ficheVide('Tueur'), race_id: 'races/humain', magie_innee_id: magie('Feu').id, classes: [{ rang: 1, classe_id: classe('Tueur').id, specialite_id: null }],
+    maitrise_choix: [{ source: `${classe('Tueur').id}#maitrise-arme:1`, rang: 1, arme_famille_id: 'hache' }],
+  };
+  const degats = degatsDArme(regles, { ...tueur, armes: [{ rang: 1, arme_id: dHache.id, materiau_id: regles.materiau_arme_defaut }] }, 1).texte;
+  r = ficheDuClasseur(regles, deLaPage(tueur, { ...avecHache, AG10: degats }));
   assert.deepEqual(r.fiche.armes.map((x) => x.arme_id), [dHache.id]);
+  assert.deepEqual(r.fiche.maitrise_choix, tueur.maitrise_choix);
   r = ficheDuClasseur(regles, ordinateur(avecHache));
   assert.deepEqual(r.fiche.armes, []);
   assert.match(r.nonRepris[0], /^Arme 1 : « Crochet grappin » désigne plusieurs entrées des règles/);
@@ -954,14 +976,59 @@ test('homonymes départagés par les dégâts écrits : les crans perdus y compt
   const fiche = {
     ...ficheVide('Mage jade'), race_id: 'races/humain', magie_innee_id: magie('Feu').id, xp: regles.niveaux.find((l) => l.niveau === don.niveau).xp_min,
     classes: [{ rang: 1, classe_id: classe.id, specialite_id: don.specialite_id }], capacites: [{ capacite_id: don.id }],
-    maitrises_armes: [{ arme_famille_id: 'hache', des: maitriseDArme(regles).desDe(2) }], armes: [{ ...arme, durabilite: max - 1 }],
+    // deux dés de hache : l'accessoire « Un point de maîtrise d'arme » (décisions R54, R151), sa famille écrite dans sa case (« → HACHE »)
+    accessoires: [{ emplacement: 'bague-1', accessoire_effet_id: regles.accessoires.find((a) => a.effets.some((e) => e.cible === 'maitrise_arme')).id, valeur: null, maudit: 0, competence_id: null, arme_famille_id: 'hache' }],
+    armes: [{ ...arme, durabilite: max - 1 }],
   };
+  assert.equal(M.maitrisesParFamille(regles, fiche).find((m) => m.famille === 'hache').des, 2);
   const d = degatsDArme(regles, fiche, 1);
   assert.ok(d.bonus.some((b) => b.nom.startsWith(don.nom) && b.valeur === don.degats.valeur), 'un cran perdu : +4');
   const r = ficheDuClasseur(regles, deLaPage(fiche));
   assert.deepEqual(r.fiche.armes.map((x) => [x.arme_id, x.durabilite]), [[dHache.id, max - 1]]);
   assert.deepEqual(r.fiche.capacites.map((c) => c.capacite_id), [don.id]);
+  assert.deepEqual(r.fiche.accessoires, fiche.accessoires);
   assert.equal(degatsDArme(regles, r.fiche, 1).texte, d.texte);
+});
+
+test('un classeur d’avant la refonte des maîtrises (décisions R153, R152) : ses dés et l’arme choisie d’un « Acquis au choix (DAGUES) » notés dans nonRepris, aucun choix posé, la compétence gardée ; la fiche auto V15.2.2 de même', () => {
+  // un Tueur Flétrisseur exporté par la page avant la refonte : ÉPÉES 2 dés, DAGUES 3 dés dans la grille, « +5% de la compétence de l'arme choisie »
+  // écrit avec sa famille ; la note n'a pas de ligne « Maîtrise d'arme au choix »
+  const fletrisseur = don('Tueur', 'Flétrisseur');
+  const fiche = {
+    ...ficheVide('Ancien'), race_id: 'races/humain', magie_innee_id: magie('Feu').id, xp: xpDuNiveau(10),
+    classes: [{ rang: 1, classe_id: classe('Tueur').id, specialite_id: fletrisseur.specialite_id }],
+  };
+  const { cellules, remplis } = cellulesDeLaFiche(regles, fiche, { date: '15/10/2026' });
+  assert.deepEqual(remplis, {}, 'sans choix, aucune famille maîtrisée');
+  const [epees, dagues] = ['epees', 'dagues'].map((id) => MAITRISES.find((m) => m.famille === id));
+  const anciens = Object.fromEntries([...casesDesDes(epees).slice(0, 1), ...casesDesDes(dagues).slice(0, 2)].map((a) => [a, REMPLISSAGE_DE_ATTEINT]));
+  const ligne = `${fletrisseur.nom} (Tueur) : Arme Légère (DAGUES)`;
+  const r = ficheDuClasseur(regles, ordinateur({ ...cellules, [ORDINATEUR.note]: `${cellules[ORDINATEUR.note]}\nAcquis au choix : ${ligne}` }, { remplis: anciens }));
+  assert.deepEqual(r.nonRepris, [ligneDAvant([['epees', 2], ['dagues', 3]], `arme choisie : ${fletrisseur.nom} (Tueur) DAGUES`)]);
+  assert.deepEqual(r.remarques, []);
+  // aucun choix posé (R153) ; la compétence de l'arme choisie gardée comme choix d'acquis (R152), sans sa famille : elle attend la maîtrise au choix
+  assert.deepEqual(r.fiche.maitrise_choix, []);
+  const rang = M.acquisDesDons(regles, r.fiche).choix.find((c) => c.source === fletrisseur.id && c.arme).rang;
+  assert.deepEqual(r.fiche.acquis_choix, [{ source: fletrisseur.id, rang, competence_id: 'arme-legere', valeur: null }]);
+  const enAttente = M.acquisDesDons(regles, r.fiche).choix.find((c) => c.source === fletrisseur.id);
+  assert.deepEqual([enAttente.arme_famille_id, enAttente.fait], [null, false]);
+  // la maîtrise au choix posée sur une famille qui offre la compétence : le bonus la compte
+  const pose = { ...r.fiche, ...M.maitriseApresChoix(r.fiche, `${classe('Tueur').id}#maitrise-arme:1`, 1, 'epees') };
+  const arme = M.acquisDesDons(regles, pose).choix.find((c) => c.source === fletrisseur.id);
+  assert.deepEqual([arme.arme_famille_id, arme.choisi, arme.fait], ['epees', 'arme-legere', true]);
+  // le même classeur, la maîtrise au choix du Tueur posée dans la note (après la refonte) : DAGUES est calculée, rien à dire ; les dés en trop, si
+  const apres = `${cellules[ORDINATEUR.note]}\nMaîtrise d'arme au choix : Tueur (maîtrise 1) : DAGUES\nAcquis au choix : ${ligne}`;
+  const ok = ficheDuClasseur(regles, ordinateur({ ...cellules, [ORDINATEUR.note]: apres }, { remplis: Object.fromEntries(casesDesDes(dagues).slice(0, 1).map((a) => [a, REMPLISSAGE_DE_ATTEINT])) }));
+  assert.deepEqual([ok.nonRepris, ok.fiche.maitrise_choix, ok.fiche.acquis_choix], [[], [{ source: `${classe('Tueur').id}#maitrise-arme:1`, rang: 1, arme_famille_id: 'dagues' }],
+    [{ source: fletrisseur.id, rang, competence_id: 'arme-legere', valeur: null }]]);
+  const trop = ficheDuClasseur(regles, ordinateur({ ...cellules, [ORDINATEUR.note]: apres }, { remplis: anciens }));
+  assert.deepEqual(trop.nonRepris, [`Maîtrises d'armes du classeur : « ÉPÉES ${M.notationDesDes('D10', 2)}, DAGUES ${M.notationDesDes(M.trouver(regles.familles_armes, 'dagues').de, 3)} » (non reprises : la fiche les calcule d’après ses choix ; décision R148)`]);
+  // la fiche auto V15.2.2 : ses dés « Nd » notés de même, aucun choix posé (verifierLeCommun, Lucien et Louise)
+  for (const values of [LUCIEN, LOUISE]) {
+    const auto = importer(values);
+    assert.deepEqual(auto.fiche.maitrise_choix, []);
+    assert.equal(auto.nonRepris.filter((x) => x.startsWith('Maîtrises d\'armes avant la refonte : « ')).length, 1);
+  }
 });
 
 test('effet d’une arme (AA13) d’un classeur exporté avant la décision R107 : sa ligne « Non compté : Vieille Branche … » n’est pas de l’effet en plus ; une remarque la cite', () => {
@@ -1239,14 +1306,16 @@ test('ce qui a pu se perdre avant l’import : case relue finie par « … » sa
 
 test('maîtrises (modèle ordinateur) : un fond commun à toutes les cases de dés n’est pas un dé atteint ; un .csv sans marque le dit', () => {
   const cases = MAITRISES.flatMap(casesDesDes);
-  assert.deepEqual(ficheDuClasseur(regles, ordinateur({}, { remplis: Object.fromEntries(cases.map((a) => [a, 'FFF2CC'])) })).fiche.maitrises_armes, [], 'un fond de bloc');
+  // (les dés lus se disent dans nonRepris : un classeur sans classe ni choix n'en calcule aucun, décision R153)
+  assert.deepEqual(ficheDuClasseur(regles, ordinateur({}, { remplis: Object.fromEntries(cases.map((a) => [a, 'FFF2CC'])) })).nonRepris, [], 'un fond de bloc');
   // le gris de la page sur toutes les cases : tous les dés
   const max = maitriseDArme(regles).desMax;
-  assert.ok(ficheDuClasseur(regles, ordinateur({}, { remplis: Object.fromEntries(cases.map((a) => [a, '808080'])) })).fiche.maitrises_armes.every((m) => m.des === max));
+  assert.deepEqual(ficheDuClasseur(regles, ordinateur({}, { remplis: Object.fromEntries(cases.map((a) => [a, '808080'])) })).nonRepris,
+    [ligneDAvant(M.famillesMaitrisables(regles).map((x) => [x.id, max]))]);
   // un fond de bloc et des marques : les marques
   const epees = MAITRISES.find((m) => m.famille === 'epees');
-  const f = ficheDuClasseur(regles, ordinateur({ [casesDesDes(epees)[0]]: '2d ✔' }, { remplis: Object.fromEntries(cases.map((a) => [a, 'FFF2CC'])) })).fiche;
-  assert.deepEqual(f.maitrises_armes, [{ arme_famille_id: 'epees', des: 2 }]);
+  const r = ficheDuClasseur(regles, ordinateur({ [casesDesDes(epees)[0]]: '2d ✔' }, { remplis: Object.fromEntries(cases.map((a) => [a, 'FFF2CC'])) }));
+  assert.deepEqual(r.nonRepris, [ligneDAvant([['epees', 2]])]);
   // un .csv au modèle ordinateur : les couleurs n'y sont pas ; sans marque écrite, une remarque (la page passe le format du fichier)
   assert.deepEqual(ficheDuClasseur(regles, ordinateur(), { format: 'csv' }).remarques, [REMARQUE_MAITRISES_CSV]);
   assert.deepEqual(ficheDuClasseur(regles, ordinateur({ [casesDesDes(epees)[0]]: '✔' }), { format: 'csv' }).remarques, []);
@@ -1266,7 +1335,7 @@ test('élément d’armure de la fiche auto (le nom d’une magie) : retrouvé p
   assert.ok(r.remarques.includes(`Élément d'armure déduit de la magie « Art des morts » et de la catégorie « ${armure.type} » : ${element.nom}`));
   // rien d'autre de perdu que ce que perd la fiche de Lucien (l'acquis saisi au-delà du calcul, décision R104)
   assert.deepEqual(r.nonRepris, importer(LUCIEN).nonRepris);
-  assert.ok(r.nonRepris.every((l) => l.startsWith('Acquis ')), r.nonRepris.join('\n'));
+  assert.ok(r.nonRepris.every((l) => l.startsWith('Acquis ') || l.startsWith('Maîtrises d\'armes avant la refonte : ')), r.nonRepris.join('\n'));
 });
 
 test('gains de niveau d’un classeur qui ne les écrit pas (décision R73) : maximum lu − ce que la fiche calcule sans gains ; négatif ou hors du total à saisir : à vérifier', () => {

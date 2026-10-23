@@ -14,7 +14,7 @@ import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import {
   accessoiresDesSorts, actionsDesAccessoires, attributsDe, caracteristiquesDe, choixEnAttente, competencesDe, degatsDArme, effetsDesAccessoires, modeHyperDe,
-  quotaDeMaitrise, resistancesDe,
+  compteurDeMaitrise, resistancesDe,
 } from '../src/lib/fiche-moteur.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 
@@ -104,7 +104,8 @@ test('dégâts : physiques sur toutes les armes, +5 sur la famille choisie ; mag
 
 test('maîtrise d’arme, Mode Hyper, résistances (maudit : vulnérabilité)', () => {
   const avec = fiche([porte('chef', 'attaque:7'), porte('collier', 'attaque:8'), porte('bague-1', 'defense:5')]);
-  assert.equal(quotaDeMaitrise(regles, avec).total, quotaDeMaitrise(regles, fiche()).total + 1);
+  // l'accessoire « Un point de maîtrise d'arme » (décision R54) : un point de plus, à choisir (R151)
+  assert.deepEqual(compteurDeMaitrise(regles, avec), { ...compteurDeMaitrise(regles, fiche()), points: compteurDeMaitrise(regles, fiche()).points + 1, aChoisir: compteurDeMaitrise(regles, fiche()).aChoisir + 1 });
   assert.equal(modeHyperDe(regles, avec).toursAccessoires, 1);
   const crans = (f, id) => resistancesDe(regles, f).paliers.flatMap((p) => p.cibles).find((c) => c.id === id)?.crans ?? 0;
   assert.equal(crans(avec, 'magies/magie-du-feu') - crans(fiche(), 'magies/magie-du-feu'), 1);

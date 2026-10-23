@@ -11,7 +11,7 @@ import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.
 import { enregistrerFiche, lireFiche } from '../serveur/fiches.mjs';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
-import { armesApresChoix, attaqueADeuxArmes, choixEnAttente, degatsDArme, donDeBase, durabiliteDArme, durabiliteMaxDArme, maitriseDArme, modeHyperDe } from '../src/lib/fiche-moteur.mjs';
+import { armesApresChoix, attaqueADeuxArmes, choixEnAttente, degatsDArme, donDeBase, durabiliteDArme, durabiliteMaxDArme, maitrisesParFamille, modeHyperDe } from '../src/lib/fiche-moteur.mjs';
 import { forgerArme } from '../src/lib/arme-forge.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 
@@ -92,10 +92,11 @@ test('dégâts d’une arme : dés de la maîtrise, dé de l’arme, bonus de l�
   const niveau1 = regles.ameliorations.find((a) => a.cible === 'arme' && a.niveau === 1);
   const fiche = archer(6, {
     classes: [{ rang: 1, classe_id: 'classes/archer', specialite_id: 'classes/archer#specialite:tireur-delite' }],
-    maitrises_armes: [{ arme_famille_id: 'arc', des: maitriseDArme(regles).desDe(3) }],
     armes: [{ rang: 1, arme_id: arme('arc', 'Arc'), materiau_id: acier.id, amelioration_id: niveau1.id }],
   });
+  // les dés de la maîtrise, calculés (décisions R148, R149) : ceux de la famille ARC de la fiche
   const d = degatsDArme(regles, fiche, 1);
+  assert.equal(maitrisesParFamille(regles, fiche).find((m) => m.famille === 'arc').des, 4);
   assert.equal(d.notation, '4D8');
   assert.deepEqual(d.bonus, [{ nom: 'Composition : Acier', valeur: acier.bonus_degats }, { nom: 'Amélioration niveau 1', valeur: niveau1.bonus_degats }]);
   assert.equal(d.texte, `4D8+${acier.bonus_degats + niveau1.bonus_degats}`);
