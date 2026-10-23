@@ -2,7 +2,7 @@
 // les vues de la base (v_personnage_niveau, v_personnage_controle, par le service sur une base vivante temporaire), les personnages fil rouge du
 // guide (lib/guide-fil-rouge.mjs) et les décisions du propriétaire (R2, R3, R6, R7, R15, R16, R19, R20, R23, R24, R25, R26, R27, R28, R32, R33, R34, R35, R37, R38, R39, R41, R45) ; les résistances, contre les tables de la base (magie_resistance, resistance_palier).
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, test } from 'node:test';
@@ -194,8 +194,45 @@ test('attributs : deux classes et deux magies comptent ; gains de niveau (deux t
   assert.deepEqual([avecTout.detail.sante.niveaux, avecTout.detail.chakra.niveaux], [13, 23]);
   assert.equal(avecTout.barriere, Math.floor(avecTout.chakra / 2) + avecTout.detail.barriere.classes + avecTout.detail.barriere.race + avecTout.detail.barriere.ethnie);
   assert.equal(avecTout.corruptionMax, avecTout.chakra);
-  assert.deepEqual(attributsDe(regles, { ...base, magie_innee_id: 'magies/magie-du-sang' }).quatriemeBarre, { ressource: 'Sang', max: regles.magies.find((m) => m.id === 'magies/magie-du-sang').barre4.max });
+  assert.deepEqual(attributsDe(regles, { ...base, magie_innee_id: 'magies/magie-du-sang' }).quatriemeBarre,
+    { ressource: 'Sang', max: regles.magies.find((m) => m.id === 'magies/magie-du-sang').barre4.max, magie_id: 'magies/magie-du-sang', classe: 'couleur-magie-sang' });
   assert.equal(attributsDe(regles, ficheConforme()).initiative.bonus, 0, 'Agilité 2 : +0');
+});
+
+test('la 4ᵉ barre a la couleur de la magie qui la donne : Sang ou Nécromancie, sa classe de la palette (demande du propriétaire du 2026-10-23)', () => {
+  // « La 4eme barre doit être de couleur différente en fonction de la magie qui l'utilise (Sang ou nécromancie) » : la magie se lit dans les données
+  // (magie.barre4_ressource), jamais dans le nom de la ressource ; Sang et Nécromancie sont incompatibles, un personnage n'en a qu'une
+  const avecBarre4 = regles.magies.filter((m) => m.barre4);
+  assert.deepEqual(avecBarre4.map((m) => m.id).sort(), ['magies/magie-de-la-necromancie', 'magies/magie-du-sang']);
+  assert.ok(regles.magies.find((m) => m.id === 'magies/magie-du-sang').incompatibles.includes('magies/magie-de-la-necromancie'), 'Sang et Nécromancie : incompatibles');
+  for (const [magie, classe, ressource] of [['magies/magie-du-sang', 'couleur-magie-sang', 'Sang'], ['magies/magie-de-la-necromancie', 'couleur-magie-necromancie', 'Âme']]) {
+    for (const fiche of [ficheConforme({ magie_innee_id: magie }), ficheConforme({ magie_innee_id: 'magies/magie-du-feu', magie_acquise_id: magie })]) {
+      const q = attributsDe(regles, fiche).quatriemeBarre;
+      assert.deepEqual([q.magie_id, q.classe, q.ressource], [magie, classe, ressource], `${magie} (${fiche.magie_innee_id === magie ? 'innée' : 'acquise'})`);
+      assert.equal(q.classe, regles.magies.find((m) => m.id === magie).classe, 'la classe de la magie de regles.json');
+      assert.ok(valeursDuMoment(regles, fiche).some((j) => j.champ === 'barre4_actuelle'), 'la carte de la 4ᵉ barre');
+    }
+  }
+  const sans = ficheConforme({ magie_innee_id: 'magies/magie-du-feu' });
+  assert.equal(attributsDe(regles, sans).quatriemeBarre, null);
+  assert.ok(!valeursDuMoment(regles, sans).some((j) => j.champ === 'barre4_actuelle'), 'sans Sang ni Nécromancie : pas de carte de 4ᵉ barre');
+});
+
+test('la page pose la classe de la magie de la 4ᵉ barre sur sa carte, à chaque calcul (src/scripts/fiche.mjs, styles/fiche/fiche.css)', () => {
+  // le script n'a pas de test de comportement (DOM) : le contrôle lit le source. La carte n'est pas reconstruite quand la magie passe du Sang à la
+  // Nécromancie (même champ barre4_actuelle) : la classe doit être reposée par une synchro, jamais posée une seule fois à la construction
+  const page = readFileSync(new URL('../src/scripts/fiche.mjs', import.meta.url), 'utf8');
+  const jauges = /const JAUGES = \{([\s\S]*?)\n\};/.exec(page)?.[1] ?? assert.fail('JAUGES introuvable dans src/scripts/fiche.mjs');
+  const barre4 = /barre4_actuelle: \{([\s\S]*?)\n  \},/.exec(jauges)?.[1] ?? assert.fail('JAUGES.barre4_actuelle introuvable');
+  assert.match(barre4, /\ba: 'barre4'/);
+  assert.match(barre4, /\bclasse: \(\) => calcul\.attributs\.quatriemeBarre\?\.classe\b/, 'la classe vient de quatriemeBarre.classe');
+  const carte = /function carteDeJauge\(champ\) \{([\s\S]*?)\n\}\n/.exec(page)?.[1] ?? assert.fail('carteDeJauge introuvable');
+  assert.match(carte, /const carte = el\('div', \{ class: 'attribut attribut--jauge', dataset: \{ a: def\.a \} \}/);
+  assert.match(carte, /if \(def\.classe\) synchro\(\(\) => poserTeinte\(carte, \[def\.classe\(\)\]\.filter\(Boolean\)\)\);/, 'reposée à chaque calcul');
+  assert.match(carte, /return carte;\s*$/);
+  // la feuille lit la couleur de cette classe pour la carte (--a), et rien d'autre ne colore la 4ᵉ barre
+  const css = readFileSync(new URL('../src/styles/fiche/fiche.css', import.meta.url), 'utf8');
+  assert.deepEqual(css.match(/^\.attribut\[data-a='barre4'\][^\n]*$/gm), [".attribut[data-a='barre4'][class*='couleur-magie-'] { --a: var(--couleur); }"]);
 });
 
 test('classe magique : catégorie et Archimage (R6), spécialité « considérée comme classe magique » au niveau de classe 10 (R7)', () => {

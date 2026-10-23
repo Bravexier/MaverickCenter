@@ -1463,7 +1463,11 @@ function construireDons() {
 // ------------------------------------------------------------------ attributs et valeurs du moment
 const NOMS_DU_DETAIL = { classes: 'classes', race: 'race', magies: 'magies', ethnie: 'ethnie', accessoires: 'accessoires', niveaux: 'niveaux', chakra: '½ chakra' };
 const detailDe = (d) => Object.entries(d).filter(([, v]) => v).map(([k, v]) => `${NOMS_DU_DETAIL[k] ?? k} ${signe(v)}`).join(' · ') || '—';
-/** Carte d'une valeur du moment : son nom, la couleur de son attribut (data-a) et le détail de son maximum. */
+/**
+ * Carte d'une valeur du moment : son nom, la couleur de son attribut (data-a) et le détail de son maximum. La 4ᵉ barre prend la classe de la magie qui
+ * la donne (`classe`, de calcul.attributs.quatriemeBarre : Sang ou Nécromancie ; demande du propriétaire du 2026-10-23 : « La 4eme barre doit être de
+ * couleur différente en fonction de la magie qui l'utilise (Sang ou nécromancie) »), que fiche.css lit en `--couleur`.
+ */
 const JAUGES = {
   sante_actuelle: { a: 'sante', nom: () => 'Santé', detail: () => detailDe(calcul.attributs.detail.sante) },
   barriere_actuelle: { a: 'barriere', nom: () => 'Barrière', detail: () => detailDe(calcul.attributs.detail.barriere) },
@@ -1471,7 +1475,10 @@ const JAUGES = {
     a: 'chakra', nom: () => 'Chakra',
     detail: (j) => `${detailDe(calcul.attributs.detail.chakra)}${j.reduction ? ` ; ${j.chakra} − ${j.reduction} de corruption` : ''}`,
   },
-  barre4_actuelle: { a: 'barre4', nom: () => calcul.attributs.quatriemeBarre?.ressource ?? '4ᵉ barre', detail: () => '4ᵉ barre, de la magie' },
+  barre4_actuelle: {
+    a: 'barre4', nom: () => calcul.attributs.quatriemeBarre?.ressource ?? '4ᵉ barre', detail: () => '4ᵉ barre, de la magie',
+    classe: () => calcul.attributs.quatriemeBarre?.classe ?? null,
+  },
   corruption: { a: 'corruption', nom: () => 'Corruption', detail: () => 'Au plus le chakra ; elle en prend la place' },
 };
 
@@ -1547,8 +1554,11 @@ function carteDeJauge(champ) {
     valeur.toggleAttribute('data-hors', j.hors);
     valeur.title = def.detail(j);   // le calcul du maximum en infobulle seulement (« les textes de calcul sont inutiles », demande du propriétaire)
   });
-  return el('div', { class: 'attribut attribut--jauge', dataset: { a: def.a } },
+  const carte = el('div', { class: 'attribut attribut--jauge', dataset: { a: def.a } },
     el('span', { class: 'attribut__tete' }, nom, valeur), el('span', { class: 'attribut__curseur' }, moins, curseur, plus), ajout);
+  // la classe de la magie de la 4ᵉ barre, reposée à chaque calcul : la carte n'est pas reconstruite quand la magie innée passe du Sang à la Nécromancie
+  if (def.classe) synchro(() => poserTeinte(carte, [def.classe()].filter(Boolean)));
+  return carte;
 }
 
 /**

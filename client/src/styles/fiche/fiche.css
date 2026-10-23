@@ -869,7 +869,8 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .attribut[data-a='barriere'] { --a: var(--attribut-barriere); }
 .attribut[data-a='chakra'] { --a: var(--attribut-chakra); }
 .attribut[data-a='corruption'] { --a: var(--attribut-corruption); }
-.attribut[data-a='barre4'] { --a: var(--attribut-barre4); }
+/* la 4ᵉ barre : la couleur de la magie qui la donne, Sang ou Nécromancie (sa classe couleur-magie-<id>, posée par le script ; demande du propriétaire du 2026-10-23) */
+.attribut[data-a='barre4'][class*='couleur-magie-'] { --a: var(--couleur); }
 /* santé, barrière, chakra (et 4ᵉ barre) puis la corruption, sur une ligne */
 .attributs-ligne { display: grid; gap: 0.45rem; grid-template-columns: minmax(0, 1fr); }
 @media (min-width: 48rem) {

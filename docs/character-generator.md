@@ -154,7 +154,10 @@ abandonne.
   les neuf noms sont ceux du guide « Les neuf alignements » (« Neutre » sur les deux axes, que la fiche auto écrit « Neutre Pur »).
 - **Attributs et valeurs du moment**, fusionnés : une carte par attribut, santé · barrière · chakra (· Âme ou Sang, la 4ᵉ barre de la Nécromancie ou du
   Sang), puis la corruption, sur une ligne ; initiative, vitesse et vitesse de nage en **tuiles** (zone 3) ; santé **rouge**, barrière **jaune**,
-  chakra **bleu**, corruption **noire** ; pas d'armure de base (les AP/AM viendront avec l'armure portée). Pas de texte de calcul (demande du propriétaire) : le
+  chakra **bleu**, corruption **noire**, la 4ᵉ barre dans la **couleur de la magie qui la donne** (la classe `couleur-magie-sang` ou
+  `couleur-magie-necromancie`, `quatriemeBarre.classe` de `lib/fiche-moteur.mjs#attributsDe`, lue depuis la magie et non depuis le nom de la ressource ;
+  demande du propriétaire du 2026-10-23 : « La 4eme barre doit être de couleur différente en fonction de la magie qui l'utilise (Sang ou nécromancie) ») ;
+  pas d'armure de base (les AP/AM viendront avec l'armure portée). Pas de texte de calcul (demande du propriétaire) : le
   détail d'un maximum est en infobulle sur sa valeur. Une valeur du moment s'affiche « actuelle / maximum », un curseur de 0 au maximum (au maximum tant qu'on n'y touche
   pas, la corruption à 0 ; le chakra actuel au plus chakra − corruption, pour tous, magie de la Corruption comprise (R142), et la corruption qui monte emporte le chakra
   actuel, celle qui baisse ne le rend pas : `valeursDuMoment`, `ecrireValeurDuMoment`, guide « Fiche de personnage : Attributs »), et deux boutons **−** et

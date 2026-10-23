@@ -173,7 +173,7 @@ const reglesDeLaPage = () => new Map([...html.matchAll(/<style>([\s\S]*?)<\/styl
 test('chaque potion sur la couleur de la règle du site (son essence, ou la caractéristique d’un philtre, au niveau de son palier) ; les carquois et sacs sans couleur', options, () => {
   const regles = reglesDeLaPage();
   for (const x of objets.tableaux.filter((t) => t.pages).flatMap((t) => t.pages)) for (const p of x.potions) {
-    const c = couleurDePotion({ essence: p.essence, caracteristique: x.caracteristique, niveau: p.niveau_rang });
+    const c = couleurDePotion({ page: x.id, essence: p.essence, caracteristique: x.caracteristique, niveau: p.niveau_rang });
     // la ligne ne porte que la classe de sa combinaison (base et niveau : « Règle de calcul »), dont la page émet la valeur calculée par la règle
     const debut = c
       ? `<tr class="ceint-ligne ligne-couleur ${classeDePotion(c)}" id="${ancreDObjet(p.id)}">`
@@ -184,9 +184,26 @@ test('chaque potion sur la couleur de la règle du site (son essence, ou la cara
       assert.ok(contraste(c.fond, c.texte) >= CONTRASTE_MINIMAL, p.id);
     }
   }
-  // seules les potions d'essence Anti (sans couleur dans le Doc ni sur le site) restent neutres
+  // plus aucune potion neutre : les deux pages d'essence Anti (sans couleur dans le Doc ni sur le site) ont la couleur que le propriétaire leur a
+  // choisie, le Vide (2026-10-23 : « Le remède enragé est de la couleur du Vide » ; « L'huile rage devrai être couleur du Vide »)
   const neutres = objets.tableaux.flatMap((t) => t.pages ?? []).flatMap((x) => x.potions).filter((p) => !p.couleur);
-  assert.deepEqual([...new Set(neutres.map((p) => p.essence))], ['anti']);
+  assert.deepEqual(neutres.map((p) => p.id), []);
+  // les choix du propriétaire du 2026-10-23 dans la page construite : chaque ligne de ces cartes porte la classe de la magie nommée, à son niveau
+  for (const [page, magie] of [['ressources/fiole-verte-fonce', 'necromancie'], ['ressources/remede-poison', 'necromancie'], ['ressources/huile-toxique', 'necromancie'],
+    ['ressources/remede-enrage', 'vide'], ['ressources/huile-rage', 'vide'], ['ressources/remede-saignement', 'sang'], ['ressources/remede-brulure', 'feu'],
+    ['ressources/huile-seraphine', 'feu']]) {
+    const x = objets.tableaux.flatMap((t) => t.pages ?? []).find((y) => y.id === page) ?? assert.fail(`page absente : ${page}`);
+    for (const p of x.potions) {
+      assert.ok(onglet.includes(`<tr class="ceint-ligne ligne-couleur couleur-potion-magie-${magie}-n${p.niveau_rang}" id="${ancreDObjet(p.id)}">`), p.id);
+    }
+  }
+  assert.ok(!onglet.includes('couleur-potion-attribut-barre4-'), 'plus de potion sur la couleur de l’attribut 4ᵉ barre');
+  // le texte d'aide des consommables ne parle de lignes neutres que s'il y en a, et ne nomme alors que des pages dont toutes les lignes le sont
+  const aide = (/<p class="ceinture-aide">([\s\S]*?)<\/p>/.exec(panneau('ceinture-consommables'))?.[1] ?? assert.fail('texte d’aide absent')).replace(/\s+/g, ' ');
+  assert.equal(/neutre/i.test(aide), neutres.length > 0, `texte d’aide : ${aide}`);
+  for (const p of objets.tableaux.flatMap((t) => t.pages ?? []).filter((y) => aide.includes(y.titre))) {
+    assert.ok(!/neutre/i.test(aide) || p.potions.every((y) => !y.couleur), `${p.titre} : l’aide la dit neutre`);
+  }
   assert.ok(!panneau('ceinture-carquois').includes('ligne-couleur'), 'le classeur ne colore pas les carquois');
 });
 

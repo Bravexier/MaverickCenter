@@ -16,7 +16,7 @@
 // sort-format.mjs#texteSurCouleur). Les familles (FAMILLES_DE_LA_PALETTE) :
 //   - magie : sort-format.mjs#COULEURS_DES_MAGIES, id = le nom court normalisé de la magie (« feu », « espace-temps »), plus `par-defaut`
 //     (COULEUR_PAR_DEFAUT, la couleur d'une magie inconnue) ;
-//   - attribut : lib/attributs-couleurs.mjs (sante, barriere, chakra, corruption, barre4) ;
+//   - attribut : lib/attributs-couleurs.mjs (sante, barriere, chakra, corruption ; la 4ᵉ barre prend la classe de sa magie) ;
 //   - caracteristique : lib/caracteristiques-postures.mjs#COULEURS_CARACTERISTIQUES (id de la base : force, volonte…), plus `par-defaut`
 //     (COULEUR_NEUTRE) ; une compétence porte la classe de sa caractéristique ;
 //   - affinite : lib/alchimie-couleurs.mjs#COULEURS_DES_AFFINITES, les dix affinités sans autre règle (d'après le Doc « Alchimie ») ;

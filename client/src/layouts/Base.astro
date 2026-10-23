@@ -49,7 +49,7 @@ const pageMesuree = Astro.url.pathname;
     <meta name="description" content={description} />
     <link rel="icon" type="image/png" sizes="32x32" href={url('favicon.png')} />
     <link rel="apple-touch-icon" href={url('apple-touch-icon.png')} />
-    {/* les couleurs des attributs (santé, barrière, chakra, corruption, 4ᵉ barre) : la règle du site, lib/attributs-couleurs.mjs, lue par la fiche et le bestiaire */}
+    {/* les couleurs des attributs (santé, barrière, chakra, corruption ; la 4ᵉ barre de la fiche prend la classe de sa magie) : la règle du site, lib/attributs-couleurs.mjs, lue par la fiche et le bestiaire */}
     <style is:inline set:html={cssDesAttributs()}></style>
     {/* la palette du site en classes (`.couleur-<famille>-<id>` : --couleur, --couleur-texte ; magies, attributs, caractéristiques, affinités), fabriquée
         depuis les modules des règles : lib/palette-css.mjs (choix du propriétaire du 2026-10-22, « Module JS → classe ») */}

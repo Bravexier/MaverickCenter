@@ -7,8 +7,8 @@
 // pas le bouclier : décision R82 ; la liste du guide reste « non exhaustive »). Les bâtons magiques ont leur sous-onglet, chargé par lib/batons-db.mjs.
 // Les règles affichées sont des textes de la base, rendus par l'onglet : le paragraphe « La ceinture » du chapitre « L'équipement » du guide et la
 // section « Ceinture » de la page de référence (le texte du Google Doc). Chaque potion porte la couleur que lui donne la règle du site
-// (lib/alchimie-couleurs.mjs : l'affinité de son essence, ou la caractéristique d'un philtre, nuancée selon son niveau d'alchimie ; demande du
-// propriétaire du 2026-10-22 : « Partout il faut utiliser Que les couleurs du site »).
+// (lib/alchimie-couleurs.mjs : la couleur que le propriétaire a choisie pour sa page, sinon l'affinité de son essence, ou la caractéristique d'un
+// philtre, nuancée selon son niveau d'alchimie ; demande du propriétaire du 2026-10-22 : « Partout il faut utiliser Que les couleurs du site »).
 // Sans dépendance (sauf lib/equipement.mjs et lib/alchimie-couleurs.mjs, purs) : `chargerObjetsDeCeinture` reçoit la base ouverte par lib/donnees.mjs.
 import { AFFINITE_DES_PHILTRES, caracteristiqueDesCompetences, couleurDePotion } from './alchimie-couleurs.mjs';
 import { SOUS_ONGLETS_DE_LA_CEINTURE } from './equipement.mjs';
@@ -79,7 +79,7 @@ const pageDe = (db, id) => lignes(db, 'SELECT id, titre, resume, corps_md FROM p
  *                l'affinité de l'essence de la première variante de sa recette (`affinite.id`, null sans recette) ; `caracteristique` : pour une page de philtres
  *                (essence AFFINITE_DES_PHILTRES), celle que nomment ses effets (« compétences de Force » ; l'Ultime, « +1 Force », la reçoit de sa page) ;
  *                null pour une autre page, ou si ses effets en nomment plusieurs ou aucune ; `couleur` : { fond, texte, base, niveau } ou null
- *                (lib/alchimie-couleurs.mjs#couleurDePotion) ;
+ *                (lib/alchimie-couleurs.mjs#couleurDePotion, avec l'id de la page : COULEURS_CHOISIES_PAR_PAGE) ;
  *              - carquois et sacs : `objets` : [{ id, nom, prix_brut, description }] dans l'ordre de l'onglet « Équipement inventaire ».
  *   `nombre` : le nombre d'objets du tableau (lignes de v_objet_ceinture).
  */
@@ -150,7 +150,7 @@ function pagesDePotions(db, ids) {
       .sort((a, b) => a.place - b.place || a.p.ordre - b.p.ordre || a.p.niveau_rang - b.p.niveau_rang || comparer(a.p.nom_cle, b.p.nom_cle))
       .map(({ p: { page_id, ordre, nom_cle, ...p } }) => {
         const essence = essences.get(p.id) ?? null;
-        return { ...p, essence, couleur: couleurDePotion({ essence, caracteristique, niveau: p.niveau_rang }) };
+        return { ...p, essence, couleur: couleurDePotion({ page: id, essence, caracteristique, niveau: p.niveau_rang }) };
       });
     return { id, titre: page?.titre ?? id, resume: page?.resume ?? null, existe: Boolean(page), caracteristique, potions: rangees };
   }).sort((a, b) => comparer(a.titre, b.titre));

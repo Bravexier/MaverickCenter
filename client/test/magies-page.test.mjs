@@ -200,10 +200,12 @@ test('sortsParNpm range les sorts par niveau croissant sans perdre l’ordre de 
   assert.equal(couleurDeMagie('Inconnue'), COULEUR_PAR_DEFAUT);
   assert.equal(couleurDeMagie(undefined), COULEUR_PAR_DEFAUT);
   assert.equal(couleurDeMagie('Espace/Temps'), couleurDeMagie('espace-temps'));
+  // Feu et Arcane : demande du propriétaire du 2026-10-23, « Profite en pour rendre le Feu un peu plus orangé, et l'arcane un peu plus argenté gris pour
+  // mieux différenciers du sang et du vide. »
   const couleursAttendues = {
-    feu: '#ff0000', eau: '#0000ff', glace: '#00ffff', terre: '#996600', vent: '#00ff66',
+    feu: '#ff4500', eau: '#0000ff', glace: '#00ffff', terre: '#996600', vent: '#00ff66',
     foudre: '#ffff00', lumiere: '#fff2cc', ombre: '#cc66ff', sang: '#cc0000', vide: '#ffffff',
-    arcane: '#b7b7b7', corruption: '#000000', necromancie: '#274e13', 'espace-temps': '#ff66cc',
+    arcane: '#a8adb5', corruption: '#000000', necromancie: '#274e13', 'espace-temps': '#ff66cc',
     'potentiel-illimite': '#ff9900',
   };
   for (const [nom, couleur] of Object.entries(couleursAttendues)) assert.equal(couleurDeMagie(nom), couleur);

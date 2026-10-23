@@ -145,7 +145,8 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   `scripts/edition/nouvelles.mjs`, car la page 404 où il la dessine ne les a pas), comme les combinaisons des potions (`cssDesPotions`). Chaque classe
   posée existe dans une feuille de sa page (testé sur le site construit).
 - **Les familles** : `magie` (`sort-format.mjs#COULEURS_DES_MAGIES` ; id = le nom court normalisé de la magie, `feu`, `espace-temps`, et
-  `par-defaut` pour une magie inconnue), `attribut` (`lib/attributs-couleurs.mjs` : `sante`, `barriere`, `chakra`, `corruption`, `barre4`),
+  `par-defaut` pour une magie inconnue), `attribut` (`lib/attributs-couleurs.mjs` : `sante`, `barriere`, `chakra`, `corruption` ; la 4ᵉ barre de la fiche prend la classe de sa magie, Sang
+  ou Nécromancie, depuis le 2026-10-23),
   `caracteristique` (`lib/caracteristiques-postures.mjs`, ids de la base ; une compétence porte la classe de sa caractéristique), `affinite` (les dix
   affinités d'alchimie sans autre règle, `lib/alchimie-couleurs.mjs#COULEURS_DES_AFFINITES`, d'après le Doc « Alchimie » ; `chakra+sante` →
   `couleur-affinite-chakra-sante`), `posture` (`COULEURS_POSTURES`, la fin de l'id de la base : `offensif`…), `alignement` (`COULEURS_ALIGNEMENTS`,
@@ -726,11 +727,17 @@ L'onglet est rendu depuis la base (`lib/ceinture-db.mjs`, `components/ceinture/C
     « Alchimie »** (lu le 2026-10-16 sur l'original : chaque fiole y a sa teinte et ses paliers du clair au foncé ; le Doc ne suit pas une règle
     unique, ses remèdes, huiles et philtres ont souvent la teinte d'une fiole voisine) : la teinte est celle de l'**affinité de son essence**
     (`recette_ingredient`, rôle « essence », de la première variante de sa recette) — un attribut prend la couleur de l'attribut sur le site
-    (`lib/attributs-couleurs.mjs` : santé, chakra, barrière, corruption, 4ᵉ barre, la même que la fiche), une magie la couleur de la magie
-    (`sort-format.mjs`), une autre affinité la couleur que le site lui ajoute d'après le Doc (`COULEURS_DES_AFFINITES` : la fiole de l'affinité au palier
+    (`lib/attributs-couleurs.mjs` : santé, chakra, barrière, corruption, la même que la fiche), une magie la couleur de la magie
+    (`sort-format.mjs`), la **4ᵉ barre la couleur de la magie Nécromancie** (`MAGIE_DE_L_AFFINITE` ; demande du propriétaire du 2026-10-23 : « La fiole
+    verte foncée devrai avoir la couleur verte foncée en s'inspirant de la couleur de la nécromancie. », puis « Le remède du poison couleur
+    nécromancie » et « L'huile toxique devrait être couleur nécromancie » : les trois pages d'essence 4ᵉ barre), une autre affinité la couleur que le site lui ajoute d'après le Doc (`COULEURS_DES_AFFINITES` : la fiole de l'affinité au palier
     Super, niveau Avancé) ; un **philtre** (essence Démon, sans fiole dans le Doc) prend la couleur de la caractéristique que nomment les effets de sa
     page (« compétences de Force » : `caracteristiqueDesCompetences` ; l'Ultime, « +1 Force », la reçoit de sa page ; `lib/caracteristiques-postures.mjs`) ;
-    l'affinité Anti (Remède enragé, Huile rage) n'a pas de couleur : ces lignes restent neutres ; puis la **nuance de son niveau d'alchimie**
+    l'affinité Anti n'a pas de couleur : une potion d'essence Anti reste neutre ; mais une **page dont le propriétaire a choisi la couleur** prend
+    la magie qu'il nomme, avant l'essence (`COULEURS_CHOISIES_PAR_PAGE`, ses retours carte par carte du 2026-10-23 : « Le remède enragé est de la
+    couleur du Vide » ; « Le remêde du saignement devrai être couleur sang » ; « Le remêde brûlure devrai couleur feu » ; « L'huile rage devrai être
+    couleur du Vide » ; « L'huile séraphine couleur feu » : Remède enragé et Huile rage en Vide, Remède saignement en Sang, Remède brûlure et Huile
+    séraphine en Feu ; une carte non citée suit la règle, rien n'en est déduit pour les autres) ; puis la **nuance de son niveau d'alchimie**
     (`NUANCES_DES_NIVEAUX`, parts choisies par le site : plus claire pour Novice et Apprenti, la teinte à Avancé, plus foncée pour Expert et Maître).
     Une potion dont le niveau ou l'effet change sur le site de dev suit la même règle à la construction suivante du site (l'éditeur réécrit ses cases,
     pas la classe de sa ligne, qui existe donc toujours dans la page) ;

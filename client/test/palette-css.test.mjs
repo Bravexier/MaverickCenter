@@ -16,7 +16,7 @@ import {
   secondsRangs, secondsRangsDesMagies,
 } from '../src/lib/palette-css.mjs';
 import {
-  AFFINITE_DES_PHILTRES, ATTRIBUT_DE_L_AFFINITE, CONTRASTE_MINIMAL, COULEURS_DES_AFFINITES, NUANCES_DES_NIVEAUX, contraste, couleurDePotion, lisible,
+  AFFINITE_DES_PHILTRES, ATTRIBUT_DE_L_AFFINITE, CONTRASTE_MINIMAL, COULEURS_CHOISIES_PAR_PAGE, COULEURS_DES_AFFINITES, NUANCES_DES_NIVEAUX, contraste, couleurDePotion, lisible,
   nuanceDuNiveau,
 } from '../src/lib/alchimie-couleurs.mjs';
 import { COULEURS_DES_ATTRIBUTS } from '../src/lib/attributs-couleurs.mjs';
@@ -97,7 +97,7 @@ test('le nom d’une classe : « couleur-<famille>-<id> », l’id = la clé du 
   assert.equal(classeDeMagie('Lumière'), 'couleur-magie-lumiere');
   assert.equal(classeDeMagie('Inconnue'), `couleur-magie-${MAGIE_PAR_DEFAUT}`, 'une magie inconnue : la couleur par défaut, comme couleurDeMagie');
   assert.equal(classeDAttribut('sante'), 'couleur-attribut-sante');
-  assert.equal(classeDAttribut('barre4'), 'couleur-attribut-barre4');
+  assert.equal(classeDAttribut('barre4'), null, 'la 4ᵉ barre : la classe de sa magie (2026-10-23)');
   assert.equal(classeDeCaracteristique('volonte'), 'couleur-caracteristique-volonte');
   assert.equal(classeDeCaracteristique('chance'), `couleur-caracteristique-${PAR_DEFAUT}`, 'inconnue : la classe par défaut, comme couleurDeCaracteristique');
   assert.equal(classeDeCaracteristique(undefined), `couleur-caracteristique-${PAR_DEFAUT}`, 'une compétence sans caractéristique');
@@ -223,7 +223,8 @@ test('les combinaisons des potions : la base (une classe du site) et le niveau ;
   const db = ouvrirBase();
   const essences = db.prepare("SELECT DISTINCT ri.affinite_id AS id FROM recette r JOIN recette_ingredient ri ON ri.recette_id = r.id WHERE r.genre = 'alchimie' AND ri.role = 'essence'")
     .all().map((e) => e.id);
-  const cas = [...essences.map((essence) => ({ essence })), ...Object.keys(COULEURS_CARACTERISTIQUES).map((caracteristique) => ({ essence: AFFINITE_DES_PHILTRES, caracteristique }))];
+  const cas = [...essences.map((essence) => ({ essence })), ...Object.keys(COULEURS_CARACTERISTIQUES).map((caracteristique) => ({ essence: AFFINITE_DES_PHILTRES, caracteristique })),
+    ...Object.keys(COULEURS_CHOISIES_PAR_PAGE).map((page) => ({ page }))]; // les pages dont le propriétaire a choisi la couleur (2026-10-23)
   const palette = new Map(couleursDeLaPalette().map((c) => [c.classe, c]));
   let combinaisons = 0;
   for (const c of cas) for (const niveau of [...Object.keys(NUANCES_DES_NIVEAUX).map(Number), null]) {
@@ -231,7 +232,7 @@ test('les combinaisons des potions : la base (une classe du site) et le niveau ;
     if (!couleur) continue;
     combinaisons++;
     const base = palette.get(classeDeCouleur(couleur.base.famille, couleur.base.cle));
-    assert.ok(base, `${c.essence} : sa base est une classe de la palette`);
+    assert.ok(base, `${c.essence ?? c.page} : sa base est une classe de la palette`);
     assert.equal(couleur.fond, lisible(nuanceDuNiveau(base.fond, niveau)), `${classeDePotion(couleur)} : calculée depuis la couleur de sa classe de base`);
     assert.ok(contraste(couleur.fond, couleur.texte) >= CONTRASTE_MINIMAL, `${classeDePotion(couleur)} : ${couleur.fond} / ${couleur.texte}`);
   }
