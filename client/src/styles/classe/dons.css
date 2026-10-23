@@ -61,7 +61,7 @@
 .onglets--2 > .onglet:first-child { justify-self: start; }
 .onglets--2 > .onglet:last-child { justify-self: end; align-items: flex-end; text-align: right; }
 .onglet { display: flex; flex-direction: column; align-items: flex-start; gap: 0.1rem; max-width: 100%; padding: 0.45rem 1.1rem 0.6rem; border: 1px solid var(--cla-line); border-bottom: 0; border-radius: var(--radius-lg) 12px 0 0;
-  background: linear-gradient(135deg, var(--hero-1), var(--hero-2)); color: #fff; text-decoration: none; }
+  background: linear-gradient(135deg, var(--hero-1), var(--hero-2)); color: var(--texte-sur-fonce); text-decoration: none; }
 .onglet__surtitre { font-size: 0.65rem; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.8; }
 .onglet__nom { font-size: 1.15rem; font-weight: 700; letter-spacing: 0.1em; line-height: 1.25; overflow-wrap: normal; word-break: normal; }
 .onglet__magique { margin-top: 0.15rem; font-size: var(--fs-xxs); letter-spacing: var(--ls-fin); padding: 0.05rem 0.5rem; border-radius: var(--radius-pill); background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.3); }
@@ -78,7 +78,7 @@ html.js .onglet:not(.is-active):hover { background: color-mix(in srgb, var(--cla
 html.js .specialites[data-onglets] .specialite:not(.is-active) { display: none; }
 html.js .specialites[data-onglets] .specialite { margin-top: 0; border-radius: 0 0 12px 12px; }
 /* titre du panneau : visible sans JavaScript ; avec JavaScript, l'onglet le montre déjà (gardé pour les lecteurs d'écran) */
-.specialite__titre { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.6rem; margin: 0; padding: 0.5rem 0.8rem; border-radius: var(--radius); color: #fff;
+.specialite__titre { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.6rem; margin: 0; padding: 0.5rem 0.8rem; border-radius: var(--radius); color: var(--texte-sur-fonce);
   background: linear-gradient(135deg, var(--hero-1), var(--hero-2)); font-size: 1.1rem; letter-spacing: 0.1em; }
 .specialite__surtitre { width: 100%; font-size: 0.65rem; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.8; }
 .specialite__magique { font-size: var(--fs-xxs); font-weight: normal; letter-spacing: var(--ls-fin); padding: 0.05rem 0.5rem; border-radius: var(--radius-pill); background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.3); }

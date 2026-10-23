@@ -9,16 +9,13 @@ main:has(> .fiche) { max-width: 100rem; }
 /* lu par les lecteurs d'écran, pas affiché (le titre de la page : le nom, déjà en grand dans l'identité) */
 .fiche .visuellement-cache { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .fiche {
-  --vert: #2e7d4f;
-  --a-choisir: #b45309;   /* un choix qui reste à faire : champ surligné, tiroir des choix */
+  /* couleurs d'interface du thème (styles/global/base.css) : l'action principale ; --a-choisir (un choix qui reste à faire : champ surligné, tiroir des
+     choix) y est aussi, avec sa valeur du thème sombre */
+  --vert: var(--vert-action);
   display: grid;
   gap: 0.75rem;
   font-size: var(--fs-lg);
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .fiche { --a-choisir: #f0a14a; }
-}
-:root[data-theme='dark'] .fiche { --a-choisir: #f0a14a; }
 /* l'attribut hidden l'emporte sur les display des blocs (un champ caché par le script reste caché) */
 .fiche [hidden] { display: none !important; }
 .fiche input:not([type='range'], [type='checkbox'], [type='radio']), .fiche select, .fiche textarea, .fiche button { padding: 0.22rem 0.45rem; font-size: var(--fs-md); }
@@ -34,7 +31,7 @@ main:has(> .fiche) { max-width: 100rem; }
 .xp__niveau { margin-right: auto; color: var(--vert); }
 .fiche .xp__ligne input { width: 6.5rem; text-align: right; font-variant-numeric: tabular-nums; }
 .xp__objectif { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.fiche .xp__plus { width: 1.8rem; padding: 0.1rem 0; font-weight: 700; color: #fff; background: var(--vert); border-color: var(--vert); border-radius: var(--radius-pill); }
+.fiche .xp__plus { width: 1.8rem; padding: 0.1rem 0; font-weight: 700; color: var(--texte-sur-fonce); background: var(--vert); border-color: var(--vert); border-radius: var(--radius-pill); }
 .xp__jauge { height: 0.5rem; overflow: hidden; border: 1px solid color-mix(in srgb, var(--vert) 45%, var(--border)); border-radius: var(--radius-pill); background: color-mix(in srgb, var(--vert) 8%, var(--surface)); }
 .xp__rempli { display: block; width: 0; height: 100%; background: var(--vert); transition: width 200ms ease; }
 .xp__ajout { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; }
@@ -58,7 +55,7 @@ main:has(> .fiche) { max-width: 100rem; }
   box-shadow: 0 3px 10px color-mix(in srgb, var(--text) 9%, transparent);
 }
 .fiche-barre label { display: flex; align-items: center; gap: 0.35rem; font-size: var(--fs-md); }
-.fiche .fiche-barre__principal { font-weight: 700; color: #fff; background: var(--vert); border-color: var(--vert); padding-inline: 0.9rem; }
+.fiche .fiche-barre__principal { font-weight: 700; color: var(--texte-sur-fonce); background: var(--vert); border-color: var(--vert); padding-inline: 0.9rem; }
 .fiche-barre__principal:hover:not(:disabled) { filter: brightness(1.1); }
 .fiche .fiche-barre__danger { color: var(--danger); background: none; border-color: color-mix(in srgb, var(--danger) 50%, var(--border)); }
 .fiche .fiche-barre__danger:hover { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, var(--surface)); }
@@ -100,9 +97,10 @@ main:has(> .fiche) { max-width: 100rem; }
   --cadre-trait-2: color-mix(in srgb, var(--cadre-2) 80%, var(--text));
 }
 .fiche[data-magie] .fiche-etape { --cadre: var(--couleur); --cadre-2: var(--couleur-2, var(--couleur)); }
-/* la couleur d'une magie, d'une caractéristique (et de ses compétences), d'une posture ou d'un alignement sur un élément de la fiche (pastille,
-   résistance, sort, liste, carte, tableau des compétences, case de posture, alignement) : sa classe (lib/palette-css.mjs, nom transmis par regles.json)
-   et `teinte-palette`, qui la fait lire dans les variables de la fiche (src/scripts/fiche.mjs#teinteDe) ; jamais une couleur en style */
+/* la couleur d'une magie, d'une caractéristique (et de ses compétences), d'une posture, d'un alignement, d'une race, d'une classe, du Mode Hyper ou
+   la classe neutre sur un élément de la fiche (pastille, groupe de pastilles, résistance, sort, liste, carte, tableau des compétences, case de posture
+   ou du Mode Hyper, alignement, dons d'une classe) : sa classe (lib/palette-css.mjs, nom transmis par regles.json) et `teinte-palette`, qui la fait lire
+   dans les variables de la fiche (src/scripts/fiche.mjs#teinteDe) ; jamais une couleur en style */
 .fiche .teinte-palette { --c: var(--couleur); --c-texte: var(--couleur-texte); --texte-sur-c: var(--couleur-texte); }
 .fiche option.teinte-palette { background-color: var(--c); color: var(--c-texte); }
 
@@ -283,9 +281,9 @@ main:has(> .fiche) { max-width: 100rem; }
 }
 .parametres .onglet:hover { background: color-mix(in srgb, var(--etape) 18%, var(--surface)); }
 .parametres .onglet.is-active { border-color: var(--etape); border-bottom-color: var(--surface); background: var(--surface); color: color-mix(in srgb, var(--etape) 70%, var(--text)); }
-.onglet__compte { padding: 0 0.4rem; border-radius: var(--radius-pill); background: var(--danger); color: #fff; font-size: var(--fs-xxs); }
+.onglet__compte { padding: 0 0.4rem; border-radius: var(--radius-pill); background: var(--danger); color: var(--texte-sur-fonce); font-size: var(--fs-xxs); }
 .onglet__compte[data-ok] { background: var(--good); }
-.onglet__compte--attente { background: #b45309; }
+.onglet__compte--attente { background: var(--a-choisir-plein); }
 .parametres__panneau { border-top-left-radius: 0; border-top-right-radius: 0; }
 html.js .parametres[data-onglets] .parametres__panneau:not(.is-active) { display: none; }
 html.js .parametres[data-onglets] .parametres__titre { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -405,7 +403,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
   height: 1.4rem;
   border-radius: 50%;
   background: var(--etape);
-  color: #fff;
+  color: var(--texte-sur-fonce);
   font-size: var(--fs-xxs);
   font-weight: 700;
 }
@@ -487,7 +485,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
   padding: 0.05rem 0.6rem;
   border-radius: var(--radius-pill);
   background: var(--c);
-  color: var(--texte-sur-c, #fff);
+  color: var(--texte-sur-c, var(--texte-sur-fonce));
   font-size: var(--fs-md);
   font-weight: 700;
 }
@@ -567,7 +565,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .pastille[aria-pressed='true'] {
   background: var(--c);
   border-color: var(--c);
-  color: var(--texte-sur-c, #fff);
+  color: var(--texte-sur-c, var(--texte-sur-fonce));
   box-shadow: 0 2px 8px color-mix(in srgb, var(--c) 40%, transparent);
 }
 .pastille[aria-pressed='true'] .pastille__point { background: var(--surface); border-color: var(--surface); }
@@ -610,7 +608,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
   font-weight: 700;
 }
 .budget[data-etat='ok'] { border-color: color-mix(in srgb, var(--good) 60%, var(--border)); color: var(--good); }
-.budget[data-etat='manque'] { border-color: color-mix(in srgb, var(--a-choisir) 60%, var(--border)); color: #b45309; }
+.budget[data-etat='manque'] { border-color: color-mix(in srgb, var(--a-choisir) 60%, var(--border)); color: var(--a-choisir); }
 .budget[data-etat='trop'] { border-color: var(--danger); color: var(--danger); }
 .fiche-entete-bloc { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.4rem; }
 .fiche-budgets { display: inline-flex; flex-wrap: wrap; gap: 0.35rem; }
@@ -679,7 +677,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 /* la remarque d'un sort : une étoile, son texte en infobulle (demande du propriétaire ; son `title`, montré en position fixe par components/Infobulles.astro : le cadre défilant ne la coupe pas) */
 .sort-choix { display: flex; min-width: 9rem; align-items: center; gap: 0.3rem; }
 .sort-choix select { flex: 1; min-width: 0; }
-.sort-remarque { flex: none; color: #c99a06; font-size: var(--fs-lg); line-height: 1; cursor: help; }
+.sort-remarque { flex: none; color: var(--etoile); font-size: var(--fs-lg); line-height: 1; cursor: help; }
 .sort-remarque:focus-visible { outline: 2px solid var(--etape); outline-offset: 2px; border-radius: var(--radius-xxs); }
 /* liste d'un emplacement : un groupe par NPM, chaque sort sur la couleur de sa magie (demande du propriétaire) ; fermée, la couleur du sort choisi */
 .fiche .fiche-table--sorts select[data-couleur] { background-color: var(--c); color: var(--texte-sur-c); font-weight: 600; } /* la classe de la magie du sort (teinte-palette) */
@@ -850,7 +848,8 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 }
 .fiche .attributs-pastilles strong { color: var(--muted); font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; }
 /* les six postures (demande du propriétaire) : une case chacune, dans sa couleur (la classe de la posture et teinte-palette), avec ses effets toujours lisibles ; la choisie pleine. Puis le Mode
-   Hyper et le Mode Hyper 100 % une fois débloqués, sur deux colonnes (leurs effets sont plus longs) */
+   Hyper et le Mode Hyper 100 % une fois débloqués, sur deux colonnes (leurs effets sont plus longs), chacun dans la classe de son mode (famille `mode`
+   de lib/palette-css.mjs) et teinte-palette */
 .postures { display: grid; gap: 0.45rem; align-items: start; }
 .postures__cartes { display: grid; gap: 0.45rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 12rem), 1fr)); align-items: stretch; }
 .postures__hyper { display: grid; gap: 0.45rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); align-items: start; }
@@ -879,8 +878,6 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .fiche .posture-carte[aria-pressed='true'] { border-color: var(--c); box-shadow: 0 0 0 2px var(--c), 0 2px 8px color-mix(in srgb, var(--c) 40%, transparent); }
 .fiche .posture-carte[aria-pressed='true'] .posture-carte__nom { background: var(--c); color: var(--c-texte); }
 .fiche .posture-carte[aria-pressed='true'] .posture-carte__nom::after { content: ' ✓'; }
-.posture-carte--hyper { --c: #7c3aed; }
-.posture-carte--cent { --c: #c026d3; }
 .posture-carte__magie { list-style: none; margin-left: -0.8rem; padding-left: 0.5rem; border-left: 3px solid var(--couleur); } /* la classe de la magie */
 .posture-carte__race, .posture-carte__suite { list-style: none; margin-left: -0.8rem; }
 /* avantages en vert, inconvénients en rouge (décision du propriétaire) */
@@ -927,8 +924,8 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .equipement--armes .objet { align-content: start; }
 .objet__tete { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
 .objet__degats { display: inline-flex; align-items: center; gap: 0.2rem; }
-.objet__des { padding: 0 0.5rem; border-radius: var(--radius-pill); background: var(--etape); color: #fff; font-size: var(--fs-md); font-variant-numeric: tabular-nums; cursor: help; }
-.objet__etoile { color: #c99a06; font-size: 1rem; line-height: 1; cursor: help; }
+.objet__des { padding: 0 0.5rem; border-radius: var(--radius-pill); background: var(--etape); color: var(--texte-sur-fonce); font-size: var(--fs-md); font-variant-numeric: tabular-nums; cursor: help; }
+.objet__etoile { color: var(--etoile); font-size: 1rem; line-height: 1; cursor: help; }
 .objet__etoile:focus-visible { outline: 2px solid var(--etape); outline-offset: 2px; border-radius: var(--radius-xxs); }
 /* une arme cassée (décision R74 : « La tuile des dés de dégâts devra alors être grisée et indiquée "Cassée" ») : seule la pastille des dés est grisée */
 .objet__des[data-cassee] { background: var(--border); color: var(--muted); }
@@ -984,12 +981,9 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .resistances__table th, .resistances__table td { padding: 0.2rem 0.35rem; border-top: 1px solid var(--etape-ligne); vertical-align: middle; text-align: left; }
 .resistances__table th { width: 8.5rem; font-weight: 600; border-left: 3px solid var(--r, var(--etape-ligne)); line-height: 1.15; }
 .resistances__table th small { display: block; font-weight: normal; color: var(--muted); font-size: var(--fs-xxs); }
-.resistances__table tr[data-palier='immunite'] { --r: #1b5e20; }
-.resistances__table tr[data-palier='grande_resistance'] { --r: #2e7d32; }
-.resistances__table tr[data-palier='resistance'] { --r: #66bb6a; }
-.resistances__table tr[data-palier='vulnerabilite'] { --r: #ef9a9a; }
-.resistances__table tr[data-palier='grande_vulnerabilite'] { --r: #e53935; }
-.resistances__table tr[data-palier='sensibilite'] { --r: #8e0000; }
+/* le trait d'un palier : la classe de son palier (lib/palette-css.mjs, famille `palier`, posée par le script d'après regles.json), seulement là où la
+   ligne la porte (la fiche porte la classe de sa magie innée : --couleur s'hériterait) */
+.resistances__table tr[class*='couleur-palier-'] { --r: var(--couleur); }
 .resistances__cibles { display: flex; flex-wrap: wrap; gap: 0.25rem; margin: 0; padding: 0; list-style: none; }
 .resistance { padding: 0 0.45rem; border: 1.5px solid var(--c, var(--border)); border-radius: var(--radius-pill); font-size: var(--fs-xs); line-height: 1.5; cursor: help; }
 .resistance--magie { background: var(--c, var(--etape-doux)); color: var(--c-texte, var(--text)); }
@@ -1001,7 +995,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 /* Accessoires (décision R54) : sous l'effet, le choix qu'il demande (compétence, famille d'armes) et ce qu'il change sur la fiche */
 .accessoire-cellule { display: grid; gap: 0.25rem; }
 .accessoire-cellule > select[hidden] { display: none; }
-.accessoire-effet { font-size: var(--fs-sm); color: var(--good, #2e7d32); }
+.accessoire-effet { font-size: var(--fs-sm); color: var(--good); }
 .accessoire-effet:empty { display: none; }
 .accessoire-cellule > select[data-a-choisir] { outline: 2px solid var(--a-choisir); outline-offset: 1px; }
 
@@ -1060,7 +1054,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
   border: 1px solid var(--etape-ligne);
   border-radius: var(--radius);
   background: var(--surface);
-  box-shadow: 0 4px 14px rgb(0 0 0 / 0.18);
+  box-shadow: 0 4px 14px color-mix(in srgb, #000 18%, transparent);
   list-style: none;
 }
 .autocompletion__liste[hidden] { display: none; }

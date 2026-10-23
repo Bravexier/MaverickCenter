@@ -11,11 +11,13 @@ import racePageCss from '../../styles/race/page.css?raw';
 import raceRelationsCss from '../../styles/race/relations.css?raw';
 import classeBaseCss from '../../styles/classe/base.css?raw';
 import classePageCss from '../../styles/classe/page.css?raw';
-import { classColor, CLASS_GROUPS } from '../../lib/class-groups.mjs';
-import { texteSurCouleur } from '../../lib/sort-format.mjs';
+import { CLASS_GROUPS } from '../../lib/class-groups.mjs';
 import { attributEd, ENTITES } from '../../lib/edition-modele.mjs';
 import { echapperHtml } from '../../lib/edition-rendu.mjs';
-import { RACE_COLORS, TAG_RACE_HYBRIDE } from '../../lib/race-kinds.mjs';
+// la couleur d'une race ou d'une classe créée : la classe de sa nature ou de sa catégorie, comme les gabarits (familles `race` et `classe`, émises avec
+// la page dessinée : la page 404 ne les a pas) ; l'éditeur peut importer la palette (hors version portable : skill ui-couleurs)
+import { classeDUneClasse, classeDeRace, cssDesFamilles } from '../../lib/palette-css.mjs';
+import { TAG_RACE_HYBRIDE } from '../../lib/race-kinds.mjs';
 import { normalize } from '../../lib/text.mjs';
 
 const ed_ = (table, cle, colonne) => echapperHtml(attributEd(table, cle, colonne));
@@ -49,10 +51,10 @@ function pageDeRace(lignes, id, vocabulaire) {
   const stat = (libelle, c) => `<div class="race-stat"><dt>${libelle}</dt><dd data-ed="${o(c)}"></dd></div>`;
   const trait = (genre, titre, c) => `<article class="race-trait race-trait--${genre}"><h3>${titre}</h3><div data-ed="${o(c)}" data-ed-rendu="blocs"></div></article>`;
   return {
-    css: [raceBaseCss, racePageCss, raceRelationsCss].join('\n'),
+    css: [raceBaseCss, racePageCss, raceRelationsCss, cssDesFamilles(['race'])].join('\n'),
     titre: race.nom,
     html: `<p class="muted"><a href="#">Races</a> › ${hybride ? 'Races hybrides' : 'Races pures'}</p>
-    <div class="race race--${hybride ? 'hybride' : 'pure'}" style="--couleur-race: ${RACE_COLORS[hybride ? 'hybride' : 'pure']}">
+    <div class="race race--${hybride ? 'hybride' : 'pure'} ${classeDeRace(hybride ? 'hybride' : 'pure')}">
       <header class="race-hero">
         <p class="race-hero__surtitre">${hybride ? 'Race hybride' : 'Race pure'}</p>
         <h1>${echapperHtml(race.nom)}</h1>
@@ -78,15 +80,15 @@ function pageDeClasse(lignes, id, vocabulaire) {
   const classe = lignesDe(lignes, 'classe').find((l) => l.cle.id === id)?.ligne;
   if (!classe) return null;
   const tags = motsClesDeLaPage(lignes, id, vocabulaire).map((m) => m.libelle);
-  const couleur = classColor({ id, data: { tags } });
+  const couleur = classeDUneClasse({ id, data: { tags } });
   const c = (col) => ed_('classe', { id }, col);
   const stat = (libelle, col) => `<div class="classe-stat"><dt>${libelle}</dt><dd data-ed="${c(col)}"></dd></div>`;
   const carte = (titre, col, rendu, balise = 'p') => `<article class="depart-carte" data-ed-cadre="${balise}"><h3>${titre}</h3><${balise} data-ed="${c(col)}"${rendu ? ` data-ed-rendu="${rendu}"` : ''}></${balise}></article>`;
   return {
-    css: [classeBaseCss, classePageCss].join('\n'),
+    css: [classeBaseCss, classePageCss, cssDesFamilles(['classe'])].join('\n'),
     titre: classe.nom,
     html: `<p class="muted"><a href="#">Classes</a></p>
-    <div class="classe" data-ed-classe="${echapperHtml(id)}" style="--couleur-classe: ${couleur}; --couleur-texte-classe: ${texteSurCouleur(couleur)}">
+    <div class="classe ${couleur}" data-ed-classe="${echapperHtml(id)}">
       <header class="classe-hero">
         <p class="classe-hero__surtitre">${echapperHtml(tags.find((t) => t !== 'classe') ?? 'Classe')}</p>
         <h1>${echapperHtml(classe.nom)}</h1>

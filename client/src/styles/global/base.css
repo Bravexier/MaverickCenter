@@ -11,6 +11,14 @@
   --warn-text: #5c4400;
   --danger: #a12020;
   --good: #2f6f47;
+  /* couleurs d'interface sans règle du jeu, reprises des feuilles qui les écrivaient (demande du propriétaire du 2026-10-22 : « Aucune couleur en
+     dur. » ; choix « Thème reste, Debug à part » : une copie ailleurs passe par ces variables) */
+  --texte-sur-fonce: #fff;        /* texte posé sur un aplat foncé : bannières des classes, des races et des magies, boutons et pastilles pleins de la fiche */
+  --fond-banniere: #111;          /* le noir où se fond la couleur des bannières des classes, des races et des magies (styles/classe/base.css, race/base.css, magie/base.css) */
+  --vert-action: #2e7d4f;         /* l'action principale de la fiche (Enregistrer, + de l'XP) et son surtitre */
+  --a-choisir: #b45309;           /* un choix qui reste à faire (fiche : champ surligné, tiroir des choix) */
+  --a-choisir-plein: #b45309;     /* le même, en aplat sous un texte clair, dans les deux thèmes (compte des choix en attente) */
+  --etoile: #c99a06;              /* l'étoile d'une remarque (sort, arme de la fiche) */
   --radius: 8px;
   --radius-xs: 4px;
   --radius-sm: 6px;
@@ -51,6 +59,7 @@
     --warn-text: #f0d98a;
     --danger: #ef8a8a;
     --good: #7fcf9b;
+    --a-choisir: #f0a14a;
   }
 }
 
@@ -67,6 +76,7 @@
   --warn-text: #f0d98a;
   --danger: #ef8a8a;
   --good: #7fcf9b;
+  --a-choisir: #f0a14a;
 }
 
 * { box-sizing: border-box; }

@@ -1,14 +1,15 @@
 /* Chargé uniquement depuis components/classes/ClassePage.astro (?raw), pour ne pas alourdir les autres pages du wiki. Même grammaire que les pages de magie et de race.
-   La couleur d'une classe (--couleur-classe, lib/class-groups.mjs#classColor) suit sa catégorie de /classes/ et s'emploie sur toute la page comme celle
-   d'une magie : rouge (mêlée), vert (distance), bleu (magiques), violet (raciales), jaune (spéciales). Un repère visuel, sans valeur de règle. */
+   La couleur d'une classe suit sa catégorie de /classes/ et s'emploie sur toute la page comme celle d'une magie : rouge (mêlée), vert (distance), bleu
+   (magiques), violet (raciales), jaune (spéciales). Un repère visuel, sans valeur de règle. Elle vient de la classe de sa catégorie, que porte .classe
+   (lib/palette-css.mjs, famille `classe` : --couleur, --couleur-texte ; valeurs dans lib/class-groups.mjs#CLASS_COLORS), jamais d'un style. */
 .classe {
-  --cla: var(--couleur-classe, #6b5a45);
-  --cla-texte: var(--couleur-texte-classe, #fff); /* texte posé sur la couleur pleine (pastilles) : sombre sur le jaune */
+  --cla: var(--couleur, var(--muted));
+  --cla-texte: var(--couleur-texte, var(--texte-sur-fonce)); /* texte posé sur la couleur pleine (pastilles) : sombre sur le jaune */
   --cla-readable: color-mix(in srgb, var(--cla) 55%, #000);
   --cla-soft: color-mix(in srgb, var(--cla) 10%, var(--surface));
   --cla-line: color-mix(in srgb, var(--cla) 40%, var(--border));
-  --hero-1: color-mix(in srgb, var(--cla) 35%, #111);
-  --hero-2: color-mix(in srgb, var(--cla) 50%, #111);
+  --hero-1: color-mix(in srgb, var(--cla) 35%, var(--fond-banniere));
+  --hero-2: color-mix(in srgb, var(--cla) 50%, var(--fond-banniere));
   /* infobulles (styles/magie/tooltips.css) : mêmes variables que les pages de magie */
   --mag: var(--cla);
   --mag-soft: var(--cla-soft);

@@ -11,7 +11,7 @@ import { groupesDeChoix, typeDeDon } from './classe-dons.mjs';
 import { ditClasseMagique } from './classe-magique.mjs';
 import { COULEURS_ALIGNEMENTS } from './caracteristiques-postures.mjs';
 import { effetDePosture } from './posture-texte.mjs';
-import { CLASS_GROUPS, classCategory, classColor } from './class-groups.mjs';
+import { CLASS_GROUPS, classCategory } from './class-groups.mjs';
 import { competencesDArme, durabiliteDeLArme, porteeDeLArme } from './arme-champs.mjs';
 import { DURABILITE_MIN } from './arme-forge.mjs';
 import { couleurDuPoids } from './armures-rendu.mjs';
@@ -21,10 +21,13 @@ import { bonusDeSortsEcrits, preparationEcrite } from './sort-bonus-texte.mjs';
 import { lecteurDAcquis } from './acquis-texte.mjs';
 import { chargerInvocations, tableauxDesSorts } from './bestiaire-db.mjs';
 import { desSelonLaForce, pointsDeMaitriseDArme } from './maitrise-arme.mjs';
-import { ORDRE_DES_RACES, RACE_COLORS, raceKind } from './race-kinds.mjs';
+import { ORDRE_DES_RACES, raceKind } from './race-kinds.mjs';
 import { lecteurDeResistances } from './resistance-texte.mjs';
 import { texteSurCouleur } from './sort-format.mjs';
-import { classeDAlignement, classeDeCaracteristique, classeDeMagie, classeDePosture, classeDeSecondeMagie } from './palette-css.mjs';
+import {
+  CLASSE_NEUTRE, classeDAlignement, classeDUneClasse, classeDeCaracteristique, classeDeMagie, classeDePalier, classeDePosture, classeDeRace,
+  classeDeSecondeMagie, classeDuModeHyper,
+} from './palette-css.mjs';
 import { normalize } from './text.mjs';
 import { chargerVocabulaire } from './mots-cles-db.mjs';
 import { texteSansBalises, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
@@ -51,7 +54,7 @@ const parCle = (rows, cle, valeur = (r) => r) => {
   return m;
 };
 
-/** Entrées minimales (id, titre, tags) des pages de races et de classes : pour réutiliser raceKind et classColor, comme /races/ et /classes/. */
+/** Entrées minimales (id, titre, tags) des pages de races et de classes : pour réutiliser raceKind et la couleur de la catégorie (classeDUneClasse), comme /races/ et /classes/. */
 function entreesDesPages(db) {
   const tags = parCle(lignes(db, "SELECT t.page_id, m.libelle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE t.page_id LIKE 'classes/%' OR t.page_id LIKE 'races/%' ORDER BY t.page_id, t.ordre"), 'page_id', (r) => r.libelle);
   return lignes(db, "SELECT id, titre FROM page WHERE type IN ('classes', 'races')").map((p) => ({ id: p.id, data: { title: p.titre, tags: tags.get(p.id) ?? [] } }));
@@ -123,7 +126,8 @@ function reglesDeLaBase(db) {
   // leur nom et sous les écritures que les importeurs leur ont rapprochées (magie_resistance, ethnie_resistance : « Gelé », « Pétrification »).
   // `multiplicateur` : celui des dégâts subis (« dégâts subis ÷2 » : 0,5), que le calcul des dégâts reçus applique (décision R98)
   const resistance_paliers = lignes(db, 'SELECT id, libelle, valeur_min, valeur_max, multiplicateur, effet_brut FROM resistance_palier ORDER BY ordre')
-    .map((p) => ({ id: p.id, libelle: p.libelle, min: p.valeur_min, max: p.valeur_max, multiplicateur: p.multiplicateur, effet: p.effet_brut }));
+    // `classe` : la classe de la couleur du palier (lib/palette-css.mjs, famille `palier` ; null pour un palier sans couleur), jamais un hex
+    .map((p) => ({ id: p.id, libelle: p.libelle, min: p.valeur_min, max: p.valeur_max, multiplicateur: p.multiplicateur, effet: p.effet_brut, classe: classeDePalier(p.id) }));
   const etats = lignes(db, 'SELECT id, nom FROM etat ORDER BY ordre');
   const lireResistances = lecteurDeResistances([
     ...lignes(db, 'SELECT id, nom FROM magie').map((m) => ({ type: 'magie', id: m.id, nom: m.nom })),
@@ -229,7 +233,8 @@ function reglesDeLaBase(db) {
       const entree = entrees.find((e) => e.id === r.id) ?? { id: r.id, data: { title: r.nom, tags: [] } };
       const nature = raceKind(entrees, entree);
       return {
-        id: r.id, nom: r.nom, nature, couleur: RACE_COLORS[nature],
+        // sa couleur : la classe de sa nature (lib/palette-css.mjs, famille `race`, celle de /races/ et des pages de race), jamais un hex
+        id: r.id, nom: r.nom, nature, classe: classeDeRace(nature),
         sante: r.sante_depart, chakra: r.chakra_depart, barriere: r.barriere_bonus ?? 0, vitesse_sol: r.vitesse_sol, vitesse_nage: r.vitesse_nage,
         ap: r.ap ?? 0, am: r.am ?? 0, don_base: r.don_base, mono_magie: r.mono_magie === 1,
         classes: accesClasses.get(r.id) ?? [],
@@ -355,7 +360,8 @@ function reglesDeLaBase(db) {
         return { id: s.id, nom: s.nom, rang: s.rang, magique: ditClasseMagique(cartouche?.effet) };
       });
       return {
-        id: c.id, nom: c.nom, categorie: c.categorie, couleur: classColor(entree),
+        // sa couleur : la classe de sa catégorie de /classes/ (lib/palette-css.mjs, famille `classe`, celle des pages de classe), jamais un hex
+        id: c.id, nom: c.nom, categorie: c.categorie, classe: classeDUneClasse(entree),
         // colonne de /classes/ (Parleur sous « Spéciales ») et son rang de gauche à droite
         groupe: (({ key, label }) => ({ key, label, ordre: CLASS_GROUPS.findIndex((g) => g.key === key) }))(classCategory(entree) ?? { key: 'speciales', label: 'Spéciales' }),
         magique: (c.am_base ?? 0) > 0 || c.id === 'classes/archimage',
@@ -442,7 +448,10 @@ function reglesDeLaBase(db) {
     magies: Object.fromEntries([...parCle(lignes(db, "SELECT magie_id, variante, effet FROM mode_hyper_effet WHERE version = 'onglet_magie' AND portee = 'magie'"), 'magie_id')]
       .map(([id, rows]) => [id, Object.fromEntries(rows.map((r) => [r.variante, r.effet]))])),
     races: Object.fromEntries(lignes(db, "SELECT race_id, nom, effet FROM mode_hyper_effet WHERE version = 'onglet_race'").map((r) => [r.race_id, { nom: r.nom, effet: r.effet }])),
+    // la couleur des deux cases : la classe du mode (lib/palette-css.mjs, famille `mode`), jamais un hex
+    classe: classeDuModeHyper('hyper'),
     cent: {
+      classe: classeDuModeHyper('cent'),
       niveau: Number(niveauCent),
       effets: [...sectionCent.matchAll(/^- (.+)$/gm)].map((m) => m[1].trim()),
       suite: /^En revanche, (.+)$/m.exec(sectionCent)?.[1]?.trim() ?? null,
@@ -586,10 +595,14 @@ function reglesDeLaBase(db) {
   // classe de la palette (famille d'une zone, émise par pages/fiche/index.astro), par nom ; `alignement_par_defaut` : celle d'un alignement inconnu
   const alignements = Object.fromEntries(Object.keys(COULEURS_ALIGNEMENTS).map((nom) => [nom, { classe: classeDAlignement(nom) }]));
   const alignement_par_defaut = { classe: classeDAlignement(null) };
+  // la couleur d'un groupe de races (pures, hybrides), même vide : la classe de sa nature ; `neutre` : la classe de ce que la fiche montre sans couleur
+  // de règle (la magie acquise « Aucune », un objet de départ au choix, une ethnie sans race choisie)
+  const race_par_nature = Object.fromEntries(['pure', 'hybride'].map((nature) => [nature, { classe: classeDeRace(nature) }]));
+  const neutre = { classe: CLASSE_NEUTRE };
 
   return {
     constantes, am_classe_magique: amMagique, niveaux, caracteristiques, caracteristique_par_defaut, competences, initiative, races, ethnies, magies, dieux, metiers, classes, sorts, postures,
-    ordre_postures, mode_hyper, ambidextrie, resistance_paliers, etats, alignements, alignement_par_defaut, invocations, tableaux_de_sacrifice, ...equipement,
+    ordre_postures, mode_hyper, ambidextrie, resistance_paliers, etats, alignements, alignement_par_defaut, race_par_nature, neutre, invocations, tableaux_de_sacrifice, ...equipement,
   };
 }
 

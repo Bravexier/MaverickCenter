@@ -5,9 +5,7 @@ import classeDonsCss from '../../styles/classe/dons.css?raw';
 import magieTooltipsCss from '../../styles/magie/tooltips.css?raw';
 import type { ClasseDb } from '../../lib/classes';
 import { idBulle, pageHref } from '../../lib/magies';
-import { classColor } from '../../lib/class-groups.mjs';
-import { texteSurCouleur } from '../../lib/sort-format.mjs';
-import { classeDeMagie } from '../../lib/palette-css.mjs';
+import { classeDUneClasse, classeDeMagie, cssDesFamilles } from '../../lib/palette-css.mjs';
 import type { WikiEntry } from '../../lib/wiki';
 import Texte from '../magie/Texte.astro';
 import ClasseDons from './ClasseDons.astro';
@@ -29,8 +27,9 @@ interface Props {
 }
 const { entry, classe, statusNote } = Astro.props;
 
-// couleur de la catégorie de /classes/ (rouge, vert, bleu, violet, jaune), sur toute la page comme celle d'une magie
-const couleur = classColor(entry);
+// couleur de la catégorie de /classes/ (rouge, vert, bleu, violet, jaune), sur toute la page comme celle d'une magie : la classe de sa catégorie
+// (lib/palette-css.mjs, famille `classe`, une famille d'une zone que la page émet), jamais un style
+const couleur = classeDUneClasse(entry);
 // spécialités : celles qui ont des dons (une colonne du plateau ; les deux de l'Archimage n'en ont pas) ; un article caché tant qu'il n'a ni description
 // ni remarque, que le mode modification ouvre pour le remplir (D11 : une spécialité créée sur le site n'a d'abord que son nom)
 const colonnes = classe.plateau.flatMap((e) => (e.forme === 'specialites' ? e.specialites : []));
@@ -55,7 +54,8 @@ const edSpe = (id: string, colonne: string) => attributEd('specialite', { id }, 
 ---
 
 <style is:inline set:html={classeCss}></style>
-<div class="classe" data-ed-classe={classe.id} data-ed-structure={empreinteDeStructure(classe)} style={`--couleur-classe: ${couleur}; --couleur-texte-classe: ${texteSurCouleur(couleur)}`}>
+<style is:inline set:html={cssDesFamilles(['classe'])}></style>
+<div class={`classe ${couleur}`} data-ed-classe={classe.id} data-ed-structure={empreinteDeStructure(classe)}>
   <header class="classe-hero">
     <p class="classe-hero__surtitre">{classe.categorie?.libelle ?? 'Classe'}</p>
     <h1>{entry.data.title}</h1>

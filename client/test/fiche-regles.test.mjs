@@ -9,7 +9,10 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { classeDeCaracteristique, classeDePosture } from '../src/lib/palette-css.mjs';
 import { CLASS_COLORS } from '../src/lib/class-groups.mjs';
-import { MAGIE_PAR_DEFAUT, classeDeMagie, classeDeSecondeMagie, classesDeLaPalette } from '../src/lib/palette-css.mjs';
+import {
+  CLASSE_NEUTRE, FAMILLES_DES_ZONES, MAGIE_PAR_DEFAUT, classeDUneClasse, classeDeCategorie, classeDeMagie, classeDePalier, classeDeRace, classeDeSecondeMagie,
+  classeDuModeHyper, classesDeLaPalette, cssDesFamilles,
+} from '../src/lib/palette-css.mjs';
 import { typeDeDon } from '../src/lib/classe-dons.mjs';
 import { ditClasseMagique } from '../src/lib/classe-magique.mjs';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
@@ -18,7 +21,7 @@ import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { porteeDeLArme } from '../src/lib/arme-champs.mjs';
 import { desSelonLaForce, pointsDeMaitriseDArme } from '../src/lib/maitrise-arme.mjs';
-import { ORDRE_DES_RACES, RACE_COLORS } from '../src/lib/race-kinds.mjs';
+import { ORDRE_DES_RACES } from '../src/lib/race-kinds.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const regles = chargerReglesDeFiche(db);
@@ -130,8 +133,10 @@ test('races : l’ordre et les couleurs de /races/, valeurs de l’onglet de la 
   assert.deepEqual(regles.races.slice(0, ORDRE_DES_RACES.length).map((r) => r.id), ORDRE_DES_RACES);
   const autres = regles.races.slice(ORDRE_DES_RACES.length).map((r) => r.nom);
   assert.deepEqual(autres, [...autres].sort((a, b) => a.localeCompare(b, 'fr')));
+  // la couleur d'une race : la classe de sa nature (lib/palette-css.mjs, famille `race`), celle de /races/ ; jamais un hex
   for (const r of regles.races) {
-    assert.equal(r.couleur, RACE_COLORS[r.nature], r.id);
+    assert.equal(r.classe, classeDeRace(r.nature), r.id);
+    assert.ok(!('couleur' in r), `${r.id} : plus de couleur dans regles.json`);
     assert.equal(Object.keys(r.bornes).length, 6, r.id);
     const onglet = db.prepare('SELECT sante_depart, chakra_depart FROM race_onglet WHERE race_id = ?').get(r.id);
     assert.deepEqual([r.sante, r.chakra], [onglet.sante_depart, onglet.chakra_depart], r.id);
@@ -141,15 +146,28 @@ test('races : l’ordre et les couleurs de /races/, valeurs de l’onglet de la 
   assert.equal(regles.races.find((r) => r.id === 'races/drassahthac').nature, 'hybride', 'décision R14');
   assert.equal(regles.races.find((r) => r.id === 'races/orios').nature, 'hybride');
   assert.equal(regles.races.find((r) => r.id === 'races/humain').nature, 'pure');
+  // la couleur d'un groupe de races, même vide (plus de repli écrit) ; la classe neutre (ethnie sans race, magie acquise « Aucune », objet de départ)
+  assert.deepEqual(regles.race_par_nature, { pure: { classe: 'couleur-race-pure' }, hybride: { classe: 'couleur-race-hybride' } });
+  assert.deepEqual(regles.neutre, { classe: CLASSE_NEUTRE });
+  assert.equal(CLASSE_NEUTRE, 'couleur-neutre-par-defaut');
+  // des classes de la feuille de la fiche (les familles d'une zone, que pages/fiche/index.astro émet)
+  const feuille = cssDesFamilles(FAMILLES_DES_ZONES);
+  for (const c of [...regles.races, ...Object.values(regles.race_par_nature), regles.neutre].map((x) => x.classe)) assert.ok(feuille.includes(`.${c}{`), c);
 });
 
 test('classes : couleurs de /classes/ ; magiques = catégorie Magique et Archimage (R6) ; spécialités magiques = 13 classes raciales et le Flagelleur (R7) ; Archimage du Potentiel Illimité (R23)', () => {
-  assert.ok(regles.classes.every((c) => Object.values(CLASS_COLORS).includes(c.couleur)));
-  assert.equal(regles.classes.find((c) => c.id === 'classes/parleur').couleur, CLASS_COLORS.speciales, 'Parleur sous « Spéciales »');
+  // la couleur d'une classe : la classe de sa catégorie de /classes/ (lib/palette-css.mjs, famille `classe`) ; jamais un hex
+  assert.ok(regles.classes.every((c) => Object.keys(CLASS_COLORS).map(classeDeCategorie).includes(c.classe) && !('couleur' in c)));
+  assert.equal(regles.classes.find((c) => c.id === 'classes/parleur').classe, 'couleur-classe-speciales', 'Parleur sous « Spéciales »');
   assert.deepEqual(regles.classes.find((c) => c.id === 'classes/parleur').groupe, { key: 'speciales', label: 'Spéciales', ordre: 4 });
   assert.deepEqual([...new Set([...regles.classes].sort((a, b) => a.groupe.ordre - b.groupe.ordre).map((c) => c.groupe.label))], ['Physiques Mêlée', 'Physiques Distance', 'Magiques', 'Raciales', 'Spéciales']);
   assert.deepEqual([...new Set(regles.classes.map((c) => c.groupe.key))].sort(), Object.keys(CLASS_COLORS).sort(), 'les cinq colonnes de /classes/');
-  for (const c of regles.classes) assert.equal(c.couleur, CLASS_COLORS[c.groupe.key], c.id);
+  for (const c of regles.classes) assert.equal(c.classe, classeDeCategorie(c.groupe.key), c.id);
+  const feuille = cssDesFamilles(FAMILLES_DES_ZONES);
+  for (const c of regles.classes) assert.ok(feuille.includes(`.${c.classe}{`), `${c.id} : dans la feuille de la fiche`);
+  // la même règle que la page de la classe (class-groups.mjs#groupeDeCouleur : le Parleur, une classe sans catégorie reconnue sous « Spéciales »)
+  assert.equal(classeDUneClasse({ id: 'classes/parleur', data: { tags: ['càc'] } }), 'couleur-classe-speciales');
+  assert.equal(classeDUneClasse({ id: 'classes/inconnue', data: { tags: [] } }), 'couleur-classe-speciales');
   // R6 : magiques = catégorie Magique (la seule qui donne de l'AM) et Archimage ; à l'import, ces neuf classes
   assert.deepEqual(db.prepare('SELECT id FROM categorie_classe WHERE am_base > 0').all().map((k) => k.id), ['classe-magique']);
   const magiquesR6 = (classes) => classes.filter((c) => c.categorie_id === 'classe-magique' || c.id === 'classes/archimage').map((c) => c.nom).sort();
@@ -319,6 +337,14 @@ test('fiche en tableur : type d’un sort, effet et portée d’une arme, nom de
 
 test('résistances (tableau « Résistance / Faiblesse » de la fiche) : les six paliers, les listes de chaque magie et l’altération qui lui est liée, ce que les dons écrivent', () => {
   assert.deepEqual(regles.resistance_paliers.map((p) => p.id), db.prepare('SELECT id FROM resistance_palier ORDER BY ordre').all().map((r) => r.id));
+  // la couleur de chaque palier : la classe de son palier (lib/palette-css.mjs, famille `palier`, dans la feuille de la fiche), jamais un hex
+  for (const p of regles.resistance_paliers) {
+    assert.equal(p.classe, classeDePalier(p.id), p.id);
+    assert.ok(p.classe && cssDesFamilles(FAMILLES_DES_ZONES).includes(`.${p.classe}{`), p.id);
+  }
+  // le Mode Hyper et le Mode Hyper 100 % : la classe de leur mode (famille `mode`)
+  assert.deepEqual([regles.mode_hyper.classe, regles.mode_hyper.cent.classe], [classeDuModeHyper('hyper'), classeDuModeHyper('cent')]);
+  assert.deepEqual([regles.mode_hyper.classe, regles.mode_hyper.cent.classe], ['couleur-mode-hyper', 'couleur-mode-cent']);
   // décision R70 : ÷2, ÷4, x2, x4, x8, ceux de la fiche auto (le modèle ordinateur écrit ÷3, x3 et x4 : « C'est bien 2 4 8 »)
   assert.deepEqual(regles.resistance_paliers.map((p) => p.effet),
     ['dégâts subis =0', 'dégâts subis ÷4', 'dégâts subis ÷2', 'dégâts subis x2', 'dégâts subis x4', 'dégâts subis x8']);

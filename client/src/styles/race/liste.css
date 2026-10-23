@@ -1,6 +1,6 @@
 /* Chargé uniquement depuis components/race/RacesPastilles.astro (?raw) : les races de /races/.
-   Deux groupes côte à côte, races pures puis hybrides, chacun dans sa couleur (--couleur-race, lib/race-kinds.mjs#RACE_COLORS : celle du bandeau des pages
-   de race). Chaque race est une pastille sur le modèle de la carte des magies (styles/magie/orbit.css) et de la page des classes (styles/classe/liste.css) :
+   Deux groupes côte à côte, races pures puis hybrides, chacun dans sa couleur (la classe de sa nature, lib/palette-css.mjs, famille `race` : --couleur ;
+   valeurs dans lib/race-kinds.mjs#RACE_COLORS : celle du bandeau des pages de race). Chaque race est une pastille sur le modèle de la carte des magies (styles/magie/orbit.css) et de la page des classes (styles/classe/liste.css) :
    pilule bordée et teintée de la couleur, point de couleur, nom en gras, légère élévation au survol. Les pastilles d'un groupe vont deux par rangée. */
 .races-pastilles {
   display: grid;
@@ -11,7 +11,7 @@
 }
 
 .races-groupe {
-  --rac: var(--couleur-race, #6b5a45);
+  --rac: var(--couleur, var(--muted));
   --rac-readable: color-mix(in srgb, var(--rac) 60%, #000);
   --rac-line: color-mix(in srgb, var(--rac) 40%, var(--border));
   /* infobulles (styles/magie/tooltips.css) : mêmes variables que les pages de magie */

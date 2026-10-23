@@ -68,12 +68,20 @@ export function groupClasses(entries) {
 /**
  * Couleur d'une classe, d'après sa catégorie (demande du propriétaire) : rouge pour les physiques de mêlée, vert pour les physiques à distance,
  * bleu pour les magiques, violet pour les raciales (hybrides), jaune pour les spéciales (et les non classées). Repère visuel sans valeur de règle,
- * comme la couleur d'une magie ; elle suit la catégorie de /classes/, exception du Parleur comprise.
+ * comme la couleur d'une magie ; elle suit la catégorie de /classes/, exception du Parleur comprise. La valeur est ici (la règle) ; une page n'en pose
+ * que la classe (lib/palette-css.mjs, famille `classe` : `couleur-classe-melee`… ; choix du propriétaire du 2026-10-22, « Module JS → classe »).
  */
 export const CLASS_COLORS = { melee: '#c62828', distance: '#2e7d32', magiques: '#1e5bb8', raciales: '#7b3fa6', speciales: '#e3b104' };
 
+/**
+ * La catégorie dont une classe prend la couleur (clé de CLASS_COLORS) : celle de /classes/, exception du Parleur comprise ; « Spéciales » pour une classe
+ * non classée. Une page pose la classe de cette couleur (lib/palette-css.mjs#classeDUneClasse, famille `classe`), jamais la couleur.
+ */
+export const groupeDeCouleur = (entry) => findGroup(entry)?.key ?? LAST.key;
+
+/** La couleur d'une classe (la règle, que les tests comparent) : celle de sa catégorie (groupeDeCouleur). */
 export function classColor(entry) {
-  return CLASS_COLORS[findGroup(entry)?.key ?? LAST.key];
+  return CLASS_COLORS[groupeDeCouleur(entry)];
 }
 
 /** Catégorie d'une page de classe ({ key, label }), ou null si aucune n'est reconnue. */

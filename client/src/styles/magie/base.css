@@ -14,8 +14,8 @@
   --tab-soft: var(--mag-soft);
   --tab-line: var(--mag-line);
   --gl: 34%;
-  --hero-1: color-mix(in srgb, var(--mag) 35%, #000);
-  --hero-2: color-mix(in srgb, var(--mag) 45%, #000);
+  --hero-1: color-mix(in srgb, var(--mag) 35%, var(--fond-banniere));
+  --hero-2: color-mix(in srgb, var(--mag) 45%, var(--fond-banniere));
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) :is(.magie, .magie-teinte) { --mag-readable: color-mix(in srgb, var(--mag) 55%, #fff); --gl: 74%; }

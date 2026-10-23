@@ -121,9 +121,10 @@ function attribut(e, nom, valeur) {
 }
 
 /**
- * La couleur d'une magie, d'une caractéristique (et de ses compétences), d'une posture ou d'un alignement : les classes de la palette du site
- * (lib/palette-css.mjs ; regles.json en donne les noms : `classe` et `classe_2` de chaque magie, `classe` de chaque caractéristique, posture et
- * alignement), jamais une couleur écrite. `teinteDe(x)` : les classes d'un élément sur la couleur de `x` (rien sans `x`) ; `teinte-palette` fait lire à
+ * La couleur d'une magie, d'une caractéristique (et de ses compétences), d'une posture, d'un alignement, d'une race, d'une classe, d'un palier de
+ * résistance ou du Mode Hyper : les classes de la palette du site (lib/palette-css.mjs ; regles.json en donne les noms : `classe` et `classe_2` de
+ * chaque magie, `classe` de chaque caractéristique, posture, alignement, race, classe, palier et mode, `race_par_nature`, et `neutre` pour ce qui n'a
+ * pas de couleur de règle), jamais une couleur écrite. `teinteDe(x)` : les classes d'un élément sur la couleur de `x` (rien sans `x`) ; `teinte-palette` fait lire à
  * l'élément --couleur et --couleur-texte de sa classe dans les variables de la fiche (--c, --c-texte, --texte-sur-c : styles/fiche/fiche.css).
  */
 const teinteDe = (x) => (x ? ['teinte-palette', x.classe] : []);
@@ -199,12 +200,11 @@ const retirer = (cle, critere) => {
  * aussi). Une pastille refusée par les règles est grisée ; choisie malgré tout (règles changées, fiche importée), elle reste cliquable et cerclée de
  * rouge. Une pastille choisie que les règles imposent (`verrou()` dit pourquoi) ne se retire pas : le clic est sans effet.
  */
-function pastille({ texte, couleur, texteSurCouleur, teinte, choisie, refus = () => null, verrou = () => null, surClic, detail }) {
+function pastille({ texte, teinte, choisie, refus = () => null, verrou = () => null, surClic, detail }) {
   const bouton = el('button', {
     type: 'button',
-    // une magie ou une compétence (`teinte`) : les classes de sa couleur ; sinon la couleur reçue (races, classes : leur lot reste à faire)
+    // les classes de sa couleur (`teinte` : une magie, une compétence, une race, une classe, ou `regles.neutre`), jamais un style
     class: ['pastille', ...teinteDe(teinte)].join(' '),
-    style: teinte ? null : `--c: ${couleur}${texteSurCouleur ? `; --texte-sur-c: ${texteSurCouleur}` : ''}`,
     'aria-pressed': 'false',
     onclick: () => {
       if (bouton.hasAttribute('data-verrou')) return;
@@ -248,15 +248,16 @@ function afficherChoix(id, choix, vide = 'À choisir') {
   const faits = choix.filter(Boolean);
   cible.replaceChildren(...(faits.length
     ? faits.map((c) => el('span', {
-      class: ['choix__pastille', ...teinteDe(c.teinte)].join(' '), style: c.teinte ? null : `--c: ${c.couleur}${c.texte ? `; --texte-sur-c: ${c.texte}` : ''}`,
+      class: ['choix__pastille', ...teinteDe(c.teinte)].join(' '),
       dataset: { ...(c.refus ? { refus: '' } : {}), ...(c.verrou ? { verrou: '' } : {}) }, title: c.refus || c.verrou || null,
     }, c.nom, c.verrou ? el('small', { class: 'choix__verrou' }, ' · imposée') : null))
     : [el('span', { class: 'choix__vide' }, vide)]));
 }
 
-function groupe(titre, couleur, elements) {
-  return el('div', { class: 'groupe-pastilles', style: `--c: ${couleur}` },
-    el('h4', {}, el('span', { class: 'pastille__point', style: `--c: ${couleur}`, 'aria-hidden': 'true' }), titre),
+/** Un groupe de pastilles dans la couleur de `teinte` (une race par sa nature, une classe par sa catégorie) : son titre et son point la lisent (--c). */
+function groupe(titre, teinte, elements) {
+  return el('div', { class: ['groupe-pastilles', ...teinteDe(teinte)].join(' ') },
+    el('h4', {}, el('span', { class: 'pastille__point', 'aria-hidden': 'true' }), titre),
     el('ul', { class: 'pastilles' }, elements));
 }
 
@@ -264,8 +265,8 @@ function groupe(titre, couleur, elements) {
 function construireRaces() {
   reconstruire($('races'), 'fixe', () => [['pure', 'Races pures'], ['hybride', 'Races hybrides']].map(([nature, titre]) => {
     const races = regles.races.filter((r) => r.nature === nature);
-    return groupe(titre, races[0]?.couleur ?? '#6b5a45', races.map((r) => pastille({
-      texte: r.nom, couleur: r.couleur, choisie: () => fiche.race_id === r.id,
+    return groupe(titre, regles.race_par_nature[nature], races.map((r) => pastille({
+      texte: r.nom, teinte: r, choisie: () => fiche.race_id === r.id,
       surClic: () => {
         fiche.race_id = fiche.race_id === r.id ? null : r.id;
         if (fiche.ethnie_id && trouver(regles.ethnies, fiche.ethnie_id)?.race_id !== fiche.race_id) fiche.ethnie_id = null;
@@ -282,16 +283,17 @@ function construireRaces() {
   const ethnie = trouver(regles.ethnies, fiche.ethnie_id);
   const imposee = ethnieImposee(regles, fiche);
   const pourquoi = () => (ethniesDeLaRace(regles, fiche.race_id).length === 1 ? 'seule ethnie de la race' : 'seule ethnie de la magie innée');
-  afficherChoix('race', [race && { nom: race.nom, couleur: race.couleur }]);
+  afficherChoix('race', [race && { nom: race.nom, teinte: race }]);
   $('choix-ethnie').toggleAttribute('data-a-choisir', aChoisir('ethnie'));
   afficherChoix('ethnie', [ethnie && {
-    nom: ethnie.nom, couleur: race?.couleur ?? '#8a7a66',
+    // une ethnie n'a pas de couleur à elle : celle de la race choisie, ou la classe neutre sans race
+    nom: ethnie.nom, teinte: race ?? regles.neutre,
     refus: ethnie.race_id !== fiche.race_id ? 'ethnie d’une autre race' : ethnieCompatible(ethnie, fiche.magie_innee_id) ? null : 'liée à une autre magie innée',
     verrou: imposee === ethnie.id ? pourquoi() : null,
   }]);
   $('ethnies').dataset.choixCle = 'ethnie';   // sa tuile dans l'infobulle du tiroir des choix (choixEnAttente)
   reconstruire($('ethnies'), `${fiche.race_id}`, () => ethnies.map((e) => pastille({
-    texte: e.nom, couleur: race.couleur, choisie: () => fiche.ethnie_id === e.id,
+    texte: e.nom, teinte: race, choisie: () => fiche.ethnie_id === e.id,
     refus: () => (ethnieCompatible(e, fiche.magie_innee_id) ? null : `seulement avec la ${trouver(regles.magies, e.magie_id)?.nom ?? 'magie de l’ethnie'} innée`),
     verrou: () => (ethnieImposee(regles, fiche) === e.id ? pourquoi() : null),
     detail: [e.sante && `${signe(e.sante)} santé`, e.chakra && `${signe(e.chakra)} chakra`, e.barriere && `${signe(e.barriere)} barrière`, e.vitesse && `${signe(e.vitesse)} vitesse`].filter(Boolean).join(', ') || null,
@@ -350,7 +352,7 @@ function construireMagies() {
     nom: acquiseChoisie.nom, teinte: acquiseChoisie, refus: refusMagieAcquise(regles, fiche, acquiseChoisie.id),
   }], 'Aucune');
   reconstruire($('magies-acquises'), 'fixe', () => [
-    pastille({ texte: 'Aucune', couleur: '#8a7a66', choisie: () => !fiche.magie_acquise_id, surClic: () => { fiche.magie_acquise_id = null; changer(); } }),
+    pastille({ texte: 'Aucune', teinte: regles.neutre, choisie: () => !fiche.magie_acquise_id, surClic: () => { fiche.magie_acquise_id = null; changer(); } }),
     ...regles.magies.map((m) => pastille({
       texte: m.nom, teinte: m, choisie: () => fiche.magie_acquise_id === m.id,
       refus: () => refusMagieAcquise(regles, fiche, m.id),
@@ -400,7 +402,7 @@ function construireResistances() {
   const magieDeLEtat = new Map(regles.magies.filter((m) => m.etat_id).map((m) => [m.etat_id, m]));
   const detail = (c) => `${c.nom} : ${c.origines.map((o) => (o.immunite ? `immunisé (${o.nom})` : `${o.nom} ${signe(o.crans)}`)).join(' · ')}`
     + (c.immunite || c.origines.length < 2 ? '' : ` = ${signe(c.crans)}`);
-  reconstruire($('resistances'), JSON.stringify(paliers.map((p) => p.cibles.map(detail))), () => paliers.map((p) => el('tr', { dataset: { palier: p.id } },
+  reconstruire($('resistances'), JSON.stringify(paliers.map((p) => p.cibles.map(detail))), () => paliers.map((p) => el('tr', { class: trouver(regles.resistance_paliers, p.id)?.classe ?? null, dataset: { palier: p.id } },
     el('th', { scope: 'row' }, p.libelle, el('small', {}, p.effet)),
     el('td', {}, p.cibles.length
       ? el('ul', { class: 'resistances__cibles' }, p.cibles.map((c) => {
@@ -427,7 +429,7 @@ function construireClasses() {
   const groupes = [];
   for (const k of regles.classes) {
     let g = groupes.find((x) => x.key === k.groupe.key);
-    if (!g) groupes.push((g = { ...k.groupe, couleur: k.couleur, classes: [] }));
+    if (!g) groupes.push((g = { ...k.groupe, classe: k.classe, classes: [] }));   // la classe de couleur de la catégorie : celle de ses classes
     g.classes.push(k);
   }
   groupes.sort((a, b) => a.ordre - b.ordre);
@@ -442,18 +444,18 @@ function construireClasses() {
     $(`titre-classe-${rang}`).title = rang === 2 && fiche.mode_classe === 'mono' ? 'Prise au niveau 11 (décision R2)' : '';
     const choixDe = (r) => calcul.classes.find((x) => x.rang === r)?.choix ?? null;
     afficherChoix(`classe-${rang}`, [c.classe && {
-      nom: c.classe.nom, couleur: c.classe.couleur, refus: refusClasse(regles, fiche, c.classe.id, rang),
+      nom: c.classe.nom, teinte: c.classe, refus: refusClasse(regles, fiche, c.classe.id, rang),
       verrou: rang === 1 && imposee?.id === c.classe.id && magieImposante ? pourquoiImposee(imposee) : null,
     }]);
     const specialite = c.classe?.specialites.find((s) => s.id === c.choix?.specialite_id);
     $(`choix-specialite-${rang}`).hidden = !c.classe?.specialites.length || $(`choix-classe-${rang}`).hidden;
     afficherChoix(`specialite-${rang}`, [specialite && {
-      nom: specialite.nom, couleur: c.classe.couleur, refus: c.niveau < 10 ? 'au niveau de classe 10' : null,
+      nom: specialite.nom, teinte: c.classe, refus: c.niveau < 10 ? 'au niveau de classe 10' : null,
     }], c.niveau >= 10 ? 'À choisir' : 'Au niveau de classe 10');
     // un choix qui reste à faire est surligné (demande du propriétaire : « mettre en surbrillance le champ à saisir »)
     $(`choix-specialite-${rang}`).toggleAttribute('data-a-choisir', aChoisir('specialite', rang));
-    reconstruire($(`classe-${rang}`), 'fixe', () => groupes.map((g) => groupe(g.label, g.couleur, g.classes.map((k) => pastille({
-      texte: k.nom, couleur: k.couleur, choisie: () => choixDe(rang)?.classe_id === k.id,
+    reconstruire($(`classe-${rang}`), 'fixe', () => groupes.map((g) => groupe(g.label, g, g.classes.map((k) => pastille({
+      texte: k.nom, teinte: k, choisie: () => choixDe(rang)?.classe_id === k.id,
       refus: () => refusClasse(regles, fiche, k.id, rang),
       verrou: () => (rang === 1 && classeImposee(regles, fiche)?.id === k.id ? pourquoiImposee(k) : null),
       surClic: () => {
@@ -465,7 +467,7 @@ function construireClasses() {
       },
     })))));
     reconstruire($(`specialite-${rang}`), `${c.choix?.classe_id}`, () => (!c.classe ? [] : c.classe.specialites.map((s) => pastille({
-      texte: s.nom, couleur: c.classe.couleur, detail: s.magique ? 'classe magique' : null,
+      texte: s.nom, teinte: c.classe, detail: s.magique ? 'classe magique' : null,
       choisie: () => choixDe(rang)?.specialite_id === s.id,
       refus: () => ((calcul.classes.find((x) => x.rang === rang)?.niveau ?? 0) < 10 ? 'au niveau de classe 10' : null),
       surClic: () => {
@@ -657,7 +659,7 @@ function construireMetier() {
       : (() => {
         const li = el('li', { class: 'metier-fiche__choix', dataset: { choixCle: cleDeChoix.metierObjet(r.rang) } }, el('strong', {}, 'Objet de départ au choix '),
         el('ul', { class: 'pastilles pastilles--etroites' }, r.options.map((o, i) => pastille({
-          texte: o.texte, couleur: '#8a7a66', choisie: () => objetChoisi(fiche, r) === i,
+          texte: o.texte, teinte: regles.neutre, choisie: () => objetChoisi(fiche, r) === i,
           surClic: () => {
             fiche.inventaire = choisirObjetDeMetier(regles, fiche, r.rang, i);
             versionInventaire += 1;
@@ -1359,7 +1361,7 @@ function construireDons() {
   const cleClasses = JSON.stringify(classes.map((c) => [c.classe.id, c.niveau, c.dons.map((d) => d.id)]));
   reconstruire($('dons-classes'), cleClasses, () => (classes.length === 0
     ? el('p', { class: 'fiche-aide' }, 'Choisissez une classe : ses dons apparaîtront ici, niveau de classe par niveau de classe.')
-    : classes.map((c) => el('div', { class: 'dons-classe', style: `--c: ${c.classe.couleur}` },
+    : classes.map((c) => el('div', { class: ['dons-classe', ...teinteDe(c.classe)].join(' ') },
       el('h4', {}, `${c.classe.nom} · niveau ${c.niveau}`),
       c.dons.length
         ? el('ul', { class: 'dons-liste' }, c.dons.map((d) => elementDeDon({ niveau: d.niveau, nom: d.nom, type: d.type, precision: d.precision, texte: d.effet })))
@@ -1531,14 +1533,15 @@ function construirePostures() {
   const cartesHyper = $('postures-hyper');
   cartesHyper.hidden = !hyper?.debloque;
   reconstruire(cartesHyper, cleHyper, () => [
-    hyper?.debloque ? el('div', { class: 'posture-carte posture-carte--hyper' },
+    // leur couleur : la classe du mode (regles.mode_hyper.classe, .cent.classe : lib/palette-css.mjs, famille `mode`), comme une posture
+    hyper?.debloque ? el('div', { class: ['posture-carte', 'posture-carte--hyper', ...teinteDe(regles.mode_hyper)].join(' ') },
       el('span', { class: 'posture-carte__nom' }, 'Mode Hyper', el('small', {}, ` · dès le niveau ${hyper.niveau}`)),
       el('ul', { class: 'posture-carte__effets' }, hyper.effets.map((e) => el('li', {}, e)),
         hyper.magies.map((m) => el('li', { class: `posture-carte__magie ${m.magie.classe}` }, el('strong', {}, `${m.magie.nom} : `), m.effet)),
         hyper.race ? el('li', { class: 'posture-carte__race' }, el('strong', {}, `${hyper.race.nom ?? 'Race'} : `), hyper.race.effet) : null,
         // accessoire « +1 tour de Mode Hyper (100% exclu) » (décision R54)
         hyper.toursAccessoires ? el('li', {}, el('strong', {}, 'Accessoires : '), `${signe(hyper.toursAccessoires)} tour${Math.abs(hyper.toursAccessoires) > 1 ? 's' : ''} (pas le Mode Hyper 100 %)`) : null)) : null,
-    hyper?.cent.debloque ? el('div', { class: 'posture-carte posture-carte--hyper posture-carte--cent' },
+    hyper?.cent.debloque ? el('div', { class: ['posture-carte', 'posture-carte--hyper', 'posture-carte--cent', ...teinteDe(regles.mode_hyper.cent)].join(' ') },
       el('span', { class: 'posture-carte__nom' }, 'Mode Hyper 100 %', el('small', {}, ` · dès le niveau ${hyper.cent.niveau}`)),
       el('ul', { class: 'posture-carte__effets' }, hyper.cent.effets.map((e) => el('li', {}, e)),
         hyper.cent.suite ? el('li', { class: 'posture-carte__suite' }, `${hyper.cent.suite.charAt(0).toUpperCase()}${hyper.cent.suite.slice(1)}`) : null)) : null,
@@ -1559,8 +1562,8 @@ function construireChoixSpecialites() {
   bloc.hidden = classes.length === 0;
   reconstruire(bloc, JSON.stringify(classes.map((c) => [c.rang, c.classe.id])), () => classes.map((c) => {
     const choixDe = () => calcul.classes.find((x) => x.rang === c.rang)?.choix;
-    const cadre = groupe(`Spécialité · ${c.classe.nom}`, c.classe.couleur, c.classe.specialites.map((s) => pastille({
-      texte: s.nom, couleur: c.classe.couleur, detail: s.magique ? 'classe magique' : null,
+    const cadre = groupe(`Spécialité · ${c.classe.nom}`, c.classe, c.classe.specialites.map((s) => pastille({
+      texte: s.nom, teinte: c.classe, detail: s.magique ? 'classe magique' : null,
       choisie: () => choixDe()?.specialite_id === s.id,
       surClic: () => {
         const l = ligneDe('classes', (x) => x.rang === c.rang);
@@ -1776,7 +1779,7 @@ function construireProgression() {
   const dons = donsAChoisir(regles, fiche);
   reconstruire($('dons'), JSON.stringify(dons.map((d) => [d.rang, d.classe.id, d.groupes.map((g) => g.options[0].id)])), () => {
     if (!dons.length) return el('p', { class: 'fiche-aide' }, 'Choisissez une classe : ses dons à choisir apparaîtront ici, niveau de classe par niveau de classe.');
-    return dons.map((d) => el('div', { class: 'groupe-pastilles', style: `--c: ${d.classe.couleur}` },
+    return dons.map((d) => el('div', { class: ['groupe-pastilles', ...teinteDe(d.classe)].join(' ') },
       el('h4', {}, d.classe.nom),
       d.groupes.length === 0
         ? el('p', { class: 'fiche-aide' }, 'Pas encore de don à choisir à ce niveau de classe.')

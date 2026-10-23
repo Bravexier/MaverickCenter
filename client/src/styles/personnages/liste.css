@@ -6,7 +6,7 @@
    sans piste qui dépende du contenu) et la même largeur de contenu (marge de l'en-tête = bordure + marge d'une ligne) : leurs colonnes s'alignent.
    Pas de sous-grille : elle reporterait la bordure et la marge de la ligne sur ses colonnes extrêmes (le portrait déborderait de la sienne).
    Couleurs de la partie « Créer son personnage » du guide, comme la fiche. */
-.personnages { --vert: #2e7d4f; display: grid; gap: 1rem; }
+.personnages { --vert: var(--vert-action); display: grid; gap: 1rem; }
 .personnages h1 { margin: 0; }
 .personnages-filtres {
   display: grid;

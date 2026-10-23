@@ -251,7 +251,7 @@ test('/fiche/regles.json : les règles de la base que lit la page (races et clas
   }
   assert.equal(regles.niveaux.length, 20);
   assert.ok(regles.sorts.length > 300);
-  assert.ok(regles.classes.every((c) => /^#[0-9a-f]{6}$/i.test(c.couleur) && Number.isInteger(c.groupe.ordre)));
+  assert.ok(regles.classes.every((c) => /^couleur-classe-[a-z]+$/.test(c.classe) && !('couleur' in c) && Number.isInteger(c.groupe.ordre)));
   assert.equal(regles.resistance_paliers.length, 6);
   assert.ok(regles.magies.some((m) => m.resistances.length) && regles.etats.length > 0);
   // la couleur d'une magie : les noms de ses classes de la palette (lib/palette-css.mjs), que la page porte ; jamais une couleur

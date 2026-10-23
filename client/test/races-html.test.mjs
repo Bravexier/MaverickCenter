@@ -7,7 +7,8 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { classeDeMagie, cssDeLaPalette } from '../src/lib/palette-css.mjs';
+import { classeDeMagie, cssDeLaPalette, cssDesFamilles } from '../src/lib/palette-css.mjs';
+import { RACE_COLORS } from '../src/lib/race-kinds.mjs';
 
 const dossier = fileURLToPath(new URL('../dist/races/', import.meta.url));
 const present = existsSync(dossier);
@@ -92,7 +93,7 @@ test('race hybride : bandeau « Race hybride » et lien vers sa classe raciale',
 // sur le modèle des classes et de la carte des magies ; l'accroche en infobulle ; ni magies ni classe raciale.
 const liste = present && existsSync(join(dossier, 'index.html')) ? main(readFileSync(join(dossier, 'index.html'), 'utf8')) : '';
 const colonne = (id) => {
-  const debut = liste.indexOf(`<section class="races-groupe" id="${id}"`);
+  const debut = liste.search(new RegExp(`<section class="races-groupe(?: couleur-race-[a-z]+)?" id="${id}"`));
   return debut < 0 ? '' : liste.slice(debut, liste.indexOf('</section>', debut));
 };
 // sans la race d'exemple, présente quand le site est construit sans HIDE_EXAMPLES=1 (c'est le cas de la CI)
@@ -114,11 +115,18 @@ test('liste des races : deux groupes de pastilles, pures puis hybrides, dans l�
 });
 
 test('liste des races : chaque groupe dans la couleur du bandeau des pages de race, avec le nombre de ses races', options, () => {
-  assert.match(colonne('pures'), /^<section class="races-groupe" id="pures" style="--couleur-race: #2f6a6a">/);
-  assert.match(colonne('hybrides'), /^<section class="races-groupe" id="hybrides" style="--couleur-race: #8a5a1c">/);
+  // la couleur : la classe de la nature (lib/palette-css.mjs, famille `race`, émise par la page), jamais un style
+  assert.match(colonne('pures'), /^<section class="races-groupe couleur-race-pure" id="pures">/);
+  assert.match(colonne('hybrides'), /^<section class="races-groupe couleur-race-hybride" id="hybrides">/);
   assert.match(colonne('hybrides'), /<span class="races-groupe__nom">Races hybrides<\/span>\s*<span class="races-groupe__compte">14<\/span>/);
-  assert.match(page('orios'), /<div class="race race--hybride" style="--couleur-race: #8a5a1c">/);
-  assert.match(page('humain'), /<div class="race race--pure" style="--couleur-race: #2f6a6a">/);
+  assert.match(page('orios'), /<div class="race race--hybride couleur-race-hybride">/);
+  assert.match(page('humain'), /<div class="race race--pure couleur-race-pure">/);
+  // les couleurs des deux natures, dans la feuille de la liste et de chaque page de race
+  assert.deepEqual(RACE_COLORS, { pure: '#2f6a6a', hybride: '#8a5a1c' });
+  for (const html of [readFileSync(join(dossier, 'index.html'), 'utf8'), page('orios'), page('humain')]) {
+    assert.ok(html.includes(`<style>${cssDesFamilles(['race'])}</style>`), 'la feuille des races');
+  }
+  assert.ok(cssDesFamilles(['race']).startsWith('.couleur-race-pure{--couleur:#2f6a6a;'));
 });
 
 test('liste des races : l’accroche de chaque race en infobulle ; ni magies ni classe raciale', options, () => {

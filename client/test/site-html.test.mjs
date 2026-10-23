@@ -557,3 +557,48 @@ test('couleurs des caractéristiques, compétences, postures et alignements : ja
   assert.ok([...regles.caracteristiques, regles.caracteristique_par_defaut].every((k) => palette.has(k.classe)), 'regles.json : caractéristiques');
   for (const x of [...regles.postures, ...Object.values(regles.alignements), regles.alignement_par_defaut]) assert.ok(fiche.includes(`.${x.classe}{`), `${x.classe} : dans la feuille de la fiche`);
 });
+
+// Lot des catégories de classe, des races et du reste de la fiche (même demande, mêmes choix de cadrage : skill ui-couleurs) : sur toute page construite,
+// aucune de ces couleurs en style ; chaque classe posée existe (contrôle commun des magies ci-dessus : la palette de chaque page, ou une feuille que la
+// page émet, les familles `classe` et `race` comprises).
+/** Les éléments que les pages posent sur la couleur d'une catégorie de classe ou d'une race. */
+const ELEMENTS_DU_LOT_DES_CLASSES_ET_RACES = new Set(['classe', 'classes-groupe', 'race', 'races-groupe']);
+const CLASSE_DU_LOT_DES_CLASSES_ET_RACES = /^couleur-(?:classe|race|palier|mode|neutre)-/;
+
+test('couleurs des catégories de classe, des races, des paliers, du Mode Hyper et neutre : jamais en style sur une page construite, toujours par une classe qui existe', options, () => {
+  const parPage = new Map();
+  for (const fichier of walk(dist).filter((f) => f.endsWith('.html'))) {
+    const rel = relative(dist, fichier);
+    const html = readFileSync(fichier, 'utf8');
+    // les variables de ces couleurs ne sont plus posées en style, nulle part
+    assert.doesNotMatch(html, /style="[^"]*(?:--couleur-classe|--couleur-texte-classe|--couleur-race|--cla:|--rac:|--r:)/, `${rel} : une variable de couleur du lot en style`);
+    for (const [balise, classe] of html.matchAll(/<[a-z][a-z0-9]*\b[^>]*\bclass="([^"]*)"[^>]*>/g)) {
+      const jetons = classe.split(/\s+/);
+      if (!jetons.some((c) => CLASSE_DU_LOT_DES_CLASSES_ET_RACES.test(c) || ELEMENTS_DU_LOT_DES_CLASSES_ET_RACES.has(c))) continue;
+      assert.doesNotMatch(balise, /\bstyle="/, `${rel} : un style sur un élément du lot : ${balise}`);
+      for (const c of jetons.filter((x) => CLASSE_DU_LOT_DES_CLASSES_ET_RACES.test(x))) {
+        assert.ok(html.includes(`.${c}{`), `${rel} : la classe ${c} n’est pas dans une feuille de la page`);
+        parPage.set(rel, [...(parPage.get(rel) ?? []), c]);
+      }
+    }
+  }
+  // chaque zone du lot pose bien ses classes
+  const zones = {
+    'classes/index.html': ['couleur-classe-melee', 'couleur-classe-distance', 'couleur-classe-magiques', 'couleur-classe-raciales', 'couleur-classe-speciales'],
+    'classes/guerrier/index.html': ['couleur-classe-melee'],
+    'races/index.html': ['couleur-race-pure', 'couleur-race-hybride'],
+    'races/humain/index.html': ['couleur-race-pure'],
+  };
+  for (const [rel, attendues] of Object.entries(zones)) {
+    assert.ok(existsSync(join(dist, rel)), `page construite : ${rel}`);
+    assert.deepEqual([...new Set(parPage.get(rel))], attendues, rel);
+  }
+  // la fiche pose ses classes au navigateur, d'après regles.json : toutes dans la feuille de la fiche (familles d'une zone)
+  const regles = JSON.parse(lire('fiche/regles.json'));
+  const fiche = lire('fiche/index.html');
+  const classes = [...regles.races, ...regles.classes, ...Object.values(regles.race_par_nature), regles.neutre, ...regles.resistance_paliers,
+    regles.mode_hyper, regles.mode_hyper.cent].map((x) => x.classe);
+  assert.ok(classes.length > 60, `${classes.length} classes`);
+  for (const c of classes) assert.ok(CLASSE_DU_LOT_DES_CLASSES_ET_RACES.test(c) && fiche.includes(`.${c}{`), `${c} : dans la feuille de la fiche`);
+  assert.ok([...regles.races, ...regles.classes].every((x) => !('couleur' in x) && !('texte' in x)), 'regles.json : aucune couleur de race ni de classe');
+});
