@@ -335,7 +335,9 @@ html:not(.js) .parametres { gap: 0.75rem; }
 
 /* ----------------------------------------------------------------- le tiroir des choix à faire (demande du propriétaire) : tant qu'il en reste, le
    panneau « Choix » sort en bas de l'écran, par-dessus la fiche ; il se range quand la zone IV est à l'écran. Réduit, il ne montre que sa poignée (la
-   liste de ce qui manque) et se rouvre au survol. */
+   liste de ce qui manque) et se rouvre au survol. Son corps est alors en `display: none` : le focus clavier n'y entre pas. Au clavier, on passe par
+   « Déplier », « Aller aux choix » ou la bulle d'un choix du tiroir, qui montre sa tuile au focus (sauf l'ethnie, un bouton qui ouvre son menu, sans bulle
+   au clavier ; src/scripts/fiche.mjs#construireChoixEnAttente). */
 .tiroir__tete {
   display: flex;
   flex-wrap: wrap;
@@ -376,7 +378,8 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
   animation: tiroir-sort 260ms ease-out;
 }
 .parametres__panneau.est-tiroir .tiroir__tete { position: sticky; top: 0; z-index: 1; }
-/* le focus sur la poignée (le bouton « Déplier ») ne le rouvre pas ; le focus dans le panneau, si (clavier) */
+/* réduit, le corps est en `display: none` : le focus clavier n'y entre pas (on passe par « Déplier »). Le focus déjà dans le corps le garde ouvert : une
+   liste ouverte au survol puis le pointeur qui sort, ou le focus dans le panneau quand la zone IV sort de l'écran. */
 .parametres__panneau.est-tiroir[data-reduit]:not(:hover, :has(.fiche-etape__corps :focus)) { max-height: none; overflow: hidden; }
 .parametres__panneau.est-tiroir[data-reduit]:not(:hover, :has(.fiche-etape__corps :focus)) > :not(.tiroir__tete) { display: none; }
 @keyframes tiroir-sort { from { transform: translate(-50%, 100%); } to { transform: translate(-50%, 0); } }
