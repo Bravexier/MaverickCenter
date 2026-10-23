@@ -25,7 +25,7 @@ Ton chef est `leader-technique` : il t'envoie un brief, tu lui rends ton rapport
 ## Avant d'écrire
 
 Charge le skill de chaque zone que tu touches :
-- le service et ses parties : `zone-service`, `zone-edition`, `zone-mise-a-jour`, `zone-api-rest`, `zone-debug-metriques`, `zone-hebergement` ;
+- le service et ses parties : `zone-service`, `zone-edition`, `zone-mise-a-jour`, `zone-mise-a-jour-conflits`, `zone-maintenance`, `zone-api-rest`, `zone-debug-metriques`, `zone-hebergement` ;
 - les fiches enregistrées : `zone-fiches-base`, `zone-fiche-tableur` (classeur en ligne) ;
 - la base : `base-sqlite` ;
 - les zones de contenu dont tu touches la lecture en base (`zone-bestiaire`, `zone-armes`…).

@@ -7,7 +7,7 @@
 .race-hero__classe { margin: 0.9rem 0 0; font-size: var(--fs-lg); }
 .race-hero__classe a { color: var(--texte-sur-fonce); }
 .race-stats { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 1rem 0 0; }
-.race-stat { min-width: 7.5rem; padding: 0.5rem 0.9rem; border-radius: var(--radius-md); background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.22); }
+.race-stat { min-width: 7.5rem; padding: 0.5rem 0.9rem; border-radius: var(--radius-md); background: color-mix(in srgb, #fff 12%, transparent); border: 1px solid color-mix(in srgb, #fff 22%, transparent); }
 .race-stat dt { font-size: var(--fs-xxs); letter-spacing: var(--ls-large); text-transform: uppercase; opacity: 0.8; }
 .race-stat dd { margin: 0; font-size: 1.6rem; font-weight: 700; line-height: 1.2; }
 .race-stat--nul dd { opacity: 0.6; }

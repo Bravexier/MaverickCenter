@@ -7,11 +7,10 @@
   --bulle-teinte: var(--mag, var(--accent));
   --bulle-lisible: color-mix(in srgb, var(--bulle-teinte) 55%, #000);
   --bulle-ligne: color-mix(in srgb, var(--bulle-teinte) 35%, var(--border));
-  --bulle-ombre: rgb(42 33 24 / 0.36);
   z-index: 1100; width: max-content; max-width: min(22rem, calc(100vw - 1rem)); padding: 0.5rem 0.8rem 0.55rem 0.85rem;
   border: 1px solid var(--bulle-ligne); border-left: 3px solid var(--bulle-teinte); border-radius: var(--radius);
   background: color-mix(in srgb, var(--bulle-teinte) 5%, var(--surface)); color: var(--text);
-  box-shadow: 0 12px 28px -10px var(--bulle-ombre), 0 2px 6px -2px var(--bulle-ombre);
+  box-shadow: 0 12px 28px -10px var(--ombre-bulle), 0 2px 6px -2px var(--ombre-bulle);
   font: normal 400 0.82rem/1.45 Georgia, 'Times New Roman', serif; letter-spacing: 0; text-transform: none; text-align: left; text-decoration: none;
   white-space: pre-line; overflow-y: auto; overscroll-behavior: contain;
   animation: bulle-apparition 0.12s ease-out;
@@ -47,9 +46,9 @@
   .bulle, .bulle-fleche { animation: none; }
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .bulle { --bulle-lisible: color-mix(in srgb, var(--bulle-teinte) 55%, #fff); --bulle-ombre: rgb(0 0 0 / 0.6); }
+  :root:not([data-theme="light"]) .bulle { --bulle-lisible: color-mix(in srgb, var(--bulle-teinte) 55%, #fff); }
 }
-:root[data-theme="dark"] .bulle { --bulle-lisible: color-mix(in srgb, var(--bulle-teinte) 55%, #fff); --bulle-ombre: rgb(0 0 0 / 0.6); }
+:root[data-theme="dark"] .bulle { --bulle-lisible: color-mix(in srgb, var(--bulle-teinte) 55%, #fff); }
 @media print {
   .bulle--simple, .bulle-fleche { display: none !important; }
 }

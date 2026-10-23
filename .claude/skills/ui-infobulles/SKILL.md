@@ -10,7 +10,7 @@ Toutes les infobulles sont habillées comme le reste du site (demande du propri�
 
 ## Fichiers
 - `client/src/components/Infobulles.astro` : script en ligne, posé une fois par page par `client/src/layouts/Base.astro`.
-- `client/src/styles/global/infobulles.css` : fond clair, filet de couleur à gauche comme les cartes, serif, intitulés en petites capitales, pointe vers le déclencheur ; teinte = `--mag` du contexte, sinon l'accent. `--mag` vient d'une feuille, jamais d'un style, tirée de la classe de la magie (`couleur-magie-<id>`, skill `ui-couleurs`) : page de magie (`magie/base.css`), lignes des bâtons (`ceinture.css`), des gemmes et des bois (`composants.css`), infobulle d'une gemme des accessoires (`bulle--gemme`, `accessoires.css`) : le script lit la valeur calculée (`getComputedStyle`), une bulle riche en hérite.
+- `client/src/styles/global/infobulles.css` : fond clair, filet de couleur à gauche comme les cartes, serif, intitulés en petites capitales, pointe vers le déclencheur ; teinte = `--mag` du contexte, sinon l'accent. `--mag` vient d'une feuille, jamais d'un style, tirée de la classe de la magie (`couleur-magie-<id>`, skill `ui-couleurs`) : page de magie (`magie/base.css`), lignes des bâtons (`ceinture.css`), des gemmes et des bois (`composants.css`), infobulle d'une gemme des accessoires (`bulle--gemme`, `accessoires.css`) : le script lit la valeur calculée (`getComputedStyle`), une bulle riche en hérite. Les deux ombres lisent le jeton `--ombre-bulle` (`global/base.css`, noire en sombre : skill `ui-couleurs-theme`), pas une variable de la feuille.
 
 ## À lire
 - `docs/content-guide.md`, puce « Infobulles » de « Pages de magie » (survol, focus clavier, toucher, position fixe bornée à l'écran, bulle faite de `<span>` seulement).

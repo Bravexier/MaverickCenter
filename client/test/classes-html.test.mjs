@@ -228,7 +228,7 @@ test('page d’une classe : la couleur de sa catégorie de /classes/ par la clas
     ['melee', 'distance', 'magiques', 'raciales', 'speciales', 'speciales', 'speciales'].map((k) => `couleur-classe-${k}`), 'le Parleur sous « Spéciales »');
   for (const p of pages) {
     assert.ok(couleurDe(p.slug), `${p.slug} : la classe de sa catégorie`);
-    assert.ok(p.html.includes(`<style>${cssDesFamilles(['classe'])}</style>`), `${p.slug} : la feuille des catégories`);
+    assert.ok(p.html.includes(`<style>${cssDesFamilles(['classe', 'don'])}</style>`), `${p.slug} : la feuille des catégories et des types de don`);
     assert.doesNotMatch(p.html, /--couleur-(?:classe|texte-classe):/, `${p.slug} : plus de couleur en style`);
   }
 });

@@ -11,7 +11,7 @@ user-invocable: false
 - VPS des deux instances : `deploy/vps/durcir.sh`, `outils.sh`, `instances.sh`, `volume.sh`, `Caddyfile`, `README.md` pas à pas (dont « 7. Site de dev : mode modification et page Mise à jour » : `MAVERICK_EDITION`, `MAVERICK_ADRESSE_PUBLIQUE`, les deux jetons).
 - Paquet du NAS (installation à la main) : nginx + service des personnages dans Docker, mot de passe ; `deploy/build.sh` (le zip), `deploy/update-site.sh` (installe la branche `site` dans un dossier ; la livraison ne la reconstruit plus : elle publie des installateurs), `deploy/docker-compose.yml`, `deploy/README.md`. Une installation existante garde sa copie `update-nas.sh`.
 - `deploy/nginx.conf` : commun au NAS et aux installateurs.
-- Le service lui-même : skill `zone-service`. Maintenance et dossier partagé `maintenance/` : skill `zone-mise-a-jour`. Métriques et `volume.sh` : skill `zone-debug-metriques`. Versions, releases et branche `site` : `docs/flux-git.md`.
+- Le service lui-même : skill `zone-service`. Maintenance et dossier partagé `maintenance/` : skill `zone-maintenance`. Métriques et `volume.sh` : skill `zone-debug-metriques`. Versions, releases et branche `site` : `docs/flux-git.md`.
 
 ## À lire
 - `deploy/installateur/README.md` (instances, `db/`, mise à jour automatique), `deploy/vps/README.md` (mise en place du VPS), `deploy/README.md` (NAS).

@@ -14,8 +14,12 @@ import {
   classeDAttribut, classeDUneClasse, classeDeCaracteristique, classeDeCategorie, classeDeCouleur, classeDeMagie, classeDePalier, classeDePosture,
   classeDeNiveau, classeDePartie, classeDePotion, cssDesParties, classeDeRace, classeDeSecondeCaracteristique, classeDeSecondeMagie, classeDuModeHyper, classesDeDeuxCaracteristiques,
   classesDeDeuxMagies, classesDeLaPalette, couleursDeLaPalette, cssDeLaPalette, cssDesEvenements, cssDesFamilles, cssDesPotions, cssDesSecondsRangs, idDeCouleur,
-  secondsRangs, secondsRangsDesMagies, classeDEvenement,
+  secondsRangs, secondsRangsDesMagies, classeDEvenement, classeDeGenre, classeDeTypeDeDon,
 } from '../src/lib/palette-css.mjs';
+import { COULEURS_DES_GENRES, COULEURS_DES_TYPES_DE_DON } from '../src/lib/genres-couleurs.mjs';
+import { TYPES_DE_SORT } from '../src/lib/sort-analyse.mjs';
+import { TYPES_DE_DON } from '../src/lib/classe-champs.mjs';
+import { RENDUS } from '../src/lib/edition-rendu.mjs';
 import {
   AFFINITE_DES_PHILTRES, ATTRIBUT_DE_L_AFFINITE, CONTRASTE_MINIMAL, COULEURS_CHOISIES_PAR_PAGE, COULEURS_DES_AFFINITES, NUANCES_DES_NIVEAUX, contraste, couleurDePotion, lisible,
   nuanceDuNiveau,
@@ -40,9 +44,9 @@ const HEX = /(?<!&)#[0-9a-f]{6}\b|(?<!&)#[0-9a-f]{3}\b/gi;
 const regles = (css) => new Map([...css.matchAll(/\.([a-z0-9-]+)\{([^}]*)\}/g)].map(([, classe, corps]) =>
   [classe, Object.fromEntries(corps.split(';').filter(Boolean).map((d) => d.split(':')))]));
 
-test('dix-sept familles, chacune lue dans le module de sa règle : magies, attributs, caractéristiques, affinités sans autre règle, postures, alignements, catégories de classe, races, paliers de résistance, Mode Hyper, neutre, matériaux, armes de départ, types d’armure, poids des boucliers, niveaux des accessoires, parties du guide (et la couleur par défaut de sept d’entre elles)', () => {
+test('dix-neuf familles, chacune lue dans le module de sa règle : magies, attributs, caractéristiques, affinités sans autre règle, postures, alignements, catégories de classe, races, paliers de résistance, Mode Hyper, neutre, matériaux, armes de départ, types d’armure, poids des boucliers, niveaux des accessoires, parties du guide, genres de sort, types de don (et la couleur par défaut de sept d’entre elles)', () => {
   assert.deepEqual(Object.keys(FAMILLES_DE_LA_PALETTE), ['magie', 'attribut', 'caracteristique', 'affinite', 'posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre',
-    'materiau', 'arme', 'armure', 'poids', 'niveau', 'partie']);
+    'materiau', 'arme', 'armure', 'poids', 'niveau', 'partie', 'genre', 'don']);
   assert.equal(MAGIE_PAR_DEFAUT, PAR_DEFAUT);
   assert.deepEqual(FAMILLES_DE_LA_PALETTE.magie, { ...COULEURS_DES_MAGIES, [PAR_DEFAUT]: COULEUR_PAR_DEFAUT });
   assert.equal(FAMILLES_DE_LA_PALETTE.attribut, COULEURS_DES_ATTRIBUTS);
@@ -102,7 +106,7 @@ test('dix-sept familles, chacune lue dans le module de sa règle : magies, attri
   // chaque famille est émise sur chaque page ou par les pages de sa zone, jamais les deux
   assert.deepEqual([...FAMILLES_DE_CHAQUE_PAGE, ...FAMILLES_DES_ZONES].sort(), Object.keys(FAMILLES_DE_LA_PALETTE).sort());
   assert.deepEqual(FAMILLES_DE_CHAQUE_PAGE, ['magie', 'attribut', 'caracteristique', 'affinite']);
-  assert.deepEqual(FAMILLES_DES_ZONES, ['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre', 'materiau', 'arme', 'armure', 'poids', 'niveau', 'partie']);
+  assert.deepEqual(FAMILLES_DES_ZONES, ['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre', 'materiau', 'arme', 'armure', 'poids', 'niveau', 'partie', 'genre', 'don']);
   // la fiche : les familles d'une zone qu'elle pose, sans celles des onglets de l'équipement hors le poids du bouclier ; plus les parties du guide (ses
   // quatre zones)
   assert.deepEqual(FAMILLES_DE_LA_FICHE, ['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre', 'poids', 'partie']);
@@ -168,7 +172,7 @@ test('le nom d’une classe : « couleur-<famille>-<id> », l’id = la clé du 
   const classes = couleursDeLaPalette().map((c) => c.classe);
   assert.equal(classes.length, Object.values(FAMILLES_DE_LA_PALETTE).reduce((n, f) => n + Object.keys(f).length, 0));
   assert.equal(new Set(classes).size, classes.length, 'une classe par couleur');
-  for (const c of classes) assert.match(c, /^couleur-(?:magie|attribut|caracteristique|affinite|posture|alignement|classe|race|palier|mode|neutre|materiau|arme|armure|poids|niveau|partie)-[a-z0-9]+(?:-[a-z0-9]+)*$/);
+  for (const c of classes) assert.match(c, /^couleur-(?:magie|attribut|caracteristique|affinite|posture|alignement|classe|race|palier|mode|neutre|materiau|arme|armure|poids|niveau|partie|genre|don)-[a-z0-9]+(?:-[a-z0-9]+)*$/);
 });
 
 test('pas de recopie : une affinité qui est un attribut ou une magie garde la classe de cet attribut ou de cette magie ; Anti et Démon n’en ont pas', () => {
@@ -201,7 +205,7 @@ test('la valeur de chaque classe est celle de sa règle (rendue lisible), et son
   assert.equal(COULEURS_DES_MATERIAUX.titane, '#3c78d8', 'la couleur de référence reste dans son module');
   // une famille dont la couleur ne porte pas de texte (le trait d'un palier de résistance ; le bleu des armes de départ, une nuance et un filet) n'est
   // pas corrigée : le seuil de 4,5:1 vaut pour un texte ; la grande vulnérabilité garde #e53935 (4,4:1 au mieux), les armes de départ #3c78d8
-  assert.deepEqual(FAMILLES_SANS_TEXTE, ['palier', 'arme']);
+  assert.deepEqual(FAMILLES_SANS_TEXTE, ['palier', 'arme', 'genre', 'don']);
   assert.equal(couleursDeLaPalette(['arme']).find((c) => c.cle === 'depart').fond, '#3c78d8');
   assert.equal(couleursDeLaPalette(['palier']).find((c) => c.cle === 'grande_vulnerabilite').fond, '#e53935');
   assert.ok(contraste('#e53935', texteSurCouleur('#e53935')) < CONTRASTE_MINIMAL, 'elle serait corrigée si elle portait un texte');
@@ -289,9 +293,9 @@ test('aucune couleur écrite dans le module de la palette ; la palette posée su
   assert.match(lire('src/components/armes/ArmesPage.astro'), /const secondsRangs = cssDesSecondsRangs\('caracteristique'\);[^]*<style is:inline set:html=\{secondsRangs\}><\/style>/);
   // les catégories de classe (/classes/, les pages de classe) et les races (/races/, les pages de race) ; la fiche les émet avec les autres familles
   // d'une zone (paliers, Mode Hyper, neutre compris) ; le mode modification avec la page d'une race ou d'une classe créée (la page 404 n'en a pas)
-  for (const f of ['src/components/classes/ClassesPastilles.astro', 'src/components/classes/ClassePage.astro']) {
-    assert.match(lire(f), /<style is:inline set:html=\{cssDesFamilles\(\['classe'\]\)\}><\/style>/, f);
-  }
+  assert.match(lire('src/components/classes/ClassesPastilles.astro'), /<style is:inline set:html=\{cssDesFamilles\(\['classe'\]\)\}><\/style>/);
+  // la page d'une classe émet aussi les types de don (lot des restes)
+  assert.match(lire('src/components/classes/ClassePage.astro'), /<style is:inline set:html=\{cssDesFamilles\(\['classe', 'don'\]\)\}><\/style>/);
   for (const f of ['src/components/race/RacesPastilles.astro', 'src/components/race/RacePage.astro']) {
     assert.match(lire(f), /<style is:inline set:html=\{cssDesFamilles\(\['race'\]\)\}><\/style>/, f);
   }
@@ -337,7 +341,11 @@ test('la palette dans les pages construites', construit ? {} : { skip: 'site non
   assert.ok(page('ressources/equipement/index.html').includes(`<style>${cssDesSecondsRangs('caracteristique')}</style>`), 'seconds rangs : l’onglet Armes');
   for (const rel of ['index.html', 'ressources/equipement/index.html']) assert.ok(!page(rel).includes('.couleur-posture-'), `${rel} : pas de postures`);
   // les catégories de classe et les races : sur leurs listes et leurs pages, et seulement là (et la fiche)
-  for (const rel of ['classes/index.html', 'classes/guerrier/index.html']) assert.ok(page(rel).includes(`<style>${cssDesFamilles(['classe'])}</style>`), `classes : ${rel}`);
+  assert.ok(page('classes/index.html').includes(`<style>${cssDesFamilles(['classe'])}</style>`), 'classes : la liste');
+  assert.ok(page('classes/guerrier/index.html').includes(`<style>${cssDesFamilles(['classe', 'don'])}</style>`), 'classes et types de don : la page d’une classe');
+  // les genres de sort : sur les pages des magies seules
+  assert.ok(page('magies/magie-du-feu/index.html').includes(`<style>${cssDesFamilles(['genre'])}</style>`), 'genres : la page d’une magie');
+  for (const rel of ['index.html', 'classes/index.html', 'races/humain/index.html']) assert.ok(!/\.couleur-(?:genre|don)-/.test(page(rel)), `${rel} : ni genres ni types`);
   for (const rel of ['races/index.html', 'races/humain/index.html']) assert.ok(page(rel).includes(`<style>${cssDesFamilles(['race'])}</style>`), `races : ${rel}`);
   for (const rel of ['index.html', 'magies/index.html']) assert.ok(!/\.couleur-(?:classe|race|palier|mode|neutre)-/.test(page(rel)), `${rel} : pas de ces familles`);
   // les matériaux, les armes de départ, les types d'armure et les poids : l'équipement, les composants (matériaux), la fiche (poids)
@@ -627,8 +635,8 @@ const FICHIERS_DU_LOT_DES_CARACTERISTIQUES = [
 /**
  * Les fichiers propres au lot des catégories de classe, des races et du reste de la fiche (paliers de résistance, Mode Hyper, couleurs d'interface,
  * neutres), hors ceux des lots d'avant : contrôlés en entier. Les modules des règles (class-groups.mjs, race-kinds.mjs, fiche-couleurs.mjs) écrivent
- * leurs couleurs ; les feuilles des pages de classe et de race (page.css, dons.css, race/base.css, relations.css) gardent celles de lots à venir
- * (impression, types de don, voiles des bannières, échelle des relations) et ne sont contrôlées que dans leurs règles de ce lot.
+ * leurs couleurs ; les feuilles des pages de classe et de race (page.css, dons.css, race/base.css, relations.css) sont contrôlées ici dans leurs
+ * règles de ce lot, et en entier par le balayage du lot des restes (hors l'impression et les types de don, laissés de côté, nommés).
  */
 const FICHIERS_DU_LOT_DES_CLASSES_ET_RACES = [
   'src/components/classes/ClassesPastilles.astro', 'src/components/race/RacesPastilles.astro', 'src/scripts/edition/nouvelles.mjs', 'src/scripts/fiche.mjs',
@@ -707,17 +715,6 @@ const reglesQuiLisentLaPalette = () => readdirSync(new URL('../src/styles/', imp
       || (FEUILLES_DES_CLASSES_ET_RACES.test(`src/styles/${n}`) && /var\(--(?:cla|rac)(?:-[a-z]+)?[,)]|var\(--hero-[12]\)/.test(corps))
       || /var\(--(?:texte-sur-fonce|fond-banniere|depart(?:-[a-z]+)*|degats-[a-z]+|defense-a[pm]|ombre-fiche|maudit(?:-texte|-choisi)?|ombre-encart|ombre-evenement|ombre-barre-du-bas|ombre-poignee|ombre-tiroir|voile-tiroir|sommaire-couleur|guide(?:-[a-z]+)?|etape(?:-[a-z]+)?|(?:doc|sheet)-google(?:-fond)?|(?:amelioration|affaiblissement)(?:-fond)?|texte-sur-good)[,)]/.test(corps))
     .map(([, selecteur, corps]) => ({ fichier: `src/styles/${n}`, selecteur: selecteur.trim().replace(/\s+/g, ' '), corps })));
-/**
- * Hors des lots faits : la seule déclaration de règles choisies qui n'est pas une couleur de ces lots, retirée avant le contrôle (le reste de la règle est
- * contrôlé). L'ombre de l'infobulle partagée (une couleur du thème : skill ui-infobulles) ; l'échelle des relations entre les peuples de la page d'une
- * race (`--regard-evitee`, la seule qui écrit sa teinte : un lot à venir). Les pastilles de la fiche n'en ont plus : toutes posent leur classe (races,
- * ethnies, classes, objets de départ et magie acquise « Aucune » compris).
- */
-const HORS_DU_LOT = new Map([
-  ['src/styles/global/infobulles.css .bulle', '--bulle-ombre: rgb(42 33 24 / 0.36);'],
-  ['src/styles/race/base.css .race', '--regard-evitee: color-mix(in srgb, #c27a12 70%, var(--surface));'],
-]);
-
 test('aucune couleur écrite dans les fichiers des lots faits (ni dans les règles de ces lots des feuilles partagées), hors le noir et le blanc de mélange', () => {
   for (const f of [...FICHIERS_DU_LOT_DES_MAGIES, ...FICHIERS_DU_LOT_DES_CARACTERISTIQUES, ...FICHIERS_DU_LOT_DES_CLASSES_ET_RACES, ...FICHIERS_DU_LOT_DES_ARMES_ET_ARMURES,
     ...FICHIERS_DU_LOT_DES_ACCESSOIRES, ...FICHIERS_DU_LOT_DE_LA_CHRONOLOGIE, ...FICHIERS_DU_LOT_DES_PARTIES, ...FICHIERS_DU_LOT_DES_ARCHIVES_ET_DE_LA_MISE_A_JOUR]) {
@@ -778,14 +775,8 @@ test('aucune couleur écrite dans les fichiers des lots faits (ni dans les règl
     'src/styles/mise-a-jour/mise-a-jour.css .nv-dev button.nv-principal, .nv-dialogue button.nv-principal']) {
     assert.ok(regles.some((r) => `${r.fichier} ${r.selecteur}` === attendue), `règle choisie : ${attendue}`);
   }
-  for (const [h, declaration] of HORS_DU_LOT) {
-    const regle = regles.find((r) => `${r.fichier} ${r.selecteur}` === h);
-    assert.ok(regle?.corps.includes(declaration), `hors du lot, mais choisie : ${h} (« ${declaration} »)`);
-  }
-  for (const { fichier, selecteur, corps } of regles) {
-    const horsDuLot = HORS_DU_LOT.get(`${fichier} ${selecteur}`);
-    assert.deepEqual(couleursEcrites(horsDuLot ? corps.replace(horsDuLot, '') : corps, { nommees: true }), [], `${fichier}, ${selecteur}`);
-  }
+  // plus rien hors du lot dans ces règles (l'ombre de l'infobulle et l'échelle des relations sont passées aux jetons au lot des restes) : chacune entière
+  for (const { fichier, selecteur, corps } of regles) assert.deepEqual(couleursEcrites(corps, { nommees: true }), [], `${fichier}, ${selecteur}`);
   // le script de la fiche : la couleur d'une magie par ses classes (regles.json : `classe`, `classe_2`), jamais sa couleur ni une variable posée
   const fiche = lire('src/scripts/fiche.mjs');
   assert.doesNotMatch(fiche, /\b(?:m|m1|m2|innee|acquise|acquiseChoisie|choisi|magie|magieDuSort)\??\.couleur\b/, 'aucune couleur de magie lue');
@@ -1601,4 +1592,319 @@ test('lisibilité des archives et de la mise à jour dans les deux thèmes : cha
     assert.ok(contraste(valeur(b, '--texte-sur-good'), valeur(b, '--good')) > 9.5, `${b.sel} : le texte foncé`);
   }
   assert.ok(contraste(valeur(clair, '--texte-sur-fonce'), valeur(clair, '--good')) >= CONTRASTE_MINIMAL);
+});
+
+// Lot des restes (2026-10-23, même demande et mêmes choix de cadrage) : ce que les feuilles écrivaient encore. Le bandeau du site de dev, le niveau
+// `evitee` de l'échelle des relations entre les peuples et l'ombre des infobulles passent à des jetons du thème, avec leurs valeurs d'avant (« Thème
+// reste, Debug à part ») ; les voiles blancs des bannières et les ombres et voiles noirs s'écrivent en blanc et noir de mélange (« Non, exception »), au
+// même rendu ; le texte posé sur le vert du site prend `--texte-sur-good` partout (réponse du propriétaire du 2026-10-23 à « En thème sombre, d'autres
+// boutons et pastilles du site ont un texte blanc sur le vert du site (#7fcf9b) […] Faut-il appliquer le même choix ici ? » : « Même choix partout
+// (Recommandé) »). Restent, nommés : l'impression et la page Debug (« la page Debug et l'impression ne changent pas »), les teintes des genres de sort et
+// des types de don (en attente d'une réponse du propriétaire), les cases de tableau (lot 11).
+
+/** Les feuilles que le balayage des restes laisse de côté en entier, avec leur raison. */
+const FEUILLES_LAISSEES_DE_COTE = new Map([
+  ['src/styles/debug/debug.css', 'la page Debug (« Thème reste, Debug à part » : elle ne change pas)'],
+  ['src/styles/debug/schema.css', 'le schéma de la page Debug (même choix)'],
+  ['src/styles/magie/print.css', 'l’impression des pages de magie (« l’impression ne change pas »)'],
+]);
+/** Les feuilles dont les blocs `@media print` écrivent le noir et le blanc de l'impression (« l'impression ne change pas ») : ces blocs sont laissés de côté. */
+const IMPRESSION_LAISSEE_DE_COTE = ['src/styles/classe/page.css', 'src/styles/race/page.css', 'src/styles/global/common.css'];
+/** Les règles laissées de côté : [feuille, sélecteur (tel quel, ou un motif), raison]. */
+const REGLES_LAISSEES_DE_COTE = [
+  ['src/styles/global/wiki.css', /^\[data-couleur="[a-z]+"\]$/, 'les couleurs des cases de tableau ({couleur:x}, lib/markdown-couleurs.mjs : lot 11)'],
+];
+
+/** L'indice de l'accolade qui ferme celle ouverte en `ouvrante`. */
+const accoladeFermante = (texte, ouvrante) => {
+  let profondeur = 0;
+  for (let i = ouvrante; i < texte.length; i++) {
+    if (texte[i] === '{') profondeur++;
+    else if (texte[i] === '}' && --profondeur === 0) return i;
+  }
+  return texte.length - 1;
+};
+/** Une feuille sans ses blocs `@media print`, et ces blocs. */
+const sansImpression = (css) => {
+  const blocs = [];
+  let reste = css;
+  for (let m = reste.search(/@media print\s*\{/); m >= 0; m = reste.search(/@media print\s*\{/)) {
+    const fin = accoladeFermante(reste, reste.indexOf('{', m));
+    blocs.push(reste.slice(m, fin + 1));
+    reste = reste.slice(0, m) + reste.slice(fin + 1);
+  }
+  return { reste, blocs };
+};
+/** Les feuilles du site (`src/styles/**.css`), chemins depuis client/. */
+const feuillesDuSite = () => readdirSync(new URL('../src/styles/', import.meta.url), { recursive: true }).filter((n) => n.endsWith('.css'))
+  .map((n) => `src/styles/${n.replaceAll('\\', '/')}`).sort();
+
+test('les restes : aucune couleur écrite dans aucune feuille du site, hors les blocs du thème, le noir et le blanc de mélange et ce qui est laissé de côté, nommé', () => {
+  const feuilles = feuillesDuSite();
+  assert.ok(feuilles.length > 50, `${feuilles.length} feuilles`);
+  // ce qui est laissé de côté existe et écrit encore ses couleurs (sinon, l'exception est à retirer)
+  for (const f of FEUILLES_LAISSEES_DE_COTE.keys()) assert.ok(couleursDuFichier(f).length > 0, `${f} : plus de couleur écrite, l’exception est à retirer`);
+  const trouvees = new Set();
+  for (const f of feuilles.filter((x) => !FEUILLES_LAISSEES_DE_COTE.has(x))) {
+    let css = lire(f).replace(/\/\*[\s\S]*?\*\//g, '');
+    if (IMPRESSION_LAISSEE_DE_COTE.includes(f)) {
+      const { reste, blocs } = sansImpression(css);
+      assert.ok(blocs.some((b) => couleursEcrites(b, { nommees: true }).length > 0), `${f} : l’impression n’écrit plus de couleur, l’exception est à retirer`);
+      css = reste;
+    }
+    // les blocs du thème (`:root…` de global/base.css) écrivent ses jetons (« Thème reste ») ; le reste de base.css est balayé comme toute feuille
+    if (f === 'src/styles/global/base.css') css = css.replace(/:root[^{]*\{[^{}]*\}/g, '');
+    css = css.replace(/([^{}]+)\{([^{}]*)\}/g, (regle, selecteur, corps) => {
+      const s = selecteur.trim().replace(/\s+/g, ' ');
+      const laissee = REGLES_LAISSEES_DE_COTE.find(([fichier, motif]) => fichier === f && (typeof motif === 'string' ? s === motif : motif.test(s)));
+      if (!laissee) return regle;
+      if (couleursEcrites(corps, { nommees: true }).length > 0) trouvees.add(laissee);
+      return '';
+    });
+    assert.deepEqual(couleursEcrites(css, { nommees: true }), [], f);
+  }
+  for (const r of REGLES_LAISSEES_DE_COTE) assert.ok(trouvees.has(r), `${r[0]} ${r[1]} : plus de couleur écrite, l’exception est à retirer`);
+  // les feuilles de ce lot y sont, entières hors l'impression et la partie B
+  for (const f of ['src/styles/edition/edition.css', 'src/styles/global/site-shell.css', 'src/styles/global/infobulles.css', 'src/styles/galerie/carrousel.css',
+    'src/styles/bestiaire/bestiaire.css', 'src/styles/race/base.css', 'src/styles/magie/page.css']) {
+    assert.ok(feuilles.includes(f), f);
+    assert.deepEqual(couleursDuFichier(f), [], f);
+  }
+});
+
+/** Les jetons du lot des restes et leurs valeurs, en clair puis dans les deux blocs du thème sombre (null : pas redéfini, la même valeur dans les deux thèmes, comme avant). */
+const JETONS_DES_RESTES = {
+  '--bandeau-dev': ['#b45309', null],
+  '--regard-evite': ['#c27a12', null],
+  '--ombre-bulle': ['rgb(42 33 24 / 0.36)', 'rgb(0 0 0 / 0.6)'],
+};
+
+test('les restes : le bandeau du site de dev, l’échelle des relations et l’ombre des infobulles, des jetons du thème avec les valeurs d’avant ; le texte sur le vert du site, foncé en sombre partout ; les voiles en blanc et noir de mélange', () => {
+  const blocs = blocsDuTheme();
+  const clair = blocs.find((b) => b.sel === ':root');
+  const sombres = blocs.filter((b) => b.sel !== ':root' && b.valeur('--bg'));
+  assert.deepEqual(sombres.map((b) => b.sel), [':root:not([data-theme="light"])', ':root[data-theme="dark"]']);
+  for (const [nom, [enClair, enSombre]] of Object.entries(JETONS_DES_RESTES)) {
+    assert.equal(clair.valeur(nom), enClair, `${nom}, clair`);
+    for (const b of sombres) assert.equal(b.valeur(nom), enSombre ?? undefined, `${nom}, ${b.sel}`);
+  }
+  // aucun n'a la valeur d'une autre variable de son bloc, sauf le bandeau : la valeur de --a-choisir et --a-choisir-plein en clair, un autre sens
+  // (« Garder séparées », comme --vert-action au lot 8)
+  const corpsDesBlocs = new Map([...lire('src/styles/global/base.css').matchAll(/(:root[^{]*)\{([^{}]*)\}/g)].map(([, sel, corps]) => [sel.trim(), corps]));
+  for (const b of [clair, ...sombres]) {
+    const variables = [...corpsDesBlocs.get(b.sel).matchAll(/\n\s*(--[a-z0-9-]+): ([^;]+);/g)].map(([, nom, v]) => [nom, v.trim().toLowerCase()]);
+    for (const nom of Object.keys(JETONS_DES_RESTES).filter((n) => b.valeur(n))) {
+      const egales = variables.filter(([autre, x]) => autre !== nom && x === b.valeur(nom).toLowerCase()).map(([autre]) => autre);
+      assert.deepEqual(egales, nom === '--bandeau-dev' && b === clair ? ['--a-choisir', '--a-choisir-plein'] : [], `${b.sel} : ${nom} a la valeur de ${egales}`);
+    }
+  }
+  const dans = (fichier, selecteur, attendu) => {
+    const regle = regleDe(lire(fichier), selecteur);
+    for (const a of [attendu].flat()) assert.ok(regle.includes(a), `${fichier}, ${selecteur} : « ${a} » dans « ${regle} »`);
+  };
+  // les feuilles lisent les jetons
+  dans('src/styles/global/site-shell.css', '.bandeau-test', ['background: var(--bandeau-dev);', 'color: var(--texte-sur-fonce);']);
+  assert.match(lire('src/layouts/Base.astro'), /<p class="bandeau-test" role="note">/, 'le bandeau : sa classe, sans style');
+  dans('src/styles/race/base.css', '.race', '--regard-evitee: color-mix(in srgb, var(--regard-evite) 70%, var(--surface));');
+  dans('src/styles/global/infobulles.css', '.bulle', 'box-shadow: 0 12px 28px -10px var(--ombre-bulle), 0 2px 6px -2px var(--ombre-bulle);');
+  assert.doesNotMatch(lire('src/styles/global/infobulles.css'), /--bulle-ombre/, 'l’ombre ne se règle plus dans la feuille, ni en sombre');
+  // le texte posé sur le vert du site : --texte-sur-good, sur chaque aplat --good des feuilles (hors Debug, dont la jauge ne porte pas de texte)
+  const surLeVert = feuillesDuSite().filter((f) => !FEUILLES_LAISSEES_DE_COTE.has(f))
+    .flatMap((f) => [...lire(f).replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .filter(([, , corps]) => /background: var\(--good\)/.test(corps)).map(([, s, corps]) => ({ regle: `${f} ${s.trim().replace(/\s+/g, ' ')}`, corps })));
+  assert.deepEqual(surLeVert.map((r) => r.regle), [
+    "src/styles/edition/edition.css .ed-confirmer", "src/styles/edition/edition.css .ed-dialogue button[type='submit']",
+    'src/styles/fiche/fiche.css .onglet__compte[data-ok]', 'src/styles/mise-a-jour/mise-a-jour.css .nv-dev button.nv-principal, .nv-dialogue button.nv-principal',
+  ]);
+  for (const { regle, corps } of surLeVert) assert.match(corps, /color: var\(--texte-sur-good\);/, regle);
+  // le compteur des onglets de la fiche dans ses autres états : sur le rouge du site (règles à revoir), --texte-sur-danger (réponse du propriétaire du
+  // 2026-10-23 à « En thème sombre, le compteur rouge de l'onglet « Contrôle » de la fiche […] Faut-il le même choix ici ? » : « Texte foncé en sombre
+  // (Recommandé) ») : le texte sur aplat foncé en clair, le fond sombre du site dans les deux blocs du thème sombre ; en attente, le texte sur aplat foncé
+  dans('src/styles/fiche/fiche.css', '.onglet__compte', ['background: var(--danger);', 'color: var(--texte-sur-danger);']);
+  dans('src/styles/fiche/fiche.css', '.onglet__compte--attente', ['background: var(--a-choisir-plein);', 'color: var(--texte-sur-fonce);']);
+  assert.equal(clair.valeur('--texte-sur-danger'), 'var(--texte-sur-fonce)');
+  for (const b of sombres) assert.equal(b.valeur('--texte-sur-danger'), 'var(--bg)', b.sel);
+  // les voiles blancs des bannières et les ombres et voiles noirs : le blanc ou le noir de mélange, à la part de l'alpha d'avant
+  for (const [fichier, selecteur, attendu] of [
+    ['src/styles/classe/page.css', '.classe-stat', ['background: color-mix(in srgb, #fff 12%, transparent);', 'border: 1px solid color-mix(in srgb, #fff 22%, transparent);']],
+    ['src/styles/classe/page.css', '.classe-hero__reperes li', ['background: color-mix(in srgb, #fff 14%, transparent);', 'border: 1px solid color-mix(in srgb, #fff 28%, transparent);']],
+    ['src/styles/classe/dons.css', '.onglet__magique', ['background: color-mix(in srgb, #fff 16%, transparent);', 'border: 1px solid color-mix(in srgb, #fff 30%, transparent);']],
+    ['src/styles/classe/dons.css', '.specialite__magique', ['background: color-mix(in srgb, #fff 16%, transparent);', 'border: 1px solid color-mix(in srgb, #fff 30%, transparent);']],
+    ['src/styles/race/page.css', '.race-stat', ['background: color-mix(in srgb, #fff 12%, transparent);', 'border: 1px solid color-mix(in srgb, #fff 22%, transparent);']],
+    ['src/styles/magie/page.css', '.magie-hero__roles li', ['background: color-mix(in srgb, #fff 16%, transparent);', 'border: 1px solid color-mix(in srgb, #fff 28%, transparent);']],
+    ['src/styles/magie/page.css', '.magie-stat', ['background: color-mix(in srgb, #fff 12%, transparent);', 'border: 1px solid color-mix(in srgb, #fff 22%, transparent);']],
+    ['src/styles/edition/edition.css', '.ed-crayon,\n.ed-confirmer', 'box-shadow: 0 4px 14px color-mix(in srgb, #000 22%, transparent);'],
+    ['src/styles/edition/edition.css', '.ed-dialogue', 'box-shadow: 0 18px 50px color-mix(in srgb, #000 35%, transparent);'],
+    ['src/styles/edition/edition.css', '.ed-dialogue::backdrop', 'background: color-mix(in srgb, #000 45%, transparent);'],
+    ['src/styles/edition/edition.css', '.ed-annonce', 'box-shadow: 0 6px 20px color-mix(in srgb, #000 25%, transparent);'],
+    ['src/styles/edition/edition.css', '.ed-barre-guide', 'box-shadow: 0 6px 20px color-mix(in srgb, #000 20%, transparent);'],
+    ['src/styles/galerie/carrousel.css', '.carrousel__diapo img', 'filter: drop-shadow(0 0.4rem 0.8rem color-mix(in srgb, #000 25%, transparent));'],
+    ['src/styles/bestiaire/bestiaire.css', '.bfacette__panneau', 'box-shadow: 0 8px 24px color-mix(in srgb, #000 18%, transparent);'],
+  ]) dans(fichier, selecteur, attendu);
+  // rien d'ajouté à la feuille de chaque page, le plafond de 4 ko tenu
+  assert.doesNotMatch(cssDeLaPalette(), /bandeau-dev|regard-evite|ombre-bulle|texte-sur-good/);
+  assert.ok(cssDeLaPalette().length < 4000, `${cssDeLaPalette().length} octets`);
+});
+
+test('lisibilité des restes dans les deux thèmes : le bandeau du site de dev, les boutons du mode modification et le compteur des onglets de la fiche dans chacun de ses états (4,5:1)', () => {
+  const blocs = blocsDuTheme();
+  const clair = blocs.find((b) => b.sel === ':root');
+  const sombres = blocs.filter((b) => b.sel !== ':root' && b.valeur('--bg'));
+  /** La valeur d'un jeton dans un bloc du thème, ses `var(--x)` suivis (dans le bloc, sinon dans le thème clair). */
+  const valeur = (b, nom) => {
+    const v = b.valeur(nom) ?? clair.valeur(nom);
+    const renvoi = v?.match(/^var\((--[a-z-]+)\)$/);
+    if (renvoi) return valeur(b, renvoi[1]);
+    return /^#[0-9a-f]{3}$/i.test(v) ? `#${[...v.slice(1)].map((c) => c + c).join('')}` : v;
+  };
+  // les couples texte / fond des règles épinglées par le test précédent
+  const COUPLES = [
+    ['le bandeau du site de dev', '--texte-sur-fonce', '--bandeau-dev'],
+    ['« Enregistrer », la validation des boîtes du mode modification et le compteur « ✓ » de l’onglet Contrôle', '--texte-sur-good', '--good'],
+    ['le compteur des choix en attente', '--texte-sur-fonce', '--a-choisir-plein'],
+    ['le compteur des règles à revoir', '--texte-sur-danger', '--danger'],
+  ];
+  const mesures = [];
+  for (const b of [clair, ...sombres]) {
+    for (const [quoi, texte, fond] of COUPLES) {
+      const [t, f] = [valeur(b, texte), valeur(b, fond)];
+      assert.match(t, /^#[0-9a-f]{6}$/, `${texte}, ${b.sel}`);
+      assert.match(f, /^#[0-9a-f]{6}$/, `${fond}, ${b.sel}`);
+      const r = contraste(t, f);
+      const cle = `${b.sel} : ${quoi}`;
+      mesures.push([cle, r]);
+      assert.ok(r >= CONTRASTE_MINIMAL, `${cle} : ${texte} (${t}) sur ${fond} (${f}) = ${r.toFixed(2)}:1`);
+    }
+  }
+  assert.equal(mesures.length, COUPLES.length * 3);
+  // le plus juste : le blanc sur #b45309, 5,0:1, dans les deux thèmes (le bandeau, le compteur des choix en attente)
+  assert.equal(Math.min(...mesures.map(([, r]) => r)).toFixed(2), '5.02');
+  // le texte foncé sur le vert en sombre (9,9:1) : le blanc d'avant n'y était pas lisible (1,9:1) ; en clair, le blanc (6,0:1)
+  for (const b of sombres) {
+    assert.ok(contraste(valeur(b, '--texte-sur-fonce'), valeur(b, '--good')) < CONTRASTE_MINIMAL, `${b.sel} : le blanc sur le vert clair`);
+    assert.ok(contraste(valeur(b, '--texte-sur-good'), valeur(b, '--good')) > 9.5, `${b.sel} : le texte foncé`);
+  }
+  assert.ok(contraste(valeur(clair, '--texte-sur-good'), valeur(clair, '--good')) > 6);
+  // de même sur le rouge du site : en sombre, le texte foncé (7,6:1) là où le blanc n'atteignait que 2,4:1 ; en clair, le blanc inchangé (7,7:1)
+  for (const b of sombres) {
+    assert.ok(contraste(valeur(b, '--texte-sur-fonce'), valeur(b, '--danger')) < CONTRASTE_MINIMAL, `${b.sel} : le blanc sur le rouge clair`);
+    assert.ok(contraste(valeur(b, '--texte-sur-danger'), valeur(b, '--danger')) > 7.5, `${b.sel} : le texte foncé`);
+  }
+  assert.equal(valeur(clair, '--texte-sur-danger'), valeur(clair, '--texte-sur-fonce'));
+  assert.ok(contraste(valeur(clair, '--texte-sur-danger'), valeur(clair, '--danger')) > 7.6);
+});
+
+// Lot des restes, partie B (2026-10-23) : les teintes des genres de sort et des types de don, couleurs du site (réponse du propriétaire : « Garder les
+// teintes actuelles (Recommandé) » ; option : « Garder les teintes actuelles comme couleurs du site : chaque genre et chaque type de don reçoit sa classe du
+// site, avec la teinte qu'il a aujourd'hui, comme les parties du guide. Le rendu ne change pas, dans les deux thèmes. Aucune couleur nouvelle. »). Le Soin
+// en clair : l'option recommandée « Assombrir le Soin en clair », appliquée au nom de la réponse permanente du propriétaire du 2026-10-23 (« Pour toutes tes
+// prochaines questions sur le thème et les palette, considère que je réponds "rcommandé" à chaque fois. »).
+
+/** Les teintes d'avant le lot, [teinte, saturation] de l'ancien `hsl(<teinte> <saturation> 50%)` des feuilles. */
+const TEINTES_D_AVANT = {
+  genre: { attaque: [5, 60], entrave: [275, 60], soin: [55, 60], amplification: [120, 60], protection: [185, 60], placement: [42, 60], invocation: [320, 60],
+    construction: [22, 60], meteo: [232, 60], aleatoire: [30, 0] },
+  don: { passif: [210, 30], actif: [32, 55], action: [5, 55], reaction: [275, 55], variable: [30, 0] },
+};
+/** hsl(h s l) en canaux sRGB 0-255, non arrondis. */
+const canauxHsl = (h, s, l) => {
+  const [S, L] = [s / 100, l / 100];
+  const a = S * Math.min(L, 1 - L);
+  const f = (n) => { const k = (n + h / 30) % 12; return (L - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))) * 255; };
+  return [f(0), f(8), f(4)];
+};
+const versHex = (rgb) => `#${rgb.map((c) => Math.round(c).toString(16).padStart(2, '0')).join('')}`;
+const canauxHex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+/** color-mix(in srgb, a p, b) sur des canaux. */
+const melange = (a, p, b) => a.map((c, i) => c * p + b[i] * (1 - p));
+
+test('les genres de sort et les types de don : une classe par genre et par type, la teinte d’avant ; posée par les rendus, émise par les seules pages des magies et des classes', () => {
+  assert.equal(FAMILLES_DE_LA_PALETTE.genre, COULEURS_DES_GENRES);
+  assert.equal(FAMILLES_DE_LA_PALETTE.don, COULEURS_DES_TYPES_DE_DON);
+  // une couleur par valeur des listes fermées (CHECK du schéma, TYPES_DE_SORT, TYPES_DE_DON) : pas de `par-defaut`
+  assert.deepEqual(Object.keys(COULEURS_DES_GENRES).sort(), [...TYPES_DE_SORT].sort());
+  assert.deepEqual(Object.keys(COULEURS_DES_TYPES_DE_DON), TYPES_DE_DON);
+  assert.ok(!Object.hasOwn(COULEURS_DES_GENRES, PAR_DEFAUT) && !Object.hasOwn(COULEURS_DES_TYPES_DE_DON, PAR_DEFAUT));
+  // la valeur : l'ancien hsl(… 50 %), arrondi au hex ; le fond de la classe sans correction (famille sans texte posé sur la couleur pure)
+  for (const [famille, teintes] of Object.entries(TEINTES_D_AVANT)) {
+    for (const [cle, [h, s]] of Object.entries(teintes)) {
+      assert.equal(FAMILLES_DE_LA_PALETTE[famille][cle], versHex(canauxHsl(h, s, 50)), `${famille} ${cle}`);
+      assert.ok(cssDesFamilles([famille]).includes(`.couleur-${famille}-${cle}{--couleur:${versHex(canauxHsl(h, s, 50))};`), `${famille} ${cle} : sa classe`);
+    }
+  }
+  assert.equal(classeDeGenre('soin'), 'couleur-genre-soin');
+  assert.equal(classeDeTypeDeDon('reaction'), 'couleur-don-reaction');
+  assert.equal(classeDeGenre('inconnu'), null);
+  // émission : les pages des magies et des classes seules, pas la feuille de chaque page (plafond de 4 ko)
+  assert.ok(lire('src/components/magie/MagiePage.astro').includes("<style is:inline set:html={cssDesFamilles(['genre'])}></style>"));
+  assert.ok(lire('src/components/classes/ClassePage.astro').includes("<style is:inline set:html={cssDesFamilles(['classe', 'don'])}></style>"));
+  assert.doesNotMatch(cssDeLaPalette(), /couleur-(?:genre|don)-/);
+  assert.ok(cssDeLaPalette().length < 4000);
+  // les rendus posent la classe, jamais un style
+  assert.ok(lire('src/components/magie/LigneDeSort.astro').includes('<span class={`genre ${classeDeGenre(t.type)}`} data-genre={t.type}>'));
+  assert.ok(lire('src/components/classes/DonCarte.astro').includes('<span class={`don-type ${classeDeTypeDeDon(don.type.id)}`} data-type={don.type.id} title={bulleType}>'));
+  assert.equal(RENDUS['sort-type']('Attaque / Soin'), '<span class="genre couleur-genre-attaque" data-genre="attaque">Attaque</span> <span class="genre couleur-genre-soin" data-genre="soin">Soin</span> ');
+  assert.match(RENDUS['don-type']('Réaction (1/combat)', {}, {}), /^<span class="don-type couleur-don-reaction" data-type="reaction">Réaction<\/span>/);
+  // les feuilles : plus de teinte écrite ni de --gh, --gs, --gl ; la couleur lue sur l'étiquette qui porte la classe
+  for (const [f, sel, v] of [['src/styles/magie/sorts.css', ".genre[class*='couleur-genre-']", '--genre-texte'], ['src/styles/classe/dons.css', ".don-type[class*='couleur-don-']", '--don-texte']]) {
+    const css = lire(f);
+    assert.doesNotMatch(css.replace(/\/\*[\s\S]*?\*\//g, ''), /--g[hsl]\b|hsl\(/, f);
+    assert.ok(regleDe(css, sel).includes(`${v}: color-mix(in srgb, var(--couleur) 68%, #000); border: 1px solid color-mix(in srgb, var(--couleur) 40%, var(--border)); background: color-mix(in srgb, var(--couleur) 15%, var(--surface)); color: color-mix(in srgb, var(${v}) 85%, var(--text));`), f);
+    for (const sombre of [`:root:not([data-theme="light"]) ${sel}`, `:root[data-theme="dark"] ${sel}`]) assert.ok(css.includes(`${sombre} { ${v}: color-mix(in srgb, var(--couleur) 52%, #fff); }`), `${f} : ${sombre}`);
+  }
+  assert.ok(lire('src/styles/magie/sorts.css').includes('\n.genre.couleur-genre-soin { --genre-texte: color-mix(in srgb, var(--couleur) 64%, #000); }'));
+  for (const f of ['src/styles/magie/base.css', 'src/styles/classe/base.css']) assert.doesNotMatch(lire(f), /--gl\b/, f);
+});
+
+test('lisibilité des étiquettes des genres de sort et des types de don dans les deux thèmes : le texte sur son fond (4,5:1), le rendu d’avant hors le Soin en clair', () => {
+  const blocs = blocsDuTheme();
+  const clair = blocs.find((b) => b.sel === ':root');
+  const sombre = blocs.find((b) => b.sel === ':root[data-theme="dark"]');
+  const mesures = [];
+  for (const [famille, teintes] of Object.entries(TEINTES_D_AVANT)) {
+    for (const [cle, [h, s]] of Object.entries(teintes)) {
+      const couleur = canauxHex(FAMILLES_DE_LA_PALETTE[famille][cle]);
+      for (const [theme, b, part, vers, gl] of [['clair', clair, famille === 'genre' && cle === 'soin' ? 0.64 : 0.68, [0, 0, 0], 34], ['sombre', sombre, 0.52, [255, 255, 255], 74]]) {
+        const [surface, texteDuSite] = [canauxHex(b.valeur('--surface')), canauxHex(b.valeur('--text'))];
+        const fond = melange(couleur, 0.15, surface);
+        const texte = melange(melange(couleur, part, vers), 0.85, texteDuSite);
+        // le rendu d'avant : hsl(h s gl) à 85 % sur le texte (écart d'arrondi seulement), sauf le Soin en clair, assombri
+        const avant = melange(canauxHsl(h, s, gl), 0.85, texteDuSite);
+        const ecart = Math.max(...texte.map((c, i) => Math.abs(c - avant[i])));
+        if (famille === 'genre' && cle === 'soin' && theme === 'clair') {
+          assert.ok(contraste(versHex(avant), versHex(fond)) < CONTRASTE_MINIMAL, 'le Soin d’avant en clair : 4,4:1');
+        } else assert.ok(ecart < 0.5, `${famille} ${cle}, ${theme} : écart ${ecart}`);
+        const r = contraste(versHex(texte), versHex(fond));
+        mesures.push([`${famille} ${cle}, ${theme}`, r]);
+        assert.ok(r >= CONTRASTE_MINIMAL, `${famille} ${cle}, ${theme} : ${r.toFixed(2)}:1`);
+      }
+    }
+  }
+  assert.equal(mesures.length, 30);
+  // le plus juste : l'Amplification en clair (4,67:1), puis le Soin assombri (4,8:1)
+  const [quoi, minimum] = mesures.reduce((m, x) => (x[1] < m[1] ? x : m));
+  assert.equal(quoi, 'genre amplification, clair', `${quoi} : ${minimum.toFixed(2)}`);
+  assert.ok(mesures.find(([q]) => q === 'genre soin, clair')[1] > 4.7);
+});
+
+test('les étiquettes des genres et des types dans les pages construites : leur classe, définie dans une feuille de la page, sans style', construit ? {} : { skip: 'site non construit (npm run build)' }, () => {
+  const page = (rel) => readFileSync(new URL(`../dist/${rel}`, import.meta.url), 'utf8');
+  const pages = [];
+  for (const dossier of ['magies', 'classes']) {
+    for (const n of readdirSync(new URL(`../dist/${dossier}/`, import.meta.url))) if (existsSync(new URL(`../dist/${dossier}/${n}/index.html`, import.meta.url))) pages.push(`${dossier}/${n}/index.html`);
+  }
+  let genres = 0, types = 0;
+  for (const rel of pages) {
+    const html = page(rel);
+    const styles = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join('');
+    for (const [, classes] of html.matchAll(/<span class="((?:genre|don-type)(?: [^"]*)?)"/g)) {
+      const famille = classes.startsWith('genre') ? 'genre' : 'don';
+      const classe = classes.split(' ').find((c) => c.startsWith(`couleur-${famille}-`));
+      assert.ok(classe, `${rel} : « ${classes} » sans sa classe`);
+      assert.ok(styles.includes(`.${classe}{`), `${rel} : ${classe} sans sa feuille`);
+      if (famille === 'genre') genres++; else types++;
+    }
+    assert.doesNotMatch(html, /<span class="(?:genre|don-type)[^"]*"[^>]*style=/, rel);
+  }
+  assert.ok(genres > 300 && types > 300, `${genres} genres, ${types} types`);
 });

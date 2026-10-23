@@ -13,14 +13,13 @@
   --tab: var(--mag);
   --tab-soft: var(--mag-soft);
   --tab-line: var(--mag-line);
-  --gl: 34%;
   --hero-1: color-mix(in srgb, var(--mag) 35%, var(--fond-banniere));
   --hero-2: color-mix(in srgb, var(--mag) 45%, var(--fond-banniere));
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) :is(.magie, .magie-teinte) { --mag-readable: color-mix(in srgb, var(--mag) 55%, #fff); --gl: 74%; }
+  :root:not([data-theme="light"]) :is(.magie, .magie-teinte) { --mag-readable: color-mix(in srgb, var(--mag) 55%, #fff); }
 }
-:root[data-theme="dark"] :is(.magie, .magie-teinte) { --mag-readable: color-mix(in srgb, var(--mag) 55%, #fff); --gl: 74%; }
+:root[data-theme="dark"] :is(.magie, .magie-teinte) { --mag-readable: color-mix(in srgb, var(--mag) 55%, #fff); }
 
 .js-only { display: none; }
 html.js .js-only { display: inline; }

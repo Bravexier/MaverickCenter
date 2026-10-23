@@ -14,13 +14,11 @@
   --mag: var(--cla);
   --mag-soft: var(--cla-soft);
   --mag-line: var(--cla-line);
-  /* types de don (guide « Capacités/Don ») : teinte de la pastille */
-  --gl: 34%;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .classe { --cla-readable: color-mix(in srgb, var(--cla) 55%, #fff); --gl: 74%; }
+  :root:not([data-theme="light"]) .classe { --cla-readable: color-mix(in srgb, var(--cla) 55%, #fff); }
 }
-:root[data-theme="dark"] .classe { --cla-readable: color-mix(in srgb, var(--cla) 55%, #fff); --gl: 74%; }
+:root[data-theme="dark"] .classe { --cla-readable: color-mix(in srgb, var(--cla) 55%, #fff); }
 
 .classe .texte { white-space: pre-line; margin: 0.4rem 0; }
 .classe .texte-titre { margin: 0.9rem 0 0.2rem; font-size: var(--fs-md); letter-spacing: var(--ls-fin); text-transform: uppercase; color: var(--muted); }

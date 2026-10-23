@@ -18,7 +18,7 @@
   font: inherit;
   cursor: pointer;
   border-radius: var(--radius-pill);
-  box-shadow: 0 4px 14px rgb(0 0 0 / 0.22);
+  box-shadow: 0 4px 14px color-mix(in srgb, #000 22%, transparent);
 }
 .ed-crayon {
   width: 3.2rem;
@@ -41,7 +41,7 @@
   gap: 0.45rem;
   padding: 0.7rem 1.1rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--texte-sur-good);
   background: var(--good);
   border: 0;
 }
@@ -126,9 +126,9 @@ textarea.ed-saisie--ligne { resize: none; min-height: 0; }
   padding: 0;
   color: var(--text);
   background: var(--surface);
-  box-shadow: 0 18px 50px rgb(0 0 0 / 0.35);
+  box-shadow: 0 18px 50px color-mix(in srgb, #000 35%, transparent);
 }
-.ed-dialogue::backdrop { background: rgb(0 0 0 / 0.45); }
+.ed-dialogue::backdrop { background: color-mix(in srgb, #000 45%, transparent); }
 .ed-dialogue form { display: grid; gap: 0.75rem; padding: 1.1rem 1.3rem 1.2rem; }
 .ed-dialogue h2 { margin: 0; font-size: 1.2rem; }
 .ed-dialogue label { display: grid; gap: 0.2rem; }
@@ -138,7 +138,7 @@ textarea.ed-saisie--ligne { resize: none; min-height: 0; }
 /* un champ caché selon un autre (« Ajouter une capacité » : nom et description d'une capacité nouvelle seulement) : `display: grid` ne l'emporte pas */
 .ed-dialogue label[hidden] { display: none; }
 .ed-dialogue button { font: inherit; padding: 0.35rem 1rem; border-radius: var(--radius-sm); cursor: pointer; }
-.ed-dialogue button[type='submit'] { color: #fff; background: var(--good); border: 0; font-weight: 700; }
+.ed-dialogue button[type='submit'] { color: var(--texte-sur-good); background: var(--good); border: 0; font-weight: 700; }
 
 /* Annonces (enregistré, fiches adaptées, erreur) */
 .ed-annonce {
@@ -154,7 +154,7 @@ textarea.ed-saisie--ligne { resize: none; min-height: 0; }
   border: 1px solid var(--border);
   border-left: 4px solid var(--good);
   border-radius: var(--radius);
-  box-shadow: 0 6px 20px rgb(0 0 0 / 0.25);
+  box-shadow: 0 6px 20px color-mix(in srgb, #000 25%, transparent);
   white-space: pre-line;
 }
 .ed-annonce[hidden] { display: none; }
@@ -243,7 +243,7 @@ body:not(.ed-mode) :is(.ed-capacite, .ed-ajout-capacite) { display: none; }
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  box-shadow: 0 6px 20px rgb(0 0 0 / 0.2);
+  box-shadow: 0 6px 20px color-mix(in srgb, #000 20%, transparent);
 }
 /* plusieurs éditeurs en place sur la page (Bienvenue : le texte et l'annonce) : une seule barre se montre (texte-en-place.mjs#choisirLaBarre) */
 .ed-barre-guide[hidden] { display: none; }

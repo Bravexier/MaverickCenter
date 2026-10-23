@@ -262,10 +262,22 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   `#b3261e` sur `#fbe6e4` ; en sombre `#7fd3a0` sur `#18301f`, `#f2a19a` sur `#3a1d1b` ; de 4,68:1, le vert sur son fond en clair, à 10,3:1) et
   `--texte-sur-good` (le texte des boutons principaux de la page Mise à jour, sur `--good` : `var(--texte-sur-fonce)` en clair, 6,0:1, `var(--bg)` en
   sombre, 9,9:1 ; réponse du propriétaire du 2026-10-23 à « Sur la page « Mise à jour » du site de dev, les boutons principaux (« Effectuer la mise à jour », « Lancer la simulation », « Passer en version majeure », « Résoudre ce lot ») ont un texte blanc sur le vert du site. En thème sombre, ce vert est clair (#7fcf9b) : le blanc n'y atteint que 1,9:1, loin du contraste minimal de lisibilité (4,5:1). En thème clair, c'est lisible (6,0:1). Que faire ? » : « Texte foncé en sombre (Recommandé) » ; option : « En thème sombre seulement, le texte de ces boutons prend le fond sombre du site (#17130f, 9,9:1), comme le choisit déjà la règle du texte sur couleur du site pour un fond clair. Aucune couleur ajoutée ; le thème clair ne change pas. ») ; le voile de ses
-  boîtes de dialogue s'écrit `color-mix(in srgb, #000 45%, transparent)`. Le bandeau du site de dev reste à un lot à venir ; les pages Debug gardent leurs
-  copies du vert et du rouge (« Thème reste, Debug à part »). Un voile noir ou
+  boîtes de dialogue s'écrit `color-mix(in srgb, #000 45%, transparent)` ; puis (lot des restes, avec les valeurs qu'écrivaient les feuilles)
+  `--bandeau-dev` (`#b45309`, le bandeau du site de dev de `global/site-shell.css`, le même dans les deux thèmes comme avant, son texte
+  `var(--texte-sur-fonce)`, 5,0:1 ; la valeur de `--a-choisir` et `--a-choisir-plein` en clair, mais un autre sens : « Garder séparées »),
+  `--regard-evite` (`#c27a12`, le niveau `evitee` de l'échelle des relations entre les peuples, que `race/base.css` mêle à la surface :
+  `--regard-evitee: color-mix(in srgb, var(--regard-evite) 70%, var(--surface))`, sans texte) et `--ombre-bulle` (la couleur des deux ombres d'une
+  infobulle, `global/infobulles.css` : `rgb(42 33 24 / 0.36)` en clair, `rgb(0 0 0 / 0.6)` dans les deux blocs du thème sombre ; la feuille ne la règle
+  plus elle-même). `--texte-sur-good` sert à tout texte posé sur un aplat `--good` : en plus des boutons de la page Mise à jour, « Enregistrer »
+  (`.ed-confirmer`) et le bouton de validation des boîtes de dialogue du mode modification (`edition/edition.css`), et le compteur « ✓ » de l'onglet
+  Contrôle de la fiche (`.onglet__compte[data-ok]`, aucune règle à revoir) ; réponse du propriétaire du 2026-10-23 à « En thème sombre, d'autres boutons et pastilles du site ont un texte blanc sur le vert du site (#7fcf9b) : le blanc n'y atteint que 1,9:1, loin du contraste minimal de lisibilité (4,5:1). En thème clair, c'est lisible (6,0:1). Ce sont le bouton « Enregistrer » du mode modification et le bouton de validation de ses boîtes de dialogue (site de dev), et, sur la fiche, le compteur d'un onglet quand tout est choisi. Pour les boutons principaux de la page « Mise à jour », vous avez choisi « Texte foncé en sombre ». Faut-il appliquer le même choix ici ? » : « Même choix partout (Recommandé) » ; option : « En thème sombre seulement, le texte de ces boutons et de ce compteur prend le fond sombre du site (#17130f, 9,9:1), comme sur la page « Mise à jour ». Aucune couleur ajoutée ; le thème clair ne change pas. ».
+  Le compteur garde `var(--texte-sur-fonce)` quand des choix sont en attente, sur `--a-choisir-plein` (5,0:1 dans les deux thèmes). Sur `--danger`
+  (règles à revoir), il prend `--texte-sur-danger`, sur le modèle de `--texte-sur-good` : `var(--texte-sur-fonce)` en clair, 7,7:1, `var(--bg)` dans
+  les deux blocs du thème sombre, 7,6:1 ; réponse du propriétaire du 2026-10-23 à « En thème sombre, le compteur rouge de l'onglet « Contrôle » de la fiche (le nombre de règles à revoir) a un texte blanc sur le rouge du site (#ef8a8a) : le blanc n'y atteint que 2,4:1, loin du contraste minimal de lisibilité (4,5:1). En thème clair, c'est lisible (7,7:1). Pour les boutons et le compteur verts, vous avez choisi « Texte foncé en sombre ». Faut-il le même choix ici ? » : « Texte foncé en sombre (Recommandé) » ; option : « En thème sombre seulement, le texte de ce compteur prend le fond sombre du site (#17130f, 7,6:1), comme sur le vert. Aucune couleur ajoutée ; le thème clair ne change pas. ». Les pages Debug gardent leurs copies du vert et du rouge (« Thème reste, Debug à part »). Un voile noir ou
   blanc translucide (le survol d'une ligne, les voiles des champs et du dé posés sur la couleur d'un niveau) s'écrit en noir ou blanc de mélange,
-  `color-mix(in srgb, #fff 70%, transparent)`, le même rendu que `rgb(255 255 255 / 0.7)`.
+  `color-mix(in srgb, #fff 70%, transparent)`, le même rendu que `rgb(255 255 255 / 0.7)` : ainsi les voiles blancs des bannières (`classe/page.css`,
+  `classe/dons.css`, `race/page.css`, `magie/page.css`) et les ombres et voiles noirs du mode modification, du carrousel et du bestiaire
+  (`edition/edition.css`, `galerie/carrousel.css`, `bestiaire/bestiaire.css`), au lot des restes.
 - **Deux couleurs d'une famille sur un même élément** (le dégradé de l'innée vers l'acquise des cadres de la fiche et des lignes de `/personnages/`,
   une créature ou une cible de défense à deux magies, le trait d'une relation de la carte de `/magies/`, une arme de deux compétences) : une classe ne
   pose qu'une `--couleur`. La première est la classe de sa couleur (`--couleur`, `--couleur-texte`) ; la seconde, sa **classe de second rang**
@@ -302,20 +314,24 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
     compétence, celle du niveau du bonus d'acquis (`data-niveaux` : `classe`) ;
   - **la chronologie** (lot 7) : la page d'un événement et `/chronologie/` (`--chrono`, et `--chrono-sur` pour le texte de ses aplats, tirés de la classe
     posée sur `.chrono`), lignes de la frise, barre en dégradé (`--c`, `--c-avant`, `--c-apres` lus sur la ligne, sa barre et son morceau de barre, qui
-    portent leur classe), mini-frise et tiroir du téléphone, éditeur du site de dev (`styles/chronologie/chronologie.css`).
+    portent leur classe), mini-frise et tiroir du téléphone, éditeur du site de dev (`styles/chronologie/chronologie.css`) ;
+  - **les genres de sort et les types de don** (lot des restes) : familles `genre` et `don` (`lib/genres-couleurs.mjs`, une couleur par valeur des CHECK
+    de `sort_type.type` et `capacite.type`, sans `par-defaut`), émises par `MagiePage.astro` et `ClassePage.astro` seules et posées par `LigneDeSort.astro`,
+    `DonCarte.astro` et `edition-rendu.mjs` (`classeDeGenre`, `classeDeTypeDeDon`) ; réponse du propriétaire du 2026-10-23 à « Sur les pages des magies, chaque sort affiche son genre (attaque, entrave, soin, amplification, protection, placement, invocation, construction, météo, aléatoire) dans une étiquette teintée. Sur les pages de classe, chaque don affiche son type (passif, actif, action, réaction, variable) de la même façon. Ces teintes ont été choisies par le site : aucune source connue (Docs, Sheets, Discord) ne donne de couleur à un genre de sort ni à un type de don. Elles sont aujourd'hui calculées dans la feuille par une teinte écrite en dur (`hsl(…)`), ce qui contredit « Aucune couleur en dur ». Que faire ? » : « Garder les teintes actuelles (Recommandé) » ; option : « Garder les teintes actuelles comme couleurs du site : chaque genre et chaque type de don reçoit sa classe du site, avec la teinte qu'il a aujourd'hui, comme les parties du guide. Le rendu ne change pas, dans les deux thèmes. Aucune couleur nouvelle. ».
+    Chaque valeur est l'ancien `hsl(<teinte> <saturation> 50%)` en hex ; le texte de l'étiquette en est tiré par le noir de mélange en clair
+    (`color-mix(in srgb, var(--couleur) 68%, #000)`, l'ancien `hsl(… 34%)`) et le blanc en sombre (52 %, l'ancien `hsl(… 74%)`), puis mêlé à 85 % au
+    texte du site ; `--gl` est retiré. Familles sans texte sur la couleur pure (`FAMILLES_SANS_TEXTE`) : le contraste se mesure sur l'étiquette, de
+    4,67:1 (Amplification en clair) à 9,3:1. Le Soin en clair (4,37:1 avant) prend 64 % (environ `#756d1f`, 4,8:1) : c'est l'option recommandée de la
+    question « Sur les pages des magies, l'étiquette du genre « Soin » d'un sort a un texte jaune foncé sur un fond jaune pâle. En thème clair, ce texte n'atteint que 4,4:1, juste sous le contraste minimal de lisibilité (4,5:1). Les autres genres et les types de don sont lisibles dans les deux thèmes (4,7:1 au moins), et « Soin » l'est en thème sombre (9,1:1). Que faire ? » (option : « Assombrir le Soin en clair (Recommandé) : en thème clair seulement, le texte de l'étiquette « Soin » est un peu plus foncé (#756d1f au lieu de #7c7321), soit 4,8:1 ; les autres étiquettes et le thème sombre ne changent pas ; aucune couleur nouvelle, calculée depuis la teinte du Soin. »), appliquée au nom de la réponse permanente du propriétaire du 2026-10-23 : « Pour toutes tes prochaines questions sur le thème et les palette, considère que je réponds "rcommandé" à chaque fois.  Fait au plus économe en token je suis a sec » ; ce n'est pas un choix qu'il a fait sur ce cas.
   Une feuille garde ses variables locales (`--mag`, `--creature-1`, `--cadre`, `--magie-1`…) mais les tire des propriétés de la classe, jamais d'un
   style. Les scripts du navigateur posent des classes (`classList`), jamais une couleur : ils reçoivent leurs noms de la page (`data-couleurs` de
   `/personnages/`) ou de `regles.json` (`classe` et `classe_2` de chaque magie, `classe` de chaque caractéristique, posture, alignement, race, classe
   et palier, de `mode_hyper` et `mode_hyper.cent`, `race_par_nature`, `neutre` : skill `zone-fiche`), car un script de page n'importe pas
   `palette-css.mjs`. La carte de `/magies/` : les règles du survol (écrites par le composant) font lire au trait `--couleur` ou `--couleur-2` de ses
   classes selon la magie survolée ; seule la part de la couleur dans le trait se calcule encore depuis la valeur (luminance, au build).
-  Restent, pour les lots à venir : le bandeau du site de dev (`.bandeau-test` de `global/site-shell.css`, `#b45309` et `#fff`), les couleurs des
-  cases de tableau (`{couleur:x}`, `[data-couleur]` de `global/wiki.css`, `lib/markdown-couleurs.mjs`) et les couleurs encore écrites des feuilles
-  des lots faits (les
-  voiles blancs translucides des bannières, `rgba(255, 255, 255, …)` de `classe/page.css`, `classe/dons.css`, `race/page.css`, `magie/page.css` ;
-  l'échelle des relations entre les peuples, `--regard-evitee` de `race/base.css` ; les teintes des genres de sort, `.genre` de
-  `styles/magie/sorts.css`, et des types de don, `.don-type` de `classe/dons.css` ; l'ombre des infobulles). La page Debug et l'impression ne
-  changent pas. Les dérivées sombres des bannières des magies, des classes et des races (`--hero-1`, `--hero-2`) mêlent la couleur au
+  Restent : les couleurs des cases de tableau (`{couleur:x}`, `[data-couleur]` de `global/wiki.css`,
+  `lib/markdown-couleurs.mjs` : prévues pour le lot 11). La page Debug et l'impression ne changent pas (`debug/debug.css`, `debug/schema.css`,
+  `magie/print.css`, les blocs `@media print` de `classe/page.css`, `race/page.css` et `global/common.css`). Les dérivées sombres des bannières des magies, des classes et des races (`--hero-1`, `--hero-2`) mêlent la couleur au
   noir `#111` d'avant, par le jeton `--fond-banniere` (les magies, passées au noir pur `#000` au lot 2, ont retrouvé leur rendu d'avant au lot 4).
 - Tests : `test/palette-css.test.mjs` (familles, noms, valeur de chaque classe égale à celle de sa règle, contraste de 4,5:1, combinaisons des potions,
   seconds rangs, émission par page et par zone, feuilles qui lisent les propriétés des classes ; aucune couleur écrite — hex, fonction de couleur au
@@ -323,7 +339,10 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   `var(--couleur…)` ou `var(--mag…)`, ou, dans `fiche.css` et `guide/blocs.css`, les variables qui en sont tirées (`--c`, `--c1`, `--c2`, `--c-texte`,
   `--texte-sur-c`), ou, dans `styles/classe/` et `styles/race/`, celles de la catégorie ou de la nature (`--cla…`, `--rac…`, `--hero-1`, `--hero-2`),
   ou, partout, les jetons du thème des lots faits et le bleu des armes de départ (`--texte-sur-fonce`, `--fond-banniere`, `--depart…`, `--degats-…`,
-  `--defense-ap`, `--defense-am`, `--ombre-fiche`, `--maudit`, `--maudit-texte`, `--maudit-choisi`, `--ombre-encart`), choisie d'après ce qu'elle lit (hors du lot, nommées : l'ombre de l'infobulle et `--regard-evitee` de la page d'une race) ; le script de la fiche ne
+  `--defense-ap`, `--defense-am`, `--ombre-fiche`, `--maudit`, `--maudit-texte`, `--maudit-choisi`, `--ombre-encart`), choisie d'après ce qu'elle lit ; depuis le lot des restes, toutes les feuilles de `src/styles/`, hors les blocs du thème de `global/base.css` et ce
+  qui est laissé de côté, nommé avec sa raison : `FEUILLES_LAISSEES_DE_COTE` (Debug, `magie/print.css`), `IMPRESSION_LAISSEE_DE_COTE`,
+  `REGLES_LAISSEES_DE_COTE` (les cases de tableau), chacune vérifiée encore utile ; le texte sur chaque aplat `--good` ; les
+  jetons des restes dans les trois blocs et leurs contrastes ; le script de la fiche ne
   lit ni ne pose aucune de ces couleurs ; jetons du thème ; poids borné),
   `test/alchimie-couleurs.test.mjs`, `test/ceinture-html.test.mjs`, `test/equipement-html.test.mjs` ; sur le site construit, `test/site-html.test.mjs`
   (sur toute page, aucune couleur de magie, de caractéristique, de posture, d'alignement, de catégorie de classe, de race, de palier, du Mode Hyper,

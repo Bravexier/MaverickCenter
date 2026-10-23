@@ -20,13 +20,15 @@
 .don__nom a { color: var(--cla-readable); text-decoration: none; }
 .don__nom a:hover { text-decoration: underline; }
 .don__type { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.45rem; margin: 0.3rem 0 0; }
-.don-type { --gh: 30; --gs: 55%; font-size: var(--fs-xs); padding: 0.02rem 0.55rem; border-radius: var(--radius-pill); border: 1px solid color-mix(in srgb, hsl(var(--gh) var(--gs) 50%) 40%, var(--border)); background: color-mix(in srgb, hsl(var(--gh) var(--gs) 50%) 15%, var(--surface)); color: color-mix(in srgb, hsl(var(--gh) var(--gs) var(--gl)) 85%, var(--text)); }
+.don-type { font-size: var(--fs-xs); padding: 0.02rem 0.55rem; border-radius: var(--radius-pill); }
+/* la couleur d'un type : sa classe (lib/genres-couleurs.mjs, famille `don` émise par ClassePage.astro), lue sur l'étiquette qui la porte ; le texte en est
+   tiré par le noir de mélange (le blanc en sombre), le rendu de l'ancien hsl(… 34 %) et hsl(… 74 %) */
+.don-type[class*='couleur-don-'] { --don-texte: color-mix(in srgb, var(--couleur) 68%, #000); border: 1px solid color-mix(in srgb, var(--couleur) 40%, var(--border)); background: color-mix(in srgb, var(--couleur) 15%, var(--surface)); color: color-mix(in srgb, var(--don-texte) 85%, var(--text)); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .don-type[class*='couleur-don-'] { --don-texte: color-mix(in srgb, var(--couleur) 52%, #fff); }
+}
+:root[data-theme="dark"] .don-type[class*='couleur-don-'] { --don-texte: color-mix(in srgb, var(--couleur) 52%, #fff); }
 .don-type:is([title], [data-infobulle]:not([data-infobulle=""])) { cursor: help; } /* data-infobulle : le `title` déplacé (components/Infobulles.astro) */
-.don-type[data-type="passif"] { --gh: 210; --gs: 30%; }
-.don-type[data-type="actif"] { --gh: 32; }
-.don-type[data-type="action"] { --gh: 5; }
-.don-type[data-type="reaction"] { --gh: 275; }
-.don-type[data-type="variable"] { --gs: 0%; }
 .don__precision { font-size: var(--fs-xs); color: var(--muted); }
 .don__effet { font-size: var(--fs-lg); }
 .don__effet > .texte:first-child, .don__effet > ul:first-child { margin-top: 0.35rem; }
@@ -64,7 +66,7 @@
   background: linear-gradient(135deg, var(--hero-1), var(--hero-2)); color: var(--texte-sur-fonce); text-decoration: none; }
 .onglet__surtitre { font-size: 0.65rem; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.8; }
 .onglet__nom { font-size: 1.15rem; font-weight: 700; letter-spacing: 0.1em; line-height: 1.25; overflow-wrap: normal; word-break: normal; }
-.onglet__magique { margin-top: 0.15rem; font-size: var(--fs-xxs); letter-spacing: var(--ls-fin); padding: 0.05rem 0.5rem; border-radius: var(--radius-pill); background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.3); }
+.onglet__magique { margin-top: 0.15rem; font-size: var(--fs-xxs); letter-spacing: var(--ls-fin); padding: 0.05rem 0.5rem; border-radius: var(--radius-pill); background: color-mix(in srgb, #fff 16%, transparent); border: 1px solid color-mix(in srgb, #fff 30%, transparent); }
 .onglet:focus-visible { outline: 2px solid var(--cla); outline-offset: 2px; }
 html.js .onglet { cursor: pointer; }
 html.js .onglet:not(.is-active) { background: var(--cla-soft); color: var(--cla-readable); border-color: var(--border); }
@@ -81,7 +83,7 @@ html.js .specialites[data-onglets] .specialite { margin-top: 0; border-radius: 0
 .specialite__titre { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.6rem; margin: 0; padding: 0.5rem 0.8rem; border-radius: var(--radius); color: var(--texte-sur-fonce);
   background: linear-gradient(135deg, var(--hero-1), var(--hero-2)); font-size: 1.1rem; letter-spacing: 0.1em; }
 .specialite__surtitre { width: 100%; font-size: 0.65rem; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.8; }
-.specialite__magique { font-size: var(--fs-xxs); font-weight: normal; letter-spacing: var(--ls-fin); padding: 0.05rem 0.5rem; border-radius: var(--radius-pill); background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.3); }
+.specialite__magique { font-size: var(--fs-xxs); font-weight: normal; letter-spacing: var(--ls-fin); padding: 0.05rem 0.5rem; border-radius: var(--radius-pill); background: color-mix(in srgb, #fff 16%, transparent); border: 1px solid color-mix(in srgb, #fff 30%, transparent); }
 html.js .specialites[data-onglets] .specialite__titre { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .specialite__cartouche { display: grid; justify-items: center; }
 .specialite__cartouche > .don { width: min(100%, 36rem); }

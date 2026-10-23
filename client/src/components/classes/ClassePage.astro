@@ -54,7 +54,7 @@ const edSpe = (id: string, colonne: string) => attributEd('specialite', { id }, 
 ---
 
 <style is:inline set:html={classeCss}></style>
-<style is:inline set:html={cssDesFamilles(['classe'])}></style>
+<style is:inline set:html={cssDesFamilles(['classe', 'don'])}></style>
 <div class={`classe ${couleur}`} data-ed-classe={classe.id} data-ed-structure={empreinteDeStructure(classe)}>
   <header class="classe-hero">
     <p class="classe-hero__surtitre">{classe.categorie?.libelle ?? 'Classe'}</p>

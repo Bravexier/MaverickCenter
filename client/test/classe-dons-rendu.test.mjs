@@ -47,7 +47,7 @@ test('un don en carte : ancre tirée de l’id, champs data-ed du modèle, type 
   const html = htmlDeDon(contact, { titre: 'h3', base: '/site/', typesDon: LIGNES.typesDon });
   assert.match(html, /^<article class="don" id="don-essai-contact" data-type="passif"><header class="don__tete"><span class="don__niveau" title="Niveau de classe 1">Niv\. 1<\/span>/);
   assert.ok(html.includes(`<h3 class="don__nom" data-ed="${attributEd('capacite', { id: contact.id }, 'nom').replace(/"/g, '&quot;')}" data-ed-cible="a"><a href="/site/capacites/essai-contact/">contact</a></h3>`));
-  assert.match(html, /<span class="don-type" data-type="passif" title="Passif : Toujours actif\.">Passif<\/span>/);
+  assert.match(html, /<span class="don-type couleur-don-passif" data-type="passif" title="Passif : Toujours actif\.">Passif<\/span>/);
   assert.match(html, /<div class="don__effet" data-ed="[^"]+" data-ed-rendu="blocs" data-ed-cadre><p class="texte">Touche\.<\/p><ul><li>a<\/li><li>b<\/li><\/ul><\/div>/);
   assert.match(html, /<div class="don__remarque" data-ed-cadre="\.don__remarque-texte" hidden>/, 'remarque vide : cachée');
   const seul = classe.dons.find((d) => d.id === 'capacites/essai-seul');
