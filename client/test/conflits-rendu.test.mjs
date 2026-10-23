@@ -15,6 +15,7 @@ import {
   raisonDuChoix, raisonDuConflit, texteDeLaVersion, texteDeValeur,
 } from '../src/lib/conflits-rendu.mjs';
 import { TABLES } from '../src/lib/edition-modele.mjs';
+import { htmlAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { nomDeColonne, nomDeTable } from '../src/lib/libelles-de-la-base.mjs';
 
 const DIAG = JSON.parse(readFileSync(new URL('./fixtures/conflits-diagnostic.json', import.meta.url), 'utf8'));
@@ -58,6 +59,21 @@ test('une page du guide modifiée puis réécrite : les deux versions côte à c
   assert.equal(texte(html.match(/<textarea[^>]*>([\s\S]*?)<\/textarea>/)[1]), c.version_1.valeur);
   assert.match(html, /<legend>Page « La magie en jeu » — Texte <span class="nv-conflit__operation">modification<\/span><\/legend>/);
   assert.match(html, /<p class="nv-conflit__raison">les règles ont changé « Texte » autrement<\/p>/, 'la raison lisible, jamais la trace');
+});
+
+// R164 : une balise de plusieurs mots posée sur le site de dev autour d'un texte que les règles livrées ont gardé (« Sort fer ») : les différences
+// (lib/notes-de-version-rendu.mjs#diffMots) la gardent entière dans un seul morceau, et le middleware la rend ; aucune « {{ » dans le texte visible.
+test('les différences d’un conflit : une balise de plusieurs mots posée autour d’un texte existant reste entière et se rend (R164)', () => {
+  const c = structuredClone(MAGIE.conflits[0]);
+  c.version_1.valeur = 'Lance des {{sort-fer|sorts "fer"}}, perce les défenses.';
+  c.version_2.valeur = 'Lance des sorts "fer", perce les défenses.';
+  const diff = htmlDuConflit(c, 0).match(/<div class="nv-diff">([\s\S]*?)<\/div><\/details>/)?.[1];
+  assert.ok(diff, 'les différences');
+  assert.match(diff, /<ins>\{\{sort-fer\|sorts &quot;fer&quot;\}\},<\/ins>/, 'la balise entière dans un seul <ins>');
+  for (const m of diff.match(/<(del|ins)>[^<]*<\/\1>/g)) assert.equal(m.split('{{').length, m.split('}}').length, m);
+  const rendu = htmlAvecMotsCles(diff, [{ id: 'sort-fer', libelle: 'Sort fer', description: 'Définition d’essai.' }]);
+  assert.deepEqual(rendu.employes, ['sort-fer']);
+  assert.ok(!texte(rendu.html).includes('{{'), rendu.html);
 });
 
 test('une page retirée des règles : seul le choix 2 (abandonner), la raison dite ; la version 1 reste lisible', () => {

@@ -40,6 +40,7 @@ user-invocable: false
 - Référence : `scripts/db-reference.mjs` construit la base de master depuis `git archive origin/master` (`donnees/reference.db`). La CI et la livraison font `git fetch … master` avant le build. Sans master, la page dit que la référence manque. Rien de tout cela en `SITE_MODE=prod` ni dans la version portable.
 - La liste ne compare que les colonnes de `TABLES` (`lib/edition-modele.mjs`, skill `zone-edition`) ; le reste en est dérivé.
 - Une couleur vient de R29 et de rien d'autre (`notes-de-version-sens.mjs`) ; tout cas douteux reste neutre.
+- Le détail mot à mot (`notes-de-version-rendu.mjs#diffMots`, aussi celui des conflits) garde une balise du glossaire entière dans un seul morceau, espaces intérieurs compris : coupée entre deux `<ins>`, le middleware la laisserait brute (R164, « Sort fer » posé autour d'un texte existant ; tests `notes-de-version`, `conflits-rendu`, `site-html`).
 - Domaines : sorts, magies, classes, races, métiers, guide, Codex, bestiaire, armes, armures, composants, chronologie, mots-clés, équipement. C'est la contrainte CHECK de `note_version_ligne.domaine` (migrations `0032`, `0034`, `0040`, `0043`, `0046`, `0056`) : un domaine nouveau demande une migration.
 - Une table nouvelle dans `TABLES` n'est listée qu'avec sa définition (`DEFINITIONS`, `TABLES_LUES`).
 - `detail` : une ligne qui n'existe qu'avec une autre (rubrique, butin) n'est listée que pour un champ modifié. `resume` : un contenu absent de la production est dit en une ligne.
