@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 71;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 72;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -106,8 +106,6 @@ CREATE TABLE alias (
 
 CREATE INDEX alias_cle   ON alias (cle);
 
-CREATE INDEX alias_texte ON alias (texte);
-
 -- Vocabulaire des mots-clés, devenu un glossaire : un mot-clé = son id, son libellé et sa définition (migrations 0043 et 0056). Demandes du
 -- propriétaire : sur /recherche/, en mode modification, « supprimer / ajouter / modifier des mots clés » ; une suppression le retire de tous les
 -- endroits qui le citent (0043 : les pages qui le portent, page_tag, par ON DELETE CASCADE) ; le 2026-10-16, la refonte en glossaire (0056) :
@@ -169,10 +167,6 @@ CREATE TABLE source (
   CHECK (google_id IS NULL OR genre IS NOT NULL)
 ) STRICT;
 
-CREATE INDEX source_google ON source (google_id) WHERE google_id IS NOT NULL;
-
-CREATE INDEX source_fichier ON source (fichier) WHERE fichier IS NOT NULL;
-
 CREATE TABLE page_source (
   page_id   TEXT    NOT NULL REFERENCES page(id) ON DELETE CASCADE,
   ordre     INTEGER NOT NULL CHECK (ordre >= 0),     -- rang dans la liste `sources:`
@@ -194,8 +188,7 @@ CREATE TABLE page_entite (
   origine      TEXT    NOT NULL REFERENCES famille(id),
   PRIMARY KEY (entite_table, entite_id)
 ) STRICT;
-CREATE INDEX page_entite_page ON page_entite (page_id);
-CREATE INDEX page_entite_id   ON page_entite (entite_id);
+CREATE INDEX page_entite_page ON page_entite (page_id);   -- une entité se cherche par la clé primaire (entite_table, entite_id) : pas d'index sur entite_id seul (migration 0072)
 CREATE UNIQUE INDEX page_entite_principale ON page_entite (page_id) WHERE principale = 1;   -- au plus une entité principale par page
 
 -- Panneaux de règles : l'encart replié en tête de chaque onglet de /ressources/equipement/ (migration 0056). Demandes du propriétaire du 2026-10-16,
@@ -3362,7 +3355,6 @@ CREATE TABLE note_cellule (
   CHECK (repond_a IS NULL OR repond_a < rang),
   FOREIGN KEY (entite_table, entite_id, repond_a) REFERENCES note_cellule (entite_table, entite_id, rang)
 ) STRICT, WITHOUT ROWID;
-CREATE INDEX note_cellule_nature ON note_cellule (nature) WHERE nature IS NOT NULL;
 
 -- Écarts constatés entre deux sources, ou anomalies d'une source (coquille, prix incohérent, forme non reconnue). AUCUNE correction n'est
 -- appliquée : la valeur retenue reste dans la colonne typée de l'entité, l'autre est ici avec sa source. Calculés par l'importeur, jamais saisis.
@@ -3386,7 +3378,6 @@ CREATE TABLE ecart_source (
   CHECK (id = entite_table || ':' || entite_id || ':' || champ || ':' || nature || ':' || source_a || COALESCE(':' || source_b, ''))
 ) STRICT, WITHOUT ROWID;
 CREATE INDEX ecart_source_entite ON ecart_source (entite_table, entite_id);
-CREATE INDEX ecart_source_nature ON ecart_source (nature);
 
 -- Corrections de coquilles et de fautes d'orthographe : TRACE MIROIR du registre versionné `tools/sheets/corrections.json` (décision du propriétaire :
 -- le registre est la source, il est appliqué au dump AVANT les extracteurs par `tools/sheets/corriger-dump.py` ; les colonnes typées, les *_brut et les
