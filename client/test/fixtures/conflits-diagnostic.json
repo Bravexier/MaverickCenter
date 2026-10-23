@@ -6,8 +6,8 @@
    "page_id": "guide/le-mode-hyper",
    "resume": "Alias d’essai",
    "detail": "lot 2026-10-21T08:00:00.000Z-000000-essai-alias : alias : clé étrangère rompue vers page",
-   "detail_lisible": "alias : clé étrangère rompue vers Page",
-   "empreinte": "bdab0693f2f98522d4a5a529a33f5d6b",
+   "detail_lisible": "Autre nom de la page : clé étrangère rompue vers Page",
+   "empreinte": "e5d6274f641acb0fe9712cfdec9a3b57",
    "saines": [],
    "conflits": [
     {
@@ -18,9 +18,9 @@
       "ordre": 900
      },
      "operation": "inserer",
-     "libelle": "alias (Page guide/le-mode-hyper), ordre 900",
+     "libelle": "Autre nom de la page (Page guide/le-mode-hyper), ordre 900",
      "raison": "alias : clé étrangère rompue vers page (page_id = \"guide/le-mode-hyper\")",
-     "raison_lisible": "alias : clé étrangère rompue vers Page guide/le-mode-hyper",
+     "raison_lisible": "Autre nom de la page : clé étrangère rompue vers Page guide/le-mode-hyper",
      "colonne": null,
      "colonne_libelle": null,
      "avant": null,
@@ -33,8 +33,12 @@
       "valeur": {
        "page_id": "guide/le-mode-hyper",
        "ordre": 900,
-       "texte": "Alias du site de dev (essai des conflits)",
-       "cle": "alias-du-site-de-dev-essai-des-conflits"
+       "texte": "Alias du site de dev (essai des conflits)"
+      },
+      "libelles": {
+       "page_id": "Page",
+       "ordre": "Ordre",
+       "texte": "Autre nom"
       }
      },
      "version_2": {
@@ -54,7 +58,7 @@
    "resume": "avant 0044",
    "detail": "lot 2026-10-21T08:00:01.000Z-000000-essai-ancien : monstre_capacite {\"monstre_id\":\"monstres/amblypyge-noir#carte:amblypyge-de-brai\",\"rang\":1} : noté avant la migration 0044 : les capacités d’une carte ne sont plus le texte de sa rubrique « Capacité(s) » mais des capacités communes (décision R66) ; à refaire sur le site de dev (une carte : la supprimer de nouveau ; une capacité : dans son panneau)",
    "detail_lisible": "Capacité de la carte « Amblypyge de brai », n° 1 : noté avant la migration 0044 : les capacités d’une carte ne sont plus le texte de sa rubrique « Capacité(s) » mais des capacités communes (décision R66) ; à refaire sur le site de dev (une carte : la supprimer de nouveau ; une capacité : dans son panneau)",
-   "empreinte": "1379935af82da42ec06453f34959a284",
+   "empreinte": "7459aff9c6f691ec1e558572992488c4",
    "saines": [],
    "conflits": [
     {
@@ -79,6 +83,9 @@
       "genre": "valeurs",
       "valeur": {
        "texte": "vole très haut."
+      },
+      "libelles": {
+       "texte": "Texte"
       }
      },
      "version_2": {
@@ -89,9 +96,15 @@
        "prefixe": null,
        "ep_min": null,
        "capacite_commune_id": "carapace-huileuse",
-       "sorts": null,
-       "origine": "monstres",
-       "source_ref": "Bestiaire 2.0 › ligne 763"
+       "sorts": null
+      },
+      "libelles": {
+       "monstre_id": "Monstre",
+       "rang": "Rang",
+       "prefixe": "Préfixe (« [EP3] », « [Gauche] »)",
+       "ep_min": "Échelle de puissance minimale",
+       "capacite_commune_id": "Capacité",
+       "sorts": "Sorts de cette carte (séparés par des virgules)"
       }
      },
      "choix_possibles": [
@@ -101,13 +114,13 @@
    ]
   },
   {
-   "lot": "2026-10-22T23:50:33.829Z-000000-1db60532-cf90-4a1b-9d29-0d4b6d30e644",
-   "fait_le": "2026-10-22T23:50:33Z",
+   "lot": "2026-10-23T08:47:19.819Z-000000-a504e7d7-20d1-406f-8660-b544e22dc5ca",
+   "fait_le": "2026-10-23T08:47:19Z",
    "page_id": "guide/la-magie-en-jeu",
    "resume": "Page La magie en jeu : Texte ; Métier Forgeron : Description",
-   "detail": "lot 2026-10-22T23:50:33.829Z-000000-1db60532-cf90-4a1b-9d29-0d4b6d30e644 : page {\"id\":\"guide/la-magie-en-jeu\"} : les règles ont changé corps_md autrement",
+   "detail": "lot 2026-10-23T08:47:19.819Z-000000-a504e7d7-20d1-406f-8660-b544e22dc5ca : page {\"id\":\"guide/la-magie-en-jeu\"} : les règles ont changé corps_md autrement",
    "detail_lisible": "Page « La magie en jeu » : les règles ont changé « Texte » autrement",
-   "empreinte": "4e8557267759037d81cd7f285e20e945",
+   "empreinte": "bc0fcecc514a84eece2533eedeff801d",
    "saines": [
     {
      "rang": 2,
@@ -174,13 +187,13 @@
    ]
   },
   {
-   "lot": "2026-10-22T23:50:33.879Z-000000-32dd6ab2-7528-4657-890c-03f4c15a592b",
-   "fait_le": "2026-10-22T23:50:33Z",
+   "lot": "2026-10-23T08:47:19.855Z-000000-3f5e48c4-2dc3-4cbe-b77e-13f71d5f23d0",
+   "fait_le": "2026-10-23T08:47:19Z",
    "page_id": "guide/le-mode-hyper",
    "resume": "Page Le Mode Hyper et le Mode Super : Texte",
-   "detail": "lot 2026-10-22T23:50:33.879Z-000000-32dd6ab2-7528-4657-890c-03f4c15a592b : page {\"id\":\"guide/le-mode-hyper\"} : la ligne n’existe plus dans les règles",
+   "detail": "lot 2026-10-23T08:47:19.855Z-000000-3f5e48c4-2dc3-4cbe-b77e-13f71d5f23d0 : page {\"id\":\"guide/le-mode-hyper\"} : la ligne n’existe plus dans les règles",
    "detail_lisible": "Page guide/le-mode-hyper : la ligne n’existe plus dans les règles",
-   "empreinte": "30c16ae46aaa9e7d11f3b3647cd62bf2",
+   "empreinte": "fda8d762379ff29405b8f0e0b32e4f4f",
    "saines": [],
    "conflits": [
     {
@@ -206,6 +219,9 @@
       "genre": "valeurs",
       "valeur": {
        "corps_md": "> « Ne plus faire qu’un avec soi-même. »\n\nLe **Mode Hyper** est un état de surpuissance, qui s’ouvre au **niveau 2** du personnage. Le personnage libère alors la puissance cachée en lui : sa magie ne fait plus qu’un avec lui, son aura magique déferle, et son apparence change profondément sous l’effe\n…\niste ne compte pas, ce sont les valeurs données plus haut (+15, et +7 avec deux magies) qui valent.\n\nParagraphe ajouté sur le site de dev (essai des conflits).\n"
+      },
+      "libelles": {
+       "corps_md": "Texte"
       }
      },
      "version_2": {
@@ -219,13 +235,13 @@
    ]
   },
   {
-   "lot": "2026-10-22T23:50:33.883Z-000000-8731190a-e124-44d0-82be-83622442a1c8",
-   "fait_le": "2026-10-22T23:50:33Z",
+   "lot": "2026-10-23T08:47:19.860Z-000000-4d3b2a03-f0ad-48cf-ae67-eb2556c9dc0b",
+   "fait_le": "2026-10-23T08:47:19Z",
    "page_id": "guide/s-entrainer-et-exercer-un-metier",
    "resume": "Page S’entraîner et exercer un métier : Texte",
-   "detail": "lot 2026-10-22T23:50:33.883Z-000000-8731190a-e124-44d0-82be-83622442a1c8 : page {\"id\":\"guide/s-entrainer-et-exercer-un-metier\"} : les règles ont changé corps_md autrement",
+   "detail": "lot 2026-10-23T08:47:19.860Z-000000-4d3b2a03-f0ad-48cf-ae67-eb2556c9dc0b : page {\"id\":\"guide/s-entrainer-et-exercer-un-metier\"} : les règles ont changé corps_md autrement",
    "detail_lisible": "Page « S’entraîner et exercer un métier » : les règles ont changé « Texte » autrement",
-   "empreinte": "840716d368bb54dbd20654c61ecc7d9b",
+   "empreinte": "4aa5eb2cbb2eb1d2610fe93c7793e2d7",
    "saines": [],
    "conflits": [
     {
@@ -272,13 +288,13 @@
    ]
   },
   {
-   "lot": "2026-10-22T23:50:33.887Z-000000-8d44f920-e9df-4054-b36a-ca7e69ac26a6",
-   "fait_le": "2026-10-22T23:50:33Z",
+   "lot": "2026-10-23T08:47:19.864Z-000000-73db5d23-08fd-4a86-9f86-a5932e7e57ec",
+   "fait_le": "2026-10-23T08:47:19Z",
    "page_id": "metiers/forgeron",
    "resume": "Métier Forgeron : Bonus",
-   "detail": "lot 2026-10-22T23:50:33.887Z-000000-8d44f920-e9df-4054-b36a-ca7e69ac26a6 : metier {\"id\":\"metiers/forgeron\"} : les règles ont changé bonus_brut autrement",
+   "detail": "lot 2026-10-23T08:47:19.864Z-000000-73db5d23-08fd-4a86-9f86-a5932e7e57ec : metier {\"id\":\"metiers/forgeron\"} : les règles ont changé bonus_brut autrement",
    "detail_lisible": "Métier « Forgeron » : les règles ont changé « Bonus » autrement",
-   "empreinte": "9179708469a01ff59e6d5646f2834b36",
+   "empreinte": "c24b8a846c95f9936284292ae36f5d3a",
    "saines": [
     {
      "rang": 2,
@@ -289,7 +305,7 @@
       "option": 2
      },
      "operation": "supprimer",
-     "libelle": "metier_bonus (Métier « Forgeron »), n° 1, option 2",
+     "libelle": "Bonus du métier (Métier « Forgeron »), n° 1, option 2",
      "issue": "reappliquee"
     },
     {
@@ -301,7 +317,7 @@
       "option": 1
      },
      "operation": "modifier",
-     "libelle": "metier_bonus (Métier « Forgeron »), n° 1, option 1",
+     "libelle": "Bonus du métier (Métier « Forgeron »), n° 1, option 1",
      "issue": "reappliquee"
     },
     {
@@ -353,6 +369,153 @@
       "libelle": "Bonus",
       "vide": ""
      }
+    }
+   ]
+  },
+  {
+   "lot": "2026-10-23T08:47:19.883Z-000000-3852d559-d04e-4cdb-9a86-c3ae36d8ca58",
+   "fait_le": "2026-10-23T08:47:19Z",
+   "page_id": "recherche/",
+   "resume": "Mot-clé supprimé : Essai conflits étiquette (retiré de 0 page(s))",
+   "detail": "lot 2026-10-23T08:47:19.883Z-000000-3852d559-d04e-4cdb-9a86-c3ae36d8ca58 : sort_mot_cle : clé étrangère rompue vers mot_cle",
+   "detail_lisible": "Étiquette du sort : clé étrangère rompue vers Mot-clé",
+   "empreinte": "833fb25150b43e3def50c687e7c68d84",
+   "saines": [],
+   "conflits": [
+    {
+     "rang": 1,
+     "table": "mot_cle",
+     "cle": {
+      "id": "essai-conflits-etiquette"
+     },
+     "operation": "supprimer",
+     "libelle": "Mot-clé « Essai conflits étiquette »",
+     "raison": "sort_mot_cle : clé étrangère rompue vers mot_cle (mot_cle_id = \"essai-conflits-etiquette\")",
+     "raison_lisible": "Étiquette du sort : clé étrangère rompue vers Mot-clé essai-conflits-etiquette",
+     "colonne": null,
+     "colonne_libelle": null,
+     "avant": null,
+     "apercu": null,
+     "saisie": null,
+     "id": "1",
+     "genre": "sans_valeur",
+     "version_1": {
+      "genre": "suppression",
+      "valeur": {
+       "id": "essai-conflits-etiquette",
+       "libelle": "Essai conflits étiquette",
+       "description": "Mot-clé d’essai des conflits (test/serveur-edition-conflits.test.mjs)."
+      },
+      "libelles": {
+       "id": "Identifiant",
+       "libelle": "Mot-clé",
+       "description": "Définition"
+      }
+     },
+     "version_2": {
+      "genre": "ligne",
+      "valeur": {
+       "id": "essai-conflits-etiquette",
+       "libelle": "Essai conflits étiquette",
+       "description": "Mot-clé d’essai des conflits (test/serveur-edition-conflits.test.mjs)."
+      },
+      "libelles": {
+       "id": "Identifiant",
+       "libelle": "Mot-clé",
+       "description": "Définition"
+      }
+     },
+     "choix_possibles": [
+      2
+     ]
+    }
+   ]
+  },
+  {
+   "lot": "2026-10-23T08:47:19.924Z-000000-a16952f5-9efe-4f36-88fb-b8f171db5170",
+   "fait_le": "2026-10-23T08:47:19Z",
+   "page_id": "metiers/acrobate",
+   "resume": "Métier Acrobate : Nom",
+   "detail": "lot 2026-10-23T08:47:19.924Z-000000-a16952f5-9efe-4f36-88fb-b8f171db5170 : metier {\"id\":\"metiers/acrobate\"} : les règles ont changé nom, nom_cle autrement",
+   "detail_lisible": "Métier « Acrobate des règles (essai des conflits) » : les règles ont changé « Nom » autrement",
+   "empreinte": "319cd94d60ee039dece244a7766132bf",
+   "saines": [],
+   "conflits": [
+    {
+     "rang": 1,
+     "table": "metier",
+     "cle": {
+      "id": "metiers/acrobate"
+     },
+     "operation": "modifier",
+     "libelle": "Métier « Acrobate des règles (essai des conflits) »",
+     "raison": "les règles ont changé nom autrement",
+     "raison_lisible": "les règles ont changé « Nom » autrement",
+     "id": "1:nom",
+     "colonne": "nom",
+     "colonne_libelle": "Nom",
+     "genre": "champ",
+     "version_1": {
+      "genre": "valeur",
+      "valeur": "Acrobate du site (essai des conflits)"
+     },
+     "version_2": {
+      "genre": "valeur",
+      "valeur": "Acrobate des règles (essai des conflits)"
+     },
+     "avant": {
+      "genre": "valeur",
+      "valeur": "Acrobate"
+     },
+     "apercu": null,
+     "choix_possibles": [
+      1,
+      2,
+      3
+     ],
+     "saisie": {
+      "type": "ligne",
+      "libelle": "Nom",
+      "requis": true
+     }
+    },
+    {
+     "rang": 2,
+     "table": "page",
+     "cle": {
+      "id": "metiers/acrobate"
+     },
+     "operation": "modifier",
+     "libelle": "Page « Acrobate des règles (essai des conflits) »",
+     "raison": "les règles ont changé titre autrement",
+     "raison_lisible": "les règles ont changé « Titre » autrement",
+     "id": "2:titre",
+     "colonne": "titre",
+     "colonne_libelle": "Titre",
+     "genre": "champ",
+     "version_1": {
+      "genre": "valeur",
+      "valeur": "Acrobate du site (essai des conflits)"
+     },
+     "version_2": {
+      "genre": "valeur",
+      "valeur": "Acrobate des règles (essai des conflits)"
+     },
+     "avant": {
+      "genre": "valeur",
+      "valeur": "Acrobate"
+     },
+     "apercu": null,
+     "choix_possibles": [
+      2,
+      3
+     ],
+     "saisie": {
+      "type": "ligne",
+      "libelle": "Titre",
+      "requis": true
+     },
+     "refus_1": "metiers/acrobate : seules les pages du guide et du Codex se modifient ici (les autres pages suivent leurs tables)"
     }
    ]
   }

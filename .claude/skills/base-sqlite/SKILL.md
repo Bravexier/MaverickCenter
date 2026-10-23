@@ -47,6 +47,7 @@ user-invocable: false
 - Les commentaires de `data/schema.sql` (recopiés dans `docs/sql` par `db:doc`) ne citent que du code qui existe : un fichier `.mjs`, `.astro`,
   `.css` cité existe, un renvoi `fichier.mjs#Nom` nomme une définition du fichier, et `#Nom.prop` une propriété de l'export d'un module de `lib/`
   (`db-schema.test.mjs`). Un renommage ou une suppression dans le code corrige le commentaire dans le même lot ; une migration appliquée garde le sien.
+- Noms d'affichage : une table ou une colonne nouvelle d'une table que l'édition écrit a son nom français dans `client/src/lib/libelles-de-la-base.mjs` (skill `zone-edition`), sinon `test/libelles-de-la-base.test.mjs` échoue ; une clé normalisée `X_cle` et la provenance n'en demandent pas.
 - Identifiants figés : un id ne dérive plus du nom depuis la migration 0006 ; un nom corrigé ou renommé garde son id, une page renommée garde son adresse
   (skill `base-orthographe`).
 - Les lignes typées ne se réimportent pas encore depuis les classeurs : réimporter un classeur modifié demande de porter l'importeur de sa famille. Une mise à

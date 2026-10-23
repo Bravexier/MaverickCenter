@@ -2,17 +2,20 @@
 // 2026-10-22 : « Après les listes de modifications, montrer les lignes en conflits. 1. Pour chaque conflit, montrer les deux versions 2. Laisser le
 // choix entre 1, 2, ou 3 pour saisir à la main ce qui remplace les deux. »).
 // Le diagnostic lu est celui du service sur le scénario de test/serveur-edition-conflits.test.mjs (GET /api/mise-a-jour/conflits/ : trois pages du guide
-// modifiées sur le site de dev puis réécrites ou retirées par les règles livrées, le bonus du forgeron, une référence rompue, une forme d'avant la 0044),
+// modifiées sur le site de dev puis réécrites ou retirées par les règles livrées, le bonus du forgeron, une référence rompue, une forme d'avant la 0044,
+// un mot-clé supprimé sur le site de dev que les règles posent sur un sort, un métier renommé des deux bords),
 // enregistré dans test/fixtures/conflits-diagnostic.json, ses longs textes raccourcis (début et fin gardés).
 //   node --test test/conflits-rendu.test.mjs
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import {
   colonnesDeLaSaine, corpsDeLaResolution, erreurDeSaisie, htmlDesConflits, htmlDuConflit, htmlDuLot, libelleDuChoix, messageDeResolution, optionsDeLaSaisie,
   raisonDuChoix, raisonDuConflit, texteDeLaVersion, texteDeValeur,
 } from '../src/lib/conflits-rendu.mjs';
 import { TABLES } from '../src/lib/edition-modele.mjs';
+import { nomDeColonne, nomDeTable } from '../src/lib/libelles-de-la-base.mjs';
 
 const DIAG = JSON.parse(readFileSync(new URL('./fixtures/conflits-diagnostic.json', import.meta.url), 'utf8'));
 const lotDe = (resume) => DIAG.lots.find((l) => l.resume.startsWith(resume));
@@ -24,7 +27,7 @@ const ALIAS = lotDe('Alias');
 const texte = (html) => html.replace(/<[^>]+>/g, '').replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 
 test('le diagnostic enregistré a la forme du service (lots, saines, conflits, choix permis)', () => {
-  assert.equal(DIAG.lots.length, 6);
+  assert.equal(DIAG.lots.length, 8);
   for (const l of DIAG.lots) {
     assert.ok(l.lot && l.empreinte && Array.isArray(l.saines) && l.conflits.length, l.lot);
     for (const c of l.conflits) assert.ok(c.id && c.genre && c.version_1 && c.version_2 && c.choix_possibles.length, `${l.lot} ${c.id}`);
@@ -66,7 +69,7 @@ test('une page retirée des règles : seul le choix 2 (abandonner), la raison di
   assert.match(texte(html), /2 : abandonner cette modification \(la règle livrée reste\)/);
   assert.match(texte(html), /3 : saisir à la main ce qui remplace les deux \(seul un champ se saisit à la main/);
   assert.doesNotMatch(html, /data-nv-saisie/, 'pas de saisie');
-  assert.match(texte(html), /Version 1 : ce que le site de dev avait écritcorps_md : > « Ne plus faire qu’un avec soi-même. »/);
+  assert.match(texte(html), /Version 1 : ce que le site de dev avait écritTexte : > « Ne plus faire qu’un avec soi-même. »/);
   assert.match(texte(html), /Version 2 : ce que disent les règles livréesLigne supprimée : elle n’existe plus dans les règles livrées\./);
 });
 
@@ -118,8 +121,8 @@ test('les versions en texte : valeur, vide, image, liste, ligne, suppression, ab
 test('la section : après les listes, chaque lot avec ses modifications saines, ses conflits et son envoi ; les lots résolus ; rien sans conflit', () => {
   assert.equal(htmlDesConflits({ lots: [], resolus: [] }), '');
   const html = htmlDesConflits(DIAG);
-  assert.match(html, /^<h3 class="nv-conflits__titre">Lignes en conflit<\/h3><p>6 lots du site de dev sont en conflit avec les règles livrées depuis : ils ne partent pas avec cette mise à jour\./);
-  assert.equal((html.match(/<form class="nv-conflit-lot"/g) ?? []).length, 6);
+  assert.match(html, /^<h3 class="nv-conflits__titre">Lignes en conflit<\/h3><p>8 lots du site de dev sont en conflit avec les règles livrées depuis : ils ne partent pas avec cette mise à jour\./);
+  assert.equal((html.match(/<form class="nv-conflit-lot"/g) ?? []).length, 8);
   assert.equal((html.match(/<fieldset class="nv-conflit"/g) ?? []).length, DIAG.lots.reduce((n, l) => n + l.conflits.length, 0));
   // des identifiants uniques dans la page
   const ids = [...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]);
@@ -146,7 +149,7 @@ test('la raison du rejeu d’un lot se lit comme la légende de ses conflits : n
   assert.ok(auRejeu(FORGERON).startsWith(FORGERON.conflits[0].libelle), 'la ligne nommée comme la légende de son conflit');
   assert.ok(auRejeu(FORGERON).includes(`« ${FORGERON.conflits[0].colonne_libelle} »`), 'la colonne par son libellé');
   assert.equal(auRejeu(MAGIE), 'Page « La magie en jeu » : les règles ont changé « Texte » autrement');
-  assert.equal(auRejeu(ALIAS), 'alias : clé étrangère rompue vers Page');
+  assert.equal(auRejeu(ALIAS), 'Autre nom de la page : clé étrangère rompue vers Page');
   for (const lot of DIAG.lots) {
     const t = auRejeu(lot);
     assert.equal(t, lot.detail_lisible, lot.lot);
@@ -169,6 +172,40 @@ const TECHNIQUES = [...new Set(Object.values(TABLES).flatMap((t) => Object.entri
 const techniquesDans = (t) => TECHNIQUES.filter((c) => new RegExp(`(^|[^a-z0-9_])${c}($|[^a-z0-9_])`).test(t));
 /** Le HTML sans le texte des versions 1 et 2 (le contenu écrit par le site de dev ou les règles, vérifié à part). */
 const sansLesVersions = (html) => html.replace(/<div class="nv-version__texte">[\s\S]*?<\/div>/g, '');
+
+/**
+ * Les noms techniques du schéma (data/schema.sql) qui ne se lisent pas comme un mot : chaque table et chaque colonne à « _ » (metier_bonus, corps_md,
+ * page_id, capacite_commune_id…). Demande du propriétaire du 2026-10-23 (« Un vrai nom serai mieux ») : aucun dans la section, versions comprises.
+ */
+const NOMS_DU_SCHEMA = (() => {
+  const db = new DatabaseSync(':memory:');
+  db.exec(readFileSync(new URL('../../data/schema.sql', import.meta.url), 'utf8'));
+  const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all().map((r) => r.name);
+  const noms = new Set([...tables, ...tables.flatMap((t) => db.prepare(`PRAGMA table_info("${t}")`).all().map((c) => c.name))].filter((n) => n.includes('_')));
+  db.close();
+  return noms;
+})();
+/** Les noms du schéma lus dans un texte, même collés au mot d'avant (le texte d'un HTML sans ses balises : « écrit » + « page_id » → « écritpage_id »). */
+const nomsDuSchemaDans = (t) => [...new Set((String(t).match(/[a-z0-9]+(?:_[a-z0-9]+)+/g) ?? []).flatMap((m) => [...NOMS_DU_SCHEMA].filter((n) => m.endsWith(n))))];
+/**
+ * Les noms de tables du schéma dits comme un mot, mots sans « _ » compris (« invocation », « lien », « page ») : comparés à la liste exacte des tables,
+ * après avoir retiré du texte les vrais noms du registre (« Étiquette du sort ») et les valeurs entre guillemets (le nom d'une ligne) ; un id (« / »,
+ * « - », « # ») n'en est pas un. Pour les textes du service hors du contenu des versions (relecture du 2026-10-23 : « sort_mot_cle », mais aussi une
+ * table d'un seul mot, seraient passés).
+ */
+const { TABLES_DU_SCHEMA, NOMS_AFFICHES } = (() => {
+  const db = new DatabaseSync(':memory:');
+  db.exec(readFileSync(new URL('../../data/schema.sql', import.meta.url), 'utf8'));
+  const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all().map((r) => r.name);
+  const noms = new Set(tables.flatMap((t) => [nomDeTable(t), ...db.prepare(`PRAGMA table_info("${t}")`).all().map((c) => nomDeColonne(t, c.name))]).filter(Boolean));
+  db.close();
+  return { TABLES_DU_SCHEMA: new Set(tables), NOMS_AFFICHES: [...noms].sort((a, b) => b.length - a.length) };
+})();
+const tablesDans = (t) => NOMS_AFFICHES.reduce((x, n) => x.split(n).join(' '), String(t ?? '')).replace(/«[^«»]*»/g, ' ')
+  .split(/[\s,;()«»"]+/).map((m) => m.replace(/[:.]+$/, '')).filter((m) => TABLES_DU_SCHEMA.has(m));
+/** Les versions faites d'une ligne (entière, ses valeurs, supprimée) du diagnostic : [lot, conflit, version]. */
+const VERSIONS_EN_LIGNES = DIAG.lots.flatMap((l) => l.conflits.flatMap((c) => [c.version_1, c.version_2].map((v) => [l, c, v])))
+  .filter(([, , v]) => ['ligne', 'valeurs', 'suppression'].includes(v?.genre) && v.valeur);
 
 test('la section se lit sans nom technique : légendes, raisons, saines, rejeu sans JSON ni nom de colonne qui a un libellé (fixture du service)', () => {
   assert.ok(TECHNIQUES.includes('corps_md') && TECHNIQUES.includes('bonus_brut'), 'les noms cherchés');
@@ -194,7 +231,46 @@ test('la section se lit sans nom technique : légendes, raisons, saines, rejeu s
   }
   // la clé composée d'une capacité de carte : la carte nommée, « n° N » (point 3 de la relecture)
   assert.match(texte(html), /Capacité de la carte « Amblypyge de brai », n° 1/);
-  assert.match(texte(html), /alias : clé étrangère rompue vers Page guide\/le-mode-hyper/);
+  assert.match(texte(html), /Autre nom de la page : clé étrangère rompue vers Page guide\/le-mode-hyper/);
+});
+
+test('un vrai nom partout (demande du 2026-10-23) : aucun nom de table ni de colonne du schéma dans la section, versions ligne entière comprises', () => {
+  assert.ok(NOMS_DU_SCHEMA.has('metier_bonus') && NOMS_DU_SCHEMA.has('page_id') && NOMS_DU_SCHEMA.has('capacite_commune_id'), 'les noms cherchés');
+  const html = htmlDesConflits(DIAG);
+  // toute la section, le contenu des versions compris : ni nom du schéma à « _ », ni JSON, ni les tables « alias » et « metier_bonus » sous leur nom
+  assert.deepEqual(nomsDuSchemaDans(texte(html)), []);
+  assert.doesNotMatch(texte(html), /\{"|"\}|":/);
+  assert.doesNotMatch(texte(html), /\balias\b|metier_bonus/);
+  assert.match(texte(html), /Bonus du métier \(Métier « Forgeron »\), n° 1, option 2/);
+  assert.match(texte(html), /Autre nom de la page \(Page guide\/le-mode-hyper\), ordre 900/);
+  // les textes du service hors du contenu des versions : aucune table du schéma, même d'un seul mot (la liste exacte)
+  for (const l of DIAG.lots) {
+    const textes = [l.detail_lisible, ...l.saines.flatMap((x) => [x.libelle, ...(x.colonnes_libelles ?? [])]),
+      ...l.conflits.flatMap((c) => [c.libelle, c.colonne_libelle, c.raison_lisible, ...[c.version_1, c.version_2].flatMap((v) => Object.values(v?.libelles ?? {}))])];
+    for (const t of textes) assert.deepEqual(tablesDans(t), [], `${l.lot} : « ${t} »`);
+  }
+  assert.deepEqual(tablesDans('sort_mot_cle : clé étrangère rompue vers Mot-clé ; invocation, lien'), ['sort_mot_cle', 'invocation', 'lien'], 'la garde les voit');
+  // la rupture « enfant » (la table qui cite, par son nom) et le renommage des deux bords (sans la clé normalisée)
+  assert.match(texte(html), /Étiquette du sort : clé étrangère rompue vers Mot-clé essai-conflits-etiquette/);
+  assert.match(texte(html), /Au rejeu : Métier « Acrobate des règles \(essai des conflits\) » : les règles ont changé « Nom » autrement/);
+  // chaque version faite d'une ligne : ses colonnes par le nom que donne le service, jamais leur nom technique devant « : »
+  assert.ok(VERSIONS_EN_LIGNES.some(([, c]) => c.table === 'alias') && VERSIONS_EN_LIGNES.some(([, c]) => c.table === 'monstre_capacite'), 'les lignes du scénario');
+  for (const [l, c, v] of VERSIONS_EN_LIGNES) {
+    assert.ok(v.libelles, `${l.lot} ${c.id} : le service nomme les colonnes`);
+    const t = texteDeLaVersion(v);
+    assert.deepEqual(nomsDuSchemaDans(t), [], `${l.lot} ${c.id}`);
+    for (const [col, x] of Object.entries(v.valeur)) {
+      if (x === null || x === undefined || x === '') continue;
+      assert.ok(t.includes(`${v.libelles[col]} : `), `${l.lot} ${c.id} : « ${v.libelles[col]} » montré`);
+      if (v.libelles[col] !== col) assert.doesNotMatch(t, new RegExp(`(^|\\n)${col} : `), `${l.lot} ${c.id} : jamais « ${col} »`);
+    }
+  }
+  // la ligne entière d'un autre nom de page : son texte complet, ni clé normalisée ni provenance
+  const alias = VERSIONS_EN_LIGNES.find(([, c]) => c.table === 'alias')[2];
+  assert.equal(texteDeLaVersion(alias), 'Page : guide/le-mode-hyper\nOrdre : 900\nAutre nom : Alias du site de dev (essai des conflits)');
+  // la capacité de la carte dans les règles livrées : chaque colonne non vide par son nom
+  const capacite = DIAG.lots.find((l) => l.resume === 'avant 0044').conflits[0].version_2;
+  assert.match(texteDeLaVersion(capacite), /^Monstre : monstres\/amblypyge-noir#carte:amblypyge-de-brai\nRang : 1\nCapacité : carapace-huileuse$/);
 });
 
 test('raison, colonnes des saines, ligne entière : les textes du service, avec repli sur l’ancien champ (réponse ancienne)', () => {
@@ -211,8 +287,11 @@ test('raison, colonnes des saines, ligne entière : les textes du service, avec 
   const lot = { ...FORGERON, saines: [saine] };
   assert.match(texte(htmlDuLot(lot)), /1 modification saine de ce lot \(sans conflit\)Métier « X » \(Remarque, Bonus\) modification : repartira telle quelle/);
   assert.doesNotMatch(texte(htmlDuLot(lot)), /bonus_brut|remarque,/);
-  // une ligne entière : la colonne par son libellé quand le service le donne, sinon son nom ; une valeur objet sans JSON
-  assert.equal(texteDeLaVersion({ genre: 'ligne', valeur: { capacite_commune_id: 'carapace-huileuse', rang: 1 }, libelles: { capacite_commune_id: 'Capacité' } }), 'Capacité : carapace-huileuse\nrang : 1');
+  // une ligne entière : les colonnes que le service nomme, par leur nom ; une colonne qu'il ne nomme pas ne s'affiche pas (jamais sous son nom
+  // technique) ; sans `libelles` (réponse ancienne), chaque colonne sous son nom ; une valeur objet sans JSON
+  assert.equal(texteDeLaVersion({ genre: 'ligne', valeur: { capacite_commune_id: 'carapace-huileuse', rang: 1 }, libelles: { capacite_commune_id: 'Capacité' } }), 'Capacité : carapace-huileuse');
+  assert.equal(texteDeLaVersion({ genre: 'valeurs', valeur: { cle: 'x', origine: 'import' }, libelles: {} }), '(vide)');
+  assert.equal(texteDeLaVersion({ genre: 'ligne', valeur: { capacite_commune_id: 'carapace-huileuse', rang: 1 } }), 'capacite_commune_id : carapace-huileuse\nrang : 1');
   assert.equal(texteDeLaVersion({ genre: 'suppression', valeur: { corps_md: 'x' }, libelles: { corps_md: 'Texte' } }), 'Ligne supprimée par le site de dev. Elle était :\nTexte : x');
   assert.equal(texteDeValeur({ monstre_id: 'monstres/a', rang: 1, vide: null }), 'monstre_id : monstres/a, rang : 1');
   assert.equal(texteDeValeur([{ a: 1 }, 'b']), 'a : 1, b');

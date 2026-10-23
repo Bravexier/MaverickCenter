@@ -20,7 +20,9 @@ import { journalExporte, ouvrirLot } from '../serveur/edition-journal.mjs';
 import { routeNormalisee } from '../serveur/metriques.mjs';
 import { CONFIRMATION, enregistrerMajeure, figerLot, lireLot, noteEnPreparation } from '../serveur/notes-de-version.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
+import { colonneMasquee, nomDeColonne, nomDeTable } from '../src/lib/libelles-de-la-base.mjs';
 import { decouperCorps } from '../src/lib/markdown-edition.mjs';
+import { normalize } from '../src/lib/text.mjs';
 
 const racine = mkdtempSync(join(tmpdir(), 'maverick-conflits-'));
 const ouvertes = [];
@@ -40,6 +42,13 @@ const REECRITE = (id) => `Page ${id} réécrite par les règles livrées (essai 
 const BONUS_DU_SITE = '+3% Esquive';
 const BONUS_DES_REGLES = '+5% Parade';
 const DESCRIPTION_DU_SITE = 'Description du forgeron écrite sur le site de dev (essai des conflits).';
+// une étiquette rompue : un mot-clé d'essai (absent de la base) supprimé sur le site de dev, que les règles livrées posent sur un sort (sort_mot_cle)
+const ETIQUETTE = { id: 'essai-conflits-etiquette', libelle: 'Essai conflits étiquette' };
+const SORT_ETIQUETE = 'magies/magie-de-la-corruption#sort:aiguisage-magique';
+// un renommage des deux bords : le site de dev et les règles livrées renomment le même métier (nom et sa clé normalisée nom_cle)
+const ACROBATE = 'metiers/acrobate';
+const NOM_DU_SITE = 'Acrobate du site (essai des conflits)';
+const NOM_DES_REGLES = 'Acrobate des règles (essai des conflits)';
 
 /** Supprime une ligne et tout ce qui la cite (clés coupées), comme une page fusionnée puis retirée des règles. */
 function supprimerAvecSesReferences(db, table, id) {
@@ -64,6 +73,10 @@ const S = {};
 before(() => {
   const r0 = `${chemin('regles')}.db`;
   copyFileSync(cheminBase({ sansExemples: false }), r0);
+  const r0db = new DatabaseSync(r0);
+  r0db.prepare('INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES (?, ?, ?, ?)')
+    .run(ETIQUETTE.id, ETIQUETTE.libelle, normalize(ETIQUETTE.libelle), 'Mot-clé d’essai des conflits (test/serveur-edition-conflits.test.mjs).');
+  r0db.close();
   S.dossier = chemin('scenario');
   const { chemin: vivante } = preparerBaseVivante({ regles: r0, dossier: S.dossier });
   const db = ouvrirBaseVivante(vivante);
@@ -94,6 +107,10 @@ before(() => {
   db.prepare("INSERT INTO modification_lot (id, fait_le, auteur_id, page_id, resume) VALUES (?, '2026-10-21T08:00:01Z', NULL, 'bestiaire/', 'avant 0044')").run(S.ancien);
   db.prepare(`INSERT INTO modification (lot_id, rang, table_nom, cle, operation, avant, apres, etat) VALUES (?, 1, 'monstre_capacite', ?, 'modifier', ?, ?, 'en_attente')`)
     .run(S.ancien, JSON.stringify({ monstre_id: p.monstre_id, rang: p.rang }), JSON.stringify({ texte: 'vole.' }), JSON.stringify({ texte: 'vole très haut.' }));
+  // une suppression sur le site de dev, puis une ligne livrée qui cite la ligne supprimée (une table qui cite : sort_mot_cle)
+  S.etiquette = lot('recherche/', [{ op: 'supprimer', entite: 'mot_cle', cle: { id: ETIQUETTE.id } }]);
+  // un renommage des deux bords
+  S.renommage = lot(ACROBATE, [{ op: 'modifier', table: 'metier', cle: { id: ACROBATE }, valeurs: { nom: NOM_DU_SITE } }]);
   db.close();
   // les règles livrées : deux pages réécrites, une page retirée (avec ce qui la cite), le bonus du forgeron changé
   const r1 = `${chemin('regles')}.db`;
@@ -101,13 +118,16 @@ before(() => {
   const regles = new DatabaseSync(r1);
   for (const id of [MAGIE, METIER_GUIDE]) regles.prepare('UPDATE page SET corps_md = ? WHERE id = ?').run(REECRITE(id), id);
   regles.prepare('UPDATE metier SET bonus_brut = ? WHERE id = ?').run(BONUS_DES_REGLES, FORGERON);
+  regles.prepare('INSERT INTO sort_mot_cle (sort_id, mot_cle_id) VALUES (?, ?)').run(SORT_ETIQUETE, ETIQUETTE.id);
+  regles.prepare('UPDATE metier SET nom = ?, nom_cle = ? WHERE id = ?').run(NOM_DES_REGLES, normalize(NOM_DES_REGLES), ACROBATE);
+  regles.prepare('UPDATE page SET titre = ?, titre_cle = ? WHERE id = ?').run(NOM_DES_REGLES, normalize(NOM_DES_REGLES), ACROBATE);
   regles.exec('PRAGMA foreign_keys = OFF');
   supprimerAvecSesReferences(regles, 'page', HYPER);
   assert.deepEqual(regles.prepare('PRAGMA foreign_key_check').all(), [], 'les règles livrées sont saines');
   regles.close();
   S.regles = r1;
   const { rejeu } = preparerBaseVivante({ regles: r1, dossier: S.dossier });
-  assert.equal(rejeu.lots, 6);
+  assert.equal(rejeu.lots, 8);
   assert.equal(rejeu.appliquees, 0, 'tous les lots du scénario sont en conflit');
 });
 
@@ -128,11 +148,11 @@ const lot = (db, id) => ({ ...lire(db, 'SELECT * FROM modification_lot WHERE id 
 test('le journal d’avant la résolution : chaque lot du scénario est en conflit, avec un seul message, et aucun ne part avec la mise à jour', () => {
   const { db } = copie();
   const lots = lotsEnConflit(db).map((l) => l.id);
-  assert.deepEqual(lots.sort(), [S.magie, S.hyper, S.metierGuide, S.bonus, S.alias, S.ancien].sort());
+  assert.deepEqual(lots.sort(), [S.magie, S.hyper, S.metierGuide, S.bonus, S.alias, S.ancien, S.etiquette, S.renommage].sort());
   // un lot en conflit n'est jamais dans le lot figé (journalExporte : en attente et intégrées) ; la note en préparation les compte
   assert.equal(journalExporte(db).lots.length, 0);
   const note = noteEnPreparation(db, { reference: null, versionDev: '0.3.70' });
-  assert.equal(note.en_conflit.lots, 6);
+  assert.equal(note.en_conflit.lots, 8);
 });
 
 test('les trois pages du guide réécrites par les règles : version 1 (le site de dev), version 2 (les règles), choix 1, 2 ou 3', () => {
@@ -166,7 +186,7 @@ test('les trois pages du guide réécrites par les règles : version 1 (le site 
   // l'examen n'écrit rien (savepoint annulé)
   assert.equal(lire(db, 'SELECT corps_md FROM page WHERE id = ?', MAGIE).corps_md, REECRITE(MAGIE));
   assert.equal(lire(db, "SELECT count(*) AS n FROM modification WHERE etat = 'en_attente'").n, 0);
-  assert.equal(lire(db, 'SELECT count(*) AS n FROM modification_lot').n, 6);
+  assert.equal(lire(db, 'SELECT count(*) AS n FROM modification_lot').n, 8);
 });
 
 test('libellé d’une ligne : son nom ou son titre, sinon l’id de sa clé (ligne supprimée), une clé composée sans id par ce qu’elle désigne, jamais de JSON', () => {
@@ -176,8 +196,8 @@ test('libellé d’une ligne : son nom ou son titre, sinon l’id de sa clé (li
   assert.equal(libelleDeLigne('page', { corps_md: 'texte' }, { id: 'guide/le-jeu-de-role' }), 'Page guide/le-jeu-de-role');
   assert.equal(libelleDeLigne('page', null, { id: 'guide/le-jeu-de-role' }), 'Page guide/le-jeu-de-role');
   assert.equal(libelleDeLigne('page', { titre: '' }, { id: 'guide/le-jeu-de-role' }), 'Page guide/le-jeu-de-role');
-  // sans la base : les colonnes de la clé, le rang dit « n° N », sans JSON
-  assert.equal(libelleDeLigne('metier_bonus', null, { metier_id: 'metiers/forgeron', rang: 1, option: 2 }), 'metier_bonus metier_id metiers/forgeron, n° 1, option 2');
+  // sans la base : les colonnes de la clé par leur nom (lib/libelles-de-la-base.mjs, dans le cours de la phrase), le rang dit « n° N », sans JSON
+  assert.equal(libelleDeLigne('metier_bonus', null, { metier_id: 'metiers/forgeron', rang: 1, option: 2 }), 'Bonus du métier métier metiers/forgeron, n° 1, option 2');
   // avec la base : la ligne citée par sa clé étrangère, par son nom quand elle existe (lu dans la base, jamais inventé), sinon par l'id de sa clé
   const { db } = copie();
   const carte = lire(db, 'SELECT m.id, m.nom FROM monstre_capacite c JOIN monstre m ON m.id = c.monstre_id ORDER BY c.monstre_id, c.rang LIMIT 1');
@@ -185,12 +205,12 @@ test('libellé d’une ligne : son nom ou son titre, sinon l’id de sa clé (li
   assert.equal(libelleDeLigne('monstre_capacite', null, { monstre_id: 'monstres/absente-essai#carte:absente', rang: 2 }, db),
     'Capacité de la carte (Monstre monstres/absente-essai#carte:absente), n° 2', 'la carte citée n’existe plus : son id');
   const forgeron = lire(db, 'SELECT nom FROM metier WHERE id = ?', FORGERON).nom;
-  assert.equal(libelleDeLigne('metier_bonus', null, { metier_id: FORGERON, rang: 1, option: 2 }, db), `metier_bonus (Métier « ${forgeron} »), n° 1, option 2`,
-    'une table hors du modèle : son nom, la ligne citée entre parenthèses');
-  assert.equal(libelleDeLigne('alias', null, { page_id: HYPER, ordre: 900 }, db), `alias (Page ${HYPER}), ordre 900`, 'la page citée, supprimée par les règles : son id');
+  assert.equal(libelleDeLigne('metier_bonus', null, { metier_id: FORGERON, rang: 1, option: 2 }, db), `Bonus du métier (Métier « ${forgeron} »), n° 1, option 2`,
+    'une table hors du modèle : son vrai nom (demande du propriétaire du 2026-10-23), la ligne citée entre parenthèses');
+  assert.equal(libelleDeLigne('alias', null, { page_id: HYPER, ordre: 900 }, db), `Autre nom de la page (Page ${HYPER}), ordre 900`, 'la page citée, supprimée par les règles : son id');
   // une clé étrangère composée (monstre_capacite_valeur → monstre_capacite) : la ligne citée dite à son tour
   assert.equal(libelleDeLigne('monstre_capacite_valeur', null, { monstre_id: carte.id, rang: 1, numero: 2 }, db),
-    `Valeur d’une capacité (Capacité de la carte « ${carte.nom} », n° 1), numero 2`);
+    `Valeur d’une capacité (Capacité de la carte « ${carte.nom} », n° 1), numéro de l’emplacement 2`);
   for (const l of conflitsDuJournal(db).lots) for (const x of [...l.conflits, ...l.saines]) assert.doesNotMatch(x.libelle, /[{}]|"/, `${l.lot} : ${x.libelle}`);
 });
 
@@ -202,13 +222,13 @@ test('la raison d’un conflit, lisible (raison_lisible) : colonnes et tables pa
   assert.equal(conflit(S.bonus, 'metier').raison_lisible, 'les règles ont changé « Bonus » autrement');
   assert.equal(conflit(S.hyper, 'page').raison_lisible, 'la ligne n’existe plus dans les règles', 'une raison sans nom technique : telle quelle');
   assert.equal(conflit(S.alias, 'alias').raison, `alias : clé étrangère rompue vers page (page_id = "${HYPER}")`);
-  assert.equal(conflit(S.alias, 'alias').raison_lisible, `alias : clé étrangère rompue vers Page ${HYPER}`);
+  assert.equal(conflit(S.alias, 'alias').raison_lisible, `Autre nom de la page : clé étrangère rompue vers Page ${HYPER}`);
   assert.equal(conflit(S.ancien, 'monstre_capacite').raison_lisible, conflit(S.ancien, 'monstre_capacite').raison, 'le texte de l’adaptateur : tel quel');
   for (const l of conflitsDuJournal(db).lots) for (const c of l.conflits) assert.doesNotMatch(c.raison_lisible, /corps_md|bonus_brut|page_id|[{}"]/, `${l.lot} ${c.id}`);
   // les formes des raisons (edition-journal.mjs#evaluerUne, #rompuesDuLot ; edition.mjs#messageSqlite), plusieurs jointes par « ; »
   assert.equal(raisonLisible('metier', 'les règles ont changé nom, hors_modele autrement'), 'les règles ont changé « Nom », hors_modele autrement');
   assert.equal(raisonLisible('monstre_capacite_valeur', 'monstre_capacite_valeur : clé étrangère rompue vers monstre_capacite (monstre_id, rang = "monstres/x", 3) ; après le lot : balise inconnue'),
-    'Valeur d’une capacité : clé étrangère rompue vers Capacité de la carte (monstre_id monstres/x, n° 3) ; après le lot : balise inconnue');
+    'Valeur d’une capacité : clé étrangère rompue vers Capacité de la carte (monstre monstres/x, n° 3) ; après le lot : balise inconnue');
   assert.equal(raisonLisible('metier', 'écriture refusée : UNIQUE constraint failed: metier.nom'), 'écriture refusée : valeur déjà utilisée ailleurs (Métier : « Nom »)');
   assert.equal(raisonLisible('sort', 'écriture refusée : NOT NULL constraint failed: sort.nom, sort.hors_modele'), 'écriture refusée : valeur obligatoire (Sort : « Nom », hors_modele)');
   assert.equal(raisonLisible('sort', 'l’édition refuse aujourd’hui cette valeur : valeur refusée par une règle de la base (length(nom) > 0)'),
@@ -244,7 +264,7 @@ test('la raison du rejeu d’un lot, lisible (detail_lisible) : la ligne dite co
   assert.equal(lisible(S.bonus), `${legende(S.bonus, 'metier')} : les règles ont changé « Bonus » autrement`);
   assert.equal(lisible(S.magie), `${legende(S.magie, 'page')} : les règles ont changé « Texte » autrement`);
   assert.equal(lisible(S.hyper), `Page ${HYPER} : la ligne n’existe plus dans les règles`);
-  assert.equal(lisible(S.alias), 'alias : clé étrangère rompue vers Page', 'une table sans libellé dans le modèle : son nom');
+  assert.equal(lisible(S.alias), 'Autre nom de la page : clé étrangère rompue vers Page', 'une table sans libellé dans le modèle : son nom du registre');
   assert.ok(lisible(S.ancien).startsWith(`${legende(S.ancien, 'monstre_capacite')} : noté avant la migration 0044`));
   for (const l of conflitsDuJournal(db).lots) {
     assert.doesNotMatch(l.detail_lisible, /^lot |\{"id"|corps_md|bonus_brut/, l.lot);
@@ -385,7 +405,7 @@ test('les lots de résolution se rejouent sans conflit à la livraison suivante 
     resoudreLeConflit(db, { lot: id, empreinte: d.empreinte, choix: tousLesChoix(d, 1) });
   }
   // /api/etat et la note en préparation ne comptent plus les lots résolus (leurs lignes « conflit » sont des traces)
-  assert.equal(compterLesConflits(db).lots, 3);
+  assert.equal(compterLesConflits(db).lots, 5);
   db.close();
   const r2 = `${chemin('regles')}.db`;
   copyFileSync(S.regles, r2);
@@ -400,7 +420,7 @@ test('les lots de résolution se rejouent sans conflit à la livraison suivante 
   assert.equal(lire(vivante, "SELECT count(*) AS n FROM modification WHERE etat = 'en_attente'").n > 0, true);
   assert.equal(lire(vivante, 'SELECT corps_md FROM page WHERE id = ?', MAGIE).corps_md, S.corps[MAGIE] + AJOUT);
   assert.equal(lire(vivante, 'SELECT bonus_brut FROM metier WHERE id = ?', FORGERON).bonus_brut, BONUS_DU_SITE);
-  assert.deepEqual(lotsEnConflit(vivante).map((l) => l.id).sort(), [S.hyper, S.alias, S.ancien].sort());
+  assert.deepEqual(lotsEnConflit(vivante).map((l) => l.id).sort(), [S.hyper, S.alias, S.ancien, S.etiquette, S.renommage].sort());
 });
 
 // « Effectuer la mise à jour », majeure ou non (case « Version majeure », migration 0070) : un lot en conflit à résoudre ne part jamais dans le lot figé
@@ -415,7 +435,7 @@ test('mise à jour majeure ou non : les lots en conflit à résoudre restent hor
     const note = noteEnPreparation(db, { reference: null, versionDev: '0.3.70' });
     assert.equal(note.version_cible, majeure ? note.version_majeure : note.version_mineure);
     assert.deepEqual(note.en_conflit, compterLesConflits(db));
-    assert.equal(note.en_conflit.lots, 5, 'les cinq lots pas encore résolus restent comptés, sans rien bloquer');
+    assert.equal(note.en_conflit.lots, 7, 'les sept lots pas encore résolus restent comptés, sans rien bloquer');
     const lancement = figerLot(db, dossier, {
       versionDev: '0.3.70', versionCible: note.version_cible, instant: '2026-10-22T20:00:00Z', confirmation: CONFIRMATION, adresse: 'https://dev.example', aLivrer: null,
     });
@@ -435,11 +455,11 @@ test('compte des conflits : la note en préparation et /api/etat lisent le même
   const { db } = copie();
   const note = () => noteEnPreparation(db, { reference: null, versionDev: '0.3.70' }).en_conflit;
   assert.deepEqual(note(), compterLesConflits(db));
-  assert.equal(note().lots, 6);
+  assert.equal(note().lots, 8);
   const d = diagnostic(db, S.magie);
   resoudreLeConflit(db, { lot: S.magie, empreinte: d.empreinte, choix: tousLesChoix(d, 2) });
   assert.deepEqual(note(), compterLesConflits(db), 'après une résolution : le même compte des deux côtés');
-  assert.equal(note().lots, 5);
+  assert.equal(note().lots, 7);
   // une seule requête du compte dans le service, et la note l'importe
   const dossier = new URL('../serveur/', import.meta.url);
   const avecLeCompte = readdirSync(dossier).filter((f) => f.endsWith('.mjs') && /count\(DISTINCT m\.lot_id\)/.test(readFileSync(new URL(f, dossier), 'utf8')));
@@ -456,7 +476,7 @@ test('routes : GET et POST /api/mise-a-jour/conflits/ sur le site de dev seuleme
   assert.equal(traiter({ methode: 'DELETE', chemin: '/api/mise-a-jour/conflits/', entetes: {} }, service).statut, 405);
   const g = traiter({ methode: 'GET', chemin: '/api/mise-a-jour/conflits/', entetes: {} }, service);
   assert.equal(g.statut, 200);
-  assert.equal(g.corps.lots.length, 6);
+  assert.equal(g.corps.lots.length, 8);
   const d = g.corps.lots.find((l) => l.lot === S.magie);
   const post = (corps, entetes = { 'content-type': 'application/json' }) => traiter({ methode: 'POST', chemin: '/api/mise-a-jour/conflits/', entetes, corps: JSON.stringify(corps) }, service);
   assert.equal(post({ lot: S.magie }, {}).statut, 415);
@@ -472,6 +492,100 @@ test('routes : GET et POST /api/mise-a-jour/conflits/ sur le site de dev seuleme
   assert.equal(routeNormalisee('/api/mise-a-jour/conflits/x/'), '/api/{inconnue}');
 });
 
+// Un vrai nom pour chaque table et chaque colonne de la section (demande du propriétaire du 2026-10-23 : « Un vrai nom serai mieux », après « metier_bonus »
+// et « alias » sous leur nom technique) : le service les tire du registre (lib/libelles-de-la-base.mjs, prouvé complet contre le schéma et le code de
+// l'édition par test/libelles-de-la-base.test.mjs) ; une version faite d'une ligne nomme chacune de ses colonnes et ne montre ni clé normalisée
+// (X_cle, alias.cle) ni provenance (origine, source_ref).
+test('les noms du diagnostic : chaque table et chaque colonne par son vrai nom, aucune colonne masquée dans une version, aucun nom technique', () => {
+  const { db } = copie();
+  for (const { table_nom: t } of db.prepare('SELECT DISTINCT table_nom FROM modification').all()) assert.ok(nomDeTable(t), `${t} : une table du journal sans nom`);
+  const memoire = new DatabaseSync(':memory:');
+  memoire.exec(readFileSync(new URL('../../data/schema.sql', import.meta.url), 'utf8'));
+  const tables = memoire.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all().map((r) => r.name);
+  const noms = new Set([...tables, ...tables.flatMap((t) => memoire.prepare(`PRAGMA table_info("${t}")`).all().map((c) => c.name))].filter((n) => n.includes('_')));
+  memoire.close();
+  const techniques = (texte) => (String(texte ?? '').match(/[a-z0-9]+(?:_[a-z0-9]+)+/g) ?? []).filter((m) => noms.has(m));
+  const { lots } = conflitsDuJournal(db);
+  const versions = lots.flatMap((l) => l.conflits.flatMap((c) => [c.version_1, c.version_2].map((v) => [l, c, v]))).filter(([, , v]) => v?.valeur && v.genre !== 'valeur');
+  assert.ok(versions.some(([, c]) => c.table === 'alias'), 'la ligne entière d’un autre nom de page, dans le scénario');
+  for (const [l, c, v] of versions) {
+    assert.deepEqual(Object.keys(v.libelles).sort(), Object.keys(v.valeur).sort(), `${l.lot} ${c.id} : chaque colonne de la version a son nom`);
+    for (const [col, nom] of Object.entries(v.libelles)) {
+      assert.equal(nom, nomDeColonne(c.table, col), `${c.table}.${col}`);
+      assert.ok(!colonneMasquee(c.table, col), `${c.table}.${col} : une colonne masquée ne s'affiche pas`);
+    }
+  }
+  const alias = lots.find((l) => l.lot === S.alias).conflits[0].version_1;
+  assert.deepEqual(alias.libelles, { page_id: 'Page', ordre: 'Ordre', texte: 'Autre nom' }, 'ni sa clé normalisée (cle) ni sa provenance');
+  for (const l of lots) {
+    const textes = [l.detail_lisible, ...l.saines.flatMap((s) => [s.libelle, ...(s.colonnes_libelles ?? [])]),
+      ...l.conflits.flatMap((c) => [c.libelle, c.colonne_libelle, c.raison_lisible, ...[c.version_1, c.version_2].flatMap((v) => Object.values(v?.libelles ?? {}))])];
+    for (const t of textes) assert.deepEqual([...techniques(t), ...tablesDans(t)], [], `${l.lot} : « ${t} »`);
+    for (const x of [...l.saines, ...l.conflits]) assert.ok(x.libelle.startsWith(nomDeTable(x.table)), `${l.lot} : « ${x.libelle} » commence par le nom de sa table`);
+  }
+  assert.ok(lots.some((l) => l.saines.some((s) => s.libelle.startsWith('Bonus du métier ('))), 'metier_bonus : « Bonus du métier »');
+});
+
+// Les deux cas les plus probables d'une section sous des noms techniques (relecture du 2026-10-23) : une suppression faite sur le site de dev, puis une
+// ligne livrée qui la cite (la raison nomme la table QUI CITE, hors de TABLES : « sort_mot_cle ») ; un renommage des deux bords (le rejeu compare aussi
+// la clé normalisée nom_cle : « les règles ont changé nom, nom_cle autrement »).
+/**
+ * Les noms de tables du schéma (data/schema.sql) dits comme un mot d'un texte, mots sans « _ » compris (« invocation », « lien », « page ») : comparés à
+ * la liste exacte des tables, après avoir retiré du texte les vrais noms du registre (« Étiquette du sort », « Autre nom de la page » : un mot du
+ * français n'est pas un nom technique) ; une valeur (entre guillemets : le nom d'une ligne ; un id : « / », « - », « # ») n'en est pas un.
+ */
+const { TABLES_DU_SCHEMA, NOMS_AFFICHES } = (() => {
+  const m = new DatabaseSync(':memory:');
+  m.exec(readFileSync(new URL('../../data/schema.sql', import.meta.url), 'utf8'));
+  const t = m.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all().map((r) => r.name);
+  const noms = new Set(t.flatMap((x) => [nomDeTable(x), ...m.prepare(`PRAGMA table_info("${x}")`).all().map((c) => nomDeColonne(x, c.name))]).filter(Boolean));
+  m.close();
+  return { TABLES_DU_SCHEMA: new Set(t), NOMS_AFFICHES: [...noms].sort((a, b) => b.length - a.length) };
+})();
+const tablesDans = (texte) => NOMS_AFFICHES.reduce((x, n) => x.split(n).join(' '), String(texte ?? '')).replace(/«[^«»]*»/g, ' ')
+  .split(/[\s,;()«»"]+/).map((m) => m.replace(/[:.]+$/, '')).filter((m) => TABLES_DU_SCHEMA.has(m));
+
+test('une rupture « enfant » : le mot-clé supprimé sur le site de dev, que les règles livrées posent sur un sort, dit par le nom de la table qui le cite', () => {
+  const { db } = copie();
+  const d = diagnostic(db, S.etiquette);
+  assert.equal(d.conflits.length, 1);
+  const [c] = d.conflits;
+  assert.deepEqual([c.table, c.operation, c.genre, c.choix_possibles], ['mot_cle', 'supprimer', 'sans_valeur', [2]]);
+  assert.equal(c.raison, `sort_mot_cle : clé étrangère rompue vers mot_cle (mot_cle_id = "${ETIQUETTE.id}")`, 'la trace');
+  assert.equal(c.raison_lisible, `Étiquette du sort : clé étrangère rompue vers Mot-clé ${ETIQUETTE.id}`);
+  assert.equal(c.libelle, `Mot-clé « ${ETIQUETTE.libelle} »`);
+  assert.match(d.detail, /: sort_mot_cle : clé étrangère rompue vers mot_cle$/, 'la trace du rejeu');
+  assert.equal(d.detail_lisible, 'Étiquette du sort : clé étrangère rompue vers Mot-clé');
+  // aucun nom de table du schéma, mots sans « _ » compris (comparés à la liste exacte des tables)
+  for (const t of [c.libelle, c.raison_lisible, d.detail_lisible]) assert.deepEqual(tablesDans(t), [], `« ${t} »`);
+  assert.deepEqual(tablesDans(c.raison), ['sort_mot_cle', 'mot_cle'], 'la garde voit les noms techniques');
+  assert.deepEqual(tablesDans('Invocation : clé étrangère rompue vers page'), ['page'], 'un nom d’un seul mot, vu');
+  // le choix 2 : la suppression est abandonnée, l'étiquette livrée garde son mot-clé
+  const r = resoudreLeConflit(db, { lot: S.etiquette, empreinte: d.empreinte, choix: tousLesChoix(d, 2) });
+  assert.equal(r.nouveau_lot, null);
+  assert.equal(lire(db, 'SELECT count(*) AS n FROM sort_mot_cle WHERE mot_cle_id = ?', ETIQUETTE.id).n, 1);
+  assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
+});
+
+test('un renommage des deux bords : la clé normalisée (nom_cle), comparée par le rejeu, n’est jamais dite ; la colonne par son nom (« Nom »)', () => {
+  const { db } = copie();
+  const d = diagnostic(db, S.renommage);
+  const c = d.conflits.find((x) => x.table === 'metier');
+  assert.deepEqual([c.colonne, c.colonne_libelle, c.version_1.valeur, c.version_2.valeur], ['nom', 'Nom', NOM_DU_SITE, NOM_DES_REGLES]);
+  assert.deepEqual(d.conflits.filter((x) => x.table === 'metier').map((x) => x.colonne), ['nom'], 'nom_cle suit nom : pas un conflit à elle');
+  assert.equal(c.raison_lisible, 'les règles ont changé « Nom » autrement');
+  assert.match(d.detail, /metier \{"id":"metiers\/acrobate"\} : les règles ont changé nom, nom_cle autrement$/, 'la trace du rejeu garde nom_cle');
+  assert.equal(d.detail_lisible, `Métier « ${NOM_DES_REGLES} » : les règles ont changé « Nom » autrement`);
+  // les formes : une clé normalisée dite par sa colonne source, la provenance jamais, sans laisser une liste vide
+  assert.equal(detailLisible('lot x : metier {"id":"metiers/forgeron"} : les règles ont changé nom, nom_cle autrement'), 'Métier metiers/forgeron : les règles ont changé « Nom » autrement');
+  assert.equal(raisonLisible('metier', 'les règles ont changé nom_cle autrement'), 'les règles ont changé « Nom » autrement');
+  assert.equal(raisonLisible('page', 'les règles ont changé titre_cle, corps_md autrement'), 'les règles ont changé « Titre », « Texte » autrement');
+  assert.equal(raisonLisible('alias', 'les règles ont changé texte, cle autrement'), 'les règles ont changé « Autre nom » autrement');
+  assert.equal(raisonLisible('metier', 'les règles ont changé source_ref autrement'), 'les règles ont changé cette ligne autrement');
+  assert.equal(raisonLisible('metier', 'écriture refusée : UNIQUE constraint failed: metier.nom_cle'), 'écriture refusée : valeur déjà utilisée ailleurs (Métier : « Nom »)');
+  for (const t of [c.libelle, c.raison_lisible, d.detail_lisible, ...d.saines.flatMap((x) => [x.libelle, ...(x.colonnes_libelles ?? [])])]) assert.doesNotMatch(t, /nom_cle|titre_cle/, t);
+});
+
 /** La fixture du rendu (test/fixtures/conflits-diagnostic.json, lue par conflits-rendu et mise-a-jour-conflits) : le diagnostic, ses longs textes raccourcis. */
 const FIXTURE = new URL('./fixtures/conflits-diagnostic.json', import.meta.url);
 const raccourcir = (v) => {
@@ -483,7 +597,7 @@ const raccourcir = (v) => {
 const lisibles = (l) => ({
   resume: l.resume, detail_lisible: l.detail_lisible,
   saines: l.saines.map((s) => [s.table, s.operation, s.libelle, s.issue, s.colonnes ?? null, s.colonnes_libelles ?? null]),
-  conflits: l.conflits.map((c) => [c.id, c.genre, c.libelle, c.colonne_libelle, c.raison_lisible, c.choix_possibles]),
+  conflits: l.conflits.map((c) => [c.id, c.genre, c.libelle, c.colonne_libelle, c.raison_lisible, c.choix_possibles, c.version_1?.libelles ?? null, c.version_2?.libelles ?? null]),
 });
 
 test('la fixture du rendu est le diagnostic du service sur ce scénario, jamais écrite à la main (MAVERICK_ECRIRE_FIXTURE=1 la recalcule)', () => {
