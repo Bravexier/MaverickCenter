@@ -8,7 +8,7 @@ user-invocable: false
 
 ## Fichiers
 - Lecture de la base : `client/src/lib/magies-db.mjs`, `lib/magies.ts` (`ordreDesMagies`).
-- Couleurs des magies : la valeur dans `lib/sort-format.mjs#COULEURS_DES_MAGIES`, le rendu par les classes de la palette (`lib/palette-css.mjs` : `classeDeMagie`, `classesDeDeuxMagies` ; skill `ui-couleurs`). Feu `#ff4500` et Arcane `#a8adb5` depuis le 2026-10-23 (demande du propriétaire : « Profite en pour rendre le Feu un peu plus orangé, et l'arcane un peu plus argenté gris pour mieux différenciers du sang et du vide. » ; épinglées par `test/magies-page.test.mjs`, `magies-html.test.mjs`).
+- Couleurs des magies : la valeur dans `lib/sort-format.mjs#COULEURS_DES_MAGIES`, le rendu par les classes de la palette (`lib/palette-css.mjs` : `classeDeMagie`, `classesDeDeuxMagies` ; skill `ui-couleurs`). Feu `#ff4500` et Arcane `#a8adb5` depuis le 2026-10-23 (demande du propriétaire : « Profite en pour rendre le Feu un peu plus orangé, et l'arcane un peu plus argenté gris pour mieux différenciers du sang et du vide. » ; valeurs validées par le propriétaire le 2026-10-23 : « Garder les deux » ; épinglées par `test/magies-page.test.mjs`, `magies-html.test.mjs`).
 - Mise en forme pure : `lib/sort-format.mjs` ; coût : `lib/sort-cout.mjs` ; NM : `lib/sort-maitrise.mjs`.
 - Relations : `lib/magie-relations.mjs` (`entriesAvecRelationsDeLaBase`), `lib/magie-fleches.mjs`, `lib/magie-non-compatible.mjs`.
 - Potentiel Illimité : `lib/potentiel-illimite.mjs` (`NPM_MAX_DU_POTENTIEL`), `components/magie/SortsDuPotentiel.astro`, `styles/magie/potentiel.css`.

@@ -27,7 +27,7 @@ Source des couleurs (réponse du propriétaire du 2026-10-22) : « La classe CSS
 
 ## Choix du propriétaire (2026-10-23)
 - « La 4eme barre doit être de couleur différente en fonction de la magie qui l'utilise (Sang ou nécromancie) » : la 4ᵉ barre de la fiche prend la classe de sa magie (`couleur-magie-sang`, `couleur-magie-necromancie`), lue depuis la magie (`magie.barre4_ressource`, `fiche-moteur.mjs#attributsDe` → `quatriemeBarre.magie_id`, `.classe`), jamais depuis le nom de la ressource ; la couleur d'attribut `barre4` (`#8a1c1c`) est retirée, sans plus d'usage (Sang et Nécromancie sont incompatibles : une seule magie donne la 4ᵉ barre).
-- « Profite en pour rendre le Feu un peu plus orangé, et l'arcane un peu plus argenté gris pour mieux différenciers du sang et du vide. » : Feu `#ff0000` → `#ff4500`, Arcane `#b7b7b7` → `#a8adb5` (`sort-format.mjs#COULEURS_DES_MAGIES`, valeurs choisies par le site ; texte foncé, lisibles).
+- « Profite en pour rendre le Feu un peu plus orangé, et l'arcane un peu plus argenté gris pour mieux différenciers du sang et du vide. » : Feu `#ff0000` → `#ff4500`, Arcane `#b7b7b7` → `#a8adb5` (`sort-format.mjs#COULEURS_DES_MAGIES` ; ces deux valeurs sont validées par le propriétaire le 2026-10-23 : « Garder les deux » ; texte foncé, lisibles).
 - Potions : skill `zone-ceinture` (4ᵉ barre en Nécromancie, couleurs choisies page par page).
 
 ## Choix du propriétaire (2026-10-22, questions de cadrage)

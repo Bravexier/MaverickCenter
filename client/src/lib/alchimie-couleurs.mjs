@@ -60,6 +60,8 @@ export const MAGIE_DE_L_AFFINITE = Object.freeze({ '4eme-barre': 'necromancie' }
  *   - « Le remêde brûlure devrai couleur feu » ;
  *   - « L'huile rage devrai être couleur du Vide » ;
  *   - « L'huile séraphine couleur feu ».
+ * Puis, à la question « L'Huile hémophile (inflige saignement, rouge-orangé #cc4125) passe-t-elle en Sang comme le Remède saignement ? » :
+ *   - « Huile hémophile → Sang » (la magie du Sang du site, comme le Remède saignement ; la Fiole bordeaux, de même essence, garde la sienne).
  * (« Le remède du poison couleur nécromancie » et « L'huile toxique devrait être couleur nécromancie », comme la Fiole verte foncée, suivent l'affinité
  * 4ᵉ barre : MAGIE_DE_L_AFFINITE.)
  */
@@ -69,6 +71,7 @@ export const COULEURS_CHOISIES_PAR_PAGE = Object.freeze({
   'ressources/remede-brulure': Object.freeze({ famille: 'magie', cle: 'feu' }),
   'ressources/huile-rage': Object.freeze({ famille: 'magie', cle: 'vide' }),
   'ressources/huile-seraphine': Object.freeze({ famille: 'magie', cle: 'feu' }),
+  'ressources/huile-hemophile': Object.freeze({ famille: 'magie', cle: 'sang' }),
 });
 
 /** La base que le propriétaire a choisie pour une page de potion ({ famille, cle }, une copie), ou null. */

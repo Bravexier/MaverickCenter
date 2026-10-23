@@ -191,7 +191,7 @@ test('chaque potion sur la couleur de la règle du site (son essence, ou la cara
   // les choix du propriétaire du 2026-10-23 dans la page construite : chaque ligne de ces cartes porte la classe de la magie nommée, à son niveau
   for (const [page, magie] of [['ressources/fiole-verte-fonce', 'necromancie'], ['ressources/remede-poison', 'necromancie'], ['ressources/huile-toxique', 'necromancie'],
     ['ressources/remede-enrage', 'vide'], ['ressources/huile-rage', 'vide'], ['ressources/remede-saignement', 'sang'], ['ressources/remede-brulure', 'feu'],
-    ['ressources/huile-seraphine', 'feu']]) {
+    ['ressources/huile-seraphine', 'feu'], ['ressources/huile-hemophile', 'sang']]) {
     const x = objets.tableaux.flatMap((t) => t.pages ?? []).find((y) => y.id === page) ?? assert.fail(`page absente : ${page}`);
     for (const p of x.potions) {
       assert.ok(onglet.includes(`<tr class="ceint-ligne ligne-couleur couleur-potion-magie-${magie}-n${p.niveau_rang}" id="${ancreDObjet(p.id)}">`), p.id);
