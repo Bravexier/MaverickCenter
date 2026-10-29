@@ -90,20 +90,17 @@ html.js .acc .acc-acquis { display: inline-flex; align-items: center; gap: 0.35r
 .acc-acquis__curseur { width: 6rem; height: 1rem; margin: 0; padding: 0; border: 0; background: none; cursor: pointer; }
 .acc-acquis__saisie { width: 3.2rem; padding: 0 0.25rem; font: inherit; font-size: var(--fs-md); line-height: 1.5; font-variant-numeric: tabular-nums; text-align: right;
   border: 1px solid; border-radius: var(--radius-xs); }
-/* sur la couleur du niveau de la ligne (sa classe, lue sur la ligne qui la porte ; :where garde le poids des règles d'avant) : le texte de la classe, un
-   liseré qui en est tiré, un voile de blanc de mélange */
-:where(.acc-ligne[class*='couleur-niveau-']) .acc-acquis__curseur { accent-color: var(--couleur-texte); }
-:where(.acc-ligne[class*='couleur-niveau-']) .acc-acquis__saisie { border-color: color-mix(in srgb, var(--couleur-texte) 35%, transparent);
-  background: color-mix(in srgb, #fff 70%, transparent); color: var(--couleur-texte); }
+/* sur une ligne dans la couleur de son niveau (sa classe, lue sur la ligne qui la porte ; :where garde le poids des règles d'avant) : le curseur dans le
+   texte du thème (les couleurs claires des niveaux ne se verraient pas en thème clair) ; la case saisie sur la surface du thème, bordée du filet de la
+   ligne */
+:where(.acc-ligne[class*='couleur-niveau-']) .acc-acquis__curseur { accent-color: var(--text); }
+:where(.acc-ligne[class*='couleur-niveau-']) .acc-acquis__saisie { border-color: var(--acc-filet); background: var(--surface); color: var(--text); }
 .acc-acquis__unite { margin-left: -0.2rem; }
 .acc-acquis input:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
-/* le dé d'une ligne (1d20 : son bonus d'acquis), sur la couleur du niveau, thème sombre compris */
+/* le dé d'une ligne (1d20 : son bonus d'acquis) : le dé des tableaux, sur la surface du thème */
 .acc .acc-de--acquis { padding: 0.05rem 0.2rem; }
-.acc :where(.acc-ligne[class*='couleur-niveau-']) .acc-de--acquis { background: color-mix(in srgb, #fff 55%, transparent); color: var(--couleur-texte);
-  border-color: color-mix(in srgb, var(--couleur-texte) 35%, transparent); }
-.acc :where(.acc-ligne[class*='couleur-niveau-']) .acc-de--acquis:hover { background: color-mix(in srgb, #fff 85%, transparent); }
 .acc-de--acquis svg { width: 1.05rem; height: 1.05rem; }
-html:not(.js) .acc-ligne.acc-competence > * { background: none; color: inherit; }
+html:not(.js) .acc-ligne.acc-competence { --acc-teinte: transparent; --acc-filet: var(--border); --acc-lisere: none; }
 .acc-plages { margin: 0; padding: 0; list-style: none; font-size: var(--fs-md); }
 
 /* La case du dé (en-tête de la première colonne) : l'icône et le dernier jet */
@@ -119,12 +116,26 @@ html.js .acc-de-case__texte { display: none; }
 
 /* Lignes et cases à choisir ; couleur du niveau (lignes d'effet, cases des compétences, montures) */
 html.js .acc [data-choix] { cursor: pointer; }
-html.js .acc tr.acc-ligne:hover > * { box-shadow: inset 0 0 0 999px color-mix(in srgb, #000 5%, transparent); }
-/* la couleur du niveau : la classe de la ligne (`couleur-niveau-<n>`), lue sur la ligne qui la porte ; le jet en texte adouci (68 % du texte de la
-   classe, 4,9:1 au moins sur chaque niveau : test/palette-css.test.mjs) */
-.acc-ligne[class*='couleur-niveau-'] > * { background: var(--couleur); color: var(--couleur-texte); }
-.acc-ligne[class*='couleur-niveau-'] > .acc-jet { color: color-mix(in srgb, var(--couleur-texte) 68%, transparent); }
-.acc-ligne[class*='couleur-niveau-'] .acc-remarque { color: var(--couleur-texte); }
+html.js .acc tr.acc-ligne:not([class*='couleur-niveau-']):hover > * { box-shadow: inset 0 0 0 999px color-mix(in srgb, #000 5%, transparent); }
+/* la couleur du niveau : la classe de la ligne (`couleur-niveau-<n>`), lue sur la ligne qui la porte. Comme une ligne colorée du gabarit
+   (styles/global/tableaux.css) et les tuiles de la fiche de personnage (demande du propriétaire, 2026-10-29 : « Je ne veux plus de ligne entièrement
+   colorées ») : le fond du thème teinté à 12 % de la couleur, un filet de la couleur dessus et dessous, un liseré de la couleur pleine à gauche (bordé
+   d'un trait tiré du texte de la classe), le texte du thème ; le jet en texte adouci, mêlé au texte (lisible sur la teinte : test/palette-css.test.mjs) ;
+   au survol, la teinte à 20 %. La couleur pleine reste aux pastilles des niveaux. */
+.acc-ligne[class*='couleur-niveau-'] {
+  --acc-teinte: color-mix(in srgb, var(--couleur) 12%, var(--surface));
+  --acc-filet: color-mix(in srgb, var(--couleur) 60%, var(--border));
+  --acc-lisere: inset 4px 0 0 var(--couleur), inset 5px 0 0 color-mix(in srgb, var(--couleur-texte) 35%, var(--couleur));
+}
+.acc-ligne[class*='couleur-niveau-'] > * { background: var(--acc-teinte); border-top: 1px solid var(--acc-filet); border-bottom: 1px solid var(--acc-filet); }
+.acc-ligne[class*='couleur-niveau-'] > :first-child { box-shadow: var(--acc-lisere); }
+.acc-ligne[class*='couleur-niveau-'] > .acc-jet { color: color-mix(in srgb, var(--text) 50%, var(--muted)); }
+/* le niveau de la ligne (effet, monture ; celui d'une compétence, que le script réécrit) : une pastille dans la couleur pleine du niveau, comme celles
+   de la légende de l'étape 3, bordée d'un trait tiré du texte du thème pour qu'une couleur claire se voie en thème clair */
+.acc-ligne[class*='couleur-niveau-'] .acc-ligne__niveau, html.js .acc-ligne.acc-competence[class*='couleur-niveau-'] [data-acc-niveau] { display: inline-block; padding: 0 0.5rem; border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--text) 25%, var(--couleur)); background: var(--couleur); color: var(--couleur-texte); font-size: var(--fs-sm);
+  font-weight: 600; white-space: nowrap; }
+html.js .acc tr.acc-ligne[class*='couleur-niveau-']:hover, .acc tr.acc-ligne[data-choix][class*='couleur-niveau-'].est-choisi { --acc-teinte: color-mix(in srgb, var(--couleur) 20%, var(--surface)); }
 .acc-ligne--malediction > * { color: var(--maudit-texte); font-weight: 700; letter-spacing: var(--ls-fin); }
 .acc-effet--vide .acc-choisir { font-weight: 400; }
 .acc-choisir { all: unset; cursor: pointer; font-weight: 700; line-height: 1.35; }
@@ -132,6 +143,9 @@ html.js .acc tr.acc-ligne:hover > * { box-shadow: inset 0 0 0 999px color-mix(in
 .acc-choisir:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; border-radius: var(--radius-xs); }
 .acc tr[data-choix].est-choisi > * { box-shadow: inset 0 3px 0 var(--acc), inset 0 -3px 0 var(--acc); }
 .acc tr[data-choix].est-choisi > :first-child { box-shadow: inset 4px 0 0 var(--acc), inset 0 3px 0 var(--acc), inset 0 -3px 0 var(--acc); }
+/* une ligne dans la couleur de son niveau, choisie : la teinte plus forte (plus haut), le liseré du choix (--acc) devant celui du niveau */
+.acc tr[data-choix][class*='couleur-niveau-'].est-choisi > :first-child { box-shadow: inset 4px 0 0 var(--acc), inset 8px 0 0 var(--couleur),
+  inset 9px 0 0 color-mix(in srgb, var(--couleur-texte) 35%, var(--couleur)), inset 0 3px 0 var(--acc), inset 0 -3px 0 var(--acc); }
 .acc tr[data-choix]:not([class*='couleur-niveau-']).est-choisi > * { background: color-mix(in srgb, var(--acc) 14%, var(--surface)); }
 /* une ligne « MALÉDICTION » choisie, sur ce fond : le violet de la ligne choisie (--maudit-choisi : en sombre, le violet clair encore éclairci par le
    calcul, 4,8:1 ; en clair, inchangé) ; réponse du propriétaire du 2026-10-23 : « Plus clair sur la ligne choisie (Recommandé) » */
@@ -146,7 +160,6 @@ html.js .acc tr.acc-ligne:hover > * { box-shadow: inset 0 0 0 999px color-mix(in
    les autres cases grisées une fois le compte atteint */
 .acc-gemme-choix { display: inline-flex; align-items: center; gap: 0.2rem; margin-right: 0.4rem; }
 .acc-gemme-choix input { width: 1rem; height: 1rem; margin: 0; cursor: pointer; }
-:where(.acc-ligne[class*='couleur-niveau-']) .acc-gemme-choix input { accent-color: var(--couleur-texte); }
 .acc-gemme-choix:has(input:disabled) { opacity: 0.5; }
 .acc-gemme-choix input:disabled { cursor: not-allowed; }
 .acc-gemmes__ou { font-style: italic; }
@@ -156,10 +169,11 @@ html.js .acc tr.acc-ligne:hover > * { box-shadow: inset 0 0 0 999px color-mix(in
 
 /* L'accessoire créé (rempli par src/scripts/accessoires.mjs) : dans la couleur du niveau de son effet */
 .acc-produit { padding: 0.9rem 1rem 1rem; background: var(--surface); border: 1px solid var(--acc-line); border-radius: var(--radius-lg); font-size: var(--fs-lg); box-shadow: var(--ombre-encart); }
-/* la classe du niveau de l'effet choisi, reprise de sa ligne par le script ; le liseré, la couleur mêlée au noir de mélange ; le texte adouci, 68 % du
-   texte de la classe */
-.acc-produit[class*='couleur-niveau-'] { background: var(--couleur); color: var(--couleur-texte); border-color: color-mix(in srgb, var(--couleur) 60%, #000); }
-.acc-produit[class*='couleur-niveau-'] :is(.acc-produit__sur, .acc-produit__sous, dt, .acc-produit__note) { color: color-mix(in srgb, var(--couleur-texte) 68%, transparent); }
+/* la classe du niveau de l'effet choisi, reprise de sa ligne par le script : comme le bloc des compétences de la fiche de personnage (demande du
+   propriétaire, 2026-10-29), le fond du thème teinté à 8 % de la couleur, le cadre de la couleur mêlée à celle des filets (60 %), un liseré de la
+   couleur pleine à gauche ; le texte et le texte adouci du thème (lisibles sur la teinte : test/palette-css.test.mjs) */
+.acc-produit[class*='couleur-niveau-'] { background: color-mix(in srgb, var(--couleur) 8%, var(--surface)); border-color: color-mix(in srgb, var(--couleur) 60%, var(--border));
+  box-shadow: inset 4px 0 0 var(--couleur), var(--ombre-encart); }
 .acc-produit.est-maudit { border: 2px dashed var(--maudit); }
 /* Accessoire détruit (décision R94 : une seconde malédiction tirée, « il tombe en poussière ») : pas de couleur de niveau, un fond terne, l'effet grisé */
 .acc-produit.est-detruit { background: color-mix(in srgb, var(--muted) 12%, var(--surface)); color: var(--text); }
@@ -168,9 +182,9 @@ html.js .acc tr.acc-ligne:hover > * { box-shadow: inset 0 0 0 999px color-mix(in
 .acc-produit__vide { margin: 0; color: var(--muted); }
 .acc-produit__sur { margin: 0; font-size: var(--fs-xs); letter-spacing: var(--ls-large); text-transform: uppercase; color: var(--muted); }
 .acc-produit__sur strong { color: var(--maudit-texte); }
-/* sur la couleur d'un niveau (un fond clair dans les deux thèmes) : le violet de référence assombri par le calcul, 4,5:1 au moins sur les cinq niveaux
-   (réponse du propriétaire du 2026-10-23 : « Violet assombri (Recommandé) » ; test/palette-css.test.mjs) */
-.acc-produit[class*='couleur-niveau-'] .acc-produit__sur strong { color: color-mix(in srgb, var(--maudit) 80%, #000); }
+/* sur l'encart teinté de la couleur d'un niveau (plus clair que la surface en thème sombre) : le violet d'une ligne « MALÉDICTION » choisie, encore
+   éclairci en sombre (--maudit-choisi), 4,5:1 au moins sur les cinq niveaux dans les deux thèmes (test/palette-css.test.mjs) ; inchangé en clair */
+.acc-produit[class*='couleur-niveau-'] .acc-produit__sur strong { color: var(--maudit-choisi); }
 .acc-produit__titre { margin: 0.15rem 0 0.6rem; font-size: 1.25rem; line-height: 1.25; }
 .acc-produit__liste { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.35rem 0.8rem; margin: 0; }
 .acc-produit__liste dt { font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); padding-top: 0.15rem; }

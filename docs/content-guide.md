@@ -91,10 +91,14 @@ tableaux de règles suivent le même gabarit, écrit à un seul endroit (`styles
   **note** sous le titre (`.tableau__note`) ; la **zone qui défile** en largeur (`.tableau__defile`, ou le cadre lui-même : `.tableau--defile`) ;
 - **la table** (`.table-donnees`) : en-têtes en petites capitales sur un fond teinté, un filet entre deux lignes, cases alignées en haut à gauche ;
   deux densités (`.table-donnees--serree` : tableaux où l'on choisit une ligne — matériaux, formes, améliorations, étapes des accessoires — et
-  bestiaire ; `.table-donnees--aeree` : les armes, « l'affichage est trop serré ») ; une **ligne colorée** (`tr.ligne-couleur`, `--ligne-fond`, `--ligne-texte`) prend toute la couleur de sa source (potions, bâtons
-  magiques, matériaux des armes), un filet de sa teinte, un voile au survol ; ces deux variables viennent d'une classe de la palette du site (les
-  potions et les bâtons de la ceinture : « Couleurs du site : la palette en classes » ci-dessous) ou, en attendant leur lot, du style de la ligne
-  (matériaux des armes) ;
+  bestiaire ; `.table-donnees--aeree` : les armes, « l'affichage est trop serré ») ; une **ligne colorée** (`tr.ligne-couleur`, `--ligne-fond`, `--ligne-texte`) est dans la couleur de sa source (potions, bâtons
+  magiques, matériaux des armes) comme les tuiles des caractéristiques de la fiche de personnage (demande du propriétaire, 2026-10-29 : « Je ne veux plus de ligne entièrement colorées de la couleur de la magie. Je péfèrerai une bordure ou un fond plus transparent de la même manière sont soint faites les tuiles de caractéristiques et de compétences dans la fiche de personnage ») : le fond du thème teinté à 12 % de la
+  couleur (20 % au survol), un filet de la couleur mêlée à celle des filets (60 %) dessus et dessous, un liseré de la couleur pleine à gauche, bordé
+  d'un trait tiré de `--ligne-texte`, et le texte du thème, lisible sur les deux teintes dans les deux thèmes (`test/tableaux.test.mjs`) ; la couleur
+  pleine ne sert plus qu'aux liserés et aux pastilles, et aucune ligne de tableau n'est plus posée sur elle (même test) ; les armes élémentaires
+  et les lignes des accessoires suivent la même recette dans leur feuille ; ces deux variables viennent d'une classe de la palette du site (les
+  potions et les bâtons de la ceinture, les matériaux des armes par `couleur-materiau-<id>` : « Couleurs du site : la palette en classes »
+  ci-dessous) ;
 - **plusieurs tableaux** : `.tableaux` (l'un sous l'autre) ou `.tableaux--cote-a-cote` (autant par rangée que la largeur en tient : la largeur
   minimale d'un tableau, `--tableau-largeur`, 26rem par défaut, en fixe le nombre ; 30rem pour les potions de la ceinture, deux ou trois dans la page
   de 120rem) ; un tableau dans un groupe de tableaux a un nom plus petit que celui du groupe ;
@@ -247,8 +251,9 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   qu'aucune source ne donne : la référence, la même dans les deux thèmes, que lit le cadre pointillé de l'encart maudit, sans texte), `--maudit-texte`
   (ce violet en texte sur le fond de la page, la ligne « MALÉDICTION », le mot « Maudit », le titre d'un accessoire détruit : `var(--maudit)` en
   clair, `#a86ec0` en sombre, 4,6:1 ; réponse du propriétaire du 2026-10-23 à « Le violet d'un accessoire maudit (#8e44ad : ligne « MALÉDICTION », mot « Maudit ») n'atteint que 2,9:1 sur le fond du thème sombre, et 3,3:1 sur le niveau 5 dans l'encart, alors que le minimal de lisibilité est 4,5:1. Que faire ? » : « Plus clair en sombre (Recommandé) » ; option : « Un violet plus clair en thème sombre seulement (#a86ec0, 4,6:1) ; le thème clair ne change pas. ») ;
-  sur la couleur d'un niveau, clair dans les deux thèmes, le mot « Maudit » prend la référence assombrie, `color-mix(in srgb, var(--maudit) 80%,
-  #000)` (environ `#72368a`, 4,5:1 au moins sur les cinq niveaux ; réponse du propriétaire du 2026-10-23 à « Sur l'encart d'un accessoire, le mot « Maudit » est en violet sur la couleur du niveau, un fond clair dans les deux thèmes. Le violet actuel (#8e44ad) n'atteint pas le contraste minimal de lisibilité (4,5:1) aux niveaux 4 et 5 (4,0:1 et 3,3:1). Le violet plus clair choisi pour le thème sombre (#a86ec0) y descendrait de 2,1:1 à 3,3:1. Quel violet sur les fonds de niveau ? » : « Violet assombri (Recommandé) » ; option : « Sur un fond de niveau, dans les deux thèmes, le violet du site est assombri par le calcul (environ #72368a), au moins 4,5:1 sur les cinq niveaux ; aucune couleur ajoutée. ») ; `--maudit-choisi` (le violet d'une ligne « MALÉDICTION » choisie :
+  sur la couleur d'un niveau (tant que l'encart était sur la couleur pleine de son niveau), le mot « Maudit » prenait la référence assombrie, `color-mix(in srgb, var(--maudit) 80%,
+  #000)` (environ `#72368a`, 4,5:1 au moins sur les cinq niveaux ; depuis le 2026-10-29, l'encart est teinté à 8 % de la couleur et le mot prend
+  `--maudit-choisi`, ci-dessous, 5,0:1 au moins sur les cinq niveaux dans les deux thèmes ; réponse du propriétaire du 2026-10-23 à « Sur l'encart d'un accessoire, le mot « Maudit » est en violet sur la couleur du niveau, un fond clair dans les deux thèmes. Le violet actuel (#8e44ad) n'atteint pas le contraste minimal de lisibilité (4,5:1) aux niveaux 4 et 5 (4,0:1 et 3,3:1). Le violet plus clair choisi pour le thème sombre (#a86ec0) y descendrait de 2,1:1 à 3,3:1. Quel violet sur les fonds de niveau ? » : « Violet assombri (Recommandé) » ; option : « Sur un fond de niveau, dans les deux thèmes, le violet du site est assombri par le calcul (environ #72368a), au moins 4,5:1 sur les cinq niveaux ; aucune couleur ajoutée. ») ; `--maudit-choisi` (le violet d'une ligne « MALÉDICTION » choisie :
   `var(--maudit-texte)` en clair, 4,6:1 ; en sombre, `color-mix(in srgb, var(--maudit-texte) 80%, #fff)`, environ `#b98bcd`, 4,8:1 sur le fond
   `#3c2e1f` de la ligne choisie ; réponse du propriétaire du 2026-10-23 à « Sur l'onglet Accessoires, en thème sombre, une ligne « MALÉDICTION » choisie (surlignée après un tirage ou un clic) a un fond brun foncé (#3c2e1f). Le violet clair choisi pour le thème sombre (#a86ec0) n'y atteint que 3,5:1, sous le contraste minimal de lisibilité (4,5:1). En thème clair, cette ligne est lisible (4,6:1). Que faire ? » : « Plus clair sur la ligne choisie (Recommandé) » ; option : « En thème sombre seulement, sur une ligne choisie, le violet clair est encore éclairci par le calcul (environ #b98bcd), 4,8:1 ; aucune couleur ajoutée, le thème clair ne change pas. ») ; et `--ombre-encart` (`0 6px 12px -10px rgb(0 0 0 / 0.35)`, l'ombre de l'encart de l'accessoire créé) ; puis (lot de la chronologie, la même valeur dans
   les deux thèmes) `--ombre-evenement` (`0 10px 30px rgb(0 0 0 / 0.05)`, la page d'un événement), `--ombre-barre-du-bas` (`0 -4px 18px rgb(0 0 0 /
@@ -275,7 +280,7 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   Le compteur garde `var(--texte-sur-fonce)` quand des choix sont en attente, sur `--a-choisir-plein` (5,0:1 dans les deux thèmes). Sur `--danger`
   (règles à revoir), il prend `--texte-sur-danger`, sur le modèle de `--texte-sur-good` : `var(--texte-sur-fonce)` en clair, 7,7:1, `var(--bg)` dans
   les deux blocs du thème sombre, 7,6:1 ; réponse du propriétaire du 2026-10-23 à « En thème sombre, le compteur rouge de l'onglet « Contrôle » de la fiche (le nombre de règles à revoir) a un texte blanc sur le rouge du site (#ef8a8a) : le blanc n'y atteint que 2,4:1, loin du contraste minimal de lisibilité (4,5:1). En thème clair, c'est lisible (7,7:1). Pour les boutons et le compteur verts, vous avez choisi « Texte foncé en sombre ». Faut-il le même choix ici ? » : « Texte foncé en sombre (Recommandé) » ; option : « En thème sombre seulement, le texte de ce compteur prend le fond sombre du site (#17130f, 7,6:1), comme sur le vert. Aucune couleur ajoutée ; le thème clair ne change pas. ». Les pages Debug gardent leurs copies du vert et du rouge (« Thème reste, Debug à part »). Un voile noir ou
-  blanc translucide (le survol d'une ligne, les voiles des champs et du dé posés sur la couleur d'un niveau) s'écrit en noir ou blanc de mélange,
+  blanc translucide (le survol d'une ligne) s'écrit en noir ou blanc de mélange,
   `color-mix(in srgb, #fff 70%, transparent)`, le même rendu que `rgb(255 255 255 / 0.7)` : ainsi les voiles blancs des bannières (`classe/page.css`,
   `classe/dons.css`, `race/page.css`, `magie/page.css`) et les ombres et voiles noirs du mode modification, du carrousel et du bestiaire
   (`edition/edition.css`, `galerie/carrousel.css`, `bestiaire/bestiaire.css`), au lot des restes.
@@ -335,8 +340,9 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
     reprennent la classe de la ligne affichée (`classList`) dans la fiche qu'ils écrivent, `regles.json` donne `classe` de chaque poids ;
   - **les niveaux des accessoires** (lot 6) : pastilles des niveaux de l'étape 3, lignes d'effet, de compétence et de monture, encart de l'accessoire
     créé (`styles/accessoires/accessoires.css`, qui ne lit `--couleur` et `--couleur-texte` que sur l'élément qui porte la classe d'un niveau,
-    `[class*='couleur-niveau-']` ; le texte adouci de la colonne du jet et des intitulés de l'encart, 68 % du texte de la classe, atteint 4,9:1 au
-    moins sur chaque niveau, testé) ; le script de l'onglet reprend la classe de la ligne de l'effet choisi dans l'encart et, sur une ligne de
+    `[class*='couleur-niveau-']` ; depuis le 2026-10-29, les lignes et l'encart sont teintés de la couleur, la couleur pleine restant aux pastilles
+    des niveaux, et le texte adouci de la colonne du jet, mêlé au texte du thème, est lisible sur la teinte de chaque niveau dans les deux thèmes,
+    testé) ; le script de l'onglet reprend la classe de la ligne de l'effet choisi dans l'encart et, sur une ligne de
     compétence, celle du niveau du bonus d'acquis (`data-niveaux` : `classe`) ;
   - **la chronologie** (lot 7) : la page d'un événement et `/chronologie/` (`--chrono`, et `--chrono-sur` pour le texte de ses aplats, tirés de la classe
     posée sur `.chrono`), lignes de la frise, barre en dégradé (`--c`, `--c-avant`, `--c-apres` lus sur la ligne, sa barre et son morceau de barre, qui
@@ -709,8 +715,9 @@ ne sert qu'à la recherche et aux `[[liens]]`, et suit les tables à chaque modi
   l'infobulle** (bulle riche, `[data-armes-bulles]`, hors du panneau qui défile) ; puis, sans titre, les effets (types de dégâts, portée, effets
   supplémentaires, celui du matériau en vert), la description et l'origine (« Origine X » ou « Facture X », le mot de la source) (« On en garderai que l'effet la description et l'origine »). Plus de
   « dés selon la maîtrise » ni de « Le nombre de dés dépend de la maîtrise du personnage ». Dessous, côte à côte quand la place le permet, les
-  **matériaux** — toute la ligne dans la couleur du matériau (`lib/materiaux-couleurs.mjs`, posée par sa classe `couleur-materiau-<id>`, que le script
-  reprend sur la pastille du matériau dans la fiche, jamais un style : « Couleurs du site : la palette en classes » ; le texte suit la règle du site),
+  **matériaux** — la ligne dans la couleur du matériau (`lib/materiaux-couleurs.mjs`, posée par sa classe `couleur-materiau-<id>`, que le script
+  reprend sur la pastille du matériau dans la fiche, jamais un style : « Couleurs du site : la palette en classes ») : la ligne colorée du gabarit,
+  teintée, avec son filet et son liseré, au texte du thème, depuis le 2026-10-29 (« Tableaux » plus haut ; avant, toute la ligne sur la couleur),
   prix en RO seulement, effets sur une seule ligne : le bonus
   aux dégâts sans le mot « Dégâts » (gardé pour les lecteurs d'écran), puis les autres effets, séparés par « | » (« +7 | dégâts doublés contre la
   barrière »), lignes basses — et les **améliorations** (+1 à +10, sans ligne TOTAL : « La ligne "total" des amélioration est inutile », de même pour
@@ -724,8 +731,11 @@ ne sert qu'à la recherche et aux `[[liens]]`, et suit les tables à chaque modi
   « en sélectionnant l'arme élémentaire en question ça affichera ou non la bonne colone du tableau "amélioration" et grisera le "matériau" ») : pas
   d'option « Élément » ni de transformation d'une arme choisie. Les **14 armes élémentaires de chaque famille** (une par magie, sans le Potentiel
   Illimité ; `familles[].armes_elementaires` de `chargerArmes`) suivent ses armes dans son tableau, dans l'ordre de `arme_elementaire.ordre` (place
-  choisie par l'équipe), **chacune sur le fond de sa magie** (aucune pour une famille créée sur le site de dev, R167 ; ses deux lignes portent la classe `couleur-magie-<id>`, jamais un style ; texte de
-  `texteSurCouleur`) : `lib/armes-rendu.mjs#htmlDeLigneDArmeElementaire`. Une famille dont le type est mixte montre celles du type où elle mène
+  choisie par l'équipe), **chacune dans la couleur de sa magie** (aucune pour une famille créée sur le site de dev, R167 ; ses deux lignes portent la classe `couleur-magie-<id>`, jamais un style) :
+  depuis le 2026-10-29 (« Je ne veux plus de ligne entièrement colorées de la couleur de la magie »), comme la ligne colorée du gabarit, le fond du
+  thème teinté à 12 % de la magie (20 % survolée ou choisie), un filet de sa couleur au-dessus de l'arme et sous ses effets, un liseré de la couleur
+  pleine à gauche des deux lignes (celui des armes choisies devant lui quand elle est choisie), le texte du thème, et la pastille de sa magie dans les
+  types de dégâts dans la couleur pleine (`styles/armes/armes.css`) : `lib/armes-rendu.mjs#htmlDeLigneDArmeElementaire`. Une famille dont le type est mixte montre celles du type où elle mène
   (`arme_famille.type_elementaire_id` : « Lance de X » sous Lance/Arme d'hast). Colonnes : son nom (« Arc de Sang ») et ses mains (« une ou deux mains », écrites comme une arme `une_ou_deux` du catalogue, à la même place :
   « l'arme s'adapte au porteur », choix du leader-technique), sa compétence au choix du porteur
   (Lourde / Légère ; Arc / Légère pour l'arc ; Arbalète seule : `type_elementaire.competences`), son type, **le dé et la portée de son type** (rien de
@@ -962,8 +972,10 @@ L'onglet est rendu depuis la base (`lib/ceinture-db.mjs`, `components/ceinture/C
     pas la classe de sa ligne, qui existe donc toujours dans la page) ;
   - un **bâton**, la couleur de sa magie sur le site (la classe `.couleur-magie-<id>`), comme ses infobulles ;
   - les carquois et sacs n'ont pas de couleur (ni dans l'onglet « Équipement inventaire » du classeur, ni de règle sur le site).
-  Choix du site : la couleur s'étend à toute la ligne, et le texte est le plus lisible sur le fond (`texteSurCouleur`) ; le fond d'une potion qui
-  n'atteint pas un contraste de 4,5:1 avec lui (seuil AA du WCAG) est éclairci ou assombri jusqu'à l'atteindre (`lisible`). Aucun fichier de l'onglet
+  La ligne est la ligne colorée du gabarit (« Tableaux » plus haut : depuis le 2026-10-29, le fond du thème teinté de la couleur, son filet et son
+  liseré, le texte du thème ; avant, toute la ligne sur la couleur) ; la couleur de la classe garde son texte le plus lisible (`texteSurCouleur`,
+  qui borde le liseré) et le fond d'une potion qui n'atteint pas un contraste de 4,5:1 avec lui (seuil AA du WCAG) est éclairci ou assombri jusqu'à
+  l'atteindre (`lisible`) ; le texte du thème est lisible sur la teinte de chaque potion dans les deux thèmes (`test/ceinture-html.test.mjs`). Aucun fichier de l'onglet
   n'écrit de couleur, hors le noir ou le blanc purs de mélange d'un `color-mix` (exception du propriétaire : le liseré de la pastille d'une gemme,
   `styles/equipement/equipement.css` ; `test/alchimie-couleurs.test.mjs`, `test/palette-css.test.mjs`). Repère visuel sans valeur de règle.
   **En classes, jamais en style** (« Couleurs du site : la palette en classes » plus haut ; choix du propriétaire du 2026-10-22, « Module JS → classe »
@@ -1016,7 +1028,8 @@ utile. Il faudra un tooltip pour donner le lien vers l'objet de la gemme ou et d
 
 - En tête, son **panneau de règles** (« Panneaux de règles » plus haut ; id `batons-magiques`, l'ancre du sous-onglet) : l'introduction de la page
   « Bâton magique », puis la fabrication en tuile, replié comme ceux des autres onglets.
-- Une ligne par magie (ordre des magies), **toute sur la couleur de sa magie sur le site** (sa classe `.couleur-magie-<id>`,
+- Une ligne par magie (ordre des magies), **dans la couleur de sa magie sur le site** (la ligne colorée du gabarit depuis le 2026-10-29 : fond
+  teinté, filet et liseré de la couleur, texte du thème, la pastille de la gemme dans la couleur pleine ; sa classe `.couleur-magie-<id>`,
   `lib/palette-css.mjs#classeDeMagie` : `--couleur`, et le texte le plus lisible, `--couleur-texte` ; ni style ni couleur dans la ligne ; demande du propriétaire du 2026-10-22 : « Partout il faut utiliser Que les couleurs du site » — la couleur de l'onglet « Bâton
   magique » du classeur, relevée le 2026-10-16, n'est plus lue), **sans colonne Magie** (le nom de la magie reste dans l'en-tête de la ligne pour les lecteurs d'écran, et dans les infobulles) :
   **Gemme | Bois | Niveau | Effet | Prix**.
@@ -1093,7 +1106,9 @@ qu'à la recherche et aux `[[liens]]`. Seul le panneau de règles se modifie sur
   du tableau), dans l'encart avec la monture choisie.
   Recliquer une ligne choisie la retire. État dans l'adresse (`?emplacement=…&propriete=…&effet=…&acquis=…&monture=…&gemmes=…&maudit=1&detruit=1`),
   lu tel quel (aucune transition à la lecture ; `detruit=1` n'est retenu qu'avec une malédiction choisie, et il implique `maudit`).
-- **Couleurs** : les lignes d'effet, les montures et l'encart dans la couleur de leur niveau, celle des cases « Niveau 1 » à
+- **Couleurs** : les lignes d'effet, de compétence et les montures (le fond du thème teinté à 12 % de la couleur, 20 % au survol ou choisies, un
+  filet et un liseré de la couleur, le texte du thème, et le niveau de la ligne en pastille dans la couleur pleine) et l'encart (teinté à 8 %, cadre
+  et liseré de la couleur) dans la couleur de leur niveau (demande du propriétaire, 2026-10-29 : « Je ne veux plus de ligne entièrement colorées de la couleur de la magie. Je péfèrerai une bordure ou un fond plus transparent de la même manière sont soint faites les tuiles de caractéristiques et de compétences dans la fiche de personnage »), celle des cases « Niveau 1 » à
   « Niveau 5 » du tableau Monture de l'onglet (`lib/accessoires-couleurs.mjs#COULEURS_DES_NIVEAUX`), posée par sa classe (`couleur-niveau-<n>`, que
   l'onglet émet ; l'encart reprend celle de la ligne de l'effet choisi : « Couleurs du site : la palette en classes ») ; une gemme dans la couleur de sa magie
   (la classe de la magie, sur sa pastille comme sur son infobulle, `bulle--gemme` : `--mag` ; l'encart copie la pastille telle quelle). **Pas de tableau des gemmes** : une infobulle par gemme (magie, description, prix d'un quart classique, raffiné, parfait).

@@ -20,7 +20,12 @@ Tous les tableaux de règles suivent un seul gabarit (demande du propriétaire :
 - Cadre `.tableau` : titre repliable (`<summary>`) ou `<hN>`, `.tableau__nom`, `.tableau__compte`, `.tableau__note`.
 - Zone qui défile : `.tableau__defile`, ou le cadre lui-même `.tableau--defile`.
 - Table `.table-donnees` : en-têtes en petites capitales sur fond teinté, filets entre lignes ; densités `--serree` et `--aeree`.
-- Ligne colorée : `tr.ligne-couleur` avec `--ligne-fond`, `--ligne-texte`, posés par une classe de la palette (potions de la ceinture : `couleur-potion-…` ; bâtons : la feuille de la page les tire de `couleur-magie-…` ; skill `ui-couleurs`), ou encore en style là où le lot n'est pas fait (matériaux des armes).
+- Ligne colorée : `tr.ligne-couleur` avec `--ligne-fond` (la couleur) et `--ligne-texte` (le texte de sa classe), posés par une classe de la palette (potions de la ceinture : `couleur-potion-…` ; bâtons : la feuille de la page les tire de `couleur-magie-…` ; matériaux des armes : `couleur-materiau-…` ; skill `ui-couleurs`). Recette, celle des tuiles `.carac` de `fiche.css` (demande du propriétaire : « Je ne veux plus de ligne entièrement colorées de la couleur de la magie. Je péfèrerai une bordure ou un fond plus transparent de la même manière sont soint faites les tuiles de caractéristiques et de compétences dans la fiche de personnage ») :
+  - fond `color-mix(--ligne-fond 12%, var(--surface))`, 20 % au survol ;
+  - filet `color-mix(--ligne-fond 60%, var(--border))` dessus et dessous ;
+  - liseré `--ligne-lisere` à gauche de la première case : 4 px de la couleur pleine, bordé d'1 px tiré de `--ligne-texte` (35 %), pour qu'une couleur proche du fond (le Vide) se voie ;
+  - texte du thème (`--text`) : la couleur pleine ne reste qu'aux pastilles.
+  - Réponses du propriétaire à la mise en œuvre : « Fond teinté + liseré (Recommandé) » (pas de bordure seule) ; même style pour les accessoires colorés par niveau (« Oui, même style (Recommandé) »), les matériaux des armes et les potions de Vide, qui remplacent la ligne pleine (« Oui, les deux (Recommandé) »). `.pmat__nom` (armures) est une case seule, pas une ligne : elle reste en couleur pleine.
 - Plusieurs tableaux : `.tableaux` (l'un sous l'autre) ou `.tableaux--cote-a-cote` (autant par rangée que la largeur minimale `--tableau-largeur` le permet : 26rem par défaut, 30rem pour les potions de la ceinture, soit 2 ou 3).
 - Teinte : `--tab`, `--tab-soft`, `--tab-line`, posée par la page sur son conteneur ; sinon l'accent du site.
 - `bloc` du composant : les classes de la page (`armes-famille`, `armes-famille__compte`…) posées à côté de celles du gabarit ; scripts, tests et feuille de page s'y accrochent.
@@ -37,4 +42,4 @@ Tous les tableaux de règles suivent un seul gabarit (demande du propriétaire :
 - Avant de nommer une classe de page, chercher son nom dans `styles/global/` (ex. `.piece` : skill `ui-monnaies`).
 
 ## Tests
-- `client/test/tableaux.test.mjs` : gabarit chargé partout, sous `:where()` ; refuse un `thead th` en petites capitales hors du gabarit ; sur le site construit, refuse un tableau sans `table-donnees` ni zone qui défile.
+- `client/test/tableaux.test.mjs` : gabarit chargé partout, sous `:where()` ; refuse un `thead th` en petites capitales hors du gabarit ; la ligne colorée (fond 12 %/20 %, filet, `--ligne-lisere`, texte du thème, même teinte que `.carac`, texte du thème à 4,5:1 sur chaque teinte des magies, matériaux et niveaux dans les deux thèmes) ; aucune règle de `styles/` ne pose la couleur pleine en fond d'une ligne (`tr`, `> *`) ; sur le site construit, refuse un tableau sans `table-donnees` ni zone qui défile.

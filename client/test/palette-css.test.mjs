@@ -476,8 +476,12 @@ test('les feuilles lisent les propriétés que posent les classes : bâtons (cei
   assert.ok(pastille.includes(`color: var(${texte});`), pastille);
   assert.ok(!/--g\b|--g-texte/.test(equipement), 'plus de --g ni de --g-texte');
   assert.deepEqual(couleursEcrites(pastille), [], 'la pastille n’écrit que le noir de mélange de son liseré');
-  // la ligne colorée du gabarit commun lit les propriétés des combinaisons
-  assert.match(lire('src/styles/global/tableaux.css'), new RegExp(`:where\\(\\.table-donnees\\) tr\\.ligne-couleur > \\* \\{ background: var\\(${ligneFond}\\); color: var\\(${ligneTexte}\\); \\}`));
+  // la ligne colorée du gabarit commun lit les propriétés des combinaisons : la couleur teinte le fond du thème et fait le filet et le liseré, le texte
+  // de la classe borde le liseré ; le texte de la ligne est celui du thème (demande du propriétaire, 2026-10-29 ; test/tableaux.test.mjs)
+  const gabarit = lire('src/styles/global/tableaux.css');
+  assert.ok(regleDe(gabarit, ':where(.table-donnees) tr.ligne-couleur > *').includes(`background: color-mix(in srgb, var(${ligneFond}) 12%, var(--surface)); color: var(--text);`));
+  assert.ok(regleDe(gabarit, ':where(.table-donnees) tr.ligne-couleur').includes(
+    `--ligne-lisere: inset 4px 0 0 var(${ligneFond}), inset 5px 0 0 color-mix(in srgb, var(${ligneTexte}) 35%, var(${ligneFond}));`));
   // les fichiers de l'onglet Ceinture n'écrivent aucune couleur, hors l'exception du mélange
   for (const f of ['src/styles/ceinture/ceinture.css', 'src/components/ceinture/CeinturePanneau.astro', 'src/components/ceinture/BatonsMagiques.astro']) {
     assert.deepEqual(couleursDuFichier(f), [], f);
@@ -748,16 +752,18 @@ test('aucune couleur écrite dans les fichiers des lots faits (ni dans les règl
     'src/styles/armes/armes.css .materiau', 'src/styles/armes/armes.css .arme-fiche__materiau', 'src/styles/armes/armes.css .armes',
     'src/styles/armes/armes.css .armes__phrase-depart', 'src/styles/armes/armes.css .arme--depart > .arme__nom, .arme--depart + .arme-suite > .arme-suite__marge',
     'src/styles/armes/armes.css .arme-dgt--frappe',
-    // les armes élémentaires (R167) : leurs lignes sur le fond de leur magie, sa pastille dans la fiche de l'arme
-    'src/styles/armes/armes.css .arme--elementaire > *, .arme-suite--elementaire > *', 'src/styles/armes/armes.css .arme-fiche__magie',
+    // les armes élémentaires (R167) : leurs lignes teintées de leur magie (demande du propriétaire du 2026-10-29), sa pastille dans la ligne et dans la
+    // fiche de l'arme
+    'src/styles/armes/armes.css .arme--elementaire, .arme-suite--elementaire', 'src/styles/armes/armes.css .arme--elementaire .arme-dgt--magie',
+    'src/styles/armes/armes.css .arme-fiche__magie',
     'src/styles/armures/armures.css .pmat__nom', 'src/styles/armures/armures.css .ptype, .pmat-pastille, .ppoids',
     'src/styles/armures/armures.css .poids__nom', 'src/styles/armures/armures.css .pdef__ap', 'src/styles/armures/armures.css .pdef__am',
     'src/styles/armures/armures.css .pdgt--frappe', 'src/styles/composants/composants.css .comp-teinte', 'src/styles/equipement/equipement.css .arme-dgt--taille, .pdgt--taille',
     'src/styles/equipement/equipement.css .arme-fiche, .pfiche', "src/styles/fiche/fiche.css .bouclier__tuile[data-poids]",
     // lot des niveaux des accessoires
-    "src/styles/accessoires/accessoires.css .acc-niveau-pastille[class*='couleur-niveau-']", "src/styles/accessoires/accessoires.css .acc-ligne[class*='couleur-niveau-'] > *",
-    "src/styles/accessoires/accessoires.css .acc-ligne[class*='couleur-niveau-'] > .acc-jet", "src/styles/accessoires/accessoires.css .acc-produit[class*='couleur-niveau-']",
-    "src/styles/accessoires/accessoires.css .acc :where(.acc-ligne[class*='couleur-niveau-']) .acc-de--acquis", 'src/styles/accessoires/accessoires.css .acc-produit',
+    "src/styles/accessoires/accessoires.css .acc-niveau-pastille[class*='couleur-niveau-']", "src/styles/accessoires/accessoires.css .acc-ligne[class*='couleur-niveau-']",
+    "src/styles/accessoires/accessoires.css .acc-ligne[class*='couleur-niveau-'] .acc-ligne__niveau, html.js .acc-ligne.acc-competence[class*='couleur-niveau-'] [data-acc-niveau]",
+    "src/styles/accessoires/accessoires.css .acc-produit[class*='couleur-niveau-']", 'src/styles/accessoires/accessoires.css .acc-produit',
     'src/styles/accessoires/accessoires.css .acc-ligne--malediction > *', 'src/styles/accessoires/accessoires.css .acc-produit.est-maudit',
     'src/styles/accessoires/accessoires.css .acc-produit.est-detruit .acc-produit__titre', 'src/styles/accessoires/accessoires.css .acc-produit__sur strong',
     "src/styles/accessoires/accessoires.css .acc-produit[class*='couleur-niveau-'] .acc-produit__sur strong",
@@ -888,8 +894,32 @@ test('les feuilles des matériaux, des armes, des armures et des boucliers lisen
   dans('src/styles/armes/armes.css', '.materiau', `--ligne-fond: var(${fond}); --ligne-texte: var(${texte});`);
   dans('src/styles/armes/armes.css', '.arme-fiche__materiau', `background: var(${fond}); color: var(${texte});`);
   dans('src/styles/armes/armes.css', '.armes', `--depart: var(${fond});`);
-  // les armes élémentaires (R167) : leurs deux lignes et la pastille de leur magie dans la fiche, la classe de la magie (couleur-magie-<id>)
-  dans('src/styles/armes/armes.css', '.arme--elementaire > *, .arme-suite--elementaire > *', `background: var(${fond}); color: var(${texte});`);
+  // les armes élémentaires (R167) : leurs deux lignes (le fond du thème teinté de leur magie, le filet et le liseré de sa couleur, le texte du thème :
+  // demande du propriétaire du 2026-10-29), la pastille de leur magie dans la ligne et dans la fiche, la classe de la magie (couleur-magie-<id>)
+  const armes = lire('src/styles/armes/armes.css');
+  dans('src/styles/armes/armes.css', '.arme--elementaire, .arme-suite--elementaire', [`--elem-teinte: color-mix(in srgb, var(${fond}) 12%, var(--surface));`,
+    `--elem-filet: color-mix(in srgb, var(${fond}) 60%, var(--border));`, `--elem-bord: color-mix(in srgb, var(${texte}) 35%, var(${fond}));`]);
+  dans('src/styles/armes/armes.css', '.arme--elementaire > *, .arme-suite--elementaire > *', 'background: var(--elem-teinte);');
+  dans('src/styles/armes/armes.css', '.arme--elementaire > .arme__nom, .arme-suite--elementaire > .arme-suite__marge', `box-shadow: inset 4px 0 0 var(${fond}), inset 5px 0 0 var(--elem-bord);`);
+  dans('src/styles/armes/armes.css', '.arme--elementaire .arme-dgt--magie', `background: var(${fond}); color: var(${texte});`);
+  const surLeTexteDeLaClasse = [...armes.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .filter(([, sel, corps]) => /--elementaire/.test(sel) && !/arme-dgt--magie/.test(sel) && corps.includes(`color: var(${texte})`)).map(([, sel]) => sel.trim());
+  assert.deepEqual(surLeTexteDeLaClasse, [], 'aucune case d’une arme élémentaire dans le texte de la classe (seule la pastille de sa magie)');
+  // le texte adouci d'une arme élémentaire (mains, cases vides) : une part du texte du thème mêlé au texte adouci, lisible (4,5:1) sur la teinte de
+  // chaque magie, au repos et survolée ou choisie, dans les deux thèmes
+  const [, partDouce] = regleDe(armes, '.arme--elementaire :is(.arme__mains, .vide)').match(/color: color-mix\(in srgb, var\(--text\) (\d+)%, var\(--muted\)\);/) ?? [];
+  assert.ok(partDouce, 'le texte adouci des armes élémentaires');
+  const [, forte] = regleDe(armes, '.arme--elementaire, .arme-suite--elementaire').match(/--elem-teinte-forte: color-mix\(in srgb, var\(--couleur\) (\d+)%, var\(--surface\)\);/) ?? [];
+  assert.ok(forte, 'la teinte d’une arme survolée ou choisie');
+  for (const b of blocsDuTheme().filter((x) => [':root', ':root[data-theme="dark"]'].includes(x.sel))) {
+    const doux = surFond(b.valeur('--text'), b.valeur('--muted'), Number(partDouce) / 100);
+    for (const c of couleursDeLaPalette(['magie'])) {
+      for (const p of [12, Number(forte)]) {
+        const f = surFond(c.fond, b.valeur('--surface'), p / 100);
+        assert.ok(contraste(doux, f) >= CONTRASTE_MINIMAL, `${b.sel}, ${c.classe} à ${p} % : ${doux} sur ${f} = ${contraste(doux, f).toFixed(2)}`);
+      }
+    }
+  }
   dans('src/styles/armes/armes.css', '.arme-fiche__magie', `background: var(${fond}); color: var(${texte});`);
   // le bleu des armes de départ (famille sans texte : FAMILLES_SANS_TEXTE) : aucune règle qui le lit ne pose le texte de sa classe, et la classe posée sur
   // `.armes` ne s'hérite pas sous lui (un élément n'a de --couleur que par sa propre classe)
@@ -991,39 +1021,58 @@ test('les feuilles de l’onglet Accessoires lisent les propriétés que posent 
     return regle;
   };
   const NIVEAU = "[class*='couleur-niveau-']";
-  // les pastilles des niveaux, les lignes d'effet et de monture, l'encart : le fond et le texte de la classe
+  // les pastilles des niveaux (légende de l'étape 3, niveau d'une ligne) : le fond et le texte de la classe ; les lignes d'effet, de compétence et de
+  // monture : le fond du thème teinté de la couleur, le filet et le liseré de la couleur, le texte du thème ; l'encart : le fond teinté, le cadre et le
+  // liseré de la couleur (demande du propriétaire, 2026-10-29 : « Je ne veux plus de ligne entièrement colorées »)
   dans(`.acc-niveau-pastille${NIVEAU}`, `background: var(${fond}); color: var(${texte});`);
-  dans(`.acc-ligne${NIVEAU} > *`, `background: var(${fond}); color: var(${texte});`);
-  dans(`.acc-ligne${NIVEAU} .acc-remarque`, `color: var(${texte});`);
-  dans(`.acc-produit${NIVEAU}`, [`background: var(${fond}); color: var(${texte});`, `border-color: color-mix(in srgb, var(${fond}) 60%, #000);`]);
-  // les champs, le dé et les cases d'une ligne sur la couleur de son niveau : le texte de la classe, un liseré qui en est tiré, un voile de blanc de mélange
-  dans(`:where(.acc-ligne${NIVEAU}) .acc-acquis__curseur`, `accent-color: var(${texte});`);
-  dans(`:where(.acc-ligne${NIVEAU}) .acc-gemme-choix input`, `accent-color: var(${texte});`);
-  dans(`:where(.acc-ligne${NIVEAU}) .acc-acquis__saisie`, [`border-color: color-mix(in srgb, var(${texte}) 35%, transparent);`, 'background: color-mix(in srgb, #fff 70%, transparent);', `color: var(${texte});`]);
-  dans(`.acc :where(.acc-ligne${NIVEAU}) .acc-de--acquis`, ['background: color-mix(in srgb, #fff 55%, transparent);', `color: var(${texte});`, `border-color: color-mix(in srgb, var(${texte}) 35%, transparent);`]);
-  dans(`.acc :where(.acc-ligne${NIVEAU}) .acc-de--acquis:hover`, 'background: color-mix(in srgb, #fff 85%, transparent);');
+  dans(`.acc-ligne${NIVEAU} .acc-ligne__niveau, html.js .acc-ligne.acc-competence${NIVEAU} [data-acc-niveau]`, `background: var(${fond}); color: var(${texte});`);
+  dans(`.acc-ligne${NIVEAU}`, [`--acc-teinte: color-mix(in srgb, var(${fond}) 12%, var(--surface));`, `--acc-filet: color-mix(in srgb, var(${fond}) 60%, var(--border));`,
+    `--acc-lisere: inset 4px 0 0 var(${fond}), inset 5px 0 0 color-mix(in srgb, var(${texte}) 35%, var(${fond}));`]);
+  const cases = dans(`.acc-ligne${NIVEAU} > *`, ['background: var(--acc-teinte);', 'border-top: 1px solid var(--acc-filet);', 'border-bottom: 1px solid var(--acc-filet);']);
+  assert.doesNotMatch(cases, /\bcolor:/, 'le texte du thème, plus celui de la classe');
+  dans(`.acc-ligne${NIVEAU} > :first-child`, 'box-shadow: var(--acc-lisere);');
+  dans(`html.js .acc tr.acc-ligne${NIVEAU}:hover, .acc tr.acc-ligne[data-choix]${NIVEAU}.est-choisi`, `--acc-teinte: color-mix(in srgb, var(${fond}) 20%, var(--surface));`);
+  dans(`.acc-produit${NIVEAU}`, [`background: color-mix(in srgb, var(${fond}) 8%, var(--surface));`, `border-color: color-mix(in srgb, var(${fond}) 60%, var(--border));`,
+    `box-shadow: inset 4px 0 0 var(${fond}), var(--ombre-encart);`]);
+  // les champs d'une ligne dans la couleur de son niveau : le curseur dans le texte du thème, la case saisie sur la surface, bordée du filet de la ligne ;
+  // le dé et les cases à cocher, ceux des autres lignes
+  dans(`:where(.acc-ligne${NIVEAU}) .acc-acquis__curseur`, 'accent-color: var(--text);');
+  dans(`:where(.acc-ligne${NIVEAU}) .acc-acquis__saisie`, ['border-color: var(--acc-filet);', 'background: var(--surface);', 'color: var(--text);']);
+  assert.doesNotMatch(css, /\.acc-de--acquis(?::hover)? \{[^}]*(?:#fff|--couleur)/, 'le dé d’une ligne n’a plus de voile ni la couleur du niveau');
+  assert.doesNotMatch(css, /\.acc-gemme-choix input \{[^}]*--couleur/, 'les cases des gemmes au choix n’ont plus la couleur du niveau');
   // chaque règle qui lit la couleur d'un niveau ne la lit que sur un élément qui porte la classe d'un niveau (une gemme porte celle de sa magie, dont
   // --couleur s'hériterait), hors l'infobulle d'une gemme, qui porte la classe de sa magie
   const regles = [...css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(([, , corps]) => /var\(--couleur/.test(corps));
-  assert.ok(regles.length >= 10, `${regles.length} règles`);
+  assert.ok(regles.length >= 6, `${regles.length} règles`);
   for (const [, selecteur] of regles) {
     const sel = selecteur.trim();
     if (sel === '.bulle--gemme') continue;
     assert.ok(sel.includes(NIVEAU), `${sel} : lue sur l’élément qui porte la classe d’un niveau`);
   }
   assert.doesNotMatch(css, /--niv\b|--sur-niveau|\[style/, 'plus de --niv, de --sur-niveau ni de sélecteur sur le style');
-  // le texte adouci (la colonne du jet, les intitulés de l'encart) : une part du texte de la classe, lue dans la feuille ; lisible (4,5:1) sur chaque
-  // niveau, comme le texte plein (« Privilégé la lisibilité. »)
-  const [, part] = dans(`.acc-ligne${NIVEAU} > .acc-jet`, `transparent)`).match(new RegExp(`color: color-mix\\(in srgb, var\\(${texte}\\) (\\d+)%, transparent\\);`)) ?? [];
+  // le texte adouci de la colonne du jet, sur une ligne teintée : une part du texte du thème mêlé au texte adouci du thème, lue dans la feuille ; lisible
+  // (4,5:1) sur la teinte de chaque niveau, au repos, au survol et choisie, dans les deux thèmes ; les intitulés de l'encart (texte adouci du thème)
+  // aussi, sur sa teinte (« Privilégé la lisibilité. »)
+  const [, part] = dans(`.acc-ligne${NIVEAU} > .acc-jet`, 'var(--muted))').match(/color: color-mix\(in srgb, var\(--text\) (\d+)%, var\(--muted\)\);/) ?? [];
   assert.ok(part, 'le texte adouci de la colonne du jet');
-  dans(`.acc-produit${NIVEAU} :is(.acc-produit__sur, .acc-produit__sous, dt, .acc-produit__note)`, `color: color-mix(in srgb, var(${texte}) ${part}%, transparent);`);
   const niveaux = couleursDeLaPalette(['niveau']);
   assert.deepEqual(niveaux.map((c) => c.classe), ['couleur-niveau-1', 'couleur-niveau-2', 'couleur-niveau-3', 'couleur-niveau-4', 'couleur-niveau-5']);
+  const deuxThemes = blocsDuTheme().filter((x) => [':root', ':root[data-theme="dark"]'].includes(x.sel));
+  assert.equal(deuxThemes.length, 2);
   for (const c of niveaux) {
     assert.equal(c.fond, COULEURS_DES_NIVEAUX[c.cle], `${c.classe} : la couleur de l’onglet, inchangée (déjà lisible)`);
-    assert.equal(c.texte, '#171210', `${c.classe} : le texte foncé de la règle du site`);
-    const doux = surFond(c.texte, c.fond, Number(part) / 100);
-    assert.ok(contraste(c.fond, doux) >= CONTRASTE_MINIMAL, `${c.classe} : texte adouci ${doux} sur ${c.fond} = ${contraste(c.fond, doux).toFixed(2)}`);
+    assert.equal(c.texte, '#171210', `${c.classe} : le texte foncé de la règle du site (les pastilles)`);
+    assert.ok(contraste(c.fond, c.texte) >= CONTRASTE_MINIMAL, `${c.classe} : la pastille`);
+    for (const b of deuxThemes) {
+      const doux = surFond(b.valeur('--text'), b.valeur('--muted'), Number(part) / 100);
+      for (const teinte of [12, 20]) {
+        const f = surFond(c.fond, b.valeur('--surface'), teinte / 100);
+        assert.ok(contraste(b.valeur('--text'), f) >= CONTRASTE_MINIMAL, `${b.sel}, ${c.classe} à ${teinte} % : texte`);
+        assert.ok(contraste(doux, f) >= CONTRASTE_MINIMAL, `${b.sel}, ${c.classe} à ${teinte} % : texte adouci ${doux} sur ${f} = ${contraste(doux, f).toFixed(2)}`);
+      }
+      const encart = surFond(c.fond, b.valeur('--surface'), 0.08);
+      assert.ok(contraste(b.valeur('--muted'), encart) >= CONTRASTE_MINIMAL, `${b.sel}, encart ${c.classe} : intitulés ${b.valeur('--muted')} sur ${encart}`);
+    }
   }
   // les couleurs d'interface sans règle : des jetons du thème, avec leur valeur d'avant (styles/global/base.css ; « Thème reste, Debug à part »)
   const theme = lire('src/styles/global/base.css');
@@ -1036,7 +1085,8 @@ test('les feuilles de l’onglet Accessoires lisent les propriétés que posent 
   // le violet d'un accessoire maudit (réponses du propriétaire du 2026-10-23 : « Plus clair en sombre (Recommandé) », « Violet assombri (Recommandé) ») :
   //   - en texte sur le fond de la page : la référence en clair, un violet plus clair dans les deux blocs du thème sombre (préférence du système et choix
   //     du site), lisible sur la surface et le fond sombres ;
-  //   - sur un fond de niveau (clair dans les deux thèmes) : la référence (jamais la valeur sombre) assombrie par le calcul, lisible sur les cinq niveaux ;
+  //   - sur l'encart teinté d'un niveau (demande du propriétaire du 2026-10-29 : plus de fond plein) : le violet d'une ligne « MALÉDICTION » choisie
+  //     (--maudit-choisi : en sombre, le violet clair encore éclairci ; en clair, la référence), lisible sur les cinq niveaux dans les deux thèmes ;
   //   - le cadre pointillé de l'encart maudit ne porte pas de texte : la référence, non corrigée.
   const reference = jeton('--maudit');
   const sombres = [...theme.matchAll(/\n {2,4}--maudit-texte: (#[0-9a-f]{6});/g)].map((m) => m[1]);
@@ -1050,11 +1100,7 @@ test('les feuilles de l’onglet Accessoires lisent les propriétés que posent 
   dans('.acc-ligne--malediction > *', 'color: var(--maudit-texte);');
   dans('.acc-produit__sur strong', 'color: var(--maudit-texte);');
   dans('.acc-produit.est-detruit .acc-produit__titre', 'color: color-mix(in srgb, var(--maudit-texte) 70%, var(--text));');
-  const [, partSombre] = dans(`.acc-produit${NIVEAU} .acc-produit__sur strong`, '#000)').match(/color: color-mix\(in srgb, var\(--maudit\) (\d+)%, #000\);/) ?? [];
-  assert.ok(partSombre, 'sur un fond de niveau : la référence assombrie');
-  const assombri = surFond(reference, '#000000', Number(partSombre) / 100);
-  for (const c of niveaux) assert.ok(contraste(assombri, c.fond) >= CONTRASTE_MINIMAL, `violet assombri ${assombri} sur ${c.classe} (${c.fond}) = ${contraste(assombri, c.fond).toFixed(2)}`);
-  assert.ok(contraste(surFond(sombres[0], '#000000', Number(partSombre) / 100), niveaux.at(-1).fond) < CONTRASTE_MINIMAL, 'parti de la valeur sombre, le calcul ne suffirait pas');
+  dans(`.acc-produit${NIVEAU} .acc-produit__sur strong`, 'color: var(--maudit-choisi);');
   dans('.acc-produit.est-maudit', 'border: 2px dashed var(--maudit);');
   // une ligne « MALÉDICTION » choisie (réponse du propriétaire du 2026-10-23 : « Plus clair sur la ligne choisie (Recommandé) ») : en sombre, le violet du
   // texte encore éclairci par le calcul (dans les deux blocs sombres), lisible sur le fond de la ligne choisie, calculé comme la feuille l'écrit ; en
@@ -1080,8 +1126,20 @@ test('les feuilles de l’onglet Accessoires lisent les propriétés que posent 
   }
   const fondChoisiClair = surFond(clair.valeur('--accent'), clair.valeur('--surface'), Number(partAcc) / 100);
   assert.ok(contraste(reference, fondChoisiClair) >= CONTRASTE_MINIMAL, `en clair : ${reference} sur ${fondChoisiClair}`);
+  // le mot « Maudit » sur l'encart teinté de chaque niveau (8 %) : en sombre, le violet éclairci de --maudit-choisi (le violet du texte n'y suffirait pas
+  // partout) ; en clair, la référence
+  for (const b of blocsSombres) {
+    const violet = surFond(b.valeur('--maudit-texte'), '#ffffff', eclaircis[0] / 100);
+    const fonds = niveaux.map((c) => surFond(c.fond, b.valeur('--surface'), 0.08));
+    for (const f of fonds) assert.ok(contraste(violet, f) >= CONTRASTE_MINIMAL, `${b.sel} : « Maudit » ${violet} sur l’encart ${f} = ${contraste(violet, f).toFixed(2)}`);
+    assert.ok(fonds.some((f) => contraste(b.valeur('--maudit-texte'), f) < CONTRASTE_MINIMAL), `${b.sel} : sans l’éclaircir, illisible sur un niveau`);
+  }
+  for (const c of niveaux) {
+    const f = surFond(c.fond, clair.valeur('--surface'), 0.08);
+    assert.ok(contraste(reference, f) >= CONTRASTE_MINIMAL, `en clair : « Maudit » ${reference} sur l’encart ${c.classe} ${f}`);
+  }
   dans('.acc-produit', 'box-shadow: var(--ombre-encart);');
-  dans('html.js .acc tr.acc-ligne:hover > *', 'box-shadow: inset 0 0 0 999px color-mix(in srgb, #000 5%, transparent);');
+  dans(`html.js .acc tr.acc-ligne:not(${NIVEAU}):hover > *`, 'box-shadow: inset 0 0 0 999px color-mix(in srgb, #000 5%, transparent);');
   assert.deepEqual(couleursDuFichier(fichier), [], 'la feuille n’écrit plus que le noir et le blanc de mélange');
 });
 

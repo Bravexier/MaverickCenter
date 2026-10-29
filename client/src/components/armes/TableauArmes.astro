@@ -28,8 +28,8 @@ import Tableau from '../Tableau.astro';
 // La ligne d'une arme est le HTML de lib/armes-rendu.mjs#htmlDeLigneDArme (celui que le mode modification pose pour une arme créée), ses cellules les
 // rendus que le mode modification réécrit après un enregistrement.
 // Les armes élémentaires de la famille (décision R167 : « les armes élémentaires sont listées directement dans le tableau de leur famille » ; les 14, une
-// par magie, sans le Potentiel Illimité) suivent les armes du catalogue, dans l'ordre de arme_elementaire.ordre, chacune sur le fond de sa magie
-// (lib/armes-rendu.mjs#htmlDeLigneDArmeElementaire ; place choisie par l'équipe, la question étant restée sans réponse) ; en lecture sur le site de dev.
+// par magie, sans le Potentiel Illimité) suivent les armes du catalogue, dans l'ordre de arme_elementaire.ordre, chacune dans la couleur de sa magie
+// (fond teinté, filet et liseré : styles/armes/armes.css ; lib/armes-rendu.mjs#htmlDeLigneDArmeElementaire ; place choisie par l'équipe, la question étant restée sans réponse) ; en lecture sur le site de dev.
 // Le compte du tableau (et de l'onglet) compte toutes ses lignes, élémentaires comprises.
 // Mode modification (site de dev) : chaque champ porte son `data-ed` ; les colonnes tirées de l'effet sont en lecture (`data-ed-lecture`, recalculées
 // par le service) ; cinq colonnes n'apparaissent qu'en mode modification (classe `ed-seul`) : Description, Coût, Effet (le texte de l'onglet, d'où

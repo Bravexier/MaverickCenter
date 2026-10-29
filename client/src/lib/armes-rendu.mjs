@@ -205,7 +205,7 @@ export function htmlDeLigneDArme(a, ctx = {}) {
  * « Les deux. Exactement pour les sorts de "Fer". Estoc + Feu pour un arc de feu par exemple. ») : les types physiques de son type élémentaire
  * (`type.types_degats` ; vide ou absente : aucun, rien n'est deviné) — tous (la dague : Estoc et Taille), ou, quand le porteur en choisit un
  * (`type.type_degats_au_choix`, la bombe : « Estoc, Frappe ou Taille au choix »), « Estoc, Frappe ou Taille (au choix) » —, puis « + » et le type de
- * sa magie (son élément : `ae.magie_id`, libellé du nom de la magie, `arme-dgt--magie`, sans couleur à lui : la ligne porte déjà celle de la magie). Les
+ * sa magie (son élément : `ae.magie_id`, libellé du nom de la magie, `arme-dgt--magie` : la pastille dans la couleur pleine de la magie, celle de la classe que porte la ligne, styles/armes/armes.css). Les
  * pastilles physiques gardent les jetons du thème (`arme-dgt--<type>` : --degats-*).
  */
 export function htmlDesTypesDeDegatsElementaires(ae, type) {

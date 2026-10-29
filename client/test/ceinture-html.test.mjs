@@ -166,6 +166,21 @@ test('une ligne par objet de la vue (sauf les bâtons), aux ancres uniques ; le 
   }
 });
 
+/** La surface et le texte des deux thèmes (styles/global/base.css : `:root`, `:root[data-theme="dark"]`). */
+const THEMES = (() => {
+  const base = readFileSync(fileURLToPath(new URL('../src/styles/global/base.css', import.meta.url)), 'utf8');
+  const bloc = (sel) => base.slice(base.indexOf(`${sel} {`), base.indexOf('}', base.indexOf(`${sel} {`)));
+  const jeton = (corps, nom) => corps.match(new RegExp(`\\n\\s*${nom}: (#[0-9a-f]{6});`))?.[1];
+  return Object.fromEntries([['clair', ':root'], ['sombre', ':root[data-theme="dark"]']]
+    .map(([theme, sel]) => [theme, { surface: jeton(bloc(sel), '--surface'), texte: jeton(bloc(sel), '--text') }]));
+})();
+/** `color-mix(in srgb, <couleur> <part>, <fond>)`, comme le navigateur le calcule. */
+const melange = (couleur, fond, part) => {
+  const canaux = (hex) => hex.slice(1).match(/../g).map((x) => parseInt(x, 16));
+  const [c, f] = [canaux(couleur), canaux(fond)];
+  return `#${c.map((v, i) => Math.round(v * part + f[i] * (1 - part)).toString(16).padStart(2, '0')).join('')}`;
+};
+
 /** Les règles des feuilles en ligne de la page : Map(classe → { propriété: valeur }) pour chaque `.classe{…}` d'une balise <style>. */
 const reglesDeLaPage = () => new Map([...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].flatMap((m) => [...m[1].matchAll(/\.([a-z0-9-]+)\{([^{}]*)\}/g)])
   .map(([, classe, corps]) => [classe, Object.fromEntries(corps.split(';').filter(Boolean).map((d) => d.split(':')))]));
@@ -182,6 +197,13 @@ test('chaque potion sur la couleur de la règle du site (son essence, ou la cara
     if (c) {
       assert.deepEqual(regles.get(classeDePotion(c)), { '--ligne-fond': c.fond, '--ligne-texte': c.texte }, `${p.id} : la classe ${classeDePotion(c)}`);
       assert.ok(contraste(c.fond, c.texte) >= CONTRASTE_MINIMAL, p.id);
+      // la ligne : le texte du thème sur le fond du thème teinté de la couleur (12 %, 20 % au survol : styles/global/tableaux.css), dans les deux thèmes
+      for (const [theme, { surface, texte }] of Object.entries(THEMES)) {
+        for (const part of [0.12, 0.2]) {
+          const fond = melange(c.fond, surface, part);
+          assert.ok(contraste(texte, fond) >= CONTRASTE_MINIMAL, `${p.id}, ${theme} à ${part * 100} % : ${texte} sur ${fond} = ${contraste(texte, fond).toFixed(2)}`);
+        }
+      }
     }
   }
   // plus aucune potion neutre : les deux pages d'essence Anti (sans couleur dans le Doc ni sur le site) ont la couleur que le propriétaire leur a
@@ -252,7 +274,7 @@ const reglesDuThemeSombre = (css) => {
 const declarations = (corps) => new Map(corps.split(';').map((d) => d.split(':')).filter((d) => d.length > 1)
   .map(([p, ...v]) => [p.trim(), v.join(':').trim()]));
 
-test('les cartes en Vide (Huile rage, Remède enragé) : lignes du dégradé du blanc avec un texte foncé, en thème sombre comme en clair', options, () => {
+test('les cartes en Vide (Huile rage, Remède enragé) : leurs lignes dans le dégradé du blanc (liseré, teinte) au texte foncé de la classe, en thème sombre comme en clair', options, () => {
   // demande du propriétaire du 2026-10-23, après « Le remède enragé est de la couleur du Vide » et « L'huile rage devrai être couleur du Vide » :
   // « Dans le screen que je t'ai envoyé les lignes ne sont pas affiché blanches. (du moins pas dans le monde sombre) » ; puis, à « Faut-il un palier
   // visible entre Apprenti et Avancé ? » : « Dégradé visible » (lib/alchimie-couleurs.mjs#NUANCES_D_UNE_BASE_BLANCHE)
@@ -275,14 +297,15 @@ test('les cartes en Vide (Huile rage, Remède enragé) : lignes du dégradé du 
     }
     assert.equal(new Set(fonds).size, fonds.length, `${page} : chaque palier a sa teinte (${fonds.join(', ')})`);
   }
-  // le thème sombre ne touche ni à la ligne colorée ni à ses couleurs, ni au fond ou au texte des cases d'un tableau : la ligne garde en sombre le fond
-  // et le texte de sa classe
+  // le thème sombre ne touche ni à la ligne colorée ni à ses couleurs, ni au fond ou au texte des cases d'un tableau ; depuis la demande du propriétaire
+  // du 2026-10-29 (« Je ne veux plus de ligne entièrement colorées de la couleur de la magie ») la ligne n'est plus sur sa couleur : le fond du thème
+  // teinté de la couleur de sa classe, le texte du thème, le liseré de la couleur (styles/global/tableaux.css, test/tableaux.test.mjs)
   const css = feuillesDeLaPage().join('\n');
   const ligne = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(([, sel]) => /tr\.ligne-couleur\s*>\s*\*\s*$/.test(sel.trim()))
     .map(([, , corps]) => declarations(corps)).find((d) => d.has('background'));
   assert.ok(ligne, 'la règle de la ligne colorée (tableaux.css)');
-  assert.equal(ligne.get('background'), 'var(--ligne-fond)');
-  assert.equal(ligne.get('color'), 'var(--ligne-texte)');
+  assert.equal(ligne.get('background'), 'color-mix(in srgb, var(--ligne-fond) 12%, var(--surface))');
+  assert.equal(ligne.get('color'), 'var(--text)');
   const sombres = reglesDuThemeSombre(css);
   assert.ok(sombres.length > 0, 'les règles du thème sombre sont lues');
   const touche = /ligne-couleur|--ligne-(?:fond|texte)|couleur-potion-|couleur-magie-|--couleur(?:-texte)?\s*:|ceint-|ceinture/;
