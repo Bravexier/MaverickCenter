@@ -95,28 +95,34 @@ export function diffMots(avant, apres) {
   return sortie;
 }
 
-const htmlDuDiff = (diff) =>
-  diff.map((d) => (d.type === 'egal' ? echapper(d.texte) : d.type === 'retire' ? `<del>${echapper(d.texte)}</del>` : `<ins>${echapper(d.texte)}</ins>`)).join('');
+// `texte` : le HTML d'un texte cité (echapper par défaut ; la page publiée passe lib/monnaies.mjs#htmlAvecMonnaies, décisions R61 et R63 : les montants
+// convertis partout, notes de version comprises, le texte cité restant tel quel en base). Ce module n'importe pas monnaies.mjs : scripts/mise-a-jour.mjs
+// l'importe, scripts/accessoires.mjs importe monnaies.mjs, et deux scripts de page n'importent jamais le même module (skill site-version-portable) ;
+// la note en préparation du site de dev, rendue par ce script, reste donc échappée. Un montant que le détail mot à mot coupe (« 620 » → « 640 »
+// avant « RO ») perd sa décomposition : l'abréviation seule devient sa pièce.
+const htmlDuDiff = (diff, texte = echapper) =>
+  diff.map((d) => (d.type === 'egal' ? texte(d.texte) : d.type === 'retire' ? `<del>${texte(d.texte)}</del>` : `<ins>${texte(d.texte)}</ins>`)).join('');
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 // Markdown simple du champ libre
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 
-function enLigne(texte) {
-  return echapper(texte)
+function enLigne(ligne, texte = echapper) {
+  return texte(ligne)
     .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, t, url) => `<a href="${url}" rel="noopener noreferrer">${t}</a>`)
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     .replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>');
 }
 
 /** Le champ libre des admins en HTML : paragraphes (ligne vide), listes « - », gras, italique, liens http(s) ; rien d'autre ne passe. */
-export function htmlDuTexteLibre(texte) {
+export function htmlDuTexteLibre(texte, { texte: html = echapper } = {}) {
+  const enLigneHtml = (l) => enLigne(l, html);
   const blocs = String(texte ?? '').replace(/\r\n?/g, '\n').trim().split(/\n{2,}/).filter((b) => b.trim());
   return blocs
     .map((b) => {
       const lignes = b.split('\n');
-      if (lignes.every((l) => /^\s*[-*]\s+/.test(l))) return `<ul>${lignes.map((l) => `<li>${enLigne(l.replace(/^\s*[-*]\s+/, ''))}</li>`).join('')}</ul>`;
-      return `<p>${lignes.map(enLigne).join('<br>')}</p>`;
+      if (lignes.every((l) => /^\s*[-*]\s+/.test(l))) return `<ul>${lignes.map((l) => `<li>${enLigneHtml(l.replace(/^\s*[-*]\s+/, ''))}</li>`).join('')}</ul>`;
+      return `<p>${lignes.map(enLigneHtml).join('<br>')}</p>`;
     })
     .join('');
 }
@@ -127,32 +133,32 @@ export function htmlDuTexteLibre(texte) {
 
 const classeSens = (sens) => `nv-sens nv-sens--${sens ?? 'neutre'}`;
 const titreSens = (sens) => (LIBELLES_SENS[sens] ? ` title="${LIBELLES_SENS[sens]}"` : '');
-const valeur = (v) => (v === null || v === undefined || v === '' ? '<span class="nv-vide">—</span>' : echapper(v));
+const valeur = (v, texte = echapper) => (v === null || v === undefined || v === '' ? '<span class="nv-vide">—</span>' : texte(v));
 
 /** Une valeur courte : l'ancienne barrée, la nouvelle à côté, dans la couleur du sens. */
-function avantApres(avant, apres, sens) {
-  const ancien = avant === null || avant === undefined ? '' : `<del>${valeur(avant)}</del> `;
-  const nouveau = apres === null || apres === undefined ? '<ins class="nv-retire">retiré</ins>' : `<ins>${valeur(apres)}</ins>`;
+function avantApres(avant, apres, sens, texte = echapper) {
+  const ancien = avant === null || avant === undefined ? '' : `<del>${valeur(avant, texte)}</del> `;
+  const nouveau = apres === null || apres === undefined ? '<ins class="nv-retire">retiré</ins>' : `<ins>${valeur(apres, texte)}</ins>`;
   return `<span class="${classeSens(sens)}"${titreSens(sens)}>${ancien}<span class="nv-fleche" aria-hidden="true">→</span> ${nouveau}</span>`;
 }
 
-function htmlDuChamp(l) {
-  const nom = `<span class="nv-champ__nom">${echapper(l.champ)}</span>`;
+function htmlDuChamp(l, texte = echapper) {
+  const nom = `<span class="nv-champ__nom">${texte(l.champ)}</span>`;
   if (estLong(l.avant) || estLong(l.apres)) {
     const diff = l.avant && l.apres ? diffMots(l.avant, l.apres) : null;
     const corps = diff
-      ? `<div class="nv-diff">${htmlDuDiff(diff)}</div>`
-      : `<div class="nv-diff">${l.avant ? `<del>${echapper(l.avant)}</del>` : ''}${l.apres ? `<ins>${echapper(l.apres)}</ins>` : ''}</div>`;
+      ? `<div class="nv-diff">${htmlDuDiff(diff, texte)}</div>`
+      : `<div class="nv-diff">${l.avant ? `<del>${texte(l.avant)}</del>` : ''}${l.apres ? `<ins>${texte(l.apres)}</ins>` : ''}</div>`;
     const etat = l.nature === 'ajoute' ? 'ajouté' : l.nature === 'retire' ? 'retiré' : 'modifié';
     return `<details class="nv-champ nv-champ--long ${classeSens(l.sens)}"${titreSens(l.sens)}><summary>${nom} <span class="nv-etat">${etat}</span></summary>${corps}</details>`;
   }
   if (l.parties?.length) {
     const parties = l.parties
-      .map((p) => `${LIBELLES_PARTIES[p.partie] ? `<span class="nv-partie">${LIBELLES_PARTIES[p.partie]}</span> ` : ''}${avantApres(p.avant, p.apres, p.sens)}`)
+      .map((p) => `${LIBELLES_PARTIES[p.partie] ? `<span class="nv-partie">${LIBELLES_PARTIES[p.partie]}</span> ` : ''}${avantApres(p.avant, p.apres, p.sens, texte)}`)
       .join(' <span class="nv-sep">·</span> ');
     return `<span class="nv-champ">${nom} ${parties}</span>`;
   }
-  return `<span class="nv-champ">${nom} ${avantApres(l.avant, l.apres, l.sens)}</span>`;
+  return `<span class="nv-champ">${nom} ${avantApres(l.avant, l.apres, l.sens, texte)}</span>`;
 }
 
 const regrouper = (lignes, cle) => {
@@ -165,13 +171,13 @@ const regrouper = (lignes, cle) => {
   return m;
 };
 
-function htmlDeLEntite(entite, lignes) {
+function htmlDeLEntite(entite, lignes, texte = echapper) {
   const entiere = lignes.find((l) => l.champ === null);
   if (entiere) {
     const etat = entiere.nature === 'ajoute' ? '<span class="nv-badge nv-badge--ajout">ajouté</span>' : '<span class="nv-badge nv-badge--retrait">retiré</span>';
-    return `<li class="nv-entite"><span class="nv-entite__nom">${echapper(entite)}</span> ${etat}</li>`;
+    return `<li class="nv-entite"><span class="nv-entite__nom">${texte(entite)}</span> ${etat}</li>`;
   }
-  return `<li class="nv-entite"><span class="nv-entite__nom">${echapper(entite)}</span> : ${lignes.map(htmlDuChamp).join(' ')}</li>`;
+  return `<li class="nv-entite"><span class="nv-entite__nom">${texte(entite)}</span> : ${lignes.map((l) => htmlDuChamp(l, texte)).join(' ')}</li>`;
 }
 
 /** Nombre de lignes par sens. */
@@ -183,9 +189,9 @@ export function compter(lignes) {
 
 /**
  * La liste des modifications en HTML. `lignes` = celles de lib/notes-de-version.mjs#comparerBases ou de la table note_version_ligne (même forme) ;
- * `ouvert` : domaines dépliés (sinon repliés au-delà de `plafond` lignes).
+ * `ouvert` : domaines dépliés (sinon repliés au-delà de `plafond` lignes) ; `texte` : le HTML d'un texte cité (htmlDuDiff).
  */
-export function htmlDeLaListe(lignes, { plafond = 40, niveau = 3 } = {}) {
+export function htmlDeLaListe(lignes, { plafond = 40, niveau = 3, texte = echapper } = {}) {
   if (!lignes.length) return '<p class="nv-aucune">Aucune modification des règles.</p>';
   const parDomaine = regrouper(lignes, (l) => l.domaine);
   const domaines = [...parDomaine.keys()].sort((a, b) => ORDRE_DOMAINES.indexOf(a) - ORDRE_DOMAINES.indexOf(b));
@@ -195,8 +201,8 @@ export function htmlDeLaListe(lignes, { plafond = 40, niveau = 3 } = {}) {
       const n = compter(lesLignes);
       const groupes = [...regrouper(lesLignes, (l) => l.groupe ?? '').entries()]
         .map(([groupe, deGroupe]) => {
-          const entites = [...regrouper(deGroupe, (l) => l.entite).entries()].map(([e, ls]) => htmlDeLEntite(e, ls)).join('');
-          return `<div class="nv-groupe">${groupe ? `<h${niveau + 1} class="nv-groupe__titre">${echapper(groupe)}</h${niveau + 1}>` : ''}<ul class="nv-entites">${entites}</ul></div>`;
+          const entites = [...regrouper(deGroupe, (l) => l.entite).entries()].map(([e, ls]) => htmlDeLEntite(e, ls, texte)).join('');
+          return `<div class="nv-groupe">${groupe ? `<h${niveau + 1} class="nv-groupe__titre">${texte(groupe)}</h${niveau + 1}>` : ''}<ul class="nv-entites">${entites}</ul></div>`;
         })
         .join('');
       const resume = `<span class="nv-domaine__titre">${echapper(TITRES_DOMAINES[d] ?? d)}</span> <span class="nv-compte">${lesLignes.length} modification${lesLignes.length > 1 ? 's' : ''}${n.amelioration ? ` · <span class="nv-sens--amelioration">${n.amelioration} amélioration${n.amelioration > 1 ? 's' : ''}</span>` : ''}${n.affaiblissement ? ` · <span class="nv-sens--affaiblissement">${n.affaiblissement} affaiblissement${n.affaiblissement > 1 ? 's' : ''}</span>` : ''}</span>`;
@@ -209,16 +215,16 @@ const DATE = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', y
 /** « 1 octobre 2026 » d'une date AAAA-MM-JJ. */
 export const dateLisible = (iso) => (iso ? DATE.format(new Date(`${iso}T00:00:00Z`)) : '');
 
-/** Une note de version publiée : en-tête (version, date, depuis), champ libre, liste. */
-export function htmlDeLaNote(note, lignes, { niveau = 2 } = {}) {
+/** Une note de version publiée : en-tête (version, date, depuis), champ libre, liste. `texte` : le HTML d'un texte cité (htmlDuDiff). */
+export function htmlDeLaNote(note, lignes, { niveau = 2, texte = echapper } = {}) {
   const exemple = note.exemple ? '<p class="nv-exemple" role="note">Donnée d’exemple (lorem ipsum) : elle disparaîtra à la première vraie mise à jour.</p>' : '';
   const depuis = note.depuis ? ` <span class="nv-depuis">depuis la V${echapper(note.depuis)}</span>` : '';
   // une note sans liste mais avec un texte (la V0.2 : « Import initial depuis les sources historiques », migration 0028) : le texte dit tout,
   // sans « Aucune modification des règles » en dessous
-  const liste = lignes.length || !note.texte ? htmlDeLaListe(lignes, { niveau: niveau + 1 }) : '';
+  const liste = lignes.length || !note.texte ? htmlDeLaListe(lignes, { niveau: niveau + 1, texte }) : '';
   return `<article class="nv-note" id="v${echapper(note.version.replace('.', '-'))}">
     <h${niveau} class="nv-note__titre">Version ${echapper(note.version)} <span class="nv-date">${echapper(dateLisible(note.publiee_le))}</span>${depuis}</h${niveau}>
-    ${exemple}${note.texte ? `<div class="nv-texte">${htmlDuTexteLibre(note.texte)}</div>` : ''}
+    ${exemple}${note.texte ? `<div class="nv-texte">${htmlDuTexteLibre(note.texte, { texte })}</div>` : ''}
     ${liste}
   </article>`;
 }

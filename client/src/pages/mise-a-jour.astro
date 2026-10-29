@@ -6,6 +6,7 @@ import { ouvrirBase } from '../lib/donnees.mjs';
 import { trierVersions } from '../lib/notes-de-version.mjs';
 import { dateLisible, htmlDeLaNote } from '../lib/notes-de-version-rendu.mjs';
 import { url } from '../lib/wiki';
+import { htmlAvecMonnaies } from '../lib/monnaies.mjs';
 
 // Mise à jour (menu Outils ; demande du propriétaire). Deux visages, comme le mode modification :
 //   - production (par défaut, construit ici depuis la base : tables note_version et note_version_ligne) : la note de la dernière version livrée,
@@ -31,7 +32,7 @@ const portable = process.env.INLINE_CSS === '1';
     <section class="nv-production" data-nv-production>
       {
         derniere ? (
-          <Fragment set:html={htmlDeLaNote(derniere, parVersion(derniere.version), { niveau: 2 })} />
+          <Fragment set:html={htmlDeLaNote(derniere, parVersion(derniere.version), { niveau: 2, texte: htmlAvecMonnaies })} />
         ) : (
           <p class="nv-aucune">Aucune version n’a encore été livrée.</p>
         )
@@ -46,7 +47,7 @@ const portable = process.env.INLINE_CSS === '1';
                   Version {n.version} <span class="nv-date">{dateLisible(n.publiee_le)}</span>
                   {n.exemple === 1 && <span class="nv-badge nv-badge--exemple">exemple</span>}
                 </summary>
-                <Fragment set:html={htmlDeLaNote(n, parVersion(n.version), { niveau: 3 })} />
+                <Fragment set:html={htmlDeLaNote(n, parVersion(n.version), { niveau: 3, texte: htmlAvecMonnaies })} />
               </details>
             ))}
           </section>

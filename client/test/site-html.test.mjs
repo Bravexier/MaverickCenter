@@ -16,6 +16,7 @@ import { cheminDePage } from '../src/lib/metiers.mjs';
 import { classeDePartie, classesDeLaPalette, cssDeLaPalette, cssDesFamilles } from '../src/lib/palette-css.mjs';
 import { cssDesAttributs } from '../src/lib/attributs-couleurs.mjs';
 import { htmlDeLaNote } from '../src/lib/notes-de-version-rendu.mjs';
+import { htmlAvecMonnaies } from '../src/lib/monnaies.mjs';
 
 const dist =fileURLToPath(new URL('../dist/', import.meta.url));
 const present = existsSync(join(dist, 'index.html'));
@@ -363,11 +364,12 @@ test('/mise-a-jour/ : la note de la dernière version, l’historique, la place 
   // (le middleware : src/middleware.mjs), comme partout ; on compare donc au rendu pur passé par le même rendu des mots-clés
   const vocabulaire = chargerVocabulaire(db);
   const htmlDeLaNoteRendue = (...args) => htmlAvecMotsCles(htmlDeLaNote(...args), vocabulaire).html;
+  // les montants des textes cités convertis comme sur la page (htmlAvecMonnaies, R61, R63)
   // la plus récente en premier, telle que le rendu pur la donne ; les autres dans l'historique, de la plus récente à la plus ancienne
-  assert.ok(main.includes(htmlDeLaNoteRendue(derniere, lignesDe(derniere.version), { niveau: 2 })), `la note de la V${derniere.version}`);
+  assert.ok(main.includes(htmlDeLaNoteRendue(derniere, lignesDe(derniere.version), { niveau: 2, texte: htmlAvecMonnaies })), `la note de la V${derniere.version}`);
   assert.equal(main.indexOf('<article class="nv-note"'), main.indexOf(`<article class="nv-note" id="v${derniere.version.replace('.', '-')}">`));
   assert.equal(main.includes('<h2 id="nv-historique">Historique</h2>'), anciennes.length > 0);
-  for (const n of anciennes) assert.ok(main.includes(htmlDeLaNoteRendue(n, lignesDe(n.version), { niveau: 3 })), `la V${n.version} dans l’historique`);
+  for (const n of anciennes) assert.ok(main.includes(htmlDeLaNoteRendue(n, lignesDe(n.version), { niveau: 3, texte: htmlAvecMonnaies })), `la V${n.version} dans l’historique`);
   const positions = [derniere, ...anciennes].map((n) => main.indexOf(`id="v${n.version.replace('.', '-')}"`));
   assert.deepEqual(positions, [...positions].sort((a, b) => a - b));
   assert.equal(/class="nv-exemple" role="note"/.test(main), notes.some((n) => n.exemple === 1), 'le bandeau « donnée d’exemple » sur les seules notes d’exemple');
