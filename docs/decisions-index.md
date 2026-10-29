@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 168 décisions, de R1 à R168, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 170 décisions, de R1 à R170, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
 
 | Réf. | Sujet | Décision |
 | --- | --- | --- |
@@ -174,3 +174,5 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R166 | Crans de résistance des armures élémentaires (suite de R165) : chaque armu… | Les crans de résistance de l'armure élémentaire portée… |
 | R167 | Armes élémentaires (« dans un premier temps que pour les armes » ; les arm… | Une pièce élémentaire transforme l'arme : quels que so… |
 | R168 | Mage Vert (Mage jade), don de niveau 20 « Meilleure attaque ... » : « (Pos… | Le don complète l'un des deux dons de niveau 15 qui co… |
+| R169 | Livre de sort de l'entraînement (R104, R118) : la fiche ne propose un livr… | Un livre de sort s'apprend pour n'importe quel sort de… |
+| R170 | Plafond de maîtrise d'une famille d'armes (R149 : 4 points, 5 dés ; « au-d… | Des points de maîtrise au-delà du plafond ne sont pas… |
