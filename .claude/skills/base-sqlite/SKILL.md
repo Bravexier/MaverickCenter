@@ -46,7 +46,7 @@ user-invocable: false
   `conflit`, avec leur `detail` (skill `zone-edition`).
 - Les commentaires de `data/schema.sql` (recopiés dans `docs/sql` par `db:doc`) ne citent que du code qui existe : un fichier `.mjs`, `.astro`,
   `.css` cité existe, un renvoi `fichier.mjs#Nom` nomme une définition du fichier, et `#Nom.prop` une propriété de l'export d'un module de `lib/`
-  (`db-schema.test.mjs`). Un renommage ou une suppression dans le code corrige le commentaire dans le même lot ; une migration appliquée garde le sien.
+  (`db-schema.test.mjs`). Un renommage ou une suppression dans le code corrige le commentaire dans le même lot, sans migration (`tools/db/maverick.py#comparer_schemas` ignore les commentaires), sauf dans le corps d'une `CREATE VIEW` ou d'une `CREATE TRIGGER` : SQLite garde dans `sqlite_master.sql` le texte entier du corps, commentaires compris, et les tests de migration rejouée (`client/test/aide-migration-rejouee.mjs#rejouerLaMigration`, par exemple `personnages-livre-de-sort.test.mjs`) le comparent à celui de `data/schema.sql`. Un commentaire dans ce corps reste identique, au caractère près, à celui de la dernière migration qui crée l'objet ; le changer demande une migration qui recrée l'objet. Une migration appliquée garde le sien.
 - Noms d'affichage : une table ou une colonne nouvelle d'une table que l'édition écrit a son nom français dans `client/src/lib/libelles-de-la-base.mjs` (skill `zone-edition`), sinon `test/libelles-de-la-base.test.mjs` échoue ; une clé normalisée `X_cle` et la provenance n'en demandent pas.
 - Identifiants figés : un id ne dérive plus du nom depuis la migration 0006 ; un nom corrigé ou renommé garde son id, une page renommée garde son adresse
   (skill `base-orthographe`).

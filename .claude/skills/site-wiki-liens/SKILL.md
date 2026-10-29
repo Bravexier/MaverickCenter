@@ -16,7 +16,7 @@ user-invocable: false
 - `client/src/content.config.ts` : la collection `wiki` et son `generateId`.
 - `client/astro.config.mjs` : processeur Markdown et index des liens du plugin.
 - `client/src/pages/[type]/` : une page à `/<type>/<slug>/` ; `client/src/pages/pages.astro` : l'index alphabétique.
-- `client/src/pages/404.astro` : renvois des anciennes adresses.
+- `client/src/pages/404.astro` : renvois des anciennes adresses (`data-renvois` : le guide ; `data-eclatees` : les pages éclatées).
 
 ## À lire
 
@@ -40,6 +40,7 @@ user-invocable: false
 - Le pied d'une page (`components/PiedDePage.astro`) : mots-clés, pages mentionnées, rétroliens ; plus de sources (seulement sur `/archives/`, réponse du propriétaire du 2026-10-22).
 - Une ancienne adresse `/wiki/…` est renvoyée vers la nouvelle par la page 404 (`legacyWikiRedirect`, `lib/nav.mjs`, testé dans `test/nav.test.mjs`).
 - Une page `guide/…` est à l'adresse que lui donne le plan du site (`lib/livres.mjs`, skill `zone-guide`), jamais sous `/guide/`. Ses anciennes adresses `/guide/…` sont renvoyées par la page 404 : renvois calculés au build (`lib/metiers.mjs#renvoisDuGuide`), passés au script par `data-renvois` (`nav.mjs` n'importe pas le plan).
+- Une page éclatée en plusieurs (l'ancienne `/ressources/equipement/`, `/ressources/pieces-elementaires/`) mène à la page de son ancre ou de sa requête : `data-eclatees` (`RENVOIS_DES_PAGES_ECLATEES`), `adresseDeRenvoi`. Un lien Markdown écrit vers elle est redirigé au rendu (`lib/guide-rendu.ts`, adresse écrite gardée en `data-lien-ecrit`). Les `[[liens]]` du wiki vers `ressources/pieces-elementaires` mènent tous à `ressources/armes/#pieces-elementaires` (« Garder Armes pour tous » ; `lib/metiers.mjs#adresseDePage`) ; les anciennes ancres de section de `/ressources/pieces-elementaires/#…`, elles, vont à la page de leur section (armure et vêtement à Armures, le reste à Armes). Règles : skill `zone-equipement`.
 
 ## Maillage automatique
 
@@ -47,5 +48,5 @@ user-invocable: false
 
 ## Tests
 
-- `test/wikilinks.test.mjs`, `test/autolink.test.mjs`, `test/nav.test.mjs` (`legacyWikiRedirect`).
+- `test/wikilinks.test.mjs`, `test/autolink.test.mjs`, `test/nav.test.mjs` (`legacyWikiRedirect`, pages éclatées).
 - `test/site-html.test.mjs` contrôle le site construit (adresses sans `/wiki/`) ; la CI le lance après le build.
