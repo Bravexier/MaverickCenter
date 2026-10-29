@@ -342,6 +342,7 @@ export const HORS_RESSOURCE = {
   personnage_metier_bonus: `Choix d’un rang de bonus de métier à plusieurs compétences (partie de la fiche) : ${FICHES}.`,
   personnage_capacite: `Dons à choix d’une fiche (partie de la fiche) : ${FICHES}.`,
   personnage_sort: `Sorts d’une fiche et leurs NM (partie de la fiche, R24, R26) : ${FICHES}.`,
+  personnage_livre_sort: `Livres de sort lus d’une fiche, un par sort, sur un sort de la liste ou non ; son NM n’est utilisé que si le sort est choisi (partie de la fiche, R26, R169) : ${FICHES}.`,
   personnage_maitrise_choix: `Choix de maîtrise d’armes d’une fiche, une famille par point à choisir de chaque source ; les points et les dés se calculent (partie de la fiche, R148 à R153) : ${FICHES}.`,
   personnage_arme: `Armes d’une fiche (partie de la fiche) : ${FICHES}.`,
   personnage_armure_partie: `Solidité du moment des parties de l’armure d’une fiche (partie de la fiche ; décision R95) : ${FICHES}.`,

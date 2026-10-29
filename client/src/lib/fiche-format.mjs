@@ -13,7 +13,7 @@
 export const TABLES_FICHES = Object.freeze([
   'utilisateur', 'utilisateur_role', 'personnage', 'personnage_partage', 'personnage_classe', 'personnage_caracteristique', 'personnage_competence',
   'personnage_entrainement', 'personnage_acquis_choix', 'personnage_resistance_choix', 'personnage_metier_bonus', 'personnage_capacite', 'personnage_sort',
-  'personnage_maitrise_choix', 'personnage_arme', 'personnage_armure_partie', 'personnage_accessoire', 'personnage_inventaire', 'personnage_ceinture', 'groupe',
+  'personnage_livre_sort', 'personnage_maitrise_choix', 'personnage_arme', 'personnage_armure_partie', 'personnage_accessoire', 'personnage_inventaire', 'personnage_ceinture', 'groupe',
   'groupe_membre',
 ]);
 
@@ -25,6 +25,8 @@ export const PARTIES_DE_FICHE = Object.freeze({
   metier_bonus: 'personnage_metier_bonus',
   capacites: 'personnage_capacite',
   sorts: 'personnage_sort',
+  // un livre de sort lu, un seul par sort (R26), sur un sort de la liste ou non : son NM ne compte que si le sort est choisi (décision R169, migration 0082)
+  livres_sorts: 'personnage_livre_sort',
   // une famille d'armes par point de maîtrise à choisir d'une source (décisions R148 à R153, migration 0076) : les points et les dés se calculent
   maitrise_choix: 'personnage_maitrise_choix',
   armes: 'personnage_arme',
@@ -61,10 +63,13 @@ export const CHAMP_VERSION = 'version';
  * (décision R153 : maitrisesDAvant) ; la compétence du choix reste. `amelioration_elementaire_id` d'une arme (l'amélioration de l'élément posé sur une
  * arme du catalogue) : une pièce élémentaire transforme l'arme, qui n'a plus qu'un niveau d'amélioration (décision R167, migration 0081 : armeDAvant) ;
  * le niveau passe à l'arme élémentaire, ou il est noté, daté, dans la fiche.
+ * `nm_livre` d'un sort (le NM d'un livre de sort, porté par la ligne du sort, décision R26) : le livre se note à part, indépendamment de la liste des
+ * sorts (décision R169, migration 0082 : personnage_livre_sort, clé `livres_sorts`), un livre par sort à `nm_livre = 1`, rangé dans l'ordre de la
+ * liste (livresDesSorts) ; le NM de chaque sort ne change pas.
  */
 export const COLONNES_RETIREES = Object.freeze({
   personnage: Object.freeze(['statut', 'entrainement']), personnage_accessoire: Object.freeze(['nom', 'texte']), personnage_competence: Object.freeze(['acquis']),
-  personnage_sort: Object.freeze(['nm_cadeau']), personnage_acquis_choix: Object.freeze(['arme_famille_id']),
+  personnage_sort: Object.freeze(['nm_cadeau', 'nm_livre']), personnage_acquis_choix: Object.freeze(['arme_famille_id']),
   personnage_arme: Object.freeze(['amelioration_elementaire_id']),
 });
 
@@ -80,6 +85,28 @@ export const nmDuMjDesSorts = (sorts) => (Array.isArray(sorts) ? sorts : []).red
  * page d'avant qui a repris les NM du MJ d'une réponse, puis en a noté sur un sort ; on ne sait pas s'ils s'ajoutent, le service refuse (409).
  */
 export const nmDuMjAvecCadeaux = (fiche) => Boolean(fiche) && typeof fiche === 'object' && 'nm_mj' in fiche && nmDuMjDesSorts(fiche.sorts) > 0;
+
+/**
+ * Les livres de sort d'une fiche d'avant la migration 0082, notés sur la ligne du sort (`nm_livre` = 1, décision R26) : un livre par sort qui en a un,
+ * rangé dans l'ordre de la liste des sorts (`rang`, puis l'ordre reçu), dans le format de la décision R169 ([{ sort_id, rang }], rang de 1 à n). La même
+ * règle pour la base vivante (serveur/base-vivante.mjs, COLONNES_CONVERTIES), une fiche reçue d'une page d'avant et la migration 0082.
+ */
+export function livresDesSorts(sorts) {
+  const vus = new Set();
+  return (Array.isArray(sorts) ? sorts : []).map((x, i) => ({ x, i }))
+    .filter(({ x }) => x && typeof x === 'object' && !Array.isArray(x) && entierPositif(x.nm_livre) > 0 && !vide(x.sort_id))
+    .sort((a, b) => entierPositif(a.x.rang) - entierPositif(b.x.rang) || a.i - b.i)
+    .filter(({ x }) => !vus.has(x.sort_id) && vus.add(x.sort_id))
+    .map(({ x }, n) => ({ sort_id: x.sort_id, rang: n + 1 }));
+}
+
+/**
+ * Vrai si la fiche reçue porte à la fois un livre sur la ligne d'un sort (`nm_livre` positif, avant la décision R169) et les livres de la fiche
+ * (`livres_sorts`) : une page d'avant qui a repris les livres d'une réponse, puis en a noté un sur un sort ; on ne sait pas s'ils s'ajoutent, le service
+ * refuse (409), comme nmDuMjAvecCadeaux.
+ */
+export const livresAvecLivresDesSorts = (fiche) => Boolean(fiche) && typeof fiche === 'object' && 'livres_sorts' in fiche
+  && livresDesSorts(fiche.sorts).length > 0;
 
 /**
  * Les lignes d'entraînement d'un ancien texte d'entraînement (personnage.entrainement, décision R71) : une ligne de texte libre par ligne non vide du
@@ -523,7 +550,9 @@ export function armesDAvant(lignes, noms = {}) {
  * (retraitsDuBouclier) ; et des accessoires qui portent encore un nom, un effet hors table, ou un emplacement retiré (Ceinture, Autre) sont convertis
  * (accessoiresGardes), ce qu'ils perdent noté. Des sorts qui portent encore leurs NM du MJ (`nm_cadeau`, avant la migration 0066) les perdent : leur
  * somme devient les NM du MJ de la fiche (nmDuMjDesSorts, décision R118) quand elle n'a pas `nm_mj` (avec, positifs : refusés par le service,
- * nmDuMjAvecCadeaux, et jetés par la page). Des maîtrises d'avant la migration 0076 (une liste `maitrises_armes`, l'arme choisie `arme_famille_id`
+ * nmDuMjAvecCadeaux, et jetés par la page). Des sorts qui portent encore leur livre (`nm_livre`, avant la migration 0082) le perdent : chaque sort à
+ * nm_livre = 1 devient un livre de la fiche (`livres_sorts`, livresDesSorts, décision R169) quand elle n'a pas `livres_sorts` (avec, des livres sur
+ * les sorts : refusés par le service, livresAvecLivresDesSorts, et jetés par la page) ; le NM de chaque sort ne change pas. Des maîtrises d'avant la migration 0076 (une liste `maitrises_armes`, l'arme choisie `arme_famille_id`
  * d'un choix d'acquis) sont retirées, notées en une ligne datée quand la fiche n'a pas `maitrise_choix` (maitrisesDAvant, décision R153 ; aucun choix
  * n'est posé ; la compétence d'un choix d'acquis reste) ; avec `maitrise_choix` : refusées par le service (maitrisesAvecChoix) et jetées par la page.
  * Une fiche qui porte une armure ET une armure élémentaire (l'« élément » de R95, avant la décision R165) : l'élément devient l'armure, avec son
@@ -552,14 +581,16 @@ export function sansPartiesRetirees(fiche, { instant = null, noms = {}, notes = 
   const acquis = Array.isArray(fiche.competences) && fiche.competences.some((c) => c && 'acquis' in c);
   // décision R118 : les NM du MJ notés sort par sort
   const cadeaux = Array.isArray(fiche.sorts) && fiche.sorts.some((x) => x && typeof x === 'object' && 'nm_cadeau' in x);
+  // décision R169 : le livre de sort noté sur la ligne du sort
+  const livres = Array.isArray(fiche.sorts) && fiche.sorts.some((x) => x && typeof x === 'object' && 'nm_livre' in x);
   // décisions R152 et R153 : l'arme choisie d'un choix d'acquis (R119)
   const armesChoisies = Array.isArray(fiche.acquis_choix) && fiche.acquis_choix.some((a) => a && typeof a === 'object' && !Array.isArray(a) && 'arme_famille_id' in a);
   // décision R165 : une armure et son « élément » (R95)
   const transformee = armureDouble && deuxArmures(fiche);
   // décision R167 : un élément posé sur une arme du catalogue, l'amélioration de l'élément
   const armesElementaires = Array.isArray(fiche.armes) && fiche.armes.some(armeDAvant0081);
-  if (!Object.keys(PARTIES_RETIREES).some((cle) => cle in fiche) && !accessoires && !entrainement && !acquis && !cadeaux && !armesChoisies && !transformee
-    && !armesElementaires) return fiche;
+  if (!Object.keys(PARTIES_RETIREES).some((cle) => cle in fiche) && !accessoires && !entrainement && !acquis && !cadeaux && !livres && !armesChoisies
+    && !transformee && !armesElementaires) return fiche;
   const { progression, armures, bouclier_materiaux, maitrises_armes, ...reste } = fiche;
   const retraits = [];
   if (progression !== undefined && !('gains_sante' in reste) && !('gains_chakra' in reste)) Object.assign(reste, gainsDeLaProgression(progression));
@@ -592,6 +623,11 @@ export function sansPartiesRetirees(fiche, { instant = null, noms = {}, notes = 
   if (cadeaux) {
     if (!('nm_mj' in reste)) reste.nm_mj = nmDuMjDesSorts(reste.sorts);
     reste.sorts = reste.sorts.map((x) => (x && typeof x === 'object' && !Array.isArray(x) ? (({ nm_cadeau: _c, ...y }) => y)(x) : x));
+  }
+  if (livres) {
+    // décision R169 : un livre par sort à nm_livre = 1, dans l'ordre de la liste ; avec les livres de la fiche, ceux-ci restent (livresAvecLivresDesSorts)
+    if (!('livres_sorts' in reste)) reste.livres_sorts = livresDesSorts(reste.sorts);
+    reste.sorts = reste.sorts.map((x) => (x && typeof x === 'object' && !Array.isArray(x) ? (({ nm_livre: _l, ...y }) => y)(x) : x));
   }
   if (maitrises_armes !== undefined || armesChoisies) {
     // décision R153 : les anciens dés et l'arme choisie, une ligne datée ; jetés sans note avec les choix de maîtrise (maitrisesAvecChoix)
@@ -688,7 +724,9 @@ const positif = (n) => typeof n === 'number' && n > 0;
  *   don        : « le don « Botte secrète » (classe Bretteur des dunes, spécialité LAME COURBE, niveau 20) » ;
  *   spécialité : « la spécialité « LAME COURBE » (classe X, avec les dons choisis « A » et « B ») » (`dons` : ceux de la fiche qui partent avec elle) ;
  *   sort       : « le sort « Boule de feu » (magie Feu, NPM 2, 2 NM sur cette fiche dont 1 de livre) » (des faits, rien sur ce qu'ils deviennent ; les NM
- *                du MJ sont ceux de la fiche, décision R118 : ils restent quand le sort part) ;
+ *                du MJ sont ceux de la fiche, décision R118 : ils restent quand le sort part). Son livre (décision R169, `livre`) part avec lui : « dont
+ *                1 de livre » sur un sort choisi qui a des NM ; sinon « livre de sort en attente », et « …, sort hors de la liste » quand la fiche n'avait
+ *                que le livre (`choisi` faux, `nm` null) ;
  *   métier     : « le métier « Forgeron » » ;
  *   arme       : « l'arme « Katana » (ÉPÉES, arme 1) » (décision R52) ;
  *   arme élém. : une arme d'avant la migration 0081 (décision R167, armeDAvant ; `cas`) : devenue l'arme élémentaire, « l'arme « Arc long » (ARC, arme 1,
@@ -710,7 +748,7 @@ const positif = (n) => typeof n === 'number' && n > 0;
  *                `amelioration_devenue` ; « armure_magie_absente » : `magie` ; « armure_trop_lourde » : `poids` (celui de l'armure) et `portable` (le poids
  *                portable du personnage), en mots (POIDS_DES_ARMURES).
  * @param {{ nature: 'metier' | 'specialite' | 'capacite' | 'sort' | 'arme' | 'objet' | 'arme_elementaire' | 'piece_armure' | 'armure_transformee' | 'armure_familier' | 'armure_magie_absente' | 'armure_trop_lourde' | 'materiau_bouclier' | 'accessoire' | 'acquis' | 'maitrises_armes', id: string, emplacement?: string | null, famille?: string | null, rang?: number | null, nom?: string | null, classe?: string | null, specialite?: string | null,
- *   niveau?: number | null, magie?: string | null, npm?: number | null, nm?: number | null, nm_livre?: number | null,
+ *   niveau?: number | null, magie?: string | null, npm?: number | null, nm?: number | null, livre?: boolean, choisi?: boolean,
  *   dons?: string[], devenue?: boolean | string, armureGardee?: boolean, quantite?: number | null, matiere?: string | null, effet?: string | null, texte?: string | null,
  *   ecarte?: boolean, valeur?: number, amelioration?: number | string | null, parties?: string | null, amelioration_devenue?: number | string | null,
  *   elementaire?: boolean, poids?: string, portable?: string, cas?: 'devenue' | 'autre_type' | 'amelioration_seule', element?: string,
@@ -734,9 +772,9 @@ export function descriptionDuRetrait(d) {
     tete = `le sort « ${nom} »`;
     if (d.magie) parties.push(`magie ${d.magie}`);
     if (d.npm !== null && d.npm !== undefined) parties.push(`NPM ${d.npm}`);
-    if (positif(d.nm)) {
-      parties.push(`${d.nm} NM sur cette fiche${positif(d.nm_livre) ? ` dont ${d.nm_livre} de livre` : ''}`);
-    }
+    // décision R169 : le livre du sort part avec lui ; noté sur un sort choisi d'au moins 1 NM, il en fait partie, sinon il était en attente
+    if (positif(d.nm)) parties.push(`${d.nm} NM sur cette fiche${d.livre ? ' dont 1 de livre' : ''}`);
+    else if (d.livre) parties.push(d.choisi === false ? 'livre de sort en attente, sort hors de la liste' : 'livre de sort en attente');
   } else if (d.nature === 'metier') {
     tete = `le métier « ${nom} »`;
   } else if (d.nature === 'arme') {

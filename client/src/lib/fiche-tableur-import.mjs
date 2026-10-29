@@ -62,7 +62,7 @@ import {
   degatsDArme, donsValables, durabiliteAEcrire, durabiliteMaxDArme, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, ethnieImposee, ethniesDeLaRace,
   famillesMaitrisables, gainsDeNiveau, magieAcquiseValable, maitriseChoixValables, maitriseDArme, maitrisesParFamille, maitriseDesSorts, minimumDeLEmplacement,
   partiesApresReglage, sourcesDeMaitrise,
-  armureParPartie, bouclierDe, jetDuSortPrepare, partiesDeLArmure, refusMagieAcquise, soliditeDuBouclierAEcrire, sortPrepare, trouver, armeDeLaLigne, typesDeDegats,
+  armureParPartie, aUnLivre, bouclierDe, jetDuSortPrepare, partiesDeLArmure, sortsDesLivres, refusMagieAcquise, soliditeDuBouclierAEcrire, sortPrepare, trouver, armeDeLaLigne, typesDeDegats,
 } from './fiche-moteur.mjs';
 import { coutEnUneCase } from './sort-cout.mjs';
 import { valeurAuNm } from './sort-maitrise.mjs';
@@ -1075,7 +1075,7 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     });
     if (!sort) return;
     pris.add(sort.id);
-    f.sorts.push({ sort_id: sort.id, rang: f.sorts.length + 1, niveau_maitrise: Math.max(0, nm), nm_livre: 0 });
+    f.sorts.push({ sort_id: sort.id, rang: f.sorts.length + 1, niveau_maitrise: Math.max(0, nm) });
   };
   for (const l of d.sorts.lignes) {
     const nom = texte(`${colonnes.nom}${l}`);
@@ -1084,8 +1084,13 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   for (const v of notee('sorts')) {
     for (const { nom, nm } of lireListe(v).map(lireSortEnSuite)) ajouterSort(nom, nm ?? 0, null);
   }
-  // les livres de sort ; les NM du MJ sont ceux de la fiche (décision R118 : ligne « NM du MJ »), un classeur d'avant les écrit sort par sort (« MJ 2 »)
+  // les livres de sort (décision R169) : un par sort, sur un sort de la liste ou non (il attend alors), même hors des magies du personnage (aucun
+  // contrôle ne le refuse) ; seul un nom inconnu des règles est perdu. Un nom ambigu (homonymes d'un Potentiel Illimité) se lit d'abord dans la liste
+  // des sorts, puis dans sortsDesLivres, puis dans toutes les règles ; encore ambigu, il est perdu (jamais rapproché par vraisemblance). Les NM du MJ
+  // sont ceux de la fiche (décision R118 : ligne « NM du MJ »), un classeur d'avant les écrit sort par sort (« MJ 2 »)
   let nmDuMj = 0;
+  f.livres_sorts = [];
+  const nomme = (o) => (s) => cle(s.nom) === cle(o.nom) || segment(s.id) === cle(o.nom);
   for (const v of notee('nmOfferts')) {
     const offerts = lireNmOfferts(v);
     if (!offerts) {
@@ -1093,13 +1098,17 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
       continue;
     }
     for (const o of offerts) {
-      const lignes = f.sorts.filter((s) => cle(nomDe(regles.sorts, s.sort_id)) === cle(o.nom) || segment(s.sort_id) === cle(o.nom));
-      if (lignes.length !== 1 || o.livre > 1 || o.livre + o.cadeau > lignes[0].niveau_maitrise) {
-        perdu(`NM offerts : « ${o.nom} » (livre ${o.livre}, MJ ${o.cadeau}) ${lignes.length !== 1 ? 'ne désigne pas un sort de la liste' : 'dépasse les NM du sort'}`);
+      const choisis = f.sorts.map((s) => trouver(regles.sorts, s.sort_id)).filter((s) => s && nomme(o)(s));
+      const candidats = [choisis, sortsDesLivres(regles, f).filter(nomme(o)), regles.sorts.filter(nomme(o))].find((c) => c.length) ?? [];
+      if (candidats.length !== 1) {
+        perdu(`NM offerts : « ${o.nom} » (livre ${o.livre}, MJ ${o.cadeau}) ${candidats.length ? 'désigne plusieurs sorts' : 'introuvable dans les règles'}`);
         continue;
       }
-      lignes[0].nm_livre = o.livre;
       nmDuMj += o.cadeau;
+      if (!o.livre) continue;
+      const sort = candidats[0];
+      if (aUnLivre(f, sort.id) || o.livre > 1) perdu(`NM offerts : « ${o.nom} » (livre ${o.livre}) : un seul livre par sort (décision R26)`);
+      if (!aUnLivre(f, sort.id)) f.livres_sorts.push({ sort_id: sort.id, rang: f.livres_sorts.length + 1 });
     }
   }
   for (const v of notee('nmMj')) {

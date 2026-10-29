@@ -66,3 +66,24 @@ export const LIBELLES_DES_CONTROLES = Object.freeze({
 
 /** Libellé d'une règle (la clé elle-même si elle est inconnue : une règle ajoutée à la vue reste visible). */
 export const libelleDuControle = (regle) => LIBELLES_DES_CONTROLES[regle] ?? regle;
+
+/**
+ * La gravité des règles qui ne sont pas des erreurs (la vue ne la porte pas : elle signale, la page dit comment) : `maitrise_plafond`, un
+ * avertissement (décision R170 : « La mention de points de maitrise au delà du plafond ne devrai pas remonter une erreur. Juste un avertissement ,
+ * surtout quand ils sont imposées ») ; toute autre règle, connue ou non, est une erreur.
+ */
+export const GRAVITES_DES_CONTROLES = Object.freeze({ maitrise_plafond: 'avertissement' });
+
+/** Gravité d'une règle : 'avertissement' (GRAVITES_DES_CONTROLES) ou 'erreur'. */
+export const graviteDuControle = (regle) => GRAVITES_DES_CONTROLES[regle] ?? 'erreur';
+
+/**
+ * Les contrôles rendus par le service, rangés pour l'onglet « Contrôle » : les erreurs d'abord, puis les avertissements, chacun avec sa gravité, et
+ * leurs nombres. { erreurs, avertissements, lignes: [{ regle, detail, gravite }] }.
+ */
+export function controlesParGravite(controles) {
+  const lignes = (controles ?? []).map((c) => ({ ...c, gravite: graviteDuControle(c.regle) }));
+  const erreurs = lignes.filter((c) => c.gravite === 'erreur');
+  const avertissements = lignes.filter((c) => c.gravite === 'avertissement');
+  return { erreurs: erreurs.length, avertissements: avertissements.length, lignes: [...erreurs, ...avertissements] };
+}

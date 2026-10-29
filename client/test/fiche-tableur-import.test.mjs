@@ -181,6 +181,14 @@ test('case NOTE : notes du joueur avant le marqueur, lignes « Clé : valeur » 
   assert.deepEqual(r.nonRepris, ['NM offerts : « Boule de feu » illisible', 'NM du MJ : « deux » illisible', 'Gains de niveau : « niv. 2 : beaucoup » illisibles']);
   // les NM du MJ, pour toute la fiche (décision R118)
   assert.equal(ficheDuClasseur(regles, ordinateur({ BA54: `${MARQUEUR_DES_NOTES}\nNM du MJ : 2` })).fiche.nm_mj, 2);
+  // décision R169 : un livre de sort sur un sort qui n'est pas dans la liste (ici, aucun sort ni magie) est repris, en attente ; seul un sort inconnu des
+  // règles est perdu ; un second livre du même sort aussi (R26)
+  const livres = ficheDuClasseur(regles, ordinateur({ BA54: `${MARQUEUR_DES_NOTES}\nNM offerts : Boule de feu (livre 1) ; Sort imaginaire (livre 1) ; Boule de feu (livre 1)` }));
+  const bouleDeFeu = 'magies/magie-du-feu#sort:boule-de-feu';
+  assert.deepEqual([livres.fiche.sorts, livres.fiche.livres_sorts], [[], [{ sort_id: bouleDeFeu, rang: 1 }]]);
+  assert.deepEqual(M.livresDe(regles, livres.fiche).map((l) => [l.sort_id, l.enAttente]), [[bouleDeFeu, true]]);
+  assert.deepEqual(livres.nonRepris, ['NM offerts : « Sort imaginaire » (livre 1, MJ 0) introuvable dans les règles',
+    'NM offerts : « Boule de feu » (livre 1) : un seul livre par sort (décision R26)']);
 
   // la case « Entraînement » de la fiche auto : les bonus d'entraînement (guide « Fiche de personnage : Capacités/Dons »), « 2 Magie | 10 Concentration »
   // ou « Magie 2 | Concentration 10 » (« % » permis)
@@ -357,7 +365,8 @@ function verifierLeCommun(values, r) {
   const magies = [f.magie_innee_id, f.magie_acquise_id].filter(Boolean);
   const ecrits = AUTO.sorts.lignes.filter((l) => v(`AA${l}`)).map((l) => [v(`AA${l}`), Number(v(`AY${l}`) || 0)])
     .map(([nom, nm]) => [selon(regles.sorts.filter((s) => magies.includes(s.magie_id)), nom), nm]).filter(([s]) => s.length === 1);
-  assert.deepEqual(f.sorts.map((s) => [s.sort_id, s.niveau_maitrise, s.nm_livre, s.rang]), ecrits.map(([[s], nm], i) => [s.id, nm, 0, i + 1]));
+  assert.deepEqual(f.sorts.map((s) => [s.sort_id, s.niveau_maitrise, s.rang]), ecrits.map(([[s], nm], i) => [s.id, nm, i + 1]));
+  assert.deepEqual(f.livres_sorts, [], 'aucun livre : la fiche auto ne le dit pas');
   assert.equal(f.nm_mj, 0, 'la fiche auto n’écrit pas de NM du MJ');
   assert.ok(f.sorts.length >= 1);
   // inventaire : colonne par colonne, les lignes nommées ; la ressource de ce nom exact (comme la page)
@@ -689,10 +698,11 @@ test('modèle ordinateur : une fiche écrite par la page dans l’ancienne écri
   assert.deepEqual([f.gains_sante, f.gains_chakra], [30, 36]);
   // le NM du MJ d'un sort (« MJ 1 », écrit avant la décision R118) : un NM du MJ de la fiche
   assert.deepEqual(f.sorts, [
-    { sort_id: sortDe('Feu', 'Boule de feu').id, rang: 1, niveau_maitrise: 3, nm_livre: 1 },
-    { sort_id: sortDe('Feu', 'Fer brûlant').id, rang: 2, niveau_maitrise: 1, nm_livre: 0 },
-    { sort_id: sortDe('Feu', 'Cautérisation').id, rang: 3, niveau_maitrise: 2, nm_livre: 0 },
+    { sort_id: sortDe('Feu', 'Boule de feu').id, rang: 1, niveau_maitrise: 3 },
+    { sort_id: sortDe('Feu', 'Fer brûlant').id, rang: 2, niveau_maitrise: 1 },
+    { sort_id: sortDe('Feu', 'Cautérisation').id, rang: 3, niveau_maitrise: 2 },
   ]);
+  assert.deepEqual(f.livres_sorts, [{ sort_id: sortDe('Feu', 'Boule de feu').id, rang: 1 }], 'le livre de la Boule de feu, noté à part (décision R169)');
   assert.equal(f.nm_mj, 1);
   // R167 : l'arme élémentaire, sans matériau, au niveau de l'ancienne amélioration de l'élément ; l'effet en plus gardé, l'effet du catalogue de l'arme
   // d'origine reconnu (pas de l'effet en plus)

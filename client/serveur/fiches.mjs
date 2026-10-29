@@ -5,8 +5,8 @@
 // n'a plus de statut « validé » qui les rendait bloquantes : demande du propriétaire, migration 0038).
 import { randomUUID } from 'node:crypto';
 import {
-  armuresAvecArmure, bouclierAvecMatiere, entrainementAvecLignes, CHAMP_VERSION, COLONNES_DU_SERVICE, COLONNES_RETIREES, PARTIES_DE_FICHE, ficheVide, maitrisesAvecChoix,
-  nmDuMjAvecCadeaux, progressionAvecGains, sansPartiesRetirees,
+  armuresAvecArmure, bouclierAvecMatiere, entrainementAvecLignes, CHAMP_VERSION, COLONNES_DU_SERVICE, COLONNES_RETIREES, PARTIES_DE_FICHE, ficheVide, livresAvecLivresDesSorts,
+  maitrisesAvecChoix, nmDuMjAvecCadeaux, progressionAvecGains, sansPartiesRetirees,
 } from '../src/lib/fiche-format.mjs';
 import { cadrageDe, dimensionsDuPortrait, empreinte, estUnPortrait, octetsDuPortrait, styleDuCadrage } from '../src/lib/portrait.mjs';
 import { clesRompues } from './base-vivante.mjs';
@@ -34,7 +34,7 @@ const DEPART_DES_COLONNES_RETIREES_DE_DETAIL = Object.freeze({ personnage_compet
  * une de ces colonnes que la base n'a pas est ignorée tant qu'elle ne porte rien (sa valeur de départ, ou vide : null, « "" ») ; autrement, « champ
  * inconnu » (ce qu'elle porte serait perdu). De même une table de la fiche que la base n'a pas encore (personnage_armure_partie, 0055 ;
  * personnage_entrainement et personnage_acquis_choix, 0062 ; personnage_resistance_choix, 0069, la résistance au choix du Drakos orange, R124 ;
- * personnage_maitrise_choix, 0076, les choix de maîtrise d'armes, R148 : partiesDeLaBase) se lit vide, et une liste non vide pour elle est refusée.
+ * personnage_maitrise_choix, 0076, les choix de maîtrise d'armes, R148 ; personnage_livre_sort, 0082, les livres de sort, R169 : partiesDeLaBase) se lit vide, et une liste non vide pour elle est refusée.
  */
 export const DEPART_DES_COLONNES_AJOUTEES = Object.freeze({
   personnage: Object.freeze({
@@ -62,7 +62,7 @@ export const PAGE_D_AVANT = 'La page vient d’une version précédente du site 
   + 'l’armure est une seule armure complète, avec la solidité de chacune de ses parties ; le bouclier a une forme et une matière ; '
   + 'les accessoires n’ont plus que six emplacements, sans nom ni effet hors table ; l’entraînement se note en lignes et l’acquis se calcule ; '
   + 'les NM du MJ se notent pour toute la fiche, à côté de la limite des NM, et plus sort par sort ; les maîtrises d’armes se choisissent '
-  + 'désormais par source, une famille par point à choisir, et leurs dés se calculent).';
+  + 'désormais par source, une famille par point à choisir, et leurs dés se calculent ; un livre de sort se note à part de la liste des sorts).';
 
 /** Au plus tant de lignes par liste (une fiche en a quelques dizaines) : un envoi aberrant est refusé avant d'écrire. */
 export const LIGNES_MAX = 500;
@@ -336,7 +336,8 @@ function verifierForme(db, entree, problemes) {
  * l'armure (armuresAvecArmure) : refus 409. Une liste `bouclier_materiaux` (avant la migration 0060) donne la matière du bouclier (R96 ; avec les
  * nouvelles clés du bouclier, bouclierAvecMatiere : refus 409), et les accessoires d'avant (nom, effet hors table, Ceinture, Autre) sont convertis (R97).
  * Des sorts qui portent leurs NM du MJ (`nm_cadeau`, avant la migration 0066) donnent les NM du MJ de la fiche (R118) ; avec `nm_mj` et des NM du MJ
- * sur un sort (nmDuMjAvecCadeaux) : refus 409. Des maîtrises d'avant la migration 0076 (`maitrises_armes`, l'arme choisie d'un choix d'acquis) sont notées
+ * sur un sort (nmDuMjAvecCadeaux) : refus 409. Des sorts qui portent leur livre (`nm_livre`, avant la migration 0082) donnent les livres de la fiche,
+ * `livres_sorts` (R169 : livresDesSorts) ; avec `livres_sorts` et un livre sur un sort (livresAvecLivresDesSorts) : refus 409. Des maîtrises d'avant la migration 0076 (`maitrises_armes`, l'arme choisie d'un choix d'acquis) sont notées
  * en une ligne datée, aucun choix posé (R153) ; avec les choix de maîtrise `maitrise_choix` (maitrisesAvecChoix) : refus 409. Des armes d'avant la
  * migration 0081 (un élément posé sur une arme du catalogue, `amelioration_elementaire_id`) prennent la forme de la décision R167 (une arme du catalogue
  * OU une arme élémentaire, un seul niveau d'amélioration : armesDAvant), ce qu'elles perdent noté, daté. Les choix de maîtrise
@@ -353,7 +354,7 @@ function verifierForme(db, entree, problemes) {
 export function enregistrerFiche(db, recue, { id = null, maintenant = new Date(), poidsPortable = undefined } = {}) {
   const problemes = [];
   if (progressionAvecGains(recue) || armuresAvecArmure(recue) || bouclierAvecMatiere(recue) || entrainementAvecLignes(recue) || nmDuMjAvecCadeaux(recue)
-    || maitrisesAvecChoix(recue)) {
+    || maitrisesAvecChoix(recue) || livresAvecLivresDesSorts(recue)) {
     throw new ErreurFiche(409, PAGE_D_AVANT);
   }
   const nomDans = (table) => (x) => db.prepare(`SELECT nom FROM "${table}" WHERE id = ?`).get(x)?.nom ?? null;

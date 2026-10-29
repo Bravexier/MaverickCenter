@@ -270,6 +270,8 @@ test('R42 — une fiche qui cite un métier, un sort, une spécialité ou un don
   const { spec, don } = avecSpecialite(chemin, 'Note du joueur.');
   const ecrire = new DatabaseSync(chemin);
   ecrire.prepare("UPDATE personnage SET metier_id = ? WHERE id = 'p2'").run(UN_METIER);
+  // décision R169 : le livre seul du sort, sur une fiche qui ne l'a pas choisi (en attente), part avec lui (la clé n'a pas d'ON DELETE)
+  ecrire.prepare("INSERT INTO personnage_livre_sort (personnage_id, sort_id, rang) VALUES ('p2', ?, 1)").run(UN_SORT_DE_FEU);
   ecrire.close();
   const avant = lignesVivantes(chemin);
   const versionAvant = versionDe(chemin, 'p1');
@@ -286,19 +288,21 @@ test('R42 — une fiche qui cite un métier, un sort, une spécialité ou un don
     metier: `le métier « ${metier} »`,
     specialite: `la spécialité « ${spec.nom} » (classe ${guerrier}, avec le don choisi « ${don.nom} »)`,
     sort: `le sort « ${sort.nom} » (magie ${sort.magie}, NPM ${sort.niveau})`,
+    livre: `le sort « ${sort.nom} » (magie ${sort.magie}, NPM ${sort.niveau}, livre de sort en attente, sort hors de la liste)`,
   };
   const ligneDe = (d) => `[11/10/2026] Retrait (règles modifiées) : ${d}${SUITE}`;
   assert.deepEqual(r.fiches, [
     { fiche: 'Aldric', retraits: [retraits.metier, retraits.specialite, retraits.sort] },
-    { fiche: 'fiche de joueur n° 1', retraits: [retraits.metier] },
+    { fiche: 'fiche de joueur n° 1', retraits: [retraits.metier, retraits.livre] },
   ]);
   // les fiches : l'élément retiré, la ligne de classe gardée, une ligne de note par élément à la suite du texte du joueur
   const db = lecture(chemin);
   try {
     assert.deepEqual(db.prepare("SELECT id, metier_id, notes, modifie_le FROM personnage ORDER BY id").all().map((l) => ({ ...l })), [
       { id: 'p1', metier_id: null, notes: ['Note du joueur.', ...[retraits.metier, retraits.specialite, retraits.sort].map(ligneDe)].join('\n'), modifie_le: '2026-10-11T08:30:00Z' },
-      { id: 'p2', metier_id: null, notes: ligneDe(retraits.metier), modifie_le: '2026-10-11T08:30:00Z' },
+      { id: 'p2', metier_id: null, notes: [retraits.metier, retraits.livre].map(ligneDe).join('\n'), modifie_le: '2026-10-11T08:30:00Z' },
     ]);
+    assert.equal(db.prepare('SELECT count(*) AS n FROM personnage_livre_sort').get().n, 0, 'R169 : le livre part avec le sort');
     assert.deepEqual(db.prepare("SELECT rang, classe_id, specialite_id FROM personnage_classe WHERE personnage_id = 'p1'").all().map((l) => ({ ...l })),
       [{ rang: 1, classe_id: 'classes/guerrier', specialite_id: null }]);
     assert.equal(db.prepare('SELECT count(*) AS n FROM personnage_capacite').get().n, 0);
@@ -894,8 +898,31 @@ test('migration 0062 : une base vivante d’avant est reprise ; l’entraînemen
   assert.equal(valeur(chemin, "SELECT count(*) AS n FROM personnage_entrainement WHERE personnage_id = 'p1'").n, 2);
 });
 
+/**
+ * La base vivante comme avant la migration 0082 : le livre de sort sur la ligne du sort (personnage_sort.nm_livre, décision R26), pas de
+ * personnage_livre_sort (chaque livre devient nm_livre = 1 de son sort ; un livre sur un sort non choisi n'existait pas) ; la vue lit nm_livre.
+ */
+function enBaseDAvant0082(chemin) {
+  const db = new DatabaseSync(chemin);
+  try {
+    const vue = db.prepare("SELECT sql FROM sqlite_master WHERE name = 'v_personnage_controle'").get().sql;
+    const vueDAvant = vue.replaceAll('ps.niveau_maitrise - CASE WHEN l.sort_id IS NULL OR ps.niveau_maitrise = 0 THEN 0 ELSE 1 END', 'ps.niveau_maitrise - ps.nm_livre')
+      .replace(/\s*LEFT JOIN personnage_livre_sort l ON l\.personnage_id = ps\.personnage_id AND l\.sort_id = ps\.sort_id/g, '');
+    assert.ok(!vueDAvant.includes('JOIN personnage_livre_sort') && vueDAvant.includes('ps.nm_livre'));
+    db.exec(`DROP VIEW v_personnage_controle;
+      ALTER TABLE personnage_sort ADD COLUMN nm_livre INTEGER NOT NULL DEFAULT 0 CHECK (nm_livre IN (0, 1) AND nm_livre <= niveau_maitrise);
+      UPDATE personnage_sort SET nm_livre = 1
+        WHERE EXISTS (SELECT 1 FROM personnage_livre_sort l WHERE l.personnage_id = personnage_sort.personnage_id AND l.sort_id = personnage_sort.sort_id);
+      DROP TABLE personnage_livre_sort;
+      ${vueDAvant};`);
+  } finally {
+    db.close();
+  }
+}
+
 /** La base vivante comme avant la migration 0066 : les NM du MJ sort par sort (personnage_sort.nm_cadeau, décision R26), pas de personnage.nm_mj. */
 function enBaseDAvant0066(chemin) {
+  enBaseDAvant0082(chemin);
   const db = new DatabaseSync(chemin);
   try {
     const vue = db.prepare("SELECT sql FROM sqlite_master WHERE name = 'v_personnage_controle'").get().sql;
@@ -924,8 +951,51 @@ function enBaseDAvant0066(chemin) {
   }
 }
 
+test('migration 0082 (R169) : une base vivante d’avant est reprise ; chaque sort à nm_livre = 1 donne un livre, rangé dans l’ordre de la liste, le NM des sorts inchangé ; un sort disparu emporte son livre', () => {
+  assert.ok(COLONNES_RETIREES.personnage_sort.includes('nm_livre'));
+  const dossier = nouveau('db');
+  const { chemin } = preparerBaseVivante({ regles: regles(), dossier });
+  remplir(chemin);
+  enBaseDAvant0082(chemin);
+  const autres = valeur(REGLES, "SELECT group_concat(id, '|') AS ids FROM (SELECT id FROM sort WHERE magie_id = 'magies/magie-du-feu' AND id <> ? ORDER BY id LIMIT 3)", UN_SORT_DE_FEU).ids.split('|');
+  const ecrire = new DatabaseSync(chemin);
+  ecrire.exec('PRAGMA foreign_keys = ON');
+  // p1 : livres aux rangs 1 et 3 de la liste (le rang 2 sans livre) ; p2 : un livre sur le sort que la livraison supprime (2 NM dont 1 de livre)
+  ecrire.prepare("UPDATE personnage_sort SET niveau_maitrise = 2, nm_livre = 1 WHERE personnage_id = 'p1'").run();
+  ecrire.prepare("INSERT INTO personnage_sort (personnage_id, sort_id, rang, niveau_maitrise, nm_livre) VALUES ('p1', ?, 2, 1, 0), ('p1', ?, 3, 1, 1), ('p2', ?, 1, 2, 1)")
+    .run(autres[0], autres[1], autres[2]);
+  ecrire.close();
+  const sort = valeur(REGLES, 'SELECT s.nom, s.niveau, m.nom AS magie FROM sort s JOIN magie m ON m.id = s.magie_id WHERE s.id = ?', autres[2]);
+
+  const r = preparerBaseVivante({ regles: regles(`DELETE FROM sort WHERE id = '${autres[2]}'`), dossier, instant: new Date('2026-10-29T09:00:00Z') });
+  assert.equal(r.refaite, true);
+  assert.equal(valeur(chemin, "SELECT count(*) AS n FROM pragma_table_info('personnage_sort') WHERE name = 'nm_livre'").n, 0, 'la colonne n’est plus dans la base vivante');
+  const ligne = `[29/10/2026] Retrait (règles modifiées) : le sort « ${sort.nom} » (magie ${sort.magie}, NPM ${sort.niveau}, 2 NM sur cette fiche dont 1 de livre)${SUITE}`;
+  assert.deepEqual(r.fiches, [{ fiche: 'fiche de joueur n° 1', retraits: [ligne.slice(ligne.indexOf('le sort'), -SUITE.length)] }]);
+  const db = lecture(chemin);
+  try {
+    // (les règles de la livraison d'essai, elles, ont été coupées sans leurs lignes de détail)
+    for (const t of TABLES_FICHES) assert.deepEqual(db.prepare(`PRAGMA foreign_key_check("${t}")`).all(), [], t);
+    const p1 = lireFiche(db, 'p1');
+    assert.deepEqual(p1.sorts.map((x) => [x.sort_id, x.rang, x.niveau_maitrise]), [[UN_SORT_DE_FEU, 1, 2], [autres[0], 2, 1], [autres[1], 3, 1]], 'le NM de chaque sort ne change pas');
+    assert.ok(p1.sorts.every((x) => !('nm_livre' in x)));
+    assert.deepEqual(p1.livres_sorts, [{ sort_id: UN_SORT_DE_FEU, rang: 1 }, { sort_id: autres[1], rang: 2 }], 'dans l’ordre de la liste, comme la migration 0082');
+    assert.deepEqual([p1.notes, p1.modifie_le], [null, INSTANT], 'une conversion sans perte : ni note ni modification');
+    assert.deepEqual(db.prepare("SELECT count(*) AS n FROM personnage_livre_sort WHERE personnage_id = 'p2'").get().n, 0, 'le sort disparu emporte son livre (R42)');
+    assert.equal(db.prepare("SELECT notes FROM personnage WHERE id = 'p2'").get().notes, ligne);
+  } finally {
+    db.close();
+  }
+  assert.equal(valeur(r.archive, 'SELECT sum(nm_livre) AS n FROM personnage_sort').n, 3, 'l’archive garde les livres sur les sorts');
+  // une reconstruction suivante ne convertit plus rien
+  const suivante = preparerBaseVivante({ regles: regles(`DELETE FROM sort WHERE id = '${autres[2]}'; UPDATE race SET nom = 'Humain (suite)' WHERE id = 'races/humain'`), dossier });
+  assert.equal(suivante.refaite, true);
+  assert.deepEqual(suivante.fiches, []);
+  assert.equal(valeur(chemin, "SELECT count(*) AS n FROM personnage_livre_sort WHERE personnage_id = 'p1'").n, 2);
+});
+
 test('migration 0066 : une base vivante d’avant est reprise ; les NM du MJ de chaque sort deviennent ceux de la fiche, leur somme, et le NM de chaque sort ne change pas (R118)', () => {
-  assert.deepEqual(COLONNES_RETIREES.personnage_sort, ['nm_cadeau']);
+  assert.ok(COLONNES_RETIREES.personnage_sort.includes('nm_cadeau'));
   const dossier = nouveau('db');
   const { chemin } = preparerBaseVivante({ regles: regles(), dossier });
   remplir(chemin);
@@ -947,8 +1017,9 @@ test('migration 0066 : une base vivante d’avant est reprise ; les NM du MJ de 
     assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
     const p1 = lireFiche(db, 'p1');
     assert.equal(p1.nm_mj, 3, '1 + 2 NM du MJ');
-    assert.deepEqual(p1.sorts.map((x) => [x.sort_id, x.niveau_maitrise, x.nm_livre]), [[UN_SORT_DE_FEU, 3, 1], [deuxSorts[0], 2, 0]], 'le NM de chaque sort ne change pas');
-    assert.ok(p1.sorts.every((x) => !('nm_cadeau' in x)));
+    assert.deepEqual(p1.sorts.map((x) => [x.sort_id, x.niveau_maitrise]), [[UN_SORT_DE_FEU, 3], [deuxSorts[0], 2]], 'le NM de chaque sort ne change pas');
+    assert.ok(p1.sorts.every((x) => !('nm_cadeau' in x) && !('nm_livre' in x)));
+    assert.deepEqual(p1.livres_sorts, [{ sort_id: UN_SORT_DE_FEU, rang: 1 }], 'le livre du sort (R169, migration 0082)');
     const p2 = db.prepare("SELECT nm_mj, notes, modifie_le FROM personnage WHERE id = 'p2'").get();
     assert.deepEqual({ ...p2 }, { nm_mj: 0, notes: null, modifie_le: INSTANT }, 'rien du MJ : 0 ; rien n’est noté');
     assert.deepEqual([p1.notes, p1.modifie_le], [null, INSTANT], 'une conversion sans perte : ni note ni modification');

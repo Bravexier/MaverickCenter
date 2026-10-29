@@ -126,6 +126,7 @@ export const NOMS_DES_TABLES = Object.freeze({
   personnage_ceinture: 'Objet de la ceinture du personnage',
   personnage_classe: 'Classe du personnage',
   personnage_inventaire: 'Objet de l’inventaire du personnage',
+  personnage_livre_sort: 'Livre de sort du personnage',
   personnage_maitrise_choix: 'Maîtrise d’arme choisie du personnage',
   personnage_resistance_choix: 'Résistance choisie du personnage',
   personnage_sort: 'Sort du personnage',

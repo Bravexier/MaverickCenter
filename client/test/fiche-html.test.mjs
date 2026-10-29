@@ -55,13 +55,15 @@ test('/fiche/ en quatre zones (demande du propriétaire), sans cadre, titre ni p
   const jetons = [...fiche.matchAll(/<section class="fiche-zone[^"]*" id="zone-([a-z]+)"|<(?:section|div) class="fiche-etape[^"]*" id="etape-([a-z]+)"/g)]
     .map((m) => (m[1] ? `[${m[1]}]` : m[2]));
   assert.deepEqual(jetons, ['[identite]', 'identite', '[portee]', 'attributs', 'caracteristiques', 'armes', 'ceinture', 'sorts', 'dons',
-    '[situation]', 'posture', 'armure', 'accessoires', 'inventaire', 'mouvement', 'resistances', 'bouclier', '[parametres]', 'progression', 'choix', 'jeu', 'controles']);
+    '[situation]', 'posture', 'armure', 'accessoires', 'inventaire', 'mouvement', 'resistances', 'bouclier', '[parametres]', 'progression', 'choix', 'entrainement', 'jeu', 'controles']);
   assert.ok(!fiche.includes('fiche-zones-nav') && !fiche.includes('fiche-etapes'), 'ni pastilles des zones ni sommaire des blocs');
   assert.match(html, /\.fiche-zone__titre\s*\{[^}]*clip-path:\s*inset\(50%\)/, 'titres des zones lus par les lecteurs d’écran, pas affichés');
   // zone IV : des onglets (components/Onglets.astro), le compteur des choix et celui du contrôle
   const onglets = [...fiche.matchAll(/<a class="onglet[^"]*" id="onglet-([a-z]+)" href="#etape-([a-z]+)"/g)].map((m) => [m[1], m[2]]);
-  // l'inventaire est sous les accessoires (zone III), plus dans un onglet (demande du propriétaire du 2026-10-17)
-  assert.deepEqual(onglets, [['progression', 'progression'], ['choix', 'choix'], ['jeu', 'jeu'], ['controles', 'controles']]);
+  // l'inventaire est sous les accessoires (zone III), plus dans un onglet (demande du propriétaire du 2026-10-17) ; l'entraînement dans le sien, juste
+  // après « Choix » (demande du propriétaire du 2026-10-29 : « Le tableau d'entrainement devrait être dans un onglet à part à coté des choix. »)
+  assert.deepEqual(onglets, [['progression', 'progression'], ['choix', 'choix'], ['entrainement', 'entrainement'], ['jeu', 'jeu'], ['controles', 'controles']]);
+  assert.match(fiche, /<a class="onglet" id="onglet-entrainement" href="#etape-entrainement">Entraînement<\/a>/);
   assert.match(fiche, /<div class="parametres" data-onglets="Paramètres et suivi">/);
   assert.match(fiche, /id="choix-compte" hidden><\/span>/);
   assert.match(fiche, /id="controles-compte" hidden><\/span>/);
@@ -147,15 +149,18 @@ test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options
   assert.match(bloc('ceinture'), /<ol id="ceinture" class="ceinture"/, 'les 3 emplacements de la ceinture');
   const dons = bloc('dons');
   assert.ok(dons.indexOf('id="dons-classes"') > dons.indexOf('id="dons-race"'), 'les dons de la race, puis ceux des classes');
-  // « Entraînement » (décision R104 ; un texte libre avant, R71) : des lignes, entre les dons de la race et ceux des classes, les boutons d'ajout dessous,
-  // avec l'aide du guide (le paragraphe que la base écrit) ; puis les acquis à choisir et les bonus non comptés des dons
-  const entrainement = dons.indexOf('<ul id="entrainement" class="entrainement" aria-labelledby="titre-entrainement">');
-  assert.ok(entrainement > dons.indexOf('id="dons-race"') && entrainement < dons.indexOf('id="dons-classes"'), 'entre les dons de la race et ceux des classes');
-  assert.match(dons, /<h4 class="fiche-sous-titre" id="titre-entrainement">Entraînement<\/h4>\s*<ul id="entrainement" class="entrainement" aria-labelledby="titre-entrainement"><\/ul>\s*<p class="entrainement__ajouts" id="entrainement-ajouts"><\/p>/);
+  // « Entraînement » (décision R104 ; un texte libre avant, R71) : des lignes, dans son onglet de la zone IV, juste après « Choix » (demande du
+  // propriétaire du 2026-10-29), plus dans les dons ; les boutons d'ajout dessous, avec l'aide du guide (le paragraphe que la base écrit) ; les acquis à
+  // choisir et les bonus non comptés restent dans les dons
+  assert.ok(!dons.includes('id="entrainement"') && !dons.includes('titre-entrainement'), 'plus dans les dons débloqués');
+  const entrainement = bloc('entrainement');
+  assert.match(entrainement, /^id="etape-entrainement" aria-labelledby="titre-entrainement">\s*<h3 class="parametres__titre" id="titre-entrainement">Entraînement<\/h3>\s*<div class="fiche-etape__corps entrainement-panneau">\s*<ul id="entrainement" class="entrainement" aria-labelledby="titre-entrainement"><\/ul>\s*<p class="entrainement__ajouts" id="entrainement-ajouts"><\/p>/);
+  assert.ok(html.indexOf('id="etape-entrainement"') > html.indexOf('id="etape-choix"') && html.indexOf('id="etape-entrainement"') < html.indexOf('id="etape-jeu"'));
+  assert.equal([...html.matchAll(/id="entrainement"/g)].length, 1, 'un seul bloc de l’entraînement');
   assert.ok(!html.includes('data-champ="entrainement"') && !html.includes('id="fiche-entrainement"'), 'plus de texte libre d’entraînement');
-  assert.match(html, /<div id="acquis-choix-bloc" hidden>/);
-  assert.match(html, /<div id="acquis-non-comptes-bloc" hidden>/);
-  const aide = /<p class="fiche-aide" id="entrainement-aide">([\s\S]*?)<\/p>/.exec(dons)?.[1] ?? '';
+  assert.match(dons, /<div id="acquis-choix-bloc" hidden>/);
+  assert.match(dons, /<div id="acquis-non-comptes-bloc" hidden>/);
+  const aide = /<p class="fiche-aide" id="entrainement-aide">([\s\S]*?)<\/p>/.exec(entrainement)?.[1] ?? '';
   const guide = aideDeLEntrainement(ouvrirBase());
   const html_ = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   // le titre de la page, puis le paragraphe tel que la base l'écrit ; plus de numéro de chapitre (refonte des pages du guide, 2026-10-18), et pas de lien :
@@ -163,7 +168,7 @@ test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options
   if (guide) assert.ok(aide.startsWith(`<cite>${html_(guide.titre)}</cite> : « ${html_(guide.texte)} »`), 'le titre de la page, puis le paragraphe du guide');
   assert.doesNotMatch(aide, /<a /);
   assert.doesNotMatch(aide, /chapitre \d/);
-  assert.match(aide, /Les points d’une compétence s’ajoutent à son acquis ; un livre de sort lui donne un NM, qui ne compte pas dans le décompte des NM ; un texte libre note un don évènementiel ou ce que le MJ accorde\./);
+  assert.match(aide, /Les points d’une compétence s’ajoutent à son acquis ; un livre de sort donne un NM à son sort, qui ne compte pas dans le décompte des NM, et attend tant que le sort n’est pas choisi ; un texte libre note un don évènementiel ou ce que le MJ accorde\./);
   assert.match(bloc('sorts'), /<table class="fiche-table fiche-table--sorts" id="sorts"><\/table>/);
   // les NM du MJ, pour toute la fiche, juste après le décompte des NM (décision R118 : « noté à coté de la limit de NM »)
   assert.match(bloc('sorts'), /<span class="budget" id="budget-nm"><\/span><label class="budget budget--mj"[^>]*><span aria-hidden="true">\+ MJ<\/span><input type="number" min="0" step="1" inputmode="numeric" data-champ="nm_mj" data-entier id="nm-mj"/);

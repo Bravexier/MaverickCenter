@@ -21,6 +21,7 @@ db.exec('PRAGMA foreign_keys = ON');
 const TABLES = [
   'utilisateur', 'utilisateur_role', 'personnage', 'personnage_partage', 'personnage_classe', 'personnage_caracteristique', 'personnage_competence',
   'personnage_entrainement', 'personnage_acquis_choix', 'personnage_resistance_choix', 'personnage_metier_bonus', 'personnage_capacite', 'personnage_sort',
+  'personnage_livre_sort',
   'personnage_maitrise_choix', 'personnage_arme', 'personnage_armure_partie', 'personnage_accessoire', 'personnage_inventaire', 'personnage_ceinture', 'groupe',
   'groupe_membre',
 ];
@@ -79,7 +80,7 @@ function personnageValide(id, surcharge = {}) {
   inserer('personnage_maitrise_choix', { personnage_id: id, source: 'classes/guerrier#maitrise-arme:2', rang: 1, arme_famille_id: 'hache' });
 }
 
-test('les 21 tables des fiches et des groupes existent et data/rows les garde vides (les fiches réelles vivent dans la base du serveur)', () => {
+test('les 22 tables des fiches et des groupes existent et data/rows les garde vides (les fiches réelles vivent dans la base du serveur)', () => {
   for (const t of TABLES) {
     assert.equal(LIGNES_AU_DEPART[t], 0, t);
     const lignes = readFileSync(join(racine, 'data', 'rows', `${t}.sql`), 'utf8').trim().split('\n');
@@ -485,30 +486,81 @@ test('sorts : de la magie du personnage ; NM de niveau au plus niveau global −
   inserer('personnage_sort', { personnage_id: 'sorts', sort_id: 'magies/magie-du-feu#sort:boule-de-feu', rang: 1, niveau_maitrise: 2 });
   assert.deepEqual(controle('sorts'), []);
   db.prepare("UPDATE personnage SET nm_mj = 1 WHERE id = 'sorts'").run();
-  inserer('personnage_sort', { personnage_id: 'sorts', sort_id: 'magies/magie-du-feu#sort:cauterisation', rang: 2, niveau_maitrise: 2, nm_livre: 1 });
+  inserer('personnage_sort', { personnage_id: 'sorts', sort_id: 'magies/magie-du-feu#sort:cauterisation', rang: 2, niveau_maitrise: 2 });
+  inserer('personnage_livre_sort', { personnage_id: 'sorts', sort_id: 'magies/magie-du-feu#sort:cauterisation', rang: 1 });
   assert.deepEqual(controle('sorts'), [], '4 NM pour 2 gagnés : les 2 en plus viennent d’un livre et du MJ (R24, R26, R118)');
   db.prepare("UPDATE personnage SET nm_mj = 0 WHERE id = 'sorts'").run();
   assert.deepEqual(controle('sorts'), [{ regle: 'sorts_nm_total', detail: '3 / 2' }], 'sans NM du MJ, un NM au-delà de ceux gagnés');
   db.prepare("UPDATE personnage SET nm_mj = 2 WHERE id = 'sorts'").run();
-  db.prepare("UPDATE personnage_sort SET nm_livre = 0 WHERE personnage_id = 'sorts' AND rang = 2").run();
+  db.prepare("DELETE FROM personnage_livre_sort WHERE personnage_id = 'sorts'").run();
   assert.deepEqual(controle('sorts'), [], 'les NM du MJ valent pour toute la fiche, sur n’importe quel sort');
   db.prepare("UPDATE personnage SET nm_mj = 1 WHERE id = 'sorts'").run();
   assert.deepEqual(controle('sorts'), [{ regle: 'sorts_nm_total', detail: '4 / 2 + 1 du MJ' }], 'le détail cite les NM du MJ');
-  db.prepare("UPDATE personnage_sort SET niveau_maitrise = 4, nm_livre = 1 WHERE personnage_id = 'sorts' AND rang = 2").run();
+  db.prepare("UPDATE personnage_sort SET niveau_maitrise = 4 WHERE personnage_id = 'sorts' AND rang = 2").run();
+  inserer('personnage_livre_sort', { personnage_id: 'sorts', sort_id: 'magies/magie-du-feu#sort:cauterisation', rang: 1 });
   db.prepare("UPDATE personnage SET nm_mj = 3 WHERE id = 'sorts'").run();
   assert.deepEqual(controle('sorts'), [{ regle: 'sort_nm_plafond', detail: 'magies/magie-du-feu#sort:cauterisation = 4' }], 'jamais plus de 3 NM sur un sort');
-  assert.throws(() => db.prepare("UPDATE personnage_sort SET nm_livre = 2 WHERE personnage_id = 'sorts' AND rang = 2").run(), /CHECK/, 'un seul NM de livre par sort');
-  assert.throws(() => db.prepare("UPDATE personnage_sort SET niveau_maitrise = 0 WHERE personnage_id = 'sorts' AND rang = 2").run(), /CHECK/, 'le NM du livre fait partie du NM du sort');
+  assert.throws(() => inserer('personnage_livre_sort', { personnage_id: 'sorts', sort_id: 'magies/magie-du-feu#sort:cauterisation', rang: 2 }), /UNIQUE|PRIMARY/,
+    'un seul livre par sort (R26)');
+  assert.ok(!db.prepare("SELECT 1 FROM pragma_table_info('personnage_sort') WHERE name = 'nm_livre'").get(), 'le livre se note à part (migration 0082, R169)');
   assert.throws(() => db.prepare("UPDATE personnage SET nm_mj = -1 WHERE id = 'sorts'").run(), /CHECK/, 'pas de NM du MJ négatif');
   assert.ok(!db.prepare("SELECT 1 FROM pragma_table_info('personnage_sort') WHERE name = 'nm_cadeau'").get(), 'plus de NM du MJ sort par sort (migration 0066)');
   db.prepare("UPDATE personnage SET nm_mj = 0 WHERE id = 'sorts'").run();
   db.prepare("DELETE FROM personnage_sort WHERE personnage_id = 'sorts' AND rang = 2").run();
+  db.prepare("DELETE FROM personnage_livre_sort WHERE personnage_id = 'sorts'").run();
   inserer('personnage_sort', { personnage_id: 'sorts', sort_id: 'magies/magie-du-feu#sort:cauterisation', rang: 2, niveau_maitrise: 3 });
   const glace = db.prepare("SELECT id FROM sort WHERE magie_id = 'magies/magie-de-la-glace' AND niveau = 1 LIMIT 1").get().id;
   inserer('personnage_sort', { personnage_id: 'sorts', sort_id: glace, rang: 3, niveau_maitrise: 0 });
   assert.deepEqual(regles('sorts'), ['sort_hors_magie', 'sort_nm_max', 'sorts_nm_total']);
   db.prepare("UPDATE personnage SET nm_mj = 1 WHERE id = 'sorts'").run();
   assert.deepEqual(regles('sorts'), ['sort_hors_magie', 'sorts_nm_total'], 'un sort à 3 NM au niveau 3 : un NM du MJ (R118)');
+});
+
+test('livre de sort indépendant de la liste des sorts (R169, migration 0082) : en attente sur un sort non choisi, hors décompte sur un sort choisi (R118), gardé quand le sort est retiré', () => {
+  const A = 'magies/magie-du-feu#sort:boule-de-feu';
+  const B = 'magies/magie-du-feu#sort:braise-magique';
+  const C = 'magies/magie-du-feu#sort:cauterisation';
+  const DES_SORTS = ['sort_hors_magie', 'sort_puissance', 'sort_nm_plafond', 'sort_nm_max', 'sorts_nm_total'];
+  const controleDesSorts = () => controle('livres').filter((c) => DES_SORTS.includes(c.regle));
+  const livres = () => db.prepare("SELECT sort_id, rang FROM personnage_livre_sort WHERE personnage_id = 'livres' ORDER BY rang").all().map((r) => ({ ...r }));
+  personnageValide('livres', { xp: 1650 });   // niveau 5 : 4 NM gagnés, 4 NM comptés au plus sur un sort
+  assert.equal(niveau('livres').niveau_global, 5);
+  inserer('personnage_sort', { personnage_id: 'livres', sort_id: A, rang: 1, niveau_maitrise: 2 });
+  inserer('personnage_sort', { personnage_id: 'livres', sort_id: C, rang: 2, niveau_maitrise: 2 });
+  assert.deepEqual(controleDesSorts(), [], '4 NM comptés pour 4 gagnés');
+
+  // le livre de B, qui n'est pas choisi : enregistré quand même, en attente, son NM n'est pas utilisé et le décompte ne change pas
+  inserer('personnage_livre_sort', { personnage_id: 'livres', sort_id: B, rang: 1 });
+  assert.deepEqual(livres(), [{ sort_id: B, rang: 1 }]);
+  assert.deepEqual(controleDesSorts(), [], 'le livre d’un sort non choisi ne change rien');
+  db.prepare("UPDATE personnage_sort SET niveau_maitrise = 3 WHERE personnage_id = 'livres' AND sort_id = ?").run(A);
+  assert.deepEqual(controleDesSorts(), [{ regle: 'sorts_nm_total', detail: '5 / 4' }], 'le livre en attente n’ôte rien du décompte (sinon 4 / 4)');
+  db.prepare("UPDATE personnage_sort SET niveau_maitrise = 2 WHERE personnage_id = 'livres' AND sort_id = ?").run(A);
+
+  // B choisi ensuite à 1 NM : le NM du livre est le sien et ne compte pas (R118)
+  inserer('personnage_sort', { personnage_id: 'livres', sort_id: B, rang: 3, niveau_maitrise: 1 });
+  assert.deepEqual(controleDesSorts(), [], '5 NM sur les sorts, dont 1 de livre : 4 comptés pour 4 gagnés');
+  db.prepare("DELETE FROM personnage_livre_sort WHERE personnage_id = 'livres'").run();
+  assert.deepEqual(controleDesSorts(), [{ regle: 'sorts_nm_total', detail: '5 / 4' }], 'sans son livre, le NM de B compte');
+  inserer('personnage_livre_sort', { personnage_id: 'livres', sort_id: B, rang: 1 });
+  db.prepare("UPDATE personnage_sort SET niveau_maitrise = 0 WHERE personnage_id = 'livres' AND sort_id = ?").run(B);
+  db.prepare("UPDATE personnage_sort SET niveau_maitrise = 3 WHERE personnage_id = 'livres' AND sort_id = ?").run(A);
+  assert.deepEqual(controleDesSorts(), [{ regle: 'sorts_nm_total', detail: '5 / 4' }], 'un sort choisi à 0 NM avec son livre : 0 NM comptés, jamais −1 (nmDuSort)');
+  db.prepare("UPDATE personnage_sort SET niveau_maitrise = 2 WHERE personnage_id = 'livres' AND sort_id = ?").run(A);
+  db.prepare("UPDATE personnage_sort SET niveau_maitrise = 1 WHERE personnage_id = 'livres' AND sort_id = ?").run(B);
+
+  // B retiré de la liste : le livre reste noté, en attente, et le décompte redevient celui de A et C
+  db.prepare("DELETE FROM personnage_sort WHERE personnage_id = 'livres' AND sort_id = ?").run(B);
+  assert.deepEqual(livres(), [{ sort_id: B, rang: 1 }], 'le livre reste');
+  assert.deepEqual(controleDesSorts(), []);
+
+  // un livre par sort (R26), un rang par livre, un sort qui existe ; la fiche supprimée emporte ses livres
+  assert.throws(() => inserer('personnage_livre_sort', { personnage_id: 'livres', sort_id: B, rang: 2 }), /UNIQUE|PRIMARY/, 'un seul livre par sort');
+  assert.throws(() => inserer('personnage_livre_sort', { personnage_id: 'livres', sort_id: A, rang: 1 }), /UNIQUE/, 'deux livres au même rang');
+  assert.throws(() => inserer('personnage_livre_sort', { personnage_id: 'livres', sort_id: A, rang: 0 }), /CHECK/);
+  assert.throws(() => inserer('personnage_livre_sort', { personnage_id: 'livres', sort_id: 'magies/magie-du-feu#sort:absent', rang: 2 }), /FOREIGN KEY/);
+  db.prepare("DELETE FROM personnage WHERE id = 'livres'").run();
+  assert.deepEqual(livres(), []);
 });
 
 test('posture Symbiose (R100, migration 0061) : sa magie est la magie innée ou acquise du personnage, jamais le Potentiel Illimité', () => {

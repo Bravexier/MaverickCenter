@@ -46,7 +46,8 @@ test('RETRAITS : exactement les clés étrangères des fiches vers metier, speci
     }
     cles.push(...parId.values());
   }
-  assert.equal(cles.length, 5);
+  // un sort est cité par la liste des sorts et par les livres (décision R169) : deux clés vers `sort`
+  assert.equal(cles.length, 6);
   assert.deepEqual(RETRAITS.map((r) => ({ table: r.table, vise: r.vise, colonnes: [...r.colonnes] })), cles);
   for (const r of RETRAITS) {
     assert.ok(['vider', 'supprimer'].includes(r.action), r.table);
@@ -97,11 +98,14 @@ test('retirerDesFiches puis noterLesRetraits : éléments retirés, ligne de cla
   inserer('personnage', { ...FICHE, id: 'p-retraits', nature: 'pretire', nom: 'Témoin des retraits', notes: 'Note du joueur.', metier_id: metier });
   inserer('personnage_classe', { personnage_id: 'p-retraits', rang: 1, classe_id: classe, specialite_id: spec });
   inserer('personnage_capacite', { personnage_id: 'p-retraits', capacite_id: donA });
-  inserer('personnage_sort', { personnage_id: 'p-retraits', sort_id: sort.id, rang: 1, niveau_maitrise: 2, nm_livre: 1 });
+  inserer('personnage_sort', { personnage_id: 'p-retraits', sort_id: sort.id, rang: 1, niveau_maitrise: 2 });
+  inserer('personnage_livre_sort', { personnage_id: 'p-retraits', sort_id: sort.id, rang: 1 });
   inserer('personnage', { ...FICHE, id: 'j-retraits', nature: 'joueur', proprietaire_id: 'u-retraits', visibilite: 'privee', nom: 'Nom secret du joueur',
     cree_le: '2026-10-12T00:00:00Z', modifie_le: '2026-10-12T00:00:00Z' });
   inserer('personnage_classe', { personnage_id: 'j-retraits', rang: 1, classe_id: classe });
   inserer('personnage_capacite', { personnage_id: 'j-retraits', capacite_id: donB });
+  // décision R169 : le livre seul d'un sort que la fiche n'a pas choisi (en attente) part aussi avec le sort, la clé n'a pas d'ON DELETE
+  inserer('personnage_livre_sort', { personnage_id: 'j-retraits', sort_id: sort.id, rang: 1 });
   const journal = ligne('SELECT count(*) AS n FROM modification').n;
 
   const acc = nouveauxRetraitsDeFiches();
@@ -113,10 +117,11 @@ test('retirerDesFiches puis noterLesRetraits : éléments retirés, ligne de cla
     specialite: `la spécialité « LAME D’ESSAI » (classe ${nomClasse}, avec le don choisi « Don témoin A »)`,
     sort: `le sort « ${sort.nom} » (magie ${sort.magie}, NPM ${sort.niveau}, 2 NM sur cette fiche dont 1 de livre)`,
     donB: `le don « Don témoin B » (classe ${nomClasse}, spécialité LAME D’ESSAI, niveau 15)`,
+    livre: `le sort « ${sort.nom} » (magie ${sort.magie}, NPM ${sort.niveau}, livre de sort en attente, sort hors de la liste)`,
   };
   assert.deepEqual(fiches, [
     { fiche: 'Témoin des retraits', retraits: [attendus.metier, attendus.specialite, attendus.sort] },
-    { fiche: 'fiche de joueur n° 1', retraits: [attendus.donB] },
+    { fiche: 'fiche de joueur n° 1', retraits: [attendus.donB, attendus.livre] },
   ]);
   assert.ok(!JSON.stringify(fiches).includes('Nom secret du joueur'), 'le nom d’une fiche de joueur ne sort pas');
 
@@ -125,12 +130,13 @@ test('retirerDesFiches puis noterLesRetraits : éléments retirés, ligne de cla
   assert.deepEqual(lignes("SELECT rang, classe_id, specialite_id FROM personnage_classe WHERE personnage_id = 'p-retraits'"), [{ rang: 1, classe_id: classe, specialite_id: null }]);
   assert.deepEqual(lignes("SELECT * FROM personnage_capacite WHERE personnage_id IN ('p-retraits', 'j-retraits')"), []);
   assert.deepEqual(lignes("SELECT * FROM personnage_sort WHERE personnage_id = 'p-retraits'"), []);
+  assert.deepEqual(lignes("SELECT * FROM personnage_livre_sort WHERE personnage_id IN ('p-retraits', 'j-retraits')"), [], 'R169 : les livres du sort partent avec lui');
   const suite = ' n’existe plus dans les règles. Choisissez autre chose ou adaptez la fiche à la nouvelle règle.';
   const jour = jourDuRetrait(INSTANT);
   assert.equal(p.notes, ['Note du joueur.', ...[attendus.metier, attendus.specialite, attendus.sort].map((d) => `[${jour}] Retrait (règles modifiées) : ${d}${suite}`)].join('\n'));
   assert.equal(p.modifie_le, INSTANT);
   const j = ligne("SELECT notes, modifie_le, cree_le FROM personnage WHERE id = 'j-retraits'");
-  assert.equal(j.notes, `[${jour}] Retrait (règles modifiées) : ${attendus.donB}${suite}`);
+  assert.equal(j.notes, [attendus.donB, attendus.livre].map((d) => `[${jour}] Retrait (règles modifiées) : ${d}${suite}`).join('\n'));
   assert.equal(j.modifie_le, j.cree_le, 'fiche plus récente que l’instant : modifie_le = cree_le (CHECK modifie_le >= cree_le)');
   assert.deepEqual(lignes("SELECT rang, classe_id FROM personnage_classe WHERE personnage_id = 'j-retraits'"), [{ rang: 1, classe_id: classe }]);
 

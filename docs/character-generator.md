@@ -21,22 +21,30 @@ posée par la page : `docs/content-guide.md`, « Couleurs du site : la palette e
    dieux · case **« Bi-classé »**, classe(s) et spécialités.
 2. **À portée de main** : les attributs et valeurs du moment ; caractéristiques et compétences, à côté les **armes** (avec leur **solidité**) et,
    dessous, la **ceinture** (choix du propriétaire du 2026-10-23 : « Il faudrai séparer les arme et les maitrises . Garder l'armes visibles à coté des
-   caractéristiques comme avant. », qui remplace « Caractéristiques d'abord » du même jour) ; les sorts, à côté les **dons débloqués** (et
-   l'**entraînement**). Plus étroit, les blocs se suivent : attributs, caractéristiques et compétences, armes, ceinture, sorts, dons ; c'est aussi
+   caractéristiques comme avant. », qui remplace « Caractéristiques d'abord » du même jour) ; les sorts, à côté les **dons débloqués**
+   (l'**entraînement** est dans son onglet de la zone 4). Plus étroit, les blocs se suivent : attributs, caractéristiques et compétences, armes, ceinture, sorts, dons ; c'est aussi
    l'ordre du clavier sur grand écran. Les **maîtrises d'armes** sont dans l'onglet « Choix » de la zone 4 (même demande).
 3. **Selon la situation** : les **postures** (et le Mode Hyper) sur toute la largeur ; l'armure (avec la **défense** totale et les **dégâts reçus**, R98),
    les accessoires et, juste en dessous, l'**inventaire** (sac et bourse ; demande du propriétaire du 2026-10-17) ; à côté l'initiative et les vitesses,
    les résistances et faiblesses, le bouclier.
 4. **Paramètres et suivi**, en **onglets** (`components/Onglets.astro`) : Progression (jauge d'XP, gains de niveau) · Choix (ce que donne le métier et ses
    choix, le +1 d'une magie au choix, la spécialité, les dons de classe à choisir, ce que donnent la race et les magies ; dessous, sur toute la largeur du
-   panneau, les **maîtrises d'armes** : « La partie maitrise d'arme vont déscendre dans l'encart des "choix" », 2026-10-23) · Notes et événements · Contrôle. L'onglet « Choix » compte les choix qui restent, l'onglet « Contrôle » les règles à revoir ; sans JavaScript et à l'impression,
+   panneau, les **maîtrises d'armes** : « La partie maitrise d'arme vont déscendre dans l'encart des "choix" », 2026-10-23) · Entraînement (juste
+   après « Choix » : « Le tableau d'entrainement devrait être dans un onglet à part à coté des choix. », 2026-10-29 ; `#etape-entrainement`) · Notes et
+   événements · Contrôle. L'onglet « Choix » compte les choix qui restent, l'onglet « Contrôle » les règles à revoir (les avertissements à part,
+   décision R170) ; sans JavaScript et à l'impression,
    les panneaux se suivent.
 
 La page prend plus de largeur que les autres (100rem au plus) ; sur un écran étroit, les blocs passent l'un sous l'autre. Le panneau d'un menu déroulant
 s'étend sur toute sa rangée de menus. **Compacte** (demandes du propriétaire) : pas de lien vers le guide ;
 race, ethnie, magies innée et acquise, classes et spécialités sont des **menus déroulants** (`<details class="choix">` : fermé, le choix fait ; ouvert, les
 **pastilles** dans les couleurs de `/races/`, `/magies/`, `/classes/` (leurs classes de la palette, ci-dessous), celles que les règles ferment grisées ; un choix, un clic ailleurs ou Échap le
-referme ; l'explication d'une classe imposée est en infobulle sur sa pastille « · imposée ») ; les caractéristiques sont des **curseurs** bornés par la race, à 1 (le minimum) par défaut, jamais vides (`caracteristiquesCompletes`), et le
+referme ; l'explication d'une classe imposée est en infobulle sur sa pastille « · imposée ») ; les **tuiles de choix ont une infobulle** avec leur
+description (demande du propriétaire du 2026-10-29 : « les tuiles de choix de classe / dons […] devraient avoir une infobulle avec leur description »),
+au survol et au focus du clavier, le texte de la base tel qu'écrit, sans lien : une classe, sa `description` (`infobulleDeClasse`) ; une spécialité, dans le
+menu de l'identité et dans l'onglet « Choix », sa `description`, sinon l'effet de son cartouche (choix du propriétaire ; sans l'un ni l'autre, aucune :
+`infobulleDeSpecialite`, la seule fonction de ce choix) ; une option des « Dons de classe à choisir », le texte de son don, son type et sa précision
+d'abord (« Actif (1 fois/combat) », `infobulleDuDonAChoisir`, `texteDuDon`) ; sous la raison d'un refus ou d'un verrou quand il y en a une ; les caractéristiques sont des **curseurs** bornés par la race, à 1 (le minimum) par défaut, jamais vides (`caracteristiquesCompletes`), et le
 naturel des compétences un curseur (jusqu'au maximum du niveau ; l'**acquis** n'est plus un curseur : le nombre calculé, son détail en infobulle, décision
 R104). Un **clic droit**
 sur un curseur (ou Entrée) le remplace par une case de saisie : le nombre tapé est ramené au maximum au-dessus, au minimum en dessous (`borner`) ; Échap
@@ -345,8 +353,9 @@ abandonne.
     L'accessoire se choisit dans sa carte ou sous les accessoires, la même valeur (`personnage_accessoire.arme_famille_id`).
   - **À côté, le tableau calculé des familles** (`maitrisesParFamille`, `ligneDeMaitrise`), sous la carte quand la place manque (le bloc mesure sa
     largeur : `@container`) : famille, points, dés (`notationDesDes`, 5 dés au plus) et d'où viennent les points (« Mage Bleu (maîtrise 1) +1 · Mage saphir
-    (Mage Bleu) +2 (suit un choix) ») ; les points au-delà du plafond sont signalés sur la ligne (« 5 points : 1 au-delà du plafond, non compté », R149),
-    un total des sources sous 0 aussi (« ramené à 0 », R151). Pas de ligne pour « ARME DE MONSTRES », des armes exclusives aux monstres (décision R45,
+    (Mage Bleu) +2 (suit un choix) ») ; les points au-delà du plafond sont signalés sur la ligne (« 5 points : 1 au-delà du plafond, non compté », R149)
+    comme un **avertissement**, pas une erreur, même pour des points imposés (décision R170 : ton `avertissement` de `ligneDeMaitrise`, aux couleurs
+    `--warn-bg` et `--warn-text` du thème ; la limite écrite d'un don, R150, reste en rouge), un total des sources sous 0 aussi (« ramené à 0 », R151). Pas de ligne pour « ARME DE MONSTRES », des armes exclusives aux monstres (décision R45,
     `arme_famille.maitrisable`, `famillesMaitrisables`) ; une famille créée sur le site de dev a sa ligne, et entre dans les sélecteurs de sa catégorie
     et dans celui de l'accessoire (décision R159 ; le classeur exporté garde sa grille de 11 familles : `docs/serveur.md`, « Édition »). Le **Pugilat** montre le seul dé de la Force du personnage, +1 de la magie innée compris
     (`deDeLaFamille` : « D6 1-2 Force, D8 3-4 Force, D10 5 Force », note de la famille, lue par `lib/maitrise-arme.mjs#desSelonLaForce`), en infobulle.
@@ -359,7 +368,9 @@ abandonne.
   lignes (`lignesDeSorts`), groupée par NPM, le nom seul, chaque sort sur la couleur de sa magie comme sur les pages de magie, la liste fermée dans celle du
   sort choisi (`sortsParNpm`, demande du propriétaire) ; le **NM** d'un sort se règle à **un seul curseur, de 0 à 3** (décision R118, qui précise
   R26 : plus de cases « livre » ni « MJ » ; `bornesDuNm`, `sortAuNm`), **de 1 à 3** quand l'entraînement note un livre de ce sort (« livre » à côté du
-  curseur), dont le NM **ne compte pas** dans le décompte ; les **NM du MJ** valent **pour toute la fiche** (`personnage.nm_mj`, migration 0066), notés dans
+  curseur ; la page le borne, la base ne l'impose plus), dont le NM **ne compte pas** dans le décompte ; le livre d'un sort qui n'est pas choisi
+  **attend** (décision R169 : son NM n'est pas utilisé, le décompte ne change pas ; l'infobulle du décompte compte les livres en attente) ; un sort qui
+  a son livre et prend un emplacement y arrive à 1 NM, celui du livre (`sortsApresChoixDEmplacement`), et un sort retiré laisse son livre noté ; les **NM du MJ** valent **pour toute la fiche** (`personnage.nm_mj`, migration 0066), notés dans
   un champ « + MJ » juste à côté du décompte des NM (« NM : 9 / 11 », les NM comptés sur ceux gagnés, plus ceux du MJ : `maitriseDesSorts`) ; les NM gagnés
   sont ceux des niveaux et ceux qu'écrit un don acquis (décision R154 : « Gagne 4 niveaux de maîtrise (NM). », le don « Maîtrise » de l'Ocultomancien au
   niveau de classe 20, `nm_gagnes` ; `maitriseDesSorts` : `niveaux`, `dons`, `disponibles` ; l'infobulle du décompte les détaille : « 19 par les
@@ -397,12 +408,19 @@ abandonne.
   spécialité choisie jusqu'au niveau de classe, dons à choix choisis (`donsAcquis`), avec leur niveau et leur type (passif, actif, action, réaction) ;
   sous « ... plus fort ! » du Flagelleur, l'aide de la décision R163 (« Oui, à appliquer par le MJ ») : « La fiche retire les faiblesses qu'elle
   connaît ; le MJ annule aussi en jeu celles qu'elle ne connaît pas (sorts ennemis, météo, armure, états en jeu). »
-  Entre les deux, l'**entraînement** (décision R104, table `personnage_entrainement` ; avant, un texte libre jamais compté : R71) : des **lignes** qu'on
-  ajoute (« + Compétence », « + Livre de sort », « + Texte »), chacune une **compétence** et ses points (un curseur de 0 à 10, comptés dans l'acquis ; 15
-  compétences au plus : règles `entrainement_valeur`, `entrainement_competences` de la vue, qui signalent sans bloquer ; deux lignes de la même compétence n'en
-  font qu'une à l'enregistrement, points additionnés : `entrainementsAEnregistrer`), un **livre de sort** (le sort choisi parmi ceux de la fiche : son NM de
-  livre, `nm_livre` ; noter le livre ajoute son NM au sort, au plus 3, le retirer le lui reprend : `sortAvecLivre`, R118 ; la case du livre a quitté le
-  tableau des sorts, qui ne montre plus que « livre » à côté du curseur) ou un
+- **Entraînement**, dans son **onglet « Entraînement »** de la zone 4, juste après « Choix » (demande du propriétaire du 2026-10-29 : « Le tableau
+  d'entrainement devrait être dans un onglet à part à coté des choix. » ; avant, entre les dons de la race et ceux des classes ; `#etape-entrainement`,
+  hors du tiroir des choix) ; calculs inchangés (décision R104, table `personnage_entrainement` ; avant, un texte libre jamais compté : R71) : des
+  **lignes** qu'on ajoute (« + Compétence », « + Livre de sort », « + Texte »), chacune une **compétence** et ses points (un curseur de 0 à 10, comptés
+  dans l'acquis ; 15 compétences au plus : règles `entrainement_valeur`, `entrainement_competences` de la vue, qui signalent sans bloquer ; deux lignes de
+  la même compétence n'en font qu'une à l'enregistrement, points additionnés : `entrainementsAEnregistrer`), un **livre de sort** (décision R169 : un
+  livre par sort, `livres_sorts` de la fiche, table `personnage_livre_sort` ; le sort se choisit parmi **tous ceux de la magie innée et de la magie
+  acquise, quel que soit le NPM, choisis ou non**, ceux de **toutes les magies** pour le Potentiel Illimité, toujours la magie innée (R176) — `sortsDesLivres`, la seule liste —, groupés
+  par magie sur leur couleur, sans ceux qui ont déjà leur livre ; « + Livre de sort » prend le premier sort choisi sans livre sous le plafond, sinon le
+  premier sort possible sans livre, `sortPourUnLivre` ; sur un sort choisi, noter le livre ajoute son NM, au plus 3, le retirer le lui reprend, le
+  déplacer d'un sort à l'autre ne fait perdre aucun NM : `sortAvecLivre`, `livresApresAjout`, `livresApresRetrait`, `livresApresChangement`, R118 ; sur
+  un sort non choisi, la ligne dit « **en attente** » (`livresDe`) ; le livre d'un sort dont la magie est perdue reste, en attente, son sort dans un
+  groupe « Hors des magies du personnage » ; aucun contrôle ne le refuse ; le tableau des sorts ne montre que « livre » à côté du curseur) ou un
   **texte libre** (« dons évènementiels », jamais compté) ; son aide cite, tel que la base l'écrit, le
   paragraphe du guide « S’entraîner et exercer un métier » (son titre seul, sans numéro de chapitre ni lien : la fiche reste sans lien vers le guide) qui en dit les limites (`lib/fiche-regles.mjs#aideDeLEntrainement`, écrit dans la page
   au build ; en texte : sans gras ni italique, un lien par son texte, un lien du wiki sans texte par le titre de sa page ; rien si la page ne l'écrit plus).
@@ -585,7 +603,11 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   plus de statut brouillon / validé / archivé : demande du propriétaire, migration 0038). Une arme élémentaire d'une magie que le personnage n'a pas
   (`arme_elementaire_hors_magie`, R167) : « Arme élémentaire d'une magie que le personnage n'a pas (ni innée ni acquise) : 1 : Arc de Sang » ; un type
   physique choisi hors des choix de l'arme (`arme_type_degats_choisi`, R167) : « Type de dégâts physique choisi hors des choix de l'arme (son type ne se
-  choisit pas, ou elle n'offre pas ce type) : 2 : taille ». Ce que la base ne contrôle pas encore (bonus d'équipement, nombre de
+  choisit pas, ou elle n'offre pas ce type) : 2 : taille ». Une règle est une **erreur**, sauf le plafond de maîtrise d'une famille, `maitrise_plafond`,
+  un **avertissement** (décision R170 ; la gravité est portée par `lib/fiche-controles.mjs`, `GRAVITES_DES_CONTROLES`, `graviteDuControle`, la vue ne
+  change pas) : l'onglet liste les erreurs, puis les avertissements, marqués « Avertissement · » aux couleurs `--warn-text` (`controlesParGravite`) ; son
+  compteur compte les erreurs, en rouge, les avertissements dans son infobulle ; sans erreur, il compte les avertissements aux couleurs `--warn-bg` et
+  `--warn-text` (`data-avertissement`), et « ✓ » vert sans rien ; le message d'enregistrement dit de même « N règles à revoir, M avertissements ». Ce que la base ne contrôle pas encore (bonus d'équipement, nombre de
   sorts par emplacement, plafond de NPM du Potentiel Illimité) n'est montré que comme compteur.
 - **Enregistrement** : création (`POST`) puis modification (`PUT` avec la version lue : si quelqu'un a modifié la fiche entre-temps, rien n'est écrasé et
   la page propose de la recharger), suppression (`DELETE` avec la version lue). Sans le service (service arrêté), ou quand il refuse
@@ -684,7 +706,7 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   Flagelleur d'un personnage du Potentiel Illimité : « Punis-moi ... (Flagelleur) : Feu », R163 ; relue si c'est une option du choix de la fiche) ; le nom et le type du modèle restent. Les dés de maîtrise
   calculés (`maitrisesParFamille`, R148, R149 : 5 au plus) sont remplis de gris (`REMPLISSAGE_DE_ATTEINT`), la posture du moment marquée « ✔ ». Ce qui n'a pas de case (bi-classe, caractéristique du
   Potentiel Illimité, gains de niveau — deux totaux, R73 : « Gains de niveau : santé X, chakra Y » ; la note d'un classeur exporté avant, niveau par
-  niveau, se relit sommée, le dé « les deux » sur chacun —, NM offerts de livre (« NM offerts : Boule de feu (livre 1) »), NM du MJ de la fiche (R118 :
+  niveau, se relit sommée, le dé « les deux » sur chacun —, NM offerts de livre (« NM offerts : Boule de feu (livre 1) » : chaque livre de la fiche, dans l'ordre de l'entraînement, son sort choisi ou non, R169 ; relus sur n'importe quel sort, le nom cherché dans la liste des sorts, puis dans `sortsDesLivres`, puis dans toutes les règles : seul un sort inconnu, ou un nom qui en désigne plusieurs, est perdu ; un second livre du même sort aussi, R26), NM du MJ de la fiche (R118 :
   « NM du MJ : 2 » ; un classeur d'avant les écrit sort par sort, « Boule de feu (livre 1, MJ 1) », relus comme NM du MJ de la fiche), magie de la symbiose (R100 : « Magie de la symbiose : Glace », relue si c'est une magie du personnage), sort
   préparé (R115 : « Sort préparé : Boule de feu (jet 57, posture Offensif) », le nom seul sans jet ni posture ; relu si c'est un sort de la liste que
   le don de préparation de la fiche autorise, son jet de 1 à 100 et sa posture une des six, sinon perdu et dit : `texteDuSortPrepare`,
@@ -910,7 +932,8 @@ pas, et la note datée est le seul signal.
 | `personnage_resistance_choix` | Un choix de résistance : `source` (celle du choix d'acquis de la ligne, ou l'identifiant du don), `rang` (1 = le premier) et l'altération d'état (`etat_id`) ou la magie (`magie_id`) retenue, l'une ou l'autre. Trois sortes : une altération d'une ligne du tableau de la race (« Au choix parmi les autres » du Drakos orange, décision R124, migration 0069), +1 cran ; une magie au choix ou tirée d'un don (Ocultomancien « Résilience », Anansi d'Arcane : décision R137, migration 0071), +1 cran à cette magie (et, pour l'Anansi, à son altération, lue dans `etat_magie`) ; la magie tirée au D14 par le MJ pour « Punis-moi ... » ou « ... plus fort ! » d'un personnage du Potentiel Illimité (une des 14 magies : décision R163, sans migration), sans cran par elle-même : elle tient lieu de magie innée pour ce don seulement (ses listes de résistances et de faiblesses aux altérations servent au don, le PI n'en hérite pas) ; une de ses options (la page les lit, la base ne les écrit pas) ; un choix d'une autre ethnie ou d'un don qui n'est plus débloqué part à l'enregistrement (`resistanceChoixValables`) ; ligne « Résistance au choix » de la note du tableur |
 | `personnage_metier_bonus` | Pour chaque rang de bonus du métier qui propose plusieurs compétences, celle que le joueur retient (décision R33) |
 | `personnage_capacite` | Dons de classe **à choix** (options d'une ligne, paliers de l'Archimage) ; les autres se déduisent |
-| `personnage_sort` | Sorts de la liste (AA55:AY74) et leur NM (toutes origines comprises), dont celui d'un livre (`nm_livre`, noté dans l'entraînement : le sort a alors au moins 1 NM ; décision R118) ; les NM du MJ, notés sort par sort jusqu'à la migration 0066 (`nm_cadeau`), sont ceux de la fiche ; le sort préparé (décision R115, migration 0067 : `prepare`, un seul par fiche), son jet de magie (`prepare_jet`, D100) et la posture du moment de sa préparation (`prepare_posture_id`), que les autres sorts n'ont pas ; pas de case dans la fiche auto |
+| `personnage_sort` | Sorts de la liste (AA55:AY74) et leur NM (toutes origines comprises), dont celui d'un livre quand le sort en a un (`personnage_livre_sort` ; décisions R118, R169 : la colonne `nm_livre` est retirée par la migration 0082) ; les NM du MJ, notés sort par sort jusqu'à la migration 0066 (`nm_cadeau`), sont ceux de la fiche ; le sort préparé (décision R115, migration 0067 : `prepare`, un seul par fiche), son jet de magie (`prepare_jet`, D100) et la posture du moment de sa préparation (`prepare_posture_id`), que les autres sorts n'ont pas ; pas de case dans la fiche auto |
+| `personnage_livre_sort` | Les livres de sort de l'entraînement (décision R169, migration 0082) : un par sort (clé `personnage_id`, `sort_id`), sur un sort de la liste ou non, rangés (`rang`, unique par fiche) ; le NM d'un livre ne compte (hors du décompte) que si son sort est choisi avec au moins 1 NM ; clé `livres_sorts` du JSON ; « NM offerts » de la note du tableur |
 | `personnage_maitrise_choix` | Maîtrises d'armes (AA2:AV7) : plus rien ne se saisit par famille (décision R148, migration 0076, qui retire `personnage_maitrise_arme` et ses dés par famille) ; une ligne par point à choisir d'une source acquise : la source (`source` : l'id du don, ou `<classe>#maitrise-arme:<rang>` pour une ligne de `classe_maitrise_arme`, sans clé étrangère), le numéro du point dans sa part à choisir (`rang`) et la famille choisie, parmi les options de la part (`maitrise_arme_part_famille`) ; la même famille peut revenir sauf limite écrite (R150) ; jamais ARME DE MONSTRES (R45) ; la famille de la ligne `au_choix` d'une classe est aussi celle des dons qui la suivent (R151) et l'arme du bonus « de l'arme choisie » (R152). L'accessoire « Un point de maîtrise d'arme » garde sa famille dans `personnage_accessoire.arme_famille_id` (R151). Les points et les dés se calculent (`v_personnage_maitrise_arme`) |
 | `personnage_arme`, `personnage_armure_partie`, `personnage_accessoire`, `personnage_inventaire` | Équipement : catalogue de la base (armes, matériaux, améliorations, pièces élémentaires, effets d'accessoire et valeur tirée, case « Malédiction » : six emplacements, R97) et sac ; deux armes (`personnage_arme`, rangs 1 et 2), chacune **un seul modèle** (décision R167, migration 0081) : soit une arme du catalogue (`arme_id`) avec sa composition (`materiau_id`), soit une arme élémentaire (`arme_elementaire_id`, sans matériau : une pièce élémentaire transforme l'arme, qui perd tout), et un seul niveau d'amélioration (`amelioration_id`, une ligne du tableau fondu des armes, cible `arme`), qui ne sert qu'aux dégâts et à la solidité ; plus d'élément posé sur une arme du catalogue ni d'amélioration de l'élément (`amelioration_elementaire_id`, retirée ; la base vivante convertit ses fiches) ; le bouclier dans `personnage` (forme, matière, amélioration, solidité du moment : décision R96, migration 0060, qui remplace `personnage_bouclier_materiau`) ; durabilité du moment d'une arme (`personnage_arme.durabilite`, « Solidité » AK17, AX17 : NULL = à son maximum, 0 = cassée ; décision R74, migration 0045) ; l'armure portée dans `personnage` (une armure complète, son amélioration, son élément et l'amélioration de l'élément) et la solidité du moment de chacune de ses parties abîmées (`personnage_armure_partie` ; décision R95, migration 0055, qui remplace `personnage_armure`, une armure par emplacement) |
 | `personnage_ceinture` | Les 3 emplacements de la ceinture (guide « Fiche de personnage : Accessoires et Ceinture ») : objet et quantité ; demande du propriétaire, migration 0031 |

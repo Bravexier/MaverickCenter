@@ -397,7 +397,7 @@ test('la page (src/scripts/fiche.mjs, lue comme un texte) : les lignes d’entra
   assert.match(corps, /const cle = JSON\.stringify\(\[versionInventaire, /);
   // « + Compétence » et « + Livre de sort » cherchent la compétence libre et le sort sans livre au moment du clic
   assert.match(corps, /onclick: \(\) => \{ const k = libre\(\);/);
-  assert.match(corps, /onclick: \(\) => \{ const j = sansLivre\(\);/);
+  assert.match(corps, /onclick: \(\) => \{ const id_ = sansLivre\(\);/);
   // les raisons que rend le lecteur (et l'armure à cran uni cassée, R158) ont toutes un libellé dans la page ; plus la raison « element » (R165 : une armure
   // élémentaire est l'armure de la fiche, il n'y a plus d'armure d'origine)
   const raisons = script.slice(script.indexOf('const RAISONS_DE_L_ACQUIS = {'), script.indexOf('};', script.indexOf('const RAISONS_DE_L_ACQUIS = {')));

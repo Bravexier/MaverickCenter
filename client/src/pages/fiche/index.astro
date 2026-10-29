@@ -12,10 +12,11 @@ import { classeDAlignement, classeDePartie, cssDesFamilles, FAMILLES_DE_LA_FICHE
 
 // Fiche de personnage (demande du propriétaire) : création et modification d'un PRÉTIRÉ sur le même écran (/fiche/, /fiche/?id=<id>). Quatre zones,
 // sans cadre ni titre visibles (demandes du propriétaire) : I. l'identité (portrait, nom, surnom, origine, race, magies, classes, alignement, niveau seul) ; II. ce qu'on veut toujours
-// à portée (attributs, caractéristiques et compétences, sorts et le sort préparé (R115), dons débloqués et entraînement (R71), armes avec leur solidité (R74), les trois emplacements de la ceinture) ; III. ce qui
+// à portée (attributs, caractéristiques et compétences, sorts et le sort préparé (R115), dons débloqués, armes avec leur solidité (R74), les trois emplacements de la ceinture) ; III. ce qui
 // dépend de la situation (posture, initiative et vitesses, armure avec la défense totale et les dégâts reçus (R98), accessoires (R97), inventaire juste en
 // dessous (demande du propriétaire du 2026-10-17), bouclier (R96), résistances et faiblesses) ; IV. ce qui se règle et se suit, en onglets (progression et
-// XP, choix — dont les maîtrises d'armes, demande du propriétaire du 2026-10-23 —, notes et événements, contrôle des règles). Compacte (demandes du
+// XP, choix — dont les maîtrises d'armes, demande du propriétaire du 2026-10-23 —, entraînement (R104, demande du propriétaire du 2026-10-29), notes
+// et événements, contrôle des règles). Compacte (demandes du
 // propriétaire) : les choix (race, ethnie, magies, classes, spécialités) dans des menus déroulants, caractéristiques, compétences et valeurs du moment
 // en curseurs. Les règles viennent
 // de la base (/fiche/regles.json, lib/fiche-regles.mjs), les calculs de lib/fiche-moteur.mjs, l'enregistrement du service des personnages (/api/,
@@ -216,14 +217,6 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
           <h3 id="titre-dons">Dons débloqués</h3>
           <div class="fiche-etape__corps">
             <div><h4 class="fiche-sous-titre">Dons raciaux</h4><ul id="dons-race" class="dons-liste" aria-label="Dons de la race"></ul></div>
-            {/* « Entraînement » (décision R104) : des lignes qu'on ajoute — une compétence et ses points (dans l'Acquis), un livre de sort (son NM), un
-                texte libre (« dons évènementiels ») */}
-            <div class="dons-entrainement">
-              <h4 class="fiche-sous-titre" id="titre-entrainement">Entraînement</h4>
-              <ul id="entrainement" class="entrainement" aria-labelledby="titre-entrainement"></ul>
-              <p class="entrainement__ajouts" id="entrainement-ajouts"></p>
-              <p class="fiche-aide" id="entrainement-aide">{entrainement && <Fragment><cite>{entrainement.titre}</cite> : « {entrainement.texte} » </Fragment>}Les points d’une compétence s’ajoutent à son acquis ; un livre de sort lui donne un NM, qui ne compte pas dans le décompte des NM ; un texte libre note un don évènementiel ou ce que le MJ accorde.</p>
-            </div>
             <div><h4 class="fiche-sous-titre">Dons de classe</h4><div id="dons-classes" class="dons-classes"></div></div>
             {/* les bonus d'acquis « X ou Y » des dons débloqués (décision R104) : la compétence se choisit ici */}
             <div id="acquis-choix-bloc" hidden><h4 class="fiche-sous-titre" id="titre-acquis-choix">Acquis à choisir</h4><ul id="acquis-choix" class="acquis-choix" aria-labelledby="titre-acquis-choix"></ul></div>
@@ -311,6 +304,7 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
         <div class="parametres__onglets">
           <a class="onglet is-active" id="onglet-progression" href="#etape-progression">Progression</a>
           <a class="onglet" id="onglet-choix" href="#etape-choix">Choix <span class="onglet__compte onglet__compte--attente" id="choix-compte" hidden></span></a>
+          <a class="onglet" id="onglet-entrainement" href="#etape-entrainement">Entraînement</a>
           <a class="onglet" id="onglet-jeu" href="#etape-jeu">Notes et événements</a>
           <a class="onglet" id="onglet-controles" href="#etape-controles">Contrôle <span class="onglet__compte" id="controles-compte" hidden></span></a>
         </div>
@@ -391,6 +385,19 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
                 </div>
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* « Entraînement » (décision R104), dans son onglet, juste après « Choix » (demande du propriétaire du 2026-10-29 : « Le tableau d'entrainement
+            devrait être dans un onglet à part à coté des choix. ») : des lignes qu'on ajoute — une compétence et ses points (dans l'Acquis), un livre de
+            sort (son NM ; sur n'importe quel sort des magies du personnage, en attente tant que le sort n'est pas choisi : décision R169), un texte
+            libre (« dons évènementiels ») ; remplies par src/scripts/fiche.mjs#construireEntrainement */}
+        <section class="fiche-etape parametres__panneau" id="etape-entrainement" aria-labelledby="titre-entrainement">
+          <h3 class="parametres__titre" id="titre-entrainement">Entraînement</h3>
+          <div class="fiche-etape__corps entrainement-panneau">
+            <ul id="entrainement" class="entrainement" aria-labelledby="titre-entrainement"></ul>
+            <p class="entrainement__ajouts" id="entrainement-ajouts"></p>
+            <p class="fiche-aide" id="entrainement-aide">{entrainement && <Fragment><cite>{entrainement.titre}</cite> : « {entrainement.texte} » </Fragment>}Les points d’une compétence s’ajoutent à son acquis ; un livre de sort donne un NM à son sort, qui ne compte pas dans le décompte des NM, et attend tant que le sort n’est pas choisi ; un texte libre note un don évènementiel ou ce que le MJ accorde.</p>
           </div>
         </section>
 

@@ -84,6 +84,8 @@ texte : `entrainementEnLignes`), et l'acquis saisi de `personnage_competence` (a
 calcule). Sur une base d'avant 0062 (reconstruction échouée), une fiche se lit avec des listes `entrainements` et `acquis_choix` vides et s'enregistre
 sans elles (une liste non vide est refusée), l'acquis d'avant à 0. Depuis la migration 0066 (décision R118), les NM du MJ de chaque sort
 (`personnage_sort.nm_cadeau`) deviennent ceux de la fiche, `personnage.nm_mj`, leur somme ; le NM de chaque sort ne change pas, rien n'est noté.
+Depuis la migration 0082 (décision R169), le livre d'un sort (`personnage_sort.nm_livre` = 1) devient une ligne de `personnage_livre_sort`, rangée
+dans l'ordre de la liste des sorts (comme la migration et `livresDesSorts`) ; le NM du sort ne change pas, rien n'est noté.
 Depuis la migration 0076 (refonte des maîtrises d'armes, décisions R148 à R153), `personnage_maitrise_arme` (les dés par famille) et l'arme choisie
 d'un choix d'acquis (`personnage_acquis_choix.arme_famille_id`, R119, retirée par R152) ne sont plus recopiées : **« Tout remettre à choisir »**
 (R153), aucun choix de maîtrise n'est posé (`personnage_maitrise_choix` reste vide ; les familles imposées par les classes et les dons comptent
@@ -172,14 +174,18 @@ Les adresses finissent par « / », comme celles du site : en développement, As
 service (qui accepte les deux formes).
 
 **Une fiche en JSON** (`fiche-format.mjs`) : les colonnes de `personnage` à la racine, sous leur nom ; une liste par table de détail
-(`classes`, `caracteristiques`, `competences`, `entrainements`, `acquis_choix`, `resistance_choix`, `metier_bonus`, `capacites`, `sorts`, `maitrise_choix`, `armes`,
+(`classes`, `caracteristiques`, `competences`, `entrainements`, `acquis_choix`, `resistance_choix`, `metier_bonus`, `capacites`, `sorts`, `livres_sorts`, `maitrise_choix`, `armes`,
 `armure_parties`, `accessoires`, `inventaire`, `ceinture`), chaque ligne avec les colonnes de sa table sans `personnage_id` ; et `version`. Une page restée ouverte qui envoie encore
 `bouclier_materiaux` (avant la migration 0060) voit sa liste convertie en matière du bouclier, les autres matériaux notés (avec les nouvelles clés du
 bouclier : `409`) ; des accessoires avec un nom, un effet hors table ou un emplacement Ceinture ou Autre sont convertis de même (`sansPartiesRetirees`) ;
 un texte `entrainement` (avant la migration 0062) devient des lignes de texte de `entrainements` (une par ligne du texte ; avec des lignes déjà là :
 `409`) et l'`acquis` d'une compétence n'est plus repris, noté, daté, dans les notes (décision R104 : l'Acquis se calcule) ; des `sorts[].nm_cadeau`
 (avant la migration 0066) donnent leur somme à `nm_mj` (décision R118 : les NM du MJ valent pour toute la fiche ; avec `nm_mj` et un `nm_cadeau`
-positif : `409`, `nmDuMjAvecCadeaux`) ; une liste `maitrises_armes` (les dés par famille, avant la migration 0076) et l'`arme_famille_id` d'un choix
+positif : `409`, `nmDuMjAvecCadeaux`) ; des `sorts[].nm_livre` (avant la migration 0082) donnent les livres de la fiche, `livres_sorts`
+(`[{ sort_id, rang }]`, un par sort à 1, dans l'ordre de la liste : décision R169, `livresDesSorts` ; avec `livres_sorts` et un `nm_livre` à 1 :
+`409`, `livresAvecLivresDesSorts`) ; le `niveau_maitrise` d'un sort reste son NM, toutes origines comprises. Un livre se note sur n'importe quel sort,
+choisi ou non (R169 : sur un sort non choisi, il est en attente, son NM n'est pas utilisé) ; un par sort (R26 : `400` « en double (sort_id) ») ;
+une liste `maitrises_armes` (les dés par famille, avant la migration 0076) et l'`arme_famille_id` d'un choix
 d'acquis sont retirées et notées en une ligne datée (R153, comme la base vivante ; aucun choix posé), et, envoyées avec `maitrise_choix` (une page
 d'avant qui a repris une réponse), refusées : `409`, `maitrisesAvecChoix`. L'armure (décision R165) : la fiche enregistrée (l'envoi, avec les
 colonnes qu'il ne change pas) qui porte une armure **et** une armure élémentaire (l'« élément » d'une page d'avant) est **convertie** comme à la
@@ -216,7 +222,7 @@ colonne de sa ligne (`armes[].durabilite`, R74) ; l'entraînement, des lignes (u
 - **Refus** (`400`, rien n'est écrit) : `{ erreur, problemes: [...] }`, un message par problème, en français (« caracteristiques[0] : valeur
   hors des bornes (base >= 1) », « « race_id » : « races/x » n'existe pas dans les règles (race) », champ inconnu…). Une colonne que les règles ont
   retirée (`COLONNES_RETIREES` de `fiche-format.mjs` : `statut`, migration 0038 ; `entrainement` et `competences[].acquis`, 0062 ; `sorts[].nm_cadeau`,
-  0066 ; `acquis_choix[].arme_famille_id`, 0076 ; `armes[].amelioration_elementaire_id`, 0081 ; convertis plus haut)
+  0066 ; `acquis_choix[].arme_famille_id`, 0076 ; `armes[].amelioration_elementaire_id`, 0081 ; `sorts[].nm_livre`, 0082 ; convertis plus haut)
 n'est pas un champ inconnu : elle est ignorée (fichier exporté avant).
   La clé d'une table retirée non plus (`TABLES_RETIREES`, `sansPartiesRetirees`) : une `progression` reçue (page restée ouverte, fichier d'avant la
   migration 0045) devient `gains_sante` et `gains_chakra` quand la fiche ne les porte pas. Avec eux, une `progression` vide est jetée sans rien
@@ -236,7 +242,7 @@ n'est pas un champ inconnu : elle est ignorée (fichier exporté avant).
   base d'avant 0060, la page convertit elle-même la fiche lue (accessoires d'avant, matériaux du bouclier) et note, datés, ce qu'elle perd. Une table de la fiche que la base n'a pas encore
   (`personnage_armure_partie`, 0055 ; `personnage_entrainement` et `personnage_acquis_choix`, 0062 ; `personnage_resistance_choix`, 0069, la
   résistance au choix du Drakos orange, liste `resistance_choix` ; `personnage_maitrise_choix`, 0076, liste `maitrise_choix`, les anciens dés laissés
-  intacts pour la reconstruction suivante) se lit vide, et une liste non vide pour elle est
+  intacts pour la reconstruction suivante ; `personnage_livre_sort`, 0082, liste `livres_sorts` : un livre ne s'enregistre pas sur cette base) se lit vide, et une liste non vide pour elle est
   refusée (« pas encore dans cette base, ses lignes seraient perdues ») ; une colonne retirée qu'une base d'avant exige encore (`statut`,
   `competences[].acquis`) y prend sa valeur de départ.
 - **Contrôles** : les règles de `v_personnage_controle` enfreintes sont rendues avec chaque fiche ; toute fiche est contrôlée, même inachevée, et
@@ -375,7 +381,8 @@ une spécialité, un métier ou une arme qu'une fiche utilise le **retire de la 
 la composition et l'amélioration de cet emplacement ; une arme élémentaire, qui ne se supprime pas, n'est jamais visée) part, `personnage_classe.specialite_id`
 passe à `NULL` (la classe reste) avec les dons choisis de la spécialité, `personnage.metier_id` passe à `NULL` avec les bonus « A OU B » que la fiche
 y avait choisis (`personnage_metier_bonus`) (un sort, que le site ne supprime pas
-encore, partirait de `personnage_sort` ; à la reconstruction, les quatre sont retirés, sauf un don, une spécialité ou un sort dont la classe ou la
+encore, partirait de `personnage_sort` avec son livre, `personnage_livre_sort`, même sur une fiche qui n'a que le livre : décision R169, la clé n'a pas
+d'`ON DELETE` ; la ligne de note le dit, « 2 NM sur cette fiche dont 1 de livre », « livre de sort en attente, sort hors de la liste » ; à la reconstruction, les quatre sont retirés, sauf un don, une spécialité ou un sort dont la classe ou la
 magie a disparu aussi : celle-ci reste un blocage, hors R42). Le retrait se fait **dans le même lot**, avant la suppression
 de la règle, **en SQL direct** : jamais au journal (`TABLES_INTERDITES` contient toute la section 13 : une écriture de fiche par le rédacteur du lot
 est refusée), donc jamais dans `data/rows` ni dans le résumé du lot (qui va dans l'historique et la note de version : ni nom ni compte de fiches) ;

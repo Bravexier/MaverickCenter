@@ -295,6 +295,8 @@ main:has(> .fiche) { max-width: 100rem; }
 .parametres .onglet.is-active { border-color: var(--etape); border-bottom-color: var(--surface); background: var(--surface); color: color-mix(in srgb, var(--etape) 70%, var(--text)); }
 .onglet__compte { padding: 0 0.4rem; border-radius: var(--radius-pill); background: var(--danger); color: var(--texte-sur-danger); font-size: var(--fs-xxs); }
 .onglet__compte[data-ok] { background: var(--good); color: var(--texte-sur-good); }
+/* des avertissements seulement (décision R170 : le plafond de maîtrise), aucune erreur */
+.onglet__compte[data-avertissement] { background: var(--warn-bg); color: var(--warn-text); }
 .onglet__compte--attente { background: var(--a-choisir-plein); color: var(--texte-sur-fonce); }
 .parametres__panneau { border-top-left-radius: 0; border-top-right-radius: 0; }
 html.js .parametres[data-onglets] .parametres__panneau:not(.is-active) { display: none; }
@@ -687,10 +689,11 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .fiche-table--maitrises tbody th { color: var(--text); font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; }
 .fiche .fiche-table--maitrises td, .fiche .fiche-table--maitrises tbody th { vertical-align: top; }
 .fiche-table--maitrises tr[data-nul] > * { color: var(--muted); font-weight: normal; }
-.fiche-table--maitrises tr[data-etat='trop'] > * { background: color-mix(in srgb, var(--danger) 8%, transparent); }
+/* au-delà du plafond (R149) : un avertissement, pas une erreur (décision R170) */
+.fiche-table--maitrises tr[data-etat='avertissement'] > * { background: var(--warn-bg); }
 .maitrise-detail { color: var(--muted); font-size: var(--fs-xs); }
 .maitrise-alerte { display: block; margin-top: 0.1rem; padding-left: 0.4rem; border-left: 3px solid var(--border); }
-.maitrise-alerte[data-ton='trop'] { border-color: var(--danger); color: var(--danger); font-weight: 600; }
+.maitrise-alerte[data-ton='avertissement'] { border-color: var(--warn-text); color: var(--warn-text); font-weight: 600; }
 
 /* alignement (demande du propriétaire) : les quatre scores serrés, l'alignement qui en résulte à côté */
 .alignement { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.7rem; margin: 0; padding: 0.25rem 0.55rem 0.4rem; border: 1px solid var(--etape-ligne); border-radius: var(--radius); }
@@ -976,9 +979,8 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .don__texte { color: var(--muted); font-size: var(--fs-xs); line-height: 1.3; white-space: pre-line; }
 /* l'aide de la fiche sous le texte d'un don (« ... plus fort ! » du Flagelleur, décision R163) */
 .don__aide { font-size: var(--fs-xs); font-style: italic; line-height: 1.3; }
-/* « Entraînement » (décision R71) : texte libre, entre les dons de la race et ceux des classes */
-.dons-entrainement textarea { display: block; width: 100%; min-height: 2.6rem; resize: vertical; }
-.dons-entrainement .fiche-aide { margin-top: 0.2rem; font-size: var(--fs-xs); }
+/* « Entraînement » (décisions R104, R169) : son onglet de la zone IV, après « Choix » */
+.entrainement-panneau .fiche-aide { margin-top: 0.2rem; font-size: var(--fs-xs); }
 .dons-classes { display: grid; gap: 0.5rem; }
 .dons-classe > h4 { margin: 0 0 0.25rem; padding-bottom: 0.15rem; border-bottom: 2px solid var(--c); font-size: var(--fs-sm); }
 
@@ -1037,6 +1039,8 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .controles { margin: 0; padding-left: 1.1rem; font-size: var(--fs-md); }
 .controles li { margin: 0.1rem 0; }
 .controles[data-vide] { list-style: none; padding: 0; color: var(--good); }
+.controles .controles__ok { list-style: none; margin-left: -1.1rem; color: var(--good); }
+.controles li[data-gravite='avertissement'] { color: var(--warn-text); }
 
 @media (max-width: 40rem) {
   .fiche-zone { padding: 0.45rem 0.4rem 0.5rem; }
@@ -1180,6 +1184,9 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .acquis-calcule { font-weight: 600; cursor: help; }
 .acquis-calcule[data-rogne] { color: var(--danger); }
 .nm-livre[hidden] { display: none; }
+/* un livre de sort dont le sort n'est pas choisi (décision R169) : son NM attend */
+.entrainement__attente { color: var(--muted); font-size: var(--fs-xs); font-style: italic; }
+.entrainement__attente[hidden] { display: none; }
 .acquis-choix { display: grid; gap: 0.3rem; margin: 0; padding: 0; list-style: none; }
 /* « à répartir au choix » (décision R104) : chaque compétence et ses points, ce qui reste à répartir */
 .acquis-choix__reste { display: block; color: var(--muted); font-size: var(--fs-xs); }

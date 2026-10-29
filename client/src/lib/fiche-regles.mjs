@@ -349,7 +349,10 @@ function reglesDeLaBase(db) {
   if (!amMagique) throw new Error('categorie_classe « classe-magique » : am_base absent');
   const alternatives = parCle(lignes(db, 'SELECT capacite_id, autre_id FROM v_capacite_exclusive'), 'capacite_id', (r) => r.autre_id);
   const capacites = parCle(lignes(db, 'SELECT id, classe_id, specialite_id, niveau, nature, ligne, rang, nom, type, type_brut, effet, remarque FROM capacite'), 'classe_id');
-  const specialites = parCle(lignes(db, 'SELECT id, classe_id, rang, nom FROM specialite ORDER BY classe_id, rang'), 'classe_id');
+  const specialites = parCle(lignes(db, 'SELECT id, classe_id, rang, nom, description FROM specialite ORDER BY classe_id, rang'), 'classe_id');
+  // le texte de présentation d'une classe ou d'une spécialité (infobulle d'une tuile de choix), tel qu'en base, sans les balises du glossaire comme tout
+  // texte de ces règles (chargerReglesDeFiche : le texte affiché) ; null sans texte
+  const texte = (v) => (typeof v === 'string' && v !== '' ? v : null);
   // Les sources de maîtrise d'arme (décisions R148 à R151), lues dans leurs tables de règles (maitrise_arme_part, maitrise_arme_part_famille : écrites par
   // lib/maitrise-arme.mjs, rejouées par test/maitrise-arme-sources.test.mjs ; rien n'est relu des textes ici) : les parts de chaque source, dans l'ordre
   // de son texte, { rang, genre ('imposee' | 'choix' | 'suit'), points (signés : le −1 de l'Épéiste), famille (la famille imposée, sinon null), options
@@ -394,7 +397,8 @@ function reglesDeLaBase(db) {
   const maitrisesArmures = parCle(lignes(db, "SELECT classe_id, rang, brut, poids_min, poids_max FROM classe_maitrise_armure WHERE objet = 'armure' ORDER BY classe_id, rang"),
     'classe_id', (r) => ({ rang: r.rang, brut: r.brut, poids_min: r.poids_min, poids_max: r.poids_max, valeur_max: valeurDuPoids(r.poids_max) }));
   const classes = lignes(db, `
-    SELECT c.id, c.nom, c.sante_depart, c.chakra_depart, c.barriere_depart, c.categorie_id, c.magie_innee_id, c.magie_innee_exclue_id, k.libelle AS categorie, k.am_base
+    SELECT c.id, c.nom, c.sante_depart, c.chakra_depart, c.barriere_depart, c.categorie_id, c.magie_innee_id, c.magie_innee_exclue_id, k.libelle AS categorie, k.am_base,
+           c.description
     FROM classe c JOIN categorie_classe k ON k.id = c.categorie_id ORDER BY c.ordre`)
     .map((c) => {
       const dons = capacites.get(c.id) ?? [];
@@ -405,11 +409,16 @@ function reglesDeLaBase(db) {
           .map((g) => ({ niveau: g.niveau, specialite_id: specialiteId, options: g.options.map((o) => ({ id: o.id, nom: o.nom, type: o.type })) }));
       const specialitesDeLaClasse = (specialites.get(c.id) ?? []).map((s) => {
         const cartouche = dons.find((d) => d.nature === 'specialite' && d.specialite_id === s.id);
-        return { id: s.id, nom: s.nom, rang: s.rang, magique: ditClasseMagique(cartouche?.effet) };
+        return {
+          id: s.id, nom: s.nom, rang: s.rang, magique: ditClasseMagique(cartouche?.effet),
+          description: texte(s.description),
+        };
       });
       return {
         // sa couleur : la classe de sa catégorie de /classes/ (lib/palette-css.mjs, famille `classe`, celle des pages de classe), jamais un hex
         id: c.id, nom: c.nom, categorie: c.categorie, classe: classeDUneClasse(entree),
+        // son texte de présentation, tel qu'en base (sans les balises du glossaire ; null sans texte) : l'infobulle de sa tuile
+        description: texte(c.description),
         // colonne de /classes/ (Parleur sous « Spéciales ») et son rang de gauche à droite
         groupe: (({ key, label }) => ({ key, label, ordre: CLASS_GROUPS.findIndex((g) => g.key === key) }))(classCategory(entree) ?? { key: 'speciales', label: 'Spéciales' }),
         magique: (c.am_base ?? 0) > 0 || c.id === 'classes/archimage',

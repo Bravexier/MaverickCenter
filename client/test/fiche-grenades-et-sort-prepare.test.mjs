@@ -132,7 +132,7 @@ function mage(niveau, sorts, x = {}) {
   return {
     ...ficheVide('Ignis'), race_id: 'races/humain', magie_innee_id: 'magies/magie-du-feu', xp: xpDuNiveau(niveau),
     classes: [{ rang: 1, classe_id: 'classes/mage-rouge', specialite_id: 'classes/mage-rouge#specialite:mage-rubis' }],
-    sorts: sorts.map((sort_id, i) => ({ sort_id, rang: i + 1, niveau_maitrise: 0, nm_livre: 0 })),
+    sorts: sorts.map((sort_id, i) => ({ sort_id, rang: i + 1, niveau_maitrise: 0 })),
     ...x,
   };
 }
@@ -224,16 +224,20 @@ test('R135 : en Symbiose d’une autre magie que la sienne, le sort préparé es
   assert.match(rafraichir, /fiche\.sorts = sortsApresLaSymbiose\(regles, fiche\);/);
 });
 
-test('R115 : changer le sort d’un emplacement (sortsApresChoixDEmplacement) : le nouveau sort à 0 NM, sans livre ni la préparation de l’ancien ; vider retire la ligne ; un emplacement libre en ajoute une', () => {
+test('R115, R169 : changer le sort d’un emplacement (sortsApresChoixDEmplacement) : le nouveau sort à 0 NM (1 avec son livre), sans la préparation de l’ancien, dont le livre reste ; vider retire la ligne ; un emplacement libre en ajoute une', () => {
   const f = mage(3, [ATTAQUE_1, ATTAQUE_2]);
-  const avant = { ...f, sorts: M.sortsApresPreparation(regles, { ...f, posture_id: POSTURE('focus') }, ATTAQUE_1).map((s, i) => (i === 0 ? { ...s, prepare_jet: 40, niveau_maitrise: 2, nm_livre: 1 } : s)) };
+  const avant = { ...f, livres_sorts: [{ sort_id: ATTAQUE_1, rang: 1 }],
+    sorts: M.sortsApresPreparation(regles, { ...f, posture_id: POSTURE('focus') }, ATTAQUE_1).map((s, i) => (i === 0 ? { ...s, prepare_jet: 40, niveau_maitrise: 2 } : s)) };
   const gele = structuredClone(avant);
   assert.deepEqual(M.sortsApresChoixDEmplacement(avant, 0, AUTRE_1)[0],
-    { sort_id: AUTRE_1, rang: 1, niveau_maitrise: 0, nm_livre: 0, prepare: 0, prepare_jet: null, prepare_posture_id: null });
+    { sort_id: AUTRE_1, rang: 1, niveau_maitrise: 0, prepare: 0, prepare_jet: null, prepare_posture_id: null });
   assert.equal(M.sortPrepare(regles, avant).sort.id, ATTAQUE_1);
   assert.equal(M.sortPrepare(regles, { ...avant, sorts: M.sortsApresChoixDEmplacement(avant, 0, AUTRE_1) }), null, 'plus de sort préparé');
   assert.deepEqual(M.sortsApresChoixDEmplacement(avant, 0, null).map((s) => s.sort_id), [ATTAQUE_2]);
-  assert.deepEqual(M.sortsApresChoixDEmplacement(avant, 2, ATTAQUE_3).at(-1), { sort_id: ATTAQUE_3, rang: 3, niveau_maitrise: 0, nm_livre: 0 });
+  assert.deepEqual(M.sortsApresChoixDEmplacement(avant, 2, ATTAQUE_3).at(-1), { sort_id: ATTAQUE_3, rang: 3, niveau_maitrise: 0 });
+  // R169 : le sort qui a son livre reprend son emplacement à 1 NM (« Une fois le sort repris, le NM est automatiquement réactivé ») ; le livre est resté
+  assert.deepEqual(M.sortsApresChoixDEmplacement({ ...avant, sorts: M.sortsApresChoixDEmplacement(avant, 0, null) }, 1, ATTAQUE_1).at(-1),
+    { sort_id: ATTAQUE_1, rang: 2, niveau_maitrise: 1 });
   // l'autre ligne garde la sienne (rien de préparé, mais son objet n'est pas recréé) ; la fiche n'est pas touchée
   assert.equal(M.sortsApresChoixDEmplacement(avant, 0, AUTRE_1)[1], avant.sorts[1]);
   assert.deepEqual(avant, gele);

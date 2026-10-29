@@ -6,7 +6,7 @@ user-invocable: false
 ---
 # Fiche : acquis, entraînement, métier
 
-Noyau (fichiers, invariants communs) : skill `zone-fiche`. Détail : `docs/character-generator.md`, « Caractéristiques » (l'acquis), « Dons débloqués » (l'entraînement), « Métier ».
+Noyau (fichiers, invariants communs) : skill `zone-fiche`. Détail : `docs/character-generator.md`, « Caractéristiques » (l'acquis), « Entraînement » (puce de « La page `/fiche/` »), « Métier ».
 
 ## Acquis calculé (R104, migration `0062-fiche-entrainement-acquis`)
 - Plus d'acquis saisi (`personnage_competence.acquis` retirée, `COLONNES_RETIREES`). `competencesDe` le calcule, dans cet ordre (un arbitrage) : l'entraînement (`entrainementDe`), les dons débloqués et l'armure portée (`acquisDesDons`), le métier, puis l'accessoire, rognés au plafond de R41. L'Acquis du métier n'est jamais écrit dans `personnage_competence`.
@@ -27,7 +27,8 @@ Noyau (fichiers, invariants communs) : skill `zone-fiche`. Détail : `docs/chara
 - Le « sauf » est la famille de son bandeau, tel quel ou au singulier, ou celle que R138 rattache à « Hast », « Bâton », « Arme jet », « Masse » (`lib/maitrise-arme.mjs#FAMILLES_DES_SAUF`, réexporté par `lib/fiche-regles.mjs`).
 
 ## Entraînement
-- En lignes dans les dons : `personnage_entrainement` (une compétence et ses points de 0 à 10, ou un texte libre jamais compté ; règles `entrainement_valeur`, `entrainement_competences` ; une ligne à 0 ne compte pas ; deux lignes d'une compétence fusionnées à l'envoi : `entrainementsAEnregistrer`). Un livre de sort reste `personnage_sort.nm_livre` (skill `zone-fiche-sorts`). Son aide est lue dans le guide au build (`aideDeLEntrainement`).
+- Dans son propre onglet « Entraînement » de la zone IV, juste après « Choix », hors du tiroir des choix (demande du propriétaire : « Le tableau d'entrainement devrait être dans un onglet à part à coté des choix. »).
+- En lignes : `personnage_entrainement` (une compétence et ses points de 0 à 10, ou un texte libre jamais compté ; règles `entrainement_valeur`, `entrainement_competences` ; une ligne à 0 ne compte pas ; deux lignes d'une compétence fusionnées à l'envoi : `entrainementsAEnregistrer`). Un livre de sort se note dans `fiche.livres_sorts` (R169, skill `zone-fiche-sorts`). Son aide est lue dans le guide au build (`aideDeLEntrainement`).
 
 ## Fiche d'avant
 - `sansPartiesRetirees` (`lib/fiche-format.mjs`) : entraînement en texte → lignes de texte (`entrainementEnLignes`) ; acquis > 0 → un retrait noté (`acquisRetires`, nature `acquis`). La base vivante fait la même conversion par `COLONNES_CONVERTIES` de `serveur/base-vivante.mjs` quand l'ancienne base a la colonne.

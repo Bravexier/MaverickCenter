@@ -1,5 +1,5 @@
 // Fiches de personnage et règles supprimées (décision R42 ; docs/serveur.md, « Fiches de personnage (R42) ») : un don, une spécialité (avec les dons
-// choisis qui en dépendent), un sort, un métier ou une arme (décision R52) que les règles suppriment est RETIRÉ des fiches qui l'utilisent — la fiche reste, seul l'élément part —
+// choisis qui en dépendent), un sort (avec son livre, décision R169), un métier ou une arme (décision R52) que les règles suppriment est RETIRÉ des fiches qui l'utilisent — la fiche reste, seul l'élément part —
 // et une ligne datée par élément s'ajoute à la fin de ses notes (« NOTE », cellule BA53 ; texte : src/lib/fiche-format.mjs#ligneDeRetrait). Deux moments :
 //   - le site de dev supprime une ligne de règle (serveur/edition.mjs : métier, spécialité, don) : retirerDesFiches, AVANT la suppression de la règle
 //     (clés étrangères contrôlées), noms lus dans la base avant qu'elle ne parte ;
@@ -32,6 +32,8 @@ export const RETRAITS = Object.freeze([
   }),
   Object.freeze({ table: 'personnage_capacite', colonnes: Object.freeze(['capacite_id']), vise: 'capacite', action: 'supprimer', cle: Object.freeze(['personnage_id', 'capacite_id']) }),
   Object.freeze({ table: 'personnage_sort', colonnes: Object.freeze(['sort_id']), vise: 'sort', action: 'supprimer', cle: Object.freeze(['personnage_id', 'sort_id']) }),
+  // le livre d'un sort (décision R169, migration 0082 : sur un sort de la liste ou non) part avec le sort, nommé sur sa ligne (la clé n'a pas d'ON DELETE)
+  Object.freeze({ table: 'personnage_livre_sort', colonnes: Object.freeze(['sort_id']), vise: 'sort', action: 'supprimer', cle: Object.freeze(['personnage_id', 'sort_id']) }),
   // une arme supprimée (décision R52, comme R42) : son emplacement (arme 1 ou 2) part, avec sa composition et son amélioration ; une arme élémentaire
   // (arme_id NULL, décision R167, migration 0081) n'est jamais visée : elle ne se supprime pas sur le site de dev (sa source est la page « Pièces élémentaires »)
   Object.freeze({ table: 'personnage_arme', colonnes: Object.freeze(['arme_id']), vise: 'arme', action: 'supprimer', cle: Object.freeze(['personnage_id', 'rang']) }),
@@ -71,16 +73,42 @@ const aLaTable = (db, table) => !!db.prepare("SELECT 1 FROM main.sqlite_master W
 const champsDeFiche = 'p.id AS personnage, p.nom AS fiche, p.nature';
 
 /**
+ * Les sorts des fiches (`main`) et leurs livres (décision R169, migration 0082 : personnage_livre_sort, un livre sur un sort de la liste ou non), une
+ * ligne par (fiche, sort) qui a l'un ou l'autre : personnage_id, sort_id, niveau_maitrise (null sans le sort dans la liste), choisi (0 ou 1), livre
+ * (0 ou 1), ordre (le rang dans la liste, après elle le rang du livre). `ou` (« WHERE sort_id = :sort », paramètre nommé : il sert aux deux tables)
+ * restreint les deux. Une base d'avant la migration 0082 (le service peut y retomber : serveur/fiches.mjs) n'a pas la table : le livre est alors la
+ * colonne nm_livre de la ligne du sort.
+ */
+function sortsEtLivres(db, ou = '') {
+  if (!aLaTable(db, 'personnage_livre_sort')) {
+    const livre = db.prepare('PRAGMA main.table_info(personnage_sort)').all().some((c) => c.name === 'nm_livre') ? 'nm_livre = 1' : '0';
+    return `SELECT personnage_id, sort_id, niveau_maitrise, 1 AS choisi, ${livre} AS livre, rang AS ordre FROM main.personnage_sort ${ou}`;
+  }
+  return `SELECT personnage_id, sort_id, max(niveau_maitrise) AS niveau_maitrise, max(choisi) AS choisi, max(livre) AS livre, min(ordre) AS ordre FROM (
+      SELECT personnage_id, sort_id, niveau_maitrise, 1 AS choisi, 0 AS livre, rang AS ordre FROM main.personnage_sort ${ou}
+      UNION ALL SELECT personnage_id, sort_id, NULL, 0, 1, 1000000 + rang FROM main.personnage_livre_sort ${ou})
+    GROUP BY personnage_id, sort_id`;
+}
+
+/** Le descripteur du retrait d'un sort (sortsEtLivres, nom, magie, NPM) : ses NM sur la fiche, et son livre, qui part avec lui (décision R169). */
+const descripteurDuSort = (s) => ({
+  nature: 'sort', id: s.id, nom: s.nom ?? null, magie: s.magie ?? null, npm: s.npm ?? null, nm: s.choisi ? s.niveau_maitrise ?? null : null,
+  livre: Boolean(s.livre), choisi: Boolean(s.choisi),
+});
+
+/**
  * Applique les retraits collectés (SQL direct, dans `main`) et range leurs descripteurs dans `acc`. Une entrée sans descripteur (un don qui part avec sa
  * spécialité, nommé sur la ligne de celle-ci) est retirée sans ligne de note à elle.
  * @param {{ personnage: string, fiche: string, nature: string, vise: string, cle: unknown[], descripteur: object | null }[]} aRetirer
  */
 function appliquer(db, aRetirer, acc) {
   for (const l of aRetirer) {
-    const r = RETRAITS.find((x) => x.vise === l.vise);
-    const ou = r.cle.map((c) => `"${c}" = ?`).join(' AND ');
-    const sql = r.action === 'vider' ? `UPDATE main."${r.table}" SET "${r.colonne}" = NULL WHERE ${ou}` : `DELETE FROM main."${r.table}" WHERE ${ou}`;
-    db.prepare(sql).run(...l.cle);
+    // chaque table qui cite l'élément (un sort : sa ligne de la liste et son livre, R169) ; une table qu'une base d'avant n'a pas encore est passée
+    for (const r of RETRAITS.filter((x) => x.vise === l.vise && aLaTable(db, x.table))) {
+      const ou = r.cle.map((c) => `"${c}" = ?`).join(' AND ');
+      const sql = r.action === 'vider' ? `UPDATE main."${r.table}" SET "${r.colonne}" = NULL WHERE ${ou}` : `DELETE FROM main."${r.table}" WHERE ${ou}`;
+      db.prepare(sql).run(...l.cle);
+    }
     // le métier retiré emporte les bonus « A OU B » que la fiche y avait choisis (personnage_metier_bonus : rang dans metier_bonus de SON métier)
     if (l.vise === 'metier' && aLaTable(db, 'personnage_metier_bonus')) db.prepare('DELETE FROM main.personnage_metier_bonus WHERE personnage_id = ?').run(l.personnage);
     if (!l.descripteur) continue;
@@ -128,10 +156,10 @@ export function retirerDesFiches(db, { metiers = [], specialites = [], capacites
   for (const id of sorts) {
     const s = db.prepare('SELECT s.id, s.nom, s.niveau, m.nom AS magie FROM main.sort s LEFT JOIN main.magie m ON m.id = s.magie_id WHERE s.id = ?').get(id);
     if (!s) continue;
-    for (const f of db.prepare(`SELECT ${champsDeFiche}, ps.niveau_maitrise, ps.nm_livre FROM main.personnage_sort ps
-      JOIN main.personnage p ON p.id = ps.personnage_id WHERE ps.sort_id = ?`).all(s.id)) {
-      aRetirer.push({ ...f, vise: 'sort', cle: [f.personnage, s.id], descripteur: { nature: 'sort', id: s.id, nom: s.nom, magie: s.magie ?? null, npm: s.niveau ?? null,
-        nm: f.niveau_maitrise ?? null, nm_livre: f.nm_livre ?? null } });
+    // les fiches qui ont le sort dans leur liste, ou son livre seul (décision R169)
+    for (const f of db.prepare(`SELECT ${champsDeFiche}, x.niveau_maitrise, x.choisi, x.livre FROM (${sortsEtLivres(db, 'WHERE sort_id = :sort')}) x
+      JOIN main.personnage p ON p.id = x.personnage_id ORDER BY p.id`).all({ sort: s.id })) {
+      aRetirer.push({ ...f, vise: 'sort', cle: [f.personnage, s.id], descripteur: descripteurDuSort({ ...f, id: s.id, nom: s.nom, magie: s.magie, npm: s.niveau }) });
     }
   }
   for (const id of metiers) {
@@ -241,16 +269,16 @@ export function retirerLesManquants(db, acc = nouveauxRetraitsDeFiches()) {
       : { nature: 'capacite', id: k.id, nom: k.nom ?? null, classe: k.classe ?? null, specialite: k.specialite ?? null, niveau: k.niveau ?? null } });
   }
   // sorts : absents des nouvelles règles, leur magie présente
-  for (const s of db.prepare(`SELECT ${champsDeFiche}, ps.sort_id AS id, ps.niveau_maitrise, ps.nm_livre, a.nom AS nom, a.niveau AS npm,
+  // (un sort de la liste ou le livre seul d'un sort, décision R169 : le livre part avec le sort)
+  for (const s of db.prepare(`SELECT ${champsDeFiche}, ps.sort_id AS id, ps.niveau_maitrise, ps.choisi, ps.livre, a.nom AS nom, a.niveau AS npm,
       coalesce(mm.nom, am.nom) AS magie
-    FROM main.personnage_sort ps JOIN main.personnage p ON p.id = ps.personnage_id
+    FROM (${sortsEtLivres(db)}) ps JOIN main.personnage p ON p.id = ps.personnage_id
     LEFT JOIN ancienne.sort a ON a.id = ps.sort_id
     LEFT JOIN main.magie mm ON mm.id = a.magie_id
     LEFT JOIN ancienne.magie am ON am.id = a.magie_id
     WHERE NOT EXISTS (SELECT 1 FROM main.sort x WHERE x.id = ps.sort_id) AND EXISTS (SELECT 1 FROM main.magie m WHERE m.id = a.magie_id)
-    ORDER BY p.id, ps.rang`).all()) {
-    aRetirer.push({ ...s, vise: 'sort', cle: [s.personnage, s.id], descripteur: { nature: 'sort', id: s.id, nom: s.nom ?? null, magie: s.magie ?? null, npm: s.npm ?? null,
-      nm: s.niveau_maitrise ?? null, nm_livre: s.nm_livre ?? null } });
+    ORDER BY p.id, ps.ordre, ps.sort_id`).all()) {
+    aRetirer.push({ ...s, vise: 'sort', cle: [s.personnage, s.id], descripteur: descripteurDuSort(s) });
   }
   // métiers : absents des nouvelles règles
   for (const m of db.prepare(`SELECT ${champsDeFiche}, p.metier_id AS id, a.nom AS nom

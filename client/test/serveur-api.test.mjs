@@ -832,20 +832,24 @@ test('entraînement en lignes et choix d’acquis (décision R104, migration 006
 test('NM du MJ (décision R118, migration 0066) : enregistrés pour la fiche et relus ; une page d’avant qui les note sort par sort donne leur somme ; les deux à la fois : 409', () => {
   const bdf = 'magies/magie-du-feu#sort:boule-de-feu';
   const cau = 'magies/magie-du-feu#sort:cauterisation';
-  const r = appel('POST', '/api/personnages', { ...ficheConforme('Ombeline'), nm_mj: 2, sorts: [{ sort_id: bdf, rang: 1, niveau_maitrise: 2, nm_livre: 1 }] });
+  const r = appel('POST', '/api/personnages', {
+    ...ficheConforme('Ombeline'), nm_mj: 2, sorts: [{ sort_id: bdf, rang: 1, niveau_maitrise: 2 }], livres_sorts: [{ sort_id: bdf, rang: 1 }],
+  });
   assert.equal(r.statut, 201, JSON.stringify(r.corps));
   const p = r.corps.personnage;
-  assert.deepEqual([p.nm_mj, p.sorts], [2, [{ sort_id: bdf, rang: 1, niveau_maitrise: 2, nm_livre: 1, prepare: 0, prepare_jet: null, prepare_posture_id: null }]]);
+  assert.deepEqual([p.nm_mj, p.sorts, p.livres_sorts],
+    [2, [{ sort_id: bdf, rang: 1, niveau_maitrise: 2, prepare: 0, prepare_jet: null, prepare_posture_id: null }], [{ sort_id: bdf, rang: 1 }]]);
   assert.deepEqual(r.corps.controles, [], 'niveau 1 : le NM compté vient du MJ, celui du livre ne compte pas');
   // une page d'avant : les NM du MJ de chaque sort (nm_cadeau), sans nm_mj
-  const { nm_mj: _n, ...sansNmMj } = lire(p.id).personnage;
+  const { nm_mj: _n, livres_sorts: _l, ...sansNmMj } = lire(p.id).personnage;
   let m = appel('PUT', `/api/personnages/${p.id}`, {
     ...sansNmMj, sorts: [{ sort_id: bdf, rang: 1, niveau_maitrise: 2, nm_livre: 1, nm_cadeau: 1 }, { sort_id: cau, rang: 2, niveau_maitrise: 1, nm_livre: 0, nm_cadeau: 1 }],
   });
   assert.equal(m.statut, 200, JSON.stringify(m.corps));
   assert.equal(m.corps.personnage.nm_mj, 2, 'leur somme');
-  assert.deepEqual(m.corps.personnage.sorts.map((x) => [x.sort_id, x.niveau_maitrise, x.nm_livre]), [[bdf, 2, 1], [cau, 1, 0]]);
-  assert.ok(m.corps.personnage.sorts.every((x) => !('nm_cadeau' in x)));
+  assert.deepEqual(m.corps.personnage.sorts.map((x) => [x.sort_id, x.niveau_maitrise]), [[bdf, 2], [cau, 1]]);
+  assert.deepEqual(m.corps.personnage.livres_sorts, [{ sort_id: bdf, rang: 1 }], 'son livre aussi (R169)');
+  assert.ok(m.corps.personnage.sorts.every((x) => !('nm_cadeau' in x) && !('nm_livre' in x)));
   // les deux formes à la fois (une page d'avant qui a repris nm_mj d'une réponse, puis noté un NM du MJ sur un sort) : rien ne les concilie
   const avant = lire(p.id);
   const k = appel('PUT', `/api/personnages/${p.id}`, { ...avant.personnage, sorts: avant.personnage.sorts.map((x) => ({ ...x, nm_cadeau: 1 })) });
@@ -858,13 +862,61 @@ test('NM du MJ (décision R118, migration 0066) : enregistrés pour la fiche et 
   assert.equal(m.corps.personnage.nm_mj, 2);
 });
 
+test('livre de sort (décision R169, migration 0082) : un livre sur un sort non choisi est accepté et relu tel quel ; une page d’avant (nm_livre sur le sort) donne ses livres ; les deux à la fois : 409 ; un sort inconnu ou un livre en double : 400', () => {
+  const bdf = 'magies/magie-du-feu#sort:boule-de-feu';
+  const cau = 'magies/magie-du-feu#sort:cauterisation';
+  // le livre de Cautérisation, qui n'est pas dans la liste : en attente, son NM n'est pas utilisé (aucun contrôle ne le signale)
+  const livres = [{ sort_id: cau, rang: 1 }, { sort_id: bdf, rang: 2 }];
+  const r = appel('POST', '/api/personnages', { ...ficheConforme('Liseuse'), nm_mj: 1, sorts: [{ sort_id: bdf, rang: 1, niveau_maitrise: 2 }], livres_sorts: livres });
+  assert.equal(r.statut, 201, JSON.stringify(r.corps));
+  const p = r.corps.personnage;
+  assert.deepEqual([p.sorts.map((x) => [x.sort_id, x.niveau_maitrise]), p.livres_sorts], [[[bdf, 2]], livres]);
+  assert.deepEqual(r.corps.controles, [], 'niveau 1 : 2 NM sur Boule de feu, dont 1 de livre et 1 du MJ');
+  assert.deepEqual(lire(p.id), r.corps, 'relue à l’identique');
+  // un envoi partiel sans `livres_sorts` ne change pas les livres ; sans le sort, son livre reste noté
+  let m = appel('PUT', `/api/personnages/${p.id}`, { version: p.version, sorts: [] });
+  assert.equal(m.statut, 200, JSON.stringify(m.corps));
+  assert.deepEqual([m.corps.personnage.sorts, m.corps.personnage.livres_sorts], [[], livres]);
+  // une page d'avant : le livre sur la ligne du sort (nm_livre), sans `livres_sorts` ; le NM du sort ne change pas
+  const { livres_sorts: _l, ...sansLivres } = lire(p.id).personnage;
+  m = appel('PUT', `/api/personnages/${p.id}`, {
+    ...sansLivres, sorts: [{ sort_id: cau, rang: 1, niveau_maitrise: 1, nm_livre: 0 }, { sort_id: bdf, rang: 2, niveau_maitrise: 2, nm_livre: 1 }],
+  });
+  assert.equal(m.statut, 200, JSON.stringify(m.corps));
+  assert.deepEqual(m.corps.personnage.livres_sorts, [{ sort_id: bdf, rang: 1 }]);
+  assert.deepEqual(m.corps.personnage.sorts.map((x) => [x.sort_id, x.niveau_maitrise]), [[cau, 1], [bdf, 2]]);
+  assert.ok(m.corps.personnage.sorts.every((x) => !('nm_livre' in x)));
+  // les deux formes à la fois (une page d'avant qui a repris les livres d'une réponse, puis noté un livre sur un sort) : rien ne les concilie
+  const avant = lire(p.id);
+  const k = appel('PUT', `/api/personnages/${p.id}`, { ...avant.personnage, sorts: avant.personnage.sorts.map((x) => ({ ...x, nm_livre: 1 })) });
+  assert.deepEqual([k.statut, k.corps], [409, { erreur: PAGE_D_AVANT }]);
+  assert.deepEqual(lire(p.id), avant, 'rien n’est écrit');
+  assert.match(PAGE_D_AVANT, /un livre de sort se note à part de la liste des sorts/);
+  // nm_livre à 0 avec les livres de la fiche : gardés
+  m = appel('PUT', `/api/personnages/${p.id}`, { ...avant.personnage, sorts: avant.personnage.sorts.map((x) => ({ ...x, nm_livre: 0 })) });
+  assert.equal(m.statut, 200, JSON.stringify(m.corps));
+  assert.deepEqual(m.corps.personnage.livres_sorts, avant.personnage.livres_sorts);
+  // un sort inconnu, deux livres pour un sort (R26), deux livres au même rang : refusés, rien n’est écrit
+  for (const [liste, motif] of [
+    [[{ sort_id: 'magies/magie-du-feu#sort:inconnu', rang: 1 }], /^livres_sorts : « sort_id » = « magies\/magie-du-feu#sort:inconnu » n’existe pas dans les règles/],
+    [[{ sort_id: bdf, rang: 1 }, { sort_id: bdf, rang: 2 }], /^livres_sorts\[1\] : en double \(sort_id\)$/],
+    [[{ sort_id: bdf, rang: 1 }, { sort_id: cau, rang: 1 }], /^livres_sorts\[1\] : en double \(rang\)$/],
+  ]) {
+    const lue = lire(p.id);
+    const e = appel('PUT', `/api/personnages/${p.id}`, { version: lue.personnage.version, livres_sorts: liste });
+    assert.equal(e.statut, 400, JSON.stringify(e.corps));
+    assert.ok(e.corps.problemes.some((x) => motif.test(x)), JSON.stringify(e.corps.problemes));
+    assert.deepEqual(lire(p.id), lue, 'rien n’est écrit');
+  }
+});
+
 test('sort préparé (décision R115, migration 0067) : marque, jet et posture enregistrés et relus ; un seul par fiche, jet de 1 à 100, jet ou posture hors du sort préparé, posture inconnue : refusés, rien n’est écrit', () => {
   const bdf = 'magies/magie-du-feu#sort:boule-de-feu';
   const cau = 'magies/magie-du-feu#sort:cauterisation';
   const offensif = 'guide/postures#posture:offensif';
   const sorts = [
-    { sort_id: bdf, rang: 1, niveau_maitrise: 0, nm_livre: 0, prepare: 1, prepare_jet: 57, prepare_posture_id: offensif },
-    { sort_id: cau, rang: 2, niveau_maitrise: 0, nm_livre: 0, prepare: 0, prepare_jet: null, prepare_posture_id: null },
+    { sort_id: bdf, rang: 1, niveau_maitrise: 0, prepare: 1, prepare_jet: 57, prepare_posture_id: offensif },
+    { sort_id: cau, rang: 2, niveau_maitrise: 0, prepare: 0, prepare_jet: null, prepare_posture_id: null },
   ];
   const r = appel('POST', '/api/personnages', { ...ficheConforme('Ombre rouge'), sorts });
   assert.equal(r.statut, 201, JSON.stringify(r.corps));
@@ -892,9 +944,9 @@ test('sort préparé (décision R115, migration 0067) : marque, jet et posture e
   }
   // un sort retiré de la fiche part avec sa préparation (sa ligne) ; la marque absente d'un envoi vaut 0
   const avant = lire(p.id);
-  m = appel('PUT', `/api/personnages/${p.id}`, { version: avant.personnage.version, sorts: [{ sort_id: cau, rang: 1, niveau_maitrise: 0, nm_livre: 0 }] });
+  m = appel('PUT', `/api/personnages/${p.id}`, { version: avant.personnage.version, sorts: [{ sort_id: cau, rang: 1, niveau_maitrise: 0 }] });
   assert.equal(m.statut, 200, JSON.stringify(m.corps));
-  assert.deepEqual(m.corps.personnage.sorts, [{ sort_id: cau, rang: 1, niveau_maitrise: 0, nm_livre: 0, prepare: 0, prepare_jet: null, prepare_posture_id: null }]);
+  assert.deepEqual(m.corps.personnage.sorts, [{ sort_id: cau, rang: 1, niveau_maitrise: 0, prepare: 0, prepare_jet: null, prepare_posture_id: null }]);
   assert.equal(expliquer('UNIQUE constraint failed: personnage_sort.personnage_id'), 'un seul sort préparé par fiche (décision R115)');
   // un autre index unique sur la seule fiche : sa table, jamais « en double () »
   assert.equal(expliquer('UNIQUE constraint failed: personnage_ceinture.personnage_id'), 'une seule ligne par fiche (personnage_ceinture)');
@@ -1063,24 +1115,34 @@ test('repli sur une base vivante d’avant la migration 0062 (sa reconstruction 
 test('repli sur une base vivante d’avant la migration 0066 (sa reconstruction a échoué) : sans `nm_mj`, une fiche à 0 NM du MJ s’enregistre (les sorts à 0 NM du MJ chacun) ; des NM du MJ sont refusés, rien n’est perdu sans le dire', () => {
   const { chemin: avant } = preparerBaseVivante({ regles: REGLES, dossier: join(racine, 'db-avant-0066') });
   const ancienne = new DatabaseSync(avant);
-  // la vue et la table d'avant (décision R26 : les NM du MJ sort par sort, personnage_sort.nm_cadeau)
+  // la vue et la table d'avant (décision R26 : les NM du MJ sort par sort, personnage_sort.nm_cadeau ; le livre sur la ligne du sort, nm_livre, jusqu'à
+  // la migration 0082)
   const vue = ancienne.prepare("SELECT sql FROM sqlite_master WHERE name = 'v_personnage_controle'").get().sql;
   const vueDAvant = vue.replaceAll(" || CASE WHEN p.nm_mj > 0 THEN ' + ' || p.nm_mj || ' du MJ' ELSE '' END", '').replaceAll(' + p.nm_mj', '')
-    .replaceAll('ps.niveau_maitrise - ps.nm_livre', 'ps.niveau_maitrise - ps.nm_livre - ps.nm_cadeau');
-  assert.ok(!vueDAvant.includes('p.nm_mj'));
+    .replaceAll('ps.niveau_maitrise - CASE WHEN l.sort_id IS NULL OR ps.niveau_maitrise = 0 THEN 0 ELSE 1 END', 'ps.niveau_maitrise - ps.nm_livre - ps.nm_cadeau')
+    .replace(/\s*LEFT JOIN personnage_livre_sort l ON l\.personnage_id = ps\.personnage_id AND l\.sort_id = ps\.sort_id/g, '');
+  assert.ok(!vueDAvant.includes('p.nm_mj') && !vueDAvant.includes('JOIN personnage_livre_sort'));
   ancienne.exec(`DROP VIEW v_personnage_controle;
     ALTER TABLE personnage DROP COLUMN nm_mj;
+    DROP TABLE personnage_livre_sort;
+    ALTER TABLE personnage_sort ADD COLUMN nm_livre INTEGER NOT NULL DEFAULT 0 CHECK (nm_livre IN (0, 1));
     ALTER TABLE personnage_sort ADD COLUMN nm_cadeau INTEGER NOT NULL DEFAULT 0 CHECK (nm_cadeau >= 0);
     ${vueDAvant};`);
   ancienne.close();
   const base = ouvrirBaseVivante(avant);
   try {
     const bdf = 'magies/magie-du-feu#sort:boule-de-feu';
-    const cree = enregistrerFiche(base, { ...ficheConforme('Repli 0066'), sorts: [{ sort_id: bdf, rang: 1, niveau_maitrise: 1, nm_livre: 1 }] });
+    const cree = enregistrerFiche(base, { ...ficheConforme('Repli 0066'), sorts: [{ sort_id: bdf, rang: 1, niveau_maitrise: 1 }], livres_sorts: [] });
     assert.ok(!('nm_mj' in cree.personnage), 'la colonne n’est pas dans cette base');
+    assert.deepEqual(cree.personnage.livres_sorts, [], 'la table des livres (migration 0082) n’est pas dans cette base : lue vide');
     assert.deepEqual(base.prepare('SELECT niveau_maitrise, nm_livre, nm_cadeau FROM personnage_sort WHERE personnage_id = ?').all(cree.personnage.id).map((l) => ({ ...l })),
-      [{ niveau_maitrise: 1, nm_livre: 1, nm_cadeau: 0 }]);
+      [{ niveau_maitrise: 1, nm_livre: 0, nm_cadeau: 0 }]);
     const lue = lireFiche(base, cree.personnage.id);
+    // un livre (décision R169) : cette base ne sait pas le garder, refusé plutôt que perdu
+    assert.throws(() => enregistrerFiche(base, { version: lue.version, livres_sorts: [{ sort_id: bdf, rang: 1 }] }, { id: lue.id }), (e) => {
+      assert.deepEqual([e.statut, e.details.problemes], [400, ['livres_sorts : pas encore dans cette base, ses lignes seraient perdues']]);
+      return true;
+    });
     assert.throws(() => enregistrerFiche(base, { version: lue.version, nm_mj: 2 }, { id: lue.id }), (e) => {
       assert.deepEqual([e.statut, e.details.problemes], [400, ['champ inconnu « nm_mj »']]);
       return true;
@@ -1251,11 +1313,11 @@ test('repli sur une base vivante d’avant la migration 0067 (sa reconstruction 
   const base = ouvrirBaseVivante(avant);
   try {
     const bdf = 'magies/magie-du-feu#sort:boule-de-feu';
-    const sort = { sort_id: bdf, rang: 1, niveau_maitrise: 0, nm_livre: 0, prepare: 0, prepare_jet: null, prepare_posture_id: null };
+    const sort = { sort_id: bdf, rang: 1, niveau_maitrise: 0, prepare: 0, prepare_jet: null, prepare_posture_id: null };
     const choix = { source: 'races/humain#don:humain-central', rang: 1, competence_id: 'arc', valeur: 6 };
     const cree = enregistrerFiche(base, { ...ficheConforme('Repli 0067'), sorts: [sort], acquis_choix: [choix] });
     const p = cree.personnage;
-    assert.deepEqual([p.sorts, p.acquis_choix], [[{ sort_id: bdf, rang: 1, niveau_maitrise: 0, nm_livre: 0 }], [{ source: choix.source, rang: 1, competence_id: 'arc', valeur: 6 }]],
+    assert.deepEqual([p.sorts, p.acquis_choix], [[{ sort_id: bdf, rang: 1, niveau_maitrise: 0 }], [{ source: choix.source, rang: 1, competence_id: 'arc', valeur: 6 }]],
       'colonnes absentes de la base : ni écrites ni rendues');
     for (const [cle, liste, champ] of [
       ['sorts', [{ ...sort, prepare: 1 }], 'prepare'], ['sorts', [{ ...sort, prepare_jet: 40 }], 'prepare_jet'],
