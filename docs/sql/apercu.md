@@ -25,7 +25,7 @@
 | `source` | Provenance au niveau de la page : une entrée de frontmatter `sources` = une ligne (texte exact). | **id**, nature, texte, url?, genre?, google_id?, fichier?, onglets? |
 | `page_source` |  | **page_id**→page, **ordre**, source_id→source |
 | `page_entite` | Lien page -> entité typée. | **entite_table**, **entite_id**, page_id→page, principale, origine→famille |
-| `panneau_regles` | Panneaux de règles : l'encart replié en tête de chaque onglet de /ressources/equipement/ (migration 0056). | **id**, titre, page_id→page |
+| `panneau_regles` | Panneaux de règles : l'encart replié en tête de chaque page de l'équipement (migration 0056). | **id**, titre, page_id→page |
 | `panneau_regles_bloc` | Un bloc d'un panneau, dans l'ordre de lecture : du texte (tuile = 0), qui suit les colonnes du panneau, ou une tuile (tuile = 1 : encadrée, titre facultatif). | **panneau_id**→panneau_regles, **rang**, ordre, tuile, titre?, texte |
 | `composant_onglet` | Onglets de la page « Composants » (/ressources/composants/, migration 0057) : un onglet par tableau de la page. | **id**, titre, note?, ordre |
 | `annonce` | Annonces placées par le site (migration 0068) : aujourd'hui l'encart « Notre prochaine rencontre IRL » sur l'accueil (/, components/accueil/LiensEtRencontre.astro, depuis le 2026-10-23 ; sur la page L | **id**, texte? |
@@ -319,7 +319,7 @@
 | `v_ressource_recette` *(vue)* | « Recettes qui utilisent la ressource X » : ressource citée par son nom dans la recette (via = 'nommee') ou ingrédient d'alchimie qui répond à l'exigence d'un emplacement (via = 'affinite'). |  |
 | `v_metier_recette` *(vue)* | Recettes d'un métier : par famille citée dans « Artisanat possible » (alchimie seulement, voir metier_recette_famille). |  |
 | `v_potion` *(vue)* | Potions avec leur niveau, leur prix et leurs recettes (une ligne par potion et variante de recette de sa page). |  |
-| `v_objet_ceinture` *(vue)* | Objets à la ceinture (décision R81 ; onglet « Ceinture » de la page /ressources/equipement/, d'abord la page /ressources/objets-a-la-ceinture/) : les objets du catalogue que l'onglet liste parmi ceux |  |
+| `v_objet_ceinture` *(vue)* | Objets à la ceinture (décision R81 ; page « Ceinture » /ressources/objets-a-la-ceinture/, onglet « Ceinture » de /ressources/equipement/ jusqu'au 2026-10-29) : les objets du catalogue que la page list |  |
 | `v_arme_composee` *(vue)* | Arme forgée dans un matériau : « tous les bonus se cumulent une fois l'arme forgée (exemple : une claymore en cuivre donne un bonus aux dégâts de +10 car le cuivre donne +5 aux dégâts et la claymore d |  |
 | `v_armure_piece` *(vue)* | Une armure sur chacune de ses six pièces (Casque, Torse, Bras Gauche, Bras Droit, Jambe Gauche, Jambe Droit) : lecture de la fiche, qui recopie l'AP, l'AM et la solidité de l'armure choisie sur les six pièces. |  |
 | `v_niveau` *(vue)* | Le moteur de la fiche, niveau par niveau : cumuls des dons du guide et valeurs par palier de la fiche. |  |
