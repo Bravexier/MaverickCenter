@@ -9,8 +9,19 @@
 // du guide : le rendu ne change pas.
 import { lireUneBalise } from './mots-cles-balises.mjs';
 
-/** Couleurs de case permises (une classe CSS par couleur : styles/global/wiki.css). */
+/**
+ * Couleurs de case permises : leurs noms seuls (le navigateur reçoit ce module : aucune couleur ici). Leurs valeurs sont celles de
+ * lib/cases-couleurs.mjs#COULEURS_DES_CASES, mêmes clés dans le même ordre (testé) ; la palette en fait une classe par couleur (lib/palette-css.mjs,
+ * famille `case`), que lit styles/global/wiki.css.
+ */
 export const COULEURS_DE_CASE = ['rouge', 'orange', 'jaune', 'vert', 'bleu', 'violet', 'gris'];
+
+/**
+ * La classe de la palette d'une couleur de case (« vert » → « couleur-case-vert », lib/palette-css.mjs#classeDeCase, le même nom : testé), ou null
+ * hors de COULEURS_DE_CASE. Posée avec `data-couleur` par le plugin remark (lib/markdown-couleurs.mjs), l'aperçu assaini (htmlSur) et l'éditeur du
+ * guide (scripts/edition/guide.mjs, par classList) ; le Markdown ne l'écrit jamais : versMarkdown ne relit que `data-couleur`.
+ */
+export const classeDeCouleurDeCase = (nom) => (COULEURS_DE_CASE.includes(nom) ? `couleur-case-${nom}` : null);
 
 const BLOCS = new Set(['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'blockquote', 'pre', 'hr', 'table', 'section', 'article', 'figure']);
 const IGNORES = new Set(['script', 'style', 'button', 'select', 'textarea', 'input', 'colgroup']);
@@ -377,7 +388,12 @@ function attributsSurs(n, nom) {
     if (langue) garder('class', langue);
   }
   if (nom === 'td' || nom === 'th') {
-    if (COULEURS_DE_CASE.includes(attribut(n, 'data-couleur'))) garder('data-couleur', attribut(n, 'data-couleur'));
+    // la couleur d'une case : son nom, et la classe de la palette recalculée depuis lui (jamais celle reçue)
+    const couleur = attribut(n, 'data-couleur');
+    if (COULEURS_DE_CASE.includes(couleur)) {
+      garder('data-couleur', couleur);
+      garder('class', classeDeCouleurDeCase(couleur));
+    }
     const align = alignement(n);
     if (align) garder('align', align);
   }

@@ -46,11 +46,13 @@
 //     fiche. Un texte blanc est posé sur ces couleurs (aplats du guide et de la fiche) : leur famille porte un texte.
 //   - genre, don : lib/genres-couleurs.mjs (sort_type.type, capacite.type), sans `par-defaut` (listes fermées) : les étiquettes des genres de sort
 //     des pages des magies et des types de don des pages de classe.
+//   - case : lib/cases-couleurs.mjs#COULEURS_DES_CASES (rouge, orange…, les couleurs « {couleur:x} » des cases de tableau du Markdown des pages, que
+//     pose lib/markdown-couleurs.mjs et que relit l'éditeur), sans `par-defaut` : la case mêle la couleur à la surface, texte du site (sans texte).
 // L'id d'une classe est la clé du module de sa règle passée par text.mjs#normalize (« chakra+sante » → « chakra-sante ») : il ne change pas quand le nom
 // affiché change.
 //
 // Où la feuille est émise (le poids de chaque page) : les familles que beaucoup de pages posent (FAMILLES_DE_CHAQUE_PAGE : magies, attributs,
-// caractéristiques, affinités) et les seconds rangs des magies sont posés sur chaque page par layouts/Base.astro (cssDeLaPalette) ; les familles d'une
+// caractéristiques, affinités, cases de tableau : toute page qui rend du Markdown, et l'éditeur en place) et les seconds rangs des magies sont posés sur chaque page par layouts/Base.astro (cssDeLaPalette) ; les familles d'une
 // zone (FAMILLES_DES_ZONES : postures, alignements, catégories de classe, races, paliers, Mode Hyper, neutre, matériaux, armes de départ, types
 // d'armure, poids des boucliers, niveaux des accessoires, parties du guide) et les seconds rangs des caractéristiques ne le sont que par le composant des
 // pages qui les posent (cssDesFamilles, cssDesSecondsRangs : le bloc « postures » du guide, la fiche (FAMILLES_DE_LA_FICHE), l'onglet Armes, les onglets
@@ -85,6 +87,7 @@ import { COULEUR_SANS_TYPE, COULEURS_DES_ARMES, COULEURS_DES_POIDS, COULEURS_DES
 import { COULEURS_DES_NIVEAUX } from './accessoires-couleurs.mjs';
 import { COULEURS_DES_PARTIES } from './parties-couleurs.mjs';
 import { COULEURS_DES_GENRES, COULEURS_DES_TYPES_DE_DON } from './genres-couleurs.mjs';
+import { COULEURS_DES_CASES } from './cases-couleurs.mjs';
 import { normalize } from './text.mjs';
 
 /** L'id de la classe d'une couleur inconnue de sa famille (magie : COULEUR_PAR_DEFAUT ; caractéristique, posture, alignement, neutre : COULEUR_NEUTRE). */
@@ -113,10 +116,14 @@ export const FAMILLES_DE_LA_PALETTE = Object.freeze({
   partie: COULEURS_DES_PARTIES,
   genre: COULEURS_DES_GENRES,
   don: COULEURS_DES_TYPES_DE_DON,
+  case: COULEURS_DES_CASES,
 });
 
-/** Les familles posées sur chaque page (layouts/Base.astro : cssDeLaPalette), celles que beaucoup de pages posent. */
-export const FAMILLES_DE_CHAQUE_PAGE = Object.freeze(['magie', 'attribut', 'caracteristique', 'affinite']);
+/**
+ * Les familles posées sur chaque page (layouts/Base.astro : cssDeLaPalette), celles que beaucoup de pages posent ; `case` : les cases de tableau du
+ * Markdown, sur toute page qui en rend (wiki, guide, Codex, chronologie, panneaux de règles, accueil) et dans l'éditeur en place, qui les pose au navigateur.
+ */
+export const FAMILLES_DE_CHAQUE_PAGE = Object.freeze(['magie', 'attribut', 'caracteristique', 'affinite', 'case']);
 /**
  * Les familles d'une zone, émises par le composant des pages qui les posent (cssDesFamilles) : `posture` (le bloc « postures » du guide, la fiche),
  * `alignement`, `palier`, `mode`, `neutre` (la fiche), `classe` (/classes/, les pages de classe, la fiche, la page d'une classe créée sur le site de
@@ -137,9 +144,10 @@ export const FAMILLES_DE_LA_FICHE = Object.freeze(['posture', 'alignement', 'cla
  * bleu des armes de départ : une nuance sur la surface, un filet et, mêlé au texte du site, la couleur de la phrase des règles ; styles/armes/armes.css). Le seuil de lisibilité de 4,5:1 vaut pour un texte : leur fond reste la
  * couleur de leur règle, sans correction (test/palette-css.test.mjs ne mesure le contraste que des familles qui portent un texte). `genre` et `don`
  * (étiquettes des genres de sort et des types de don) : un fond pâle et un texte calculés depuis la couleur (styles/magie/sorts.css,
- * styles/classe/dons.css), mesurés à part ; jamais un texte sur la couleur pure.
+ * styles/classe/dons.css), mesurés à part ; jamais un texte sur la couleur pure. `case` (les cases de tableau du Markdown) : la couleur mêlée à 26 % à
+ * la surface, sous le texte du site (styles/global/wiki.css), mesurée à part dans les deux thèmes.
  */
-export const FAMILLES_SANS_TEXTE = Object.freeze(['palier', 'arme', 'genre', 'don']);
+export const FAMILLES_SANS_TEXTE = Object.freeze(['palier', 'arme', 'genre', 'don', 'case']);
 
 /**
  * Le fond d'une classe : la couleur de sa règle, rendue lisible (alchimie-couleurs.mjs#lisible) quand sa famille porte un texte : inchangée quand son
@@ -246,6 +254,12 @@ export const classeDeGenre = (type) => classeDeCouleur('genre', type ?? '');
 
 /** La classe d'un type de don (capacite.type : « reaction » → « couleur-don-reaction ») ; null si inconnu. */
 export const classeDeTypeDeDon = (type) => classeDeCouleur('don', type ?? '');
+
+/**
+ * La classe de la couleur d'une case de tableau (« {couleur:vert} » → « couleur-case-vert ») ; null si inconnue. Le même nom que
+ * lib/markdown-edition.mjs#classeDeCouleurDeCase, que le plugin remark et l'éditeur posent sans importer ce module (testé).
+ */
+export const classeDeCase = (id) => classeDeCouleur('case', id ?? '');
 
 /** La classe neutre (COULEUR_NEUTRE) : ce que la fiche montre sans couleur de règle (magie acquise « Aucune », objet de départ, ethnie sans race). */
 export const CLASSE_NEUTRE = classeDeCouleur('neutre', PAR_DEFAUT);

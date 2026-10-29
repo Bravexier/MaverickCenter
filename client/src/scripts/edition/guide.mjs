@@ -8,7 +8,7 @@
 // le HTML de chaque morceau modifié est réécrit en Markdown (lib/markdown-edition.mjs) et remis à sa place dans le corps de la page, autour des blocs ;
 // son HTML assaini part avec, comme aperçu montré tant que la page construite ne l'a pas (surcouche).
 import { cleDeLigne } from '../../lib/edition-modele.mjs';
-import { arbreDuDom, COULEURS_DE_CASE, decouperCorps, htmlSur, recomposerCorps, versMarkdown } from '../../lib/markdown-edition.mjs';
+import { arbreDuDom, classeDeCouleurDeCase, COULEURS_DE_CASE, decouperCorps, htmlSur, recomposerCorps, versMarkdown } from '../../lib/markdown-edition.mjs';
 import { editeurEnPlace, outilsDesMotsCles } from './texte-en-place.mjs';
 
 const ETIQUETTES_COULEUR = { rouge: 'Rouge', orange: 'Orange', jaune: 'Jaune', vert: 'Vert', bleu: 'Bleu', violet: 'Violet', gris: 'Gris' };
@@ -120,9 +120,16 @@ function couleur(ed, nom) {
   if (courante) cases.add(courante);
   for (const m of etat.morceaux) for (const c of m.querySelectorAll('td, th')) if (r.intersectsNode(c)) cases.add(c);
   if (!cases.size) return ed.annoncer('Placez d’abord le curseur dans une case du tableau.');
+  // le nom (que relit le Markdown) et la classe de la palette (la couleur, styles/global/wiki.css) : jamais une couleur ni un style
   for (const c of cases) {
-    if (nom) c.dataset.couleur = nom;
-    else delete c.dataset.couleur;
+    for (const k of [...c.classList]) if (k.startsWith('couleur-case-')) c.classList.remove(k);
+    if (nom) {
+      c.dataset.couleur = nom;
+      c.classList.add(classeDeCouleurDeCase(nom));
+    } else {
+      delete c.dataset.couleur;
+      if (!c.classList.length) c.removeAttribute('class');
+    }
   }
   ed.marquerModifie();
 }
@@ -170,7 +177,7 @@ function barreDOutils(ed) {
   couleurs.append(titre);
   for (const nom of COULEURS_DE_CASE) {
     const b = ajouter(couleurs, '', `Case ${ETIQUETTES_COULEUR[nom].toLowerCase()}`, (e) => couleur(e, nom), 'ed-couleur');
-    b.dataset.couleur = nom;
+    b.classList.add(classeDeCouleurDeCase(nom)); // sa couleur : la classe de la palette (styles/edition/edition.css)
   }
   ajouter(couleurs, '∅', 'Case sans couleur', (e) => couleur(e, null), 'ed-couleur');
   barre.append(couleurs);

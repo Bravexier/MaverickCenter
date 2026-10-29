@@ -285,7 +285,8 @@ body:not(.ed-mode) :is(.ed-capacite, .ed-ajout-capacite) { display: none; }
 .ed-barre-guide .ed-italique { font-style: italic; font-family: Georgia, serif; }
 .ed-barre-guide .ed-barre { text-decoration: line-through; }
 .ed-barre-guide .ed-couleur { min-width: 1.4rem; height: 1.4rem; padding: 0; border-radius: 50%; }
-.ed-barre-guide .ed-couleur[data-couleur] { background: color-mix(in srgb, var(--case) 60%, var(--surface)); }
+/* une pastille porte la classe de sa couleur de case (`.couleur-case-…`, la palette de chaque page : scripts/edition/guide.mjs) */
+.ed-barre-guide .ed-couleur[class*='couleur-case-'] { background: color-mix(in srgb, var(--couleur) 60%, var(--surface)); }
 
 /* Panneaux de règles (src/scripts/edition/panneaux.mjs) : le panneau reste ouvert, son titre est une saisie dans le summary ; sous chaque bloc, ses outils
    (↑ ↓, Supprimer, + Texte, + Tuile), jamais coupés et jamais séparés de la fin du bloc (break-before: avoid) : un bloc de texte se coupe entre deux
