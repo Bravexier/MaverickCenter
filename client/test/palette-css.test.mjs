@@ -14,8 +14,10 @@ import {
   classeDAttribut, classeDUneClasse, classeDeCaracteristique, classeDeCategorie, classeDeCouleur, classeDeMagie, classeDePalier, classeDePosture,
   classeDeNiveau, classeDePartie, classeDePotion, cssDesParties, classeDeRace, classeDeSecondeCaracteristique, classeDeSecondeMagie, classeDuModeHyper, classesDeDeuxCaracteristiques,
   classesDeDeuxMagies, classesDeLaPalette, couleursDeLaPalette, cssDeLaPalette, cssDesEvenements, cssDesFamilles, cssDesPotions, cssDesSecondsRangs, idDeCouleur,
-  secondsRangs, secondsRangsDesMagies, classeDEvenement, classeDeGenre, classeDeTypeDeDon,
+  secondsRangs, secondsRangsDesMagies, classeDEvenement, classeDeGenre, classeDeTypeDeDon, classeDeCase,
 } from '../src/lib/palette-css.mjs';
+import { COULEURS_DES_CASES } from '../src/lib/cases-couleurs.mjs';
+import { COULEURS_DE_CASE, classeDeCouleurDeCase, htmlSur, versMarkdown } from '../src/lib/markdown-edition.mjs';
 import { COULEURS_DES_GENRES, COULEURS_DES_TYPES_DE_DON } from '../src/lib/genres-couleurs.mjs';
 import { TYPES_DE_SORT } from '../src/lib/sort-analyse.mjs';
 import { TYPES_DE_DON } from '../src/lib/classe-champs.mjs';
@@ -44,9 +46,9 @@ const HEX = /(?<!&)#[0-9a-f]{6}\b|(?<!&)#[0-9a-f]{3}\b/gi;
 const regles = (css) => new Map([...css.matchAll(/\.([a-z0-9-]+)\{([^}]*)\}/g)].map(([, classe, corps]) =>
   [classe, Object.fromEntries(corps.split(';').filter(Boolean).map((d) => d.split(':')))]));
 
-test('dix-neuf familles, chacune lue dans le module de sa règle : magies, attributs, caractéristiques, affinités sans autre règle, postures, alignements, catégories de classe, races, paliers de résistance, Mode Hyper, neutre, matériaux, armes de départ, types d’armure, poids des boucliers, niveaux des accessoires, parties du guide, genres de sort, types de don (et la couleur par défaut de sept d’entre elles)', () => {
+test('vingt familles, chacune lue dans le module de sa règle : magies, attributs, caractéristiques, affinités sans autre règle, postures, alignements, catégories de classe, races, paliers de résistance, Mode Hyper, neutre, matériaux, armes de départ, types d’armure, poids des boucliers, niveaux des accessoires, parties du guide, genres de sort, types de don, cases de tableau (et la couleur par défaut de sept d’entre elles)', () => {
   assert.deepEqual(Object.keys(FAMILLES_DE_LA_PALETTE), ['magie', 'attribut', 'caracteristique', 'affinite', 'posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre',
-    'materiau', 'arme', 'armure', 'poids', 'niveau', 'partie', 'genre', 'don']);
+    'materiau', 'arme', 'armure', 'poids', 'niveau', 'partie', 'genre', 'don', 'case']);
   assert.equal(MAGIE_PAR_DEFAUT, PAR_DEFAUT);
   assert.deepEqual(FAMILLES_DE_LA_PALETTE.magie, { ...COULEURS_DES_MAGIES, [PAR_DEFAUT]: COULEUR_PAR_DEFAUT });
   assert.equal(FAMILLES_DE_LA_PALETTE.attribut, COULEURS_DES_ATTRIBUTS);
@@ -105,7 +107,7 @@ test('dix-neuf familles, chacune lue dans le module de sa règle : magies, attri
   }
   // chaque famille est émise sur chaque page ou par les pages de sa zone, jamais les deux
   assert.deepEqual([...FAMILLES_DE_CHAQUE_PAGE, ...FAMILLES_DES_ZONES].sort(), Object.keys(FAMILLES_DE_LA_PALETTE).sort());
-  assert.deepEqual(FAMILLES_DE_CHAQUE_PAGE, ['magie', 'attribut', 'caracteristique', 'affinite']);
+  assert.deepEqual(FAMILLES_DE_CHAQUE_PAGE, ['magie', 'attribut', 'caracteristique', 'affinite', 'case']);
   assert.deepEqual(FAMILLES_DES_ZONES, ['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre', 'materiau', 'arme', 'armure', 'poids', 'niveau', 'partie', 'genre', 'don']);
   // la fiche : les familles d'une zone qu'elle pose, sans celles des onglets de l'équipement hors le poids du bouclier ; plus les parties du guide (ses
   // quatre zones)
@@ -172,7 +174,7 @@ test('le nom d’une classe : « couleur-<famille>-<id> », l’id = la clé du 
   const classes = couleursDeLaPalette().map((c) => c.classe);
   assert.equal(classes.length, Object.values(FAMILLES_DE_LA_PALETTE).reduce((n, f) => n + Object.keys(f).length, 0));
   assert.equal(new Set(classes).size, classes.length, 'une classe par couleur');
-  for (const c of classes) assert.match(c, /^couleur-(?:magie|attribut|caracteristique|affinite|posture|alignement|classe|race|palier|mode|neutre|materiau|arme|armure|poids|niveau|partie|genre|don)-[a-z0-9]+(?:-[a-z0-9]+)*$/);
+  for (const c of classes) assert.match(c, /^couleur-(?:magie|attribut|caracteristique|affinite|posture|alignement|classe|race|palier|mode|neutre|materiau|arme|armure|poids|niveau|partie|genre|don|case)-[a-z0-9]+(?:-[a-z0-9]+)*$/);
 });
 
 test('pas de recopie : une affinité qui est un attribut ou une magie garde la classe de cet attribut ou de cette magie ; Anti et Démon n’en ont pas', () => {
@@ -205,7 +207,7 @@ test('la valeur de chaque classe est celle de sa règle (rendue lisible), et son
   assert.equal(COULEURS_DES_MATERIAUX.titane, '#3c78d8', 'la couleur de référence reste dans son module');
   // une famille dont la couleur ne porte pas de texte (le trait d'un palier de résistance ; le bleu des armes de départ, une nuance et un filet) n'est
   // pas corrigée : le seuil de 4,5:1 vaut pour un texte ; la grande vulnérabilité garde #e53935 (4,4:1 au mieux), les armes de départ #3c78d8
-  assert.deepEqual(FAMILLES_SANS_TEXTE, ['palier', 'arme', 'genre', 'don']);
+  assert.deepEqual(FAMILLES_SANS_TEXTE, ['palier', 'arme', 'genre', 'don', 'case']);
   assert.equal(couleursDeLaPalette(['arme']).find((c) => c.cle === 'depart').fond, '#3c78d8');
   assert.equal(couleursDeLaPalette(['palier']).find((c) => c.cle === 'grande_vulnerabilite').fond, '#e53935');
   assert.ok(contraste('#e53935', texteSurCouleur('#e53935')) < CONTRASTE_MINIMAL, 'elle serait corrigée si elle portait un texte');
@@ -281,7 +283,7 @@ test('les combinaisons des potions : la base (une classe du site) et le niveau ;
 test('aucune couleur écrite dans le module de la palette ; la palette posée sur chaque page par layouts/Base.astro, d’un poids borné ; les familles d’une zone émises par leurs pages', () => {
   assert.deepEqual(lire('src/lib/palette-css.mjs').match(HEX) ?? [], []);
   assert.match(lire('src/layouts/Base.astro'), /<style is:inline set:html=\{cssDeLaPalette\(\)\}><\/style>/);
-  // le poids ajouté à chaque page : environ 3,4 ko aujourd'hui (38 classes et les 16 de second rang des magies) ; au-delà de 4 ko, revoir la manière de
+  // le poids ajouté à chaque page : environ 3,7 ko aujourd'hui (45 classes, dont les 7 des cases de tableau, et les 16 de second rang des magies) ; au-delà de 4 ko, revoir la manière de
   // l'émettre. Toutes les familles et tous les seconds rangs sur chaque page le dépasseraient : c'est pourquoi les familles d'une zone n'y sont pas.
   assert.ok(cssDeLaPalette().length < 4000, `${cssDeLaPalette().length} octets`);
   const tout = cssDesFamilles(Object.keys(FAMILLES_DE_LA_PALETTE)) + cssDesSecondsRangs('magie') + cssDesSecondsRangs('caracteristique');
@@ -772,7 +774,9 @@ test('aucune couleur écrite dans les fichiers des lots faits (ni dans les règl
     // lot des archives et de la mise à jour
     'src/styles/archives/archives.css .archive__genre--doc', 'src/styles/archives/archives.css .archive__genre--sheet',
     'src/styles/mise-a-jour/mise-a-jour.css .nv-badge--ajout', 'src/styles/mise-a-jour/mise-a-jour.css .nv-diff del',
-    'src/styles/mise-a-jour/mise-a-jour.css .nv-dev button.nv-principal, .nv-dialogue button.nv-principal']) {
+    'src/styles/mise-a-jour/mise-a-jour.css .nv-dev button.nv-principal, .nv-dialogue button.nv-principal',
+    // lot des cases de tableau
+    "src/styles/global/wiki.css :is(td, th)[class*='couleur-case-'][class*='couleur-case-']", "src/styles/edition/edition.css .ed-barre-guide .ed-couleur[class*='couleur-case-']"]) {
     assert.ok(regles.some((r) => `${r.fichier} ${r.selecteur}` === attendue), `règle choisie : ${attendue}`);
   }
   // plus rien hors du lot dans ces règles (l'ombre de l'infobulle et l'échelle des relations sont passées aux jetons au lot des restes) : chacune entière
@@ -1330,7 +1334,8 @@ test('les feuilles des parties du guide lisent les propriétés que pose la clas
   const wiki = 'src/styles/global/wiki.css';
   dans(wiki, `.sommaire${PARTIE}`, `--sommaire-couleur: var(${fond});`);
   dans(wiki, '.sommaire--couleur > h2', 'border-left: 4px solid var(--sommaire-couleur);');
-  assert.deepEqual(lecteurs(wiki), [`.sommaire${PARTIE}`]);
+  // (et, depuis le lot 11, la case de tableau, sur la case qui porte la classe de sa couleur)
+  assert.deepEqual(lecteurs(wiki), [":is(td, th)[class*='couleur-case-'][class*='couleur-case-']", `.sommaire${PARTIE}`]);
   // la fiche : --etape tirée de la classe de la partie de la zone, sur la zone ; la magie innée (sa classe est sur .fiche, posée par le script) est lue sur
   // .fiche elle-même, avant les zones, et les enfants d'une zone la retrouvent : les cadres (`.fiche[data-magie] .fiche-etape`) et tout élément sans classe
   // propre gardent la magie innée, jamais la couleur de la zone
@@ -1600,7 +1605,7 @@ test('lisibilité des archives et de la mise à jour dans les deux thèmes : cha
 // même rendu ; le texte posé sur le vert du site prend `--texte-sur-good` partout (réponse du propriétaire du 2026-10-23 à « En thème sombre, d'autres
 // boutons et pastilles du site ont un texte blanc sur le vert du site (#7fcf9b) […] Faut-il appliquer le même choix ici ? » : « Même choix partout
 // (Recommandé) »). Restent, nommés : l'impression et la page Debug (« la page Debug et l'impression ne changent pas »), les teintes des genres de sort et
-// des types de don (en attente d'une réponse du propriétaire), les cases de tableau (lot 11).
+// des types de don (en attente d'une réponse du propriétaire), les cases de tableau (lot 11, passées depuis à la famille `case`, plus bas).
 
 /** Les feuilles que le balayage des restes laisse de côté en entier, avec leur raison. */
 const FEUILLES_LAISSEES_DE_COTE = new Map([
@@ -1610,10 +1615,11 @@ const FEUILLES_LAISSEES_DE_COTE = new Map([
 ]);
 /** Les feuilles dont les blocs `@media print` écrivent le noir et le blanc de l'impression (« l'impression ne change pas ») : ces blocs sont laissés de côté. */
 const IMPRESSION_LAISSEE_DE_COTE = ['src/styles/classe/page.css', 'src/styles/race/page.css', 'src/styles/global/common.css'];
-/** Les règles laissées de côté : [feuille, sélecteur (tel quel, ou un motif), raison]. */
-const REGLES_LAISSEES_DE_COTE = [
-  ['src/styles/global/wiki.css', /^\[data-couleur="[a-z]+"\]$/, 'les couleurs des cases de tableau ({couleur:x}, lib/markdown-couleurs.mjs : lot 11)'],
-];
+/**
+ * Les règles laissées de côté : [feuille, sélecteur (tel quel, ou un motif), raison]. Plus aucune depuis le lot 11 (les cases de tableau, passées à la
+ * famille `case` de la palette) : seules la page Debug et l'impression restent de côté. Une exception future s'y nomme avec sa raison.
+ */
+const REGLES_LAISSEES_DE_COTE = [];
 
 /** L'indice de l'accolade qui ferme celle ouverte en `ouvrante`. */
 const accoladeFermante = (texte, ouvrante) => {
@@ -1907,4 +1913,112 @@ test('les étiquettes des genres et des types dans les pages construites : leur 
     assert.doesNotMatch(html, /<span class="(?:genre|don-type)[^"]*"[^>]*style=/, rel);
   }
   assert.ok(genres > 300 && types > 300, `${genres} genres, ${types} types`);
+});
+
+// Lot 11, les cases de tableau (même demande et mêmes choix de cadrage) : la couleur d'une case du Markdown des pages (« {couleur:vert} »,
+// lib/markdown-couleurs.mjs, modifiable depuis le site de dev) passe par la classe de la palette (`couleur-case-<id>`, famille `case`,
+// lib/cases-couleurs.mjs#COULEURS_DES_CASES), les valeurs d'avant gardées (aucune source ne les donne : « Si le site n'a pas de règle il ajoute une
+// nouvelle couleur au site »). Choix appliqués au nom de la réponse permanente du propriétaire du 2026-10-23 (« Pour toutes tes prochaines questions sur
+// le thème et les palette, considère que je réponds "rcommandé" à chaque fois. ») : une famille à elles, sans rabattre une case sur une autre famille de
+// teinte proche (« Garder séparées ») ; sans texte sur la couleur pure (FAMILLES_SANS_TEXTE), le texte du site sur le mélange à 26 % mesuré dans les deux
+// thèmes ; émise sur chaque page (Base.astro), le plafond de 4 ko tenu ; `data-couleur` et le Markdown inchangés, la classe posée en plus.
+
+/** Les couleurs des cases avant le lot 11 (styles/global/wiki.css : `[data-couleur="…"] { --case: … }`), gardées telles quelles. */
+const CASES_D_AVANT = { rouge: '#c0392b', orange: '#e07b24', jaune: '#d4ac0d', vert: '#2e8b57', bleu: '#2a6fb0', violet: '#7b4fb0', gris: '#8a8a8a' };
+
+test('les cases de tableau : une famille de la palette, les couleurs d’avant, une classe par couleur de l’éditeur, du même nom que celui que pose le Markdown', () => {
+  assert.equal(FAMILLES_DE_LA_PALETTE.case, COULEURS_DES_CASES);
+  assert.deepEqual(COULEURS_DES_CASES, CASES_D_AVANT, 'les valeurs d’avant le lot, inchangées');
+  assert.deepEqual(Object.keys(COULEURS_DES_CASES), COULEURS_DE_CASE, 'les couleurs que l’éditeur écrit et relit, dans le même ordre');
+  assert.ok(!Object.hasOwn(COULEURS_DES_CASES, PAR_DEFAUT), 'pas de `par-defaut` : une case sans couleur connue n’a pas de classe');
+  for (const nom of COULEURS_DE_CASE) {
+    assert.equal(classeDeCase(nom), `couleur-case-${nom}`);
+    assert.equal(classeDeCouleurDeCase(nom), classeDeCase(nom), `${nom} : le nom posé sans la palette (plugin, aperçu, éditeur) est celui de la palette`);
+    assert.ok(classesDeLaPalette().has(classeDeCase(nom)), `${nom} : dans la feuille de chaque page (l’éditeur la pose au navigateur)`);
+  }
+  for (const inconnue of ['noir', 'fuchsia', '', null, undefined]) {
+    assert.equal(classeDeCase(inconnue), null, String(inconnue));
+    assert.equal(classeDeCouleurDeCase(inconnue), null, String(inconnue));
+  }
+  // « Garder séparées » : une famille à elle, même quand une autre a une teinte proche ; aucune autre famille ne la reprend
+  assert.deepEqual(Object.keys(FAMILLES_DE_LA_PALETTE).filter((f) => FAMILLES_DE_LA_PALETTE[f] === COULEURS_DES_CASES), ['case']);
+  // sans texte sur la couleur pure : la valeur de la règle, sans correction de lisibilité
+  assert.ok(FAMILLES_SANS_TEXTE.includes('case'));
+  for (const c of couleursDeLaPalette(['case'])) assert.equal(c.fond, COULEURS_DES_CASES[c.cle], c.classe);
+  // le module de la règle n'importe rien (le navigateur ne reçoit aucune couleur) ; le module que reçoit le navigateur n'en écrit aucune
+  assert.doesNotMatch(lire('src/lib/cases-couleurs.mjs'), /^\s*import\b/m);
+  for (const f of ['src/lib/markdown-edition.mjs', 'src/lib/markdown-couleurs.mjs']) assert.doesNotMatch(lire(f), /^import [^;]*(?:cases-couleurs|palette-css)/m, f);
+  // émission : sur chaque page (toute page qui rend du Markdown, et l'éditeur en place), sous le plafond de 4 ko
+  assert.ok(FAMILLES_DE_CHAQUE_PAGE.includes('case') && !FAMILLES_DES_ZONES.includes('case'));
+  assert.ok(cssDeLaPalette().includes(`.couleur-case-vert{--couleur:${CASES_D_AVANT.vert};`));
+  assert.ok(cssDeLaPalette().length < 4000, `${cssDeLaPalette().length} octets`);
+});
+
+test('les cases de tableau : le texte du site sur le mélange de chaque couleur à la surface, lisible dans les deux thèmes (4,5:1)', () => {
+  const wiki = lire('src/styles/global/wiki.css');
+  const regle = wiki.match(/\n:is\(td, th\)\[class\*='couleur-case-'\]\[class\*='couleur-case-'\] \{ background: color-mix\(in srgb, var\(--couleur\) (\d+)%, var\(--surface\)\); \}/);
+  assert.ok(regle, 'la règle des cases dans wiki.css (la part lue dans la feuille)');
+  const part = Number(regle[1]) / 100;
+  assert.equal(part, 0.26, 'la part d’avant le lot');
+  const blocs = blocsDuTheme().filter((b) => b.valeur('--surface') && b.valeur('--text'));
+  assert.equal(blocs.length, 3, 'le thème clair et les deux blocs du thème sombre');
+  const mesures = [];
+  for (const b of blocs) {
+    for (const [nom, couleur] of Object.entries(COULEURS_DES_CASES)) {
+      const fond = surFond(couleur, b.valeur('--surface'), part);
+      const c = contraste(fond, b.valeur('--text'));
+      mesures.push([`${nom}, ${b.sel}`, c]);
+      assert.ok(c >= CONTRASTE_MINIMAL, `${nom} (${b.sel}) : ${b.valeur('--text')} sur ${fond} = ${c.toFixed(2)}`);
+    }
+  }
+  const [quoi, minimum] = mesures.reduce((a, m) => (m[1] < a[1] ? m : a));
+  assert.ok(minimum > 8, `le plus juste : ${quoi}, ${minimum.toFixed(2)}:1`);
+});
+
+test('les cases de tableau : la feuille ne lit que la classe, l’éditeur pose la classe par classList, aucune couleur écrite ; l’aller-retour ignore la classe', () => {
+  for (const f of ['src/styles/global/wiki.css', 'src/styles/edition/edition.css', 'src/scripts/edition/guide.mjs', 'src/lib/markdown-couleurs.mjs', 'src/lib/markdown-edition.mjs']) {
+    assert.deepEqual(couleursDuFichier(f), [], f);
+  }
+  const wiki = lire('src/styles/global/wiki.css').replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.doesNotMatch(wiki, /\[data-couleur|--case\b/, 'plus de règle par attribut ni de variable des cases');
+  const edition = lire('src/styles/edition/edition.css').replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.ok(edition.includes(".ed-barre-guide .ed-couleur[class*='couleur-case-'] { background: color-mix(in srgb, var(--couleur) 60%, var(--surface)); }"), 'les pastilles de l’éditeur');
+  assert.doesNotMatch(edition, /--case\b|\.ed-couleur\[data-couleur\]/);
+  // l'éditeur du guide : la classe de la palette posée et retirée avec le nom, par classList ; ni style, ni import de la palette ou du module des couleurs
+  const guide = lire('src/scripts/edition/guide.mjs');
+  assert.doesNotMatch(guide, /palette-css|cases-couleurs|setProperty|\.style\b/);
+  assert.ok(guide.includes('c.classList.add(classeDeCouleurDeCase(nom));'), 'la case colorée');
+  assert.ok(guide.includes("for (const k of [...c.classList]) if (k.startsWith('couleur-case-')) c.classList.remove(k);"), 'la couleur d’avant retirée');
+  assert.ok(guide.includes('b.classList.add(classeDeCouleurDeCase(nom));'), 'la pastille de chaque couleur');
+  // l'aller-retour : le Markdown ne relit que `data-couleur`, jamais la classe
+  const td = (attributs, texte = 'x') => ({ type: 'element', nom: 'td', attributs, enfants: [{ type: 'texte', valeur: texte }] });
+  const table = (...cases) => [{ type: 'element', nom: 'table', attributs: {}, enfants: [{ type: 'element', nom: 'tr', attributs: {}, enfants: cases }] }];
+  assert.equal(versMarkdown(table(td({ 'data-couleur': 'vert', class: 'couleur-case-vert' }))), '|  |\n| --- |\n| {couleur:vert} x |\n');
+  assert.equal(versMarkdown(table(td({ class: 'couleur-case-rouge' }))), '|  |\n| --- |\n| x |\n', 'une classe seule ne fait pas une couleur');
+  assert.doesNotMatch(versMarkdown(table(td({ 'data-couleur': 'bleu', class: 'couleur-case-bleu' }))), /couleur-case/);
+  // l'aperçu assaini : la classe recalculée depuis le nom, jamais celle reçue
+  assert.equal(htmlSur(table(td({ 'data-couleur': 'vert', class: 'couleur-case-rouge autre' }))),
+    '<table><tr><td data-couleur="vert" class="couleur-case-vert">x</td></tr></table>');
+  assert.equal(htmlSur(table(td({ 'data-couleur': 'noir', class: 'couleur-case-rouge' }))), '<table><tr><td>x</td></tr></table>');
+});
+
+test('les cases de tableau dans les pages construites : jamais `data-couleur` sans sa classe, ni une couleur en style', construit ? {} : { skip: 'site non construit (npm run build)' }, () => {
+  const fichiers = readdirSync(new URL('../dist/', import.meta.url), { recursive: true }).filter((n) => n.endsWith('.html') && !n.startsWith('_serveur'));
+  assert.ok(fichiers.length > 300, `${fichiers.length} pages`);
+  for (const rel of fichiers) {
+    const html = readFileSync(new URL(`../dist/${rel}`, import.meta.url), 'utf8');
+    for (const [balise] of html.matchAll(/<t[dh]\b[^>]*>/g)) {
+      const couleur = balise.match(/\bdata-couleur="([^"]*)"/)?.[1];
+      const classe = balise.match(/\bclass="[^"]*\b(couleur-case-[a-z]+)\b/)?.[1];
+      if (!couleur && !classe) continue;
+      assert.equal(classe, classeDeCase(couleur), `${rel} : ${balise}`);
+      assert.doesNotMatch(balise, /\bstyle=/, `${rel} : ${balise}`);
+    }
+  }
+  // le compte peut être nul (aucune page de la base n'a de case colorée aujourd'hui) : la classe posée au rendu est vérifiée par
+  // test/markdown-edition.test.mjs ; chaque page porte la feuille des sept (celle de chaque page, que l'éditeur en place lit aussi)
+  for (const rel of ['index.html', 'regles/index.html', 'decouvrir/l-univers/index.html', 'chronologie/index.html']) {
+    const html = readFileSync(new URL(`../dist/${rel}`, import.meta.url), 'utf8');
+    for (const nom of COULEURS_DE_CASE) assert.ok(html.includes(`.${classeDeCase(nom)}{--couleur:${COULEURS_DES_CASES[nom]};`), `${rel} : ${nom}`);
+  }
 });

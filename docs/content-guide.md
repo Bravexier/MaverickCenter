@@ -134,8 +134,8 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   (`#467fda`) depuis que son texte suit la règle du site (le texte foncé, 4,3:1 sur la couleur du classeur) et non plus le noir du classeur ; sa
   couleur de référence reste dans `lib/materiaux-couleurs.mjs`.
 - **Où la feuille est émise** : les familles que beaucoup de pages posent (`FAMILLES_DE_CHAQUE_PAGE` : magies, attributs, caractéristiques,
-  affinités) et les seconds rangs des magies sur chaque page, par `layouts/Base.astro` (`cssDeLaPalette` : environ 3,4 ko, 38 classes et 16 de second
-  rang ; version portable comprise ; plafond testé : 4 ko, que toutes les familles sur chaque page dépasseraient) ; les familles d'une zone
+  affinités, cases de tableau) et les seconds rangs des magies sur chaque page, par `layouts/Base.astro` (`cssDeLaPalette` : environ 3,7 ko, 45 classes
+  et 16 de second rang ; version portable comprise ; plafond testé : 4 ko, que toutes les familles sur chaque page dépasseraient) ; les familles d'une zone
   (`FAMILLES_DES_ZONES` : postures, alignements, catégories de classe, races, paliers de résistance, Mode Hyper, neutre, matériaux, armes de départ,
   types d'armure, poids des boucliers, niveaux des accessoires, parties du guide) et les seconds rangs des caractéristiques par le composant des seules pages qui les posent (`cssDesFamilles`,
   `cssDesSecondsRangs` : le bloc `postures` du guide, `pages/fiche/index.astro` (`FAMILLES_DE_LA_FICHE` : celles d'une zone, sans les matériaux, les
@@ -217,7 +217,8 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   (`lib/accessoires-couleurs.mjs#COULEURS_DES_NIVEAUX`, les cases « Niveau 1 » à « Niveau 5 » du tableau Monture de l'onglet « Accessoires » du
   classeur : `couleur-niveau-1` à `couleur-niveau-5`, `classeDeNiveau` ; pas de `par-defaut` : un niveau absent, « Niveau ? » ou ligne vide, n'a pas de
   couleur ; des fonds clairs inchangés par la règle de lisibilité, texte foncé ; les niveaux 1, 2 et 4 ont la valeur des types d'armure Léger,
-  Intermédiaire et Lourd, le 2 celle de la magie Lumière, chacun garde sa famille), puis `partie` (les parties du guide, ci-dessus). Le texte
+  Intermédiaire et Lourd, le 2 celle de la magie Lumière, chacun garde sa famille), puis `partie` (les parties du guide, ci-dessus), puis `case`
+  (les cases de tableau, ci-dessous). Le texte
   d'un matériau suit la règle du site (`texteSurCouleur`) et non plus celle du classeur (noir, sauf Fer noir et Fonte en blanc) : blanc sur Bronze et Maverium, où le noir
   n'atteignait que 3,6:1.
   Une caractéristique, une posture ou un alignement inconnu reçoit la classe `par-defaut` de sa famille (`COULEUR_NEUTRE`, comme
@@ -278,6 +279,31 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   `color-mix(in srgb, #fff 70%, transparent)`, le même rendu que `rgb(255 255 255 / 0.7)` : ainsi les voiles blancs des bannières (`classe/page.css`,
   `classe/dons.css`, `race/page.css`, `magie/page.css`) et les ombres et voiles noirs du mode modification, du carrousel et du bestiaire
   (`edition/edition.css`, `galerie/carrousel.css`, `bestiaire/bestiaire.css`), au lot des restes.
+- **Les couleurs des cases de tableau** (lot 11) : famille `case` (`lib/cases-couleurs.mjs#COULEURS_DES_CASES`, sans import ; clés = les noms
+  de `lib/markdown-edition.mjs#COULEURS_DE_CASE`, que l'éditeur écrit et relit, dans le même ordre : `couleur-case-rouge`, `-orange`, `-jaune`, `-vert`,
+  `-bleu`, `-violet`, `-gris`, `classeDeCase` ; pas de `par-defaut` : une case sans couleur connue n'a pas de classe). Aucune source ne donne ces
+  couleurs : ce sont les valeurs que le site écrivait dans `global/wiki.css` (« Si le site n'a pas de règle il ajoute une nouvelle couleur au site »),
+  inchangées. Le Markdown (`{couleur:x}`) et l'attribut `data-couleur` (le nom, que relit l'aller-retour) ne changent pas : le plugin remark
+  (`lib/markdown-couleurs.mjs`, déclaré dans `astro.config.mjs` et `lib/guide-rendu.ts`) pose en plus la classe sur la case, l'aperçu assaini
+  (`htmlSur`) la recalcule depuis le nom (jamais celle reçue), et l'éditeur du guide (`scripts/edition/guide.mjs`) la pose et la retire par `classList`
+  avec le nom, ainsi que sur chaque pastille de sa barre ; le nom de la classe vient de `markdown-edition.mjs#classeDeCouleurDeCase` (sans couleur, le
+  même nom que `classeDeCase`, testé), car ni le plugin ni le script n'importent la palette. `global/wiki.css` ne lit que la classe,
+  `:is(td, th)[class*='couleur-case-'][class*='couleur-case-']` (le poids qui passe devant les en-têtes des gabarits du guide), avec `var(--couleur)`
+  mêlée à 26 % à `--surface` ; les pastilles de l'éditeur (`edition/edition.css`) la mêlent à 60 %. Choix appliqués au nom de la réponse permanente
+  du propriétaire du 2026-10-23 (« Pour toutes tes prochaines questions sur le thème et les palette, considère que je réponds "rcommandé" à chaque
+  fois. ») ; ce ne sont pas des choix qu'il a faits sur ce cas :
+  - question « Les couleurs des cases de tableau ({couleur:x}) n'ont aucune source (ni Docs, ni Sheets, ni Discord) : ce sont celles que le site
+    écrivait dans sa feuille. Quelles valeurs prennent leurs classes ? » ; option retenue : « Garder les valeurs actuelles (Recommandé) : une famille
+    `case` de la palette avec les sept couleurs d'aujourd'hui, chacune sous son nom, même quand une autre famille a une teinte proche (« Garder
+    séparées »). Le rendu ne change pas. » ;
+  - question « Le texte d'une case colorée est-il posé sur la couleur ? » ; option retenue : « Famille sans texte (Recommandé) : la case garde la
+    couleur mêlée à 26 % à la surface, sous le texte du site (de 8,1:1, Jaune en sombre, à 12,9:1, Jaune en clair, mesuré dans les deux thèmes) ; la
+    couleur de base n'est pas corrigée. » (`FAMILLES_SANS_TEXTE`) ;
+  - question « Où la feuille des cases est-elle émise ? » ; option retenue : « Sur chaque page (Recommandé) : avec les familles de chaque page
+    (`layouts/Base.astro`), car toute page qui rend du Markdown peut en avoir et l'éditeur du site de dev les pose au navigateur ; environ 3,7 ko, sous
+    le plafond de 4 ko. » ;
+  - question « Le Markdown des pages et l'attribut des cases changent-ils ? » ; option retenue : « Garder `{couleur:x}` et `data-couleur`
+    (Recommandé) : la classe est posée en plus, par le plugin et par l'éditeur ; le Markdown ne l'écrit jamais. ».
 - **Deux couleurs d'une famille sur un même élément** (le dégradé de l'innée vers l'acquise des cadres de la fiche et des lignes de `/personnages/`,
   une créature ou une cible de défense à deux magies, le trait d'une relation de la carte de `/magies/`, une arme de deux compétences) : une classe ne
   pose qu'une `--couleur`. La première est la classe de sa couleur (`--couleur`, `--couleur-texte`) ; la seconde, sa **classe de second rang**
@@ -326,11 +352,11 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   Une feuille garde ses variables locales (`--mag`, `--creature-1`, `--cadre`, `--magie-1`…) mais les tire des propriétés de la classe, jamais d'un
   style. Les scripts du navigateur posent des classes (`classList`), jamais une couleur : ils reçoivent leurs noms de la page (`data-couleurs` de
   `/personnages/`) ou de `regles.json` (`classe` et `classe_2` de chaque magie, `classe` de chaque caractéristique, posture, alignement, race, classe
-  et palier, de `mode_hyper` et `mode_hyper.cent`, `race_par_nature`, `neutre` : skill `zone-fiche`), car un script de page n'importe pas
+  et palier, de `mode_hyper` et `mode_hyper.cent`, `race_par_nature`, `neutre` : skill `zone-fiche`), ou d'un module sans couleur qu'ils importent
+  déjà (l'éditeur du guide : `markdown-edition.mjs#classeDeCouleurDeCase`, le nom de la classe d'une case), car un script de page n'importe pas
   `palette-css.mjs`. La carte de `/magies/` : les règles du survol (écrites par le composant) font lire au trait `--couleur` ou `--couleur-2` de ses
   classes selon la magie survolée ; seule la part de la couleur dans le trait se calcule encore depuis la valeur (luminance, au build).
-  Restent : les couleurs des cases de tableau (`{couleur:x}`, `[data-couleur]` de `global/wiki.css`,
-  `lib/markdown-couleurs.mjs` : prévues pour le lot 11). La page Debug et l'impression ne changent pas (`debug/debug.css`, `debug/schema.css`,
+  La page Debug et l'impression ne changent pas (`debug/debug.css`, `debug/schema.css`,
   `magie/print.css`, les blocs `@media print` de `classe/page.css`, `race/page.css` et `global/common.css`). Les dérivées sombres des bannières des magies, des classes et des races (`--hero-1`, `--hero-2`) mêlent la couleur au
   noir `#111` d'avant, par le jeton `--fond-banniere` (les magies, passées au noir pur `#000` au lot 2, ont retrouvé leur rendu d'avant au lot 4).
 - Tests : `test/palette-css.test.mjs` (familles, noms, valeur de chaque classe égale à celle de sa règle, contraste de 4,5:1, combinaisons des potions,
@@ -341,7 +367,9 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   ou, partout, les jetons du thème des lots faits et le bleu des armes de départ (`--texte-sur-fonce`, `--fond-banniere`, `--depart…`, `--degats-…`,
   `--defense-ap`, `--defense-am`, `--ombre-fiche`, `--maudit`, `--maudit-texte`, `--maudit-choisi`, `--ombre-encart`), choisie d'après ce qu'elle lit ; depuis le lot des restes, toutes les feuilles de `src/styles/`, hors les blocs du thème de `global/base.css` et ce
   qui est laissé de côté, nommé avec sa raison : `FEUILLES_LAISSEES_DE_COTE` (Debug, `magie/print.css`), `IMPRESSION_LAISSEE_DE_COTE`,
-  `REGLES_LAISSEES_DE_COTE` (les cases de tableau), chacune vérifiée encore utile ; le texte sur chaque aplat `--good` ; les
+  `REGLES_LAISSEES_DE_COTE` (vide depuis le lot 11, qui y a retiré les cases de tableau ; une exception future s'y nomme), chacune vérifiée encore
+  utile ; les cases de tableau (famille, valeurs d'avant, contraste du mélange dans les deux thèmes, classe posée par le plugin, l'aperçu et l'éditeur,
+  aller-retour sans classe, aucune couleur écrite dans `global/wiki.css`, `edition/edition.css`, `scripts/edition/guide.mjs`) ; le texte sur chaque aplat `--good` ; les
   jetons des restes dans les trois blocs et leurs contrastes ; le script de la fiche ne
   lit ni ne pose aucune de ces couleurs ; jetons du thème ; poids borné),
   `test/alchimie-couleurs.test.mjs`, `test/ceinture-html.test.mjs`, `test/equipement-html.test.mjs` ; sur le site construit, `test/site-html.test.mjs`
@@ -1296,8 +1324,8 @@ dev (un commit la change) ni cherchée par la recherche.
   (l'ancien devient un alias). À l'enregistrement, chaque morceau de texte modifié est réécrit en Markdown (`lib/markdown-edition.mjs`, aller-retour
   vérifié sur toutes les pages du guide par `test/markdown-edition.test.mjs`) : un morceau inchangé garde son écriture exacte.
 - **Couleur d'une case de tableau** : `{couleur:vert}` en tête de case (`| {couleur:vert} Réussite | … |`) ; couleurs : rouge, orange, jaune, vert,
-  bleu, violet, gris (`COULEURS_DE_CASE`). Le plugin `lib/markdown-couleurs.mjs` en fait l'attribut `data-couleur` (palette dans
-  `styles/global/wiki.css`) ; tout autre texte entre accolades reste tel quel.
+  bleu, violet, gris (`COULEURS_DE_CASE`). Le plugin `lib/markdown-couleurs.mjs` en fait l'attribut `data-couleur` et la classe de la palette
+  `couleur-case-<couleur>` (famille `case`, « Couleurs du site : la palette en classes ») ; tout autre texte entre accolades reste tel quel.
 
 ## Niveaux de maîtrise (NM) des sorts
 
