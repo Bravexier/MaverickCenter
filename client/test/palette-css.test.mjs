@@ -2060,6 +2060,14 @@ test('les cases de tableau : la feuille ne lit que la classe, l’éditeur pose 
   assert.equal(htmlSur(table(td({ 'data-couleur': 'noir', class: 'couleur-case-rouge' }))), '<table><tr><td>x</td></tr></table>');
 });
 
+test('la liste ouverte d\'un select suit le thème : option et optgroup ont le fond et le texte du site (Métier de la fiche, select transparent)', () => {
+  const css = lire('src/styles/global/common.css');
+  const regle = css.match(/(?:^|\n)option, optgroup \{([^}]*)\}/)?.[1];
+  assert.ok(regle, 'règle `option, optgroup` absente de common.css');
+  assert.match(regle, /background-color: var\(--surface\)/);
+  assert.match(regle, /(?:^|[;\s])color: var\(--text\)/);
+});
+
 test('les cases de tableau dans les pages construites : jamais `data-couleur` sans sa classe, ni une couleur en style', construit ? {} : { skip: 'site non construit (npm run build)' }, () => {
   const fichiers = readdirSync(new URL('../dist/', import.meta.url), { recursive: true }).filter((n) => n.endsWith('.html') && !n.startsWith('_serveur'));
   assert.ok(fichiers.length > 300, `${fichiers.length} pages`);
