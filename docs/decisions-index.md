@@ -103,7 +103,7 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R95 | Armures sur la fiche de personnage, après R93 (une armure ne se fabrique p… | La fiche porte une seule armure complète, avec son amé… |
 | R96 | Bouclier sur la fiche de personnage : la fiche portait une forme (classe)… | Forme + matière, comme l'onglet Boucliers : la fiche p… |
 | R97 | Accessoires sur la fiche de personnage : huit emplacements (Chef, Collier,… | Six emplacements : Chef, Collier, Bracelet 1 et 2, Bag… |
-| R98 | Défense et dégâts reçus : la fiche n'affichait ni l'AP ni l'AM totaux, et… | AP et AM totaux dans le bloc Armure : la base (race, e… |
+| R98 | Défense et dégâts reçus : la fiche n'affichait ni l'AP ni l'AM totaux, et… | AP et AM totaux dans le bloc Armure (depuis R171, avec… |
 | R99 | Pièce élémentaire (arme ou armure transformée) : la page « Pièces élémenta… | L'élément remplace tout : pour l'armure, l'AP et l'AM… |
 | R100 | Posture du moment sur la fiche : la fiche affichait les effets de chaque p… | La posture cochée recalcule les valeurs qu'elle chiffr… |
 | R101 | Bâtons magiques sur la fiche : les 42 bâtons (14 magies × 3 niveaux) étaie… | Un bâton se règle dans le sac : le sac propose « Bâton… |
