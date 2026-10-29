@@ -580,8 +580,8 @@ Règles de sélection et questions en attente : [`chronologie.md`](chronologie.m
 Demandes du propriétaire (2026-10-16) : « J'aimerai fusionner "Armes" et "Armures" dans un seule onglet : "Equipement" A l'instar de "Armure et bouclier"
 les "Armes" seront dans un onglet à part. Il faudrait également un 4em onglet pour les bâtons magiques du coup qui auront mieux leur place ici » ;
 « J'aimerai rajouter un 5 onglet pour y déplacer les accessoires » ; puis « revoir intégralement la page des objets à la ceinture, renommer l'onglet
-en "Ceinture" et le mettre dans les onglets de équipement » (« Ceinture » ci-dessous). Une seule entrée du menu (rubrique Règles depuis le 2026-10-18), **Équipement**, à la place
-d'« Armes », d'« Armures », d'« Accessoires » et d'« Objets à la ceinture » ; une page sans page du wiki (`src/pages/ressources/equipement.astro`, `components/equipement/EquipementPage.astro`,
+en "Ceinture" et le mettre dans les onglets de équipement » (« Ceinture » ci-dessous). Au menu, la rubrique **Équipement** (demande du propriétaire du 2026-10-29) a une entrée par onglet (Armes, Armures, Boucliers, Ceinture,
+Accessoires : l'ancre de l'onglet), puis Artisanat et Livres & Parchemins ; une page sans page du wiki (`src/pages/ressources/equipement.astro`, `components/equipement/EquipementPage.astro`,
 `styles/equipement/equipement.css`), rendue depuis la base, en **cinq onglets** (`components/Onglets.astro`, posé une fois ; sans JavaScript, les panneaux
 se suivent, chacun sous son titre), dans l'ordre de `lib/equipement.mjs#ONGLETS_DE_L_EQUIPEMENT` :
 
@@ -1218,13 +1218,14 @@ navigation y sont écrits (titres de rubrique, de groupe, libellés des liens) ;
 présentation du lien Discord de l'accueil (`LIENS_ET_RENCONTRE.liens[].presentation`, plus bas), écrite dans le plan, donc ni modifiable sur le site de
 dev (un commit la change) ni cherchée par la recherche.
 
-- **Découvrir** (`/decouvrir/`, rubrique Découvrir du menu, faite pour être vue même des non-membres ; `DECOUVRIR`) : **une page par entrée du menu**
-  (choix du propriétaire du 2026-10-18) — « Bienvenue » (servie à `/decouvrir/` ; elle absorbe « Le jeu de rôle, comment ça marche ? », et n'a plus de
+- **Découvrir** (`/decouvrir/`, en tête de la rubrique Règles du menu — l'ancienne rubrique Découvrir, renommée le 2026-10-29 —, faite pour être vue
+  même des non-membres ; `DECOUVRIR`) : **une page par entrée du menu** (choix du propriétaire du 2026-10-18) — « Bienvenue » (servie à `/decouvrir/`,
+  entrée « Découvrir » du menu ; elle absorbe « Le jeu de rôle, comment ça marche ? », et n'a plus de
   sommaire), « L'univers » (race, magie, classe ; dessous, un bloc de navigation rendu par le gabarit, `RUBRIQUES_SOUS_LA_PAGE`, mène aux Races, aux
   Magies et aux Classes), « Créer son personnage » (les six étapes sur une seule page), « Rejoindre une partie » (une page pour les joueurs) —, à
   `/decouvrir/<slug>/`. Discord, Tipeee et l'encart « Notre prochaine rencontre IRL » sont sur l'accueil (plus bas) ; plus de page « Liens ».
   Ce sont aussi les quatre cartes « Par où commencer ? » de l'accueil (`PAR_OU_COMMENCER`).
-- **Les bases** (`/regles/`, rubrique Règles ; `LES_BASES`) : un **sommaire** (`pages/regles/index.astro`, comme les Règles avancées) en trois groupes,
+- **Les bases** (`/regles/`, rubrique Règles, après les pages de Découvrir ; `LES_BASES`) : un **sommaire** (`pages/regles/index.astro`, comme les Règles avancées) en trois groupes,
   Jouer, Progresser, Pour aller plus loin, chacun dans sa couleur ; une page par sujet, à `/regles/<slug>/`. L'ancien plan (24 pages, validé par le
   propriétaire) faisait lire la règle du D100 (« Réussir une action ») **avant** de créer son personnage ; le nouveau la met en tête des Bases : ce
   remplacement attend la confirmation du propriétaire (`docs/feuille-de-route.md`, « Questions encore ouvertes », 10).

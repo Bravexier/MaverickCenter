@@ -70,13 +70,13 @@ test('les pages servies par un onglet n’ont pas d’adresse à elles : leurs l
   for (const id of ['ressources/livre-parchemin', 'ressources/alchimie', 'ressources/equipement-inventaire']) assert.equal(cheminDePage(id), `${id}/`, id);
 });
 
-test('menu Règles (plus de rubrique Ressources depuis le 2026-10-18) : « Équipement » remplace « Armes », « Armures », « Accessoires » et « Objets à la ceinture »', () => {
-  const items = NAV.find((g) => g.key === 'regles').items;
-  assert.deepEqual(items.find((i) => i.label === 'Équipement'), { label: 'Équipement', path: CHEMIN_DE_L_EQUIPEMENT });
-  assert.ok(!items.some((i) => ['Armes', 'Armures', 'Accessoires', 'Objets à la ceinture'].includes(i.label)
-    || /ressources\/(armes|armures|accessoires|objets-a-la-ceinture)\//.test(i.path ?? '')));
+test('rubrique Équipement (2026-10-29, entre Personnage et Espace joueur) : une entrée par onglet de la page « Équipement », son libellé et son ancre', () => {
+  assert.deepEqual(NAV.map((g) => g.key).slice(1, 4), ['personnage', 'equipement', 'joueur']);
+  const items = NAV.find((g) => g.key === 'equipement').items;
+  assert.deepEqual(items.slice(0, ONGLETS_DE_L_EQUIPEMENT.length), ONGLETS_DE_L_EQUIPEMENT.map((o) => ({ label: o.nom, path: `${CHEMIN_DE_L_EQUIPEMENT}#${o.id}` })));
+  assert.ok(!NAV.some((g) => g.items.some((i) => i.path === CHEMIN_DE_L_EQUIPEMENT)), 'plus d’entrée « Équipement » sans onglet');
+  assert.ok(!NAV.some((g) => g.items.some((i) => /ressources\/(armes|armures|bouclier|accessoires|objets-a-la-ceinture)\//.test(i.path ?? ''))), 'les entrées mènent aux onglets, pas aux anciennes adresses');
   assert.ok(!NAV.some((g) => g.key === 'ressources'), 'plus de rubrique Ressources');
-  assert.deepEqual(items.slice(1, 6).map((i) => i.label), ['Races', 'Magies', 'Classes', 'Équipement', 'Métiers'], 'après les classes, avant les métiers');
 });
 
 test('bâtons : une ligne par magie (ordre des magies), la gemme et le bois de la magie, un bonus par niveau ; tous les bâtons de la base', () => {

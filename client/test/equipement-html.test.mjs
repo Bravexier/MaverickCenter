@@ -49,8 +49,10 @@ test('le titre, puis les cinq onglets dans l’ordre, chacun un lien vers son pa
     assert.ok(main.includes(`<h2 class="equipement-panneau__titre" id="titre-${id}">`), `${id} : le titre du panneau`);
   }
   assert.equal((main.match(/<h1[\s>]/g) ?? []).length, 1, 'un seul titre de page');
-  assert.ok(html.includes(`href="/${CHEMIN_DE_L_EQUIPEMENT}"`), 'l’entrée du menu Règles');
-  assert.ok(html.includes(`<a href="/${CHEMIN_DE_L_EQUIPEMENT}" aria-current="page">Équipement</a>`), 'marquée courante');
+  // la rubrique Équipement du menu (2026-10-29) : une entrée par onglet, vers son ancre, ouverte et courante sur la page
+  for (const o of ONGLETS_DE_L_EQUIPEMENT) assert.ok(html.includes(`<a href="/${CHEMIN_DE_L_EQUIPEMENT}#${o.id}">${o.nom}</a>`), `l’entrée du menu ${o.nom}`);
+  assert.match(html, /data-group="equipement" aria-pressed="true" aria-current="true"/, 'la rubrique Équipement, ouverte');
+  assert.ok(!html.includes(`href="/${CHEMIN_DE_L_EQUIPEMENT}"`), 'plus d’entrée « Équipement » sans onglet');
   // une entrée du menu, sans fil d'Ariane comme les autres (Races, Métiers, Artisanat…) : plus de maillon vers l'ancienne rubrique Ressources
   assert.ok(!html.includes('href="/ressources/"'), 'aucun lien vers l’ancienne rubrique Ressources');
   assert.doesNotMatch(main, /<p class="muted"><a href="\/">Accueil<\/a>/);

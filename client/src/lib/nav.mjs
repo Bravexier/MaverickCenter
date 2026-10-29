@@ -2,53 +2,75 @@
 // Ligne 1 = les rubriques (`NAV`), ligne 2 = les `items` de la rubrique sélectionnée.
 // `path` : chemin relatif du site (sans préfixe de déploiement). Sans `path`, l'entrée est affichée
 // grisée « bientôt » : la page n'existe pas encore (on n'invente pas de contenu).
-// `autres` : débuts d'adresse des pages de la rubrique qui ne sont pas dans le menu (une page de `ressources/` ouvre les Règles).
+// `autres` : débuts d'adresse des pages de la rubrique qui ne sont pas dans le menu (une page de `ressources/` ouvre l'Équipement). Une page ouvre la
+// rubrique dont une entrée ou un début d'adresse est le plus long début de la sienne : /regles/artisanat/ ouvre l'Équipement, pas les Règles de /regles/.
+// L'ancre d'une entrée (« ressources/equipement/#armes ») ne compte pas.
 // `devSeulement` : une entrée du site de dev seulement, absente du menu en production (entreesDuMenu).
 // Arborescence voulue par le propriétaire du projet (pas de barre de recherche dans l'en-tête : la recherche est une page, avec les mots-clés).
-// Six rubriques (demande du propriétaire, 2026-10-16 puis 2026-10-18 : « éclater le guide pour retravailler pleinement l'organisation des onglets et
-// de la présentation ») : Découvrir (la vitrine, faite pour être vue même des non-membres), Règles, Espace joueur, Espace MJ, Codex, Outils ; plus de
-// rubrique Ressources ni d'entrée Guide (les pages du guide sont rangées par lib/livres.mjs : Découvrir, Les bases — un sommaire —, Règles avancées,
-// Guide du MJ). Rien n'est caché ni filtré : « Pour l'instant comme les menus ne sont pas prêt rien n'est caché mais tout de même ils ne verront à
-// terme que les 2 premiers onglets » (sic ; « ils » : les non-membres) ; « Tu fait comme si de rien n'était pour l'instant. On verra les caches. »
-// (sic). Composants va sous Artisanat ; Pièces élémentaires et Livres & Parchemins restent visibles dans les Règles « pour l'instant » (ils iront plus
-// tard dans les Armes, les Armures et la Ceinture de l'Équipement).
-// « Équipement » (demandes du propriétaire, 2026-10-16 : « J'aimerai fusionner "Armes" et "Armures" dans un seule onglet : "Equipement" »,
+// Sept rubriques (demande du propriétaire du 2026-10-29, après celles du 2026-10-16 et du 2026-10-18 : « éclater le guide pour retravailler pleinement
+// l'organisation des onglets et de la présentation ») : Règles (l'ancienne Découvrir, la vitrine, faite pour être vue même des non-membres, avec Les
+// bases et les Règles avancées), Personnage (l'ancienne Règles), Équipement, Espace joueur, Espace MJ, Codex, Outils ; plus de rubrique Ressources ni
+// d'entrée Guide (les pages du guide sont rangées par lib/livres.mjs : Découvrir, Les bases — un sommaire —, Règles avancées, Guide du MJ). Rien n'est
+// caché ni filtré : « Pour l'instant comme les menus ne sont pas prêt rien n'est caché mais tout de même ils ne verront à terme que les 2 premiers
+// onglets » (sic ; « ils » : les non-membres) ; « Tu fait comme si de rien n'était pour l'instant. On verra les caches. » (sic). Composants va sous
+// Artisanat. Plus d'entrée « Pièces élémentaires » (demande du 2026-10-29) ; sa page reste dans la base, en attendant la réponse du propriétaire sur
+// son contenu (armes et armures élémentaires, lus par la fiche).
+// La page « Équipement » (demandes du propriétaire, 2026-10-16 : « J'aimerai fusionner "Armes" et "Armures" dans un seule onglet : "Equipement" »,
 // « J'aimerai rajouter un 5 onglet pour y déplacer les accessoires », puis « renommer l'onglet en "Ceinture" et le mettre dans les onglets de
-// équipement ») : cinq onglets, Armes, Armures, Boucliers, Ceinture, Accessoires (lib/equipement.mjs). La ceinture (potions et huiles, carquois et
-// sacs, bâtons magiques : décision R81) n'a plus d'entrée à elle : c'est l'onglet Ceinture de « Équipement ». Le bouclier ne va pas à la ceinture,
-// son emplacement est dans l'armure (décision R82) : c'est l'onglet Boucliers de « Équipement ».
+// équipement ») : cinq onglets, Armes, Armures, Boucliers, Ceinture, Accessoires (lib/equipement.mjs), chacun une entrée de la rubrique Équipement
+// depuis le 2026-10-29. La ceinture (potions et huiles, carquois et sacs, bâtons magiques : décision R81) est l'onglet Ceinture. Le bouclier ne va pas
+// à la ceinture, son emplacement est dans l'armure (décision R82) : c'est l'onglet Boucliers.
 // Les chemins des pages du guide (decouvrir/…, regles/…, mj/) sont ceux de lib/livres.mjs, écrits ici à part (nav.mjs n'importe rien : le script de la
 // page 404 l'importe) ; test/livres.test.mjs vérifie qu'ils s'accordent.
 export const NAV = [
   {
-    key: 'decouvrir',
-    label: 'Découvrir',
-    // une page par entrée (choix du propriétaire du 2026-10-18) : les quatre pages de Découvrir, celles des cartes « Par où commencer ? » de l'accueil
+    key: 'regles',
+    label: 'Règles',
+    // l'ancienne rubrique Découvrir, renommée « Règles » (demande du propriétaire du 2026-10-29 : « Le menu "Découvrir" sera renommé "Règles", le
+    // sous-menu "Bienvenue" sera renommé "Découvrir" ») ; puis « Les bases » et « Règles avancées », venues de l'ancienne rubrique Règles (« il faudra
+    // les sous-menu "Les bases", "règles avancées" soient déplacées dans l'ancien menu "Découvrir", devenu "Règles" »).
+    // Une page par entrée (choix du propriétaire du 2026-10-18) : les quatre pages de Découvrir, celles des cartes « Par où commencer ? » de l'accueil
     // (lib/livres.mjs#DECOUVRIR, PAR_OU_COMMENCER) ; plus d'entrée « Liens » (réponse du 2026-10-22, « Supprimer la page » : « Plus d'entrée Liens au
     // menu : tout est sur Bienvenue. ») : Discord, Tipeee et la rencontre IRL sont sur l'accueil depuis le 2026-10-23 (« Ces 3 blocs auraient
     // plus leur place dans l'onglet d'acceuil. »)
     items: [
-      { label: 'Bienvenue', path: 'decouvrir/' },
+      { label: 'Découvrir', path: 'decouvrir/' },
       { label: 'L’univers', path: 'decouvrir/l-univers/' },
       { label: 'Créer son personnage', path: 'decouvrir/creer-son-personnage/' },
       { label: 'Rejoindre une partie', path: 'decouvrir/rejoindre-une-partie/' },
+      { label: 'Les bases', path: 'regles/' },
+      { label: 'Règles avancées', path: 'regles/avancees/' },
     ],
   },
   {
-    key: 'regles',
-    label: 'Règles',
-    // les dons de classe vont avec les classes ; toutes les pages /ressources/… (Composants, alchimie…) ouvrent les Règles
-    autres: ['capacites/', 'ressources/'],
+    key: 'personnage',
+    label: 'Personnage',
+    // l'ancienne rubrique Règles, renommée « Personnage » (demande du propriétaire du 2026-10-29 : « Il faudra renommer le menu "Règles" en
+    // "Personnage" ») ; les dons de classe vont avec les classes
+    autres: ['capacites/'],
     items: [
-      { label: 'Les bases', path: 'regles/' },
       { label: 'Races', path: 'races/' },
       { label: 'Magies', path: 'magies/' },
       { label: 'Classes', path: 'classes/' },
-      { label: 'Équipement', path: 'ressources/equipement/' },
       { label: 'Métiers', path: 'metiers/' },
+    ],
+  },
+  {
+    key: 'equipement',
+    label: 'Équipement',
+    // demande du propriétaire du 2026-10-29 : « Entre le nouvellement créé "Personnage" et "Espace Joueur" il faudra un nouveau menu : "Equipement"
+    // Dedans tu y déplacera les pages "Armes, Armures, Bouclier, Ceinture, Accessoire" en les sortant du sous-menu "Equipement" le remettant à nouveau
+    // dans un sous-menu dédié. Il faudra aussi y déplacer les sous-menu "Artisanat" et "Livres & parchemins". » Une entrée par onglet de la page
+    // « Équipement » (lib/equipement.mjs#ONGLETS_DE_L_EQUIPEMENT : même libellé, l'ancre de l'onglet) ; toutes les pages /ressources/… (Composants,
+    // alchimie…) ouvrent cette rubrique.
+    autres: ['ressources/'],
+    items: [
+      { label: 'Armes', path: 'ressources/equipement/#armes' },
+      { label: 'Armures', path: 'ressources/equipement/#armures' },
+      { label: 'Boucliers', path: 'ressources/equipement/#boucliers' },
+      { label: 'Ceinture', path: 'ressources/equipement/#ceinture' },
+      { label: 'Accessoires', path: 'ressources/equipement/#accessoires' },
       { label: 'Artisanat', path: 'regles/artisanat/' },
-      { label: 'Règles avancées', path: 'regles/avancees/' },
-      { label: 'Pièces élémentaires', path: 'ressources/pieces-elementaires/' },
       { label: 'Livres & Parchemins', path: 'ressources/livre-parchemin/' },
     ],
   },
@@ -118,16 +140,45 @@ export function navPaths(nav = NAV) {
   return nav.flatMap((g) => g.items.map((i) => i.path)).filter(Boolean);
 }
 
-/** Vrai si `pathname` (avec préfixe de déploiement `base`) est dans la section d'un groupe : une de ses entrées, ou une de ses `autres` pages. */
-export function groupIsCurrent(group, pathname, base = '/') {
+/** Le chemin de `pathname` relatif à la racine du site (préfixe de déploiement `base` retiré). */
+function cheminRelatif(pathname, base) {
   const prefix = base.replace(/\/$/, '') + '/';
-  const rel = pathname.startsWith(prefix) ? pathname.slice(prefix.length) : pathname.replace(/^\//, '');
-  return [...group.items.map((i) => i.path), ...(group.autres ?? [])].some((debut) => debut && rel.startsWith(debut));
+  return pathname.startsWith(prefix) ? pathname.slice(prefix.length) : pathname.replace(/^\//, '');
 }
 
-/** Rubrique à ouvrir pour cette page : celle de la page, sinon la première, Découvrir (accueil, page 404…). */
+/** La longueur du plus long début d'adresse du groupe (une entrée sans son ancre, ou une `autres`) qui commence `rel` ; -1 si aucun. */
+function correspondance(group, rel) {
+  let longueur = -1;
+  for (const debut of [...group.items.map((i) => i.path?.split('#')[0]), ...(group.autres ?? [])]) {
+    if (debut && rel.startsWith(debut) && debut.length > longueur) longueur = debut.length;
+  }
+  return longueur;
+}
+
+/** La rubrique de `rel` : celle du plus long début d'adresse (la première en cas d'égalité), `null` si aucune. */
+function rubriqueDe(rel, nav) {
+  let meilleure = null;
+  let longueur = -1;
+  for (const g of nav) {
+    const l = correspondance(g, rel);
+    if (l > longueur) [meilleure, longueur] = [g, l];
+  }
+  return meilleure;
+}
+
+/**
+ * Vrai si `pathname` (avec préfixe de déploiement `base`) est dans la section d'un groupe : une de ses entrées, ou une de ses `autres` pages, sans
+ * qu'un autre groupe de `nav` en ait un début plus long (/regles/artisanat/ est à l'Équipement, pas aux Règles de /regles/).
+ */
+export function groupIsCurrent(group, pathname, base = '/', nav = NAV) {
+  const rel = cheminRelatif(pathname, base);
+  if (!nav.includes(group)) return correspondance(group, rel) >= 0;
+  return rubriqueDe(rel, nav) === group;
+}
+
+/** Rubrique à ouvrir pour cette page : celle de la page (groupIsCurrent), sinon la première, les Règles (accueil, page 404…). */
 export function activeGroup(pathname, base = '/', nav = NAV) {
-  return nav.find((g) => groupIsCurrent(g, pathname, base)) ?? nav[0];
+  return rubriqueDe(cheminRelatif(pathname, base), nav) ?? nav[0];
 }
 
 /**

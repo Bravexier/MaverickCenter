@@ -99,15 +99,19 @@ test('en-tête : plus de barre de recherche (une page à part, avec les mots-cl�
   const entete = html.slice(html.indexOf('<header'), html.indexOf('</header>'));
   assert.ok(!/<form|type="search"/.test(entete), 'aucun formulaire de recherche dans l’en-tête');
   assert.deepEqual([...entete.matchAll(/class="nav-group__toggle" data-group="([^"]+)"[^>]*>([^<]+)</g)].map((m) => `${m[1]} ${m[2].trim()}`),
-    ['decouvrir Découvrir', 'regles Règles', 'joueur Espace joueur', 'mj Espace MJ', 'codex Codex', 'outils Outils']);
-  assert.match(entete, /data-group="decouvrir" aria-pressed="true"/, 'l’accueil ouvre Découvrir');
+    ['regles Règles', 'personnage Personnage', 'equipement Équipement', 'joueur Espace joueur', 'mj Espace MJ', 'codex Codex', 'outils Outils']);
+  assert.match(entete, /data-group="regles" aria-pressed="true"/, 'l’accueil ouvre les Règles');
   const outils = entete.match(/<ul class="site-nav__items" data-group="outils"[^>]*>([\s\S]*?)<\/ul>/)[1];
   // Debug : au menu du site de dev seulement (lib/nav.mjs#entreesDuMenu) ; un build de production (SITE_MODE=prod) a la page réservée, sans menu
   // (test/debug-page.test.mjs)
   const production = lire('debug/index.html').includes('class="debug-reservee"');
   assert.deepEqual([...outils.matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => `${m[2]} ${m[1]}`),
     ['Mise à jour /mise-a-jour/', 'Galeries /galeries/', 'Recherche /recherche/', 'Archives /archives/', ...(production ? [] : ['Debug /debug/'])]);
-  assert.match(lire('ressources/alchimie/index.html'), /data-group="regles" aria-pressed="true" aria-current="true"/, 'une ressource hors menu ouvre les Règles');
+  assert.match(lire('ressources/alchimie/index.html'), /data-group="equipement" aria-pressed="true" aria-current="true"/, 'une ressource hors menu ouvre l’Équipement');
+  // /regles/artisanat/ : l'Équipement seul est la rubrique courante (le plus long début d'adresse), pas les Règles de /regles/
+  const artisanat = lire('regles/artisanat/index.html');
+  assert.match(artisanat, /data-group="equipement" aria-pressed="true" aria-current="true"/);
+  assert.match(artisanat, /data-group="regles" aria-pressed="false">/);
   assert.ok(!entete.includes('data-group="ressources"'), 'plus de rubrique Ressources');
 });
 

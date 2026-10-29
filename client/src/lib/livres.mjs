@@ -3,8 +3,8 @@
 // la pagination ») : les pages `guide/<slug>` de la base sont rangées ici. Plus de livre lu dans l'ordre : chaque page se lit seule, comme une page du
 // wiki (components/guide/PageDuGuide.astro : fil d'Ariane vers sa rubrique ou son sommaire, titre, texte, blocs, pied de page ; plus aucune source
 // affichée : elles ne se lisent que sur /archives/, réponse du propriétaire du 2026-10-22).
-//   - « Découvrir » (/decouvrir/, rubrique Découvrir du menu, faite pour être vue même des non-membres) : UNE page par entrée du menu (choix du
-//     propriétaire du 2026-10-18) — Bienvenue (servie à /decouvrir/), L'univers, Créer son personnage (les six étapes sur une seule page), Rejoindre une
+//   - « Découvrir » (/decouvrir/, en tête de la rubrique Règles du menu — l'ancienne rubrique Découvrir, renommée le 2026-10-29 —, faite pour être vue
+//     même des non-membres) : UNE page par entrée du menu (choix du propriétaire du 2026-10-18) — Bienvenue (servie à /decouvrir/, entrée « Découvrir »), L'univers, Créer son personnage (les six étapes sur une seule page), Rejoindre une
 //     partie. Les autres à /decouvrir/<slug>/. Les liens Discord et Tipeee et l'encart « Notre prochaine rencontre IRL » sont sur l'accueil
 //     (LIENS_ET_RENCONTRE ; sur la page « Liens » jusqu'au 2026-10-22, puis sous le texte de Bienvenue jusqu'au 2026-10-23 ; l'ancienne adresse de la
 //     page Liens n'est plus renvoyée nulle part).
@@ -20,7 +20,7 @@
 // Pages fusionnées (2026-10-18) : « Le jeu de rôle, comment ça marche ? » dans Bienvenue, les six étapes de la création dans Créer son personnage
 // (PAGES_ABSORBEES) ; elles ne sont plus dans la base, leurs adresses mènent à la page qui les absorbe (page 404 : lib/metiers.mjs#renvoisDuGuide).
 // Rien n'est caché ni filtré (réponse du propriétaire du 2026-10-18 : « Tu fait comme si de rien n'était pour l'instant. On verra les caches. », sic) : à
-// terme, les non-membres ne verront que Découvrir et Règles.
+// terme, les non-membres ne verront que les deux premières rubriques du menu (lib/nav.mjs).
 // Seuls des libellés de navigation sont écrits ici (titres de rubrique, de groupe, libellés des liens) : les textes des pages sont dans la base. Une
 // exception : la présentation du lien Discord de l'accueil (LIENS_ET_RENCONTRE.liens[].presentation), un texte écrit ici, donc ni modifiable sur le site
 // de dev (un commit le change), ni cherché par la recherche, et emporté par la chaîne de l'édition du navigateur avec le reste du plan.

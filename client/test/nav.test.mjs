@@ -8,21 +8,32 @@ import { cheminDePage } from '../src/lib/metiers.mjs';
 
 const content = new URL('../src/content/wiki/', import.meta.url);
 
-test('le menu a les rubriques et les entrées voulues par le propriétaire, dans l’ordre (2026-10-18 : six rubriques, rien de caché)', () => {
+test('le menu a les rubriques et les entrées voulues par le propriétaire, dans l’ordre (2026-10-29 : sept rubriques, rien de caché)', () => {
   const plan = NAV.map((g) => `${g.label} : ${g.items.map((i) => (i.path ? i.label : `${i.label} (bientôt)`) + (i.devSeulement ? ' (site de dev)' : '')).join(', ')}`);
   assert.deepEqual(plan, [
-    'Découvrir : Bienvenue, L’univers, Créer son personnage, Rejoindre une partie',
-    'Règles : Les bases, Races, Magies, Classes, Équipement, Métiers, Artisanat, Règles avancées, Pièces élémentaires, Livres & Parchemins',
+    // « Le menu "Découvrir" sera renommé "Règles", le sous-menu "Bienvenue" sera renommé "Découvrir" » ; « Les bases » et « Règles avancées » y vont
+    'Règles : Découvrir, L’univers, Créer son personnage, Rejoindre une partie, Les bases, Règles avancées',
+    // « renommer le menu "Règles" en "Personnage" »
+    'Personnage : Races, Magies, Classes, Métiers',
+    // « Entre le nouvellement créé "Personnage" et "Espace Joueur" il faudra un nouveau menu : "Equipement" » : les onglets de la page Équipement,
+    // Artisanat et Livres & Parchemins ; plus d'entrée Pièces élémentaires
+    'Équipement : Armes, Armures, Boucliers, Ceinture, Accessoires, Artisanat, Livres & Parchemins',
     'Espace joueur : Fiche de personnage, Personnages, Groupes d’aventures (bientôt), Table de jeu (bientôt), Chroniques (bientôt)',
     'Espace MJ : Guide du MJ, Fiches de PNJ et scénarios (bientôt), Groupes de jeu (bientôt)',
     'Codex : Chronologie, Carte & lieux (bientôt), Mythologie, Bestiaire, Factions',
     'Outils : Statistiques (bientôt), Mise à jour, Boîte à idée (bientôt), Galeries, Recherche, Archives, Debug (site de dev)',
   ]);
-  assert.deepEqual(NAV.map((g) => g.key), ['decouvrir', 'regles', 'joueur', 'mj', 'codex', 'outils']);
+  assert.deepEqual(NAV.map((g) => g.key), ['regles', 'personnage', 'equipement', 'joueur', 'mj', 'codex', 'outils']);
   assert.deepEqual(NAV.find((g) => g.key === 'joueur').items.filter((i) => i.path).map((i) => i.path), ['fiche/', 'personnages/'], 'la fiche, puis la liste des personnages');
   assert.deepEqual(NAV.find((g) => g.key === 'regles').items.map((i) => i.path), [
-    'regles/', 'races/', 'magies/', 'classes/', 'ressources/equipement/', 'metiers/', 'regles/artisanat/', 'regles/avancees/', 'ressources/pieces-elementaires/', 'ressources/livre-parchemin/',
+    'decouvrir/', 'decouvrir/l-univers/', 'decouvrir/creer-son-personnage/', 'decouvrir/rejoindre-une-partie/', 'regles/', 'regles/avancees/',
   ]);
+  assert.deepEqual(NAV.find((g) => g.key === 'personnage').items.map((i) => i.path), ['races/', 'magies/', 'classes/', 'metiers/']);
+  assert.deepEqual(NAV.find((g) => g.key === 'equipement').items.map((i) => i.path), [
+    'ressources/equipement/#armes', 'ressources/equipement/#armures', 'ressources/equipement/#boucliers', 'ressources/equipement/#ceinture',
+    'ressources/equipement/#accessoires', 'regles/artisanat/', 'ressources/livre-parchemin/',
+  ]);
+  assert.ok(!navPaths().includes('ressources/pieces-elementaires/'), 'plus d’entrée Pièces élémentaires (2026-10-29)');
   assert.ok(!navPaths().includes('guide/') && !navPaths().includes('ressources/composants/'), 'plus d’entrée Guide ; Composants est sous Artisanat');
   assert.ok(NAV.every((g) => g.items.every((i) => Object.keys(i).every((k) => ['label', 'path', 'devSeulement'].includes(k)))), 'aucun drapeau de visibilité : rien n’est caché');
 });
@@ -31,7 +42,7 @@ test('chaque lien du menu pointe vers une page qui existe', () => {
   const pages = new URL('../src/pages/', import.meta.url);
   // les adresses des pages du guide (lib/livres.mjs, par cheminDePage) : /decouvrir/…, /regles/…, /mj/…
   const duGuide = new Set(readdirSync(new URL('guide/', content)).filter((f) => f.endsWith('.md')).map((f) => cheminDePage(`guide/${f.slice(0, -3)}`)));
-  for (const path of navPaths()) {
+  for (const path of navPaths().map((p) => p.split('#')[0])) {
     const m = path.match(/^([^/]+)\/(?:([^/]+)\/)?$/);
     if (duGuide.has(path)) continue;
     if (m && TYPE_KEYS.includes(m[1])) {
@@ -46,25 +57,31 @@ test('chaque lien du menu pointe vers une page qui existe', () => {
 
 test('la rubrique courante est repérée, avec ou sans préfixe de déploiement', () => {
   const rubrique = (cle) => NAV.find((g) => g.key === cle);
-  assert.equal(groupIsCurrent(rubrique('regles'), '/races/elfe/'), true);
+  assert.equal(groupIsCurrent(rubrique('personnage'), '/races/elfe/'), true);
   assert.equal(groupIsCurrent(rubrique('joueur'), '/MaverickCenter/fiche/', '/MaverickCenter/'), true);
   assert.equal(groupIsCurrent(rubrique('joueur'), '/personnages/'), true);
-  assert.equal(groupIsCurrent(rubrique('regles'), '/fiche/'), false, 'la fiche est dans l’Espace joueur');
-  assert.equal(groupIsCurrent(rubrique('regles'), '/ressources/equipement/'), true);
-  assert.equal(groupIsCurrent(rubrique('regles'), '/ressources/composants/'), true, 'Composants, sous Artisanat');
-  assert.equal(groupIsCurrent(rubrique('decouvrir'), '/races/'), false);
+  assert.equal(groupIsCurrent(rubrique('personnage'), '/fiche/'), false, 'la fiche est dans l’Espace joueur');
+  assert.equal(groupIsCurrent(rubrique('equipement'), '/ressources/equipement/'), true, 'les entrées des onglets, sans leur ancre');
+  assert.equal(groupIsCurrent(rubrique('equipement'), '/ressources/composants/'), true, 'Composants, sous Artisanat');
+  assert.equal(groupIsCurrent(rubrique('regles'), '/races/'), false);
+  // le plus long début l'emporte : /regles/artisanat/ est à l'Équipement, pas aux Règles de /regles/ (une seule rubrique courante)
+  assert.equal(groupIsCurrent(rubrique('equipement'), '/regles/artisanat/'), true);
+  assert.equal(groupIsCurrent(rubrique('regles'), '/regles/artisanat/'), false);
+  assert.equal(groupIsCurrent(rubrique('regles'), '/regles/la-magie/'), true, 'une page des Bases');
   assert.equal(groupIsCurrent(rubrique('outils'), '/archives/'), true);
   assert.equal(groupIsCurrent(rubrique('outils'), '/pages/'), true, 'index du wiki, hors menu');
   assert.equal(groupIsCurrent(rubrique('mj'), '/MaverickCenter/mj/un-maitre-du-jeu/', '/MaverickCenter/'), true);
 });
 
-test('la 2e ligne suit la rubrique de la page, même hors menu ; la première (Découvrir) par défaut', () => {
-  assert.equal(activeGroup('/ressources/alchimie/').key, 'regles', 'une ressource hors menu ouvre les Règles');
-  assert.equal(activeGroup('/ressources/bouclier/').key, 'regles');
+test('la 2e ligne suit la rubrique de la page, même hors menu ; la première (Règles) par défaut', () => {
+  assert.equal(activeGroup('/ressources/alchimie/').key, 'equipement', 'une ressource hors menu ouvre l’Équipement');
+  assert.equal(activeGroup('/ressources/bouclier/').key, 'equipement');
+  assert.equal(activeGroup('/ressources/pieces-elementaires/').key, 'equipement', 'hors menu depuis le 2026-10-29');
+  assert.equal(activeGroup('/MaverickCenter/ressources/equipement/', '/MaverickCenter/').key, 'equipement');
   assert.equal(activeGroup('/regles/avancees/meteo/').key, 'regles');
-  assert.equal(activeGroup('/regles/artisanat/').key, 'regles');
-  assert.equal(activeGroup('/decouvrir/l-univers/').key, 'decouvrir');
-  assert.equal(activeGroup('/decouvrir/rejoindre-une-partie/').key, 'decouvrir');
+  assert.equal(activeGroup('/regles/artisanat/').key, 'equipement', 'Artisanat, à l’Équipement malgré /regles/');
+  assert.equal(activeGroup('/decouvrir/l-univers/').key, 'regles');
+  assert.equal(activeGroup('/decouvrir/rejoindre-une-partie/').key, 'regles');
   assert.equal(activeGroup('/regles/').key, 'regles', 'le sommaire des Bases');
   assert.equal(activeGroup('/mj/').key, 'mj');
   assert.equal(activeGroup('/mj/guide-pour-mj-maverick/').key, 'mj');
@@ -73,11 +90,12 @@ test('la 2e ligne suit la rubrique de la page, même hors menu ; la première (D
   assert.equal(activeGroup('/bestiaire/monstres/loup-garou/loup-garou-superieur/').key, 'codex', 'la page d’un monstre ouvre le Codex');
   assert.equal(activeGroup('/lore/').key, 'codex');
   assert.equal(activeGroup('/chronologie/grande-croisade/').key, 'codex', 'un événement de la chronologie ouvre le Codex');
-  assert.equal(activeGroup('/capacites/clerc-zelote/').key, 'regles', 'un don de classe va avec les classes');
+  assert.equal(activeGroup('/capacites/clerc-zelote/').key, 'personnage', 'un don de classe va avec les classes');
+  assert.equal(activeGroup('/races/elfe/').key, 'personnage');
   assert.equal(activeGroup('/recherche/').key, 'outils');
   assert.equal(activeGroup('/donnees/').key, 'outils');
-  assert.equal(activeGroup('/').key, 'decouvrir');
-  assert.equal(activeGroup('/MaverickCenter/', '/MaverickCenter/').key, 'decouvrir');
+  assert.equal(activeGroup('/').key, 'regles');
+  assert.equal(activeGroup('/MaverickCenter/', '/MaverickCenter/').key, 'regles');
 });
 
 test('les pages ne sont plus sous /wiki/ : une ancienne adresse mène à la nouvelle (page 404)', () => {

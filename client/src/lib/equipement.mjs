@@ -1,4 +1,4 @@
-// Page /ressources/equipement/ (menu Règles ; demandes du propriétaire, 2026-10-16 : « J'aimerai fusionner "Armes" et "Armures" dans un seule
+// Page /ressources/equipement/ (rubrique Équipement du menu, une entrée par onglet depuis le 2026-10-29 ; demandes du propriétaire, 2026-10-16 : « J'aimerai fusionner "Armes" et "Armures" dans un seule
 // onglet : "Equipement" A l'instar de "Armure et bouclier" les "Armes" seront dans un onglet à part. Il faudrait également un 4em onglet pour les
 // bâtons magiques du coup qui auront mieux leur place ici » ; « J'aimerai rajouter un 5 onglet pour y déplacer les accessoires » ; puis « revoir
 // intégralement la page des objets à la ceinture, renommer l'onglet en "Ceinture" et le mettre dans les onglets de équipement », avec ses sous-onglets
