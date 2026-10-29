@@ -2,6 +2,9 @@ input, select, textarea, button {
   font: inherit; color: var(--text); background: var(--surface);
   border: 1px solid var(--border); border-radius: var(--radius); padding: 0.4rem 0.6rem;
 }
+/* la liste ouverte d'un <select> : son fond et son texte suivent le thème, même quand le select est transparent (Métier de la fiche,
+   `background: none`) ; sinon Chromium la peint sur fond clair avec le texte clair du thème sombre, illisible */
+option, optgroup { background-color: var(--surface); color: var(--text); }
 button { cursor: pointer; background: var(--accent-soft); }
 button:hover:not(:disabled) { border-color: var(--accent); }
 button:disabled { opacity: 0.45; cursor: not-allowed; }
