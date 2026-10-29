@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 import { classesDeDeuxMagies } from '../src/lib/palette-css.mjs';
 
 const {
-  COLONNES, FILTRES_PAR_DEFAUT, adresseDesFiltres, choixDeFiltres, classesDe, classesDeBordure, filtrer, filtresDepuisAdresse, magiesDe, normaliser, trier,
+  COLONNES, FILTRES_PAR_DEFAUT, adresseDesFiltres, casseDeSpecialite, choixDeFiltres, classesDe, classesDeBordure, filtrer, filtresDepuisAdresse, magiesDe, normaliser, trier,
 } = liste;
 
 const p = (id, surcharge = {}) => ({
@@ -47,19 +47,31 @@ test('colonnes : exactement portrait, nom, race, magies, classes, niveau (demand
   assert.equal(texte('race', PERSONNAGES[1]), 'Humain', 'la race seule, sans l’ethnie');
   assert.equal(texte('race', PERSONNAGES[3]), '', 'sans race : case vide');
   assert.equal(texte('magies', PERSONNAGES[1]), 'Eau, Feu');
-  assert.equal(texte('classes', PERSONNAGES[1]), 'Guerrier (ÉPÉISTE), Mage');
+  assert.equal(texte('classes', PERSONNAGES[1]), 'Guerrier (Épéiste), Mage');
   assert.equal(texte('classes', PERSONNAGES[3]), '', 'sans classe : case vide');
   assert.equal(texte('niveau', PERSONNAGES[1]), 11, 'le niveau global (l’XP sert au tri)');
 });
 
-test('classes dans une case (demande du propriétaire) : par rang, la spécialité entre parenthèses s’il y en a une, les noms de la base tels quels ; rien sans classe', () => {
+test('classes dans une case (demande du propriétaire) : par rang, la spécialité entre parenthèses s’il y en a une, en casse « Épéiste », la classe telle quelle ; rien sans classe', () => {
   assert.equal(classesDe(PERSONNAGES[0]), 'Mage', 'une classe sans spécialité : son nom seul');
-  assert.equal(classesDe(PERSONNAGES[1]), 'Guerrier (ÉPÉISTE), Mage', 'la spécialité de la 1re classe entre parenthèses, la 2e sans');
+  assert.equal(classesDe(PERSONNAGES[1]), 'Guerrier (Épéiste), Mage', 'la spécialité de la 1re classe entre parenthèses (« ÉPÉISTE » dans la base), la 2e sans');
   assert.equal(classesDe(p('x', { classes: [
-    { rang: 2, classe_id: 'classes/mage', classe: 'Mage', specialite: 'PYROMANCIEN' },
+    { rang: 2, classe_id: 'classes/mage', classe: 'Mage', specialite: 'MAGE BLANC' },
     { rang: 1, classe_id: 'classes/guerrier', classe: 'Guerrier', specialite: 'ÉPÉISTE' },
-  ] })), 'Guerrier (ÉPÉISTE), Mage (PYROMANCIEN)', 'l’ordre est celui du rang, pas celui reçu ; deux spécialités');
+  ] })), 'Guerrier (Épéiste), Mage (Mage blanc)', 'l’ordre est celui du rang, pas celui reçu ; deux spécialités');
   assert.equal(classesDe(PERSONNAGES[3]), '', 'sans classe');
+  assert.equal(classesDe(p('x', { classes: [{ rang: 1, classe: 'Guerrier', specialite: 'MAÎTRE D\'ARME' }] })), 'Guerrier (Maître d\'arme)', 'la classe garde son libellé');
+});
+
+test('casse d’une spécialité (demande du propriétaire : « juste une majuscule ») : la première lettre en majuscule, le reste en minuscules', () => {
+  // des noms réels de data/rows/specialite.sql (plusieurs mots, apostrophe, tirets, accent en tête, casse déjà mixte)
+  for (const [base, affiche] of [
+    ['ÉPÉISTE', 'Épéiste'], ['CEMIES', 'Cemies'], ['CHASSEUR DE PRIMES', 'Chasseur de primes'], ['MAÎTRE D\'ARME', 'Maître d\'arme'],
+    ['TIREUR D\'ÉLITE', 'Tireur d\'élite'], ['VA-T-EN-GUERRE', 'Va-t-en-guerre'], ['ÉLOQUENT', 'Éloquent'], ['Élémentaliste', 'Élémentaliste'],
+    ['Occultiste', 'Occultiste'], ['MAGE ÉMERAUDE', 'Mage émeraude'],
+  ]) assert.equal(casseDeSpecialite(base), affiche, base);
+  assert.equal(casseDeSpecialite(''), '');
+  assert.equal(casseDeSpecialite(null), '');
   assert.equal(classesDe(p('x', { classes: undefined })), '', 'résumé sans liste de classes');
   const recue = [{ rang: 2, classe: 'B', specialite: null }, { rang: 1, classe: 'A', specialite: null }];
   classesDe(p('x', { classes: recue }));
@@ -105,7 +117,9 @@ test('tri : chaque colonne triable dans les deux sens, texte sans casse ni accen
   assert.deepEqual(noms(trier(tous, 'niveau', 'desc')), ['aldric', 'Élise', 'Cyrielle', 'Brune']);
   const memeNiveau = [p('A', { niveau_global: 2, xp: 300 }), p('B', { niveau_global: 2, xp: 150 })];
   assert.deepEqual(noms(trier(memeNiveau, 'niveau')), ['B', 'A'], 'à niveau égal, l’XP départage');
-  assert.deepEqual(noms(trier(tous, 'classes')), ['aldric', 'Élise', 'Brune', 'Cyrielle'], 'classes : « Guerrier (ÉPÉISTE), Mage », « Mage », puis les cases vides');
+  assert.deepEqual(noms(trier(tous, 'classes')), ['aldric', 'Élise', 'Brune', 'Cyrielle'], 'classes : « Guerrier (Épéiste), Mage », « Mage », puis les cases vides');
+  const casses = [p('A', { classes: [{ rang: 1, classe: 'mage', specialite: null }] }), p('B', { classes: [{ rang: 1, classe: 'Guerrier', specialite: null }] })];
+  assert.deepEqual(noms(trier(casses, 'classes')), ['B', 'A'], 'le tri des classes ignore la casse');
   assert.deepEqual(noms(trier(tous, 'classes', 'desc')), ['Élise', 'aldric', 'Brune', 'Cyrielle'], 'les cases vides restent à la fin');
   const parNom = noms(trier(tous, 'nom'));
   assert.deepEqual(noms(trier(tous, 'portrait')), parNom, 'le portrait ne se trie pas : par nom');

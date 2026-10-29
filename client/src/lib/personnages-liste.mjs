@@ -9,14 +9,20 @@ export const normaliser = (texte) => String(texte ?? '').normalize('NFD').replac
 export const magiesDe = (p) => [p.magie_innee, p.magie_acquise].filter(Boolean).join(', ');
 
 /**
+ * Le nom d'une spécialité dans la liste (demande du propriétaire, 2026-10-29 : « juste une majuscule ») : la première lettre en majuscule, le reste en
+ * minuscules, « ÉPÉISTE » → « Épéiste », « MAÎTRE D'ARME » → « Maître d'arme » ; la base garde sa casse (la fiche aussi).
+ */
+export const casseDeSpecialite = (nom) => String(nom ?? '').toLocaleLowerCase('fr').replace(/^\p{L}/u, (l) => l.toLocaleUpperCase('fr'));
+
+/**
  * Les classes d'un personnage dans une case (demande du propriétaire, 2026-10-29) : dans l'ordre de leur rang, chacune suivie de sa spécialité entre
- * parenthèses s'il en a une, « Guerrier (ÉPÉISTE), Mage » ; les noms tels que la base les donne (GET /api/personnages/ : `classes[].classe`,
- * `classes[].specialite`) ; '' sans classe.
+ * parenthèses s'il en a une, « Guerrier (Épéiste), Mage » ; la classe telle que la base la donne, la spécialité en casse « Épéiste »
+ * (casseDeSpecialite ; GET /api/personnages/ : `classes[].classe`, `classes[].specialite`) ; '' sans classe. Le tri de la colonne ignore la casse.
  */
 export const classesDe = (p) => [...(p.classes ?? [])]
   .sort((a, b) => (a.rang ?? 0) - (b.rang ?? 0))
   .filter((c) => c.classe)
-  .map((c) => (c.specialite ? `${c.classe} (${c.specialite})` : c.classe))
+  .map((c) => (c.specialite ? `${c.classe} (${casseDeSpecialite(c.specialite)})` : c.classe))
   .join(', ');
 
 /**
