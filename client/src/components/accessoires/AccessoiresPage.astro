@@ -210,7 +210,7 @@ const DE_SVG =
                                   <span class="bulle-zone"><span class="acc-remarque" data-bulle={bulle} aria-describedby={bulle} title={e.remarque} tabindex="0" aria-label="Remarque">*</span><span class="bulle" role="tooltip" id={bulle} hidden><strong class="bulle__titre">Remarque</strong><span class="bulle__texte">{e.remarque}</span></span></span>
                                 )}
                               </th>
-                              <td class="acc-effet__niveau">{e.niveau_brut ?? ''}</td>
+                              <td class="acc-effet__niveau">{e.niveau_brut && <span class="acc-ligne__niveau">{e.niveau_brut}</span>}</td>
                               <td class="acc-gemmes" data-gemmes><GemmesDeLEffet rangs={e.gemmes} brut={e.gemmes_brut} libelle={e.libelle ?? ''} /></td>
                               <td class="acc-effet__prix" data-acc-prix set:html={htmlAvecMonnaies(e.prix_brut ?? '')} />
                             </tr>
@@ -241,7 +241,7 @@ const DE_SVG =
             <tbody>
               {accessoires.montures.map((m) => (
                 <tr class={classes('acc-ligne acc-monture', classeDeNiveau(m.niveau))} data-choix="monture" data-valeur={m.niveau} data-min={m.niveau} data-max={m.niveau} data-niveau={m.niveau} data-libelle={m.matiere} data-prix={m.prix_brut} data-prix-html={m.prix_brut ? htmlAvecMonnaies(m.prix_brut) : undefined} data-prix-ro={m.prix_ro ?? undefined} data-effet={m.effet_brut}>
-                  <td class="acc-jet">Niveau {m.niveau}</td>
+                  <td class="acc-jet"><span class="acc-ligne__niveau">Niveau {m.niveau}</span></td>
                   <th scope="row"><button type="button" class="acc-choisir" aria-pressed="false">{m.matiere}</button></th>
                   <td set:html={htmlAvecMonnaies(m.prix_brut)} />
                   <td>{m.effet_brut}</td>

@@ -141,15 +141,29 @@ html.js .arme--depart + .arme-suite:hover > * { background: var(--depart-fond-fo
 .arme.ed-supprime + .arme-suite { opacity: 0.45; text-decoration: line-through; }
 .arme__libelle { display: block; }
 /* Une arme élémentaire (décision R167 : les 14 de la famille à la suite de ses armes, lib/armes-rendu.mjs#htmlDeLigneDArmeElementaire) : ses deux lignes
-   sur le fond de sa magie, la classe de la magie posée sur chacune (`couleur-magie-<id>`, lib/palette-css.mjs : --couleur, et --couleur-texte de
-   texteSurCouleur), jamais un style ; au survol, un filet dans la couleur du texte ; choisie, un filet plus large (le fond reste celui de la magie) */
-.arme--elementaire > *, .arme-suite--elementaire > * { background: var(--couleur); color: var(--couleur-texte); }
-.arme--elementaire :is(.arme__mains, .vide, .arme__remarque), .arme-suite--elementaire .arme__effets { color: inherit; }
+   dans la couleur de sa magie, la classe de la magie posée sur chacune (`couleur-magie-<id>`, lib/palette-css.mjs : --couleur, et --couleur-texte de
+   texteSurCouleur), jamais un style. Comme une ligne colorée du gabarit (styles/global/tableaux.css) et les tuiles de la fiche de personnage (demande
+   du propriétaire, 2026-10-29 : « Je ne veux plus de ligne entièrement colorées de la couleur de la magie ») : le fond du thème teinté à 12 %, un filet
+   de la couleur au-dessus de l'arme et sous ses effets, un liseré de la couleur pleine à gauche des deux lignes, le texte du thème (le texte adouci des
+   mains et des cases vides, mêlé au texte, reste lisible sur la teinte) ; la couleur pleine sur la pastille de sa magie (types de dégâts). Survolée : la
+   teinte à 20 % ; choisie : la même, et le liseré des armes choisies (--arm) devant celui de la magie ; en mode modification, la teinte et le liseré
+   de la magie restent (comme les armes de départ). */
+.arme--elementaire, .arme-suite--elementaire {
+  --elem-teinte: color-mix(in srgb, var(--couleur) 12%, var(--surface));
+  --elem-teinte-forte: color-mix(in srgb, var(--couleur) 20%, var(--surface));
+  --elem-filet: color-mix(in srgb, var(--couleur) 60%, var(--border));
+  --elem-bord: color-mix(in srgb, var(--couleur-texte) 35%, var(--couleur));
+}
+.arme--elementaire > *, .arme-suite--elementaire > * { background: var(--elem-teinte); }
+.arme--elementaire > * { border-top: 1px solid var(--elem-filet); }
+.arme-suite--elementaire > * { border-bottom: 1px solid var(--elem-filet); }
+.arme--elementaire > .arme__nom, .arme-suite--elementaire > .arme-suite__marge { box-shadow: inset 4px 0 0 var(--couleur), inset 5px 0 0 var(--elem-bord); }
+.arme--elementaire :is(.arme__mains, .vide) { color: color-mix(in srgb, var(--text) 50%, var(--muted)); }
+.arme--elementaire .arme-dgt--magie { background: var(--couleur); color: var(--couleur-texte); border-color: color-mix(in srgb, var(--text) 25%, var(--couleur)); font-weight: 600; }
 html.js :is(.arme--elementaire:hover, .arme--elementaire:has(+ .arme-suite:hover)) > *, html.js .arme--elementaire:hover + .arme-suite > *,
-html.js .arme-suite--elementaire:hover > *, html.js .arme--elementaire.est-choisie > *, html.js .arme--elementaire.est-choisie + .arme-suite > * { background: var(--couleur); }
-html.js :is(.arme--elementaire:hover, .arme--elementaire:has(+ .arme-suite:hover)) > .arme__nom, html.js .arme--elementaire:hover + .arme-suite > .arme-suite__marge,
-html.js .arme-suite--elementaire:hover > .arme-suite__marge { box-shadow: inset 3px 0 0 var(--couleur-texte); }
-html.js .arme--elementaire.est-choisie > .arme__nom, html.js .arme--elementaire.est-choisie + .arme-suite > .arme-suite__marge { box-shadow: inset 6px 0 0 var(--couleur-texte); }
+html.js .arme-suite--elementaire:hover > *, html.js .arme--elementaire.est-choisie > *, html.js .arme--elementaire.est-choisie + .arme-suite > * { background: var(--elem-teinte-forte); }
+html.js .arme--elementaire.est-choisie > .arme__nom, html.js .arme--elementaire.est-choisie + .arme-suite > .arme-suite__marge {
+  box-shadow: inset 4px 0 0 var(--arm), inset 8px 0 0 var(--couleur), inset 9px 0 0 var(--elem-bord); }
 .arme-capacite__nom { font-weight: 700; }
 .arme-capacite__mode { font-style: italic; }
 
@@ -183,11 +197,13 @@ html.js .arme--elementaire.est-choisie > .arme__nom, html.js .arme--elementaire.
 
 /* Les tableaux du panneau (matériaux, améliorations) : des lignes basses, serrées (« réduire la hauteur des lignes des matériaux ») */
 .armes-cote .armes-table tbody > tr > * { vertical-align: middle; }
-/* Matériaux : toute la ligne dans la couleur du matériau (comme l'onglet du classeur), ses effets sur une seule ligne, séparés par « | », le bonus aux
+/* Matériaux : la ligne dans la couleur du matériau (comme l'onglet du classeur), ses effets sur une seule ligne, séparés par « | », le bonus aux
    dégâts sans le mot « Dégâts » (demande du propriétaire, 2026-10-16 : « La ligne tout entière devrait prendre la couleur du matériau et les effets
-   devraient être sur la même ligne. (exemple : +2 / +7 | dégats doubles sur la barrière / +10 | Casse barrière.) ») ; la ligne choisie : un double
-   filet (accent puis fond) tout autour, et une coche après son nom ; la couleur est la classe du matériau (`couleur-materiau-<id>`,
-   lib/palette-css.mjs, valeur dans lib/materiaux-couleurs.mjs), posée sur la ligne et, par le script de la page, sur sa pastille dans la fiche */
+   devraient être sur la même ligne. (exemple : +2 / +7 | dégats doubles sur la barrière / +10 | Casse barrière.) ») ; depuis le 2026-10-29 (« Je ne
+   veux plus de ligne entièrement colorées ») : la ligne colorée du gabarit, le fond teinté, le filet et le liseré de la couleur, le texte du thème
+   (styles/global/tableaux.css) ; la ligne choisie : un double filet (accent puis fond) tout autour, le liseré du matériau gardé à l'intérieur (comme une arme élémentaire choisie), et une coche après son nom ; la couleur est la
+   classe du matériau (`couleur-materiau-<id>`, lib/palette-css.mjs, valeur dans lib/materiaux-couleurs.mjs), posée sur la ligne et, par le script de
+   la page, sur sa pastille dans la fiche (en couleur pleine) */
 .materiau { --ligne-fond: var(--couleur); --ligne-texte: var(--couleur-texte); }
 .materiau__nom { min-width: 6.5rem; }
 .materiau__prix { white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -198,7 +214,8 @@ html.js .arme--elementaire.est-choisie > .arme__nom, html.js .arme--elementaire.
 .materiau-effet__rien { opacity: 0.7; }
 .materiau.est-choisie > * { box-shadow: inset 0 3px 0 var(--arm), inset 0 5px 0 var(--surface), inset 0 -3px 0 var(--arm), inset 0 -5px 0 var(--surface); }
 .materiau.est-choisie > :first-child { box-shadow: inset 3px 0 0 var(--arm), inset 5px 0 0 var(--surface), inset 0 3px 0 var(--arm), inset 0 5px 0 var(--surface),
-  inset 0 -3px 0 var(--arm), inset 0 -5px 0 var(--surface); }
+  inset 0 -3px 0 var(--arm), inset 0 -5px 0 var(--surface), inset 9px 0 0 var(--ligne-fond),
+  inset 10px 0 0 color-mix(in srgb, var(--ligne-texte) 35%, var(--ligne-fond)); }
 .materiau.est-choisie > :last-child { box-shadow: inset -3px 0 0 var(--arm), inset -5px 0 0 var(--surface), inset 0 3px 0 var(--arm), inset 0 5px 0 var(--surface),
   inset 0 -3px 0 var(--arm), inset 0 -5px 0 var(--surface); }
 .materiau.est-choisie .materiau__choisir::after { content: ' ✓'; content: ' ✓' / ''; }
@@ -283,8 +300,13 @@ body.ed-mode .armes :is(.armes-materiaux__note-elementaire, .armes-ameliorations
 body.ed-mode .armes .arme, body.ed-mode .armes .materiau, body.ed-mode .armes .amelioration { cursor: default; }
 body.ed-mode .armes :is(.arme, .amelioration).est-choisie > * { background: none; box-shadow: none; }
 body.ed-mode .armes .materiau.est-choisie > * { box-shadow: none; }
+body.ed-mode .armes .materiau.est-choisie > :first-child { box-shadow: var(--ligne-lisere); }
 body.ed-mode .armes .materiau.est-choisie .materiau__choisir::after { content: none; }
 body.ed-mode .armes .arme--depart > *, body.ed-mode .armes .arme--depart + .arme-suite > * { background: var(--depart-fond); }
+/* une arme élémentaire choisie, en mode modification : sa teinte et le liseré de sa magie, sans le choix (après la règle qui l'efface, même poids) */
+body.ed-mode .armes .arme--elementaire.est-choisie > *, body.ed-mode .armes .arme--elementaire.est-choisie + .arme-suite > * { background: var(--elem-teinte); }
+body.ed-mode .armes .arme--elementaire.est-choisie > .arme__nom, body.ed-mode .armes .arme--elementaire.est-choisie + .arme-suite > .arme-suite__marge {
+  box-shadow: inset 4px 0 0 var(--couleur), inset 5px 0 0 var(--elem-bord); }
 body.ed-mode .armes :is(.arme__choisir, .materiau__choisir, .amelioration__choisir) { pointer-events: none; }
 body.ed-mode .armes .arme__nom { position: static; }
 body.ed-mode .armes .arme__effet .ed-saisie { min-width: 22rem; }

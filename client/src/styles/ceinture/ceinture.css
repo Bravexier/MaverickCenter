@@ -4,7 +4,7 @@
    primitive), un tableau par potion, deux ou trois côte à côte ; le tableau des carquois ; le tableau des bâtons magiques. Aucune couleur écrite ici :
    les lignes prennent celle de la règle du site par leur classe (lib/palette-css.mjs : `.couleur-potion-…` pour une potion, émise par
    CeinturePanneau.astro ; `.couleur-magie-…` pour un bâton, posée sur chaque page par layouts/Base.astro), jamais par un style. Les tableaux suivent le gabarit commun (styles/global/tableaux.css : cadre, titre,
-   en-têtes, lignes sur la couleur de leur source) ; ici, ce qui leur est propre. Les onglets de la page et la pastille d'une gemme :
+   en-têtes, lignes teintées de la couleur de leur source, avec son filet et son liseré) ; ici, ce qui leur est propre. Les onglets de la page et la pastille d'une gemme :
    styles/equipement/equipement.css. */
 .ceinture {
   --ctr: var(--accent);
@@ -88,9 +88,10 @@ html.js .ceinture-famille__titre { position: absolute; width: 1px; height: 1px; 
 html.js .batons .sans-js { display: none; }
 
 .batons-table tbody > tr > * { vertical-align: middle; }
-/* toute la ligne sur la couleur de sa magie sur le site (demandes du propriétaire), comme les matériaux de l'onglet Armes : la ligne colorée du gabarit ;
-   la couleur vient de la classe de la magie (`.couleur-magie-<id>` : --couleur, --couleur-texte, lib/palette-css.mjs), qui teinte aussi les infobulles de
-   la ligne (--mag, styles/global/infobulles.css) */
+/* la ligne dans la couleur de sa magie sur le site (demandes du propriétaire), comme les matériaux de l'onglet Armes : la ligne colorée du gabarit (le
+   fond teinté, le filet et le liseré de la couleur, le texte du thème : demande du propriétaire du 2026-10-29, styles/global/tableaux.css) ; la couleur
+   vient de la classe de la magie (`.couleur-magie-<id>` : --couleur, --couleur-texte, lib/palette-css.mjs), qui teinte aussi les infobulles de la ligne
+   (--mag, styles/global/infobulles.css) ; le curseur du niveau, dans le texte du thème (une magie claire, le Vide, ne se verrait pas en clair) */
 .batons-table tr.baton { --baton-fond: var(--couleur); --baton-texte: var(--couleur-texte); --ligne-fond: var(--baton-fond); --ligne-texte: var(--baton-texte);
   --mag: var(--baton-fond); }
 /* la magie n'a plus de colonne (demande du propriétaire) : son nom reste dans l'en-tête de la ligne pour les lecteurs d'écran */
@@ -98,14 +99,14 @@ html.js .batons .sans-js { display: none; }
 .baton__gemme { min-width: 9rem; font-weight: 400; }
 .baton__bois { min-width: 7rem; }
 /* un nom de gemme ou de bois ne se coupe qu'entre deux mots (main a, styles/global/wiki.css, coupe partout) : le tableau défile en largeur */
-.baton__nom { color: inherit; font-weight: 700; text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--baton-texte) 45%, transparent);
+.baton__nom { color: inherit; font-weight: 700; text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
   text-underline-offset: 0.18em; overflow-wrap: normal; }
 .baton__nom:hover, .baton__nom[data-ouverte] { text-decoration-color: currentColor; }
-.baton__nom:focus-visible { outline: 2px solid var(--baton-texte); outline-offset: 2px; border-radius: var(--radius-xs); }
+.baton__nom:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; border-radius: var(--radius-xs); }
 .baton__niveau { white-space: nowrap; }
 html.js .batons .baton-curseur { display: inline-flex; align-items: center; gap: 0.5rem; }
-.baton-curseur__champ { width: 5.5rem; margin: 0; padding: 0; border: 0; background: none; accent-color: var(--baton-texte); cursor: pointer; }
-.baton-curseur__champ:focus-visible { outline: 2px solid var(--baton-texte); outline-offset: 3px; border-radius: var(--radius-xs); }
+.baton-curseur__champ { width: 5.5rem; margin: 0; padding: 0; border: 0; background: none; accent-color: var(--text); cursor: pointer; }
+.baton-curseur__champ:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; border-radius: var(--radius-xs); }
 .baton-curseur__valeur { min-width: 1ch; font-weight: 700; font-variant-numeric: tabular-nums; }
 .baton__effet { min-width: 14rem; }
 .baton__prix { white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -123,7 +124,7 @@ html.js .batons-table tr.baton:not([data-niveau='3']) .baton-niv[data-niv='3'] {
 .batons-table tr.baton[data-niveau='3'] .bulle__stade[data-niv='3'] { background: color-mix(in srgb, var(--bulle-teinte) 14%, var(--surface)); font-weight: 600; }
 .bulle--baton .bulle__lien { display: block; margin-top: 0.4rem; color: var(--bulle-lisible); font-weight: 700; }
 .bulle--baton .bulle__lien::after { content: ' ›'; content: ' ›' / ''; }
-/* sur une ligne des bâtons, la pastille de la gemme (styles/equipement/equipement.css) a la couleur du fond, celle de la magie : un liseré dans la
-   couleur du texte de la ligne la détache (Onyx sur le noir) ; son contour au focus aussi */
-.batons-table .acc-gemme { box-shadow: 0 0 0 1px color-mix(in srgb, var(--baton-texte) 45%, transparent); }
-.batons-table a.acc-gemme:focus-visible { outline-color: var(--baton-texte); }
+/* sur une ligne des bâtons, la pastille de la gemme (styles/equipement/equipement.css) est dans la couleur pleine de sa magie, sur le fond teinté du
+   thème : un trait tiré du texte du thème la détache (l'Onyx, noir, en thème sombre) ; son contour au focus, le texte du thème */
+.batons-table .acc-gemme { box-shadow: 0 0 0 1px color-mix(in srgb, var(--text) 30%, transparent); }
+.batons-table a.acc-gemme:focus-visible { outline-color: var(--text); }
