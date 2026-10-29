@@ -12,6 +12,7 @@ import {
   TITRES_DOMAINES, diffMots, echapper, htmlDeLaListe, htmlDeLaNote, htmlDuTexteLibre, lancementAffiche, markdownDeLaNote, neutraliserMarqueur,
 } from '../src/lib/notes-de-version-rendu.mjs';
 import { htmlAvecMotsCles, pageAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
+import { htmlAvecMonnaies } from '../src/lib/monnaies.mjs';
 
 const magies = [
   { id: 'magies/feu', nom: 'Feu', ordre: 1, description: 'Brûle.' },
@@ -507,6 +508,26 @@ test('rendu : une balise posée autour d’un texte existant se rend dans le dé
   assert.deepEqual(rendu.employes, ['sort-fer']);
   const page = pageAvecMotsCles(`<html><body>${html}</body></html>`, VOCABULAIRE_SORT_FER);
   assert.ok(!page.replace(/<[^>]+>/g, '').includes('{{'), 'aucune balise brute dans le texte visible');
+});
+
+test('rendu : les montants des textes cités convertis par `texte` (htmlAvecMonnaies, R61, R63), échappés sans lui ; aucune abréviation visible', () => {
+  const long = 'Chaque étape se paie en RO. *Exemple : l’espadon revient à 620 RO, ou à 1 220 RO si l’on achète aussi le titane.* Texte assez long pour être replié.';
+  const lignes = [
+    { domaine: 'armes', groupe: 'Améliorations', entite: 'Amélioration +1', champ: 'Coût en RO (bouclier)', nature: 'modifie', avant: '500', apres: '50', sens: 'neutre' },
+    { domaine: 'guide', groupe: 'Chapitre', entite: 'Forge', champ: 'Texte', nature: 'modifie', avant: long, apres: long.replace('620', '640'), sens: 'neutre' },
+    { domaine: 'guide', groupe: 'Chapitre', entite: 'Monnaies', champ: 'Texte', nature: 'ajoute', avant: null, apres: '- **Monnaies** : le Ricken d’or (RO). 1 RO = 100 RF, et 1 PP = 1 000 RO.', sens: 'neutre' },
+  ];
+  const visible = (html) => html.replace(/<[^>]+>/g, ' ');
+  const abreviation = /(?<![\p{L}\p{N}])(R[Oo]|R[Ff]|PP)(?![\p{L}\p{N}])/u;
+  // sans `texte` : échappé, tel qu'avant (le script de la page de dev, qui n'importe pas monnaies.mjs)
+  assert.match(visible(htmlDeLaListe(lignes)), abreviation);
+  const html = htmlDeLaListe(lignes, { texte: htmlAvecMonnaies });
+  assert.doesNotMatch(visible(html), abreviation, visible(html));
+  assert.match(html, /class="montant"/, 'un montant décomposé');
+  assert.match(html, /class="nv-champ__nom">Coût en <span[^>]*class="piece piece--ro"/, 'le nom du champ aussi');
+  const note = htmlDeLaNote({ version: '0.4', publiee_le: '2026-10-01', texte: 'Tout coûte 10 RO.' }, lignes, { texte: htmlAvecMonnaies });
+  assert.doesNotMatch(visible(note), abreviation);
+  assert.match(htmlDuTexteLibre('Tout coûte **10 RO**.', { texte: htmlAvecMonnaies }), /<strong><span class="montant"/);
 });
 
 test('champ libre : paragraphes, listes, gras, italique, liens http(s) ; rien d’autre ne passe', () => {
