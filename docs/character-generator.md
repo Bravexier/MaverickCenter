@@ -893,7 +893,8 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
 La liste montre tous les prétirés, et seulement (demande du propriétaire, 2026-10-14) : **portrait** (le carré cadré de l'image, le logo en attendant ;
 l'image vient de `GET /api/personnages/<id>/portrait/`, la liste n'en reçoit que l'empreinte et le style du cadrage), **nom**, **race**, **magies** (une
 case : l'innée puis l'acquise, « Feu, Eau »), **classes** (demande du propriétaire, 2026-10-29 : une case, par rang, la spécialité entre
-parenthèses s'il en a une, « Guerrier (ÉPÉISTE), Mage », noms de la base tels quels, `classesDe`) et **niveau** (trié par l'XP). **Toute la ligne est le lien vers la fiche** (le nom n'a pas l'air d'un lien),
+parenthèses s'il en a une, « Guerrier (Épéiste), Mage » : la classe telle que la base la donne, la spécialité avec juste une majuscule,
+le reste en minuscules, « ÉPÉISTE » → « Épéiste », `classesDe`, `casseDeSpecialite` ; la base et la fiche gardent leur casse) et **niveau** (trié par l'XP). **Toute la ligne est le lien vers la fiche** (le nom n'a pas l'air d'un lien),
 et sa bordure prend la couleur de la magie innée, en dégradé vers celle de l'acquise en bi-magie (celles des pages de magie : les classes de la palette
 de chaque magie, `data-couleurs`, posées au build ; le script pose sur la ligne la classe de l'innée et la classe de second rang de l'acquise,
 `classesDeBordure`, jamais une couleur). Chaque colonne sauf le portrait **se trie** dans les deux sens (bouton dans l'en-tête) ; filtres : texte (nom, surnom, origine,
