@@ -1512,12 +1512,13 @@ export function carteDeMaitrise(regles, s) {
 /**
  * Une ligne du tableau des familles du bloc Maîtrises (maitrisesParFamille) : d'où viennent ses points, en mots (« Guerrier (maîtrise 1) +1 »,
  * « Mage saphir (Mage Bleu) +2 (suit un choix) »), et ses alertes : les points au-delà du plafond (R149, « 5 points : 1 au-delà du plafond, non compté »,
- * ton 'trop') ; un total des sources sous 0, ramené à 0 (R151, ton 'info'). { detail: [texte], alertes: [{ ton, texte }] }.
+ * ton 'avertissement' : « ne devrai pas remonter une erreur. Juste un avertissement, surtout quand ils sont imposées », décision R170 ; le calcul ne
+ * change pas) ; un total des sources sous 0, ramené à 0 (R151, ton 'info'). { detail: [texte], alertes: [{ ton, texte }] }.
  */
 export function ligneDeMaitrise(m) {
   const detail = m.detail.map((d) => `${d.titre} ${pointsSignes(d.points)}${d.genre === 'suit' ? ' (suit un choix)' : ''}`);
   const alertes = [];
-  if (m.excedent) alertes.push({ ton: 'trop', texte: `${pluriel(m.points, 'point')} : ${m.excedent} au-delà du plafond, non compté${m.excedent > 1 ? 's' : ''}` });
+  if (m.excedent) alertes.push({ ton: 'avertissement', texte: `${pluriel(m.points, 'point')} : ${m.excedent} au-delà du plafond, non compté${m.excedent > 1 ? 's' : ''}` });
   const brut = m.detail.reduce((t, d) => t + d.points, 0);
   if (brut < 0) alertes.push({ ton: 'info', texte: `${pointsSignes(brut)} en tout : ramené à 0, une famille ne descend jamais sous 0` });
   return { detail, alertes };
@@ -1815,16 +1816,60 @@ export function emplacementsDeSorts(regles, fiche) {
 
 /** Sorts que la fiche peut prendre : de sa magie innée ou acquise (toutes pour le Potentiel Illimité), jusqu'au NPM accessible. */
 export function sortsPossibles(regles, fiche) {
-  const toutes = fiche.magie_innee_id === 'magies/potentiel-illimite';
+  const toutes = fiche.magie_innee_id === POTENTIEL_ILLIMITE;
   const magies = new Set([fiche.magie_innee_id, fiche.magie_acquise_id].filter(Boolean));
   const max = npmMax(regles, fiche);
   return regles.sorts.filter((s) => (toutes || magies.has(s.magie_id)) && s.niveau <= max);
 }
 
 /**
- * Niveaux de maîtrise (NM) des sorts (décisions R24, R26, R118). Le NM d'un sort (`niveau_maitrise`, un curseur de 0 à `plafond` sur la page : R118)
- * compte toutes ses origines ; celui d'un livre de sort (un seul par sort, `nm_livre`, noté dans l'entraînement) en fait partie sans compter dans le
- * décompte. Les NM comptés (`comptes` : ceux des sorts sans leurs livres) vont au plus jusqu'à la limite (`limite`), les NM gagnés (`disponibles`) plus
+ * Les sorts dont un livre peut s'apprendre dans l'entraînement (décision R169 : « on peux apprendre n'importe quel "entainement" livre de sort pour
+ * n'importe quel sort de sa magie, même si on l'a pas sélectionné » ; réponses du propriétaire : « Tous, quel que soit le NPM », « Oui, toutes les
+ * magies » pour le Potentiel Illimité) : tous ceux de la magie innée puis de la magie acquise, quel que soit le NPM ; le Potentiel Illimité, toujours
+ * la magie innée (R176 : une fiche qui le met en magie acquise est signalée par la règle mono_magie, la liste n'y ouvre que ses magies), ceux de
+ * toutes les magies, comme sortsPossibles. La seule liste des livres (la ligne « Livre de sort » de la page, l'import du tableur la préfère pour un nom
+ * ambigu) ; aucun contrôle ne refuse un livre hors d'elle (un livre d'une magie perdue reste, en attente : livresDe). Dans l'ordre des règles.
+ */
+export function sortsDesLivres(regles, fiche) {
+  const magies = [fiche?.magie_innee_id, fiche?.magie_acquise_id].filter(Boolean);
+  if (fiche?.magie_innee_id === POTENTIEL_ILLIMITE) return [...(regles.sorts ?? [])];
+  return magies.flatMap((m) => (regles.sorts ?? []).filter((s) => s.magie_id === m));
+}
+
+/** Vrai si l'entraînement de la fiche note un livre du sort `sortId` (fiche.livres_sorts, décision R169 ; un seul par sort, R26). */
+export const aUnLivre = (fiche, sortId) => Boolean(sortId) && (fiche?.livres_sorts ?? []).some((l) => l?.sort_id === sortId);
+
+/**
+ * Les livres de sort de la fiche (décision R169), dans l'ordre de l'entraînement (`rang`) : [{ sort_id, rang, sort (des règles, null s'il n'y est
+ * plus), choisi (le sort est dans la liste des sorts), enAttente (il ne l'est pas : son NM n'est pas utilisé, « mis en attente tant que le sort n'est
+ * pas réintégré », page « Livre / Parchemin »), horsDesMagies (le sort n'est pas dans sortsDesLivres : magie acquise changée, Livre du Rien ; rien n'est
+ * refusé, le livre reste) }]. Un second livre du même sort n'est pas repris (R26).
+ */
+export function livresDe(regles, fiche) {
+  const choisis = new Set((fiche?.sorts ?? []).map((s) => s?.sort_id).filter(Boolean));
+  const possibles = new Set(sortsDesLivres(regles, fiche).map((s) => s.id));
+  const vus = new Set();
+  return [...(fiche?.livres_sorts ?? [])]
+    .filter((l) => l?.sort_id && !vus.has(l.sort_id) && vus.add(l.sort_id))
+    .sort((a, b) => entier(a.rang) - entier(b.rang))
+    .map((l) => ({
+      sort_id: l.sort_id, rang: entier(l.rang), sort: trouver(regles.sorts ?? [], l.sort_id) ?? null,
+      choisi: choisis.has(l.sort_id), enAttente: !choisis.has(l.sort_id), horsDesMagies: !possibles.has(l.sort_id),
+    }));
+}
+
+/** Les livres de sort à enregistrer (décision R169) : un par sort (le premier), rangés dans l'ordre (rang 1, 2…). */
+export const livresAEnregistrer = (fiche) => {
+  const vus = new Set();
+  return [...(fiche?.livres_sorts ?? [])].filter((l) => l?.sort_id && !vus.has(l.sort_id) && vus.add(l.sort_id))
+    .sort((a, b) => entier(a.rang) - entier(b.rang)).map((l, i) => ({ sort_id: l.sort_id, rang: i + 1 }));
+};
+
+/**
+ * Niveaux de maîtrise (NM) des sorts (décisions R24, R26, R118, R169). Le NM d'un sort (`niveau_maitrise`, un curseur de 0 à `plafond` sur la page :
+ * R118) compte toutes ses origines ; celui d'un livre de sort (un seul par sort, `fiche.livres_sorts`, noté dans l'entraînement) en fait partie sans
+ * compter dans le décompte, seulement quand le sort est choisi (R169 ; `livres`) ; le livre d'un sort non choisi attend (`enAttente`, sans rien changer
+ * au décompte). Les NM comptés (`comptes` : ceux des sorts sans leurs livres) vont au plus jusqu'à la limite (`limite`), les NM gagnés (`disponibles`) plus
  * ceux du MJ (`mj`, personnage.nm_mj : « Les NM du MJ […] vaudront donc pour toute la fiche », R118). Les NM gagnés : ceux des niveaux (`niveaux`,
  * v_niveau.niveaux_maitrise_cumul) et ceux qu'écrivent les dons acquis (décision R154 : « Gagne 4 niveaux de maîtrise (NM). », Ocultomancien
  * « Maîtrise » ; `nm_gagnes` des règles, capacite_nm_gagne ; `dons` : [{ nom, nm }], pour l'infobulle du décompte), comme la règle sorts_nm_total de
@@ -1833,7 +1878,7 @@ export function sortsPossibles(regles, fiche) {
  */
 export function maitriseDesSorts(regles, fiche) {
   const niveau = niveauGlobal(regles, fiche.xp);
-  const sorts = (fiche.sorts ?? []).map(nmDuSort);
+  const sorts = (fiche.sorts ?? []).map((ligne) => nmDuSort(ligne, fiche));
   const maxParSort = Math.max(0, niveau - constante(regles, 'sort.nm_ecart_niveau_global'));
   const niveaux = ligneDeNiveau(regles, niveau).niveaux_maitrise_cumul;
   const dons = donsAcquis(regles, fiche).flatMap((c) => c.dons.filter((d) => d.nm_gagnes).map((d) => ({ nom: `${d.nom} (${c.classe.nom})`, nm: d.nm_gagnes })));
@@ -1845,6 +1890,7 @@ export function maitriseDesSorts(regles, fiche) {
     maxCompteParSort: maxParSort + mj,
     total: sorts.reduce((s, x) => s + x.total, 0),
     livres: sorts.reduce((s, x) => s + x.livre, 0),
+    enAttente: livresDe(regles, fiche).filter((l) => l.enAttente).length,
     comptes: sorts.reduce((s, x) => s + x.comptes, 0),
     niveaux,
     dons,
@@ -1854,11 +1900,18 @@ export function maitriseDesSorts(regles, fiche) {
   };
 }
 
-/** NM d'un sort de la fiche : en tout, dont celui d'un livre (0 ou 1), et ceux qui comptent dans le décompte (le livre ôté : décision R118). */
-export function nmDuSort(ligne) {
-  const total = entier(ligne?.niveau_maitrise);
-  const livre = entier(ligne?.nm_livre);
-  return { total, livre, comptes: Math.max(0, total - livre) };
+/**
+ * NM d'un sort de la fiche : en tout, dont celui d'un livre (0 ou 1 : le sort est choisi et l'entraînement note son livre, `fiche` portant
+ * `livres_sorts`), et ceux qui comptent dans le décompte (le livre ôté). Décisions R118, R169 : « Si le sort a été amélioré via un livre de sort, alors
+ * un NM est offert. A l'affichage le curseur deviens alors de 1 à 3. Le NM donné par le livre ne compte toujours pas dans le total de NM. » : un sort
+ * choisi avec son livre se lit à 1 NM au moins, même enregistré à 0 (par l'API ou un import) ; le décompte est celui des règles sort_nm_max et
+ * sorts_nm_total de v_personnage_controle (0 pour ce sort).
+ */
+export function nmDuSort(ligne, fiche) {
+  const enregistre = entier(ligne?.niveau_maitrise);
+  const livre = aUnLivre(fiche, ligne?.sort_id) ? 1 : 0;
+  const total = Math.max(enregistre, livre);
+  return { total, livre, comptes: total - livre };
 }
 
 /**
@@ -1869,7 +1922,7 @@ export function nmDuSort(ligne) {
  * ligne), detail: [{ nom, valeur }] }.
  */
 export function nmDuMoment(regles, fiche, ligne, contexte = contexteDesSorts(regles, fiche)) {
-  const base = nmDuSort(ligne).total;
+  const base = nmDuSort(ligne, fiche).total;
   const sort = trouver(regles.sorts, ligne?.sort_id);
   const detail = [];
   let total = base;
@@ -1884,37 +1937,83 @@ export function nmDuMoment(regles, fiche, ligne, contexte = contexteDesSorts(reg
   return { total, base, detail };
 }
 
-/** Bornes du curseur de NM d'un sort (décision R118) : « un slider de 0 à 3 », de 1 à 3 quand l'entraînement note un livre de ce sort. */
-export function bornesDuNm(regles, ligne) {
-  return { min: nmDuSort(ligne).livre ? 1 : 0, max: constante(regles, 'sort.nm_max') };
+/**
+ * Bornes du curseur de NM d'un sort (décisions R118, R169) : « un slider de 0 à 3 », de 1 à 3 quand l'entraînement note un livre de ce sort (la base ne
+ * l'impose pas : la page le borne).
+ */
+export function bornesDuNm(regles, ligne, fiche) {
+  return { min: ligne && aUnLivre(fiche, ligne.sort_id) ? 1 : 0, max: constante(regles, 'sort.nm_max') };
 }
 
 /** Le sort au NM `valeur` choisi au curseur, borné (bornesDuNm). */
-export function sortAuNm(regles, ligne, valeur) {
-  const { min, max } = bornesDuNm(regles, ligne);
+export function sortAuNm(regles, ligne, valeur, fiche) {
+  const { min, max } = bornesDuNm(regles, ligne, fiche);
   return { ...ligne, niveau_maitrise: Math.min(max, Math.max(min, entier(valeur))) };
 }
 
 /**
- * Le sort quand l'entraînement note (`livre` vrai) ou retire son livre (décision R118) : noter le livre lui donne son NM, en plus de ceux qu'il a ; au
- * plafond (3 NM : livreAuPlafond), le sort les garde et le livre prend la place d'un NM compté. Le retirer lui reprend son NM, sauf avec `rendre` : le
- * NM compté qu'il avait pris au plafond est rendu, le sort garde ses NM (la page le sait tant que le curseur n'a pas bougé). Le même sort quand rien ne
- * change.
+ * Le sort choisi `ligne` quand l'entraînement note (`livre` vrai) ou retire son livre (décision R118), `fiche` étant la fiche d'avant le geste : noter
+ * le livre lui donne son NM, en plus de ceux qu'il a ; au plafond (3 NM : livreAuPlafond), le sort les garde et le livre prend la place d'un NM compté.
+ * Le retirer lui reprend son NM, sauf avec `rendre` : le NM compté qu'il avait pris au plafond est rendu, le sort garde ses NM (la page le sait tant
+ * que le curseur n'a pas bougé). Le même sort quand rien ne change. Le livre lui-même (fiche.livres_sorts) : livresApresAjout, livresApresRetrait.
  */
-export function sortAvecLivre(regles, ligne, livre, { rendre = false } = {}) {
-  const nm = nmDuSort(ligne);
-  if (Boolean(livre) === Boolean(nm.livre)) return ligne;
-  const total = livre ? Math.min(constante(regles, 'sort.nm_max'), nm.total + 1) : rendre ? nm.total : Math.max(0, nm.total - 1);
-  return { ...ligne, niveau_maitrise: total, nm_livre: livre ? 1 : 0 };
+export function sortAvecLivre(regles, fiche, ligne, livre, { rendre = false } = {}) {
+  if (Boolean(livre) === aUnLivre(fiche, ligne?.sort_id)) return ligne;
+  const nm = entier(ligne?.niveau_maitrise);
+  const total = livre ? Math.min(constante(regles, 'sort.nm_max'), nm + 1) : rendre ? nm : Math.max(0, nm - 1);
+  return { ...ligne, niveau_maitrise: total };
 }
 
-/** Vrai si noter le livre de ce sort prend la place d'un NM compté : le sort, sans livre, est au plafond (sortAvecLivre). */
-export const livreAuPlafond = (regles, ligne) => !nmDuSort(ligne).livre && nmDuSort(ligne).total >= constante(regles, 'sort.nm_max');
+/** Vrai si noter le livre de ce sort choisi prend la place d'un NM compté : le sort, sans livre, est au plafond (sortAvecLivre). */
+export const livreAuPlafond = (regles, fiche, ligne) => Boolean(ligne) && !aUnLivre(fiche, ligne.sort_id)
+  && entier(ligne.niveau_maitrise) >= constante(regles, 'sort.nm_max');
 
-/** L'index du sort qui reçoit un livre ajouté : le premier sans livre sous le plafond, sinon le premier sans livre ; −1 si chacun a le sien. */
-export function sortPourUnLivre(regles, sorts) {
-  const libres = (sorts ?? []).map((x, i) => [x, i]).filter(([x]) => !nmDuSort(x).livre);
-  return (libres.find(([x]) => !livreAuPlafond(regles, x)) ?? libres[0])?.[1] ?? -1;
+/**
+ * Le sort qui reçoit un livre ajouté (« + Livre de sort », décision R169) : parmi les sorts choisis sans livre, le premier sous le plafond, sinon le
+ * premier ; s'ils en ont tous un, le premier sort de sortsDesLivres sans livre ; null quand chaque sort possible a le sien.
+ */
+export function sortPourUnLivre(regles, fiche) {
+  const choisis = (fiche?.sorts ?? []).filter((x) => x?.sort_id && !aUnLivre(fiche, x.sort_id));
+  const choisi = choisis.find((x) => !livreAuPlafond(regles, fiche, x)) ?? choisis[0];
+  if (choisi) return choisi.sort_id;
+  return sortsDesLivres(regles, fiche).find((s) => !aUnLivre(fiche, s.id))?.id ?? null;
+}
+
+/** La fiche après un geste sur ses livres : { livres_sorts, sorts }, chaque sort qui ne change pas étant le même objet (la page garde ses lignes). */
+const apresLivres = (regles, fiche, livres, gestes) => ({
+  livres_sorts: livres,
+  sorts: (fiche?.sorts ?? []).map((x) => (x && Object.hasOwn(gestes, x.sort_id) ? sortAvecLivre(regles, fiche, x, gestes[x.sort_id].livre, gestes[x.sort_id]) : x)),
+});
+
+/**
+ * Un livre du sort `sortId` noté dans l'entraînement (décision R169) : sur n'importe quel sort, choisi ou non ; choisi, il reçoit le NM du livre
+ * (sortAvecLivre) ; non choisi, le livre attend (rien d'autre ne change). Un seul livre par sort (R26) : un sort qui en a déjà un, ou pas de sort, ne
+ * change rien. { livres_sorts, sorts }.
+ */
+export function livresApresAjout(regles, fiche, sortId) {
+  if (!sortId || aUnLivre(fiche, sortId)) return { livres_sorts: fiche?.livres_sorts ?? [], sorts: fiche?.sorts ?? [] };
+  const rang = Math.max(0, ...(fiche?.livres_sorts ?? []).map((l) => entier(l?.rang))) + 1;
+  return apresLivres(regles, fiche, [...(fiche?.livres_sorts ?? []), { sort_id: sortId, rang }], { [sortId]: { livre: true } });
+}
+
+/**
+ * Le livre du sort `sortId` retiré de l'entraînement : le sort choisi perd le NM du livre (`rendre` : sortAvecLivre). { livres_sorts, sorts }.
+ */
+export function livresApresRetrait(regles, fiche, sortId, { rendre = false } = {}) {
+  if (!aUnLivre(fiche, sortId)) return { livres_sorts: fiche?.livres_sorts ?? [], sorts: fiche?.sorts ?? [] };
+  return apresLivres(regles, fiche, (fiche.livres_sorts ?? []).filter((l) => l?.sort_id !== sortId), { [sortId]: { livre: false, rendre } });
+}
+
+/**
+ * Le livre du sort `ancien` porté sur le sort `nouveau` (la liste de sa ligne), à la même place de l'entraînement : comme un retrait puis un ajout,
+ * sans perdre de NM (`rendre` pour l'ancien : sortAvecLivre). Un nouveau sort qui a déjà son livre ne change rien. { livres_sorts, sorts }.
+ */
+export function livresApresChangement(regles, fiche, ancien, nouveau, { rendre = false } = {}) {
+  if (!nouveau || ancien === nouveau || !aUnLivre(fiche, ancien) || aUnLivre(fiche, nouveau)) {
+    return { livres_sorts: fiche?.livres_sorts ?? [], sorts: fiche?.sorts ?? [] };
+  }
+  return apresLivres(regles, fiche, (fiche.livres_sorts ?? []).map((l) => (l?.sort_id === ancien ? { ...l, sort_id: nouveau } : l)),
+    { [ancien]: { livre: false, rendre }, [nouveau]: { livre: true } });
 }
 
 /**
@@ -2007,6 +2106,37 @@ export function donDeBase(texte) {
 
 /** Le niveau de classe où se choisit la spécialité : celui de son don de spécialité (le plus bas des dons `specialite` de la classe, 10). */
 export const niveauDeSpecialite = (classe) => Math.min(...(classe?.dons ?? []).filter((d) => d.nature === 'specialite').map((d) => d.niveau));
+
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+// Infobulles des tuiles de choix (demande du propriétaire du 2026-10-29 : « les tuiles de choix de classe / dons […] devraient avoir une infobulle avec
+// leur description ») : les textes de la base, tels qu'écrits (sans les balises du glossaire, comme tout texte des règles de la page), jamais réécrits.
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+
+/** Les libellés des types d'un don (capacite.type), comme la liste des dons débloqués de la page. */
+export const TYPES_DE_DON = Object.freeze({ passif: 'Passif', actif: 'Actif', action: 'Action', reaction: 'Réaction', variable: 'Variable' });
+
+/** Le texte d'un don des règles pour une infobulle : son type et sa précision (« Actif (1 fois/combat) ») s'il en a, puis son effet ; null sans effet. */
+export function texteDuDon(don) {
+  if (!don?.effet) return null;
+  const tete = [TYPES_DE_DON[don.type] ?? don.type, don.precision ? `(${don.precision})` : null].filter(Boolean).join(' ');
+  return tete ? `${tete}\n${don.effet}` : don.effet;
+}
+
+/** L'infobulle d'une option d'un groupe de dons à choisir (`classe.choix[].options` : { id, nom, type }) : le texte de son don (texteDuDon). */
+export const infobulleDuDonAChoisir = (classe, optionId) => texteDuDon((classe?.dons ?? []).find((d) => d.id === optionId));
+
+/**
+ * L'infobulle d'une spécialité : sa description ; sans description, l'effet de son cartouche, le don de la spécialité (choix du propriétaire) ; sans
+ * l'un ni l'autre (Élémentaliste et Occultiste de l'Archimage aujourd'hui), null : pas d'infobulle. Le titre de la description (« Description
+ * Épéiste ») n'apprend rien de plus : il n'est pas repris. La seule fonction de ce choix.
+ */
+export function infobulleDeSpecialite(classe, specialite) {
+  if (specialite?.description) return specialite.description;
+  return (classe?.dons ?? []).find((d) => d.nature === 'specialite' && d.specialite_id === specialite?.id)?.effet || null;
+}
+
+/** L'infobulle d'une classe : sa description, sinon null (pas d'infobulle). */
+export const infobulleDeClasse = (classe) => classe?.description || null;
 
 /**
  * Le libellé d'une magie tirée qui tient lieu de magie innée pour un don (décision R163 : « Punis-moi ... », « ... plus fort ! » d'un personnage du
@@ -3294,14 +3424,16 @@ const nonPrepare = (ligne) => ({ ...ligne, prepare: 0, prepare_jet: null, prepar
 
 /**
  * Les sorts de la fiche quand l'emplacement `index` du tableau des sorts reçoit le sort `sortId` : vide (`sortId` absent), la ligne part ; un autre
- * sort sur une ligne existante, il la prend à 0 NM, sans livre et sans la préparation de l'ancien (décision R115 : le sort préparé est un sort, pas un
- * emplacement) ; un emplacement libre, une ligne de plus. Une nouvelle liste, la fiche n'est pas touchée.
+ * sort sur une ligne existante, il la prend à 0 NM, ou à 1 quand l'entraînement note son livre (décisions R118, R169 : « Une fois le sort repris, le NM
+ * est automatiquement réactivé »), sans la préparation de l'ancien (décision R115 : le sort préparé est un sort, pas un emplacement) ; un emplacement
+ * libre, une ligne de plus. Le livre d'un sort qui quitte la liste reste noté, en attente (R169). Une nouvelle liste, la fiche n'est pas touchée.
  */
 export function sortsApresChoixDEmplacement(fiche, index, sortId) {
   const sorts = [...(fiche.sorts ?? [])];
+  const nm = aUnLivre(fiche, sortId) ? 1 : 0;
   if (!sortId) sorts.splice(index, 1);
-  else if (sorts[index]) sorts[index] = { ...nonPrepare(sorts[index]), sort_id: sortId, niveau_maitrise: 0, nm_livre: 0 };
-  else sorts.push({ sort_id: sortId, rang: sorts.length + 1, niveau_maitrise: 0, nm_livre: 0 });
+  else if (sorts[index]) sorts[index] = { ...nonPrepare(sorts[index]), sort_id: sortId, niveau_maitrise: nm };
+  else sorts.push({ sort_id: sortId, rang: sorts.length + 1, niveau_maitrise: nm });
   return sorts;
 }
 

@@ -15,7 +15,7 @@ user-invocable: false
 - Pages : `pages/decouvrir/` (`[...page].astro` seulement : plus de page Liens), `pages/regles/` (`index.astro`, `[...page].astro`, `artisanat.astro`, `avancees/index.astro`), `pages/mj/`.
 - Styles : `styles/guide/blocs.css` (couleurs des pages et blocs ; `styles/global/wiki.css` : le filet d'un groupe du sommaire), `styles/accueil/liens-et-rencontre.css` (liens et encart de l'accueil).
 - Édition : `src/scripts/edition/annonces.mjs`, `serveur/edition.mjs#ANNONCE`.
-- Tipeee : `src/scripts/tipeee.mjs` (le script de l'accueil), `lib/tipeee.mjs` (module pur), instantané `sources/tipeee/bienvenue.json` ; le service : skill `zone-service` (`serveur/tipeee.mjs`, `GET /api/tipeee/`).
+- Tipeee : `src/scripts/tipeee.mjs` (le script de l'accueil), `lib/tipeee.mjs` (module pur), instantané `sources/tipeee/bienvenue.json` ; le service : skill `zone-service-sorties` (`serveur/tipeee.mjs`, `GET /api/tipeee/`).
 
 ## À lire
 

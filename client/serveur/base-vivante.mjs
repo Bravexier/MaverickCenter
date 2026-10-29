@@ -251,7 +251,9 @@ function ajouterLesRetraits(db, retraits, parFiche) {
  * (db, { retraits }) lue dans `ancienne`, faite après la copie des fiches. Décision R104 (migration 0062) : `personnage.entrainement`, le texte libre de
  * R71, devient une ligne de texte de l'entraînement (entrainementEnLignes) ; l'acquis saisi d'une compétence (`personnage_competence.acquis`) se perd,
  * noté, daté, dans la fiche (acquisRetires). Décision R118 (migration 0066) : les NM du MJ d'un sort (`personnage_sort.nm_cadeau`) deviennent ceux de
- * la fiche, `personnage.nm_mj`, leur somme (comme la migration et nmDuMjDesSorts) ; le NM de chaque sort, recopié, ne change pas. Décisions R152 et R153
+ * la fiche, `personnage.nm_mj`, leur somme (comme la migration et nmDuMjDesSorts) ; le NM de chaque sort, recopié, ne change pas. Décision R169
+ * (migration 0082) : le livre d'un sort (`personnage_sort.nm_livre` = 1) devient une ligne de personnage_livre_sort, rangée dans l'ordre de la liste
+ * (comme la migration et livresDesSorts) ; le NM du sort ne change pas. Décisions R152 et R153
  * (migration 0076) : l'arme choisie d'un choix d'acquis (`personnage_acquis_choix.arme_famille_id`) se perd, notée sur la ligne des anciennes maîtrises
  * (noterLesMaitrisesDAvant, une seule fois avec la conversion de personnage_maitrise_arme) ; la compétence du choix reste. Décision R167 (migration
  * 0081) : l'amélioration de l'élément d'une arme (`personnage_arme.amelioration_elementaire_id`) devient le niveau de l'arme élémentaire, ou part, notée
@@ -284,6 +286,14 @@ export const COLONNES_CONVERTIES = Object.freeze({
       for (const l of db.prepare('SELECT personnage_id, SUM(nm_cadeau) AS nm FROM ancienne.personnage_sort WHERE nm_cadeau > 0 GROUP BY personnage_id').all()) {
         ecrire.run(l.nm, l.personnage_id);
       }
+    },
+    // décision R169 (migration 0082) : un livre par sort à nm_livre = 1, rangé dans l'ordre de la liste (comme la migration et livresDesSorts)
+    nm_livre: (db) => {
+      db.exec(`INSERT INTO main.personnage_livre_sort (personnage_id, sort_id, rang)
+        SELECT ps.personnage_id, ps.sort_id,
+               (SELECT count(*) FROM ancienne.personnage_sort q WHERE q.personnage_id = ps.personnage_id AND q.nm_livre = 1 AND q.rang <= ps.rang)
+        FROM ancienne.personnage_sort ps
+        WHERE ps.nm_livre = 1`);
     },
   }),
   personnage_acquis_choix: Object.freeze({

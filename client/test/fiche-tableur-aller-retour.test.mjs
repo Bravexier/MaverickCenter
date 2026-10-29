@@ -57,6 +57,8 @@ function commeLaPage(fiche) {
   f.armes = M.armesValables(regles, f);
   // rangés dans l'ordre ; le sort préparé garde sa marque, son jet et sa posture, les autres n'en ont pas (décision R115)
   f.sorts = M.sortsAEnregistrer(regles, f);
+  // les livres de sort (décision R169) : un par sort, rangés
+  f.livres_sorts = M.livresAEnregistrer(f);
   f.bouclier_solidite = M.soliditeDuBouclierAEcrire(regles, f, f.bouclier_solidite);
   f.inventaire = f.inventaire.filter((o) => o.nom && o.nom.trim()).map((o, i) => ({ ...o, nom: o.nom.trim(), rang: i + 1 }));
   f.accessoires = f.accessoires.filter((a) => a.accessoire_effet_id);
@@ -240,7 +242,10 @@ function ficheRiche() {
   // les gains de niveau, deux totaux (décision R73)
   f.gains_sante = 37;
   f.gains_chakra = 54;
-  f.sorts = M.sortsPossibles(regles, f).slice(0, 26).map((s, i) => ({ sort_id: s.id, rang: i + 1, niveau_maitrise: i % 4, nm_livre: i % 4 >= 1 && i % 3 === 0 ? 1 : 0 }));
+  f.sorts = M.sortsPossibles(regles, f).slice(0, 26).map((s, i) => ({ sort_id: s.id, rang: i + 1, niveau_maitrise: i % 4 }));
+  // des livres, dont un d'un sort qui n'est pas choisi (en attente, décision R169)
+  const enAttente = M.sortsDesLivres(regles, f).find((s) => !f.sorts.some((x) => x.sort_id === s.id));
+  f.livres_sorts = [...f.sorts.filter((x, i) => x.niveau_maitrise >= 1 && i % 3 === 0).map((x) => x.sort_id), enAttente.id].map((sort_id, i) => ({ sort_id, rang: i + 1 }));
   // les NM du MJ, pour toute la fiche (décision R118)
   f.nm_mj = 2;
   return f;
@@ -258,7 +263,10 @@ function ficheBiPotentiel() {
   const possibles = M.sortsPossibles(regles, f);
   const magies = [...new Set(possibles.map((s) => s.magie_id))];
   const unNom = (s) => possibles.filter((x) => x.nom === s.nom).length === 1;
-  f.sorts = magies.slice(0, 6).flatMap((m) => possibles.filter((s) => s.magie_id === m && unNom(s)).slice(0, 2)).map((s, i) => ({ sort_id: s.id, rang: i + 1, niveau_maitrise: i % 3, nm_livre: 0 }));
+  f.sorts = magies.slice(0, 6).flatMap((m) => possibles.filter((s) => s.magie_id === m && unNom(s)).slice(0, 2)).map((s, i) => ({ sort_id: s.id, rang: i + 1, niveau_maitrise: i % 3 }));
+  // un livre d'un sort d'une autre magie, au-delà du NPM accessible, qui n'est pas choisi (le Potentiel Illimité : toutes les magies, décision R169)
+  const seul = (s) => regles.sorts.filter((x) => x.nom === s.nom).length === 1;
+  f.livres_sorts = [{ sort_id: M.sortsDesLivres(regles, f).find((s) => s.niveau > M.npmMax(regles, f) && seul(s)).id, rang: 1 }];
   f.nm_mj = 1;
   return f;
 }
@@ -356,7 +364,7 @@ function ficheDuMageRouge() {
     capacites: [{ capacite_id: 'capacites/mage-rouge-charge-lente' }],
   };
   f.sorts = M.sortsPossibles(regles, f).filter((s) => s.magie_id === 'magies/magie-du-feu').slice(0, 6)
-    .map((s, i) => ({ sort_id: s.id, rang: i + 1, niveau_maitrise: 0, nm_livre: 0 }));
+    .map((s, i) => ({ sort_id: s.id, rang: i + 1, niveau_maitrise: 0 }));
   assert.ok(f.sorts.some((s) => s.sort_id === BOULE_DE_FEU), 'Boule de feu parmi les sorts');
   f.sorts = f.sorts.map((s) => (s.sort_id === BOULE_DE_FEU ? { ...s, prepare: 1, prepare_jet: 57, prepare_posture_id: 'guide/postures#posture:offensif' } : s));
   return f;
@@ -370,7 +378,7 @@ test('sort préparé (décision R115) : le sort, son jet de magie et sa posture 
   const r = await verifier(f, 'sort préparé');
   const preparees = (cellules) => lignesDeLaNote(cellules).filter((l) => l.nom === 'sortPrepare').map((l) => l.valeur);
   assert.deepEqual(preparees(r.cellules), ['Boule de feu (jet 57, posture Offensif)']);
-  assert.deepEqual(r.fiche.sorts.filter((s) => s.prepare === 1), [{ sort_id: BOULE_DE_FEU, rang: commeLaPage(f).sorts.find((s) => s.prepare === 1).rang, niveau_maitrise: 0, nm_livre: 0, prepare: 1, prepare_jet: 57, prepare_posture_id: 'guide/postures#posture:offensif' }]);
+  assert.deepEqual(r.fiche.sorts.filter((s) => s.prepare === 1), [{ sort_id: BOULE_DE_FEU, rang: commeLaPage(f).sorts.find((s) => s.prepare === 1).rang, niveau_maitrise: 0, prepare: 1, prepare_jet: 57, prepare_posture_id: 'guide/postures#posture:offensif' }]);
   // préparé sans jet (« si réussi ») ni posture (aucune n'était cochée) : le nom seul
   const sansJet = { ...f, sorts: f.sorts.map((s) => (s.prepare ? { ...s, prepare_jet: null, prepare_posture_id: null } : s)) };
   assert.deepEqual(preparees((await verifier(sansJet, 'sort préparé sans jet ni posture')).cellules), ['Boule de feu']);

@@ -13,7 +13,7 @@
 // Script de page (navigateur) : il n'importe que des modules purs que seule cette page utilise (la version portable refuse un module partagé), et le
 // choix et le recadrage du portrait (src/scripts/portrait.mjs, lib/portrait.mjs), partagés avec le mode modification du bestiaire, absent de la version
 // portable.
-import { libelleDuControle } from '../lib/fiche-controles.mjs';
+import { controlesParGravite, libelleDuControle } from '../lib/fiche-controles.mjs';
 import {
   CHAMP_VERSION, COLONNES_DU_SERVICE, PARTIES_DE_FICHE, ajouterAuxNotes, ficheVide, ligneDeRetrait, nouveauxRetraits, resumeDesRetraits, sansPartiesRetirees,
 } from '../lib/fiche-format.mjs';
@@ -35,7 +35,7 @@ import {
   choisirObjetDeMetier, choixDeMetierValables, classeImposee, classesDe, classesSelonLaMagieInnee, competencesDe, donsAChoisir, donsAcquis, donsDeRace, donsValables,
   durabiliteAEcrire, durabiliteDArme, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, famillesMaitrisables, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable,
   magiesInneesPermises, maitriseDArme, maitriseDesSorts, gainsDeNiveau, niveauGlobal, bornesDuNm, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionXp,
-  bornesDuMultiplicateur, livreAuPlafond, multiplicateurDuCout, sortAuNm, sortAvecLivre, sortPourUnLivre, donDePreparation, jetDuSortPrepare, sortPrepare, sortsAEnregistrer, sortsAPreparer, sortsApresLeJet,
+  bornesDuMultiplicateur, livreAuPlafond, livresAEnregistrer, livresApresAjout, livresApresChangement, livresApresRetrait, livresDe, multiplicateurDuCout, sortAuNm, sortPourUnLivre, sortsDesLivres, donDePreparation, jetDuSortPrepare, sortPrepare, sortsAEnregistrer, sortsAPreparer, sortsApresLeJet,
   sortsApresChoixDEmplacement, sortsApresPreparation, sortsApresLaSymbiose, nmDuMoment,
   refusClasse, refusMagieAcquise, resistancesDe, sortsParNpm, trouver, ecrireValeurDuMoment, valeursDuMoment,
   armureApresChoix, armuresProposees, partiesApresReglage, partiesDeLArmure, partiesValables, poidsPortableDe, retraitsDeLArmureHorsListe,
@@ -43,7 +43,7 @@ import {
   propositionsDuCatalogue, soliditeDuBouclierAEcrire, typesDeDegats, valeurDEffetDAccessoire,
   acquisApresChoix, acquisApresRepartition, acquisChoixValables, acquisDesDons, magieTireeParLeMj, resistanceApresChoix, resistanceChoixValables, entrainementDe, entrainementsAEnregistrer, batonDuSac, contexteDesSorts, degatsDArmeDuMoment, magiesDesBatons, nomDuBaton, postureDuMoment, sortDuMoment,
   creaturesDuSort, sacrificeDuSort,
-  carteDeMaitrise, compteurDeMaitrise, groupesDArmesParMaitrise, ligneDeMaitrise, maitriseApresChoix, maitriseChoixValables, maitrisesParFamille, presentationDuCompteurDeMaitrise, sourcesDeMaitrise,
+  carteDeMaitrise, compteurDeMaitrise, infobulleDeClasse, infobulleDeSpecialite, infobulleDuDonAChoisir, TYPES_DE_DON, groupesDArmesParMaitrise, ligneDeMaitrise, maitriseApresChoix, maitriseChoixValables, maitrisesParFamille, presentationDuCompteurDeMaitrise, sourcesDeMaitrise,
   armeDeLaLigne, armesElementairesProposees, effetDeLArmeElementaire, sortsFerDAutreElement,
 } from '../lib/fiche-moteur.mjs';
 import { creatureAuNpm, FPVSIA, vautAuNpm } from '../lib/creature-npm.mjs';
@@ -219,9 +219,11 @@ const retirer = (cle, critere) => {
 /**
  * Une pastille (bouton à bascule) : `choisie()`, `refus()` et `verrou()` sont relus à chaque rafraîchissement (le bouton reste en place, le focus
  * aussi). Une pastille refusée par les règles est grisée ; choisie malgré tout (règles changées, fiche importée), elle reste cliquable et cerclée de
- * rouge. Une pastille choisie que les règles imposent (`verrou()` dit pourquoi) ne se retire pas : le clic est sans effet.
+ * rouge. Une pastille choisie que les règles imposent (`verrou()` dit pourquoi) ne se retire pas : le clic est sans effet. `description` : le texte de
+ * l'infobulle d'une classe ou d'une spécialité (demande du propriétaire du 2026-10-29 : infobulleDeClasse, infobulleDeSpecialite), sous la raison d'un
+ * refus ou d'un verrou ; au survol et au focus du clavier, comme toute infobulle (components/Infobulles.astro).
  */
-function pastille({ texte, teinte, choisie, refus = () => null, verrou = () => null, surClic, detail }) {
+function pastille({ texte, teinte, choisie, refus = () => null, verrou = () => null, surClic, detail, description = null }) {
   const bouton = el('button', {
     type: 'button',
     // les classes de sa couleur (`teinte` : une magie, une compétence, une race, une classe, ou `regles.neutre`), jamais un style
@@ -244,7 +246,8 @@ function pastille({ texte, teinte, choisie, refus = () => null, verrou = () => n
     bouton.toggleAttribute('data-verrou', Boolean(impose));
     if (impose) bouton.setAttribute('aria-disabled', 'true');
     else bouton.removeAttribute('aria-disabled');
-    bouton.title = non || impose || ''; // vide : plus d'infobulle (components/Infobulles.astro a déplacé l'attribut : un removeAttribute ne l'efface pas)
+    // vide : plus d'infobulle (components/Infobulles.astro a déplacé l'attribut : un removeAttribute ne l'efface pas)
+    infobulle(bouton, [non || impose, description].filter(Boolean).join('\n\n'));
   });
   return el('li', {}, bouton);
 }
@@ -478,7 +481,7 @@ function construireClasses() {
     // un choix qui reste à faire est surligné (demande du propriétaire : « mettre en surbrillance le champ à saisir »)
     $(`choix-specialite-${rang}`).toggleAttribute('data-a-choisir', aChoisir('specialite', rang));
     reconstruire($(`classe-${rang}`), 'fixe', () => groupes.map((g) => groupe(g.label, g, g.classes.map((k) => pastille({
-      texte: k.nom, teinte: k, choisie: () => choixDe(rang)?.classe_id === k.id,
+      texte: k.nom, teinte: k, choisie: () => choixDe(rang)?.classe_id === k.id, description: infobulleDeClasse(k),
       refus: () => refusClasse(regles, fiche, k.id, rang),
       verrou: () => (rang === 1 && classeImposee(regles, fiche)?.id === k.id ? pourquoiImposee(k) : null),
       surClic: () => {
@@ -490,7 +493,7 @@ function construireClasses() {
       },
     })))));
     reconstruire($(`specialite-${rang}`), `${c.choix?.classe_id}`, () => (!c.classe ? [] : c.classe.specialites.map((s) => pastille({
-      texte: s.nom, teinte: c.classe, detail: s.magique ? 'classe magique' : null,
+      texte: s.nom, teinte: c.classe, detail: s.magique ? 'classe magique' : null, description: infobulleDeSpecialite(c.classe, s),
       choisie: () => choixDe(rang)?.specialite_id === s.id,
       refus: () => ((calcul.classes.find((x) => x.rang === rang)?.niveau ?? 0) < 10 ? 'au niveau de classe 10' : null),
       surClic: () => {
@@ -824,7 +827,8 @@ function ligneDeFamilleDeLaPage(f) {
         ...l.alertes.map((a) => el('span', { class: 'maitrise-alerte', dataset: { ton: a.ton } }, a.texte)));
     }
     attribut(tr, 'data-nul', !m.detail.length);
-    attribut(tr, 'data-etat', l.alertes.some((a) => a.ton === 'trop') ? 'trop' : null);
+    // au-delà du plafond : un avertissement, pas une erreur (décision R170)
+    attribut(tr, 'data-etat', l.alertes.some((a) => a.ton === 'avertissement') ? 'avertissement' : null);
   });
   return tr;
 }
@@ -869,7 +873,9 @@ function construireSorts() {
   etatBudget(badge, nm.comptes, nm.limite, 'NM');
   badge.textContent = `NM : ${nm.comptes} / ${nm.disponibles}`;
   const gagnes = nm.dons.length ? ` (${nm.niveaux} par les niveaux, ${nm.dons.map((d) => `+${d.nm} ${d.nom}`).join(', ')})` : '';
-  infobulle(badge, `NM répartis sur les sorts (sans ceux des livres${nm.livres ? ` : ${nm.livres} en plus` : ''}) / NM gagnés par les niveaux${nm.dons.length ? ' et les dons' : ''}${gagnes}, `
+  // un livre d'un sort qui n'est pas choisi attend (décision R169) : rappelé, sans rien changer au décompte
+  const attente = nm.enAttente ? `, ${nm.enAttente} livre${nm.enAttente > 1 ? 's' : ''} en attente (sort non choisi)` : '';
+  infobulle(badge, `NM répartis sur les sorts (sans ceux des livres${nm.livres ? ` : ${nm.livres} en plus` : ''}${attente}) / NM gagnés par les niveaux${nm.dons.length ? ' et les dons' : ''}${gagnes}, `
     + `plus ceux du MJ, notés à côté pour toute la fiche${nm.mj ? ` (${nm.disponibles} + ${nm.mj} = ${nm.limite})` : ''} ; ${nm.plafond} NM au plus sur un sort`);
 
   const lignes = lignesDeSorts(regles, fiche);
@@ -895,7 +901,8 @@ function construireSorts() {
           title: choisi ? `${l.sort.nom} (${choisi.nom}, NPM ${l.sort.niveau})` : null,
           'aria-label': `Sort de l’emplacement ${l.index + 1}`,
           onchange: (ev) => {
-            // un autre sort dans l'emplacement : à 0 NM, sans livre ni la préparation de l'ancien (décision R115)
+            // un autre sort dans l'emplacement : à 0 NM (à 1 avec son livre, R169), sans la préparation de l'ancien (décision R115) ; le livre de
+            // l'ancien reste noté, en attente
             fiche.sorts = sortsApresChoixDEmplacement(fiche, l.index, ev.target.value || null);
             changer();
           },
@@ -908,7 +915,7 @@ function construireSorts() {
           oninput: (ev) => {
             const x = fiche.sorts[l.index];
             if (!x) return;
-            Object.assign(x, sortAuNm(regles, x, ev.target.value));
+            Object.assign(x, sortAuNm(regles, x, ev.target.value, fiche));
             livresAuPlafond.delete(x);
             changer();
           } });
@@ -951,7 +958,7 @@ function construireSorts() {
           modes, cout, portee, zone, dsb,
           el('td', { class: 'nm-sort' }, el('span', { class: 'curseur-cellule' }, curseur, total), livre));
         synchro(() => {
-          const nm = nmDuSort(fiche.sorts[l.index]);
+          const nm = nmDuSort(fiche.sorts[l.index], fiche);
           // le NM auquel les valeurs se lisent : celui du curseur, plus ceux que les dons donnent au sort préparé (« À l'aise », décision R134 ; au plus 3)
           const nmLu = fiche.sorts[l.index] ? nmDuMoment(regles, fiche, fiche.sorts[l.index], calcul.contexteSorts) : { total: nm.total, detail: [] };
           const auNm = (brut, champ) => (l.sort ? valeurAuNm(brut, l.sort.bonus ?? [], champ, nmLu.total) ?? '' : '');
@@ -1020,7 +1027,7 @@ function construireSorts() {
           if (effet.textContent !== texteEffet) effet.textContent = texteEffet;
           effet.toggleAttribute('data-calcule', Boolean(m?.effets.detail.length));
           infobulle(effet, m?.effets.detail.length ? detail(`Écrit : ${auNm(l.sort.effets, 'effets')}`, m.effets.detail) : '');
-          const bornes = bornesDuNm(regles, fiche.sorts[l.index]);
+          const bornes = bornesDuNm(regles, fiche.sorts[l.index], fiche);
           curseur.min = String(bornes.min);
           curseur.max = String(bornes.max);
           poser(curseur, nm.total);
@@ -1240,22 +1247,36 @@ function construireSortPrepare() {
  * L'entraînement (demande du propriétaire : « Il faudrai remplacer le texte des "Entraînement" par des lignes qu'on peut ajouter (+) et remplir soit par
  * "entrainement compétence : une compétence donnée avec un slider de 0 à 10, qui s'ajoute aux Aquis. […] Soit par un livre de compétence et lister le
  * sort associé (et du coup déplacer la case [livre] du sort, sans changer le calcul. Soit un texte libre pour les "dons évènementiels". ») : une ligne
- * par compétence entraînée (curseur de 0 à entrainement.bonus_max_pct), par livre lu (le NM de livre d'un sort, personnage_sort.nm_livre) et par texte ;
- * trois boutons en ajoutent.
+ * par compétence entraînée (curseur de 0 à entrainement.bonus_max_pct), par livre lu (un livre par sort, fiche.livres_sorts : décision R169) et par
+ * texte ; trois boutons en ajoutent. Dans son onglet « Entraînement » de la zone IV, à côté de « Choix » (demande du propriétaire du 2026-10-29).
  */
 function construireEntrainement() {
   const e = entrainementDe(regles, fiche);
-  const livres = (fiche.sorts ?? []).map((x, i) => ({ x, i })).filter(({ x }) => entier(x.nm_livre) > 0);
+  const livres = livresDe(regles, fiche);
   // (versionInventaire : une fiche relue ou rechargée a d'autres objets, auxquels chaque ligne doit se lier de nouveau)
-  const cle = JSON.stringify([versionInventaire, e.lignes.map((l) => [l.rang, l.competence_id === null ? 't' : 'c']), livres.map(({ x }) => x.sort_id), (fiche.sorts ?? []).map((x) => x.sort_id)]);
+  const cle = JSON.stringify([versionInventaire, e.lignes.map((l) => [l.rang, l.competence_id === null ? 't' : 'c']), livres.map((l) => l.sort_id),
+    fiche.magie_innee_id, fiche.magie_acquise_id]);
   const nomDuSort = (id) => trouver(regles.sorts, id)?.nom ?? id;
-  // noter le livre d'un sort lui donne son NM (au plus 3), le retirer le lui reprend, sauf le NM compté qu'il avait pris au plafond (sortAvecLivre,
-  // décision R118) : déplacer un livre d'un sort à l'autre ne fait perdre aucun NM
-  const poserLivre = (index, oui) => {
-    const x = fiche.sorts[index];
-    if (!x) return;
-    if (oui && livreAuPlafond(regles, x)) livresAuPlafond.add(x);
-    Object.assign(x, sortAvecLivre(regles, x, oui, { rendre: !oui && livresAuPlafond.delete(x) }));
+  // noter le livre d'un sort choisi lui donne son NM (au plus 3), le retirer le lui reprend, sauf le NM compté qu'il avait pris au plafond
+  // (sortAvecLivre, décision R118) : déplacer un livre d'un sort à l'autre ne fait perdre aucun NM ; le livre d'un sort non choisi attend (R169). Les
+  // lignes des sorts gardent leurs objets (livresAuPlafond les connaît) : seules celles qui changent sont recopiées
+  const choisi = (sortId) => (fiche.sorts ?? []).find((y) => y.sort_id === sortId) ?? null;
+  const poserLivres = (r) => {
+    (fiche.sorts ?? []).forEach((x, i) => { if (r.sorts[i] !== x) Object.assign(x, r.sorts[i]); });
+    fiche.livres_sorts = r.livres_sorts;
+  };
+  const ajouterLivre = (sortId) => {
+    const x = choisi(sortId);
+    if (x && livreAuPlafond(regles, fiche, x)) livresAuPlafond.add(x);
+    poserLivres(livresApresAjout(regles, fiche, sortId));
+  };
+  const rendre = (sortId) => { const x = choisi(sortId); return Boolean(x) && livresAuPlafond.delete(x); };
+  const retirerLivre = (sortId) => poserLivres(livresApresRetrait(regles, fiche, sortId, { rendre: rendre(sortId) }));
+  const changerLivre = (ancien, nouveau) => {
+    const x = choisi(nouveau);
+    const auPlafond = x && livreAuPlafond(regles, fiche, x);
+    poserLivres(livresApresChangement(regles, fiche, ancien, nouveau, { rendre: rendre(ancien) }));
+    if (auPlafond) livresAuPlafond.add(x);
   };
   reconstruire($('entrainement'), cle, () => [
     ...e.lignes.map((l, i) => {
@@ -1283,28 +1304,39 @@ function construireEntrainement() {
       return el('li', { class: 'entrainement__ligne' }, el('span', { class: 'entrainement__type' }, 'Compétence'), competence,
         el('span', { class: 'curseur-cellule' }, curseur, valeur), retirer_);
     }),
-    // les livres de sort : le NM de livre du sort (« sans changer le calcul »), choisi parmi les sorts de la fiche
-    ...livres.map(({ x, i }) => {
-      const sort = el('select', { 'aria-label': `Livre de sort : le sort (${nomDuSort(x.sort_id)})`,
-        onchange: (ev) => {
-          const j = fiche.sorts.findIndex((y) => y.sort_id === ev.target.value);
-          if (j < 0 || j === i) return;
-          poserLivre(i, false);
-          poserLivre(j, true);
-          changer();
-        } },
-      (fiche.sorts ?? []).filter((y, j) => j === i || !entier(y.nm_livre)).map((y) => option(y.sort_id, nomDuSort(y.sort_id), y.sort_id === x.sort_id)));
-      const retirer_ = el('button', { type: 'button', class: 'retirer', 'aria-label': `Retirer le livre de ${nomDuSort(x.sort_id)}`,
-        onclick: () => { poserLivre(i, false); changer(); } }, '✕');
-      return el('li', { class: 'entrainement__ligne entrainement__ligne--livre' }, el('span', { class: 'entrainement__type' }, 'Livre'), sort, retirer_);
+    // les livres de sort (décision R169) : le sort parmi ceux de la magie innée et de la magie acquise, quel que soit le NPM (toutes les magies pour le
+    // Potentiel Illimité : sortsDesLivres), choisi ou non, sans ceux qui ont déjà leur livre ; le sort d'une magie perdue reste, à part ; un sort non
+    // choisi : « en attente », son NM n'est pas utilisé
+    ...livres.map((livre) => {
+      const pris = new Set(livres.filter((y) => y.sort_id !== livre.sort_id).map((y) => y.sort_id));
+      const possibles = sortsDesLivres(regles, fiche).filter((s) => !pris.has(s.id));
+      const parMagie = [...new Set(possibles.map((s) => s.magie_id))].map((m) => [trouver(regles.magies, m), possibles.filter((s) => s.magie_id === m)]);
+      const optionDeLivre = (s) => el('option', { value: s.id, selected: s.id === livre.sort_id, class: teinteDe(trouver(regles.magies, s.magie_id)).join(' ') || null },
+        `${s.nom} (NPM ${s.niveau})`);
+      const actuel = livre.sort ?? { id: livre.sort_id, nom: nomDuSort(livre.sort_id), niveau: '?' };
+      const magie = trouver(regles.magies, livre.sort?.magie_id);
+      const sort = el('select', { 'aria-label': `Livre de sort : le sort (${nomDuSort(livre.sort_id)})`, class: teinteDe(magie).join(' ') || null,
+        onchange: (ev) => { changerLivre(livre.sort_id, ev.target.value); changer(); } },
+      parMagie.map(([m, sorts]) => el('optgroup', { label: m?.nom ?? 'Autres' }, sorts.map(optionDeLivre))),
+      livre.horsDesMagies ? el('optgroup', { label: 'Hors des magies du personnage' }, optionDeLivre(actuel)) : null);
+      const attente = el('span', { class: 'entrainement__attente', tabindex: '0', hidden: true }, 'en attente');
+      synchro(() => {
+        const l = livresDe(regles, fiche).find((y) => y.sort_id === livre.sort_id);
+        attente.hidden = !l?.enAttente;
+        infobulle(attente, l?.enAttente ? `${nomDuSort(livre.sort_id)} n’est pas dans la liste des sorts : le NM du livre attend qu’il y soit (décision R169)${l.horsDesMagies ? ' ; ce sort n’est d’aucune magie du personnage' : ''}` : '');
+      });
+      const retirer_ = el('button', { type: 'button', class: 'retirer', 'aria-label': `Retirer le livre de ${nomDuSort(livre.sort_id)}`,
+        onclick: () => { retirerLivre(livre.sort_id); changer(); } }, '✕');
+      return el('li', { class: 'entrainement__ligne entrainement__ligne--livre' }, el('span', { class: 'entrainement__type' }, 'Livre'), sort, attente, retirer_);
     }),
   ]);
-  // les ajouts : une compétence (la première qui n'est pas encore entraînée), un livre (le premier sort sans livre sous le plafond : sortPourUnLivre),
-  // un texte ; ce qui est libre se relit au clic (les boutons ne sont refaits que quand l'un d'eux se grise ou se dégrise)
+  // les ajouts : une compétence (la première qui n'est pas encore entraînée), un livre (le premier sort choisi sans livre sous le plafond, sinon le
+  // premier sort possible sans livre : sortPourUnLivre), un texte ; ce qui est libre se relit au clic (les boutons ne sont refaits que quand l'un d'eux
+  // se grise ou se dégrise)
   const ajouts = $('entrainement-ajouts');
   const libre = () => regles.competences.find((c) => !entrainementDe(regles, fiche).parCompetence.has(c.id)) ?? null;
-  const sansLivre = () => sortPourUnLivre(regles, fiche.sorts);
-  const cleAjouts = JSON.stringify([e.competences >= e.max || !libre(), sansLivre() < 0]);
+  const sansLivre = () => sortPourUnLivre(regles, fiche);
+  const cleAjouts = JSON.stringify([e.competences >= e.max || !libre(), !sansLivre()]);
   reconstruire(ajouts, cleAjouts, () => {
     const ajouter = (ligne) => {
       const rang = Math.max(0, ...(fiche.entrainements ?? []).map((y) => entier(y.rang))) + 1;
@@ -1316,8 +1348,9 @@ function construireEntrainement() {
       el('button', { type: 'button', class: 'ajouter', disabled: plein,
         title: e.competences >= e.max ? `${e.max} compétences au plus (« Vous ne pouvez monter que 15 compétences maximum »)` : null,
         onclick: () => { const k = libre(); if (k) ajouter({ competence_id: k.id, valeur: 0, texte: null }); } }, '+ Compétence'),
-      el('button', { type: 'button', class: 'ajouter', disabled: sansLivre() < 0, title: sansLivre() < 0 ? 'Chaque sort de la fiche a déjà son livre' : null,
-        onclick: () => { const j = sansLivre(); if (j >= 0) { poserLivre(j, true); changer(); } } }, '+ Livre de sort'),
+      el('button', { type: 'button', class: 'ajouter', disabled: !sansLivre(),
+        title: !sansLivre() ? (fiche.magie_innee_id ? 'Chaque sort des magies du personnage a déjà son livre' : 'Choisissez une magie : ses sorts peuvent recevoir un livre') : null,
+        onclick: () => { const id_ = sansLivre(); if (id_) { ajouterLivre(id_); changer(); } } }, '+ Livre de sort'),
       el('button', { type: 'button', class: 'ajouter', onclick: () => ajouter({ competence_id: null, valeur: null, texte: '' }) }, '+ Texte'),
     ];
   });
@@ -1439,8 +1472,7 @@ function construireAcquisAChoisir() {
   }));
 }
 
-// ------------------------------------------------------------------ rappel des dons
-const TYPES_DE_DON = { passif: 'Passif', actif: 'Actif', action: 'Action', reaction: 'Réaction', variable: 'Variable' };
+// ------------------------------------------------------------------ rappel des dons (TYPES_DE_DON : lib/fiche-moteur.mjs)
 
 /**
  * Un don de la liste : son niveau (s'il en a un), son nom, son type et sa précision (limite d'usage « 2 fois/combat », telle qu'écrite), son texte, et
@@ -1698,7 +1730,7 @@ function construireChoixSpecialites() {
   reconstruire(bloc, JSON.stringify(classes.map((c) => [c.rang, c.classe.id])), () => classes.map((c) => {
     const choixDe = () => calcul.classes.find((x) => x.rang === c.rang)?.choix;
     const cadre = groupe(`Spécialité · ${c.classe.nom}`, c.classe, c.classe.specialites.map((s) => pastille({
-      texte: s.nom, teinte: c.classe, detail: s.magique ? 'classe magique' : null,
+      texte: s.nom, teinte: c.classe, detail: s.magique ? 'classe magique' : null, description: infobulleDeSpecialite(c.classe, s),
       choisie: () => choixDe()?.specialite_id === s.id,
       surClic: () => {
         const l = ligneDe('classes', (x) => x.rang === c.rang);
@@ -2290,7 +2322,14 @@ function construireProgression() {
             el('legend', {}, `Niveau de classe ${g.niveau}${specialite ? ` · ${specialite.nom}` : ''} : un seul au choix`),
             el('div', { class: 'dons-options' },
               el('label', {}, radio(null), 'Pas encore choisi'),
-              g.options.map((o) => el('label', {}, radio(o), o.nom, el('small', { class: 'muted' }, ` (${o.type})`)))));
+              // le texte du don en infobulle (demande du propriétaire du 2026-10-29 : infobulleDuDonAChoisir), au survol de l'option et au focus de son
+              // rond : le `title` est aussi sur le rond, car components/Infobulles.astro n'ouvre au clavier que la bulle de l'élément qui a le focus
+              g.options.map((o) => {
+                const texte = infobulleDuDonAChoisir(d.classe, o.id);
+                const rond = radio(o);
+                if (texte) rond.title = texte;
+                return el('label', { title: texte }, rond, o.nom, el('small', { class: 'muted' }, ` (${o.type})`));
+              })));
           // un groupe encore sans choix est surligné (demande du propriétaire)
           synchro(() => {
             const choisis = new Set((fiche.capacites ?? []).map((c) => c.capacite_id));
@@ -3301,12 +3340,19 @@ const avecNoms = (texte) => String(texte).split(/( \/ | : | = |« | »)/).map((x
 
 function construireControles() {
   const liste = $('controles');
-  // l'onglet « Contrôle » de la zone IV compte les règles à revoir (vert quand il n'y en a aucune)
+  // l'onglet « Contrôle » de la zone IV compte les règles à revoir, en rouge (vert quand il n'y en a aucune) ; les avertissements (décision R170 : le
+  // plafond de maîtrise, lib/fiche-controles.mjs#graviteDuControle) ne sont pas des erreurs : comptés à part, dans l'infobulle, et dans le compteur aux
+  // couleurs d'un avertissement seulement quand il n'y a aucune erreur
   const compte = $('controles-compte');
+  const g = controlesParGravite(controles);
+  const avertis = g.avertissements ? `${g.avertissements} avertissement${g.avertissements > 1 ? 's' : ''}` : '';
   compte.hidden = controles === null;
-  compte.textContent = controles === null ? '' : controles.length ? String(controles.length) : '✓';
-  compte.toggleAttribute('data-ok', controles !== null && controles.length === 0);
-  compte.title = controles === null ? '' : controles.length ? `${controles.length} règle${controles.length > 1 ? 's' : ''} à revoir` : 'Aucune règle enfreinte';
+  compte.textContent = controles === null ? '' : g.erreurs ? String(g.erreurs) : g.avertissements ? String(g.avertissements) : '✓';
+  compte.toggleAttribute('data-ok', controles !== null && !g.erreurs && !g.avertissements);
+  compte.toggleAttribute('data-avertissement', controles !== null && !g.erreurs && g.avertissements > 0);
+  compte.title = controles === null ? ''
+    : g.erreurs ? `${g.erreurs} règle${g.erreurs > 1 ? 's' : ''} à revoir${avertis ? ` · ${avertis}` : ''}`
+      : avertis ? `Aucune règle enfreinte · ${avertis}` : 'Aucune règle enfreinte';
   if (controles === null) {
     delete liste.dataset.vide;
     liste.replaceChildren(el('li', {}, id ? 'Enregistrez pour revoir le contrôle.' : 'La fiche n’a pas encore été enregistrée.'));
@@ -3318,7 +3364,12 @@ function construireControles() {
     return;
   }
   delete liste.dataset.vide;
-  liste.replaceChildren(...controles.map((c) => el('li', {}, el('strong', {}, libelleDuControle(c.regle)), c.detail ? ` : ${avecNoms(c.detail)}` : '')));
+  // les erreurs, puis les avertissements, marqués comme tels
+  liste.replaceChildren(
+    ...(g.erreurs ? [] : [el('li', { class: 'controles__ok' }, '✓ Aucune règle enfreinte ; à noter :')]),
+    ...g.lignes.map((c) => el('li', { dataset: c.gravite === 'avertissement' ? { gravite: 'avertissement' } : {} },
+      c.gravite === 'avertissement' ? el('span', { class: 'controles__gravite' }, 'Avertissement · ') : null,
+      el('strong', {}, libelleDuControle(c.regle)), c.detail ? ` : ${avecNoms(c.detail)}` : '')));
 }
 
 // ------------------------------------------------------------------ rafraîchissement
@@ -3512,6 +3563,8 @@ function aEnvoyer() {
   for (const c of ['gains_sante', 'gains_chakra']) f[c] = Math.max(0, entier(f[c]));
   // rangés dans l'ordre ; le sort préparé garde sa marque, son jet et sa posture, une préparation que le don ne permet plus part (décision R115)
   f.sorts = sortsAEnregistrer(regles, f);
+  // les livres de sort (décision R169) : un par sort, sur un sort choisi ou non, rangés dans l'ordre
+  f.livres_sorts = livresAEnregistrer(f);
   // la solidité du moment du bouclier bornée à son maximum (décision R96 : à son maximum ou au-delà, rien d'enregistré)
   f.bouclier_solidite = soliditeDuBouclierAEcrire(regles, f, f.bouclier_solidite);
   f.inventaire = (f.inventaire ?? []).filter((o) => o.nom && o.nom.trim()).map((o, i) => ({ ...o, nom: o.nom.trim(), rang: i + 1 }));
@@ -3597,7 +3650,11 @@ async function enregistrer() {
       serviceJoignable = true;   // il répond de nouveau : Télécharger suit de nouveau l'enregistrement
       appliquer(donnees);
       history.replaceState(null, '', `?id=${encodeURIComponent(id)}`);
-      message(controles.length ? `Enregistré : ${controles.length} règle${controles.length > 1 ? 's' : ''} à revoir (onglet « Contrôle »).` : 'Enregistré ✓', 'ok');
+      // les erreurs seules sont « à revoir » ; un avertissement (décision R170) est dit à part
+      const g = controlesParGravite(controles);
+      const avertis = g.avertissements ? `${g.avertissements} avertissement${g.avertissements > 1 ? 's' : ''}` : '';
+      message(g.erreurs ? `Enregistré : ${g.erreurs} règle${g.erreurs > 1 ? 's' : ''} à revoir${avertis ? `, ${avertis}` : ''} (onglet « Contrôle »).`
+        : avertis ? `Enregistré ✓ (${avertis}, onglet « Contrôle »).` : 'Enregistré ✓', 'ok');
       return;
     }
     enregistrementRefuse = true;   // les modifications restent à l'écran : Télécharger et Exporter permis pour ne rien perdre (etatDesBoutons, plus bas)

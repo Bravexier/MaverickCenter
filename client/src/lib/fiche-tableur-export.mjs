@@ -41,7 +41,7 @@ import { ARMURE_ENTIERE, PARTIES_DE_FICHE, gainsDeLaProgression } from './fiche-
 import {
   EMPLACEMENTS_ACCESSOIRES, accessoiresDesSorts, acquisChoixGardes, alignementDe, artisanatDe, bouclierDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, budgetCaracteristiques,
   caracteristiquesCompletes, caracteristiquesDe, choixEnAttente, classesDe, competencesDe, degatsDArme, donDeBase, donsAcquis, donsDeRace, durabiliteDArme,
-  armureParPartie, emplacementsDeSorts, maitriseDesSorts, maitrisesParFamille, modeHyperDe, nmDuSort, npmMax, partiesDeLArmure, progressionXp, resistancesDe, sortPrepare,
+  armureParPartie, emplacementsDeSorts, livresDe, maitriseDesSorts, maitrisesParFamille, modeHyperDe, nmDuSort, npmMax, partiesDeLArmure, progressionXp, resistancesDe, sortPrepare,
   sourcesDeMaitrise, trouver, valeursDuMoment, armeDeLaLigne, typeDegatsChoisi, typesDeDegats,
 } from './fiche-moteur.mjs';
 import {
@@ -350,12 +350,12 @@ export function lireGains(texte) {
 }
 
 /**
- * Les NM offerts des sorts de la fiche, ceux de leurs livres : « Boule de feu (livre 1) ; Brasier (livre 1) » ; vide quand aucun. Les NM du MJ sont ceux
- * de la fiche (décision R118 : ligne « NM du MJ » de la note) ; un classeur d'avant les écrit ici, sort par sort (« Brasier (livre 1, MJ 2) »).
+ * Les NM offerts de la fiche, ceux de ses livres de sort, dans l'ordre de l'entraînement : « Boule de feu (livre 1) ; Brasier (livre 1) » ; vide quand
+ * aucun. Un livre sur un sort qui n'est pas choisi s'écrit de même (décision R169 : il attend, livresDe). Les NM du MJ sont ceux de la fiche (décision
+ * R118 : ligne « NM du MJ » de la note) ; un classeur d'avant les écrit ici, sort par sort (« Brasier (livre 1, MJ 2) »).
  */
-export function texteDesNmOfferts(regles, sorts) {
-  return (sorts ?? []).map((ligne) => [ligne, nmDuSort(ligne).livre]).filter(([, livre]) => livre)
-    .map(([ligne, livre]) => `${nomDe(regles.sorts, ligne.sort_id)} (livre ${livre})`).join(SEPARATEUR_DE_LISTE);
+export function texteDesNmOfferts(regles, fiche) {
+  return livresDe(regles, fiche).map((l) => `${nomDe(regles.sorts, l.sort_id)} (livre 1)`).join(SEPARATEUR_DE_LISTE);
 }
 
 /** [{ nom, livre, cadeau }] d'un texte de texteDesNmOfferts (`cadeau` : les NM du MJ d'un classeur d'avant la décision R118) ; null si un morceau ne se lit pas (l'import le dit). */
@@ -1160,7 +1160,7 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
   const sortsEnSuite = [];
   f.sorts.forEach((ligne, i) => {
     const sort = trouver(regles.sorts, ligne.sort_id);
-    const nm = nmDuSort(ligne).total;
+    const nm = nmDuSort(ligne, f).total;
     if (i >= PLACES_SORTS) {
       sortsEnSuite.push(texteDeSortEnSuite(sort?.nom ?? ligne.sort_id, nm));
       return;
@@ -1212,7 +1212,7 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
   if (innee && !innee.caracteristique_id && f.caracteristique_magie_id) noter(K.caracteristiqueMagie, nomDe(regles.caracteristiques, f.caracteristique_magie_id));
   if (f.symbiose_magie_id) noter(K.symbioseMagie, nomDe(regles.magies, f.symbiose_magie_id));
   noter(K.gains, texteDesGains(f));
-  noter(K.nmOfferts, texteDesNmOfferts(regles, f.sorts));
+  noter(K.nmOfferts, texteDesNmOfferts(regles, f));
   if (entier(f.nm_mj) > 0) noter(K.nmMj, String(entier(f.nm_mj)));
   const prepare = sortPrepare(regles, f);
   if (prepare) noter(K.sortPrepare, texteDuSortPrepare(prepare));

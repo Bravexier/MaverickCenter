@@ -18,7 +18,7 @@ import {
   accessoiresGardes, ARMURE_ENTIERE, armureDesArmures, armuresAvecArmure, bouclierAvecMatiere, COLONNES_DE_L_ARMURE, COLONNES_RETIREES, EMPLACEMENTS_D_ARMURE,
   matiereDuBouclier, nmDuMjAvecCadeaux, nmDuMjDesSorts, PARTIES_DE_FICHE, PARTIES_RETIREES, TABLES_FICHES, TABLES_RETIREES, ficheVide, gainsDeLaProgression,
   lignesDesPiecesRetirees, progressionAvecGains, retraitsDuBouclier, sansPartiesRetirees, desEnNotation, maitrisesDAvant, maitrisesAvecChoix, ligneDeRetrait,
-  ordreDesRetraits, PREFIXE_DES_MAITRISES_D_AVANT, armeDAvant, armeDAvant0081, armesDAvant,
+  ordreDesRetraits, PREFIXE_DES_MAITRISES_D_AVANT, armeDAvant, armeDAvant0081, armesDAvant, livresAvecLivresDesSorts, livresDesSorts,
 } from '../src/lib/fiche-format.mjs';
 import { notationDesDes } from '../src/lib/fiche-moteur.mjs';
 
@@ -212,10 +212,10 @@ test('bouclierAvecMatiere : une liste `bouclier_materiaux` non vide ET une des n
 });
 
 test('NM du MJ (décision R118, migration 0066) : `nm_cadeau` d’un sort est une colonne retirée ; une fiche d’avant donne leur somme à `nm_mj`, le NM de chaque sort gardé ; avec `nm_mj`, il est gardé', () => {
-  assert.deepEqual(COLONNES_RETIREES.personnage_sort, ['nm_cadeau']);
+  assert.ok(COLONNES_RETIREES.personnage_sort.includes('nm_cadeau'));
   assert.equal(ficheVide().nm_mj, 0);
-  const sorts = [{ sort_id: 'a', rang: 1, niveau_maitrise: 3, nm_livre: 1, nm_cadeau: 1 }, { sort_id: 'b', rang: 2, niveau_maitrise: 2, nm_livre: 0, nm_cadeau: 2 },
-    { sort_id: 'c', rang: 3, niveau_maitrise: 1, nm_livre: 0, nm_cadeau: 0 }];
+  const sorts = [{ sort_id: 'a', rang: 1, niveau_maitrise: 3, nm_cadeau: 1 }, { sort_id: 'b', rang: 2, niveau_maitrise: 2, nm_cadeau: 2 },
+    { sort_id: 'c', rang: 3, niveau_maitrise: 1, nm_cadeau: 0 }];
   assert.equal(nmDuMjDesSorts(sorts), 3);
   assert.equal(nmDuMjDesSorts(null), 0);
   const avant = { nom: 'Aldric', sorts };
@@ -227,8 +227,32 @@ test('NM du MJ (décision R118, migration 0066) : `nm_cadeau` d’un sort est un
   assert.equal(nmDuMjAvecCadeaux({ nm_mj: 2, sorts: [{ ...sorts[2] }] }), false);
   assert.equal(nmDuMjAvecCadeaux({ nm_mj: 2, sorts }), true, 'des NM du MJ sur un sort ET ceux de la fiche : le service refuse (409)');
   assert.equal(nmDuMjAvecCadeaux({ sorts }), false, 'sans `nm_mj` : convertie');
-  const sans = { nm_mj: 1, sorts: [{ sort_id: 'a', rang: 1, niveau_maitrise: 1, nm_livre: 0 }] };
+  const sans = { nm_mj: 1, sorts: [{ sort_id: 'a', rang: 1, niveau_maitrise: 1 }] };
   assert.equal(sansPartiesRetirees(sans), sans, 'rien à convertir : la même fiche');
+});
+
+test('livre de sort (décision R169, migration 0082) : `nm_livre` d’un sort est une colonne retirée ; une fiche d’avant donne un livre par sort à 1, dans l’ordre de la liste ; le NM des sorts gardé', () => {
+  assert.deepEqual(COLONNES_RETIREES.personnage_sort, ['nm_cadeau', 'nm_livre']);
+  assert.equal(PARTIES_DE_FICHE.livres_sorts, 'personnage_livre_sort');
+  assert.deepEqual(ficheVide().livres_sorts, []);
+  // la liste reçue dans le désordre : les livres suivent le rang des sorts (comme la migration 0082) ; un nm_livre absent, 0 ou vide : pas de livre
+  const sorts = [{ sort_id: 'c', rang: 3, niveau_maitrise: 1, nm_livre: 1 }, { sort_id: 'a', rang: 1, niveau_maitrise: 3, nm_livre: 1 },
+    { sort_id: 'b', rang: 2, niveau_maitrise: 2, nm_livre: 0 }, { sort_id: 'd', rang: 4, niveau_maitrise: 0, nm_livre: null }];
+  assert.deepEqual(livresDesSorts(sorts), [{ sort_id: 'a', rang: 1 }, { sort_id: 'c', rang: 2 }]);
+  assert.deepEqual(livresDesSorts(null), []);
+  const avant = { nom: 'Aldric', sorts };
+  const convertie = sansPartiesRetirees(avant);
+  assert.deepEqual(convertie, { nom: 'Aldric', livres_sorts: [{ sort_id: 'a', rang: 1 }, { sort_id: 'c', rang: 2 }], sorts: sorts.map(({ nm_livre: _l, ...x }) => x) });
+  assert.equal(avant.sorts[0].nm_livre, 1, 'jamais modifiée en place');
+  // une page d'avant qui a repris les livres d'une réponse, sans livre sur un sort : ses livres gardés, nm_livre jeté
+  const livres = [{ sort_id: 'z', rang: 1 }];
+  assert.deepEqual(sansPartiesRetirees({ livres_sorts: livres, sorts: [sorts[2]] }), { livres_sorts: livres, sorts: [{ sort_id: 'b', rang: 2, niveau_maitrise: 2 }] });
+  assert.equal(livresAvecLivresDesSorts({ livres_sorts: livres, sorts: [sorts[2]] }), false);
+  assert.equal(livresAvecLivresDesSorts({ livres_sorts: livres, sorts }), true, 'un livre sur un sort ET les livres de la fiche : le service refuse (409)');
+  assert.equal(livresAvecLivresDesSorts({ sorts }), false, 'sans `livres_sorts` : convertie');
+  // les deux colonnes d'avant à la fois (une fiche d'avant 0066)
+  assert.deepEqual(sansPartiesRetirees({ sorts: [{ sort_id: 'a', rang: 1, niveau_maitrise: 3, nm_livre: 1, nm_cadeau: 1 }] }),
+    { nm_mj: 1, livres_sorts: [{ sort_id: 'a', rang: 1 }], sorts: [{ sort_id: 'a', rang: 1, niveau_maitrise: 3 }] });
 });
 
 // Décision R153 : les noms, dés et ordre des familles et le don de la base des règles, comme le service (serveur/fiches.mjs, serveur/base-vivante.mjs).

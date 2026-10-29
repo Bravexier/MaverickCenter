@@ -546,3 +546,37 @@ test('glossaire des mots-clés (D2) : les règles de la fiche lisent les textes 
     rmSync(dossier, { recursive: true, force: true });
   }
 });
+
+test('A3 : le texte de présentation de chaque classe et de chaque spécialité (infobulle d’une tuile de choix), tel qu’en base, null sans texte', () => {
+  const lire = (table) => new Map(db.prepare(`SELECT id, description FROM ${table}`).all().map((r) => [r.id, r]));
+  const classes = lire('classe');
+  const specialites = lire('specialite');
+  // le texte écrit, sans les balises du glossaire comme tout texte des règles de la fiche (le texte affiché : jamais réécrit au-delà)
+  const texte = (v) => (v === null || v === undefined || v === '' ? null : texteSansBalises(v));
+  let avec = 0;
+  let sans = 0;
+  for (const c of regles.classes) {
+    assert.equal(c.description, texte(classes.get(c.id).description), c.id);
+    assert.ok(!('description_titre' in c), 'le titre n’est pas exporté : la page ne le lit pas');
+    for (const s of c.specialites) {
+      const ligne = specialites.get(s.id);
+      assert.equal(s.description, texte(ligne.description), s.id);
+      if (s.description === null) sans += 1;
+      else avec += 1;
+    }
+  }
+  assert.ok(avec > 0 && sans > 0, `des spécialités avec texte (${avec}) et sans (${sans}, null)`);
+  assert.equal(avec + sans, compte('specialite'));
+  // le repli de l'infobulle d'une spécialité sans texte (choix du propriétaire) : l'effet du don de son cartouche (capacite.nature = 'specialite'), lu
+  // dans classes[].dons[] ; au plus un cartouche par spécialité, celui de la base
+  const cartouches = db.prepare("SELECT specialite_id, effet FROM capacite WHERE nature = 'specialite'").all();
+  for (const c of regles.classes) {
+    for (const s of c.specialites) {
+      const lus = c.dons.filter((d) => d.nature === 'specialite' && d.specialite_id === s.id);
+      const enBase = cartouches.filter((k) => k.specialite_id === s.id);
+      assert.equal(lus.length, enBase.length, s.id);
+      assert.ok(lus.length <= 1, s.id);
+      if (lus.length) assert.equal(lus[0].effet, enBase[0].effet === null ? null : texteSansBalises(enBase[0].effet), s.id);
+    }
+  }
+});

@@ -168,12 +168,11 @@ function ficheRiche() {
   const attendus = M.gainsAttendus(regles, NIVEAU_RICHE);
   f.gains_chakra = Math.floor(attendus.points / 3);
   f.gains_sante = attendus.points - f.gains_chakra + 3 * attendus.des.length;
-  // 25 sorts des deux magies, des NM dont certains d'un livre ; les NM du MJ, pour toute la fiche (décision R118)
-  f.sorts = M.sortsPossibles(regles, f).slice(0, 25).map((s, i) => {
-    const total = i % 4;
-    const livre = total >= 1 && i % 3 === 0 ? 1 : 0;
-    return { sort_id: s.id, rang: i + 1, niveau_maitrise: total, nm_livre: livre };
-  });
+  // 25 sorts des deux magies, des NM dont certains d'un livre, plus un livre d'un sort non choisi (en attente, décision R169) ; les NM du MJ, pour
+  // toute la fiche (décision R118)
+  f.sorts = M.sortsPossibles(regles, f).slice(0, 25).map((s, i) => ({ sort_id: s.id, rang: i + 1, niveau_maitrise: i % 4 }));
+  const enAttente = M.sortsDesLivres(regles, f).find((s) => !f.sorts.some((x) => x.sort_id === s.id));
+  f.livres_sorts = [...f.sorts.filter((x, i) => x.niveau_maitrise >= 1 && i % 3 === 0).map((x) => x.sort_id), enAttente.id].map((sort_id, i) => ({ sort_id, rang: i + 1 }));
   f.nm_mj = 3;
   return f;
 }
@@ -182,7 +181,7 @@ function ficheRiche() {
 function fichePotentiel() {
   const f = { ...ficheVide('Ysolde'), race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-toundra', magie_innee_id: 'magies/potentiel-illimite', caracteristique_magie_id: 'intelligence', xp: xpDuNiveau(5) };
   f.classes = M.classesSelonLaMagieInnee(regles, f);
-  f.sorts = M.sortsPossibles(regles, f).slice(0, 3).map((s, i) => ({ sort_id: s.id, rang: i + 1, niveau_maitrise: 1, nm_livre: 0 }));
+  f.sorts = M.sortsPossibles(regles, f).slice(0, 3).map((s, i) => ({ sort_id: s.id, rang: i + 1, niveau_maitrise: 1 }));
   return f;
 }
 
@@ -555,7 +554,7 @@ test('une rangée par sort : type et effets écrits sur plusieurs lignes dans le
   const [magie, sorts] = [...parMagie].sort((x, y) => y[1].length - x[1].length)[0];
   assert.ok(sorts.some((x) => /\n/.test(x.type ?? '')) && sorts.some((x) => /\n/.test(x.effets ?? '')), magie);
   const f = { ...ficheVide('Une ligne'), race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-central', magie_innee_id: magie, xp: xpDuNiveau(10),
-    sorts: sorts.slice(0, 20).map((x, i) => ({ sort_id: x.id, rang: i + 1, niveau_maitrise: 1, nm_livre: 0 })) };
+    sorts: sorts.slice(0, 20).map((x, i) => ({ sort_id: x.id, rang: i + 1, niveau_maitrise: 1 })) };
   const v = cellulesDeLaFiche(regles, f, { date: DATE }).cellules;
   const col = ORDINATEUR.sorts.colonnes;
   f.sorts.forEach((l, i) => {
@@ -654,9 +653,9 @@ test('fiche riche : la note — notes du joueur, marqueur, puis ce qui n’a pas
   assert.deepEqual(note.valeur(K.caracteristiqueMagie), [], 'la Nécromancie a sa caractéristique');
   assert.ok(riche.gains_sante && riche.gains_chakra);
   assert.deepEqual(lireGains(note.valeur(K.gains)[0]), { gains_sante: riche.gains_sante, gains_chakra: riche.gains_chakra });
-  // les livres de sort ; les NM du MJ, ceux de la fiche (décision R118)
-  const livres = riche.sorts.filter((s) => s.nm_livre);
-  assert.ok(livres.length);
+  // les livres de sort, celui d'un sort non choisi compris (décision R169) ; les NM du MJ, ceux de la fiche (décision R118)
+  const livres = riche.livres_sorts;
+  assert.ok(livres.length > 1 && livres.some((l) => !riche.sorts.some((x) => x.sort_id === l.sort_id)));
   assert.deepEqual(lireNmOfferts(note.valeur(K.nmOfferts)[0]), livres.map((s) => ({ nom: nomDe('sorts', s.sort_id), livre: 1, cadeau: 0 })));
   assert.deepEqual(note.valeur(K.nmMj), [String(riche.nm_mj)]);
   // les choix de maîtrise (décision R148) : la maîtrise au choix du Guerrier et celle du Mage ; ARME DE MONSTRES n'est pas une option (R45) : pas écrite
@@ -1092,10 +1091,12 @@ test('mise en forme de la note et des lignes : relue telle qu’écrite', () => 
   assert.equal(lireGains('santé 10, santé 3'), null, 'deux fois la santé');
   assert.equal(lireGains('beaucoup'), null);
   assert.deepEqual(lireGains(''), { gains_sante: 0, gains_chakra: 0 });
-  const sorts = regles.sorts.slice(0, 3).map((s, i) => ({ sort_id: s.id, niveau_maitrise: 3, nm_livre: i === 1 ? 0 : 1 }));
-  assert.equal(texteDesNmOfferts(regles, sorts), `${nomDe('sorts', sorts[0].sort_id)} (livre 1) ; ${nomDe('sorts', sorts[2].sort_id)} (livre 1)`, 'les livres seuls (décision R118)');
-  assert.deepEqual(lireNmOfferts(texteDesNmOfferts(regles, sorts)), [sorts[0], sorts[2]].map((s) => ({ nom: nomDe('sorts', s.sort_id), livre: 1, cadeau: 0 })));
-  assert.equal(texteDesNmOfferts(regles, [{ sort_id: regles.sorts[0].id, niveau_maitrise: 2 }]), '');
+  // les livres de la fiche, dans l'ordre de l'entraînement, sur un sort choisi ou non (décision R169)
+  const sorts = regles.sorts.slice(0, 3).map((s) => ({ sort_id: s.id, niveau_maitrise: 3 }));
+  const avecLivres = { sorts: sorts.slice(0, 2), livres_sorts: [{ sort_id: sorts[2].sort_id, rang: 2 }, { sort_id: sorts[0].sort_id, rang: 1 }] };
+  assert.equal(texteDesNmOfferts(regles, avecLivres), `${nomDe('sorts', sorts[0].sort_id)} (livre 1) ; ${nomDe('sorts', sorts[2].sort_id)} (livre 1)`, 'les livres seuls (décision R118)');
+  assert.deepEqual(lireNmOfferts(texteDesNmOfferts(regles, avecLivres)), [sorts[0], sorts[2]].map((s) => ({ nom: nomDe('sorts', s.sort_id), livre: 1, cadeau: 0 })));
+  assert.equal(texteDesNmOfferts(regles, { sorts: [{ sort_id: regles.sorts[0].id, niveau_maitrise: 2 }] }), '');
   // un classeur d'avant la décision R118 : les NM du MJ sort par sort
   assert.deepEqual(lireNmOfferts('Boule de feu (livre 1, MJ 2) ; Rayon d’Aurora (MJ 1)'), [{ nom: 'Boule de feu', livre: 1, cadeau: 2 }, { nom: 'Rayon d’Aurora', livre: 0, cadeau: 1 }]);
   assert.deepEqual(lireNmOfferts('Sort (rituel) (livre 1)'), [{ nom: 'Sort (rituel)', livre: 1, cadeau: 0 }]);

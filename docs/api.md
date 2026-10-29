@@ -25,7 +25,7 @@ externes ; la page **Debug** du site de dev (menu Outils) n'a plus de testeur de
   d'un ingrédient d'alchimie, la description d'un produit non monétaire) ou qu'il refuse toujours (le prix de la ressource d'une gemme, qui est dans
   son extension) est **figée** dans le registre (`colonnesFigees`, `ecriture.champsFiges`) : non modifiable au catalogue, `400` avec la raison.
 - **Jamais servi** : les tables des fiches de personnages, des comptes et des groupes (section 13 de `data/schema.sql` : elles passent par
-  `/api/personnages/`, dont le JSON d'une fiche, les choix de maîtrise d'armes `maitrise_choix` et les règles de contrôle sont décrits dans
+  `/api/personnages/`, dont le JSON d'une fiche, les choix de maîtrise d'armes `maitrise_choix`, les livres de sort `livres_sorts` (R169) et les règles de contrôle sont décrits dans
   [`serveur.md`](serveur.md), « L'API ») et celles du journal de l'édition (section 14). La section 15 (notes de version, historique des modifications) se lit seulement.
   Une image (portrait d'un monstre ou d'une espèce) n'est jamais rendue en entier : `{ image: true, empreinte, resume }`
   (`edition-modele.mjs#ligneSansImage`) ; l'image entière passe par `POST /api/edition/portrait/`.

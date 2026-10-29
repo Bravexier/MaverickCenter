@@ -343,7 +343,7 @@ test('décision R154 : un Ocultomancien de niveau de classe 20 a les 4 NM gagné
   assert.deepEqual([a20.maxParSort, a20.maxCompteParSort, a20.plafond], [a19.maxParSort + 1, a19.maxCompteParSort + 1, 3], 'R118, R26 : inchangés');
   // la base : sorts_nm_total compte les NM des dons
   const sorts = (total) => regles.sorts.filter((s) => s.magie_id === 'magies/magie-du-feu').slice(0, Math.ceil(total / 3))
-    .map((s, i) => ({ sort_id: s.id, rang: i + 1, niveau_maitrise: Math.min(3, total - 3 * i), nm_livre: 0 }));
+    .map((s, i) => ({ sort_id: s.id, rang: i + 1, niveau_maitrise: Math.min(3, total - 3 * i) }));
   const enBase = (f) => enregistrerFiche(vivante, f).controles.filter((c) => c.regle === 'sorts_nm_total').map((c) => c.detail);
   const juste = oculto(20, sorts(a20.disponibles));
   assert.equal(M.maitriseDesSorts(regles, juste).comptes, a20.disponibles);
@@ -405,16 +405,17 @@ test('décision R148, variante A de la maquette : les cartes du bloc Maîtrises 
   assert.equal(carte({ ...ex2, accessoires: [accessoire('bague-1', 'epees', 1)] }, 'accessoire:bague-1').sousTitre, 'Accessoire maudit : l’effet contraire');
   assert.deepEqual(M.ligneDeMaitrise(famille(ex2, 'epees')), {
     detail: ['Guerrier (maîtrise 1) +1', 'Épéiste (Guerrier) +2', 'Mercenaire (maîtrise 1) +2', 'Accessoire : Bague 1 +1'],
-    alertes: [{ ton: 'trop', texte: '6 points : 2 au-delà du plafond, non comptés' }],
+    alertes: [{ ton: 'avertissement', texte: '6 points : 2 au-delà du plafond, non comptés' }],
   });
   assert.equal(famille(ex2, 'epees').notation, '5D10', '5 dés au plus');
   assert.deepEqual(M.ligneDeMaitrise(famille(ex2, 'hache')), { detail: ['Guerrier (maîtrise 2) +1', 'Épéiste (Guerrier) −1 (suit un choix)'], alertes: [] });
   const compteur = M.presentationDuCompteurDeMaitrise(M.compteurDeMaitrise(regles, ex2), M.sourcesDeMaitrise(regles, ex2));
   assert.deepEqual([compteur.texte, compteur.etat], ['8 points · 0 à choisir', 'trop']);
   assert.match(compteur.infobulle, /Mercenaire \(maîtrise 1\) \+3 · Accessoire : Bague 1 \+1 ; 1 point au-delà d’une limite écrite$/);
-  // un seul point au-delà du plafond : « non compté » (la phrase de la maquette)
+  // un seul point au-delà du plafond : « non compté » (la phrase de la maquette) ; un avertissement, pas une erreur, même pour des points imposés
+  // (décision R170 : « Juste un avertissement , surtout quand ils sont imposées »)
   const lancier = fiche([['lanceur', 'fantassin'], ['lancier']], { maitrise_choix: [choix(ligne('lanceur', 2), 1, 'hache'), choix('capacites/lanceur-fantassin', 1, 'hache')], accessoires: [accessoire('chef', 'arme-de-jet')] });
-  assert.deepEqual(M.ligneDeMaitrise(famille(lancier, 'arme-de-jet')).alertes, [{ ton: 'trop', texte: '5 points : 1 au-delà du plafond, non compté' }]);
+  assert.deepEqual(M.ligneDeMaitrise(famille(lancier, 'arme-de-jet')).alertes, [{ ton: 'avertissement', texte: '5 points : 1 au-delà du plafond, non compté' }]);
   // jamais sous 0 (R151) : l'Épéiste et un accessoire maudit sur la maîtrise au choix du Guerrier
   const sous = fiche([['guerrier', 'epeiste']], { niveau: 10, maitrise_choix: [choix(ligne('guerrier', 2), 1, 'hache')], accessoires: [accessoire('chef', 'hache', 1)] });
   assert.deepEqual(M.ligneDeMaitrise(famille(sous, 'hache')).alertes, [{ ton: 'info', texte: '−1 en tout : ramené à 0, une famille ne descend jamais sous 0' }]);
