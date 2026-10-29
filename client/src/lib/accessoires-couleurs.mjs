@@ -1,4 +1,4 @@
-// Couleurs de l'onglet Accessoires de /ressources/equipement/ : la valeur de chaque couleur est ici (la règle) ; une page n'en pose que la classe
+// Couleurs de la page Accessoires (/ressources/accessoires/) : la valeur de chaque couleur est ici (la règle) ; une page n'en pose que la classe
 // (lib/palette-css.mjs, famille `niveau` : `.couleur-niveau-<n>` ; choix du propriétaire du 2026-10-22, « Module JS → classe », et sa réponse : « La
 // classe CSS du site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas, créer une classe CSS avec la couleur du classeur. »).
 // Sans import (le module de la palette l'importe) ; à part de lib/accessoires-generateur.mjs, la logique du générateur que le script de la page importe :

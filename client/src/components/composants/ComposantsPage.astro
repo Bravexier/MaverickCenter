@@ -20,7 +20,7 @@ import { cssDesFamilles } from '../../lib/palette-css.mjs';
 // ici ; chaque onglet est une ligne de la table composant_onglet (migration 0057 : titre, note, place dans la barre), son id l'ancre de l'onglet et l'id
 // du panneau de son tableau. Le panneau est le tableau lui-même, sur le gabarit commun du site (components/Tableau.astro, styles/global/tableaux.css :
 // `section.tableau.comp-tableau.composants-panneau`, son titre `<h2>`, sa note), dont le titre se cache sous les onglets (l'onglet le dit). Sans
-// JavaScript, les panneaux se suivent, chacun sous son titre. Un lien vers une ligne (#composant-…, depuis la page « Équipement ») ouvre son onglet.
+// JavaScript, les panneaux se suivent, chacun sous son titre. Un lien vers une ligne (#composant-…, depuis les pages de l'équipement) ouvre son onglet.
 // Une recherche filtre les lignes de tous les tableaux ; chaque onglet dit combien il en garde (src/scripts/composants.mjs). À l'impression, tous les
 // panneaux sortent, chacun sous son titre.
 // Mode modification (site de dev, src/scripts/edition/composants.mjs) : le titre (le titre du panneau, que l'onglet reprend) et la note de chaque onglet ;

@@ -66,7 +66,7 @@
 // deux porte toujours les deux classes, la seconde de la même couleur quand il n'en a qu'une (classesDeDeuxMagies, classesDeDeuxCaracteristiques) : il
 // n'hérite jamais du second rang d'un parent.
 //
-// Une potion (onglet Ceinture de la page Équipement) : sa classe de combinaison `.couleur-potion-<famille>-<id>-n<rang>` (classeDePotion) pose
+// Une potion (page Ceinture, /ressources/objets-a-la-ceinture/) : sa classe de combinaison `.couleur-potion-<famille>-<id>-n<rang>` (classeDePotion) pose
 // `--ligne-fond` et `--ligne-texte` (la ligne colorée du gabarit commun, styles/global/tableaux.css), calculés par lib/alchimie-couleurs.mjs#couleurDePotion
 // depuis la couleur de sa classe de base ; components/ceinture/CeinturePanneau.astro n'émet que celles de ses lignes (cssDesPotions).
 //

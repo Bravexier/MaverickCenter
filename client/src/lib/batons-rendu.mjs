@@ -1,4 +1,4 @@
-// Rendu HTML du tableau des bâtons magiques, sous-onglet « Bâtons magiques » de l'onglet « Ceinture » de la page /ressources/equipement/
+// Rendu HTML du tableau des bâtons magiques, sous-onglet « Bâtons magiques » de la page Ceinture (/ressources/objets-a-la-ceinture/)
 // (components/ceinture/BatonsMagiques.astro ; données : lib/batons-db.mjs). Demande du propriétaire du 2026-10-16 : « colorer toute la ligne de la
 // couleur de la magie concernée. La colonne magie elle même n'est pas utile. Il faudra un tooltip pour donner le lien vers l'objet de la gemme ou et du
 // bois utilisé. Il faudrait une colonne "niveau" avec un slider de 1 à 3 à chaque fois. La case de la colonne "effet" se mettra à jour en fonction du

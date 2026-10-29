@@ -1,10 +1,11 @@
-// Onglet « Ceinture » de la page /ressources/equipement/ construite (dist/ ; demande du propriétaire, 2026-10-16 : « revoir intégralement la page des
+// La page Ceinture construite, /ressources/objets-a-la-ceinture/ (dist/ ; une page à elle depuis le 2026-10-29, « Cinq pages séparées », à l'adresse de
+// l'ancienne page « Objets à la ceinture » ; avant, l'onglet Ceinture de la page « Équipement » ; demande du propriétaire, 2026-10-16 : « revoir intégralement la page des
 // objets à la ceinture, renommer l'onglet en "Ceinture" et le mettre dans les onglets de équipement », des sous-onglets « plutôt que la recherche
 // actuel », « dans l'ordre Consommable / Carquois / Bâton magiques », les consommables dans l'ordre fioles, remèdes, philtres, huiles, alchimie
 // primitive, et les couleurs des tableaux des sources ; le 2026-10-22 : un onglet par famille de consommables, et « Partout il faut utiliser Que les
 // couleurs du site […] Aucune couleur en dur ») : rendu depuis la base (lib/ceinture-db.mjs, vue v_objet_ceinture : décisions R81 et R82), trois
 // sous-onglets et leurs panneaux dans l'ordre, les onglets des familles de consommables, une ligne par objet sur la couleur de la règle du site, des liens qui mènent
-// à des pages et des ancres qui existent, les monnaies en icônes (R63), les règles de la ceinture ; plus de recherche ni de page à part. Le tableau des
+// à des pages et des ancres qui existent, les monnaies en icônes (R63), les règles de la ceinture ; plus de recherche. Le tableau des
 // bâtons (le troisième sous-onglet) : test/equipement-html.test.mjs. Se saute sans dist/ (npm run build) ; la CI le lance après le build.
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
@@ -21,12 +22,12 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { cheminDePage } from '../src/lib/metiers.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
-const fichier = join(dist, 'ressources', 'equipement', 'index.html');
+const fichier = join(dist, 'ressources', 'objets-a-la-ceinture', 'index.html');
 const present = existsSync(fichier);
 const options = present ? {} : { skip: 'site non construit (npm run build)' };
 const html = present ? readFileSync(fichier, 'utf8') : '';
 const main = html.slice(html.indexOf('<main'), html.indexOf('</main>'));
-const onglet = main.slice(main.indexOf('<section class="equipement-panneau ceinture" id="ceinture"'), main.indexOf('<section class="equipement-panneau" id="accessoires"'));
+const onglet = main.slice(main.indexOf('<section class="equipement-panneau ceinture" id="ceinture"'));
 const objets = present ? chargerObjetsDeCeinture(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' })) : null;
 const tableau = (famille) => objets.tableaux.find((t) => t.famille === famille);
 /** Le panneau d'un sous-onglet : de son <section> au suivant (ou à la fin de l'onglet). */
@@ -57,9 +58,9 @@ test('l’onglet Ceinture : ses trois sous-onglets dans l’ordre, chacun un lie
     assert.equal(/\bis-active\b/.test(classes), id === SOUS_ONGLETS_DE_LA_CEINTURE[0].id, `${id} : ouvert au départ ou non`);
     assert.ok(onglet.includes(`<h3 class="ceinture-panneau__titre" id="titre-${id}">`), `${id} : son titre`);
   }
-  // l'ancienne page n'est plus construite, ni dans le menu ; son adresse mène à l'onglet par la page 404 (test/equipement.test.mjs)
-  assert.ok(!existsSync(join(dist, 'ressources', 'objets-a-la-ceinture')), 'pas de page /ressources/objets-a-la-ceinture/');
-  assert.ok(!html.includes('ressources/objets-a-la-ceinture/'), 'aucun lien vers l’ancienne page');
+  // la page est à l'adresse de l'ancienne page « Objets à la ceinture » (identifiants figés), plus de page « Équipement » (test/equipement-html.test.mjs)
+  assert.ok(!existsSync(join(dist, 'ressources', 'equipement')), 'pas de page /ressources/equipement/');
+  assert.ok(html.includes('<a href="/ressources/objets-a-la-ceinture/" aria-current="page">Ceinture</a>'), 'son entrée du menu, courante');
 });
 
 test('mode modification (site de dev) : les quatre cases saisies de chaque potion, et rien d’autre de l’onglet hors du panneau de règles des bâtons', options, () => {
@@ -107,8 +108,9 @@ test('consommables : un onglet par famille, dans l’ordre Fioles, Remèdes, Phi
   // les carquois et sacs : le tableau repliable de leur sous-onglet
   assert.deepEqual([...panneau('ceinture-carquois').matchAll(/<details class="tableau ceint-tableau" id="([^"]+)" open>/g)].map((m) => m[1]), ['objets-contenant']);
   assert.ok(!panneau(ONGLET_DES_BATONS).includes('ceint-tableau'), 'les bâtons ont leur tableau (lib/batons-rendu.mjs)');
-  // trois groupes d'onglets imbriqués sur la page : la page, la ceinture, ses consommables (components/Onglets.astro : chacun sa barre)
-  assert.deepEqual([...main.matchAll(/data-onglets="([^"]+)"/g)].map((m) => m[1]).filter((n) => ['Équipement', 'Ceinture', 'Consommables'].includes(n)), ['Équipement', 'Ceinture', 'Consommables']);
+  // deux groupes d'onglets imbriqués sur la page Ceinture (une page à elle depuis le 2026-10-29, plus d'onglets de page « Équipement ») : la ceinture,
+  // ses consommables (components/Onglets.astro : chacun sa barre)
+  assert.deepEqual([...main.matchAll(/data-onglets="([^"]+)"/g)].map((m) => m[1]).filter((n) => ['Équipement', 'Ceinture', 'Consommables'].includes(n)), ['Ceinture', 'Consommables']);
 });
 
 test('consommables : un tableau par page de potion, deux ou trois côte à côte (demande du propriétaire, 2026-10-17), sur le gabarit commun', options, () => {
@@ -331,10 +333,10 @@ test('les liens mènent à des pages construites et à des ancres qui existent (
       assert.ok(pages.get(page).includes(`id="${ancre}"`), `ancre absente : ${lien}`);
     }
   }
-  // les liens vers la page même (les onglets des familles, les bombes de l'onglet Armes)
+  // les liens vers la page même (les onglets des familles) ; les bombes, sur la page Armes (une page à elle depuis le 2026-10-29)
   const ancres = [...new Set([...onglet.matchAll(/href="#([^"]+)"/g)].map((m) => m[1]))];
   for (const a of ancres) assert.ok(main.includes(`id="${a}"`), `ancre absente de la page : #${a}`);
-  assert.ok(ancres.includes('famille-bombes'), 'les bombes, dans l’onglet Armes');
+  assert.ok(liens.includes('/ressources/armes/#famille-bombes') && !ancres.includes('famille-bombes'), 'les bombes, sur la page Armes');
   for (const p of objets.tableaux.filter((t) => t.pages).flatMap((t) => t.pages)) assert.ok(liens.includes(`/${p.id}/`), `la page ${p.id}`);
   assert.ok(liens.includes(`/${cheminDePage('guide/l-equipement')}`) && liens.includes(`/${cheminDePage('guide/fiche-accessoires-et-ceinture')}`), 'les pages du guide');
 });

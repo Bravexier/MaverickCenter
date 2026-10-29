@@ -219,7 +219,7 @@ test('rapatriement (db:appliquer-edition) : un journal retouché à la main qui 
   const cle = { panneau_id: 'armes', rang: bloc.rang };
   const r = traiter({
     methode: 'POST', chemin: '/api/edition/', entetes: { 'content-type': 'application/json' },
-    corps: JSON.stringify({ page: 'ressources/equipement/', operations: [{ op: 'modifier', table: 'panneau_regles_bloc', cle, valeurs: { texte: `${bloc.texte}\n\nUne phrase sûre.` } }] }),
+    corps: JSON.stringify({ page: 'ressources/armes/', operations: [{ op: 'modifier', table: 'panneau_regles_bloc', cle, valeurs: { texte: `${bloc.texte}\n\nUne phrase sûre.` } }] }),
   }, service);
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
   const journal = journalExporte(vivante);

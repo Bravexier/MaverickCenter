@@ -1,4 +1,4 @@
-// Générateur d'accessoires de l'onglet Accessoires de /ressources/equipement/ (demande du propriétaire, 2026-10-14 : « au lieu d'un tableau Markdown,
+// Générateur d'accessoires de la page Accessoires (/ressources/accessoires/) (demande du propriétaire, 2026-10-14 : « au lieu d'un tableau Markdown,
 // un générateur d'accessoire ») : fonctions pures, sans dépendance, partagées par le gabarit (components/accessoires/AccessoiresPage.astro) et le
 // script de la page (src/scripts/accessoires.mjs, le seul script de page qui importe ce module). Aucune règle n'est déduite : les dés sont ceux des
 // tables de l'onglet (le plus grand jet écrit d'une table donne ses faces : 1d4, 1d100, 1d6, 1d20), la qualité de gemme d'un niveau est la phrase des
@@ -62,8 +62,8 @@ export function bonusDeLAdresse(niveaux, cle, acquis) {
 
 /**
  * L'ancre gardée dans l'adresse : celle d'un onglet d'effets (#effets-…) ne l'est pas, la propriété de l'adresse dit l'onglet ouvert ; elle laisse sa
- * place à `ancreDuPanneau`, l'ancre de l'onglet de la page qui contient le générateur (« #accessoires » : l'onglet Accessoires de la page
- * « Équipement », qu'une adresse sans ancre n'ouvrirait pas).
+ * place à `ancreDuPanneau` (aucune sur la page Accessoires, une page à elle depuis le 2026-10-29 ; avant, « #accessoires », l'onglet de la page
+ * « Équipement » qu'une adresse sans ancre n'ouvrait pas).
  */
 export const ancreGardee = (ancre, ancreDuPanneau = '') => (String(ancre ?? '').startsWith('#effets-') ? String(ancreDuPanneau ?? '') : String(ancre ?? ''));
 

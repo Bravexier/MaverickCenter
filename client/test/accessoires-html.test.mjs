@@ -1,5 +1,5 @@
-// Onglet Accessoires de la page /ressources/equipement/ construite (dist/ ; avant, la page /ressources/accessoires/ : test/equipement-html.test.mjs pour
-// la page et ses onglets) : le générateur d'accessoire (demande du propriétaire) — pas de tableau Markdown, les règles en tête,
+// La page Accessoires construite, /ressources/accessoires/ (dist/ ; une page à elle depuis le 2026-10-29, « Cinq pages séparées » ; avant, l'onglet
+// Accessoires de la page « Équipement » : test/equipement-html.test.mjs pour le cadre des pages) : le générateur d'accessoire (demande du propriétaire) — pas de tableau Markdown, les règles en tête,
 // un tableau par étape avec une case au dé, un tableau d'effets par propriété dans son onglet, la compétence en une ligne par compétence (bonus d'acquis
 // au curseur), la monture, l'encart de l'accessoire créé ; les lignes d'effet et de monture dans la couleur de leur niveau (la classe du niveau, émise
 // par l'onglet) ; pas de tableau des gemmes,
@@ -16,11 +16,11 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { classeDeMagie, classeDeNiveau, cssDeLaPalette, cssDesFamilles } from '../src/lib/palette-css.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
-const fichier = join(dist, 'ressources', 'equipement', 'index.html');
+const fichier = join(dist, 'ressources', 'accessoires', 'index.html');
 const present = existsSync(fichier);
 const options = present ? {} : { skip: 'site non construit (npm run build)' };
 const html = present ? readFileSync(fichier, 'utf8') : '';
-// le panneau de l'onglet Accessoires, le dernier de la page (components/equipement/EquipementPage.astro)
+// le panneau de la page Accessoires (components/equipement/EquipementPage.astro)
 const main = html.slice(html.indexOf('<section class="equipement-panneau" id="accessoires"'), html.indexOf('</main>'));
 const a = present ? chargerAccessoires(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' })) : null;
 

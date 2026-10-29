@@ -1,7 +1,7 @@
 ---
 // Onglets (motif « tabs » de l'ARIA : flèches gauche et droite, Début, Fin), partagés par les spécialités d'une classe (classes/ClasseDons.astro), les
-// magies de la page du Potentiel Illimité (magie/SortsDuPotentiel.astro), le bestiaire, la page Équipement (equipement/EquipementPage.astro), avec les
-// sous-onglets de sa ceinture et les familles de ses consommables (ceinture/CeinturePanneau.astro : des onglets dans un panneau d'onglet, sur trois
+// magies de la page du Potentiel Illimité (magie/SortsDuPotentiel.astro), le bestiaire, les pages de l'équipement (equipement/EquipementPage.astro) : les
+// sous-onglets de la Ceinture et les familles de ses consommables (ceinture/CeinturePanneau.astro : des onglets dans un panneau d'onglet, sur deux
 // niveaux ; un lien vers un élément ouvre tous les niveaux qui le contiennent), les deux menus des familles d'armes (armes/ArmesPage.astro) et les tableaux d'effets des accessoires (accessoires/AccessoiresPage.astro). À poser une fois par page, avant les onglets : un seul script pour toute la page, que le build écrit dans la page
 // (la version portable de tools/build-artifact.mjs refuse un script qui en importe un autre).
 //
@@ -20,8 +20,8 @@
 // les prend, sans écouter deux fois ceux qu'il avait, et garde l'onglet ouvert. Un script de page
 // ouvre l'onglet d'un panneau (ou d'un élément qu'il contient) par l'évènement « onglets:ouvrir » envoyé sur cet élément (src/scripts/accessoires.mjs :
 // la propriété choisie), sans toucher à l'adresse ni faire défiler la page ; avec `detail.dans` (un élément), seuls les groupes dont les panneaux sont
-// dans cet élément s'ouvrent, pas ceux qui le contiennent (src/scripts/armes.mjs : l'onglet de la famille d'une arme, sans ouvrir l'onglet Armes de la
-// page quand l'adresse en montre un autre).
+// dans cet élément s'ouvrent, pas ceux qui le contiennent (src/scripts/armes.mjs : l'onglet de la famille d'une arme, sans ouvrir les niveaux
+// au-dessus).
 ---
 
 <script is:inline>

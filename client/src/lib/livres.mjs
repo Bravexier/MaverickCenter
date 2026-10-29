@@ -20,7 +20,8 @@
 // Pages fusionnées (2026-10-18) : « Le jeu de rôle, comment ça marche ? » dans Bienvenue, les six étapes de la création dans Créer son personnage
 // (PAGES_ABSORBEES) ; elles ne sont plus dans la base, leurs adresses mènent à la page qui les absorbe (page 404 : lib/metiers.mjs#renvoisDuGuide).
 // Rien n'est caché ni filtré (réponse du propriétaire du 2026-10-18 : « Tu fait comme si de rien n'était pour l'instant. On verra les caches. », sic) : à
-// terme, les non-membres ne verront que les deux premières rubriques du menu (lib/nav.mjs).
+// terme, les non-membres ne verront que les deux premières rubriques du menu, « Règles et Personnage » (réponse du propriétaire du 2026-10-29 ;
+// lib/nav.mjs).
 // Seuls des libellés de navigation sont écrits ici (titres de rubrique, de groupe, libellés des liens) : les textes des pages sont dans la base. Une
 // exception : la présentation du lien Discord de l'accueil (LIENS_ET_RENCONTRE.liens[].presentation), un texte écrit ici, donc ni modifiable sur le site
 // de dev (un commit le change), ni cherché par la recherche, et emporté par la chaîne de l'édition du navigateur avec le reste du plan.
@@ -178,7 +179,7 @@ export const LIENS_ET_RENCONTRE = gele({
   }),
 });
 
-/** Les quatre cartes « Par où commencer ? » de l'accueil, et les entrées du menu Découvrir qui mènent à ces pages, dans cet ordre : les pages de Découvrir. */
+/** Les quatre cartes « Par où commencer ? » de l'accueil, et les entrées de la rubrique Règles du menu qui mènent à ces pages, dans cet ordre : les pages de Découvrir. */
 export const PAR_OU_COMMENCER = Object.freeze(DECOUVRIR.groupes.flatMap((g) => g.pages));
 
 /** Les pages Astro écrites à côté des pages du plan (regles/artisanat, regles/avancees/) : aucune page de Découvrir ni des Bases ne prend ce nom. */

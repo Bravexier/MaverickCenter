@@ -1,4 +1,4 @@
-// Onglet Armes de la page /ressources/equipement/ (avant, la page /ressources/armes/ ; demande du propriétaire, 2026-10-13) : chargée depuis les
+// Page Armes, /ressources/armes/ (du 2026-10-16 au 2026-10-29, l'onglet Armes de la page /ressources/equipement/ ; demande du propriétaire, 2026-10-13) : chargée depuis les
 // tables de la base, jamais depuis son Markdown (qui ne sert plus qu'à la recherche et aux [[liens]] : lib/corps-armes.mjs). Un tableau par famille
 // d'armes (bandeau de l'onglet), sans les armes de monstres (« Ne pas tenir compte des armes de monstres » : la famille sans maîtrise, décision
 // R45) ; à côté, la fiche de l'arme choisie, les matériaux et les améliorations. Les armes élémentaires (décision R167, migration 0081) sont listées

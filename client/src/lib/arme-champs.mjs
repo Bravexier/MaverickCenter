@@ -1,6 +1,6 @@
 // Champs de l'onglet « Armes » du classeur « Ressources et Craft » et ce que la base en tire (tables arme, arme_degats, arme_prerequis,
 // materiau_arme, amelioration_equipement, amelioration_total) : les découpages de l'importeur, réécrits ici pour l'édition depuis le site de dev
-// (client/serveur/edition.mjs) et pour l'onglet Armes de /ressources/equipement/ (demande du propriétaire : un tableau par famille, les colonnes
+// (client/serveur/edition.mjs) et pour la page Armes (/ressources/armes/) (demande du propriétaire : un tableau par famille, les colonnes
 // Dégâts, Type de dégâts, Solidité, Effets supplémentaires et Origine tirées de l'effet). Un test les rejoue sur toutes les armes, tous les
 // matériaux et toutes les améliorations d'arme de la base : ils doivent redonner exactement les colonnes typées et les tables de détail en place
 // (test/arme-champs.test.mjs).

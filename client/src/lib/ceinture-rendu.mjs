@@ -1,4 +1,4 @@
-// Rendu HTML des lignes de l'onglet « Ceinture » de la page /ressources/equipement/ (components/ceinture/CeinturePanneau.astro ; données :
+// Rendu HTML des lignes de la page Ceinture (/ressources/objets-a-la-ceinture/) (components/ceinture/CeinturePanneau.astro ; données :
 // lib/ceinture-db.mjs) : les potions du sous-onglet Consommables, un tableau par page (« Fiole rouge » et ses paliers ; demande du propriétaire,
 // 2026-10-17 : « Les tableaux des fioles sont trop larrges Mettre de coté 2 ou 3 tableaux serai plus lisible »), et les carquois et sacs du
 // sous-onglet Carquois. Plus de recherche (demande du propriétaire, 2026-10-16 : des sous-onglets « plutôt que la recherche actuel ») : aucune ligne

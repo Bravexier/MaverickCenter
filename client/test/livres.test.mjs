@@ -299,9 +299,11 @@ test('nav.mjs et livres.mjs n’importent rien (le script de la page 404 importe
     const source = readFileSync(new URL(f, import.meta.url), 'utf8');
     assert.doesNotMatch(source, /^\s*(?:import|export\s+[^;]*\sfrom)\s/m, f);
   }
-  // la page 404 écrit les renvois au build et les passe à nouvelleAdresse
+  // la page 404 écrit les renvois au build (ceux du guide, et ceux des pages éclatées : lib/equipement.mjs#RENVOIS_DES_PAGES_ECLATEES) et les passe à
+  // adresseDeRenvoi (nav.mjs : nouvelleAdresse, ou adresseEclatee)
   const page404 = readFileSync(new URL('../src/pages/404.astro', import.meta.url), 'utf8');
   assert.match(page404, /data-renvois=\{JSON\.stringify\(renvois\)\}/);
-  assert.match(page404, /nouvelleAdresse\(location\.pathname, base, renvois\)/);
+  assert.match(page404, /data-eclatees=\{JSON\.stringify\(RENVOIS_DES_PAGES_ECLATEES\)\}/);
+  assert.match(page404, /adresseDeRenvoi\(location\.pathname, \{\s*base, renvois: lire\(introuvable\.dataset\.renvois\), eclatees: lire\(introuvable\.dataset\.eclatees\)/);
   assert.deepEqual([...page404.slice(page404.indexOf('<script>')).matchAll(/^\s*import .* from '([^']+)';$/gm)].map((m) => m[1]), ['../lib/nav.mjs']);
 });

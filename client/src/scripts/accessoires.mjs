@@ -1,4 +1,4 @@
-// Onglet Accessoires de la page /ressources/equipement/ (components/accessoires/AccessoiresPage.astro) — demande du propriétaire : un générateur
+// Page Accessoires, /ressources/accessoires/ (components/accessoires/AccessoiresPage.astro ; l'onglet Accessoires de la page « Équipement » jusqu'au 2026-10-29) — demande du propriétaire : un générateur
 // d'accessoire. Cliquer sur une ligne la choisit ; le dé d'un tableau en tire une au hasard (le tableau des compétences : 1d6 pour la ligne, puis
 // 1d20 pour son bonus d'acquis) ; « Tirer un accessoire » suit les étapes de l'onglet. Les tableaux d'effets sont dans des onglets
 // (components/Onglets.astro) : choisir une propriété ouvre le sien. Une ligne du tableau des compétences a son bonus d'acquis au curseur, au dé ou saisi (demande du propriétaire, 2026-10-16), qui en
@@ -426,10 +426,9 @@ if (racine) {
       maudit: etat.maudit,
       detruit: etat.detruit,
     });
-    // l'onglet d'effets ouvert suit la propriété de l'adresse : l'ancre qu'y pose components/Onglets.astro (#effets-…) n'est pas gardée, celle de
-    // l'onglet Accessoires de la page « Équipement » la remplace (sans elle, la page rouvrirait son premier onglet)
-    const panneau = racine.closest('.equipement-panneau[id]');
-    const ancre = ancreGardee(location.hash, panneau ? `#${panneau.id}` : '');
+    // l'onglet d'effets ouvert suit la propriété de l'adresse : l'ancre qu'y pose components/Onglets.astro (#effets-…) n'est pas gardée (la page
+    // Accessoires, une page à elle depuis le 2026-10-29, n'a plus d'onglet de page à garder)
+    const ancre = ancreGardee(location.hash);
     if (s !== location.search || ancre !== location.hash) history.replaceState(history.state, '', `${location.pathname}${s}${ancre}`);
   }
 

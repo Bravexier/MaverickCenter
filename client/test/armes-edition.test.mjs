@@ -27,7 +27,7 @@ const [presente, nouvelle] = famille.armes;
 let numero = 0;
 
 // les modèles d'une famille créée : ceux de la page construite (components/armes/ArmesPage.astro), sinon réduits aux jetons de MODELE_DE_FAMILLE
-const construite = fileURLToPath(new URL('../dist/ressources/equipement/index.html', import.meta.url));
+const construite = fileURLToPath(new URL('../dist/ressources/armes/index.html', import.meta.url));
 const MODELES_CONSTRUITS = existsSync(construite)
   ? Object.fromEntries([...readFileSync(construite, 'utf8').matchAll(/<template data-armes-modele="(onglet|famille)">([\s\S]*?)<\/template>/g)].map((m) => [m[1], m[2]]))
   : null;

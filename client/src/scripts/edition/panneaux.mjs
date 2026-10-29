@@ -1,7 +1,8 @@
 // Extension de l'éditeur : les panneaux de règles (components/equipement/PanneauDeRegles.astro, migration 0056 ; demande du propriétaire, 2026-10-16 :
 // « Il faudrait que ce champ texte soit modifiable sur son titre, et son contenu. Son contenu peut d'ailleurs inclure des tuiles génériques (toujours
-// insérables / modifiables en mode édition) »). Service : serveur/edition-panneaux.mjs. Active dès qu'un panneau est dans la page (aujourd'hui les cinq de
-// /ressources/equipement/, à côté des extensions armes.mjs et armures.mjs, qui ne les touchent pas).
+// insérables / modifiables en mode édition) »). Service : serveur/edition-panneaux.mjs. Active dès qu'un panneau est dans la page (aujourd'hui sur les cinq
+// pages de l'équipement, /ressources/armes/…, à côté des extensions armes.mjs et armures.mjs, qui ne les touchent pas ; pas le texte de la page
+// « Pièces élémentaires » des pages Armes et Armures, en lecture : components/equipement/PiecesElementaires.astro).
 //   - en mode modification : chaque panneau s'ouvre et reste ouvert (un clic, une espace ou Entrée dans son `<summary>` ne le replie pas : son titre y est
 //     un champ commun, `data-ed`) ; le texte de chaque bloc et le contenu de chaque tuile se modifient en place (texte-en-place.mjs, la barre d'outils de
 //     la chronologie : Texte, Mise en page, Liens, Mots-clés ; HTML → Markdown par lib/markdown-edition.mjs#versMarkdown), le titre d'une tuile est un champ commun ;
@@ -27,7 +28,7 @@ import { ordresApresDeplacement } from '../../lib/panneaux-regles-db.mjs';
 import { empreinteDuTexte, htmlDuBloc } from '../../lib/panneaux-regles-rendu.mjs';
 import { editeurEnPlace, outilsDesMotsCles, pageChoisie, pagesDuWiki } from './texte-en-place.mjs';
 
-/** Ce que le build fait au HTML d'un bloc, par panneau (src/pages/ressources/equipement.astro), refait ici pour un bloc rendu dans le navigateur. */
+/** Ce que le build fait au HTML d'un bloc, par panneau (lib/equipement-rendu.ts, src/pages/ressources/armes.astro…), refait ici pour un bloc rendu dans le navigateur. */
 const RETOUCHES = { armes: avecPhraseDesArmesDeDepart };
 
 const etat = {

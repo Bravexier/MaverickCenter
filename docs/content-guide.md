@@ -575,48 +575,76 @@ ses descriptions ont été **copiées** des pages (registre `tools/chronologie/e
 sur le site de dev, avec la date, le titre, le lien de chaque description et les catégories (plusieurs par événement ; sans catégorie, « Sans catégorie
 (à trier) », sur le site de dev seulement) ; la frise se filtre par catégorie (une à la fois).
 Règles de sélection et questions en attente : [`chronologie.md`](chronologie.md).
-## Équipement (`/ressources/equipement/`) : armes, armures, boucliers, ceinture et accessoires
+## Équipement (rubrique du menu) : cinq pages, armes, armures, boucliers, ceinture et accessoires
 
-Demandes du propriétaire (2026-10-16) : « J'aimerai fusionner "Armes" et "Armures" dans un seule onglet : "Equipement" A l'instar de "Armure et bouclier"
-les "Armes" seront dans un onglet à part. Il faudrait également un 4em onglet pour les bâtons magiques du coup qui auront mieux leur place ici » ;
-« J'aimerai rajouter un 5 onglet pour y déplacer les accessoires » ; puis « revoir intégralement la page des objets à la ceinture, renommer l'onglet
-en "Ceinture" et le mettre dans les onglets de équipement » (« Ceinture » ci-dessous). Au menu, la rubrique **Équipement** (demande du propriétaire du 2026-10-29) a une entrée par onglet (Armes, Armures, Boucliers, Ceinture,
-Accessoires : l'ancre de l'onglet), puis Artisanat et Livres & Parchemins ; une page sans page du wiki (`src/pages/ressources/equipement.astro`, `components/equipement/EquipementPage.astro`,
-`styles/equipement/equipement.css`), rendue depuis la base, en **cinq onglets** (`components/Onglets.astro`, posé une fois ; sans JavaScript, les panneaux
-se suivent, chacun sous son titre), dans l'ordre de `lib/equipement.mjs#ONGLETS_DE_L_EQUIPEMENT` :
+Demandes du propriétaire du 2026-10-29 : « Entre le nouvellement créé "Personnage" et "Espace Joueur" il faudra un nouveau menu : "Equipement" Dedans tu
+y déplacera les pages "Armes, Armures, Bouclier, Ceinture, Accessoire" en les sortant du sous-menu "Equipement" le remettant à nouveau dans un sous-menu
+dédié. Il faudra aussi y déplacer les sous-menu "Artisanat" et "Livres & parchemins". » ; « Le sous-menu "pièce élémentaire" et sa page associé seront
+supprimées. » ; ses réponses : « Cinq pages séparées », libellés « Comme les onglets (pluriel) », et pour les Pièces élémentaires « Fusionner dans Armes
+et Armures ». Du 2026-10-16 au 2026-10-29, ces cinq pages étaient les onglets d'une seule page « Équipement », `/ressources/equipement/` (« J'aimerai
+fusionner "Armes" et "Armures" dans un seule onglet : "Equipement" » ; « J'aimerai rajouter un 5 onglet pour y déplacer les accessoires » ; puis
+« renommer l'onglet en "Ceinture" et le mettre dans les onglets de équipement »).
 
-| Onglet | Ancre | Page du wiki servie | Contenu |
-| --- | --- | --- | --- |
-| Armes | `#armes` (ouvert au départ) | `ressources/armes` | « Armes » ci-dessous (`components/armes/ArmesPage.astro`) |
-| Armures | `#armures` | `ressources/armures` | « Armures et boucliers » ci-dessous (`components/armures/ArmuresPage.astro`) |
-| Boucliers | `#boucliers` | `ressources/bouclier` | idem |
-| Ceinture | `#ceinture` | aucune (l'ancienne page `/ressources/objets-a-la-ceinture/`, sans page du wiki) ; son sous-onglet Bâtons magiques (`#batons-magiques`) sert `ressources/baton-magique` | « Ceinture » ci-dessous (`components/ceinture/CeinturePanneau.astro`) : trois sous-onglets, Consommables, Carquois, Bâtons magiques (celui-ci avec son panneau de règles) |
-| Accessoires | `#accessoires` | `ressources/accessoires` | « Accessoires » ci-dessous (`components/accessoires/AccessoiresPage.astro`) |
+Au menu, la rubrique **Équipement** a une entrée par page (libellé et adresse de `lib/equipement.mjs#PAGES_DE_L_EQUIPEMENT`), puis Artisanat, Livres &
+Parchemins et **Autres** : la liste de toutes les pages de ressources, `/ressources/` (`pages/[type]/index.astro`). Réponse du propriétaire du 2026-10-29
+sur les pages `/ressources/…` hors menu : « Famillier devrai être dans Personnage, Le reste dans equipement (sous menu-autres pour commencer) » (sic) :
+Familiers (`/ressources/familiers/`) est la dernière entrée de la rubrique Personnage et ouvre le Personnage ; toute autre page `/ressources/…` ouvre
+l'Équipement (`lib/nav.mjs`, plus long début d'adresse). Chaque page est rendue depuis la base, sans page du wiki, dans le cadre commun
+`components/equipement/EquipementPage.astro` (titre `h1#titre-<id>`, `components/Onglets.astro` posé une fois, `styles/equipement/equipement.css`) ;
+ses règles sont rendues par `lib/equipement-rendu.ts` :
 
-- Les cinq pages du wiki servies (`lib/equipement.mjs#PAGES_SERVIES_PAR_L_EQUIPEMENT` : quatre onglets et le sous-onglet des bâtons) **ne sont plus
-  construites** (`lib/metiers.mjs#pageSansAdresse`) : elles restent dans la base (recherche, `[[liens]]`, contexte des liens de leur panneau de règles) ;
-  leurs liens mènent à leur onglet (`adresseDePage`), leurs anciennes adresses aussi, par la page 404 (`lib/nav.mjs#PAGES_RENOMMEES`, la requête gardée :
-  `/ressources/armes/?arme=…` → `/ressources/equipement/?arme=…#armes`), comme celle de l'ancienne page « Objets à la ceinture » (→ `#ceinture`). Les liens écrits à la main
-  dans les chapitres du guide mènent aux onglets depuis la migration `0053-liens-page-equipement` (la version portable n'a pas de page 404).
-- Un lien vers un élément d'un panneau (`#famille-bombes`, `#bouclier-ecu-fer`, `#effets-…`, `#batons-magiques`, `#objets-huile`) ouvre tous les niveaux
-  qui le contiennent (son onglet, son sous-onglet, la famille des consommables ou celle des armes). Chaque onglet garde son script
-  (`src/scripts/armes.mjs`, `armures.mjs`, `batons.mjs`, `accessoires.mjs`) et ses paramètres d'adresse, **sans aucun en commun** (celui des bâtons n'en a pas) (l'amélioration d'une armure est
-  `amelioration-armure`, celle d'une arme `amelioration`) : une même adresse garde l'état de plusieurs onglets. Échap ne ferme l'arme ouverte que si
-  l'onglet Armes est affiché.
-- Identifiants uniques sur toute la page : les matériaux et les améliorations des armes sont `#materiaux-armes`, `#ameliorations-arme`, celles des
+| Page (menu) | Adresse (identifiant figé : celle d'avant la page « Équipement ») | Fichier | Page du wiki servie | Contenu |
+| --- | --- | --- | --- | --- |
+| Armes | `/ressources/armes/` | `src/pages/ressources/armes.astro` | `ressources/armes` | « Armes » ci-dessous (`components/armes/ArmesPage.astro`), puis le texte des Pièces élémentaires qui touche les armes |
+| Armures | `/ressources/armures/` | `src/pages/ressources/armures.astro` | `ressources/armures` | « Armures et boucliers » ci-dessous (`components/armures/ArmuresPage.astro`, vue `armures`), puis le texte des Pièces élémentaires qui touche les armures et les vêtements |
+| Boucliers | `/ressources/bouclier/` | `src/pages/ressources/bouclier.astro` | `ressources/bouclier` | idem, vue `boucliers` |
+| Ceinture | `/ressources/objets-a-la-ceinture/` | `src/pages/ressources/objets-a-la-ceinture.astro` | aucune ; son sous-onglet Bâtons magiques (`#batons-magiques`) sert `ressources/baton-magique` | « Ceinture » ci-dessous (`components/ceinture/CeinturePanneau.astro`) : trois sous-onglets, Consommables, Carquois, Bâtons magiques |
+| Accessoires | `/ressources/accessoires/` | `src/pages/ressources/accessoires.astro` | `ressources/accessoires` | « Accessoires » ci-dessous (`components/accessoires/AccessoiresPage.astro`) |
+
+- Le contenu de chaque page est dans un `section.equipement-panneau#<id>` (`armes`, `armures`, `boucliers`, `ceinture`, `accessoires`), l'id de son
+  panneau de règles ; plus de barre d'onglets de page.
+- Les pages du wiki servies (`lib/equipement.mjs#PAGES_SERVIES_PAR_L_EQUIPEMENT`) et la page « Pièces élémentaires » **ne sont pas construites par la
+  route du wiki** (`lib/metiers.mjs#pageSansAdresse`) : elles restent dans la base (recherche, `[[liens]]`, contexte des liens de leur panneau de règles ;
+  les armes et armures élémentaires citent « Pièces élémentaires ») ; leurs liens mènent à la page qui les sert (`adresseDePage`,
+  `lib/equipement.mjs#ADRESSES_DES_PAGES_SERVIES` : « Bâton magique » → `/ressources/objets-a-la-ceinture/#batons-magiques`, « Pièces élémentaires » →
+  `/ressources/armes/#pieces-elementaires`).
+- **Anciennes adresses** (page 404, la requête gardée) : `/ressources/equipement/` mène à la page de son ancre (un ancien onglet, `#armes`…, mène à sa
+  page sans ancre ; un élément, `#famille-bombes`, `#bouclier-ecu-fer`, `#batons-magiques`, `#objets-huile`, `#effets-…`, à la page qui le contient, l'ancre
+  gardée), sinon de son premier paramètre (`?arme=`, `?forme=`, `?materiau1=`, `?emplacement=`…), sinon Armes ; `/ressources/pieces-elementaires/` mène
+  à la section « Pièces élémentaires » de la page Armes (ses anciennes ancres : à la famille d'armes, aux améliorations, ou à la section de la page
+  Armures). Renvois : `lib/equipement.mjs#RENVOIS_DES_PAGES_ECLATEES`, passés au script de la page 404 (`data-eclatees`), lus par
+  `lib/nav.mjs#adresseEclatee` / `adresseDeRenvoi` ; `/ressources/baton-magique/` par `lib/nav.mjs#PAGES_RENOMMEES`.
+- **Liens écrits à la main** dans les pages du guide vers l'ancienne page (« [Armures](/ressources/equipement/#armures) », migration
+  `0053-liens-page-equipement`) : le texte de la base n'est pas réécrit ; au rendu, ils mènent à la nouvelle page (`lib/guide-rendu.ts`,
+  `lib/nav.mjs#cheminVersUnePageEclatee`), l'adresse écrite gardée en `data-lien-ecrit` (relue par l'éditeur du guide). Pas besoin de page 404 : la
+  version portable les suit aussi.
+- Chaque page garde son script (`src/scripts/armes.mjs`, `armures.mjs` pour Armures et Boucliers, `batons.mjs`, `accessoires.mjs`) et ses paramètres
+  d'adresse, **sans aucun en commun** (celui des bâtons n'en a pas ; l'amélioration d'une armure est `amelioration-armure`, celle d'une arme
+  `amelioration`) : c'est ce qui permet à l'ancienne adresse de choisir sa page par son paramètre. Un lien vers un élément d'un panneau ouvre tous les
+  niveaux d'onglets qui le contiennent (sous-onglet de la Ceinture, famille des consommables ou des armes).
+- Identifiants uniques sur chaque page : les matériaux et les améliorations des armes sont `#materiaux-armes`, `#ameliorations-arme`, celles des
   armures et des boucliers `#ameliorations-armure`, `#ameliorations-bouclier`. Le tableau MATÉRIAUX des armures et des boucliers (`#materiaux-armures`,
   lignes `#matiere-<clé>`) n'existe plus : il est mêlé à celui de la page « Composants » (voir « Armures et boucliers »).
-- Mode modification (site de dev) : les onglets Armes, Armures et Boucliers comme avant (`src/scripts/edition/armes.mjs`, `armures.mjs`, chacune
-  active dès que son bloc est dans la page) ; les cinq panneaux de règles (`src/scripts/edition/panneaux.mjs`, ci-dessous) ; les tableaux des
-  consommables de la ceinture (« Ceinture » plus bas : les cases saisies des potions, par l'éditeur commun) ; ni les carquois ni les bâtons de la
-  ceinture, ni les tableaux des accessoires.
-- Tests : `test/equipement.test.mjs` (onglets et sous-onglets, adresses, menu, chargement, prix et rendu des bâtons), `equipement-html.test.mjs` (site
-  construit : onglets et panneaux dans l'ordre, identifiants uniques, panneaux de règles, bâtons, anciennes pages absentes et plus aucun lien vers elles,
-  scripts), `batons-script.test.mjs` (le curseur des bâtons, dans un faux navigateur) ; le contenu de chaque onglet : `armes-html`, `armures-html`,
-  `ceinture-html`, `accessoires-html.test.mjs` ; les panneaux de règles : `panneaux-regles.test.mjs` (lecture, ordre, rendu, copie de l'import),
+- **Pièces élémentaires** (« Fusionner dans Armes et Armures ») : les tableaux de la page sont déjà rendus depuis les tables (armes élémentaires dans
+  chaque tableau des armes et leurs améliorations, R167 ; armures élémentaires, leur choix et leurs améliorations sur la page Armures, R165). Son texte,
+  avant ses tableaux, est lu tel qu'écrit dans la base (`page.corps_md`, jamais réécrit) par `lib/pieces-elementaires.mjs#texteDesPiecesElementaires` :
+  la partie « ▸ Armes » va à la page Armes, « ▸ Armures » et « ▸ Vêtements » à la page Armures, le reste (la pièce, sa solidité et son amélioration,
+  son obtention, sa valeur) aux deux pages, en attendant la réponse du propriétaire. Affiché par `components/equipement/PiecesElementaires.astro` : un
+  `details.preg#pieces-elementaires` replié sous le panneau de règles, titré par le titre de la page ; en lecture seule sur le site de dev (aucun
+  `data-panneau-regles`). Une adresse qui vise le bloc, ou un élément qu'il contient, l'ouvre : au chargement, quand l'ancre change, et au clic d'un
+  lien vers l'ancre que l'adresse a déjà, qui ne change pas l'ancre (`src/scripts/pieces-elementaires.mjs`). Une partie « ▸ … » introuvable : tout le
+  texte va aux deux pages, et le build le dit.
+- Mode modification (site de dev) : les pages Armes, Armures et Boucliers (`src/scripts/edition/armes.mjs`, `armures.mjs`), les panneaux de règles
+  (`src/scripts/edition/panneaux.mjs`, ci-dessous), les consommables de la Ceinture (« Ceinture » plus bas : les cases saisies des potions, par
+  l'éditeur commun) ; ni les carquois ni les bâtons de la ceinture, ni les tableaux des accessoires.
+- Tests : `test/equipement.test.mjs` (pages et sous-onglets, adresses, renvois, menu, texte des Pièces élémentaires, prix et rendu des bâtons),
+  `equipement-html.test.mjs` (site construit : chaque page à son adresse, identifiants uniques et renvois de chacun, panneaux de règles, Pièces
+  élémentaires sur Armes et Armures, anciennes pages absentes et plus aucun lien vers elles, scripts), `nav.test.mjs` (renvois de la page 404),
+  `batons-script.test.mjs` (le curseur des bâtons, dans un faux navigateur) ; le contenu de chaque page : `armes-html`, `armures-html`, `ceinture-html`,
+  `accessoires-html.test.mjs` ; les panneaux de règles : `panneaux-regles.test.mjs` (lecture, ordre, rendu, copie de l'import),
   `serveur-edition-panneaux.test.mjs` (le service).
 
-### Panneaux de règles (en tête des onglets et du sous-onglet Bâtons magiques)
+### Panneaux de règles (en tête des pages de l'équipement et du sous-onglet Bâtons magiques)
 
 Demande du propriétaire (2026-10-16) : « Il faudrait refaçonner tous les encarts de début des onglets des équipements. La première ligne serait à
 supprimer et intégrer dans le panneau déroulant. Il faudrait que ce champ texte soit modifiable sur son titre, et son contenu. Son contenu peut d'ailleurs
@@ -625,15 +653,15 @@ Sinon une seule. Dans le cas présent pour les armes les blocs modulaires à sé
 Recharge très longue, Mordhau, Dague et Arme de jet. »
 
 - **Données** (migration `0056-glossaire-et-panneaux-de-regles`) : `panneau_regles` (un par page du wiki que la page sert,
-  `lib/equipement.mjs#PAGES_SERVIES_PAR_L_EQUIPEMENT` ; son `id` est l'ancre de l'onglet ou du sous-onglet de cette page : `armes`, `armures`,
-  `boucliers`, `accessoires`, et `batons-magiques`, le sous-onglet de l'onglet Ceinture ; son titre ; sa page, `page_id`, contexte des `[[liens]]`) et
+  `lib/equipement.mjs#PAGES_SERVIES_PAR_L_EQUIPEMENT` ; son `id` est l'id de la page de l'équipement ou du sous-onglet : `armes`, `armures`,
+  `boucliers`, `accessoires`, et `batons-magiques`, le sous-onglet de la page Ceinture ; son titre ; sa page, `page_id`, contexte des `[[liens]]`) et
   `panneau_regles_bloc` (ses blocs : `rang`, la clé, jamais redonné ; `ordre`, la place de lecture, non unique, à égalité le rang ; `tuile` 0 ou 1 ; le titre facultatif d'une tuile,
   jamais d'un bloc de texte ; le texte, du Markdown des pages). La migration a **copié** le texte que l'onglet affichait (tiré du corps de la page) ;
   depuis, le site de dev en est la source, et le corps de la page (`page.corps_md`) **n'est plus que la trace de l'import** de ces règles : il n'est plus
   affiché ni modifié (la recherche le lit encore, après le texte des panneaux, voir plus bas). Lecture : `lib/panneaux-regles-db.mjs` (`chargerPanneau`,
   `ordonnerBlocs`) ; `test/panneaux-regles.test.mjs` compare les panneaux aux pages servies (un panneau par page, son id = l'ancre :
   `PAGES_SERVIES_PAR_L_EQUIPEMENT`) et vérifie que chaque bloc de l'import se lit mot pour mot dans le corps de sa page.
-- **L'onglet Ceinture n'a pas de panneau de règles** (il ne sert pas de page du wiki) : il garde son encart, le chapeau et les règles de la ceinture
+- **La page Ceinture n'a pas de panneau de règles** (il ne sert pas de page du wiki) : il garde son encart, le chapeau et les règles de la ceinture
   repliées (« Ceinture » plus bas), dont le texte est celui du guide, modifiable sur la page du guide.
 - **Affichage** (`components/equipement/PanneauDeRegles.astro`, générique ; HTML des blocs : `lib/panneaux-regles-rendu.mjs`, le même au build et sur le
   site de dev ; CSS `.preg` dans `styles/equipement/equipement.css`) : plus de phrase au-dessus du panneau (le résumé de la page, qui répétait la
@@ -642,7 +670,7 @@ Recharge très longue, Mordhau, Dague et Arme de jet. »
   une capacité du bestiaire) avec son titre s'il en a un. **Deux colonnes** séparées d'un filet à partir de 64rem, une seule en dessous ; une tuile, un
   paragraphe ou une liste ne se coupe jamais entre deux colonnes, et la fin d'un bloc de texte suivi d'une tuile reste avec elle (« CAS PARTICULIERS : »
   n'est jamais seul en bas d'une colonne ; `break-after: avoid`, que Firefox n'applique pas aux colonnes). Le Markdown de chaque bloc est rendu au build par `lib/guide-rendu.ts` (`[[liens]]`,
-  couleurs, monnaies en icônes) avec la page du panneau comme contexte (`src/pages/ressources/equipement.astro`). Dans celui des armes, « Les armes en
+  couleurs, monnaies en icônes) avec la page du panneau comme contexte (`lib/equipement-rendu.ts#panneauRendu`). Dans celui des armes, « Les armes en
   bleu… » prend le bleu des armes de départ (`lib/armes-rendu.mjs#avecPhraseDesArmesDeDepart`, sur le HTML du bloc qui la contient).
 - **Panneaux à l'import** : Armes — l'introduction (fabrication, recyclage, bonus du matériau), trois tuiles **Recharge longue**, **Recharge très
   longue** et **Mordhau** (sans titre : chacune n'est que la balise du mot-clé en mode complet, « `{{recharge-longue:}}` », la définition vivant dans le
@@ -659,10 +687,10 @@ Recharge très longue, Mordhau, Dague et Arme de jet. »
 - **Recherche** : le titre et les blocs des panneaux d'une page sont en tête du texte de son entrée (`lib/recherche-index.ts`) ; le corps de la page
   (la trace de l'import) suit.
 
-## Armes (onglet Armes de `/ressources/equipement/`) : deux menus à onglets, un tableau par famille, la fiche de l'arme forgée
+## Armes (page `/ressources/armes/`) : deux menus à onglets, un tableau par famille, la fiche de l'arme forgée
 
 Demande du propriétaire (2026-10-13) : « Pas de tableau markdown, inspire-toi des sorts et fais un tableau par type d'arme. » La page est rendue depuis
-les tables (`lib/armes-db.mjs`, `components/armes/`), jamais depuis son Markdown ; ses règles sont le panneau de règles de l'onglet (« Panneaux de
+les tables (`lib/armes-db.mjs`, `components/armes/`), jamais depuis son Markdown ; ses règles sont le panneau de règles de la page (« Panneaux de
 règles » plus haut : leur texte a été copié de l'introduction et de « Comment déterminer le prix de votre arme ? ») ; le Markdown de la page (tableaux)
 ne sert qu'à la recherche et aux `[[liens]]`, et suit les tables à chaque modification (`lib/corps-armes.mjs`).
 
@@ -681,9 +709,9 @@ ne sert qu'à la recherche et aux `[[liens]]`, et suit les tables à chaque modi
   propriétaire, 2026-10-23 : « Juste l'indiquer suffit (en tooltip de la catégorie) » ; la note reste écrite sous le titre du tableau, et ces paliers
   ne se modifient pas sur le site) ; le premier de chaque menu ouvert au départ, un seul ouvert
   par menu (`components/Onglets.astro`, motif « tabs » : flèches, Début, Fin). Le panneau d'une famille garde l'id `famille-<id>` : un lien ou une
-  adresse `#famille-…` (celui de la Ceinture vers les bombes, une adresse partagée) ouvre l'onglet Armes de la page, puis l'onglet de la famille ;
+  adresse `#famille-…` (celui de la Ceinture vers les bombes, `/ressources/armes/#famille-bombes`) ouvre l'onglet de la famille ;
   **l'onglet choisi est écrit dans l'adresse** (demande du propriétaire, 2026-10-23 : « On peut retenir l'onglet ouvert #epee par exemple » ; forme
-  choisie : « #famille-epees ») : recharger la page ou partager l'adresse rouvre la famille ; `#boucliers` reste l'onglet Boucliers ; aucun paramètre
+  choisie : « #famille-epees ») : recharger la page ou partager l'adresse rouvre la famille ; aucun paramètre
   pour l'onglet. Un onglet de famille s'ouvre aussi par un lien de la page vers une de ses armes (`#arme-…`), par `?arme=`, ou en ouvrant une arme. Sur un écran
   étroit, la barre passe à la ligne et n'y garde que le nom et le dé. Plus de « Tout déplier » ni de « Tout replier ». Sans JavaScript, les tableaux
   se suivent, chacun sous son titre (nom, dé, compte), les onglets ne sont que des liens.
@@ -787,23 +815,25 @@ ne sert qu'à la recherche et aux `[[liens]]`, et suit les tables à chaque modi
   `armes-edition.test.mjs` (en lecture, arme créée avant elles).
 
 
-## Armures et boucliers (onglets Armures et Boucliers de `/ressources/equipement/`) : deux matériaux pour une armure, une forme et une matière pour un bouclier
+## Armures et boucliers (pages `/ressources/armures/` et `/ressources/bouclier/`) : deux matériaux pour une armure, une forme et une matière pour un bouclier
 
 Demandes du propriétaire (2026-10-15) : « Je souhaite faire la refonte de l'onglet armure, de la même manière que les Armes. […] Les deux seront dans la
 page » ; « les autres armures étant composées de deux matériaux il faut donc deux tables des matériaux à sélectionner pour avoir l'armure ainsi créée. Une
 liste plus classique est disponible également. Il faut aussi le tableau d'amélioration » ; « Il faut aussi inclure ce fonctionnement pour les
 boucliers » ; « Pour les bouclier c'est forme + matière ». La page est rendue depuis les tables (`lib/armures-db.mjs`, `components/armures/ArmuresPage.astro`,
 `styles/armures/armures.css`), jamais depuis les Markdown des pages « Armures » et « Bouclier » ; leurs règles sont le panneau de règles de chaque
-onglet (« Panneaux de règles » plus haut : le texte avant les tableaux, copié par la migration 0056) ; le Markdown ne sert qu'à la recherche et aux
+page (« Panneaux de règles » plus haut : le texte avant les tableaux, copié par la migration 0056) ; le Markdown ne sert qu'à la recherche et aux
 `[[liens]]`, et suit les tables à chaque modification (`lib/corps-armures.mjs`).
-**Les pages « Armures » et « Bouclier » ne sont plus construites** : leurs liens mènent à leur onglet de la page « Équipement » (voir plus haut) ; le
-lien écrit à la main vers la page « Bouclier » dans le chapitre du guide « L'équipement » menait à l'onglet Boucliers depuis la migration
-`0046-armures-boucliers`, il mène à celui de la page « Équipement » depuis la migration `0053-liens-page-equipement` (seule l'adresse a changé).
+**Les pages du wiki « Armures » et « Bouclier » ne sont pas construites par la route du wiki** : les pages Armures et Boucliers de la rubrique
+Équipement les servent, à leurs adresses (`/ressources/armures/`, `/ressources/bouclier/` ; voir plus haut) ; le lien écrit à la main vers la page
+« Bouclier » dans le chapitre du guide « L'équipement » menait à l'onglet Boucliers depuis la migration `0046-armures-boucliers`, puis à celui de la
+page « Équipement » depuis la migration `0053-liens-page-equipement` ; au rendu, il mène à `/ressources/bouclier/` (2026-10-29, voir plus haut).
 
-- **Deux onglets** de la page « Équipement » (avant, de la page des armures) : Armures et Boucliers, chacun avec son panneau de règles replié. **Plus de tableau
+- **Deux pages** de la rubrique Équipement (avant, deux onglets de la page des armures, puis de la page « Équipement ») : Armures et Boucliers, chacune
+  avec son panneau de règles replié ; la page Armures, puis le texte des Pièces élémentaires qui touche les armures et les vêtements. **Plus de tableau
   MATÉRIAUX** sous les deux (prix, description, fabrication) : demande du propriétaire, 2026-10-16 (« Les onglets Matériaux présent en bas de page de
   l'Armure et du bouclier (avec les grand textes) devraient disparaitre et être mélangés au tableau des matériaux des Composants ») ; sa description et
-  son prix étaient déjà ceux du tableau des matériaux de la page « Composants » (R62), sa fabrication y est une colonne ; chaque onglet y renvoie
+  son prix étaient déjà ceux du tableau des matériaux de la page « Composants » (R62), sa fabrication y est une colonne ; chaque page y renvoie
   (`/ressources/composants/#materiaux`), et la description d'une matière reste l'infobulle de son nom dans les tableaux à choisir.
 - **Armures** : deux tableaux des matières de la grille, « Premier matériau » et « Second matériau » (case Matière dans la couleur de son type — vert léger,
   jaune intermédiaire, rouge lourd, relevés sur la capture de l'onglet : `lib/equipement-couleurs.mjs#COULEURS_DES_TYPES`, posés par la classe
@@ -904,7 +934,7 @@ lien écrit à la main vers la page « Bouclier » dans le chapitre du guide « 
   `serveur-edition-armures.test.mjs` (service, notes de version, rejeu du journal), `boucliers-poids.test.mjs` (décision R92 : le registre de la
   migration 0054 = la base dans son état d'import, couleurs, pastille), `armures-tri.test.mjs` (tri de la liste), `armures-html.test.mjs` (site construit).
 
-## Ceinture (onglet Ceinture de `/ressources/equipement/`) : consommables, carquois et sacs, bâtons magiques
+## Ceinture (page `/ressources/objets-a-la-ceinture/`) : consommables, carquois et sacs, bâtons magiques
 
 Demandes du propriétaire : le 2026-10-15, « l'ensemble de tous les objets que les joueurs peuvent placer à la ceinture dans le but de pouvoir les
 utiliser comme un IC. De plus il faut parler aussi des bâtons magiques. Ils ne sont pas consommables mais ils tiennent tout de même un emplacement à la
@@ -912,7 +942,8 @@ ceinture » (d'abord une page, `/ressources/objets-a-la-ceinture/`, aux tableaux
 à la ceinture, renommer l'onglet en "Ceinture" et le mettre dans les onglets de équipement. Dans cet onglet chaque tableau aurai aussi ses sous onglets
 plutôt que la recherche actuel. On y remettrait à ce moment le tableau Bâton magique (actuellement migré dans équipement). Les onglets seront
 organisées dans l'ordre Consommable / Carquois / Bâton magiques. Les consommables regrouperai les fioles remêdes philtres huiles et alchimie
-privatives dans cet ordre. il faudra aussi récupérer les couleurs utilisé dans les tableaux du GoogleSheet pour les lignes présentes. »
+privatives dans cet ordre. il faudra aussi récupérer les couleurs utilisé dans les tableaux du GoogleSheet pour les lignes présentes. » ; le
+2026-10-29, de nouveau une page à son adresse, « Ceinture » dans la rubrique Équipement (« Cinq pages séparées », voir « Équipement » plus haut).
 
 Le guide ne donne qu'une liste « non exhaustive » (« Voyez avec votre mj ») ; l'onglet liste ce que le propriétaire a retenu (décision R81) : **toutes
 les potions** (fioles, remèdes et panacée, philtres, alchimie primitive), **toutes les huiles**, les **carquois, sacs de bombes et sacs de pierres**
@@ -927,10 +958,11 @@ table : elle suit les tables (un carquois créé sur la page « Composants » y 
 (`personnage_ceinture`, décision R89) : elle y reconnaît les bâtons magiques (un seul par emplacement) et les carquois ou sacs (leur contenance) ; les
 emplacements, eux, prennent n'importe quel objet du sac (la liste du guide n'est pas exhaustive) ; voir `docs/character-generator.md`, « Ceinture ».
 
-L'onglet est rendu depuis la base (`lib/ceinture-db.mjs`, `components/ceinture/CeinturePanneau.astro`, `styles/ceinture/ceinture.css`, lignes :
-`lib/ceinture-rendu.mjs`), dans le panneau `section.equipement-panneau#ceinture` de la page « Équipement » :
+La page est rendue depuis la base (`lib/ceinture-db.mjs`, `components/ceinture/CeinturePanneau.astro`, `styles/ceinture/ceinture.css`, lignes :
+`lib/ceinture-rendu.mjs`), dans le panneau `section.equipement-panneau#ceinture` de `src/pages/ressources/objets-a-la-ceinture.astro` :
 
-- en tête, **les règles de la ceinture**, repliées comme celles des autres onglets : la section « La ceinture » du chapitre « L'équipement » du guide
+- en tête, **les règles de la ceinture**, repliées comme celles des autres pages de l'équipement : la section « La ceinture »
+  du chapitre « L'équipement » du guide
   (`guide/l-equipement`), rendue depuis la base, et, en dépliable, le texte de la source : la section « Ceinture » de la page de référence « Fiche de
   personnage : Accessoires et Ceinture » (la liste « non exhaustive », « Voyez avec votre mj », le nombre de flèches d'un carquois) ;
 - puis **trois sous-onglets** (`lib/equipement.mjs#SOUS_ONGLETS_DE_LA_CEINTURE`, `components/Onglets.astro` ; leur barre est un groupe à elle,
@@ -946,9 +978,10 @@ L'onglet est rendu depuis la base (`lib/ceinture-db.mjs`, `components/ceinture/C
     nombre de paliers, le résumé de la page, puis une potion par ligne (nom, niveau, prix, effet tel qu'écrit), dans l'ordre où la page les écrit ;
   - **Carquois** (`#ceinture-carquois`) : le tableau **Carquois et sacs** (nom en lien vers sa ligne de « Composants », où ils se modifient, prix,
     description) ;
-  - **Bâtons magiques** (`#batons-magiques`, l'ancre de l'ancien onglet de la page « Équipement » : les liens déjà faits vers lui ouvrent l'onglet Ceinture
-    et ce sous-onglet) : son panneau de règles en tête, puis le tableau (« Bâtons magiques » ci-dessous).
-- **Plus de recherche** (demande du propriétaire : des sous-onglets « plutôt que la recherche actuel ») : l'onglet n'a pas de script, sauf le curseur des
+  - **Bâtons magiques** (`#batons-magiques`, l'ancre de l'ancien onglet de la page « Équipement » : ses anciennes adresses,
+    `/ressources/equipement/#batons-magiques` et `/ressources/baton-magique/`, mènent à ce sous-onglet par la page 404) : son panneau de règles en tête,
+    puis le tableau (« Bâtons magiques » ci-dessous).
+- **Plus de recherche** (demande du propriétaire : des sous-onglets « plutôt que la recherche actuel ») : la page n'a pas de script, sauf le curseur des
   bâtons. Sans JavaScript, tout est affiché, chaque sous-onglet sous son titre.
 - **Couleurs des lignes : les couleurs du site, jamais une couleur relevée ligne par ligne** (demande du propriétaire du 2026-10-22 : « Partout il
   faut utiliser Que les couleurs du site. Si le site n'a pas de règle il ajoute une nouvelle couleur au site en se basant sur celle du classeur. Aucune
@@ -1053,13 +1086,13 @@ utile. Il faudra un tooltip pour donner le lien vers l'objet de la gemme ou et d
   null si l'un des deux manque), en icônes de monnaie ; l'en-tête le dit en infobulle. Aucun coût de fabrication n'est ajouté.
 - Pas encore modifiable sur le site de dev : les prix de la gemme et du bois se modifient dans « Composants » et suivent au build suivant.
 
-## Accessoires (onglet Accessoires de `/ressources/equipement/`) : le générateur d'accessoire
+## Accessoires (page `/ressources/accessoires/`) : le générateur d'accessoire
 
 Demande du propriétaire (2026-10-14) : « Pas de tableau markdown. Au lieu de ça, je veux un générateur à accessoire », présenté comme la page des armes :
 un bloc d'explication, plusieurs tableaux et, sur le côté, un encart qui décrit l'accessoire créé d'après ce qui a été sélectionné. La page est rendue
 depuis les tables (`lib/accessoires-db.mjs`, `components/accessoires/AccessoiresPage.astro`, `styles/accessoires/`), jamais depuis son Markdown, dont
 seules les consignes écrites sous chaque étape (« Accessoire trouvé ou bien accessoire vierge », « Ne peut dépasser 4 »…) s'affichent ; ses règles (avant
-« ## CRÉATION D'ACCESSOIRE ») sont le panneau de règles de l'onglet, déplié au départ (« Panneaux de règles » plus haut) ; le reste (tableaux) ne sert
+« ## CRÉATION D'ACCESSOIRE ») sont le panneau de règles de la page, déplié au départ (« Panneaux de règles » plus haut) ; le reste (tableaux) ne sert
 qu'à la recherche et aux `[[liens]]`. Seul le panneau de règles se modifie sur le site de dev.
 
 - **Tableaux** : Étape 1 Identité (`accessoire_emplacement`), Étape 2 Propriété (`accessoire_propriete`, plages du 1d100), Étape 3 Effet — un tableau
@@ -1128,7 +1161,7 @@ fruits. Ainsi que tout ce qui n'est pas directement des consommables mais qui pe
 de page du wiki : elle est rendue depuis les tables (`src/pages/ressources/composants.astro`, `lib/composants-db.mjs`, `components/composants/`,
 `styles/composants/`, lignes : `lib/composants-rendu.mjs`), **un onglet par tableau**, comme la page « Équipement » (demande du propriétaire du
 2026-10-17 : « à l'image de la page d'équipement avoir des onglets pour chaque table. Il faudrait aussi qu'elles soient modifiables et directement liées
-en base »). Au menu, elle est la première page de Règles › Artisanat (`/regles/artisanat/` ; réponse du propriétaire du 2026-10-18 : « Composants en
+en base »). Au menu, elle est la première page d'Équipement › Artisanat (`/regles/artisanat/` ; réponse du propriétaire du 2026-10-18 : « Composants en
 Artisanat ok ») :
 
 - **Monnaie** (`monnaie`) : nom, symbole (son icône, décision R61), valeur en RF ; les conversions vers les plus petites (« 1 PP = 1 000 RO = 100 000 RF »)
@@ -1324,7 +1357,8 @@ dev (un commit la change) ni cherchée par la recherche.
   nomme « le Doc « Guide pour MJ » » (lié une fois par page à sa page d'accueil, `guide/guide-pour-mj-maverick`), « Guide du MJ » étant la rubrique du
   menu. Un bloc des personnages fil rouge se pose sous l'intertitre qu'il illustre : `fil-rouge` sous un `##` (ses personnages en `h3`), les autres
   sous un `###` (la sous-section, ou « Nos quatre personnages » ; leurs personnages en `h4`). Quelques phrases sont **lues par le code** : la section
-  `## La ceinture` de « L'équipement » (les règles de l'onglet Ceinture de l'Équipement, `lib/ceinture-db.mjs`, avec le mot « emplacements »), le
+  `## La ceinture` de « L'équipement » (les règles de la page Ceinture, `/ressources/objets-a-la-ceinture/`, `lib/ceinture-db.mjs`,
+  avec le mot « emplacements »), le
   paragraphe de « S'entraîner et exercer un métier » qui écrit « case Entraînement » (l'aide du bloc Entraînement de la fiche,
   `lib/fiche-regles.mjs#aideDeLEntrainement`), « 37 ÷ 2 = 18,5, arrondi à **18 dégâts** » dans « Les dégâts » (R17, `test/guide.test.mjs`),
   « **{{corruption}}** : son maximum est celui du {{chakra|chakra}} » dans « Créer son personnage » (`test/fiche-moteur.test.mjs`), le lien vers

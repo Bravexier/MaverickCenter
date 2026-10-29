@@ -1422,7 +1422,7 @@ const DOMAINES = {
   ressource: ressourcesParGenre(COMPOSANTS.ressource, CONSOMMABLES.ressource),
   // la chronologie (événements, blocs de description) et le vocabulaire des mots-clés (serveur/edition-chronologie.mjs)
   ...CHRONOLOGIE.domaines,
-  // les blocs des panneaux de règles en tête des onglets de /ressources/equipement/ (serveur/edition-panneaux.mjs, migration 0056)
+  // les blocs des panneaux de règles en tête des pages de l'équipement, /ressources/armes/… (serveur/edition-panneaux.mjs, migration 0056)
   ...domainesDesPanneaux({ refus, ErreurEdition, rangLibre }),
   // l'annonce de l'encart « Notre prochaine rencontre IRL » (sur l'accueil, migration 0068)
   annonce: ANNONCE,

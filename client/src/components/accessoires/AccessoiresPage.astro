@@ -9,23 +9,23 @@ import { classeDeNiveau, cssDesFamilles } from '../../lib/palette-css.mjs';
 import PanneauDeRegles from '../equipement/PanneauDeRegles.astro';
 import type { PanneauRendu } from '../equipement/PanneauDeRegles.astro';
 
-// Onglet « Accessoires » de la page /ressources/equipement/ (components/equipement/EquipementPage.astro ; demande du propriétaire, 2026-10-16 :
-// « J'aimerai rajouter un 5 onglet pour y déplacer les accessoires » ; avant, la page /ressources/accessoires/, dont l'adresse mène à l'onglet) : un
-// panneau (`section.equipement-panneau#accessoires`). Demande du propriétaire, 2026-10-14 : « Pas de tableau Markdown. Au lieu de ça, un générateur
+// La page Accessoires, /ressources/accessoires/ (src/pages/ressources/accessoires.astro, dans components/equipement/EquipementPage.astro ; une page à
+// elle depuis le 2026-10-29, « Cinq pages séparées » ; du 2026-10-16 au 2026-10-29, l'onglet Accessoires de la page « Équipement ») : un panneau
+// (`section.equipement-panneau#accessoires`). Demande du propriétaire, 2026-10-14 : « Pas de tableau Markdown. Au lieu de ça, un générateur
 // d'accessoire. La page se
 // présente comme celle des armes : un bloc d'explication, plusieurs tableaux et sur le côté un encart pour décrire l'accessoire ainsi créé en fonction de
-// ce qui a été sélectionné dans les différents tableaux. » Rendue depuis les tables (lib/accessoires-db.mjs) : le panneau de règles de l'onglet en
+// ce qui a été sélectionné dans les différents tableaux. » Rendue depuis les tables (lib/accessoires-db.mjs) : le panneau de règles de la page en
 // tête, déplié au départ (components/equipement/PanneauDeRegles.astro, migration 0056) ; les tableaux des étapes (Identité 1d4, Propriété 1d100, un
 // tableau d'effets par propriété, chacun dans son onglet), puis la monture ; à côté, l'accessoire créé (src/scripts/accessoires.mjs). Chaque tableau des étapes a une case avec un dé, qui en tire une ligne au hasard (« dans chaque tableau, une case avec une
 // icône de dé ») ; pas la Monture (« Pas de random à faire sur la table des Montures ») ; pas de tableau des gemmes, une infobulle sur chaque gemme (écrite une fois par gemme en bas de page), la gemme dans la couleur de sa magie ;
 // les lignes des effets, la monture et l'accessoire créé dans la couleur de leur niveau : la classe du niveau (`couleur-niveau-<n>`, lib/palette-css.mjs ;
-// la valeur : lib/accessoires-couleurs.mjs#COULEURS_DES_NIVEAUX), dont cet onglet émet la feuille (famille d'une zone), jamais une couleur en style ;
+// la valeur : lib/accessoires-couleurs.mjs#COULEURS_DES_NIVEAUX), dont cette page émet la feuille (famille d’une zone), jamais une couleur en style ;
 // une ligne sans niveau (« Niveau ? », ligne vide) n'en porte pas.
 // Sans JavaScript : tous les tableaux, ni sélection ni encart. CSS : styles/accessoires/accessoires.css (?raw, inséré ici seulement).
 type Accessoires = ReturnType<typeof chargerAccessoires>;
 interface Props {
   accessoires: Accessoires;
-  /** le panneau de règles de l'onglet (`accessoires`), le Markdown de ses blocs rendu (src/pages/ressources/equipement.astro) */
+  /** le panneau de règles de la page (`accessoires`), le Markdown de ses blocs rendu (src/pages/ressources/accessoires.astro) */
   regles: PanneauRendu | null;
 }
 const { accessoires, regles } = Astro.props;
@@ -46,7 +46,7 @@ const auChoix = (e: { gemmes: { id: string }[][] }) => gemmesAuChoix(e.gemmes.ma
 const ancreDeLaPropriete = (id: string) => `effets-${id}`;
 /** Les classes d'une ligne, celle de la couleur de son niveau comprise s'il en a un. */
 const classes = (...noms: (string | null | false | undefined)[]) => noms.filter(Boolean).join(' ');
-// la feuille des classes des niveaux (lib/palette-css.mjs : une famille d'une zone, émise par cet onglet seulement)
+// la feuille des classes des niveaux (lib/palette-css.mjs : une famille d'une zone, émise par cette page seulement)
 const couleurs = cssDesFamilles(['niveau']);
 // le dé d'un tableau (icône) ; `de` = « 1d4 », « 1d6 puis 1d20 »
 const DE_SVG =
@@ -58,8 +58,8 @@ const DE_SVG =
 {/* Onglets pose aussi `html.js` (sans JavaScript, ni dé, ni encart, ni curseur) ; il ne sert qu'une fois par page, même posé aussi par
    components/equipement/EquipementPage.astro (le groupe des onglets d'effets est le sien, `.acc-effets`) */}
 <Onglets />
+{/* le titre de la page (`h1#titre-accessoires`) : components/equipement/EquipementPage.astro */}
 <section class="equipement-panneau" id="accessoires" aria-labelledby="titre-accessoires">
-<h2 class="equipement-panneau__titre" id="titre-accessoires">{accessoires.page?.titre ?? 'Accessoires'}</h2>
 <div class="acc" data-accessoires>
   <PanneauDeRegles panneau={regles} ouvert />
 

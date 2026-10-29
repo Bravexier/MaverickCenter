@@ -1,4 +1,4 @@
-// Onglets Armures et Boucliers de la page /ressources/equipement/ (avant, la page /ressources/armures/ ; demandes du propriétaire, 2026-10-15 : « Je
+// Pages Armures et Boucliers, /ressources/armures/ et /ressources/bouclier/ (du 2026-10-16 au 2026-10-29, les onglets de la page /ressources/equipement/ ; demandes du propriétaire, 2026-10-15 : « Je
 // souhaite faire la refonte de l'onglet armure, de la même manière que les Armes » ; « Les deux seront dans la page » ; « les autres armures étant
 // composées de deux matériaux il faut donc deux tables des matériaux à sélectionner pour avoir l'armure ainsi créée. Une liste plus classique est
 // disponible également. Il faut aussi le tableau d'amélioration » ; « Il faut aussi inclure ce fonctionnement pour les boucliers » ; « Pour les

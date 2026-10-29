@@ -1,4 +1,4 @@
-// Une armure ou un bouclier forgé (onglets Armures et Boucliers de /ressources/equipement/, demandes du propriétaire, 2026-10-15) : ce que la page
+// Une armure ou un bouclier forgé (pages Armures et Boucliers (/ressources/armures/, /ressources/bouclier/), demandes du propriétaire, 2026-10-15) : ce que la page
 // affiche une fois choisis les deux matériaux d'une armure (ou une armure particulière) et son amélioration, ou la forme et la matière d'un bouclier et
 // son amélioration.
 //   - Armure : elle ne se fabrique plus pièce par pièce, seulement complète (décision R93, demande du propriétaire du 2026-10-16, qui remplace le prix

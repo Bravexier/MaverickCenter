@@ -1,4 +1,4 @@
-/* Chargé uniquement depuis components/ceinture/CeinturePanneau.astro (?raw) : l'onglet « Ceinture » de la page /ressources/equipement/. Ses règles
+/* Chargé uniquement depuis components/ceinture/CeinturePanneau.astro (?raw) : la page Ceinture (/ressources/objets-a-la-ceinture/). Ses règles
    repliées, ses trois sous-onglets (Consommables, Carquois, Bâtons magiques : components/Onglets.astro), un panneau fermé caché sous html.js seulement
    (sans JavaScript, ils se suivent, chacun sous son titre) ; dans Consommables, un onglet par famille (Fioles, Remèdes, Philtres, Huiles, Alchimie
    primitive), un tableau par potion, deux ou trois côte à côte ; le tableau des carquois ; le tableau des bâtons magiques. Aucune couleur écrite ici :

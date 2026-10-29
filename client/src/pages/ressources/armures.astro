@@ -1,0 +1,24 @@
+---
+import Base from '../../layouts/Base.astro';
+import EquipementPage from '../../components/equipement/EquipementPage.astro';
+import ArmuresPage from '../../components/armures/ArmuresPage.astro';
+import { chargerArmures, contexteDesArmures } from '../../lib/armures-db.mjs';
+import { pageDeLEquipement } from '../../lib/equipement.mjs';
+import { panneauRendu, piecesElementairesRendues } from '../../lib/equipement-rendu';
+import { ouvrirBase } from '../../lib/donnees.mjs';
+
+// /ressources/armures/ (rubrique Équipement du menu ; une page à elle depuis le 2026-10-29, « Cinq pages séparées » : lib/equipement.mjs) : rendue depuis
+// la base (components/armures/ArmuresPage.astro, vue `armures`), son panneau de règles en tête (lib/equipement-rendu.ts), puis le texte de la page
+// « Pièces élémentaires » qui touche les armures et les vêtements (« Fusionner dans Armes et Armures »). Modifiable sur le site de dev
+// (src/scripts/edition/armures.mjs, src/scripts/edition/panneaux.mjs).
+const page = pageDeLEquipement('armures')!;
+const db = ouvrirBase();
+const regles = await panneauRendu(db, page.id);
+const piecesElementaires = await piecesElementairesRendues('armures');
+---
+
+<Base title={page.nom} description="Armures : deux matériaux font une armure complète, armures particulières, armures élémentaires, améliorations et fiche de l’armure." edition={page.chemin}>
+  <EquipementPage id={page.id}>
+    <ArmuresPage armures={chargerArmures(db)} contexte={contexteDesArmures(db)} vue="armures" regles={regles} piecesElementaires={piecesElementaires} />
+  </EquipementPage>
+</Base>

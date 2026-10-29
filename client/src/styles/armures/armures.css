@@ -1,5 +1,5 @@
-/* Chargé uniquement depuis components/armures/ArmuresPage.astro (?raw) : les onglets Armures et Boucliers de la page /ressources/equipement/ (les
-   onglets eux-mêmes : styles/equipement/equipement.css). Dans chacun, les tableaux de sélection (deux matériaux ; une forme, ses améliorations sous
+/* Chargé uniquement depuis components/armures/ArmuresPage.astro (?raw) : les pages Armures et Boucliers (/ressources/armures/, /ressources/bouclier/ ;
+   leur cadre commun : styles/equipement/equipement.css). Dans chacune, les tableaux de sélection (deux matériaux ; une forme, ses améliorations sous
    elle, et une matière) puis la liste classique (les boucliers : un seul tableau replié, triable), et à côté, dans un panneau qui suit le défilement,
    la fiche de l'armure ou du bouclier choisi (sur un écran étroit, il passe par-dessus la page), avec la pièce et l'amélioration pour une armure. Les
    cases « Matière » dans la couleur du type (vert léger, jaune intermédiaire, rouge lourd : capture de l'onglet), le poids d'un bouclier dans la
@@ -25,13 +25,9 @@ html:not(.js) .armures :is(.js-seul-ligne, .pfiche) { display: none; }
 .armures .vide { color: var(--muted); opacity: 0.6; }
 .armures [hidden] { display: none !important; }
 
-/* Les panneaux Armures et Boucliers (onglets : components/equipement/EquipementPage.astro) : un autre onglet ouvert, tout le bloc se cache (sa marge
-   ne s'ajoute pas à celle des onglets) */
-html.js .armures:not(:has(> .armures-panneau.is-active)) { display: none; }
-.armures-panneau + .armures-panneau { margin-top: 2rem; }
 
 .armures-aide { margin: 0 0 0.5rem; color: var(--muted); font-size: var(--fs-lg); }
-/* le renvoi vers le tableau des matériaux de la page Composants (description, fabrication), qui a remplacé le tableau MATÉRIAUX des deux onglets :
+/* le renvoi vers le tableau des matériaux de la page Composants (description, fabrication), qui a remplacé le tableau MATÉRIAUX des deux pages :
    comme une aide, mais affiché aussi en mode modification (les matériaux se modifient là-bas : R62) */
 .armures-renvoi { margin: 0 0 0.6rem; color: var(--muted); font-size: var(--fs-lg); }
 /* le prix d'une armure (décision R93) : une règle, affichée aussi en mode modification (son coût de fabrication s'y modifie) et à l'impression */

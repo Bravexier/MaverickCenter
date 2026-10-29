@@ -1,21 +1,22 @@
-// Onglets Armures et Boucliers de la page /ressources/equipement/ (components/armures/ArmuresPage.astro) — demandes du propriétaire (2026-10-15) :
+// Pages Armures et Boucliers, /ressources/armures/ et /ressources/bouclier/ (components/armures/ArmuresPage.astro : une page chacune depuis le
+// 2026-10-29, le même script ; ce qui manque à la page, l'autre panneau, est ignoré) — demandes du propriétaire (2026-10-15) :
 // « les autres armures étant composées de deux matériaux il faut donc deux tables des matériaux à sélectionner pour avoir l'armure ainsi créée » ;
 // « Il faut aussi inclure ce fonctionnement pour les boucliers » ; « Pour les bouclier c'est forme + matière ».
-//   - Onglet Armures : choisir un matériau dans chacun des deux tableaux donne l'armure de la grille (dans un ordre comme dans l'autre) ; une ligne de la
+//   - Page Armures : choisir un matériau dans chacun des deux tableaux donne l'armure de la grille (dans un ordre comme dans l'autre) ; une ligne de la
 //     liste choisit l'armure et ses deux matériaux, une armure particulière se choisit seule (sans matériau : la source ne lui donne que le prix de
 //     l'armure entière, décision R80). La fiche s'ouvre à côté : toujours l'armure complète (une armure ne se fabrique plus pièce par pièce, décision
 //     R93), dont le prix est la fabrication de l'armure complète (`[data-armures-fabrication]`) + 6 unités de chacun des deux matériaux, achetées ou
 //     fournies (R93 ; une armure particulière : son prix écrit, R80) ; l'amélioration en change la défense, la solidité et le coût (lib/armure-forge.mjs,
 //     décision R77). Le prix de chaque armure de la liste est calculé de même au build (lib/armures-db.mjs) ; le script le refait quand un prix de
 //     matériau ou la fabrication est réécrit (mode modification : évènement « armures:rafraichir »).
-//   - Onglet Boucliers : une forme et une matière donnent le bouclier préfabriqué (décision R78) ; une ligne de la liste choisit les deux ; l'amélioration
+//   - Page Boucliers : une forme et une matière donnent le bouclier préfabriqué (décision R78) ; une ligne de la liste choisit les deux ; l'amélioration
 //     en change la défense, la solidité et le coût (R76) ; la fiche montre son poids (la couleur de sa case dans l'onglet, décision R92 ; « Requiert N
 //     Force minimum » dans l'infobulle de la tuile). La liste est un seul tableau, replié, triable par toutes ses colonnes (demande du propriétaire,
 //     2026-10-16) : un clic sur un en-tête trie croissant, puis décroissant, puis rend l'ordre de l'onglet (`data-ordre`) ; une valeur absente (prix
 //     « ???? », AP ou AM non écrit, bouclier sans poids) va toujours à la fin ; rien dans l'adresse (lib/armures-tri.mjs).
 // Les fiches sont réduites à leur minimum, comme celle des armes (demande du propriétaire, 2026-10-16) : quatre tuiles (AP, AM, solidité, coût) dont le
 // détail du calcul est l'infobulle, puis, pour une armure, sa résistance et sa faiblesse (ou son effet).
-// Recliquer une ligne choisie la retire ; « Fermer » (ou Échap) vide le choix de l'onglet ouvert. Les valeurs viennent des cellules telles qu'affichées
+// Recliquer une ligne choisie la retire ; « Fermer » (ou Échap) vide le choix de la page. Les valeurs viennent des cellules telles qu'affichées
 // (attributs `data-…` des rendus de lib/armures-rendu.mjs), lues à chaque choix : après un enregistrement du mode modification, qui réécrit ces cellules,
 // la fiche suit sans recharger la page (évènement « armures:rafraichir »). En mode modification (body.ed-mode) : rien ne se choisit
 // (src/scripts/edition/armures.mjs ferme les fiches et ouvre tous les tableaux).
@@ -26,9 +27,9 @@
 //     liste) vide le choix élément/poids. Les armures sont lues dans `[data-armures-elementaires]` (components/armures/ArmuresPage.astro).
 // État dans l'adresse : ?materiau1=<clé>&materiau2=<clé>&amelioration-armure=<niveau> (ou ?armure=<ancre d'une armure particulière>, ou
 // ?element-armure=<magie>&poids-armure=<poids>&amelioration-elementaire=<niveau>),
-// &forme=<id>&matiere=<clé>&amelioration-bouclier=<niveau> (aucun paramètre en commun avec ceux de l'onglet Armes, src/scripts/armes.mjs : la même
-// adresse garde les deux) ; l'onglet ouvert dans l'ancre (#armures, #boucliers : components/Onglets.astro) ; une ancre `#armure-…` ou `#bouclier-…`
-// choisit aussi cette armure ou ce bouclier. Un ancien `piece=<id>` (le tableau FABRICATION, retiré : décision R93) est ignoré, et quitte l'adresse au choix suivant.
+// &forme=<id>&matiere=<clé>&amelioration-bouclier=<niveau> (aucun paramètre en commun avec ceux de la page Armes, src/scripts/armes.mjs, ni entre les
+// deux pages : l'ancienne adresse /ressources/equipement/?… mène à la page de son premier paramètre, lib/equipement.mjs#RENVOIS_DES_PAGES_ECLATEES) ;
+// une ancre `#armure-…` ou `#bouclier-…` choisit aussi cette armure ou ce bouclier, puis quitte l'adresse au premier choix. Un ancien `piece=<id>` (le tableau FABRICATION, retiré : décision R93) est ignoré, et quitte l'adresse au choix suivant.
 // Seuls imports : lib/armure-forge.mjs (le calcul) et lib/armures-tri.mjs (le tri de la liste des boucliers), qu'aucun autre script de page n'importe.
 import {
   choixDArmureApres, coutDeLaLigneElementaire, coutElementaireEcrit, estElementaire, forgerArmure, forgerArmureElementaire, forgerBouclier, nombre,
@@ -547,9 +548,8 @@ if (racine) {
     if (B.matiere) p.set('matiere', B.matiere.dataset.materiau);
     if (bouclierChoisi() && B.niveau) p.set('amelioration-bouclier', String(B.niveau));
     const q = p.toString();
-    // l'ancre garde l'onglet ouvert (#armures, #boucliers), même arrivé par une ancre de ligne (#bouclier-…), qui a servi au chargement
-    const onglet = racine.querySelector('.armures-panneau.is-active')?.id;
-    history.replaceState(history.state, '', `${location.pathname}${q ? `?${q}` : ''}${onglet ? `#${onglet}` : ''}`);
+    // une ancre de ligne (#bouclier-…), qui a servi au chargement, quitte l'adresse : la requête dit le choix
+    history.replaceState(history.state, '', `${location.pathname}${q ? `?${q}` : ''}`);
   }
 
   function rendre() {
@@ -643,7 +643,8 @@ if (racine) {
 
   document.addEventListener('keydown', (ev) => {
     if (ev.key !== 'Escape' || enEdition() || ev.defaultPrevented) return;
-    const panneau = racine.querySelector('.armures-panneau.is-active')?.dataset.panneau;
+    // le panneau de la page (Armures ou Boucliers : une page chacun)
+    const panneau = racine.querySelector('.armures-panneau')?.dataset.panneau;
     if (panneau === 'armure' && (armureChoisie() || armureElementaireChoisie())) fermer('armure');
     else if (panneau === 'bouclier' && bouclierChoisi()) fermer('bouclier');
   });
@@ -676,7 +677,7 @@ if (racine) {
   B.forme = ligneDeForme(params.get('forme'));
   B.matiere = ligneDeMateriau('matiere', params.get('matiere'));
   B.niveau = n(params.get('amelioration-bouclier'), 'bouclier');
-  // une ancre de ligne (#armure-…, #bouclier-…) : components/Onglets.astro ouvre l'onglet, on choisit la ligne
+  // une ancre de ligne (#armure-…, #bouclier-…) : on choisit la ligne
   let ancre = null;
   try {
     ancre = parId(decodeURIComponent(location.hash.slice(1)));

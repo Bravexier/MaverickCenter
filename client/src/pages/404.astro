@@ -1,34 +1,40 @@
 ---
 import Base from '../layouts/Base.astro';
+import { RENVOIS_DES_PAGES_ECLATEES } from '../lib/equipement.mjs';
 import { renvoisDuGuide } from '../lib/metiers.mjs';
 import { loadWiki, url } from '../lib/wiki';
 
 // Les anciennes adresses du guide (/guide/, /guide/<slug>/, avant son éclatement en livres et sommaires : lib/livres.mjs) → leurs nouvelles adresses,
-// calculées au build depuis le plan et passées au script (data-renvois) : nav.mjs, seul module du script, n'importe pas le plan.
+// calculées au build depuis le plan et passées au script (data-renvois) ; les pages éclatées en plusieurs (l'ancienne page « Équipement » en cinq
+// pages, la page « Pièces élémentaires » dans Armes et Armures : lib/equipement.mjs#RENVOIS_DES_PAGES_ECLATEES), passées de même (data-eclatees) :
+// nav.mjs, seul module du script, n'importe ni le plan ni lib/equipement.mjs.
 const renvois = renvoisDuGuide((await loadWiki()).entries.map((e) => e.id));
 ---
 
 <Base title="Page introuvable" edition="404">
   <h1>Page introuvable</h1>
-  <p id="introuvable" data-base={url()} data-renvois={JSON.stringify(renvois)}>Cette page n’existe pas (ou plus). Essayez la <a href={url('recherche/')}>recherche</a> ou l’<a href={url('pages/')}>index du wiki</a>.</p>
+  <p id="introuvable" data-base={url()} data-renvois={JSON.stringify(renvois)} data-eclatees={JSON.stringify(RENVOIS_DES_PAGES_ECLATEES)}>Cette page n’existe pas (ou plus). Essayez la <a href={url('recherche/')}>recherche</a> ou l’<a href={url('pages/')}>index du wiki</a>.</p>
 </Base>
 
 <script>
-  import { adresseComplete, nouvelleAdresse } from '../lib/nav.mjs';
+  import { adresseDeRenvoi } from '../lib/nav.mjs';
 
   // Anciennes adresses (/wiki/…, liens enregistrés avant la suppression du préfixe ; /generateur/, devenu /fiche/ ; /tags/<clé>/, devenu
-  // /recherche/?mot-cle=<clé> ; /guide/…, devenu /decouvrir/…, /regles/…, /mj/…) : renvoi vers la nouvelle adresse, la requête d'origine fusionnée
-  // avec la sienne (adresseComplete : jamais deux « ? »).
+  // /recherche/?mot-cle=<clé> ; /guide/…, devenu /decouvrir/…, /regles/…, /mj/… ; /ressources/equipement/#…, devenue la page de son ancre ou de sa
+  // requête) : renvoi vers la nouvelle adresse, la requête d'origine fusionnée avec la sienne (jamais deux « ? »).
   const introuvable = document.querySelector<HTMLElement>('#introuvable')!;
   const base = introuvable.dataset.base!;
-  let renvois: Record<string, string> = {};
-  try {
-    renvois = JSON.parse(introuvable.dataset.renvois || '{}');
-  } catch {
-    renvois = {};
-  }
-  const target = nouvelleAdresse(location.pathname, base, renvois);
+  const lire = (texte: string | undefined) => {
+    try {
+      return JSON.parse(texte || '{}');
+    } catch {
+      return {};
+    }
+  };
+  const target = adresseDeRenvoi(location.pathname, {
+    base, renvois: lire(introuvable.dataset.renvois), eclatees: lire(introuvable.dataset.eclatees), search: location.search, hash: location.hash,
+  });
   // jamais hors du site, quelle que soit l'adresse demandée
-  const cible = target ? new URL(adresseComplete(target, location.search, location.hash), location.href) : null;
+  const cible = target ? new URL(target, location.href) : null;
   if (cible && cible.origin === location.origin) location.replace(cible.href);
 </script>

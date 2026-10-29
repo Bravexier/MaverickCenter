@@ -1,7 +1,7 @@
 // Ressources de l'API REST du module « equipement » (format : lib/ressources.mjs) : l'équipement de la section 9 de data/schema.sql — armes (familles,
 // types, pièces élémentaires), armures (emplacements, pièces élémentaires), boucliers (classes, poids, préfabriqués), améliorations, accessoires
-// (générateur : emplacements, propriétés, effets, montures), bâtons magiques et machines de guerre ; et les panneaux de règles en tête des onglets de
-// /ressources/equipement/ (section 1, migration 0056 : leur titre, leurs blocs). Les matériaux d'arme, d'armure et de bouclier sont
+// (générateur : emplacements, propriétés, effets, montures), bâtons magiques et machines de guerre ; et les panneaux de règles en tête des pages de
+// l'équipement, /ressources/armes/… (section 1, migration 0056 : leur titre, leurs blocs). Les matériaux d'arme, d'armure et de bouclier sont
 // dans le module « artisanat » (décision R62 : la page Composants en est la seule source).
 // Les écritures sont celles que le site de dev sait déjà faire (TABLES, ENTITES de lib/edition-modele.mjs ; serveur/edition-armes.mjs,
 // edition-armures.mjs, edition-panneaux.mjs) : une arme se crée, se modifie et se supprime (décision R52) ; une famille d'armes se crée et se modifie,
@@ -35,7 +35,7 @@ export const RESSOURCES = [
     noms: 'Armes',
     description:
       'Les armes de l’onglet « Armes » du classeur « Ressources et Craft » (une ligne par arme et par bandeau, hors armes de monstres), rendues sur ' +
-      'l’onglet Armes de /ressources/equipement/ : nom, mains, compétence (décision R48), type, coût, effet, description, arme de départ (fond bleu de la source), remarque ' +
+      'la page Armes, /ressources/armes/ : nom, mains, compétence (décision R48), type, coût, effet, description, arme de départ (fond bleu de la source), remarque ' +
       '(l’étoile à côté du nom, R91) ; le service ' +
       'tire de l’effet le dé, le bonus de dégâts, la portée (R50), la solidité et la provenance, ainsi que les types de dégâts et les minimums de ' +
       'caractéristique (dans le détail) ; une arme se crée dans une famille (identifiant tiré du nom puis figé) et se supprime : elle est alors retirée ' +
@@ -306,7 +306,7 @@ export const RESSOURCES = [
     tri: 'niveau',
   },
 
-  // ▸ Accessoires (générateur de l'onglet « Accessoires » de /ressources/equipement/, non modifiable sur le site de dev)
+  // ▸ Accessoires (générateur de la page « Accessoires », /ressources/accessoires/, non modifiable sur le site de dev)
   {
     cle: 'emplacements-d-accessoire',
     nom: 'Emplacement d’accessoire',
@@ -384,7 +384,7 @@ export const RESSOURCES = [
     nom: 'Panneau de règles',
     noms: 'Panneaux de règles',
     description:
-      'Les encarts repliés en tête des onglets de /ressources/equipement/ (un par onglet : son identifiant est l’ancre de l’onglet), remplis par la ' +
+      'Les encarts repliés en tête des pages de l’équipement (un par page du wiki servie : son identifiant est l’id de la page ou du sous-onglet), remplis par la ' +
       'migration 0056 des règles que le site tirait du corps des pages « Armes », « Armures », « Bouclier », « Bâton magique » et « Accessoires » (ce ' +
       'corps n’en est plus que la trace) : le titre du panneau (modifiable) et sa page (contexte des [[liens]], en lecture) ; ses blocs dans l’ordre de ' +
       'lecture en sous-ressource.',

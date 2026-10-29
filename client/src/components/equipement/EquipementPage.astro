@@ -1,78 +1,33 @@
 ---
 import equipementCss from '../../styles/equipement/equipement.css?raw';
 import Onglets from '../Onglets.astro';
-import ArmesPage from '../armes/ArmesPage.astro';
-import ArmuresPage from '../armures/ArmuresPage.astro';
-import CeinturePanneau from '../ceinture/CeinturePanneau.astro';
-import AccessoiresPage from '../accessoires/AccessoiresPage.astro';
-import type { chargerArmes, contexteDesArmes } from '../../lib/armes-db.mjs';
-import type { chargerArmures, contexteDesArmures } from '../../lib/armures-db.mjs';
-import type { chargerBatons } from '../../lib/batons-db.mjs';
-import type { chargerObjetsDeCeinture } from '../../lib/ceinture-db.mjs';
-import type { chargerAccessoires } from '../../lib/accessoires-db.mjs';
-import { ONGLETS_DE_L_EQUIPEMENT } from '../../lib/equipement.mjs';
-import type { PanneauRendu } from './PanneauDeRegles.astro';
+import { pageDeLEquipement } from '../../lib/equipement.mjs';
 
-// Page /ressources/equipement/ (menu Règles ; demandes du propriétaire, 2026-10-16 : « J'aimerai fusionner "Armes" et "Armures" dans un seule
-// onglet : "Equipement" A l'instar de "Armure et bouclier" les "Armes" seront dans un onglet à part. Il faudrait également un 4em onglet pour les
-// bâtons magiques du coup qui auront mieux leur place ici » ; « J'aimerai rajouter un 5 onglet pour y déplacer les accessoires » ; puis la page des
-// objets à la ceinture devenue l'onglet « Ceinture », où les bâtons magiques reviennent) : cinq onglets (components/Onglets.astro, posé une fois ici ;
-// sans JavaScript, les panneaux se suivent), dans l'ordre de lib/equipement.mjs : Armes (components/armes/ArmesPage.astro), Armures et Boucliers
-// (components/armures/ArmuresPage.astro), Ceinture (components/ceinture/CeinturePanneau.astro : ses sous-onglets
-// Consommables, Carquois et Bâtons magiques), Accessoires (components/accessoires/AccessoiresPage.astro, le générateur d'accessoire). Chaque panneau
-// est une `section.equipement-panneau` dont l'id est l'ancre de son onglet ; un lien vers un élément d'un panneau (#famille-bombes, #bouclier-ecu-fer,
-// #batons-magiques…) ouvre son onglet (et son sous-onglet). Les anciennes pages (« Armes », « Armures », « Bouclier », « Bâton magique »,
-// « Accessoires », « Objets à la ceinture ») ne sont plus construites : leurs liens et leurs adresses mènent à leur onglet (lib/metiers.mjs#adresseDePage,
-// lib/nav.mjs#PAGES_RENOMMEES). Chaque onglet garde son script (src/scripts/armes.mjs, armures.mjs, batons.mjs, accessoires.mjs), sans paramètre
-// d'adresse en commun ; le mode modification du site de dev suit les mêmes extensions qu'avant (src/scripts/edition/armes.mjs, armures.mjs). En tête
-// de chaque onglet ou sous-onglet qui sert une page du wiki (lib/equipement.mjs#PAGES_SERVIES_PAR_L_EQUIPEMENT : Armes, Armures, Boucliers,
-// Accessoires, et le sous-onglet Bâtons magiques), son panneau de règles (`panneaux`, par ancre : components/equipement/PanneauDeRegles.astro, migration
-// 0056 ; demande du propriétaire, 2026-10-16 : plus de phrase au-dessus du panneau), modifiable sur le site de dev (src/scripts/edition/panneaux.mjs) ;
-// l'onglet Ceinture garde ses règles tirées du guide. CSS des onglets et des panneaux de règles : styles/equipement/equipement.css (?raw, inséré ici
-// seulement) ; celui de la ceinture : styles/ceinture/ceinture.css.
+// Le cadre commun des cinq pages de l'équipement (rubrique Équipement du menu ; demande du propriétaire du 2026-10-29 : « Cinq pages séparées », libellés
+// « Comme les onglets (pluriel) ») : Armes (src/pages/ressources/armes.astro, components/armes/ArmesPage.astro), Armures et Boucliers
+// (ressources/armures.astro, bouclier.astro : components/armures/ArmuresPage.astro, une page chacun), Ceinture (ressources/objets-a-la-ceinture.astro :
+// components/ceinture/CeinturePanneau.astro, ses sous-onglets Consommables, Carquois et Bâtons magiques), Accessoires (ressources/accessoires.astro :
+// components/accessoires/AccessoiresPage.astro, le générateur d'accessoire). Avant, les cinq onglets d'une seule page « Équipement »
+// (/ressources/equipement/, du 2026-10-16 au 2026-10-29), dont l'adresse et les ancres mènent à la bonne page par la page 404
+// (lib/equipement.mjs#RENVOIS_DES_PAGES_ECLATEES). Le titre de la page (`h1#titre-<id>`, le nom de la page au menu, qui étiquette son panneau
+// `section.equipement-panneau#<id>`), puis son contenu. Pose une fois `components/Onglets.astro` (les menus des familles d'armes, les sous-onglets de la
+// ceinture, les onglets d'effets des accessoires ; et `html.js` avant l'affichage) et le CSS commun (styles/equipement/equipement.css, ?raw : les
+// panneaux de règles, l'infobulle des tuiles des fiches, la pastille d'une gemme). Chaque page garde son script (src/scripts/armes.mjs, armures.mjs,
+// batons.mjs, accessoires.mjs) et son mode modification (src/scripts/edition/armes.mjs, armures.mjs, panneaux.mjs, l'éditeur commun pour les
+// consommables).
 interface Props {
-  armes: ReturnType<typeof chargerArmes>;
-  contexteArmes: ReturnType<typeof contexteDesArmes>;
-  armures: ReturnType<typeof chargerArmures>;
-  contexteArmures: ReturnType<typeof contexteDesArmures>;
-  ceinture: ReturnType<typeof chargerObjetsDeCeinture>;
-  reglesCeinture: { ceinture: string | null; reference: string | null };
-  batons: ReturnType<typeof chargerBatons>;
-  accessoires: ReturnType<typeof chargerAccessoires>;
-  /** le panneau de règles de chaque page servie (son id : l'ancre de l'onglet ou du sous-onglet), le Markdown de ses blocs rendu ; null s'il manque */
-  panneaux: Record<string, PanneauRendu | null>;
+  /** l'id de la page (lib/equipement.mjs#PAGES_DE_L_EQUIPEMENT : « armes », « boucliers »…) */
+  id: string;
 }
-const { armes, contexteArmes, armures, contexteArmures, ceinture, reglesCeinture, batons, accessoires, panneaux } = Astro.props;
-const pluriel = (n: number, mot: string, x = 's') => `${n} ${mot}${n > 1 ? x : ''}`;
-const nbArmes = armes.familles.reduce((n, f) => n + f.armes.length, 0);
-const nbArmures = armures.combinaisons.length + armures.particulieres.length;
-const details: Record<string, string> = {
-  armes: `${pluriel(armes.familles.length, 'famille')} · ${pluriel(nbArmes, 'arme')}`,
-  armures: `${pluriel(armures.materiaux.length, 'matériau', 'x')} · ${pluriel(nbArmures, 'armure')}`,
-  boucliers: `${pluriel(armures.formes.length, 'forme')} · ${pluriel(armures.boucliers.length, 'bouclier')}`,
-  ceinture: `${pluriel(ceinture.tableaux.reduce((n, t) => n + t.nombre, 0) + batons.nombre, 'objet')}`,
-  accessoires: `${pluriel(accessoires.proprietes.length, 'propriété')} · ${pluriel(accessoires.proprietes.reduce((n, p) => n + p.effets.length, 0), 'effet')}`,
-};
+const { id } = Astro.props;
+const page = pageDeLEquipement(id);
+if (!page) throw new Error(`[equipement] page inconnue : ${id}`);
 ---
 
 <style is:inline set:html={equipementCss}></style>
 {/* Onglets pose aussi `html.js` avant l'affichage (un panneau fermé n'est caché que sous html.js) */}
 <Onglets />
-<div class="equipement">
-  <h1>Équipement <span class="badge">Ressource</span></h1>
-  {/* le groupe d'onglets est la barre seule : un groupe prend tous les `.onglet` qu'il contient, et les onglets Ceinture et Accessoires ont les leurs */}
-  <nav class="equipement-onglets" aria-label="Équipement" data-onglets="Équipement">
-    {
-      ONGLETS_DE_L_EQUIPEMENT.map((o, i) => (
-        <a class={`onglet${i === 0 ? ' is-active' : ''}`} id={`onglet-${o.id}`} href={`#${o.id}`}>
-          <span class="onglet__nom">{o.nom}</span>
-          <span class="onglet__detail">{details[o.id]}</span>
-        </a>
-      ))
-    }
-  </nav>
-  <ArmesPage armes={armes} contexte={contexteArmes} regles={panneaux.armes} />
-  <ArmuresPage armures={armures} contexte={contexteArmures} regles={{ armures: panneaux.armures, boucliers: panneaux.boucliers }} />
-  <CeinturePanneau objets={ceinture} regles={reglesCeinture} batons={batons} reglesBatons={panneaux['batons-magiques']} />
-  <AccessoiresPage accessoires={accessoires} regles={panneaux.accessoires} />
+<div class="equipement" data-equipement={page.id}>
+  <h1 id={`titre-${page.id}`}>{page.nom} <span class="badge">Ressource</span></h1>
+  <slot />
 </div>

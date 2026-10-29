@@ -1,0 +1,26 @@
+---
+import Base from '../../layouts/Base.astro';
+import EquipementPage from '../../components/equipement/EquipementPage.astro';
+import ArmesPage from '../../components/armes/ArmesPage.astro';
+import { avecPhraseDesArmesDeDepart, chargerArmes, contexteDesArmes } from '../../lib/armes-db.mjs';
+import { pageDeLEquipement } from '../../lib/equipement.mjs';
+import { panneauRendu, piecesElementairesRendues } from '../../lib/equipement-rendu';
+import { ouvrirBase } from '../../lib/donnees.mjs';
+
+// /ressources/armes/ (rubrique Équipement du menu, sans fil d'Ariane comme les autres entrées du menu ; une page à elle depuis le 2026-10-29, « Cinq pages
+// séparées » : lib/equipement.mjs) : rendue depuis la base (components/armes/ArmesPage.astro), son panneau de règles en tête (lib/equipement-rendu.ts ;
+// dans celui des armes, « Les armes en bleu… » prend le bleu des armes de départ : avecPhraseDesArmesDeDepart), puis le texte de la page « Pièces
+// élémentaires » qui touche les armes (« Fusionner dans Armes et Armures »). Modifiable sur le site de dev (src/scripts/edition/armes.mjs,
+// src/scripts/edition/panneaux.mjs).
+const page = pageDeLEquipement('armes')!;
+const db = ouvrirBase();
+const armes = chargerArmes(db);
+const regles = await panneauRendu(db, page.id, avecPhraseDesArmesDeDepart);
+const piecesElementaires = await piecesElementairesRendues('armes');
+---
+
+<Base title={page.nom} description="Armes : un tableau par famille, armes élémentaires comprises, matériaux, améliorations et fiche de l’arme forgée." edition={page.chemin}>
+  <EquipementPage id={page.id}>
+    <ArmesPage armes={armes} contexte={contexteDesArmes(db)} regles={regles} piecesElementaires={piecesElementaires} />
+  </EquipementPage>
+</Base>

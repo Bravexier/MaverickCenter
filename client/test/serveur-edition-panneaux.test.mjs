@@ -37,7 +37,7 @@ function nouvelle() {
   const db = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, `b${(compteur += 1)}`) }).chemin);
   const service = { base: () => db, etat: () => ({}), edition: true };
   const appel = (methode, chemin, corps) => traiter({ methode, chemin, entetes: { 'content-type': 'application/json' }, corps: corps && JSON.stringify(corps) }, service);
-  const enregistrer = (operations) => appel('POST', '/api/edition/', { page: 'ressources/equipement/', operations });
+  const enregistrer = (operations) => appel('POST', '/api/edition/', { page: 'ressources/armes/', operations });
   return { db, enregistrer };
 }
 const ok = (r) => {

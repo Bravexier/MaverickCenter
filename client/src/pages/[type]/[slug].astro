@@ -22,8 +22,9 @@ import { attributEd, texteDePageModifiable } from '../../lib/edition-modele.mjs'
 export async function getStaticPaths() {
   const { entries } = await loadWiki();
   // Seules les pages servies à `<id>/` (lib/metiers.mjs#estServieASonId) : les métiers n'ont pas de page, ce sont les lignes du tableau de /metiers/,
-  // où mènent leurs liens ; les pages « Armes », « Armures », « Bouclier », « Bâton magique » et « Accessoires » sont les onglets de la page
-  // « Équipement », pages/ressources/equipement.astro (lib/metiers.mjs#pageSansAdresse) ; les pages du guide sont rangées par lib/livres.mjs et servies
+  // où mènent leurs liens ; les pages « Armes », « Armures », « Bouclier » et « Accessoires » sont servies par les pages de l'équipement
+  // (pages/ressources/armes.astro…), « Bâton magique » par la page Ceinture, « Pièces élémentaires » par les pages Armes et Armures
+  // (lib/metiers.mjs#pageSansAdresse) ; les pages du guide sont rangées par lib/livres.mjs et servies
   // par pages/decouvrir/, pages/regles/ et pages/mj/ (components/guide/PageDuPlan.astro).
   return entries.filter((entry) => estServieASonId(entry.id))
     .map((entry) => ({ params: { type: typeOf(entry), slug: slugOf(entry) }, props: { entry } }));

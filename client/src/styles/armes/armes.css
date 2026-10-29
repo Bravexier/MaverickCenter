@@ -1,4 +1,4 @@
-/* Chargé uniquement depuis components/armes/ArmesPage.astro (?raw) : l'onglet Armes de la page /ressources/equipement/. Deux menus à onglets, l'un sous
+/* Chargé uniquement depuis components/armes/ArmesPage.astro (?raw) : la page Armes, /ressources/armes/. Deux menus à onglets, l'un sous
    l'autre (demande du propriétaire, 2026-10-23 : « Il faudrai réduire çà en deux menus à onglet. Un pour les armes de mêlée l'autre pour les armes à
    distances ») : Armes de mêlée, Armes à distance, un onglet par famille, chacun le tableau de sa famille (un panneau fermé caché sous html.js
    seulement : sans JavaScript, les tableaux se suivent, chacun sous son titre), aéré (« l'affichage est trop serré »), les effets supplémentaires d'une

@@ -1,4 +1,4 @@
-// Couleurs des onglets Armes, Armures et Boucliers de /ressources/equipement/ : la valeur de chaque couleur est ici (la règle) ; une page n'en pose que
+// Couleurs des pages Armes, Armures et Boucliers : la valeur de chaque couleur est ici (la règle) ; une page n'en pose que
 // la classe (lib/palette-css.mjs, familles `armure`, `poids` et `arme` ; choix du propriétaire du 2026-10-22, « Module JS → classe », et sa réponse :
 // « La classe CSS du site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas, créer une classe CSS avec la couleur du
 // classeur. »). Repères visuels sans valeur de règle, relevés dans le classeur « Ressources et Craft ». Sans import (le module de la palette l'importe :

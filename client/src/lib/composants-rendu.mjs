@@ -79,7 +79,7 @@ const description = (r) => `<td class="comp-description" data-ed="${ed('ressourc
 
 /**
  * Un matériau (décision R62 : la page « Composants » en est la seule source) : Nom (dans sa couleur) | Type (d'après l'armure) | Prix | Description |
- * Fabrication (la recette du tableau MATÉRIAUX des onglets « Armures » et « Bouclier », en lecture : ce tableau n'est plus sur la page « Équipement »,
+ * Fabrication (la recette du tableau MATÉRIAUX des onglets « Armures » et « Bouclier », en lecture : ce tableau n'est plus sur les pages Armures et Boucliers,
  * demande du propriétaire, 2026-10-16) | Effets sur une arme (ceux du tableau MATÉRIAUX de l'onglet « Armes », pour un matériau d'arme) | Utilisé pour
  * (armes, armures, boucliers, montures).
  */

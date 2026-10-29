@@ -4,22 +4,21 @@
 // grisée « bientôt » : la page n'existe pas encore (on n'invente pas de contenu).
 // `autres` : débuts d'adresse des pages de la rubrique qui ne sont pas dans le menu (une page de `ressources/` ouvre l'Équipement). Une page ouvre la
 // rubrique dont une entrée ou un début d'adresse est le plus long début de la sienne : /regles/artisanat/ ouvre l'Équipement, pas les Règles de /regles/.
-// L'ancre d'une entrée (« ressources/equipement/#armes ») ne compte pas.
+// L'ancre d'une entrée, s'il y en a une, ne compte pas.
 // `devSeulement` : une entrée du site de dev seulement, absente du menu en production (entreesDuMenu).
 // Arborescence voulue par le propriétaire du projet (pas de barre de recherche dans l'en-tête : la recherche est une page, avec les mots-clés).
 // Sept rubriques (demande du propriétaire du 2026-10-29, après celles du 2026-10-16 et du 2026-10-18 : « éclater le guide pour retravailler pleinement
-// l'organisation des onglets et de la présentation ») : Règles (l'ancienne Découvrir, la vitrine, faite pour être vue même des non-membres, avec Les
-// bases et les Règles avancées), Personnage (l'ancienne Règles), Équipement, Espace joueur, Espace MJ, Codex, Outils ; plus de rubrique Ressources ni
-// d'entrée Guide (les pages du guide sont rangées par lib/livres.mjs : Découvrir, Les bases — un sommaire —, Règles avancées, Guide du MJ). Rien n'est
-// caché ni filtré : « Pour l'instant comme les menus ne sont pas prêt rien n'est caché mais tout de même ils ne verront à terme que les 2 premiers
-// onglets » (sic ; « ils » : les non-membres) ; « Tu fait comme si de rien n'était pour l'instant. On verra les caches. » (sic). Composants va sous
-// Artisanat. Plus d'entrée « Pièces élémentaires » (demande du 2026-10-29) ; sa page reste dans la base, en attendant la réponse du propriétaire sur
-// son contenu (armes et armures élémentaires, lus par la fiche).
-// La page « Équipement » (demandes du propriétaire, 2026-10-16 : « J'aimerai fusionner "Armes" et "Armures" dans un seule onglet : "Equipement" »,
-// « J'aimerai rajouter un 5 onglet pour y déplacer les accessoires », puis « renommer l'onglet en "Ceinture" et le mettre dans les onglets de
-// équipement ») : cinq onglets, Armes, Armures, Boucliers, Ceinture, Accessoires (lib/equipement.mjs), chacun une entrée de la rubrique Équipement
-// depuis le 2026-10-29. La ceinture (potions et huiles, carquois et sacs, bâtons magiques : décision R81) est l'onglet Ceinture. Le bouclier ne va pas
-// à la ceinture, son emplacement est dans l'armure (décision R82) : c'est l'onglet Boucliers.
+// l'organisation des onglets et de la présentation ») : Règles (l'ancienne Découvrir, la vitrine, avec Les bases et les Règles avancées), Personnage
+// (l'ancienne Règles), Équipement, Espace joueur, Espace MJ, Codex, Outils ; plus de rubrique Ressources ni d'entrée Guide (les pages du guide sont
+// rangées par lib/livres.mjs : Découvrir, Les bases — un sommaire —, Règles avancées, Guide du MJ). Rien n'est caché ni filtré : « Pour l'instant comme
+// les menus ne sont pas prêt rien n'est caché mais tout de même ils ne verront à terme que les 2 premiers onglets » (sic ; « ils » : les non-membres) ;
+// « Tu fait comme si de rien n'était pour l'instant. On verra les caches. » (sic) ; ces deux premières rubriques sont, depuis le 2026-10-29, « Règles et
+// Personnage » (réponse du propriétaire). Composants va sous Artisanat. Plus d'entrée « Pièces élémentaires » (demande du 2026-10-29 : « Le sous-menu
+// "pièce élémentaire" et sa page associé seront supprimées ») : son contenu est sur les pages Armes et Armures (« Fusionner dans Armes et Armures »).
+// La rubrique Équipement : les cinq pages de l'équipement (lib/equipement.mjs#PAGES_DE_L_EQUIPEMENT, « Cinq pages séparées », libellés « Comme les
+// onglets (pluriel) ») — Armes, Armures, Boucliers, Ceinture, Accessoires —, onglets d'une seule page « Équipement » du 2026-10-16 au 2026-10-29. La
+// ceinture (potions et huiles, carquois et sacs, bâtons magiques : décision R81) est la page Ceinture. Le bouclier ne va pas à la ceinture, son
+// emplacement est dans l'armure (décision R82) : c'est la page Boucliers.
 // Les chemins des pages du guide (decouvrir/…, regles/…, mj/) sont ceux de lib/livres.mjs, écrits ici à part (nav.mjs n'importe rien : le script de la
 // page 404 l'importe) ; test/livres.test.mjs vérifie qu'ils s'accordent.
 export const NAV = [
@@ -46,13 +45,16 @@ export const NAV = [
     key: 'personnage',
     label: 'Personnage',
     // l'ancienne rubrique Règles, renommée « Personnage » (demande du propriétaire du 2026-10-29 : « Il faudra renommer le menu "Règles" en
-    // "Personnage" ») ; les dons de classe vont avec les classes
+    // "Personnage" ») ; les dons de classe vont avec les classes. Familiers (la page `ressources/familiers`, libellé : son titre dans la base) : réponse
+    // du propriétaire du 2026-10-29, « Famillier devrai être dans Personnage » (sic) ; son adresse, plus longue que `ressources/` de l'Équipement, fait
+    // ouvrir le Personnage à sa page.
     autres: ['capacites/'],
     items: [
       { label: 'Races', path: 'races/' },
       { label: 'Magies', path: 'magies/' },
       { label: 'Classes', path: 'classes/' },
       { label: 'Métiers', path: 'metiers/' },
+      { label: 'Familiers', path: 'ressources/familiers/' },
     ],
   },
   {
@@ -60,18 +62,21 @@ export const NAV = [
     label: 'Équipement',
     // demande du propriétaire du 2026-10-29 : « Entre le nouvellement créé "Personnage" et "Espace Joueur" il faudra un nouveau menu : "Equipement"
     // Dedans tu y déplacera les pages "Armes, Armures, Bouclier, Ceinture, Accessoire" en les sortant du sous-menu "Equipement" le remettant à nouveau
-    // dans un sous-menu dédié. Il faudra aussi y déplacer les sous-menu "Artisanat" et "Livres & parchemins". » Une entrée par onglet de la page
-    // « Équipement » (lib/equipement.mjs#ONGLETS_DE_L_EQUIPEMENT : même libellé, l'ancre de l'onglet) ; toutes les pages /ressources/… (Composants,
-    // alchimie…) ouvrent cette rubrique.
+    // dans un sous-menu dédié. Il faudra aussi y déplacer les sous-menu "Artisanat" et "Livres & parchemins". » Une entrée par page de l'équipement
+    // (« Cinq pages séparées » : lib/equipement.mjs#PAGES_DE_L_EQUIPEMENT, même libellé, même adresse), puis Artisanat et Livres & Parchemins, puis
+    // « Autres » (réponse du propriétaire du 2026-10-29 sur les pages /ressources/… hors menu : « Le reste dans equipement (sous menu-autres pour
+    // commencer) ») : la liste de toutes les pages de ressources, /ressources/ (pages/[type]/index.astro) ; toutes les pages /ressources/… (Composants,
+    // alchimie…) ouvrent cette rubrique, sauf Familiers (Personnage).
     autres: ['ressources/'],
     items: [
-      { label: 'Armes', path: 'ressources/equipement/#armes' },
-      { label: 'Armures', path: 'ressources/equipement/#armures' },
-      { label: 'Boucliers', path: 'ressources/equipement/#boucliers' },
-      { label: 'Ceinture', path: 'ressources/equipement/#ceinture' },
-      { label: 'Accessoires', path: 'ressources/equipement/#accessoires' },
+      { label: 'Armes', path: 'ressources/armes/' },
+      { label: 'Armures', path: 'ressources/armures/' },
+      { label: 'Boucliers', path: 'ressources/bouclier/' },
+      { label: 'Ceinture', path: 'ressources/objets-a-la-ceinture/' },
+      { label: 'Accessoires', path: 'ressources/accessoires/' },
       { label: 'Artisanat', path: 'regles/artisanat/' },
       { label: 'Livres & Parchemins', path: 'ressources/livre-parchemin/' },
+      { label: 'Autres', path: 'ressources/' },
     ],
   },
   {
@@ -195,19 +200,54 @@ export function legacyWikiRedirect(pathname, base = '/') {
 
 /**
  * Pages renommées (demande du propriétaire) : ancienne adresse → nouvelle, relatives à la racine du site. La liste des mots-clés est dans la
- * recherche ; les pages « Armes », « Armures », « Bouclier » et « Accessoires » sont les onglets de la page « Équipement », « Bâton magique » le
- * sous-onglet Bâtons magiques de son onglet Ceinture, et l'ancienne page « Objets à la ceinture », l'onglet Ceinture (lib/equipement.mjs,
- * lib/metiers.mjs#adresseDePage : test/equipement.test.mjs vérifie que les deux listes s'accordent ; nav.mjs n'importe rien, le script de la page
- * 404 l'importe).
+ * recherche ; la page « Bâton magique » est le sous-onglet Bâtons magiques de la page Ceinture (lib/equipement.mjs, lib/metiers.mjs#adresseDePage :
+ * test/equipement.test.mjs vérifie que les deux listes s'accordent ; nav.mjs n'importe rien, le script de la page 404 l'importe). Les pages Armes,
+ * Armures, Bouclier, Accessoires et Objets à la ceinture ont retrouvé leur adresse (2026-10-29) ; l'ancienne page « Équipement » et la page « Pièces
+ * élémentaires », éclatées, sont des renvois selon l'ancre (adresseEclatee).
  */
 // « guide/statistiques-resistance-faiblesse/ » recopiait le tableau des combinaisons de deux magies de l'onglet « Statistiques », ignoré (décisions R85,
 // R86, migration 0049) : les relations des magies sont sous la carte de /magies/.
 export const PAGES_RENOMMEES = {
   'generateur/': 'fiche/', 'tags/': 'recherche/', 'guide/statistiques-resistance-faiblesse/': 'magies/',
-  'ressources/armes/': 'ressources/equipement/#armes', 'ressources/armures/': 'ressources/equipement/#armures',
-  'ressources/bouclier/': 'ressources/equipement/#boucliers', 'ressources/baton-magique/': 'ressources/equipement/#batons-magiques',
-  'ressources/accessoires/': 'ressources/equipement/#accessoires', 'ressources/objets-a-la-ceinture/': 'ressources/equipement/#ceinture',
+  'ressources/baton-magique/': 'ressources/objets-a-la-ceinture/#batons-magiques',
 };
+
+/** Une ancre sans son « # », décodée (« #%C3%A9p%C3%A9e » → « épée ») ; telle quelle si elle est mal formée. */
+function ancreLue(hash) {
+  const brute = String(hash ?? '').replace(/^#/, '');
+  try {
+    return decodeURIComponent(brute);
+  } catch {
+    return brute;
+  }
+}
+
+/**
+ * La nouvelle adresse d'une page éclatée en plusieurs (l'ancienne page « Équipement », /ressources/equipement/, en cinq pages ; la page « Pièces
+ * élémentaires », dans Armes et Armures : 2026-10-29), selon l'ancre et la requête de l'adresse demandée, relative à la racine du site et AVEC l'ancre
+ * à garder (« ressources/armes/#famille-bombes ») ; null si `rel` (relatif à la racine, « ressources/equipement/ ») n'en est pas une.
+ * `eclatees` : lib/equipement.mjs#RENVOIS_DES_PAGES_ECLATEES (nav.mjs n'importe rien : la page 404 les passe à son script, data-eclatees) —
+ *   une ancienne ancre connue (anciennesAncres) est remplacée ; sinon une ancre reconnue (le plus long des débuts d'`ancres`) mène à sa page et reste ;
+ *   sinon le premier paramètre de la requête reconnu (`parametres`) ; sinon `defaut`. Une ancre inconnue est gardée sur la page de `defaut` si celle-ci
+ *   n'en a pas.
+ */
+export function adresseEclatee(rel, eclatees = {}, { search = '', hash = '' } = {}) {
+  const chemin = String(rel ?? '').replace(/\/?$/, '/');
+  const r = eclatees && Object.hasOwn(eclatees, chemin) ? eclatees[chemin] : null;
+  if (!r) return null;
+  const ancre = ancreLue(hash);
+  const avecAncre = (page) => `${page}${ancre ? `#${ancre}` : ''}`;
+  if (ancre && r.anciennesAncres && Object.hasOwn(r.anciennesAncres, ancre)) return r.anciennesAncres[ancre];
+  if (ancre) {
+    let meilleure = null;
+    for (const [debut, page] of r.ancres ?? []) if (ancre.startsWith(debut) && (!meilleure || debut.length > meilleure[0].length)) meilleure = [debut, page];
+    if (meilleure) return avecAncre(meilleure[1]);
+  }
+  const parametres = new URLSearchParams(search);
+  const parParametre = (r.parametres ?? []).find(([nom]) => parametres.has(nom));
+  if (parParametre) return avecAncre(parParametre[1]);
+  return r.defaut.includes('#') || !ancre ? r.defaut : avecAncre(r.defaut);
+}
 
 /**
  * Nouvelle adresse d'une ancienne adresse du site : les pages du wiki sous `/wiki/` (legacyWikiRedirect), les pages renommées (le générateur
@@ -237,7 +277,7 @@ function adresseRenommee(pathname, base, renvois = {}) {
 }
 
 /**
- * L'adresse où renvoyer : `cible` (qui peut avoir sa propre requête, « /recherche/?mot-cle=feu », et sa propre ancre, « /ressources/equipement/#boucliers »),
+ * L'adresse où renvoyer : `cible` (qui peut avoir sa propre requête, « /recherche/?mot-cle=feu », et sa propre ancre, « /ressources/objets-a-la-ceinture/#batons-magiques »),
  * plus les paramètres de la requête d'origine (`search`) qu'elle n'a pas déjà, puis l'ancre (`hash`, sinon celle de la cible) : jamais deux « ? » ni deux
  * « # », la requête toujours avant l'ancre.
  */
@@ -248,4 +288,34 @@ export function adresseComplete(cible, search = '', hash = '') {
   for (const [nom, valeur] of new URLSearchParams(search)) if (!parametres.has(nom)) parametres.append(nom, valeur);
   const texte = parametres.toString();
   return `${chemin}${texte ? `?${texte}` : ''}${hash || (ancreDeLaCible ? `#${ancreDeLaCible}` : '')}`;
+}
+
+/**
+ * Un chemin écrit vers une page éclatée, relatif à la racine du site, requête et ancre comprises (« ressources/equipement/?arme=x#armes », un lien
+ * Markdown du guide : lib/guide-rendu.ts) : sa nouvelle adresse (adresseEclatee), la requête gardée avant l'ancre ; le chemin tel quel sinon.
+ */
+export function cheminVersUnePageEclatee(chemin, eclatees = {}) {
+  const m = String(chemin).match(/^([^?#]*)(\?[^#]*)?(#.*)?$/);
+  if (!m) return chemin;
+  const [, rel, search = '', hash = ''] = m;
+  const nouvelle = adresseEclatee(rel, eclatees, { search, hash });
+  if (!nouvelle) return chemin;
+  const i = nouvelle.indexOf('#');
+  return i < 0 ? `${nouvelle}${search}` : `${nouvelle.slice(0, i)}${search}${nouvelle.slice(i)}`;
+}
+
+/**
+ * L'adresse complète où la page 404 renvoie `pathname` (avec préfixe de déploiement `base`), requête (`search`) et ancre (`hash`) d'origine comprises,
+ * ou null : une page éclatée (adresseEclatee, `eclatees` : lib/equipement.mjs#RENVOIS_DES_PAGES_ECLATEES) mène à la page de son ancre ou de sa requête,
+ * l'ancre décidée par elle ; sinon nouvelleAdresse (`renvois`), puis adresseComplete. Une ancienne adresse du wiki d'une page éclatée : un seul saut.
+ */
+export function adresseDeRenvoi(pathname, { base = '/', renvois = {}, eclatees = {}, search = '', hash = '' } = {}) {
+  const root = base.replace(/\/$/, '') + '/';
+  const chemin = legacyWikiRedirect(pathname, base) ?? pathname;
+  if (chemin.startsWith(root)) {
+    const eclatee = adresseEclatee(chemin.slice(root.length), eclatees, { search, hash });
+    if (eclatee) return adresseComplete(root + eclatee, search, '');
+  }
+  const cible = nouvelleAdresse(pathname, base, renvois);
+  return cible ? adresseComplete(cible, search, hash) : null;
 }

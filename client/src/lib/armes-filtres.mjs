@@ -1,4 +1,4 @@
-// Filtre des armes par compétence de l'onglet Armes de /ressources/equipement/ (demande du propriétaire, 2026-10-13 : « j'aimerais pouvoir filtrer
+// Filtre des armes par compétence de la page Armes (/ressources/armes/) (demande du propriétaire, 2026-10-13 : « j'aimerais pouvoir filtrer
 // les armes par compétence arc / arbalète / légère et lourde ») : des boutons à bascule, un par compétence d'arme
 // (lib/arme-champs.mjs#COMPETENCES_D_ARME) ; comme les filtres du bestiaire, une arme reste affichée si l'UNE de ses compétences est choisie (« Arc /
 // Arme Légère » sous Arc comme sous Légère), toutes sans choix. Plus un bouton « Arme de départ » (« la possibilité de trier par "arme de départ" »)
@@ -15,8 +15,8 @@ export const PARAMETRE_DES_COMPETENCES = 'competence';
 export const PARAMETRE_DU_DEPART = 'depart';
 
 /**
- * L'ancre que garde l'adresse des armes (`hash`, « #boucliers », « #famille-epees ») : la page « Équipement » a plusieurs onglets, dont l'ancre dit
- * lequel est ouvert (ou quelle famille d'armes : components/Onglets.astro l'écrit au choix d'un onglet), et l'état de chacun est dans la même adresse ;
+ * L'ancre que garde l'adresse des armes (`hash`, « #famille-epees ») : elle dit quelle famille d'armes est ouverte (components/Onglets.astro l'écrit
+ * au choix d'un onglet ; du 2026-10-16 au 2026-10-29, aussi l'onglet de la page « Équipement », « #boucliers ») ;
  * l'ancre est donc gardée, sauf, quand une arme est ouverte, celle de la ligne d'une arme (« #arme-… », `ancreDUneArme`), que le paramètre ?arme=
  * remplace.
  */
