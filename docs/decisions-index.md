@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 170 décisions, de R1 à R170, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 176 décisions, de R1 à R176, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
 
 | Réf. | Sujet | Décision |
 | --- | --- | --- |
@@ -176,3 +176,9 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R168 | Mage Vert (Mage jade), don de niveau 20 « Meilleure attaque ... » : « (Pos… | Le don complète l'un des deux dons de niveau 15 qui co… |
 | R169 | Livre de sort de l'entraînement (R104, R118) : la fiche ne propose un livr… | Un livre de sort s'apprend pour n'importe quel sort de… |
 | R170 | Plafond de maîtrise d'une famille d'armes (R149 : 4 points, 5 dés ; « au-d… | Des points de maîtrise au-delà du plafond ne sont pas… |
+| R171 | Dégâts reçus sur la fiche, suite de R98 : un seul type parmi 17 (Estoc, Ta… | Type et élément : le type est Estoc, Taille, Frappe ou… |
+| R172 | Mode Hyper et Mode Hyper 100 % sur la fiche : ils n'étaient donnés « pour… | Deux cases activables, comme les postures (état enregi… |
+| R173 | Actions et passifs sur la fiche : les dons débloqués étaient listés par or… | Sous la ceinture, la liste des actions utilisables : l… |
+| R174 | Résistances physiques sur la fiche : le tableau des résistances et faibles… | Le tableau des résistances et faiblesses de la fiche g… |
+| R175 | Arrondi des calculs de la fiche : le guide (« Formule des dégâts ») écrit… | On arrondit à l'inférieur, partout : dégâts reçus (R98… |
+| R176 | Potentiel Illimité en magie acquise : des questions de ce lot (livres de s… | Le Potentiel Illimité est toujours la magie innée, mon… |
