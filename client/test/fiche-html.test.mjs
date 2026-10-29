@@ -55,7 +55,7 @@ test('/fiche/ en quatre zones (demande du propriétaire), sans cadre, titre ni p
   const jetons = [...fiche.matchAll(/<section class="fiche-zone[^"]*" id="zone-([a-z]+)"|<(?:section|div) class="fiche-etape[^"]*" id="etape-([a-z]+)"/g)]
     .map((m) => (m[1] ? `[${m[1]}]` : m[2]));
   assert.deepEqual(jetons, ['[identite]', 'identite', '[portee]', 'attributs', 'caracteristiques', 'armes', 'ceinture', 'sorts', 'dons',
-    '[situation]', 'posture', 'armure', 'accessoires', 'inventaire', 'mouvement', 'resistances', 'bouclier', '[parametres]', 'progression', 'choix', 'entrainement', 'jeu', 'controles']);
+    '[situation]', 'posture', 'armure', 'accessoires', 'inventaire', 'resistances', 'bouclier', '[parametres]', 'progression', 'choix', 'entrainement', 'jeu', 'controles']);
   assert.ok(!fiche.includes('fiche-zones-nav') && !fiche.includes('fiche-etapes'), 'ni pastilles des zones ni sommaire des blocs');
   assert.match(html, /\.fiche-zone__titre\s*\{[^}]*clip-path:\s*inset\(50%\)/, 'titres des zones lus par les lecteurs d’écran, pas affichés');
   // zone IV : des onglets (components/Onglets.astro), le compteur des choix et celui du contrôle
@@ -132,6 +132,12 @@ test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options
   assert.match(attributs, /<div id="attributs-barres" class="attributs"><\/div>/, 'valeurs du moment et maximums fusionnés');
   assert.match(attributs, /<div id="attributs-corruption" class="attributs-corruption"><\/div>/);
   assert.ok(!attributs.includes('fiche-aide'), 'pas de texte de calcul');
+  // la 2ᵉ ligne (demande du propriétaire du 2026-10-29 : « une 2em ligne où tu y déplacera : les AP / AM / Vitesse et initiative , ainsi que
+  // l'interface pour les dégâts reçu ») : l'AP et l'AM, puis initiative, vitesse et nage, puis les dégâts reçus (décisions R98, R171)
+  assert.match(attributs, /<div class="attributs-ligne2">\s*<ul id="defense-tuiles" class="defense__tuiles" aria-label="Armure totale"><\/ul>\s*<ul id="attributs-pastilles" class="fiche-resume attributs-pastilles" aria-label="Initiative et vitesses"><\/ul>\s*<\/div>\s*<div id="defense" class="defense"><\/div>/);
+  assert.ok(attributs.indexOf('class="attributs-ligne2"') > attributs.indexOf('id="attributs-corruption"'), 'sous la ligne des valeurs du moment');
+  for (const id of ['defense', 'defense-tuiles', 'attributs-pastilles']) assert.equal([...html.matchAll(new RegExp(`id="${id}"`, 'g'))].length, 1, `un seul #${id}`);
+  assert.ok(!html.includes('id="etape-mouvement"'), 'plus de bloc « Initiative et vitesses » dans la zone III');
   const armes = bloc('armes');
   assert.match(armes, /<div id="armes" class="equipement equipement--armes"><\/div>/);
   assert.doesNotMatch(armes, /maitrise/, 'le bloc des armes n’a plus les maîtrises (panneau « Choix »)');
@@ -176,13 +182,12 @@ test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options
   const posture = bloc('posture');
   assert.match(posture, /<div id="postures" class="postures__cartes" role="group" aria-labelledby="titre-postures"><\/div>/, 'les six postures en cases');
   assert.match(posture, /<div id="postures-hyper" class="postures__hyper" hidden><\/div>/, 'le Mode Hyper et le Mode Hyper 100 %, une fois débloqués');
-  assert.match(bloc('mouvement'), /<ul id="attributs-pastilles" class="fiche-resume attributs-pastilles"/, 'initiative, vitesse et nage');
   assert.match(bloc('resistances'), /<table class="resistances__table" aria-labelledby="titre-resistances"><tbody id="resistances"><\/tbody><\/table>/);
   assert.match(bloc('resistances'), /<p class="fiche-aide" id="resistances-choix" hidden><\/p>/);
   // une armure complète et la solidité de ses parties (décision R95), remplies par le script comme le bouclier ; la défense totale et les dégâts reçus
-  // en tête (décision R98)
+  // sont dans la 2ᵉ ligne des attributs (demande du propriétaire du 2026-10-29)
   assert.match(bloc('armure'), /<div id="armures" class="equipement"><\/div>/);
-  assert.ok(bloc('armure').indexOf('<div id="defense" class="defense"></div>') >= 0 && bloc('armure').indexOf('id="defense"') < bloc('armure').indexOf('id="armures"'), 'la défense en tête de l’armure');
+  assert.ok(!bloc('armure').includes('id="defense"'), 'plus la défense dans l’armure');
   assert.match(bloc('bouclier'), /<div id="bouclier" class="equipement"><\/div>/);
   // IV. paramètres et suivi
   const progression = bloc('progression');

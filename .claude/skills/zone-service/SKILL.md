@@ -7,12 +7,12 @@ user-invocable: false
 # Service des personnages (`client/serveur/`)
 
 ## Fichiers
-- `serveur/index.mjs` (point d'entrée livré), `service.mjs` (HTTP, surveillance des fichiers), `api.mjs` (routes), `fiches.mjs` (fiche ↔ lignes de la section 13), `base-vivante.mjs` (création, renouvellement, archives), `fiches-retraits.mjs` (R42), `livraison.mjs` (intégration Astro), `dev.mjs` (`npm run serveur`, jamais livré).
+- `serveur/index.mjs` (point d'entrée livré), `service.mjs` (HTTP, surveillance des fichiers), `api.mjs` (routes), `fiches.mjs` (fiche ↔ lignes de la section 13), `base-vivante.mjs` (création, renouvellement, archives), `fiches-retraits.mjs` (R42), `livraison.mjs` (Astro), `dev.mjs` (`npm run serveur`, jamais livré).
 - `src/lib/fiche-format.mjs` : format d'une fiche, partagé avec les pages (sans dépendance).
 - Édition des règles (`/api/edition/`, `serveur/edition*.mjs`) : skill `zone-edition`. Conteneurs, nginx, installateurs : skill `zone-hebergement`. Maintenance : skill `zone-maintenance`. Page « Mise à jour » : skill `zone-mise-a-jour`. `/api/v1/` : skill `zone-api-rest`. Métriques et page Debug : skill `zone-debug-metriques`. Tables de la section 13 : skill `zone-fiches-base`. `POST /api/classeur/` et `GET /api/tipeee/` (les deux sorties vers l'extérieur) : skill `zone-service-sorties`.
 
 ## À lire
-- `docs/serveur.md` : « Le code », « La base vivante (`db/`) » (reconstruction, retraits, conversions, retour sous 0045 / 0055, sauvegarde), « L'API » (routes, format JSON d'une fiche, création, modification, refus, repli sur une base d'avant), « Hébergement » (classeur, surveillance), « Développement » (tests).
+- `docs/serveur.md` : « Le code », « La base vivante (`db/`) » (reconstruction, retraits, conversions, retour sous 0045 / 0055, sauvegarde), « L'API » (routes, format JSON d'une fiche, création, modification, refus, repli sur une base d'avant), « Hébergement », « Développement » (tests).
 
 ## Ce que fait le service
 - Node ≥ 22.13, `node:sqlite`, aucun paquet npm. Il répond sous `/api/` : prétirés (liste, lecture, création, modification avec `version`, suppression), portrait, contrôles de `v_personnage_controle` (ils signalent, ne bloquent jamais).
@@ -36,7 +36,7 @@ user-invocable: false
 
 ## Conversions en place
 - `personnage_progression` (migration 0045) devient la somme `gains_sante` / `gains_chakra` ; une `progression` reçue par le service ou la page est convertie (`sansPartiesRetirees`).
-- `personnage_armure` (migration 0055, R95) devient l'armure de `personnage` : la première pièce dans l'ordre des emplacements (`armureDesArmures`) ; la pièce gardée (devenue l'armure complète) et chaque autre pièce sont des retraits (`retraitsDeLArmure`), notés et listés dans `/api/etat` avec ceux de R42 (`noterLesRetraits`). De même pour une liste `armures` reçue (`lignesDesPiecesRetirees`) ; avec les nouvelles clés : 409 (`armuresAvecArmure`).
+- `personnage_armure` (migration 0055, R95) devient l'armure de `personnage` : la première pièce dans l'ordre des emplacements (`armureDesArmures`) ; la pièce gardée (devenue l'armure complète) et chaque autre pièce sont des retraits (`retraitsDeLArmure`), notés et listés dans `/api/etat` avec ceux de R42 (`noterLesRetraits`). De même pour une liste `armures` reçue (`lignesDesPiecesRetirees`) : ses lignes s'ajoutent aux notes enregistrées si l'envoi n'a pas les siennes, sans toucher au texte du joueur ; avec les nouvelles clés : 409 (`armuresAvecArmure`).
 - `personnage_bouclier_materiau` (migration 0060, R96) devient la matière du bouclier (`personnage.bouclier_materiau_id`, le matériau du premier rang : `matiereDuBouclier`), chaque autre matériau noté (`retraitsDuBouclier`) ; une liste `bouclier_materiaux` reçue avec les nouvelles clés : 409 (`bouclierAvecMatiere`).
 - `personnage_accessoire` (0060, R97) : la Ceinture, « Autre » et l'effet hors table seul écartés ; un nom ou un effet hors table perdus (`COLONNES_RETIREES`) notés ; la même règle pour une fiche reçue (`accessoiresGardes`).
 - Les conversions de 0062 (entraînement, acquis, R104) et 0066 (`nm_cadeau` → `nm_mj`, R118) : `docs/serveur.md`, « La base vivante » et « L'API ».

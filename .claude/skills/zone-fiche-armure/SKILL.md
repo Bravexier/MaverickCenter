@@ -1,7 +1,7 @@
 ---
 name: zone-fiche-armure
-description: "Fiche /fiche/ : armure portée, de base ou élémentaire (R95, R165), liste unique et poids portable, solidité par partie (R77), armure cassée (R157, R158), retraits, bouclier (R96, R92), défense AP/AM et dégâts reçus (R98, R108, R155). À charger avant de lire, modifier ou relire ces calculs ou leurs tests."
-paths: ["client/test/fiche-armure*.test.mjs", "client/test/fiche-bouclier-defense.test.mjs"]
+description: "Fiche /fiche/ : armure portée, de base ou élémentaire (R95, R165), liste unique et poids portable, solidité par partie (R77), armure cassée (R157, R158), retraits, bouclier (R96, R92), défense AP/AM, dégâts reçus et leur application aux jauges (R98, R108, R155, R171). À charger avant de lire, modifier ou relire ces calculs ou leurs tests."
+paths: ["client/test/fiche-armure*.test.mjs", "client/test/fiche-bouclier-defense.test.mjs", "client/test/fiche-degats-recus.test.mjs"]
 user-invocable: false
 ---
 # Fiche : armure, bouclier, défense
@@ -21,8 +21,13 @@ Noyau : skill `zone-fiche`. Résistances de l'armure élémentaire : skill `zone
 - Poids (R92) : `regles.json` donne `classe` de chaque poids (`poids_bouclier[].classe`, `couleur-poids-<id>`, ni couleur ni texte), posée avec `teinte-palette` sur la tuile du poids (`poserTeinte(tuilePoids.li, teinteDe(b.poids))`).
 
 ## Défense et dégâts reçus
+La défense et les dégâts reçus sont dans la 2ᵉ ligne des attributs (zone II, skill `zone-fiche`), plus dans le bloc Armure.
 - Défense totale AP/AM de la partie touchée, le torse par défaut ; l'armure d'une partie cassée et le bouclier cassé ne comptent pas (R108 : `defenseDe`, `armureParPartie`).
-- Dégâts reçus (R98, `degatsRecus`), rien d'enregistré ; contre une magie, le multiplicateur du palier de la base (R155 : =0, ÷3, ÷2, x2, x3, x4), un inverse d'entier divisant exactement avant l'arrondi à l'inférieur (`appliquerMultiplicateur` : 30 ÷ 3 = 10, jamais 9,999…).
+- Le coup (R171) : un type (Estoc, Taille, Frappe, Magique) et un élément (les 14 magies, sans le Potentiel Illimité), `coupDeDegats` ; « Magique » sans élément : pas de calcul. `typeDeDegatsDuCoup` ramène aux 17 types d'avant R171 (`typesDeDegats`, qui nomment encore le type des armes) ; l'équivalence est testée.
+- `degatsRecus` (R98 inchangé étape par étape) : AP pour un type physique, AM pour « Magique », puis le palier de l'élément (R155 : =0, ÷3, ÷2, x2, x3, x4) ou l'immunité de la Symbiose (R100), même sur un coup physique (« Oui, les deux ») ; un inverse d'entier divise exactement avant l'arrondi à l'inférieur (`appliquerMultiplicateur` : 30 ÷ 3 = 10, jamais 9,999…). Rien d'enregistré.
+- « Appliquer » (R171) : `appliquerDegatsRecus` baisse la barrière du moment, puis le reste la santé (sans plancher ; la barrière reste ≥ 0). `degatsALaBarriere`, cases Passe, Casse, Laiton, Médusain (`CASES_DE_LA_BARRIERE`) : entiers, arrondis à l'inférieur (R175) ; Laiton et Médusain se compensent ; Casse ignore le Médusain ; Passe et Casse font tout baisser la santé.
+- Passe, Casse et Laiton s'excluent à titre provisoire (question Q74 ouverte) : le choix tient dans `CASES_EXCLUSIVES_DE_LA_BARRIERE` et `casesDeLaBarriereApres`, rien d'autre ne l'écrit.
+- Médusain coché d'office (R171 : « Automatique si don + type », `medusainDOffice`) : le don est lu dans son texte (`barriereMoinsToucheeEcrite`), jamais par son nom : « La barrière prend deux fois moins de dégâts physiques » pour un coup physique, « … magiques » pour un coup avec élément. La case se décoche à la main.
 
 ## Tests
-`test/fiche-armure.test.mjs` (compare à `forgerArmure`), `fiche-armure-elementaire` (R165 : poids portable, relevé des dons sur toute la base, liste unique, solidité 4/5, choix, retraits comparés au service), `fiche-armure-cassee` (R157, R158), `fiche-bouclier-defense`.
+`test/fiche-armure.test.mjs` (compare à `forgerArmure`), `fiche-armure-elementaire` (R165 : poids portable, relevé des dons sur toute la base, liste unique, solidité 4/5, choix, retraits comparés au service), `fiche-armure-cassee` (R157, R158), `fiche-bouclier-defense`, `fiche-degats-recus` (R171 : coup, équivalence aux 17 types, barrière, Médusain d'office).

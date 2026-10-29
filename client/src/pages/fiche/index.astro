@@ -12,8 +12,9 @@ import { classeDAlignement, classeDePartie, cssDesFamilles, FAMILLES_DE_LA_FICHE
 
 // Fiche de personnage (demande du propriétaire) : création et modification d'un PRÉTIRÉ sur le même écran (/fiche/, /fiche/?id=<id>). Quatre zones,
 // sans cadre ni titre visibles (demandes du propriétaire) : I. l'identité (portrait, nom, surnom, origine, race, magies, classes, alignement, niveau seul) ; II. ce qu'on veut toujours
-// à portée (attributs, caractéristiques et compétences, sorts et le sort préparé (R115), dons débloqués, armes avec leur solidité (R74), les trois emplacements de la ceinture) ; III. ce qui
-// dépend de la situation (posture, initiative et vitesses, armure avec la défense totale et les dégâts reçus (R98), accessoires (R97), inventaire juste en
+// à portée (attributs — et, sur leur 2ᵉ ligne, AP, AM, initiative, vitesses et dégâts reçus (R98, R171) —, caractéristiques et compétences, sorts et le
+// sort préparé (R115), dons débloqués, armes avec leur solidité (R74), les trois emplacements de la ceinture) ; III. ce qui
+// dépend de la situation (posture, armure, accessoires (R97), inventaire juste en
 // dessous (demande du propriétaire du 2026-10-17), bouclier (R96), résistances et faiblesses) ; IV. ce qui se règle et se suit, en onglets (progression et
 // XP, choix — dont les maîtrises d'armes, demande du propriétaire du 2026-10-23 —, entraînement (R104, demande du propriétaire du 2026-10-29), notes
 // et événements, contrôle des règles). Compacte (demandes du
@@ -159,6 +160,15 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
               <div id="attributs-barres" class="attributs"></div>
               <div id="attributs-corruption" class="attributs-corruption"></div>
             </div>
+            {/* la 2ᵉ ligne (demande du propriétaire, 2026-10-29 : « une 2em ligne où tu y déplacera : les AP / AM / Vitesse et initiative , ainsi que
+                l'interface pour les dégâts reçu ») : l'AP et l'AM totaux sur la partie touchée (décision R98), l'initiative, la vitesse et la nage en
+                tuiles, puis les dégâts reçus (décisions R98, R171 : type et élément, cases de la barrière, « Appliquer » ;
+                src/scripts/fiche.mjs#construireDefense) */}
+            <div class="attributs-ligne2">
+              <ul id="defense-tuiles" class="defense__tuiles" aria-label="Armure totale"></ul>
+              <ul id="attributs-pastilles" class="fiche-resume attributs-pastilles" aria-label="Initiative et vitesses"></ul>
+            </div>
+            <div id="defense" class="defense"></div>
           </div>
         </section>
 
@@ -244,9 +254,7 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
           <section class="fiche-etape" id="etape-armure" aria-labelledby="titre-armure">
             <h3 id="titre-armure">Armure</h3>
             <div class="fiche-etape__corps">
-              {/* la défense totale (AP, AM ; le bouclier à part : compté en parade partielle) et les dégâts reçus (décision R98 : src/scripts/fiche.mjs#construireDefense) */}
-              <div id="defense" class="defense"></div>
-              {/* une armure complète, son amélioration et son élément, puis la solidité de chacune de ses parties (décision R95) */}
+              {/* la défense totale et les dégâts reçus sont dans la 2ᵉ ligne des attributs (zone II) ; une armure complète, son amélioration et son élément, puis la solidité de chacune de ses parties (décision R95) */}
               <div id="armures" class="equipement"></div>
             </div>
           </section>
@@ -274,12 +282,6 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
         </div>
 
         <div class="zs-droite">
-          <section class="fiche-etape" id="etape-mouvement" aria-labelledby="titre-mouvement">
-            <h3 id="titre-mouvement">Initiative et vitesses</h3>
-            <div class="fiche-etape__corps">
-              <ul id="attributs-pastilles" class="fiche-resume attributs-pastilles" aria-label="Initiative et vitesses"></ul>
-            </div>
-          </section>
           <section class="fiche-etape" id="etape-resistances" aria-labelledby="titre-resistances">
             <h3 id="titre-resistances">Résistances et faiblesses</h3>
             <div class="fiche-etape__corps">

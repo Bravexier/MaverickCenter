@@ -19,14 +19,15 @@ posée par la page : `docs/content-guide.md`, « Couleurs du site : la palette e
 1. **Identité** : le **portrait** (le logo en attendant une image), le **nom** en grand, le **niveau** seul (dans un médaillon ; l'XP est dans la zone 4),
    surnom, lieu d'origine et **alignement**, puis trois colonnes de menus : race, ethnie et **métier** (facultatif, sous l'ethnie) · magies innée et acquise,
    dieux · case **« Bi-classé »**, classe(s) et spécialités.
-2. **À portée de main** : les attributs et valeurs du moment ; caractéristiques et compétences, à côté les **armes** (avec leur **solidité**) et,
+2. **À portée de main** : les attributs et valeurs du moment, et sur leur 2ᵉ ligne l'AP, l'AM, l'initiative, les vitesses et les **dégâts reçus**
+   (demande du propriétaire du 2026-10-29 : « Dans la tuile des attributs, je veux que tu rajoute une 2em ligne où tu y déplacera : les AP / AM /
+   Vitesse et initiative , ainsi que l'interface pour les dégâts reçu. ») ; caractéristiques et compétences, à côté les **armes** (avec leur **solidité**) et,
    dessous, la **ceinture** (choix du propriétaire du 2026-10-23 : « Il faudrai séparer les arme et les maitrises . Garder l'armes visibles à coté des
    caractéristiques comme avant. », qui remplace « Caractéristiques d'abord » du même jour) ; les sorts, à côté les **dons débloqués**
    (l'**entraînement** est dans son onglet de la zone 4). Plus étroit, les blocs se suivent : attributs, caractéristiques et compétences, armes, ceinture, sorts, dons ; c'est aussi
    l'ordre du clavier sur grand écran. Les **maîtrises d'armes** sont dans l'onglet « Choix » de la zone 4 (même demande).
-3. **Selon la situation** : les **postures** (et le Mode Hyper) sur toute la largeur ; l'armure (avec la **défense** totale et les **dégâts reçus**, R98),
-   les accessoires et, juste en dessous, l'**inventaire** (sac et bourse ; demande du propriétaire du 2026-10-17) ; à côté l'initiative et les vitesses,
-   les résistances et faiblesses, le bouclier.
+3. **Selon la situation** : les **postures** (et le Mode Hyper) sur toute la largeur ; l'armure, les accessoires et, juste en dessous,
+   l'**inventaire** (sac et bourse ; demande du propriétaire du 2026-10-17) ; à côté les résistances et faiblesses, le bouclier.
 4. **Paramètres et suivi**, en **onglets** (`components/Onglets.astro`) : Progression (jauge d'XP, gains de niveau) · Choix (ce que donne le métier et ses
    choix, le +1 d'une magie au choix, la spécialité, les dons de classe à choisir, ce que donnent la race et les magies ; dessous, sur toute la largeur du
    panneau, les **maîtrises d'armes** : « La partie maitrise d'arme vont déscendre dans l'encart des "choix" », 2026-10-23) · Entraînement (juste
@@ -240,13 +241,15 @@ abandonne.
   chaque axe, 5 points d'écart ou plus donnent la tendance, en dessous le personnage est Neutre (guide « Alignement », constante `alignement.ecart_axe`) ;
   les neuf noms sont ceux du guide « Les neuf alignements » (« Neutre » sur les deux axes, que la fiche auto écrit « Neutre Pur »).
 - **Attributs et valeurs du moment**, fusionnés : une carte par attribut, santé · barrière · chakra (· Âme ou Sang, la 4ᵉ barre de la Nécromancie ou du
-  Sang), puis la corruption, sur une ligne ; initiative, vitesse et vitesse de nage en **tuiles** (zone 3) ; santé **rouge**, barrière **jaune**,
+  Sang), puis la corruption, sur une ligne ; sur une **2ᵉ ligne**, l'AP et l'AM (voir « Défense et dégâts reçus »), l'initiative, la vitesse et la
+  vitesse de nage en **tuiles** de même largeur, puis les dégâts reçus ; santé **rouge**, barrière **jaune**,
   chakra **bleu**, corruption **noire**, la 4ᵉ barre dans la **couleur de la magie qui la donne** (la classe `couleur-magie-sang` ou
   `couleur-magie-necromancie`, `quatriemeBarre.classe` de `lib/fiche-moteur.mjs#attributsDe`, lue depuis la magie et non depuis le nom de la ressource ;
   demande du propriétaire du 2026-10-23 : « La 4eme barre doit être de couleur différente en fonction de la magie qui l'utilise (Sang ou nécromancie) ») ;
   pas d'armure de base (les AP/AM viendront avec l'armure portée). Pas de texte de calcul (demande du propriétaire) : le
   détail d'un maximum est en infobulle sur sa valeur. Une valeur du moment s'affiche « actuelle / maximum », un curseur de 0 au maximum (au maximum tant qu'on n'y touche
-  pas, la corruption à 0 ; le chakra actuel au plus chakra − corruption, pour tous, magie de la Corruption comprise (R142), et la corruption qui monte emporte le chakra
+  pas, la corruption à 0 ; la **santé peut devenir négative**, sans plancher — décision R171 : « Peut devenir négative » —, affichée en rouge, son
+  curseur à 0 ; les autres valeurs restent au moins à 0 ; le chakra actuel au plus chakra − corruption, pour tous, magie de la Corruption comprise (R142), et la corruption qui monte emporte le chakra
   actuel, celle qui baisse ne le rend pas : `valeursDuMoment`, `ecrireValeurDuMoment`, guide « Fiche de personnage : Attributs »), et deux boutons **−** et
   **+** qui ouvrent une case où saisir le nombre à retirer ou à ajouter (`ajusterValeurDuMoment`, borné comme le curseur ; Entrée ou OK l'applique, Échap
   abandonne). La posture du moment se choisit dans les cases des postures (zone 3 ; un second clic la retire) : la fiche la garde (`personnage.posture_id`,
@@ -513,20 +516,41 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   minimum, signalé sans rien bloquer) ; sa solidité est celle de la matière plus les crans de l'amélioration (R78, R76), avec un curseur de 0 (« Cassé »)
   au maximum (`bouclierDe`, `bouclierApresChoix`, `soliditeDuBouclierAEcrire` ; le calcul de `lib/armure-forge.mjs#forgerBouclier`, comparé sur toute la
   liste) ; **un bouclier cassé** (solidité 0) : ses AP et AM ne comptent plus, même en parade partielle au bouclier (décision R108 : « Bouclier à 0 : ses
-  AP/AM cessent-ils de compter, comme une arme cassée ? Oui »), ce que dit la ligne du bouclier sous la défense ; ses tuiles AP et AM sont alors grisées
+  AP/AM cessent-ils de compter, comme une arme cassée ? Oui »), ce que dit l'infobulle de la case « Au bouclier » des dégâts reçus ; ses tuiles AP et AM sont alors grisées
   à 0, comme la pastille d'une arme cassée, l'infobulle le dit et donne ses valeurs une fois réparé. Une forme et une matière que la liste n'écrit pas sont
   signalées (règle `bouclier_inconnu`).
-- **Défense et dégâts reçus** (décision R98), en tête du bloc Armure : l'**AP** et l'**AM totaux** (`defenseDe` : base de la race, de l'ethnie et des
+- **Défense et dégâts reçus** (décisions R98, R171), dans la 2ᵉ ligne des attributs (zone 2, demande du propriétaire du 2026-10-29) : l'**AP** et l'**AM totaux** (`defenseDe` : base de la race, de l'ethnie et des
   classes magiques, accessoires, posture, armure portée et son amélioration, de base ou élémentaire : R99, R165)
   **sur la partie touchée** (décision R108 : un choix « Partie touchée » parmi les six parties, avec une armure seulement, **le torse par défaut** — « Une
   attaque "non ciblée" touche par défaut le torse, sauf indication contraire du MJ » —, une partie cassée marquée « (cassée) » ; l'armure d'une partie
   cassée ne compte pas, « Seul l'AP et l'AM de l'armure tombe à zéro […] le reste demeure »), le détail en infobulle avec la partie touchée et les parties
-  cassées, le bouclier à part (« pour qu'ils soient comptés, ça implique une “Parade partielle” » ; cassé, plus du tout) ; puis les **dégâts reçus**
-  (`degatsRecus`, option `partie`) : dégâts entrants, type (Estoc, Taille, Frappe, ou l'une des quatorze magies), partie touchée, « Dégâts réduits »
-  (esquive ou parade partielle, ÷ 2 après l'armure), « Au bouclier », « Don ÷ 2 » (l'étape « ÷ 2 si un don divise les dégâts » de la formule, à cocher :
-  la fiche ne lit pas ces dons) ; la formule du guide (armure, défense partielle, don, palier de résistance à la magie, arrondi à l'inférieur), l'armure
-  portée appliquant sa résistance (AP × 2) ou sa faiblesse (AP ÷ 2) au type physique, « x2 » doublant l'effet (pas avec un élément : R99 ; sur sa seule
-  part, donc rien sur une partie cassée : R108) ; les étapes en infobulle, rien d'enregistré (ni la partie touchée).
+  cassées ; puis les **dégâts reçus**
+  (`degatsRecus`, option `partie`) : dégâts entrants, **type** (Estoc, Taille, Frappe ou **Magique**, `TYPES_DE_COUP`) et **élément** (l'une des
+  quatorze magies, sans le Potentiel Illimité, `elementsDeDegats` ; facultatif, **obligatoire avec « Magique »** : sans lui, pas de calcul, la liste
+  marquée « à choisir ») — décision R171, `coupDeDegats` ; l'écriture d'avant, une magie en type, vaut « Magique » et cette magie —, partie touchée,
+  « Dégâts réduits » (esquive ou parade partielle, ÷ 2 après l'armure ; pas de case de défense parfaite : 0 dégât, rien à calculer), « Au bouclier »
+  (son infobulle donne les AP et AM du bouclier : « pour qu'ils soient comptés, ça implique une “Parade partielle” » ; cassé, plus du tout), « Don ÷ 2 »
+  (l'étape « ÷ 2 si un don divise les dégâts » de la formule, à cocher : la fiche ne lit pas ces dons) ; la formule du guide (armure, défense partielle,
+  don, palier de résistance à la magie, arrondi à l'inférieur) : un type physique prend l'AP, l'armure portée appliquant sa résistance (AP × 2) ou sa
+  faiblesse (AP ÷ 2) au type physique, « x2 » doublant l'effet (pas avec une armure élémentaire : R99 ; sur sa seule part, donc rien sur une partie
+  cassée : R108) ; « Magique » prend l'AM ; l'élément applique ensuite le palier de résistance à sa magie, ou l'immunité de la Symbiose (R100) ; un coup
+  physique avec un élément prend l'AP, puis le palier de son élément. Un type physique sans élément et « Magique » + élément donnent exactement les
+  dix-sept types d'avant (`typesDeDegats`, `typeDeDegatsDuCoup`, `test/fiche-degats-recus.test.mjs`). Les étapes en infobulle, rien d'enregistré (ni
+  la partie touchée, ni le coup).
+- **« Appliquer »** (décision R171, `appliquerDegatsRecus`, `degatsALaBarriere`) : le résultat baisse d'abord la **barrière du moment** ; si elle passe
+  à 0, ou y est déjà, **le reste baisse la santé**, qui peut devenir négative (la barrière reste ≥ 0). Les **cases de la barrière**
+  (`CASES_DE_LA_BARRIERE`), pour les coups contre lesquels elle ne joue pas normalement : « Passe la barrière » (Mythril, sorts qui ignorent la
+  barrière : elle ne bouge pas, tout baisse la santé) ; « Casse la barrière » (Maverium : elle tombe à 0 sans rien absorber, tout baisse la santé ; elle
+  ignore le Médusain) ; « Dégâts doublés contre la barrière » (Laiton : chaque point retire 2 de barrière, ⌈B ÷ 2⌉ points la vident) ; « Deux fois
+  moins » (Médusain : chaque point retire 0,5 de barrière, arrondi à l'inférieur, R175). Laiton et Médusain cochés ensemble se compensent (1 de barrière
+  par point) ; ce sont les seuls qui se neutralisent. **Passe, Casse et Laiton : une seule à la fois**, à titre provisoire (question Q74 ouverte ; le
+  choix tient dans `CASES_EXCLUSIVES_DE_LA_BARRIERE`, appliqué par `casesDeLaBarriereApres`). « Deux fois moins » se **coche d'office**
+  (`medusainDOffice`) quand le personnage a un don dont le texte écrit « La barrière prend deux fois moins de dégâts physiques » (« Barrière
+  résistante ») et que le coup a un type physique, ou « … magiques » (« Barrière isolante ») et que le coup a un élément (`barriereMoinsToucheeEcrite`,
+  lu dans le texte, jamais par le nom) ; elle se décoche à la main, et suit de nouveau le don quand le coup change. À côté du bouton, ce que deviendront
+  la barrière et la santé (« Barrière 12 → 2 · Santé 40 → 40 ») ; le coup appliqué, le champ des dégâts entrants se vide. Exemple de R171 (20 reçus,
+  barrière 12, santé 40) : sans case, barrière 0 et santé 32 ; Passe, santé 20 ; Casse, barrière 0 et santé 20 ; Laiton, santé 26 ; Médusain,
+  barrière 2 et santé 40 (30 reçus : santé 34).
 - **Arme à pièce élémentaire** : le volet arme de la décision R99 est remplacé par R167 (l'arme transformée est une arme élémentaire, voir plus haut) ;
   son volet armure ne change pas.
 - **Posture du moment** (décision R100) : la posture cochée recalcule ce que son tableau chiffre (`lib/posture-texte.mjs`, `postureDuMoment`) — le
