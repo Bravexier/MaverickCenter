@@ -398,7 +398,8 @@ function construireMagies() {
 
 /**
  * Résistances et faiblesses (demande du propriétaire, sur le modèle du tableau « Résistance / Faiblesse » de la fiche auto) : les six paliers, chacun avec
- * ses magies (dans leur couleur) puis ses altérations d'état (cerclées de la couleur de leur magie), le détail des crans en infobulle (resistancesDe) ;
+ * ses magies (dans leur couleur) puis ses altérations d'état (cerclées de la couleur de leur magie), puis les types physiques (décision R174 : Estoc,
+ * Frappe, Taille, cerclés de la couleur du palier), le détail des crans en infobulle (resistancesDe) ;
  * sous le tableau, les résistances à choisir — de la ligne du tableau de la race (« Au choix parmi les autres » du Drakos orange, décision R124 : une
  * liste des altérations des autres lignes), d'un don qui laisse une magie au choix ou tirée (décision R137 : Ocultomancien « Résilience », Anansi
  * d'Arcane : une liste des magies) ; personnage_resistance_choix ; surlignées et dans le tiroir des choix tant qu'elles ne sont pas faites —, puis les
@@ -427,14 +428,16 @@ function construireResistances() {
     return li;
   }));
   const magieDeLEtat = new Map(regles.magies.filter((m) => m.etat_id).map((m) => [m.etat_id, m]));
+  const palierTeinte = (id) => { const x = trouver(regles.resistance_paliers, id); return x?.classe ? x : null; };
   const detail = (c) => `${c.nom} : ${c.origines.map((o) => (o.immunite ? `immunisé (${o.nom})` : `${o.nom} ${signe(o.crans)}`)).join(' · ')}`
     + (c.immunite || c.origines.length < 2 ? '' : ` = ${signe(c.crans)}`);
   reconstruire($('resistances'), JSON.stringify(paliers.map((p) => p.cibles.map(detail))), () => paliers.map((p) => el('tr', { class: trouver(regles.resistance_paliers, p.id)?.classe ?? null, dataset: { palier: p.id } },
     el('th', { scope: 'row' }, p.libelle, el('small', {}, p.effet)),
     el('td', {}, p.cibles.length
       ? el('ul', { class: 'resistances__cibles' }, p.cibles.map((c) => {
-        const magie = c.type === 'magie' ? trouver(regles.magies, c.id) : magieDeLEtat.get(c.id);
-        return el('li', { class: [`resistance resistance--${c.type}`, ...teinteDe(magie)].join(' '), title: detail(c) }, c.nom);
+        // un type physique (R174) n'a pas de magie : cerclé de la couleur de son palier (`couleur-palier-…`, sans texte sur elle)
+        const teinte = c.type === 'magie' ? trouver(regles.magies, c.id) : c.type === 'physique' ? palierTeinte(p.id) : magieDeLEtat.get(c.id);
+        return el('li', { class: [`resistance resistance--${c.type}`, ...teinteDe(teinte)].join(' '), title: detail(c) }, c.nom);
       }))
       : el('span', { class: 'resistances__vide' }, '—')))));
   // la ligne sous le tableau : les résistances au choix, et la magie que la Symbiose désactive (décision R111 : ses résistances et faiblesses ne

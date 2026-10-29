@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 82 : 202 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 83 : 202 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -397,7 +397,7 @@ Rôles de la magie (bloc « ROLES » : trois cellules, de gauche à droite). `ra
 
 ### `magie_resistance`
 
-Résistances et vulnérabilités de la magie (4 blocs de l'onglet : « Résistance magique », « Vulnérabilité magique », « Résistance altération d'état », « Vulnérabilité altération d'état » ; « Aucune » = aucune ligne). Une ligne = un nom de la liste, dans l'ordre de la source (rang). cible_type = 'magie' : cible_magie_id renseigné (liste de noms de magies). cible_type = 'etat' : cible_etat_id renseigné. La source écrit « Gelé » et « Pétrification » là où la liste des altérations dit « Gel » et « Pétrifié » : le rapprochement est fait par l'importeur (table d'alias explicite) ; cible_brut garde l'écriture d'origine. Les lignes 'etat' sont, d'après la fiche (spécification resist.total-etat), l'image des lignes 'magie' par la colonne « Magie Liée » de la liste des altérations ; elles sont conservées parce que la source les écrit.
+Résistances et vulnérabilités de la magie (4 blocs de l'onglet : « Résistance magique », « Vulnérabilité magique », « Résistance altération d'état », « Vulnérabilité altération d'état » ; « Aucune » = aucune ligne). Une ligne = un nom de la liste, dans l'ordre de la source (rang). cible_type = 'magie' : cible_magie_id renseigné (liste de noms de magies). cible_type = 'etat' : cible_etat_id renseigné. La source écrit « Gelé » et « Pétrification » là où la liste des altérations dit « Gel » et « Pétrifié » : le rapprochement est fait par l'importeur (table d'alias explicite) ; cible_brut garde l'écriture d'origine. Les lignes 'etat' sont, d'après la fiche (spécification resist.total-etat), l'image des lignes 'magie' par la colonne « Magie Liée » de la liste des altérations ; elles sont conservées parce que la source les écrit. cible_type = 'physique' : cible_physique renseigné, un des trois types de dégâts physiques (estoc, taille, frappe : le vocabulaire de creature_attaque_type). Décision R174 (migration 0083) : le malus « Surtension corporelle » du Potentiel Illimité (magie.explication : « Surtension corporelle (Vulnérabilité contre les dégâts physiques ») est un palier personnel, un cran de moins à chacun des trois types (sens 'vulnerabilite', rangs 1 à 3 : estoc, taille, frappe) ; cible_brut garde ce texte, le même sur les trois lignes. Ses crans s'additionnent comme ceux d'une magie (resistance_palier, R155) ; leur annulation en Mode Hyper (R172, R174) n'est pas une donnée de cette table.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -410,6 +410,7 @@ Résistances et vulnérabilités de la magie (4 blocs de l'onglet : « Résistan
 | `cible_brut` | TEXT | oui |  |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `cible_physique` | TEXT | non |  | 'physique' : type de dégâts physiques visé (R174) |
 
 ### `magie_incompatibilite`
 

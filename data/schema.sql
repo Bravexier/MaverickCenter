@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 82;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 83;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -491,10 +491,16 @@ CREATE INDEX magie_role_role ON magie_role (role);
 --                          d'alias explicite) ; cible_brut garde l'écriture d'origine.
 -- Les lignes 'etat' sont, d'après la fiche (spécification resist.total-etat), l'image des lignes 'magie' par la colonne
 -- « Magie Liée » de la liste des altérations ; elles sont conservées parce que la source les écrit.
+--   cible_type = 'physique' : cible_physique renseigné, un des trois types de dégâts physiques (estoc, taille, frappe : le vocabulaire de
+--                          creature_attaque_type). Décision R174 (migration 0083) : le malus « Surtension corporelle » du Potentiel Illimité
+--                          (magie.explication : « Surtension corporelle (Vulnérabilité contre les dégâts physiques ») est un palier personnel,
+--                          un cran de moins à chacun des trois types (sens 'vulnerabilite', rangs 1 à 3 : estoc, taille, frappe) ; cible_brut
+--                          garde ce texte, le même sur les trois lignes. Ses crans s'additionnent comme ceux d'une magie (resistance_palier, R155) ;
+--                          leur annulation en Mode Hyper (R172, R174) n'est pas une donnée de cette table.
 CREATE TABLE magie_resistance (
   magie_id        TEXT    NOT NULL REFERENCES magie(id),
   sens            TEXT    NOT NULL CHECK (sens IN ('resistance', 'vulnerabilite')),
-  cible_type      TEXT    NOT NULL CHECK (cible_type IN ('magie', 'etat')),
+  cible_type      TEXT    NOT NULL CHECK (cible_type IN ('magie', 'etat', 'physique')),
   rang            INTEGER NOT NULL CHECK (rang >= 1),
   cible_magie_id  TEXT    REFERENCES magie(id),
   cible_etat_id   TEXT    REFERENCES etat(id),
@@ -502,11 +508,16 @@ CREATE TABLE magie_resistance (
   origine         TEXT    NOT NULL REFERENCES famille(id)
     CHECK (origine = 'magies'),
   source_ref      TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  cible_physique  TEXT    CHECK (cible_physique IN ('estoc', 'taille', 'frappe')),   -- 'physique' : type de dégâts physiques visé (R174)
   PRIMARY KEY (magie_id, sens, cible_type, rang),
   UNIQUE (magie_id, sens, cible_magie_id),
   UNIQUE (magie_id, sens, cible_etat_id),
-  CHECK ((cible_type = 'magie' AND cible_magie_id IS NOT NULL AND cible_etat_id IS NULL)
-      OR (cible_type = 'etat'  AND cible_etat_id  IS NOT NULL AND cible_magie_id IS NULL))
+  UNIQUE (magie_id, sens, cible_physique),
+  -- exactement une cible renseignée, celle de cible_type
+  CONSTRAINT magie_resistance_une_cible CHECK (
+         (cible_type = 'magie'    AND cible_magie_id IS NOT NULL AND cible_etat_id  IS NULL AND cible_physique IS NULL)
+      OR (cible_type = 'etat'     AND cible_etat_id  IS NOT NULL AND cible_magie_id IS NULL AND cible_physique IS NULL)
+      OR (cible_type = 'physique' AND cible_physique IS NOT NULL AND cible_magie_id IS NULL AND cible_etat_id  IS NULL))
 ) STRICT, WITHOUT ROWID;
 
 CREATE INDEX magie_resistance_cible_magie ON magie_resistance (cible_magie_id, sens) WHERE cible_magie_id IS NOT NULL;

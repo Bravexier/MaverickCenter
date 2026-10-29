@@ -29,7 +29,7 @@ user-invocable: false
 - Ce qui n'a pas de case, et la suite de la part relue d'un texte trop long pour la sienne, va dans la case NOTE, en lignes « Clé : valeur » sous `MARQUEUR_DES_NOTES`.
 - Import d'un .xlsx, .ods ou .csv au modèle ordinateur ou de la fiche auto V15.2.2 : l'onglet « Personnage » ou le premier qui suit un des deux modèles ; ce qui n'a pas de place est ajouté aux notes.
 - Dialogue « import-cible » (`#import-cible`) : mettre à jour le prétiré ouvert ou en créer un. Rien n'est enregistré avant « Enregistrer ».
-- Paliers de résistance écrits : ceux de la base (R70). Métier à l'import : celui de la base (R72). Gains de niveau : deux totaux (R73). Solidité d'arme notée (R74).
+- Paliers de résistance écrits : ceux de la base (R70) ; les cases BI des paliers (liste libre) listent aussi les types physiques (R174), et ne sont pas relues à l'import. Métier à l'import : celui de la base (R72). Gains de niveau : deux totaux (R73). Solidité d'arme notée (R74).
 
 ## Invariants
 - Parmi les scripts de page, seul `src/scripts/fiche.mjs` importe les modules du tableur (`zip`, `xml-mini`, `tableur-*`, `fiche-tableur-*`) et `lib/google-sheets.mjs` (testé). Un module partagé entre deux scripts de page casse la version portable (skill `site-version-portable`).

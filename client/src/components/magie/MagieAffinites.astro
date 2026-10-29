@@ -1,4 +1,5 @@
 ---
+import { RESISTANCES_PHYSIQUES } from '../../lib/fiche-moteur.mjs';
 import { blocNonCompatible, MONO_MAGIE } from '../../lib/magie-non-compatible.mjs';
 import { pageHref, type Magies, type MagieDb } from '../../lib/magies';
 import EtatPastille from './EtatPastille.astro';
@@ -7,6 +8,10 @@ import EtatPastille from './EtatPastille.astro';
 // Chaque élément est un lien : une magie vers sa page, une altération d'état vers sa section de la « Liste des altérations d'état »
 // (avec son infobulle : type, magie liée, effet par stade), une race vers sa page.
 // « Magie non compatible » : lib/magie-non-compatible.mjs (« Mono-magie uniquement » pour une magie mono-magie, jamais le Potentiel Illimité dans une liste).
+// Les types de dégâts physiques (décision R174, magie_resistance.cible_physique : le malus du Potentiel Illimité, « Surtension corporelle ») : un groupe
+// « Dégâts physiques » seulement quand la magie en a, ses types dans l'ordre de la fiche (RESISTANCES_PHYSIQUES : Estoc, Frappe, Taille), sans lien,
+// puis la phrase de la source une fois (la même sur les trois lignes), telle qu'écrite ; elle est coupée à la virgule de magie.explication (« …dégâts
+// physiques, ne peut mettre… ») : la coupe est marquée « […] », comme dans le registre R174, sans réécrire le texte cité.
 interface Props {
   magie: MagieDb;
   magies: Magies;
@@ -14,18 +19,28 @@ interface Props {
 const { magie, magies } = Astro.props;
 
 // Texte du lien = écriture de la source (« Gelé ») ; le nom de l'entité visée (« Gel ») est dans l'infobulle quand il diffère.
-const lienMagie = ({ id, brut }: { id: string; brut: string }) => ({ href: pageHref(id), texte: brut, soi: id === magie.id, titre: magies.magies.get(id)!.nom, etat: null });
-const lienEtat = ({ id, brut }: { id: string; brut: string }) => ({ href: '', texte: brut, soi: false, titre: '', etat: magies.etats.get(id)! });
+const lienMagie = ({ id, brut }: { id: string; brut: string }) => ({ href: pageHref(id), texte: brut, soi: id === magie.id, titre: magies.magies.get(id)!.nom, etat: null, physique: false });
+const lienEtat = ({ id, brut }: { id: string; brut: string }) => ({ href: '', texte: brut, soi: false, titre: '', etat: magies.etats.get(id)!, physique: false });
+const groupePhysique = (physiques: { type: string; brut: string }[]) =>
+  physiques.length === 0
+    ? []
+    : [{
+        titre: 'Dégâts physiques',
+        liens: RESISTANCES_PHYSIQUES.filter((t) => physiques.some((p) => p.type === t.id))
+          .map((t) => ({ href: '', texte: t.nom, soi: false, titre: '', etat: null, physique: true })),
+        sources: [...new Set(physiques.map((p) => p.brut))],
+      }];
 const cartes = (['resistance', 'vulnerabilite'] as const).map((sens) => ({
   cle: sens === 'resistance' ? 'fort' : 'faible',
   titre: sens === 'resistance' ? 'Résistances' : 'Vulnérabilités',
   aide:
     sens === 'resistance'
-      ? 'Résistance magique : dégâts de ces magies réduits'
-      : 'Vulnérabilité magique : dégâts de ces magies augmentés',
+      ? 'Résistance : dégâts de ces magies, altérations ou types réduits'
+      : 'Vulnérabilité : dégâts de ces magies, altérations ou types augmentés',
   groupes: [
     { titre: 'Magies', liens: magie.resistances[sens].magies.map(lienMagie) },
     { titre: 'Altérations d’état', liens: magie.resistances[sens].etats.map(lienEtat) },
+    ...groupePhysique(magie.resistances[sens].physiques),
   ],
 }));
 const bloc = blocNonCompatible(magie);
@@ -50,6 +65,8 @@ const ethnies = bloc.ethnies.map((e) => ({ href: pageHref(e.pageId), texte: e.no
                   {g.liens.map((l) =>
                     l.etat ? (
                       <li><EtatPastille etat={l.etat} texte={l.texte} classe={`chip--${c.cle}`} /></li>
+                    ) : l.physique ? (
+                      <li><span class={`chip chip--${c.cle}`}>{l.texte}</span></li>
                     ) : l.soi ? (
                       <li><span class={`chip chip--${c.cle} chip--soi`} title="Cette magie, elle-même">{l.texte}</span></li>
                     ) : (
@@ -58,6 +75,7 @@ const ethnies = bloc.ethnies.map((e) => ({ href: pageHref(e.pageId), texte: e.no
                   )}
                 </ul>
               )}
+              {g.sources?.map((t) => <p class="texte affinite__source">« {t} […] »</p>)}
             </>
           ))}
         </article>

@@ -1086,6 +1086,8 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .resistance { padding: 0 0.45rem; border: 1.5px solid var(--c, var(--border)); border-radius: var(--radius-pill); font-size: var(--fs-xs); line-height: 1.5; cursor: help; }
 .resistance--magie { background: var(--c, var(--etape-doux)); color: var(--c-texte, var(--text)); }
 .resistance--etat { background: var(--surface); color: var(--text); }
+/* un type physique (décision R174 : Estoc, Frappe, Taille) : cerclé de la couleur de son palier (sa classe et teinte-palette), jamais un texte sur elle */
+.resistance--physique { background: var(--surface); color: var(--text); }
 .resistances__vide { color: var(--muted); }
 #resistances-choix { margin: 0.3rem 0 0; }
 #resistances-choix[hidden] { display: none; }

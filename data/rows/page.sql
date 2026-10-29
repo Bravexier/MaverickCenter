@@ -7869,7 +7869,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 5. **On retire l’armure de la cible** : son armure physique (AP) contre une arme, son armure magique (AM) contre un sort.
 6. **Défense partielle** (une parade ou une esquive réussie, mais moins bonne que l’attaque) : on divise par 2.
 7. **Un don qui divise les dégâts** : on divise encore par 2.
-8. **Résistance ou faiblesse de la cible à l’élément du coup** : on multiplie par la valeur de son palier (voir plus bas). Un sort a toujours un élément, sa magie. Un coup physique n’en a que s’il vient d’une arme élémentaire ou d’une arme sous un sort « Fer » : l’armure réagit d’abord à son type physique (étape 5), puis le palier de l’élément s’applique.
+8. **Résistance ou faiblesse de la cible au coup** : on multiplie par la valeur de son palier à l’élément du coup (voir plus bas) ; un sort a toujours un élément, sa magie, et un coup physique n’en a que s’il vient d’une arme élémentaire ou d’une arme sous un sort « Fer ». Contre un coup physique, l’armure réagit d’abord à son type (étape 5), puis on multiplie aussi par le palier de la cible à ce type (estoc, frappe ou taille). Avec un type physique et un élément, les deux paliers se multiplient.
 9. **On arrondit à l’inférieur**, une seule fois, à la fin. Le résultat ne descend jamais sous 0.
 
 ## L’armure de la cible
@@ -7887,6 +7887,8 @@ Contre un coup physique, l’armure portée réagit aussi à son type, **estoc**
 Chaque magie résiste à certaines magies et craint certaines autres : la page de chaque [magie](/magies/) les donne, et le tableau [Relations entre magies](/magies/#relations) les réunit toutes. Une cible prend deux fois plus de dégâts d’une magie à laquelle elle est vulnérable, et deux fois moins d’une magie à laquelle elle résiste.
 
 Les résistances et les faiblesses se comptent en crans, qui s’additionnent : chaque résistance à une magie en ajoute un, chaque faiblesse en retire un. Un personnage à deux magies cumule ainsi celles de ses deux magies : deux résistances à la même magie font une grande résistance, deux faiblesses une grande vulnérabilité, et une résistance et une faiblesse s’annulent. L’Arcane et la Corruption résistent l’une à l’autre. Certains objets et équipements changent aussi ces crans : un accessoire de résistance, ou l’armure élémentaire portée, qui donne un cran de résistance à sa magie (voir [[guide/l-equipement|L’équipement]]).
+
+Les dégâts physiques ont aussi leurs paliers, estoc, frappe et taille, qui se comptent de la même façon. Le Potentiel Illimité a un cran de moins contre chacun (« Surtension corporelle ») : il prend deux fois plus de dégâts physiques que les autres. Ce malus est annulé tant que dure son Mode Hyper.
 
 Le tableau « Résistances et faiblesses » de la [fiche de personnage](/fiche/) donne chaque palier avec son effet sur les dégâts subis, et y range les magies de votre personnage : il fait le compte pour vous.
 

@@ -44,6 +44,8 @@ const fiche = (magie, don, surcharge = {}) => ({
 const lignes = (f, r = regles) => Object.fromEntries(M.resistancesDe(r, f).paliers.flatMap((p) => p.cibles.map((c) => [`${c.type}:${c.id}`, c.immunite ? 'immunité' : c.crans])));
 const cible = (f, id) => M.resistancesDe(regles, f).paliers.flatMap((p) => p.cibles.map((c) => ({ ...c, palier: p.id }))).find((c) => c.id === id) ?? null;
 const etat = (id) => `etat:${id}`;
+// décision R174 : un personnage du Potentiel Illimité (hors Mode Hyper) a un cran de moins à chacun des trois types physiques (« Surtension corporelle »)
+const SURTENSION = { 'physique:estoc': -1, 'physique:taille': -1, 'physique:frappe': -1 };
 const magie = (id) => `magie:${id}`;
 /** Ce qui change entre deux tableaux : clé → [avant, après] (undefined : pas de ligne). */
 const ecarts = (avant, apres) => Object.fromEntries([...new Set([...Object.keys(avant), ...Object.keys(apres)])]
@@ -51,7 +53,7 @@ const ecarts = (avant, apres) => Object.fromEntries([...new Set([...Object.keys(
 
 test('la base (décision R163) : pour chaque magie, ses altérations sont l’image par etat_magie de ses magies, en résistance comme en vulnérabilité, et aucune altération n’est à la fois l’une et l’autre', () => {
   const etatDe = new Map(db.prepare('SELECT magie_id, etat_id FROM etat_magie').all().map((r) => [r.magie_id, r.etat_id]));
-  const listes = db.prepare('SELECT magie_id, sens, cible_type, COALESCE(cible_magie_id, cible_etat_id) AS cible FROM magie_resistance').all();
+  const listes = db.prepare('SELECT magie_id, sens, cible_type, COALESCE(cible_magie_id, cible_etat_id, cible_physique) AS cible FROM magie_resistance').all();
   const magies = db.prepare("SELECT id FROM magie WHERE id <> 'magies/potentiel-illimite'").all().map((m) => m.id);
   assert.equal(magies.length, 14);
   for (const m of magies) {
@@ -62,8 +64,10 @@ test('la base (décision R163) : pour chaque magie, ses altérations sont l’im
     const resistees = new Set(listes.filter((l) => l.magie_id === m && l.sens === 'resistance' && l.cible_type === 'etat').map((l) => l.cible));
     assert.deepEqual(listes.filter((l) => l.magie_id === m && l.sens === 'vulnerabilite' && l.cible_type === 'etat' && resistees.has(l.cible)), [], m);
   }
-  // le Potentiel Illimité n'a pas de liste (décision R139)
-  assert.deepEqual(listes.filter((l) => l.magie_id === PI), []);
+  // le Potentiel Illimité n'a pas de liste de magies ni d'altérations (décision R139) ; ses seules lignes sont ses trois vulnérabilités physiques
+  // (décision R174, cible_type « physique » : estoc, taille, frappe), qu'aucun don du Flagelleur ne lit
+  assert.deepEqual(listes.filter((l) => l.magie_id === PI && l.cible_type !== 'physique'), []);
+  assert.deepEqual(listes.filter((l) => l.magie_id === PI).map((l) => `${l.sens}:${l.cible_type}`), Array(3).fill('vulnerabilite:physique'));
 });
 
 test('décision R163 : les règles des deux dons — ce que leur texte donne, et la magie tirée du Potentiel Illimité parmi les 14 magies (Arcane et Corruption comprises)', () => {
@@ -143,7 +147,7 @@ test('décision R163 : Potentiel Illimité + « Punis-moi ... » — la magie ti
   assert.deepEqual(M.resistanceChoixValables(regles, g), [{ source: PUNIS, rang: 1, magie_id: FEU }]);
   assert.deepEqual(M.choixEnAttente(regles, g).filter((c) => c.nature === 'resistance'), []);
   // l'Arcane et la Corruption se tirent aussi (Surcharge magique) ; le PI lui-même n'est pas une option
-  assert.deepEqual(lignes({ ...f, ...M.resistanceApresChoix(f, PUNIS, 1, CORRUPTION, true) }), { [etat(SURCHARGE)]: 1 });
+  assert.deepEqual(lignes({ ...f, ...M.resistanceApresChoix(f, PUNIS, 1, CORRUPTION, true) }), { [etat(SURCHARGE)]: 1, ...SURTENSION });
   assert.deepEqual(M.resistanceChoixValables(regles, { ...f, resistance_choix: [{ source: PUNIS, rang: 1, magie_id: PI }] }), []);
   // la magie innée passe du PI au Feu : le choix part, le don compte la liste du Feu
   const feu = { ...g, magie_innee_id: FEU };
@@ -159,12 +163,12 @@ test('décision R163 : Potentiel Illimité + « Punis-moi ... » — la magie ti
 test('décision R163 : Potentiel Illimité + « ... plus fort ! » — la Glace tirée, un accessoire maudit « Résistance Feu et Brûlure » : la Brûlure retirée, la faiblesse au Feu reste', () => {
   const maudit = { accessoires: [porte('bague-1', 'defense:5', { maudit: 1 })] };
   const f = fiche(PI, PLUS_FORT, maudit);
-  assert.deepEqual(lignes(f), { [magie(FEU)]: -1, [etat(BRULURE)]: -1 }, 'sans magie tirée, rien n’est annulé');
+  assert.deepEqual(lignes(f), { [magie(FEU)]: -1, [etat(BRULURE)]: -1, ...SURTENSION }, 'sans magie tirée, rien n’est annulé');
   const g = { ...f, ...M.resistanceApresChoix(f, PLUS_FORT, 1, GLACE, true) };
-  assert.deepEqual(lignes(g), { [magie(FEU)]: -1 });
+  assert.deepEqual(lignes(g), { [magie(FEU)]: -1, ...SURTENSION }, 'les faiblesses physiques ne sont pas des altérations : « ... plus fort ! » ne les retire pas');
   assert.deepEqual(M.resistanceChoixValables(regles, g), [{ source: PLUS_FORT, rang: 1, magie_id: GLACE }]);
   // le Feu tiré (ses faiblesses : Confusion, Surdité) : la Brûlure maudite reste
-  assert.deepEqual(lignes({ ...f, ...M.resistanceApresChoix(f, PLUS_FORT, 1, FEU, true) }), { [magie(FEU)]: -1, [etat(BRULURE)]: -1 });
+  assert.deepEqual(lignes({ ...f, ...M.resistanceApresChoix(f, PLUS_FORT, 1, FEU, true) }), { [magie(FEU)]: -1, [etat(BRULURE)]: -1, ...SURTENSION });
 });
 
 test('la page (src/scripts/fiche.mjs, lue comme un texte) : la magie tirée sous le tableau des résistances et dans le tiroir, l’aide de « ... plus fort ! » sous le don (décision R163)', () => {

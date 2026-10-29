@@ -1028,11 +1028,12 @@ test('dons de la race (demande du propriétaire) : le don de base d’abord, le 
 });
 
 test('résistances (fiche auto Personnage!BA2:BI12) : les crans de la magie innée et de l’acquise s’additionnent, rangés dans les six paliers ; à 0, rien', () => {
-  // la base recalcule la même chose : somme des crans des deux listes (magie_resistance), palier de resistance_palier
+  // la base recalcule la même chose : somme des crans des deux listes (magie_resistance), palier de resistance_palier ; les types de dégâts physiques
+  // aussi (décision R174 : la ligne du tableau est le type, estoc, taille ou frappe ; le Potentiel Illimité, une vulnérabilité à chacun)
   const palierSql = db.prepare(`
     SELECT r.cible, p.id AS palier FROM (
-      SELECT COALESCE(cible_magie_id, cible_etat_id) AS cible, SUM(CASE sens WHEN 'resistance' THEN 1 ELSE -1 END) AS v
-      FROM magie_resistance WHERE magie_id IN (?, ?) GROUP BY cible) r
+      SELECT COALESCE(cible_magie_id, cible_etat_id, cible_physique) AS cible, SUM(CASE sens WHEN 'resistance' THEN 1 ELSE -1 END) AS v
+      FROM magie_resistance WHERE magie_id IN (?, ?) GROUP BY cible_type, cible) r
     JOIN resistance_palier p ON (p.valeur_min IS NULL OR r.v >= p.valeur_min) AND (p.valeur_max IS NULL OR r.v <= p.valeur_max)`);
   let paires = 0;
   for (const innee of regles.magies) {
@@ -1085,7 +1086,11 @@ test('résistances des dons : ethnie hybride (sa magie innée et son altération
   const rouge = resistancesDe(regles, ficheConforme({ race_id: 'races/drakos', ethnie_id: 'races/drakos#ethnie:drakos-rouge' }));
   assert.equal(cible(rouge, 'Brûlure').crans, 2);
   const orange = resistancesDe(regles, ficheConforme({ race_id: 'races/drakos', ethnie_id: 'races/drakos#ethnie:drakos-orange', magie_innee_id: 'magies/potentiel-illimite' }));
-  assert.deepEqual([orange.paliers.flatMap((p) => p.cibles), orange.auChoix, orange.aChoisir.map((c) => [c.nom, c.fait])], [[], [], [['Écaille draconique', false]]]);
+  // le Potentiel Illimité : aucune magie ni altération (R139), ses trois vulnérabilités physiques seulement (R174, « Surtension corporelle »)
+  assert.deepEqual([orange.paliers.flatMap((p) => p.cibles).filter((c) => c.type !== 'physique'), orange.auChoix, orange.aChoisir.map((c) => [c.nom, c.fait])],
+    [[], [], [['Écaille draconique', false]]]);
+  assert.deepEqual(orange.paliers.flatMap((p) => p.cibles.filter((c) => c.type === 'physique').map((c) => `${c.id}:${c.crans}>${p.id}`)),
+    ['estoc:-1>vulnerabilite', 'frappe:-1>vulnerabilite', 'taille:-1>vulnerabilite']);
   // Clerc, don de classe de niveau 1 « Proche » : la magie innée (Feu) et la Brûlure gagnent un cran
   const clerc = resistancesDe(regles, ficheConforme({ classes: [{ rang: 1, classe_id: 'classes/clerc', specialite_id: null }] }));
   assert.deepEqual([cible(clerc, 'Feu').crans, cible(clerc, 'Brûlure').crans, cible(clerc, 'Glace').crans], [2, 2, 1]);

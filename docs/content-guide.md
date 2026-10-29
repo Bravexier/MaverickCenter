@@ -424,6 +424,10 @@ Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, tes
 - **Altération d'état liée** (demande du propriétaire) : après la présentation (et l'Explication), avant les résistances, un encart montre l'altération d'état de la magie
   (colonne « Magie Liée » de la « Liste des altérations d'état » : `etat_magie`) : son nom (lien vers sa section), son type et l'effet de chaque stade ; une altération partagée
   (Surcharge Magique : Arcane et Corruption) nomme l'autre magie. Pas d'encart sans altération liée (Potentiel Illimité). `components/magie/MagieEtats.astro`.
+- **Résistances et vulnérabilités** (`components/magie/MagieAffinites.astro`) : deux cartes, chacune avec ses magies puis ses altérations d'état ; une magie qui a des
+  lignes physiques (`magie_resistance.cible_physique`, décision R174 : le Potentiel Illimité, « Surtension corporelle ») a de plus un groupe « Dégâts physiques » (Estoc, Frappe,
+  Taille, dans l'ordre de la fiche : `RESISTANCES_PHYSIQUES` de `lib/fiche-moteur.mjs`, sans lien), suivi une fois de la phrase de la source, telle qu'écrite ; les autres magies
+  n'ont pas ce groupe.
 - **Capacité Mode Hyper** : un (+) à côté du titre mène à la liste des effets mode hyper (plus de lien en texte).
 - **Aucune virgule dans les données** : une liste devient des pastilles (une par élément), les bonus du D/S/B (« +8 dégâts, +2AM ») sont un élément par ligne, « 4.0 » s'affiche « 4 », les précisions entre
   parenthèses passent en petit (parenthèses gardées), un coût qui écrirait encore deux coûts en une case (« 5 + 1 âme ») serait séparé en coût et supplément (il n'y en a plus : décisions R105, R106), les types et les marques (IC, imparable, inesquivable) sont des pastilles.
