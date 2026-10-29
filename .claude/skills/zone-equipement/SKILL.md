@@ -18,7 +18,7 @@ user-invocable: false
 - `docs/serveur.md`, « Édition des règles (site de dev) », ligne « Panneaux de règles » ; notes de version des panneaux : `docs/serveur.md` (domaine « Équipement », `comparerOrdreDesBlocs`).
 
 ## Page et onglets
-- Une page sans page du wiki, rendue depuis la base. Une seule entrée du menu, « Équipement » (rubrique Règles).
+- Une page sans page du wiki, rendue depuis la base. Au menu, pas d'entrée unique : la rubrique Équipement a une entrée par onglet (libellé et ancre de `ONGLETS_DE_L_EQUIPEMENT`, `lib/nav.mjs` ; skill `zone-menu`), comparées par `test/equipement.test.mjs` et `test/equipement-html.test.mjs`.
 - Cinq onglets dans l'ordre de `ONGLETS_DE_L_EQUIPEMENT` : Armes, Armures, Boucliers, Ceinture, Accessoires (demandes du propriétaire). `components/Onglets.astro` est posé une fois, par `EquipementPage.astro` (skill `ui-onglets`). Sans JavaScript, les panneaux se suivent.
 - Un onglet = une `section.equipement-panneau` dont l'id est l'ancre de l'onglet (`lib/equipement.mjs`). Un sous-onglet de la ceinture = une `section.ceinture-panneau`, ancre unique sur la page aussi.
 - Un lien vers un élément d'un panneau ouvre son onglet, et son sous-onglet.

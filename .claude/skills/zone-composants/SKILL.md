@@ -39,7 +39,7 @@ user-invocable: false
 - Un onglet par tableau, comme la page Équipement, modifiables et liés en base.
 - Monnaie avec ses conversions vers les plus petites ; table des fruits à part, puis une table par catégorie d'ingrédient ; les six tableaux de l'onglet « Équipement inventaire ».
 - Recherche sur toutes les lignes, le nombre trouvé dans chaque onglet.
-- Au menu : première page de Règles › Artisanat (skill `zone-menu`).
+- Au menu : première page de l'Équipement › Artisanat (skill `zone-menu`).
 
 ## Tests
 - `client/test/serveur-edition-composants.test.mjs` (la création et la suppression d'une gemme et d'un bois sur une magie d'essai ajoutée à une copie à part, la base n'ayant plus de magie libre, et le rejeu de leur journal sur une base neuve qui a la même magie d'essai), `serveur-edition-r160.test.mjs`, `corps-composants.test.mjs`, `composants-onglets.test.mjs`, `composants-html.test.mjs` (site construit).

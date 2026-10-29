@@ -19,10 +19,16 @@ user-invocable: false
 
 ## Menu (arborescence du propriétaire)
 
-- Six rubriques, dans l'ordre : Découvrir (la vitrine ; l'accueil l'ouvre : Bienvenue, L'univers, Créer son personnage, Rejoindre une partie ; plus d'entrée « Liens », réponse du propriétaire du 2026-10-22 : « Plus d'entrée Liens au menu : tout est sur Bienvenue. »), Règles (en tête, Les bases : le sommaire `/regles/`), Espace joueur, Espace MJ, Codex, Outils.
-- Rien n'est caché. À terme, les non-membres ne verront que Découvrir et Règles (`docs/feuille-de-route.md`).
+- Sept rubriques, dans l'ordre (clé) :
+  - Règles (`regles`, la vitrine, l'accueil l'ouvre) : Découvrir (`/decouvrir/`), L'univers, Créer son personnage, Rejoindre une partie, puis Les bases (`/regles/`) et Règles avancées. Plus d'entrée « Liens » : tout est sur l'accueil (demande du propriétaire).
+  - Personnage (`personnage`) : Races, Magies, Classes, Métiers.
+  - Équipement (`equipement`) : une entrée par onglet de la page Équipement (libellé et ancre de `ONGLETS_DE_L_EQUIPEMENT`, `ressources/equipement/#armes`…), puis Artisanat et Livres & Parchemins. Plus d'entrée unique « Équipement » (skill `zone-equipement`).
+  - Espace joueur, Espace MJ, Codex, Outils.
+- Plus d'entrée « Pièces élémentaires » : sa page reste dans la base, en attente de la réponse du propriétaire sur son contenu.
+- Rien n'est caché. À terme, les non-membres ne verront que « les 2 premiers onglets » (formulé ainsi par le propriétaire : ne pas nommer les rubriques ; `docs/feuille-de-route.md`).
+- Une page ouvre la rubrique dont une entrée (sans son ancre) ou un début d'adresse `autres` est le plus long début de son adresse (`activeGroup`, `groupIsCurrent`) : `/regles/artisanat/` ouvre l'Équipement, pas les Règles de `/regles/`. Une seule rubrique est courante.
 - Une entrée sans `path` est affichée « bientôt » : la page n'existe pas encore, on n'invente pas de contenu.
-- `autres` = débuts d'adresse des pages de la rubrique hors menu (`ressources/` et `capacites/` ouvrent les Règles).
+- `autres` = débuts d'adresse des pages de la rubrique hors menu (`capacites/` ouvre le Personnage, `ressources/` l'Équipement).
 - `devSeulement` : entrée du site de dev seulement (Debug), retirée par `entreesDuMenu` d'un build `SITE_MODE=prod` et de la version portable.
 - Les chemins des pages du guide sont ceux de `lib/livres.mjs`, recopiés dans `nav.mjs`, qui n'importe rien (le script de la page 404 l'importe) : `test/livres.test.mjs` vérifie leur accord.
 - Une page renommée : son ancienne adresse dans `PAGES_RENOMMEES` (renvoyée par la page 404 via `nouvelleAdresse`). Adresses du wiki et du guide : skill `site-wiki-liens`.
