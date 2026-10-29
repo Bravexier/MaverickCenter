@@ -61,7 +61,7 @@ export function chargerMagies(db) {
   );
   const roles = regrouper(all('SELECT magie_id, rang, role, role_brut FROM magie_role ORDER BY magie_id, rang'), 'magie_id');
   const resistances = regrouper(
-    all('SELECT magie_id, sens, cible_type, rang, cible_magie_id, cible_etat_id, cible_brut FROM magie_resistance ORDER BY magie_id, sens, cible_type, rang'),
+    all('SELECT magie_id, sens, cible_type, rang, cible_magie_id, cible_etat_id, cible_physique, cible_brut FROM magie_resistance ORDER BY magie_id, sens, cible_type, rang'),
     'magie_id',
   );
   const incompatibles = regrouper(
@@ -80,6 +80,9 @@ export function chargerMagies(db) {
 
   const cibleMagie = (r) => ({ id: r.cible_magie_id, brut: r.cible_brut });
   const cibleEtat = (r) => ({ id: r.cible_etat_id, brut: r.cible_brut });
+  // un type de dégâts physiques (décision R174, cible_type « physique ») : `type` = 'estoc' | 'taille' | 'frappe' (DEGATS_PHYSIQUES de
+  // lib/fiche-moteur.mjs), `brut` = la phrase de la source, la même sur les trois lignes du Potentiel Illimité (« Surtension corporelle (Vulnérabilité… »)
+  const ciblePhysique = (r) => ({ type: r.cible_physique, brut: r.cible_brut });
   const magies = new Map();
   for (const m of rowsMagie) {
     const parSens = (sens, type) =>
@@ -106,10 +109,17 @@ export function chargerMagies(db) {
       monoMagie: m.mono_magie === 1,
       roles: (roles.get(m.id) ?? []).map((r) => ({ rang: r.rang, role: r.role, brut: r.role_brut })),
       // « Aucune » dans la source = aucune ligne
-      // chaque élément : { id de la magie ou de l'état visé, brut = écriture de la source (« Gelé », « Pétrification ») }
+      // chaque élément : { id de la magie ou de l'état visé, brut = écriture de la source (« Gelé », « Pétrification ») } ; `physiques` :
+      // { type de dégâts physiques, brut } (R174), dans l'ordre de la table (rang : estoc, taille, frappe)
       resistances: {
-        resistance: { magies: parSens('resistance', 'magie').map(cibleMagie), etats: parSens('resistance', 'etat').map(cibleEtat) },
-        vulnerabilite: { magies: parSens('vulnerabilite', 'magie').map(cibleMagie), etats: parSens('vulnerabilite', 'etat').map(cibleEtat) },
+        resistance: {
+          magies: parSens('resistance', 'magie').map(cibleMagie), etats: parSens('resistance', 'etat').map(cibleEtat),
+          physiques: parSens('resistance', 'physique').map(ciblePhysique),
+        },
+        vulnerabilite: {
+          magies: parSens('vulnerabilite', 'magie').map(cibleMagie), etats: parSens('vulnerabilite', 'etat').map(cibleEtat),
+          physiques: parSens('vulnerabilite', 'physique').map(ciblePhysique),
+        },
       },
       incompatibles: (incompatibles.get(m.id) ?? []).map((r) => r.autre),
       modeHyper: (modesHyper.get(m.id) ?? [])

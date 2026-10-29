@@ -41,7 +41,9 @@ export const RESSOURCES = [
         tri: 'sens',
         description:
           'Les quatre blocs de l’onglet (résistance et vulnérabilité magiques, résistance et vulnérabilité aux altérations d’état), un nom de la liste ' +
-          'par ligne dans l’ordre de la source, l’écriture d’origine gardée (« Gelé ») ; en lecture seule (demande du propriétaire).',
+          'par ligne dans l’ordre de la source, l’écriture d’origine gardée (« Gelé ») ; et les types de dégâts physiques (cible_physique : estoc, ' +
+          'taille, frappe ; décision R174 : les trois vulnérabilités du Potentiel Illimité, « Surtension corporelle ») ; en lecture seule (demande du ' +
+          'propriétaire).',
       },
       {
         cle: 'incompatibilites',

@@ -258,7 +258,13 @@ abandonne.
   d'état) » de la fiche auto, `Personnage!BA2:BI12`) : les six paliers (`resistance_palier` : immunité, grande résistance, résistance, vulnérabilité, grande
   vulnérabilité, sensibilité, avec leur effet sur les dégâts ; le trait de chaque ligne dans la couleur de son palier : le champ `classe` de chaque
   palier de `regles.json`, posée par le script sur la ligne), chacun avec ses magies, dans leur couleur, puis ses altérations d'état, cerclées de la couleur
-  de leur magie ; le détail des crans en infobulle (`resistancesDe`). Une cible additionne ses crans (guide « Créer sa fiche », Tableau Résistances/Faiblesses :
+  de leur magie, puis les **types physiques** (décision R174 : « rajouter les 3 type de physique dans le tableau de résistance » ; Estoc, Frappe, Taille,
+  dans l'ordre que le propriétaire écrit, `RESISTANCES_PHYSIQUES`), cerclés de la couleur de leur palier (sa classe `couleur-palier-…`, aucun texte
+  sur elle) ; le détail des crans en infobulle (`resistancesDe`). Un type physique suit les mêmes paliers et additionne ses crans comme une magie ; à 0,
+  il n'a pas de ligne, comme une magie sans cran. Sa seule source aujourd'hui : le malus du **Potentiel Illimité** (toujours la magie innée, R176), un
+  cran de moins à chacun (« Surtension corporelle », `magie_resistance` de type `physique` : la Vulnérabilité, × 2 ; origine « Potentiel Illimité
+  (magie innée) ») ; ni race, ni don (« Squelettique » et « Gluant » du Mage Bleu jouent sur l'armure), ni équipement. Le Mode Hyper l'annule (R172) :
+  pas encore branché, l'option `sansMalusPhysique` de `resistancesDe` et de `degatsRecus` en est le point d'entrée. Une cible additionne ses crans (guide « Créer sa fiche », Tableau Résistances/Faiblesses :
   deux résistances font une grande résistance) : ceux des listes de la magie innée et de la magie acquise (`magie_resistance`, les listes des pages de magie et
   du guide ; l'Arcane et la Corruption se résistent l'une à l'autre, décision R90), et ceux que les dons écrivent
   (`lib/resistance-texte.mjs` : dons de la race et de l'ethnie de l'onglet, R13 — « 1 cran de résistance en plus à la magie innée et son altération d'état »,
@@ -533,8 +539,11 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   (l'étape « ÷ 2 si un don divise les dégâts » de la formule, à cocher : la fiche ne lit pas ces dons) ; la formule du guide (armure, défense partielle,
   don, palier de résistance à la magie, arrondi à l'inférieur) : un type physique prend l'AP, l'armure portée appliquant sa résistance (AP × 2) ou sa
   faiblesse (AP ÷ 2) au type physique, « x2 » doublant l'effet (pas avec une armure élémentaire : R99 ; sur sa seule part, donc rien sur une partie
-  cassée : R108) ; « Magique » prend l'AM ; l'élément applique ensuite le palier de résistance à sa magie, ou l'immunité de la Symbiose (R100) ; un coup
-  physique avec un élément prend l'AP, puis le palier de son élément. Un type physique sans élément et « Magique » + élément donnent exactement les
+  cassée : R108) ; « Magique » prend l'AM ; un type physique prend ensuite le **palier physique personnel** de ce type (décision R174 : « Oui, armure
+  puis palier » ; le Potentiel Illimité, × 2), puis l'élément le palier de résistance à sa magie, ou l'immunité de la Symbiose (R100) ; un coup
+  physique avec un élément prend l'AP, puis les deux paliers, qui se multiplient (« Ils se multiplient » : 30 entrants, AP 4, × 2, grande résistance au
+  Feu ÷ 3 → 26 × 2 ÷ 3 = 17 ; 30 en Estoc, armure qui résiste à l'estoc, AP 4 → 8, × 2 → 44), arrondis à l'inférieur une seule fois, à la fin (R175) ;
+  « Magique » n'a pas de palier physique ; pas de case pour les dons d'attaquant qui ignorent une résistance physique (« Pas de case »). Un type physique sans élément et « Magique » + élément donnent exactement les
   dix-sept types d'avant (`typesDeDegats`, `typeDeDegatsDuCoup`, `test/fiche-degats-recus.test.mjs`). Les étapes en infobulle, rien d'enregistré (ni
   la partie touchée, ni le coup).
 - **« Appliquer »** (décision R171, `appliquerDegatsRecus`, `degatsALaBarriere`) : le résultat baisse d'abord la **barrière du moment** ; si elle passe
@@ -698,7 +707,8 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   correction 9 de [`fiche-auto.md`](fiche-auto.md)), acquis d'une compétence = l'acquis calculé (R104 : entraînement, dons, métier, accessoires, rognés
   au plafond) ; dégâts de l'arme forgée (R49) ; portée d'une arme, celle de la page
   « Armes » (R50 : la portée écrite, 1 par défaut), plus celle des accessoires ; « Deux armes : −N % » dans l'effet de l'arme (R46) ; sorts au NM du
-  sort ; paliers de résistance et leur effet tels que la base les écrit (R155), sans la posture du moment (en Symbiose, la magie désactivée garde ses
+  sort ; paliers de résistance et leur effet tels que la base les écrit (R155), leurs cibles dans la case de chaque palier (BI2 à BI12 : les
+  magies, les altérations, puis les types physiques, R174 : « Estoc, Frappe, Taille » en BI8 pour le Potentiel Illimité ; non relues), sans la posture du moment (en Symbiose, la magie désactivée garde ses
   listes dans le classeur : R111 ne vaut que sur la page). **L'AP et l'AM de la grille de l'armure** (AI22:AN23, une colonne par
   partie, R108) : ceux de l'armure portée sur chaque partie, 0 sur une partie cassée (`armureParPartie` ; l'« AP Base » et l'« AM Base », AA22 et AA24,
   restent la base : race, ethnie, classes magiques, accessoires), calculés et non relus. Le **bouclier** (R96) : la forme en AA26, la matière et

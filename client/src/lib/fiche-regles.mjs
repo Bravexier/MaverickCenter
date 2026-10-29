@@ -135,7 +135,10 @@ function reglesDeLaBase(db) {
   const lireResistances = lecteurDeResistances([
     ...lignes(db, 'SELECT id, nom FROM magie').map((m) => ({ type: 'magie', id: m.id, nom: m.nom })),
     ...etats.map((e) => ({ type: 'etat', id: e.id, nom: e.nom })),
+    // les cibles physiques (décision R174) n'y vont pas : leur cible_brut est une phrase (« Surtension corporelle (Vulnérabilité… »), pas le nom
+    // d'une cible qu'un don écrirait, et le lecteur ne reconnaît que des magies et des altérations
     ...lignes(db, `SELECT DISTINCT cible_type AS type, COALESCE(cible_magie_id, cible_etat_id) AS id, cible_brut AS nom FROM magie_resistance
+                   WHERE cible_type IN ('magie', 'etat')
                    UNION SELECT DISTINCT cible_type, COALESCE(cible_magie_id, cible_etat_id), cible_brut FROM ethnie_resistance`),
   ]);
   /** `resistances` d'un don quand son texte en écrit (ou en laisse au choix) ; rien sinon, pour garder regles.json léger. */
@@ -270,8 +273,11 @@ function reglesDeLaBase(db) {
   const secondaires = parCle(lignes(db, 'SELECT magie_id, ethnie_id FROM magie_ethnie_secondaire WHERE ethnie_id IS NOT NULL'), 'magie_id', (r) => r.ethnie_id);
   // Ses résistances et vulnérabilités : les listes de la page de la magie (magie_resistance, classeur V8), magies et altérations d'état, un cran
   // chacune ; et l'altération qui lui est liée (etat_magie), à laquelle un don « … à la magie innée et son altération d'état » donne un cran.
-  const resistancesDeMagie = parCle(lignes(db, `SELECT magie_id, sens, cible_type, COALESCE(cible_magie_id, cible_etat_id) AS cible_id FROM magie_resistance
-                                                 ORDER BY magie_id, sens, cible_type, rang`), 'magie_id',
+  // Les types de dégâts physiques aussi (décision R174, cible_type « physique ») : `{ type: 'physique', id: 'estoc' | 'taille' | 'frappe', crans }`,
+  // l'id étant celui de DEGATS_PHYSIQUES (lib/fiche-moteur.mjs) ; aujourd'hui les trois vulnérabilités du Potentiel Illimité (« Surtension corporelle »),
+  // un palier personnel dont l'annulation en Mode Hyper (R172, R174) n'est pas une donnée de la table.
+  const resistancesDeMagie = parCle(lignes(db, `SELECT magie_id, sens, cible_type, COALESCE(cible_magie_id, cible_etat_id, cible_physique) AS cible_id
+                                                 FROM magie_resistance ORDER BY magie_id, sens, cible_type, rang`), 'magie_id',
     (r) => ({ type: r.cible_type, id: r.cible_id, crans: r.sens === 'resistance' ? 1 : -1 }));
   const etatDeMagie = new Map(lignes(db, 'SELECT magie_id, etat_id FROM etat_magie').map((r) => [r.magie_id, r.etat_id]));
   const magies = lignes(db, `

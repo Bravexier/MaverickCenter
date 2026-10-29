@@ -13,6 +13,7 @@ import {
   classeDuModeHyper, classesDeLaPalette, cssDesFamilles,
 } from '../src/lib/palette-css.mjs';
 import { typeDeDon } from '../src/lib/classe-dons.mjs';
+import { DEGATS_PHYSIQUES } from '../src/lib/fiche-moteur.mjs';
 import { ditClasseMagique } from '../src/lib/classe-magique.mjs';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { PAGE_DE_L_ENTRAINEMENT, aideDeLEntrainement, chargerReglesDeFiche, limitesDeLEntrainement } from '../src/lib/fiche-regles.mjs';
@@ -508,8 +509,10 @@ test('résistances (tableau « Résistance / Faiblesse » de la fiche) : les six
     ['Résistance', 1, 1], ['Vulnérabilité', -1, -1], ['Grande vulnérabilité', -2, -2], ['Sensibilité', null, -3]]);
   assert.deepEqual(regles.etats.map((e) => e.id), db.prepare('SELECT id FROM etat ORDER BY ordre').all().map((r) => r.id));
   assert.equal(regles.magies.reduce((n, m) => n + m.resistances.length, 0), compte('magie_resistance'));
+  // chaque cran : une magie, une altération ou un type de dégâts physiques (décision R174 : estoc, taille, frappe, les ids de DEGATS_PHYSIQUES), d'id connu
+  const connus = { magie: regles.magies.map((x) => x.id), etat: regles.etats.map((x) => x.id), physique: DEGATS_PHYSIQUES.map(([id]) => id) };
   for (const m of regles.magies) {
-    for (const r of m.resistances) assert.ok([1, -1].includes(r.crans) && (r.type === 'magie' ? regles.magies : regles.etats).some((x) => x.id === r.id), `${m.nom} : ${r.id}`);
+    for (const r of m.resistances) assert.ok([1, -1].includes(r.crans) && (connus[r.type] ?? []).includes(r.id), `${m.nom} : ${r.type} ${r.id}`);
     const lie = db.prepare('SELECT etat_id FROM etat_magie WHERE magie_id = ?').get(m.id)?.etat_id ?? null;
     assert.equal(m.etat_id, lie, m.nom);
   }
@@ -518,6 +521,19 @@ test('résistances (tableau « Résistance / Faiblesse » de la fiche) : les six
   assert.ok(dons.some((d) => d.resistances?.effets.length) && dons.some((d) => d.resistances?.choix));
   for (const d of dons.filter((x) => x.resistances)) assert.ok(d.resistances.effets.length || d.resistances.choix || d.resistances.au_choix?.length);
   assert.ok(regles.races.find((r) => r.id === 'races/drakos').dons_tableau.lignes.every((l) => l.resistances), 'chaque ligne du Drakos : son cran, ou au choix');
+});
+
+test('décision R174 : le Potentiel Illimité porte ses trois vulnérabilités physiques (estoc, taille, frappe), un cran de moins chacune, et rien d’autre', () => {
+  const pi = regles.magies.find((m) => m.id === 'magies/potentiel-illimite');
+  // R139 : aucune liste de magies ni d'altérations ; R174 : « Surtension corporelle », un palier personnel, −1 cran à chacun des trois types
+  assert.deepEqual(pi.resistances, ['estoc', 'taille', 'frappe'].map((id) => ({ type: 'physique', id, crans: -1 })));
+  // l'export suit la table : autant de crans physiques que de lignes physiques, chacun vers la magie de sa ligne
+  const exportes = regles.magies.flatMap((m) => m.resistances.filter((r) => r.type === 'physique').map((r) => `${m.id}>${r.id}>${r.crans}`));
+  assert.deepEqual(exportes.sort(), db.prepare(`SELECT magie_id || '>' || cible_physique || '>' || CASE sens WHEN 'resistance' THEN 1 ELSE -1 END AS c
+                                                 FROM magie_resistance WHERE cible_type = 'physique'`).all().map((r) => r.c).sort());
+  // le lecteur des textes de dons ne reçoit aucune cible physique : un don n'en gagne pas (aucun effet de type « physique »)
+  const dons = [...regles.races.flatMap((r) => r.dons), ...regles.classes.flatMap((c) => c.dons)];
+  assert.ok(dons.every((d) => !(d.resistances?.effets ?? []).some((e) => e.type === 'physique')));
 });
 
 test('glossaire des mots-clés (D2) : les règles de la fiche lisent les textes comme les découpages — le texte écrit, sinon le libellé, jamais une balise ni une définition', () => {

@@ -1568,9 +1568,17 @@ export function presentationDuCompteurDeMaitrise(compteur, sources) {
  * d'équipement, R166, même quand sa magie est la magie désactivée) restent. `desactivee` : cette magie
  * ({ id, nom }), null sinon. `options.avecLaPosture` (vrai par défaut, la page) : faux, la posture du moment est ignorée, aucune magie n'est
  * désactivée (l'export en tableur, qui écrit les valeurs de la fiche, pas celles de la posture : docs/character-generator.md, « Export »).
+ * Les trois types de dégâts physiques (décision R174 : « rajouter les 3 type de physique dans le tableau de résistance », « Oui, palier personnel ») :
+ * des cibles `type: 'physique'` (id estoc, frappe ou taille, nom de DEGATS_PHYSIQUES), rangées après les magies et les altérations, dans l'ordre du
+ * propriétaire (RESISTANCES_PHYSIQUES : « Estoc, Frappe, Taille ») ; mêmes paliers, crans additionnés comme pour une magie, absentes à 0 comme une
+ * magie sans cran. Seule source aujourd'hui : la liste de la magie innée du Potentiel Illimité (magie_resistance, « Surtension corporelle », un cran
+ * de moins à chacune : la Vulnérabilité ; origine « Potentiel Illimité (magie innée) »), ni les dons, ni l'équipement (les dons du Mage Bleu
+ * « Squelettique » et « Gluant » jouent sur l'armure, pas sur ce palier). `options.sansMalusPhysique` (faux par défaut) : les crans physiques des
+ * listes des magies ne comptent pas — le point d'entrée du Mode Hyper (R172, R174 : « le mode hyper se contente d'annuler malus passif du PI »), que
+ * le lot du Mode Hyper branchera ; rien ne le passe encore.
  * { paliers: [{ id, libelle, effet, cibles: [{ type, id, nom, crans, immunite, origines: [{ nom, crans } | { nom, immunite }] }] }], auChoix: [nom], aChoisir, desactivee }
  */
-export function resistancesDe(regles, fiche, { avecLaPosture = true } = {}) {
+export function resistancesDe(regles, fiche, { avecLaPosture = true, sansMalusPhysique = false } = {}) {
   const innee = trouver(regles.magies, fiche.magie_innee_id);
   const acquise = trouver(regles.magies, fiche.magie_acquise_id);
   const desactivee = avecLaPosture ? postureDuMoment(regles, fiche)?.symbiose?.inactive ?? null : null;
@@ -1632,7 +1640,11 @@ export function resistancesDe(regles, fiche, { avecLaPosture = true } = {}) {
   for (const [magie, role] of [[innee, 'magie innée'], [acquise, 'magie acquise']]) {
     // la magie que la Symbiose désactive : ni ses résistances ni ses faiblesses (décision R111)
     if (!magie || magie.id === desactivee?.id) continue;
-    for (const e of magie.resistances ?? []) compter(e, `${magie.nom} (${role})`);
+    for (const e of magie.resistances ?? []) {
+      // le malus physique du Potentiel Illimité, annulé en Mode Hyper (R172, R174) : point d'entrée seulement (sansMalusPhysique)
+      if (sansMalusPhysique && e.type === 'physique') continue;
+      compter(e, `${magie.nom} (${role})`);
+    }
   }
   const race = donsDeRace(regles, fiche);
   const ethnie = trouver(regles.ethnies, fiche.ethnie_id)?.nom ?? trouver(regles.races, fiche.race_id)?.nom;
@@ -1660,10 +1672,13 @@ export function resistancesDe(regles, fiche, { avecLaPosture = true } = {}) {
     c.origines.push({ nom: origine, crans: -negatifs });
   }
 
-  const rang = (c) => (c.type === 'magie' ? regles.magies : regles.etats ?? []).findIndex((x) => x.id === c.id);
+  // les magies, puis les altérations, puis les types physiques (R174), chacun dans son ordre (regles.magies, regles.etats, RESISTANCES_PHYSIQUES)
+  const listeDe = (type) => (type === 'magie' ? regles.magies : type === 'physique' ? RESISTANCES_PHYSIQUES : regles.etats ?? []);
+  const ordreDuType = (type) => ['magie', 'etat', 'physique'].indexOf(type);
+  const rang = (c) => listeDe(c.type).findIndex((x) => x.id === c.id);
   const rangees = [...cibles.values()]
-    .map((c) => ({ ...c, nom: trouver(c.type === 'magie' ? regles.magies : regles.etats ?? [], c.id)?.nom ?? c.id }))
-    .sort((a, b) => (a.type === b.type ? 0 : a.type === 'magie' ? -1 : 1) || rang(a) - rang(b));
+    .map((c) => ({ ...c, nom: trouver(listeDe(c.type), c.id)?.nom ?? c.id }))
+    .sort((a, b) => ordreDuType(a.type) - ordreDuType(b.type) || rang(a) - rang(b));
   const palierDe = (c) => (c.immunite ? 'immunite'
     : (regles.resistance_paliers ?? []).find((p) => (p.min === null || c.crans >= p.min) && (p.max === null || c.crans <= p.max))?.id ?? null);
   return {
@@ -2972,6 +2987,12 @@ export function bouclierApresChoix(regles, fiche, champ, valeur) {
 const POTENTIEL_ILLIMITE = 'magies/potentiel-illimite';
 /** Les dégâts physiques (armure_degats.type_degats), dans l'ordre de la page « Armes ». */
 export const DEGATS_PHYSIQUES = Object.freeze([['estoc', 'Estoc'], ['taille', 'Taille'], ['frappe', 'Frappe']]);
+/**
+ * Les types physiques du tableau des résistances (décision R174), dans l'ordre que le propriétaire écrit (« Estoc, Frappe, Taille »), leur nom celui de
+ * DEGATS_PHYSIQUES : la fiche (resistancesDe) et la page d'une magie (components/magie/MagieAffinites.astro). [{ id, nom }]
+ */
+export const RESISTANCES_PHYSIQUES = Object.freeze(['estoc', 'frappe', 'taille']
+  .map((id) => Object.freeze({ id, nom: DEGATS_PHYSIQUES.find(([x]) => x === id)[1] })));
 
 /**
  * Les dix-sept types de dégâts d'avant R171 (R98) : les trois physiques, puis les quatorze magies (sans le Potentiel Illimité). [{ id, nom, physique }].
@@ -3099,10 +3120,16 @@ export function appliquerMultiplicateur(valeur, mult) {
  * « Magique ») ; chaque étape de R98 est inchangée : un type physique prend l'AP (et la résistance ou la faiblesse de l'armure à ce type), « Magique »
  * l'AM ; l'élément applique ensuite le palier de résistance à sa magie, ou l'immunité de la Symbiose (R100) ; un coup physique avec un élément prend
  * l'AP, puis le palier de son élément (« Oui, les deux »). null sans coup valable (coupDeDegats).
+ * Le palier physique personnel (décision R174 : « Oui, armure puis palier ») : un coup Estoc, Taille ou Frappe prend, après l'armure (sa résistance ou
+ * sa faiblesse au type, R98) et les ÷ 2, le palier du personnage à ce type (resistancesDe, cible `physique` ; le Potentiel Illimité : la
+ * Vulnérabilité, × 2), au même endroit que le palier de l'élément ; avec un élément, les deux se multiplient (« Ils se multiplient » : 30 entrants,
+ * AP 4, × 2, grande résistance au Feu ÷ 3 → 26 × 2 ÷ 3 = 17), arrondi à l'inférieur une seule fois, à la fin (R175). « Magique » n'en a pas. Aucune
+ * case pour les dons d'attaquant qui ignorent une résistance physique (« Pas de case »). `sansMalusPhysique` : passé à resistancesDe (point
+ * d'entrée du Mode Hyper, R172 ; rien ne le passe encore).
  * { recus, etapes: [{ texte, valeur }], armure, type, element, partie }
  */
 export function degatsRecus(regles, fiche, options = {}) {
-  const { entrants = 0, reduits = false, parade = false, don = false } = options;
+  const { entrants = 0, reduits = false, parade = false, don = false, sansMalusPhysique = false } = options;
   const partie = options.partie ?? PARTIE_PAR_DEFAUT;
   const coup = coupDeDegats(regles, options);
   if (!coup) return null;
@@ -3145,15 +3172,23 @@ export function degatsRecus(regles, fiche, options = {}) {
   // d'immunité (décision R109)
   // l'élément du coup (R171), qu'il soit « Magique » ou physique : l'immunité de la Symbiose, sinon le palier de résistance à sa magie
   const e = coup.element;
+  const paliers = t.physique || e ? resistancesDe(regles, fiche, { sansMalusPhysique }).paliers : [];
+  const palierDe = (type, id) => paliers.find((p) => p.cibles.some((c) => c.type === type && c.id === id)) ?? null;
+  const multiplicateurDe = (palier) => (regles.resistance_paliers ?? []).find((p) => p.id === palier.id)?.multiplicateur ?? 1;
+  // le palier physique personnel du type du coup (décision R174), avant celui de l'élément : les deux se multiplient, l'arrondi reste à la fin
+  const physique = t.physique ? palierDe('physique', t.id) : null;
+  if (physique) {
+    reste = appliquerMultiplicateur(reste, multiplicateurDe(physique));
+    etapes.push({ texte: `${physique.libelle} contre ${t.nom.toLowerCase()} (${physique.effet})`, valeur: reste });
+  }
   const symbiose = e ? postureDuMoment(regles, fiche)?.symbiose : null;
   if (symbiose?.immunite && symbiose.magie?.id === e.id) {
     reste = 0;
     etapes.push({ texte: `Symbiose avec ${symbiose.magie.nom} : immunité`, valeur: 0 });
   } else if (e) {
-    const palier = resistancesDe(regles, fiche).paliers.find((p) => p.cibles.some((c) => c.type === 'magie' && c.id === e.id));
-    const mult = palier ? (regles.resistance_paliers ?? []).find((p) => p.id === palier.id)?.multiplicateur ?? 1 : 1;
+    const palier = palierDe('magie', e.id);
     if (palier) {
-      reste = appliquerMultiplicateur(reste, mult);
+      reste = appliquerMultiplicateur(reste, multiplicateurDe(palier));
       etapes.push({ texte: `${palier.libelle} (${palier.effet})`, valeur: reste });
     }
   }

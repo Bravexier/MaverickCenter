@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { chargerInvocations } from '../src/lib/bestiaire-db.mjs';
 import { chargerMagies } from '../src/lib/magies-db.mjs';
+import { DEGATS_PHYSIQUES } from '../src/lib/fiche-moteur.mjs';
 import { entriesAvecRelationsDeLaBase, relationMatrix } from '../src/lib/magie-relations.mjs';
 import { splitFrontmatter } from '../src/lib/wikilinks.mjs';
 import {
@@ -319,13 +320,27 @@ test('résistances et vulnérabilités : listes de la base, dans l’ordre de la
   assert.deepEqual(feu.resistances.vulnerabilite.magies.map((r) => r.id), ['magies/magie-de-leau', 'magies/magie-du-vent']);
   assert.deepEqual(feu.resistances.resistance.etats.map((r) => m.etats.get(r.id).nom), ['Brûlure', 'Gel', 'Pétrifié']);
   assert.deepEqual(feu.resistances.resistance.etats.map((r) => r.brut), ['Brûlure', 'Gelé', 'Pétrification'], 'écriture de la source gardée (le nom de l’état est dans l’infobulle)');
-  assert.deepEqual(m.magies.get('magies/potentiel-illimite').resistances.resistance, { magies: [], etats: [] }, '« Aucune » = aucune ligne');
+  assert.deepEqual(m.magies.get('magies/potentiel-illimite').resistances.resistance, { magies: [], etats: [], physiques: [] }, '« Aucune » = aucune ligne');
+  assert.deepEqual(feu.resistances.vulnerabilite.physiques, [], 'une magie sans ligne physique : une liste vide');
+  let physiques = 0;
   for (const magie of m.magies.values()) {
     for (const sens of ['resistance', 'vulnerabilite']) {
       for (const r of magie.resistances[sens].magies) assert.ok(m.magies.has(r.id), `${magie.id} : ${r.id}`);
       for (const r of magie.resistances[sens].etats) assert.ok(m.etats.has(r.id), `${magie.id} : ${r.id}`);
+      for (const r of magie.resistances[sens].physiques) assert.ok(DEGATS_PHYSIQUES.some(([id]) => id === r.type) && r.brut, `${magie.id} : ${r.type}`);
+      physiques += magie.resistances[sens].physiques.length;
     }
   }
+  // toutes les lignes physiques de la table sont lues (décision R174)
+  assert.equal(physiques, db.prepare("SELECT count(*) AS n FROM magie_resistance WHERE cible_type = 'physique'").get().n);
+});
+
+test('décision R174 : la page du Potentiel Illimité lit ses trois vulnérabilités physiques (estoc, taille, frappe), la phrase de la source gardée', () => {
+  const pi = m.magies.get('magies/potentiel-illimite');
+  const brut = 'Surtension corporelle (Vulnérabilité contre les dégâts physiques';
+  assert.deepEqual(pi.resistances.vulnerabilite, {
+    magies: [], etats: [], physiques: ['estoc', 'taille', 'frappe'].map((type) => ({ type, brut })),
+  });
 });
 
 test('incompatibilités symétriques ; la phrase libre de la Corruption est gardée telle quelle (trace) ; mono-magie et ethnies d’exception (décision R15)', () => {

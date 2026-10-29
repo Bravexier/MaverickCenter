@@ -526,6 +526,16 @@ test('« Magie non compatible » : le Potentiel Illimité n’est cité nulle pa
   assert.equal(pages.filter((p) => p.html.includes('Mono-magie uniquement</p>')).length, 2);
 });
 
+test('décision R174 : le Potentiel Illimité montre sa vulnérabilité physique (« Dégâts physiques » : Estoc, Frappe, Taille, puis la phrase de la source) ; aucune autre magie', options, () => {
+  const carte = (html, cle) => contenu(html, html.indexOf(`<article class="affinite affinite--${cle}">`), 'article');
+  const brut = 'Surtension corporelle (Vulnérabilité contre les dégâts physiques';
+  assert.equal(texteDe(carte(potentiel, 'faible')), `Vulnérabilités Magies Aucune Altérations d’état Aucune Dégâts physiques Estoc Frappe Taille « ${brut} […] »`, 'la coupe de la citation marquée « […] »');
+  assert.equal(texteDe(carte(potentiel, 'fort')), 'Résistances Magies Aucune Altérations d’état Aucune');
+  for (const { slug, html } of pages.filter((p) => p.slug !== 'potentiel-illimite')) {
+    assert.ok(!contenu(html, html.indexOf('<section class="magie-section" id="affinites"'), 'section').includes('Dégâts physiques'), `${slug} : pas de groupe physique`);
+  }
+});
+
 test('Mode Hyper : plus de texte « Liste des effets mode hyper », un (+) à côté du titre mène à la liste', options, () => {
   for (const { slug, html } of pages) {
     const titre = html.match(/<h2 id="mode-hyper-titre">[\s\S]*?<\/h2>/)?.[0] ?? '';

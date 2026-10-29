@@ -11,6 +11,7 @@ const lire = lecteurDEffets([
   ...q('SELECT id, nom FROM magie').map((m) => ({ type: 'magie', ...m })),
   ...q('SELECT id, nom FROM etat').map((e) => ({ type: 'etat', ...e })),
   ...q(`SELECT DISTINCT cible_type AS type, COALESCE(cible_magie_id, cible_etat_id) AS id, cible_brut AS nom FROM magie_resistance
+        WHERE cible_type IN ('magie', 'etat')   -- comme lib/fiche-regles.mjs : pas de cible physique (R174)
         UNION SELECT DISTINCT cible_type, COALESCE(cible_magie_id, cible_etat_id), cible_brut FROM ethnie_resistance`),
 ]);
 const effets = q('SELECT * FROM accessoire_effet ORDER BY id');

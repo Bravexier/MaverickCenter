@@ -313,6 +313,7 @@ const lireResistances = lecteurDeResistances([
   ...regles.magies.map((m) => ({ type: 'magie', id: m.id, nom: m.nom })),
   ...regles.etats.map((e) => ({ type: 'etat', id: e.id, nom: e.nom })),
   ...db.prepare(`SELECT DISTINCT cible_type AS type, COALESCE(cible_magie_id, cible_etat_id) AS id, cible_brut AS nom FROM magie_resistance
+                 WHERE cible_type IN ('magie', 'etat')   -- comme lib/fiche-regles.mjs : pas de cible physique (R174)
                  UNION SELECT DISTINCT cible_type, COALESCE(cible_magie_id, cible_etat_id), cible_brut FROM ethnie_resistance`).all().map((r) => ({ ...r })),
 ]);
 
