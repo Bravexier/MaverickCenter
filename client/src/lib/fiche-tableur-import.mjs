@@ -1510,7 +1510,8 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
       .map(([champ, a, max]) => [champ, entierLu(a, QUOI_DES_JAUGES[champ]), entierLu(max, `${QUOI_DES_JAUGES[champ]} (maximum)`)])
     : [['sante_actuelle', d.sante], ['chakra_actuel', d.chakra], ['barriere_actuelle', d.barriere], ['barre4_actuelle', d.barre4]]
       .map(([champ, a]) => [champ, ...paireLue(a, champ)]);
-  for (const [champ, valeur, max] of jauges) f[champ] = valeur === null || valeur === max ? null : Math.max(0, valeur);
+  // la santé du moment n'a pas de plancher (décision R171 : « Peut devenir négative ») ; les autres jauges restent au moins à 0
+  for (const [champ, valeur, max] of jauges) f[champ] = valeur === null || valeur === max ? null : champ === 'sante_actuelle' ? valeur : Math.max(0, valeur);
   const corruption = auto ? entierLu(d.corruption, QUOI_DES_JAUGES.corruption) : paireLue(d.corruption, 'corruption')[0];
   f.corruption = corruption ? Math.max(0, corruption) : null;
   if (!auto) {

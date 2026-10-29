@@ -41,6 +41,7 @@ import {
   armureApresChoix, armuresProposees, partiesApresReglage, partiesDeLArmure, partiesValables, poidsPortableDe, retraitsDeLArmureHorsListe,
   bouclierApresChoix, bouclierDe, catalogueDuSac, defenseDe, degatsRecus, effetDeCompetence, effetsDAccessoireProposes, PARTIE_PAR_DEFAUT, partiesDuCorps, valeurDeCompetenceBornee,
   propositionsDuCatalogue, soliditeDuBouclierAEcrire, typesDeDegats, valeurDEffetDAccessoire,
+  appliquerDegatsRecus, CASES_DE_LA_BARRIERE, casesDeLaBarriereApres, coupDeDegats, elementsDeDegats, medusainDOffice, TYPES_DE_COUP,
   acquisApresChoix, acquisApresRepartition, acquisChoixValables, acquisDesDons, magieTireeParLeMj, resistanceApresChoix, resistanceChoixValables, entrainementDe, entrainementsAEnregistrer, batonDuSac, contexteDesSorts, degatsDArmeDuMoment, magiesDesBatons, nomDuBaton, postureDuMoment, sortDuMoment,
   creaturesDuSort, sacrificeDuSort,
   carteDeMaitrise, compteurDeMaitrise, infobulleDeClasse, infobulleDeSpecialite, infobulleDuDonAChoisir, TYPES_DE_DON, groupesDArmesParMaitrise, ligneDeMaitrise, maitriseApresChoix, maitriseChoixValables, maitrisesParFamille, presentationDuCompteurDeMaitrise, sourcesDeMaitrise,
@@ -1617,6 +1618,8 @@ function carteDeJauge(champ) {
     saisie.setAttribute('aria-label', `${texte} : nombre à ${sens > 0 ? 'ajouter' : 'retirer'}`);
     valeur.textContent = `${j.hors ? fiche[champ] : j.valeur} / ${j.max}`;
     valeur.toggleAttribute('data-hors', j.hors);
+    // la santé sous 0 (décision R171 : sans plancher ; guide « Blessures et états » : « à 0 ou moins, le personnage est dans le coma ») : le curseur reste à 0
+    valeur.toggleAttribute('data-negative', j.valeur < 0);
     valeur.title = def.detail(j);   // le calcul du maximum en infobulle seulement (« les textes de calcul sont inutiles », demande du propriétaire)
   });
   const carte = el('div', { class: 'attribut attribut--jauge', dataset: { a: def.a } },
@@ -1628,8 +1631,8 @@ function carteDeJauge(champ) {
 
 /**
  * Attributs et valeurs du moment, fusionnés (demandes du propriétaire) : santé, barrière, chakra (et Âme ou Sang, la 4ᵉ barre de la Nécromancie ou du
- * Sang) en cartes, chacune dans la couleur de son attribut ; puis initiative, vitesse et vitesse de nage en simples pastilles, à côté de la corruption ;
- * l'armure de base n'y est plus (les AP/AM viendront avec l'armure portée).
+ * Sang) en cartes, chacune dans la couleur de son attribut, puis la corruption ; sur la 2ᵉ ligne (demande du propriétaire du 2026-10-29), après l'AP et
+ * l'AM (construireDefense), l'initiative, la vitesse et la vitesse de nage en tuiles.
  */
 function construireAttributs() {
   const barres = ['sante_actuelle', 'barriere_actuelle', 'chakra_actuel', 'barre4_actuelle'].filter((c) => calcul.jauges.some((j) => j.champ === c));
@@ -3061,51 +3064,39 @@ function construireEquipement() {
   ]);
 }
 
-// ------------------------------------------------------------------ défense et dégâts reçus (décision R98)
-/** Les dégâts reçus en cours de calcul : rien n'en est enregistré (un calcul du moment, pas un choix du joueur), la partie touchée comprise (R108). */
-const degatsEnCours = { entrants: '', type: 'estoc', partie: PARTIE_PAR_DEFAUT, reduits: false, parade: false, don: false };
+// ------------------------------------------------------------------ défense et dégâts reçus (décisions R98, R171)
+/**
+ * Les dégâts reçus en cours de calcul : rien n'en est enregistré (un calcul du moment, pas un choix du joueur), la partie touchée comprise (R108). Le
+ * coup en type et élément (décision R171 : l'élément facultatif, '' sans élément ; obligatoire avec « Magique ») ; les cases d'attaque contre la barrière
+ * (`cases` : Passe, Casse, Laiton, une seule à la fois, casesDeLaBarriereApres) ; `medusain` : null tant qu'on n'a pas touché à « Deux fois moins »
+ * (elle suit alors medusainDOffice), le geste du joueur sinon, oublié quand le coup change (type ou élément).
+ */
+const degatsEnCours = {
+  entrants: '', type: 'estoc', element: '', partie: PARTIE_PAR_DEFAUT, reduits: false, parade: false, don: false,
+  cases: { passe: false, casse: false, laiton: false }, medusain: null,
+};
 
 /**
- * La défense du personnage (demande du propriétaire du 2026-10-17 : « dans l'onglet Armure avoir la valeur totale d'AP et d'AM ») : l'AP et l'AM totaux
- * (defenseDe : base, accessoires, armure portée) sur la partie touchée (décision R108 : « Partie touchée », le torse par défaut, l'armure d'une partie
- * cassée ne compte pas), le détail en infobulle avec les parties cassées, et ceux du bouclier à part (comptés en parade partielle, plus du tout cassé) ;
- * puis les dégâts reçus (degatsRecus : « saisir le nombre de dégâts entrants, et un champ calculant automatiquement les dégâts reçus, avec une case à
- * cocher (dégâts réduits) pour les cas d'esquive ou parade partielle », le type de dégâts : Estoc, Taille, Frappe ou l'une des quatorze magies ; « Ce
- * calcul devra inclure les réductions éventuelles » : l'étape « ÷ 2 si un don divise les dégâts » de la formule, à cocher), les étapes du calcul en
- * infobulle.
+ * La défense du personnage, dans la 2ᵉ ligne des attributs (demande du propriétaire du 2026-10-29 : « une 2em ligne où tu y déplacera : les AP / AM /
+ * Vitesse et initiative , ainsi que l'interface pour les dégâts reçu ») : l'AP et l'AM totaux (décision R98, defenseDe : base, accessoires, armure portée)
+ * sur la partie touchée (décision R108 : « Partie touchée », le torse par défaut, l'armure d'une partie cassée ne compte pas), le détail en infobulle avec
+ * les parties cassées ; puis les dégâts reçus (degatsRecus : « saisir le nombre de dégâts entrants, et un champ calculant automatiquement les dégâts
+ * reçus, avec une case à cocher (dégâts réduits) pour les cas d'esquive ou parade partielle » ; le coup en type — Estoc, Taille, Frappe ou Magique — et
+ * élément — l'une des quatorze magies, « obligatoire si type "magique" » —, décision R171 ; « Au bouclier », dont l'infobulle donne les AP et AM du
+ * bouclier ; « Ce calcul devra inclure les réductions éventuelles » : l'étape « ÷ 2 si un don divise les dégâts » de la formule, à cocher), les étapes
+ * du calcul en infobulle ; enfin les cases de la barrière et « Appliquer » (décision R171 : la barrière du moment, puis la santé, appliquerDegatsRecus),
+ * avec ce que deviendront la barrière et la santé.
  */
 function construireDefense() {
-  // un réglage du calcul ne change pas la fiche : seules les synchronisations de ce bloc sont refaites
-  const majDefense = () => { for (const f of synchros.get($('defense')) ?? []) f(); };
-  reconstruire($('defense'), 'fixe', () => {
+  // un réglage du calcul ne change pas la fiche : seules les synchronisations de ces deux blocs sont refaites
+  const majDefense = () => { for (const c of [$('defense-tuiles'), $('defense')]) for (const f of synchros.get(c) ?? []) f(); };
+  reconstruire($('defense-tuiles'), 'fixe', () => {
     const tuile = (nom) => {
       const valeur = el('strong', {});
       return { valeur, li: el('li', { class: 'defense__tuile', tabindex: '0' }, el('small', {}, nom), valeur) };
     };
     const ap = tuile('AP');
     const am = tuile('AM');
-    const bouclier = el('p', { class: 'fiche-aide defense__bouclier' });
-    const entrants = el('input', {
-      type: 'number', min: '0', step: '1', inputmode: 'numeric', 'aria-label': 'Dégâts entrants', placeholder: 'Dégâts',
-      oninput: (ev) => { degatsEnCours.entrants = ev.target.value; majDefense(); },
-    });
-    const types = typesDeDegats(regles);
-    const type = el('select', { 'aria-label': 'Type de dégâts', onchange: (ev) => { degatsEnCours.type = ev.target.value; majDefense(); } },
-      el('optgroup', { label: 'Physique' }, types.filter((t) => t.physique).map((t) => option(t.id, t.nom, t.id === degatsEnCours.type))),
-      el('optgroup', { label: 'Magie' }, types.filter((t) => !t.physique).map((t) => option(t.id, t.nom, t.id === degatsEnCours.type))));
-    // la partie touchée (décision R108) : les six parties, le torse par défaut (« Une attaque "non ciblée" touche par défaut le torse ») ; seulement
-    // avec une armure (sans elle, toutes les parties se valent)
-    const parties = partiesDuCorps(regles);
-    const partie = el('select', {
-      'aria-label': 'Partie touchée',
-      title: 'Partie touchée : une attaque non ciblée touche le torse ; l’armure d’une partie cassée n’y compte pas (décision R108)',
-      onchange: (ev) => { degatsEnCours.partie = ev.target.value; majDefense(); },
-    }, parties.map((x) => option(x.id, x.nom, x.id === degatsEnCours.partie)));
-    const reduits = el('input', { type: 'checkbox', onchange: (ev) => { degatsEnCours.reduits = ev.target.checked; majDefense(); } });
-    const parade = el('input', { type: 'checkbox', onchange: (ev) => { degatsEnCours.parade = ev.target.checked; majDefense(); } });
-    const paradeLabel = el('label', { class: 'fiche-coche', title: 'La parade partielle se fait au bouclier : ses AP et AM s’ajoutent à l’armure' }, parade, 'Au bouclier');
-    const don = el('input', { type: 'checkbox', onchange: (ev) => { degatsEnCours.don = ev.target.checked; majDefense(); } });
-    const recus = el('output', { class: 'defense__recus', 'aria-live': 'polite' });
     synchro(() => {
       const avecArmure = Boolean(partiesDeLArmure(regles, fiche));
       const d = defenseDe(regles, fiche, calcul.attributs, { partie: degatsEnCours.partie });
@@ -3120,6 +3111,64 @@ function construireDefense() {
       am.valeur.textContent = String(d.am.total);
       infobulle(ap.li, detail(d.ap, 'Armure physique (AP)'));
       infobulle(am.li, detail(d.am, 'Armure magique (AM)'));
+    });
+    return [ap.li, am.li];
+  });
+  reconstruire($('defense'), 'fixe', () => {
+    const entrants = el('input', {
+      type: 'number', min: '0', step: '1', inputmode: 'numeric', 'aria-label': 'Dégâts entrants', placeholder: 'Dégâts',
+      oninput: (ev) => { degatsEnCours.entrants = ev.target.value; majDefense(); },
+    });
+    // le coup (décision R171) : changer de type ou d'élément rend « Deux fois moins » à ce que le don coche d'office
+    const changerDeCoup = (cle) => (ev) => { degatsEnCours[cle] = ev.target.value; degatsEnCours.medusain = null; majDefense(); };
+    const type = el('select', { 'aria-label': 'Type de dégâts', onchange: changerDeCoup('type') },
+      TYPES_DE_COUP.map((t) => option(t.id, t.nom, t.id === degatsEnCours.type)));
+    const element = el('select', { 'aria-label': 'Élément des dégâts', onchange: changerDeCoup('element') },
+      option('', 'Sans élément', degatsEnCours.element === ''),
+      elementsDeDegats(regles).map((m) => option(m.id, m.nom, m.id === degatsEnCours.element)));
+    // la partie touchée (décision R108) : les six parties, le torse par défaut (« Une attaque "non ciblée" touche par défaut le torse ») ; seulement
+    // avec une armure (sans elle, toutes les parties se valent)
+    const parties = partiesDuCorps(regles);
+    const partie = el('select', {
+      'aria-label': 'Partie touchée',
+      title: 'Partie touchée : une attaque non ciblée touche le torse ; l’armure d’une partie cassée n’y compte pas (décision R108)',
+      onchange: (ev) => { degatsEnCours.partie = ev.target.value; majDefense(); },
+    }, parties.map((x) => option(x.id, x.nom, x.id === degatsEnCours.partie)));
+    const reduits = el('input', { type: 'checkbox', onchange: (ev) => { degatsEnCours.reduits = ev.target.checked; majDefense(); } });
+    const parade = el('input', { type: 'checkbox', onchange: (ev) => { degatsEnCours.parade = ev.target.checked; majDefense(); } });
+    const paradeLabel = el('label', { class: 'fiche-coche' }, parade, 'Au bouclier');
+    const don = el('input', { type: 'checkbox', onchange: (ev) => { degatsEnCours.don = ev.target.checked; majDefense(); } });
+    const recus = el('output', { class: 'defense__recus', 'aria-live': 'polite' });
+    // les cases de la barrière (décision R171) : Passe, Casse et Laiton une à la fois (Q74 : casesDeLaBarriereApres) ; « Deux fois moins » cochée
+    // d'office selon le don et le coup (medusainDOffice), décochée à la main
+    const cases = CASES_DE_LA_BARRIERE.map((c) => {
+      const coche = el('input', {
+        type: 'checkbox',
+        onchange: (ev) => {
+          if (c.id === 'medusain') degatsEnCours.medusain = ev.target.checked;
+          else degatsEnCours.cases = casesDeLaBarriereApres(degatsEnCours.cases, c.id, ev.target.checked);
+          majDefense();
+        },
+      });
+      return { ...c, coche, label: el('label', { class: 'fiche-coche', title: c.aide }, coche, c.nom) };
+    });
+    const appliquer = el('button', {
+      type: 'button', class: 'defense__appliquer',
+      onclick: () => {
+        const coup = { ...degatsEnCours, element: degatsEnCours.element || null };
+        const r = degatsEnCours.entrants === '' ? null : degatsRecus(regles, fiche, coup);
+        if (!r) return;
+        const office = medusainDOffice(regles, fiche, coup);
+        // l'écriture dans les jauges : celle du moteur (la barrière, puis la santé, sans plancher), telle quelle ; le coup appliqué, le champ se vide
+        Object.assign(fiche, appliquerDegatsRecus(regles, fiche, r.recus, { ...degatsEnCours.cases, medusain: degatsEnCours.medusain ?? office.coche }, calcul.attributs).ecrit);
+        degatsEnCours.entrants = '';
+        changer();
+      },
+    }, 'Appliquer');
+    const apercu = el('output', { class: 'defense__apercu', 'aria-live': 'polite' });
+    synchro(() => {
+      const avecArmure = Boolean(partiesDeLArmure(regles, fiche));
+      const d = defenseDe(regles, fiche, calcul.attributs, { partie: degatsEnCours.partie });
       partie.hidden = !avecArmure;
       for (const o of partie.options) {
         const x = parties.find((y) => y.id === o.value);
@@ -3127,33 +3176,54 @@ function construireDefense() {
         if (o.textContent !== texte) o.textContent = texte;
       }
       poser(partie, d.partie?.id ?? degatsEnCours.partie);
-      const texteBouclier = !d.bouclier ? ''
-        : d.bouclier.cassee ? `Bouclier ${d.bouclier.nom} cassé : ses AP et AM ne comptent plus, même en parade partielle (décision R108).`
-          : `Bouclier ${d.bouclier.nom} : +${d.bouclier.ap} AP, +${d.bouclier.am} AM en parade partielle.`;
-      if (bouclier.textContent !== texteBouclier) bouclier.textContent = texteBouclier;
-      bouclier.hidden = !d.bouclier;
       if (document.activeElement !== entrants) poser(entrants, degatsEnCours.entrants);
+      poser(type, degatsEnCours.type);
+      poser(element, degatsEnCours.element);
       poser(reduits, degatsEnCours.reduits);
       poser(parade, degatsEnCours.parade);
       poser(don, degatsEnCours.don);
+      // l'élément, obligatoire avec « Magique » (décision R171 : sans lui, pas de calcul)
+      const sansElement = degatsEnCours.type === 'magique' && !degatsEnCours.element;
+      attribut(element, 'required', degatsEnCours.type === 'magique');
+      attribut(element, 'aria-invalid', sansElement ? 'true' : null);
+      attribut(element, 'data-a-choisir', sansElement);
+      infobulle(element, sansElement ? 'Magique : choisir l’élément (obligatoire)' : 'Élément : facultatif, sauf pour un coup magique ; il applique la résistance à sa magie');
+      // « Au bouclier » : la parade partielle se fait au bouclier, ses AP et AM s'ajoutent ; cassé, il ne compte plus (R108)
       paradeLabel.hidden = !d.bouclier;
       parade.disabled = !degatsEnCours.reduits;
-      const r = degatsEnCours.entrants === '' ? null
-        : degatsRecus(regles, fiche, degatsEnCours);
+      infobulle(paradeLabel, !d.bouclier ? ''
+        : d.bouclier.cassee ? `Bouclier ${d.bouclier.nom} cassé : ses AP et AM ne comptent plus, même en parade partielle (décision R108).`
+          : `La parade partielle se fait au bouclier : ses AP et AM s’ajoutent à l’armure (${d.bouclier.nom} : +${d.bouclier.ap} AP, +${d.bouclier.am} AM).`);
+      const coup = { ...degatsEnCours, element: degatsEnCours.element || null };
+      const r = degatsEnCours.entrants === '' || !coupDeDegats(regles, coup) ? null : degatsRecus(regles, fiche, coup);
       // écrit seulement quand il change : c'est une région annoncée aux lecteurs d'écran (aria-live), et la fiche est rafraîchie à chaque frappe
       const texteRecus = r ? `${r.recus} reçus` : '—';
       if (recus.textContent !== texteRecus) recus.textContent = texteRecus;
-      infobulle(recus, r ? r.etapes.map((e) => `${e.texte} : ${String(Math.round(e.valeur * 100) / 100).replace('.', ',')}`).concat(`Arrondi à l’inférieur : ${r.recus}`).join('\n') : '');
+      infobulle(recus, r ? r.etapes.map((e) => `${e.texte} : ${String(Math.round(e.valeur * 100) / 100).replace('.', ',')}`).concat(`Arrondi à l’inférieur : ${r.recus}`).join('\n')
+        : sansElement ? 'Magique : choisir l’élément' : '');
+      // les cases de la barrière : « Deux fois moins » suit le don tant qu'on n'y a pas touché
+      const office = medusainDOffice(regles, fiche, coup);
+      const etat = { ...degatsEnCours.cases, medusain: degatsEnCours.medusain ?? office.coche };
+      for (const c of cases) {
+        poser(c.coche, etat[c.id]);
+        if (c.id === 'medusain') infobulle(c.label, office.coche ? `${c.aide}. Cochée d’office : ${office.dons.join(', ')} ; se décoche à la main` : c.aide);
+      }
+      // « Appliquer » et ce que deviendront la barrière et la santé
+      appliquer.disabled = !r;
+      const a = r ? appliquerDegatsRecus(regles, fiche, r.recus, etat, calcul.attributs) : null;
+      const texteApercu = a ? `Barrière ${a.barriere.avant} → ${a.barriere.apres} · Santé ${a.sante.avant} → ${a.sante.apres}` : '';
+      if (apercu.textContent !== texteApercu) apercu.textContent = texteApercu;
+      infobulle(appliquer, a ? ['La barrière d’abord ; vide, le reste baisse la santé (décision R171)', ...a.etapes].join('\n') : 'Saisir les dégâts entrants');
     });
     return [
-      el('ul', { class: 'defense__tuiles', 'aria-label': 'Armure totale' }, ap.li, am.li),
-      bouclier,
       el('div', { class: 'defense__degats', role: 'group', 'aria-label': 'Dégâts reçus' },
-        el('span', { class: 'defense__titre' }, 'Dégâts reçus'), entrants, type, partie,
+        el('span', { class: 'defense__titre' }, 'Dégâts reçus'), entrants, type, element, partie,
         el('label', { class: 'fiche-coche', title: 'Esquive ou parade partielle : les dégâts sont divisés par 2 après l’armure' }, reduits, 'Dégâts réduits'),
         paradeLabel,
         el('label', { class: 'fiche-coche', title: 'Formule des dégâts : « ÷ 2 si un don divise les dégâts » (selon la situation : à cocher)' }, don, 'Don ÷ 2'),
         recus),
+      el('div', { class: 'defense__barriere', role: 'group', 'aria-label': 'Contre la barrière' },
+        cases.map((c) => c.label), apercu, appliquer),
     ];
   });
 }

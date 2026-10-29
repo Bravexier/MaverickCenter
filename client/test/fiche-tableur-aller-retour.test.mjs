@@ -693,6 +693,13 @@ test('bouclier cassé (décision R108) : 0 AP et 0 AM écrits, sa solidité « 0
   assert.deepEqual([r.cellules[ORDINATEUR.bouclier.ap], r.cellules[ORDINATEUR.bouclier.am]], [0, 0]);
 });
 
+test('santé du moment négative (décision R171 : « Peut devenir négative ») : « -13 / M » écrite, relue telle quelle, point fixe', async () => {
+  const f = { ...ficheRiche(), sante_actuelle: -13 };
+  const r = await verifier(f, 'santé négative');
+  assert.equal(r.fiche.sante_actuelle, -13);
+  assert.match(String(r.cellules[ORDINATEUR.sante]), /^-13 \/ \d+$/);
+});
+
 test('bi-classe au Potentiel Illimité : relue telle quelle, point fixe', async () => {
   await verifier(ficheBiPotentiel(), 'Potentiel Illimité');
 });

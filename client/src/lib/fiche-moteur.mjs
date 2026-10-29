@@ -1747,19 +1747,25 @@ export function attributsDe(regles, fiche) {
  * monter au-delà de 23/25 car la corruption prend la place »), pour tous, magie de la Corruption innée ou acquise comprise (décision R142 : « le maximum
  * de corruption comme pour tous les autre resent la même valeur que le maximum de chakra et chaque point de corruption empêche de récupérer un point de
  * chakra » ; la mort au maximum n'est épargnée qu'à la Corruption innée ou acquise, pas au Potentiel Illimité, R146).
- * La santé s'arrête à 0 : « Quand sa santé tombe à 0 ou moins, le personnage est dans le coma » (guide « Blessures et états »).
- * `hors` : la valeur enregistrée dépasse le maximum (le curseur, lui, s'arrête au maximum).
+ * La santé n'a pas de plancher (décision R171 : « La santé du moment peut devenir négative », aucun plancher n'est donné ; guide « Blessures et
+ * états » : « Quand sa santé tombe à 0 ou moins, le personnage est dans le coma ») : son `min` est null, une santé enregistrée sous 0 est gardée
+ * telle quelle. Les autres valeurs restent au moins à 0 (la barrière comprise, R171).
+ * `hors` : la valeur enregistrée dépasse le maximum, ou passe sous le minimum (le curseur, lui, s'arrête au maximum et à 0).
  */
 export function valeursDuMoment(regles, fiche, attributs = attributsDe(regles, fiche)) {
-  const jauge = (champ, nom, max, vide = max) => {
+  const jauge = (champ, nom, max, vide = max, min = 0) => {
     const v = fiche[champ];
     const enregistree = v === null || v === undefined || v === '' ? null : entier(v);
-    return { champ, nom, min: 0, max, valeur: enregistree === null ? vide : Math.min(max, Math.max(0, enregistree)), hors: enregistree !== null && (enregistree > max || enregistree < 0) };
+    const plancher = (x) => (min === null ? x : Math.max(min, x));
+    return {
+      champ, nom, min, max, valeur: enregistree === null ? vide : Math.min(max, plancher(enregistree)),
+      hors: enregistree !== null && (enregistree > max || (min !== null && enregistree < min)),
+    };
   };
   const corruption = jauge('corruption', 'Corruption', attributs.corruptionMax, 0);
   const reduction = corruption.valeur;
   return [
-    jauge('sante_actuelle', 'Santé actuelle', attributs.sante),
+    jauge('sante_actuelle', 'Santé actuelle', attributs.sante, attributs.sante, null),
     { ...jauge('chakra_actuel', 'Chakra actuel', Math.max(0, attributs.chakra - reduction)), chakra: attributs.chakra, reduction },
     jauge('barriere_actuelle', 'Barrière actuelle', attributs.barriere),
     corruption,
@@ -1769,13 +1775,15 @@ export function valeursDuMoment(regles, fiche, attributs = attributsDe(regles, f
 
 /**
  * Ce qu'écrit un curseur des valeurs du moment : la valeur, bornée ; et, pour la corruption, le chakra actuel qu'elle laisse — celui d'avant, au plus
- * le nouveau maximum (la corruption qui monte prend la place du chakra ; celle qui baisse ne rend pas de chakra). { champ: valeur }.
+ * le nouveau maximum (la corruption qui monte prend la place du chakra ; celle qui baisse ne rend pas de chakra). La santé n'a pas de plancher
+ * (décision R171 : son `min` est null). { champ: valeur }.
  */
 export function ecrireValeurDuMoment(regles, fiche, champ, valeur) {
   const avant = valeursDuMoment(regles, fiche);
   const jauge = avant.find((j) => j.champ === champ);
   if (!jauge) return {};
-  const ecrit = { [champ]: Math.min(jauge.max, Math.max(jauge.min, entier(valeur))) };
+  const v = entier(valeur);
+  const ecrit = { [champ]: Math.min(jauge.max, jauge.min === null ? v : Math.max(jauge.min, v)) };
   if (champ !== 'corruption') return ecrit;
   const chakra = valeursDuMoment(regles, { ...fiche, ...ecrit }).find((j) => j.champ === 'chakra_actuel');
   return { ...ecrit, chakra_actuel: Math.min(avant.find((j) => j.champ === 'chakra_actuel').valeur, chakra.max) };
@@ -1783,7 +1791,7 @@ export function ecrireValeurDuMoment(regles, fiche, champ, valeur) {
 
 /**
  * Ce qu'écrivent les boutons + et − d'une valeur du moment (demande du propriétaire) : la valeur affichée plus `ecart` (négatif pour retirer), bornée
- * comme le curseur (ecrireValeurDuMoment). { champ: valeur }.
+ * comme le curseur (ecrireValeurDuMoment), sauf la santé, qui peut passer sous 0 (décision R171). { champ: valeur }.
  */
 export function ajusterValeurDuMoment(regles, fiche, champ, ecart) {
   const jauge = valeursDuMoment(regles, fiche).find((j) => j.champ === champ);
@@ -2965,13 +2973,49 @@ const POTENTIEL_ILLIMITE = 'magies/potentiel-illimite';
 /** Les dégâts physiques (armure_degats.type_degats), dans l'ordre de la page « Armes ». */
 export const DEGATS_PHYSIQUES = Object.freeze([['estoc', 'Estoc'], ['taille', 'Taille'], ['frappe', 'Frappe']]);
 
-/** Les types de dégâts reçus proposés : les trois physiques, puis les quatorze magies (sans le Potentiel Illimité). [{ id, nom, physique }] */
+/**
+ * Les dix-sept types de dégâts d'avant R171 (R98) : les trois physiques, puis les quatorze magies (sans le Potentiel Illimité). [{ id, nom, physique }].
+ * Ils nomment encore le type des armes (`type_degats_choisi`) et leur magie ; un coup les écrit en type et élément (coupDeDegats : un type physique sans
+ * élément, ou « Magique » et la magie).
+ */
 export function typesDeDegats(regles) {
   return [
     ...DEGATS_PHYSIQUES.map(([id, nom]) => ({ id, nom, physique: true })),
-    ...(regles.magies ?? []).filter((m) => m.id !== POTENTIEL_ILLIMITE).map((m) => ({ id: m.id, nom: m.nom, physique: false })),
+    ...elementsDeDegats(regles).map((m) => ({ id: m.id, nom: m.nom, physique: false })),
   ];
 }
+
+/** Le type « Magique » d'un coup (décision R171 : « ni Estoc, ni Taille, ni Frappe », les sorts). */
+export const TYPE_MAGIQUE = 'magique';
+/** Les types d'un coup (décision R171) : Estoc, Taille, Frappe, puis Magique. [{ id, nom, physique }] */
+export const TYPES_DE_COUP = Object.freeze([...DEGATS_PHYSIQUES.map(([id, nom]) => Object.freeze({ id, nom, physique: true })),
+  Object.freeze({ id: TYPE_MAGIQUE, nom: 'Magique', physique: false })]);
+
+/** Les éléments d'un coup (décision R171) : les quatorze magies, sans le Potentiel Illimité, dans l'ordre de regles.magies. [magie] */
+export const elementsDeDegats = (regles) => (regles.magies ?? []).filter((m) => m.id !== POTENTIEL_ILLIMITE);
+
+/**
+ * Le coup reçu (décision R171) : son type (TYPES_DE_COUP) et son élément (une magie d'elementsDeDegats, facultatif, obligatoire avec « Magique ») ;
+ * `type` peut aussi être l'un des dix-sept types de typesDeDegats (une magie : « Magique » et cette magie). null sans type connu, « Magique » sans
+ * élément, ou un élément qui n'en est pas un (le Potentiel Illimité). { type, element (la magie, ou null) }
+ */
+export function coupDeDegats(regles, { type = null, element = null } = {}) {
+  const elements = elementsDeDegats(regles);
+  const ancien = TYPES_DE_COUP.some((t) => t.id === type) ? null : elements.find((m) => m.id === type);
+  if (ancien) return element && element !== ancien.id ? null : { type: TYPES_DE_COUP.find((t) => t.id === TYPE_MAGIQUE), element: ancien };
+  const t = TYPES_DE_COUP.find((x) => x.id === type);
+  if (!t) return null;
+  const e = element ? elements.find((m) => m.id === element) : null;
+  if (element && !e) return null;
+  if (!t.physique && !e) return null;
+  return { type: t, element: e ?? null };
+}
+
+/**
+ * Le type de typesDeDegats qui écrit le même coup (R98 avant R171) : un type physique sans élément, ou la magie d'un coup « Magique » ; null pour un
+ * coup physique avec un élément (il n'en a pas). L'équivalence est épinglée par test/fiche-degats-recus.test.mjs.
+ */
+export const typeDeDegatsDuCoup = (coup) => (!coup ? null : coup.type.physique ? (coup.element ? null : coup.type.id) : coup.element.id);
 
 /**
  * L'armure physique (AP) et l'armure magique (AM) du personnage (décision R98), sur la partie du corps `partie` (décision R108 ; un id de partiesDuCorps,
@@ -3050,14 +3094,19 @@ export function appliquerMultiplicateur(valeur, mult) {
  * la part de l'armure (rien sur une partie cassée). Contre une magie, le palier de résistance du personnage à cette magie multiplie le résultat
  * (resistancesDe ; décision R155 : immunité 0, grande résistance ÷ 3, résistance ÷ 2, vulnérabilité × 2, grande vulnérabilité × 3, sensibilité × 4 ;
  * un multiplicateur inverse d'un entier divise : appliquerMultiplicateur). `don` : l'étape « ÷ 2 si un don divise les dégâts » de la formule, cochée par le
- * joueur (un tel don dépend de la situation : la fiche ne le lit pas). null sans type connu.
- * { recus, etapes: [{ texte, valeur }], armure, type, partie }
+ * joueur (un tel don dépend de la situation : la fiche ne le lit pas).
+ * Le coup (décision R171, coupDeDegats) : `type` (Estoc, Taille, Frappe ou « Magique ») et `element` (une des quatorze magies ; obligatoire avec
+ * « Magique ») ; chaque étape de R98 est inchangée : un type physique prend l'AP (et la résistance ou la faiblesse de l'armure à ce type), « Magique »
+ * l'AM ; l'élément applique ensuite le palier de résistance à sa magie, ou l'immunité de la Symbiose (R100) ; un coup physique avec un élément prend
+ * l'AP, puis le palier de son élément (« Oui, les deux »). null sans coup valable (coupDeDegats).
+ * { recus, etapes: [{ texte, valeur }], armure, type, element, partie }
  */
 export function degatsRecus(regles, fiche, options = {}) {
-  const { entrants = 0, type = null, reduits = false, parade = false, don = false } = options;
+  const { entrants = 0, reduits = false, parade = false, don = false } = options;
   const partie = options.partie ?? PARTIE_PAR_DEFAUT;
-  const t = typesDeDegats(regles).find((x) => x.id === type);
-  if (!t) return null;
+  const coup = coupDeDegats(regles, options);
+  if (!coup) return null;
+  const t = coup.type;
   const d = defenseDe(regles, fiche, undefined, { partie });
   const brut = Math.max(0, entier(entrants));
   const etapes = [{ texte: 'Dégâts entrants', valeur: brut }];
@@ -3094,19 +3143,136 @@ export function degatsRecus(regles, fiche, options = {}) {
   }
   // la posture Symbiose : « Immunité à la magie de la symbiose » (décision R100) ; le Potentiel Illimité n'a pas de magie de la symbiose, donc pas
   // d'immunité (décision R109)
-  const symbiose = t.physique ? null : postureDuMoment(regles, fiche)?.symbiose;
-  if (symbiose?.immunite && symbiose.magie?.id === t.id) {
+  // l'élément du coup (R171), qu'il soit « Magique » ou physique : l'immunité de la Symbiose, sinon le palier de résistance à sa magie
+  const e = coup.element;
+  const symbiose = e ? postureDuMoment(regles, fiche)?.symbiose : null;
+  if (symbiose?.immunite && symbiose.magie?.id === e.id) {
     reste = 0;
     etapes.push({ texte: `Symbiose avec ${symbiose.magie.nom} : immunité`, valeur: 0 });
-  } else if (!t.physique) {
-    const palier = resistancesDe(regles, fiche).paliers.find((p) => p.cibles.some((c) => c.type === 'magie' && c.id === t.id));
+  } else if (e) {
+    const palier = resistancesDe(regles, fiche).paliers.find((p) => p.cibles.some((c) => c.type === 'magie' && c.id === e.id));
     const mult = palier ? (regles.resistance_paliers ?? []).find((p) => p.id === palier.id)?.multiplicateur ?? 1 : 1;
     if (palier) {
       reste = appliquerMultiplicateur(reste, mult);
       etapes.push({ texte: `${palier.libelle} (${palier.effet})`, valeur: reste });
     }
   }
-  return { recus: Math.floor(reste), etapes, armure, type: t, partie: d.partie };
+  return { recus: Math.floor(reste), etapes, armure, type: t, element: e, partie: d.partie };
+}
+
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+// Les dégâts reçus appliqués aux jauges (décision R171) : le résultat baisse d'abord la barrière du moment, puis la santé ; des cases pour les coups
+// contre lesquels la barrière ne joue pas normalement. Tous les arrondis à l'inférieur (R175).
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Les cases de la barrière (décision R171) : `passe` « Passe la barrière » (Mythril, sorts qui ignorent la barrière), `casse` « Casse la barrière »
+ * (Maverium), `laiton` « Dégâts doublés contre la barrière » (Laiton), `medusain` « Deux fois moins » (dons du Médusain). [{ id, nom, aide }]
+ */
+export const CASES_DE_LA_BARRIERE = Object.freeze([
+  Object.freeze({ id: 'passe', nom: 'Passe la barrière', aide: 'Mythril, sorts qui ignorent la barrière : la barrière ne bouge pas, tout baisse la santé' }),
+  Object.freeze({ id: 'casse', nom: 'Casse la barrière', aide: 'Maverium : la barrière tombe à 0 sans rien absorber, tout baisse la santé' }),
+  Object.freeze({ id: 'laiton', nom: 'Dégâts doublés contre la barrière', aide: 'Laiton : chaque point retire 2 de barrière' }),
+  Object.freeze({ id: 'medusain', nom: 'Deux fois moins', aide: 'Médusain (« Barrière résistante », « Barrière isolante ») : chaque point retire 0,5 de barrière, arrondi à l’inférieur' }),
+]);
+
+/**
+ * Les cases d'attaque qu'on ne coche qu'une à la fois (décision R171 : « une seule à la fois en attendant » ; question Q74 ouverte au propriétaire :
+ * peut-on en cocher plusieurs ?). Le choix provisoire tient tout entier ici : vider la liste (ou en retirer une) les rend cumulables.
+ */
+export const CASES_EXCLUSIVES_DE_LA_BARRIERE = Object.freeze(['passe', 'casse', 'laiton']);
+
+/**
+ * Les cases de la barrière après un clic sur `cle` (`coche` : son nouvel état) : une case exclusive cochée décoche les autres cases exclusives
+ * (CASES_EXCLUSIVES_DE_LA_BARRIERE, Q74) ; « Deux fois moins » (Médusain) se coche avec n'importe laquelle (R171). Rend un nouvel objet { passe, casse,
+ * laiton, medusain }.
+ */
+export function casesDeLaBarriereApres(cases, cle, coche) {
+  const apres = { ...cases, [cle]: Boolean(coche) };
+  if (coche && CASES_EXCLUSIVES_DE_LA_BARRIERE.includes(cle)) {
+    for (const autre of CASES_EXCLUSIVES_DE_LA_BARRIERE) if (autre !== cle) apres[autre] = false;
+  }
+  return apres;
+}
+
+/**
+ * Ce que perdent la barrière et la santé (décision R171) : `recus` (les dégâts reçus, entier ≥ 0), `barriere` et `sante` (leurs valeurs du moment),
+ * `cases` ({ passe, casse, laiton, medusain }). Le résultat baisse la barrière ; si elle passe à 0, ou y est déjà, le reste baisse la santé (sans
+ * plancher). « Passe » : la barrière ne bouge pas, tout baisse la santé. « Casse » : la barrière tombe à 0 sans rien absorber, tout baisse la santé ; elle
+ * ignore le Médusain (« Casse barrière ignore l'effet du Medusain »). Sinon chaque point retire c de barrière : 1 ; 2 avec le Laiton ; 0,5 avec le
+ * Médusain ; 1 avec les deux (« Ils se compensent », × 2 puis ÷ 2). La barrière absorbe ⌈B ÷ c⌉ points au plus (le dernier point du Laiton peut ne
+ * retirer qu'1), et perd ⌊reçus × c⌋ sans être vidée (Médusain : « chaque point retire 0,5 de barrière, arrondi à l'inférieur », R175). Les exemples
+ * de R171 (20 reçus, barrière 12, santé 40) : sans case, barrière 0 et santé 32 ; Passe, santé 20 ; Casse, barrière 0 et santé 20 ; Laiton, 6 points la
+ * vident, santé 26 ; Médusain, barrière 2, santé 40 (30 reçus : 24 points la vident, santé 34).
+ * { barriere, sante (après), absorbes (les points que la barrière a pris), etapes: [texte] }
+ */
+export function degatsALaBarriere(recus, { barriere, sante }, cases = {}) {
+  const r = Math.max(0, Math.floor(entier(recus)));
+  const b = Math.max(0, Math.floor(entier(barriere)));
+  const s = Math.floor(entier(sante));
+  // un coup sans dégâts ne touche rien, quelle que soit la case (réponse du propriétaire à « Casse la barrière » sur un coup de 0 : « Non, il faut
+  // des dégâts »)
+  if (r === 0) return { barriere: b, sante: s, absorbes: 0, etapes: [] };
+  if (cases.passe) return { barriere: b, sante: s - r, absorbes: 0, etapes: ['La barrière est passée : tout baisse la santé'] };
+  if (cases.casse) return { barriere: 0, sante: s - r, absorbes: 0, etapes: ['La barrière est cassée : elle tombe à 0, tout baisse la santé'] };
+  // c = num ÷ den : ce qu'un point retire de barrière (en entiers, pour des arrondis exacts)
+  const [num, den, texte] = cases.laiton && cases.medusain ? [1, 1, 'Laiton et Médusain se compensent : chaque point retire 1 de barrière']
+    : cases.laiton ? [2, 1, 'Laiton : chaque point retire 2 de barrière']
+      : cases.medusain ? [1, 2, 'Médusain : chaque point retire 0,5 de barrière']
+        : [1, 1, null];
+  const pourVider = Math.ceil((b * den) / num);
+  const absorbes = Math.min(r, pourVider);
+  const barriereApres = r >= pourVider ? 0 : b - Math.floor((r * num) / den);
+  return { barriere: barriereApres, sante: s - (r - absorbes), absorbes, etapes: texte ? [texte] : [] };
+}
+
+/**
+ * La barrière moins touchée qu'écrit le texte d'un don (décision R171, Médusain : « La barrière prend deux fois moins de dégâts physiques » —
+ * « Barrière résistante » —, « … magiques » — « Barrière isolante ») ; lue dans le texte, jamais par le nom du don. { physiques, magiques }
+ */
+export function barriereMoinsToucheeEcrite(texte) {
+  const t = texteALire(texte);
+  const lu = (mot) => new RegExp(`\\bla barri[eè]re prend deux fois moins de d[ée]g[âa]ts ${mot}\\b`).test(t);
+  return { physiques: lu('physiques'), magiques: lu('magiques') };
+}
+
+/**
+ * « Deux fois moins » cochée d'office (décision R171 : « Automatique si don + type ») : le personnage a un don qui écrit la barrière moins touchée
+ * (barriereMoinsToucheeEcrite : dons de classe débloqués, donsAcquis ; dons de sa race et de son ethnie, donsDeRace) par les dégâts physiques et le coup a
+ * un type physique, ou par les dégâts magiques et le coup a un élément (un coup physique avec un élément : l'un ou l'autre suffit). La case se décoche à
+ * la main (la page). `coup` : { type, element } (coupDeDegats). { coche, dons: [noms des dons qui comptent] }
+ */
+export function medusainDOffice(regles, fiche, coup) {
+  const c = coupDeDegats(regles, coup ?? {});
+  if (!c) return { coche: false, dons: [] };
+  const race = trouver(regles.races ?? [], fiche.race_id);
+  const dons = [
+    ...donsAcquis(regles, fiche).flatMap((x) => x.dons.map((d) => ({ nom: d.nom, texte: d.effet }))),
+    ...(race ? donsDeRace(regles, fiche).dons.map((d) => ({ nom: `${race.nom}${d.etiquette ? ` (${d.etiquette})` : ''}`, texte: d.texte })) : []),
+  ];
+  const comptent = dons.filter((d) => {
+    const lu = barriereMoinsToucheeEcrite(d.texte);
+    return (lu.physiques && c.type.physique) || (lu.magiques && Boolean(c.element));
+  });
+  return { coche: comptent.length > 0, dons: comptent.map((d) => d.nom) };
+}
+
+/**
+ * Le bouton « Appliquer » des dégâts reçus (décision R171) : les valeurs du moment de la barrière et de la santé (valeursDuMoment) après `recus`
+ * (degatsALaBarriere, avec `cases`). Rend { ecrit: { barriere_actuelle, sante_actuelle } (à écrire dans la fiche), barriere: { avant, apres },
+ * sante: { avant, apres }, absorbes, etapes }. La barrière reste ≥ 0 ; la santé peut devenir négative.
+ */
+export function appliquerDegatsRecus(regles, fiche, recus, cases = {}, attributs = attributsDe(regles, fiche)) {
+  const jauges = valeursDuMoment(regles, fiche, attributs);
+  const avant = { barriere: jauges.find((j) => j.champ === 'barriere_actuelle').valeur, sante: jauges.find((j) => j.champ === 'sante_actuelle').valeur };
+  const apres = degatsALaBarriere(recus, avant, cases);
+  return {
+    ecrit: { barriere_actuelle: apres.barriere, sante_actuelle: apres.sante },
+    barriere: { avant: avant.barriere, apres: apres.barriere },
+    sante: { avant: avant.sante, apres: apres.sante },
+    absorbes: apres.absorbes,
+    etapes: apres.etapes,
+  };
 }
 
 /**

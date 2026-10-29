@@ -681,7 +681,8 @@ test('valeurs du moment : de 0 au maximum, absentes au maximum (corruption à 0)
   const par = (fiche) => Object.fromEntries(valeursDuMoment(regles, { ...ficheVide(), ...fiche }, attributs).map((j) => [j.champ, j]));
   const vide = par({});
   assert.deepEqual(Object.keys(vide), ['sante_actuelle', 'chakra_actuel', 'barriere_actuelle', 'corruption']);
-  assert.deepEqual(Object.values(vide).map((j) => [j.min, j.max, j.valeur]), [[0, 40, 40], [0, 50, 50], [0, 25, 25], [0, 50, 0]]);
+  // la santé sans plancher (décision R171 : « La santé du moment peut devenir négative »), les autres au moins à 0
+  assert.deepEqual(Object.values(vide).map((j) => [j.min, j.max, j.valeur]), [[null, 40, 40], [0, 50, 50], [0, 25, 25], [0, 50, 0]]);
   const corrompu = par({ corruption: 15 });
   assert.deepEqual([corrompu.chakra_actuel.max, corrompu.chakra_actuel.valeur, corrompu.chakra_actuel.reduction], [35, 35, 15]);
   assert.equal(par({ corruption: 15, chakra_actuel: 20 }).chakra_actuel.valeur, 20);
@@ -815,6 +816,9 @@ test('boutons + et − des valeurs du moment (demande du propriétaire) : la val
   assert.deepEqual(ajusterValeurDuMoment(regles, { ...fiche, sante_actuelle: 4 }, 'sante_actuelle', 3), { sante_actuelle: 7 });
   assert.deepEqual(ajusterValeurDuMoment(regles, fiche, 'sante_actuelle', 100), { sante_actuelle: a.sante }, 'au plus le maximum');
   assert.deepEqual(ajusterValeurDuMoment(regles, fiche, 'barriere_actuelle', -999), { barriere_actuelle: 0 }, 'au moins 0');
+  // la santé passe sous 0, sans plancher (décision R171)
+  assert.deepEqual(ajusterValeurDuMoment(regles, { ...fiche, sante_actuelle: 4 }, 'sante_actuelle', -10), { sante_actuelle: -6 }, 'santé négative (R171)');
+  assert.deepEqual(ajusterValeurDuMoment(regles, { ...fiche, sante_actuelle: -6 }, 'sante_actuelle', 2), { sante_actuelle: -4 });
   assert.deepEqual(ajusterValeurDuMoment(regles, fiche, 'corruption', 3), { corruption: 3, chakra_actuel: a.chakra - 3 }, 'la corruption prend la place du chakra');
   assert.deepEqual(ajusterValeurDuMoment(regles, { ...fiche, corruption: 3, chakra_actuel: a.chakra - 3 }, 'chakra_actuel', 10), { chakra_actuel: a.chakra - 3 });
   assert.deepEqual(ajusterValeurDuMoment(regles, fiche, 'barre4_actuelle', 1), {}, 'pas de 4ᵉ barre sans Sang ni Nécromancie');

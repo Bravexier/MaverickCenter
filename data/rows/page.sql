@@ -7869,7 +7869,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 5. **On retire l’armure de la cible** : son armure physique (AP) contre une arme, son armure magique (AM) contre un sort.
 6. **Défense partielle** (une parade ou une esquive réussie, mais moins bonne que l’attaque) : on divise par 2.
 7. **Un don qui divise les dégâts** : on divise encore par 2.
-8. **Résistance ou faiblesse de la cible à la magie du coup** : on multiplie par la valeur de son palier (voir plus bas) ; contre un coup physique, c’est l’armure qui réagit à son type (étape 5).
+8. **Résistance ou faiblesse de la cible à l’élément du coup** : on multiplie par la valeur de son palier (voir plus bas). Un sort a toujours un élément, sa magie. Un coup physique n’en a que s’il vient d’une arme élémentaire ou d’une arme sous un sort « Fer » : l’armure réagit d’abord à son type physique (étape 5), puis le palier de l’élément s’applique.
 9. **On arrondit à l’inférieur**, une seule fois, à la fin. Le résultat ne descend jamais sous 0.
 
 ## L’armure de la cible
@@ -7928,9 +7928,11 @@ Le détail est dans [[guide/attaquer-et-se-defendre|Attaquer et se défendre]], 
 
 La {{barriere|barrière}} est une seconde peau magique qui protège la chair : une sorte de santé magique, qui vaut la moitié du {{chakra|chakra}} total (plus ce qu’offrent certaines races et classes). Plus un personnage a de {{chakra|chakra}}, plus sa {{barriere|barrière}} est grande ; mais certains matériaux d’arme la contrent, comme le **Mythril**, qui passe à travers, ou le **Maverium**, qui la brise à son contact, si colossale soit-elle. Une arme de **Laiton**, elle, fait des dégâts doublés contre la {{barriere|barrière}} (voir l’onglet [Matériaux](/ressources/composants/#materiaux) des composants).
 
+Elle prend les coups avant la santé, sauf contre-indication : une fois qu’elle est vide, ce qui reste des dégâts baisse la santé, qui peut alors devenir négative (voir [[guide/blessures-et-etats|Blessures et états]]). Deux dons du Médusain la rendent moins touchée : « La barrière prend deux fois moins de dégâts physiques » (Barrière résistante) et « … magiques » (Barrière isolante). Contre une arme de Laiton, ces deux effets se compensent ; une arme de Maverium, elle, casse la barrière sans tenir compte du Médusain.
+
 ## La fiche fait le calcul
 
-Sur la [fiche de personnage](/fiche/), le bloc Armure affiche l’AP et l’AM totaux du personnage et calcule les dégâts qu’il reçoit : saisissez les dégâts du coup (critique compris) et leur type, cochez « Dégâts réduits » pour une défense partielle, « Au bouclier » ou « Don ÷ 2 » s’il y a lieu, et la fiche fait le reste.
+Sur la [fiche de personnage](/fiche/), la deuxième ligne de la tuile des attributs donne l’AP et l’AM totaux du personnage et calcule les dégâts qu’il reçoit. Saisissez les dégâts du coup (critique compris), son type (Estoc, Taille, Frappe, ou Magique pour un sort) et son élément : il est obligatoire pour un coup magique, et une arme élémentaire a les deux. Cochez « Dégâts réduits » pour une défense partielle, et « Au bouclier » ou « Don ÷ 2 » s’il y a lieu. Le bouton « Appliquer » retire ensuite le résultat de la barrière, puis de la santé quand la barrière est vide. Des cases règlent les coups contre lesquels la barrière ne joue pas normalement : « Passe la barrière » (Mythril, sorts qui l’ignorent), « Casse la barrière » (Maverium), « Dégâts doublés contre la barrière » (Laiton), et « Deux fois moins » (dons du Médusain), cochée d’office quand le personnage a le don qui correspond au coup.
 
 Le texte d’origine de la formule et de ses exemples : [[guide/formule-des-degats|Formule des dégâts]] et [[guide/resistance-faiblesse-magie|Résistance/Faiblesse Magie]].
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
