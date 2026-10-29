@@ -9,7 +9,18 @@ export const normaliser = (texte) => String(texte ?? '').normalize('NFD').replac
 export const magiesDe = (p) => [p.magie_innee, p.magie_acquise].filter(Boolean).join(', ');
 
 /**
- * Colonnes de la liste, dans l'ordre (demande du propriétaire : portrait, nom, race, magies, niveau, rien d'autre) : clé (tri, adresse), titre, valeur
+ * Les classes d'un personnage dans une case (demande du propriétaire, 2026-10-29) : dans l'ordre de leur rang, chacune suivie de sa spécialité entre
+ * parenthèses s'il en a une, « Guerrier (ÉPÉISTE), Mage » ; les noms tels que la base les donne (GET /api/personnages/ : `classes[].classe`,
+ * `classes[].specialite`) ; '' sans classe.
+ */
+export const classesDe = (p) => [...(p.classes ?? [])]
+  .sort((a, b) => (a.rang ?? 0) - (b.rang ?? 0))
+  .filter((c) => c.classe)
+  .map((c) => (c.specialite ? `${c.classe} (${c.specialite})` : c.classe))
+  .join(', ');
+
+/**
+ * Colonnes de la liste, dans l'ordre (demandes du propriétaire : portrait, nom, race, magies, classes, niveau, rien d'autre) : clé (tri, adresse), titre, valeur
  * affichée, valeur de tri, nature (texte, nombre). Le portrait ne se trie pas (`tri` absent).
  */
 export const COLONNES = Object.freeze([
@@ -17,6 +28,7 @@ export const COLONNES = Object.freeze([
   { cle: 'nom', titre: 'Nom', texte: (p) => p.nom, tri: (p) => p.nom, nature: 'texte' },
   { cle: 'race', titre: 'Race', texte: (p) => p.race ?? '', tri: (p) => p.race, nature: 'texte' },
   { cle: 'magies', titre: 'Magies', texte: magiesDe, tri: (p) => magiesDe(p) || null, nature: 'texte' },
+  { cle: 'classes', titre: 'Classes', texte: classesDe, tri: (p) => classesDe(p) || null, nature: 'texte' },
   // niveau, puis XP à niveau égal
   { cle: 'niveau', titre: 'Niveau', texte: (p) => p.niveau_global, tri: (p) => p.xp, nature: 'nombre' },
 ]);

@@ -1,5 +1,5 @@
-// Recherche des personnages (lib/personnages-liste.mjs, page /personnages/) : les colonnes de la liste (portrait, nom, race, magies, niveau : demande
-// du propriétaire), filtres, tri de chaque colonne triable dans les deux sens, choix des listes, couleurs de la bordure d'une ligne et aller-retour des
+// Recherche des personnages (lib/personnages-liste.mjs, page /personnages/) : les colonnes de la liste (portrait, nom, race, magies, classes, niveau :
+// demandes du propriétaire), filtres, tri de chaque colonne triable dans les deux sens, choix des listes, couleurs de la bordure d'une ligne et aller-retour des
 // filtres dans l'adresse. Les résumés imitent ceux que rend le service (client/serveur/fiches.mjs#listerFiches) : plus de statut (migration 0038).
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 import { classesDeDeuxMagies } from '../src/lib/palette-css.mjs';
 
 const {
-  COLONNES, FILTRES_PAR_DEFAUT, adresseDesFiltres, choixDeFiltres, classesDeBordure, filtrer, filtresDepuisAdresse, magiesDe, normaliser, trier,
+  COLONNES, FILTRES_PAR_DEFAUT, adresseDesFiltres, choixDeFiltres, classesDe, classesDeBordure, filtrer, filtresDepuisAdresse, magiesDe, normaliser, trier,
 } = liste;
 
 const p = (id, surcharge = {}) => ({
@@ -30,9 +30,9 @@ const noms = (personnages) => personnages.map((x) => x.nom);
 // les classes de la palette de chaque magie, posées par la page au build (pages/personnages.astro : lib/palette-css.mjs#classesDeDeuxMagies)
 const COULEURS = { 'magies/magie-du-feu': classesDeDeuxMagies('Feu'), 'magies/magie-de-leau': classesDeDeuxMagies('Eau') };
 
-test('colonnes : exactement portrait, nom, race, magies, niveau (demande du propriétaire), le portrait sans tri ni texte', () => {
-  assert.deepEqual(COLONNES.map((c) => c.cle), ['portrait', 'nom', 'race', 'magies', 'niveau']);
-  assert.deepEqual(COLONNES.map((c) => c.titre), ['Portrait', 'Nom', 'Race', 'Magies', 'Niveau']);
+test('colonnes : exactement portrait, nom, race, magies, classes, niveau (demandes du propriétaire), le portrait sans tri ni texte', () => {
+  assert.deepEqual(COLONNES.map((c) => c.cle), ['portrait', 'nom', 'race', 'magies', 'classes', 'niveau']);
+  assert.deepEqual(COLONNES.map((c) => c.titre), ['Portrait', 'Nom', 'Race', 'Magies', 'Classes', 'Niveau']);
   const portrait = COLONNES.find((c) => c.cle === 'portrait');
   assert.equal(portrait.tri, undefined, 'le portrait ne se trie pas');
   assert.equal(portrait.texte, undefined);
@@ -47,7 +47,23 @@ test('colonnes : exactement portrait, nom, race, magies, niveau (demande du prop
   assert.equal(texte('race', PERSONNAGES[1]), 'Humain', 'la race seule, sans l’ethnie');
   assert.equal(texte('race', PERSONNAGES[3]), '', 'sans race : case vide');
   assert.equal(texte('magies', PERSONNAGES[1]), 'Eau, Feu');
+  assert.equal(texte('classes', PERSONNAGES[1]), 'Guerrier (ÉPÉISTE), Mage');
+  assert.equal(texte('classes', PERSONNAGES[3]), '', 'sans classe : case vide');
   assert.equal(texte('niveau', PERSONNAGES[1]), 11, 'le niveau global (l’XP sert au tri)');
+});
+
+test('classes dans une case (demande du propriétaire) : par rang, la spécialité entre parenthèses s’il y en a une, les noms de la base tels quels ; rien sans classe', () => {
+  assert.equal(classesDe(PERSONNAGES[0]), 'Mage', 'une classe sans spécialité : son nom seul');
+  assert.equal(classesDe(PERSONNAGES[1]), 'Guerrier (ÉPÉISTE), Mage', 'la spécialité de la 1re classe entre parenthèses, la 2e sans');
+  assert.equal(classesDe(p('x', { classes: [
+    { rang: 2, classe_id: 'classes/mage', classe: 'Mage', specialite: 'PYROMANCIEN' },
+    { rang: 1, classe_id: 'classes/guerrier', classe: 'Guerrier', specialite: 'ÉPÉISTE' },
+  ] })), 'Guerrier (ÉPÉISTE), Mage (PYROMANCIEN)', 'l’ordre est celui du rang, pas celui reçu ; deux spécialités');
+  assert.equal(classesDe(PERSONNAGES[3]), '', 'sans classe');
+  assert.equal(classesDe(p('x', { classes: undefined })), '', 'résumé sans liste de classes');
+  const recue = [{ rang: 2, classe: 'B', specialite: null }, { rang: 1, classe: 'A', specialite: null }];
+  classesDe(p('x', { classes: recue }));
+  assert.deepEqual(recue.map((c) => c.classe), ['B', 'A'], 'la liste reçue n’est pas réordonnée');
 });
 
 test('magies dans une case : « Innée, Acquise », toujours dans cet ordre ; l’innée seule ; rien sans magie', () => {
@@ -89,10 +105,12 @@ test('tri : chaque colonne triable dans les deux sens, texte sans casse ni accen
   assert.deepEqual(noms(trier(tous, 'niveau', 'desc')), ['aldric', 'Élise', 'Cyrielle', 'Brune']);
   const memeNiveau = [p('A', { niveau_global: 2, xp: 300 }), p('B', { niveau_global: 2, xp: 150 })];
   assert.deepEqual(noms(trier(memeNiveau, 'niveau')), ['B', 'A'], 'à niveau égal, l’XP départage');
+  assert.deepEqual(noms(trier(tous, 'classes')), ['aldric', 'Élise', 'Brune', 'Cyrielle'], 'classes : « Guerrier (ÉPÉISTE), Mage », « Mage », puis les cases vides');
+  assert.deepEqual(noms(trier(tous, 'classes', 'desc')), ['Élise', 'aldric', 'Brune', 'Cyrielle'], 'les cases vides restent à la fin');
   const parNom = noms(trier(tous, 'nom'));
   assert.deepEqual(noms(trier(tous, 'portrait')), parNom, 'le portrait ne se trie pas : par nom');
   assert.deepEqual(noms(trier(tous, 'portrait', 'desc')), noms(trier(tous, 'nom', 'desc')), 'le sens demandé reste celui du nom');
-  for (const ancienne of ['statut', 'classes', 'metier', 'anomalies', 'modifie_le', 'inconnue', undefined]) {
+  for (const ancienne of ['statut', 'metier', 'anomalies', 'modifie_le', 'inconnue', undefined]) {
     assert.deepEqual(noms(trier(tous, ancienne)), parNom, `colonne ${ancienne} (retirée ou inconnue) : par nom`);
   }
   for (const c of COLONNES.filter((x) => x.tri)) {
@@ -153,9 +171,10 @@ test('les filtres et le tri vivent dans l’adresse : aller-retour, seuls ceux q
   assert.deepEqual(filtresDepuisAdresse('?statut=archive'), FILTRES_PAR_DEFAUT);
   assert.deepEqual(filtresDepuisAdresse('?statut=tous&race=races%2Fhumain'), { ...FILTRES_PAR_DEFAUT, race: 'races/humain' });
   assert.deepEqual(filtresDepuisAdresse('?tri=statut&sens=desc'), { ...FILTRES_PAR_DEFAUT, sens: 'desc' }, 'tri par statut : par nom, le sens gardé');
-  for (const tri of ['portrait', 'classes', 'metier', 'anomalies', 'modifie_le', 'inconnue', '']) {
+  for (const tri of ['portrait', 'metier', 'anomalies', 'modifie_le', 'inconnue', '']) {
     assert.equal(filtresDepuisAdresse(`?tri=${tri}`).tri, 'nom', `?tri=${tri}`);
   }
+  assert.deepEqual(filtresDepuisAdresse('?tri=classes&sens=desc'), { ...FILTRES_PAR_DEFAUT, tri: 'classes', sens: 'desc' }, 'la colonne des classes se trie (revenue, demande du propriétaire)');
   assert.deepEqual(filtresDepuisAdresse('?tri=race&sens=n%27importe-quoi'), { ...FILTRES_PAR_DEFAUT, tri: 'race' }, 'sens invalide : croissant');
   assert.equal(filtresDepuisAdresse('?sens=DESC').sens, 'asc', 'le sens se lit tel quel');
   assert.equal(adresseDesFiltres({ ...FILTRES_PAR_DEFAUT, statut: 'archive' }), '', 'un statut resté dans les filtres ne va pas dans l’adresse');

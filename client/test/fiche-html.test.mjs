@@ -322,7 +322,7 @@ test('/fiche/regles.json : les règles de la base que lit la page (races et clas
   for (const m of regles.magies) assert.ok(palette.has(m.classe) && palette.has(m.classe_2) && !('couleur' in m) && !('texte' in m), m.id);
 });
 
-test('/personnages/ (demandes du propriétaire) : filtres sans statut, puis la liste (portrait, nom, race, magies, niveau) dont chaque colonne sauf le portrait se trie (un bouton par en-tête) ; ni phrase d’introduction ni bouton « Nouveau prétiré »', options, () => {
+test('/personnages/ (demandes du propriétaire) : filtres sans statut, puis la liste (portrait, nom, race, magies, classes, niveau) dont chaque colonne sauf le portrait se trie (un bouton par en-tête) ; ni phrase d’introduction ni bouton « Nouveau prétiré »', options, () => {
   const html = lire('personnages/index.html');
   // les adresses du service, de la fiche et du logo (portrait par défaut), et les couleurs des magies pour la bordure des lignes (data-couleurs : du
   // JSON, guillemets échappés par Astro)
