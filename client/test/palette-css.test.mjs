@@ -804,7 +804,7 @@ test('aucune couleur écrite dans les fichiers des lots faits (ni dans les règl
   assert.doesNotMatch(fiche, /--c-texte: \$\{|setProperty\('--c-texte'|--texte-sur-c: \$\{p/, 'aucune variable de ces couleurs posée');
   for (const attendu of [
     "el('div', { class: ['carac', ...teinteDe(k)].join(' ') }", "el('div', { class: ['competences__groupe', ...teinteDe(k)].join(' ') }",
-    "class: ['posture-carte', ...teinteDe(p)].join(' ')", 'poserTeinte(posture, teinteDe(p?.posture));',
+    "class: ['posture-carte', ...teinteDe(p)].join(' ')", 'poserTeinte(posture, teinteDe(couleur));',
     'poserTeinte(sortie, teinteDe(regles.alignements?.[a.nom] ?? regles.alignement_par_defaut));', 'teinte: caracDe(o.competence_id)',
     "class: ['invocation-carte__carac', ...teinteDe(carac ?? regles.caracteristique_par_defaut)].join(' ')",
   ]) assert.ok(fiche.includes(attendu), attendu);

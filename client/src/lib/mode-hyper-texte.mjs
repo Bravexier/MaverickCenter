@@ -12,7 +12,7 @@
  * - `des_armes` : « 2d de dégâts physiques en plus » (Nain : les armes) ;
  * - `des_sorts` : « les dégâts et soins magiques sont augmentés de 2d » (Felfe : les sorts, `soins` : leurs soins aussi) ;
  * - `vitesse` : « +2 à la Vitesse » (Humain), « +3 Vitesse » (Jackalope) ;
- * - `armure_naturelle` : « Les AP et AM naturels s'ajoutent à toute réduction de dégâts » (Marcass : même contre une attaque qui ignore l'armure).
+ * - `armure_naturelle` : « Les AP et AM naturels s'ajoutent à toute réduction de dégâts » (Marcass : son AP et son AM naturelles ajoutées à la réduction de tout coup, décision R178 : fiche-moteur.mjs#degatsRecus).
  */
 const LECTURES = [
   [/\barmure magique \(AM\) de base augmente de (\d+)/i, (m) => ({ cible: 'am_base', valeur: Number(m[1]) })],

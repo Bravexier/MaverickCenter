@@ -648,7 +648,7 @@ test('repli sur une base vivante d’avant la migration 0060 (sa reconstruction 
   }
 });
 
-test('colonnes ajoutées par les migrations 0045, 0055, 0060, 0061, 0066, 0067, 0071, 0081 et 0084 (DEPART_DES_COLONNES_AJOUTEES) : dans les tables d’aujourd’hui, leur valeur de départ est leur défaut du schéma et celle d’une fiche vide', () => {
+test('colonnes ajoutées par les migrations 0045, 0055, 0060, 0061, 0066, 0067, 0071, 0081, 0084 et 0086 (DEPART_DES_COLONNES_AJOUTEES) : dans les tables d’aujourd’hui, leur valeur de départ est leur défaut du schéma et celle d’une fiche vide', () => {
   assert.deepEqual(DEPART_DES_COLONNES_AJOUTEES, {
     personnage: {
       gains_sante: 0, gains_chakra: 0,
@@ -659,7 +659,7 @@ test('colonnes ajoutées par les migrations 0045, 0055, 0060, 0061, 0066, 0067, 
       mode_hyper: 0, mode_hyper_100: 0, mode_hyper_semaine: null,
     },
     personnage_arme: { durabilite: null, type_degats_choisi: null },
-    personnage_sort: { prepare: 0, prepare_jet: null, prepare_posture_id: null },
+    personnage_sort: { prepare: 0, prepare_jet: null, prepare_posture_id: null, prepare_hyper: 0, prepare_cent: 0 },
     personnage_resistance_choix: { magie_id: null },
   });
   for (const [table, departs] of Object.entries(DEPART_DES_COLONNES_AJOUTEES)) {
@@ -839,7 +839,7 @@ test('NM du MJ (décision R118, migration 0066) : enregistrés pour la fiche et 
   assert.equal(r.statut, 201, JSON.stringify(r.corps));
   const p = r.corps.personnage;
   assert.deepEqual([p.nm_mj, p.sorts, p.livres_sorts],
-    [2, [{ sort_id: bdf, rang: 1, niveau_maitrise: 2, prepare: 0, prepare_jet: null, prepare_posture_id: null }], [{ sort_id: bdf, rang: 1 }]]);
+    [2, [{ sort_id: bdf, rang: 1, niveau_maitrise: 2, prepare: 0, prepare_jet: null, prepare_posture_id: null, prepare_hyper: 0, prepare_cent: 0 }], [{ sort_id: bdf, rang: 1 }]]);
   assert.deepEqual(r.corps.controles, [], 'niveau 1 : le NM compté vient du MJ, celui du livre ne compte pas');
   // une page d'avant : les NM du MJ de chaque sort (nm_cadeau), sans nm_mj
   const { nm_mj: _n, livres_sorts: _l, ...sansNmMj } = lire(p.id).personnage;
@@ -916,8 +916,8 @@ test('sort préparé (décision R115, migration 0067) : marque, jet et posture e
   const cau = 'magies/magie-du-feu#sort:cauterisation';
   const offensif = 'guide/postures#posture:offensif';
   const sorts = [
-    { sort_id: bdf, rang: 1, niveau_maitrise: 0, prepare: 1, prepare_jet: 57, prepare_posture_id: offensif },
-    { sort_id: cau, rang: 2, niveau_maitrise: 0, prepare: 0, prepare_jet: null, prepare_posture_id: null },
+    { sort_id: bdf, rang: 1, niveau_maitrise: 0, prepare: 1, prepare_jet: 57, prepare_posture_id: offensif, prepare_hyper: 0, prepare_cent: 0 },
+    { sort_id: cau, rang: 2, niveau_maitrise: 0, prepare: 0, prepare_jet: null, prepare_posture_id: null, prepare_hyper: 0, prepare_cent: 0 },
   ];
   const r = appel('POST', '/api/personnages', { ...ficheConforme('Ombre rouge'), sorts });
   assert.equal(r.statut, 201, JSON.stringify(r.corps));
@@ -935,6 +935,9 @@ test('sort préparé (décision R115, migration 0067) : marque, jet et posture e
     [[sorts[0], { ...sorts[1], prepare_jet: 12 }], /^sorts\[1\] : valeur hors des bornes/],
     [[sorts[0], { ...sorts[1], prepare_posture_id: offensif }], /^sorts\[1\] : valeur hors des bornes/],
     [[{ ...sorts[0], prepare: 2 }, sorts[1]], /^sorts\[0\] : valeur hors des bornes/],
+    // décision R172 (migration 0086) : les cases du Mode Hyper hors du sort préparé, ou le 100 % sans le Mode Hyper
+    [[sorts[0], { ...sorts[1], prepare_hyper: 1 }], /^sorts\[1\] : seul le sort préparé se prépare en Mode Hyper \(décision R172\)$/],
+    [[{ ...sorts[0], prepare_cent: 1 }, sorts[1]], /^sorts\[0\] : un sort préparé au Mode Hyper 100 % l’est aussi en Mode Hyper \(décision R172\)$/],
     [[{ ...sorts[0], prepare_posture_id: 'guide/postures#posture:inconnue' }, sorts[1]], /^sorts : « prepare_posture_id » = « guide\/postures#posture:inconnue » n’existe pas dans les règles/],
   ]) {
     const avant = lire(p.id);
@@ -947,7 +950,7 @@ test('sort préparé (décision R115, migration 0067) : marque, jet et posture e
   const avant = lire(p.id);
   m = appel('PUT', `/api/personnages/${p.id}`, { version: avant.personnage.version, sorts: [{ sort_id: cau, rang: 1, niveau_maitrise: 0 }] });
   assert.equal(m.statut, 200, JSON.stringify(m.corps));
-  assert.deepEqual(m.corps.personnage.sorts, [{ sort_id: cau, rang: 1, niveau_maitrise: 0, prepare: 0, prepare_jet: null, prepare_posture_id: null }]);
+  assert.deepEqual(m.corps.personnage.sorts, [{ sort_id: cau, rang: 1, niveau_maitrise: 0, prepare: 0, prepare_jet: null, prepare_posture_id: null, prepare_hyper: 0, prepare_cent: 0 }]);
   assert.equal(expliquer('UNIQUE constraint failed: personnage_sort.personnage_id'), 'un seul sort préparé par fiche (décision R115)');
   // un autre index unique sur la seule fiche : sa table, jamais « en double () »
   assert.equal(expliquer('UNIQUE constraint failed: personnage_ceinture.personnage_id'), 'une seule ligne par fiche (personnage_ceinture)');
@@ -1309,6 +1312,7 @@ test('repli sur une base vivante d’avant la migration 0067 (sa reconstruction 
   // les tables d'avant 0067 : personnage_sort sans prepare, prepare_jet, prepare_posture_id (personnage_acquis_choix n'avait pas encore l'arme choisie,
   // que la migration 0076 a retirée : comme aujourd'hui)
   ancienne.exec(`DROP INDEX personnage_sort_prepare;
+    ALTER TABLE personnage_sort DROP COLUMN prepare_cent; ALTER TABLE personnage_sort DROP COLUMN prepare_hyper;
     ALTER TABLE personnage_sort DROP COLUMN prepare_jet; ALTER TABLE personnage_sort DROP COLUMN prepare_posture_id; ALTER TABLE personnage_sort DROP COLUMN prepare;`);
   ancienne.close();
   const base = ouvrirBaseVivante(avant);

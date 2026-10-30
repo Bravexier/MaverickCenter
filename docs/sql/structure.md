@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 85 : 203 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 86 : 203 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -3530,6 +3530,8 @@ Dons de classe choisis (lignes « CLASSE 1 » / « CLASSE 2 », C43:L67) : seule
 | `prepare` | INTEGER | oui |  | 1 = le sort préparé de la fiche (R115) |
 | `prepare_jet` | INTEGER | non |  | jet de magie (D100) |
 | `prepare_posture_id` | TEXT | non | → posture.id | posture du moment de la préparation |
+| `prepare_hyper` | INTEGER | oui |  |  |
+| `prepare_cent` | INTEGER | oui |  |  |
 
 ### `personnage_livre_sort`
 

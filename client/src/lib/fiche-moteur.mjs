@@ -3190,17 +3190,6 @@ export function defenseDe(regles, fiche, attributs = attributsDe(regles, fiche),
 }
 
 /**
- * L'AP ou l'AM naturels du personnage (`cle` : 'ap' ou 'am' ; décision R172, Marcass : « Les AP et AM naturels », « Oui, le compter ») : ceux de sa race
- * et de son ethnie (colonnes de la base) et ceux qu'écrivent ses dons de race et d'ethnie (`races[].dons[].armure_naturelle`, lus dans le texte : « +2
- * Armure magique (+2 tous les 5 niveaux) »), au niveau global comme R110 (armureDesDonsDeRace). Seul degatsRecus le lit, à la place de toute l'armure
- * (« L'attaque ignore l'armure » en Mode Hyper) : la part du don, aussi dans l'armure de base (attributsDe), n'y compte qu'une fois.
- */
-export function armureNaturelleDe(regles, fiche, cle) {
-  return entier(trouver(regles.races ?? [], fiche.race_id)?.[cle]) + entier(trouver(regles.ethnies ?? [], fiche.ethnie_id)?.[cle])
-    + armureDesDonsDeRace(regles, fiche, cle);
-}
-
-/**
  * L'AP ou l'AM (`cle`) qu'écrivent les dons de race et d'ethnie du personnage (`races[].dons[].armure_naturelle`, lus dans le texte : « +2 Armure
  * magique (+2 tous les 5 niveaux) » du Marcass), au niveau global comme R110 : base + pas × ⌊N ÷ niveaux⌋ (2, 4 au niveau 5, 6 au niveau 10).
  * Toujours comptée dans l'armure de base de la fiche (attributsDe ; décision R177 : « Oui, toujours »).
@@ -3209,22 +3198,6 @@ export function armureDesDonsDeRace(regles, fiche, cle) {
   const niveau = niveauGlobal(regles, fiche.xp);
   return donsDeRace(regles, fiche).dons.flatMap((d) => (d.armure_naturelle ?? []).filter((a) => a.cle === cle))
     .reduce((s, a) => s + a.base + (a.niveaux ? a.pas * Math.floor(niveau / a.niveaux) : 0), 0);
-}
-
-/**
- * Ce qui reste de l'armure (`cle` : 'ap' ou 'am') quand une attaque ignore l'armure (décision R172) : rien, sauf pour un personnage dont l'effet de
- * Mode Hyper actif écrit « Les AP et AM naturels s'ajoutent à toute réduction de dégâts » (Marcass) — l'armure naturelle de sa race et de son ethnie,
- * leurs dons compris (armureNaturelleDe, R177), et l'AP ou l'AM de base que donne l'effet de Mode Hyper de sa magie, lu dans son texte (Terre « AP de
- * base +25 », Glace « AM de base +25 », +10 avec deux magies : réponse du propriétaire « Oui, gardé »). [{ nom, valeur }] sans les parts nulles.
- */
-export function partsDeLArmureNaturelle(regles, fiche, cle) {
-  const hyper = modeHyperDuMoment(regles, fiche);
-  if (!hyper?.armureNaturelle.length) return [];
-  return [
-    { nom: 'race et ethnie', valeur: entier(trouver(regles.races ?? [], fiche.race_id)?.[cle]) + entier(trouver(regles.ethnies ?? [], fiche.ethnie_id)?.[cle]) },
-    { nom: 'dons de race', valeur: armureDesDonsDeRace(regles, fiche, cle) },
-    ...(cle === 'ap' ? hyper.apBase : hyper.amBase),
-  ].filter((p) => p.valeur);
 }
 
 /**
@@ -3263,12 +3236,17 @@ export function appliquerMultiplicateur(valeur, mult) {
  * AP 4, × 2, grande résistance au Feu ÷ 3 → 26 × 2 ÷ 3 = 17), arrondi à l'inférieur une seule fois, à la fin (R175). « Magique » n'en a pas. Aucune
  * case pour les dons d'attaquant qui ignorent une résistance physique (« Pas de case »). `sansMalusPhysique` : passé à resistancesDe (forcé ;
  * sinon le Mode Hyper actif l'annule, R172).
- * Mode Hyper (décision R172) : ses résistances (resistancesDe) ; en Mode Hyper 100 %, l'immunité de la Symbiose vaut pour ses deux magies. `ignoreArmure`
- * (case « L'attaque ignore l'armure ») : l'AP ou l'AM ne compte pas (ni l'armure portée, ni sa résistance au type, ni le bouclier), sauf pour un
- * personnage dont l'effet de Mode Hyper actif écrit « Les AP et AM naturels s'ajoutent à toute réduction de dégâts » (Marcass, « Même si l'armure est
- * ignorée ») : l'AP ou l'AM de sa race et de son ethnie, leurs dons compris (R177), et l'AP ou l'AM de base de l'effet de Mode Hyper de sa magie
- * (partsDeLArmureNaturelle) comptent encore ; sans la case, rien ne compte deux fois.
- * { recus, etapes: [{ texte, valeur }], armure, type, element, partie }
+ * Mode Hyper (décision R172) : ses résistances (resistancesDe) ; en Mode Hyper 100 %, l'immunité de la Symbiose vaut pour ses deux magies.
+ * Le Marcass en Mode Hyper (décision R178 ; « Corps isolant », effet de sa race lu dans son texte, jamais par le nom : « Les AP et AM naturels s'ajoutent
+ * à toute réduction de dégâts, quel que soit le type d'attaque », modeHyperDuMoment, `armureNaturelle`) : la réduction de tout coup est son AP naturelle
+ * + son AM naturelle + l'armure du calcul classique (l'armure portée : sa part d'AP, avec sa résistance au type, contre un coup physique, sa part d'AM
+ * contre un coup magique ; le bouclier en parade partielle), chaque part naturelle comptée une fois. « Naturel » = tout ce qui n'est pas l'armure portée
+ * ni le bouclier (« Quand on parle d'AP nat, c'est tout ce qui n'est pas "armure" ») : le total de defenseDe moins la part de l'armure portée (race,
+ * ethnie, classes magiques, dons dont R177, accessoires, posture, AP ou AM de base du Mode Hyper de la Terre ou de la Glace). Marcass de Terre de niveau
+ * 10, AP naturelle 25, AM naturelle 6, armure portée AP 8 et AM 3 : 50 physiques → 39 retirés, 11 reçus ; 50 magiques → 34 retirés, 16 reçus.
+ * `ignoreArmure` (case « L'attaque ignore l'armure », R172, R178 : « Ignore l'armure, ou Igore AP ou AM, tout passe à 0. Même pour le Marcass. ») :
+ * aucune réduction (ni l'armure portée, ni sa résistance au type, ni le bouclier, ni l'armure naturelle, Marcass compris).
+ * { recus, etapes: [{ texte, valeur }], armure (la réduction totale), type, element, partie }
  */
 export function degatsRecus(regles, fiche, options = {}) {
   const { entrants = 0, reduits = false, parade = false, don = false, sansMalusPhysique = null, ignoreArmure = false } = options;
@@ -3289,24 +3267,36 @@ export function degatsRecus(regles, fiche, options = {}) {
       facteur *= r.sens === 'resistance' ? f : 1 / f;
     }
   }
-  let armure = x.total - x.armure + x.armure * facteur;
   const auBouclier = reduits && parade && d.bouclier;
-  const bouclier = auBouclier && !d.bouclier.cassee && !ignoreArmure ? (t.physique ? d.bouclier.ap : d.bouclier.am) : 0;
-  armure += bouclier;
+  const bouclier = auBouclier && !d.bouclier.cassee ? (t.physique ? d.bouclier.ap : d.bouclier.am) : 0;
+  // la part de l'armure portée (sa résistance ou sa faiblesse au type comprise) et le bouclier
+  const portee = x.armure * facteur + bouclier;
   const nomArmure = t.physique ? 'AP' : 'AM';
-  // « L'attaque ignore l'armure » (décision R172) : rien, ou l'AP / AM naturels d'un Marcass en Mode Hyper : race et ethnie, leurs dons (R177), et l'AP
-  // ou l'AM de base que donne l'effet de Mode Hyper de sa magie (Terre, Glace : « Oui, gardé »), chacun une fois
-  const naturelle = ignoreArmure ? partsDeLArmureNaturelle(regles, fiche, t.physique ? 'ap' : 'am') : null;
-  if (naturelle) armure = naturelle.reduce((s, p) => s + p.valeur, 0);
-  const precisions = ignoreArmure
-    ? [naturelle?.length ? `l’attaque ignore l’armure ; ${nomArmure} naturelle : ${naturelle.map((p) => `${p.nom} ${p.valeur}`).join(', ')}` : 'l’attaque ignore l’armure']
-    : [
-      facteur !== 1 ? `armure ${facteur > 1 ? `× ${facteur}` : `÷ ${1 / facteur}`} contre ${t.nom.toLowerCase()}` : null,
-      d.partie?.cassee ? `partie ${d.partie.nom} cassée : l’armure n’y compte pas` : null,
-      bouclier ? `bouclier +${bouclier}` : null,
-      auBouclier && d.bouclier.cassee ? 'bouclier cassé : il ne compte plus' : null,
-    ].filter(Boolean);
-  etapes.push({ texte: `− ${nomArmure}${precisions.map((p) => ` (${p})`).join('')}`, valeur: -armure });
+  const precisions = [
+    facteur !== 1 ? `armure ${facteur > 1 ? `× ${facteur}` : `÷ ${1 / facteur}`} contre ${t.nom.toLowerCase()}` : null,
+    d.partie?.cassee ? `partie ${d.partie.nom} cassée : l’armure n’y compte pas` : null,
+    bouclier ? `bouclier +${bouclier}` : null,
+    auBouclier && d.bouclier.cassee ? 'bouclier cassé : il ne compte plus' : null,
+  ].filter(Boolean);
+  const entre = (liste) => liste.map((p) => ` (${p})`).join('');
+  // le Marcass en Mode Hyper (décision R178) : AP naturelle + AM naturelle + l'armure portée du calcul classique
+  const marcass = !ignoreArmure && Boolean(modeHyperDuMoment(regles, fiche)?.armureNaturelle.length);
+  let armure;
+  if (ignoreArmure) {
+    // « L'attaque ignore l'armure » (décisions R172, R178) : tout passe à 0, même pour le Marcass
+    armure = 0;
+    etapes.push({ texte: `− ${nomArmure} (l’attaque ignore l’armure : aucune réduction)`, valeur: 0 });
+  } else if (marcass) {
+    const apNaturelle = d.ap.total - d.ap.armure;
+    const amNaturelle = d.am.total - d.am.armure;
+    armure = apNaturelle + amNaturelle + portee;
+    etapes.push({ texte: '− AP naturelle (Mode Hyper, Marcass)', valeur: -apNaturelle });
+    etapes.push({ texte: '− AM naturelle (Mode Hyper, Marcass)', valeur: -amNaturelle });
+    etapes.push({ texte: `− ${nomArmure} de l’armure portée${entre(precisions)}`, valeur: -portee });
+  } else {
+    armure = x.total - x.armure + portee;
+    etapes.push({ texte: `− ${nomArmure}${entre(precisions)}`, valeur: -armure });
+  }
   let reste = Math.max(0, brut - armure);
   if (reduits) {
     reste /= 2;
@@ -3567,9 +3557,11 @@ export function magiesDeLaSymbiose(regles, fiche) {
  * { id: null, nom: 'Mode Hyper 100 %' }, `noms` : les noms de toutes les postures (un bonus écrit pour une posture compte) ; la Symbiose « vaut pour ses
  * deux magies » (bonus de dégâts et de soins, AM, immunité), sans magie à choisir.
  * `libelle` : « Posture X » (ou « Mode Hyper 100 % (postures) »), le nom d'une ligne de détail ; `noms` : le nom des postures actives, en minuscules.
+ * Option `cent` (booléen) : le Mode Hyper 100 % compté ou non, quel que soit l'état du moment (le sort préparé, figé à sa préparation : décisions R172,
+ * R179, contexteDesSorts) ; absente, celui du moment.
  */
-export function postureDuMoment(regles, fiche) {
-  const cent = Boolean(modeHyperDe(regles, fiche)?.cent.actif);
+export function postureDuMoment(regles, fiche, { cent: centForce } = {}) {
+  const cent = typeof centForce === 'boolean' ? centForce : Boolean(modeHyperDe(regles, fiche)?.cent.actif);
   const posture = cent ? { id: null, nom: 'Mode Hyper 100 %' } : trouver(regles.postures ?? [], fiche.posture_id);
   if (!posture) return null;
   const ordre = (p) => (regles.ordre_postures ?? []).indexOf(p.id);
@@ -3693,25 +3685,71 @@ export function modeHyperDuMoment(regles, fiche, h = modeHyperDe(regles, fiche))
   const c = (id) => regles.constantes?.[id] ?? 0;
   const uneSeule = !fiche.magie_acquise_id;
   const potentielIllimite = fiche.magie_innee_id === POTENTIEL_ILLIMITE;
-  const race = trouver(regles.races ?? [], fiche.race_id);
-  const lus = [
-    ...h.magies.flatMap((m) => m.chiffres.map((x) => ({ ...x, nom: `Mode Hyper (${m.magie.nom})` }))),
-    ...(h.race?.chiffres ?? []).map((x) => ({ ...x, nom: `Mode Hyper (${[h.race.nom, race?.nom].filter(Boolean).join(', ')})` })),
-  ];
-  const de = (cible) => lus.filter((x) => x.cible === cible).map(({ nom, valeur, soins }) => ({ nom, valeur, ...(soins ? { soins } : {}) }));
+  const lus = effetsLusDuModeHyper(regles, fiche, h);
+  const de = (cible) => deLaCible(lus, cible);
   return {
     cent: h.cent.actif,
     armes: c('mode_hyper.degats_physique'),
-    sorts: {
-      valeur: c(uneSeule ? 'mode_hyper.degats_magie_mono' : 'mode_hyper.degats_magie_bi'),
-      magies: [fiche.magie_innee_id, fiche.magie_acquise_id].filter(Boolean), tous: potentielIllimite,
-    },
-    soins: c('mode_hyper.soin_magique'),
+    ...bonusDuModeHyperSurLesSorts(regles, fiche, { cent: h.cent.actif }),
     coutNul: true,
-    attaques: h.cent.actif ? c('mode_hyper_100.degats_bonus') : 0,
     uneSeule, potentielIllimite,
     apBase: de('ap_base'), amBase: de('am_base'), desAttaques: de('des_attaques'), desArmes: de('des_armes'), desSorts: de('des_sorts'), vitesse: de('vitesse'),
     armureNaturelle: lus.filter((x) => x.cible === 'armure_naturelle').map((x) => x.nom),
+  };
+}
+
+/**
+ * Les effets de magie et de race du Mode Hyper lus dans leur texte (décision R13 : mode_hyper.chiffres_magies, races[].chiffres), chacun avec son nom
+ * (« Mode Hyper (Feu) », « Mode Hyper (<effet de race>, <race>) »), que le Mode Hyper soit actif ou non (`h` : modeHyperDe). [{ cible, valeur, soins?, nom }]
+ */
+function effetsLusDuModeHyper(regles, fiche, h) {
+  const race = trouver(regles.races ?? [], fiche.race_id);
+  return [
+    ...h.magies.flatMap((m) => m.chiffres.map((x) => ({ ...x, nom: `Mode Hyper (${m.magie.nom})` }))),
+    ...(h.race?.chiffres ?? []).map((x) => ({ ...x, nom: `Mode Hyper (${[h.race.nom, race?.nom].filter(Boolean).join(', ')})` })),
+  ];
+}
+
+/** Les effets lus (effetsLusDuModeHyper) d'une cible : [{ nom, valeur, soins? }]. */
+const deLaCible = (lus, cible) => lus.filter((x) => x.cible === cible).map(({ nom, valeur, soins }) => ({ nom, valeur, ...(soins ? { soins } : {}) }));
+
+/**
+ * Les bonus du Mode Hyper aux sorts (décision R172) : { sorts: { valeur (+15 avec une seule magie, +7 avec deux : R5), magies (celles du personnage),
+ * tous (le Potentiel Illimité : tous ses sorts) }, soins (+15), attaques (+10 du Mode Hyper 100 % avec `cent`, 0 sinon) }, des constantes `mode_hyper.*`
+ * de la base. Le nombre de magies est celui de la fiche telle qu'elle est, lu au lancer pour un sort préparé en Mode Hyper (modeHyperDuSortPrepare) :
+ * il ne peut pas changer entre la préparation et le lancer (décision R179, la question Q83 sans objet : « Un sort préparer ne demeure que jusqu'à la fin
+ * d'un combat. Changer de magie est acte théoriquement impossible hors combat. »).
+ */
+function bonusDuModeHyperSurLesSorts(regles, fiche, { cent = false } = {}) {
+  const c = (id) => regles.constantes?.[id] ?? 0;
+  return {
+    sorts: {
+      valeur: c(fiche.magie_acquise_id ? 'mode_hyper.degats_magie_bi' : 'mode_hyper.degats_magie_mono'),
+      magies: [fiche.magie_innee_id, fiche.magie_acquise_id].filter(Boolean), tous: fiche.magie_innee_id === POTENTIEL_ILLIMITE,
+    },
+    soins: c('mode_hyper.soin_magique'),
+    attaques: cent ? c('mode_hyper_100.degats_bonus') : 0,
+  };
+}
+
+/**
+ * Ce que le sort préparé tient du Mode Hyper, figé à sa préparation (décisions R172, R179 : « le sort préparé est comme "figé" à un instant T près à être
+ * lancé plus tard » ; réponses aux questions Q82 « Oui : 2d6+20 », Q84 « Oui : 3D8 au maximum + 30 = 54 », Q85 « Non : 2d6+5 », Q87 « Oui : 3d6+20 »),
+ * ou null pour un sort préparé hors Mode Hyper, qui n'en reçoit rien, même lancé en Mode Hyper ou au Mode Hyper 100 % : préparé en Mode Hyper
+ * (personnage_sort.prepare_hyper, migration 0086), son +15 (+7 avec deux magies ; tous les sorts du Potentiel Illimité) aux dégâts et aux soins et le
+ * dé de race du Mode Hyper (`des` : Humain +1 dé à toutes les attaques, Felfe +2 dés aux dégâts et aux soins magiques, lus dans le texte de la race) ;
+ * préparé au Mode Hyper 100 % (prepare_cent), en plus le +10 du 100 % (et le cumul des postures : contexteDesSorts) ; jusqu'au lancer, à « Lâcher le
+ * sort », à une nouvelle préparation ou à « Fin de combat » (R179), même après la fin du Mode Hyper. Le coût et les résistances, qui ne sont pas des
+ * valeurs du sort préparé, restent ceux du moment. `prepare` : sortPrepare. { cent, sorts, soins, attaques (bonusDuModeHyperSurLesSorts), des:
+ * { desAttaques, desSorts } }.
+ */
+export function modeHyperDuSortPrepare(regles, fiche, prepare = sortPrepare(regles, fiche)) {
+  if (!prepare?.hyper) return null;
+  const h = modeHyperDe(regles, fiche);
+  const lus = h ? effetsLusDuModeHyper(regles, fiche, h) : null;
+  return {
+    cent: prepare.cent, ...bonusDuModeHyperSurLesSorts(regles, fiche, { cent: prepare.cent }),
+    des: { desAttaques: lus ? deLaCible(lus, 'des_attaques') : [], desSorts: lus ? deLaCible(lus, 'des_sorts') : [] },
   };
 }
 
@@ -3872,7 +3910,8 @@ export function effetsDesBatons(regles, fiche) {
 // Le sort préparé (décision R115 ; présentation validée par le propriétaire le 2026-10-18 : « Le don niveau 1 (et son équivalent mage vert) permettrai de
 // choisir le sort qui est préparé et de noter le résultat du jet de magie si réussi » ; « le sort même répété plusieurs fois (don lvl 20) se lance toujours
 // avec les règles de postures du moment où il a été préparé ») : un des sorts de la fiche (personnage_sort.prepare, migration 0067), son jet de magie (un
-// D100, `prepare_jet`) et la posture du moment où il a été préparé (`prepare_posture_id`).
+// D100, `prepare_jet`) et la posture du moment où il a été préparé (`prepare_posture_id`) ; préparé en Mode Hyper ou au Mode Hyper 100 % (décision R172,
+// question Q82 : `prepare_hyper`, `prepare_cent`, migration 0086), il garde ce qu'ils lui donnent (modeHyperDuSortPrepare).
 // ------------------------------------------------------------------------------------------------------------------------------------------------
 
 /** Les bornes du jet de magie d'un sort préparé : un D100 (regles.sort_prepare, décision R115 ; personnage_sort.prepare_jet, de 1 à 100). { min, max }. */
@@ -3920,7 +3959,8 @@ export function sortsAPreparer(regles, fiche, don = donDePreparation(regles, fic
  * Le sort préparé de la fiche (décision R115), ou null : sans don qui le permet (donDePreparation), sans sort marqué `prepare`, quand le sort marqué
  * n'est pas de ceux que le don autorise (il ne compte pas, et part à l'enregistrement : sortsAEnregistrer), ou quand la fiche est en Symbiose avec une
  * autre magie que la sienne (décision R135 : il est perdu, sortsApresLaSymbiose) ; une autre posture cochée depuis n'y change rien. { index, ligne, sort,
- * jet (1 à 100, ou null tant qu'il n'est pas noté), posture (la posture du moment de la préparation, ou null : aucune n'était cochée), dons }.
+ * jet (1 à 100, ou null tant qu'il n'est pas noté), posture (la posture du moment de la préparation, ou null : aucune n'était cochée), hyper (préparé
+ * en Mode Hyper, `prepare_hyper`), cent (préparé au Mode Hyper 100 %, `prepare_cent`, seulement avec `hyper` : décision R172), dons }.
  */
 export function sortPrepare(regles, fiche) {
   const don = donDePreparation(regles, fiche);
@@ -3932,11 +3972,16 @@ export function sortPrepare(regles, fiche) {
     ...choisi, dons: don.dons,
     jet: jet === null || jet === undefined || jet === '' ? null : borner(jet, jetDuSortPrepare(regles).min, jetDuSortPrepare(regles).max),
     posture: trouver(regles.postures ?? [], choisi.ligne.prepare_posture_id),
+    hyper: entier(choisi.ligne.prepare_hyper) === 1,
+    cent: entier(choisi.ligne.prepare_hyper) === 1 && entier(choisi.ligne.prepare_cent) === 1,
   };
 }
 
-/** Une ligne de sort qui n'est pas le sort préparé : ni marque, ni jet, ni posture (la base les refuse hors du sort préparé : CHECK de personnage_sort). */
-const nonPrepare = (ligne) => ({ ...ligne, prepare: 0, prepare_jet: null, prepare_posture_id: null });
+/**
+ * Une ligne de sort qui n'est pas le sort préparé : ni marque, ni jet, ni posture, ni Mode Hyper (la base les refuse hors du sort préparé : CHECK de
+ * personnage_sort ; contraintes personnage_sort_prepare_hyper_avec_prepare et personnage_sort_prepare_cent_avec_prepare_hyper, migration 0086).
+ */
+const nonPrepare = (ligne) => ({ ...ligne, prepare: 0, prepare_jet: null, prepare_posture_id: null, prepare_hyper: 0, prepare_cent: 0 });
 
 /**
  * Les sorts de la fiche quand l'emplacement `index` du tableau des sorts reçoit le sort `sortId` : vide (`sortId` absent), la ligne part ; un autre
@@ -3955,12 +4000,17 @@ export function sortsApresChoixDEmplacement(fiche, index, sortId) {
 
 /**
  * Les sorts de la fiche quand on prépare le sort `sortId` (décision R115) : lui seul est marqué, avec la posture cochée à cet instant (personnage.posture_id,
- * « la posture du moment où il a été préparé » ; null sans posture), son jet effacé (à noter : noterLeJet) ; les autres ne le sont plus. Sans `sortId`
- * (« Lâcher le sort »), aucun ne l'est : marque, jet et posture remis à zéro.
+ * « la posture du moment où il a été préparé » ; null sans posture) et l'état du Mode Hyper à cet instant (décision R172 : `prepare_hyper` si le Mode
+ * Hyper est actif, débloqué et coché, `prepare_cent` si le Mode Hyper 100 % l'est : modeHyperDe), son jet effacé (à noter : noterLeJet) ; les autres ne
+ * le sont plus. Sans `sortId` (« Lâcher le sort »), aucun ne l'est : marque, jet, posture et Mode Hyper remis à zéro.
  */
 export function sortsApresPreparation(regles, fiche, sortId) {
   const posture = trouver(regles.postures ?? [], fiche.posture_id)?.id ?? null;
-  return (fiche.sorts ?? []).map((l) => (sortId && l.sort_id === sortId ? { ...l, prepare: 1, prepare_jet: null, prepare_posture_id: posture } : nonPrepare(l)));
+  const h = modeHyperDe(regles, fiche);
+  const hyper = h?.actif ? 1 : 0;
+  const cent = hyper && h.cent.actif ? 1 : 0;
+  return (fiche.sorts ?? []).map((l) => (sortId && l.sort_id === sortId
+    ? { ...l, prepare: 1, prepare_jet: null, prepare_posture_id: posture, prepare_hyper: hyper, prepare_cent: cent } : nonPrepare(l)));
 }
 
 /**
@@ -3986,14 +4036,17 @@ export function sortsApresLeJet(regles, fiche, saisie) {
 }
 
 /**
- * Les sorts à enregistrer (page, fiche en tableur) : rangés dans l'ordre (rang 1, 2…) ; le sort préparé (sortPrepare) garde sa marque, son jet et sa
- * posture, tous les autres ne les ont pas — une préparation que le don ne permet plus (classe changée, sort retiré, sort d'un autre type ou NPM) part.
+ * Les sorts à enregistrer (page, fiche en tableur) : rangés dans l'ordre (rang 1, 2…) ; le sort préparé (sortPrepare) garde sa marque, son jet, sa
+ * posture et son Mode Hyper (R172), tous les autres ne les ont pas — une préparation que le don ne permet plus (classe changée, sort retiré, sort d'un autre type ou NPM) part.
  */
 export function sortsAEnregistrer(regles, fiche) {
   const prepare = sortPrepare(regles, fiche);
   return (fiche.sorts ?? []).map((s, i) => {
     if (prepare?.index !== i) return { ...nonPrepare(s), rang: i + 1 };
-    return { ...s, rang: i + 1, prepare: 1, prepare_jet: prepare.jet, prepare_posture_id: prepare.posture?.id ?? null };
+    return {
+      ...s, rang: i + 1, prepare: 1, prepare_jet: prepare.jet, prepare_posture_id: prepare.posture?.id ?? null,
+      prepare_hyper: prepare.hyper ? 1 : 0, prepare_cent: prepare.cent ? 1 : 0,
+    };
   });
 }
 
@@ -4085,13 +4138,21 @@ export function bonusDeSortsDuPersonnage(regles, fiche) {
 /**
  * Ce qui vaut pour tous les sorts de la fiche (sortDuMoment), calculé une fois : la posture du moment, les bâtons à la ceinture, les bonus écrits des
  * dons et de l'armure élémentaire, les effets des accessoires, le Mode Hyper actif (modeHyperDuMoment) ; le sort préparé (décision R115 : sortPrepare) et la posture de sa préparation, à
- * laquelle il se calcule (`prepare` : { sort_id, posture (postureDuMoment à la posture enregistrée, null sans posture) }, null sans sort préparé).
+ * laquelle il se calcule (`prepare` : { sort_id, posture (postureDuMoment à la posture enregistrée, null sans posture ; pour un sort préparé au Mode
+ * Hyper 100 %, le cumul des postures, décision R172), modeHyper (ce qu'il garde du Mode Hyper de sa préparation :
+ * modeHyperDuSortPrepare, null préparé hors Mode Hyper) }, null sans sort préparé). La posture est figée (décision R179) : celle de la préparation, ou
+ * le cumul des postures s'il a été préparé au Mode Hyper 100 % ; le 100 % du moment ne la change pas.
  */
 export function contexteDesSorts(regles, fiche) {
   const prepare = sortPrepare(regles, fiche);
   return {
     posture: postureDuMoment(regles, fiche), batons: effetsDesBatons(regles, fiche), ecrits: bonusDeSortsDuPersonnage(regles, fiche),
-    prepare: prepare && { sort_id: prepare.sort.id, posture: postureDuMoment(regles, { ...fiche, posture_id: prepare.posture?.id ?? null }) },
+    prepare: prepare && {
+      sort_id: prepare.sort.id,
+      posture: postureDuMoment(regles, { ...fiche, posture_id: prepare.posture?.id ?? null }, { cent: prepare.cent }),
+      // (figée : au Mode Hyper 100 % seulement s'il y a été préparé, jamais par le 100 % du moment, R179)
+      modeHyper: modeHyperDuSortPrepare(regles, fiche, prepare),
+    },
     accessoires: effetsDesAccessoires(regles, fiche).filter((e) => e.valeur && !e.aChoisir),
     // le chakra maximum du personnage, pour un coût qui en est un pourcentage (décision R106)
     chakraMax: attributsDe(regles, fiche).chakra,
@@ -4226,6 +4287,10 @@ export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSo
   // l'attaque physique a lieu en posture défensive ») ; les autres, à la posture cochée
   const estPrepare = Boolean(contexte.prepare) && contexte.prepare.sort_id === sort.id;
   const posture = estPrepare ? contexte.prepare.posture : contexte.posture;
+  // le sort préparé est figé à sa préparation (décisions R172, R179) : du Mode Hyper, ses dégâts et ses soins ne reçoivent que ce qu'il avait alors
+  // (modeHyperDuSortPrepare : +15 ou +7, dé de race, +10 au 100 %), jamais celui du moment ; préparé hors Mode Hyper, rien (Q85 : « Non : 2d6+5 »)
+  const fige = estPrepare ? contexte.prepare.modeHyper ?? null : null;
+  const modeHyperAuLancer = estPrepare ? null : hyper;
   const nonComptes = [];
   const rappels = [];
   const symbiose = posture?.symbiose ?? null;
@@ -4323,13 +4388,18 @@ export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSo
     : symbiose.potentielIllimite ? [{ nom: nomDeSymbiose('Potentiel Illimité'), valeur: symbiose.degats }]
       : magieDeSymbiose ? [{ nom: nomDeSymbiose(magieDeSymbiose.nom), valeur: symbiose.degats }] : [];
   // le Mode Hyper actif (décision R172) : +15 aux dégâts des sorts de ses magies (+7 avec deux, R5 ; tous ses sorts pour le Potentiel Illimité) et, en
-  // Mode Hyper 100 %, +10 à toutes les attaques ; +15 aux soins
+  // Mode Hyper 100 %, +10 à toutes les attaques ; +15 aux soins. Le sort préparé ne reçoit que ceux de sa préparation (`fige`, « à la préparation »,
+  // R179), les autres sorts ceux du moment
   const deModeHyper = (nature) => {
-    if (!hyper) return [];
-    if (nature === 'soin') return hyper.soins ? [{ nom: 'Mode Hyper', valeur: hyper.soins }] : [];
+    const h = modeHyperAuLancer ?? fige;
+    if (!h) return [];
+    const nom = modeHyperAuLancer ? 'Mode Hyper' : 'Mode Hyper (à la préparation)';
+    if (nature === 'soin') return h.soins ? [{ nom, valeur: h.soins }] : [];
+    const attaques = modeHyperAuLancer?.attaques ? { nom: 'Mode Hyper 100 %', valeur: modeHyperAuLancer.attaques }
+      : fige?.attaques ? { nom: 'Mode Hyper 100 % (à la préparation)', valeur: fige.attaques } : null;
     return [
-      ...(hyper.sorts.valeur && (hyper.sorts.tous || hyper.sorts.magies.includes(sort.magie_id)) ? [{ nom: 'Mode Hyper', valeur: hyper.sorts.valeur }] : []),
-      ...(hyper.attaques ? [{ nom: 'Mode Hyper 100 %', valeur: hyper.attaques }] : []),
+      ...(h.sorts.valeur && (h.sorts.tous || h.sorts.magies.includes(sort.magie_id)) ? [{ nom, valeur: h.sorts.valeur }] : []),
+      ...(attaques ? [attaques] : []),
     ];
   };
   const fixesDesDegats = () => [...(sort.attaque ? accessoire('degats_magie') : []), ...ecritsPour('degats'), ...duBaton('degats'), ...deSymbiose, ...deModeHyper('degats')];
@@ -4347,8 +4417,12 @@ export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSo
     }
     // le Mode Hyper actif (décision R172), lu dans le texte de la race : un dé de plus à toutes les attaques (Humain), deux dés aux dégâts et aux soins
     // magiques (Felfe) ; du même type que le premier dé du coup (après le cran de Focus), rien sur un sort sans dé
-    if (x.nombre && hyper) {
-      for (const d of [...(v.nature === 'degats' ? hyper.desAttaques : []), ...hyper.desSorts.filter((y) => v.nature === 'degats' || y.soins)]) {
+    // (le sort préparé en Mode Hyper garde le sien, Q84, Q87 : « à la préparation » ; préparé hors Mode Hyper, aucun)
+    const desDeRace = modeHyperAuLancer ?? (fige?.des
+      ? { desAttaques: fige.des.desAttaques.map((d) => ({ ...d, nom: `${d.nom} (à la préparation)` })), desSorts: fige.des.desSorts.map((d) => ({ ...d, nom: `${d.nom} (à la préparation)` })) }
+      : null);
+    if (x.nombre && desDeRace) {
+      for (const d of [...(v.nature === 'degats' ? desDeRace.desAttaques : []), ...desDeRace.desSorts.filter((y) => v.nature === 'degats' || y.soins)]) {
         x.nombre += d.valeur;
         dsb.detail.push({ nom: `${d.nom} : +${d.valeur}d`, valeur: 0, des: d.valeur });
       }
@@ -4421,7 +4495,11 @@ export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSo
   for (const r of batons.rappels) rappels.push({ nom: r.baton.nom, texte: r.texte });
   const protection = batons.comptes.get('protection');
   if (protection && sort.types?.includes('protection') && !dsb.lu && !effets.detail.length) rappels.push({ nom: protection.baton.nom, texte: protection.texte });
-  return { inactif, cout, portee, dsb, effets, nonComptes, rappels, prepare: estPrepare, posture: posture?.posture ?? null };
+  return {
+    inactif, cout, portee, dsb, effets, nonComptes, rappels, prepare: estPrepare, posture: posture?.posture ?? null,
+    // l'état du Mode Hyper à la préparation du sort préparé (décision R172) : « Mode Hyper », « Mode Hyper 100 % », ou null
+    prepareModeHyper: fige ? (fige.cent ? 'Mode Hyper 100 %' : 'Mode Hyper') : null,
+  };
 }
 
 /**
@@ -4752,11 +4830,27 @@ export function remonterLAction(regles, fiche, cle, ecart = 1) {
 /**
  * « Fin de combat » (décision R173 : « remet au maximum les compteurs "par combat" ») : { actions_usage } sans les lignes des actions dont le compteur
  * est par combat ; ceux par jour, semaine… restent (« ne remontent qu'à la main »), comme une ligne qui ne répond à aucune action (nettoyée à
- * l'enregistrement : actionsUsageValables).
+ * l'enregistrement : actionsUsageValables). Elle lâche aussi le sort préparé (décision R179 : « Un sort préparer ne demeure que jusqu'à la fin d'un
+ * combat » ; Q86 : « Oui, « Fin de combat » le lâche aussi ») : `sorts`, comme « Lâcher le sort » (sortsApresPreparation : `prepare`, `prepare_jet`,
+ * `prepare_posture_id`, `prepare_hyper`, `prepare_cent` remis à zéro), seulement quand un sort est préparé.
  */
 export function finDeCombat(regles, fiche) {
   const parCombat = new Set(actionsDeLaFiche(regles, fiche).filter((a) => a.compteur?.remontee === 'fin_de_combat').map((a) => a.cle));
-  return { actions_usage: (fiche.actions_usage ?? []).filter((u) => !parCombat.has(u?.action_id)) };
+  return {
+    actions_usage: (fiche.actions_usage ?? []).filter((u) => !parCombat.has(u?.action_id)),
+    ...(unSortEstPrepare(fiche) ? { sorts: sortsApresPreparation(regles, fiche, null) } : {}),
+  };
+}
+
+/** Vrai si une ligne de sort de la fiche porte la marque du sort préparé (`prepare`, décision R115) : ce que « Fin de combat » lâche (R179). */
+const unSortEstPrepare = (fiche) => (fiche.sorts ?? []).some((l) => entier(l?.prepare) === 1);
+
+/**
+ * Le bouton « Fin de combat » est montré (décisions R173, R179) : quand une action de la fiche a un compteur par combat, ou qu'un sort est préparé (il le
+ * lâche) — celui que la page montre (sortPrepare), pas une marque que le don ne permet plus. `actions` : actionsDeLaFiche.
+ */
+export function finDeCombatMontree(regles, fiche, actions = actionsDeLaFiche(regles, fiche)) {
+  return actions.some((a) => a.compteur?.remontee === 'fin_de_combat') || Boolean(sortPrepare(regles, fiche));
 }
 
 /**

@@ -230,7 +230,7 @@ test('R115, R169 : changer le sort d’un emplacement (sortsApresChoixDEmplaceme
     sorts: M.sortsApresPreparation(regles, { ...f, posture_id: POSTURE('focus') }, ATTAQUE_1).map((s, i) => (i === 0 ? { ...s, prepare_jet: 40, niveau_maitrise: 2 } : s)) };
   const gele = structuredClone(avant);
   assert.deepEqual(M.sortsApresChoixDEmplacement(avant, 0, AUTRE_1)[0],
-    { sort_id: AUTRE_1, rang: 1, niveau_maitrise: 0, prepare: 0, prepare_jet: null, prepare_posture_id: null });
+    { sort_id: AUTRE_1, rang: 1, niveau_maitrise: 0, prepare: 0, prepare_jet: null, prepare_posture_id: null, prepare_hyper: 0, prepare_cent: 0 });
   assert.equal(M.sortPrepare(regles, avant).sort.id, ATTAQUE_1);
   assert.equal(M.sortPrepare(regles, { ...avant, sorts: M.sortsApresChoixDEmplacement(avant, 0, AUTRE_1) }), null, 'plus de sort préparé');
   assert.deepEqual(M.sortsApresChoixDEmplacement(avant, 0, null).map((s) => s.sort_id), [ATTAQUE_2]);

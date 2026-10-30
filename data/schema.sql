@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 85;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 86;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -4327,9 +4327,21 @@ CREATE TABLE personnage_sort (
   -- tous les autres. Le résultat du jet de magie (un D100, de 1 à 100 ; NULL tant qu'il n'est pas noté) et la posture (NULL quand aucune n'était
   -- choisie : personnage.posture_id NULL) n'existent que sur le sort préparé : « Lâcher le sort » remet `prepare` à 0 et les deux à NULL. Un sort retiré
   -- des fiches (R42) part avec sa ligne, préparation comprise.
+  -- Sort préparé en Mode Hyper (décision R172, migration 0086 : « un sort préparé pendant le Mode Hyper 100 % reste "préparé au 100 %", même après la
+  -- sortie du 100 % », « Aussi le +15/+7 » ; réponse à Q82 pour le Mode Hyper normal : « Oui : 2d6+20 ») : la posture de préparation ne peut pas le
+  -- dire, deux cases le disent, comme personnage.mode_hyper et mode_hyper_100 (migration 0084). prepare_hyper = 1 : préparé pendant le Mode Hyper, le
+  -- sort garde le +15 (ou +7) du Mode Hyper ; prepare_cent = 1 : préparé pendant le Mode Hyper 100 %, il garde en plus le cumul des postures sans
+  -- inconvénients et le +10 du 100 %. Dans les deux cas jusqu'au lancer, à « Lâcher le sort » ou à une nouvelle préparation (R115), même une fois le
+  -- Mode Hyper (ou le 100 %) terminé. Comme le jet et la posture, elles n'existent que sur le sort préparé (contraintes nommées
+  -- personnage_sort_prepare_hyper_avec_prepare et personnage_sort_prepare_cent_avec_prepare_hyper) : « Lâcher le sort » les remet à 0, une nouvelle
+  -- préparation les réécrit selon le moment. Ce que vaut le sort se calcule (lib/fiche-moteur.mjs), rien n'en est stocké.
   prepare            INTEGER NOT NULL DEFAULT 0 CHECK (prepare IN (0, 1)),   -- 1 = le sort préparé de la fiche (R115)
   prepare_jet        INTEGER CHECK (prepare_jet IS NULL OR (prepare = 1 AND prepare_jet BETWEEN 1 AND 100)),   -- jet de magie (D100)
   prepare_posture_id TEXT    REFERENCES posture(id) CHECK (prepare_posture_id IS NULL OR prepare = 1),   -- posture du moment de la préparation
+  prepare_hyper      INTEGER NOT NULL DEFAULT 0 CHECK (prepare_hyper IN (0, 1))
+                       CONSTRAINT personnage_sort_prepare_hyper_avec_prepare CHECK (prepare_hyper = 0 OR prepare = 1),   -- 1 = préparé en Mode Hyper (R172)
+  prepare_cent       INTEGER NOT NULL DEFAULT 0 CHECK (prepare_cent IN (0, 1))
+                       CONSTRAINT personnage_sort_prepare_cent_avec_prepare_hyper CHECK (prepare_cent = 0 OR prepare_hyper = 1),   -- 1 = préparé au 100 % (R172)
   PRIMARY KEY (personnage_id, sort_id),
   UNIQUE (personnage_id, rang)
 ) STRICT, WITHOUT ROWID;

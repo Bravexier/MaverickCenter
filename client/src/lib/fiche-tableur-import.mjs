@@ -1133,7 +1133,7 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   }
   f.nm_mj = nmDuMj;
   // le sort préparé (décision R115), dans la note : un sort de la liste, que le don de préparation de la fiche autorise (sortPrepare), son jet de magie
-  // (1 à 100) et la posture de la préparation ; sinon perdu, et dit
+  // (1 à 100), la posture de la préparation et son Mode Hyper (R172) ; sinon perdu, et dit
   for (const v of notee('sortPrepare')) {
     if (f.sorts.some((s) => s.prepare === 1)) {
       perdu(`Sort préparé : « ${v} » : un seul sort préparé par fiche (décision R115)`);
@@ -1152,9 +1152,10 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     }
     const posture = lu.posture === null ? null : unSeul(retrouver(regles.postures, lu.posture), 'Sort préparé (posture)', lu.posture);
     if (lu.posture !== null && !posture) continue;
-    Object.assign(lignes[0], { prepare: 1, prepare_jet: lu.jet, prepare_posture_id: posture?.id ?? null });
+    // préparé en Mode Hyper ou au Mode Hyper 100 % (décision R172) : les deux cases, cohérentes (le 100 % l'est aussi en Mode Hyper)
+    Object.assign(lignes[0], { prepare: 1, prepare_jet: lu.jet, prepare_posture_id: posture?.id ?? null, prepare_hyper: lu.hyper ? 1 : 0, prepare_cent: lu.hyper && lu.cent ? 1 : 0 });
     if (!sortPrepare(regles, f)) {
-      Object.assign(lignes[0], { prepare: 0, prepare_jet: null, prepare_posture_id: null });
+      Object.assign(lignes[0], { prepare: 0, prepare_jet: null, prepare_posture_id: null, prepare_hyper: 0, prepare_cent: 0 });
       perdu(`Sort préparé : « ${v} » : la fiche n’a pas le don qui le permet (« Préparation », « Chargement »), ou ce sort n’est pas de ceux qu’il autorise`);
     }
   }
