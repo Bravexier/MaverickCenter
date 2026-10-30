@@ -213,7 +213,7 @@ la ressource ne prend que les lignes de la table qui passent sa condition.
 | `paliers-d-entrainement/` | Paliers d’entraînement | `entrainement_palier` | lecture seule | — |
 | `bonus-d-initiative/` | Bonus d’initiative | `initiative_agilite` | lecture seule | — |
 | `types-de-don/` | Types de don | `type_don` | lecture seule | — |
-| `postures/` | Postures | `posture` | lecture seule | `effets` |
+| `postures/` | Postures | `posture` | lecture seule | `effets`, `competences-du-critique` |
 | `paliers-de-resistance/` | Paliers de résistance | `resistance_palier` | lecture seule | — |
 | `alterations-d-etat/` | Altérations d’état | `etat` | lecture seule | `magies-liees`, `stades`, `effets-par-palier` |
 | `meteos/` | Météos | `meteo` | lecture seule | `effets` |

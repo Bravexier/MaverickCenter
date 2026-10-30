@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 86;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 87;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -428,6 +428,22 @@ CREATE TABLE posture_effet (
                                                              -- fiche), 0 = un avantage (en vert), décision R47 ; NULL pour les versions du guide
   PRIMARY KEY (posture_id, version, rang),
   CHECK ((version = 'fiche') = (intitule IS NULL))
+) STRICT, WITHOUT ROWID;
+
+-- Jets sur lesquels compte un bonus de réussite critique lié à une posture (décision R180, migration 0087). Une ligne = une compétence où le bonus
+-- compte. `bonus` dit d'où vient le bonus :
+--   'posture'         : l'effet de la posture elle-même (« +5% à la réussite critique », posture_effet) : Offensif sur Arc, Arbalète, Arme légère,
+--                       Arme lourde, Magie et Concentration (« Le +5 % de l'Offensive ne compte que pour les jets d'attaque (Arc, Arbalète, Arme
+--                       légère, Arme lourde, Magie, Concentration). ») ; Défensif sur Esquive et Parade (« quand on esquive ou pare », R180 (4)).
+--                       Liste propre au critique : le −10 % de l'Offensif reste sur ses cinq compétences (R100, lib/posture-texte.mjs#COMPETENCES_D_ATTAQUE) ;
+--   'don_de_posture'  : un don passif écrit « (Posture X) » (« Sci du Crit », Offensif) : les six jets de l'Offensif, choix provisoire de game-design
+--                       (docs/sql/a-valider.md, Q90). Si Q90 tranche « tout jet », seules ces lignes changent (les 30 compétences), pas le code.
+-- Les nombres du critique (base 5, paliers 96 et 103, +2 et +5, plafond 15) sont dans regle_constante ('critique.*').
+CREATE TABLE posture_critique (
+  posture_id    TEXT NOT NULL REFERENCES posture(id),
+  bonus         TEXT NOT NULL CHECK (bonus IN ('posture', 'don_de_posture')),
+  competence_id TEXT NOT NULL REFERENCES competence(id),
+  PRIMARY KEY (posture_id, bonus, competence_id)
 ) STRICT, WITHOUT ROWID;
 
 -- ====================================================================================================================

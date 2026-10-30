@@ -277,7 +277,8 @@ export function choixDeMetierValables(regles, fiche) {
  * `metier`, `accessoire` ; les mêmes avant le plafond : `…Brut`), plafonds (naturel : seuil du niveau ; acquis : 5 par point de la caractéristique
  * totale, le +1 de la magie innée compris — décision R41 : « 5 en volonté donnerait un max de 25 aquis » —, `plafondAcquis` ; « le plafond prévaut »,
  * R38) et score (guide, « Réussir une action » : 10 × la caractéristique + naturel + acquis ; une croix −20 %, deux croix : inutilisable, décision R19),
- * plus le bonus au jet des dons (décision R122 : « +5% à tout jet impliquant la Perception », hors acquis et hors plafond : `jet`, son détail `jetDetail`).
+ * plus le bonus au jet des dons (décision R122 : « +5% à tout jet impliquant la Perception », hors acquis et hors plafond : `jet`, son détail `jetDetail`),
+ * et le bonus de réussite critique de la compétence au moment présent (décision R180 : `critique`, critiqueDe ; null à deux croix).
  */
 export function competencesDe(regles, fiche) {
   const niveau = niveauGlobal(regles, fiche.xp);
@@ -288,6 +289,7 @@ export function competencesDe(regles, fiche) {
   const posture = postureDuMoment(regles, fiche);
   const entrainement = entrainementDe(regles, fiche).parCompetence;
   const { parCompetence: dons, plafonds, jets } = acquisDesDons(regles, fiche);
+  const sourcesCritique = sourcesDuCritique(regles, fiche);
   return regles.competences.map((k) => {
     const saisie = parId.get(k.id);
     const carac = caracs.get(k.caracteristique_id);
@@ -323,13 +325,86 @@ export function competencesDe(regles, fiche) {
     const score = utilisable ? carac.valeur * constante(regles, 'competence.base_par_point_caracteristique') + naturel + acquis + malus + jet : null;
     // la posture du moment (décision R100) : un bonus au jet, pas un Acquis — `score` reste celui de la fiche (tableur), `scoreDuMoment` le compte
     const bonusPosture = bonusDePostureSurCompetence(posture, k);
+    const scoreDuMoment = score === null ? null : score + bonusPosture;
     return {
       id: k.id, nom: k.nom, caracteristique_id: k.caracteristique_id, naturel, maxNaturel, plafondAcquis, plafondBonus,
       acquis, acquisBrut: entrainementBrut + donsBrut + metierBrut + accessoireBrut,
       entrainement: entrainementCompte, entrainementBrut, dons: donsComptes, donsBrut, donsDetail, metier, metierBrut, accessoire, accessoireBrut,
-      jet, jetDetail, score, posture: bonusPosture, scoreDuMoment: score === null ? null : score + bonusPosture,
+      jet, jetDetail, score, posture: bonusPosture, scoreDuMoment,
+      critique: critiqueDe(regles, posture, k, scoreDuMoment, sourcesCritique),
     };
   });
+}
+
+/**
+ * Ce qui donne un bonus de réussite critique en permanence, hors posture et score (décision R180 (4), « Seulement ce qui joue en permanence », R128) :
+ * les dons acquis — de classe, passifs, et de race — dont le texte écrit « (Posture X) Augmente la réussite critique de +N% » (`critique` des règles :
+ * lib/critique-texte.mjs#critiqueDuDon, Sci du Crit) et les accessoires portés « Augmente la réussite critique de N%, peu importe le jet. »
+ * (lib/critique-texte.mjs#critiqueDeLAccessoire ; maudit : l'effet contraire, R54). { dons: [{ nom, critique: { postures, valeur } }], accessoires:
+ * [{ nom, valeur }] }. Jamais les sorts « à la prochaine attaque », les dons actifs, l'arme utilisée, la tenaille ni une situation (Q88 : (a)).
+ */
+export function sourcesDuCritique(regles, fiche) {
+  const vus = new Set();
+  const dons = [...donsAcquis(regles, fiche).flatMap((c) => c.dons), ...donsDeRace(regles, fiche).dons]
+    .filter((d) => d.critique && !vus.has(d.id) && vus.add(d.id));
+  const accessoires = (fiche.accessoires ?? []).flatMap((a) => {
+    const effet = trouver(regles.accessoires ?? [], a.accessoire_effet_id);
+    return effet?.critique ? [{ nom: nomDAccessoire(a), valeur: a.maudit ? -effet.critique : effet.critique }] : [];
+  });
+  return { dons, accessoires };
+}
+
+/**
+ * Le bonus de réussite critique d'une compétence au moment présent (décision R180), null à deux croix (`scoreDuMoment` null) :
+ * { base, bonus, brut, rogne, plafond, plage, origines: [{ origine: 'palier' | 'posture' | 'don' | 'accessoire', nom, valeur }] }.
+ * - le palier, lu sur le score du moment (posture comprise : « 113 de base en offensif ça passe à 103 ») : de `critique.palier_1_score_min` (96) à
+ *   `critique.palier_2_score_min` − 1 (102), `critique.palier_1_bonus` (+2) ; à partir de `critique.palier_2_score_min` (103), `critique.palier_2_bonus`
+ *   (+5 au total), sans borne haute ; « sur tout jet, quelle que soit la posture » ;
+ * - chaque ligne de réussite critique des postures actives qui vise la compétence (`posture.critique` : posture_critique, 'posture') ; au Mode Hyper
+ *   100 %, l'Offensif et le Défensif ensemble (R172) ;
+ * - chaque don de posture dont une posture écrite est active et vise la compétence (`posture.critiqueDesDons` : posture_critique, 'don_de_posture') ;
+ * - chaque accessoire porté, sur toutes les compétences.
+ * `brut` : leur somme ; `bonus` : rogné pour que la base plus le bonus ne dépasse pas `critique.plafond` (« ne dépasse jamais 1 à 15 », base comprise,
+ * « toutes sources ensemble ») ; `rogne` : ce que le plafond retire ; `plage` : base + bonus (« 1 à `plage` »). Toutes les valeurs viennent de
+ * regle_constante (`critique.*`), jamais écrites ici.
+ */
+export function critiqueDe(regles, posture, k, scoreDuMoment, sources = { dons: [], accessoires: [] }) {
+  if (scoreDuMoment === null || scoreDuMoment === undefined) return null;
+  const c = (id) => constante(regles, id);
+  const base = c('critique.base');
+  const plafond = c('critique.plafond');
+  const seuil1 = c('critique.palier_1_score_min');
+  const seuil2 = c('critique.palier_2_score_min');
+  const origines = [];
+  if (scoreDuMoment >= seuil2) origines.push({ origine: 'palier', nom: `score de ${seuil2} % et plus`, valeur: c('critique.palier_2_bonus') });
+  else if (scoreDuMoment >= seuil1) origines.push({ origine: 'palier', nom: `score de ${seuil1} à ${seuil2 - 1} %`, valeur: c('critique.palier_1_bonus') });
+  for (const l of posture?.critique ?? []) {
+    if (l.competences.includes(k.id)) origines.push({ origine: 'posture', nom: `posture ${l.posture}${posture.cent ? ', Mode Hyper 100 %' : ''}`, valeur: l.valeur });
+  }
+  for (const d of sources.dons) {
+    const vise = (posture?.critiqueDesDons ?? []).some((p) => d.critique.postures.includes(p.nom) && p.competences.includes(k.id));
+    if (vise) origines.push({ origine: 'don', nom: d.nom, valeur: d.critique.valeur });
+  }
+  for (const a of sources.accessoires) origines.push({ origine: 'accessoire', nom: a.nom, valeur: a.valeur });
+  const brut = origines.reduce((t, o) => t + o.valeur, 0);
+  const bonus = Math.min(brut, plafond - base);
+  return { base, bonus, brut, rogne: brut - bonus, plafond, plage: base + bonus, origines };
+}
+
+const signeDe = (n) => (n > 0 ? `+${n}` : String(n));
+/**
+ * Les lignes de l'infobulle du score sur la réussite critique (décision R180 (4) : « elle affiche le bonus de critique dès qu'il n'est pas nul, quelle
+ * que soit sa provenance ») : le total et la plage (« Réussite critique : +10 % (1 à 15) »), une ligne par origine (« +5 % (posture Offensif) »), et le
+ * plafond quand il rogne ; [] sans bonus (ou à deux croix).
+ */
+export function lignesDuCritique(critique) {
+  if (!critique || critique.bonus === 0) return [];
+  return [
+    `Réussite critique : ${signeDe(critique.bonus)} % (1 à ${critique.plage})`,
+    ...critique.origines.map((o) => `${signeDe(o.valeur)} % (${o.nom})`),
+    ...(critique.rogne > 0
+      ? [`Plafond : ${signeDe(critique.brut)} % ramené à ${signeDe(critique.bonus)} % (jamais plus de 1 à ${critique.plafond})`] : []),
+  ];
 }
 
 /**
@@ -3545,7 +3620,8 @@ export function magiesDeLaSymbiose(regles, fiche) {
  * { posture, libelle, noms, cent, competences: [{ toutes | caracteristiques | competences, valeur }], initiative, ap, am, degatsMaximum, diviseur, crans,
  *   symbiose: { magie (la magie de la symbiose, null tant qu'elle n'est pas choisie), magies (celles dont les sorts reçoivent son bonus et qu'elle
  *   immunise : [magie], ou les deux en Mode Hyper 100 %), possibles, aChoisir, degats (dégâts et soin des sorts de ces magies), am, immunite, inactive
- *   (l'autre magie), potentielIllimite } | null, armesInutilisables, lignes: [{ texte, chiffre, inconvenient }] }.
+ *   (l'autre magie), potentielIllimite } | null, armesInutilisables, lignes: [{ texte, chiffre, inconvenient }], critique: [{ posture, valeur,
+ *   competences }], critiqueDesDons: [{ posture, nom, competences }] } (la réussite critique, décision R180 : critiqueDe).
  * Défensif : 2 × ⌈N ÷ 4⌉ AP et AM (N niveau global ; réponse « 2 × ⌈N/4⌉ ») ; Symbiose : base + pas × (puissance magique − 1) (« le premier niveau ne
  * compte pas » ; réponse « +5 dégâts et soin ») ; sa magie : la seule du personnage, sinon `fiche.symbiose_magie_id` (« choisie dans la case »).
  * Magie innée Potentiel Illimité (décision R109) : `potentielIllimite` vrai, ni magie ni magie à choisir (`magie` null, `possibles` vide, `aChoisir`
@@ -3572,7 +3648,8 @@ export function postureDuMoment(regles, fiche, { cent: centForce } = {}) {
   const lignesDe = (p) => p.effets.map((texte, i) => ({ texte, chiffre: p.chiffres?.[i] ?? null, inconvenient: (p.inconvenients ?? []).includes(i + 1) }));
   const r = {
     posture, libelle: cent ? 'Mode Hyper 100 % (postures)' : `Posture ${posture.nom}`, noms: actives.map((p) => p.nom.toLowerCase()), cent,
-    competences: [], initiative: 0, ap: 0, am: 0, degatsMaximum: false, diviseur: 1, crans: 0, symbiose: null, armesInutilisables: false,
+    competences: [], initiative: 0, ap: 0, am: 0, degatsMaximum: false, diviseur: 1, crans: 0, symbiose: null, armesInutilisables: false, critique: [],
+    critiqueDesDons: [],
     // en Mode Hyper 100 %, les avantages seuls
     lignes: actives.flatMap((p) => lignesDe(p).filter((l) => !cent || !l.inconvenient)),
   };
@@ -3616,6 +3693,12 @@ export function postureDuMoment(regles, fiche, { cent: centForce } = {}) {
     r.am += s.am;
     if (s.uneSeule && s.magie) s.inactive = s.possibles.find((m) => m.id !== s.magie.id) ?? null;
   }
+  // la réussite critique (décision R180) : chaque ligne « +N% à la réussite critique » d'une posture active, sur les compétences de cette posture
+  // (posture_critique, 'posture' : Offensif ses six jets d'attaque, Défensif Esquive et Parade ; en Mode Hyper 100 %, les deux) ; et, par posture
+  // active, les compétences d'un don écrit pour elle (`critiqueDesDons` : posture_critique, 'don_de_posture'), jamais une liste écrite ici
+  r.critique = actives.flatMap((p) => lignesDe(p).filter((l) => l.chiffre?.cible === 'critique' && !(cent && l.inconvenient))
+    .map((l) => ({ posture: p.nom, valeur: l.chiffre.valeur, competences: p.critique?.posture ?? [] })));
+  r.critiqueDesDons = actives.map((p) => ({ posture: p.nom, nom: p.nom.toLowerCase(), competences: p.critique?.don_de_posture ?? [] }));
   return r;
 }
 

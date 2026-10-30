@@ -106,11 +106,25 @@ const FONDUES = [
     dans: { id: 'ressources/armes#amelioration:arme:10' } },
 ];
 const fondue = (c) => FONDUES.find((r) => r.table === c.table && JSON.stringify(r.cle) === JSON.stringify(c.cle));
+// Corrections dans lesquelles une décision du propriétaire a inséré des mots depuis : décision R180 (« [Mode Hyper] Lumière Toutes les amplification
+// deviennent des IC en plus de tout le reste »), migration 0087 : « une protection est » devient « une protection ou une amplification est ». La
+// graphie corrigée reste : les mots corrigés sont dans la nouvelle phrase, dans le même ordre. (La page « Liste des effets mode hyper », que le site
+// de dev a modifiée, se lit dans son état d'import : elle garde « une protection est ».)
+const INSEREES = ['classeur_modes', 'fiche'].map((v) => ({
+  table: 'mode_hyper_effet', cle: { id: `${v}:magies/magie-de-la-lumiere:bi` }, col: 'effet',
+  decision: 'R180', apres: 'une protection est', maintenant: 'une protection ou une amplification est',
+}));
+const inseree = (c) => INSEREES.find((r) => r.table === c.table && r.col === c.col && JSON.stringify(r.cle) === JSON.stringify(c.cle) && r.apres === c.apres);
+const dansLOrdre = (mots, phrase) => { let i = 0; for (const m of phrase.split(' ')) if (m === mots[i]) i++; return i === mots.length; };
 
 test('base : chaque correction est faite (le texte corrigé est dans sa cellule, aux noms corrigés par 0006 près)', () => {
   for (const r of RETIREES) assert.ok(corrections.some((c) => retiree(c) === r), `${r.apres} : une correction du registre`);
   for (const r of CHANGEES) assert.ok(corrections.some((c) => changee(c) === r), `${r.apres} : une correction du registre`);
   for (const f of FONDUES) assert.match(readFileSync(join(dossier, f.migration), 'utf8'), /WHERE a\.cible <> 'arme_elementaire';/, `${f.migration} : fond la ligne`);
+  for (const r of INSEREES) {
+    assert.ok(corrections.some((c) => inseree(c) === r), `${r.table} ${JSON.stringify(r.cle)} « ${r.apres} » : une correction du registre`);
+    assert.ok(dansLOrdre(r.apres.split(' '), r.maintenant), `${r.maintenant} : garde les mots corrigés, dans l'ordre`);
+  }
   for (const c0 of corrections) {
     const f = fondue(c0);
     const c = f ? { ...c0, cle: f.dans } : c0;
@@ -126,6 +140,11 @@ test('base : chaque correction est faite (le texte corrigé est dans sa cellule,
     if (n) {
       assert.ok(readFileSync(join(dossier, n.migration), 'utf8').includes(`${c.col} = '${c.apres}'`), `${c.apres} : la valeur d'avant que ${n.migration} garde`);
       assert.equal(v, n.maintenant, `${c.table} ${JSON.stringify(c.cle)} : la valeur de ${n.migration}`);
+      continue;
+    }
+    const i = inseree(c);
+    if (i) {
+      assert.ok(v.includes(i.maintenant) && !v.includes(c.avant), `${c.table} ${JSON.stringify(c.cle)} : « ${i.maintenant} » (décision ${i.decision}), sans « ${c.avant} »`);
       continue;
     }
     assert.ok(v.includes(c.apres) || avant0006(c, v).includes(c.apres), `${c.table} ${JSON.stringify(c.cle)} ${c.col} : « ${c.apres} » absent (corrigé à partir de « ${c.avant} »)`);

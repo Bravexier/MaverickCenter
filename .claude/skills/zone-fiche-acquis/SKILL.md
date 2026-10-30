@@ -18,6 +18,7 @@ Noyau (fichiers, invariants communs) : skill `zone-fiche`. Détail : `docs/chara
 - « à tout jet impliquant la Perception », « à tout test d'Agilité » : un bonus au jet, hors acquis et hors plafond, compté dans le score (R122 : `jet`, `jetDetail` de `competencesDe`).
 - Les « tests d'artisanat » s'ajoutent à `artisanatDe` (R123), rien sans métier.
 - Drakos orange, « parmi les autres » : une compétence et une altération d'état au choix parmi celles des autres lignes du tableau, indépendantes (R124, `personnage_resistance_choix`, `resistanceChoixValables`).
+- `acquis-texte.mjs` écarte toujours « réussite crit » (jamais un acquis) : `lib/critique-texte.mjs` la lit (R180), un seul compte (skill `zone-fiche-situation`).
 - Ne rien compter d'autre : un bonus d'un cas particulier (situation, condition, falsification de documents au MJ) est seulement mentionné (R128, R123), dans le bloc « Bonus d'acquis non comptés » (`nonComptes`, `RAISONS_DE_L_ACQUIS` de la page).
 
 ## Bonus « de l'arme choisie » (R119, R152)

@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 86 : 203 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 87 : 204 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -9,7 +9,7 @@
 
 - [0. FAMILLES D'IMPORT](#0-familles-dimport) : `famille`
 - [1. PAGES, LIENS, MOTS-CLÉS, SOURCES (couche générique)](#1-pages-liens-mots-clés-sources-couche-générique) : `type_page`, `page`, `alias`, `mot_cle`, `page_tag`, `source`, `page_source`, `page_entite`, `panneau_regles`, `panneau_regles_bloc`, `composant_onglet`, `annonce`
-- [2. RÈGLES DE LA FICHE : caractéristiques, compétences, niveaux, constantes, postures (famille « fiche »)](#2-règles-de-la-fiche--caractéristiques-compétences-niveaux-constantes-postures-famille--fiche) : `caracteristique`, `competence`, `niveau_global`, `niveau_deblocage`, `seuil_niveau`, `regle_constante`, `entrainement_palier`, `initiative_agilite`, `type_don`, `posture`, `posture_effet`
+- [2. RÈGLES DE LA FICHE : caractéristiques, compétences, niveaux, constantes, postures (famille « fiche »)](#2-règles-de-la-fiche--caractéristiques-compétences-niveaux-constantes-postures-famille--fiche) : `caracteristique`, `competence`, `niveau_global`, `niveau_deblocage`, `seuil_niveau`, `regle_constante`, `entrainement_palier`, `initiative_agilite`, `type_don`, `posture`, `posture_effet`, `posture_critique`
 - [3. MAGIES ET SORTS (famille « magies »)](#3-magies-et-sorts-famille--magies) : `magie`, `magie_role`, `magie_resistance`, `magie_incompatibilite`, `magie_ethnie_secondaire`, `magie_dieu`, `amelioration_cadaverique`, `sort`, `sort_type`, `sort_mode`, `sort_bonus_maitrise`, `sort_etat`, `sort_mot_cle`, `commentaire_orphelin`, `legende_sort`, `regle_magie`
 - [4. ANNEXES DES MAGIES : états, résistances, météo, modes hyper et super (famille « annexes »)](#4-annexes-des-magies--états-résistances-météo-modes-hyper-et-super-famille--annexes) : `resistance_palier`, `etat`, `etat_magie`, `etat_stade`, `etat_palier`, `meteo`, `meteo_effet`, `mode_texte`, `mode_hyper_depassement`, `mode_super_objet`, `mode_hyper_effet`
 - [5. DIEUX](#5-dieux) : `dieu`
@@ -350,6 +350,16 @@ Les quatre types de don (guide « Capacités/Don »). Le domaine classes écrit 
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
 | `inconvenient` | INTEGER | non |  | version 'fiche' : 1 = un inconvénient de la posture (en rouge sur la fiche), 0 = un avantage (en vert), décision R47 ; NULL pour les versions du guide |
+
+### `posture_critique`
+
+Jets sur lesquels compte un bonus de réussite critique lié à une posture (décision R180, migration 0087). Une ligne = une compétence où le bonus compte. `bonus` dit d'où vient le bonus : 'posture' : l'effet de la posture elle-même (« +5% à la réussite critique », posture_effet) : Offensif sur Arc, Arbalète, Arme légère, Arme lourde, Magie et Concentration (« Le +5 % de l'Offensive ne compte que pour les jets d'attaque (Arc, Arbalète, Arme légère, Arme lourde, Magie, Concentration). ») ; Défensif sur Esquive et Parade (« quand on esquive ou pare », R180 (4)). Liste propre au critique : le −10 % de l'Offensif reste sur ses cinq compétences (R100, lib/posture-texte.mjs#COMPETENCES_D_ATTAQUE) ; 'don_de_posture' : un don passif écrit « (Posture X) » (« Sci du Crit », Offensif) : les six jets de l'Offensif, choix provisoire de game-design (docs/sql/a-valider.md, Q90). Si Q90 tranche « tout jet », seules ces lignes changent (les 30 compétences), pas le code. Les nombres du critique (base 5, paliers 96 et 103, +2 et +5, plafond 15) sont dans regle_constante ('critique.*').
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `posture_id` | TEXT | oui | PK 1, → posture.id |  |
+| `bonus` | TEXT | oui | PK 2 |  |
+| `competence_id` | TEXT | oui | PK 3, → competence.id |  |
 
 ## 3. MAGIES ET SORTS (famille « magies »)
 
