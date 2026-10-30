@@ -48,7 +48,7 @@ import {
   infobulleDArme, infobulleDArmeElementaire, infobulleDArmure, infobulleDArmureElementaire, infobulleDeMetier, infobulleDeSort, TYPES_DE_DON, groupesDArmesParMaitrise, ligneDeMaitrise, maitriseApresChoix, maitriseChoixValables, maitrisesParFamille, presentationDuCompteurDeMaitrise, sourcesDeMaitrise,
   armeDeLaLigne, armesElementairesProposees, effetDeLArmeElementaire, sortsFerDAutreElement,
   finDuModeHyperCent, modeHyperApres, modeHyperValable, semaineDuModeHyperApres, tourDeModeHyper,
-  actionsDeLaFiche, actionsUsageSansObjetRetire, actionsUsageValables, consommerLAction, finDeCombat, passifsDeLaFiche, REMONTEES, remonterLAction,
+  actionsDeLaFiche, actionsUsageSansObjetRetire, actionsUsageValables, consommerLAction, finDeCombat, finDeCombatMontree, passifsDeLaFiche, REMONTEES, remonterLAction,
 } from '../lib/fiche-moteur.mjs';
 import { creatureAuNpm, FPVSIA, vautAuNpm } from '../lib/creature-npm.mjs';
 import { listeDeChoix } from './liste-choix.mjs';
@@ -1023,11 +1023,12 @@ function construireSorts() {
             m && detail(`Écrit : ${auNm(l.sort.dsb, 'dsb')}`, m.dsb.detail, [
               ...(m.dsb.diviseur > 1 ? [`Posture ${m.posture?.nom} : dégâts infligés ÷ ${m.dsb.diviseur}, avant l’armure`] : []),
               // le sort préparé : à la posture du moment de sa préparation (décision R115)
-              ...(m.prepare ? [`Sort préparé : calculé à la posture de sa préparation (${m.posture?.nom ?? 'aucune'})`] : []),
+              ...(m.prepare ? [`Sort préparé, figé à sa préparation (décisions R115, R179) : posture ${m.posture?.nom ?? 'aucune'}, ${m.prepareModeHyper
+                ? `préparé en ${m.prepareModeHyper}` : 'préparé hors Mode Hyper (rien du Mode Hyper du lancer)'}`] : []),
               ...autres, ...m.rappels.map((r) => `${r.nom} : ${r.texte}`),
             ]), m && (m.dsb.detail.length || m.dsb.diviseur > 1 || autres.length || m.rappels.length || m.prepare));
           marquePrepare.hidden = !m?.prepare;
-          infobulle(marquePrepare, m?.prepare ? `Sort préparé, à la posture du moment de sa préparation : ${m.posture?.nom ?? 'aucune'}` : '');
+          infobulle(marquePrepare, m?.prepare ? `Sort préparé, figé à sa préparation : posture ${m.posture?.nom ?? 'aucune'}${m.prepareModeHyper ? ` ; préparé en ${m.prepareModeHyper}` : ''}` : '');
           // la magie que la Symbiose désactive (« Une seule magie active ») : ses sorts grisés
           tr.toggleAttribute('data-inactif', Boolean(m?.inactif));
           infobulle(tr, m?.inactif ? `Posture Symbiose : la magie ${m.inactif} est désactivée` : l.enTrop ? 'Au-delà des emplacements du personnage : à retirer' : '');
@@ -1190,7 +1191,7 @@ function ligneDInvocation(l) {
  * un seul sort d'attaque de niveau 1 ou 2, le jet de magie (le D100), la posture du moment enregistrée, « Lâcher le sort » ») : caché sans l'un de ces dons
  * (donDePreparation) ; l'aide dit qu'il n'y en a qu'un, pour tout type d'attaque (décision R136), perdu en Symbiose d'une autre magie (R135 :
  * sortsApresLaSymbiose, à chaque rafraîchissement) ; la liste ne propose que les sorts de la fiche que le don autorise (sortsAPreparer). Choisir un sort le prépare à la posture cochée à
- * cet instant, qu'on voit à côté ; le jet de magie se note ensuite (« si réussi » : il peut rester vide) ; « Lâcher le sort » remet tout à zéro. Ses dégâts,
+ * cet instant, qu'on voit à côté (avec le Mode Hyper ou le Mode Hyper 100 % de cet instant, décision R172) ; le jet de magie se note ensuite (« si réussi » : il peut rester vide) ; « Lâcher le sort » remet tout à zéro. Ses dégâts,
  * dans le tableau des sorts, se calculent à la posture enregistrée (sortDuMoment).
  */
 function construireSortPrepare() {
@@ -1205,7 +1206,7 @@ function construireSortPrepare() {
   // un seul sort préparé à la fois, pour n'importe quel type d'attaque (décision R136 : « Un seul sort préparé à la fois. Il comptera juste pour n'importe
   // quel type d'attaque »), même avec les deux dons ; perdu en Symbiose avec une autre magie que la sienne (décision R135)
   const texteAide = `${noms} : ${don.dons.map((x) => x.don.effet).join(' ')} Un seul sort préparé à la fois, utilisable pour n’importe quel type `
-    + 'd’attaque, de contact ou à distance ; en posture Symbiose avec une autre magie que la sienne, il est perdu.';
+    + 'd’attaque, de contact ou à distance ; en posture Symbiose avec une autre magie que la sienne, il est perdu ; « Fin de combat » le lâche.';
   if (aide.textContent !== texteAide) aide.textContent = texteAide;
   const choix = sortsAPreparer(regles, fiche, don);
   const cle = JSON.stringify([choix.map((x) => x.sort.id), don.dons.map((x) => x.don.id)]);
@@ -1235,11 +1236,19 @@ function construireSortPrepare() {
       poserTeinte(liste, teinteDe(m));
       jet.disabled = !p;
       if (document.activeElement !== jet) poser(jet, p?.jet ?? '');
-      const texte = p ? (p.posture?.nom ?? 'aucune') : '—';
+      // préparé en Mode Hyper ou au Mode Hyper 100 % (décision R172) : dit à côté de la posture, gardé jusqu'au lancer
+      // (au 100 %, la posture cochée ne compte pas : toutes les postures)
+      const texte = !p ? '—' : p.cent ? 'Mode Hyper 100 % (toutes les postures)' : `${p.posture?.nom ?? 'aucune'}${p.hyper ? ' · Mode Hyper' : ''}`;
       if (posture.textContent !== texte) posture.textContent = texte;
-      attribut(posture, 'data-couleur', Boolean(p?.posture));
-      poserTeinte(posture, teinteDe(p?.posture));
-      infobulle(posture, p ? 'La posture du moment où le sort a été préparé : ses dégâts se calculent à elle, même si la posture change ensuite (décision R115)' : '');
+      // la couleur suit le texte : celle du Mode Hyper 100 % (regles.mode_hyper.cent, comme sa case), sinon celle de la posture de préparation
+      const couleur = p?.cent ? regles.mode_hyper?.cent : p?.posture;
+      attribut(posture, 'data-couleur', Boolean(couleur));
+      poserTeinte(posture, teinteDe(couleur));
+      // ce qui est figé à la préparation (décisions R115, R172, R179 : « le sort préparé est comme "figé" à un instant T près à être lancé plus tard »)
+      infobulle(posture, p ? `Le sort préparé est figé à sa préparation jusqu’à son lancer, « Lâcher le sort » ou « Fin de combat » (décisions R115, R179) : ${p.cent
+        ? 'préparé au Mode Hyper 100 %, il garde le cumul des postures, le +10, le bonus du Mode Hyper et son dé de race, même après leur fin'
+        : p.hyper ? 'sa posture ; préparé en Mode Hyper, il garde le bonus du Mode Hyper et son dé de race, même après sa fin, sans le +10 ni le cumul du 100 %'
+          : 'sa posture ; préparé hors Mode Hyper, il ne reçoit rien du Mode Hyper du lancer'}. Le coût et les résistances sont ceux du moment.` : '');
       lacher.disabled = !p;
     });
     return [
@@ -1591,7 +1600,8 @@ function rendreLeFocusDesActions(place) {
 
 /**
  * Les actions utilisables, juste sous la ceinture (décision R173 : actionsDeLaFiche), et le bouton « Fin de combat » (finDeCombat : les compteurs par
- * combat remis au maximum ; ceux par jour, semaine… ne remontent qu'à la main), montré quand une action a un compteur par combat.
+ * combat remis au maximum ; ceux par jour, semaine… ne remontent qu'à la main ; le sort préparé lâché, R179), montré quand une action a un compteur par
+ * combat ou qu'un sort est préparé (finDeCombatMontree).
  */
 function construireActions() {
   calcul.actions = actionsDeLaFiche(regles, fiche);
@@ -1600,13 +1610,14 @@ function construireActions() {
   reconstruire($('actions'), cle, () => (calcul.actions.length
     ? calcul.actions.map(elementDAction)
     : el('li', { class: 'fiche-aide' }, 'Aucune action : le don de base de la race, les dons de classe Action, Actif ou Réaction et l’équipement activable apparaîtront ici.')));
-  $('fin-de-combat').hidden = !calcul.actions.some((a) => a.compteur?.remontee === 'fin_de_combat');
+  $('fin-de-combat').hidden = !finDeCombatMontree(regles, fiche, calcul.actions);
 }
 
-/** « Fin de combat » (décision R173) : les compteurs par combat remis au maximum. */
+/** « Fin de combat » (décisions R173, R179) : les compteurs par combat remis au maximum, le sort préparé lâché. */
 function finirLeCombat() {
   const ecrit = finDeCombat(regles, fiche);
-  if (JSON.stringify(ecrit.actions_usage) === JSON.stringify(fiche.actions_usage ?? [])) return;
+  // (les compteurs par combat, et le sort préparé, que « Fin de combat » lâche : décision R179)
+  if (Object.entries(ecrit).every(([cle, valeur]) => JSON.stringify(valeur) === JSON.stringify(fiche[cle] ?? []))) return;
   Object.assign(fiche, ecrit);
   changer();
 }
@@ -3431,7 +3442,7 @@ function construireDefense() {
         el('label', { class: 'fiche-coche', title: 'Esquive ou parade partielle : les dégâts sont divisés par 2 après l’armure' }, reduits, 'Dégâts réduits'),
         paradeLabel,
         el('label', { class: 'fiche-coche', title: 'Formule des dégâts : « ÷ 2 si un don divise les dégâts » (selon la situation : à cocher)' }, don, 'Don ÷ 2'),
-        el('label', { class: 'fiche-coche', title: 'L’AP ou l’AM ne compte pas (ni l’armure, ni le bouclier) ; sauf, en Mode Hyper, l’AP et l’AM naturels (race et ethnie) d’un personnage dont la race l’écrit (Marcass, décision R172)' }, ignore, 'L’attaque ignore l’armure'),
+        el('label', { class: 'fiche-coche', title: 'Aucune réduction : ni l’AP ou l’AM, ni l’armure, ni le bouclier, ni l’AP et l’AM naturels du Marcass en Mode Hyper (décisions R172, R178)' }, ignore, 'L’attaque ignore l’armure'),
         recus),
       el('div', { class: 'defense__barriere', role: 'group', 'aria-label': 'Contre la barrière' },
         cases.map((c) => c.label), apercu, appliquer),

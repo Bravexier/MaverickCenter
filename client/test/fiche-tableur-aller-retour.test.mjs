@@ -382,7 +382,7 @@ test('sort préparé (décision R115) : le sort, son jet de magie et sa posture 
   const r = await verifier(f, 'sort préparé');
   const preparees = (cellules) => lignesDeLaNote(cellules).filter((l) => l.nom === 'sortPrepare').map((l) => l.valeur);
   assert.deepEqual(preparees(r.cellules), ['Boule de feu (jet 57, posture Offensif)']);
-  assert.deepEqual(r.fiche.sorts.filter((s) => s.prepare === 1), [{ sort_id: BOULE_DE_FEU, rang: commeLaPage(f).sorts.find((s) => s.prepare === 1).rang, niveau_maitrise: 0, prepare: 1, prepare_jet: 57, prepare_posture_id: 'guide/postures#posture:offensif' }]);
+  assert.deepEqual(r.fiche.sorts.filter((s) => s.prepare === 1), [{ sort_id: BOULE_DE_FEU, rang: commeLaPage(f).sorts.find((s) => s.prepare === 1).rang, niveau_maitrise: 0, prepare: 1, prepare_jet: 57, prepare_posture_id: 'guide/postures#posture:offensif', prepare_hyper: 0, prepare_cent: 0 }]);
   // préparé sans jet (« si réussi ») ni posture (aucune n'était cochée) : le nom seul
   const sansJet = { ...f, sorts: f.sorts.map((s) => (s.prepare ? { ...s, prepare_jet: null, prepare_posture_id: null } : s)) };
   assert.deepEqual(preparees((await verifier(sansJet, 'sort préparé sans jet ni posture')).cellules), ['Boule de feu']);
@@ -415,9 +415,27 @@ test('sort préparé (décision R115) : le sort, son jet de magie et sa posture 
   assert.deepEqual(deux.nonRepris, [`Sort préparé : « ${nomDeLAutre} (jet 12) » : un seul sort préparé par fiche (décision R115)`]);
   assert.deepEqual(deux.fiche.sorts.filter((s) => s.prepare === 1).map((s) => [s.sort_id, s.prepare_jet]), [[BOULE_DE_FEU, 57]]);
   // la lecture de la ligne : des parenthèses qui ne disent ni un jet ni une posture font partie du nom
-  assert.deepEqual(lireSortPrepare('Boule de feu (posture Focus, jet 3)'), { nom: 'Boule de feu', jet: 3, posture: 'Focus' });
-  assert.deepEqual(lireSortPrepare('Mur (de glace)'), { nom: 'Mur (de glace)', jet: null, posture: null });
-  assert.deepEqual(lireSortPrepare('Boule de feu'), { nom: 'Boule de feu', jet: null, posture: null });
+  const rien = { hyper: false, cent: false };
+  assert.deepEqual(lireSortPrepare('Boule de feu (posture Focus, jet 3)'), { nom: 'Boule de feu', jet: 3, posture: 'Focus', ...rien });
+  assert.deepEqual(lireSortPrepare('Mur (de glace)'), { nom: 'Mur (de glace)', jet: null, posture: null, ...rien });
+  assert.deepEqual(lireSortPrepare('Boule de feu'), { nom: 'Boule de feu', jet: null, posture: null, ...rien });
+});
+
+test('sort préparé en Mode Hyper ou au Mode Hyper 100 % (décision R172, Q82) : « (jet N, posture X, Mode Hyper) », « (jet N, Mode Hyper 100 %) », relus avec leurs deux cases cohérentes, point fixe', async () => {
+  const f = ficheDuMageRouge();
+  const preparees = (cellules) => lignesDeLaNote(cellules).filter((l) => l.nom === 'sortPrepare').map((l) => l.valeur);
+  const prepare = (fiche) => fiche.sorts.filter((s) => s.prepare === 1).map((s) => [s.sort_id, s.prepare_hyper, s.prepare_cent]);
+  const avec = (hyper, cent) => ({ ...f, sorts: f.sorts.map((s) => (s.prepare ? { ...s, prepare_hyper: hyper, prepare_cent: cent } : s)) });
+  const hyper = await verifier(avec(1, 0), 'sort préparé en Mode Hyper');
+  assert.deepEqual(preparees(hyper.cellules), ['Boule de feu (jet 57, posture Offensif, Mode Hyper)']);
+  assert.deepEqual(prepare(hyper.fiche), [[BOULE_DE_FEU, 1, 0]]);
+  const cent = await verifier(avec(1, 1), 'sort préparé au Mode Hyper 100 %');
+  assert.deepEqual(preparees(cent.cellules), ['Boule de feu (jet 57, posture Offensif, Mode Hyper 100 %)']);
+  assert.deepEqual(prepare(cent.fiche), [[BOULE_DE_FEU, 1, 1]]);
+  // la lecture : « Mode Hyper 100 % » vaut aussi le Mode Hyper ; un seul Mode Hyper par ligne
+  assert.deepEqual(lireSortPrepare('Boule de feu (jet 57, Mode Hyper)'), { nom: 'Boule de feu', jet: 57, posture: null, hyper: true, cent: false });
+  assert.deepEqual(lireSortPrepare('Boule de feu (Mode Hyper 100 %)'), { nom: 'Boule de feu', jet: null, posture: null, hyper: true, cent: true });
+  assert.deepEqual(lireSortPrepare('Boule de feu (Mode Hyper, Mode Hyper 100 %)').nom, 'Boule de feu (Mode Hyper, Mode Hyper 100 %)');
 });
 
 

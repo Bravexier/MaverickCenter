@@ -272,14 +272,15 @@ bouton (au-dessus quand la place manque), bornée à l'écran, téléphone compr
   les effets de magie et de race lus dans le texte des onglets (`lib/mode-hyper-texte.mjs`, `mode_hyper.chiffres_magies` et `races[].chiffres` de
   `regles.json`, jamais par le nom ; l'Espace/Temps : l'onglet de la magie) : Glace, AM de base +25 (+10 avec deux magies) ; Terre, AP de base +25
   (+10) ; Humain, +1 dé à toutes les attaques (armes et sorts, du type du premier dé, rien sur un sort sans dé) et +2 en Vitesse ; Nain, +2 dés aux
-  armes ; Felfe, +2 dés aux dégâts et aux soins des sorts ; Jackalope, +3 en Vitesse ; Marcass, l'AP et l'AM naturels même contre une attaque qui
-  ignore l'armure (voir « Défense et dégâts reçus ») ; les autres effets restent affichés. La vitesse du moment (`attributsDe`, `vitesseModeHyper`) et
+  armes ; Felfe, +2 dés aux dégâts et aux soins des sorts ; Jackalope, +3 en Vitesse ; Marcass, son AP et son AM naturelles ajoutées à la réduction de
+  tout coup (décision R178 ; voir « Défense et dégâts reçus ») ; les autres effets restent affichés. La vitesse du moment (`attributsDe`, `vitesseModeHyper`) et
   les dégâts du moment changent, pas les valeurs de la fiche (tableur). **Le Mode Hyper 100 % actif** : les avantages chiffrés de toutes les postures se
   cumulent (`postureDuMoment`, `cent` ; R100), sans leurs inconvénients (ni −10 de l'Offensif, ni ÷ 2 du Défensif, armes utilisables, l'autre magie
   active : R111, R112 levés) ; la posture cochée est ignorée tant qu'il dure (ses cases toutes pleines, leurs inconvénients barrés) ; sur un même dé, le
   cran de Focus puis le maximum de l'Offensif (6D6+4 → 6D8+4 → 52, l'accessoire qui monte le dé compris) ; le Défensif à 2 × ⌈N ÷ 4⌉ (R175) ; la
   Symbiose pour ses deux magies (bonus de dégâts et de soins, immunité ; son AM une fois) ; +10 dégâts à toutes les attaques, en plus du Mode Hyper ; la
-  surcharge des sorts est seulement affichée.
+  surcharge des sorts est seulement affichée. Le sort préparé est **figé à sa préparation** (décisions R172, R179) : il ne reçoit du Mode Hyper que ce
+  qu'il avait alors, jamais celui du lancer (voir « Sort préparé »).
 - **Méditation ou Repos** : le don de base de la race s'affiche sous son nom (`donDeBase`), en tête des dons raciaux.
 - **Compétences** : six blocs sur deux colonnes remplies de haut en bas, comme la fiche auto : Force, Volonté, Intelligence ; Perception, Social, Agilité.
 - **Métier** (décisions R33 à R40) : choisi dans la liste de l'identité, chaque métier avec ce qu'il apporte en infobulle (« Listes avec infobulles »,
@@ -461,7 +462,22 @@ bouton (au-dessus quand la place manque), bornée à l'écran, téléphone compr
   « si réussi ») se note ensuite (`sortsApresLeJet` ; les bornes du D100, valeurs de la décision, dans `regles.sort_prepare`) ; « **Lâcher le sort** » remet tout à zéro. Dans le tableau, le sort préparé porte la marque
   « préparé » (dans la couleur de la zone, éclaircie en thème sombre : `docs/content-guide.md`, « Couleurs du site : la palette en classes ») et **se calcule à la posture de sa préparation**, même si une autre est cochée ensuite (« préparé en posture offensive, fera les dégâts
   maximals, même si l'attaque physique a lieu en posture défensive » : `contexteDesSorts`, `prepare`) ; les autres sorts suivent la posture cochée.
-  Colonnes `personnage_sort.prepare`, `prepare_jet`, `prepare_posture_id` (migration 0067) ; une préparation que le don ne permet plus (classe changée,
+  **Le sort préparé est figé à sa préparation** (décision R179 : « Dans l'idée le sort préparé est comme "figé" à un instant T près à être lancé plus
+  tard ») : sa posture (R115) et ce qu'il tient du Mode Hyper (R172), jamais le Mode Hyper du lancer. **Préparé en Mode Hyper** (réponses aux questions
+  Q82 « Oui : 2d6+20 » et Q87 « Oui : 3d6+20 »), il garde son +15 (+7 avec deux magies ; tous les sorts du Potentiel Illimité) aux dégâts et aux soins
+  et le dé de race du Mode Hyper (Humain +1 dé à toutes les attaques, Felfe +2 dés aux dégâts et aux soins magiques, lus dans le texte de la race),
+  **même après la fin du Mode Hyper** (2d6+5 préparé en Mode Hyper, une magie, lancé après : 2d6+20, un Humain 3d6+20 ; détail « Mode Hyper (à la
+  préparation) ») ; lancé au Mode Hyper 100 %, il ne reçoit ni le +10 ni le cumul des postures (« Non : reste figé comme préparé » : un Humain, 3d6+20).
+  **Préparé au Mode Hyper 100 %** (Q84, « Oui : 3D8 au maximum + 30 = 54 »), il garde en plus le cumul des postures sans inconvénients et le +10 du
+  100 %, même après la sortie du 100 % ou du Mode Hyper. **Préparé hors Mode Hyper** (Q85, « Non : 2d6+5 »), il ne reçoit rien du Mode Hyper ni du
+  Mode Hyper 100 % du lancer (ni +15, ni dé de race, ni +10, ni cumul : la posture de sa préparation). Le coût et les résistances, qui ne sont pas des
+  valeurs du sort préparé, sont ceux du moment ; le nombre de magies du +15 ou +7 est lu au lancer (il ne change pas en combat, R179).
+  `sortsApresPreparation` écrit l'état de `modeHyperDe` à cet instant ; `modeHyperDuSortPrepare`, `contexteDesSorts` (`postureDuMoment` avec `cent`
+  forcé), `sortDuMoment`. Relancer le Mode Hyper ne change rien à un sort déjà préparé ; le bloc dit « · Mode Hyper » ou « Mode Hyper 100 % (toutes
+  les postures) » à côté de la posture, son infobulle ce qui est figé. **Un sort préparé ne demeure que jusqu'à la fin d'un combat** (R179) : « Fin de
+  combat » le lâche, comme « Lâcher le sort » (`finDeCombat`, Q86 : « Oui, « Fin de combat » le lâche aussi »).
+  Colonnes `personnage_sort.prepare`, `prepare_jet`, `prepare_posture_id` (migration 0067), `prepare_hyper` et `prepare_cent` (0/1, migration 0086 :
+  `prepare_hyper` exige `prepare`, `prepare_cent` exige `prepare_hyper` ; « Lâcher le sort » les remet à 0 avec le reste) ; une préparation que le don ne permet plus (classe changée,
   sort d'un autre NPM) n'est plus comptée et part à l'enregistrement (`sortPrepare`, `sortsAEnregistrer`) ; changer le sort d'un emplacement ne lui
   donne pas la préparation de l'ancien (`sortsApresChoixDEmplacement`). **En Symbiose avec une autre magie que la sienne, le sort préparé est perdu**
   (décision R135 : « Si le sort préparé est d'une magie différente de la posture symbiose, il est perdu ») : la page lâche sa préparation à chaque
@@ -483,7 +499,7 @@ bouton (au-dessus quand la place manque), bornée à l'écran, téléphone compr
   n'y sont pas (leurs boutons restent, R89, R131). Chaque action dit d'où elle vient (la race, la classe, l'objet), son type et sa précision telle
   qu'écrite, son texte tel qu'écrit. **Compteurs** : la limite écrite (`lib/limite-texte.mjs`, lecteur rejoué sur toute la base par
   `test/limite-texte.test.mjs`) a un genre — **par combat** (« N fois/combat », « une seule fois par combat ») : remis au maximum par le bouton
-  **« Fin de combat »** (`finDeCombat`, montré quand une action a un tel compteur) ; **par jour, 24 h (le jour), semaine, « 1 semaine de recharge »,
+  **« Fin de combat »** (`finDeCombat`, montré quand une action a un tel compteur ou qu'un sort est préparé, qu'il lâche aussi : décision R179, `finDeCombatMontree`) ; **par jour, 24 h (le jour), semaine, « 1 semaine de recharge »,
   mois, nuit, session, partie** : remonté **seulement à la main** ; **par tour, par N tours, par Mode Hyper, par personnage, allié, ennemi, dialogue** :
   un **rappel** en texte, sans compteur ; les six précisions illisibles (« X tour/combat »…) : le texte seulement. Le nom d'une action à compteur est le
   bouton qui la **consomme** (`consommerLAction` : une utilisation de moins) ; à 0 elle est **grisée** ; « + » la remonte d'une utilisation
@@ -635,14 +651,21 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   puis palier » ; le Potentiel Illimité, × 2), puis l'élément le palier de résistance à sa magie, ou l'immunité de la Symbiose (R100) ; un coup
   physique avec un élément prend l'AP, puis les deux paliers, qui se multiplient (« Ils se multiplient » : 30 entrants, AP 4, × 2, grande résistance au
   Feu ÷ 3 → 26 × 2 ÷ 3 = 17 ; 30 en Estoc, armure qui résiste à l'estoc, AP 4 → 8, × 2 → 44), arrondis à l'inférieur une seule fois, à la fin (R175) ;
-  « Magique » n'a pas de palier physique ; pas de case pour les dons d'attaquant qui ignorent une résistance physique (« Pas de case »). La case
-  **« L'attaque ignore l'armure »** (décision R172, option `ignoreArmure`) : l'AP ou l'AM ne compte pas (ni l'armure portée, ni sa résistance au type, ni
-  le bouclier), sauf pour un personnage dont l'effet de Mode Hyper actif écrit « Les AP et AM naturels s'ajoutent à toute réduction de dégâts »
-  (Marcass, « Même si l'armure est ignorée ») : l'AP ou l'AM de sa race et de son ethnie comptent encore, ceux qu'écrivent ses dons de race et d'ethnie
-  compris (« Oui, le compter » : « +2 Armure magique (+2 tous les 5 niveaux) », lu dans le texte par `lib/mode-hyper-texte.mjs#armureNaturelleEcrite`,
-  au niveau global comme R110, 2 + 2 × ⌊N ÷ 5⌋ : `armureNaturelleDe`) ; sans la case, rien ne compte deux fois. Ce don est aussi, toujours, dans
-  l'armure de base de la fiche (décision R177, « Oui, toujours » : `attributsDe`, `armureDesDonsDeRace` ; l'AM d'un Marcass : 2 aux niveaux 1 à 4, 4 aux niveaux 5 à 9,
-  6 au niveau 10 ; l'« AM Base » du tableur, AA24, l'écrit) ; avec la case, il ne compte qu'une fois. En
+  « Magique » n'a pas de palier physique ; pas de case pour les dons d'attaquant qui ignorent une résistance physique (« Pas de case »).
+  **Le Marcass en Mode Hyper** (décision R178 ; « Corps isolant », lu dans le texte de l'onglet de sa race, jamais par le nom : « Les AP et AM naturels
+  s'ajoutent à toute réduction de dégâts, quel que soit le type d'attaque ») : la réduction de **tout coup** est son **AP naturelle + son AM naturelle +
+  l'armure du calcul classique** (l'armure portée : sa part d'AP, avec sa résistance ou sa faiblesse au type, contre un coup physique, sa part d'AM
+  contre un coup magique ; le bouclier en parade partielle), chaque part naturelle comptée une fois. « Naturel » = tout ce qui n'est pas l'armure portée
+  (de base ou élémentaire, avec son amélioration) ni le bouclier (« Quand on parle d'AP nat, c'est tout ce qui n'est pas "armure" ») : le total de
+  `defenseDe` moins la part de l'armure portée — race, ethnie, classes magiques, dons (dont celui de R177), accessoires, posture (dont le Défensif cumulé
+  du 100 %), AP de base de la Terre et AM de base de la Glace en Mode Hyper. Marcass de Terre de niveau 10, AP naturelle 25, AM naturelle 6, armure AP 8
+  et AM 3 : 50 physiques → 25 + 6 + 8 = 39, il prend 11 ; 50 magiques → 25 + 6 + 3 = 34, il prend 16. L'infobulle en fait trois étapes (« − AP
+  naturelle (Mode Hyper, Marcass) », « − AM naturelle (Mode Hyper, Marcass) », « − AP de l'armure portée »). La case **« L'attaque ignore l'armure »**
+  (décisions R172, R178, option `ignoreArmure` : « Ignore l'armure, ou Igore AP ou AM, tout passe à 0. Même pour le Marcass. ») : **aucune réduction**,
+  ni l'armure portée, ni sa résistance au type, ni le bouclier, ni l'armure naturelle, Marcass compris. Le don d'ethnie du Marcass « +2 Armure magique
+  (+2 tous les 5 niveaux) », lu dans le texte par `lib/mode-hyper-texte.mjs#armureNaturelleEcrite`, au niveau global comme R110 (2 + 2 × ⌊N ÷ 5⌋), est
+  toujours dans l'armure de base de la fiche (décision R177, « Oui, toujours » : `attributsDe`, `armureDesDonsDeRace` ; l'AM d'un Marcass : 2 aux niveaux
+  1 à 4, 4 aux niveaux 5 à 9, 6 au niveau 10 ; l'« AM Base » du tableur, AA24, l'écrit), donc dans son AM naturelle, une fois. En
   Mode Hyper 100 %, l'immunité de la Symbiose vaut pour ses deux magies. Un type physique sans élément et « Magique » + élément donnent exactement les
   dix-sept types d'avant (`typesDeDegats`, `typeDeDegatsDuCoup`, `test/fiche-degats-recus.test.mjs`). Les étapes en infobulle, rien d'enregistré (ni
   la partie touchée, ni le coup).
@@ -841,9 +864,10 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   Potentiel Illimité, gains de niveau — deux totaux, R73 : « Gains de niveau : santé X, chakra Y » ; la note d'un classeur exporté avant, niveau par
   niveau, se relit sommée, le dé « les deux » sur chacun —, NM offerts de livre (« NM offerts : Boule de feu (livre 1) » : chaque livre de la fiche, dans l'ordre de l'entraînement, son sort choisi ou non, R169 ; relus sur n'importe quel sort, le nom cherché dans la liste des sorts, puis dans `sortsDesLivres`, puis dans toutes les règles : seul un sort inconnu, ou un nom qui en désigne plusieurs, est perdu ; un second livre du même sort aussi, R26), NM du MJ de la fiche (R118 :
   « NM du MJ : 2 » ; un classeur d'avant les écrit sort par sort, « Boule de feu (livre 1, MJ 1) », relus comme NM du MJ de la fiche), magie de la symbiose (R100 : « Magie de la symbiose : Glace », relue si c'est une magie du personnage), sort
-  préparé (R115 : « Sort préparé : Boule de feu (jet 57, posture Offensif) », le nom seul sans jet ni posture ; relu si c'est un sort de la liste que
-  le don de préparation de la fiche autorise, son jet de 1 à 100 et sa posture une des six, sinon perdu et dit : `texteDuSortPrepare`,
-  `lireSortPrepare`), Mode Hyper (R172 : « Mode Hyper : actif, 100 %, semaine 0/1 », écrite seulement quand il est actif ou que le compteur n'est pas
+  préparé (R115 : « Sort préparé : Boule de feu (jet 57, posture Offensif) », le nom seul sans jet ni posture ; préparé en Mode Hyper ou au Mode
+  Hyper 100 %, R172 : « (jet 57, posture Offensif, Mode Hyper) », « (jet 57, Mode Hyper 100 %) », relus dans `prepare_hyper` et `prepare_cent`,
+  cohérents ; relu si c'est un sort de la liste que le don de préparation de la fiche autorise, son jet de 1 à 100 et sa posture une des six, sinon
+  perdu et dit : `texteDuSortPrepare`, `lireSortPrepare`), Mode Hyper (R172 : « Mode Hyper : actif, 100 %, semaine 0/1 », écrite seulement quand il est actif ou que le compteur n'est pas
   au maximum ; relue si le niveau du classeur le débloque, sinon perdu et dit : `texteDuModeHyper`, `lireModeHyper`), compteurs entamés des actions
   (R173 : « Compteur d'action : Méditation (Humain) 1/3 [race:don-de-base:races/humain] », une ligne par compteur sous son maximum ; la clé entre
   crochets est relue si la fiche importée a cette action à compteur, sinon perdu et dit : `texteDuCompteurDAction`, `lireCompteurDAction`), dons, sorts, objets et événements au-delà des places du modèle : 7 dons par classe, 20 sorts,
@@ -1070,7 +1094,7 @@ pas, et la note datée est le seul signal.
 | `personnage_resistance_choix` | Un choix de résistance : `source` (celle du choix d'acquis de la ligne, ou l'identifiant du don), `rang` (1 = le premier) et l'altération d'état (`etat_id`) ou la magie (`magie_id`) retenue, l'une ou l'autre. Trois sortes : une altération d'une ligne du tableau de la race (« Au choix parmi les autres » du Drakos orange, décision R124, migration 0069), +1 cran ; une magie au choix ou tirée d'un don (Ocultomancien « Résilience », Anansi d'Arcane : décision R137, migration 0071), +1 cran à cette magie (et, pour l'Anansi, à son altération, lue dans `etat_magie`) ; la magie tirée au D14 par le MJ pour « Punis-moi ... » ou « ... plus fort ! » d'un personnage du Potentiel Illimité (une des 14 magies : décision R163, sans migration), sans cran par elle-même : elle tient lieu de magie innée pour ce don seulement (ses listes de résistances et de faiblesses aux altérations servent au don, le PI n'en hérite pas) ; une de ses options (la page les lit, la base ne les écrit pas) ; un choix d'une autre ethnie ou d'un don qui n'est plus débloqué part à l'enregistrement (`resistanceChoixValables`) ; ligne « Résistance au choix » de la note du tableur |
 | `personnage_metier_bonus` | Pour chaque rang de bonus du métier qui propose plusieurs compétences, celle que le joueur retient (décision R33) |
 | `personnage_capacite` | Dons de classe **à choix** (options d'une ligne, paliers de l'Archimage) ; les autres se déduisent |
-| `personnage_sort` | Sorts de la liste (AA55:AY74) et leur NM (toutes origines comprises), dont celui d'un livre quand le sort en a un (`personnage_livre_sort` ; décisions R118, R169 : la colonne `nm_livre` est retirée par la migration 0082) ; les NM du MJ, notés sort par sort jusqu'à la migration 0066 (`nm_cadeau`), sont ceux de la fiche ; le sort préparé (décision R115, migration 0067 : `prepare`, un seul par fiche), son jet de magie (`prepare_jet`, D100) et la posture du moment de sa préparation (`prepare_posture_id`), que les autres sorts n'ont pas ; pas de case dans la fiche auto |
+| `personnage_sort` | Sorts de la liste (AA55:AY74) et leur NM (toutes origines comprises), dont celui d'un livre quand le sort en a un (`personnage_livre_sort` ; décisions R118, R169 : la colonne `nm_livre` est retirée par la migration 0082) ; les NM du MJ, notés sort par sort jusqu'à la migration 0066 (`nm_cadeau`), sont ceux de la fiche ; le sort préparé (décision R115, migration 0067 : `prepare`, un seul par fiche), son jet de magie (`prepare_jet`, D100) et la posture du moment de sa préparation (`prepare_posture_id`), et s'il a été préparé en Mode Hyper ou au Mode Hyper 100 % (`prepare_hyper`, `prepare_cent`, 0/1, décision R172, migration 0086 : `prepare_hyper` exige `prepare`, `prepare_cent` exige `prepare_hyper`), que les autres sorts n'ont pas ; pas de case dans la fiche auto |
 | `personnage_livre_sort` | Les livres de sort de l'entraînement (décision R169, migration 0082) : un par sort (clé `personnage_id`, `sort_id`), sur un sort de la liste ou non, rangés (`rang`, unique par fiche) ; le NM d'un livre ne compte (hors du décompte) que si son sort est choisi avec au moins 1 NM ; clé `livres_sorts` du JSON ; « NM offerts » de la note du tableur |
 | `personnage_maitrise_choix` | Maîtrises d'armes (AA2:AV7) : plus rien ne se saisit par famille (décision R148, migration 0076, qui retire `personnage_maitrise_arme` et ses dés par famille) ; une ligne par point à choisir d'une source acquise : la source (`source` : l'id du don, ou `<classe>#maitrise-arme:<rang>` pour une ligne de `classe_maitrise_arme`, sans clé étrangère), le numéro du point dans sa part à choisir (`rang`) et la famille choisie, parmi les options de la part (`maitrise_arme_part_famille`) ; la même famille peut revenir sauf limite écrite (R150) ; jamais ARME DE MONSTRES (R45) ; la famille de la ligne `au_choix` d'une classe est aussi celle des dons qui la suivent (R151) et l'arme du bonus « de l'arme choisie » (R152). L'accessoire « Un point de maîtrise d'arme » garde sa famille dans `personnage_accessoire.arme_famille_id` (R151). Les points et les dés se calculent (`v_personnage_maitrise_arme`) |
 | `personnage_arme`, `personnage_armure_partie`, `personnage_accessoire`, `personnage_inventaire` | Équipement : catalogue de la base (armes, matériaux, améliorations, pièces élémentaires, effets d'accessoire et valeur tirée, case « Malédiction » : six emplacements, R97) et sac ; deux armes (`personnage_arme`, rangs 1 et 2), chacune **un seul modèle** (décision R167, migration 0081) : soit une arme du catalogue (`arme_id`) avec sa composition (`materiau_id`), soit une arme élémentaire (`arme_elementaire_id`, sans matériau : une pièce élémentaire transforme l'arme, qui perd tout), et un seul niveau d'amélioration (`amelioration_id`, une ligne du tableau fondu des armes, cible `arme`), qui ne sert qu'aux dégâts et à la solidité ; plus d'élément posé sur une arme du catalogue ni d'amélioration de l'élément (`amelioration_elementaire_id`, retirée ; la base vivante convertit ses fiches) ; le bouclier dans `personnage` (forme, matière, amélioration, solidité du moment : décision R96, migration 0060, qui remplace `personnage_bouclier_materiau`) ; durabilité du moment d'une arme (`personnage_arme.durabilite`, « Solidité » AK17, AX17 : NULL = à son maximum, 0 = cassée ; décision R74, migration 0045) ; l'armure portée dans `personnage` (une armure complète, son amélioration, son élément et l'amélioration de l'élément) et la solidité du moment de chacune de ses parties abîmées (`personnage_armure_partie` ; décision R95, migration 0055, qui remplace `personnage_armure`, une armure par emplacement) |
