@@ -1,8 +1,8 @@
 // La réussite critique sur la fiche de personnage (décision R180, « Nerf de la réussite critique ») : le palier lu sur le score du moment (de 96 à 102 %,
 // +2 ; à partir de 103 %, +5 au total ; sans borne haute), le +5 de l'Offensif sur ses six jets d'attaque et celui du Défensif sur Esquive et Parade
 // (posture_critique), cumulés au Mode Hyper 100 % (R172), le don de posture (« (Posture Offensif) Augmente la réussite critique de +5% », Sci du Crit,
-// lu dans son texte comme « ... Brutale », R164 ; ses jets : Q90, choix provisoire), l'accessoire « peu importe le jet », le plafond de 1 à 15 (base
-// comprise), et l'infobulle du score. Seulement ce qui joue en permanence (R128, Q88 décidée : (a)). Les nombres viennent de regle_constante, les
+// lu dans son texte comme « ... Brutale », R164 ; seulement mentionné, jamais compté, depuis R182 (3) : test/fiche-critique-sort-prepare.test.mjs),
+// l'accessoire « peu importe le jet », le plafond de 1 à 15 (base comprise), et l'infobulle du score. Seulement ce qui joue en permanence (R128, Q88 décidée : (a)). Les nombres viennent de regle_constante, les
 // compétences de posture_critique : le test les lit dans la base, jamais en dur, sauf les exemples de la décision.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -44,7 +44,8 @@ test('R180 : les constantes et les jets de la réussite critique viennent de la 
   }
   for (const p of regles.postures) {
     const slug = p.id.split(':').at(-1);
-    assert.deepEqual(p.critique, { posture: deLaBase(slug, 'posture'), don_de_posture: deLaBase(slug, 'don_de_posture') }, p.nom);
+    // R182 (3) : plus de compétences d'un don de posture (Sci du Crit n'est que mentionné)
+    assert.deepEqual(p.critique, { posture: deLaBase(slug, 'posture') }, p.nom);
   }
   // Offensif : ses six jets (Concentration en plus des cinq compétences d'attaque de R100, dont le −10 ne change pas) ; Défensif : Esquive et Parade
   const offensif = regles.postures.find((p) => p.id === POSTURE('offensif')).critique.posture;
@@ -166,22 +167,18 @@ test('R180, R172 : le Mode Hyper 100 % cumule l’Offensif et le Défensif, sans
   assert.deepEqual(origines(cs.medecine), []);
 });
 
-test('R180 (4), Q90 : Sci du Crit compte en Offensif (et au Mode Hyper 100 %) sur les six jets, jamais hors Offensif ni sur Médecine', () => {
+test('R182 (3), Q90 : Sci du Crit ne compte plus dans le total, ni en Offensif ni au Mode Hyper 100 % ; les six jets gardent le +5 de l’Offensif seul', () => {
   const offensif = Object.fromEntries(M.competencesDe(regles, heros({ posture_id: POSTURE('offensif') })).map((c) => [c.id, c]));
-  for (const id of deLaBase('offensif', 'don_de_posture')) assert.ok(origines(offensif[id]).some(([o, v]) => o === 'don' && v === 5), id);
-  assert.deepEqual(origines(offensif.concentration), [['posture', 5], ['don', 5]]);
-  assert.deepEqual(M.lignesDuCritique(offensif.concentration.critique), ['Réussite critique : +10 % (1 à 15)', '+5 % (posture Offensif)', '+5 % (Sci du Crit)']);
+  for (const id of deLaBase('offensif', 'posture')) assert.deepEqual(origines(offensif[id]), [['posture', 5]], id);
+  assert.deepEqual(M.lignesDuCritique(offensif.concentration.critique), ['Réussite critique : +5 % (1 à 10)', '+5 % (posture Offensif)']);
   assert.deepEqual(origines(offensif.medecine), []);
-  // hors Offensif : rien
-  for (const slug of ['neutre', 'defensif', 'focus']) {
-    for (const c of M.competencesDe(regles, heros({ posture_id: POSTURE(slug) }))) assert.ok(!c.critique.origines.some((o) => o.origine === 'don'), `${slug} : ${c.id}`);
+  for (const slug of [null, 'offensif', 'neutre', 'defensif', 'focus']) {
+    for (const c of M.competencesDe(regles, heros({ posture_id: slug && POSTURE(slug) }))) {
+      assert.ok(!c.critique.origines.some((o) => o.nom === 'Sci du Crit'), `${slug} : ${c.id}`);
+    }
   }
-  for (const c of M.competencesDe(regles, heros())) assert.ok(!c.critique.origines.some((o) => o.origine === 'don'), `sans posture : ${c.id}`);
-  // le don non acquis (pas choisi) ne compte pas
-  assert.deepEqual(origines(competence(heros({ posture_id: POSTURE('offensif'), capacites: [] }), 'arc')), [['posture', 5]]);
-  // au Mode Hyper 100 % : toutes les postures sont actives
   const cent = competence(heros({ mode_hyper: 1, mode_hyper_100: 1 }), 'arc');
-  assert.ok(cent.critique.origines.some((o) => o.origine === 'don' && o.nom === 'Sci du Crit'));
+  assert.deepEqual(origines(cent), [['posture', 5]]);
 });
 
 test('R180 (4) : l’accessoire « peu importe le jet » ajoute son +1 à toutes les compétences', () => {
@@ -200,16 +197,21 @@ test('R180 (4), R54 : l’accessoire maudit a l’effet contraire — −1 % de 
   assert.deepEqual(lignes, ['Réussite critique : -1 % (1 à 4)', '-1 % (Accessoire : Collier)']);
 });
 
-test('R180 (2) : le plafond — palier 5 + Offensif 5 + Sci du Crit 5 + accessoire 1 donnent +10 (1 à 15), la mention du plafond', () => {
-  const f = avecScores(heros({ posture_id: POSTURE('offensif'), accessoires: [{ emplacement: 'bague-1', accessoire_effet_id: ACCESSOIRE, valeur: null, maudit: 0 }] }), { arc: 120 });
-  const c = competence(f, 'arc');
+test('R180 (2), R182 (3) : le plafond — palier 5 + Offensif 5 + deux accessoires 1 donnent +12 ramené à +10 (1 à 15) ; Sci du Crit mentionné hors du total et du plafond', () => {
+  const accessoires = ['bague-1', 'bague-2'].map((emplacement) => ({ emplacement, accessoire_effet_id: ACCESSOIRE, valeur: null, maudit: 0 }));
+  const f = avecScores(heros({ posture_id: POSTURE('offensif'), accessoires }), { 'arme-lourde': 120 });
+  const c = competence(f, 'arme-lourde');
   assert.equal(c.scoreDuMoment, 110);
-  assert.deepEqual(origines(c), [['palier', 5], ['posture', 5], ['don', 5], ['accessoire', 1]]);
-  assert.deepEqual([c.critique.brut, c.critique.bonus, c.critique.rogne, c.critique.plage], [16, 10, 6, 15]);
+  assert.deepEqual(origines(c), [['palier', 5], ['posture', 5], ['accessoire', 1], ['accessoire', 1]]);
+  assert.deepEqual([c.critique.brut, c.critique.bonus, c.critique.rogne, c.critique.plage], [12, 10, 2, 15]);
   assert.deepEqual(M.lignesDuCritique(c.critique), [
-    'Réussite critique : +10 % (1 à 15)', '+5 % (score de 103 % et plus)', '+5 % (posture Offensif)', '+5 % (Sci du Crit)', '+1 % (Accessoire : Bague 1)',
-    'Plafond : +16 % ramené à +10 % (jamais plus de 1 à 15)',
+    'Réussite critique : +10 % (1 à 15)', '+5 % (score de 103 % et plus)', '+5 % (posture Offensif)', '+1 % (Accessoire : Bague 1)', '+1 % (Accessoire : Bague 2)',
+    'Plafond : +12 % ramené à +10 % (jamais plus de 1 à 15)',
+    'Sci du Crit : +5 % avec une arme de contact (non compté)',
   ]);
+  // sans Sci du Crit, le même total : la mention n'y entre pas
+  const sans = competence(avecScores(heros({ posture_id: POSTURE('offensif'), accessoires, capacites: [] }), { 'arme-lourde': 120 }), 'arme-lourde');
+  assert.deepEqual([sans.critique.brut, sans.critique.bonus, sans.critique.plage, sans.critique.mentions], [12, 10, 15, []]);
 });
 
 test('R180 : une compétence à deux croix (inutilisable, R19) n’a pas de réussite critique', () => {

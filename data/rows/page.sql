@@ -7523,6 +7523,10 @@ Lancer un sort, c’est un jet de D100 dans la compétence *Magie* (Intelligence
 - **Réussite critique** : un sort d’attaque double ses dégâts, et la cible ne peut l’arrêter que par une réussite critique meilleure ; un sort d’amplification, de soin, d’entrave ou de protection double sa durée ou son effet.
 - **Échec critique** : le sort coûte le double, et le MJ peut ajouter d’autres ennuis : le sort profite à l’ennemi, le personnage se trompe de sort, l’attaque se retourne contre lui…
 
+### Le sort préparé
+
+Le Mage Rouge et le Mage Vert préparent un sort dans la main ([[capacites/mage-rouge-preparation|Préparation]], [[capacites/mage-vert-chargement|Chargement]]). Le jet se fait et se note à la préparation, et la cible se défend contre ce nombre. La réussite critique est celle du moment de la préparation, et c’est elle qui compte au relâchement. Avec « Double coup » (niveau 20), le même sort se relâche à chaque coup, au corps à corps pour le Mage Rouge, à distance pour le Mage Vert ([[capacites/mage-rouge-double-coup|Double coup du Mage Rouge]], [[capacites/mage-vert-double-coup|du Mage Vert]]) : seul le premier relâchement peut être un critique, les suivants sont fixés à 40 de réussite, et le {{chakra|chakra}} se consomme à chaque sort.
+
 ## Ce que coûte un sort
 
 Le coût en {{chakra|chakra}} écrit sur le sort se paie selon le résultat du jet :
@@ -9403,6 +9407,8 @@ L’action rate complètement, et cela coûte quelque chose :
 - **pour une amplification, un soin, une entrave ou une protection**, l’effet profite à l’ennemi, ou le personnage se trompe de sort ;
 - **en défense**, la défense tombe à zéro : l’armure ne compte pas, et l’adversaire ajoute +8 à ses dégâts ;
 - **hors combat**, le MJ décide des conséquences.
+
+C’est vrai même pour un score au-delà de 95 % : de 96 à 100, le jet reste un échec critique.
 
 C’est aussi dans l’échec qu’on apprend : à un joueur qui enchaîne les échecs dans une compétence, le MJ peut accorder un jet d’entraînement pour elle.
 

@@ -1,7 +1,8 @@
 // Décision R180 du propriétaire (2026-10-30), « nerf de la réussite critique » : Affûtage coûte 4 chakra ; « Prends ça … » est un IC ; en Mode
 // Hyper, les amplifications de la Lumière deviennent aussi des IC (mêmes exceptions) ; les nombres du critique (base 5, paliers 96 et 103, +2 et +5
 // au total, plafond 15) et les jets où compte le bonus de critique d'une posture sont des données. Migration
-// data/migrations/0087-r180-reussite-critique.sql ; pages du guide passées par db:sync-pages. Lecture seule de la base construite.
+// data/migrations/0087-r180-reussite-critique.sql ; pages du guide passées par db:sync-pages. Lecture seule de la base construite. Les lignes
+// 'don_de_posture' de posture_critique sont retirées par R182 (migration 0089 : test/db-r182-critique-du-sort-prepare.test.mjs).
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { lecteurDAcquis } from '../src/lib/acquis-texte.mjs';
@@ -87,10 +88,11 @@ test('R180 : le bonus de critique de l’Offensif compte sur six jets (Concentra
   const jets = (posture, bonus) => db.prepare(`SELECT competence_id FROM posture_critique WHERE posture_id = ? AND bonus = ?
                                                ORDER BY competence_id`).all(posture, bonus).map((r) => r.competence_id);
   assert.deepEqual(jets(OFFENSIF, 'posture'), SIX_JETS);
-  // Q90, choix provisoire de game-design : un don « (Posture Offensif) » sur les mêmes six jets (une liste à part : « tout jet » ne changerait qu'elle)
-  assert.deepEqual(jets(OFFENSIF, 'don_de_posture'), SIX_JETS);
+  // Q90 tranchée par R182 (migration 0089) : un don « (Posture Offensif) » (Sci du Crit) n'a plus de ligne, il n'est que mentionné sur la fiche
+  // (test/db-r182-critique-du-sort-prepare.test.mjs)
+  assert.deepEqual(jets(OFFENSIF, 'don_de_posture'), []);
   assert.deepEqual(jets(DEFENSIF, 'posture'), ['esquive', 'parade']);
-  assert.equal(db.prepare('SELECT count(*) AS n FROM posture_critique').get().n, 14);
+  assert.equal(db.prepare('SELECT count(*) AS n FROM posture_critique').get().n, 8);
   assert.deepEqual(SIX_JETS.filter((c) => !COMPETENCES_D_ATTAQUE.includes(c)), ['concentration']);
   assert.equal(COMPETENCES_D_ATTAQUE.length, 5);
 });

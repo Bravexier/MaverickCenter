@@ -231,6 +231,15 @@ test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options
   assert.match(html, /<dialog class="recadrage" id="recadrage" aria-labelledby="titre-recadrage">/);
 });
 
+test('/fiche/, bloc « Sort préparé » (décision R182 (4), (5)) : la plage de réussite critique figée et le rappel de Double coup, cachés jusqu’au remplissage', options, () => {
+  const html = lire('fiche/index.html');
+  const debut = html.indexOf('id="sort-prepare-bloc"');
+  assert.ok(debut >= 0, 'bloc du sort préparé');
+  const bloc = html.slice(debut, html.indexOf('id="sort-prepare-rappel"', debut) + 200);
+  assert.match(bloc, /<p[^>]*id="sort-prepare-critique"[^>]*hidden/, 'plage figée, cachée tant que NULL');
+  assert.match(bloc, /<p[^>]*id="sort-prepare-rappel"[^>]*hidden/, 'rappel Double coup, caché sans le don');
+});
+
 test('/fiche/ compacte (demandes du propriétaire) : pas de lien vers le guide, choix en menus déroulants, jauge d’XP avec ajout, suppression', options, () => {
   const html = lire('fiche/index.html');
   const fiche = html.slice(html.indexOf('<div class="fiche" id="fiche"'));

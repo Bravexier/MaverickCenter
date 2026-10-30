@@ -1686,7 +1686,7 @@ INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/la-magie-en-j
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/la-magie-en-jeu', 7, 'google-sheet:1KkOG6FYjIf62Y_xLQxIE8aQTZFLlKPXmCB9e7XU3-vw');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/la-magie-en-jeu', 8, 'ref:google-sheet-mode-hyper-et-co-onglet-mode-hyper');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/la-magie-en-jeu', 9, 'google-sheet:1AjQyT-IZMULq6FlgnmVmn2QiQ9AWhhbOgjr-COgMyMo');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/la-magie-en-jeu', 10, 'ref:decisions-du-proprietaire-r18-r24-r26-r53-r100-r101-r102-r103-r104-et-r105-docs-decisions-regles-md');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/la-magie-en-jeu', 10, 'ref:decisions-du-proprietaire-r18-r24-r26-r53-r100-r101-r102-r103-r104-r105-r115-r179-et-r182-docs-decisions-regles-md');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/la-montee-de-niveau', 0, 'ref:google-doc-creer-sa-fiche-de-personnage');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/la-montee-de-niveau', 1, 'google-doc:1PMmFVmKZspSTXJp-y_on5LoprFu_KHxCp34a9kSTFgA');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/la-montee-de-niveau', 2, 'ref:google-sheet-fiche-personnage-maverick-auto-v15-2-2-onglet-bdd');
@@ -1805,7 +1805,7 @@ INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/reussir-une-a
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/reussir-une-action', 4, 'ref:google-sheet-fiche-personnage-maverick-auto-v15-2-2-onglet-personnage');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/reussir-une-action', 5, 'google-sheet:1tDuJpoVVqMtRXBi0WKgH6lwzdQXVdNWPZVLFbdbFqY0');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/reussir-une-action', 6, 'ref:calcul-du-score-confirme-par-le-proprietaire-du-projet');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/reussir-une-action', 7, 'ref:decisions-du-proprietaire-r19-r41-r104-et-r180-docs-decisions-regles-md');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/reussir-une-action', 7, 'ref:decisions-du-proprietaire-r19-r41-r104-r180-et-r182-docs-decisions-regles-md');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/s-entrainer-et-exercer-un-metier', 0, 'ref:google-doc-creer-sa-fiche-de-personnage');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/s-entrainer-et-exercer-un-metier', 1, 'google-doc:1PMmFVmKZspSTXJp-y_on5LoprFu_KHxCp34a9kSTFgA');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/s-entrainer-et-exercer-un-metier', 2, 'ref:google-doc-metier');

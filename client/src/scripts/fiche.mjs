@@ -35,7 +35,7 @@ import {
   choisirObjetDeMetier, choixDeMetierValables, classeImposee, classesDe, classesSelonLaMagieInnee, competencesDe, donsAChoisir, donsValables,
   durabiliteAEcrire, durabiliteDArme, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, famillesMaitrisables, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable,
   magiesInneesPermises, maitriseDArme, maitriseDesSorts, gainsDeNiveau, niveauGlobal, bornesDuNm, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionXp,
-  bornesDuMultiplicateur, livreAuPlafond, livresAEnregistrer, livresApresAjout, livresApresChangement, livresApresRetrait, livresDe, multiplicateurDuCout, sortAuNm, sortPourUnLivre, sortsDesLivres, donDePreparation, jetDuSortPrepare, sortPrepare, sortsAEnregistrer, sortsAPreparer, sortsApresLeJet,
+  bornesDuMultiplicateur, livreAuPlafond, livresAEnregistrer, livresApresAjout, livresApresChangement, livresApresRetrait, livresDe, multiplicateurDuCout, sortAuNm, sortPourUnLivre, sortsDesLivres, donDePreparation, jetDuSortPrepare, rappelsDuSortPrepare, sortPrepare, sortsAEnregistrer, texteDuCritiquePrepare, sortsAPreparer, sortsApresLeJet,
   sortsApresChoixDEmplacement, sortsApresPreparation, sortsApresLaSymbiose, nmDuMoment,
   refusClasse, refusMagieAcquise, resistancesDe, sortsParNpm, trouver, ecrireValeurDuMoment, valeursDuMoment,
   armureApresChoix, armuresProposees, partiesApresReglage, partiesDeLArmure, partiesValables, poidsPortableDe, retraitsDeLArmureHorsListe,
@@ -1200,6 +1200,16 @@ function ligneDInvocation(l) {
 function construireSortPrepare() {
   const don = donDePreparation(regles, fiche);
   $('sort-prepare-bloc').hidden = !don;
+  // la plage de réussite critique figée à la préparation (décision R182 (4) : « Réussite critique : 1 à N (figée à la préparation) », sans verdict sur
+  // le jet noté ; une fiche d'avant, sans plage notée, n'a pas la ligne) et le rappel de « Double coup » (R182 (5), sans calcul : rappelsDuSortPrepare)
+  const critique = don ? texteDuCritiquePrepare(sortPrepare(regles, fiche)) : null;
+  const ligneCritique = $('sort-prepare-critique');
+  if (ligneCritique.textContent !== (critique ?? '')) ligneCritique.textContent = critique ?? '';
+  ligneCritique.hidden = !critique;
+  const rappel = don ? rappelsDuSortPrepare(regles, fiche).join(' ') : '';
+  const ligneRappel = $('sort-prepare-rappel');
+  if (ligneRappel.textContent !== rappel) ligneRappel.textContent = rappel;
+  ligneRappel.hidden = !rappel;
   if (!don) {
     reconstruire($('sort-prepare'), '', () => []);
     return;

@@ -766,6 +766,8 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .sort-prepare { margin-top: 0.6rem; }
 .sort-prepare__champs { display: flex; flex-wrap: wrap; align-items: end; gap: 0.5rem 0.75rem; }
 .sort-prepare__sort { flex: 1 1 14rem; min-width: 0; }
+/* la plage de réussite critique figée et le rappel de Double coup (décision R182), sous les champs du bloc */
+.sort-prepare__critique, .sort-prepare__rappel { margin: 0.4rem 0 0; }
 .fiche .sort-prepare__jet { width: 5.5rem; }
 /* la posture de la préparation sur sa couleur (teinte-palette) ; le sort, sur celle de sa magie, est une liste du site (.liste-choix, plus bas) */
 .sort-prepare__posture[data-couleur] { background-color: var(--c); color: var(--texte-sur-c); font-weight: 600; }

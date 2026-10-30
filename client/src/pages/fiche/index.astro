@@ -224,10 +224,13 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
             <div class="fiche-defile"><table class="fiche-table fiche-table--sorts" id="sorts"></table></div>
             {/* le sort préparé (décision R115, présentation validée par le propriétaire) : avec « Préparation » (Mage Rouge) ou « Chargement » (Mage
                 Vert), un seul des sorts que le don autorise, le jet de magie (D100), la posture du moment enregistrée à la préparation, et « Lâcher le
-                sort » qui remet tout à zéro ; refait par src/scripts/fiche.mjs#construireSortPrepare */}
+                sort » qui remet tout à zéro ; refait par src/scripts/fiche.mjs#construireSortPrepare. Sous les champs (décision R182) : la plage de
+                réussite critique figée à la préparation, sans verdict sur le jet, et le rappel de « Double coup » quand le personnage l'a */}
             <div class="sort-prepare" id="sort-prepare-bloc" hidden>
               <div class="fiche-entete-bloc"><h4 class="fiche-sous-titre" id="titre-sort-prepare">Sort préparé</h4><p class="fiche-aide" id="sort-prepare-aide"></p></div>
               <div class="sort-prepare__champs" id="sort-prepare" role="group" aria-labelledby="titre-sort-prepare"></div>
+              <p class="sort-prepare__critique" id="sort-prepare-critique" aria-live="polite" hidden></p>
+              <p class="fiche-aide sort-prepare__rappel" id="sort-prepare-rappel" hidden></p>
             </div>
           </div>
         </section>
