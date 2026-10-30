@@ -962,6 +962,19 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 /* avantages en vert, inconvénients en rouge (décision du propriétaire) */
 .posture-carte__effets li.est-avantage { color: var(--good); }
 .posture-carte__effets li.est-inconvenient { color: var(--danger); font-weight: 600; }
+/* le Mode Hyper et le Mode Hyper 100 % activables (décision R172) : leur nom est le bouton qui les coche ; actifs, pleins comme la posture choisie ; sous
+   eux, le compteur de la semaine et les boutons des jauges. En Mode Hyper 100 %, toutes les postures sont actives, leurs inconvénients barrés */
+.fiche .posture-carte__bascule { display: block; width: 100%; border: 0; border-radius: 0; color: var(--text); font: inherit; font-size: var(--fs-md); font-weight: 700; text-align: left; cursor: pointer; }
+.fiche .posture-carte__bascule:disabled { cursor: not-allowed; opacity: 0.6; }
+.fiche .posture-carte--hyper[data-actif] { border-color: var(--c); box-shadow: 0 0 0 2px var(--c), 0 2px 8px color-mix(in srgb, var(--c) 40%, transparent); }
+.fiche .posture-carte--hyper[data-actif] .posture-carte__bascule { background: var(--c); color: var(--c-texte); }
+.fiche .posture-carte--hyper[data-actif] .posture-carte__bascule::after { content: ' ✓'; }
+.posture-carte__suivi { display: flex; flex-wrap: wrap; gap: 0.35rem 0.6rem; align-items: center; padding: 0 0.6rem 0.45rem; font-size: var(--fs-xs); }
+.posture-carte__semaine { --a: var(--c); --a-trait: color-mix(in srgb, var(--c) 65%, var(--border)); display: inline-flex; gap: 0.25rem; align-items: center; }
+.fiche .posture-carte__semaine .ajuster:disabled { opacity: 0.45; }
+.posture-carte__compte { min-width: 2.6em; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; }
+.fiche .postures__cartes[data-cent] .posture-carte { border-color: var(--c); }
+.fiche .postures__cartes[data-cent] .posture-carte__effets li.est-inconvenient { text-decoration: line-through; opacity: 0.7; }
 /* la corruption reste noire en mode sombre : son nom et ses boutons prennent alors la couleur du texte pour rester lisibles */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) .attribut[data-a='corruption'] { --a-trait: var(--muted); --a-nom: var(--text); }

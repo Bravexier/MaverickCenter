@@ -7690,10 +7690,10 @@ Une météo lève aussi cette limite : sous le Crachin Blanc, le Mode Hyper n’
 
 ## Ce qu’il donne
 
-Avec une seule magie, le personnage devient **immunisé à sa magie innée** ; avec deux, il devient **très résistant à ses deux magies**. Dans les deux cas, tant que dure le Mode Hyper :
+Avec une seule magie, le personnage devient **immunisé à sa magie innée** ; avec deux, il devient **très résistant à ses deux magies** (une grande résistance, sauf à une magie contre laquelle il est déjà immunisé, qui le reste). Le Potentiel Illimité gagne un cran de résistance à toutes les magies, et son malus physique (« Surtension corporelle » : un cran de moins contre l’estoc, la frappe et la taille) est annulé. Tant que dure le Mode Hyper, quel que soit le nombre de ses magies :
 
 - ses dégâts physiques gagnent **+15** ;
-- les dégâts de sa magie gagnent **+15** avec une seule magie, **+7** avec deux ;
+- les dégâts de sa magie gagnent **+15** avec une seule magie (tous ses sorts pour le Potentiel Illimité), **+7** avec deux ;
 - ses soins magiques gagnent **+15** ;
 - ses sorts ne coûtent **plus de {{chakra|chakra}}**.
 
@@ -7756,7 +7756,7 @@ Ses limites ressemblent à celles du Mode Hyper, avec quelques différences :
 
 ## Sur la fiche du site
 
-Sur la [fiche de personnage](/fiche/) du site, le Mode Hyper apparaît à côté des postures dès le niveau 2, avec ses effets de base, celui de chacune de vos magies et celui de votre race ; le Mode Hyper 100 % s’y ajoute au niveau 10. Ils y sont donnés pour lecture.
+Sur la [fiche de personnage](/fiche/) du site, le Mode Hyper apparaît à côté des postures dès le niveau 2, et le Mode Hyper 100 % au niveau 10. Comme une posture, il s’active d’une case : la fiche compte alors ses bonus, ses résistances et les effets chiffrés de votre magie et de votre race. Deux boutons retirent le chakra de chaque tour et celui de la sortie du Mode Hyper 100 %, et un compteur garde son usage de la semaine.
 
 Le classeur des magies garde, dans un onglet masqué, une autre liste des effets du Mode Hyper, aux valeurs différentes ([[guide/mode-hyper-magie|Mode Hyper (Magie)]]) : cette liste ne compte pas, ce sont les valeurs données plus haut (+15, et +7 avec deux magies) qui valent.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
@@ -7888,7 +7888,7 @@ Chaque magie résiste à certaines magies et craint certaines autres : la page d
 
 Les résistances et les faiblesses se comptent en crans, qui s’additionnent : chaque résistance à une magie en ajoute un, chaque faiblesse en retire un. Un personnage à deux magies cumule ainsi celles de ses deux magies : deux résistances à la même magie font une grande résistance, deux faiblesses une grande vulnérabilité, et une résistance et une faiblesse s’annulent. L’Arcane et la Corruption résistent l’une à l’autre. Certains objets et équipements changent aussi ces crans : un accessoire de résistance, ou l’armure élémentaire portée, qui donne un cran de résistance à sa magie (voir [[guide/l-equipement|L’équipement]]).
 
-Les dégâts physiques ont aussi leurs paliers, estoc, frappe et taille, qui se comptent de la même façon. Le Potentiel Illimité a un cran de moins contre chacun (« Surtension corporelle ») : il prend deux fois plus de dégâts physiques que les autres. Ce malus est annulé tant que dure son Mode Hyper.
+Les dégâts physiques ont aussi leurs paliers, estoc, frappe et taille, qui se comptent de la même façon. Le Potentiel Illimité a un cran de moins contre chacun (« Surtension corporelle ») : il prend deux fois plus de dégâts physiques que les autres. Ce malus est annulé tant que dure son Mode Hyper (voir [[guide/le-mode-hyper|Le Mode Hyper]]).
 
 Le tableau « Résistances et faiblesses » de la [fiche de personnage](/fiche/) donne chaque palier avec son effet sur les dégâts subis, et y range les magies de votre personnage : il fait le compte pour vous.
 

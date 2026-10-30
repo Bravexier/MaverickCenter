@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 83;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 84;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -4160,6 +4160,16 @@ CREATE TABLE personnage (
   -- ils s'ajoutent aux NM gagnés par les niveaux (v_niveau.niveaux_maitrise_cumul), sans être liés à un sort ; contrôlés par les règles sort_nm_max et
   -- sorts_nm_total de v_personnage_controle. Jusqu'à 0066, ils se notaient sort par sort (personnage_sort.nm_cadeau, décision R26).
   nm_mj                 INTEGER NOT NULL DEFAULT 0 CHECK (nm_mj >= 0),   -- NM donnés par le MJ, pour toute la fiche (R118)
+  -- Mode Hyper et Mode Hyper 100 % du moment (décision R172, migration 0084) : deux cases activables comme une posture (posture_id), à côté des postures
+  -- de la page /fiche/ ; 1 = actif. Le Mode Hyper 100 % n'est actif qu'avec le Mode Hyper (contrainte nommée personnage_mode_hyper_100_avec_mode_hyper :
+  -- le Mode Hyper décoché le décoche). Les niveaux qui les débloquent (2 et 10) sont des règles, lues par lib/fiche-moteur.mjs#modeHyperDe, pas ici.
+  -- mode_hyper_semaine : le compteur « une fois par semaine », les utilisations qui restent dans la semaine du jeu, consommé à l'activation et remonté
+  -- seulement à la main (R172) ; NULL = non suivi, au maximum, comme les jauges du moment (sante_actuelle…). Le dépassement de durée (R161) n'est pas
+  -- appliqué.
+  mode_hyper            INTEGER NOT NULL DEFAULT 0 CHECK (mode_hyper IN (0, 1)),
+  mode_hyper_100        INTEGER NOT NULL DEFAULT 0 CHECK (mode_hyper_100 IN (0, 1))
+                          CONSTRAINT personnage_mode_hyper_100_avec_mode_hyper CHECK (mode_hyper_100 = 0 OR mode_hyper = 1),
+  mode_hyper_semaine    INTEGER CHECK (mode_hyper_semaine IS NULL OR mode_hyper_semaine >= 0),
   CHECK ((nature = 'pretire') = (proprietaire_id IS NULL)),   -- un prétiré n'est à personne ; la fiche d'un joueur a son propriétaire
   CHECK (nature = 'joueur' OR visibilite = 'tous'),           -- « Les prétirés sont visibles par tous »
   CHECK (magie_acquise_id IS NULL OR magie_acquise_id <> magie_innee_id)

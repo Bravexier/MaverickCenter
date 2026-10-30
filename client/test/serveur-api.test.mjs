@@ -648,7 +648,7 @@ test('repli sur une base vivante d’avant la migration 0060 (sa reconstruction 
   }
 });
 
-test('colonnes ajoutées par les migrations 0045, 0055, 0060, 0061, 0066, 0067, 0071 et 0081 (DEPART_DES_COLONNES_AJOUTEES) : dans les tables d’aujourd’hui, leur valeur de départ est leur défaut du schéma et celle d’une fiche vide', () => {
+test('colonnes ajoutées par les migrations 0045, 0055, 0060, 0061, 0066, 0067, 0071, 0081 et 0084 (DEPART_DES_COLONNES_AJOUTEES) : dans les tables d’aujourd’hui, leur valeur de départ est leur défaut du schéma et celle d’une fiche vide', () => {
   assert.deepEqual(DEPART_DES_COLONNES_AJOUTEES, {
     personnage: {
       gains_sante: 0, gains_chakra: 0,
@@ -656,6 +656,7 @@ test('colonnes ajoutées par les migrations 0045, 0055, 0060, 0061, 0066, 0067, 
       bouclier_materiau_id: null, bouclier_amelioration_id: null, bouclier_solidite: null,
       symbiose_magie_id: null,
       nm_mj: 0,
+      mode_hyper: 0, mode_hyper_100: 0, mode_hyper_semaine: null,
     },
     personnage_arme: { durabilite: null, type_degats_choisi: null },
     personnage_sort: { prepare: 0, prepare_jet: null, prepare_posture_id: null },

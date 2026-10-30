@@ -888,7 +888,7 @@ export function actionsDeLEmplacement(regles, fiche, rang) {
     max,
     genre,
     utiliser,
-    refus: posture?.armesInutilisables && !estUnParchemin(regles, x) ? `Posture ${posture.posture.nom} : on ne peut que lancer des sorts` : null,
+    refus: posture?.armesInutilisables && !estUnParchemin(regles, x) ? `${posture.libelle} : on ne peut que lancer des sorts` : null,
     remplir: quantite < max,
     duSac: genre === 'contenant' ? null : Math.max(0, Math.min(max - quantite, dansLeSac(fiche, x.nom))),
   };
@@ -1573,15 +1573,24 @@ export function presentationDuCompteurDeMaitrise(compteur, sources) {
  * propriétaire (RESISTANCES_PHYSIQUES : « Estoc, Frappe, Taille ») ; mêmes paliers, crans additionnés comme pour une magie, absentes à 0 comme une
  * magie sans cran. Seule source aujourd'hui : la liste de la magie innée du Potentiel Illimité (magie_resistance, « Surtension corporelle », un cran
  * de moins à chacune : la Vulnérabilité ; origine « Potentiel Illimité (magie innée) »), ni les dons, ni l'équipement (les dons du Mage Bleu
- * « Squelettique » et « Gluant » jouent sur l'armure, pas sur ce palier). `options.sansMalusPhysique` (faux par défaut) : les crans physiques des
- * listes des magies ne comptent pas — le point d'entrée du Mode Hyper (R172, R174 : « le mode hyper se contente d'annuler malus passif du PI »), que
- * le lot du Mode Hyper branchera ; rien ne le passe encore.
- * { paliers: [{ id, libelle, effet, cibles: [{ type, id, nom, crans, immunite, origines: [{ nom, crans } | { nom, immunite }] }] }], auChoix: [nom], aChoisir, desactivee }
+ * « Squelettique » et « Gluant » jouent sur l'armure, pas sur ce palier).
+ * Le Mode Hyper actif (décision R172 ; `options.avecLeModeHyper`, comme `avecLaPosture` par défaut : l'export en tableur ne le compte pas), origine
+ * « Mode Hyper » : une seule magie, l'immunité à sa magie innée ; deux magies, le palier Grande résistance à chacune (« Très résistant aux deux
+ * magies » : un palier fixé, pas un cran ; `palier` de la cible), sauf une magie déjà en immunité, qui le reste (« sauf celles où il est déjà immunisé,
+ * qui le restent ») ; le Potentiel Illimité, +1 cran à chacune des quatorze magies (elementsDeDegats : « un cran de résistance de plus à toutes les
+ * magies ») et l'annulation de son malus physique (R174 : « le mode hyper se contente d'annuler malus passif du PI ») : les crans négatifs que la
+ * liste du Potentiel Illimité donne aux types physiques ne comptent pas, ses crans positifs et ceux d'une autre origine restent. `options.sansMalusPhysique`
+ * (null par défaut : le Mode Hyper en décide) force cette annulation (vrai) ou l'empêche (faux).
+ * Le Mode Hyper 100 % (R172) : en Symbiose, aucune magie désactivée (R111 levé : postureDuMoment).
+ * { paliers: [{ id, libelle, effet, cibles: [{ type, id, nom, crans, immunite, palier?, origines: [{ nom, crans } | { nom, immunite } | { nom, palier }] }] }],
+ *   auChoix: [nom], aChoisir, desactivee }
  */
-export function resistancesDe(regles, fiche, { avecLaPosture = true, sansMalusPhysique = false } = {}) {
+export function resistancesDe(regles, fiche, { avecLaPosture = true, avecLeModeHyper = avecLaPosture, sansMalusPhysique = null } = {}) {
   const innee = trouver(regles.magies, fiche.magie_innee_id);
   const acquise = trouver(regles.magies, fiche.magie_acquise_id);
   const desactivee = avecLaPosture ? postureDuMoment(regles, fiche)?.symbiose?.inactive ?? null : null;
+  const hyper = avecLeModeHyper ? modeHyperDuMoment(regles, fiche) : null;
+  const sansMalus = sansMalusPhysique ?? Boolean(hyper);
   const cibles = new Map();
   const auChoix = [];
   // les altérations dont « ... plus fort ! » retire les crans négatifs (décision R163), appliqué après tous les crans : id → origine (la première)
@@ -1641,8 +1650,8 @@ export function resistancesDe(regles, fiche, { avecLaPosture = true, sansMalusPh
     // la magie que la Symbiose désactive : ni ses résistances ni ses faiblesses (décision R111)
     if (!magie || magie.id === desactivee?.id) continue;
     for (const e of magie.resistances ?? []) {
-      // le malus physique du Potentiel Illimité, annulé en Mode Hyper (R172, R174) : point d'entrée seulement (sansMalusPhysique)
-      if (sansMalusPhysique && e.type === 'physique') continue;
+      // le malus physique du Potentiel Illimité, annulé en Mode Hyper (R172, R174) : ses seuls crans négatifs aux types physiques
+      if (sansMalus && magie.id === POTENTIEL_ILLIMITE && e.type === 'physique' && e.crans < 0) continue;
       compter(e, `${magie.nom} (${role})`);
     }
   }
@@ -1660,6 +1669,20 @@ export function resistancesDe(regles, fiche, { avecLaPosture = true, sansMalusPh
   // écrite prévaut ; jamais retirés par une partie à 0 (armureCassee n'est pas lue) ni par la Symbiose (effet d'équipement)
   const elementaire = trouver(regles.armures_elementaires ?? [], fiche.armure_elementaire_id);
   if (elementaire) for (const e of elementaire.resistances?.effets ?? []) compter(e, `${elementaire.nom} (armure élémentaire)`);
+  // le Mode Hyper actif (décision R172) : le Potentiel Illimité, +1 cran à chacune des quatorze magies ; une seule magie, l'immunité à la magie innée ;
+  // deux magies, le palier Grande résistance fixé à chacune (une immunité, écrite ou de crans, prévaut : palierDe)
+  if (hyper?.potentielIllimite) for (const m of elementsDeDegats(regles)) compter({ type: 'magie', id: m.id, crans: 1 }, 'Mode Hyper');
+  else if (hyper?.uneSeule) {
+    if (innee) compter({ type: 'magie', id: innee.id, immunite: true }, 'Mode Hyper');
+  } else if (hyper) {
+    for (const m of [innee, acquise].filter(Boolean)) {
+      compter({ type: 'magie', id: m.id, crans: 0 }, 'Mode Hyper');
+      const c = cibles.get(`magie:${m.id}`);
+      c.origines.pop();
+      c.palier = PALIER_DU_MODE_HYPER_BI;
+      c.origines.push({ nom: 'Mode Hyper', palier: (regles.resistance_paliers ?? []).find((p) => p.id === PALIER_DU_MODE_HYPER_BI)?.libelle ?? PALIER_DU_MODE_HYPER_BI });
+    }
+  }
 
   // « ... plus fort ! » (décision R163) : après tous les crans (magies, dons, accessoires maudits compris), une altération de la liste de faiblesses de la
   // magie innée (ou tirée) perd ses crans négatifs, quelle qu'en soit l'origine, et garde les positifs (« +1 et −2 donnent +1 ») ; une origine de plus,
@@ -1679,8 +1702,9 @@ export function resistancesDe(regles, fiche, { avecLaPosture = true, sansMalusPh
   const rangees = [...cibles.values()]
     .map((c) => ({ ...c, nom: trouver(listeDe(c.type), c.id)?.nom ?? c.id }))
     .sort((a, b) => ordreDuType(a.type) - ordreDuType(b.type) || rang(a) - rang(b));
-  const palierDe = (c) => (c.immunite ? 'immunite'
-    : (regles.resistance_paliers ?? []).find((p) => (p.min === null || c.crans >= p.min) && (p.max === null || c.crans <= p.max))?.id ?? null);
+  const parCrans = (c) => (regles.resistance_paliers ?? []).find((p) => (p.min === null || c.crans >= p.min) && (p.max === null || c.crans <= p.max))?.id ?? null;
+  // un palier fixé (le Mode Hyper à deux magies) cède à l'immunité, écrite ou de crans (R172)
+  const palierDe = (c) => (c.immunite ? 'immunite' : c.palier && parCrans(c) !== 'immunite' ? c.palier : parCrans(c));
   return {
     paliers: (regles.resistance_paliers ?? []).map((p) => ({ id: p.id, libelle: p.libelle, effet: p.effet, cibles: rangees.filter((c) => palierDe(c) === p.id) })),
     auChoix,
@@ -1694,7 +1718,8 @@ export function resistancesDe(regles, fiche, { avecLaPosture = true, sansMalusPh
  *   santé    = classes + race + magie innée + magie acquise + ethnie + accessoires « Santé » + gains de niveau
  *   chakra   = classes + race + magie innée + magie acquise + ethnie + accessoires « Chakra » + gains de niveau
  *   barrière = chakra ÷ 2 (arrondi à l'inférieur) + classes + race + ethnie + accessoires « Barrière »
- * Vitesse et vitesse de nage de la race, de l'ethnie et du métier (décision R37) ; armure de base : AP/AM de la race et de l'ethnie, AM de chaque classe magique (guide, étape 6) ; initiative :
+ * Vitesse et vitesse de nage de la race, de l'ethnie et du métier (décision R37) ; armure de base : AP/AM de la race et de l'ethnie, et ceux qu'écrivent
+ * leurs dons (armureDesDonsDeRace, décision R172), AM de chaque classe magique (guide, étape 6) ; initiative :
  * 1D20 + le bonus de l'Agilité (table initiative_agilite) + le bonus d'initiative du métier (« +X INI », décision R33) : `initiativeBonus` ; 4ᵉ barre
  * (Sang, Âme) de la magie qui en a une ; Corruption au plus le chakra.
  */
@@ -1726,6 +1751,9 @@ export function attributsDe(regles, fiche) {
   // accessoires (décision R54) : initiative, vitesse (au sol), 4ᵉ barre (« Augmente le maximum de sang ou d'âme »), AP et AM de base
   const acc = (cible) => sommeDesAccessoires(regles, fiche, cible);
   const initiativeAccessoires = acc('initiative');
+  // le Mode Hyper actif (décision R172) : la vitesse qu'écrit l'effet de la race (« +2 à la Vitesse », « +3 Vitesse »), lue dans son texte ; comme la
+  // posture, une valeur du moment : `vitesseSol` reste celle de la fiche (tableur)
+  const vitesseModeHyper = modeHyperDuMoment(regles, fiche)?.vitesse ?? [];
   return {
     sante: total(detail.sante),
     chakra,
@@ -1736,8 +1764,11 @@ export function attributsDe(regles, fiche) {
     vitesseMetier: metier.vitesse,
     vitesseNageMetier: metier.vitesseNage,
     vitesseAccessoires: acc('vitesse'),
-    ap: (race?.ap ?? 0) + (ethnie?.ap ?? 0) + acc('armure_ap'),
-    am: (race?.am ?? 0) + (ethnie?.am ?? 0) + classes.filter((c) => c.magique).length * regles.am_classe_magique + acc('armure_am'),
+    vitesseModeHyper: vitesseModeHyper.reduce((s, l) => s + l.valeur, 0),
+    vitesseModeHyperDetail: vitesseModeHyper,
+    // (l'AP et l'AM qu'écrivent les dons de race et d'ethnie, « +2 Armure magique (+2 tous les 5 niveaux) » du Marcass : décision R177, « Oui, toujours »)
+    ap: (race?.ap ?? 0) + (ethnie?.ap ?? 0) + armureDesDonsDeRace(regles, fiche, 'ap') + acc('armure_ap'),
+    am: (race?.am ?? 0) + (ethnie?.am ?? 0) + armureDesDonsDeRace(regles, fiche, 'am') + classes.filter((c) => c.magique).length * regles.am_classe_magique + acc('armure_am'),
     apAccessoires: acc('armure_ap'),
     amAccessoires: acc('armure_am'),
     initiative,
@@ -3044,6 +3075,8 @@ export function bouclierApresChoix(regles, fiche, champ, valeur) {
 
 /** Le Potentiel Illimité : pas un type de dégâts (« L'une des 14 formes de magie hors PI »). */
 const POTENTIEL_ILLIMITE = 'magies/potentiel-illimite';
+/** Le palier du Mode Hyper à deux magies (décision R172 : « Très résistant aux deux magies » → « Grande résistance, sauf pour les magies déjà "immunisé" ») */
+const PALIER_DU_MODE_HYPER_BI = 'grande_resistance';
 /** Les dégâts physiques (armure_degats.type_degats), dans l'ordre de la page « Armes ». */
 export const DEGATS_PHYSIQUES = Object.freeze([['estoc', 'Estoc'], ['taille', 'Taille'], ['frappe', 'Frappe']]);
 /**
@@ -3131,12 +3164,19 @@ export function defenseDe(regles, fiche, attributs = attributsDe(regles, fiche),
     for (const l of portee.detail.ap) ajouter(ap, l.nom, l.valeur, true);
     for (const l of portee.detail.am) ajouter(am, l.nom, l.valeur, true);
   }
-  // la posture du moment (décision R100) : Défensif « +2/4 niveau global AP/AM », Symbiose « +4 (+2/NPM) à l'Armure magique »
+  // la posture du moment (décision R100) : Défensif « +2/4 niveau global AP/AM », Symbiose « +4 (+2/NPM) à l'Armure magique » ; en Mode Hyper 100 %,
+  // toutes les postures (R172 : le Défensif à 2 × ⌈N ÷ 4⌉, exception de R175)
   const posture = postureDuMoment(regles, fiche);
   if (posture) {
-    ajouter(ap, `Posture ${posture.posture.nom}`, posture.ap);
-    ajouter(am, `Posture ${posture.posture.nom}`, posture.am);
+    ajouter(ap, posture.libelle, posture.ap);
+    ajouter(am, posture.libelle, posture.am);
   }
+  // le Mode Hyper actif (décision R172) : l'effet de la magie qui l'écrit, « L'armure physique (AP) de base augmente de 25 » (Terre), « L'armure
+  // magique (AM) de base augmente de 25 » (Glace), 10 avec deux magies, lu dans son texte (modeHyperDuMoment) ; une armure de base, pas celle de l'armure
+  // portée
+  const hyper = modeHyperDuMoment(regles, fiche);
+  for (const l of hyper?.apBase ?? []) ajouter(ap, l.nom, l.valeur);
+  for (const l of hyper?.amBase ?? []) ajouter(am, l.nom, l.valeur);
   const b = bouclierDe(regles, fiche);
   const total = (x) => x.detail.reduce((s, d) => s + d.valeur, 0);
   return {
@@ -3147,6 +3187,44 @@ export function defenseDe(regles, fiche, attributs = attributsDe(regles, fiche),
     cassees: (parPartie ?? []).filter((p) => p.cassee).map((p) => ({ id: p.id, nom: p.nom })),
     bouclier: b?.bouclier ? { nom: b.nom, ap: b.ap, am: b.am, cassee: Boolean(b.solidite?.cassee) } : null,
   };
+}
+
+/**
+ * L'AP ou l'AM naturels du personnage (`cle` : 'ap' ou 'am' ; décision R172, Marcass : « Les AP et AM naturels », « Oui, le compter ») : ceux de sa race
+ * et de son ethnie (colonnes de la base) et ceux qu'écrivent ses dons de race et d'ethnie (`races[].dons[].armure_naturelle`, lus dans le texte : « +2
+ * Armure magique (+2 tous les 5 niveaux) »), au niveau global comme R110 (armureDesDonsDeRace). Seul degatsRecus le lit, à la place de toute l'armure
+ * (« L'attaque ignore l'armure » en Mode Hyper) : la part du don, aussi dans l'armure de base (attributsDe), n'y compte qu'une fois.
+ */
+export function armureNaturelleDe(regles, fiche, cle) {
+  return entier(trouver(regles.races ?? [], fiche.race_id)?.[cle]) + entier(trouver(regles.ethnies ?? [], fiche.ethnie_id)?.[cle])
+    + armureDesDonsDeRace(regles, fiche, cle);
+}
+
+/**
+ * L'AP ou l'AM (`cle`) qu'écrivent les dons de race et d'ethnie du personnage (`races[].dons[].armure_naturelle`, lus dans le texte : « +2 Armure
+ * magique (+2 tous les 5 niveaux) » du Marcass), au niveau global comme R110 : base + pas × ⌊N ÷ niveaux⌋ (2, 4 au niveau 5, 6 au niveau 10).
+ * Toujours comptée dans l'armure de base de la fiche (attributsDe ; décision R177 : « Oui, toujours »).
+ */
+export function armureDesDonsDeRace(regles, fiche, cle) {
+  const niveau = niveauGlobal(regles, fiche.xp);
+  return donsDeRace(regles, fiche).dons.flatMap((d) => (d.armure_naturelle ?? []).filter((a) => a.cle === cle))
+    .reduce((s, a) => s + a.base + (a.niveaux ? a.pas * Math.floor(niveau / a.niveaux) : 0), 0);
+}
+
+/**
+ * Ce qui reste de l'armure (`cle` : 'ap' ou 'am') quand une attaque ignore l'armure (décision R172) : rien, sauf pour un personnage dont l'effet de
+ * Mode Hyper actif écrit « Les AP et AM naturels s'ajoutent à toute réduction de dégâts » (Marcass) — l'armure naturelle de sa race et de son ethnie,
+ * leurs dons compris (armureNaturelleDe, R177), et l'AP ou l'AM de base que donne l'effet de Mode Hyper de sa magie, lu dans son texte (Terre « AP de
+ * base +25 », Glace « AM de base +25 », +10 avec deux magies : réponse du propriétaire « Oui, gardé »). [{ nom, valeur }] sans les parts nulles.
+ */
+export function partsDeLArmureNaturelle(regles, fiche, cle) {
+  const hyper = modeHyperDuMoment(regles, fiche);
+  if (!hyper?.armureNaturelle.length) return [];
+  return [
+    { nom: 'race et ethnie', valeur: entier(trouver(regles.races ?? [], fiche.race_id)?.[cle]) + entier(trouver(regles.ethnies ?? [], fiche.ethnie_id)?.[cle]) },
+    { nom: 'dons de race', valeur: armureDesDonsDeRace(regles, fiche, cle) },
+    ...(cle === 'ap' ? hyper.apBase : hyper.amBase),
+  ].filter((p) => p.valeur);
 }
 
 /**
@@ -3183,12 +3261,17 @@ export function appliquerMultiplicateur(valeur, mult) {
  * sa faiblesse au type, R98) et les ÷ 2, le palier du personnage à ce type (resistancesDe, cible `physique` ; le Potentiel Illimité : la
  * Vulnérabilité, × 2), au même endroit que le palier de l'élément ; avec un élément, les deux se multiplient (« Ils se multiplient » : 30 entrants,
  * AP 4, × 2, grande résistance au Feu ÷ 3 → 26 × 2 ÷ 3 = 17), arrondi à l'inférieur une seule fois, à la fin (R175). « Magique » n'en a pas. Aucune
- * case pour les dons d'attaquant qui ignorent une résistance physique (« Pas de case »). `sansMalusPhysique` : passé à resistancesDe (point
- * d'entrée du Mode Hyper, R172 ; rien ne le passe encore).
+ * case pour les dons d'attaquant qui ignorent une résistance physique (« Pas de case »). `sansMalusPhysique` : passé à resistancesDe (forcé ;
+ * sinon le Mode Hyper actif l'annule, R172).
+ * Mode Hyper (décision R172) : ses résistances (resistancesDe) ; en Mode Hyper 100 %, l'immunité de la Symbiose vaut pour ses deux magies. `ignoreArmure`
+ * (case « L'attaque ignore l'armure ») : l'AP ou l'AM ne compte pas (ni l'armure portée, ni sa résistance au type, ni le bouclier), sauf pour un
+ * personnage dont l'effet de Mode Hyper actif écrit « Les AP et AM naturels s'ajoutent à toute réduction de dégâts » (Marcass, « Même si l'armure est
+ * ignorée ») : l'AP ou l'AM de sa race et de son ethnie, leurs dons compris (R177), et l'AP ou l'AM de base de l'effet de Mode Hyper de sa magie
+ * (partsDeLArmureNaturelle) comptent encore ; sans la case, rien ne compte deux fois.
  * { recus, etapes: [{ texte, valeur }], armure, type, element, partie }
  */
 export function degatsRecus(regles, fiche, options = {}) {
-  const { entrants = 0, reduits = false, parade = false, don = false, sansMalusPhysique = false } = options;
+  const { entrants = 0, reduits = false, parade = false, don = false, sansMalusPhysique = null, ignoreArmure = false } = options;
   const partie = options.partie ?? PARTIE_PAR_DEFAUT;
   const coup = coupDeDegats(regles, options);
   if (!coup) return null;
@@ -3208,15 +3291,21 @@ export function degatsRecus(regles, fiche, options = {}) {
   }
   let armure = x.total - x.armure + x.armure * facteur;
   const auBouclier = reduits && parade && d.bouclier;
-  const bouclier = auBouclier && !d.bouclier.cassee ? (t.physique ? d.bouclier.ap : d.bouclier.am) : 0;
+  const bouclier = auBouclier && !d.bouclier.cassee && !ignoreArmure ? (t.physique ? d.bouclier.ap : d.bouclier.am) : 0;
   armure += bouclier;
   const nomArmure = t.physique ? 'AP' : 'AM';
-  const precisions = [
-    facteur !== 1 ? `armure ${facteur > 1 ? `× ${facteur}` : `÷ ${1 / facteur}`} contre ${t.nom.toLowerCase()}` : null,
-    d.partie?.cassee ? `partie ${d.partie.nom} cassée : l’armure n’y compte pas` : null,
-    bouclier ? `bouclier +${bouclier}` : null,
-    auBouclier && d.bouclier.cassee ? 'bouclier cassé : il ne compte plus' : null,
-  ].filter(Boolean);
+  // « L'attaque ignore l'armure » (décision R172) : rien, ou l'AP / AM naturels d'un Marcass en Mode Hyper : race et ethnie, leurs dons (R177), et l'AP
+  // ou l'AM de base que donne l'effet de Mode Hyper de sa magie (Terre, Glace : « Oui, gardé »), chacun une fois
+  const naturelle = ignoreArmure ? partsDeLArmureNaturelle(regles, fiche, t.physique ? 'ap' : 'am') : null;
+  if (naturelle) armure = naturelle.reduce((s, p) => s + p.valeur, 0);
+  const precisions = ignoreArmure
+    ? [naturelle?.length ? `l’attaque ignore l’armure ; ${nomArmure} naturelle : ${naturelle.map((p) => `${p.nom} ${p.valeur}`).join(', ')}` : 'l’attaque ignore l’armure']
+    : [
+      facteur !== 1 ? `armure ${facteur > 1 ? `× ${facteur}` : `÷ ${1 / facteur}`} contre ${t.nom.toLowerCase()}` : null,
+      d.partie?.cassee ? `partie ${d.partie.nom} cassée : l’armure n’y compte pas` : null,
+      bouclier ? `bouclier +${bouclier}` : null,
+      auBouclier && d.bouclier.cassee ? 'bouclier cassé : il ne compte plus' : null,
+    ].filter(Boolean);
   etapes.push({ texte: `− ${nomArmure}${precisions.map((p) => ` (${p})`).join('')}`, valeur: -armure });
   let reste = Math.max(0, brut - armure);
   if (reduits) {
@@ -3240,10 +3329,12 @@ export function degatsRecus(regles, fiche, options = {}) {
     reste = appliquerMultiplicateur(reste, multiplicateurDe(physique));
     etapes.push({ texte: `${physique.libelle} contre ${t.nom.toLowerCase()} (${physique.effet})`, valeur: reste });
   }
+  // (en Mode Hyper 100 %, la Symbiose vaut pour ses deux magies : R172)
   const symbiose = e ? postureDuMoment(regles, fiche)?.symbiose : null;
-  if (symbiose?.immunite && symbiose.magie?.id === e.id) {
+  const immunisee = symbiose?.immunite ? symbiose.magies.find((m) => m.id === e.id) : null;
+  if (immunisee) {
     reste = 0;
-    etapes.push({ texte: `Symbiose avec ${symbiose.magie.nom} : immunité`, valeur: 0 });
+    etapes.push({ texte: `Symbiose avec ${immunisee.nom} : immunité`, valeur: 0 });
   } else if (e) {
     const palier = palierDe('magie', e.id);
     if (palier) {
@@ -3461,38 +3552,53 @@ export function magiesDeLaSymbiose(regles, fiche) {
 
 /**
  * La posture du moment et ce qu'elle change (décision R100), ou null sans posture :
- * { posture, competences: [{ toutes | caracteristiques | competences, valeur }], initiative, ap, am, degatsMaximum, diviseur, crans,
- *   symbiose: { magie (la magie de la symbiose, null tant qu'elle n'est pas choisie), possibles, aChoisir, degats (dégâts et soin des sorts de cette
- *   magie), am, immunite, inactive (l'autre magie), potentielIllimite } | null, armesInutilisables, lignes: [{ texte, chiffre, inconvenient }] }.
+ * { posture, libelle, noms, cent, competences: [{ toutes | caracteristiques | competences, valeur }], initiative, ap, am, degatsMaximum, diviseur, crans,
+ *   symbiose: { magie (la magie de la symbiose, null tant qu'elle n'est pas choisie), magies (celles dont les sorts reçoivent son bonus et qu'elle
+ *   immunise : [magie], ou les deux en Mode Hyper 100 %), possibles, aChoisir, degats (dégâts et soin des sorts de ces magies), am, immunite, inactive
+ *   (l'autre magie), potentielIllimite } | null, armesInutilisables, lignes: [{ texte, chiffre, inconvenient }] }.
  * Défensif : 2 × ⌈N ÷ 4⌉ AP et AM (N niveau global ; réponse « 2 × ⌈N/4⌉ ») ; Symbiose : base + pas × (puissance magique − 1) (« le premier niveau ne
  * compte pas » ; réponse « +5 dégâts et soin ») ; sa magie : la seule du personnage, sinon `fiche.symbiose_magie_id` (« choisie dans la case »).
  * Magie innée Potentiel Illimité (décision R109) : `potentielIllimite` vrai, ni magie ni magie à choisir (`magie` null, `possibles` vide, `aChoisir`
  * faux), le bonus de dégâts et de soin sur tous ses sorts, quelle que soit leur magie (sortDuMoment), l'AM de la posture, jamais l'immunité (degatsRecus :
  * elle vise la magie de la symbiose, qu'il n'a pas).
+ * Mode Hyper 100 % actif (décision R172 : « le cumul de tous les avantages chiffrés des postures (R100), sans leurs inconvénients, la posture cochée étant
+ * ignorée tant qu'il dure ») : les lignes chiffrées de toutes les postures, sauf leurs inconvénients (`posture_effet.inconvenient`, R47 : ni le −10 de
+ * l'Offensif, ni le ÷ 2 du Défensif, ni les armes inutilisables — R112 levé —, ni « Une seule magie active » — R111 levé) ; `cent` vrai, `posture` :
+ * { id: null, nom: 'Mode Hyper 100 %' }, `noms` : les noms de toutes les postures (un bonus écrit pour une posture compte) ; la Symbiose « vaut pour ses
+ * deux magies » (bonus de dégâts et de soins, AM, immunité), sans magie à choisir.
+ * `libelle` : « Posture X » (ou « Mode Hyper 100 % (postures) »), le nom d'une ligne de détail ; `noms` : le nom des postures actives, en minuscules.
  */
 export function postureDuMoment(regles, fiche) {
-  const posture = trouver(regles.postures ?? [], fiche.posture_id);
+  const cent = Boolean(modeHyperDe(regles, fiche)?.cent.actif);
+  const posture = cent ? { id: null, nom: 'Mode Hyper 100 %' } : trouver(regles.postures ?? [], fiche.posture_id);
   if (!posture) return null;
+  const ordre = (p) => (regles.ordre_postures ?? []).indexOf(p.id);
+  const actives = cent ? [...(regles.postures ?? [])].sort((a, b) => ordre(a) - ordre(b)) : [posture];
   const niveau = niveauGlobal(regles, fiche.xp);
   // « +2 tous les niveaux de puissance magique » : le NPM accessible (npmMax : le palier 5 n'est pas pour un personnage à magie acquise)
   const puissance = npmMax(regles, fiche);
+  const lignesDe = (p) => p.effets.map((texte, i) => ({ texte, chiffre: p.chiffres?.[i] ?? null, inconvenient: (p.inconvenients ?? []).includes(i + 1) }));
   const r = {
-    posture, competences: [], initiative: 0, ap: 0, am: 0, degatsMaximum: false, diviseur: 1, crans: 0, symbiose: null, armesInutilisables: false,
-    lignes: posture.effets.map((texte, i) => ({ texte, chiffre: posture.chiffres?.[i] ?? null, inconvenient: (posture.inconvenients ?? []).includes(i + 1) })),
+    posture, libelle: cent ? 'Mode Hyper 100 % (postures)' : `Posture ${posture.nom}`, noms: actives.map((p) => p.nom.toLowerCase()), cent,
+    competences: [], initiative: 0, ap: 0, am: 0, degatsMaximum: false, diviseur: 1, crans: 0, symbiose: null, armesInutilisables: false,
+    // en Mode Hyper 100 %, les avantages seuls
+    lignes: actives.flatMap((p) => lignesDe(p).filter((l) => !cent || !l.inconvenient)),
   };
   const symbiose = () => {
     if (!r.symbiose) {
       // le Potentiel Illimité inné (R109) : pas de magie de la symbiose, ni à choisir
       const potentielIllimite = fiche.magie_innee_id === POTENTIEL_ILLIMITE_INNE;
       const possibles = potentielIllimite ? [] : magiesDeLaSymbiose(regles, fiche);
-      const magie = possibles.length === 1 ? possibles[0] : possibles.find((m) => m.id === fiche.symbiose_magie_id) ?? null;
+      const magie = possibles.length === 1 ? possibles[0] : cent ? null : possibles.find((m) => m.id === fiche.symbiose_magie_id) ?? null;
       r.symbiose = {
-        magie, possibles, aChoisir: possibles.length > 1 && !magie, degats: 0, am: 0, immunite: false, inactive: null, uneSeule: false, potentielIllimite,
+        magie, magies: cent ? possibles : magie ? [magie] : [], possibles, aChoisir: !cent && possibles.length > 1 && !magie, degats: 0, am: 0, immunite: false,
+        inactive: null, uneSeule: false, potentielIllimite,
       };
     }
     return r.symbiose;
   };
-  for (const c of posture.chiffres ?? []) {
+  for (const l of r.lignes) {
+    const c = l.chiffre;
     if (!c) continue;
     if (c.cible === 'competences') r.competences.push(c);
     else if (c.cible === 'initiative') r.initiative += c.valeur;
@@ -3530,22 +3636,172 @@ export function bonusDePostureSurCompetence(posture, k) {
 /**
  * Le Mode Hyper et le Mode Hyper 100 % du personnage (demande du propriétaire : leurs cases à côté des postures, une fois débloqués) : débloqués au niveau
  * global qu'écrit la page « Liste des effets mode hyper » (2 et 10) ; les effets de base de la fiche (décision R5), l'effet de chaque magie du personnage
- * (« Mono-Magie » ou « Bi-magie » selon qu'il en a une ou deux) et celui de sa race (décision R13) ; ceux du Mode Hyper 100 %. null sans ces règles.
+ * (« Mono-Magie » ou « Bi-magie » selon qu'il en a une ou deux) et celui de sa race (décision R13), avec
+ * ce que chacun change aux valeurs (`chiffres` : lib/mode-hyper-texte.mjs) ; ceux du Mode Hyper 100 %. null sans ces règles.
+ * Décision R172 (« Deux cases activables, comme les postures ») : `actif` (personnage.mode_hyper, et débloqué), `cent.actif` (personnage.mode_hyper_100,
+ * seulement avec le Mode Hyper actif et débloqué : la case n'est « cochable seulement quand le Mode Hyper l'est ») ; `semaine` : le compteur « une fois
+ * par semaine » (« Oui, compteur manuel »), { restantes, max } — max : la constante `mode_hyper.usage_par_semaine`, restantes : personnage.mode_hyper_semaine,
+ * NULL au maximum (migration 0084) — ; `activable` : la case du Mode Hyper se coche (débloqué, une utilisation qui reste) ou se décoche (actif) ;
+ * `cent.activable` : celle du Mode Hyper 100 % (débloqué, Mode Hyper actif). `tour` et `cent.sortie` : les pourcentages du chakra maximum d'un tour de
+ * Mode Hyper et de la sortie du Mode Hyper 100 % (constantes `mode_hyper.conso_chakra_pct_max_par_tour`, `mode_hyper_100.cout_chakra_pct_max`).
  */
 export function modeHyperDe(regles, fiche) {
   const h = regles.mode_hyper;
   if (!h) return null;
   const niveau = niveauGlobal(regles, fiche.xp);
   const variante = fiche.magie_acquise_id ? 'bi' : 'mono';
+  // (la « Forme complète » du Potentiel Illimité n'est pas montrée : son Mode Hyper est celui de la décision R172, modeHyperDuMoment)
+  const deLaVariante = (parVariante) => parVariante?.[variante] ?? parVariante?.mono_et_bi ?? null;
   const magies = [fiche.magie_innee_id, fiche.magie_acquise_id].filter(Boolean)
-    .map((id) => ({ magie: trouver(regles.magies, id), effet: h.magies[id]?.[variante] ?? h.magies[id]?.mono_et_bi ?? null }))
+    .map((id) => ({ magie: trouver(regles.magies, id), effet: deLaVariante(h.magies[id]), chiffres: deLaVariante(h.chiffres_magies?.[id]) ?? [] }))
     .filter((x) => x.magie && x.effet);
+  const debloque = niveau >= h.niveau;
+  const centDebloque = niveau >= h.cent.niveau;
+  const actif = debloque && entier(fiche.mode_hyper) === 1;
+  const max = regles.constantes?.['mode_hyper.usage_par_semaine'] ?? null;
+  const enregistree = fiche.mode_hyper_semaine;
+  const restantes = max === null ? null
+    : enregistree === null || enregistree === undefined || enregistree === '' ? max : Math.min(max, Math.max(0, entier(enregistree)));
   return {
-    debloque: niveau >= h.niveau, niveau: h.niveau, effets: h.effets, magies, race: (fiche.race_id && h.races[fiche.race_id]) || null,
+    debloque, niveau: h.niveau, effets: h.effets, magies, race: (fiche.race_id && h.races[fiche.race_id]) || null,
     // accessoire « +1 tour de Mode Hyper (100% exclu) » (décision R54)
     toursAccessoires: sommeDesAccessoires(regles, fiche, 'mode_hyper_tours'),
-    cent: { debloque: niveau >= h.cent.niveau, niveau: h.cent.niveau, effets: h.cent.effets, suite: h.cent.suite },
+    actif,
+    semaine: max === null ? null : { restantes, max },
+    activable: debloque && (actif || restantes === null || restantes > 0),
+    tour: regles.constantes?.['mode_hyper.conso_chakra_pct_max_par_tour'] ?? null,
+    cent: {
+      debloque: centDebloque, niveau: h.cent.niveau, effets: h.cent.effets, suite: h.cent.suite,
+      actif: actif && centDebloque && entier(fiche.mode_hyper_100) === 1, activable: actif && centDebloque,
+      sortie: regles.constantes?.['mode_hyper_100.cout_chakra_pct_max'] ?? null,
+    },
   };
+}
+
+/**
+ * Ce que le Mode Hyper actif change aux valeurs du moment (décision R172), ou null hors Mode Hyper (case décochée ou pas encore débloquée) :
+ * { cent (le Mode Hyper 100 % est actif), armes (« Dégâts physiques +15 »), sorts: { valeur (+15 avec une seule magie, +7 avec deux : R5), magies
+ * (les siennes), tous (le Potentiel Illimité : tous ses sorts, comme sa Symbiose, R109) }, soins (+15), coutNul (« Consommation de chakra = 0 », R18),
+ * attaques (Mode Hyper 100 % : « +10 dégâts à toutes les attaques, physiques et magiques », en plus du Mode Hyper ; 0 sinon), uneSeule, potentielIllimite,
+ * et les effets de magie et de race lus dans leur texte (mode_hyper.chiffres_magies, races[].chiffres) : apBase, amBase (Terre, Glace : « de base
+ * augmente de 25 », 10 avec deux magies, l'écrit de chaque variante), desAttaques (Humain : armes et sorts), desArmes (Nain), desSorts (Felfe ; `soins` :
+ * les soins aussi), vitesse (Humain, Jackalope), chacun [{ nom, valeur, soins? }] ; armureNaturelle (Marcass : les noms des effets, [] sinon) }.
+ * Les valeurs de base viennent des constantes `mode_hyper.*` de la base (regles.constantes), jamais écrites ici.
+ */
+export function modeHyperDuMoment(regles, fiche, h = modeHyperDe(regles, fiche)) {
+  if (!h?.actif) return null;
+  const c = (id) => regles.constantes?.[id] ?? 0;
+  const uneSeule = !fiche.magie_acquise_id;
+  const potentielIllimite = fiche.magie_innee_id === POTENTIEL_ILLIMITE;
+  const race = trouver(regles.races ?? [], fiche.race_id);
+  const lus = [
+    ...h.magies.flatMap((m) => m.chiffres.map((x) => ({ ...x, nom: `Mode Hyper (${m.magie.nom})` }))),
+    ...(h.race?.chiffres ?? []).map((x) => ({ ...x, nom: `Mode Hyper (${[h.race.nom, race?.nom].filter(Boolean).join(', ')})` })),
+  ];
+  const de = (cible) => lus.filter((x) => x.cible === cible).map(({ nom, valeur, soins }) => ({ nom, valeur, ...(soins ? { soins } : {}) }));
+  return {
+    cent: h.cent.actif,
+    armes: c('mode_hyper.degats_physique'),
+    sorts: {
+      valeur: c(uneSeule ? 'mode_hyper.degats_magie_mono' : 'mode_hyper.degats_magie_bi'),
+      magies: [fiche.magie_innee_id, fiche.magie_acquise_id].filter(Boolean), tous: potentielIllimite,
+    },
+    soins: c('mode_hyper.soin_magique'),
+    coutNul: true,
+    attaques: h.cent.actif ? c('mode_hyper_100.degats_bonus') : 0,
+    uneSeule, potentielIllimite,
+    apBase: de('ap_base'), amBase: de('am_base'), desAttaques: de('des_attaques'), desArmes: de('des_armes'), desSorts: de('des_sorts'), vitesse: de('vitesse'),
+    armureNaturelle: lus.filter((x) => x.cible === 'armure_naturelle').map((x) => x.nom),
+  };
+}
+
+/**
+ * Ce qu'écrit un clic sur la case du Mode Hyper (`cle` 'mode_hyper') ou du Mode Hyper 100 % ('mode_hyper_100'), `coche` son nouvel état (décision R172) :
+ * { mode_hyper?, mode_hyper_100?, mode_hyper_semaine? }, {} quand le clic ne change rien. Cocher le Mode Hyper demande qu'il soit débloqué et qu'il reste
+ * une utilisation dans la semaine (« consommé à l'activation » : le compteur baisse d'un ; à 0, la case est grisée, comme une action épuisée) ; le
+ * décocher décoche aussi le Mode Hyper 100 % (la base ne le fait pas d'elle-même : contrainte personnage_mode_hyper_100_avec_mode_hyper), sans rendre
+ * l'utilisation. Le Mode Hyper 100 % ne se coche qu'avec le Mode Hyper actif et débloqué.
+ */
+export function modeHyperApres(regles, fiche, cle, coche) {
+  const h = modeHyperDe(regles, fiche);
+  if (!h) return {};
+  if (cle === 'mode_hyper') {
+    if (!coche) return h.actif || entier(fiche.mode_hyper) || entier(fiche.mode_hyper_100) ? { mode_hyper: 0, mode_hyper_100: 0 } : {};
+    if (h.actif || !h.activable) return {};
+    const reste = h.semaine ? h.semaine.restantes - 1 : null;
+    return { mode_hyper: 1, mode_hyper_100: 0, ...(h.semaine ? { mode_hyper_semaine: reste >= h.semaine.max ? null : reste } : {}) };
+  }
+  if (cle === 'mode_hyper_100') {
+    if (!coche) return entier(fiche.mode_hyper_100) ? { mode_hyper_100: 0 } : {};
+    return h.cent.activable && !h.cent.actif ? { mode_hyper_100: 1 } : {};
+  }
+  return {};
+}
+
+/**
+ * Le compteur « une fois par semaine » remonté (ou baissé) à la main de `ecart` (décision R172 : « ne remonte qu'à la main ») : { mode_hyper_semaine },
+ * borné de 0 au maximum ; au maximum, NULL (migration 0084 : « remonter au maximum écrit NULL »). {} sans compteur.
+ */
+export function semaineDuModeHyperApres(regles, fiche, ecart) {
+  const s = modeHyperDe(regles, fiche)?.semaine;
+  if (!s) return {};
+  const v = Math.min(s.max, Math.max(0, s.restantes + entier(ecart)));
+  return { mode_hyper_semaine: v >= s.max ? null : v };
+}
+
+/**
+ * Le Mode Hyper et le Mode Hyper 100 % que la fiche peut garder (décision R172) : décochés quand le niveau ne les débloque plus, le Mode Hyper 100 % sans le
+ * Mode Hyper décoché aussi (la base le refuse : personnage_mode_hyper_100_avec_mode_hyper). { mode_hyper, mode_hyper_100 }.
+ */
+export function modeHyperValable(regles, fiche) {
+  const h = modeHyperDe(regles, fiche);
+  const mode_hyper = h?.debloque && entier(fiche.mode_hyper) === 1 ? 1 : 0;
+  return { mode_hyper, mode_hyper_100: mode_hyper && h.cent.debloque && entier(fiche.mode_hyper_100) === 1 ? 1 : 0 };
+}
+
+/** « 2 santé pour 1 chakra » manquant (décision R18 : « il paye de la santé à la place à la hauteur de 2 santé pour 1 chakra ») : aucune table ne le porte. */
+export const SANTE_PAR_CHAKRA_MANQUANT = 2;
+
+/**
+ * Payer `cout` chakra avec les jauges du moment (décision R18) : le chakra du moment paie ce qu'il peut, sans descendre sous 0 ; le chakra qui manque se
+ * paie 2 santé pour 1 chakra, la santé pouvant devenir négative (R171). { ecrit: { chakra_actuel, sante_actuelle? }, cout, chakra: { avant, apres },
+ * sante: { avant, apres }, manque }.
+ */
+export function payerDuChakra(regles, fiche, cout, attributs = attributsDe(regles, fiche)) {
+  const jauges = valeursDuMoment(regles, fiche, attributs);
+  const chakra = jauges.find((j) => j.champ === 'chakra_actuel').valeur;
+  const sante = jauges.find((j) => j.champ === 'sante_actuelle').valeur;
+  const du = Math.max(0, Math.floor(entier(cout)));
+  const pris = Math.min(du, Math.max(0, chakra));
+  const manque = du - pris;
+  const apres = { chakra: chakra - pris, sante: sante - manque * SANTE_PAR_CHAKRA_MANQUANT };
+  return {
+    // (la santé, seulement quand elle change)
+    ecrit: { chakra_actuel: apres.chakra, ...(manque ? { sante_actuelle: apres.sante } : {}) },
+    cout: du, chakra: { avant: chakra, apres: apres.chakra }, sante: { avant: sante, apres: apres.sante }, manque,
+  };
+}
+
+/**
+ * Le bouton « Tour de Mode Hyper » (décision R172 : « un tour de Mode Hyper retire 10 % du chakra maximum », Mode Hyper actif, pas en Mode Hyper 100 % :
+ * « le chakra ne s'évapore plus ») : ⌊10 % du chakra maximum⌋ (R175 : 65 → 6), payé par payerDuChakra. null hors de ce cas.
+ */
+export function tourDeModeHyper(regles, fiche, attributs = attributsDe(regles, fiche)) {
+  const h = modeHyperDe(regles, fiche);
+  if (!h?.actif || h.cent.actif || h.tour === null) return null;
+  return { ...payerDuChakra(regles, fiche, Math.floor((attributs.chakra * h.tour) / 100), attributs), pourcent: h.tour };
+}
+
+/**
+ * Le bouton « Fin du Mode Hyper 100 % » (décision R172 : « sortir du Mode Hyper 100 % consomme 75 % du chakra maximum (un coût, pas un retour du
+ * chakra à 75 %) et ramène au Mode Hyper ») : ⌊75 % du chakra maximum⌋ (R175 : 65 → 48), payé par payerDuChakra (40 de chakra : 40 chakra et 16 santé) ;
+ * la case du Mode Hyper 100 % se décoche (`ecrit.mode_hyper_100` : 0), le Mode Hyper reste. null hors du Mode Hyper 100 %.
+ */
+export function finDuModeHyperCent(regles, fiche, attributs = attributsDe(regles, fiche)) {
+  const h = modeHyperDe(regles, fiche);
+  if (!h?.cent.actif || h.cent.sortie === null) return null;
+  const r = payerDuChakra(regles, fiche, Math.floor((attributs.chakra * h.cent.sortie) / 100), attributs);
+  return { ...r, ecrit: { ...r.ecrit, mode_hyper_100: 0 }, pourcent: h.cent.sortie };
 }
 
 // ------------------------------------------------------------------------------------------------------------------------------------------------
@@ -3828,7 +4084,7 @@ export function bonusDeSortsDuPersonnage(regles, fiche) {
 
 /**
  * Ce qui vaut pour tous les sorts de la fiche (sortDuMoment), calculé une fois : la posture du moment, les bâtons à la ceinture, les bonus écrits des
- * dons et de l'armure élémentaire, les effets des accessoires ; le sort préparé (décision R115 : sortPrepare) et la posture de sa préparation, à
+ * dons et de l'armure élémentaire, les effets des accessoires, le Mode Hyper actif (modeHyperDuMoment) ; le sort préparé (décision R115 : sortPrepare) et la posture de sa préparation, à
  * laquelle il se calcule (`prepare` : { sort_id, posture (postureDuMoment à la posture enregistrée, null sans posture) }, null sans sort préparé).
  */
 export function contexteDesSorts(regles, fiche) {
@@ -3839,6 +4095,8 @@ export function contexteDesSorts(regles, fiche) {
     accessoires: effetsDesAccessoires(regles, fiche).filter((e) => e.valeur && !e.aChoisir),
     // le chakra maximum du personnage, pour un coût qui en est un pourcentage (décision R106)
     chakraMax: attributsDe(regles, fiche).chakra,
+    // le Mode Hyper actif (décision R172), null sinon
+    modeHyper: modeHyperDuMoment(regles, fiche),
   };
 }
 
@@ -3963,6 +4221,7 @@ export function sacrificeDuSort(regles, sortId) {
  */
 export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSorts(regles, fiche), { fois = 1 } = {}) {
   const { batons, ecrits, accessoires } = contexte;
+  const hyper = contexte.modeHyper ?? null;
   // le sort préparé se calcule à la posture du moment où il a été préparé (décision R115 : « préparé en posture offensive, fera les dégâts maximals, même si
   // l'attaque physique a lieu en posture défensive ») ; les autres, à la posture cochée
   const estPrepare = Boolean(contexte.prepare) && contexte.prepare.sort_id === sort.id;
@@ -3988,7 +4247,7 @@ export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSo
       dejaLus.add(b);
       const valeur = valeurEcrite(b, npm);
       if (b.raison) nonComptes.push({ nom: b.nom, valeur, raison: b.raison, cible: colonneDe(cible) });
-      else if (b.posture && b.posture !== posture?.posture.nom.toLowerCase()) nonComptes.push({ nom: b.nom, valeur, raison: 'posture', cible: colonneDe(cible) });
+      else if (b.posture && !(posture?.noms ?? []).includes(b.posture)) nonComptes.push({ nom: b.nom, valeur, raison: 'posture', cible: colonneDe(cible) });
       else {
         r.push({ nom: b.nom, valeur });
         if ('parNpm' in b) parNpmCompte = true;
@@ -4030,7 +4289,15 @@ export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSo
     const reduit = reductions.length ? Math.max(Math.min(base, 1), base + somme(reductions)) : base;
     cout.detail = reductions;
     cout.texte = `${reduit}${brut[2] ?? ''}`;
-    if (sort.magie_id === 'magies/magie-de-la-corruption') {
+    // le Mode Hyper (décisions R172, R18 : « Le cout des sort passe à 0 de chakra ») : la part en chakra, pas un coût secondaire (âmes, Sang…) ; la
+    // corruption d'un sort de la Corruption non plus (« Oui, aussi à 0 » : ci-dessous)
+    if (hyper?.coutNul && reduit) {
+      cout.detail = [...reductions, { nom: 'Mode Hyper : consommation de chakra = 0', valeur: -reduit }];
+      cout.texte = `0${brut[2] ?? ''}`;
+      cout.modeHyper = true;
+    }
+    // le Mode Hyper (décision R172, « Oui, aussi à 0 ») : un sort de la Corruption est gratuit dans les deux monnaies, chakra et corruption
+    if (sort.magie_id === 'magies/magie-de-la-corruption' && !cout.modeHyper) {
       const corr = duBaton('cout_corruption');
       cout.corruption = { valeur: Math.max(Math.min(2 * reduit, 1), 2 * reduit + somme(corr)), detail: [{ nom: 'Coût en corruption : 2 × le coût', valeur: 2 * reduit }, ...corr] };
     }
@@ -4049,11 +4316,24 @@ export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSo
   const effets = { texte: auNm.effets ?? '', detail: [] };
   const v = lireDegatsDeSort(auNm.dsb);
   // la Symbiose : les sorts de sa magie ; le Potentiel Illimité, tous ses sorts, quelle que soit leur magie (décision R109)
+  // (en Mode Hyper 100 %, ses deux magies : R172)
+  const magieDeSymbiose = symbiose?.magies?.find((m) => m.id === sort.magie_id) ?? null;
+  const nomDeSymbiose = (magie) => `${posture?.cent ? 'Mode Hyper 100 % : Symbiose' : 'Posture Symbiose'} (${magie})`;
   const deSymbiose = !symbiose?.degats ? []
-    : symbiose.potentielIllimite ? [{ nom: 'Posture Symbiose (Potentiel Illimité)', valeur: symbiose.degats }]
-      : symbiose.magie?.id === sort.magie_id ? [{ nom: `Posture Symbiose (${symbiose.magie.nom})`, valeur: symbiose.degats }] : [];
-  const fixesDesDegats = () => [...(sort.attaque ? accessoire('degats_magie') : []), ...ecritsPour('degats'), ...duBaton('degats'), ...deSymbiose];
-  const fixesDuSoin = () => [...ecritsPour('soin'), ...duBaton('soin'), ...deSymbiose];
+    : symbiose.potentielIllimite ? [{ nom: nomDeSymbiose('Potentiel Illimité'), valeur: symbiose.degats }]
+      : magieDeSymbiose ? [{ nom: nomDeSymbiose(magieDeSymbiose.nom), valeur: symbiose.degats }] : [];
+  // le Mode Hyper actif (décision R172) : +15 aux dégâts des sorts de ses magies (+7 avec deux, R5 ; tous ses sorts pour le Potentiel Illimité) et, en
+  // Mode Hyper 100 %, +10 à toutes les attaques ; +15 aux soins
+  const deModeHyper = (nature) => {
+    if (!hyper) return [];
+    if (nature === 'soin') return hyper.soins ? [{ nom: 'Mode Hyper', valeur: hyper.soins }] : [];
+    return [
+      ...(hyper.sorts.valeur && (hyper.sorts.tous || hyper.sorts.magies.includes(sort.magie_id)) ? [{ nom: 'Mode Hyper', valeur: hyper.sorts.valeur }] : []),
+      ...(hyper.attaques ? [{ nom: 'Mode Hyper 100 %', valeur: hyper.attaques }] : []),
+    ];
+  };
+  const fixesDesDegats = () => [...(sort.attaque ? accessoire('degats_magie') : []), ...ecritsPour('degats'), ...duBaton('degats'), ...deSymbiose, ...deModeHyper('degats')];
+  const fixesDuSoin = () => [...ecritsPour('soin'), ...duBaton('soin'), ...deSymbiose, ...deModeHyper('soin')];
   // une valeur par tour reçoit ses bonus à chaque tour, comme une autre (décision R113)
   if (v) {
     dsb.lu = true;
@@ -4064,6 +4344,14 @@ export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSo
       const faces = deMonte(x.faces, crans);
       if (faces !== x.faces) dsb.detail.push({ nom: `Dés d${x.faces} → d${faces}`, valeur: 0, crans: true });
       x.faces = faces;
+    }
+    // le Mode Hyper actif (décision R172), lu dans le texte de la race : un dé de plus à toutes les attaques (Humain), deux dés aux dégâts et aux soins
+    // magiques (Felfe) ; du même type que le premier dé du coup (après le cran de Focus), rien sur un sort sans dé
+    if (x.nombre && hyper) {
+      for (const d of [...(v.nature === 'degats' ? hyper.desAttaques : []), ...hyper.desSorts.filter((y) => v.nature === 'degats' || y.soins)]) {
+        x.nombre += d.valeur;
+        dsb.detail.push({ nom: `${d.nom} : +${d.valeur}d`, valeur: 0, des: d.valeur });
+      }
     }
     let fixes;
     if (v.nature === 'degats') {
@@ -4087,7 +4375,7 @@ export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSo
     x.fixe += somme(fixes);
     if (v.nature === 'degats' && posture?.degatsMaximum) {
       // Offensif : « 6 D6+4 deviens alors 40 » (demande du propriétaire) ; guide : « 2d6+2 de dégâts en offensif fera automatiquement 14 dégâts »
-      dsb.detail.push({ nom: `Posture ${posture.posture.nom} : dégâts maximum`, valeur: x.nombre * x.faces, maximum: true });
+      dsb.detail.push({ nom: `${posture.libelle} : dégâts maximum`, valeur: x.nombre * x.faces, maximum: true });
       x.fixe += x.nombre * x.faces;
       x.nombre = 0;
     }
@@ -4143,22 +4431,43 @@ export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSo
  * d'utiliser les armes » (`inutilisable`) — sauf l'arme élémentaire de la magie de la Symbiose (décision R167, exception à R112 : « l'arme élémentaire de
  * la magie de la Symbiose reste utilisable et reçoit le bonus de dégâts de la posture », celui de R100, +5 et +2 par NPM au-delà du premier, le NPM
  * accessible) ; tant que la magie de la Symbiose n'est pas choisie, ou pour le Potentiel Illimité (R109 : sa Symbiose n'a pas de magie), aucune arme
- * élémentaire ne correspond. null sans arme. { ...degatsDArme, texte, moment: [{ nom, valeur }], diviseur, inutilisable }.
+ * élémentaire ne correspond.
+ * Le Mode Hyper actif (décision R172) : les dés que l'effet de la race écrit (Humain, « 1d de dégâts en plus pour toutes les attaques » ; Nain, « 2d de
+ * dégâts physiques en plus » : du dé de l'arme), +15 (« Dégâts physiques ») et, en Mode Hyper 100 %, +10 ; le Mode Hyper 100 % cumule les postures
+ * sans leurs inconvénients (postureDuMoment : le maximum de l'Offensif, ni ÷ 2 ni armes inutilisables ; la Symbiose de ses deux magies sur leurs armes
+ * élémentaires). null sans arme. { ...degatsDArme, texte, moment: [{ nom, valeur, des? }], diviseur, inutilisable }.
  */
 export function degatsDArmeDuMoment(regles, fiche, rang) {
   const d = degatsDArme(regles, fiche, rang);
   if (!d) return null;
   const posture = postureDuMoment(regles, fiche);
+  const hyper = modeHyperDuMoment(regles, fiche);
   const faces = /^D(\d+)$/i.exec(String(d.de ?? '').trim());
   const moment = [];
   let nombre = d.nombre;
   let total = d.total;
-  // décision R167 : l'arme élémentaire de la magie de la Symbiose (postureDuMoment : symbiose.magie, null tant qu'elle n'est pas choisie et pour le
-  // Potentiel Illimité)
-  const symbiose = posture?.armesInutilisables && d.elementaire && posture.symbiose?.magie?.id === d.elementaire.magie_id ? posture.symbiose : null;
+  // décision R167 : l'arme élémentaire de la magie de la Symbiose (postureDuMoment : symbiose.magies, vide tant qu'elle n'est pas choisie et pour le
+  // Potentiel Illimité ; ses deux magies en Mode Hyper 100 %, R172)
+  const magieDeSymbiose = d.elementaire ? posture?.symbiose?.magies?.find((m) => m.id === d.elementaire.magie_id) ?? null : null;
+  const symbiose = (posture?.armesInutilisables || posture?.cent) && magieDeSymbiose ? posture.symbiose : null;
   if (symbiose?.degats) {
     total += symbiose.degats;
-    moment.push({ nom: `Posture ${posture.posture.nom} (${symbiose.magie.nom})`, valeur: symbiose.degats });
+    moment.push({ nom: `${posture.cent ? 'Mode Hyper 100 % : Symbiose' : `Posture ${posture.posture.nom}`} (${magieDeSymbiose.nom})`, valeur: symbiose.degats });
+  }
+  // le Mode Hyper (R172) : les dés de plus, puis ses bonus
+  if (hyper && faces && nombre >= 1) {
+    for (const x of [...hyper.desAttaques, ...hyper.desArmes]) {
+      nombre += x.valeur;
+      moment.push({ nom: x.nom, valeur: 0, des: x.valeur });
+    }
+  }
+  if (hyper?.armes) {
+    total += hyper.armes;
+    moment.push({ nom: 'Mode Hyper', valeur: hyper.armes });
+  }
+  if (hyper?.attaques) {
+    total += hyper.attaques;
+    moment.push({ nom: 'Mode Hyper 100 %', valeur: hyper.attaques });
   }
   const deMax = effetsDesAccessoires(regles, fiche).filter((e) => e.cible === 'de_maximum' && e.valeur).reduce((s, e) => s + e.valeur, 0);
   if (deMax && faces && nombre >= 1 && !posture?.degatsMaximum) {
@@ -4172,7 +4481,7 @@ export function degatsDArmeDuMoment(regles, fiche, rang) {
   let texte;
   if (posture?.degatsMaximum && faces) {
     const max = nombre * Number(faces[1]);
-    moment.push({ nom: `Posture ${posture.posture.nom} : dégâts maximum`, valeur: max });
+    moment.push({ nom: `${posture.libelle} : dégâts maximum`, valeur: max });
     texte = String(max + total);
   } else {
     const notation = nombre ? notationDesDes(d.de, nombre) : '';

@@ -1,6 +1,7 @@
 // Décision R174 (2026-10-29) : les résistances physiques de la fiche — le tableau des résistances et faiblesses gagne Estoc, Frappe et Taille ; le
 // Potentiel Illimité (toujours la magie innée, R176) y a un cran de moins à chacun (« Surtension corporelle » : la Vulnérabilité, × 2), un palier
-// personnel, annulé en Mode Hyper (R172 ; seulement un point d'entrée ici, `sansMalusPhysique`) ; dans les dégâts reçus, l'armure d'abord (R98), puis
+// personnel, annulé en Mode Hyper (R172 : le Mode Hyper actif passe `sansMalusPhysique`, restreint aux crans négatifs du PI ; le détail du Mode Hyper :
+// test/fiche-mode-hyper.test.mjs) ; dans les dégâts reçus, l'armure d'abord (R98), puis
 // le palier physique, au même endroit que le palier de l'élément, les deux multipliés, arrondi à l'inférieur une seule fois (R175).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -56,7 +57,7 @@ test('R174 : un personnage sans cran physique n’a pas de ligne physique (absen
   assert.deepEqual(physiques(M.resistancesDe(regles, fiche())), [], 'sans magie');
 });
 
-test('R172, R174 : le point d’entrée du Mode Hyper — `sansMalusPhysique` retire le malus du PI et rien d’autre ; rien ne le passe encore', () => {
+test('R172, R174 : le Mode Hyper actif passe `sansMalusPhysique` — il retire le malus du PI et rien d’autre ; l’option le force ou l’empêche', () => {
   const f = fiche({ race_id: 'races/mort-vivant', ethnie_id: 'races/mort-vivant#ethnie:mort-vivant-feu', magie_innee_id: PI, accessoires: BAGUES_DU_FEU });
   const avec = lignes(M.resistancesDe(regles, f));
   const sans = lignes(M.resistancesDe(regles, f, { sansMalusPhysique: true }));
@@ -64,10 +65,14 @@ test('R172, R174 : le point d’entrée du Mode Hyper — `sansMalusPhysique` re
   assert.deepEqual(sans, Object.fromEntries(Object.entries(avec).filter(([k]) => !k.startsWith('physique:'))), 'le reste inchangé');
   // les dégâts reçus le passent à resistancesDe
   assert.equal(M.degatsRecus(regles, f, { entrants: 30, type: 'estoc', sansMalusPhysique: true }).recus, 30);
-  // aucun appel du site ne le passe (le lot du Mode Hyper le branchera)
-  for (const chemin of ['../src/scripts/fiche.mjs', '../src/lib/fiche-tableur-export.mjs', '../src/lib/fiche-tableur-import.mjs']) {
-    assert.doesNotMatch(readFileSync(new URL(chemin, import.meta.url), 'utf8'), /sansMalusPhysique/, chemin);
-  }
+  // le Mode Hyper actif (niveau 2 et plus, la case cochée) le passe ; décoché, ou dans l'export (la fiche, pas le moment), le malus reste
+  const enHyper = { ...f, xp: regles.niveaux.find((l) => l.niveau === 2).xp_min, mode_hyper: 1 };
+  const physiquesEnHyper = (o) => Object.keys(lignes(M.resistancesDe(regles, enHyper, o))).filter((k) => k.startsWith('physique:'));
+  assert.deepEqual(physiquesEnHyper(), [], 'le Mode Hyper l’annule');
+  assert.deepEqual(physiquesEnHyper({ sansMalusPhysique: false }), ['physique:estoc', 'physique:frappe', 'physique:taille'], 'l’option l’empêche');
+  assert.deepEqual(physiquesEnHyper({ avecLaPosture: false }), ['physique:estoc', 'physique:frappe', 'physique:taille'], 'l’export garde la fiche');
+  assert.equal(M.degatsRecus(regles, enHyper, { entrants: 30, type: 'estoc' }).recus, 30);
+  assert.equal(M.degatsRecus(regles, { ...enHyper, mode_hyper: 0 }, { entrants: 30, type: 'estoc' }).recus, 60);
 });
 
 test('R174, exemple du propriétaire : 30 entrants, AP 4, PI × 2 et grande résistance au Feu ÷ 3 → 26 × 2 ÷ 3 = 17 (les deux paliers se multiplient, un seul arrondi)', () => {

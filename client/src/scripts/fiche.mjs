@@ -47,6 +47,7 @@ import {
   carteDeMaitrise, compteurDeMaitrise, infobulleDeClasse, infobulleDeSpecialite, infobulleDuDonAChoisir,
   infobulleDArme, infobulleDArmeElementaire, infobulleDArmure, infobulleDArmureElementaire, infobulleDeMetier, infobulleDeSort, TYPES_DE_DON, groupesDArmesParMaitrise, ligneDeMaitrise, maitriseApresChoix, maitriseChoixValables, maitrisesParFamille, presentationDuCompteurDeMaitrise, sourcesDeMaitrise,
   armeDeLaLigne, armesElementairesProposees, effetDeLArmeElementaire, sortsFerDAutreElement,
+  finDuModeHyperCent, modeHyperApres, modeHyperValable, semaineDuModeHyperApres, tourDeModeHyper,
 } from '../lib/fiche-moteur.mjs';
 import { creatureAuNpm, FPVSIA, vautAuNpm } from '../lib/creature-npm.mjs';
 import { listeDeChoix } from './liste-choix.mjs';
@@ -612,7 +613,7 @@ function construireCaracteristiques() {
           // le bonus au jet d'un don (décision R122 : « +5% à tout jet impliquant la Perception ») est dans le score, hors acquis : son détail, comme la posture
           const detail = [
             ...(c.jet ? [`${c.score - c.jet} % ${signe(c.jet)} au jet = ${c.score} %`, ...c.jetDetail.map((d) => `${signe(d.valeur)} ${d.nom} (bonus au jet, hors acquis)`)] : []),
-            ...(c.posture ? [`${c.score} % ${signe(c.posture)} (posture ${calcul.posture.posture.nom})`] : []),
+            ...(c.posture ? [`${c.score} % ${signe(c.posture)} (${nomDeLaPosture()})`] : []),
           ];
           infobulle(score, c.score === null ? 'Deux croix : compétence inutilisable' : detail.join('\n'));
         });
@@ -998,7 +999,7 @@ function construireSorts() {
             m && (calcule || parUnite?.n > 1 || m.cout.detail.length || m.cout.corruption?.detail.length > 1),
             m && detail(calcule ? `${calcule.pourcent} % du chakra maximum (${calcule.chakra}) : ${calcule.valeur}${(calcule.chakra * calcule.pourcent) % 100 ? ', arrondi à l\'inférieur' : ''}` : ecrit,
               m.cout.detail, [
-                'Jamais moins de 1',
+                m.cout.modeHyper ? 'Mode Hyper : les sorts coûtent 0 chakra (décision R18)' : 'Jamais moins de 1',
                 ...(m.cout.corruption ? [detail('Avec la corruption :', m.cout.corruption.detail, ['Jamais moins de 1'])] : []),
                 ...nonComptes('cout'),
               ]), m && (calcule || parUnite?.n > 1 || m.cout.detail.length || m.cout.corruption || nonComptes('cout').length), coutTexte);
@@ -1657,10 +1658,12 @@ function construireAttributs() {
       return [['Initiative', ecrit ? `1D20 ${bonus >= 0 ? '+' : '−'} ${Math.abs(bonus)}` : '1D20',
         [a.initiative?.note ?? 'Selon l’Agilité', a.initiativeMetier ? `${signe(a.initiativeMetier)} du métier` : null,
           a.initiativeAccessoires ? `${signe(a.initiativeAccessoires)} des accessoires` : null,
-          a.initiativePosture ? `${signe(a.initiativePosture)} de la posture ${calcul.posture.posture.nom}` : null].filter(Boolean).join(' · ')]];
+          a.initiativePosture ? `${signe(a.initiativePosture)} (${nomDeLaPosture()})` : null].filter(Boolean).join(' · ')]];
     })(),
-    // vitesse et vitesse de nage de la race, de l'ethnie et du métier (décision R37)
-    ['Vitesse', a.vitesseSol ?? '—', `Vitesse sur terre (race et ethnie${a.vitesseMetier ? `, ${signe(a.vitesseMetier)} du métier` : ''}${a.vitesseAccessoires ? `, ${signe(a.vitesseAccessoires)} des accessoires` : ''})`],
+    // vitesse et vitesse de nage de la race, de l'ethnie et du métier (décision R37) ; le Mode Hyper actif y ajoute ce qu'écrit l'effet de la race
+    // (décision R172 : Humain, Jackalope), une valeur du moment comme la posture
+    ['Vitesse', a.vitesseSol === null ? '—' : a.vitesseSol + a.vitesseModeHyper,
+      `Vitesse sur terre (race et ethnie${a.vitesseMetier ? `, ${signe(a.vitesseMetier)} du métier` : ''}${a.vitesseAccessoires ? `, ${signe(a.vitesseAccessoires)} des accessoires` : ''}${a.vitesseModeHyperDetail.map((l) => `, ${signe(l.valeur)} ${l.nom}`).join('')})`],
     ['Nage', a.vitesseNage ?? '—', `Vitesse de nage (race et ethnie${a.vitesseNageMetier ? `, ${signe(a.vitesseNageMetier)} du métier` : ''})`],
   ];
   reconstruire($('attributs-pastilles'), JSON.stringify(pastilles), () => pastilles.map(([nom, valeur, titre]) => el('li', { title: titre }, el('strong', {}, `${nom} `), String(valeur))));
@@ -1670,62 +1673,149 @@ function construireAttributs() {
  * Les six postures (demande du propriétaire), chacune dans sa case avec ses effets du tableau de la fiche, toujours lisibles, avantages en vert et
  * inconvénients en rouge, sur deux lignes : un clic choisit la posture du moment (personnage.posture_id), un second la retire. À droite, une fois débloqués
  * (modeHyperDe : niveaux 2 et 10), les cases du Mode Hyper (effets de base, de la magie et de la race) et du Mode Hyper 100 % (demande du propriétaire),
- * pour lecture.
+ * activables comme les postures (décision R172 : « Deux cases activables », personnage.mode_hyper et mode_hyper_100, modeHyperApres) : leur nom est le
+ * bouton qui les coche ; le Mode Hyper 100 % ne se coche qu'avec le Mode Hyper, et décocher le Mode Hyper le décoche. Sous le Mode Hyper, le compteur
+ * « une fois par semaine » (consommé à l'activation, remonté à la main : semaineDuModeHyperApres ; à 0, la case est grisée) et le bouton « Tour de Mode
+ * Hyper » (tourDeModeHyper) ; sous le Mode Hyper 100 %, « Fin du Mode Hyper 100 % » (finDuModeHyperCent). En Mode Hyper 100 %, les cases des postures
+ * sont toutes actives, leurs inconvénients barrés (`data-cent`) : la posture cochée reprend à sa fin.
  */
 function construirePostures() {
   const hyper = modeHyperDe(regles, fiche);
   const cleHyper = JSON.stringify(hyper && [hyper.debloque, hyper.cent.debloque, hyper.magies.map((m) => m.effet), hyper.race?.nom, hyper.toursAccessoires]);
   // dans l'ordre des cases de la fiche (regles.ordre_postures) ; chaque effet en vert (avantage) ou en rouge (inconvénient : `inconvenients`, par rang)
   const ordre = (p) => (regles.ordre_postures ?? []).indexOf(p.id);
-  reconstruire($('postures'), 'fixe', () => [...regles.postures].sort((a, b) => ordre(a) - ordre(b)).map((p) => {
-    const bouton = el('button', {
-      type: 'button', class: ['posture-carte', ...teinteDe(p)].join(' '), 'aria-pressed': 'false',
-      onclick: () => {
-        fiche.posture_id = fiche.posture_id === p.id ? null : p.id;
-        changer();
-      },
-    }, el('span', { class: 'posture-carte__nom' }, p.nom), el('ul', { class: 'posture-carte__effets' }, p.effets.map((e, i) => {
-      const inconvenient = (p.inconvenients ?? []).includes(i + 1);
-      return el('li', { class: inconvenient ? 'est-inconvenient' : 'est-avantage' }, el('span', { class: 'visuellement-cache' }, inconvenient ? 'Inconvénient : ' : 'Avantage : '), e);
-    })));
-    synchro(() => bouton.setAttribute('aria-pressed', String(fiche.posture_id === p.id)));
-    return bouton;
-  }).concat((() => {
-    // la magie de la Symbiose (décision R100 : « Quand vous avez 2 magies, 1 de ces magies doit être désactivée temporairement ») : choisie ici quand le
-    // personnage en a deux ; ses sorts reçoivent le bonus de la posture, l'autre magie est désactivée
-    const choix = el('select', { 'aria-label': 'Magie de la symbiose', onchange: (ev) => { fiche.symbiose_magie_id = ev.target.value || null; changer(); } });
-    const bloc = el('label', { class: 'fiche-champ posture-symbiose', hidden: true, dataset: { choixCle: 'symbiose' } }, el('span', {}, 'Symbiose avec'), choix);
+  reconstruire($('postures'), 'fixe', () => {
+    // le Mode Hyper 100 % (décision R172) : toutes les postures actives, sans leurs inconvénients
     synchro(() => {
-      const s = calcul.posture?.symbiose;
-      bloc.hidden = !s || s.possibles.length < 2;
-      if (bloc.hidden) return;
-      const cle = s.possibles.map((m) => m.id).join();
-      if (choix.dataset.cle !== cle) {
-        choix.replaceChildren(option('', 'Choisir…'), ...s.possibles.map((m) => option(m.id, m.nom)));
-        choix.dataset.cle = cle;
-      }
-      poser(choix, s.magie?.id ?? '');
-      bloc.toggleAttribute('data-a-choisir', s.aChoisir);
+      $('postures').toggleAttribute('data-cent', Boolean(calcul.posture?.cent));
     });
-    return [bloc];
-  })()));
+    return [...regles.postures].sort((a, b) => ordre(a) - ordre(b)).map((p) => {
+      const bouton = el('button', {
+        type: 'button', class: ['posture-carte', ...teinteDe(p)].join(' '), 'aria-pressed': 'false',
+        onclick: () => {
+          fiche.posture_id = fiche.posture_id === p.id ? null : p.id;
+          changer();
+        },
+      }, el('span', { class: 'posture-carte__nom' }, p.nom), el('ul', { class: 'posture-carte__effets' }, p.effets.map((e, i) => {
+        const inconvenient = (p.inconvenients ?? []).includes(i + 1);
+        return el('li', { class: inconvenient ? 'est-inconvenient' : 'est-avantage' }, el('span', { class: 'visuellement-cache' }, inconvenient ? 'Inconvénient : ' : 'Avantage : '), e);
+      })));
+      synchro(() => bouton.setAttribute('aria-pressed', String(fiche.posture_id === p.id)));
+      return bouton;
+    }).concat((() => {
+      // la magie de la Symbiose (décision R100 : « Quand vous avez 2 magies, 1 de ces magies doit être désactivée temporairement ») : choisie ici quand le
+      // personnage en a deux ; ses sorts reçoivent le bonus de la posture, l'autre magie est désactivée (pas en Mode Hyper 100 % : les deux, R172)
+      const choix = el('select', { 'aria-label': 'Magie de la symbiose', onchange: (ev) => { fiche.symbiose_magie_id = ev.target.value || null; changer(); } });
+      const bloc = el('label', { class: 'fiche-champ posture-symbiose', hidden: true, dataset: { choixCle: 'symbiose' } }, el('span', {}, 'Symbiose avec'), choix);
+      synchro(() => {
+        const s = calcul.posture?.symbiose;
+        bloc.hidden = !s || s.possibles.length < 2 || calcul.posture.cent;
+        if (bloc.hidden) return;
+        const cle = s.possibles.map((m) => m.id).join();
+        if (choix.dataset.cle !== cle) {
+          choix.replaceChildren(option('', 'Choisir…'), ...s.possibles.map((m) => option(m.id, m.nom)));
+          choix.dataset.cle = cle;
+        }
+        poser(choix, s.magie?.id ?? '');
+        bloc.toggleAttribute('data-a-choisir', s.aChoisir);
+      });
+      return [bloc];
+    })());
+  });
   const cartesHyper = $('postures-hyper');
   cartesHyper.hidden = !hyper?.debloque;
-  reconstruire(cartesHyper, cleHyper, () => [
+  // un bouton des jauges (décision R172) : ce qu'il coûtera, en infobulle ; appliqué, l'écriture du moteur telle quelle
+  const boutonDeJauges = (texte, calculer) => {
+    const bouton = el('button', {
+      type: 'button', class: 'posture-carte__jauges',
+      onclick: () => {
+        const r = calculer();
+        if (!r) return;
+        Object.assign(fiche, r.ecrit);
+        changer();
+      },
+    }, texte);
+    synchro(() => {
+      const r = calculer();
+      bouton.hidden = !r;
+      infobulle(bouton, r ? [`${r.pourcent} % du chakra maximum (${calcul.attributs.chakra}), arrondi à l’inférieur : ${r.cout} chakra`,
+        `Chakra ${r.chakra.avant} → ${r.chakra.apres}`,
+        ...(r.manque ? [`Chakra manquant : ${r.manque}, payé 2 santé pour 1 chakra (décision R18) : santé ${r.sante.avant} → ${r.sante.apres}`] : [])].join('\n') : '');
+    });
+    return bouton;
+  };
+  // le nom d'une case : le bouton qui la coche (aria-pressed), grisé quand elle ne se coche pas
+  const bascule = (cle, nom, niveau) => {
+    const bouton = el('button', {
+      type: 'button', class: 'posture-carte__nom posture-carte__bascule', 'aria-pressed': 'false',
+      onclick: () => {
+        const actif = cle === 'mode_hyper' ? modeHyperDe(regles, fiche).actif : modeHyperDe(regles, fiche).cent.actif;
+        const ecrit = modeHyperApres(regles, fiche, cle, !actif);
+        if (!Object.keys(ecrit).length) return;
+        Object.assign(fiche, ecrit);
+        changer();
+      },
+    }, nom, el('small', {}, ` · dès le niveau ${niveau}`));
+    return bouton;
+  };
+  reconstruire(cartesHyper, cleHyper, () => {
+    if (!hyper?.debloque) return [];
     // leur couleur : la classe du mode (regles.mode_hyper.classe, .cent.classe : lib/palette-css.mjs, famille `mode`), comme une posture
-    hyper?.debloque ? el('div', { class: ['posture-carte', 'posture-carte--hyper', ...teinteDe(regles.mode_hyper)].join(' ') },
-      el('span', { class: 'posture-carte__nom' }, 'Mode Hyper', el('small', {}, ` · dès le niveau ${hyper.niveau}`)),
+    const nomHyper = bascule('mode_hyper', 'Mode Hyper', hyper.niveau);
+    const carteHyper = el('div', { class: ['posture-carte', 'posture-carte--hyper', ...teinteDe(regles.mode_hyper)].join(' ') }, nomHyper,
       el('ul', { class: 'posture-carte__effets' }, hyper.effets.map((e) => el('li', {}, e)),
         hyper.magies.map((m) => el('li', { class: `posture-carte__magie ${m.magie.classe}` }, el('strong', {}, `${m.magie.nom} : `), m.effet)),
         hyper.race ? el('li', { class: 'posture-carte__race' }, el('strong', {}, `${hyper.race.nom ?? 'Race'} : `), hyper.race.effet) : null,
         // accessoire « +1 tour de Mode Hyper (100% exclu) » (décision R54)
-        hyper.toursAccessoires ? el('li', {}, el('strong', {}, 'Accessoires : '), `${signe(hyper.toursAccessoires)} tour${Math.abs(hyper.toursAccessoires) > 1 ? 's' : ''} (pas le Mode Hyper 100 %)`) : null)) : null,
-    hyper?.cent.debloque ? el('div', { class: ['posture-carte', 'posture-carte--hyper', 'posture-carte--cent', ...teinteDe(regles.mode_hyper.cent)].join(' ') },
-      el('span', { class: 'posture-carte__nom' }, 'Mode Hyper 100 %', el('small', {}, ` · dès le niveau ${hyper.cent.niveau}`)),
+        hyper.toursAccessoires ? el('li', {}, el('strong', {}, 'Accessoires : '), `${signe(hyper.toursAccessoires)} tour${Math.abs(hyper.toursAccessoires) > 1 ? 's' : ''} (pas le Mode Hyper 100 %)`) : null));
+    // le compteur « une fois par semaine » (décision R172 : « Oui, compteur manuel ») : consommé à l'activation, remonté à la main
+    const compte = el('output', { class: 'posture-carte__compte', 'aria-live': 'polite' });
+    const ajusterSemaine = (ecart) => () => {
+      const ecrit = semaineDuModeHyperApres(regles, fiche, ecart);
+      if (!Object.keys(ecrit).length) return;
+      Object.assign(fiche, ecrit);
+      changer();
+    };
+    const moins = el('button', { type: 'button', class: 'ajuster', 'aria-label': 'Utilisations de la semaine : une de moins', title: 'Une utilisation de moins', onclick: ajusterSemaine(-1) }, '−');
+    const plus = el('button', { type: 'button', class: 'ajuster', 'aria-label': 'Utilisations de la semaine : une de plus', title: 'Remonter le compteur (à la main, une nouvelle semaine)', onclick: ajusterSemaine(1) }, '+');
+    const semaine = el('span', { class: 'posture-carte__semaine', title: 'Une fois par semaine : consommé à l’activation, remonté à la main' }, el('span', {}, 'Cette semaine '), moins, compte, plus);
+    carteHyper.append(el('div', { class: 'posture-carte__suivi' }, semaine,
+      boutonDeJauges('Tour de Mode Hyper', () => tourDeModeHyper(regles, fiche, calcul.attributs))));
+    synchro(() => {
+      const h = modeHyperDe(regles, fiche);
+      nomHyper.setAttribute('aria-pressed', String(h.actif));
+      carteHyper.toggleAttribute('data-actif', h.actif);
+      nomHyper.disabled = !h.activable;
+      nomHyper.title = h.actif ? 'Mode Hyper actif : un clic le décoche (et le Mode Hyper 100 %)'
+        : h.activable ? 'Activer le Mode Hyper (une utilisation de la semaine)' : 'Plus d’utilisation cette semaine : remonter le compteur à la main';
+      semaine.hidden = !h.semaine;
+      if (h.semaine) {
+        const texte = `${h.semaine.restantes} / ${h.semaine.max}`;
+        if (compte.textContent !== texte) compte.textContent = texte;
+        moins.disabled = h.semaine.restantes <= 0;
+        plus.disabled = h.semaine.restantes >= h.semaine.max;
+      }
+    });
+    if (!hyper.cent.debloque) return [carteHyper];
+    const nomCent = bascule('mode_hyper_100', 'Mode Hyper 100 %', hyper.cent.niveau);
+    const carteCent = el('div', { class: ['posture-carte', 'posture-carte--hyper', 'posture-carte--cent', ...teinteDe(regles.mode_hyper.cent)].join(' ') }, nomCent,
       el('ul', { class: 'posture-carte__effets' }, hyper.cent.effets.map((e) => el('li', {}, e)),
-        hyper.cent.suite ? el('li', { class: 'posture-carte__suite' }, `${hyper.cent.suite.charAt(0).toUpperCase()}${hyper.cent.suite.slice(1)}`) : null)) : null,
-  ]);
+        hyper.cent.suite ? el('li', { class: 'posture-carte__suite' }, `${hyper.cent.suite.charAt(0).toUpperCase()}${hyper.cent.suite.slice(1)}`) : null),
+      el('div', { class: 'posture-carte__suivi' }, boutonDeJauges('Fin du Mode Hyper 100 %', () => finDuModeHyperCent(regles, fiche, calcul.attributs))));
+    synchro(() => {
+      const h = modeHyperDe(regles, fiche);
+      nomCent.setAttribute('aria-pressed', String(h.cent.actif));
+      carteCent.toggleAttribute('data-actif', h.cent.actif);
+      nomCent.disabled = !h.cent.actif && !h.cent.activable;
+      nomCent.title = h.cent.actif ? 'Mode Hyper 100 % actif : un clic le décoche (sans coût ; « Fin du Mode Hyper 100 % » consomme le chakra)'
+        : h.cent.activable ? 'Activer le Mode Hyper 100 %' : 'Seulement avec le Mode Hyper actif';
+    });
+    return [carteHyper, carteCent];
+  });
 }
+
+/** La posture du moment, nommée dans un détail : « posture Offensif », ou le Mode Hyper 100 % qui les cumule toutes (décision R172). */
+const nomDeLaPosture = () => (calcul.posture?.cent ? 'Mode Hyper 100 % : toutes les postures' : `posture ${calcul.posture?.posture.nom ?? ''}`);
 
 // ------------------------------------------------------------------ les choix qui restent à faire, en tiroir (demande du propriétaire)
 /** Le choix `nature` (et de la classe `rang`) reste à faire (choixEnAttente, refait à chaque rafraîchissement) : son champ est surligné. */
@@ -2669,7 +2759,7 @@ function construireEquipement() {
           ...(d.inutilisable ? [`Posture ${d.inutilisable} : « Impossible d’utiliser les armes ou objets ». Hors de cette posture : ${valeur}`] : []),
           `${d.notation} : ${d.nombre} dé${d.nombre > 1 ? 's' : ''} (maîtrise) de ${d.de ?? '—'}`,
           ...d.bonus.map((b) => `+${b.valeur} ${b.nom}`),
-          ...d.moment.map((b) => `${b.nom} : ${b.valeur}`),
+          ...d.moment.map((b) => (b.des ? `${b.nom} : +${b.des} dé${b.des > 1 ? 's' : ''}` : `${b.nom} : ${b.valeur}`)),
           ...(d.diviseur > 1 ? [`Posture ${calcul.posture.posture.nom} : dégâts infligés ÷ ${d.diviseur}, avant l’armure`] : []),
           ...(d.porteeEnPlus ? [`Portée ${signe(d.porteeEnPlus)} (accessoires)`] : []),
           ...(d.nonComptes.length ? ['Non comptés :', ...d.nonComptes.map((n) => `+${n.valeur} ${n.nom} (${n.raison === 'mains' ? 'arme à une main non écrite' : RAISONS[n.raison]})`)] : []),
@@ -3086,7 +3176,7 @@ function construireEquipement() {
  * (elle suit alors medusainDOffice), le geste du joueur sinon, oublié quand le coup change (type ou élément).
  */
 const degatsEnCours = {
-  entrants: '', type: 'estoc', element: '', partie: PARTIE_PAR_DEFAUT, reduits: false, parade: false, don: false,
+  entrants: '', type: 'estoc', element: '', partie: PARTIE_PAR_DEFAUT, reduits: false, parade: false, don: false, ignoreArmure: false,
   cases: { passe: false, casse: false, laiton: false }, medusain: null,
 };
 
@@ -3152,6 +3242,8 @@ function construireDefense() {
     const parade = el('input', { type: 'checkbox', onchange: (ev) => { degatsEnCours.parade = ev.target.checked; majDefense(); } });
     const paradeLabel = el('label', { class: 'fiche-coche' }, parade, 'Au bouclier');
     const don = el('input', { type: 'checkbox', onchange: (ev) => { degatsEnCours.don = ev.target.checked; majDefense(); } });
+    // « L'attaque ignore l'armure » (décision R172) : l'AP ou l'AM ne compte pas, sauf l'AP et l'AM naturels d'un Marcass en Mode Hyper
+    const ignore = el('input', { type: 'checkbox', onchange: (ev) => { degatsEnCours.ignoreArmure = ev.target.checked; majDefense(); } });
     const recus = el('output', { class: 'defense__recus', 'aria-live': 'polite' });
     // les cases de la barrière (décision R171) : Passe, Casse et Laiton une à la fois (Q74 : casesDeLaBarriereApres) ; « Deux fois moins » cochée
     // d'office selon le don et le coup (medusainDOffice), décochée à la main
@@ -3196,6 +3288,7 @@ function construireDefense() {
       poser(reduits, degatsEnCours.reduits);
       poser(parade, degatsEnCours.parade);
       poser(don, degatsEnCours.don);
+      poser(ignore, degatsEnCours.ignoreArmure);
       // l'élément, obligatoire avec « Magique » (décision R171 : sans lui, pas de calcul)
       const sansElement = degatsEnCours.type === 'magique' && !degatsEnCours.element;
       attribut(element, 'required', degatsEnCours.type === 'magique');
@@ -3235,6 +3328,7 @@ function construireDefense() {
         el('label', { class: 'fiche-coche', title: 'Esquive ou parade partielle : les dégâts sont divisés par 2 après l’armure' }, reduits, 'Dégâts réduits'),
         paradeLabel,
         el('label', { class: 'fiche-coche', title: 'Formule des dégâts : « ÷ 2 si un don divise les dégâts » (selon la situation : à cocher)' }, don, 'Don ÷ 2'),
+        el('label', { class: 'fiche-coche', title: 'L’AP ou l’AM ne compte pas (ni l’armure, ni le bouclier) ; sauf, en Mode Hyper, l’AP et l’AM naturels (race et ethnie) d’un personnage dont la race l’écrit (Marcass, décision R172)' }, ignore, 'L’attaque ignore l’armure'),
         recus),
       el('div', { class: 'defense__barriere', role: 'group', 'aria-label': 'Contre la barrière' },
         cases.map((c) => c.label), apercu, appliquer),
@@ -3652,6 +3746,9 @@ function aEnvoyer() {
   f.livres_sorts = livresAEnregistrer(f);
   // la solidité du moment du bouclier bornée à son maximum (décision R96 : à son maximum ou au-delà, rien d'enregistré)
   f.bouclier_solidite = soliditeDuBouclierAEcrire(regles, f, f.bouclier_solidite);
+  // le Mode Hyper et le Mode Hyper 100 % (décision R172) : décochés à l'enregistrement quand le niveau ne les débloque pas (la base ne connaît pas les
+  // niveaux) ; pas à chaque rafraîchissement : une XP retapée passe par le niveau 1, et le moteur ne compte que ce qui est débloqué (modeHyperDe)
+  Object.assign(f, modeHyperValable(regles, f));
   f.inventaire = (f.inventaire ?? []).filter((o) => o.nom && o.nom.trim()).map((o, i) => ({ ...o, nom: o.nom.trim(), rang: i + 1 }));
   f.accessoires = (f.accessoires ?? []).filter((a) => a.accessoire_effet_id);
   // la ceinture garde ses emplacements (rang 1 à 3) : seuls les emplacements vides partent

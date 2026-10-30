@@ -67,6 +67,9 @@ export const CLES_DE_LA_NOTE = Object.freeze({
   nmMj: 'NM du MJ',
   // le sort préparé (décision R115) : « <sort> (jet 57, posture Offensif) » ; le modèle n'a pas de case pour lui (texteDuSortPrepare, lireSortPrepare)
   sortPrepare: 'Sort préparé',
+  // le Mode Hyper du moment et le compteur « une fois par semaine » (décision R172, migration 0084) : « actif, 100 %, semaine 0/1 » ; le modèle n'a pas de
+  // case pour eux (texteDuModeHyper, lireModeHyper)
+  modeHyper: 'Mode Hyper',
   donsClasse1: 'Dons de classe 1 (suite)',
   donsClasse2: 'Dons de classe 2 (suite)',
   sorts: 'Sorts (suite)',
@@ -405,6 +408,38 @@ export function lireSortPrepare(texte) {
     if (lisible) return lu;
   }
   return { nom: brut, jet: null, posture: null };
+}
+
+/** Les mots de la ligne « Mode Hyper » de la note (décision R172) : son état, le Mode Hyper 100 %, le compteur de la semaine (« semaine 0/1 »). */
+export const MOTS_DU_MODE_HYPER = Object.freeze({ actif: 'actif', inactif: 'inactif', cent: '100 %', semaine: 'semaine' });
+
+/**
+ * Le Mode Hyper de la fiche dans la note (décision R172) : « actif », « actif, 100 % », « inactif, semaine 0/1 »… (`hyper` : modeHyperDe) ; '' quand il
+ * n'y a rien à noter (inactif, compteur au maximum).
+ */
+export function texteDuModeHyper(hyper) {
+  if (!hyper) return '';
+  const s = hyper.semaine && hyper.semaine.restantes < hyper.semaine.max ? `${MOTS_DU_MODE_HYPER.semaine} ${hyper.semaine.restantes}/${hyper.semaine.max}` : null;
+  if (!hyper.actif && !s) return '';
+  return [hyper.actif ? MOTS_DU_MODE_HYPER.actif : MOTS_DU_MODE_HYPER.inactif, hyper.cent.actif ? MOTS_DU_MODE_HYPER.cent : null, s].filter(Boolean).join(', ');
+}
+
+/**
+ * { mode_hyper, mode_hyper_100, semaine (les utilisations qui restent, ou null : non écrit) } d'un texte de texteDuModeHyper ; null s'il ne se lit pas
+ * en entier.
+ */
+export function lireModeHyper(texte) {
+  const parts = String(texte ?? '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
+  const etat = parts.shift();
+  if (etat !== MOTS_DU_MODE_HYPER.actif && etat !== MOTS_DU_MODE_HYPER.inactif) return null;
+  const lu = { mode_hyper: etat === MOTS_DU_MODE_HYPER.actif ? 1 : 0, mode_hyper_100: 0, semaine: null };
+  for (const part of parts) {
+    const semaine = /^semaine\s+(\d+)\s*(?:\/\s*\d+)?$/.exec(part);
+    if (/^100\s*%$/.test(part) && lu.mode_hyper && !lu.mode_hyper_100) lu.mode_hyper_100 = 1;
+    else if (semaine && lu.semaine === null) lu.semaine = Number(semaine[1]);
+    else return null;
+  }
+  return lu;
 }
 
 /** Un point d'une source de maîtrise pas encore choisi, dans la ligne « Maîtrise d'arme au choix » (comme « → ? » d'un accessoire). */
@@ -1216,6 +1251,7 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
   if (entier(f.nm_mj) > 0) noter(K.nmMj, String(entier(f.nm_mj)));
   const prepare = sortPrepare(regles, f);
   if (prepare) noter(K.sortPrepare, texteDuSortPrepare(prepare));
+  noter(K.modeHyper, texteDuModeHyper(hyper));
   for (const [cle_, valeur] of accessoiresSansCase) noter(cle_, valeur);
   noter(K.donsClasse1, donsEnSuite[1].join(SEPARATEUR_DE_LISTE));
   noter(K.donsClasse2, donsEnSuite[2].join(SEPARATEUR_DE_LISTE));

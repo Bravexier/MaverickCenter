@@ -248,6 +248,8 @@ function ficheRiche() {
   f.livres_sorts = [...f.sorts.filter((x, i) => x.niveau_maitrise >= 1 && i % 3 === 0).map((x) => x.sort_id), enAttente.id].map((sort_id, i) => ({ sort_id, rang: i + 1 }));
   // les NM du MJ, pour toute la fiche (décision R118)
   f.nm_mj = 2;
+  // le Mode Hyper et le Mode Hyper 100 % actifs, l'utilisation de la semaine consommée (décision R172) : dans la note
+  Object.assign(f, { mode_hyper: 1, mode_hyper_100: 1, mode_hyper_semaine: 0 });
   return f;
 }
 

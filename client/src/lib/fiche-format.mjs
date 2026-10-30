@@ -675,6 +675,9 @@ export function ficheVide(nom = '') {
     gains_sante: 0,
     gains_chakra: 0,
     nm_mj: 0,
+    // le Mode Hyper et le Mode Hyper 100 % décochés (décision R172, migration 0084 ; le compteur de la semaine, mode_hyper_semaine, absent : au maximum)
+    mode_hyper: 0,
+    mode_hyper_100: 0,
     ...Object.fromEntries(Object.keys(PARTIES_DE_FICHE).map((cle) => [cle, []])),
   };
 }

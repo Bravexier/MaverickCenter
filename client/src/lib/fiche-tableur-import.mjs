@@ -63,6 +63,7 @@ import {
   famillesMaitrisables, gainsDeNiveau, magieAcquiseValable, maitriseChoixValables, maitriseDArme, maitrisesParFamille, maitriseDesSorts, minimumDeLEmplacement,
   partiesApresReglage, sourcesDeMaitrise,
   armureParPartie, aUnLivre, bouclierDe, jetDuSortPrepare, partiesDeLArmure, sortsDesLivres, refusMagieAcquise, soliditeDuBouclierAEcrire, sortPrepare, trouver, armeDeLaLigne, typesDeDegats,
+  modeHyperDe,
 } from './fiche-moteur.mjs';
 import { coutEnUneCase } from './sort-cout.mjs';
 import { valeurAuNm } from './sort-maitrise.mjs';
@@ -75,7 +76,7 @@ import {
 import {
   ARMURE_COMPLETE, FLECHE, NON, OUI, SEPARATEUR_D_ACCESSOIRE, SEPARATEUR_D_ARMURE, SUITE_DE_LA_CASE, apAmDuBouclier, enChiffres, lireAccessoire, lireChoixDuMetier, lireEffetDAmelioration,
   lireChoixDeMaitrise, lireEffetDArme, lireGains, lireLigneDArmure, lireLigneDeNote, lireListe, lireNiveauDAmelioration, lireNmOfferts, lireObjet, lireSortEnSuite,
-  lireSortPrepare, partiesDeLArme,
+  lireModeHyper, lireSortPrepare, partiesDeLArme,
 } from './fiche-tableur-export.mjs';
 
 /** Message d'un onglet qui ne suit aucune des deux dispositions (dispositionDe). */
@@ -723,6 +724,21 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     const magie = unSeul(retrouver(regles.magies, symbiose), 'Magie de la symbiose', symbiose);
     if (magie && [f.magie_innee_id, f.magie_acquise_id].includes(magie.id)) f.symbiose_magie_id = magie.id;
     else if (magie) perdu(`Magie de la symbiose : « ${symbiose} » n’est pas une magie du personnage`);
+  }
+
+  // ---- le Mode Hyper (décision R172), dans la note : son état, s'il est débloqué au niveau du classeur, et le compteur de la semaine
+  const ecritHyper = notee('modeHyper')[0];
+  if (ecritHyper !== undefined) {
+    const lu = lireModeHyper(ecritHyper);
+    const h = modeHyperDe(regles, f);
+    if (!lu || !h) perdu(`Mode Hyper : « ${ecritHyper} » illisible`);
+    else {
+      if (lu.mode_hyper && !h.debloque) perdu(`Mode Hyper : « ${ecritHyper} » : pas débloqué avant le niveau ${h.niveau}`);
+      else if (lu.mode_hyper_100 && !h.cent.debloque) perdu(`Mode Hyper : « ${ecritHyper} » : le Mode Hyper 100 % n’est pas débloqué avant le niveau ${h.cent.niveau}`);
+      f.mode_hyper = lu.mode_hyper && h.debloque ? 1 : 0;
+      f.mode_hyper_100 = f.mode_hyper && lu.mode_hyper_100 && h.cent.debloque ? 1 : 0;
+      if (lu.semaine !== null && h.semaine) f.mode_hyper_semaine = lu.semaine >= h.semaine.max ? null : lu.semaine;
+    }
   }
 
   // ---- dons de classe : les dons à choix (les autres se déduisent), la spécialité d'après ses dons quand le classeur ne l'écrit pas
