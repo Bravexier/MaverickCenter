@@ -3343,7 +3343,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Moine »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/moine-pas-encore', 'capacites', 'moine-pas-encore', 'Pas encore … (Moine)', 'pas-encore-moine', 'Si coma = Maintenu à 1PV, État « Intuable », +10 dégâts, +4 AP et AM, Insensible à la douleur, Immunisé aux Peurs pendant 2 tours.', '{"classe": "classes/moine", "specialite": "TEMPLIER", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Réaction (1 fois/combat)", "choix_exclusif_avec": ["capacites/moine-toi"]}', 'Si coma = Maintenu à 1PV, État « Intuable », +10 dégâts, +4 AP et AM, Insensible à la douleur, Immunisé aux Peurs pendant 2 tours. Tombe dans le coma une fois terminé.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Moine »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/moine-prend-ca', 'capacites', 'moine-prend-ca', 'Prends ça … (Moine)', 'prends-ca-moine', 'Donne +5% à la réussite critique pour la prochaine attaque.', '{"classe": "classes/moine", "specialite": "MOINE GUERRIER", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Actif (3 fois/combat)", "choix_exclusif_avec": ["capacites/moine-dans-ta-face"]}', 'Donne +5% à la réussite critique pour la prochaine attaque.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/moine-prend-ca', 'capacites', 'moine-prend-ca', 'Prends ça … (Moine)', 'prends-ca-moine', 'Donne +5% à la réussite critique pour la prochaine attaque. C''est un IC.', '{"classe": "classes/moine", "specialite": "MOINE GUERRIER", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Actif (3 fois/combat)", "choix_exclusif_avec": ["capacites/moine-dans-ta-face"]}', 'Donne +5% à la réussite critique pour la prochaine attaque. C''est un IC.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Moine »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/moine-reste-en-vie', 'capacites', 'moine-reste-en-vie', 'Reste en vie … (Moine)', 'reste-en-vie-moine', 'Les attaques infligent +2 de dégâts et sont capables d''être non-létales.', '{"classe": "classes/moine", "niveau": 1, "nature": "classe", "rang": 1, "ligne": 4, "type_capacite": "Passif"}', 'Les attaques infligent +2 de dégâts et sont capables d''être non-létales.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Moine »');
@@ -5884,6 +5884,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 - On lance un **D100** : un résultat **égal ou inférieur au score**, c’est réussi.
 - **Score** = 10 × la caractéristique + les points naturels + les points acquis.
 - **1 à 5** : réussite critique. **96 à 100** : échec critique.
+- **Au-delà de 95 %**, le score du moment (posture comprise) élargit la réussite critique, sur tout jet : de 96 à 102 %, +2 % ; à partir de 103 %, +5 % au total. Toutes sources ensemble, la réussite critique ne dépasse jamais **1 à 15**.
 - Les points acquis ne dépassent pas **5 par point de la caractéristique**, le +1 de la magie innée compris, sauf don qui relève ce plafond.
 - **Une croix** sous une caractéristique : −20 % à tous ses jets. **Deux croix** : ni elle ni ses compétences ne sont plus utilisables.
 
@@ -5914,7 +5915,7 @@ Le détail : [[guide/le-tour-de-jeu|Le tour de jeu]] ; pour le MJ, [[guide/en-re
 - **Échec critique** : la cible peut riposter par une attaque d’opportunité, ou désarmer l’attaquant.
 - **Une arme de mêlée dans chaque main** : −20 % pour la main directrice, −40 % pour la main secondaire ; ce malus est divisé par deux pour la main qui tient une dague, et par deux pour un Bimane, les deux se cumulant.
 - **Viser la tête, un bras ou une jambe** : un malus pour toucher et un effet en plus, propres à la zone (voir le tableau « Localisation des dégâts » de [[guide/attaque-et-defense|Attaque et Défense]]).
-- **La prise en tenaille** (des alliés sur des cases opposées) : +4 aux dégâts à deux, +4 encore à trois ; à quatre, en plus, +5 % de réussite critique pour les alliés et −10 % au jet de défense de la cible.
+- **La prise en tenaille** (des alliés sur des cases opposées) : +4 aux dégâts à deux, +4 encore à trois ; à quatre, en plus, +5 % de réussite critique pour les alliés (jamais au-delà de 1 à 15) et −10 % au jet de défense de la cible.
 - **L’attaque discrète** : un dé de dégâts en plus.
 - **L’attaque d’opportunité** : une par tour et par joueur (sauf don qui en permet plus), et seulement une action simple (une arme déjà dégainée et à portée, ou un sort d’attaque) ; sa victime ne peut parer ou esquiver qu’en posture défensive.
 
@@ -5960,7 +5961,7 @@ Le détail : [[guide/les-degats|Les dégâts]] ; le texte d’origine : [[guide/
 
 Chacun déclare sa posture au début de son tour, avant tout le reste. Elle dit aussi s’il pourra parer ou esquiver, et combien de fois.
 
-- **Offensif** : des dégâts au maximum et une réussite critique élargie ; un malus pour toucher, ni parade ni esquive.
+- **Offensif** : des dégâts au maximum et une réussite critique élargie sur les six jets d’attaque (*Concentration* comprise) ; un malus pour toucher, ni parade ni esquive.
 - **Défensif** : plus d’AP et d’AM ; des défenses sans limite, de plus en plus difficiles ; la Provocation et l’Intervention ; une réussite critique élargie en défense ; c’est la seule posture qui permet de parer ou d’esquiver une attaque d’opportunité. En échange, les dégâts que l’on inflige sont divisés par 2.
 - **Neutre** : un bonus aux jets de Social et de Volonté ; un nombre limité de défenses.
 - **Focus** : un bonus à la réussite de tous les jets, plus de tour de charge, des dés de sorts plus forts ; ni parade ni esquive.
@@ -6194,7 +6195,7 @@ L’attaquant lance un D100 et doit faire son score ou moins dans la compétence
 
 Deux résultats sortent de l’ordinaire :
 
-- **Réussite critique (1 à 5)** : les dégâts de base sont doublés, et la cible ne peut bloquer le coup que par une réussite critique meilleure que celle de l’attaquant.
+- **Réussite critique (1 à 5)** : les dégâts de base sont doublés, et la cible ne peut bloquer le coup que par une réussite critique meilleure que celle de l’attaquant. La posture offensive l’élargit à 1 à 10 sur les six jets d’attaque, *Concentration* comprise ; d’autres bonus (un score au-delà de 95 %, un don, un sort, la tenaille…) l’élargissent encore, sans jamais dépasser 1 à 15 (voir [[guide/reussir-une-action|Réussir une action]]).
 - **Échec critique (96 à 100)** : la cible peut riposter par une attaque d’opportunité, ou désarmer l’attaquant si c’est possible ; le MJ peut aussi en décider autrement.
 
 ### La portée
@@ -6237,7 +6238,7 @@ C’est un jet de D100, possible seulement si sa posture le permet et qu’il lu
 
 Là encore, les critiques changent tout :
 
-- **Réussite critique en défense** : une contre-attaque est possible, ou désarmer l’adversaire ; le MJ peut aussi imaginer autre chose. La posture défensive l’élargit (voir [[guide/les-postures|Les postures]]).
+- **Réussite critique en défense** : une contre-attaque est possible, ou désarmer l’adversaire ; le MJ peut aussi imaginer autre chose. La posture défensive l’élargit, jamais au-delà de 1 à 15 (voir [[guide/les-postures|Les postures]]).
 - **Échec critique en défense** : l’AP et l’AM de la cible ne comptent pas, et l’attaquant ajoute +8 à ses dégâts (ou autre chose, au choix du MJ).
 
 ### Combien de défenses par tour ?
@@ -6265,7 +6266,7 @@ Viser la tête, un bras ou une jambe plutôt que le corps est plus difficile : c
 
 Le détail de chacune est dans [[guide/situations-avancees|Les situations avancées]].
 
-- **La prise en tenaille.** Un ennemi encerclé au corps à corps par des alliés placés sur des cases opposées (devant et derrière, ou à gauche et à droite) est en tenaille : à deux, +4 aux dégâts ; à trois, encore +4 ; à quatre, en plus, +5 % de réussite critique pour les alliés et −10 % au jet de défense de la cible. Les effets se cumulent.
+- **La prise en tenaille.** Un ennemi encerclé au corps à corps par des alliés placés sur des cases opposées (devant et derrière, ou à gauche et à droite) est en tenaille : à deux, +4 aux dégâts ; à trois, encore +4 ; à quatre, en plus, +5 % de réussite critique pour les alliés (jamais au-delà de 1 à 15) et −10 % au jet de défense de la cible. Les effets se cumulent.
 - **L’attaque d’opportunité.** Une attaque offerte quand un adversaire rate son attaque contre vous sur un échec critique, quand il sort de votre zone d’influence (sauf si c’est vous qui l’y forcez), ou quand un don de votre classe le permet. Une seule par tour et par joueur, sauf don qui en permet plus. Ce doit être une action simple : un coup avec une arme déjà dégainée et à portée, ou un sort d’attaque ; pas de sort qui n’attaque pas, de sort de niveau 5, de déplacement, de potion ni d’arme à dégainer. Sa victime ne peut ni parer ni esquiver, sauf en posture défensive.
 - **L’attaque discrète.** Frapper une cible qui ne vous voit pas venir ajoute un dé aux dégâts (2d6 à la dague deviennent 3d6). Il faut passer en mode discret (trois actions rapides, deux pour un [[classes/voleur|voleur]]), réussir un jet de *Ruse*, et qu’aucun ennemi ne vous voie clairement. La cible tente alors un jet d’*Observation* ou de *Distinction* : si elle fait mieux que votre jet de discrétion, la discrétion est perdue, et le dé en plus avec elle. À ne pas confondre avec l’attaque sournoise, qui vient d’une classe.
 - **L’embuscade.** Vous consommez l’action de votre tour pour attendre un ennemi, et lui porter une attaque d’opportunité dès qu’il entre dans la zone voulue : à une distance égale à la vitesse divisée par 2 avec une arme de corps à corps (on fonce alors sur lui), à la portée de l’arme avec une arme à distance, à la portée du sort avec la magie. Posture, déplacement et actions rapides restent possibles pendant ce tour. Contrairement aux autres attaques d’opportunité, la victime d’une embuscade peut parer ou esquiver ; et la posture de vigilance déjoue l’embuscade.
@@ -8223,7 +8224,7 @@ Le tableau de la fiche de personnage (survolez le nom d’une posture pour la d�
 La posture de l’attaque : pour frapper et faire le plus de dégâts possible.
 
 - **Dégâts au maximum**, avec les armes comme avec les sorts : on ne lance pas les dés, on prend leur maximum. 2d6+2 font 14 ; 6d6+4 font 40.
-- **Réussite critique à 10 ou moins** au lieu de 5.
+- **Réussite critique à 10 ou moins** au lieu de 5, sur les six jets d’attaque : *Arc*, *Arbalète*, *Arme Légère*, *Arme Lourde*, *Magie* et *Concentration* (*Concentration* comprise, bien que le malus pour toucher ne la touche pas). Avec les autres bonus (un score au-delà de 95 %, un don, un sort…), elle ne dépasse jamais 1 à 15 (voir [[guide/reussir-une-action|Réussir une action]]).
 - *Inconvénient* : **−10 % pour toucher la cible**. Sur la fiche, ce malus s’applique aux compétences d’attaque : *Arc*, *Arbalète*, *Arme Légère*, *Arme Lourde* et *Magie*.
 - *Inconvénient* : **ni parade ni esquive**.
 
@@ -8235,7 +8236,7 @@ La posture de l’attaque : pour frapper et faire le plus de dégâts possible.
 - **Parades et esquives sans limite** : autant de défenses qu’il y a de coups, mais chacune fait baisser de 10 % la réussite de la suivante. Le Doc « Créer sa fiche de personnage » compte ce malus dès la première défense ; le [[guide/guide-pour-mj-maverick|Doc « Guide pour MJ »]] seulement au-delà de deux.
 - **Provocation** : en échange d’un bon dialogue et d’un jet réussi de *Diplomatie*, d’*Intimidation* ou de *Manipulation*, un adversaire est obligé de n’attaquer que vous pendant 1 tour. (Le Doc « Guide pour MJ » se contente du dialogue **ou** du jet.)
 - **Intervention** : parer ou esquiver un coup à la place d’un allié adjacent. Ce n’est pas possible si vous êtes tous les deux pris dans la même attaque de zone.
-- **Réussite critique à 10 ou moins** quand vous parez ou esquivez.
+- **Réussite critique à 10 ou moins** quand vous parez ou esquivez ; toutes sources ensemble, elle ne dépasse jamais 1 à 15.
 - **Contre une attaque d’opportunité**, seule la posture défensive permet de parer ou d’esquiver.
 - *Inconvénient* : **vos dégâts sont divisés par 2**, avec les armes comme avec la magie. La division se fait avant de retirer l’armure de la cible (voir [[guide/les-degats|Les dégâts]]).
 
@@ -8286,7 +8287,7 @@ Les boss, pensés pour affronter une équipe de quatre joueurs, se défendent da
 
 ## Le Mode Hyper 100 %
 
-À partir du niveau 10, le Mode Hyper 100 % **active toutes les postures à la fois, sans aucun de leurs inconvénients**, pendant 3 tours (voir [[guide/le-mode-hyper|Le Mode Hyper]]).
+À partir du niveau 10, le Mode Hyper 100 % **active toutes les postures à la fois, sans aucun de leurs inconvénients**, pendant 3 tours (voir [[guide/le-mode-hyper|Le Mode Hyper]]). Même alors, la réussite critique ne dépasse jamais 1 à 15.
 
 ## Sur la fiche
 
@@ -8411,7 +8412,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 - {{recharge-tres-longue:}} Une propriété de certaines [armes](/ressources/equipement/#armes).
 - **Remède** : une potion contre une altération d’état. Le mineur la réduit d’un cran, le majeur de deux, le parfait la soigne entièrement ([[guide/blessures-et-etats|Blessures et états]]).
 - **Résistance**, **faiblesse** (ou vulnérabilité) : ce qui fait prendre deux fois moins de dégâts d’une magie, ou deux fois plus. Elles se comptent en crans qui s’additionnent : deux résistances à la même magie font une grande résistance, deux faiblesses une grande vulnérabilité, une résistance et une faiblesse s’annulent. L’armure, elle, résiste ou est faible à des types de coups physiques ([[guide/les-degats|Les dégâts]]).
-- **Réussite critique** (RC) : un résultat de 1 à 5 au D100. L’action réussit de façon exceptionnelle : en attaque, les dégâts de base sont doublés ([[guide/reussir-une-action|Réussir une action]]).
+- **Réussite critique** (RC) : un résultat de 1 à 5 au D100, que des bonus élargissent (posture, score au-delà de 95 %, dons, sorts…), jamais au-delà de 1 à 15. L’action réussit de façon exceptionnelle : en attaque, les dégâts de base sont doublés ([[guide/reussir-une-action|Réussir une action]]).
 
 ## S
 
@@ -8794,7 +8795,7 @@ Le Mode Hyper 100% n''est disponible qu''au niveau 10 de personnage.
 | Terre | L''armure physique (AP) de base augmente de 25. | L''armure physique (AP) de base augmente de 10. |
 | Vent | Chaque attaque physique libère une lame de vent blanche qui inflige 1d6/NPM de dégâts qui va ignorer les AP et AM sur 8 cases de distance. Dégâts non élémentaires. | Chaque attaque physique libère une lame de vent blanche qui inflige 1d6/NPM de dégâts sur 6 cases de distance. Dégâts non élémentaires. |
 | Foudre | Toutes les attaques physiques de contact sont enchaînées d''un éclair blanc qui inflige 1d8/NPM de dégâts qui va ignorer les AM et AP. Dégâts non élémentaires. | Toutes les attaques physiques de contact sont enchaînées d''un éclair blanc qui inflige 1d8/NPM de dégâts. Dégâts non élémentaires. |
-| Lumière | Les soins et les protections deviennent des IC le temps du mode hyper (sauf les sorts niveau de puissance 5). | Chaque tour, un soin ou une protection est un IC (seulement le premier IC). (sauf les sorts niveau de puissance 5). |
+| Lumière | Les soins, les protections et les amplifications deviennent des IC le temps du mode hyper (sauf les sorts niveau de puissance 5). | Chaque tour, un soin, une protection ou une amplification est un IC (seulement le premier IC). (sauf les sorts niveau de puissance 5). |
 | Ombre | Les sorts entraves deviennent des IC le temps du mode hyper (sauf les sorts niveau de puissance 5). | Chaque tour, une entrave est un IC (seulement le premier IC). (sauf les sorts niveau de puissance 5). |
 
 ## Effets selon la race
@@ -9371,6 +9372,10 @@ Chaque compétence a un **score**, en pourcentage, noté sur la fiche de personn
 
 *Exemple : un personnage a 3 en Perception, 15 points naturels et 5 points acquis en Observation. Son score d’Observation est de 3 × 10 + 15 + 5 = 50 % : il réussit sur un résultat de 50 ou moins.*
 
+Un score peut dépasser 95 %. Au-delà de 95 %, le surplus élargit la réussite critique : de 96 à 102 %, +2 % ; à partir de 103 %, +5 % au total. Le score compté est celui du moment, posture comprise, et ce bonus vaut sur tout jet, quelle que soit la posture.
+
+*Exemple : en posture offensive, un score de 113 % en Arme Lourde descend à 103 % (−10 % pour toucher) : la réussite critique gagne +5 %, et encore +5 % pour la posture, soit de 1 à 15.*
+
 ## Les quatre résultats
 
 Un jet a quatre issues : la **réussite**, l’**échec**, la **réussite critique** et l’**échec critique**. Les deux dernières sont rares, et elles comptent.
@@ -9384,7 +9389,9 @@ L’action réussit de façon exceptionnelle, et mérite une récompense à sa m
 - **en défense**, le personnage peut contre-attaquer ou désarmer son adversaire ;
 - **hors combat**, le MJ décide de ce qu’elle apporte : les situations sont trop nombreuses pour une règle.
 
-Certaines postures de combat élargissent la réussite critique : la posture offensive pour attaquer, la posture défensive pour parer ou esquiver (le détail est dans [[guide/les-postures|Les postures]]). Prendre un ennemi en tenaille à quatre donne aussi +5 % de réussite critique aux alliés.
+Certaines postures de combat élargissent la réussite critique : la posture offensive pour les six jets d’attaque (*Arc*, *Arbalète*, *Arme Légère*, *Arme Lourde*, *Magie* et *Concentration*), la posture défensive pour parer ou esquiver (le détail est dans [[guide/les-postures|Les postures]]). Prendre un ennemi en tenaille à quatre donne aussi +5 % de réussite critique aux alliés. Un score au-delà de 95 % l’élargit encore (voir « Le score » plus haut), comme certains dons, sorts, armes et accessoires.
+
+Mais **la réussite critique ne dépasse jamais 1 à 15, toutes sources ensemble** (posture, score, dons, sorts, armes, accessoires, tenaille).
 
 Une réussite critique ne rend pas tout possible : certaines actions restent impossibles, quels que soient les efforts. Le MJ peut toutefois laisser tenter une action normalement irréalisable, mais encore possible en théorie : elle ne réussira alors que sur une réussite critique. Il reste seul juge de ce qui est possible, improbable ou impossible.
 
@@ -9504,6 +9511,8 @@ Si l''ennemi est encerclé par des joueurs ou PNJ alliés au corps à corps à d
 - Avec 4 joueurs : +5% à la réussite critique pour les alliés et -10% au jet de défense de la cible.
 
 Bien entendu, les effets se cumulent.
+
+La réussite critique ne dépasse jamais 1 à 15, toutes sources ensemble, tenaille comprise (décision R180 ; voir [[guide/reussir-une-action|Réussir une action]]).
 
 ## Le déplacement ou la sortie de la zone d''influence
 
@@ -18929,7 +18938,7 @@ Les utilisateurs de la foudre ont les mèches jaunes, les yeux jaunes lors de l'
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1.0 | Éclair | Attaque | 4.0 | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Une simple attaque de Foudre. 3NM = Sur un coup critique, force le jet de vigueur pour ne pas prendre paralysie 1. |
 | 1.0 | Contact de Volt | Attaque<br>(Imparable) | 4.0 | 5.0 | 1.0 | 1d8 dégâts (+2/NM) | Un sort qui se propage aux adversaires au contact de la cible et inflige +2 dégâts par cible touchée. |
-| 1.0 | Affûtage | Amplification<br>(IC) | 2.0 | 1.0 | 1.0 | / | Permet d''augmenter la réussite critique de 2% (+1/NM) à la prochaine attaque avec une arme. |
+| 1.0 | Affûtage | Amplification<br>(IC) | 4.0 | 1.0 | 1.0 | / | Permet d''augmenter la réussite critique de 2% (+1/NM) à la prochaine attaque avec une arme. |
 | 1.0 | Nerveux | Amplification (IC pour 3 NM) | 3.0 | 1.0 | 1.0 | +2 INI (+1/NM) | Augmente l''initiative au prochain tour. |
 | 1.0 | Tazeur | Attaque/ Entrave | 5.0 | 1.0 | 1.0 | 2d4 dégâts (+2/NM) | Si jet de fermeté raté = Inflige "Couardise" |
 | 2.0 | Fer Foudroyant | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Charge l''arme en électricité : pendant 3 tours, ses attaques infligent des dégâts de foudre. |
@@ -19132,8 +19141,8 @@ Les utilisateurs de la Lumière ont des cheveux avec les mèches beiges, les yeu
 
 | Type | Effets |
 | --- | --- |
-| Mono-Magie | Les soins et les protections deviennent des IC le temps du mode hyper (sauf les sorts niveau de puissance 5). |
-| Bi-magie | Chaque tour, un soin ou une protection est un IC (seulement le premier IC). (sauf les sorts niveau de puissance 5). |
+| Mono-Magie | Les soins, les protections et les amplifications deviennent des IC le temps du mode hyper (sauf les sorts niveau de puissance 5). |
+| Bi-magie | Chaque tour, un soin, une protection ou une amplification est un IC (seulement le premier IC). (sauf les sorts niveau de puissance 5). |
 
 ## Rôles
 

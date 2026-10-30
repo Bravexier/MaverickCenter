@@ -1,6 +1,6 @@
 # Aperçu du schéma de la base
 
-> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 203 tables, 2 tables de recherche, 38 vues.
+> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 204 tables, 2 tables de recherche, 38 vues.
 > Ce qui reste à trancher sur le **contenu** (pas sur la forme) est dans [`a-valider.md`](a-valider.md).
 
 **Lecture des colonnes** : **gras** = clé primaire ; `→table` = clé étrangère vers cette table ; `?` = peut être absente (`NULL`, jamais une valeur inventée) ; `+provenance` = `origine` (famille d'import) et `source_ref` (classeur › onglet › plage). Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté.
@@ -32,7 +32,7 @@
 
 ## 2. RÈGLES DE LA FICHE : caractéristiques, compétences, niveaux, constantes, postures (famille « fiche »)
 
-**Relations dans cette section** : `competence→caracteristique`, `niveau_deblocage→niveau_global`, `posture_effet→posture`
+**Relations dans cette section** : `competence→caracteristique`, `niveau_deblocage→niveau_global`, `posture_critique→competence`, `posture_critique→posture`, `posture_effet→posture`
 
 **Vers d'autres sections** : `regle_constante→page (§1)`
 
@@ -49,6 +49,7 @@
 | `type_don` | Les quatre types de don (guide « Capacités/Don »). | **id**, nom, definition, ordre, remarque?, +provenance |
 | `posture` | ▸ POSTURES DE COMBAT Six postures. | **id**, nom, ordre, libelle_fiche, description, remarque?, +provenance |
 | `posture_effet` |  | **posture_id**→posture, **version**, **rang**, intitule?, texte, inconvenient?, +provenance |
+| `posture_critique` | Jets sur lesquels compte un bonus de réussite critique lié à une posture (décision R180, migration 0087). | **posture_id**→posture, **bonus**, **competence_id**→competence |
 
 ## 3. MAGIES ET SORTS (famille « magies »)
 

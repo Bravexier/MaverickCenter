@@ -1551,7 +1551,7 @@ INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/aide-memoire'
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/aide-memoire', 17, 'ref:google-sheet-mode-hyper-et-co-onglet-mode-super');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/aide-memoire', 18, 'ref:google-doc-metier');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/aide-memoire', 19, 'google-doc:1EK51ZTpXfzZNhRm-uINaRqkMz_RjBW0r-wir4pAg6uc');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/aide-memoire', 20, 'ref:decisions-du-proprietaire-r2-r3-r4-r5-r6-r7-r18-r19-r24-r26-r27-r33-r34-r35-r37-r41-r44-r46-r47-r48-r49-r54-r73-r74-r78-r82-r85-r88-r89-r92-r95-r96-r97-r98-r100-r102-r103-r104-r165-r166-et-r167-docs-decisions-regles-md');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/aide-memoire', 20, 'ref:decisions-du-proprietaire-r2-r3-r4-r5-r6-r7-r18-r19-r24-r26-r27-r33-r34-r35-r37-r41-r44-r46-r47-r48-r49-r54-r73-r74-r78-r82-r85-r88-r89-r92-r95-r96-r97-r98-r100-r102-r103-r104-r165-r166-r167-et-r180-docs-decisions-regles-md');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/alignement', 0, 'ref:google-doc-regle-du-jeu-guide-pour-mj-maverick');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/alignement', 1, 'google-doc:17VxGUwjzEZWElwIYVaXvaaumqFM4yKnO1C7uhVyc9iM');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/alterations-d-etats-et-mode-hyper', 0, 'ref:google-doc-regle-du-jeu-guide-pour-mj-maverick');
@@ -1564,7 +1564,7 @@ INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/attaquer-et-s
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/attaquer-et-se-defendre', 3, 'google-doc:1PMmFVmKZspSTXJp-y_on5LoprFu_KHxCp34a9kSTFgA');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/attaquer-et-se-defendre', 4, 'ref:google-sheet-ressources-et-craft');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/attaquer-et-se-defendre', 5, 'google-sheet:1KkOG6FYjIf62Y_xLQxIE8aQTZFLlKPXmCB9e7XU3-vw');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/attaquer-et-se-defendre', 6, 'ref:decisions-du-proprietaire-r46-r48-r50-et-r96-docs-decisions-regles-md');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/attaquer-et-se-defendre', 6, 'ref:decisions-du-proprietaire-r46-r48-r50-r96-et-r180-docs-decisions-regles-md');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/bienvenue', 0, 'ref:google-doc-regle-du-jeu-guide-pour-mj-maverick');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/bienvenue', 1, 'google-doc:17VxGUwjzEZWElwIYVaXvaaumqFM4yKnO1C7uhVyc9iM');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/bienvenue', 2, 'ref:texte-daccueil-ecrit-par-le-proprietaire-du-projet');
@@ -1746,7 +1746,7 @@ INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/les-postures'
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/les-postures', 5, 'google-sheet:1tDuJpoVVqMtRXBi0WKgH6lwzdQXVdNWPZVLFbdbFqY0');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/les-postures', 6, 'ref:google-sheet-mode-hyper-et-co-onglet-mode-hyper');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/les-postures', 7, 'google-sheet:1AjQyT-IZMULq6FlgnmVmn2QiQ9AWhhbOgjr-COgMyMo');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/les-postures', 8, 'ref:decisions-du-proprietaire-r47-r100-r112-et-r167-docs-decisions-regles-md');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/les-postures', 8, 'ref:decisions-du-proprietaire-r47-r100-r112-r167-et-r180-docs-decisions-regles-md');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/lexique', 0, 'ref:google-doc-creer-sa-fiche-de-personnage');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/lexique', 1, 'google-doc:1PMmFVmKZspSTXJp-y_on5LoprFu_KHxCp34a9kSTFgA');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/lexique', 2, 'ref:google-doc-regle-du-jeu-guide-pour-mj-maverick');
@@ -1771,11 +1771,12 @@ INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/lexique', 20,
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/lexique', 21, 'google-doc:1Lv6pMUx4aaVUTot2tYFl17de1FtxmVbJUlnBXo0J20s');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/lexique', 22, 'ref:calcul-du-score-confirme-par-le-proprietaire-du-projet');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/lexique', 23, 'ref:fiche-de-personnage-du-site-docs-character-generator-md');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/lexique', 24, 'ref:decisions-du-proprietaire-r2-r3-r6-r7-r14-r16-r18-r19-r24-r26-r27-r33-r34-r35-r37-r41-r43-r44-r49-r50-r53-r61-r63-r76-r77-r78-r85-r89-r92-r95-r96-r98-r99-r103-r104-et-r105-docs-decisions-regles-md');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/lexique', 24, 'ref:decisions-du-proprietaire-r2-r3-r6-r7-r14-r16-r18-r19-r24-r26-r27-r33-r34-r35-r37-r41-r43-r44-r49-r50-r53-r61-r63-r76-r77-r78-r85-r89-r92-r95-r96-r98-r99-r103-r104-r105-et-r180-docs-decisions-regles-md');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/liste-des-alterations-d-etat', 0, 'ref:google-sheet-magie-maverick-v8-onglet-alteration-detats');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/liste-des-alterations-d-etat', 1, 'google-sheet:1fF2buZjbCm3xdQ-Qa8vRecxj03do3hsE8_k_cfYnIR0');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/liste-des-effets-mode-hyper', 0, 'ref:google-sheet-mode-hyper-et-co-onglet-mode-hyper');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/liste-des-effets-mode-hyper', 1, 'google-sheet:1AjQyT-IZMULq6FlgnmVmn2QiQ9AWhhbOgjr-COgMyMo');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/liste-des-effets-mode-hyper', 2, 'ref:decision-du-proprietaire-r180-docs-decisions-regles-md');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/liste-des-effets-mode-super', 0, 'ref:google-sheet-mode-hyper-et-co-onglet-mode-super');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/liste-des-effets-mode-super', 1, 'google-sheet:1AjQyT-IZMULq6FlgnmVmn2QiQ9AWhhbOgjr-COgMyMo');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/meteo', 0, 'ref:google-sheet-magie-maverick-v8-onglet-meteo');
@@ -1804,7 +1805,7 @@ INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/reussir-une-a
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/reussir-une-action', 4, 'ref:google-sheet-fiche-personnage-maverick-auto-v15-2-2-onglet-personnage');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/reussir-une-action', 5, 'google-sheet:1tDuJpoVVqMtRXBi0WKgH6lwzdQXVdNWPZVLFbdbFqY0');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/reussir-une-action', 6, 'ref:calcul-du-score-confirme-par-le-proprietaire-du-projet');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/reussir-une-action', 7, 'ref:decisions-du-proprietaire-r19-r41-et-r104-docs-decisions-regles-md');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/reussir-une-action', 7, 'ref:decisions-du-proprietaire-r19-r41-r104-et-r180-docs-decisions-regles-md');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/s-entrainer-et-exercer-un-metier', 0, 'ref:google-doc-creer-sa-fiche-de-personnage');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/s-entrainer-et-exercer-un-metier', 1, 'google-doc:1PMmFVmKZspSTXJp-y_on5LoprFu_KHxCp34a9kSTFgA');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/s-entrainer-et-exercer-un-metier', 2, 'ref:google-doc-metier');
@@ -1814,6 +1815,7 @@ INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/s-entrainer-e
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/s-entrainer-et-exercer-un-metier', 6, 'ref:decisions-du-proprietaire-r19-r26-r33-a-r41-et-r104-docs-decisions-regles-md');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/situations-avancees', 0, 'ref:google-doc-regle-du-jeu-guide-pour-mj-maverick');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/situations-avancees', 1, 'google-doc:17VxGUwjzEZWElwIYVaXvaaumqFM4yKnO1C7uhVyc9iM');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/situations-avancees', 2, 'ref:decision-du-proprietaire-r180-docs-decisions-regles-md');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/un-maitre-du-jeu', 0, 'ref:google-doc-regle-du-jeu-guide-pour-mj-maverick');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/un-maitre-du-jeu', 1, 'google-doc:17VxGUwjzEZWElwIYVaXvaaumqFM4yKnO1C7uhVyc9iM');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/utiliser-ce-wiki', 0, 'ref:page-de-demonstration-a-remplacer');

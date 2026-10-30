@@ -27,10 +27,11 @@ test('posture-texte (R100) : chaque ligne du tableau des postures de la fiche es
   const lues = Object.fromEntries(lignes("SELECT posture_id, rang, texte FROM posture_effet WHERE version = 'fiche' ORDER BY posture_id, rang")
     .map((l) => [`${l.posture_id.split(':')[1]}:${l.rang}`, effetDePosture(l.texte)?.cible ?? null]));
   assert.deepEqual(lues, {
-    'defensif:1': null, 'defensif:2': 'armure', 'defensif:3': null, 'defensif:4': null, 'defensif:5': null, 'defensif:6': 'degats_diviseur',
+    // « +5% à la RC à la défense » (Défensif) et « +5% à la réussite critique » (Offensif) : la réussite critique (décision R180, test/fiche-critique.test.mjs)
+    'defensif:1': null, 'defensif:2': 'armure', 'defensif:3': null, 'defensif:4': null, 'defensif:5': 'critique', 'defensif:6': 'degats_diviseur',
     'focus:1': 'competences', 'focus:2': 'cran_des_sorts', 'focus:3': null, 'focus:4': null,
     'neutre:1': 'competences', 'neutre:2': null,
-    'offensif:1': 'degats_maximum', 'offensif:2': null, 'offensif:3': 'competences', 'offensif:4': null,
+    'offensif:1': 'degats_maximum', 'offensif:2': 'critique', 'offensif:3': 'competences', 'offensif:4': null,
     'symbiose:1': 'symbiose_sorts', 'symbiose:2': 'symbiose_am', 'symbiose:3': 'symbiose_immunite', 'symbiose:4': 'armes_inutilisables', 'symbiose:5': null, 'symbiose:6': 'une_seule_magie',
     'vigilance:1': 'competences', 'vigilance:2': 'initiative', 'vigilance:3': null, 'vigilance:4': null, 'vigilance:5': null, 'vigilance:6': null,
   });

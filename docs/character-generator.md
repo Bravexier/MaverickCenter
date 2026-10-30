@@ -404,6 +404,20 @@ bouton (au-dessus quand la place manque), bornée à l'écran, téléphone compr
   ou la falsification de documents (au MJ : R123) n'est pas compté : listé sous « Bonus d'acquis non comptés », avec sa raison. « Son acquis max en Social
   est augmenté de +20 » (Mort-vivant, « Trompe-mort ») relève le plafond de chaque compétence du Social (`plafondBonus`, décision R125 : 25, le Social
   verrouillé à 1 ; 30 avec le Feu ou l'Eau inné).
+  **Réussite critique** (décision R180) : chaque compétence porte son bonus de réussite critique **du moment** (`competencesDe` : `critique`,
+  `critiqueDe` ; null à deux croix), en infobulle du score dès qu'il n'est pas nul (`lignesDuCritique` : le total et la plage, « Réussite critique :
+  +10 % (1 à 15) », une ligne par origine, « +5 % (score de 103 % et plus) », « +5 % (posture Offensif) », « +5 % (Sci du Crit) », « +1 % (Accessoire :
+  Collier) », et « Plafond : +16 % ramené à +10 % (jamais plus de 1 à 15) » quand le plafond rogne). Les origines : le **palier**, lu sur le score du
+  moment (posture comprise : 113 en Offensif donne 103), de 96 à 102 % +2, à partir de 103 % +5 au total, sans borne haute, sur tout jet ; la
+  **posture** (ci-dessous, « Posture du moment ») ; un **don de posture** acquis, passif, dont le texte s'ouvre sur « (Posture X) » et écrit « Augmente
+  la réussite critique de +N% » (`lib/critique-texte.mjs#critiqueDuDon`, jamais par le nom : aujourd'hui Sci du Crit, Martiale, Héros), quand X est la
+  posture du moment ou au Mode Hyper 100 %, sur les compétences (X, `don_de_posture`) de `posture_critique` (les six jets de l'Offensif, choix
+  provisoire, Q90) ; un **accessoire** porté « Augmente la réussite critique de N%, peu importe le jet. » (`critiqueDeLAccessoire`), sur toutes les
+  compétences (maudit : l'effet contraire, R54). Le total est **plafonné** pour que la base (5) plus le bonus ne dépasse pas 15. Les nombres viennent des
+  constantes `critique.*` de `regle_constante` (`regles.constantes`), les compétences de `posture_critique` (`regles.postures[].critique`), jamais du code.
+  **Ne sont pas comptés** (R128, Q88 : « Seulement ce qui joue en permanence ») : les sorts « à la prochaine attaque », les dons actifs (Tout ou rien,
+  Prends ça …, Coup mortel), l'arme utilisée, la tenaille, une situation (milieu urbain, vol à la tire, soins, divinité) ; `lib/acquis-texte.mjs` écarte
+  toujours la réussite critique des acquis. `score`, `scoreDuMoment` et le tableur ne changent pas (`test/fiche-critique.test.mjs`).
 - **Maîtrises d'armes** (décision R148, variante A de la maquette retenue par le propriétaire, « Bloc des sources » : « tous les choix dans le bloc
   Maîtrises, une carte par source, à côté du tableau calculé par famille ») : rien ne se saisit par famille, plus de curseur ni de quota. Le bloc est dans
   l'onglet « Choix » de la zone 4, sur toute la largeur du panneau, sous ses deux colonnes (demande du propriétaire du 2026-10-23), donc aussi dans le
@@ -687,7 +701,10 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   son volet armure ne change pas.
 - **Posture du moment** (décision R100) : la posture cochée recalcule ce que son tableau chiffre (`lib/posture-texte.mjs`, `postureDuMoment`) — le
   score du moment des compétences (`scoreDuMoment` : Neutre +5 Social et Volonté, Focus +10 partout, Vigilance +5 Perception, Offensif −10 aux
-  compétences d'attaque ; en vert ou en rouge, le détail en infobulle), l'initiative (Vigilance +2), l'AP et l'AM (Défensif 2 × ⌈N ÷ 4⌉, Symbiose AM
+  compétences d'attaque ; en vert ou en rouge, le détail en infobulle), la réussite critique (décision R180 : « +5% à la réussite critique » de
+  l'Offensif sur Arc, Arbalète, Arme légère, Arme lourde, Magie et Concentration — Concentration sans le −10 —, « +5% à la RC à la défense » du
+  Défensif sur Esquive et Parade, les deux au Mode Hyper 100 % ; les compétences de `posture_critique`, `bonus = 'posture'` ; `postureDuMoment` :
+  `critique`, `critiqueDesDons` ; détail plus haut, « Caractéristiques »), l'initiative (Vigilance +2), l'AP et l'AM (Défensif 2 × ⌈N ÷ 4⌉, Symbiose AM
   +4 +2 par puissance magique au-delà de la première), les dégâts des armes (`degatsDArmeDuMoment` : Offensif le maximum, « 6D6+4 » → « 40 » ;
   Défensif « ÷ 2 » ; Symbiose : pastille grisée, sauf l'arme élémentaire de la magie de la Symbiose, décision R167, exception à R112 : utilisable,
   avec le bonus de dégâts de la posture, +5 et +2 par puissance magique au-delà de la première, « Posture Symbiose (Sang) » en infobulle ; tant que

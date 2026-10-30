@@ -2,7 +2,8 @@
 // valeurs de la fiche si besoin. Exemple : posture offensive 6 D6+4 devient alors 40 […] pour aussi bien les sorts et les armes. Neutre donne +5 % à
 // toutes les compétences Social et Volonté etc. » ; décision R100). Chaque ligne du tableau des postures de la fiche (posture_effet, version 'fiche')
 // se lit ici en un effet chiffré, seulement quand son écriture est l'une de celles ci-dessous ; une autre ligne n'est qu'affichée (« Intervention »,
-// « Provocation », « +5% à la réussite critique »…). Ce qu'aucune ligne n'écrit vient des réponses du propriétaire du 2026-10-17, citées.
+// « Provocation »…). Ce qu'aucune ligne n'écrit vient des réponses du propriétaire du 2026-10-17, citées. La réussite critique (décision R180) : la
+// ligne ne donne que la valeur ; les compétences où elle compte sont dans la base (posture_critique), jamais ici.
 // Sans dépendance : lu au build par lib/fiche-regles.mjs, testé sur toutes les lignes de la base (test/fiche-postures-sorts.test.mjs).
 
 /**
@@ -54,6 +55,9 @@ const LECTURES = [
   [/^Impossible d['’]utiliser les armes ou objets$/i, () => ({ cible: 'armes_inutilisables' })],
   // « Une seule magie active » (Symbiose : « 1 de ces magies doit être désactivée temporairement »)
   [/^Une seule magie active$/i, () => ({ cible: 'une_seule_magie' })],
+  // « +5% à la réussite critique » (Offensif : « cette réussite critique monte à 10 ou moins ») et « +5% à la RC à la défense » (Défensif : « quand on
+  // esquive ou pare une attaque ») : un bonus de réussite critique (décision R180), sur les compétences (posture, 'posture') de la table posture_critique
+  [/^\+(\d+)\s*%\s*à la (?:réussite critique|RC)(?: (?:à la|avec une) défense)?$/i, (m) => ({ cible: 'critique', valeur: Number(m[1]) })],
 ];
 
 /** L'effet chiffré qu'écrit une ligne du tableau des postures de la fiche, ou null (la ligne n'est qu'affichée). */

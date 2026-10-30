@@ -19,6 +19,7 @@ import { BATON_A_REGLER, contenanceEcrite, effetsDeBaton, exemplairesDeCeintureE
 import { bonusDeDegatsEcrit } from './degats-texte.mjs';
 import { bonusDeSortsEcrits, preparationEcrite } from './sort-bonus-texte.mjs';
 import { lecteurDAcquis } from './acquis-texte.mjs';
+import { critiqueDeLAccessoire, critiqueDuDon } from './critique-texte.mjs';
 import { chargerInvocations, tableauxDesSorts } from './bestiaire-db.mjs';
 import { FAMILLES_DES_SAUF, desSelonLaForce, famillesAuChoix, idDeSourceDeClasse } from './maitrise-arme.mjs';
 import { ORDRE_DES_RACES, raceKind } from './race-kinds.mjs';
@@ -81,6 +82,8 @@ const CONSTANTES = [
   // l'inférieur, R175), son usage « 1 fois toutes les semaines » ; telles qu'écrites par la page « Liste des effets mode hyper » (Mode hyper et co)
   'mode_hyper.degats_physique', 'mode_hyper.degats_magie_mono', 'mode_hyper.degats_magie_bi', 'mode_hyper.soin_magique',
   'mode_hyper.conso_chakra_pct_max_par_tour', 'mode_hyper.usage_par_semaine', 'mode_hyper_100.degats_bonus', 'mode_hyper_100.cout_chakra_pct_max',
+  // la réussite critique (décision R180, migration 0087) : sa base, les deux paliers du score du moment (le second, bonus total), son plafond (base comprise)
+  'critique.base', 'critique.palier_1_score_min', 'critique.palier_1_bonus', 'critique.palier_2_score_min', 'critique.palier_2_bonus', 'critique.plafond',
 ];
 
 /** @param {import('node:sqlite').DatabaseSync} db */
@@ -189,9 +192,12 @@ function reglesDeLaBase(db) {
       // l'armure naturelle qu'il écrit (« +2 Armure magique (+2 tous les 5 niveaux) » : lib/mode-hyper-texte.mjs), dans l'armure de base de la fiche et
       // gardée par l'effet de Mode Hyper qui la nomme (décisions R172, Marcass : « Oui, le compter » ; R177 : « Oui, toujours »)
       const armure = armureNaturelleEcrite(d.texte);
+      // son bonus de réussite critique dans une posture (« (Posture X) Augmente la réussite critique de +N% » : lib/critique-texte.mjs, décision R180)
+      const critique = critiqueDuDon(d.texte);
       return {
         id: d.id, forme: d.forme, nom: d.nom, etiquette: d.etiquette, texte: d.texte, ethnie_id: d.ethnie_id, ...resistancesEcrites(resistancesDuTexte(d.texte)),
         ...(sorts.length ? { sorts } : {}), ...(acquis.length ? { acquis } : {}), ...(armure.length ? { armure_naturelle: armure } : {}),
+        ...(critique ? { critique } : {}),
       };
     });
   const colonnesDuTableau = parCle(lignes(db, 'SELECT race_id, rang, libelle FROM race_don_tableau_colonne ORDER BY race_id, rang'), 'race_id');
@@ -472,6 +478,9 @@ function reglesDeLaBase(db) {
           ...(() => { const acquis = horsDuTableau(lireAcquis(d.effet)); return acquis.length ? { acquis } : {}; })(),
           // le sort qu'il permet de préparer (« Préparation », « Chargement » : décision R115, lib/sort-bonus-texte.mjs#preparationEcrite)
           ...(() => { const preparation = preparationEcrite(d.effet); return preparation ? { preparation } : {}; })(),
+          // son bonus de réussite critique dans une posture, s'il est passif (« (Posture Offensif) Augmente la réussite critique de +5% », Sci du Crit :
+          // lib/critique-texte.mjs, décision R180 ; un don actif ne joue pas en permanence, R128)
+          ...(() => { const critique = d.type === 'passif' ? critiqueDuDon(d.effet) : null; return critique ? { critique } : {}; })(),
         })),
       };
     });
@@ -518,6 +527,10 @@ function reglesDeLaBase(db) {
   const lignesDePosture = lignes(db, "SELECT posture_id, rang, texte, inconvenient FROM posture_effet WHERE version = 'fiche' ORDER BY posture_id, rang");
   const effetsDePosture = parCle(lignesDePosture, 'posture_id', (r) => r.texte);
   const inconvenientsDePosture = parCle(lignesDePosture.filter((r) => r.inconvenient === 1), 'posture_id', (r) => r.rang);
+  // les compétences où compte un bonus de réussite critique lié à la posture (décision R180, table posture_critique) : `posture`, celui de la posture
+  // elle-même (Offensif : ses six jets d'attaque ; Défensif : Esquive et Parade) ; `don_de_posture`, celui d'un don écrit pour elle (Sci du Crit, Q90)
+  const critiqueDesPostures = parCle(lignes(db, 'SELECT posture_id, bonus, competence_id FROM posture_critique ORDER BY posture_id, bonus, competence_id'), 'posture_id');
+  const critiqueDe = (id, bonus) => (critiqueDesPostures.get(id) ?? []).filter((r) => r.bonus === bonus).map((r) => r.competence_id);
   const postures = lignes(db, 'SELECT id, nom FROM posture ORDER BY ordre')
     .map((p) => ({
       // sa couleur : la classe de la posture (lib/palette-css.mjs ; famille d'une zone, émise par pages/fiche/index.astro), jamais un hex
@@ -525,6 +538,7 @@ function reglesDeLaBase(db) {
       inconvenients: inconvenientsDePosture.get(p.id) ?? [],
       // ce que chaque ligne change aux valeurs de la fiche (décision R100 : lib/posture-texte.mjs), au même rang que `effets` ; null = affichée seulement
       chiffres: (effetsDePosture.get(p.id) ?? []).map(effetDePosture),
+      critique: { posture: critiqueDe(p.id, 'posture'), don_de_posture: critiqueDe(p.id, 'don_de_posture') },
     }));
 
   // Mode Hyper et Mode Hyper 100 % (demande du propriétaire : leurs cases à côté des postures, quand ils sont débloqués) : les niveaux et le Mode Hyper 100 %
@@ -722,6 +736,9 @@ function reglesDeLaBase(db) {
         // recharge) ») et « l'objet se brise après » (`se_brise` : l'accessoire quitte son emplacement dès qu'il est utilisé) ; absents sinon
         ...(a.usage && limiteEcrite(a.libelle) ? { limite: limiteEcrite(a.libelle) } : {}),
         ...(a.usage && seBriseEcrit(a.libelle) ? { se_brise: true } : {}),
+        // « Augmente la réussite critique de 1%, peu importe le jet. » : un bonus de réussite critique sur toutes les compétences (décision R180 :
+        // lib/critique-texte.mjs) ; absent sinon
+        ...(critiqueDeLAccessoire(a.libelle) !== null ? { critique: critiqueDeLAccessoire(a.libelle) } : {}),
       })),
     ressources: lignes(db, 'SELECT id, nom, genre FROM ressource ORDER BY nom COLLATE NOCASE'),
     // la ceinture (décisions R81, R89) : les objets du catalogue qui y vont (v_objet_ceinture), avec la contenance écrite d'un carquois ou d'un sac

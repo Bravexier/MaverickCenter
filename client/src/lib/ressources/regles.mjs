@@ -130,8 +130,8 @@ export const RESSOURCES = [
     nom: 'Posture',
     noms: 'Postures',
     description:
-      'Les six postures de combat (page « Postures » du guide), leur libellé dans le tableau de la fiche et leur présentation ; leurs effets en ' +
-      'sous-ressource ; en lecture seule.',
+      'Les six postures de combat (page « Postures » du guide), leur libellé dans le tableau de la fiche et leur présentation ; leurs effets et les ' +
+      'compétences de leur réussite critique (R180) en sous-ressources ; en lecture seule.',
     table: 'posture',
     enfants: [
       {
@@ -145,6 +145,17 @@ export const RESSOURCES = [
           'Les effets d’une posture dans les trois textes qui coexistent (version « fiche » : tableau de la fiche auto, chaque ligne marquée avantage ' +
           'ou inconvénient, décision R47 ; « guide_fiche » : page « Tableau Posture » du Google Doc de la fiche ; « guide_mj » : page « Postures » du ' +
           'guide MJ).',
+      },
+      {
+        cle: 'competences-du-critique',
+        nom: 'Compétence du critique',
+        noms: 'Compétences du critique',
+        table: 'posture_critique',
+        parent: { posture_id: 'id' },
+        tri: 'bonus',
+        description:
+          'Les compétences sur lesquelles compte le bonus de réussite critique de la posture (« posture » : l’Offensif sur ses six jets d’attaque, ' +
+          'le Défensif sur Esquive et Parade) ou d’un don « (Posture …) » (« don_de_posture », choix provisoire Q90), décision R180.',
       },
     ],
     liste: ['id', 'nom', 'ordre', 'libelle_fiche'],

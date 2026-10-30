@@ -745,7 +745,7 @@ INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('guide/fiche-capacites-don
 INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('guide/fiche-classe', 1, 'classe');
 INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('guide/fiche-personnage', 2, 'race');
 INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('guide/s-entrainer-et-exercer-un-metier', 0, 'metier');
-INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('guide/situations-avancees', 6, 'mordhau');
+INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('guide/situations-avancees', 0, 'mordhau');
 INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('lore/400', 0, 'codex');
 INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('lore/academie-de-larcane', 0, 'codex');
 INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('lore/anna', 0, 'codex');

@@ -43,7 +43,7 @@ import {
   propositionsDuCatalogue, soliditeDuBouclierAEcrire, typesDeDegats, valeurDEffetDAccessoire,
   appliquerDegatsRecus, CASES_DE_LA_BARRIERE, casesDeLaBarriereApres, coupDeDegats, elementsDeDegats, medusainDOffice, TYPES_DE_COUP,
   acquisApresChoix, acquisApresRepartition, acquisChoixValables, acquisDesDons, magieTireeParLeMj, resistanceApresChoix, resistanceChoixValables, entrainementDe, entrainementsAEnregistrer, batonDuSac, contexteDesSorts, degatsDArmeDuMoment, magiesDesBatons, nomDuBaton, postureDuMoment, sortDuMoment,
-  creaturesDuSort, sacrificeDuSort,
+  creaturesDuSort, sacrificeDuSort, lignesDuCritique,
   carteDeMaitrise, compteurDeMaitrise, infobulleDeClasse, infobulleDeSpecialite, infobulleDuDonAChoisir,
   infobulleDArme, infobulleDArmeElementaire, infobulleDArmure, infobulleDArmureElementaire, infobulleDeMetier, infobulleDeSort, TYPES_DE_DON, groupesDArmesParMaitrise, ligneDeMaitrise, maitriseApresChoix, maitriseChoixValables, maitrisesParFamille, presentationDuCompteurDeMaitrise, sourcesDeMaitrise,
   armeDeLaLigne, armesElementairesProposees, effetDeLArmeElementaire, sortsFerDAutreElement,
@@ -615,6 +615,8 @@ function construireCaracteristiques() {
           const detail = [
             ...(c.jet ? [`${c.score - c.jet} % ${signe(c.jet)} au jet = ${c.score} %`, ...c.jetDetail.map((d) => `${signe(d.valeur)} ${d.nom} (bonus au jet, hors acquis)`)] : []),
             ...(c.posture ? [`${c.score} % ${signe(c.posture)} (${nomDeLaPosture()})`] : []),
+            // la réussite critique (décision R180) : dès que son bonus n'est pas nul, le total, ses origines et le plafond (lignesDuCritique)
+            ...lignesDuCritique(c.critique),
           ];
           infobulle(score, c.score === null ? 'Deux croix : compétence inutilisable' : detail.join('\n'));
         });
