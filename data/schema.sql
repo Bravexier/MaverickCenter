@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 88;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 89;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -434,14 +434,16 @@ CREATE TABLE posture_effet (
 -- compte. `bonus` dit d'où vient le bonus :
 --   'posture'         : l'effet de la posture elle-même (« +5% à la réussite critique », posture_effet) : Offensif sur Arc, Arbalète, Arme légère,
 --                       Arme lourde, Magie et Concentration (« Le +5 % de l'Offensive ne compte que pour les jets d'attaque (Arc, Arbalète, Arme
---                       légère, Arme lourde, Magie, Concentration). ») ; Défensif sur Esquive et Parade (« quand on esquive ou pare », R180 (4)).
---                       Liste propre au critique : le −10 % de l'Offensif reste sur ses cinq compétences (R100, lib/posture-texte.mjs#COMPETENCES_D_ATTAQUE) ;
---   'don_de_posture'  : un don passif écrit « (Posture X) » (« Sci du Crit », Offensif) : les six jets de l'Offensif, choix provisoire de game-design
---                       (docs/sql/a-valider.md, Q90). Si Q90 tranche « tout jet », seules ces lignes changent (les 30 compétences), pas le code.
+--                       légère, Arme lourde, Magie, Concentration). ») ; Défensif sur Esquive et Parade (« quand on esquive ou pare », R180 (4),
+--                       confirmé par R182 (2)). Liste propre au critique : le −10 % de l'Offensif reste sur ses cinq compétences (R100,
+--                       lib/posture-texte.mjs#COMPETENCES_D_ATTAQUE).
+--   La valeur 'don_de_posture' (un don passif écrit « (Posture X) », « Sci du Crit » : les six jets de l'Offensif, choix provisoire de R180) est
+--   retirée par la décision R182 (migration 0089, Q90) : Sci du Crit ne compte que pour les jets d'attaque faits avec une arme de contact (R151,
+--   R127), jamais sur un sort ; il dépend de l'arme utilisée (R128) et n'est donc que mentionné sur la fiche, jamais compté : aucune ligne ne le dit.
 -- Les nombres du critique (base 5, paliers 96 et 103, +2 et +5, plafond 15) sont dans regle_constante ('critique.*').
 CREATE TABLE posture_critique (
   posture_id    TEXT NOT NULL REFERENCES posture(id),
-  bonus         TEXT NOT NULL CHECK (bonus IN ('posture', 'don_de_posture')),
+  bonus         TEXT NOT NULL CHECK (bonus IN ('posture')),
   competence_id TEXT NOT NULL REFERENCES competence(id),
   PRIMARY KEY (posture_id, bonus, competence_id)
 ) STRICT, WITHOUT ROWID;
@@ -4407,6 +4409,16 @@ CREATE TABLE personnage_sort (
   -- Mode Hyper (ou le 100 %) terminé. Comme le jet et la posture, elles n'existent que sur le sort préparé (contraintes nommées
   -- personnage_sort_prepare_hyper_avec_prepare et personnage_sort_prepare_cent_avec_prepare_hyper) : « Lâcher le sort » les remet à 0, une nouvelle
   -- préparation les réécrit selon le moment. Ce que vaut le sort se calcule (lib/fiche-moteur.mjs), rien n'en est stocké.
+  -- Réussite critique du sort préparé (décision R182, migration 0089, Q91 : « c'est le critique au moment de la préparation qui va taper quand le sort
+  -- est relaché ») : le jet se fait et se note à la préparation, la cible se défend contre ce nombre. prepare_critique = N de « Réussite critique : 1 à
+  -- N (figée à la préparation) », la plage de critique de Concentration au moment de la préparation (posture, score du moment et sources permanentes de
+  -- R180), enregistrée à la préparation, jamais recalculée ; NULL tant qu'elle n'est pas notée (une fiche d'avant 0089 la garde NULL). Comme le jet,
+  -- seulement sur le sort préparé (personnage_sort_prepare_critique_avec_prepare) : « Lâcher le sort » la remet à NULL. Bornes
+  -- (personnage_sort_prepare_critique_bornes) : de 1, le bas de la plage « 1 à N » (N ≥ 1 : un accessoire maudit retire de la réussite critique,
+  -- R180 et R54, et Concentration peut n'avoir que 1 à 4), à 15, regle_constante 'critique.plafond' ; un CHECK ne lit pas une autre table, le
+  -- plafond est écrit ici et test/db-r182-critique-du-sort-prepare.test.mjs le compare à regle_constante (une constante changée demande une
+  -- migration). « Double coup » (niveau 20) : seul le premier relâchement peut être un critique, les suivants sont fixés à 40 de réussite
+  -- (un rappel de la fiche, rien n'est stocké).
   prepare            INTEGER NOT NULL DEFAULT 0 CHECK (prepare IN (0, 1)),   -- 1 = le sort préparé de la fiche (R115)
   prepare_jet        INTEGER CHECK (prepare_jet IS NULL OR (prepare = 1 AND prepare_jet BETWEEN 1 AND 100)),   -- jet de magie (D100)
   prepare_posture_id TEXT    REFERENCES posture(id) CHECK (prepare_posture_id IS NULL OR prepare = 1),   -- posture du moment de la préparation
@@ -4414,6 +4426,9 @@ CREATE TABLE personnage_sort (
                        CONSTRAINT personnage_sort_prepare_hyper_avec_prepare CHECK (prepare_hyper = 0 OR prepare = 1),   -- 1 = préparé en Mode Hyper (R172)
   prepare_cent       INTEGER NOT NULL DEFAULT 0 CHECK (prepare_cent IN (0, 1))
                        CONSTRAINT personnage_sort_prepare_cent_avec_prepare_hyper CHECK (prepare_cent = 0 OR prepare_hyper = 1),   -- 1 = préparé au 100 % (R172)
+  prepare_critique   INTEGER
+                       CONSTRAINT personnage_sort_prepare_critique_avec_prepare CHECK (prepare_critique IS NULL OR prepare = 1)
+                       CONSTRAINT personnage_sort_prepare_critique_bornes CHECK (prepare_critique IS NULL OR prepare_critique BETWEEN 1 AND 15),   -- N de « 1 à N », figé (R182)
   PRIMARY KEY (personnage_id, sort_id),
   UNIQUE (personnage_id, rang)
 ) STRICT, WITHOUT ROWID;

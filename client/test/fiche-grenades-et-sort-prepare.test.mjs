@@ -157,7 +157,8 @@ test('R115 : le don débloqué propose les sorts de la fiche qu’il autorise ; 
     [ATTAQUE_1, 0, null, null], [ATTAQUE_2, 1, null, POSTURE('offensif')], [ATTAQUE_3, 0, null, null], [AUTRE_1, 0, null, null],
   ]);
   // le jet de magie : un D100 (regles.sort_prepare, la décision), borné ; vide, effacé
-  assert.deepEqual([regles.sort_prepare, M.jetDuSortPrepare(regles)], [{ jet_min: 1, jet_max: 100 }, { min: 1, max: 100 }]);
+  // (la compétence de la plage de critique figée, décision R182 (4) : test/fiche-critique-sort-prepare.test.mjs)
+  assert.deepEqual([regles.sort_prepare, M.jetDuSortPrepare(regles)], [{ jet_min: 1, jet_max: 100, competence_id: 'concentration' }, { min: 1, max: 100 }]);
   for (const [saisie, jet] of [['57', 57], ['0', 1], ['140', 100], ['', null], ['abc', null]]) {
     assert.equal(M.sortsApresLeJet(regles, { ...f, sorts }, saisie)[1].prepare_jet, jet, saisie);
   }
@@ -230,7 +231,7 @@ test('R115, R169 : changer le sort d’un emplacement (sortsApresChoixDEmplaceme
     sorts: M.sortsApresPreparation(regles, { ...f, posture_id: POSTURE('focus') }, ATTAQUE_1).map((s, i) => (i === 0 ? { ...s, prepare_jet: 40, niveau_maitrise: 2 } : s)) };
   const gele = structuredClone(avant);
   assert.deepEqual(M.sortsApresChoixDEmplacement(avant, 0, AUTRE_1)[0],
-    { sort_id: AUTRE_1, rang: 1, niveau_maitrise: 0, prepare: 0, prepare_jet: null, prepare_posture_id: null, prepare_hyper: 0, prepare_cent: 0 });
+    { sort_id: AUTRE_1, rang: 1, niveau_maitrise: 0, prepare: 0, prepare_jet: null, prepare_posture_id: null, prepare_hyper: 0, prepare_cent: 0, prepare_critique: null });
   assert.equal(M.sortPrepare(regles, avant).sort.id, ATTAQUE_1);
   assert.equal(M.sortPrepare(regles, { ...avant, sorts: M.sortsApresChoixDEmplacement(avant, 0, AUTRE_1) }), null, 'plus de sort préparé');
   assert.deepEqual(M.sortsApresChoixDEmplacement(avant, 0, null).map((s) => s.sort_id), [ATTAQUE_2]);

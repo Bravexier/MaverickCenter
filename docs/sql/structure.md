@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 88 : 207 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 89 : 207 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -353,7 +353,7 @@ Les quatre types de don (guide « Capacités/Don »). Le domaine classes écrit 
 
 ### `posture_critique`
 
-Jets sur lesquels compte un bonus de réussite critique lié à une posture (décision R180, migration 0087). Une ligne = une compétence où le bonus compte. `bonus` dit d'où vient le bonus : 'posture' : l'effet de la posture elle-même (« +5% à la réussite critique », posture_effet) : Offensif sur Arc, Arbalète, Arme légère, Arme lourde, Magie et Concentration (« Le +5 % de l'Offensive ne compte que pour les jets d'attaque (Arc, Arbalète, Arme légère, Arme lourde, Magie, Concentration). ») ; Défensif sur Esquive et Parade (« quand on esquive ou pare », R180 (4)). Liste propre au critique : le −10 % de l'Offensif reste sur ses cinq compétences (R100, lib/posture-texte.mjs#COMPETENCES_D_ATTAQUE) ; 'don_de_posture' : un don passif écrit « (Posture X) » (« Sci du Crit », Offensif) : les six jets de l'Offensif, choix provisoire de game-design (docs/sql/a-valider.md, Q90). Si Q90 tranche « tout jet », seules ces lignes changent (les 30 compétences), pas le code. Les nombres du critique (base 5, paliers 96 et 103, +2 et +5, plafond 15) sont dans regle_constante ('critique.*').
+Jets sur lesquels compte un bonus de réussite critique lié à une posture (décision R180, migration 0087). Une ligne = une compétence où le bonus compte. `bonus` dit d'où vient le bonus : 'posture' : l'effet de la posture elle-même (« +5% à la réussite critique », posture_effet) : Offensif sur Arc, Arbalète, Arme légère, Arme lourde, Magie et Concentration (« Le +5 % de l'Offensive ne compte que pour les jets d'attaque (Arc, Arbalète, Arme légère, Arme lourde, Magie, Concentration). ») ; Défensif sur Esquive et Parade (« quand on esquive ou pare », R180 (4), confirmé par R182 (2)). Liste propre au critique : le −10 % de l'Offensif reste sur ses cinq compétences (R100, lib/posture-texte.mjs#COMPETENCES_D_ATTAQUE). La valeur 'don_de_posture' (un don passif écrit « (Posture X) », « Sci du Crit » : les six jets de l'Offensif, choix provisoire de R180) est retirée par la décision R182 (migration 0089, Q90) : Sci du Crit ne compte que pour les jets d'attaque faits avec une arme de contact (R151, R127), jamais sur un sort ; il dépend de l'arme utilisée (R128) et n'est donc que mentionné sur la fiche, jamais compté : aucune ligne ne le dit. Les nombres du critique (base 5, paliers 96 et 103, +2 et +5, plafond 15) sont dans regle_constante ('critique.*').
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -3583,6 +3583,7 @@ Don obtenu par un don « Variable » du Mage Bleu (décision R181, migration 008
 | `prepare_posture_id` | TEXT | non | → posture.id | posture du moment de la préparation |
 | `prepare_hyper` | INTEGER | oui |  |  |
 | `prepare_cent` | INTEGER | oui |  |  |
+| `prepare_critique` | INTEGER | non |  |  |
 
 ### `personnage_livre_sort`
 

@@ -385,7 +385,7 @@ test('sort préparé (décision R115) : le sort, son jet de magie et sa posture 
   const r = await verifier(f, 'sort préparé');
   const preparees = (cellules) => lignesDeLaNote(cellules).filter((l) => l.nom === 'sortPrepare').map((l) => l.valeur);
   assert.deepEqual(preparees(r.cellules), ['Boule de feu (jet 57, posture Offensif)']);
-  assert.deepEqual(r.fiche.sorts.filter((s) => s.prepare === 1), [{ sort_id: BOULE_DE_FEU, rang: commeLaPage(f).sorts.find((s) => s.prepare === 1).rang, niveau_maitrise: 0, prepare: 1, prepare_jet: 57, prepare_posture_id: 'guide/postures#posture:offensif', prepare_hyper: 0, prepare_cent: 0 }]);
+  assert.deepEqual(r.fiche.sorts.filter((s) => s.prepare === 1), [{ sort_id: BOULE_DE_FEU, rang: commeLaPage(f).sorts.find((s) => s.prepare === 1).rang, niveau_maitrise: 0, prepare: 1, prepare_jet: 57, prepare_posture_id: 'guide/postures#posture:offensif', prepare_hyper: 0, prepare_cent: 0, prepare_critique: null }]);
   // préparé sans jet (« si réussi ») ni posture (aucune n'était cochée) : le nom seul
   const sansJet = { ...f, sorts: f.sorts.map((s) => (s.prepare ? { ...s, prepare_jet: null, prepare_posture_id: null } : s)) };
   assert.deepEqual(preparees((await verifier(sansJet, 'sort préparé sans jet ni posture')).cellules), ['Boule de feu']);
@@ -418,7 +418,7 @@ test('sort préparé (décision R115) : le sort, son jet de magie et sa posture 
   assert.deepEqual(deux.nonRepris, [`Sort préparé : « ${nomDeLAutre} (jet 12) » : un seul sort préparé par fiche (décision R115)`]);
   assert.deepEqual(deux.fiche.sorts.filter((s) => s.prepare === 1).map((s) => [s.sort_id, s.prepare_jet]), [[BOULE_DE_FEU, 57]]);
   // la lecture de la ligne : des parenthèses qui ne disent ni un jet ni une posture font partie du nom
-  const rien = { hyper: false, cent: false };
+  const rien = { hyper: false, cent: false, critique: null };
   assert.deepEqual(lireSortPrepare('Boule de feu (posture Focus, jet 3)'), { nom: 'Boule de feu', jet: 3, posture: 'Focus', ...rien });
   assert.deepEqual(lireSortPrepare('Mur (de glace)'), { nom: 'Mur (de glace)', jet: null, posture: null, ...rien });
   assert.deepEqual(lireSortPrepare('Boule de feu'), { nom: 'Boule de feu', jet: null, posture: null, ...rien });
@@ -435,9 +435,23 @@ test('sort préparé en Mode Hyper ou au Mode Hyper 100 % (décision R172, Q82) 
   const cent = await verifier(avec(1, 1), 'sort préparé au Mode Hyper 100 %');
   assert.deepEqual(preparees(cent.cellules), ['Boule de feu (jet 57, posture Offensif, Mode Hyper 100 %)']);
   assert.deepEqual(prepare(cent.fiche), [[BOULE_DE_FEU, 1, 1]]);
+  // sa plage de réussite critique figée à la préparation (décision R182 (4), prepare_critique) : « critique 1 à N », relue telle quelle, même sous la base
+  // (1 à 4 : accessoire maudit, R180) ; hors de 1 à 1 … 1 à 15 (critique.plafond), perdue et dite
+  const critique = await verifier({ ...avec(1, 0), sorts: avec(1, 0).sorts.map((s) => (s.prepare ? { ...s, prepare_critique: 12 } : s)) }, 'sort préparé avec sa plage figée');
+  assert.deepEqual(preparees(critique.cellules), ['Boule de feu (jet 57, posture Offensif, Mode Hyper, critique 1 à 12)']);
+  assert.deepEqual(critique.fiche.sorts.filter((s) => s.prepare === 1).map((s) => s.prepare_critique), [12]);
+  const maudit = await verifier({ ...avec(1, 0), sorts: avec(1, 0).sorts.map((s) => (s.prepare ? { ...s, prepare_critique: 4 } : s)) }, 'sort préparé sous la base');
+  assert.deepEqual(maudit.fiche.sorts.filter((s) => s.prepare === 1).map((s) => s.prepare_critique), [4]);
+  const a = await allerRetour(f);
+  const note = a.cellules[ORDINATEUR.note].replace('Sort préparé : Boule de feu (jet 57, posture Offensif)', 'Sort préparé : Boule de feu (jet 57, critique 1 à 16)');
+  const classeur = await lireClasseur(await ecrireXlsx(MODELE, { cellules: { ...a.cellules, [ORDINATEUR.note]: note }, remplis: a.remplis, alignements: a.alignements, descriptionImage: 'logo', titre: f.nom }), { nom: 'essai.xlsx' });
+  const hors = ficheDuClasseur(regles, classeur.feuille('Personnage'), { nomFichier: 'essai.xlsx', date: DATE, logo: LOGO, empreintePortrait: null });
+  assert.deepEqual(hors.nonRepris, ['Sort préparé : « Boule de feu (jet 57, critique 1 à 16) » : réussite critique « 1 à 16 » hors des plages possibles (de « 1 à 1 » à « 1 à 15 »)']);
+  assert.ok(hors.fiche.sorts.every((s) => !s.prepare && s.prepare_critique == null));
   // la lecture : « Mode Hyper 100 % » vaut aussi le Mode Hyper ; un seul Mode Hyper par ligne
-  assert.deepEqual(lireSortPrepare('Boule de feu (jet 57, Mode Hyper)'), { nom: 'Boule de feu', jet: 57, posture: null, hyper: true, cent: false });
-  assert.deepEqual(lireSortPrepare('Boule de feu (Mode Hyper 100 %)'), { nom: 'Boule de feu', jet: null, posture: null, hyper: true, cent: true });
+  assert.deepEqual(lireSortPrepare('Boule de feu (jet 57, Mode Hyper)'), { nom: 'Boule de feu', jet: 57, posture: null, hyper: true, cent: false, critique: null });
+  assert.deepEqual(lireSortPrepare('Boule de feu (Mode Hyper 100 %)'), { nom: 'Boule de feu', jet: null, posture: null, hyper: true, cent: true, critique: null });
+  assert.deepEqual(lireSortPrepare('Boule de feu (critique 1 à 12)'), { nom: 'Boule de feu', jet: null, posture: null, hyper: false, cent: false, critique: 12 });
   assert.deepEqual(lireSortPrepare('Boule de feu (Mode Hyper, Mode Hyper 100 %)').nom, 'Boule de feu (Mode Hyper, Mode Hyper 100 %)');
 });
 

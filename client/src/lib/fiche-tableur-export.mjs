@@ -384,46 +384,54 @@ export function lireNmOfferts(texte) {
   return offerts;
 }
 
-/** Les mots du Mode Hyper d'un sort préparé (décision R172) dans sa ligne de la note : « Mode Hyper », « Mode Hyper 100 % ». */
-export const MOTS_DU_SORT_PREPARE = Object.freeze({ hyper: 'Mode Hyper', cent: 'Mode Hyper 100 %' });
+/**
+ * Les mots du Mode Hyper d'un sort préparé (décision R172) dans sa ligne de la note : « Mode Hyper », « Mode Hyper 100 % » ; et ceux de sa plage de
+ * réussite critique figée (décision R182 (4)) : « critique 1 à 12 ».
+ */
+export const MOTS_DU_SORT_PREPARE = Object.freeze({ hyper: 'Mode Hyper', cent: 'Mode Hyper 100 %', critique: 'critique 1 à' });
 
 /**
  * Le sort préparé (décision R115 ; lib/fiche-moteur.mjs#sortPrepare), dans la note : « Boule de feu (jet 57, posture Offensif) », et, préparé en Mode
- * Hyper ou au Mode Hyper 100 % (décision R172), « (jet 57, posture Offensif, Mode Hyper) » ou « (jet 57, Mode Hyper 100 %) » ; sans jet (« si réussi »)
- * ni posture (aucune n'était cochée) ni Mode Hyper, le nom seul.
+ * Hyper ou au Mode Hyper 100 % (décision R172), « (jet 57, posture Offensif, Mode Hyper) » ou « (jet 57, Mode Hyper 100 %) » ; sa plage de réussite
+ * critique figée à la préparation (décision R182 (4), `prepare_critique`), « (jet 57, posture Offensif, critique 1 à 12) » ; sans jet (« si réussi »)
+ * ni posture (aucune n'était cochée) ni Mode Hyper ni plage (une fiche d'avant), le nom seul.
  */
 export function texteDuSortPrepare(prepare) {
   const parts = [
     prepare.jet === null || prepare.jet === undefined ? null : `jet ${prepare.jet}`, prepare.posture ? `posture ${prepare.posture.nom}` : null,
     prepare.cent ? MOTS_DU_SORT_PREPARE.cent : prepare.hyper ? MOTS_DU_SORT_PREPARE.hyper : null,
+    prepare.critique === null || prepare.critique === undefined ? null : `${MOTS_DU_SORT_PREPARE.critique} ${prepare.critique}`,
   ].filter(Boolean);
   return `${prepare.sort.nom}${parts.length ? ` (${parts.join(', ')})` : ''}`;
 }
 
 /**
- * { nom, jet, posture, hyper, cent } d'un texte de texteDuSortPrepare (`jet` : un nombre ou null ; `posture` : le nom écrit ou null ; `hyper`, `cent` :
- * préparé en Mode Hyper, au Mode Hyper 100 % — qui l'est aussi en Mode Hyper —, décision R172). Des parenthèses finales qui ne disent ni un jet, ni une
- * posture, ni le Mode Hyper font partie du nom.
+ * { nom, jet, posture, hyper, cent, critique } d'un texte de texteDuSortPrepare (`jet` : un nombre ou null ; `posture` : le nom écrit ou null ; `hyper`,
+ * `cent` : préparé en Mode Hyper, au Mode Hyper 100 % — qui l'est aussi en Mode Hyper —, décision R172 ; `critique` : le N de « critique 1 à N », la plage
+ * figée à la préparation, décision R182, ou null). Des parenthèses finales qui ne disent ni un jet, ni une posture, ni le Mode Hyper, ni une plage font
+ * partie du nom.
  */
 export function lireSortPrepare(texte) {
   const brut = String(texte ?? '').trim();
   const m = /^(.*\S)\s*\(([^()]*)\)$/.exec(brut);
   if (m) {
-    const lu = { nom: m[1].trim(), jet: null, posture: null, hyper: false, cent: false };
+    const lu = { nom: m[1].trim(), jet: null, posture: null, hyper: false, cent: false, critique: null };
     const parts = m[2].split(',').map((x) => x.trim()).filter(Boolean);
     let lisible = parts.length > 0;
     for (const part of parts) {
       const jet = /^jet\s+(\d+)$/i.exec(part);
       const posture = /^posture\s+(.+)$/i.exec(part);
       const hyper = /^mode\s+hyper(\s+100\s*%)?$/i.exec(part);
+      const critique = /^critique\s+1\s+[àa]\s+(\d+)$/i.exec(part);
       if (jet && lu.jet === null) lu.jet = Number(jet[1]);
       else if (posture && lu.posture === null) lu.posture = posture[1].trim();
       else if (hyper && !lu.hyper) Object.assign(lu, { hyper: true, cent: Boolean(hyper[1]) });
+      else if (critique && lu.critique === null) lu.critique = Number(critique[1]);
       else lisible = false;
     }
     if (lisible) return lu;
   }
-  return { nom: brut, jet: null, posture: null, hyper: false, cent: false };
+  return { nom: brut, jet: null, posture: null, hyper: false, cent: false, critique: null };
 }
 
 /** Les mots de la ligne « Mode Hyper » de la note (décision R172) : son état, le Mode Hyper 100 %, le compteur de la semaine (« semaine 0/1 »). */

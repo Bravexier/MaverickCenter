@@ -50,10 +50,13 @@ const etat = (db, sortId) => ({
 });
 const REPOS = { prepare: 0, prepare_hyper: 0, prepare_cent: 0 };
 
-test('R172 : personnage_sort finit par prepare_hyper et prepare_cent (0/1, 0 par défaut, NOT NULL), sans ligne dans data/rows', () => {
+test('R172 : personnage_sort a prepare_hyper et prepare_cent (0/1, 0 par défaut, NOT NULL) après les colonnes de 0067, sans ligne dans data/rows', () => {
   const db = ouvrirBase({ sansExemples: false });
   const colonnes = db.prepare('PRAGMA table_xinfo(personnage_sort)').all();
-  assert.deepEqual(colonnes.slice(-2).map(({ name, type, notnull, dflt_value: defaut }) => ({ name, type, notnull, defaut })), [
+  // suivies de prepare_critique (migration 0089, R182 : test/db-r182-critique-du-sort-prepare.test.mjs)
+  const fin = colonnes.findIndex((c) => c.name === 'prepare_cent') + 1;
+  assert.equal(colonnes[fin - 3].name, 'prepare_posture_id');
+  assert.deepEqual(colonnes.slice(fin - 2, fin).map(({ name, type, notnull, dflt_value: defaut }) => ({ name, type, notnull, defaut })), [
     { name: 'prepare_hyper', type: 'INTEGER', notnull: 1, defaut: '0' },
     { name: 'prepare_cent', type: 'INTEGER', notnull: 1, defaut: '0' },
   ]);
@@ -100,14 +103,17 @@ test('R172 : la migration 0086 donne au sort préparé d\'une fiche d\'avant pre
   const db = copie(t);
   const attendu = sqlDeLaTable(db);
   const [a, b] = deuxSorts(db);
-  // la table d'avant 0086 : sans les deux colonnes (prepare_cent d'abord : sa contrainte lit prepare_hyper)
-  for (const c of ['prepare_cent', 'prepare_hyper']) db.exec(`ALTER TABLE personnage_sort DROP COLUMN ${c}`);
+  // la table d'avant 0086 : sans les deux colonnes (prepare_cent d'abord : sa contrainte lit prepare_hyper), ni prepare_critique, venue après elles
+  // (migration 0089, R182)
+  for (const c of ['prepare_critique', 'prepare_cent', 'prepare_hyper']) db.exec(`ALTER TABLE personnage_sort DROP COLUMN ${c}`);
   assert.ok(!db.prepare('PRAGMA table_xinfo(personnage_sort)').all().some((c) => ['prepare_hyper', 'prepare_cent'].includes(c.name)));
   inserer(db, a, 1);
   inserer(db, b, 2, { prepare: 1, prepare_jet: 87 });
   rejouerLaMigration(db, MIGRATION);
   assert.deepEqual([etat(db, a), etat(db, b)], [REPOS, { prepare: 1, prepare_hyper: 0, prepare_cent: 0 }],
     'aucun sort préparé d’avant ne l’a été en Mode Hyper');
+  // puis 0089 (R182), qui ajoute prepare_critique en dernier : la table de data/schema.sql
+  rejouerLaMigration(db, '0089-r182-critique-du-sort-prepare.sql');
   const normal = (sql) => sql.replace(/--[^\n]*/g, '').replace(/\s+/g, ' ').replace(/ ?([,()]) ?/g, '$1').trim();
   assert.equal(normal(sqlDeLaTable(db)), normal(attendu));
 });

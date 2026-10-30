@@ -337,11 +337,13 @@ export function competencesDe(regles, fiche) {
 }
 
 /**
- * Ce qui donne un bonus de réussite critique en permanence, hors posture et score (décision R180 (4), « Seulement ce qui joue en permanence », R128) :
+ * Ce qui touche la réussite critique en permanence, hors posture et score (décisions R180 (4), R182 (3) ; « Seulement ce qui joue en permanence », R128) :
  * les dons acquis — de classe, passifs, et de race — dont le texte écrit « (Posture X) Augmente la réussite critique de +N% » (`critique` des règles :
- * lib/critique-texte.mjs#critiqueDuDon, Sci du Crit) et les accessoires portés « Augmente la réussite critique de N%, peu importe le jet. »
- * (lib/critique-texte.mjs#critiqueDeLAccessoire ; maudit : l'effet contraire, R54). { dons: [{ nom, critique: { postures, valeur } }], accessoires:
- * [{ nom, valeur }] }. Jamais les sorts « à la prochaine attaque », les dons actifs, l'arme utilisée, la tenaille ni une situation (Q88 : (a)).
+ * lib/critique-texte.mjs#critiqueDuDon, Sci du Crit), seulement mentionnés (R182 (3) : ils dépendent de l'arme utilisée), et les accessoires portés
+ * « Augmente la réussite critique de N%, peu importe le jet. » (lib/critique-texte.mjs#critiqueDeLAccessoire ; maudit : l'effet contraire, R54), comptés.
+ * `contact` : les compétences des armes de contact (competencesDeContact), où un don de posture se mentionne. { dons: [{ nom, critique: { postures,
+ * valeur } }], accessoires: [{ nom, valeur }], contact }. Jamais les sorts « à la prochaine attaque », les dons actifs, l'arme utilisée, la tenaille ni une
+ * situation (Q88 : (a)).
  */
 export function sourcesDuCritique(regles, fiche) {
   const vus = new Set();
@@ -351,24 +353,36 @@ export function sourcesDuCritique(regles, fiche) {
     const effet = trouver(regles.accessoires ?? [], a.accessoire_effet_id);
     return effet?.critique ? [{ nom: nomDAccessoire(a), valeur: a.maudit ? -effet.critique : effet.critique }] : [];
   });
-  return { dons, accessoires };
+  return { dons, accessoires, contact: competencesDeContact(regles) };
+}
+
+/**
+ * Les compétences des armes de contact (décision R182 (3) : Sci du Crit « Tout jet d'attaque au corps à corps », les familles de contact de R127 et
+ * R151) : celles que donnent les armes des familles `categorie` 'contact' (regles.familles_armes[].competences, lues dans arme.competence_brut, R48 ;
+ * aujourd'hui Arme légère et Arme lourde), dans l'ordre de la table competence, jamais une liste écrite ici.
+ */
+export function competencesDeContact(regles) {
+  const ids = new Set((regles.familles_armes ?? []).filter((f) => f.categorie === 'contact').flatMap((f) => f.competences ?? []));
+  return regles.competences.map((k) => k.id).filter((id) => ids.has(id));
 }
 
 /**
  * Le bonus de réussite critique d'une compétence au moment présent (décision R180), null à deux croix (`scoreDuMoment` null) :
- * { base, bonus, brut, rogne, plafond, plage, origines: [{ origine: 'palier' | 'posture' | 'don' | 'accessoire', nom, valeur }] }.
+ * { base, bonus, brut, rogne, plafond, plage, origines: [{ origine: 'palier' | 'posture' | 'accessoire', nom, valeur }], mentions: [{ nom, valeur }] }.
  * - le palier, lu sur le score du moment (posture comprise : « 113 de base en offensif ça passe à 103 ») : de `critique.palier_1_score_min` (96) à
  *   `critique.palier_2_score_min` − 1 (102), `critique.palier_1_bonus` (+2) ; à partir de `critique.palier_2_score_min` (103), `critique.palier_2_bonus`
  *   (+5 au total), sans borne haute ; « sur tout jet, quelle que soit la posture » ;
  * - chaque ligne de réussite critique des postures actives qui vise la compétence (`posture.critique` : posture_critique, 'posture') ; au Mode Hyper
  *   100 %, l'Offensif et le Défensif ensemble (R172) ;
- * - chaque don de posture dont une posture écrite est active et vise la compétence (`posture.critiqueDesDons` : posture_critique, 'don_de_posture') ;
  * - chaque accessoire porté, sur toutes les compétences.
- * `brut` : leur somme ; `bonus` : rogné pour que la base plus le bonus ne dépasse pas `critique.plafond` (« ne dépasse jamais 1 à 15 », base comprise,
+ * `mentions` : chaque don de posture (Sci du Crit) dont une posture écrite est active (`posture.noms` ; au Mode Hyper 100 %, toutes), sur les compétences
+ * des armes de contact (`sources.contact`) : il ne vaut qu'avec une arme de contact (décision R182 (3), Q90 : « Le mentionner seulement ») et dépend de
+ * l'arme utilisée (R128) ; jamais dans le total ni le plafond.
+ * `brut` : la somme des origines ; `bonus` : rogné pour que la base plus le bonus ne dépasse pas `critique.plafond` (« ne dépasse jamais 1 à 15 », base comprise,
  * « toutes sources ensemble ») ; `rogne` : ce que le plafond retire ; `plage` : base + bonus (« 1 à `plage` »). Toutes les valeurs viennent de
  * regle_constante (`critique.*`), jamais écrites ici.
  */
-export function critiqueDe(regles, posture, k, scoreDuMoment, sources = { dons: [], accessoires: [] }) {
+export function critiqueDe(regles, posture, k, scoreDuMoment, sources = { dons: [], accessoires: [], contact: [] }) {
   if (scoreDuMoment === null || scoreDuMoment === undefined) return null;
   const c = (id) => constante(regles, id);
   const base = c('critique.base');
@@ -381,29 +395,32 @@ export function critiqueDe(regles, posture, k, scoreDuMoment, sources = { dons: 
   for (const l of posture?.critique ?? []) {
     if (l.competences.includes(k.id)) origines.push({ origine: 'posture', nom: `posture ${l.posture}${posture.cent ? ', Mode Hyper 100 %' : ''}`, valeur: l.valeur });
   }
-  for (const d of sources.dons) {
-    const vise = (posture?.critiqueDesDons ?? []).some((p) => d.critique.postures.includes(p.nom) && p.competences.includes(k.id));
-    if (vise) origines.push({ origine: 'don', nom: d.nom, valeur: d.critique.valeur });
-  }
-  for (const a of sources.accessoires) origines.push({ origine: 'accessoire', nom: a.nom, valeur: a.valeur });
+  for (const a of sources.accessoires ?? []) origines.push({ origine: 'accessoire', nom: a.nom, valeur: a.valeur });
+  const contact = (sources.contact ?? []).includes(k.id);
+  const mentions = (sources.dons ?? []).filter((d) => contact && d.critique.postures.some((p) => posture?.noms?.includes(p)))
+    .map((d) => ({ nom: d.nom, valeur: d.critique.valeur }));
   const brut = origines.reduce((t, o) => t + o.valeur, 0);
   const bonus = Math.min(brut, plafond - base);
-  return { base, bonus, brut, rogne: brut - bonus, plafond, plage: base + bonus, origines };
+  return { base, bonus, brut, rogne: brut - bonus, plafond, plage: base + bonus, origines, mentions };
 }
 
 const signeDe = (n) => (n > 0 ? `+${n}` : String(n));
 /**
  * Les lignes de l'infobulle du score sur la réussite critique (décision R180 (4) : « elle affiche le bonus de critique dès qu'il n'est pas nul, quelle
- * que soit sa provenance ») : le total et la plage (« Réussite critique : +10 % (1 à 15) »), une ligne par origine (« +5 % (posture Offensif) »), et le
- * plafond quand il rogne ; [] sans bonus (ou à deux croix).
+ * que soit sa provenance ») : le total et la plage (« Réussite critique : +10 % (1 à 15) »), une ligne par origine (« +5 % (posture Offensif) »), le
+ * plafond quand il rogne, puis chaque don de posture mentionné, hors du total (décision R182 (3) : « Sci du Crit : +5 % avec une arme de contact (non
+ * compté) ») ; [] sans bonus ni mention (ou à deux croix).
  */
 export function lignesDuCritique(critique) {
-  if (!critique || critique.bonus === 0) return [];
+  if (!critique) return [];
+  const mentions = (critique.mentions ?? []).map((m) => `${m.nom} : ${signeDe(m.valeur)} % avec une arme de contact (non compté)`);
+  if (critique.bonus === 0) return mentions;
   return [
     `Réussite critique : ${signeDe(critique.bonus)} % (1 à ${critique.plage})`,
     ...critique.origines.map((o) => `${signeDe(o.valeur)} % (${o.nom})`),
     ...(critique.rogne > 0
       ? [`Plafond : ${signeDe(critique.brut)} % ramené à ${signeDe(critique.bonus)} % (jamais plus de 1 à ${critique.plafond})`] : []),
+    ...mentions,
   ];
 }
 
@@ -3633,7 +3650,7 @@ export function magiesDeLaSymbiose(regles, fiche) {
  *   symbiose: { magie (la magie de la symbiose, null tant qu'elle n'est pas choisie), magies (celles dont les sorts reçoivent son bonus et qu'elle
  *   immunise : [magie], ou les deux en Mode Hyper 100 %), possibles, aChoisir, degats (dégâts et soin des sorts de ces magies), am, immunite, inactive
  *   (l'autre magie), potentielIllimite } | null, armesInutilisables, lignes: [{ texte, chiffre, inconvenient }], critique: [{ posture, valeur,
- *   competences }], critiqueDesDons: [{ posture, nom, competences }] } (la réussite critique, décision R180 : critiqueDe).
+ *   competences }] } (la réussite critique, décision R180 : critiqueDe ; un don de posture se lit sur `noms`, R182).
  * Défensif : 2 × ⌈N ÷ 4⌉ AP et AM (N niveau global ; réponse « 2 × ⌈N/4⌉ ») ; Symbiose : base + pas × (puissance magique − 1) (« le premier niveau ne
  * compte pas » ; réponse « +5 dégâts et soin ») ; sa magie : la seule du personnage, sinon `fiche.symbiose_magie_id` (« choisie dans la case »).
  * Magie innée Potentiel Illimité (décision R109) : `potentielIllimite` vrai, ni magie ni magie à choisir (`magie` null, `possibles` vide, `aChoisir`
@@ -3661,7 +3678,6 @@ export function postureDuMoment(regles, fiche, { cent: centForce } = {}) {
   const r = {
     posture, libelle: cent ? 'Mode Hyper 100 % (postures)' : `Posture ${posture.nom}`, noms: actives.map((p) => p.nom.toLowerCase()), cent,
     competences: [], initiative: 0, ap: 0, am: 0, degatsMaximum: false, diviseur: 1, crans: 0, symbiose: null, armesInutilisables: false, critique: [],
-    critiqueDesDons: [],
     // en Mode Hyper 100 %, les avantages seuls
     lignes: actives.flatMap((p) => lignesDe(p).filter((l) => !cent || !l.inconvenient)),
   };
@@ -3706,11 +3722,10 @@ export function postureDuMoment(regles, fiche, { cent: centForce } = {}) {
     if (s.uneSeule && s.magie) s.inactive = s.possibles.find((m) => m.id !== s.magie.id) ?? null;
   }
   // la réussite critique (décision R180) : chaque ligne « +N% à la réussite critique » d'une posture active, sur les compétences de cette posture
-  // (posture_critique, 'posture' : Offensif ses six jets d'attaque, Défensif Esquive et Parade ; en Mode Hyper 100 %, les deux) ; et, par posture
-  // active, les compétences d'un don écrit pour elle (`critiqueDesDons` : posture_critique, 'don_de_posture'), jamais une liste écrite ici
+  // (posture_critique, 'posture' : Offensif ses six jets d'attaque, Défensif Esquive et Parade ; en Mode Hyper 100 %, les deux), jamais une liste
+  // écrite ici ; un don de posture (Sci du Crit) n'est que mentionné (décision R182 (3) : critiqueDe, sur `noms`)
   r.critique = actives.flatMap((p) => lignesDe(p).filter((l) => l.chiffre?.cible === 'critique' && !(cent && l.inconvenient))
     .map((l) => ({ posture: p.nom, valeur: l.chiffre.valeur, competences: p.critique?.posture ?? [] })));
-  r.critiqueDesDons = actives.map((p) => ({ posture: p.nom, nom: p.nom.toLowerCase(), competences: p.critique?.don_de_posture ?? [] }));
   return r;
 }
 
@@ -4006,7 +4021,8 @@ export function effetsDesBatons(regles, fiche) {
 // choisir le sort qui est préparé et de noter le résultat du jet de magie si réussi » ; « le sort même répété plusieurs fois (don lvl 20) se lance toujours
 // avec les règles de postures du moment où il a été préparé ») : un des sorts de la fiche (personnage_sort.prepare, migration 0067), son jet de magie (un
 // D100, `prepare_jet`) et la posture du moment où il a été préparé (`prepare_posture_id`) ; préparé en Mode Hyper ou au Mode Hyper 100 % (décision R172,
-// question Q82 : `prepare_hyper`, `prepare_cent`, migration 0086), il garde ce qu'ils lui donnent (modeHyperDuSortPrepare).
+// question Q82 : `prepare_hyper`, `prepare_cent`, migration 0086), il garde ce qu'ils lui donnent (modeHyperDuSortPrepare) ; sa plage de réussite
+// critique est celle de la préparation (décision R182 (4), Q91 : `prepare_critique`, migration 0089 : critiqueAlaPreparation).
 // ------------------------------------------------------------------------------------------------------------------------------------------------
 
 /** Les bornes du jet de magie d'un sort préparé : un D100 (regles.sort_prepare, décision R115 ; personnage_sort.prepare_jet, de 1 à 100). { min, max }. */
@@ -4055,7 +4071,9 @@ export function sortsAPreparer(regles, fiche, don = donDePreparation(regles, fic
  * n'est pas de ceux que le don autorise (il ne compte pas, et part à l'enregistrement : sortsAEnregistrer), ou quand la fiche est en Symbiose avec une
  * autre magie que la sienne (décision R135 : il est perdu, sortsApresLaSymbiose) ; une autre posture cochée depuis n'y change rien. { index, ligne, sort,
  * jet (1 à 100, ou null tant qu'il n'est pas noté), posture (la posture du moment de la préparation, ou null : aucune n'était cochée), hyper (préparé
- * en Mode Hyper, `prepare_hyper`), cent (préparé au Mode Hyper 100 %, `prepare_cent`, seulement avec `hyper` : décision R172), dons }.
+ * en Mode Hyper, `prepare_hyper`), cent (préparé au Mode Hyper 100 %, `prepare_cent`, seulement avec `hyper` : décision R172), critique (le N de
+ * « 1 à N », figé à la préparation, `prepare_critique` : décision R182 (4) ; null tant qu'il n'est pas noté, une fiche d'avant n'est jamais recalculée),
+ * dons }.
  */
 export function sortPrepare(regles, fiche) {
   const don = donDePreparation(regles, fiche);
@@ -4069,14 +4087,46 @@ export function sortPrepare(regles, fiche) {
     posture: trouver(regles.postures ?? [], choisi.ligne.prepare_posture_id),
     hyper: entier(choisi.ligne.prepare_hyper) === 1,
     cent: entier(choisi.ligne.prepare_hyper) === 1 && entier(choisi.ligne.prepare_cent) === 1,
+    critique: critiqueNotee(choisi.ligne.prepare_critique),
   };
 }
 
+/** La plage figée notée sur la ligne du sort préparé (`prepare_critique`), un entier, ou null (absente, vide ou illisible). */
+const critiqueNotee = (v) => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) ? null : Math.trunc(Number(v)));
+
 /**
- * Une ligne de sort qui n'est pas le sort préparé : ni marque, ni jet, ni posture, ni Mode Hyper (la base les refuse hors du sort préparé : CHECK de
- * personnage_sort ; contraintes personnage_sort_prepare_hyper_avec_prepare et personnage_sort_prepare_cent_avec_prepare_hyper, migration 0086).
+ * La plage de réussite critique figée à la préparation d'un sort (décision R182 (4), Q91 : « c'est le critique au moment de la préparation qui va taper
+ * quand le sort est relaché ») : le N de « 1 à N » de la compétence `regles.sort_prepare.competence_id` (Concentration : les mages rouge et vert lancent
+ * leurs sorts avec elle), calculé à cet instant (critiqueDe par competencesDe : la posture cochée, le score du moment, le Mode Hyper et le Mode Hyper
+ * 100 % du moment, les sources permanentes de R180) ; null quand la compétence n'a pas de critique (deux croix, R19).
  */
-const nonPrepare = (ligne) => ({ ...ligne, prepare: 0, prepare_jet: null, prepare_posture_id: null, prepare_hyper: 0, prepare_cent: 0 });
+export function critiqueAlaPreparation(regles, fiche) {
+  return competencesDe(regles, fiche).find((k) => k.id === regles.sort_prepare.competence_id)?.critique?.plage ?? null;
+}
+
+/** Le texte de la plage figée du bloc « Sort préparé » (décision R182 (4), sans verdict sur le jet noté), ou null sans plage notée. `prepare` : sortPrepare. */
+export function texteDuCritiquePrepare(prepare) {
+  return prepare?.critique === null || prepare?.critique === undefined ? null : `Réussite critique : 1 à ${prepare.critique} (figée à la préparation)`;
+}
+
+/**
+ * Les rappels du bloc « Sort préparé » (décision R182 (5)) : pour chaque don acquis dont la remarque écrit que seul le premier coup peut être un critique
+ * (`critique_premier_coup` des règles, lu par lib/critique-texte.mjs#critiqueDuPremierCoup : « Double coup », Mage Rouge et Mage Vert, niveau 20),
+ * « Seul le premier relâchement peut être un critique ; les suivants sont fixés à 40 de réussite (Double coup). », sans calcul ; un texte en double
+ * (bi-classé avec les deux) n'est écrit qu'une fois.
+ */
+export function rappelsDuSortPrepare(regles, fiche) {
+  const textes = donsAcquis(regles, fiche).flatMap((c) => c.dons).filter((d) => d.critique_premier_coup)
+    .map((d) => `Seul le premier relâchement peut être un critique ; les suivants sont fixés à ${d.critique_premier_coup.reussite} de réussite (${d.nom}).`);
+  return [...new Set(textes)];
+}
+
+/**
+ * Une ligne de sort qui n'est pas le sort préparé : ni marque, ni jet, ni posture, ni Mode Hyper, ni plage de critique figée (la base les refuse hors du
+ * sort préparé : CHECK de personnage_sort ; contraintes personnage_sort_prepare_hyper_avec_prepare et personnage_sort_prepare_cent_avec_prepare_hyper,
+ * migration 0086 ; personnage_sort_prepare_critique_avec_prepare, migration 0089).
+ */
+const nonPrepare = (ligne) => ({ ...ligne, prepare: 0, prepare_jet: null, prepare_posture_id: null, prepare_hyper: 0, prepare_cent: 0, prepare_critique: null });
 
 /**
  * Les sorts de la fiche quand l'emplacement `index` du tableau des sorts reçoit le sort `sortId` : vide (`sortId` absent), la ligne part ; un autre
@@ -4096,16 +4146,18 @@ export function sortsApresChoixDEmplacement(fiche, index, sortId) {
 /**
  * Les sorts de la fiche quand on prépare le sort `sortId` (décision R115) : lui seul est marqué, avec la posture cochée à cet instant (personnage.posture_id,
  * « la posture du moment où il a été préparé » ; null sans posture) et l'état du Mode Hyper à cet instant (décision R172 : `prepare_hyper` si le Mode
- * Hyper est actif, débloqué et coché, `prepare_cent` si le Mode Hyper 100 % l'est : modeHyperDe), son jet effacé (à noter : noterLeJet) ; les autres ne
- * le sont plus. Sans `sortId` (« Lâcher le sort »), aucun ne l'est : marque, jet, posture et Mode Hyper remis à zéro.
+ * Hyper est actif, débloqué et coché, `prepare_cent` si le Mode Hyper 100 % l'est : modeHyperDe) et la plage de réussite critique de cet instant
+ * (décision R182 (4) : `prepare_critique`, critiqueAlaPreparation), son jet effacé (à noter : noterLeJet) ; les autres ne le sont plus. Sans `sortId`
+ * (« Lâcher le sort »), aucun ne l'est : marque, jet, posture, Mode Hyper et plage remis à zéro.
  */
 export function sortsApresPreparation(regles, fiche, sortId) {
   const posture = trouver(regles.postures ?? [], fiche.posture_id)?.id ?? null;
   const h = modeHyperDe(regles, fiche);
   const hyper = h?.actif ? 1 : 0;
   const cent = hyper && h.cent.actif ? 1 : 0;
+  const critique = sortId ? critiqueAlaPreparation(regles, fiche) : null;
   return (fiche.sorts ?? []).map((l) => (sortId && l.sort_id === sortId
-    ? { ...l, prepare: 1, prepare_jet: null, prepare_posture_id: posture, prepare_hyper: hyper, prepare_cent: cent } : nonPrepare(l)));
+    ? { ...l, prepare: 1, prepare_jet: null, prepare_posture_id: posture, prepare_hyper: hyper, prepare_cent: cent, prepare_critique: critique } : nonPrepare(l)));
 }
 
 /**
@@ -4132,7 +4184,7 @@ export function sortsApresLeJet(regles, fiche, saisie) {
 
 /**
  * Les sorts à enregistrer (page, fiche en tableur) : rangés dans l'ordre (rang 1, 2…) ; le sort préparé (sortPrepare) garde sa marque, son jet, sa
- * posture et son Mode Hyper (R172), tous les autres ne les ont pas — une préparation que le don ne permet plus (classe changée, sort retiré, sort d'un autre type ou NPM) part.
+ * posture, son Mode Hyper (R172) et sa plage de critique figée (R182), tous les autres ne les ont pas — une préparation que le don ne permet plus (classe changée, sort retiré, sort d'un autre type ou NPM) part.
  */
 export function sortsAEnregistrer(regles, fiche) {
   const prepare = sortPrepare(regles, fiche);
@@ -4140,7 +4192,7 @@ export function sortsAEnregistrer(regles, fiche) {
     if (prepare?.index !== i) return { ...nonPrepare(s), rang: i + 1 };
     return {
       ...s, rang: i + 1, prepare: 1, prepare_jet: prepare.jet, prepare_posture_id: prepare.posture?.id ?? null,
-      prepare_hyper: prepare.hyper ? 1 : 0, prepare_cent: prepare.cent ? 1 : 0,
+      prepare_hyper: prepare.hyper ? 1 : 0, prepare_cent: prepare.cent ? 1 : 0, prepare_critique: prepare.critique,
     };
   });
 }
@@ -5090,7 +5142,7 @@ export function remonterLAction(regles, fiche, cle, ecart = 1) {
  * est par combat ; ceux par jour, semaine… restent (« ne remontent qu'à la main »), comme une ligne qui ne répond à aucune action (nettoyée à
  * l'enregistrement : actionsUsageValables). Elle lâche aussi le sort préparé (décision R179 : « Un sort préparer ne demeure que jusqu'à la fin d'un
  * combat » ; Q86 : « Oui, « Fin de combat » le lâche aussi ») : `sorts`, comme « Lâcher le sort » (sortsApresPreparation : `prepare`, `prepare_jet`,
- * `prepare_posture_id`, `prepare_hyper`, `prepare_cent` remis à zéro), seulement quand un sort est préparé.
+ * `prepare_posture_id`, `prepare_hyper`, `prepare_cent`, `prepare_critique` remis à zéro), seulement quand un sort est préparé.
  */
 export function finDeCombat(regles, fiche) {
   const parCombat = new Set(actionsDeLaFiche(regles, fiche).filter((a) => a.compteur?.remontee === 'fin_de_combat').map((a) => a.cle));

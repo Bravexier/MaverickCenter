@@ -154,8 +154,9 @@ export const RESSOURCES = [
         parent: { posture_id: 'id' },
         tri: 'bonus',
         description:
-          'Les compétences sur lesquelles compte le bonus de réussite critique de la posture (« posture » : l’Offensif sur ses six jets d’attaque, ' +
-          'le Défensif sur Esquive et Parade) ou d’un don « (Posture …) » (« don_de_posture », choix provisoire Q90), décision R180.',
+          'Les compétences sur lesquelles compte le bonus de réussite critique de la posture elle-même (« posture » : l’Offensif sur ses six ' +
+          'jets d’attaque, le Défensif sur Esquive et Parade), décision R180. Un don « (Posture …) » (Sci du Crit) n’y a pas de ligne : il ne ' +
+          'compte qu’avec une arme de contact et n’est que mentionné sur la fiche (décision R182).',
       },
     ],
     liste: ['id', 'nom', 'ordre', 'libelle_fiche'],

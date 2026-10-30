@@ -28,7 +28,7 @@ const DEPART_DES_COLONNES_RETIREES_DE_DETAIL = Object.freeze({ personnage_compet
  * (gains de niveau en deux totaux, R73 ; durabilité d'une arme, R74 ; son entraînement en texte, R71, retiré par la migration 0062 :
  * COLONNES_RETIREES), de la migration 0055 (l'armure de la fiche, R95), de la migration 0060 (le bouclier forme + matière, R96) et de la migration
  * 0061 (la magie de la Symbiose, R100), de la migration 0081 (le type de dégâts choisi d'une arme élémentaire, R167), de la migration 0066 (les NM du MJ de la fiche, R118) et de la migration 0067 (le sort préparé, son jet et sa
- * posture, R115) et de la migration 0071 (la magie d'une résistance au choix, R137), et de la migration 0084 (le Mode Hyper, le Mode Hyper 100 % et le compteur de la semaine, R172), et de la migration 0086 (un sort préparé en Mode Hyper ou au Mode Hyper 100 %, R172, Q82). L'arme choisie d'un choix d'acquis (R119, migration 0067) n'en est
+ * posture, R115) et de la migration 0071 (la magie d'une résistance au choix, R137), et de la migration 0084 (le Mode Hyper, le Mode Hyper 100 % et le compteur de la semaine, R172), et de la migration 0086 (un sort préparé en Mode Hyper ou au Mode Hyper 100 %, R172, Q82), et de la migration 0089 (la réussite critique figée du sort préparé, R182). L'arme choisie d'un choix d'acquis (R119, migration 0067) n'en est
  * plus : la migration 0076 l'a retirée (R152, COLONNES_RETIREES).
  * Quand le service retombe sur sa base d'avant (reconstruction échouée, docs/serveur.md), la page à jour les envoie quand même (ficheVide met les gains à 0) :
  * une de ces colonnes que la base n'a pas est ignorée tant qu'elle ne porte rien (sa valeur de départ, ou vide : null, « "" ») ; autrement, « champ
@@ -47,7 +47,7 @@ export const DEPART_DES_COLONNES_AJOUTEES = Object.freeze({
     mode_hyper: 0, mode_hyper_100: 0, mode_hyper_semaine: null,
   }),
   personnage_arme: Object.freeze({ durabilite: null, type_degats_choisi: null }),
-  personnage_sort: Object.freeze({ prepare: 0, prepare_jet: null, prepare_posture_id: null, prepare_hyper: 0, prepare_cent: 0 }),
+  personnage_sort: Object.freeze({ prepare: 0, prepare_jet: null, prepare_posture_id: null, prepare_hyper: 0, prepare_cent: 0, prepare_critique: null }),
   personnage_resistance_choix: Object.freeze({ magie_id: null }),
 });
 
@@ -279,6 +279,9 @@ const CHECKS_DE_LA_FICHE = Object.freeze({
   // un sort préparé en Mode Hyper ou au 100 % (migration 0086, contraintes nommées : SQLite donne leur nom)
   personnage_sort_prepare_hyper_avec_prepare: 'seul le sort préparé se prépare en Mode Hyper (décision R172)',
   personnage_sort_prepare_cent_avec_prepare_hyper: 'un sort préparé au Mode Hyper 100 % l’est aussi en Mode Hyper (décision R172)',
+  // la réussite critique figée du sort préparé (migration 0089, contraintes nommées)
+  personnage_sort_prepare_critique_avec_prepare: 'seul le sort préparé a une réussite critique figée à sa préparation (décision R182)',
+  personnage_sort_prepare_critique_bornes: 'la réussite critique figée d’un sort préparé (1 à N) a un N de 1 à 15 (décisions R180, R182)',
 });
 
 /** Message d’une contrainte de la base, en français (exporté pour les tests). */

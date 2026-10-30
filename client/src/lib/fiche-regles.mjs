@@ -19,7 +19,7 @@ import { BATON_A_REGLER, contenanceEcrite, effetsDeBaton, exemplairesDeCeintureE
 import { bonusDeDegatsEcrit } from './degats-texte.mjs';
 import { bonusDeSortsEcrits, preparationEcrite } from './sort-bonus-texte.mjs';
 import { lecteurDAcquis } from './acquis-texte.mjs';
-import { critiqueDeLAccessoire, critiqueDuDon } from './critique-texte.mjs';
+import { critiqueDeLAccessoire, critiqueDuDon, critiqueDuPremierCoup } from './critique-texte.mjs';
 import { chargerInvocations, tableauxDesSorts } from './bestiaire-db.mjs';
 import { FAMILLES_DES_SAUF, desSelonLaForce, famillesAuChoix, idDeSourceDeClasse } from './maitrise-arme.mjs';
 import { ORDRE_DES_RACES, raceKind } from './race-kinds.mjs';
@@ -498,6 +498,9 @@ function reglesDeLaBase(db) {
           // son bonus de réussite critique dans une posture, s'il est passif (« (Posture Offensif) Augmente la réussite critique de +5% », Sci du Crit :
           // lib/critique-texte.mjs, décision R180 ; un don actif ne joue pas en permanence, R128)
           ...(() => { const critique = d.type === 'passif' ? critiqueDuDon(d.effet) : null; return critique ? { critique } : {}; })(),
+          // le critique du sort qu'il relâche plusieurs fois, écrit dans sa remarque (« Dans le cas d'un critique, ce sera que pour le premier coup, les
+          // prochains c'est fixé à 40 de réussite. », Double coup : lib/critique-texte.mjs, décision R182 (5)) : un rappel du bloc « Sort préparé »
+          ...(() => { const premier = critiqueDuPremierCoup(d.remarque); return premier ? { critique_premier_coup: premier } : {}; })(),
         })),
       };
     });
@@ -544,8 +547,8 @@ function reglesDeLaBase(db) {
   const lignesDePosture = lignes(db, "SELECT posture_id, rang, texte, inconvenient FROM posture_effet WHERE version = 'fiche' ORDER BY posture_id, rang");
   const effetsDePosture = parCle(lignesDePosture, 'posture_id', (r) => r.texte);
   const inconvenientsDePosture = parCle(lignesDePosture.filter((r) => r.inconvenient === 1), 'posture_id', (r) => r.rang);
-  // les compétences où compte un bonus de réussite critique lié à la posture (décision R180, table posture_critique) : `posture`, celui de la posture
-  // elle-même (Offensif : ses six jets d'attaque ; Défensif : Esquive et Parade) ; `don_de_posture`, celui d'un don écrit pour elle (Sci du Crit, Q90)
+  // les compétences où compte le bonus de réussite critique de la posture elle-même (décision R180, table posture_critique : Offensif, ses six jets
+  // d'attaque ; Défensif, Esquive et Parade) ; un don écrit pour une posture (Sci du Crit) n'y a plus de ligne : il n'est que mentionné (R182, Q90)
   const critiqueDesPostures = parCle(lignes(db, 'SELECT posture_id, bonus, competence_id FROM posture_critique ORDER BY posture_id, bonus, competence_id'), 'posture_id');
   const critiqueDe = (id, bonus) => (critiqueDesPostures.get(id) ?? []).filter((r) => r.bonus === bonus).map((r) => r.competence_id);
   const postures = lignes(db, 'SELECT id, nom FROM posture ORDER BY ordre')
@@ -555,7 +558,7 @@ function reglesDeLaBase(db) {
       inconvenients: inconvenientsDePosture.get(p.id) ?? [],
       // ce que chaque ligne change aux valeurs de la fiche (décision R100 : lib/posture-texte.mjs), au même rang que `effets` ; null = affichée seulement
       chiffres: (effetsDePosture.get(p.id) ?? []).map(effetDePosture),
-      critique: { posture: critiqueDe(p.id, 'posture'), don_de_posture: critiqueDe(p.id, 'don_de_posture') },
+      critique: { posture: critiqueDe(p.id, 'posture') },
     }));
 
   // Mode Hyper et Mode Hyper 100 % (demande du propriétaire : leurs cases à côté des postures, quand ils sont débloqués) : les niveaux et le Mode Hyper 100 %
@@ -776,8 +779,10 @@ function reglesDeLaBase(db) {
     // « Organisé » (« un inventaire équivalent à 5 de Force, quelque soit la force du personnage » : lib/fiche-moteur.mjs#donDuSacSansForce)
     sac: { quantite_max: 99, force_avec_le_don: 5 },
     // le sort préparé (décision R115 : « noter le résultat du jet de magie si réussi », « le jet de magie (le D100) » ; des valeurs de la décision, comme le
-    // sac, que le CHECK de personnage_sort.prepare_jet garde aussi) : le jet se note de 1 à 100 (lib/fiche-moteur.mjs#sortsApresLeJet)
-    sort_prepare: { jet_min: 1, jet_max: 100 },
+    // sac, que le CHECK de personnage_sort.prepare_jet garde aussi) : le jet se note de 1 à 100 (lib/fiche-moteur.mjs#sortsApresLeJet) ; la compétence
+    // dont la plage de réussite critique est figée à la préparation (décision R182 (4) : « la plage de critique de Concentration » ; guide, « La magie en
+    // jeu » : « Les mages rouge, bleu et vert lancent les leurs avec *Concentration* » ; personnage_sort.prepare_critique, lib/fiche-moteur.mjs#sortsApresPreparation)
+    sort_prepare: { jet_min: 1, jet_max: 100, competence_id: 'concentration' },
   };
 
   // Les invocations (décision R130 : « avoir la liste des invocations possibles pour les sorts qui invoquent des créatures », « adapter le monstre invoqué en

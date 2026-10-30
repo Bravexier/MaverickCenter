@@ -406,18 +406,24 @@ bouton (au-dessus quand la place manque), bornée à l'écran, téléphone compr
   verrouillé à 1 ; 30 avec le Feu ou l'Eau inné).
   **Réussite critique** (décision R180) : chaque compétence porte son bonus de réussite critique **du moment** (`competencesDe` : `critique`,
   `critiqueDe` ; null à deux croix), en infobulle du score dès qu'il n'est pas nul (`lignesDuCritique` : le total et la plage, « Réussite critique :
-  +10 % (1 à 15) », une ligne par origine, « +5 % (score de 103 % et plus) », « +5 % (posture Offensif) », « +5 % (Sci du Crit) », « +1 % (Accessoire :
-  Collier) », et « Plafond : +16 % ramené à +10 % (jamais plus de 1 à 15) » quand le plafond rogne). Les origines : le **palier**, lu sur le score du
+  +10 % (1 à 15) », une ligne par origine, « +5 % (score de 103 % et plus) », « +5 % (posture Offensif) », « +1 % (Accessoire : Collier) », et
+  « Plafond : +12 % ramené à +10 % (jamais plus de 1 à 15) » quand le plafond rogne). Les origines : le **palier**, lu sur le score du
   moment (posture comprise : 113 en Offensif donne 103), de 96 à 102 % +2, à partir de 103 % +5 au total, sans borne haute, sur tout jet ; la
-  **posture** (ci-dessous, « Posture du moment ») ; un **don de posture** acquis, passif, dont le texte s'ouvre sur « (Posture X) » et écrit « Augmente
-  la réussite critique de +N% » (`lib/critique-texte.mjs#critiqueDuDon`, jamais par le nom : aujourd'hui Sci du Crit, Martiale, Héros), quand X est la
-  posture du moment ou au Mode Hyper 100 %, sur les compétences (X, `don_de_posture`) de `posture_critique` (les six jets de l'Offensif, choix
-  provisoire, Q90) ; un **accessoire** porté « Augmente la réussite critique de N%, peu importe le jet. » (`critiqueDeLAccessoire`), sur toutes les
-  compétences (maudit : l'effet contraire, R54). Le total est **plafonné** pour que la base (5) plus le bonus ne dépasse pas 15. Les nombres viennent des
-  constantes `critique.*` de `regle_constante` (`regles.constantes`), les compétences de `posture_critique` (`regles.postures[].critique`), jamais du code.
+  **posture** (ci-dessous, « Posture du moment ») ; un **accessoire** porté « Augmente la réussite critique de N%, peu importe le jet. »
+  (`critiqueDeLAccessoire`), sur toutes les compétences (maudit : l'effet contraire, R54). Le total est **plafonné** pour que la base (5) plus le bonus
+  ne dépasse pas 15. Les nombres viennent des constantes `critique.*` de `regle_constante` (`regles.constantes`), les compétences de `posture_critique`
+  (`regles.postures[].critique`), jamais du code.
+  **Un don de posture est mentionné, jamais compté** (décision R182 (3), Q90 : « Tout jet d'attaque au corps à corps », « Le mentionner seulement ») :
+  un don acquis, passif, dont le texte s'ouvre sur « (Posture X) » et écrit « Augmente la réussite critique de +N% » (`lib/critique-texte.mjs#critiqueDuDon`,
+  jamais par le nom : aujourd'hui Sci du Crit, Martiale, Héros) ne vaut qu'avec une arme de contact et dépend de l'arme utilisée (R128). Quand X est la
+  posture du moment, ou au Mode Hyper 100 %, l'infobulle du score des compétences des armes de contact le dit après le total, hors du total et du
+  plafond : « Sci du Crit : +5 % avec une arme de contact (non compté) » (`critique.mentions`). Ces compétences sont celles que donnent les armes des
+  familles `categorie = 'contact'` (R127, R151 : `competencesDeContact`, lues dans `regles.familles_armes[].competences`, aujourd'hui Arme légère et
+  Arme lourde), jamais une liste du code ; un sort d'attaque n'en est jamais une.
   **Ne sont pas comptés** (R128, Q88 : « Seulement ce qui joue en permanence ») : les sorts « à la prochaine attaque », les dons actifs (Tout ou rien,
   Prends ça …, Coup mortel), l'arme utilisée, la tenaille, une situation (milieu urbain, vol à la tire, soins, divinité) ; `lib/acquis-texte.mjs` écarte
-  toujours la réussite critique des acquis. `score`, `scoreDuMoment` et le tableur ne changent pas (`test/fiche-critique.test.mjs`).
+  toujours la réussite critique des acquis. `score`, `scoreDuMoment` et le tableur ne changent pas (`test/fiche-critique.test.mjs`,
+  `test/fiche-critique-sort-prepare.test.mjs`).
 - **Maîtrises d'armes** (décision R148, variante A de la maquette retenue par le propriétaire, « Bloc des sources » : « tous les choix dans le bloc
   Maîtrises, une carte par source, à côté du tableau calculé par famille ») : rien ne se saisit par famille, plus de curseur ni de quota. Le bloc est dans
   l'onglet « Choix » de la zone 4, sur toute la largeur du panneau, sous ses deux colonnes (demande du propriétaire du 2026-10-23), donc aussi dans le
@@ -490,8 +496,21 @@ bouton (au-dessus quand la place manque), bornée à l'écran, téléphone compr
   forcé), `sortDuMoment`. Relancer le Mode Hyper ne change rien à un sort déjà préparé ; le bloc dit « · Mode Hyper » ou « Mode Hyper 100 % (toutes
   les postures) » à côté de la posture, son infobulle ce qui est figé. **Un sort préparé ne demeure que jusqu'à la fin d'un combat** (R179) : « Fin de
   combat » le lâche, comme « Lâcher le sort » (`finDeCombat`, Q86 : « Oui, « Fin de combat » le lâche aussi »).
+  **Sa réussite critique est celle de la préparation** (décision R182 (4), Q91 : « c'est le critique au moment de la préparation qui va taper quand le
+  sort est relaché ») : préparer note la plage de critique de **Concentration** à cet instant (`regles.sort_prepare.competence_id`,
+  `critiqueAlaPreparation` : `critiqueDe` à la posture cochée, au score du moment et au Mode Hyper de l'instant, Mode Hyper 100 % compris, avec les
+  sources permanentes de R180). Le bloc l'affiche sous ses champs, « Réussite critique : 1 à 12 (figée à la préparation) » (`texteDuCritiquePrepare`),
+  sans jamais dire si le jet noté est un critique ; passer ensuite en Neutre ne la change pas, alors que l'infobulle de Concentration montre la plage
+  du moment. « Lâcher le sort », « Fin de combat », un autre sort sur la ligne ou la Symbiose d'une autre magie l'effacent avec le reste ; une fiche
+  d'avant (NULL) n'est jamais recalculée et n'a pas la ligne. **« Double coup »** (Mage Rouge et Mage Vert, niveau 20 ; R182 (5)) : quand le
+  personnage l'a acquis, le bloc rappelle « Seul le premier relâchement peut être un critique ; les suivants sont fixés à 40 de réussite (Double
+  coup). », sans calcul ni suivi des relâchements (`rappelsDuSortPrepare` ; le don est reconnu à sa remarque, « Dans le cas d'un critique, ce sera que
+  pour le premier coup, les prochains c'est fixé à 40 de réussite. », lue par `lib/critique-texte.mjs#critiqueDuPremierCoup` dans
+  `regles.classes[].dons[].critique_premier_coup`, jamais par son nom ; un bi-classé qui a les deux ne le lit qu'une fois).
   Colonnes `personnage_sort.prepare`, `prepare_jet`, `prepare_posture_id` (migration 0067), `prepare_hyper` et `prepare_cent` (0/1, migration 0086 :
-  `prepare_hyper` exige `prepare`, `prepare_cent` exige `prepare_hyper` ; « Lâcher le sort » les remet à 0 avec le reste) ; une préparation que le don ne permet plus (classe changée,
+  `prepare_hyper` exige `prepare`, `prepare_cent` exige `prepare_hyper` ; « Lâcher le sort » les remet à 0 avec le reste), `prepare_critique` (R182,
+  migration 0089 : le N de « Réussite critique : 1 à N », figé à la préparation, de 1 à 15 (sous la base de 5 avec un accessoire maudit, R180), seulement sur le sort préparé, NULL tant qu'il n'est pas
+  noté ; une fiche d'avant le garde NULL ; « Lâcher le sort » la remet à NULL) ; une préparation que le don ne permet plus (classe changée,
   sort d'un autre NPM) n'est plus comptée et part à l'enregistrement (`sortPrepare`, `sortsAEnregistrer`) ; changer le sort d'un emplacement ne lui
   donne pas la préparation de l'ancien (`sortsApresChoixDEmplacement`). **En Symbiose avec une autre magie que la sienne, le sort préparé est perdu**
   (décision R135 : « Si le sort préparé est d'une magie différente de la posture symbiose, il est perdu ») : la page lâche sa préparation à chaque
@@ -724,7 +743,7 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   compétences d'attaque ; en vert ou en rouge, le détail en infobulle), la réussite critique (décision R180 : « +5% à la réussite critique » de
   l'Offensif sur Arc, Arbalète, Arme légère, Arme lourde, Magie et Concentration — Concentration sans le −10 —, « +5% à la RC à la défense » du
   Défensif sur Esquive et Parade, les deux au Mode Hyper 100 % ; les compétences de `posture_critique`, `bonus = 'posture'` ; `postureDuMoment` :
-  `critique`, `critiqueDesDons` ; détail plus haut, « Caractéristiques »), l'initiative (Vigilance +2), l'AP et l'AM (Défensif 2 × ⌈N ÷ 4⌉, Symbiose AM
+  `critique` ; un don de posture est seulement mentionné, sur `noms`, R182 ; détail plus haut, « Caractéristiques »), l'initiative (Vigilance +2), l'AP et l'AM (Défensif 2 × ⌈N ÷ 4⌉, Symbiose AM
   +4 +2 par puissance magique au-delà de la première), les dégâts des armes (`degatsDArmeDuMoment` : Offensif le maximum, « 6D6+4 » → « 40 » ;
   Défensif « ÷ 2 » ; Symbiose : pastille grisée, sauf l'arme élémentaire de la magie de la Symbiose, décision R167, exception à R112 : utilisable,
   avec le bonus de dégâts de la posture, +5 et +2 par puissance magique au-delà de la première, « Posture Symbiose (Sang) » en infobulle ; tant que
@@ -906,7 +925,8 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   « NM du MJ : 2 » ; un classeur d'avant les écrit sort par sort, « Boule de feu (livre 1, MJ 1) », relus comme NM du MJ de la fiche), magie de la symbiose (R100 : « Magie de la symbiose : Glace », relue si c'est une magie du personnage), sort
   préparé (R115 : « Sort préparé : Boule de feu (jet 57, posture Offensif) », le nom seul sans jet ni posture ; préparé en Mode Hyper ou au Mode
   Hyper 100 %, R172 : « (jet 57, posture Offensif, Mode Hyper) », « (jet 57, Mode Hyper 100 %) », relus dans `prepare_hyper` et `prepare_cent`,
-  cohérents ; relu si c'est un sort de la liste que le don de préparation de la fiche autorise, son jet de 1 à 100 et sa posture une des six, sinon
+  cohérents ; sa plage de critique figée, R182 : « (jet 57, posture Offensif, critique 1 à 12) », relue telle quelle dans `prepare_critique` si elle
+  va de « 1 à 1 » à « 1 à 15 » (le bas de la plage « 1 à N », puis la constante `critique.plafond`), sinon perdu et dit, jamais recalculée, absente d'une fiche d'avant ; relu si c'est un sort de la liste que le don de préparation de la fiche autorise, son jet de 1 à 100 et sa posture une des six, sinon
   perdu et dit : `texteDuSortPrepare`, `lireSortPrepare`), Mode Hyper (R172 : « Mode Hyper : actif, 100 %, semaine 0/1 », écrite seulement quand il est actif ou que le compteur n'est pas
   au maximum ; relue si le niveau du classeur le débloque, sinon perdu et dit : `texteDuModeHyper`, `lireModeHyper`), compteurs entamés des actions
   (R173 : « Compteur d'action : Méditation (Humain) 1/3 [race:don-de-base:races/humain] », une ligne par compteur sous son maximum ; la clé entre
