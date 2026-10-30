@@ -36,6 +36,9 @@ export const NOMS_DES_TABLES = Object.freeze({
   evenement_categorie: 'Catégorie de l’événement',
   // classes (section 6)
   classe_annexe: 'Tableau annexe de la classe',
+  // le tableau du Mage Bleu découpé en entrées, et la magie que vise chaque don « Variable » (migration 0088, décision R181) : lus seulement
+  classe_annexe_entree: 'Entrée du tableau annexe de la classe',
+  capacite_variable: 'Magie visée par le don « Variable »',
   classe_maitrise_arme: 'Maîtrise d’arme de la classe',
   classe_maitrise_armure: 'Maîtrise d’armure de la classe',
   classe_objet_depart: 'Objet de départ de la classe',
@@ -125,6 +128,7 @@ export const NOMS_DES_TABLES = Object.freeze({
   personnage_capacite: 'Don de classe choisi du personnage',
   personnage_ceinture: 'Objet de la ceinture du personnage',
   personnage_classe: 'Classe du personnage',
+  personnage_don_obtenu: 'Don obtenu du personnage',
   personnage_inventaire: 'Objet de l’inventaire du personnage',
   personnage_livre_sort: 'Livre de sort du personnage',
   personnage_maitrise_choix: 'Maîtrise d’arme choisie du personnage',
@@ -239,6 +243,11 @@ export const NOMS_DES_COLONNES = geler({
   bouclier_poids: { force_min: 'Force minimale' },
   capacite: { ligne: 'Ligne', limite_nombre: 'Nombre d’utilisations', limite_periode: 'Période des utilisations' },
   capacite_nm_gagne: { capacite_id: 'Don de classe', nm: 'NM de sorts gagnés' },
+  capacite_variable: { capacite_id: 'Don « Variable »', magie: 'Magie visée' },
+  classe_annexe_entree: {
+    annexe_rang: 'Ligne du tableau annexe', type_brut: 'Type (tel qu’écrit)', limite_brute: 'Limite (telle qu’écrite)', limite_nombre: 'Nombre d’utilisations',
+    limite_periode: 'Période des utilisations', effet: 'Effet',
+  },
   classe: {
     categorie_id: 'Catégorie de classe', bouclier_classe_max: 'Classe de bouclier maximale', chose_a_savoir_lien: 'Lien de la chose à savoir',
     description_titre: 'Titre de la présentation', magie_innee_id: 'Magie innée qui réserve la classe', magie_innee_exclue_id: 'Magie innée qui ferme la classe',
@@ -289,6 +298,7 @@ export const NOMS_DES_COLONNES = geler({
   note_cellule: { cellule: 'Cellule', repond_a: 'Répond à' },
   page: { type: 'Rubrique du wiki', slug: 'Adresse', resume: 'Résumé', donnees: 'Données', statut: 'Statut' },
   page_entite: { principale: 'Page principale' },
+  personnage_don_obtenu: { source: 'Don « Variable »', entree_id: 'Entrée obtenue' },
   panneau_regles_bloc: { tuile: 'Genre du bloc' },
   potion_etat: { action: 'Action' },
   race: {

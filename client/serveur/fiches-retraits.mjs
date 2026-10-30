@@ -1,5 +1,6 @@
 // Fiches de personnage et règles supprimées (décision R42 ; docs/serveur.md, « Fiches de personnage (R42) ») : un don, une spécialité (avec les dons
-// choisis qui en dépendent), un sort (avec son livre, décision R169), un métier ou une arme (décision R52) que les règles suppriment est RETIRÉ des fiches qui l'utilisent — la fiche reste, seul l'élément part —
+// choisis qui en dépendent), un sort (avec son livre, décision R169), un métier, une arme (décision R52) ou le don obtenu d'un don « Variable » du Mage
+// Bleu (décision R181 : l'entrée du tableau, ou le don « Variable », supprimés) que les règles suppriment est RETIRÉ des fiches qui l'utilisent — la fiche reste, seul l'élément part —
 // et une ligne datée par élément s'ajoute à la fin de ses notes (« NOTE », cellule BA53 ; texte : src/lib/fiche-format.mjs#ligneDeRetrait). Deux moments :
 //   - le site de dev supprime une ligne de règle (serveur/edition.mjs : métier, spécialité, don) : retirerDesFiches, AVANT la suppression de la règle
 //     (clés étrangères contrôlées), noms lus dans la base avant qu'elle ne parte ;
@@ -31,6 +32,12 @@ export const RETRAITS = Object.freeze([
     cle: Object.freeze(['personnage_id', 'rang']),
   }),
   Object.freeze({ table: 'personnage_capacite', colonnes: Object.freeze(['capacite_id']), vise: 'capacite', action: 'supprimer', cle: Object.freeze(['personnage_id', 'capacite_id']) }),
+  // le don obtenu d'un don « Variable » (décision R181, migration 0088 ; les deux clés sont sans ON DELETE) : il part avec l'entrée du tableau qu'il
+  // obtient, ou avec le don « Variable » qui l'obtient (nommé sur sa ligne à lui : donsObtenusDesDons)
+  Object.freeze({
+    table: 'personnage_don_obtenu', colonnes: Object.freeze(['entree_id']), vise: 'classe_annexe_entree', action: 'supprimer', cle: Object.freeze(['personnage_id', 'entree_id']),
+  }),
+  Object.freeze({ table: 'personnage_don_obtenu', colonnes: Object.freeze(['source']), vise: 'capacite', action: 'supprimer', cle: Object.freeze(['personnage_id', 'source']) }),
   Object.freeze({ table: 'personnage_sort', colonnes: Object.freeze(['sort_id']), vise: 'sort', action: 'supprimer', cle: Object.freeze(['personnage_id', 'sort_id']) }),
   // le livre d'un sort (décision R169, migration 0082 : sur un sort de la liste ou non) part avec le sort, nommé sur sa ligne (la clé n'a pas d'ON DELETE)
   Object.freeze({ table: 'personnage_livre_sort', colonnes: Object.freeze(['sort_id']), vise: 'sort', action: 'supprimer', cle: Object.freeze(['personnage_id', 'sort_id']) }),
@@ -97,6 +104,33 @@ const descripteurDuSort = (s) => ({
 });
 
 /**
+ * Le descripteur du retrait d'un don obtenu (décision R181 ; fiche-format.mjs#descriptionDuRetrait, nature « don_obtenu ») : l'entrée (`id`, `nom`), le
+ * don « Variable » qui l'obtenait (`don`), la classe et la magie de sa ligne ; `cas` : 'entree' (l'entrée supprimée) ou 'don' (le don supprimé).
+ */
+const descripteurDuDonObtenu = (o, cas) => ({
+  nature: 'don_obtenu', id: o.entree_id, nom: o.nom ?? null, don: o.don ?? null, classe: o.classe ?? null, magie: o.magie ?? null, cas,
+});
+
+/**
+ * Site de dev : les dons obtenus (décision R181, personnage_don_obtenu) que les dons « Variable » donnés font obtenir aux fiches, à retirer avec eux :
+ * une ligne par fiche et par don, l'entrée nommée (nom, classe, magie de sa ligne) et le don qui l'obtenait. La fiche n'a pas forcément le don dans ses
+ * dons choisis (Mimétisme et Ultime raison s'obtiennent d'office ; un choix gardé sans effet, R181) : une ligne de note à elle, cas « don ». Rien sans la
+ * table (une base vivante d'avant la migration 0088).
+ */
+function donsObtenusDesDons(db, capacites) {
+  if (!capacites.length || !aLaTable(db, 'personnage_don_obtenu')) return [];
+  return db.prepare(`SELECT ${champsDeFiche}, o.source, o.entree_id, e.nom, k.nom AS don, c.nom AS classe, m.nom AS magie
+    FROM main.personnage_don_obtenu o JOIN main.personnage p ON p.id = o.personnage_id
+    LEFT JOIN main.capacite k ON k.id = o.source
+    LEFT JOIN main.classe_annexe_entree e ON e.id = o.entree_id
+    LEFT JOIN main.classe c ON c.id = e.classe_id
+    LEFT JOIN main.classe_annexe x ON x.classe_id = e.classe_id AND x.rang = e.annexe_rang
+    LEFT JOIN main.magie m ON m.id = x.magie_id
+    WHERE o.source IN (SELECT value FROM json_each(?)) ORDER BY p.id, o.source`).all(JSON.stringify(capacites))
+    .map((o) => ({ ...o, vise: 'classe_annexe_entree', cle: [o.personnage, o.entree_id], descripteur: descripteurDuDonObtenu(o, 'don') }));
+}
+
+/**
  * Applique les retraits collectés (SQL direct, dans `main`) et range leurs descripteurs dans `acc`. Une entrée sans descripteur (un don qui part avec sa
  * spécialité, nommé sur la ligne de celle-ci) est retirée sans ligne de note à elle.
  * @param {{ personnage: string, fiche: string, nature: string, vise: string, cle: unknown[], descripteur: object | null }[]} aRetirer
@@ -153,6 +187,8 @@ export function retirerDesFiches(db, { metiers = [], specialites = [], capacites
         : { nature: 'capacite', id: k.id, nom: k.nom, classe: k.classe ?? null, specialite: k.specialite ?? null, niveau: k.niveau ?? null } });
     }
   }
+  // le don obtenu par un don « Variable » qui part (décision R181), que la fiche ait le don dans ses choix ou non
+  aRetirer.push(...donsObtenusDesDons(db, capacites));
   for (const id of sorts) {
     const s = db.prepare('SELECT s.id, s.nom, s.niveau, m.nom AS magie FROM main.sort s LEFT JOIN main.magie m ON m.id = s.magie_id WHERE s.id = ?').get(id);
     if (!s) continue;
@@ -297,9 +333,39 @@ export function retirerLesManquants(db, acc = nouveauxRetraitsDeFiches()) {
     ORDER BY p.id, pa.rang`).all()) {
     aRetirer.push({ ...a, vise: 'arme', cle: [a.personnage, a.rang], descripteur: { nature: 'arme', id: a.id, nom: a.nom ?? null, famille: a.famille ?? null, rang: a.rang } });
   }
+  aRetirer.push(...donsObtenusManquants(db));
   // composants : l'objet reste sous son nom, sans lien au catalogue, avec une note (R60, OBJETS_AU_CATALOGUE)
   detacherLesManquantes(db, acc);
   return appliquer(db, aRetirer, acc);
+}
+
+/**
+ * Reconstruction de la base vivante (retirerLesManquants) : les dons obtenus (décision R181, personnage_don_obtenu) dont l'entrée du tableau (cas
+ * « entree ») ou le don « Variable » (cas « don ») manque dans les nouvelles règles, leur classe présente ; une classe disparue bloque la reconstruction
+ * (hors R42), comme pour un don. Une ligne par fiche et par entrée : l'entrée disparue l'emporte sur le don disparu. Noms lus dans les nouvelles règles,
+ * sinon dans l'ancienne base. Rien quand l'ancienne base n'a pas la table (avant la migration 0088 : aucune ligne n'a été recopiée).
+ */
+function donsObtenusManquants(db) {
+  const ancienne = (t) => !!db.prepare("SELECT 1 FROM ancienne.sqlite_master WHERE type = 'table' AND name = ?").get(t);
+  if (!aLaTable(db, 'personnage_don_obtenu') || !['personnage_don_obtenu', 'classe_annexe_entree', 'classe_annexe'].every(ancienne)) return [];
+  return db.prepare(`SELECT ${champsDeFiche}, o.source, o.entree_id, coalesce(me.nom, ae.nom) AS nom, coalesce(mk.nom, ak.nom) AS don,
+      coalesce(mc.nom, ac.nom) AS classe, coalesce(mm.nom, am.nom) AS magie,
+      CASE WHEN me.id IS NULL THEN 'entree' ELSE 'don' END AS cas
+    FROM main.personnage_don_obtenu o JOIN main.personnage p ON p.id = o.personnage_id
+    LEFT JOIN main.classe_annexe_entree me ON me.id = o.entree_id
+    LEFT JOIN ancienne.classe_annexe_entree ae ON ae.id = o.entree_id
+    LEFT JOIN main.capacite mk ON mk.id = o.source
+    LEFT JOIN ancienne.capacite ak ON ak.id = o.source
+    LEFT JOIN main.classe mc ON mc.id = coalesce(me.classe_id, ae.classe_id)
+    LEFT JOIN ancienne.classe ac ON ac.id = coalesce(me.classe_id, ae.classe_id)
+    LEFT JOIN ancienne.classe_annexe ax ON ax.classe_id = ae.classe_id AND ax.rang = ae.annexe_rang
+    LEFT JOIN main.classe_annexe mx ON mx.classe_id = me.classe_id AND mx.rang = me.annexe_rang
+    LEFT JOIN main.magie mm ON mm.id = coalesce(mx.magie_id, ax.magie_id)
+    LEFT JOIN ancienne.magie am ON am.id = coalesce(mx.magie_id, ax.magie_id)
+    WHERE (me.id IS NULL AND EXISTS (SELECT 1 FROM main.classe c WHERE c.id = ae.classe_id))
+       OR (me.id IS NOT NULL AND mk.id IS NULL AND EXISTS (SELECT 1 FROM main.classe c WHERE c.id = ak.classe_id))
+    ORDER BY p.id, o.source`).all()
+    .map((o) => ({ ...o, vise: 'classe_annexe_entree', cle: [o.personnage, o.entree_id], descripteur: descripteurDuDonObtenu(o, o.cas) }));
 }
 
 /**

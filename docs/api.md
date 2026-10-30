@@ -195,7 +195,7 @@ la ressource ne prend que les lignes de la table qui passent sa condition.
 | `races/` | Races | `race` | créer, modifier | `dons` (modifier), `colonnes-du-tableau-de-dons` (modifier), `lignes-du-tableau-de-dons`, `cases-du-tableau-de-dons` (modifier), `restrictions-de-caracteristique`, `magies-innees-de-l-onglet` (créer, supprimer), `acces-aux-magies` (modifier), `acces-aux-classes` |
 | `ethnies/` | Ethnies | `ethnie` | lecture seule | `resistances` |
 | `categories-de-classe/` | Catégories de classe | `categorie_classe` | lecture seule | — |
-| `classes/` | Classes | `classe` | créer, modifier | `tableau-annexe` |
+| `classes/` | Classes | `classe` | créer, modifier | `tableau-annexe`, `entrees-du-tableau` |
 | `specialites/` | Spécialités | `specialite` | créer, modifier, supprimer | — |
 | `dons-de-classe/` | Dons de classe | `capacite` | créer, modifier, supprimer | — |
 | `objets-de-depart/` | Objets de départ | `objet_depart` | lecture seule | — |
@@ -342,7 +342,10 @@ fois et une seule (ressource, sous-ressource, extension, dérivée ou hors resso
 donne chaque source de points de maîtrise d'armes, migration 0076) : une source est une ligne de maîtrise d'une classe ou un don, deux parents qu'une
 dérivée ne sait pas porter ; `capacite_nm_gagne` (les NM de sorts gagnés d'un don, R154) est une dérivée de `dons-de-classe/`. Toutes trois sont
 refaites par le service d'édition quand une écriture change une ligne de maîtrise d'une classe ou l'effet d'un don (`serveur/edition-maitrises.mjs`),
-jamais écrites directement.
+jamais écrites directement. `capacite_variable` (la magie que vise un don « Variable » du Mage Bleu, décision R181, migration 0088) est aussi une dérivée de
+`dons-de-classe/`, mais écrite par la migration seulement : le service d'édition ne la refait pas encore (un don « Variable » créé ou réécrit sur le site
+de dev n'y entre pas). Les entrées du tableau du Mage Bleu (`classe_annexe_entree`) sont la sous-ressource `entrees-du-tableau` de `classes/`, en
+lecture seule ; les dons obtenus d'une fiche (`personnage_don_obtenu`) sont une partie de la fiche, hors ressource.
 
 Chaque opération du lot du service est joignable par une ressource (`test/ressources-registre.test.mjs` lit `OPERATIONS` dans
 `serveur/edition.mjs`) ; seuls les lots à plusieurs opérations atomiques (références « @i » : créer une spécialité puis son don dans la même

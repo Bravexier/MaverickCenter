@@ -67,7 +67,8 @@ test('migration 0082 : nm_livre retirée, personnage_sort et personnage_livre_so
     neuve.close();
   }
   assert.ok(!colonnes(db, 'personnage_sort').some((c) => c.name === 'nm_livre'));
-  assert.deepEqual(vuesRefaites, [], 'la migration recrée v_personnage_controle telle que data/schema.sql');
+  // la vue de 0082 est refaite depuis data/schema.sql : la migration 0088 (dons « Variable », R181) l'a changée depuis (comme 0080 après 0082)
+  assert.deepEqual(vuesRefaites, ['v_personnage_controle']);
   assert.equal(db.prepare("SELECT sql FROM sqlite_master WHERE name = 'v_personnage_controle'").get().sql,
     vuesCourantes().find((v) => v.name === 'v_personnage_controle').sql);
   assert.deepEqual(db.prepare("SELECT regle, detail FROM v_personnage_controle WHERE personnage_id = 'un-livre' AND regle LIKE 'sort%'").all().map((r) => ({ ...r })),

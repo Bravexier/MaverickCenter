@@ -341,6 +341,7 @@ export const HORS_RESSOURCE = {
   personnage_resistance_choix: `Résistance au choix d’une fiche : d’une ligne du tableau de la race, « Au choix parmi les autres » du Drakos orange (R124), ou à une magie au choix ou tirée d’un don, Ocultomancien « Résilience », Anansi d’Arcane (R137) (partie de la fiche) : ${FICHES}.`,
   personnage_metier_bonus: `Choix d’un rang de bonus de métier à plusieurs compétences (partie de la fiche) : ${FICHES}.`,
   personnage_capacite: `Dons à choix d’une fiche (partie de la fiche) : ${FICHES}.`,
+  personnage_don_obtenu: `Dons obtenus d’une fiche : l’entrée du tableau du Mage Bleu qu’obtient chaque don « Variable », une entrée une seule fois (partie de la fiche, R181) : ${FICHES}.`,
   personnage_sort: `Sorts d’une fiche et leurs NM (partie de la fiche, R24, R26) : ${FICHES}.`,
   personnage_livre_sort: `Livres de sort lus d’une fiche, un par sort, sur un sort de la liste ou non ; son NM n’est utilisé que si le sort est choisi (partie de la fiche, R26, R169) : ${FICHES}.`,
   personnage_maitrise_choix: `Choix de maîtrise d’armes d’une fiche, une famille par point à choisir de chaque source ; les points et les dés se calculent (partie de la fiche, R148 à R153) : ${FICHES}.`,

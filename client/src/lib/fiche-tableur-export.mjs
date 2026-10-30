@@ -42,7 +42,7 @@ import {
   EMPLACEMENTS_ACCESSOIRES, accessoiresDesSorts, acquisChoixGardes, alignementDe, artisanatDe, bouclierDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, budgetCaracteristiques,
   caracteristiquesCompletes, caracteristiquesDe, choixEnAttente, classesDe, competencesDe, degatsDArme, donDeBase, donsAcquis, donsDeRace, durabiliteDArme,
   armureParPartie, emplacementsDeSorts, livresDe, maitriseDesSorts, maitrisesParFamille, modeHyperDe, nmDuSort, npmMax, partiesDeLArmure, progressionXp, resistancesDe, sortPrepare,
-  sourcesDeMaitrise, trouver, valeursDuMoment, armeDeLaLigne, typeDegatsChoisi, typesDeDegats, actionsDeLaFiche,
+  sourcesDeMaitrise, trouver, valeursDuMoment, armeDeLaLigne, typeDegatsChoisi, typesDeDegats, actionsDeLaFiche, donsVariables,
 } from './fiche-moteur.mjs';
 import {
   CASES_CARACTERISTIQUES, CASES_COMPETENCES, CASES_POSTURES, CASES_RESISTANCES, DONS, EMPLACEMENTS_DU_MODELE, LONGUEUR_MAX_D_UNE_CASE, MAITRISES,
@@ -84,6 +84,9 @@ export const CLES_DE_LA_NOTE = Object.freeze({
   // la sienne dans sa case) : « <source> : <famille>, <famille>, ? » (texteDesChoixDeMaitrise, lireChoixDeMaitrise) ; avant les acquis au choix, dont
   // l'arme choisie suit la maîtrise au choix de la classe (R152)
   maitriseChoix: 'Maîtrise d\'arme au choix',
+  // l'entrée qu'obtient un don « Variable » du Mage Bleu (décision R181, personnage_don_obtenu) : « <don> (<classe>) : <entrée> (<magie>) »
+  // (texteDuDonObtenu, lireDonObtenu), un par choix, gardés sans effet compris ; avant les acquis au choix
+  donObtenu: 'Don obtenu',
   // un choix d'acquis d'un don (décision R104) : « <don> : <compétence> » (« X ou Y »), « <don> : Arc 6, Calme 4 » (« à répartir au choix »),
   // « <don> : <compétence> (<famille d'armes>) » (l'arme choisie, décision R119 : « Flétrisseur (Tueur) : Arme Légère (DAGUES) » ; la famille est celle
   // de la maîtrise au choix de la classe du don, calculée, décision R152 : l'import ne la relit pas)
@@ -469,6 +472,27 @@ export function texteDuCompteurDAction(action) {
 export function lireCompteurDAction(texte) {
   const m = /(?:^|\s)(\d+)\s*\/\s*\d+\s*\[([^\]\s]+)\]\s*$/.exec(String(texte ?? ''));
   return m ? { cle: m[2], restants: Number(m[1]) } : null;
+}
+
+/**
+ * La ligne « Don obtenu » d'un choix d'un don « Variable » du Mage Bleu (décision R181) : « <don> (<classe>) : <entrée> (<magie de l'entrée>) » —
+ * « Mimétisme (Mage Bleu) : Moteur thermique (Feu) » ; les noms tels que les règles les écrivent, relus par lireDonObtenu.
+ */
+export const texteDuDonObtenu = ({ don, classe, entree, magie }) => `${don} (${classe})${SEPARATEUR_DE_CLE}${entree} (${magie})`;
+
+/** { don, classe, entree, magie } d'un texte de texteDuDonObtenu ; null s'il ne se lit pas (« : » puis un nom et sa parenthèse de chaque côté). */
+export function lireDonObtenu(texte) {
+  const t = String(texte ?? '').trim();
+  const i = t.indexOf(SEPARATEUR_DE_CLE);
+  if (i <= 0) return null;
+  const parenthese = (x) => {
+    const y = x.trim();
+    const o = y.lastIndexOf('(');
+    return o > 0 && y.endsWith(')') && y.slice(0, o).trim() && y.slice(o + 1, -1).trim() ? [y.slice(0, o).trim(), y.slice(o + 1, -1).trim()] : null;
+  };
+  const avant = parenthese(t.slice(0, i));
+  const apres = parenthese(t.slice(i + SEPARATEUR_DE_CLE.length));
+  return avant && apres ? { don: avant[0], classe: avant[1], entree: apres[0], magie: apres[1] } : null;
 }
 
 /** Un point d'une source de maîtrise pas encore choisi, dans la ligne « Maîtrise d'arme au choix » (comme « → ? » d'un accessoire). */
@@ -1294,6 +1318,16 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
   for (const source of sourcesDeMaitrise(regles, f)) {
     const t = texteDesChoixDeMaitrise(regles, source);
     if (t) noter(K.maitriseChoix, t);
+  }
+  // les entrées qu'obtiennent les dons « Variable » du Mage Bleu (décision R181), dans l'ordre de la fiche, puis les choix gardés sans effet d'un don qui
+  // n'est plus acquis ; une entrée inconnue des règles n'est pas écrite
+  const variables = donsVariables(regles, f);
+  const nomDeMagie = (e) => nomDe(regles.magies, e.magie_id);
+  for (const d of variables.dons) {
+    if (d.choisie) noter(K.donObtenu, texteDuDonObtenu({ don: d.don.nom, classe: d.classe.nom, entree: d.choisie.nom, magie: nomDeMagie(d.choisie) }));
+  }
+  for (const p of variables.perdus) {
+    if (p.don && p.classe && p.entree) noter(K.donObtenu, texteDuDonObtenu({ don: p.don.nom, classe: p.classe.nom, entree: p.entree.nom, magie: nomDeMagie(p.entree) }));
   }
   // ceux d'une armure cassée compris (décisions R157, R158) : gardés comme à l'enregistrement (acquisChoixGardes)
   for (const c of acquisChoixGardes(regles, f)) {

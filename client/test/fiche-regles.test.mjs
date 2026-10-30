@@ -19,6 +19,7 @@ import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { PAGE_DE_L_ENTRAINEMENT, aideDeLEntrainement, chargerReglesDeFiche, limitesDeLEntrainement } from '../src/lib/fiche-regles.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
+import { genreDeLaPeriode } from '../src/lib/limite-texte.mjs';
 import { porteeDeLArme } from '../src/lib/arme-champs.mjs';
 import { desSelonLaForce } from '../src/lib/maitrise-arme.mjs';
 import { ORDRE_DES_RACES } from '../src/lib/race-kinds.mjs';
@@ -619,4 +620,31 @@ test('A3 : le texte de présentation de chaque classe et de chaque spécialité 
       if (lus.length) assert.equal(lus[0].effet, enBase[0].effet === null ? null : texteSansBalises(enBase[0].effet), s.id);
     }
   }
+});
+
+test('décision R181 : les 54 entrées du tableau du Mage Bleu (classes[].entrees, dans l’ordre du tableau, textes tels qu’en base) et la magie visée de chaque don « Variable » (classes[].dons[].magie_visee)', () => {
+  const sans = (t) => texteSansBalises(t); // regles.json ne porte pas les balises du glossaire
+  const lignes = db.prepare(`SELECT e.classe_id, e.id, x.magie_id, e.rang, e.nom, e.type, e.type_brut, e.limite_nombre, e.limite_periode, e.effet
+    FROM classe_annexe_entree e JOIN classe_annexe x ON x.classe_id = e.classe_id AND x.rang = e.annexe_rang ORDER BY e.classe_id, x.rang, e.rang`).all();
+  assert.equal(lignes.length, 54);
+  const avecEntrees = regles.classes.filter((c) => 'entrees' in c);
+  assert.deepEqual(avecEntrees.map((c) => c.id), ['classes/mage-bleu'], 'seule une classe qui a son tableau porte des entrées');
+  assert.deepEqual(avecEntrees[0].entrees, lignes.map((e) => ({
+    id: e.id, magie_id: e.magie_id, rang: e.rang, nom: sans(e.nom), type: e.type, type_brut: e.type_brut,
+    limite: e.limite_nombre === null ? null : { nombre: e.limite_nombre, periode: e.limite_periode, genre: genreDeLaPeriode(e.limite_periode) },
+    effet: sans(e.effet),
+  })));
+  // « (Actif 2 fois/combat) » : 2 usages remis par « Fin de combat » ; « (Réaction 1 fois/tour) » : un rappel (décision R173, R181)
+  const parId = new Map(avecEntrees[0].entrees.map((e) => [e.id, e]));
+  assert.deepEqual(parId.get('classes/mage-bleu#entree:sang:attaque-saignante').limite, { nombre: 2, periode: 'combat', genre: 'combat' });
+  assert.equal(parId.get('classes/mage-bleu#entree:sang:temeraire').limite, null);
+  assert.deepEqual(parId.get('classes/mage-bleu#entree:lumiere:lumiere-de-force').limite, { nombre: 1, periode: 'tour', genre: genreDeLaPeriode('tour') });
+  // 14 magies (le Mage Bleu n'a jamais le Potentiel Illimité : R25, R176), 3 ou 4 entrées chacune
+  assert.equal(new Set(avecEntrees[0].entrees.map((e) => e.magie_id)).size, 14);
+  const visees = Object.fromEntries(regles.classes.flatMap((c) => c.dons).filter((d) => 'magie_visee' in d).map((d) => [d.id, d.magie_visee]));
+  assert.deepEqual(visees, Object.fromEntries(db.prepare('SELECT capacite_id, magie FROM capacite_variable ORDER BY capacite_id').all().map((r) => [r.capacite_id, r.magie])));
+  assert.deepEqual(visees, {
+    'capacites/mage-bleu-mime': 'innee', 'capacites/mage-bleu-mimetisme': 'innee', 'capacites/mage-bleu-principale': 'innee',
+    'capacites/mage-bleu-secondaire': 'acquise', 'capacites/mage-bleu-ultime-raison': 'innee',
+  });
 });

@@ -12,8 +12,8 @@
  */
 export const TABLES_FICHES = Object.freeze([
   'utilisateur', 'utilisateur_role', 'personnage', 'personnage_partage', 'personnage_classe', 'personnage_caracteristique', 'personnage_competence',
-  'personnage_entrainement', 'personnage_acquis_choix', 'personnage_resistance_choix', 'personnage_metier_bonus', 'personnage_capacite', 'personnage_sort',
-  'personnage_livre_sort', 'personnage_maitrise_choix', 'personnage_arme', 'personnage_armure_partie', 'personnage_accessoire', 'personnage_inventaire', 'personnage_ceinture', 'personnage_action_usage', 'groupe',
+  'personnage_entrainement', 'personnage_acquis_choix', 'personnage_resistance_choix', 'personnage_metier_bonus', 'personnage_capacite',
+  'personnage_don_obtenu', 'personnage_sort', 'personnage_livre_sort', 'personnage_maitrise_choix', 'personnage_arme', 'personnage_armure_partie', 'personnage_accessoire', 'personnage_inventaire', 'personnage_ceinture', 'personnage_action_usage', 'groupe',
   'groupe_membre',
 ]);
 
@@ -24,6 +24,9 @@ export const PARTIES_DE_FICHE = Object.freeze({
   competences: 'personnage_competence',
   metier_bonus: 'personnage_metier_bonus',
   capacites: 'personnage_capacite',
+  // l'entrée du tableau du bas de la classe qu'obtient chaque don « Variable » du Mage Bleu (décision R181, migration 0088) : { source (l'id du don),
+  // entree_id (classe_annexe_entree) } ; un choix par don, une entrée une seule fois par fiche
+  dons_obtenus: 'personnage_don_obtenu',
   sorts: 'personnage_sort',
   // un livre de sort lu, un seul par sort (R26), sur un sort de la liste ou non : son NM ne compte que si le sort est choisi (décision R169, migration 0082)
   livres_sorts: 'personnage_livre_sort',
@@ -694,7 +697,8 @@ export function ficheVide(nom = '') {
 export const PREFIXE_DE_RETRAIT = 'Retrait (règles modifiées) : ';
 
 /**
- * Natures d'un élément retiré, dans l'ordre des lignes d'une fiche : métier, spécialité, don, sort, arme (décision R52 : une arme supprimée, comme R42),
+ * Natures d'un élément retiré, dans l'ordre des lignes d'une fiche : métier, spécialité, don, don obtenu (R181 : l'entrée du tableau du Mage Bleu
+ * qu'obtenait un don « Variable », l'entrée ou le don supprimés), sort, arme (décision R52 : une arme supprimée, comme R42),
  * arme élémentaire (R167 : un élément posé sur une arme d'avant la migration 0081, qui la transforme ou part ; l'amélioration de l'élément), objet (R60), pièce d'armure (R95 : une fiche ne porte plus qu'une armure complète), matériau de bouclier (R96 : un bouclier n'a plus qu'une forme et une
  * matière), accessoire (R97 : plus d'emplacement Ceinture ni Autre, ni de nom, ni d'effet hors table), acquis saisi (R104), maîtrises d'armes d'avant la
  * refonte (R153 : la dernière ligne, une par fiche). L'armure de la décision R165 (NATURES_DE_L_ARMURE), après les pièces d'armure de R95.
@@ -706,7 +710,7 @@ export const PREFIXE_DE_RETRAIT = 'Retrait (règles modifiées) : ';
  */
 export const NATURES_DE_L_ARMURE = Object.freeze(['armure_transformee', 'armure_familier', 'armure_magie_absente', 'armure_trop_lourde']);
 export const ORDRE_DES_NATURES = Object.freeze([
-  'metier', 'specialite', 'capacite', 'sort', 'arme', 'arme_elementaire', 'objet', 'piece_armure', ...NATURES_DE_L_ARMURE, 'materiau_bouclier', 'accessoire', 'acquis',
+  'metier', 'specialite', 'capacite', 'don_obtenu', 'sort', 'arme', 'arme_elementaire', 'objet', 'piece_armure', ...NATURES_DE_L_ARMURE, 'materiau_bouclier', 'accessoire', 'acquis',
   'maitrises_armes',
 ]);
 
@@ -732,6 +736,9 @@ const positif = (n) => typeof n === 'number' && n > 0;
  *                du MJ sont ceux de la fiche, décision R118 : ils restent quand le sort part). Son livre (décision R169, `livre`) part avec lui : « dont
  *                1 de livre » sur un sort choisi qui a des NM ; sinon « livre de sort en attente », et « …, sort hors de la liste » quand la fiche n'avait
  *                que le livre (`choisi` faux, `nm` null) ;
+ *   don obtenu : « le don obtenu « Moteur thermique » (par le don « Mimétisme », classe Mage Bleu, magie Feu) » (décision R181 : une entrée du tableau du
+ *                bas de la classe, personnage_don_obtenu ; `don` : le don « Variable » qui l'obtenait, `classe`, `magie` : la ligne de l'entrée) ; `cas` :
+ *                'entree' (l'entrée supprimée des règles) ou 'don' (le don « Variable » supprimé : l'entrée existe encore, la fiche ne l'obtient plus) ;
  *   métier     : « le métier « Forgeron » » ;
  *   arme       : « l'arme « Katana » (ÉPÉES, arme 1) » (décision R52) ;
  *   arme élém. : une arme d'avant la migration 0081 (décision R167, armeDAvant ; `cas`) : devenue l'arme élémentaire, « l'arme « Arc long » (ARC, arme 1,
@@ -752,11 +759,12 @@ const positif = (n) => typeof n === 'number' && n > 0;
  *                `amelioration` : le niveau ; `parties` : partiesEnTexte. « armure_transformee » : `devenue` (le nom de l'armure élémentaire) et
  *                `amelioration_devenue` ; « armure_magie_absente » : `magie` ; « armure_trop_lourde » : `poids` (celui de l'armure) et `portable` (le poids
  *                portable du personnage), en mots (POIDS_DES_ARMURES).
- * @param {{ nature: 'metier' | 'specialite' | 'capacite' | 'sort' | 'arme' | 'objet' | 'arme_elementaire' | 'piece_armure' | 'armure_transformee' | 'armure_familier' | 'armure_magie_absente' | 'armure_trop_lourde' | 'materiau_bouclier' | 'accessoire' | 'acquis' | 'maitrises_armes', id: string, emplacement?: string | null, famille?: string | null, rang?: number | null, nom?: string | null, classe?: string | null, specialite?: string | null,
+ * @param {{ nature: 'metier' | 'specialite' | 'capacite' | 'don_obtenu' | 'sort' | 'arme' | 'objet' | 'arme_elementaire' | 'piece_armure' | 'armure_transformee' | 'armure_familier' | 'armure_magie_absente' | 'armure_trop_lourde' | 'materiau_bouclier' | 'accessoire' | 'acquis' | 'maitrises_armes', id: string, emplacement?: string | null, famille?: string | null, rang?: number | null, nom?: string | null, classe?: string | null, specialite?: string | null,
  *   niveau?: number | null, magie?: string | null, npm?: number | null, nm?: number | null, livre?: boolean, choisi?: boolean,
  *   dons?: string[], devenue?: boolean | string, armureGardee?: boolean, quantite?: number | null, matiere?: string | null, effet?: string | null, texte?: string | null,
  *   ecarte?: boolean, valeur?: number, amelioration?: number | string | null, parties?: string | null, amelioration_devenue?: number | string | null,
- *   elementaire?: boolean, poids?: string, portable?: string, cas?: 'devenue' | 'autre_type' | 'amelioration_seule', element?: string,
+ *   elementaire?: boolean, poids?: string, portable?: string, cas?: 'devenue' | 'autre_type' | 'amelioration_seule' | 'entree' | 'don', element?: string,
+ *   don?: string | null,
  *   niveau_element?: number | null, niveau_garde?: boolean, materiau?: string | null }} d
  */
 export function descriptionDuRetrait(d) {
@@ -780,6 +788,11 @@ export function descriptionDuRetrait(d) {
     // décision R169 : le livre du sort part avec lui ; noté sur un sort choisi d'au moins 1 NM, il en fait partie, sinon il était en attente
     if (positif(d.nm)) parties.push(`${d.nm} NM sur cette fiche${d.livre ? ' dont 1 de livre' : ''}`);
     else if (d.livre) parties.push(d.choisi === false ? 'livre de sort en attente, sort hors de la liste' : 'livre de sort en attente');
+  } else if (d.nature === 'don_obtenu') {
+    tete = `le don obtenu « ${nom} »`;
+    if (d.don) parties.push(`par le don « ${d.don} »`);
+    if (d.classe) parties.push(`classe ${d.classe}`);
+    if (d.magie) parties.push(`magie ${d.magie}`);
   } else if (d.nature === 'metier') {
     tete = `le métier « ${nom} »`;
   } else if (d.nature === 'arme') {
@@ -894,7 +907,10 @@ export const ligneDeRetrait = (d, instant) => (d.nature === 'maitrises_armes'
           : d.nature === 'acquis'
             // décision R104 : l'Acquis se calcule (entraînement, dons, métier, accessoires)
             ? 'n’est plus saisi : l’Acquis se calcule (entraînement, dons, métier, accessoires). Notez l’entraînement dans ses lignes.'
-            : 'n’existe plus dans les règles. Choisissez autre chose ou adaptez la fiche à la nouvelle règle.'}`);
+            : d.nature === 'don_obtenu' && d.cas === 'don'
+              // décision R181 : l'entrée reste dans les règles, mais le don « Variable » qui l'obtenait n'y est plus
+              ? 'n’est plus obtenu : le don qui le donnait n’existe plus dans les règles. Adaptez la fiche à la nouvelle règle.'
+              : 'n’existe plus dans les règles. Choisissez autre chose ou adaptez la fiche à la nouvelle règle.'}`);
 
 /** Ordre des retraits d'une fiche : par nature (ORDRE_DES_NATURES), puis par nom ; le même sur le site de dev et à la reconstruction. */
 export const ordreDesRetraits = (a, b) => ORDRE_DES_NATURES.indexOf(a.nature) - ORDRE_DES_NATURES.indexOf(b.nature)

@@ -2392,13 +2392,20 @@ export function donneesDeClasse(db, classeId) {
   const vues = new Set();
   // fiches de joueur : le numéro de la fiche dans la base, le même dans cette réponse (permissions réunit spécialité et dons) et dans celle du lot
   const numeros = numerosDesFichesDeJoueur(db);
+  // un don « Variable » qui fait obtenir une entrée du tableau de la classe (décision R181, migration 0088) : le don obtenu part avec lui ; une base
+  // vivante d'avant n'a pas la table (le service y retombe si la reconstruction échoue)
+  const avecDonsObtenus = !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'personnage_don_obtenu'").get();
+  const donsObtenus = avecDonsObtenus ? `
+    SELECT o.source AS id, p.id AS personnage, p.nom, p.nature, p.nature = 'pretire' AS pretire FROM personnage_don_obtenu o
+      JOIN personnage p ON p.id = o.personnage_id JOIN capacite k ON k.id = o.source WHERE k.classe_id = ?
+    UNION ALL` : '';
   for (const r of db.prepare(`
     SELECT pc.capacite_id AS id, p.id AS personnage, p.nom, p.nature, p.nature = 'pretire' AS pretire FROM personnage_capacite pc
       JOIN personnage p ON p.id = pc.personnage_id JOIN capacite k ON k.id = pc.capacite_id WHERE k.classe_id = ?
-    UNION ALL
+    UNION ALL${donsObtenus}
     SELECT pc.specialite_id AS id, p.id AS personnage, p.nom, p.nature, p.nature = 'pretire' AS pretire FROM personnage_classe pc
       JOIN personnage p ON p.id = pc.personnage_id WHERE pc.classe_id = ? AND pc.specialite_id IS NOT NULL
-    ORDER BY pretire DESC, nom COLLATE NOCASE, personnage`).all(classe.id, classe.id)) {
+    ORDER BY pretire DESC, nom COLLATE NOCASE, personnage`).all(...(avecDonsObtenus ? [classe.id, classe.id, classe.id] : [classe.id, classe.id]))) {
     if (vues.has(`${r.id}\u0000${r.personnage}`)) continue;
     vues.add(`${r.id}\u0000${r.personnage}`);
     (fiches[r.id] ??= []).push(libelleDeFiche(r, numeros));

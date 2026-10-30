@@ -160,9 +160,20 @@ test('arme d’avant la migration 0081 (décision R167) : devenue l’arme élé
   assert.ok(retraitsDesNotes(ligneDeRetrait(d, jour)).length === 1, 'une ligne de retrait, comptée par la page');
 });
 
-test('ordreDesRetraits : métier, spécialité, don, sort, puis par nom ; l’arme élémentaire de R167 après les armes de R52 ; l’armure de R165 après les pièces d’armure de R95 ; les maîtrises d’armes d’avant la refonte en dernier (R153)', () => {
+test('décision R181 : le don obtenu d’un don « Variable » — l’entrée et le don qui l’obtenait ; l’entrée supprimée ou le don supprimé', () => {
+  const jour = '2026-10-30T12:00:00Z';
+  const d = { nature: 'don_obtenu', id: 'classes/mage-bleu#entree:feu:moteur-thermique', nom: 'Moteur thermique', don: 'Mimétisme', classe: 'Mage Bleu', magie: 'Feu', cas: 'entree' };
+  assert.equal(descriptionDuRetrait(d), 'le don obtenu « Moteur thermique » (par le don « Mimétisme », classe Mage Bleu, magie Feu)');
+  assert.equal(ligneDeRetrait(d, jour), `[30/10/2026] ${PREFIXE_DE_RETRAIT}le don obtenu « Moteur thermique » (par le don « Mimétisme », classe Mage Bleu, magie Feu) n’existe plus dans les règles. Choisissez autre chose ou adaptez la fiche à la nouvelle règle.`);
+  assert.equal(ligneDeRetrait({ ...d, cas: 'don' }, jour), `[30/10/2026] ${PREFIXE_DE_RETRAIT}le don obtenu « Moteur thermique » (par le don « Mimétisme », classe Mage Bleu, magie Feu) n’est plus obtenu : le don qui le donnait n’existe plus dans les règles. Adaptez la fiche à la nouvelle règle.`);
+  // les noms inconnus : l'identifiant de l'entrée, rien d'autre
+  assert.equal(descriptionDuRetrait({ nature: 'don_obtenu', id: d.id, nom: null, don: null, classe: null, magie: null }), `le don obtenu « ${d.id} »`);
+  assert.ok(retraitsDesNotes(ligneDeRetrait(d, jour)).length === 1, 'une ligne de retrait, comptée par la page');
+});
+
+test('ordreDesRetraits : métier, spécialité, don, don obtenu (R181), sort, puis par nom ; l’arme élémentaire de R167 après les armes de R52 ; l’armure de R165 après les pièces d’armure de R95 ; les maîtrises d’armes d’avant la refonte en dernier (R153)', () => {
   assert.deepEqual([...ORDRE_DES_NATURES], [
-    'metier', 'specialite', 'capacite', 'sort', 'arme', 'arme_elementaire', 'objet', 'piece_armure', 'armure_transformee', 'armure_familier', 'armure_magie_absente',
+    'metier', 'specialite', 'capacite', 'don_obtenu', 'sort', 'arme', 'arme_elementaire', 'objet', 'piece_armure', 'armure_transformee', 'armure_familier', 'armure_magie_absente',
     'armure_trop_lourde', 'materiau_bouclier', 'accessoire', 'acquis', 'maitrises_armes',
   ]);
   const elements = [

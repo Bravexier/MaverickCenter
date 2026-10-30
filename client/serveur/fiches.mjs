@@ -34,7 +34,8 @@ const DEPART_DES_COLONNES_RETIREES_DE_DETAIL = Object.freeze({ personnage_compet
  * une de ces colonnes que la base n'a pas est ignorée tant qu'elle ne porte rien (sa valeur de départ, ou vide : null, « "" ») ; autrement, « champ
  * inconnu » (ce qu'elle porte serait perdu). De même une table de la fiche que la base n'a pas encore (personnage_armure_partie, 0055 ;
  * personnage_entrainement et personnage_acquis_choix, 0062 ; personnage_resistance_choix, 0069, la résistance au choix du Drakos orange, R124 ;
- * personnage_maitrise_choix, 0076, les choix de maîtrise d'armes, R148 ; personnage_livre_sort, 0082, les livres de sort, R169 ; personnage_action_usage, 0085, les compteurs d'actions, R173 : partiesDeLaBase) se lit vide, et une liste non vide pour elle est refusée.
+ * personnage_maitrise_choix, 0076, les choix de maîtrise d'armes, R148 ; personnage_livre_sort, 0082, les livres de sort, R169 ; personnage_action_usage, 0085, les compteurs d'actions, R173 ; personnage_don_obtenu, 0088,
+ * les dons obtenus des dons « Variable » du Mage Bleu, R181 : partiesDeLaBase) se lit vide, et une liste non vide pour elle est refusée.
  */
 export const DEPART_DES_COLONNES_AJOUTEES = Object.freeze({
   personnage: Object.freeze({
@@ -254,8 +255,17 @@ function valeurDeCellule(v, ou, problemes) {
   return null;
 }
 
-/** Index uniques partiels qui ne nomment que la fiche (« UNIQUE constraint failed: <table>.personnage_id ») : ce qu'ils refusent. */
-const UNIQUES_DE_LA_FICHE = Object.freeze({ 'personnage_sort.personnage_id': 'un seul sort préparé par fiche (décision R115)' });
+/**
+ * Clés uniques d'une table de la fiche dont « en double (…) » ne dit pas la règle, par leurs colonnes telles que SQLite les nomme : ce qu'elles
+ * refusent. Un index unique partiel qui ne nomme que la fiche (« UNIQUE constraint failed: personnage_sort.personnage_id ») ; les dons obtenus des dons
+ * « Variable » du Mage Bleu (décision R181, migration 0088 : un choix par don, clé primaire ; « chaque entrée ne se prend qu'une fois », UNIQUE).
+ */
+const UNIQUES_DE_LA_FICHE = Object.freeze({
+  'personnage_sort.personnage_id': 'un seul sort préparé par fiche (décision R115)',
+  'personnage_don_obtenu.personnage_id, personnage_don_obtenu.source': 'un don « Variable » n’obtient qu’une entrée (décision R181)',
+  'personnage_don_obtenu.personnage_id, personnage_don_obtenu.entree_id':
+    'cette entrée du tableau du Mage Bleu est déjà obtenue par un autre don « Variable » de la fiche : chaque entrée ne se prend qu’une fois (décision R181)',
+});
 
 /**
  * Les CHECK d'une table de la fiche qui disent une règle de forme, par leur texte (tel que SQLite le rend) : ce qu'ils refusent. personnage_arme
@@ -280,8 +290,8 @@ export function expliquer(message) {
     return CHECKS_DE_LA_FICHE[texte] ?? `valeur hors des bornes (${texte})`;
   }
   if ((m = /^UNIQUE constraint failed: (.+)$/.exec(message))) {
-    // un index unique partiel sur la seule fiche (personnage_sort_prepare, migration 0067) : SQLite ne nomme que personnage_id
-    if (UNIQUES_DE_LA_FICHE[m[1].trim()]) return UNIQUES_DE_LA_FICHE[m[1].trim()];
+    // un index unique partiel sur la seule fiche (personnage_sort_prepare, migration 0067) : SQLite ne nomme que personnage_id ; une clé qui dit une règle (R181)
+    if (Object.hasOwn(UNIQUES_DE_LA_FICHE, m[1].trim())) return UNIQUES_DE_LA_FICHE[m[1].trim()];
     const noms = m[1].split(',').map((c) => c.trim());
     const cols = noms.map((c) => c.replace(/^\w+\./, '')).filter((c) => c !== 'personnage_id');
     // un autre index sur la seule fiche : sa table, plutôt que « en double () »

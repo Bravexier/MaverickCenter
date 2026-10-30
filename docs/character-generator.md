@@ -126,7 +126,7 @@ bouton (au-dessus quand la place manque), bornée à l'écran, téléphone compr
   `v_personnage_controle` : la page les signale seule.
 - **Choix à faire** (`choixEnAttente`) : l'ethnie d'une race choisie, la spécialité d'une classe au niveau de son don de spécialité, chaque groupe de dons à
   choisir, chaque bonus ou objet de départ du métier à choisir, le +1 d'une magie qui le laisse au choix, chaque point de maîtrise d'arme à choisir (et
-  l'acquis, l'accessoire, la résistance au choix). Leur champ est **surligné** (ambre, `data-a-choisir`),
+  l'acquis, l'accessoire, la résistance au choix), l'entrée qu'obtient chaque don « Variable » du Mage Bleu (nature `don_obtenu`, ci-dessous). Leur champ est **surligné** (ambre, `data-a-choisir`),
   et tant qu'il en reste le panneau « Choix » sort en **tiroir** en bas de l'écran, par-dessus la fiche, avec la liste de ce qui manque ; il ne se range que
   quand la zone 4 est à l'écran ; « Réduire » le replie sur sa poignée (le survol le rouvre), « Aller aux choix » y descend. Replié, son contenu est caché
   (`display: none`) : le focus clavier n'y entre pas. Au clavier, on le rouvre par « Déplier », ou l'on passe par « Aller aux choix », qui met le focus sur
@@ -507,7 +507,8 @@ bouton (au-dessus quand la place manque), bornée à l'écran, téléphone compr
   de type Action, Actif et Réaction** (`donsAcquis`, `TYPES_D_ACTION` ; leur limite, celle de leur type : `classes[].dons[].limite`, tirée de
   `capacite.limite_nombre` et `limite_periode`), les **effets d'accessoire activables** (`accessoire_effet.usage` : « (Action) » ou usage compté, R54 ;
   un accessoire maudit garde « (maudit : l'effet est le contraire) »), les **capacités « actif » et « action » des armes élémentaires** portées (armes 1
-  et 2) et les **effets « (Action) », « (Réaction) » et « (actif) » de l'armure élémentaire** portée, ainsi que ceux qui écrivent une limite d'usage
+  et 2) et les **effets « (Action) », « (Réaction) » et « (actif) » de l'armure élémentaire** portée (l'entrée Actif, Action ou Réaction qu'obtient un don
+  « Variable » du Mage Bleu suit les dons de sa classe : décision R181, ci-dessous), ainsi que ceux qui écrivent une limite d'usage
   (réponse du propriétaire à Q79, « Deviennent des actions » : les trois météos « (actif) », sans compteur ; « (1 fois par combat) » de
   l'Intermédiaire Espace/Temps et de l'Intermédiaire Glace, un compteur par combat ; lus dans le texte : `armures_elementaires[].actions`). Les objets de la ceinture
   n'y sont pas (leurs boutons restent, R89, R131). Chaque action dit d'où elle vient (la race, la classe, l'objet), son type et sa précision telle
@@ -525,11 +526,30 @@ bouton (au-dessus quand la place manque), bornée à l'écran, téléphone compr
   propriétaire à Q80 : « Non, grisée ») ; réparée, elle resert. Une action qui quitte la liste (un accessoire qui se brise) rend le focus à sa voisine. Un don présent dans deux classes d'un bi-classé a **un compteur par classe** (sa clé est l'identifiant du don).
   Les compteurs entamés s'enregistrent avec la fiche (`actions_usage`, table `personnage_action_usage`) ; la **clé** d'une action (`cleDAction`) porte
   l'objet porté (`accessoire:<emplacement>:<effet>`, `arme:<rang>:<arme élémentaire>`, `armure:<armure élémentaire>:<rang de l'effet>`,
-  `capacite:<don>`, `race:don-de-base:<race>`) : un objet changé ou retiré perd sa ligne dès le rafraîchissement (`actionsUsageSansObjetRetire`) et
+  `capacite:<don>`, `race:don-de-base:<race>`, `entree:<entrée du Mage Bleu>`, R181) : un objet changé ou retiré perd sa ligne dès le rafraîchissement (`actionsUsageSansObjetRetire`) et
   repart au maximum ; une clé orpheline (un don perdu) est ignorée à l'affichage et retirée à l'enregistrement (`actionsUsageValables`).
+- **Dons « Variable » du Mage Bleu** (décision R181 : « Il devra choisir l'un dons disponible en bas de la fiche de la classe du mage bleu, limité sa
+  magie innée (sauf mention contraire) pour le don "secondaire". ») : Mimétisme (niveau 1), Mime (10, Mage saphir), Principale ou Secondaire (15),
+  Ultime raison (20) obtiennent chacun une **entrée du tableau du bas de l'onglet de la classe** (`classes[].entrees` des règles, table
+  `classe_annexe_entree`), sur la ligne de la **magie innée**, ou de la **magie acquise** pour Secondaire (`classes[].dons[].magie_visee`). Le choix se
+  fait dans le panneau « Choix », bloc « Dons obtenus », sous les dons à choisir (`construireDonsObtenus`) : un groupe de boutons ronds par don acquis,
+  qui ne propose que les **entrées libres** de sa magie (« chaque entrée ne se prend qu'une fois » : une entrée prise par un autre don « Variable », même
+  gardée sans effet, sort de la liste des autres), chacune avec son en-tête et son effet tels qu'écrits en infobulle (`infobulleDEntree`) ; il est aussi
+  dans le tiroir (nature `don_obtenu`, `cleDeChoix.donObtenu(<don>)`). « (Ne peut pas être changé une fois choisi) » est **seulement rappelé** sous le
+  groupe : le choix reste modifiable (Q95). **Sans magie acquise, Secondaire ne peut pas être choisi** : son option est grisée parmi les dons à choisir,
+  la raison en infobulle (`refusDuDon`), sauf s'il est déjà choisi (la base le signale). Quand la magie visée **n'a plus d'entrée libre** (l'Arcane et
+  l'Espace/Temps n'en ont que 3, pour jusqu'à 4 dons de magie innée), le don **ne donne rien** et la fiche le dit, dans le bloc et dans les passifs (Q96).
+  Un choix dont le don n'est **plus acquis** (niveau baissé, Anti-monstre au lieu de Mime, Mage Bleu retiré, choisi avant son niveau) est **gardé sans
+  effet** et signalé (`don_obtenu_source_perdue`), listé sous le bloc avec « Retirer » ; un choix **hors de la liste** (magie changée) aussi, et revient
+  dans le tiroir. Une entrée Actif, Action ou Réaction obtenue est une **action** (ci-dessus : clé `entree:<entrée>`, compteur, « Fin de combat » ou
+  rappel comme un don de R173) ; une entrée Passif est un **passif**, juste après son don. Aucun calcul ne lit l'effet d'une entrée : il est affiché tel
+  qu'écrit (« cette créature »). Moteur : `donsVariables` (états `choisi`, `a_choisir`, `hors_liste`, `epuise`, `sans_magie_acquise`,
+  `sans_magie_innee` ; les choix gardés dans `perdus`), `texteDuDonVariable`, `donsObtenusApresChoix`, `donsObtenusValables` (l'envoi : un choix par don,
+  une entrée une fois, les choix gardés compris) ; tests `test/fiche-dons-variables.test.mjs` (comparés aux règles `don_obtenu_*` de la base).
 - **Passifs**, juste après les actions (décision R173 ; ils remplacent les « Dons débloqués ») : `passifsDeLaFiche` — les **dons raciaux** (le don de
   l'ethnie, `race_don`, et la ligne de l'ethnie dans le tableau de dons de la race, Drakos, Mort-vivant : `donsDeRace` ; le don de base est une action),
-  puis les **dons de classe débloqués qui ne sont pas des actions**, classe par classe (passifs, les « Variable » du Mage Bleu ; dons de la classe et de
+  puis les **dons de classe débloqués qui ne sont pas des actions**, classe par classe (passifs, les « Variable » du Mage Bleu avec ce qu'ils obtiennent,
+  « → <entrée> » ou pourquoi ils ne donnent rien, suivis de l'entrée Passif obtenue, R181 ; dons de la classe et de
   la spécialité choisie jusqu'au niveau de classe, dons à choix choisis : `donsAcquis`), avec leur niveau, leur type et leur précision (« Noyau dur » du
   Flagelleur, « Passif (1 fois/combat) », reste ici, sa limite en rappel), puis l'**équipement**, ses effets **tels qu'écrits**, comptés par la fiche ou
   non : accessoires sans usage, effet de l'armure de base portée (une armure cassée le dit : R157, R158), effets de l'armure élémentaire ni « (Action) »
@@ -873,7 +893,10 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   celui d'une armure cassée est écrit comme à l'enregistrement, R157 : `acquisChoixGardes`), et chaque choix de maîtrise d'arme (R148) une ligne « Maîtrise d'arme au choix : <source> : <famille>, <famille>, ? » avant eux (`texteDesChoixDeMaitrise`,
   `lireChoixDeMaitrise` : le titre de la source comme sur la page, « Guerrier (maîtrise 2) », « Maître d'arme (Guerrier) », puis le bandeau de la
   famille de chaque point dans l'ordre, « ? » pour un point pas encore choisi, jusqu'au dernier choisi ; l'accessoire « Un point de maîtrise d'arme »
-  garde sa famille dans sa case, « → ÉPÉES »), et chaque résistance au choix une
+  garde sa famille dans sa case, « → ÉPÉES »), chaque entrée qu'obtient un don « Variable » du Mage Bleu (R181) une ligne « Don obtenu : <don> (<classe>) :
+  <entrée> (<magie>) » avant les acquis au choix (« Mimétisme (Mage Bleu) : Moteur thermique (Feu) », `texteDuDonObtenu`, `lireDonObtenu` ; les choix
+  gardés sans effet compris ; relue par les noms du don parmi les dons « Variable » de la classe nommée et de l'entrée sur la ligne de la magie nommée,
+  jamais rapprochés : un nom introuvable, un don déjà servi ou une entrée déjà obtenue sont perdus et dits), et chaque résistance au choix une
   ligne « Résistance au choix : <ligne ou don> : <altération ou magie> » (d'une ligne du tableau de la race : « Écaille draconique : Poison », R124 ; d'un
   don qui laisse une magie au choix ou tirée : « Anansi d'Arcane : Feu », « Résilience (Ocultomancien) : Glace », R137 ; la magie tirée d'un don du
   Flagelleur d'un personnage du Potentiel Illimité : « Punis-moi ... (Flagelleur) : Feu », R163 ; relue si c'est une option du choix de la fiche) ; le nom et le type du modèle restent. Les dés de maîtrise
@@ -1116,6 +1139,7 @@ pas, et la note datée est le seul signal.
 | `personnage_maitrise_choix` | Maîtrises d'armes (AA2:AV7) : plus rien ne se saisit par famille (décision R148, migration 0076, qui retire `personnage_maitrise_arme` et ses dés par famille) ; une ligne par point à choisir d'une source acquise : la source (`source` : l'id du don, ou `<classe>#maitrise-arme:<rang>` pour une ligne de `classe_maitrise_arme`, sans clé étrangère), le numéro du point dans sa part à choisir (`rang`) et la famille choisie, parmi les options de la part (`maitrise_arme_part_famille`) ; la même famille peut revenir sauf limite écrite (R150) ; jamais ARME DE MONSTRES (R45) ; la famille de la ligne `au_choix` d'une classe est aussi celle des dons qui la suivent (R151) et l'arme du bonus « de l'arme choisie » (R152). L'accessoire « Un point de maîtrise d'arme » garde sa famille dans `personnage_accessoire.arme_famille_id` (R151). Les points et les dés se calculent (`v_personnage_maitrise_arme`) |
 | `personnage_arme`, `personnage_armure_partie`, `personnage_accessoire`, `personnage_inventaire` | Équipement : catalogue de la base (armes, matériaux, améliorations, pièces élémentaires, effets d'accessoire et valeur tirée, case « Malédiction » : six emplacements, R97) et sac ; deux armes (`personnage_arme`, rangs 1 et 2), chacune **un seul modèle** (décision R167, migration 0081) : soit une arme du catalogue (`arme_id`) avec sa composition (`materiau_id`), soit une arme élémentaire (`arme_elementaire_id`, sans matériau : une pièce élémentaire transforme l'arme, qui perd tout), et un seul niveau d'amélioration (`amelioration_id`, une ligne du tableau fondu des armes, cible `arme`), qui ne sert qu'aux dégâts et à la solidité ; plus d'élément posé sur une arme du catalogue ni d'amélioration de l'élément (`amelioration_elementaire_id`, retirée ; la base vivante convertit ses fiches) ; le bouclier dans `personnage` (forme, matière, amélioration, solidité du moment : décision R96, migration 0060, qui remplace `personnage_bouclier_materiau`) ; durabilité du moment d'une arme (`personnage_arme.durabilite`, « Solidité » AK17, AX17 : NULL = à son maximum, 0 = cassée ; décision R74, migration 0045) ; l'armure portée dans `personnage` (une armure complète, son amélioration, son élément et l'amélioration de l'élément) et la solidité du moment de chacune de ses parties abîmées (`personnage_armure_partie` ; décision R95, migration 0055, qui remplace `personnage_armure`, une armure par emplacement) |
 | `personnage_ceinture` | Les 3 emplacements de la ceinture (guide « Fiche de personnage : Accessoires et Ceinture ») : objet et quantité ; demande du propriétaire, migration 0031 |
+| `personnage_don_obtenu` | L'entrée du tableau du bas de la classe qu'obtient chaque don « Variable » du Mage Bleu (décision R181, migration 0088) : la source (`source`, l'id du don) et l'entrée (`entree_id`, `classe_annexe_entree`) ; un choix par don (clé), une entrée une seule fois par fiche (UNIQUE) ; un choix d'un don plus acquis ou hors de sa liste reste, signalé ; clé `dons_obtenus` du JSON ; « Don obtenu » de la note du tableur ; pas de case dans la fiche auto |
 | `personnage_action_usage` | Les compteurs entamés des actions de la fiche (décision R173, migration 0085) : la clé de l'action (`action_id`, fabriquée par le moteur, `lib/fiche-moteur.mjs#cleDAction`, sans clé étrangère : elle porte l'objet porté pour une action d'équipement) et les utilisations restantes (`restants` ≥ 0) ; une ligne absente = au maximum (le maximum est une règle, jamais stocké) : remettre au maximum, à la main ou par « Fin de combat », supprime la ligne ; clé `actions_usage` du JSON ; « Compteur d'action » de la note du tableur ; pas de case dans la fiche auto |
 | `groupe`, `groupe_membre` | Groupe de jeu (one-shot ou campagne), ses membres (MJ ou joueur) et la fiche que chacun y a inscrite |
 
@@ -1146,7 +1170,9 @@ pas, et la note datée est le seul signal.
   plus 1 à 8 par dé atteint, `niveau_global.de_attributs_min` et `de_attributs_max` ; détail « total / à saisir » ou « total / minimum à maximum »), 2ᵉ classe, spécialité
   avant le niveau de classe 10, dons hors classe ou exclusifs, sorts (magie du personnage, toutes pour le Potentiel Illimité ; NPM au plus la puissance magique
   du niveau, la 5 au niveau 16 et sans magie acquise, R16 ; 3 NM au plus sur un sort ; NM d'un sort sans celui de son livre au plus niveau global − 1 plus les NM du MJ de la fiche, et en tout au plus ceux gagnés — par les niveaux et par les dons acquis qui l'écrivent, `capacite_nm_gagne`, R154 — plus ceux du MJ, R24, R26, R118), bouclier (forme et matière : R96), armure (R95, R165 : une armure, de base ou élémentaire, jamais les deux, `armure_double` ; une amélioration sans son armure, `armure_manquante` ; une armure « Familier », `armure_familier` ; une armure élémentaire d'une magie que le personnage n'a pas, `armure_magie_absente` ; une partie que l'armure n'a pas, `armure_partie_hors_armure`, une armure élémentaire ayant ses six parties ; le poids portable est au moteur), améliorations (celle d'une arme, du catalogue ou élémentaire : cible `arme`, R167), arme élémentaire d'une magie que le personnage n'a ni en innée ni en acquise (`arme_elementaire_hors_magie` « rang : arme élémentaire », R167 ; le Potentiel Illimité n'en ouvre aucune), valeur d'un
-  accessoire ; une fiche sans race ou sans magie innée (`race_manquante`, `magie_innee_manquante` : contrainte de la table jusqu'à la migration 0038).
+  accessoire, dons « Variable » du Mage Bleu (R181 : `don_obtenu_a_choisir` « don », seulement quand sa liste garde une entrée libre, Q96 ;
+  `don_obtenu_sans_magie_acquise` « don », Secondaire sans magie acquise ; `don_obtenu_source_perdue` et `don_obtenu_hors_liste` « don = entrée », un
+  choix gardé sans effet ; libellés dans `lib/fiche-controles.mjs`, noms par `indexerNoms`) ; une fiche sans race ou sans magie innée (`race_manquante`, `magie_innee_manquante` : contrainte de la table jusqu'à la migration 0038).
   Toute fiche est contrôlée, même inachevée ; une fiche conforme n'y a aucune ligne. Ce qui demande le moteur (bonus de classe, d'équipement et de race, nombre de sorts, plafond de NPM du
   Potentiel Illimité, résistances — calculées par le moteur, `resistancesDe` —, valeurs dérivées) n'y est pas encore.
 

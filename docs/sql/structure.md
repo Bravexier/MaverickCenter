@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 87 : 204 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 88 : 207 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -14,7 +14,7 @@
 - [4. ANNEXES DES MAGIES : états, résistances, météo, modes hyper et super (famille « annexes »)](#4-annexes-des-magies--états-résistances-météo-modes-hyper-et-super-famille--annexes) : `resistance_palier`, `etat`, `etat_magie`, `etat_stade`, `etat_palier`, `meteo`, `meteo_effet`, `mode_texte`, `mode_hyper_depassement`, `mode_super_objet`, `mode_hyper_effet`
 - [5. DIEUX](#5-dieux) : `dieu`
 - [5 bis. CHRONOLOGIE : les événements datés du Codex et des races (famille « chronologie » ; migration 0035, docs/chronologie.md)](#5-bis-chronologie--les-événements-datés-du-codex-et-des-races-famille--chronologie---migration-0035-docschronologiemd) : `evenement`, `evenement_extrait`, `categorie_chronologie`, `evenement_categorie`
-- [6. CLASSES, SPÉCIALITÉS, CAPACITÉS (famille « classes »)](#6-classes-spécialités-capacités-famille--classes) : `categorie_classe`, `classe`, `specialite`, `capacite`, `objet_depart`, `classe_objet_depart`, `classe_maitrise_armure`, `classe_maitrise_arme`, `maitrise_arme_part`, `maitrise_arme_part_famille`, `capacite_nm_gagne`, `classe_annexe`
+- [6. CLASSES, SPÉCIALITÉS, CAPACITÉS (famille « classes »)](#6-classes-spécialités-capacités-famille--classes) : `categorie_classe`, `classe`, `specialite`, `capacite`, `objet_depart`, `classe_objet_depart`, `classe_maitrise_armure`, `classe_maitrise_arme`, `maitrise_arme_part`, `maitrise_arme_part_famille`, `capacite_nm_gagne`, `classe_annexe`, `classe_annexe_entree`, `capacite_variable`
 - [7. RACES, ETHNIES, ACCESSIBILITÉS (famille « races »)](#7-races-ethnies-accessibilités-famille--races) : `race`, `race_restriction_carac`, `ethnie`, `ethnie_resistance`, `race_classe`, `race_magie`, `race_onglet`, `race_don`, `race_don_tableau_colonne`, `race_don_tableau_ligne`, `race_don_tableau_cellule`, `race_magie_onglet`, `echelle_relation`, `peuple`, `relation_peuple`
 - [8. BESTIAIRE : invocations et créatures (famille « bestiaire »)](#8-bestiaire--invocations-et-créatures-famille--bestiaire) : `invocation`, `invocation_capacite_commune`, `invocation_resistance`, `invocation_bloc`, `invocation_bloc_magie`, `creature`, `creature_ressource`, `creature_caracteristique`, `creature_bonus_npm`, `creature_attaque`, `creature_attaque_type`, `creature_capacite`, `creature_capacite_sort`, `creature_capacite_resistance`, `creature_effet`
 - [8 bis. BESTIAIRE 2.0 : monstres, butin, échelles de puissance (famille « monstres »)](#8-bis-bestiaire-20--monstres-butin-échelles-de-puissance-famille--monstres) : `monstre_regle`, `monstre_echelle`, `monstre_butin_objet`, `monstre_groupe`, `monstre_espece`, `monstre_espece_lieu`, `monstre_espece_bloc`, `monstre_butin`, `monstre`, `monstre_rubrique`, `monstre_caracteristique`, `monstre_attaque`, `monstre_capacite_commune`, `monstre_capacite`, `monstre_capacite_valeur`, `monstre_defense`
@@ -22,7 +22,7 @@
 - [10. TRANSVERSAL : notes de cellule et écarts entre sources](#10-transversal--notes-de-cellule-et-écarts-entre-sources) : `note_cellule`, `ecart_source`, `correction`
 - [11. TABLES DÉRIVÉES (jamais exportées dans data/rows/, recalculées par `npm run db:build`)](#11-tables-dérivées-jamais-exportées-dans-datarows-recalculées-par-npm-run-dbbuild) : `lien`, `lien_candidat`, `page_fts`, `entite_fts`
 - [12. VUES (toujours à jour : rien à recalculer)](#12-vues-toujours-à-jour--rien-à-recalculer) : `cle_page`, `lien_page`, `lien_a_creer`, `v_mot_cle`, `v_magie_incompatible`, `v_sort_bonus_au_nm`, `v_race_carac_borne`, `v_race_classe_accessible`, `v_race_magie_accessible`, `v_regard_peuple`, `v_creature_magie`, `v_creature_resistance`, `v_creature_sort`, `v_creature_cout_invocation`, `v_creature_meme_bloc`, `v_arme`, `v_ingredient_possible`, `v_ressource_recette`, `v_metier_recette`, `v_potion`, `v_objet_ceinture`, `v_arme_composee`, `v_armure_piece`, `v_niveau`, `v_competence`, `v_resistance_combinaison`, `v_mode_hyper_lectures`, `v_classe_capacite`, `v_capacite_exclusive`, `v_capacite_partagee`
-- [13. PERSONNAGES : les vraies fiches (joueurs et prétirés), les groupes de jeu et la visibilité (saisie, jamais importée ; migration 0011)](#13-personnages--les-vraies-fiches-joueurs-et-prétirés-les-groupes-de-jeu-et-la-visibilité-saisie-jamais-importée--migration-0011) : `utilisateur`, `utilisateur_role`, `personnage`, `personnage_partage`, `personnage_classe`, `personnage_caracteristique`, `personnage_competence`, `personnage_entrainement`, `personnage_acquis_choix`, `personnage_resistance_choix`, `personnage_metier_bonus`, `personnage_capacite`, `personnage_sort`, `personnage_livre_sort`, `personnage_maitrise_choix`, `personnage_arme`, `personnage_armure_partie`, `personnage_accessoire`, `personnage_inventaire`, `personnage_ceinture`, `personnage_action_usage`, `groupe`, `groupe_membre`, `v_personnage_niveau`, `v_personnage_metier_bonus`, `v_personnage_don_acquis`, `v_personnage_maitrise_part`, `v_personnage_maitrise_arme`, `v_personnage_visible`, `v_groupe_controle`, `v_personnage_controle`
+- [13. PERSONNAGES : les vraies fiches (joueurs et prétirés), les groupes de jeu et la visibilité (saisie, jamais importée ; migration 0011)](#13-personnages--les-vraies-fiches-joueurs-et-prétirés-les-groupes-de-jeu-et-la-visibilité-saisie-jamais-importée--migration-0011) : `utilisateur`, `utilisateur_role`, `personnage`, `personnage_partage`, `personnage_classe`, `personnage_caracteristique`, `personnage_competence`, `personnage_entrainement`, `personnage_acquis_choix`, `personnage_resistance_choix`, `personnage_metier_bonus`, `personnage_capacite`, `personnage_don_obtenu`, `personnage_sort`, `personnage_livre_sort`, `personnage_maitrise_choix`, `personnage_arme`, `personnage_armure_partie`, `personnage_accessoire`, `personnage_inventaire`, `personnage_ceinture`, `personnage_action_usage`, `groupe`, `groupe_membre`, `v_personnage_niveau`, `v_personnage_metier_bonus`, `v_personnage_don_acquis`, `v_personnage_maitrise_part`, `v_personnage_maitrise_arme`, `v_personnage_visible`, `v_groupe_controle`, `v_personnage_controle`
 - [14. ÉDITION : le journal des modifications faites depuis le site de dev (saisie, jamais importée ; migration 0017)](#14-édition--le-journal-des-modifications-faites-depuis-le-site-de-dev-saisie-jamais-importée--migration-0017) : `modification_lot`, `modification`, `note_version_brouillon`
 - [15. NOTES DE VERSION : ce que chaque version a changé dans les règles, et l'historique des modifications faites sur le site de dev](#15-notes-de-version--ce-que-chaque-version-a-changé-dans-les-règles-et-lhistorique-des-modifications-faites-sur-le-site-de-dev) : `note_version`, `note_version_ligne`, `historique_modification`
 
@@ -1064,6 +1064,37 @@ TABLEAU LIBRE D'UN ONGLET Tableau sans titre sous les aptitudes de Mage Bleu (A5
 | `texte` | TEXT | oui |  |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+
+### `classe_annexe_entree`
+
+Les entrées du tableau libre, une par ligne « (Type) Nom. Effet » du texte d'une ligne de classe_annexe (décision R181, migration 0088 : « Il devra choisir l'un dons disponible en bas de la fiche de la classe du mage bleu, limité sa magie innée (sauf mention contraire) pour le don "secondaire". »). Mage Bleu : 54 entrées, 3 ou 4 par magie (Arcane et Espace/Temps en ont 3). Découpage sans rien réécrire : la ligne de la source est exactement type_brut || ' ' || nom || '. ' || effet, et les lignes d'une même ligne de classe_annexe, jointes par un saut de ligne dans l'ordre de `rang`, redonnent son texte (test/db-r181-dons-variables.test.mjs). Le texte parle de « cette créature » : il est cité tel quel. La magie d'une entrée est celle de sa ligne (classe_annexe.magie_id), jamais recopiée ici. R67 laisse ce tableau à part des capacités de monstre communes. id = '<classe_id>#entree:<libelle_cle de la ligne>:<normalize(nom) à la création>' (« classes/mage-bleu#entree:sang:temeraire »), figé : un nom corrigé garde son id. Les choix des fiches : personnage_don_obtenu.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `id` | TEXT | oui | PK |  |
+| `classe_id` | TEXT | oui | → classe_annexe.classe_id |  |
+| `annexe_rang` | INTEGER | oui | → classe_annexe.rang | la ligne du tableau (classe_annexe.rang), donc sa magie |
+| `rang` | INTEGER | oui |  | position de l'entrée dans le texte de la ligne, de haut en bas |
+| `nom` | TEXT | oui |  | tel qu'écrit, entre la parenthèse et le premier « . » : « Attrape-moi ! », « 25h » |
+| `nom_cle` | TEXT | oui |  | normalize(nom) |
+| `type` | TEXT | oui |  | premier mot de type_brut, sans accent ni casse (comme capacite.type) |
+| `type_brut` | TEXT | oui |  | l'en-tête tel qu'écrit, parenthèses comprises : « (Actif 2 fois/combat) », « (Passif] » (Terre) |
+| `limite_brute` | TEXT | non |  | la limite de l'en-tête, telle qu'écrite : « 2 fois/combat », « 1 fois/tour » ; NULL sans limite |
+| `limite_nombre` | INTEGER | non |  | N de « N fois/période » (comme capacite.limite_nombre) ; NULL pour toute autre forme |
+| `limite_periode` | TEXT | non |  | période de cette limite, telle qu'écrite (« combat », « tour ») ; NULL avec limite_nombre |
+| `effet` | TEXT | oui |  | le reste de la ligne, tel qu'écrit (« cette créature »…) |
+| `origine` | TEXT | oui | → famille.id |  |
+| `source_ref` | TEXT | oui |  | la plage de la ligne du tableau (celle de classe_annexe) |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
+
+### `capacite_variable`
+
+La liste d'un don « Variable » (capacite.type = 'variable' ; décision R181, migration 0088) : le don obtient une entrée du tableau libre de sa classe (classe_annexe_entree), sur la ligne de la magie que son texte vise. `magie` : 'innee' (« lié à sa magie innée » : Mimétisme, Mime, Principale, Ultime raison) ou 'acquise' (« lié à sa magie acquise » : Secondaire, la « mention contraire » de R181 ; sans magie acquise, il ne se choisit pas : règle don_obtenu_sans_magie_acquise de v_personnage_controle). Écrite par la migration d'après le texte du don, relu par test/db-r181-dons-variables.test.mjs ; un don « Variable » créé sur le site de dev n'y est pas (il n'obtient rien).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `capacite_id` | TEXT | oui | PK, → capacite.id |  |
+| `magie` | TEXT | oui |  |  |
 
 ## 7. RACES, ETHNIES, ACCESSIBILITÉS (famille « races »)
 
@@ -3527,6 +3558,16 @@ Dons de classe choisis (lignes « CLASSE 1 » / « CLASSE 2 », C43:L67) : seule
 | `personnage_id` | TEXT | oui | PK 1, → personnage.id |  |
 | `capacite_id` | TEXT | oui | PK 2, → capacite.id |  |
 
+### `personnage_don_obtenu`
+
+Don obtenu par un don « Variable » du Mage Bleu (décision R181, migration 0088 ; pas de case dans la fiche auto V15.2.2) : une ligne par don « Variable » (capacite_variable) qui a son choix : `source`, l'id du don, et `entree_id`, l'entrée du tableau libre de la classe (classe_annexe_entree) qu'il obtient. Un choix par don (clé primaire) ; « chaque entrée ne se prend qu'une fois » (R181) : une entrée par fiche (UNIQUE). Rien d'autre n'est refusé ici, car la magie et le niveau changent : la bonne liste (sa magie innée, ou acquise pour Secondaire) et le don encore acquis sont des règles de v_personnage_controle (don_obtenu_hors_liste, don_obtenu_source_perdue), qui signalent un choix gardé sans effet, comme les maîtrises (R148). « (Ne peut pas être changé une fois choisi) » n'est qu'un rappel (R181) : le choix reste modifiable.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `personnage_id` | TEXT | oui | PK 1, → personnage.id |  |
+| `source` | TEXT | oui | PK 2, → capacite.id | le don « Variable » (capacite_variable.capacite_id) |
+| `entree_id` | TEXT | oui | → classe_annexe_entree.id | l'entrée obtenue |
+
 ### `personnage_sort`
 
 « LISTE DE SORTS » (AA55:AY74) : sorts de la magie innée ou acquise, avec leur niveau de maîtrise (« NM », AY). Un NM vient d'un niveau (au plus niveau global − 1 sur un sort, BDD!BB6, et au plus les NM gagnés en tout), d'un livre de sort (un seul par sort, lié à ce sort : page « Livre / Parchemin ») ou d'un cadeau du MJ ; un sort a au plus 3 NM en tout (regle_constante 'sort.nm_max', décision R26). Type, coût, portée, zone et effets se lisent dans `sort`. Le livre de sort se note à part, indépendamment de la liste (personnage_livre_sort, décision R169, migration 0082, qui retire la colonne nm_livre) : un sort choisi qui a son livre compte ce NM dans niveau_maitrise, mais pas dans le décompte des NM (décision R118, migration 0066 ; les NM du MJ sont ceux de la fiche, personnage.nm_mj).
@@ -3630,7 +3671,7 @@ La ceinture (demande du propriétaire, migration 0031) : ses 3 emplacements d'ob
 
 ### `personnage_action_usage`
 
-Compteurs d'usage des actions (décision R173, migration 0085 : « Il faudrait lister toutes les actions utilisables […]. Il faudrai pouvoir les sélectionner pour les "consommer" (et griser si plus utilisable). Un bouton "fin de combat" permet de remettre tous les compteur X/combat au maximum. Le compteur 1/ jour / semainee lui ne peut que remonter manuellement. » ; « les compteurs s'enregistrent avec la fiche »). Une ligne par action à limite lisible dont le compteur est entamé : `action_id`, la clé de l'action fabriquée par le moteur de la fiche (lib/fiche-moteur.mjs : un don de classe, le don de base de la race, l'effet d'un accessoire, une capacité d'une arme élémentaire, un effet de l'armure élémentaire ; un don présent dans deux classes d'un bi-classé a un compteur par identifiant de don) ; pas de clé étrangère : l'action dépend de l'équipement porté et de l'état de la fiche, et une clé sans action correspondante est ignorée par la page. `restants` : les utilisations qui restent (entier >= 0 ; 0 = action grisée). Une ligne absente = compteur au maximum, comme personnage.mode_hyper_semaine NULL (R172) : le maximum est une règle (limite lue dans le texte du don, de l'accessoire, de l'arme ou de l'armure), jamais stocké. « Fin de combat » remonte au maximum les compteurs « par combat », les autres ne remontent qu'à la main (R173).
+Compteurs d'usage des actions (décision R173, migration 0085 : « Il faudrait lister toutes les actions utilisables […]. Il faudrai pouvoir les sélectionner pour les "consommer" (et griser si plus utilisable). Un bouton "fin de combat" permet de remettre tous les compteur X/combat au maximum. Le compteur 1/ jour / semainee lui ne peut que remonter manuellement. » ; « les compteurs s'enregistrent avec la fiche »). Une ligne par action à limite lisible dont le compteur est entamé : `action_id`, la clé de l'action fabriquée par le moteur de la fiche (lib/fiche-moteur.mjs : un don de classe, le don de base de la race, l'effet d'un accessoire, une capacité d'une arme élémentaire, un effet de l'armure élémentaire, une entrée du tableau du Mage Bleu obtenue par un don « Variable » (`entree:<id>`, décision R181) ; un don présent dans deux classes d'un bi-classé a un compteur par identifiant de don) ; pas de clé étrangère : l'action dépend de l'équipement porté et de l'état de la fiche, et une clé sans action correspondante est ignorée par la page. `restants` : les utilisations qui restent (entier >= 0 ; 0 = action grisée). Une ligne absente = compteur au maximum, comme personnage.mode_hyper_semaine NULL (R172) : le maximum est une règle (limite lue dans le texte du don, de l'accessoire, de l'arme ou de l'armure), jamais stocké. « Fin de combat » remonte au maximum les compteurs « par combat », les autres ne remontent qu'à la main (R173).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -3692,7 +3733,7 @@ Bonus que le métier d'une fiche apporte (décision R33) : une ligne par rang li
 
 *vue*
 
-Dons acquis d'une fiche (décision R32, migration 0076) : le miroir de lib/fiche-moteur.mjs#donsAcquis. Pour chaque classe prise qui a des niveaux (niveau de classe >= 1, v_personnage_niveau ; la seconde d'un mono-classe n'en a qu'au niveau global 11, R2), ses dons jusqu'au niveau de classe atteint, de sa spécialité quand ils en ont une (celle de la fiche), et, pour un don à choix (nature 'choix'), seulement s'il est choisi (personnage_capacite). Sert aux sources de maîtrise d'arme (R148) et aux NM gagnés des dons (R154).
+Dons acquis d'une fiche (décision R32, migration 0076) : le miroir de lib/fiche-moteur.mjs#donsAcquis. Pour chaque classe prise qui a des niveaux (niveau de classe >= 1, v_personnage_niveau ; la seconde d'un mono-classe n'en a qu'au niveau global 11, R2), ses dons jusqu'au niveau de classe atteint, de sa spécialité quand ils en ont une (celle de la fiche), et, pour un don à choix (nature 'choix'), seulement s'il est choisi (personnage_capacite). Sert aux sources de maîtrise d'arme (R148), aux NM gagnés des dons (R154) et aux dons « Variable » du Mage Bleu (R181).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -3764,7 +3805,7 @@ Contrôle des inscriptions dans les groupes : une ligne par anomalie (vide = con
 
 *vue*
 
-Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi. Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45, R73, R95, R96, R100, R104, R118, les maîtrises d'armes de R148 à R151, R154, l'armure de R165 et les armes élémentaires de R167) ; ce qui demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité, poids d'armure portable de R165) n'est pas ici. Toute fiche est contrôlée, même inachevée : il n'y a plus de statut (demande du propriétaire, migration 0038) ; une ligne signale, elle n'empêche pas d'enregistrer.
+Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi. Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45, R73, R95, R96, R100, R104, R118, les maîtrises d'armes de R148 à R151, R154, l'armure de R165, les armes élémentaires de R167 et les dons « Variable » de R181) ; ce qui demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité, poids d'armure portable de R165) n'est pas ici. Toute fiche est contrôlée, même inachevée : il n'y a plus de statut (demande du propriétaire, migration 0038) ; une ligne signale, elle n'empêche pas d'enregistrer.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
