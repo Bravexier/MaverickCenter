@@ -44,10 +44,12 @@ import {
   appliquerDegatsRecus, CASES_DE_LA_BARRIERE, casesDeLaBarriereApres, coupDeDegats, elementsDeDegats, medusainDOffice, TYPES_DE_COUP,
   acquisApresChoix, acquisApresRepartition, acquisChoixValables, acquisDesDons, magieTireeParLeMj, resistanceApresChoix, resistanceChoixValables, entrainementDe, entrainementsAEnregistrer, batonDuSac, contexteDesSorts, degatsDArmeDuMoment, magiesDesBatons, nomDuBaton, postureDuMoment, sortDuMoment,
   creaturesDuSort, sacrificeDuSort,
-  carteDeMaitrise, compteurDeMaitrise, infobulleDeClasse, infobulleDeSpecialite, infobulleDuDonAChoisir, TYPES_DE_DON, groupesDArmesParMaitrise, ligneDeMaitrise, maitriseApresChoix, maitriseChoixValables, maitrisesParFamille, presentationDuCompteurDeMaitrise, sourcesDeMaitrise,
+  carteDeMaitrise, compteurDeMaitrise, infobulleDeClasse, infobulleDeSpecialite, infobulleDuDonAChoisir,
+  infobulleDArmeElementaire, infobulleDArmure, infobulleDArmureElementaire, infobulleDeMetier, infobulleDeSort, TYPES_DE_DON, groupesDArmesParMaitrise, ligneDeMaitrise, maitriseApresChoix, maitriseChoixValables, maitrisesParFamille, presentationDuCompteurDeMaitrise, sourcesDeMaitrise,
   armeDeLaLigne, armesElementairesProposees, effetDeLArmeElementaire, sortsFerDAutreElement,
 } from '../lib/fiche-moteur.mjs';
 import { creatureAuNpm, FPVSIA, vautAuNpm } from '../lib/creature-npm.mjs';
+import { listeDeChoix } from './liste-choix.mjs';
 
 const racine = document.getElementById('fiche');
 const API = racine.dataset.api;
@@ -893,11 +895,12 @@ function construireSorts() {
     el('tbody', {}, lignes.length === 0
       ? el('tr', {}, el('td', { colspan: '8', class: 'muted' }, 'Aucun emplacement de sort.'))
       : lignes.flatMap((l) => {
-        // un groupe par NPM, le nom seul ; chaque sort sur la couleur de sa magie, comme sur les pages de magie (demande du propriétaire)
+        // un groupe par NPM, le nom seul ; chaque sort sur la couleur de sa magie, comme sur les pages de magie (demande du propriétaire), ce qu'il apporte
+        // en infobulle (infobulleDeSort, dans la liste dessinée par le site : listeDeChoix)
         const couleurDe = (s) => trouver(regles.magies, s?.magie_id);
         const optionDeSort = (s) => {
           const m = couleurDe(s);
-          return el('option', { value: s.id, selected: s.id === l.ligne?.sort_id, class: teinteDe(m).join(' ') || null, title: m?.nom }, s.nom);
+          return el('option', { value: s.id, selected: s.id === l.ligne?.sort_id, class: teinteDe(m).join(' ') || null, title: infobulleDeSort(s, m) }, s.nom);
         };
         const choisi = couleurDe(l.sort);
         const liste = el('select', {
@@ -958,7 +961,7 @@ function construireSorts() {
         const marquePrepare = el('span', { class: 'sort-prepare__marque', tabindex: '0', hidden: true }, 'préparé');
         const classe = [l.enTrop ? 'en-trop' : null, l.sort?.effets ? 'avec-effet' : null].filter(Boolean).join(' ') || null;
         const tr = el('tr', { class: classe },
-          el('td', { class: 'nombre muted' }, String(l.index + 1)), el('td', {}, el('span', { class: 'sort-choix' }, liste, remarque, marquePrepare)),
+          el('td', { class: 'nombre muted' }, String(l.index + 1)), el('td', {}, el('span', { class: 'sort-choix' }, listeDeChoix(liste, { cle: `sort-${l.index + 1}` }), remarque, marquePrepare)),
           modes, cout, portee, zone, dsb,
           el('td', { class: 'nm-sort' }, el('span', { class: 'curseur-cellule' }, curseur, total), livre));
         synchro(() => {
@@ -1212,7 +1215,7 @@ function construireSortPrepare() {
     }, el('option', { value: '', class: 'option-vide' }, choix.length ? '— aucun —' : `— aucun sort ${don.types.includes('attaque') ? 'd’attaque ' : ''}de NPM ${don.niveaux.join(' ou ')} dans la fiche —`),
     choix.map((x) => {
       const m = couleurDe(x.sort);
-      return el('option', { value: x.sort.id, class: teinteDe(m).join(' ') || null, title: m?.nom }, `${x.sort.nom} (NPM ${x.sort.niveau})`);
+      return el('option', { value: x.sort.id, class: teinteDe(m).join(' ') || null, title: infobulleDeSort(x.sort, m) }, `${x.sort.nom} (NPM ${x.sort.niveau})`);
     }));
     const jet = el('input', {
       type: 'number', min: String(jetDuSortPrepare(regles).min), max: String(jetDuSortPrepare(regles).max), step: '1', inputmode: 'numeric', class: 'sort-prepare__jet',
@@ -1238,7 +1241,7 @@ function construireSortPrepare() {
       lacher.disabled = !p;
     });
     return [
-      el('label', { class: 'fiche-champ sort-prepare__sort' }, el('span', {}, 'Sort'), liste),
+      el('label', { class: 'fiche-champ sort-prepare__sort' }, el('span', {}, 'Sort'), listeDeChoix(liste, { cle: 'sort-prepare' })),
       el('label', { class: 'fiche-champ' }, el('span', {}, 'Jet de magie (D100)'), jet),
       el('span', { class: 'fiche-champ' }, el('span', {}, 'Posture à la préparation'), posture),
       lacher,
@@ -1315,8 +1318,11 @@ function construireEntrainement() {
       const pris = new Set(livres.filter((y) => y.sort_id !== livre.sort_id).map((y) => y.sort_id));
       const possibles = sortsDesLivres(regles, fiche).filter((s) => !pris.has(s.id));
       const parMagie = [...new Set(possibles.map((s) => s.magie_id))].map((m) => [trouver(regles.magies, m), possibles.filter((s) => s.magie_id === m)]);
-      const optionDeLivre = (s) => el('option', { value: s.id, selected: s.id === livre.sort_id, class: teinteDe(trouver(regles.magies, s.magie_id)).join(' ') || null },
-        `${s.nom} (NPM ${s.niveau})`);
+      const optionDeLivre = (s) => {
+        const m = trouver(regles.magies, s.magie_id);
+        return el('option', { value: s.id, selected: s.id === livre.sort_id, class: teinteDe(m).join(' ') || null, title: s.magie_id ? infobulleDeSort(s, m) : null },
+          `${s.nom} (NPM ${s.niveau})`);
+      };
       const actuel = livre.sort ?? { id: livre.sort_id, nom: nomDuSort(livre.sort_id), niveau: '?' };
       const magie = trouver(regles.magies, livre.sort?.magie_id);
       const sort = el('select', { 'aria-label': `Livre de sort : le sort (${nomDuSort(livre.sort_id)})`, class: teinteDe(magie).join(' ') || null,
@@ -1331,7 +1337,7 @@ function construireEntrainement() {
       });
       const retirer_ = el('button', { type: 'button', class: 'retirer', 'aria-label': `Retirer le livre de ${nomDuSort(livre.sort_id)}`,
         onclick: () => { retirerLivre(livre.sort_id); changer(); } }, '✕');
-      return el('li', { class: 'entrainement__ligne entrainement__ligne--livre' }, el('span', { class: 'entrainement__type' }, 'Livre'), sort, attente, retirer_);
+      return el('li', { class: 'entrainement__ligne entrainement__ligne--livre' }, el('span', { class: 'entrainement__type' }, 'Livre'), listeDeChoix(sort, { cle: `livre-${livre.rang}` }), attente, retirer_);
     }),
   ]);
   // les ajouts : une compétence (la première qui n'est pas encore entraînée), un livre (le premier sort choisi sans livre sous le plafond, sinon le
@@ -2532,7 +2538,10 @@ function construireEquipement() {
       else if (l()) fiche.armes = armesApresReglage(regles, fiche, rang, cle, v);
       changer();
     };
-    const optionDElement = (a) => el('option', { value: a.id, class: teinteDe(a).join(' ') || null, title: trouver(regles.magies, a.magie_id)?.nom ?? null }, a.nom);
+    // une arme élémentaire : ce qu'elle apporte en infobulle (sa magie, sa capacité : infobulleDArmeElementaire, dans la liste dessinée par le site,
+    // listeDeChoix) ; les armes du catalogue n'en ont pas
+    const optionDElement = (a) => el('option', { value: a.id, class: teinteDe(a).join(' ') || null,
+      title: infobulleDArmeElementaire(a, trouver(regles.types_elementaires ?? [], a.type_id), trouver(regles.magies, a.magie_id)) }, a.nom);
     // les groupes du catalogue, la maîtrise la plus haute d'abord (groupesDArmesParMaitrise, demande du propriétaire du 2026-10-23 : puis par ordre
     // alphabétique à maîtrise égale ; « Autres » à la fin) ; les armes élémentaires proposées à la fin du groupe de leur famille (celle de leur type élémentaire)
     const groupesDuCatalogue = () => groupesDArmesParMaitrise(regles, fiche, calcul.maitrises.familles).map((g) => g.famille);
@@ -2609,7 +2618,8 @@ function construireEquipement() {
       const element = arme?.elementaire ?? null;
       poserTeinte(choixDArme, teinteDe(element));
       attribut(choixDArme, 'data-couleur', Boolean(element));
-      attribut(choixDArme, 'title', element ? `${element.nom} (arme élémentaire, ${trouver(regles.magies, element.magie_id)?.nom ?? element.magie_id})` : null);
+      // (infobulle, pas attribut : un `title` déplacé par components/Infobulles.astro ne se retire qu'en le vidant)
+      infobulle(choixDArme, element ? `${element.nom} (arme élémentaire, ${trouver(regles.magies, element.magie_id)?.nom ?? element.magie_id})` : '');
       attribut(choixDArme, 'aria-invalid', element && !armesProposees.some((a) => a.id === element.id) ? 'true' : null);
       composition.disabled = !x || Boolean(element);
       typeLigne.hidden = !arme?.type_degats_au_choix;
@@ -2682,7 +2692,7 @@ function construireEquipement() {
     // à portée de main (demande du propriétaire) : l'arme et ses dés ; composition (grisée pour une arme élémentaire), amélioration et effet en plus
     // repliés (décision R167 : plus de champ « Élément » ni « Amélioration de l'élément », un seul niveau d'amélioration)
     return el('div', { class: 'objet' }, el('div', { class: 'objet__tete' }, el('h4', {}, `Arme ${rang}`), el('span', { class: 'objet__degats' }, des, etoile)),
-      el('label', { class: 'fiche-champ' }, el('span', { class: 'visuellement-cache' }, 'Arme'), choixDArme),
+      el('label', { class: 'fiche-champ' }, el('span', { class: 'visuellement-cache' }, 'Arme'), listeDeChoix(choixDArme, { cle: `arme-${rang}` })),
       effetDeLArme, rappels,
       soliditeLigne,
       el('details', { class: 'objet__details' }, el('summary', {}, resume), el('div', { class: 'fiche-champs' },
@@ -2716,8 +2726,9 @@ function construireEquipement() {
       changer();
     };
     const libelle = (a) => `${a.nom} (${[a.categorie, stats(a)].filter(Boolean).join(', ')})`;
-    const optionDArmure = (a, magie = null) => el('option', { value: a.id, class: teinteDe(magie).join(' ') || null, title: magie ? `${magie.nom} : armure élémentaire` : null },
-      magie ? libelle(a) : `${a.nom}${stats(a) ? ` (${stats(a)})` : ''}`);
+    // ce que l'armure apporte en infobulle (infobulleDArmure, infobulleDArmureElementaire : dans la liste dessinée par le site, listeDeChoix)
+    const optionDArmure = (a, magie = null) => el('option', { value: a.id, class: teinteDe(magie).join(' ') || null,
+      title: magie ? infobulleDArmureElementaire(a, magie) : infobulleDArmure(a) }, magie ? libelle(a) : `${a.nom}${stats(a) ? ` (${stats(a)})` : ''}`);
     const armure = el('select', { 'aria-label': 'Armure', onchange: (ev) => choisir('armure')(ev.target.value || null) },
       el('option', { value: '', class: 'option-vide' }, 'Aucune'),
       proposees.base.map((g) => el('optgroup', { label: g.poids }, g.armures.map((a) => optionDArmure(a)))),
@@ -2729,7 +2740,7 @@ function construireEquipement() {
       const magie = trouver(regles.magies, a?.magie_id);
       poserTeinte(armure, teinteDe(magie));
       armure.toggleAttribute('data-couleur', Boolean(magie));
-      attribut(armure, 'title', a ? `${a.nom} : armure élémentaire (${magie?.nom ?? a.magie_id}, ${a.categorie})` : null);
+      infobulle(armure, a ? `${a.nom} : armure élémentaire (${magie?.nom ?? a.magie_id}, ${a.categorie})` : '');
     });
     const poids = el('p', { class: 'fiche-aide armure__poids' });
     synchro(() => {
@@ -2778,7 +2789,7 @@ function construireEquipement() {
     const parties = el('div', { class: 'armure__parties', role: 'group', 'aria-label': 'Solidité des parties de l’armure' }, rangs);
     synchro(() => { parties.hidden = !armurePortee(); });
     return el('div', { class: 'objet' },
-      el('label', { class: 'fiche-champ armure__choix' }, el('span', {}, 'Armure'), armure),
+      el('label', { class: 'fiche-champ armure__choix' }, el('span', {}, 'Armure'), listeDeChoix(armure, { cle: 'armure' })),
       poids,
       el('div', { class: 'fiche-champs' }, el('label', { class: 'fiche-champ' }, el('span', {}, 'Amélioration'), amelioration)),
       parties);
@@ -3496,11 +3507,12 @@ function retirerLArmureHorsListe() {
  * Le contrôle d'un geste, pour le retrait différé de l'armure (armureEnSuspens) : le menu de pastilles (race, ethnie, magies, classe, spécialité : un
  * <details class="choix">, son résumé compris, pour retirer une classe puis en choisir une autre dans le même menu), sinon le groupe de boutons radio
  * (un <fieldset> : les dons à choisir, que les flèches parcourent en déclenchant « change » à chaque bouton), sinon le groupe de pastilles (les
- * spécialités du tiroir), sinon l'élément même (une liste, que les flèches parcourent de même sous Windows ; le champ de l'XP ; la case « Bi-classé »).
+ * spécialités du tiroir), sinon la liste dessinée par le site (listeDeChoix : son bouton et ses options), sinon l'élément même (une liste, que les
+ * flèches parcourent de même sous Windows ; le champ de l'XP ; la case « Bi-classé »).
  */
 function groupeDuControle(cible) {
   if (!(cible instanceof Element)) return null;
-  return cible.closest('details.choix') ?? cible.closest('fieldset') ?? cible.closest('.groupe-pastilles') ?? cible;
+  return cible.closest('details.choix') ?? cible.closest('fieldset') ?? cible.closest('.groupe-pastilles') ?? cible.closest('.liste-choix') ?? cible;
 }
 
 /**
@@ -4218,7 +4230,10 @@ function indexerNoms() {
 
 function remplirListesFixes() {
   $('dieux').append(...regles.dieux.map((d) => option(d.id, d.nom)));
-  $('metiers').append(...regles.metiers.map((m) => option(m.id, m.nom)));
+  // l'infobulle d'un métier : ce qu'il apporte, ses champs tels qu'écrits dans la base (`apport`, lib/fiche-regles.mjs ; infobulleDeMetier), sur sa
+  // ligne de la liste dessinée par le site (listeDeChoix : demande du propriétaire)
+  $('metiers').append(...regles.metiers.map((m) => el('option', { value: m.id, title: infobulleDeMetier(m) }, m.nom)));
+  listeDeChoix($('metiers'), { cle: 'metier' });
   $('carac-magie').replaceChildren(option('', '—'), ...regles.caracteristiques.map((c) => option(c.id, c.nom)));
   // la ceinture propose tous les objets du sac (liste-ceinture, refaite par construireCeinture) ; le sac, son catalogue (autocompletion)
   racine.append(el('datalist', { id: 'liste-ceinture' }));

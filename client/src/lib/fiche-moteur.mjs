@@ -2161,6 +2161,61 @@ export function infobulleDeSpecialite(classe, specialite) {
 /** L'infobulle d'une classe : sa description, sinon null (pas d'infobulle). */
 export const infobulleDeClasse = (classe) => classe?.description || null;
 
+/*
+ * Les infobulles des options des listes de la fiche (demande du propriétaire : « Il faudrai également une infobulle au survol des choix pour voir ce
+ * qu'ils apportent. » ; le métier, les sorts, les armes élémentaires et l'armure, dans la liste dessinée par le site : src/scripts/liste-choix.mjs) : les
+ * textes et valeurs de la base tels qu'écrits (sans balises, comme tout regles.json), une ligne par champ, sous le libellé que le site leur donne déjà
+ * (tableau /metiers/, colonnes des sorts des pages de magie, tableaux des armures) ; un champ vide est omis ; rien du tout : null, pas d'infobulle.
+ */
+const lignesDeChamps = (champs) => champs.filter(([, v]) => v !== null && v !== undefined && String(v).trim() !== '').map(([libelle, v]) => `${libelle} : ${v}`);
+const infobulleDesLignes = (lignes) => (lignes.length ? lignes.join('\n') : null);
+
+/** L'infobulle d'un métier : ce qu'il apporte (`apport` : Bonus, Artisanat possible, Équipement supplémentaire possible, Avantage possible, tels qu'écrits). */
+export const infobulleDeMetier = (metier) => infobulleDesLignes(lignesDeChamps((metier?.apport ?? []).map((a) => [a.libelle, a.texte])));
+
+/**
+ * L'infobulle d'un sort (listes des emplacements, du sort préparé et des livres) : sa magie et son NPM (« Feu, NPM 2 », comme l'infobulle du sort choisi),
+ * puis Type, Coût, Coût secondaire, Portée, Zone, D/S/B, Effets et Remarque tels qu'écrits, « (+1/NM) » compris (valeurs au NM 0 : la ligne du
+ * tableau donne celles du NM choisi). `magie` : l'entrée de regles.magies (facultative).
+ */
+export function infobulleDeSort(sort, magie = null) {
+  if (!sort) return null;
+  return infobulleDesLignes([
+    ...(magie ? [`${magie.nom}, NPM ${sort.niveau}`] : []),
+    ...lignesDeChamps([['Type', sort.type], ['Coût', sort.cout], ['Coût secondaire', sort.cout_secondaire], ['Portée', sort.portee], ['Zone', sort.zone],
+      ['D/S/B', sort.dsb], ['Effets', sort.effets], ['Remarque', sort.remarque]]),
+  ]);
+}
+
+/**
+ * L'infobulle d'une arme élémentaire (décision R167) : « Arme élémentaire : <magie> » (l'infobulle de son nom sur la page des armes), puis son effet
+ * tel que la fiche l'écrit sous la liste (effetDeLArmeElementaire : capacité, « Ignore N AP », mention). `type` : regles.types_elementaires[] de l'arme.
+ */
+export function infobulleDArmeElementaire(arme, type = null, magie = null) {
+  if (!arme) return null;
+  return infobulleDesLignes([magie ? `Arme élémentaire : ${magie.nom}` : null, ...effetDeLArmeElementaire(arme, type)].filter(Boolean));
+}
+
+/**
+ * L'infobulle d'une armure de base (son nom, son AP et son AM sont déjà dans l'option, son poids dans le groupe) : Solidité (« uni » pour une armure à
+ * solidité unifiée, comme la page des armures), Résistance et Faiblesse (« ×2 Frappe » ; `degats`, sens `resistance` et `vulnerabilite`), Effet tel
+ * qu'écrit.
+ */
+export function infobulleDArmure(armure) {
+  if (!armure) return null;
+  const nomDuType = new Map(DEGATS_PHYSIQUES);
+  const degats = (sens) => (armure.degats ?? []).filter((d) => d.sens === sens)
+    .map((d) => `${d.multiplicateur > 1 ? `×${d.multiplicateur} ` : ''}${nomDuType.get(d.type) ?? d.type}`).join(', ');
+  return infobulleDesLignes(lignesDeChamps([['Solidité', armure.solidite === null || armure.solidite === undefined ? null : `${armure.solidite}${armure.solidite_uni ? ' uni' : ''}`],
+    ['Résistance', degats('resistance')], ['Faiblesse', degats('vulnerabilite')], ['Effet', armure.effet]]));
+}
+
+/** L'infobulle d'une armure élémentaire (décision R165) : « <magie> : armure élémentaire », puis ses effets tels qu'écrits, un par ligne. */
+export function infobulleDArmureElementaire(armure, magie = null) {
+  if (!armure) return null;
+  return infobulleDesLignes([magie ? `${magie.nom} : armure élémentaire` : null, ...(armure.effets ?? [])].filter((x) => x && String(x).trim()));
+}
+
 /**
  * Le libellé d'une magie tirée qui tient lieu de magie innée pour un don (décision R163 : « Punis-moi ... », « ... plus fort ! » d'un personnage du
  * Potentiel Illimité ; un choix de resistancesDe().aChoisir, `remplaceMagieInnee`) : le tiroir et la liste sous le tableau des résistances.

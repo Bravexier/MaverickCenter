@@ -62,7 +62,10 @@ test('R167 : la liste propose les armes élémentaires de la magie innée puis d
   assert.match(bloc, /poserTeinte\(choixDArme, teinteDe\(element\)\);\n\s*attribut\(choixDArme, 'data-couleur', Boolean\(element\)\);/);
   assert.match(bloc, /composition\.disabled = !x \|\| Boolean\(element\);/);
   assert.doesNotMatch(bloc, /champ\('Élément'|Amélioration de l’élément'/);
-  assert.match(css, /\.fiche \.objet select\[data-couleur\] \{ background-color: var\(--c\); color: var\(--texte-sur-c\);/);
+  // fermée, la liste (dessinée par le site : src/scripts/liste-choix.mjs, qui recopie `data-couleur` et la teinte du <select> caché sur son bouton) prend
+  // le fond de la magie de l'arme élémentaire choisie
+  assert.match(bloc, /listeDeChoix\(choixDArme, \{ cle: `arme-\$\{rang\}` \}\)/);
+  assert.match(css, /\.fiche \.liste-choix__bouton\[data-couleur\] \{ background-color: var\(--c\); color: var\(--texte-sur-c\);/);
 });
 
 test('R167 : choisir une arme élémentaire vide le matériau sans remettre l’amélioration à zéro ; revenir au catalogue reprend le fer (R49)', () => {

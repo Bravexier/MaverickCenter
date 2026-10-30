@@ -731,12 +731,12 @@ test('aucune couleur écrite dans les fichiers des lots faits (ni dans les règl
   for (const attendue of ['src/styles/fiche/fiche.css .fiche[data-magie] .fiche-etape', 'src/styles/personnages/liste.css .perso--magie',
     'src/styles/classe/page.css .annexe-classe__carte--magie', 'src/styles/equipement/equipement.css .acc-gemme', 'src/styles/magie/sorts.css .npm__badge',
     // les règles des magies qui ne lisent que les variables de leur feuille (`--c` de la fiche, sur la couleur d'un sort)
-    'src/styles/fiche/fiche.css .fiche .fiche-table--sorts select[data-couleur]', 'src/styles/fiche/fiche.css .fiche .invocation-choix',
+    'src/styles/fiche/fiche.css .fiche .liste-choix__bouton[data-couleur]', 'src/styles/fiche/fiche.css .fiche .liste-choix__option.teinte-palette', 'src/styles/fiche/fiche.css .fiche .invocation-choix',
     'src/styles/fiche/fiche.css .resistance', 'src/styles/fiche/fiche.css .resistance--magie',
     // lot des caractéristiques, postures et alignements
     'src/styles/fiche/fiche.css .carac', 'src/styles/fiche/fiche.css .carac__nom', 'src/styles/fiche/fiche.css .competences__groupe',
     'src/styles/fiche/fiche.css .competences__groupe thead th', 'src/styles/fiche/fiche.css .alignement__resultat', 'src/styles/fiche/fiche.css .fiche .posture-carte',
-    'src/styles/fiche/fiche.css .invocation-carte__carac', 'src/styles/fiche/fiche.css .fiche .sort-prepare select[data-couleur], .sort-prepare__posture[data-couleur]',
+    'src/styles/fiche/fiche.css .invocation-carte__carac', 'src/styles/fiche/fiche.css .sort-prepare__posture[data-couleur]',
     'src/styles/guide/blocs.css .guide-carac', 'src/styles/guide/blocs.css .guide-competences__groupe', 'src/styles/guide/blocs.css .guide-posture',
     'src/styles/guide/blocs.css .guide-posture__nom', 'src/styles/bestiaire/carte.css .bcarac', 'src/styles/armes/armes.css .arme-comp',
     'src/styles/metier/tableau.css .metier-cible, .metier-carac',
