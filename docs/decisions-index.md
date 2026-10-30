@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 177 décisions, de R1 à R177, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 178 décisions, de R1 à R178, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
 
 | Réf. | Sujet | Décision |
 | --- | --- | --- |
@@ -183,3 +183,4 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R175 | Arrondi des calculs de la fiche : le guide (« Formule des dégâts ») écrit… | On arrondit à l'inférieur, partout : dégâts reçus (R98… |
 | R176 | Potentiel Illimité en magie acquise : des questions de ce lot (livres de s… | Le Potentiel Illimité est toujours la magie innée, mon… |
 | R177 | Don d'ethnie du Marcass « +2 Armure magique (+2 tous les 5 niveaux) » : la… | Ce don s'ajoute en permanence à l'AM de la fiche, pas… |
+| R178 | Mode Hyper du Marcass (« Corps isolant », onglet de la race, R13 : « Les A… | La règle du Marcass en Mode Hyper : ses AP et AM natur… |
