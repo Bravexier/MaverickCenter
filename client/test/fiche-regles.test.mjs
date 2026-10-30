@@ -447,8 +447,9 @@ test('armes élémentaires (décision R167, migration 0081) : chaque arme élém
   const enBase = db.prepare(`SELECT e.id, e.nom, e.type_id, e.magie_id, m.nom AS magie, e.bonus_degats, e.capacite_nom, e.capacite_mode, e.capacite_texte
     FROM arme_elementaire e JOIN magie m ON m.id = e.magie_id ORDER BY e.ordre`).all();
   assert.deepEqual(regles.armes_elementaires.map((a) => a.id), enBase.map((a) => a.id), 'l’ordre de arme_elementaire.ordre');
-  for (const [i, a] of regles.armes_elementaires.entries()) {
+  for (const [i, { capacite_limite: _limite, ...a }] of regles.armes_elementaires.entries()) {
     const b = enBase[i];
+    // (`capacite_limite`, la limite d'usage lue dans sa capacité, décision R173 : test/limite-texte.test.mjs)
     assert.deepEqual(a, { id: b.id, nom: texteSansBalises(b.nom), type_id: b.type_id, magie_id: b.magie_id, classe: classeDeMagie(b.magie), bonus_degats: b.bonus_degats,
       capacite_nom: b.capacite_nom === null ? null : texteSansBalises(b.capacite_nom), capacite_mode: b.capacite_mode,
       capacite_texte: b.capacite_texte === null ? null : texteSansBalises(b.capacite_texte) }, b.id);

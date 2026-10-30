@@ -63,7 +63,7 @@ import {
   famillesMaitrisables, gainsDeNiveau, magieAcquiseValable, maitriseChoixValables, maitriseDArme, maitrisesParFamille, maitriseDesSorts, minimumDeLEmplacement,
   partiesApresReglage, sourcesDeMaitrise,
   armureParPartie, aUnLivre, bouclierDe, jetDuSortPrepare, partiesDeLArmure, sortsDesLivres, refusMagieAcquise, soliditeDuBouclierAEcrire, sortPrepare, trouver, armeDeLaLigne, typesDeDegats,
-  modeHyperDe,
+  modeHyperDe, actionsDeLaFiche,
 } from './fiche-moteur.mjs';
 import { coutEnUneCase } from './sort-cout.mjs';
 import { valeurAuNm } from './sort-maitrise.mjs';
@@ -76,7 +76,7 @@ import {
 import {
   ARMURE_COMPLETE, FLECHE, NON, OUI, SEPARATEUR_D_ACCESSOIRE, SEPARATEUR_D_ARMURE, SUITE_DE_LA_CASE, apAmDuBouclier, enChiffres, lireAccessoire, lireChoixDuMetier, lireEffetDAmelioration,
   lireChoixDeMaitrise, lireEffetDArme, lireGains, lireLigneDArmure, lireLigneDeNote, lireListe, lireNiveauDAmelioration, lireNmOfferts, lireObjet, lireSortEnSuite,
-  lireModeHyper, lireSortPrepare, partiesDeLArme,
+  lireModeHyper, lireSortPrepare, partiesDeLArme, lireCompteurDAction,
 } from './fiche-tableur-export.mjs';
 
 /** Message d'un onglet qui ne suit aucune des deux dispositions (dispositionDe). */
@@ -172,7 +172,7 @@ const segmentsDe = (texte) => String(texte ?? '').split(/\n| · /).map((l) => l.
 
 /**
  * La case NOTE : { marqueur (la page l'a écrite), notes (le texte avant le dernier marqueur, sans ses lignes vides de fin ; null s'il est vide), valeurs:
- * { nom: [valeur] } (lignes reconnues par lireLigneDeNote : biClasse, gains, sorts…, CLES_DE_LA_NOTE ; une seule par clé, sauf les événements, les textes de l’entraînement, les maîtrises et les acquis au choix,
+ * { nom: [valeur] } (lignes reconnues par lireLigneDeNote : biClasse, gains, sorts…, CLES_DE_LA_NOTE ; une seule par clé, sauf les événements, les textes de l’entraînement, les maîtrises et les acquis au choix, les compteurs d'actions (R173),
  * les résistances au choix et le sort préparé (un seul par fiche, mais l'import dit pourquoi le second ne l'est pas : décision R115) ;
  * accessoires : [{ emplacement, valeur }], un par emplacement), suites: Map<adresse, { valeur, ligne }> (la suite d'un texte coupé, la première par case),
  * autres: [ligne] (lignes après le marqueur que rien ne reconnaît : elles reviennent dans les notes), doubles: [ligne] (une clé déjà lue) }. Les lignes
@@ -200,7 +200,7 @@ export function lireLaNote(texte) {
     } else if (lue.nom === 'accessoire') {
       if ((valeurs.accessoires ??= []).some((a) => a.emplacement === lue.emplacement)) doubles.push(ligne);
       else valeurs.accessoires.push({ emplacement: lue.emplacement, valeur: lue.valeur });
-    } else if (['evenement', 'entrainementTexte', 'maitriseChoix', 'acquisChoix', 'resistanceChoix', 'sortPrepare'].includes(lue.nom)) (valeurs[lue.nom] ??= []).push(lue.valeur);
+    } else if (['evenement', 'entrainementTexte', 'maitriseChoix', 'acquisChoix', 'resistanceChoix', 'sortPrepare', 'compteurAction'].includes(lue.nom)) (valeurs[lue.nom] ??= []).push(lue.valeur);
     else if (valeurs[lue.nom]) doubles.push(ligne);
     else valeurs[lue.nom] = [lue.valeur];
   }
@@ -1573,6 +1573,22 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     if (lue.ecartees.length) {
       const s = lue.ecartees.length > 1 ? 's' : '';
       remarques.push(`Arme ${rang} (${arme.nom}) : ligne${s} ${lue.ecartees.map((l) => `« ${l} »`).join(', ')} non reprise${s} (recalculée${s} par le site)`);
+    }
+  }
+
+  // ---- les compteurs entamés des actions (décision R173), dans la note : la clé d'une action à compteur de la fiche importée (son équipement, ses dons
+  // et sa race relus), une fois chacune, sous son maximum ; sinon la ligne est perdue, avec sa raison
+  const compteurs = notee('compteurAction');
+  if (compteurs.length) {
+    const actions = new Map(actionsDeLaFiche(regles, f).filter((a) => a.compteur).map((a) => [a.cle, a]));
+    f.actions_usage = [];
+    for (const ecrit of compteurs) {
+      const lu = lireCompteurDAction(ecrit);
+      const action = lu ? actions.get(lu.cle) : null;
+      if (!lu) perdu(`Compteur d’action : « ${ecrit} » illisible`);
+      else if (!action) perdu(`Compteur d’action : « ${ecrit} » : la fiche n’a pas cette action`);
+      else if (f.actions_usage.some((u) => u.action_id === lu.cle)) perdu(`Compteur d’action : « ${ecrit} » : déjà lu`);
+      else if (lu.restants < action.compteur.max) f.actions_usage.push({ action_id: lu.cle, restants: lu.restants });
     }
   }
 

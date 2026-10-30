@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 84;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 85;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -4459,6 +4459,23 @@ CREATE TABLE personnage_ceinture (
   quantite       INTEGER NOT NULL CHECK (quantite >= 0),          -- 0 : un carquois ou un sac de projectiles vide (décision R89, migration 0052)
   ressource_id   TEXT    REFERENCES ressource(id),
   PRIMARY KEY (personnage_id, rang)
+) STRICT, WITHOUT ROWID;
+
+-- Compteurs d'usage des actions (décision R173, migration 0085 : « Il faudrait lister toutes les actions utilisables […]. Il faudrai pouvoir les
+-- sélectionner pour les "consommer" (et griser si plus utilisable). Un bouton "fin de combat" permet de remettre tous les compteur X/combat au maximum.
+-- Le compteur 1/ jour / semainee lui ne peut que remonter manuellement. » ; « les compteurs s'enregistrent avec la fiche »). Une ligne par action à
+-- limite lisible dont le compteur est entamé : `action_id`, la clé de l'action fabriquée par le moteur de la fiche (lib/fiche-moteur.mjs : un don de
+-- classe, le don de base de la race, l'effet d'un accessoire, une capacité d'une arme élémentaire, un effet de l'armure élémentaire ; un don présent dans
+-- deux classes d'un bi-classé a un compteur par identifiant de don) ; pas de clé étrangère : l'action dépend de l'équipement porté et de l'état de la
+-- fiche, et une clé sans action correspondante est ignorée par la page. `restants` : les utilisations qui restent (entier >= 0 ; 0 = action grisée).
+-- Une ligne absente = compteur au maximum, comme personnage.mode_hyper_semaine NULL (R172) : le maximum est une règle (limite lue dans le texte du don,
+-- de l'accessoire, de l'arme ou de l'armure), jamais stocké. « Fin de combat » remonte au maximum les compteurs « par combat », les autres ne remontent
+-- qu'à la main (R173).
+CREATE TABLE personnage_action_usage (
+  personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+  action_id      TEXT    NOT NULL CHECK (length(action_id) > 0),   -- clé de l'action du moteur de la fiche (sans clé étrangère)
+  restants       INTEGER NOT NULL CHECK (restants >= 0),           -- utilisations restantes ; ligne absente = au maximum
+  PRIMARY KEY (personnage_id, action_id)
 ) STRICT, WITHOUT ROWID;
 
 -- Groupe de jeu : la table d'un one-shot (« OS ») ou d'une campagne. Ses membres voient les fiches qui y sont inscrites.

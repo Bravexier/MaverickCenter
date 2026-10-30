@@ -34,7 +34,7 @@ const DEPART_DES_COLONNES_RETIREES_DE_DETAIL = Object.freeze({ personnage_compet
  * une de ces colonnes que la base n'a pas est ignorée tant qu'elle ne porte rien (sa valeur de départ, ou vide : null, « "" ») ; autrement, « champ
  * inconnu » (ce qu'elle porte serait perdu). De même une table de la fiche que la base n'a pas encore (personnage_armure_partie, 0055 ;
  * personnage_entrainement et personnage_acquis_choix, 0062 ; personnage_resistance_choix, 0069, la résistance au choix du Drakos orange, R124 ;
- * personnage_maitrise_choix, 0076, les choix de maîtrise d'armes, R148 ; personnage_livre_sort, 0082, les livres de sort, R169 : partiesDeLaBase) se lit vide, et une liste non vide pour elle est refusée.
+ * personnage_maitrise_choix, 0076, les choix de maîtrise d'armes, R148 ; personnage_livre_sort, 0082, les livres de sort, R169 ; personnage_action_usage, 0085, les compteurs d'actions, R173 : partiesDeLaBase) se lit vide, et une liste non vide pour elle est refusée.
  */
 export const DEPART_DES_COLONNES_AJOUTEES = Object.freeze({
   personnage: Object.freeze({

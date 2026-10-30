@@ -349,6 +349,7 @@ export const HORS_RESSOURCE = {
   personnage_accessoire: `Accessoires d’une fiche et leurs choix (partie de la fiche, R54, R97) : ${FICHES}.`,
   personnage_inventaire: `Inventaire d’une fiche (partie de la fiche, R60) : ${FICHES}.`,
   personnage_ceinture: `Ceinture d’une fiche, trois emplacements (partie de la fiche) : ${FICHES}.`,
+  personnage_action_usage: `Compteurs entamés des actions d’une fiche (usages restants ; une action absente est au maximum ; partie de la fiche, R173) : ${FICHES}.`,
   groupe: `Groupe de jeu (one-shot, campagne) : ${FICHES} ; dépend des comptes, aucun code ne le remplit encore.`,
   groupe_membre: `Membres d’un groupe de jeu et la fiche que chacun y inscrit : ${FICHES}.`,
   modification_lot: `Un enregistrement fait depuis une page du site de dev (lot atomique) : ${JOURNAL}.`,

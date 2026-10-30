@@ -177,5 +177,6 @@ test('la page (src/scripts/fiche.mjs, lue comme un texte) : la magie tirée sous
   assert.match(resistances, /const quoi = c\.remplaceMagieInnee \? magieTireeParLeMj\(c\)/);
   assert.match(script, /AIDE_ANNULE_LES_FAIBLESSES = 'La fiche retire les faiblesses qu’elle connaît ; le MJ annule aussi en jeu celles qu’elle ne connaît pas \(sorts ennemis, météo, armure, états en jeu\)\.'/);
   assert.match(script, /const aideDuDon = \(d\) => \(\(d\.resistances\?\.effets \?\? \[\]\)\.some\(\(e\) => e\.annule\) \? AIDE_ANNULE_LES_FAIBLESSES : null\);/);
-  assert.match(script, /texte: d\.effet, aide: aideDuDon\(d\) \}/);
+  // sous le don, parmi les passifs (décision R173 : passifsDeLaFiche, `don` : le don des règles)
+  assert.match(script, /texte: d\.texte, aide: aideDuDon\(d\.don\) \}/);
 });

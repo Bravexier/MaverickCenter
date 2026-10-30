@@ -54,7 +54,7 @@ test('/fiche/ en quatre zones (demande du propriétaire), sans cadre, titre ni p
   const fiche = html.slice(html.indexOf('<div class="fiche" id="fiche"'));
   const jetons = [...fiche.matchAll(/<section class="fiche-zone[^"]*" id="zone-([a-z]+)"|<(?:section|div) class="fiche-etape[^"]*" id="etape-([a-z]+)"/g)]
     .map((m) => (m[1] ? `[${m[1]}]` : m[2]));
-  assert.deepEqual(jetons, ['[identite]', 'identite', '[portee]', 'attributs', 'caracteristiques', 'armes', 'ceinture', 'sorts', 'dons',
+  assert.deepEqual(jetons, ['[identite]', 'identite', '[portee]', 'attributs', 'caracteristiques', 'armes', 'ceinture', 'actions', 'sorts', 'passifs',
     '[situation]', 'posture', 'armure', 'accessoires', 'inventaire', 'resistances', 'bouclier', '[parametres]', 'progression', 'choix', 'entrainement', 'jeu', 'controles']);
   assert.ok(!fiche.includes('fiche-zones-nav') && !fiche.includes('fiche-etapes'), 'ni pastilles des zones ni sommaire des blocs');
   assert.match(html, /\.fiche-zone__titre\s*\{[^}]*clip-path:\s*inset\(50%\)/, 'titres des zones lus par les lecteurs d’écran, pas affichés');
@@ -73,11 +73,15 @@ test('/fiche/ en quatre zones (demande du propriétaire), sans cadre, titre ni p
 test('/fiche/, zone II sur grand écran : les armes à côté des caractéristiques et compétences, la ceinture dessous, comme avant ; les maîtrises dans « Choix » (demande du propriétaire du 2026-10-23)', options, () => {
   const html = lire('fiche/index.html');
   const fiche = html.slice(html.indexOf('<div class="fiche" id="fiche"'));
-  // l'ordre du DOM est celui des écrans moyens et des téléphones : attributs, compétences, armes, ceinture, sorts, dons
-  const ordre = ['attributs', 'caracteristiques', 'armes', 'ceinture', 'sorts', 'dons'].map((id) => fiche.indexOf(`id="etape-${id}"`));
+  // l'ordre du DOM est celui des écrans moyens et des téléphones : attributs, compétences, armes, ceinture, actions (juste sous la ceinture, décision
+  // R173), sorts, passifs (aire `don`, juste sous la colonne sur grand écran)
+  const ordre = ['attributs', 'caracteristiques', 'armes', 'ceinture', 'actions', 'sorts', 'passifs'].map((id) => fiche.indexOf(`id="etape-${id}"`));
   assert.ok(ordre.every((i, n) => i > 0 && (n === 0 || i > ordre[n - 1])), `ordre du DOM de la zone II : ${ordre}`);
   // « Garder l'armes visibles à coté des caractéristiques comme avant » : la colonne des armes, puis de la ceinture, dans l'aire `col`
   assert.match(fiche, /<div class="zp-colonne">\s*(?:<!--[^]*?-->\s*)?<section class="fiche-etape" id="etape-armes" aria-labelledby="titre-armes">\s*<h3 id="titre-armes">Armes<\/h3>[^]*?<section class="fiche-etape" id="etape-ceinture"/);
+  // les actions dans la même colonne, juste après la ceinture (décision R173 : « directement sous la case de la ceinture »)
+  const colonne = fiche.slice(fiche.indexOf('<div class="zp-colonne">'), fiche.indexOf('id="etape-sorts"'));
+  assert.match(colonne, /<section class="fiche-etape" id="etape-ceinture"[^]*?<\/section>\s*<section class="fiche-etape" id="etape-actions" aria-labelledby="titre-actions">\s*<h3 id="titre-actions">Actions<\/h3>/);
   const grand = html.match(/@media \(min-width:\s*64rem\)\s*\{([^]*?)\.zone-situation/)?.[1] ?? '';
   const aires = [...(grand.match(/\.zone-portee\s*\{[^}]*grid-template-areas:\s*([^;}]+)/)?.[1] ?? '').matchAll(/["']([^"']+)["']/g)].map((m) => m[1]);
   assert.deepEqual(aires, ['attr attr', 'car col', 'sor don'], 'la colonne des armes et de la ceinture à côté des compétences');
@@ -153,8 +157,15 @@ test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options
   assert.doesNotMatch(maitrises, /type="range"|class="maitrise"|Points du MJ|à confirmer/i, 'ni curseur, ni points du MJ, ni « à confirmer »');
   assert.doesNotMatch(html, /Points du MJ/);
   assert.match(bloc('ceinture'), /<ol id="ceinture" class="ceinture"/, 'les 3 emplacements de la ceinture');
-  const dons = bloc('dons');
+  // les actions (décision R173) : la liste, puis « Fin de combat » (montré par le script quand une action a un compteur par combat)
+  const actions = bloc('actions');
+  assert.match(actions, /<ul id="actions" class="dons-liste actions-liste" aria-labelledby="titre-actions"><\/ul>\s*<p class="actions__pied"><button type="button" id="fin-de-combat"[^>]*>Fin de combat<\/button><\/p>/);
+  // les passifs (décision R173 ; ils remplacent les « Dons débloqués ») : la race, puis les classes, puis l'équipement
+  const dons = bloc('passifs');
+  assert.match(dons, /<h3 id="titre-passifs">Passifs<\/h3>/);
+  assert.ok(!html.includes('id="etape-dons"') && !html.includes('Dons débloqués'), 'plus de bloc « Dons débloqués »');
   assert.ok(dons.indexOf('id="dons-classes"') > dons.indexOf('id="dons-race"'), 'les dons de la race, puis ceux des classes');
+  assert.ok(dons.indexOf('id="passifs-equipement"') > dons.indexOf('id="dons-classes"'), 'puis l’équipement');
   // « Entraînement » (décision R104 ; un texte libre avant, R71) : des lignes, dans son onglet de la zone IV, juste après « Choix » (demande du
   // propriétaire du 2026-10-29), plus dans les dons ; les boutons d'ajout dessous, avec l'aide du guide (le paragraphe que la base écrit) ; les acquis à
   // choisir et les bonus non comptés restent dans les dons
