@@ -13,7 +13,7 @@
 export const TABLES_FICHES = Object.freeze([
   'utilisateur', 'utilisateur_role', 'personnage', 'personnage_partage', 'personnage_classe', 'personnage_caracteristique', 'personnage_competence',
   'personnage_entrainement', 'personnage_acquis_choix', 'personnage_resistance_choix', 'personnage_metier_bonus', 'personnage_capacite', 'personnage_sort',
-  'personnage_livre_sort', 'personnage_maitrise_choix', 'personnage_arme', 'personnage_armure_partie', 'personnage_accessoire', 'personnage_inventaire', 'personnage_ceinture', 'groupe',
+  'personnage_livre_sort', 'personnage_maitrise_choix', 'personnage_arme', 'personnage_armure_partie', 'personnage_accessoire', 'personnage_inventaire', 'personnage_ceinture', 'personnage_action_usage', 'groupe',
   'groupe_membre',
 ]);
 
@@ -34,6 +34,8 @@ export const PARTIES_DE_FICHE = Object.freeze({
   accessoires: 'personnage_accessoire',
   inventaire: 'personnage_inventaire',
   ceinture: 'personnage_ceinture',
+  // les compteurs entamés des actions de la fiche (décision R173, migration 0085) : { action_id, restants } ; une action absente est au maximum
+  actions_usage: 'personnage_action_usage',
   entrainements: 'personnage_entrainement',
   acquis_choix: 'personnage_acquis_choix',
   // la résistance au choix d'une ligne du tableau de la race (décision R124, migration 0069 : Drakos orange), ou à une magie au choix ou tirée d'un don

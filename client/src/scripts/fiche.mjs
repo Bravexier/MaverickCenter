@@ -30,9 +30,9 @@ import { lireClasseur } from '../lib/tableur-lecture.mjs';
 import { lireZip } from '../lib/zip.mjs';
 import { dessinerVignette, ouvrirRecadrage, reduireImage } from './portrait.mjs';
 import {
-  actionsDeLEmplacement, actionsDesAccessoires, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, exemplairesParEmplacement, inventaireDe,
-  mettreALaCeinture, objetChoisiDansLaListe, quantiteDuSac, rangerLEmplacement, remplirLEmplacement, suggestionsDeCeinture, utiliserLObjet, ajusterValeurDuMoment, alignementDe, armesApresChoix, armesApresReglage, armesValables, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, choixEnAttente, cleDeChoix, donDeBase, modeHyperDe, niveauDeSpecialite, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
-  choisirObjetDeMetier, choixDeMetierValables, classeImposee, classesDe, classesSelonLaMagieInnee, competencesDe, donsAChoisir, donsAcquis, donsDeRace, donsValables,
+  actionsDeLEmplacement, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, exemplairesParEmplacement, inventaireDe,
+  mettreALaCeinture, objetChoisiDansLaListe, quantiteDuSac, rangerLEmplacement, remplirLEmplacement, suggestionsDeCeinture, utiliserLObjet, ajusterValeurDuMoment, alignementDe, armesApresChoix, armesApresReglage, armesValables, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, choixEnAttente, cleDeChoix, modeHyperDe, niveauDeSpecialite, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
+  choisirObjetDeMetier, choixDeMetierValables, classeImposee, classesDe, classesSelonLaMagieInnee, competencesDe, donsAChoisir, donsValables,
   durabiliteAEcrire, durabiliteDArme, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, famillesMaitrisables, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable,
   magiesInneesPermises, maitriseDArme, maitriseDesSorts, gainsDeNiveau, niveauGlobal, bornesDuNm, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionXp,
   bornesDuMultiplicateur, livreAuPlafond, livresAEnregistrer, livresApresAjout, livresApresChangement, livresApresRetrait, livresDe, multiplicateurDuCout, sortAuNm, sortPourUnLivre, sortsDesLivres, donDePreparation, jetDuSortPrepare, sortPrepare, sortsAEnregistrer, sortsAPreparer, sortsApresLeJet,
@@ -48,6 +48,7 @@ import {
   infobulleDArme, infobulleDArmeElementaire, infobulleDArmure, infobulleDArmureElementaire, infobulleDeMetier, infobulleDeSort, TYPES_DE_DON, groupesDArmesParMaitrise, ligneDeMaitrise, maitriseApresChoix, maitriseChoixValables, maitrisesParFamille, presentationDuCompteurDeMaitrise, sourcesDeMaitrise,
   armeDeLaLigne, armesElementairesProposees, effetDeLArmeElementaire, sortsFerDAutreElement,
   finDuModeHyperCent, modeHyperApres, modeHyperValable, semaineDuModeHyperApres, tourDeModeHyper,
+  actionsDeLaFiche, actionsUsageSansObjetRetire, actionsUsageValables, consommerLAction, finDeCombat, passifsDeLaFiche, REMONTEES, remonterLAction,
 } from '../lib/fiche-moteur.mjs';
 import { creatureAuNpm, FPVSIA, vautAuNpm } from '../lib/creature-npm.mjs';
 import { listeDeChoix } from './liste-choix.mjs';
@@ -1483,18 +1484,24 @@ function construireAcquisAChoisir() {
   }));
 }
 
-// ------------------------------------------------------------------ rappel des dons (TYPES_DE_DON : lib/fiche-moteur.mjs)
+// ------------------------------------------------------------------ actions et passifs (décision R173 ; TYPES_DE_DON : lib/fiche-moteur.mjs)
+
+/** Le type d'un don et sa précision (« Actif (2 fois/combat) », telle qu'écrite), la pastille à droite du nom ; null sans l'un ni l'autre. */
+const typeDuDon = (type, precision) => (type || precision
+  ? el('span', { class: 'don__type', dataset: type ? { type } : {} }, [TYPES_DE_DON[type] ?? type, precision ? `(${precision})` : null].filter(Boolean).join(' '))
+  : null);
 
 /**
- * Un don de la liste : son niveau (s'il en a un), son nom, son type et sa précision (limite d'usage « 2 fois/combat », telle qu'écrite), son texte, et
- * une aide de la fiche sous le texte (`aide`, AIDE_ANNULE_LES_FAIBLESSES).
+ * Un don ou un effet de la liste : son niveau (s'il en a un), son nom, d'où il vient (`source` : un objet, une classe), son type et sa précision (limite
+ * d'usage « 2 fois/combat », telle qu'écrite), son texte, et une aide de la fiche sous le texte (`aide`, AIDE_ANNULE_LES_FAIBLESSES).
  */
-function elementDeDon({ niveau = null, nom, type = null, precision = null, texte, aide = null }) {
-  return el('li', { class: 'don' },
+function elementDeDon({ niveau = null, nom, source = null, type = null, precision = null, texte, aide = null, teinte = null }) {
+  return el('li', { class: ['don', ...teinteDe(teinte)].join(' ') },
     el('span', { class: 'don__tete' },
       niveau !== null ? el('span', { class: 'don__niveau' }, `Niv. ${niveau}`) : null,
       el('strong', { class: 'don__nom' }, nom),
-      type || precision ? el('span', { class: 'don__type', dataset: type ? { type } : {} }, [TYPES_DE_DON[type] ?? type, precision ? `(${precision})` : null].filter(Boolean).join(' ')) : null),
+      source ? el('span', { class: 'don__source' }, source) : null,
+      typeDuDon(type, precision)),
     texte ? el('span', { class: 'don__texte' }, texte) : null,
     aide ? el('small', { class: 'fiche-aide don__aide' }, aide) : null);
 }
@@ -1505,35 +1512,131 @@ function elementDeDon({ niveau = null, nom, type = null, precision = null, texte
  */
 const AIDE_ANNULE_LES_FAIBLESSES = 'La fiche retire les faiblesses qu’elle connaît ; le MJ annule aussi en jeu celles qu’elle ne connaît pas (sorts ennemis, météo, armure, états en jeu).';
 const aideDuDon = (d) => ((d.resistances?.effets ?? []).some((e) => e.annule) ? AIDE_ANNULE_LES_FAIBLESSES : null);
+/** Le texte d'un accessoire maudit (décision R54 : « l'effet est le contraire »). */
+const texteMaudit = (x) => (x.maudit ? `${x.texte ?? ''} (maudit : l’effet est le contraire)` : x.texte);
 
 /**
- * Sous les sorts, le rappel des dons (demande du propriétaire) : ceux de la race — le don de base d'abord (demande du propriétaire), puis le don de
- * l'ethnie et la ligne de son ethnie dans le tableau de la race (donsDeRace) —, puis les dons de chaque classe débloqués au niveau atteint (donsAcquis).
+ * Une action de la liste (décision R173 : actionsDeLaFiche) : son nom est le bouton qui la consomme quand elle a un compteur (une utilisation de moins :
+ * consommerLAction) ou qu'elle se brise (l'accessoire quitte son emplacement) ; sinon un simple nom (sans limite écrite, rappel ou texte : rien à
+ * consommer, jamais grisée par sa limite). Son compteur « N / M » et le bouton « + » qui le remonte à la main (remonterLAction ; il reprend aussi une
+ * sélection faite par erreur), et ce qui le remet au maximum (REMONTEES). Grisée (`data-grisee`, le bouton en aria-disabled : il garde le focus, son
+ * infobulle dit pourquoi) en Symbiose pour une action d'équipement (R112, sauf l'arme élémentaire de la magie de la Symbiose, R167) ou à 0. L'état du
+ * moment est relu à chaque rafraîchissement (calcul.actions) : la liste n'est refaite que quand les actions changent.
  */
-function construireDons() {
-  const race = donsDeRace(regles, fiche);
-  const actions = actionsDesAccessoires(regles, fiche);
-  const cleRace = JSON.stringify([fiche.race_id, fiche.ethnie_id, actions]);
-  reconstruire($('dons-race'), cleRace, () => {
-    if (!fiche.race_id) return [el('li', { class: 'fiche-aide' }, 'Choisissez une race : ses dons apparaîtront ici.'), actions.map((x) => elementDeDon({ nom: x.nom, type: x.type, texte: x.texte }))];
+function elementDAction(a) {
+  // l'action utilisée peut quitter la liste (un accessoire qui se brise) : le focus, qu'elle emporterait sur la page, va à sa voisine (rendreLeFocusDesActions)
+  const appliquer = (ecrit) => {
+    if (!Object.keys(ecrit).length) return;
+    const place = [...$('actions').children].indexOf(li);
+    Object.assign(fiche, ecrit);
+    changer();
+    if (!li.isConnected) rendreLeFocusDesActions(place);
+  };
+  const consommable = Boolean(a.compteur || a.seBrise);
+  const nom = consommable
+    ? el('button', {
+      type: 'button', class: 'don__nom action__utiliser', 'aria-label': `Utiliser ${a.nom}${a.source ? ` (${a.source})` : ''}`,
+      onclick: () => { if (nom.getAttribute('aria-disabled') !== 'true') appliquer(consommerLAction(regles, fiche, a.cle)); },
+    }, a.nom)
+    : el('strong', { class: 'don__nom' }, a.nom);
+  const compte = a.compteur ? el('span', { class: 'action__compte' }) : null;
+  const plus = a.compteur ? el('button', {
+    type: 'button', class: 'ajuster', 'aria-label': `${a.nom} : une utilisation de plus`,
+    onclick: () => { if (plus.getAttribute('aria-disabled') !== 'true') appliquer(remonterLAction(regles, fiche, a.cle, 1)); },
+  }, '+') : null;
+  const raison = el('small', { class: 'fiche-aide action__raison' });
+  const li = el('li', { class: ['don', 'action', ...teinteDe(a.teinte)].join(' '), dataset: { origine: a.origine }, tabindex: '-1' },
+    el('span', { class: 'don__tete' },
+      a.niveau !== null ? el('span', { class: 'don__niveau' }, `Niv. ${a.niveau}`) : null,
+      nom,
+      a.source ? el('span', { class: 'don__source' }, a.source) : null,
+      typeDuDon(a.type, a.precision)),
+    a.texte ? el('span', { class: 'don__texte' }, texteMaudit(a)) : null,
+    a.compteur ? el('span', { class: 'action__suivi' }, compte, plus, el('small', { class: 'fiche-aide' }, REMONTEES[a.compteur.remontee])) : null,
+    a.seBrise ? el('small', { class: 'fiche-aide' }, 'L’objet se brise à l’usage : il quitte son emplacement.') : null,
+    a.limite?.genre === 'rappel' ? el('small', { class: 'fiche-aide' }, 'Limite rappelée, sans compteur.') : null,
+    raison);
+  synchro(() => {
+    const x = (calcul.actions ?? []).find((y) => y.cle === a.cle);
+    if (!x) return;
+    li.toggleAttribute('data-grisee', Boolean(x.grisee));
+    if (raison.textContent !== (x.grisee ?? '')) raison.textContent = x.grisee ?? '';
+    if (consommable) {
+      attribut(nom, 'aria-disabled', x.utilisable ? null : 'true');
+      infobulle(nom, x.grisee ?? (x.seBrise ? 'Utiliser : l’objet se brise et quitte son emplacement' : 'Utiliser : une utilisation de moins'));
+    }
+    if (x.compteur) {
+      const texte = `${x.compteur.restants} / ${x.compteur.max}`;
+      if (compte.textContent !== texte) compte.textContent = texte;
+      attribut(plus, 'aria-disabled', x.compteur.restants >= x.compteur.max ? 'true' : null);
+      infobulle(plus, x.compteur.restants >= x.compteur.max ? 'Le compteur est au maximum' : 'Une utilisation de plus (à la main)');
+    }
+  });
+  return li;
+}
+
+/**
+ * Le focus d'une action qui a quitté la liste (un accessoire qui se brise : constat de tech-qualite, comme rendreLeFocus de la ceinture) : à l'action qui a
+ * pris sa place (`place`), sinon à la dernière, sinon à la liste ; jamais à un bouton (le refocaliser referait son action à la touche suivante) : à la
+ * ligne de l'action (tabindex -1), d'où Tab mène à ses boutons.
+ */
+function rendreLeFocusDesActions(place) {
+  const liste = $('actions');
+  const actions = [...liste.children].filter((x) => x.classList.contains('action'));
+  const voisine = actions[Math.min(Math.max(place, 0), actions.length - 1)];
+  if (voisine) return voisine.focus();
+  liste.tabIndex = -1;
+  liste.focus();
+}
+
+/**
+ * Les actions utilisables, juste sous la ceinture (décision R173 : actionsDeLaFiche), et le bouton « Fin de combat » (finDeCombat : les compteurs par
+ * combat remis au maximum ; ceux par jour, semaine… ne remontent qu'à la main), montré quand une action a un compteur par combat.
+ */
+function construireActions() {
+  calcul.actions = actionsDeLaFiche(regles, fiche);
+  const cle = JSON.stringify(calcul.actions.map((a) => [a.cle, a.nom, a.source, a.niveau, a.type, a.precision, a.texte, a.maudit, a.compteur?.max ?? null,
+    a.compteur?.remontee ?? null, a.seBrise, a.limite?.genre ?? null, a.teinte?.classe ?? null]));
+  reconstruire($('actions'), cle, () => (calcul.actions.length
+    ? calcul.actions.map(elementDAction)
+    : el('li', { class: 'fiche-aide' }, 'Aucune action : le don de base de la race, les dons de classe Action, Actif ou Réaction et l’équipement activable apparaîtront ici.')));
+  $('fin-de-combat').hidden = !calcul.actions.some((a) => a.compteur?.remontee === 'fin_de_combat');
+}
+
+/** « Fin de combat » (décision R173) : les compteurs par combat remis au maximum. */
+function finirLeCombat() {
+  const ecrit = finDeCombat(regles, fiche);
+  if (JSON.stringify(ecrit.actions_usage) === JSON.stringify(fiche.actions_usage ?? [])) return;
+  Object.assign(fiche, ecrit);
+  changer();
+}
+
+/**
+ * Les passifs, juste après les actions (décision R173 : passifsDeLaFiche) : ceux de la race (sans le don de base, une action ; le don de l'ethnie et la
+ * ligne de son ethnie dans le tableau de la race), puis les dons de chaque classe débloqués au niveau atteint qui ne sont pas des actions, puis les
+ * effets de l'équipement porté, tels qu'écrits.
+ */
+function construirePassifs() {
+  const p = passifsDeLaFiche(regles, fiche);
+  reconstruire($('dons-race'), JSON.stringify([fiche.race_id, fiche.ethnie_id, p.race.map((x) => x.nom)]), () => {
+    if (!fiche.race_id) return el('li', { class: 'fiche-aide' }, 'Choisissez une race : ses dons apparaîtront ici.');
     return [
-      race.base ? elementDeDon(donDeBase(race.base)) : null,   // « Méditation » ou « Repos » plutôt que « Don de base » (demande du propriétaire)
-      race.dons.map((d) => elementDeDon({ nom: d.nom ?? d.etiquette, texte: d.texte })),
-      race.tableau ? elementDeDon({ nom: race.tableau.titre ?? 'Selon l’ethnie', texte: race.tableau.cellules.map((c) => `${c.libelle.replace(/\n/g, ' / ')} : ${c.valeur}`).join('\n') }) : null,
-      race.ethnieAChoisir ? el('li', { class: 'fiche-aide' }, 'Choisissez l’ethnie : son don apparaîtra ici.') : null,
-      // à la suite, les effets d'accessoire « (Action) » et à usage compté, sous le même format (demande du propriétaire, décision R54)
-      actions.map((x) => elementDeDon({ nom: x.nom, type: x.type, texte: x.maudit ? `${x.texte} (maudit : l’effet est le contraire)` : x.texte })),
+      p.race.map((x) => elementDeDon({ nom: x.nom, type: x.type, texte: x.texte })),
+      p.ethnieAChoisir ? el('li', { class: 'fiche-aide' }, 'Choisissez l’ethnie : son don apparaîtra ici.') : null,
     ];
   });
-  const classes = donsAcquis(regles, fiche);
-  const cleClasses = JSON.stringify(classes.map((c) => [c.classe.id, c.niveau, c.dons.map((d) => d.id)]));
-  reconstruire($('dons-classes'), cleClasses, () => (classes.length === 0
+  const cleClasses = JSON.stringify(p.classes.map((c) => [c.classe.id, c.niveau, c.dons.map((d) => d.don.id)]));
+  reconstruire($('dons-classes'), cleClasses, () => (p.classes.length === 0
     ? el('p', { class: 'fiche-aide' }, 'Choisissez une classe : ses dons apparaîtront ici, niveau de classe par niveau de classe.')
-    : classes.map((c) => el('div', { class: ['dons-classe', ...teinteDe(c.classe)].join(' ') },
+    : p.classes.map((c) => el('div', { class: ['dons-classe', ...teinteDe(c.classe)].join(' ') },
       el('h4', {}, `${c.classe.nom} · niveau ${c.niveau}`),
       c.dons.length
-        ? el('ul', { class: 'dons-liste' }, c.dons.map((d) => elementDeDon({ niveau: d.niveau, nom: d.nom, type: d.type, precision: d.precision, texte: d.effet, aide: aideDuDon(d) })))
-        : el('p', { class: 'fiche-aide' }, 'Pas encore de don à ce niveau de classe.')))));
+        ? el('ul', { class: 'dons-liste' }, c.dons.map((d) => elementDeDon({ niveau: d.niveau, nom: d.nom, type: d.type, precision: d.precision, texte: d.texte, aide: aideDuDon(d.don) })))
+        : el('p', { class: 'fiche-aide' }, 'Pas encore de don passif à ce niveau de classe (ses actions sont sous la ceinture).')))));
+  const cleEquipement = JSON.stringify(p.equipement.map((x) => [x.nom, x.source, x.texte, x.maudit, x.aide, x.teinte?.classe ?? null]));
+  reconstruire($('passifs-equipement'), cleEquipement, () => (p.equipement.length
+    ? p.equipement.map((x) => elementDeDon({ nom: x.nom, source: x.source, texte: texteMaudit(x), aide: x.aide, teinte: x.teinte }))
+    : el('li', { class: 'fiche-aide' }, 'Aucun effet d’équipement porté.')));
 }
 
 // ------------------------------------------------------------------ attributs et valeurs du moment
@@ -3636,6 +3739,8 @@ function rafraichir() {
     || ![fiche.magie_innee_id, fiche.magie_acquise_id].includes(fiche.symbiose_magie_id))) fiche.symbiose_magie_id = null;
   // le sort préparé est perdu en Symbiose avec une autre magie que la sienne (décision R135) : sa préparation est lâchée, et ne revient pas
   fiche.sorts = sortsApresLaSymbiose(regles, fiche);
+  // un objet retiré ou changé perd le compteur de son action (décision R173 : remis, il repart au maximum) ; ceux des dons attendent l'enregistrement
+  fiche.actions_usage = actionsUsageSansObjetRetire(regles, fiche);
   calcul = {
     niveau: niveauGlobal(regles, fiche.xp),
     classes: classesDe(regles, fiche),
@@ -3679,7 +3784,7 @@ function rafraichir() {
   construireMaitrises();
   construireSorts();
   construireSortPrepare();
-  construireDons();
+  construirePassifs();
   construireEntrainement();
   construireAcquisAChoisir();
   construireAttributs();
@@ -3688,6 +3793,7 @@ function rafraichir() {
   construireEquipement();
   construireDefense();
   construireCeinture();
+  construireActions();
   construirePortrait();
   for (const liste of synchros.values()) for (const s of liste) s();
   construireControles();
@@ -3753,6 +3859,8 @@ function aEnvoyer() {
   f.accessoires = (f.accessoires ?? []).filter((a) => a.accessoire_effet_id);
   // la ceinture garde ses emplacements (rang 1 à 3) : seuls les emplacements vides partent
   f.ceinture = (f.ceinture ?? []).filter((o) => o.nom && o.nom.trim()).map((o) => ({ ...o, nom: o.nom.trim() }));
+  // les compteurs entamés des actions (décision R173) : ceux d'une action de la fiche, sous leur maximum ; une clé orpheline part
+  f.actions_usage = actionsUsageValables(regles, f);
   return f;
 }
 
@@ -4379,6 +4487,7 @@ async function demarrer() {
   document.addEventListener('focusin', quitteLeGroupe, { capture: true });
   $('fiche-enregistrer').addEventListener('click', enregistrer);
   $('fiche-nouvelle').addEventListener('click', nouvelle);
+  $('fin-de-combat').addEventListener('click', finirLeCombat);
   $('fiche-telecharger').addEventListener('click', telechargerClasseur);
   const exporter = $('fiche-exporter');
   exporter.addEventListener('click', exporterVersGoogle);

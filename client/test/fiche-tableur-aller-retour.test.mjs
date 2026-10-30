@@ -63,6 +63,8 @@ function commeLaPage(fiche) {
   f.inventaire = f.inventaire.filter((o) => o.nom && o.nom.trim()).map((o, i) => ({ ...o, nom: o.nom.trim(), rang: i + 1 }));
   f.accessoires = f.accessoires.filter((a) => a.accessoire_effet_id);
   f.ceinture = f.ceinture.filter((o) => o.nom && o.nom.trim()).map((o) => ({ ...o, nom: o.nom.trim() }));
+  // les compteurs entamés des actions (décision R173) : ceux d'une action de la fiche, sous leur maximum
+  f.actions_usage = M.actionsUsageValables(regles, f);
   return f;
 }
 
@@ -418,6 +420,38 @@ test('sort préparé (décision R115) : le sort, son jet de magie et sa posture 
   assert.deepEqual(lireSortPrepare('Boule de feu'), { nom: 'Boule de feu', jet: null, posture: null });
 });
 
+
+test('compteurs d’actions (décision R173) : chaque compteur entamé dans la note (« Compteur d’action »), relu tel quel, point fixe ; une clé que la fiche n’a pas est dite', async () => {
+  const xp = regles.niveaux.find((n) => n.niveau === 5).xp_min;
+  const f = {
+    ...ficheVide('Lyre R173'), race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-toundra', magie_innee_id: 'magies/magie-du-feu', xp,
+    classes: [{ rang: 1, classe_id: 'classes/barde', specialite_id: null }],
+    accessoires: [{ emplacement: 'chef', accessoire_effet_id: 'ressources/accessoires#effet:jet-de-de:5', maudit: 0 }],
+    actions_usage: [
+      { action_id: 'race:don-de-base:races/humain', restants: 1 }, { action_id: 'capacites:inconnue', restants: 0 },
+      { action_id: 'capacite:capacites/barde-prestation', restants: 0 }, { action_id: 'accessoire:chef:ressources/accessoires#effet:jet-de-de:5', restants: 0 },
+    ],
+  };
+  const page = commeLaPage(f);
+  assert.equal(page.actions_usage.length, 3, 'la clé orpheline part (actionsUsageValables)');
+  const r = await allerRetour(page);
+  assert.deepEqual(r.nonRepris, []);
+  const notes = lignesDeLaNote(r.cellules).filter((l) => l.nom === 'compteurAction').map((l) => l.valeur);
+  assert.deepEqual(notes, [
+    'Méditation (Humain) 1/3 [race:don-de-base:races/humain]', 'Prestation (Barde) 0/2 [capacite:capacites/barde-prestation]',
+    'Accessoire : Chef 0/1 [accessoire:chef:ressources/accessoires#effet:jet-de-de:5]',
+  ]);
+  assert.deepEqual(canonique(r.fiche).actions_usage, canonique(page).actions_usage);
+  const encore = await allerRetour(commeLaPage(r.fiche));
+  assert.deepEqual(canonique(encore.fiche).actions_usage, canonique(r.fiche).actions_usage, 'point fixe');
+  // une ligne d'une action que la fiche n'a pas (l'accessoire retiré) : dite, pas reprise
+  const sans = await allerRetour(commeLaPage({ ...f, accessoires: [] }));
+  const cellules = { ...sans.cellules, [ORDINATEUR.note]: `${sans.cellules[ORDINATEUR.note]}\nCompteur d'action : Accessoire : Chef 0/1 [accessoire:chef:ressources/accessoires#effet:jet-de-de:5]` };
+  const classeur = await lireClasseur(await ecrireXlsx(MODELE, { cellules, remplis: sans.remplis, alignements: sans.alignements, descriptionImage: 'logo', titre: f.nom }), { nom: 'essai.xlsx' });
+  const relu = ficheDuClasseur(regles, classeur.feuille('Personnage'), { nomFichier: 'essai.xlsx', date: DATE, logo: LOGO, empreintePortrait: null });
+  assert.deepEqual(relu.nonRepris, ['Compteur d’action : « Accessoire : Chef 0/1 [accessoire:chef:ressources/accessoires#effet:jet-de-de:5] » : la fiche n’a pas cette action']);
+  assert.deepEqual(relu.fiche.actions_usage.map((u) => u.action_id), ['race:don-de-base:races/humain', 'capacite:capacites/barde-prestation']);
+});
 
 test('armes élémentaires (décision R167) : nom, niveau, solidité et type physique choisi de la bombe reviennent tels quels, point fixe', async () => {
   const bombe = regles.armes_elementaires.find((a) => a.type_id === 'bombe' && a.magie_id === 'magies/magie-du-feu');

@@ -16,7 +16,7 @@
 //   - « Résistance X et Y » : un cran de résistance à chaque magie ou altération d'état nommée ;
 //   - « Augmente le dé de dégâts des sorts » (un cran, comme la posture Focus), « Permet à un dé de dégâts d'être maximum » (réponse du propriétaire
 //     « Oui, un dé au max »), « Augmente de 1d les soins magiques » (R102, migration 0061).
-// Usage (R54 : « (Action) + usages limités », rappelés sous les dons de race) : `action` pour un effet écrit « (Action) … », `limite` pour un usage compté
+// Usage (R54 : « (Action) + usages limités » ; listés parmi les actions de la fiche, décision R173) : `action` pour un effet écrit « (Action) … », `limite` pour un usage compté
 // (« 1 fois par combat », « l'objet se brise », « recharge »…).
 
 /** Les cibles de la table accessoire_effet_cible. */

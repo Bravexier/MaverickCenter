@@ -1178,8 +1178,8 @@ export function valeurDEffetDAccessoire(regles, a) {
 }
 
 /**
- * Les effets d'accessoire rappelés à la suite des dons de race, sous le même format (demande du propriétaire : « Dans le cas d'une action ajoute-le à la
- * suite des dons raciaux » ; décision R54 : les effets « (Action) » et ceux à usage compté, accessoire_effet.usage) : { nom, type, texte, maudit }.
+ * Les effets d'accessoire « (Action) » et à usage compté (décision R54 : accessoire_effet.usage) : { nom, type, texte, maudit }. Ils étaient rappelés à
+ * la suite des dons de race ; la page les liste maintenant parmi les actions, avec leur compteur (décision R173 : actionsDeLaFiche).
  */
 export function actionsDesAccessoires(regles, fiche) {
   return (fiche.accessoires ?? []).flatMap((a) => {
@@ -4492,4 +4492,299 @@ export function degatsDArmeDuMoment(regles, fiche, rang) {
     diviseur: posture?.diviseur > 1 ? posture.diviseur : 1,
     inutilisable: posture?.armesInutilisables && !symbiose ? posture.posture.nom : null,
   };
+}
+
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+// Actions et passifs (décision R173 : « Il faudrait lister toutes les actions utilisables (dons, accessoire activable(s) directement sous la case de la
+// ceinture. Il faudrai pouvoir les sélectionner pour les "consommer" (et griser si plus utilisable). Un bouton "fin de combat" permet de remettre tous les
+// compteur X/combat au maximum. Le compteur 1/ jour / semainee lui ne peut que remonter manuellement. Juste après, il faudra mettre les passifs (donc de
+// race / classe ou equipement) »). Les limites viennent des règles (regles.json) : celle d'un don de classe, de son type (`classes[].dons[].limite`) ;
+// celles du don de base, des accessoires, des armes et des armures élémentaires, de leur texte (lib/limite-texte.mjs, au build). Le compteur entamé
+// d'une action est une ligne de fiche.actions_usage ({ action_id, restants } : personnage_action_usage, migration 0085) ; une ligne absente = au
+// maximum, jamais stocké. La clé d'une action (cleDAction) porte l'identifiant de l'objet porté : un autre objet repart au maximum.
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+
+/** Les types de dons de classe listés parmi les actions (décision R173 : « dons de classe débloqués de type Action, Actif et Réaction »). */
+export const TYPES_D_ACTION = Object.freeze(['action', 'actif', 'reaction']);
+
+/**
+ * La clé d'une action (personnage_action_usage.action_id) : un don de classe par son identifiant (un compteur par don, donc un par classe d'un
+ * bi-classé : décision R173, « Un par classe ») ; le don de base par la race ; un accessoire par son emplacement et son effet ; une arme élémentaire par
+ * son rang et son identifiant ; un effet d'armure élémentaire par l'armure et son rang. Un objet changé ou retiré change la clé : son compteur repart au
+ * maximum (actionsUsageSansObjetRetire).
+ */
+export const cleDAction = Object.freeze({
+  capacite: (capaciteId) => `capacite:${capaciteId}`,
+  donDeBase: (raceId) => `race:don-de-base:${raceId}`,
+  accessoire: (emplacement, effetId) => `accessoire:${emplacement}:${effetId}`,
+  arme: (rang, armeElementaireId) => `arme:${rang}:${armeElementaireId}`,
+  armure: (armureElementaireId, rang) => `armure:${armureElementaireId}:${rang}`,
+});
+
+/** Vrai pour la clé d'une action d'équipement (accessoire, arme ou armure élémentaire : grisées en Symbiose, décision R112, et liées à l'objet porté). */
+export const estUneActionDEquipement = (cle) => /^(?:accessoire|arme|armure):/.test(String(cle ?? ''));
+
+/** Ce qui remonte un compteur (décision R173) : « Fin de combat » (par combat) ou la main (jour, semaine…), comme la page le dit. */
+export const REMONTEES = Object.freeze({ fin_de_combat: 'remis au maximum par « Fin de combat »', main: 'remonté seulement à la main' });
+
+/**
+ * Le compteur d'une action d'après sa limite (décision R173) : { max, restants, remontee: 'fin_de_combat' | 'main' } pour une limite de genre `combat`
+ * ou `manuel` ; null sans compteur (sans limite écrite, rappel, texte seulement). `restants` : la ligne de fiche.actions_usage, bornée de 0 au maximum ;
+ * sans ligne, le maximum.
+ */
+function compteurDeLAction(fiche, cle, limite) {
+  if (!limite || (limite.genre !== 'combat' && limite.genre !== 'manuel') || !(entier(limite.nombre) >= 1)) return null;
+  const max = Math.trunc(entier(limite.nombre));
+  const ligne = (fiche.actions_usage ?? []).find((u) => u?.action_id === cle);
+  const restants = ligne ? Math.min(max, Math.max(0, Math.trunc(entier(ligne.restants)))) : max;
+  return { max, restants, remontee: limite.genre === 'combat' ? 'fin_de_combat' : 'main' };
+}
+
+/** Le texte d'un effet d'armure élémentaire sans son « (Action) » ou « (Réaction) » de tête (le type est dit à part). */
+const sansTypeDeTete = (texte) => String(texte ?? '').replace(/^\((?:Action|Réaction|Reaction)\)\s*/i, '');
+
+/**
+ * Les actions utilisables de la fiche (décision R173), dans l'ordre de la fiche — le don de base de la race (R13 : « Méditation (Action 3 fois/jour) »,
+ * lu dans le texte de l'onglet, jamais par son nom ; la race d'abord, comme le rappel des dons), les dons de classe débloqués de type Action, Actif et
+ * Réaction (donsAcquis : classe 1 puis 2, par niveau), les effets d'accessoire activables (accessoire_effet.usage : « (Action) » ou usage compté, R54,
+ * dans l'ordre des emplacements), les capacités « actif » et « action » des armes élémentaires portées (armes 1 et 2), les effets « (Action) »,
+ * « (Réaction) » et « (actif) » de l'armure élémentaire portée et ceux qui écrivent une limite d'usage (Q79 : « Deviennent des actions »). Les objets de la ceinture n'en sont pas (ils gardent leurs boutons, R89, R131). Chaque action :
+ * { cle (cleDAction), origine ('race' | 'classe' | 'accessoire' | 'arme' | 'armure'), nom, source (la race, la classe, l'objet), niveau (don de classe),
+ * type ('action' | 'actif' | 'reaction' | null), precision (ce que le type d'un don écrit entre parenthèses, tel quel), texte (tel qu'écrit), maudit
+ * (accessoire : R54, l'effet est le contraire), teinte (ce qui porte sa couleur : race, classe, magie), limite ({ nombre, periode, genre } ; un don dont
+ * le type écrit une précision illisible, « X tour/combat » : genre `texte`), compteur (compteurDeLAction), seBrise (« l'objet se brise après »),
+ * emplacement (accessoire), grisee (pourquoi elle est grisée, null sinon), epuisee (compteur à 0), utilisable (la sélectionner la consomme) }.
+ * Grisée : la capacité d'une arme élémentaire cassée (solidité à 0, R74 ; réponse du propriétaire à Q80 : « Non, grisée ») ; une action d'équipement en
+ * Symbiose (« Impossible d'utiliser les armes ou objets », R112 : comme « Utiliser » à la ceinture), sauf
+ * l'arme élémentaire de la magie de la Symbiose (R167) ; jamais en Mode Hyper 100 % (R172 : sans les inconvénients des postures) ; jamais un don
+ * (« (Posture X) », « (Rage) » restent listés tels qu'écrits) ; un compteur à 0 (`epuisee`). Une action sans compteur (sans limite écrite, rappel,
+ * texte) n'est jamais grisée par sa limite.
+ */
+export function actionsDeLaFiche(regles, fiche) {
+  const posture = postureDuMoment(regles, fiche);
+  const symbiose = posture?.armesInutilisables ? `${posture.libelle} : on ne peut que lancer des sorts` : null;
+  const actions = [];
+  const ajouter = ({ equipement = false, permise = false, cassee = null, ...a }) => {
+    const compteur = compteurDeLAction(fiche, a.cle, a.limite);
+    const epuisee = Boolean(compteur && compteur.restants <= 0);
+    const grisee = cassee ?? (equipement && symbiose && !permise ? symbiose : epuisee ? 'Plus d’utilisation : le compteur est à 0' : null);
+    actions.push({
+      niveau: null, type: null, precision: null, maudit: false, teinte: null, limite: null, seBrise: false, emplacement: null, ...a,
+      compteur, grisee, epuisee, utilisable: !grisee && (compteur ? compteur.restants > 0 : Boolean(a.seBrise)),
+    });
+  };
+  const race = trouver(regles.races ?? [], fiche.race_id);
+  if (race?.don_base_action) {
+    const { nom, texte } = donDeBase(race.don_base);
+    ajouter({ cle: cleDAction.donDeBase(race.id), origine: 'race', nom, source: race.nom, type: race.don_base_action.type, texte, teinte: race, limite: race.don_base_action.limite });
+  }
+  for (const c of donsAcquis(regles, fiche)) {
+    for (const d of c.dons.filter((x) => TYPES_D_ACTION.includes(x.type))) {
+      ajouter({
+        cle: cleDAction.capacite(d.id), origine: 'classe', nom: d.nom, source: c.classe.nom, niveau: d.niveau, type: d.type, precision: d.precision ?? null,
+        texte: d.effet ?? null, teinte: c.classe, limite: d.limite ?? (d.precision ? { nombre: null, periode: null, genre: 'texte' } : null), don: d,
+      });
+    }
+  }
+  const ordre = (a) => {
+    const i = EMPLACEMENTS_ACCESSOIRES.findIndex(([cle]) => cle === a.emplacement);
+    return i < 0 ? EMPLACEMENTS_ACCESSOIRES.length : i;
+  };
+  for (const a of [...(fiche.accessoires ?? [])].sort((x, y) => ordre(x) - ordre(y))) {
+    const effet = trouver(regles.accessoires ?? [], a.accessoire_effet_id);
+    if (!effet?.usage) continue;
+    ajouter({
+      cle: cleDAction.accessoire(a.emplacement, effet.id), origine: 'accessoire', nom: nomDAccessoire(a), source: null, type: TYPE_D_USAGE[effet.usage],
+      texte: String(effet.libelle ?? '').replace(/^\(Action\)\s*/i, ''), maudit: Boolean(entier(a.maudit)), limite: effet.limite ?? null,
+      seBrise: Boolean(effet.se_brise), emplacement: a.emplacement, equipement: true,
+    });
+  }
+  for (const rang of [1, 2]) {
+    const ligne = (fiche.armes ?? []).find((x) => entier(x.rang) === rang);
+    const element = ligne?.arme_id ? null : trouver(regles.armes_elementaires ?? [], ligne?.arme_elementaire_id);
+    if (!element || !['actif', 'action'].includes(element.capacite_mode)) continue;
+    // décision R167 : l'arme élémentaire de la magie de la Symbiose reste utilisable (postureDuMoment : symbiose.magies, vide tant qu'elle n'est pas
+    // choisie et pour le Potentiel Illimité)
+    const permise = Boolean(posture?.symbiose?.magies?.some((m) => m.id === element.magie_id));
+    // réponse du propriétaire à Q80 (« Non, grisée ») : l'arme cassée (solidité à 0, décision R74) ne sert plus, sa capacité non plus
+    const cassee = durabiliteDArme(regles, fiche, rang)?.cassee ? 'Arme cassée (solidité à 0, décision R74) : réparez-la pour utiliser sa capacité' : null;
+    ajouter({
+      cle: cleDAction.arme(rang, element.id), origine: 'arme', nom: element.capacite_nom || element.nom, source: `Arme ${rang} : ${element.nom}`,
+      type: element.capacite_mode, texte: element.capacite_texte ?? null, teinte: element, limite: element.capacite_limite ?? null, equipement: true, permise, cassee,
+    });
+  }
+  const armure = trouver(regles.armures_elementaires ?? [], fiche.armure_elementaire_id);
+  for (const x of armure?.actions ?? []) {
+    ajouter({
+      cle: cleDAction.armure(armure.id, x.rang), origine: 'armure', nom: armure.nom, source: 'Armure élémentaire', type: x.type,
+      texte: sansTypeDeTete(armure.effets?.[x.index]), teinte: trouver(regles.magies ?? [], armure.magie_id), limite: x.limite ?? null, equipement: true,
+    });
+  }
+  return actions;
+}
+
+/**
+ * Les passifs de la fiche, juste après les actions (décision R173) : { race: [...], ethnieAChoisir, classes: [{ rang, classe, niveau, dons }],
+ * equipement: [...] }. Race : tous les dons de race et d'ethnie (donsDeRace : le don de l'ethnie, la ligne de son ethnie dans le tableau de la race), sans
+ * le don de base quand il est une action (sinon, il reste ici, tel qu'écrit). Classes : les dons de classe débloqués qui ne sont pas des actions
+ * (passifs, « Variable » du Mage Bleu, sans type), avec leur précision (« Noyau dur » du Flagelleur : « 1 fois/combat », un rappel, « Dans les
+ * passifs »). Équipement (« Ce qu'elle compte + les textes ») : les effets tels qu'écrits, que la fiche les compte ou non — accessoires sans usage,
+ * effet de l'armure de base portée (« aucun effet » quand elle est cassée, R157, R158), effets de l'armure élémentaire ni « (Action) » ni
+ * « (Réaction) » (ni « (actif) », ni limite écrite : Q79), bâtons magiques à la ceinture (R101), armes 1 et 2 (l'effet d'une arme du catalogue et
+ * l'effet secondaire de son matériau ; d'une arme élémentaire, ses lignes d'effet sans sa capacité quand celle-ci est une action), le texte de
+ * l'amélioration de chaque objet porté (armure, armes, bouclier : « Oui, dans ce lot D »). Chaque entrée : { origine, nom, source, texte, type, precision, niveau, maudit, aide, teinte, don }.
+ */
+export function passifsDeLaFiche(regles, fiche) {
+  const r = donsDeRace(regles, fiche);
+  const race = trouver(regles.races ?? [], fiche.race_id);
+  const passif = (x) => ({ source: null, type: null, precision: null, niveau: null, maudit: false, aide: null, teinte: null, don: null, ...x });
+  const raceListe = [
+    ...(r.base && !race?.don_base_action ? [passif({ origine: 'race', ...donDeBase(r.base), source: race?.nom ?? null, teinte: race })] : []),
+    ...r.dons.map((d) => passif({ origine: 'race', nom: d.nom ?? d.etiquette ?? 'Don de race', texte: d.texte ?? null, source: race?.nom ?? null, teinte: race })),
+    ...(r.tableau ? [passif({
+      origine: 'race', nom: r.tableau.titre ?? 'Selon l’ethnie', source: race?.nom ?? null, teinte: race,
+      texte: r.tableau.cellules.map((c) => `${String(c.libelle ?? '').replace(/\n/g, ' / ')} : ${c.valeur}`).join('\n'),
+    })] : []),
+  ];
+  const classes = donsAcquis(regles, fiche).map((c) => ({
+    rang: c.rang, classe: c.classe, niveau: c.niveau,
+    dons: c.dons.filter((d) => !TYPES_D_ACTION.includes(d.type)).map((d) => passif({
+      origine: 'classe', nom: d.nom, source: c.classe.nom, niveau: d.niveau, type: d.type ?? null, precision: d.precision ?? null, texte: d.effet ?? null,
+      teinte: c.classe, don: d,
+    })),
+  }));
+  const equipement = [];
+  // le texte d'une amélioration portée (amelioration_equipement.effet_brut, tel qu'écrit ; réponse du propriétaire : « Oui, dans ce lot D »), de sa cible
+  const amelioration = (id, cible, source) => {
+    const a = trouver(regles.ameliorations ?? [], id);
+    if (a?.cible === cible && a.effet) equipement.push(passif({ origine: 'amelioration', nom: `Amélioration niveau ${a.niveau}`, source, texte: a.effet }));
+  };
+  const ordre = (a) => {
+    const i = EMPLACEMENTS_ACCESSOIRES.findIndex(([cle]) => cle === a.emplacement);
+    return i < 0 ? EMPLACEMENTS_ACCESSOIRES.length : i;
+  };
+  for (const a of [...(fiche.accessoires ?? [])].sort((x, y) => ordre(x) - ordre(y))) {
+    const effet = trouver(regles.accessoires ?? [], a.accessoire_effet_id);
+    if (!effet || effet.usage) continue;
+    equipement.push(passif({ origine: 'accessoire', nom: nomDAccessoire(a), source: effet.propriete_nom ?? null, texte: effet.libelle ?? null, maudit: Boolean(entier(a.maudit)) }));
+  }
+  const portee = armureDeLaFiche(regles, fiche);
+  if (portee && !portee.elementaire && portee.armure.effet) {
+    equipement.push(passif({
+      origine: 'armure', nom: portee.armure.nom, source: 'Armure', texte: portee.armure.effet,
+      aide: armureCassee(regles, fiche) ? 'Armure cassée : aucun de ses effets jusqu’à sa réparation (décisions R157, R158).' : null,
+    }));
+  }
+  if (portee?.elementaire) {
+    const actives = new Set((portee.armure.actions ?? []).map((x) => x.index));
+    const textes = (portee.armure.effets ?? []).filter((_, i) => !actives.has(i));
+    if (textes.length) equipement.push(passif({ origine: 'armure', nom: portee.armure.nom, source: 'Armure élémentaire', texte: textes.join('\n'), teinte: trouver(regles.magies ?? [], portee.armure.magie_id) }));
+  }
+  if (portee) {
+    amelioration(portee.elementaire ? fiche.armure_amelioration_elementaire_id : fiche.armure_amelioration_id, portee.elementaire ? 'armure_elementaire' : 'armure',
+      `${portee.elementaire ? 'Armure élémentaire' : 'Armure'} : ${portee.armure.nom}`);
+  }
+  for (const l of [...(fiche.ceinture ?? [])].sort((a, b) => entier(a.rang) - entier(b.rang))) {
+    const b = batonDuSac(regles, l.nom);
+    if (!b?.regle) continue;
+    equipement.push(passif({ origine: 'baton', nom: b.baton.nom, source: `Ceinture, emplacement ${entier(l.rang)}`, texte: (b.baton.effets ?? []).map((e) => e.texte).join('\n') || null, teinte: trouver(regles.magies ?? [], b.baton.magie_id) }));
+  }
+  for (const rang of [1, 2]) {
+    const ligne = (fiche.armes ?? []).find((x) => entier(x.rang) === rang);
+    if (ligne?.arme_id) {
+      const arme = trouver(regles.armes ?? [], ligne.arme_id);
+      if (!arme) continue;
+      if (arme.effet) equipement.push(passif({ origine: 'arme', nom: arme.nom, source: `Arme ${rang}`, texte: arme.effet }));
+      // l'effet secondaire écrit de son matériau (« +1d de dégâts contre les non-morts » ; réponse du propriétaire : « Oui, dans ce lot D »)
+      const materiau = trouver(regles.materiaux_armes ?? [], ligne.materiau_id);
+      if (materiau?.effet_secondaire) equipement.push(passif({ origine: 'materiau', nom: materiau.nom, source: `Arme ${rang} : ${arme.nom}`, texte: materiau.effet_secondaire }));
+      amelioration(ligne.amelioration_id, 'arme', `Arme ${rang} : ${arme.nom}`);
+      continue;
+    }
+    const element = trouver(regles.armes_elementaires ?? [], ligne?.arme_elementaire_id);
+    if (!element) continue;
+    const type = trouver(regles.types_elementaires ?? [], element.type_id);
+    const lignes = effetDeLArmeElementaire(element, type);
+    const textes = ['actif', 'action'].includes(element.capacite_mode) && (element.capacite_nom || element.capacite_texte) ? lignes.slice(1) : lignes;
+    if (textes.length) equipement.push(passif({ origine: 'arme', nom: element.nom, source: `Arme ${rang}`, texte: textes.join('\n'), teinte: element }));
+    amelioration(ligne.amelioration_id, 'arme', `Arme ${rang} : ${element.nom}`);
+  }
+  const bouclier = bouclierDe(regles, fiche);
+  if (bouclier) amelioration(fiche.bouclier_amelioration_id, 'bouclier', `Bouclier : ${bouclier.nom}`);
+  return { race: raceListe, ethnieAChoisir: r.ethnieAChoisir, classes, equipement };
+}
+
+/** fiche.actions_usage avec la ligne de `cle` à `restants` : supprimée au maximum (migration 0085 : « remettre au maximum supprime la ligne »). */
+function avecLUsage(fiche, cle, restants, max) {
+  const autres = (fiche.actions_usage ?? []).filter((u) => u?.action_id !== cle);
+  return restants >= max ? autres : [...autres, { action_id: cle, restants: Math.max(0, restants) }];
+}
+
+/**
+ * Sélectionner l'action `cle` pour la consommer (décision R173 : « On sélectionne une action pour la consommer ; elle se grise quand son compteur est à
+ * 0 ») : son compteur baisse de 1 (fiche.actions_usage) ; un accessoire « l'objet se brise après » quitte son emplacement (« Retiré de
+ * l'emplacement » : fiche.accessoires sans lui). {} quand rien ne change : une action grisée (Symbiose, compteur à 0), sans compteur (sans limite
+ * écrite, rappel, texte), ou inconnue. { actions_usage, accessoires? }.
+ */
+export function consommerLAction(regles, fiche, cle) {
+  const a = actionsDeLaFiche(regles, fiche).find((x) => x.cle === cle);
+  if (!a?.utilisable) return {};
+  const ecrit = {};
+  if (a.compteur) ecrit.actions_usage = avecLUsage(fiche, cle, a.compteur.restants - 1, a.compteur.max);
+  if (a.seBrise) {
+    ecrit.accessoires = (fiche.accessoires ?? []).filter((x) => x.emplacement !== a.emplacement);
+    ecrit.actions_usage = (ecrit.actions_usage ?? fiche.actions_usage ?? []).filter((u) => u?.action_id !== cle);
+  }
+  return ecrit;
+}
+
+/**
+ * Le compteur de l'action `cle` remonté à la main de `ecart` (décision R173 : « ne remontent qu'à la main », un bouton par compteur ; il sert aussi à
+ * reprendre une sélection faite par erreur) : { actions_usage }, borné de 0 au maximum, sans ligne au maximum. {} sans compteur ou si rien ne change.
+ */
+export function remonterLAction(regles, fiche, cle, ecart = 1) {
+  const c = actionsDeLaFiche(regles, fiche).find((x) => x.cle === cle)?.compteur;
+  if (!c) return {};
+  const v = Math.min(c.max, Math.max(0, c.restants + Math.trunc(entier(ecart))));
+  return v === c.restants ? {} : { actions_usage: avecLUsage(fiche, cle, v, c.max) };
+}
+
+/**
+ * « Fin de combat » (décision R173 : « remet au maximum les compteurs "par combat" ») : { actions_usage } sans les lignes des actions dont le compteur
+ * est par combat ; ceux par jour, semaine… restent (« ne remontent qu'à la main »), comme une ligne qui ne répond à aucune action (nettoyée à
+ * l'enregistrement : actionsUsageValables).
+ */
+export function finDeCombat(regles, fiche) {
+  const parCombat = new Set(actionsDeLaFiche(regles, fiche).filter((a) => a.compteur?.remontee === 'fin_de_combat').map((a) => a.cle));
+  return { actions_usage: (fiche.actions_usage ?? []).filter((u) => !parCombat.has(u?.action_id)) };
+}
+
+/**
+ * Les compteurs à enregistrer (personnage_action_usage, migration 0085) : une ligne par action de la fiche qui a un compteur entamé, ses restants
+ * bornés de 0 au maximum moins 1 ; une ligne au maximum, en double, ou d'une clé qu'aucune action de la fiche n'a plus (un don perdu, un objet retiré :
+ * « une clé orpheline est ignorée à l'affichage et nettoyée à l'enregistrement ») part.
+ */
+export function actionsUsageValables(regles, fiche) {
+  const compteurs = new Map(actionsDeLaFiche(regles, fiche).filter((a) => a.compteur).map((a) => [a.cle, a.compteur]));
+  const vus = new Set();
+  return (fiche.actions_usage ?? []).flatMap((u) => {
+    const c = compteurs.get(u?.action_id);
+    if (!c || vus.has(u.action_id) || c.restants >= c.max) return [];
+    vus.add(u.action_id);
+    return [{ action_id: u.action_id, restants: c.restants }];
+  });
+}
+
+/**
+ * fiche.actions_usage sans les compteurs des objets qui ne sont plus portés (décision R173, choix technique de la clé : un objet changé ou retiré, dont
+ * un accessoire qui « se brise », perd sa ligne : remis, il repart au maximum) : les lignes d'une clé d'équipement (estUneActionDEquipement) qu'aucune
+ * action de la fiche n'a plus partent ; celles des dons restent jusqu'à l'enregistrement (un niveau retapé repasse par le niveau 1 : actionsUsageValables).
+ * La page l'applique à chaque rafraîchissement.
+ */
+export function actionsUsageSansObjetRetire(regles, fiche) {
+  const usages = fiche.actions_usage ?? [];
+  if (!usages.some((u) => estUneActionDEquipement(u?.action_id))) return usages;
+  const cles = new Set(actionsDeLaFiche(regles, fiche).map((a) => a.cle));
+  const gardes = usages.filter((u) => !estUneActionDEquipement(u?.action_id) || cles.has(u.action_id));
+  return gardes.length === usages.length ? usages : gardes;
 }

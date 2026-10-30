@@ -39,8 +39,8 @@ test('R165 : regles.json donne les armures élémentaires (ordre des colonnes pu
   const effets = tous('SELECT armure_elementaire_id, texte FROM armure_elementaire_effet ORDER BY armure_elementaire_id, rang');
   const attendues = tous('SELECT id, nom, categorie, magie_id, ap, am, ordre FROM armure_elementaire ORDER BY ordre, id')
     .map((a) => ({ ...a, nom: texteSansBalises(a.nom), effets: effets.filter((e) => e.armure_elementaire_id === a.id).map((e) => texteSansBalises(e.texte)) }));
-  // `sorts` (R102) et `resistances` (R166 : test/fiche-resistances-armure-elementaire.test.mjs) sont lus de ces effets
-  assert.deepEqual(regles.armures_elementaires.map(({ sorts: _s, resistances: _r, ...a }) => a), attendues);
+  // `sorts` (R102), `resistances` (R166 : test/fiche-resistances-armure-elementaire.test.mjs) et `actions` (R173 : test/limite-texte.test.mjs) sont lus de ces effets
+  assert.deepEqual(regles.armures_elementaires.map(({ sorts: _s, resistances: _r, actions: _a, ...a }) => a), attendues);
   assert.equal(regles.armures_elementaires.length, 56, '4 poids × 14 magies (Q99:EE138)');
   assert.ok(!regles.armures_elementaires.some((a) => a.magie_id === PI), 'aucune pour le Potentiel Illimité');
   // la teinte de chaque magie (le fond d'une armure élémentaire dans la liste) : sa classe de la palette

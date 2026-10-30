@@ -42,7 +42,7 @@ import {
   EMPLACEMENTS_ACCESSOIRES, accessoiresDesSorts, acquisChoixGardes, alignementDe, artisanatDe, bouclierDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, budgetCaracteristiques,
   caracteristiquesCompletes, caracteristiquesDe, choixEnAttente, classesDe, competencesDe, degatsDArme, donDeBase, donsAcquis, donsDeRace, durabiliteDArme,
   armureParPartie, emplacementsDeSorts, livresDe, maitriseDesSorts, maitrisesParFamille, modeHyperDe, nmDuSort, npmMax, partiesDeLArmure, progressionXp, resistancesDe, sortPrepare,
-  sourcesDeMaitrise, trouver, valeursDuMoment, armeDeLaLigne, typeDegatsChoisi, typesDeDegats,
+  sourcesDeMaitrise, trouver, valeursDuMoment, armeDeLaLigne, typeDegatsChoisi, typesDeDegats, actionsDeLaFiche,
 } from './fiche-moteur.mjs';
 import {
   CASES_CARACTERISTIQUES, CASES_COMPETENCES, CASES_POSTURES, CASES_RESISTANCES, DONS, EMPLACEMENTS_DU_MODELE, LONGUEUR_MAX_D_UNE_CASE, MAITRISES,
@@ -70,6 +70,9 @@ export const CLES_DE_LA_NOTE = Object.freeze({
   // le Mode Hyper du moment et le compteur « une fois par semaine » (décision R172, migration 0084) : « actif, 100 %, semaine 0/1 » ; le modèle n'a pas de
   // case pour eux (texteDuModeHyper, lireModeHyper)
   modeHyper: 'Mode Hyper',
+  // un compteur entamé d'une action (décision R173, migration 0085 : personnage_action_usage) : « <action> (<source>) 1/2 [<clé>] », un par action ; le
+  // modèle n'a pas de case pour eux (texteDuCompteurDAction, lireCompteurDAction)
+  compteurAction: 'Compteur d\'action',
   donsClasse1: 'Dons de classe 1 (suite)',
   donsClasse2: 'Dons de classe 2 (suite)',
   sorts: 'Sorts (suite)',
@@ -440,6 +443,22 @@ export function lireModeHyper(texte) {
     else return null;
   }
   return lu;
+}
+
+/**
+ * La ligne « Compteur d'action » d'un compteur entamé (décision R173 ; actionsDeLaFiche) : « <nom> (<source>) <restants>/<max> [<clé>] » ; le nom et la
+ * source se lisent, la clé (cleDAction) est ce que l'import relit. '' sans compteur entamé.
+ */
+export function texteDuCompteurDAction(action) {
+  const c = action?.compteur;
+  if (!c || c.restants >= c.max) return '';
+  return `${action.nom}${action.source ? ` (${action.source})` : ''} ${c.restants}/${c.max} [${action.cle}]`;
+}
+
+/** { cle, restants } d'un texte de texteDuCompteurDAction ; null s'il ne se lit pas (« N/M » puis la clé entre crochets, en fin de ligne). */
+export function lireCompteurDAction(texte) {
+  const m = /(?:^|\s)(\d+)\s*\/\s*\d+\s*\[([^\]\s]+)\]\s*$/.exec(String(texte ?? ''));
+  return m ? { cle: m[2], restants: Number(m[1]) } : null;
 }
 
 /** Un point d'une source de maîtrise pas encore choisi, dans la ligne « Maîtrise d'arme au choix » (comme « → ? » d'un accessoire). */
@@ -1252,6 +1271,8 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
   const prepare = sortPrepare(regles, f);
   if (prepare) noter(K.sortPrepare, texteDuSortPrepare(prepare));
   noter(K.modeHyper, texteDuModeHyper(hyper));
+  // les compteurs entamés des actions (décision R173), dans l'ordre de la liste de la page
+  for (const action of actionsDeLaFiche(regles, f)) noter(K.compteurAction, texteDuCompteurDAction(action));
   for (const [cle_, valeur] of accessoiresSansCase) noter(cle_, valeur);
   noter(K.donsClasse1, donsEnSuite[1].join(SEPARATEUR_DE_LISTE));
   noter(K.donsClasse2, donsEnSuite[2].join(SEPARATEUR_DE_LISTE));

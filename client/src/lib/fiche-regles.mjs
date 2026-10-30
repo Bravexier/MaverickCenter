@@ -23,6 +23,7 @@ import { chargerInvocations, tableauxDesSorts } from './bestiaire-db.mjs';
 import { FAMILLES_DES_SAUF, desSelonLaForce, famillesAuChoix, idDeSourceDeClasse } from './maitrise-arme.mjs';
 import { ORDRE_DES_RACES, raceKind } from './race-kinds.mjs';
 import { lecteurDeResistances } from './resistance-texte.mjs';
+import { genreDeLaPeriode, limiteEcrite, seBriseEcrit, typeDActionEcrit } from './limite-texte.mjs';
 import {
   CLASSE_NEUTRE, classeDAlignement, classeDUneClasse, classeDeCaracteristique, classeDeMagie, classeDePalier, classeDePosture, classeDeRace,
   classeDeSecondeMagie, classeDuModeHyper, classeDuPoids,
@@ -260,6 +261,9 @@ function reglesDeLaBase(db) {
         id: r.id, nom: r.nom, nature, classe: classeDeRace(nature),
         sante: r.sante_depart, chakra: r.chakra_depart, barriere: r.barriere_bonus ?? 0, vitesse_sol: r.vitesse_sol, vitesse_nage: r.vitesse_nage,
         ap: r.ap ?? 0, am: r.am ?? 0, don_base: r.don_base, mono_magie: r.mono_magie === 1,
+        // le don de base lu comme une action (décision R173 : « Méditation (Action 3 fois/jour) » de l'onglet, R13 ; lib/limite-texte.mjs, dans le texte,
+        // jamais par son nom) : { type, limite } ; absent quand le texte n'écrit pas d'action
+        ...(typeDActionEcrit(r.don_base) ? { don_base_action: { type: typeDActionEcrit(r.don_base), limite: limiteEcrite(r.don_base) } } : {}),
         classes: accesClasses.get(r.id) ?? [],
         magies: magiesOnglet.get(r.id) ?? magiesMatrice.get(r.id) ?? [],
         bornes: Object.fromEntries((bornes.get(r.id) ?? []).map((b) => [b.caracteristique_id, [b.minimum, b.maximum]])),
@@ -368,7 +372,8 @@ function reglesDeLaBase(db) {
   const amMagique = db.prepare("SELECT am_base FROM categorie_classe WHERE id = 'classe-magique'").get()?.am_base;
   if (!amMagique) throw new Error('categorie_classe « classe-magique » : am_base absent');
   const alternatives = parCle(lignes(db, 'SELECT capacite_id, autre_id FROM v_capacite_exclusive'), 'capacite_id', (r) => r.autre_id);
-  const capacites = parCle(lignes(db, 'SELECT id, classe_id, specialite_id, niveau, nature, ligne, rang, nom, type, type_brut, effet, remarque FROM capacite'), 'classe_id');
+  const capacites = parCle(lignes(db, `SELECT id, classe_id, specialite_id, niveau, nature, ligne, rang, nom, type, type_brut, limite_nombre, limite_periode, effet, remarque
+                                        FROM capacite`), 'classe_id');
   const specialites = parCle(lignes(db, 'SELECT id, classe_id, rang, nom, description FROM specialite ORDER BY classe_id, rang'), 'classe_id');
   // le texte de présentation d'une classe ou d'une spécialité (infobulle d'une tuile de choix), tel qu'en base, sans les balises du glossaire comme tout
   // texte de ces règles (chargerReglesDeFiche : le texte affiché) ; null sans texte
@@ -452,6 +457,10 @@ function reglesDeLaBase(db) {
           id: d.id, nom: d.nom, nature: d.nature, niveau: d.niveau, specialite_id: d.specialite_id, type: d.type, effet: d.effet,
           // ce que la cellule de type écrit entre parenthèses (« 2 fois/combat », « 3 tours de recharge »), tel quel, comme la page de la classe
           precision: typeDeDon(d.type_brut).precision,
+          // sa limite d'usage, lue dans son type (capacite.limite_nombre, limite_periode : « Actif (2 fois/combat) ») et son genre (décision R173 :
+          // lib/limite-texte.mjs#genreDeLaPeriode : `combat`, remis par « Fin de combat » ; `manuel`, remonté à la main ; `rappel`) ; absente sans limite lue
+          ...(d.limite_nombre !== null && d.limite_periode
+            ? { limite: { nombre: d.limite_nombre, periode: d.limite_periode, genre: genreDeLaPeriode(d.limite_periode) } } : {}),
           ...resistancesEcrites(resistancesDuTexte(d.effet, d.remarque)), ...degatsEcrits(d),
           // ses parts de maîtrise d'arme (maitrise_arme_part : décisions R148, R150, R151) et ses NM de sorts gagnés (capacite_nm_gagne : R154), quand il en a
           ...(partsDesSources.has(d.id) ? { maitrise: { parts: partsDesSources.get(d.id) } } : {}),
@@ -582,8 +591,13 @@ function reglesDeLaBase(db) {
     })(),
     // « tous les bonus se cumulent une fois l'arme forgée » (page « Armes ») : celui de la composition et de l'amélioration ; de même les crans de solidité
     // de la composition et de l'amélioration (`cran_solidite`, `bonus_cran` : décisions R51, R74)
-    materiaux_armes: lignes(db, 'SELECT ressource_id, bonus_degats, cran_solidite FROM materiau_arme ORDER BY ordre')
-      .map((m) => ({ id: m.ressource_id, nom: nomDeRessource(m.ressource_id), bonus_degats: m.bonus_degats, cran_solidite: m.cran_solidite })),
+    // `effet_secondaire` : l'effet écrit du matériau en plus de ses dégâts (« +1d de dégâts contre les non-morts »), tel qu'écrit, montré parmi les passifs de
+    // l'arme portée (décision R173, réponse du propriétaire : « Oui, dans ce lot D »), jamais lu par un calcul ; absent sans effet secondaire
+    materiaux_armes: lignes(db, 'SELECT ressource_id, bonus_degats, cran_solidite, effet_secondaire FROM materiau_arme ORDER BY ordre')
+      .map((m) => ({
+        id: m.ressource_id, nom: nomDeRessource(m.ressource_id), bonus_degats: m.bonus_degats, cran_solidite: m.cran_solidite,
+        ...(m.effet_secondaire?.trim() ? { effet_secondaire: m.effet_secondaire } : {}),
+      })),
     // le matériau d'une arme choisie, par défaut (décision R49 : « son matériau (par défaut le fer) ») : le fer du tableau des matériaux d'arme
     materiau_arme_defaut: db.prepare("SELECT m.ressource_id AS id FROM materiau_arme m JOIN ressource r ON r.id = m.ressource_id WHERE r.nom_cle = 'fer'").get()?.id ?? null,
     // `bonus_ap`, `bonus_am` : l'AP et l'AM d'une amélioration d'armure, d'armure élémentaire ou de bouclier, ceux du niveau choisi (décisions R76, R77)
@@ -608,7 +622,9 @@ function reglesDeLaBase(db) {
     armes_elementaires: lignes(db, `SELECT e.id, e.nom, e.type_id, e.magie_id, m.nom AS magie, e.bonus_degats, e.capacite_nom, e.capacite_mode, e.capacite_texte
                                     FROM arme_elementaire e JOIN magie m ON m.id = e.magie_id ORDER BY e.ordre`)
       .map(({ magie, ...e }) => ({ id: e.id, nom: e.nom, type_id: e.type_id, magie_id: e.magie_id, classe: classeDeMagie(magie), bonus_degats: e.bonus_degats,
-        capacite_nom: e.capacite_nom, capacite_mode: e.capacite_mode, capacite_texte: e.capacite_texte })),
+        capacite_nom: e.capacite_nom, capacite_mode: e.capacite_mode, capacite_texte: e.capacite_texte,
+        // la limite d'usage qu'écrit sa capacité (décision R173 : lib/limite-texte.mjs, « (2 fois/combat) ») ; absente sans limite écrite
+        ...(limiteEcrite(e.capacite_texte) ? { capacite_limite: limiteEcrite(e.capacite_texte) } : {}) })),
     // Types des armes élémentaires (arme_elementaire_type, décision R167 : « Dé et portée : ceux de son type », arme_type), dans l'ordre des en-têtes de
     // l'onglet : le dé du type (`de`, null pour le Pugilat) et ses paliers selon la Force (`de_selon_force`, lib/maitrise-arme.mjs#desSelonLaForce sur
     // arme_type.de_regle, comme regles.familles_armes[].de_selon_force) ; la portée du type (« N » ou « N - M », comme regles.armes[].portee) ; `ignore_ap`
@@ -660,15 +676,25 @@ function reglesDeLaBase(db) {
     // `resistances` (décisions R165, R166 : « Le compter dans ce lot ») : les crans et immunités qu'écrivent ses effets, lus comme ceux des dons
     // (lib/resistance-texte.mjs, avec l'option `immunites` des armures élémentaires seulement : « … et immunité à la brûlure ») ; l'Arcane et la
     // Corruption tels qu'écrits (la colonne Arcane donne la Corruption, et l'inverse) ; absent quand ses effets n'en écrivent pas
+    // `actions` (décision R173 : « les effets "(Action)" et "(Réaction)" de l'armure élémentaire portée » ; réponse du propriétaire à Q79, « Deviennent des
+    // actions » : aussi les effets « (actif) » et ceux qui écrivent une limite d'usage, « (1 fois par combat) ») : pour chaque effet qui écrit un type
+    // (lib/limite-texte.mjs#typeDActionEcrit) ou une limite (limiteEcrite), lus dans le texte, { rang (armure_elementaire_effet.rang), index (dans
+    // `effets`), type (null sans type écrit), limite (null sans limite écrite) } ; absent quand aucun effet n'en écrit (les autres effets sont des
+    // passifs, montrés tels qu'écrits)
     armures_elementaires: (() => {
-      const effets = parCle(lignes(db, 'SELECT armure_elementaire_id, texte FROM armure_elementaire_effet ORDER BY armure_elementaire_id, rang'), 'armure_elementaire_id', (r) => r.texte);
+      const lignesDEffets = parCle(lignes(db, 'SELECT armure_elementaire_id, rang, texte FROM armure_elementaire_effet ORDER BY armure_elementaire_id, rang'),
+        'armure_elementaire_id', (r) => ({ rang: r.rang, texte: r.texte }));
       return lignes(db, 'SELECT id, nom, categorie, magie_id, ap, am, ordre FROM armure_elementaire ORDER BY ordre, id')
         .map((a) => {
-          const sorts = (effets.get(a.id) ?? []).flatMap(bonusDeSortsEcrits);
-          const lues = (effets.get(a.id) ?? []).map((t) => lireResistances(t, { immunites: true }));
+          const effets = (lignesDEffets.get(a.id) ?? []).map((e) => e.texte);
+          const sorts = effets.flatMap(bonusDeSortsEcrits);
+          const lues = effets.map((t) => lireResistances(t, { immunites: true }));
+          const actions = (lignesDEffets.get(a.id) ?? []).flatMap((e, index) => (typeDActionEcrit(e.texte) || limiteEcrite(e.texte)
+            ? [{ rang: e.rang, index, type: typeDActionEcrit(e.texte), limite: limiteEcrite(e.texte) }] : []));
           return {
-            ...a, effets: effets.get(a.id) ?? [], ...(sorts.length ? { sorts } : {}),
+            ...a, effets, ...(sorts.length ? { sorts } : {}),
             ...resistancesEcrites({ effets: lues.flatMap((l) => l.effets), choix: lues.some((l) => l.choix) }),
+            ...(actions.length ? { actions } : {}),
           };
         });
     })(),
@@ -681,8 +707,8 @@ function reglesDeLaBase(db) {
     boucliers_formes_matieres: lignes(db, 'SELECT id, classe_id, materiau_id, nom, ap, am, poids_id FROM bouclier ORDER BY classe_id, materiau_id'),
     poids_bouclier: lignes(db, 'SELECT id, nom, force_min FROM bouclier_poids ORDER BY ordre')
       .map((p) => ({ ...p, classe: classeDuPoids(p.id) })),
-    // accessoires : l'effet, et ce qu'il change sur la fiche (accessoire_effet_cible, décision R54 : lib/fiche-moteur.mjs#effetsDesAccessoires) ; `usage` : rappelé
-    // sous les dons de race (« (Action) » ou usage compté) ; `propriete_nom` : le nom de sa propriété (accessoire_propriete.nom, « Attributs »), écrit par la
+    // accessoires : l'effet, et ce qu'il change sur la fiche (accessoire_effet_cible, décision R54 : lib/fiche-moteur.mjs#effetsDesAccessoires) ; `usage` :
+    // un effet activable (« (Action) » ou usage compté), listé parmi les actions de la fiche (décision R173 : lib/fiche-moteur.mjs#actionsDeLaFiche) ; `propriete_nom` : le nom de sa propriété (accessoire_propriete.nom, « Attributs »), écrit par la
     // fiche en tableur
     // `propriete_ordre` : l'ordre des propriétés (accessoire_propriete.ordre), celui des groupes de la liste des effets (décision R97)
     accessoires: lignes(db, `SELECT e.id, e.propriete_id, p.nom AS propriete_nom, p.ordre AS propriete_ordre, e.libelle, e.caracteristique_id, e.niveau, e.bonus_min,
@@ -692,6 +718,10 @@ function reglesDeLaBase(db) {
         id: a.id, propriete: a.propriete_id, propriete_nom: a.propriete_nom, propriete_ordre: a.propriete_ordre, libelle: a.libelle, caracteristique_id: a.caracteristique_id, niveau: a.niveau, min: a.bonus_min, max: a.bonus_max,
         valeur: a.bonus_valeur, cible: a.bonus_cible, malediction: a.malediction === 1, usage: a.usage,
         effets: (ciblesDesAccessoires.get(a.id) ?? []),
+        // un effet activable (`usage`, décision R173) : la limite d'usage qu'il écrit (lib/limite-texte.mjs : « (1 fois par combat) », « (1 semaine de
+        // recharge) ») et « l'objet se brise après » (`se_brise` : l'accessoire quitte son emplacement dès qu'il est utilisé) ; absents sinon
+        ...(a.usage && limiteEcrite(a.libelle) ? { limite: limiteEcrite(a.libelle) } : {}),
+        ...(a.usage && seBriseEcrit(a.libelle) ? { se_brise: true } : {}),
       })),
     ressources: lignes(db, 'SELECT id, nom, genre FROM ressource ORDER BY nom COLLATE NOCASE'),
     // la ceinture (décisions R81, R89) : les objets du catalogue qui y vont (v_objet_ceinture), avec la contenance écrite d'un carquois ou d'un sac

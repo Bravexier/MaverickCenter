@@ -986,7 +986,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .retirer:hover { border-color: var(--danger) !important; }
 
 /* dons à choix */
-/* rappel des dons sous les sorts (demande du propriétaire) : don de base et don de race, puis les dons débloqués de chaque classe */
+/* les actions sous la ceinture et les passifs (décision R173) : dons de race, puis les dons débloqués de chaque classe, puis l'équipement */
 .dons-liste { display: grid; gap: 0.3rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr)); margin: 0; padding: 0; list-style: none; }
 .don { display: grid; gap: 0.1rem; align-content: start; padding: 0.25rem 0.45rem; border: 1px solid var(--etape-ligne); border-left: 3px solid var(--c, var(--etape)); border-radius: var(--radius); background: var(--etape-doux); font-size: var(--fs-sm); }
 .don__tete { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.15rem 0.4rem; }
@@ -996,6 +996,21 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .don__texte { color: var(--muted); font-size: var(--fs-xs); line-height: 1.3; white-space: pre-line; }
 /* l'aide de la fiche sous le texte d'un don (« ... plus fort ! » du Flagelleur, décision R163) */
 .don__aide { font-size: var(--fs-xs); font-style: italic; line-height: 1.3; }
+/* d'où vient un passif ou une action (un objet, une classe) */
+.don__source { color: var(--muted); font-size: var(--fs-xxs); }
+/* les actions sous la ceinture (décision R173) : le nom d'une action à compteur est le bouton qui la consomme ; grisée en Symbiose (R112) ou à 0 */
+.actions-liste { grid-template-columns: 1fr; }
+.fiche .action__utiliser { padding: 0 0.45rem; font-size: var(--fs-sm); font-weight: 700; }
+.fiche .action__utiliser[aria-disabled='true'] { opacity: 0.45; cursor: not-allowed; }
+/* grisée : le trait de gauche en pointillés et le bouton atténué ; le texte garde sa couleur (--muted, lisible : pas d'opacité en plus) */
+.action[data-grisee] { border-left-style: dashed; }
+.action:focus-visible { outline: 2px solid var(--etape); outline-offset: 1px; }
+.action__suivi { --a: var(--c, var(--etape)); --a-trait: color-mix(in srgb, var(--a) 60%, var(--border)); display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; }
+.action__compte { font-variant-numeric: tabular-nums; font-weight: 700; }
+.fiche .action__suivi .ajuster[aria-disabled='true'] { opacity: 0.45; cursor: not-allowed; }
+.action__raison:empty { display: none; }
+.action .fiche-aide { font-size: var(--fs-xs); }
+.actions__pied { margin: 0.4rem 0 0; }
 /* « Entraînement » (décisions R104, R169) : son onglet de la zone IV, après « Choix » */
 .entrainement-panneau .fiche-aide { margin-top: 0.2rem; font-size: var(--fs-xs); }
 .dons-classes { display: grid; gap: 0.5rem; }
@@ -1065,7 +1080,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 }
 @media print {
   .site-header, .site-footer, .fiche-barre, .retirer, .fiche-indisponible, .fiche-retraits, .xp__plus, .xp__ajout, .ajuster, .ajout,
-  .portrait__actions, .ceinture__actions, .ceinture__refus, .parametres__onglets, .recadrage, .import-cible, .tiroir__tete { display: none !important; }
+  .portrait__actions, .ceinture__actions, .ceinture__refus, .actions__pied, .parametres__onglets, .recadrage, .import-cible, .tiroir__tete { display: none !important; }
   .parametres__panneau.est-tiroir { position: static; transform: none; max-height: none; box-shadow: none; animation: none; }
   .fiche-etape { break-inside: avoid-page; }
   .fiche-zone { break-inside: auto; background: none; }

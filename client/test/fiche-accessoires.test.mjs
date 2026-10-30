@@ -1,6 +1,6 @@
 // Les accessoires sur la fiche de personnage (demande du propriétaire : « l'accessoire influe sur le reste de la fiche » ; décision R54 ; table
 // accessoire_effet_cible) : caractéristique +1 plafonnée, compétence choisie, attributs, armure de base, dégâts des armes et des sorts, maîtrise,
-// résistances, Mode Hyper, malédiction (effet contraire), choix en attente, effets « (Action) » et usages comptés rappelés sous les dons de race, et
+// résistances, Mode Hyper, malédiction (effet contraire), choix en attente, effets « (Action) » et usages comptés (listés parmi les actions de la fiche : décision R173, test/fiche-actions-passifs.test.mjs), et
 // l'enregistrement des choix dans la base.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -112,7 +112,7 @@ test('maîtrise d’arme, Mode Hyper, résistances (maudit : vulnérabilité)', 
   assert.equal(crans(maudit, 'magies/magie-du-feu') - crans(fiche(), 'magies/magie-du-feu'), -1);
 });
 
-test('rappel sous les dons de race : les effets « (Action) » et à usage compté, pas les autres', () => {
+test('les effets « (Action) » et à usage compté (actionsDesAccessoires), pas les autres', () => {
   // un accessoire n'a plus de nom donné (décision R97) : son emplacement le nomme
   const f = fiche([porte('chef', 'autre:13'), porte('collier', 'autre:16'), porte('bague-1', 'attaque:1')]);
   assert.deepEqual(actionsDesAccessoires(regles, f), [

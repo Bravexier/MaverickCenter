@@ -23,8 +23,9 @@ posée par la page : `docs/content-guide.md`, « Couleurs du site : la palette e
    (demande du propriétaire du 2026-10-29 : « Dans la tuile des attributs, je veux que tu rajoute une 2em ligne où tu y déplacera : les AP / AM /
    Vitesse et initiative , ainsi que l'interface pour les dégâts reçu. ») ; caractéristiques et compétences, à côté les **armes** (avec leur **solidité**) et,
    dessous, la **ceinture** (choix du propriétaire du 2026-10-23 : « Il faudrai séparer les arme et les maitrises . Garder l'armes visibles à coté des
-   caractéristiques comme avant. », qui remplace « Caractéristiques d'abord » du même jour) ; les sorts, à côté les **dons débloqués**
-   (l'**entraînement** est dans son onglet de la zone 4). Plus étroit, les blocs se suivent : attributs, caractéristiques et compétences, armes, ceinture, sorts, dons ; c'est aussi
+   caractéristiques comme avant. », qui remplace « Caractéristiques d'abord » du même jour), puis, juste sous la ceinture, les **actions** (décision
+   R173) ; les sorts, à côté (sous la colonne des armes, de la ceinture et des actions) les **passifs** (l'**entraînement** est dans son onglet de la
+   zone 4). Plus étroit, les blocs se suivent : attributs, caractéristiques et compétences, armes, ceinture, actions, sorts, passifs ; c'est aussi
    l'ordre du clavier sur grand écran. Les **maîtrises d'armes** sont dans l'onglet « Choix » de la zone 4 (même demande).
 3. **Selon la situation** : les **postures** (et le Mode Hyper) sur toute la largeur ; l'armure, les accessoires et, juste en dessous,
    l'**inventaire** (sac et bourse ; demande du propriétaire du 2026-10-17) ; à côté les résistances et faiblesses, le bouclier.
@@ -470,11 +471,44 @@ bouton (au-dessus quand la place manque), bornée à l'écran, téléphone compr
   son **NM du moment** (`nmDuMoment`) : celui du curseur, plus les NM que lui donnent les dons débloqués, lus dans leur texte (« À l'aise » du Mage Vert,
   nouvelle version de la décision R134 : « Donne un NM supplémentaire au sort préparé. Ne peut pas dépasser 3 NM. », migration 0071) ; la case NM
   l'écrit « 1+1 », l'infobulle dit d'où vient le NM ajouté, qui ne compte pas dans le décompte ni ne s'enregistre.
-- **Dons débloqués**, à côté des sorts : les **dons raciaux** — le don de base d'abord, puis le don de l'ethnie (`race_don`) et la ligne de l'ethnie dans le
-  tableau de dons de la race (Drakos, Mort-vivant) : `donsDeRace` — puis les **dons de classe débloqués**, classe par classe : dons de la classe et de la
-  spécialité choisie jusqu'au niveau de classe, dons à choix choisis (`donsAcquis`), avec leur niveau et leur type (passif, actif, action, réaction) ;
-  sous « ... plus fort ! » du Flagelleur, l'aide de la décision R163 (« Oui, à appliquer par le MJ ») : « La fiche retire les faiblesses qu'elle
-  connaît ; le MJ annule aussi en jeu celles qu'elle ne connaît pas (sorts ennemis, météo, armure, états en jeu). »
+- **Actions**, juste sous la ceinture (décision R173 : « Il faudrait lister toutes les actions utilisables (dons, accessoire activable(s) directement sous
+  la case de la ceinture. ») : `actionsDeLaFiche`, dans cet ordre — le **don de base de la race** (« Méditation » ou « Repos », « Action 3 fois/jour »,
+  lu dans le texte de l'onglet par `lib/limite-texte.mjs`, jamais par son nom ; `races[].don_base_action` des règles), les **dons de classe débloqués
+  de type Action, Actif et Réaction** (`donsAcquis`, `TYPES_D_ACTION` ; leur limite, celle de leur type : `classes[].dons[].limite`, tirée de
+  `capacite.limite_nombre` et `limite_periode`), les **effets d'accessoire activables** (`accessoire_effet.usage` : « (Action) » ou usage compté, R54 ;
+  un accessoire maudit garde « (maudit : l'effet est le contraire) »), les **capacités « actif » et « action » des armes élémentaires** portées (armes 1
+  et 2) et les **effets « (Action) », « (Réaction) » et « (actif) » de l'armure élémentaire** portée, ainsi que ceux qui écrivent une limite d'usage
+  (réponse du propriétaire à Q79, « Deviennent des actions » : les trois météos « (actif) », sans compteur ; « (1 fois par combat) » de
+  l'Intermédiaire Espace/Temps et de l'Intermédiaire Glace, un compteur par combat ; lus dans le texte : `armures_elementaires[].actions`). Les objets de la ceinture
+  n'y sont pas (leurs boutons restent, R89, R131). Chaque action dit d'où elle vient (la race, la classe, l'objet), son type et sa précision telle
+  qu'écrite, son texte tel qu'écrit. **Compteurs** : la limite écrite (`lib/limite-texte.mjs`, lecteur rejoué sur toute la base par
+  `test/limite-texte.test.mjs`) a un genre — **par combat** (« N fois/combat », « une seule fois par combat ») : remis au maximum par le bouton
+  **« Fin de combat »** (`finDeCombat`, montré quand une action a un tel compteur) ; **par jour, 24 h (le jour), semaine, « 1 semaine de recharge »,
+  mois, nuit, session, partie** : remonté **seulement à la main** ; **par tour, par N tours, par Mode Hyper, par personnage, allié, ennemi, dialogue** :
+  un **rappel** en texte, sans compteur ; les six précisions illisibles (« X tour/combat »…) : le texte seulement. Le nom d'une action à compteur est le
+  bouton qui la **consomme** (`consommerLAction` : une utilisation de moins) ; à 0 elle est **grisée** ; « + » la remonte d'une utilisation
+  (`remonterLAction` : la remontée à la main, et la reprise d'une sélection faite par erreur). Une action sans limite écrite (ou en rappel) n'a pas
+  de compteur, son nom n'est pas un bouton, et elle n'est jamais grisée par sa limite. Un accessoire « l'objet se brise après » **quitte son
+  emplacement** dès qu'il est utilisé. **En Symbiose**, les actions d'équipement (accessoires, armes et armure élémentaires) sont **grisées comme
+  « Utiliser » à la ceinture** (R112), sauf l'arme élémentaire de la magie de la Symbiose (R167) ; rien n'est grisé pour cette raison en Mode Hyper 100 %
+  (R172) ; les dons ne le sont jamais. La capacité d'une **arme élémentaire cassée** (solidité à 0, R74) est grisée, la raison dessous (réponse du
+  propriétaire à Q80 : « Non, grisée ») ; réparée, elle resert. Une action qui quitte la liste (un accessoire qui se brise) rend le focus à sa voisine. Un don présent dans deux classes d'un bi-classé a **un compteur par classe** (sa clé est l'identifiant du don).
+  Les compteurs entamés s'enregistrent avec la fiche (`actions_usage`, table `personnage_action_usage`) ; la **clé** d'une action (`cleDAction`) porte
+  l'objet porté (`accessoire:<emplacement>:<effet>`, `arme:<rang>:<arme élémentaire>`, `armure:<armure élémentaire>:<rang de l'effet>`,
+  `capacite:<don>`, `race:don-de-base:<race>`) : un objet changé ou retiré perd sa ligne dès le rafraîchissement (`actionsUsageSansObjetRetire`) et
+  repart au maximum ; une clé orpheline (un don perdu) est ignorée à l'affichage et retirée à l'enregistrement (`actionsUsageValables`).
+- **Passifs**, juste après les actions (décision R173 ; ils remplacent les « Dons débloqués ») : `passifsDeLaFiche` — les **dons raciaux** (le don de
+  l'ethnie, `race_don`, et la ligne de l'ethnie dans le tableau de dons de la race, Drakos, Mort-vivant : `donsDeRace` ; le don de base est une action),
+  puis les **dons de classe débloqués qui ne sont pas des actions**, classe par classe (passifs, les « Variable » du Mage Bleu ; dons de la classe et de
+  la spécialité choisie jusqu'au niveau de classe, dons à choix choisis : `donsAcquis`), avec leur niveau, leur type et leur précision (« Noyau dur » du
+  Flagelleur, « Passif (1 fois/combat) », reste ici, sa limite en rappel), puis l'**équipement**, ses effets **tels qu'écrits**, comptés par la fiche ou
+  non : accessoires sans usage, effet de l'armure de base portée (une armure cassée le dit : R157, R158), effets de l'armure élémentaire ni « (Action) »
+  ni « (Réaction) » ni « (actif) » sans limite écrite, bâtons magiques à la ceinture (R101), effet de chaque arme du catalogue portée et **effet
+  secondaire de son matériau** (`materiaux_armes[].effet_secondaire` : « +1d de dégâts contre les non-morts » de l'Argent…), lignes d'effet d'une arme
+  élémentaire (sa capacité passive, « Ignore 4 AP », la mention de son type ; sa capacité quand elle est une action est dans les actions), **texte de
+  l'amélioration** de l'armure, des armes et du bouclier portés (`ameliorations[].effet`, de sa cible ; réponse du propriétaire : « Oui, dans ce lot D »). Sous « ... plus fort ! » du
+  Flagelleur, l'aide de la décision R163 (« Oui, à appliquer par le MJ ») : « La fiche retire les faiblesses qu'elle connaît ; le MJ annule aussi en jeu
+  celles qu'elle ne connaît pas (sorts ennemis, météo, armure, états en jeu). »
 - **Entraînement**, dans son **onglet « Entraînement »** de la zone 4, juste après « Choix » (demande du propriétaire du 2026-10-29 : « Le tableau
   d'entrainement devrait être dans un onglet à part à coté des choix. » ; avant, entre les dons de la race et ceux des classes ; `#etape-entrainement`,
   hors du tiroir des choix) ; calculs inchangés (décision R104, table `personnage_entrainement` ; avant, un texte libre jamais compté : R71) : des
@@ -574,7 +608,7 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   seuls sorts d'attaque, `sort_type`) ; point de maîtrise (une source du bloc Maîtrises, sa famille au choix parmi les 11 maîtrisables, dans sa carte ou
   sous l'effet comme celle des dégâts ; « (ne peut changer une fois décidé) » n'est qu'un rappel, R151) ; tour de Mode Hyper ; un cran de résistance par cible (`resistancesDe`).
   Un choix qui manque est dans le tiroir (`choixEnAttente`, nature `accessoire`). Les effets « (Action) » et à usage compté (`accessoire_effet.usage`)
-  sont rappelés à la suite des dons de race, sous le même format (`actionsDesAccessoires`). Sous chaque effet, ce qu'il change en quelques mots.
+  sont dans les **actions**, avec leur compteur (décision R173), les autres dans les **passifs**. Sous chaque effet, ce qu'il change en quelques mots.
 - **Bouclier** (décision R96 : « Forme + matière », comme l'onglet Boucliers) : la forme, la matière et l'amélioration (+1 à +5) ; le bouclier de la liste
   donne l'AP et l'AM (plus l'AP du niveau d'amélioration, R76) et le poids (R92 : tuile dans la couleur de l'onglet, la classe de son poids, en rouge quand la Force est sous son
   minimum, signalé sans rien bloquer) ; sa solidité est celle de la matière plus les crans de l'amélioration (R78, R76), avec un curseur de 0 (« Cassé »)
@@ -810,7 +844,9 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   préparé (R115 : « Sort préparé : Boule de feu (jet 57, posture Offensif) », le nom seul sans jet ni posture ; relu si c'est un sort de la liste que
   le don de préparation de la fiche autorise, son jet de 1 à 100 et sa posture une des six, sinon perdu et dit : `texteDuSortPrepare`,
   `lireSortPrepare`), Mode Hyper (R172 : « Mode Hyper : actif, 100 %, semaine 0/1 », écrite seulement quand il est actif ou que le compteur n'est pas
-  au maximum ; relue si le niveau du classeur le débloque, sinon perdu et dit : `texteDuModeHyper`, `lireModeHyper`), dons, sorts, objets et événements au-delà des places du modèle : 7 dons par classe, 20 sorts,
+  au maximum ; relue si le niveau du classeur le débloque, sinon perdu et dit : `texteDuModeHyper`, `lireModeHyper`), compteurs entamés des actions
+  (R173 : « Compteur d'action : Méditation (Humain) 1/3 [race:don-de-base:races/humain] », une ligne par compteur sous son maximum ; la clé entre
+  crochets est relue si la fiche importée a cette action à compteur, sinon perdu et dit : `texteDuCompteurDAction`, `lireCompteurDAction`), dons, sorts, objets et événements au-delà des places du modèle : 7 dons par classe, 20 sorts,
   48 objets, 4 événements ; un événement par ligne non vide de `evenements`, blancs de bord retirés : lignes vides et retraits ne reviennent pas) va dans la case **NOTE**, sous les notes du joueur et la ligne `MARQUEUR_DES_NOTES`, en lignes « Clé : valeur » que
   l'import relit ; suivent des lignes d'information refaites à chaque export (résistances au choix, « Mode Hyper 100 % : débloqué », choix à faire),
   que l'import ignore. La note ne porte que des **données du personnage**, jamais un texte de règles. Le classeur est écrit par
@@ -1039,6 +1075,7 @@ pas, et la note datée est le seul signal.
 | `personnage_maitrise_choix` | Maîtrises d'armes (AA2:AV7) : plus rien ne se saisit par famille (décision R148, migration 0076, qui retire `personnage_maitrise_arme` et ses dés par famille) ; une ligne par point à choisir d'une source acquise : la source (`source` : l'id du don, ou `<classe>#maitrise-arme:<rang>` pour une ligne de `classe_maitrise_arme`, sans clé étrangère), le numéro du point dans sa part à choisir (`rang`) et la famille choisie, parmi les options de la part (`maitrise_arme_part_famille`) ; la même famille peut revenir sauf limite écrite (R150) ; jamais ARME DE MONSTRES (R45) ; la famille de la ligne `au_choix` d'une classe est aussi celle des dons qui la suivent (R151) et l'arme du bonus « de l'arme choisie » (R152). L'accessoire « Un point de maîtrise d'arme » garde sa famille dans `personnage_accessoire.arme_famille_id` (R151). Les points et les dés se calculent (`v_personnage_maitrise_arme`) |
 | `personnage_arme`, `personnage_armure_partie`, `personnage_accessoire`, `personnage_inventaire` | Équipement : catalogue de la base (armes, matériaux, améliorations, pièces élémentaires, effets d'accessoire et valeur tirée, case « Malédiction » : six emplacements, R97) et sac ; deux armes (`personnage_arme`, rangs 1 et 2), chacune **un seul modèle** (décision R167, migration 0081) : soit une arme du catalogue (`arme_id`) avec sa composition (`materiau_id`), soit une arme élémentaire (`arme_elementaire_id`, sans matériau : une pièce élémentaire transforme l'arme, qui perd tout), et un seul niveau d'amélioration (`amelioration_id`, une ligne du tableau fondu des armes, cible `arme`), qui ne sert qu'aux dégâts et à la solidité ; plus d'élément posé sur une arme du catalogue ni d'amélioration de l'élément (`amelioration_elementaire_id`, retirée ; la base vivante convertit ses fiches) ; le bouclier dans `personnage` (forme, matière, amélioration, solidité du moment : décision R96, migration 0060, qui remplace `personnage_bouclier_materiau`) ; durabilité du moment d'une arme (`personnage_arme.durabilite`, « Solidité » AK17, AX17 : NULL = à son maximum, 0 = cassée ; décision R74, migration 0045) ; l'armure portée dans `personnage` (une armure complète, son amélioration, son élément et l'amélioration de l'élément) et la solidité du moment de chacune de ses parties abîmées (`personnage_armure_partie` ; décision R95, migration 0055, qui remplace `personnage_armure`, une armure par emplacement) |
 | `personnage_ceinture` | Les 3 emplacements de la ceinture (guide « Fiche de personnage : Accessoires et Ceinture ») : objet et quantité ; demande du propriétaire, migration 0031 |
+| `personnage_action_usage` | Les compteurs entamés des actions de la fiche (décision R173, migration 0085) : la clé de l'action (`action_id`, fabriquée par le moteur, `lib/fiche-moteur.mjs#cleDAction`, sans clé étrangère : elle porte l'objet porté pour une action d'équipement) et les utilisations restantes (`restants` ≥ 0) ; une ligne absente = au maximum (le maximum est une règle, jamais stocké) : remettre au maximum, à la main ou par « Fin de combat », supprime la ligne ; clé `actions_usage` du JSON ; « Compteur d'action » de la note du tableur ; pas de case dans la fiche auto |
 | `groupe`, `groupe_membre` | Groupe de jeu (one-shot ou campagne), ses membres (MJ ou joueur) et la fiche que chacun y a inscrite |
 
 ### Les vues

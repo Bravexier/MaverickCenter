@@ -6,7 +6,7 @@ user-invocable: false
 # Base SQLite (`data/schema.sql`, `data/rows/`)
 
 ## Fichiers
-- `data/schema.sql` : la structure. 202 tables STRICT, FTS5, 38 vues, rangées en sections numérotées (en-têtes `-- N. …` du fichier) :
+- `data/schema.sql` : la structure. 203 tables STRICT, FTS5, 38 vues, rangées en sections numérotées (en-têtes `-- N. …` du fichier) :
   0 familles d'import ; 1 pages, liens, mots-clés, sources ; 2 règles de la fiche ; 3 magies et sorts ; 4 annexes des magies ; 5 dieux ;
   5 bis chronologie ; 6 classes, spécialités, capacités ; 7 races ; 8 bestiaire (invocations et créatures) ; 8 bis monstres du Bestiaire 2.0 et leurs
   capacités communes ; 9 équipement, ressources, craft, métiers ; 10 notes de cellule et écarts entre sources ; 11 tables dérivées ; 12 vues ;
@@ -39,7 +39,7 @@ user-invocable: false
 - `data/rows` s'écrit tel que l'exporteur l'écrit : jamais de résolution de conflit git à la main (relancer l'importeur ou `db:sync-pages`). Un fichier qui
   n'est pas tel que l'exporteur l'écrit bloque une mise à jour (skill `zone-mise-a-jour`).
 - Un changement de structure passe par une migration, jamais par une retouche de `data/rows`.
-- Les 22 tables de la section 13 (fiches de personnages, groupes de jeu) et les 3 de la section 14 (journal de l'édition, brouillon de la note de version)
+- Les 23 tables de la section 13 (fiches de personnages, groupes de jeu) et les 3 de la section 14 (journal de l'édition, brouillon de la note de version)
   restent vides dans `data/rows`. Les vraies fiches vivent dans la base vivante du service (skill `zone-fiches-base`, skill `zone-service`).
 - Journal de l'édition (section 14) : un lot en conflit n'est jamais effacé ni réécrit. Sa résolution (`/mise-a-jour/`, migration 0072) remplit
   `modification_lot.resolu_le`, `resolution` (les choix, JSON) et `resolu_par` (le nouveau lot normal, jamais lui-même) ; ses lignes restent
@@ -58,6 +58,7 @@ user-invocable: false
 - Provenance (`famille`, `origine`, `source_ref`) : ne sert que jusqu'à la 1.0, puis retirée (décision du propriétaire, `docs/feuille-de-route.md`). N'y rien
   investir, ne pas réparer les références incomplètes.
 - Améliorations d'arme (R167, migration 0081) : un seul tableau pour l'arme du catalogue et l'arme élémentaire. Les lignes de cible `arme` portent le coût matériel (`cout_brut`…) et le coût élémentaire (`cout_elementaire_brut`, `cout_gemmes`…) ; la cible `arme_elementaire` ne reste que dans `amelioration_total`. Type d'une famille : `arme_famille.type_elementaire_id` (NULL pour ARME DE MONSTRES et pour une famille créée sur le site de dev, R159 : aucune arme élémentaire ; le site ne le modifie pas) ; `arme_elementaire_type` et ses `_competence` et `_degats` (types physiques posés par la décision, jamais recalculés depuis `arme_degats` ; tous appliqués sauf `type_degats_au_choix` = 1, la bombe, dont le choix est `personnage_arme.type_degats_choisi`). Solidité de base : `constante_equipement` `piece_elementaire.solidite_base` (migration 0080) + `bonus_cran` de la ligne d'amélioration.
+- Compteurs d'usage des actions (R173, migration 0085) : `personnage_action_usage`, ligne absente = au maximum, maximum jamais stocké (skill `zone-fiches-base`).
 - Résistances physiques (R174, migration 0083) : `magie_resistance.cible_type` admet `'physique'`, avec `cible_physique` (`estoc`, `taille`, `frappe`) ; la contrainte nommée `magie_resistance_une_cible` veut exactement une cible renseignée, celle de `cible_type`. Seules lignes physiques : les trois vulnérabilités du Potentiel Illimité (« Surtension corporelle », texte de la magie cité tel quel dans `cible_brut`). Leur annulation en Mode Hyper (R172) n'est pas une donnée de la table.
 - Le site de dev est la source de ce qu'il modifie : une valeur de l'import se lit par `client/src/lib/historique-site.mjs` (`valeurDImport`, `lignesDImport`,
   `effectifDImport`, table `historique_modification`).
@@ -76,4 +77,4 @@ user-invocable: false
   `donnees.test.mjs` (ancres, liens de clés étrangères de l'onglet DB), `historique-site.test.mjs`, `db-index-retires.test.mjs` (migration 0073 : six
   index qu'aucun plan ne choisissait, retirés ; les lectures par clé restent des recherches par index), `db-arme-famille-nom-lecture.test.mjs` (migration 0077, R159 : `arme_famille.nom_lecture`, figé, jamais NULL ni vide,
   le nom d'import ou de création), `r160-potentiel-illimite-sans-gemme.test.mjs` (migration 0078, R160 : aucune ligne du Potentiel Illimité dans les
-  cinq tables, et une insertion ou une modification qui en pose une refusée, dans une copie), `db-armes-elementaires.test.mjs` (R167, migration 0081 : tableau fondu prouvé sur l'export du classeur, type, compétences et types physiques des 11 familles maîtrisables, aucun pour une famille créée, solidité de base, `personnage_arme` à un seul modèle, règles des armes élémentaires), `db-r174-resistances-physiques.test.mjs` (R174, migration 0083 : les trois lignes citées, aucune autre cible physique, contrainte `magie_resistance_une_cible` refusant une ligne à cible multiple ou sans cible, dans une copie), `db-r172-mode-hyper-activable.test.mjs` (R172, migration 0084 : colonnes du Mode Hyper de `personnage`, contrainte du 100 %, fiche d'avant ; skill `zone-fiches-base`).
+  cinq tables, et une insertion ou une modification qui en pose une refusée, dans une copie), `db-armes-elementaires.test.mjs` (R167, migration 0081 : tableau fondu prouvé sur l'export du classeur, type, compétences et types physiques des 11 familles maîtrisables, aucun pour une famille créée, solidité de base, `personnage_arme` à un seul modèle, règles des armes élémentaires), `db-r174-resistances-physiques.test.mjs` (R174, migration 0083 : les trois lignes citées, aucune autre cible physique, contrainte `magie_resistance_une_cible` refusant une ligne à cible multiple ou sans cible, dans une copie), `db-r172-mode-hyper-activable.test.mjs` (R172, migration 0084 : colonnes du Mode Hyper de `personnage`, contrainte du 100 %, fiche d'avant ; skill `zone-fiches-base`), `db-r173-compteurs-d-actions.test.mjs` (R173, migration 0085).

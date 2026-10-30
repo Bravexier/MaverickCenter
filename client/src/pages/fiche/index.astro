@@ -13,7 +13,7 @@ import { classeDAlignement, classeDePartie, cssDesFamilles, FAMILLES_DE_LA_FICHE
 // Fiche de personnage (demande du propriétaire) : création et modification d'un PRÉTIRÉ sur le même écran (/fiche/, /fiche/?id=<id>). Quatre zones,
 // sans cadre ni titre visibles (demandes du propriétaire) : I. l'identité (portrait, nom, surnom, origine, race, magies, classes, alignement, niveau seul) ; II. ce qu'on veut toujours
 // à portée (attributs — et, sur leur 2ᵉ ligne, AP, AM, initiative, vitesses et dégâts reçus (R98, R171) —, caractéristiques et compétences, sorts et le
-// sort préparé (R115), dons débloqués, armes avec leur solidité (R74), les trois emplacements de la ceinture) ; III. ce qui
+// sort préparé (R115), armes avec leur solidité (R74), les trois emplacements de la ceinture, les actions avec leurs compteurs puis les passifs (R173)) ; III. ce qui
 // dépend de la situation (posture, armure, accessoires (R97), inventaire juste en
 // dessous (demande du propriétaire du 2026-10-17), bouclier (R96), résistances et faiblesses) ; IV. ce qui se règle et se suit, en onglets (progression et
 // XP, choix — dont les maîtrises d'armes, demande du propriétaire du 2026-10-23 —, entraînement (R104, demande du propriétaire du 2026-10-29), notes
@@ -205,6 +205,16 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
               <p class="fiche-aide" id="ceinture-aide">3 emplacements d’objets rapides, utilisables en IC ; les carquois, sacs de bombes ou de pierres doivent être à la ceinture pour servir.</p>
             </div>
           </section>
+          {/* les actions utilisables, juste sous la ceinture (décision R173) : dons de classe Action, Actif et Réaction, don de base de la race, effets
+              d'accessoire activables, capacités des armes élémentaires et effets de l'armure élémentaire portées ; le nom d'une action à compteur la
+              consomme, « Fin de combat » remet au maximum les compteurs par combat ; refaites par src/scripts/fiche.mjs#construireActions */}
+          <section class="fiche-etape" id="etape-actions" aria-labelledby="titre-actions">
+            <h3 id="titre-actions">Actions</h3>
+            <div class="fiche-etape__corps">
+              <ul id="actions" class="dons-liste actions-liste" aria-labelledby="titre-actions"></ul>
+              <p class="actions__pied"><button type="button" id="fin-de-combat" title="Remet au maximum les compteurs « par combat » ; ceux par jour, semaine… ne remontent qu’à la main">Fin de combat</button></p>
+            </div>
+          </section>
         </div>
 
         <section class="fiche-etape zp-sorts" id="etape-sorts" aria-labelledby="titre-sorts">
@@ -222,12 +232,14 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
           </div>
         </section>
 
-        {/* rappel des dons (demande du propriétaire) : ceux de la race (don de base d'abord), puis ceux des classes, débloqués au niveau atteint */}
-        <section class="fiche-etape zp-dons" id="etape-dons" aria-labelledby="titre-dons">
-          <h3 id="titre-dons">Dons débloqués</h3>
+        {/* les passifs, juste après les actions (décision R173 ; ils remplacent les « Dons débloqués ») : ceux de la race (sans le don de base, une
+            action), puis les dons de classe débloqués qui ne sont pas des actions, puis l'équipement, ses effets tels qu'écrits */}
+        <section class="fiche-etape zp-dons" id="etape-passifs" aria-labelledby="titre-passifs">
+          <h3 id="titre-passifs">Passifs</h3>
           <div class="fiche-etape__corps">
             <div><h4 class="fiche-sous-titre">Dons raciaux</h4><ul id="dons-race" class="dons-liste" aria-label="Dons de la race"></ul></div>
             <div><h4 class="fiche-sous-titre">Dons de classe</h4><div id="dons-classes" class="dons-classes"></div></div>
+            <div><h4 class="fiche-sous-titre">Équipement</h4><ul id="passifs-equipement" class="dons-liste" aria-label="Effets de l’équipement porté"></ul></div>
             {/* les bonus d'acquis « X ou Y » des dons débloqués (décision R104) : la compétence se choisit ici */}
             <div id="acquis-choix-bloc" hidden><h4 class="fiche-sous-titre" id="titre-acquis-choix">Acquis à choisir</h4><ul id="acquis-choix" class="acquis-choix" aria-labelledby="titre-acquis-choix"></ul></div>
             <div id="acquis-non-comptes-bloc" hidden><h4 class="fiche-sous-titre" id="titre-acquis-non-comptes">Bonus d’acquis non comptés</h4><ul id="acquis-non-comptes" class="acquis-non-comptes" aria-labelledby="titre-acquis-non-comptes"></ul></div>
