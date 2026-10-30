@@ -5,9 +5,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import {
-  effetDeLArmeElementaire, infobulleDArmeElementaire, infobulleDArmure, infobulleDArmureElementaire, infobulleDeMetier, infobulleDeSort, trouver,
+  effetDeLArmeElementaire, infobulleDArme, infobulleDArmeElementaire, infobulleDArmure, infobulleDArmureElementaire, infobulleDeMetier, infobulleDeSort, trouver,
 } from '../src/lib/fiche-moteur.mjs';
 
 const regles = chargerReglesDeFiche(ouvrirBase({ sansExemples: false }));
@@ -40,6 +41,19 @@ test('infobulleDeSort : « Magie, NPM n », puis Type, Coût, Coût secondaire, 
   assert.ok(!infobulleDeSort(sansDsb, null).includes('NPM'), 'sans magie : pas de ligne de magie');
   assert.equal(infobulleDeSort(null), null);
   assert.equal(infobulleDeSort({ id: 'x', nom: 'X', niveau: 1 }), null, 'aucun texte : aucune infobulle');
+});
+
+test('infobulleDArme : « Effet : <effet> » de chaque arme du catalogue, tel qu’écrit dans la base (sans balises) ; sans effet, aucune infobulle (réponse du propriétaire)', () => {
+  const db = ouvrirBase({ sansExemples: false });
+  const effets = new Map(db.prepare('SELECT id, effet FROM arme').all().map((r) => [r.id, r.effet]));
+  assert.equal(regles.armes.length, effets.size);
+  for (const a of regles.armes) {
+    const effet = texteSansBalises(effets.get(a.id));
+    assert.equal(infobulleDArme(a), effet && effet.trim() ? `Effet : ${effet}` : null, a.id);
+  }
+  assert.ok(regles.armes.some((a) => infobulleDArme(a) === null), 'une arme sans effet : pas d’infobulle');
+  assert.ok(regles.armes.some((a) => infobulleDArme(a)?.startsWith('Effet : ')));
+  assert.equal(infobulleDArme(null), null);
 });
 
 test('infobulleDArmeElementaire (R167) : « Arme élémentaire : <magie> », puis l’effet que la fiche écrit sous la liste (capacité, « Ignore N AP », mention)', () => {
