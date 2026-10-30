@@ -238,7 +238,8 @@ n'est pas un champ inconnu : elle est ignorée (fichier exporté avant).
   valeur (des gains, une solidité saisis) est **refusée**, « champ inconnu » (`400`) : rien n'est écrit, rien n'est perdu sans
   le dire. De même pour les colonnes des migrations 0055 (l'armure), 0060 (le bouclier : `bouclier_materiau_id`, `bouclier_amelioration_id`,
   `bouclier_solidite`), 0061 (`symbiose_magie_id`, la magie de la posture Symbiose) et 0066 (`nm_mj`, les NM du MJ : à 0 ignoré, une autre valeur
-  refusée ; la page convertissant elle-même les `nm_cadeau` lus en `nm_mj`, une fiche qui a des NM du MJ ne s'enregistre pas sur cette base) ; sur une
+  refusée ; la page convertissant elle-même les `nm_cadeau` lus en `nm_mj`, une fiche qui a des NM du MJ ne s'enregistre pas sur cette base) et 0084
+  (`mode_hyper`, `mode_hyper_100`, `mode_hyper_semaine`, le Mode Hyper activable, R172 : décochés et compteur au maximum ignorés, un autre état refusé) ; sur une
   base d'avant 0060, la page convertit elle-même la fiche lue (accessoires d'avant, matériaux du bouclier) et note, datés, ce qu'elle perd. Une table de la fiche que la base n'a pas encore
   (`personnage_armure_partie`, 0055 ; `personnage_entrainement` et `personnage_acquis_choix`, 0062 ; `personnage_resistance_choix`, 0069, la
   résistance au choix du Drakos orange, liste `resistance_choix` ; `personnage_maitrise_choix`, 0076, liste `maitrise_choix`, les anciens dés laissés

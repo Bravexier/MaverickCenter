@@ -28,7 +28,7 @@ const DEPART_DES_COLONNES_RETIREES_DE_DETAIL = Object.freeze({ personnage_compet
  * (gains de niveau en deux totaux, R73 ; durabilité d'une arme, R74 ; son entraînement en texte, R71, retiré par la migration 0062 :
  * COLONNES_RETIREES), de la migration 0055 (l'armure de la fiche, R95), de la migration 0060 (le bouclier forme + matière, R96) et de la migration
  * 0061 (la magie de la Symbiose, R100), de la migration 0081 (le type de dégâts choisi d'une arme élémentaire, R167), de la migration 0066 (les NM du MJ de la fiche, R118) et de la migration 0067 (le sort préparé, son jet et sa
- * posture, R115) et de la migration 0071 (la magie d'une résistance au choix, R137). L'arme choisie d'un choix d'acquis (R119, migration 0067) n'en est
+ * posture, R115) et de la migration 0071 (la magie d'une résistance au choix, R137), et de la migration 0084 (le Mode Hyper, le Mode Hyper 100 % et le compteur de la semaine, R172). L'arme choisie d'un choix d'acquis (R119, migration 0067) n'en est
  * plus : la migration 0076 l'a retirée (R152, COLONNES_RETIREES).
  * Quand le service retombe sur sa base d'avant (reconstruction échouée, docs/serveur.md), la page à jour les envoie quand même (ficheVide met les gains à 0) :
  * une de ces colonnes que la base n'a pas est ignorée tant qu'elle ne porte rien (sa valeur de départ, ou vide : null, « "" ») ; autrement, « champ
@@ -43,6 +43,7 @@ export const DEPART_DES_COLONNES_AJOUTEES = Object.freeze({
     bouclier_materiau_id: null, bouclier_amelioration_id: null, bouclier_solidite: null,
     symbiose_magie_id: null,
     nm_mj: 0,
+    mode_hyper: 0, mode_hyper_100: 0, mode_hyper_semaine: null,
   }),
   personnage_arme: Object.freeze({ durabilite: null, type_degats_choisi: null }),
   personnage_sort: Object.freeze({ prepare: 0, prepare_jet: null, prepare_posture_id: null }),

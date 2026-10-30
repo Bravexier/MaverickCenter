@@ -11,6 +11,7 @@ import { groupesDeChoix, typeDeDon } from './classe-dons.mjs';
 import { ditClasseMagique } from './classe-magique.mjs';
 import { COULEURS_ALIGNEMENTS } from './caracteristiques-postures.mjs';
 import { effetDePosture } from './posture-texte.mjs';
+import { armureNaturelleEcrite, effetsDuModeHyper } from './mode-hyper-texte.mjs';
 import { CLASS_GROUPS, classCategory } from './class-groups.mjs';
 import { competencesDArme, durabiliteDeLArme, porteeDeLArme } from './arme-champs.mjs';
 import { DURABILITE_MIN } from './arme-forge.mjs';
@@ -75,6 +76,10 @@ const CONSTANTES = [
   // inventaire et ceinture (décisions R88, R89, migration 0048)
   'inventaire.colonnes_de_depart', 'inventaire.lignes_par_colonne', 'inventaire.colonnes_max', 'inventaire.emplacements_force_2',
   'inventaire.emplacements_force_3', 'inventaire.emplacements_force_4', 'inventaire.force_tout_l_inventaire', 'ceinture.exemplaires_par_emplacement',
+  // le Mode Hyper activable (décision R172) : ses bonus (R5 : « 15/7 »), sa consommation par tour, son coût de sortie du Mode Hyper 100 % (arrondis à
+  // l'inférieur, R175), son usage « 1 fois toutes les semaines » ; telles qu'écrites par la page « Liste des effets mode hyper » (Mode hyper et co)
+  'mode_hyper.degats_physique', 'mode_hyper.degats_magie_mono', 'mode_hyper.degats_magie_bi', 'mode_hyper.soin_magique',
+  'mode_hyper.conso_chakra_pct_max_par_tour', 'mode_hyper.usage_par_semaine', 'mode_hyper_100.degats_bonus', 'mode_hyper_100.cout_chakra_pct_max',
 ];
 
 /** @param {import('node:sqlite').DatabaseSync} db */
@@ -180,9 +185,12 @@ function reglesDeLaBase(db) {
       // ses bonus d'acquis (« Magie, Concentration, Survie = 5% d'acquis » : lib/acquis-texte.mjs, décision R104)
       const sorts = bonusDeSortsEcrits(d.texte);
       const acquis = horsDuTableau(lireAcquis(d.texte));
+      // l'armure naturelle qu'il écrit (« +2 Armure magique (+2 tous les 5 niveaux) » : lib/mode-hyper-texte.mjs), dans l'armure de base de la fiche et
+      // gardée par l'effet de Mode Hyper qui la nomme (décisions R172, Marcass : « Oui, le compter » ; R177 : « Oui, toujours »)
+      const armure = armureNaturelleEcrite(d.texte);
       return {
         id: d.id, forme: d.forme, nom: d.nom, etiquette: d.etiquette, texte: d.texte, ethnie_id: d.ethnie_id, ...resistancesEcrites(resistancesDuTexte(d.texte)),
-        ...(sorts.length ? { sorts } : {}), ...(acquis.length ? { acquis } : {}),
+        ...(sorts.length ? { sorts } : {}), ...(acquis.length ? { acquis } : {}), ...(armure.length ? { armure_naturelle: armure } : {}),
       };
     });
   const colonnesDuTableau = parCle(lignes(db, 'SELECT race_id, rang, libelle FROM race_don_tableau_colonne ORDER BY race_id, rang'), 'race_id');
@@ -519,12 +527,18 @@ function reglesDeLaBase(db) {
   const sectionCent = /## Mode Hyper 100 ?%\s*\n([\s\S]*?)(?=\n## |$)/.exec(pageHyper)?.[1] ?? '';
   const niveauCent = /disponible qu['’]au niveau (\d+)/.exec(sectionCent)?.[1];
   if (!niveauHyper || !niveauCent) throw new Error('page « Liste des effets mode hyper » : niveaux du Mode Hyper et du Mode Hyper 100 % introuvables');
+  const effetsHyperDesMagies = lignes(db, "SELECT magie_id, variante, effet FROM mode_hyper_effet WHERE version = 'onglet_magie' AND portee = 'magie'");
   const mode_hyper = {
     niveau: Number(niveauHyper),
     effets: lignes(db, "SELECT effet FROM mode_hyper_effet WHERE version = 'fiche' AND portee = 'general' ORDER BY rang").map((r) => r.effet),
-    magies: Object.fromEntries([...parCle(lignes(db, "SELECT magie_id, variante, effet FROM mode_hyper_effet WHERE version = 'onglet_magie' AND portee = 'magie'"), 'magie_id')]
+    magies: Object.fromEntries([...parCle(effetsHyperDesMagies, 'magie_id')]
       .map(([id, rows]) => [id, Object.fromEntries(rows.map((r) => [r.variante, r.effet]))])),
-    races: Object.fromEntries(lignes(db, "SELECT race_id, nom, effet FROM mode_hyper_effet WHERE version = 'onglet_race'").map((r) => [r.race_id, { nom: r.nom, effet: r.effet }])),
+    // ce que l'effet de chaque magie change aux valeurs de la fiche (décision R172 : lib/mode-hyper-texte.mjs, lu dans le texte, jamais par le nom),
+    // par variante comme `magies` ; [] pour un effet seulement affiché
+    chiffres_magies: Object.fromEntries([...parCle(effetsHyperDesMagies, 'magie_id')]
+      .map(([id, rows]) => [id, Object.fromEntries(rows.map((r) => [r.variante, effetsDuModeHyper(r.effet)]))])),
+    races: Object.fromEntries(lignes(db, "SELECT race_id, nom, effet FROM mode_hyper_effet WHERE version = 'onglet_race'")
+      .map((r) => [r.race_id, { nom: r.nom, effet: r.effet, chiffres: effetsDuModeHyper(r.effet) }])),
     // la couleur des deux cases : la classe du mode (lib/palette-css.mjs, famille `mode`), jamais un hex
     classe: classeDuModeHyper('hyper'),
     cent: {

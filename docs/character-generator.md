@@ -253,8 +253,32 @@ bouton (au-dessus quand la place manque), bornée à l'écran, téléphone compr
 - **Postures et Mode Hyper** : une **case par posture**, ses effets toujours lisibles, **avantages en vert, inconvénients en rouge** (décision R47,
   `posture_effet.inconvenient`), sur deux lignes : Offensif, Neutre, Défensif, puis Focus, Vigilance, Symbiose (`regles.ordre_postures`) ; un clic choisit la
   posture du moment. À droite, une fois débloqués (`modeHyperDe` : niveaux 2 et 10, page « Liste des effets mode hyper »), les cases du **Mode Hyper** (effets
-  de base de la fiche, décision R5 ; effet de la magie, « Mono-Magie » ou « Bi-magie » ; effet de la race, R13) et du **Mode Hyper 100 %**, pour lecture,
-  chacune dans la classe de son mode (`mode_hyper.classe`, `mode_hyper.cent.classe` de `regles.json` : famille `mode` de la palette).
+  de base de la fiche, décision R5 ; effet de la magie, « Mono-Magie » ou « Bi-magie » ; effet de la race, R13) et du **Mode Hyper 100 %**,
+  chacune dans la classe de son mode (`mode_hyper.classe`, `mode_hyper.cent.classe` de `regles.json` : famille `mode` de la palette). **Activables**
+  (décision R172, « Deux cases activables, comme les postures ») : le nom de la case est le bouton qui la coche (`aria-pressed`, pleine comme la posture
+  choisie), enregistrée avec la fiche (`personnage.mode_hyper`, `mode_hyper_100`, migration 0084 ; `modeHyperApres`) ; le Mode Hyper 100 % ne se coche
+  qu'avec le Mode Hyper, décocher le Mode Hyper décoche aussi le 100 % ; une case cochée au-dessus du niveau du personnage est décochée
+  (`modeHyperValable`). Sous le Mode Hyper, le **compteur « une fois par semaine »** (« Oui, compteur manuel » : `personnage.mode_hyper_semaine`, NULL au
+  maximum, la constante `mode_hyper.usage_par_semaine`) : consommé à l'activation, remonté seulement à la main (boutons − et +, `semaineDuModeHyperApres`) ;
+  à 0, la case est grisée, comme une action épuisée. **Boutons des jauges** (R172, R175, R18 ; fonctions pures `tourDeModeHyper`, `finDuModeHyperCent`,
+  `payerDuChakra`) : « Tour de Mode Hyper » (Mode Hyper actif hors 100 %) retire ⌊10 % du chakra maximum⌋ ; « Fin du Mode Hyper 100 % » consomme
+  ⌊75 % du chakra maximum⌋, décoche le 100 % et laisse le Mode Hyper (65 de chakra maximum : 6 par tour, 48 à la sortie) ; le chakra qui manque se paie
+  2 santé pour 1 chakra, le chakra ne descend pas sous 0, la santé peut devenir négative (R171) ; le coût en infobulle. Le dépassement de durée (R161)
+  n'est pas appliqué.
+  **Le Mode Hyper actif recalcule** (`modeHyperDuMoment`, constantes `mode_hyper.*` de la base) : dégâts des armes +15 ; dégâts des sorts de ses magies
+  +15 avec une seule magie, +7 avec deux (R5 ; le Potentiel Illimité : tous ses sorts) ; soins des sorts +15 ; coût des sorts : 0 chakra (R18 ; le coût
+  secondaire n'est pas visé ; un sort de la Corruption est gratuit dans les deux monnaies, chakra et corruption : « Oui, aussi à 0 ») ; résistances, origine « Mode Hyper » (voir « Résistances et faiblesses ») ;
+  les effets de magie et de race lus dans le texte des onglets (`lib/mode-hyper-texte.mjs`, `mode_hyper.chiffres_magies` et `races[].chiffres` de
+  `regles.json`, jamais par le nom ; l'Espace/Temps : l'onglet de la magie) : Glace, AM de base +25 (+10 avec deux magies) ; Terre, AP de base +25
+  (+10) ; Humain, +1 dé à toutes les attaques (armes et sorts, du type du premier dé, rien sur un sort sans dé) et +2 en Vitesse ; Nain, +2 dés aux
+  armes ; Felfe, +2 dés aux dégâts et aux soins des sorts ; Jackalope, +3 en Vitesse ; Marcass, l'AP et l'AM naturels même contre une attaque qui
+  ignore l'armure (voir « Défense et dégâts reçus ») ; les autres effets restent affichés. La vitesse du moment (`attributsDe`, `vitesseModeHyper`) et
+  les dégâts du moment changent, pas les valeurs de la fiche (tableur). **Le Mode Hyper 100 % actif** : les avantages chiffrés de toutes les postures se
+  cumulent (`postureDuMoment`, `cent` ; R100), sans leurs inconvénients (ni −10 de l'Offensif, ni ÷ 2 du Défensif, armes utilisables, l'autre magie
+  active : R111, R112 levés) ; la posture cochée est ignorée tant qu'il dure (ses cases toutes pleines, leurs inconvénients barrés) ; sur un même dé, le
+  cran de Focus puis le maximum de l'Offensif (6D6+4 → 6D8+4 → 52, l'accessoire qui monte le dé compris) ; le Défensif à 2 × ⌈N ÷ 4⌉ (R175) ; la
+  Symbiose pour ses deux magies (bonus de dégâts et de soins, immunité ; son AM une fois) ; +10 dégâts à toutes les attaques, en plus du Mode Hyper ; la
+  surcharge des sorts est seulement affichée.
 - **Méditation ou Repos** : le don de base de la race s'affiche sous son nom (`donDeBase`), en tête des dons raciaux.
 - **Compétences** : six blocs sur deux colonnes remplies de haut en bas, comme la fiche auto : Force, Volonté, Intelligence ; Perception, Social, Agilité.
 - **Métier** (décisions R33 à R40) : choisi dans la liste de l'identité, chaque métier avec ce qu'il apporte en infobulle (« Listes avec infobulles »,
@@ -294,8 +318,11 @@ bouton (au-dessus quand la place manque), bornée à l'écran, téléphone compr
   sur elle) ; le détail des crans en infobulle (`resistancesDe`). Un type physique suit les mêmes paliers et additionne ses crans comme une magie ; à 0,
   il n'a pas de ligne, comme une magie sans cran. Sa seule source aujourd'hui : le malus du **Potentiel Illimité** (toujours la magie innée, R176), un
   cran de moins à chacun (« Surtension corporelle », `magie_resistance` de type `physique` : la Vulnérabilité, × 2 ; origine « Potentiel Illimité
-  (magie innée) ») ; ni race, ni don (« Squelettique » et « Gluant » du Mage Bleu jouent sur l'armure), ni équipement. Le Mode Hyper l'annule (R172) :
-  pas encore branché, l'option `sansMalusPhysique` de `resistancesDe` et de `degatsRecus` en est le point d'entrée. Une cible additionne ses crans (guide « Créer sa fiche », Tableau Résistances/Faiblesses :
+  (magie innée) ») ; ni race, ni don (« Squelettique » et « Gluant » du Mage Bleu jouent sur l'armure), ni équipement. Le Mode Hyper actif l'annule
+  (R172 : `sansMalusPhysique` de `resistancesDe` et de `degatsRecus`, passé par le Mode Hyper, l'option le force ou l'empêche), seulement les crans
+  négatifs de la liste du Potentiel Illimité. **Le Mode Hyper actif** (décision R172, origine « Mode Hyper », pas dans l'export : `avecLeModeHyper`) : une
+  seule magie, l'immunité à sa magie innée ; deux magies, le palier Grande résistance fixé à chacune (un palier, pas un cran), sauf une magie déjà en
+  immunité, qui le reste ; le Potentiel Illimité, +1 cran à chacune des quatorze magies et son malus physique annulé. Une cible additionne ses crans (guide « Créer sa fiche », Tableau Résistances/Faiblesses :
   deux résistances font une grande résistance) : ceux des listes de la magie innée et de la magie acquise (`magie_resistance`, les listes des pages de magie et
   du guide ; l'Arcane et la Corruption se résistent l'une à l'autre, décision R90), et ceux que les dons écrivent
   (`lib/resistance-texte.mjs` : dons de la race et de l'ethnie de l'onglet, R13 — « 1 cran de résistance en plus à la magie innée et son altération d'état »,
@@ -574,7 +601,15 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   puis palier » ; le Potentiel Illimité, × 2), puis l'élément le palier de résistance à sa magie, ou l'immunité de la Symbiose (R100) ; un coup
   physique avec un élément prend l'AP, puis les deux paliers, qui se multiplient (« Ils se multiplient » : 30 entrants, AP 4, × 2, grande résistance au
   Feu ÷ 3 → 26 × 2 ÷ 3 = 17 ; 30 en Estoc, armure qui résiste à l'estoc, AP 4 → 8, × 2 → 44), arrondis à l'inférieur une seule fois, à la fin (R175) ;
-  « Magique » n'a pas de palier physique ; pas de case pour les dons d'attaquant qui ignorent une résistance physique (« Pas de case »). Un type physique sans élément et « Magique » + élément donnent exactement les
+  « Magique » n'a pas de palier physique ; pas de case pour les dons d'attaquant qui ignorent une résistance physique (« Pas de case »). La case
+  **« L'attaque ignore l'armure »** (décision R172, option `ignoreArmure`) : l'AP ou l'AM ne compte pas (ni l'armure portée, ni sa résistance au type, ni
+  le bouclier), sauf pour un personnage dont l'effet de Mode Hyper actif écrit « Les AP et AM naturels s'ajoutent à toute réduction de dégâts »
+  (Marcass, « Même si l'armure est ignorée ») : l'AP ou l'AM de sa race et de son ethnie comptent encore, ceux qu'écrivent ses dons de race et d'ethnie
+  compris (« Oui, le compter » : « +2 Armure magique (+2 tous les 5 niveaux) », lu dans le texte par `lib/mode-hyper-texte.mjs#armureNaturelleEcrite`,
+  au niveau global comme R110, 2 + 2 × ⌊N ÷ 5⌋ : `armureNaturelleDe`) ; sans la case, rien ne compte deux fois. Ce don est aussi, toujours, dans
+  l'armure de base de la fiche (décision R177, « Oui, toujours » : `attributsDe`, `armureDesDonsDeRace` ; l'AM d'un Marcass : 2 aux niveaux 1 à 4, 4 aux niveaux 5 à 9,
+  6 au niveau 10 ; l'« AM Base » du tableur, AA24, l'écrit) ; avec la case, il ne compte qu'une fois. En
+  Mode Hyper 100 %, l'immunité de la Symbiose vaut pour ses deux magies. Un type physique sans élément et « Magique » + élément donnent exactement les
   dix-sept types d'avant (`typesDeDegats`, `typeDeDegatsDuCoup`, `test/fiche-degats-recus.test.mjs`). Les étapes en infobulle, rien d'enregistré (ni
   la partie touchée, ni le coup).
 - **« Appliquer »** (décision R171, `appliquerDegatsRecus`, `degatsALaBarriere`) : le résultat baisse d'abord la **barrière du moment** ; si elle passe
@@ -659,8 +694,7 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   dégâts, qui augmente… ») n'est pas comptée, pas même sa base : « Non compté (progression par niveau à préciser) » dans l'infobulle, jusqu'à ce que sa
   lecture soit ajoutée. Ne sont pas encore lus du tout (rien n'est compté, pas même la base) :
   « +2 aux dégâts avec les armes, qui augmente de +2 tous les 5 niveaux globaux » (Orios, Drassah'thac Est : des dons de race, quand
-  `degatsDArme` ne lit que les dons de classe), « +2 Armure magique (+2 tous les 5 niveaux) » des Marcass (la colonne `ethnie.bonus_am` est vide :
-  une donnée à fournir), « Écaille solide » de la Lamia (AP par partie), « Sournois » du Tueur (« +2d4 dégâts tous les 5 niveaux de classe ») et
+  `degatsDArme` ne lit que les dons de classe), « Écaille solide » de la Lamia (AP par partie), « Sournois » du Tueur (« +2d4 dégâts tous les 5 niveaux de classe ») et
   les tours des Rages.
 - **Contrôle** : à chaque enregistrement, le service rend les règles de `v_personnage_controle` que la fiche enfreint, affichées en français
   (`lib/fiche-controles.mjs`) : elles signalent, elles n'empêchent jamais d'enregistrer, et toute fiche est contrôlée, même inachevée (une fiche n'a
@@ -775,7 +809,8 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   « NM du MJ : 2 » ; un classeur d'avant les écrit sort par sort, « Boule de feu (livre 1, MJ 1) », relus comme NM du MJ de la fiche), magie de la symbiose (R100 : « Magie de la symbiose : Glace », relue si c'est une magie du personnage), sort
   préparé (R115 : « Sort préparé : Boule de feu (jet 57, posture Offensif) », le nom seul sans jet ni posture ; relu si c'est un sort de la liste que
   le don de préparation de la fiche autorise, son jet de 1 à 100 et sa posture une des six, sinon perdu et dit : `texteDuSortPrepare`,
-  `lireSortPrepare`), dons, sorts, objets et événements au-delà des places du modèle : 7 dons par classe, 20 sorts,
+  `lireSortPrepare`), Mode Hyper (R172 : « Mode Hyper : actif, 100 %, semaine 0/1 », écrite seulement quand il est actif ou que le compteur n'est pas
+  au maximum ; relue si le niveau du classeur le débloque, sinon perdu et dit : `texteDuModeHyper`, `lireModeHyper`), dons, sorts, objets et événements au-delà des places du modèle : 7 dons par classe, 20 sorts,
   48 objets, 4 événements ; un événement par ligne non vide de `evenements`, blancs de bord retirés : lignes vides et retraits ne reviennent pas) va dans la case **NOTE**, sous les notes du joueur et la ligne `MARQUEUR_DES_NOTES`, en lignes « Clé : valeur » que
   l'import relit ; suivent des lignes d'information refaites à chaque export (résistances au choix, « Mode Hyper 100 % : débloqué », choix à faire),
   que l'import ignore. La note ne porte que des **données du personnage**, jamais un texte de règles. Le classeur est écrit par
@@ -989,7 +1024,7 @@ pas, et la note datée est le seul signal.
 | Table | Contenu (cellules de la fiche) |
 | --- | --- |
 | `utilisateur`, `utilisateur_role` | Personne connectée (identifiant Discord, nom d'affichage) et ses rôles : connexion Discord prévue à la 1.0 (`feuille-de-route.md`) |
-| `personnage` | Nature (joueur ou prétiré), propriétaire, visibilité ; identité (F1, P1, F3), race (I2), ethnie (C40), magies innée et acquise (S2, S3), point de caractéristique d'une magie « au choix » (Potentiel Illimité), dieu choisi (S5), métier (C41), mode mono/bi-classe (BDD!K26), XP (S11), scores d'alignement L/C/B/M (L5:O5), bourse PP/RO/RF (I6, N6, T6), ambidextrie (AU8), classe de bouclier (AA26), valeurs courantes (santé, chakra, barrière, corruption, 4ᵉ barre), notes et événements (plus de statut depuis la migration 0038) ; **portrait** et son cadrage (demande du propriétaire, migration 0031) ; **gains de niveau** en deux totaux, `gains_sante` et `gains_chakra` (la santé et le chakra gagnés par les niveaux atteints, décision R73) : migration 0045, qui a remplacé la table `personnage_progression` (une ligne par niveau) par la somme de ses lignes (l'entraînement en texte, `entrainement`, ajouté par la même migration (R71), est retiré par la migration 0062 : `personnage_entrainement`) ; les **NM du MJ**, `nm_mj`, pour toute la fiche (décision R118, migration 0066) |
+| `personnage` | Nature (joueur ou prétiré), propriétaire, visibilité ; identité (F1, P1, F3), race (I2), ethnie (C40), magies innée et acquise (S2, S3), point de caractéristique d'une magie « au choix » (Potentiel Illimité), dieu choisi (S5), métier (C41), mode mono/bi-classe (BDD!K26), XP (S11), scores d'alignement L/C/B/M (L5:O5), bourse PP/RO/RF (I6, N6, T6), ambidextrie (AU8), classe de bouclier (AA26), valeurs courantes (santé, chakra, barrière, corruption, 4ᵉ barre), notes et événements (plus de statut depuis la migration 0038) ; **portrait** et son cadrage (demande du propriétaire, migration 0031) ; **gains de niveau** en deux totaux, `gains_sante` et `gains_chakra` (la santé et le chakra gagnés par les niveaux atteints, décision R73) : migration 0045, qui a remplacé la table `personnage_progression` (une ligne par niveau) par la somme de ses lignes (l'entraînement en texte, `entrainement`, ajouté par la même migration (R71), est retiré par la migration 0062 : `personnage_entrainement`) ; les **NM du MJ**, `nm_mj`, pour toute la fiche (décision R118, migration 0066) ; le **Mode Hyper** et le **Mode Hyper 100 %** du moment, `mode_hyper` et `mode_hyper_100` (0/1, décision R172, migration 0084 ; le 100 % exige le Mode Hyper : contrainte `personnage_mode_hyper_100_avec_mode_hyper`, la base ne décoche rien d'elle-même ; les niveaux qui les débloquent sont au moteur), et le compteur « une fois par semaine », `mode_hyper_semaine` (les utilisations qui restent, NULL au maximum), dans la note du tableur (« Mode Hyper : actif, 100 %, semaine 0/1 ») |
 | `personnage_partage` | Utilisateurs à qui le propriétaire montre sa fiche |
 | `personnage_classe` | Classes 1 et 2 (A9, A11) et leur spécialité (choisie au niveau de classe 10) |
 | `personnage_caracteristique` | Valeur de base des six caractéristiques (E18…U19) et leurs **croix** (cases H18, I18… ; 0 à 2, décision R19 : 1 croix = −20 % à tout test de la caractéristique, 2 = plus utilisable) |
