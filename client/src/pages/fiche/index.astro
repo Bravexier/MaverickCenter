@@ -379,6 +379,9 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
               {/* la spécialité de chaque classe qui y a droit, aussi choisie ici (demande du propriétaire : « le doubler dans le menu de choix ») */}
               <div id="choix-specialites" class="choix-specialites" hidden></div>
               <div><h4 class="fiche-sous-titre">Dons de classe à choisir</h4><div id="dons" class="fiche-etape__dons"></div></div>
+              {/* l'entrée qu'obtient chaque don « Variable » du Mage Bleu (décision R181) : une entrée du tableau du bas de la classe, de la magie innée (ou
+                  acquise pour Secondaire), chacune une seule fois ; remplis par src/scripts/fiche.mjs#construireDonsObtenus */}
+              <div id="dons-obtenus-bloc" hidden><h4 class="fiche-sous-titre">Dons obtenus (dons « Variable »)</h4><div id="dons-obtenus" class="fiche-etape__dons"></div></div>
             </div>
             {/* les maîtrises d'armes, sur toute la largeur du panneau, sous les deux piles (demande du propriétaire du 2026-10-23 : « La partie maitrise
                 d'arme vont déscendre dans l'encart des "choix" ») ; leur rendu ne change pas (décision R148, variante A de la maquette retenue par le

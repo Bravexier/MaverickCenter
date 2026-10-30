@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 87;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 88;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -1462,6 +1462,46 @@ CREATE TABLE classe_annexe (
 ) STRICT, WITHOUT ROWID;
 
 CREATE INDEX classe_annexe_libelle ON classe_annexe (libelle_cle);
+
+-- Les entrées du tableau libre, une par ligne « (Type) Nom. Effet » du texte d'une ligne de classe_annexe (décision R181, migration 0088 : « Il devra
+-- choisir l'un dons disponible en bas de la fiche de la classe du mage bleu, limité sa magie innée (sauf mention contraire) pour le don "secondaire". »).
+-- Mage Bleu : 54 entrées, 3 ou 4 par magie (Arcane et Espace/Temps en ont 3). Découpage sans rien réécrire : la ligne de la source est exactement
+-- type_brut || ' ' || nom || '. ' || effet, et les lignes d'une même ligne de classe_annexe, jointes par un saut de ligne dans l'ordre de `rang`,
+-- redonnent son texte (test/db-r181-dons-variables.test.mjs). Le texte parle de « cette créature » : il est cité tel quel. La magie d'une entrée est
+-- celle de sa ligne (classe_annexe.magie_id), jamais recopiée ici. R67 laisse ce tableau à part des capacités de monstre communes.
+-- id = '<classe_id>#entree:<libelle_cle de la ligne>:<normalize(nom) à la création>' (« classes/mage-bleu#entree:sang:temeraire »), figé : un nom
+-- corrigé garde son id. Les choix des fiches : personnage_don_obtenu.
+CREATE TABLE classe_annexe_entree (
+  id             TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0),
+  classe_id      TEXT    NOT NULL,
+  annexe_rang    INTEGER NOT NULL,                                   -- la ligne du tableau (classe_annexe.rang), donc sa magie
+  rang           INTEGER NOT NULL CHECK (rang >= 1),                 -- position de l'entrée dans le texte de la ligne, de haut en bas
+  nom            TEXT    NOT NULL CHECK (length(nom) > 0),           -- tel qu'écrit, entre la parenthèse et le premier « . » : « Attrape-moi ! », « 25h »
+  nom_cle        TEXT    NOT NULL CHECK (nom_cle NOT GLOB '*[^a-z0-9-]*' AND nom_cle NOT GLOB '*--*' AND nom_cle NOT GLOB '-*' AND nom_cle NOT GLOB '*-'),   -- normalize(nom)
+  type           TEXT    NOT NULL CHECK (type IN ('passif', 'actif', 'action', 'reaction')),   -- premier mot de type_brut, sans accent ni casse (comme capacite.type)
+  type_brut      TEXT    NOT NULL CHECK (length(type_brut) > 0),     -- l'en-tête tel qu'écrit, parenthèses comprises : « (Actif 2 fois/combat) », « (Passif] » (Terre)
+  limite_brute   TEXT,                                               -- la limite de l'en-tête, telle qu'écrite : « 2 fois/combat », « 1 fois/tour » ; NULL sans limite
+  limite_nombre  INTEGER CHECK (limite_nombre >= 1),                 -- N de « N fois/période » (comme capacite.limite_nombre) ; NULL pour toute autre forme
+  limite_periode TEXT,                                               -- période de cette limite, telle qu'écrite (« combat », « tour ») ; NULL avec limite_nombre
+  effet          TEXT    NOT NULL CHECK (length(effet) > 0),         -- le reste de la ligne, tel qu'écrit (« cette créature »…)
+  origine        TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'classes'),
+  source_ref     TEXT    NOT NULL CHECK (length(source_ref) > 0),    -- la plage de la ligne du tableau (celle de classe_annexe)
+  remarque       TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
+  FOREIGN KEY (classe_id, annexe_rang) REFERENCES classe_annexe (classe_id, rang),
+  UNIQUE (classe_id, annexe_rang, rang),
+  CHECK ((limite_nombre IS NULL) = (limite_periode IS NULL)),
+  CHECK (limite_nombre IS NULL OR limite_brute IS NOT NULL)
+) STRICT, WITHOUT ROWID;
+
+-- La liste d'un don « Variable » (capacite.type = 'variable' ; décision R181, migration 0088) : le don obtient une entrée du tableau libre de sa classe
+-- (classe_annexe_entree), sur la ligne de la magie que son texte vise. `magie` : 'innee' (« lié à sa magie innée » : Mimétisme, Mime, Principale,
+-- Ultime raison) ou 'acquise' (« lié à sa magie acquise » : Secondaire, la « mention contraire » de R181 ; sans magie acquise, il ne se choisit pas :
+-- règle don_obtenu_sans_magie_acquise de v_personnage_controle). Écrite par la migration d'après le texte du don, relu par
+-- test/db-r181-dons-variables.test.mjs ; un don « Variable » créé sur le site de dev n'y est pas (il n'obtient rien).
+CREATE TABLE capacite_variable (
+  capacite_id  TEXT    NOT NULL PRIMARY KEY REFERENCES capacite(id) ON DELETE CASCADE,
+  magie        TEXT    NOT NULL CHECK (magie IN ('innee', 'acquise'))
+) STRICT, WITHOUT ROWID;
 
 -- ====================================================================================================================
 -- 7. RACES, ETHNIES, ACCESSIBILITÉS (famille « races »)
@@ -4324,6 +4364,22 @@ CREATE TABLE personnage_capacite (
 
 CREATE INDEX personnage_capacite_capacite ON personnage_capacite (capacite_id);
 
+-- Don obtenu par un don « Variable » du Mage Bleu (décision R181, migration 0088 ; pas de case dans la fiche auto V15.2.2) : une ligne par don
+-- « Variable » (capacite_variable) qui a son choix : `source`, l'id du don, et `entree_id`, l'entrée du tableau libre de la classe
+-- (classe_annexe_entree) qu'il obtient. Un choix par don (clé primaire) ; « chaque entrée ne se prend qu'une fois » (R181) : une entrée par fiche
+-- (UNIQUE). Rien d'autre n'est refusé ici, car la magie et le niveau changent : la bonne liste (sa magie innée, ou acquise pour Secondaire) et le don
+-- encore acquis sont des règles de v_personnage_controle (don_obtenu_hors_liste, don_obtenu_source_perdue), qui signalent un choix gardé sans effet,
+-- comme les maîtrises (R148). « (Ne peut pas être changé une fois choisi) » n'est qu'un rappel (R181) : le choix reste modifiable.
+CREATE TABLE personnage_don_obtenu (
+  personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+  source         TEXT    NOT NULL REFERENCES capacite(id),               -- le don « Variable » (capacite_variable.capacite_id)
+  entree_id      TEXT    NOT NULL REFERENCES classe_annexe_entree(id),   -- l'entrée obtenue
+  PRIMARY KEY (personnage_id, source),
+  UNIQUE (personnage_id, entree_id)
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX personnage_don_obtenu_source ON personnage_don_obtenu (source);   -- « les fiches qui ont ce don » (retrait d'un don, R42)
+
 -- « LISTE DE SORTS » (AA55:AY74) : sorts de la magie innée ou acquise, avec leur niveau de maîtrise (« NM », AY). Un NM vient d'un niveau (au plus niveau
 -- global − 1 sur un sort, BDD!BB6, et au plus les NM gagnés en tout), d'un livre de sort (un seul par sort, lié à ce sort : page « Livre / Parchemin ») ou
 -- d'un cadeau du MJ ; un sort a au plus 3 NM en tout (regle_constante 'sort.nm_max', décision R26). Type, coût, portée, zone et effets se lisent dans `sort`.
@@ -4493,7 +4549,8 @@ CREATE TABLE personnage_ceinture (
 -- sélectionner pour les "consommer" (et griser si plus utilisable). Un bouton "fin de combat" permet de remettre tous les compteur X/combat au maximum.
 -- Le compteur 1/ jour / semainee lui ne peut que remonter manuellement. » ; « les compteurs s'enregistrent avec la fiche »). Une ligne par action à
 -- limite lisible dont le compteur est entamé : `action_id`, la clé de l'action fabriquée par le moteur de la fiche (lib/fiche-moteur.mjs : un don de
--- classe, le don de base de la race, l'effet d'un accessoire, une capacité d'une arme élémentaire, un effet de l'armure élémentaire ; un don présent dans
+-- classe, le don de base de la race, l'effet d'un accessoire, une capacité d'une arme élémentaire, un effet de l'armure élémentaire, une entrée du tableau du Mage Bleu obtenue
+-- par un don « Variable » (`entree:<id>`, décision R181) ; un don présent dans
 -- deux classes d'un bi-classé a un compteur par identifiant de don) ; pas de clé étrangère : l'action dépend de l'équipement porté et de l'état de la
 -- fiche, et une clé sans action correspondante est ignorée par la page. `restants` : les utilisations qui restent (entier >= 0 ; 0 = action grisée).
 -- Une ligne absente = compteur au maximum, comme personnage.mode_hyper_semaine NULL (R172) : le maximum est une règle (limite lue dans le texte du don,
@@ -4555,7 +4612,7 @@ CREATE VIEW v_personnage_metier_bonus AS
 -- Dons acquis d'une fiche (décision R32, migration 0076) : le miroir de lib/fiche-moteur.mjs#donsAcquis. Pour chaque classe prise qui a des niveaux
 -- (niveau de classe >= 1, v_personnage_niveau ; la seconde d'un mono-classe n'en a qu'au niveau global 11, R2), ses dons jusqu'au niveau de classe
 -- atteint, de sa spécialité quand ils en ont une (celle de la fiche), et, pour un don à choix (nature 'choix'), seulement s'il est choisi
--- (personnage_capacite). Sert aux sources de maîtrise d'arme (R148) et aux NM gagnés des dons (R154).
+-- (personnage_capacite). Sert aux sources de maîtrise d'arme (R148), aux NM gagnés des dons (R154) et aux dons « Variable » du Mage Bleu (R181).
 CREATE VIEW v_personnage_don_acquis AS
   SELECT pc.personnage_id, pc.rang AS classe_rang, pc.classe_id, c.id AS capacite_id
   FROM personnage_classe pc
@@ -4665,7 +4722,7 @@ CREATE VIEW v_groupe_controle AS
 
 -- Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi.
 -- Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45, R73, R95, R96,
--- R100, R104, R118, les maîtrises d'armes de R148 à R151, R154, l'armure de R165 et les armes élémentaires de R167) ; ce qui
+-- R100, R104, R118, les maîtrises d'armes de R148 à R151, R154, l'armure de R165, les armes élémentaires de R167 et les dons « Variable » de R181) ; ce qui
 -- demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité, poids d'armure portable de R165) n'est pas ici. Toute fiche est
 -- contrôlée, même inachevée : il n'y a plus de statut (demande du propriétaire, migration 0038) ; une ligne signale, elle n'empêche pas d'enregistrer.
 CREATE VIEW v_personnage_controle AS
@@ -4971,6 +5028,44 @@ CREATE VIEW v_personnage_controle AS
   SELECT m.personnage_id, 'maitrise_plafond', m.arme_famille_id || ' = ' || m.points || ' / ' || m.points_comptes
   FROM v_personnage_maitrise_arme m
   WHERE m.points > m.points_comptes
+  UNION ALL
+  -- Dons « Variable » du Mage Bleu (décision R181) : un don acquis (v_personnage_don_acquis) de capacite_variable obtient une entrée du tableau libre
+  -- de sa classe (classe_annexe_entree), sur la ligne de sa magie innée, ou acquise pour Secondaire (capacite_variable.magie). Don qui vise la magie
+  -- acquise sans magie acquise : il ne se choisit pas (détail : le don)
+  SELECT a.personnage_id, 'don_obtenu_sans_magie_acquise', a.capacite_id
+  FROM v_personnage_don_acquis a
+  JOIN capacite_variable v ON v.capacite_id = a.capacite_id
+  JOIN personnage p ON p.id = a.personnage_id
+  WHERE v.magie = 'acquise' AND p.magie_acquise_id IS NULL
+  UNION ALL
+  -- Don acquis sans choix, quand sa liste garde une entrée que la fiche n'a pas prise (« chaque entrée ne se prend qu'une fois ») : sans entrée libre
+  -- (une magie à 3 entrées pour 4 dons « Variable », question Q96 ; une magie absente ou sans ligne), rien n'est exigé (détail : le don)
+  SELECT a.personnage_id, 'don_obtenu_a_choisir', a.capacite_id
+  FROM v_personnage_don_acquis a
+  JOIN capacite_variable v ON v.capacite_id = a.capacite_id
+  JOIN personnage p ON p.id = a.personnage_id
+  WHERE NOT EXISTS (SELECT 1 FROM personnage_don_obtenu o WHERE o.personnage_id = a.personnage_id AND o.source = a.capacite_id)
+    AND EXISTS (SELECT 1 FROM classe_annexe x JOIN classe_annexe_entree e ON e.classe_id = x.classe_id AND e.annexe_rang = x.rang
+                WHERE x.classe_id = a.classe_id
+                  AND x.magie_id = CASE v.magie WHEN 'innee' THEN p.magie_innee_id ELSE p.magie_acquise_id END
+                  AND NOT EXISTS (SELECT 1 FROM personnage_don_obtenu o WHERE o.personnage_id = a.personnage_id AND o.entree_id = e.id))
+  UNION ALL
+  -- Un choix relève d'une seule règle : d'un don qui n'est plus acquis (classe, spécialité, niveau, don à choix perdus) ou qui n'est pas un don
+  -- « Variable », don_obtenu_source_perdue (gardé sans effet, comme maitrise_source_perdue) ; sinon, d'une entrée hors de la liste du don (autre classe,
+  -- autre magie, magie visée absente), don_obtenu_hors_liste. Détail : « source = entrée »
+  SELECT o.personnage_id, 'don_obtenu_source_perdue', o.source || ' = ' || o.entree_id
+  FROM personnage_don_obtenu o
+  WHERE NOT EXISTS (SELECT 1 FROM v_personnage_don_acquis a JOIN capacite_variable v ON v.capacite_id = a.capacite_id
+                    WHERE a.personnage_id = o.personnage_id AND a.capacite_id = o.source)
+  UNION ALL
+  SELECT o.personnage_id, 'don_obtenu_hors_liste', o.source || ' = ' || o.entree_id
+  FROM personnage_don_obtenu o
+  JOIN v_personnage_don_acquis a ON a.personnage_id = o.personnage_id AND a.capacite_id = o.source
+  JOIN capacite_variable v ON v.capacite_id = a.capacite_id
+  JOIN personnage p ON p.id = o.personnage_id
+  WHERE NOT EXISTS (SELECT 1 FROM classe_annexe_entree e JOIN classe_annexe x ON x.classe_id = e.classe_id AND x.rang = e.annexe_rang
+                    WHERE e.id = o.entree_id AND x.classe_id = a.classe_id
+                      AND x.magie_id = CASE v.magie WHEN 'innee' THEN p.magie_innee_id ELSE p.magie_acquise_id END)
   UNION ALL
   -- Équipement : chaque amélioration vise le bon genre d'objet ; celle d'une arme, du catalogue ou élémentaire, est une ligne du tableau fondu des armes
   -- (cible 'arme' : décision R167, migration 0081)

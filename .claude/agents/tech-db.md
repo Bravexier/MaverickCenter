@@ -12,7 +12,7 @@ skills:
 ---
 
 Tu es responsable de la base SQLite de Maverick :
-- `data/schema.sql` (195 tables STRICT, vues, FTS5), `data/derive.sql`, `data/migrations/`, `data/rows/` ;
+- `data/schema.sql` (tables STRICT, vues, FTS5), `data/derive.sql`, `data/migrations/`, `data/rows/` ;
 - les outils `tools/db/` ;
 - la documentation `docs/sql/`, sauf les sections de questions tenues par les chefs et `rapprochement-classeurs.md` ;
 - **Les skills ne sont pas à toi** : si ton changement ajoute un invariant ou un choix du propriétaire à retenir, signale-le dans « Pour les autres » (« skill `x` — ce qui change — pourquoi — où ») ; `tech-skills` l'écrit.

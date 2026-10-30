@@ -2342,6 +2342,8 @@ export const cleDeChoix = {
   acquis: (source, rang) => `acquis:${source}:${rang}`,
   maitrise: (source, rang) => `maitrise:${source}:${rang}`,
   resistance: (source, rang) => `resistance:${source}:${rang}`,
+  // l'entrée qu'obtient un don « Variable » du Mage Bleu (décision R181) : un choix par don, sa source
+  donObtenu: (source) => `don_obtenu:${source}`,
 };
 
 /**
@@ -2362,7 +2364,8 @@ export function accessoiresDesSorts(regles, fiche) {
  * la caractéristique au choix, les points de maîtrise d'arme sans famille et les parts qui suivent une famille pas encore choisie (sourcesDeMaitrise,
  * décisions R148, R151 : nature `maitrise`, sur le premier point à choisir de la source, ou sur la maîtrise au choix suivie ; l'accessoire sans famille
  * reste de nature `accessoire`), les choix d'acquis des dons (acquisDesDons ; « l'arme choisie » attend la maîtrise au choix de sa classe, R152) et les
- * résistances au choix (resistancesDe : d'une ligne du tableau de la race, décision R124 ; à une magie, décision R137). [{ nature, libelle, cle, rang? }] ; vide quand tout est choisi. `cle` désigne le choix (la page
+ * résistances au choix (resistancesDe : d'une ligne du tableau de la race, décision R124 ; à une magie, décision R137), l'entrée qu'obtient un don « Variable » du Mage Bleu
+ * (donsVariables, décision R181 : nature `don_obtenu`, une entrée libre de sa liste, ou un choix hors de la liste à refaire). [{ nature, libelle, cle, rang? }] ; vide quand tout est choisi. `cle` désigne le choix (la page
  * y accroche sa tuile, montrée dans l'infobulle de l'élément du tiroir : demande du propriétaire).
  */
 export function choixEnAttente(regles, fiche) {
@@ -2378,6 +2381,15 @@ export function choixEnAttente(regles, fiche) {
     for (const g of d.groupes) {
       if (!g.options.some((o) => choisis.has(o.id))) attente.push({ nature: 'don', rang: d.rang, cle: cleDeChoix.don(d.rang, g), libelle: `Don ${d.classe.nom} niv. ${g.niveau} : ${g.options.map((o) => o.nom).join(' ou ')}` });
     }
+  }
+  // l'entrée qu'obtient chaque don « Variable » acquis du Mage Bleu (décision R181 : donsVariables), tant qu'il n'en a pas une de sa liste et qu'il y en
+  // reste une libre ; sans entrée libre (Q96), sans magie acquise pour Secondaire : rien à choisir, la fiche le dit ailleurs
+  for (const d of donsVariables(regles, fiche).dons) {
+    if (d.etat !== 'a_choisir' && !(d.etat === 'hors_liste' && d.options.length)) continue;
+    attente.push({
+      nature: 'don_obtenu', rang: d.rang, cle: cleDeChoix.donObtenu(d.source),
+      libelle: `Don obtenu par ${d.don.nom} (${d.classe.nom}) : ${d.magie.nom}${d.etat === 'hors_liste' ? ' (le choix est hors de la liste)' : ''}`,
+    });
   }
   for (const b of bonusDuMetier(regles, fiche).rangs) if (b.aChoisir && !b.retenue) attente.push({ nature: 'metier_bonus', cle: cleDeChoix.metierBonus(b.rang), libelle: `Métier : ${b.texte}` });
   for (const r of objetsDuMetier(regles, fiche.metier_id)) {
@@ -4656,6 +4668,143 @@ export function degatsDArmeDuMoment(regles, fiche, rang) {
 }
 
 // ------------------------------------------------------------------------------------------------------------------------------------------------
+// Dons « Variable » du Mage Bleu (décision R181 : « Il devra choisir l'un dons disponible en bas de la fiche de la classe du mage bleu, limité sa magie
+// innée (sauf mention contraire) pour le don "secondaire". » ; « Dans le cas où il n'a pas de magie aquise, il ne peut pas choisir le don
+// "secondaire" »). Chaque don « Variable » acquis (Mimétisme, Mime, Principale, Secondaire, Ultime raison : `classes[].dons[].magie_visee`) obtient une
+// entrée du tableau du bas de l'onglet de sa classe (`classes[].entrees`), sur la ligne de sa magie innée, ou acquise pour Secondaire ; chaque entrée
+// ne se prend qu'une fois (Q93). Le choix est une ligne de fiche.dons_obtenus ({ source, entree_id } : personnage_don_obtenu, migration 0088).
+// « (Ne peut pas être changé une fois choisi) » n'est qu'un rappel (Q95) : le choix reste modifiable. Quand la magie visée n'a plus d'entrée libre
+// (l'Arcane et l'Espace/Temps n'en ont que 3), le don ne donne rien et la fiche le dit (Q96). Un choix dont le don n'est plus acquis (niveau, spécialité,
+// don à choix, classe) est gardé sans effet et signalé (choix de game-design, comme maitrise_source_perdue de R148). Aucun calcul ne lit l'effet d'une
+// entrée : il est montré tel qu'écrit (« cette créature »). Pendant SQL : les règles don_obtenu_* de v_personnage_controle.
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+
+/** Les entrées de toutes les classes (classes[].entrees), par identifiant, avec leur classe. */
+function entreesDesRegles(regles) {
+  const index = new Map();
+  for (const c of regles.classes ?? []) for (const e of c.entrees ?? []) index.set(e.id, { entree: e, classe: c });
+  return index;
+}
+
+/** Le don « Variable » `id` des règles (un don qui a `magie_visee`), avec sa classe ; null pour un autre don ou un identifiant inconnu. */
+function donVariableDesRegles(regles, id) {
+  for (const c of regles.classes ?? []) {
+    const d = (c.dons ?? []).find((x) => x.id === id);
+    if (d) return d.magie_visee ? { don: d, classe: c } : null;
+  }
+  return null;
+}
+
+/**
+ * La précision de l'en-tête d'une entrée, ce qu'il écrit après son type (« (Actif 2 fois/combat) » → « 2 fois/combat », comme la précision d'un don de
+ * classe) ; null quand il n'écrit que le type (« (Passif) », « (Passif] »).
+ */
+export const precisionDeLEntree = (entree) => String(entree?.type_brut ?? '').trim().replace(/^[([]\s*/, '').replace(/\s*[)\]]$/, '').replace(/^\S+\s*/, '').trim() || null;
+
+/**
+ * Les dons « Variable » de la fiche (décision R181). `dons` : un par don « Variable » acquis (donsAcquis : classe, spécialité et niveau de classe atteint,
+ * dons à choix choisis), dans l'ordre de la fiche — { source (l'id du don), don, classe, rang (de la classe), niveau, magie_visee ('innee' |
+ * 'acquise'), magie (la magie visée, null sans elle), liste (les entrées de la ligne de cette magie, dans l'ordre du tableau), options (celles qu'aucun
+ * autre choix de la fiche n'a prises, la sienne comprise : « chaque entrée ne se prend qu'une fois »), choix (sa ligne de fiche.dons_obtenus, ou null),
+ * entree (l'entrée obtenue : son choix quand il est dans la liste, sinon null), choisie (l'entrée de son choix, même hors de la liste), etat } ; `etat` :
+ * 'choisi' ; 'a_choisir' (une entrée libre l'attend) ; 'hors_liste' (son choix n'est pas une entrée de sa liste : autre classe, autre magie ; sans
+ * effet) ; 'epuise' (aucune entrée libre : le don ne donne rien, Q96) ; 'sans_magie_acquise' (Secondaire sans magie acquise : il ne peut pas être
+ * choisi) ; 'sans_magie_innee' (magie innée pas encore choisie). `perdus` : les choix dont la source n'est pas un don « Variable » acquis, gardés sans
+ * effet (comme maitrise_source_perdue, R148) — { source, entree_id, don, classe (null pour un don inconnu), entree (null pour une entrée inconnue) }.
+ * Une entrée prise par un choix, même perdu ou hors de sa liste, n'est plus libre (comme la base : une entrée une seule fois par fiche).
+ */
+export function donsVariables(regles, fiche) {
+  const lignes = (fiche.dons_obtenus ?? []).filter((o) => o?.source && o.entree_id);
+  const entrees = entreesDesRegles(regles);
+  const dons = [];
+  for (const c of donsAcquis(regles, fiche)) {
+    for (const don of c.dons.filter((d) => d.magie_visee)) {
+      const magieId = don.magie_visee === 'acquise' ? fiche.magie_acquise_id : fiche.magie_innee_id;
+      const magie = trouver(regles.magies ?? [], magieId);
+      const liste = magie ? (c.classe.entrees ?? []).filter((e) => e.magie_id === magie.id) : [];
+      const choix = lignes.find((o) => o.source === don.id) ?? null;
+      const prises = new Set(lignes.filter((o) => o !== choix).map((o) => o.entree_id));
+      const options = liste.filter((e) => !prises.has(e.id));
+      const entree = choix ? liste.find((e) => e.id === choix.entree_id) ?? null : null;
+      const etat = entree ? 'choisi'
+        : !magie ? (don.magie_visee === 'acquise' ? 'sans_magie_acquise' : 'sans_magie_innee')
+          : choix ? 'hors_liste'
+            : options.length ? 'a_choisir' : 'epuise';
+      dons.push({
+        source: don.id, don, classe: c.classe, rang: c.rang, niveau: don.niveau, magie_visee: don.magie_visee, magie, liste, options, choix, entree,
+        choisie: choix ? entrees.get(choix.entree_id)?.entree ?? null : null, etat,
+      });
+    }
+  }
+  const acquis = new Set(dons.map((d) => d.source));
+  const perdus = lignes.filter((o) => !acquis.has(o.source)).map((o) => {
+    const v = donVariableDesRegles(regles, o.source);
+    const nonVariable = v ? null : (regles.classes ?? []).flatMap((c) => (c.dons ?? []).map((d) => ({ don: d, classe: c }))).find((x) => x.don.id === o.source);
+    return { source: o.source, entree_id: o.entree_id, don: (v ?? nonVariable)?.don ?? null, classe: (v ?? nonVariable)?.classe ?? null, entree: entrees.get(o.entree_id)?.entree ?? null };
+  });
+  return { dons, perdus };
+}
+
+/**
+ * Ce que la fiche dit d'un don « Variable » (décision R181), à côté de son nom dans les passifs (« → <entrée obtenue> ») et dans le bloc des choix :
+ * l'entrée obtenue, ou pourquoi il ne donne rien. `d` : un élément de donsVariables().dons.
+ */
+export function texteDuDonVariable(d) {
+  const magie = d.magie?.nom ?? '';
+  switch (d.etat) {
+    case 'choisi': return `→ ${d.entree.nom}`;
+    case 'a_choisir': return `→ à choisir parmi les entrées de ${magie}`;
+    case 'hors_liste': return `→ ${d.choisie?.nom ?? d.choix?.entree_id} : hors de la liste de ${magie}, sans effet`;
+    // décision R181 (Q96 : « Ce don ne donne rien, la fiche le signale »)
+    case 'epuise': return d.liste.length ? `→ rien : ${magie} n’a plus d’entrée libre, ce don ne donne rien (décision R181)` : `→ rien : le tableau n’a pas d’entrée pour ${magie}`;
+    // décision R181 : « Dans le cas où il n'a pas de magie aquise, il ne peut pas choisir le don "secondaire" »
+    case 'sans_magie_acquise': return '→ rien : sans magie acquise, ce don ne peut pas être choisi (décision R181)';
+    default: return '→ choisissez d’abord la magie innée';
+  }
+}
+
+/**
+ * Pourquoi un don à choix ne peut pas être choisi (décision R181 : « Dans le cas où il n'a pas de magie aquise, il ne peut pas choisir le don
+ * "secondaire" » : un don « Variable » qui vise la magie acquise, sans magie acquise) ; null sinon. La base le signale aussi
+ * (don_obtenu_sans_magie_acquise) ; la page grise l'option, sauf si elle est déjà choisie.
+ */
+export function refusDuDon(regles, fiche, donId) {
+  const v = donVariableDesRegles(regles, donId);
+  return v?.don.magie_visee === 'acquise' && !fiche.magie_acquise_id ? 'Sans magie acquise, ce don ne peut pas être choisi (décision R181)' : null;
+}
+
+/**
+ * fiche.dons_obtenus après le choix de l'entrée `entreeId` pour le don « Variable » `source` (null : plus de choix) : sa ligne remplacée. Une entrée
+ * qu'un autre choix a déjà prise n'est pas posée (« chaque entrée ne se prend qu'une fois », décision R181 ; la base la refuserait) : rien ne change.
+ */
+export function donsObtenusApresChoix(fiche, source, entreeId) {
+  const autres = (fiche.dons_obtenus ?? []).filter((o) => o?.source !== source);
+  if (!entreeId) return autres;
+  if (autres.some((o) => o?.entree_id === entreeId)) return fiche.dons_obtenus ?? [];
+  return [...autres, { source, entree_id: entreeId }];
+}
+
+/**
+ * Les choix à enregistrer (personnage_don_obtenu, décision R181) : une ligne par don « Variable » des règles, d'une entrée des règles, une seule fois
+ * chacune (la première) ; les choix gardés sans effet (don plus acquis, hors de la liste) restent : la base les signale. Une ligne d'un don qui n'est pas
+ * « Variable » ou d'une entrée inconnue part.
+ */
+export function donsObtenusValables(regles, fiche) {
+  const entrees = entreesDesRegles(regles);
+  const sources = new Set();
+  const prises = new Set();
+  return (fiche.dons_obtenus ?? []).flatMap((o) => {
+    if (!o?.source || !entrees.has(o.entree_id) || !donVariableDesRegles(regles, o.source) || sources.has(o.source) || prises.has(o.entree_id)) return [];
+    sources.add(o.source);
+    prises.add(o.entree_id);
+    return [{ source: o.source, entree_id: o.entree_id }];
+  });
+}
+
+/** L'infobulle d'une entrée à obtenir (décision R181) : son en-tête tel qu'écrit, puis son effet tel qu'écrit. */
+export const infobulleDEntree = (entree) => (entree ? [entree.type_brut, entree.effet].filter((x) => x && String(x).trim()).join('\n') || null : null);
+
+// ------------------------------------------------------------------------------------------------------------------------------------------------
 // Actions et passifs (décision R173 : « Il faudrait lister toutes les actions utilisables (dons, accessoire activable(s) directement sous la case de la
 // ceinture. Il faudrai pouvoir les sélectionner pour les "consommer" (et griser si plus utilisable). Un bouton "fin de combat" permet de remettre tous les
 // compteur X/combat au maximum. Le compteur 1/ jour / semainee lui ne peut que remonter manuellement. Juste après, il faudra mettre les passifs (donc de
@@ -4680,6 +4829,8 @@ export const cleDAction = Object.freeze({
   accessoire: (emplacement, effetId) => `accessoire:${emplacement}:${effetId}`,
   arme: (rang, armeElementaireId) => `arme:${rang}:${armeElementaireId}`,
   armure: (armureElementaireId, rang) => `armure:${armureElementaireId}:${rang}`,
+  // l'entrée obtenue par un don « Variable » du Mage Bleu (décision R181) : par son identifiant (une entrée une seule fois par fiche)
+  entree: (entreeId) => `entree:${entreeId}`,
 });
 
 /** Vrai pour la clé d'une action d'équipement (accessoire, arme ou armure élémentaire : grisées en Symbiose, décision R112, et liées à l'objet porté). */
@@ -4707,10 +4858,11 @@ const sansTypeDeTete = (texte) => String(texte ?? '').replace(/^\((?:Action|Réa
 /**
  * Les actions utilisables de la fiche (décision R173), dans l'ordre de la fiche — le don de base de la race (R13 : « Méditation (Action 3 fois/jour) »,
  * lu dans le texte de l'onglet, jamais par son nom ; la race d'abord, comme le rappel des dons), les dons de classe débloqués de type Action, Actif et
- * Réaction (donsAcquis : classe 1 puis 2, par niveau), les effets d'accessoire activables (accessoire_effet.usage : « (Action) » ou usage compté, R54,
+ * Réaction (donsAcquis : classe 1 puis 2, par niveau), chacune suivie de l'entrée Actif, Action ou Réaction qu'obtient un de ses dons « Variable »
+ * (décision R181 : donsVariables, clé cleDAction.entree), les effets d'accessoire activables (accessoire_effet.usage : « (Action) » ou usage compté, R54,
  * dans l'ordre des emplacements), les capacités « actif » et « action » des armes élémentaires portées (armes 1 et 2), les effets « (Action) »,
  * « (Réaction) » et « (actif) » de l'armure élémentaire portée et ceux qui écrivent une limite d'usage (Q79 : « Deviennent des actions »). Les objets de la ceinture n'en sont pas (ils gardent leurs boutons, R89, R131). Chaque action :
- * { cle (cleDAction), origine ('race' | 'classe' | 'accessoire' | 'arme' | 'armure'), nom, source (la race, la classe, l'objet), niveau (don de classe),
+ * { cle (cleDAction), origine ('race' | 'classe' | 'don_obtenu' | 'accessoire' | 'arme' | 'armure'), nom, source (la race, la classe, l'objet), niveau (don de classe),
  * type ('action' | 'actif' | 'reaction' | null), precision (ce que le type d'un don écrit entre parenthèses, tel quel), texte (tel qu'écrit), maudit
  * (accessoire : R54, l'effet est le contraire), teinte (ce qui porte sa couleur : race, classe, magie), limite ({ nombre, periode, genre } ; un don dont
  * le type écrit une précision illisible, « X tour/combat » : genre `texte`), compteur (compteurDeLAction), seBrise (« l'objet se brise après »),
@@ -4734,6 +4886,7 @@ export function actionsDeLaFiche(regles, fiche) {
       compteur, grisee, epuisee, utilisable: !grisee && (compteur ? compteur.restants > 0 : Boolean(a.seBrise)),
     });
   };
+  const variables = donsVariables(regles, fiche);
   const race = trouver(regles.races ?? [], fiche.race_id);
   if (race?.don_base_action) {
     const { nom, texte } = donDeBase(race.don_base);
@@ -4744,6 +4897,16 @@ export function actionsDeLaFiche(regles, fiche) {
       ajouter({
         cle: cleDAction.capacite(d.id), origine: 'classe', nom: d.nom, source: c.classe.nom, niveau: d.niveau, type: d.type, precision: d.precision ?? null,
         texte: d.effet ?? null, teinte: c.classe, limite: d.limite ?? (d.precision ? { nombre: null, periode: null, genre: 'texte' } : null), don: d,
+      });
+    }
+    // décision R181 (Q94 : « Va dans la liste des actions avec son compteur ») : l'entrée Actif, Action ou Réaction obtenue par un don « Variable » de
+    // cette classe, son compteur comme celui d'un don (« 2 fois/combat » : « Fin de combat » ; « 1 fois/tour » : un rappel) ; son effet tel qu'écrit
+    for (const v of variables.dons.filter((x) => x.rang === c.rang && x.etat === 'choisi' && TYPES_D_ACTION.includes(x.entree.type))) {
+      const precision = precisionDeLEntree(v.entree);
+      ajouter({
+        cle: cleDAction.entree(v.entree.id), origine: 'don_obtenu', nom: v.entree.nom, source: `${v.don.nom} (${v.classe.nom})`, type: v.entree.type, precision,
+        texte: v.entree.effet ?? null, teinte: trouver(regles.magies ?? [], v.entree.magie_id), limite: v.entree.limite ?? (precision ? { nombre: null, periode: null, genre: 'texte' } : null),
+        don: v.don, entree: v.entree,
       });
     }
   }
@@ -4789,7 +4952,8 @@ export function actionsDeLaFiche(regles, fiche) {
  * equipement: [...] }. Race : tous les dons de race et d'ethnie (donsDeRace : le don de l'ethnie, la ligne de son ethnie dans le tableau de la race), sans
  * le don de base quand il est une action (sinon, il reste ici, tel qu'écrit). Classes : les dons de classe débloqués qui ne sont pas des actions
  * (passifs, « Variable » du Mage Bleu, sans type), avec leur précision (« Noyau dur » du Flagelleur : « 1 fois/combat », un rappel, « Dans les
- * passifs »). Équipement (« Ce qu'elle compte + les textes ») : les effets tels qu'écrits, que la fiche les compte ou non — accessoires sans usage,
+ * passifs ») ; un don « Variable » du Mage Bleu porte `obtenu` (texteDuDonVariable : « → <entrée obtenue> », décision R181) et `variable`
+ * (donsVariables), suivi de l'entrée Passif qu'il obtient (origine 'don_obtenu', `entree`). Équipement (« Ce qu'elle compte + les textes ») : les effets tels qu'écrits, que la fiche les compte ou non — accessoires sans usage,
  * effet de l'armure de base portée (« aucun effet » quand elle est cassée, R157, R158), effets de l'armure élémentaire ni « (Action) » ni
  * « (Réaction) » (ni « (actif) », ni limite écrite : Q79), bâtons magiques à la ceinture (R101), armes 1 et 2 (l'effet d'une arme du catalogue et
  * l'effet secondaire de son matériau ; d'une arme élémentaire, ses lignes d'effet sans sa capacité quand celle-ci est une action), le texte de
@@ -4807,12 +4971,23 @@ export function passifsDeLaFiche(regles, fiche) {
       texte: r.tableau.cellules.map((c) => `${String(c.libelle ?? '').replace(/\n/g, ' / ')} : ${c.valeur}`).join('\n'),
     })] : []),
   ];
+  // décision R181 : un don « Variable » reste ici avec ce qu'il obtient (« → <entrée obtenue> », ou pourquoi il ne donne rien : texteDuDonVariable),
+  // suivi de l'entrée obtenue quand elle est un Passif, son effet tel qu'écrit (une entrée Actif, Action ou Réaction est une action)
+  const variables = new Map(donsVariables(regles, fiche).dons.map((v) => [v.source, v]));
   const classes = donsAcquis(regles, fiche).map((c) => ({
     rang: c.rang, classe: c.classe, niveau: c.niveau,
-    dons: c.dons.filter((d) => !TYPES_D_ACTION.includes(d.type)).map((d) => passif({
-      origine: 'classe', nom: d.nom, source: c.classe.nom, niveau: d.niveau, type: d.type ?? null, precision: d.precision ?? null, texte: d.effet ?? null,
-      teinte: c.classe, don: d,
-    })),
+    dons: c.dons.filter((d) => !TYPES_D_ACTION.includes(d.type)).flatMap((d) => {
+      const v = variables.get(d.id);
+      const don = passif({
+        origine: 'classe', nom: d.nom, source: c.classe.nom, niveau: d.niveau, type: d.type ?? null, precision: d.precision ?? null, texte: d.effet ?? null,
+        teinte: c.classe, don: d, ...(v ? { obtenu: texteDuDonVariable(v), variable: v } : {}),
+      });
+      if (v?.etat !== 'choisi' || v.entree.type !== 'passif') return [don];
+      return [don, passif({
+        origine: 'don_obtenu', nom: v.entree.nom, source: `${d.nom} (${c.classe.nom})`, type: v.entree.type, precision: precisionDeLEntree(v.entree),
+        texte: v.entree.effet ?? null, teinte: trouver(regles.magies ?? [], v.entree.magie_id), don: d, entree: v.entree,
+      })];
+    }),
   }));
   const equipement = [];
   // le texte d'une amélioration portée (amelioration_equipement.effet_brut, tel qu'écrit ; réponse du propriétaire : « Oui, dans ce lot D »), de sa cible

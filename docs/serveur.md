@@ -174,8 +174,12 @@ Les adresses finissent par « / », comme celles du site : en développement, As
 service (qui accepte les deux formes).
 
 **Une fiche en JSON** (`fiche-format.mjs`) : les colonnes de `personnage` à la racine, sous leur nom ; une liste par table de détail
-(`classes`, `caracteristiques`, `competences`, `entrainements`, `acquis_choix`, `resistance_choix`, `metier_bonus`, `capacites`, `sorts`, `livres_sorts`, `maitrise_choix`, `armes`,
-`armure_parties`, `accessoires`, `inventaire`, `ceinture`), chaque ligne avec les colonnes de sa table sans `personnage_id` ; et `version`. Une page restée ouverte qui envoie encore
+(`classes`, `caracteristiques`, `competences`, `entrainements`, `acquis_choix`, `resistance_choix`, `metier_bonus`, `capacites`, `dons_obtenus`, `sorts`, `livres_sorts`, `maitrise_choix`, `armes`,
+`armure_parties`, `accessoires`, `inventaire`, `ceinture`, `actions_usage`), chaque ligne avec les colonnes de sa table sans `personnage_id` ; et `version`.
+`dons_obtenus` (`[{ source, entree_id }]`, décision R181, migration 0088) : l'entrée du tableau du Mage Bleu (`classe_annexe_entree`) qu'obtient chaque
+don « Variable » (`source`) ; un choix par don (`400` « un don « Variable » n’obtient qu’une entrée ») et une entrée une seule fois par fiche (`400`
+« … chaque entrée ne se prend qu’une fois (décision R181) ») ; une entrée hors de la liste du don, ou d'un don qui n'est plus acquis, s'enregistre et
+est signalée (`v_personnage_controle`). Une page restée ouverte qui envoie encore
 `bouclier_materiaux` (avant la migration 0060) voit sa liste convertie en matière du bouclier, les autres matériaux notés (avec les nouvelles clés du
 bouclier : `409`) ; des accessoires avec un nom, un effet hors table ou un emplacement Ceinture ou Autre sont convertis de même (`sansPartiesRetirees`) ;
 un texte `entrainement` (avant la migration 0062) devient des lignes de texte de `entrainements` (une par ligne du texte ; avec des lignes déjà là :
@@ -244,7 +248,8 @@ n'est pas un champ inconnu : elle est ignorée (fichier exporté avant).
   base d'avant 0060, la page convertit elle-même la fiche lue (accessoires d'avant, matériaux du bouclier) et note, datés, ce qu'elle perd. Une table de la fiche que la base n'a pas encore
   (`personnage_armure_partie`, 0055 ; `personnage_entrainement` et `personnage_acquis_choix`, 0062 ; `personnage_resistance_choix`, 0069, la
   résistance au choix du Drakos orange, liste `resistance_choix` ; `personnage_maitrise_choix`, 0076, liste `maitrise_choix`, les anciens dés laissés
-  intacts pour la reconstruction suivante ; `personnage_livre_sort`, 0082, liste `livres_sorts` : un livre ne s'enregistre pas sur cette base) se lit vide, et une liste non vide pour elle est
+  intacts pour la reconstruction suivante ; `personnage_livre_sort`, 0082, liste `livres_sorts` : un livre ne s'enregistre pas sur cette base ; `personnage_action_usage`, 0085, liste
+  `actions_usage` ; `personnage_don_obtenu`, 0088, liste `dons_obtenus`) se lit vide, et une liste non vide pour elle est
   refusée (« pas encore dans cette base, ses lignes seraient perdues ») ; une colonne retirée qu'une base d'avant exige encore (`statut`,
   `competences[].acquis`) y prend sa valeur de départ.
 - **Contrôles** : les règles de `v_personnage_controle` enfreintes sont rendues avec chaque fiche ; toute fiche est contrôlée, même inachevée, et
@@ -384,8 +389,12 @@ la composition et l'amélioration de cet emplacement ; une arme élémentaire, q
 passe à `NULL` (la classe reste) avec les dons choisis de la spécialité, `personnage.metier_id` passe à `NULL` avec les bonus « A OU B » que la fiche
 y avait choisis (`personnage_metier_bonus`) (un sort, que le site ne supprime pas
 encore, partirait de `personnage_sort` avec son livre, `personnage_livre_sort`, même sur une fiche qui n'a que le livre : décision R169, la clé n'a pas
-d'`ON DELETE` ; la ligne de note le dit, « 2 NM sur cette fiche dont 1 de livre », « livre de sort en attente, sort hors de la liste » ; à la reconstruction, les quatre sont retirés, sauf un don, une spécialité ou un sort dont la classe ou la
-magie a disparu aussi : celle-ci reste un blocage, hors R42). Le retrait se fait **dans le même lot**, avant la suppression
+d'`ON DELETE` ; la ligne de note le dit, « 2 NM sur cette fiche dont 1 de livre », « livre de sort en attente, sort hors de la liste » ;
+à la reconstruction, les quatre sont retirés, sauf un don, une spécialité ou un sort dont la classe ou la
+magie a disparu aussi : celle-ci reste un blocage, hors R42). Un don « Variable » du Mage Bleu supprimé emporte le don obtenu de la fiche
+(`personnage_don_obtenu`, décision R181 ; les deux clés n'ont pas d'`ON DELETE`), qu'elle ait le don dans ses choix ou non, avec sa ligne : « le don
+obtenu « Moteur thermique » (par le don « Mimétisme », classe Mage Bleu, magie Feu) n’est plus obtenu : le don qui le donnait n’existe plus dans les
+règles » ; à la reconstruction, une entrée du tableau disparue aussi (« … n’existe plus dans les règles »), sauf si la classe a disparu. Le retrait se fait **dans le même lot**, avant la suppression
 de la règle, **en SQL direct** : jamais au journal (`TABLES_INTERDITES` contient toute la section 13 : une écriture de fiche par le rédacteur du lot
 est refusée), donc jamais dans `data/rows` ni dans le résumé du lot (qui va dans l'historique et la note de version : ni nom ni compte de fiches) ;
 un lot refusé annule aussi les retraits. Chaque fiche touchée reçoit **une ligne datée par élément** à la fin de ses notes (« NOTE », BA53 ; le

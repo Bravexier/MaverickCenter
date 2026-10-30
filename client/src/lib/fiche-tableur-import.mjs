@@ -76,7 +76,7 @@ import {
 import {
   ARMURE_COMPLETE, FLECHE, NON, OUI, SEPARATEUR_D_ACCESSOIRE, SEPARATEUR_D_ARMURE, SUITE_DE_LA_CASE, apAmDuBouclier, enChiffres, lireAccessoire, lireChoixDuMetier, lireEffetDAmelioration,
   lireChoixDeMaitrise, lireEffetDArme, lireGains, lireLigneDArmure, lireLigneDeNote, lireListe, lireNiveauDAmelioration, lireNmOfferts, lireObjet, lireSortEnSuite,
-  lireModeHyper, lireSortPrepare, partiesDeLArme, lireCompteurDAction,
+  lireModeHyper, lireSortPrepare, partiesDeLArme, lireCompteurDAction, lireDonObtenu,
 } from './fiche-tableur-export.mjs';
 
 /** Message d'un onglet qui ne suit aucune des deux dispositions (dispositionDe). */
@@ -200,7 +200,7 @@ export function lireLaNote(texte) {
     } else if (lue.nom === 'accessoire') {
       if ((valeurs.accessoires ??= []).some((a) => a.emplacement === lue.emplacement)) doubles.push(ligne);
       else valeurs.accessoires.push({ emplacement: lue.emplacement, valeur: lue.valeur });
-    } else if (['evenement', 'entrainementTexte', 'maitriseChoix', 'acquisChoix', 'resistanceChoix', 'sortPrepare', 'compteurAction'].includes(lue.nom)) (valeurs[lue.nom] ??= []).push(lue.valeur);
+    } else if (['evenement', 'entrainementTexte', 'maitriseChoix', 'donObtenu', 'acquisChoix', 'resistanceChoix', 'sortPrepare', 'compteurAction'].includes(lue.nom)) (valeurs[lue.nom] ??= []).push(lue.valeur);
     else if (valeurs[lue.nom]) doubles.push(ligne);
     else valeurs[lue.nom] = [lue.valeur];
   }
@@ -830,6 +830,26 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     });
   }
   f.maitrise_choix = maitriseChoixValables(regles, f);
+
+  // ---- les dons obtenus des dons « Variable » du Mage Bleu (décision R181), lignes « Don obtenu » de la note : « <don> (<classe>) : <entrée> (<magie>) »
+  // (lireDonObtenu) ; le don par son nom parmi les dons « Variable » de la classe nommée, l'entrée par son nom sur la ligne de la magie nommée du tableau
+  // de cette classe, jamais rapprochés ; un don une fois, une entrée une fois. Un choix d'un don qui n'est pas acquis, ou hors de la liste du don, est
+  // repris tel quel : gardé sans effet, signalé par la base (comme sur la page)
+  f.dons_obtenus = [];
+  for (const ligne of notee('donObtenu')) {
+    const quoi = `Don obtenu « ${ligne} »`;
+    const lu = lireDonObtenu(ligne);
+    const classe = lu && (regles.classes ?? []).find((c) => cle(c.nom) === cle(lu.classe));
+    const don = classe && (classe.dons ?? []).find((d) => d.magie_visee && cle(d.nom) === cle(lu.don));
+    const magie = don && (regles.magies ?? []).find((m) => cle(m.nom) === cle(lu.magie));
+    const entree = magie && (classe.entrees ?? []).find((e) => e.magie_id === magie.id && cle(e.nom) === cle(lu.entree));
+    if (!lu) perdu(`${quoi} : illisible (un don « Variable » et sa classe, puis une entrée et sa magie)`);
+    else if (!don) perdu(`${quoi} : aucun don « Variable » de ce nom dans les classes des règles`);
+    else if (!entree) perdu(`${quoi} : « ${lu.entree} » introuvable parmi les entrées de ${lu.magie} du tableau de ${classe.nom}`);
+    else if (f.dons_obtenus.some((o) => o.source === don.id)) perdu(`${quoi} : ce don a déjà son entrée`);
+    else if (f.dons_obtenus.some((o) => o.entree_id === entree.id)) perdu(`${quoi} : entrée déjà obtenue par un autre don (une seule fois, décision R181)`);
+    else f.dons_obtenus.push({ source: don.id, entree_id: entree.id });
+  }
 
   // ---- l'entraînement (décision R104) : ses compétences dans la case L42 (« Magie 2 | Concentration 10 », bonusDEntrainement) ; la case est lue ligne
   // par ligne : une ligne qui se lit ainsi en entier donne ses compétences, une autre (le texte libre d'avant, R71) une ligne de texte, puis les

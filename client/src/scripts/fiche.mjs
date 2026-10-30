@@ -49,6 +49,7 @@ import {
   armeDeLaLigne, armesElementairesProposees, effetDeLArmeElementaire, sortsFerDAutreElement,
   finDuModeHyperCent, modeHyperApres, modeHyperValable, semaineDuModeHyperApres, tourDeModeHyper,
   actionsDeLaFiche, actionsUsageSansObjetRetire, actionsUsageValables, consommerLAction, finDeCombat, finDeCombatMontree, passifsDeLaFiche, REMONTEES, remonterLAction,
+  donsObtenusApresChoix, donsObtenusValables, donsVariables, infobulleDEntree, refusDuDon, texteDuDonVariable,
 } from '../lib/fiche-moteur.mjs';
 import { creatureAuNpm, FPVSIA, vautAuNpm } from '../lib/creature-npm.mjs';
 import { listeDeChoix } from './liste-choix.mjs';
@@ -1506,13 +1507,15 @@ const typeDuDon = (type, precision) => (type || precision
  * Un don ou un effet de la liste : son niveau (s'il en a un), son nom, d'où il vient (`source` : un objet, une classe), son type et sa précision (limite
  * d'usage « 2 fois/combat », telle qu'écrite), son texte, et une aide de la fiche sous le texte (`aide`, AIDE_ANNULE_LES_FAIBLESSES).
  */
-function elementDeDon({ niveau = null, nom, source = null, type = null, precision = null, texte, aide = null, teinte = null }) {
+function elementDeDon({ niveau = null, nom, source = null, type = null, precision = null, texte, aide = null, teinte = null, obtenu = null }) {
   return el('li', { class: ['don', ...teinteDe(teinte)].join(' ') },
     el('span', { class: 'don__tete' },
       niveau !== null ? el('span', { class: 'don__niveau' }, `Niv. ${niveau}`) : null,
       el('strong', { class: 'don__nom' }, nom),
       source ? el('span', { class: 'don__source' }, source) : null,
       typeDuDon(type, precision)),
+    // ce qu'obtient un don « Variable » du Mage Bleu (décision R181 : texteDuDonVariable, « → <entrée obtenue> »)
+    obtenu ? el('strong', { class: 'don__texte don__obtenu' }, obtenu) : null,
     texte ? el('span', { class: 'don__texte' }, texte) : null,
     aide ? el('small', { class: 'fiche-aide don__aide' }, aide) : null);
 }
@@ -1638,13 +1641,16 @@ function construirePassifs() {
       p.ethnieAChoisir ? el('li', { class: 'fiche-aide' }, 'Choisissez l’ethnie : son don apparaîtra ici.') : null,
     ];
   });
-  const cleClasses = JSON.stringify(p.classes.map((c) => [c.classe.id, c.niveau, c.dons.map((d) => d.don.id)]));
+  const cleClasses = JSON.stringify(p.classes.map((c) => [c.classe.id, c.niveau, c.dons.map((d) => [d.don.id, d.nom, d.obtenu ?? null])]));
   reconstruire($('dons-classes'), cleClasses, () => (p.classes.length === 0
     ? el('p', { class: 'fiche-aide' }, 'Choisissez une classe : ses dons apparaîtront ici, niveau de classe par niveau de classe.')
     : p.classes.map((c) => el('div', { class: ['dons-classe', ...teinteDe(c.classe)].join(' ') },
       el('h4', {}, `${c.classe.nom} · niveau ${c.niveau}`),
       c.dons.length
-        ? el('ul', { class: 'dons-liste' }, c.dons.map((d) => elementDeDon({ niveau: d.niveau, nom: d.nom, type: d.type, precision: d.precision, texte: d.texte, aide: aideDuDon(d.don) })))
+        // un don « Variable » du Mage Bleu dit ce qu'il obtient (`obtenu`) ; l'entrée Passif obtenue, son don en source et la couleur de sa magie (R181)
+        ? el('ul', { class: 'dons-liste' }, c.dons.map((d) => elementDeDon({
+          niveau: d.niveau, nom: d.nom, type: d.type, precision: d.precision, obtenu: d.obtenu ?? null,
+          ...(d.origine === 'don_obtenu' ? { source: d.source, teinte: d.teinte } : {}), texte: d.texte, aide: aideDuDon(d.don) })))
         : el('p', { class: 'fiche-aide' }, 'Pas encore de don passif à ce niveau de classe (ses actions sont sous la ceinture).')))));
   const cleEquipement = JSON.stringify(p.equipement.map((x) => [x.nom, x.source, x.texte, x.maudit, x.aide, x.teinte?.classe ?? null]));
   reconstruire($('passifs-equipement'), cleEquipement, () => (p.equipement.length
@@ -2533,6 +2539,15 @@ function construireProgression() {
             synchro(() => {
               const choisis = new Set((fiche.capacites ?? []).map((c) => c.capacite_id));
               r.checked = option_ ? choisis.has(option_.id) : !g.options.some((o) => choisis.has(o.id));
+              // décision R181 : sans magie acquise, Secondaire ne peut pas être choisi (refusDuDon : l'option grisée, la raison avant le texte du don dans
+              // l'infobulle) ; déjà choisi, il reste cochable (la base le signale : don_obtenu_sans_magie_acquise)
+              const refus = option_ ? refusDuDon(regles, fiche, option_.id) : null;
+              r.disabled = Boolean(refus) && !r.checked;
+              if (!option_ || (!refus && !('refus' in r.dataset))) return;   // dataset.refus vaut « » (faux) : on teste sa présence
+              const bulle = [refus, infobulleDuDonAChoisir(d.classe, option_.id)].filter(Boolean).join('\n');
+              for (const x of [r, r.closest('label')]) if (x && bulle) infobulle(x, bulle);
+              if (refus) r.dataset.refus = '';
+              else delete r.dataset.refus;
             });
             return r;
           };
@@ -2555,6 +2570,74 @@ function construireProgression() {
           });
           return cadre;
         })));
+  });
+}
+
+/**
+ * L'entrée qu'obtient chaque don « Variable » acquis du Mage Bleu (décision R181 : donsVariables), dans le panneau « Choix », sous les dons à choisir :
+ * un groupe par don, comme un groupe de dons à choisir (des boutons radio, la tuile du tiroir, nature `don_obtenu`), qui ne propose que les entrées
+ * libres de la magie visée (« chaque entrée ne se prend qu'une fois »), chacune avec son en-tête et son effet tels qu'écrits en infobulle
+ * (infobulleDEntree). « (Ne peut pas être changé une fois choisi) » est seulement rappelé (Q95) : le choix reste modifiable. Un don sans entrée libre
+ * (Q96), ou Secondaire sans magie acquise, le dit (texteDuDonVariable) ; un choix hors de la liste aussi. Les choix gardés sans effet d'un don qui
+ * n'est plus acquis sont rappelés, chacun avec « Retirer » (la base les signale : don_obtenu_source_perdue).
+ */
+function construireDonsObtenus() {
+  const { dons, perdus } = calcul.donsVariables;
+  $('dons-obtenus-bloc').hidden = !dons.length && !perdus.length;
+  // reconstruit quand les dons ou leur liste changent ; une entrée prise ou rendue par un autre choix est seulement cachée ou montrée (le focus reste)
+  const cle = JSON.stringify([dons.map((d) => [d.source, d.rang, d.classe.id, d.magie?.id ?? null, d.liste.map((e) => e.id)]), perdus.map((p) => [p.source, p.entree_id])]);
+  reconstruire($('dons-obtenus'), cle, () => {
+    const groupes = dons.map((d, i) => {
+      const nomGroupe = `don-obtenu-${i}`;
+      const actuel = () => calcul.donsVariables.dons.find((x) => x.source === d.source) ?? d;
+      const choisir = (entreeId) => {
+        fiche.dons_obtenus = donsObtenusApresChoix(fiche, d.source, entreeId);
+        changer();
+      };
+      const radio = (entree) => {
+        const r = el('input', { type: 'radio', name: nomGroupe, onchange: () => choisir(entree?.id ?? null) });
+        synchro(() => {
+          const choix = (fiche.dons_obtenus ?? []).find((o) => o?.source === d.source)?.entree_id ?? null;
+          r.checked = entree ? choix === entree.id : !d.liste.some((e) => e.id === choix);
+        });
+        return r;
+      };
+      const legende = el('legend', {}, `${d.don.nom} · niveau de classe ${d.niveau}${d.magie ? ` : une entrée de ${d.magie.nom}` : ''}`);
+      // ce que le don ne donne pas (hors de la liste, plus d'entrée libre : Q96, sans magie acquise), sous la légende
+      const etat = el('p', { class: 'fiche-aide' });
+      const options = d.liste.length
+        ? el('div', { class: 'dons-options' },
+          el('label', {}, radio(null), 'Pas encore choisi'),
+          d.liste.map((e) => {
+            const texte = infobulleDEntree(e);
+            const rond = radio(e);
+            if (texte) rond.title = texte;
+            const etiquette = el('label', { title: texte }, rond, e.nom, el('small', { class: 'muted' }, ` ${e.type_brut}`));
+            // une entrée prise par un autre don « Variable » sort de la liste (« chaque entrée ne se prend qu'une fois », décision R181)
+            synchro(() => { etiquette.hidden = !actuel().options.some((x) => x.id === e.id); });
+            return etiquette;
+          }))
+        : null;
+      // décision R181 (Q95 : « Elle le rappelle seulement ») : rien n'empêche de changer le choix
+      const rappel = options ? el('small', { class: 'fiche-aide' }, 'Rappel du don : « Ne peut pas être changé une fois choisi » (le choix reste modifiable ici).') : null;
+      const cadre = el('fieldset', { class: ['dons-groupe', ...teinteDe(d.magie)].join(' '), dataset: options ? { choixCle: cleDeChoix.donObtenu(d.source) } : {} },
+        legende, etat, options, rappel);
+      synchro(() => {
+        const v = actuel();
+        const texte = v.etat === 'choisi' || v.etat === 'a_choisir' ? '' : texteDuDonVariable(v);
+        etat.hidden = !texte;
+        if (etat.textContent !== texte) etat.textContent = texte;
+        if (options) options.hidden = !v.options.length;
+        if (rappel) rappel.hidden = !v.options.length;
+        cadre.toggleAttribute('data-a-choisir', (calcul.attente ?? []).some((c) => c.cle === cleDeChoix.donObtenu(d.source)));
+      });
+      return el('div', { class: ['groupe-pastilles', ...teinteDe(d.classe)].join(' ') }, el('h4', {}, d.classe.nom), cadre);
+    });
+    // les choix d'un don qui n'est plus acquis (niveau baissé, autre don à choix, classe retirée) : gardés sans effet, signalés (choix de game-design, R181)
+    const gardes = perdus.length ? el('ul', { class: 'dons-liste' }, perdus.map((p) => el('li', { class: 'fiche-aide' },
+      `${p.entree?.nom ?? p.entree_id} (par ${p.don?.nom ?? p.source}${p.classe ? `, ${p.classe.nom}` : ''}) : gardé sans effet, ce don n’est plus acquis. `,
+      el('button', { type: 'button', class: 'retirer', onclick: () => { fiche.dons_obtenus = donsObtenusApresChoix(fiche, p.source, null); changer(); } }, 'Retirer')))) : null;
+    return [groupes, gardes];
   });
 }
 
@@ -3775,6 +3858,8 @@ function rafraichir() {
     compteur: compteurDeMaitrise(regles, fiche, sourcesDesMaitrises),
   };
   calcul.attente = choixEnAttente(regles, fiche);
+  // les dons « Variable » du Mage Bleu (décision R181) : leur liste, leurs options libres et leur état, lus par le bloc des dons obtenus
+  calcul.donsVariables = donsVariables(regles, fiche);
   for (const champ of racine.querySelectorAll('[data-champ]')) poser(champ, fiche[champ.dataset.champ]);
   // cadres des blocs dans la couleur de la magie innée, en dégradé vers celle de la magie acquise (demande du propriétaire ; fiche.css, « cadres »)
   const innee = trouver(regles.magies, fiche.magie_innee_id);
@@ -3803,6 +3888,7 @@ function rafraichir() {
   construireAttributs();
   construirePostures();
   construireProgression();
+  construireDonsObtenus();
   construireEquipement();
   construireDefense();
   construireCeinture();
@@ -3854,6 +3940,8 @@ function aEnvoyer() {
   // liste maitrises_armes envoyée avec maitrise_choix serait refusée : 409)
   f.maitrise_choix = maitriseChoixValables(regles, f);
   delete f.maitrises_armes;
+  // les dons obtenus des dons « Variable » du Mage Bleu (décision R181) : un par don, une entrée une seule fois ; les choix gardés sans effet restent
+  f.dons_obtenus = donsObtenusValables(regles, f);
   // solidité du moment de chaque arme bornée à son maximum (décision R74 : à son maximum ou au-delà, rien d'enregistré) ; gains de niveau jamais négatifs (R73)
   f.armes = armesValables(regles, f);
   // de même celle des parties de l'armure (décision R95 : une ligne par partie abîmée, rien sans armure)
@@ -4440,6 +4528,8 @@ function indexerNoms() {
     // les sources de maîtrise d'arme des contrôles maitrise_* (décision R148) : une ligne de classe, un don, comme les titres du bloc Maîtrises
     (c.maitrises ?? []).forEach((m, i) => { if (m.source) noms.set(m.source, `${c.nom} (maîtrise ${i + 1})`); });
     for (const d of c.dons ?? []) if (!noms.has(d.id)) noms.set(d.id, `${d.nom} (${c.nom})`);
+    // les entrées du tableau du bas de la classe (décision R181 : le détail des règles don_obtenu_*, « source = entrée »)
+    for (const e of c.entrees ?? []) noms.set(e.id, `${e.nom} (${regles.magies.find((m) => m.id === e.magie_id)?.nom ?? e.magie_id})`);
   }
   for (const [cle, nom] of EMPLACEMENTS_ACCESSOIRES) noms.set(`accessoire:${cle}`, `Accessoire : ${nom}`);
   // les familles d'armes (une compétence du même identifiant, « arc », garde son nom)

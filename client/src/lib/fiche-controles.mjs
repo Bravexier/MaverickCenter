@@ -60,6 +60,12 @@ export const LIBELLES_DES_CONTROLES = Object.freeze({
   // décision R167 (bombe : « Estoc, Frappe ou Taille au choix ») : un type physique choisi sur une arme dont le type ne se choisit pas, ou qu'elle n'offre
   // pas ; le détail : « rang : type »
   arme_type_degats_choisi: 'Type de dégâts physique choisi hors des choix de l’arme (son type ne se choisit pas, ou elle n’offre pas ce type)',
+  // dons « Variable » du Mage Bleu (décision R181) : l'entrée du tableau du bas de la classe qu'obtient chacun ; le détail nomme le don (« source = entrée »
+  // pour un choix)
+  don_obtenu_sans_magie_acquise: 'Don « Variable » qui vise la magie acquise, sans magie acquise : il ne peut pas être choisi',
+  don_obtenu_a_choisir: 'Don obtenu à choisir (don « Variable » du Mage Bleu)',
+  don_obtenu_source_perdue: 'Don obtenu gardé sans effet : son don « Variable » n’est plus acquis',
+  don_obtenu_hors_liste: 'Don obtenu hors de la liste de son don « Variable » (une entrée de la magie visée)',
   armure_partie_hors_armure: 'Solidité d’une partie que l’armure n’a pas',
   accessoire_valeur: 'Valeur d’accessoire hors de la fourchette de son effet',
 });

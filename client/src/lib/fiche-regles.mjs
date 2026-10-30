@@ -414,6 +414,19 @@ function reglesDeLaBase(db) {
     if (n !== 1) throw new Error(`maitrise_arme_part : ${p.source_id} suit la maîtrise au choix de ${p.classe_id}, qui en a ${n} (une seule attendue, R151)`);
   }
   const nmGagnes = new Map(lignes(db, 'SELECT capacite_id, nm FROM capacite_nm_gagne').map((r) => [r.capacite_id, r.nm]));
+  // Dons « Variable » du Mage Bleu (décision R181, migration 0088) : la magie que vise chaque don (capacite_variable.magie : 'innee', ou 'acquise' pour
+  // Secondaire), et les entrées du tableau du bas de l'onglet de sa classe (classe_annexe_entree), dans l'ordre du tableau (une ligne par magie, puis
+  // l'ordre du texte) : { id, magie_id (celle de sa ligne, classe_annexe.magie_id), rang (dans sa ligne), nom, type ('passif', 'actif', 'action',
+  // 'reaction'), type_brut (l'en-tête tel qu'écrit, « (Actif 2 fois/combat) »), limite ({ nombre, periode, genre } comme celle d'un don, R173 :
+  // genreDeLaPeriode ; null sans limite « N fois/période »), effet } ; textes tels qu'en base, sans balises. Rien n'est relu des textes ici
+  const magiesVisees = new Map(lignes(db, 'SELECT capacite_id, magie FROM capacite_variable').map((r) => [r.capacite_id, r.magie]));
+  const entreesDesClasses = parCle(lignes(db, `SELECT e.classe_id, e.id, x.magie_id, e.rang, e.nom, e.type, e.type_brut, e.limite_nombre, e.limite_periode, e.effet
+      FROM classe_annexe_entree e JOIN classe_annexe x ON x.classe_id = e.classe_id AND x.rang = e.annexe_rang ORDER BY e.classe_id, x.rang, e.rang`), 'classe_id',
+  (e) => ({
+    id: e.id, magie_id: e.magie_id, rang: e.rang, nom: e.nom, type: e.type, type_brut: e.type_brut,
+    limite: e.limite_nombre !== null && e.limite_periode ? { nombre: e.limite_nombre, periode: e.limite_periode, genre: genreDeLaPeriode(e.limite_periode) } : null,
+    effet: e.effet,
+  }));
   // une maîtrise au choix porte ses familles (`au_choix` : familles, null si son « sauf » ne se lit pas ; décision R119) ; chaque ligne, sa source
   // (`source` : lib/maitrise-arme.mjs#idDeSourceDeClasse, l'identifiant que la fiche enregistre dans personnage_maitrise_choix) et ses parts
   const maitrises = parCle(lignes(db, 'SELECT classe_id, rang, brut, nombre, forme, categorie, sauf_cle FROM classe_maitrise_arme WHERE nombre IS NOT NULL ORDER BY classe_id, rang'), 'classe_id',
@@ -459,6 +472,8 @@ function reglesDeLaBase(db) {
         choix: [null, ...specialitesDeLaClasse.map((s) => s.id)].flatMap(parSpecialite).sort((a, b) => a.niveau - b.niveau),
         maitrises: maitrises.get(c.id) ?? [],
         maitrise_armures: maitrisesArmures.get(c.id) ?? [],
+        // les entrées que ses dons « Variable » font obtenir (décision R181 : le tableau du bas de l'onglet du Mage Bleu) ; absente pour une classe sans tableau
+        ...(entreesDesClasses.has(c.id) ? { entrees: entreesDesClasses.get(c.id) } : {}),
         dons: [...dons].sort((a, b) => a.niveau - b.niveau || a.ligne - b.ligne || a.rang - b.rang).map((d) => ({
           id: d.id, nom: d.nom, nature: d.nature, niveau: d.niveau, specialite_id: d.specialite_id, type: d.type, effet: d.effet,
           // ce que la cellule de type écrit entre parenthèses (« 2 fois/combat », « 3 tours de recharge »), tel quel, comme la page de la classe
@@ -471,6 +486,8 @@ function reglesDeLaBase(db) {
           // ses parts de maîtrise d'arme (maitrise_arme_part : décisions R148, R150, R151) et ses NM de sorts gagnés (capacite_nm_gagne : R154), quand il en a
           ...(partsDesSources.has(d.id) ? { maitrise: { parts: partsDesSources.get(d.id) } } : {}),
           ...(nmGagnes.has(d.id) ? { nm_gagnes: nmGagnes.get(d.id) } : {}),
+          // un don « Variable » (décision R181) : la magie que vise sa liste, 'innee' ou 'acquise' (capacite_variable) ; absente pour un autre don
+          ...(magiesVisees.has(d.id) ? { magie_visee: magiesVisees.get(d.id) } : {}),
           // exemplaires du même objet sur un emplacement de ceinture que le don permet (« Permet d'avoir 4 fois… », Mercenaire « Organisé » ; décision R89)
           ...(exemplairesDeCeintureEcrits(d.effet) ? { exemplaires_ceinture: exemplairesDeCeintureEcrits(d.effet) } : {}),
           ...(sacSansForceEcrit(d.effet) ? { sac_sans_force: true } : {}),

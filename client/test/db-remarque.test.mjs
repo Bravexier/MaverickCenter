@@ -37,8 +37,9 @@ const APRES_REMARQUE = {
   sort: ['mode_brut', 'bonus_maitrise', 'cout_secondaire'], mode_hyper_effet: ['nom'], magie: ['mono_magie'], race: ['mono_magie'], classe: ['magie_innee_id', 'magie_innee_exclue_id'],
   arme_famille: ['maitrisable', 'categorie', 'nom_lecture', 'type_elementaire_id'], accessoire_effet: ['usage'], bouclier: ['poids_id'], amelioration_equipement: ['cout_elementaire_brut'],
 };
-// Tables d'entités créées APRÈS 0002 par une migration qui leur donne directement leur `remarque` (0007 : les dons raciaux de l'onglet de la race).
-const CREEES_APRES_0002 = ['race_don'];
+// Tables d'entités créées APRÈS 0002 par une migration qui leur donne directement leur `remarque` (0007 : les dons raciaux de l'onglet de la race ;
+// 0088 : les entrées du tableau libre du Mage Bleu, R181).
+const CREEES_APRES_0002 = ['race_don', 'classe_annexe_entree'];
 // Tables d'entités que 0002 a dotées d'une `remarque` puis qu'une migration ultérieure a retirées (0049 : les couples de magies de l'onglet
 // « Statistiques », décisions R85 et R86 : la vue v_resistance_combinaison les remplace ; 0051 : la matrice des résistances de la fiche auto,
 // décision R90 : l'Arcane et la Corruption se résistent l'une à l'autre, comme le disent les listes de magie_resistance).

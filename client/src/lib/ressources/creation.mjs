@@ -169,6 +169,17 @@ export const RESSOURCES = [
         tri: 'rang',
         description: 'Le tableau sans titre sous les dons de l’onglet du Mage Bleu (une ligne par magie, son libellé et son texte) ; en lecture seule.',
       },
+      {
+        cle: 'entrees-du-tableau',
+        nom: 'Entrée du tableau annexe de la classe',
+        noms: 'Entrées du tableau annexe de la classe',
+        table: 'classe_annexe_entree',
+        parent: { classe_id: 'id' },
+        tri: 'annexe_rang',
+        description:
+          'Les entrées du tableau du bas de l’onglet du Mage Bleu, une par « (Type) Nom. Effet » d’une ligne, citées sans rien réécrire, avec leur type et ' +
+          'leur limite d’usage : la liste des dons « Variable » (décision R181, migration 0088) ; en lecture seule.',
+      },
     ],
     derivees: [
       { table: 'classe_maitrise_arme', parent: { classe_id: 'id' } },
@@ -205,7 +216,9 @@ export const RESSOURCES = [
       '15, 20 : R44), un don supprimé est retiré des fiches avec une note datée (R42).',
     table: 'capacite',
     // les NM de sorts gagnés que le texte du don écrit (« Gagne 4 niveaux de maîtrise (NM). », décision R154), lus par lib/maitrise-arme.mjs
-    derivees: [{ table: 'capacite_nm_gagne', parent: { capacite_id: 'id' } }],
+    // la magie que vise un don « Variable » (capacite_variable, décision R181, migration 0088 : écrite par la migration d'après le texte du don, pas encore
+    // refaite par le service d'édition)
+    derivees: [{ table: 'capacite_nm_gagne', parent: { capacite_id: 'id' } }, { table: 'capacite_variable', parent: { capacite_id: 'id' } }],
     liste: ['id', 'nom', 'classe_id', 'specialite_id', 'niveau', 'nature', 'type_brut'],
     recherche: ['nom'],
     tri: 'classe_id',

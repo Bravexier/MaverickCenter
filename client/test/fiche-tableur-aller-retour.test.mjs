@@ -54,6 +54,8 @@ function commeLaPage(fiche) {
   // les maîtrises d'armes (décision R148) : la famille de chaque point à choisir d'une source acquise, parmi ses options ; plus de dés par famille
   f.maitrise_choix = M.maitriseChoixValables(regles, f);
   delete f.maitrises_armes;
+  // les dons obtenus des dons « Variable » du Mage Bleu (décision R181) : un par don, une entrée une fois, les choix gardés sans effet compris
+  f.dons_obtenus = M.donsObtenusValables(regles, f);
   f.armes = M.armesValables(regles, f);
   // rangés dans l'ordre ; le sort préparé garde sa marque, son jet et sa posture, les autres n'en ont pas (décision R115)
   f.sorts = M.sortsAEnregistrer(regles, f);
@@ -109,6 +111,7 @@ function canonique(fiche) {
     metier_bonus: (a, b) => a.rang - b.rang,
     capacites: (a, b) => a.capacite_id.localeCompare(b.capacite_id),
     maitrise_choix: (a, b) => a.source.localeCompare(b.source) || a.rang - b.rang,
+    dons_obtenus: (a, b) => a.source.localeCompare(b.source),
     armes: (a, b) => a.rang - b.rang,
     armure_parties: parCle('emplacement_id', emplacementsArmure),
     accessoires: parCle('emplacement', emplacementsAccessoire),
@@ -469,6 +472,38 @@ test('compteurs d’actions (décision R173) : chaque compteur entamé dans la n
   const relu = ficheDuClasseur(regles, classeur.feuille('Personnage'), { nomFichier: 'essai.xlsx', date: DATE, logo: LOGO, empreintePortrait: null });
   assert.deepEqual(relu.nonRepris, ['Compteur d’action : « Accessoire : Chef 0/1 [accessoire:chef:ressources/accessoires#effet:jet-de-de:5] » : la fiche n’a pas cette action']);
   assert.deepEqual(relu.fiche.actions_usage.map((u) => u.action_id), ['race:don-de-base:races/humain', 'capacite:capacites/barde-prestation']);
+});
+
+test('dons « Variable » du Mage Bleu (décision R181) : une ligne « Don obtenu » par choix, avant « Acquis au choix », relue ; choix gardé sans effet compris ; un nom introuvable est dit', async () => {
+  const ENTREE = (magie, nom) => `classes/mage-bleu#entree:${magie}:${nom}`;
+  const DON = (nom) => `capacites/mage-bleu-${nom}`;
+  // niveau global 4 (niveau de classe 8) : Mimétisme acquis ; une entrée notée pour Mime, pas acquis (gardée sans effet) ; « Attaque glaçante » entamée
+  const f = commeLaPage({
+    ...ficheVide('Givre R181'), race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-toundra', magie_innee_id: 'magies/magie-de-la-glace',
+    xp: xpDuNiveau(4), classes: [{ rang: 1, classe_id: 'classes/mage-bleu', specialite_id: null }],
+    dons_obtenus: [{ source: DON('mimetisme'), entree_id: ENTREE('glace', 'attaque-glacante') }, { source: DON('mime'), entree_id: ENTREE('glace', 'peau-froide') }],
+    actions_usage: [{ action_id: `entree:${ENTREE('glace', 'attaque-glacante')}`, restants: 1 }],
+  });
+  assert.equal(f.actions_usage.length, 1, 'le compteur de l’entrée obtenue s’enregistre');
+  const r = await verifier(f, 'dons « Variable »');
+  const lues = lignesDeLaNote(r.cellules);
+  assert.deepEqual(lues.filter((l) => l.nom === 'donObtenu').map((l) => l.valeur), [
+    'Mimétisme (Mage Bleu) : Attaque glaçante (Glace)', 'Mime (Mage Bleu) : Peau froide (Glace)',
+  ]);
+  assert.deepEqual(lues.filter((l) => l.nom === 'compteurAction').map((l) => l.valeur), [`Attaque glaçante (Mimétisme (Mage Bleu)) 1/2 [entree:${ENTREE('glace', 'attaque-glacante')}]`]);
+  const noms = lues.map((l) => l.nom);
+  assert.ok(noms.lastIndexOf('donObtenu') < noms.indexOf('acquisChoix') || !noms.includes('acquisChoix'), 'avant les acquis au choix');
+  // un nom introuvable, une entrée déjà obtenue : dits (nonRepris), jamais rapprochés
+  const note = r.cellules[ORDINATEUR.note];
+  const cellules = { ...r.cellules, [ORDINATEUR.note]: `${note}\nDon obtenu : Principale (Mage Bleu) : Attaque glacante bis (Glace)\nDon obtenu : Ultime raison (Mage Bleu) : Peau froide (Glace)\nDon obtenu : Mimétisme (Mage Rouge) : Peau froide (Glace)` };
+  const classeur = await lireClasseur(await ecrireXlsx(MODELE, { cellules, remplis: r.remplis, alignements: r.alignements, descriptionImage: 'logo', titre: f.nom }), { nom: 'essai.xlsx' });
+  const relu = ficheDuClasseur(regles, classeur.feuille('Personnage'), { nomFichier: 'essai.xlsx', date: DATE, logo: LOGO, empreintePortrait: null });
+  assert.deepEqual(relu.nonRepris, [
+    'Don obtenu « Principale (Mage Bleu) : Attaque glacante bis (Glace) » : « Attaque glacante bis » introuvable parmi les entrées de Glace du tableau de Mage Bleu',
+    'Don obtenu « Ultime raison (Mage Bleu) : Peau froide (Glace) » : entrée déjà obtenue par un autre don (une seule fois, décision R181)',
+    'Don obtenu « Mimétisme (Mage Rouge) : Peau froide (Glace) » : aucun don « Variable » de ce nom dans les classes des règles',
+  ]);
+  assert.deepEqual(canonique(relu.fiche).dons_obtenus, canonique(f).dons_obtenus);
 });
 
 test('armes élémentaires (décision R167) : nom, niveau, solidité et type physique choisi de la bombe reviennent tels quels, point fixe', async () => {

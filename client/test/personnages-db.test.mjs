@@ -20,7 +20,7 @@ db.exec('PRAGMA foreign_keys = ON');
 
 const TABLES = [
   'utilisateur', 'utilisateur_role', 'personnage', 'personnage_partage', 'personnage_classe', 'personnage_caracteristique', 'personnage_competence',
-  'personnage_entrainement', 'personnage_acquis_choix', 'personnage_resistance_choix', 'personnage_metier_bonus', 'personnage_capacite', 'personnage_sort',
+  'personnage_entrainement', 'personnage_acquis_choix', 'personnage_resistance_choix', 'personnage_metier_bonus', 'personnage_capacite', 'personnage_don_obtenu', 'personnage_sort',
   'personnage_livre_sort',
   'personnage_maitrise_choix', 'personnage_arme', 'personnage_armure_partie', 'personnage_accessoire', 'personnage_inventaire', 'personnage_ceinture',
   'personnage_action_usage', 'groupe',
@@ -81,7 +81,7 @@ function personnageValide(id, surcharge = {}) {
   inserer('personnage_maitrise_choix', { personnage_id: id, source: 'classes/guerrier#maitrise-arme:2', rang: 1, arme_famille_id: 'hache' });
 }
 
-test('les 23 tables des fiches et des groupes existent et data/rows les garde vides (les fiches réelles vivent dans la base du serveur)', () => {
+test('les 24 tables des fiches et des groupes existent et data/rows les garde vides (les fiches réelles vivent dans la base du serveur)', () => {
   for (const t of TABLES) {
     assert.equal(LIGNES_AU_DEPART[t], 0, t);
     const lignes = readFileSync(join(racine, 'data', 'rows', `${t}.sql`), 'utf8').trim().split('\n');
@@ -798,6 +798,8 @@ test('décision R25 : le Mage Bleu est fermé au Potentiel Illimité, à tous le
   personnageValide('r25-feu');
   db.prepare("UPDATE personnage_classe SET classe_id = 'classes/mage-bleu' WHERE personnage_id = 'r25-feu'").run();
   maitrisesDeClasseChoisies('r25-feu');
+  // Mimétisme (niveau 1, don « Variable ») obtient une entrée du tableau de sa magie innée (R181 : règle don_obtenu_a_choisir sans elle)
+  inserer('personnage_don_obtenu', { personnage_id: 'r25-feu', source: 'capacites/mage-bleu-mimetisme', entree_id: 'classes/mage-bleu#entree:feu:moteur-thermique' });
   assert.deepEqual(controle('r25-feu'), [], 'sans Potentiel Illimité, le Mage Bleu reste ouvert');
 });
 

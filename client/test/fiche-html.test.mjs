@@ -107,6 +107,9 @@ test('/fiche/, panneau « Choix » : les maîtrises d’armes sur toute sa large
   assert.ok(choix.indexOf('<div class="choix-maitrises">') > choix.indexOf('id="dons"'), 'sous les dons de classe à choisir');
   assert.equal([...choix.matchAll(/class="parametres__pile"/g)].length, 2);
   assert.match(html, /\.choix-maitrises\s*\{\s*grid-column:\s*1\s*\/\s*-1/, 'une rangée sur toute la largeur');
+  // décision R181 : les dons obtenus des dons « Variable » du Mage Bleu, juste sous les dons à choisir, cachés tant qu'il n'y en a pas (le script les remplit)
+  assert.match(choix, /<div id="dons-obtenus-bloc" hidden><h4 class="fiche-sous-titre">Dons obtenus \(dons « Variable »\)<\/h4><div id="dons-obtenus" class="fiche-etape__dons"><\/div><\/div>/);
+  assert.ok(choix.indexOf('id="dons-obtenus-bloc"') > choix.indexOf('id="dons"') && choix.indexOf('id="dons-obtenus-bloc"') < choix.indexOf('<div class="choix-maitrises">'));
   assert.equal([...html.matchAll(/id="maitrises"/g)].length, 1, 'un seul bloc des maîtrises');
 });
 
