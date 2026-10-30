@@ -45,7 +45,7 @@ import {
   acquisApresChoix, acquisApresRepartition, acquisChoixValables, acquisDesDons, magieTireeParLeMj, resistanceApresChoix, resistanceChoixValables, entrainementDe, entrainementsAEnregistrer, batonDuSac, contexteDesSorts, degatsDArmeDuMoment, magiesDesBatons, nomDuBaton, postureDuMoment, sortDuMoment,
   creaturesDuSort, sacrificeDuSort,
   carteDeMaitrise, compteurDeMaitrise, infobulleDeClasse, infobulleDeSpecialite, infobulleDuDonAChoisir,
-  infobulleDArmeElementaire, infobulleDArmure, infobulleDArmureElementaire, infobulleDeMetier, infobulleDeSort, TYPES_DE_DON, groupesDArmesParMaitrise, ligneDeMaitrise, maitriseApresChoix, maitriseChoixValables, maitrisesParFamille, presentationDuCompteurDeMaitrise, sourcesDeMaitrise,
+  infobulleDArme, infobulleDArmeElementaire, infobulleDArmure, infobulleDArmureElementaire, infobulleDeMetier, infobulleDeSort, TYPES_DE_DON, groupesDArmesParMaitrise, ligneDeMaitrise, maitriseApresChoix, maitriseChoixValables, maitrisesParFamille, presentationDuCompteurDeMaitrise, sourcesDeMaitrise,
   armeDeLaLigne, armesElementairesProposees, effetDeLArmeElementaire, sortsFerDAutreElement,
 } from '../lib/fiche-moteur.mjs';
 import { creatureAuNpm, FPVSIA, vautAuNpm } from '../lib/creature-npm.mjs';
@@ -2539,13 +2539,13 @@ function construireEquipement() {
       changer();
     };
     // une arme élémentaire : ce qu'elle apporte en infobulle (sa magie, sa capacité : infobulleDArmeElementaire, dans la liste dessinée par le site,
-    // listeDeChoix) ; les armes du catalogue n'en ont pas
+    // listeDeChoix) ; une arme du catalogue : son effet tel qu'écrit (infobulleDArme), aucune infobulle sans effet
     const optionDElement = (a) => el('option', { value: a.id, class: teinteDe(a).join(' ') || null,
       title: infobulleDArmeElementaire(a, trouver(regles.types_elementaires ?? [], a.type_id), trouver(regles.magies, a.magie_id)) }, a.nom);
     // les groupes du catalogue, la maîtrise la plus haute d'abord (groupesDArmesParMaitrise, demande du propriétaire du 2026-10-23 : puis par ordre
     // alphabétique à maîtrise égale ; « Autres » à la fin) ; les armes élémentaires proposées à la fin du groupe de leur famille (celle de leur type élémentaire)
     const groupesDuCatalogue = () => groupesDArmesParMaitrise(regles, fiche, calcul.maitrises.familles).map((g) => g.famille);
-    const parFamille = new Map(groupesDArmesParMaitrise(regles, fiche, calcul.maitrises.familles).map((g) => [g.famille, el('optgroup', { label: g.nom }, g.armes.map((a) => option(a.id, a.nom)))]));
+    const parFamille = new Map(groupesDArmesParMaitrise(regles, fiche, calcul.maitrises.familles).map((g) => [g.famille, el('optgroup', { label: g.nom }, g.armes.map((a) => el('option', { value: a.id, title: infobulleDArme(a) }, a.nom)))]));
     for (const a of armesProposees) {
       const f = regles.familles_armes.find((x) => x.type_elementaire_id === a.type_id);
       if (!f) continue;

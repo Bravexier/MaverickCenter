@@ -2163,7 +2163,7 @@ export const infobulleDeClasse = (classe) => classe?.description || null;
 
 /*
  * Les infobulles des options des listes de la fiche (demande du propriétaire : « Il faudrai également une infobulle au survol des choix pour voir ce
- * qu'ils apportent. » ; le métier, les sorts, les armes élémentaires et l'armure, dans la liste dessinée par le site : src/scripts/liste-choix.mjs) : les
+ * qu'ils apportent. » ; le métier, les sorts, les armes (catalogue et élémentaires) et l'armure, dans la liste dessinée par le site : src/scripts/liste-choix.mjs) : les
  * textes et valeurs de la base tels qu'écrits (sans balises, comme tout regles.json), une ligne par champ, sous le libellé que le site leur donne déjà
  * (tableau /metiers/, colonnes des sorts des pages de magie, tableaux des armures) ; un champ vide est omis ; rien du tout : null, pas d'infobulle.
  */
@@ -2195,6 +2195,10 @@ export function infobulleDArmeElementaire(arme, type = null, magie = null) {
   if (!arme) return null;
   return infobulleDesLignes([magie ? `Arme élémentaire : ${magie.nom}` : null, ...effetDeLArmeElementaire(arme, type)].filter(Boolean));
 }
+
+/** L'infobulle d'une arme du catalogue (réponse du propriétaire : « Chaque arme du catalogue montre son effet au survol, texte de la base tel qu'écrit ») :
+ * « Effet : <effet> » (regles.armes[].effet) ; sans effet, null. */
+export const infobulleDArme = (arme) => infobulleDesLignes(lignesDeChamps([['Effet', arme?.effet]]));
 
 /**
  * L'infobulle d'une armure de base (son nom, son AP et son AM sont déjà dans l'option, son poids dans le groupe) : Solidité (« uni » pour une armure à

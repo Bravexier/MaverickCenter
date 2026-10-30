@@ -64,7 +64,8 @@ qu'écrits, une ligne par champ, un champ vide omis, aucune infobulle sans texte
 - un sort, `infobulleDeSort` : « Feu, NPM 1 », puis « Type », « Coût », « Coût secondaire », « Portée », « Zone », « D/S/B », « Effets », « Remarque »
   tels qu'écrits, « (+1/NM) » compris ;
 - une arme élémentaire, `infobulleDArmeElementaire` : « Arme élémentaire : Feu », puis son effet tel que la fiche l'écrit sous la liste (capacité,
-  « Ignore 4 AP », mention) ; une arme du catalogue n'en a pas ;
+  « Ignore 4 AP », mention) ; une arme du catalogue, `infobulleDArme` : « Effet » tel qu'écrit (`regles.armes[].effet` ; réponse du propriétaire :
+  « Oui, l'ajouter », « Chaque arme du catalogue montre son effet au survol, texte de la base tel qu'écrit »), aucune infobulle sans effet ;
 - une armure de base, `infobulleDArmure` (son nom, son AP et son AM sont dans l'option, son poids dans le groupe) : « Solidité » (« 5 uni »),
   « Résistance », « Faiblesse » (« ×2 Frappe »), « Effet » (`regles.armures[].effet`, montré, jamais lu par un calcul) ; une armure élémentaire,
   `infobulleDArmureElementaire` : « Feu : armure élémentaire », puis ses effets.
