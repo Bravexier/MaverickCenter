@@ -51,6 +51,33 @@ R104). Un **clic droit**
 sur un curseur (ou Entrée) le remplace par une case de saisie : le nombre tapé est ramené au maximum au-dessus, au minimum en dessous (`borner`) ; Échap
 abandonne.
 
+**Listes avec infobulles** (demande du propriétaire : « Il faudrai également une infobulle au survol des choix pour voir ce qu'ils apportent. » ; réponses
+« Liste personnalisée (Recommandé) » et « Métier + sorts, armes élémentaires, armures ») : les menus dont les options ont un texte en base sont des
+**listes dessinées par le site** (`src/scripts/liste-choix.mjs#listeDeChoix`) — le **métier**, les **sorts** des emplacements, le **sort préparé**, le sort
+d'un **livre** de l'entraînement (des sorts aussi), les **armes 1 et 2** (toute la liste : catalogue et armes élémentaires) et l'**armure** ; « Dieu
+choisi » et les autres menus restent des menus du navigateur (aucune description en base). Fermée, la liste a l'aspect du menu qu'elle remplace (la couleur
+du choix, `aria-invalid`, grisée quand il n'y a rien à choisir) ; ouverte, ses groupes et ses options, chacune sur la couleur de sa magie comme avant, et
+**l'infobulle du site** à côté de l'option, au survol et à l'option active du clavier (pas au toucher, où un appui choisit) : les textes de la base tels
+qu'écrits, une ligne par champ, un champ vide omis, aucune infobulle sans texte (`lib/fiche-moteur.mjs`) :
+- un métier, `infobulleDeMetier` : « Bonus », « Artisanat possible », « Équipement supplémentaire possible », « Avantage possible » (les colonnes de
+  `/metiers/`, `regles.metiers[].apport`) ;
+- un sort, `infobulleDeSort` : « Feu, NPM 1 », puis « Type », « Coût », « Coût secondaire », « Portée », « Zone », « D/S/B », « Effets », « Remarque »
+  tels qu'écrits, « (+1/NM) » compris ;
+- une arme élémentaire, `infobulleDArmeElementaire` : « Arme élémentaire : Feu », puis son effet tel que la fiche l'écrit sous la liste (capacité,
+  « Ignore 4 AP », mention) ; une arme du catalogue n'en a pas ;
+- une armure de base, `infobulleDArmure` (son nom, son AP et son AM sont dans l'option, son poids dans le groupe) : « Solidité » (« 5 uni »),
+  « Résistance », « Faiblesse » (« ×2 Frappe »), « Effet » (`regles.armures[].effet`, montré, jamais lu par un calcul) ; une armure élémentaire,
+  `infobulleDArmureElementaire` : « Feu : armure élémentaire », puis ses effets.
+
+Le `<select>` reste dans la page, caché, et garde la valeur : la fiche le lit, le pose et écoute son `input` et son `change` comme avant (enregistrement,
+tableur, contrôles inchangés). Au clavier (motif WAI-ARIA d'une liste déroulante, l'option active a le focus réel : `components/Infobulles.astro` n'ouvre
+au clavier que la bulle de l'élément qui a le focus) : sur le bouton, Entrée, Espace, ↓, ↑, Alt+↓, Début, Fin ou une lettre ouvrent la liste ; dans la
+liste, ↓ ↑ Début Fin et les pages déplacent, une lettre (ou quelques-unes à la suite) saute à l'option qui commence par elles (`lib/liste-choix.mjs`),
+Entrée, Espace ou Alt+↑ choisissent, Tab choisit et passe au champ suivant, Échap ferme sans rien changer et rend le focus au bouton ; une liste que la
+fiche refait après le choix (le tableau des sorts, le bloc de l'armure) rend le focus au nouveau bouton. La liste ouverte est en position fixe sous le
+bouton (au-dessus quand la place manque), bornée à l'écran, téléphone compris, et défile en elle-même ; un clic ailleurs la ferme. Tests :
+`test/liste-choix.test.mjs`, `test/liste-choix-script.test.mjs` (le script sur un faux document), `test/fiche-listes-infobulles.test.mjs`.
+
 - **Portrait** (migration `0031-fiche-zones`) : « Choisir une image » ouvre le **recadrage** (un cadre carré où l'image se déplace au doigt, à la souris ou aux
   flèches ; un curseur ou la molette zoome de 1 à 4) ; la fiche garde l'image, réduite à 600 000 pixels et sous 700 000 caractères en data URL
   (`personnage.portrait`), et son cadrage (`portrait_x`, `portrait_y`, `portrait_zoom`) : « Recadrer » rouvre l'image d'origine, « ✕ » revient au logo.
@@ -120,7 +147,8 @@ abandonne.
 - **Armes élémentaires** (décision R167, migration 0081) : la liste de chaque arme propose les armes du catalogue et, **directement, les armes
   élémentaires des magies du personnage** (innée puis acquise ; jamais le Potentiel Illimité : un personnage au Potentiel Illimité seul n'en a aucune ;
   `armesElementairesProposees`), chacune à la fin du groupe de sa famille (celle dont le type élémentaire est le sien, `familles_armes[].type_elementaire_id`)
-  et **sur le fond de sa magie** (la classe de la palette de sa magie et `teinte-palette`, comme un sort ; la liste aussi quand elle est choisie) ; une arme
+  et **sur le fond de sa magie** (la classe de la palette de sa magie et `teinte-palette`, comme un sort ; la liste aussi quand elle est choisie), sa
+  capacité en infobulle (« Listes avec infobulles », plus haut) ; une arme
   élémentaire déjà posée d'une autre magie reste dans un groupe « Hors des magies du personnage », la liste en rouge. Plus de champ « Élément » ni
   « Amélioration de l'élément » : une ligne porte soit une arme du catalogue (avec sa composition), soit une arme élémentaire (sans matériau : la
   composition est grisée), et **un seul niveau d'amélioration**, qui ne sert qu'aux dégâts et à la solidité. Choisir une arme élémentaire vide le
@@ -170,8 +198,9 @@ abandonne.
   amélioration, pour l'armure entière (`personnage.armure_id` et `armure_amelioration_id`, ou `armure_elementaire_id` et
   `armure_amelioration_elementaire_id`). **Une seule liste** (R165 (5), `armuresProposees`) : les armures de base dont le poids est au plus le **poids
   portable**, par poids, jamais une armure « Familier » ; puis les **armures élémentaires des magies innée et acquise**, au plus du poids portable, un
-  groupe par magie (« Armures élémentaires : Feu »), chaque option **sur la couleur de sa magie** (sa classe et `teinte-palette`, comme les sorts ; Safari
-  iOS ignore le fond d'une option : le nom de la magie est celui de son groupe ; fermée, la liste prend la couleur de l'armure élémentaire choisie) ; aucune
+  groupe par magie (« Armures élémentaires : Feu »), chaque option **sur la couleur de sa magie** (sa classe et `teinte-palette`, comme les sorts ; le
+  nom de la magie est aussi celui de son groupe ; fermée, la liste prend la couleur de l'armure élémentaire choisie), ce que chaque armure apporte en
+  infobulle (« Listes avec infobulles », plus haut) ; aucune
   pour le Potentiel Illimité, qui n'en a pas (la magie tirée par le MJ pour un don du Flagelleur, R163, ne sert qu'au calcul du don : la liste lit
   les vraies magies innée et acquise de la fiche, R165 (5)). Plus de choix « Élément ». L'amélioration suit le genre de l'armure : le tableau des armures, ou celui des
   armures élémentaires (+1 à +5, R165 (2) ; la fiche note ce que le personnage possède, la perte des améliorations ne vaut qu'à la transformation)
@@ -227,7 +256,8 @@ abandonne.
   chacune dans la classe de son mode (`mode_hyper.classe`, `mode_hyper.cent.classe` de `regles.json` : famille `mode` de la palette).
 - **Méditation ou Repos** : le don de base de la race s'affiche sous son nom (`donDeBase`), en tête des dons raciaux.
 - **Compétences** : six blocs sur deux colonnes remplies de haut en bas, comme la fiche auto : Force, Volonté, Intelligence ; Perception, Social, Agilité.
-- **Métier** (décisions R33 à R40) : dans l'onglet « Choix », ce que donne le métier choisi (`bonusDuMetier`, `artisanatDe`, `objetsDuMetier`) — ses
+- **Métier** (décisions R33 à R40) : choisi dans la liste de l'identité, chaque métier avec ce qu'il apporte en infobulle (« Listes avec infobulles »,
+  plus haut) ; dans l'onglet « Choix », ce que donne le métier choisi (`bonusDuMetier`, `artisanatDe`, `objetsDuMetier`) — ses
   bonus, chacun **en Acquis** de sa compétence ou à un attribut : l'**initiative** (« +1 INI »), la **vitesse** ou la **vitesse de nage** (R37) ; un rang à plusieurs compétences (« +3% Diplomatie OU Intimidation »,
   « une compétence sociale au choix ») **se choisit ici** en pastilles (`personnage_metier_bonus`) ; un bonus en texte libre est rappelé sans effet. Sa
   **compétence d'artisanat** : 10 × chacune de ses deux caractéristiques, avec leur valeur (« Force 3 × 10 + Intelligence 2 × 10 = 50 % ») ; une croix sur
@@ -375,7 +405,7 @@ abandonne.
     Les contrôles `maitrise_*` du service nomment la source et la famille (« Mage Bleu (maîtrise 1) = 1 »).
 - **Sorts** : un tableau d'une ligne par emplacement, sans emplacement en plus (décision R27), chacune avec la liste des sorts possibles moins ceux des autres
   lignes (`lignesDeSorts`), groupée par NPM, le nom seul, chaque sort sur la couleur de sa magie comme sur les pages de magie, la liste fermée dans celle du
-  sort choisi (`sortsParNpm`, demande du propriétaire) ; le **NM** d'un sort se règle à **un seul curseur, de 0 à 3** (décision R118, qui précise
+  sort choisi (`sortsParNpm`, demande du propriétaire), ce que chaque sort apporte en infobulle (« Listes avec infobulles », plus haut) ; le **NM** d'un sort se règle à **un seul curseur, de 0 à 3** (décision R118, qui précise
   R26 : plus de cases « livre » ni « MJ » ; `bornesDuNm`, `sortAuNm`), **de 1 à 3** quand l'entraînement note un livre de ce sort (« livre » à côté du
   curseur ; la page le borne, la base ne l'impose plus), dont le NM **ne compte pas** dans le décompte ; le livre d'un sort qui n'est pas choisi
   **attend** (décision R169 : son NM n'est pas utilisé, le décompte ne change pas ; l'infobulle du décompte compte les livres en attente) ; un sort qui

@@ -501,8 +501,6 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
   background: var(--surface);
 }
 .choix-liste:focus-within { border-color: var(--etape); box-shadow: 0 0 0 1px var(--etape); }
-.fiche .choix-liste select { flex: 1; min-width: 0; border: 0; background: none; font-weight: 700; }
-.fiche .choix-liste select:focus { outline: none; }
 .choix__valeur { display: flex; flex-wrap: wrap; gap: 0.3rem; min-width: 0; }
 .choix__pastille {
   --c: var(--etape);
@@ -742,13 +740,10 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .fiche-table--sorts tr.sort-effet td { padding-top: 0; color: var(--muted); font-size: var(--fs-xs); line-height: 1.3; white-space: pre-line; }
 /* la remarque d'un sort : une étoile, son texte en infobulle (demande du propriétaire ; son `title`, montré en position fixe par components/Infobulles.astro : le cadre défilant ne la coupe pas) */
 .sort-choix { display: flex; min-width: 9rem; align-items: center; gap: 0.3rem; }
-.sort-choix select { flex: 1; min-width: 0; }
 .sort-remarque { flex: none; color: var(--etoile); font-size: var(--fs-lg); line-height: 1; cursor: help; }
 .sort-remarque:focus-visible { outline: 2px solid var(--etape); outline-offset: 2px; border-radius: var(--radius-xxs); }
-/* liste d'un emplacement : un groupe par NPM, chaque sort sur la couleur de sa magie (demande du propriétaire) ; fermée, la couleur du sort choisi */
-.fiche .fiche-table--sorts select[data-couleur] { background-color: var(--c); color: var(--texte-sur-c); font-weight: 600; } /* la classe de la magie du sort (teinte-palette) */
-.fiche-table--sorts optgroup, .fiche-table--sorts option.option-vide { background-color: var(--surface); color: var(--text); font-weight: normal; }
-.fiche-table--sorts optgroup { color: var(--muted); font-style: normal; }
+/* liste d'un emplacement : un groupe par NPM, chaque sort sur la couleur de sa magie (demande du propriétaire) ; fermée, la couleur du sort choisi (la
+   liste dessinée par le site : .liste-choix, plus bas) */
 /* un sort au-delà des emplacements (XP baissée, magie retirée) : pas d'emplacement en plus (décision R27), à retirer */
 .fiche-table--sorts tr.en-trop td { background: color-mix(in srgb, var(--danger) 8%, var(--surface)); }
 /* le NM d'un sort (décision R118) : un curseur de 0 à 3, sa valeur, et « livre » quand l'entraînement en note un */
@@ -772,9 +767,8 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .sort-prepare__champs { display: flex; flex-wrap: wrap; align-items: end; gap: 0.5rem 0.75rem; }
 .sort-prepare__sort { flex: 1 1 14rem; min-width: 0; }
 .fiche .sort-prepare__jet { width: 5.5rem; }
-/* la magie du sort (teinte-palette) ; la posture, sa couleur et son texte en style jusqu'à leur lot */
-.fiche .sort-prepare select[data-couleur], .sort-prepare__posture[data-couleur] { background-color: var(--c); color: var(--texte-sur-c); font-weight: 600; }
-.sort-prepare option { background-color: var(--surface); color: var(--text); font-weight: normal; }
+/* la posture de la préparation sur sa couleur (teinte-palette) ; le sort, sur celle de sa magie, est une liste du site (.liste-choix, plus bas) */
+.sort-prepare__posture[data-couleur] { background-color: var(--c); color: var(--texte-sur-c); font-weight: 600; }
 .sort-prepare__posture { display: inline-block; padding: 0.15rem 0.5rem; border-radius: var(--radius-xxs); }
 /* les NM du MJ, pour toute la fiche (décision R118) : à côté du décompte des NM */
 .budget--mj { align-items: center; color: var(--muted); }
@@ -1023,19 +1017,15 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .objet__solidite .curseur__valeur { min-width: 2.6rem; }
 .objet__solidite[data-cassee] .curseur__valeur { color: var(--danger); }
 /* la liste unique des armures (décision R165 (5)) : chaque armure élémentaire sur la couleur de sa magie (sa classe et teinte-palette, comme les sorts) ;
-   fermée, la couleur de l'armure élémentaire choisie ; le poids portable dessous */
-.fiche .armure__choix select[data-couleur] { background-color: var(--c); color: var(--texte-sur-c); font-weight: 600; }
-.armure__choix optgroup, .armure__choix option.option-vide, .armure__choix option:not(.teinte-palette) { background-color: var(--surface); color: var(--text); font-weight: normal; }
-.armure__choix optgroup { color: var(--muted); font-style: normal; }
+   fermée, la couleur de l'armure élémentaire choisie (la liste dessinée par le site : .liste-choix, plus bas) ; le poids portable dessous */
 .armure__poids { margin: 0; cursor: help; }
 /* l'armure portée (décision R95) : la solidité de chacune de ses parties, sur deux colonnes quand la place le permet ; une partie cassée en rouge */
 .armure__parties { display: grid; gap: 0.3rem 0.9rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr)); }
 .armure__partie .objet__solidite-nom { min-width: 6.2rem; }
 .armure__partie[data-cassee] .objet__solidite-nom { color: var(--danger); }
-/* une arme élémentaire (décision R167) : sa liste sur le fond de sa magie (la classe de la magie et `teinte-palette`, comme un sort), les groupes et les
-   autres options au fond du site ; sous la liste, son effet (capacité, « Ignore 4 AP », mention) et le rappel des sorts « Fer » d'un autre élément */
-.fiche .objet select[data-couleur] { background-color: var(--c); color: var(--texte-sur-c); font-weight: 600; }
-.fiche .objet select[data-couleur] optgroup, .fiche .objet select[data-couleur] option:not(.teinte-palette) { background-color: var(--surface); color: var(--text); font-weight: normal; }
+/* une arme élémentaire (décision R167) : sa liste sur le fond de sa magie (la classe de la magie et `teinte-palette`, comme un sort : la liste dessinée
+   par le site, .liste-choix, plus bas), les groupes et les autres options au fond du site ; sous la liste, son effet (capacité, « Ignore 4 AP », mention)
+   et le rappel des sorts « Fer » d'un autre élément */
 .objet__effet { display: grid; gap: 0.15rem; margin: 0; color: var(--muted); font-size: var(--fs-xs); }
 .objet__rappels { margin: 0; padding: 0; list-style: none; color: var(--danger); font-size: var(--fs-xs); }
 .objet__rappels li { cursor: help; }
@@ -1164,6 +1154,57 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .autocompletion__liste[hidden] { display: none; }
 .autocompletion__liste li { padding: 0.25rem 0.6rem; cursor: pointer; white-space: nowrap; }
 .autocompletion__liste li:hover, .autocompletion__liste li[aria-selected='true'] { background: var(--etape-doux); color: var(--text); }
+
+/* la liste de choix dessinée par le site à la place d'un menu (src/scripts/liste-choix.mjs : métier, sorts, livres, armes, armure ; demande du
+   propriétaire : l'infobulle de chaque option, ce qu'elle apporte) : fermée, l'aspect du menu qu'elle remplace (bordure, fond, la couleur du choix
+   quand le menu en avait une : `data-couleur` et les classes de la palette recopiées sur le bouton) ; ouverte, une liste en position fixe aux couleurs du
+   thème, bornée à l'écran par le script, chaque option sur la couleur de sa magie comme les options d'avant ; l'option active (le focus) cerclée */
+.liste-choix { display: flex; min-width: 0; }
+.fiche-champ .liste-choix, .fiche-table .liste-choix { width: 100%; }
+.sort-choix .liste-choix, .choix-liste .liste-choix { flex: 1; }
+.entrainement__ligne > .liste-choix { flex: 1 1 6rem; }
+.fiche .liste-choix__bouton {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+}
+.liste-choix__valeur { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.liste-choix__bouton::after { content: '▾'; flex: none; font-size: 0.85em; opacity: 0.7; }
+.liste-choix__bouton[aria-expanded='true']::after { content: '▴'; }
+.fiche .liste-choix__bouton[aria-invalid='true'] { border-color: var(--danger); box-shadow: 0 0 0 1px var(--danger); }
+.fiche .liste-choix__bouton[data-couleur] { background-color: var(--c); color: var(--texte-sur-c); font-weight: 600; }
+.fiche .choix-liste .liste-choix__bouton { padding-inline: 0; border: 0; background: none; font-weight: 700; }
+.fiche .choix-liste .liste-choix__bouton:focus { outline: none; }
+.liste-choix__liste {
+  position: fixed;
+  z-index: 20;
+  width: max-content;
+  margin: 0;
+  padding: 0.2rem 0;
+  overflow-y: auto;
+  border: 1px solid var(--etape-ligne);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--ombre-flottante);
+  font-size: var(--fs-md);
+  font-weight: normal;
+  text-align: left;
+}
+.liste-choix__titre { padding: 0.3rem 0.6rem 0.1rem; color: var(--muted); font-size: var(--fs-xs); font-weight: 600; }
+.liste-choix__option { padding: 0.25rem 0.6rem; overflow-wrap: anywhere; cursor: pointer; }
+.liste-choix__groupe .liste-choix__option { padding-left: 1.1rem; }
+.liste-choix__option.option-vide { color: var(--muted); }
+.fiche .liste-choix__option.teinte-palette { background-color: var(--c); color: var(--c-texte); }
+.liste-choix__option[aria-selected='true'] { font-weight: 700; }
+.liste-choix__option[aria-disabled='true'] { opacity: 0.55; cursor: not-allowed; }
+.liste-choix__option:hover:not(.teinte-palette), .liste-choix__option:focus:not(.teinte-palette) { background: var(--etape-doux); color: var(--text); }
+.liste-choix__option:hover, .liste-choix__option:focus { outline: 2px solid var(--etape); outline-offset: -2px; }
 /* l'inventaire, sous les accessoires (zone III) : le sac puis la bourse ; la liste qui se filtre déborde du tableau qui défile */
 .inventaire { display: grid; gap: 0.6rem; }
 #etape-inventaire .fiche-defile { overflow: visible; }

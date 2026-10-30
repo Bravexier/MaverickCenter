@@ -343,6 +343,29 @@ test('métiers (décisions R33 à R35) : bonus par rang avec leur compétence ou
   assert.ok(regles.metiers.some((m) => m.bonus.some((b) => b.options.some((o) => o.attribut === 'initiative'))), '« +X INI » vers l’initiative');
 });
 
+test('métiers : `apport` (infobulle de la liste Métier, demande du propriétaire) — Bonus, Artisanat, Équipement, Avantage tels qu’écrits dans la base, un champ vide omis, sans la description', () => {
+  const lignes = new Map(db.prepare('SELECT id, bonus_brut, artisanat_brut, equipement_brut, avantage_brut FROM metier').all().map((r) => [r.id, r]));
+  assert.equal(regles.metiers.length, lignes.size);
+  for (const m of regles.metiers) {
+    const r = lignes.get(m.id);
+    const attendu = [['Bonus', r.bonus_brut], ['Artisanat possible', r.artisanat_brut], ['Équipement supplémentaire possible', r.equipement_brut], ['Avantage possible', r.avantage_brut]]
+      .filter(([, texte]) => texte).map(([libelle, texte]) => ({ libelle, texte: texteSansBalises(texte) })); // sans balises de mots-clés, comme tout regles.json
+    assert.deepEqual(m.apport, attendu, m.id);
+  }
+  assert.ok(regles.metiers.some((m) => m.apport.length === 3), 'un métier sans « Avantage possible » (l’Artisan) : la ligne omise');
+});
+
+test('armures : `effet` (infobulle de la liste Armure, demande du propriétaire) — le texte de la base tel qu’écrit, sans balises, absent quand l’armure n’en a pas', () => {
+  const effets = new Map(db.prepare('SELECT id, effet FROM armure').all().map((r) => [r.id, r.effet]));
+  assert.equal(regles.armures.length, effets.size);
+  for (const a of regles.armures) {
+    const texte = effets.get(a.id);
+    if (texte?.trim()) assert.equal(a.effet, texteSansBalises(texte), a.id);
+    else assert.ok(!('effet' in a), `${a.id} : pas d’effet`);
+  }
+  assert.ok(regles.armures.some((a) => a.effet) && regles.armures.some((a) => !a.effet), 'des armures avec et sans effet');
+});
+
 test('postures (sélecteur de la page, demande du propriétaire) : les six de la base dans leur ordre, leur couleur, leurs effets du tableau de la fiche', () => {
   assert.deepEqual(regles.postures.map((p) => p.id), db.prepare('SELECT id FROM posture ORDER BY ordre').all().map((r) => r.id));
   for (const p of regles.postures) {

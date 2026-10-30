@@ -30,6 +30,7 @@ import { normalize } from './text.mjs';
 import { chargerVocabulaire } from './mots-cles-db.mjs';
 import { texteSansBalises, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
 import { valeurDuPoids } from './fiche-format.mjs';
+import { CHAMPS_DU_CORPS } from './corps-metiers.mjs';
 
 const vocabulaires = new WeakMap(); // base -> vocabulaire des mots-clés
 const vocabulaireDe = (db) => {
@@ -306,9 +307,14 @@ function reglesDeLaBase(db) {
     for (const r of rows ?? []) ajouter((rangs[r.rang - 1] ??= creer(r)), r);
     return rangs.filter(Boolean);
   };
-  const metiers = lignes(db, 'SELECT id, nom, artisanat_texte, test_carac_1_id, test_carac_2_id FROM metier ORDER BY nom COLLATE NOCASE')
+  // `apport` : ce que le métier apporte, ses champs de /metiers/ tels qu'écrits dans la base (libellés de CHAMPS_DU_CORPS, sans la description ; un
+  // champ vide omis) ; l'infobulle de son option dans la liste Métier de la fiche (demande du propriétaire)
+  const CHAMPS_D_APPORT = CHAMPS_DU_CORPS.filter((c) => c.colonne !== 'description');
+  const metiers = lignes(db, `SELECT id, nom, artisanat_texte, test_carac_1_id, test_carac_2_id, ${CHAMPS_D_APPORT.map((c) => c.colonne).join(', ')}
+    FROM metier ORDER BY nom COLLATE NOCASE`)
     .map((m) => ({
       id: m.id, nom: m.nom,
+      apport: CHAMPS_D_APPORT.filter((c) => m[c.colonne]).map((c) => ({ libelle: c.libelle, texte: m[c.colonne] })),
       bonus: parRang(bonusDesMetiers.get(m.id), (r) => ({ rang: r.rang, texte: r.texte, valeur: r.valeur, unite: r.unite, options: [] }),
         (rang, r) => rang.options.push({ competence_id: r.competence_id, attribut: r.attribut })),
       artisanat: m.artisanat_texte ? { texte: m.artisanat_texte, caracteristiques: m.test_carac_1_id ? [m.test_carac_1_id, m.test_carac_2_id] : [] } : null,
@@ -623,9 +629,11 @@ function reglesDeLaBase(db) {
       // (décisions R157, R158 : « Cassée, l'armure ne donne plus aucun de ses effets, bonus comme malus, jusqu'à sa réparation » — l'initiative, la vitesse et
       // les croix qu'écrit l'effet, « +3 INI », « -5 INI, 1 Croix en AGI », ne sont pas lus ; un effet qu'on lira un jour devra cesser, comme l'acquis, quand
       // l'armure à cran uni est à 0 : lib/fiche-moteur.mjs#armureCassee. Le malus de la catégorie Lourd, lui, reste : « Non, elle pèse toujours », R158)
+      // `effet` : son texte tel qu'écrit, montré seulement (l'infobulle de son option dans la liste Armure : lib/fiche-moteur.mjs#infobulleDArmure ;
+      // demande du propriétaire), jamais lu par un calcul ; absent quand l'armure n'en a pas
       return lignes(db, 'SELECT id, nom, type, ap, am, solidite, solidite_uni, effet FROM armure ORDER BY ordre').map(({ effet, ...a }) => {
         const acquis = horsDuTableau(lireAcquis(effet));
-        return { ...a, degats: degats.get(a.id) ?? [], ...(acquis.length ? { acquis } : {}) };
+        return { ...a, degats: degats.get(a.id) ?? [], ...(acquis.length ? { acquis } : {}), ...(effet?.trim() ? { effet } : {}) };
       });
     })(),
     // la magie de chaque armure élémentaire (armure_elementaire.magie_id) : la fiche auto écrit l'élément d'une armure par le nom de sa magie, l'import en

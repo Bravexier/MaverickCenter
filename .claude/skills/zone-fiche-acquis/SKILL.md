@@ -36,6 +36,7 @@ Noyau (fichiers, invariants communs) : skill `zone-fiche`. Détail : `docs/chara
 ## Métier (R33 à R40)
 - Bonus à l'Acquis de la compétence (affiché « +N », compté dans le score, rogné au plafond R41 : `competencesDe`) ou à l'initiative et aux vitesses (`attributsDe`).
 - Une croix retire 20 à l'artisanat, deux le rendent inutilisable (R39). Un rang à choix se choisit sous le métier (`bonusDuMetier`, `choixDeMetierValables`). La compétence d'artisanat s'affiche (`artisanatDe`).
+- Le menu du métier est une liste du site : l'infobulle de chaque métier donne ce qu'il apporte, colonnes de `/metiers/` (`infobulleDeMetier`, `regles.metiers[].apport`, jamais lu par un calcul).
 - Ses objets de départ entrent dans l'inventaire au choix du métier (`inventaireSelonLeMetier`, `choisirObjetDeMetier`). Page `/metiers/` : skill `zone-metiers`.
 
 ## Tests
