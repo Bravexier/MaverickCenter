@@ -1,6 +1,6 @@
 ---
 name: zone-accessoires
-description: "Onglet Accessoires de /ressources/equipement/ : générateur d'accessoire rendu depuis les tables accessoire_*, gemme, tirages au dé, malédiction et destruction (R94), gemmes au choix, prix, encart, couleurs des niveaux. À charger avant de lire, modifier ou relire ce code."
+description: "Page Accessoires, /ressources/accessoires/ : générateur d'accessoire rendu depuis les tables accessoire_*, gemme, tirages au dé, malédiction et destruction (R94), gemmes au choix, prix, encart, couleurs des niveaux. À charger avant de lire, modifier ou relire ce code."
 paths: ["client/src/lib/accessoires-db.mjs", "client/src/lib/accessoires-generateur.mjs", "client/src/lib/accessoires-couleurs.mjs", "client/src/components/accessoires/**", "client/src/scripts/accessoires.mjs", "client/src/styles/accessoires/**", "client/test/accessoires-*.test.mjs"]
 user-invocable: false
 ---
@@ -10,17 +10,17 @@ user-invocable: false
 - Lecture des tables : `client/src/lib/accessoires-db.mjs` (`chargerAccessoires`, `titreDeCompetence`).
 - Logique pure du générateur : `client/src/lib/accessoires-generateur.mjs` (`tirerUnAccessoire`, `apresUnJet`, `etatDeMalediction`, `noteDeMalediction`, `gemmesAuChoix`, `gemmesCochees`, `prixDeLAccessoire`, `bonusBorne`, `effetDuBonus`, `bonusDeLAdresse`) ; sans couleur.
 - Couleurs des niveaux : `client/src/lib/accessoires-couleurs.mjs` (`COULEURS_DES_NIVEAUX`, sans import), lues par `lib/palette-css.mjs` (famille `niveau`, `classeDeNiveau` ; skill `ui-couleurs`).
-- Gabarit : `components/accessoires/AccessoiresPage.astro`, `GemmesDeLEffet.astro` ; CSS `styles/accessoires/accessoires.css`.
+- Gabarit : `src/pages/ressources/accessoires.astro`, `components/accessoires/AccessoiresPage.astro`, `GemmesDeLEffet.astro` ; CSS `styles/accessoires/accessoires.css`.
 - Script de page : `src/scripts/accessoires.mjs` (encart, dés, curseur d'acquis `reglerLAcquis`, état dans l'adresse).
 - Tables : `accessoire_emplacement`, `accessoire_propriete`, `accessoire_effet`, `accessoire_effet_gemme`, `gemme`, `accessoire_monture`.
-- Onglet posé dans la page Équipement : skill `zone-equipement` ; panneau de règles de l'onglet : skill `zone-equipement` (« Panneaux de règles »).
+- Cadre de la page et panneau de règles : skill `zone-equipement` (« Panneaux de règles »).
 
 ## À lire
-- `docs/content-guide.md`, « Accessoires (onglet Accessoires de `/ressources/equipement/`) : le générateur d'accessoire » : tableaux, dés, transitions de malédiction, encart, gemmes au choix, adresse, couleurs, rendu sans JavaScript. Tout le détail y est.
+- `docs/content-guide.md`, « Accessoires (page `/ressources/accessoires/`) : le générateur d'accessoire » : tableaux, dés, transitions de malédiction, encart, gemmes au choix, adresse, couleurs, rendu sans JavaScript. Tout le détail y est.
 - Effets des accessoires sur la fiche (R54, `accessoire_effet_cible`, `lib/accessoire-champs.mjs` et son test) : skill `zone-fiche-equipement`.
 
 ## Invariants
-- Rendu depuis les tables, jamais depuis le Markdown de la page : seules les consignes écrites sous chaque étape s'affichent ; les règles sont le panneau de règles de l'onglet, déplié au départ.
+- Rendu depuis les tables, jamais depuis le Markdown de la page : seules les consignes écrites sous chaque étape s'affichent ; les règles sont le panneau de règles de la page, déplié au départ.
 - Non modifiable sur le site de dev, sauf son panneau de règles.
 - Malédiction (R94, `tirerUnAccessoire`, testé) : l'accessoire devient maudit et on relance depuis l'étape 2 avec le même emplacement (l'étape 1 n'est tirée qu'une fois) ; une seconde malédiction le détruit, sans troisième tirage.
 - Chaque jet, de « Tirer un accessoire » comme du dé d'un tableau, passe par `apresUnJet` : le dé de l'étape 1, ou un dé jeté sur un accessoire détruit, commence un nouvel accessoire ; le dé de l'étape 2 retire un effet MALÉDICTION choisi. Un accessoire détruit ne revient jamais.
@@ -39,7 +39,7 @@ user-invocable: false
 - Un tableau par étape ; l'étape 3, un tableau par propriété, chacun dans son onglet (`components/Onglets.astro`, skill `ui-onglets`).
 - Compétence en une ligne par compétence (« Compétence Force »), bonus d'acquis au curseur, au dé ou saisi.
 - Chaque tableau des étapes a une case au dé qui tire une ligne.
-- Lignes d'effet, de compétence et de monture, et encart, dans la couleur de leur niveau (`COULEURS_DES_NIVEAUX`, celles de l'onglet), au style des autres tableaux : « Oui, même style (Recommandé) » (2026-10-29 ; recette du skill `ui-tableaux`, variables `--acc-teinte`, `--acc-filet`, `--acc-lisere`) :
+- Lignes d'effet, de compétence et de monture, et encart, dans la couleur de leur niveau (`COULEURS_DES_NIVEAUX`, celles de la page), au style des autres tableaux : « Oui, même style (Recommandé) » (2026-10-29 ; recette du skill `ui-tableaux`, variables `--acc-teinte`, `--acc-filet`, `--acc-lisere`) :
   - ligne : fond teinté à 12 % (20 % au survol ou choisie), filet, liseré à gauche, texte du thème ; jet en texte adouci (`--text` mêlé à `--muted`) ; curseur de l'acquis en `--text`, case saisie sur `--surface` bordée du filet ; ni voile de blanc ni texte de la classe ; choisie : le liseré `--acc` devant celui du niveau ;
   - encart (`.acc-produit`) : fond teinté à 8 %, cadre de la couleur mêlée aux filets (60 %), liseré de 4 px, intitulés en jetons du thème ;
   - pastille du niveau (`.acc-ligne__niveau` dans les lignes d'effet et de monture, niveau d'une compétence réécrit par le script, légende de l'étape 3) : couleur pleine et texte de la classe, bordée d'un trait tiré de `--text` (« Garder les deux (Recommandé) », 2026-10-29).

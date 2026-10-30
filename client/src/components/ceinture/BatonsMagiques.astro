@@ -6,10 +6,10 @@ import PanneauDeRegles from '../equipement/PanneauDeRegles.astro';
 import Tableau from '../Tableau.astro';
 import type { PanneauRendu } from '../equipement/PanneauDeRegles.astro';
 
-// Sous-onglet « Bâtons magiques » de l'onglet « Ceinture » de la page /ressources/equipement/ (components/ceinture/CeinturePanneau.astro ; demandes du
+// Sous-onglet « Bâtons magiques » de la page Ceinture, /ressources/objets-a-la-ceinture/ (components/ceinture/CeinturePanneau.astro ; demandes du
 // propriétaire, 2026-10-16 : d'abord un onglet de « Équipement », puis « On y remettrait à ce moment le tableau Bâton magique », dans la ceinture) :
 // un panneau (`section.ceinture-panneau#batons-magiques`, l'ancre de l'ancien onglet) rendu depuis la base (lib/batons-db.mjs), jamais depuis le
-// Markdown de la page « Bâton magique » ; en tête, son panneau de règles, replié comme ceux des autres onglets
+// Markdown de la page « Bâton magique » ; en tête, son panneau de règles, replié comme ceux des autres pages
 // (components/equipement/PanneauDeRegles.astro, migration 0056, id `batons-magiques` : l'introduction de la page, et « Comment fabriquer un bâton
 // magique ? » en tuile). Puis le tableau
 // (lib/batons-rendu.mjs ; demande du propriétaire du 2026-10-16) : une ligne par magie, sur la couleur de sa magie sur le site (demande du propriétaire
@@ -21,7 +21,7 @@ import type { PanneauRendu } from '../equipement/PanneauDeRegles.astro';
 type Batons = ReturnType<typeof chargerBatons>;
 interface Props {
   batons: Batons;
-  /** le panneau de règles du sous-onglet (`batons-magiques`), le Markdown de ses blocs rendu (src/pages/ressources/equipement.astro) */
+  /** le panneau de règles du sous-onglet (`batons-magiques`), le Markdown de ses blocs rendu (src/pages/ressources/objets-a-la-ceinture.astro) */
   regles: PanneauRendu | null;
   /** l'id du panneau (lib/equipement.mjs#SOUS_ONGLETS_DE_LA_CEINTURE), son nom, et s'il est le sous-onglet ouvert au départ */
   id: string;

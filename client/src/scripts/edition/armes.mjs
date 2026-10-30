@@ -1,4 +1,4 @@
-// Extension de l'éditeur pour l'onglet Armes de /ressources/equipement/ (components/armes/ArmesPage.astro) — demandes du propriétaire : « tout peut
+// Extension de l'éditeur pour la page Armes (/ressources/armes/) (components/armes/ArmesPage.astro) — demandes du propriétaire : « tout peut
 // être éditable à l'instar des autres pages qui peuvent l'être. Quand le mode Edition est lancé, il n'est pas possible de "sélectionner" une arme /
 // matériau / amélioration, mais tous les tableaux sont visibles » ; « Fais donc la possibilité de créer / supprimer des armes » ; puis, avec les deux
 // menus à onglets (2026-10-23) : « Je veux les onglets aussi. (mais la possibilité de changer le nom et leur dés, ou même de créer un nouvel onglet donc

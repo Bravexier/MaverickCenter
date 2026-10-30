@@ -23,7 +23,7 @@ const vivante = () => ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase
 const db = vivante();
 const service = { base: () => db, etat: () => ({}), edition: true };
 const appel = (methode, chemin, corps_) => traiter({ methode, chemin, entetes: { 'content-type': 'application/json' }, corps: corps_ && JSON.stringify(corps_) }, service);
-const enregistrer = (operations) => appel('POST', '/api/edition/', { page: 'ressources/equipement/', operations });
+const enregistrer = (operations) => appel('POST', '/api/edition/', { page: 'ressources/objets-a-la-ceinture/', operations });
 const ligne = (sql, ...p) => {
   const l = db.prepare(sql).get(...p);
   return l ? { ...l } : undefined;

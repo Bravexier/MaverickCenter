@@ -1,4 +1,4 @@
-// Onglet « Ceinture » de la page /ressources/equipement/ (demandes du propriétaire : le 2026-10-15, « l'ensemble de tous les objets que les joueurs
+// Page « Ceinture », /ressources/objets-a-la-ceinture/ (l'onglet « Ceinture » de la page /ressources/equipement/ du 2026-10-16 au 2026-10-29 ; demandes du propriétaire : le 2026-10-15, « l'ensemble de tous les objets que les joueurs
 // peuvent placer à la ceinture dans le but de pouvoir les utiliser comme un IC. De plus il faut parler aussi des bâtons magiques » ; le 2026-10-16,
 // « revoir intégralement la page des objets à la ceinture, renommer l'onglet en "Ceinture" et le mettre dans les onglets de équipement », chaque
 // tableau dans ses sous-onglets « plutôt que la recherche actuel », « dans l'ordre Consommable / Carquois / Bâton magiques », les consommables

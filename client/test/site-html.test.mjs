@@ -49,7 +49,7 @@ test('plus rien sous /guide/ (éclatement du guide, 2026-10-18) : ni page, ni li
 
 test('la page 404 renvoie les anciennes adresses /wiki/… vers les nouvelles', options, () => {
   const html = lire('404.html');
-  assert.match(html, /<p id="introuvable" data-base="\/" data-renvois="[^"]*">/);
+  assert.match(html, /<p id="introuvable" data-base="\/" data-renvois="[^"]*" data-eclatees="[^"]*">/);
   assert.match(html, /location\.replace/);
   // les anciennes adresses du guide (/guide/, /guide/<slug>/) : une par page du guide de l'index de la recherche, vers sa nouvelle adresse ; puis, pour
   // chaque page fusionnée dans une autre (refonte du 2026-10-18), /guide/<slug>/ et /decouvrir/<slug>/, et les adresses du plan précédent qui ont changé
@@ -99,16 +99,30 @@ test('en-tête : plus de barre de recherche (une page à part, avec les mots-cl�
   const entete = html.slice(html.indexOf('<header'), html.indexOf('</header>'));
   assert.ok(!/<form|type="search"/.test(entete), 'aucun formulaire de recherche dans l’en-tête');
   assert.deepEqual([...entete.matchAll(/class="nav-group__toggle" data-group="([^"]+)"[^>]*>([^<]+)</g)].map((m) => `${m[1]} ${m[2].trim()}`),
-    ['decouvrir Découvrir', 'regles Règles', 'joueur Espace joueur', 'mj Espace MJ', 'codex Codex', 'outils Outils']);
-  assert.match(entete, /data-group="decouvrir" aria-pressed="true"/, 'l’accueil ouvre Découvrir');
+    ['regles Règles', 'personnage Personnage', 'equipement Équipement', 'joueur Espace joueur', 'mj Espace MJ', 'codex Codex', 'outils Outils']);
+  assert.match(entete, /data-group="regles" aria-pressed="true"/, 'l’accueil ouvre les Règles');
   const outils = entete.match(/<ul class="site-nav__items" data-group="outils"[^>]*>([\s\S]*?)<\/ul>/)[1];
   // Debug : au menu du site de dev seulement (lib/nav.mjs#entreesDuMenu) ; un build de production (SITE_MODE=prod) a la page réservée, sans menu
   // (test/debug-page.test.mjs)
   const production = lire('debug/index.html').includes('class="debug-reservee"');
   assert.deepEqual([...outils.matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => `${m[2]} ${m[1]}`),
     ['Mise à jour /mise-a-jour/', 'Galeries /galeries/', 'Recherche /recherche/', 'Archives /archives/', ...(production ? [] : ['Debug /debug/'])]);
-  assert.match(lire('ressources/alchimie/index.html'), /data-group="regles" aria-pressed="true" aria-current="true"/, 'une ressource hors menu ouvre les Règles');
+  assert.match(lire('ressources/alchimie/index.html'), /data-group="equipement" aria-pressed="true" aria-current="true"/, 'une ressource hors menu ouvre l’Équipement');
+  // /regles/artisanat/ : l'Équipement seul est la rubrique courante (le plus long début d'adresse), pas les Règles de /regles/
+  const artisanat = lire('regles/artisanat/index.html');
+  assert.match(artisanat, /data-group="equipement" aria-pressed="true" aria-current="true"/);
+  assert.match(artisanat, /data-group="regles" aria-pressed="false">/);
   assert.ok(!entete.includes('data-group="ressources"'), 'plus de rubrique Ressources');
+  // réponse du propriétaire du 2026-10-29 : « Famillier devrai être dans Personnage, Le reste dans equipement (sous menu-autres pour commencer) »
+  const familiers = lire('ressources/familiers/index.html');
+  assert.match(familiers, /data-group="personnage" aria-pressed="true" aria-current="true"/, 'Familiers ouvre le Personnage');
+  assert.match(familiers, /data-group="equipement" aria-pressed="false">/, 'pas l’Équipement');
+  assert.ok(familiers.includes('<a href="/ressources/familiers/" aria-current="page">Familiers</a>'), 'son entrée, courante');
+  const autres = lire('ressources/index.html');
+  assert.match(autres, /data-group="equipement" aria-pressed="true" aria-current="true"/, 'la liste des pages de ressources ouvre l’Équipement');
+  assert.ok(autres.includes('<a href="/ressources/" aria-current="page">Autres</a>'), 'son entrée Autres, courante');
+  const equipement = entete.match(/<ul class="site-nav__items" data-group="equipement"[^>]*>([\s\S]*?)<\/ul>/)[1];
+  assert.match(equipement, /<a href="\/ressources\/">Autres<\/a><\/li>\s*$/, 'Autres, en dernière entrée de l’Équipement');
 });
 
 test('accueil : texte de bienvenue et défilement des images de la galerie (en construction : le logo seul)', options, () => {
@@ -518,7 +532,7 @@ test('couleurs des magies : jamais en style sur une page construite, toujours pa
     'decouvrir/l-univers/index.html': /<li class="couleur-magie-feu">\s*<a class="guide-magie"/,
     'bestiaire/index.html': /class="bcible bcible--[a-z_]+ bcible--magie(?: bcible--deux)? couleur-magie-[\w-]+ couleur-2-magie-[\w-]+"/,
     'ressources/composants/index.html': /<tr class="composant composant--magie couleur-magie-[\w-]+"[\s\S]*<span class="comp-magie couleur-magie-[\w-]+">/,
-    'ressources/equipement/index.html': /<span class="acc-gemme couleur-magie-[\w-]+" data-bulle=[\s\S]*<span class="bulle bulle--gemme couleur-magie-[\w-]+"/,
+    'ressources/accessoires/index.html': /<span class="acc-gemme couleur-magie-[\w-]+" data-bulle=[\s\S]*<span class="bulle bulle--gemme couleur-magie-[\w-]+"/,
   };
   for (const [rel, attendu] of Object.entries(zones)) assert.match(avecMagie.get(rel) ?? '', attendu, rel);
   assert.ok([...avecMagie.values()].some((html) => /<tr class="couleur-magie-[\w-]+">\s*<th scope="row">\s*<a class="guide-magie guide-magie--ligne"/.test(html)), 'le tableau de ce que donne chaque magie (guide)');
@@ -553,7 +567,7 @@ test('couleurs des caractéristiques, compétences, postures et alignements : ja
   const zones = {
     'regles/les-postures/index.html': /<section class="guide-posture couleur-posture-offensif" aria-labelledby/,
     'decouvrir/creer-son-personnage/index.html': /<section class="guide-competences__groupe couleur-caracteristique-force" aria-labelledby/,
-    'ressources/equipement/index.html': /<span class="arme-comp couleur-caracteristique-force couleur-2-caracteristique-force" data-competences="arme-lourde"/,
+    'ressources/armes/index.html': /<span class="arme-comp couleur-caracteristique-force couleur-2-caracteristique-force" data-competences="arme-lourde"/,
     'bestiaire/index.html': /<span class="bcarac couleur-caracteristique-force" title="Force">/,
     'fiche/index.html': /<output class="alignement__resultat teinte-palette couleur-alignement-neutre" id="alignement-resultat"/,
   };
@@ -638,13 +652,16 @@ test('couleurs des matériaux, des armes de départ, des types d’armure et des
       }
     }
   }
-  // chaque zone du lot pose bien ses classes : la page Équipement (matériaux, armes de départ, types, poids), la page Composants (matériaux)
-  const equipement = parPage.get('ressources/equipement/index.html') ?? new Set();
-  for (const c of ['couleur-arme-depart', 'couleur-materiau-fer', 'couleur-materiau-titane', 'couleur-armure-leger', 'couleur-armure-intermediaire',
-    'couleur-armure-lourd', 'couleur-poids-leger', 'couleur-poids-tres-lourd']) assert.ok(equipement.has(c), `l’équipement : ${c}`);
+  // chaque zone du lot pose bien ses classes : les pages Armes (matériaux, armes de départ), Armures (types), Boucliers (types, poids), la page
+  // Composants (matériaux)
+  const pagesDuLot = { armes: 'ressources/armes/index.html', armures: 'ressources/armures/index.html', boucliers: 'ressources/bouclier/index.html' };
+  const classesDe = (cle) => parPage.get(pagesDuLot[cle]) ?? new Set();
+  for (const c of ['couleur-arme-depart', 'couleur-materiau-fer', 'couleur-materiau-titane']) assert.ok(classesDe('armes').has(c), `les armes : ${c}`);
+  for (const c of ['couleur-armure-leger', 'couleur-armure-intermediaire', 'couleur-armure-lourd']) assert.ok(classesDe('armures').has(c), `les armures : ${c}`);
+  for (const c of ['couleur-poids-leger', 'couleur-poids-tres-lourd']) assert.ok(classesDe('boucliers').has(c), `les boucliers : ${c}`);
   const composants = parPage.get('ressources/composants/index.html') ?? new Set();
   assert.ok(composants.has('couleur-materiau-fer') && composants.has('couleur-materiau-par-defaut'), 'les composants : un matériau d’arme et un d’armure');
-  assert.ok(![...parPage.keys()].some((rel) => !['ressources/equipement/index.html', 'ressources/composants/index.html'].includes(rel)), `ailleurs : ${[...parPage.keys()]}`);
+  assert.ok(![...parPage.keys()].some((rel) => ![...Object.values(pagesDuLot), 'ressources/composants/index.html'].includes(rel)), `ailleurs : ${[...parPage.keys()]}`);
   // la fiche pose la classe du poids au navigateur, d'après regles.json : dans la feuille de la fiche, sans couleur
   const regles = JSON.parse(lire('fiche/regles.json'));
   const fiche = lire('fiche/index.html');
@@ -656,9 +673,9 @@ test('couleurs des matériaux, des armes de départ, des types d’armure et des
 });
 
 // Lot des niveaux des accessoires (même demande, mêmes choix de cadrage : skill ui-couleurs) : sur toute page construite, aucune couleur de niveau en
-// style (ni `--niv`, en style comme dans data-niveaux) ; chaque classe posée existe dans une feuille de la page (famille d'une zone, émise par l'onglet
-// Accessoires de l'équipement, et seulement là).
-/** Les éléments que l'onglet Accessoires pose sur la couleur d'un niveau. */
+// style (ni `--niv`, en style comme dans data-niveaux) ; chaque classe posée existe dans une feuille de la page (famille d'une zone, émise par la page
+// Accessoires, et seulement là).
+/** Les éléments que la page Accessoires pose sur la couleur d'un niveau. */
 const ELEMENTS_DU_LOT_DES_ACCESSOIRES = new Set(['acc-niveau-pastille', 'acc-effet', 'acc-competence', 'acc-monture', 'acc-produit']);
 const CLASSE_DU_LOT_DES_ACCESSOIRES = /^couleur-niveau-/;
 
@@ -679,11 +696,11 @@ test('couleurs des niveaux des accessoires : jamais en style sur une page constr
       }
     }
   }
-  // l'onglet Accessoires pose les cinq niveaux (pastilles de l'étape 3, lignes d'effet et de monture), et lui seul
-  assert.deepEqual([...(parPage.get('ressources/equipement/index.html') ?? [])].sort(), [1, 2, 3, 4, 5].map((n) => `couleur-niveau-${n}`));
-  assert.deepEqual([...parPage.keys()], ['ressources/equipement/index.html'], 'ailleurs : aucune');
+  // la page Accessoires pose les cinq niveaux (pastilles de l'étape 3, lignes d'effet et de monture), et elle seule
+  assert.deepEqual([...(parPage.get('ressources/accessoires/index.html') ?? [])].sort(), [1, 2, 3, 4, 5].map((n) => `couleur-niveau-${n}`));
+  assert.deepEqual([...parPage.keys()], ['ressources/accessoires/index.html'], 'ailleurs : aucune');
   // les classes que le script reprend d'une ligne de compétence (data-niveaux) : des classes de la feuille de la page, jamais une couleur
-  const equipement = lire('ressources/equipement/index.html');
+  const equipement = lire('ressources/accessoires/index.html');
   const niveaux = [...equipement.matchAll(/data-niveaux="([^"]+)"/g)].flatMap((m) => JSON.parse(m[1].replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&')));
   assert.ok(niveaux.length >= 20, `${niveaux.length} niveaux de compétence`);
   for (const n of niveaux) {

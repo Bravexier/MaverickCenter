@@ -1,4 +1,4 @@
-// Les deux menus à onglets de l'onglet Armes de /ressources/equipement/ (demande du propriétaire, 2026-10-23 : « Il faudrai réduire çà en deux menus à
+// Les deux menus à onglets de la page Armes, /ressources/armes/ (demande du propriétaire, 2026-10-23 : « Il faudrai réduire çà en deux menus à
 // onglet. Un pour les armes de mêlée l'autre pour les armes à distances. ») : lib/armes-rendu.mjs#menusDesArmes range les familles de chargerArmes par
 // leur catégorie (arme_famille.categorie, décision R127), mêlée (`contact`) puis distance, chaque menu dans l'ordre de l'onglet ; une famille sans menu
 // arrête le build. D'abord la catégorie que chargerArmes donne (lib/armes-db.mjs, colonne arme_famille.categorie, ordre de arme_famille.ordre), puis

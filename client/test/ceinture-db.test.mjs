@@ -1,5 +1,5 @@
-// Objets à la ceinture (décisions R81 et R82) : la vue v_objet_ceinture (migration 0047) et le chargement de l'onglet « Ceinture » de la page
-// /ressources/equipement/ (lib/ceinture-db.mjs ; demande du propriétaire du 2026-10-16 : les sous-onglets Consommables, Carquois et Bâtons magiques,
+// Objets à la ceinture (décisions R81 et R82) : la vue v_objet_ceinture (migration 0047) et le chargement de la page « Ceinture »,
+// /ressources/objets-a-la-ceinture/ (lib/ceinture-db.mjs ; demande du propriétaire du 2026-10-16 : les sous-onglets Consommables, Carquois et Bâtons magiques,
 // les consommables dans l'ordre fioles, remèdes, philtres, huiles, alchimie primitive ; les bâtons, qui sont dans la vue, ont leur chargement à part :
 // test/equipement.test.mjs), lus dans la base construite. Le site de dev peut créer, renommer et supprimer des contenants (page « Composants ») et réécrire
 // les pages du guide : les tests contrôlent des invariants (la vue suit les tables, la page suit les sections), et ce qui vient de l'import (les

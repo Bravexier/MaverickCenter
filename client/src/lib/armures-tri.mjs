@@ -1,4 +1,4 @@
-// Tri de la liste des boucliers de l'onglet Boucliers de /ressources/equipement/ (demande du propriétaire, 2026-10-16 : « La liste complète des
+// Tri de la liste des boucliers de la page Boucliers (/ressources/bouclier/) (demande du propriétaire, 2026-10-16 : « La liste complète des
 // boucliers doit être sur un seul tableau, replié par défaut et triable par toutes les colonnes ») : la part pure, que le script de la page
 // (src/scripts/armures.mjs) applique aux lignes du tableau et que test/armures-tri.test.mjs vérifie.
 //   * Un clic sur un en-tête : croissant, puis décroissant, puis l'ordre de l'onglet (triSuivant).

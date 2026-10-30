@@ -2900,7 +2900,7 @@ export function retraitsDeLArmureHorsListe(regles, fiche, { portable = null } = 
 }
 
 // ------------------------------------------------------------------------------------------------------------------------------------------------
-// Bouclier porté (décision R96, migration 0060 : « Forme + matière », comme l'onglet Boucliers de /ressources/equipement/) : sa forme
+// Bouclier porté (décision R96, migration 0060 : « Forme + matière », comme la page Boucliers (/ressources/bouclier/)) : sa forme
 // (fiche.bouclier_classe_id) et sa matière (fiche.bouclier_materiau_id) donnent le bouclier de la liste (regles.boucliers_formes_matieres : AP, AM,
 // poids, décision R92) ; sa solidité est celle de la matière (R78), plus les crans de son amélioration (R76 : « crans cumulés ») ; son amélioration
 // +N ajoute l'AP (et l'AM) écrit au niveau choisi (R76). Le calcul de lib/armure-forge.mjs#forgerBouclier, que ce module ne peut pas importer

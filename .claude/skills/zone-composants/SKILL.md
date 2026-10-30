@@ -24,7 +24,7 @@ user-invocable: false
 - Titre et note d'un onglet se modifient sur le site de dev ; ni création ni suppression d'onglet.
 - Chaque tableau passe par le gabarit commun (`Tableau.astro`) : skill `ui-tableaux`.
 - Matériaux : seule source (R62, migration `0041-materiaux-types`, table `materiau`, type Léger / Intermédiaire / Lourd / Autres). Nom, type, prix et effets sur une arme ne se modifient qu'ici ; armes et armures les lisent (skill `zone-armes`, skill `zone-armures`). « Autres » est refusé pour un matériau d'armure.
-- La fabrication d'une matière (table `recette` de genre `materiau`) est en lecture ; elle vient du tableau MATÉRIAUX retiré de la page Équipement.
+- La fabrication d'une matière (table `recette` de genre `materiau`) est en lecture ; elle vient du tableau MATÉRIAUX retiré des pages Armures et Boucliers.
 - Valeurs des monnaies non modifiables, ni l'abréviation du RF, du RO et de la PP (R61) ; le RF vaut 1 et ne se supprime pas.
 - Gemme et bois : une par magie à l'ajout, hors Potentiel Illimité (R160 : ni gemme, ni bois, ni bâton magique, ni pièce élémentaire du PI). Les listes `magiesSansGemme`, `magiesSansBois` ne le proposent pas ; le service le refuse en 422 (`REFUS_R160`) avant d'écrire, et la base aussi (migration 0078, erreur traduite par `serveur/edition.mjs#messageSqlite`) ; la seule liste de ces magies : `lib/edition-modele.mjs#MAGIES_SANS_OBJET_PAR_MAGIE` (skill `zone-edition`). Leur ligne (`composant composant--magie`) et leur pastille (`comp-magie`) portent la classe de la magie (`couleur-magie-<id>`, `lib/palette-css.mjs`, skill `ui-couleurs`), jamais un style ; `styles/composants/composants.css` en tire le filet et `--mag` (teinte des infobulles de la ligne). Le même HTML sert au mode modification (`lib/composants-rendu.mjs`).
 - Matériaux : la pastille (`comp-teinte`) porte la classe du matériau (`palette-css.mjs#classeDeMateriau`, `couleur-materiau-<id>`, `par-defaut` pour un matériau sans couleur ou ajouté en mode modification), jamais un style ; `ComposantsPage.astro` émet `cssDesFamilles(['materiau'])` ; `composants.css` lit `--couleur` (skill `ui-couleurs`).
@@ -36,10 +36,10 @@ user-invocable: false
 - Prix en icônes de monnaie et montants décomposés (R61, R63) : skill `ui-monnaies`.
 
 ## Choix du propriétaire
-- Un onglet par tableau, comme la page Équipement, modifiables et liés en base.
+- Un onglet par tableau, comme les onglets des pages de l'Équipement, modifiables et liés en base.
 - Monnaie avec ses conversions vers les plus petites ; table des fruits à part, puis une table par catégorie d'ingrédient ; les six tableaux de l'onglet « Équipement inventaire ».
 - Recherche sur toutes les lignes, le nombre trouvé dans chaque onglet.
-- Au menu : première page de Règles › Artisanat (skill `zone-menu`).
+- Au menu : première page de l'Équipement › Artisanat (skill `zone-menu`).
 
 ## Tests
 - `client/test/serveur-edition-composants.test.mjs` (la création et la suppression d'une gemme et d'un bois sur une magie d'essai ajoutée à une copie à part, la base n'ayant plus de magie libre, et le rejeu de leur journal sur une base neuve qui a la même magie d'essai), `serveur-edition-r160.test.mjs`, `corps-composants.test.mjs`, `composants-onglets.test.mjs`, `composants-html.test.mjs` (site construit).

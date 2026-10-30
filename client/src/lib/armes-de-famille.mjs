@@ -1,4 +1,4 @@
-// La pastille du dé d'une famille d'armes (onglet Armes de /ressources/equipement/ : components/armes/OngletDeFamille.astro, TableauArmes.astro) :
+// La pastille du dé d'une famille d'armes (page Armes (/ressources/armes/) : components/armes/OngletDeFamille.astro, TableauArmes.astro) :
 // son infobulle. Quand la note de la famille écrit des dés selon la Force (PUGILAT : « D6 1-2 Force, D8 3-4 Force, D10 5 Force »,
 // arme_famille.note_brut, lue par lib/maitrise-arme.mjs#desSelonLaForce), l'infobulle les cite (demande du propriétaire, 2026-10-23 : « Inutile dans
 // l'onglet des armes de changer ça. Juste l'indiquer suffit (en tooltip de la catégorie) ») ; sinon « Dé de la famille, sauf indication contraire ».

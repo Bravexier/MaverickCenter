@@ -177,10 +177,11 @@ test('plus aucune ligne de tableau sur la couleur pleine : la couleur pleine ne 
 // magies (/magies/, /races/) et le butin d'une carte de monstre (une colonne par échelle).
 const GRILLES = ['tableau-magies__table', 'bbutin'];
 const PAGES = [
-  ['ressources', 'equipement'], ['ressources', 'composants'], ['metiers'], ['bestiaire'], ['magies', 'magie-de-la-corruption'], ['races', 'elfe-noir'],
+  ['ressources', 'armes'], ['ressources', 'armures'], ['ressources', 'bouclier'], ['ressources', 'objets-a-la-ceinture'], ['ressources', 'accessoires'],
+  ['ressources', 'composants'], ['metiers'], ['bestiaire'], ['magies', 'magie-de-la-corruption'], ['races', 'elfe-noir'],
   ['decouvrir', 'creer-son-personnage'], ['regles', 'avancees', 'le-mode-hyper'], ['magies'], ['races'], ['lore', 'academie-de-larcane'],
 ];
-const construit = existsSync(join(dist, 'ressources', 'equipement', 'index.html'));
+const construit = existsSync(join(dist, 'ressources', 'armes', 'index.html'));
 
 test('le site construit : chaque tableau des règles suit le gabarit, dans un cadre qui défile', construit ? {} : { skip: 'site non construit (npm run build)' }, () => {
   let nombre = 0;

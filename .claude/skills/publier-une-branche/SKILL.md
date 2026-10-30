@@ -25,7 +25,7 @@ Règles du propriétaire, en détail dans `docs/flux-git.md` (code : `tools/flux
   5. pousser.
 
   **Jamais de fusion de la base dans la branche.** La seule exception est la refusion de `master` dans `dev`, décrite dans `docs/flux-git.md`.
-- **Le push.** `git push -u origin <branche>`, ou `git push --force-with-lease --force-if-includes` après un rebase d'une branche déjà poussée. En cas d'erreur réseau, jusqu'à 4 reprises, après 2 s, 4 s, 8 s puis 16 s.
+- **Le push.** Après un `git fetch --prune origin` juste avant : `git push -u --force-with-lease origin <branche>` la première fois, `git push --force-with-lease origin <branche>` ensuite. Le push forcé de SA PROPRE branche (`feature/<nom>` ou `hotfix/<nom>` créée par nous) après un rebase est TOUJOURS autorisé (choix du propriétaire, 2026-10-29) : on ne le lui redemande pas. Sans `--force-if-includes` : cette forme n'est pas dans la liste autorisée de `.claude/settings.json`. Jamais de push forcé sur `dev`, `master` ni sur la branche d'un autre, jamais `--force` ou `-f` seuls, jamais de rebase d'une branche qui n'est pas la nôtre. En cas d'erreur réseau, jusqu'à 4 reprises, après 2 s, 4 s, 8 s puis 16 s.
 - **Le rapport** donne : la branche, le commit, le résumé du diff (`git diff --stat <base>...HEAD`), et s'il y a eu un rebase, les contrôles à relancer.
 
 ## L'ordre de passage

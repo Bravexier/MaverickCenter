@@ -1,4 +1,4 @@
-// Onglet Armes de la page /ressources/equipement/ (components/armes/ArmesPage.astro) — demande du propriétaire : cliquer sur une arme la sélectionne et
+// Page Armes, /ressources/armes/ (components/armes/ArmesPage.astro ; l'onglet Armes de la page « Équipement » jusqu'au 2026-10-29) — demande du propriétaire : cliquer sur une arme la sélectionne et
 // remplit à côté sa fiche (un seul cadre, avec son bouton Fermer, dans le panneau toujours affiché comme celui des armures), avec dessous les
 // matériaux et les améliorations côte à côte ; choisir un matériau (le fer par défaut) et une amélioration ajuste dans la fiche les dégâts, la
 // solidité, les effets (celui du matériau en vert) et le coût total (calcul : lib/arme-forge.mjs). La fiche est réduite à son minimum (demande du
@@ -7,7 +7,7 @@
 // `[data-armes-bulles]`, hors du panneau qui défile), puis les effets, la description et l'origine.
 // Les tableaux des familles sont les panneaux de deux menus à onglets, mêlée et distance (demande du propriétaire, 2026-10-23 : « Il faudrai réduire çà
 // en deux menus à onglet », components/Onglets.astro) : ouvrir une arme (clic, ?arme=, #arme-…) ouvre l'onglet de sa famille par l'évènement
-// « onglets:ouvrir », limité aux menus de l'onglet Armes (`detail.dans`), sans toucher à l'adresse ni faire défiler.
+// « onglets:ouvrir », limité aux menus des armes (`detail.dans`), sans toucher à l'adresse ni faire défiler.
 // Les boutons « Compétence » filtrent les tableaux (« filtrer les armes par compétence arc / arbalète / légère et lourde » : lib/armes-filtres.mjs), le
 // bouton « Arme de départ » n'en garde que les armes de départ ; l'onglet d'une famille sans arme affichée se cache, un menu sans aucune famille
 // affichée aussi, et si l'onglet ouvert d'un menu n'a plus d'arme, le premier qui en a s'ouvre (lib/armes-filtres.mjs#ongletARouvrir) ; l'onglet dit,
@@ -19,10 +19,11 @@
 // En mode modification (body.ed-mode) : rien ne se sélectionne (src/scripts/edition/armes.mjs vide la fiche) ; les onglets restent (demande du
 // propriétaire, 2026-10-23 : « Je veux les onglets aussi »).
 // État dans l'adresse : ?arme=<ancre de la ligne>&materiau=<ancre>&amelioration=<niveau>&competence=<ids>&depart=1 (une adresse `#arme-…` ouvre aussi
-// l'arme ; aucun paramètre en commun avec ceux des autres onglets, src/scripts/armures.mjs, accessoires.mjs : la même adresse garde leur état), et
-// l'ancre : celle de l'onglet de la page ou de la famille choisie (`#famille-<id>`, écrite par components/Onglets.astro : « On peut retenir l'onglet
+// l'arme ; aucun paramètre en commun avec ceux des autres pages de l'équipement, src/scripts/armures.mjs, accessoires.mjs : l'ancienne adresse
+// /ressources/equipement/?… mène à la page de son premier paramètre, lib/equipement.mjs#RENVOIS_DES_PAGES_ECLATEES), et
+// l'ancre : celle de la famille choisie (`#famille-<id>`, écrite par components/Onglets.astro : « On peut retenir l'onglet
 // ouvert #epee par exemple »), que ce script garde (lib/armes-filtres.mjs#ancreDesArmes) et fait suivre quand le filtre ouvre un autre onglet
-// (lib/armes-filtres.mjs#ancreApresLeFiltre). Échap ne ferme l'arme que si l'onglet est affiché. En mode modification, pas de filtre : tout s'affiche,
+// (lib/armes-filtres.mjs#ancreApresLeFiltre). Échap ne ferme l'arme que si les armes sont affichées. En mode modification, pas de filtre : tout s'affiche,
 // aucun onglet ne se cache.
 // Armes élémentaires (décision R167) : listées dans le tableau de leur famille (`tr.arme--elementaire`, lib/armes-rendu.mjs#htmlDeLigneDArmeElementaire ;
 // aucune dans une famille créée sur le site de dev) ; en choisir une pose la classe `armes--elementaire` sur `.armes` : le tableau des améliorations
@@ -66,7 +67,7 @@ if (racine) {
   const armeDeLaSuite = (suite) => (suite?.previousElementSibling?.classList.contains('arme') ? suite.previousElementSibling : null);
   /**
    * Ouvre l'onglet de la famille (son panneau, ou un élément qu'il contient) dans le menu de sa catégorie (components/Onglets.astro), et seulement lui :
-   * pas l'onglet Armes de la page, qu'une adresse (#boucliers) peut laisser caché.
+   * aucun groupe d'onglets au-dessus des armes (`detail.dans`).
    */
   const ouvrirSonOnglet = (el) => el?.dispatchEvent(new CustomEvent('onglets:ouvrir', { bubbles: true, detail: { dans: racine } }));
   /** L'onglet d'une famille (components/armes/ArmesPage.astro : `onglet-famille-<id>` vers `famille-<id>`). */

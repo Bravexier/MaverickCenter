@@ -72,7 +72,7 @@ résolvent seuls. Même chose si le hotfix modifie `.github/workflows/` et que l
 l'historique des fusions (une refusion faite par *squash* laisserait `master` hors de `dev`, et la livraison suivante serait refusée).
 
 **Une `feature/<nom>` ou `hotfix/<nom>` en conflit avec sa base se rebase, on n'y fusionne jamais la base** (demande du propriétaire) :
-`git fetch --prune origin`, `git rebase origin/dev` (ou `origin/master`), résoudre, puis `git push --force-with-lease --force-if-includes`. La PR n'est fusionnée qu'une fois
+`git fetch --prune origin`, `git rebase origin/dev` (ou `origin/master`), résoudre, puis `git fetch --prune origin` et `git push --force-with-lease origin <branche>` (`-u` au premier push) : le push forcé de sa propre branche après un rebase est toujours autorisé (choix du propriétaire, 2026-10-29), jamais sur `dev`, `master` ni la branche d'un autre, jamais `--force` ou `-f` seuls ; sans `--force-if-includes`, forme absente de la liste autorisée de `.claude/settings.json`. La PR n'est fusionnée qu'une fois
 sans conflit et la CI verte. Seule exception, la refusion de `master` dans `dev` décrite plus haut : elle doit rester une fusion (le bot vérifie que
 `master` est dans l'historique de `dev`).
 
@@ -81,7 +81,7 @@ sans conflit et la CI verte. Seule exception, la refusion de `master` dans `dev`
 (`git merge-base --is-ancestor origin/dev HEAD` échoue), `git rebase` sur elle, résoudre les conflits aussitôt, relancer les contrôles que le rebase
 touche (`npm run test:cible -- --apres-rebase` dans `client/` : les seuls tests du recouvrement, fichiers que la base a changés et que le lot touche
 aussi, plus `--fichiers` pour un conflit résolu à la main ; recouvrement vide, seulement l'absence de marqueurs de conflit ; skill
-`choisir-les-tests`), puis pousser (`git push --force-with-lease --force-if-includes` si la branche était déjà poussée). Même sans conflit : la PR est ainsi
+`choisir-les-tests`), puis pousser (`git fetch --prune origin` puis `git push --force-with-lease origin <branche>` si la branche était déjà poussée, même règle que ci-dessus). Même sans conflit : la PR est ainsi
 toujours testée sur la base du moment. Une PR ouverte se corrige ensuite automatiquement jusqu'à sa fusion (CI rouge, conflit, revue ; skill
 `corriger-une-pr`).
 

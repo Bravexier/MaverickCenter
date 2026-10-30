@@ -38,7 +38,7 @@ Seule la session principale a les outils GitHub. Elle seule commente, répond à
 ## Garde-fous
 
 - **Jamais** de test sauté, désactivé ou mis en quarantaine, de commit vide, ni de PR refermée puis rouverte pour relancer la CI.
-- **Jamais** de fusion de la base dans la branche : on rebase. Le push après un rebase utilise `--force-with-lease --force-if-includes` (`resoudre-un-conflit`).
+- **Jamais** de fusion de la base dans la branche : on rebase. Le push forcé de sa propre branche après un rebase est toujours autorisé (choix du propriétaire, 2026-10-29), sans le redemander : `git fetch --prune origin` puis `git push --force-with-lease origin <branche>`, sans `--force-if-includes` (hors de la liste autorisée de `.claude/settings.json`). Jamais sur `dev`, `master` ni la branche d'un autre, jamais `--force` ou `-f` seuls (`resoudre-un-conflit`).
 - **Le fond.** Une correction qui change une règle ou le lore passe par le contrôle du fond (`circuit-des-demandes`).
 - **Avant chaque push,** les tests pertinents pour la correction (`npm run test:cible`, `choisir-les-tests`) sont verts en local : un push qui rougit la CI coûte un tour.
 - **Ce qui ne se corrige pas depuis la PR** (panne de la base sans correctif, accès manquant) se dit une fois, sur la PR, par la session principale. La PR reste suivie jusqu'à sa fusion ou sa fermeture.

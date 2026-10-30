@@ -1,7 +1,7 @@
-/* Chargé uniquement depuis components/equipement/EquipementPage.astro (?raw) : la page /ressources/equipement/. Les cinq onglets (Armes, Armures,
-   Boucliers, Ceinture, Accessoires : components/Onglets.astro), un panneau fermé caché sous html.js seulement (sans JavaScript, les panneaux
-   se suivent, chacun sous son titre) ; les panneaux de règles en tête des onglets (components/equipement/PanneauDeRegles.astro) ; l'infobulle des tuiles
-   des fiches (arme, armure, bouclier) ; la pastille d'une gemme (accessoires, bâtons magiques). Le contenu des onglets a son CSS : styles/armes/armes.css,
+/* Chargé uniquement depuis components/equipement/EquipementPage.astro (?raw) : le cadre commun des cinq pages de l'équipement (Armes, Armures,
+   Boucliers, Ceinture, Accessoires : /ressources/armes/…) ; les panneaux de règles en tête des pages (components/equipement/PanneauDeRegles.astro) et
+   le texte de la page « Pièces élémentaires » sur les pages Armes et Armures (components/equipement/PiecesElementaires.astro) ; l'infobulle des tuiles
+   des fiches (arme, armure, bouclier) ; la pastille d'une gemme (accessoires, bâtons magiques). Le contenu des pages a son CSS : styles/armes/armes.css,
    styles/armures/armures.css, styles/ceinture/ceinture.css, styles/accessoires/accessoires.css. */
 main:has(.equipement) { max-width: 120rem; }
 .equipement {
@@ -10,34 +10,13 @@ main:has(.equipement) { max-width: 120rem; }
   --eq-line: color-mix(in srgb, var(--accent) 35%, var(--border));
 }
 
-/* Onglets */
-.equipement-onglets { display: flex; flex-wrap: wrap; gap: 0.4rem; border-bottom: 2px solid var(--eq-line); margin: 0 0 1rem; }
-.equipement-onglets .onglet { display: flex; flex-direction: column; gap: 0.1rem; padding: 0.5rem 1.1rem 0.55rem; border: 1px solid var(--border);
-  border-bottom: 0; border-radius: var(--radius-lg) var(--radius-lg) 0 0; background: var(--surface); color: var(--text); text-decoration: none; margin-bottom: -2px; }
-.equipement-onglets .onglet__nom { font-weight: 700; font-size: var(--fs-xl); }
-.equipement-onglets .onglet__detail { font-size: var(--fs-xs); color: var(--muted); }
-html.js .equipement-onglets .onglet.is-active { background: var(--eq); border-color: var(--eq); color: var(--surface); }
-html.js .equipement-onglets .onglet.is-active .onglet__detail { color: inherit; opacity: 0.85; }
-html.js .equipement-onglets .onglet:not(.is-active):hover { background: var(--eq-soft); }
-.equipement-onglets .onglet:focus-visible { outline: 2px solid var(--eq); outline-offset: 2px; }
-/* sur un écran étroit, les cinq onglets sans leur détail (nombres) : deux rangées au plus */
-@media (max-width: 40rem) {
-  .equipement-onglets { gap: 0.3rem; }
-  .equipement-onglets .onglet { padding: 0.35rem 0.75rem; }
-  .equipement-onglets .onglet__nom { font-size: var(--fs-lg); }
-  .equipement-onglets .onglet__detail { display: none; }
-}
-html.js .equipement-panneau:not(.is-active) { display: none; }
-/* le titre d'un panneau : celui de son onglet ; sans JavaScript, il sépare les panneaux qui se suivent */
-html.js .equipement-panneau__titre { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-html:not(.js) .equipement-panneau + .equipement-panneau, html:not(.js) .equipement-panneau + .armures { margin-top: 2rem; }
-
 /* ── Panneaux de règles (components/equipement/PanneauDeRegles.astro, lib/panneaux-regles-rendu.mjs ; demande du propriétaire, 2026-10-16 : « Si
    l'écran est assez large, la zone de texte prendra deux colonnes. Sinon une seule ») : repliés, le titre dans le summary ; à partir de 64rem, le contenu
    en deux colonnes séparées d'un filet. Un bloc de texte suit les colonnes (ses paragraphes et ses listes ne se coupent pas) ; une tuile, encadrée comme
    un don de classe ou une capacité du bestiaire (filet de couleur à gauche), ne se coupe jamais entre deux colonnes. La fin d'un bloc de texte suivi
    d'une tuile reste avec elle (« CAS PARTICULIERS : », dernière ligne d'un bloc des armes, n'est jamais seule en bas d'une colonne, loin des tuiles
-   qu'elle annonce) : `break-after: avoid` sur le bloc et sur son dernier enfant (Chrome, Safari ; Firefox ne l'applique pas aux colonnes). ── */
+   qu'elle annonce) : `break-after: avoid` sur le bloc et sur son dernier enfant (Chrome, Safari ; Firefox ne l'applique pas aux colonnes). Le texte de la
+   page « Pièces élémentaires » (`.preg--pieces-elementaires`) se présente de même, en un seul bloc de texte. ── */
 .preg { --preg: var(--eq, var(--accent)); margin: 0 0 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
 .preg > summary { cursor: pointer; padding: 0.6rem 0.9rem; font-weight: 700; }
 .preg > summary:focus-visible { outline: 2px solid var(--preg); outline-offset: 2px; border-radius: var(--radius-lg); }
@@ -68,7 +47,7 @@ html:not(.js) .equipement-panneau + .equipement-panneau, html:not(.js) .equipeme
    toucher (components/Infobulles.astro retient le déclencheur le plus proche du pointeur) */
 :is(.arme-fiche__tuile, .pfiche__tuile) .piece { pointer-events: none; }
 
-/* ── La pastille d'une gemme, dans la couleur de sa magie : la même dans les onglets Accessoires (components/accessoires/GemmesDeLEffet.astro, copiée
+/* ── La pastille d'une gemme, dans la couleur de sa magie : la même sur les pages Accessoires (components/accessoires/GemmesDeLEffet.astro, copiée
    telle quelle par l'encart de src/scripts/accessoires.mjs) et Ceinture, sous-onglet Bâtons magiques (lib/batons-rendu.mjs, demande du propriétaire du
    2026-10-16 : « La case des gemmes doit utiliser le même item que pour les accessoire. Une pastille », où elle est un lien vers « Composants ») ; elle
    porte la classe de la magie (`.couleur-magie-<id>` : --couleur, --couleur-texte, lib/palette-css.mjs) ── */
@@ -78,7 +57,7 @@ html:not(.js) .equipement-panneau + .equipement-panneau, html:not(.js) .equipeme
 a.acc-gemme { text-decoration: none; cursor: pointer; overflow-wrap: normal; white-space: nowrap; }
 a.acc-gemme:focus-visible { outline: 2px solid var(--mag-texte, var(--gemme)); outline-offset: 2px; }
 
-/* Éléments communs aux onglets Armes et Armures (la même présentation : un seul endroit ; leurs tableaux : le gabarit commun, styles/global/tableaux.css) */
+/* Éléments communs aux pages Armes, Armures et Boucliers (la même présentation : un seul endroit ; leurs tableaux : le gabarit commun, styles/global/tableaux.css) */
 .arme-fiche, .pfiche { padding: 0.9rem 1.1rem 1rem; background: var(--surface); border: 1px solid var(--eq-line); border-radius: var(--radius-lg); font-size: var(--fs-lg);
   box-shadow: var(--ombre-fiche); }
 .arme-fiche__vide, .pfiche__vide { margin: 0; color: var(--muted); }

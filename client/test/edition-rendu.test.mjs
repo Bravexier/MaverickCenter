@@ -158,7 +158,8 @@ const ligneDe = (table, cle) => {
 
 test('site construit : chaque champ [data-ed] des métiers, des magies, des races, des classes, du bestiaire, de la chronologie et de l’équipement (armes, armures, consommables de la ceinture) redonne le HTML du gabarit', { skip: sansDist && 'dist/ absent (npm run build)' }, () => {
   const sousPages = (type) => readdirSync(join(dist, type), { withFileTypes: true }).filter((d) => d.isDirectory() && !d.name.startsWith('exemple')).map((d) => `${type}/${d.name}`);
-  const pages = ['metiers', 'bestiaire', ...sousPages('magies'), ...sousPages('races'), ...sousPages('classes'), 'chronologie', ...sousPages('chronologie'), 'ressources/equipement'];
+  const pages = ['metiers', 'bestiaire', ...sousPages('magies'), ...sousPages('races'), ...sousPages('classes'), 'chronologie', ...sousPages('chronologie'),
+    'ressources/armes', 'ressources/armures', 'ressources/bouclier', 'ressources/objets-a-la-ceinture'];
   const parRendu = new Map();
   for (const p of pages) {
     const arbre = fromHtml(readFileSync(join(dist, p, 'index.html'), 'utf8'));

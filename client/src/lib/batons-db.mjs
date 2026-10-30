@@ -1,4 +1,4 @@
-// Sous-onglet « Bâtons magiques » de l'onglet « Ceinture » de la page /ressources/equipement/ (demandes du propriétaire, 2026-10-16 : d'abord un
+// Sous-onglet « Bâtons magiques » de la page « Ceinture », /ressources/objets-a-la-ceinture/ (demandes du propriétaire, 2026-10-16 : d'abord un
 // onglet de « Équipement », « qui auront mieux leur place ici », puis, la ceinture devenue l'onglet « Ceinture », « On y remettrait à ce moment le
 // tableau Bâton magique ») : chargé depuis la base, jamais depuis le Markdown de la page « Bâton magique » ; ses règles (son introduction et « Comment
 // fabriquer un bâton magique ? », copiées par la migration 0056) sont le panneau de règles `batons-magiques` (lib/panneaux-regles-db.mjs) ; la page

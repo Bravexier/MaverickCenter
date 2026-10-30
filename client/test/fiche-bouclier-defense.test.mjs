@@ -1,4 +1,4 @@
-// Le bouclier de la fiche (décision R96 : « Forme + matière », comme l'onglet Boucliers de /ressources/equipement/), la défense totale et les dégâts
+// Le bouclier de la fiche (décision R96 : « Forme + matière », comme la page Boucliers, /ressources/bouclier/), la défense totale et les dégâts
 // reçus (décision R98), la liste des effets d'accessoire (décision R97) et les propositions du sac (demande du propriétaire du 2026-10-17 : « un
 // véritable autocomplete […] à partir de 2 caractères »). Le bouclier de la fiche refait le calcul de lib/armure-forge.mjs#forgerBouclier (le moteur ne
 // peut pas l'importer : deux scripts de page ne partagent jamais un module) : comparé ici sur TOUTES les formes × matières × améliorations 0 à 5.

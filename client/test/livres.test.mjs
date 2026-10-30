@@ -231,18 +231,18 @@ test('les pages nommées par le plan : « Par où commencer ? », L’univers et
   assert.ok(db.prepare('SELECT 1 FROM annonce WHERE id = ?').get(LIENS_ET_RENCONTRE.rencontre.annonce), 'l’annonce de l’encart est dans la base (migration 0068)');
 });
 
-test('le menu s’accorde au plan : Découvrir (une entrée par page), Règles (Les bases, Artisanat, Règles avancées), Espace MJ (Guide du MJ)', () => {
+test('le menu s’accorde au plan : Règles (Découvrir, une entrée par page, puis Les bases et Règles avancées), Équipement (Artisanat), Espace MJ (Guide du MJ)', () => {
   const rubrique = (cle) => NAV.find((g) => g.key === cle);
   // plus d'entrée « Liens » (« Plus d'entrée Liens au menu : tout est sur Bienvenue. »)
-  assert.deepEqual(rubrique('decouvrir').items.map((i) => i.path), PAR_OU_COMMENCER.map(cheminDePage));
-  assert.deepEqual(rubrique('decouvrir').items.map((i) => i.label), ['Bienvenue', 'L’univers', 'Créer son personnage', 'Rejoindre une partie']);
-  const regles = rubrique('regles').items.map((i) => i.path);
-  for (const chemin of [LES_BASES.chemin, ARTISANAT.chemin, REGLES_AVANCEES.chemin]) assert.ok(regles.includes(chemin), chemin);
-  assert.deepEqual([rubrique('regles').items[0].label, rubrique('regles').items[0].path], [LES_BASES.titre, LES_BASES.chemin]);
+  // les quatre premières entrées des Règles : les pages de Découvrir (Bienvenue sous le libellé « Découvrir », demande du 2026-10-29)
+  assert.deepEqual(rubrique('regles').items.slice(0, 4).map((i) => i.path), PAR_OU_COMMENCER.map(cheminDePage));
+  assert.deepEqual(rubrique('regles').items.map((i) => i.label), ['Découvrir', 'L’univers', 'Créer son personnage', 'Rejoindre une partie', 'Les bases', 'Règles avancées']);
+  assert.deepEqual(rubrique('regles').items.slice(4).map((i) => [i.label, i.path]), [[LES_BASES.titre, LES_BASES.chemin], [REGLES_AVANCEES.titre, REGLES_AVANCEES.chemin]]);
+  assert.ok(rubrique('equipement').items.some((i) => i.label === ARTISANAT.titre && i.path === ARTISANAT.chemin));
   assert.ok(rubrique('mj').items.some((i) => i.label === GUIDE_DU_MJ.titre && i.path === GUIDE_DU_MJ.chemin));
-  assert.equal(activeGroup('/').key, 'decouvrir', 'l’accueil ouvre Découvrir');
+  assert.equal(activeGroup('/').key, 'regles', 'l’accueil ouvre les Règles');
   for (const id of ids) {
-    const attendue = estDuGuideDuMj(id) ? 'mj' : rubriqueDe(id)?.rubrique === DECOUVRIR ? 'decouvrir' : 'regles';
+    const attendue = estDuGuideDuMj(id) ? 'mj' : 'regles';
     assert.equal(activeGroup(`/${cheminDePage(id)}`).key, attendue, id);
   }
 });
@@ -299,9 +299,11 @@ test('nav.mjs et livres.mjs n’importent rien (le script de la page 404 importe
     const source = readFileSync(new URL(f, import.meta.url), 'utf8');
     assert.doesNotMatch(source, /^\s*(?:import|export\s+[^;]*\sfrom)\s/m, f);
   }
-  // la page 404 écrit les renvois au build et les passe à nouvelleAdresse
+  // la page 404 écrit les renvois au build (ceux du guide, et ceux des pages éclatées : lib/equipement.mjs#RENVOIS_DES_PAGES_ECLATEES) et les passe à
+  // adresseDeRenvoi (nav.mjs : nouvelleAdresse, ou adresseEclatee)
   const page404 = readFileSync(new URL('../src/pages/404.astro', import.meta.url), 'utf8');
   assert.match(page404, /data-renvois=\{JSON\.stringify\(renvois\)\}/);
-  assert.match(page404, /nouvelleAdresse\(location\.pathname, base, renvois\)/);
+  assert.match(page404, /data-eclatees=\{JSON\.stringify\(RENVOIS_DES_PAGES_ECLATEES\)\}/);
+  assert.match(page404, /adresseDeRenvoi\(location\.pathname, \{\s*base, renvois: lire\(introuvable\.dataset\.renvois\), eclatees: lire\(introuvable\.dataset\.eclatees\)/);
   assert.deepEqual([...page404.slice(page404.indexOf('<script>')).matchAll(/^\s*import .* from '([^']+)';$/gm)].map((m) => m[1]), ['../lib/nav.mjs']);
 });

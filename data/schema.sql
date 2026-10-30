@@ -191,14 +191,16 @@ CREATE TABLE page_entite (
 CREATE INDEX page_entite_page ON page_entite (page_id);   -- une entité se cherche par la clé primaire (entite_table, entite_id) : pas d'index sur entite_id seul (migration 0073)
 CREATE UNIQUE INDEX page_entite_principale ON page_entite (page_id) WHERE principale = 1;   -- au plus une entité principale par page
 
--- Panneaux de règles : l'encart replié en tête de chaque onglet de /ressources/equipement/ (migration 0056). Demandes du propriétaire du 2026-10-16,
--- pour les onglets Armes, Armures, Boucliers, Bâtons magiques et Accessoires : sans chapeau (la première phrase n'est plus répétée au-dessus du
+-- Panneaux de règles : l'encart replié en tête de chaque page de l'équipement (migration 0056). Pages /ressources/armes/, /ressources/armures/,
+-- /ressources/bouclier/, /ressources/accessoires/, et sous-onglet Bâtons magiques (#batons-magiques) de la page Ceinture /ressources/objets-a-la-ceinture/
+-- (client/src/lib/equipement.mjs#PAGES_SERVIES_PAR_L_EQUIPEMENT) ; jusqu'au 2026-10-29, les onglets de la page /ressources/equipement/, éclatée en ces
+-- pages. Demandes du propriétaire du 2026-10-16, pour les onglets Armes, Armures, Boucliers, Bâtons magiques et Accessoires : sans chapeau (la première phrase n'est plus répétée au-dessus du
 -- panneau), un titre et un contenu qui se modifient sur le site de dev, un contenu qui peut comprendre des tuiles (insérées et modifiées en mode
 -- modification). À la création, le texte des blocs est COPIÉ, jamais réécrit, des règles que le site tirait du corps de la page (page.corps_md, qui
 -- reste tel quel : la trace de l'import, pour la recherche) ; depuis, le site de dev en est la source. Pas de provenance (origine, source_ref :
 -- feuille de route, retirées à la 1.0).
 CREATE TABLE panneau_regles (
-  id      TEXT NOT NULL PRIMARY KEY CHECK (length(id) > 0 AND id NOT GLOB '*[^a-z0-9-]*' AND id NOT GLOB '*--*' AND id NOT GLOB '-*' AND id NOT GLOB '*-'),   -- l'ancre de son onglet
+  id      TEXT NOT NULL PRIMARY KEY CHECK (length(id) > 0 AND id NOT GLOB '*[^a-z0-9-]*' AND id NOT GLOB '*--*' AND id NOT GLOB '-*' AND id NOT GLOB '*-'),   -- l'id de sa page ou de son sous-onglet
                                                      -- ('armes', 'armures', 'boucliers', 'batons-magiques', 'accessoires')
   titre   TEXT NOT NULL CHECK (length(titre) > 0),   -- le titre du panneau replié
   page_id TEXT NOT NULL REFERENCES page(id)          -- la page dont le texte se lit (contexte des [[liens]], recherche) : 'ressources/armes'…
@@ -3837,8 +3839,8 @@ CREATE VIEW v_potion AS
   JOIN ressource r ON r.id = p.ressource_id
   JOIN niveau_alchimie n ON n.id = p.niveau_id;
 
--- Objets à la ceinture (décision R81 ; onglet « Ceinture » de la page /ressources/equipement/, d'abord la page /ressources/objets-a-la-ceinture/) :
--- les objets du catalogue que l'onglet liste parmi ceux qu'un personnage met dans les 3 emplacements de sa ceinture (guide « Fiche de personnage :
+-- Objets à la ceinture (décision R81 ; page « Ceinture » /ressources/objets-a-la-ceinture/, onglet « Ceinture » de /ressources/equipement/ jusqu'au 2026-10-29) :
+-- les objets du catalogue que la page liste parmi ceux qu'un personnage met dans les 3 emplacements de sa ceinture (guide « Fiche de personnage :
 -- Accessoires et Ceinture », dont la liste est « non exhaustive » : « Voyez avec votre mj »). Une ligne par objet, `famille` :
 --   'fiole', 'philtre', 'remede', 'primitive', 'huile' : toutes les potions (table potion, famille de leur recette ; la panacée est un remède) ;
 --   'contenant' : les carquois, sacs de bombes et sacs de pierres du matériel (« Les carquois, sac de bombe ou sac de pierre DOIVENT être mis dans la
@@ -4141,7 +4143,7 @@ CREATE TABLE personnage (
   armure_amelioration_id TEXT   REFERENCES amelioration_equipement(id),
   armure_elementaire_id TEXT    REFERENCES armure_elementaire(id),
   armure_amelioration_elementaire_id TEXT REFERENCES amelioration_equipement(id),
-  -- Bouclier porté (décision R96, migration 0060 : « Forme + matière », comme l'onglet Boucliers de /ressources/equipement/ et la décision R78) : la
+  -- Bouclier porté (décision R96, migration 0060 : « Forme + matière », comme la page Boucliers /ressources/bouclier/ et la décision R78) : la
   -- forme (bouclier_classe_id, plus haut) et la matière donnent le bouclier de la liste (table bouclier, UNIQUE (classe_id, materiau_id)) : son AP,
   -- son AM, son poids (R92) ; sa solidité est celle de la matière ; son amélioration +1 à +5 (cible 'bouclier', R76 : AP et crans de solidité) ;
   -- `bouclier_solidite` : sa solidité du moment, de 0 (cassé) au maximum (la matière et les crans de l'amélioration, calculé par la page, pas ici),
@@ -5079,7 +5081,7 @@ CREATE TABLE note_version (
 
 -- Une ligne de la liste calculée : une modification d'un champ d'une entité entre la production et la nouvelle version. `domaine` range la ligne
 -- (sorts, magies, classes et leurs dons, races, métiers, guide, Codex, bestiaire : migration 0032 ; armes : 0034 ; composants : 0040 ; chronologie, mots-clés : 0043 ;
--- armures et boucliers : 0046 ; équipement, les panneaux de règles des onglets de /ressources/equipement/ : 0056), `groupe` et `entite` la nomment (« Lumière » › « Flash »), au nom qu'elle porte
+-- armures et boucliers : 0046 ; équipement, les panneaux de règles des pages de l'équipement : 0056), `groupe` et `entite` la nomment (« Lumière » › « Flash »), au nom qu'elle porte
 -- dans la nouvelle version (l'ancien pour une entité retirée). `sens` : la couleur (vert, rouge, gris) d'après les critères du propriétaire
 -- (client/src/lib/notes-de-version.mjs) ; `parties` : le détail quand une case se lit en morceaux (valeur de base, expression de NM), chacun avec son sens.
 -- `table_nom`, `cle`, `colonne` : la trace de la ligne de la base d'où elle vient.

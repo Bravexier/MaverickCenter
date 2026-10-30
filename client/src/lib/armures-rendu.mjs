@@ -1,4 +1,4 @@
-// Rendu HTML des cellules des onglets Armures et Boucliers de /ressources/equipement/ (components/armures/) : le même HTML sert à la page construite
+// Rendu HTML des cellules des pages Armures et Boucliers (/ressources/armures/, /ressources/bouclier/) (components/armures/) : le même HTML sert à la page construite
 // et au mode modification du site de dev (lib/edition-rendu.mjs : une cellule modifiée se réaffiche depuis sa ligne de la base). Les valeurs dont la
 // fiche de l'armure ou du bouclier forgé a besoin (AP, AM, solidité, prix, coût et effet d'une amélioration) sont posées en attributs `data-…` sur
 // l'élément rendu : le script de la page les lit au moment de la sélection (src/scripts/armures.mjs), si bien qu'une cellule réécrite après un

@@ -1,6 +1,6 @@
-// Panneaux de règles (migration 0056 ; lib/panneaux-regles-db.mjs, lib/panneaux-regles-rendu.mjs) : un panneau par page du wiki que sert
-// /ressources/equipement/ (son id = l'ancre de l'onglet ou du sous-onglet de cette page, sa page : lib/equipement.mjs#PAGES_SERVIES_PAR_L_EQUIPEMENT ;
-// l'onglet Ceinture, qui ne sert pas de page, n'en a pas), ses blocs dans l'ordre de lecture (ordre, puis rang), la place d'un bloc inséré et les ordres après un déplacement
+// Panneaux de règles (migration 0056 ; lib/panneaux-regles-db.mjs, lib/panneaux-regles-rendu.mjs) : un panneau par page du wiki que servent les
+// pages de l'équipement (son id = l'id de la page de l'équipement ou du sous-onglet Bâtons magiques, sa page : lib/equipement.mjs#PAGES_SERVIES_PAR_L_EQUIPEMENT ;
+// la page Ceinture, qui ne sert pas de page du wiki, n'en a pas), ses blocs dans l'ordre de lecture (ordre, puis rang), la place d'un bloc inséré et les ordres après un déplacement
 // (le service et le mode modification s'en servent), le HTML d'un bloc (texte, tuile, titre échappé, champ du mode modification), et la copie de
 // l'import : chaque bloc de texte se lit mot pour mot dans le corps de sa page tel que l'import l'a laissé, sauf les tuiles qui ne sont qu'une balise du
 // glossaire. L'état courant (le site de dev modifie les panneaux) se contrôle par des invariants ; l'import par lib/historique-site.mjs.
@@ -9,7 +9,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { lireAttributEd } from '../src/lib/edition-modele.mjs';
-import { ONGLETS_DE_L_EQUIPEMENT, PAGES_SERVIES_PAR_L_EQUIPEMENT } from '../src/lib/equipement.mjs';
+import { PAGES_DE_L_EQUIPEMENT, PAGES_SERVIES_PAR_L_EQUIPEMENT } from '../src/lib/equipement.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { chargerPanneau, chargerPanneaux, ordonnerBlocs, ordresApresDeplacement, ordresApresInsertion } from '../src/lib/panneaux-regles-db.mjs';
@@ -18,12 +18,12 @@ import { ancreDuPanneau, empreinteDuTexte, htmlDesBlocs, htmlDuBloc } from '../s
 const db = ouvrirBase({ sansExemples: false });
 const historique = historiqueSite(db);
 
-test('un panneau par page servie de /ressources/equipement/ : (id, page_id) de panneau_regles = (ancre, page) de PAGES_SERVIES_PAR_L_EQUIPEMENT', () => {
+test('un panneau par page du wiki servie par les pages de l’équipement : (id, page_id) de panneau_regles = (ancre, page) de PAGES_SERVIES_PAR_L_EQUIPEMENT', () => {
   const lignes = db.prepare('SELECT id, page_id FROM panneau_regles ORDER BY id').all().map((l) => [l.id, l.page_id]);
   assert.deepEqual(lignes, PAGES_SERVIES_PAR_L_EQUIPEMENT.map((o) => [o.ancre, o.page]).sort(([a], [b]) => a.localeCompare(b)));
-  // le sous-onglet des bâtons de l'onglet Ceinture a le sien ; l'onglet Ceinture, qui ne sert pas de page du wiki, n'en a pas (ses règles : le guide)
+  // le sous-onglet des bâtons de la page Ceinture a le sien ; la page Ceinture, qui ne sert pas de page du wiki, n'en a pas (ses règles : le guide)
   assert.ok(lignes.some(([id]) => id === 'batons-magiques'));
-  assert.ok(ONGLETS_DE_L_EQUIPEMENT.some((o) => o.id === 'ceinture' && o.page === null) && !lignes.some(([id]) => id === 'ceinture'));
+  assert.ok(PAGES_DE_L_EQUIPEMENT.some((o) => o.id === 'ceinture' && o.page === null) && !lignes.some(([id]) => id === 'ceinture'));
   assert.deepEqual(chargerPanneaux(db).map((p) => p.id), lignes.map(([id]) => id));
   for (const [, page] of lignes) assert.ok(db.prepare('SELECT 1 FROM page WHERE id = ?').get(page), `${page} : la page du panneau existe`);
 });

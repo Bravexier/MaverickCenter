@@ -1,0 +1,36 @@
+---
+import Base from '../../layouts/Base.astro';
+import EquipementPage from '../../components/equipement/EquipementPage.astro';
+import CeinturePanneau from '../../components/ceinture/CeinturePanneau.astro';
+import { chargerBatons } from '../../lib/batons-db.mjs';
+import { chargerObjetsDeCeinture, TITRE_DE_LA_REFERENCE, TITRE_DES_REGLES } from '../../lib/ceinture-db.mjs';
+import { pageDeLEquipement } from '../../lib/equipement.mjs';
+import { panneauRendu } from '../../lib/equipement-rendu';
+import { ouvrirBase } from '../../lib/donnees.mjs';
+import { rendreMarkdown } from '../../lib/guide-rendu';
+
+// /ressources/objets-a-la-ceinture/ (rubrique Équipement du menu, « Ceinture » ; une page à elle depuis le 2026-10-29, « Cinq pages séparées », à
+// l'adresse de l'ancienne page « Objets à la ceinture » : lib/equipement.mjs) : rendue depuis la base (components/ceinture/CeinturePanneau.astro) ; ses
+// règles tirées des sections des pages du guide (décisions R81 et R82), rendues ici avec leur page comme contexte des [[liens]] ; le panneau de
+// règles du sous-onglet Bâtons magiques (lib/equipement-rendu.ts). Modifiable sur le site de dev : les consommables (l'éditeur commun).
+const page = pageDeLEquipement('ceinture')!;
+const db = ouvrirBase();
+const batons = chargerBatons(db);
+const ceinture = chargerObjetsDeCeinture(db);
+// une section de règles que sa page n'écrit plus (titre renommé sur le site de dev) : la page reste construite, sans elle, et le build le dit
+for (const [cle, source, titre] of [['ceinture', ceinture.sources.chapitre, TITRE_DES_REGLES], ['reference', ceinture.sources.reference, TITRE_DE_LA_REFERENCE]] as const) {
+  if (!ceinture.regles[cle]) console.warn(`[ceinture] la page ${source?.id ?? '(absente)'} n'écrit plus la section « ${titre} » : la page Ceinture s'en passe`);
+}
+const rendreDe = async (md: string | null, source: { id: string } | null) => (md && source ? await rendreMarkdown(md, source.id) : null);
+const reglesCeinture = {
+  ceinture: await rendreDe(ceinture.regles.ceinture, ceinture.sources.chapitre),
+  reference: await rendreDe(ceinture.regles.reference, ceinture.sources.reference),
+};
+const reglesBatons = await panneauRendu(db, 'batons-magiques');
+---
+
+<Base title={page.nom} description="Ceinture : potions et huiles, carquois et sacs, bâtons magiques, les objets qui vont à la ceinture." edition={page.chemin}>
+  <EquipementPage id={page.id}>
+    <CeinturePanneau objets={ceinture} regles={reglesCeinture} batons={batons} reglesBatons={reglesBatons} />
+  </EquipementPage>
+</Base>

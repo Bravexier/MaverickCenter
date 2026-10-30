@@ -9,8 +9,8 @@ import { ancreDuPanneau, htmlDesBlocs } from '../../lib/panneaux-regles-rendu.mj
 // modification), puis ses blocs dans l'ordre de lecture (lib/panneaux-regles-db.mjs#chargerPanneau ; HTML : lib/panneaux-regles-rendu.mjs) — du texte qui
 // suit les colonnes, ou une tuile encadrée au titre facultatif. Deux colonnes à partir de 64rem, un filet entre elles ; une tuile, un paragraphe ou une
 // liste ne se coupe jamais entre deux colonnes. Générique : la page passe le panneau, son Markdown déjà rendu bloc par bloc (`blocs[].html` ; sur
-// /ressources/equipement/ : src/pages/ressources/equipement.astro). Rien sans panneau. Mode modification du site de dev : src/scripts/edition/panneaux.mjs
-// (titre, texte et titre des tuiles, ordre, ajout et retrait de blocs). CSS : styles/equipement/equipement.css (`.preg`), inséré une fois par la page
+// les pages de l'équipement : lib/equipement-rendu.ts#panneauRendu). Rien sans panneau. Mode modification du site de dev : src/scripts/edition/panneaux.mjs
+// (titre, texte et titre des tuiles, ordre, ajout et retrait de blocs). CSS : styles/equipement/equipement.css (`.preg`), inséré une fois par page
 // (components/equipement/EquipementPage.astro) ; un autre usage emportera ces règles avec lui.
 export interface BlocRendu {
   panneau_id: string;

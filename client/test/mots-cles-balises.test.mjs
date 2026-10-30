@@ -409,14 +409,14 @@ test('service : un texte enregistré sous sa forme canonique (journal compris), 
   const id = s.creerMotCle(libelle, 'Définition d’essai.');
   const arme = armeSansRecharge(s);
   const effet = `${arme.effet}, {{${libelle}|Recharge longue}}`;
-  s.ok([{ op: 'modifier', table: 'arme', cle: { id: arme.id }, valeurs: { effet }, avant: { effet: arme.effet } }], 'ressources/equipement/');
+  s.ok([{ op: 'modifier', table: 'arme', cle: { id: arme.id }, valeurs: { effet }, avant: { effet: arme.effet } }], 'ressources/armes/');
   const apres = s.ligne('SELECT effet, recharge FROM arme WHERE id = ?', arme.id);
   assert.equal(apres.effet, `${arme.effet}, {{${id}|Recharge longue}}`, 'la forme canonique : l’id');
   assert.equal(apres.recharge, 'longue', 'le découpage lit le texte sans balise');
   const note = s.ligne("SELECT apres FROM modification WHERE table_nom = 'arme' AND json_extract(cle, '$.id') = ? ORDER BY lot_id DESC, rang DESC LIMIT 1", arme.id);
   assert.equal(JSON.parse(note.apres).effet, apres.effet, 'le journal note la forme canonique');
   // une ref inconnue : refusée, avec la ref
-  const inconnue = s.lot([{ op: 'modifier', table: 'arme', cle: { id: arme.id }, valeurs: { effet: `${apres.effet} {{aucun-mot-cle-de-ce-nom}}` } }], 'ressources/equipement/');
+  const inconnue = s.lot([{ op: 'modifier', table: 'arme', cle: { id: arme.id }, valeurs: { effet: `${apres.effet} {{aucun-mot-cle-de-ce-nom}}` } }], 'ressources/armes/');
   assert.equal(inconnue.statut, 400);
   assert.match(inconnue.corps.erreur, /« \{\{aucun-mot-cle-de-ce-nom\}\} » ne cite aucun mot-clé/);
   // déjà dans le texte (d'avant la suppression de son mot-clé) : le texte se modifie quand même
@@ -438,7 +438,7 @@ test('service (D2) : le mode complet refusé dans un texte de case (message clai
   const libelle = s.libre('Essai complet');
   const id = s.creerMotCle(libelle, 'Sa définition.');
   const arme = armeSansRecharge(s);
-  const refus = s.lot([{ op: 'modifier', table: 'arme', cle: { id: arme.id }, valeurs: { effet: `${arme.effet}, {{${id}:}}` } }], 'ressources/equipement/');
+  const refus = s.lot([{ op: 'modifier', table: 'arme', cle: { id: arme.id }, valeurs: { effet: `${arme.effet}, {{${id}:}}` } }], 'ressources/armes/');
   assert.equal(refus.statut, 400);
   assert.match(refus.corps.erreur, /le mode complet ne s’écrit que dans un texte mis en forme \(guide, Codex, chronologie, panneaux de règles\)/);
   assert.equal(s.lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: s.libre('Essai complet bis'), description: `Voir {{${id}:}}.` } }]).statut, 400, 'une définition est un texte de case');
@@ -447,7 +447,7 @@ test('service (D2) : le mode complet refusé dans un texte de case (message clai
   // ambiguïté : le mot-clé renommé garde son id, un autre prend l'ancienne écriture (son id : « -2 »)
   const ancien = s.creerMotCle(s.libre('Essai ambigu'), 'L’ancien.');
   const effet = `${arme.effet}, {{${ancien}|cité avant}}`;
-  s.ok([{ op: 'modifier', table: 'arme', cle: { id: arme.id }, valeurs: { effet } }], 'ressources/equipement/');
+  s.ok([{ op: 'modifier', table: 'arme', cle: { id: arme.id }, valeurs: { effet } }], 'ressources/armes/');
   s.ok([{ op: 'modifier', table: 'mot_cle', cle: { id: ancien }, valeurs: { libelle: s.libre('Essai renommé') } }]);
   const nouveau = s.creerMotCle(s.ligne('SELECT libelle FROM mot_cle WHERE id = ?', ancien) ? ancien.replace(/-/g, ' ') : ancien, 'Le nouveau.');
   assert.notEqual(nouveau, ancien);
@@ -455,7 +455,7 @@ test('service (D2) : le mode complet refusé dans un texte de case (message clai
   assert.equal(douteux.statut, 400);
   assert.match(douteux.corps.erreur, new RegExp(`« \\{\\{${ancien}\\}\\} » est l’identifiant du mot-clé .* et l’écriture du mot-clé .*\\{\\{${nouveau}\\}\\}.*précisez l’identifiant`));
   // déjà dans le texte avant l'ambiguïté : il se modifie encore (la balise reste lue par l'id)
-  s.ok([{ op: 'modifier', table: 'arme', cle: { id: arme.id }, valeurs: { effet: `${effet} (modifié)` } }], 'ressources/equipement/');
+  s.ok([{ op: 'modifier', table: 'arme', cle: { id: arme.id }, valeurs: { effet: `${effet} (modifié)` } }], 'ressources/armes/');
   assert.equal(s.ligne('SELECT effet FROM arme WHERE id = ?', arme.id).effet, `${effet} (modifié)`);
   s.ok([{ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { description: `Voir {{${nouveau}|celui-ci}}.` } }]);
 });
@@ -493,7 +493,7 @@ test('service : supprimer un mot-clé retire ses balises de tous les textes (l�
   const evenement = s.ok([{ op: 'creer', entite: 'evenement', valeurs: { epoque: 'inconnue', titre: `Essai témoin ${process.pid}`, description: `Le {{${a}:}}, {{${a}}} et {{${b}}}.` } }], 'chronologie/').crees[0].id;
   const description = () => s.ligne('SELECT texte FROM evenement_extrait WHERE evenement_id = ?', evenement).texte;
   const arme = armeSansRecharge(s);
-  s.ok([{ op: 'modifier', table: 'arme', cle: { id: arme.id }, valeurs: { effet: `${arme.effet}, {{${a}|Recharge longue}}` } }], 'ressources/equipement/');
+  s.ok([{ op: 'modifier', table: 'arme', cle: { id: arme.id }, valeurs: { effet: `${arme.effet}, {{${a}|Recharge longue}}` } }], 'ressources/armes/');
   assert.equal(s.ligne('SELECT recharge FROM arme WHERE id = ?', arme.id).recharge, 'longue');
   const pageDesArmes = () => s.ligne("SELECT corps_md FROM page WHERE id = 'ressources/armes'").corps_md;
   assert.ok(pageDesArmes().includes(`{{${a}\\|Recharge longue}}`), 'le corps de la page des armes suit (case de tableau : « \\| »)');

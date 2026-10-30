@@ -373,7 +373,7 @@ export const TABLES = {
       texte: { type: 'ligne', libelle: 'Butin possible', requis: true },
     },
   },
-  // Armes (onglet de /ressources/equipement/, demande du propriétaire : « tout peut être éditable à l'instar des autres pages ») : les cellules de l'onglet « Armes » ;
+  // Armes (page /ressources/armes/, demande du propriétaire : « tout peut être éditable à l'instar des autres pages ») : les cellules de l'onglet « Armes » ;
   // le service en tire les colonnes typées (dé, bonus, portée, solidité, provenance…), les types de dégâts et les minimums de caractéristique
   // (lib/arme-champs.mjs), et suit le corps de la page (lib/corps-armes.mjs). Pas les armes de monstres (absentes de la page).
   arme: {
@@ -445,7 +445,7 @@ export const TABLES = {
       affinite_brut: { type: 'ligne', libelle: 'Affinité (« Santé », « Santé + Chakra »)', requis: true },
     },
   },
-  // Consommables (sous-onglet Consommables de l'onglet Ceinture de /ressources/equipement/ ; demande du propriétaire, 2026-10-17 : « Les tableaux des
+  // Consommables (sous-onglet Consommables de la page Ceinture, /ressources/objets-a-la-ceinture/ ; demande du propriétaire, 2026-10-17 : « Les tableaux des
   // consommables devrai pouvoir aussi être modifiées . (sauf pour les champ calculés) ») : le niveau et l'effet d'une potion (son nom et son prix : sa
   // ressource, colonnes de `ressource`) ; le service en refait les altérations d'état de l'effet (potion_etat) et suit le corps de la page de la potion
   // (serveur/edition-consommables.mjs). Ni création ni suppression.
@@ -500,7 +500,7 @@ export const TABLES = {
       bonus_cran: { type: 'choix', libelle: '+1 cran de solidité (bouclier)', choix: OUI_SEUL, libelleVide: 'Non' },
     },
   },
-  // Armures et boucliers (onglets de /ressources/equipement/, demande du propriétaire, 2026-10-15 : « Modifiable tout de suite ») : les cases des onglets « Armures » et
+  // Armures et boucliers (pages /ressources/armures/ et /ressources/bouclier/, demande du propriétaire, 2026-10-15 : « Modifiable tout de suite ») : les cases des onglets « Armures » et
   // « Bouclier » ; le service en tire les colonnes typées (prix, AP, AM, coût en RF, Force minimum) et les résistances et faiblesses d'une armure
   // (lib/armure-champs.mjs), et suit le corps des pages (lib/corps-armures.mjs). Ni création ni suppression (les fiches de personnage citent armures,
   // pièces, formes et améliorations) ; les matériaux se modifient sur la page « Composants » (décision R62).

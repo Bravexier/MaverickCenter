@@ -1,10 +1,10 @@
-// Onglets Armures et Boucliers de la page /ressources/equipement/ construite (dist/ ; avant, la page /ressources/armures/ : test/equipement-html.test.mjs
-// pour la page et ses onglets) : rendus depuis les tables (pas de tableau Markdown), deux onglets (Armures, Boucliers : « Les deux seront
-// dans la page »), deux tableaux de matériaux à choisir pour l'armure (« deux tables des matériaux à sélectionner pour avoir l'armure ainsi créée »), la
+// Les pages Armures et Boucliers construites, /ressources/armures/ et /ressources/bouclier/ (dist/ ; une page chacune depuis le 2026-10-29, « Cinq
+// pages séparées » ; avant, les onglets Armures et Boucliers de la page « Équipement » : test/equipement-html.test.mjs pour le cadre des pages) : rendues
+// depuis les tables (pas de tableau Markdown), un panneau chacune (Armures, Boucliers), deux tableaux de matériaux à choisir pour l'armure (« deux tables des matériaux à sélectionner pour avoir l'armure ainsi créée »), la
 // liste des armures (« Une liste plus classique est disponible également »), les armures particulières en premier, et les améliorations ; plus de
 // tableau FABRICATION (une armure ne se fabrique plus pièce par pièce : décision R93) ni de création par pièces dans les règles (R95) ; la forme, ses améliorations sous elle, et la matière d'un bouclier (« forme + matière »), la liste des boucliers en un seul tableau
 // replié et triable (AP et AM séparés), le poids de chaque bouclier (décision R92) ; plus de tableau MATÉRIAUX (sa fabrication est sur la page
-// « Composants » : test/composants-html.test.mjs) ; les champs du mode modification. Les pages « Armures » et « Bouclier » ne sont plus construites : leurs liens mènent à leur onglet. Se saute sans dist/ (npm run build) ;
+// « Composants » : test/composants-html.test.mjs) ; les champs du mode modification. Les pages « Armures » et « Bouclier » du wiki ne sont pas construites par la route du wiki : ces pages les servent, à leur adresse. Se saute sans dist/ (npm run build) ;
 // la CI le lance après le build.
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
@@ -19,12 +19,16 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
-const fichier = join(dist, 'ressources', 'equipement', 'index.html');
-const present = existsSync(fichier);
+// les pages Armures et Boucliers (une chacune depuis le 2026-10-29, « Cinq pages séparées ») : le même composant, un panneau chacune
+const fichiers = { armures: join(dist, 'ressources', 'armures', 'index.html'), boucliers: join(dist, 'ressources', 'bouclier', 'index.html') };
+const present = Object.values(fichiers).every((f) => existsSync(f));
 const options = present ? {} : { skip: 'site non construit (npm run build)' };
-const html = present ? readFileSync(fichier, 'utf8') : '';
-// le bloc des armures et des boucliers : ses deux panneaux, jusqu'au panneau de la ceinture
-const main = html.slice(html.indexOf('<div class="armures" data-armures>'), html.indexOf('<section class="equipement-panneau ceinture" id="ceinture"'));
+const pages = Object.fromEntries(Object.entries(fichiers).map(([id, f]) => [id, present ? readFileSync(f, 'utf8') : '']));
+/** Le bloc des armures (ou des boucliers) d'une page, jusqu'à la fin de son contenu. */
+const bloc = (h) => h.slice(h.indexOf('<div class="armures" data-armures>'), h.indexOf('</main>'));
+// les deux pages bout à bout (un panneau chacune) : ce que lisaient les tests quand elles étaient les deux onglets d'une page
+const html = pages.armures + pages.boucliers;
+const main = bloc(pages.armures) + bloc(pages.boucliers);
 const armures = present ? chargerArmures(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' })) : null;
 const echapper = (t) => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;');
 /** Le HTML d'un panneau (onglet) : de son <section> au suivant. */
@@ -34,13 +38,14 @@ const panneau = (id) => {
   return main.slice(debut, fin < 0 ? undefined : fin);
 };
 
-test('pas de tableau Markdown : le gabarit des armures, deux panneaux (Armures, Boucliers), le panneau de règles de chaque onglet replié', options, () => {
+test('pas de tableau Markdown : le gabarit des armures, un panneau par page (Armures, Boucliers), le panneau de règles de chaque page replié', options, () => {
   assert.match(main, /^<div class="armures" data-armures>/);
   assert.ok(!main.includes('<table>'), 'aucun tableau rendu depuis le Markdown');
   for (const id of ['armures', 'boucliers']) assert.ok(panneau(id).length > 1000, `le panneau ${id}`);
-  // le panneau de règles de chaque onglet (migration 0056), en tête, replié, sans phrase au-dessus
+  // le panneau de règles de chaque page (migration 0056), en tête, replié, sans phrase au-dessus ; le titre de la page étiquette le panneau
   for (const id of ['armures', 'boucliers']) {
-    assert.match(panneau(id), new RegExp(`^<section class="armures-panneau equipement-panneau" id="${id}"[^>]*><h2 class="equipement-panneau__titre" id="titre-${id}">[^<]*</h2><details class="preg" id="regles-${id}" data-panneau-regles="${id}">`), id);
+    assert.match(panneau(id), new RegExp(`^<section class="armures-panneau equipement-panneau" id="${id}" aria-labelledby="titre-${id}"[^>]*><details class="preg" id="regles-${id}" data-panneau-regles="${id}">`), id);
+    assert.equal((bloc(pages[id]).match(/<section class="armures-panneau /g) ?? []).length, 1, `${id} : son seul panneau`);
   }
   assert.ok(!main.includes('armures__chapo'), 'plus de chapeau');
   assert.equal((main.match(/<details class="preg" /g) ?? []).length, 2);

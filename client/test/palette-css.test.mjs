@@ -334,14 +334,14 @@ test('la palette dans les pages construites', construit ? {} : { skip: 'site non
     assert.ok(existsSync(construite), `page construite : ${rel}`);
     return readFileSync(construite, 'utf8');
   };
-  for (const rel of ['index.html', 'ressources/equipement/index.html', 'fiche/index.html', 'regles/les-postures/index.html']) {
+  for (const rel of ['index.html', 'ressources/armes/index.html', 'fiche/index.html', 'regles/les-postures/index.html']) {
     assert.ok(page(rel).includes(`<style>${cssDeLaPalette()}</style>`), `dans la page construite : ${rel}`);
   }
   // les familles d'une zone : sur les pages qui les posent, et seulement là
   assert.ok(page('fiche/index.html').includes(`<style>${cssDesFamilles(FAMILLES_DE_LA_FICHE)}</style>`), 'postures, alignements… et poids : la fiche');
   assert.ok(page('regles/les-postures/index.html').includes(`<style>${cssDesFamilles(['posture'])}</style>`), 'postures : la page du guide');
-  assert.ok(page('ressources/equipement/index.html').includes(`<style>${cssDesSecondsRangs('caracteristique')}</style>`), 'seconds rangs : l’onglet Armes');
-  for (const rel of ['index.html', 'ressources/equipement/index.html']) assert.ok(!page(rel).includes('.couleur-posture-'), `${rel} : pas de postures`);
+  assert.ok(page('ressources/armes/index.html').includes(`<style>${cssDesSecondsRangs('caracteristique')}</style>`), 'seconds rangs : la page Armes');
+  for (const rel of ['index.html', 'ressources/armes/index.html']) assert.ok(!page(rel).includes('.couleur-posture-'), `${rel} : pas de postures`);
   // les catégories de classe et les races : sur leurs listes et leurs pages, et seulement là (et la fiche)
   assert.ok(page('classes/index.html').includes(`<style>${cssDesFamilles(['classe'])}</style>`), 'classes : la liste');
   assert.ok(page('classes/guerrier/index.html').includes(`<style>${cssDesFamilles(['classe', 'don'])}</style>`), 'classes et types de don : la page d’une classe');
@@ -350,21 +350,21 @@ test('la palette dans les pages construites', construit ? {} : { skip: 'site non
   for (const rel of ['index.html', 'classes/index.html', 'races/humain/index.html']) assert.ok(!/\.couleur-(?:genre|don)-/.test(page(rel)), `${rel} : ni genres ni types`);
   for (const rel of ['races/index.html', 'races/humain/index.html']) assert.ok(page(rel).includes(`<style>${cssDesFamilles(['race'])}</style>`), `races : ${rel}`);
   for (const rel of ['index.html', 'magies/index.html']) assert.ok(!/\.couleur-(?:classe|race|palier|mode|neutre)-/.test(page(rel)), `${rel} : pas de ces familles`);
-  // les matériaux, les armes de départ, les types d'armure et les poids : l'équipement, les composants (matériaux), la fiche (poids)
-  const equipement = page('ressources/equipement/index.html');
-  assert.ok(equipement.includes(`<style>${cssDesFamilles(['materiau', 'arme'])}</style>`) && equipement.includes(`<style>${cssDesFamilles(['armure', 'poids'])}</style>`), 'l’équipement');
+  // les matériaux, les armes de départ, les types d'armure et les poids : les pages Armes, Armures et Boucliers, les composants (matériaux), la fiche (poids)
+  assert.ok(page('ressources/armes/index.html').includes(`<style>${cssDesFamilles(['materiau', 'arme'])}</style>`), 'la page Armes');
+  for (const rel of ['ressources/armures/index.html', 'ressources/bouclier/index.html']) assert.ok(page(rel).includes(`<style>${cssDesFamilles(['armure', 'poids'])}</style>`), rel);
   assert.ok(page('ressources/composants/index.html').includes(`<style>${cssDesFamilles(['materiau'])}</style>`), 'les composants');
   assert.ok(!/\.couleur-(?:materiau|arme|armure)-/.test(page('fiche/index.html')), 'la fiche : le poids seulement');
   for (const rel of ['index.html', 'magies/index.html']) assert.ok(!/\.couleur-(?:materiau|arme|armure|poids)-/.test(page(rel)), `${rel} : pas de ces familles`);
-  // les niveaux des accessoires : l'onglet Accessoires de l'équipement, et seulement là
-  assert.ok(equipement.includes(`<style>${cssDesFamilles(['niveau'])}</style>`), 'les niveaux : l’onglet Accessoires');
-  for (const rel of ['index.html', 'magies/index.html', 'fiche/index.html', 'ressources/composants/index.html']) assert.ok(!/\.couleur-niveau-/.test(page(rel)), `${rel} : pas des niveaux`);
+  // les niveaux des accessoires : la page Accessoires, et seulement là
+  assert.ok(page('ressources/accessoires/index.html').includes(`<style>${cssDesFamilles(['niveau'])}</style>`), 'les niveaux : la page Accessoires');
+  for (const rel of ['index.html', 'magies/index.html', 'fiche/index.html', 'ressources/composants/index.html', 'ressources/armes/index.html']) assert.ok(!/\.couleur-niveau-/.test(page(rel)), `${rel} : pas des niveaux`);
   // les parties du guide : l'accueil, le sommaire des Bases, une page de Découvrir ou des Bases (la fiche : avec ses familles, ci-dessus) ; ni une page de
   // référence du guide, ni une autre page
   for (const rel of ['index.html', 'regles/index.html', 'decouvrir/index.html', 'regles/les-postures/index.html']) {
     assert.ok(page(rel).includes(`<style>${cssDesFamilles(['partie'])}</style>`), `les parties : ${rel}`);
   }
-  for (const rel of ['magies/index.html', 'ressources/equipement/index.html', 'regles/avancees/index.html', 'mj/index.html']) assert.ok(!/\.couleur-partie-[a-z-]+\{/.test(page(rel)), `${rel} : pas des parties`);
+  for (const rel of ['magies/index.html', 'ressources/armes/index.html', 'regles/avancees/index.html', 'mj/index.html']) assert.ok(!/\.couleur-partie-[a-z-]+\{/.test(page(rel)), `${rel} : pas des parties`);
 });
 
 /** Le corps de la règle CSS d'un sélecteur (écrit tel quel, au début d'une ligne), sans les retours à la ligne. */

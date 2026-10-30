@@ -1,18 +1,22 @@
-// Page « Équipement » (/ressources/equipement/ ; demandes du propriétaire, 2026-10-16 : « J'aimerai fusionner "Armes" et "Armures" dans un seule
-// onglet : "Equipement" A l'instar de "Armure et bouclier" les "Armes" seront dans un onglet à part. Il faudrait également un 4em onglet pour les
-// bâtons magiques du coup qui auront mieux leur place ici » ; « J'aimerai rajouter un 5 onglet pour y déplacer les accessoires » ; puis la page des
-// objets à la ceinture devenue l'onglet « Ceinture », où les bâtons magiques reviennent, en sous-onglet) : ses onglets et les sous-onglets de la
-// ceinture (lib/equipement.mjs), les adresses des pages qu'ils servent (lib/metiers.mjs#adresseDePage, et lib/nav.mjs#PAGES_RENOMMEES pour la page
-// 404 : les deux doivent s'accorder), le menu, et le sous-onglet des bâtons magiques chargé depuis la base (lib/batons-db.mjs, lib/batons-rendu.mjs). Le site de dev
+// Les cinq pages de l'équipement (demande du propriétaire du 2026-10-29 : un menu « Equipement » où vont « les pages "Armes, Armures, Bouclier,
+// Ceinture, Accessoire" » ; « Cinq pages séparées » ; libellés « Comme les onglets (pluriel) » ; avant, les cinq onglets d'une seule page « Équipement »,
+// /ressources/equipement/, demandes du 2026-10-16) : leur ordre et leurs adresses (identifiants figés : celles d'avant la page « Équipement »), les
+// sous-onglets de la ceinture (lib/equipement.mjs), les adresses des pages du wiki qu'elles servent (lib/metiers.mjs#adresseDePage, et
+// lib/nav.mjs#PAGES_RENOMMEES pour la page 404 : les deux doivent s'accorder), les renvois des pages éclatées (l'ancienne page « Équipement », la page
+// « Pièces élémentaires », fusionnée dans Armes et Armures), le menu, le texte de la page « Pièces élémentaires » trié entre Armes et Armures
+// (lib/pieces-elementaires.mjs), et le sous-onglet des bâtons magiques chargé depuis la base (lib/batons-db.mjs, lib/batons-rendu.mjs). Le site de dev
 // peut réécrire la page « Bâton magique » et le panneau de règles du sous-onglet : ce qui vient de l'import est lu tel que l'import l'a laissé
 // (lib/historique-site.mjs). Les panneaux de règles eux-mêmes : test/panneaux-regles.test.mjs.
 import assert from 'node:assert/strict';
+import { existsSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import {
-  ANCIENNE_PAGE_DE_LA_CEINTURE, CHEMIN_DE_L_EQUIPEMENT, ONGLETS_DE_L_EQUIPEMENT, PAGES_SERVIES_PAR_L_EQUIPEMENT, SOUS_ONGLETS_DE_LA_CEINTURE,
+  ADRESSES_DES_PAGES_SERVIES, ANCIENNE_PAGE_DE_L_EQUIPEMENT, ANCRE_DES_PIECES_ELEMENTAIRES, PAGE_DES_PIECES_ELEMENTAIRES, PAGES_DE_L_EQUIPEMENT,
+  PAGES_SERVIES_PAR_L_EQUIPEMENT, RENVOIS_DES_PAGES_ECLATEES, SOUS_ONGLETS_DE_LA_CEINTURE, pageDeLEquipement,
 } from '../src/lib/equipement.mjs';
-import { adresseDePage, cheminDePage, pageSansAdresse } from '../src/lib/metiers.mjs';
-import { NAV, PAGES_RENOMMEES, adresseComplete, nouvelleAdresse } from '../src/lib/nav.mjs';
+import { adresseDePage, cheminDePage, estServieASonId, pageSansAdresse } from '../src/lib/metiers.mjs';
+import { NAV, PAGES_RENOMMEES, adresseComplete, adresseDeRenvoi, nouvelleAdresse } from '../src/lib/nav.mjs';
+import { introductionDesPiecesElementaires, PARTIES_DES_PIECES_ELEMENTAIRES, texteDesPiecesElementaires } from '../src/lib/pieces-elementaires.mjs';
 import { chargerBatons, PAGE_DES_BATONS, prixDuBaton, QUALITES_DE_GEMME } from '../src/lib/batons-db.mjs';
 import { ancreDeBatons, bulleDeBatons, classeDesBatons, htmlDeLigneDeBatons, htmlDuPrixDuBaton } from '../src/lib/batons-rendu.mjs';
 import { classeDeMagie } from '../src/lib/palette-css.mjs';
@@ -25,58 +29,154 @@ import { historiqueSite } from '../src/lib/historique-site.mjs';
 const db = ouvrirBase();
 const batons = chargerBatons(db);
 const historique = historiqueSite(db);
+const pages = new URL('../src/pages/', import.meta.url);
+const scripts = new URL('../src/scripts/', import.meta.url);
 
-test('cinq onglets, dans l’ordre voulu : Armes, Armures, Boucliers, Ceinture, Accessoires ; la ceinture a trois sous-onglets ; chaque page servie existe', () => {
-  assert.deepEqual(ONGLETS_DE_L_EQUIPEMENT.map((o) => o.nom), ['Armes', 'Armures', 'Boucliers', 'Ceinture', 'Accessoires']);
-  assert.deepEqual(ONGLETS_DE_L_EQUIPEMENT.map((o) => o.id), ['armes', 'armures', 'boucliers', 'ceinture', 'accessoires']);
+test('cinq pages, dans l’ordre voulu : Armes, Armures, Boucliers, Ceinture, Accessoires, chacune à l’adresse qu’elle avait avant la page « Équipement » ; la ceinture a trois sous-onglets ; chaque page servie existe', () => {
+  assert.deepEqual(PAGES_DE_L_EQUIPEMENT.map((o) => o.nom), ['Armes', 'Armures', 'Boucliers', 'Ceinture', 'Accessoires']);
+  assert.deepEqual(PAGES_DE_L_EQUIPEMENT.map((o) => o.id), ['armes', 'armures', 'boucliers', 'ceinture', 'accessoires']);
+  // identifiants figés : les adresses de PAGES_RENOMMEES avant le 2026-10-29 (« ressources/armes/ »…, et l'ancienne page « Objets à la ceinture »)
+  assert.deepEqual(PAGES_DE_L_EQUIPEMENT.map((o) => o.chemin), [
+    'ressources/armes/', 'ressources/armures/', 'ressources/bouclier/', 'ressources/objets-a-la-ceinture/', 'ressources/accessoires/',
+  ]);
+  for (const o of PAGES_DE_L_EQUIPEMENT) {
+    assert.ok(existsSync(new URL(`${o.chemin.replace(/\/$/, '')}.astro`, pages)), `${o.chemin} : sa page (src/pages/${o.chemin.replace(/\/$/, '')}.astro)`);
+    assert.equal(pageDeLEquipement(o.id), o);
+  }
+  assert.equal(pageDeLEquipement('inconnue'), null);
+  assert.ok(!existsSync(new URL('ressources/equipement.astro', pages)), 'plus de page « Équipement »');
   // demande du propriétaire du 2026-10-16 : « dans l'ordre Consommable / Carquois / Bâton magiques » ; le sous-onglet des bâtons garde l'ancre de
   // l'ancien onglet « Bâtons magiques »
   assert.deepEqual(SOUS_ONGLETS_DE_LA_CEINTURE.map((o) => [o.id, o.nom]), [['ceinture-consommables', 'Consommables'], ['ceinture-carquois', 'Carquois'], ['batons-magiques', 'Bâtons magiques']]);
-  assert.deepEqual(PAGES_SERVIES_PAR_L_EQUIPEMENT.map((o) => [o.page, o.ancre]), [
-    ['ressources/armes', 'armes'], ['ressources/armures', 'armures'], ['ressources/bouclier', 'boucliers'], ['ressources/accessoires', 'accessoires'],
-    ['ressources/baton-magique', 'batons-magiques'],
-  ], 'l’onglet Ceinture et ses deux premiers sous-onglets ne servent pas de page du wiki');
-  for (const o of PAGES_SERVIES_PAR_L_EQUIPEMENT) assert.ok(db.prepare('SELECT 1 FROM page WHERE id = ?').get(o.page), o.page);
-  const ids = [...ONGLETS_DE_L_EQUIPEMENT, ...SOUS_ONGLETS_DE_LA_CEINTURE].map((o) => o.id);
-  assert.equal(new Set(ids).size, ids.length, 'des ancres uniques sur la page');
-  assert.equal(CHEMIN_DE_L_EQUIPEMENT, 'ressources/equipement/');
+  assert.deepEqual(PAGES_SERVIES_PAR_L_EQUIPEMENT.map((o) => [o.page, o.ancre, o.chemin]), [
+    ['ressources/armes', 'armes', 'ressources/armes/'], ['ressources/armures', 'armures', 'ressources/armures/'],
+    ['ressources/bouclier', 'boucliers', 'ressources/bouclier/'], ['ressources/accessoires', 'accessoires', 'ressources/accessoires/'],
+    ['ressources/baton-magique', 'batons-magiques', 'ressources/objets-a-la-ceinture/'],
+  ], 'la Ceinture et ses deux premiers sous-onglets ne servent pas de page du wiki');
+  for (const o of [...PAGES_SERVIES_PAR_L_EQUIPEMENT, { page: PAGE_DES_PIECES_ELEMENTAIRES }]) assert.ok(db.prepare('SELECT 1 FROM page WHERE id = ?').get(o.page), o.page);
+  const ids = [...PAGES_DE_L_EQUIPEMENT.filter((o) => o.id === 'ceinture'), ...SOUS_ONGLETS_DE_LA_CEINTURE].map((o) => o.id);
+  assert.equal(new Set(ids).size, ids.length, 'des ancres uniques sur la page Ceinture');
 });
 
-test('les pages servies par un onglet n’ont pas d’adresse à elles : leurs liens et leurs anciennes adresses (page 404) mènent à l’onglet', () => {
-  for (const o of PAGES_SERVIES_PAR_L_EQUIPEMENT.map(({ page, ancre }) => ({ page, id: ancre }))) {
-    assert.ok(pageSansAdresse(o.page), o.page);
-    assert.deepEqual(adresseDePage(o.page), { chemin: CHEMIN_DE_L_EQUIPEMENT, ancre: o.id });
-    assert.equal(cheminDePage(o.page), `ressources/equipement/#${o.id}`);
-    // nav.mjs n'importe rien (le script de la page 404 l'importe) : sa liste doit dire la même chose que lib/equipement.mjs
-    assert.equal(PAGES_RENOMMEES[`${o.page}/`], cheminDePage(o.page), `${o.page} : PAGES_RENOMMEES`);
-    assert.equal(nouvelleAdresse(`/${o.page}/`), `/${cheminDePage(o.page)}`);
-    assert.equal(nouvelleAdresse(`/wiki/${o.page}/`), `/${cheminDePage(o.page)}`, 'une ancienne adresse du wiki : un seul saut');
-    assert.equal(nouvelleAdresse(`/MaverickCenter/${o.page}`, '/MaverickCenter/'), `/MaverickCenter/${cheminDePage(o.page)}`, 'sous un sous-chemin, sans « / » final');
+test('les pages du wiki servies par une page de l’équipement ne sont pas construites par la route du wiki : leurs liens mènent à leur page (à son adresse, ou à l’ancre de son sous-onglet ou de sa section)', () => {
+  assert.deepEqual(Object.fromEntries(Object.entries(ADRESSES_DES_PAGES_SERVIES).map(([id, a]) => [id, cheminDePage(id)])), {
+    'ressources/armes': 'ressources/armes/', 'ressources/armures': 'ressources/armures/', 'ressources/bouclier': 'ressources/bouclier/',
+    'ressources/accessoires': 'ressources/accessoires/', 'ressources/baton-magique': 'ressources/objets-a-la-ceinture/#batons-magiques',
+    // « Fusionner dans Armes et Armures » : la section « Pièces élémentaires » de la page Armes
+    'ressources/pieces-elementaires': `ressources/armes/#${ANCRE_DES_PIECES_ELEMENTAIRES}`,
+  });
+  for (const id of Object.keys(ADRESSES_DES_PAGES_SERVIES)) {
+    assert.ok(pageSansAdresse(id), id);
+    assert.deepEqual(adresseDePage(id), ADRESSES_DES_PAGES_SERVIES[id]);
+    // la route du wiki ne la construit pas, même quand son adresse est la sienne (« ressources/armes/ » : src/pages/ressources/armes.astro)
+    assert.equal(estServieASonId(id), false, `${id} : pas par la route du wiki`);
   }
-  // la requête d'origine est gardée (l'état des onglets : ?arme=, ?materiau1=…), l'ancre d'origine l'emporte sur celle de l'onglet
-  assert.equal(adresseComplete(nouvelleAdresse('/ressources/armes/'), '?arme=arme-epees-espadon', ''), '/ressources/equipement/?arme=arme-epees-espadon#armes');
-  assert.equal(adresseComplete(nouvelleAdresse('/ressources/bouclier/'), '', '#bouclier-ecu-fer'), '/ressources/equipement/#bouclier-ecu-fer');
-  // dans l'autre sens : chaque renvoi de nav.mjs vers la page « Équipement » vise l'ancre d'un onglet ou d'un sous-onglet qui existe
-  const ancres = new Set([...ONGLETS_DE_L_EQUIPEMENT, ...SOUS_ONGLETS_DE_LA_CEINTURE].map((o) => o.id));
-  for (const [ancienne, nouvelle] of Object.entries(PAGES_RENOMMEES).filter(([, n]) => n.startsWith(CHEMIN_DE_L_EQUIPEMENT))) {
-    assert.ok(ancres.has(nouvelle.slice(nouvelle.indexOf('#') + 1)), `${ancienne} → ${nouvelle}`);
-  }
-  // l'ancienne page « Objets à la ceinture » (sans page du wiki) : l'onglet Ceinture, la requête et l'ancre d'origine gardées
-  assert.equal(ANCIENNE_PAGE_DE_LA_CEINTURE, 'ressources/objets-a-la-ceinture/');
-  assert.equal(PAGES_RENOMMEES[ANCIENNE_PAGE_DE_LA_CEINTURE], `${CHEMIN_DE_L_EQUIPEMENT}#ceinture`);
-  assert.equal(nouvelleAdresse('/ressources/objets-a-la-ceinture/'), '/ressources/equipement/#ceinture');
-  assert.equal(adresseComplete(nouvelleAdresse('/ressources/objets-a-la-ceinture/'), '', '#objets-huile'), '/ressources/equipement/#objets-huile');
   // les autres pages de Ressources gardent leur adresse
-  for (const id of ['ressources/livre-parchemin', 'ressources/alchimie', 'ressources/equipement-inventaire']) assert.equal(cheminDePage(id), `${id}/`, id);
+  for (const id of ['ressources/livre-parchemin', 'ressources/alchimie', 'ressources/equipement-inventaire']) {
+    assert.equal(cheminDePage(id), `${id}/`, id);
+    assert.equal(estServieASonId(id), true, id);
+  }
 });
 
-test('menu Règles (plus de rubrique Ressources depuis le 2026-10-18) : « Équipement » remplace « Armes », « Armures », « Accessoires » et « Objets à la ceinture »', () => {
-  const items = NAV.find((g) => g.key === 'regles').items;
-  assert.deepEqual(items.find((i) => i.label === 'Équipement'), { label: 'Équipement', path: CHEMIN_DE_L_EQUIPEMENT });
-  assert.ok(!items.some((i) => ['Armes', 'Armures', 'Accessoires', 'Objets à la ceinture'].includes(i.label)
-    || /ressources\/(armes|armures|accessoires|objets-a-la-ceinture)\//.test(i.path ?? '')));
+test('anciennes adresses (page 404) : « Bâton magique » mène au sous-onglet de la Ceinture, l’ancienne page « Équipement » à la page de son ancre ou de sa requête ; nav.mjs et lib/equipement.mjs s’accordent', () => {
+  // nav.mjs n'importe rien (le script de la page 404 l'importe) : sa liste doit dire la même chose que lib/equipement.mjs
+  for (const { page } of PAGES_SERVIES_PAR_L_EQUIPEMENT) {
+    const chemin = cheminDePage(page);
+    if (chemin === `${page}/`) {
+      assert.ok(!Object.hasOwn(PAGES_RENOMMEES, `${page}/`), `${page} : une vraie page, pas un renvoi`);
+      continue;
+    }
+    assert.equal(PAGES_RENOMMEES[`${page}/`], chemin, `${page} : PAGES_RENOMMEES`);
+    assert.equal(nouvelleAdresse(`/${page}/`), `/${chemin}`);
+    assert.equal(nouvelleAdresse(`/wiki/${page}/`), `/${chemin}`, 'une ancienne adresse du wiki : un seul saut');
+    assert.equal(nouvelleAdresse(`/MaverickCenter/${page}`, '/MaverickCenter/'), `/MaverickCenter/${chemin}`, 'sous un sous-chemin, sans « / » final');
+  }
+  for (const o of PAGES_DE_L_EQUIPEMENT) assert.ok(!Object.hasOwn(PAGES_RENOMMEES, o.chemin), `${o.chemin} : plus de renvoi (une vraie page)`);
+  assert.equal(adresseComplete(nouvelleAdresse('/ressources/baton-magique/'), '', '#baton-magie-du-feu'), '/ressources/objets-a-la-ceinture/#baton-magie-du-feu');
+  // chaque renvoi de nav.mjs vers une page de l'équipement vise une page qui existe, à l'ancre d'un sous-onglet qui existe
+  const chemins = new Set(PAGES_DE_L_EQUIPEMENT.map((o) => o.chemin));
+  const ancres = new Set(SOUS_ONGLETS_DE_LA_CEINTURE.map((o) => o.id));
+  for (const [ancienne, nouvelle] of Object.entries(PAGES_RENOMMEES).filter(([, n]) => n.startsWith('ressources/'))) {
+    const [chemin, ancre] = nouvelle.split('#');
+    assert.ok(chemins.has(chemin) && (!ancre || ancres.has(ancre)), `${ancienne} → ${nouvelle}`);
+  }
+  // les pages éclatées : l'ancienne page « Équipement » et « Pièces élémentaires » ; chacun de leurs renvois vise une des cinq pages
+  assert.deepEqual(Object.keys(RENVOIS_DES_PAGES_ECLATEES), [ANCIENNE_PAGE_DE_L_EQUIPEMENT, `${PAGE_DES_PIECES_ELEMENTAIRES}/`]);
+  for (const [ancienne, r] of Object.entries(RENVOIS_DES_PAGES_ECLATEES)) {
+    assert.ok(!Object.hasOwn(PAGES_RENOMMEES, ancienne), `${ancienne} : pas dans PAGES_RENOMMEES`);
+    for (const cible of [...r.ancres.map(([, c]) => c), ...Object.values(r.anciennesAncres), ...r.parametres.map(([, c]) => c), r.defaut]) {
+      assert.ok(chemins.has(cible.split('#')[0]), `${ancienne} → ${cible}`);
+    }
+  }
+  // l'ancien onglet de chaque page : la page, sans ancre ; la requête gardée
+  for (const o of PAGES_DE_L_EQUIPEMENT) {
+    assert.equal(adresseDeRenvoi('/ressources/equipement/', { eclatees: RENVOIS_DES_PAGES_ECLATEES, hash: `#${o.id}`, search: '?x=1' }), `/${o.chemin}?x=1`, o.id);
+  }
+});
+
+test('paramètres de l’adresse (l’état d’une page : ?arme=, ?forme=…) : chacun mène à la page dont le script le lit ; aucun en commun entre deux pages', () => {
+  const { parametres } = RENVOIS_DES_PAGES_ECLATEES[ANCIENNE_PAGE_DE_L_EQUIPEMENT];
+  const noms = parametres.map(([nom]) => nom);
+  assert.equal(new Set(noms).size, noms.length, 'chaque paramètre, une seule page');
+  const source = (nom) => readFileSync(new URL(nom, scripts), 'utf8');
+  const lus = (texte) => new Set([...texte.matchAll(/params\.get\('([a-z0-9-]+)'\)/g)].map((m) => m[1]));
+  // src/scripts/armes.mjs lit aussi « competence » et « depart » par lib/armes-filtres.mjs ; accessoires.mjs, ceux de lib/accessoires-generateur.mjs#PARAMETRES
+  const parPage = {
+    'ressources/armes/': [...lus(source('armes.mjs')), 'competence', 'depart'],
+    'ressources/armures/': [...lus(source('armures.mjs'))].filter((n) => !['forme', 'matiere', 'amelioration-bouclier'].includes(n)),
+    'ressources/bouclier/': ['forme', 'matiere', 'amelioration-bouclier'],
+  };
+  for (const [chemin, attendus] of Object.entries(parPage)) {
+    assert.deepEqual(parametres.filter(([, c]) => c === chemin).map(([n]) => n).sort(), [...new Set(attendus)].sort(), chemin);
+  }
+  for (const nom of ['forme', 'matiere', 'amelioration-bouclier']) assert.ok(lus(source('armures.mjs')).has(nom), `armures.mjs lit ${nom}`);
+});
+
+test('rubrique Équipement (2026-10-29, entre Personnage et Espace joueur) : une entrée par page de l’équipement, son libellé et son adresse, puis Artisanat, Livres & Parchemins et Autres', () => {
+  assert.deepEqual(NAV.map((g) => g.key).slice(1, 4), ['personnage', 'equipement', 'joueur']);
+  const items = NAV.find((g) => g.key === 'equipement').items;
+  assert.deepEqual(items.slice(0, PAGES_DE_L_EQUIPEMENT.length), PAGES_DE_L_EQUIPEMENT.map((o) => ({ label: o.nom, path: o.chemin })));
+  assert.deepEqual(items.slice(PAGES_DE_L_EQUIPEMENT.length).map((i) => i.label), ['Artisanat', 'Livres & Parchemins', 'Autres']);
+  // « Le reste dans equipement (sous menu-autres pour commencer) » (réponse du propriétaire du 2026-10-29) : la liste des pages de ressources
+  assert.equal(items.at(-1).path, 'ressources/', 'Autres : la liste des pages /ressources/');
+  assert.ok(!NAV.some((g) => g.items.some((i) => /ressources\/(equipement|pieces-elementaires)\//.test(i.path ?? ''))), 'ni l’ancienne page « Équipement » ni « Pièces élémentaires »');
   assert.ok(!NAV.some((g) => g.key === 'ressources'), 'plus de rubrique Ressources');
-  assert.deepEqual(items.slice(1, 6).map((i) => i.label), ['Races', 'Magies', 'Classes', 'Équipement', 'Métiers'], 'après les classes, avant les métiers');
+});
+
+test('« Pièces élémentaires » fusionnée dans Armes et Armures : son texte (avant ses tableaux) lu tel qu’écrit, « ▸ Armes » à la page Armes, « ▸ Armures » et « ▸ Vêtements » à la page Armures, le reste aux deux', () => {
+  const corps = db.prepare('SELECT corps_md FROM page WHERE id = ?').get(PAGE_DES_PIECES_ELEMENTAIRES).corps_md;
+  const intro = introductionDesPiecesElementaires(corps);
+  assert.ok(intro && !intro.includes('## '), 'le texte avant « ## Armes élémentaires »');
+  const armes = texteDesPiecesElementaires(corps, 'armes');
+  const armures = texteDesPiecesElementaires(corps, 'armures');
+  // tant que le site de dev n'a pas réécrit la page : les trois parties de l'import
+  if (corps === historique.valeurDImport('page', { id: PAGE_DES_PIECES_ELEMENTAIRES }, 'corps_md')) {
+    assert.deepEqual(armes.parties, ['Armes', 'Armures', 'Vêtements']);
+  }
+  // rien n'est réécrit : chaque paragraphe gardé est un paragraphe du texte (ou ses lignes communes), et tout le texte est sur l'une des deux pages
+  const paragraphes = intro.split(/\n[ \t]*\n/);
+  for (const t of [armes.markdown, armures.markdown]) {
+    for (const p of t.split(/\n[ \t]*\n/)) assert.ok(paragraphes.some((x) => x === p || x.startsWith(`${p}\n`)), `réécrit : ${p.slice(0, 60)}`);
+  }
+  for (const p of paragraphes) {
+    const lignes = p.split('\n');
+    assert.ok(lignes.every((l) => armes.markdown.includes(l) || armures.markdown.includes(l)), `perdu : ${p.slice(0, 60)}`);
+  }
+  // chaque partie sur sa page seulement
+  for (const [nom, page] of Object.entries(PARTIES_DES_PIECES_ELEMENTAIRES)) {
+    if (!armes.parties.includes(nom)) continue;
+    assert.equal(armes.markdown.includes(`▸ ${nom}`), page === 'armes', `▸ ${nom} sur la page Armes`);
+    assert.equal(armures.markdown.includes(`▸ ${nom}`), page === 'armures', `▸ ${nom} sur la page Armures`);
+  }
+  // le texte commun aux deux (la pièce, sa solidité, son obtention, sa valeur)
+  for (const t of [armes.markdown, armures.markdown]) assert.ok(t.startsWith(intro.split(/\n[ \t]*\n/)[0]), 'la première phrase');
+  // un exemple écrit ici : les listes suivent leur partie ; un paragraphe la termine ; les lignes avant « ▸ » restent communes
+  const exemple = 'Intro.\n\nDétails  \n▸ Armes\n\n- a1\n- a2\n\n▸ Armures\n\n- b1\n\nCommun\n\n- c1\n\n## Tableaux\n\n| x |';
+  assert.deepEqual(texteDesPiecesElementaires(exemple, 'armes'), { markdown: 'Intro.\n\nDétails  \n▸ Armes\n\n- a1\n- a2\n\nCommun\n\n- c1', parties: ['Armes', 'Armures'] });
+  assert.deepEqual(texteDesPiecesElementaires(exemple, 'armures'), { markdown: 'Intro.\n\nDétails  \n\n▸ Armures\n\n- b1\n\nCommun\n\n- c1', parties: ['Armes', 'Armures'] });
+  assert.deepEqual(texteDesPiecesElementaires('Sans partie.\n\n- x', 'armures'), { markdown: 'Sans partie.\n\n- x', parties: [] }, 'sans partie : tout, aux deux pages');
+  assert.deepEqual(texteDesPiecesElementaires('## Tableaux seuls', 'armes'), { markdown: null, parties: [] });
+  assert.deepEqual(texteDesPiecesElementaires(null, 'armes'), { markdown: null, parties: [] });
 });
 
 test('bâtons : une ligne par magie (ordre des magies), la gemme et le bois de la magie, un bonus par niveau ; tous les bâtons de la base', () => {

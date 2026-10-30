@@ -1,4 +1,4 @@
-// Le script de l'onglet Armes de /ressources/equipement/ (src/scripts/armes.mjs), exécuté dans un faux navigateur (test/aide-faux-dom.mjs), pour les
+// Le script de la page Armes, /ressources/armes/ (src/scripts/armes.mjs), exécuté dans un faux navigateur (test/aide-faux-dom.mjs), pour les
 // deux menus à onglets, mêlée et distance (demande du propriétaire, 2026-10-23 : « Il faudrai réduire çà en deux menus à onglet. Un pour les armes de
 // mêlée l'autre pour les armes à distances. Le fonctionnement interne des tableaux reste inchangé ») : sous le filtre, l'onglet d'une famille sans arme
 // affichée se cache, un menu sans aucune famille affichée aussi, l'onglet ouvert qui n'a plus d'arme laisse la place au premier qui en a (évènement
@@ -71,7 +71,7 @@ async function charger(recherche = '', { edition = false, vide = false } = {}) {
   for (const { panneau } of Object.values(f)) {
     panneau.addEventListener('onglets:ouvrir', (e) => ouvertures.push([panneau.id.replace('famille-', ''), e.detail?.dans === racine]));
   }
-  let url = new URL(`/ressources/equipement/${recherche}`, 'http://site/');
+  let url = new URL(`/ressources/armes/${recherche}`, 'http://site/');
   const document = fauxDocument(el('section', { class: 'equipement-panneau', id: 'armes' }, racine));
   if (edition) document.body.classList.add('ed-mode');
   Object.assign(globalThis, {
@@ -170,8 +170,8 @@ test('l’adresse retient l’onglet : quand le filtre ferme l’onglet qu’ell
   // une ligne d'arme de l'onglet fermé, que le filtre écarte (elle ne s'ouvre donc pas : ?arme= ne la remplace pas) : l'adresse suit aussi
   const r = await charger('?competence=arme-legere#arme-glaive');
   assert.equal(r.adresse(), '?competence=arme-legere#famille-dagues');
-  // l'onglet de la page (#boucliers) ou celui de l'autre menu reste
-  for (const ancre of ['#boucliers', '#famille-arc']) {
+  // une autre ancre de la page (#ameliorations-arme) ou l'onglet de l'autre menu reste
+  for (const ancre of ['#ameliorations-arme', '#famille-arc']) {
     const s = await charger(ancre);
     s.clic(s.filtre['arme-legere']);
     assert.deepEqual(s.ouvertures, [['dagues', true]]);
@@ -258,7 +258,7 @@ async function chargerLaForge(recherche = '') {
         el('details', { class: 'tableau armes-ameliorations' }, el('table', {}, el('tbody', {}, ...ameliorations))))),
     el('div', { 'data-armes-bulles': '' }));
   racine.querySelector('.armes-cote').scrollTo = () => {};
-  let url = new URL(`/ressources/equipement/${recherche}`, 'http://site/');
+  let url = new URL(`/ressources/armes/${recherche}`, 'http://site/');
   const document = fauxDocument(el('section', { class: 'equipement-panneau', id: 'armes' }, racine));
   Object.assign(globalThis, {
     document,

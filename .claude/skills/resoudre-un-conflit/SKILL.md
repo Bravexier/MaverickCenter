@@ -50,15 +50,17 @@ Ne rebase qu'à ton tour (`publier-une-branche`, L'ordre de passage).
    - Le rapport liste les fichiers que la base a changés et que le lot touche aussi (le **recouvrement**). Les tests à relancer sont ceux de `npm run test:cible -- --apres-rebase`, un seul jeu, sur ce recouvrement (ajoute `--fichiers <fichiers résolus à la main>`) ; recouvrement vide : aucun test. Le chef les fait lancer (`choisir-les-tests`).
    - Une résolution de sens faite après la relecture de `tech-qualite` a sa relecture courte, limitée à son diff.
 5. **Pousser** quand tout est vert.
-   - Une branche déjà poussée : `git push --force-with-lease --force-if-includes`. Le second drapeau refuse d'écraser un commit distant que l'étape 1 n'a pas repris.
-   - La première fois : `git push -u origin <branche>`.
+   - Le push forcé de SA PROPRE branche (`feature/<nom>` ou `hotfix/<nom>` créée par nous) après un rebase est TOUJOURS autorisé (choix du propriétaire, 2026-10-29) : on ne le lui redemande pas. Sans `--force-if-includes` : cette forme n'est pas dans la liste autorisée de `.claude/settings.json` ; c'est le `git fetch --prune origin` juste avant et l'étape 1 qui évitent d'écraser un commit distant.
+   - Une branche déjà poussée : `git fetch --prune origin` puis `git push --force-with-lease origin <branche>`.
+   - La première fois : `git push -u --force-with-lease origin <branche>` (après le même `fetch`).
+   - Jamais de push forcé sur `dev`, `master` ni sur la branche d'un autre ; jamais `--force` ou `-f` seuls.
    - En cas d'erreur réseau, jusqu'à 4 reprises, après 2 s, 4 s, 8 s puis 16 s.
 6. **Le rapport** dit : rebase fait ou non, chaque conflit et qui l'a résolu, les contrôles relancés, le commit poussé.
 
 ## Ce qui ne se fait jamais
 
 - Fusionner la base dans la branche.
-- Rebaser la branche de refusion.
+- Rebaser la branche de refusion, ou une branche qui n'est pas la nôtre.
 - Résoudre à la main un fichier tenu par un outil.
 - Garder un marqueur de conflit.
 - Pousser un état à moitié résolu.

@@ -1,5 +1,7 @@
-// Le script des onglets partagés (components/Onglets.astro), tel que le build l'écrit dans la page Équipement (dist/ : se saute sans le site construit,
-// npm run build), exécuté dans un faux navigateur (test/aide-faux-dom.mjs) : choisir un onglet écrit son ancre dans l'adresse, les menus des familles
+// Le script des onglets partagés (components/Onglets.astro), tel que le build l'écrit dans la page Armes (dist/ : se saute sans le site construit,
+// npm run build), exécuté dans un faux navigateur (test/aide-faux-dom.mjs), sur une page d'essai à deux niveaux d'onglets (une barre de page, Armes et
+// Boucliers, et dans Armes les deux menus des familles : la forme de l'ancienne page « Équipement », jusqu'au 2026-10-29 ; aujourd'hui, deux niveaux
+// sur la page Ceinture, ses sous-onglets et les familles des consommables) : choisir un onglet écrit son ancre dans l'adresse, les menus des familles
 // d'armes compris (`#famille-<id>` : demande du propriétaire, 2026-10-23, « On peut retenir l'onglet ouvert #epee par exemple »), sauf dans un groupe
 // `data-onglets-sans-adresse` (option gardée, sans usage aujourd'hui) ; une adresse `#famille-…` au chargement ouvre l'onglet Armes puis la famille, et
 // `#boucliers` ensuite l'onglet Boucliers ; les flèches, Début et Fin sautent un onglet caché (`hidden` : une famille d'armes que le filtre vide) ;
@@ -15,10 +17,10 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { cliquer, el, Element, fauxDocument } from './aide-faux-dom.mjs';
 
-const fichier = fileURLToPath(new URL('../dist/ressources/equipement/index.html', import.meta.url));
+const fichier = fileURLToPath(new URL('../dist/ressources/armes/index.html', import.meta.url));
 const present = existsSync(fichier);
 const options = present ? {} : { skip: 'site non construit (npm run build)' };
-// le script des onglets, écrit en ligne dans la page (un seul : test/equipement-html.test.mjs)
+// le script des onglets, écrit en ligne dans la page (un seul par page : test/equipement-html.test.mjs)
 const script = present ? [...readFileSync(fichier, 'utf8').matchAll(/<script type="module">([\s\S]*?)<\/script>/g)].map((m) => m[1]).find((s) => s.includes('onglets:brancher')) : '';
 
 // ce que le script lit d'un lien et d'un élément, absent du faux navigateur
@@ -31,7 +33,7 @@ Object.defineProperties(Element.prototype, {
 let numero = 0;
 
 /**
- * La page : la barre « Équipement » (Armes, Boucliers) ; dans Armes, deux menus (mêlée : Épées, Dagues, Hache ; distance : Arc, Bombes), dont Épées et
+ * La page d'essai : une barre de page « Équipement » (Armes, Boucliers) ; dans Armes, deux menus (mêlée : Épées, Dagues, Hache ; distance : Arc, Bombes), dont Épées et
  * Arc ouverts ; `sansAdresse` : le menu des armes de mêlée porte `data-onglets-sans-adresse` ; l'adresse `hash` au chargement. Rend les onglets, les
  * panneaux, l'adresse écrite et de quoi la changer (`naviguer` : une nouvelle ancre, évènement hashchange).
  */

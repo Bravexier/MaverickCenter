@@ -1,4 +1,4 @@
-/* Chargé uniquement depuis components/accessoires/AccessoiresPage.astro (?raw) : l'onglet Accessoires de la page /ressources/equipement/, générateur d'accessoire. Les tableaux
+/* Chargé uniquement depuis components/accessoires/AccessoiresPage.astro (?raw) : la page Accessoires, /ressources/accessoires/, générateur d'accessoire. Les tableaux
    des étapes à gauche (à la manière de la page des armes), l'accessoire créé à droite (panneau qui suit le défilement ; sur un écran étroit, il passe
    sous les tableaux). Les pastilles des niveaux, les lignes d'effet, la monture et l'accessoire créé prennent la couleur de leur niveau : la classe du
    niveau (`.couleur-niveau-<n>` : --couleur, --couleur-texte, lib/palette-css.mjs, émise par le gabarit ; posée par le gabarit, reprise par le script),

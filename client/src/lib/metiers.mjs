@@ -4,7 +4,7 @@
 // Les pages `metiers/<slug>` restent dans la base et dans les `.md` fabriqués (recherche, mots-clés, `[[liens]]`), mais tout lien vers un métier
 // mène à sa ligne : /metiers/#metier-forgeron. « Règles des métiers », du même type mais sans ligne dans `metier`, garde sa page.
 // Sans dépendance (sauf lib/livres.mjs et lib/equipement.mjs, purs eux aussi) : importé par wikilinks.mjs (au démarrage d'Astro), par wiki.ts et par les tests ; `chargerMetiers` reçoit la base ouverte par lib/donnees.mjs.
-import { CHEMIN_DE_L_EQUIPEMENT, PAGES_SERVIES_PAR_L_EQUIPEMENT } from './equipement.mjs';
+import { ADRESSES_DES_PAGES_SERVIES } from './equipement.mjs';
 import { ACCUEIL_DU_GUIDE, ADRESSES_DU_PLAN_PRECEDENT, adresseDeLaPageAbsorbee, adresseDuGuide, PAGES_ABSORBEES } from './livres.mjs';
 
 /** La seule page du type `metiers` qui n'est pas un métier (test/metiers.test.mjs vérifie que les autres sont exactement les lignes de `metier`). */
@@ -17,20 +17,20 @@ export const estUnMetier = (id) => id.startsWith('metiers/') && id !== PAGE_DES_
 export const ancreDeMetier = (id) => `metier-${id.slice(id.indexOf('/') + 1)}`;
 
 /**
- * Pages servies par une autre, qui n'ont pas d'adresse à elles : les pages « Armes », « Armures », « Bouclier » et « Accessoires » sont les onglets
- * de la page « Équipement », « Bâton magique » le sous-onglet Bâtons magiques de son onglet Ceinture (demandes du propriétaire, 2026-10-16 ;
- * lib/equipement.mjs, components/equipement/EquipementPage.astro). Elles restent dans la base (recherche, [[liens]]).
+ * Pages servies par une page de l'équipement, que la route du wiki ne construit pas : les pages « Armes », « Armures », « Bouclier » et « Accessoires »
+ * sont servies, à leur adresse, par leur page de l'équipement (src/pages/ressources/armes.astro…), « Bâton magique » par le sous-onglet Bâtons magiques
+ * de la page Ceinture, « Pièces élémentaires » par sa section de la page Armes (demandes du propriétaire, 2026-10-16 et 2026-10-29 ;
+ * lib/equipement.mjs#ADRESSES_DES_PAGES_SERVIES). Elles restent dans la base (recherche, [[liens]]).
  */
-const PAGES_DANS_UNE_AUTRE = Object.freeze(Object.fromEntries(PAGES_SERVIES_PAR_L_EQUIPEMENT
-  .map((o) => [o.page, Object.freeze({ chemin: CHEMIN_DE_L_EQUIPEMENT, ancre: o.ancre })])));
+const PAGES_DANS_UNE_AUTRE = ADRESSES_DES_PAGES_SERVIES;
 
-/** Vrai si la page d'id donné n'est pas construite : ses liens mènent à la page qui la sert (PAGES_DANS_UNE_AUTRE). */
+/** Vrai si la page d'id donné n'est pas construite par la route du wiki : ses liens mènent à la page qui la sert (PAGES_DANS_UNE_AUTRE). */
 export const pageSansAdresse = (id) => Object.hasOwn(PAGES_DANS_UNE_AUTRE, id);
 
 /**
  * Adresse d'une page du wiki, relative à la racine du site : { chemin: '<id>/', ancre: '' } ; pour un métier, la ligne du tableau ; pour une page du
  * guide, sa place dans le plan du site (lib/livres.mjs#adresseDuGuide : /decouvrir/…, /regles/…, /regles/avancees/…, /mj/… ; plus aucune sous /guide/) ;
- * pour une page servie par un onglet (ou un sous-onglet) de la page « Équipement », cet onglet.
+ * pour une page servie par une page de l'équipement, cette page (à l'ancre de son sous-onglet ou de sa section).
  */
 export function adresseDePage(id) {
   if (estUnMetier(id)) return { chemin: 'metiers/', ancre: ancreDeMetier(id) };
@@ -47,9 +47,10 @@ export function cheminDePage(id) {
 
 /**
  * Vrai si la page est servie à `<id>/` par la route des pages du wiki (pages/[type]/[slug].astro) : ni un métier, ni une page servie par une autre
- * (onglets de l'Équipement), ni une page du guide (servies par les routes de lib/livres.mjs).
+ * (pages de l'équipement, même à l'adresse de la page : « ressources/armes » est servie par src/pages/ressources/armes.astro), ni une page du guide
+ * (servies par les routes de lib/livres.mjs).
  */
-export const estServieASonId = (id) => cheminDePage(id) === `${id}/`;
+export const estServieASonId = (id) => !pageSansAdresse(id) && cheminDePage(id) === `${id}/`;
 
 /**
  * Les renvois des anciennes adresses du guide vers les nouvelles, relatifs à la racine du site, pour les ids donnés (les pages chargées) :

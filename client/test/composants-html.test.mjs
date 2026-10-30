@@ -44,13 +44,16 @@ test('un onglet par tableau, dans l’ordre de la base : monnaie, matériaux, ge
   assert.ok(main.includes('<section class="tableau comp-tableau composants-panneau is-active" id="monnaie"'), 'son panneau aussi');
   assert.ok(!/<details class="[^"]*comp-tableau/.test(main), 'plus de tableaux repliables');
   assert.ok(html.includes('data-edition'), 'la page se modifie sur le site de dev');
-  // plus d'entrée au menu (2026-10-18 : « Composants en Artisanat ok ») : la page est dans le sommaire de l'Artisanat, la rubrique Règles ouverte
-  assert.match(html, /data-group="regles" aria-pressed="true" aria-current="true"/, 'la page ouvre les Règles');
+  // plus d'entrée au menu (2026-10-18 : « Composants en Artisanat ok ») : la page est dans le sommaire de l'Artisanat ; la rubrique Équipement ouverte
+  // (2026-10-29 : l'Artisanat y est, et toute page de ressources/ l'ouvre, lib/nav.mjs)
+  assert.match(html, /data-group="equipement" aria-pressed="true" aria-current="true"/, 'la page ouvre l’Équipement');
   assert.match(readFileSync(join(dist, 'regles', 'artisanat', 'index.html'), 'utf8'), /<a href="\/ressources\/composants\/">Composants<\/a>/, 'dans l’Artisanat');
   // l'Artisanat, son sommaire, est son fil d'Ariane et l'entrée courante du menu (la rubrique « Ressources » n'existe plus)
   assert.ok(main.includes('<p class="muted"><a href="/">Accueil</a> › <a href="/regles/artisanat/">Artisanat</a></p>'), 'fil d’Ariane vers l’Artisanat');
   assert.ok(html.includes('<a href="/regles/artisanat/" aria-current="true">Artisanat</a>'), 'l’entrée Artisanat du menu marquée courante');
-  assert.ok(!html.includes('href="/ressources/"'), 'aucun lien vers l’ancienne rubrique Ressources');
+  // un seul lien vers /ressources/ : l'entrée Autres du menu Équipement (« sous menu-autres », 2026-10-29), aucun dans la page
+  assert.equal(html.split('href="/ressources/"').length - 1, 1, 'un seul lien vers /ressources/');
+  assert.ok(html.includes('<a href="/ressources/">Autres</a>'), 'celui de l’entrée Autres du menu');
   assert.ok(!html.includes('aria-current="page"'), 'la page n’est pas une entrée du menu');
 });
 
@@ -93,7 +96,8 @@ test('les champs du mode modification se relisent ; un composant cité ne se sup
 });
 
 test('les monnaies en icônes dans les tables (décision R61) : plus d’abréviation dans une case de tableau ; le type de chaque matériau (R62)', options, () => {
-  for (const page of ['ressources/composants', 'ressources/equipement-inventaire', 'ressources/livre-parchemin', 'ressources/equipement']) {
+  for (const page of ['ressources/composants', 'ressources/equipement-inventaire', 'ressources/livre-parchemin', 'ressources/armes', 'ressources/armures',
+    'ressources/bouclier', 'ressources/objets-a-la-ceinture', 'ressources/accessoires']) {
     const h = readFileSync(join(dist, ...page.split('/'), 'index.html'), 'utf8');
     const cases = [...h.matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/g)].map((m) => m[1].replace(/<[^>]+>/g, ''));
     const restes = cases.filter((c) => /(?<![\p{L}\p{N}])(R[OoFf]|PP)(?![\p{L}\p{N}])/u.test(c));

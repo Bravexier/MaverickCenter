@@ -11,7 +11,7 @@
 import { CATEGORIES_DE_MONSTRE, EPOQUES_SAISIE, OUI_NON, PORTEES_SAISIE, STATS_VARIABLES, TABLES } from './edition-modele.mjs';
 import { MAINS } from './arme-champs.mjs';
 import { CASES_D_AMELIORATION_DE_BOUCLIER } from './armure-champs.mjs';
-import { ONGLETS_DE_L_EQUIPEMENT, SOUS_ONGLETS_DE_LA_CEINTURE } from './equipement.mjs';
+import { PAGES_DE_L_EQUIPEMENT, SOUS_ONGLETS_DE_LA_CEINTURE } from './equipement.mjs';
 import { FAMILLES_DE_LA_CEINTURE } from './ceinture-db.mjs';
 import { texteSansBalises, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
 import { ordonnerBlocs } from './panneaux-regles-db.mjs';
@@ -316,7 +316,7 @@ const DEFINITIONS = [
     filtre: (r) => r.cible === 'bouclier', groupe: () => 'Améliorations de bouclier', entite: (r) => `Amélioration +${r.niveau}`, ordre: (r) => [7, r.niveau],
     valeur: (colonne, v) => (colonne === 'cout_materiaux' || colonne === 'bonus_cran' ? ouiNon(v) : v),
   },
-  // les panneaux de règles en tête des onglets de /ressources/equipement/ (migration 0056) : un panneau sous le nom de son onglet (son titre ; l'ordre
+  // les panneaux de règles en tête des pages de l'équipement (migration 0056) : un panneau sous le nom de sa page (son titre ; l'ordre
   // de ses blocs : comparerOrdreDesBlocs), puis ses blocs dans l'ordre de lecture, nommés par leur titre de tuile, sinon par leurs premiers mots
   // (nomDuBloc) ; leur place (`ordre`) n'est pas listée bloc par bloc ; un bloc d'un panneau ajouté ou retiré est dit par le panneau (`suit`)
   {
@@ -408,16 +408,16 @@ const DEFINITIONS = [
  * Le nom de l'onglet d'un panneau de règles (son id est l'ancre de l'onglet ou du sous-onglet : lib/equipement.mjs ; un sous-onglet de la ceinture :
  * « Ceinture › Bâtons magiques »), sinon son id ; et sa place parmi les onglets (un sous-onglet : celle de l'onglet Ceinture).
  */
-const ONGLET_DE_LA_CEINTURE = ONGLETS_DE_L_EQUIPEMENT.find((o) => o.id === 'ceinture');
+const ONGLET_DE_LA_CEINTURE = PAGES_DE_L_EQUIPEMENT.find((o) => o.id === 'ceinture');
 const ongletDuPanneau = (id) => {
-  const onglet = ONGLETS_DE_L_EQUIPEMENT.find((o) => o.id === id);
+  const onglet = PAGES_DE_L_EQUIPEMENT.find((o) => o.id === id);
   if (onglet) return onglet.nom;
   const sous = SOUS_ONGLETS_DE_LA_CEINTURE.find((o) => o.id === id);
   return sous ? `${ONGLET_DE_LA_CEINTURE?.nom ?? 'Ceinture'} › ${sous.nom}` : String(id);
 };
 const rangDuPanneau = (id) => {
-  const i = ONGLETS_DE_L_EQUIPEMENT.findIndex((o) => o.id === (SOUS_ONGLETS_DE_LA_CEINTURE.some((s) => s.id === id) ? ONGLET_DE_LA_CEINTURE?.id : id));
-  return i < 0 ? ONGLETS_DE_L_EQUIPEMENT.length : i;
+  const i = PAGES_DE_L_EQUIPEMENT.findIndex((o) => o.id === (SOUS_ONGLETS_DE_LA_CEINTURE.some((s) => s.id === id) ? ONGLET_DE_LA_CEINTURE?.id : id));
+  return i < 0 ? PAGES_DE_L_EQUIPEMENT.length : i;
 };
 
 /** Le tableau de l'onglet Ceinture d'une potion (sa ligne de la table potion) : « Ceinture › Fioles » (lib/ceinture-db.mjs#FAMILLES_DE_LA_CEINTURE). */

@@ -10,7 +10,7 @@ import { ANCRES_DES_PAGES_ABSORBEES, estDansDecouvrirOuLesBases, PAGES_ABSORBEES
 
 /**
  * Blocs qu'une page du guide peut appeler par `<!-- guide:<bloc> -->` (le composant qui les rend : components/guide/GuideBloc.astro). Plus de « sommaire »
- * (demande du propriétaire du 2026-10-18 : « Dans la page de bienvenue, retire le sommaire ») : le menu Découvrir et les cartes de l'accueil mènent aux pages.
+ * (demande du propriétaire du 2026-10-18 : « Dans la page de bienvenue, retire le sommaire ») : les entrées de la rubrique Règles du menu et les cartes de l'accueil mènent aux pages.
  */
 export const BLOCS = [
   'magies', 'magie-bonus', 'initiative', 'competences', 'niveaux', 'types-de-don', 'entrainement', 'postures', 'documents',

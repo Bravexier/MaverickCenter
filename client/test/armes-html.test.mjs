@@ -1,4 +1,4 @@
-// Onglet Armes de la page /ressources/equipement/ construite (dist/ ; avant, la page /ressources/armes/ : test/equipement-html.test.mjs pour la page et
+// La page Armes construite, /ressources/armes/ (dist/ ; l'onglet Armes de la page « Équipement » du 2026-10-16 au 2026-10-29 : test/equipement-html.test.mjs pour la page et
 // ses onglets) : rendu depuis les tables (pas de tableau Markdown), deux menus à onglets, mêlée puis distance (demande du propriétaire, 2026-10-23),
 // un onglet et un tableau par famille sans les armes de monstres, les colonnes voulues par le propriétaire, les lignes de départ en bleu avec leur infobulle, la description en infobulle du nom, les compétences
 // en couleur (décision R48) et leur filtre, le panneau de règles (migration 0056 : ses blocs dans l'ordre de la base, tuiles et leurs titres, la mise
@@ -27,12 +27,12 @@ import { htmlAvecMotsCles, texteSansBalises } from '../src/lib/mots-cles-balises
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
-const fichier = join(dist, 'ressources', 'equipement', 'index.html');
+const fichier = join(dist, 'ressources', 'armes', 'index.html');
 const present = existsSync(fichier);
 const options = present ? {} : { skip: 'site non construit (npm run build)' };
 const html = present ? readFileSync(fichier, 'utf8') : '';
-// le panneau de l'onglet Armes : de sa <section> au bloc des armures, qui le suit (components/equipement/EquipementPage.astro)
-const main = html.slice(html.indexOf('<section class="equipement-panneau is-active" id="armes"'), html.indexOf('<div class="armures" data-armures>'));
+// le panneau de la page Armes : de sa <section> à la fin du contenu (components/equipement/EquipementPage.astro)
+const main = html.slice(html.indexOf('<section class="equipement-panneau" id="armes"'), html.indexOf('</main>'));
 const base = present ? ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' }) : null;
 const armes = present ? chargerArmes(base) : null;
 const echapper = (t) => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;');
@@ -394,8 +394,11 @@ test('R167 : chaque famille affichée liste ses 14 armes élémentaires, à la s
   // jamais un style, et chaque classe de magie posée existe sur la page (la palette de chaque page : layouts/Base.astro)
   assert.doesNotMatch(main, /<tr class="arme(-suite)? arme(-suite)?--elementaire[^>]*style=/);
   for (const classe of new Set([...main.matchAll(/arme--elementaire (couleur-magie-[\w-]+)/g)].map((m) => m[1]))) assert.ok(html.includes(`.${classe}{`), classe);
-  // le « [Métier à définir] » de la page source n'est pas affiché
-  assert.ok(!main.includes('Métier à définir'));
+  // le « [Métier à définir] » de la page source n'est pas affiché par les armes élémentaires ; le texte de la page « Pièces élémentaires », lu tel
+  // qu'écrit sous le panneau de règles (`details#pieces-elementaires`, « Fusionner dans Armes et Armures »), le cite : il n'est pas réécrit
+  const debutDesPieces = main.indexOf('<details class="preg preg--pieces-elementaires"');
+  const sansLeTexteDesPieces = debutDesPieces < 0 ? main : main.slice(0, debutDesPieces) + main.slice(main.indexOf('</details>', debutDesPieces));
+  assert.ok(!sansLeTexteDesPieces.includes('Métier à définir'));
 });
 
 test('R167 : le tableau des améliorations a ses deux colonnes de coût (matériel, élémentaire), l’une ou l’autre selon l’arme choisie ; le matériau grisé', options, () => {

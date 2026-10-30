@@ -30,7 +30,7 @@ user-invocable: false
 - Jamais : flèches, touches ← →, glissement du doigt, pagination, numéro de chapitre. Le retour arrière au glissement horizontal est empêché pour tout le site par la feuille globale (`html { overscroll-behavior-x: none; }`, `styles/global/base.css`, skill `ui-defilement`), jamais par une page.
 - Plus aucune source sous une page (réponse du propriétaire du 2026-10-22, G43 : « Plus de sources ailleurs que dans les archives. On va épurer un peu ce qui est redondant. ») : `PiedDePage.astro` n'a plus de pied « Sources » ; `sources:` reste dans le frontmatter et la base, que `/archives/` lit (skill `zone-archives`).
 - L'adresse d'une page du guide ne vient que du plan : `adresseDuGuide`, appelée par `lib/metiers.mjs#adresseDePage`.
-  - Découvrir (`DECOUVRIR`) : une page par entrée du menu (Bienvenue, L'univers, Créer son personnage, Rejoindre une partie). Bienvenue est à `/decouvrir/`, les autres à `/decouvrir/<slug>/`. Plus de page « Liens » ; `/decouvrir/liens/` n'a aucun renvoi (choix du propriétaire : « supprimer ce lien ») : la page 404 la dit introuvable (`test/livres.test.mjs`, `test/site-html.test.mjs`).
+  - Découvrir (`DECOUVRIR`) : une page par entrée du menu de la rubrique Règles (Bienvenue, entrée « Découvrir » du menu, L'univers, Créer son personnage, Rejoindre une partie). Bienvenue est à `/decouvrir/`, les autres à `/decouvrir/<slug>/`. Plus de page « Liens » ; `/decouvrir/liens/` n'a aucun renvoi (choix du propriétaire : « supprimer ce lien ») : la page 404 la dit introuvable (`test/livres.test.mjs`, `test/site-html.test.mjs`).
   - Les bases (`LES_BASES`) : un sommaire à `/regles/` (`pages/regles/index.astro`), trois groupes ; pages à `/regles/<slug>/`.
   - Guide du MJ : sommaire `/mj/`, pages à `/mj/<slug>/`.
   - Toute autre page `guide/…` : Règles avancées, sommaire `/regles/avancees/` en groupes, pages à `/regles/avancees/<slug>/` (groupe « Autres pages de référence » si le plan ne la nomme pas).
@@ -49,7 +49,7 @@ user-invocable: false
 
 - Les anciennes adresses (`/guide/<slug>/`, `/decouvrir/<slug>/`) et celles du plan précédent (`ADRESSES_DU_PLAN_PRECEDENT`) mènent à la page qui les a par la page 404 (`lib/metiers.mjs#renvoisDuGuide`). Une page fusionnée mène à l'intertitre où se lit son contenu (`ANCRES_DES_PAGES_ABSORBEES`, comparées aux intertitres et au site construit).
 - `livres.mjs` entre dans la chaîne de l'édition (par `metiers.mjs`), chargée aussi sur la page 404. Donc `nav.mjs` ne l'importe pas : la page 404 reçoit les renvois au build (`data-renvois`).
-- Un lien Markdown écrit vers `/guide/<slug>/` mène à la nouvelle adresse au rendu (celle de la page qui absorbe une page fusionnée) : `guide.mjs#adresseDesAnciensLiens`, `remarkAnciensLiensDuGuide`, `guide-rendu.ts`. Il garde l'adresse écrite en `data-lien-ecrit`, que l'éditeur relit (`markdown-edition.mjs#versMarkdown`, gardée par `htmlSur`).
+- Un lien Markdown écrit vers `/guide/<slug>/` mène à la nouvelle adresse au rendu (celle de la page qui absorbe une page fusionnée) : `guide.mjs#adresseDesAnciensLiens`, `remarkAnciensLiensDuGuide`, `guide-rendu.ts`. Il garde l'adresse écrite en `data-lien-ecrit`, que l'éditeur relit (`markdown-edition.mjs#versMarkdown`, gardée par `htmlSur`). Même traitement d'un lien écrit vers une page éclatée, `/ressources/equipement/#armes` (skill `zone-equipement`).
 - Le texte de la base n'est réécrit ni au rendu ni quand on modifie la page (`test/markdown-edition.test.mjs`).
 
 ## Blocs tirés de la base

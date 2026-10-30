@@ -111,7 +111,7 @@ export function etatDeLaDistante({ distants, connus, nonPousses, ref }) {
     .map((c) => ({ sha: c.sha, sujet: c.sujet, commande: reecrite ? `git cherry-pick ${c.sha.slice(0, 10)}` : `git rebase ${ref}` }));
   let conseil;
   if (aReprendre.length) conseil = `reprendre d'abord ${aReprendre.length} commit(s) distant(s)${reecrite ? ' un par un (branche réécrite : pas de rebase sur la distante)' : ''}, puis pousser`;
-  else if (reecrite) conseil = 'branche réécrite par un rebase : git push --force-with-lease --force-if-includes attendu';
+  else if (reecrite) conseil = 'branche réécrite par un rebase : git fetch --prune origin, puis git push --force-with-lease origin <branche> attendu';
   else if (nonPousses) conseil = `${nonPousses} commit(s) à pousser (git push)`;
   else conseil = 'à jour avec la distante';
   return { aReprendre, remplaces: remplaces.map((c) => ({ sha: c.sha, sujet: c.sujet })), reecrite, nonPousses, conseil };
