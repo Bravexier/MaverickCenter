@@ -9,6 +9,7 @@ user-invocable: false
 ## Fichiers
 - Liste `/classes/` : `client/src/lib/class-groups.mjs` (`CLASS_GROUPS`, `CLASS_OVERRIDES`, `CLASS_COLORS`, `groupeDeCouleur`, `classColor`), `components/classes/ClassesPastilles.astro`, CSS `styles/classe/liste.css` (`?raw`).
 - Page d'une classe : `lib/classes-db.mjs` (lecture des tables), `components/classes/ClassePage.astro` (avec `ClasseDons`, `ChoixDeDons`, `DonCarte`), CSS `client/src/styles/classe/` inséré par `ClassePage.astro` (`?raw`).
+- Menu latéral : rendu par `ClassePage.astro` (prop `groupes` = `groupClasses(entriesOfType(entries, 'classes'))`, passée par `pages/[type]/[slug].astro`), CSS `styles/classe/menu.css`.
 - Disposition des dons : `lib/classe-dons.mjs#plateauDeDons` ; rendu pur partagé avec le mode modification : `lib/classe-dons-rendu.mjs` sur `lib/classe-assemblage.mjs`.
 - Dons (type `capacites`) : `lib/capacites.mjs` (`choix_exclusif_avec`, `checkSelection`), `lib/dons-edition.mjs` (`donneesDeDon`, D11).
 - +4 AM d'une classe magique : `lib/classe-magique.mjs` (`CLASSE_MAGIQUE_HORS_CATEGORIE`).
@@ -41,11 +42,12 @@ user-invocable: false
 - L'étiquette du type d'un don porte `couleur-don-<id>` (`classeDeTypeDeDon`, `lib/genres-couleurs.mjs`, famille `don`), lue en `--couleur` par `styles/classe/dons.css` ; `ClassePage.astro` émet `cssDesFamilles(['classe', 'don'])`.
 - Annexe du Mage Bleu : le tableau de l'onglet est découpé en 54 entrées (`classe_annexe_entree`, R181 : la liste des dons « Variable » de la fiche, skills `base-sqlite` et `zone-fiches-base`) ; R67 reste, ce tableau est à part des capacités de monstre communes.
 - Annexe d'une classe (« Tableau de l'onglet », Mage Bleu) : une entrée liée à une magie porte `annexe-classe__carte--magie` et la classe de la magie (`couleur-magie-<id>`, `lib/palette-css.mjs`) ; son filet lit `--couleur` (`styles/classe/page.css`), jamais un style.
+- Menu latéral d'une page de classe : les cinq catégories de `/classes/` (ordre et rangement de `groupClasses`, Parleur sous « Spéciales »), chacune un `<details name="classes-menu">` (un seul déroulé à la fois ; relais en ligne pour un navigateur qui ignore `name`), celle de la classe affichée ouverte au build (`groupeDeCouleur`), la classe marquée `aria-current="page"` (demande du propriétaire). Chaque type porte `couleur-classe-<clé>` (point de couleur, filet de l'entrée courante). Mise en page sur le modèle du menu des Bases (`styles/guide/les-bases.css`) : collé en haut ; ≤ 56rem replié au-dessus de la page dans un `<details>` « Classes » ouvert sans JavaScript ; caché à l'impression. Le menu est hors de `.classe[data-ed-classe]` (enveloppe `.classe-cadre`) : le mode modification n'y touche pas.
 
 ## Voisins
 - Fiche de personnage (choix de classe, dons débloqués, R23, R25) : skill `zone-fiche`. Mode modification des classes, spécialités et dons (D11) : skill `zone-edition`. Lien entre une race hybride et sa classe raciale : skill `zone-races`.
 
 ## Tests
-- `client/test/classes-html.test.mjs` : site construit (pastilles, classes des catégories et leur feuille, infobulles ; CI après le build).
+- `client/test/classes-html.test.mjs` : site construit (pastilles, classes des catégories et leur feuille, infobulles, « menu latéral d'une classe » ; CI après le build). `site-html.test.mjs` attend les cinq classes `couleur-classe-*` sur `classes/guerrier/`.
 - `class-groups.test.mjs`, `classes-dons.test.mjs`, `classe-dons-rendu.test.mjs`, `classe-magique.test.mjs`, `classe-champs.test.mjs`, `classes-notes.test.mjs`, `classes-sans-suffixe.test.mjs`.
 - `capacites-content.test.mjs` (règle des choix rejouée sur les pages de l'import), `capacites.test.mjs`, `dons-edition.test.mjs`, `corps-classes.test.mjs`, `serveur-edition-classes.test.mjs`, `serveur-edition-rejeu-capacites.test.mjs`.

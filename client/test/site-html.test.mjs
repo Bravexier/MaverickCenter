@@ -618,7 +618,8 @@ test('couleurs des catégories de classe, des races, des paliers, du Mode Hyper 
   // chaque zone du lot pose bien ses classes
   const zones = {
     'classes/index.html': ['couleur-classe-melee', 'couleur-classe-distance', 'couleur-classe-magiques', 'couleur-classe-raciales', 'couleur-classe-speciales'],
-    'classes/guerrier/index.html': ['couleur-classe-melee'],
+    // la page d'une classe : celle de sa catégorie, et celles des cinq types de son menu latéral (components/classes/ClassePage.astro)
+    'classes/guerrier/index.html': ['couleur-classe-melee', 'couleur-classe-distance', 'couleur-classe-magiques', 'couleur-classe-raciales', 'couleur-classe-speciales'],
     'races/index.html': ['couleur-race-pure', 'couleur-race-hybride'],
     'races/humain/index.html': ['couleur-race-pure'],
   };

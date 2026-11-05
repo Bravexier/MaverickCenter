@@ -232,3 +232,33 @@ test('page d’une classe : la couleur de sa catégorie de /classes/ par la clas
     assert.doesNotMatch(p.html, /--couleur-(?:classe|texte-classe):/, `${p.slug} : plus de couleur en style`);
   }
 });
+
+test('menu latéral d’une classe : les cinq catégories de /classes/ à dérouler, une seule à la fois, celle de la classe affichée ouverte', options, () => {
+  const ordre = ['melee', 'distance', 'magiques', 'raciales', 'speciales'];
+  const menuDe = (html) => {
+    const m = main(html);
+    const debut = m.indexOf('<nav class="classes-menu" aria-label="Classes">');
+    return { m, debut, menu: debut < 0 ? '' : m.slice(debut, m.indexOf('</nav>', debut)) };
+  };
+  for (const { slug, html } of pages) {
+    const { m, debut, menu } = menuDe(html);
+    assert.ok(debut >= 0, `${slug} : menu latéral`);
+    assert.ok(debut < m.indexOf('<div class="classe couleur-classe-'), `${slug} : le menu à gauche, la page à droite`);
+    assert.match(menu, /<details class="classes-menu__repli" open data-classes-repli>/, `${slug} : ouvert sans JavaScript`);
+    // cinq <details> du même `name` (un seul ouvert à la fois), dans l'ordre et la couleur des colonnes de /classes/ ; un seul ouvert au build
+    const groupes = [...menu.matchAll(/<details class="classes-menu__groupe couleur-classe-([a-z]+)" name="classes-menu"( open)?>/g)];
+    assert.deepEqual(groupes.map(([, cle]) => cle), ordre, `${slug} : les cinq catégories`);
+    const ouverts = groupes.filter(([, , open]) => open).map(([, cle]) => cle);
+    // celle de la classe affichée : la même que sa couleur (Parleur sous « Spéciales » compris)
+    const couleur = m.match(/<div class="classe couleur-classe-([a-z]+)"/)[1];
+    assert.deepEqual(ouverts, [couleur], `${slug} : seule sa catégorie ouverte`);
+    // chaque classe une fois ; la classe affichée marquée, dans le groupe ouvert
+    const liens = [...menu.matchAll(/<a class="classes-menu__lien" href="[^"]*\/classes\/([^/"]+)\/"( aria-current="page")?>/g)];
+    for (const p of pages) assert.equal(liens.filter(([, s]) => s === p.slug).length, 1, `${slug} : ${p.slug} une fois dans le menu`);
+    assert.deepEqual(liens.filter(([, , c]) => c).map(([, s]) => s), [slug], `${slug} : la classe affichée marquée`);
+    const groupeOuvert = menu.slice(menu.indexOf(' name="classes-menu" open>'));
+    assert.ok(groupeOuvert.slice(0, groupeOuvert.indexOf('</details>')).includes('aria-current="page"'), `${slug} : marquée dans son groupe`);
+  }
+  assert.match(menuDe(page('parleur')).menu, /couleur-classe-speciales" name="classes-menu" open>/, 'le Parleur : « Spéciales » ouvert');
+  assert.match(menuDe(page('kitsune')).menu, /couleur-classe-raciales" name="classes-menu" open>/);
+});
