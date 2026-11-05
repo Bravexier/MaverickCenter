@@ -529,12 +529,15 @@ test('couleurs des magies : jamais en style sur une page construite, toujours pa
     'races/index.html': /<col class="tableau-magies__col-magie couleur-magie-feu">/,
     'races/nain/index.html': /<a class="chip race-magie couleur-magie-[\w-]+"/,
     'classes/mage-bleu/index.html': /<article class="annexe-classe__carte annexe-classe__carte--magie couleur-magie-sang">/,
-    'decouvrir/l-univers/index.html': /<li class="couleur-magie-feu">\s*<a class="guide-magie"/,
     'bestiaire/index.html': /class="bcible bcible--[a-z_]+ bcible--magie(?: bcible--deux)? couleur-magie-[\w-]+ couleur-2-magie-[\w-]+"/,
     'ressources/composants/index.html': /<tr class="composant composant--magie couleur-magie-[\w-]+"[\s\S]*<span class="comp-magie couleur-magie-[\w-]+">/,
     'ressources/accessoires/index.html': /<span class="acc-gemme couleur-magie-[\w-]+" data-bulle=[\s\S]*<span class="bulle bulle--gemme couleur-magie-[\w-]+"/,
   };
   for (const [rel, attendu] of Object.entries(zones)) assert.match(avecMagie.get(rel) ?? '', attendu, rel);
+  // « L’univers » ne liste plus les quinze magies (le bloc `guide:magies` a quitté la page) : son texte renvoie à la carte des magies
+  const univers = readFileSync(join(dist, 'decouvrir/l-univers/index.html'), 'utf8');
+  assert.match(univers, /<a href="[^"]*\/magies\/">carte des magies<\/a>/, 'L’univers : le lien vers la carte des magies');
+  assert.doesNotMatch(univers, /<ul class="guide-magies"/, 'L’univers : plus de liste des magies');
   assert.ok([...avecMagie.values()].some((html) => /<tr class="couleur-magie-[\w-]+">\s*<th scope="row">\s*<a class="guide-magie guide-magie--ligne"/.test(html)), 'le tableau de ce que donne chaque magie (guide)');
   // la fiche et les personnages posent leurs classes au navigateur : leurs noms viennent de la page ou de regles.json (test/fiche-html.test.mjs)
   const regles = JSON.parse(lire('fiche/regles.json'));

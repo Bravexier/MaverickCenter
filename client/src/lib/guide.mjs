@@ -11,9 +11,11 @@ import { ANCRES_DES_PAGES_ABSORBEES, estDansDecouvrirOuLesBases, PAGES_ABSORBEES
 /**
  * Blocs qu'une page du guide peut appeler par `<!-- guide:<bloc> -->` (le composant qui les rend : components/guide/GuideBloc.astro). Plus de « sommaire »
  * (demande du propriétaire du 2026-10-18 : « Dans la page de bienvenue, retire le sommaire ») : les entrées de la rubrique Règles du menu et les cartes de l'accueil mènent aux pages.
+ * Plus de « magies » (la liste des 15 magies et de leurs dieux) : la refonte de « L'univers », sa seule page, ne liste plus les magies (demande du
+ * propriétaire : « Pas la peine le lister les 5 magies ici, mais tu peux mettre un lien vers la page qui va avec »).
  */
 export const BLOCS = [
-  'magies', 'magie-bonus', 'initiative', 'competences', 'niveaux', 'types-de-don', 'entrainement', 'postures', 'documents',
+  'magie-bonus', 'initiative', 'competences', 'niveaux', 'types-de-don', 'entrainement', 'postures', 'documents',
   // les personnages fil rouge (lib/guide-fil-rouge.mjs), étape par étape de la création
   'fil-rouge', 'fil-rouge-race', 'fil-rouge-magie', 'fil-rouge-classe', 'fil-rouge-sorts', 'fil-rouge-attributs',
 ];

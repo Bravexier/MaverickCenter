@@ -129,6 +129,9 @@ test('le guide du site : chaque page de Découvrir et des Bases a un résumé (c
   // plus de sommaire dans Bienvenue (demande du propriétaire du 2026-10-18 : « Dans la page de bienvenue, retire le sommaire ») : plus de bloc « sommaire »
   assert.equal(BLOCS.includes('sommaire'), false);
   assert.throws(() => morceauxDuChapitre('<!-- guide:sommaire -->\n'), /bloc inconnu « sommaire »/);
+  // plus de liste des 15 magies (refonte de « L’univers », sa seule page : « Pas la peine le lister les 5 magies ici ») : plus de bloc « magies »
+  assert.equal(BLOCS.includes('magies'), false);
+  assert.throws(() => morceauxDuChapitre('<!-- guide:magies -->\n'), /bloc inconnu « magies »/);
   const documents = pagesDuGuide.find((p) => morceauxDuChapitre(p.body).some((m) => m.bloc === 'documents'));
   assert.equal(documents.id, 'guide/les-documents-des-regles');
   assert.equal(estDansDecouvrirOuLesBases(documents.id), false, 'la liste des pages de référence est une page de référence');

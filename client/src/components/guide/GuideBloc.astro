@@ -28,7 +28,7 @@ const db = ouvrirBase();
 
 const niveaux = bloc === 'niveaux' ? chargerNiveaux(db) : [];
 const postures = bloc === 'postures' ? chargerPostures(db) : [];
-const magies = bloc === 'magies' || bloc === 'magie-bonus' ? chargerMagiesDuGuide(db) : [];
+const magies = bloc === 'magie-bonus' ? chargerMagiesDuGuide(db) : [];
 const initiative = bloc === 'initiative' ? chargerInitiative(db) : [];
 const entrainement = bloc === 'entrainement' ? chargerEntrainement(db) : [];
 const typesDeDon = bloc === 'types-de-don' ? chargerTypesDeDon(db) : [];
@@ -170,22 +170,6 @@ const moitieDuChakra = (chakra: number) =>
         </section>
       ))}
     </div>
-  )
-}
-
-{
-  bloc === 'magies' && (
-    <ul class="guide-magies" aria-label="Les 15 magies et leur dieu">
-      {magies.map((m) => (
-        <li class={classeDeMagie(m.nom)}>
-          <a class="guide-magie" href={pageHref(m.id)}>
-            <span class="guide-magie__point" aria-hidden="true" />
-            <span class="guide-magie__nom">{m.nom}</span>
-          </a>
-          {m.dieux.length > 0 && <span class="guide-magie__dieu">{m.dieux.join(' & ')}</span>}
-        </li>
-      ))}
-    </ul>
   )
 }
 
