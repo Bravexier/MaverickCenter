@@ -1,0 +1,102 @@
+/* Chargé uniquement depuis components/guide/MenuLateral.astro (?raw) : les pages des Bases (/regles/ et /regles/<slug>/), des Règles avancées
+   (/regles/avancees/ et /regles/avancees/<slug>/) et de race (/races/<race>/, par components/race/MenuDesRaces.astro : demande du propriétaire,
+   « comme pour chronologie, et les bases »). Sur le modèle de la chronologie (styles/chronologie/chronologie.css ; demandes du propriétaire du
+   2026-11-05 : « un menu latéral sous le même modèle que la chronologie », puis « refait la même avec les "règles avancées", tout sur la même page
+   avec menu lattéral ») : à gauche, en vertical, le menu des pages de la rubrique, qui reste en place pendant qu'on lit ; à droite, le texte de la
+   page choisie. Ni barre en dégradé, ni dates, ni chevrons : la mise en page et le comportement seulement. Couleur : l'accent du site (réponse du
+   propriétaire : « Accent du site ») ; aucune couleur écrite, les jetons du thème (styles/global/base.css). */
+
+/* Plus large que le reste du site : la place du menu s'ajoute à la largeur d'une page. */
+main:has(> .lateral) { max-width: calc(var(--max) + 16rem); }
+.lateral {
+  display: grid;
+  grid-template-columns: minmax(13rem, 16rem) minmax(0, 1fr);
+  grid-template-areas: 'menu page';
+  column-gap: clamp(1rem, 2.5vw, 2.25rem);
+  align-items: start;
+}
+.lateral-page { grid-area: page; min-width: 0; }
+
+/* ---------- Le menu : une entrée par page, l'entrée affichée marquée ---------- */
+/* Il reste en place pendant qu'on lit la page (collé en haut de l'écran) et défile seul s'il dépasse l'écran. */
+.lateral-menu {
+  grid-area: menu;
+  position: sticky;
+  top: 0;
+  max-height: 100vh;
+  max-height: 100dvh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  padding: 0.5rem 0.2rem 1.5rem 0;
+}
+/* grand écran : le menu toujours ouvert, sans son résumé (celui du téléphone) */
+.lateral-menu__resume { display: none; }
+.lateral-menu__titre { margin: 0 0 0.5rem; padding-left: 0.85rem; font-size: 1.15rem; font-weight: 700; }
+.lateral-menu__titre a { color: var(--text); text-decoration: none; }
+.lateral-menu__titre a:hover { color: var(--accent); text-decoration: underline; }
+.lateral-menu__liste { margin: 0; padding: 0; border-left: 2px solid var(--border); list-style: none; }
+.lateral-menu__lien {
+  display: block;
+  margin-left: -2px;
+  padding: 0.45rem 0.65rem 0.45rem 0.85rem;
+  border-left: 3px solid transparent;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  color: var(--text);
+  line-height: 1.3;
+  text-decoration: none;
+}
+.lateral-menu__lien:hover { background: color-mix(in srgb, var(--accent) 9%, transparent); color: var(--accent); }
+.lateral-menu__lien:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* la page affichée : son entrée teintée, un filet de l'accent du côté du menu, en gras */
+.lateral-menu__lien[aria-current='page'] {
+  border-left-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  color: var(--text);
+  font-weight: 700;
+}
+
+/* ---------- Petit écran (<= 56rem, comme la chronologie) : le menu replié au-dessus de la page ----------
+   Un appui sur son résumé (le titre de la rubrique et celui de la page affichée) l'ouvre. Sans JavaScript, il reste ouvert (le script de
+   MenuLateral.astro ne le replie qu'avec lui). */
+@media (max-width: 56rem) {
+  main:has(> .lateral) { max-width: var(--max); }
+  .lateral { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'menu' 'page'; row-gap: 1rem; }
+  .lateral-menu { position: static; max-height: none; overflow: visible; padding: 0; }
+  .lateral-menu__repli { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+  .lateral-menu__resume {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.1rem 0.6rem;
+    min-height: 2.75rem;
+    box-sizing: border-box;
+    padding: 0.6rem 0.85rem;
+    cursor: pointer;
+  }
+  .lateral-menu__resume::-webkit-details-marker { display: none; }
+  /* à droite, un chevron (en bas : replié ; en haut : ouvert) dit qu'un appui ouvre la liste */
+  .lateral-menu__resume::after {
+    content: '';
+    width: 0.5rem;
+    height: 0.5rem;
+    margin-left: auto;
+    align-self: center;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    rotate: 45deg;
+    translate: 0 -0.15rem;
+  }
+  .lateral-menu__repli[open] > .lateral-menu__resume::after { rotate: -135deg; translate: 0 0.15rem; }
+  .lateral-menu__resume:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .lateral-menu__resume-rubrique { color: var(--muted); font-size: var(--fs-sm); font-weight: 700; }
+  .lateral-menu__resume-page { font-weight: 700; }
+  /* ouvert, le résumé dit déjà la rubrique : pas de second titre ; la liste sous un filet, des entrées d'au moins 44 px à toucher */
+  .lateral-menu__titre { display: none; }
+  .lateral-menu__liste { padding: 0.25rem 0 0.4rem; border-top: 1px solid var(--border); border-left: 0; }
+  .lateral-menu__lien { display: flex; align-items: center; min-height: 2.75rem; box-sizing: border-box; margin-left: 0; border-radius: 0; }
+}
+
+@media print {
+  .lateral-menu { display: none; }
+  .lateral { display: block; }
+}

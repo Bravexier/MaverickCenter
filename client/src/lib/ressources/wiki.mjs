@@ -24,7 +24,7 @@ export const RESSOURCES = [
     noms: 'Pages du guide',
     description:
       'Les pages de la rubrique « guide », rangées par le plan du site (lib/livres.mjs) : « Découvrir » (/decouvrir/…, une page par entrée du menu), ' +
-      '« Les bases » (/regles/<slug>/, un sommaire à /regles/), le Guide du MJ (/mj/…) et les Règles avancées (/regles/avancees/…), toutes les autres ' +
+      '« Les bases » (/regles/<slug>/, en menu latéral à /regles/), le Guide du MJ (/mj/…) et les Règles avancées (/regles/avancees/<slug>/, en menu latéral à /regles/avancees/), toutes les autres ' +
       'pages de référence (Google Docs « Règle du jeu/Guide pour MJ » et « Créer sa fiche de ' +
       'personnage », et six pages tirées des classeurs : altérations d’état, météo, modes hyper et super, statistiques) ; le titre et le texte (Markdown) ' +
       'se modifient par le service : ni HTML brut ni lien non sûr ajouté, blocs <!-- guide:… --> connus seulement, un titre qui est déjà le nom d’une ' +

@@ -2,8 +2,8 @@
 // le guide », puis « refaire toutes les anciennes pages du guide. Retirer le mécanisme de swipe, et les flèches suivant / précédent et la pagination ») :
 // chaque page du guide est une page simple (fil d'Ariane vers sa rubrique ou son sommaire, titre, texte et blocs tirés de la base, mots-clés,
 // rétroliens ; plus de sources : réponse du propriétaire du 2026-10-22, « Plus de sources ailleurs que dans les archives. »), sans flèches, ni
-// pagination, ni glissement du doigt ; les pages de Découvrir dans la couleur de leur groupe ; Les bases sur le modèle de la chronologie (menu latéral
-// des douze pages, texte de la page choisie à droite, l'accent du site) ; les sommaires des Règles avancées, du Guide du MJ et de l'Artisanat ; plus de Discord, de Tipeee ni d'encart « Notre prochaine rencontre IRL » sous Bienvenue (sur l'accueil
+// pagination, ni glissement du doigt ; les pages de Découvrir dans la couleur de leur groupe ; Les bases puis les Règles avancées sur le modèle de la
+// chronologie (menu latéral des pages, texte de la page choisie à droite, l'accent du site) ; les sommaires du Guide du MJ et de l'Artisanat ; plus de Discord, de Tipeee ni d'encart « Notre prochaine rencontre IRL » sous Bienvenue (sur l'accueil
 // depuis le 2026-10-23 : test/accueil-html.test.mjs ; la page Liens est supprimée le 2026-10-22) ; plus rien sous /guide/, plus rien aux adresses des
 // pages fusionnées.
 // Ce test lit le site construit : il ne tourne qu'après `npm run build` (la CI l'exécute juste après) et se saute sinon.
@@ -18,8 +18,8 @@ import { morceauxDuChapitre } from '../src/lib/guide.mjs';
 import { decouperCorps } from '../src/lib/markdown-edition.mjs';
 import { classeDePartie, cssDesFamilles } from '../src/lib/palette-css.mjs';
 import {
-  ARTISANAT, DECOUVRIR, estDansDecouvrirOuLesBases, estDesBases, groupesDesReglesAvancees, GUIDE_DU_MJ, LES_BASES,
-  PAGES_ABSORBEES, pagesDeLaRubrique, pagesDesBases, partieDeLaPage,
+  ARTISANAT, DECOUVRIR, estDansDecouvrirOuLesBases, estDesBases, estDesReglesAvancees, GUIDE_DU_MJ, LES_BASES,
+  PAGES_ABSORBEES, pagesDeLaRubrique, pagesDesBases, pagesDesReglesAvancees, partieDeLaPage, REGLES_AVANCEES,
 } from '../src/lib/livres.mjs';
 import { cheminDePage } from '../src/lib/metiers.mjs';
 
@@ -73,7 +73,7 @@ test('chaque page du guide est une page simple : ni flèches, ni pagination, ni 
   }
 });
 
-test('le fil d’Ariane : Découvrir pour ses pages, Les bases (sans groupe), Règles avancées et le groupe, Guide du MJ ; la couleur du groupe sur les pages de Découvrir, l’accent du site sur celles des Bases', options, () => {
+test('le fil d’Ariane : Découvrir pour ses pages, Les bases, Règles avancées (sans groupe), Guide du MJ ; la couleur du groupe sur les pages de Découvrir, l’accent du site sur celles des Bases', options, () => {
   const fil = (chemin) => sansStyles(lire(chemin).main).match(/<p class="muted guide-fil">([\s\S]*?)<\/p>/)?.[1].replace(/\s+/g, ' ').trim();
   assert.equal(fil('decouvrir'), '<a href="/">Accueil</a> › <a href="/decouvrir/" aria-current="page">Découvrir</a>');
   assert.equal(fil('decouvrir/creer-son-personnage'), '<a href="/">Accueil</a> › <a href="/decouvrir/">Découvrir</a>');
@@ -81,7 +81,10 @@ test('le fil d’Ariane : Découvrir pour ses pages, Les bases (sans groupe), R�
   assert.equal(fil('regles/les-degats'), '<a href="/">Accueil</a> › <a href="/regles/">Les bases</a>');
   assert.equal(fil('regles/lexique'), '<a href="/">Accueil</a> › <a href="/regles/">Les bases</a>');
   assert.equal(fil('regles'), '<a href="/">Accueil</a> › <a href="/regles/">Les bases</a>', '/regles/ : le fil de sa première page');
-  assert.equal(fil('regles/avancees/meteo'), '<a href="/">Accueil</a> › <a href="/regles/avancees/">Règles avancées</a> › <a href="/regles/avancees/#exploration-et-voyage">Exploration et voyage</a>');
+  // Règles avancées : de même, plus de groupe ni d'ancre de groupe dans le fil (réponse du propriétaire du 2026-11-05 : « Liste sans groupes »)
+  assert.equal(fil('regles/avancees/meteo'), '<a href="/">Accueil</a> › <a href="/regles/avancees/">Règles avancées</a>');
+  assert.equal(fil('regles/avancees/fiche-attributs'), '<a href="/">Accueil</a> › <a href="/regles/avancees/">Règles avancées</a>');
+  assert.equal(fil('regles/avancees'), '<a href="/">Accueil</a> › <a href="/regles/avancees/">Règles avancées</a>', '/regles/avancees/ : le fil de sa première page');
   assert.equal(fil('mj/campagne-ou-scenario-one-shot'), '<a href="/">Accueil</a> › <a href="/mj/">Guide du MJ</a>');
   for (const p of pagesConstruites) {
     const { main } = lire(cheminDePage(p.id));
@@ -98,20 +101,56 @@ test('le fil d’Ariane : Découvrir pour ses pages, Les bases (sans groupe), R�
       assert.doesNotMatch(main, /\.couleur-partie-[a-z-]+\{/, `${p.id} : une page de référence, sans la feuille des parties`);
     }
     assert.doesNotMatch(main, /--couleur-partie/, p.id);
-    // le badge « Guide » sur les pages de référence seulement (comme avant)
-    assert.equal(/<span class="badge">Guide<\/span><\/h1>/.test(main.replace(/\s+<\/h1>/, '</h1>')), !estDansDecouvrirOuLesBases(p.id), `${p.id} : badge`);
+    // le badge « Guide » et « Aussi appelé » hors de Découvrir, des Bases et des Règles avancées (réponse du propriétaire du 2026-11-05 : « Retirer, comme Les bases »)
+    const reference = !estDansDecouvrirOuLesBases(p.id) && !estDesReglesAvancees(p.id);
+    assert.equal(/<span class="badge">Guide<\/span><\/h1>/.test(main.replace(/\s+<\/h1>/, '</h1>')), reference, `${p.id} : badge`);
+    if (!reference) assert.doesNotMatch(main, /Aussi appelé/, `${p.id} : sans « Aussi appelé »`);
   }
   // une page écrite pour le site a aussi son pied de page : ses mots-clés (ses sources restent dans le frontmatter ; plus de rétroliens)
   assert.match(lire('decouvrir/creer-son-personnage').main, /class="tags"/);
 });
 
-/** Le menu latéral des Bases d'une page construite : [[adresse, titre, courante]] dans l'ordre, et le HTML du menu. */
-const menuDesBases = (main) => {
-  const nav = main.match(/<nav class="bases-menu" aria-label="Les bases">([\s\S]*?)<\/nav>/);
-  assert.ok(nav, 'le menu latéral des Bases');
-  const entrees = [...nav[1].matchAll(/<li><a class="bases-menu__lien" href="([^"]+)"( aria-current="page")?>([^<]+)<\/a><\/li>/g)]
-    .map((m) => [m[1], m[3].replace(/&#39;/g, "'"), Boolean(m[2])]);
+/** Le menu latéral d'une rubrique (`titre` : « Les bases », « Règles avancées ») d'une page construite : [[adresse, titre, courante]] dans l'ordre, et le HTML du menu. */
+const menuLateral = (main, titre) => {
+  const nav = main.match(new RegExp(`<nav class="lateral-menu" aria-label="${titre}">([\\s\\S]*?)<\\/nav>`));
+  assert.ok(nav, `le menu latéral « ${titre} »`);
+  const entrees = [...nav[1].matchAll(/<li><a class="lateral-menu__lien" href="([^"]+)"( aria-current="page")?>([^<]+)<\/a><\/li>/g)]
+    .map((m) => [m[1], m[3].replace(/&#39;/g, "'").replace(/&amp;/g, '&').replace(/&quot;/g, '"'), Boolean(m[2])]);
   return { entrees, html: nav[1] };
+};
+
+/**
+ * Les contrôles communs d'une page à menu latéral (Les bases, Règles avancées) : les entrées dans l'ordre, l'entrée affichée marquée, ni titres de
+ * groupe ni sommaire, la page à droite (`droite` : à partir d'elle), le mode modification, l'accent du site, le menu lisible sans JavaScript, aucun script importé, l'entrée de la
+ * rubrique marquée dans le menu du site.
+ */
+const verifierLeMenuLateral = (chemin, page, rubrique, attendues) => {
+  const { html, main } = lire(chemin);
+  const { entrees, html: menu } = menuLateral(main, rubrique.titre);
+  assert.deepEqual(entrees.map(([href, titre]) => [href, titre]), attendues, `${chemin} : les entrées, dans l’ordre`);
+  // l'entrée affichée marquée (aria-current), elle seule
+  assert.deepEqual(entrees.filter((e) => e[2]).map((e) => e[0]), [`/${cheminDePage(page.id)}`], `${chemin} : l’entrée courante`);
+  // plus de groupes : ni titres de groupe, ni sommaire
+  assert.doesNotMatch(sansStyles(menu), /<h[2-6]/, `${chemin} : sans titres de groupe`);
+  assert.doesNotMatch(main, /class="sommaire/, `${chemin} : plus de sommaire en groupes`);
+  // à droite, la page elle-même (son titre, son texte modifiable, son pied de page), après le menu
+  const droite = main.slice(main.indexOf('<div class="lateral-page">'));
+  assert.ok(main.indexOf('<nav class="lateral-menu"') < main.indexOf('<div class="lateral-page">'), `${chemin} : le menu à gauche, la page à droite`);
+  // (une page d'exemple, dans le reste des Règles avancées tant qu'elle est chargée, ne se modifie pas : HIDE_EXAMPLES=1 la retire)
+  const modifiable = page.statut !== 'example';
+  assert.match(droite, new RegExp(`<h1 id="guide-titre">${modifiable ? '<span data-ed="[^"]+">' : ''}${echappe(page.titre).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`), `${chemin} : le titre de la page`);
+  assert.match(droite, new RegExp(`<div class="guide-corps"${modifiable ? ` data-ed-corps="${page.id}"` : ''}>`), `${chemin} : le texte de la page`);
+  // le mode modification du site de dev porte sur la page affichée
+  if (modifiable) assert.match(html, new RegExp(`<div data-edition data-api="/api/" data-page="${page.id}"`), `${chemin} : le mode modification`);
+  // l'accent du site : aucune couleur de partie ni sa feuille (« Accent du site »)
+  assert.doesNotMatch(html, /class="[^"]*\bcouleur-partie-/, `${chemin} : aucune classe des parties`);
+  assert.doesNotMatch(html, /\.couleur-partie-[a-z-]+\{/, `${chemin} : ni leur feuille`);
+  // le menu se lit sans JavaScript : ouvert dans le HTML construit (le script ne le replie que sur petit écran)
+  assert.match(menu, /<details class="lateral-menu__repli" open data-lateral-repli>/, `${chemin} : ouvert sans JavaScript`);
+  assert.doesNotMatch(main, /<script[^>]*\bsrc=|<script type="module"/, `${chemin} : aucun script de page importé (un script en ligne)`);
+  // l'entrée de la rubrique du menu du site, marquée sur chacune de ces pages
+  assert.match(html, new RegExp(`<a href="/${rubrique.chemin}" aria-current="(?:page|true)">${rubrique.titre}</a>`), `${chemin} : l’entrée « ${rubrique.titre} » du menu du site`);
+  return { html, main, droite };
 };
 
 // Les bases sur le modèle de la chronologie (demande du propriétaire du 2026-11-05 : « Refait la page les bases. Au lieu de lister les différentes
@@ -123,30 +162,10 @@ test('Les bases : à gauche le menu latéral des douze pages dans l’ordre (san
   assert.equal(pages.length, 12);
   const attendues = pages.map((p) => [`/${cheminDePage(p.id)}`, p.titre]);
   for (const [chemin, page] of [['regles', pages[0]], ...pages.map((p) => [cheminDePage(p.id).slice(0, -1), p])]) {
-    const { html, main } = lire(chemin);
-    const { entrees, html: menu } = menuDesBases(main);
-    assert.deepEqual(entrees.map(([href, titre]) => [href, titre]), attendues, `${chemin} : les douze entrées, dans l’ordre`);
-    // l'entrée affichée marquée (aria-current), elle seule
-    assert.deepEqual(entrees.filter((e) => e[2]).map((e) => e[0]), [`/${cheminDePage(page.id)}`], `${chemin} : l’entrée courante`);
-    // plus de groupes : ni titres « Jouer », « Progresser », « Pour aller plus loin », ni sommaire
-    assert.doesNotMatch(sansStyles(menu), /<h[2-6]|Jouer|Progresser|Pour aller plus loin/, `${chemin} : sans titres de groupe`);
-    assert.doesNotMatch(main, /class="sommaire/, `${chemin} : plus de sommaire en groupes`);
-    // à droite, la page elle-même (son titre, son texte modifiable, son pied de page), après le menu
-    const droite = main.slice(main.indexOf('<div class="bases-page">'));
-    assert.ok(main.indexOf('<nav class="bases-menu"') < main.indexOf('<div class="bases-page">'), `${chemin} : le menu à gauche, la page à droite`);
-    assert.match(droite, new RegExp(`<h1 id="guide-titre"><span data-ed="[^"]+">${echappe(page.titre)}</span>\\s*</h1>`), `${chemin} : le titre de la page`);
-    assert.match(droite, new RegExp(`<div class="guide-corps" data-ed-corps="${page.id}">`), `${chemin} : le texte de la page`);
+    const { main, droite } = verifierLeMenuLateral(chemin, page, LES_BASES, attendues);
     if (db.prepare('SELECT COUNT(*) AS n FROM page_tag WHERE page_id = ?').get(page.id).n > 0) assert.match(droite, /<ul class="tags" aria-label="Mots-clés">/, `${chemin} : son pied de page`);
-    // le mode modification du site de dev porte sur la page affichée
-    assert.match(html, new RegExp(`<div data-edition data-api="/api/" data-page="${page.id}"`), `${chemin} : le mode modification`);
-    // l'accent du site : aucune couleur de partie ni sa feuille (« Accent du site »)
-    assert.doesNotMatch(html, /class="[^"]*\bcouleur-partie-/, `${chemin} : aucune classe des parties`);
-    assert.doesNotMatch(html, /\.couleur-partie-[a-z-]+\{/, `${chemin} : ni leur feuille`);
-    // le menu se lit sans JavaScript : ouvert dans le HTML construit (le script ne le replie que sur petit écran)
-    assert.match(menu, /<details class="bases-menu__repli" open data-bases-repli>/, `${chemin} : ouvert sans JavaScript`);
-    assert.doesNotMatch(main, /<script[^>]*\bsrc=|<script type="module"/, `${chemin} : aucun script de page importé (un script en ligne)`);
-    // l'entrée « Les bases » du menu du site, marquée sur chacune de ces pages
-    assert.match(html, /<a href="\/regles\/" aria-current="(?:page|true)">Les bases<\/a>/, `${chemin} : l’entrée « Les bases » du menu du site`);
+    // ni « Jouer », ni « Progresser », ni « Pour aller plus loin »
+    assert.doesNotMatch(sansStyles(menuLateral(main, LES_BASES.titre).html), /Jouer|Progresser|Pour aller plus loin/, `${chemin} : sans titres de groupe`);
   }
   // /regles/ montre « Réussir une action » ; son adresse canonique reste /regles/reussir-une-action/ (pas deux pages du même texte pour la recherche)
   assert.equal(LES_BASES.ouverture, 'guide/reussir-une-action');
@@ -191,20 +210,33 @@ test('sous « L’univers », et sous elle seule, la navigation vers Races, Magi
   for (const p of pagesConstruites.filter((x) => x.id !== 'guide/l-univers')) assert.doesNotMatch(sansStyles(lire(cheminDePage(p.id)).main), /class="guide-rubriques"/, p.id);
 });
 
-test('/regles/avancees/ : les sept groupes dans l’ordre, chaque page liée avec son résumé (s’il y en a un), rien d’autre', options, () => {
-  const { main } = lire('regles/avancees');
-  assert.match(main, /<h1>Règles avancées<\/h1>/);
-  const groupes = groupesDesReglesAvancees(pagesConstruites);
-  assert.deepEqual([...main.matchAll(/<section class="sommaire" id="([^"]+)"[^>]*><h2 id="[^"]+">([^<]+)<\/h2>/g)].map((m) => [m[1], m[2]]),
-    groupes.map((g) => [g.id, g.titre]));
-  assert.equal(groupes.length, 7);
-  const lignes = [...main.matchAll(/<li><a href="([^"]+)">([^<]+)<\/a>(?:<div class="muted">([\s\S]*?)<\/div>)?<\/li>/g)];
-  assert.deepEqual(lignes.map((m) => m[1]), groupes.flatMap((g) => g.pages.map((p) => `/${cheminDePage(p.id)}`)));
-  for (const [, href, , resume] of lignes) {
-    const p = pagesConstruites.find((x) => `/${cheminDePage(x.id)}` === href);
-    assert.equal(Boolean(resume), Boolean(p.resume), `${p.id} : résumé`);
+// Les Règles avancées comme Les bases (demande du propriétaire du 2026-11-05 : « Suite à la modification de la page "les bases" refait la même avec les
+// "règles avancées", tout sur la même page avec menu lattéral. » ; réponses : « Liste sans groupes » — « Comme Les bases : une seule liste de titres,
+// dans l'ordre actuel des groupes. » — et « Le Mode Hyper »)
+test('Les Règles avancées : le même menu latéral, une seule liste de titres sans groupes dans l’ordre du plan, la page choisie à droite ; /regles/avancees/ s’ouvre sur « Le Mode Hyper »', options, () => {
+  const pages = pagesDesReglesAvancees(pagesConstruites);
+  assert.ok(pages.length > 30, `${pages.length} pages construites`);
+  assert.deepEqual(pages.map((p) => p.id).slice(0, REGLES_AVANCEES.pages.length), REGLES_AVANCEES.pages, 'les pages nommées en tête, dans l’ordre');
+  assert.deepEqual(pagesConstruites.filter((p) => estDesReglesAvancees(p.id)).map((p) => p.id).sort(), pages.map((p) => p.id).sort(), 'toutes les pages construites des Règles avancées');
+  const attendues = pages.map((p) => [`/${cheminDePage(p.id)}`, p.titre]);
+  for (const [chemin, page] of [['regles/avancees', pages[0]], ...pages.map((p) => [cheminDePage(p.id).slice(0, -1), p])]) {
+    const { main } = verifierLeMenuLateral(chemin, page, REGLES_AVANCEES, attendues);
+    // ni les titres des anciens groupes du sommaire
+    assert.doesNotMatch(sansStyles(menuLateral(main, REGLES_AVANCEES.titre).html), /Magie et Mode Hyper|Combat et actions|Exploration et voyage|Autres pages de référence/,
+      `${chemin} : sans titres de groupe`);
   }
-  for (const id of ['guide/les-pieges', 'guide/les-portes', 'guide/meteo', 'guide/donjon-pas-bon']) assert.ok(lignes.some((m) => m[1] === `/${cheminDePage(id)}`), id);
+  // les pages « Fiche de personnage : … » et une page que le plan ne nomme pas (les documents des règles) ont aussi le menu
+  assert.ok(pages.some((p) => p.id.startsWith('guide/fiche-')) && pages.some((p) => p.id === 'guide/les-documents-des-regles'));
+  // /regles/avancees/ montre « Le Mode Hyper » ; son adresse canonique reste /regles/avancees/le-mode-hyper/
+  assert.equal(REGLES_AVANCEES.ouverture, 'guide/le-mode-hyper');
+  assert.equal(pages[0].id, REGLES_AVANCEES.ouverture);
+  const avancees = lire('regles/avancees').html;
+  assert.match(avancees, /<link rel="canonical" href="\/regles\/avancees\/le-mode-hyper\/">/);
+  assert.match(avancees, /<title>Règles avancées — Maverick Center<\/title>/);
+  assert.match(avancees, /<a href="\/regles\/avancees\/" aria-current="page">Règles avancées<\/a>/, 'l’entrée du menu du site, la page elle-même');
+  for (const p of pages) assert.doesNotMatch(lire(cheminDePage(p.id)).html, /rel="canonical"/, `${p.id} : à sa propre adresse, pas de canonique`);
+  // pièges, portes, météo, « Donjon pas bon » : « dans les règles avancées, pour tout le monde » (2026-10-18)
+  for (const id of ['guide/les-pieges', 'guide/les-portes', 'guide/meteo', 'guide/donjon-pas-bon']) assert.ok(pages.some((p) => p.id === id), id);
   // le bloc des documents : les pages de référence par document, liées à leur nouvelle adresse, sans les pages de Découvrir ni des Bases
   const documents = lire('regles/avancees/les-documents-des-regles').main;
   assert.match(documents, /<div class="guide-references">/);
@@ -215,6 +247,9 @@ test('/regles/avancees/ : les sept groupes dans l’ordre, chaque page liée ave
 test('/mj/ et /regles/artisanat/ : le titre et le résumé de chaque page, liés ; « Campagne » ou « Scénario one shot » dans le Guide du MJ ; Composants dans l’Artisanat', options, () => {
   const mj = lire('mj').main;
   assert.match(mj, /<h1>Guide du MJ<\/h1>/);
+  // le Guide du MJ ne change pas (2026-11-05) : un sommaire, ni menu latéral, ni sur ses pages
+  assert.match(mj, /<section class="sommaire"/);
+  for (const chemin of ['mj', ...GUIDE_DU_MJ.pages.map((id) => cheminDePage(id).slice(0, -1)), 'regles/artisanat']) assert.doesNotMatch(lire(chemin).main, /class="lateral/, `${chemin} : sans menu latéral`);
   assert.deepEqual([...mj.matchAll(/<li><a href="([^"]+)">/g)].map((m) => m[1]), GUIDE_DU_MJ.pages.map((id) => `/${cheminDePage(id)}`));
   assert.ok(GUIDE_DU_MJ.pages.includes('guide/campagne-ou-scenario-one-shot'));
   const artisanat = lire('regles/artisanat').main;

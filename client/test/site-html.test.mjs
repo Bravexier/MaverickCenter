@@ -116,6 +116,18 @@ test('en-tête : plus de barre de recherche (une page à part, avec les mots-cl�
   const artisanat = lire('regles/artisanat/index.html');
   assert.match(artisanat, /data-group="equipement" aria-pressed="true" aria-current="true"/);
   assert.match(artisanat, /data-group="regles" aria-pressed="false">/);
+  // Les bases et les Règles avancées, lues dans leur menu latéral (demandes du propriétaire du 2026-11-05) : leurs pages ouvrent les Règles et marquent
+  // l'entrée de leur rubrique (`entree` de layouts/Base.astro), elle seule ; l'adresse de la rubrique (ouverte sur sa première page) en est la page
+  for (const [rel, chemin, libelle, courant] of [
+    ['regles/index.html', '/regles/', 'Les bases', 'page'], ['regles/les-degats/index.html', '/regles/', 'Les bases', 'true'],
+    ['regles/avancees/index.html', '/regles/avancees/', 'Règles avancées', 'page'], ['regles/avancees/meteo/index.html', '/regles/avancees/', 'Règles avancées', 'true'],
+    ['regles/avancees/fiche-attributs/index.html', '/regles/avancees/', 'Règles avancées', 'true'],
+  ]) {
+    const page = lire(rel);
+    assert.match(page, /data-group="regles" aria-pressed="true" aria-current="true"/, `${rel} : les Règles`);
+    assert.ok(page.includes(`<a href="${chemin}" aria-current="${courant}">${libelle}</a>`), `${rel} : l’entrée « ${libelle} »`);
+    assert.equal(page.match(/<a href="\/regles\/(?:avancees\/)?" aria-current=/g).length, 1, `${rel} : une seule des deux entrées marquée`);
+  }
   assert.ok(!entete.includes('data-group="ressources"'), 'plus de rubrique Ressources');
   // réponse du propriétaire du 2026-10-29 : « Famillier devrai être dans Personnage, Le reste dans equipement (sous menu-autres pour commencer) »
   const familiers = lire('ressources/familiers/index.html');

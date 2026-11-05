@@ -10,7 +10,7 @@
 // Sept rubriques (demande du propriétaire du 2026-10-29, après celles du 2026-10-16 et du 2026-10-18 : « éclater le guide pour retravailler pleinement
 // l'organisation des onglets et de la présentation ») : Règles (l'ancienne Découvrir, la vitrine, avec Les bases et les Règles avancées), Personnage
 // (l'ancienne Règles), Équipement, Espace joueur, Espace MJ, Codex, Outils ; plus de rubrique Ressources ni d'entrée Guide (les pages du guide sont
-// rangées par lib/livres.mjs : Découvrir, Les bases — un sommaire —, Règles avancées, Guide du MJ). Rien n'est caché ni filtré : « Pour l'instant comme
+// rangées par lib/livres.mjs : Découvrir, Les bases et Règles avancées — chacune en menu latéral —, Guide du MJ). Rien n'est caché ni filtré : « Pour l'instant comme
 // les menus ne sont pas prêt rien n'est caché mais tout de même ils ne verront à terme que les 2 premiers onglets » (sic ; « ils » : les non-membres) ;
 // « Tu fait comme si de rien n'était pour l'instant. On verra les caches. » (sic) ; ces deux premières rubriques sont, depuis le 2026-10-29, « Règles et
 // Personnage » (réponse du propriétaire). Composants va sous Artisanat. Plus d'entrée « Pièces élémentaires » (demande du 2026-10-29 : « Le sous-menu

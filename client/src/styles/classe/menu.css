@@ -1,6 +1,6 @@
 /* Menu latéral d'une page de classe (components/classes/ClassePage.astro, ?raw). Demande du propriétaire : « les 5 types de classes en menu à
    dérouler avec un seul menu déroulable à la fois », celui de la classe affichée ouvert. Mise en page sur le modèle du menu des Bases
-   (styles/guide/les-bases.css) : à gauche, en vertical, collé en haut de l'écran pendant qu'on lit ; à droite, la page de la classe. Chaque type
+   (styles/guide/menu-lateral.css) : à gauche, en vertical, collé en haut de l'écran pendant qu'on lit ; à droite, la page de la classe. Chaque type
    porte la classe de sa catégorie (famille `classe`, lib/palette-css.mjs) : son point et le filet de la classe affichée lisent --couleur, comme les
    colonnes de /classes/ ; aucune couleur écrite. */
 

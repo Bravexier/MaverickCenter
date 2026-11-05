@@ -1,21 +1,23 @@
 ---
 import Base from '../../layouts/Base.astro';
-import LesBases from './LesBases.astro';
+import MenuLateral from './MenuLateral.astro';
 import PageDuGuide from './PageDuGuide.astro';
-import { estDesBases, LES_BASES, verifierLePlan } from '../../lib/livres.mjs';
+import { menuLateralDe, verifierLePlan } from '../../lib/livres.mjs';
 import { texteDePageModifiable } from '../../lib/edition-modele.mjs';
 import { cheminDePage } from '../../lib/metiers.mjs';
 import { loadWiki, typeOf, url, type WikiEntry } from '../../lib/wiki';
 
 // Une page du guide à l'adresse que lui donne le plan du site (lib/livres.mjs ; routes pages/decouvrir/, pages/regles/, pages/mj/) : une page simple
 // (PageDuGuide : fil d'Ariane, titre, texte et blocs, mots-clés, rétroliens ; les sources ne s'affichent que sur /archives/), quelle que soit sa
-// rubrique ; une page des Bases à côté de leur menu latéral (LesBases, sur le modèle de la chronologie ; l'entrée « Les bases » du menu du site
-// marquée, `entree`). Le plan est contrôlé contre les pages chargées (verifierLePlan : le build s'arrête sur une page absente, nommée deux fois, ou
-// absorbée par une autre et toujours là).
-// `ouverture` : /regles/ (pages/regles/index.astro), qui montre la première page des Bases (LES_BASES.ouverture) sous l'adresse de la rubrique ; pour
-// ne pas faire deux pages du même texte aux yeux des moteurs de recherche, elle désigne l'adresse propre de cette page comme canonique
-// (<link rel="canonical">). Son titre est celui de la rubrique, « Les bases ».
-// Mode modification du site de dev (demande du propriétaire) : titre et texte modifiables (src/scripts/edition/guide.mjs), /regles/ comprise.
+// rubrique ; une page des Bases ou des Règles avancées à côté du menu latéral de sa rubrique (MenuLateral, sur le modèle de la chronologie :
+// lib/livres.mjs#menuLateralDe ; l'entrée « Les bases » ou « Règles avancées » du menu du site marquée, `entree`). Le plan est contrôlé contre les pages
+// chargées (verifierLePlan : le build s'arrête sur une page absente, nommée deux fois, ou absorbée par une autre et toujours là).
+// `ouverture` : l'adresse de la rubrique (/regles/ : pages/regles/index.astro ; /regles/avancees/ : pages/regles/avancees/index.astro), qui montre sa
+// page d'ouverture (LES_BASES.ouverture, « Réussir une action » ; REGLES_AVANCEES.ouverture, « Le Mode Hyper » : réponses du propriétaire du
+// 2026-11-05) ; pour ne pas faire deux pages du même texte aux yeux des moteurs de recherche, elle désigne l'adresse propre de cette page comme
+// canonique (<link rel="canonical">). Son titre est celui de la rubrique.
+// Mode modification du site de dev (demande du propriétaire) : titre et texte modifiables (src/scripts/edition/guide.mjs), /regles/ et
+// /regles/avancees/ comprises.
 interface Props {
   entry: WikiEntry;
   ouverture?: boolean;
@@ -24,15 +26,23 @@ const { entry, ouverture = false } = Astro.props;
 const { entries } = await loadWiki();
 verifierLePlan(entries);
 const modifiable = texteDePageModifiable(typeOf(entry), entry.data.sources[0]) && entry.data.status !== 'example';
-const desBases = estDesBases(entry.id);
+const menu = menuLateralDe(entry.id, entries);
 ---
 
 <Base
-  title={ouverture ? LES_BASES.titre : entry.data.title}
+  title={ouverture && menu ? menu.rubrique.titre : entry.data.title}
   description={entry.data.summary}
   edition={modifiable ? entry.id : undefined}
-  entree={desBases && !ouverture ? LES_BASES.chemin : undefined}
+  entree={menu && !ouverture ? menu.rubrique.chemin : undefined}
 >
   {ouverture && <link slot="tete" rel="canonical" href={url(cheminDePage(entry.id))} />}
-  {desBases ? <LesBases entry={entry} entries={entries} modifiable={modifiable} /> : <PageDuGuide entry={entry} entries={entries} modifiable={modifiable} />}
+  {
+    menu ? (
+      <MenuLateral rubrique={menu.rubrique} pages={menu.pages} entry={entry}>
+        <PageDuGuide entry={entry} entries={entries} modifiable={modifiable} />
+      </MenuLateral>
+    ) : (
+      <PageDuGuide entry={entry} entries={entries} modifiable={modifiable} />
+    )
+  }
 </Base>

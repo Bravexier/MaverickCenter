@@ -1,17 +1,18 @@
 ---
-import lesBasesCss from '../../styles/guide/les-bases.css?raw';
+import MenuLateral from '../guide/MenuLateral.astro';
 import { groupRaces } from '../../lib/race-kinds.mjs';
 import { TYPES } from '../../lib/types.mjs';
-import { entryHref, url, type WikiEntry } from '../../lib/wiki';
+import type { WikiEntry } from '../../lib/wiki';
 
 // Les pages de race, à côté d'un menu latéral de toutes les races (demande du propriétaire : « Je veux comme pour chronologie, et les bases, un menu
-// latéral qui récapitule toutes les races sur le menu d'une race ouverte. »). Même mise en page, mêmes classes et même feuille que le menu des Bases
-// (components/guide/LesBases.astro, styles/guide/les-bases.css), pour une apparence identique : à gauche, en vertical, les races de la liste /races/
-// dans le même ordre (lib/race-kinds.mjs#groupRaces : races pures puis hybrides, ORDRE_DES_RACES), en une seule liste sans titre de groupe (réponse
-// du propriétaire : « Une seule liste », comme le menu des Bases), l'entrée affichée marquée (aria-current) ; à droite, la page (fil d'Ariane, gabarit
-// RacePage, pied de page). Liens ordinaires : tout se lit sans JavaScript. L'accent du site (réponse du propriétaire : « Accent du site »), pas la
-// couleur de la nature. Petit écran (<= 56rem) : le menu replié au-dessus de la page (un <details> : « Races » et le nom de la race), ouvert sans
-// JavaScript ; le script en ligne le replie sur petit écran (il n'importe rien, skill site-version-portable).
+// latéral qui récapitule toutes les races sur le menu d'une race ouverte. »). Le menu latéral commun des Bases et des Règles avancées
+// (components/guide/MenuLateral.astro, feuille styles/guide/menu-lateral.css), pour une apparence et un comportement identiques : à gauche, en
+// vertical, les races de la liste /races/ dans le même ordre (lib/race-kinds.mjs#groupRaces : races pures puis hybrides, ORDRE_DES_RACES), en une
+// seule liste sans titre de groupe (réponse du propriétaire : « Une seule liste », comme le menu des Bases), l'entrée affichée marquée
+// (aria-current) ; à droite, la page passée en contenu (fil d'Ariane, gabarit RacePage, pied de page). Liens ordinaires : tout se lit sans
+// JavaScript. L'accent du site (réponse du propriétaire : « Accent du site »), pas la couleur de la nature. Petit écran (<= 56rem) : le menu replié
+// au-dessus de la page (un <details> : « Races » et le nom de la race), ouvert sans JavaScript ; le script en ligne de MenuLateral le replie sur
+// petit écran (il n'importe rien, skill site-version-portable).
 // `actif` faux (toute autre page servie par pages/[type]/[slug].astro, la race d'exemple sans ligne dans la base) : la page seule, sans menu.
 interface Props {
   actif: boolean;
@@ -20,46 +21,14 @@ interface Props {
 }
 const { actif, entry, entries } = Astro.props;
 const races = actif ? groupRaces(entries).flatMap((g) => g.entries) : [];
-const titre = TYPES.races.label;
+const rubrique = { titre: TYPES.races.label, chemin: 'races/' };
 ---
 
 {
   actif ? (
-    <>
-      <style is:inline set:html={lesBasesCss} />
-      <div class="bases">
-        <nav class="bases-menu" aria-label={titre}>
-          <details class="bases-menu__repli" open data-bases-repli>
-            <summary class="bases-menu__resume">
-              <span class="bases-menu__resume-rubrique">{titre}</span>
-              <span class="bases-menu__resume-page">{entry.data.title}</span>
-            </summary>
-            <p class="bases-menu__titre"><a href={url('races/')}>{titre}</a></p>
-            <ol class="bases-menu__liste">
-              {races.map((r) => (
-                <li>
-                  <a class="bases-menu__lien" href={entryHref(r)} aria-current={r.id === entry.id ? 'page' : undefined}>{r.data.title}</a>
-                </li>
-              ))}
-            </ol>
-          </details>
-        </nav>
-        <script is:inline>
-          // Petit écran : le menu replié au premier affichage (la page d'abord), rouvert sur grand écran ; sans JavaScript, ouvert.
-          (function () {
-            var repli = document.querySelector('[data-bases-repli]');
-            if (!repli) return;
-            var petit = matchMedia('(max-width: 56rem)');
-            function regler() { repli.open = !petit.matches; }
-            regler();
-            petit.addEventListener('change', regler);
-          })();
-        </script>
-        <div class="bases-page">
-          <slot />
-        </div>
-      </div>
-    </>
+    <MenuLateral rubrique={rubrique} pages={races} entry={entry}>
+      <slot />
+    </MenuLateral>
   ) : (
     <slot />
   )

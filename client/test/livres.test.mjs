@@ -1,6 +1,6 @@
 // Le plan des pages du guide (lib/livres.mjs ; demandes du propriétaire, 2026-10-16 puis 2026-10-18 : « éclater le guide », puis « refaire toutes les
 // anciennes pages du guide. Retirer le mécanisme de swipe, et les flèches suivant / précédent et la pagination ») : plus de livre ; Découvrir (une page
-// par entrée du menu), Les bases (une liste de pages, sans groupes : menu latéral), les Règles avancées et le Guide du MJ en sommaires ; les adresses de chaque page `guide/…` de la base, plus aucune sous
+// par entrée du menu), Les bases et les Règles avancées (chacune une liste de pages, sans groupes : menu latéral), le Guide du MJ en sommaire ; les adresses de chaque page `guide/…` de la base, plus aucune sous
 // /guide/ ; les pages fusionnées dans une autre ; les renvois des anciennes adresses par la page 404 ; le menu en six rubriques qui s'accorde au plan.
 //   node --test test/livres.test.mjs
 import assert from 'node:assert/strict';
@@ -10,8 +10,8 @@ import GithubSlugger from 'github-slugger';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import {
   ACCUEIL_DU_GUIDE, ADRESSES_DU_PLAN_PRECEDENT, adresseDeLaPageAbsorbee, ANCRES_DES_PAGES_ABSORBEES, ARTISANAT, adresseDuGuide, DECOUVRIR, estDansDecouvrirOuLesBases, estDuGuideDuMj,
-  estDesBases, filDAriane, groupeDeLaPage, groupesDesReglesAvancees, GUIDE_DU_MJ, LES_BASES, NOMS_RESERVES, PAGES_ABSORBEES, PAR_OU_COMMENCER, LIENS_ET_RENCONTRE,
-  PARTIES, pagesDeLaRubrique, pagesDesBases, partieDeLaPage, placeDansLeGuide, REGLES_AVANCEES, rubriqueDe, RUBRIQUES_DU_GUIDE, RUBRIQUES_SOUS_LA_PAGE, verifierLePlan,
+  estDesBases, estDesReglesAvancees, filDAriane, GUIDE_DU_MJ, LES_BASES, menuLateralDe, NOMS_RESERVES, PAGES_ABSORBEES, PAR_OU_COMMENCER, LIENS_ET_RENCONTRE,
+  PARTIES, pagesDeLaRubrique, pagesDesBases, pagesDesReglesAvancees, partieDeLaPage, placeDansLeGuide, REGLES_AVANCEES, rubriqueDe, RUBRIQUES_DU_GUIDE, RUBRIQUES_SOUS_LA_PAGE, verifierLePlan,
 } from '../src/lib/livres.mjs';
 import * as Guide from '../src/lib/guide.mjs';
 import { COULEURS_DES_PARTIES } from '../src/lib/parties-couleurs.mjs';
@@ -107,7 +107,7 @@ test('chaque page `guide/…` de la base a une adresse à elle, jamais sous /gui
     assert.match(chemins[i], /^(?:decouvrir|regles|mj)\/(?:[a-z0-9-]+\/)*$/, id);
     assert.notEqual(chemins[i], LES_BASES.chemin, `${id} : /regles/ n'est l'adresse d'aucune page (le menu des Bases, ouvert sur la première)`);
     assert.equal(estServieASonId(id), false, `${id} : la route des pages du wiki ne la sert pas`);
-    const places = [estDansDecouvrirOuLesBases(id), estDuGuideDuMj(id), Boolean(groupeDeLaPage(id))].filter(Boolean).length;
+    const places = [estDansDecouvrirOuLesBases(id), estDuGuideDuMj(id), estDesReglesAvancees(id)].filter(Boolean).length;
     assert.equal(places, 1, `${id} : une place et une seule`);
   }
   assert.equal(cheminDePage('guide/bienvenue'), 'decouvrir/', 'Bienvenue à l’adresse de Découvrir');
@@ -141,7 +141,8 @@ test('le plan est contrôlé au build : une page absente, une page d’exemple, 
   assert.throws(() => verifierLePlan(sans('guide/lexique')), /guide\/lexique \(« Les bases »\) n'existe pas/);
   assert.throws(() => verifierLePlan(sans('guide/creer-son-personnage')), /guide\/creer-son-personnage \(« Découvrir »\) n'existe pas/);
   assert.throws(() => verifierLePlan(sans('guide/reussir-une-action')), /guide\/reussir-une-action \(« Les bases »\) n'existe pas/);
-  assert.throws(() => verifierLePlan(sans('guide/meteo')), /guide\/meteo \(groupe « Exploration et voyage »\) n'existe pas/);
+  assert.throws(() => verifierLePlan(sans('guide/meteo')), /guide\/meteo \(« Règles avancées »\) n'existe pas/);
+  assert.throws(() => verifierLePlan(sans('guide/le-mode-hyper')), /guide\/le-mode-hyper \(« Règles avancées »\) n'existe pas/, 'la page d’ouverture des Règles avancées');
   const exemple = pagesDuGuide.map((p) => (p.id === 'guide/un-maitre-du-jeu' ? { ...p, data: { ...p.data, status: 'example' } } : p));
   assert.throws(() => verifierLePlan(exemple), /guide\/un-maitre-du-jeu \(Guide du MJ\) est une page d'exemple/);
   const revenue = [...pagesDuGuide, { id: 'guide/premiers-sorts', data: { title: 'Étape 5 : ses premiers sorts', status: 'draft' } }];
@@ -149,7 +150,7 @@ test('le plan est contrôlé au build : une page absente, une page d’exemple, 
   // HIDE_EXAMPLES=1 : sans les pages d'exemple, le plan tient toujours (aucune n'y est nommée)
   assert.doesNotThrow(() => verifierLePlan(pagesDuGuide.filter((p) => p.data.status !== 'example')));
   // aucune page nommée deux fois, aucun groupe vide
-  const nommees = [...RUBRIQUES_DU_GUIDE.flatMap((r) => pagesDeLaRubrique(r).map((p) => p.id)), ...GUIDE_DU_MJ.pages, ...REGLES_AVANCEES.groupes.flatMap((g) => g.pages ?? [])];
+  const nommees = [...RUBRIQUES_DU_GUIDE.flatMap((r) => pagesDeLaRubrique(r).map((p) => p.id)), ...GUIDE_DU_MJ.pages, ...REGLES_AVANCEES.pages];
   assert.equal(new Set(nommees).size, nommees.length);
   assert.ok(DECOUVRIR.groupes.every((g) => g.pages.length > 0) && LES_BASES.pages.length > 0);
 });
@@ -160,30 +161,74 @@ test('le menu latéral des Bases : leurs douze pages dans l’ordre du plan, une
   assert.ok(pagesDesBases(pagesDuGuide).every((p) => p.data.title), 'chaque entrée a son titre (celui de la base)');
 });
 
-test('les Règles avancées : tous les groupes dans l’ordre, exactement les pages hors de Découvrir, des Bases et du Guide du MJ', () => {
-  const groupes = groupesDesReglesAvancees(pagesDuGuide);
-  assert.deepEqual(groupes.map((g) => g.titre), [
-    'Magie et Mode Hyper', 'Combat et actions', 'Altérations d’état', 'Alignement', 'Exploration et voyage', 'La fiche de personnage, case par case', 'Autres pages de référence',
-  ]);
-  const dans = groupes.flatMap((g) => g.pages.map((p) => p.id));
+/** Les pages nommées des Règles avancées, dans l'ordre des anciens groupes du sommaire (réponse du propriétaire du 2026-11-05 : « Liste sans groupes » —
+ * « Comme Les bases : une seule liste de titres, dans l'ordre actuel des groupes. ») : Magie et Mode Hyper, Combat et actions, Altérations d'état,
+ * Alignement, Exploration et voyage. */
+const PAGES_NOMMEES_DES_REGLES_AVANCEES = [
+  'guide/le-mode-hyper', 'guide/mode-hyper-magie', 'guide/liste-des-effets-mode-hyper', 'guide/liste-des-effets-mode-super',
+  'guide/alterations-d-etats-et-mode-hyper', 'guide/resistance-faiblesse-magie',
+  'guide/situations-avancees', 'guide/actions-et-mouvements', 'guide/vitesse-et-portee', 'guide/jet-de-des', 'guide/formule-des-degats',
+  'guide/liste-des-alterations-d-etat', 'guide/alignement', 'guide/les-neuf-alignements',
+  'guide/distance-et-voyage', 'guide/meteo', 'guide/les-pieges', 'guide/les-portes', 'guide/donjon-pas-bon',
+];
+
+// « Suite à la modification de la page "les bases" refait la même avec les "règles avancées", tout sur la même page avec menu lattéral. » (demande du
+// propriétaire du 2026-11-05 ; réponses : « Liste sans groupes », « Le Mode Hyper »)
+test('les Règles avancées : une seule liste, sans groupes, dans l’ordre des anciens groupes, les pages « Fiche de personnage : … » puis toute autre page ; ouverte sur « Le Mode Hyper »', () => {
+  assert.equal('groupes' in REGLES_AVANCEES, false, 'plus de groupes');
+  for (const nom of ['groupesDesReglesAvancees', 'groupeDeLaPage']) assert.equal(nom in Livres, false, `${nom} : plus de groupes`);
+  assert.deepEqual(REGLES_AVANCEES.pages, PAGES_NOMMEES_DES_REGLES_AVANCEES);
+  assert.deepEqual(REGLES_AVANCEES.prefixes, ['guide/fiche-']);
+  assert.equal(REGLES_AVANCEES.ouverture, 'guide/le-mode-hyper');
+  assert.equal(cheminDePage(REGLES_AVANCEES.ouverture), 'regles/avancees/le-mode-hyper/', 'la page ouverte à /regles/avancees/ garde son adresse');
+  const pages = pagesDesReglesAvancees(pagesDuGuide).map((p) => p.id);
+  // exactement les pages hors de Découvrir, des Bases et du Guide du MJ, chacune une fois
   const attendues = ids.filter((id) => !estDansDecouvrirOuLesBases(id) && !estDuGuideDuMj(id));
-  assert.deepEqual([...dans].sort(), [...attendues].sort());
-  assert.equal(new Set(dans).size, dans.length, 'une page dans un seul groupe');
-  for (const g of groupes) for (const p of g.pages) assert.equal(groupeDeLaPage(p.id).id, g.id, `${p.id} : groupeDeLaPage`);
-  // pièges, portes, météo, « Donjon pas bon » : « dans les règles avancées, pour tout le monde » (2026-10-18)
-  assert.deepEqual(groupes.find((g) => g.id === 'exploration-et-voyage').pages.map((p) => p.id),
-    ['guide/distance-et-voyage', 'guide/meteo', 'guide/les-pieges', 'guide/les-portes', 'guide/donjon-pas-bon']);
-  assert.equal(groupes[0].pages[0].id, 'guide/le-mode-hyper', 'le Mode Hyper en tête de « Magie et Mode Hyper »');
-  const fiche = groupes.find((g) => g.id === 'fiche-de-personnage').pages;
-  assert.ok(fiche.length > 5 && fiche.every((p) => p.id.startsWith('guide/fiche-')), 'les pages « Fiche de personnage : … »');
-  assert.deepEqual(fiche.map((p) => p.data.title), [...fiche.map((p) => p.data.title)].sort((a, b) => a.localeCompare(b, 'fr')), 'ordre des titres');
-  // les documents des règles : leur bloc liste les pages par document, avec leurs liens, ce que /archives/ ne fait pas : une page de référence
-  assert.equal(groupeDeLaPage('guide/les-documents-des-regles').id, 'autres');
+  assert.deepEqual([...pages].sort(), [...attendues].sort());
+  assert.equal(new Set(pages).size, pages.length, 'une page une seule fois');
+  for (const id of pages) assert.ok(estDesReglesAvancees(id), `${id} : estDesReglesAvancees`);
+  // l'ordre : les pages nommées, puis les pages « Fiche de personnage : … » (ordre des titres), puis le reste (ordre des titres)
+  const n = PAGES_NOMMEES_DES_REGLES_AVANCEES.length;
+  assert.deepEqual(pages.slice(0, n), PAGES_NOMMEES_DES_REGLES_AVANCEES);
+  assert.equal(pages[0], 'guide/le-mode-hyper', 'le Mode Hyper en tête');
+  const titre = (id) => pagesDuGuide.find((p) => p.id === id).data.title;
+  const parTitre = (liste) => [...liste].sort((a, b) => titre(a).localeCompare(titre(b), 'fr'));
+  const fiche = pages.slice(n).filter((id) => id.startsWith('guide/fiche-'));
+  assert.ok(fiche.length > 5, 'les pages « Fiche de personnage : … »');
+  assert.deepEqual(pages.slice(n, n + fiche.length), parTitre(fiche), 'juste après les pages nommées, dans l’ordre des titres');
+  const reste = pages.slice(n + fiche.length);
+  assert.ok(reste.length > 0 && reste.every((id) => !id.startsWith('guide/fiche-') && !PAGES_NOMMEES_DES_REGLES_AVANCEES.includes(id)));
+  assert.deepEqual(reste, parTitre(reste), 'le reste en dernier, dans l’ordre des titres');
+  // les documents des règles : leur bloc liste les pages par document, avec leurs liens, ce que /archives/ ne fait pas : une page de référence, dans le reste
+  assert.ok(reste.includes('guide/les-documents-des-regles'));
   assert.equal(cheminDePage('guide/les-documents-des-regles'), 'regles/avancees/les-documents-des-regles/');
-  assert.equal(dans.includes('guide/campagne-ou-scenario-one-shot'), false, 'la page du MJ n’est pas une page des Règles avancées');
-  // une page d'exemple (utiliser-ce-wiki) tombe dans « Autres » tant qu'elle est chargée ; sans elle (HIDE_EXAMPLES=1), elle n'y est pas
-  const sansExemples = groupesDesReglesAvancees(pagesDuGuide.filter((p) => p.data.status !== 'example')).flatMap((g) => g.pages);
+  assert.equal(pages.includes('guide/campagne-ou-scenario-one-shot'), false, 'la page du MJ n’est pas une page des Règles avancées');
+  // une page ajoutée plus tard a toujours une adresse et une entrée dans le menu : à la fin (reste) ou parmi les pages « Fiche » (préfixe)
+  const ajout = (id, title) => ({ id, data: { title, status: 'draft' } });
+  const avecAjouts = pagesDesReglesAvancees([...pagesDuGuide, ajout('guide/zzz-page-ajoutee', 'Zzz page ajoutée'), ajout('guide/fiche-zzz', 'Fiche de personnage : zzz')]).map((p) => p.id);
+  assert.equal(avecAjouts.at(-1), 'guide/zzz-page-ajoutee', 'une page que le plan ne nomme pas : en fin de liste');
+  assert.equal(avecAjouts.indexOf('guide/fiche-zzz'), n + fiche.length, 'une page « fiche-… » : à la fin des pages « Fiche »');
+  assert.equal(cheminDePage('guide/zzz-page-ajoutee'), 'regles/avancees/zzz-page-ajoutee/');
+  // une page nommée absente est sautée (verifierLePlan la signale)
+  assert.deepEqual(pagesDesReglesAvancees(pagesDuGuide.filter((p) => p.id !== 'guide/meteo')).map((p) => p.id), pages.filter((id) => id !== 'guide/meteo'));
+  // une page d'exemple (utiliser-ce-wiki) tombe dans le reste tant qu'elle est chargée ; sans elle (HIDE_EXAMPLES=1), elle n'y est pas
+  const sansExemples = pagesDesReglesAvancees(pagesDuGuide.filter((p) => p.data.status !== 'example'));
   assert.ok(sansExemples.every((p) => p.data.status !== 'example'));
+  // le plan arrête le build si la page d'ouverture n'est pas nommée par les Règles avancées
+  assert.ok(REGLES_AVANCEES.pages.includes(REGLES_AVANCEES.ouverture));
+});
+
+test('le menu latéral d’une page : celui des Bases ou des Règles avancées, aucun pour Découvrir ni le Guide du MJ', () => {
+  const bases = menuLateralDe('guide/les-degats', pagesDuGuide);
+  assert.equal(bases.rubrique, LES_BASES);
+  assert.deepEqual(bases.pages.map((p) => p.id), PAGES_DES_BASES);
+  const avancees = menuLateralDe('guide/meteo', pagesDuGuide);
+  assert.equal(avancees.rubrique, REGLES_AVANCEES);
+  assert.deepEqual(avancees.pages, pagesDesReglesAvancees(pagesDuGuide));
+  assert.equal(menuLateralDe('guide/fiche-attributs', pagesDuGuide).rubrique, REGLES_AVANCEES, 'une page « Fiche » : le menu des Règles avancées');
+  assert.equal(menuLateralDe('guide/les-documents-des-regles', pagesDuGuide).rubrique, REGLES_AVANCEES, 'une page non nommée : aussi');
+  for (const id of ['guide/bienvenue', 'guide/creer-son-personnage', 'guide/un-maitre-du-jeu', 'races/elfe']) assert.equal(menuLateralDe(id, pagesDuGuide), null, id);
+  assert.equal(estDesReglesAvancees('races/elfe'), false);
 });
 
 test('plus de livre : ni précédent ni suivant ; la place d’une page, son fil d’Ariane vers sa rubrique ou son sommaire', () => {
@@ -195,7 +240,10 @@ test('plus de livre : ni précédent ni suivant ; la place d’une page, son fil
   assert.deepEqual(filDAriane('guide/creer-son-personnage'), [{ titre: 'Découvrir', chemin: 'decouvrir/' }]);
   // Les bases : plus de groupe dans le fil (« Accueil › Les bases »)
   assert.deepEqual(filDAriane('guide/la-montee-de-niveau'), [{ titre: 'Les bases', chemin: 'regles/' }]);
-  assert.deepEqual(filDAriane('guide/meteo'), [{ titre: 'Règles avancées', chemin: 'regles/avancees/' }, { titre: 'Exploration et voyage', chemin: 'regles/avancees/#exploration-et-voyage' }]);
+  // les Règles avancées : plus de groupe ni d'ancre dans le fil (« Accueil › Règles avancées »), comme Les bases
+  assert.deepEqual(filDAriane('guide/meteo'), [{ titre: 'Règles avancées', chemin: 'regles/avancees/' }]);
+  assert.deepEqual(filDAriane('guide/fiche-attributs'), [{ titre: 'Règles avancées', chemin: 'regles/avancees/' }]);
+  assert.deepEqual(filDAriane('guide/les-documents-des-regles'), [{ titre: 'Règles avancées', chemin: 'regles/avancees/' }]);
   assert.deepEqual(filDAriane('guide/campagne-ou-scenario-one-shot'), [{ titre: 'Guide du MJ', chemin: 'mj/' }]);
 });
 

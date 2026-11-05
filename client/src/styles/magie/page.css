@@ -66,7 +66,7 @@
 /* ---------- Panneau latéral : toutes les magies (components/magie/MagiePage.astro) ----------
    Demande du propriétaire du 2026-11-05 : « un panneau latéral qui liste toutes les magies et un bouton "toutes" qui ramène au menu d'avant […] les
    mêmes pastilles de couleur que l'écran de toutes les magies ». Le dessin des pastilles est le dessin commun (styles/global/pastille.css, couleur : la
-   classe de la magie) ; ici, la mise en page seulement, sur le modèle des Bases (styles/guide/les-bases.css) : à gauche, collé en haut de l'écran,
+   classe de la magie) ; ici, la mise en page seulement, sur le modèle des Bases (styles/guide/menu-lateral.css) : à gauche, collé en haut de l'écran,
    défilant seul s'il dépasse ; sur 56rem ou moins, replié au-dessus de la page. Aucune couleur écrite. */
 main:has(> .magie-cadre) { max-width: calc(var(--max) + 14rem); }
 .magie-cadre {

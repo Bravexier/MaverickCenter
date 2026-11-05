@@ -11,7 +11,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
-import { estDansDecouvrirOuLesBases, estDuGuideDuMj, groupeDeLaPage, PAGES_ABSORBEES, PARTIES, pagesDeLaRubrique, RUBRIQUES_DU_GUIDE } from '../src/lib/livres.mjs';
+import { estDansDecouvrirOuLesBases, estDesReglesAvancees, estDuGuideDuMj, PAGES_ABSORBEES, PARTIES, pagesDeLaRubrique, REGLES_AVANCEES, RUBRIQUES_DU_GUIDE } from '../src/lib/livres.mjs';
 
 const racine = (chemin) => fileURLToPath(new URL(`../../${chemin}`, import.meta.url));
 const lire = (chemin) => readFileSync(racine(chemin), 'utf8');
@@ -105,10 +105,12 @@ test('le plan garde l’ordre de lecture de l’ancien guide, et chaque ancien c
   }
   for (const p of registre.pages) {
     const id = placeDe(p.id);
-    const place = estDansDecouvrirOuLesBases(id) ? 'decouvrir-ou-bases' : estDuGuideDuMj(id) ? 'mj' : groupeDeLaPage(id) ? 'avancees' : null;
+    const place = estDansDecouvrirOuLesBases(id) ? 'decouvrir-ou-bases' : estDuGuideDuMj(id) ? 'mj' : estDesReglesAvancees(id) ? 'avancees' : null;
     assert.ok(place, `${p.id} (ancien chapitre ${p.chapitre}) n’a plus de place`);
   }
-  // les deux anciens chapitres hors de Découvrir et des Bases : le Mode Hyper (20) et les documents des règles (24), dans les Règles avancées
-  assert.deepEqual(registre.pages.filter((p) => !estDansDecouvrirOuLesBases(placeDe(p.id))).map((p) => [p.chapitre, groupeDeLaPage(p.id)?.id]),
-    [[20, 'magie-et-mode-hyper'], [24, 'autres']]);
+  // les deux anciens chapitres hors de Découvrir et des Bases : le Mode Hyper (20, nommé par le plan, la page d'ouverture des Règles avancées depuis
+  // le 2026-11-05) et les documents des règles (24, que le plan ne nomme pas : dans le reste), dans les Règles avancées (plus de groupes depuis le
+  // 2026-11-05 : « Liste sans groupes »)
+  assert.deepEqual(registre.pages.filter((p) => !estDansDecouvrirOuLesBases(placeDe(p.id))).map((p) => [p.chapitre, p.id, estDesReglesAvancees(p.id), REGLES_AVANCEES.pages.includes(p.id)]),
+    [[20, 'guide/le-mode-hyper', true, true], [24, 'guide/les-documents-des-regles', true, false]]);
 });
