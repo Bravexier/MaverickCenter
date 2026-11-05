@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { classeDeMagie, cssDeLaPalette, cssDesFamilles } from '../src/lib/palette-css.mjs';
-import { RACE_COLORS } from '../src/lib/race-kinds.mjs';
+import { ORDRE_DES_RACES, RACE_COLORS } from '../src/lib/race-kinds.mjs';
 
 const dossier = fileURLToPath(new URL('../dist/races/', import.meta.url));
 const present = existsSync(dossier);
@@ -189,4 +189,29 @@ test('liste des races : tableau des magies innées en bas de page, races dans l�
 test('pages de race : le lien « Voir le tableau » mène au tableau de /races/', options, () => {
   for (const { slug, html } of pages) assert.ok(!html.includes('races-et-magies'), slug);
   assert.match(page('orios'), /href="[^"]*\/races\/#magies-innees">Voir le tableau de toutes les races et de leurs magies</);
+});
+
+// Demande du propriétaire : « Je veux comme pour chronologie, et les bases, un menu latéral qui récapitule toutes les races sur le menu d'une race
+// ouverte. » (components/race/MenuDesRaces.astro, les classes et la feuille du menu des Bases).
+test('pages de race : à gauche le menu latéral de toutes les races (une seule liste, pures puis hybrides, ordre du propriétaire, la race ouverte marquée), à droite la page', options, () => {
+  const attendu = ORDRE_DES_RACES.map((id) => id.slice('races/'.length));
+  for (const { slug, html } of pages) {
+    const m = main(html);
+    const nav = m.match(/<nav class="bases-menu" aria-label="Races">([\s\S]*?)<\/nav>/);
+    assert.ok(nav, `${slug} : menu des races`);
+    assert.ok(m.indexOf('<nav class="bases-menu"') < m.indexOf('<div class="bases-page">'), `${slug} : le menu à gauche, la page à droite`);
+    assert.match(nav[1], /<details class="bases-menu__repli" open data-bases-repli>/, `${slug} : ouvert sans JavaScript`);
+    assert.match(nav[1], /<p class="bases-menu__titre"><a href="[^"]*\/races\/">Races<\/a><\/p>/, `${slug} : titre lié à /races/`);
+    // réponse du propriétaire : « Une seule liste » (sans titre de groupe, comme le menu des Bases)
+    assert.equal((nav[1].match(/<ol class="bases-menu__liste">/g) ?? []).length, 1, `${slug} : une seule liste`);
+    assert.ok(!nav[1].includes('bases-menu__groupe') && !nav[1].includes('Races pures'), `${slug} : sans titre de groupe`);
+    const entrees = [...nav[1].matchAll(/<a class="bases-menu__lien" href="[^"]*\/races\/([^/"]+)\/"( aria-current="page")?>/g)]
+      .filter((e) => e[1] !== 'exemple-race');
+    assert.deepEqual(entrees.map((e) => e[1]), attendu, `${slug} : toutes les races, dans l'ordre`);
+    assert.deepEqual(entrees.filter((e) => e[2]).map((e) => e[1]), [slug], `${slug} : seule la race ouverte est marquée`);
+    // le fil d'Ariane et le gabarit dans la colonne de la page
+    const droite = m.slice(m.indexOf('<div class="bases-page">'));
+    assert.match(droite, /<p class="muted"><a href="[^"]*\/">Accueil<\/a> › <a href="[^"]*\/races\/">Races<\/a>/, `${slug} : fil d'Ariane à droite`);
+    assert.ok(droite.includes('class="race-hero"'), `${slug} : gabarit à droite`);
+  }
 });

@@ -1,4 +1,5 @@
-/* Chargé uniquement depuis components/guide/LesBases.astro (?raw) : les pages des Bases (/regles/ et /regles/<slug>/). Sur le modèle de la
+/* Chargé (?raw) depuis components/guide/LesBases.astro, pour les pages des Bases (/regles/ et /regles/<slug>/), et depuis
+   components/race/MenuDesRaces.astro, pour les pages de race (même menu, demande du propriétaire : « comme pour chronologie, et les bases »). Sur le modèle de la
    chronologie (styles/chronologie/chronologie.css ; demande du propriétaire du 2026-11-05 : « un menu latéral sous le même modèle que la
    chronologie ») : à gauche, en vertical, le menu des douze pages, qui reste en place pendant qu'on lit ; à droite, le texte de la page choisie.
    Ni barre en dégradé, ni dates, ni chevrons : la mise en page et le comportement seulement. Couleur : l'accent du site (réponse du propriétaire :
