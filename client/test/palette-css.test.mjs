@@ -552,6 +552,9 @@ test('les feuilles des magies lisent les propriétés que posent les classes : p
   dans('src/styles/magie/creatures.css', 'button.creature__bouton--magie', `--creature-1: var(${fond}); --creature-2: var(${second});`);
   dans('src/styles/global/pastille.css', '.magies-orbite__noeud', `--p: var(${fond});`);
   dans('src/styles/global/pastille.css', '.magies-orbite__pastille', `--p: var(${fond});`);
+  // le panneau latéral des pages de magie : les mêmes pastilles que la carte (demande du propriétaire du 2026-11-05)
+  dans('src/styles/global/pastille.css', '.magies-panneau__lien', `--p: var(${fond});`);
+  dans('src/styles/global/pastille.css', '.magies-panneau__point', `--p: var(${fond});`);
   // la carte : le trait prend --couleur ou --couleur-2 de ses classes, selon la magie survolée
   const carte = lire('src/components/magie/MagiesConstellation.astro');
   assert.ok(carte.includes(`.magies-relation.avec-\${k} { --c: var(${fond});`) && carte.includes(`.magies-relation.seconde-\${k} { --c: var(${second}); }`), 'règles du survol');

@@ -63,3 +63,90 @@
 .hyper__carte h3 { margin: 0 0 0.2rem; font-size: 1rem; color: var(--mag-readable); }
 
 @media (max-width: 52rem) { .magie-presentation { grid-template-columns: minmax(0, 1fr); } }
+/* ---------- Panneau latéral : toutes les magies (components/magie/MagiePage.astro) ----------
+   Demande du propriétaire du 2026-11-05 : « un panneau latéral qui liste toutes les magies et un bouton "toutes" qui ramène au menu d'avant […] les
+   mêmes pastilles de couleur que l'écran de toutes les magies ». Le dessin des pastilles est le dessin commun (styles/global/pastille.css, couleur : la
+   classe de la magie) ; ici, la mise en page seulement, sur le modèle des Bases (styles/guide/les-bases.css) : à gauche, collé en haut de l'écran,
+   défilant seul s'il dépasse ; sur 56rem ou moins, replié au-dessus de la page. Aucune couleur écrite. */
+main:has(> .magie-cadre) { max-width: calc(var(--max) + 14rem); }
+.magie-cadre {
+  display: grid;
+  grid-template-columns: minmax(10rem, 12rem) minmax(0, 1fr);
+  column-gap: clamp(1rem, 2.5vw, 2rem);
+  align-items: start;
+}
+.magie-cadre > .magie { min-width: 0; }
+.magies-panneau {
+  position: sticky;
+  top: 0;
+  max-height: 100vh;
+  max-height: 100dvh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  /* la place du contour de la pastille marquée (outline-offset), que le défilement couperait */
+  padding: 0.5rem 0.4rem 1.5rem;
+}
+.magies-panneau__resume { display: none; }
+.magies-panneau__toutes {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.4rem;
+  box-sizing: border-box;
+  margin: 0 0 0.75rem;
+  padding: 0.35rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 700;
+  text-decoration: none;
+}
+.magies-panneau__toutes:hover { border-color: var(--accent); color: var(--accent); }
+.magies-panneau__toutes:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.magies-panneau__liste { display: flex; flex-direction: column; gap: 0.5rem; margin: 0; padding: 0; list-style: none; }
+/* la pastille commune, plus petite et alignée à gauche pour une liste ; la magie affichée plus teintée (son contour : pastille.css) */
+.magies-panneau__lien { justify-content: flex-start; min-height: 2.4rem; padding: 0.35rem 0.75rem; font-size: var(--fs-md); text-align: left; }
+.magies-panneau__lien[aria-current='page'] { background: color-mix(in srgb, var(--p) 24%, var(--surface)); transform: none; }
+
+/* Petit écran (<= 56rem, comme les Bases) : le panneau replié au-dessus de la page ; un appui sur son résumé (« Magies » et la magie affichée) l'ouvre,
+   les pastilles sur deux colonnes. Sans JavaScript il reste ouvert (le script de MagiePage.astro ne le replie qu'avec lui). */
+@media (max-width: 56rem) {
+  main:has(> .magie-cadre) { max-width: var(--max); }
+  .magie-cadre { grid-template-columns: minmax(0, 1fr); row-gap: 1rem; }
+  .magies-panneau { position: static; max-height: none; overflow: visible; padding: 0; }
+  .magies-panneau__repli { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+  .magies-panneau__repli[open] { padding-bottom: 0.75rem; }
+  .magies-panneau__resume {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.1rem 0.6rem;
+    min-height: 2.75rem;
+    box-sizing: border-box;
+    padding: 0.6rem 0.85rem;
+    cursor: pointer;
+  }
+  .magies-panneau__resume::-webkit-details-marker { display: none; }
+  .magies-panneau__resume::after {
+    content: '';
+    width: 0.5rem;
+    height: 0.5rem;
+    margin-left: auto;
+    align-self: center;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    rotate: 45deg;
+    translate: 0 -0.15rem;
+  }
+  .magies-panneau__repli[open] > .magies-panneau__resume::after { rotate: -135deg; translate: 0 0.15rem; }
+  .magies-panneau__resume:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .magies-panneau__resume-rubrique { color: var(--muted); font-size: var(--fs-sm); font-weight: 700; }
+  .magies-panneau__resume-page { font-weight: 700; }
+  .magies-panneau__toutes { margin: 0.25rem 0.75rem 0.6rem; min-height: 2.75rem; }
+  .magies-panneau__liste { display: grid; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); padding: 0 0.75rem; }
+  .magies-panneau__lien { min-height: 2.75rem; }
+}
+@media print {
+  .magie-cadre { display: block; }
+}
