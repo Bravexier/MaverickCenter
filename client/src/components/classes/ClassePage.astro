@@ -2,17 +2,19 @@
 import classeBaseCss from '../../styles/classe/base.css?raw';
 import classePageCss from '../../styles/classe/page.css?raw';
 import classeDonsCss from '../../styles/classe/dons.css?raw';
+import classeMenuCss from '../../styles/classe/menu.css?raw';
 import magieTooltipsCss from '../../styles/magie/tooltips.css?raw';
 import type { ClasseDb } from '../../lib/classes';
 import { idBulle, pageHref } from '../../lib/magies';
-import { classeDUneClasse, classeDeMagie, cssDesFamilles } from '../../lib/palette-css.mjs';
-import type { WikiEntry } from '../../lib/wiki';
+import { classeDUneClasse, classeDeCategorie, classeDeMagie, cssDesFamilles } from '../../lib/palette-css.mjs';
+import { groupeDeCouleur, type groupClasses } from '../../lib/class-groups.mjs';
+import { entryHref, url, type WikiEntry } from '../../lib/wiki';
 import Texte from '../magie/Texte.astro';
 import ClasseDons from './ClasseDons.astro';
 import { attributEd } from '../../lib/edition-modele.mjs';
 import { empreinteDeStructure, htmlDuGroupeDeNavigation, htmlDuRepereMagique, lienDesSpecialites } from '../../lib/classe-dons-rendu.mjs';
 
-const classeCss = [classeBaseCss, classePageCss, classeDonsCss, magieTooltipsCss].join('\n');
+const classeCss = [classeBaseCss, classePageCss, classeDonsCss, classeMenuCss, magieTooltipsCss].join('\n');
 
 // Gabarit commun des pages de classe, sur le modèle des pages de magie et de race : bandeau (nom, catégorie du Sommaire, « Don de départ »),
 // présentation et « Chose à savoir », spécialités, équipement de départ, DONS disposés comme l'onglet (choix encadrés), tableau annexe de l'onglet.
@@ -23,9 +25,18 @@ const classeCss = [classeBaseCss, classePageCss, classeDonsCss, magieTooltipsCss
 interface Props {
   entry: WikiEntry;
   classe: ClasseDb;
+  /** les classes rangées comme sur /classes/ (lib/class-groups.mjs#groupClasses) : le menu latéral */
+  groupes: ReturnType<typeof groupClasses>;
   statusNote?: string;
 }
-const { entry, classe, statusNote } = Astro.props;
+const { entry, classe, groupes, statusNote } = Astro.props;
+// Menu latéral (demande du propriétaire : « les 5 types de classes en menu à dérouler avec un seul menu déroulable à la fois […] par défaut le menu
+// ouvert soit celui du type de la classe actuellement ouvert ») : les cinq catégories de /classes/, dans leur ordre et avec leurs classes (Parleur sous
+// « Spéciales » compris), chacune un <details> du même `name` (un seul ouvert à la fois, sans JavaScript dans les navigateurs récents) ; celle de la
+// classe affichée ouverte au build, la classe marquée (aria-current). Sur grand écran, collé à gauche comme le menu des Bases
+// (components/guide/LesBases.astro) ; sur petit écran, un tiroir comme celui de la chronologie (script ci-dessous).
+const groupeCourant = groupeDeCouleur(entry);
+const compte = (g: Props['groupes'][number]) => g.sections.reduce((n, s) => n + s.entries.length, 0);
 
 // couleur de la catégorie de /classes/ (rouge, vert, bleu, violet, jaune), sur toute la page comme celle d'une magie : la classe de sa catégorie
 // (lib/palette-css.mjs, famille `classe`, une famille d'une zone que la page émet), jamais un style
@@ -55,6 +66,134 @@ const edSpe = (id: string, colonne: string) => attributEd('specialite', { id }, 
 
 <style is:inline set:html={classeCss}></style>
 <style is:inline set:html={cssDesFamilles(['classe', 'don'])}></style>
+<script is:inline>
+  document.documentElement.classList.add('js');
+</script>
+<div class="classe-cadre">
+  <nav class="classes-menu" id="classes-menu" aria-label="Classes" data-classes-menu>
+    <div class="classes-menu__entete">
+      <p class="classes-menu__entete-titre">Classes</p>
+      <button type="button" class="classes-menu__fermer" data-classes-fermer>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+        <span class="classes-invisible">Fermer le menu des classes</span>
+      </button>
+    </div>
+    <p class="classes-menu__titre"><a href={url('classes/')}>Classes</a></p>
+    {
+      groupes.map((g) => (
+        <details class={`classes-menu__groupe ${classeDeCategorie(g.key)}`} name="classes-menu" open={g.key === groupeCourant}>
+          <summary class="classes-menu__type">
+            <span class="classes-menu__point" aria-hidden="true" />
+            <span class="classes-menu__nom">{g.label}</span>
+            <span class="classes-menu__compte">{compte(g)}</span>
+          </summary>
+          {g.sections.map((section) => (
+            <>
+              {section.label && <p class="classes-menu__section">{section.label}</p>}
+              <ul class="classes-menu__liste">
+                {section.entries.map((e) => (
+                  <li>
+                    <a class="classes-menu__lien" href={entryHref(e)} aria-current={e.id === entry.id ? 'page' : undefined}>{e.data.title}</a>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ))}
+        </details>
+      ))
+    }
+  </nav>
+  <button type="button" class="classes-ouvrir" aria-controls="classes-menu" aria-expanded="false" data-classes-ouvrir>
+    <span class="classes-ouvrir__poignee" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" /></svg></span>
+    <span class="classes-ouvrir__points" aria-hidden="true">
+      {groupes.map((g) => <span class={`classes-ouvrir__point ${classeDeCategorie(g.key)}${g.key === groupeCourant ? ' est-courant' : ''}`} />)}
+    </span>
+    <span class="classes-invisible">Ouvrir le menu des classes</span>
+  </button>
+  <div class="classes-voile" data-classes-voile hidden />
+  <script is:inline>
+    // Un seul type déroulé à la fois : l'attribut `name` des <details> le fait ; ce relais le fait aussi dans un navigateur qui l'ignore.
+    // Petit écran (<= 56rem), sur le modèle du tiroir de la chronologie (components/chronologie/Chronologie.astro ; réponse du propriétaire : « Sur
+    // mobile on le cachera dans un tiroir comme chronologie ») : le menu réduit à une bande collée au bord gauche de l'écran (la poignée et le point
+    // de chaque type), un appui l'ouvre en grand par-dessus la page (le tiroir), sur la classe affichée ; un appui sur une classe y mène (lien
+    // ordinaire) ; la croix, le voile ou Échap le referment, le focus revient au bouton. Réduit, le menu est inerte (le bouton le remplace au clavier
+    // et pour un lecteur d'écran) ; ouvert, c'est le reste de la page. Retour sur grand écran : le tiroir se ferme. Sans JavaScript, le menu est
+    // au-dessus de la page, tout ouvert.
+    (function () {
+      var cadre = document.querySelector('.classe-cadre');
+      var menu = document.querySelector('[data-classes-menu]');
+      var ouvrir = document.querySelector('[data-classes-ouvrir]');
+      var voile = document.querySelector('[data-classes-voile]');
+      if (!cadre || !menu || !ouvrir) return;
+      menu.addEventListener('toggle', function (ev) {
+        var groupe = ev.target;
+        if (!groupe.open || !groupe.classList.contains('classes-menu__groupe')) return;
+        menu.querySelectorAll('.classes-menu__groupe[open]').forEach(function (d) { if (d !== groupe) d.open = false; });
+      }, true);
+      var actuel = menu.querySelector('[aria-current="page"]');
+      var petit = matchMedia('(max-width: 56rem)');
+      var ouvert = false;
+      var image = 0;
+      // ce que le tiroir rend inerte : cherché à l'ouverture (le pied de page n'est pas encore lu quand ce script tourne)
+      function autour() {
+        return [cadre.querySelector(':scope > .classe'), ouvrir, document.querySelector('.site-header'), document.querySelector('.site-footer'), document.querySelector('.bandeau-test'), document.querySelector('main > p.muted')];
+      }
+      // la place de la bande : du haut du cadre (sous l'en-tête, tant qu'il est visible) ou du haut de l'écran, jusqu'au bas du cadre ou de l'écran
+      function placer() {
+        var c = cadre.getBoundingClientRect();
+        cadre.style.setProperty('--mini-haut', Math.max(c.top, 0) + 'px');
+        cadre.style.setProperty('--mini-bas', Math.max(window.innerHeight - c.bottom, 0) + 'px');
+      }
+      function suivre() {
+        cancelAnimationFrame(image);
+        image = requestAnimationFrame(function () {
+          if (petit.matches && !ouvert) placer();
+        });
+      }
+      function etat() {
+        menu.inert = petit.matches && !ouvert;
+        ouvrir.setAttribute('aria-expanded', String(ouvert));
+        if (petit.matches && !ouvert) placer();
+      }
+      function basculer(oui) {
+        if (oui === ouvert) return;
+        ouvert = oui;
+        menu.classList.toggle('est-ouvert', oui);
+        document.documentElement.classList.toggle('classes-ouvert', oui);
+        if (voile) voile.hidden = !oui;
+        autour().forEach(function (el) { if (el) el.inert = oui; });
+        etat();
+        if (oui) {
+          if (actuel) {
+            actuel.scrollIntoView({ block: 'center' });
+            actuel.focus({ preventScroll: true });
+          }
+        } else if (petit.matches) {
+          ouvrir.focus({ preventScroll: true });
+        }
+      }
+      ouvrir.addEventListener('click', function () { basculer(true); });
+      if (voile) voile.addEventListener('click', function () { basculer(false); });
+      menu.addEventListener('click', function (e) {
+        if (e.target.closest && e.target.closest('[data-classes-fermer]')) basculer(false);
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && ouvert) basculer(false);
+      });
+      petit.addEventListener('change', function () {
+        if (!petit.matches) basculer(false);
+        etat();
+      });
+      addEventListener('scroll', suivre, { passive: true });
+      addEventListener('resize', suivre);
+      // retour arrière vers une page gardée en mémoire (bfcache) : le tiroir fermé
+      window.addEventListener('pageshow', function () {
+        basculer(false);
+        etat();
+      });
+      etat();
+    })();
+  </script>
 <div class={`classe ${couleur}`} data-ed-classe={classe.id} data-ed-structure={empreinteDeStructure(classe)}>
   <header class="classe-hero">
     <p class="classe-hero__surtitre">{classe.categorie?.libelle ?? 'Classe'}</p>
@@ -232,4 +371,5 @@ const edSpe = (id: string, colonne: string) => attributEd('specialite', { id }, 
     <p class="classe-remarque__titre">Remarque</p>
     <div class="classe-remarque__texte" data-ed={ed('remarque')} data-ed-rendu="blocs"><Texte blocs={classe.remarque} /></div>
   </div>
+</div>
 </div>

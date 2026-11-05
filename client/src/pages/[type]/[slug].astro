@@ -9,14 +9,14 @@ import RacePage from '../../components/race/RacePage.astro';
 import ClassePage from '../../components/classes/ClassePage.astro';
 import ChoixDeCapacite from '../../components/classes/ChoixDeCapacite.astro';
 import { TYPES } from '../../lib/types.mjs';
-import { classCategory } from '../../lib/class-groups.mjs';
+import { classCategory, groupClasses } from '../../lib/class-groups.mjs';
 import { isMagicalClass } from '../../lib/classe-magique.mjs';
 import { loadMagies } from '../../lib/magies';
 import { loadRaces } from '../../lib/races';
 import { loadClasses } from '../../lib/classes';
 import { raceKind, raceOfClass } from '../../lib/race-kinds.mjs';
 import { estServieASonId } from '../../lib/metiers.mjs';
-import { entryHref, loadWiki, slugOf, typeOf, url, type WikiEntry } from '../../lib/wiki';
+import { entriesOfType, entryHref, loadWiki, slugOf, typeOf, url, type WikiEntry } from '../../lib/wiki';
 import { attributEd, texteDePageModifiable } from '../../lib/edition-modele.mjs';
 
 export async function getStaticPaths() {
@@ -92,7 +92,7 @@ const texteModifiable = modifiable && pageDeTexte;
     ) : race && races ? (
       <RacePage entry={entry} entries={entries} race={race} races={races} statusNote={statusNote} />
     ) : classe ? (
-      <ClassePage entry={entry} classe={classe} statusNote={statusNote} />
+      <ClassePage entry={entry} classe={classe} groupes={groupClasses(entriesOfType(entries, 'classes'))} statusNote={statusNote} />
     ) : (
       <>
         <h1>

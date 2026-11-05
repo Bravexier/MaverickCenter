@@ -1221,6 +1221,15 @@ pas de source citée ; le Markdown de la page ne sert plus qu'à la recherche et
   physiques de mêlée, vert pour les physiques à distance, bleu pour les magiques, violet pour les raciales (hybrides), jaune pour les spéciales (Parleur compris). Repère visuel sans valeur de règle.
   La page pose la classe de la catégorie (`couleur-classe-<catégorie>`, `palette-css.mjs#classeDUneClasse` : famille `classe`, émise par la page), que
   `styles/classe/base.css` lit en `--cla` ; jamais un style (« Couleurs du site : la palette en classes »).
+- **Menu latéral** (demande du propriétaire : « les 5 types de classes en menu à dérouler avec un seul menu déroulable à la fois », celui de la classe affichée ouvert par défaut) :
+  à gauche de la page, les cinq catégories de `/classes/` dans leur ordre (`lib/class-groups.mjs#groupClasses`, Parleur sous « Spéciales » compris), chacune un `<details>` du même
+  `name` (un seul déroulé à la fois ; un relais en ligne le fait aussi dans un navigateur qui ignore `name`), avec son point de couleur, son nombre de classes et ses classes
+  par nom ; celle de la classe affichée est ouverte au build et la classe marquée (`aria-current`). Mise en page du menu des Bases (`styles/classe/menu.css`, sur le modèle de
+  `styles/guide/les-bases.css`) : collé en haut de l'écran ; caché à l'impression. Sur petit écran (≤ 56rem), un **tiroir sur le modèle de celui de la chronologie** (réponse du
+  propriétaire : « Sur mobile on le cachera dans un tiroir comme chronologie ») : le menu réduit à une bande collée au bord gauche (poignée et point de chaque type, celui de la
+  classe plus gros), un appui l'ouvre par-dessus la page sur la classe affichée (focus sur elle, le reste de la page inerte, voile) ; la croix, le voile ou Échap le referment
+  (focus rendu au bouton) ; retour sur grand écran ou retour arrière (bfcache) : fermé. Sans JavaScript, le menu est au-dessus de la page, tout ouvert.
+  Testé dans `test/classes-html.test.mjs`.
 - **Sections** : présentation et « Chose à savoir », descriptions des spécialités (un article par spécialité qui a des dons, caché tant qu'il n'a ni description ni remarque :
   le mode modification l'ouvre pour le remplir), « Au départ » (maîtrises, arme, armure, inventaire : chaque objet du glossaire a son infobulle, « A OU B »
   est un emplacement à deux options), **Dons**, tableau sans titre de l'onglet (Mage Bleu : une carte par magie).
