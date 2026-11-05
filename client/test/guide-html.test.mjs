@@ -9,7 +9,7 @@
 // Ce test lit le site construit : il ne tourne qu'après `npm run build` (la CI l'exécute juste après) et se saute sinon.
 //   node --test test/guide-html.test.mjs
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -101,8 +101,8 @@ test('le fil d’Ariane : Découvrir pour ses pages, Les bases (sans groupe), R�
     // le badge « Guide » sur les pages de référence seulement (comme avant)
     assert.equal(/<span class="badge">Guide<\/span><\/h1>/.test(main.replace(/\s+<\/h1>/, '</h1>')), !estDansDecouvrirOuLesBases(p.id), `${p.id} : badge`);
   }
-  // une page écrite pour le site a aussi son pied de page : mots-clés et pages liées (ses sources restent dans le frontmatter)
-  assert.match(lire('decouvrir/creer-son-personnage').main, /class="tags"|Cette page mentionne|Mentionnée par/);
+  // une page écrite pour le site a aussi son pied de page : ses mots-clés (ses sources restent dans le frontmatter ; plus de rétroliens)
+  assert.match(lire('decouvrir/creer-son-personnage').main, /class="tags"/);
 });
 
 /** Le menu latéral des Bases d'une page construite : [[adresse, titre, courante]] dans l'ordre, et le HTML du menu. */
@@ -136,7 +136,7 @@ test('Les bases : à gauche le menu latéral des douze pages dans l’ordre (san
     assert.ok(main.indexOf('<nav class="bases-menu"') < main.indexOf('<div class="bases-page">'), `${chemin} : le menu à gauche, la page à droite`);
     assert.match(droite, new RegExp(`<h1 id="guide-titre"><span data-ed="[^"]+">${echappe(page.titre)}</span>\\s*</h1>`), `${chemin} : le titre de la page`);
     assert.match(droite, new RegExp(`<div class="guide-corps" data-ed-corps="${page.id}">`), `${chemin} : le texte de la page`);
-    assert.match(droite, /class="tags"|Cette page mentionne|Mentionnée par/, `${chemin} : son pied de page`);
+    if (db.prepare('SELECT COUNT(*) AS n FROM page_tag WHERE page_id = ?').get(page.id).n > 0) assert.match(droite, /<ul class="tags" aria-label="Mots-clés">/, `${chemin} : son pied de page`);
     // le mode modification du site de dev porte sur la page affichée
     assert.match(html, new RegExp(`<div data-edition data-api="/api/" data-page="${page.id}"`), `${chemin} : le mode modification`);
     // l'accent du site : aucune couleur de partie ni sa feuille (« Accent du site »)
@@ -254,17 +254,15 @@ test('Bienvenue (/decouvrir/) : plus de liens Discord et Tipeee ni d’encart so
   for (const { id } of pagesDeLaRubrique(DECOUVRIR).slice(1)) assert.doesNotMatch(lire(cheminDePage(id)).main, /accueil-liens|data-tipeee|data-annonce/, id);
 });
 
-test('Bienvenue (/decouvrir/) et L’univers : sans rétroliens, les autres pages du guide gardent les leurs (demandes du propriétaire du 2026-11-05)', options, () => {
-  // « Retire cette patie là de la page de bienvenue. », puis « Cette partie de la page "l'univers" est à supprimer. » : le bloc « Cette page
-  // mentionne » / « Mentionnée par » (et son filet, la bordure de .linked-pages)
-  for (const id of ['guide/bienvenue', 'guide/l-univers']) {
-    const { main } = lire(cheminDePage(id));
-    assert.match(main, /<div class="guide-corps"/, id);
-    assert.doesNotMatch(main, /class="linked-pages"|Cette page mentionne|Mentionnée par/, id);
-    // ses mots-clés, s'il en a, restent
+test('Plus aucune page du site n’a de rétroliens (« Cette page mentionne » / « Mentionnée par ») ; les mots-clés restent (demande du propriétaire du 2026-11-05)', options, () => {
+  // « Supprime ces colonnes de toutes les pages. Elles polluent l'affichage pour rien. » : le bloc (et son filet, la bordure de .linked-pages)
+  const walk = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((d) => (d.isDirectory() ? walk(join(dir, d.name)) : d.name.endsWith('.html') ? [join(dir, d.name)] : []));
+  const pages = walk(dist);
+  assert.ok(pages.length > 100, `${pages.length} pages construites`);
+  for (const f of pages) assert.doesNotMatch(readFileSync(f, 'utf8'), /class="linked-pages"|<h2>Cette page mentionne<\/h2>|<h2>Mentionnée par<\/h2>/, f);
+  // une page du guide et une page du wiki gardent leurs mots-clés, s'ils en ont
+  for (const id of ['guide/creer-son-personnage', 'guide/bienvenue', 'races/nain']) {
     const tags = db.prepare('SELECT COUNT(*) AS n FROM page_tag WHERE page_id = ?').get(id).n;
-    if (tags > 0) assert.match(main, /<ul class="tags" aria-label="Mots-clés">/, id);
+    if (tags > 0) assert.match(lire(cheminDePage(id)).main, /<ul class="tags" aria-label="Mots-clés">/, id);
   }
-  // les autres pages de Découvrir gardent les leurs
-  assert.match(lire(cheminDePage('guide/creer-son-personnage')).main, /class="linked-pages"/, 'guide/creer-son-personnage');
 });

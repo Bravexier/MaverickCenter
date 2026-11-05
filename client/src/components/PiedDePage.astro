@@ -1,23 +1,18 @@
 ---
-import EntryList from './EntryList.astro';
-import { loadWiki, url, type WikiEntry } from '../lib/wiki';
+import { url, type WikiEntry } from '../lib/wiki';
 import { ouvrirBase } from '../lib/donnees.mjs';
 import { idDuMotCle } from '../lib/mots-cles-db.mjs';
 import { PARAMETRE_MOT_CLE } from '../lib/recherche-mots-cles.mjs';
 
-// Le pied d'une page du wiki (pages/[type]/[slug].astro, components/guide/PageDuGuide.astro) : ses mots-clés, les pages qu'elle mentionne et celles
-// qui la mentionnent (rétroliens, lib/wiki.ts). Plus de sources : elles ne s'affichent que sur /archives/ (réponse du propriétaire du 2026-10-22 :
-// « Plus de sources ailleurs que dans les archives. On va épurer un peu ce qui est redondant. ») ; `sources:` reste dans le front matter et la base
-// (page_source, source), que les Archives lisent. `retroliens={false}` retire le bloc des rétroliens (et son filet) et garde les mots-clés : Bienvenue
-// et L'univers (lib/livres.mjs#PAGES_SANS_RETROLIENS ; demandes du propriétaire du 2026-11-05).
+// Le pied d'une page du wiki (pages/[type]/[slug].astro, components/guide/PageDuGuide.astro) : ses mots-clés, rien d'autre.
+// Plus de rétroliens (« Cette page mentionne » / « Mentionnée par ») sur aucune page (demande du propriétaire du 2026-11-05 : « Supprime ces colonnes
+// de toutes les pages. Elles polluent l'affichage pour rien. ») ; le graphe des liens (lib/wiki.ts, vue lien_page) n'est plus affiché nulle part.
+// Plus de sources : elles ne s'affichent que sur /archives/ (réponse du propriétaire du 2026-10-22 : « Plus de sources ailleurs que dans les archives.
+// On va épurer un peu ce qui est redondant. ») ; `sources:` reste dans le front matter et la base (page_source, source), que les Archives lisent.
 interface Props {
   entry: WikiEntry;
-  retroliens?: boolean;
 }
-const { entry, retroliens = true } = Astro.props;
-const { outgoing, incoming } = await loadWiki();
-const mentions = outgoing.get(entry.id) ?? [];
-const mentionedBy = incoming.get(entry.id) ?? [];
+const { entry } = Astro.props;
 ---
 
 {
@@ -26,14 +21,5 @@ const mentionedBy = incoming.get(entry.id) ?? [];
     <ul class="tags" aria-label="Mots-clés">
       {entry.data.tags.map((tag) => <li><a class="badge" href={`${url('recherche/')}?${PARAMETRE_MOT_CLE}=${encodeURIComponent(idDuMotCle(ouvrirBase(), tag))}`}>{tag}</a></li>)}
     </ul>
-  )
-}
-
-{
-  retroliens && (mentions.length > 0 || mentionedBy.length > 0) && (
-    <div class="linked-pages">
-      {mentions.length > 0 && (<section><h2>Cette page mentionne</h2><EntryList entries={mentions} /></section>)}
-      {mentionedBy.length > 0 && (<section><h2>Mentionnée par</h2><EntryList entries={mentionedBy} /></section>)}
-    </div>
   )
 }

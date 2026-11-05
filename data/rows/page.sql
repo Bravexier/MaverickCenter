@@ -9602,8 +9602,6 @@ et la page est listée dans « Pages à créer » de l''index.
 
 Un personnage de démonstration est une [[Race d''exemple]] qui suit la [[Classe d''exemple]] et pratique la [[Magie d''exemple]].
 Il peut affronter une [[Créature d''exemple|créature quelconque]].
-
-Chaque page cible affiche automatiquement les pages qui la mentionnent (« Mentionnée par »).
 ', 'example', 'exemple', 'Page de démonstration — à remplacer');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/vitesse-et-portee', 'guide', 'vitesse-et-portee', 'La Vitesse et la Portée', 'la-vitesse-et-la-portee', 'Il existe deux types de vitesse : Vitesse terrestre et Vitesse de nage, qui peut varier selon les races.', NULL, '## La Vitesse
 
