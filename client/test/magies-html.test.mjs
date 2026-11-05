@@ -317,7 +317,8 @@ test('coût (décisions R105, R106) : pas de colonne « Coût secondaire » ; le
 test('panneau d’un sort : un seul cadre « Effets » par sort, les règles d’invocation et l’annexe sont repliées par défaut', options, () => {
   for (const { slug, html } of avecSorts) {
     assert.equal([...html.matchAll(/<h5>Effets<\/h5>/g)].length, 23, `${slug} : 23 cadres « Effets »`);
-    assert.doesNotMatch(html, /<details[^>]*\sopen\b/, `${slug} : un <details> est ouvert par défaut`);
+    // (hors le panneau latéral des magies, ouvert sans JavaScript : test plus bas)
+    assert.doesNotMatch(html, /<details(?![^>]*data-magies-repli)[^>]*\sopen\b/, `${slug} : un <details> est ouvert par défaut`);
   }
   const necro = pages.find((p) => p.slug === 'magie-de-la-necromancie').html;
   assert.match(necro, /<summary>Règles de l’invocation<\/summary>/);
@@ -570,4 +571,31 @@ test('altération d’état liée : un encart après la présentation (et l’ex
   assert.match(texteDe(feu), /^Altération d’état Brûlure Physique Stade 1 Inflige 10% de la santé Max pendant 3 Tours\./);
   const arcane = contenu(page('magie-de-larcane'), page('magie-de-larcane').indexOf('<section class="magie-section" id="alteration"'), 'section');
   assert.match(texteDe(arcane), /^Altération d’état Surcharge Magique Mental Aussi liée à Corruption Stade 1/, 'altération partagée : l’autre magie est nommée');
+});
+
+// Panneau latéral des pages de magie (demande du propriétaire du 2026-11-05) : le bouton « Toutes » vers /magies/, puis une pastille par magie dans
+// l'ordre du classeur, de la couleur de sa magie (la classe de la palette, comme la carte de /magies/), la magie affichée marquée ; ouvert sans JavaScript.
+test('pages de magie : panneau latéral des 15 magies, bouton « Toutes », pastilles de la couleur de chaque magie', options, () => {
+  const magies = [...chargerMagies(ouvrirBase()).magies.values()].sort((a, b) => a.ordre - b.ordre);
+  assert.equal(magies.length, 15);
+  for (const { slug, html } of pages) {
+    const debut = html.indexOf('<nav class="magies-panneau');
+    assert.ok(debut >= 0, `${slug} : panneau latéral`);
+    const nav = contenu(html, debut, 'nav');
+    assert.match(nav, /<details class="magies-panneau__repli" open data-magies-repli>/, `${slug} : ouvert sans JavaScript`);
+    const toutes = nav.match(/<a class="magies-panneau__toutes" href="([^"]+)">Toutes<\/a>/);
+    assert.ok(toutes && /\/magies\/$/.test(toutes[1]), `${slug} : bouton « Toutes » vers /magies/`);
+    const liens = [...nav.matchAll(/<a class="magies-panneau__lien ([^"]+)" href="([^"]+)"( aria-current="page")?>[\s\S]*?<span class="magies-panneau__nom">([^<]+)<\/span>/g)]
+      .map((m) => ({ classe: m[1], href: m[2], courant: Boolean(m[3]), nom: m[4] }));
+    assert.deepEqual(liens.map((l) => l.nom), magies.map((m) => m.nom), `${slug} : toutes les magies, dans l'ordre du classeur`);
+    for (const [i, l] of liens.entries()) {
+      assert.equal(l.classe, classeDeMagie(magies[i].nom), `${slug} : pastille ${l.nom} dans la couleur de sa magie`);
+      assert.ok(l.href.endsWith(`/${magies[i].id}/`), `${slug} : ${l.nom} mène à sa page`);
+    }
+    assert.deepEqual(liens.filter((l) => l.courant).map((l) => l.href.split('/').at(-2)), [slug], `${slug} : seule la magie affichée est marquée`);
+    assert.ok(html.indexOf('<nav class="magies-panneau') < html.indexOf('<div class="magie '), `${slug} : le panneau avant la page`);
+  }
+  // la même pastille que la carte de /magies/ : le dessin commun (styles/global/pastille.css) et la classe de la magie
+  const pastille = readFileSync(new URL('../src/styles/global/pastille.css', import.meta.url), 'utf8');
+  assert.match(pastille, /^\.classe-pastille, \.race-pastille, \.magies-orbite__noeud, \.magies-panneau__lien \{$/m);
 });

@@ -14,7 +14,7 @@ import { racesOfMagie } from '../../lib/magie-relations.mjs';
 import { magiesDuPotentiel, POTENTIEL_ILLIMITE } from '../../lib/potentiel-illimite.mjs';
 import { bulleDeCreature, carteDeCreature, pageHref, type Magies, type MagieDb } from '../../lib/magies';
 import { attributEd } from '../../lib/edition-modele.mjs';
-import type { WikiEntry } from '../../lib/wiki';
+import { url, type WikiEntry } from '../../lib/wiki';
 import CarteInvoquee from '../bestiaire/CarteInvoquee.astro';
 import MagieAffinites from './MagieAffinites.astro';
 import MagieEtats from './MagieEtats.astro';
@@ -77,10 +77,52 @@ const nav = [
   { href: '#sorts', label: 'Sorts', show: groupes.length > 0 || autresMagies.length > 0 },
   { href: '#races-disponibles', label: 'Races', show: aDesRaces },
 ].filter((n) => n.show);
+// Panneau latéral (demande du propriétaire du 2026-11-05 : « un panneau latéral qui liste toutes les magies et un bouton "toutes" qui ramène au menu
+// d'avant. Ce menu latéral aura les mêmes pastilles de couleur que l'écran de toutes les magies. ») : le bouton « Toutes » vers /magies/, puis une
+// pastille par magie de la base (le dessin commun de styles/global/pastille.css, la classe de la magie comme sur la carte : aucune couleur écrite),
+// dans l'ordre du classeur (comme le tableau des relations), la magie affichée marquée (aria-current). Mise en page des Bases (components/guide/LesBases.astro) :
+// à gauche et collé en haut de l'écran ; sur 56rem ou moins, un <details> replié au-dessus de la page, ouvert sans JavaScript (script en ligne, sans import).
+const panneau = [...magies.magies.values()]
+  .filter((m) => entries.some((e) => e.id === m.id))
+  .sort((a, b) => a.ordre - b.ordre)
+  .map((m) => ({ id: m.id, nom: m.nom, href: pageHref(m.id), classe: classeDeMagie(m.nom) }));
 ---
 
 <style is:inline set:html={creatures.length ? `${magieCss}\n${carteCss}` : magieCss}></style>
 <style is:inline set:html={cssDesFamilles(['genre'])}></style>
+<div class="magie-cadre">
+<nav class="magies-panneau no-print" aria-label="Magies">
+  <details class="magies-panneau__repli" open data-magies-repli>
+    <summary class="magies-panneau__resume">
+      <span class="magies-panneau__resume-rubrique">Magies</span>
+      <span class="magies-panneau__resume-page">{magie.nom}</span>
+    </summary>
+    <a class="magies-panneau__toutes" href={url('magies/')}>Toutes</a>
+    <ul class="magies-panneau__liste">
+      {
+        panneau.map((m) => (
+          <li>
+            <a class={`magies-panneau__lien ${m.classe}`} href={m.href} aria-current={m.id === magie.id ? 'page' : undefined}>
+              <span class="magies-panneau__point" aria-hidden="true" />
+              <span class="magies-panneau__nom">{m.nom}</span>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </details>
+</nav>
+<script is:inline>
+  // Petit écran : le panneau replié au premier affichage (la page d'abord), rouvert sur grand écran ; sans JavaScript, ouvert.
+  (function () {
+    var repli = document.querySelector('[data-magies-repli]');
+    if (!repli) return;
+    var petit = matchMedia('(max-width: 56rem)');
+    function regler() { repli.open = !petit.matches; }
+    regler();
+    petit.addEventListener('change', regler);
+  })();
+</script>
 <div class={`magie ${classeDeLaMagie}`}>
   <header class="magie-hero">
     <p class="magie-hero__surtitre">Magie</p>
@@ -174,4 +216,5 @@ const nav = [
   }
 
   {aDesRaces && <RacesDeMagie entry={entry} entries={entries} />}
+</div>
 </div>
