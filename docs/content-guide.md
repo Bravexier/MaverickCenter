@@ -1225,7 +1225,10 @@ pas de source citée ; le Markdown de la page ne sert plus qu'à la recherche et
   à gauche de la page, les cinq catégories de `/classes/` dans leur ordre (`lib/class-groups.mjs#groupClasses`, Parleur sous « Spéciales » compris), chacune un `<details>` du même
   `name` (un seul déroulé à la fois ; un relais en ligne le fait aussi dans un navigateur qui ignore `name`), avec son point de couleur, son nombre de classes et ses classes
   par nom ; celle de la classe affichée est ouverte au build et la classe marquée (`aria-current`). Mise en page du menu des Bases (`styles/classe/menu.css`, sur le modèle de
-  `styles/guide/les-bases.css`) : collé en haut de l'écran ; sur petit écran (≤ 56rem), replié au-dessus de la page (« Classes » et le nom de la classe) ; ouvert sans JavaScript ; caché à l'impression.
+  `styles/guide/les-bases.css`) : collé en haut de l'écran ; caché à l'impression. Sur petit écran (≤ 56rem), un **tiroir sur le modèle de celui de la chronologie** (réponse du
+  propriétaire : « Sur mobile on le cachera dans un tiroir comme chronologie ») : le menu réduit à une bande collée au bord gauche (poignée et point de chaque type, celui de la
+  classe plus gros), un appui l'ouvre par-dessus la page sur la classe affichée (focus sur elle, le reste de la page inerte, voile) ; la croix, le voile ou Échap le referment
+  (focus rendu au bouton) ; retour sur grand écran ou retour arrière (bfcache) : fermé. Sans JavaScript, le menu est au-dessus de la page, tout ouvert.
   Testé dans `test/classes-html.test.mjs`.
 - **Sections** : présentation et « Chose à savoir », descriptions des spécialités (un article par spécialité qui a des dons, caché tant qu'il n'a ni description ni remarque :
   le mode modification l'ouvre pour le remplir), « Au départ » (maîtrises, arme, armure, inventaire : chaque objet du glossaire a son infobulle, « A OU B »

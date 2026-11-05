@@ -25,8 +25,9 @@ main:has(> .classe-cadre) { max-width: calc(var(--max) + 16rem); }
   scrollbar-width: thin;
   padding: 0.5rem 0.2rem 1.5rem 0;
 }
-/* grand écran : le menu toujours ouvert, sans son résumé (celui du téléphone) */
-.classes-menu__resume { display: none; }
+/* grand écran et sans JavaScript : ni en-tête du tiroir, ni bouton, ni voile (ceux du téléphone) */
+.classes-menu__entete, .classes-ouvrir, .classes-voile { display: none; }
+.classes-invisible { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .classes-menu__titre { margin: 0 0 0.5rem; padding-left: 0.85rem; font-size: 1.15rem; font-weight: 700; }
 .classes-menu__titre a { color: var(--text); text-decoration: none; }
 .classes-menu__titre a:hover { color: var(--accent); text-decoration: underline; }
@@ -86,48 +87,117 @@ main:has(> .classe-cadre) { max-width: calc(var(--max) + 16rem); }
   font-weight: 700;
 }
 
-/* ---------- Petit écran (<= 56rem, comme les Bases) : le menu replié au-dessus de la page ----------
-   Un appui sur son résumé (« Classes » et le nom de la classe affichée) l'ouvre. Sans JavaScript, il reste ouvert. */
+/* ---------- Petit écran (<= 56rem) : un tiroir, sur le modèle de celui de la chronologie (styles/chronologie/chronologie.css) ----------
+   Réponse du propriétaire : « Sur mobile on le cachera dans un tiroir comme chronologie ». Le menu réduit à une bande collée au bord gauche de l'écran
+   (la poignée et le point de chaque type, celui de la classe affichée plus gros), un appui l'ouvre en grand par-dessus la page ; la croix, le voile ou
+   Échap le referment (script de ClassePage.astro). Le tiroir demande JavaScript (`html.js`) : sans lui, le menu est au-dessus de la page, tout ouvert. */
 @media (max-width: 56rem) {
   main:has(> .classe-cadre) { max-width: var(--max); }
   .classe-cadre { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'menu' 'page'; row-gap: 1rem; }
   .classes-menu { position: static; max-height: none; overflow: visible; padding: 0; }
-  .classes-menu__repli { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
-  .classes-menu__resume {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0.1rem 0.6rem;
-    min-height: 2.75rem;
-    box-sizing: border-box;
-    padding: 0.6rem 0.85rem;
-    cursor: pointer;
-  }
-  .classes-menu__resume::-webkit-details-marker { display: none; }
-  .classes-menu__resume::after {
-    content: '';
-    width: 0.5rem;
-    height: 0.5rem;
-    margin-left: auto;
-    align-self: center;
-    border-right: 2px solid currentColor;
-    border-bottom: 2px solid currentColor;
-    rotate: 45deg;
-    translate: 0 -0.15rem;
-  }
-  .classes-menu__repli[open] > .classes-menu__resume::after { rotate: -135deg; translate: 0 0.15rem; }
-  .classes-menu__resume:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .classes-menu__resume-rubrique { color: var(--muted); font-size: var(--fs-sm); font-weight: 700; }
-  .classes-menu__resume-page { font-weight: 700; }
-  /* ouvert, le résumé dit déjà la rubrique : pas de second titre ; des entrées d'au moins 44 px à toucher */
-  .classes-menu__titre { display: none; }
-  .classes-menu__groupe:first-of-type { border-top: 1px solid var(--border); }
-  .classes-menu__groupe:last-of-type { border-bottom: 0; }
   .classes-menu__type { min-height: 2.75rem; }
   .classes-menu__lien { display: flex; align-items: center; min-height: 2.75rem; box-sizing: border-box; }
+
+  /* avec JavaScript : la bande à gauche (la première colonne de la grille lui garde la place), collée au bord de l'écran, la page à côté */
+  html.js .classe-cadre {
+    grid-template-columns: 2.25rem minmax(0, 1fr);
+    grid-template-areas: 'menu page';
+    column-gap: 0.85rem;
+    margin-left: -1rem;
+    padding-left: env(safe-area-inset-left);
+  }
+  /* la bande et le bouton posé dessus : fixés au bord gauche de l'écran, du haut du cadre (sous l'en-tête, tant qu'il est visible) jusqu'au bas du
+     cadre ou de l'écran (--mini-haut, --mini-bas : le script de ClassePage.astro, à chaque défilement) */
+  html.js .classe-cadre :is(.classes-menu, .classes-ouvrir) {
+    position: fixed;
+    top: var(--mini-haut, 0px);
+    bottom: var(--mini-bas, 0px);
+    left: env(safe-area-inset-left, 0px);
+    width: 2.25rem;
+    height: auto;
+    max-height: none;
+  }
+  html.js .classe-cadre .classes-menu:not(.est-ouvert) {
+    z-index: 1;
+    overflow: hidden;
+    border-right: 1px solid var(--border);
+    background: color-mix(in srgb, var(--accent) 7%, var(--bg));
+  }
+  html.js .classe-cadre .classes-menu:not(.est-ouvert) > * { display: none; }
+  /* le bouton qui couvre la bande : la poignée en haut, puis le point de chaque type */
+  html.js .classe-cadre .classes-ouvrir {
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.9rem;
+    margin: 0;
+    padding: 0.55rem 0 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    color: var(--text);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  html.js .classe-cadre .classes-ouvrir:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+  .classes-ouvrir__poignee {
+    display: grid;
+    place-items: center;
+    width: 1.85rem;
+    height: 1.85rem;
+    border: 1.5px solid var(--border);
+    border-radius: 50%;
+    background: var(--surface);
+    box-shadow: var(--ombre-poignee);
+  }
+  .classes-ouvrir__poignee svg { width: 1.05rem; height: 1.05rem; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+  .classes-ouvrir__points { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; }
+  .classes-ouvrir__point { width: 0.55rem; height: 0.55rem; border-radius: 50%; background: var(--couleur, var(--muted)); }
+  .classes-ouvrir__point.est-courant { width: 0.85rem; height: 0.85rem; box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--couleur, var(--muted)); }
+
+  /* ---------- Le tiroir : le menu en grand, par-dessus la page ; son en-tête (titre, croix) reste en haut, la liste défile ---------- */
+  html.js .classe-cadre .classes-menu.est-ouvert {
+    position: fixed;
+    z-index: 41;
+    inset: 0 auto 0 0;
+    width: min(24rem, calc(100vw - 3.25rem));
+    padding: 0 0.25rem calc(1.5rem + env(safe-area-inset-bottom)) env(safe-area-inset-left);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border-right: 1px solid var(--border);
+    background: var(--bg);
+    box-shadow: var(--ombre-tiroir);
+    animation: classes-tiroir 0.22s ease-out;
+  }
+  @keyframes classes-tiroir { from { clip-path: inset(0 calc(100% - 2.25rem) 0 0); } to { clip-path: inset(0); } }
+  html.js .classes-menu.est-ouvert .classes-menu__entete {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0 0.35rem 0.85rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+  html.js .classes-menu.est-ouvert .classes-menu__titre { display: none; }
+  .classes-menu__entete-titre { flex: 1; margin: 0; font-size: 1.15rem; font-weight: 700; }
+  .classes-menu__fermer { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--text); cursor: pointer; }
+  .classes-menu__fermer:hover, .classes-menu__fermer:focus-visible { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .classes-menu__fermer:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .classes-menu__fermer svg { width: 1.3rem; height: 1.3rem; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
+  /* le voile sur le reste de l'écran : un appui ferme le tiroir */
+  html.js .classes-voile:not([hidden]) { position: fixed; z-index: 40; inset: 0; display: block; background: var(--voile-tiroir); animation: classes-voile 0.22s ease-out; }
+  @keyframes classes-voile { from { opacity: 0; } }
+  html.classes-ouvert { overflow: hidden; }
+}
+@media (max-width: 56rem) and (prefers-reduced-motion: reduce) {
+  html.js .classe-cadre .classes-menu.est-ouvert, html.js .classes-voile:not([hidden]) { animation: none; }
 }
 
 @media print {
-  .classes-menu { display: none; }
+  .classes-menu, .classes-ouvrir, .classes-voile { display: none !important; }
   .classe-cadre { display: block; }
 }

@@ -237,14 +237,20 @@ test('menu latéral d’une classe : les cinq catégories de /classes/ à dérou
   const ordre = ['melee', 'distance', 'magiques', 'raciales', 'speciales'];
   const menuDe = (html) => {
     const m = main(html);
-    const debut = m.indexOf('<nav class="classes-menu" aria-label="Classes">');
+    const debut = m.indexOf('<nav class="classes-menu"');
     return { m, debut, menu: debut < 0 ? '' : m.slice(debut, m.indexOf('</nav>', debut)) };
   };
   for (const { slug, html } of pages) {
     const { m, debut, menu } = menuDe(html);
     assert.ok(debut >= 0, `${slug} : menu latéral`);
     assert.ok(debut < m.indexOf('<div class="classe couleur-classe-'), `${slug} : le menu à gauche, la page à droite`);
-    assert.match(menu, /<details class="classes-menu__repli" open data-classes-repli>/, `${slug} : ouvert sans JavaScript`);
+    // téléphone : un tiroir comme celui de la chronologie (réponse du propriétaire : « Sur mobile on le cachera dans un tiroir comme chronologie ») :
+    // l'en-tête et sa croix, le bouton de la bande qui l'ouvre (fermé au build), le voile caché
+    assert.ok(menu.startsWith('<nav class="classes-menu" id="classes-menu" aria-label="Classes" data-classes-menu>'), `${slug} : le menu et l'id du tiroir`);
+    assert.match(menu, /<div class="classes-menu__entete">[\s\S]*?data-classes-fermer/, `${slug} : en-tête du tiroir et sa croix`);
+    assert.match(m, /<button type="button" class="classes-ouvrir" aria-controls="classes-menu" aria-expanded="false" data-classes-ouvrir>/, `${slug} : le bouton de la bande`);
+    assert.match(m, /<div class="classes-voile" data-classes-voile hidden><\/div>/, `${slug} : le voile du tiroir`);
+    assert.equal(compte(m.slice(m.indexOf('class="classes-ouvrir__points"')), /class="classes-ouvrir__point couleur-classe-[a-z]+( est-courant)?"/g), 5, `${slug} : un point par type sur la bande`);
     // cinq <details> du même `name` (un seul ouvert à la fois), dans l'ordre et la couleur des colonnes de /classes/ ; un seul ouvert au build
     const groupes = [...menu.matchAll(/<details class="classes-menu__groupe couleur-classe-([a-z]+)" name="classes-menu"( open)?>/g)];
     assert.deepEqual(groupes.map(([, cle]) => cle), ordre, `${slug} : les cinq catégories`);
@@ -261,4 +267,20 @@ test('menu latéral d’une classe : les cinq catégories de /classes/ à dérou
   }
   assert.match(menuDe(page('parleur')).menu, /couleur-classe-speciales" name="classes-menu" open>/, 'le Parleur : « Spéciales » ouvert');
   assert.match(menuDe(page('kitsune')).menu, /couleur-classe-raciales" name="classes-menu" open>/);
+});
+
+test('menu latéral d’une classe, téléphone : la feuille du tiroir (bande fixée à gauche, tiroir par-dessus la page depuis la gauche, voile)', options, () => {
+  const css = readFileSync(fileURLToPath(new URL('../src/styles/classe/menu.css', import.meta.url)), 'utf8');
+  const telephone = css.slice(css.indexOf('@media (max-width: 56rem) {'), css.indexOf('@media (max-width: 56rem) and (prefers-reduced-motion'));
+  const regleTel = (selecteur) => {
+    const i = telephone.indexOf(`\n  ${selecteur} {`);
+    assert.ok(i >= 0, `règle du téléphone ${selecteur}`);
+    return telephone.slice(i, telephone.indexOf('}', i));
+  };
+  assert.match(regleTel('html.js .classe-cadre'), /grid-template-columns: 2\.25rem minmax\(0, 1fr\);/, 'la bande à gauche, la page à côté');
+  assert.match(regleTel('html.js .classe-cadre :is(.classes-menu, .classes-ouvrir)'), /position: fixed;[\s\S]*top: var\(--mini-haut[\s\S]*bottom: var\(--mini-bas/, 'la bande reste à l’écran pendant la lecture');
+  assert.match(regleTel('html.js .classe-cadre .classes-menu.est-ouvert'), /position: fixed;[\s\S]*inset: 0 auto 0 0;/, 'le tiroir, par-dessus la page, depuis la gauche');
+  assert.match(regleTel('html.js .classes-voile:not([hidden])'), /position: fixed;[\s\S]*background: var\(--voile-tiroir\)/, 'le voile');
+  // la page construite charge cette feuille
+  assert.ok(page('guerrier').includes('.classes-menu.est-ouvert'), 'la feuille du menu dans la page');
 });
