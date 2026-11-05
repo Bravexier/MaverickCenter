@@ -200,11 +200,23 @@ test('Découvrir : une page par entrée du menu, dans l’ordre ; « Rejoindre u
 });
 
 test('Bienvenue (/decouvrir/) : plus de liens Discord et Tipeee ni d’encart sous son texte (sur l’accueil depuis le 2026-10-23 : test/accueil-html.test.mjs)', options, () => {
-  // « Ces 3 blocs auraient plus leur place dans l'onglet d'acceuil. » : la page garde son texte, ses mots-clés, ses rétroliens et son mode modification
+  // « Ces 3 blocs auraient plus leur place dans l'onglet d'acceuil. » : la page garde son texte, ses mots-clés et son mode modification (ses rétroliens : test suivant)
   const { html, main } = lire('decouvrir');
   assert.match(main, /<div class="guide-corps"/);
   assert.doesNotMatch(main, /accueil-liens|bienvenue-liens|data-tipeee|data-annonce|id="(?:lien-discord|lien-tipeee|prochaine-rencontre)"/);
   assert.match(html, /<div data-edition data-api="\/api\/" data-page="guide\/bienvenue"/, 'le texte reste modifiable sur le site de dev');
   // sur les autres pages de Découvrir non plus
   for (const { id } of pagesDeLaRubrique(DECOUVRIR).slice(1)) assert.doesNotMatch(lire(cheminDePage(id)).main, /accueil-liens|data-tipeee|data-annonce/, id);
+});
+
+test('Bienvenue (/decouvrir/) : sans rétroliens, les autres pages du guide gardent les leurs (demande du propriétaire du 2026-11-05)', options, () => {
+  // « Retire cette patie là de la page de bienvenue. » : le bloc « Cette page mentionne » / « Mentionnée par » (et son filet, la bordure de .linked-pages)
+  const { main } = lire('decouvrir');
+  assert.match(main, /<div class="guide-corps"/);
+  assert.doesNotMatch(main, /class="linked-pages"|Cette page mentionne|Mentionnée par/);
+  // ses mots-clés, s'il en a, restent
+  const tags = db.prepare("SELECT COUNT(*) AS n FROM page_tag WHERE page_id = 'guide/bienvenue'").get().n;
+  if (tags > 0) assert.match(main, /<ul class="tags" aria-label="Mots-clés">/);
+  // L'univers (Découvrir) garde les siens
+  assert.match(lire(cheminDePage('guide/l-univers')).main, /class="linked-pages"/, 'guide/l-univers');
 });
