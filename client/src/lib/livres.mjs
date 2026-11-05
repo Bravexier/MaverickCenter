@@ -92,9 +92,10 @@ export const RUBRIQUES_SOUS_LA_PAGE = Object.freeze({ 'guide/l-univers': Object.
 
 /**
  * Pages du guide rendues sans le bloc des rétroliens (« Cette page mentionne » / « Mentionnée par », components/PiedDePage.astro) ; leurs mots-clés
- * restent. Bienvenue : demande du propriétaire du 2026-11-05, « Retire cette patie là de la page de bienvenue. » (les autres pages gardent le leur).
+ * restent. Bienvenue : demande du propriétaire du 2026-11-05, « Retire cette patie là de la page de bienvenue. » ; L'univers : demande du
+ * propriétaire du 2026-11-05, « Cette partie de la page "l'univers" est à supprimer. » (les autres pages gardent le leur).
  */
-export const PAGES_SANS_RETROLIENS = Object.freeze(['guide/bienvenue']);
+export const PAGES_SANS_RETROLIENS = Object.freeze(['guide/bienvenue', 'guide/l-univers']);
 
 /**
  * Les Règles avancées : un sommaire en groupes (titre et résumé de chaque page), chaque groupe avec son ancre (`id`). Un groupe nomme ses pages

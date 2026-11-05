@@ -209,14 +209,17 @@ test('Bienvenue (/decouvrir/) : plus de liens Discord et Tipeee ni d’encart so
   for (const { id } of pagesDeLaRubrique(DECOUVRIR).slice(1)) assert.doesNotMatch(lire(cheminDePage(id)).main, /accueil-liens|data-tipeee|data-annonce/, id);
 });
 
-test('Bienvenue (/decouvrir/) : sans rétroliens, les autres pages du guide gardent les leurs (demande du propriétaire du 2026-11-05)', options, () => {
-  // « Retire cette patie là de la page de bienvenue. » : le bloc « Cette page mentionne » / « Mentionnée par » (et son filet, la bordure de .linked-pages)
-  const { main } = lire('decouvrir');
-  assert.match(main, /<div class="guide-corps"/);
-  assert.doesNotMatch(main, /class="linked-pages"|Cette page mentionne|Mentionnée par/);
-  // ses mots-clés, s'il en a, restent
-  const tags = db.prepare("SELECT COUNT(*) AS n FROM page_tag WHERE page_id = 'guide/bienvenue'").get().n;
-  if (tags > 0) assert.match(main, /<ul class="tags" aria-label="Mots-clés">/);
-  // L'univers (Découvrir) garde les siens
-  assert.match(lire(cheminDePage('guide/l-univers')).main, /class="linked-pages"/, 'guide/l-univers');
+test('Bienvenue (/decouvrir/) et L’univers : sans rétroliens, les autres pages du guide gardent les leurs (demandes du propriétaire du 2026-11-05)', options, () => {
+  // « Retire cette patie là de la page de bienvenue. », puis « Cette partie de la page "l'univers" est à supprimer. » : le bloc « Cette page
+  // mentionne » / « Mentionnée par » (et son filet, la bordure de .linked-pages)
+  for (const id of ['guide/bienvenue', 'guide/l-univers']) {
+    const { main } = lire(cheminDePage(id));
+    assert.match(main, /<div class="guide-corps"/, id);
+    assert.doesNotMatch(main, /class="linked-pages"|Cette page mentionne|Mentionnée par/, id);
+    // ses mots-clés, s'il en a, restent
+    const tags = db.prepare('SELECT COUNT(*) AS n FROM page_tag WHERE page_id = ?').get(id).n;
+    if (tags > 0) assert.match(main, /<ul class="tags" aria-label="Mots-clés">/, id);
+  }
+  // les autres pages de Découvrir gardent les leurs
+  assert.match(lire(cheminDePage('guide/creer-son-personnage')).main, /class="linked-pages"/, 'guide/creer-son-personnage');
 });

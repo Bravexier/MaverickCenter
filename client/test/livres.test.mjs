@@ -202,8 +202,9 @@ test('les pages nommées par le plan : « Par où commencer ? », L’univers et
   assert.deepEqual(PAR_OU_COMMENCER, pagesDeLaRubrique(DECOUVRIR).map((p) => p.id), 'les quatre pages de Découvrir');
   assert.deepEqual(RUBRIQUES_SOUS_LA_PAGE, { 'guide/l-univers': ['races', 'magies', 'classes'] });
   assert.deepEqual(RUBRIQUES_SOUS_LA_PAGE['guide/l-univers'].map((k) => TYPES[k].label), ['Races', 'Magies', 'Classes']);
-  // demande du propriétaire du 2026-11-05 : « Retire cette patie là de la page de bienvenue. » (les rétroliens) ; Bienvenue seule
-  assert.deepEqual(PAGES_SANS_RETROLIENS, ['guide/bienvenue']);
+  // demandes du propriétaire du 2026-11-05 (les rétroliens) : « Retire cette patie là de la page de bienvenue. », puis « Cette partie de la page
+  // "l'univers" est à supprimer. » ; ces deux pages seules
+  assert.deepEqual(PAGES_SANS_RETROLIENS, ['guide/bienvenue', 'guide/l-univers']);
   assert.deepEqual(ARTISANAT.pages, ['ressources/composants', 'ressources/alchimie', 'ressources/alchimie-primitive', 'ressources/alchimie-liste-ingredients', 'metiers/regles-des-metiers']);
   const existe = db.prepare('SELECT 1 FROM page WHERE id = ?');
   for (const id of ARTISANAT.pages.slice(1)) assert.ok(existe.get(id), `${id} : page absente`);
