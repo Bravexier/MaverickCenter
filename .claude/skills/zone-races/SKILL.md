@@ -9,6 +9,7 @@ user-invocable: false
 ## Fichiers
 - Lecture de la base : `client/src/lib/races-db.mjs`, `lib/races.ts`.
 - Gabarit : `components/race/RacePage.astro`, `RaceRelations.astro` ; CSS `client/src/styles/race/`.
+- Menu latéral de toutes les races : `components/race/MenuDesRaces.astro`, posé par `pages/[type]/[slug].astro` autour de la page (prop `actif`) ; feuille `styles/guide/les-bases.css`, partagée avec le menu des Bases (skill `zone-guide`).
 - Relations entre peuples : `lib/race-relations.mjs`.
 - Pures ou hybrides, ordre et couleurs : `lib/race-kinds.mjs` (`ORDRE_DES_RACES`, `RACE_COLORS`, `HYBRIDES_SANS_CLASSE_RACIALE`).
 - Liste `/races/` : `components/race/RacesPastilles.astro`, `styles/race/liste.css` ; tableau des magies innées : `components/magie/TableauMagiesInnees.astro`.
@@ -25,7 +26,7 @@ user-invocable: false
 - Magies innées : la matrice de la fiche (R8), sauf `race_magie_onglet` qui prime (R11).
 - Relations : la case (ligne A, colonne B) de « Relation entre les races » dit comment A voit B (R12, vue `v_regard_peuple`).
 - `lib/race-relations.mjs` ne regroupe jamais deux peuples dont les relations diffèrent (Elfe Noir Charbon / Salé).
-- Le CSS est dans `client/src/styles/race/`, inséré par `RacePage.astro` en `?raw` seulement, comme celui des magies.
+- Le CSS est dans `client/src/styles/race/`, inséré par `RacePage.astro` en `?raw` seulement, comme celui des magies. Seule exception : `MenuDesRaces.astro` insère `styles/guide/les-bases.css` en `?raw` (classes `bases-*`, `.bases-menu__groupe` pour les titres de groupe) ; un changement de cette feuille change aussi le menu des Bases.
 - Les champs structurés des pages (`magies_innees`, `nom_court`, `resiste_a`, `vulnerable_a`, `incompatible_avec`) sont posés par `tools/sheets/races.py` et `magies.py` et déclarés dans `client/src/content.config.ts` : un champ non déclaré est supprimé par Astro.
 - Exception explicite : la liste du Nain vient de l'onglet « Nain » de « Les races » (`RACE_DETAIL_OVERRIDES` dans `races.py`), pas de la matrice.
 - Hybride = a une classe raciale, plus le Drassah'thac (décision R14). Distinction races pures / hybrides : `lib/magie-relations.mjs`, `lib/race-kinds.mjs`.
@@ -34,9 +35,10 @@ user-invocable: false
 ## Choix du propriétaire
 - Sur la page : ni écarts avec la fiche V15.2.2, ni sous-races ou valeurs de la fiche, ni sources, ni liste des classes accessibles ; seule la classe raciale d'une race hybride, dans le bandeau.
 - Liste `/races/` dans l'ordre du propriétaire (`ORDRE_DES_RACES`), pures et hybrides côte à côte, une pastille par race comme les classes (`RacesPastilles.astro`, `styles/race/liste.css`), accroche en infobulle, ni magies ni classe raciale.
+- Menu latéral de toutes les races sur chaque page de race dont la base a les lignes (demande du propriétaire : « Je veux comme pour chronologie, et les bases, un menu latéral qui récapitule toutes les races sur le menu d'une race ouverte. ») : modèle des Bases (mêmes classes, même feuille, replié sur 56rem ou moins, ouvert sans JavaScript), pures puis hybrides sous leur titre dans l'ordre du propriétaire (`groupRaces`), race ouverte en `aria-current="page"`, accent du site (pas la couleur de la nature).
 - Le site tire des champs structurés les liens et deux tableaux : magies innées en bas de `/races/`, relations sous la carte de `/magies/` (skill `zone-magies`). Magies dans l'ordre du classeur et dans leur couleur, sans défilement horizontal (`styles/magie/tableaux.css`). L'ancienne page `/wiki/races-et-magies/` est supprimée.
 - Couleur d'une magie (pastilles des magies innées d'une race, et leur éditeur `scripts/edition/races.mjs` ; colonnes, en-têtes et pastilles du tableau des magies innées) : la classe de la magie (`couleur-magie-<id>`, `lib/palette-css.mjs`, skill `ui-couleurs`), jamais un style ; `styles/race/page.css` (`.race-magie`) lit `--couleur`. La couleur de la race : sa classe (ci-dessus). Restent écrits, pour un lot à venir : l'échelle des relations entre les peuples (`--regard-evitee` de `race/base.css`) et les voiles blancs translucides de la bannière ; son texte blanc est le jeton `--texte-sur-fonce`, le noir de ses dérivées `--fond-banniere`.
 
 ## Tests
-- `client/test/races-html.test.mjs` : site construit (CI après le build).
+- `client/test/races-html.test.mjs` : site construit (CI après le build), dont le menu latéral.
 - `races-onglet.test.mjs` (`races_onglet.py --verifier`), `race-relations.test.mjs`, `race-kinds.test.mjs`, `races-magies-content.test.mjs`, `races-magies-innees-liste.test.mjs`, `races-detail-content.test.mjs`, `corps-races.test.mjs`.
