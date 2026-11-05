@@ -1,8 +1,8 @@
 // L'accueil CONSTRUIT (client/dist/index.html) : sous la bienvenue et le carrousel, avant « Par où commencer ? », le serveur Discord, la page Tipeee (le
 // texte de l'instantané) et l'encart « Notre prochaine rencontre IRL » (components/accueil/LiensEtRencontre.astro, lib/livres.mjs#LIENS_ET_RENCONTRE ;
 // demandes du propriétaire du 2026-10-23 : « Ces 3 blocs auraient plus leur place dans l'onglet d'acceuil. », puis « Sous la bienvenue et le carrousel » ;
-// avant, sous le texte de Bienvenue, et d'abord sur la page Liens). Leurs ancres sont figées : les liens écrits dans Bienvenue et Rejoindre une partie y
-// mènent. Bienvenue ne les a plus : test/guide-html.test.mjs.
+// avant, sous le texte de Bienvenue, et d'abord sur la page Liens). Leurs ancres sont figées : un lien écrit dans une page (Bienvenue) y
+// mène. Bienvenue ne les a plus : test/guide-html.test.mjs.
 // Ce test lit le site construit : il ne tourne qu'après `npm run build` (la CI l'exécute juste après) et se saute sinon.
 //   node --test test/accueil-html.test.mjs
 import assert from 'node:assert/strict';

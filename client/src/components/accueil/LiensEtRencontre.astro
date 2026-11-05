@@ -23,8 +23,8 @@ import { url } from '../../lib/wiki';
 //     service injoignable), l'instantané reste. Un retour à la ligne de Tipeee (« \n » d'un paragraphe) reste un retour à la ligne (white-space: pre-line).
 //   - L'encart : sur le site de dev, l'annonce se modifie en place en mode modification (src/scripts/edition/annonces.mjs ; l'accueil propose le mode
 //     modification, `edition` de layouts/Base.astro), et part en production avec la mise à jour.
-// Les ancres (lien-discord, lien-tipeee, prochaine-rencontre) sont celles de l'ancienne page Liens, figées : les liens écrits dans Bienvenue et
-// Rejoindre une partie y mènent (« /#lien-discord », « /#prochaine-rencontre »). L'ancienne adresse /decouvrir/liens/ n'est plus renvoyée nulle part
+// Les ancres (lien-discord, lien-tipeee, prochaine-rencontre) sont celles de l'ancienne page Liens, figées : un lien écrit dans une page y mène
+// (« /#lien-discord », « /#prochaine-rencontre »). L'ancienne adresse /decouvrir/liens/ n'est plus renvoyée nulle part
 // (réponse du propriétaire du 2026-10-23 : « supprimer ce lien »).
 const CONTEXTE = LIENS_ET_RENCONTRE.page; // le nom de la page dans les avertissements des [[liens]] cassés
 const portable = process.env.INLINE_CSS === '1';

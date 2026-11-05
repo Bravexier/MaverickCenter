@@ -114,7 +114,7 @@ const pagesDuGuide = readdirSync(dossier)
     return { id: `guide/${f.slice(0, -3)}`, data, body };
   });
 
-test('le guide du site : chaque page de Découvrir et des Bases a un résumé (cartes de l’accueil, sommaire des Bases), chaque bloc est appelé une fois, les blocs sont connus', () => {
+test('le guide du site : chaque page de Découvrir et des Bases a un résumé (cartes de l’accueil, description de la page), chaque bloc est appelé une fois, les blocs sont connus', () => {
   const parId = new Map(pagesDuGuide.map((p) => [p.id, p]));
   for (const rubrique of RUBRIQUES_DU_GUIDE) {
     for (const { id } of pagesDeLaRubrique(rubrique)) {

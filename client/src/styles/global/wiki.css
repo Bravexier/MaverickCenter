@@ -12,7 +12,3 @@ main a { overflow-wrap: anywhere; } /* les URLs de la section « Sources » ne d
    `--couleur`, mêlée à 26 % à la surface sous le texte du site : lisible en clair comme en sombre (test/palette-css.test.mjs). Attribut doublé : passe
    devant le fond des en-têtes de tableau des gabarits (guide). */
 :is(td, th)[class*='couleur-case-'][class*='couleur-case-'] { background: color-mix(in srgb, var(--couleur) 26%, var(--surface)); }
-/* Un groupe d'un sommaire dans la couleur de son groupe du plan (components/guide/Sommaire.astro : le sommaire des Bases, lib/livres.mjs#LES_BASES) :
-   --sommaire-couleur tiré de la classe de sa partie (`.couleur-partie-…`, lib/palette-css.mjs#classeDePartie), posée sur le groupe ; jamais un style. */
-.sommaire[class*='couleur-partie-'] { --sommaire-couleur: var(--couleur); }
-.sommaire--couleur > h2 { padding-left: 0.6rem; border-left: 4px solid var(--sommaire-couleur); }

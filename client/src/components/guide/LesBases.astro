@@ -1,0 +1,60 @@
+---
+import lesBasesCss from '../../styles/guide/les-bases.css?raw';
+import PageDuGuide from './PageDuGuide.astro';
+import { LES_BASES, pagesDesBases } from '../../lib/livres.mjs';
+import { entryHref, url, type WikiEntry } from '../../lib/wiki';
+
+// Les bases (/regles/ et /regles/<slug>/), sur le modèle de la chronologie (demande du propriétaire du 2026-11-05 : « Au lieu de lister les
+// différentes pages, réécrit directement le contenu. […] Inutile de séparer les catégories les Jouer / Progresser / Pour aller plus loin. Pour la
+// présation je préfèrera un menu latéral sous le même modèle que la chronologie. » ; réponse « Comme la chronologie (Recommandé) ») : à gauche, en
+// vertical, le menu des douze pages (leurs titres, dans l'ordre de lib/livres.mjs#LES_BASES, sans groupes ; l'entrée affichée marquée,
+// aria-current) ; à droite, le texte de la page choisie (PageDuGuide : fil d'Ariane, titre, texte et blocs tirés de la base, pied de page). Chaque
+// page garde son adresse : le menu fait des liens ordinaires, tout se lit sans JavaScript. Pas de couleur de partie : l'accent du site (réponse du
+// propriétaire : « Accent du site »). De la chronologie, la mise en page et le comportement seulement : ni barre en dégradé, ni dates, ni chevrons.
+// Petit écran (<= 56rem, comme la chronologie) : le menu replié au-dessus de la page (un <details> : « Les bases » et le titre affiché), un appui
+// l'ouvre. Sans JavaScript il reste ouvert (attribut `open` du build) ; le script en ligne qui le suit le replie sur petit écran et le rouvre sur
+// grand écran (il n'importe rien : aucun module partagé entre scripts de page, skill site-version-portable).
+interface Props {
+  entry: WikiEntry;
+  entries: WikiEntry[];
+  modifiable: boolean;
+}
+const { entry, entries, modifiable } = Astro.props;
+const pages = pagesDesBases(entries);
+---
+
+<style is:inline set:html={lesBasesCss}></style>
+<div class="bases">
+  <nav class="bases-menu" aria-label={LES_BASES.titre}>
+    <details class="bases-menu__repli" open data-bases-repli>
+      <summary class="bases-menu__resume">
+        <span class="bases-menu__resume-rubrique">{LES_BASES.titre}</span>
+        <span class="bases-menu__resume-page">{entry.data.title}</span>
+      </summary>
+      <p class="bases-menu__titre"><a href={url(LES_BASES.chemin)}>{LES_BASES.titre}</a></p>
+      <ol class="bases-menu__liste">
+        {
+          pages.map((p) => (
+            <li>
+              <a class="bases-menu__lien" href={entryHref(p)} aria-current={p.id === entry.id ? 'page' : undefined}>{p.data.title}</a>
+            </li>
+          ))
+        }
+      </ol>
+    </details>
+  </nav>
+  <script is:inline>
+    // Petit écran : le menu replié au premier affichage (la page d'abord), rouvert sur grand écran (une tablette tournée) ; sans JavaScript, ouvert.
+    (function () {
+      var repli = document.querySelector('[data-bases-repli]');
+      if (!repli) return;
+      var petit = matchMedia('(max-width: 56rem)');
+      function regler() { repli.open = !petit.matches; }
+      regler();
+      petit.addEventListener('change', regler);
+    })();
+  </script>
+  <div class="bases-page">
+    <PageDuGuide entry={entry} entries={entries} modifiable={modifiable} />
+  </div>
+</div>

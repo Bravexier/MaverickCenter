@@ -19,4 +19,5 @@ Les fichiers `client/src/content/wiki/<type>/<slug>.md` sont **fabriqués** depu
 - **Pages créées par un importeur.** Les familles autres que `docs` et `exemple` voient leurs pages créées par leur importeur.
 - **Mots-clés.** Un import ne crée jamais de mot-clé : une écriture inconnue n'est pas posée, et `db:sync-pages` la signale (`zone-mots-cles`).
 - **Maillage automatique.** `npm run autolink -- --write` modifie les `.md` fabriqués : le faire suivre de `db:sync-pages`.
+- **Page retirée.** `db:sync-pages` retire aussi ses lignes d'import (`page_source`) sans écrire dans `historique_modification` : `lignesDImport('page_source')` en compte moins. Un test qui compte des renvois d'import (`test/sources-copies.test.mjs`) devient rouge : mettre son nombre à jour, avec un commentaire daté.
 - **Texte copié.** Le Codex, les citations « telles quelles » et les extraits de la chronologie ne se réécrivent pas (`verifier-une-source`).

@@ -145,8 +145,8 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   `cssDesSecondsRangs` : le bloc `postures` du guide, `pages/fiche/index.astro` (`FAMILLES_DE_LA_FICHE` : celles d'une zone, sans les matériaux, les
   armes de départ, les types d'armure ni les niveaux des accessoires), l'onglet Armes (seconds rangs des caractéristiques, `materiau`, `arme`), `ArmuresPage.astro` (`armure`,
   `poids`), `AccessoiresPage.astro` (`niveau`), `ComposantsPage.astro` (`materiau`), `ClassesPastilles.astro` et `ClassePage.astro` (`classe`),
-  `RacesPastilles.astro` et `RacePage.astro` (`race`), `PageDuGuide.astro` (une page de Découvrir ou des Bases), `pages/index.astro` (l'accueil) et
-  `Sommaire.astro` (le sommaire des Bases, seul à poser une partie) (`partie` ; la fiche l'émet avec ses autres familles), et le mode modification avec la page d'une race ou d'une classe créée,
+  `RacesPastilles.astro` et `RacePage.astro` (`race`), `PageDuGuide.astro` (une page de Découvrir) et `pages/index.astro` (l'accueil) (`partie` ; la fiche
+  l'émet avec ses autres familles), et le mode modification avec la page d'une race ou d'une classe créée,
   `scripts/edition/nouvelles.mjs`, car la page 404 où il la dessine ne les a pas), comme les combinaisons des potions (`cssDesPotions`) et les couleurs
   des événements de la chronologie (`cssDesEvenements`, ci-dessous). Chaque classe posée existe dans une feuille de sa page (testé sur le site construit).
 - **Les couleurs des événements de la chronologie** (lot 7) : une couleur calculée, pas une famille fixe (elle dépend de la liste des événements). La
@@ -158,12 +158,13 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   la frise la sienne, sa barre celle de l'événement visible précédent et le morceau de barre qu'elle contient celle du suivant (le dégradé) ; le script
   du filtre les repose entre les lignes visibles, et l'éditeur du site de dev réécrit la feuille d'après la base vivante avant de poser les classes.
 - **Les couleurs des parties du guide** (lot 8) : famille `partie` (`lib/parties-couleurs.mjs#COULEURS_DES_PARTIES`, clé = l'id de la partie de
-  `lib/livres.mjs#PARTIES` : `couleur-partie-decouvrir`, `-creer`, `-jouer`, `-progresser`, `-plus-loin`, `classeDePartie` ; pas de `par-defaut` : une page
-  sans partie, des Règles avancées ou du Guide du MJ, n'a pas de classe et garde l'accent du site). Les valeurs d'avant, inchangées par la règle de
+  `lib/livres.mjs#PARTIES` : `couleur-partie-decouvrir`, `-creer`, `-jouer`, `-progresser`, `-plus-loin`, `classeDePartie` ; pas de `par-defaut` : une
+  page sans partie, des Bases, des Règles avancées ou du Guide du MJ, n'a pas de classe et garde l'accent du site ; `-plus-loin` ne colore plus aucune
+  page depuis le 2026-11-05, elle reste une partie de l'ancien guide, que nomme le registre de la migration 0064). Les valeurs d'avant, inchangées par la règle de
   lisibilité (texte blanc, de 5,05:1 à 6,84:1). Le plan n'écrit plus aucune couleur (il entre dans la chaîne de l'édition du navigateur) : un groupe porte
   l'id de sa partie (`partie`), `partieDeLaPage` remplace `couleurDeLaPage`. La classe est posée sur la page du guide (`.guide-reference`, d'où
-  `blocs.css` tire `--guide` et le texte de ses aplats, `--guide-sur`), sur une carte « Par où commencer ? » (`--c`), sur un groupe du sommaire des
-  Bases (`--sommaire-couleur`) et sur chacune des quatre zones de la fiche (`--etape`) ; jamais un style. La classe pose aussi `--couleur` et
+  `blocs.css` tire `--guide` et le texte de ses aplats, `--guide-sur`), sur une carte « Par où commencer ? » (`--c`) et sur chacune des quatre zones
+  de la fiche (`--etape`) ; jamais un style (plus de groupe de sommaire en couleur : Les bases n'ont plus de groupes depuis le 2026-11-05). La classe pose aussi `--couleur` et
   `--couleur-texte` sur toute la zone : les enfants directs de la page du guide les remettent à leur valeur initiale, ceux d'une zone de la fiche à celle
   de la fiche (la magie innée, lue sur `.fiche` : `--couleur-de-la-fiche`), sous `:where()` (sans poids : une classe propre l'emporte) ; les cadres de la
   fiche gardent la magie innée, un bloc du guide sans classe propre son repli (comparé dans Chromium au rendu d'avant le lot : aucune différence hors
@@ -1255,28 +1256,44 @@ dev (un commit la change) ni cherchée par la recherche.
   même des non-membres ; `DECOUVRIR`) : **une page par entrée du menu** (choix du propriétaire du 2026-10-18) — « Bienvenue » (servie à `/decouvrir/`,
   entrée « Découvrir » du menu ; elle absorbe « Le jeu de rôle, comment ça marche ? », et n'a plus de
   sommaire), « L'univers » (race, magie, classe ; dessous, un bloc de navigation rendu par le gabarit, `RUBRIQUES_SOUS_LA_PAGE`, mène aux Races, aux
-  Magies et aux Classes), « Créer son personnage » (les six étapes sur une seule page), « Rejoindre une partie » (une page pour les joueurs) —, à
-  `/decouvrir/<slug>/`. Discord, Tipeee et l'encart « Notre prochaine rencontre IRL » sont sur l'accueil (plus bas) ; plus de page « Liens ».
-  Ce sont aussi les quatre cartes « Par où commencer ? » de l'accueil (`PAR_OU_COMMENCER`).
-- **Les bases** (`/regles/`, rubrique Règles, après les pages de Découvrir ; `LES_BASES`) : un **sommaire** (`pages/regles/index.astro`, comme les Règles avancées) en trois groupes,
-  Jouer, Progresser, Pour aller plus loin, chacun dans sa couleur ; une page par sujet, à `/regles/<slug>/`. L'ancien plan (24 pages, validé par le
-  propriétaire) faisait lire la règle du D100 (« Réussir une action ») **avant** de créer son personnage ; le nouveau la met en tête des Bases : ce
-  remplacement attend la confirmation du propriétaire (`docs/feuille-de-route.md`, « Questions encore ouvertes », 10).
-- **Les couleurs** des groupes sont celles des anciennes parties (`PARTIES` ; chaque groupe porte l'id de sa partie, `partie` : Découvrir #2a6f97,
-  Créer son personnage #2e7d4f, Jouer #b03030 — aussi « Rejoindre une partie » —, Progresser #6a4a9c, Pour aller plus loin #5a6470, valeurs dans
-  `lib/parties-couleurs.mjs`), qui restent celles des quatre zones de la fiche : une page de Découvrir ou des Bases a le filet de son titre, ses
-  intertitres et ses blocs dans la couleur de son groupe (`partieDeLaPage`, la classe de sa partie `.couleur-partie-<id>` : « Couleurs du site : la
-  palette en classes »), une carte de l'accueil et un groupe du sommaire des Bases aussi.
-- **Toute page du guide est une page simple** (`components/guide/PageDuGuide.astro`, servie par `PageDuPlan.astro`) : fil d'Ariane vers sa rubrique
-  (Découvrir) ou son sommaire et son groupe (Les bases, Règles avancées), ou le Guide du MJ (`filDAriane`), titre, texte coupé à ses blocs tirés de la
+  Magies et aux Classes), « Créer son personnage » (les six étapes sur une seule page) —, à `/decouvrir/<slug>/`. Discord, Tipeee et l'encart
+  « Notre prochaine rencontre IRL » sont sur l'accueil (plus bas) ; plus de page « Liens ». Ce sont aussi les trois cartes « Par où commencer ? » de
+  l'accueil (`PAR_OU_COMMENCER`), sous la phrase « Première visite ? Commencez par Découvrir : le jeu, son univers et la création d’un personnage. ».
+  **Plus de page « Rejoindre une partie »** (demande du propriétaire du 2026-11-05 : « Efface la page "Rejoindre une partie" et son lien. ») : ni dans
+  la base, ni au menu, ni sur l'accueil ; son ancienne adresse `/decouvrir/rejoindre-une-partie/` n'est renvoyée nulle part (réponse « Page 404
+  (Recommandé) ») : la page 404 la dit introuvable, comme `/decouvrir/liens/`.
+- **Les bases** (`/regles/`, rubrique Règles, après les pages de Découvrir ; `LES_BASES`) : **douze pages, sans groupes**, sur le modèle de la
+  chronologie (demande du propriétaire du 2026-11-05 : « Au lieu de lister les différentes pages, réécrit directement le contenu. Tu peux mettre
+  chaque page dans un onglet. Inutile de séparer les catégories les Jouer / Progresser / Pour aller plus loin. Pour la présation je préfèrera un menu
+  latéral sous le même modèle que la chronologie. » ; réponse « Comme la chronologie (Recommandé) ») : `components/guide/LesBases.astro` met à gauche,
+  en vertical, le menu des douze titres (dans l'ordre de `LES_BASES.pages`, tels que la base les écrit ; l'entrée affichée marquée, `aria-current`) et
+  à droite le texte de la page choisie (`PageDuGuide`, son pied de page compris). Chaque page garde son adresse `/regles/<slug>/` (le menu fait des
+  liens ordinaires : tout se lit sans JavaScript) ; `/regles/` (`pages/regles/index.astro`) montre le menu et la page `LES_BASES.ouverture`,
+  « Réussir une action », sous le titre « Les bases », avec un `<link rel="canonical">` vers `/regles/reussir-une-action/` (pas deux pages du même
+  texte pour les moteurs de recherche). L'entrée « Les bases » du menu du site est marquée sur chacune (`entree`). De la chronologie, la mise en page
+  et le comportement seulement (menu collé en haut de l'écran pendant la lecture, qui défile seul s'il dépasse) : ni barre en dégradé, ni dates, ni
+  chevrons, ni ← →. Sous 56rem, le menu est replié au-dessus de la page (un `<details>` : « Les bases » et le titre affiché, un appui l'ouvre) ; sans
+  JavaScript, il reste ouvert (un script en ligne, sans import, le replie sur petit écran et le rouvre sur grand écran). Feuille :
+  `styles/guide/les-bases.css` (jetons du thème, aucune couleur écrite). Le mode modification du site de dev porte sur la page affichée (`/regles/`
+  comprise). Le texte des pages reste celui de la base : rien n'est réécrit. L'ancien plan (24 pages, validé par le propriétaire) faisait lire la
+  règle du D100 (« Réussir une action ») **avant** de créer son personnage ; le nouveau la met en tête des Bases : ce remplacement attend la
+  confirmation du propriétaire (`docs/feuille-de-route.md`, « Questions encore ouvertes », 10).
+- **Les couleurs** des groupes de Découvrir sont celles des anciennes parties (`PARTIES` ; chaque groupe porte l'id de sa partie, `partie` : Découvrir
+  #2a6f97, Créer son personnage #2e7d4f ; Jouer #b03030 et Progresser #6a4a9c ne servent plus qu'à la fiche, Pour aller plus loin #5a6470 plus à rien ;
+  valeurs dans `lib/parties-couleurs.mjs`), qui restent celles des quatre zones de la fiche : une page de Découvrir a le filet de son titre, ses intertitres et ses
+  blocs dans la couleur de son groupe (`partieDeLaPage`, la classe de sa partie `.couleur-partie-<id>` : « Couleurs du site : la palette en
+  classes »), une carte de l'accueil aussi. **Les pages des Bases n'ont pas de couleur de partie** : l'accent du site, comme les Règles avancées et le
+  Guide du MJ (réponses du propriétaire du 2026-11-05 : « Une seule couleur », puis « Accent du site » ; `partieDeLaPage` rend null).
+- **Toute page du guide est une page simple** (`components/guide/PageDuGuide.astro`, servie par `PageDuPlan.astro`, à côté du menu latéral pour une
+  page des Bases) : fil d'Ariane vers sa rubrique (Découvrir, Les bases) ou son sommaire et son groupe (Règles avancées), ou le Guide du MJ (`filDAriane`), titre, texte coupé à ses blocs tirés de la
   base, puis mots-clés et rétroliens (`components/PiedDePage.astro`). **Plus aucune source sous une page**, quelle qu'elle soit (réponse du
   propriétaire du 2026-10-22, G43 : « Plus de sources ailleurs que dans les archives. On va épurer un peu ce qui est redondant. ») : `sources:` reste
   dans le frontmatter et la base (`page_source`, `source`), que `/archives/` lit. Ni flèches, ni touches ← →, ni glissement du doigt, ni pagination,
   ni numéro de chapitre. Le retour arrière du navigateur au glissement horizontal est empêché pour tout le site (`html { overscroll-behavior-x: none; }`,
   `styles/global/base.css` ; réponse du 2026-10-22 : « Supprime juste le swipe. ») ; sur iOS, le geste qui part du bord de l'écran est celui du
   système et aucune règle CSS ne le bloque. Les pages de référence (Règles avancées, Guide du MJ) gardent le badge « Guide » à côté du titre.
-- **Deux autres sommaires** (`components/guide/Sommaire.astro` : le titre lié et le résumé de chaque page, tel que la base l'écrit, rien si elle n'en a
-  pas) : « **Règles avancées** » (`/regles/avancees/`), en groupes (Magie et Mode Hyper — « Le Mode Hyper » en tête —, Combat et actions, Altérations
+- **Deux sommaires** (`components/guide/Sommaire.astro` : le titre lié et le résumé de chaque page, tel que la base l'écrit, rien si elle n'en a
+  pas ; aucune couleur de partie) : « **Règles avancées** » (`/regles/avancees/`), en groupes (Magie et Mode Hyper — « Le Mode Hyper » en tête —, Combat et actions, Altérations
   d'état, Alignement, Exploration et voyage — pièges, portes, météo et « Donjon pas bon » y sont « pour tout le monde », réponse du propriétaire du
   2026-10-18 —, La fiche de personnage case par case (les pages `guide/fiche-…`), puis « Autres pages de référence » : **toute autre page `guide/…`**
   que ni Découvrir, ni Les bases, ni le Guide du MJ ne nomme, de sorte qu'une page ajoutée plus tard a toujours une place), pages à
@@ -1295,8 +1312,8 @@ dev (un commit la change) ni cherchée par la recherche.
   Avant : sur la page Liens, puis sous le texte de Bienvenue (réponses du propriétaire du 2026-10-22, G34 : l'encart et les présentations passent sur
   Bienvenue, « Bonne idée. », et la page Liens qui les portait est supprimée, « Plus d'entrée Liens au menu : tout est sur Bienvenue. L'ancienne
   adresse renverrait vers Bienvenue. »). L'ancienne adresse `/decouvrir/liens/` n'est plus renvoyée nulle part (réponse du propriétaire du
-  2026-10-23 : « supprimer ce lien ») : la page 404 la dit introuvable. Bienvenue et Rejoindre une partie renvoient aux blocs par des liens écrits,
-  `/#lien-discord` et `/#prochaine-rencontre`. Dans l'ordre : le serveur Discord « L'univers de Maverick » et Maverick JDR sur Tipeee (liens donnés par le propriétaire, 2026-10-16 et 2026-10-18), chacun
+  2026-10-23 : « supprimer ce lien ») : la page 404 la dit introuvable. Un lien écrit dans une page y mène par son ancre
+  (Bienvenue : `/#lien-discord`). Dans l'ordre : le serveur Discord « L'univers de Maverick » et Maverick JDR sur Tipeee (liens donnés par le propriétaire, 2026-10-16 et 2026-10-18), chacun
   sous son titre (un `h2` qui porte le lien, au niveau de celui de l'encart : la navigation par titres les trouve ; ancres `#lien-discord`,
   `#lien-tipeee`, celles de l'ancienne page, figées) et suivi de sa **présentation** :
   - Discord : `LIENS_ET_RENCONTRE.liens[].presentation`, Markdown écrit dans le plan (demande du propriétaire : « Étoffe un peu la présentation pour les
@@ -1348,7 +1365,7 @@ dev (un commit la change) ni cherchée par la recherche.
   lui-même la feuille des postures. Un lien Markdown vers une rubrique s'écrit depuis la racine (`[les races](/races/)`) :
   le préfixe de déploiement est ajouté au rendu (`avecPrefixe`). Les couleurs des pages et les blocs sont dans `styles/guide/blocs.css`.
 - **Les textes de Découvrir et des Bases** (refonte du 2026-10-18, demande du propriétaire : « Prends chaque nouvelle page depuis le début à
-  recommencer entièrement ») : les seize pages, « Le Mode Hyper et le Mode Super » et la présentation du lien Discord sont réécrits de zéro à partir
+  recommencer entièrement ») : les seize pages (quinze depuis que « Rejoindre une partie » est effacée, 2026-11-05), « Le Mode Hyper et le Mode Super » et la présentation du lien Discord sont réécrits de zéro à partir
   de la base (tables, pages de référence importées des documents), des **originaux** de « Règle du jeu/Guide pour MJ - Maverick » et de « Créer sa
   fiche de personnage » et des décisions R1 à R105 ; quand un original diffère de la base, la page suit la base et les décisions, et l'écart est
   consigné pour le propriétaire (`docs/sql/a-valider.md` §6), jamais appliqué (R83). En réécrivant l'une d'elles : chaque fait vient d'une source

@@ -72,7 +72,7 @@ test('le modèle et la base : une annonce par encart placé par le site, son tex
 test('le texte de l’annonce : Markdown sûr (ni HTML brut ni lien non sûr), balises du glossaire en forme canonique, vidé = NULL, 409 s’il a changé', () => {
   const { lire, modifier, db } = nouvelle();
   const avant = lire().texte;
-  const texte = 'Retrouvez-nous **à la convention** ; voir [[guide/rejoindre-une-partie|Rejoindre une partie]].';
+  const texte = 'Retrouvez-nous **à la convention** ; voir [[guide/bienvenue|Bienvenue]].';
   ok(modifier({ texte }, { texte: avant }));
   assert.equal(lire().texte, texte);
   assert.equal(modifier({ texte: 'Du <script>alert(1)</script>' }).statut, 400, 'HTML brut');

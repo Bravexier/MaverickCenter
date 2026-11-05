@@ -3,7 +3,7 @@
 // `<!-- guide:<bloc> -->` : invisible dans le Markdown, il est remplacé au rendu par le composant du bloc (components/guide/GuideBloc.astro, appelé par
 // PageDuGuide.astro).
 // Sans dépendance (sauf lib/livres.mjs, pur lui aussi) : importé par lib/guide-rendu.ts, lib/recherche-index.ts, les composants du guide, le service
-// (serveur/edition.mjs) et les tests. Les couleurs des parties (groupes de Découvrir et des Bases, zones de la fiche) ne sont pas ici : leurs classes
+// (serveur/edition.mjs) et les tests. Les couleurs des parties (groupes de Découvrir, zones de la fiche) ne sont pas ici : leurs classes
 // (lib/palette-css.mjs#classeDePartie, valeurs dans lib/parties-couleurs.mjs).
 
 import { ANCRES_DES_PAGES_ABSORBEES, estDansDecouvrirOuLesBases, PAGES_ABSORBEES } from './livres.mjs';

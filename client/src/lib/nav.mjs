@@ -28,15 +28,15 @@ export const NAV = [
     // l'ancienne rubrique Découvrir, renommée « Règles » (demande du propriétaire du 2026-10-29 : « Le menu "Découvrir" sera renommé "Règles", le
     // sous-menu "Bienvenue" sera renommé "Découvrir" ») ; puis « Les bases » et « Règles avancées », venues de l'ancienne rubrique Règles (« il faudra
     // les sous-menu "Les bases", "règles avancées" soient déplacées dans l'ancien menu "Découvrir", devenu "Règles" »).
-    // Une page par entrée (choix du propriétaire du 2026-10-18) : les quatre pages de Découvrir, celles des cartes « Par où commencer ? » de l'accueil
+    // Une page par entrée (choix du propriétaire du 2026-10-18) : les trois pages de Découvrir, celles des cartes « Par où commencer ? » de l'accueil
     // (lib/livres.mjs#DECOUVRIR, PAR_OU_COMMENCER) ; plus d'entrée « Liens » (réponse du 2026-10-22, « Supprimer la page » : « Plus d'entrée Liens au
     // menu : tout est sur Bienvenue. ») : Discord, Tipeee et la rencontre IRL sont sur l'accueil depuis le 2026-10-23 (« Ces 3 blocs auraient
-    // plus leur place dans l'onglet d'acceuil. »)
+    // plus leur place dans l'onglet d'acceuil. ») ; plus d'entrée « Rejoindre une partie » (demande du 2026-11-05 : « Efface la page "Rejoindre une
+    // partie" et son lien. »)
     items: [
       { label: 'Découvrir', path: 'decouvrir/' },
       { label: 'L’univers', path: 'decouvrir/l-univers/' },
       { label: 'Créer son personnage', path: 'decouvrir/creer-son-personnage/' },
-      { label: 'Rejoindre une partie', path: 'decouvrir/rejoindre-une-partie/' },
       { label: 'Les bases', path: 'regles/' },
       { label: 'Règles avancées', path: 'regles/avancees/' },
     ],

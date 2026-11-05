@@ -1,23 +1,15 @@
 ---
-import Base from '../../layouts/Base.astro';
-import Sommaire from '../../components/guide/Sommaire.astro';
-import { groupesDesBases, LES_BASES, verifierLePlan } from '../../lib/livres.mjs';
-import { classeDePartie } from '../../lib/palette-css.mjs';
-import { entryHref, loadWiki } from '../../lib/wiki';
+import PageDuPlan from '../../components/guide/PageDuPlan.astro';
+import { LES_BASES } from '../../lib/livres.mjs';
+import { loadWiki } from '../../lib/wiki';
 
-// Le sommaire des Bases (lib/livres.mjs#LES_BASES ; choix du propriétaire du 2026-10-18 : « Les bases = une page par sujet, listées sur un sommaire
-// « Les bases » à /regles/ (comme les Règles avancées) ») : les groupes « Jouer », « Progresser », « Pour aller plus loin », chacun dans la couleur de
-// sa partie (sa classe, lib/palette-css.mjs#classeDePartie), le titre et le résumé de chaque page (tels que la base les écrit), rien d'autre.
+// /regles/ : Les bases, ouvertes sur leur première page (lib/livres.mjs#LES_BASES.ouverture, « Réussir une action » ; réponse du propriétaire du
+// 2026-11-05 : « Comme la chronologie (Recommandé) » : le menu latéral des douze pages, le texte de la page choisie à droite). Plus de sommaire en
+// groupes (« Au lieu de lister les différentes pages, réécrit directement le contenu. ») ; la page garde son adresse /regles/<slug>/, que celle-ci
+// désigne comme canonique (components/guide/PageDuPlan.astro).
 const { entries } = await loadWiki();
-const groupes = groupesDesBases(verifierLePlan(entries)).map((g) => ({
-  id: g.id,
-  titre: g.titre,
-  classe: classeDePartie(g.partie),
-  elements: g.pages.map((e) => ({ href: entryHref(e), titre: e.data.title, resume: e.data.summary })),
-}));
+const entry = entries.find((e) => e.id === LES_BASES.ouverture);
+if (!entry) throw new Error(`/${LES_BASES.chemin} : ${LES_BASES.ouverture} n'existe pas (plan du guide, lib/livres.mjs)`);
 ---
 
-<Base title={LES_BASES.titre}>
-  <h1>{LES_BASES.titre}</h1>
-  <Sommaire groupes={groupes} />
-</Base>
+<PageDuPlan entry={entry} ouverture />
