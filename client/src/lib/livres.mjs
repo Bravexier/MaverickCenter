@@ -13,11 +13,16 @@
 //   - « Les bases » (/regles/, rubrique Règles) : une liste de pages, sans groupes, sur le modèle de la chronologie (demande du propriétaire du
 //     2026-11-05 : « Au lieu de lister les différentes pages, réécrit directement le contenu. […] Inutile de séparer les catégories les Jouer /
 //     Progresser / Pour aller plus loin. Pour la présation je préfèrera un menu latéral sous le même modèle que la chronologie. ») : à gauche, le menu
-//     des titres, à droite le texte de la page choisie (components/guide/LesBases.astro). Chaque page à /regles/<slug>/ ; /regles/ montre la première
+//     des titres, à droite le texte de la page choisie (components/guide/MenuLateral.astro). Chaque page à /regles/<slug>/ ; /regles/ montre la première
 //     (`ouverture`, « Réussir une action »), son adresse canonique restant /regles/<slug>/.
-//   - Les « Règles avancées » (/regles/avancees/) et le « Guide du MJ » (/mj/) sont des sommaires ; leurs pages sont à /regles/avancees/<slug>/ et
-//     /mj/<slug>/. Toute page `guide/…` qui n'est ni dans Découvrir, ni dans Les bases, ni dans le Guide du MJ est une page des Règles avancées (groupe
-//     « Autres pages de référence » si aucun groupe ne la nomme) : une page ajoutée plus tard a toujours une adresse.
+//   - Les « Règles avancées » (/regles/avancees/) : de même, une liste de pages sans groupes dans le même menu latéral (demande du propriétaire du
+//     2026-11-05 : « Suite à la modification de la page "les bases" refait la même avec les "règles avancées", tout sur la même page avec menu
+//     lattéral. » ; réponses : « Liste sans groupes » — « Comme Les bases : une seule liste de titres, dans l'ordre actuel des groupes. » — et
+//     « Le Mode Hyper » pour la page d'ouverture). Chaque page à /regles/avancees/<slug>/ ; /regles/avancees/ montre `ouverture` (« Le Mode Hyper »),
+//     son adresse canonique restant /regles/avancees/le-mode-hyper/. Toute page `guide/…` qui n'est ni dans Découvrir, ni dans Les bases, ni dans le
+//     Guide du MJ est une page des Règles avancées (en fin de liste si le plan ne la nomme pas) : une page ajoutée plus tard a toujours une adresse et
+//     une entrée dans le menu.
+//   - Le « Guide du MJ » (/mj/) est un sommaire ; ses pages sont à /mj/<slug>/.
 //   - « Artisanat » (/regles/artisanat/) est un sommaire de pages d'autres types.
 // Chaque groupe de Découvrir porte l'id d'une ancienne partie du guide (PARTIES, `partie`) : la couleur de cette partie (sa classe de la palette,
 // `.couleur-partie-<id>` : lib/palette-css.mjs#classeDePartie, valeur dans lib/parties-couleurs.mjs) colore ses pages (filet du titre, blocs) et ses
@@ -70,7 +75,7 @@ export const DECOUVRIR = gele({
 });
 
 /**
- * Les bases : douze pages, sans groupes ni partie (l'accent du site), dans l'ordre du menu latéral (components/guide/LesBases.astro) ; chaque page à
+ * Les bases : douze pages, sans groupes ni partie (l'accent du site), dans l'ordre du menu latéral (components/guide/MenuLateral.astro) ; chaque page à
  * /regles/<slug>/. `accueil` est null : aucune page n'est servie à /regles/ sous cette adresse ; /regles/ (pages/regles/index.astro) montre le menu et
  * la page `ouverture` (« Réussir une action » : réponse du propriétaire du 2026-11-05), dont l'adresse canonique reste /regles/<slug>/.
  */
@@ -95,34 +100,30 @@ export const ACCUEIL_DU_GUIDE = DECOUVRIR.chemin;
 export const RUBRIQUES_SOUS_LA_PAGE = Object.freeze({ 'guide/l-univers': Object.freeze(['races', 'magies', 'classes']) });
 
 /**
- * Les Règles avancées : un sommaire en groupes (titre et résumé de chaque page), chaque groupe avec son ancre (`id`). Un groupe nomme ses pages
- * (`pages`, dans cet ordre), ou les prend par le début de leur id (`prefixe`, ordre des titres) ; le dernier (`reste`) reçoit toute autre page
- * `guide/…` qui n'est ni dans Découvrir, ni dans Les bases, ni dans le Guide du MJ, ni dans un groupe précédent (ordre des titres).
+ * Les Règles avancées : une liste de pages, sans groupes ni partie (l'accent du site), dans l'ordre du menu latéral (components/guide/MenuLateral.astro),
+ * comme Les bases (réponse du propriétaire du 2026-11-05 : « Liste sans groupes » — « Comme Les bases : une seule liste de titres, dans l'ordre actuel
+ * des groupes. »). L'ordre est celui des anciens groupes du sommaire : Magie et Mode Hyper, Combat et actions, Altérations d'état, Alignement,
+ * Exploration et voyage (`pages`, nommées dans cet ordre), puis la fiche de personnage case par case (les pages dont l'id commence par un des
+ * `prefixes`, un préfixe après l'autre, chacun dans l'ordre des titres), puis toute autre page `guide/…` qui n'est ni dans Découvrir, ni dans Les
+ * bases, ni dans le Guide du MJ, ni prise avant (ordre des titres) : une page ajoutée plus tard a toujours une adresse (adresseDuGuide) et une entrée
+ * dans le menu (pagesDesReglesAvancees). Chaque page à /regles/avancees/<slug>/ ; /regles/avancees/ (pages/regles/avancees/index.astro) montre le menu
+ * et la page `ouverture` (« Le Mode Hyper » : réponse du propriétaire du 2026-11-05), dont l'adresse canonique reste /regles/avancees/<slug>/.
  */
 export const REGLES_AVANCEES = gele({
-  titre: 'Règles avancées', chemin: 'regles/avancees/', groupes: Object.freeze([
-    gele({
-      id: 'magie-et-mode-hyper', titre: 'Magie et Mode Hyper', pages: Object.freeze([
-        'guide/le-mode-hyper', 'guide/mode-hyper-magie', 'guide/liste-des-effets-mode-hyper', 'guide/liste-des-effets-mode-super',
-        'guide/alterations-d-etats-et-mode-hyper', 'guide/resistance-faiblesse-magie',
-      ]),
-    }),
-    gele({
-      id: 'combat-et-actions', titre: 'Combat et actions', pages: Object.freeze([
-        'guide/situations-avancees', 'guide/actions-et-mouvements', 'guide/vitesse-et-portee', 'guide/jet-de-des', 'guide/formule-des-degats',
-      ]),
-    }),
-    gele({ id: 'alterations-d-etat', titre: 'Altérations d’état', pages: Object.freeze(['guide/liste-des-alterations-d-etat']) }),
-    gele({ id: 'alignement', titre: 'Alignement', pages: Object.freeze(['guide/alignement', 'guide/les-neuf-alignements']) }),
-    // pièges, portes, météo, « Donjon pas bon » : « dans les règles avancées, pour tout le monde » (réponse du propriétaire du 2026-10-18)
-    gele({
-      id: 'exploration-et-voyage', titre: 'Exploration et voyage', pages: Object.freeze([
-        'guide/distance-et-voyage', 'guide/meteo', 'guide/les-pieges', 'guide/les-portes', 'guide/donjon-pas-bon',
-      ]),
-    }),
-    gele({ id: 'fiche-de-personnage', titre: 'La fiche de personnage, case par case', prefixe: 'guide/fiche-' }),
-    gele({ id: 'autres', titre: 'Autres pages de référence', reste: true }),
+  id: 'avancees', titre: 'Règles avancées', chemin: 'regles/avancees/', ouverture: 'guide/le-mode-hyper', pages: Object.freeze([
+    // Magie et Mode Hyper
+    'guide/le-mode-hyper', 'guide/mode-hyper-magie', 'guide/liste-des-effets-mode-hyper', 'guide/liste-des-effets-mode-super',
+    'guide/alterations-d-etats-et-mode-hyper', 'guide/resistance-faiblesse-magie',
+    // Combat et actions
+    'guide/situations-avancees', 'guide/actions-et-mouvements', 'guide/vitesse-et-portee', 'guide/jet-de-des', 'guide/formule-des-degats',
+    // Altérations d'état ; Alignement
+    'guide/liste-des-alterations-d-etat', 'guide/alignement', 'guide/les-neuf-alignements',
+    // Exploration et voyage — pièges, portes, météo, « Donjon pas bon » : « dans les règles avancées, pour tout le monde » (réponse du propriétaire
+    // du 2026-10-18)
+    'guide/distance-et-voyage', 'guide/meteo', 'guide/les-pieges', 'guide/les-portes', 'guide/donjon-pas-bon',
   ]),
+  // la fiche de personnage, case par case (« Fiche de personnage : … »)
+  prefixes: Object.freeze(['guide/fiche-']),
 });
 
 /**
@@ -259,8 +260,14 @@ export const estDansDecouvrirOuLesBases = (id) => PLACES.has(id);
 /** Vrai si la page est dans le Guide du MJ. */
 export const estDuGuideDuMj = (id) => GUIDE_DU_MJ.pages.includes(id);
 
-/** Vrai si la page est dans Les bases (menu latéral de components/guide/LesBases.astro). */
+/** Vrai si la page est dans Les bases (menu latéral de components/guide/MenuLateral.astro). */
 export const estDesBases = (id) => PLACES.get(id)?.rubrique === LES_BASES;
+
+/**
+ * Vrai si la page est une page des Règles avancées : toute page `guide/…` qui n'est ni dans Découvrir, ni dans Les bases, ni dans le Guide du MJ, que
+ * le plan la nomme ou non (adresseDuGuide lui donne alors /regles/avancees/<slug>/).
+ */
+export const estDesReglesAvancees = (id) => id.startsWith('guide/') && !PLACES.has(id) && !estDuGuideDuMj(id);
 
 /**
  * La partie d'une page de Découvrir (celle de son groupe : l'id de sa couleur, lib/palette-css.mjs#classeDePartie), ou null : une page des Bases (l'accent
@@ -303,51 +310,55 @@ export function pagesDesBases(entries) {
 }
 
 /**
- * Les groupes des Règles avancées remplis des pages données (`entries` : les pages chargées, { id, data: { title } }) : [{ id, titre, pages }] (`pages` :
- * les éléments de `entries`), un groupe vide omis. Une page nommée par un groupe et absente de `entries` est sautée (verifierLePlan la signale).
+ * Les pages des Règles avancées prises dans les pages données (`entries` : les pages chargées, { id, data: { title } }), dans l'ordre du plan : le menu
+ * latéral, une seule liste. D'abord les pages nommées (REGLES_AVANCEES.pages, dans cet ordre), puis, pour chaque préfixe (REGLES_AVANCEES.prefixes),
+ * les pages dont l'id commence par lui (ordre des titres), puis toute autre page des Règles avancées (estDesReglesAvancees, ordre des titres). Une page
+ * nommée et absente de `entries` est sautée (verifierLePlan la signale).
  */
-export function groupesDesReglesAvancees(entries) {
-  const guide = entries.filter((e) => e.id.startsWith('guide/') && !estDansDecouvrirOuLesBases(e.id) && !estDuGuideDuMj(e.id));
-  const parId = new Map(guide.map((e) => [e.id, e]));
-  const pris = new Set();
-  const groupes = [];
-  for (const g of REGLES_AVANCEES.groupes) {
-    let pages;
-    if (g.pages) pages = g.pages.map((id) => parId.get(id)).filter(Boolean);
-    else if (g.prefixe) pages = guide.filter((e) => e.id.startsWith(g.prefixe) && !pris.has(e.id)).sort(parTitre);
-    else pages = guide.filter((e) => !pris.has(e.id)).sort(parTitre);
-    for (const p of pages) pris.add(p.id);
-    if (pages.length) groupes.push({ id: g.id, titre: g.titre, pages });
-  }
-  return groupes;
-}
-
-/** Le groupe des Règles avancées d'une page (un élément de REGLES_AVANCEES.groupes), ou null si elle est dans Découvrir, Les bases ou le Guide du MJ. */
-export function groupeDeLaPage(id) {
-  if (!id.startsWith('guide/') || estDansDecouvrirOuLesBases(id) || estDuGuideDuMj(id)) return null;
-  const nomme = REGLES_AVANCEES.groupes.find((g) => g.pages?.includes(id));
-  if (nomme) return nomme;
-  return REGLES_AVANCEES.groupes.find((g) => g.prefixe && id.startsWith(g.prefixe)) ?? REGLES_AVANCEES.groupes.find((g) => g.reste);
+export function pagesDesReglesAvancees(entries) {
+  const avancees = entries.filter((e) => estDesReglesAvancees(e.id));
+  const parId = new Map(avancees.map((e) => [e.id, e]));
+  const pages = REGLES_AVANCEES.pages.map((id) => parId.get(id)).filter(Boolean);
+  const pris = new Set(REGLES_AVANCEES.pages);
+  const prendre = (liste) => {
+    for (const e of liste.sort(parTitre)) {
+      pages.push(e);
+      pris.add(e.id);
+    }
+  };
+  for (const prefixe of REGLES_AVANCEES.prefixes) prendre(avancees.filter((e) => e.id.startsWith(prefixe) && !pris.has(e.id)));
+  prendre(avancees.filter((e) => !pris.has(e.id)));
+  return pages;
 }
 
 /**
- * Le fil d'Ariane d'une page `guide/…`, après « Accueil » : [{ titre, chemin }] (`chemin` relatif à la racine du site, ancre comprise) — sa rubrique
- * (Découvrir, Les bases : plus de groupes depuis le 2026-11-05), ou son sommaire et son groupe (Règles avancées), ou le Guide du MJ. Le gabarit marque le
- * maillon qui mène à la page elle-même (Bienvenue est servie à /decouvrir/).
+ * Le menu latéral d'une page `guide/…` (components/guide/MenuLateral.astro) : { rubrique, pages } — Les bases (LES_BASES, pagesDesBases) ou les Règles
+ * avancées (REGLES_AVANCEES, pagesDesReglesAvancees), `pages` prises dans les pages chargées (`entries`) —, ou null (Découvrir, Guide du MJ).
+ */
+export function menuLateralDe(id, entries) {
+  if (estDesBases(id)) return { rubrique: LES_BASES, pages: pagesDesBases(entries) };
+  if (estDesReglesAvancees(id)) return { rubrique: REGLES_AVANCEES, pages: pagesDesReglesAvancees(entries) };
+  return null;
+}
+
+/**
+ * Le fil d'Ariane d'une page `guide/…`, après « Accueil » : [{ titre, chemin }] (`chemin` relatif à la racine du site) — sa rubrique (Découvrir, Les
+ * bases, Règles avancées : plus de groupes depuis le 2026-11-05, ni d'ancre de groupe), ou le Guide du MJ. Le gabarit marque le maillon qui mène à la
+ * page elle-même (Bienvenue est servie à /decouvrir/).
  */
 export function filDAriane(id) {
   const place = PLACES.get(id);
   if (place) return [{ titre: place.rubrique.titre, chemin: place.rubrique.chemin }];
   if (estDuGuideDuMj(id)) return [{ titre: GUIDE_DU_MJ.titre, chemin: GUIDE_DU_MJ.chemin }];
-  const groupe = groupeDeLaPage(id);
-  return [{ titre: REGLES_AVANCEES.titre, chemin: REGLES_AVANCEES.chemin }, ...(groupe ? [{ titre: groupe.titre, chemin: `${REGLES_AVANCEES.chemin}#${groupe.id}` }] : [])];
+  return [{ titre: REGLES_AVANCEES.titre, chemin: REGLES_AVANCEES.chemin }];
 }
 
 /**
  * Contrôle du plan contre les pages chargées (`entries` : { id, data: { status } }), appelé au build par les routes : chaque page nommée (Découvrir, Les
- * bases, Guide du MJ, groupes des Règles avancées) existe et n'est pas une page d'exemple, aucune n'est nommée deux fois, aucune page de Découvrir ni des
- * Bases ne prend un nom réservé, aucune rubrique ni aucun groupe n'est vide, la page d'ouverture des Bases en est une, aucune page absorbée n'est
- * encore là (elle s'afficherait dans les Règles avancées) et chaque page qui en absorbe une est dans le plan. Lève une erreur (le build s'arrête plutôt que de montrer un plan faux) ; rend `entries`.
+ * bases, Guide du MJ, Règles avancées) existe et n'est pas une page d'exemple, aucune n'est nommée deux fois, aucune page de Découvrir ni des Bases ne
+ * prend un nom réservé, aucune rubrique ni aucun groupe n'est vide, la page d'ouverture des Bases en est une, celle des Règles avancées aussi (nommée
+ * par REGLES_AVANCEES.pages), aucune page absorbée n'est encore là (elle s'afficherait dans les Règles avancées) et chaque page qui en absorbe une est
+ * dans le plan. Lève une erreur (le build s'arrête plutôt que de montrer un plan faux) ; rend `entries`.
  */
 export function verifierLePlan(entries) {
   const parId = new Map(entries.map((e) => [e.id, e]));
@@ -355,11 +366,13 @@ export function verifierLePlan(entries) {
     for (const g of r.groupes ?? []) if (!g.pages.length) throw new Error(`plan du guide : le groupe « ${g.titre} » de « ${r.titre} » est vide`);
     if (!pagesDeLaRubrique(r).length) throw new Error(`plan du guide : « ${r.titre} » est vide`);
   }
-  if (!LES_BASES.pages.includes(LES_BASES.ouverture)) throw new Error(`plan du guide : ${LES_BASES.ouverture}, ouverte à /${LES_BASES.chemin}, n'est pas dans « ${LES_BASES.titre} »`);
+  for (const r of [LES_BASES, REGLES_AVANCEES]) {
+    if (!r.pages.includes(r.ouverture)) throw new Error(`plan du guide : ${r.ouverture}, ouverte à /${r.chemin}, n'est pas dans « ${r.titre} »`);
+  }
   const nommees = [
     ...RUBRIQUES_DU_GUIDE.flatMap((r) => pagesDeLaRubrique(r).map(({ id }) => [id, `« ${r.titre} »`])),
     ...GUIDE_DU_MJ.pages.map((id) => [id, GUIDE_DU_MJ.titre]),
-    ...REGLES_AVANCEES.groupes.flatMap((g) => (g.pages ?? []).map((id) => [id, `groupe « ${g.titre} »`])),
+    ...REGLES_AVANCEES.pages.map((id) => [id, `« ${REGLES_AVANCEES.titre} »`]),
   ];
   const vues = new Map();
   for (const [id, ou] of nommees) {

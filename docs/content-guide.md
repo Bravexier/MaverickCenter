@@ -512,10 +512,10 @@ typées lues par `client/src/lib/races-db.mjs`, jamais le Markdown. **Aucun tabl
   sinon chacun a le sien (Elfe Noir Charbon et Elfe Noir Salé côte à côte) ; dans un niveau, une autre race n'est citée d'un seul nom que si tous ses peuples y sont, sinon chacun de ses peuples est cité
   à son propre niveau (« Humain » suivi de « Central · Désertique »). Les relations entre peuples d'une même race sont dans une petite matrice. Une race sans peuple dans l'onglet (Anansi, Farfadet, Goleois) le dit.
 - **Menu latéral de toutes les races** (demande du propriétaire : « comme pour chronologie, et les bases, un menu latéral qui récapitule toutes les races sur le menu d'une race ouverte ») :
-  `components/race/MenuDesRaces.astro`, posé par `pages/[type]/[slug].astro` autour de la page (fil d'Ariane, gabarit, pied de page) quand la race a ses lignes dans la base. Même mise en page, mêmes
-  classes et même feuille que le menu des Bases (`styles/guide/les-bases.css`) : à gauche les races de `/races/` dans le même ordre (`groupRaces` : pures puis hybrides, `ORDRE_DES_RACES`),
+  `components/race/MenuDesRaces.astro`, posé par `pages/[type]/[slug].astro` autour de la page (fil d'Ariane, gabarit, pied de page) quand la race a ses lignes dans la base. Le menu latéral
+  commun des Bases et des Règles avancées (`components/guide/MenuLateral.astro`, la page passée en contenu ; classes `lateral*`, feuille `styles/guide/menu-lateral.css`) : à gauche les races de `/races/` dans le même ordre (`groupRaces` : pures puis hybrides, `ORDRE_DES_RACES`),
   en une seule liste sans titre de groupe (réponse du propriétaire : « Une seule liste »), la race ouverte marquée (`aria-current`), l'accent du site (réponse : « Accent du site ») ; petit écran (<= 56rem), le menu replié au-dessus de la page, ouvert sans JavaScript.
-- Le CSS est dans `client/src/styles/race/`, injecté par `RacePage.astro` (`?raw`) seulement, comme celui des magies (le menu latéral, lui, lit `styles/guide/les-bases.css`). `test/races-html.test.mjs` contrôle le site construit (la CI le lance après le build).
+- Le CSS est dans `client/src/styles/race/`, injecté par `RacePage.astro` (`?raw`) seulement, comme celui des magies (le menu latéral, lui, lit `styles/guide/menu-lateral.css` par `MenuLateral.astro`). `test/races-html.test.mjs` contrôle le site construit (la CI le lance après le build).
 
 **Pour changer une race, on change la base** (une migration `data/migrations/NNNN-<nom>.sql`, voir `docs/sql/remplissage.md`) : modifier le `.md` fabriqué n'a plus d'effet sur la page.
 
@@ -1229,7 +1229,7 @@ pas de source citée ; le Markdown de la page ne sert plus qu'à la recherche et
   à gauche de la page, les cinq catégories de `/classes/` dans leur ordre (`lib/class-groups.mjs#groupClasses`, Parleur sous « Spéciales » compris), chacune un `<details>` du même
   `name` (un seul déroulé à la fois ; un relais en ligne le fait aussi dans un navigateur qui ignore `name`), avec son point de couleur, son nombre de classes et ses classes
   par nom ; celle de la classe affichée est ouverte au build et la classe marquée (`aria-current`). Mise en page du menu des Bases (`styles/classe/menu.css`, sur le modèle de
-  `styles/guide/les-bases.css`) : collé en haut de l'écran ; caché à l'impression. Sur petit écran (≤ 56rem), un **tiroir sur le modèle de celui de la chronologie** (réponse du
+  `styles/guide/menu-lateral.css`) : collé en haut de l'écran ; caché à l'impression. Sur petit écran (≤ 56rem), un **tiroir sur le modèle de celui de la chronologie** (réponse du
   propriétaire : « Sur mobile on le cachera dans un tiroir comme chronologie ») : le menu réduit à une bande collée au bord gauche (poignée et point de chaque type, celui de la
   classe plus gros), un appui l'ouvre par-dessus la page sur la classe affichée (focus sur elle, le reste de la page inerte, voile) ; la croix, le voile ou Échap le referment
   (focus rendu au bouton) ; retour sur grand écran ou retour arrière (bfcache) : fermé. Sans JavaScript, le menu est au-dessus de la page, tout ouvert.
@@ -1278,7 +1278,7 @@ dev (un commit la change) ni cherchée par la recherche.
 - **Les bases** (`/regles/`, rubrique Règles, après les pages de Découvrir ; `LES_BASES`) : **douze pages, sans groupes**, sur le modèle de la
   chronologie (demande du propriétaire du 2026-11-05 : « Au lieu de lister les différentes pages, réécrit directement le contenu. Tu peux mettre
   chaque page dans un onglet. Inutile de séparer les catégories les Jouer / Progresser / Pour aller plus loin. Pour la présation je préfèrera un menu
-  latéral sous le même modèle que la chronologie. » ; réponse « Comme la chronologie (Recommandé) ») : `components/guide/LesBases.astro` met à gauche,
+  latéral sous le même modèle que la chronologie. » ; réponse « Comme la chronologie (Recommandé) ») : `components/guide/MenuLateral.astro` met à gauche,
   en vertical, le menu des douze titres (dans l'ordre de `LES_BASES.pages`, tels que la base les écrit ; l'entrée affichée marquée, `aria-current`) et
   à droite le texte de la page choisie (`PageDuGuide`, son pied de page compris). Chaque page garde son adresse `/regles/<slug>/` (le menu fait des
   liens ordinaires : tout se lit sans JavaScript) ; `/regles/` (`pages/regles/index.astro`) montre le menu et la page `LES_BASES.ouverture`,
@@ -1287,10 +1287,25 @@ dev (un commit la change) ni cherchée par la recherche.
   et le comportement seulement (menu collé en haut de l'écran pendant la lecture, qui défile seul s'il dépasse) : ni barre en dégradé, ni dates, ni
   chevrons, ni ← →. Sous 56rem, le menu est replié au-dessus de la page (un `<details>` : « Les bases » et le titre affiché, un appui l'ouvre) ; sans
   JavaScript, il reste ouvert (un script en ligne, sans import, le replie sur petit écran et le rouvre sur grand écran). Feuille :
-  `styles/guide/les-bases.css` (jetons du thème, aucune couleur écrite). Le mode modification du site de dev porte sur la page affichée (`/regles/`
+  `styles/guide/menu-lateral.css` (jetons du thème, aucune couleur écrite). Le mode modification du site de dev porte sur la page affichée (`/regles/`
   comprise). Le texte des pages reste celui de la base : rien n'est réécrit. L'ancien plan (24 pages, validé par le propriétaire) faisait lire la
   règle du D100 (« Réussir une action ») **avant** de créer son personnage ; le nouveau la met en tête des Bases : ce remplacement attend la
   confirmation du propriétaire (`docs/feuille-de-route.md`, « Questions encore ouvertes », 10).
+- **Les Règles avancées** (`/regles/avancees/`, rubrique Règles, après Les bases ; `REGLES_AVANCEES`) : **la même chose que Les bases** (demande du
+  propriétaire du 2026-11-05 : « Suite à la modification de la page "les bases" refait la même avec les "règles avancées", tout sur la même page avec
+  menu lattéral. ») : le même composant (`MenuLateral.astro`, même mise en page, même comportement, même feuille ; aussi celui des pages de race,
+  « Pages de race »), à gauche le menu des titres, à
+  droite le texte de la page choisie, sans couleur de partie (l'accent du site). **Une seule liste, sans groupes** (réponse « Liste sans groupes » :
+  « Comme Les bases : une seule liste de titres, dans l'ordre actuel des groupes. ») : d'abord les pages nommées par `REGLES_AVANCEES.pages`, dans
+  l'ordre des anciens groupes du sommaire (Magie et Mode Hyper — « Le Mode Hyper » en tête —, Combat et actions, Altérations d'état, Alignement,
+  Exploration et voyage — pièges, portes, météo et « Donjon pas bon » y sont « pour tout le monde », réponse du propriétaire du 2026-10-18 —), puis
+  les pages `guide/fiche-…` (`REGLES_AVANCEES.prefixes`, ordre des titres), puis **toute autre page `guide/…`** que ni Découvrir, ni Les bases, ni le
+  Guide du MJ ne nomme (`estDesReglesAvancees`, ordre des titres) : une page ajoutée plus tard a toujours une adresse et une entrée dans le menu
+  (`pagesDesReglesAvancees`). Chaque page garde son adresse `/regles/avancees/<slug>/` ; `/regles/avancees/` (`pages/regles/avancees/index.astro`)
+  montre le menu et la page `REGLES_AVANCEES.ouverture`, « Le Mode Hyper » (réponse du propriétaire du 2026-11-05), sous le titre « Règles
+  avancées », avec un `<link rel="canonical">` vers `/regles/avancees/le-mode-hyper/`. Fil d'Ariane « Accueil › Règles avancées » (plus de groupe ni
+  d'ancre de groupe). L'entrée « Règles avancées » du menu du site est marquée sur chacune (`entree`). `lib/livres.mjs#menuLateralDe` choisit le
+  menu d'une page (Les bases, Règles avancées, ou aucun).
 - **Les couleurs** des groupes de Découvrir sont celles des anciennes parties (`PARTIES` ; chaque groupe porte l'id de sa partie, `partie` : Découvrir
   #2a6f97, Créer son personnage #2e7d4f ; Jouer #b03030 et Progresser #6a4a9c ne servent plus qu'à la fiche, Pour aller plus loin #5a6470 plus à rien ;
   valeurs dans `lib/parties-couleurs.mjs`), qui restent celles des quatre zones de la fiche : une page de Découvrir a le filet de son titre, ses intertitres et ses
@@ -1298,22 +1313,19 @@ dev (un commit la change) ni cherchée par la recherche.
   classes »), une carte de l'accueil aussi. **Les pages des Bases n'ont pas de couleur de partie** : l'accent du site, comme les Règles avancées et le
   Guide du MJ (réponses du propriétaire du 2026-11-05 : « Une seule couleur », puis « Accent du site » ; `partieDeLaPage` rend null).
 - **Toute page du guide est une page simple** (`components/guide/PageDuGuide.astro`, servie par `PageDuPlan.astro`, à côté du menu latéral pour une
-  page des Bases) : fil d'Ariane vers sa rubrique (Découvrir, Les bases) ou son sommaire et son groupe (Règles avancées), ou le Guide du MJ (`filDAriane`), titre, texte coupé à ses blocs tirés de la
+  page des Bases ou des Règles avancées) : fil d'Ariane vers sa rubrique (Découvrir, Les bases, Règles avancées) ou le Guide du MJ (`filDAriane`), titre, texte coupé à ses blocs tirés de la
   base, puis ses mots-clés (`components/PiedDePage.astro`). **Plus aucune source sous une page**, quelle qu'elle soit (réponse du
   propriétaire du 2026-10-22, G43 : « Plus de sources ailleurs que dans les archives. On va épurer un peu ce qui est redondant. ») : `sources:` reste
   dans le frontmatter et la base (`page_source`, `source`), que `/archives/` lit. Ni flèches, ni touches ← →, ni glissement du doigt, ni pagination,
   ni numéro de chapitre. Le retour arrière du navigateur au glissement horizontal est empêché pour tout le site (`html { overscroll-behavior-x: none; }`,
   `styles/global/base.css` ; réponse du 2026-10-22 : « Supprime juste le swipe. ») ; sur iOS, le geste qui part du bord de l'écran est celui du
-  système et aucune règle CSS ne le bloque. Les pages de référence (Règles avancées, Guide du MJ) gardent le badge « Guide » à côté du titre.
-- **Deux sommaires** (`components/guide/Sommaire.astro` : le titre lié et le résumé de chaque page, tel que la base l'écrit, rien si elle n'en a
-  pas ; aucune couleur de partie) : « **Règles avancées** » (`/regles/avancees/`), en groupes (Magie et Mode Hyper — « Le Mode Hyper » en tête —, Combat et actions, Altérations
-  d'état, Alignement, Exploration et voyage — pièges, portes, météo et « Donjon pas bon » y sont « pour tout le monde », réponse du propriétaire du
-  2026-10-18 —, La fiche de personnage case par case (les pages `guide/fiche-…`), puis « Autres pages de référence » : **toute autre page `guide/…`**
-  que ni Découvrir, ni Les bases, ni le Guide du MJ ne nomme, de sorte qu'une page ajoutée plus tard a toujours une place), pages à
-  `/regles/avancees/<slug>/` ; et « **Guide du MJ** » (`/mj/`, rubrique Espace MJ : « Un maître du jeu », le guide pour MJ et « « Campagne » ou
-  « Scénario one shot » ? », qui y passe, choix du propriétaire du 2026-10-18), pages à `/mj/<slug>/`. « Les documents des règles » garde son adresse
-  (Autres pages de référence) : son bloc liste les pages de référence par document source (`pagesDeReference` : sans les pages de Découvrir ni des
-  Bases), avec leurs liens, ce que `/archives/` ne montre pas.
+  système et aucune règle CSS ne le bloque. Les pages du Guide du MJ gardent le badge « Guide » à côté du titre et la ligne « Aussi appelé » ; celles des Bases et des Règles avancées n'ont ni l'un ni l'autre (réponse du propriétaire du 2026-11-05 : « Retirer, comme Les bases »).
+- **Un sommaire** (`components/guide/Sommaire.astro` : le titre lié et le résumé de chaque page, tel que la base l'écrit, rien si elle n'en a
+  pas ; aucune couleur de partie) : « **Guide du MJ** » (`/mj/`, rubrique Espace MJ : « Un maître du jeu », le guide pour MJ et « « Campagne » ou
+  « Scénario one shot » ? », qui y passe, choix du propriétaire du 2026-10-18), pages à `/mj/<slug>/` ; le même composant sert à l'Artisanat. Les
+  Règles avancées n'ont plus de sommaire depuis le 2026-11-05 (menu latéral, plus haut). « Les documents des règles » garde son adresse
+  (`/regles/avancees/les-documents-des-regles/`, dans le reste des Règles avancées) : son bloc liste les pages de référence par document source
+  (`pagesDeReference` : sans les pages de Découvrir ni des Bases), avec leurs liens, ce que `/archives/` ne montre pas.
 - **Artisanat** (`/regles/artisanat/`, `lib/livres.mjs#ARTISANAT`) : un sommaire de pages d'autres types — Composants (titre et description de la page,
   `lib/composants-db.mjs`, faute de ligne `page`), les pages d'alchimie et les règles des métiers.
 - **Sur l'accueil**, sous la bienvenue et le carrousel, avant « Par où commencer ? » (`/`, `pages/index.astro` ;
@@ -1358,7 +1370,7 @@ dev (un commit la change) ni cherchée par la recherche.
 - **Plus de champs `chapitre` ni `partie`** dans le frontmatter (migration `0064-guide-sans-chapitres`, registre de ce qui est parti dans
   `data/migrations/0064-guide-sans-chapitres.json`, `test/guide-sans-chapitres.test.mjs`) : l'ordre, les groupes et leurs couleurs sont dans le plan,
   contrôlé au build (`verifierLePlan` : une page nommée absente, d'exemple ou nommée deux fois arrête tout). Pour placer une page : la nommer dans
-  `lib/livres.mjs` (Découvrir, Les bases, Guide du MJ ou groupe des Règles avancées), sinon elle va d'elle-même dans « Autres pages de référence ».
+  `lib/livres.mjs` (Découvrir, Les bases, Guide du MJ ou Règles avancées), sinon elle va d'elle-même à la fin du menu des Règles avancées.
 - **Les anciennes adresses** `/guide/` et `/guide/<slug>/` mènent aux nouvelles par la page 404 (renvois calculés au build, `lib/metiers.mjs#renvoisDuGuide`,
   requête et ancre gardées). Un lien Markdown écrit à la main vers `/guide/<slug>/` mène à la nouvelle adresse au rendu — celle de la page qui l'absorbe
   pour une page fusionnée, à son intertitre si le lien n'écrit pas d'ancre — (`lib/guide.mjs#adresseDesAnciensLiens`, `remarkAnciensLiensDuGuide`), sans que la base change, et garde l'adresse écrite en

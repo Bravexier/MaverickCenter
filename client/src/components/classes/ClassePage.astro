@@ -34,7 +34,7 @@ const { entry, classe, groupes, statusNote } = Astro.props;
 // ouvert soit celui du type de la classe actuellement ouvert ») : les cinq catégories de /classes/, dans leur ordre et avec leurs classes (Parleur sous
 // « Spéciales » compris), chacune un <details> du même `name` (un seul ouvert à la fois, sans JavaScript dans les navigateurs récents) ; celle de la
 // classe affichée ouverte au build, la classe marquée (aria-current). Sur grand écran, collé à gauche comme le menu des Bases
-// (components/guide/LesBases.astro) ; sur petit écran, un tiroir comme celui de la chronologie (script ci-dessous).
+// (components/guide/MenuLateral.astro) ; sur petit écran, un tiroir comme celui de la chronologie (script ci-dessous).
 const groupeCourant = groupeDeCouleur(entry);
 const compte = (g: Props['groupes'][number]) => g.sections.reduce((n, s) => n + s.entries.length, 0);
 
