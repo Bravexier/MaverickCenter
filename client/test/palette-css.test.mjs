@@ -81,8 +81,9 @@ test('vingt familles, chacune lue dans le module de sa règle : magies, attribut
   // reçoit), une par partie du plan, même clé ; pas de `par-defaut` (une page sans partie ne porte aucune classe : l'accent du site)
   assert.equal(FAMILLES_DE_LA_PALETTE.partie, COULEURS_DES_PARTIES);
   assert.deepEqual(Object.keys(COULEURS_DES_PARTIES), PARTIES.map((p) => p.id), 'une couleur par partie du plan');
+  // (« plus-loin » ne colore plus aucune page depuis le 2026-11-05 : les Bases ont l'accent du site, « Accent du site » ; elle reste une partie de l'ancien guide)
   assert.deepEqual(COULEURS_DES_PARTIES, { decouvrir: '#2a6f97', creer: '#2e7d4f', jouer: '#b03030', progresser: '#6a4a9c', 'plus-loin': '#5a6470' }, 'les valeurs d’avant le lot');
-  assert.ok(RUBRIQUES_DU_GUIDE.every((r) => r.groupes.every((g) => Object.hasOwn(COULEURS_DES_PARTIES, g.partie))), 'chaque groupe du plan, la partie d’une couleur');
+  assert.ok(RUBRIQUES_DU_GUIDE.every((r) => (r.groupes ?? []).every((g) => Object.hasOwn(COULEURS_DES_PARTIES, g.partie))), 'chaque groupe du plan, la partie d’une couleur');
   assert.ok(!Object.hasOwn(COULEURS_DES_PARTIES, PAR_DEFAUT));
   assert.deepEqual(Object.keys(COULEURS_DES_TYPES), ['Léger', 'Intermédiaire', 'Lourd'], 'les trois types de la légende de la grille');
   assert.deepEqual(Object.keys(CLASS_COLORS), CLASS_GROUPS.map((g) => g.key), 'une couleur par catégorie de /classes/');
@@ -165,11 +166,12 @@ test('le nom d’une classe : « couleur-<famille>-<id> », l’id = la clé du 
   // lot des accessoires : un niveau absent ou inconnu n'a pas de classe (pas de `par-defaut`), comme il n'avait pas de couleur
   assert.deepEqual([1, '5', null, undefined, 6].map(classeDeNiveau), ['couleur-niveau-1', 'couleur-niveau-5', null, null, null]);
   assert.notEqual(classeDeNiveau(1), classeDuTypeDArmure('Léger'), 'la même valeur, deux classes');
-  // lot des parties du guide : la classe d'une partie (une page de Découvrir ou des Bases, un groupe du sommaire, une zone de la fiche) ; une page sans
-  // partie (Règles avancées, Guide du MJ) n'a pas de classe (pas de `par-defaut`), comme elle n'avait pas de couleur
+  // lot des parties du guide : la classe d'une partie (une page de Découvrir, une zone de la fiche) ; une page sans partie (Les bases, Règles avancées,
+  // Guide du MJ) n'a pas de classe (pas de `par-defaut`), comme elle n'avait pas de couleur
   assert.deepEqual(['decouvrir', 'creer', 'jouer', 'progresser', 'plus-loin', null, undefined, 'inconnue'].map(classeDePartie),
     ['couleur-partie-decouvrir', 'couleur-partie-creer', 'couleur-partie-jouer', 'couleur-partie-progresser', 'couleur-partie-plus-loin', null, null, null]);
-  assert.equal(classeDePartie(partieDeLaPage('guide/rejoindre-une-partie')), 'couleur-partie-jouer');
+  assert.equal(classeDePartie(partieDeLaPage('guide/creer-son-personnage')), 'couleur-partie-creer');
+  assert.equal(classeDePartie(partieDeLaPage('guide/les-degats')), null, 'une page des Bases : l’accent du site (« Accent du site », 2026-11-05)');
   assert.equal(classeDePartie(partieDeLaPage('guide/meteo')), null, 'une page de référence');
   const classes = couleursDeLaPalette().map((c) => c.classe);
   assert.equal(classes.length, Object.values(FAMILLES_DE_LA_PALETTE).reduce((n, f) => n + Object.keys(f).length, 0));
@@ -313,11 +315,11 @@ test('aucune couleur écrite dans le module de la palette ; la palette posée su
   // les niveaux des accessoires : l'onglet Accessoires seul
   assert.match(lire('src/components/accessoires/AccessoiresPage.astro'), /const couleurs = cssDesFamilles\(\['niveau'\]\);[^]*<style is:inline set:html=\{couleurs\}><\/style>/);
   assert.doesNotMatch(lire('src/layouts/Base.astro'), /'niveau'/, 'pas sur chaque page');
-  // les parties du guide : une page de Découvrir ou des Bases (seulement si elle en pose une), le sommaire (seulement si un groupe en pose une : celui des
-  // Bases), l'accueil (ses cartes) et la fiche (ses zones, avec ses autres familles d'une zone) ; jamais sur chaque page
+  // les parties du guide : une page de Découvrir (seulement si elle en pose une), l'accueil (ses cartes) et la fiche (ses zones, avec ses autres familles
+  // d'une zone) ; jamais sur chaque page. Plus le sommaire : ses groupes n'ont plus de couleur (Les bases, sans groupes depuis le 2026-11-05)
   assert.equal(cssDesParties(), cssDesFamilles(['partie']));
   assert.match(lire('src/components/guide/PageDuGuide.astro'), /\{couleur && <style is:inline set:html=\{cssDesParties\(\)\}><\/style>\}/);
-  assert.match(lire('src/components/guide/Sommaire.astro'), /const enCouleur = groupes\.some\(\(g\) => g\.classe\);[^]*\{enCouleur && <style is:inline set:html=\{cssDesParties\(\)\}><\/style>\}/);
+  assert.doesNotMatch(lire('src/components/guide/Sommaire.astro'), /cssDesParties|classe/, 'le sommaire : plus de couleur de partie');
   assert.match(lire('src/pages/index.astro'), /<style is:inline set:html=\{cssDesParties\(\)\}><\/style>/);
   assert.ok(FAMILLES_DE_LA_FICHE.includes('partie') && FAMILLES_DES_ZONES.includes('partie') && !FAMILLES_DE_CHAQUE_PAGE.includes('partie'));
   assert.doesNotMatch(lire('src/layouts/Base.astro'), /'partie'/, 'pas sur chaque page');
@@ -359,12 +361,13 @@ test('la palette dans les pages construites', construit ? {} : { skip: 'site non
   // les niveaux des accessoires : la page Accessoires, et seulement là
   assert.ok(page('ressources/accessoires/index.html').includes(`<style>${cssDesFamilles(['niveau'])}</style>`), 'les niveaux : la page Accessoires');
   for (const rel of ['index.html', 'magies/index.html', 'fiche/index.html', 'ressources/composants/index.html', 'ressources/armes/index.html']) assert.ok(!/\.couleur-niveau-/.test(page(rel)), `${rel} : pas des niveaux`);
-  // les parties du guide : l'accueil, le sommaire des Bases, une page de Découvrir ou des Bases (la fiche : avec ses familles, ci-dessus) ; ni une page de
-  // référence du guide, ni une autre page
-  for (const rel of ['index.html', 'regles/index.html', 'decouvrir/index.html', 'regles/les-postures/index.html']) {
+  // les parties du guide : l'accueil, une page de Découvrir (la fiche : avec ses familles, ci-dessus) ; ni Les bases (l'accent du site depuis le
+  // 2026-11-05 : « Accent du site »), ni une page de référence du guide, ni une autre page
+  for (const rel of ['index.html', 'decouvrir/index.html', 'decouvrir/creer-son-personnage/index.html']) {
     assert.ok(page(rel).includes(`<style>${cssDesFamilles(['partie'])}</style>`), `les parties : ${rel}`);
   }
-  for (const rel of ['magies/index.html', 'ressources/armes/index.html', 'regles/avancees/index.html', 'mj/index.html']) assert.ok(!/\.couleur-partie-[a-z-]+\{/.test(page(rel)), `${rel} : pas des parties`);
+  for (const rel of ['magies/index.html', 'ressources/armes/index.html', 'regles/index.html', 'regles/les-postures/index.html', 'regles/avancees/index.html',
+    'mj/index.html']) assert.ok(!/\.couleur-partie-[a-z-]+\{/.test(page(rel)), `${rel} : pas des parties`);
 });
 
 /** Le corps de la règle CSS d'un sélecteur (écrit tel quel, au début d'une ligne), sans les retours à la ligne. */
@@ -773,8 +776,7 @@ test('aucune couleur écrite dans les fichiers des lots faits (ni dans les règl
     "src/styles/chronologie/chronologie.css .frise__evenement[class*='couleur-evenement-']", "src/styles/chronologie/chronologie.css .frise__barre[class*='couleur-evenement-']",
     "src/styles/chronologie/chronologie.css .frise__morceau[class*='couleur-evenement-']", 'src/styles/chronologie/chronologie.css .chrono-page',
     "src/styles/chronologie/chronologie.css html.js .frise-voile:not([hidden])",
-    // lot des parties du guide
-    "src/styles/global/wiki.css .sommaire[class*='couleur-partie-']", 'src/styles/global/wiki.css .sommaire--couleur > h2',
+    // lot des parties du guide (les règles du sommaire des Bases, retirées avec ses groupes le 2026-11-05)
     "src/styles/guide/blocs.css .guide-reference[class*='couleur-partie-']", 'src/styles/guide/blocs.css .guide-rubriques__lien:hover, .guide-rubriques__lien:focus-visible',
     "src/styles/fiche/fiche.css .fiche-zone[class*='couleur-partie-']", 'src/styles/fiche/fiche.css .sort-prepare__marque',
     // lot des archives et de la mise à jour
@@ -1356,8 +1358,9 @@ test('les classes des événements posées par la frise, la page et l’éditeur
 });
 
 // Lot des parties du guide (2026-10-23, même demande et mêmes choix de cadrage) : la couleur d'une partie de l'ancien guide passe par la classe de la
-// palette (`couleur-partie-<id>`, famille `partie`, lib/parties-couleurs.mjs#COULEURS_DES_PARTIES) : une page de Découvrir ou des Bases, les cartes de
-// l'accueil, les groupes du sommaire des Bases, les quatre zones de la fiche ; plus aucune couleur dans le plan (lib/livres.mjs).
+// palette (`couleur-partie-<id>`, famille `partie`, lib/parties-couleurs.mjs#COULEURS_DES_PARTIES) : une page de Découvrir, les cartes de l'accueil, les
+// quatre zones de la fiche (plus les pages des Bases ni leur sommaire depuis le 2026-11-05 : « Accent du site ») ; plus aucune couleur dans le plan
+// (lib/livres.mjs).
 
 const PARTIE = "[class*='couleur-partie-']";
 
@@ -1385,15 +1388,14 @@ test('les feuilles des parties du guide lisent les propriétés que pose la clas
   assert.deepEqual(lecteurs(blocs), [`.guide-reference${PARTIE}`, '.guide-magie', '.guide-carac', '.guide-competences__groupe', '.guide-posture']);
   for (const [sel, repli] of [['.guide-magie', `--c: var(${fond}, var(--guide));`], ['.guide-competences__groupe', `--c: var(${fond}, var(--guide));`],
     ['.guide-posture', [`--c: var(${fond}, var(--guide));`, `--c-texte: var(${texte}, var(--text));`]]]) dans(blocs, sel, repli);
-  // l'accueil et le sommaire : la couleur lue sur la carte ou le groupe qui porte la classe, rien d'autre
+  // l'accueil : la couleur lue sur la carte qui porte la classe, rien d'autre ; le sommaire n'en lit plus (Les bases sans groupes depuis le 2026-11-05)
   const accueil = 'src/styles/accueil/accueil.css';
   dans(accueil, `.accueil-debut__carte${PARTIE}`, `--c: var(${fond});`);
   assert.deepEqual(lecteurs(accueil), [`.accueil-debut__carte${PARTIE}`]);
   const wiki = 'src/styles/global/wiki.css';
-  dans(wiki, `.sommaire${PARTIE}`, `--sommaire-couleur: var(${fond});`);
-  dans(wiki, '.sommaire--couleur > h2', 'border-left: 4px solid var(--sommaire-couleur);');
+  assert.doesNotMatch(lire(wiki), /--sommaire-couleur|sommaire--couleur/, 'plus de couleur de groupe dans un sommaire');
   // (et, depuis le lot 11, la case de tableau, sur la case qui porte la classe de sa couleur)
-  assert.deepEqual(lecteurs(wiki), [":is(td, th)[class*='couleur-case-'][class*='couleur-case-']", `.sommaire${PARTIE}`]);
+  assert.deepEqual(lecteurs(wiki), [":is(td, th)[class*='couleur-case-'][class*='couleur-case-']"]);
   // la fiche : --etape tirée de la classe de la partie de la zone, sur la zone ; la magie innée (sa classe est sur .fiche, posée par le script) est lue sur
   // .fiche elle-même, avant les zones, et les enfants d'une zone la retrouvent : les cadres (`.fiche[data-magie] .fiche-etape`) et tout élément sans classe
   // propre gardent la magie innée, jamais la couleur de la zone
@@ -1418,8 +1420,8 @@ test('les feuilles des parties du guide lisent les propriétés que pose la clas
   assert.ok(page.includes('const couleur = classeDePartie(partieDeLaPage(entry.id));'));
   assert.ok(page.includes("<div class:list={['guide-reference', couleur && ['guide-reference--couleur', couleur]]}>"));
   const sommaire = lire('src/components/guide/Sommaire.astro');
-  assert.ok(sommaire.includes("class:list={['sommaire', g.classe && ['sommaire--couleur', g.classe]]}"));
-  assert.ok(lire('src/pages/regles/index.astro').includes('classe: classeDePartie(g.partie),'));
+  assert.ok(sommaire.includes('<section class="sommaire" id={g.id}'), 'un groupe de sommaire, sans classe de partie');
+  assert.doesNotMatch(lire('src/pages/regles/index.astro'), /classeDePartie|cssDesParties/, '/regles/ : l’accent du site');
   const accueilPage = lire('src/pages/index.astro');
   assert.ok(accueilPage.includes("classe: classeDePartie(partieDeLaPage(e.id)),") && accueilPage.includes("<li class:list={['accueil-debut__carte', c.classe]}>"));
   const fichePage = lire('src/pages/fiche/index.astro');

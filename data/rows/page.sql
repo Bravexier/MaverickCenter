@@ -6305,7 +6305,7 @@ Autour d’une vraie table comme sur le Discord, une partie avance comme une con
 4. Si l’issue est incertaine, on lance les dés.
 5. Le MJ interprète l’action et le jet, puis décrit ce qui en découle.
 
-Et l’on recommence, jusqu’au bout de l’aventure. D’une partie à l’autre, les personnages gagnent de l’expérience et montent de niveau ([[guide/la-montee-de-niveau|La montée de niveau]]). Pour trouver une table, voyez [[guide/rejoindre-une-partie|Rejoindre une partie]].
+Et l’on recommence, jusqu’au bout de l’aventure. D’une partie à l’autre, les personnages gagnent de l’expérience et montent de niveau ([[guide/la-montee-de-niveau|La montée de niveau]]).
 
 Voici à quoi cela ressemble :
 
@@ -6685,7 +6685,7 @@ Chaque don est de l’un de ces quatre types :
 
 L’alignement décrit la morale du personnage. Il n’est pas choisi une fois pour toutes : il évolue au fil de l’aventure, selon ses actes, ses décisions et ses paroles. Le MJ en tient les quatre scores, Loyal, Chaotique, Bon et Mauvais ([[Alignement]]).
 
-> **Sur votre fiche** : les attributs ; les dons dans leurs cases ; les armes, l’armure, le bouclier, les accessoires, l’inventaire et la ceinture ; l’or de départ. Votre personnage est prêt : il ne lui manque qu’une table, et [[guide/rejoindre-une-partie|Rejoindre une partie]] vous dit où la trouver.
+> **Sur votre fiche** : les attributs ; les dons dans leurs cases ; les armes, l’armure, le bouclier, les accessoires, l’inventaire et la ceinture ; l’or de départ. Votre personnage est prêt.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/distance-et-voyage', 'guide', 'distance-et-voyage', 'Distance et voyage', 'distance-et-voyage', 'Dans Maverick, il est possible de faire de longs voyages et il est important de calculer le temps de voyage pour les joueurs.', NULL, 'Dans Maverick, il est possible de faire de longs voyages et il est important de calculer le temps de voyage pour les joueurs.
 
@@ -8338,7 +8338,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 ## C
 
-- **Campagne** : une aventure en plusieurs séances, qui part d’un point A pour arriver à un point B ; les joueurs y font partie de l’écriture de l’histoire. Voir aussi *One shot* ([[guide/rejoindre-une-partie|Rejoindre une partie]]).
+- **Campagne** : une aventure en plusieurs séances, qui part d’un point A pour arriver à un point B ; les joueurs y font partie de l’écriture de l’histoire. Voir aussi *One shot* ([[guide/campagne-ou-scenario-one-shot|« Campagne » ou « Scénario one shot » ?]]).
 - **Caractéristiques** : les six valeurs de base du personnage, Force, Volonté, Intelligence, Perception, Social et Agilité, de 1 à 4 en règle générale (5 avec le +1 de la magie innée). Chacune compte dix fois dans le score de ses cinq compétences ([[guide/creer-son-personnage|Créer son personnage]]).
 - **Carte de combat** (*battlemap*) : une carte quadrillée vue de haut, où le MJ dessine les obstacles d’un combat et où l’on compte les distances en cases. Il peut s’en passer pour un combat rapide ([[guide/le-tour-de-jeu|Le tour de jeu]]).
 - **Ceinture** : trois emplacements pour des objets à portée de main (fioles, carquois, bâtons magiques…), qui s’utilisent en une action rapide au lieu d’une action entière ; au plus 3 exemplaires du même objet dans chacun ([[guide/l-equipement|L’équipement]]).
@@ -8406,7 +8406,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 ## O
 
-- **One shot** (scénario) : une histoire jouée en une seule séance, avec une fin fermée, qui ne laisse pas de suite. Voir aussi *Campagne* ([[guide/rejoindre-une-partie|Rejoindre une partie]]).
+- **One shot** (scénario) : une histoire jouée en une seule séance, avec une fin fermée, qui ne laisse pas de suite. Voir aussi *Campagne* ([[guide/campagne-ou-scenario-one-shot|« Campagne » ou « Scénario one shot » ?]]).
 
 ## P
 
@@ -9295,44 +9295,6 @@ Cette posture étrange permet d''être en parfaite fusion avec sa magie, dans ce
 - **Une seule parade/esquive par tour :** Permet d''esquiver ou de parer une fois par tour.
 - **Impossible d''utiliser les objets et armes (sauf forgemagie) :** Vous êtes quasiment un élémentaire, les armes physiques et les objets ne sont pas dans votre optique (“Forgemagie”, “Forge de ses morts”, Bâton magique et les parchemins ne sont pas interdits)
 - **Une seule magie active :** Quand vous avez 2 magies, 1 de ces magies doit être désactivée temporairement, ainsi tous ses avantages et inconvénients sont annulés également.
-', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/rejoindre-une-partie', 'guide', 'rejoindre-une-partie', 'Rejoindre une partie', 'rejoindre-une-partie', 'Pour les joueurs : les deux façons de jouer (one shot, campagne), où trouver une table et comment se préparer à sa première partie.', NULL, 'Vous avez envie de jouer à Maverick ? Voici comment se passent les parties, où les trouver et comment vous y préparer.
-
-## Deux façons de jouer
-
-Selon ce que l’on souhaite faire, il y a deux façons principales de jouer :
-
-- **Le scénario one shot** : une histoire jouée en une seule séance, en général de 1 h 30 à 4 h, selon l’histoire et le nombre de joueurs autour de la table. C’est le plus souvent une aventure simple, avec une fin fermée qui ne laisse pas de suite : escorter une caravane, pourchasser un criminel évadé de prison, venir à bout d’une créature qui détruit un village, enquêter sur une mort mystérieuse… Parfait pour passer un bon moment quand on ne peut être là qu’une fois, ou pour prendre la température avant une campagne.
-- **La campagne** : une aventure en plusieurs séances, qui part d’un point A pour arriver à un point B. Le MJ en prépare les grandes lignes, les situations et le décor, puis laisse les joueurs décider de la façon d’avancer : en campagne, les joueurs font partie de l’écriture de l’histoire.
-
-Côté MJ, la préparation de chacune est expliquée dans [[guide/campagne-ou-scenario-one-shot|« Campagne » ou « Scénario one shot » ?]], au Guide du MJ.
-
-## Trouver une table
-
-L’activité de jeu de rôle se fait principalement sur le serveur Discord officiel, « L’univers de Maverick » : rejoignez-le par son [lien d’invitation](https://discord.gg/GMGBnjzfMk), que vous retrouverez aussi [sur la page d’accueil](/#lien-discord).
-
-Maverick se joue aussi autour d’une vraie table : [la page d’accueil](/#prochaine-rencontre) annonce, dans son encart « Notre prochaine rencontre IRL », les prochaines conventions où Maverick sera présent.
-
-## Avant votre première partie
-
-- **Un personnage.** [[guide/creer-son-personnage|Créer son personnage]] vous guide pas à pas, et la [fiche de personnage](/fiche/) du site fait les calculs pour vous ; vous pouvez la télécharger en tableur. Les fiches que l’on y crée sont des *prétirés*, visibles de tous, et réunis dans la liste des [personnages](/personnages/).
-- **Les règles de base.** Inutile de tout savoir pour commencer : [Les bases](/regles/) expliquent l’essentiel, à commencer par [[guide/reussir-une-action|Réussir une action]] et [[guide/le-tour-de-jeu|Le tour de jeu]].
-
-## À la table
-
-- **Décrivez ce que fait votre personnage**, posez vos questions au MJ, dites ce que votre personnage tente : c’est ainsi que l’histoire avance, et vous avez votre mot à dire.
-- **Le MJ est le juge de la partie.** Il reste seul juge de ce qui est possible, improbable ou impossible, et sa parole doit être respectée ; en échange, il se doit d’être impartial et de laisser chacun s’amuser.
-- **Les dés.** Selon la table, vous lancez vos dés ou le MJ les lance pour vous ; quand chacun lance les siens, ceux des joueurs se font toujours à découvert. Le MJ, lui, peut lancer les siens en secret. Si votre personnage tombe dans le coma, le MJ peut aussi faire lui-même ses jets de survie.
-- **Les combats.** Le MJ peut déployer une carte de combat quadrillée, qui montre la scène vue du dessus, les obstacles et les distances exactes ; il peut aussi s’en passer quand le combat sera rapide.
-
-## D’une partie à l’autre
-
-Votre personnage garde ce qu’il a vécu :
-
-- il gagne de l’**expérience** et monte de **niveau** ([[guide/la-montee-de-niveau|La montée de niveau]]) ;
-- son **alignement** évolue selon ses actes, ses décisions et ses paroles ; c’est le MJ qui en tient les scores ([[Alignement]]) ;
-- il peut s’**entraîner**, le plus souvent auprès d’entraîneurs des villes et des villages, contre une somme d’or que fixe le MJ, parfois auprès d’un personnage important si le MJ le décide ; un **métier** se prend à la création ou plus tard dans l’aventure ([[guide/s-entrainer-et-exercer-un-metier|S’entraîner et exercer un métier]]) ;
-- des **événements** peuvent lui apporter des dons, bons ou mauvais, sans prévenir.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/resistance-faiblesse-magie', 'guide', 'resistance-faiblesse-magie', 'Résistance/Faiblesse Magie', 'resistance-faiblesse-magie', 'À la manière de beaucoup d''univers, il existe une relation entre les différentes magies, certaines sont efficaces sur certaines, d''autres sont moins efficaces et ainsi de suite.', NULL, 'À la manière de beaucoup d''univers, il existe une relation entre les différentes magies, certaines sont efficaces sur certaines, d''autres sont moins efficaces et ainsi de suite, voici la table :
 

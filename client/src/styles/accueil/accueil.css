@@ -12,15 +12,12 @@
   .accueil { grid-template-columns: minmax(0, 1fr); }
 }
 
-/* « Par où commencer ? » : quatre cartes sous le texte et la galerie, les quatre pages de Découvrir, chacune dans la couleur de son groupe (lib/livres.mjs) ; toute la carte est cliquable
-   (le lien couvre la carte) ; quatre de front, puis deux, puis une seule sur un écran étroit, jamais de défilement de côté. */
+/* « Par où commencer ? » : trois cartes sous le texte et la galerie, les trois pages de Découvrir, chacune dans la couleur de son groupe (lib/livres.mjs) ; toute la carte est cliquable
+   (le lien couvre la carte) ; trois de front, puis une seule sur un écran étroit, jamais de défilement de côté. */
 .accueil-debut { margin-top: 2rem; }
 .accueil-debut h2 { margin: 0 0 0.8rem; }
-.accueil-debut__cartes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.8rem; margin: 0; padding: 0; list-style: none; }
-@media (max-width: 60rem) {
-  .accueil-debut__cartes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-@media (max-width: 32rem) {
+.accueil-debut__cartes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.8rem; margin: 0; padding: 0; list-style: none; }
+@media (max-width: 40rem) {
   .accueil-debut__cartes { grid-template-columns: minmax(0, 1fr); }
 }
 /* une carte dans la couleur de son groupe : --c tiré de la classe de sa partie (`.couleur-partie-…`, lib/palette-css.mjs#classeDePartie), posée sur

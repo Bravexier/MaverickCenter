@@ -16,8 +16,9 @@ const content = new URL('../src/content/wiki/', import.meta.url);
 test('le menu a les rubriques et les entrées voulues par le propriétaire, dans l’ordre (2026-10-29 : sept rubriques, rien de caché)', () => {
   const plan = NAV.map((g) => `${g.label} : ${g.items.map((i) => (i.path ? i.label : `${i.label} (bientôt)`) + (i.devSeulement ? ' (site de dev)' : '')).join(', ')}`);
   assert.deepEqual(plan, [
-    // « Le menu "Découvrir" sera renommé "Règles", le sous-menu "Bienvenue" sera renommé "Découvrir" » ; « Les bases » et « Règles avancées » y vont
-    'Règles : Découvrir, L’univers, Créer son personnage, Rejoindre une partie, Les bases, Règles avancées',
+    // « Le menu "Découvrir" sera renommé "Règles", le sous-menu "Bienvenue" sera renommé "Découvrir" » ; « Les bases » et « Règles avancées » y vont ;
+    // « Efface la page "Rejoindre une partie" et son lien. » (2026-11-05)
+    'Règles : Découvrir, L’univers, Créer son personnage, Les bases, Règles avancées',
     // « renommer le menu "Règles" en "Personnage" » ; « Famillier devrai être dans Personnage » (sic, réponse du 2026-10-29)
     'Personnage : Races, Magies, Classes, Métiers, Familiers',
     // « Entre le nouvellement créé "Personnage" et "Espace Joueur" il faudra un nouveau menu : "Equipement" » : cinq pages séparées, libellés « Comme
@@ -32,7 +33,7 @@ test('le menu a les rubriques et les entrées voulues par le propriétaire, dans
   assert.deepEqual(NAV.map((g) => g.key), ['regles', 'personnage', 'equipement', 'joueur', 'mj', 'codex', 'outils']);
   assert.deepEqual(NAV.find((g) => g.key === 'joueur').items.filter((i) => i.path).map((i) => i.path), ['fiche/', 'personnages/'], 'la fiche, puis la liste des personnages');
   assert.deepEqual(NAV.find((g) => g.key === 'regles').items.map((i) => i.path), [
-    'decouvrir/', 'decouvrir/l-univers/', 'decouvrir/creer-son-personnage/', 'decouvrir/rejoindre-une-partie/', 'regles/', 'regles/avancees/',
+    'decouvrir/', 'decouvrir/l-univers/', 'decouvrir/creer-son-personnage/', 'regles/', 'regles/avancees/',
   ]);
   assert.deepEqual(NAV.find((g) => g.key === 'personnage').items.map((i) => i.path), ['races/', 'magies/', 'classes/', 'metiers/', 'ressources/familiers/']);
   assert.deepEqual(NAV.find((g) => g.key === 'equipement').items.map((i) => i.path), [
@@ -99,8 +100,9 @@ test('la 2e ligne suit la rubrique de la page, même hors menu ; la première (R
   assert.equal(activeGroup('/regles/avancees/meteo/').key, 'regles');
   assert.equal(activeGroup('/regles/artisanat/').key, 'equipement', 'Artisanat, à l’Équipement malgré /regles/');
   assert.equal(activeGroup('/decouvrir/l-univers/').key, 'regles');
-  assert.equal(activeGroup('/decouvrir/rejoindre-une-partie/').key, 'regles');
-  assert.equal(activeGroup('/regles/').key, 'regles', 'le sommaire des Bases');
+  assert.equal(activeGroup('/decouvrir/creer-son-personnage/').key, 'regles');
+  assert.equal(activeGroup('/regles/').key, 'regles', 'Les bases (menu latéral, ouvert sur leur première page)');
+  assert.equal(activeGroup('/regles/les-degats/').key, 'regles', 'une page des Bases');
   assert.equal(activeGroup('/mj/').key, 'mj');
   assert.equal(activeGroup('/mj/guide-pour-mj-maverick/').key, 'mj');
   assert.equal(activeGroup('/fiche/').key, 'joueur');

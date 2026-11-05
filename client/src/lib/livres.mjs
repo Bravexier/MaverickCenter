@@ -4,19 +4,25 @@
 // wiki (components/guide/PageDuGuide.astro : fil d'Ariane vers sa rubrique ou son sommaire, titre, texte, blocs, pied de page ; plus aucune source
 // affichée : elles ne se lisent que sur /archives/, réponse du propriétaire du 2026-10-22).
 //   - « Découvrir » (/decouvrir/, en tête de la rubrique Règles du menu — l'ancienne rubrique Découvrir, renommée le 2026-10-29 —, faite pour être vue
-//     même des non-membres) : UNE page par entrée du menu (choix du propriétaire du 2026-10-18) — Bienvenue (servie à /decouvrir/, entrée « Découvrir »), L'univers, Créer son personnage (les six étapes sur une seule page), Rejoindre une
-//     partie. Les autres à /decouvrir/<slug>/. Les liens Discord et Tipeee et l'encart « Notre prochaine rencontre IRL » sont sur l'accueil
+//     même des non-membres) : UNE page par entrée du menu (choix du propriétaire du 2026-10-18) — Bienvenue (servie à /decouvrir/, entrée
+//     « Découvrir »), L'univers, Créer son personnage (les six étapes sur une seule page). Les autres à /decouvrir/<slug>/. La page « Rejoindre une
+//     partie » est supprimée (demande du propriétaire du 2026-11-05 : « Efface la page "Rejoindre une partie" et son lien. ») ; son ancienne adresse
+//     n'est renvoyée nulle part (réponse « Page 404 (Recommandé) ») : la page 404 la dit introuvable. Les liens Discord et Tipeee et l'encart « Notre prochaine rencontre IRL » sont sur l'accueil
 //     (LIENS_ET_RENCONTRE ; sur la page « Liens » jusqu'au 2026-10-22, puis sous le texte de Bienvenue jusqu'au 2026-10-23 ; l'ancienne adresse de la
 //     page Liens n'est plus renvoyée nulle part).
-//   - « Les bases » (/regles/, rubrique Règles) : un sommaire en trois groupes (« Jouer », « Progresser », « Pour aller plus loin » : titre et résumé de
-//     chaque page, components/guide/Sommaire.astro, comme les Règles avancées) ; une page par sujet, à /regles/<slug>/.
+//   - « Les bases » (/regles/, rubrique Règles) : une liste de pages, sans groupes, sur le modèle de la chronologie (demande du propriétaire du
+//     2026-11-05 : « Au lieu de lister les différentes pages, réécrit directement le contenu. […] Inutile de séparer les catégories les Jouer /
+//     Progresser / Pour aller plus loin. Pour la présation je préfèrera un menu latéral sous le même modèle que la chronologie. ») : à gauche, le menu
+//     des titres, à droite le texte de la page choisie (components/guide/LesBases.astro). Chaque page à /regles/<slug>/ ; /regles/ montre la première
+//     (`ouverture`, « Réussir une action »), son adresse canonique restant /regles/<slug>/.
 //   - Les « Règles avancées » (/regles/avancees/) et le « Guide du MJ » (/mj/) sont des sommaires ; leurs pages sont à /regles/avancees/<slug>/ et
 //     /mj/<slug>/. Toute page `guide/…` qui n'est ni dans Découvrir, ni dans Les bases, ni dans le Guide du MJ est une page des Règles avancées (groupe
 //     « Autres pages de référence » si aucun groupe ne la nomme) : une page ajoutée plus tard a toujours une adresse.
 //   - « Artisanat » (/regles/artisanat/) est un sommaire de pages d'autres types.
-// Chaque groupe de Découvrir et des Bases porte l'id d'une ancienne partie du guide (PARTIES, `partie`) : la couleur de cette partie (sa classe de la
-// palette, `.couleur-partie-<id>` : lib/palette-css.mjs#classeDePartie, valeur dans lib/parties-couleurs.mjs) colore ses pages (filet du titre, blocs),
-// ses cartes « Par où commencer ? » et son groupe dans le sommaire des Bases. Aucune couleur n'est écrite ici (le navigateur reçoit ce plan).
+// Chaque groupe de Découvrir porte l'id d'une ancienne partie du guide (PARTIES, `partie`) : la couleur de cette partie (sa classe de la palette,
+// `.couleur-partie-<id>` : lib/palette-css.mjs#classeDePartie, valeur dans lib/parties-couleurs.mjs) colore ses pages (filet du titre, blocs) et ses
+// cartes « Par où commencer ? ». Les pages des Bases n'ont pas de partie : l'accent du site, comme les Règles avancées et le Guide du MJ (réponse du
+// propriétaire du 2026-11-05 : « Une seule couleur », puis « Accent du site »). Aucune couleur n'est écrite ici (le navigateur reçoit ce plan).
 // Pages fusionnées (2026-10-18) : « Le jeu de rôle, comment ça marche ? » dans Bienvenue, les six étapes de la création dans Créer son personnage
 // (PAGES_ABSORBEES) ; elles ne sont plus dans la base, leurs adresses mènent à la page qui les absorbe (page 404 : lib/metiers.mjs#renvoisDuGuide).
 // Rien n'est caché ni filtré (réponse du propriétaire du 2026-10-18 : « Tu fait comme si de rien n'était pour l'instant. On verra les caches. », sic) : à
@@ -31,9 +37,11 @@
 // lib/fiche-regles.mjs, les composants et les tests.
 
 /**
- * Les parties de l'ancien guide, dont les groupes de Découvrir et des Bases prennent la couleur (`partie` d'un groupe : l'id d'une partie). Leurs
- * couleurs sont dans lib/parties-couleurs.mjs#COULEURS_DES_PARTIES (même clé), posées par leur classe (lib/palette-css.mjs#classeDePartie) ; elles sont
- * aussi celles des quatre zones de la fiche (pages/fiche/index.astro).
+ * Les parties de l'ancien guide, dont les groupes de Découvrir prennent la couleur (`partie` d'un groupe : l'id d'une partie). Leurs couleurs sont dans
+ * lib/parties-couleurs.mjs#COULEURS_DES_PARTIES (même clé), posées par leur classe (lib/palette-css.mjs#classeDePartie) ; elles sont aussi celles des
+ * quatre zones de la fiche (pages/fiche/index.astro : creer, jouer, decouvrir, progresser). « Pour aller plus loin » ne colore plus rien depuis que
+ * Les bases n'ont plus de groupes (2026-11-05) ; elle reste une partie de l'ancien guide, que nomme le registre de la migration 0064
+ * (data/migrations/0064-guide-sans-chapitres.json, test/guide-sans-chapitres.test.mjs).
  */
 export const PARTIES = Object.freeze([
   Object.freeze({ id: 'decouvrir', titre: 'Découvrir' }),
@@ -51,30 +59,26 @@ const partie = (id) => {
 const gele = (o) => Object.freeze(o);
 
 /**
- * Découvrir : quatre pages, une par entrée du menu, dans l'ordre du menu ; `accueil` est servie à l'adresse de la rubrique (/decouvrir/), les autres à
+ * Découvrir : trois pages, une par entrée du menu, dans l'ordre du menu ; `accueil` est servie à l'adresse de la rubrique (/decouvrir/), les autres à
  * /decouvrir/<slug>/. Les groupes ne donnent que la partie (la couleur) de leurs pages (Découvrir n'a pas de sommaire).
  */
 export const DECOUVRIR = gele({
   id: 'decouvrir', titre: 'Découvrir', chemin: 'decouvrir/', accueil: 'guide/bienvenue', groupes: Object.freeze([
     gele({ id: 'decouvrir', titre: 'Découvrir', partie: partie('decouvrir'), pages: Object.freeze(['guide/bienvenue', 'guide/l-univers']) }),
     gele({ id: 'creer', titre: 'Créer son personnage', partie: partie('creer'), pages: Object.freeze(['guide/creer-son-personnage']) }),
-    gele({ id: 'rejoindre', titre: 'Rejoindre une partie', partie: partie('jouer'), pages: Object.freeze(['guide/rejoindre-une-partie']) }),
   ]),
 });
 
 /**
- * Les bases : un sommaire à /regles/ (pages/regles/index.astro), en trois groupes (chacun son ancre `id` et sa partie, la couleur) ; chaque page à /regles/<slug>/.
+ * Les bases : douze pages, sans groupes ni partie (l'accent du site), dans l'ordre du menu latéral (components/guide/LesBases.astro) ; chaque page à
+ * /regles/<slug>/. `accueil` est null : aucune page n'est servie à /regles/ sous cette adresse ; /regles/ (pages/regles/index.astro) montre le menu et
+ * la page `ouverture` (« Réussir une action » : réponse du propriétaire du 2026-11-05), dont l'adresse canonique reste /regles/<slug>/.
  */
 export const LES_BASES = gele({
-  id: 'bases', titre: 'Les bases', chemin: 'regles/', accueil: null, groupes: Object.freeze([
-    gele({
-      id: 'jouer', titre: 'Jouer', partie: partie('jouer'), pages: Object.freeze([
-        'guide/reussir-une-action', 'guide/le-tour-de-jeu', 'guide/attaquer-et-se-defendre', 'guide/l-equipement', 'guide/les-degats', 'guide/les-postures',
-        'guide/la-magie-en-jeu', 'guide/blessures-et-etats',
-      ]),
-    }),
-    gele({ id: 'progresser', titre: 'Progresser', partie: partie('progresser'), pages: Object.freeze(['guide/la-montee-de-niveau', 'guide/s-entrainer-et-exercer-un-metier']) }),
-    gele({ id: 'plus-loin', titre: 'Pour aller plus loin', partie: partie('plus-loin'), pages: Object.freeze(['guide/aide-memoire', 'guide/lexique']) }),
+  id: 'bases', titre: 'Les bases', chemin: 'regles/', accueil: null, ouverture: 'guide/reussir-une-action', pages: Object.freeze([
+    'guide/reussir-une-action', 'guide/le-tour-de-jeu', 'guide/attaquer-et-se-defendre', 'guide/l-equipement', 'guide/les-degats', 'guide/les-postures',
+    'guide/la-magie-en-jeu', 'guide/blessures-et-etats', 'guide/la-montee-de-niveau', 'guide/s-entrainer-et-exercer-un-metier', 'guide/aide-memoire',
+    'guide/lexique',
   ]),
 });
 
@@ -170,8 +174,8 @@ export const ARTISANAT = gele({
  * et dans les avertissements des [[liens]] cassés ; ce n'est pas une page du wiki.
  * `titre` : le titre de l'accueil (pages/index.astro, « Accueil », celui du fil d'Ariane), qui nomme l'encart dans la note de version
  * (lib/notes-de-version.mjs : « Accueil › Notre prochaine rencontre IRL »).
- * Les `id` (ancres « lien-discord », « lien-tipeee », « prochaine-rencontre ») sont ceux de l'ancienne page Liens, figés : les liens écrits dans
- * Bienvenue et Rejoindre une partie y mènent (« /#lien-discord », « /#prochaine-rencontre »). L'ancienne adresse de la page Liens
+ * Les `id` (ancres « lien-discord », « lien-tipeee », « prochaine-rencontre ») sont ceux de l'ancienne page Liens, figés : un lien écrit dans une page
+ * y mène (« /#lien-discord », « /#prochaine-rencontre »). L'ancienne adresse de la page Liens
  * (/decouvrir/liens/) n'est plus renvoyée nulle part (réponse du propriétaire du 2026-10-23 : « supprimer ce lien ») : la page 404 la dit introuvable.
  */
 export const LIENS_ET_RENCONTRE = gele({
@@ -186,7 +190,7 @@ export const LIENS_ET_RENCONTRE = gele({
   }),
 });
 
-/** Les quatre cartes « Par où commencer ? » de l'accueil, et les entrées de la rubrique Règles du menu qui mènent à ces pages, dans cet ordre : les pages de Découvrir. */
+/** Les trois cartes « Par où commencer ? » de l'accueil, et les entrées de la rubrique Règles du menu qui mènent à ces pages, dans cet ordre : les pages de Découvrir. */
 export const PAR_OU_COMMENCER = Object.freeze(DECOUVRIR.groupes.flatMap((g) => g.pages));
 
 /** Les pages Astro écrites à côté des pages du plan (regles/artisanat, regles/avancees/) : aucune page de Découvrir ni des Bases ne prend ce nom. */
@@ -229,7 +233,7 @@ export const adresseDeLaPageAbsorbee = (ancienne, cheminDe) => `${cheminDe(PAGES
 /**
  * Les adresses du plan précédent (livres Découvrir et Les bases, 2026-10-18) qui ont changé, hors pages absorbées : adresse → page qui y est maintenant.
  * « « Campagne » ou « Scénario one shot » ? » était la dernière page de Découvrir ; elle est dans le Guide du MJ. (/regles/ reste une adresse : le
- * sommaire des Bases.) La page « Liens » (/decouvrir/liens/), supprimée le 2026-10-22, menait à Bienvenue jusqu'au 2026-10-23 ; elle n'est plus
+ * menu des Bases, ouvert sur leur première page.) La page « Liens » (/decouvrir/liens/), supprimée le 2026-10-22, menait à Bienvenue jusqu'au 2026-10-23 ; elle n'est plus
  * renvoyée nulle part (réponse du propriétaire du 2026-10-23 : « supprimer ce lien »).
  */
 export const ADRESSES_DU_PLAN_PRECEDENT = Object.freeze({
@@ -238,8 +242,12 @@ export const ADRESSES_DU_PLAN_PRECEDENT = Object.freeze({
 
 const slugDe = (id) => id.slice(id.indexOf('/') + 1);
 
-/** Les pages d'une rubrique (Découvrir, Les bases) dans l'ordre : [{ id, groupe, ordre }] (`ordre` : 0…M − 1 dans la rubrique). */
+/**
+ * Les pages d'une rubrique (Découvrir, Les bases) dans l'ordre : [{ id, groupe, ordre }] (`ordre` : 0…M − 1 dans la rubrique ; `groupe` : celui de
+ * Découvrir, null pour Les bases, qui n'en a pas).
+ */
 export function pagesDeLaRubrique(rubrique) {
+  if (!rubrique.groupes) return rubrique.pages.map((id, ordre) => ({ id, groupe: null, ordre }));
   let ordre = 0;
   return rubrique.groupes.flatMap((groupe) => groupe.pages.map((id) => ({ id, groupe, ordre: ordre++ })));
 }
@@ -258,8 +266,14 @@ export const estDansDecouvrirOuLesBases = (id) => PLACES.has(id);
 /** Vrai si la page est dans le Guide du MJ. */
 export const estDuGuideDuMj = (id) => GUIDE_DU_MJ.pages.includes(id);
 
-/** La partie d'une page de Découvrir ou des Bases (celle de son groupe : l'id de sa couleur, lib/palette-css.mjs#classeDePartie), ou null. */
-export const partieDeLaPage = (id) => PLACES.get(id)?.groupe.partie ?? null;
+/** Vrai si la page est dans Les bases (menu latéral de components/guide/LesBases.astro). */
+export const estDesBases = (id) => PLACES.get(id)?.rubrique === LES_BASES;
+
+/**
+ * La partie d'une page de Découvrir (celle de son groupe : l'id de sa couleur, lib/palette-css.mjs#classeDePartie), ou null : une page des Bases (l'accent
+ * du site, réponse du propriétaire du 2026-11-05 : « Accent du site ») ou de référence.
+ */
+export const partieDeLaPage = (id) => PLACES.get(id)?.groupe?.partie ?? null;
 
 /**
  * L'adresse d'une page `guide/<slug>`, relative à la racine du site : Bienvenue à /decouvrir/, une autre page de Découvrir à `decouvrir/<slug>/`, une page
@@ -287,14 +301,12 @@ export function placeDansLeGuide(id) {
 const parTitre = (a, b) => String(a.data?.title ?? a.id).localeCompare(String(b.data?.title ?? b.id), 'fr');
 
 /**
- * Les groupes des Bases remplis des pages données (`entries` : les pages chargées, { id, data: { title } }) : [{ id, titre, partie, pages }] (`pages` :
- * les éléments de `entries`, dans l'ordre du plan), un groupe vide omis. Une page nommée et absente de `entries` est sautée (verifierLePlan la signale).
+ * Les pages des Bases prises dans les pages données (`entries` : les pages chargées, { id, data: { title } }), dans l'ordre du plan : le menu latéral.
+ * Une page nommée et absente de `entries` est sautée (verifierLePlan la signale).
  */
-export function groupesDesBases(entries) {
+export function pagesDesBases(entries) {
   const parId = new Map(entries.map((e) => [e.id, e]));
-  return LES_BASES.groupes
-    .map((g) => ({ id: g.id, titre: g.titre, partie: g.partie, pages: g.pages.map((id) => parId.get(id)).filter(Boolean) }))
-    .filter((g) => g.pages.length);
+  return LES_BASES.pages.map((id) => parId.get(id)).filter(Boolean);
 }
 
 /**
@@ -327,13 +339,12 @@ export function groupeDeLaPage(id) {
 
 /**
  * Le fil d'Ariane d'une page `guide/…`, après « Accueil » : [{ titre, chemin }] (`chemin` relatif à la racine du site, ancre comprise) — sa rubrique
- * (Découvrir), ou son sommaire et son groupe (Les bases, Règles avancées), ou le Guide du MJ. Le gabarit marque le maillon qui mène à la page elle-même
- * (Bienvenue est servie à /decouvrir/).
+ * (Découvrir, Les bases : plus de groupes depuis le 2026-11-05), ou son sommaire et son groupe (Règles avancées), ou le Guide du MJ. Le gabarit marque le
+ * maillon qui mène à la page elle-même (Bienvenue est servie à /decouvrir/).
  */
 export function filDAriane(id) {
   const place = PLACES.get(id);
-  if (place?.rubrique === DECOUVRIR) return [{ titre: DECOUVRIR.titre, chemin: DECOUVRIR.chemin }];
-  if (place) return [{ titre: LES_BASES.titre, chemin: LES_BASES.chemin }, { titre: place.groupe.titre, chemin: `${LES_BASES.chemin}#${place.groupe.id}` }];
+  if (place) return [{ titre: place.rubrique.titre, chemin: place.rubrique.chemin }];
   if (estDuGuideDuMj(id)) return [{ titre: GUIDE_DU_MJ.titre, chemin: GUIDE_DU_MJ.chemin }];
   const groupe = groupeDeLaPage(id);
   return [{ titre: REGLES_AVANCEES.titre, chemin: REGLES_AVANCEES.chemin }, ...(groupe ? [{ titre: groupe.titre, chemin: `${REGLES_AVANCEES.chemin}#${groupe.id}` }] : [])];
@@ -342,16 +353,18 @@ export function filDAriane(id) {
 /**
  * Contrôle du plan contre les pages chargées (`entries` : { id, data: { status } }), appelé au build par les routes : chaque page nommée (Découvrir, Les
  * bases, Guide du MJ, groupes des Règles avancées) existe et n'est pas une page d'exemple, aucune n'est nommée deux fois, aucune page de Découvrir ni des
- * Bases ne prend un nom réservé, aucun groupe n'est vide, aucune page absorbée n'est encore là (elle s'afficherait dans les Règles avancées) et chaque
- * page qui en absorbe une est dans le plan. Lève une erreur (le build s'arrête plutôt que de montrer un plan faux) ; rend `entries`.
+ * Bases ne prend un nom réservé, aucune rubrique ni aucun groupe n'est vide, la page d'ouverture des Bases en est une, aucune page absorbée n'est
+ * encore là (elle s'afficherait dans les Règles avancées) et chaque page qui en absorbe une est dans le plan. Lève une erreur (le build s'arrête plutôt que de montrer un plan faux) ; rend `entries`.
  */
 export function verifierLePlan(entries) {
   const parId = new Map(entries.map((e) => [e.id, e]));
+  for (const r of RUBRIQUES_DU_GUIDE) {
+    for (const g of r.groupes ?? []) if (!g.pages.length) throw new Error(`plan du guide : le groupe « ${g.titre} » de « ${r.titre} » est vide`);
+    if (!pagesDeLaRubrique(r).length) throw new Error(`plan du guide : « ${r.titre} » est vide`);
+  }
+  if (!LES_BASES.pages.includes(LES_BASES.ouverture)) throw new Error(`plan du guide : ${LES_BASES.ouverture}, ouverte à /${LES_BASES.chemin}, n'est pas dans « ${LES_BASES.titre} »`);
   const nommees = [
-    ...RUBRIQUES_DU_GUIDE.flatMap((r) => r.groupes.flatMap((g) => {
-      if (!g.pages.length) throw new Error(`plan du guide : le groupe « ${g.titre} » de « ${r.titre} » est vide`);
-      return g.pages.map((id) => [id, `« ${r.titre} »`]);
-    })),
+    ...RUBRIQUES_DU_GUIDE.flatMap((r) => pagesDeLaRubrique(r).map(({ id }) => [id, `« ${r.titre} »`])),
     ...GUIDE_DU_MJ.pages.map((id) => [id, GUIDE_DU_MJ.titre]),
     ...REGLES_AVANCEES.groupes.flatMap((g) => (g.pages ?? []).map((id) => [id, `groupe « ${g.titre} »`])),
   ];

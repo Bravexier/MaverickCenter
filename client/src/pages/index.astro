@@ -10,7 +10,7 @@ import { entryHref, loadWiki, url } from '../lib/wiki';
 
 // Accueil (demande du propriétaire ; la rubrique Règles du menu s'ouvre, l'ancienne rubrique Découvrir) : un texte de bienvenue et le défilement des images de la galerie
 // (components/galerie/Carrousel.astro). La présentation du jeu reprend le texte d'accueil du propriétaire (guide/bienvenue, servie à /decouvrir/).
-// Dessous, « Par où commencer ? » (2026-10-18) : quatre cartes, les quatre pages de Découvrir (lib/livres.mjs#PAR_OU_COMMENCER), le titre et le résumé
+// Dessous, « Par où commencer ? » (2026-10-18) : trois cartes, les trois pages de Découvrir (lib/livres.mjs#PAR_OU_COMMENCER), le titre et le résumé
 // de chaque page tels que la base les écrit, dans la couleur de son groupe (la classe de sa partie, lib/palette-css.mjs#classeDePartie, dont la page
 // émet la feuille). La phrase « Première visite ? » et son bouton ne disent que la navigation.
 // Entre les deux, sous la bienvenue et le carrousel (demande du propriétaire du 2026-10-23 : « Ces 3 blocs auraient plus leur place dans l'onglet
@@ -39,7 +39,7 @@ const cartes = PAR_OU_COMMENCER.map((id) => parId.get(id)!).map((e) => ({
         Maverick Center en rassemble les règles et le lore, en pages reliées entre elles par mots-clés, et les outils de vos personnages : la fiche pour
         les créer, la liste pour les retrouver.
       </p>
-      <p>Première visite ? Commencez par Découvrir : le jeu, son univers, la création d’un personnage et comment rejoindre une partie.</p>
+      <p>Première visite ? Commencez par Découvrir : le jeu, son univers et la création d’un personnage.</p>
       <p class="accueil__actions">
         <a class="accueil__bouton accueil__bouton--principal" href={url(DECOUVRIR.chemin)}>Découvrir Maverick</a>
         <a class="accueil__bouton" href={url('fiche/')}>Créer un personnage</a>

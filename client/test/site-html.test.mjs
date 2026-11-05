@@ -76,6 +76,10 @@ test('la page 404 renvoie les anciennes adresses /wiki/… vers les nouvelles', 
   // lien ») ; ses blocs, aux mêmes ancres, sont sur l'accueil (« Ces 3 blocs auraient plus leur place dans l'onglet d'acceuil. »), plus sur Bienvenue
   assert.equal(Object.hasOwn(renvois, 'decouvrir/liens/'), false, 'plus de renvoi de /decouvrir/liens/');
   assert.ok(!existsSync(join(dist, 'decouvrir', 'liens')), '/decouvrir/liens/ n’est plus construite');
+  // « Rejoindre une partie », effacée le 2026-11-05 (« Efface la page "Rejoindre une partie" et son lien. ») : plus construite, son adresse n'est
+  // renvoyée nulle part (réponse du propriétaire : « Page 404 (Recommandé) »), comme celle de la page Liens
+  assert.ok(!existsSync(join(dist, 'decouvrir', 'rejoindre-une-partie')), '/decouvrir/rejoindre-une-partie/ n’est plus construite');
+  assert.ok(Object.keys(renvois).every((k) => !k.includes('rejoindre-une-partie')), 'aucun renvoi de « Rejoindre une partie »');
   for (const ancre of ['lien-discord', 'lien-tipeee', 'prochaine-rencontre']) {
     assert.match(lire('index.html'), new RegExp(` id="${ancre}"`), `${ancre} : sur l’accueil`);
     assert.doesNotMatch(lire('decouvrir/index.html'), new RegExp(` id="${ancre}"`), `${ancre} : plus sur Bienvenue`);
@@ -130,10 +134,11 @@ test('accueil : texte de bienvenue et défilement des images de la galerie (en c
   const main = html.slice(html.indexOf('<main'), html.indexOf('</main>'));
   assert.match(main, /<h1 id="titre-accueil">Bienvenue sur Maverick Center<\/h1>/);
   // la phrase de la première visite ne dit que la navigation (plus de livre : « Découvrir », la rubrique)
-  assert.match(main, /<p>Première visite \? Commencez par Découvrir : le jeu, son univers, la création d’un personnage et comment rejoindre une partie\.<\/p>/);
+  // (plus de « Rejoindre une partie », effacée le 2026-11-05 ; réponse du propriétaire : « Phrase raccourcie (Recommandé) »)
+  assert.match(main, /<p>Première visite \? Commencez par Découvrir : le jeu, son univers et la création d’un personnage\.<\/p>/);
   assert.match(main, /<a class="accueil__bouton accueil__bouton--principal" href="\/decouvrir\/">Découvrir Maverick<\/a>/);
   assert.doesNotMatch(main, /Lire le guide|pas à pas/);
-  // « Par où commencer ? » : quatre cartes, le titre et le résumé de chaque page tels que la base les écrit, liés à leur adresse, chacune dans la couleur
+  // « Par où commencer ? » : trois cartes, le titre et le résumé de chaque page tels que la base les écrit, liés à leur adresse, chacune dans la couleur
   // de son groupe (la classe de sa partie, jamais un style)
   assert.match(main, /<h2 id="titre-par-ou-commencer">Par où commencer \?<\/h2>/);
   const cartes = [...main.matchAll(/<li class="accueil-debut__carte (couleur-partie-[a-z-]+)"><a class="accueil-debut__lien" href="([^"]+)">([^<]+)<\/a>(?:<p class="accueil-debut__resume">([\s\S]*?)<\/p>)?<\/li>/g)]
@@ -750,7 +755,8 @@ test('couleurs des événements de la chronologie : jamais en style sur une page
 
 // Lot des parties du guide (même demande, mêmes choix de cadrage : skill ui-couleurs) : sur toute page construite, aucune couleur d'une partie en style
 // (ni `--couleur-partie`, ni `--sommaire-couleur`, ni `--etape`, ni le `--c` des cartes de l'accueil) ; chaque classe `couleur-partie-…` posée existe dans
-// une feuille de la page (famille d'une zone : une page de Découvrir ou des Bases, l'accueil, le sommaire des Bases, la fiche, et seulement elles).
+// une feuille de la page (famille d'une zone : une page de Découvrir, l'accueil, la fiche, et seulement elles ; plus les pages des Bases, à l'accent du
+// site depuis le 2026-11-05 : « Accent du site »).
 /** Les éléments que les pages posent sur la couleur d'une partie. */
 const ELEMENTS_DES_PARTIES = new Set(['guide-reference', 'sommaire', 'accueil-debut__carte', 'fiche-zone']);
 const CLASSE_DES_PARTIES = /^couleur-partie-/;
@@ -778,16 +784,16 @@ test('couleurs des parties du guide : jamais en style sur une page construite, t
       assert.equal(html.split('.couleur-partie-creer{').length - 1, 1, `${rel} : une seule feuille des parties`);
     }
   }
-  // les pages qui les posent : les seize de Découvrir et des Bases, l'accueil, le sommaire des Bases, la fiche ; aucune autre
-  const attendues = { 'index.html': ['decouvrir', 'creer', 'jouer'], 'regles/index.html': ['jouer', 'progresser', 'plus-loin'],
-    'fiche/index.html': ['creer', 'jouer', 'decouvrir', 'progresser'], 'decouvrir/index.html': ['decouvrir'], 'decouvrir/creer-son-personnage/index.html': ['creer'],
-    'regles/les-degats/index.html': ['jouer'], 'regles/la-montee-de-niveau/index.html': ['progresser'], 'regles/lexique/index.html': ['plus-loin'] };
+  // les pages qui les posent : les trois de Découvrir, l'accueil, la fiche ; aucune autre (ni /regles/, ni une page des Bases)
+  const attendues = { 'index.html': ['decouvrir', 'creer'],
+    'fiche/index.html': ['creer', 'jouer', 'decouvrir', 'progresser'], 'decouvrir/index.html': ['decouvrir'], 'decouvrir/l-univers/index.html': ['decouvrir'],
+    'decouvrir/creer-son-personnage/index.html': ['creer'] };
   for (const [rel, parties] of Object.entries(attendues)) {
     assert.deepEqual([...(parPage.get(rel) ?? [])].sort(), [...new Set(parties)].map((p) => `couleur-partie-${p}`).sort(), rel);
   }
-  const autres = [...parPage.keys()].filter((rel) => !(rel in attendues));
-  assert.ok(autres.every((rel) => /^(?:decouvrir|regles)\/[a-z-]+\/index\.html$/.test(rel) && !rel.startsWith('regles/avancees/')), `ailleurs : ${autres}`);
-  assert.equal(parPage.size, 3 + 16, `l’accueil, le sommaire des Bases, la fiche et les ${parPage.size - 3} pages de Découvrir et des Bases`);
+  assert.deepEqual([...parPage.keys()].filter((rel) => !(rel in attendues)), [], 'ailleurs');
+  assert.equal(parPage.size, 2 + 3, 'l’accueil, la fiche et les trois pages de Découvrir');
+  assert.ok(![...parPage.keys()].some((rel) => rel.startsWith('regles/')), 'Les bases : l’accent du site, comme les Règles avancées');
   assert.ok(!parPage.has('regles/avancees/meteo/index.html') && !parPage.has('mj/index.html'), 'une page de référence : l’accent du site');
 });
 

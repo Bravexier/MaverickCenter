@@ -1785,17 +1785,6 @@ INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/mode-hyper-ma
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/mode-hyper-magie', 1, 'google-sheet:1fF2buZjbCm3xdQ-Qa8vRecxj03do3hsE8_k_cfYnIR0');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/postures', 0, 'ref:google-doc-regle-du-jeu-guide-pour-mj-maverick');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/postures', 1, 'google-doc:17VxGUwjzEZWElwIYVaXvaaumqFM4yKnO1C7uhVyc9iM');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/rejoindre-une-partie', 0, 'ref:google-doc-regle-du-jeu-guide-pour-mj-maverick');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/rejoindre-une-partie', 1, 'google-doc:17VxGUwjzEZWElwIYVaXvaaumqFM4yKnO1C7uhVyc9iM');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/rejoindre-une-partie', 2, 'ref:texte-daccueil-ecrit-par-le-proprietaire-du-projet');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/rejoindre-une-partie', 3, 'url:https://discord.gg/GMGBnjzfMk');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/rejoindre-une-partie', 4, 'ref:deroulement-dune-partie-decrit-par-le-proprietaire-du-projet');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/rejoindre-une-partie', 5, 'ref:demande-du-proprietaire-du-2026-10-18-encart-notre-prochaine-rencontre-irl-de-la-page-liens');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/rejoindre-une-partie', 6, 'ref:google-doc-creer-sa-fiche-de-personnage');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/rejoindre-une-partie', 7, 'google-doc:1PMmFVmKZspSTXJp-y_on5LoprFu_KHxCp34a9kSTFgA');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/rejoindre-une-partie', 8, 'ref:google-doc-metier');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/rejoindre-une-partie', 9, 'google-doc:1EK51ZTpXfzZNhRm-uINaRqkMz_RjBW0r-wir4pAg6uc');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/rejoindre-une-partie', 10, 'ref:fiche-de-personnage-du-site-docs-character-generator-md');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/resistance-faiblesse-magie', 0, 'ref:google-doc-regle-du-jeu-guide-pour-mj-maverick');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/resistance-faiblesse-magie', 1, 'google-doc:17VxGUwjzEZWElwIYVaXvaaumqFM4yKnO1C7uhVyc9iM');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/reussir-une-action', 0, 'ref:google-doc-regle-du-jeu-guide-pour-mj-maverick');

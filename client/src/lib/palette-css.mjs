@@ -41,9 +41,8 @@
 //     `par-defaut` : un niveau absent (« Niveau ? », ligne vide) ne porte aucune classe ; les pastilles des niveaux, les lignes d'effet et de monture,
 //     l'encart de l'accessoire créé ;
 //   - partie : lib/parties-couleurs.mjs#COULEURS_DES_PARTIES (l'id d'une partie de l'ancien guide, lib/livres.mjs#PARTIES : decouvrir, creer, jouer,
-//     progresser, plus-loin), sans `par-defaut` : une page sans partie (Règles avancées, Guide du MJ) ne porte aucune classe et garde l'accent du site ;
-//     les pages de Découvrir et des Bases, leurs cartes « Par où commencer ? » de l'accueil, les groupes du sommaire des Bases, les quatre zones de la
-//     fiche. Un texte blanc est posé sur ces couleurs (aplats du guide et de la fiche) : leur famille porte un texte.
+//     progresser, plus-loin), sans `par-defaut` : une page sans partie (Les bases, Règles avancées, Guide du MJ) ne porte aucune classe et garde l'accent du
+//     site ; les pages de Découvrir, leurs cartes « Par où commencer ? » de l'accueil, les quatre zones de la fiche. Un texte blanc est posé sur ces couleurs (aplats du guide et de la fiche) : leur famille porte un texte.
 //   - genre, don : lib/genres-couleurs.mjs (sort_type.type, capacite.type), sans `par-defaut` (listes fermées) : les étiquettes des genres de sort
 //     des pages des magies et des types de don des pages de classe.
 //   - case : lib/cases-couleurs.mjs#COULEURS_DES_CASES (rouge, orange…, les couleurs « {couleur:x} » des cases de tableau du Markdown des pages, que
@@ -57,7 +56,7 @@
 // d'armure, poids des boucliers, niveaux des accessoires, parties du guide) et les seconds rangs des caractéristiques ne le sont que par le composant des
 // pages qui les posent (cssDesFamilles, cssDesSecondsRangs : le bloc « postures » du guide, la fiche (FAMILLES_DE_LA_FICHE), l'onglet Armes, les onglets
 // Armures et Boucliers, l'onglet Accessoires, la page Composants, /classes/ et les pages de classe, /races/ et les pages de race, le mode modification
-// qui dessine une race ou une classe créée, une page de Découvrir ou des Bases, l'accueil et le sommaire des Bases), comme les combinaisons des potions
+// qui dessine une race ou une classe créée, une page de Découvrir, l'accueil), comme les combinaisons des potions
 // (cssDesPotions).
 //
 // Deux couleurs d'une même famille sur un même élément (dégradé de l'innée vers l'acquise, créature ou cible à deux magies, trait d'une relation entre
@@ -129,7 +128,7 @@ export const FAMILLES_DE_CHAQUE_PAGE = Object.freeze(['magie', 'attribut', 'cara
  * `alignement`, `palier`, `mode`, `neutre` (la fiche), `classe` (/classes/, les pages de classe, la fiche, la page d'une classe créée sur le site de
  * dev), `race` (/races/, les pages de race, la fiche, la page d'une race créée), `materiau` (l'onglet Armes, la page Composants), `arme` (l'onglet
  * Armes), `armure` (les onglets Armures et Boucliers), `poids` (l'onglet Boucliers, la fiche), `niveau` (l'onglet Accessoires), `partie` (une page de
- * Découvrir ou des Bases, l'accueil, le sommaire des Bases, la fiche), `genre` (les pages des magies), `don` (les pages de classe).
+ * Découvrir, l'accueil, la fiche), `genre` (les pages des magies), `don` (les pages de classe).
  */
 export const FAMILLES_DES_ZONES = Object.freeze(['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre', 'materiau', 'arme', 'armure', 'poids', 'niveau', 'partie', 'genre', 'don']);
 
@@ -243,8 +242,8 @@ export const classeDeNiveau = (niveau) => classeDeCouleur('niveau', String(nivea
 export const FAMILLE_DES_PARTIES = 'partie';
 
 /**
- * La classe d'une partie de l'ancien guide (lib/livres.mjs#PARTIES : « creer » → « couleur-partie-creer ») : celle d'une page de Découvrir ou des Bases
- * (lib/livres.mjs#partieDeLaPage), d'un groupe du sommaire des Bases, d'une zone de la fiche ; null pour une partie absente ou inconnue (aucune couleur :
+ * La classe d'une partie de l'ancien guide (lib/livres.mjs#PARTIES : « creer » → « couleur-partie-creer ») : celle d'une page de Découvrir
+ * (lib/livres.mjs#partieDeLaPage), d'une zone de la fiche ; null pour une partie absente ou inconnue (aucune couleur :
  * l'accent du site).
  */
 export const classeDePartie = (id) => classeDeCouleur(FAMILLE_DES_PARTIES, id ?? '');
@@ -305,8 +304,8 @@ export const cssDesSecondsRangs = (famille) => secondsRangs(famille).map((c) => 
 export const cssDeLaPalette = () => cssDesFamilles(FAMILLES_DE_CHAQUE_PAGE) + cssDesSecondsRangs('magie');
 
 /**
- * La feuille des parties du guide (famille `partie`, d'une zone) : celle qu'émettent une page de Découvrir ou des Bases, l'accueil et le sommaire des Bases
- * (la fiche l'émet avec ses autres familles, FAMILLES_DE_LA_FICHE).
+ * La feuille des parties du guide (famille `partie`, d'une zone) : celle qu'émettent une page de Découvrir et l'accueil (la fiche l'émet avec ses
+ * autres familles, FAMILLES_DE_LA_FICHE).
  */
 export const cssDesParties = () => cssDesFamilles([FAMILLE_DES_PARTIES]);
 
