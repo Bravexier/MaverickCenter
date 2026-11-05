@@ -6,8 +6,8 @@
 // `data-onglets-sans-adresse` (option gardée, sans usage aujourd'hui) ; une adresse `#famille-…` au chargement ouvre l'onglet Armes puis la famille, et
 // `#boucliers` ensuite l'onglet Boucliers ; les flèches, Début et Fin sautent un onglet caché (`hidden` : une famille d'armes que le filtre vide) ;
 // « onglets:ouvrir » ouvre tous les niveaux qui contiennent l'élément, ou seulement les groupes dont les panneaux sont dans `detail.dans`
-// (src/scripts/armes.mjs : l'onglet de la famille d'une arme, sans changer l'onglet de la page) ; « onglets:brancher » est ré-entrant (une famille
-// créée en mode modification : décision R159).
+// (option sans usage depuis le menu latéral des armes du 2026-11-05) ; « onglets:brancher » est ré-entrant (son usage d'avant, une famille d'armes
+// créée en mode modification, est passé au menu latéral).
 // Le faux navigateur ne fait pas remonter les évènements : un clic ou une touche s'envoie sur l'onglet, « onglets:ouvrir » et « onglets:brancher » sur
 // le document, leur cible posée à la main.
 //   node --test test/onglets-script.test.mjs

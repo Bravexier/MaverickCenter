@@ -267,10 +267,11 @@ test('chaque page garde son script ; un seul script d’onglets par page, et ses
     assert.equal(n, ['armes', 'armures'].includes(p.id) ? 1 : 0, `${p.id} : script des Pièces élémentaires`);
   }
   for (const p of PAGES_DE_L_EQUIPEMENT) assert.equal((html[p.id].match(/onglets:brancher/g) ?? []).length, 1, `${p.id} : components/Onglets.astro, posé une fois`);
-  // les groupes : les deux menus des familles d'armes (mêlée, distance : demande du propriétaire du 2026-10-23), les sous-onglets de la ceinture, les
-  // familles des consommables (demande du propriétaire du 2026-10-22) et les tableaux d'effets des accessoires ; chacun est sa barre seule
+  // les groupes : les sous-onglets de la ceinture, les familles des consommables (demande du propriétaire du 2026-10-22) et les tableaux d'effets des
+  // accessoires ; chacun est sa barre seule. Plus aucun sur Armes : les deux menus à onglets des familles (2026-10-23) sont devenus un menu latéral
+  // (demande du propriétaire du 2026-11-05 : test/armes-html.test.mjs)
   const groupes = (id) => [...main[id].matchAll(/data-onglets="([^"]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(groupes('armes'), ['Armes de mêlée', 'Armes à distance']);
+  assert.deepEqual(groupes('armes'), []);
   assert.deepEqual(groupes('armures'), []);
   assert.deepEqual(groupes('boucliers'), []);
   assert.deepEqual(groupes('ceinture'), ['Ceinture', 'Consommables']);

@@ -2,7 +2,7 @@
 // Onglets (motif « tabs » de l'ARIA : flèches gauche et droite, Début, Fin), partagés par les spécialités d'une classe (classes/ClasseDons.astro), les
 // magies de la page du Potentiel Illimité (magie/SortsDuPotentiel.astro), le bestiaire, les pages de l'équipement (equipement/EquipementPage.astro) : les
 // sous-onglets de la Ceinture et les familles de ses consommables (ceinture/CeinturePanneau.astro : des onglets dans un panneau d'onglet, sur deux
-// niveaux ; un lien vers un élément ouvre tous les niveaux qui le contiennent), les deux menus des familles d'armes (armes/ArmesPage.astro) et les tableaux d'effets des accessoires (accessoires/AccessoiresPage.astro). À poser une fois par page, avant les onglets : un seul script pour toute la page, que le build écrit dans la page
+// niveaux ; un lien vers un élément ouvre tous les niveaux qui le contiennent) et les tableaux d'effets des accessoires (accessoires/AccessoiresPage.astro) ; plus les familles d'armes, passées le 2026-11-05 à un menu latéral (armes/ArmesPage.astro, src/scripts/armes.mjs). À poser une fois par page, avant les onglets : un seul script pour toute la page, que le build écrit dans la page
 // (la version portable de tools/build-artifact.mjs refuse un script qui en importe un autre).
 //
 // HTML attendu : un groupe `[data-onglets]` dont les onglets `.onglet` sont des liens vers leur panneau (`href="#id-du-panneau"`), l'onglet ouvert au
@@ -10,18 +10,17 @@
 // posés ici : sans JavaScript, les onglets sont de simples liens et les panneaux se suivent ; le CSS de la page ne cache un panneau fermé que sous
 // `html.js`, classe posée ici avant l'affichage (pas de saut de mise en page au chargement).
 // Une adresse (au chargement, retour arrière) ou un lien de la page vers un panneau ou un élément qu'il contient ouvre son onglet. Choisir un onglet
-// (clic, clavier) écrit son ancre dans l'adresse (les menus des familles d'armes aussi, `#famille-<id>` : demande du propriétaire, 2026-10-23, « On peut
-// retenir l'onglet ouvert #epee par exemple »), sauf dans un groupe `data-onglets-sans-adresse` : l'option reste, sans usage aujourd'hui, pour des
-// onglets dont l'ancre ne doit pas remplacer celle de l'adresse. Les flèches, Début et Fin sautent un onglet caché (`hidden` : une famille d'armes que le
-// filtre vide).
+// (clic, clavier) écrit son ancre dans l'adresse (demande du propriétaire, 2026-10-23, pour les familles d'armes alors en onglets : « On peut retenir
+// l'onglet ouvert #epee par exemple »), sauf dans un groupe `data-onglets-sans-adresse` : l'option reste, sans usage aujourd'hui, pour des
+// onglets dont l'ancre ne doit pas remplacer celle de l'adresse. Les flèches, Début et Fin sautent un onglet caché (`hidden`).
 // Des onglets dessinés après le chargement (mode modification du site de dev, D11 : src/scripts/edition/classes.mjs) se branchent par l'évènement
 // « onglets:brancher » envoyé sur leur groupe (ou un élément qui le contient) : aucun module n'est partagé entre les deux scripts. Le branchement est
-// ré-entrant : un groupe déjà branché qui reçoit de nouveaux onglets (une famille d'armes créée en mode modification : src/scripts/edition/armes.mjs)
-// les prend, sans écouter deux fois ceux qu'il avait, et garde l'onglet ouvert. Un script de page
+// ré-entrant : un groupe déjà branché qui reçoit de nouveaux onglets les prend, sans écouter deux fois ceux qu'il avait, et garde l'onglet ouvert
+// (son usage d'avant le 2026-11-05, une famille d'armes créée en mode modification, est passé au menu latéral des armes). Un script de page
 // ouvre l'onglet d'un panneau (ou d'un élément qu'il contient) par l'évènement « onglets:ouvrir » envoyé sur cet élément (src/scripts/accessoires.mjs :
 // la propriété choisie), sans toucher à l'adresse ni faire défiler la page ; avec `detail.dans` (un élément), seuls les groupes dont les panneaux sont
-// dans cet élément s'ouvrent, pas ceux qui le contiennent (src/scripts/armes.mjs : l'onglet de la famille d'une arme, sans ouvrir les niveaux
-// au-dessus).
+// dans cet élément s'ouvrent, pas ceux qui le contiennent (option sans usage depuis le 2026-11-05 : src/scripts/armes.mjs s'en servait pour l'onglet
+// de la famille d'une arme).
 ---
 
 <script is:inline>

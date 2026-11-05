@@ -94,7 +94,8 @@ const ACCESSOIRES = pageDeLEquipement('accessoires').chemin;
 export const RENVOIS_DES_PAGES_ECLATEES = Object.freeze({
   [ANCIENNE_PAGE_DE_L_EQUIPEMENT]: Object.freeze({
     ancres: Object.freeze([
-      // Armes : le panneau, ses deux menus, les familles, les armes, les matériaux, les améliorations
+      // Armes : le panneau, ses deux menus d'alors (`onglet-famille-<id>`, lu par src/scripts/armes.mjs comme sa famille), les familles, les armes, les
+      // matériaux, les améliorations
       ['armes', ARMES], ['titre-armes', ARMES], ['regles-armes', ARMES], ['famille-', ARMES], ['onglet-famille-', ARMES], ['arme-', ARMES],
       ['materiau-', ARMES], ['materiaux-armes', ARMES], ['ameliorations-arme', ARMES], ['amelioration-', ARMES],
       // Armures : les matériaux, les armures, la liste, les améliorations (élémentaires comprises)

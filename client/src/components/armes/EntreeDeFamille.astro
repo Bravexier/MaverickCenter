@@ -1,0 +1,33 @@
+---
+import { attributEd } from '../../lib/edition-modele.mjs';
+import { infobulleDuDeDeFamille } from '../../lib/armes-de-famille.mjs';
+import type { chargerArmes } from '../../lib/armes-db.mjs';
+
+// L'entrée d'UNE famille d'armes dans le menu latéral de la page (ArmesPage.astro ; demande du propriétaire, 2026-11-05 : « un menu lattéral sur la
+// gauche comme pour la page chronologie et les bases pour passer d'un type d'arme à l'autre ») : un lien vers le tableau de la famille
+// (TableauArmes.astro, `#famille-<id>`, l'ancre que l'adresse retient quand on la choisit : demande du propriétaire, 2026-10-23, « On peut retenir
+// l'onglet ouvert #epee par exemple »), son nom, la pastille de son dé (toujours écrite, cachée si elle est vide) et son nombre d'armes. L'entrée de la
+// famille affichée porte `aria-current="true"` (src/scripts/armes.mjs le déplace). Sans JavaScript, un lien d'ancre ordinaire.
+// Le nom et le dé suivent ceux du tableau en mode modification (`data-ed-lecture`) : ils se modifient dans l'en-tête du tableau, jamais dans le menu
+// (décision R159). Rendu aussi pour la famille fictive du modèle d'une famille créée (lib/armes-rendu.mjs#MODELE_DE_FAMILLE), d'où ce composant à part.
+// L'infobulle du dé : les paliers selon la Force quand la note de la famille en écrit (PUGILAT), lus dans la base (lib/armes-de-famille.mjs#infobulleDuDeDeFamille ;
+// demande du propriétaire, 2026-10-23 : « Juste l'indiquer suffit (en tooltip de la catégorie) ») ; sinon « Dé de la famille, sauf indication contraire ».
+type Armes = ReturnType<typeof chargerArmes>;
+interface Props {
+  famille: Pick<Armes['familles'][number], 'id' | 'nom' | 'de_brut' | 'note_brut'> & { armes: readonly unknown[]; armes_elementaires?: readonly unknown[] };
+  /** la famille affichée au départ (la première du menu) */
+  actif?: boolean;
+}
+const { famille, actif = false } = Astro.props;
+const ed = (colonne: string) => attributEd('arme_famille', { id: famille.id }, colonne);
+// le nombre d'armes : celles du catalogue et ses armes élémentaires (décision R167 ; aucune pour une famille créée), comme le compte de son tableau
+const n = famille.armes.length + (famille.armes_elementaires?.length ?? 0);
+---
+
+<li class="armes-menu__entree">
+  <a class="armes-menu__lien" id={`armes-menu-famille-${famille.id}`} href={`#famille-${famille.id}`} aria-current={actif ? 'true' : undefined}>
+    <span class="armes-menu__nom" data-ed-lecture={ed('nom')}>{famille.nom}</span>
+    <span class="armes-menu__de" title={infobulleDuDeDeFamille(famille.note_brut)} data-ed-lecture={ed('de_brut')} hidden={!famille.de_brut}>{famille.de_brut ?? ''}</span>
+    <span class="armes-menu__compte" data-armes-menu-compte>{`${n} arme${n > 1 ? 's' : ''}`}</span>
+  </a>
+</li>

@@ -145,16 +145,48 @@ export const RENDUS_DES_ARMES = {
     for (const l of String(m.effet_secondaire ?? '').split('\n').filter(Boolean)) lignes.push(`<span class="materiau-effet__secondaire">${e(l)}</span>`);
     return `<span class="materiau-effet"${attribut('bonus', m.bonus_degats ?? 0)}${attribut('cran', m.cran_solidite ?? 0)}>${lignes.length ? lignes.join('') : '<span class="materiau-effet__rien">Rien de particulier</span>'}</span>`;
   },
+  // la ligne à part d'un matériau, sous la sienne, sur la page Armes (demande du propriétaire, 2026-11-05 : « Pour gagner de la largeur, tu peux mettre
+  // l'effet secondaire des matériaux et amélioration sur une ligne à part comme c'est le cas pour les armes elles même ») : ses crans de solidité et
+  // ses autres effets, tels qu'écrits (la ligne du matériau n'en montre plus que le bonus aux dégâts : styles/armes/armes.css) ; rien s'il n'en a pas
+  'materiau-effet-suite': (valeur) => {
+    const m = analyserEffetDeMateriau(valeur);
+    const morceaux = [];
+    if (m.cran_solidite) morceaux.push(`<span class="materiau-suite__morceau">${m.cran_solidite > 0 ? '+' : '−'}${Math.abs(m.cran_solidite)} cran${Math.abs(m.cran_solidite) > 1 ? 's' : ''} de solidité</span>`);
+    for (const l of String(m.effet_secondaire ?? '').split('\n').filter(Boolean)) morceaux.push(`<span class="materiau-suite__morceau">${e(l)}</span>`);
+    return morceaux.join('');
+  },
   // améliorations : coût et effet tels qu'écrits, leurs valeurs en attributs (coût cumulé et effet du niveau : lib/arme-forge.mjs)
   'amelioration-cout': (valeur) => {
     const c = analyserCoutDAmelioration(valeur);
     return `<span class="amelioration-cout"${attribut('ro', c.cout_ro ?? 0)}${attribut('materiaux', c.cout_materiaux ?? 0)}>${htmlAvecMonnaies(valeur ?? '')}</span>`;
   },
+  // l'effet tel qu'écrit, en deux morceaux (decouperEffetDAmelioration) : le bonus aux dégâts, puis le reste (`amelioration-effet__reste`, avec sa
+  // virgule), que la page Armes montre sur la ligne à part de l'amélioration et laisse dans ce champ en mode modification ; le texte reste entier
   'amelioration-effet': (valeur) => {
     const a = analyserEffetDAmelioration(valeur);
-    return `<span class="amelioration-effet"${attribut('bonus', a.bonus_degats ?? 0)}${attribut('cran', a.bonus_cran ?? 0)}>${e(valeur ?? '')}</span>`;
+    const d = decouperEffetDAmelioration(valeur);
+    const reste = d.reste ? `<span class="amelioration-effet__reste">${e(`${d.separateur}${d.reste}`)}</span>` : '';
+    return `<span class="amelioration-effet"${attribut('bonus', a.bonus_degats ?? 0)}${attribut('cran', a.bonus_cran ?? 0)}>${e(d.principal)}${reste}</span>`;
+  },
+  // la ligne à part d'une amélioration (même demande du 2026-11-05) : le reste de son effet, sans la virgule qui le séparait ; rien s'il n'y en a pas
+  'amelioration-effet-suite': (valeur) => {
+    const d = decouperEffetDAmelioration(valeur);
+    return d.reste ? `<span class="amelioration-suite__morceau">${e(d.reste)}</span>` : '';
   },
 };
+
+/**
+ * L'effet d'une amélioration d'arme découpé pour l'affichage de la page Armes (demande du propriétaire, 2026-11-05 : « mettre l'effet secondaire des
+ * matériaux et amélioration sur une ligne à part ») : `principal`, sa première clause quand c'est le bonus aux dégâts (« +10 dégâts »), `separateur`
+ * (« , ») et `reste`, le texte qui suit, tel qu'écrit (« +1 cran de solidité ») ; `principal + separateur + reste` redonne le texte. Sans virgule, ou
+ * quand la première clause n'est pas le bonus aux dégâts, tout reste principal. L'affichage seulement : le calcul de la fiche lit
+ * analyserEffetDAmelioration (lib/arme-champs.mjs), inchangé.
+ */
+export function decouperEffetDAmelioration(valeur) {
+  const texte = String(valeur ?? '');
+  const m = /^([^,]*[+\-−]\d+\s*dégâts?\b[^,]*)(,\s*)(\S[\s\S]*)$/iu.exec(texte);
+  return m ? { principal: m[1], separateur: m[2], reste: m[3] } : { principal: texte, separateur: '', reste: '' };
+}
 
 /** Ancre HTML d'une arme : « arme-epees-flamberge » pour « ressources/armes#arme:epees:flamberge ». */
 export const ancreDArme = (id) => `arme-${String(id).slice(String(id).indexOf('#arme:') + 6).replace(/:/g, '-')}`;
@@ -298,9 +330,10 @@ export function htmlDuCoutElementaire(a, cumul = '') {
 }
 
 /**
- * Les deux menus à onglets de l'onglet Armes (demande du propriétaire, 2026-10-23 : « Il faudrai réduire çà en deux menus à onglet. Un pour les armes
- * de mêlée l'autre pour les armes à distances. ») : la catégorie de famille que chacun montre (arme_famille.categorie, décision R127) et son intitulé,
- * dans l'ordre de la page.
+ * Les catégories de familles d'armes (arme_famille.categorie, décision R127), dans l'ordre du menu latéral de la page Armes : les familles de mêlée,
+ * puis celles à distance, en une seule liste (réponses du propriétaire, 2026-11-05 : « un menu lattéral sur la gauche comme pour la page chronologie
+ * et les bases », « Liste unique » : le `titre` n'est plus affiché sur la page ; c'était celui des deux menus à onglets du 2026-10-23, « Un pour les
+ * armes de mêlée l'autre pour les armes à distances »). L'extension du mode modification s'en sert pour placer une famille créée à la fin des siennes.
  */
 export const MENUS_DES_ARMES = [
   { categorie: 'contact', titre: 'Armes de mêlée' },
@@ -308,9 +341,9 @@ export const MENUS_DES_ARMES = [
 ];
 
 /**
- * Les familles de l'onglet (lib/armes-db.mjs#chargerArmes, dans l'ordre de l'onglet) rangées dans leurs menus : [{ categorie, titre, familles }], dans
- * l'ordre de MENUS_DES_ARMES, chaque menu dans l'ordre des familles, un menu sans famille omis. Une famille d'une autre catégorie (ou sans catégorie)
- * arrête le build : elle n'aurait pas de menu, et la page la perdrait sans rien dire.
+ * Les familles de la page (lib/armes-db.mjs#chargerArmes, dans l'ordre de la base) rangées dans les groupes du menu : [{ categorie, titre, familles }],
+ * dans l'ordre de MENUS_DES_ARMES, chaque groupe dans l'ordre des familles, un groupe sans famille omis ; leurs tableaux se suivent dans cet ordre.
+ * Une famille d'une autre catégorie (ou sans catégorie) arrête le build : elle n'aurait pas de groupe, et la page la perdrait sans rien dire.
  */
 export function menusDesArmes(familles) {
   const sansMenu = familles.filter((f) => !MENUS_DES_ARMES.some((m) => m.categorie === f.categorie));
@@ -322,7 +355,7 @@ export function menusDesArmes(familles) {
 
 /**
  * La famille fictive des modèles d'une famille créée en mode modification (décision R159 : « créer un nouvel onglet donc un nouveau tableau si
- * besoin ») : components/armes/ArmesPage.astro rend son onglet (OngletDeFamille.astro) et son tableau (TableauArmes.astro) dans deux `<template
+ * besoin ») : components/armes/ArmesPage.astro rend son entrée du menu (EntreeDeFamille.astro) et son tableau (TableauArmes.astro) dans deux `<template
  * data-armes-modele>` ; src/scripts/edition/armes.mjs les remplit (htmlDeFamilleDepuisModele) pour une famille créée, sans autre HTML que celui de la
  * page construite. Des jetons qu'aucun nom ne donne : un identifiant de famille est `normalize(nom)` (lib/text.mjs : lettres, chiffres et tirets, jamais
  * de « _ »), d'où des ids uniques dans la page (`famille-__id__`). Ni note ni arme.

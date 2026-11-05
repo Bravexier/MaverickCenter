@@ -1,14 +1,16 @@
-/* Chargé uniquement depuis components/armes/ArmesPage.astro (?raw) : la page Armes, /ressources/armes/. Deux menus à onglets, l'un sous
-   l'autre (demande du propriétaire, 2026-10-23 : « Il faudrai réduire çà en deux menus à onglet. Un pour les armes de mêlée l'autre pour les armes à
-   distances ») : Armes de mêlée, Armes à distance, un onglet par famille, chacun le tableau de sa famille (un panneau fermé caché sous html.js
-   seulement : sans JavaScript, les tableaux se suivent, chacun sous son titre), aéré (« l'affichage est trop serré »), les effets supplémentaires d'une
-   arme sur une seconde ligne ; à côté, toujours affiché et
+/* Chargé uniquement depuis components/armes/ArmesPage.astro (?raw) : la page Armes, /ressources/armes/. Un seul tableau affiché et, à sa gauche, un
+   menu latéral des familles (demande du propriétaire, 2026-11-05 : « plutôt que 2 tableaux à onglet j'aimerai que tu n'affiche qu'un seul tableau et
+   que tu ajoute un menu lattéral sur la gauche comme pour la page chronologie et les bases », qui remplace les deux menus à onglets du 2026-10-23) :
+   l'apparence du menu des Bases (styles/guide/les-bases.css : vertical, l'entrée affichée teintée, un filet de l'accent, en gras ; replié dans un
+   <details> sous 56rem), une seule liste (« Liste unique », 2026-11-05), mêlée puis distance ; chaque tableau, celui d'une famille (un tableau qui n'est pas
+   affiché n'est caché que sous html.js : sans JavaScript, les tableaux se suivent, chacun sous son titre), aéré (« l'affichage est trop serré »), les
+   effets supplémentaires d'une arme sur une seconde ligne ; à droite, toujours affiché et
    de la largeur de celui des armures (styles/armures/armures.css), le panneau de l'arme : sa fiche dans un seul cadre réduit, le détail des tuiles en
    infobulle, puis les matériaux (lignes dans la couleur du matériau) et les améliorations côte à côte (panneau qui suit le défilement ; arrivée au bout
    de son défilement, la molette fait défiler la page ; sur un écran étroit, il passe par-dessus la page une fois une arme choisie). Les tableaux suivent
    le gabarit commun (styles/global/tableaux.css : cadre, titre, en-têtes ; les familles aérées, ceux du panneau serrés et repliables). Mode
-   modification du site de dev (body.ed-mode) : pas de fiche, le panneau de côté sous les menus, colonnes `ed-seul` visibles ; les onglets restent, et le
-   titre de la famille ouverte (ses champs : nom, dé) se montre au-dessus de son tableau. */
+   modification du site de dev (body.ed-mode) : pas de fiche, le panneau de côté sous le tableau, colonnes `ed-seul` visibles ; le menu reste, un seul
+   tableau affiché. Aucune couleur écrite : les jetons du thème et l'accent du site. */
 main:has(.armes) { max-width: 120rem; }
 .armes {
   --arm: var(--accent);
@@ -70,54 +72,96 @@ html.js .armes .sans-js { display: none; }
 html.js .armes-outils__boutons { display: flex; }
 .armes-aide { color: var(--muted); font-size: var(--fs-md); margin-right: 0.4rem; }
 
-/* Vue : les tableaux, et à côté le panneau de l'arme, toujours affiché sur un grand écran, de la largeur de celui des armures (demande du propriétaire,
-   2026-10-16 : « Avoir l'endroit de l'arme en permanence visible comme c'est le cas pour l'armure, et avec la même largeur »). Il suit le défilement ;
-   arrivée au bout du sien, la molette fait défiler la page (pas d'`overscroll-behavior: contain` : « qu'elle descende la fenêtre entière si le max
-   est atteint sur l'intermédiaire »). */
-.armes-vue { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+/* Vue : à gauche le menu des familles, au milieu le tableau affiché, à droite le panneau de l'arme, toujours affiché sur un grand écran (demande du
+   propriétaire, 2026-10-16 : « Avoir l'endroit de l'arme en permanence visible comme c'est le cas pour l'armure, et avec la même largeur »). Sa
+   largeur : celle des armures (38 % de la vue, comme `.armures-vue`, le menu compris dans la vue) quand tout tient ; sur écran moyen, il rétrécit
+   jusqu'à 16rem pour laisser au tableau ses 8 colonnes (réponse du propriétaire, 2026-11-05 : « Panneau de l'arme plus étroit », qui remplace là
+   « avec la même largeur ») : la colonne du tableau garde au moins `--armes-tableau-min` (52.5rem, ce que demande la plus large des familles de la
+   base, Lance/Arme d'hast : 837 px mesurés, cases resserrées), le panneau prend la place qui reste, entre 16rem (sa fiche, ses tuiles l'une sous
+   l'autre, ses deux tableaux l'un sous l'autre restent lisibles, mesuré à 1280 px) et 38 %. Il suit le défilement ; arrivée au bout du sien, la
+   molette fait défiler la page (pas d'`overscroll-behavior: contain` : « qu'elle descende la fenêtre entière si le max est atteint sur
+   l'intermédiaire »). Sous 80rem, le panneau passe par-dessus la page une fois une arme choisie (plus bas) ; sous 56rem, le menu se replie au-dessus
+   du tableau. Sans JavaScript, le panneau (matériaux, améliorations) vient sous les tableaux. */
+.armes-vue {
+  display: grid;
+  grid-template-columns: minmax(11rem, 14rem) minmax(0, 1fr);
+  grid-template-areas: 'menu tableaux' 'menu cote';
+  gap: 1.25rem clamp(1rem, 2vw, 1.75rem);
+  align-items: start;
+}
+.armes-menu { grid-area: menu; }
+.armes-tableaux { grid-area: tableaux; }
+.armes-cote { grid-area: cote; }
 @media (min-width: 80rem) {
-  html.js .armes-vue { grid-template-columns: minmax(0, 1fr) minmax(30rem, 38%); }
+  /* les minimums d'abord (menu 11rem, tableau --armes-tableau-min ou ce qui reste, panneau 16rem), puis la place libre grandit le menu (14rem) et le
+     panneau (38 %), enfin le tableau (1fr) : le panneau n'est plus étroit que celui des armures que si le tableau en a besoin */
+  html.js .armes-vue {
+    --armes-tableau-min: 52.5rem;
+    --armes-ecart: 1.25rem;
+    column-gap: var(--armes-ecart);
+    grid-template-columns: minmax(11rem, 14rem) minmax(min(var(--armes-tableau-min), 100% - 11rem - 16rem - 2 * var(--armes-ecart)), 1fr) minmax(16rem, 38%);
+    grid-template-areas: 'menu tableaux cote';
+  }
   html.js .armes-cote { position: sticky; top: 0.75rem; max-height: calc(100vh - 1.5rem); overflow-y: auto; }
   /* le panneau prend de la place : les cases des tableaux se resserrent un peu sur les côtés */
   html.js .armes-tableaux .armes-table :is(thead th, tbody > tr > *) { padding-left: 0.6rem; padding-right: 0.6rem; }
 }
+/* les tableaux des familles à la suite (sans JavaScript, à l'impression : l'espace entre deux tableaux) ; sous html.js, seul celui de la famille
+   choisie (`is-active`, src/scripts/armes.mjs), et rien ne se cache sans lui */
 .armes-tableaux { display: grid; gap: 1.4rem; min-width: 0; }
-.armes-cote { display: grid; gap: 1rem; min-width: 0; align-content: start; }
-/* les matériaux et les améliorations côte à côte, sous la fiche */
-.armes-cote__tables { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: 1rem; align-items: start; min-width: 0; }
+html.js .armes-tableaux > .armes-famille:not(.is-active) { display: none; }
+.armes-cote { display: grid; gap: 1rem; min-width: 0; align-content: start; container-type: inline-size; }
+/* les matériaux et les améliorations côte à côte, sous la fiche ; l'un sous l'autre dans un panneau plus étroit que deux fois 18rem (écran moyen :
+   « Panneau de l'arme plus étroit »), chacun à la largeur du panneau quand il a moins de 18rem */
+.armes-cote__tables { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr)); gap: 1rem; align-items: start; min-width: 0; }
 .armes-cote__fermer { font: inherit; font-size: var(--fs-sm); padding: 0.2rem 0.85rem; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface); color: var(--text); cursor: pointer; }
 .armes-cote__fermer:hover { border-color: var(--arm); }
 
-/* Les deux menus (components/armes/ArmesPage.astro : `section.armes-bloc`, son titre, sa barre d'onglets, ses panneaux ; components/Onglets.astro) :
-   la barre passe à la ligne sur un écran étroit, comme celles de la page et de la ceinture, et n'y garde que le nom et le dé de chaque famille ; un
-   onglet que le filtre vide, ou un menu entier, se cache (`hidden`) */
-.armes-bloc { min-width: 0; }
-.armes-bloc__titre { margin: 0 0 0.5rem; font-size: var(--fs-xl); }
-.armes-onglets { display: flex; flex-wrap: wrap; gap: 0.35rem; border-bottom: 2px solid var(--arm-line); margin: 0 0 0.8rem; }
-.armes-onglets .onglet { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 0.4rem; row-gap: 0.05rem; padding: 0.4rem 0.9rem 0.45rem;
-  border: 1px solid var(--border); border-bottom: 0; border-radius: var(--radius-lg) var(--radius-lg) 0 0; background: var(--surface); color: var(--text);
-  text-decoration: none; margin-bottom: -2px; }
-.armes-onglets .onglet__nom { font-weight: 700; font-size: var(--fs-lg); }
-.armes-onglets .onglet__detail { flex-basis: 100%; font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
-html.js .armes-onglets .onglet.is-active { background: var(--arm); border-color: var(--arm); color: var(--surface); }
-html.js .armes-onglets .onglet.is-active .onglet__detail { color: inherit; opacity: 0.85; }
-html.js .armes-onglets .onglet.is-active .armes-onglets__de { background: var(--surface); color: var(--arm); }
-html.js .armes-onglets .onglet:not(.is-active):hover { background: var(--arm-soft); }
-.armes-onglets .onglet:focus-visible { outline: 2px solid var(--arm); outline-offset: 2px; }
-@media (max-width: 40rem) {
-  .armes-onglets .onglet { padding: 0.3rem 0.65rem; }
-  .armes-onglets .onglet__detail { display: none; }
+/* ---------- Le menu des familles (components/armes/ArmesPage.astro, EntreeDeFamille.astro) ----------
+   Comme celui des Bases (styles/guide/les-bases.css) : il reste en place pendant qu'on lit (collé en haut de l'écran) et défile seul s'il dépasse
+   l'écran ; une seule liste, sans titres de groupe (réponse du propriétaire, 2026-11-05 : « Liste unique » ; mêlée puis distance, R127), une entrée
+   par famille (nom, pastille du dé, nombre d'armes), l'entrée affichée (`aria-current`) teintée de l'accent, un filet de l'accent du côté du menu, en
+   gras. Une entrée que le filtre vide se cache (`hidden`). Sans JavaScript, des liens d'ancre vers les tableaux qui se suivent. */
+.armes-menu {
+  position: sticky;
+  top: 0;
+  max-height: 100vh;
+  max-height: 100dvh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  min-width: 0;
+  padding: 0.25rem 0.2rem 1.5rem 0;
 }
-html.js .armes-bloc > .armes-famille:not(.is-active) { display: none; }
-/* quand les familles d'un menu se suivent (sans JavaScript, à l'impression), l'espace d'avant entre deux tableaux (celui de `.armes-tableaux`) : une
-   famille affichée qui en suit une autre affichée ; jamais en mode onglets (mode modification compris), où un seul panneau se voit */
-html:not(.js) .armes-bloc > .armes-famille:not(.est-filtree) ~ .armes-famille:not(.est-filtree) { margin-top: 1.4rem; }
-/* le titre d'une famille (nom, dé, compte) : celui de son onglet ; sans JavaScript, il sépare les tableaux qui se suivent ; en mode modification, il se
-   montre (plus bas) : il porte les champs de la famille */
-html.js .armes-bloc > .armes-famille > .armes-famille__titre { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+/* grand écran : le menu toujours ouvert, sans son résumé (celui du petit écran) */
+.armes-menu__resume { display: none; }
+.armes-menu__liste { margin: 0; padding: 0; border-left: 2px solid var(--border); list-style: none; }
+.armes-menu__lien {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.05rem 0.45rem;
+  margin-left: -2px;
+  padding: 0.4rem 0.6rem 0.4rem 0.85rem;
+  border-left: 3px solid transparent;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  color: var(--text);
+  line-height: 1.3;
+  text-decoration: none;
+}
+.armes-menu__lien:hover { background: color-mix(in srgb, var(--accent) 9%, transparent); color: var(--accent); }
+.armes-menu__lien:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.armes-menu__nom { font-weight: 600; }
+.armes-menu__compte { flex-basis: 100%; font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
+/* la famille affichée (sous html.js seulement : sans JavaScript, tous les tableaux se suivent) : son entrée teintée, le filet de l'accent, en gras */
+html.js .armes-menu__lien[aria-current='true'] {
+  border-left-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  color: var(--text);
+}
+html.js .armes-menu__lien[aria-current='true'] .armes-menu__nom { font-weight: 700; }
 
-/* Une famille (le gabarit commun, panneau de son onglet) : le dé de la famille à côté de son nom, dans le titre et dans l'onglet */
-.armes-famille__de, .armes-onglets__de { font-size: var(--fs-xs); font-weight: 700; padding: 0.05rem 0.6rem; border-radius: var(--radius-pill); background: var(--arm); color: var(--surface); }
+/* Une famille (le gabarit commun) : le dé de la famille à côté de son nom, dans le titre de son tableau et dans son entrée du menu */
+.armes-famille__de, .armes-menu__de { font-size: var(--fs-xs); font-weight: 700; padding: 0.05rem 0.6rem; border-radius: var(--radius-pill); background: var(--arm); color: var(--surface); }
 
 /* la seconde ligne d'une arme : ses effets supplémentaires, sous elle (comme l'effet d'un sort choisi dans la fiche de personnage) ; cachée si elle n'en a pas */
 .armes-table tbody > tr.arme-suite > * { border-top: 0; padding-top: 0; padding-bottom: 0.75rem; }
@@ -128,7 +172,7 @@ html.js .armes-bloc > .armes-famille > .armes-famille__titre { position: absolut
 
 /* Une arme */
 /* une arme et la ligne de ses effets se survolent, se sélectionnent et se colorent ensemble */
-html.js .arme, html.js .arme-suite, html.js .materiau, html.js .amelioration { cursor: pointer; }
+html.js :is(.arme, .arme-suite, .materiau, .materiau-suite, .amelioration, .amelioration-suite) { cursor: pointer; }
 .arme__nom { min-width: 10rem; position: sticky; left: 0; z-index: 1; background: var(--surface); }
 html.js :is(.arme:hover, .arme:has(+ .arme-suite:hover)) > *, html.js .arme:hover + .arme-suite > *, html.js .arme-suite:hover > *,
 html.js .amelioration:hover > * { background: var(--arm-soft); }
@@ -205,6 +249,8 @@ html.js .arme--elementaire.est-choisie > .arme__nom, html.js .arme--elementaire.
    classe du matériau (`couleur-materiau-<id>`, lib/palette-css.mjs, valeur dans lib/materiaux-couleurs.mjs), posée sur la ligne et, par le script de
    la page, sur sa pastille dans la fiche (en couleur pleine) */
 .materiau { --ligne-fond: var(--couleur); --ligne-texte: var(--couleur-texte); }
+/* sa ligne à part, dans sa couleur : la même classe du matériau, lue de la même façon */
+.materiau-suite { --ligne-fond: var(--couleur); --ligne-texte: var(--couleur-texte); }
 .materiau__nom { min-width: 6.5rem; }
 .materiau__prix { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .materiau-effet { display: inline; }
@@ -212,6 +258,32 @@ html.js .arme--elementaire.est-choisie > .arme__nom, html.js .arme--elementaire.
 .materiau-effet__bonus { font-weight: 700; }
 .materiau-effet__mot { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .materiau-effet__rien { opacity: 0.7; }
+/* L'effet secondaire d'un matériau et d'une amélioration sur une ligne à part, sous la sienne (demande du propriétaire, 2026-11-05 : « Pour gagner de la
+   largeur, tu peux mettre l'effet secondaire des matériaux et amélioration sur une ligne à part comme c'est le cas pour les armes elles même ») : la
+   ligne du matériau ne montre que son bonus aux dégâts (ses crans et ses autres effets restent dans sa case, cachés, pour la fiche de l'arme), celle de
+   l'amélioration que sa première clause ; la ligne à part (`tr.materiau-suite`, `tr.amelioration-suite`, toute la largeur sauf la première colonne)
+   montre le reste, et se cache vide. Les deux lignes se survolent, se choisissent et se colorent ensemble (comme une arme et la ligne de ses effets). En
+   mode modification, l'amélioration garde tout son texte dans son champ, et sa ligne à part se cache. */
+.armes-materiaux .materiau__effet :is(.materiau-effet__cran, .materiau-effet__secondaire) { display: none; }
+.armes-ameliorations .amelioration-effet__reste { display: none; }
+.armes-table tbody > tr:is(.materiau-suite, .amelioration-suite):has(> td:last-child:empty) { display: none; }
+.armes-table tbody > tr.materiau:has(+ tr.materiau-suite > td:last-child:not(:empty)) > *,
+body:not(.ed-mode) .armes-table tbody > tr.amelioration:has(+ tr.amelioration-suite > td:last-child:not(:empty)) > * { border-bottom: 0; }
+.armes-table tbody > tr:is(.materiau-suite, .amelioration-suite) > * { border-top: 0; padding-top: 0; font-size: var(--fs-sm); }
+.materiau-suite__morceau + .materiau-suite__morceau::before { content: ' · '; content: ' · ' / ''; opacity: 0.6; }
+html.js :is(.materiau:has(+ .materiau-suite:hover), .materiau:hover + .materiau-suite) > * { background: color-mix(in srgb, var(--ligne-fond) 20%, var(--surface)); }
+html.js :is(.amelioration:has(+ .amelioration-suite:hover), .amelioration:hover + .amelioration-suite, .amelioration-suite:hover) > * { background: var(--arm-soft); }
+/* un matériau choisi qui a une ligne à part : le double filet (accent puis fond) fait le tour des deux lignes */
+body:not(.ed-mode) .materiau.est-choisie:has(+ .materiau-suite > td:last-child:not(:empty)) > * { box-shadow: inset 0 3px 0 var(--arm), inset 0 5px 0 var(--surface); }
+body:not(.ed-mode) .materiau.est-choisie:has(+ .materiau-suite > td:last-child:not(:empty)) > :first-child { box-shadow: inset 3px 0 0 var(--arm), inset 5px 0 0 var(--surface),
+  inset 0 3px 0 var(--arm), inset 0 5px 0 var(--surface), inset 9px 0 0 var(--ligne-fond), inset 10px 0 0 color-mix(in srgb, var(--ligne-texte) 35%, var(--ligne-fond)); }
+body:not(.ed-mode) .materiau.est-choisie:has(+ .materiau-suite > td:last-child:not(:empty)) > :last-child { box-shadow: inset -3px 0 0 var(--arm), inset -5px 0 0 var(--surface),
+  inset 0 3px 0 var(--arm), inset 0 5px 0 var(--surface); }
+body:not(.ed-mode) .materiau.est-choisie + .materiau-suite > * { box-shadow: inset 0 -3px 0 var(--arm), inset 0 -5px 0 var(--surface); }
+body:not(.ed-mode) .materiau.est-choisie + .materiau-suite > :first-child { box-shadow: inset 3px 0 0 var(--arm), inset 5px 0 0 var(--surface),
+  inset 0 -3px 0 var(--arm), inset 0 -5px 0 var(--surface), inset 9px 0 0 var(--ligne-fond), inset 10px 0 0 color-mix(in srgb, var(--ligne-texte) 35%, var(--ligne-fond)); }
+body:not(.ed-mode) .materiau.est-choisie + .materiau-suite > :last-child { box-shadow: inset -3px 0 0 var(--arm), inset -5px 0 0 var(--surface),
+  inset 0 -3px 0 var(--arm), inset 0 -5px 0 var(--surface); }
 .materiau.est-choisie > * { box-shadow: inset 0 3px 0 var(--arm), inset 0 5px 0 var(--surface), inset 0 -3px 0 var(--arm), inset 0 -5px 0 var(--surface); }
 .materiau.est-choisie > :first-child { box-shadow: inset 3px 0 0 var(--arm), inset 5px 0 0 var(--surface), inset 0 3px 0 var(--arm), inset 0 5px 0 var(--surface),
   inset 0 -3px 0 var(--arm), inset 0 -5px 0 var(--surface), inset 9px 0 0 var(--ligne-fond),
@@ -220,9 +292,14 @@ html.js .arme--elementaire.est-choisie > .arme__nom, html.js .arme--elementaire.
   inset 0 -3px 0 var(--arm), inset 0 -5px 0 var(--surface); }
 .materiau.est-choisie .materiau__choisir::after { content: ' ✓'; content: ' ✓' / ''; }
 .amelioration__niveau { white-space: nowrap; }
-.amelioration.est-choisie > * { background: color-mix(in srgb, var(--arm) 16%, var(--surface)); }
-.amelioration.est-choisie > .amelioration__niveau { box-shadow: inset 4px 0 0 var(--arm); }
+:is(.amelioration.est-choisie, .amelioration.est-choisie + .amelioration-suite) > * { background: color-mix(in srgb, var(--arm) 16%, var(--surface)); }
+:is(.amelioration.est-choisie > .amelioration__niveau, .amelioration.est-choisie + .amelioration-suite > .amelioration-suite__marge) { box-shadow: inset 4px 0 0 var(--arm); }
 .amelioration__cout { white-space: nowrap; }
+/* un panneau étroit (moins de 18rem) : le coût d'une amélioration passe à la ligne (« 1 Matériel + » / « 200 RO »), le montant jamais coupé */
+@container (max-width: 18rem) {
+  .amelioration__cout { white-space: normal; }
+  .amelioration__cout .montant__part { white-space: nowrap; }
+}
 /* Armes élémentaires (décision R167 : « en sélectionnant l'arme élémentaire en question ça affichera ou non la bonne colone du tableau "amélioration" et
    grisera le "matériau" ») : la colonne du coût élémentaire (les gemmes de sa magie) au lieu du coût matériel quand une arme élémentaire est choisie
    (classe `armes--elementaire` sur `.armes`, src/scripts/armes.mjs), et les matériaux grisés ; sans JavaScript et en mode modification, les deux colonnes */
@@ -232,7 +309,7 @@ html.js .armes.armes--elementaire .armes-ameliorations .amelioration__cout { dis
 html.js .armes:not(.armes--elementaire) :is(.armes-materiaux__note-elementaire, .armes-ameliorations__note-elementaire),
 html.js .armes.armes--elementaire :is(.armes-materiaux__note, .armes-ameliorations > .tableau__note:not(.armes-ameliorations__note-elementaire)) { display: none; }
 html.js .armes--elementaire .armes-materiaux tbody { opacity: 0.45; }
-html.js .armes--elementaire .armes-materiaux :is(.materiau, .materiau__choisir) { cursor: not-allowed; }
+html.js .armes--elementaire .armes-materiaux :is(.materiau, .materiau-suite, .materiau__choisir) { cursor: not-allowed; }
 
 
 /* Fiche de l'arme choisie (remplie par src/scripts/armes.mjs) : un seul cadre, son bouton Fermer en haut à droite, réduit à son minimum (demande du
@@ -284,20 +361,64 @@ html.js .armes--elementaire .armes-materiaux :is(.materiau, .materiau__choisir) 
   html.js .armes-vue.est-ouverte .armes-cote { position: fixed; inset: 0; z-index: 60; max-height: none; overflow-y: auto; overscroll-behavior: contain; padding: 0.75rem 1rem 2rem; background: var(--bg); }
 }
 
-/* Mode modification du site de dev (src/scripts/edition/armes.mjs) : ni sélection ni fiche ; les onglets restent affichés (demande du propriétaire,
-   2026-10-23 : « Je veux les onglets aussi », qui remplace pour l'affichage en onglets la demande antérieure « Quand le mode Edition est lancé, il n'est
-   pas possible de "sélectionner" une arme / matériau / amélioration, mais tous les tableaux sont visibles ») : un panneau ouvert par menu, comme hors du
-   mode modification. Le titre de la famille ouverte (nom, dé, compte) se montre au-dessus de son tableau : son nom et son dé s'y modifient (décision
-   R159 ; l'onglet suit). « + Nouvelle famille » sous la barre de chaque menu. */
-body.ed-mode .armes-bloc > .armes-famille > .armes-famille__titre { position: static; width: auto; height: auto; overflow: visible; clip: auto; white-space: normal; }
-body.ed-mode .armes-bloc > .armes-nouvelle-famille { margin: 0 0 0.8rem; }
-body.ed-mode .armes-vue { grid-template-columns: minmax(0, 1fr) !important; }
+/* Petit écran (<= 56rem, comme les Bases) : le menu replié au-dessus du tableau. Un appui sur son résumé (« Familles d'armes » et la famille affichée)
+   l'ouvre ; choisir une famille le referme (le script en ligne d'ArmesPage.astro, qui le replie au premier affichage). Sans JavaScript, il reste
+   ouvert. */
+@media (max-width: 56rem) {
+  .armes-vue, html.js .armes-vue { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'menu' 'tableaux' 'cote'; }
+  .armes-menu { position: static; max-height: none; overflow: visible; padding: 0; }
+  .armes-menu__repli { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+  .armes-menu__resume {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.1rem 0.6rem;
+    min-height: 2.75rem;
+    box-sizing: border-box;
+    padding: 0.6rem 0.85rem;
+    cursor: pointer;
+  }
+  .armes-menu__resume::-webkit-details-marker { display: none; }
+  /* à droite, un chevron (en bas : replié ; en haut : ouvert) dit qu'un appui ouvre la liste */
+  .armes-menu__resume::after {
+    content: '';
+    width: 0.5rem;
+    height: 0.5rem;
+    margin-left: auto;
+    align-self: center;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    rotate: 45deg;
+    translate: 0 -0.15rem;
+  }
+  .armes-menu__repli[open] > .armes-menu__resume::after { rotate: -135deg; translate: 0 0.15rem; }
+  .armes-menu__resume:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .armes-menu__resume-rubrique { color: var(--muted); font-size: var(--fs-sm); font-weight: 700; }
+  .armes-menu__resume-famille { font-weight: 700; }
+  /* ouvert : la liste sous un filet, des entrées d'au moins 44 px à toucher */
+  .armes-menu__liste { padding: 0.25rem 0 0.4rem; border-top: 1px solid var(--border); border-left: 0; }
+  .armes-menu__lien { min-height: 2.75rem; box-sizing: border-box; align-content: center; margin-left: 0; border-radius: 0; }
+}
+
+/* Mode modification du site de dev (src/scripts/edition/armes.mjs) : ni sélection ni fiche ; le menu et un seul tableau restent (comme les onglets
+   d'avant : demande du propriétaire, 2026-10-23, « Je veux les onglets aussi », qui remplace pour l'affichage la demande antérieure « Quand le mode
+   Edition est lancé, il n'est pas possible de "sélectionner" une arme / matériau / amélioration, mais tous les tableaux sont visibles »). Le titre de la
+   famille affichée (nom, dé, compte), au-dessus de son tableau, porte ses champs (décision R159 ; l'entrée du menu suit). Un seul « + Nouvelle
+   famille », en bas du menu (« Un seul bouton en bas », 2026-11-05) ; le panneau de côté (matériaux, améliorations) sous le tableau. */
+body.ed-mode .armes-menu .armes-nouvelle-famille { margin: 0.6rem 0 0 0.85rem; }
+body.ed-mode .armes-vue { grid-template-columns: minmax(11rem, 14rem) minmax(0, 1fr) !important; grid-template-areas: 'menu tableaux' 'menu cote' !important; }
+@media (max-width: 56rem) {
+  body.ed-mode .armes-vue { grid-template-columns: minmax(0, 1fr) !important; grid-template-areas: 'menu' 'tableaux' 'cote' !important; }
+}
 body.ed-mode .armes-cote { display: grid !important; position: static !important; max-height: none !important; overflow: visible !important; padding: 0 !important; background: none !important; }
 body.ed-mode .arme-fiche, body.ed-mode .amelioration--aucune, body.ed-mode .armes-outils__boutons .armes-aide { display: none !important; }
 body.ed-mode .ed-seul { display: table-cell; }
 body.ed-mode .armes .armes-ameliorations :is(.amelioration__cout, .amelioration__cout-elementaire) { display: table-cell !important; }
 body.ed-mode .armes :is(.armes-materiaux__note-elementaire, .armes-ameliorations__note-elementaire) { display: none !important; }
-body.ed-mode .armes .arme, body.ed-mode .armes .materiau, body.ed-mode .armes .amelioration { cursor: default; }
+body.ed-mode .armes :is(.arme, .materiau, .materiau-suite, .amelioration, .amelioration-suite) { cursor: default; }
+/* l'amélioration : tout son effet dans son champ, sans ligne à part */
+body.ed-mode .armes-ameliorations .amelioration-effet__reste { display: inline; }
+body.ed-mode .armes-table tbody > tr.amelioration-suite { display: none; }
 body.ed-mode .armes :is(.arme, .amelioration).est-choisie > * { background: none; box-shadow: none; }
 body.ed-mode .armes .materiau.est-choisie > * { box-shadow: none; }
 body.ed-mode .armes .materiau.est-choisie > :first-child { box-shadow: var(--ligne-lisere); }
@@ -313,11 +434,9 @@ body.ed-mode .armes .arme__effet .ed-saisie { min-width: 22rem; }
 body.ed-mode .armes :is(.arme__competence, .arme__type, .arme__nom) select.ed-saisie { min-width: 10rem; }
 
 @media print {
-  .armes-outils__boutons, .armes-filtre, .arme-fiche, .armes-onglets { display: none !important; }
-  /* à l'impression, toutes les familles, chacune sous son titre */
-  .armes-bloc > .armes-famille:not(.est-filtree) { display: block !important; }
-  .armes-bloc > .armes-famille:not(.est-filtree) ~ .armes-famille:not(.est-filtree) { margin-top: 1.4rem; }
-  .armes-bloc > .armes-famille > .armes-famille__titre { position: static !important; width: auto !important; height: auto !important; overflow: visible !important; clip: auto !important; }
-  .armes-vue { grid-template-columns: minmax(0, 1fr) !important; }
+  .armes-outils__boutons, .armes-filtre, .arme-fiche, .armes-menu { display: none !important; }
+  /* à l'impression, toutes les familles, chacune sous son titre (l'espace entre deux tableaux : celui de `.armes-tableaux`) */
+  .armes-tableaux > .armes-famille:not(.est-filtree) { display: block !important; }
+  .armes-vue { grid-template-columns: minmax(0, 1fr) !important; grid-template-areas: 'tableaux' 'cote' !important; }
   .armes-cote { display: grid !important; position: static !important; max-height: none !important; }
 }

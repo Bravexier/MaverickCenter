@@ -238,7 +238,7 @@ export function domainesDesArmes({ refus, ErreurEdition, synchroniser, provenanc
     },
     deriver: (ctx, avant, apres) => suivreLeCorps(ctx, 'arme_famille', avant, apres),
     /**
-     * Une famille (un onglet de sa barre, mêlée ou distance : R159) : identifiant tiré du nom une fois (suffixe -2… s'il est pris ou a déjà servi), puis
+     * Une famille (une entrée du menu de la page et un tableau, mêlée ou distance : R159) : identifiant tiré du nom une fois (suffixe -2… s'il est pris ou a déjà servi), puis
      * figé ; au dernier rang ; maîtrisable, sa catégorie posée ici et jamais changée, son nom de lecture celui de sa création (migration 0077) ; sa section
      * à la fin du corps de la page ; les sources de maîtrise d'arme refaites (elle entre dans les choix de sa catégorie et ceux de toutes les familles).
      */
