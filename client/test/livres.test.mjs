@@ -10,7 +10,7 @@ import GithubSlugger from 'github-slugger';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import {
   ACCUEIL_DU_GUIDE, ADRESSES_DU_PLAN_PRECEDENT, adresseDeLaPageAbsorbee, ANCRES_DES_PAGES_ABSORBEES, ARTISANAT, adresseDuGuide, DECOUVRIR, estDansDecouvrirOuLesBases, estDuGuideDuMj,
-  estDesBases, filDAriane, groupeDeLaPage, groupesDesReglesAvancees, GUIDE_DU_MJ, LES_BASES, NOMS_RESERVES, PAGES_ABSORBEES, PAGES_SANS_RETROLIENS, PAR_OU_COMMENCER, LIENS_ET_RENCONTRE,
+  estDesBases, filDAriane, groupeDeLaPage, groupesDesReglesAvancees, GUIDE_DU_MJ, LES_BASES, NOMS_RESERVES, PAGES_ABSORBEES, PAR_OU_COMMENCER, LIENS_ET_RENCONTRE,
   PARTIES, pagesDeLaRubrique, pagesDesBases, partieDeLaPage, placeDansLeGuide, REGLES_AVANCEES, rubriqueDe, RUBRIQUES_DU_GUIDE, RUBRIQUES_SOUS_LA_PAGE, verifierLePlan,
 } from '../src/lib/livres.mjs';
 import * as Guide from '../src/lib/guide.mjs';
@@ -212,9 +212,6 @@ test('les pages nommées par le plan : « Par où commencer ? », L’univers et
   assert.deepEqual(PAR_OU_COMMENCER, pagesDeLaRubrique(DECOUVRIR).map((p) => p.id), 'les trois pages de Découvrir');
   assert.deepEqual(RUBRIQUES_SOUS_LA_PAGE, { 'guide/l-univers': ['races', 'magies', 'classes'] });
   assert.deepEqual(RUBRIQUES_SOUS_LA_PAGE['guide/l-univers'].map((k) => TYPES[k].label), ['Races', 'Magies', 'Classes']);
-  // demandes du propriétaire du 2026-11-05 (les rétroliens) : « Retire cette patie là de la page de bienvenue. », puis « Cette partie de la page
-  // "l'univers" est à supprimer. » ; ces deux pages seules
-  assert.deepEqual(PAGES_SANS_RETROLIENS, ['guide/bienvenue', 'guide/l-univers']);
   assert.deepEqual(ARTISANAT.pages, ['ressources/composants', 'ressources/alchimie', 'ressources/alchimie-primitive', 'ressources/alchimie-liste-ingredients', 'metiers/regles-des-metiers']);
   const existe = db.prepare('SELECT 1 FROM page WHERE id = ?');
   for (const id of ARTISANAT.pages.slice(1)) assert.ok(existe.get(id), `${id} : page absente`);

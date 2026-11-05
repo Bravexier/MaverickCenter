@@ -1247,7 +1247,7 @@ Le guide n'est plus un seul livre de 24 chapitres servi sous `/guide/` (demande 
 retravailler pleinement l'organisation des onglets et de la présentation »), ni deux livres lus dans l'ordre (2026-10-18 : « refaire toutes les anciennes
 pages du guide. Retirer le mécanisme de swipe, et les flèches suivant / précédent et la pagination ») : les pages `guide/<slug>` (famille `docs`, ids
 inchangés) sont rangées par le **plan du site**, `client/src/lib/livres.mjs` (sans import, testé par `test/livres.test.mjs`), qui donne à chacune son
-adresse (`adresseDuGuide`, par `lib/metiers.mjs#adresseDePage` : `[[liens]]`, recherche, rétroliens et index la suivent). Seuls des libellés de
+adresse (`adresseDuGuide`, par `lib/metiers.mjs#adresseDePage` : `[[liens]]`, recherche et index la suivent). Seuls des libellés de
 navigation y sont écrits (titres de rubrique, de groupe, libellés des liens) ; les textes sont ceux de la base, sauf une exception : la
 présentation du lien Discord de l'accueil (`LIENS_ET_RENCONTRE.liens[].presentation`, plus bas), écrite dans le plan, donc ni modifiable sur le site de
 dev (un commit la change) ni cherchée par la recherche.
@@ -1286,7 +1286,7 @@ dev (un commit la change) ni cherchée par la recherche.
   Guide du MJ (réponses du propriétaire du 2026-11-05 : « Une seule couleur », puis « Accent du site » ; `partieDeLaPage` rend null).
 - **Toute page du guide est une page simple** (`components/guide/PageDuGuide.astro`, servie par `PageDuPlan.astro`, à côté du menu latéral pour une
   page des Bases) : fil d'Ariane vers sa rubrique (Découvrir, Les bases) ou son sommaire et son groupe (Règles avancées), ou le Guide du MJ (`filDAriane`), titre, texte coupé à ses blocs tirés de la
-  base, puis mots-clés et rétroliens (`components/PiedDePage.astro`). **Plus aucune source sous une page**, quelle qu'elle soit (réponse du
+  base, puis ses mots-clés (`components/PiedDePage.astro`). **Plus aucune source sous une page**, quelle qu'elle soit (réponse du
   propriétaire du 2026-10-22, G43 : « Plus de sources ailleurs que dans les archives. On va épurer un peu ce qui est redondant. ») : `sources:` reste
   dans le frontmatter et la base (`page_source`, `source`), que `/archives/` lit. Ni flèches, ni touches ← →, ni glissement du doigt, ni pagination,
   ni numéro de chapitre. Le retour arrière du navigateur au glissement horizontal est empêché pour tout le site (`html { overscroll-behavior-x: none; }`,
@@ -1611,7 +1611,8 @@ descriptions peuvent citer des mots-clés.
 
 La casse, les accents et les apostrophes sont ignorés. Les liens sont **résolus au build** :
 
-- une page cible affiche automatiquement « Mentionnée par … » (rétroliens) ;
+- aucune page n'affiche plus ni « Cette page mentionne » ni « Mentionnée par » (demande du propriétaire du 2026-11-05 : « Supprime ces
+  colonnes de toutes les pages. Elles polluent l'affichage pour rien. ») ; le pied d'une page ne garde que ses mots-clés ;
 - un lien sans cible s'affiche en rouge, un avertissement `[wikilinks]` apparaît au build, et la page figure dans
   « Pages à créer » de l'index du wiki (`/pages/`) ;
 - un titre porté par plusieurs pages est signalé comme ambigu : utiliser `[[catégorie/slug]]`.

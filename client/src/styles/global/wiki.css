@@ -4,7 +4,6 @@
 .prose { max-width: 46rem; }
 .wikilink { text-decoration-style: dotted; }
 .wikilink--missing { color: var(--danger); font-style: normal; text-decoration: underline wavy; cursor: help; }
-.linked-pages { display: grid; gap: 1rem 2rem; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border); }
 .class-nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; }
 main a { overflow-wrap: anywhere; } /* les URLs de la section « Sources » ne doivent pas élargir la page */
 /* Couleur d'une case de tableau (« {couleur:vert} » en tête de case : lib/markdown-couleurs.mjs, modifiable depuis le site de dev) : la case porte la classe

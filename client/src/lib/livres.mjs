@@ -95,13 +95,6 @@ export const ACCUEIL_DU_GUIDE = DECOUVRIR.chemin;
 export const RUBRIQUES_SOUS_LA_PAGE = Object.freeze({ 'guide/l-univers': Object.freeze(['races', 'magies', 'classes']) });
 
 /**
- * Pages du guide rendues sans le bloc des rétroliens (« Cette page mentionne » / « Mentionnée par », components/PiedDePage.astro) ; leurs mots-clés
- * restent. Bienvenue : demande du propriétaire du 2026-11-05, « Retire cette patie là de la page de bienvenue. » ; L'univers : demande du
- * propriétaire du 2026-11-05, « Cette partie de la page "l'univers" est à supprimer. » (les autres pages gardent le leur).
- */
-export const PAGES_SANS_RETROLIENS = Object.freeze(['guide/bienvenue', 'guide/l-univers']);
-
-/**
  * Les Règles avancées : un sommaire en groupes (titre et résumé de chaque page), chaque groupe avec son ancre (`id`). Un groupe nomme ses pages
  * (`pages`, dans cet ordre), ou les prend par le début de leur id (`prefixe`, ordre des titres) ; le dernier (`reste`) reçoit toute autre page
  * `guide/…` qui n'est ni dans Découvrir, ni dans Les bases, ni dans le Guide du MJ, ni dans un groupe précédent (ordre des titres).
