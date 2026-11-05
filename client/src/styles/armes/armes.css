@@ -1,7 +1,7 @@
 /* Chargé uniquement depuis components/armes/ArmesPage.astro (?raw) : la page Armes, /ressources/armes/. Un seul tableau affiché et, à sa gauche, un
    menu latéral des familles (demande du propriétaire, 2026-11-05 : « plutôt que 2 tableaux à onglet j'aimerai que tu n'affiche qu'un seul tableau et
    que tu ajoute un menu lattéral sur la gauche comme pour la page chronologie et les bases », qui remplace les deux menus à onglets du 2026-10-23) :
-   l'apparence du menu des Bases (styles/guide/les-bases.css : vertical, l'entrée affichée teintée, un filet de l'accent, en gras ; replié dans un
+   l'apparence du menu des Bases (styles/guide/menu-lateral.css : vertical, l'entrée affichée teintée, un filet de l'accent, en gras ; replié dans un
    <details> sous 56rem), une seule liste (« Liste unique », 2026-11-05), mêlée puis distance ; chaque tableau, celui d'une famille (un tableau qui n'est pas
    affiché n'est caché que sous html.js : sans JavaScript, les tableaux se suivent, chacun sous son titre), aéré (« l'affichage est trop serré »), les
    effets supplémentaires d'une arme sur une seconde ligne ; à droite, toujours affiché et
@@ -118,7 +118,7 @@ html.js .armes-tableaux > .armes-famille:not(.is-active) { display: none; }
 .armes-cote__fermer:hover { border-color: var(--arm); }
 
 /* ---------- Le menu des familles (components/armes/ArmesPage.astro, EntreeDeFamille.astro) ----------
-   Comme celui des Bases (styles/guide/les-bases.css) : il reste en place pendant qu'on lit (collé en haut de l'écran) et défile seul s'il dépasse
+   Comme celui des Bases (styles/guide/menu-lateral.css) : il reste en place pendant qu'on lit (collé en haut de l'écran) et défile seul s'il dépasse
    l'écran ; une seule liste, sans titres de groupe (réponse du propriétaire, 2026-11-05 : « Liste unique » ; mêlée puis distance, R127), une entrée
    par famille (nom, pastille du dé, nombre d'armes), l'entrée affichée (`aria-current`) teintée de l'accent, un filet de l'accent du côté du menu, en
    gras. Une entrée que le filtre vide se cache (`hidden`). Sans JavaScript, des liens d'ancre vers les tableaux qui se suivent. */
