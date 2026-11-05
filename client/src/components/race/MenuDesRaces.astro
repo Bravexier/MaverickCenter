@@ -7,10 +7,11 @@ import { entryHref, url, type WikiEntry } from '../../lib/wiki';
 // Les pages de race, à côté d'un menu latéral de toutes les races (demande du propriétaire : « Je veux comme pour chronologie, et les bases, un menu
 // latéral qui récapitule toutes les races sur le menu d'une race ouverte. »). Même mise en page, mêmes classes et même feuille que le menu des Bases
 // (components/guide/LesBases.astro, styles/guide/les-bases.css), pour une apparence identique : à gauche, en vertical, les races de la liste /races/
-// (lib/race-kinds.mjs#groupRaces : races pures puis hybrides, chaque groupe sous son titre, dans l'ordre du propriétaire), l'entrée affichée marquée
-// (aria-current) ; à droite, la page (fil d'Ariane, gabarit RacePage, pied de page). Liens ordinaires : tout se lit sans JavaScript. L'accent du site,
-// comme les Bases, pas la couleur de la nature. Petit écran (<= 56rem) : le menu replié au-dessus de la page (un <details> : « Races » et le nom de la
-// race), ouvert sans JavaScript ; le script en ligne le replie sur petit écran (il n'importe rien, skill site-version-portable).
+// dans le même ordre (lib/race-kinds.mjs#groupRaces : races pures puis hybrides, ORDRE_DES_RACES), en une seule liste sans titre de groupe (réponse
+// du propriétaire : « Une seule liste », comme le menu des Bases), l'entrée affichée marquée (aria-current) ; à droite, la page (fil d'Ariane, gabarit
+// RacePage, pied de page). Liens ordinaires : tout se lit sans JavaScript. L'accent du site (réponse du propriétaire : « Accent du site »), pas la
+// couleur de la nature. Petit écran (<= 56rem) : le menu replié au-dessus de la page (un <details> : « Races » et le nom de la race), ouvert sans
+// JavaScript ; le script en ligne le replie sur petit écran (il n'importe rien, skill site-version-portable).
 // `actif` faux (toute autre page servie par pages/[type]/[slug].astro, la race d'exemple sans ligne dans la base) : la page seule, sans menu.
 interface Props {
   actif: boolean;
@@ -18,7 +19,7 @@ interface Props {
   entries: WikiEntry[];
 }
 const { actif, entry, entries } = Astro.props;
-const groupes = actif ? groupRaces(entries) : [];
+const races = actif ? groupRaces(entries).flatMap((g) => g.entries) : [];
 const titre = TYPES.races.label;
 ---
 
@@ -34,18 +35,13 @@ const titre = TYPES.races.label;
               <span class="bases-menu__resume-page">{entry.data.title}</span>
             </summary>
             <p class="bases-menu__titre"><a href={url('races/')}>{titre}</a></p>
-            {groupes.map((g) => (
-              <>
-                <p class="bases-menu__groupe" id={`menu-races-${g.key}`}>{g.label}</p>
-                <ol class="bases-menu__liste" aria-labelledby={`menu-races-${g.key}`}>
-                  {g.entries.map((r) => (
-                    <li>
-                      <a class="bases-menu__lien" href={entryHref(r)} aria-current={r.id === entry.id ? 'page' : undefined}>{r.data.title}</a>
-                    </li>
-                  ))}
-                </ol>
-              </>
-            ))}
+            <ol class="bases-menu__liste">
+              {races.map((r) => (
+                <li>
+                  <a class="bases-menu__lien" href={entryHref(r)} aria-current={r.id === entry.id ? 'page' : undefined}>{r.data.title}</a>
+                </li>
+              ))}
+            </ol>
           </details>
         </nav>
         <script is:inline>

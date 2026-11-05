@@ -34,9 +34,6 @@ main:has(> .bases) { max-width: calc(var(--max) + 16rem); }
 .bases-menu__titre a { color: var(--text); text-decoration: none; }
 .bases-menu__titre a:hover { color: var(--accent); text-decoration: underline; }
 .bases-menu__liste { margin: 0; padding: 0; border-left: 2px solid var(--border); list-style: none; }
-/* un menu en groupes (les races : pures, puis hybrides) : le titre de chaque groupe au-dessus de sa liste ; les Bases n'en ont pas */
-.bases-menu__groupe { margin: 0.9rem 0 0.3rem; padding-left: 0.85rem; color: var(--muted); font-size: var(--fs-sm); font-weight: 700; }
-.bases-menu__titre + .bases-menu__groupe { margin-top: 0.25rem; }
 .bases-menu__lien {
   display: block;
   margin-left: -2px;
@@ -94,8 +91,6 @@ main:has(> .bases) { max-width: calc(var(--max) + 16rem); }
   .bases-menu__resume-page { font-weight: 700; }
   /* ouvert, le résumé dit déjà la rubrique : pas de second titre ; la liste sous un filet, des entrées d'au moins 44 px à toucher */
   .bases-menu__titre { display: none; }
-  .bases-menu__groupe { margin: 0; padding: 0.6rem 0.85rem 0.1rem; border-top: 1px solid var(--border); }
-  .bases-menu__groupe + .bases-menu__liste { border-top: 0; }
   .bases-menu__liste { padding: 0.25rem 0 0.4rem; border-top: 1px solid var(--border); border-left: 0; }
   .bases-menu__lien { display: flex; align-items: center; min-height: 2.75rem; box-sizing: border-box; margin-left: 0; border-radius: 0; }
 }

@@ -513,8 +513,8 @@ typées lues par `client/src/lib/races-db.mjs`, jamais le Markdown. **Aucun tabl
   à son propre niveau (« Humain » suivi de « Central · Désertique »). Les relations entre peuples d'une même race sont dans une petite matrice. Une race sans peuple dans l'onglet (Anansi, Farfadet, Goleois) le dit.
 - **Menu latéral de toutes les races** (demande du propriétaire : « comme pour chronologie, et les bases, un menu latéral qui récapitule toutes les races sur le menu d'une race ouverte ») :
   `components/race/MenuDesRaces.astro`, posé par `pages/[type]/[slug].astro` autour de la page (fil d'Ariane, gabarit, pied de page) quand la race a ses lignes dans la base. Même mise en page, mêmes
-  classes et même feuille que le menu des Bases (`styles/guide/les-bases.css`) : à gauche les races de `/races/` (`groupRaces` : « Races pures » puis « Races hybrides », chaque groupe sous son titre,
-  ordre `ORDRE_DES_RACES`), la race ouverte marquée (`aria-current`), l'accent du site ; petit écran (<= 56rem), le menu replié au-dessus de la page, ouvert sans JavaScript.
+  classes et même feuille que le menu des Bases (`styles/guide/les-bases.css`) : à gauche les races de `/races/` dans le même ordre (`groupRaces` : pures puis hybrides, `ORDRE_DES_RACES`),
+  en une seule liste sans titre de groupe (réponse du propriétaire : « Une seule liste »), la race ouverte marquée (`aria-current`), l'accent du site (réponse : « Accent du site ») ; petit écran (<= 56rem), le menu replié au-dessus de la page, ouvert sans JavaScript.
 - Le CSS est dans `client/src/styles/race/`, injecté par `RacePage.astro` (`?raw`) seulement, comme celui des magies (le menu latéral, lui, lit `styles/guide/les-bases.css`). `test/races-html.test.mjs` contrôle le site construit (la CI le lance après le build).
 
 **Pour changer une race, on change la base** (une migration `data/migrations/NNNN-<nom>.sql`, voir `docs/sql/remplissage.md`) : modifier le `.md` fabriqué n'a plus d'effet sur la page.

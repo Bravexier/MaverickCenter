@@ -193,7 +193,7 @@ test('pages de race : le lien « Voir le tableau » mène au tableau de /races/'
 
 // Demande du propriétaire : « Je veux comme pour chronologie, et les bases, un menu latéral qui récapitule toutes les races sur le menu d'une race
 // ouverte. » (components/race/MenuDesRaces.astro, les classes et la feuille du menu des Bases).
-test('pages de race : à gauche le menu latéral de toutes les races (pures puis hybrides, ordre du propriétaire, la race ouverte marquée), à droite la page', options, () => {
+test('pages de race : à gauche le menu latéral de toutes les races (une seule liste, pures puis hybrides, ordre du propriétaire, la race ouverte marquée), à droite la page', options, () => {
   const attendu = ORDRE_DES_RACES.map((id) => id.slice('races/'.length));
   for (const { slug, html } of pages) {
     const m = main(html);
@@ -202,8 +202,9 @@ test('pages de race : à gauche le menu latéral de toutes les races (pures puis
     assert.ok(m.indexOf('<nav class="bases-menu"') < m.indexOf('<div class="bases-page">'), `${slug} : le menu à gauche, la page à droite`);
     assert.match(nav[1], /<details class="bases-menu__repli" open data-bases-repli>/, `${slug} : ouvert sans JavaScript`);
     assert.match(nav[1], /<p class="bases-menu__titre"><a href="[^"]*\/races\/">Races<\/a><\/p>/, `${slug} : titre lié à /races/`);
-    const groupes = [...nav[1].matchAll(/<p class="bases-menu__groupe"[^>]*>([^<]+)<\/p>/g)].map((g) => g[1]);
-    assert.deepEqual(groupes, ['Races pures', 'Races hybrides'], `${slug} : groupes`);
+    // réponse du propriétaire : « Une seule liste » (sans titre de groupe, comme le menu des Bases)
+    assert.equal((nav[1].match(/<ol class="bases-menu__liste">/g) ?? []).length, 1, `${slug} : une seule liste`);
+    assert.ok(!nav[1].includes('bases-menu__groupe') && !nav[1].includes('Races pures'), `${slug} : sans titre de groupe`);
     const entrees = [...nav[1].matchAll(/<a class="bases-menu__lien" href="[^"]*\/races\/([^/"]+)\/"( aria-current="page")?>/g)]
       .filter((e) => e[1] !== 'exemple-race');
     assert.deepEqual(entrees.map((e) => e[1]), attendu, `${slug} : toutes les races, dans l'ordre`);
