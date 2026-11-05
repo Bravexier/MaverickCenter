@@ -71,16 +71,7 @@
 .guide-note { margin: 0.35rem 0 0; color: var(--muted); font-size: var(--fs-md); }
 .guide-lettre { color: var(--muted); font-weight: 400; font-size: 0.9em; }
 
-/* Les 15 magies (L'univers) et le tableau de ce qu'elles donnent (Créer son personnage) : pastille de la couleur de la magie. */
-.guide-magies {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 10.5rem), 1fr));
-  gap: 0.6rem;
-  margin: 1rem 0 1.25rem;
-  padding: 0;
-  list-style: none;
-}
-.guide-magies li { display: grid; justify-items: start; gap: 0.15rem; }
+/* Le tableau de ce que donne chaque magie (Créer son personnage) : pastille de la couleur de la magie. */
 .guide-magie {
   --c: var(--couleur, var(--guide)); /* la classe de la magie (`.couleur-magie-<id>`, lib/palette-css.mjs), posée sur la case ou la ligne */
   display: inline-flex;
@@ -97,7 +88,6 @@
 }
 .guide-magie:hover, .guide-magie:focus-visible { background: color-mix(in srgb, var(--c) 24%, var(--surface)); }
 .guide-magie__point { width: 0.75rem; height: 0.75rem; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 55%, var(--muted)); flex: none; }
-.guide-magie__dieu { padding-left: 0.6rem; color: var(--muted); font-size: var(--fs-md); }
 .guide-magie--ligne { padding: 0.1rem 0.6rem 0.1rem 0.4rem; border-width: 1px; font-size: var(--fs-lg); }
 
 /* Caractéristiques (et leurs compétences) et postures : chacune dans sa couleur (lib/caracteristiques-postures.mjs, demande du propriétaire), par la

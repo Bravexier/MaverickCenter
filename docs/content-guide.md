@@ -322,8 +322,8 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
 - **Où elle sert** :
   - les potions et les bâtons magiques de l'onglet Ceinture (« Ceinture » plus bas) ;
   - **toute couleur de magie** (lot des magies) : pages de magie (la page, les onglets du Potentiel Illimité, les créatures invoquées), carte et
-    tableaux de `/magies/` et `/races/`, magies innées d'une race (et son éditeur), entrées de l'annexe d'une classe, blocs du guide (les 15 magies,
-    ce que donne chaque magie), pastilles de magie et cibles de défense du bestiaire, gemmes et bois des composants, gemmes des accessoires (pastille,
+    tableaux de `/magies/` et `/races/`, magies innées d'une race (et son éditeur), entrées de l'annexe d'une classe, bloc du guide (ce que donne
+    chaque magie), pastilles de magie et cibles de défense du bestiaire, gemmes et bois des composants, gemmes des accessoires (pastille,
     infobulle, copie de l'encart), lignes de `/personnages/`, fiche de personnage (pastilles, résistances, sorts, créatures, Mode Hyper, cadres) ;
   - **les caractéristiques (et leurs compétences), les postures et les alignements** (lot 3) : blocs du guide (« +1 en … », cadres des compétences,
     postures), cases des caractéristiques des cartes du bestiaire, compétence d'une arme et filtre de l'onglet Armes (R48), compétences et
@@ -1338,7 +1338,8 @@ dev (un commit la change) ni cherchée par la recherche.
 - **Les blocs tirés de la base** : une ligne seule `<!-- guide:<bloc> -->` dans le Markdown (`BLOCS`, chacun appelé une fois dans tout le guide) est
   remplacée au rendu par un tableau lu dans la base (`lib/guide-db.mjs`, `components/guide/GuideBloc.astro`), sur toute page du guide : progression
   (`niveau_global`), postures, compétences, initiative, ce que donne chaque magie, types de don, entraînement, personnages fil rouge… Plus de bloc
-  `sommaire` (demande du propriétaire du 2026-10-18 : « Dans la page de bienvenue, retire le sommaire ») : un marqueur inconnu arrête le rendu. Ne jamais
+  `sommaire` (demande du propriétaire du 2026-10-18 : « Dans la page de bienvenue, retire le sommaire »), ni `magies` (la liste des 15 magies, qui
+  quitte « L’univers » à sa refonte) : un marqueur inconnu arrête le rendu. Ne jamais
   recopier ces chiffres dans le texte. Les caractéristiques (cadre de leurs compétences, « +1 en … » d'une magie) et les postures y sont dans leur
   couleur (demande du propriétaire, `lib/caracteristiques-postures.mjs`, clés = ids de la base, testé : Force #FF6666, Volonté #FF99FF, Intelligence
   #66CCFF, Perception #FFCC00, Social #DDDDDD, Agilité #99FF66 ; Offensif #FF6666, Neutre #EEEEEE, Défensif #99FF99, Focus #9999FF, Vigilance #FFFF66,
