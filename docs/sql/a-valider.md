@@ -326,3 +326,20 @@ corrections d'orthographe seulement). Choix de rédaction, pas des écarts : un 
 (provenance non réparée, décision du 2026-10-16) ; « Dieu choisi » (la fiche), avec le « Dieu acquis » du Codex entre parenthèses ; la Solidité
 définie par le glossaire du site et les « mauvais coups » du Codex ; « PJ » défini d'après l'ancien texte d'accueil de la base ; le Laiton ajouté aux
 matériaux qui contrent la barrière d'après `materiau_arme`.
+
+## 7. Refonte de la page « L'univers » : points non tranchés (2026-11-05)
+
+La page « L'univers » (`guide/l-univers`) est réécrite de zéro (demande du propriétaire : « Retravaille l'intégralité de la page "l'univers" en partant de
+zéro […] mettre l'accent sur l'omni présence de la magie, de l'aspect inné dans chaque élément vivant de l'univers »). Les points ci-dessous ne sont dans
+aucune source ni décision : la page les **laisse absents** en attendant ta réponse, rien n'est déduit. Sources : `docs/chronologie.md` (questions 1, 3 et
+15), `docs/codex.md` (question 2), `docs/sql/orthographe-a-valider.md`.
+
+| # | Pages | Ce qui diffère ou manque | Ce que la page fait en attendant |
+| --- | --- | --- | --- |
+| U1 | L'univers, chronologie | Étendue de l'histoire. Les quatre événements créés sur le site de dev le 2026-10-18 (« Ère des Élémentaires » -2000, « Ère des Dieux » -1500, « Naissance des premiers mortels » -500, « Apparition de Joyeuse » -300) sont du lore à part entière (le site de dev est la source de ce qu'il modifie), mais l'événement -2000 dit lui-même que sa date n'est que « l'indice le plus ancien trouvé ». Avec eux, la chronologie va de -2000 à 1160 (3160 ans) ; sans eux, de -450 (Naissance des Drassah'thac) à 1160 (1610 ans). La page peut-elle donner une durée chiffrée, et laquelle ? | Aucune durée chiffrée : « plusieurs siècles » ; ni le -2000 ni le -450 ne sont cités ; l'ère des Élémentaires et l'ère des Dieux sont évoquées comme passé lointain, sans date (texte de `lore/origine-du-monde`) |
+| U2 | L'univers | Premier Impact : « An 20 » (liste des Impacts, « Guerre des Temples/Apparition de l'Ottar Monde ») ou « l'an -30 » (même page « Temple de l'Espace/Temps », qui écrit les deux ; `docs/chronologie.md`, question 1) ? | Aucune date du Premier Impact |
+| U3 | L'univers | Fin de l'empire humain : 1138 (liste des Impacts) ou 1141 (tableau des empereurs, où Louis XVI règne jusqu'en 1139 ; `docs/chronologie.md`, question 3) ? | Aucune date de la fin de l'Empire |
+| U4 | L'univers | Le continent « Enhor » (Civilisations) ou « Enohr » (Impacts mineurs, « Le Blizzard de la Peine ») ? (`docs/codex.md`, question 2 ; `docs/sql/orthographe-a-valider.md`) | Ce continent n'est pas nommé |
+| U5 | L'univers | « Erisia » (titre de la page et Civilisations) ou « Érisia » (texte de l'Empire humain) ? | « Erisia », la graphie du titre de la page liée (`lore/erisia`) |
+| U6 | L'univers | Le Codex liste six continents (Erisia, Enhor, Engrevua, Mrode, Désert Doré, Golopa) mais quatre n'ont qu'un titre sans texte. Les nommer sur la page de présentation, ou seulement Erisia et Mrode, qui sont décrits ? | Seuls Erisia et Mrode sont nommés |
+| U7 | L'univers | Année « d'aujourd'hui » : aucune source ne l'écrit (le dernier fait daté est « Disparition de l'Ordre des Abeilles », 1160 ; `lore/situation-actuelle` n'a pas d'année). Faut-il en fixer une ? | Aucune année actuelle |
