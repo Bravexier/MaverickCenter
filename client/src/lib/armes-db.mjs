@@ -10,7 +10,7 @@ export { PAGE_DES_ARMES };
 
 const lignes = (db, sql, ...p) => db.prepare(sql).all(...p).map((l) => ({ ...l }));
 
-// le rendu de l'onglet (lib/armes-rendu.mjs) : l'ancre d'une arme, la phrase des armes de départ dans le panneau de règles
+// le rendu de la page (lib/armes-rendu.mjs) : l'ancre d'une arme, la phrase des armes de départ dans le panneau de règles
 export { ancreDArme, avecPhraseDesArmesDeDepart } from './armes-rendu.mjs';
 /** Ancre HTML d'un matériau : « materiau-titane ». */
 export const ancreDeMateriau = (id) => `materiau-${String(id).slice(String(id).lastIndexOf(':') + 1)}`;
@@ -50,7 +50,7 @@ export function coutsElementairesCumules(ameliorations) {
  * Les données de la page :
  *   familles      : les bandeaux à maîtrise (ordre de l'onglet), même sans arme (une famille créée sur le site de dev, R159), chacun { id, nom, de_brut, note_brut,
  *                   cout_libelle, categorie, armes: [lignes arme], type_elementaire, armes_elementaires } ;
- *                   categorie : 'contact' ou 'distance' (arme_famille.categorie, décision R127) — les deux menus à onglets de l'onglet Armes la groupent ;
+ *                   categorie : 'contact' ou 'distance' (arme_famille.categorie, décision R127) — le menu latéral de la page Armes la range (mêlée puis distance) ;
  *                   type_elementaire : le type des armes élémentaires de la famille (décision R167 : « la transformation suit la famille sous laquelle l'arme
  *                   est listée », arme_famille.type_elementaire_id) : { id, nom, de, de_regle, portee_min, portee_max (arme_type : « Dé et portée : ceux de
  *                   son type »), ignore_ap (« ignore 4 AP » de l'Arbalète, null sinon), exemplaire_unique (Arme de jet, Bombe : « en un seul exemplaire,
@@ -88,7 +88,7 @@ export function chargerArmes(db) {
                                    LEFT JOIN gemme g ON g.magie_id = e.magie_id LEFT JOIN ressource r ON r.id = g.ressource_id
                                    ORDER BY e.ordre`)
     .map(({ gemme_id, gemme_nom, ...e }) => ({ ...e, gemme: gemme_id ? { id: gemme_id, nom: gemme_nom } : null }));
-  // toutes les familles à maîtrise, même sans arme : une famille créée sur le site de dev (décision R159) a son onglet et son tableau dès sa création ;
+  // toutes les familles à maîtrise, même sans arme : une famille créée sur le site de dev (décision R159) a son entrée du menu et son tableau dès sa création ;
   // elle n'a aucune arme élémentaire (type_elementaire_id NULL : décision R167)
   const familles = lignes(db, 'SELECT id, nom, de_brut, note_brut, cout_libelle, categorie, type_elementaire_id FROM arme_famille WHERE maitrisable = 1 ORDER BY ordre')
     .map(({ type_elementaire_id, ...f }) => ({

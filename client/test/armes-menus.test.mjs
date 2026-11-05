@@ -1,8 +1,9 @@
-// Les deux menus à onglets de la page Armes, /ressources/armes/ (demande du propriétaire, 2026-10-23 : « Il faudrai réduire çà en deux menus à
-// onglet. Un pour les armes de mêlée l'autre pour les armes à distances. ») : lib/armes-rendu.mjs#menusDesArmes range les familles de chargerArmes par
-// leur catégorie (arme_famille.categorie, décision R127), mêlée (`contact`) puis distance, chaque menu dans l'ordre de l'onglet ; une famille sans menu
-// arrête le build. D'abord la catégorie que chargerArmes donne (lib/armes-db.mjs, colonne arme_famille.categorie, ordre de arme_famille.ordre), puis
-// les menus sur toute la base et sur des familles d'essai. Le rendu (barres, onglets, panneaux) : test/armes-html.test.mjs.
+// L'ordre du menu latéral de la page Armes, /ressources/armes/ (demandes du propriétaire, 2026-11-05 : « un menu lattéral sur la gauche », « Liste
+// unique » : une seule liste, les familles de mêlée puis celles à distance, comme les deux menus à onglets du 2026-10-23 qu'il remplace) :
+// lib/armes-rendu.mjs#menusDesArmes range les familles de chargerArmes par leur catégorie (arme_famille.categorie, décision R127), mêlée (`contact`)
+// puis distance, chaque catégorie dans l'ordre de la base ; la page aplatit le résultat ; une famille sans catégorie connue arrête le build. D'abord la
+// catégorie que chargerArmes donne (lib/armes-db.mjs, colonne arme_famille.categorie, ordre de arme_famille.ordre), puis le rangement sur toute la base
+// et sur des familles d'essai. Le rendu (le menu, les tableaux) : test/armes-html.test.mjs.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { chargerArmes } from '../src/lib/armes-db.mjs';
