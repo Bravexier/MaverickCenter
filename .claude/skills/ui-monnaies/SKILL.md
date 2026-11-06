@@ -22,6 +22,7 @@ user-invocable: false
 ## Où c'est appliqué
 - Rendus des tables : armes, accessoires, composants, bourse de la fiche.
 - Markdown : `lib/markdown-monnaies.mjs`, sur tout le texte sauf liens et code. Dans un tableau, une colonne dont l'en-tête écrit l'unité (« Coût(RO) ») lit ses nombres seuls comme des montants.
+- Glossaire (R63, R183 (9)) : le titre d'une bulle (`mots-cles-balises.mjs#htmlDuNomDuMotCle`) montre une monnaie en « Libellé » suivi de l'icône, sans « (RO) » ; sa définition, le texte affiché d'une balise (`{{RO}}`), le mode complet et les bulles passent par `htmlAvecMonnaies` (`htmlDeLaBalise`). Un montant écrit dans une balise se décompose comme ailleurs (R183 (12), « Décomposer comme ailleurs » : `{{prix-fixe|1245,5 RO}}` → « 1 [PP] 245 [RO] 50 [RF] », écriture d'origine dans `data-montant`) ; une conversion écrite ne se décompose pas ; dans un attribut, c'est le texte simple. Même nom dans la pastille et la définition rendue de `/recherche/` (`htmlDeLaPastille`, `htmlDeLaDefinition`), rendues au build et par l'extension de l'éditeur : `scripts/recherche.mjs` les recopie, sans importer `monnaies.mjs`.
 - Le plugin est déclaré dans `client/astro.config.mjs` ET `client/src/lib/guide-rendu.ts` (et dans `test/markdown-edition.test.mjs`) : les trois restent d'accord.
 
 ## Invariants
@@ -29,7 +30,7 @@ user-invocable: false
 - « 100 RF / 1 RO » (même somme) n'en fait qu'un.
 - Une conversion (« 1 PP = 1 000 RO ») ne se décompose pas.
 - Un nombre sans monnaie écrite reste un nombre (exception R79 : skill `zone-armures`).
-- Une balise du glossaire (« {{id|10 RO}} ») reste entière, rien n'y est lu (`morceauxDeMonnaie`, sans importer `mots-cles-balises.mjs`).
+- Le passage Markdown garde une balise du glossaire (« {{id|10 RO}} ») entière, rien n'y est lu (`morceauxDeMonnaie`, sans importer `mots-cles-balises.mjs`) ; la monnaie de son texte affiché est rendue après, par `htmlDeLaBalise`.
 - Un script de page n'importe pas `monnaies.mjs` (ce serait un module partagé entre scripts de page : skill `site-version-portable`), sauf `src/scripts/accessoires.mjs`, le seul à l'importer (prix calculés et prix écrit du niveau d'une compétence ; testé).
 - La page des armes décompose par `lib/arme-forge.mjs#piecesDuMontant` (même calcul, testé) avec les icônes de ses `<template data-armes-piece>`. `lib/armure-forge.mjs` a aussi un `piecesDuMontant` pour la page des armures.
 - `.piece` est une classe globale : ne jamais nommer ainsi une autre classe (une ligne de tableau ainsi nommée s'écrase).

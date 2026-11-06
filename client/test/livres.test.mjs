@@ -9,14 +9,14 @@ import { test } from 'node:test';
 import GithubSlugger from 'github-slugger';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import {
-  ACCUEIL_DU_GUIDE, ADRESSES_DU_PLAN_PRECEDENT, adresseDeLaPageAbsorbee, ANCRES_DES_PAGES_ABSORBEES, ARTISANAT, adresseDuGuide, DECOUVRIR, estDansDecouvrirOuLesBases, estDuGuideDuMj,
-  estDesBases, estDesReglesAvancees, filDAriane, GUIDE_DU_MJ, LES_BASES, menuLateralDe, NOMS_RESERVES, PAGES_ABSORBEES, PAR_OU_COMMENCER, LIENS_ET_RENCONTRE,
+  ACCUEIL_DU_GUIDE, ADRESSES_DU_PLAN_PRECEDENT, adresseDeLaPageAbsorbee, adresseDeLaPageRetiree, ANCRES_DES_PAGES_ABSORBEES, ARTISANAT, adresseDuGuide, DECOUVRIR, estDansDecouvrirOuLesBases, estDuGuideDuMj,
+  estDesBases, estDesReglesAvancees, filDAriane, GUIDE_DU_MJ, LES_BASES, menuLateralDe, NOMS_RESERVES, PAGES_ABSORBEES, PAGES_RETIREES, PAR_OU_COMMENCER, LIENS_ET_RENCONTRE,
   PARTIES, pagesDeLaRubrique, pagesDesBases, pagesDesReglesAvancees, partieDeLaPage, placeDansLeGuide, REGLES_AVANCEES, rubriqueDe, RUBRIQUES_DU_GUIDE, RUBRIQUES_SOUS_LA_PAGE, verifierLePlan,
 } from '../src/lib/livres.mjs';
 import * as Guide from '../src/lib/guide.mjs';
 import { COULEURS_DES_PARTIES } from '../src/lib/parties-couleurs.mjs';
 import { cheminDePage, estServieASonId, renvoisDuGuide } from '../src/lib/metiers.mjs';
-import { adresseComplete, NAV, activeGroup, nouvelleAdresse } from '../src/lib/nav.mjs';
+import { adresseComplete, adresseDeRenvoi, NAV, activeGroup, nouvelleAdresse } from '../src/lib/nav.mjs';
 import { TYPE_KEYS, TYPES } from '../src/lib/types.mjs';
 import * as Livres from '../src/lib/livres.mjs';
 
@@ -27,14 +27,16 @@ const pagesDuGuide = db.prepare("SELECT id, titre, resume, statut FROM page WHER
 const ids = pagesDuGuide.map((p) => p.id);
 const groupes = (rubrique) => rubrique.groupes.map((g) => [g.id, g.titre, g.partie, g.pages]);
 
-/** Les douze pages des Bases, dans l'ordre du menu latéral (demande du propriétaire du 2026-11-05 : « Inutile de séparer les catégories ») : celui d'avant. */
+/**
+ * Les onze pages des Bases, dans l'ordre du menu latéral (demande du propriétaire du 2026-11-05 : « Inutile de séparer les catégories ») : celui d'avant,
+ * sans le Lexique, devenu des mots-clés (migration 0090, demande du propriétaire du 2026-11-05 : « Supprime la page lexique. »).
+ */
 const PAGES_DES_BASES = [
   'guide/reussir-une-action', 'guide/le-tour-de-jeu', 'guide/attaquer-et-se-defendre', 'guide/l-equipement', 'guide/les-degats', 'guide/les-postures',
   'guide/la-magie-en-jeu', 'guide/blessures-et-etats', 'guide/la-montee-de-niveau', 'guide/s-entrainer-et-exercer-un-metier', 'guide/aide-memoire',
-  'guide/lexique',
 ];
 
-test('le plan : Découvrir, une page par entrée du menu (2 + 1), chaque groupe dans la couleur de son ancienne partie (son id ; aucune couleur écrite dans le plan) ; Les bases, douze pages sans groupes ni partie', () => {
+test('le plan : Découvrir, une page par entrée du menu (2 + 1), chaque groupe dans la couleur de son ancienne partie (son id ; aucune couleur écrite dans le plan) ; Les bases, onze pages sans groupes ni partie (plus de Lexique)', () => {
   assert.deepEqual(RUBRIQUES_DU_GUIDE.map((r) => [r.id, r.titre, r.chemin, r.accueil]), [
     ['decouvrir', 'Découvrir', 'decouvrir/', 'guide/bienvenue'], ['bases', 'Les bases', 'regles/', null],
   ]);
@@ -48,6 +50,10 @@ test('le plan : Découvrir, une page par entrée du menu (2 + 1), chaque groupe 
   // « Réussir une action » (réponse du propriétaire du 2026-11-05)
   assert.deepEqual(LES_BASES.pages, PAGES_DES_BASES);
   assert.equal('groupes' in LES_BASES, false, 'plus de groupes');
+  // « Supprime la page lexique. » (demande du propriétaire du 2026-11-05) : ni dans le plan, ni dans la base (migration 0090)
+  assert.ok(!ids.includes('guide/lexique') && !estDansDecouvrirOuLesBases('guide/lexique'), 'plus de Lexique');
+  assert.ok(!REGLES_AVANCEES.pages.includes('guide/lexique') && !pagesDesReglesAvancees(pagesDuGuide).some((p) => p.id === 'guide/lexique'),
+    'ni dans le menu latéral des Règles avancées');
   assert.equal(LES_BASES.ouverture, 'guide/reussir-une-action');
   assert.deepEqual(pagesDeLaRubrique(LES_BASES).map((p) => [p.id, p.groupe, p.ordre]), PAGES_DES_BASES.map((id, i) => [id, null, i]), 'une place 0…M − 1, sans groupe');
   assert.deepEqual(pagesDeLaRubrique(DECOUVRIR).map((p) => p.ordre), [0, 1, 2]);
@@ -135,10 +141,10 @@ test('les adresses du plan n’entrent en conflit ni avec un type de page, ni av
   assert.deepEqual([ARTISANAT.chemin, REGLES_AVANCEES.chemin, LES_BASES.chemin], ['regles/artisanat/', 'regles/avancees/', 'regles/']);
 });
 
-test('le plan est contrôlé au build : une page absente, une page d’exemple, une page nommée deux fois ou une page absorbée encore là arrête tout', () => {
+test('le plan est contrôlé au build : une page absente, une page d’exemple, une page nommée deux fois, une page absorbée ou retirée encore là arrête tout', () => {
   assert.equal(verifierLePlan(pagesDuGuide), pagesDuGuide);
   const sans = (id) => pagesDuGuide.filter((p) => p.id !== id);
-  assert.throws(() => verifierLePlan(sans('guide/lexique')), /guide\/lexique \(« Les bases »\) n'existe pas/);
+  assert.throws(() => verifierLePlan(sans('guide/aide-memoire')), /guide\/aide-memoire \(« Les bases »\) n'existe pas/);
   assert.throws(() => verifierLePlan(sans('guide/creer-son-personnage')), /guide\/creer-son-personnage \(« Découvrir »\) n'existe pas/);
   assert.throws(() => verifierLePlan(sans('guide/reussir-une-action')), /guide\/reussir-une-action \(« Les bases »\) n'existe pas/);
   assert.throws(() => verifierLePlan(sans('guide/meteo')), /guide\/meteo \(« Règles avancées »\) n'existe pas/);
@@ -147,6 +153,9 @@ test('le plan est contrôlé au build : une page absente, une page d’exemple, 
   assert.throws(() => verifierLePlan(exemple), /guide\/un-maitre-du-jeu \(Guide du MJ\) est une page d'exemple/);
   const revenue = [...pagesDuGuide, { id: 'guide/premiers-sorts', data: { title: 'Étape 5 : ses premiers sorts', status: 'draft' } }];
   assert.throws(() => verifierLePlan(revenue), /guide\/premiers-sorts est absorbée par guide\/creer-son-personnage/);
+  // une page retirée dont le contenu se lit ailleurs (PAGES_RETIREES : le Lexique, devenu des mots-clés) qui reviendrait dans la base
+  const lexique = [...pagesDuGuide, { id: 'guide/lexique', data: { title: 'Lexique', status: 'draft' } }];
+  assert.throws(() => verifierLePlan(lexique), /guide\/lexique est retirée \(ses adresses mènent à \/recherche\/\) et ne doit plus être dans la base/);
   // HIDE_EXAMPLES=1 : sans les pages d'exemple, le plan tient toujours (aucune n'y est nommée)
   assert.doesNotThrow(() => verifierLePlan(pagesDuGuide.filter((p) => p.data.status !== 'example')));
   // aucune page nommée deux fois, aucun groupe vide
@@ -155,9 +164,9 @@ test('le plan est contrôlé au build : une page absente, une page d’exemple, 
   assert.ok(DECOUVRIR.groupes.every((g) => g.pages.length > 0) && LES_BASES.pages.length > 0);
 });
 
-test('le menu latéral des Bases : leurs douze pages dans l’ordre du plan, une page absente sautée', () => {
+test('le menu latéral des Bases : leurs onze pages dans l’ordre du plan, une page absente sautée', () => {
   assert.deepEqual(pagesDesBases(pagesDuGuide).map((p) => p.id), PAGES_DES_BASES);
-  assert.deepEqual(pagesDesBases(pagesDuGuide.filter((p) => p.id !== 'guide/lexique')).map((p) => p.id), PAGES_DES_BASES.slice(0, -1), 'une page absente est sautée');
+  assert.deepEqual(pagesDesBases(pagesDuGuide.filter((p) => p.id !== 'guide/aide-memoire')).map((p) => p.id), PAGES_DES_BASES.slice(0, -1), 'une page absente est sautée');
   assert.ok(pagesDesBases(pagesDuGuide).every((p) => p.data.title), 'chaque entrée a son titre (celui de la base)');
 });
 
@@ -306,6 +315,26 @@ test('le menu s’accorde au plan : Règles (Découvrir, une entrée par page, p
   }
 });
 
+test('une page retirée dont le contenu se lit ailleurs (PAGES_RETIREES) : un lien écrit vers une de ses anciennes adresses mène à sa destination, requête et ancre gardées', () => {
+  // le Lexique, devenu des mots-clés (migration 0090) : « Rediriger vers /recherche/ » (réponse du propriétaire du 2026-11-05)
+  assert.equal(adresseDeLaPageRetiree('regles/lexique/'), 'recherche/');
+  assert.equal(adresseDeLaPageRetiree('regles/lexique'), 'recherche/', 'sans barre de fin');
+  assert.equal(adresseDeLaPageRetiree('guide/lexique/#acquis'), 'recherche/#acquis', 'l’ancre écrite gardée');
+  assert.equal(adresseDeLaPageRetiree('regles/lexique/?q=AM#x'), 'recherche/?q=AM#x', 'la requête avant l’ancre');
+  assert.equal(adresseDeLaPageRetiree('regles/lexique/', { existe: (id) => id === 'guide/lexique' }), null, 'revenue dans la base : plus de renvoi');
+  for (const autre of ['regles/', 'regles/aide-memoire/', 'regles/lexiques/', 'lexique/', 'recherche/', '']) assert.equal(adresseDeLaPageRetiree(autre), null, autre);
+  // un lien Markdown du guide écrit vers elle (lib/guide.mjs#adresseDesAnciensLiens, rendu par lib/guide-rendu.ts) mène au même endroit que la page 404
+  const options = { cheminDe: cheminDePage, existe: (id) => ids.includes(id), accueil: ACCUEIL_DU_GUIDE };
+  assert.equal(Guide.adresseDesAnciensLiens('guide/lexique/', options), 'recherche/');
+  assert.equal(Guide.adresseDesAnciensLiens('regles/lexique/#acquis', options), 'recherche/#acquis');
+  assert.equal(Guide.adresseDesAnciensLiens('regles/aide-memoire/', options), 'regles/aide-memoire/', 'une page du plan : telle qu’écrite');
+  const renvois = renvoisDuGuide(ids);
+  for (const { vers, adresses } of Object.values(PAGES_RETIREES)) {
+    for (const adresse of adresses) assert.equal(renvois[adresse], Guide.adresseDesAnciensLiens(adresse, options), `${adresse} : la page 404 et le lien écrit, même destination`);
+    assert.ok(!ids.some((id) => adresses.includes(cheminDePage(id))) && vers === 'recherche/', 'aucune page du plan à une adresse retirée');
+  }
+});
+
 test('les anciennes adresses mènent à la nouvelle adresse de chaque page (page 404), requête et ancre gardées', () => {
   const renvois = renvoisDuGuide(ids);
   assert.equal(renvois['guide/'], 'decouvrir/');
@@ -340,6 +369,16 @@ test('les anciennes adresses mènent à la nouvelle adresse de chaque page (page
   }
   assert.equal(nouvelleAdresse('/MaverickCenter/decouvrir/liens/', '/MaverickCenter/', renvois), null, 'sous un sous-chemin non plus');
   assert.ok(Object.keys(renvois).every((k) => !k.includes('liens')), 'aucun renvoi de la page Liens');
+  // le Lexique, devenu des mots-clés (migration 0090, « Supprime la page lexique. ») : son adresse des Bases et celle d'avant l'éclatement du guide
+  // mènent à /recherche/ (réponse du propriétaire : « Rediriger vers /recherche/ »), requête et ancre gardées
+  assert.deepEqual(PAGES_RETIREES, { 'guide/lexique': { vers: 'recherche/', adresses: ['guide/lexique/', 'regles/lexique/'] } });
+  for (const adresse of ['/regles/lexique/', '/regles/lexique', '/guide/lexique/', '/wiki/guide/lexique/']) {
+    assert.equal(nouvelleAdresse(adresse, '/', renvois), '/recherche/', adresse);
+  }
+  assert.equal(nouvelleAdresse('/MaverickCenter/regles/lexique/', '/MaverickCenter/', renvois), '/MaverickCenter/recherche/', 'sous un sous-chemin');
+  assert.equal(adresseComplete(nouvelleAdresse('/regles/lexique/', '/', renvois), '?q=AM', '#acquis'), '/recherche/?q=AM#acquis');
+  assert.equal(adresseDeRenvoi('/regles/lexique/', { renvois, search: '?q=AM' }), '/recherche/?q=AM');
+  assert.equal(Object.hasOwn(renvoisDuGuide([...ids, 'guide/lexique']), 'regles/lexique/'), false, 'une page retirée revenue : servie, pas renvoyée');
   // un renvoi ne masque jamais une adresse servie
   for (const id of ids) assert.equal(Object.hasOwn(renvois, cheminDePage(id)), false, `${cheminDePage(id)} : servie, pas renvoyée`);
   assert.equal(Object.hasOwn(renvois, LES_BASES.chemin), false, '/regles/ : le menu des Bases');

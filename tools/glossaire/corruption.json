@@ -133,9 +133,8 @@
     }
   },
   {
-    "libelle": "CR",
+    "libelle": "Corruption",
     "motif": "CR",
-    "casse": true,
-    "description": "La corruption, dans les tableaux de sorts. « Si CR » : si le sort est lancé en utilisant la corruption. Dans les dégâts, soins ou barrière (D/S/B) ou les effets, « N CR » fait monter la corruption de la cible (le sort de soin Retrait en retire) ; dans le coût, c'est la corruption à dépenser."
+    "casse": true
   }
 ]

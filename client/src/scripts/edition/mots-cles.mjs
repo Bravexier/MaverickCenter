@@ -4,25 +4,32 @@
 //   - au chargement (surcouche) : la liste relue dans la base vivante (GET /api/edition/mots-cles/ : le site construit est en retard sur le site de dev),
 //     définitions et bulles comprises (mots-cles-vivants.mjs suit le vocabulaire relu) ;
 //   - au crayon (debut) : une liste de gestion — pour chaque mot-clé, la balise à copier (« {{id}} »), son libellé modifiable (champ commun :
-//     mot_cle.libelle), sa définition (mot_cle.description), ses pages (leur nombre), « Fusionner dans… » et « Supprimer » (mis en file, envoyés avec
+//     mot_cle.libelle), son abréviation (mot_cle.abreviation, migration 0090 ; réponse du propriétaire du 2026-11-05 : « Modifiable et affichée » ; vidée,
+//     NULL), sa définition (mot_cle.description), ses pages (leur nombre), « Fusionner dans… » et « Supprimer » (mis en file, envoyés avec
 //     « Enregistrer ») ; un mot-clé dont le site se sert (lib/mots-cles.mjs) n'a ni saisie du libellé ni bouton, sa raison est écrite, mais sa définition
-//     se modifie ; « + Ajouter un mot-clé » le crée tout de suite, avec sa définition ;
+//     et son abréviation se modifient ; « + Ajouter un mot-clé » le crée tout de suite, avec sa définition et son abréviation (ENTITES.mot_cle) ; une
+//     abréviation que le service refuse (400 : mal écrite ; 409 : prise par un autre mot-clé, `champ: 'abreviation'`) l'est comme tout refus du lot ;
 //   - à l'enregistrement (verifier) : ce que le service ne pourrait pas jouer est refusé avant toute question (noms échangés en boucle, mot-clé qui reçoit
 //     une fusion et serait supprimé) ; un renommage vers une écriture qui reste prise après le lot propose la fusion ; suppressions et fusions sont
 //     confirmées une fois, avec ce qu'elles retirent ; (operations) fusions et suppressions passent avant les renommages, chacun dans un ordre que le
 //     service accepte (lib/mots-cles-edition.mjs) ;
 //   - en sortant (fin, après un enregistrement aussi) : la liste relue dans la base vivante.
 // La page (src/scripts/recherche.mjs) relit la liste à l'évènement « recherche:mots-cles » (detail.gestion : la liste de gestion est affichée) ; chaque
-// mot-clé y est un <li data-id data-cle data-n data-libelle data-definition> (data-n : ses pages). Les catégories des événements de la chronologie se
-// gèrent sur /chronologie/.
+// mot-clé y est un <li data-id data-cle data-n data-libelle data-abreviation data-definition> (data-n : ses pages ; data-abreviation : absente sans
+// abréviation). Sa pastille montre le libellé suivi de l'abréviation, « Armure magique (AM) · 3 » (une monnaie : « Ricken d’or » et son icône, R63) :
+// le HTML de la page construite (lib/mots-cles-balises.mjs#htmlDeLaPastille). La liste de lecture refaite, la définition rendue de chaque mot-clé décrit
+// l'est aussi (#definitions-des-mots-cles, [data-definition-de] : htmlDeLaDefinition, monnaies en icônes ; ses balises, rendues par
+// mots-cles-vivants.mjs dès qu'elle est posée), que la vue d'un mot-clé recopie. Les catégories des événements de la chronologie se gèrent sur
+// /chronologie/.
 import { attributEd, cleDeLigne, ENTITES } from '../../lib/edition-modele.mjs';
 import { parLibelle, raisonDeProtection } from '../../lib/mots-cles.mjs';
 import {
   cibleSaisie, ciblesDeFusion, compteDesElements, confirmationDesRetraits, erreurDesRetraits, examinerLesRenommages, operationsDuVocabulaire,
 } from '../../lib/mots-cles-edition.mjs';
+import { htmlDeLaDefinition, htmlDeLaPastille } from '../../lib/mots-cles-balises.mjs';
 import { definirLeVocabulaire } from './mots-cles-vivants.mjs';
 
-let vocabulaire = null; // [{ id, libelle, libelle_cle, description, pages, protege }] de la base vivante ; null : pas encore lu
+let vocabulaire = null; // [{ id, libelle, libelle_cle, description, abreviation, pages, protege }] de la base vivante ; null : pas encore lu
 const suppressions = new Set();
 const fusions = new Map(); // source → cible (« Fusionner dans… »)
 let renommagesEnFusion = new Map(); // source → cible : renommages acceptés en fusion (verifier), envoyés par operations
@@ -50,11 +57,25 @@ async function relire(ed) {
   }
 }
 
-/** Les attributs que lit la page (src/scripts/recherche.mjs) : id, écriture, nombre de pages, libellé, définition. */
+/** Les attributs que lit la page (src/scripts/recherche.mjs) : id, écriture, nombre de pages, libellé, abréviation, définition. */
 function decrire(li, m) {
   Object.assign(li.dataset, { id: m.id, cle: m.libelle_cle, n: String(m.pages), libelle: m.libelle });
+  if (m.abreviation) li.dataset.abreviation = m.abreviation;
+  else delete li.dataset.abreviation;
   if (m.description) li.dataset.definition = m.description;
   else delete li.dataset.definition;
+}
+
+/** Les définitions rendues que recopie la vue d'un mot-clé (src/scripts/recherche.mjs), refaites d'après la base vivante, comme la page construite. */
+function dessinerLesDefinitions() {
+  const conteneur = document.getElementById('definitions-des-mots-cles');
+  if (!conteneur || !vocabulaire) return;
+  conteneur.replaceChildren(...vocabulaire.filter((m) => m.description).map((m) => {
+    const d = document.createElement('div');
+    d.dataset.definitionDe = m.id;
+    d.innerHTML = htmlDeLaDefinition(m.description);
+    return d;
+  }));
 }
 
 /**
@@ -73,7 +94,7 @@ function dessinerLaLecture() {
     const a = document.createElement('a');
     a.className = 'badge';
     a.href = `${lien}${encodeURIComponent(m.id)}`;
-    a.textContent = m.pages > 0 ? `${m.libelle} (${m.pages})` : m.libelle;
+    a.innerHTML = htmlDeLaPastille({ id: m.id, libelle: m.libelle, abreviation: m.abreviation, n: m.pages });
     if (m.description) {
       a.dataset.bulle = `mot-cle-${m.id}`;
       a.setAttribute('aria-describedby', `mot-cle-${m.id}`);
@@ -82,6 +103,7 @@ function dessinerLaLecture() {
     return li;
   });
   ul.replaceChildren(...lignes);
+  dessinerLesDefinitions();
   annoncerLaListe(false);
 }
 
@@ -171,8 +193,8 @@ function demanderLaCible(m, choisir) {
 }
 
 /**
- * Une ligne de la liste de gestion : la balise à copier, le libellé (saisie commune, sauf mot-clé protégé), ses pages, la définition (saisie commune,
- * pour tous), puis les boutons ou la raison de la protection.
+ * Une ligne de la liste de gestion : la balise à copier, le libellé (saisie commune, sauf mot-clé protégé), l'abréviation (saisie commune, pour tous), ses
+ * pages, la définition (saisie commune, pour tous), puis les boutons ou la raison de la protection.
  */
 function ligneDeGestion(ed, m) {
   const li = document.createElement('li');
@@ -183,10 +205,15 @@ function ligneDeGestion(ed, m) {
   const balise = document.createElement('code');
   balise.className = 'ed-mot-cle__balise';
   balise.textContent = `{{${m.id}}}`;
-  balise.title = `À écrire dans un texte pour citer ce mot-clé (en gras, sa définition en infobulle) ; « {{${m.id}|texte}} » pour un autre texte affiché, « {{${m.id}:}} » pour « Libellé : définition »`;
+  balise.title = `À écrire dans un texte pour citer ce mot-clé (en gras, sa définition en infobulle) ; « {{${m.id}|texte}} » pour un autre texte affiché, « {{${m.id}:}} » pour « Libellé : définition »${m.abreviation ? ` ; « {{${m.abreviation}}} » pour son abréviation` : ''}`;
   const nom = document.createElement('span');
   nom.className = 'ed-mot-cle__nom';
   nom.textContent = m.libelle;
+  // l'abréviation, saisie commune pour tous (protégés compris), à côté du libellé ; vide : pas d'abréviation (NULL)
+  const abreviation = document.createElement('span');
+  abreviation.className = 'ed-mot-cle__abreviation';
+  abreviation.dataset.ed = attributEd('mot_cle', { id: m.id }, 'abreviation');
+  abreviation.textContent = m.abreviation ?? '';
   const compte = document.createElement('span');
   compte.className = 'ed-mot-cle__compte';
   compte.textContent = compteDesElements(m);
@@ -194,12 +221,12 @@ function ligneDeGestion(ed, m) {
   definition.className = 'ed-mot-cle__definition';
   definition.dataset.ed = attributEd('mot_cle', { id: m.id }, 'description');
   definition.textContent = m.description ?? '';
-  li.append(balise, nom, compte, definition);
+  li.append(balise, nom, abreviation, compte, definition);
   if (m.protege) {
     li.classList.add('ed-mot-cle--protege');
     const raison = document.createElement('span');
     raison.className = 'ed-mot-cle__protege';
-    raison.textContent = `Protégé : il ${m.protege} (sa définition se modifie).`;
+    raison.textContent = `Protégé : il ${m.protege} (sa définition et son abréviation se modifient).`;
     li.append(raison);
     return li;
   }
@@ -248,8 +275,12 @@ function ligneDeGestion(ed, m) {
 function dessinerLaGestion(ed) {
   const ul = liste();
   if (!ul || !vocabulaire) return;
-  // les lignes des saisies : celles du vocabulaire qu'on vient de lire (libellé, écriture, définition telle qu'enregistrée : NULL ou texte)
-  for (const m of vocabulaire) ed.lignes?.set(cleDeLigne('mot_cle', { id: m.id }), { id: m.id, libelle: m.libelle, libelle_cle: m.libelle_cle, description: m.description ?? null });
+  // les lignes des saisies : celles du vocabulaire qu'on vient de lire (libellé, écriture, définition et abréviation telles qu'enregistrées : NULL ou texte)
+  for (const m of vocabulaire) {
+    ed.lignes?.set(cleDeLigne('mot_cle', { id: m.id }), {
+      id: m.id, libelle: m.libelle, libelle_cle: m.libelle_cle, description: m.description ?? null, abreviation: m.abreviation ?? null,
+    });
+  }
   ul.setAttribute('data-gestion', '');
   ul.className = 'ed-mots-cles';
   ul.replaceChildren(...vocabulaire.map((m) => ligneDeGestion(ed, m)));
@@ -260,7 +291,10 @@ function dessinerLaGestion(ed) {
 
 /** Un mot-clé créé : ajouté au vocabulaire et, en mode modification, à sa place dans la liste de gestion. */
 function ajouter(ed, ligne) {
-  const m = { id: ligne.id, libelle: ligne.libelle, libelle_cle: ligne.libelle_cle, description: ligne.description ?? null, pages: 0, protege: raisonDeProtection(ligne.libelle_cle) };
+  const m = {
+    id: ligne.id, libelle: ligne.libelle, libelle_cle: ligne.libelle_cle, description: ligne.description ?? null, abreviation: ligne.abreviation ?? null, pages: 0,
+    protege: raisonDeProtection(ligne.libelle_cle),
+  };
   vocabulaire = [...(vocabulaire ?? []).filter((x) => x.id !== m.id), m].sort(parLibelle);
   ed.lignes?.set(cleDeLigne('mot_cle', { id: m.id }), { ...ligne });
   const ul = liste();

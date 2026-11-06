@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 89;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 90;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -126,15 +126,25 @@ CREATE INDEX alias_cle   ON alias (cle);
 -- Le vocabulaire est celui du site de dev (le service le crée et le modifie : serveur/edition.mjs) : un import ne CRÉE jamais de mot-clé (0056). Les
 -- importeurs (tools/db/maverick.py#mot_cle, pages_md.py) cherchent un libellé par libelle_cle et ne posent qu'un mot-clé qui existe (une écriture
 -- inconnue n'est pas posée : db:sync-pages la signale) ; aucun import ne supprime un mot-clé, ni ne repose une écriture que le site a renommée,
--- fusionnée ou supprimée (historique_modification : tools/db/maverick.py#mot_cle).
+-- fusionnée ou supprimée (historique_modification : tools/db/maverick.py#mot_cle). Le 2026-11-05, le Lexique du guide (page « Lexique », retirée)
+-- est devenu des mots-clés (migration 0090, demande du propriétaire : « Toutes les informations comprises dedans doivent être converties en
+-- mot-clés ») : une entrée = un mot-clé, un doublon fusionné dans le mot-clé existant (id gardé), un renvoi (« voir … ») = une définition qui cite
+-- l'autre mot-clé ; l'abréviation que l'entrée écrivait (« AM », « INI ») est la colonne `abreviation`. « CR » y a rejoint « Corruption » (réponse du
+-- propriétaire : « Fusionner dans Corruption ») : l'id `cr` n'existe plus, « CR » est l'abréviation de `corruption`.
 CREATE TABLE mot_cle (
   id          TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0 AND id NOT GLOB '*[^a-z0-9-]*' AND id NOT GLOB '*--*' AND id NOT GLOB '-*' AND id NOT GLOB '*-'),
   libelle     TEXT    NOT NULL CHECK (length(libelle) > 0),      -- l'écriture affichée partout (pages, /recherche/, balises du glossaire)
   libelle_cle TEXT    NOT NULL UNIQUE CHECK (length(libelle_cle) > 0 AND libelle_cle NOT GLOB '*[^a-z0-9-]*' AND libelle_cle NOT GLOB '*--*' AND libelle_cle NOT GLOB '-*' AND libelle_cle NOT GLOB '*-'),
                                                                  -- normalize(libelle) ; client/scripts/db-check.mjs le vérifie
-  description TEXT    CHECK (description IS NULL OR length(description) > 0)   -- la définition du glossaire : texte simple, balises du glossaire
+  description TEXT    CHECK (description IS NULL OR length(description) > 0),  -- la définition du glossaire : texte simple, balises du glossaire
                                                                  -- comprises (forme canonique) ; NULL : pas encore décrit (absent = NULL) ;
                                                                  -- migration 0056, ajoutée en dernier
+  abreviation TEXT    CHECK (abreviation IS NULL OR length(abreviation) > 0)   -- l'abréviation du mot-clé, telle qu'écrite (« AM », « Nat. ») ; NULL : aucune.
+                                                                 -- Une seule par mot-clé, que la ref d'une balise peut citer comme l'id ou
+                                                                 -- l'écriture : normalize(abreviation) n'est ni l'id, ni le libelle_cle, ni
+                                                                 -- l'abréviation d'un autre mot-clé (client/scripts/db-check.mjs le vérifie : la
+                                                                 -- règle passe par normalize, qu'un CHECK ne lit pas). Migration 0090 (le Lexique
+                                                                 -- converti en mots-clés), ajoutée en dernier
 ) STRICT;
 
 -- Mots-clés d'une page (frontmatter `tags`, dans l'ordre) : l'écriture est celle du vocabulaire (mot_cle.libelle ; jusqu'à la migration 0043, chaque page
@@ -3717,11 +3727,12 @@ CREATE VIEW lien_a_creer AS
   SELECT page_id, position, cible, ancre, etat FROM lien WHERE etat <> 'resolu';
 
 -- Le vocabulaire des mots-clés et les pages qui les portent (page /recherche/ du site de dev : un mot-clé supprimé est retiré de nb_pages pages),
--- avec sa définition (glossaire, migration 0056).
+-- avec sa définition (glossaire, migration 0056) et son abréviation (migration 0090).
 CREATE VIEW v_mot_cle AS
   SELECT m.id, m.libelle, m.libelle_cle,
     (SELECT count(*) FROM page_tag t WHERE t.tag_id = m.id) AS nb_pages,
-    m.description                                                          -- la définition du glossaire (migration 0056 ; NULL : pas encore décrit)
+    m.description,                                                         -- la définition du glossaire (migration 0056 ; NULL : pas encore décrit)
+    m.abreviation                                                          -- l'abréviation (migration 0090 ; NULL : aucune)
   FROM mot_cle m;
 
 -- Relation d'incompatibilité symétrique : (a, b) est présent dans les deux sens dès que l'un des deux cite l'autre.

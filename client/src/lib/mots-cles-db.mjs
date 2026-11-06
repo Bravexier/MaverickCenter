@@ -2,7 +2,8 @@
 // pastilles des pages du wiki (/recherche/?mot-cle=<id>) et les balises des textes (lib/mots-cles-balises.mjs : le middleware du site, la recherche, les
 // règles de la fiche). Un mot-clé : son id (figé), son libellé, son écriture (libelle_cle = normalize du libellé) et sa définition (`description` : NULL
 // tant qu'il n'est pas décrit, ici comme dans la base, le service et GET /api/edition/mots-cles/ ; qui l'affiche écrit `?? ''`). Les pages portent les
-// LIBELLÉS de leurs mots-clés (front matter `tags`, fabriqué par db:export-pages) : l'id d'un libellé est celui du mot-clé qui s'écrit pareil.
+// LIBELLÉS de leurs mots-clés (front matter `tags`, fabriqué par db:export-pages) : l'id d'un libellé est celui du mot-clé qui s'écrit pareil. Son
+// abréviation (`abreviation`, migration 0090 : NULL sans abréviation, et pour une base d'avant), qu'une balise peut citer comme son écriture.
 // Et les textes de la base où une balise peut s'écrire (textesDeLaBase : db:check, le rejeu du journal ; hors tables de lib/tables-de-la-base.mjs).
 // Sans dépendance Astro ni navigateur : la base est passée par l'appelant (pages, middleware, service, scripts, tests).
 import { typeDeTexte } from './edition-modele.mjs';
@@ -15,21 +16,29 @@ const caches = new WeakMap(); // base -> { vocabulaire, ids }
 const tableExiste = (db, nom) => Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(nom));
 const colonneExiste = (db, table, colonne) => db.prepare(`PRAGMA table_info("${table}")`).all().some((c) => c.name === colonne);
 
+/**
+ * Les mots-clés de la base, lus à chaque appel (sans cache : le service, dont la base change d'un lot à l'autre) : [{ id, libelle, libelle_cle,
+ * description, abreviation }], dans l'ordre de la table ; une base d'avant la migration 0056 n'a pas de définitions, une d'avant la 0090 pas
+ * d'abréviations (NULL) ; vide sans table mot_cle (avant la 0043).
+ * @param {import('node:sqlite').DatabaseSync} db
+ */
+export function motsClesDeLaBase(db) {
+  if (!tableExiste(db, 'mot_cle')) return [];
+  const colonne = (c) => (colonneExiste(db, 'mot_cle', c) ? c : `NULL AS ${c}`);
+  return db.prepare(`SELECT id, libelle, libelle_cle, ${colonne('description')}, ${colonne('abreviation')} FROM mot_cle`).all().map((m) => ({ ...m }));
+}
+
 function lire(db) {
   if (caches.has(db)) return caches.get(db);
-  // une base d'avant la migration 0056 n'a pas de définitions : NULL (pas encore décrit)
-  const description = tableExiste(db, 'mot_cle') && colonneExiste(db, 'mot_cle', 'description') ? 'description' : 'NULL AS description';
-  const vocabulaire = tableExiste(db, 'mot_cle')
-    ? db.prepare(`SELECT id, libelle, libelle_cle, ${description} FROM mot_cle`).all().map((m) => ({ ...m })).sort(parLibelle)
-    : [];
+  const vocabulaire = motsClesDeLaBase(db).sort(parLibelle);
   const lu = { vocabulaire, ids: new Map(vocabulaire.map((m) => [m.libelle_cle, m.id])) };
   caches.set(db, lu);
   return lu;
 }
 
 /**
- * Le vocabulaire : [{ id, libelle, libelle_cle, description }] (description NULL tant qu'il n'est pas décrit), trié par libellé ; vide pour une base sans
- * table mot_cle (antérieure à la migration 0043).
+ * Le vocabulaire : [{ id, libelle, libelle_cle, description, abreviation }] (description NULL tant qu'il n'est pas décrit, abreviation NULL sans
+ * abréviation), trié par libellé ; vide pour une base sans table mot_cle (antérieure à la migration 0043).
  */
 export const chargerVocabulaire = (db) => lire(db).vocabulaire;
 

@@ -97,11 +97,13 @@ test('R180 : le bonus de critique de l’Offensif compte sur six jets (Concentra
   assert.equal(COMPETENCES_D_ATTAQUE.length, 5);
 });
 
-test('R180 : le guide rappelle le plafond de 1 à 15 là où il élargit la réussite critique, jamais dans les textes tels quels des postures', () => {
+test('R180 : le guide et le mot-clé « Réussite critique » rappellent le plafond de 1 à 15 là où ils élargissent la réussite critique, jamais dans les textes tels quels des postures', () => {
   const PLAFOND = /jamais (?:au-delà de |dépasser |)1 à 15|ne dépasse jamais(?: \*\*)? ?1 à 15/;
-  for (const id of ['guide/reussir-une-action', 'guide/les-postures', 'guide/aide-memoire', 'guide/lexique', 'guide/attaquer-et-se-defendre', 'guide/situations-avancees']) {
+  for (const id of ['guide/reussir-une-action', 'guide/les-postures', 'guide/aide-memoire', 'guide/attaquer-et-se-defendre', 'guide/situations-avancees']) {
     assert.match(corps(id), PLAFOND, id);
   }
+  // le Lexique est devenu des mots-clés (migration 0090) : sa phrase est la définition du mot-clé `reussite-critique` (abréviation RC)
+  assert.match(db.prepare("SELECT description FROM mot_cle WHERE id = 'reussite-critique'").get()?.description ?? '', PLAFOND, 'mot_cle reussite-critique');
   const reussir = corps('guide/reussir-une-action');
   assert.ok(reussir.includes('Au-delà de 95 %, le surplus élargit la réussite critique : de 96 à 102 %, +2 % ; à partir de 103 %, +5 % au total.'));
   assert.ok(reussir.includes('Le score compté est celui du moment, posture comprise, et ce bonus vaut sur tout jet, quelle que soit la posture.'));

@@ -1290,11 +1290,11 @@ dev (un commit la change) ni cherchée par la recherche.
   **Plus de page « Rejoindre une partie »** (demande du propriétaire du 2026-11-05 : « Efface la page "Rejoindre une partie" et son lien. ») : ni dans
   la base, ni au menu, ni sur l'accueil ; son ancienne adresse `/decouvrir/rejoindre-une-partie/` n'est renvoyée nulle part (réponse « Page 404
   (Recommandé) ») : la page 404 la dit introuvable, comme `/decouvrir/liens/`.
-- **Les bases** (`/regles/`, rubrique Règles, après les pages de Découvrir ; `LES_BASES`) : **douze pages, sans groupes**, sur le modèle de la
+- **Les bases** (`/regles/`, rubrique Règles, après les pages de Découvrir ; `LES_BASES`) : **onze pages, sans groupes**, sur le modèle de la
   chronologie (demande du propriétaire du 2026-11-05 : « Au lieu de lister les différentes pages, réécrit directement le contenu. Tu peux mettre
   chaque page dans un onglet. Inutile de séparer les catégories les Jouer / Progresser / Pour aller plus loin. Pour la présation je préfèrera un menu
   latéral sous le même modèle que la chronologie. » ; réponse « Comme la chronologie (Recommandé) ») : `components/guide/MenuLateral.astro` met à gauche,
-  en vertical, le menu des douze titres (dans l'ordre de `LES_BASES.pages`, tels que la base les écrit ; l'entrée affichée marquée, `aria-current`) et
+  en vertical, le menu des onze titres (dans l'ordre de `LES_BASES.pages`, tels que la base les écrit ; l'entrée affichée marquée, `aria-current`) et
   à droite le texte de la page choisie (`PageDuGuide`, son pied de page compris). Chaque page garde son adresse `/regles/<slug>/` (le menu fait des
   liens ordinaires : tout se lit sans JavaScript) ; `/regles/` (`pages/regles/index.astro`) montre le menu et la page `LES_BASES.ouverture`,
   « Réussir une action », sous le titre « Les bases », avec un `<link rel="canonical">` vers `/regles/reussir-une-action/` (pas deux pages du même
@@ -1306,6 +1306,10 @@ dev (un commit la change) ni cherchée par la recherche.
   comprise). Le texte des pages reste celui de la base : rien n'est réécrit. L'ancien plan (24 pages, validé par le propriétaire) faisait lire la
   règle du D100 (« Réussir une action ») **avant** de créer son personnage ; le nouveau la met en tête des Bases : ce remplacement attend la
   confirmation du propriétaire (`docs/feuille-de-route.md`, « Questions encore ouvertes », 10).
+  **Plus de page « Lexique »** (demande du propriétaire du 2026-11-05 : « Supprime la page lexique. Toutes les informations comprises dedans doivent
+  être converties en mot-clés. ») : ses entrées sont des mots-clés du glossaire (migration `0090`, « Mots-clés (glossaire) » ci-dessous), la page n'est
+  plus dans la base ni dans le plan (ni dans Les bases, ni dans les Règles avancées : `verifierLePlan` arrête le build si elle revient), et ses adresses `/regles/lexique/` et `/guide/lexique/` mènent à `/recherche/` (réponse du propriétaire :
+  « Rediriger vers /recherche/ » ; `PAGES_RETIREES`, ci-dessous).
 - **Les Règles avancées** (`/regles/avancees/`, rubrique Règles, après Les bases ; `REGLES_AVANCEES`) : **la même chose que Les bases** (demande du
   propriétaire du 2026-11-05 : « Suite à la modification de la page "les bases" refait la même avec les "règles avancées", tout sur la même page avec
   menu lattéral. ») : le même composant (`MenuLateral.astro`, même mise en page, même comportement, même feuille ; aussi celui des pages de race,
@@ -1382,6 +1386,12 @@ dev (un commit la change) ni cherchée par la recherche.
   `test/site-html.test.mjs` le vérifient), requête et ancre écrite gardées (`#une-ou-deux-classes--le-biclassage` reste une ancre de Créer son
   personnage et l'emporte), comme `/decouvrir/campagne-ou-scenario-one-shot/` mène au Guide du MJ
   (`ADRESSES_DU_PLAN_PRECEDENT` ; `/decouvrir/liens/`, l'ancienne page Liens, n'est plus renvoyée : « supprimer ce lien »).
+- **Pages retirées dont le contenu se lit ailleurs** (`PAGES_RETIREES` : page retirée → `{ vers, adresses }`, adresses relatives à la racine du site) :
+  le Lexique, devenu des mots-clés (migration `0090`). Ses anciennes adresses (`regles/lexique/`, `guide/lexique/`) mènent à `vers` (`recherche/`) par
+  la page 404 (`renvoisDuGuide`), requête et ancre d'origine gardées (`/regles/lexique/?q=AM` → `/recherche/?q=AM`), et un lien Markdown écrit vers
+  elles au rendu (`lib/livres.mjs#adresseDeLaPageRetiree`, appelée par `adresseDesAnciensLiens`) ; `verifierLePlan` arrête le build si la page revient
+  dans la base. Une page simplement effacée, sans renvoi (« Rejoindre une partie », « Liens »), n'y est pas : la page 404 la dit introuvable. Tests :
+  `test/livres.test.mjs`, `test/site-html.test.mjs`.
 - **Plus de champs `chapitre` ni `partie`** dans le frontmatter (migration `0064-guide-sans-chapitres`, registre de ce qui est parti dans
   `data/migrations/0064-guide-sans-chapitres.json`, `test/guide-sans-chapitres.test.mjs`) : l'ordre, les groupes et leurs couleurs sont dans le plan,
   contrôlé au build (`verifierLePlan` : une page nommée absente, d'exemple ou nommée deux fois arrête tout). Pour placer une page : la nommer dans
@@ -1405,7 +1415,7 @@ dev (un commit la change) ni cherchée par la recherche.
   lui-même la feuille des postures. Un lien Markdown vers une rubrique s'écrit depuis la racine (`[les races](/races/)`) :
   le préfixe de déploiement est ajouté au rendu (`avecPrefixe`). Les couleurs des pages et les blocs sont dans `styles/guide/blocs.css`.
 - **Les textes de Découvrir et des Bases** (refonte du 2026-10-18, demande du propriétaire : « Prends chaque nouvelle page depuis le début à
-  recommencer entièrement ») : les seize pages (quinze depuis que « Rejoindre une partie » est effacée, 2026-11-05), « Le Mode Hyper et le Mode Super » et la présentation du lien Discord sont réécrits de zéro à partir
+  recommencer entièrement ») : les seize pages (quatorze depuis que « Rejoindre une partie » et le Lexique sont retirés, 2026-11-05), « Le Mode Hyper et le Mode Super » et la présentation du lien Discord sont réécrits de zéro à partir
   de la base (tables, pages de référence importées des documents), des **originaux** de « Règle du jeu/Guide pour MJ - Maverick » et de « Créer sa
   fiche de personnage » et des décisions R1 à R105 ; quand un original diffère de la base, la page suit la base et les décisions, et l'écart est
   consigné pour le propriétaire (`docs/sql/a-valider.md` §6), jamais appliqué (R83). En réécrivant l'une d'elles : chaque fait vient d'une source
@@ -1423,8 +1433,9 @@ dev (un commit la change) ni cherchée par la recherche.
   l'onglet Boucliers de « L'équipement » (`test/equipement-html.test.mjs`), le titre « Bienvenue dans Maverick » et son alias « Guide du joueur »
   (`test/serveur-edition-guide.test.mjs`), les intertitres « Le jeu de rôle, comment ça marche ? » de Bienvenue et « Étape 1 : … » à « Étape 6 : … » de
   « Créer son personnage » (les ancres où mènent les pages fusionnées, `lib/livres.mjs#ANCRES_DES_PAGES_ABSORBEES`, `test/livres.test.mjs`), le
-  plafond de maîtrise d'arme (« 4 points », « 5 dés », « plafond ») dans la phrase des dés de maîtrise de « Créer son personnage », « L'équipement »,
-  « Aide-mémoire » et « Lexique », sans « et ainsi de suite » (R149, G40, `test/guide.test.mjs`) : les garder en modifiant ces pages.
+  plafond de maîtrise d'arme (« 4 points », « 5 dés », « plafond ») dans la phrase des dés de maîtrise de « Créer son personnage », « L'équipement » et
+  « Aide-mémoire », et dans la définition du mot-clé « Maîtrise d'arme » (`maitrise-darme`, qui reprend la phrase de l'ancien Lexique, migration
+  `0090`), sans « et ainsi de suite » (R149, G40, `test/guide.test.mjs`) : les garder en modifiant ces pages et ce mot-clé.
 - **Les personnages fil rouge** (`lib/guide-fil-rouge.mjs`) : quatre pré-tirés (archer felfe Vide, mage rouge majin Feu, guerrier orios Sang, barde
   kitsune Vent). Seuls leurs choix y sont écrits (race, ethnie, magie, classe ; `nom` à venir) ; santé, chakra, barrière, maîtrises, équipement et
   emplacements de sorts sont lus dans la base et calculés comme la fiche automatique V15.2.2.
@@ -1524,9 +1535,11 @@ coupés sur deux cases, « Tenir ... » / « ... ou charger ? », sont voulus : 
 Demande du propriétaire du 2026-10-16 : « Le mot-clé devra désormais servir un peu comme un glossaire. Le mot-clé aura son ID, son texte et une
 description. Partout où un mot-clé est utilisé, il sera affiché en gras. Une infobulle de sa définition sera visible. » La table `mot_cle`
 (migrations `0043`, `0056`) est ce **glossaire** : un identifiant figé (tiré une fois du premier libellé), un libellé, son écriture (`libelle_cle`) et
-une **définition** (`description`, NULL tant qu'il n'est pas décrit). La migration `0056` a retiré les anciens mots-clés des pages : il reste ceux dont le
+une **définition** (`description`, NULL tant qu'il n'est pas décrit), et une **abréviation** (`abreviation`, migration `0090` : « AM », « Nat. » ; NULL
+sans abréviation). La migration `0056` a retiré les anciens mots-clés des pages : il reste ceux dont le
 site se sert pour ranger ses pages (catégories de `/classes/`, « classe », « race », « race hybride », « capacité de classe », « métier », « codex ») et
-ceux du glossaire (Mordhau, Recharge longue, Recharge très longue, Solidité, Chakra, Barrière, Corruption, CR…). Un mot-clé peut aussi **étiqueter un
+ceux du glossaire (Mordhau, Recharge longue, Recharge très longue, Solidité, Chakra, Barrière, Corruption…), auxquels la migration `0090` a ajouté les
+entrées de l'ancien Lexique du guide (« CR » y est devenu l'abréviation de Corruption). Un mot-clé peut aussi **étiqueter un
 sort** (table `sort_mot_cle`, migration `0067`, décision R114) : « Sort grenade » (défini par le propriétaire « Type particulier de sort provoquant une
 explosion localisée ») est posé sur les 14 sorts « Grenade… », et la fiche de personnage reconnaît un sort grenade à cette étiquette, jamais à son nom ;
 de même « Sort fer » (migration `0079`, décision R164 : « Type de sort d'amélioration qui s'applique sur une arme. ») sur les 13 sorts « Fer… », que la
@@ -1545,10 +1558,13 @@ propriétaire ; « durabilité » n'est plus écrit nulle part sur le site (sauf
 | `{{non-mort\|non-morts}}` | **non-morts** (le texte écrit), en gras, la définition du mot-clé en infobulle |
 | `{{mordhau:}}` | le **mode complet** : « **Mordhau** : définition », dans le fil du texte (la définition vient du glossaire et la suit) ; `{{mordhau :}}` (une espace avant les deux-points) est la même balise |
 
-- Dans une saisie, la ref est l'**id** du mot-clé ou son **écriture**, **quelle que soit la casse** : `{{Recharge longue}}`, `{{recharge longue}}` et
-  `{{recharge-longue}}` citent le même mot-clé. **La casse écrite est gardée** (demande du propriétaire du 2026-10-17 : « que ça soit insensible à la
+- Dans une saisie, la ref est l'**id** du mot-clé, son **écriture** ou son **abréviation**, **quelle que soit la casse** : `{{Recharge longue}}`,
+  `{{recharge longue}}` et `{{recharge-longue}}` citent le même mot-clé ; `{{AM}}`, `{{am}}` et `{{armure-magique}}` aussi (demande du propriétaire du
+  2026-11-05 : « ajuster les balises {{}} pour qu'elle puissent reconnaitre aussi bien l'abréviation que le mot complet »). **La casse écrite est gardée** (demande du propriétaire du 2026-10-17 : « que ça soit insensible à la
   casse ») : `{{solidité}}` s'affiche « solidité », `{{Solidité}}` « Solidité » ; l'id, ou le libellé écrit tel quel, affiche le libellé (et suit ses
-  renommages). Une écriture autre que le libellé est enregistrée comme un texte écrit : `{{solidité}}` devient `{{solidite|solidité}}`. La balise à copier est écrite à côté
+  renommages). Une écriture autre que le libellé est enregistrée comme un texte écrit : `{{solidité}}` devient `{{solidite|solidité}}` ; une abréviation,
+  elle, est enregistrée **telle qu'écrite dans la base**, quelle que soit la casse tapée (une abréviation est un sigle ; R140 écrit « CR » en majuscules ; R183) :
+  `{{AM}}` et `{{am}}` deviennent `{{armure-magique|AM}}` (il s'affiche « AM »), `{{cr}}`, `{{Cr}}` et `{{CR}}` deviennent `{{corruption|CR}}`. La balise à copier est écrite à côté
   de chaque mot-clé sur `/recherche/` en mode modification. **La base ne garde que des ids** : le service enregistre la forme canonique (ci-dessous) et
   `db:check` refuse toute autre écriture (même règle), sauf le libellé écrit en texte dans un texte mis en forme (`{{id|Libellé}}`, que le service
   ramène à `{{id}}` : le corps d'une page typée l'écrit, un renommage peut en faire un).
@@ -1561,7 +1577,9 @@ propriétaire ; « durabilité » n'est plus écrit nulle part sur le site (sauf
   dans une bulle, un mot-clé est en gras sans bulle ; dans un bouton ou un résumé de `details`, en gras sans bulle (le toucher ferait l'action) ; dans un
   `title`, un `alt`, une description de page ou un attribut lu par un script, le texte simple. Rien n'est rendu dans le code (`code`, `pre`, ni dans
   leurs attributs), ni sur `/donnees/`, ni dans les textes d'aide du mode modification et la page Debug (les valeurs telles qu'écrites,
-  `data-mots-cles-bruts`). Les monnaies ne lisent aucun montant dans une balise (`{{x|10 RO}}` reste écrit). La fiche de personnage n'en garde que le
+  `data-mots-cles-bruts`). Le passage des monnaies sur le Markdown ne lit aucun montant dans une balise (`{{x|10 RO}}` reste écrit, entier) ; au rendu, le texte affiché de la
+  balise a ses monnaies en icônes et un montant s'y décompose comme ailleurs (R183 (12), « Décomposer comme ailleurs » : `{{prix-fixe|1245,5 RO}}`
+  montre « 1 [PP] 245 [RO] 50 [RF] ») ; dans un attribut ou une `<option>`, le texte simple, comme le texte courant. La fiche de personnage n'en garde que le
   texte affiché (le texte écrit, ou le libellé ; jamais la définition), l'index de la recherche le texte simple (« Libellé : définition » pour le mode
   complet) ; `/recherche/?mot-cle=<id>` liste aussi les pages qui **citent** un mot-clé.
 - **Forme canonique** (celle que le service du site de dev enregistre) : la ref est toujours l'id, et selon la colonne :
@@ -1575,8 +1593,13 @@ propriétaire ; « durabilité » n'est plus écrit nulle part sur le site (sauf
     forme »). Une case découpée et affichée morceau par morceau (bonus et objets d'un métier, inventaire d'une classe, lieux d'une espèce) garde la
     balise de chaque morceau, que le site met en gras.
 - **Refusés** à l'enregistrement : une balise dont la ref n'est pas un mot-clé, et une ref **ambiguë** (l'id d'un mot-clé et l'écriture d'un autre : un
-  mot-clé renommé dont l'id est devenu l'écriture d'un nouveau ; préciser l'id voulu) — sauf si le texte l'avait déjà ; au rendu, une ref inconnue (texte
-  d'avant la suppression de son mot-clé) s'affiche en texte simple.
+  mot-clé renommé dont l'id est devenu l'écriture d'un nouveau ; ou l'abréviation de l'un et l'id ou l'écriture d'un autre ; préciser l'id voulu) — sauf
+  si le texte l'avait déjà ; au rendu, une ref inconnue (texte d'avant la suppression de son mot-clé) s'affiche en texte simple.
+- **L'abréviation** (une par mot-clé, facultative) est sans ambiguïté pour la ref d'une balise : elle contient une lettre ou un chiffre, n'a ni espace
+  autour, ni `{`, `}`, `|`, saut de ligne, ni `:` final (`{{AM:}}` serait le mode complet) ; une fois normalisée, elle n'est ni l'écriture du mot-clé
+  lui-même, ni l'id, l'écriture ou l'abréviation d'un autre mot-clé (elle peut égaler son propre id). `db:check` le contrôle et le service la refuse à
+  l'enregistrement par la même règle (`lib/mots-cles-balises.mjs#fautesDeLAbreviation`) ; il refuse aussi de créer ou de renommer un mot-clé vers
+  l'abréviation d'un autre.
 - **Renommer** un mot-clé ne réécrit aucun texte : un texte de case garde le texte écrit de ses balises, un texte mis en forme montre le nouveau libellé.
   Le **supprimer** remplace chacune de ses balises par son texte simple (« Libellé : définition » pour le mode complet), partout ; le **fusionner** dans
   un autre les fait citer l'autre (un texte de case garde le texte qu'il montrait). À la livraison (rejeu du journal), cela vaut aussi pour les textes
@@ -1628,16 +1651,32 @@ balise retirée sans être reposée et chaque balise nouvelle (`changements`, av
 exclusion ou un contexte qui ne se lit dans aucun texte relu, un texte de `horsDe` ou de `sauf` qui n'en désigne aucun ; les écritures exclues du Codex,
 gardées de la première entrée, le sont tant que le Codex n'est pas balisé). Le texte affiché ne change pas ; une colonne que le service tire d'un texte
 réécrit peut, elle, changer si l'import l'avait écrite autrement (le contexte du bonus de maîtrise de « Fouet ténébreux », visible sur `/donnees/`). La
-**Corruption** (la jauge : sa définition résume « Fiche de personnage : Attributs », « Étape 6 », l'explication de sa magie et les décisions R141 à R143 et R146) et **CR** (« Si CR » : si
+**Corruption** (la jauge : sa définition résume « Fiche de personnage : Attributs », « Étape 6 », l'explication de sa magie et les décisions R141 à R143 et R146) et **CR** (devenu l'abréviation de Corruption : migration `0090`, réponse du propriétaire « Fusionner dans Corruption » ;
+ses balises citent `corruption` en gardant le texte « CR » ; « Si CR » : si
 le sort est lancé en utilisant la corruption, décision R103 ; dans le coût, la corruption à dépenser ; dans les dégâts, soins ou barrière ou les effets, la corruption que reçoit la cible, le sort de soin Retrait en retire, R140 ; « CR » balisé partout où il s'écrit, jamais « cr ») sont balisés ainsi. Un import ne pose jamais un mot-clé
 homonyme d'une magie (`tools/db/homonymes.py#MAGIES_HOMONYMES`, lu par `tools/docs/codex.py`, `tools/sheets/magies.py` et `invocations.py`) : ni un
 temple du Codex, ni la page de la magie, ni une créature invoquée de la Corruption ne reçoit le mot-clé « Corruption » de sa magie (le mot-clé est la
 jauge ; un homonyme n'est jamais lié implicitement).
 
 Chaque mot-clé a son adresse, `/recherche/?mot-cle=<id>` (son libellé, sa définition, puis les pages qui le portent ou le citent) ; renommé, il garde son
-adresse. La page Recherche est le glossaire : tous les mots-clés, même sans page, chacun avec l'infobulle de sa définition. Sur le site de dev, en mode
-modification, elle crée (avec sa définition), renomme, fusionne et supprime un mot-clé ; les mots-clés dont le site se sert ne se renomment ni ne se
-suppriment, leur définition se modifie. Une page créée depuis le site ne porte que ces mots-clés-là. Les événements de la chronologie n'ont pas
+adresse. La page Recherche est le glossaire : tous les mots-clés, même sans page, chacun avec l'infobulle de sa définition. **L'abréviation** d'un
+mot-clé (réponse du propriétaire du 2026-11-05 : « Modifiable et affichée ») suit son libellé entre parenthèses, « Armure magique (AM) », dans sa
+pastille, avant le nombre de ses pages après « · » (réponse : « Armure magique (AM) · 3 » ; sans abréviation, « Feu · 2 » ; sans page, pas de nombre),
+dans le titre de sa vue (« Mot-clé « Armure magique (AM) » ») et dans le titre de sa bulle, partout sur le site
+(`lib/mots-cles-balises.mjs#htmlDuNomDuMotCle`, `htmlDeLaPastille`, `htmlDeLaBulle`) : `{{AM}}` montre « AM », sa bulle dit « Armure magique (AM) ». Une
+**monnaie** (les mots-clés `rf`, `ro`, `pp`, reconnus à leur id, figé, celui de la table `monnaie`, jamais à leur abréviation, qui se modifie) montre
+son libellé suivi de l'icône de la monnaie, jamais « (RO) » (réponse : « Libellé + icône » ; R63). Le texte affiché d'une balise et la définition du
+mode complet ont aussi leurs monnaies en icônes (R63, R183 (9) : « R63 est respectée partout ») : `{{RO}}` montre l'icône du Ricken d'or ; un montant
+écrit dans une balise se décompose comme ailleurs (R183 (12) : `{{prix-fixe|1245,5 RO}}` montre « 1 [PP] 245 [RO] 50 [RF] » ; `htmlDeLaBalise`). La définition que montre la vue d'un mot-clé est rendue au build (`#definitions-des-mots-cles`,
+`[data-definition-de]` : `htmlDeLaDefinition`, monnaies en icônes, balises rendues par le middleware), et sur le site de dev par l'extension de
+l'éditeur ; le script de la page la recopie sans lire aucune monnaie (il n'importe pas `lib/monnaies.mjs`). Le mode complet (`{{id:}}`) garde
+« **Libellé** : définition ». La recherche de la page trouve un mot-clé par son écriture **ou** son abréviation (« AM » trouve « Armure magique » :
+`lib/search.mjs#cleDeRecherche`). Sur le site de dev, en mode modification, elle crée (avec sa définition et son abréviation), renomme, fusionne et
+supprime un mot-clé, et modifie son abréviation (une saisie à côté du libellé ; vidée, NULL ; un refus du service, 400 ou 409, s'affiche comme tout
+refus du lot) ; les mots-clés dont le site se sert ne se renomment ni ne se suppriment, leur définition et leur abréviation se modifient. La page et
+l'extension de l'éditeur ne se parlent que par l'évènement `recherche:mots-cles` et les `li[data-id][data-cle][data-n][data-libelle]`, plus
+`data-abreviation` et `data-definition` quand le mot-clé en a, le `.recherche-nom` de chaque pastille et les `[data-definition-de]` de
+`#definitions-des-mots-cles`. Une page créée depuis le site ne porte que ces mots-clés-là. Les événements de la chronologie n'ont pas
 d'étiquette (« trop nombreux et trop libres », demande du propriétaire) mais des **catégories**, un vocabulaire à part (voir « Chronologie ») ; leurs
 descriptions peuvent citer des mots-clés.
 

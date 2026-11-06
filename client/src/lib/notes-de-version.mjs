@@ -19,13 +19,24 @@ import { TABLES_DES_NOTES } from './tables-de-la-base.mjs';
 import { sensDuChangement } from './notes-de-version-sens.mjs';
 import { resumeDuPortrait } from './portrait.mjs';
 import { ORDRE_DES_RACES } from './race-kinds.mjs';
-import { DECOUVRIR, LIENS_ET_RENCONTRE, PAGES_ABSORBEES, placeDansLeGuide } from './livres.mjs';
+import { DECOUVRIR, LIENS_ET_RENCONTRE, PAGES_ABSORBEES, PAGES_RETIREES, placeDansLeGuide } from './livres.mjs';
 
 /**
  * La page du plan où se range une page du guide : elle-même, ou celle qui l'absorbe (lib/livres.mjs#PAGES_ABSORBEES) — une page fusionnée dans une autre
  * n'est plus dans le plan, et la production l'a encore : retirée, elle se range avec la page qui l'a reçue, pas dans les Règles avancées.
  */
 const pageDuPlan = (id) => (Object.hasOwn(PAGES_ABSORBEES, id) ? PAGES_ABSORBEES[id] : id);
+/** La rubrique des pages retirées du plan (lib/livres.mjs#PAGES_RETIREES : le Lexique, migration 0090), après celles du guide. */
+export const PAGES_RETIREES_DU_GUIDE = 'Pages retirées';
+/**
+ * Où une ligne de note d'une page du guide se range ({ rubrique, rang, ordre } de lib/livres.mjs#placeDansLeGuide) : une page absorbée à la place de celle
+ * qui l'absorbe (pageDuPlan) ; une page retirée (PAGES_RETIREES), qui n'a plus de place dans le plan, sous « Pages retirées », après toutes les rubriques
+ * (placeDansLeGuide la mettrait dans les Règles avancées, où elle n'a jamais été).
+ */
+function placeDeLaPage(id) {
+  if (Object.hasOwn(PAGES_RETIREES, id)) return { rubrique: PAGES_RETIREES_DU_GUIDE, rang: Number.MAX_SAFE_INTEGER, ordre: null };
+  return placeDansLeGuide(pageDuPlan(id));
+}
 
 /** Domaines de la liste, dans l'ordre d'affichage, avec leur titre. */
 export const DOMAINES = [
@@ -179,10 +190,10 @@ const DEFINITIONS = [
     table: 'page', domaine: 'guide', cle: ['id'], colonnes: colonnesDe('page'), genre: 'Page du guide',
     filtre: (r) => r.type === 'guide' && r.statut !== 'example',
     // rangée par rubrique du plan du site (lib/livres.mjs : « Découvrir », « Les bases », « Règles avancées », « Guide du MJ »), dans l'ordre du plan
-    // (une page fusionnée dans une autre : à la place de celle qui l'absorbe, pageDuPlan)
-    groupe: (r) => placeDansLeGuide(pageDuPlan(r.id)).rubrique,
+    // (une page fusionnée dans une autre : à la place de celle qui l'absorbe ; une page retirée : « Pages retirées » ; placeDeLaPage)
+    groupe: (r) => placeDeLaPage(r.id).rubrique,
     entite: (r) => r.titre, ordre: (r) => {
-      const place = placeDansLeGuide(pageDuPlan(r.id));
+      const place = placeDeLaPage(r.id);
       return [place.rang, place.ordre ?? 999, r.titre];
     },
   },

@@ -68,14 +68,18 @@ export function chronologieVivante(db) {
 }
 
 /**
- * Le vocabulaire des mots-clés pour /recherche/ en mode modification (GET /api/edition/mots-cles/) : [{ id, libelle, libelle_cle, description, pages,
- * protege }] (`description` : la définition telle qu'enregistrée, NULL tant qu'il n'est pas décrit ; `protege` : la raison pour laquelle il ne se
- * renomme, ne se supprime ni ne se fusionne, lib/mots-cles.mjs ; null sinon : sa définition, elle, se modifie toujours), triés par libellé.
+ * Le vocabulaire des mots-clés pour /recherche/ en mode modification (GET /api/edition/mots-cles/) : [{ id, libelle, libelle_cle, description,
+ * abreviation, pages, protege }] (`description` : la définition telle qu'enregistrée, NULL tant qu'il n'est pas décrit ; `abreviation` : NULL sans
+ * abréviation, et sur une base d'avant la migration 0090 ; `protege` : la raison pour laquelle il ne se renomme, ne se supprime ni ne se fusionne,
+ * lib/mots-cles.mjs ; null sinon : sa définition et son abréviation, elles, se modifient toujours), triés par libellé.
  * @param {import('node:sqlite').DatabaseSync} db
  */
 export function vocabulaire(db) {
-  return db.prepare('SELECT id, libelle, libelle_cle, description, nb_pages AS pages FROM v_mot_cle').all()
-    .map((m) => ({ ...m, protege: raisonDeProtection(m.libelle_cle) }))
+  // `*` : la vue d'avant la migration 0090 n'a pas la colonne abreviation
+  return db.prepare('SELECT * FROM v_mot_cle').all()
+    .map(({ id, libelle, libelle_cle: cle, description, abreviation, nb_pages: pages }) => ({
+      id, libelle, libelle_cle: cle, description, abreviation: abreviation ?? null, pages, protege: raisonDeProtection(cle),
+    }))
     .sort((a, b) => a.libelle.localeCompare(b.libelle, 'fr', { sensitivity: 'base' }) || a.id.localeCompare(b.id));
 }
 
@@ -83,9 +87,11 @@ export function vocabulaire(db) {
  * Les domaines de la chronologie et des mots-clés ({ table: { colonnes, deriver?, creer, supprimer } }) et les opérations du lot qu'ils ajoutent
  * ({ categories, fusionner_mots_cles }) : voir serveur/edition.mjs#DOMAINES et #OPERATIONS.
  * @param {{ refus: Function, ErreurEdition: Function, provenance: Function, idDejaEmploye: Function, rangLibre: Function, creerMotCle: Function,
- *   reecrireLesBalises: Function, vocabulaireVivant: Function, tableExiste: Function }} outils
+ *   refuserLAbreviation: Function, reecrireLesBalises: Function, vocabulaireVivant: Function, tableExiste: Function }} outils
  */
-export function domainesDeLaChronologie({ refus, ErreurEdition, provenance, idDejaEmploye, rangLibre, creerMotCle, reecrireLesBalises, vocabulaireVivant, tableExiste }) {
+export function domainesDeLaChronologie({
+  refus, ErreurEdition, provenance, idDejaEmploye, rangLibre, creerMotCle, refuserLAbreviation, reecrireLesBalises, vocabulaireVivant, tableExiste,
+}) {
   /** Refus d'une date que la table n'accepte pas, avec le message de lib/chronologie.mjs#erreurDeDate. */
   function verifierLaDate(e, quoi) {
     const erreur = erreurDeDate(e);
@@ -291,12 +297,20 @@ export function domainesDeLaChronologie({ refus, ErreurEdition, provenance, idDe
   const MOT_CLE = {
     // la définition (même d'un mot-clé dont le site se sert) : vidée, NULL ; renommer ne réécrit aucun texte (pages et balises citent l'id : une balise
     // d'un texte de case garde le texte écrit, une balise d'un texte mis en forme montre le nouveau libellé) ; vers l'écriture d'un autre mot-clé,
-    // refusé (la page propose la fusion)
+    // refusé (la page propose la fusion) ; l'abréviation (migration 0090, protégés compris : elle ne change ni l'id ni l'écriture) : vidée, NULL ; une
+    // abréviation, ou une écriture renommée, qu'une balise ne lirait pas sans ambiguïté : refusée (serveur/edition.mjs#refuserLAbreviation)
     colonnes(ctx, ligne, valeurs, avant) {
       const sortie = 'description' in valeurs ? { description: ligne.description || null } : {};
-      return { ...sortie, ...renommage(ctx, ligne, valeurs, avant) };
+      const renomme = renommage(ctx, ligne, valeurs, avant);
+      if ('abreviation' in valeurs || 'libelle' in valeurs) {
+        refuserLAbreviation(ctx.db, { id: avant.id, libelle: ligne.libelle, libelle_cle: normalize(ligne.libelle), abreviation: ligne.abreviation ?? null });
+      }
+      return { ...sortie, ...renomme };
     },
-    /** Un mot-clé du glossaire, son libellé et sa définition, sans page (il se pose ensuite) ; refusé s'il s'écrit comme un mot-clé existant. */
+    /**
+     * Un mot-clé du glossaire, son libellé, sa définition et son abréviation, sans page (il se pose ensuite) ; refusé s'il s'écrit comme un mot-clé
+     * existant, ou si son abréviation ne convient pas (serveur/edition.mjs#creerMotCle).
+     */
     creer(ctx, valeurs) {
       const { db } = ctx;
       const cle = normalize(valeurs.libelle);
@@ -305,7 +319,7 @@ export function domainesDeLaChronologie({ refus, ErreurEdition, provenance, idDe
       if (existant) throw new ErreurEdition(409, `Le mot-clé « ${existant.libelle} » existe déjà.`);
       // un mot-clé dont le site se sert se pose avec les pages qu'il range (une race hybride, une classe…) : créé seul, il ne se retirerait plus
       if (raisonDeProtection(cle)) throw new ErreurEdition(409, `« ${valeurs.libelle} » est l’écriture d’un mot-clé dont le site se sert : il vient avec ses pages.`);
-      const id = creerMotCle(ctx, valeurs.libelle, valeurs.description ?? null);
+      const id = creerMotCle(ctx, valeurs.libelle, valeurs.description ?? null, valeurs.abreviation ?? null);
       return { id, resume: `Mot-clé créé : ${valeurs.libelle}` };
     },
     /**

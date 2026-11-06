@@ -218,10 +218,21 @@ const iTypes = process.argv.indexOf('--types');
 // que formeCanonique ramène à « {{id}} » : le corps d'une page typée l'écrit, un renommage peut en faire un) — toutes les colonnes de texte des règles et des pages
 // (lib/mots-cles-db.mjs#textesDeLaBase : ni les sections 13 à 15, ni les tables dérivées, ni les traces gardées telles quelles, ni la recherche plein
 // texte ; lib/tables-de-la-base.mjs). Une balise dans un code d'un texte mis en forme est une écriture littérale : ni lue ni contrôlée.
+// L'abréviation d'un mot-clé (migration 0090), qu'une ref peut citer comme son écriture, est sans ambiguïté : la règle de
+// lib/mots-cles-balises.mjs#fautesDeLAbreviation, la même que celle du service (normalize non vide, ni espace autour, ni « { », « } », « | », saut de
+// ligne, ni « : » final ; normalize(abreviation) n'est ni l'écriture du mot-clé lui-même, ni l'id, l'écriture ou l'abréviation d'un autre).
 if (noms.has('mot_cle')) {
-  const { formesNonCanoniques, lireBalises, vocabulaireDesMotsCles } = await import(pathToFileURL(`${LIB}/mots-cles-balises.mjs`).href);
-  const { textesDeLaBase } = await import(pathToFileURL(`${LIB}/mots-cles-db.mjs`).href);
-  const vocabulaire = vocabulaireDesMotsCles(db.prepare('SELECT id, libelle, libelle_cle FROM mot_cle').all());
+  const { fautesDeLAbreviation, formesNonCanoniques, lireBalises, vocabulaireDesMotsCles } = await import(pathToFileURL(`${LIB}/mots-cles-balises.mjs`).href);
+  const { motsClesDeLaBase, textesDeLaBase } = await import(pathToFileURL(`${LIB}/mots-cles-db.mjs`).href);
+  const motsCles = motsClesDeLaBase(db);
+  const vocabulaire = vocabulaireDesMotsCles(motsCles);
+  let abreviations = 0;
+  for (const m of motsCles) {
+    if (m.abreviation === null) continue;
+    abreviations += 1;
+    for (const f of fautesDeLAbreviation(vocabulaire, m)) problemes.push(`mot_cle ${m.id} : l'abréviation « ${m.abreviation} » ne convient pas (${f.raison})`);
+  }
+  bilan.abreviations_mots_cles = abreviations;
   const q = (c) => (c === 'rowid' ? 'rowid' : `"${c}"`);
   let balises = 0;
   let colonnesLues = 0;

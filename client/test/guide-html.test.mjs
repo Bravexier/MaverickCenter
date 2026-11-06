@@ -2,8 +2,8 @@
 // le guide », puis « refaire toutes les anciennes pages du guide. Retirer le mécanisme de swipe, et les flèches suivant / précédent et la pagination ») :
 // chaque page du guide est une page simple (fil d'Ariane vers sa rubrique ou son sommaire, titre, texte et blocs tirés de la base, mots-clés,
 // rétroliens ; plus de sources : réponse du propriétaire du 2026-10-22, « Plus de sources ailleurs que dans les archives. »), sans flèches, ni
-// pagination, ni glissement du doigt ; les pages de Découvrir dans la couleur de leur groupe ; Les bases puis les Règles avancées sur le modèle de la
-// chronologie (menu latéral des pages, texte de la page choisie à droite, l'accent du site) ; les sommaires du Guide du MJ et de l'Artisanat ; plus de Discord, de Tipeee ni d'encart « Notre prochaine rencontre IRL » sous Bienvenue (sur l'accueil
+// pagination, ni glissement du doigt ; les pages de Découvrir dans la couleur de leur groupe ; Les bases (onze pages) puis les Règles avancées sur le
+// modèle de la chronologie (menu latéral des pages, texte de la page choisie à droite, l'accent du site) ; les sommaires du Guide du MJ et de l'Artisanat ; plus de Discord, de Tipeee ni d'encart « Notre prochaine rencontre IRL » sous Bienvenue (sur l'accueil
 // depuis le 2026-10-23 : test/accueil-html.test.mjs ; la page Liens est supprimée le 2026-10-22) ; plus rien sous /guide/, plus rien aux adresses des
 // pages fusionnées.
 // Ce test lit le site construit : il ne tourne qu'après `npm run build` (la CI l'exécute juste après) et se saute sinon.
@@ -79,7 +79,7 @@ test('le fil d’Ariane : Découvrir pour ses pages, Les bases, Règles avancée
   assert.equal(fil('decouvrir/creer-son-personnage'), '<a href="/">Accueil</a> › <a href="/decouvrir/">Découvrir</a>');
   // « Inutile de séparer les catégories les Jouer / Progresser / Pour aller plus loin. » (2026-11-05) : plus de groupe dans le fil
   assert.equal(fil('regles/les-degats'), '<a href="/">Accueil</a> › <a href="/regles/">Les bases</a>');
-  assert.equal(fil('regles/lexique'), '<a href="/">Accueil</a> › <a href="/regles/">Les bases</a>');
+  assert.equal(fil('regles/aide-memoire'), '<a href="/">Accueil</a> › <a href="/regles/">Les bases</a>');
   assert.equal(fil('regles'), '<a href="/">Accueil</a> › <a href="/regles/">Les bases</a>', '/regles/ : le fil de sa première page');
   // Règles avancées : de même, plus de groupe ni d'ancre de groupe dans le fil (réponse du propriétaire du 2026-11-05 : « Liste sans groupes »)
   assert.equal(fil('regles/avancees/meteo'), '<a href="/">Accueil</a> › <a href="/regles/avancees/">Règles avancées</a>');
@@ -156,10 +156,13 @@ const verifierLeMenuLateral = (chemin, page, rubrique, attendues) => {
 // Les bases sur le modèle de la chronologie (demande du propriétaire du 2026-11-05 : « Refait la page les bases. Au lieu de lister les différentes
 // pages, réécrit directement le contenu. […] Inutile de séparer les catégories les Jouer / Progresser / Pour aller plus loin. Pour la présation je
 // préfèrera un menu latéral sous le même modèle que la chronologie. » ; réponses : « Comme la chronologie (Recommandé) », « Accent du site »)
-test('Les bases : à gauche le menu latéral des douze pages dans l’ordre (sans titres de groupe), à droite le texte de la page choisie ; /regles/ s’ouvre sur « Réussir une action »', options, () => {
+test('Les bases : à gauche le menu latéral des onze pages dans l’ordre (sans titres de groupe), à droite le texte de la page choisie ; /regles/ s’ouvre sur « Réussir une action »', options, () => {
   const pages = pagesDesBases(pagesConstruites);
-  assert.deepEqual(pages.map((p) => p.id), LES_BASES.pages, 'les douze pages construites');
-  assert.equal(pages.length, 12);
+  assert.deepEqual(pages.map((p) => p.id), LES_BASES.pages, 'les onze pages construites');
+  // « Supprime la page lexique. » (2026-11-05, migration 0090) : plus construite, son adresse mène à /recherche/ (page 404 : test/site-html.test.mjs)
+  assert.ok(!existsSync(join(dist, 'regles', 'lexique')), '/regles/lexique/ n’est plus construite');
+  assert.ok(!existsSync(join(dist, 'regles', 'avancees', 'lexique')), '… ni rangée dans les Règles avancées');
+  assert.equal(pages.length, 11);
   const attendues = pages.map((p) => [`/${cheminDePage(p.id)}`, p.titre]);
   for (const [chemin, page] of [['regles', pages[0]], ...pages.map((p) => [cheminDePage(p.id).slice(0, -1), p])]) {
     const { main, droite } = verifierLeMenuLateral(chemin, page, LES_BASES, attendues);

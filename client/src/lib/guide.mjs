@@ -6,7 +6,7 @@
 // (serveur/edition.mjs) et les tests. Les couleurs des parties (groupes de Découvrir, zones de la fiche) ne sont pas ici : leurs classes
 // (lib/palette-css.mjs#classeDePartie, valeurs dans lib/parties-couleurs.mjs).
 
-import { ANCRES_DES_PAGES_ABSORBEES, estDansDecouvrirOuLesBases, PAGES_ABSORBEES } from './livres.mjs';
+import { adresseDeLaPageRetiree, ANCRES_DES_PAGES_ABSORBEES, estDansDecouvrirOuLesBases, PAGES_ABSORBEES } from './livres.mjs';
 
 /**
  * Blocs qu'une page du guide peut appeler par `<!-- guide:<bloc> -->` (le composant qui les rend : components/guide/GuideBloc.astro). Plus de « sommaire »
@@ -55,9 +55,13 @@ export const avecPrefixe = (markdown, base) => markdown.replace(/\]\(\/(?!\/)([^
  * Le chemin d'un lien écrit vers une ancienne adresse du guide (« guide/les-postures/ », « guide/choisir-sa-classe/#une-ou-deux-classes », « guide/ »),
  * mené à l'adresse de la page visée (`cheminDe(id)` : lib/metiers.mjs#cheminDePage) — celle de la page qui l'absorbe pour une page fusionnée dans une
  * autre (lib/livres.mjs#PAGES_ABSORBEES), à l'ancre où se lit son contenu si le lien n'en écrit pas (ANCRES_DES_PAGES_ABSORBEES) —, l'ancre écrite gardée ; `existe(id)` dit si la page est chargée (sinon, et pour tout autre chemin, le chemin tel
- * qu'écrit : la page 404 s'en charge). `accueil` : l'adresse de l'ancien /guide/ (lib/livres.mjs#ACCUEIL_DU_GUIDE).
+ * qu'écrit : la page 404 s'en charge). `accueil` : l'adresse de l'ancien /guide/ (lib/livres.mjs#ACCUEIL_DU_GUIDE). Un lien écrit vers une ancienne adresse
+ * d'une page retirée dont le contenu se lit ailleurs (lib/livres.mjs#PAGES_RETIREES : « /regles/lexique/ », « /guide/lexique/ ») mène à sa destination
+ * (« recherche/ »), requête et ancre écrites gardées, tant que la page n'est pas chargée.
  */
 export function adresseDesAnciensLiens(chemin, { cheminDe, existe, accueil }) {
+  const retiree = adresseDeLaPageRetiree(chemin, { existe });
+  if (retiree !== null) return retiree;
   const m = chemin.match(/^guide\/(?:([a-z0-9-]+)\/?)?((?:[?#].*)?)$/);
   if (!m) return chemin;
   if (!m[1]) return `${accueil}${m[2]}`;

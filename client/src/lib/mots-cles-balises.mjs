@@ -6,12 +6,16 @@
 //   {{ref|texte}}    de même, le texte affiché étant `texte` (une autre écriture : « {{non-mort|non-morts}} ») ; dans une case de tableau Markdown, le
 //                    séparateur s'écrit « \| » (sinon la case s'arrête là) ;
 //   {{ref:}}         le mode complet : « **Libellé** : définition » (« {{ref :}} », une espace avant les deux-points, est la même balise).
-// `ref` = l'id du mot-clé (mot_cle.id), ou, dans une saisie seulement, son écriture (normalize(ref) = mot_cle.libelle_cle) : « {{Recharge longue}} ».
+// `ref` = l'id du mot-clé (mot_cle.id), ou, dans une saisie seulement, son écriture (normalize(ref) = mot_cle.libelle_cle) : « {{Recharge longue}} », ou
+// son abréviation (normalize(ref) = normalize(mot_cle.abreviation), migration 0090 ; demande du propriétaire du 2026-11-05 : « ajuster les balises {{}}
+// pour qu'elle puissent reconnaitre aussi bien l'abréviation que le mot complet ») : « {{AM}} », « {{cr}} » — quelle que soit la casse, comme l'écriture
+// (le texte montré est alors l'abréviation telle qu'écrite dans la base : texteEcrit).
 // La base ne garde que des ids : le service enregistre la FORME CANONIQUE (formeCanonique ; db:check refuse toute autre), qui dépend de la colonne
 // (lib/edition-modele.mjs#typeDeTexte) :
 //   - un texte mis en forme (champ « markdown » : corps des pages, descriptions de la chronologie, blocs des panneaux de règles) cite « {{id}} » (le texte
 //     affiché suit le libellé : un renommage se voit partout), « {{id|texte}} » si un autre texte que le libellé est écrit — une ref écrite dans une autre
-//     casse que le libellé en est un : « {{solidité}} » devient « {{solidite|solidité}} » (texteEcrit) —, « {{id:}} » ; une balise dans
+//     casse que le libellé en est un : « {{solidité}} » devient « {{solidite|solidité}} », une abréviation aussi : « {{AM}} » devient
+//     « {{armure-magique|AM}} » (texteEcrit) —, « {{id:}} » ; une balise dans
 //     un code (« `…` », bloc ``` ou ~~~ : zonesDeCode) est une écriture littérale, ni mise en forme, ni refusée, ni rendue ;
 //   - un texte de case (champs « ligne », « texte » : cases, effets, descriptions des tables, définitions des mots-clés) porte toujours le texte de chaque
 //     balise, « {{id|texte}} » (le libellé du moment si rien n'est écrit), et jamais le mode complet : il se lit sans le vocabulaire (texteSansBalises
@@ -27,9 +31,10 @@
 // data-ed…) : le texte simple. Un mot-clé dans une bulle (`.bulle`) est en gras sans bulle ni focus ; dans un élément qui a déjà le focus (a, button,
 // summary, label, select, [tabindex]), sans tabindex ; dans un bouton ou un résumé de `details`, sans bulle non plus (le toucher ferait l'action). Une
 // bulle par mot-clé employé (et décrit) et par page, posée avant </body> : le système unique d'infobulles du site (components/Infobulles.astro).
-// Fonctions pures, sans dépendance navigateur ni Astro (dépendance : lib/text.mjs) : partagées par le middleware, la recherche, les règles de la fiche, le
+// Fonctions pures, sans dépendance navigateur ni Astro (dépendances : lib/text.mjs, lib/monnaies.mjs pour les monnaies d’une bulle) : partagées par le middleware, la recherche, les règles de la fiche, le
 // service (serveur/edition.mjs), db:check et la chaîne de l'édition du site de dev (src/scripts/edition/).
-import { normalize } from './text.mjs';
+import { htmlAvecMonnaies, htmlDePiece, MONNAIES_DU_JEU } from './monnaies.mjs';
+import { libelleAvecAbreviation, normalize } from './text.mjs';
 
 /** Une balise : « {{ », la ref, un séparateur facultatif (« | », ou « \| » dans une case de tableau Markdown) et son texte, « }} ». */
 const BALISE = /\{\{([^{}|\n]+?)(?:(\\?\|)([^{}\n]*?))?\}\}/g;
@@ -157,32 +162,84 @@ export function lireUneBalise(brut) {
 }
 
 /**
- * Le vocabulaire prêt à résoudre les refs : { parId, parCle, liste } d'après [{ id, libelle, libelle_cle?, description? }] (lib/mots-cles-db.mjs, GET
- * /api/edition/mots-cles/ : `description` NULL tant que le mot-clé n'est pas décrit, '' ici) ; un vocabulaire déjà prêt est rendu tel quel, null reste null.
+ * Le vocabulaire prêt à résoudre les refs : { parId, parCle, parAbreviation, liste } d'après [{ id, libelle, libelle_cle?, description?, abreviation? }]
+ * (lib/mots-cles-db.mjs, GET /api/edition/mots-cles/ : `description` NULL tant que le mot-clé n'est pas décrit, '' ici ; `abreviation` NULL sans
+ * abréviation, migration 0090 ; `parAbreviation` : normalize(abreviation) → mot-clé) ; un vocabulaire déjà prêt est rendu tel quel, null reste null.
  */
 export function vocabulaireDesMotsCles(motsCles) {
   if (!motsCles) return null;
   if (motsCles.parId instanceof Map) return motsCles;
-  const liste = [...motsCles].map((m) => ({ id: m.id, libelle: m.libelle, libelle_cle: m.libelle_cle ?? normalize(m.libelle), description: m.description ?? '' }));
-  return { liste, parId: new Map(liste.map((m) => [m.id, m])), parCle: new Map(liste.map((m) => [m.libelle_cle, m])) };
-}
-
-/** Le mot-clé qu'une ref désigne : par son id, sinon par son écriture (normalize = libelle_cle) ; null s'il n'existe pas. */
-export function motCleDeLaRef(vocabulaire, ref) {
-  const v = vocabulaireDesMotsCles(vocabulaire);
-  if (!v) return null;
-  return v.parId.get(ref) ?? v.parCle.get(normalize(ref)) ?? null;
+  const liste = [...motsCles].map((m) => ({
+    id: m.id, libelle: m.libelle, libelle_cle: m.libelle_cle ?? normalize(m.libelle), description: m.description ?? '', abreviation: m.abreviation ?? null,
+  }));
+  const parAbreviation = new Map();
+  for (const m of liste) if (typeof m.abreviation === 'string' && normalize(m.abreviation)) parAbreviation.set(normalize(m.abreviation), m);
+  return { liste, parId: new Map(liste.map((m) => [m.id, m])), parCle: new Map(liste.map((m) => [m.libelle_cle, m])), parAbreviation };
 }
 
 /**
- * Une ref ambiguë : l'id d'un mot-clé ET l'écriture d'un autre (un mot-clé renommé, dont l'id est devenu l'écriture d'un autre) ; { parId, parEcriture }
- * (les deux mots-clés), ou null. Le service la refuse dans une saisie (préciser l'id voulu) ; motCleDeLaRef la lit par l'id.
+ * Le mot-clé qu'une ref désigne : par son id, sinon par son écriture (normalize = libelle_cle), sinon par son abréviation (normalize de l'abréviation) ;
+ * null s'il n'existe pas.
+ */
+export function motCleDeLaRef(vocabulaire, ref) {
+  const v = vocabulaireDesMotsCles(vocabulaire);
+  if (!v) return null;
+  const cle = normalize(ref);
+  return v.parId.get(ref) ?? v.parCle.get(cle) ?? v.parAbreviation?.get(cle) ?? null;
+}
+
+/**
+ * Une ref ambiguë : elle vise deux mots-clés différents par deux chemins — l'id d'un mot-clé ET l'écriture d'un autre (un mot-clé renommé, dont l'id est
+ * devenu l'écriture d'un autre), ou l'id ou l'écriture d'un mot-clé ET l'abréviation d'un autre (db:check et le service refusent une telle abréviation :
+ * fautesDeLAbreviation ; une base qui en aurait une). Rend { parId, parEcriture, chemins } (le mot-clé que motCleDeLaRef retient, puis l'autre ;
+ * `chemins` : comment la ref vise chacun, 'id', 'ecriture' ou 'abreviation'), ou null. Le service la refuse dans une saisie (préciser l'id voulu).
  */
 export function ambiguiteDe(vocabulaire, ref) {
   const v = vocabulaireDesMotsCles(vocabulaire);
-  const parId = v?.parId.get(ref);
-  const parEcriture = v?.parCle.get(normalize(ref));
-  return parId && parEcriture && parId !== parEcriture ? { parId, parEcriture } : null;
+  if (!v) return null;
+  const cle = normalize(ref);
+  const vises = [['id', v.parId.get(ref)], ['ecriture', v.parCle.get(cle)], ['abreviation', v.parAbreviation?.get(cle)]].filter(([, m]) => m);
+  const autre = vises.find(([, m]) => m !== vises[0][1]);
+  return autre ? { parId: vises[0][1], parEcriture: autre[1], chemins: [vises[0][0], autre[0]] } : null;
+}
+
+/**
+ * Ce qui empêche l'abréviation du mot-clé `m` ({ id, libelle_cle? ou libelle, abreviation }) d'être la ref d'une balise, dans le vocabulaire `motsCles`
+ * (les autres mots-clés ; `m` lui-même y est ignoré, par son id) : [{ raison, autre? }] (`autre` : le mot-clé qui la prend déjà), vide si elle convient
+ * ou s'il n'en a pas (NULL). La règle de db:check (client/scripts/db-check.mjs) et du service (serveur/edition.mjs#refuserLAbreviation), migration 0090 :
+ * une écriture qui se normalise (normalize non vide), sans espace autour, sans « { », « } », « | » ni saut de ligne (elle couperait la balise), sans
+ * « : » final (« {{AM:}} » serait le mode complet) ; normalize(abreviation) n'est ni l'écriture du mot-clé lui-même (elle n'abrégerait rien), ni l'id,
+ * l'écriture ou l'abréviation d'un autre mot-clé (la ref serait ambiguë). Elle peut égaler son propre id (un mot-clé renommé dont l'id reste
+ * l'abréviation : la ref le vise de toute façon).
+ */
+export function fautesDeLAbreviation(motsCles, m) {
+  const abreviation = m?.abreviation;
+  if (abreviation === null || abreviation === undefined) return [];
+  if (typeof abreviation !== 'string') return [{ raison: 'une abréviation est un texte' }];
+  const fautes = [];
+  const cle = normalize(abreviation);
+  if (!cle) return [{ raison: 'elle doit contenir au moins une lettre ou un chiffre' }];
+  if (abreviation !== abreviation.trim()) fautes.push({ raison: 'elle ne commence ni ne finit par une espace' });
+  if (/[{}|\n\r]/.test(abreviation)) fautes.push({ raison: 'elle ne contient ni « { », ni « } », ni « | », ni saut de ligne (la balise s’y couperait)' });
+  if (abreviation.trim().endsWith(':')) fautes.push({ raison: 'elle ne finit pas par « : » (« {{…:}} » est le mode complet)' });
+  if (cle === (m.libelle_cle ?? normalize(m.libelle ?? ''))) fautes.push({ raison: 'elle s’écrit comme le mot-clé lui-même' });
+  const autres = [...(vocabulaireDesMotsCles(motsCles)?.liste ?? [])].filter((x) => x.id !== m.id);
+  for (const x of autres) {
+    if (x.libelle_cle === cle) fautes.push({ raison: `elle s’écrit comme le mot-clé « ${x.libelle} »`, autre: x });
+    else if (x.id === cle) fautes.push({ raison: `c’est l’identifiant du mot-clé « ${x.libelle} »`, autre: x });
+    else if (typeof x.abreviation === 'string' && normalize(x.abreviation) === cle) fautes.push({ raison: `c’est déjà l’abréviation du mot-clé « ${x.libelle} » (« ${x.abreviation} »)`, autre: x });
+  }
+  return fautes;
+}
+
+/**
+ * Les autres mots-clés dont l'abréviation (normalize) est l'id ou l'écriture du mot-clé `m` ({ id, libelle_cle? ou libelle }) : un mot-clé créé ou
+ * renommé ne prend pas l'abréviation d'un autre (la ref deviendrait ambiguë ; serveur/edition.mjs). `m` lui-même est ignoré, par son id.
+ */
+export function abreviationsPrises(motsCles, m) {
+  const cle = m.libelle_cle ?? normalize(m.libelle ?? '');
+  return [...(vocabulaireDesMotsCles(motsCles)?.liste ?? [])]
+    .filter((x) => x.id !== m.id && typeof x.abreviation === 'string' && [m.id, cle].includes(normalize(x.abreviation)));
 }
 
 const espaces = (t) => String(t).replace(/\s+/g, ' ').trim();
@@ -190,9 +247,18 @@ const espaces = (t) => String(t).replace(/\s+/g, ' ').trim();
 /**
  * Le texte que l'auteur d'une balise a écrit : celui qui suit le séparateur, sinon sa ref quand c'est une écriture du mot-clé autre que son libellé (une
  * autre casse : « {{solidité}} » montre « solidité », « {{Solidité}} » « Solidité ») ; null : le libellé (sans texte, la ref est l'id ou le libellé
- * lui-même). Demande du propriétaire du 2026-10-17 : la balise reconnaît le mot-clé quelle que soit la casse et garde la casse écrite.
+ * lui-même). Demande du propriétaire du 2026-10-17 : la balise reconnaît le mot-clé quelle que soit la casse et garde la casse écrite. Une ref qui est
+ * l'abréviation (et ni l'id, ni l'écriture : celles-ci passent d'abord, motCleDeLaRef) montre l'abréviation TELLE QU'ÉCRITE DANS LA BASE, quelle que soit
+ * la casse tapée : « {{cr}} », « {{Cr}} » et « {{CR}} » montrent « CR », « {{am}} » « AM » (choix du leader technique : une abréviation est un sigle ;
+ * R140 écrit « CR » en majuscules ; R183).
  */
-const texteEcrit = (b, m) => b.texte ?? (b.ref !== m.id && b.ref !== m.libelle ? b.ref : null);
+function texteEcrit(b, m) {
+  if (b.texte !== null && b.texte !== undefined) return b.texte;
+  if (b.ref === m.id || b.ref === m.libelle) return null;
+  const cle = normalize(b.ref);
+  if (cle !== m.libelle_cle && typeof m.abreviation === 'string' && cle === normalize(m.abreviation)) return m.abreviation;
+  return b.ref;
+}
 
 /**
  * Le texte simple d'une balise : sans vocabulaire, le texte écrit, sinon la ref ; avec, le texte écrit, sinon le libellé, et pour le mode complet
@@ -361,7 +427,7 @@ export function formesNonCanoniques(texte, vocabulaire, { markdown = false } = {
   for (const b of lireBalises(texte, { markdown })) {
     const m = v?.parId.get(b.ref);
     if (!m) {
-      fautes.push({ balise: b.brut, raison: motCleDeLaRef(v, b.ref) ? 'sa ref est une écriture, pas l’id du mot-clé' : 'elle ne vise aucun mot-clé du vocabulaire' });
+      fautes.push({ balise: b.brut, raison: motCleDeLaRef(v, b.ref) ? 'sa ref est une écriture ou une abréviation, pas l’id du mot-clé' : 'elle ne vise aucun mot-clé du vocabulaire' });
       continue;
     }
     if (b.complet && !markdown) {
@@ -447,19 +513,28 @@ const lire = (t) => decoderHtml(t, { inconnues: true });
  * focus (lien, bouton, résumé, étiquette, liste, [tabindex]) ou dans une bulle, pas de tabindex ; `sansBulle` : dans un bouton, un résumé de `details`
  * ou une bulle, ni bulle ni focus (le gras seul). Rend { html, id } (id : le mot-clé dont la bulle est à poser, ou null).
  */
+/**
+ * Le texte affiché d'une balise, en HTML (décision R63, R183 (9) : « R63 est respectée partout ») : chaque abréviation de monnaie en icône (« {{RO}} »
+ * montre l'icône du Ricken d'or, pas « RO »), et un montant écrit dans la balise se décompose comme dans le texte courant (R183 (12) : « Décomposer
+ * comme ailleurs » ; « {{prix-fixe|1245,5 RO}} » montre « 1 [PP] 245 [RO] 50 [RF] »). Le passage Markdown, lui, garde la balise entière et n'y lit
+ * aucun montant (lib/monnaies.mjs#morceauxDeMonnaie) : la décomposition se fait ici, au rendu. Un texte sans monnaie : échappé, comme avant.
+ */
+const htmlDuTexteDeLaBalise = (texte) => htmlAvecMonnaies(texte);
+
 export function htmlDeLaBalise(b, vocabulaire, { sansFocus = false, sansBulle = false } = {}) {
   const m = motCleDeLaRef(vocabulaire, b.ref);
   if (!m) return { html: echapper(b.texte ?? b.ref), id: null };
   const balise = echapper(b.brut);
   if (b.complet) {
+    // la définition du mode complet : un texte courant du glossaire, ses monnaies en icônes comme dans sa bulle (R63, R183 (9))
     const definition = m.description ? espaces(texteSansBalises(m.description, vocabulaire, { profondeur: 1 })) : '';
     return {
       html: `<span class="mot-cle-definition" data-mot-cle="${m.id}" data-balise="${balise}"><strong class="mot-cle-definition__nom">${echapper(m.libelle)}</strong>`
-        + `${definition ? ` : <span class="mot-cle-definition__texte">${echapper(definition)}</span>` : ''}</span>`,
+        + `${definition ? ` : <span class="mot-cle-definition__texte">${htmlAvecMonnaies(definition)}</span>` : ''}</span>`,
       id: null,
     };
   }
-  const texte = echapper(texteEcrit(b, m) ?? m.libelle);
+  const texte = htmlDuTexteDeLaBalise(texteEcrit(b, m) ?? m.libelle);
   if (!m.description || sansBulle) return { html: `<strong class="mot-cle" data-mot-cle="${m.id}" data-balise="${balise}">${texte}</strong>`, id: null };
   const bulle = idDeBulle(m.id);
   return {
@@ -468,13 +543,52 @@ export function htmlDeLaBalise(b, vocabulaire, { sansFocus = false, sansBulle = 
   };
 }
 
-/** La bulle d'un mot-clé décrit (posée une fois par page, hors de toute zone modifiable) ; '' pour un mot-clé inconnu ou sans définition. */
+/**
+ * Le nom d'un mot-clé en HTML, là où le glossaire le nomme (titre de sa bulle ; pastille et vue de /recherche/) : son libellé, suivi de son abréviation
+ * entre parenthèses quand il en a une (« Armure magique (AM) » : lib/text.mjs#libelleAvecAbreviation, migration 0090 ; réponse du propriétaire du
+ * 2026-11-05 : « Modifiable et affichée ») ; pour une monnaie (son id est celui d'une monnaie du jeu, lib/monnaies.mjs#MONNAIES_DU_JEU : les
+ * mots-clés `rf`, `ro`, `pp`, quelle que soit leur abréviation), le libellé suivi de l'icône de la monnaie (réponse du propriétaire : « Libellé + icône » ; décision R63 : plus
+ * d'abréviation de monnaie visible).
+ */
+export function htmlDuNomDuMotCle({ id, libelle, abreviation }) {
+  const monnaie = abreviationDeLaMonnaie(id);
+  if (monnaie) return `${echapper(libelle)} ${htmlDePiece(monnaie)}`;
+  return echapper(libelleAvecAbreviation(libelle, typeof abreviation === 'string' ? abreviation.trim() : ''));
+}
+
+/**
+ * L'abréviation de la monnaie dont `id` est le mot-clé (« RO » pour `ro`), ou null : un mot-clé de monnaie se reconnaît à son id, figé, celui de sa
+ * monnaie (table `monnaie`, lib/monnaies.mjs#MONNAIES_DU_JEU : rf, ro, pp ; R183), jamais à son abréviation, qui se modifie sur /recherche/.
+ */
+const abreviationDeLaMonnaie = (id) => Object.entries(MONNAIES_DU_JEU).find(([, x]) => x.id === id)?.[0] ?? null;
+
+/**
+ * La pastille d'un mot-clé dans la liste de /recherche/ (le contenu de son lien) : son nom (htmlDuNomDuMotCle, dans `.recherche-nom`, que la vue du
+ * mot-clé reprend), puis le nombre de ses pages visibles après « · » quand une page le porte ou le cite (réponse du propriétaire du 2026-11-05 :
+ * « Armure magique (AM) · 3 » ; sans abréviation, « Feu · 2 »). Le même HTML au build (pages/recherche.astro) et dans l'extension de l'éditeur
+ * (src/scripts/edition/mots-cles.mjs).
+ */
+export const htmlDeLaPastille = ({ id, libelle, abreviation, n }) => `<span class="recherche-nom">${htmlDuNomDuMotCle({ id, libelle, abreviation })}</span>${n > 0 ? ` · ${n}` : ''}`;
+
+/**
+ * La définition d'un mot-clé telle que la vue de /recherche/ la montre : ses monnaies en icônes (décision R63), ses balises gardées telles qu'écrites
+ * (le middleware, ou src/scripts/edition/mots-cles-vivants.mjs sur le site de dev, les rendent ensuite) ; '' sans définition. Rendue au build
+ * (pages/recherche.astro, `[data-definition-de]`) et par l'extension de l'éditeur : le script de la page ne fait que la recopier (choix du
+ * leader-technique, 2026-11-05 : « La définition de la vue d'un mot-clé sur /recherche/ est rendue au build »).
+ */
+export const htmlDeLaDefinition = (description) => htmlAvecMonnaies(description ?? '');
+
+/**
+ * La bulle d'un mot-clé décrit (posée une fois par page, hors de toute zone modifiable) ; '' pour un mot-clé inconnu ou sans définition. Son titre est
+ * son nom (htmlDuNomDuMotCle : « Armure magique (AM) », « Ricken d’or » et son icône) : la balise `{{AM}}` montre « AM », sa bulle dit ce qu'elle abrège.
+ */
 export function htmlDeLaBulle(id, vocabulaire) {
   const m = vocabulaireDesMotsCles(vocabulaire)?.parId.get(id);
   if (!m?.description) return '';
   // la bulle garde les retours à la ligne de la définition (white-space: pre-line, styles/global/infobulles.css)
   const definition = texteSansBalises(m.description, vocabulaire, { profondeur: 1 }).trim();
-  return `<span class="bulle" role="tooltip" id="${idDeBulle(m.id)}" hidden><strong class="bulle__titre">${echapper(m.libelle)}</strong><span class="bulle__texte">${echapper(definition)}</span></span>`;
+  // les monnaies de la définition en icônes, comme dans tout texte courant (décision R63 : « Monnaies : le Ricken de fer (RF)… », migration 0090)
+  return `<span class="bulle" role="tooltip" id="${idDeBulle(m.id)}" hidden><strong class="bulle__titre">${htmlDuNomDuMotCle(m)}</strong><span class="bulle__texte">${htmlAvecMonnaies(definition)}</span></span>`;
 }
 
 /** Les bulles des mots-clés `ids` (dans l'ordre), mises bout à bout. */

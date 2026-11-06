@@ -18,11 +18,12 @@ import { reponseAvecMotsCles } from '../src/middleware.mjs';
 import { analyserEffetDArme } from '../src/lib/arme-champs.mjs';
 import { decouperInventaire } from '../src/lib/classe-champs.mjs';
 import { RENDUS } from '../src/lib/edition-rendu.mjs';
-import { htmlAvecMonnaies, morceauxDeMonnaie } from '../src/lib/monnaies.mjs';
+import { htmlAvecMonnaies, htmlDePiece, MONNAIES_DU_JEU, morceauxDeMonnaie } from '../src/lib/monnaies.mjs';
 import { avecLesValeurs, emplacements } from '../src/lib/monstre-champs.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import {
-  ambiguiteDe, avecLeursBalises, formeCanonique, formesNonCanoniques, htmlAvecMotsCles, htmlDeLaBalise, lireBalises, lireUneBalise, motCleDeLaRef,
+  ambiguiteDe, avecLeursBalises, formeCanonique, formesNonCanoniques, htmlAvecMotsCles, htmlDeLaBalise, htmlDeLaBulle, htmlDeLaDefinition, htmlDeLaPastille,
+  htmlDuNomDuMotCle, lireBalises, lireUneBalise, motCleDeLaRef,
   motsClesCites, pageAvecMotsCles, reciblerLeMotCle, retirerLeMotCle, texteSansBalises, vocabulaireDesMotsCles, zonesDeCode,
 } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
@@ -145,7 +146,7 @@ test('forme canonique (relecture SQL) : formesNonCanoniques suit la règle de fo
 test('ref ambiguë : l’id d’un mot-clé et l’écriture d’un autre — relevée, lue par l’id ; les zones de code d’un Markdown', () => {
   // « X » renommé « Y » (id « x » gardé), puis un mot-clé « X » créé (id « x-2 ») : « {{x}} » est l’id de l’un et l’écriture de l’autre
   const v = vocabulaireDesMotsCles([{ id: 'x', libelle: 'Y' }, { id: 'x-2', libelle: 'X' }]);
-  assert.deepEqual(ambiguiteDe(v, 'x'), { parId: v.parId.get('x'), parEcriture: v.parId.get('x-2') });
+  assert.deepEqual(ambiguiteDe(v, 'x'), { parId: v.parId.get('x'), parEcriture: v.parId.get('x-2'), chemins: ['id', 'ecriture'] });
   assert.equal(ambiguiteDe(v, 'X-2'), null);
   assert.equal(ambiguiteDe(v, 'y'), null);
   assert.deepEqual(formeCanonique('{{x}} {{x-2}}', v), { texte: '{{x|Y}} {{x-2|X}}', inconnues: [], ambigues: ['x'], complets: [] });
@@ -212,6 +213,108 @@ test('une bulle par mot-clé employé et par page, avant </body> (hors de toute 
   const sans = '<html><body><p>Rien à voir {N} {couleur:vert}</p></body></html>';
   assert.equal(pageAvecMotsCles(sans, V), sans);
   assert.equal(htmlDeLaBalise(lireUneBalise('{{perdu:}}'), V).html, 'perdu', 'mode complet d’un mot-clé inconnu : sa ref');
+});
+
+test('décision du propriétaire (2026-11-05, « Modifiable et affichée ») : la bulle d’un mot-clé abrégé a pour titre « Libellé (ABR) » ; sans abréviation, le libellé seul', () => {
+  const vocabulaire = [...VOCABULAIRE, { id: 'armure-magique', libelle: 'Armure magique', description: 'Protège des sorts.', abreviation: 'AM' }];
+  assert.equal(htmlDeLaBulle('armure-magique', vocabulaire),
+    '<span class="bulle" role="tooltip" id="mot-cle-armure-magique" hidden><strong class="bulle__titre">Armure magique (AM)</strong><span class="bulle__texte">Protège des sorts.</span></span>');
+  assert.match(htmlDeLaBulle('non-mort', vocabulaire), /<strong class="bulle__titre">Non-mort<\/strong>/, 'sans abréviation : comme avant');
+  // la balise « {{AM}} » montre l'abréviation écrite ; sa bulle, ce qu'elle abrège
+  const page = pageAvecMotsCles('<html><body><p>{{AM}} et {{armure-magique}}</p></body></html>', vocabulaireDesMotsCles(vocabulaire));
+  assert.match(page, /<strong class="mot-cle" data-mot-cle="armure-magique"[^>]*>AM<\/strong> et <strong class="mot-cle" data-mot-cle="armure-magique"[^>]*>Armure magique<\/strong>/);
+  assert.equal((page.match(/<strong class="bulle__titre">Armure magique \(AM\)<\/strong>/g) ?? []).length, 1, 'une bulle par mot-clé et par page');
+});
+
+test('réponses du propriétaire (2026-11-05) : le nom d’un mot-clé « Libellé (ABR) », une monnaie « Libellé + icône » (R63) ; la pastille de /recherche/ « Armure magique (AM) · 3 »', () => {
+  assert.equal(htmlDuNomDuMotCle({ libelle: 'Armure magique', abreviation: 'AM' }), 'Armure magique (AM)');
+  assert.equal(htmlDuNomDuMotCle({ libelle: 'Feu', abreviation: null }), 'Feu');
+  assert.equal(htmlDuNomDuMotCle({ libelle: 'Feu' }), 'Feu');
+  assert.equal(htmlDuNomDuMotCle({ libelle: 'Nature', abreviation: 'Nat.' }), 'Nature (Nat.)');
+  assert.equal(htmlDuNomDuMotCle({ libelle: 'A & <b>', abreviation: '"x"' }), 'A &amp; &lt;b&gt; (&quot;x&quot;)', 'échappé');
+  // une monnaie (R183 : les mots-clés rf, ro, pp) : son libellé, puis l'icône de lib/monnaies.mjs, jamais « (RO) »
+  for (const [id, libelle, abr] of [['rf', 'Ricken de fer', 'RF'], ['ro', 'Ricken d’or', 'RO'], ['pp', 'Pierre précieuse', 'PP']]) {
+    assert.equal(htmlDuNomDuMotCle({ id, libelle, abreviation: abr }), `${libelle} ${htmlDePiece(abr)}`, abr);
+    assert.doesNotMatch(htmlDuNomDuMotCle({ id, libelle, abreviation: abr }).replace(/<[^>]+>/g, ''), new RegExp(`\\b${abr}\\b`), `${abr} : pas d’abréviation visible`);
+  }
+  assert.equal(htmlDeLaPastille({ libelle: 'Armure magique', abreviation: 'AM', n: 3 }), '<span class="recherche-nom">Armure magique (AM)</span> · 3');
+  assert.equal(htmlDeLaPastille({ libelle: 'Armure magique', abreviation: 'AM', n: 0 }), '<span class="recherche-nom">Armure magique (AM)</span>', 'sans page : pas de nombre');
+  assert.equal(htmlDeLaPastille({ libelle: 'Feu', abreviation: null, n: 2 }), '<span class="recherche-nom">Feu</span> · 2', 'sans abréviation : « Feu · 2 »');
+  assert.equal(htmlDeLaPastille({ id: 'ro', libelle: 'Ricken d’or', abreviation: 'RO', n: 1 }), `<span class="recherche-nom">Ricken d’or ${htmlDePiece('RO')}</span> · 1`);
+  // la bulle : le même nom en titre
+  const bulle = htmlDeLaBulle('ro', [{ id: 'ro', libelle: 'Ricken d’or', abreviation: 'RO', description: '1 RO = 100 RF.' }]);
+  assert.ok(bulle.includes(`<strong class="bulle__titre">Ricken d’or ${htmlDePiece('RO')}</strong>`), bulle);
+  // la définition de la vue : monnaies en icônes, balises gardées (le middleware les rend ensuite)
+  assert.equal(htmlDeLaDefinition('Voir {{non-mort}} : 10 RO.'), htmlAvecMonnaies('Voir {{non-mort}} : 10 RO.'));
+  assert.match(htmlDeLaDefinition('Voir {{non-mort}} : 10 RO.'), /^Voir \{\{non-mort\}\} : <span class="montant"/);
+  assert.equal(htmlDeLaDefinition(null), '');
+});
+
+test('R4 (relecture) : un mot-clé de monnaie se reconnaît à son id, figé, celui de la table `monnaie` — pas à son abréviation, qui se modifie', () => {
+  // l'abréviation changée (« R.O. »), ou vidée : toujours le libellé et l'icône du Ricken d'or, jamais « (R.O.) »
+  for (const abreviation of ['RO', 'R.O.', null, '']) {
+    assert.equal(htmlDuNomDuMotCle({ id: 'ro', libelle: 'Ricken d’or', abreviation }), `Ricken d’or ${htmlDePiece('RO')}`, String(abreviation));
+  }
+  // une abréviation de monnaie sur un autre mot-clé : une abréviation comme une autre
+  assert.equal(htmlDuNomDuMotCle({ id: 'rouge', libelle: 'Rouge', abreviation: 'RO' }), 'Rouge (RO)');
+  // la correspondance : les ids de MONNAIES_DU_JEU sont ceux de la table `monnaie`, et chacun est le mot-clé de sa monnaie (R183), du même nom
+  const db = new DatabaseSync(cheminBase(), { readOnly: true });
+  const monnaies = db.prepare('SELECT id, nom, abreviation FROM monnaie ORDER BY id').all();
+  assert.deepEqual(monnaies.map((m) => [m.id, m.abreviation]), Object.entries(MONNAIES_DU_JEU).map(([abr, m]) => [m.id, abr]).sort());
+  for (const m of monnaies) {
+    const motCle = db.prepare('SELECT libelle FROM mot_cle WHERE id = ?').get(m.id);
+    assert.ok(motCle, `${m.id} : le mot-clé de sa monnaie`);
+    assert.equal(normalize(motCle.libelle), normalize(m.nom), `${m.id} : le nom de sa monnaie`);
+  }
+  db.close();
+});
+
+test('décisions R63, R183 (9) (« R63 est respectée partout ») et R183 (12) (« Décomposer comme ailleurs ») : le texte d’une balise et la définition du mode complet montrent les monnaies en icônes ; un montant écrit dans une balise se décompose', () => {
+  const v = vocabulaireDesMotsCles([
+    ...VOCABULAIRE,
+    { id: 'ro', libelle: 'Ricken d’or', abreviation: 'RO', description: 'Le Ricken d’or (RO). 1 RO = 100 RF.' },
+    { id: 'prix-fixe', libelle: 'Prix fixe', description: 'Un prix qui ne se marchande pas.' },
+  ]);
+  const html = (t) => htmlAvecMotsCles(t, v).html;
+  const visible = (h) => h.replace(/<span class="bulle"[\s\S]*$/, '').replace(/<[^>]+>/g, '');
+  // « {{RO}} » (forme canonique : « {{ro|RO}} ») : l'icône, pas « RO »
+  const ro = html('Payer en {{ro|RO}}.');
+  assert.match(ro, /<strong class="mot-cle" data-mot-cle="ro"[^>]*data-balise="\{\{ro\|RO\}\}"><span class="piece piece--ro"[^>]*><\/span><\/strong>/);
+  assert.doesNotMatch(visible(ro), /\bRO\b/);
+  // le mode complet : « Ricken d’or : » puis la définition, ses monnaies en icônes (comme sa bulle)
+  const complet = html('{{ro:}}');
+  assert.match(complet, /<span class="mot-cle-definition__texte">Le Ricken d’or \(<span class="piece piece--ro"/);
+  assert.doesNotMatch(visible(complet), /\bR[OF]\b/);
+  // un montant écrit dans la balise (R183 (12), « Décomposer comme ailleurs ») : décomposé comme dans le texte courant, « 1 [PP] 245 [RO] 50 [RF] »,
+  // l'écriture d'origine en data-montant ; la balise garde son texte tel qu'écrit (data-balise)
+  const prix = html('{{prix-fixe|1245,5 RO}}');
+  assert.ok(prix.includes(`data-balise="{{prix-fixe|1245,5 RO}}">${htmlAvecMonnaies('1245,5 RO')}</strong>`), prix);
+  assert.deepEqual([...prix.matchAll(/<span class="montant__part">([\d ]+)&#8239;<span class="piece piece--(\w+)"/g)].map((m) => [m[1], m[2]]),
+    [['1', 'pp'], ['245', 'ro'], ['50', 'rf']], '1 PP 245 RO 50 RF');
+  assert.match(prix, /data-montant="1245,5 RO"/);
+  assert.doesNotMatch(visible(prix), /\bRO\b/);
+  // une conversion écrite dans une balise ne se décompose pas, comme ailleurs
+  assert.equal(htmlDeLaBalise(lireUneBalise('{{prix-fixe|1 RO = 100 RF}}'), v, { sansBulle: true }).html,
+    `<strong class="mot-cle" data-mot-cle="prix-fixe" data-balise="{{prix-fixe|1 RO = 100 RF}}">${htmlAvecMonnaies('1 RO = 100 RF')}</strong>`);
+  // dans un attribut de texte ou une <option> : le texte simple, comme le texte courant dans un attribut
+  assert.match(html('<p title="Le {{prix-fixe|1245,5 RO}}">x</p>'), /title="Le 1245,5 RO"/);
+  // sans monnaie : rien ne change
+  assert.equal(html('{{non-mort}} et {{non-mort|non-morts}}').replace(/<span class="bulle"[\s\S]*$/, ''),
+    '<strong class="mot-cle" data-mot-cle="non-mort" data-bulle="mot-cle-non-mort" aria-describedby="mot-cle-non-mort" tabindex="0" data-balise="{{non-mort}}">Non-mort</strong> et '
+    + '<strong class="mot-cle" data-mot-cle="non-mort" data-bulle="mot-cle-non-mort" aria-describedby="mot-cle-non-mort" tabindex="0" data-balise="{{non-mort|non-morts}}">non-morts</strong>');
+  assert.equal(htmlDeLaBalise(lireUneBalise('{{mordhau|l’épée & <la> « garde »}}'), v).html,
+    '<strong class="mot-cle" data-mot-cle="mordhau" data-balise="{{mordhau|l’épée &amp; &lt;la&gt; « garde »}}">l’épée &amp; &lt;la&gt; « garde »</strong>', 'échappé comme avant');
+  assert.match(html('{{glossaire:}}'), /<span class="mot-cle-definition__texte">Voir Non-mort et Recharge longue\.<\/span>/, 'une définition sans monnaie : telle qu’avant');
+});
+
+test('décision R63 : les monnaies d’une définition s’affichent en icônes dans la bulle de son mot-clé, comme dans tout texte courant (« Monnaies », migration 0090)', () => {
+  const vocabulaire = [{ id: 'monnaies', libelle: 'Monnaies', description: 'le Ricken de fer (RF) et le Ricken d’or (RO). 1 RO = 100 RF.' }];
+  const bulle = htmlDeLaBulle('monnaies', vocabulaire);
+  const texte = bulle.match(/<span class="bulle__texte">([\s\S]*)<\/span><\/span>$/)[1];
+  assert.equal(texte, htmlAvecMonnaies('le Ricken de fer (RF) et le Ricken d’or (RO). 1 RO = 100 RF.'));
+  assert.match(texte, /class="piece piece--rf"/);
+  assert.doesNotMatch(texte.replace(/<[^>]+>/g, ''), /(?<![\p{L}\p{N}])R[OF](?![\p{L}\p{N}])/u, 'plus d’abréviation visible');
+  assert.match(htmlDeLaBulle('non-mort', VOCABULAIRE), /<span class="bulle__texte">Une créature revenue de la mort\.<\/span>/, 'sans monnaie : le texte tel quel');
 });
 
 test('HTML : dans une bulle, le gras seul ; dans un élément qui a le focus, sans tabindex ; dans un bouton ou un résumé, sans bulle ; un élément exclu garde ses attributs', () => {
@@ -367,7 +470,7 @@ test('db:check (D1, D2) : toute balise de toutes les colonnes de texte vise un m
   const echapper = (t) => t.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&');
   const attendu = (table, cle, balise, raison) => assert.ok(problemes.some((p) => p.startsWith(`${table} ${cle} : la balise « ${balise} »`) && new RegExp(raison).test(p)),
     `${table} ${balise} : ${problemes.join(' / ')}`);
-  if (cite.libelle !== cite.id) attendu('page.corps_md', page, `{{${cite.libelle}|écrit}}`, 'une écriture, pas l’id');
+  if (cite.libelle !== cite.id) attendu('page.corps_md', page, `{{${cite.libelle}|écrit}}`, 'une écriture ou une abréviation, pas l’id');
   attendu('page.corps_md', page, '{{balise-orpheline-d-essai|texte}}', 'ne vise aucun mot-clé');
   attendu('page.corps_md', page, `{{${cite.id}|y}}`, echapper('« \\| »'));
   attendu('arme.effet', arme, `{{${cite.id}}}`, 'porte le texte de sa balise');
@@ -534,6 +637,6 @@ test('service : une page créée depuis le site ne porte que les mots-clés dont
   const don = s.ok([{ op: 'creer', entite: 'capacite', valeurs: { classe_id: classe, niveau: '1', nom: 'Don du glossaire', type: 'Passif' } }], classe).crees[0].id;
   const tags = (page) => s.db.prepare('SELECT m.libelle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE t.page_id = ? ORDER BY t.ordre').all(page).map((m) => m.libelle);
   assert.deepEqual(tags(don), ['capacité de classe']);
-  assert.deepEqual(tags(classe).sort(), ['classe', 'magique']);
+  assert.deepEqual(tags(classe).sort(), ['Classe', 'magique'], 'le libellé « Classe » (R183 (8))');
   assert.deepEqual(s.db.prepare('SELECT id FROM mot_cle ORDER BY id').all().map((m) => m.id), avant);
 });

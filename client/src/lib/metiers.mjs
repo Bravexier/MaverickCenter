@@ -5,7 +5,7 @@
 // mène à sa ligne : /metiers/#metier-forgeron. « Règles des métiers », du même type mais sans ligne dans `metier`, garde sa page.
 // Sans dépendance (sauf lib/livres.mjs et lib/equipement.mjs, purs eux aussi) : importé par wikilinks.mjs (au démarrage d'Astro), par wiki.ts et par les tests ; `chargerMetiers` reçoit la base ouverte par lib/donnees.mjs.
 import { ADRESSES_DES_PAGES_SERVIES } from './equipement.mjs';
-import { ACCUEIL_DU_GUIDE, ADRESSES_DU_PLAN_PRECEDENT, adresseDeLaPageAbsorbee, adresseDuGuide, PAGES_ABSORBEES } from './livres.mjs';
+import { ACCUEIL_DU_GUIDE, ADRESSES_DU_PLAN_PRECEDENT, adresseDeLaPageAbsorbee, adresseDuGuide, PAGES_ABSORBEES, PAGES_RETIREES } from './livres.mjs';
 
 /** La seule page du type `metiers` qui n'est pas un métier (test/metiers.test.mjs vérifie que les autres sont exactement les lignes de `metier`). */
 export const PAGE_DES_REGLES = 'metiers/regles-des-metiers';
@@ -57,7 +57,9 @@ export const estServieASonId = (id) => !pageSansAdresse(id) && cheminDePage(id) 
  *   - avant l'éclatement du guide (2026-10-18) : { 'guide/': <adresse de Découvrir>, 'guide/<slug>/': cheminDePage(id)… } ;
  *   - une page fusionnée dans une autre (lib/livres.mjs#PAGES_ABSORBEES) : 'guide/<slug>/' et 'decouvrir/<slug>/' (son adresse du plan précédent) → la
  *     page qui l'absorbe, à l'ancre où se lit son contenu (lib/livres.mjs#adresseDeLaPageAbsorbee ; l'ancre de l'ancienne adresse l'emporte), si elle est chargée ;
- *   - une autre adresse du plan précédent (lib/livres.mjs#ADRESSES_DU_PLAN_PRECEDENT) → la page qui y était, si elle est chargée.
+ *   - une autre adresse du plan précédent (lib/livres.mjs#ADRESSES_DU_PLAN_PRECEDENT) → la page qui y était, si elle est chargée ;
+ *   - une page retirée dont le contenu se lit ailleurs (lib/livres.mjs#PAGES_RETIREES : le Lexique, devenu des mots-clés) : chacune de ses anciennes
+ *     adresses → sa destination (/recherche/), tant que la page n'est pas chargée (verifierLePlan arrête le build sinon).
  * Lus par la page 404 (pages/404.astro les écrit au build, lib/nav.mjs#nouvelleAdresse les reçoit : nav.mjs n'importe rien), qui garde requête et ancre.
  */
 export function renvoisDuGuide(ids) {
@@ -71,6 +73,10 @@ export function renvoisDuGuide(ids) {
     renvois[`decouvrir/${slug}/`] = adresseDeLaPageAbsorbee(ancienne, cheminDePage);
   }
   for (const [adresse, id] of Object.entries(ADRESSES_DU_PLAN_PRECEDENT)) if (charges.has(id) && cheminDePage(id) !== adresse) renvois[adresse] = cheminDePage(id);
+  for (const [retiree, { vers, adresses }] of Object.entries(PAGES_RETIREES)) {
+    if (charges.has(retiree)) continue;
+    for (const adresse of adresses) renvois[adresse] = vers;
+  }
   return renvois;
 }
 

@@ -14,6 +14,8 @@ import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { cleDeLigne, lireAttributEd } from '../src/lib/edition-modele.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { htmlDeLaPastille } from '../src/lib/mots-cles-balises.mjs';
+import { htmlDePiece } from '../src/lib/monnaies.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { attendre, cliquer, el, Element, fauxDocument } from './aide-faux-dom.mjs';
 
@@ -32,10 +34,11 @@ let numero = 0;
  * La page /recherche/ (la liste construite : un mot-clé), un faux éditeur, et l'extension chargée à neuf. `service` : les appels vont au vrai service
  * (sinon, un faux qui connaît VIVANT).
  */
-async function monter({ confirmations = [], service = null } = {}) {
+async function monter({ confirmations = [], service = null, vocabulaire = VIVANT } = {}) {
   const liste = el('ul', { id: 'liste-mots-cles', class: 'tags' },
     el('li', { 'data-id': 'aide', 'data-cle': 'aide', 'data-n': '3', 'data-libelle': 'aide' }, el('a', { href: '/recherche/?mot-cle=aide' })));
-  const document = fauxDocument(el('div', { 'data-recherche': '', 'data-lien-mot-cle': '/recherche/?mot-cle=' }, el('section', { id: 'mots-cles' }, liste)));
+  const document = fauxDocument(el('div', { 'data-recherche': '', 'data-lien-mot-cle': '/recherche/?mot-cle=' }, el('section', { id: 'mots-cles' }, liste),
+    el('div', { id: 'definitions-des-mots-cles', hidden: '' })));
   const evenements = [];
   document.addEventListener('recherche:mots-cles', (e) => evenements.push(e.detail));
   const questions = [];
@@ -53,7 +56,7 @@ async function monter({ confirmations = [], service = null } = {}) {
       return confirmations.length ? confirmations.shift() : true;
     },
   });
-  let vivant = VIVANT.map((m) => ({ ...m }));
+  let vivant = vocabulaire.map((m) => ({ ...m }));
   const appels = [];
   const formulaires = [];
   const editeurs = new Map();
@@ -94,7 +97,10 @@ async function monter({ confirmations = [], service = null } = {}) {
   };
   const { motsCles } = await import(`../src/scripts/edition/mots-cles.mjs?page=${(numero += 1)}`);
   const saisieDe = (id, colonne) => [...editeurs].find(([c, e]) => c.closest('li').dataset.id === id && e.info.colonne === colonne)?.[1];
-  return { motsCles, ed, document, liste, evenements, questions, appels, formulaires, editeurs, saisie: (id) => saisieDe(id, 'libelle'), definition: (id) => saisieDe(id, 'description') };
+  return {
+    motsCles, ed, document, liste, evenements, questions, appels, formulaires, editeurs, saisie: (id) => saisieDe(id, 'libelle'), definition: (id) => saisieDe(id, 'description'),
+    abreviation: (id) => saisieDe(id, 'abreviation'),
+  };
 }
 
 const ligne = (liste, id) => liste.querySelector(`li[data-id="${id}"]`);
@@ -108,7 +114,7 @@ test('au chargement : la liste relue dans la base vivante (nombre de pages, ordr
   const feu = ligne(p.liste, 'feu');
   assert.deepEqual([feu.dataset.cle, feu.dataset.n, feu.dataset.libelle], ['feu', '2', 'Feu']);
   assert.equal(feu.children[0].href, '/recherche/?mot-cle=feu');
-  assert.equal(feu.children[0].textContent, 'Feu (2)');
+  assert.equal(feu.children[0].textContent, 'Feu · 2', '« Libellé · n » (réponse du propriétaire du 2026-11-05)');
   // le glossaire : la définition dans la ligne, et l'infobulle de la pastille (sa bulle : mots-cles-vivants.mjs) ; un mot-clé sans définition n'en a pas
   assert.equal(feu.dataset.definition, 'Ce qui brûle.');
   assert.equal(feu.children[0].dataset.bulle, 'mot-cle-feu');
@@ -139,13 +145,13 @@ test('au crayon : la liste de gestion ; un mot-clé protégé n’a ni saisie ni
   assert.equal(magique.querySelector('.ed-mot-cle__nom').hasAttribute('data-ed'), false, 'protégé : pas de saisie du libellé');
   assert.ok(p.definition('magique'), 'protégé : sa définition se modifie');
   assert.equal(magique.querySelector('button'), null, 'protégé : pas de bouton');
-  assert.equal(magique.querySelector('.ed-mot-cle__protege').textContent, 'Protégé : il range les classes dans la colonne « Magiques » de /classes/ (sa définition se modifie).');
+  assert.equal(magique.querySelector('.ed-mot-cle__protege').textContent, 'Protégé : il range les classes dans la colonne « Magiques » de /classes/ (sa définition et son abréviation se modifient).');
   // création immédiate, à sa place dans la liste
   const ajouter = p.document.querySelector('.ed-outils-mots-cles').querySelector('button');
   assert.equal(ajouter.textContent, '+ Ajouter un mot-clé');
   cliquer(ajouter);
   assert.doesNotMatch(p.formulaires[0].aide, /événement/, 'un mot-clé ne se pose plus sur un événement');
-  assert.deepEqual(p.formulaires[0].champs.map((c) => c.nom), ['libelle', 'description'], 'créé avec sa définition');
+  assert.deepEqual(p.formulaires[0].champs.map((c) => c.nom), ['libelle', 'description', 'abreviation'], 'créé avec sa définition et son abréviation (migration 0090)');
   await p.formulaires[0].valider({ libelle: 'Bestiaire', description: '' });
   assert.deepEqual(p.appels.at(-1), ['POST', 'edition/', { page: 'recherche/', operations: [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: 'Bestiaire', description: '' } }] }]);
   assert.deepEqual(p.liste.children.map((li) => li.dataset.id), ['aide', 'bestiaire', 'feu', 'guide', 'magique', 'peuple']);
@@ -199,7 +205,7 @@ test('suppression et fusion en file, confirmées une fois avec ce qu’elles ret
   await attendre();
   assert.ok(!p.liste.hasAttribute('data-gestion'));
   assert.deepEqual(p.liste.children.map((li) => li.dataset.id), ['aide', 'feu', 'guide', 'magique', 'peuple']);
-  assert.equal(p.liste.children[0].children[0].textContent, 'aide (3)', 'la liste de lecture');
+  assert.equal(p.liste.children[0].children[0].textContent, 'aide · 3', 'la liste de lecture');
   assert.equal(p.document.querySelector('.ed-outils-mots-cles'), null);
   assert.deepEqual(p.motsCles.operations(p.ed, []), [], 'plus rien en file');
 });
@@ -249,12 +255,13 @@ async function surLeService(noms, options = {}) {
   p.motsCles.debut(p.ed);
   await attendre();
   assert.ok(p.liste.hasAttribute('data-gestion'));
-  /** Comme editeur.mjs#enregistrer : verifier, puis les opérations des saisies changées passées par l'extension, puis l'envoi. */
+  /** Comme editeur.mjs#enregistrer : verifier, puis les opérations des saisies changées (avant : la valeur de la ligne, NULL compris, comme
+   * editeur.mjs#operationsDesChamps) passées par l'extension, puis l'envoi. */
   const enregistrer = async () => {
     const probleme = p.motsCles.verifier(p.ed, p.editeurs);
     if (probleme) return { probleme };
     const champs = [...p.editeurs.values()].filter((e) => e.controle.value !== e.original)
-      .map((e) => ({ op: 'modifier', table: e.info.table, cle: e.info.cle, valeurs: { [e.info.colonne]: e.controle.value }, avant: { [e.info.colonne]: e.original } }));
+      .map((e) => ({ op: 'modifier', table: e.info.table, cle: e.info.cle, valeurs: { [e.info.colonne]: e.controle.value }, avant: { [e.info.colonne]: e.ligne[e.info.colonne] ?? null } }));
     const operations = p.motsCles.operations(p.ed, champs, p.editeurs);
     try {
       return { operations, reponse: await p.ed.appel('POST', 'edition/', { page: 'recherche/', operations }) };
@@ -358,4 +365,74 @@ test('service : un mot-clé qui reçoit une fusion n’est pas supprimé dans le
   assert.deepEqual(r.operations, [{ op: 'fusionner_mots_cles', mot_cle: A.id, dans: X.id }]);
   assert.equal(s.motCle(A.id), null);
   assert.deepEqual(s.motCle(X.id), { id: X.id, libelle: X.libelle });
+});
+
+test('décision du propriétaire (2026-11-05, « Modifiable et affichée ») : l’abréviation après le libellé dans la pastille, en data-abreviation ; au crayon, saisie commune pour tous, protégés compris', async () => {
+  const abreges = [...VIVANT.slice(0, 3), { ...v('magique', 'Magique', 12, 'range les classes dans la colonne « Magiques » de /classes/'), abreviation: 'Mag.' },
+    { ...v('armure-magique', 'Armure magique', 0, null, 'Protège des sorts.'), abreviation: 'AM' }, { ...v('ro', 'Ricken d’or', 0, null, '1 RO = 100 RF.'), abreviation: 'RO' }];
+  const p = await monter({ vocabulaire: abreges });
+  await p.motsCles.surcouche(p.ed, []);
+  const am = ligne(p.liste, 'armure-magique');
+  // le même HTML que la page construite (lib/mots-cles-balises.mjs#htmlDeLaPastille)
+  assert.equal(am.children[0].innerHTML, htmlDeLaPastille({ libelle: 'Armure magique', abreviation: 'AM', n: 0 }));
+  assert.equal(am.children[0].textContent, 'Armure magique (AM)');
+  assert.equal(ligne(p.liste, 'magique').children[0].textContent, 'Magique (Mag.) · 12', '« Armure magique (AM) · 3 » (réponse du propriétaire du 2026-11-05)');
+  assert.equal(ligne(p.liste, 'feu').children[0].textContent, 'Feu · 2', 'sans abréviation : « Libellé · n »');
+  // une monnaie : « Libellé + icône » (réponse du propriétaire : R63), jamais « (RO) »
+  const ro = ligne(p.liste, 'ro').children[0];
+  assert.equal(ro.querySelector('.recherche-nom').textContent, 'Ricken d’or ', 'le libellé, puis l’icône (sans texte)');
+  const piece = el('div');
+  piece.innerHTML = htmlDePiece('RO'); // relu comme le navigateur (les entités réécrites)
+  assert.equal(ro.querySelector('.recherche-nom .piece').outerHTML, piece.innerHTML, 'l’icône de lib/monnaies.mjs');
+  // les définitions rendues que recopie la vue d'un mot-clé : refaites d'après la base vivante, monnaies en icônes, balises gardées (mots-cles-vivants.mjs)
+  const definitions = p.document.getElementById('definitions-des-mots-cles');
+  assert.deepEqual(definitions.children.map((d) => d.dataset.definitionDe), ['feu', 'armure-magique', 'ro'], 'les mots-clés décrits');
+  assert.ok(definitions.children.at(-1).querySelector('.piece.piece--ro') && definitions.children.at(-1).querySelector('.piece.piece--rf'), 'les monnaies en icônes (R63)');
+  assert.doesNotMatch(definitions.children.at(-1).textContent, /R[OF]/, 'plus d’abréviation visible');
+  assert.equal(definitions.children[1].innerHTML, 'Protège des sorts.');
+  assert.equal(am.dataset.abreviation, 'AM', 'la page la lit (recherche par l’abréviation)');
+  assert.equal(ligne(p.liste, 'feu').dataset.abreviation, undefined);
+  p.ed.enEdition = true;
+  p.motsCles.debut(p.ed);
+  await attendre();
+  const gestion = ligne(p.liste, 'armure-magique');
+  assert.deepEqual(lireAttributEd(gestion.querySelector('.ed-mot-cle__abreviation').dataset.ed), lireAttributEd(JSON.stringify(['mot_cle', { id: 'armure-magique' }, 'abreviation'])));
+  assert.deepEqual([...gestion.children].map((c) => c.className).slice(0, 3), ['ed-mot-cle__balise', 'ed-mot-cle__nom', 'ed-mot-cle__abreviation'], 'à côté du libellé');
+  assert.equal(p.abreviation('armure-magique').controle.value, 'AM', 'la saisie part de la base vivante');
+  assert.equal(p.abreviation('feu').controle.value, '', 'sans abréviation : vide');
+  assert.equal(p.abreviation('magique').controle.value, 'Mag.', 'protégé : son abréviation se modifie');
+  assert.match(gestion.querySelector('.ed-mot-cle__balise').title, /« \{\{AM\}\} » pour son abréviation/);
+  assert.equal(p.ed.lignes.get(cleDeLigne('mot_cle', { id: 'feu' })).abreviation, null, 'NULL tel qu’enregistré');
+});
+
+test('service : l’abréviation modifiée sur /recherche/ est enregistrée, vidée elle redevient NULL ; celle d’un autre mot-clé est refusée (409) avec le message du service', async () => {
+  const s = await surLeService({ A: 'Essai abrégé', B: 'Essai voisin' });
+  const { A, B } = s.mots;
+  const avec = async (id, valeur) => {
+    s.abreviation(id).controle.value = valeur;
+    const r = await s.enregistrer();
+    s.abreviation(id).controle.value = s.abreviation(id).original;
+    return r;
+  };
+  const abreviation = (id) => s.db.prepare('SELECT abreviation FROM mot_cle WHERE id = ?').get(id).abreviation;
+  let r = await avec(A.id, 'ZQX');
+  assert.equal(r.refus, undefined, r.refus?.message);
+  assert.equal(abreviation(A.id), 'ZQX');
+  // relu comme après un enregistrement (fin puis crayon) : la saisie part de la nouvelle valeur
+  s.ed.enEdition = false;
+  s.motsCles.fin(s.ed);
+  await attendre();
+  assert.equal(ligne(s.liste, A.id).children[0].textContent, `${A.libelle} (ZQX)`, 'la pastille relue montre l’abréviation (aucune page : pas de « · n »)');
+  s.editeurs.clear(); // comme l'éditeur en sortant du mode modification : les saisies d'avant sont démontées
+  s.ed.enEdition = true;
+  s.motsCles.debut(s.ed);
+  await attendre();
+  r = await avec(B.id, 'zqx');
+  assert.equal(r.refus?.statut, 409, 'l’abréviation d’un autre mot-clé');
+  assert.equal(r.refus.corps.champ, 'abreviation');
+  assert.equal(r.refus.corps.mot_cle, A.id);
+  assert.equal(abreviation(B.id), null, 'rien n’est écrit');
+  r = await avec(A.id, '');
+  assert.equal(r.refus, undefined, r.refus?.message);
+  assert.equal(abreviation(A.id), null, 'vidée : NULL');
 });
