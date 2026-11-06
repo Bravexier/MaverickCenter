@@ -242,8 +242,9 @@ test('les personnages fil rouge : des choix permis par la base, et des attributs
 });
 
 test('décision R17 : l’exemple 2 des dégâts donne 18', () => {
-  // le texte tel que l'import l'a écrit (corrigé selon les décisions) : le site de dev, source des données qu'il modifie, peut le réécrire depuis
-  const corps = (id) => historique.valeurDImport('page', { id }, 'corps_md', pagesDuGuide.find((p) => p.id === id).body);
+  // le texte tel que l'import l'a écrit (corrigé selon les décisions) : le site de dev, source des données qu'il modifie, peut le réécrire depuis, ou
+  // supprimer la page (« Formule des dégâts », le 2026-11-06 : la formule est dans « Les dégâts ») ; sa valeur d'import est alors celle de sa suppression
+  const corps = (id) => historique.valeurDImport('page', { id }, 'corps_md', pagesDuGuide.find((p) => p.id === id)?.body);
   assert.match(corps('guide/formule-des-degats'), /total de 18\.5 dégâts[\s\S]*donc 18 dégâts[\s\S]*J'ai pris 18 points de dégâts/);
   assert.doesNotMatch(corps('guide/formule-des-degats'), /16\.5/);
   assert.match(corps('guide/les-degats'), /37 ÷ 2 = 18,5, arrondi à \*\*18 dégâts\*\*/);
@@ -297,10 +298,22 @@ test('décisions R18 et R186 : à court de chakra, chaque point qui manque coût
   }
 });
 
-test('décision R186, invariant du texte courant : dans les pages du guide, chaque exemple « les N qui manquent lui coûtent M points de santé » compte 3 santé par chakra', () => {
-  const exemples = pagesDuGuide.flatMap((p) => [...p.body.matchAll(/les (\d+) qui manquent lui coûtent (\d+) points de santé/g)].map((m) => [p.id, Number(m[1]), Number(m[2])]));
-  assert.ok(exemples.length >= 3, 'les exemples de La magie en jeu et du Mode Hyper 100 %');
+test('décision R186 : dans les pages du guide que le site de dev n’a pas réécrites depuis la 0093, chaque exemple « les N qui manquent lui coûtent M points de santé » compte 3 santé par chakra', () => {
+  // Le texte d'une page est modifiable sur le site de dev, source de ce qu'il modifie (le 2026-11-06, le propriétaire a retiré de « La magie en jeu »,
+  // « voulu », l'exemple 10 santé, 2 chakra, 3 barrière) : le test ne fige pas le texte courant d'une page réécrite par le site. La règle elle-même
+  // (3 santé par chakra manquant, prix qui ignore la barrière, l'exemple du propriétaire) est épinglée dans le moteur : test/fiche-mode-hyper.test.mjs
+  // (SANTE_PAR_CHAKRA_MANQUANT, payerDuChakra) ; le texte laissé par la 0093, par le test précédent.
+  const EXEMPLE = /les (\d+) qui manquent lui coûtent (\d+) points de santé/g;
+  const reecriteDepuis0093 = (id) => historique.entrees.some((e) => !LOTS_AVANT_0093.has(e.lot) && e.table === 'page' && e.texte === JSON.stringify(cleDeLigne(db, 'page', { id })));
+  const intactes = pagesDuGuide.filter((p) => !reecriteDepuis0093(p.id));
+  const exemples = intactes.flatMap((p) => [...p.body.matchAll(EXEMPLE)].map((m) => [p.id, Number(m[1]), Number(m[2])]));
   for (const [id, manque, sante] of exemples) assert.equal(sante, 3 * manque, `${id} : ${manque} chakra manquants`);
+  // les pages qui portaient des exemples après la 0093 les gardent tous, tant que le site ne les a pas réécrites
+  for (const id of ['guide/la-magie-en-jeu', 'guide/le-mode-hyper-100']) {
+    const a0093 = [...valeurDe0093('page', { id }, 'corps_md').matchAll(EXEMPLE)].length;
+    assert.ok(a0093 >= 1, `${id} : des exemples après la 0093`);
+    if (!reecriteDepuis0093(id)) assert.equal(exemples.filter(([p]) => p === id).length, a0093, `${id} : un exemple perdu sans édition du site`);
+  }
 });
 
 test('décision R149 (G40) : les deux pages du guide et le mot-clé « Maîtrise d’arme » écrivent le plafond de maîtrise d’arme, 4 points, donc 5 dés, sans plus de « et ainsi de suite »', () => {

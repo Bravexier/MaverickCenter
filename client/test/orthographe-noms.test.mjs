@@ -68,8 +68,9 @@ test('clés de nom : recalculées (normalize du nom corrigé), identifiants inch
     const l = ligne(c.table, c.cle);
     assert.ok(l, `${c.table} ${JSON.stringify(c.cle)} : identifiant disparu`);
     const source = c.col.slice(0, -'_cle'.length);
-    assert.equal(l[c.col], c.apres);
-    assert.equal(normalize(l[source]), c.apres, `${c.table} ${JSON.stringify(c.cle)} : clé désaccordée de « ${l[source]} »`);
+    // la clé suit le nom courant ; la valeur du registre, tant que le site de dev n'a renommé ni le nom ni sa clé (il est la source de ce qu'il modifie)
+    assert.equal(normalize(l[source]), l[c.col], `${c.table} ${JSON.stringify(c.cle)} : clé désaccordée de « ${l[source]} »`);
+    if (!historique.modifiee(c.table, c.cle, source) && !historique.modifiee(c.table, c.cle, c.col)) assert.equal(l[c.col], c.apres);
     assert.notEqual(c.avant, c.apres);
     // l'identifiant d'une table qui le dérivait du nom garde la clé d'origine
     if (IDS_GELES[c.table] && c.col === 'nom_cle') assert.ok(c.cle.id.includes(`${IDS_GELES[c.table]}${c.avant}`), `${c.cle.id} : l'id ne garde pas la clé d'origine « ${c.avant} »`);
