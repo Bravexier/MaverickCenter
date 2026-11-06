@@ -203,11 +203,15 @@ export const adresseDeLaPageAbsorbee = (ancienne, cheminDe) => {
  *     alias ; les ids des postures gardent son préfixe, guide/postures#posture:…, identifiants figés), « Les boss et leurs postures » (son texte est
  *     dans guide/les-postures, ## Les boss), « Le Mode Super » ;
  *   - R187 (1), migration 0095 (même jour : « Supprime la liste ») : la « Liste des effets mode hyper », doublon de guide/le-mode-hyper, qui porte
- *     maintenant le tableau des effets des magies et des races (bloc mode-hyper, lib/guide.mjs#BLOCS).
+ *     maintenant le tableau des effets des magies et des races (bloc mode-hyper, lib/guide.mjs#BLOCS) ;
+ *   - migration 0096 (même jour : « L'onglet suivant est à retirer …/regles/alterations-d-etats-et-mode-hyper/ ») : « Altérations d'états et Mode
+ *     Hyper », un aiguillage vers deux classeurs, doublon de guide/alterations-d-etats, guide/liste-des-alterations-d-etat et guide/le-mode-hyper, que
+ *     ses cinq liens visent maintenant.
  */
 export const PAGES_SUPPRIMEES = Object.freeze([
   'guide/les-documents-des-regles', 'guide/en-resume-deroulement-d-un-tour', 'guide/aide-memoire', 'guide/mode-hyper-magie',
   'guide/postures', 'guide/les-boss-et-leurs-postures', 'guide/le-mode-super', 'guide/liste-des-effets-mode-hyper',
+  'guide/alterations-d-etats-et-mode-hyper',
 ]);
 
 /**
@@ -252,11 +256,12 @@ export function adresseDuGuide(id) {
  * Les pages qui étaient dans les Règles avancées (/regles/avancees/<slug>/, du 2026-11-05 à R184), sauf les pages supprimées (PAGES_SUPPRIMEES : la
  * page 404) : liste figée, relevée au commit 92a123d (les 19 pages nommées par l'ancien plan, les 14 pages « Fiche de personnage : … », et les pages
  * qu'il ne nommait pas). Chacune mène à sa page, ou à celle qui l'absorbe (ADRESSES_DU_PLAN_PRECEDENT) ; « Les situations avancées », éclatée, à la page
- * de son ancre (PAGES_ECLATEES_DU_GUIDE). « Postures », supprimée le 2026-11-06 (migration 0094), et la « Liste des effets
- * mode hyper », supprimée le même jour (R187, migration 0095), en sont sorties comme « Mode Hyper (Magie) ».
+ * de son ancre (PAGES_ECLATEES_DU_GUIDE). « Postures », supprimée le 2026-11-06 (migration 0094), la « Liste des effets
+ * mode hyper », supprimée le même jour (R187, migration 0095), et « Altérations d'états et Mode Hyper », supprimée le même jour (migration 0096), en
+ * sont sorties comme « Mode Hyper (Magie) » : leur ancienne adresse mène à la page 404 (R185 (6)).
  */
 const ANCIENNES_REGLES_AVANCEES = Object.freeze([
-  'actions-et-mouvements', 'alignement', 'alterations-d-etats-et-mode-hyper', 'attaque-et-defense', 'distance-et-voyage', 'donjon-pas-bon',
+  'actions-et-mouvements', 'alignement', 'attaque-et-defense', 'distance-et-voyage', 'donjon-pas-bon',
   'fiche-accessoires-et-ceinture', 'fiche-armure-defense-bouclier', 'fiche-attributs', 'fiche-capacites-dons', 'fiche-caracteristiques', 'fiche-classe',
   'fiche-competences', 'fiche-experience-niveau-global', 'fiche-inventaire-sac-a-dos', 'fiche-maitrise-darme-et-armes', 'fiche-personnage',
   'fiche-tableau-magie', 'fiche-tableau-posture', 'fiche-tableau-resistances-faiblesses', 'formule-des-degats', 'jet-de-des', 'le-mode-hyper',

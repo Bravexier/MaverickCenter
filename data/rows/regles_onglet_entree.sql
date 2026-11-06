@@ -3,7 +3,6 @@ INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse
 INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/actions-et-mouvements', 'combats', 9, 'guide/actions-et-mouvements', NULL, NULL);
 INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/alignement', 'fiche-de-personnage', 22, 'guide/alignement', NULL, NULL);
 INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/alterations-d-etats', 'mecaniques-generales', 7, 'guide/alterations-d-etats', NULL, NULL);
-INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/alterations-d-etats-et-mode-hyper', 'mecaniques-generales', 9, 'guide/alterations-d-etats-et-mode-hyper', NULL, NULL);
 INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/attaque-et-defense', 'combats', 4, 'guide/attaque-et-defense', NULL, NULL);
 INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/attaquer-et-se-defendre', 'combats', 3, 'guide/attaquer-et-se-defendre', NULL, NULL);
 INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/blessures-et-etats', 'combats', 19, 'guide/blessures-et-etats', NULL, NULL);
@@ -51,7 +50,7 @@ INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse
 INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/les-postures', 'combats', 15, 'guide/les-postures', NULL, NULL);
 INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/liste-des-alterations-d-etat', 'mecaniques-generales', 8, 'guide/liste-des-alterations-d-etat', NULL, NULL);
 INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/liste-des-effets-mode-super', 'combats', 18, 'guide/liste-des-effets-mode-super', NULL, NULL);
-INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/meteo', 'mecaniques-generales', 10, 'guide/meteo', NULL, NULL);
+INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/meteo', 'mecaniques-generales', 9, 'guide/meteo', NULL, NULL);
 INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/mordhau-ou-demi-epee', 'exploration', 5, 'guide/mordhau-ou-demi-epee', NULL, NULL);
 INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/premiers-sorts', 'fiche-de-personnage', 20, 'guide/premiers-sorts', NULL, NULL);
 INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/prise-en-tenaille-et-zone-d-influence', 'combats', 11, 'guide/prise-en-tenaille-et-zone-d-influence', NULL, NULL);

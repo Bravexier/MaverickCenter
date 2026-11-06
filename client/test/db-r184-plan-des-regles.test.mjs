@@ -41,8 +41,9 @@ const PLAN = {
 };
 // Trois pages des combats retirées depuis (2026-11-06, migration 0094, demande du propriétaire : « Postures », « Les boss et leurs postures »,
 // « Mode Super ») : le plan et les pages nouvelles de la migration 0091 se lisent sans elles (db-retrait-pages-doublons-des-combats.test.mjs) ;
-// de même la « Liste des effets mode hyper » (2026-11-06, migration 0095 : db-retrait-liste-des-effets-mode-hyper.test.mjs)
-const RETIREES_DEPUIS = g(['postures', 'les-boss-et-leurs-postures', 'le-mode-super', 'liste-des-effets-mode-hyper']);
+// de même la « Liste des effets mode hyper » (2026-11-06, migration 0095 : db-retrait-liste-des-effets-mode-hyper.test.mjs) et « Altérations d'états
+// et Mode Hyper » (2026-11-06, migration 0096 : db-retrait-alterations-d-etats-et-mode-hyper.test.mjs)
+const RETIREES_DEPUIS = g(['postures', 'les-boss-et-leurs-postures', 'le-mode-super', 'liste-des-effets-mode-hyper', 'alterations-d-etats-et-mode-hyper']);
 const sansLesRetireesDepuis = (ids) => ids.filter((id) => !RETIREES_DEPUIS.includes(id));
 const RETIREES = g(['les-documents-des-regles', 'en-resume-deroulement-d-un-tour', 'mode-hyper-magie', 'aide-memoire', 'resistance-faiblesse-magie',
   'situations-avancees']);

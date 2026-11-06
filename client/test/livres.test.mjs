@@ -155,10 +155,11 @@ test('les pages fusionnées dans une autre : Le jeu de rôle dans Bienvenue, Ré
 const aPourSegment = (adresse, slug) => adresse.split(/[/?#]/).includes(slug);
 
 test('R184 (9) : les pages supprimées ne sont ni dans la base, ni dans le plan, ni dans aucun renvoi (page 404, R185 (6))', () => {
-  // R184 (9) ; puis, le 2026-11-06, les trois pages retirées par la migration 0094 et la « Liste des effets mode hyper » (R187 (1), migration 0095)
-  // (tests « 0094 » et « R187 » plus bas)
+  // R184 (9) ; puis, le 2026-11-06, les trois pages retirées par la migration 0094, la « Liste des effets mode hyper » (R187 (1), migration 0095) et
+  // « Altérations d'états et Mode Hyper » (migration 0096) (tests « 0094 », « R187 » et « 0096 » plus bas)
   assert.deepEqual(PAGES_SUPPRIMEES, ['guide/les-documents-des-regles', 'guide/en-resume-deroulement-d-un-tour', 'guide/aide-memoire', 'guide/mode-hyper-magie',
-    'guide/postures', 'guide/les-boss-et-leurs-postures', 'guide/le-mode-super', 'guide/liste-des-effets-mode-hyper']);
+    'guide/postures', 'guide/les-boss-et-leurs-postures', 'guide/le-mode-super', 'guide/liste-des-effets-mode-hyper',
+    'guide/alterations-d-etats-et-mode-hyper']);
   const renvois = renvoisDuGuide(ids);
   const eclatees = { ...RENVOIS_DES_PAGES_ECLATEES, ...PAGES_ECLATEES_DU_GUIDE };
   for (const id of PAGES_SUPPRIMEES) {
@@ -472,6 +473,26 @@ test('R187 (1) : la « Liste des effets mode hyper » supprimée sans renvoi ; �
   assert.ok(Guide.morceauxDuChapitre(db.prepare("SELECT corps_md FROM page WHERE id = 'guide/le-mode-hyper'").get().corps_md).some((m) => m.bloc === 'mode-hyper'));
 });
 
+// Migration 0096, demande du propriétaire du 2026-11-06 : « L'onglet suivant est à retirer https://dev.maverick-jdr.com/regles/alterations-d-etats-et-mode-hyper/ ».
+// Convention R185 (6) (« Page 404 ») : PAGES_SUPPRIMEES, sans renvoi ; les pages dont elle était le doublon restent.
+test('0096 (2026-11-06) : « Altérations d’états et Mode Hyper » supprimée sans renvoi ; les pages des altérations et du Mode Hyper restent', () => {
+  const id = 'guide/alterations-d-etats-et-mode-hyper';
+  assert.ok(PAGES_SUPPRIMEES.includes(id), 'dans PAGES_SUPPRIMEES (son id reste réservé, serveur/edition-plan.mjs#idPris)');
+  assert.ok(!ids.includes(id), 'plus dans la base');
+  for (const adresse of ['/regles/alterations-d-etats-et-mode-hyper/', '/guide/alterations-d-etats-et-mode-hyper/',
+    '/regles/avancees/alterations-d-etats-et-mode-hyper/']) {
+    assert.equal(renvoi(adresse), null, `${adresse} : la page 404`);
+  }
+  // elle sort des anciennes Règles avancées, comme « Postures » et la Liste : /regles/avancees/alterations-d-etats-et-mode-hyper/ ne mène plus nulle part
+  assert.equal(Object.hasOwn(ADRESSES_DU_PLAN_PRECEDENT, 'regles/avancees/alterations-d-etats-et-mode-hyper/'), false);
+  const options = { cheminDe: cheminDePage, existe: (page) => ids.includes(page), accueil: ACCUEIL_DU_GUIDE };
+  assert.equal(Guide.adresseDesAnciensLiens('regles/avancees/alterations-d-etats-et-mode-hyper/', options),
+    'regles/avancees/alterations-d-etats-et-mode-hyper/', 'un lien écrit : tel qu’écrit (la 404)');
+  for (const gardee of ['guide/alterations-d-etats', 'guide/liste-des-alterations-d-etat', 'guide/le-mode-hyper']) {
+    assert.ok(ids.includes(gardee) && !PAGES_SUPPRIMEES.includes(gardee), `${gardee} : gardée`);
+  }
+});
+
 test('R184, R185 : les anciennes adresses figées mènent à la nouvelle adresse de chaque page (page 404, liens écrits), requête et ancre gardées', () => {
   // /decouvrir/creer-son-personnage/ : l'introduction ; chacune de ses anciennes ancres d'étape (et de leurs sous-intertitres) à la page de l'étape
   assert.equal(renvoi('/decouvrir/creer-son-personnage/'), '/regles/creer-son-personnage/');
@@ -495,8 +516,9 @@ test('R184, R185 : les anciennes adresses figées mènent à la nouvelle adresse
   // les Règles avancées : /regles/avancees/ mène au Mode Hyper, chaque ancienne page à sa nouvelle adresse (liste figée)
   assert.equal(renvoi('/regles/avancees/'), '/regles/le-mode-hyper/');
   const avancees = Object.entries(ADRESSES_DU_PLAN_PRECEDENT).filter(([a]) => a.startsWith('regles/avancees/') && a !== 'regles/avancees/');
-  // moins « Postures » (migration 0094) et la « Liste des effets mode hyper » (R187, migration 0095), supprimées le 2026-11-06
-  assert.equal(avancees.length, 32, 'les 37 pages des Règles avancées au commit 92a123d, moins les 5 supprimées (« Les situations avancées » : éclatée, à part)');
+  // moins « Postures » (migration 0094), la « Liste des effets mode hyper » (R187, migration 0095) et « Altérations d'états et Mode Hyper » (migration
+  // 0096), supprimées le 2026-11-06
+  assert.equal(avancees.length, 31, 'les 37 pages des Règles avancées au commit 92a123d, moins les 6 supprimées (« Les situations avancées » : éclatée, à part)');
   for (const [adresse, id] of avancees) {
     // une page supprimée sur le site de dev (« Formule des dégâts », le 2026-11-06) : son ancienne adresse mène à la page 404, sans renvoi vers une
     // autre page (réponse du propriétaire : « Page 404 » ; R185 (6))

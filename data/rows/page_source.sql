@@ -1548,8 +1548,6 @@ INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/alterations-d
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/alterations-d-etats', 12, 'ref:google-sheet-mode-hyper-et-co-onglet-mode-hyper');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/alterations-d-etats', 13, 'google-sheet:1AjQyT-IZMULq6FlgnmVmn2QiQ9AWhhbOgjr-COgMyMo');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/alterations-d-etats', 14, 'ref:decisions-du-proprietaire-r4-r19-et-r81-docs-decisions-regles-md');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/alterations-d-etats-et-mode-hyper', 0, 'ref:google-doc-regle-du-jeu-guide-pour-mj-maverick');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/alterations-d-etats-et-mode-hyper', 1, 'google-doc:17VxGUwjzEZWElwIYVaXvaaumqFM4yKnO1C7uhVyc9iM');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/attaque-et-defense', 0, 'ref:google-doc-regle-du-jeu-guide-pour-mj-maverick');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/attaque-et-defense', 1, 'google-doc:17VxGUwjzEZWElwIYVaXvaaumqFM4yKnO1C7uhVyc9iM');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/attaquer-et-se-defendre', 0, 'ref:google-doc-regle-du-jeu-guide-pour-mj-maverick');

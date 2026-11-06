@@ -394,6 +394,8 @@ Gardés tels quels :
 
 #### guide/alterations-d-etats-et-mode-hyper
 
+La page est supprimée (migration `0096-retrait-alterations-d-etats-et-mode-hyper`, demande du propriétaire du 2026-11-06) : les numéros de ligne sont ceux de l'ancienne page, et la phrase n'est plus en base.
+
 - **L7** — « les explications du monde hyper » — « monde » est probablement une coquille pour « mode » (titre de la section : Mode Hyper), mais c'est un autre mot existant. → les explications du mode hyper
 
 #### guide/attaque-et-defense

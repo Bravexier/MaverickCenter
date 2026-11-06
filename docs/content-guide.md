@@ -1412,10 +1412,15 @@ dev (un commit la change) ni cherchée par la recherche.
 - **Pages supprimées sans renvoi** (`PAGES_SUPPRIMEES`, R184 (9), R185 (6)) : « Les documents des règles », « En résumé : déroulement d'un tour »,
   « Aide-mémoire », « Mode Hyper (Magie) » ; puis « Postures », « Les boss et leurs postures » et « Le Mode Super » (migration `0094`, demande du
   propriétaire du 2026-11-06 : « inutile ou doublon » ; « Le Mode Hyper » reste), et la « Liste des effets mode hyper » (R187 (1), migration `0095`,
-  même jour : « Supprime la liste »), doublon de « Le mode hyper », qui porte maintenant ses tableaux (bloc `mode-hyper`). Leurs adresses mènent à la page 404 ; `verifierLePlan` arrête le
+  même jour : « Supprime la liste »), doublon de « Le mode hyper », qui porte maintenant ses tableaux (bloc `mode-hyper`) ; puis « Altérations
+  d'états et Mode Hyper » (migration `0096`, même jour : « L'onglet suivant est à retirer »), un aiguillage vers deux classeurs, doublon de
+  « Altérations d’états », « Liste des altérations d'état » et « Le Mode Hyper » : ses cinq liens visent `guide/alterations-d-etats` (Vigueur, dans
+  « Fiche de personnage : Compétences » et la compétence ; « Jet de dés » ; le sommaire du « Guide pour MJ - Maverick ») ou `guide/le-mode-hyper`
+  (« Fiche de personnage : Tableau Posture »), ses alias « Altérations d'états » et « Mode Hyper » ne sont reportés nulle part. Leurs adresses mènent à la page 404 ; `verifierLePlan` arrête le
   build si l'une revient sans place, et leur id reste réservé (une page créée sur le site de dev prend un suffixe, `serveur/edition-plan.mjs#idPris`).
-  « Postures » et la Liste sortent aussi des anciennes Règles avancées (`/regles/avancees/postures/` et `/regles/avancees/liste-des-effets-mode-hyper/`
-  donnent la 404, comme `/regles/avancees/mode-hyper-magie/`) ;
+  « Postures », la Liste et « Altérations d'états et Mode Hyper » sortent aussi des anciennes Règles avancées (`/regles/avancees/postures/`,
+  `/regles/avancees/liste-des-effets-mode-hyper/` et `/regles/avancees/alterations-d-etats-et-mode-hyper/` donnent la 404, comme
+  `/regles/avancees/mode-hyper-magie/`) ;
   l'alias « Postures » nomme `guide/les-postures`, et les six postures gardent leur id `guide/postures#posture:…` (identifiants figés), rattachées à
   `guide/les-postures`. L'ancienne section « Les boss et leurs postures » de « Les situations avancées » mène à la section « Les boss » de
   `guide/les-postures` (`/regles/les-postures/#les-boss`, `PAGES_ECLATEES_DU_GUIDE`).
