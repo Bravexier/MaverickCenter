@@ -115,6 +115,20 @@ const INSEREES = ['classeur_modes', 'fiche'].map((v) => ({
   decision: 'R180', apres: 'une protection est', maintenant: 'une protection ou une amplification est',
 }));
 const inseree = (c) => INSEREES.find((r) => r.table === c.table && r.col === c.col && JSON.stringify(r.cle) === JSON.stringify(c.cle) && r.apres === c.apres);
+// Corrections d'une page retirée depuis par une migration, sur décision du propriétaire : R184 (9) (« Mode Hyper (Magie) », « En résumé » supprimées)
+// et R184 (7), R185 (3) (« Résistance/Faiblesse Magie » et « Les situations avancées » absorbées : leur texte, déplacé tel quel par db:sync-pages,
+// est dans d'autres pages, sauf les doublons retirés), migration 0091 (nouveau plan des pages de règles). La page n'est plus dans la base ; la
+// migration la nomme dans son « DELETE FROM page ».
+const MIGRATION_0091 = '0091-r184-plan-des-regles.sql';
+const PAGES_RETIREES_0091 = ['guide/en-resume-deroulement-d-un-tour', 'guide/mode-hyper-magie', 'guide/resistance-faiblesse-magie', 'guide/situations-avancees'];
+const pageRetiree = (c) => c.table === 'page' && PAGES_RETIREES_0091.includes(c.cle.id);
+// Corrections d'une phrase retirée depuis d'une page restée, sur décision du propriétaire : R184 (7) (« Supprime tous les doublons. Là où il y avais la
+// liste des résistances et faiblesses renvoie désormais à cette nouvelle page »), retouche E12 de la spécification de game-design (db:sync-pages, même
+// lot que la migration 0091) : la phrase sur les crans de « Fiche de personnage : Tableau Résistances/Faiblesses » est retirée, son lien « ici » vise
+// la page « Résistances et faiblesses ».
+const DOUBLONS_R184 = [{ table: 'page', cle: { id: 'guide/fiche-tableau-resistances-faiblesses' }, col: 'corps_md',
+  renvoi: 'tout est indiqué [[guide/resistances-et-faiblesses|ici]].', phrase: 'Ce que vous devez savoir c’est que les résistances et faiblesses communiquent' }];
+const doublonR184 = (c) => DOUBLONS_R184.find((r) => r.table === c.table && r.col === c.col && JSON.stringify(r.cle) === JSON.stringify(c.cle));
 const dansLOrdre = (mots, phrase) => { let i = 0; for (const m of phrase.split(' ')) if (m === mots[i]) i++; return i === mots.length; };
 
 test('base : chaque correction est faite (le texte corrigé est dans sa cellule, aux noms corrigés par 0006 près)', () => {
@@ -125,7 +139,14 @@ test('base : chaque correction est faite (le texte corrigé est dans sa cellule,
     assert.ok(corrections.some((c) => inseree(c) === r), `${r.table} ${JSON.stringify(r.cle)} « ${r.apres} » : une correction du registre`);
     assert.ok(dansLOrdre(r.apres.split(' '), r.maintenant), `${r.maintenant} : garde les mots corrigés, dans l'ordre`);
   }
+  const supprimees = readFileSync(join(dossier, MIGRATION_0091), 'utf8').match(/^DELETE FROM page WHERE id IN \(([^)]*)\);$/m)?.[1] ?? '';
+  for (const id of PAGES_RETIREES_0091) {
+    assert.ok(supprimees.includes(`'${id}'`), `${id} : supprimée par ${MIGRATION_0091}`);
+    assert.equal(db.prepare('SELECT count(*) AS n FROM page WHERE id = ?').get(id).n, 0, `${id} : absente de la base`);
+    assert.ok(corrections.some((c) => pageRetiree(c) && c.cle.id === id), `${id} : une correction du registre`);
+  }
   for (const c0 of corrections) {
+    if (pageRetiree(c0)) continue;
     const f = fondue(c0);
     const c = f ? { ...c0, cle: f.dans } : c0;
     const v = valeur(c);
@@ -134,6 +155,11 @@ test('base : chaque correction est faite (le texte corrigé est dans sa cellule,
     if (r) {
       assert.ok(readFileSync(join(dossier, r.migration), 'utf8').includes(c.apres), `${c.apres} : dans le texte que ${r.migration} retire`);
       assert.ok(!v.includes(c.apres), `${c.apres} : retiré de la base`);
+      continue;
+    }
+    const d = doublonR184(c);
+    if (d && !v.includes(c.apres)) {
+      assert.ok(v.includes(d.renvoi) && !v.includes(d.phrase), `${c.table} ${JSON.stringify(c.cle)} : la phrase en double retirée, le renvoi en place (R184 (7))`);
       continue;
     }
     const n = changee(c);

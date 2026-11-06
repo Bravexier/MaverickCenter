@@ -24,16 +24,14 @@ intitulé prend son adresse (« AA1 »). Cellules qui peuvent porter une note, p
   * Altération détats : Nom (juste sous l'intertitre), Magie Liée, Type, Stade 1 à 3 (ou la cellule fusionnée des stades), libellé
     et effet de chaque paire Résistances/Vulnérabilités ;
   * Météo : nom, Description, Effet(s) ;
-  * Mode Hyper (Magie) : texte général et cases Mono magie / Bi magie de « Avantages de base », nom et effet de chaque ligne des
-    deux tableaux ;
   * Mode Hyper et Mode Super (classeur « Mode hyper et co ») : les textes explicatifs et les cellules des tableaux.
 Le script S'ARRÊTE, sans rien écrire, avec un message qui nomme l'onglet et la cellule, si une note :
   * est sur une cellule vide (le dump garde alors v = "" ; la note d'une cellule fusionnée autre que celle en haut à gauche est dans
     ce cas) : aucune place dans la page ;
   * est dans un onglet que ce script ne publie pas (Sommaire, onglet inconnu) : sa justification de non-publication n'est plus
     vraie. Exceptions : les 15 onglets de magie du classeur V8 (MAGIES_TABS), dont les notes sont rendues par tools/sheets/magies.py,
-    et les onglets ignorés par décision du propriétaire (IGNORED_TABS : « Statistiques », décision R86) ; leurs notes sont comptées et
-    annoncées, pas rendues ici ;
+    et les onglets ignorés par décision du propriétaire (IGNORED_TABS : « Statistiques », décision R86 ; « Mode Hyper (Magie) »,
+    décision R184 (9)) ; leurs notes sont comptées et annoncées, pas rendues ici ;
   * est sur une cellule que la page ne reprend pas (« sans place prévue ») ;
   * n'est pas retrouvée dans sa page, ou y figure plus d'une fois, ou y figure tronquée (contrôle de couverture, refait sur le TEXTE
     des pages avant toute écriture) : chaque note du dump doit figurer dans la page de son onglet exactement une fois (autant de
@@ -44,12 +42,13 @@ rendus par ce mécanisme. Le script les dénombre sur la sortie standard avec le
 qu'aucun ne soit perdu en silence. État des classeurs au moment de l'import des notes : AUCUNE note dans les onglets de cette famille
 (ni dans Sommaire, Altération détats, Météo, Statistiques et Mode Hyper (Magie) de « Magie V8 », ni dans « Mode hyper et co »). Les
 quatre cellules commentées sont : Sommaire!A1 (26 fils orphelins, onglet non publié), Statistiques!BH27 et AR52 (fils sur des
-compteurs, onglet ignoré), Mode Hyper (Magie)!M43 (fil repris dans CELL_COMMENTS). Les pages sont donc inchangées par ce mécanisme.
+compteurs, onglet ignoré), Mode Hyper (Magie)!M43 (fil résolu sur l'effet de « Vide + Nécromancie », onglet ignoré depuis la décision
+R184 (9)). Les pages sont donc inchangées par ce mécanisme.
 
 Option --verifier : n'écrit rien. Relit les dumps, recalcule les notes attendues directement dans le JSON brut (sans le code de
 rendu), les cherche dans les pages écrites (texte déséchappé, une occurrence par note, aucune de plus), compare chaque page à ce
-que le dump produit, recoupe CELL_COMMENTS avec les fils du dump et rejoue des cas d'erreur sur des copies en mémoire des dumps
-(note sur cellule vide, dans un onglet non publié, sans place, note retirée / dupliquée / tronquée / altérée dans une page).
+que le dump produit et rejoue des cas d'erreur sur des copies en mémoire des dumps (note sur cellule vide, dans un onglet non publié,
+dans un onglet ignoré, sans place, note retirée / dupliquée / tronquée / altérée dans une page).
 
 Sources (classeurs Google, copies du Drive du propriétaire, migration 0014) et pages produites :
 
@@ -65,13 +64,12 @@ Sources (classeurs Google, copies du Drive du propriétaire, migration 0014) et 
     - onglet « Météo »              -> guide/meteo.md
         En-têtes B1 Météo | H1 Description | T1 Effet(s) ; une entrée tous les 7 lignes (cellules fusionnées),
         le nom en colonne B, la description en H et les effets (une ligne « - … » par effet) en T.
-    - onglet « Mode Hyper (Magie) » (ONGLET MASQUÉ) -> guide/mode-hyper-magie.md
-        Lignes 1 à 14 : un effet par magie seule (nom en H, effet en M). Lignes 15 à 87 : un effet par
-        combinaison de deux magies (B, « + » en G, H, effet en M). À droite : encadré « Avantages de base »
-        (texte général, puis deux cases « Mono magie » et « Bi magie »).
-        Un commentaire de cellule (M43, effet de « Vide + Nécromancie ») est ajouté en fin de page : c'est un FIL de
-        commentaires (non une note) ; les anciens dumps ne le portaient pas, il est donc recopié depuis le .xlsx dans la
-        constante CELL_COMMENTS (--verifier le recoupe avec le champ `threads` des dumps récents).
+    - onglet « Mode Hyper (Magie) » (ONGLET MASQUÉ) : AUCUNE PAGE (décision R184 (9) du propriétaire, 2026-11-06 : « "Onglet
+        masqué du classeur d'origine." ça ressemble à une règle obsolète. Supprime purement cette page. »). Ce script en tirait
+        la page guide/mode-hyper-magie, retirée par migration ; il ne la produit plus et l'onglet est ignoré comme
+        « Statistiques » (IGNORED_TABS : ses notes et ses fils n'arrêtent rien, ils sont annoncés). La décision vise la page
+        seule : les effets de l'onglet (et le fil M43, colonne `commentaire`) restent dans la table mode_hyper_effet (version
+        'magie_masque'), que ce script n'écrit pas : elle se met à jour par le rapprochement des classeurs (tools/sources/rapprocher.mjs).
     - onglet « Statistiques » : IGNORÉ (décision R86 du propriétaire, 2026-10-15 : « tu peux ignorer l'onglet "Statistiques"
         c'est des données mise à la main il y a longtemps »). Ni ses compteurs ni son tableau « Résistance Faiblesse » (les
         résistances et faiblesses des couples de deux magies, au plus quatre magies par palier) ne sont lus : depuis la
@@ -122,12 +120,12 @@ MAGIES_TABS = (
 # Onglets ignorés par décision du propriétaire, par classeur : rien n'en est lu ; leurs notes et leurs fils de commentaires n'arrêtent rien, ils sont
 # comptés et annoncés. « Statistiques » (décision R86) : des compteurs et le tableau « Résistance Faiblesse » des couples de magies, écrits à la main il
 # y a longtemps ; les résistances d'un couple se calculent depuis les listes de chaque magie (décision R85, vue v_resistance_combinaison).
+# « Mode Hyper (Magie) » (décision R184 (9)) : onglet masqué, une règle obsolète ; sa page guide/mode-hyper-magie est supprimée (la page seule : ses
+# effets restent dans mode_hyper_effet, version 'magie_masque', que ce script n'écrit pas : elle se met à jour par le rapprochement des classeurs).
 IGNORED_TABS = {
-    "magie-v8": ("Statistiques",),
+    "magie-v8": ("Statistiques", "Mode Hyper (Magie)"),
 }
 
-# Titres des pages qui se renvoient l'une à l'autre (deux classeurs, deux listes d'effets du mode hyper).
-TITLE_HYPER_MAGIE = "Mode Hyper (Magie)"
 TITLE_HYPER_LISTE = "Liste des effets mode hyper"
 
 # Identification des classeurs à partir d'un onglet qui leur est propre.
@@ -147,24 +145,6 @@ WORKBOOKS = [
 ]
 
 WORKBOOK_TITLES = {wb["key"]: wb["title"] for wb in WORKBOOKS}
-
-
-# Commentaires de cellule du classeur d'origine : le dump JSON ne les contient pas (seuls les .xlsx les portent),
-# ils sont donc recopiés ici mot pour mot depuis le .xlsx. Un commentaire n'est écrit que si la cellule du dump
-# porte bien la valeur attendue. Forme : classeur -> onglet -> [(cellule, valeur attendue, commentaire, résolu)].
-CELL_COMMENTS = {
-    "magie-v8": {
-        "Mode Hyper (Magie)": [
-            (
-                "M43",
-                "Permet d'invoquer un ou des fantômes (voir catégorie invocation dans bestiaire)",
-                "Sous cette forme, Il est impossible de faire des dégâts physiques et seuls les armes spectrales "
-                "sont utilisables ainsi que les sorts.",
-                True,
-            ),
-        ],
-    },
-}
 
 
 # ---------------------------------------------------------------------------------------------------------
@@ -546,79 +526,6 @@ def page_meteo(sh, wb):
     }
 
 
-def page_hyper_magie(sh, wb):
-    title = TITLE_HYPER_MAGIE
-    body = ["*Onglet masqué du classeur d'origine.*" if sh.state == "hidden" else None]
-    # Renvoi vers l'autre liste des effets du mode hyper (autre classeur) : les valeurs diffèrent, la source
-    # n'indique pas laquelle prévaut, la page ne tranche donc pas.
-    body.append(
-        "*Le classeur « %s » contient une autre liste des effets du mode hyper (page « %s ») ; "
-        "les deux listes ne donnent pas toujours les mêmes valeurs.*" % (WORKBOOK_TITLES["mode-hyper"], TITLE_HYPER_LISTE)
-    )
-    # Encadré « Avantages de base » (à droite) : texte général, puis cases « Mono magie » / « Bi magie ».
-    base = sh.find("Avantages de base")
-    mono = sh.find("Mono magie")
-    bi = sh.find("Bi magie")
-    if base:
-        body.append("## Avantages de base")
-        general = sh.get(base[0] + 1, base[1])
-        if general is not None:
-            body.append(blocks(general))
-            body += sh.note_blocks([((base[0] + 1, base[1]), "Avantages de base")])
-    if mono and bi:
-        mono_txt = sh.get(mono[0] + 1, mono[1])
-        bi_txt = sh.get(bi[0] + 1, bi[1])
-        body.append(table(["Mono magie", "Bi magie"], [[cell(mono_txt), cell(bi_txt)]]))
-        body += sh.note_blocks([((mono[0] + 1, mono[1]), "Mono magie"), ((bi[0] + 1, bi[1]), "Bi magie")])
-    # Effets par magie seule : colonnes H (magie) et M (effet) ; combinaisons : B, G (« + »), H, M.
-    c_a, c_plus, c_b, c_eff = col_to_num("B"), col_to_num("G"), col_to_num("H"), col_to_num("M")
-    singles, pairs = [], []
-    single_notes, pair_notes = [], []
-    for r in sorted({r for (r, c) in sh.cells if c == c_b}):
-        a = sh.get(r, c_a)
-        name = one_line(sh.get(r, c_b))
-        eff = cell(sh.get(r, c_eff))
-        if a is None:
-            singles.append([esc(name), eff])
-            single_notes += [((r, c_b), "Magie (%s)" % name), ((r, c_eff), "Effet (%s)" % name)]
-        else:
-            plus = sh.get(r, c_plus)
-            label = "%s %s %s" % (esc(one_line(a)), esc(one_line(plus)) if plus is not None else "", esc(name))
-            pairs.append([" ".join(label.split()), eff])
-            raw_label = " ".join(("%s %s %s" % (one_line(a), one_line(plus) if plus is not None else "", name)).split())
-            pair_notes += [((r, c), "Magies (%s)" % raw_label) for c in (c_a, c_plus, c_b)] + [((r, c_eff), "Effet (%s)" % raw_label)]
-    body.append("## Effets par magie seule")
-    body.append(table(["Magie", "Effet"], singles))
-    body += sh.note_blocks(single_notes)
-    body.append("## Effets par combinaison de deux magies")
-    body.append(table(["Magies", "Effet"], pairs))
-    body += sh.note_blocks(pair_notes)
-    notes = []
-    for coord, expected, comment, resolved in CELL_COMMENTS.get(wb["key"], {}).get(sh.name, []):
-        m = re.fullmatch(r"([A-Z]+)(\d+)", coord)
-        r, c = int(m.group(2)), col_to_num(m.group(1))
-        if sh.get(r, c) != expected:
-            WARNINGS.append("commentaire de %s ignoré : la cellule ne porte pas la valeur attendue" % coord)
-            continue
-        a = sh.get(r, c_a)
-        who = esc(" + ".join(one_line(x) for x in (a, sh.get(r, c_b)) if x is not None))
-        notes.append("- **%s** (cellule %s) : %s" % (who, coord, esc(comment)))
-        if resolved:
-            notes.append("")
-            notes.append("*Commentaire joint à la cellule dans le classeur d'origine, marqué comme résolu.*")
-    if notes:
-        body.append("## Commentaire de cellule")
-        body.append("\n".join(notes))
-    return {
-        "slug": "mode-hyper-magie",
-        "title": title,
-        "tags": ["mode hyper", "magie"],
-        "summary": None,
-        "tab": sh.name,
-        "body": "\n\n".join(b for b in body if b),
-    }
-
-
 def first_sentence(value, start):
     m = re.search(re.escape(start) + r"[^.]*\.", fmt(value))
     return " ".join(m.group(0).split()) if m else None
@@ -674,10 +581,11 @@ def page_mode_hyper(sh, wb):
     body.append("## Effets selon la race")
     body.append(table([esc(sh.get(race[0], race[1])), esc(h_eff)], rows))
     body += sh.note_blocks(note_targets)
+    # Le renvoi « (page « Mode Hyper (Magie) ») » est retiré avec cette page (décision R184 (9)) : seul le bout devenu faux part (R184 (5)).
     body.append(
-        "*Le classeur « %s » contient, dans un onglet masqué, une autre liste des effets du mode hyper "
-        "(page « %s ») ; les deux listes ne donnent pas toujours les mêmes valeurs.*"
-        % (WORKBOOK_TITLES["magie-v8"], TITLE_HYPER_MAGIE)
+        "*Le classeur « %s » contient, dans un onglet masqué, une autre liste des effets du mode hyper ; "
+        "les deux listes ne donnent pas toujours les mêmes valeurs.*"
+        % WORKBOOK_TITLES["magie-v8"]
     )
     return {
         "slug": "liste-des-effets-mode-hyper",
@@ -732,7 +640,6 @@ BUILDERS = {
     "magie-v8": [
         ("Altération détats", page_alterations),
         ("Météo", page_meteo),
-        ("Mode Hyper (Magie)", page_hyper_magie),
     ],
     "mode-hyper": [
         ("Mode Hyper", page_mode_hyper),
@@ -745,7 +652,6 @@ BUILDERS = {
 PAGE_OF_TAB = {
     "Altération détats": "liste-des-alterations-d-etat",
     "Météo": "meteo",
-    "Mode Hyper (Magie)": "mode-hyper-magie",
     "Mode Hyper": "liste-des-effets-mode-hyper",
     "Mode Super": "liste-des-effets-mode-super",
 }
@@ -902,33 +808,11 @@ def note_problems(data, wb, texts):
     return problems
 
 
-def comment_problems(data, wb):
-    """Recoupe CELL_COMMENTS (fils recopiés du .xlsx) avec les fils (`threads`) d'un dump récent. Un dump sans aucun champ
-    `threads` (ancien format) n'a rien à recouper."""
-    if not any("threads" in c for s in data["sheets"] for c in s["cells"]):
-        return []
-    problems = []
-    for tab, items in CELL_COMMENTS.get(wb["key"], {}).items():
-        sheet = next((s for s in data["sheets"] if s["name"] == tab), None)
-        for coord, _expected, comment, resolved in items:
-            m = re.fullmatch(r"([A-Z]+)(\d+)", coord)
-            pos = (int(m.group(2)), col_to_num(m.group(1)))
-            raw = next((c for c in (sheet["cells"] if sheet else []) if (c["r"], c["c"]) == pos), None)
-            threads = (raw or {}).get("threads", [])
-            if not any(canon_note(t.get("text", "")) == canon_note(comment) and bool(t.get("done")) == resolved for t in threads):
-                problems.append(
-                    "CELL_COMMENTS : le commentaire recopié de « %s »!%s ne correspond à aucun fil du dump (texte ou état résolu différent)"
-                    % (tab, coord)
-                )
-    return problems
-
-
 def threads_report(sheets, wb):
     """Lignes d'information : fils de commentaires (champ `threads`, ce ne sont pas des notes) et leur sort, pour qu'aucun ne se
     perde en silence. Les onglets de magie relèvent de magies.py."""
     published = {tab for tab, _builder in BUILDERS[wb["key"]]}
     ignored = IGNORED_TABS.get(wb["key"], ())
-    known = {(tab, coord) for tab, items in CELL_COMMENTS.get(wb["key"], {}).items() for coord, *_rest in items}
     lines = []
     for name, sh in sheets.items():
         if not sh.threads or (wb["key"] == "magie-v8" and name in MAGIES_TABS):
@@ -938,8 +822,6 @@ def threads_report(sheets, wb):
                 fate = "onglet ignoré (décision du propriétaire)"
             elif name not in published:
                 fate = "onglet non publié par ce script"
-            elif (name, a1(r, c)) in known:
-                fate = "repris (section « Commentaire de cellule »)"
             else:
                 fate = "NON REPRIS : aucune place prévue pour un fil de commentaires"
             lines.append("  « %s » %s : %d fil(s) de commentaires, %s" % (name, a1(r, c), n, fate))
@@ -1005,8 +887,8 @@ def anchor(data, tab):
     sheet = _sheet(data, tab)
     cells = {(c["r"], c["c"]): c.get("v") for c in sheet["cells"] if c.get("v") not in (None, "")}
 
-    def first(col, after=0, alone_of=None):
-        rows = sorted(r for (r, c) in cells if c == col and r > after and (alone_of is None or (r, alone_of) not in cells))
+    def first(col, after=0):
+        rows = sorted(r for (r, c) in cells if c == col and r > after)
         return (rows[0], col) if rows else None
 
     def where(value, row=None):
@@ -1018,8 +900,6 @@ def anchor(data, tab):
         return first(head[1], 2) if head else None
     if tab == "Météo":
         return first(col_to_num("B"), 1)
-    if tab == "Mode Hyper (Magie)":
-        return first(col_to_num("H"), 0, alone_of=col_to_num("B"))
     if tab == "Mode Hyper":
         return first(col_to_num("AA"))
     if tab == "Mode Super":
@@ -1142,7 +1022,6 @@ def verify(dumps, out_dir):
             else:
                 pages_ok += 1
         problems += note_problems(data, wb, texts)
-        problems += comment_problems(data, wb)
         notes_total += len(expected_notes(data, wb))
         if elsewhere:
             info.append("%s : notes d'onglets non rendus ici (onglets de magie : magies.py ; onglets ignorés : décision du propriétaire) : %s"

@@ -825,7 +825,10 @@ function reglesDeLaBase(db) {
 }
 
 // ------------------------------------------------------------------------------------------------------------------ aide du champ « Entraînement »
-/** La page du guide qui dit où se notent les bonus d'entraînement et leurs limites (« S’entraîner et exercer un métier », Les bases ; décision R71). */
+/**
+ * La page du guide qui dit où se notent les bonus d'entraînement et leurs limites (décision R71) : « S’entraîner », onglet Exploration des Règles
+ * (« S’entraîner et exercer un métier » jusqu'à R184, qui en a tiré « Exercer un métier » : sa section « Ses limites » est restée ici, id figé).
+ */
 export const PAGE_DE_L_ENTRAINEMENT = 'guide/s-entrainer-et-exercer-un-metier';
 
 /**

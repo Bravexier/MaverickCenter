@@ -12,8 +12,8 @@ de l'import ». Elles ne sont plus écrites (le `tags:` de la page ne les porte 
   * tools/sheets/equipement.py : « bouclier » (bouclier, page ressources/bouclier), « pièce élémentaire » (piece-elementaire) et « amélioration »
     (amelioration), page ressources/pieces-elementaires ;
   * tools/sheets/divers-craft.py : « tour » (tour, page ressources/fiche-de-tour) ;
-  * tools/sheets/annexes-magie.py : « mode hyper » (mode-hyper, pages guide/mode-hyper-magie et guide/liste-des-effets-mode-hyper) et « mode super »
-    (mode-super, page guide/liste-des-effets-mode-super).
+  * tools/sheets/annexes-magie.py : « mode hyper » (mode-hyper, page guide/liste-des-effets-mode-hyper ; la page guide/mode-hyper-magie, qui la
+    portait aussi, n'est plus produite : décision R184 (9)) et « mode super » (mode-super, page guide/liste-des-effets-mode-super).
 Test : client/test/importeurs-etiquettes.test.mjs (rejoue les trois importeurs sur les instantanés de sources/raw/classeurs/)."""
 
 MAGIES_HOMONYMES = frozenset({'corruption', 'sang'})

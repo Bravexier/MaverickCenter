@@ -67,20 +67,23 @@ test('R180 : Mode Hyper de la Lumière — les trois copies (classeur_modes, ong
   // la page de la magie, la liste des effets du Mode Hyper, et pas la liste de l'onglet masqué (magie_masque)
   assert.deepEqual(morceauxDuCorpsDeMagie(corps(LUMIERE)).hyper.map((h) => h.effet), [MONO, BI]);
   assert.ok(corps('guide/liste-des-effets-mode-hyper').includes(`| Lumière | ${MONO} | ${BI} |`));
-  assert.ok(corps('guide/mode-hyper-magie').includes('| Lumière | Les soins deviennent des IC (Instant Cast) et sont au maximum de leur effet. |'));
-  assert.ok(!corps('guide/mode-hyper-magie').includes('amplifications deviennent'));
+  // la page « Mode Hyper (Magie) » qui montrait la liste de l'onglet masqué est retirée (R184 (9), migration 0091) : ses lignes restent (ci-dessus)
+  assert.equal(db.prepare("SELECT count(*) AS n FROM page WHERE id = 'guide/mode-hyper-magie'").get().n, 0);
 });
 
-test('R180 : les nombres du critique sont des constantes de règle, chacune citée d’une phrase de « Réussir une action »', () => {
+// Les phrases de la base et du plafond sont parties dans la page des critiques avec « Les quatre résultats » (R184, migration 0091 : page_id suit).
+const PAGE_DE_LA_CONSTANTE = { 'critique.base': 'guide/reussites-echecs-et-critiques', 'critique.plafond': 'guide/reussites-echecs-et-critiques' };
+
+test('R180 : les nombres du critique sont des constantes de règle, chacune citée d’une phrase de « Réussir une action » ou de « Réussites / échecs / critiques »', () => {
   const lignes = db.prepare("SELECT id, valeur, unite, nature, texte, page_id, source_ref FROM regle_constante WHERE id LIKE 'critique.%' ORDER BY id").all();
   assert.deepEqual(Object.fromEntries(lignes.map((l) => [l.id, l.valeur])), {
     'critique.base': 5, 'critique.palier_1_bonus': 2, 'critique.palier_1_score_min': 96,
     'critique.palier_2_bonus': 5, 'critique.palier_2_score_min': 103, 'critique.plafond': 15,
   });
-  const page = corps('guide/reussir-une-action');
   for (const l of lignes) {
-    assert.deepEqual([l.unite, l.nature, l.page_id, l.source_ref], ['%', 'texte', 'guide/reussir-une-action', 'Décision R180 du propriétaire'], l.id);
-    assert.ok(page.includes(l.texte), `${l.id} : « ${l.texte} » dans la page`);
+    const page = PAGE_DE_LA_CONSTANTE[l.id] ?? 'guide/reussir-une-action';
+    assert.deepEqual([l.unite, l.nature, l.page_id, l.source_ref], ['%', 'texte', page, 'Décision R180 du propriétaire'], l.id);
+    assert.ok(corps(page).includes(l.texte), `${l.id} : « ${l.texte} » dans la page ${page}`);
   }
 });
 
@@ -99,7 +102,9 @@ test('R180 : le bonus de critique de l’Offensif compte sur six jets (Concentra
 
 test('R180 : le guide et le mot-clé « Réussite critique » rappellent le plafond de 1 à 15 là où ils élargissent la réussite critique, jamais dans les textes tels quels des postures', () => {
   const PLAFOND = /jamais (?:au-delà de |dépasser |)1 à 15|ne dépasse jamais(?: \*\*)? ?1 à 15/;
-  for (const id of ['guide/reussir-une-action', 'guide/les-postures', 'guide/aide-memoire', 'guide/attaquer-et-se-defendre', 'guide/situations-avancees']) {
+  // R184 et R185 (migration 0091) : « Les quatre résultats » de « Réussir une action » est la page des critiques, la tenaille de « Les situations
+  // avancées » est la page de la tenaille ; l'aide-mémoire est retiré
+  for (const id of ['guide/reussites-echecs-et-critiques', 'guide/les-postures', 'guide/attaquer-et-se-defendre', 'guide/prise-en-tenaille-et-zone-d-influence']) {
     assert.match(corps(id), PLAFOND, id);
   }
   // le Lexique est devenu des mots-clés (migration 0090) : sa phrase est la définition du mot-clé `reussite-critique` (abréviation RC)
@@ -107,7 +112,8 @@ test('R180 : le guide et le mot-clé « Réussite critique » rappellent le plaf
   const reussir = corps('guide/reussir-une-action');
   assert.ok(reussir.includes('Au-delà de 95 %, le surplus élargit la réussite critique : de 96 à 102 %, +2 % ; à partir de 103 %, +5 % au total.'));
   assert.ok(reussir.includes('Le score compté est celui du moment, posture comprise, et ce bonus vaut sur tout jet, quelle que soit la posture.'));
-  assert.ok(reussir.includes('la posture offensive pour les six jets d’attaque (*Arc*, *Arbalète*, *Arme Légère*, *Arme Lourde*, *Magie* et *Concentration*)'));
+  assert.ok(corps('guide/reussites-echecs-et-critiques')
+    .includes('la posture offensive pour les six jets d’attaque (*Arc*, *Arbalète*, *Arme Légère*, *Arme Lourde*, *Magie* et *Concentration*)'));
   // textes copiés des Docs : inchangés (« monte à 10 ou moins », sans plafond)
   for (const id of ['guide/postures', 'guide/fiche-tableau-posture']) {
     assert.ok(corps(id).includes('cette réussite critique monte à 10 ou moins'), id);

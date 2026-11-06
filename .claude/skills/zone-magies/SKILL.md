@@ -16,7 +16,7 @@ user-invocable: false
 - Carte de `/magies/` : `components/magie/MagiesConstellation.astro` (`styles/magie/orbit.css`), tableau dessous : `components/magie/TableauRelationsMagies.astro`.
 - CSS : `client/src/styles/magie/*.css` (base, page, sorts, sort-detail, tooltips, creatures, responsive, print, orbit, potentiel, tableaux).
 - Corps Markdown tenu d'accord avec les tables : `lib/corps-magies.mjs` (skill `zone-edition`).
-- Import : `tools/sheets/magies.py` ; pages des annexes des magies (altérations d'état, météo, modes hyper et super, dans `guide/`) : `tools/sheets/annexes-magie.py`.
+- Import : `tools/sheets/magies.py` ; annexes des magies, 4 pages de `guide/` (altérations d'état, météo, effets du mode hyper et du mode super) : `tools/sheets/annexes-magie.py`. L'onglet « Mode Hyper (Magie) » est ignoré comme « Statistiques » (`IGNORED_TABS`, R184 (9)) : plus de page `guide/mode-hyper-magie` ; les données `mode_hyper_effet` restent.
 
 ## À lire
 - `docs/content-guide.md`, « Pages de magie : un gabarit commun, alimenté par la base » (tables lues, bannière, tableaux, panneau d'un sort, carte de `/magies/`, Potentiel Illimité).
@@ -27,7 +27,7 @@ user-invocable: false
 - Une page de magie est rendue depuis les tables typées (`magie`, `sort`, `invocation`…), jamais depuis son `.md`. Le `.md` ne sert qu'à la recherche et aux `[[liens]]`. Pour changer une magie ou un sort, on change la base.
 - La remarque d'un sort (note de cellule) est `sort.remarque`. La table `note_cellule` n'est qu'une trace : ne jamais la lire.
 - Le CSS est inséré par `MagiePage.astro` en `?raw`. Ne pas le mettre dans `global.css` ni l'importer : Astro l'attacherait à toutes les pages de la route `[type]/[slug]`.
-- Le tableau des relations sous la carte lit les mêmes relations dans la base (`entriesAvecRelationsDeLaBase`) : pages de magie et tableau n'ont qu'une source.
+- Le tableau des relations sous la carte lit les mêmes relations dans la base (`entriesAvecRelationsDeLaBase`) : pages de magie et tableau n'ont qu'une source. Second consommateur du composant : le bloc `<!-- guide:relations-des-magies -->` de « Résistances et faiblesses » (`GuideBloc.astro`, R185 (4) ; skill `zone-guide`).
 - Un seul gabarit de tableau de sorts sur tout le site : `components/magie/TableauNpm.astro` (une magie, un NPM ; ligne `LigneDeSort.astro` ; comportement au clic `SortsInteractifs.astro`, une fois par page).
 - Le panneau d'un sort s'ouvre sous sa ligne (clic ou `#sort-<slug>`). Sans JavaScript, tout est affiché.
 - Les bulles des pastilles d'état ne contiennent que des `<span>` : un bloc fermerait le `<p>` qui porte la pastille. Seule exception : la carte d'une créature invoquée (`<div class="bulle bulle--carte">`), hors de tout paragraphe. Système de bulles : skill `ui-infobulles`.

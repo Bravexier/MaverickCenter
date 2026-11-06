@@ -29,7 +29,7 @@ export const pageSansAdresse = (id) => Object.hasOwn(PAGES_DANS_UNE_AUTRE, id);
 
 /**
  * Adresse d'une page du wiki, relative à la racine du site : { chemin: '<id>/', ancre: '' } ; pour un métier, la ligne du tableau ; pour une page du
- * guide, sa place dans le plan du site (lib/livres.mjs#adresseDuGuide : /decouvrir/…, /regles/…, /regles/avancees/…, /mj/… ; plus aucune sous /guide/) ;
+ * guide, son adresse dans le plan du site (lib/livres.mjs#adresseDuGuide : /decouvrir/…, /regles/<slug>/, /mj/… ; plus aucune sous /guide/) ;
  * pour une page servie par une page de l'équipement, cette page (à l'ancre de son sous-onglet ou de sa section).
  */
 export function adresseDePage(id) {
@@ -55,27 +55,37 @@ export const estServieASonId = (id) => !pageSansAdresse(id) && cheminDePage(id) 
 /**
  * Les renvois des anciennes adresses du guide vers les nouvelles, relatifs à la racine du site, pour les ids donnés (les pages chargées) :
  *   - avant l'éclatement du guide (2026-10-18) : { 'guide/': <adresse de Découvrir>, 'guide/<slug>/': cheminDePage(id)… } ;
- *   - une page fusionnée dans une autre (lib/livres.mjs#PAGES_ABSORBEES) : 'guide/<slug>/' et 'decouvrir/<slug>/' (son adresse du plan précédent) → la
- *     page qui l'absorbe, à l'ancre où se lit son contenu (lib/livres.mjs#adresseDeLaPageAbsorbee ; l'ancre de l'ancienne adresse l'emporte), si elle est chargée ;
- *   - une autre adresse du plan précédent (lib/livres.mjs#ADRESSES_DU_PLAN_PRECEDENT) → la page qui y était, si elle est chargée ;
+ *   - une page fusionnée dans une autre (lib/livres.mjs#PAGES_ABSORBEES) : 'guide/<slug>/' → la page qui l'absorbe, à l'ancre où se lit son contenu
+ *     s'il y en a une (lib/livres.mjs#adresseDeLaPageAbsorbee ; l'ancre de l'ancienne adresse l'emporte), si elle est chargée ;
+ *   - une adresse des plans précédents (lib/livres.mjs#ADRESSES_DU_PLAN_PRECEDENT : /decouvrir/<étape>/, /regles/avancees/<slug>/…) → la page qui y
+ *     était, ou celle qui l'absorbe, si elle est chargée ;
  *   - une page retirée dont le contenu se lit ailleurs (lib/livres.mjs#PAGES_RETIREES : le Lexique, devenu des mots-clés) : chacune de ses anciennes
  *     adresses → sa destination (/recherche/), tant que la page n'est pas chargée (verifierLePlan arrête le build sinon).
+ * Une page supprimée (lib/livres.mjs#PAGES_SUPPRIMEES) n'y est jamais : la page 404 la dit introuvable (R185 (6)). Les pages découpées en plusieurs
+ * (/decouvrir/creer-son-personnage/, « Les situations avancées ») ont leurs renvois selon l'ancre (lib/livres.mjs#PAGES_ECLATEES_DU_GUIDE, passés à part).
  * Lus par la page 404 (pages/404.astro les écrit au build, lib/nav.mjs#nouvelleAdresse les reçoit : nav.mjs n'importe rien), qui garde requête et ancre.
  */
 export function renvoisDuGuide(ids) {
   const renvois = { 'guide/': ACCUEIL_DU_GUIDE };
   const charges = new Set(ids);
+  /** L'adresse d'une page chargée, ou de celle qui absorbe une page fusionnée ; null si aucune n'est chargée. */
+  const vers = (id) => {
+    if (charges.has(id)) return cheminDePage(id);
+    if (Object.hasOwn(PAGES_ABSORBEES, id) && charges.has(PAGES_ABSORBEES[id])) return adresseDeLaPageAbsorbee(id, cheminDePage);
+    return null;
+  };
   for (const id of ids) if (id.startsWith('guide/')) renvois[`${id}/`] = cheminDePage(id);
-  for (const [ancienne, nouvelle] of Object.entries(PAGES_ABSORBEES)) {
-    if (!charges.has(nouvelle) || charges.has(ancienne)) continue;
-    const slug = ancienne.slice('guide/'.length);
-    renvois[`${ancienne}/`] = adresseDeLaPageAbsorbee(ancienne, cheminDePage);
-    renvois[`decouvrir/${slug}/`] = adresseDeLaPageAbsorbee(ancienne, cheminDePage);
+  for (const ancienne of Object.keys(PAGES_ABSORBEES)) {
+    const cible = vers(ancienne);
+    if (cible !== null && !charges.has(ancienne)) renvois[`${ancienne}/`] = cible;
   }
-  for (const [adresse, id] of Object.entries(ADRESSES_DU_PLAN_PRECEDENT)) if (charges.has(id) && cheminDePage(id) !== adresse) renvois[adresse] = cheminDePage(id);
-  for (const [retiree, { vers, adresses }] of Object.entries(PAGES_RETIREES)) {
+  for (const [adresse, id] of Object.entries(ADRESSES_DU_PLAN_PRECEDENT)) {
+    const cible = vers(id);
+    if (cible !== null && cible !== adresse) renvois[adresse] = cible;
+  }
+  for (const [retiree, { vers: destination, adresses }] of Object.entries(PAGES_RETIREES)) {
     if (charges.has(retiree)) continue;
-    for (const adresse of adresses) renvois[adresse] = vers;
+    for (const adresse of adresses) renvois[adresse] = destination;
   }
   return renvois;
 }

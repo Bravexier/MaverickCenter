@@ -2,26 +2,28 @@
 import menuLateralCss from '../../styles/guide/menu-lateral.css?raw';
 import { entryHref, url, type WikiEntry } from '../../lib/wiki';
 
-// Le menu latéral d'une rubrique lue page à page, sur le modèle de la chronologie : Les bases (/regles/ et /regles/<slug>/) et les Règles avancées
-// (/regles/avancees/ et /regles/avancees/<slug>/), où le pose PageDuPlan.astro (rubrique et pages tirées du plan, lib/livres.mjs#menuLateralDe), et
-// les pages de race (/races/<race>/), où le pose components/race/MenuDesRaces.astro (la demande et les réponses du propriétaire y sont citées).
-//   - Les bases : demande du propriétaire du 2026-11-05 (« Au lieu de lister les différentes pages, réécrit directement le contenu. […] Inutile de
-//     séparer les catégories les Jouer / Progresser / Pour aller plus loin. Pour la présation je préfèrera un menu latéral sous le même modèle que la
-//     chronologie. » ; réponse « Comme la chronologie (Recommandé) »).
-//   - Les Règles avancées : demande du propriétaire du 2026-11-05 (« Suite à la modification de la page "les bases" refait la même avec les "règles
-//     avancées", tout sur la même page avec menu lattéral. » ; réponses « Liste sans groupes » — « Comme Les bases : une seule liste de titres, dans
-//     l'ordre actuel des groupes. » — et « Le Mode Hyper » pour la page d'ouverture).
-// À gauche, en vertical, le menu des pages (leurs titres, dans l'ordre reçu, sans groupes ; l'entrée affichée marquée, aria-current) ; à droite, la
-// page choisie, que l'appelant passe en contenu (<slot /> : PageDuGuide pour le guide, fil d'Ariane et gabarit RacePage pour une race). Chaque page
-// garde son adresse : le menu fait des liens ordinaires, tout se lit sans JavaScript. Pas de couleur de partie : l'accent du site (réponse du
-// propriétaire : « Accent du site »). De la chronologie, la mise en page et le comportement seulement : ni barre en dégradé, ni dates, ni chevrons.
+// Le menu latéral d'une rubrique lue page à page, sur le modèle de la chronologie : les onglets des Règles (/regles/<onglet>/ et /regles/<slug>/, R184),
+// où le posent PageDuPlan.astro (onglet et entrées tirés du plan, lib/livres.mjs#menuLateralDe) et pages/regles/artisanat.astro (l'onglet Exploration,
+// dont l'Artisanat est une entrée lien), et les pages de race (/races/<race>/), où le pose components/race/MenuDesRaces.astro (la demande et les
+// réponses du propriétaire y sont citées).
+//   - Le modèle : demande du propriétaire du 2026-11-05 pour Les bases (« Au lieu de lister les différentes pages, réécrit directement le contenu.
+//     […] Pour la présation je préfèrera un menu latéral sous le même modèle que la chronologie. » ; réponse « Comme la chronologie (Recommandé) »),
+//     repris par les Règles avancées (« Liste sans groupes »), puis par chaque onglet des Règles (R184 : un menu latéral par onglet, sans groupes).
+// À gauche, en vertical, le menu (une seule liste, dans l'ordre reçu, sans groupes) : une page par son titre (l'entrée affichée marquée,
+// aria-current) ; un lien vers une autre adresse du site par son libellé (`{ libelle, adresse }` : l'Artisanat), marqué quand il mène à la page
+// affichée (`entry.id` + « / » : pages/regles/artisanat.astro passe { id: 'regles/artisanat' }) ; une entrée « bientôt » (`{ bientot }` : une puce du
+// propriétaire sans texte encore, R184 (1)) grisée, sans lien, comme celles du menu du site. À droite, la page choisie, que l'appelant passe en
+// contenu (<slot /> : PageDuGuide pour le guide, fil d'Ariane et gabarit RacePage pour une race). Chaque page garde son adresse : le menu fait des
+// liens ordinaires, tout se lit sans JavaScript. Pas de couleur de partie : l'accent du site (réponse du propriétaire : « Accent du site »). De la
+// chronologie, la mise en page et le comportement seulement : ni barre en dégradé, ni dates, ni chevrons.
 // Petit écran (<= 56rem, comme la chronologie) : le menu replié au-dessus de la page (un <details> : le titre de la rubrique et celui de la page
 // affichée), un appui l'ouvre. Sans JavaScript il reste ouvert (attribut `open` du build) ; le script en ligne qui le suit le replie sur petit écran et
 // le rouvre sur grand écran (il n'importe rien : aucun module partagé entre scripts de page, skill site-version-portable). Un seul menu par page.
+type Entree = WikiEntry | { libelle: string; adresse: string } | { bientot: string };
 interface Props {
   rubrique: { titre: string; chemin: string };
-  pages: WikiEntry[];
-  entry: WikiEntry;
+  pages: Entree[];
+  entry: { id: string; data: { title: string } };
 }
 const { rubrique, pages, entry } = Astro.props;
 ---
@@ -37,11 +39,15 @@ const { rubrique, pages, entry } = Astro.props;
       <p class="lateral-menu__titre"><a href={url(rubrique.chemin)}>{rubrique.titre}</a></p>
       <ol class="lateral-menu__liste">
         {
-          pages.map((p) => (
-            <li>
-              <a class="lateral-menu__lien" href={entryHref(p)} aria-current={p.id === entry.id ? 'page' : undefined}>{p.data.title}</a>
-            </li>
-          ))
+          pages.map((p) =>
+            'bientot' in p ? (
+              <li><span class="lateral-menu__bientot nav-soon">{p.bientot} <small>(bientôt)</small></span></li>
+            ) : 'adresse' in p ? (
+              <li><a class="lateral-menu__lien" href={url(p.adresse)} aria-current={p.adresse === `${entry.id}/` ? 'page' : undefined}>{p.libelle}</a></li>
+            ) : (
+              <li><a class="lateral-menu__lien" href={entryHref(p)} aria-current={p.id === entry.id ? 'page' : undefined}>{p.data.title}</a></li>
+            ),
+          )
         }
       </ol>
     </details>

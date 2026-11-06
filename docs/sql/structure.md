@@ -1,14 +1,14 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 90 : 207 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 91 : 209 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
 ## Sommaire
 
 - [0. FAMILLES D'IMPORT](#0-familles-dimport) : `famille`
-- [1. PAGES, LIENS, MOTS-CLÉS, SOURCES (couche générique)](#1-pages-liens-mots-clés-sources-couche-générique) : `type_page`, `page`, `alias`, `mot_cle`, `page_tag`, `source`, `page_source`, `page_entite`, `panneau_regles`, `panneau_regles_bloc`, `composant_onglet`, `annonce`
+- [1. PAGES, LIENS, MOTS-CLÉS, SOURCES (couche générique)](#1-pages-liens-mots-clés-sources-couche-générique) : `type_page`, `page`, `alias`, `mot_cle`, `page_tag`, `source`, `page_source`, `page_entite`, `panneau_regles`, `panneau_regles_bloc`, `composant_onglet`, `annonce`, `regles_onglet`, `regles_onglet_entree`
 - [2. RÈGLES DE LA FICHE : caractéristiques, compétences, niveaux, constantes, postures (famille « fiche »)](#2-règles-de-la-fiche--caractéristiques-compétences-niveaux-constantes-postures-famille--fiche) : `caracteristique`, `competence`, `niveau_global`, `niveau_deblocage`, `seuil_niveau`, `regle_constante`, `entrainement_palier`, `initiative_agilite`, `type_don`, `posture`, `posture_effet`, `posture_critique`
 - [3. MAGIES ET SORTS (famille « magies »)](#3-magies-et-sorts-famille--magies) : `magie`, `magie_role`, `magie_resistance`, `magie_incompatibilite`, `magie_ethnie_secondaire`, `magie_dieu`, `amelioration_cadaverique`, `sort`, `sort_type`, `sort_mode`, `sort_bonus_maitrise`, `sort_etat`, `sort_mot_cle`, `commentaire_orphelin`, `legende_sort`, `regle_magie`
 - [4. ANNEXES DES MAGIES : états, résistances, météo, modes hyper et super (famille « annexes »)](#4-annexes-des-magies--états-résistances-météo-modes-hyper-et-super-famille--annexes) : `resistance_palier`, `etat`, `etat_magie`, `etat_stade`, `etat_palier`, `meteo`, `meteo_effet`, `mode_texte`, `mode_hyper_depassement`, `mode_super_objet`, `mode_hyper_effet`
@@ -181,6 +181,30 @@ Annonces placées par le site (migration 0068) : aujourd'hui l'encart « Notre p
 | --- | --- | --- | --- | --- |
 | `id` | TEXT | oui | PK | l'annonce que le site place ('prochaine-rencontre-irl') |
 | `texte` | TEXT | non |  | Markdown des pages, balises du glossaire comprises ; NULL : rien d'annoncé (le texte d'attente s'affiche) |
+
+### `regles_onglet`
+
+Plan des onglets de la rubrique Règles (migration 0091, décisions R184 et R185 : « Fiche de personnage », « Mécaniques générales », « Les combats », « Exploration », après Découvrir et L'univers, que le site écrit lui-même) : un onglet, son titre, sa place et la page qu'il ouvre. Son menu latéral est la liste de ses entrées (regles_onglet_entree), dans l'ordre de `rang`. Liste fermée : l'édition n'en crée ni n'en retire (choix du leader-technique : le plan est une donnée de la base, qu'un lot suivant rendra modifiable sur le site de dev ; pas encore dans lib/edition-modele.mjs#TABLES). La page d'ouverture est une entrée page de l'onglet (clé étrangère composée vers regles_onglet_entree, vérifiée à la fin de la transaction : un onglet et ses entrées s'écrivent ensemble) : déplacer cette page dans un autre onglet, ou la supprimer, est refusé tant qu'une autre page n'ouvre pas l'onglet. Pas de provenance (origine, source_ref : feuille de route, retirées à la 1.0).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `id` | TEXT | oui | PK, → regles_onglet_entree.onglet_id |  |
+| `titre` | TEXT | oui |  | le nom de l'onglet (« Les combats ») |
+| `ordre` | INTEGER | oui |  | place parmi ces onglets (1 = le premier après L'univers) ; pas UNIQUE, pour qu'un réordonnancement puisse échanger deux ordres dans un même lot (à égalité, l'id) |
+| `ouverture_page_id` | TEXT | oui | → regles_onglet_entree.page_id | la page montrée à l'adresse de l'onglet, qui n'est pas forcément la première du menu (« Fiche de personnage » ouvre sur guide/creer-son-personnage) |
+
+### `regles_onglet_entree`
+
+Une entrée du menu latéral d'un onglet des Règles, à sa place (`rang`). Trois sortes, exactement une par ligne : * une page (`page_id`, une page `guide/…`) : son titre est celui de la page ; id 'page:<id de la page>' ; une page n'est que dans un onglet (UNIQUE) ; * un lien vers une adresse du site qui n'est pas une page du guide (`libelle` et `adresse`) : « Artisanat » (regles/artisanat/), id 'lien:<adresse sans la barre finale>' ; * une entrée grisée « bientôt » (`libelle` seul) : une puce du propriétaire sans texte encore (R184 (1)) ; aucune aujourd'hui, id 'bientot:<clé>'. `rang` n'est pas UNIQUE dans l'onglet (comme panneau_regles_bloc.ordre) : SQLite contrôle une contrainte UNIQUE ligne par ligne, et un déplacement par glisser-déposer renumérote plusieurs entrées dans un même lot ; à égalité, l'id départage. Retirer une page retire son entrée (ON DELETE CASCADE), sauf la page d'ouverture d'un onglet (regles_onglet). Pas de provenance (origine, source_ref : feuille de route, retirées à la 1.0).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `id` | TEXT | oui | PK |  |
+| `onglet_id` | TEXT | oui | → regles_onglet.id |  |
+| `rang` | INTEGER | oui |  | place dans le menu latéral de l'onglet (1 = en haut) |
+| `page_id` | TEXT | non | → page.id, unique | la page de l'entrée ; NULL : un lien ou une entrée « bientôt » |
+| `libelle` | TEXT | non |  | le texte d'un lien ou d'une entrée « bientôt » ; NULL pour une page (son titre) |
+| `adresse` | TEXT | non |  |  |
 
 ## 2. RÈGLES DE LA FICHE : caractéristiques, compétences, niveaux, constantes, postures (famille « fiche »)
 

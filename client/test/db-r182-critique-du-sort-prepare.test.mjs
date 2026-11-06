@@ -116,10 +116,13 @@ test('R182 (Q90) : posture_critique n’a plus aucune ligne de don de posture ; 
 });
 
 test('R182 (Q89, Q91) : le guide dit l’échec critique au-delà de 95 % et le sort préparé (critique de la préparation, Double coup), décisions citées', () => {
-  const reussir = corps('guide/reussir-une-action');
+  // « Les quatre résultats » de « Réussir une action » est devenu la page « Réussites / échecs / critiques » (R184, migration 0091)
+  const critiques = corps('guide/reussites-echecs-et-critiques');
   const ECHEC = 'C’est vrai même pour un score au-delà de 95 % : de 96 à 100, le jet reste un échec critique.';
-  assert.ok(reussir.includes(ECHEC));
-  const section = reussir.slice(reussir.indexOf('### L’échec critique : de 96 à 100'), reussir.indexOf('## Bonus et malus'));
+  assert.ok(critiques.includes(ECHEC));
+  const debut = critiques.indexOf('## L’échec critique : de 96 à 100');
+  assert.ok(debut >= 0);
+  const section = critiques.slice(debut);
   assert.ok(section.includes(ECHEC), 'dans la section « L’échec critique : de 96 à 100 »');
   const magie = corps('guide/la-magie-en-jeu');
   const lancer = magie.slice(magie.indexOf('## Lancer un sort'), magie.indexOf('## Ce que coûte un sort'));

@@ -1,7 +1,7 @@
 # Ce qu'il reste à valider sur la base de données
 
 Deux listes : les **choix de forme** du schéma (ce que tu peux relire dans [`apercu.md`](apercu.md)) et les **questions de contenu** que les sources ne tranchent pas.
-Les décisions déjà prises sont dans [`../decisions-regles.md`](../decisions-regles.md) (R1 à R182, liste à jour) ; la conception complète est dans [`conception.md`](conception.md) (§2 conventions, §12 points ouverts).
+Les décisions déjà prises sont dans [`../decisions-regles.md`](../decisions-regles.md) (R1 à R185, liste à jour) ; la conception complète est dans [`conception.md`](conception.md) (§2 conventions, §12 points ouverts).
 
 ## 1. Choix de forme du schéma
 
@@ -247,6 +247,11 @@ Maverick » et de « Créer sa fiche de personnage » (exportés le 2026-10-18 :
 des décisions R1 à R105. Quand un original diffère de la base, les pages suivent la base et les décisions (R83) : **rien n'est appliqué** ci-dessous, ni
 dans la base ni dans les pages de référence. « MJ-orig » et « Fiche-orig » renvoient aux lignes des deux originaux exportés.
 
+**Nouveau plan des pages de règles (R184, R185, 2026-11-06).** L'« Aide-mémoire », « En résumé », « Mode Hyper (Magie) » et « Les documents des règles »
+sont supprimés ; « Résistance/Faiblesse Magie » est fondue dans « Résistances et faiblesses », et « Les situations avancées » répartie en une page par
+situation. Dans la colonne « Pages » ci-dessous, ces noms sont historiques : la question reste posée pour les pages qui demeurent, et ne vaut plus pour
+une page supprimée. Les sections déplacées se lisent à leur nouvelle place (spécification de game-design du 2026-11-06).
+
 **À trancher** (aucune décision ; ce que les pages écrivent en attendant ta réponse)
 
 | # | Pages | Ce qui diffère ou manque | Ce que font les pages en attendant |
@@ -344,3 +349,25 @@ aucune source ni décision : la page les **laisse absents** en attendant ta rép
 | U6 | L'univers | Le Codex liste six continents (Erisia, Enhor, Engrevua, Mrode, Désert Doré, Golopa) mais quatre n'ont qu'un titre sans texte. Les nommer sur la page de présentation, ou seulement Erisia et Mrode, qui sont décrits ? | Seuls Erisia et Mrode sont nommés |
 | U7 | L'univers | Année « d'aujourd'hui » : aucune source ne l'écrit (le dernier fait daté est « Disparition de l'Ordre des Abeilles », 1160 ; `lore/situation-actuelle` n'a pas d'année). Faut-il en fixer une ? | Aucune année actuelle |
 | U8 | L'univers | L'Empire humain est « Née en l'an 0 en même temps que le calendrier » (`lore/empire-humain`, événement `empire-humain-et-calendrier`), mais le tableau des empereurs de la même page en compte six avant l'an 0 (le premier règne de −300 à −270) ; `docs/chronologie.md`, question 5. L'an 0 est-il bien celui du calendrier ? | « né avec le calendrier, selon le Codex », sans écrire « l'an 0 » |
+
+## 8. Nouveau plan des pages de règles : points non tranchés (2026-11-06)
+
+Les onglets Fiche de personnage, Mécaniques générales, Les combats et Exploration remplacent « Créer son personnage », « Les bases » et « Règles
+avancées » (décision R184). Les points ci-dessous ne sont dans aucune source ni décision : le site applique la colonne de droite en attendant ta
+réponse, rien n'est déduit. P1 à P8 sont tranchés par R185 (2026-11-06) ; P9 à P13 restent ouverts.
+
+| # | Pages | Question | Ce que le site fait en attendant |
+| --- | --- | --- | --- |
+| P1 | Équipement et butin | Le butin « se joue sur le résultat de 3D100 » (R184). Qui lance les dés (le MJ, le joueur) et quand (à la mort d'un monstre, à la fin du combat) ? Les trois dés s'additionnent-ils ? Les cartes du bestiaire donnent des tranches de score de 3-15 à 251-287 (Bestiaire 2.0, modèle « BUTIN », `monstre_butin`), sans le dire. | **Tranché (R185)** : le MJ demande le jet au joueur qui fouille un ennemi vaincu ou cherche dans un lieu, un coffre… ; le tableau n'est qu'une indication ; plus le score est bas, plus la découverte est fabuleuse. Reste non dit : si les trois dés s'additionnent (la page n'en parle pas) |
+| P2 | Équipement et butin | Pour fabriquer : « voir un forgeron » (R184). Les sources ne le disent que pour une arme (`ressources/armes` : forgeron recommandé pour fabriquer, indispensable pour recycler ou reforger) ; l'inventaire cite des outils « pour divers métiers comme forgeron ou armurier ». Une armure, un bouclier ou un accessoire se fabrique-t-il aussi chez un forgeron ? | **Tranché (R185)** : le forgeron est le PNJ qui fabrique ; un PJ fabrique lui-même avec le bon métier (forgeron : armes, armures lourdes, boucliers ; travailleur du cuir ou couturier : armures plus légères, selon leurs matériaux). Voir P10 |
+| P3 | La prise en tenaille et zone d'influence ; Les situations avancées | Le texte de la tenaille est désormais sur sa page, et reste aussi dans « Les situations avancées » (« La prise en tenaille »), page importée gardée entière (R184 (3)). Retirer la section de « Les situations avancées » ? | **Tranché (R185)** : « Les situations avancées » est répartie, une page par situation ; la tenaille n'est plus en double. Voir P11 et P12 |
+| P4 | Résistances et faiblesses | La table 13 × 13 de l'ancienne page « Résistance/Faiblesse Magie » (transcription d'une image du Doc « Guide pour MJ », sans la Corruption ni le Potentiel Illimité) n'est pas reprise : la liste est le tableau « Relations entre magies » (`/magies/#relations`, tiré de la base), auquel la page renvoie. Faut-il afficher ce tableau dans la page ? | **Tranché (R185)** : oui, le tableau est affiché dans la page |
+| P5 | La magie en jeu | Sa section « Résistances et faiblesses » garde sa première phrase, la seule à dire que la plupart des magies « sont liées à une altération d'état », dont le début (« Chaque magie résiste à certaines magies et craint certaines autres ») redit la page « Résistances et faiblesses ». La garder, ou ne laisser que le lien ? | **Tranché (R185)** : la phrase, puis le lien |
+| P6 | Les documents des règles, En résumé, Mode Hyper (Magie), Aide-mémoire | Les adresses des quatre pages supprimées mènent-elles à une page proche (« En résumé » vers « Le tour de jeu », « Mode Hyper (Magie) » vers « Le Mode Hyper »…), ou à la page 404 ? | **Tranché (R185)** : page 404, comme « Rejoindre une partie » |
+| P7 | Onglet « Autre » | Après les suppressions, aucune page de règles n'est sans onglet ; il ne reste que la page de démonstration « Utiliser ce wiki » (`status: example`). Créer quand même l'onglet « Autre » ? | **Tranché (R185)** : pas d'onglet « Autre » ; une page `guide/` qu'aucun onglet ne range garde une adresse (choix technique) |
+| P8 | Alignement | « (voir plus bas) » (l.23) vise les neuf alignements, sur une autre page depuis avant le nouveau plan. Même traitement que les phrases devenues fausses (R184 (5)) ? | **Tranché (R185)** : le renvoi devient un lien vers « Les neuf alignements » |
+| P9 | Liste des effets mode hyper ; Le Mode Hyper | « Mode Hyper (Magie) » est supprimée comme « une règle obsolète » (R184 (9)). Deux phrases mentionnent encore cette autre liste de l'onglet masqué du classeur, sans renvoi : la note en italique de fin de `guide/liste-des-effets-mode-hyper` (« … les deux listes ne donnent pas toujours les mêmes valeurs ») et `guide/le-mode-hyper` l.98 (« cette liste ne compte pas, ce sont les valeurs données plus haut … qui valent »). Les retirer aussi ? | Les deux phrases restent, sans le renvoi à la page supprimée |
+| P10 | Équipement et butin | « Travailleur du cuir » (R185) n'est le nom d'aucun métier de la liste (`/metiers/` : Forgeron, Couturier, Maroquinier, Armurier…). Est-ce un métier de la liste, et lequel ? | Les mots du propriétaire, sans lien ; Forgeron et Couturier liés à leur métier |
+| P11 | Les situations avancées | La page est entièrement répartie (R185). Son ancienne adresse, et les liens par son titre (sommaire du « Guide pour MJ - Maverick », « Les situations avancées »), mènent où ? | À « La prise en tenaille et zone d'influence », sa première section |
+| P12 | Rater ses sortilèges ; Mordhau ou Demi-épée | Où ranger ces deux situations ? « Rater ses sortilèges » parle du coût d'un sort raté ; « Mordhau ou Demi-épée » double « La solidité d'une arme » de `guide/l-equipement`. | « Rater ses sortilèges » dans Mécaniques générales, après « La magie en jeu » ; « Mordhau ou Demi-épée » dans Exploration, après « L'équipement » (R184 (3) : juste après la page qu'elle étaye) |
+| P13 | Attaquer et se défendre | Sa section « Les situations qui changent la donne » résume la tenaille, l'attaque d'opportunité, l'attaque discrète et l'embuscade, qui ont désormais chacune leur page. Garder ce résumé ? | Le résumé reste ; sa phrase de renvoi mène aux quatre pages |

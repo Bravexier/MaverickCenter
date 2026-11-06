@@ -24,9 +24,10 @@ export const RESSOURCES = [
     noms: 'Pages du guide',
     description:
       'Les pages de la rubrique « guide », rangées par le plan du site (lib/livres.mjs) : « Découvrir » (/decouvrir/…, une page par entrée du menu), ' +
-      '« Les bases » (/regles/<slug>/, en menu latéral à /regles/), le Guide du MJ (/mj/…) et les Règles avancées (/regles/avancees/<slug>/, en menu latéral à /regles/avancees/), toutes les autres ' +
-      'pages de référence (Google Docs « Règle du jeu/Guide pour MJ » et « Créer sa fiche de ' +
-      'personnage », et six pages tirées des classeurs : altérations d’état, météo, modes hyper et super, statistiques) ; le titre et le texte (Markdown) ' +
+      'les quatre onglets des Règles (Fiche de personnage, Mécaniques générales, Les combats, Exploration ; décisions R184 et R185), chacun en menu ' +
+      'latéral, dont le plan est la ressource onglets-des-regles, et le Guide du MJ (/mj/…) ; pages écrites pour le site et pages de référence (Google ' +
+      'Docs « Règle du jeu/Guide pour MJ » et « Créer sa fiche de personnage », et quatre pages tirées des classeurs : la liste des altérations d’état, la ' +
+      'météo, les effets des modes hyper et super) ; le titre et le texte (Markdown) ' +
       'se modifient par le service : ni HTML brut ni lien non sûr ajouté, blocs <!-- guide:… --> connus seulement, un titre qui est déjà le nom d’une ' +
       'autre page refusé (409), l’ancien titre devient un alias ; l’identifiant <type>/<slug> et l’adresse ne changent jamais ; le résumé ne se ' +
       'modifie pas ; ni création ni suppression.',
@@ -86,6 +87,36 @@ export const RESSOURCES = [
     liste: ['id', 'texte'],
     recherche: ['id', 'texte'],
     tri: 'id',
+  },
+  {
+    cle: 'onglets-des-regles',
+    nom: 'Onglet des Règles',
+    noms: 'Onglets des Règles',
+    description:
+      'Le plan de la rubrique Règles (migration 0091, décisions R184 et R185) : les onglets qui suivent Découvrir et L’univers (« Fiche de ' +
+      'personnage », « Mécaniques générales », « Les combats », « Exploration »), dans l’ordre de `ordre` (à égalité, l’identifiant), chacun avec son ' +
+      'titre et la page montrée à son adresse (`ouverture_page_id`, une page de son menu, pas forcément la première) ; son menu latéral en ' +
+      'sous-ressource ; liste fermée, en lecture seule (le site de dev ne modifie pas encore le plan).',
+    table: 'regles_onglet',
+    libelle: 'titre',
+    liste: ['id', 'titre', 'ordre', 'ouverture_page_id'],
+    recherche: ['titre'],
+    tri: 'ordre',
+    enfants: [
+      {
+        cle: 'entrees',
+        nom: 'Entrée du menu d’un onglet des Règles',
+        noms: 'Entrées du menu d’un onglet des Règles',
+        table: 'regles_onglet_entree',
+        parent: { onglet_id: 'id' },
+        tri: 'rang',
+        description:
+          'Le menu latéral de l’onglet, dans l’ordre de `rang` (à égalité, l’identifiant) : une page du guide (`page_id`, identifiant « page:<id de ' +
+          'la page> », son libellé est le titre de la page ; une page n’est que dans un onglet), un lien vers une autre adresse du site (`libelle` ' +
+          'et `adresse`, « lien:… » : « Artisanat », regles/artisanat/) ou une entrée grisée « bientôt » (`libelle` seul, « bientot:… », aucune ' +
+          'aujourd’hui) ; une page retirée emporte son entrée, sauf la page d’ouverture d’un onglet, refusée ; en lecture seule.',
+      },
+    ],
   },
   {
     cle: 'alias-des-pages',

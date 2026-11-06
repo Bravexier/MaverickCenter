@@ -1,4 +1,4 @@
-// Extension de l'éditeur pour les pages du guide (components/guide/PageDuGuide.astro, toutes rubriques : Découvrir, Les bases, Règles avancées, Guide
+// Extension de l'éditeur pour les pages du guide (components/guide/PageDuGuide.astro, toutes rubriques : Découvrir, les onglets des Règles, Guide
 // du MJ) et du Codex (pages/[type]/[slug].astro) —
 // demande du propriétaire : « le texte de chaque page, les liens (ou non), la mise en page, les tableaux et les cases, ainsi que leur couleur ».
 // En mode modification, chaque morceau de texte [data-ed-morceau] devient modifiable en place (contenteditable) ; les blocs tirés de la base (tableaux

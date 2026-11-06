@@ -1,16 +1,15 @@
 ---
 import PageDuPlan from '../../components/guide/PageDuPlan.astro';
-import { LES_BASES } from '../../lib/livres.mjs';
+import { ongletsDesRegles } from '../../lib/livres.mjs';
 import { loadWiki } from '../../lib/wiki';
 
-// /regles/ : Les bases, ouvertes sur leur première page (lib/livres.mjs#LES_BASES.ouverture, « Réussir une action » ; réponse du propriétaire du
-// 2026-11-05 : « Comme la chronologie (Recommandé) » : le menu latéral des onze pages, components/guide/MenuLateral.astro, le texte de la page
-// choisie à droite ; les Règles avancées de même, pages/regles/avancees/index.astro). Plus de sommaire en
-// groupes (« Au lieu de lister les différentes pages, réécrit directement le contenu. ») ; la page garde son adresse /regles/<slug>/, que celle-ci
-// désigne comme canonique (components/guide/PageDuPlan.astro).
+// /regles/ : le premier onglet des Règles (lib/livres.mjs, plan de la base : R184, « Fiche de personnage »), ouvert sur sa page d'ouverture, comme
+// /regles/<onglet>/ (pages/regles/[...page].astro) : le menu latéral de l'onglet (components/guide/MenuLateral.astro), le texte de la page à droite ;
+// la page garde son adresse /regles/<slug>/, que celle-ci désigne comme canonique (components/guide/PageDuPlan.astro).
 const { entries } = await loadWiki();
-const entry = entries.find((e) => e.id === LES_BASES.ouverture);
-if (!entry) throw new Error(`/${LES_BASES.chemin} : ${LES_BASES.ouverture} n'existe pas (plan du guide, lib/livres.mjs)`);
+const [premier] = ongletsDesRegles();
+const entry = premier && entries.find((e) => e.id === premier.ouverture);
+if (!entry) throw new Error(`/regles/ : la page d'ouverture du premier onglet des Règles (${premier?.ouverture}) n'existe pas (plan de la base, lib/livres.mjs)`);
 ---
 
 <PageDuPlan entry={entry} ouverture />

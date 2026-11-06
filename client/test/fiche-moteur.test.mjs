@@ -670,12 +670,13 @@ test('valeurs du moment : de 0 au maximum, absentes au maximum (corruption à 0)
   assert.doesNotMatch(corps('guide/fiche-attributs'), /ne sont pas concernés par cette règle/);
   assert.doesNotMatch(corps('magies/magie-de-la-corruption'), /n'empiète pas dans l'espace du chakra/);
   // décision R146 : seule la Corruption innée ou acquise échappe à la mort au maximum ; le Potentiel Illimité, même s'il peut s'en servir, peut en mourir
-  for (const id of ['guide/aide-memoire', 'guide/blessures-et-etats', 'guide/creer-son-personnage', 'guide/fiche-attributs', 'guide/la-magie-en-jeu']) {
+  // R184 : la phrase de la création est partie avec l'étape 6 (guide/finaliser-son-personnage) ; l'Aide-mémoire est supprimée (R184 (9))
+  for (const id of ['guide/blessures-et-etats', 'guide/finaliser-son-personnage', 'guide/fiche-attributs', 'guide/la-magie-en-jeu']) {
     assert.match(corps(id), /ont la Corruption en magie innée ou acquise/i, id);
     assert.match(corps(id), /le Potentiel Illimité, même s[’']il peut (?:s[’']en servir|l[’']utiliser), peut en mourir s[’']il en cumule trop/i, id);
     assert.doesNotMatch(corps(id), /(?:mages de la Corruption|utilisent la magie de la corruption) ne (?:risquent|meurent)/i, id);
   }
-  assert.match(corps('guide/creer-son-personnage'), /\*\*Corruption\*\* : son maximum est celui du chakra/); // l’étape 6 de la création (guide/finaliser-son-personnage, fusionnée)
+  assert.match(corps('guide/finaliser-son-personnage'), /\*\*Corruption\*\* : son maximum est celui du chakra/); // l’étape 6 de la création (une page à elle depuis R184)
   // l'exemple du propriétaire : 50 de chakra, 15 de corruption, 35 au plus
   const attributs = { sante: 40, chakra: 50, barriere: 25, corruptionMax: 50, quatriemeBarre: null };
   const par = (fiche) => Object.fromEntries(valeursDuMoment(regles, { ...ficheVide(), ...fiche }, attributs).map((j) => [j.champ, j]));

@@ -36,7 +36,7 @@ import { COULEURS_DES_MATERIAUX } from '../src/lib/materiaux-couleurs.mjs';
 import { COULEUR_SANS_TYPE, COULEURS_DES_ARMES, COULEURS_DES_POIDS, COULEURS_DES_TYPES } from '../src/lib/equipement-couleurs.mjs';
 import { COULEURS_DES_NIVEAUX } from '../src/lib/accessoires-couleurs.mjs';
 import { COULEURS_DES_PARTIES } from '../src/lib/parties-couleurs.mjs';
-import { PARTIES, partieDeLaPage, RUBRIQUES_DU_GUIDE, RUBRIQUES_SOUS_LA_PAGE } from '../src/lib/livres.mjs';
+import { DECOUVRIR, PAGES_DE_LA_CREATION, PARTIES, partieDeLaPage, RUBRIQUES_SOUS_LA_PAGE } from '../src/lib/livres.mjs';
 import { COULEUR_AUJOURDHUI, COULEUR_INCONNUE, couleursDesEvenements } from '../src/lib/chronologie-couleurs.mjs';
 import { chargerChronologie } from '../src/lib/chronologie-db.mjs';
 
@@ -83,7 +83,7 @@ test('vingt familles, chacune lue dans le module de sa règle : magies, attribut
   assert.deepEqual(Object.keys(COULEURS_DES_PARTIES), PARTIES.map((p) => p.id), 'une couleur par partie du plan');
   // (« plus-loin » ne colore plus aucune page depuis le 2026-11-05 : les Bases ont l'accent du site, « Accent du site » ; elle reste une partie de l'ancien guide)
   assert.deepEqual(COULEURS_DES_PARTIES, { decouvrir: '#2a6f97', creer: '#2e7d4f', jouer: '#b03030', progresser: '#6a4a9c', 'plus-loin': '#5a6470' }, 'les valeurs d’avant le lot');
-  assert.ok(RUBRIQUES_DU_GUIDE.every((r) => (r.groupes ?? []).every((g) => Object.hasOwn(COULEURS_DES_PARTIES, g.partie))), 'chaque groupe du plan, la partie d’une couleur');
+  assert.ok([...DECOUVRIR.groupes, PAGES_DE_LA_CREATION].every((g) => Object.hasOwn(COULEURS_DES_PARTIES, g.partie)), 'chaque groupe du plan, la partie d’une couleur');
   assert.ok(!Object.hasOwn(COULEURS_DES_PARTIES, PAR_DEFAUT));
   assert.deepEqual(Object.keys(COULEURS_DES_TYPES), ['Léger', 'Intermédiaire', 'Lourd'], 'les trois types de la légende de la grille');
   assert.deepEqual(Object.keys(CLASS_COLORS), CLASS_GROUPS.map((g) => g.key), 'une couleur par catégorie de /classes/');
@@ -166,12 +166,13 @@ test('le nom d’une classe : « couleur-<famille>-<id> », l’id = la clé du 
   // lot des accessoires : un niveau absent ou inconnu n'a pas de classe (pas de `par-defaut`), comme il n'avait pas de couleur
   assert.deepEqual([1, '5', null, undefined, 6].map(classeDeNiveau), ['couleur-niveau-1', 'couleur-niveau-5', null, null, null]);
   assert.notEqual(classeDeNiveau(1), classeDuTypeDArmure('Léger'), 'la même valeur, deux classes');
-  // lot des parties du guide : la classe d'une partie (une page de Découvrir, une zone de la fiche) ; une page sans partie (Les bases, Règles avancées,
-  // Guide du MJ) n'a pas de classe (pas de `par-defaut`), comme elle n'avait pas de couleur
+  // lot des parties du guide : la classe d'une partie (une page de Découvrir ou de la création du personnage, une zone de la fiche) ; une page sans
+  // partie (les autres pages des onglets des Règles, Guide du MJ) n'a pas de classe (pas de `par-defaut`), comme elle n'avait pas de couleur
   assert.deepEqual(['decouvrir', 'creer', 'jouer', 'progresser', 'plus-loin', null, undefined, 'inconnue'].map(classeDePartie),
     ['couleur-partie-decouvrir', 'couleur-partie-creer', 'couleur-partie-jouer', 'couleur-partie-progresser', 'couleur-partie-plus-loin', null, null, null]);
   assert.equal(classeDePartie(partieDeLaPage('guide/creer-son-personnage')), 'couleur-partie-creer');
-  assert.equal(classeDePartie(partieDeLaPage('guide/les-degats')), null, 'une page des Bases : l’accent du site (« Accent du site », 2026-11-05)');
+  assert.equal(classeDePartie(partieDeLaPage('guide/premiers-sorts')), 'couleur-partie-creer', 'une étape de la création : la couleur de « creer » (R184)');
+  assert.equal(classeDePartie(partieDeLaPage('guide/les-degats')), null, 'une page des onglets des Règles : l’accent du site (« Accent du site », 2026-11-05)');
   assert.equal(classeDePartie(partieDeLaPage('guide/meteo')), null, 'une page de référence');
   const classes = couleursDeLaPalette().map((c) => c.classe);
   assert.equal(classes.length, Object.values(FAMILLES_DE_LA_PALETTE).reduce((n, f) => n + Object.keys(f).length, 0));
@@ -361,12 +362,13 @@ test('la palette dans les pages construites', construit ? {} : { skip: 'site non
   // les niveaux des accessoires : la page Accessoires, et seulement là
   assert.ok(page('ressources/accessoires/index.html').includes(`<style>${cssDesFamilles(['niveau'])}</style>`), 'les niveaux : la page Accessoires');
   for (const rel of ['index.html', 'magies/index.html', 'fiche/index.html', 'ressources/composants/index.html', 'ressources/armes/index.html']) assert.ok(!/\.couleur-niveau-/.test(page(rel)), `${rel} : pas des niveaux`);
-  // les parties du guide : l'accueil, une page de Découvrir (la fiche : avec ses familles, ci-dessus) ; ni Les bases (l'accent du site depuis le
-  // 2026-11-05 : « Accent du site »), ni une page de référence du guide, ni une autre page
-  for (const rel of ['index.html', 'decouvrir/index.html', 'decouvrir/creer-son-personnage/index.html']) {
+  // les parties du guide : l'accueil, une page de Découvrir ou de la création du personnage (la fiche : avec ses familles, ci-dessus) ; ni les autres
+  // pages des onglets des Règles (l'accent du site depuis le 2026-11-05 : « Accent du site »), ni le Guide du MJ, ni une autre page
+  for (const rel of ['index.html', 'decouvrir/index.html', 'regles/creer-son-personnage/index.html', 'regles/premiers-sorts/index.html', 'regles/index.html',
+    'regles/fiche-de-personnage/index.html']) {
     assert.ok(page(rel).includes(`<style>${cssDesFamilles(['partie'])}</style>`), `les parties : ${rel}`);
   }
-  for (const rel of ['magies/index.html', 'ressources/armes/index.html', 'regles/index.html', 'regles/les-postures/index.html', 'regles/avancees/index.html',
+  for (const rel of ['magies/index.html', 'ressources/armes/index.html', 'regles/les-postures/index.html', 'regles/combats/index.html', 'regles/meteo/index.html',
     'mj/index.html']) assert.ok(!/\.couleur-partie-[a-z-]+\{/.test(page(rel)), `${rel} : pas des parties`);
 });
 

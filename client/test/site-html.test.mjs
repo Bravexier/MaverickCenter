@@ -11,7 +11,9 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { htmlAvecMotsCles, pageAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { trierVersions } from '../src/lib/notes-de-version.mjs';
-import { ADRESSES_DU_PLAN_PRECEDENT, ANCRES_DES_PAGES_ABSORBEES, PAGES_ABSORBEES, PAGES_RETIREES, PAR_OU_COMMENCER, partieDeLaPage } from '../src/lib/livres.mjs';
+import {
+  ADRESSES_DU_PLAN_PRECEDENT, ANCRES_DES_PAGES_ABSORBEES, PAGES_ABSORBEES, PAGES_DE_LA_CREATION, PAGES_ECLATEES_DU_GUIDE, PAGES_RETIREES, PAGES_SUPPRIMEES, PAR_OU_COMMENCER, partieDeLaPage,
+} from '../src/lib/livres.mjs';
 import { cheminDePage } from '../src/lib/metiers.mjs';
 import { classeDePartie, classesDeLaPalette, cssDeLaPalette, cssDesFamilles } from '../src/lib/palette-css.mjs';
 import { cssDesAttributs } from '../src/lib/attributs-couleurs.mjs';
@@ -51,10 +53,11 @@ test('la page 404 renvoie les anciennes adresses /wiki/… vers les nouvelles', 
   const html = lire('404.html');
   assert.match(html, /<p id="introuvable" data-base="\/" data-renvois="[^"]*" data-eclatees="[^"]*">/);
   assert.match(html, /location\.replace/);
-  // les anciennes adresses du guide (/guide/, /guide/<slug>/) : une par page du guide de l'index de la recherche, vers sa nouvelle adresse ; puis, pour
-  // chaque page fusionnée dans une autre (refonte du 2026-10-18), /guide/<slug>/ et /decouvrir/<slug>/, et les adresses du plan précédent qui ont changé
-  const attribut = html.match(/data-renvois="([^"]*)"/)[1].replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
-  const renvois = JSON.parse(attribut);
+  // les anciennes adresses du guide (/guide/, /guide/<slug>/) : une par page du guide de l'index de la recherche, vers sa nouvelle adresse ; puis
+  // /guide/<slug>/ de chaque page fusionnée dans une autre, les adresses des plans précédents (dont /decouvrir/<étape>/ et /regles/avancees/<slug>/,
+  // R184) et celles du Lexique
+  const decoder = (nom) => JSON.parse(html.match(new RegExp(`data-${nom}="([^"]*)"`))[1].replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&'));
+  const renvois = decoder('renvois');
   assert.equal(renvois['guide/'], 'decouvrir/');
   const guide = JSON.parse(lire('search-index.json')).filter((e) => e.type === 'Guide');
   for (const e of guide) {
@@ -62,20 +65,53 @@ test('la page 404 renvoie les anciennes adresses /wiki/… vers les nouvelles', 
     assert.ok(slug && slug.startsWith('guide/'), `${e.path} : renvoi absent`);
   }
   const adressesRetirees = Object.values(PAGES_RETIREES).flatMap((p) => p.adresses);
-  assert.equal(Object.keys(renvois).length, guide.length + 1 + 2 * Object.keys(PAGES_ABSORBEES).length + Object.keys(ADRESSES_DU_PLAN_PRECEDENT).length + adressesRetirees.length);
+  // une adresse des plans précédents n'est renvoyée que si sa page (ou celle qui l'absorbe) est construite : sans les pages d'exemple
+  // (HIDE_EXAMPLES=1, build de la CI), /regles/avancees/utiliser-ce-wiki/ (la fixture) ne l'est pas
+  const construite = (id) => existsSync(join(dist, cheminDePage(PAGES_ABSORBEES[id] ?? id), 'index.html'));
+  const precedentes = Object.entries(ADRESSES_DU_PLAN_PRECEDENT).filter(([, id]) => construite(id)).length;
+  assert.equal(Object.keys(renvois).length, guide.length + 1 + Object.keys(PAGES_ABSORBEES).length + precedentes + adressesRetirees.length);
+  for (const [adresse, id] of Object.entries(ADRESSES_DU_PLAN_PRECEDENT)) assert.equal(Object.hasOwn(renvois, adresse), construite(id), `${adresse} : renvoyée si et seulement si ${id} est construite`);
   // le Lexique, devenu des mots-clés (migration 0090, « Supprime la page lexique. ») : ses adresses mènent à /recherche/ (« Rediriger vers /recherche/ »)
   assert.equal(renvois['regles/lexique/'], 'recherche/');
   assert.equal(renvois['guide/lexique/'], 'recherche/');
   assert.ok(!existsSync(join(dist, 'regles', 'lexique')), '/regles/lexique/ n’est plus construite');
   for (const ancienne of Object.keys(PAGES_ABSORBEES)) {
     const slug = ancienne.slice('guide/'.length);
-    assert.equal(renvois[`decouvrir/${slug}/`], renvois[`${ancienne}/`], `${ancienne} : ses deux anciennes adresses mènent au même endroit`);
-    // … à l'intertitre de la page qui l'absorbe où se lit son contenu
+    // chaque ancienne adresse du plan précédent de la page (/decouvrir/le-jeu-de-role/, /regles/avancees/resistance-faiblesse-magie/) mène au même endroit
+    for (const [adresse, id] of Object.entries(ADRESSES_DU_PLAN_PRECEDENT)) {
+      if (id === ancienne) assert.equal(renvois[adresse], renvois[`${ancienne}/`], `${ancienne} : ${adresse} et /guide/${slug}/ mènent au même endroit`);
+    }
+    // … à la page qui l'absorbe, à l'intertitre où se lit son contenu s'il est nommé (ANCRES_DES_PAGES_ABSORBEES)
     const [chemin, ancre] = renvois[`${ancienne}/`].split('#');
+    assert.equal(chemin, cheminDePage(PAGES_ABSORBEES[ancienne]), ancienne);
     assert.equal(ancre, ANCRES_DES_PAGES_ABSORBEES[ancienne], ancienne);
-    assert.match(lire(join(chemin, 'index.html')), new RegExp(`<h[2-6] id="${ancre}"`), `${ancienne} : #${ancre} absent de /${chemin}`);
-    assert.ok(!existsSync(join(dist, 'decouvrir', slug)), `${ancienne} : plus construite`);
+    if (ancre) assert.match(lire(join(chemin, 'index.html')), new RegExp(`<h[2-6] id="${ancre}"`), `${ancienne} : #${ancre} absent de /${chemin}`);
+    for (const dossier of ['decouvrir', 'regles', join('regles', 'avancees')]) assert.ok(!existsSync(join(dist, dossier, slug)), `${ancienne} : plus construite sous /${dossier}/`);
   }
+  // R184 : plus de Règles avancées ; /regles/avancees/ mène au Mode Hyper, chacune de ses pages à son adresse à plat ; les six étapes de la création, de
+  // nouveau des pages, depuis leurs adresses de Découvrir
+  assert.ok(!existsSync(join(dist, 'regles', 'avancees')), '/regles/avancees/ n’est plus construite');
+  assert.equal(renvois['regles/avancees/'], 'regles/le-mode-hyper/');
+  assert.equal(renvois['regles/avancees/meteo/'], 'regles/meteo/');
+  assert.equal(renvois['regles/avancees/resistance-faiblesse-magie/'], 'regles/resistances-et-faiblesses/');
+  assert.equal(renvois['decouvrir/premiers-sorts/'], 'regles/premiers-sorts/');
+  // les pages supprimées (R184 (9), R185 (6) : « page 404 ») : ni construites ni renvoyées
+  for (const supprimee of PAGES_SUPPRIMEES) {
+    const slug = supprimee.slice('guide/'.length);
+    assert.ok(Object.keys(renvois).every((k) => !k.includes(slug)) && Object.values(renvois).every((v) => !v.includes(slug)), `${supprimee} : aucun renvoi`);
+    assert.ok(!existsSync(join(dist, 'regles', slug)), `${supprimee} : plus construite`);
+  }
+  // les pages découpées en plusieurs (data-eclatees, avec celles de l'équipement) : « Créer son personnage » des six étapes, « Les situations avancées »
+  const eclatees = decoder('eclatees');
+  for (const [adresse, attendue] of Object.entries(PAGES_ECLATEES_DU_GUIDE)) assert.deepEqual(eclatees[adresse], attendue, adresse);
+  for (const { defaut, anciennesAncres } of Object.values(PAGES_ECLATEES_DU_GUIDE)) {
+    for (const cible of [defaut, ...Object.values(anciennesAncres)]) {
+      const [chemin, ancre] = cible.split('#');
+      assert.ok(existsSync(join(dist, chemin, 'index.html')), `${cible} : page construite`);
+      if (ancre) assert.match(lire(join(chemin, 'index.html')), new RegExp(`<h[2-6] id="${ancre}"`), `${cible} : ancre absente`);
+    }
+  }
+  assert.ok(!existsSync(join(dist, 'decouvrir', 'creer-son-personnage')), '/decouvrir/creer-son-personnage/ n’est plus construite');
   assert.equal(renvois['decouvrir/campagne-ou-scenario-one-shot/'], 'mj/campagne-ou-scenario-one-shot/');
   // la page Liens, supprimée le 2026-10-22 : son ancienne adresse n'est plus renvoyée nulle part (réponse du propriétaire du 2026-10-23 : « supprimer ce
   // lien ») ; ses blocs, aux mêmes ancres, sont sur l'accueil (« Ces 3 blocs auraient plus leur place dans l'onglet d'acceuil. »), plus sur Bienvenue
@@ -117,22 +153,28 @@ test('en-tête : plus de barre de recherche (une page à part, avec les mots-cl�
   assert.deepEqual([...outils.matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => `${m[2]} ${m[1]}`),
     ['Mise à jour /mise-a-jour/', 'Galeries /galeries/', 'Recherche /recherche/', 'Archives /archives/', ...(production ? [] : ['Debug /debug/'])]);
   assert.match(lire('ressources/alchimie/index.html'), /data-group="equipement" aria-pressed="true" aria-current="true"/, 'une ressource hors menu ouvre l’Équipement');
-  // /regles/artisanat/ : l'Équipement seul est la rubrique courante (le plus long début d'adresse), pas les Règles de /regles/
-  const artisanat = lire('regles/artisanat/index.html');
-  assert.match(artisanat, /data-group="equipement" aria-pressed="true" aria-current="true"/);
-  assert.match(artisanat, /data-group="regles" aria-pressed="false">/);
-  // Les bases et les Règles avancées, lues dans leur menu latéral (demandes du propriétaire du 2026-11-05) : leurs pages ouvrent les Règles et marquent
-  // l'entrée de leur rubrique (`entree` de layouts/Base.astro), elle seule ; l'adresse de la rubrique (ouverte sur sa première page) en est la page
+  // les onglets des Règles (R184), lus dans leur menu latéral : leurs pages ouvrent les Règles et marquent l'entrée de leur onglet, tirée du plan
+  // (`entree` de layouts/Base.astro), elle seule ; l'adresse de l'onglet (ouverte sur sa page d'ouverture) en est la page ; /regles/ montre la page
+  // d'ouverture du premier onglet. L'Artisanat (/regles/artisanat/, entrée lien d'Exploration) ouvre les Règles et marque Exploration, plus l'Équipement.
   for (const [rel, chemin, libelle, courant] of [
-    ['regles/index.html', '/regles/', 'Les bases', 'page'], ['regles/les-degats/index.html', '/regles/', 'Les bases', 'true'],
-    ['regles/avancees/index.html', '/regles/avancees/', 'Règles avancées', 'page'], ['regles/avancees/meteo/index.html', '/regles/avancees/', 'Règles avancées', 'true'],
-    ['regles/avancees/fiche-attributs/index.html', '/regles/avancees/', 'Règles avancées', 'true'],
+    ['regles/index.html', '/regles/fiche-de-personnage/', 'Fiche de personnage', 'true'],
+    ['regles/fiche-de-personnage/index.html', '/regles/fiche-de-personnage/', 'Fiche de personnage', 'page'],
+    ['regles/fiche-attributs/index.html', '/regles/fiche-de-personnage/', 'Fiche de personnage', 'true'],
+    ['regles/mecaniques-generales/index.html', '/regles/mecaniques-generales/', 'Mécaniques générales', 'page'],
+    ['regles/meteo/index.html', '/regles/mecaniques-generales/', 'Mécaniques générales', 'true'],
+    ['regles/combats/index.html', '/regles/combats/', 'Les combats', 'page'], ['regles/les-degats/index.html', '/regles/combats/', 'Les combats', 'true'],
+    ['regles/exploration/index.html', '/regles/exploration/', 'Exploration', 'page'], ['regles/les-portes/index.html', '/regles/exploration/', 'Exploration', 'true'],
+    ['regles/artisanat/index.html', '/regles/exploration/', 'Exploration', 'true'],
   ]) {
     const page = lire(rel);
     assert.match(page, /data-group="regles" aria-pressed="true" aria-current="true"/, `${rel} : les Règles`);
+    assert.match(page, /data-group="equipement" aria-pressed="false">/, `${rel} : pas l’Équipement`);
     assert.ok(page.includes(`<a href="${chemin}" aria-current="${courant}">${libelle}</a>`), `${rel} : l’entrée « ${libelle} »`);
-    assert.equal(page.match(/<a href="\/regles\/(?:avancees\/)?" aria-current=/g).length, 1, `${rel} : une seule des deux entrées marquée`);
+    assert.equal(page.match(/<a href="\/regles\/[a-z-]+\/" aria-current=/g).length, 1, `${rel} : une seule entrée des onglets marquée`);
   }
+  // l'ouverture d'un onglet n'est pas une seconde page : son adresse canonique est celle de la page montrée
+  assert.match(lire('regles/fiche-de-personnage/index.html'), /<link rel="canonical" href="\/regles\/creer-son-personnage\/">/);
+  assert.match(lire('regles/index.html'), /<link rel="canonical" href="\/regles\/creer-son-personnage\/">/);
   assert.ok(!entete.includes('data-group="ressources"'), 'plus de rubrique Ressources');
   // réponse du propriétaire du 2026-10-29 : « Famillier devrai être dans Personnage, Le reste dans equipement (sous menu-autres pour commencer) »
   const familiers = lire('ressources/familiers/index.html');
@@ -612,7 +654,7 @@ test('couleurs des caractéristiques, compétences, postures et alignements : ja
   // chaque zone du lot pose bien ses classes
   const zones = {
     'regles/les-postures/index.html': /<section class="guide-posture couleur-posture-offensif" aria-labelledby/,
-    'decouvrir/creer-son-personnage/index.html': /<section class="guide-competences__groupe couleur-caracteristique-force" aria-labelledby/,
+    'regles/caracteristiques-et-competences/index.html': /<section class="guide-competences__groupe couleur-caracteristique-force" aria-labelledby/,
     'ressources/armes/index.html': /<span class="arme-comp couleur-caracteristique-force couleur-2-caracteristique-force" data-competences="arme-lourde"/,
     'bestiaire/index.html': /<span class="bcarac couleur-caracteristique-force" title="Force">/,
     'fiche/index.html': /<output class="alignement__resultat teinte-palette couleur-alignement-neutre" id="alignement-resultat"/,
@@ -823,17 +865,19 @@ test('couleurs des parties du guide : jamais en style sur une page construite, t
       assert.equal(html.split('.couleur-partie-creer{').length - 1, 1, `${rel} : une seule feuille des parties`);
     }
   }
-  // les pages qui les posent : les trois de Découvrir, l'accueil, la fiche ; aucune autre (ni /regles/, ni une page des Bases)
+  // les pages qui les posent : les deux de Découvrir, l'accueil, la fiche, et la création du personnage (introduction et six étapes, PAGES_DE_LA_CREATION,
+  // partie « creer », défaut confirmé par le propriétaire), montrée aussi à /regles/fiche-de-personnage/ et à /regles/ (page d'ouverture) ; aucune
+  // autre page des onglets des Règles : l'accent du site (« Accent du site », réponse du 2026-11-05)
+  const creation = PAGES_DE_LA_CREATION.pages.map((id) => [`${cheminDePage(id)}index.html`, ['creer']]);
   const attendues = { 'index.html': ['decouvrir', 'creer'],
     'fiche/index.html': ['creer', 'jouer', 'decouvrir', 'progresser'], 'decouvrir/index.html': ['decouvrir'], 'decouvrir/l-univers/index.html': ['decouvrir'],
-    'decouvrir/creer-son-personnage/index.html': ['creer'] };
+    ...Object.fromEntries(creation), 'regles/index.html': ['creer'], 'regles/fiche-de-personnage/index.html': ['creer'] };
   for (const [rel, parties] of Object.entries(attendues)) {
     assert.deepEqual([...(parPage.get(rel) ?? [])].sort(), [...new Set(parties)].map((p) => `couleur-partie-${p}`).sort(), rel);
   }
   assert.deepEqual([...parPage.keys()].filter((rel) => !(rel in attendues)), [], 'ailleurs');
-  assert.equal(parPage.size, 2 + 3, 'l’accueil, la fiche et les trois pages de Découvrir');
-  assert.ok(![...parPage.keys()].some((rel) => rel.startsWith('regles/')), 'Les bases : l’accent du site, comme les Règles avancées');
-  assert.ok(!parPage.has('regles/avancees/meteo/index.html') && !parPage.has('mj/index.html'), 'une page de référence : l’accent du site');
+  assert.equal(parPage.size, 2 + 2 + 7 + 2, 'l’accueil, la fiche, les deux pages de Découvrir, les sept de la création et deux adresses d’ouverture');
+  assert.ok(!parPage.has('regles/meteo/index.html') && !parPage.has('regles/les-degats/index.html') && !parPage.has('mj/index.html'), 'une autre page : l’accent du site');
 });
 
 // Lot des archives et de la mise à jour (même demande, mêmes choix de cadrage : skill ui-couleurs) : aucune famille de la palette ; leurs couleurs sont des

@@ -4,7 +4,7 @@ import magieTooltipsCss from '../../styles/magie/tooltips.css?raw';
 import PiedDePage from '../PiedDePage.astro';
 import GuideBloc from './GuideBloc.astro';
 import { morceauxDuChapitre } from '../../lib/guide.mjs';
-import { estDansDecouvrirOuLesBases, estDesReglesAvancees, filDAriane, partieDeLaPage, RUBRIQUES_SOUS_LA_PAGE } from '../../lib/livres.mjs';
+import { estDuGuideDuMj, filDAriane, partieDeLaPage, RUBRIQUES_SOUS_LA_PAGE } from '../../lib/livres.mjs';
 import { classeDePartie, cssDesParties } from '../../lib/palette-css.mjs';
 import { rendreMarkdown } from '../../lib/guide-rendu';
 import { attributEd } from '../../lib/edition-modele.mjs';
@@ -12,7 +12,7 @@ import { cheminDePage } from '../../lib/metiers.mjs';
 import { TYPES } from '../../lib/types.mjs';
 import { url, type WikiEntry } from '../../lib/wiki';
 
-// Une page du guide, quelle qu'elle soit (lib/livres.mjs : Découvrir, Les bases, Règles avancées, Guide du MJ) : une page simple, comme une page du wiki
+// Une page du guide, quelle qu'elle soit (lib/livres.mjs : Découvrir, les onglets des Règles, Guide du MJ) : une page simple, comme une page du wiki
 // (demande du propriétaire du 2026-10-18 : « Retirer le mécanisme de swipe, et les flèches suivant / précédent et la pagination »). Fil d'Ariane vers sa
 // rubrique ou son sommaire (lib/livres.mjs#filDAriane), titre, texte coupé à ses blocs tirés de la base (GuideBloc : le tableau de la
 // montée de niveau, les postures, les personnages fil rouge…), sous L'univers les rubriques qu'elle présente (RUBRIQUES_SOUS_LA_PAGE), puis mots-clés
@@ -20,10 +20,10 @@ import { url, type WikiEntry } from '../../lib/wiki';
 // Les liens Discord et Tipeee et l'encart « Notre prochaine rencontre IRL », sous le texte de Bienvenue jusqu'au 2026-10-23, sont sur l'accueil
 // (components/accueil/LiensEtRencontre.astro ; « Ces 3 blocs auraient plus leur place dans l'onglet d'acceuil. »). Aucune page
 // ne cite ses sources sous le texte (réponse du propriétaire du 2026-10-22 : « Plus de sources ailleurs que dans les archives. ») : `sources:` reste
-// dans le frontmatter, /archives/ le lit. Une page de Découvrir prend la couleur de son groupe, la classe de sa
-// partie (partieDeLaPage, classeDePartie : `.couleur-partie-<id>`, lib/palette-css.mjs, dont la page émet la feuille ; filet du titre, intertitres,
-// blocs) ; les pages des Bases gardent l'accent du site (réponse du propriétaire du 2026-11-05 : « Accent du site » ; leur menu latéral, comme celui
-// des Règles avancées : MenuLateral.astro), comme les pages de référence (Règles avancées, Guide du MJ) ; seules celles du Guide du MJ ont en plus leur badge « Guide ». Chaque morceau de texte
+// dans le frontmatter, /archives/ le lit. Une page de Découvrir ou de la création du personnage (l'introduction et ses six étapes) prend la couleur
+// de sa partie (partieDeLaPage, classeDePartie : `.couleur-partie-<id>`, lib/palette-css.mjs, dont la page émet la feuille ; filet du titre,
+// intertitres, blocs) ; les autres pages des onglets des Règles gardent l'accent du site (réponse du propriétaire du 2026-11-05 : « Accent du site » ;
+// leur menu latéral : MenuLateral.astro), comme le Guide du MJ ; seules celles du Guide du MJ ont en plus leur badge « Guide ». Chaque morceau de texte
 // est modifiable sur le site de dev (data-ed-morceau ; src/scripts/edition/guide.mjs), comme le titre (data-ed).
 interface Props {
   entry: WikiEntry;
@@ -34,9 +34,10 @@ const { entry, entries, modifiable } = Astro.props;
 const fil = filDAriane(entry.id);
 const ici = cheminDePage(entry.id);
 const couleur = classeDePartie(partieDeLaPage(entry.id));
-// Badge « Guide » et ligne « Aussi appelé » : seulement hors de Découvrir, des Bases et des Règles avancées (réponse du propriétaire du 2026-11-05 :
-// « Retirer, comme Les bases » ; « Les deux rubriques ont la même présentation : le titre, puis le texte, sans badge « Guide » ni ligne « Aussi appelé ». »).
-const reference = !estDansDecouvrirOuLesBases(entry.id) && !estDesReglesAvancees(entry.id);
+// Badge « Guide » et ligne « Aussi appelé » : seulement dans le Guide du MJ, ni dans Découvrir ni dans les onglets des Règles (réponse du propriétaire
+// du 2026-11-05 : « Retirer, comme Les bases » ; « Les deux rubriques ont la même présentation : le titre, puis le texte, sans badge « Guide » ni ligne
+// « Aussi appelé ». »).
+const reference = estDuGuideDuMj(entry.id);
 const morceaux = await Promise.all(
   morceauxDuChapitre(entry.body ?? '').map(async (m) => ('bloc' in m ? m : { html: await rendreMarkdown(m.markdown, entry.id, entry.data.status) })),
 );

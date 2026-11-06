@@ -79,8 +79,10 @@ test('sources : une ligne par document cité, id dérivé du nouvel identifiant,
   // textes (le même jour) : les dix-sept pages réécrites citent chacune les documents dont elles tirent leurs faits (42 renvois de plus, et 2 vers le
   // CODEX Maverick, hors des onze documents de la migration) ; 1 096 depuis le retrait de la page « Rejoindre une partie » (2026-11-05, db:sync-pages,
   // réponse du propriétaire : « Efface la page "Rejoindre une partie" et son lien. ») : ses trois renvois vers des documents Google ; 1 087 depuis le
-  // retrait de la page « Lexique » (2026-11-05, migration 0090 : devenue des mots-clés) : ses neuf renvois vers des documents Google
-  assert.equal(historiqueSite(db).lignesDImport('page_source').filter((r) => ids.has(r.source_id)).length, 1087);
+  // retrait de la page « Lexique » (2026-11-05, migration 0090 : devenue des mots-clés) : ses neuf renvois vers des documents Google ; 1 171 depuis le
+  // nouveau plan des pages de règles (2026-11-06, R184 et R185 : db:sync-pages puis migration 0091) : les 23 pages nouvelles citent les sources de la
+  // page dont elles viennent (99 renvois), les six pages retirées en citaient 15
+  assert.equal(historiqueSite(db).lignesDImport('page_source').filter((r) => ids.has(r.source_id)).length, 1171);
   // aujourd'hui : tout renvoi vers un document Google cite une copie du registre, l'un des deux documents non copiés par la migration ou la copie que
   // le propriétaire en a faite depuis (manifeste : entrée dont `original` cite l'identifiant d'origine ; CODEX Maverick et Bestiaire 2.0, 2026-10-11)
   const copiesUlterieures = manifeste.google.filter((g) => registre.non_copies.some((n) => g.id !== n.id && g.original?.includes(`/d/${n.id}/`))).map((g) => g.id);

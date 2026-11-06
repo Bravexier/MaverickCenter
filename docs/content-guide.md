@@ -159,7 +159,7 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   du filtre les repose entre les lignes visibles, et l'éditeur du site de dev réécrit la feuille d'après la base vivante avant de poser les classes.
 - **Les couleurs des parties du guide** (lot 8) : famille `partie` (`lib/parties-couleurs.mjs#COULEURS_DES_PARTIES`, clé = l'id de la partie de
   `lib/livres.mjs#PARTIES` : `couleur-partie-decouvrir`, `-creer`, `-jouer`, `-progresser`, `-plus-loin`, `classeDePartie` ; pas de `par-defaut` : une
-  page sans partie, des Bases, des Règles avancées ou du Guide du MJ, n'a pas de classe et garde l'accent du site ; `-plus-loin` ne colore plus aucune
+  page sans partie, d'un onglet des Règles hors création du personnage ou du Guide du MJ, n'a pas de classe et garde l'accent du site ; `-plus-loin` ne colore plus aucune
   page depuis le 2026-11-05, elle reste une partie de l'ancien guide, que nomme le registre de la migration 0064). Les valeurs d'avant, inchangées par la règle de
   lisibilité (texte blanc, de 5,05:1 à 6,84:1). Le plan n'écrit plus aucune couleur (il entre dans la chaîne de l'édition du navigateur) : un groupe porte
   l'id de sa partie (`partie`), `partieDeLaPage` remplace `couleurDeLaPage`. La classe est posée sur la page du guide (`.guide-reference`, d'où
@@ -193,7 +193,7 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
     foncent un peu. » (`blocs.css` :
     `--guide-texte: color-mix(in srgb, var(--guide) 90%, #000)` sur `.guide-reference[class*='couleur-partie-']`, que lisent les intertitres, les
     en-têtes du tableau des niveaux, les termes des définitions, les liens des rubriques et le nom d'un personnage fil rouge, sans règle à part ; une
-    page sans partie, des Règles avancées ou du Guide du MJ, garde l'accent du site ; le thème sombre ne change pas ; de 4,99:1 à 7,74:1).
+    page sans partie, d'un onglet des Règles hors création du personnage ou du Guide du MJ, garde l'accent du site ; le thème sombre ne change pas ; de 4,99:1 à 7,74:1).
   Tous les autres textes posés sur ou dans la couleur
   d'une partie atteignent 4,5:1 dans les deux thèmes (le plus juste : l'onglet actif de la zone IV en sombre, 4,52:1 ; testé, parts lues dans les
   feuilles).
@@ -450,7 +450,7 @@ Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, tes
   La **règle spéciale d'un niveau** (`regle_magie`, « Règle spéciale pour sort niveau 5 ») est dans l'infobulle de la pastille « i » du titre du tableau concerné, pas sous le tableau. Pas de légende sur la page.
 - **Un clic sur la ligne** (ou `#sort-<slug>` dans l'adresse) **ouvre juste en dessous un panneau** : un seul cadre « **Effets** » qui contient le texte des effets secondaires (`sort.effets`), puis, à la ligne, la remarque du classeur (`sort.remarque`,
   la note de cellule) et le texte du sort de niveau 5 (`sort.texte_niveau5`) sans intitulé propre. Les **altérations d'état** repérées dans le texte (`sort_etat`, un index dérivé du texte, non exhaustif) sont des **pastilles placées dans le texte**,
-  sur le mot de la source, pas une liste à part ; chacune renvoie à sa section de `/regles/avancees/liste-des-alterations-d-etat/` et a une **infobulle** (type, magie liée, effet de chaque stade ; le stade cité est mis en avant : `etat`, `etat_magie`, `etat_stade`).
+  sur le mot de la source, pas une liste à part ; chacune renvoie à sa section de `/regles/liste-des-alterations-d-etat/` et a une **infobulle** (type, magie liée, effet de chaque stade ; le stade cité est mis en avant : `etat`, `etat_magie`, `etat_stade`).
   Les mêmes infobulles servent aux altérations d'état des résistances et vulnérabilités de la magie. Pas de source citée, pas de liste des créatures qui lancent le sort.
   Quand le sort a **ses propres règles**, un bloc dédié : pour une invocation (Animation de mort, Appel aux Golems, Marionnette de l'ombre) les règles de l'onglet de l'invocation (**repliées** par défaut, dans un `<details>`), pour Animation de mort le tableau
   « AMELIORATION CADAVERIQUE » (replié aussi) et la liste des créatures invoquées par bloc. **La carte du bestiaire d'une créature est son infobulle** (demande du propriétaire : « La carte sera à garder et servirait de tooltip
@@ -482,7 +482,7 @@ Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, tes
   ouvre son onglet puis le sort ; pas de texte d'aide au-dessus des onglets. Les onglets (script commun avec les spécialités des pages de classe : `components/Onglets.astro`) suivent le motif « tabs » de l'ARIA ; sans JavaScript et à
   l'impression, les 14 magies se suivent, chacune sous son titre. `test/potentiel-illimite.test.mjs` et `test/magies-html.test.mjs` (site construit) le vérifient.
 - **Sources** : ni « Source : … » dans le panneau d'un sort, ni section « Sources » en pied de page des pages de magie (`sources:` reste dans le front matter pour la traçabilité).
-- **Chaque élément renvoie à sa page** : magie → page de la magie, altération d'état → sa section de `/regles/avancees/liste-des-alterations-d-etat/` (l'ancre est celle du titre `## <nom>`, vérifiée par
+- **Chaque élément renvoie à sa page** : magie → page de la magie, altération d'état → sa section de `/regles/liste-des-alterations-d-etat/` (l'ancre est celle du titre `## <nom>`, vérifiée par
   le test), créature ou invocation → page du bestiaire, race → page de la race.
 - `Résistances` et `Vulnérabilités` = `magie_resistance` (cibles « magie » et « état », écriture de la source sur la pastille), `Magie non compatible` = `v_magie_incompatible` (relation symétrique)
   **sans le Potentiel Illimité**, cité dans aucun bloc (il est incompatible avec toutes) ; une magie **mono-magie** (`magie.mono_magie` : Potentiel Illimité, Corruption) affiche à la place
@@ -513,7 +513,7 @@ typées lues par `client/src/lib/races-db.mjs`, jamais le Markdown. **Aucun tabl
   à son propre niveau (« Humain » suivi de « Central · Désertique »). Les relations entre peuples d'une même race sont dans une petite matrice. Une race sans peuple dans l'onglet (Anansi, Farfadet, Goleois) le dit.
 - **Menu latéral de toutes les races** (demande du propriétaire : « comme pour chronologie, et les bases, un menu latéral qui récapitule toutes les races sur le menu d'une race ouverte ») :
   `components/race/MenuDesRaces.astro`, posé par `pages/[type]/[slug].astro` autour de la page (fil d'Ariane, gabarit, pied de page) quand la race a ses lignes dans la base. Le menu latéral
-  commun des Bases et des Règles avancées (`components/guide/MenuLateral.astro`, la page passée en contenu ; classes `lateral*`, feuille `styles/guide/menu-lateral.css`) : à gauche les races de `/races/` dans le même ordre (`groupRaces` : pures puis hybrides, `ORDRE_DES_RACES`),
+  commun des onglets des Règles (`components/guide/MenuLateral.astro`, la page passée en contenu ; classes `lateral*`, feuille `styles/guide/menu-lateral.css`) : à gauche les races de `/races/` dans le même ordre (`groupRaces` : pures puis hybrides, `ORDRE_DES_RACES`),
   en une seule liste sans titre de groupe (réponse du propriétaire : « Une seule liste »), la race ouverte marquée (`aria-current`), l'accent du site (réponse : « Accent du site ») ; petit écran (<= 56rem), le menu replié au-dessus de la page, ouvert sans JavaScript.
 - Le CSS est dans `client/src/styles/race/`, injecté par `RacePage.astro` (`?raw`) seulement, comme celui des magies (le menu latéral, lui, lit `styles/guide/menu-lateral.css` par `MenuLateral.astro`). `test/races-html.test.mjs` contrôle le site construit (la CI le lance après le build).
 
@@ -1282,71 +1282,66 @@ dev (un commit la change) ni cherchée par la recherche.
 
 - **Découvrir** (`/decouvrir/`, en tête de la rubrique Règles du menu — l'ancienne rubrique Découvrir, renommée le 2026-10-29 —, faite pour être vue
   même des non-membres ; `DECOUVRIR`) : **une page par entrée du menu** (choix du propriétaire du 2026-10-18) — « Bienvenue » (servie à `/decouvrir/`,
-  entrée « Découvrir » du menu ; elle absorbe « Le jeu de rôle, comment ça marche ? », et n'a plus de
-  sommaire), « L'univers » (race, magie, classe ; dessous, un bloc de navigation rendu par le gabarit, `RUBRIQUES_SOUS_LA_PAGE`, mène aux Races, aux
-  Magies et aux Classes), « Créer son personnage » (les six étapes sur une seule page) —, à `/decouvrir/<slug>/`. Discord, Tipeee et l'encart
-  « Notre prochaine rencontre IRL » sont sur l'accueil (plus bas) ; plus de page « Liens ». Ce sont aussi les trois cartes « Par où commencer ? » de
-  l'accueil (`PAR_OU_COMMENCER`), sous la phrase « Première visite ? Commencez par Découvrir : le jeu, son univers et la création d’un personnage. ».
+  entrée « Découvrir » du menu ; elle absorbe « Le jeu de rôle, comment ça marche ? », et n'a plus de sommaire) et « L'univers »
+  (`/decouvrir/l-univers/` ; race, magie, classe ; dessous, un bloc de navigation rendu par le gabarit, `RUBRIQUES_SOUS_LA_PAGE`, mène aux Races, aux
+  Magies et aux Classes). « Créer son personnage » n'y est plus depuis R184 : c'est l'introduction de l'onglet « Fiche de personnage ». Discord,
+  Tipeee et l'encart « Notre prochaine rencontre IRL » sont sur l'accueil (plus bas) ; plus de page « Liens ». Les trois cartes « Par où commencer ? »
+  de l'accueil (`PAR_OU_COMMENCER`) : Bienvenue, L'univers et « Créer son personnage » (`/regles/creer-son-personnage/`, défaut confirmé par le
+  propriétaire), sous la phrase « Première visite ? Commencez par Découvrir : le jeu, son univers et la création d’un personnage. ».
   **Plus de page « Rejoindre une partie »** (demande du propriétaire du 2026-11-05 : « Efface la page "Rejoindre une partie" et son lien. ») : ni dans
   la base, ni au menu, ni sur l'accueil ; son ancienne adresse `/decouvrir/rejoindre-une-partie/` n'est renvoyée nulle part (réponse « Page 404
   (Recommandé) ») : la page 404 la dit introuvable, comme `/decouvrir/liens/`.
-- **Les bases** (`/regles/`, rubrique Règles, après les pages de Découvrir ; `LES_BASES`) : **onze pages, sans groupes**, sur le modèle de la
-  chronologie (demande du propriétaire du 2026-11-05 : « Au lieu de lister les différentes pages, réécrit directement le contenu. Tu peux mettre
-  chaque page dans un onglet. Inutile de séparer les catégories les Jouer / Progresser / Pour aller plus loin. Pour la présation je préfèrera un menu
-  latéral sous le même modèle que la chronologie. » ; réponse « Comme la chronologie (Recommandé) ») : `components/guide/MenuLateral.astro` met à gauche,
-  en vertical, le menu des onze titres (dans l'ordre de `LES_BASES.pages`, tels que la base les écrit ; l'entrée affichée marquée, `aria-current`) et
-  à droite le texte de la page choisie (`PageDuGuide`, son pied de page compris). Chaque page garde son adresse `/regles/<slug>/` (le menu fait des
-  liens ordinaires : tout se lit sans JavaScript) ; `/regles/` (`pages/regles/index.astro`) montre le menu et la page `LES_BASES.ouverture`,
-  « Réussir une action », sous le titre « Les bases », avec un `<link rel="canonical">` vers `/regles/reussir-une-action/` (pas deux pages du même
-  texte pour les moteurs de recherche). L'entrée « Les bases » du menu du site est marquée sur chacune (`entree`). De la chronologie, la mise en page
-  et le comportement seulement (menu collé en haut de l'écran pendant la lecture, qui défile seul s'il dépasse) : ni barre en dégradé, ni dates, ni
-  chevrons, ni ← →. Sous 56rem, le menu est replié au-dessus de la page (un `<details>` : « Les bases » et le titre affiché, un appui l'ouvre) ; sans
-  JavaScript, il reste ouvert (un script en ligne, sans import, le replie sur petit écran et le rouvre sur grand écran). Feuille :
-  `styles/guide/menu-lateral.css` (jetons du thème, aucune couleur écrite). Le mode modification du site de dev porte sur la page affichée (`/regles/`
-  comprise). Le texte des pages reste celui de la base : rien n'est réécrit. L'ancien plan (24 pages, validé par le propriétaire) faisait lire la
-  règle du D100 (« Réussir une action ») **avant** de créer son personnage ; le nouveau la met en tête des Bases : ce remplacement attend la
-  confirmation du propriétaire (`docs/feuille-de-route.md`, « Questions encore ouvertes », 10).
-  **Plus de page « Lexique »** (demande du propriétaire du 2026-11-05 : « Supprime la page lexique. Toutes les informations comprises dedans doivent
-  être converties en mot-clés. ») : ses entrées sont des mots-clés du glossaire (migration `0090`, « Mots-clés (glossaire) » ci-dessous), la page n'est
-  plus dans la base ni dans le plan (ni dans Les bases, ni dans les Règles avancées : `verifierLePlan` arrête le build si elle revient), et ses adresses `/regles/lexique/` et `/guide/lexique/` mènent à `/recherche/` (réponse du propriétaire :
-  « Rediriger vers /recherche/ » ; `PAGES_RETIREES`, ci-dessous).
-- **Les Règles avancées** (`/regles/avancees/`, rubrique Règles, après Les bases ; `REGLES_AVANCEES`) : **la même chose que Les bases** (demande du
-  propriétaire du 2026-11-05 : « Suite à la modification de la page "les bases" refait la même avec les "règles avancées", tout sur la même page avec
-  menu lattéral. ») : le même composant (`MenuLateral.astro`, même mise en page, même comportement, même feuille ; aussi celui des pages de race,
-  « Pages de race »), à gauche le menu des titres, à
-  droite le texte de la page choisie, sans couleur de partie (l'accent du site). **Une seule liste, sans groupes** (réponse « Liste sans groupes » :
-  « Comme Les bases : une seule liste de titres, dans l'ordre actuel des groupes. ») : d'abord les pages nommées par `REGLES_AVANCEES.pages`, dans
-  l'ordre des anciens groupes du sommaire (Magie et Mode Hyper — « Le Mode Hyper » en tête —, Combat et actions, Altérations d'état, Alignement,
-  Exploration et voyage — pièges, portes, météo et « Donjon pas bon » y sont « pour tout le monde », réponse du propriétaire du 2026-10-18 —), puis
-  les pages `guide/fiche-…` (`REGLES_AVANCEES.prefixes`, ordre des titres), puis **toute autre page `guide/…`** que ni Découvrir, ni Les bases, ni le
-  Guide du MJ ne nomme (`estDesReglesAvancees`, ordre des titres) : une page ajoutée plus tard a toujours une adresse et une entrée dans le menu
-  (`pagesDesReglesAvancees`). Chaque page garde son adresse `/regles/avancees/<slug>/` ; `/regles/avancees/` (`pages/regles/avancees/index.astro`)
-  montre le menu et la page `REGLES_AVANCEES.ouverture`, « Le Mode Hyper » (réponse du propriétaire du 2026-11-05), sous le titre « Règles
-  avancées », avec un `<link rel="canonical">` vers `/regles/avancees/le-mode-hyper/`. Fil d'Ariane « Accueil › Règles avancées » (plus de groupe ni
-  d'ancre de groupe). L'entrée « Règles avancées » du menu du site est marquée sur chacune (`entree`). `lib/livres.mjs#menuLateralDe` choisit le
-  menu d'une page (Les bases, Règles avancées, ou aucun).
-- **Les couleurs** des groupes de Découvrir sont celles des anciennes parties (`PARTIES` ; chaque groupe porte l'id de sa partie, `partie` : Découvrir
-  #2a6f97, Créer son personnage #2e7d4f ; Jouer #b03030 et Progresser #6a4a9c ne servent plus qu'à la fiche, Pour aller plus loin #5a6470 plus à rien ;
-  valeurs dans `lib/parties-couleurs.mjs`), qui restent celles des quatre zones de la fiche : une page de Découvrir a le filet de son titre, ses intertitres et ses
-  blocs dans la couleur de son groupe (`partieDeLaPage`, la classe de sa partie `.couleur-partie-<id>` : « Couleurs du site : la palette en
-  classes »), une carte de l'accueil aussi. **Les pages des Bases n'ont pas de couleur de partie** : l'accent du site, comme les Règles avancées et le
-  Guide du MJ (réponses du propriétaire du 2026-11-05 : « Une seule couleur », puis « Accent du site » ; `partieDeLaPage` rend null).
+- **Les onglets des Règles** (décisions R184 et R185, migration `0091` ; rubrique Règles du menu, après Découvrir et L'univers) : « Fiche de
+  personnage », « Mécaniques générales », « Les combats », « Exploration », aucun onglet « Autre ». **Le plan est une donnée de la base**, jamais
+  écrit dans le code : tables `regles_onglet` (id, titre, ordre, page d'ouverture) et `regles_onglet_entree` (le menu latéral de chaque onglet, dans
+  l'ordre : une page `guide/…`, dont le libellé est le titre ; un lien vers une autre adresse du site, l'Artisanat ; ou une entrée « bientôt »,
+  grisée sans lien, aucune aujourd'hui). `lib/plan-des-regles-db.mjs#chargerPlanDesRegles` le lit ; celui qui charge les pages l'installe dans
+  `lib/livres.mjs` (`installerLePlan`, qui contrôle sa forme : `lib/wiki.ts` au build, le service à son démarrage) : `livres.mjs` reste sans import,
+  et une fonction qui a besoin du plan (`ongletsDesRegles`, `ongletDe`, `menuLateralDe`, `filDAriane`, `placeDansLeGuide`, `verifierLePlan`) lève
+  une erreur claire s'il n'est pas installé. **Adresses à plat** : toute page d'un onglet est à `/regles/<slug>/` (les pages des anciennes Bases
+  gardent la leur) ; l'adresse ne dépend pas du plan (`adresseDuGuide` : la chaîne de l'édition du navigateur, qui ne le reçoit pas, la calcule
+  aussi). Chaque onglet est à `/regles/<onglet>/` (`pages/regles/[...page].astro`), qui montre sa page d'ouverture sous le titre de l'onglet, avec
+  un `<link rel="canonical">` vers `/regles/<slug>/` ; `/regles/` (`pages/regles/index.astro`) montre celle du premier onglet. Les ids des onglets,
+  `artisanat` et `avancees` sont des noms réservés (`nomsReserves`) : aucune page ne les prend. Chaque page est à côté du **menu latéral** de son
+  onglet, sur le modèle de la chronologie (demande du propriétaire du 2026-11-05 pour Les bases : « Pour la présation je préfèrera un menu latéral
+  sous le même modèle que la chronologie. » ; réponse « Comme la chronologie (Recommandé) ») : `components/guide/MenuLateral.astro` met à gauche, en
+  vertical, les entrées de l'onglet (une seule liste, sans groupes ; l'entrée affichée marquée, `aria-current`) et à droite le texte de la page
+  choisie (`PageDuGuide`, son pied de page compris). Le menu fait des liens ordinaires (tout se lit sans JavaScript) ; ni barre en dégradé, ni dates,
+  ni chevrons, ni ← → ; sous 56rem, il est replié au-dessus de la page (un `<details>`, ouvert sans JavaScript ; un script en ligne, sans import, le
+  replie sur petit écran). Feuille : `styles/guide/menu-lateral.css` (jetons du thème ; une entrée « bientôt » prend la classe `nav-soon` du menu
+  du site). **L'onglet marqué au menu du site** (`entree` de `layouts/Base.astro`) vient du plan, pas de l'adresse ; toute adresse sous `/regles/`
+  ouvre la rubrique Règles (`autres` de `lib/nav.mjs`). `lib/nav.mjs` n'importe rien : ses libellés et chemins des onglets sont écrits à part, et
+  `test/nav.test.mjs` les compare à la table `regles_onglet`. Fil d'Ariane « Accueil › <onglet> ». La page « Artisanat » (`/regles/artisanat/`) est
+  une entrée lien d'Exploration : elle est à côté de ce menu, son entrée marquée, et l'onglet marqué au menu du site. Le mode modification du site de
+  dev porte sur la page affichée (adresses des onglets comprises). Le texte des pages reste celui de la base : rien n'est réécrit.
+  **Plan strict** (`verifierLePlan`, au build) : toute page `guide/…` qui n'est pas d'exemple est dans Découvrir, un onglet ou le Guide du MJ, sinon
+  le build s'arrête en la nommant (l'ajouter à `regles_onglet_entree`) ; une page d'exemple (la fixture `guide/utiliser-ce-wiki`) garde une adresse
+  de repli à `/regles/<slug>/`, sans entrée de menu ni fil d'Ariane. Plus de « Les bases » ni de « Règles avancées » (R184) : leurs anciennes
+  adresses sont renvoyées (plus bas). Le Lexique (2026-11-05, « Supprime la page lexique. ») : ses entrées sont des mots-clés du glossaire (migration
+  `0090`), ses adresses `/regles/lexique/` et `/guide/lexique/` mènent à `/recherche/` (`PAGES_RETIREES`, ci-dessous).
+- **Les couleurs** : Découvrir et **la création du personnage** (« Créer son personnage » et ses six étapes, `PAGES_DE_LA_CREATION`) prennent celles des
+  anciennes parties (`PARTIES` ; Découvrir #2a6f97, Créer son personnage #2e7d4f ; Jouer #b03030 et Progresser #6a4a9c ne servent plus qu'à la fiche,
+  Pour aller plus loin #5a6470 plus à rien ; valeurs dans `lib/parties-couleurs.mjs`), qui restent celles des quatre zones de la fiche : la page a le
+  filet de son titre, ses intertitres et ses blocs dans la couleur de sa partie (`partieDeLaPage`, sans le plan ; la classe `.couleur-partie-<id>` :
+  « Couleurs du site : la palette en classes »), une carte de l'accueil aussi. **Les autres pages des onglets n'ont pas de couleur de partie** :
+  l'accent du site, comme le Guide du MJ (réponses du propriétaire du 2026-11-05 : « Une seule couleur », puis « Accent du site » ; `partieDeLaPage`
+  rend null).
 - **Toute page du guide est une page simple** (`components/guide/PageDuGuide.astro`, servie par `PageDuPlan.astro`, à côté du menu latéral pour une
-  page des Bases ou des Règles avancées) : fil d'Ariane vers sa rubrique (Découvrir, Les bases, Règles avancées) ou le Guide du MJ (`filDAriane`), titre, texte coupé à ses blocs tirés de la
+  page d'un onglet) : fil d'Ariane vers Découvrir, son onglet ou le Guide du MJ (`filDAriane`), titre, texte coupé à ses blocs tirés de la
   base, puis ses mots-clés (`components/PiedDePage.astro`). **Plus aucune source sous une page**, quelle qu'elle soit (réponse du
   propriétaire du 2026-10-22, G43 : « Plus de sources ailleurs que dans les archives. On va épurer un peu ce qui est redondant. ») : `sources:` reste
   dans le frontmatter et la base (`page_source`, `source`), que `/archives/` lit. Ni flèches, ni touches ← →, ni glissement du doigt, ni pagination,
   ni numéro de chapitre. Le retour arrière du navigateur au glissement horizontal est empêché pour tout le site (`html { overscroll-behavior-x: none; }`,
   `styles/global/base.css` ; réponse du 2026-10-22 : « Supprime juste le swipe. ») ; sur iOS, le geste qui part du bord de l'écran est celui du
-  système et aucune règle CSS ne le bloque. Les pages du Guide du MJ gardent le badge « Guide » à côté du titre et la ligne « Aussi appelé » ; celles des Bases et des Règles avancées n'ont ni l'un ni l'autre (réponse du propriétaire du 2026-11-05 : « Retirer, comme Les bases »).
+  système et aucune règle CSS ne le bloque. Les pages du Guide du MJ gardent le badge « Guide » à côté du titre et la ligne « Aussi appelé » ; celles
+  de Découvrir et des onglets n'ont ni l'un ni l'autre (réponse du propriétaire du 2026-11-05 : « Retirer, comme Les bases »).
 - **Un sommaire** (`components/guide/Sommaire.astro` : le titre lié et le résumé de chaque page, tel que la base l'écrit, rien si elle n'en a
   pas ; aucune couleur de partie) : « **Guide du MJ** » (`/mj/`, rubrique Espace MJ : « Un maître du jeu », le guide pour MJ et « « Campagne » ou
   « Scénario one shot » ? », qui y passe, choix du propriétaire du 2026-10-18), pages à `/mj/<slug>/` ; le même composant sert à l'Artisanat. Les
-  Règles avancées n'ont plus de sommaire depuis le 2026-11-05 (menu latéral, plus haut). « Les documents des règles » garde son adresse
-  (`/regles/avancees/les-documents-des-regles/`, dans le reste des Règles avancées) : son bloc liste les pages de référence par document source
-  (`pagesDeReference` : sans les pages de Découvrir ni des Bases), avec leurs liens, ce que `/archives/` ne montre pas.
+  onglets des Règles n'ont pas de sommaire (menu latéral, plus haut). « Les documents des règles » et son bloc `documents` sont supprimés (R184 (9)).
 - **Artisanat** (`/regles/artisanat/`, `lib/livres.mjs#ARTISANAT`) : un sommaire de pages d'autres types — Composants (titre et description de la page,
-  `lib/composants-db.mjs`, faute de ligne `page`), les pages d'alchimie et les règles des métiers.
+  `lib/composants-db.mjs`, faute de ligne `page`), les pages d'alchimie et les règles des métiers —, entrée lien du menu latéral d'Exploration (R184 ;
+  plus au menu Équipement). La page Composants reste dans l'Équipement (`ressources/`), son fil d'Ariane mène à l'Artisanat.
 - **Sur l'accueil**, sous la bienvenue et le carrousel, avant « Par où commencer ? » (`/`, `pages/index.astro` ;
   `components/accueil/LiensEtRencontre.astro`, `LIENS_ET_RENCONTRE`, styles `styles/accueil/liens-et-rencontre.css` ; demandes du propriétaire du
   2026-10-23 : « Ces 3 blocs auraient plus leur place dans l'onglet d'acceuil. », puis, pour leur place, « Sous la bienvenue et le carrousel »).
@@ -1378,14 +1373,14 @@ dev (un commit la change) ni cherchée par la recherche.
   HTML brut ni lien non sûr ajouté, balises du glossaire en forme canonique : `serveur/edition.mjs#ANNONCE`), la mise à jour aussi
   (`scripts/mise-a-jour-regles.mjs#TEXTES_EN_MARKDOWN`, `texteNonSurApresLeRejeu`), et elle part en production avec la mise à jour (note de version :
   domaine Guide, groupe Découvrir, « Accueil › Notre prochaine rencontre IRL »). Ni création ni suppression d'annonce : le site place les siennes.
-- **Pages fusionnées** (2026-10-18, `PAGES_ABSORBEES`) : « Le jeu de rôle, comment ça marche ? » dans Bienvenue, les six étapes (« Étape 1 : imaginer son
-  personnage et choisir sa race » … « Étape 6 : finaliser son personnage ») dans Créer son personnage. Elles ne sont plus dans la base (retirées par
-  `db:sync-pages`, famille `docs`) ; `verifierLePlan` arrête le build si l'une revient. Leurs adresses — d'avant l'éclatement (`/guide/<slug>/`) et du plan
-  précédent (`/decouvrir/<slug>/`) — mènent à la page qui les absorbe, à l'intertitre où se lit leur contenu (`ANCRES_DES_PAGES_ABSORBEES` :
-  `#étape-5--choisir-ses-premiers-sorts`, `#le-jeu-de-rôle-comment-ça-marche-`… ; un intertitre renommé change l'ancre, `test/livres.test.mjs` et
-  `test/site-html.test.mjs` le vérifient), requête et ancre écrite gardées (`#une-ou-deux-classes--le-biclassage` reste une ancre de Créer son
-  personnage et l'emporte), comme `/decouvrir/campagne-ou-scenario-one-shot/` mène au Guide du MJ
-  (`ADRESSES_DU_PLAN_PRECEDENT` ; `/decouvrir/liens/`, l'ancienne page Liens, n'est plus renvoyée : « supprimer ce lien »).
+- **Pages fusionnées** (`PAGES_ABSORBEES`) : « Le jeu de rôle, comment ça marche ? » dans Bienvenue (2026-10-18) ; « Résistance/Faiblesse Magie »
+  dans « Résistances et faiblesses » et « Les situations avancées » dans « La prise en tenaille et zone d'influence » (R184, R185 (3)). Elles ne sont
+  plus dans la base ; `verifierLePlan` arrête le build si l'une revient. Leurs adresses mènent à la page qui les absorbe, à l'intertitre où se lit leur
+  contenu quand il est nommé (`ANCRES_DES_PAGES_ABSORBEES` : `#le-jeu-de-rôle-comment-ça-marche-` ; un intertitre renommé change l'ancre,
+  `test/livres.test.mjs` et `test/site-html.test.mjs` le vérifient), requête et ancre écrite gardées. Les six étapes de la création, fusionnées dans
+  « Créer son personnage » du 2026-10-18 à R184, sont redevenues des pages sous leur id (`/regles/<étape>/`).
+- **Pages supprimées sans renvoi** (`PAGES_SUPPRIMEES`, R184 (9), R185 (6)) : « Les documents des règles », « En résumé : déroulement d'un tour »,
+  « Aide-mémoire », « Mode Hyper (Magie) ». Leurs adresses mènent à la page 404 ; `verifierLePlan` arrête le build si l'une revient sans place.
 - **Pages retirées dont le contenu se lit ailleurs** (`PAGES_RETIREES` : page retirée → `{ vers, adresses }`, adresses relatives à la racine du site) :
   le Lexique, devenu des mots-clés (migration `0090`). Ses anciennes adresses (`regles/lexique/`, `guide/lexique/`) mènent à `vers` (`recherche/`) par
   la page 404 (`renvoisDuGuide`), requête et ancre d'origine gardées (`/regles/lexique/?q=AM` → `/recherche/?q=AM`), et un lien Markdown écrit vers
@@ -1393,20 +1388,32 @@ dev (un commit la change) ni cherchée par la recherche.
   dans la base. Une page simplement effacée, sans renvoi (« Rejoindre une partie », « Liens »), n'y est pas : la page 404 la dit introuvable. Tests :
   `test/livres.test.mjs`, `test/site-html.test.mjs`.
 - **Plus de champs `chapitre` ni `partie`** dans le frontmatter (migration `0064-guide-sans-chapitres`, registre de ce qui est parti dans
-  `data/migrations/0064-guide-sans-chapitres.json`, `test/guide-sans-chapitres.test.mjs`) : l'ordre, les groupes et leurs couleurs sont dans le plan,
-  contrôlé au build (`verifierLePlan` : une page nommée absente, d'exemple ou nommée deux fois arrête tout). Pour placer une page : la nommer dans
-  `lib/livres.mjs` (Découvrir, Les bases, Guide du MJ ou Règles avancées), sinon elle va d'elle-même à la fin du menu des Règles avancées.
-- **Les anciennes adresses** `/guide/` et `/guide/<slug>/` mènent aux nouvelles par la page 404 (renvois calculés au build, `lib/metiers.mjs#renvoisDuGuide`,
-  requête et ancre gardées). Un lien Markdown écrit à la main vers `/guide/<slug>/` mène à la nouvelle adresse au rendu — celle de la page qui l'absorbe
-  pour une page fusionnée, à son intertitre si le lien n'écrit pas d'ancre — (`lib/guide.mjs#adresseDesAnciensLiens`, `remarkAnciensLiensDuGuide`), sans que la base change, et garde l'adresse écrite en
-  `data-lien-ecrit` : un morceau de texte modifié sur le site de dev la réécrit telle quelle (`lib/markdown-edition.mjs#versMarkdown`), jamais l'adresse
-  du plan qu'il montre, qui changerait avec le plan. Vers une page du guide, un `[[lien]]` du wiki (`[[guide/les-postures|les postures]]`) suit la page
-  où que le plan la range.
+  `data/migrations/0064-guide-sans-chapitres.json`, `test/guide-sans-chapitres.test.mjs`) : l'ordre et les couleurs sont dans le plan, contrôlé au
+  build (`verifierLePlan`). Pour placer une page : l'ajouter à un onglet (table `regles_onglet_entree`), ou la nommer dans `lib/livres.mjs`
+  (Découvrir, Guide du MJ) ; une page rangée nulle part arrête le build.
+- **Les anciennes adresses** mènent aux nouvelles par la page 404, requête et ancre gardées, d'après des **listes figées** (pas de préfixe deviné) :
+  `/guide/` et `/guide/<slug>/` (renvois calculés au build, `lib/metiers.mjs#renvoisDuGuide`) ; les adresses des plans précédents
+  (`ADRESSES_DU_PLAN_PRECEDENT` : `/decouvrir/<étape>/` des six étapes, `/decouvrir/le-jeu-de-role/`, `/decouvrir/campagne-ou-scenario-one-shot/`,
+  `/regles/avancees/`, qui mène au Mode Hyper, et chaque `/regles/avancees/<slug>/` relevée au commit 92a123d) ; les pages découpées en plusieurs,
+  selon l'ancre (`PAGES_ECLATEES_DU_GUIDE`, au format des pages éclatées de l'équipement, passées à la page 404 par `data-eclatees`) :
+  `/decouvrir/creer-son-personnage/` mène à `/regles/creer-son-personnage/`, et chacune de ses anciennes ancres d'étape (`#étape-5--choisir-ses-premiers-sorts`)
+  ou de sous-intertitre (`#une-ou-deux-classes--le-biclassage`) à la page de l'étape ; `/regles/avancees/situations-avancees/` et
+  `/guide/situations-avancees/` à la page de la tenaille, chaque ancienne section à sa page. Une page découpée qui garde son adresse (« Réussir une
+  action », « Le tour de jeu »…) n'a pas de script d'ancre : `test/guide.test.mjs` vérifie que chaque lien écrit vers une page du guide avec une ancre
+  mène à un intertitre existant. Un lien Markdown écrit à la main vers une ancienne adresse mène à la nouvelle au rendu — pages découpées d'abord,
+  puis `/guide/<slug>/`, les plans précédents, les pages fusionnées ou retirées — (`lib/guide-rendu.ts`, `lib/guide.mjs#adresseDesAnciensLiens`,
+  `remarkAnciensLiensDuGuide` : la version portable n'a pas de page 404), sans que la base change, et garde l'adresse écrite en `data-lien-ecrit` :
+  un morceau de texte modifié sur le site de dev la réécrit telle quelle (`lib/markdown-edition.mjs#versMarkdown`), jamais l'adresse du plan qu'il
+  montre, qui changerait avec le plan. Vers une page du guide, un `[[lien]]` du wiki (`[[guide/les-postures|les postures]]`) suit la page où que le
+  plan la range.
 - **Les blocs tirés de la base** : une ligne seule `<!-- guide:<bloc> -->` dans le Markdown (`BLOCS`, chacun appelé une fois dans tout le guide) est
   remplacée au rendu par un tableau lu dans la base (`lib/guide-db.mjs`, `components/guide/GuideBloc.astro`), sur toute page du guide : progression
-  (`niveau_global`), postures, compétences, initiative, ce que donne chaque magie, types de don, entraînement, personnages fil rouge… Plus de bloc
-  `sommaire` (demande du propriétaire du 2026-10-18 : « Dans la page de bienvenue, retire le sommaire »), ni `magies` (la liste des 15 magies, qui
-  quitte « L’univers » à sa refonte) : un marqueur inconnu arrête le rendu. Ne jamais
+  (`niveau_global`), postures, compétences, initiative, ce que donne chaque magie, types de don, entraînement, personnages fil rouge, et
+  `relations-des-magies` (le tableau « Relations entre magies » de `/magies/#relations`, par son composant `components/magie/TableauRelationsMagies.astro`,
+  juste après le premier paragraphe de « Résistances et faiblesses », R185 (4))… Plus de bloc `sommaire` (demande du propriétaire du 2026-10-18 :
+  « Dans la page de bienvenue, retire le sommaire »), ni `magies` (la liste des 15 magies, qui quitte « L’univers » à sa refonte), ni `documents` (sa
+  page est supprimée, R184 (9)) : un marqueur inconnu arrête le rendu. Depuis R184, les blocs de la création sont dans la page de leur étape
+  (`fil-rouge-race` dans « Choisir sa race », `magie-bonus` et `fil-rouge-magie` dans « Choisir ses magies »…). Ne jamais
   recopier ces chiffres dans le texte. Les caractéristiques (cadre de leurs compétences, « +1 en … » d'une magie) et les postures y sont dans leur
   couleur (demande du propriétaire, `lib/caracteristiques-postures.mjs`, clés = ids de la base, testé : Force #FF6666, Volonté #FF99FF, Intelligence
   #66CCFF, Perception #FFCC00, Social #DDDDDD, Agilité #99FF66 ; Offensif #FF6666, Neutre #EEEEEE, Défensif #99FF99, Focus #9999FF, Vigilance #FFFF66,
@@ -1423,19 +1430,21 @@ dev (un commit la change) ni cherchée par la recherche.
   renvoie), ni celui d'un tableau que la base n'a qu'en texte (la localisation des dégâts de « Attaque et défense ») ; vers une page du guide,
   `[[guide/<slug>|texte]]`, jamais un lien écrit vers `/guide/…` ; on vouvoie le lecteur ; le document « Règle du jeu/Guide pour MJ - Maverick » se
   nomme « le Doc « Guide pour MJ » » (lié une fois par page à sa page d'accueil, `guide/guide-pour-mj-maverick`), « Guide du MJ » étant la rubrique du
-  menu. Un bloc des personnages fil rouge se pose sous l'intertitre qu'il illustre : `fil-rouge` sous un `##` (ses personnages en `h3`), les autres
-  sous un `###` (la sous-section, ou « Nos quatre personnages » ; leurs personnages en `h4`). Quelques phrases sont **lues par le code** : la section
+  menu. Un bloc des personnages fil rouge se pose sous l'intertitre `##` qu'il illustre (« Quatre personnages pour exemple », ou la section de son
+  étape : « Sa race », « Nos quatre personnages »…) ; ses personnages sont des `h3`, comme les groupes du bloc des compétences. Quelques phrases sont **lues par le code** : la section
   `## La ceinture` de « L'équipement » (les règles de la page Ceinture, `/ressources/objets-a-la-ceinture/`, `lib/ceinture-db.mjs`,
   avec le mot « emplacements »), le
   paragraphe de « S'entraîner et exercer un métier » qui écrit « case Entraînement » (l'aide du bloc Entraînement de la fiche,
   `lib/fiche-regles.mjs#aideDeLEntrainement`), « 37 ÷ 2 = 18,5, arrondi à **18 dégâts** » dans « Les dégâts » (R17, `test/guide.test.mjs`),
-  « **{{corruption}}** : son maximum est celui du {{chakra|chakra}} » dans « Créer son personnage » (`test/fiche-moteur.test.mjs`), le lien vers
+  « **{{corruption}}** : son maximum est celui du {{chakra|chakra}} » dans « Étape 6 : finaliser son personnage » (`test/fiche-moteur.test.mjs`), le lien vers
   l'onglet Boucliers de « L'équipement » (`test/equipement-html.test.mjs`), le titre « Bienvenue dans Maverick » et son alias « Guide du joueur »
-  (`test/serveur-edition-guide.test.mjs`), les intertitres « Le jeu de rôle, comment ça marche ? » de Bienvenue et « Étape 1 : … » à « Étape 6 : … » de
-  « Créer son personnage » (les ancres où mènent les pages fusionnées, `lib/livres.mjs#ANCRES_DES_PAGES_ABSORBEES`, `test/livres.test.mjs`), le
-  plafond de maîtrise d'arme (« 4 points », « 5 dés », « plafond ») dans la phrase des dés de maîtrise de « Créer son personnage », « L'équipement » et
-  « Aide-mémoire », et dans la définition du mot-clé « Maîtrise d'arme » (`maitrise-darme`, qui reprend la phrase de l'ancien Lexique, migration
-  `0090`), sans « et ainsi de suite » (R149, G40, `test/guide.test.mjs`) : les garder en modifiant ces pages et ce mot-clé.
+  (`test/serveur-edition-guide.test.mjs`), l'intertitre « Le jeu de rôle, comment ça marche ? » de Bienvenue (l'ancre où mène la page fusionnée,
+  `lib/livres.mjs#ANCRES_DES_PAGES_ABSORBEES`, `test/livres.test.mjs`), les sous-intertitres des six étapes et « La prise en tenaille » (les ancres
+  où mènent les anciennes adresses découpées, `PAGES_ECLATEES_DU_GUIDE`, `test/livres.test.mjs`), le premier paragraphe de « Résistances et
+  faiblesses », suivi du bloc `relations-des-magies` (`test/guide.test.mjs`), le plafond de maîtrise d'arme (« 4 points », « 5 dés », « plafond »)
+  dans la phrase des dés de maîtrise de « Étape 4 : répartir caractéristiques et compétences » et de « L'équipement », et dans la définition du
+  mot-clé « Maîtrise d'arme » (`maitrise-darme`, qui reprend la phrase de l'ancien Lexique, migration `0090`), sans « et ainsi de suite » (R149,
+  G40, `test/guide.test.mjs`) : les garder en modifiant ces pages et ce mot-clé.
 - **Les personnages fil rouge** (`lib/guide-fil-rouge.mjs`) : quatre pré-tirés (archer felfe Vide, mage rouge majin Feu, guerrier orios Sang, barde
   kitsune Vent). Seuls leurs choix y sont écrits (race, ethnie, magie, classe ; `nom` à venir) ; santé, chakra, barrière, maîtrises, équipement et
   emplacements de sorts sont lus dans la base et calculés comme la fiche automatique V15.2.2.
