@@ -12,7 +12,9 @@ import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import { installerLePlan } from '../src/lib/livres.mjs';
 import { bilan, comparerBases, TABLES_LUES, versionDeLivraison } from '../src/lib/notes-de-version.mjs';
+import { chargerPlanDesRegles } from '../src/lib/plan-des-regles-db.mjs';
 import { signature } from './base-vivante.mjs';
 import { ErreurHttp, sha256 } from './partage.mjs';
 import { journalExporte } from './edition-journal.mjs';
@@ -125,6 +127,9 @@ export function noteEnPreparation(db, { reference, versionDev }) {
     version_majeure: versionMajeure, en_attente: enAttente, en_conflit: enConflit, brouillon,
   };
   if (!ref.disponible) return { ...commun, lignes: null, bilan: null };
+  // les pages du guide se rangent par le plan des onglets des Règles de la base vivante (R184, R185 ; lib/livres.mjs#placeDansLeGuide), relu à chaque
+  // calcul : une livraison refait la base vivante, et son plan avec elle
+  installerLePlan(chargerPlanDesRegles(db));
   const lignes = comparerBases(tablesDeReference(ref.chemin), lireTables(db));
   return { ...commun, lignes, bilan: bilan(lignes) };
 }

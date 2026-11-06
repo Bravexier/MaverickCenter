@@ -1,26 +1,29 @@
 ---
 import Base from '../layouts/Base.astro';
 import { RENVOIS_DES_PAGES_ECLATEES } from '../lib/equipement.mjs';
+import { PAGES_ECLATEES_DU_GUIDE } from '../lib/livres.mjs';
 import { renvoisDuGuide } from '../lib/metiers.mjs';
 import { loadWiki, url } from '../lib/wiki';
 
 // Les anciennes adresses du guide (/guide/, /guide/<slug>/, avant son éclatement en livres et sommaires : lib/livres.mjs) → leurs nouvelles adresses,
 // calculées au build depuis le plan et passées au script (data-renvois) ; les pages éclatées en plusieurs (l'ancienne page « Équipement » en cinq
-// pages, la page « Pièces élémentaires » dans Armes et Armures : lib/equipement.mjs#RENVOIS_DES_PAGES_ECLATEES), passées de même (data-eclatees) :
-// nav.mjs, seul module du script, n'importe ni le plan ni lib/equipement.mjs.
+// pages, la page « Pièces élémentaires » dans Armes et Armures : lib/equipement.mjs#RENVOIS_DES_PAGES_ECLATEES ; « Créer son personnage » quand elle
+// portait les six étapes, « Les situations avancées » : lib/livres.mjs#PAGES_ECLATEES_DU_GUIDE), passées de même (data-eclatees) : nav.mjs, seul
+// module du script, n'importe ni le plan ni lib/equipement.mjs.
 const renvois = renvoisDuGuide((await loadWiki()).entries.map((e) => e.id));
+const eclatees = { ...RENVOIS_DES_PAGES_ECLATEES, ...PAGES_ECLATEES_DU_GUIDE };
 ---
 
 <Base title="Page introuvable" edition="404">
   <h1>Page introuvable</h1>
-  <p id="introuvable" data-base={url()} data-renvois={JSON.stringify(renvois)} data-eclatees={JSON.stringify(RENVOIS_DES_PAGES_ECLATEES)}>Cette page n’existe pas (ou plus). Essayez la <a href={url('recherche/')}>recherche</a> ou l’<a href={url('pages/')}>index du wiki</a>.</p>
+  <p id="introuvable" data-base={url()} data-renvois={JSON.stringify(renvois)} data-eclatees={JSON.stringify(eclatees)}>Cette page n’existe pas (ou plus). Essayez la <a href={url('recherche/')}>recherche</a> ou l’<a href={url('pages/')}>index du wiki</a>.</p>
 </Base>
 
 <script>
   import { adresseDeRenvoi } from '../lib/nav.mjs';
 
   // Anciennes adresses (/wiki/…, liens enregistrés avant la suppression du préfixe ; /generateur/, devenu /fiche/ ; /tags/<clé>/, devenu
-  // /recherche/?mot-cle=<clé> ; /guide/…, devenu /decouvrir/…, /regles/…, /mj/… ; /ressources/equipement/#…, devenue la page de son ancre ou de sa
+  // /recherche/?mot-cle=<clé> ; /guide/…, devenu /decouvrir/…, /regles/…, /mj/… ; /regles/avancees/…, devenu /regles/… ; /ressources/equipement/#…, devenue la page de son ancre ou de sa
   // requête) : renvoi vers la nouvelle adresse, la requête d'origine fusionnée avec la sienne (jamais deux « ? »).
   const introuvable = document.querySelector<HTMLElement>('#introuvable')!;
   const base = introuvable.dataset.base!;

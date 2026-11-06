@@ -1,4 +1,4 @@
-// Pages du guide (type `guide` de la base) : leur plan (Découvrir, Les bases, Règles avancées, Guide du MJ) et leurs adresses sont dans lib/livres.mjs.
+// Pages du guide (type `guide` de la base) : leur plan (Découvrir, les onglets des Règles, Guide du MJ) et leurs adresses sont dans lib/livres.mjs.
 // Ici, ce que leur rendu partage : une page peut appeler un bloc tiré de la base (tableau de la montée de niveau, postures…) par une ligne seule
 // `<!-- guide:<bloc> -->` : invisible dans le Markdown, il est remplacé au rendu par le composant du bloc (components/guide/GuideBloc.astro, appelé par
 // PageDuGuide.astro).
@@ -6,16 +6,19 @@
 // (serveur/edition.mjs) et les tests. Les couleurs des parties (groupes de Découvrir, zones de la fiche) ne sont pas ici : leurs classes
 // (lib/palette-css.mjs#classeDePartie, valeurs dans lib/parties-couleurs.mjs).
 
-import { adresseDeLaPageRetiree, ANCRES_DES_PAGES_ABSORBEES, estDansDecouvrirOuLesBases, PAGES_ABSORBEES } from './livres.mjs';
+import { ADRESSES_DU_PLAN_PRECEDENT, adresseDeLaPageAbsorbee, adresseDeLaPageRetiree, PAGES_ABSORBEES } from './livres.mjs';
 
 /**
  * Blocs qu'une page du guide peut appeler par `<!-- guide:<bloc> -->` (le composant qui les rend : components/guide/GuideBloc.astro). Plus de « sommaire »
  * (demande du propriétaire du 2026-10-18 : « Dans la page de bienvenue, retire le sommaire ») : les entrées de la rubrique Règles du menu et les cartes de l'accueil mènent aux pages.
  * Plus de « magies » (la liste des 15 magies et de leurs dieux) : la refonte de « L'univers », sa seule page, ne liste plus les magies (demande du
  * propriétaire : « Pas la peine le lister les 5 magies ici, mais tu peux mettre un lien vers la page qui va avec »).
+ * Plus de « documents » (la liste des pages de référence) : sa page, « Les documents des règles », est supprimée (R184 (9)).
+ * « relations-des-magies » : le tableau « Relations entre magies » de /magies/#relations (components/magie/TableauRelationsMagies.astro, les mêmes
+ * données), dans « Résistances et faiblesses » (R185 (4)).
  */
 export const BLOCS = [
-  'magie-bonus', 'initiative', 'competences', 'niveaux', 'types-de-don', 'entrainement', 'postures', 'documents',
+  'magie-bonus', 'initiative', 'competences', 'niveaux', 'types-de-don', 'entrainement', 'postures', 'relations-des-magies',
   // les personnages fil rouge (lib/guide-fil-rouge.mjs), étape par étape de la création
   'fil-rouge', 'fil-rouge-race', 'fil-rouge-magie', 'fil-rouge-classe', 'fil-rouge-sorts', 'fil-rouge-attributs',
 ];
@@ -52,24 +55,31 @@ export const sansMarqueurs = (corps) => corps.replace(MARQUEUR, '');
 export const avecPrefixe = (markdown, base) => markdown.replace(/\]\(\/(?!\/)([^)\s]*)/g, (_, chemin) => `](${base.replace(/\/?$/, '/')}${chemin}`);
 
 /**
- * Le chemin d'un lien écrit vers une ancienne adresse du guide (« guide/les-postures/ », « guide/choisir-sa-classe/#une-ou-deux-classes », « guide/ »),
- * mené à l'adresse de la page visée (`cheminDe(id)` : lib/metiers.mjs#cheminDePage) — celle de la page qui l'absorbe pour une page fusionnée dans une
- * autre (lib/livres.mjs#PAGES_ABSORBEES), à l'ancre où se lit son contenu si le lien n'en écrit pas (ANCRES_DES_PAGES_ABSORBEES) —, l'ancre écrite gardée ; `existe(id)` dit si la page est chargée (sinon, et pour tout autre chemin, le chemin tel
- * qu'écrit : la page 404 s'en charge). `accueil` : l'adresse de l'ancien /guide/ (lib/livres.mjs#ACCUEIL_DU_GUIDE). Un lien écrit vers une ancienne adresse
- * d'une page retirée dont le contenu se lit ailleurs (lib/livres.mjs#PAGES_RETIREES : « /regles/lexique/ », « /guide/lexique/ ») mène à sa destination
- * (« recherche/ »), requête et ancre écrites gardées, tant que la page n'est pas chargée.
+ * Le chemin d'un lien écrit vers une ancienne adresse du guide (« guide/les-postures/ », « guide/le-jeu-de-role/#lire-les-des », « guide/ »,
+ * « regles/avancees/meteo/ », « decouvrir/premiers-sorts/ »), mené à l'adresse de la page visée (`cheminDe(id)` : lib/metiers.mjs#cheminDePage) — celle
+ * de la page qui l'absorbe pour une page fusionnée dans une autre (lib/livres.mjs#PAGES_ABSORBEES), à l'ancre où se lit son contenu si le lien n'en
+ * écrit pas (ANCRES_DES_PAGES_ABSORBEES) —, la requête et l'ancre écrites gardées. Les adresses reconnues : /guide/<slug>/, celles des plans précédents
+ * (lib/livres.mjs#ADRESSES_DU_PLAN_PRECEDENT), celles d'une page retirée dont le contenu se lit ailleurs (lib/livres.mjs#PAGES_RETIREES :
+ * « /regles/lexique/ » mène à « recherche/ », tant que la page n'est pas chargée). `existe(id)` dit si la page est chargée (sinon, et pour tout autre
+ * chemin, le chemin tel qu'écrit : la page 404 s'en charge). `accueil` : l'adresse de l'ancien /guide/ (lib/livres.mjs#ACCUEIL_DU_GUIDE). Les pages
+ * découpées en plusieurs (lib/livres.mjs#PAGES_ECLATEES_DU_GUIDE) sont menées avant, selon leur ancre (lib/guide-rendu.ts).
  */
 export function adresseDesAnciensLiens(chemin, { cheminDe, existe, accueil }) {
   const retiree = adresseDeLaPageRetiree(chemin, { existe });
   if (retiree !== null) return retiree;
+  const vers = (ecrit, suite) => {
+    const absorbee = !existe(ecrit) && Object.hasOwn(PAGES_ABSORBEES, ecrit);
+    if (!existe(absorbee ? PAGES_ABSORBEES[ecrit] : ecrit)) return chemin;
+    if (!absorbee) return `${cheminDe(ecrit)}${suite}`;
+    const [adresse, ancre = ''] = adresseDeLaPageAbsorbee(ecrit, cheminDe).split('#');
+    return `${adresse}${suite}${!suite.includes('#') && ancre ? `#${ancre}` : ''}`;
+  };
+  const precedent = String(chemin).match(/^([^?#]*?)\/?((?:[?#].*)?)$/);
+  if (precedent && Object.hasOwn(ADRESSES_DU_PLAN_PRECEDENT, `${precedent[1]}/`)) return vers(ADRESSES_DU_PLAN_PRECEDENT[`${precedent[1]}/`], precedent[2]);
   const m = chemin.match(/^guide\/(?:([a-z0-9-]+)\/?)?((?:[?#].*)?)$/);
   if (!m) return chemin;
   if (!m[1]) return `${accueil}${m[2]}`;
-  const ecrit = `guide/${m[1]}`;
-  const absorbee = !existe(ecrit) && Object.hasOwn(PAGES_ABSORBEES, ecrit);
-  const id = absorbee ? PAGES_ABSORBEES[ecrit] : ecrit;
-  if (!existe(id)) return chemin;
-  return `${cheminDe(id)}${absorbee && !m[2].includes('#') ? `${m[2]}#${ANCRES_DES_PAGES_ABSORBEES[ecrit]}` : m[2]}`;
+  return vers(`guide/${m[1]}`, m[2]);
 }
 
 /**
@@ -93,29 +103,4 @@ export function remarkAnciensLiensDuGuide({ base = '/', adresse }) {
     for (const enfant of n.children ?? []) visiter(enfant);
   };
   return (arbre) => visiter(arbre);
-}
-
-/** Ordre des documents sources dans la liste des pages de référence : le guide de la fiche, celui du MJ, puis les annexes des classeurs. */
-const ORDRE_DES_DOCUMENTS = ['Créer sa fiche de personnage', 'Règle du jeu/Guide pour MJ - Maverick', 'Magie Maverick V8', 'Mode hyper et co'];
-
-/**
- * Les pages de référence du type `guide` (tout sauf les pages de Découvrir et des Bases, lib/livres.mjs, les pages d'exemple et la page `sauf` : celle qui
- * appelle le bloc), rangées par document source : le nom entre « » de la
- * première source (« Google Doc « Créer sa fiche de personnage » » → « Créer sa fiche de personnage »), ordre ORDRE_DES_DOCUMENTS puis alphabétique ;
- * dans un document, ordre alphabétique des titres. -> [{ document, genre: 'Doc' | 'Sheet' | null, pages: [{ id, titre }] }]
- */
-export function pagesDeReference(entries, sauf = null) {
-  const groupes = new Map();
-  for (const e of entries) {
-    if (!e.id.startsWith('guide/') || estDansDecouvrirOuLesBases(e.id) || e.id === sauf || e.data.status === 'example') continue;
-    const libelle = (e.data.sources ?? []).find((s) => !/^https?:\/\//.test(s)) ?? '';
-    const m = libelle.match(/^Google (Doc|Sheet) « (.+?) »/);
-    const document = m ? m[2] : 'Autres pages';
-    const groupe = groupes.get(document) ?? groupes.set(document, { document, genre: m ? m[1] : null, pages: [] }).get(document);
-    groupe.pages.push({ id: e.id, titre: e.data.title });
-  }
-  const rang = (d) => (ORDRE_DES_DOCUMENTS.includes(d) ? ORDRE_DES_DOCUMENTS.indexOf(d) : ORDRE_DES_DOCUMENTS.length);
-  return [...groupes.values()]
-    .sort((a, b) => rang(a.document) - rang(b.document) || a.document.localeCompare(b.document, 'fr'))
-    .map((g) => ({ ...g, pages: g.pages.sort((a, b) => a.titre.localeCompare(b.titre, 'fr')) }));
 }

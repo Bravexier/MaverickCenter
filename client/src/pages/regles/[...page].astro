@@ -1,15 +1,21 @@
 ---
 import PageDuPlan from '../../components/guide/PageDuPlan.astro';
+import { ongletsDesRegles, verifierLePlan } from '../../lib/livres.mjs';
 import { loadWiki, pagesSous, type WikiEntry } from '../../lib/wiki';
 
-// Les pages des Bases (lib/livres.mjs#LES_BASES) à /regles/<slug>/, celles des Règles avancées (REGLES_AVANCEES) à /regles/avancees/<slug>/, chacune
-// à côté du menu latéral de sa rubrique (components/guide/MenuLateral.astro). /regles/ (pages/regles/index.astro) et /regles/avancees/
-// (pages/regles/avancees/index.astro) montrent ce menu ouvert sur leur première page ; le sommaire de l'Artisanat est pages/regles/artisanat.astro.
+// Les pages des onglets des Règles (lib/livres.mjs, plan de la base : R184), chacune à /regles/<slug>/ (« adresses à plat »), à côté du menu latéral de
+// son onglet (components/guide/MenuLateral.astro) ; et chaque onglet à /regles/<onglet>/, qui montre sa page d'ouverture (son adresse canonique reste
+// /regles/<slug>/ : components/guide/PageDuPlan.astro). /regles/ (pages/regles/index.astro) montre l'ouverture du premier onglet ; le sommaire de
+// l'Artisanat est pages/regles/artisanat.astro. Les ids des onglets sont des noms réservés : aucune page ne les prend (verifierLePlan).
 export async function getStaticPaths() {
   const { entries } = await loadWiki();
-  return pagesSous(entries, 'regles/').filter(({ reste }) => reste).map(({ entry, reste }) => ({ params: { page: reste }, props: { entry } }));
+  verifierLePlan(entries);
+  const parId = new Map(entries.map((e) => [e.id, e]));
+  const pages = pagesSous(entries, 'regles/').filter(({ reste }) => reste).map(({ entry, reste }) => ({ params: { page: reste }, props: { entry, ouverture: false } }));
+  const onglets = ongletsDesRegles().map((o) => ({ params: { page: o.id }, props: { entry: parId.get(o.ouverture)!, ouverture: true } }));
+  return [...pages, ...onglets];
 }
-const { entry } = Astro.props as { entry: WikiEntry };
+const { entry, ouverture } = Astro.props as { entry: WikiEntry; ouverture: boolean };
 ---
 
-<PageDuPlan entry={entry} />
+<PageDuPlan entry={entry} ouverture={ouverture} />

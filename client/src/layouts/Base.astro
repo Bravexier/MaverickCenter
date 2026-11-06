@@ -17,8 +17,9 @@ interface Props {
   /** La page de maintenance (pages/maintenance.astro) : menus grisés et inertes, et pas de renvoi vers elle-même. */
   maintenance?: boolean;
   /**
-   * L'entrée du menu (son `path`, lib/nav.mjs) d'une page qui n'en est pas une mais qu'on atteint par elle (Composants, dans le sommaire de
-   * l'Artisanat) : marquée courante (`aria-current="true"`, l'entrée de la page elle-même ayant `aria-current="page"`).
+   * L'entrée du menu (son `path`, lib/nav.mjs) d'une page qui n'en est pas une mais qu'on atteint par elle (une page d'un onglet des Règles, ou
+   * l'Artisanat : l'onglet du plan de la base, lib/livres.mjs, jamais déduit de l'adresse) : marquée courante (`aria-current="true"`, l'entrée de la
+   * page elle-même ayant `aria-current="page"`).
    */
   entree?: string;
 }

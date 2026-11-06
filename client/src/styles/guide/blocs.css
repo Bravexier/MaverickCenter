@@ -1,8 +1,8 @@
-/* Chargé depuis components/guide/PageDuGuide.astro, en ?raw : toutes les pages du guide (lib/livres.mjs : Découvrir, Les bases, Règles avancées, Guide du
+/* Chargé depuis components/guide/PageDuGuide.astro, en ?raw : toutes les pages du guide (lib/livres.mjs : Découvrir, les onglets des Règles, Guide du
    MJ), des pages simples depuis la refonte du 2026-10-18 (plus de livre : ni flèches, ni pagination, ni glissement du doigt) ; leurs couleurs et les blocs
    tirés de la base (components/guide/GuideBloc.astro). */
 /* Couleur du groupe de la page : la classe de sa partie (`.couleur-partie-…`, lib/palette-css.mjs#classeDePartie d'après lib/livres.mjs#partieDeLaPage),
-   posée sur la page (sans elle, l'accent du site : pages des Règles avancées et du Guide du MJ) : --guide pour les aplats (texte blanc dessus,
+   posée sur la page (sans elle, l'accent du site : pages des onglets des Règles hors création du personnage, Guide du MJ) : --guide pour les aplats (texte blanc dessus,
    --guide-sur), --guide-texte pour un texte coloré sur la feuille (éclairci en thème sombre). */
 .guide-reference {
   --guide: var(--accent);
@@ -122,7 +122,7 @@
   border-radius: var(--radius);
   background: color-mix(in srgb, var(--c) 8%, var(--bg));
 }
-.guide-competences__groupe h4 { margin: 0 0 0.4rem; }
+.guide-competences__groupe h3 { margin: 0 0 0.4rem; font-size: 1rem; }
 .guide-competences__groupe ul { margin: 0; padding-left: 1.1rem; font-size: var(--fs-lg); line-height: 1.45; }
 .guide-competences__groupe li + li { margin-top: 0.25rem; }
 
@@ -167,16 +167,9 @@
 .guide-posture ul { margin: 0; padding: 0.5rem 0.6rem 0.6rem 1.5rem; font-size: var(--fs-md); line-height: 1.4; }
 .guide-posture li + li { margin-top: 0.3rem; }
 
-/* Pages de référence (« Les documents des règles »), par document source. */
-.guide-references {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
-  gap: 0.75rem;
-  margin: 1rem 0;
-}
-.guide-references__groupe { padding: 0.6rem 0.9rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); }
-.guide-references__groupe h3 { margin: 0 0 0.4rem; font-size: 1rem; }
-.guide-references__groupe ul { margin: 0; padding-left: 1.1rem; font-size: var(--fs-lg); }
+/* Le tableau « Relations entre magies » (bloc relations-des-magies, « Résistances et faiblesses ») : celui de /magies/#relations, sa feuille
+   (styles/magie/tableaux.css) posée par son composant ; ici, sa marge dans la page seulement. */
+.guide-relations { margin: 1rem 0; }
 
 /* Les personnages fil rouge (partie « Créer son personnage ») : une carte par personnage, côte à côte. */
 .guide-fil-rouge {

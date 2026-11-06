@@ -2,11 +2,18 @@ import { getCollection, type CollectionEntry } from 'astro:content';
 import { buildIndex, extractLinks, resolve } from './wikilinks.mjs';
 import { TYPES } from './types.mjs';
 import { cheminDePage } from './metiers.mjs';
+import { ouvrirBase } from './donnees.mjs';
+import { installerLePlan } from './livres.mjs';
+import { chargerPlanDesRegles } from './plan-des-regles-db.mjs';
 
 export type WikiEntry = CollectionEntry<'wiki'>;
 export type TypeKey = keyof typeof TYPES;
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+// Le plan des onglets des Règles (tables regles_onglet et regles_onglet_entree, R184) : installé dans lib/livres.mjs, qui n'importe rien, dès que ce
+// module se charge, avant toute route ou composant qui range une page (menu latéral, fil d'Ariane, verifierLePlan, placeDansLeGuide).
+installerLePlan(chargerPlanDesRegles(ouvrirBase()));
 
 /** URL absolue (avec le préfixe de déploiement) d'un chemin du site. */
 export const url = (path = '') => `${base}/${path.replace(/^\//, '')}`;

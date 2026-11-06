@@ -179,7 +179,19 @@ test('0090 : « CR » fondu dans « Corruption » — plus de mot-clé `cr`, auc
     .flatMap((l) => colonnes.flatMap((c) => lireBalises(l[c] ?? '', { markdown }))).filter((b) => b.ref === 'corruption' && b.texte === 'CR').length;
   const pages = reciblees('page', ['corps_md'], true);
   const sorts = reciblees('sort', ['effets', 'dsb_brut'], false);
-  assert.ok(pages + sorts >= 43, `${pages + sorts} balises « {{corruption|CR}} » (${pages} dans les pages, ${sorts} dans les sorts)`);
+  // une page retirée depuis par une migration (pas par le site de dev : l'historique ne la rend pas) emporte ses balises : l'« Aide-mémoire »
+  // (guide/aide-memoire, « ses effets « Si {{corruption|CR}} » »), supprimée par la 0091 (R184 (9) : « Supprime, on refera un aide mémoire clair
+  // plus taard »), en avait une
+  const RETIREES_APRES = { 'guide/aide-memoire': 1 };
+  const supprimees = readFileSync(new URL('../../data/migrations/0091-r184-plan-des-regles.sql', import.meta.url), 'utf8')
+    .match(/^DELETE FROM page WHERE id IN \(([^)]*)\);$/m)?.[1] ?? '';
+  for (const id of Object.keys(RETIREES_APRES)) {
+    assert.ok(supprimees.includes(`'${id}'`), `${id} : supprimée par la 0091`);
+    assert.equal(db.prepare('SELECT count(*) AS n FROM page WHERE id = ?').get(id).n, 0, `${id} : absente de la base`);
+  }
+  const retirees = Object.values(RETIREES_APRES).reduce((a, n) => a + n, 0);
+  assert.ok(pages + sorts + retirees >= 43,
+    `${pages + sorts} balises « {{corruption|CR}} » (${pages} dans les pages, ${sorts} dans les sorts), plus ${retirees} dans les pages retirées par la 0091`);
   assert.ok(sorts >= 20, `${sorts} balises dans les sorts`);
 });
 

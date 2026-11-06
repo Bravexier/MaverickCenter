@@ -132,11 +132,11 @@ test('paramètres de l’adresse (l’état d’une page : ?arme=, ?forme=…) :
   for (const nom of ['forme', 'matiere', 'amelioration-bouclier']) assert.ok(lus(source('armures.mjs')).has(nom), `armures.mjs lit ${nom}`);
 });
 
-test('rubrique Équipement (2026-10-29, entre Personnage et Espace joueur) : une entrée par page de l’équipement, son libellé et son adresse, puis Artisanat, Livres & Parchemins et Autres', () => {
+test('rubrique Équipement (2026-10-29, entre Personnage et Espace joueur) : une entrée par page de l’équipement, son libellé et son adresse, puis Livres & Parchemins et Autres (R184 : l’Artisanat est dans l’onglet Exploration des Règles)', () => {
   assert.deepEqual(NAV.map((g) => g.key).slice(1, 4), ['personnage', 'equipement', 'joueur']);
   const items = NAV.find((g) => g.key === 'equipement').items;
   assert.deepEqual(items.slice(0, PAGES_DE_L_EQUIPEMENT.length), PAGES_DE_L_EQUIPEMENT.map((o) => ({ label: o.nom, path: o.chemin })));
-  assert.deepEqual(items.slice(PAGES_DE_L_EQUIPEMENT.length).map((i) => i.label), ['Artisanat', 'Livres & Parchemins', 'Autres']);
+  assert.deepEqual(items.slice(PAGES_DE_L_EQUIPEMENT.length).map((i) => i.label), ['Livres & Parchemins', 'Autres']);
   // « Le reste dans equipement (sous menu-autres pour commencer) » (réponse du propriétaire du 2026-10-29) : la liste des pages de ressources
   assert.equal(items.at(-1).path, 'ressources/', 'Autres : la liste des pages /ressources/');
   assert.ok(!NAV.some((g) => g.items.some((i) => /ressources\/(equipement|pieces-elementaires)\//.test(i.path ?? ''))), 'ni l’ancienne page « Équipement » ni « Pièces élémentaires »');

@@ -41,8 +41,9 @@
 //     `par-defaut` : un niveau absent (« Niveau ? », ligne vide) ne porte aucune classe ; les pastilles des niveaux, les lignes d'effet et de monture,
 //     l'encart de l'accessoire créé ;
 //   - partie : lib/parties-couleurs.mjs#COULEURS_DES_PARTIES (l'id d'une partie de l'ancien guide, lib/livres.mjs#PARTIES : decouvrir, creer, jouer,
-//     progresser, plus-loin), sans `par-defaut` : une page sans partie (Les bases, Règles avancées, Guide du MJ) ne porte aucune classe et garde l'accent du
-//     site ; les pages de Découvrir, leurs cartes « Par où commencer ? » de l'accueil, les quatre zones de la fiche. Un texte blanc est posé sur ces couleurs (aplats du guide et de la fiche) : leur famille porte un texte.
+//     progresser, plus-loin), sans `par-defaut` : une page sans partie (les onglets des Règles hors création du personnage, Guide du MJ) ne porte aucune
+//     classe et garde l'accent du site ; les pages de Découvrir et de la création du personnage, les cartes « Par où commencer ? » de l'accueil, les
+//     quatre zones de la fiche. Un texte blanc est posé sur ces couleurs (aplats du guide et de la fiche) : leur famille porte un texte.
 //   - genre, don : lib/genres-couleurs.mjs (sort_type.type, capacite.type), sans `par-defaut` (listes fermées) : les étiquettes des genres de sort
 //     des pages des magies et des types de don des pages de classe.
 //   - case : lib/cases-couleurs.mjs#COULEURS_DES_CASES (rouge, orange…, les couleurs « {couleur:x} » des cases de tableau du Markdown des pages, que

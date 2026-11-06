@@ -10,9 +10,9 @@ import { entryHref, loadWiki, url } from '../lib/wiki';
 
 // Accueil (demande du propriétaire ; la rubrique Règles du menu s'ouvre, l'ancienne rubrique Découvrir) : un texte de bienvenue et le défilement des images de la galerie
 // (components/galerie/Carrousel.astro). La présentation du jeu reprend le texte d'accueil du propriétaire (guide/bienvenue, servie à /decouvrir/).
-// Dessous, « Par où commencer ? » (2026-10-18) : trois cartes, les trois pages de Découvrir (lib/livres.mjs#PAR_OU_COMMENCER), le titre et le résumé
-// de chaque page tels que la base les écrit, dans la couleur de son groupe (la classe de sa partie, lib/palette-css.mjs#classeDePartie, dont la page
-// émet la feuille). La phrase « Première visite ? » et son bouton ne disent que la navigation.
+// Dessous, « Par où commencer ? » (2026-10-18) : trois cartes (lib/livres.mjs#PAR_OU_COMMENCER), Bienvenue, L'univers et « Créer son personnage »,
+// l'introduction de l'onglet Fiche de personnage (R184 ; défaut confirmé par le propriétaire), le titre et le résumé de chaque page tels que la base
+// les écrit, dans la couleur de sa partie (lib/livres.mjs#partieDeLaPage, sa classe lib/palette-css.mjs#classeDePartie, dont la page émet la feuille). La phrase « Première visite ? » et son bouton ne disent que la navigation.
 // Entre les deux, sous la bienvenue et le carrousel (demande du propriétaire du 2026-10-23 : « Ces 3 blocs auraient plus leur place dans l'onglet
 // d'acceuil. », puis, pour leur place, « Sous la bienvenue et le carrousel ») : le serveur Discord, Tipeee (la partie « Bienvenue » de Tipeee, reprise
 // en direct) et l'encart « Notre prochaine rencontre IRL » (components/accueil/LiensEtRencontre.astro, lib/livres.mjs#LIENS_ET_RENCONTRE), avant sous

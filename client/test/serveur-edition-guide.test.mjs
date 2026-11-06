@@ -70,14 +70,15 @@ test('refus : page hors du guide et du Codex, bloc inconnu, texte vide, aperçu 
 });
 
 test('chapitre à plusieurs morceaux de texte : seul celui qui change est réécrit, les blocs restent à leur place', () => {
-  // Créer son personnage (qui absorbe les six étapes de la création) : ses blocs fil rouge, magies, compétences…
-  const avant = page('guide/creer-son-personnage').corps_md;
+  // l'étape 6 de la création (une page à elle depuis R184) : ses blocs initiative, fil rouge des attributs, types de don
+  const ID = 'guide/finaliser-son-personnage';
+  const avant = page(ID).corps_md;
   const morceaux = avant.split(/<!-- guide:[a-z-]+ -->/).filter((t) => t.trim()).length;
   assert.ok(morceaux >= 2);
   const corps = recomposerCorps(avant, [null, 'Deuxième morceau réécrit.']);
   const apercu = Array.from({ length: morceaux }, (_, i) => `<p>${i}</p>`);
-  assert.equal(enregistrer([{ op: 'modifier', table: 'page', cle: { id: 'guide/creer-son-personnage' }, valeurs: { corps_md: corps }, apercu }]).statut, 200);
-  const apres = page('guide/creer-son-personnage').corps_md;
+  assert.equal(enregistrer([{ op: 'modifier', table: 'page', cle: { id: ID }, valeurs: { corps_md: corps }, apercu }]).statut, 200);
+  const apres = page(ID).corps_md;
   assert.deepEqual(apres.match(/<!-- guide:[a-z-]+ -->/g), avant.match(/<!-- guide:[a-z-]+ -->/g));
   assert.match(apres, /Deuxième morceau réécrit\./);
   assert.equal(apres.split(/<!-- guide:[a-z-]+ -->/)[0], avant.split(/<!-- guide:[a-z-]+ -->/)[0]);

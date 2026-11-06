@@ -8,16 +8,14 @@ import { cheminDePage } from '../../lib/metiers.mjs';
 import { loadWiki, typeOf, url, type WikiEntry } from '../../lib/wiki';
 
 // Une page du guide à l'adresse que lui donne le plan du site (lib/livres.mjs ; routes pages/decouvrir/, pages/regles/, pages/mj/) : une page simple
-// (PageDuGuide : fil d'Ariane, titre, texte et blocs, mots-clés, rétroliens ; les sources ne s'affichent que sur /archives/), quelle que soit sa
-// rubrique ; une page des Bases ou des Règles avancées à côté du menu latéral de sa rubrique (MenuLateral, sur le modèle de la chronologie :
-// lib/livres.mjs#menuLateralDe ; l'entrée « Les bases » ou « Règles avancées » du menu du site marquée, `entree`). Le plan est contrôlé contre les pages
-// chargées (verifierLePlan : le build s'arrête sur une page absente, nommée deux fois, ou absorbée par une autre et toujours là).
-// `ouverture` : l'adresse de la rubrique (/regles/ : pages/regles/index.astro ; /regles/avancees/ : pages/regles/avancees/index.astro), qui montre sa
-// page d'ouverture (LES_BASES.ouverture, « Réussir une action » ; REGLES_AVANCEES.ouverture, « Le Mode Hyper » : réponses du propriétaire du
-// 2026-11-05) ; pour ne pas faire deux pages du même texte aux yeux des moteurs de recherche, elle désigne l'adresse propre de cette page comme
-// canonique (<link rel="canonical">). Son titre est celui de la rubrique.
-// Mode modification du site de dev (demande du propriétaire) : titre et texte modifiables (src/scripts/edition/guide.mjs), /regles/ et
-// /regles/avancees/ comprises.
+// (PageDuGuide : fil d'Ariane, titre, texte et blocs, mots-clés ; les sources ne s'affichent que sur /archives/), quelle que soit sa rubrique ; une
+// page d'un onglet des Règles à côté du menu latéral de son onglet (MenuLateral, sur le modèle de la chronologie : lib/livres.mjs#menuLateralDe, le plan
+// de la base, R184 ; l'entrée de l'onglet du menu du site marquée, `entree`, d'après le plan et non l'adresse). Le plan est contrôlé contre les pages
+// chargées (verifierLePlan : le build s'arrête sur une page absente, nommée deux fois, rangée nulle part, ou absorbée par une autre et toujours là).
+// `ouverture` : l'adresse d'un onglet (/regles/<onglet>/) ou des Règles (/regles/ : le premier onglet ; pages/regles/[...page].astro,
+// pages/regles/index.astro), qui montre la page d'ouverture de l'onglet ; pour ne pas faire deux pages du même texte aux yeux des moteurs de
+// recherche, elle désigne l'adresse propre de cette page comme canonique (<link rel="canonical">). Son titre est celui de l'onglet.
+// Mode modification du site de dev (demande du propriétaire) : titre et texte modifiables (src/scripts/edition/guide.mjs), adresses des onglets comprises.
 interface Props {
   entry: WikiEntry;
   ouverture?: boolean;
@@ -33,7 +31,7 @@ const menu = menuLateralDe(entry.id, entries);
   title={ouverture && menu ? menu.rubrique.titre : entry.data.title}
   description={entry.data.summary}
   edition={modifiable ? entry.id : undefined}
-  entree={menu && !ouverture ? menu.rubrique.chemin : undefined}
+  entree={menu ? menu.rubrique.chemin : undefined}
 >
   {ouverture && <link slot="tete" rel="canonical" href={url(cheminDePage(entry.id))} />}
   {

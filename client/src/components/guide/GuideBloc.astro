@@ -1,6 +1,5 @@
 ---
 import { ouvrirBase } from '../../lib/donnees.mjs';
-import { pagesDeReference } from '../../lib/guide.mjs';
 import { chargerFilRouge } from '../../lib/guide-fil-rouge.mjs';
 import {
   chargerCompetences,
@@ -14,10 +13,13 @@ import {
 import { rendreLigne } from '../../lib/guide-rendu';
 import { idBulle, pageHref } from '../../lib/magies';
 import { classeDeCaracteristique, classeDeMagie, classeDePosture, cssDesFamilles } from '../../lib/palette-css.mjs';
+import TableauRelationsMagies from '../magie/TableauRelationsMagies.astro';
 import type { WikiEntry } from '../../lib/wiki';
 
 // Un bloc d'une page du guide (`<!-- guide:<bloc> -->`, lib/guide.mjs#BLOCS), tiré de la base : rien n'y est écrit à la main, la base le tient à jour.
-// (Plus de bloc « sommaire » : demande du propriétaire du 2026-10-18, « Dans la page de bienvenue, retire le sommaire ».)
+// (Plus de bloc « sommaire » : demande du propriétaire du 2026-10-18, « Dans la page de bienvenue, retire le sommaire ». Plus de bloc « documents » :
+// sa page est supprimée, R184 (9).) « relations-des-magies » : le tableau de /magies/#relations, par son composant (les mêmes données, aucun texte
+// recopié ; R185 (4)).
 interface Props {
   bloc: string;
   entry: WikiEntry;
@@ -41,16 +43,16 @@ const competences =
         })),
       )
     : [];
-const references = bloc === 'documents' ? pagesDeReference(entries, entry.id) : [];
 // Les personnages fil rouge (lib/guide-fil-rouge.mjs) : une carte par personnage, son contenu selon l'étape de la création.
 const filRouge = bloc.startsWith('fil-rouge') ? chargerFilRouge(db) : [];
 /** « 2 de la race + 6 de la classe = 8 » : le calcul d'un attribut, termes nuls omis (sauf le premier). */
 const calcul = (termes: [number | null | undefined, string][], total: number) =>
   `${termes.filter(([v], i) => i === 0 || v).map(([v, d]) => `${v ?? 0} ${d}`).join(' + ')} = ${total}`;
 const nombre = (n: number) => n.toLocaleString('fr-FR');
-// Le titre d'un personnage suit celui du texte : le bloc « fil-rouge » est posé sous un h2 (« Quatre personnages pour exemple »), les autres sous un h3
-// (la sous-section de leur étape, ou « Nos quatre personnages »).
-const TitreDuPerso = bloc === 'fil-rouge' ? 'h3' : 'h4';
+// Le titre d'un personnage suit celui du texte : chaque bloc fil rouge est posé sous un h2 — « Quatre personnages pour exemple » dans l'introduction,
+// une section de sa page d'étape dans les autres (« Sa race », « Nos quatre personnages »… : les sous-sections des étapes sont devenues des `##` quand
+// chaque étape est redevenue une page, R184) —, donc un h3.
+const TitreDuPerso = 'h3';
 // La barrière : la moitié du chakra, sans arrondi écrit (Doc « Créer sa fiche de personnage », regle_constante barriere.diviseur_chakra) ; la fiche du
 // site arrondit à l'inférieur (lib/fiche-moteur.mjs), le calcul le dit quand le chakra est impair (question G13, docs/sql/a-valider.md §6).
 const moitieDuChakra = (chakra: number) =>
@@ -232,9 +234,9 @@ const moitieDuChakra = (chakra: number) =>
     <div class="guide-competences">
       {competences.map((c) => (
         <section class={`guide-competences__groupe ${classeDeCaracteristique(c.id)}`} aria-labelledby={`competences-${c.id}`}>
-          <h4 id={`competences-${c.id}`}>
+          <h3 id={`competences-${c.id}`}>
             <span class="guide-carac">{c.nom}</span> <span class="guide-lettre">({c.lettre})</span>
-          </h4>
+          </h3>
           <ul>
             {c.competences.map((k) => (
               <li>
@@ -346,22 +348,9 @@ const moitieDuChakra = (chakra: number) =>
 }
 
 {
-  bloc === 'documents' && (
-    <div class="guide-references">
-      {references.map((g) => (
-        <section class="guide-references__groupe">
-          <h3>
-            {g.document} {g.genre && <span class="guide-lettre">(Google {g.genre})</span>}
-          </h3>
-          <ul>
-            {g.pages.map((p) => (
-              <li>
-                <a href={pageHref(p.id)}>{p.titre}</a>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ))}
+  bloc === 'relations-des-magies' && (
+    <div class="guide-relations" role="region" aria-label="Relations entre magies">
+      <TableauRelationsMagies entries={entries} />
     </div>
   )
 }

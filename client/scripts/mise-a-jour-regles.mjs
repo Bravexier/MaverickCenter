@@ -24,9 +24,11 @@ import { rejouerLeJournal } from '../serveur/edition.mjs';
 import { chargerJournal, ORDRE_DE_REJEU, TABLES_INTERDITES } from '../serveur/edition-journal.mjs';
 import { lireTables } from '../serveur/notes-de-version.mjs';
 import { journalSansImage } from '../src/lib/edition-modele.mjs';
+import { installerLePlan } from '../src/lib/livres.mjs';
 import { fragmentsAjoutes, messageDeRefus } from '../src/lib/markdown-sur.mjs';
 import { bilan, comparerBases, TABLES_DES_NOTES, versionCourte, versionDeLivraison } from '../src/lib/notes-de-version.mjs';
 import { markdownDeLaNote } from '../src/lib/notes-de-version-rendu.mjs';
+import { chargerPlanDesRegles } from '../src/lib/plan-des-regles-db.mjs';
 
 const CLIENT = fileURLToPath(new URL('../', import.meta.url));
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
@@ -232,6 +234,8 @@ export function appliquerMiseAJour(lot, { rows = join(RACINE, 'data', 'rows'), r
       }
       const production = new DatabaseSync(ref.chemin, { readOnly: true });
       try {
+        // les pages du guide se rangent par le plan des onglets des Règles de dev, rejouée (R184, R185 ; lib/livres.mjs#placeDansLeGuide)
+        installerLePlan(chargerPlanDesRegles(db));
         lignes = comparerBases(lireTables(production), lireTables(db));
       } finally {
         production.close();

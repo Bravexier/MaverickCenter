@@ -323,6 +323,7 @@ la ressource ne prend que les lignes de la table qui passent sa condition.
 | `pages-du-codex/` | Pages du Codex | `page` (partie) | modifier | — |
 | `pages/` | Pages du wiki | `page` (partie) | lecture seule | — |
 | `annonces/` | Annonces | `annonce` | modifier | — |
+| `onglets-des-regles/` | Onglets des Règles | `regles_onglet` | lecture seule | `entrees` |
 | `alias-des-pages/` | Alias des pages | `alias` | lecture seule | — |
 | `mots-cles/` | Mots-clés | `mot_cle` | créer, modifier, supprimer | `pages` |
 | `sources/` | Sources | `source` | lecture seule | `pages` |
@@ -335,6 +336,11 @@ la ressource ne prend que les lignes de la table qui passent sa condition.
 | `liens/` | Liens entre pages | `lien` | lecture seule | — |
 | `notes-de-version/` | Notes de version | `note_version` | lecture seule | `lignes` |
 | `historique/` | Historique des modifications | `historique_modification` | lecture seule | — |
+
+`onglets-des-regles/` est le plan de la rubrique Règles (migration 0091, décisions R184 et R185) : les quatre onglets qui suivent Découvrir et
+L'univers, chacun avec sa page d'ouverture, et leur menu latéral en sous-ressource `entrees` (une page du guide, un lien comme « Artisanat », ou une
+entrée « bientôt »), dans l'ordre de `rang`. En lecture seule tant que le site de dev ne modifie pas le plan ; le site le lit au build par
+`client/src/lib/plan-des-regles-db.mjs`.
 
 `mots-cles/` liste et cherche (`?q=`) aussi l'abréviation (`abreviation`, migration 0090 : « AM », `NULL` sans), qui se donne à la création et se
 modifie par `PATCH` ; la ref d'une balise du glossaire peut être l'id, l'écriture ou l'abréviation du mot-clé (enregistrée sous l'id :

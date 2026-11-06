@@ -2,43 +2,47 @@
 // Ligne 1 = les rubriques (`NAV`), ligne 2 = les `items` de la rubrique sélectionnée.
 // `path` : chemin relatif du site (sans préfixe de déploiement). Sans `path`, l'entrée est affichée
 // grisée « bientôt » : la page n'existe pas encore (on n'invente pas de contenu).
-// `autres` : débuts d'adresse des pages de la rubrique qui ne sont pas dans le menu (une page de `ressources/` ouvre l'Équipement). Une page ouvre la
-// rubrique dont une entrée ou un début d'adresse est le plus long début de la sienne : /regles/artisanat/ ouvre l'Équipement, pas les Règles de /regles/.
+// `autres` : débuts d'adresse des pages de la rubrique qui ne sont pas dans le menu (une page de `ressources/` ouvre l'Équipement, une page de `regles/`
+// les Règles). Une page ouvre la rubrique dont une entrée ou un début d'adresse est le plus long début de la sienne : /ressources/familiers/ ouvre le
+// Personnage, pas l'Équipement de /ressources/.
 // L'ancre d'une entrée, s'il y en a une, ne compte pas.
 // `devSeulement` : une entrée du site de dev seulement, absente du menu en production (entreesDuMenu).
 // Arborescence voulue par le propriétaire du projet (pas de barre de recherche dans l'en-tête : la recherche est une page, avec les mots-clés).
 // Sept rubriques (demande du propriétaire du 2026-10-29, après celles du 2026-10-16 et du 2026-10-18 : « éclater le guide pour retravailler pleinement
-// l'organisation des onglets et de la présentation ») : Règles (l'ancienne Découvrir, la vitrine, avec Les bases et les Règles avancées), Personnage
+// l'organisation des onglets et de la présentation ») : Règles (l'ancienne Découvrir, la vitrine, avec les onglets des règles), Personnage
 // (l'ancienne Règles), Équipement, Espace joueur, Espace MJ, Codex, Outils ; plus de rubrique Ressources ni d'entrée Guide (les pages du guide sont
-// rangées par lib/livres.mjs : Découvrir, Les bases et Règles avancées — chacune en menu latéral —, Guide du MJ). Rien n'est caché ni filtré : « Pour l'instant comme
+// rangées par lib/livres.mjs : Découvrir, les onglets des Règles — chacun en menu latéral —, Guide du MJ). Rien n'est caché ni filtré : « Pour l'instant comme
 // les menus ne sont pas prêt rien n'est caché mais tout de même ils ne verront à terme que les 2 premiers onglets » (sic ; « ils » : les non-membres) ;
 // « Tu fait comme si de rien n'était pour l'instant. On verra les caches. » (sic) ; ces deux premières rubriques sont, depuis le 2026-10-29, « Règles et
-// Personnage » (réponse du propriétaire). Composants va sous Artisanat. Plus d'entrée « Pièces élémentaires » (demande du 2026-10-29 : « Le sous-menu
+// Personnage » (réponse du propriétaire). Plus d'entrée « Pièces élémentaires » (demande du 2026-10-29 : « Le sous-menu
 // "pièce élémentaire" et sa page associé seront supprimées ») : son contenu est sur les pages Armes et Armures (« Fusionner dans Armes et Armures »).
 // La rubrique Équipement : les cinq pages de l'équipement (lib/equipement.mjs#PAGES_DE_L_EQUIPEMENT, « Cinq pages séparées », libellés « Comme les
 // onglets (pluriel) ») — Armes, Armures, Boucliers, Ceinture, Accessoires —, onglets d'une seule page « Équipement » du 2026-10-16 au 2026-10-29. La
 // ceinture (potions et huiles, carquois et sacs, bâtons magiques : décision R81) est la page Ceinture. Le bouclier ne va pas à la ceinture, son
-// emplacement est dans l'armure (décision R82) : c'est la page Boucliers.
-// Les chemins des pages du guide (decouvrir/…, regles/…, mj/) sont ceux de lib/livres.mjs, écrits ici à part (nav.mjs n'importe rien : le script de la
-// page 404 l'importe) ; test/livres.test.mjs vérifie qu'ils s'accordent.
+// emplacement est dans l'armure (décision R82) : c'est la page Boucliers. L'Artisanat n'y est plus (R184) : c'est une entrée du menu latéral de
+// l'onglet Exploration ; la page Composants reste dans l'Équipement (`ressources/`), son fil d'Ariane mène à l'Artisanat.
+// Les chemins de Découvrir (decouvrir/…) et du Guide du MJ (mj/) sont ceux de lib/livres.mjs, ceux des onglets des Règles (regles/<onglet>/) et leurs
+// libellés ceux de la table regles_onglet, écrits ici à part (nav.mjs n'importe rien : le script de la page 404 l'importe) ; test/livres.test.mjs et
+// test/nav.test.mjs vérifient qu'ils s'accordent.
 export const NAV = [
   {
     key: 'regles',
     label: 'Règles',
     // l'ancienne rubrique Découvrir, renommée « Règles » (demande du propriétaire du 2026-10-29 : « Le menu "Découvrir" sera renommé "Règles", le
-    // sous-menu "Bienvenue" sera renommé "Découvrir" ») ; puis « Les bases » et « Règles avancées », venues de l'ancienne rubrique Règles (« il faudra
-    // les sous-menu "Les bases", "règles avancées" soient déplacées dans l'ancien menu "Découvrir", devenu "Règles" »).
-    // Une page par entrée (choix du propriétaire du 2026-10-18) : les trois pages de Découvrir, celles des cartes « Par où commencer ? » de l'accueil
-    // (lib/livres.mjs#DECOUVRIR, PAR_OU_COMMENCER) ; plus d'entrée « Liens » (réponse du 2026-10-22, « Supprimer la page » : « Plus d'entrée Liens au
-    // menu : tout est sur Bienvenue. ») : Discord, Tipeee et la rencontre IRL sont sur l'accueil depuis le 2026-10-23 (« Ces 3 blocs auraient
-    // plus leur place dans l'onglet d'acceuil. ») ; plus d'entrée « Rejoindre une partie » (demande du 2026-11-05 : « Efface la page "Rejoindre une
-    // partie" et son lien. »)
+    // sous-menu "Bienvenue" sera renommé "Découvrir" »). Découvrir et L'univers, une page par entrée (choix du propriétaire du 2026-10-18 ; plus
+    // d'entrée « Liens » ni « Rejoindre une partie », demandes du 2026-10-22 et du 2026-11-05), puis les onglets des Règles (R184 : « Fiche de
+    // personnage », « Mécaniques générales », « Les combats », « Exploration » ; aucun onglet « Autre »), chacun à regles/<onglet>/, ouvert sur sa
+    // page d'ouverture à côté de son menu latéral (lib/livres.mjs). Plus d'entrée « Créer son personnage » (l'introduction de l'onglet Fiche de
+    // personnage), « Les bases » ni « Règles avancées ». `autres` : toute page sous regles/ (les pages des onglets, à plat, et l'Artisanat) ouvre les
+    // Règles ; l'onglet marqué vient du plan (`entree` de layouts/Base.astro), pas de l'adresse.
+    autres: ['regles/'],
     items: [
       { label: 'Découvrir', path: 'decouvrir/' },
       { label: 'L’univers', path: 'decouvrir/l-univers/' },
-      { label: 'Créer son personnage', path: 'decouvrir/creer-son-personnage/' },
-      { label: 'Les bases', path: 'regles/' },
-      { label: 'Règles avancées', path: 'regles/avancees/' },
+      { label: 'Fiche de personnage', path: 'regles/fiche-de-personnage/' },
+      { label: 'Mécaniques générales', path: 'regles/mecaniques-generales/' },
+      { label: 'Les combats', path: 'regles/combats/' },
+      { label: 'Exploration', path: 'regles/exploration/' },
     ],
   },
   {
@@ -63,7 +67,8 @@ export const NAV = [
     // demande du propriétaire du 2026-10-29 : « Entre le nouvellement créé "Personnage" et "Espace Joueur" il faudra un nouveau menu : "Equipement"
     // Dedans tu y déplacera les pages "Armes, Armures, Bouclier, Ceinture, Accessoire" en les sortant du sous-menu "Equipement" le remettant à nouveau
     // dans un sous-menu dédié. Il faudra aussi y déplacer les sous-menu "Artisanat" et "Livres & parchemins". » Une entrée par page de l'équipement
-    // (« Cinq pages séparées » : lib/equipement.mjs#PAGES_DE_L_EQUIPEMENT, même libellé, même adresse), puis Artisanat et Livres & Parchemins, puis
+    // (« Cinq pages séparées » : lib/equipement.mjs#PAGES_DE_L_EQUIPEMENT, même libellé, même adresse), puis Livres & Parchemins (l'Artisanat est dans
+    // l'onglet Exploration des Règles depuis R184), puis
     // « Autres » (réponse du propriétaire du 2026-10-29 sur les pages /ressources/… hors menu : « Le reste dans equipement (sous menu-autres pour
     // commencer) ») : la liste de toutes les pages de ressources, /ressources/ (pages/[type]/index.astro) ; toutes les pages /ressources/… (Composants,
     // alchimie…) ouvrent cette rubrique, sauf Familiers (Personnage).
@@ -74,7 +79,6 @@ export const NAV = [
       { label: 'Boucliers', path: 'ressources/bouclier/' },
       { label: 'Ceinture', path: 'ressources/objets-a-la-ceinture/' },
       { label: 'Accessoires', path: 'ressources/accessoires/' },
-      { label: 'Artisanat', path: 'regles/artisanat/' },
       { label: 'Livres & Parchemins', path: 'ressources/livre-parchemin/' },
       { label: 'Autres', path: 'ressources/' },
     ],
@@ -173,7 +177,7 @@ function rubriqueDe(rel, nav) {
 
 /**
  * Vrai si `pathname` (avec préfixe de déploiement `base`) est dans la section d'un groupe : une de ses entrées, ou une de ses `autres` pages, sans
- * qu'un autre groupe de `nav` en ait un début plus long (/regles/artisanat/ est à l'Équipement, pas aux Règles de /regles/).
+ * qu'un autre groupe de `nav` en ait un début plus long (/ressources/familiers/ est au Personnage, pas à l'Équipement de /ressources/).
  */
 export function groupIsCurrent(group, pathname, base = '/', nav = NAV) {
   const rel = cheminRelatif(pathname, base);
@@ -255,8 +259,8 @@ export function adresseEclatee(rel, eclatees = {}, { search = '', hash = '' } = 
  * la liste de ses éléments dans la recherche, `/recherche/?mot-cle=<clé>` (les ids du vocabulaire, migration 0043, sont les anciennes clés ; un mot-clé
  * disparu depuis y est dit « n'existe plus »). `null` si ce n'en est pas une. Lu par la page 404, qui y ajoute la requête et l'ancre (adresseComplete).
  * `renvois` : d'autres anciennes adresses → nouvelles, relatives à la racine du site, calculées au build : celles des pages du guide, /guide/ et
- * /guide/<slug>/ avant l'éclatement du guide (lib/metiers.mjs#renvoisDuGuide, écrites par pages/404.astro ; nav.mjs n'importe pas le plan, que la
- * chaîne de l'édition importe aussi sur la page 404). PAGES_RENOMMEES l'emporte sur elles.
+ * /guide/<slug>/ avant l'éclatement du guide, /regles/avancees/<slug>/ avant les onglets des Règles (lib/metiers.mjs#renvoisDuGuide, écrites par
+ * pages/404.astro ; nav.mjs n'importe pas le plan, que la chaîne de l'édition importe aussi sur la page 404). PAGES_RENOMMEES l'emporte sur elles.
  */
 export function nouvelleAdresse(pathname, base = '/', renvois = {}) {
   const wiki = legacyWikiRedirect(pathname, base);

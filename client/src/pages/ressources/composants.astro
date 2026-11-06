@@ -6,13 +6,14 @@ import { ouvrirBase } from '../../lib/donnees.mjs';
 import { ARTISANAT } from '../../lib/livres.mjs';
 import { url } from '../../lib/wiki';
 
-// /ressources/composants/ (rubrique Équipement du menu › Artisanat, demande du propriétaire) : une page sans page du wiki, rendue depuis les tables (components/composants/) ;
-// modifiable sur le site de dev (`edition` : src/scripts/edition/composants.mjs). Son fil d'Ariane et l'entrée courante du menu : l'Artisanat, son sommaire
-// (lib/livres.mjs#ARTISANAT).
+// /ressources/composants/ (rubrique Équipement du menu, par `ressources/` ; demande du propriétaire) : une page sans page du wiki, rendue depuis les
+// tables (components/composants/) ; modifiable sur le site de dev (`edition` : src/scripts/edition/composants.mjs). Son fil d'Ariane : l'Artisanat, son
+// sommaire (lib/livres.mjs#ARTISANAT), qui n'est plus une entrée du menu du site depuis R184 (une entrée du menu latéral de l'onglet Exploration des
+// Règles) : aucune entrée marquée.
 const composants = chargerComposants(ouvrirBase());
 ---
 
-<Base title={TITRE_DES_COMPOSANTS} description={DESCRIPTION_DES_COMPOSANTS} edition={PAGE_DES_COMPOSANTS} entree={ARTISANAT.chemin}>
+<Base title={TITRE_DES_COMPOSANTS} description={DESCRIPTION_DES_COMPOSANTS} edition={PAGE_DES_COMPOSANTS}>
   <p class="muted"><a href={url()}>Accueil</a> › <a href={url(ARTISANAT.chemin)}>{ARTISANAT.titre}</a></p>
   <ComposantsPage composants={composants} />
 </Base>

@@ -23,19 +23,27 @@ import { DECOUVRIR, LIENS_ET_RENCONTRE, PAGES_ABSORBEES, PAGES_RETIREES, placeDa
 
 /**
  * La page du plan où se range une page du guide : elle-même, ou celle qui l'absorbe (lib/livres.mjs#PAGES_ABSORBEES) — une page fusionnée dans une autre
- * n'est plus dans le plan, et la production l'a encore : retirée, elle se range avec la page qui l'a reçue, pas dans les Règles avancées.
+ * n'est plus dans le plan, et la production l'a encore : retirée, elle se range avec la page qui l'a reçue (« Résistance/Faiblesse Magie » avec
+ * « Résistances et faiblesses », R184 (7)), pas sous « Pages retirées ».
  */
 const pageDuPlan = (id) => (Object.hasOwn(PAGES_ABSORBEES, id) ? PAGES_ABSORBEES[id] : id);
-/** La rubrique des pages retirées du plan (lib/livres.mjs#PAGES_RETIREES : le Lexique, migration 0090), après celles du guide. */
+/**
+ * La rubrique des pages qui n'ont plus de place dans le plan, après celles du guide : une page retirée dont le contenu se lit ailleurs
+ * (lib/livres.mjs#PAGES_RETIREES : le Lexique, migration 0090), une page supprimée sans renvoi (lib/livres.mjs#PAGES_SUPPRIMEES : R184 (9), migration 0091), toute
+ * page que le plan ne range nulle part (placeDansLeGuide : rubrique null).
+ */
 export const PAGES_RETIREES_DU_GUIDE = 'Pages retirées';
 /**
- * Où une ligne de note d'une page du guide se range ({ rubrique, rang, ordre } de lib/livres.mjs#placeDansLeGuide) : une page absorbée à la place de celle
- * qui l'absorbe (pageDuPlan) ; une page retirée (PAGES_RETIREES), qui n'a plus de place dans le plan, sous « Pages retirées », après toutes les rubriques
- * (placeDansLeGuide la mettrait dans les Règles avancées, où elle n'a jamais été).
+ * Où une ligne de note d'une page du guide se range : { rubrique, rang, ordre } de lib/livres.mjs#placeDansLeGuide — Découvrir (rang 0), les onglets des
+ * Règles dans leur ordre (le plan installé, celui de la base de dev : lib/plan-des-regles-db.mjs, R184 et R185), le Guide du MJ —, une page absorbée à
+ * la place de celle qui l'absorbe (pageDuPlan) ; une page retirée (PAGES_RETIREES), ou que le plan ne range nulle part (supprimée, ou toute page d'un
+ * onglet quand la base n'a pas encore de plan), sous « Pages retirées », après toutes les rubriques (choix du leader-technique, lot R184).
  */
 function placeDeLaPage(id) {
-  if (Object.hasOwn(PAGES_RETIREES, id)) return { rubrique: PAGES_RETIREES_DU_GUIDE, rang: Number.MAX_SAFE_INTEGER, ordre: null };
-  return placeDansLeGuide(pageDuPlan(id));
+  const retiree = { rubrique: PAGES_RETIREES_DU_GUIDE, rang: Number.MAX_SAFE_INTEGER, ordre: null };
+  if (Object.hasOwn(PAGES_RETIREES, id)) return retiree;
+  const place = placeDansLeGuide(pageDuPlan(id));
+  return place.rubrique === null ? retiree : place;
 }
 
 /** Domaines de la liste, dans l'ordre d'affichage, avec leur titre. */
@@ -189,7 +197,8 @@ const DEFINITIONS = [
   {
     table: 'page', domaine: 'guide', cle: ['id'], colonnes: colonnesDe('page'), genre: 'Page du guide',
     filtre: (r) => r.type === 'guide' && r.statut !== 'example',
-    // rangée par rubrique du plan du site (lib/livres.mjs : « Découvrir », « Les bases », « Règles avancées », « Guide du MJ »), dans l'ordre du plan
+    // rangée par rubrique du plan du site (lib/livres.mjs : « Découvrir », les onglets des Règles — « Fiche de personnage », « Mécaniques générales »,
+    // « Les combats », « Exploration » : le plan de la base, R184 et R185 —, « Guide du MJ »), dans l'ordre du plan
     // (une page fusionnée dans une autre : à la place de celle qui l'absorbe ; une page retirée : « Pages retirées » ; placeDeLaPage)
     groupe: (r) => placeDeLaPage(r.id).rubrique,
     entite: (r) => r.titre, ordre: (r) => {
@@ -574,12 +583,15 @@ function comparerTable(def, ref, dev, x) {
   }
   for (const [k, r] of b) {
     const avant = a.get(k);
-    const base = decrire(r);
+    // décrite (groupe, entité, ordre) seulement si elle donne une ligne : une entité inchangée n'est jamais rangée (une page du guide inchangée ne
+    // demande pas le plan des onglets, lib/livres.mjs#placeDansLeGuide)
+    let decrite = null;
+    const base = () => (decrite ??= decrire(r));
     if (!avant) {
       if (def.detail || def.suit?.(r, x)) continue; // dit par l'entité qui la porte
       if (def.vide?.(r)) continue; // une ligne vide, absente de la production : rien n'est ajouté
       // une table absente de la production (schéma plus ancien) : l'entité existait peut-être, mais pas ce contenu ; on le dit ajouté
-      sortie.push(ligneDeNote({ ...base, champ: refRows ? null : def.genre, nature: 'ajoute', avant: null, apres: def.entite(r, x) }));
+      sortie.push(ligneDeNote({ ...base(), champ: refRows ? null : def.genre, nature: 'ajoute', avant: null, apres: def.entite(r, x) }));
       continue;
     }
     def.colonnes.forEach(({ colonne, libelle }, i) => {
@@ -589,7 +601,7 @@ function comparerTable(def, ref, dev, x) {
       const v2 = lire(r[colonne], r);
       if (pareil(v1, v2)) return;
       const nature = texte(v1) === null ? 'ajoute' : texte(v2) === null ? 'retire' : 'modifie';
-      sortie.push(ligneDeNote({ ...base, ordre: [...base.ordre, i], champ: libelle, colonne, nature, avant: v1, apres: v2 }));
+      sortie.push(ligneDeNote({ ...base(), ordre: [...base().ordre, i], champ: libelle, colonne, nature, avant: v1, apres: v2 }));
     });
   }
   for (const [k, r] of a) {

@@ -24,7 +24,8 @@ import { chargerAnnonce, contenuDeLAnnonce, empreinteDeLAnnonce } from '../src/l
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { ENTITES, TABLES, typeDeTexte } from '../src/lib/edition-modele.mjs';
 import { RESSOURCES } from '../src/lib/ressources.mjs';
-import { LIENS_ET_RENCONTRE } from '../src/lib/livres.mjs';
+import { installerLePlan, LIENS_ET_RENCONTRE } from '../src/lib/livres.mjs';
+import { chargerPlanDesRegles } from '../src/lib/plan-des-regles-db.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { copieSansNoteEnAttente, versionALaRevision } from './aide-mise-a-jour.mjs';
 
@@ -98,6 +99,9 @@ test('la note de version : une annonce restée vide n’annonce rien, contre une
   const { db, lire, modifier } = nouvelle();
   if (lire().texte !== null) ok(modifier({ texte: '' }));
   assert.equal(lire().texte, null);
+  // contre une production sans la table page, chaque page du guide est ajoutée, donc rangée par le plan des onglets (R184 : celui de la base vivante,
+  // comme le fait serveur/notes-de-version.mjs#noteEnPreparation)
+  installerLePlan(chargerPlanDesRegles(db));
   const lignes = (production) => comparerBases(production, lireTables(db)).filter((l) => l.table_nom === 'annonce');
   assert.deepEqual(lignes({ tables: {} }), [], 'production sans la table annonce');
   assert.deepEqual(lignes({ tables: { annonce: [{ id: ID, texte: null }] } }), [], 'production avec l’annonce vide');

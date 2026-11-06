@@ -3,19 +3,34 @@
 // tout texte échappé, champ libre réduit à un Markdown simple, marqueur [V: X+1] jamais repris). Le sens (couleur) a son propre fichier :
 // notes-de-version-sens.test.mjs.
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { planifier } from '../../tools/flux-git/regles.mjs';
 import {
   bilan, comparerBases, DOMAINES, PAGES_RETIREES_DU_GUIDE, TABLES_DES_NOTES, TABLES_LUES, trierVersions, versionCourte, versionDeLivraison,
 } from '../src/lib/notes-de-version.mjs';
-import { PAGES_RETIREES } from '../src/lib/livres.mjs';
+import { installerLePlan, PAGES_ABSORBEES, PAGES_RETIREES, PAGES_SUPPRIMEES } from '../src/lib/livres.mjs';
 import { TABLES } from '../src/lib/edition-modele.mjs';
 import {
   TITRES_DOMAINES, diffMots, echapper, htmlDeLaListe, htmlDeLaNote, htmlDuTexteLibre, lancementAffiche, markdownDeLaNote, neutraliserMarqueur,
 } from '../src/lib/notes-de-version-rendu.mjs';
 import { htmlAvecMotsCles, pageAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { htmlAvecMonnaies } from '../src/lib/monnaies.mjs';
+
+/**
+ * Un plan des onglets des Règles d'essai (lib/plan-des-regles-db.mjs#chargerPlanDesRegles, R184 et R185), installé pour tout le fichier : les pages
+ * du guide des bases synthétiques s'y rangent (lib/livres.mjs#placeDansLeGuide). Les vrais titres des onglets, quelques pages du vrai plan.
+ */
+installerLePlan([
+  { id: 'fiche-de-personnage', titre: 'Fiche de personnage', ouverture: 'guide/creer-son-personnage',
+    entrees: [{ page: 'guide/creer-son-personnage' }, { page: 'guide/choisir-sa-race' }] },
+  { id: 'mecaniques-generales', titre: 'Mécaniques générales', ouverture: 'guide/reussir-une-action',
+    entrees: [{ page: 'guide/reussir-une-action' }, { page: 'guide/resistances-et-faiblesses' }, { page: 'guide/meteo' }] },
+  { id: 'combats', titre: 'Les combats', ouverture: 'guide/le-tour-de-jeu', entrees: [{ page: 'guide/le-tour-de-jeu' }] },
+  { id: 'exploration', titre: 'Exploration', ouverture: 'guide/la-montee-de-niveau',
+    entrees: [{ page: 'guide/la-montee-de-niveau' }, { libelle: 'Artisanat', adresse: 'regles/artisanat/' }] },
+]);
 
 const magies = [
   { id: 'magies/feu', nom: 'Feu', ordre: 1, description: 'Brûle.' },
@@ -43,7 +58,7 @@ function bases() {
       echelle_relation: [{ id: 'neutre', libelle: 'Neutre' }, { id: 'haine', libelle: 'Haine' }],
       relation_peuple: [{ ligne_peuple_id: 'peuples/humain', colonne_peuple_id: 'peuples/elfe', echelle_id: 'neutre' }],
       page: [
-        // une page du livre « Les bases » (lib/livres.mjs) : rangée sous le titre du livre
+        // une page de l'onglet « Les combats » (le plan installé) : rangée sous le titre de l'onglet
         { id: 'guide/le-tour-de-jeu', type: 'guide', statut: 'canon', titre: 'Combat', corps_md: 'Un tour dure six secondes.', donnees: null },
         { id: 'guide/exemple', type: 'guide', statut: 'example', titre: 'Exemple', corps_md: 'a', donnees: null },
         { id: 'races/humain', type: 'races', statut: 'canon', titre: 'Humain', corps_md: 'a', donnees: null },
@@ -83,7 +98,7 @@ test('comparerBases : un champ par ligne, entités ajoutées et retirées, domai
     'races | Elfe | Elfe | Présentation | ajoute',
     'metiers |  | Alchimiste | (entité) | ajoute',
     'metiers |  | Forgeron | Bonus | modifie',
-    'guide | Les bases | Combat | Texte | modifie',
+    'guide | Les combats | Combat | Texte | modifie',
   ]);
   assert.deepEqual(lignes.map((l) => l.rang), lignes.map((_, i) => i + 1));
   const flash = lignes.filter((l) => l.entite === 'Flash');
@@ -292,32 +307,56 @@ test('comparerBases : bases identiques → rien ; espaces et fins de ligne ne co
   assert.deepEqual(comparerBases(ref, dev), []);
 });
 
-test('guide : une page fusionnée dans une autre (lib/livres.mjs#PAGES_ABSORBEES), retirée, se range à la place de la page qui l’absorbe, pas dans les Règles avancées', () => {
+test('guide : une page fusionnée dans une autre (lib/livres.mjs#PAGES_ABSORBEES), retirée, se range à la place de la page qui l’absorbe ; les onglets dans leur ordre', () => {
+  assert.equal(PAGES_ABSORBEES['guide/resistance-faiblesse-magie'], 'guide/resistances-et-faiblesses', 'R184 (7)');
   const page = (id, titre) => ({ id, type: 'guide', statut: 'draft', titre, corps_md: 'Texte.', donnees: null });
-  const ref = { tables: { page: [page('guide/creer-son-personnage', 'Créer son personnage'), page('guide/choisir-sa-race', 'Étape 1'), page('guide/le-jeu-de-role', 'Le jeu de rôle'), page('guide/meteo', 'Météo')] } };
-  const dev = { tables: { page: [page('guide/creer-son-personnage', 'Créer son personnage'), page('guide/meteo', 'Météo')] } };
+  const ref = { tables: { page: [page('guide/creer-son-personnage', 'Créer son personnage'), page('guide/le-jeu-de-role', 'Le jeu de rôle'),
+    page('guide/resistance-faiblesse-magie', 'Résistance/Faiblesse Magie'), page('guide/le-tour-de-jeu', 'Le tour de jeu')] } };
+  const dev = { tables: { page: [page('guide/creer-son-personnage', 'Créer son personnage'), page('guide/choisir-sa-race', 'Étape 1'),
+    page('guide/resistances-et-faiblesses', 'Résistances et faiblesses'), page('guide/le-tour-de-jeu', 'Le tour de jeu')] } };
   const lignes = comparerBases(ref, dev).filter((l) => l.table_nom === 'page');
-  assert.deepEqual(lignes.map((l) => [l.entite, l.nature, l.groupe]), [['Le jeu de rôle', 'retire', 'Découvrir'], ['Étape 1', 'retire', 'Découvrir']],
-    'Bienvenue (rang 0 de Découvrir) puis Créer son personnage (rang 2)');
-  // une page des Règles avancées retirée y reste
-  delete dev.tables.page[1];
-  dev.tables.page = dev.tables.page.filter(Boolean);
-  assert.equal(comparerBases(ref, dev).find((l) => l.entite === 'Météo').groupe, 'Règles avancées');
+  assert.deepEqual(lignes.map((l) => [l.entite, l.nature, l.groupe]), [
+    ['Le jeu de rôle', 'retire', 'Découvrir'],
+    ['Étape 1', 'ajoute', 'Fiche de personnage'],
+    ['Résistance/Faiblesse Magie', 'retire', 'Mécaniques générales'],
+    ['Résistances et faiblesses', 'ajoute', 'Mécaniques générales'],
+  ], 'Bienvenue (Découvrir, rang 0), puis les onglets dans l’ordre du plan ; la page absorbée à la place de « Résistances et faiblesses »');
 });
 
-test('guide : une page retirée du plan (lib/livres.mjs#PAGES_RETIREES : le Lexique, migration 0090) se range sous « Pages retirées », après le Guide du MJ, jamais dans les Règles avancées', () => {
+test('guide : une page qui n’a plus de place dans le plan (PAGES_RETIREES, PAGES_SUPPRIMEES, ou que le plan ne range nulle part) se range sous « Pages retirées », après le Guide du MJ', () => {
   assert.ok(Object.hasOwn(PAGES_RETIREES, 'guide/lexique'));
+  assert.ok(PAGES_SUPPRIMEES.includes('guide/aide-memoire'), 'R184 (9)');
   const page = (id, titre) => ({ id, type: 'guide', statut: 'draft', titre, corps_md: 'Texte.', donnees: null });
-  const ref = { tables: { page: [page('guide/lexique', 'Lexique'), page('guide/meteo', 'Météo'), page('guide/un-maitre-du-jeu', 'Un maître du jeu')] } };
+  const ref = { tables: { page: [page('guide/lexique', 'Lexique'), page('guide/meteo', 'Météo'), page('guide/un-maitre-du-jeu', 'Un maître du jeu'),
+    page('guide/aide-memoire', 'Aide-mémoire'), page('guide/hors-du-plan', 'Hors du plan')] } };
   const dev = { tables: { page: [] } };
   const lignes = comparerBases(ref, dev).filter((l) => l.table_nom === 'page');
   assert.deepEqual(lignes.map((l) => [l.entite, l.nature, l.groupe]), [
-    ['Météo', 'retire', 'Règles avancées'], ['Un maître du jeu', 'retire', 'Guide du MJ'], ['Lexique', 'retire', PAGES_RETIREES_DU_GUIDE],
+    ['Météo', 'retire', 'Mécaniques générales'], ['Un maître du jeu', 'retire', 'Guide du MJ'],
+    ['Aide-mémoire', 'retire', PAGES_RETIREES_DU_GUIDE], ['Hors du plan', 'retire', PAGES_RETIREES_DU_GUIDE], ['Lexique', 'retire', PAGES_RETIREES_DU_GUIDE],
   ]);
   // modifiée (une note d'avant son retrait) : même rubrique
   const avant = { tables: { page: [page('guide/lexique', 'Lexique')] } };
   const modifiee = { tables: { page: [{ ...page('guide/lexique', 'Lexique'), corps_md: 'Autre texte.' }] } };
   assert.equal(comparerBases(avant, modifiee).find((l) => l.entite === 'Lexique').groupe, PAGES_RETIREES_DU_GUIDE);
+  // plus aucune rubrique de l'ancien plan
+  assert.ok(!lignes.some((l) => ['Les bases', 'Règles avancées'].includes(l.groupe)));
+});
+
+test('guide : une page inchangée n’est jamais rangée (la comparaison ne demande pas le plan pour elle)', () => {
+  // un processus neuf, sans plan installé : ranger une page y lèverait « le plan des onglets des Règles n’est pas installé »
+  const script = `
+    import { comparerBases } from ${JSON.stringify(new URL('../src/lib/notes-de-version.mjs', import.meta.url).href)};
+    const page = { id: 'guide/meteo', type: 'guide', statut: 'draft', titre: 'Météo', corps_md: 'Texte.', donnees: null };
+    const egales = comparerBases({ tables: { page: [page] } }, { tables: { page: [{ ...page }] } }).length;
+    let changee;
+    try { comparerBases({ tables: { page: [page] } }, { tables: { page: [{ ...page, corps_md: 'Autre.' }] } }); } catch (e) { changee = e.message; }
+    console.log(JSON.stringify({ egales, changee }));`;
+  const r = spawnSync(process.execPath, ['--no-warnings', '--input-type=module', '-e', script], { encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  const { egales, changee } = JSON.parse(r.stdout);
+  assert.equal(egales, 0);
+  assert.match(changee, /le plan des onglets des Règles n’est pas installé/, 'une page changée, elle, se range par le plan');
 });
 
 test('guide : l’annonce de l’encart IRL (migration 0068) vide n’est pas listée ; écrite, vidée ou changée, son texte se lit', () => {

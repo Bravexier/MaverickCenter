@@ -114,13 +114,13 @@
    ]
   },
   {
-   "lot": "2026-11-05T19:52:43.649Z-000000-8699b989-187a-40ed-a24b-dbf733cd80a0",
-   "fait_le": "2026-11-05T19:52:43Z",
+   "lot": "2026-11-06T09:53:32.164Z-000000-f8321526-b9c6-4517-8ffe-2615390e5457",
+   "fait_le": "2026-11-06T09:53:32Z",
    "page_id": "guide/la-magie-en-jeu",
    "resume": "Page La magie en jeu : Texte ; Métier Forgeron : Description",
-   "detail": "lot 2026-11-05T19:52:43.649Z-000000-8699b989-187a-40ed-a24b-dbf733cd80a0 : page {\"id\":\"guide/la-magie-en-jeu\"} : les règles ont changé corps_md autrement",
+   "detail": "lot 2026-11-06T09:53:32.164Z-000000-f8321526-b9c6-4517-8ffe-2615390e5457 : page {\"id\":\"guide/la-magie-en-jeu\"} : les règles ont changé corps_md autrement",
    "detail_lisible": "Page « La magie en jeu » : les règles ont changé « Texte » autrement",
-   "empreinte": "70e061003ec2f708b202f490388a2c4a",
+   "empreinte": "97d94b479a10d56e085f494b0e3a4943",
    "saines": [
     {
      "rang": 2,
@@ -160,7 +160,7 @@
      "genre": "champ",
      "version_1": {
       "genre": "valeur",
-      "valeur": "Tout personnage a au moins une magie, et donc au moins un sort : comment les choisir est expliqué dans [[guide/creer-son-personnage|Créer son personnage]]. Cette page explique comment s’en servir en partie.\n\n## Lire un sort\n\nLes sorts de chaque magie sont sur sa page (voir [les magies](/magies/)), u\n…\nuations avancées]] (« Rater ses sortilèges ») et [[guide/la-montee-de-niveau|La montée de niveau]].\n\nParagraphe ajouté sur le site de dev (essai des conflits).\n"
+      "valeur": "Tout personnage a au moins une magie, et donc au moins un sort : comment les choisir est expliqué dans [[guide/premiers-sorts|Créer son personnage]]. Cette page explique comment s’en servir en partie.\n\n## Lire un sort\n\nLes sorts de chaque magie sont sur sa page (voir [les magies](/magies/)), un tabl\n…\ne/rater-ses-sortileges|Rater ses sortilèges]] et [[guide/la-montee-de-niveau|La montée de niveau]].\n\nParagraphe ajouté sur le site de dev (essai des conflits).\n"
      },
      "version_2": {
       "genre": "valeur",
@@ -168,7 +168,7 @@
      },
      "avant": {
       "genre": "valeur",
-      "valeur": "Tout personnage a au moins une magie, et donc au moins un sort : comment les choisir est expliqué dans [[guide/creer-son-personnage|Créer son personnage]]. Cette page explique comment s’en servir en partie.\n\n## Lire un sort\n\nLes sorts de chaque magie sont sur sa page (voir [les magies](/magies/)), u\n…\n\n\nPour aller plus loin : [[guide/situations-avancees|Les situations avancées]] (« Rater ses sortilèges ») et [[guide/la-montee-de-niveau|La montée de niveau]].\n"
+      "valeur": "Tout personnage a au moins une magie, et donc au moins un sort : comment les choisir est expliqué dans [[guide/premiers-sorts|Créer son personnage]]. Cette page explique comment s’en servir en partie.\n\n## Lire un sort\n\nLes sorts de chaque magie sont sur sa page (voir [les magies](/magies/)), un tabl\n…\nce magique, de NPM 1 à NPM 5.\n\nPour aller plus loin : [[guide/rater-ses-sortileges|Rater ses sortilèges]] et [[guide/la-montee-de-niveau|La montée de niveau]].\n"
      },
      "apercu": [
       "<p>aperçu 0</p>"
@@ -187,13 +187,13 @@
    ]
   },
   {
-   "lot": "2026-11-05T19:52:43.683Z-000000-37674cd5-ddcb-4f4e-9067-af40884eedeb",
-   "fait_le": "2026-11-05T19:52:43Z",
+   "lot": "2026-11-06T09:53:32.197Z-000000-12c1bcf2-6083-448e-a42f-636fdf8d17d1",
+   "fait_le": "2026-11-06T09:53:32Z",
    "page_id": "guide/le-mode-hyper",
-   "resume": "Page Le Mode Hyper et le Mode Super : Texte",
-   "detail": "lot 2026-11-05T19:52:43.683Z-000000-37674cd5-ddcb-4f4e-9067-af40884eedeb : page {\"id\":\"guide/le-mode-hyper\"} : la ligne n’existe plus dans les règles",
+   "resume": "Page Le Mode Hyper : Texte",
+   "detail": "lot 2026-11-06T09:53:32.197Z-000000-12c1bcf2-6083-448e-a42f-636fdf8d17d1 : page {\"id\":\"guide/le-mode-hyper\"} : la ligne n’existe plus dans les règles",
    "detail_lisible": "Page guide/le-mode-hyper : la ligne n’existe plus dans les règles",
-   "empreinte": "986fc110bea7bbe41ee538403fe0069f",
+   "empreinte": "e6ae7533d7c148b1e8a84e618a1460f8",
    "saines": [],
    "conflits": [
     {
@@ -235,13 +235,13 @@
    ]
   },
   {
-   "lot": "2026-11-05T19:52:43.692Z-000000-19981dc5-7cc1-4f96-b5e2-050bbdbb30db",
-   "fait_le": "2026-11-05T19:52:43Z",
+   "lot": "2026-11-06T09:53:32.204Z-000000-b7d8ebee-a02b-4ba8-9011-24280a57403c",
+   "fait_le": "2026-11-06T09:53:32Z",
    "page_id": "guide/s-entrainer-et-exercer-un-metier",
-   "resume": "Page S’entraîner et exercer un métier : Texte",
-   "detail": "lot 2026-11-05T19:52:43.692Z-000000-19981dc5-7cc1-4f96-b5e2-050bbdbb30db : page {\"id\":\"guide/s-entrainer-et-exercer-un-metier\"} : les règles ont changé corps_md autrement",
-   "detail_lisible": "Page « S’entraîner et exercer un métier » : les règles ont changé « Texte » autrement",
-   "empreinte": "ac5bb907e67572f8e94cbbe8c422cc82",
+   "resume": "Page S’entraîner : Texte",
+   "detail": "lot 2026-11-06T09:53:32.204Z-000000-b7d8ebee-a02b-4ba8-9011-24280a57403c : page {\"id\":\"guide/s-entrainer-et-exercer-un-metier\"} : les règles ont changé corps_md autrement",
+   "detail_lisible": "Page « S’entraîner » : les règles ont changé « Texte » autrement",
+   "empreinte": "8129a119ca5165e762bf4e40ada12114",
    "saines": [],
    "conflits": [
     {
@@ -251,7 +251,7 @@
       "id": "guide/s-entrainer-et-exercer-un-metier"
      },
      "operation": "modifier",
-     "libelle": "Page « S’entraîner et exercer un métier »",
+     "libelle": "Page « S’entraîner »",
      "raison": "les règles ont changé corps_md autrement",
      "raison_lisible": "les règles ont changé « Texte » autrement",
      "id": "1:corps_md",
@@ -260,7 +260,7 @@
      "genre": "champ",
      "version_1": {
       "genre": "valeur",
-      "valeur": "Les niveaux ne sont pas la seule façon de progresser. Entre deux niveaux, un personnage peut **s’entraîner** pour améliorer une compétence ; et son **métier** lui donne, tout au long de l’aventure, un savoir-faire que les autres n’ont pas.\n\n## S’entraîner\n\n### Trouver un entraîneur\n\nLes entraînement\n…\nps.\n\nEt, quoi qu’il arrive, le MJ a toujours raison. Les règles complètes : [[Règles des métiers]].\n\nParagraphe ajouté sur le site de dev (essai des conflits).\n"
+      "valeur": "Les niveaux ne sont pas la seule façon de progresser. Entre deux niveaux, un personnage peut **s’entraîner** pour améliorer une compétence ; et son **métier** lui donne, tout au long de l’aventure, un savoir-faire que les autres n’ont pas.\n\n## Trouver un entraîneur\n\nLes entraînements se donnent surt\n…\nse (NM) au sort qu’il enseigne, un seul par sort (voir [[guide/la-magie-en-jeu|La magie en jeu]]) ;\n\nParagraphe ajouté sur le site de dev (essai des conflits).\n"
      },
      "version_2": {
       "genre": "valeur",
@@ -268,7 +268,7 @@
      },
      "avant": {
       "genre": "valeur",
-      "valeur": "Les niveaux ne sont pas la seule façon de progresser. Entre deux niveaux, un personnage peut **s’entraîner** pour améliorer une compétence ; et son **métier** lui donne, tout au long de l’aventure, un savoir-faire que les autres n’ont pas.\n\n## S’entraîner\n\n### Trouver un entraîneur\n\nLes entraînement\n…\nnus, ni trop peu, d’autant qu’ils ne servent pas tout le temps.\n\nEt, quoi qu’il arrive, le MJ a toujours raison. Les règles complètes : [[Règles des métiers]].\n"
+      "valeur": "Les niveaux ne sont pas la seule façon de progresser. Entre deux niveaux, un personnage peut **s’entraîner** pour améliorer une compétence ; et son **métier** lui donne, tout au long de l’aventure, un savoir-faire que les autres n’ont pas.\n\n## Trouver un entraîneur\n\nLes entraînements se donnent surt\n…\nes **livres de sort** lus : chacun donne un niveau de maîtrise (NM) au sort qu’il enseigne, un seul par sort (voir [[guide/la-magie-en-jeu|La magie en jeu]]) ;\n"
      },
      "apercu": [
       "<p>aperçu 0</p>",
@@ -288,13 +288,13 @@
    ]
   },
   {
-   "lot": "2026-11-05T19:52:43.696Z-000000-40375ffc-312f-4114-ad7f-1f4b00694a42",
-   "fait_le": "2026-11-05T19:52:43Z",
+   "lot": "2026-11-06T09:53:32.207Z-000000-0473370f-f742-4d53-a9d1-b902bec4b09d",
+   "fait_le": "2026-11-06T09:53:32Z",
    "page_id": "metiers/forgeron",
    "resume": "Métier Forgeron : Bonus",
-   "detail": "lot 2026-11-05T19:52:43.696Z-000000-40375ffc-312f-4114-ad7f-1f4b00694a42 : metier {\"id\":\"metiers/forgeron\"} : les règles ont changé bonus_brut autrement",
+   "detail": "lot 2026-11-06T09:53:32.207Z-000000-0473370f-f742-4d53-a9d1-b902bec4b09d : metier {\"id\":\"metiers/forgeron\"} : les règles ont changé bonus_brut autrement",
    "detail_lisible": "Métier « Forgeron » : les règles ont changé « Bonus » autrement",
-   "empreinte": "776966dbac0ef9bc5750fb6635f8d031",
+   "empreinte": "26b48cd1bc9ceed8f85f48083ced850e",
    "saines": [
     {
      "rang": 2,
@@ -373,13 +373,13 @@
    ]
   },
   {
-   "lot": "2026-11-05T19:52:43.712Z-000000-61a815af-3c03-4d7a-8f21-30c4cfbaeea6",
-   "fait_le": "2026-11-05T19:52:43Z",
+   "lot": "2026-11-06T09:53:32.216Z-000000-22c9f55c-788f-4f99-b837-3682de2a7bdb",
+   "fait_le": "2026-11-06T09:53:32Z",
    "page_id": "recherche/",
    "resume": "Mot-clé supprimé : Essai conflits étiquette (retiré de 0 page(s))",
-   "detail": "lot 2026-11-05T19:52:43.712Z-000000-61a815af-3c03-4d7a-8f21-30c4cfbaeea6 : sort_mot_cle : clé étrangère rompue vers mot_cle",
+   "detail": "lot 2026-11-06T09:53:32.216Z-000000-22c9f55c-788f-4f99-b837-3682de2a7bdb : sort_mot_cle : clé étrangère rompue vers mot_cle",
    "detail_lisible": "Étiquette du sort : clé étrangère rompue vers Mot-clé",
-   "empreinte": "d9f00f69b35ddf54c6f8fa10c3ac9ad8",
+   "empreinte": "36903313706b0dc031b38571c69555fa",
    "saines": [],
    "conflits": [
     {
@@ -436,13 +436,13 @@
    ]
   },
   {
-   "lot": "2026-11-05T19:52:43.748Z-000000-bc414289-e07f-4bc3-ad5a-a13e234bf248",
-   "fait_le": "2026-11-05T19:52:43Z",
+   "lot": "2026-11-06T09:53:32.237Z-000000-776cf650-33f9-4bbe-bfc2-a10275ade370",
+   "fait_le": "2026-11-06T09:53:32Z",
    "page_id": "metiers/acrobate",
    "resume": "Métier Acrobate : Nom",
-   "detail": "lot 2026-11-05T19:52:43.748Z-000000-bc414289-e07f-4bc3-ad5a-a13e234bf248 : metier {\"id\":\"metiers/acrobate\"} : les règles ont changé nom, nom_cle autrement",
+   "detail": "lot 2026-11-06T09:53:32.237Z-000000-776cf650-33f9-4bbe-bfc2-a10275ade370 : metier {\"id\":\"metiers/acrobate\"} : les règles ont changé nom, nom_cle autrement",
    "detail_lisible": "Métier « Acrobate des règles (essai des conflits) » : les règles ont changé « Nom » autrement",
-   "empreinte": "9f2ebd77dcae9b5d69e8804c560acaba",
+   "empreinte": "c98414fcb47f3a1be46c0c119f782d3e",
    "saines": [],
    "conflits": [
     {

@@ -119,6 +119,8 @@ export const NOMS_DES_TABLES = Object.freeze({
   recette_ingredient: 'Élément de recette',
   recette_produit: 'Produit de recette',
   regle_constante: 'Constante de règle',
+  // le menu latéral d'un onglet des Règles (migration 0091, R184) : une page retirée par un lot emporte son entrée (ON DELETE CASCADE)
+  regles_onglet_entree: 'Entrée du menu d’un onglet des Règles',
   sort_mot_cle: 'Étiquette du sort',
   // les fiches de personnage (section 13) qui citent une table écrite : jamais écrites par l'édition des règles
   personnage: 'Fiche de personnage',

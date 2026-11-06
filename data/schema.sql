@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 90;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 91;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -260,6 +260,48 @@ CREATE TABLE annonce (
   id    TEXT NOT NULL PRIMARY KEY CHECK (length(id) > 0 AND id NOT GLOB '*[^a-z0-9-]*' AND id NOT GLOB '*--*' AND id NOT GLOB '-*' AND id NOT GLOB '*-'),   -- l'annonce
                                                      -- que le site place ('prochaine-rencontre-irl')
   texte TEXT CHECK (texte IS NULL OR length(texte) > 0)   -- Markdown des pages, balises du glossaire comprises ; NULL : rien d'annoncé (le texte d'attente s'affiche)
+) STRICT;
+
+-- Plan des onglets de la rubrique Règles (migration 0091, décisions R184 et R185 : « Fiche de personnage », « Mécaniques générales », « Les combats »,
+-- « Exploration », après Découvrir et L'univers, que le site écrit lui-même) : un onglet, son titre, sa place et la page qu'il ouvre. Son menu latéral
+-- est la liste de ses entrées (regles_onglet_entree), dans l'ordre de `rang`. Liste fermée : l'édition n'en crée ni n'en retire (choix du
+-- leader-technique : le plan est une donnée de la base, qu'un lot suivant rendra modifiable sur le site de dev ; pas encore dans
+-- lib/edition-modele.mjs#TABLES). La page d'ouverture est une entrée page de l'onglet (clé étrangère composée vers regles_onglet_entree, vérifiée à
+-- la fin de la transaction : un onglet et ses entrées s'écrivent ensemble) : déplacer cette page dans un autre onglet, ou la supprimer, est refusé
+-- tant qu'une autre page n'ouvre pas l'onglet. Pas de provenance (origine, source_ref : feuille de route, retirées à la 1.0).
+CREATE TABLE regles_onglet (
+  id                TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0 AND id NOT GLOB '*[^a-z0-9-]*' AND id NOT GLOB '*--*' AND id NOT GLOB '-*' AND id NOT GLOB '*-'),
+                                                       -- 'fiche-de-personnage', 'mecaniques-generales', 'combats', 'exploration'
+  titre             TEXT    NOT NULL CHECK (length(titre) > 0),   -- le nom de l'onglet (« Les combats »)
+  ordre             INTEGER NOT NULL CHECK (ordre >= 1),          -- place parmi ces onglets (1 = le premier après L'univers) ; pas UNIQUE, pour qu'un
+                                                                  -- réordonnancement puisse échanger deux ordres dans un même lot (à égalité, l'id)
+  ouverture_page_id TEXT    NOT NULL,                             -- la page montrée à l'adresse de l'onglet, qui n'est pas forcément la première du menu
+                                                                  -- (« Fiche de personnage » ouvre sur guide/creer-son-personnage)
+  FOREIGN KEY (id, ouverture_page_id) REFERENCES regles_onglet_entree (onglet_id, page_id) DEFERRABLE INITIALLY DEFERRED
+) STRICT;
+
+-- Une entrée du menu latéral d'un onglet des Règles, à sa place (`rang`). Trois sortes, exactement une par ligne :
+--   * une page (`page_id`, une page `guide/…`) : son titre est celui de la page ; id 'page:<id de la page>' ; une page n'est que dans un onglet (UNIQUE) ;
+--   * un lien vers une adresse du site qui n'est pas une page du guide (`libelle` et `adresse`) : « Artisanat » (regles/artisanat/), id 'lien:<adresse
+--     sans la barre finale>' ;
+--   * une entrée grisée « bientôt » (`libelle` seul) : une puce du propriétaire sans texte encore (R184 (1)) ; aucune aujourd'hui, id 'bientot:<clé>'.
+-- `rang` n'est pas UNIQUE dans l'onglet (comme panneau_regles_bloc.ordre) : SQLite contrôle une contrainte UNIQUE ligne par ligne, et un déplacement
+-- par glisser-déposer renumérote plusieurs entrées dans un même lot ; à égalité, l'id départage. Retirer une page retire son entrée (ON DELETE CASCADE),
+-- sauf la page d'ouverture d'un onglet (regles_onglet). Pas de provenance (origine, source_ref : feuille de route, retirées à la 1.0).
+CREATE TABLE regles_onglet_entree (
+  id        TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0),
+  onglet_id TEXT    NOT NULL REFERENCES regles_onglet(id),
+  rang      INTEGER NOT NULL CHECK (rang >= 1),           -- place dans le menu latéral de l'onglet (1 = en haut)
+  page_id   TEXT    UNIQUE REFERENCES page(id) ON DELETE CASCADE,   -- la page de l'entrée ; NULL : un lien ou une entrée « bientôt »
+  libelle   TEXT    CHECK (libelle IS NULL OR length(libelle) > 0), -- le texte d'un lien ou d'une entrée « bientôt » ; NULL pour une page (son titre)
+  adresse   TEXT    CHECK (adresse IS NULL OR (adresse GLOB '[a-z0-9]*/' AND adresse NOT GLOB '*[^a-z0-9/-]*' AND adresse NOT GLOB '*//*')),
+                                                          -- l'adresse d'un lien, sans la base ni la barre initiale ('regles/artisanat/') ; NULL sinon
+  CHECK ((page_id IS NULL) = (libelle IS NOT NULL)),      -- une page, ou un libellé
+  CHECK (adresse IS NULL OR libelle IS NOT NULL),         -- un lien a son libellé
+  CHECK (CASE WHEN page_id IS NULL THEN id GLOB 'lien:?*' OR id GLOB 'bientot:?*' ELSE id = 'page:' || page_id END),   -- 'page:<id de la page>', 'lien:…', 'bientot:…'
+  CHECK (id NOT GLOB 'lien:*' OR adresse IS NOT NULL),
+  CHECK (id NOT GLOB 'bientot:*' OR (adresse IS NULL AND page_id IS NULL)),
+  UNIQUE (onglet_id, page_id)                             -- cible de la clé étrangère de la page d'ouverture (regles_onglet)
 ) STRICT;
 
 -- ====================================================================================================================
