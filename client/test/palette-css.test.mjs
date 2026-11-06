@@ -39,6 +39,7 @@ import { COULEURS_DES_PARTIES } from '../src/lib/parties-couleurs.mjs';
 import { DECOUVRIR, PAGES_DE_LA_CREATION, PARTIES, partieDeLaPage, RUBRIQUES_SOUS_LA_PAGE } from '../src/lib/livres.mjs';
 import { COULEUR_AUJOURDHUI, COULEUR_INCONNUE, couleursDesEvenements } from '../src/lib/chronologie-couleurs.mjs';
 import { chargerChronologie } from '../src/lib/chronologie-db.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 
 const lire = (chemin) => readFileSync(new URL(`../${chemin}`, import.meta.url), 'utf8');
 const HEX = /(?<!&)#[0-9a-f]{6}\b|(?<!&)#[0-9a-f]{3}\b/gi;
@@ -1305,7 +1306,10 @@ test('lisibilité de la chronologie dans les deux thèmes, pour chaque événeme
     mesures.push([quoi, r]);
     assert.ok(r >= CONTRASTE_MINIMAL, `${quoi} : ${texte} sur ${fond} = ${r.toFixed(2)}:1`);
   };
-  const couleurs = couleursDesEvenements(evenementsDeLaBase());
+  // les couleurs des événements de la base courante, et celles de son état d'import (test/aide-base-d-import.mjs) : la teinte dépend de l'époque de
+  // chaque événement et de leur nombre, que le site de dev modifie ; l'import garde des teintes de la roue, que vise le contrôle du plus juste
+  const couleurs = new Map([...couleursDesEvenements(chargerChronologie(baseDImport())).entries()].map(([id, c]) => [`${id} (import)`, c]));
+  for (const [id, c] of couleursDesEvenements(evenementsDeLaBase())) couleurs.set(id, c);
   for (const [id, c] of couleurs) {
     // le texte de la classe (--couleur-texte : le blanc) sur l'aplat de l'événement, et sur l'aplat assombri au survol de « Commencer »
     lisible(blanc, c, `${id} : blanc sur la couleur`);

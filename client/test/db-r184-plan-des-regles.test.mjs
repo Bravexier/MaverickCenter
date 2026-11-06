@@ -12,6 +12,7 @@ import { test } from 'node:test';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
+import { baseDImport, lotsAvant } from './aide-base-d-import.mjs';
 
 const MIGRATION = '0091-r184-plan-des-regles.sql';
 const lire = (chemin) => readFileSync(new URL(`../../${chemin}`, import.meta.url), 'utf8');
@@ -20,6 +21,13 @@ const page = (id) => db.prepare('SELECT * FROM page WHERE id = ?').get(id);
 const corps = (id) => page(id).corps_md;
 const alias = (id) => db.prepare('SELECT texte FROM alias WHERE page_id = ? ORDER BY ordre').all(id).map((r) => r.texte);
 const g = (slugs) => slugs.map((s) => `guide/${s}`);
+// Le texte et le titre d'une page sont modifiables sur le site de dev, source de ce qu'il modifie : ce que la 0091 et db:sync-pages ont écrit se lit dans
+// l'état d'après la migration (test/aide-base-d-import.mjs : seuls les lots rapatriés après elle se défont ; fixtures/lots-avant-0093.json, la même
+// liste qu'avant la 0090, aucun lot rapatrié entre les deux) ; l'état courant, par des invariants (alias gardés, bloc appelé une fois au plus).
+const apres0091 = () => baseDImport({ garder: lotsAvant('0093') });
+const pageApres0091 = (id) => apres0091().prepare('SELECT * FROM page WHERE id = ?').get(id);
+const corpsApres0091 = (id) => pageApres0091(id).corps_md;
+const aliasApres0091 = (id) => apres0091().prepare('SELECT texte FROM alias WHERE page_id = ? ORDER BY ordre').all(id).map((r) => r.texte);
 
 const FICHE = g(['personnage', 'classe', 'experience-niveau-global', 'attributs', 'caracteristiques', 'competences', 'capacites-dons',
   'maitrise-darme-et-armes', 'armure-defense-bouclier', 'accessoires-et-ceinture', 'inventaire-sac-a-dos', 'tableau-magie',
@@ -134,7 +142,10 @@ test('regles_onglet_entree : une page, un lien ou une entrée « bientôt », ex
   const base = copie(t);
   const inserer = (id, onglet, pageId, libelle, adresse) => base.prepare(`INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle,
     adresse) VALUES (?, ?, 99, ?, ?, ?)`).run(id, onglet, pageId, libelle, adresse);
-  assert.throws(() => inserer('page:guide/meteo', 'combats', 'guide/meteo', null, null), /UNIQUE constraint failed: regles_onglet_entree.page_id/);
+  // une page déjà dans un onglet (Météo), dans un autre onglet que le sien (le site de dev change une page d'onglet)
+  const ongletDeMeteo = base.prepare("SELECT onglet_id FROM regles_onglet_entree WHERE page_id = 'guide/meteo'").get().onglet_id;
+  const ailleurs = ONGLETS.map((o) => o.id).find((o) => o !== ongletDeMeteo);
+  assert.throws(() => inserer('page:guide/meteo', ailleurs, 'guide/meteo', null, null), /UNIQUE constraint failed: regles_onglet_entree.page_id/);
   assert.throws(() => inserer('page:guide/bienvenue', 'combats', 'guide/bienvenue', 'Bienvenue', null), /CHECK constraint failed/);
   assert.throws(() => inserer('guide/bienvenue', 'combats', 'guide/bienvenue', null, null), /CHECK constraint failed/);
   assert.throws(() => inserer('page:guide/x', 'combats', null, 'Sans page', null), /CHECK constraint failed/);
@@ -153,19 +164,27 @@ test('regles_onglet : la page d’ouverture est une page de l’onglet ; la reti
     base.exec('BEGIN');
     try { base.exec(sql); base.exec('COMMIT'); } catch (e) { if (base.isTransaction) base.exec('ROLLBACK'); throw e; }
   };
+  // les pages du plan courant (le site de dev change une page d'onglet, sauf une page d'ouverture) : une page hors des Combats, une autre page de la Fiche
+  const ouvertures = new Set(ONGLETS.map((o) => o.ouverture_page_id));
+  const pageDe = (condition, onglet) => base.prepare(`SELECT page_id FROM regles_onglet_entree WHERE page_id IS NOT NULL AND onglet_id ${condition} ?
+    ORDER BY rang, id`).all(onglet).map((e) => e.page_id).find((p) => !ouvertures.has(p) && p !== 'guide/initiative');
+  const horsDesCombats = pageDe('<>', 'combats');
+  const autreDeLaFiche = pageDe('=', 'fiche-de-personnage');
+  assert.ok(horsDesCombats && autreDeLaFiche);
+  const ongletDeLInitiative = base.prepare("SELECT onglet_id FROM regles_onglet_entree WHERE page_id = 'guide/initiative'").get()?.onglet_id;
   assert.throws(transaction("UPDATE regles_onglet_entree SET onglet_id = 'combats' WHERE page_id = 'guide/creer-son-personnage'"), /FOREIGN KEY constraint failed/);
-  assert.throws(transaction("UPDATE regles_onglet SET ouverture_page_id = 'guide/meteo' WHERE id = 'combats'"), /FOREIGN KEY constraint failed/);
+  assert.throws(transaction(`UPDATE regles_onglet SET ouverture_page_id = '${horsDesCombats}' WHERE id = 'combats'`), /FOREIGN KEY constraint failed/);
   // retirer une page : ses lignes qui la citent d'abord (liens, sources, mots-clés, alias), la page ensuite
   const retirer = (id) => ['lien WHERE page_id = ? OR cible_page_id = ?', 'page_source WHERE page_id = ?', 'page_tag WHERE page_id = ?',
     'alias WHERE page_id = ?', 'page WHERE id = ?'].map((d) => `DELETE FROM ${d.replaceAll('?', `'${id}'`)};`).join('\n');
   assert.throws(transaction(retirer('guide/la-montee-de-niveau')), /FOREIGN KEY constraint failed/);
   // une autre page du même onglet peut l'ouvrir, dans la même transaction que le déplacement de l'ancienne
-  transaction(`UPDATE regles_onglet SET ouverture_page_id = 'guide/choisir-sa-race' WHERE id = 'fiche-de-personnage';
+  transaction(`UPDATE regles_onglet SET ouverture_page_id = '${autreDeLaFiche}' WHERE id = 'fiche-de-personnage';
     UPDATE regles_onglet_entree SET onglet_id = 'exploration' WHERE page_id = 'guide/creer-son-personnage'`)();
   assert.equal(menu(base, 'exploration').includes('guide/creer-son-personnage'), true);
   // une page qui n'ouvre aucun onglet se retire avec son entrée (ON DELETE CASCADE)
   transaction(retirer('guide/initiative'))();
-  assert.equal(menu(base, 'combats').includes('guide/initiative'), false);
+  assert.equal(menu(base, ongletDeLInitiative).includes('guide/initiative'), false);
 });
 
 test('R184 (9), R185 (3) : six pages retirées, avec leurs alias, leurs mots-clés, leurs renvois, leur écart d’import et les sources qu’elles seules citaient', () => {
@@ -184,23 +203,32 @@ test('R184 (9), R185 (3) : six pages retirées, avec leurs alias, leurs mots-cl�
   // « la page seule » (R184 (9)) : les lignes de l'onglet masqué restent
   assert.ok(db.prepare("SELECT count(*) AS n FROM mode_hyper_effet WHERE version = 'magie_masque'").get().n > 0);
   // E7 : la liste des effets ne renvoyait plus à la page retirée ; la liste est elle-même retirée depuis (migration 0095) : aucune page n'y renvoie,
-  // et la phrase sur l'autre liste de l'onglet masqué reste dans guide/le-mode-hyper (P9)
+  // et la phrase sur l'autre liste de l'onglet masqué reste dans guide/le-mode-hyper (P9) : textes tels que les migrations les ont écrits (le site de
+  // dev peut les réécrire depuis)
   assert.equal(page('guide/liste-des-effets-mode-hyper'), undefined);
-  assert.equal(db.prepare("SELECT count(*) AS n FROM page WHERE instr(corps_md, 'Mode Hyper (Magie)') > 0").get().n, 0);
-  assert.ok(corps('guide/le-mode-hyper').includes('une autre liste des effets du Mode Hyper, aux valeurs différentes : cette liste ne compte pas'));
+  assert.equal(apres0091().prepare("SELECT count(*) AS n FROM page WHERE instr(corps_md, 'Mode Hyper (Magie)') > 0").get().n, 0);
+  assert.ok(corpsApres0091('guide/le-mode-hyper').includes('une autre liste des effets du Mode Hyper, aux valeurs différentes : cette liste ne compte pas'));
   // la migration ne fait que retirer : l'historique du site garde ce qui les citait
   assert.match(lire(`data/migrations/${MIGRATION}`), /historique_modification et de note_version_ligne qui les citent restent/);
 });
 
 test('R184, R185 : les pages absorbées et les pages retitrées gardent leurs anciens noms en alias', () => {
-  assert.deepEqual(alias('guide/resistances-et-faiblesses'), ['Résistance/Faiblesse Magie', 'Résistance/Faiblesses magique']);
-  assert.deepEqual(alias('guide/prise-en-tenaille-et-zone-d-influence'), ['La prise en tenaille', 'Les situations avancées']);
-  for (const [id, titre, ancien] of [['guide/le-mode-hyper', 'Le Mode Hyper', 'Le Mode Hyper et le Mode Super'],
-    ['guide/blessures-et-etats', 'Blessure et mort', 'Blessures et états'], ['guide/s-entrainer-et-exercer-un-metier', 'S’entraîner', 'S’entraîner et exercer un métier']]) {
-    assert.equal(page(id).titre, titre, id);
-    assert.deepEqual(alias(id), [ancien], id);
+  // après la 0091 : ces alias, exactement, et les nouveaux titres ; aujourd'hui, les anciens noms restent des alias (un titre changé sur le site de dev
+  // ajoute le sien, serveur/edition.mjs : les [[liens]] qui l'écrivent mènent toujours à la page)
+  const ANCIENS = {
+    'guide/resistances-et-faiblesses': ['Résistance/Faiblesse Magie', 'Résistance/Faiblesses magique'],
+    'guide/prise-en-tenaille-et-zone-d-influence': ['La prise en tenaille', 'Les situations avancées'],
+    'guide/le-mode-hyper': ['Le Mode Hyper et le Mode Super'], 'guide/blessures-et-etats': ['Blessures et états'],
+    'guide/s-entrainer-et-exercer-un-metier': ['S’entraîner et exercer un métier'], 'guide/mordhau-ou-demi-epee': ['Mordhau ou Demi épée'],
+  };
+  for (const [id, anciens] of Object.entries(ANCIENS)) {
+    assert.deepEqual(aliasApres0091(id), anciens, `${id} (après la 0091)`);
+    assert.deepEqual(anciens.filter((a) => !alias(id).includes(a)), [], `${id} : ancien nom perdu`);
   }
-  assert.deepEqual(alias('guide/mordhau-ou-demi-epee'), ['Mordhau ou Demi épée']);
+  for (const [id, titre] of [['guide/le-mode-hyper', 'Le Mode Hyper'], ['guide/blessures-et-etats', 'Blessure et mort'],
+    ['guide/s-entrainer-et-exercer-un-metier', 'S’entraîner']]) {
+    assert.equal(pageApres0091(id).titre, titre, id);
+  }
   assert.deepEqual(db.prepare("SELECT tag_id FROM page_tag WHERE page_id = 'guide/mordhau-ou-demi-epee'").all().map((r) => r.tag_id), ['mordhau']);
 });
 
@@ -220,21 +248,24 @@ test('R184 : les pages nouvelles, famille docs, résumées par la première phra
     const source = db.prepare('SELECT s.texte FROM page_source ps JOIN source s ON s.id = ps.source_id WHERE ps.page_id = ? AND ps.ordre = 0').get(id).texte;
     assert.match(source, /^Google Doc « /, id);
   }
-  // les blocs de « Créer son personnage » : chacun une fois, dans la page qui porte son texte (guide:initiative dans l'étape 6)
-  const blocs = (id) => corps(id).match(/<!-- guide:[a-z-]+ -->/g) ?? [];
-  assert.deepEqual(blocs('guide/creer-son-personnage'), ['<!-- guide:fil-rouge -->']);
-  assert.deepEqual(ETAPES.map(blocs), [
+  // les blocs de « Créer son personnage » : chacun une fois, dans la page qui porte son texte (guide:initiative dans l'étape 6), après la 0091 ;
+  // aujourd'hui, un bloc de ces pages y est appelé une fois au plus (test/guide.test.mjs : dans tout le guide)
+  const blocsDe = (texte) => texte.match(/<!-- guide:[a-z-]+ -->/g) ?? [];
+  const pages = ['guide/creer-son-personnage', ...ETAPES, 'guide/s-entrainer-et-exercer-un-metier'];
+  assert.deepEqual(pages.map((id) => blocsDe(corpsApres0091(id))), [['<!-- guide:fil-rouge -->'],
     ['<!-- guide:fil-rouge-race -->'], ['<!-- guide:magie-bonus -->', '<!-- guide:fil-rouge-magie -->'], ['<!-- guide:fil-rouge-classe -->'],
     ['<!-- guide:competences -->'], ['<!-- guide:fil-rouge-sorts -->'],
-    ['<!-- guide:initiative -->', '<!-- guide:fil-rouge-attributs -->', '<!-- guide:types-de-don -->']]);
-  assert.deepEqual(blocs('guide/s-entrainer-et-exercer-un-metier'), ['<!-- guide:entrainement -->']);
-  // R185 (4) : le tableau des relations entre magies, juste après le premier paragraphe (le bloc est écrit par le site)
-  const rf = corps('guide/resistances-et-faiblesses').split('\n\n');
+    ['<!-- guide:initiative -->', '<!-- guide:fil-rouge-attributs -->', '<!-- guide:types-de-don -->'], ['<!-- guide:entrainement -->']]);
+  const blocsCourants = pages.flatMap((id) => blocsDe(corps(id)));
+  assert.equal(new Set(blocsCourants).size, blocsCourants.length, 'un bloc appelé une fois au plus');
+  // R185 (4) : le tableau des relations entre magies, juste après le premier paragraphe (le bloc est écrit par le site), après la 0091
+  const rf = corpsApres0091('guide/resistances-et-faiblesses').split('\n\n');
   assert.equal(rf[1], '<!-- guide:relations-des-magies -->');
   assert.match(rf[0], /^Chaque magie résiste à certaines magies et craint certaines autres/);
 });
 
-test('R184 (5) : les retouches E1 à E12 ; plus aucune phrase ne renvoie « plus haut », « plus bas » ou « sur cette page » vers un texte parti', () => {
+test('R184 (5) : les retouches E1 à E12 ; plus aucune phrase ne renvoie « plus haut », « plus bas » ou « sur cette page » vers un texte parti (après la 0091)', () => {
+  const corps = corpsApres0091; // le texte tel que la 0091 et db:sync-pages l'ont laissé (le site de dev peut le réécrire depuis)
   assert.ok(corps('guide/creer-son-personnage').includes('en six étapes : chaque étape'));                                         // E1
   assert.ok(corps('guide/exercer-un-metier').includes('(voir « Ses limites » dans [[guide/s-entrainer-et-exercer-un-metier|S’entraîner]])')); // E2
   assert.ok(corps('guide/reussites-echecs-et-critiques').includes('(voir « Le score » dans [[guide/reussir-une-action|Réussir une action]])')); // E3

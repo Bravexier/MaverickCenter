@@ -10,6 +10,7 @@ import { test } from 'node:test';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { chargerModeHyper } from '../src/lib/guide-db.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { baseDImport, lotsAvant } from './aide-base-d-import.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const tableau = chargerModeHyper(db);
@@ -40,8 +41,9 @@ test('R187 (2) : magies — une ligne par magie de la lecture onglet_magie, dans
     if (l.id === PI) continue;
     assert.deepEqual(l.cellules.map((c) => [parId.get(c.id).variante, c.colonnes]), [['mono', 1], ['bi', 1]], `${l.id} : Mono-Magie puis Bi-magie`);
   }
-  // les balises du glossaire restent (le rendu s'en charge) : au moins un effet en porte une
-  assert.ok(tableau.magies.lignes.some((l) => l.cellules.some((c) => c.effet.includes('{{'))));
+  // les balises du glossaire restent (le rendu s'en charge) : au moins un effet en porte une, dans l'état où les lots du site rapatriés avant la 0093
+  // les ont posées (l'effet est modifiable sur le site de dev : seuls les lots rapatriés depuis sont défaits, test/aide-base-d-import.mjs)
+  assert.ok(chargerModeHyper(baseDImport({ garder: lotsAvant('0093') })).magies.lignes.some((l) => l.cellules.some((c) => c.effet.includes('{{'))));
   assert.equal(tableau.magies.lignes.flatMap((l) => l.cellules).length, lignes.length, 'chaque effet une fois');
 });
 

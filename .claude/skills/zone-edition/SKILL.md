@@ -14,7 +14,7 @@ user-invocable: false
 - Ce que chaque domaine modifie et recalcule : le skill de sa zone. Balises du glossaire : skill `zone-mots-cles`. Rapatrier un journal : skill `rapatrier-l-edition`. Mise à jour et rejeu par GitHub : skill `zone-mise-a-jour`. `/api/v1/` (écrit par ce service) : skill `zone-api-rest`. Le service en général : skill `zone-service`.
 
 ## À lire
-- `docs/serveur.md`, « Édition des règles (site de dev) » : ce qui se modifie page par page, balises, corps des pages typées, D11, fiches (R42), journal, rejeu, rapatriement, routes `/api/edition/`.
+- `docs/serveur.md`, « Édition des règles (site de dev) ».
 
 ## Ce que couvre le mode modification (demande du propriétaire)
 - Site de dev seulement (`MAVERICK_EDITION=1`, sinon `/api/edition/` répond 403 et la page ne charge pas l'éditeur), sur tous les écrans, téléphone compris.
@@ -71,4 +71,4 @@ user-invocable: false
 
 ## Tests
 - `markdown-edition` (aller-retour Markdown → HTML → Markdown sur toutes les pages du guide), `markdown-sur` (service, lot reçu, pages après le rejeu), `suppressions-d11` (les tests de spécialités et de dons importés tiennent quand le site de dev en supprime).
-- `serveur-edition*` (chaque domaine, journal, rejeu, corps, dérivations, rapatriement, fiches, conflits ; `serveur-edition-armes` (R159), `serveur-edition-maitrises`, `serveur-edition-conflits-maitrises`, aide `test/aide-maitrise-arme.mjs` ; `serveur-edition-r160`), `edition-rendu`, `edition-tous-ecrans`, `edition-annonces`, `edition-panneaux`, `ordre-des-menus` (skill `zone-edition-menus`), `edition-mots-cles`, `edition-composants-ajout` (logique pure, jamais le script de page dans Node), `dons-edition`, `tables-de-la-base`, `libelles-de-la-base` (registre contre le schéma), `db-appliquer-edition` et `db-appliquer-edition-familles`.
+- `serveur-edition*` (chaque domaine, journal, rejeu, corps, dérivations, rapatriement, fiches, conflits : `serveur-edition-conflits` compare `test/fixtures/conflits-diagnostic.json` au diagnostic après remise des noms courants aux noms d'import, le site pouvant renommer (`versLImportPar` ne remplace que des noms entiers, en une seule passe, avant de raccourcir le diagnostic) ; `serveur-edition-armes` (R159), `serveur-edition-maitrises`, `serveur-edition-conflits-maitrises`, aide `test/aide-maitrise-arme.mjs` ; `serveur-edition-r160`), `edition-rendu`, `edition-tous-ecrans`, `edition-annonces`, `edition-panneaux`, `ordre-des-menus` (skill `zone-edition-menus`), `edition-mots-cles`, `edition-composants-ajout` (logique pure, jamais le script de page dans Node), `dons-edition`, `tables-de-la-base`, `libelles-de-la-base` (registre contre le schéma), `db-appliquer-edition` et `db-appliquer-edition-familles`.

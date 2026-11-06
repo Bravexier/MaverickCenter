@@ -10,7 +10,8 @@
 //   - R125 : le plafond d'acquis du Social d'un Mort-vivant avec « Trompe-mort » ;
 //   - R128 : un bonus qui ne joue que dans un cas particulier est mentionné (« Bonus d'acquis non comptés », raison « situation »), jamais compté.
 // Le site de dev modifie les armes (leur compétence), les classes (leurs maîtrises), les dons et le tableau des races : ce qu'écrivent ces tables est
-// épinglé dans leur état d'import (lib/historique-site.mjs) ; sur l'état courant, seuls des invariants (les règles de la fiche = la lecture des tables).
+// épinglé dans leur état d'import (test/aide-base-d-import.mjs) ; sur l'état courant, seuls des invariants (dernier test : les règles de la fiche = la
+// lecture des tables).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
@@ -25,17 +26,23 @@ import { texteSansBalises, vocabulaireDesMotsCles } from '../src/lib/mots-cles-b
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { lecteurDeResistances } from '../src/lib/resistance-texte.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { baseDImport, reglesDImport } from './aide-base-d-import.mjs';
 
-const db = ouvrirBase({ sansExemples: false });
-const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que la page le reçoit
+// les règles (textes et valeurs que le site de dev modifie librement) : épinglées sur leur état d'import (test/aide-base-d-import.mjs) ; la base
+// d'aujourd'hui garde ses invariants (dernier test : les règles de la fiche sont la lecture de ses tables)
+const db = baseDImport();
+const regles = reglesDImport(); // tel que la page le reçoit
 const historique = historiqueSite(db);
-const vocabulaire = vocabulaireDesMotsCles(chargerVocabulaire(db));
-/** Un texte de la base comme le lisent les règles de la fiche : sans balises du glossaire. */
-const sansBalises = (t) => (typeof t === 'string' && t.includes('{{') ? texteSansBalises(t, vocabulaire, { definitions: false }) : t);
+/** Un texte d'une base comme le lisent les règles de la fiche : sans balises du glossaire. */
+const sansBalisesDe = (base) => {
+  const vocabulaire = vocabulaireDesMotsCles(chargerVocabulaire(base));
+  return (t) => (typeof t === 'string' && t.includes('{{') ? texteSansBalises(t, vocabulaire, { definitions: false }) : t);
+};
+const sansBalises = sansBalisesDe(db);
 const lire = lecteurDAcquis(regles.competences);
 const xpDuNiveau = (n) => regles.niveaux.find((l) => l.niveau === n).xp_min;
 const famille = (id) => regles.familles_armes.find((f) => f.id === id);
-const nomDe = (liste, id) => regles[liste].find((x) => x.id === id)?.nom ?? id;
+const nomDe = (liste, id, r = regles) => r[liste].find((x) => x.id === id)?.nom ?? id;
 const A_DISTANCE = ['arme-de-jet', 'arc', 'arbalete', 'bombes'];
 const MAITRISABLES = regles.familles_armes.filter((f) => f.maitrisable).map((f) => f.id);
 
@@ -59,29 +66,28 @@ const SAUF_DE_R138 = { hast: 'lance-arme-dhast', baton: 'baton-de-combat', 'arme
  * maîtrisables de sa catégorie, sans celle de son « sauf » — la famille qu'il nomme par un nom de son bandeau, tel quel ou au singulier (« Épée » :
  * ÉPÉES), ou celle que R138 lui rattache (« Hast », « Bâton », « Arme jet », « Masse ») ; null quand le « sauf » ne nomme aucune famille.
  */
-function famillesSelonLaRegle(ligne) {
+function famillesSelonLaRegle(ligne, r = regles) {
+  const famille = (id) => r.familles_armes.find((f) => f.id === id);
   const singulier = (cle) => cle.split('-').map((m) => m.replace(/(?<=[a-z]{3})s$/, '')).join('-');
-  const familles = MAITRISABLES.filter((id) => !ligne.categorie || famille(id).categorie === ligne.categorie);
+  const familles = r.familles_armes.filter((f) => f.maitrisable).map((f) => f.id).filter((id) => !ligne.categorie || famille(id).categorie === ligne.categorie);
   if (!ligne.sauf_cle) return familles;
   const rattachee = SAUF_DE_R138[ligne.sauf_cle];
-  const exclues = familles.filter((id) => (rattachee ? id === rattachee : famille(id).nom.split('/').some((n) => singulier(normalize(n)) === singulier(ligne.sauf_cle))));
+  // le nom de bandeau, ou le nom figé sous lequel la famille se lit aussi (décision R159) : le site de dev renomme les familles
+  const noms = (f) => [f.nom, f.nom_lecture].filter(Boolean).flatMap((n) => n.split('/'));
+  const exclues = familles.filter((id) => (rattachee ? id === rattachee : noms(famille(id)).some((n) => singulier(normalize(n)) === singulier(ligne.sauf_cle))));
   return exclues.length ? familles.filter((id) => !exclues.includes(id)) : null;
 }
 
 // ------------------------------------------------------------------ R127 : la catégorie des familles d'armes
 
 test('décision R127 (migration 0069) : Arc, Arbalète, Arme de jet et Bombes à distance, les autres familles maîtrisables au contact, ARME DE MONSTRES sans catégorie', () => {
-  // le site de dev renomme une famille et en crée (décision R159), jamais sa catégorie : les familles de l'import gardent celle de R127 (lues dans leur état
-  // d'import et dans l'état courant) ; une famille créée en a une, posée à sa création, et elle est maîtrisable
+  // à l'import (test/aide-base-d-import.mjs) ; le site de dev renomme une famille et en crée (décision R159), jamais sa catégorie : leur contrôle sur l'état
+  // courant est dans le dernier test
   assert.deepEqual(db.prepare('SELECT id FROM arme_famille WHERE (categorie IS NULL) <> (maitrisable = 0)').all(), [], 'une catégorie pour chaque famille maîtrisable, aucune pour les autres');
   const dImport = historique.lignesDImport('arme_famille');
   const deCategorie = (lignes, c) => lignes.filter((f) => f.categorie === c).map((f) => f.id).sort();
   assert.deepEqual(deCategorie(dImport, 'distance'), ['arbalete', 'arc', 'arme-de-jet', 'bombes']);
   assert.deepEqual(deCategorie(dImport, 'contact'), ['baton-de-combat', 'dagues', 'epees', 'hache', 'lance-arme-dhast', 'masse-marteau', 'pugilat']);
-  for (const f of dImport) assert.equal(db.prepare('SELECT categorie FROM arme_famille WHERE id = ?').get(f.id)?.categorie ?? null, f.categorie, `${f.id} : sa catégorie ne change pas`);
-  for (const f of db.prepare('SELECT id, categorie, maitrisable FROM arme_famille').all()) {
-    if (!dImport.some((x) => x.id === f.id)) assert.ok(historique.creee('arme_famille', { id: f.id }) && f.categorie && f.maitrisable === 1, `${f.id} : créée sur le site, classée, maîtrisable`);
-  }
   // le vocabulaire est celui des maîtrises au choix des classes (classe_maitrise_arme.categorie, à l'import)
   const ecrites = [...new Set(historique.lignesDImport('classe_maitrise_arme').map((l) => l.categorie).filter(Boolean))].sort();
   assert.deepEqual(ecrites, ['contact', 'distance']);
@@ -91,7 +97,8 @@ test('décision R127 (migration 0069) : Arc, Arbalète, Arme de jet et Bombes à
 test('décisions R48, R119, R126 : les compétences d’une famille sont celles qu’écrivent ses armes, dans l’ordre de la table competence ; à l’import, l’Arbalète seule, l’Arc avec l’Arme légère', () => {
   const ordre = regles.competences.map((k) => k.id);
   const competencesDe = (ecritures) => ordre.filter((id) => ecritures.some((e) => competencesDArme(e).some((k) => k.id === id)));
-  // les armes d'aujourd'hui : les règles de la fiche sont leur lecture (une écriture que la page Armes ne sait pas lire ne donne rien : R48)
+  // les armes de l'import : les règles de la fiche sont leur lecture (une écriture que la page Armes ne sait pas lire ne donne rien : R48 ; l'état
+  // courant : dernier test)
   for (const f of regles.familles_armes) {
     const ecritures = db.prepare('SELECT competence_brut FROM arme WHERE famille_id = ?').all(f.id).map((r) => r.competence_brut);
     assert.deepEqual(f.competences, competencesDe(ecritures), f.id);
@@ -111,7 +118,7 @@ test('décisions R119, R127, R138 : les familles d’une maîtrise au choix — 
   // R138 : le rattachement de lib/fiche-regles.mjs est celui de la décision, vers des familles maîtrisables
   assert.deepEqual({ ...FAMILLES_DES_SAUF }, SAUF_DE_R138);
   for (const id of Object.values(SAUF_DE_R138)) assert.ok(MAITRISABLES.includes(id), id);
-  // les classes d'aujourd'hui : chaque maîtrise au choix porte les familles de la règle
+  // les classes de l'import : chaque maîtrise au choix porte les familles de la règle (l'état courant : dernier test)
   const lignes = db.prepare("SELECT classe_id, brut, categorie, sauf_cle FROM classe_maitrise_arme WHERE forme = 'au_choix' ORDER BY classe_id, rang").all();
   for (const l of lignes) {
     const m = regles.classes.find((c) => c.id === l.classe_id).maitrises.find((x) => x.brut === l.brut);
@@ -159,7 +166,7 @@ const DONS_DE_L_ARME = [
   ['capacites/barde-menestrel', '+2 dégâts avec les sorts, +1 point de maîtrise à distance au choix, +6% Arme à distance liée.', 6],
 ];
 
-/** Les dons de classe d'aujourd'hui qui écrivent « l'arme choisie », chacun avec sa classe et son bonus. */
+/** Les dons de classe de l'import qui écrivent « l'arme choisie », chacun avec sa classe et son bonus (l'état courant : dernier test). */
 const DONS_D_AUJOURD_HUI = regles.classes.flatMap((c) => c.dons.flatMap((d) => (d.acquis ?? []).filter((b) => b.arme).map((b) => ({ classe: c, don: d, bonus: b }))));
 /** La fiche qui a débloqué le don : mono-classe de niveau 20 dans sa classe, sa spécialité, et le don s'il est à choisir. */
 const ficheDuDon = ({ classe, don }) => monoClasse(classe.id, don.specialite_id ?? null, 10, don.nature === 'choix' ? { capacites: [{ capacite_id: don.id }] } : {});
@@ -180,7 +187,7 @@ test('décision R119 : les dons « de l’arme choisie », « de l’arme de dé
     const lignes = historique.lignesDImport('classe_maitrise_arme').filter((l) => l.classe_id === classeId && l.forme === 'au_choix');
     assert.ok(lignes.length === 1 && famillesSelonLaRegle(lignes[0])?.length, id);
   }
-  // aujourd'hui : chaque don de classe passif qui écrit « l'arme choisie » est un choix d'arme ou, sans maîtrise au choix lisible, un bonus non compté
+  // à l'import : chaque don de classe passif qui écrit « l'arme choisie » est un choix d'arme ou, sans maîtrise au choix lisible, un bonus non compté
   assert.ok(DONS_D_AUJOURD_HUI.length >= 1);
   for (const x of DONS_D_AUJOURD_HUI.filter((y) => y.don.type === 'passif')) {
     const a = M.acquisDesDons(regles, ficheDuDon(x));
@@ -309,24 +316,25 @@ const drakos = (ethnie = ORANGE, surcharge = {}) => fiche({
 });
 
 /** Les résistances qu'écrit une cellule, lues comme le fait la fiche (lib/fiche-regles.mjs : magies, altérations, écritures rapprochées par les importeurs). */
-const lireResistances = lecteurDeResistances([
-  ...regles.magies.map((m) => ({ type: 'magie', id: m.id, nom: m.nom })),
-  ...regles.etats.map((e) => ({ type: 'etat', id: e.id, nom: e.nom })),
-  ...db.prepare(`SELECT DISTINCT cible_type AS type, COALESCE(cible_magie_id, cible_etat_id) AS id, cible_brut AS nom FROM magie_resistance
+const lecteurDeResistancesDe = (base, r) => lecteurDeResistances([
+  ...r.magies.map((m) => ({ type: 'magie', id: m.id, nom: m.nom })),
+  ...r.etats.map((e) => ({ type: 'etat', id: e.id, nom: e.nom })),
+  ...base.prepare(`SELECT DISTINCT cible_type AS type, COALESCE(cible_magie_id, cible_etat_id) AS id, cible_brut AS nom FROM magie_resistance
                  WHERE cible_type IN ('magie', 'etat')   -- comme lib/fiche-regles.mjs : pas de cible physique (R174)
-                 UNION SELECT DISTINCT cible_type, COALESCE(cible_magie_id, cible_etat_id), cible_brut FROM ethnie_resistance`).all().map((r) => ({ ...r })),
+                 UNION SELECT DISTINCT cible_type, COALESCE(cible_magie_id, cible_etat_id), cible_brut FROM ethnie_resistance`).all().map((x) => ({ ...x })),
 ]);
+const lireResistances = lecteurDeResistancesDe(db, regles);
 
 /**
  * Ce qu'un tableau de dons de race donne, ligne par ligne, d'après ses cellules ({ ligne, colonne, valeur }, colonnes { rang, libelle }) : la lecture de
  * chaque cellule, et « parmi les autres » (décision R124) un choix parmi ce que lisent les AUTRES lignes dans la même colonne, deux options au moins.
  */
-function tableauLu(lignesDuTableau, cellules, colonnes) {
+function tableauLu(lignesDuTableau, cellules, colonnes, lecteurs = { lire, lireResistances, sansBalises }) {
   const lues = lignesDuTableau.map((l) => ({
     ...l,
-    cellules: colonnes.map((k) => ({ colonne: k.rang, libelle: k.libelle, valeur: sansBalises(cellules.find((c) => c.ligne === l.rang && c.colonne === k.rang)?.valeur ?? null) }))
+    cellules: colonnes.map((k) => ({ colonne: k.rang, libelle: k.libelle, valeur: lecteurs.sansBalises(cellules.find((c) => c.ligne === l.rang && c.colonne === k.rang)?.valeur ?? null) }))
       .filter((c) => c.valeur !== null)
-      .map((c) => ({ ...c, acquis: lire(c.valeur), resistances: lireResistances(c.valeur, { colonne: c.libelle }) })),
+      .map((c) => ({ ...c, acquis: lecteurs.lire(c.valeur), resistances: lecteurs.lireResistances(c.valeur, { colonne: c.libelle }) })),
   }));
   const desAutres = (l, colonne) => lues.filter((x) => x !== l).flatMap((x) => x.cellules.filter((c) => c.colonne === colonne));
   return lues.map((l) => {
@@ -353,7 +361,7 @@ function tableauLu(lignesDuTableau, cellules, colonnes) {
 }
 
 test('décision R124 : les options du Drakos orange sont lues dans les autres lignes du tableau (compétences et altérations), jamais écrites à la main', () => {
-  // aujourd'hui : chaque tableau de dons de race de la fiche est la lecture de ses cellules (le Drakos compris)
+  // à l'import : chaque tableau de dons de race de la fiche est la lecture de ses cellules (le Drakos compris ; l'état courant : dernier test)
   for (const race of regles.races.filter((r) => r.dons_tableau)) {
     const lignesDuTableau = db.prepare('SELECT rang, ethnie_id FROM race_don_tableau_ligne WHERE race_id = ? ORDER BY rang').all(race.id);
     const cellules = db.prepare('SELECT ligne, colonne, valeur FROM race_don_tableau_cellule WHERE race_id = ?').all(race.id);
@@ -400,7 +408,7 @@ test('décision R124 : deux choix indépendants (« Tu peux en avoir un avec +5%
   assert.equal(attente[1].libelle, `Résistance ${titre} : +${auChoix.crans} cran ${auChoix.options.map((o) => nomDe('etats', o)).join(' ou ')}`);
   // les deux choix, indépendants
   const g = { ...f, ...M.acquisApresChoix(f, SOURCE_ORANGE, 1, competenceChoisie), ...M.resistanceApresChoix(f, SOURCE_ORANGE, 1, etatChoisi) };
-  assert.ok(competence(g, competenceChoisie).donsDetail.some((d) => d.nom === titre && d.valeur === bonus.valeur));
+  assert.ok(competence(g, competenceChoisie, regles).donsDetail.some((d) => d.nom === titre && d.valeur === bonus.valeur));
   const cible = M.resistancesDe(regles, g).paliers.flatMap((p) => p.cibles).find((c) => c.id === etatChoisi);
   assert.ok(cible.origines.some((o) => o.nom === titre && o.crans === auChoix.crans), JSON.stringify(cible));
   assert.deepEqual(M.resistancesDe(regles, g).aChoisir.map((c) => [c.choisi, c.fait]), [[etatChoisi, true]]);
@@ -414,7 +422,7 @@ test('décision R124 : deux choix indépendants (« Tu peux en avoir un avec +5%
   const horsCompetence = regles.competences.find((k) => !bonus.choix.includes(k.id)).id;
   const horsEtat = regles.etats.find((e) => !auChoix.options.includes(e.id)).id;
   const hors = { ...f, ...M.acquisApresChoix(f, SOURCE_ORANGE, 1, horsCompetence), ...M.resistanceApresChoix(f, SOURCE_ORANGE, 1, horsEtat) };
-  assert.deepEqual([competence(hors, horsCompetence).dons, M.acquisChoixValables(regles, hors), M.resistanceChoixValables(regles, hors)], [0, [], []]);
+  assert.deepEqual([competence(hors, horsCompetence, regles).dons, M.acquisChoixValables(regles, hors), M.resistanceChoixValables(regles, hors)], [0, [], []]);
   assert.ok(!M.resistancesDe(regles, hors).paliers.some((p) => p.cibles.some((c) => c.id === horsEtat)));
   // une autre ethnie (une ligne qui ne donne pas l'altération choisie) : ses propres bonus, et les choix de l'orange sans effet, retirés à l'enregistrement
   const autre = lignes.find((l) => l.ethnie_id !== ORANGE && !(l.resistances?.effets ?? []).some((e) => e.id === etatChoisi));
@@ -423,7 +431,7 @@ test('décision R124 : deux choix indépendants (« Tu peux en avoir un avec +5%
   const cibleDeLAutre = M.resistancesDe(regles, deLAutre).paliers.flatMap((p) => p.cibles).find((c) => c.id === etatChoisi);
   assert.ok(!cibleDeLAutre?.origines.some((o) => o.nom === titre), 'l’altération choisie par l’orange ne compte plus');
   for (const b of (autre.acquis ?? []).filter((y) => y.competence_id)) {
-    assert.ok(competence(deLAutre, b.competence_id).donsDetail.some((d) => d.nom === titre && d.valeur === b.valeur), `${autre.ethnie_id} : la sienne`);
+    assert.ok(competence(deLAutre, b.competence_id, regles).donsDetail.some((d) => d.nom === titre && d.valeur === b.valeur), `${autre.ethnie_id} : la sienne`);
   }
   // une résistance retirée
   assert.deepEqual(M.resistanceApresChoix(g, SOURCE_ORANGE, 1, null), { resistance_choix: [] });
@@ -441,7 +449,7 @@ test('décision R137 : Ocultomancien « Résilience » (une magie au choix) et A
   assert.equal(historique.lignesDImport('capacite').find((d) => d.id === RESILIENCE).effet,
     'Augmente de 1 cran la résistance à une magie au choix, à l’exception de l’arcane et de la corruption.');
   assert.match(historique.lignesDImport('race_don').find((d) => d.id === ANANSI).texte, /^- 1 cran de résistance sur une magie aléatoire \(sauf arcane et corruption\) et son altération d'état\.$/m);
-  // les règles : les quatorze magies qu'on subit (hors Potentiel Illimité, décision R98), sans l'Arcane ni la Corruption
+  // les quatorze magies qu'on subit (hors Potentiel Illimité, décision R98), sans l'Arcane ni la Corruption
   const options = regles.magies.map((m) => m.id).filter((id) => !['magies/potentiel-illimite', ARCANE, 'magies/magie-de-la-corruption'].includes(id));
   assert.equal(options.length, 12);
   const resilience = regles.classes.find((c) => c.id === 'classes/ocultomancien').dons.find((d) => d.id === RESILIENCE);
@@ -461,7 +469,7 @@ test('décision R137 : Ocultomancien « Résilience » (une magie au choix) et A
   ]], 'plus « laissées au choix » : deux choix à faire');
   const attente = M.choixEnAttente(regles, f).filter((c) => c.nature === 'resistance');
   assert.deepEqual(attente.map((c) => c.cle), [M.cleDeChoix.resistance(ANANSI, 1), M.cleDeChoix.resistance(RESILIENCE, 1)]);
-  assert.equal(attente[0].libelle, `Résistance Anansi d'Arcane : +1 cran à une magie (${options.map((id) => nomDe('magies', id)).join(' ou ')}) et son altération d’état`);
+  assert.equal(attente[0].libelle, `Résistance Anansi d'Arcane : +1 cran à une magie (${options.map((id) => nomDe('magies', id, regles)).join(' ou ')}) et son altération d’état`);
   // les deux choix : la Glace (Résilience), le Feu et sa Brûlure (Anansi)
   const g = { ...f, ...M.resistanceApresChoix(f, RESILIENCE, 1, GLACE, true) };
   const h = { ...g, ...M.resistanceApresChoix(g, ANANSI, 1, FEU, true) };
@@ -587,4 +595,61 @@ test('la page (src/scripts/fiche.mjs, lue comme un texte) : l’arme du bonus es
   // la liste des résistances à choisir et l'aide d'un choix d'arme se cachent (leur classe pose `display`)
   const css = readFileSync(new URL('../src/styles/fiche/fiche.css', import.meta.url), 'utf8');
   assert.match(css, /\.acquis-choix\[hidden\], \.acquis-choix__reste\[hidden\] \{ display: none; \}/);
+});
+
+// ------------------------------------------------------------------ aujourd'hui : les invariants de la base courante
+
+test('aujourd’hui (le site de dev modifie librement textes et valeurs) : les règles de la fiche sont la lecture des tables — catégories, compétences des familles, maîtrises au choix, dons de l’arme choisie, tableaux des races', () => {
+  const courante = ouvrirBase({ sansExemples: false });
+  const r = JSON.parse(JSON.stringify(chargerReglesDeFiche(courante)));
+  // R127 : une catégorie pour chaque famille maîtrisable, aucune pour les autres ; celle des règles est celle de la table
+  assert.deepEqual(courante.prepare('SELECT id FROM arme_famille WHERE (categorie IS NULL) <> (maitrisable = 0)').all(), []);
+  // R127, R159 (2) : la catégorie ne se modifie pas sur le site (structure) — les familles de l'import gardent la leur ; une famille créée sur le site est
+  // classée et maîtrisable
+  const h = historiqueSite(courante);
+  const familles = h.lignesDImport('arme_famille');
+  for (const f of familles) assert.equal(courante.prepare('SELECT categorie FROM arme_famille WHERE id = ?').get(f.id)?.categorie ?? null, f.categorie, `${f.id} : sa catégorie ne change pas`);
+  for (const f of courante.prepare('SELECT id, categorie, maitrisable FROM arme_famille').all()) {
+    if (!familles.some((x) => x.id === f.id)) assert.ok(h.creee('arme_famille', { id: f.id }) && f.categorie && f.maitrisable === 1, `${f.id} : créée sur le site, classée, maîtrisable`);
+  }
+  for (const f of r.familles_armes) assert.equal(f.categorie, courante.prepare('SELECT categorie FROM arme_famille WHERE id = ?').get(f.id).categorie, f.id);
+  // R48 : les compétences d'une famille sont celles qu'écrivent ses armes, dans l'ordre de la table competence
+  const ordre = r.competences.map((k) => k.id);
+  for (const f of r.familles_armes) {
+    const ecritures = courante.prepare('SELECT competence_brut FROM arme WHERE famille_id = ?').all(f.id).map((x) => x.competence_brut);
+    assert.deepEqual(f.competences, ordre.filter((id) => ecritures.some((e) => competencesDArme(e).some((k) => k.id === id))), f.id);
+  }
+  // R119, R127, R138 : chaque maîtrise au choix porte les familles de la règle, jamais ARME DE MONSTRES
+  for (const l of courante.prepare("SELECT classe_id, brut, categorie, sauf_cle FROM classe_maitrise_arme WHERE forme = 'au_choix' ORDER BY classe_id, rang").all()) {
+    const m = r.classes.find((c) => c.id === l.classe_id).maitrises.find((x) => x.brut === l.brut);
+    assert.ok(m?.au_choix, l.classe_id);
+    assert.deepEqual(m.au_choix.familles, famillesSelonLaRegle(l, r), `${l.classe_id} : ${l.brut}`);
+    assert.ok(!(m.au_choix.familles ?? []).includes('arme-de-monstres'), l.classe_id);
+  }
+  // R119, R152 : chaque don passif qui écrit « l'arme choisie » est un choix d'arme ou, sans maîtrise au choix lisible, un bonus non compté
+  const xpDuNiveauCourant = (n) => r.niveaux.find((l) => l.niveau === n).xp_min;
+  for (const c of r.classes) {
+    for (const don of c.dons.filter((d) => d.type === 'passif' && (d.acquis ?? []).some((b) => b.arme))) {
+      const f = fiche({
+        xp: xpDuNiveauCourant(10), classes: [{ rang: 1, classe_id: c.id, specialite_id: don.specialite_id ?? null }],
+        ...(don.nature === 'choix' ? { capacites: [{ capacite_id: don.id }] } : {}),
+      });
+      if (M.niveauxDeClasse(r, 10, 'mono').classe1 < don.niveau) continue;
+      const familles = M.armeAuChoixDeLaClasse(c);
+      if (familles) assert.deepEqual(choixDuDon(r, f, don)?.familles, familles, don.id);
+      else assert.ok(M.acquisDesDons(r, f).nonComptes.some((n) => n.raison === 'arme_choisie' && n.nom === `${don.nom} (${c.nom})`), don.id);
+    }
+  }
+  // R124 : chaque tableau de dons de race est la lecture de ses cellules
+  const lecteurs = { lire: lecteurDAcquis(r.competences), lireResistances: lecteurDeResistancesDe(courante, r), sansBalises: sansBalisesDe(courante) };
+  for (const race of r.races.filter((x) => x.dons_tableau)) {
+    const lignesDuTableau = courante.prepare('SELECT rang, ethnie_id FROM race_don_tableau_ligne WHERE race_id = ? ORDER BY rang').all(race.id);
+    const cellules = courante.prepare('SELECT ligne, colonne, valeur FROM race_don_tableau_cellule WHERE race_id = ?').all(race.id);
+    const colonnes = courante.prepare('SELECT rang, libelle FROM race_don_tableau_colonne WHERE race_id = ? ORDER BY rang').all(race.id);
+    const attendues = tableauLu(lignesDuTableau, cellules, colonnes, lecteurs);
+    race.dons_tableau.lignes.forEach((l, i) => {
+      assert.deepEqual(l.acquis ?? [], attendues[i].acquis, `${race.id} : ${l.ethnie_id}`);
+      assert.deepEqual(l.resistances, attendues[i].resistances, `${race.id} : ${l.ethnie_id}`);
+    });
+  }
 });

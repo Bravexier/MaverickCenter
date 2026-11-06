@@ -26,6 +26,7 @@ import { desSelonLaForce } from '../src/lib/maitrise-arme.mjs';
 import { chargerPanneau } from '../src/lib/panneaux-regles-db.mjs';
 import { htmlAvecMotsCles, texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const fichier = join(dist, 'ressources', 'armes', 'index.html');
@@ -133,8 +134,10 @@ test('colonnes : Nom, Compétence, Type, Dégâts, Type de dégâts, Portée, So
   const tete = main.slice(main.indexOf('<thead>'), main.indexOf('</thead>'));
   const colonnes = [...tete.matchAll(/<th scope="col"(?: class="ed-seul")?>(.*?)<\/th>/g)].map((m) => m[1].replace(/<[^>]+>/g, ''));
   // « Solidité » partout à la place de « Durabilité » : l'en-tête est le mot-clé du glossaire, sa définition en infobulle (migration 0058)
-  assert.deepEqual(colonnes.slice(0, 8), ['Nom', 'Compétence', 'Type', 'Dégâts', 'Type de dégâts', 'Portée', 'Solidité', 'Origine']);
-  assert.match(tete, /<th scope="col"><strong class="mot-cle" data-mot-cle="solidite" data-bulle="mot-cle-solidite"[^>]*>Solidité<\/strong><\/th>/);
+  // son libellé : celui du mot-clé dans la base (le site de dev le renomme)
+  const solidite = base.prepare("SELECT libelle FROM mot_cle WHERE id = 'solidite'").get().libelle;
+  assert.deepEqual(colonnes.slice(0, 8), ['Nom', 'Compétence', 'Type', 'Dégâts', 'Type de dégâts', 'Portée', solidite, 'Origine']);
+  assert.ok(tete.includes(`<th scope="col"><strong class="mot-cle" data-mot-cle="solidite" data-bulle="mot-cle-solidite"`));
   assert.ok(!/durabilit/i.test(main.replace(/data-[\w-]*durabilite[\w-]*(="[^"]*")?|arme-bulle-durabilite|arme__durabilite|arme-durabilite/g, '')), 'plus de « durabilité » affichée');
   assert.equal(colonnes.length - 5, COLONNES_D_UNE_ARME);
   assert.equal((tete.match(/class="ed-seul"/g) ?? []).length, 5);
@@ -241,7 +244,7 @@ test('matériaux : toute la ligne dans leur couleur, prix en RO, effets en morce
   for (const m of armes.materiaux) {
     // la couleur sur la ligne entière (demande du propriétaire, 2026-10-16 : « La ligne tout entière devrait prendre la couleur du matériau ») : la
     // classe du matériau (lib/palette-css.mjs, famille `materiau`), jamais un style
-    assert.ok(main.includes(`<tr class="materiau ligne-couleur ${classeDeMateriau(m.ligne.ressource_id)}" id="${ancreDeMateriau(m.ligne.ressource_id)}" data-materiau="${m.ligne.ressource_id}"${m.nom === 'Fer' ? ' data-defaut="1"' : ''}>`), m.nom);
+    assert.ok(main.includes(`<tr class="materiau ligne-couleur ${classeDeMateriau(m.ligne.ressource_id)}" id="${ancreDeMateriau(m.ligne.ressource_id)}" data-materiau="${m.ligne.ressource_id}"${m.defaut ? ' data-defaut="1"' : ''}>`), m.nom);
   }
   assert.ok(!main.includes('<th scope="row" class="materiau__nom" style='), 'plus de couleur sur la seule case du nom');
   assert.doesNotMatch(main, /style="[^"]*--mat\b/, 'plus de --mat en style');
@@ -254,7 +257,10 @@ test('matériaux : toute la ligne dans leur couleur, prix en RO, effets en morce
   const avecBonus = armes.materiaux.map((m) => RENDUS_DES_ARMES['materiau-effet'](m.ligne.effet_brut)).filter((h) => h.includes('materiau-effet__bonus'));
   assert.ok(avecBonus.length > 0);
   for (const h of avecBonus) assert.match(h, /^<span class="materiau-effet"[^>]*><span class="materiau-effet__bonus"><span class="materiau-effet__mot">Dégâts <\/span>[+−]\d+<\/span>(<span class="materiau-effet__(cran|secondaire)">[^<]+<\/span>)*<\/span>$/);
-  assert.deepEqual(armes.materiaux.filter((m) => m.defaut).map((m) => m.nom), ['Fer']);
+  // le fer, matériau par défaut : lib/armes-db.mjs le reconnaît à son nom, que le site de dev renomme (question au propriétaire) ; la règle s'épingle
+  // sur l'état d'import (test/aide-base-d-import.mjs), la page en pose un au plus
+  assert.deepEqual(chargerArmes(baseDImport()).materiaux.filter((m) => m.defaut).map((m) => m.ligne.ressource_id), ['ressources/armures#materiau:fer']);
+  assert.ok(armes.materiaux.filter((m) => m.defaut).length <= 1 && (main.match(/ data-defaut="1"/g) ?? []).length === armes.materiaux.filter((m) => m.defaut).length);
   assert.equal([...main.matchAll(/<tr class="amelioration" id="amelioration-(\d+)"/g)].length, armes.ameliorations.length);
   // « La ligne "total" des améliorations est inutile » (demande du propriétaire, 2026-10-16)
   const ameliorations = main.slice(main.indexOf('id="ameliorations-arme"'), main.indexOf('</details>', main.indexOf('id="ameliorations-arme"')));

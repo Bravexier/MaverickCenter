@@ -107,6 +107,15 @@ test('second passage (copie de data/rows, mot d’essai) : seules partent les ba
     exclus: { 'écriture d’essai': ['initiative de la cible'] } };
   const rows = join(tmp, 'rows-second-passage');
   cpSync(ROWS, rows, { recursive: true });
+  // les textes où le mot se lit, posés ici (le site de dev réécrit librement les textes de la base : aucun n'est sûr de dire « initiative ») : une page du
+  // guide, et une description de classe au bonus chiffré, chacune lue par son id
+  const courante = ouvrirBase({ sansExemples: false });
+  const valeur = (table, id, colonne) => courante.prepare(`SELECT ${colonne} AS v FROM ${table} WHERE id = ?`).get(id).v;
+  const graine = (table, id, colonne, ajout) => ({ table, cle: { id }, operation: 'modifier', avant: { [colonne]: valeur(table, id, colonne) },
+    apres: { [colonne]: `${valeur(table, id, colonne) ?? ''}${ajout}` } });
+  const graines = [graine('page', 'guide/bienvenue', 'corps_md', '\n\nL’initiative d’essai se lit ici.\n'), graine('classe', 'classes/guerrier', 'description', ' Essai : +2 initiative.')];
+  assert.deepEqual(appliquerJournal({ format: 'maverick-edition/1', lots: [{ id: 'essai-baliser-mot-cle', fait_le: '2026-11-06T00:00:00Z', resume: 'textes d’essai',
+    modifications: graines.map((m, i) => ({ rang: i + 1, ...m })) }] }, { rows }).conflits, []);
   const premier = baliser([mot], { rows });
   assert.ok(premier.rapport.colonnes.flatMap((c) => c.changements).every((x) => x.sens === 'posee'));
   assert.ok(!premier.rapport.colonnes.flatMap((c) => c.changements).some((x) => /initiative de la cible/i.test(x.extrait) && /initiative de la cible/i.test(x.extrait.slice(50, 90))));

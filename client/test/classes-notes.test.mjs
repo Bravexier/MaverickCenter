@@ -21,6 +21,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { corpsDeDon } from '../src/lib/corps-classes.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
@@ -61,6 +62,11 @@ const capacites = readdirSync(dossierCapacites)
 // l'import se comptent sur l'import (historique_modification) ; une fiche que le site a supprimée est sautée, sa place (rang, spécialité) se lit
 // telle que l'import l'a écrite (le rang d'un don reçu sans choix suit les dons ajoutés au-dessus de lui).
 const historique = historiqueSite(ouvrirBase({ sansExemples: false }));
+// la note d'un don est sa remarque (capacite.remarque), que le site de dev peut réécrire : la page rend la remarque courante (corps-classes.mjs#corpsDeDon),
+// le texte figé du classeur ne se compare qu'à la remarque d'import (demande du propriétaire : les tests ne portent pas sur le contenu des textes)
+const remarques = new Map(ouvrirBase({ sansExemples: false }).prepare('SELECT id, remarque FROM capacite').all().map((k) => [k.id.replace(/^capacites\//, ''), k.remarque]));
+const noteRendue = (remarque) => (remarque ? corpsDeDon({ effet: null, remarque }).replace(/\n$/, '') : null);
+const remarqueDImport = (slug) => historique.valeurDImport('capacite', { id: `capacites/${slug}` }, 'remarque');
 const supprimee = (slug) => historique.supprimee('page', { id: `capacites/${slug}` });
 const donneesDImport = (slug) => JSON.parse(historique.valeurDImport('page', { id: `capacites/${slug}` }, 'donnees') ?? 'null');
 const supprimeesDImport = historique.lignesDImport('page').filter((p) => p.type === 'capacites' && supprimee(p.slug)).map((p) => p.slug);
@@ -221,10 +227,11 @@ test('pages réelles : 660 fiches de capacités du classeur, 43 notes rendues au
   // à l'import : 660 fiches et 43 notes ; aujourd'hui, sans les fiches que le site a supprimées
   assert.equal(capacites.length + supprimeesDImport.length, 660);
   assert.equal(NOTES.length, 43);
-  const presentes = NOTES.filter(([, , slug]) => !supprimee(slug));
+  // à l'import, les 43 fiches des notes, et elles seules, ont une remarque ; aujourd'hui, une note par fiche dont le don a une remarque (le site de dev
+  // peut en écrire, en vider ou en réécrire une : la page suit la remarque courante)
+  assert.deepEqual(capacites.filter((p) => !supprimee(p.slug) && remarqueDImport(p.slug)).map((p) => p.slug).sort(), NOTES.filter(([, , slug]) => !supprimee(slug)).map(([, , slug]) => slug).sort());
   const avecNote = capacites.filter((p) => nbNotes(p.texte) > 0);
-  assert.equal(capacites.reduce((somme, p) => somme + nbNotes(p.texte), 0), presentes.length);
-  assert.deepEqual(avecNote.map((p) => [p.slug, nbNotes(p.texte)]).sort(), presentes.map(([, , slug]) => [slug, 1]).sort());
+  assert.deepEqual(avecNote.map((p) => [p.slug, nbNotes(p.texte)]).sort(), capacites.filter((p) => remarques.get(p.slug)).map((p) => [p.slug, 1]).sort());
   // ni les pages de classes ni le glossaire ne reçoivent de note de cellule
   const classes = readdirSync(join(wiki, 'classes')).filter((f) => f.endsWith('.md'));
   assert.ok(classes.length >= 39);
@@ -238,7 +245,7 @@ test('pages réelles : chaque note est sur la fiche de la capacité dont elle co
     const { r } = adresse(cellule);
     assert.equal(Number(champ(p, 'ligne')), r - 1, `${onglet} ${cellule} -> ${slug} : ligne ${champ(p, 'ligne')}`);
     assert.ok(p.includes(`onglet « ${onglet} »`), `${slug} : sources de l'onglet « ${onglet} »`);
-    assert.equal(nbNotes(p), 1, slug);
+    assert.equal(nbNotes(p), remarques.get(slug) ? 1 : 0, slug);
   }
 });
 
@@ -252,20 +259,29 @@ for (const [onglet, cellule, slug, rang, specialite, source, rendu] of NOTES) {
     const d = donneesDImport(slug);
     assert.equal(d.rang, rang);
     assert.equal(d.specialite === undefined ? undefined : JSON.stringify(d.specialite), specialite);
-    // la note termine la page, juste après l'effet, une seule fois, telle que rendue
-    assert.ok(corpsAffiche(p).endsWith(`\n\n${rendu}\n`), `${slug} : la page ne se termine pas par :\n${rendu}\n---\n${corps(p)}`);
-    assert.equal(corpsAffiche(p).split(rendu).length - 1, 1);
-    // texte du classeur = texte de la page, aux échappements Markdown, puces et espaces près
+    // à l'import : la remarque du don est la note du classeur, rendue telle quelle (échappements compris)
+    assert.equal(noteRendue(remarqueDImport(slug)), rendu, `${slug} : la note d'import`);
+    // texte du classeur = texte rendu, aux échappements Markdown, puces et espaces près
     assert.equal(aplatir(rendu), aplatir(MARQUEUR + source));
+    // aujourd'hui : la note (la remarque courante, rendue) termine la page, juste après l'effet, une seule fois
+    const courante = noteRendue(remarques.get(slug));
+    if (!courante) return assert.equal(nbNotes(p), 0, `${slug} : remarque vidée par le site de dev, plus de note`);
+    const attendue = texteSansBalises(courante, vocabulaire, { markdown: true });
+    assert.ok(corpsAffiche(p).endsWith(`\n\n${attendue}\n`), `${slug} : la page ne se termine pas par :\n${attendue}\n---\n${corps(p)}`);
+    assert.equal(corpsAffiche(p).split(attendue).length - 1, 1);
   });
 }
 
 test('pages réelles : deux notes au texte identique dans deux classes (Orios, Minotaure) ou sur deux cellules voisines (Flagelleur) : une fois par page', () => {
   for (const slug of ['orios-gigantisme', 'minotaure-gigantisme', 'flagelleur-puni-moi', 'flagelleur-plus-fort'].filter((s) => !supprimee(s))) assert.equal(nbNotes(page(slug)), 1, slug);
-  // la note de Mage A44 contient une phrase qui est l'effet de X44 : chaque fiche garde la note de SA cellule, pas celle de la voisine
+  // la note de Mage A44 contient une phrase qui est l'effet de X44 : chaque fiche garde la note de SA cellule, pas celle de la voisine (à l'import ;
+  // aujourd'hui, la page de chacune rend sa propre remarque : test précédent)
   const phrase = "Peut lancer deux sorts de soin ou/et d'amplification";
-  if (!supprimee('mage-toujours-plus')) assert.equal(corps(page('mage-toujours-plus')).split(phrase).length - 1, 1, 'dans la note de A44 (son effet parle des sorts d’attaque)');
-  if (!supprimee('mage-deux-fois-plus')) assert.equal(corps(page('mage-deux-fois-plus')).split(phrase).length - 1, 1, 'dans l’effet de X44 seulement, sa note ne la répète pas');
+  const dImport = (slug, colonne) => historique.valeurDImport('capacite', { id: `capacites/${slug}` }, colonne) ?? '';
+  assert.equal(dImport('mage-toujours-plus', 'remarque').split(phrase).length - 1, 1, 'dans la note de A44 (son effet parle des sorts d’attaque)');
+  assert.equal(dImport('mage-toujours-plus', 'effet').split(phrase).length - 1, 0, 'pas dans l’effet de A44');
+  assert.equal(dImport('mage-deux-fois-plus', 'effet').split(phrase).length - 1, 1, 'dans l’effet de X44');
+  assert.equal(dImport('mage-deux-fois-plus', 'remarque').split(phrase).length - 1, 0, 'sa note ne la répète pas');
 });
 
 // Facultatif (le vrai dump n'est pas dans le dépôt) :

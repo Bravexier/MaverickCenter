@@ -14,6 +14,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
 import { cheminBase } from '../src/lib/donnees.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 import {
   accessoiresGardes, ARMURE_ENTIERE, armureDesArmures, armuresAvecArmure, bouclierAvecMatiere, COLONNES_DE_L_ARMURE, COLONNES_RETIREES, EMPLACEMENTS_D_ARMURE,
   matiereDuBouclier, nmDuMjAvecCadeaux, nmDuMjDesSorts, PARTIES_DE_FICHE, PARTIES_RETIREES, TABLES_FICHES, TABLES_RETIREES, ficheVide, gainsDeLaProgression,
@@ -256,11 +257,12 @@ test('livre de sort (décision R169, migration 0082) : `nm_livre` d’un sort es
 });
 
 // Décision R153 : les noms, dés et ordre des familles et le don de la base des règles, comme le service (serveur/fiches.mjs, serveur/base-vivante.mjs).
+// Lus dans la base d'import (test/aide-base-d-import.mjs) : le texte du cahier de la refonte, attendu ici mot pour mot, cite des noms et des dés que le
+// site de dev peut changer ; la fonction ne fait que les recopier.
 function nomsDeLaBase() {
-  const db = new DatabaseSync(cheminBase({ sansExemples: false }), { readOnly: true });
+  const db = baseDImport();
   const familles = new Map(db.prepare('SELECT id, nom, de_brut AS de, ordre FROM arme_famille').all().map((f) => [f.id, { nom: f.nom, de: f.de, ordre: f.ordre }]));
   const dons = new Map(db.prepare('SELECT k.id, k.nom, c.nom AS classe FROM capacite k LEFT JOIN classe c ON c.id = k.classe_id').all().map((k) => [k.id, { nom: k.nom, classe: k.classe }]));
-  db.close();
   return { famille: (id) => familles.get(id) ?? null, don: (id) => dons.get(id) ?? null };
 }
 
@@ -328,9 +330,10 @@ test('maitrisesAvecChoix : des maîtrises d’avant (dés ou arme choisie) ET `m
 });
 
 // Décision R167 (migration 0081) : une arme d'avant (un élément posé sur une arme du catalogue, l'amélioration de l'élément) prend la forme d'aujourd'hui.
-// Les noms, les familles, les types et les niveaux sont ceux de la base (comme serveur/fiches.mjs et serveur/base-vivante.mjs les donnent).
+// Les noms, les familles, les types et les niveaux sont ceux de la base (comme serveur/fiches.mjs et serveur/base-vivante.mjs les donnent), dans son état
+// d'import : l'exemple de R167 (« 5 au +5 ») et les textes attendus citent des valeurs que le site de dev peut changer.
 const R167 = (() => {
-  const db = new DatabaseSync(cheminBase({ sansExemples: false }), { readOnly: true });
+  const db = baseDImport();
   const un = (sql) => { const q = db.prepare(sql); return (x) => { const l = q.get(x); return l ? { ...l } : null; }; };
   const noms = {
     arme: un('SELECT a.nom, f.nom AS famille, f.type_elementaire_id FROM arme a JOIN arme_famille f ON f.id = a.famille_id WHERE a.id = ?'),

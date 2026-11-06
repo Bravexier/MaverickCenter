@@ -11,8 +11,8 @@ import { join } from 'node:path';
 import { after, test } from 'node:test';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { enregistrer } from '../serveur/edition.mjs';
-import { cheminBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
+import { cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { modeleXlsx } from '../src/lib/fiche-modele.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
@@ -24,7 +24,8 @@ import { ecrireXlsx } from '../src/lib/tableur-ecriture.mjs';
 import { lireClasseur } from '../src/lib/tableur-lecture.mjs';
 
 const racine = dossierTemporaire('familles-fiche');
-const db = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: racine }).chemin);
+// la base des règles dans son état d'import (test/aide-base-d-import.mjs) : le don du Tueur se lit dans son texte, que le site de dev réécrit librement
+const db = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminDImport(), dossier: racine }).chemin);
 after(() => db.close());
 const PID = process.pid;
 const SANS_ARME = `Fouets ${PID}`;
@@ -41,17 +42,13 @@ const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que 
 const DATE = '23/10/2026';
 const MODELE = await modeleXlsx();
 
-const parNom = (liste, nom) => {
-  const x = liste.filter((e) => e.nom === nom);
-  assert.equal(x.length, 1, `une seule entrée « ${nom} »`);
-  return x[0];
-};
-const tueur = parNom(regles.classes, 'Tueur');
-const fletrisseur = parNom(tueur.dons, 'Flétrisseur');
+// par identifiant (figé) : le site de dev renomme classes, dons et magies
+const tueur = M.trouver(regles.classes, 'classes/tueur');
+const fletrisseur = M.trouver(tueur.dons, 'capacites/tueur-fletrisseur');
 const SOURCE = `${tueur.id}#maitrise-arme:1`;
 /** Un Tueur Flétrisseur de niveau 10 (« +5% de la compétence de l'arme choisie », R119), sa maîtrise au choix posée sur `famille`. */
 const fiche = (famille) => ({
-  ...ficheVide('Essai R159'), race_id: 'races/humain', magie_innee_id: parNom(regles.magies, 'Feu').id, xp: regles.niveaux.find((l) => l.niveau === 10).xp_min,
+  ...ficheVide('Essai R159'), race_id: 'races/humain', magie_innee_id: 'magies/magie-du-feu', xp: regles.niveaux.find((l) => l.niveau === 10).xp_min,
   classes: [{ rang: 1, classe_id: tueur.id, specialite_id: fletrisseur.specialite_id }],
   maitrise_choix: famille ? [{ source: SOURCE, rang: 1, arme_famille_id: famille }] : [],
 });
@@ -94,7 +91,7 @@ test('R159 : le classeur exporté — les dés d’une famille créée ne vont d
   assert.deepEqual(r.avertissements, [avertissementDeFamilleHorsDeLaGrille(SANS_ARME, des)]);
   assert.deepEqual(r.remplis, cellulesDeLaFiche(regles, fiche(null), { date: DATE }).remplis, 'aucune case de dés d’une autre famille remplie');
   assert.ok(!MAITRISES.some((m) => m.famille === FOUETS) && Object.keys(r.remplis).every((a) => !MAITRISES.flatMap(casesDesDes).includes(a)));
-  assert.deepEqual(lireLaNote(r.cellules[ORDINATEUR.note]).valeurs.maitriseChoix, [`Tueur (maîtrise 1) : ${SANS_ARME}`]);
+  assert.deepEqual(lireLaNote(r.cellules[ORDINATEUR.note]).valeurs.maitriseChoix, [`${tueur.nom} (maîtrise 1) : ${SANS_ARME}`]);
   assert.deepEqual(r.relu.nonRepris, []);
   assert.deepEqual(r.relu.fiche.maitrise_choix, f.maitrise_choix, 'le choix revient à l’import');
   // une famille de la grille (DAGUES) : ses dés dans sa ligne, aucun avertissement
@@ -113,7 +110,7 @@ test('R159 : l’import reconnaît une famille par son nom de lecture (classeur 
   const dAvant = structuredClone(regles);
   M.trouver(dAvant.familles_armes, 'hache').nom = 'HACHE';
   const hache = await allerRetour(fiche('hache'), { exporter: dAvant });
-  assert.deepEqual(lireLaNote(hache.cellules[ORDINATEUR.note]).valeurs.maitriseChoix, ['Tueur (maîtrise 1) : HACHE']);
+  assert.deepEqual(lireLaNote(hache.cellules[ORDINATEUR.note]).valeurs.maitriseChoix, [`${tueur.nom} (maîtrise 1) : HACHE`]);
   assert.deepEqual([hache.relu.nonRepris, hache.relu.fiche.maitrise_choix], [[], fiche('hache').maitrise_choix]);
   // « Arme Légère (Lames courbes (longues) …) » : la famille est tout ce qui suit la première parenthèse
   const lames = await allerRetour(fiche(LAMES));

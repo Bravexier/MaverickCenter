@@ -5,6 +5,8 @@ import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { chargerMagiesDuGuide } from '../src/lib/guide-db.mjs';
 import { TABLES_DES_NOTES } from '../src/lib/notes-de-version.mjs';
+import { normalize } from '../src/lib/text.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 
@@ -32,12 +34,19 @@ test('aucune colonne de texte d’aucune table n’écrit plus « Démon d’Eau
   assert.deepEqual(trouves, []);
 });
 
-test('l’Elfe noir doit sa fuite à Eaunoire, sur sa page comme dans son onglet', () => {
+test('l’Elfe noir doit sa fuite à Eaunoire, sur sa page comme dans son onglet (texte de l’import)', () => {
+  // la présentation de la race est modifiable sur le site de dev (source de ce qu'il modifie), et sa page en est refaite : lues à l'import
+  const imp = baseDImport();
   const phrase = 'après une fuite possible grâce à Eaunoire.';
-  assert.ok(db.prepare("SELECT description_generale FROM race_onglet WHERE race_id = 'races/elfe-noir'").get().description_generale.includes(phrase));
-  assert.ok(db.prepare("SELECT corps_md FROM page WHERE id = 'races/elfe-noir'").get().corps_md.includes(phrase));
+  assert.ok(imp.prepare("SELECT description_generale FROM race_onglet WHERE race_id = 'races/elfe-noir'").get().description_generale.includes(phrase));
+  assert.ok(imp.prepare("SELECT corps_md FROM page WHERE id = 'races/elfe-noir'").get().corps_md.includes(phrase));
 });
 
 test('le sort « Eau noire » de la Corruption n’est pas la déesse : il garde son nom', () => {
-  assert.deepEqual({ ...db.prepare("SELECT nom, nom_cle FROM sort WHERE id = 'magies/magie-de-la-corruption#sort:eau-noire'").get() }, { nom: 'Eau noire', nom_cle: 'eau-noire' });
+  // à l'import, son nom ; aujourd'hui, son identifiant (figé) et la clé de son nom (le nom est modifiable sur le site de dev)
+  const id = 'magies/magie-de-la-corruption#sort:eau-noire';
+  assert.deepEqual({ ...baseDImport().prepare('SELECT nom, nom_cle FROM sort WHERE id = ?').get(id) }, { nom: 'Eau noire', nom_cle: 'eau-noire' });
+  const s = db.prepare('SELECT nom, nom_cle FROM sort WHERE id = ?').get(id);
+  assert.ok(s, id);
+  assert.equal(s.nom_cle, normalize(s.nom));
 });

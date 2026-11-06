@@ -4,14 +4,19 @@
 // R185 (6)) ; ses textes (mode_texte) et ses constantes (regle_constante) rattachés à guide/le-mode-hyper, inchangés, les textes sous leurs ids figés ;
 // le corps de guide/le-mode-hyper perd le renvoi devenu faux (R184 (5)) et reçoit le marqueur du tableau tiré de la base.
 // Lecture de la base construite ; les écritures se font dans une COPIE, jamais dans var/maverick.db ni dans data/rows.
+// Le site de dev est la source de ce qu'il modifie (skill tests-conventions) : le texte de guide/le-mode-hyper (titre, corps) et l'onglet d'une entrée de
+// menu se lisent tels que la migration les a laissés, dans baseDImport({ garder: lotsAvant('0095') }) (test/aide-base-d-import.mjs ; seuls les lots
+// rapatriés après la 0095, absents de fixtures/lots-avant-0095.json, se défont) ; l'état courant ne garde que le fonctionnement (la page retirée
+// n'existe plus, rien n'y mène, aucun lien cassé hors de ceux qu'une édition du site a écrits, le menu suit les éditions du site).
 import assert from 'node:assert/strict';
 import { copyFileSync, readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
-import { TABLES_DES_NOTES } from '../src/lib/notes-de-version.mjs';
+import { baseDImport, lotsAvant } from './aide-base-d-import.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
+import { citations, ecritParLeSite, lienDuSite, lignesQuiCitent } from './aide-page-retiree.mjs';
 
 const MIGRATION = '0095-retrait-liste-des-effets-mode-hyper.sql';
 const LISTE = 'guide/liste-des-effets-mode-hyper';
@@ -20,7 +25,12 @@ const lire = (chemin) => readFileSync(new URL(`../../${chemin}`, import.meta.url
 const db = ouvrirBase({ sansExemples: false });
 const h = historiqueSite(db);
 const page = (id) => db.prepare('SELECT * FROM page WHERE id = ?').get(id);
-const corps = (id) => page(id).corps_md;
+/** La base telle que la migration 0095 l'a laissée (les éditions du site rapatriées après elle défaites). */
+const apres0095 = () => baseDImport({ garder: lotsAvant('0095') });
+const corpsApres0095 = (id) => apres0095().prepare('SELECT corps_md FROM page WHERE id = ?').get(id).corps_md;
+/** Les liens non résolus de ces pages, hors de celles dont le site a réécrit le texte (un lien qu'il a écrit lui appartient). */
+const liensCasses = (...pages) => db.prepare(`SELECT page_id, cible, etat FROM lien WHERE etat <> 'resolu' AND page_id IN (${pages.map(() => '?').join(', ')})`)
+  .all(...pages).map((r) => ({ ...r })).filter((r) => !h.modifiee('page', { id: r.page_id }, 'corps_md'));
 const IDS_DES_TEXTES = ['ne-plus-faire-quun-avec-soi-meme', 'au-dela-des-limites', 'mode-hyper-100'].map((s) => `${LISTE}#texte:${s}`);
 // Les douze constantes du classeur « Mode hyper et co » (valeurs inchangées par la migration)
 const CONSTANTES = {
@@ -42,22 +52,18 @@ test('0095 : la Liste retirée, avec ses lignes d’import, son entrée de menu,
   assert.equal(db.prepare('SELECT count(*) AS n FROM source WHERE id NOT IN (SELECT source_id FROM page_source)').get().n, 0, 'aucune source orpheline');
   // la source du classeur reste citée par guide/le-mode-hyper
   assert.ok(db.prepare("SELECT 1 FROM page_source WHERE page_id = ? AND source_id = 'ref:google-sheet-mode-hyper-et-co-onglet-mode-hyper'").get(HYPER));
-  assert.deepEqual(db.prepare("SELECT page_id, cible, etat FROM lien WHERE page_id = ? AND etat <> 'resolu'").all(HYPER), []);
+  assert.deepEqual(liensCasses(HYPER), []);
   assert.match(lire(`data/migrations/${MIGRATION}`), /historique_modification et de note_version_ligne qui citent la page restent/);
 });
 
-test('0095 : plus rien dans la base ne cite la Liste, hors des ids figés de ses textes, de l’historique du site et des notes de version', () => {
-  const sautees = new Set(TABLES_DES_NOTES);
-  const occurrences = [];
-  for (const { name } of db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE '%fts%'").all()) {
-    if (sautees.has(name)) continue;
-    for (const { name: col } of db.prepare(`PRAGMA table_info("${name}")`).all()) {
-      const n = db.prepare(`SELECT count(*) AS n FROM "${name}" WHERE instr(CAST("${col}" AS TEXT), 'liste-des-effets-mode-hyper') > 0`).get().n;
-      if (n) occurrences.push(`${name}.${col}:${n}`);
-    }
-  }
-  assert.deepEqual(occurrences.sort(), ['mode_texte.id:3', 'page_entite.entite_id:3']);
-  assert.equal(db.prepare("SELECT count(*) AS n FROM page WHERE instr(corps_md, 'Liste des effets mode hyper') > 0").get().n, 0);
+test('0095 : plus rien dans la base ne cite la Liste, hors des ids figés de ses textes, de l’historique du site, des notes de version et de ce que le site a écrit', () => {
+  // l'état des migrations : rien d'autre que les ids figés (ses liens, tables dérivées, sont ceux du texte courant : ceux d'un texte que le site a
+  // écrit avec ce lien sont admis) ; l'état courant : une cellule dont la dernière valeur écrite par le site porte l'adresse lui
+  // appartient (test/aide-page-retiree.mjs), une citation écrite par l'import ou une migration reste interdite
+  assert.deepEqual(citations(apres0095(), 'liste-des-effets-mode-hyper', lienDuSite(h)).sort(), ['mode_texte.id:3', 'page_entite.entite_id:3']);
+  assert.deepEqual(citations(db, 'liste-des-effets-mode-hyper', ecritParLeSite(h)).sort(), ['mode_texte.id:3', 'page_entite.entite_id:3']);
+  // le titre de la Liste, cité en toutes lettres : plus dans aucun texte tel que les migrations l'ont laissé (le site peut écrire ce qu'il veut depuis)
+  assert.equal(apres0095().prepare("SELECT count(*) AS n FROM page WHERE instr(corps_md, 'Liste des effets mode hyper') > 0").get().n, 0);
 });
 
 test('0095 : les trois textes du Mode Hyper gardent leurs ids, rattachés à guide/le-mode-hyper ; ce que la fiche en lit est mot pour mot celui de la Liste', () => {
@@ -105,8 +111,8 @@ test('0095 : les douze constantes du Mode Hyper, rattachées à guide/le-mode-hy
     .map(([id, [valeur, unite]]) => ({ id, valeur, unite, nature: 'texte', page_id: HYPER })));
 });
 
-test('0095 : guide/le-mode-hyper garde la première phrase, suivie du marqueur du tableau (une fois) ; le reste de la page ne change pas', () => {
-  const hyper = corps(HYPER);
+test('0095 : guide/le-mode-hyper garde la première phrase, suivie du marqueur du tableau (une fois) ; le reste de la page ne change pas (texte de la migration)', () => {
+  const hyper = corpsApres0095(HYPER);
   assert.ok(hyper.includes(`${PHRASE}\n\n<!-- guide:mode-hyper -->\n\n## Ce qu’il coûte\n`));
   assert.equal(hyper.match(/^<!--\s*guide:mode-hyper\s*-->$/gm)?.length, 1);
   assert.equal(hyper.match(/<!--\s*guide:/g)?.length, 1);
@@ -116,6 +122,14 @@ test('0095 : guide/le-mode-hyper garde la première phrase, suivie du marqueur d
   assert.ok(hyper.endsWith('Le classeur des magies garde, dans un onglet masqué, une autre liste des effets du Mode Hyper, aux valeurs différentes : '
     + 'cette liste ne compte pas, ce sont les valeurs données plus haut (+15, et +7 avec deux magies) qui valent.\n'));
   assert.ok(hyper.includes('## Sur la fiche du site\n'));
+  // l'état courant (le site peut réécrire la page, ou la supprimer) : aucun renvoi vers la Liste hors d'un texte que le site a écrit, le tableau tiré
+  // de la base au plus une fois
+  const actuel = page(HYPER)?.corps_md;
+  if (actuel === undefined) assert.ok(h.supprimee('page', { id: HYPER }), `${HYPER} absente sans que le site l'ait supprimée`);
+  else {
+    assert.deepEqual(lignesQuiCitent(db, 'page', 'corps_md', 'liste-des-effets-mode-hyper', ecritParLeSite(h)).filter((p) => p.id === HYPER), []);
+    assert.ok((actuel.match(/^<!--\s*guide:mode-hyper\s*-->$/gm)?.length ?? 0) <= 1);
+  }
 });
 
 test('0095 : le menu « Les combats » sans la Liste, rangs de 1 à 19 (état d’import) ; le menu courant suit les éditions du site', () => {
@@ -128,10 +142,13 @@ test('0095 : le menu « Les combats » sans la Liste, rangs de 1 à 19 (état d�
     'prise-en-tenaille-et-zone-d-influence', 'deplacement-ou-sortie-de-la-zone-d-influence', 'les-degats', 'formule-des-degats', 'les-postures',
     'le-mode-hyper', 'le-mode-hyper-100', 'liste-des-effets-mode-super', 'blessures-et-etats'].map((s) => `guide/${s}`));
   assert.deepEqual(importees.map((e) => e.rang), importees.map((_, i) => i + 1));
-  // le menu courant : les mêmes entrées, moins celles que le site a supprimées, plus celles qu'il a créées
+  // le menu courant : les mêmes entrées, moins celles que le site a supprimées ou envoyées dans un autre onglet, plus celles qu'il a créées ou y a amenées
   const actuelles = db.prepare("SELECT id, page_id FROM regles_onglet_entree WHERE onglet_id = 'combats'").all().map(entree);
-  const attendues = importees.filter((e) => !h.supprimee('regles_onglet_entree', { id: e.id })).map(entree)
-    .concat(actuelles.filter((e) => h.creee('regles_onglet_entree', { id: e.id })));
+  const ici = new Set(actuelles.map((e) => e.id));
+  const deplacee = (e) => h.modifiee('regles_onglet_entree', { id: e.id }, 'onglet_id');
+  const venues = new Set(importees.map((e) => e.id));
+  const attendues = importees.filter((e) => !h.supprimee('regles_onglet_entree', { id: e.id }) && (ici.has(e.id) || !deplacee(e))).map(entree)
+    .concat(actuelles.filter((e) => !venues.has(e.id) && (h.creee('regles_onglet_entree', { id: e.id }) || deplacee(e))));
   const tri = (l) => l.map((e) => JSON.stringify(e)).sort();
   assert.deepEqual(tri(actuelles), tri(attendues));
 });

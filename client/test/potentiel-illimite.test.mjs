@@ -7,6 +7,7 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { chargerMagies } from '../src/lib/magies-db.mjs';
 import { magiesDuPotentiel, NPM_MAX_DU_POTENTIEL, POTENTIEL_ILLIMITE } from '../src/lib/potentiel-illimite.mjs';
+import { texteDImport } from './aide-base-d-import.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const magies = chargerMagies(db).magies;
@@ -45,8 +46,11 @@ test('cas limites : ordre du classeur (et non d’insertion), Potentiel Illimit�
   assert.deepEqual(autres.map((a) => a.total), [2, 3]);
 });
 
-test('NPM 4 : borne de l’Explication du Potentiel Illimité (NPM 3), relevée par le don de niveau 20 de l’Archimage, sa classe unique', () => {
-  const explication = db.prepare(`SELECT explication FROM magie WHERE id = ?`).get(POTENTIEL_ILLIMITE).explication;
+test('NPM 4 : borne de l’Explication du Potentiel Illimité (NPM 3), relevée par le don de niveau 20 de l’Archimage, sa classe unique (textes de l’import)', () => {
+  // L'explication et l'effet du don sont des textes, modifiables sur le site de dev (source de ce qu'il modifie) : lus dans l'état d'import
+  // (test/aide-base-d-import.mjs, lib/historique-site.mjs). La borne du NPM 3 ne vit que dans ce texte : le moteur de la fiche ne la lit pas
+  // (fiche-moteur.mjs#sortsPossibles, npmMax) ; seule la page du Potentiel Illimité montre les sorts jusqu'au NPM_MAX_DU_POTENTIEL du code.
+  const explication = texteDImport('magie', { id: POTENTIEL_ILLIMITE }, 'explication');
   assert.match(explication, /niveau 3 de puissance magique maximum/);
   assert.match(explication, /Classe unique = Archimage/);
   // le don « Semi-complet » de l'Archimage à l'import (le site de dev a pu le modifier ou le supprimer : D11)
@@ -54,9 +58,5 @@ test('NPM 4 : borne de l’Explication du Potentiel Illimité (NPM 3), relevée 
   const cle = { id: 'capacites/archimage-semi-complet' };
   assert.deepEqual(['classe_id', 'niveau', 'effet'].map((c) => historique.valeurDImport('capacite', cle, c)),
     ['classes/archimage', 20, 'Permet d\'utiliser les sorts de lvl 4 de puissance.']);
-  // aujourd'hui : un don de niveau 20 de l'Archimage le dit encore, sinon la borne écrite dans le code est à revoir
-  const niveau20 = db.prepare("SELECT effet FROM capacite WHERE classe_id = 'classes/archimage' AND niveau = 20").all();
-  assert.ok(niveau20.some((d) => /\b(?:lvl|niveau) 4 de puissance/i.test(d.effet ?? '')),
-    `aucun don de niveau 20 de l’Archimage ne permet plus les sorts de niveau 4 de puissance : NPM_MAX_DU_POTENTIEL (${NPM_MAX_DU_POTENTIEL}, lib/potentiel-illimite.mjs) est à revoir`);
-  assert.equal(NPM_MAX_DU_POTENTIEL, 4);
+  assert.equal(NPM_MAX_DU_POTENTIEL, 4, 'les sorts du NPM 4 que le don de niveau 20 ouvre');
 });

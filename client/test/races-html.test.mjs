@@ -26,7 +26,9 @@ const page = (slug) => pages.find((p) => p.slug === slug)?.html ?? '';
 // L'ordre de la liste des races (race.rang_liste, migration 0092 ; réponse du propriétaire « /races/ suit, le reste figé ») : le menu latéral des races,
 // /races/ et le tableau des magies innées le suivent ; il se réordonne sur le site de dev, l'état courant de la base fait foi (lib/races-db.mjs#racesParNature,
 // la règle du service ; sa valeur d'import, l'ancien ORDRE_DES_RACES : test/db-rang-des-races.test.mjs)
-const groupesDeLaBase = racesParNature(ouvrirBase());
+const base = ouvrirBase();
+const groupesDeLaBase = racesParNature(base);
+const echapper = (t) => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;');
 const slugsDe = (groupe) => groupesDeLaBase[groupe].map((r) => r.id.slice('races/'.length));
 const ids = (html) => [...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]);
 const main = (html) => html.slice(html.indexOf('<main'), html.indexOf('</main>'));
@@ -68,7 +70,9 @@ test('sections de l’onglet : présentation, histoire, avantages, dons, Mode Hy
     assert.ok(!main(html).includes('Classes accessibles') && !main(html).includes('Classes non accessibles'), `${slug} : liste des classes`);
     assert.equal((html.match(/class="race-stat[ "]/g) ?? []).length, 5, `${slug} : 5 valeurs de départ`);
   }
-  assert.match(page('drakos'), /<dt>Santé de départ<\/dt>\s*<dd[^>]*>13<\/dd>/);
+  // la santé de départ du Drakos : celle de la base (le site de dev la modifie)
+  const sante = base.prepare("SELECT sante_depart FROM race_onglet WHERE race_id = 'races/drakos'").get().sante_depart;
+  assert.match(page('drakos'), new RegExp(`<dt>Santé de départ</dt>\\s*<dd[^>]*>${sante}</dd>`));
 });
 
 // Sous « Capacité Mode Hyper », le lien mène à la page « Le mode hyper » (R187 : la « Liste des effets mode hyper » est supprimée, ses renvois visent
@@ -156,7 +160,9 @@ test('liste des races : l’accroche de chaque race en infobulle ; ni magies ni 
     const liens = [...html.matchAll(/<a\b[^>]*href="([^"]+)"/g)].map((m) => m[1]);
     assert.ok(liens.length > 0 && liens.every((h) => /\/races\/[^/]+\/$/.test(h)), `${id} : seulement les liens vers les races`);
   }
-  assert.match(colonne('hybrides'), /title="Les semi-renards, une race à la beauté et au narcissisme sans égal"/);
+  // l'accroche du Kitsune : le résumé de sa page dans la base (le site de dev le réécrit)
+  const accroche = base.prepare("SELECT resume FROM page WHERE id = 'races/kitsune'").get().resume;
+  assert.ok(pastillesDe(colonne('hybrides')).find((p) => p.slug === 'kitsune').attributs.includes(`title="${echapper(accroche)}"`), `kitsune : « ${accroche} »`);
 });
 
 test('magies innées d’une race : chaque pastille dans la couleur de sa magie, par la classe de la magie (lib/palette-css.mjs), sans style', options, () => {

@@ -8,21 +8,49 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { morceauxDuChapitre } from '../src/lib/guide.mjs';
 import { htmlAvecMotsCles, pageAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { trierVersions } from '../src/lib/notes-de-version.mjs';
 import {
-  ADRESSES_DU_PLAN_PRECEDENT, ANCRES_DES_PAGES_ABSORBEES, PAGES_ABSORBEES, PAGES_DE_LA_CREATION, PAGES_ECLATEES_DU_GUIDE, pagesEclateesDuGuide, PAGES_RETIREES, PAGES_SUPPRIMEES, PAR_OU_COMMENCER, partieDeLaPage,
+  ADRESSES_DU_PLAN_PRECEDENT, ANCRES_DES_PAGES_ABSORBEES, PAGES_ABSORBEES, PAGES_DE_LA_CREATION, PAGES_ECLATEES_DU_GUIDE, pageDuGuideALAdresse, pagesEclateesDuGuide, PAGES_RETIREES, PAGES_SUPPRIMEES, PAR_OU_COMMENCER, partieDeLaPage,
 } from '../src/lib/livres.mjs';
 import { cheminDePage } from '../src/lib/metiers.mjs';
 import { classeDePartie, classesDeLaPalette, cssDeLaPalette, cssDesFamilles } from '../src/lib/palette-css.mjs';
 import { cssDesAttributs } from '../src/lib/attributs-couleurs.mjs';
 import { htmlDeLaNote } from '../src/lib/notes-de-version-rendu.mjs';
 import { htmlAvecMonnaies, htmlDePiece, MONNAIES_DU_JEU } from '../src/lib/monnaies.mjs';
+import { rendreCommeLeGuide } from './aide-rendu-du-site.mjs';
 
 const dist =fileURLToPath(new URL('../dist/', import.meta.url));
 const present = existsSync(join(dist, 'index.html'));
 const options = present ? {} : { skip: 'site non construit (npm run build)' };
+
+/**
+ * Les ids des intertitres que la page du guide `id` tire de son texte courant, calculés comme au build : le texte coupé à ses blocs
+ * (lib/guide.mjs#morceauxDuChapitre, comme components/guide/PageDuGuide.astro), chaque morceau rendu par le processeur du site
+ * (test/aide-rendu-du-site.mjs#rendreCommeLeGuide : l'id vient du texte affiché de l'intertitre, lien, emphase ou monnaie compris). Une page absente de la
+ * base échoue (jamais une liste vide qui ferait passer le contrôle sans rien vérifier).
+ */
+async function intertitresRendus(id) {
+  const ligne = id ? ouvrirBase().prepare('SELECT corps_md FROM page WHERE id = ?').get(id) : undefined;
+  assert.ok(ligne, `${id} : la page du guide visée par le renvoi, dans la base`);
+  const ids = [];
+  for (const m of morceauxDuChapitre(ligne.corps_md ?? '')) {
+    if ('markdown' in m) ids.push(...[...(await rendreCommeLeGuide(m.markdown)).matchAll(/<h[2-6] id="([^"]+)"/g)].map((x) => x[1]));
+  }
+  return ids;
+}
+/**
+ * L'ancre `ancre` d'un renvoi vers la page construite `rel` (page du guide `id`) : un intertitre de la page porte cet id si et seulement si le texte
+ * courant de la page a cet intertitre (le site de dev renomme et retire les intertitres : leur existence se contrôle sur l'état d'import,
+ * test/livres.test.mjs). Toujours une assertion, jamais un saut.
+ */
+async function verifierLAncre(rel, id, ancre, quoi) {
+  const echappee = ancre.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const dansLaPage = new RegExp(`<h[2-6] id="${echappee}"`).test(lire(rel));
+  assert.equal(dansLaPage, (await intertitresRendus(id)).includes(ancre), `${quoi} : #${ancre} sur /${rel} si et seulement si le texte courant de ${id} a cet intertitre`);
+}
 
 const walk = (dir) => readdirSync(dir).flatMap((name) => (statSync(join(dir, name)).isDirectory() ? walk(join(dir, name)) : [join(dir, name)]));
 const lire = (rel) => readFileSync(join(dist, rel), 'utf8');
@@ -49,7 +77,7 @@ test('plus rien sous /guide/ (éclatement du guide, 2026-10-18) : ni page, ni li
   assert.ok(guide.length > 50 && guide.every((e) => /^(?:decouvrir|regles|mj)\//.test(e.path)), 'les pages du guide à leurs nouvelles adresses');
 });
 
-test('la page 404 renvoie les anciennes adresses /wiki/… vers les nouvelles', options, () => {
+test('la page 404 renvoie les anciennes adresses /wiki/… vers les nouvelles', options, async () => {
   const html = lire('404.html');
   assert.match(html, /<p id="introuvable" data-base="\/" data-renvois="[^"]*" data-eclatees="[^"]*">/);
   assert.match(html, /location\.replace/);
@@ -85,7 +113,9 @@ test('la page 404 renvoie les anciennes adresses /wiki/… vers les nouvelles', 
     const [chemin, ancre] = renvois[`${ancienne}/`].split('#');
     assert.equal(chemin, cheminDePage(PAGES_ABSORBEES[ancienne]), ancienne);
     assert.equal(ancre, ANCRES_DES_PAGES_ABSORBEES[ancienne], ancienne);
-    if (ancre) assert.match(lire(join(chemin, 'index.html')), new RegExp(`<h[2-6] id="${ancre}"`), `${ancienne} : #${ancre} absent de /${chemin}`);
+    // la page construite ; l'intertitre visé y porte son id tant que le texte courant de la page l'a (verifierLAncre)
+    assert.ok(existsSync(join(dist, chemin, 'index.html')), `${ancienne} : /${chemin} construite`);
+    if (ancre) await verifierLAncre(join(chemin, 'index.html'), PAGES_ABSORBEES[ancienne], ancre, ancienne);
     for (const dossier of ['decouvrir', 'regles', join('regles', 'avancees')]) assert.ok(!existsSync(join(dist, dossier, slug)), `${ancienne} : plus construite sous /${dossier}/`);
   }
   // R184 : plus de Règles avancées ; /regles/avancees/ mène au Mode Hyper, chacune de ses pages à son adresse à plat ; les six étapes de la création, de
@@ -112,7 +142,8 @@ test('la page 404 renvoie les anciennes adresses /wiki/… vers les nouvelles', 
     for (const cible of [defaut, ...Object.values(anciennesAncres)]) {
       const [chemin, ancre] = cible.split('#');
       assert.ok(existsSync(join(dist, chemin, 'index.html')), `${cible} : page construite`);
-      if (ancre) assert.match(lire(join(chemin, 'index.html')), new RegExp(`<h[2-6] id="${ancre}"`), `${cible} : ancre absente`);
+      // l'intertitre visé y porte son id tant que le texte courant de sa page l'a (verifierLAncre)
+      if (ancre) await verifierLAncre(join(chemin, 'index.html'), pageDuGuideALAdresse(chemin), ancre, cible);
     }
   }
   // « Les boss et leurs postures », supprimée le 2026-11-06 (migration 0094) : son ancienne section mène à « ## Les boss » de la page des postures
@@ -162,14 +193,19 @@ test('en-tête : plus de barre de recherche (une page à part, avec les mots-cl�
   // les onglets des Règles (R184), lus dans leur menu latéral : leurs pages ouvrent les Règles et marquent l'entrée de leur onglet, tirée du plan
   // (`entree` de layouts/Base.astro), elle seule ; l'adresse de l'onglet (ouverte sur sa page d'ouverture) en est la page ; /regles/ montre la page
   // d'ouverture du premier onglet. L'Artisanat (/regles/artisanat/, entrée lien d'Exploration) ouvre les Règles et marque Exploration, plus l'Équipement.
+  // Les onglets sont fixes ; le site de dev range une page dans un autre onglet (regles_onglet_entree.onglet_id) : la page d'un onglet est lue dans la base
+  const base = ouvrirBase();
+  const pageDuMenu = (onglet) => base.prepare(`SELECT e.page_id FROM regles_onglet_entree e JOIN regles_onglet o ON o.id = e.onglet_id
+    WHERE e.onglet_id = ? AND e.page_id IS NOT NULL AND e.page_id <> o.ouverture_page_id ORDER BY e.rang, e.id`).get(onglet)?.page_id;
+  const deLOnglet = (onglet, chemin, libelle) => [`${cheminDePage(pageDuMenu(onglet))}index.html`, chemin, libelle, 'true'];
   for (const [rel, chemin, libelle, courant] of [
     ['regles/index.html', '/regles/fiche-de-personnage/', 'Fiche de personnage', 'true'],
     ['regles/fiche-de-personnage/index.html', '/regles/fiche-de-personnage/', 'Fiche de personnage', 'page'],
-    ['regles/fiche-attributs/index.html', '/regles/fiche-de-personnage/', 'Fiche de personnage', 'true'],
+    deLOnglet('fiche-de-personnage', '/regles/fiche-de-personnage/', 'Fiche de personnage'),
     ['regles/mecaniques-generales/index.html', '/regles/mecaniques-generales/', 'Mécaniques générales', 'page'],
-    ['regles/meteo/index.html', '/regles/mecaniques-generales/', 'Mécaniques générales', 'true'],
-    ['regles/combats/index.html', '/regles/combats/', 'Les combats', 'page'], ['regles/les-degats/index.html', '/regles/combats/', 'Les combats', 'true'],
-    ['regles/exploration/index.html', '/regles/exploration/', 'Exploration', 'page'], ['regles/les-portes/index.html', '/regles/exploration/', 'Exploration', 'true'],
+    deLOnglet('mecaniques-generales', '/regles/mecaniques-generales/', 'Mécaniques générales'),
+    ['regles/combats/index.html', '/regles/combats/', 'Les combats', 'page'], deLOnglet('combats', '/regles/combats/', 'Les combats'),
+    ['regles/exploration/index.html', '/regles/exploration/', 'Exploration', 'page'], deLOnglet('exploration', '/regles/exploration/', 'Exploration'),
     ['regles/artisanat/index.html', '/regles/exploration/', 'Exploration', 'true'],
   ]) {
     const page = lire(rel);
@@ -323,7 +359,10 @@ test('/recherche/ : la recherche et le glossaire des mots-clés (tous, liens ?mo
     // la définition rendue que recopie la vue du mot-clé (monnaies en icônes, R63 ; balises rendues par le middleware), une par mot-clé décrit
     assert.equal((html.match(new RegExp(`<div data-definition-de="${id}">`, 'g')) ?? []).length, decrit ? 1 : 0, `${id} : sa définition rendue`);
   }
-  assert.ok(motsCles.some((m) => m[8].startsWith('<span class="recherche-nom">Armure magique (AM)</span>')), '« Armure magique (AM) »');
+  // un mot-clé à abréviation (« Armure magique (AM) » à l'import) : son libellé et son abréviation courants, lus par son id
+  const am = vocabulaire.get('armure-magique');
+  const nomDeAm = echappe(am.abreviation ? `${am.libelle} (${am.abreviation})` : am.libelle);
+  assert.ok(motsCles.some((m) => m[1] === am.id && m[8].startsWith(`<span class="recherche-nom">${nomDeAm}</span>`)), `« ${nomDeAm} »`);
   for (const abr of Object.keys(MONNAIES_DU_JEU)) {
     const m = motsCles.find((x) => x[1] === MONNAIES_DU_JEU[abr].id);
     assert.ok(m && m[8].includes(`class="piece piece--${MONNAIES_DU_JEU[abr].id}"`) && !m[8].includes(`(${abr})`), `${abr} : libellé + icône`);

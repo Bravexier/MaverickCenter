@@ -17,6 +17,9 @@ import { classeDeMagie, classeDuPoids, classeDuTypeDArmure, cssDesFamilles } fro
 import { ameliorationElementaire, coutElementaireEcrit } from '../src/lib/armure-forge.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
+import { chargerPanneau } from '../src/lib/panneaux-regles-db.mjs';
+import { baseDImport, texteDImport } from './aide-base-d-import.mjs';
+import { verifierLeTexteDuPanneau } from './aide-texte-affiche.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 // les pages Armures et Boucliers (une chacune depuis le 2026-10-29, « Cinq pages séparées ») : le même composant, un panneau chacune
@@ -29,7 +32,8 @@ const bloc = (h) => h.slice(h.indexOf('<div class="armures" data-armures>'), h.i
 // les deux pages bout à bout (un panneau chacune) : ce que lisaient les tests quand elles étaient les deux onglets d'une page
 const html = pages.armures + pages.boucliers;
 const main = bloc(pages.armures) + bloc(pages.boucliers);
-const armures = present ? chargerArmures(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' })) : null;
+const db = present ? ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' }) : null;
+const armures = present ? chargerArmures(db) : null;
 const echapper = (t) => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;');
 /** Le HTML d'un panneau (onglet) : de son <section> au suivant. */
 const panneau = (id) => {
@@ -38,7 +42,7 @@ const panneau = (id) => {
   return main.slice(debut, fin < 0 ? undefined : fin);
 };
 
-test('pas de tableau Markdown : le gabarit des armures, un panneau par page (Armures, Boucliers), le panneau de règles de chaque page replié', options, () => {
+test('pas de tableau Markdown : le gabarit des armures, un panneau par page (Armures, Boucliers), le panneau de règles de chaque page replié', options, async () => {
   assert.match(main, /^<div class="armures" data-armures>/);
   assert.ok(!main.includes('<table>'), 'aucun tableau rendu depuis le Markdown');
   for (const id of ['armures', 'boucliers']) assert.ok(panneau(id).length > 1000, `le panneau ${id}`);
@@ -49,12 +53,17 @@ test('pas de tableau Markdown : le gabarit des armures, un panneau par page (Arm
   }
   assert.ok(!main.includes('armures__chapo'), 'plus de chapeau');
   assert.equal((main.match(/<details class="preg" /g) ?? []).length, 2);
-  assert.ok(panneau('armures').includes('Une armure a besoin de 2 matériaux pour être fabriquée'), 'les règles des armures (le texte de l’onglet)');
-  // « Suppression de la création par pièces » (décision R95) : les paragraphes retirés par la migration 0055, et la note de la décision R93 qui les précédait
-  for (const retire of ['il faut 2 matériaux pour chaque morceau', 'Comme vous le savez il est possible de fabriquer', 'armures-regles__decision']) {
-    assert.ok(!panneau('armures').includes(retire), retire);
+  // les règles de chaque page (le site de dev les réécrit, les vide) : le texte de son panneau dans la base, rendu comme au build (test/aide-texte-affiche.mjs)
+  for (const id of ['armures', 'boucliers']) await verifierLeTexteDuPanneau(panneau(id), db, id, `les règles des ${id}`);
+  // « Suppression de la création par pièces » (décision R95) : la note de la décision R93 (un gabarit, plus rendu) ; les paragraphes retirés par la
+  // migration 0055, absents du texte que l'import a écrit (le panneau, ses blocs, le corps de la page : le site de dev reste libre d'écrire ce qu'il veut)
+  assert.ok(!panneau('armures').includes('armures-regles__decision'), 'la note de la décision R93');
+  const importe = chargerPanneau(baseDImport(), 'armures');
+  assert.ok(importe?.blocs.length, 'le panneau des armures à l’import');
+  const corpsImporte = texteDImport('page', { id: importe.page_id }, 'corps_md');
+  for (const retire of ['il faut 2 matériaux pour chaque morceau', 'Comme vous le savez il est possible de fabriquer']) {
+    for (const texte of [importe.titre, ...importe.blocs.flatMap((b) => [b.titre, b.texte]), corpsImporte]) assert.ok(!String(texte ?? '').includes(retire), `R95 à l’import : ${retire}`);
   }
-  assert.ok(panneau('boucliers').includes('autant de matériaux que sa classe indique'), 'les règles des boucliers');
   const ids = [...main.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]);
   assert.equal(new Set(ids).size, ids.length, 'identifiants uniques');
 });
@@ -111,9 +120,11 @@ test('armures : les armures particulières en premier puis la liste par type, un
   }
   // l'en-tête « Solidité » est le mot-clé du glossaire (migration 0058) : le texte des cases, sans leurs balises HTML
   const entetes = [...listes.matchAll(/<thead>([\s\S]*?)<\/thead>/g)].map((m) => [...m[1].matchAll(/<th scope="col"[^>]*>(.*?)<\/th>/g)].map((t) => t[1].replace(/<[^>]+>/g, '')));
-  assert.match(listes, /<th scope="col"><strong class="mot-cle" data-mot-cle="solidite"[^>]*>Solidité<\/strong><\/th>/, 'la définition de la solidité en infobulle');
-  assert.deepEqual(entetes[0], ['Nom', 'Type', 'AP', 'AM', 'Solidité', 'Effet', 'Prix'], 'armures particulières');
-  for (const e of entetes.slice(1)) assert.deepEqual(e, ['Nom', 'Matériaux', 'Type', 'AP', 'AM', 'Solidité', 'Résistance', 'Faiblesse', 'Prix'], 'armures de la grille');
+  // son libellé : celui du mot-clé dans la base (le site de dev le renomme)
+  const solidite = db.prepare("SELECT libelle FROM mot_cle WHERE id = 'solidite'").get().libelle;
+  assert.ok(listes.includes(`<th scope="col"><strong class="mot-cle" data-mot-cle="solidite"`) && entetes.every((e) => e.includes(solidite)), 'la définition de la solidité en infobulle');
+  assert.deepEqual(entetes[0], ['Nom', 'Type', 'AP', 'AM', solidite, 'Effet', 'Prix'], 'armures particulières');
+  for (const e of entetes.slice(1)) assert.deepEqual(e, ['Nom', 'Matériaux', 'Type', 'AP', 'AM', solidite, 'Résistance', 'Faiblesse', 'Prix'], 'armures de la grille');
   assert.ok(p.includes(`data-m1="${a.m1}" data-m2="${a.m2}"`));
   const particuliere = armures.particulieres[0];
   for (const colonne of ['effet', 'prix_brut']) assert.ok(p.includes(`data-ed="${echapper(attributEd('armure', { id: particuliere.id }, colonne))}"`), `particulière : ${colonne}`);
@@ -260,6 +271,7 @@ test('R165 (4) : sous les deux tableaux de matériaux, le double choix « Élém
   // les 56 armures, cachées (le script les lit), chacune son AP, son AM et ses effets écrits ; aucun prix
   const cachees = bloc.slice(bloc.indexOf('<div hidden data-armures-elementaires'));
   assert.match(cachees, new RegExp(`^<div hidden data-armures-elementaires data-solidite-base="${armures.elementaires.solidite_base}">`));
+  // valeurs figées admises : constante_equipement et armure_elementaire ne se modifient pas sur le site de dev (ni lib/edition-modele.mjs, ni le service)
   assert.equal(armures.elementaires.solidite_base, 4);
   const lues = [...cachees.matchAll(/<div class="pelem-armure" data-magie="([^"]+)" data-categorie="([^"]+)" data-ap="(\d+)" data-am="(\d+)">/g)];
   assert.equal(lues.length, 56);
@@ -293,6 +305,8 @@ test('R165 (2) : le tableau d’amélioration des armures élémentaires — Auc
     assert.ok(ligne.includes(`<td class="pamelioration__cumul" data-cout-cumule>${echapper(cumul)}</td>`), `+${a.niveau} : le coût cumulé`);
     assert.ok(ligne.includes(`<td class="pamelioration__effet">${echapper(a.effet_brut)}</td>`), `+${a.niveau} : l’effet écrit`);
   }
+  // valeur figée admise : les améliorations de cible armure_elementaire ne se modifient pas sur le site de dev (serveur/edition-armures.mjs#CIBLES_DES_ARMURES,
+  // serveur/edition-armes.mjs : refusées)
   assert.ok(table.includes('2 gemmes communes + 2 gemmes raffinées + 5 gemmes parfaites + 1 pièce élémentaire'), 'le cumul du +5');
   assert.ok(!/\bRO\b|Ricken|pmontant|montant__part/.test(table), 'aucune conversion en RO');
 });

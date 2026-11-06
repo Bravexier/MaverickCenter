@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { bonusDeDegatsEcrit, degatsDeMagieEcrits, RAISONS, valeurAuNiveau } from '../src/lib/degats-texte.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 
 test('comptés : la valeur et les armes visées écrites', () => {
   assert.deepEqual(bonusDeDegatsEcrit('+8 dégâts avec les arcs'), { valeur: 8, portee: { familles: ['arc'] } });
@@ -41,34 +42,32 @@ test('non comptés, avec leur raison ; pas un bonus d’arme : rien', () => {
 });
 
 test('tous les dons passifs de la base : chaque lecture a une valeur, et des armes visées ou une raison connue', () => {
-  const db = ouvrirBase({ sansExemples: false });
-  const dons = db.prepare("SELECT id, effet FROM capacite WHERE type = 'passif'").all();
-  const lus = dons.map((d) => [d.id, bonusDeDegatsEcrit(d.effet)]).filter(([, b]) => b);
-  assert.ok(lus.length > 30, `${lus.length} dons passifs avec un bonus de dégâts d’arme`);
-  for (const [id, b] of lus) {
-    assert.ok('valeur' in b ? Number.isInteger(b.valeur) && b.valeur > 0 : b.pas > 0 && b.niveaux > 0, `${id} : valeur`);
-    assert.ok(Boolean(b.portee) !== Boolean(b.raison), `${id} : soit les armes visées, soit une raison`);
-    if (b.raison) assert.ok(RAISONS[b.raison], `${id} : raison ${b.raison}`);
-    if (b.portee?.familles) {
-      const familles = new Set(db.prepare('SELECT id FROM arme_famille').all().map((f) => f.id));
-      for (const f of b.portee.familles) assert.ok(familles.has(f), `${id} : famille ${f}`);
+  // aujourd'hui (le site de dev modifie librement effets et types des dons) : chaque lecture est bien formée ; les comptes et les lectures épinglées se
+  // font dans l'état d'import (test/aide-base-d-import.mjs)
+  const lire = (base) => base.prepare("SELECT id, effet FROM capacite WHERE type = 'passif'").all().map((d) => [d.id, bonusDeDegatsEcrit(d.effet)]).filter(([, b]) => b);
+  for (const base of [ouvrirBase({ sansExemples: false }), baseDImport()]) {
+    const familles = new Set(base.prepare('SELECT id FROM arme_famille').all().map((f) => f.id));
+    for (const [id, b] of lire(base)) {
+      assert.ok('valeur' in b ? Number.isInteger(b.valeur) && b.valeur > 0 : b.pas > 0 && b.niveaux > 0, `${id} : valeur`);
+      assert.ok(Boolean(b.portee) !== Boolean(b.raison), `${id} : soit les armes visées, soit une raison`);
+      if (b.raison) assert.ok(RAISONS[b.raison], `${id} : raison ${b.raison}`);
+      for (const f of b.portee?.familles ?? []) assert.ok(familles.has(f), `${id} : famille ${f}`);
     }
   }
+  const lus = lire(baseDImport());
+  assert.ok(lus.length > 30, `${lus.length} dons passifs avec un bonus de dégâts d’arme`);
   const compte = (id) => lus.find(([x]) => x === id)?.[1];
   // quelques lectures de l'import, épinglées
   assert.deepEqual(compte('capacites/archer-tir-parfait'), { valeur: 8, portee: { familles: ['arc'] } });
   assert.deepEqual(compte('capacites/guerrier-hyper-contact'), { valeur: 10, portee: { cac: true } });
   assert.deepEqual(compte('capacites/archer-coup-eloigne'), { valeur: 4, raison: 'situation' });
-  // décision R107 : Vieille Branche (Mage Vert, Mage jade), un bonus par cran perdu de chaque arme portée ; sa valeur (+4 à l'import) se modifie sur le
-  // site de dev, qui est la source des règles : une valeur entière positive, pas le 4 de l'import
-  const { valeur, ...vieilleBranche } = compte('capacites/mage-vert-vieille-branche');
-  assert.deepEqual(vieilleBranche, { portee: { toutes: true }, parCranPerdu: true });
-  assert.ok(Number.isInteger(valeur) && valeur > 0, `valeur ${valeur}`);
+  // décision R107 : Vieille Branche (Mage Vert, Mage jade), un bonus par cran perdu de chaque arme portée (+4 à l'import)
+  assert.deepEqual(compte('capacites/mage-vert-vieille-branche'), { valeur: 4, portee: { toutes: true }, parCranPerdu: true });
 });
 
 test('décision R167 : « Les dégâts de X, Y et Z augmentent de +N » (Tissière et les onze dons de son écriture, « Oui, tous ») : les dégâts de magie d’une arme élémentaire ; « Temps » seul, l’Espace/Temps ; une situation, non lue', () => {
-  const db = ouvrirBase({ sansExemples: false });
-  const dons = db.prepare("SELECT id, nom, effet FROM capacite WHERE type = 'passif'").all();
+  // les effets de l'import (test/aide-base-d-import.mjs) : le site de dev réécrit librement ces textes
+  const dons = baseDImport().prepare("SELECT id, nom, effet FROM capacite WHERE type = 'passif'").all();
   const lus = new Map(dons.map((d) => [d.id, degatsDeMagieEcrits(d.effet)]).filter(([, x]) => x));
   // les douze dons de la décision, lus par leur écriture commune (aucune liste dans le lecteur) ; épinglés ici sur le texte de la base
   const M = (...noms) => noms.map((n) => `magies/${n}`);

@@ -17,6 +17,7 @@ import { demarrerService } from '../serveur/service.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { ENTITES, TABLES } from '../src/lib/edition-modele.mjs';
 import { ficheVide, TABLES_FICHES } from '../src/lib/fiche-format.mjs';
+import { emplacements } from '../src/lib/monstre-champs.mjs';
 import { capacitesDe, MODULES, RESSOURCES, segmentDeCle, tablesDe } from '../src/lib/ressources.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
@@ -647,7 +648,14 @@ test('opérations du lot : une case de la matrice des relations change de niveau
 });
 
 test('opérations du lot : une valeur propre d’une capacité de monstre (R69) se modifie, revient à la valeur commune (retirée), se repose ; les catégories d’un événement se posent et se retirent', () => {
-  const v = ligne('SELECT * FROM monstre_capacite_valeur ORDER BY monstre_id, rang, numero LIMIT 1');
+  const premiere = () => ligne('SELECT * FROM monstre_capacite_valeur ORDER BY monstre_id, rang, numero LIMIT 1');
+  if (!premiere()) {
+    // le site de dev a pu retirer toutes les valeurs propres (capacité ou description commune changée) : l'API en pose une, sur le premier emplacement
+    const place = lignes('SELECT mc.monstre_id, mc.rang, c.description FROM monstre_capacite mc JOIN monstre_capacite_commune c ON c.id = mc.capacite_commune_id ORDER BY mc.monstre_id, mc.rang')
+      .find((x) => emplacements(x.description).length);
+    ok(appel('POST', `/api/v1/monstres/${seg(place.monstre_id)}/valeurs-de-capacites/`, { rang: place.rang, numero: 1, valeur: emplacements(place.description)[0] + 1 }), 201);
+  }
+  const v = premiere();
   const valeurs = `/api/v1/monstres/${seg(v.monstre_id)}/valeurs-de-capacites/`;
   const adresse = `${valeurs}${v.rang},${v.numero}/`;
   assert.equal(ok(appel('PATCH', adresse, { valeur: v.valeur + 1 })).element.valeur, v.valeur + 1);

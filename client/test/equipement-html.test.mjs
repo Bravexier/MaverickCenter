@@ -28,6 +28,8 @@ import { pagesEclateesDuGuide } from '../src/lib/livres.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
 import { chargerPanneau } from '../src/lib/panneaux-regles-db.mjs';
+import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
+import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { ancreDuPanneau } from '../src/lib/panneaux-regles-rendu.mjs';
 import { texteDesPiecesElementaires } from '../src/lib/pieces-elementaires.mjs';
 
@@ -40,6 +42,7 @@ const html = Object.fromEntries(PAGES_DE_L_EQUIPEMENT.map((p) => [p.id, present 
 const main = Object.fromEntries(Object.entries(html).map(([id, h]) => [id, h.slice(h.indexOf('<main'), h.indexOf('</main>'))]));
 const base = present ? ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' }) : null;
 const batons = present ? chargerBatons(base) : null;
+const vocabulaire = present ? chargerVocabulaire(base) : null;
 const echapper = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 /** La page qui porte un panneau de règles (son id : celui de la page, ou du sous-onglet Bâtons magiques de la Ceinture). */
 const pageDuPanneau = (ancre) => PAGES_DE_L_EQUIPEMENT.find((p) => p.chemin === PAGES_SERVIES_PAR_L_EQUIPEMENT.find((o) => o.ancre === ancre).chemin).id;
@@ -198,7 +201,8 @@ test('recherche : le titre et le texte des panneaux de règles en tête de l’e
     const entree = index.find((e) => e.path === chemin && (e.ancre ?? '') === ancre && e.title === base.prepare('SELECT titre FROM page WHERE id = ?').get(o.page)?.titre);
     assert.ok(entree, `${o.page} : son entrée`);
     const premier = panneau.blocs.find((b) => !/^\{\{/.test(b.texte));
-    const mots = premier.texte.replace(/[#>*_`|\\]/g, ' ').replace(/\s+/g, ' ').trim().split(' ').slice(0, 6).join(' ');
+    // le texte affiché, sans ses balises de mots-clés (le site de dev en pose où il veut)
+    const mots = texteSansBalises(premier.texte, vocabulaire, { markdown: true }).replace(/[#>*_`|\\]/g, ' ').replace(/\s+/g, ' ').trim().split(' ').slice(0, 6).join(' ');
     assert.ok(entree.text.startsWith(panneau.titre), `${o.ancre} : le titre du panneau en tête`);
     assert.ok(entree.text.includes(mots), `${o.ancre} : « ${mots} »`);
   }

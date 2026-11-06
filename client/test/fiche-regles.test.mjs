@@ -24,6 +24,7 @@ import { porteeDeLArme } from '../src/lib/arme-champs.mjs';
 import { desSelonLaForce } from '../src/lib/maitrise-arme.mjs';
 import { ORDRE_DES_RACES } from '../src/lib/race-kinds.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { reglesDImport } from './aide-base-d-import.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const regles = chargerReglesDeFiche(db);
@@ -124,21 +125,22 @@ test('maîtrises d’armes (décision R32) : celles de chaque classe (classe_mai
 });
 
 test('sources de maîtrise d’arme (décisions R148, R151, R154) : les parts de chaque ligne de classe et de chaque don, lues dans leurs tables ; les NM gagnés ; l’accessoire au choix', () => {
-  const classe = (id) => regles.classes.find((c) => c.id === id);
-  const don = (id) => regles.classes.flatMap((c) => c.dons).find((d) => d.id === id);
+  // les exemples des décisions se lisent dans l'état d'import (test/aide-base-d-import.mjs) : le site de dev modifie librement lignes, dons et points
+  const imp = reglesDImport();
+  const classe = (id) => imp.classes.find((c) => c.id === id);
+  const don = (id) => imp.classes.flatMap((c) => c.dons).find((d) => d.id === id);
   const part = (rang, genre, points, { famille = null, options = [], limite = null } = {}) => ({ rang, genre, points, famille, options, limite });
-  const contact = regles.familles_armes.filter((f) => f.maitrisable && f.categorie === 'contact').map((f) => f.id);
-  const distance = regles.familles_armes.filter((f) => f.maitrisable && f.categorie === 'distance').map((f) => f.id);
+  const contact = imp.familles_armes.filter((f) => f.maitrisable && f.categorie === 'contact').map((f) => f.id);
+  const distance = imp.familles_armes.filter((f) => f.maitrisable && f.categorie === 'distance').map((f) => f.id);
   // les lignes du Guerrier (« 1 maîtrise Épée », « 1 maîtrise dans une arme contact au choix (sauf épée) ») : leur source est l'identifiant que la fiche
   // enregistre (personnage_maitrise_choix.source), les options d'une maîtrise au choix sont ses familles (`au_choix`, R119, R138), dans l'ordre d'arme_famille
-  // (lues dans la base de l'état courant : le site de dev peut modifier ces lignes ; à l'import, ce sont celles-ci)
   const guerrier = classe('classes/guerrier').maitrises;
-  if (guerrier.map((m) => m.brut).join('|') === '1 maîtrise Épée|1 maîtrise dans une arme contact au choix  (sauf épée)') {
-    assert.deepEqual(guerrier.map((m) => ({ source: m.source, parts: m.parts })), [
-      { source: 'classes/guerrier#maitrise-arme:1', parts: [part(1, 'imposee', 1, { famille: 'epees' })] },
-      { source: 'classes/guerrier#maitrise-arme:2', parts: [part(1, 'choix', 1, { options: contact.filter((id) => id !== 'epees') })] },
-    ]);
-  }
+  assert.equal(guerrier.map((m) => m.brut).join('|'), '1 maîtrise Épée|1 maîtrise dans une arme contact au choix  (sauf épée)');
+  assert.deepEqual(guerrier.map((m) => ({ source: m.source, parts: m.parts })), [
+    { source: 'classes/guerrier#maitrise-arme:1', parts: [part(1, 'imposee', 1, { famille: 'epees' })] },
+    { source: 'classes/guerrier#maitrise-arme:2', parts: [part(1, 'choix', 1, { options: contact.filter((id) => id !== 'epees') })] },
+  ]);
+  // aujourd'hui : chaque ligne a sa source, et une maîtrise au choix ses familles
   for (const c of regles.classes) {
     for (const m of c.maitrises) {
       assert.match(m.source, new RegExp(`^${c.id}#maitrise-arme:\\d+$`), m.source);
@@ -147,13 +149,10 @@ test('sources de maîtrise d’arme (décisions R148, R151, R154) : les parts de
   }
   // l'Épéiste (R151) : +2 ÉPÉES et +1 DAGUES imposés, −1 sur la famille de la maîtrise au choix du Guerrier ; ses points en total (R32) restent
   const epeiste = don('capacites/guerrier-epeiste');
-  if (epeiste) {
-    assert.deepEqual(epeiste.maitrise, { parts: [part(1, 'imposee', 2, { famille: 'epees' }), part(2, 'imposee', 1, { famille: 'dagues' }), part(3, 'suit', -1)] });
-    assert.equal(epeiste.maitrise.parts.reduce((n, p) => n + p.points, 0), 2);
-  }
+  assert.deepEqual(epeiste.maitrise, { parts: [part(1, 'imposee', 2, { famille: 'epees' }), part(2, 'imposee', 1, { famille: 'dagues' }), part(3, 'suit', -1)] });
+  assert.equal(epeiste.maitrise.parts.reduce((n, p) => n + p.points, 0), 2);
   // le Ménestrel : un point parmi les 4 familles à distance seulement (R151, R127)
-  const menestrel = don('capacites/barde-menestrel');
-  if (menestrel) assert.deepEqual(menestrel.maitrise, { parts: [part(1, 'choix', 1, { options: distance })] });
+  assert.deepEqual(don('capacites/barde-menestrel').maitrise, { parts: [part(1, 'choix', 1, { options: distance })] });
   assert.equal(distance.length, 4);
   // chaque don a les parts de maitrise_arme_part, et seulement eux ; jamais ARME DE MONSTRES (R45)
   const sources = new Set(db.prepare('SELECT DISTINCT capacite_id FROM maitrise_arme_part WHERE capacite_id IS NOT NULL').all().map((r) => r.capacite_id));
@@ -166,7 +165,8 @@ test('sources de maîtrise d’arme (décisions R148, R151, R154) : les parts de
   // R154 : 4 NM gagnés pour la « Maîtrise » de l'Ocultomancien (« Gagne 4 niveaux de maîtrise (NM). »), et aucun autre don n'en a
   const nm = dons.filter((d) => d.nm_gagnes !== undefined).map((d) => [d.id, d.nm_gagnes]);
   assert.deepEqual(nm, db.prepare('SELECT capacite_id, nm FROM capacite_nm_gagne').all().map((r) => [r.capacite_id, r.nm]));
-  if (don('capacites/ocultomancien-maitrise')?.effet === 'Gagne 4 niveaux de maîtrise (NM).') assert.deepEqual(nm, [['capacites/ocultomancien-maitrise', 4]]);
+  assert.equal(don('capacites/ocultomancien-maitrise').effet, 'Gagne 4 niveaux de maîtrise (NM).', 'à l’import');
+  assert.deepEqual(imp.classes.flatMap((c) => c.dons).filter((d) => d.nm_gagnes !== undefined).map((d) => [d.id, d.nm_gagnes]), [['capacites/ocultomancien-maitrise', 4]]);
   // l'accessoire « Un point de maîtrise d'arme » : un choix (accessoire_effet_cible.choix, migration 0076), sa famille dans personnage_accessoire
   const accessoire = regles.accessoires.flatMap((a) => a.effets).filter((e) => e.cible === 'maitrise_arme');
   assert.deepEqual(accessoire, [{ cible: 'maitrise_arme', cible_id: null, valeur: 1, choix: true }]);
@@ -313,15 +313,17 @@ test('dons de classe : la précision de la cellule de type (limite d’usage « 
 });
 
 test('magies : couleur des pages de magie, mono-magie (R15) et ses exceptions (R20), caractéristique au choix du Potentiel Illimité', () => {
-  const pi = regles.magies.find((m) => m.id === 'magies/potentiel-illimite');
+  // le Potentiel Illimité tel que l'import l'a écrit (test/aide-base-d-import.mjs : le site de dev modifie librement ses valeurs)
+  const imp = reglesDImport();
+  const pi = imp.magies.find((m) => m.id === 'magies/potentiel-illimite');
   assert.equal(pi.mono_magie, true);
   assert.equal(pi.caracteristique_id, null);
   assert.match(pi.caracteristique_brut, /AU CHOIX/);
   // la couleur d'une magie : les noms de ses classes de la palette (lib/palette-css.mjs), jamais un hex
   assert.deepEqual([pi.classe, pi.classe_2], ['couleur-magie-potentiel-illimite', 'couleur-2-magie-potentiel-illimite']);
-  assert.deepEqual(regles.magies.find((m) => m.id === 'magies/magie-de-la-corruption').ethnies_secondaires.sort(),
+  assert.deepEqual(imp.magies.find((m) => m.id === 'magies/magie-de-la-corruption').ethnies_secondaires.sort(),
     ['races/elfe-noir#ethnie:elfe-noir-charbon', 'races/felfe#ethnie:felfe-noir']);
-  assert.ok(regles.magies.every((m) => m.dieux.length >= 1), 'chaque magie a son dieu inné');
+  assert.ok(imp.magies.every((m) => m.dieux.length >= 1), 'chaque magie a son dieu inné');
   const palette = classesDeLaPalette();
   for (const m of regles.magies) {
     assert.deepEqual([m.classe, m.classe_2], [classeDeMagie(m.nom), classeDeSecondeMagie(m.nom)], m.id);
@@ -353,7 +355,7 @@ test('métiers : `apport` (infobulle de la liste Métier, demande du propriétai
       .filter(([, texte]) => texte).map(([libelle, texte]) => ({ libelle, texte: texteSansBalises(texte) })); // sans balises de mots-clés, comme tout regles.json
     assert.deepEqual(m.apport, attendu, m.id);
   }
-  assert.ok(regles.metiers.some((m) => m.apport.length === 3), 'un métier sans « Avantage possible » (l’Artisan) : la ligne omise');
+  assert.ok(reglesDImport().metiers.some((m) => m.apport.length === 3), 'un métier sans « Avantage possible » (l’Artisan, à l’import) : la ligne omise');
 });
 
 test('armures : `effet` (infobulle de la liste Armure, demande du propriétaire) — le texte de la base tel qu’écrit, sans balises, absent quand l’armure n’en a pas', () => {

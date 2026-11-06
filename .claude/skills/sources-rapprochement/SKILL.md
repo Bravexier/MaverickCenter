@@ -12,7 +12,7 @@ user-invocable: false
 - `tools/sources/rapprocher.mjs` : compare l'instantané à la base dans les deux sens ; `--avant <ancien instantané>` pour une mise à jour. La forme du registre
   est décrite en tête du fichier.
 - `tools/sources/ignorer/<classeur>.json` : registre justifié par classeur.
-- `client/test/sources-rapprochement.test.mjs`.
+- `client/test/sources-rapprochement.test.mjs` : les essais qui changent une cellule ou une ligne partent de la base d'import (`baseDImport`, `cheminDImport` de `test/aide-base-d-import.mjs`) ; une ligne réécrite par le site transformerait l'écart attendu en conflit.
 - `tools/import-gdocs.mjs` : export des Google Docs/Sheets listés dans `sources/sources.json` (`--dry-run`, `--only <id>`), depuis une machine qui a accès à Google.
 - `docs/sql/rapprochement-classeurs.md` : écarts relevés.
 - `tools/sources/tipeee.mjs` : l'instantané de la partie « Bienvenue » de Tipeee, `sources/tipeee/bienvenue.json` (`{ url, lu_le, paragraphes }`), tiré
@@ -49,5 +49,5 @@ user-invocable: false
   (`.gitattributes`), contrôlées par `--verifier` et le test.
 
 ## Tests
-- `client/test/sources-rapprochement.test.mjs`.
+- `client/test/sources-rapprochement.test.mjs` : les essais qui changent une cellule ou une ligne partent de la base d'import (`baseDImport`, `cheminDImport` de `test/aide-base-d-import.mjs`) ; une ligne réécrite par le site transformerait l'écart attendu en conflit.
 - `client/test/sources-tipeee.test.mjs` (l'outil Tipeee et l'instantané versionné ; l'extraction : `tipeee.test.mjs`).

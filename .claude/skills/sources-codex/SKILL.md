@@ -46,6 +46,6 @@ user-invocable: false
 - La relecture orthographique du Codex (R10) reste à faire, par une migration de données avec son registre (skill `base-orthographe`).
 
 ## Tests
-- `client/test/codex.test.mjs`.
+- `client/test/codex.test.mjs`. Un test qui simule une édition de page part de son état d'import (titre, texte, alias), pas du `.md` courant (le site peut modifier les 116 pages) ; les liens se résolvent comme le site (`lib/wikilinks-resolution.mjs`, slug compris), sur la base d'import (`test/aide-base-d-import.mjs`).
 - `client/test/eaunoire.test.mjs` : R21 dans la base (migration `0012-eaunoire`, nom corrigé partout, identifiant inchangé, le sort « Eau noire » garde le sien).
 - L'aller-retour de l'éditeur sur les pages du Codex : `client/test/markdown-edition.test.mjs` (skill `zone-edition`).

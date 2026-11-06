@@ -28,8 +28,9 @@ function arbre(n) {
   return { type: 'element', nom: n.tagName, attributs, enfants: (n.children ?? []).map(arbre).filter(Boolean) };
 }
 const enfants = (html) => fromHtml(html, { fragment: true }).children.map(arbre).filter(Boolean);
-// les guillemets et apostrophes typographiques du build (smartypants) ne sont qu'un rendu : comparés droits
-const droits = (t) => t.replace(/[‘’]/g, "'").replace(/[“”]/g, '"');
+// la typographie du build (smartypants : guillemets et apostrophes courbes, points de suspension pour « ... » ou « . . . », tirets pour « -- ») n'est
+// qu'un rendu, que le navigateur ne refait pas : comparée droite (un texte réécrit sur le site de dev peut en écrire)
+const droits = (t) => t.replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/…|\.\.\.|\. \. \./g, '...').replace(/—/g, '--').replace(/–/g, '-');
 
 test('chaque description de la base : le rendu du navigateur redonne le même Markdown que celui du build (liens du wiki, citations, listes…)', async () => {
   const blocs = ouvrirBase().prepare('SELECT evenement_id, rang, texte FROM evenement_extrait ORDER BY evenement_id, rang').all();

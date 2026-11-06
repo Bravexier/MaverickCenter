@@ -12,6 +12,8 @@ import { ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { NAV } from '../src/lib/nav.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { buildIndex, resolve } from '../src/lib/wikilinks-resolution.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const racine = trouverRacine();
@@ -37,31 +39,39 @@ test('chaque ligne du document est dans une page, et les pages sont celles du d�
 });
 
 test('une page modifiée par le site de dev : contrôlée dans son état d’import (historique), gardée telle quelle par une nouvelle écriture', (t) => {
+  // La page d'essai part de son état d'import (titre, texte, alias : lib/historique-site.mjs), quoi que le site de dev en ait fait depuis : seul
+  // l'historique réel de ses titre, texte et alias est remplacé par celui du test (celui des autres pages, et de ses mots-clés, reste le vrai).
   const tmp = dossierTemporaire('codex', { t });
   cpSync(join(racine, 'client', 'src', 'content', 'wiki', 'lore'), join(tmp, 'lore'), { recursive: true });
+  const id = 'lore/les-divinites';
   const fichier = join(tmp, 'lore', 'les-divinites.md');
-  const original = readFileSync(fichier, 'utf8');
-  const [, entete, corps] = original.match(/^(---\n[\s\S]*?\n---\n)\n([\s\S]*)$/);
-  const titre = JSON.parse(entete.match(/^title: (.*)$/m)[1]);
-  // ce que ferait le site : un titre et un texte réécrits, l'ancien titre en alias (serveur/edition.mjs, domaine PAGE)
-  const modifiee = `${entete.replace(/^title: .*$/m, 'title: "Les dieux"').replace(/^aliases: \[(.*)\]$/m, (_, a) => `aliases: [${a ? `${a}, ` : ''}${JSON.stringify(titre)}]`)}\nUn texte réécrit sur le site.\n`;
+  // les pages comptées comme modifiées par le site, lues par le script lui-même (codex.py#pages_du_site) sur la copie : la page d'essai y est-elle déjà ?
+  const duSiteReel = JSON.parse(spawnSync('python3', ['-I', '-c',
+    'import json, sys; sys.path.insert(0, sys.argv[1]); import codex; print(json.dumps(sorted(codex.pages_du_site(sur_disque=codex.pages_sur_disque(sys.argv[2])))))',
+    join(racine, 'tools', 'docs'), tmp], { encoding: 'utf8', cwd: racine }).stdout);
+  const { titre, corps_md: corpsDImport } = pagesDImport.find((p) => p.id === id);
+  const aliasDImport = historique.lignesDImport('alias').filter((a) => a.page_id === id).map((a) => a.texte);
+  const [, entete] = readFileSync(fichier, 'utf8').match(/^(---\n[\s\S]*?\n---\n)\n([\s\S]*)$/);
+  assert.match(entete, /^aliases: \[.*\]$/m, 'l’en-tête écrit ses alias (tools/db/pages_md.py#emit_frontmatter)');
+  // ce que ferait le site depuis l'import : un titre et un texte réécrits, l'ancien titre en alias (serveur/edition.mjs, domaine PAGE)
+  const modifiee = `${entete.replace(/^title: .*$/m, 'title: "Les dieux"').replace(/^aliases: \[.*\]$/m, () => `aliases: [${[...aliasDImport, titre].map((a) => JSON.stringify(a)).join(', ')}]`)}\nUn texte réécrit sur le site.\n`;
   writeFileSync(fichier, modifiee);
   const sql = (v) => (v === null ? 'NULL' : `'${String(v).replace(/'/g, "''")}'`);
   const ligne = (rang, table, cle, operation, avant, apres) =>
     `INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres) VALUES ('lot-essai', ${rang}, '2026-10-11T20:00:00Z', 'essai', NULL, '${table}', ${sql(JSON.stringify(cle))}, '${operation}', ${sql(avant && JSON.stringify(avant))}, ${sql(apres && JSON.stringify(apres))});`;
-  // l'historique réel des autres pages (le site de dev en modifie : textes, balises du glossaire), puis celui de cette page, écrit par le test
+  // l'historique réel (le site de dev modifie des pages : textes, titres, balises du glossaire), sauf les titre, texte et alias de la page d'essai
   const toutes = readFileSync(join(racine, 'data', 'rows', 'historique_modification.sql'), 'utf8').split('\n').filter((l) => l.startsWith('INSERT'));
-  const reel = toutes.filter((l) => !l.includes('"lore/les-divinites"'));
+  const cleDe = (l) => /, '(page|alias)', '(\{[^']*\})', '(?:inserer|modifier|supprimer)'/.exec(l);
+  const reel = toutes.filter((l) => { const m = cleDe(l); return !m || (JSON.parse(m[2]).id ?? JSON.parse(m[2]).page_id) !== id; });
   // les pages comptées comme modifiées par le site : celles de l'historique réel, plus celle-ci si elle n'y est pas
   const nDuSite = (sortie) => Number(/\((\d+) modifiées depuis par le site de dev/.exec(sortie)?.[1] ?? 0);
-  const attendues = nDuSite(codexPy('--verifier').stdout) + (reel.length === toutes.length ? 1 : 0);
-  const corpsDImport = pagesDImport.find((p) => p.id === 'lore/les-divinites').corps_md;
+  const attendues = nDuSite(codexPy('--verifier').stdout) + (duSiteReel.includes('les-divinites') ? 0 : 1);
   const ecrireHistorique = (corpsDImport) => {
     const chemin = join(tmp, 'historique.sql');
     writeFileSync(chemin, [
       ...reel,
-      ligne(1, 'page', { id: 'lore/les-divinites' }, 'modifier', { titre, corps_md: corpsDImport }, { titre: 'Les dieux', corps_md: 'Un texte réécrit sur le site.\n' }),
-      ligne(2, 'alias', { page_id: 'lore/les-divinites', ordre: 9 }, 'inserer', null, { page_id: 'lore/les-divinites', ordre: 9, texte: titre, cle: 'x' }),
+      ligne(1, 'page', { id }, 'modifier', { titre, corps_md: corpsDImport }, { titre: 'Les dieux', corps_md: 'Un texte réécrit sur le site.\n' }),
+      ligne(2, 'alias', { page_id: id, ordre: 99 }, 'inserer', null, { page_id: id, ordre: 99, texte: titre, cle: 'x' }),
     ].join('\n'));
     return chemin;
   };
@@ -150,6 +160,10 @@ test('R145, R183 : l’import du Codex ne pose pas le mot-clé « Sang » sur le
   const section = doc.slice(doc.indexOf('\n## Magie de Sang\n'), doc.indexOf('\n## ', doc.indexOf('\n## Magie de Sang\n') + 1));
   assert.match(section, /^### Confrérie du Sang \(Temple du sang\)$/m);
   assert.match(section, /La Pointe de Sang/);
+  // le mot-clé « Sang » de la base (0090), cherché par son identifiant figé : le site de dev peut le renommer, ses deux écritures sont refusées
+  const sang = db.prepare("SELECT libelle FROM mot_cle WHERE id = 'sang'").get();
+  assert.ok(sang, 'le mot-clé « Sang » existe (0090) : le vocabulaire de data/rows le contient');
+  const ecrituresDuSang = new Set(['sang', normalize(sang.libelle)]);
   for (const [nom, vocabulaire] of [
     ['un vocabulaire d’essai', "INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES ('codex', 'codex', 'codex', NULL), ('sang', 'Sang', 'sang', 'La quatrième barre.');\n"],
     ['le vocabulaire de data/rows', null],
@@ -164,9 +178,8 @@ test('R145, R183 : l’import du Codex ne pose pas le mot-clé « Sang » sur le
     assert.equal(r.status, 0, r.stdout + r.stderr);
     const tags = (f) => JSON.parse(readFileSync(join(tmp, 'lore', f), 'utf8').match(/^tags: (.*)$/m)[1]);
     for (const page of ['confrerie-du-sang', 'la-pointe-de-sang']) assert.deepEqual(tags(`${page}.md`), ['codex'], `${nom} : lore/${page}`);
-    assert.deepEqual(readdirSync(join(tmp, 'lore')).filter((f) => f.endsWith('.md') && tags(f).some((e) => normalize(e) === 'sang')), [], nom);
+    assert.deepEqual(readdirSync(join(tmp, 'lore')).filter((f) => f.endsWith('.md') && tags(f).some((e) => ecrituresDuSang.has(normalize(e)))), [], nom);
   }
-  assert.ok(db.prepare("SELECT 1 FROM mot_cle WHERE libelle_cle = 'sang'").get(), 'le mot-clé « Sang » existe (0090) : le vocabulaire de data/rows le contient');
 });
 
 test('pages du Codex : type lore, famille docs, brouillon, la copie du propriétaire en seconde source, le mot-clé « codex »', () => {
@@ -190,12 +203,19 @@ test('pages du Codex : type lore, famille docs, brouillon, la copie du propriét
   assert.equal(codex.find((i) => i.label === 'Factions').path, 'lore/temples-cultes-guildes/');
 });
 
+// La sortie de l'import (le texte des pages tel que codex.py l'a écrit), lue avec l'index des pages de la même base d'import (aide-base-d-import.mjs) et
+// la résolution du site (lib/wikilinks-resolution.mjs : slug, titre, alias, `type/slug`) : un titre renommé par le site de dev sans alias (le slug
+// suffit, serveur/edition.mjs#PAGE.deriver) ou une page supprimée depuis n'en fait pas un lien cassé de l'import.
 test('les liens du Codex mènent tous à une page (les sommaires ne citent que des pages produites)', () => {
-  const titres = new Map(db.prepare('SELECT titre_cle, id FROM page').all().map((p) => [p.titre_cle, p.id]));
-  const alias = new Set(db.prepare('SELECT cle FROM alias').all().map((a) => a.cle));
-  for (const p of pagesDImport) {
+  const base = baseDImport();
+  const alias = Map.groupBy(base.prepare('SELECT page_id, texte FROM alias').all(), (a) => a.page_id);
+  const index = buildIndex(base.prepare('SELECT id, type, slug, titre FROM page').all()
+    .map((p) => ({ id: p.id, type: p.type, slug: p.slug, title: p.titre, aliases: (alias.get(p.id) ?? []).map((a) => a.texte) })));
+  const codex = base.prepare('SELECT p.id, p.corps_md FROM page p JOIN page_source ps ON ps.page_id = p.id AND ps.ordre = 0 JOIN source s ON s.id = ps.source_id WHERE s.texte = ? ORDER BY p.id').all(SOURCE);
+  assert.equal(codex.length, 116);
+  for (const p of codex) {
     for (const [, cible] of p.corps_md.matchAll(/\[\[([^\]|]+)(?:\|[^\]]*)?\]\]/g)) {
-      assert.ok(titres.has(normalize(cible)) || alias.has(normalize(cible)), `${p.id} : [[${cible}]] ne mène à aucune page`);
+      assert.ok(resolve(index, cible), `${p.id} : [[${cible}]] ne mène à aucune page`);
     }
   }
 });

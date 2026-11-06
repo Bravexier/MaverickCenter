@@ -6,17 +6,23 @@ import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { lecteurDeResistances } from '../src/lib/resistance-texte.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const historique = historiqueSite(db);
 const etat = (slug) => `guide/liste-des-alterations-d-etat#etat:${slug}`;
-const lire = lecteurDeResistances([
-  ...db.prepare('SELECT id, nom FROM magie').all().map((m) => ({ type: 'magie', id: m.id, nom: m.nom })),
-  ...db.prepare('SELECT id, nom FROM etat').all().map((e) => ({ type: 'etat', id: e.id, nom: e.nom })),
-  ...db.prepare(`SELECT DISTINCT cible_type AS type, COALESCE(cible_magie_id, cible_etat_id) AS id, cible_brut AS nom FROM magie_resistance
+/** Le lecteur de la fiche sur les noms d'une base (magies, altérations, écritures rapprochées par les importeurs). */
+const lecteurDe = (base) => lecteurDeResistances([
+  ...base.prepare('SELECT id, nom FROM magie').all().map((m) => ({ type: 'magie', id: m.id, nom: m.nom })),
+  ...base.prepare('SELECT id, nom FROM etat').all().map((e) => ({ type: 'etat', id: e.id, nom: e.nom })),
+  ...base.prepare(`SELECT DISTINCT cible_type AS type, COALESCE(cible_magie_id, cible_etat_id) AS id, cible_brut AS nom FROM magie_resistance
                  WHERE cible_type IN ('magie', 'etat')   -- comme lib/fiche-regles.mjs : pas de cible physique (R174)
                  UNION SELECT DISTINCT cible_type, COALESCE(cible_magie_id, cible_etat_id), cible_brut FROM ethnie_resistance`).all(),
 ]);
+// les exemples et les règles écrites dans les textes (le site de dev les réécrit librement, noms compris) : lus avec les noms de l'import, sur les
+// textes de l'import (test/aide-base-d-import.mjs) ; l'état courant, par des invariants (chaque texte est lu, ou porte une raison)
+const lire = lecteurDe(baseDImport());
+const lireCourant = lecteurDe(db);
 const rien = { effets: [], choix: false };
 
 test('crans écrits : la magie innée et son altération, l’altération seule, des cibles nommées, une colonne « +1 cran de résistance »', () => {
@@ -99,25 +105,21 @@ test('pas compté : au choix ou aléatoire (signalé), passager, visant un autre
   ]) assert.deepEqual(lire(autre), rien, String(autre));
 });
 
-/** Textes des dons tels qu'ils sont, avec la colonne d'une cellule de tableau. */
-function textesDesDons() {
+/** Textes des dons d'une base, avec la colonne d'une cellule de tableau. */
+function textesDesDons(base = db) {
   return [
-    ...db.prepare('SELECT id, texte FROM race_don').all().map((d) => ({ id: d.id, texte: d.texte })),
-    ...db.prepare(`SELECT c.race_id || ' L' || c.ligne || ' C' || c.colonne AS id, c.valeur AS texte, k.libelle AS colonne FROM race_don_tableau_cellule c
+    ...base.prepare('SELECT id, texte FROM race_don').all().map((d) => ({ id: d.id, texte: d.texte })),
+    ...base.prepare(`SELECT c.race_id || ' L' || c.ligne || ' C' || c.colonne AS id, c.valeur AS texte, k.libelle AS colonne FROM race_don_tableau_cellule c
                    JOIN race_don_tableau_colonne k ON k.race_id = c.race_id AND k.rang = c.colonne`).all(),
-    ...db.prepare('SELECT id, effet AS texte, remarque FROM capacite').all(),
+    ...base.prepare('SELECT id, effet AS texte, remarque FROM capacite').all(),
   ];
 }
 
 test('toute la base : un don qui parle de cran de résistance ou d’immunité donne quelque chose, laisse un choix, ou ne vaut qu’un temps ou pour un autre', () => {
   const plier = (t) => String(t ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
   const noms = db.prepare('SELECT nom FROM magie UNION SELECT nom FROM etat').all().map((r) => plier(r.nom));
-  let comptes = 0;
-  let auChoix = 0;
-  const magiesAuChoix = [];
-  const siMagieInnee = [];
   for (const d of textesDesDons()) {
-    const lecture = lire(d.texte, d.colonne === undefined ? { remarque: d.remarque } : { colonne: d.colonne });
+    const lecture = lireCourant(d.texte, d.colonne === undefined ? { remarque: d.remarque } : { colonne: d.colonne });
     for (const e of lecture.effets) {
       assert.ok(['magie', 'etat', 'magie_innee', 'etat_magie_innee', 'etats_resistes_magie_innee', 'faiblesses_etats_magie_innee'].includes(e.type), d.id);
       // « ... plus fort ! » (décision R163) : une annulation, sans crans
@@ -125,12 +127,8 @@ test('toute la base : un don qui parle de cran de résistance ou d’immunité d
       assert.equal(e.id === null, e.type.endsWith('innee'), d.id);
     }
     if (lecture.si_magie_innee) {
-      siMagieInnee.push(d.id);
       assert.ok(lecture.effets.some((e) => e.id === null), `${d.id} : la remarque du D14 sur un don qui vise la magie innée`);
     }
-    comptes += lecture.effets.length ? 1 : 0;
-    auChoix += lecture.choix ? 1 : 0;
-    if (lecture.magies_au_choix) magiesAuChoix.push(d.id);
     const t = plier(d.texte);
     const parle = /\bcrans? de (?:resistance|vulnerabilite)|\bimmunise|^- (?:resistance|vulnerabilite) a la magie/m.test(t) || /cran de resistance/.test(plier(d.colonne));
     // non lu : passager, pour un autre, partiel… ou une immunité qui ne nomme ni magie ni altération (« immunise aux attaques discrètes »)
@@ -138,11 +136,15 @@ test('toute la base : un don qui parle de cran de résistance ou d’immunité d
       assert.ok(/immunise/.test(t) && !noms.some((n) => new RegExp(`(?:^|[^a-z])${n}s?(?![a-z])`).test(t)), `${d.id} : « ${d.texte} » n’est pas lu`);
     }
   }
-  assert.ok(comptes > 0 && auChoix > 0);
-  // une magie au choix ou tirée (décision R137) : les deux dons de la décision, aucun autre
-  assert.deepEqual(magiesAuChoix.sort(), ['capacites/ocultomancien-resilience', 'races/anansi#don:arcane-en-innee']);
-  // la remarque du D14 (décision R163) : les dons dont la remarque la porte, aujourd'hui « Punis-moi ... » et « ... plus fort ! »
-  assert.deepEqual(siMagieInnee.sort(), db.prepare("SELECT id FROM capacite WHERE remarque LIKE '%lancer un D14 pour déterminer une résistance magique aléatoire%' ORDER BY id").all().map((r) => r.id));
+  // à l'import : des dons lus, des choix, et une magie au choix ou tirée (décision R137) — les deux dons de la décision, aucun autre (le site de dev
+  // peut en écrire d'autres : aujourd'hui, ce que la boucle ci-dessus lit)
+  const lectures = textesDesDons(baseDImport()).map((d) => ({ id: d.id, ...lire(d.texte, d.colonne === undefined ? { remarque: d.remarque } : { colonne: d.colonne }) }));
+  assert.ok(lectures.some((l) => l.effets.length) && lectures.some((l) => l.choix));
+  assert.deepEqual(lectures.filter((l) => l.magies_au_choix).map((l) => l.id).sort(), ['capacites/ocultomancien-resilience', 'races/anansi#don:arcane-en-innee']);
+  // la remarque du D14 (décision R163), à l'import : les dons dont la remarque la porte, « Punis-moi ... » et « ... plus fort ! »
+  assert.deepEqual(lectures.filter((l) => l.si_magie_innee).map((l) => l.id).sort(),
+    baseDImport().prepare("SELECT id FROM capacite WHERE remarque LIKE '%lancer un D14 pour déterminer une résistance magique aléatoire%' ORDER BY id").all().map((r) => r.id));
+  assert.deepEqual(lectures.filter((l) => l.si_magie_innee).map((l) => l.id).sort(), ['capacites/flagelleur-plus-fort', 'capacites/flagelleur-puni-moi']);
 });
 
 test('import : chaque ethnie a, d’après son onglet, les crans que la fiche auto lui donne (ethnie_resistance), plus l’altération de sa magie quand l’onglet l’écrit', () => {

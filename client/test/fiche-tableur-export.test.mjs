@@ -9,10 +9,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
-import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import {
   CASES_CARACTERISTIQUES, CASES_COMPETENCES, CASES_POSTURES, CASES_RESISTANCES, DONS, EMPLACEMENTS_DU_MODELE, LONGUEUR_MAX_D_UNE_CASE, MAITRISES,
   MARQUEUR_DES_NOTES, ORDINATEUR, REMPLISSAGE_DE_ATTEINT, TITRE_DE_L_INVENTAIRE, casesDesDes, casesDuDon, decouperAdresse,
@@ -31,11 +29,14 @@ import { coutEnUneCase } from '../src/lib/sort-cout.mjs';
 import { modesAuNm, valeurAuNm } from '../src/lib/sort-maitrise.mjs';
 import { zonesDuClasseur } from '../src/lib/tableur-ecriture.mjs';
 import { recollerLeTexte, sansLaCoupure, tientDans } from '../src/lib/tableur-mesure.mjs';
+import { reglesDImport } from './aide-base-d-import.mjs';
 
 // les coûts que la migration 0063 a répartis (décision R105) et leur écriture dans le classeur
 const REPARTIS = new Map(JSON.parse(readFileSync(new URL('../../data/migrations/0063-cout-secondaire.json', import.meta.url), 'utf8')).repartis.map((r) => [r.id, r]));
 
-const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(ouvrirBase({ sansExemples: false })))); // tel que la page le reçoit
+// les fiches d'essai choisissent dons, armes et matériaux par leur nom ou une valeur de règle, et le moteur lit ses règles dans les textes : l'export
+// s'épingle sur l'état d'import de la base (le site de dev réécrit librement noms, textes et valeurs ; test/aide-base-d-import.mjs)
+const regles = reglesDImport(); // tel que la page le reçoit
 const DATE = '15/10/2026';
 const xpDuNiveau = (n) => regles.niveaux.find((l) => l.niveau === n).xp_min;
 const trouve = (liste, critere, quoi) => {

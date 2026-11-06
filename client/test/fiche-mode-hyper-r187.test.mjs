@@ -12,6 +12,7 @@ import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { texteSansBalises, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
+import { baseDImport, lotsAvant, reglesDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
@@ -54,8 +55,11 @@ test('R187 (4) : les puces du Mode Hyper 100 % et sa phrase « En revanche, … 
   const historique = historiqueSite(db);
   assert.equal(historique.valeurDImport('mode_texte', { id: TEXTE_CENT }, 'texte'), t);
   // la page retirée, lue dans l'historique du site de dev (son texte d'import, puis chaque modification), comme la fiche la lisait avant R187 : la
-  // section « ## Mode Hyper 100% » donnait les mêmes puces, la même suite et les mêmes niveaux
-  const vocabulaire = vocabulaireDesMotsCles(chargerVocabulaire(db));
+  // section « ## Mode Hyper 100% » donnait les mêmes puces, la même suite et les mêmes niveaux. Ses balises (« {{chakra}} », posées par le site de dev
+  // avant la 0095) se rendent avec le vocabulaire de leur époque, celui d'avant le retrait (lotsAvant('0095')), et se comparent aux règles d'import :
+  // le site de dev peut renommer depuis un mot-clé que la page citait, sans rien changer à R187
+  const vocabulaire = vocabulaireDesMotsCles(chargerVocabulaire(baseDImport({ garder: lotsAvant('0095') })));
+  const imp = reglesDImport();
   const versions = [historique.valeurDImport('page', { id: LISTE }, 'corps_md'), ...db
     .prepare("SELECT apres FROM historique_modification WHERE table_nom = 'page' AND cle = ? AND operation = 'modifier' ORDER BY fait_le, lot_id, rang")
     .all(JSON.stringify({ id: LISTE }))
@@ -65,10 +69,10 @@ test('R187 (4) : les puces du Mode Hyper 100 % et sa phrase « En revanche, … 
   for (const corps of versions) {
     const page = texteSansBalises(corps, vocabulaire, { definitions: false });
     const section = /## Mode Hyper 100 ?%\s*\n([\s\S]*?)(?=\n## |$)/.exec(page)[1];
-    assert.deepEqual(puces(section), regles.mode_hyper.cent.effets);
-    assert.equal(/^En revanche, (.+)$/m.exec(section)[1].trim(), regles.mode_hyper.cent.suite);
-    assert.equal(/se d[ée]bloque au niveau (\d+)/.exec(page)[1], String(regles.mode_hyper.niveau));
-    assert.equal(/disponible qu['’]au niveau (\d+)/.exec(section)[1], String(regles.mode_hyper.cent.niveau));
+    assert.deepEqual(puces(section), imp.mode_hyper.cent.effets);
+    assert.equal(/^En revanche, (.+)$/m.exec(section)[1].trim(), imp.mode_hyper.cent.suite);
+    assert.equal(/se d[ée]bloque au niveau (\d+)/.exec(page)[1], String(imp.mode_hyper.niveau));
+    assert.equal(/disponible qu['’]au niveau (\d+)/.exec(section)[1], String(imp.mode_hyper.cent.niveau));
   }
 });
 

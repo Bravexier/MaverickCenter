@@ -7,7 +7,6 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { enregistrerFiche } from '../serveur/fiches.mjs';
-import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import {
   ajusterValeurDuMoment, alignementDe, artisanatDe, attributsDe, bonusDuMetier, borner, choisirObjetDeMetier, choixDeMetierValables, inventaireSelonLeMetier,
@@ -18,17 +17,18 @@ import {
   competencesDe, donsAChoisir, donsValables, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, magiesInneesPermises, maitriseDesSorts, niveauGlobal,
   gainsAttendus, gainsDeNiveau, maitriseDArme, niveauxDeClasse, notationDesDes, npmMax, puissanceMagique, refusClasse, refusMagieAcquise, resistancesDe, sortsParNpm, sortsPossibles, ecrireValeurDuMoment, valeursDuMoment, xpDuNiveauSuivant,
 } from '../src/lib/fiche-moteur.mjs';
-import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { FIL_ROUGE, chargerFilRouge } from '../src/lib/guide-fil-rouge.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { baseDImport, cheminDImport, lotsAvant, reglesDImport } from './aide-base-d-import.mjs';
 
-const db = ouvrirBase({ sansExemples: false });
-const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que la page le reçoit
+// les règles (textes et valeurs que le site de dev modifie librement) : épinglées sur leur état d'import (test/aide-base-d-import.mjs)
+const db = baseDImport();
+const regles = reglesDImport(); // tel que la page le reçoit
 const racine = dossierTemporaire('moteur');
-const vivante = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: racine }).chemin);
+const vivante = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminDImport(), dossier: racine }).chemin);
 
 /**
  * Humain central, Feu inné (Social), Guerrier, HACHE pour sa maîtrise au choix (décision R148 : sans elle, un choix reste à faire) ; 14 points de
@@ -662,9 +662,11 @@ test('saisie d’un curseur au clic droit (demande du propriétaire) : ramenée 
 });
 
 test('valeurs du moment : de 0 au maximum, absentes au maximum (corruption à 0) ; la corruption prend la place du chakra, pour tous (R142)', () => {
-  // les phrases du guide que valeursDuMoment applique, telles que la page les affiche (sans les balises du glossaire)
-  const vocabulaire = chargerVocabulaire(db);
-  const corps = (id) => texteSansBalises(db.prepare('SELECT corps_md FROM page WHERE id = ?').get(id).corps_md, vocabulaire, { markdown: true });
+  // les phrases du guide que valeursDuMoment applique, telles que la page les affiche (sans les balises du glossaire) ; écrites par le site de dev
+  // (décisions R142, R146), elles se lisent dans l'état d'après la dernière migration : un texte réécrit depuis sur le site ne les défait pas
+  const ref = baseDImport({ garder: lotsAvant('0093') });
+  const vocabulaire = chargerVocabulaire(ref);
+  const corps = (id) => texteSansBalises(ref.prepare('SELECT corps_md FROM page WHERE id = ?').get(id).corps_md, vocabulaire, { markdown: true });
   assert.match(corps('guide/fiche-attributs'), /25 de chakra maximum, si jamais vous avez 2 points de corruption, vous ne pourrez pas monter au-delà de 23\/25/);
   // décision R142 : la magie de la Corruption ne dispense pas de cette règle ; seule la mort au maximum est épargnée, à la Corruption innée ou acquise (R146)
   assert.doesNotMatch(corps('guide/fiche-attributs'), /ne sont pas concernés par cette règle/);

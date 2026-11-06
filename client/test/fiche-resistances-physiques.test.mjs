@@ -6,14 +6,14 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
-import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { CASES_RESISTANCES } from '../src/lib/fiche-tableur-cases.mjs';
 import { cellulesDeLaFiche } from '../src/lib/fiche-tableur-export.mjs';
+import { reglesDImport } from './aide-base-d-import.mjs';
 
-const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(ouvrirBase({ sansExemples: false })))); // tel que la page le reçoit
+// les règles (textes et valeurs que le site de dev modifie librement) : épinglées sur leur état d'import (test/aide-base-d-import.mjs)
+const regles = reglesDImport(); // tel que la page le reçoit
 const PI = 'magies/potentiel-illimite';
 const FEU = 'magies/magie-du-feu';
 const GLACE = 'magies/magie-de-la-glace';

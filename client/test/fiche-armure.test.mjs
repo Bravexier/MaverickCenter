@@ -11,16 +11,16 @@ import { test } from 'node:test';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { enregistrerFiche, lireFiche } from '../serveur/fiches.mjs';
 import { forgerArmure } from '../src/lib/armure-forge.mjs';
-import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import {
   ARMURE_ENTIERE, armureApresChoix, partiesApresReglage, partiesDeLArmure, partiesValables, soliditeMaxDeLArmure,
 } from '../src/lib/fiche-moteur.mjs';
-import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { baseDImport, cheminDImport, reglesDImport } from './aide-base-d-import.mjs';
 
-const db = ouvrirBase({ sansExemples: false });
-const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que la page le reçoit
+// les règles (textes et valeurs que le site de dev modifie librement) : épinglées sur leur état d'import (test/aide-base-d-import.mjs)
+const db = baseDImport();
+const regles = reglesDImport(); // tel que la page le reçoit
 const ameliorations = db.prepare("SELECT * FROM amelioration_equipement WHERE cible = 'armure' ORDER BY niveau").all().map((a) => ({ ...a }));
 const PARTIES = db.prepare("SELECT id, nom FROM armure_emplacement WHERE id NOT IN ('armure-complete', 'bouclier') ORDER BY ordre").all().map((e) => ({ ...e }));
 const grille = regles.armures.find((a) => Number(a.solidite_uni) !== 1 && a.solidite >= 2);
@@ -105,7 +105,7 @@ test('R95 (« Suppression de la création par pièces ») : la page « Armures �
 const racine = dossierTemporaire('armure');
 
 test('aller-retour par le service : l’armure, son amélioration et la solidité de ses parties s’enregistrent et se relisent telles quelles', () => {
-  const vivante = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, 'db') }).chemin);
+  const vivante = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminDImport(), dossier: join(racine, 'db') }).chemin);
   try {
     // une armure de base et son amélioration (décision R165 : une fiche porte UNE armure ; l'armure élémentaire : test/fiche-armure-elementaire.test.mjs)
     // une classe qui la porte (sans classe, un vêtement seulement : R165 (6), l'armure partirait, trop lourde)

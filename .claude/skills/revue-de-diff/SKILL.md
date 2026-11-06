@@ -22,7 +22,8 @@ Relis d'un regard neuf, sans la conclusion attendue : `git diff origin/dev...HEA
   - Bugs, cas limites (vide, `NULL`, premier et dernier, casse et accents passés par `normalize`), erreurs de bornes.
   - Une valeur déduite au lieu d'être lue dans la base ou dans une source (règle d'or).
 - **Tests** (`tests-conventions`).
-  - Une logique nouvelle sans test, un test qui épingle une valeur de l'import sans `historique-site`.
+  - Une logique nouvelle sans test, un test qui épingle une valeur de l'import sans `historique-site` ni `aide-base-d-import`.
+  - Un test du lot fige-t-il un texte ou une valeur modifiable sur le site de dev (prose, nom, coût, dés…) sur l'état courant, ou cherche-t-il par nom plutôt que par id ? (`CLAUDE.md` « Pas de texte figé »)
   - Un test sauté, un test qui ne peut pas échouer.
 - **Invariants.**
   - Ceux du skill de la zone, et `site-version-portable` (module partagé par deux scripts de page, `src/lib` qui touche au navigateur).

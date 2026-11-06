@@ -8,14 +8,14 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { lecteurDAcquis } from '../src/lib/acquis-texte.mjs';
 import { critiqueDeLAccessoire, critiqueDuDon } from '../src/lib/critique-texte.mjs';
-import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
-import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { COMPETENCES_D_ATTAQUE, effetDePosture } from '../src/lib/posture-texte.mjs';
+import { baseDImport, reglesDImport } from './aide-base-d-import.mjs';
 
-const db = ouvrirBase({ sansExemples: false });
-const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que la page le reçoit
+// les règles (textes et valeurs que le site de dev modifie librement) : épinglées sur leur état d'import (test/aide-base-d-import.mjs)
+const db = baseDImport();
+const regles = reglesDImport(); // tel que la page le reçoit
 const lignes = (sql, ...p) => db.prepare(sql).all(...p).map((l) => ({ ...l }));
 const POSTURE = (slug) => `guide/postures#posture:${slug}`;
 const xpDuNiveau = (n) => regles.niveaux.find((l) => l.niveau === n).xp_min;

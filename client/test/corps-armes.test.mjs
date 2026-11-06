@@ -96,7 +96,8 @@ test('remarque d’une arme : ajoutée (une entrée sous le tableau de sa famill
   const ajoute = corpsDesArmesApres(corpsSans, 'arme', a, avec, contexte);
   const entree = ligneDeRemarque(avec);
   assert.ok(entree.endsWith('** : Une remarque \\*neuve\\* sur deux lignes.'), 'sur une ligne, échappée');
-  if (a.id === BOMBE) assert.equal(entree, '**Remarque de l’arme « Bombe perçante »** : Une remarque \\*neuve\\* sur deux lignes.');
+  // le nom de l'arme, tel que la base l'écrit aujourd'hui (le site de dev peut la renommer)
+  if (a.id === BOMBE) assert.equal(entree, `**Remarque de l’arme « ${a.nom} »** : Une remarque \\*neuve\\* sur deux lignes.`);
   const lignes = ajoute.split('\n');
   const i = lignes.indexOf(entree);
   const [debut, fin] = bornesDe(a)(lignes);

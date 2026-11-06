@@ -5,13 +5,12 @@
 // accessoire qui se brise, Symbiose (R112, R167) et Mode Hyper 100 % (R172), bi-classé, « Noyau dur », objet changé, nettoyage à l'enregistrement.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
-import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
+import { reglesDImport } from './aide-base-d-import.mjs';
 
-const db = ouvrirBase({ sansExemples: false });
-const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que la page le reçoit
+// les règles (textes et valeurs que le site de dev modifie librement) : épinglées sur leur état d'import (test/aide-base-d-import.mjs)
+const regles = reglesDImport(); // tel que la page le reçoit
 const xpDuNiveau = (n) => regles.niveaux.find((l) => l.niveau === n).xp_min;
 const E = (id) => `ressources/accessoires#effet:${id}`;
 const AE = (id) => `ressources/pieces-elementaires#arme-elementaire:${id}`;

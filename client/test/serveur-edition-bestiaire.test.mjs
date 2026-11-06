@@ -26,6 +26,7 @@ import { comparerBases } from '../src/lib/notes-de-version.mjs';
 import { empreinte, PORTRAIT_MAX, resumeDuPortrait } from '../src/lib/portrait.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { lireTables } from '../serveur/notes-de-version.mjs';
+import { baseDImport, texteDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const racine = dossierTemporaire('edition-bestiaire');
@@ -40,8 +41,10 @@ const un = (sql, ...p) => db.prepare(sql).get(...p);
 const tous = (sql, ...p) => db.prepare(sql).all(...p).map((l) => ({ ...l }));
 const nomLibre = (base) => `${base} ${process.pid} ${(n += 1)}`;
 
-// une carte dont la ligne « Santé : … Chakra : … Barrière : … » est typée, et ses rubriques
-const carte = un('SELECT * FROM monstre WHERE sante IS NOT NULL AND armure_physique IS NOT NULL ORDER BY espece_id, rang LIMIT 1');
+// une carte qui a les rubriques que les essais réécrivent et des capacités (le texte d'une rubrique, que le site de dev peut rendre illisible, n'y entre pas)
+const carte = un(`SELECT m.* FROM monstre m WHERE EXISTS (SELECT 1 FROM monstre_capacite c WHERE c.monstre_id = m.id)
+  AND (SELECT count(DISTINCT r.rubrique) FROM monstre_rubrique r WHERE r.monstre_id = m.id AND r.rubrique IN ('attributs', 'caracteristiques', 'defense', 'capacites')) = 4
+  ORDER BY m.espece_id, m.rang LIMIT 1`);
 const rubrique = (cle) => un('SELECT * FROM monstre_rubrique WHERE monstre_id = ? AND rubrique = ? ORDER BY rang LIMIT 1', carte.id, cle);
 
 test('modèle : tables et entités du bestiaire, catégories de lib/monstre-champs.mjs, rendus des champs', () => {
@@ -172,7 +175,7 @@ test('nouvelle espèce (décision R64) : rangée sous un groupe au choix ; une e
 
 test('description de la créature (décision R65) : la carte reçoit la sienne, l’espèce garde la sienne ; vide = NULL', () => {
   const avantEspece = un('SELECT description FROM monstre_espece WHERE id = ?', carte.espece_id).description;
-  assert.equal(un('SELECT description FROM monstre WHERE id = ?', carte.id).description, null, 'le doc n’en écrit aucune');
+  assert.equal(texteDImport('monstre', { id: carte.id }, 'description'), null, 'le doc n’en écrit aucune');
   const r = enregistrer({ op: 'modifier', table: 'monstre', cle: { id: carte.id }, valeurs: { description: 'Une créature à part.\n\nDeux paragraphes.' } });
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
   assert.equal(un('SELECT description FROM monstre WHERE id = ?', carte.id).description, 'Une créature à part.\n\nDeux paragraphes.');
@@ -244,7 +247,8 @@ test('curseur d’échelle et butin en infobulle : les listes du service (serveu
   assert.deepEqual(l.renvoisAuxDegatsMoyens, renvoisAuxDegatsMoyens(db));
   const renvoi = l.renvoisAuxDegatsMoyens[0];
   assert.equal(rendreChamp('monstre-echelle', '1-10', { id: renvoi, categorie: 'boss' }, l), htmlDeLEchelle('1-10', 'boss', l.echellesDePuissance, true));
-  const butin = un("SELECT texte FROM monstre_butin WHERE texte LIKE 'Gelée%' ORDER BY espece_id, rang LIMIT 1").texte;
+  // une case du butin telle que l'import l'écrit (le site de dev peut la réécrire en un texte sans objet connu)
+  const butin = baseDImport().prepare("SELECT texte FROM monstre_butin WHERE texte LIKE 'Gelée%' ORDER BY espece_id, rang LIMIT 1").get().texte;
   assert.equal(rendreChamp('monstre-butin', butin, {}, l), htmlDuButin(butin, l.objetsDuButin, l.magies.map((m) => m.nom)));
   assert.match(rendreChamp('monstre-butin', 'Minitaire de Foudre', {}, l), /data-bulle="bulle-butin-minitaire"[^>]*>Minitaire de Foudre<\/button>$/);
   assert.match(rendreChamp('monstre-butin', butin, {}, l), /<button type="button" class="bobjet" data-bulle="bulle-butin-/);
@@ -390,7 +394,7 @@ test('capacités communes (décisions R66, R69) : modifiées pour toutes leurs c
   const html = (id) => appel('POST', '/api/edition/bestiaire/', { capacites: [id] }).corps.capacites[id];
   // une capacité à emplacement (« Minus », {10}) portée par plusieurs cartes, dont une à sa valeur propre
   // (un emplacement « {N} », jamais une balise du glossaire « {{…}} » : lib/monstre-champs.mjs#emplacements)
-  const gabarit = un("SELECT * FROM monstre_capacite_commune WHERE description GLOB '*{[0-9]*}*' AND (SELECT count(*) FROM monstre_capacite p WHERE p.capacite_commune_id = id) > 2 ORDER BY id LIMIT 1");
+  const gabarit = un("SELECT * FROM monstre_capacite_commune WHERE description GLOB '*{[0-9]*}*' AND NOT description GLOB '*{[0-9]*}*{[0-9]*}*' AND (SELECT count(*) FROM monstre_capacite p WHERE p.capacite_commune_id = id) > 2 ORDER BY id LIMIT 1");
   assert.ok(gabarit, 'une capacité à emplacement');
   const porteurs = tous('SELECT * FROM monstre_capacite WHERE capacite_commune_id = ? ORDER BY monstre_id, rang', gabarit.id);
   const [p] = porteurs;

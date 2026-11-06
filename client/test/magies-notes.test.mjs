@@ -26,7 +26,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { createMarkdownProcessor, unified } from '@astrojs/markdown-remark';
-import { nomDeNote, nomPlie } from '../src/lib/corps-magies.mjs';
+import { lignesDEntree, nomDeNote, nomPlie } from '../src/lib/corps-magies.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
@@ -43,6 +43,12 @@ const REGENERER = 'python3 -I tools/sheets/magies.py --dump <magie-v8.json> --ex
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 const page = (slug) => readFileSync(join(dossierPages, `${slug}.md`), 'utf8');
+/**
+ * La section des notes d'une page telle que le classeur la donne : les entrées de la copie de contrôle, écrites comme l'importeur et la base les écrivent
+ * (lib/corps-magies.mjs#lignesDEntree), quoi que le site de dev ait fait depuis des noms et des remarques des sorts.
+ */
+const pageDuClasseur = (slug) => `## ${SECTION}\n\n${reference().filter((e) => e.page === slug)
+  .map((e) => lignesDEntree(`${e.genre} de la cellule « ${e.colonne} » du sort « ${e.sort} »`, e.lignes).join('\n')).join('\n\n')}\n`;
 const section = (texte) => texte.split(new RegExp(`^## ${SECTION}\\s*$`, 'm'))[1]?.split(/^## /m)[0] ?? null;
 // « Remarque du sort « … » » : la remarque d'un sort réécrite par le site de dev (lib/corps-magies.mjs), sans cellule
 const ETIQUETTE = /^\*\*(Note|Commentaire résolu|Commentaire|Remarque)(?: de la cellule « (.+?) »)? du sort « (.+?) »\*\*(?: : (.*))?$/;
@@ -132,10 +138,15 @@ for (const s of base.prepare('SELECT id, magie_id, nom FROM sort').all()) {
   if (!sortsDuSite.has(slug)) sortsDuSite.set(slug, new Map());
   sortsDuSite.get(slug).set(nomPlie(historique.valeurDImport('sort', cle, 'nom', s.nom)), { nom: nomDeNote(s.nom), remarque });
 }
+/**
+ * Le corps de la page magies/<slug> tel que l'import (et les migrations d'avant le site de dev) l'a écrit : la valeur « avant » de sa première
+ * modification par le site (historique_modification), sinon le corps actuel. Ce qu'un test cite du classeur s'y vérifie sans condition, quoi que le
+ * site ait fait depuis des noms et des remarques des sorts. (baseDImport ne le rend pas : une migration passée après le site a réécrit ces corps, et
+ * defaireLeSite garde alors la cellule telle que la migration l'a laissée.)
+ */
+const pageDImport = (slug) => historique.valeurDImport('page', { id: `magies/${slug}` }, 'corps_md');
 /** Ce que le site a fait du sort `sort` (nom d'import) de la page : undefined s'il n'y a pas touché. */
 const duSite = (slug, sort) => sortsDuSite.get(slug)?.get(nomPlie(sort));
-/** Le sort n'a été ni renommé ni réécrit par le site : ce que les tests citent du classeur vaut tel quel. */
-const intact = (slug, sort) => !duSite(slug, sort);
 /** Les sorts de la page dont le site a réécrit la remarque, sous leur nom actuel. */
 const reecrits = (slug) => new Set([...(sortsDuSite.get(slug)?.values() ?? [])].filter((x) => x.remarque).map((x) => x.nom));
 /** La copie de contrôle telle que la page doit la citer aujourd'hui : sorts à remarque réécrite retirés, sorts renommés sous leur nouveau nom. */
@@ -150,10 +161,13 @@ const entreesDuClasseur = (slug, texte) => {
   return entrees(texte).filter((e) => e.genre !== 'Remarque' && !exclus.has(e.sort));
 };
 
-/** Écarts entre les entrées d'une page et la copie de contrôle : lignes, genre, colonne, sort, ordre, sauts forcés. */
-function ecartsPage(slug, texte) {
-  const attendu = referenceDuSite().filter((e) => e.page === slug);
-  const lues = entreesDuClasseur(slug, texte);
+/**
+ * Écarts entre les entrées d'une page et la copie de contrôle : lignes, genre, colonne, sort, ordre, sauts forcés. `dImport` : une page telle que le
+ * classeur la donne (pageDuClasseur), comparée à la copie telle quelle (aucun sort renommé ni réécrit).
+ */
+function ecartsPage(slug, texte, { dImport = false } = {}) {
+  const attendu = (dImport ? reference() : referenceDuSite()).filter((e) => e.page === slug);
+  const lues = dImport ? entrees(texte).filter((e) => e.genre !== 'Remarque') : entreesDuClasseur(slug, texte);
   const problemes = [];
   for (let i = 0; i < Math.max(attendu.length, lues.length); i++) {
     const a = attendu[i];
@@ -205,6 +219,14 @@ test('chaque note est citée avec son texte intégral, sous le sort dont la cell
     ['magie-de-lombre', 'BJ40', 'Amplification sombre', 'EC = Échec critique'],
   ];
   assert.ok(reelles.length >= 5);
+  // à l'import : chacune, sans condition
+  for (const [slug, cellule, sort, texte] of reelles) {
+    const trouvees = entrees(pageDImport(slug)).filter((e) => e.genre === 'Note' && e.sort === sort);
+    assert.equal(trouvees.length, 1, `${slug} ${cellule} (${sort}) : une note attendue à l'import`);
+    assert.equal(trouvees[0].colonne, 'Effets secondaires', `${slug} ${cellule} à l'import`);
+    assert.equal(trouvees[0].texte, norme(texte), `${slug} ${cellule} (${sort}) : texte à l'import`);
+  }
+  // aujourd'hui : celles des sorts dont le site n'a pas réécrit la remarque, sous le nom courant du sort
   for (const [slug, cellule, sort, texte] of reelles.filter(([slug, , sort]) => !duSite(slug, sort)?.remarque)) {
     const nom = duSite(slug, sort)?.nom ?? sort;
     const trouvees = entrees(page(slug)).filter((e) => e.genre === 'Note' && e.sort === nom);
@@ -215,9 +237,10 @@ test('chaque note est citée avec son texte intégral, sous le sort dont la cell
 });
 
 test('le libellé est « Note de la cellule « … » du sort « … » », sur la ligne ou au-dessus du texte (comme les pages de races)', () => {
-  const sang = page('magie-du-sang');
-  if (intact('magie-du-sang', 'Attirance')) assert.ok(sang.includes('**Note de la cellule « Effets secondaires » du sort « Attirance »** : Si la cible possède le don "grande créature" ou est logiquement trop grosse ou lourde : C\'est le lanceur qui est attiré.\n'));
-  if (intact('magie-du-sang', 'Annulation')) assert.ok(sang.includes([
+  // à l'import, sans condition (le site de dev peut renommer ces sorts ou réécrire leur remarque)
+  const sang = pageDImport('magie-du-sang');
+  assert.ok(sang.includes('**Note de la cellule « Effets secondaires » du sort « Attirance »** : Si la cible possède le don "grande créature" ou est logiquement trop grosse ou lourde : C\'est le lanceur qui est attiré.\n'));
+  assert.ok(sang.includes([
     '**Note de la cellule « Effets secondaires » du sort « Annulation »**',
     '',
     '- Inutile contre les infirmités, la fatigue physique, les croix.',
@@ -230,7 +253,7 @@ test('le libellé est « Note de la cellule « … » du sort « … » », sur 
     'Ne marche pas sur les effets magie niveau 3 ou plus',
     '',
   ].join('\n')));
-  assert.doesNotMatch(sang, /^\*Note :\*$/m, 'plus de « *Note :* » : un seul libellé pour toutes les familles');
+  for (const texte of [sang, page('magie-du-sang')]) assert.doesNotMatch(texte, /^\*Note :\*$/m, 'plus de « *Note :* » : un seul libellé pour toutes les familles');
 });
 
 test('les notes suivent la table des sorts (même ordre qu\'elle), avant les textes de niveau 5 et la légende', () => {
@@ -251,8 +274,14 @@ test('les notes suivent la table des sorts (même ordre qu\'elle), avant les tex
 
 test('les quatre « Verrouillage » de la Corruption portent la même note, citée quatre fois', () => {
   const slug = 'magie-de-la-corruption';
+  const QUATRE = ['Verrouillage Simple', 'Verrouillage Visible', 'Verrouillage Magique', 'Verrouillage Physique'];
+  // à l'import, sans condition
+  const aLImport = entrees(pageDImport(slug)).filter((e) => e.texte.startsWith('Si la cible est dans la posture indiquée'));
+  assert.deepEqual(aLImport.map((e) => [e.genre, e.sort]), QUATRE.map((n) => ['Note', n]));
+  assert.equal(new Set(aLImport.map((e) => e.texte)).size, 1);
+  // aujourd'hui : celles des sorts dont le site n'a pas réécrit la remarque, sous le nom courant du sort
   const identiques = entreesDuClasseur(slug, page(slug)).filter((e) => e.texte.startsWith('Si la cible est dans la posture indiquée'));
-  const quatre = ['Verrouillage Simple', 'Verrouillage Visible', 'Verrouillage Magique', 'Verrouillage Physique'].filter((n) => !duSite(slug, n)?.remarque);
+  const quatre = QUATRE.filter((n) => !duSite(slug, n)?.remarque);
   assert.deepEqual(identiques.map((e) => e.sort), quatre.map((n) => duSite(slug, n)?.nom ?? n));
   assert.ok(new Set(identiques.map((e) => e.texte)).size <= 1);
 });
@@ -262,16 +291,15 @@ test('les fils de commentaires : un fil identique à la note de sa cellule n\'es
   // 31 à l'import : 61 fils des onglets de magie − 29 identiques à la note de leur cellule − 1 message écarté (moins ceux des remarques réécrites)
   assert.equal(total.length, referenceDuSite().filter((e) => e.genre !== 'Note').length, 'fils rendus');
   assert.ok(total.every((e) => e.genre === 'Commentaire résolu'));
-  const genres = (slug, sort) => entrees(page(slug)).filter((e) => e.sort === sort).map((e) => e.genre);
-  if (intact('magie-du-vide', 'Dissipation')) {
-    const vide = entrees(page('magie-du-vide')).filter((e) => e.sort === 'Dissipation');
-    assert.deepEqual(vide.map((e) => e.genre), ['Note', 'Commentaire résolu']);
-    assert.equal(vide[1].texte, 'Les buff niveau 5 ne peuvent pas être annulés par ce sort.');
-  }
+  // à l'import, sans condition (le site de dev peut renommer ces sorts ou réécrire leur remarque)
+  const genres = (slug, sort) => entrees(pageDImport(slug)).filter((e) => e.sort === sort).map((e) => e.genre);
+  const vide = entrees(pageDImport('magie-du-vide')).filter((e) => e.sort === 'Dissipation');
+  assert.deepEqual(vide.map((e) => e.genre), ['Note', 'Commentaire résolu']);
+  assert.equal(vide[1].texte, 'Les buff niveau 5 ne peuvent pas être annulés par ce sort.');
   // la note de Fer Sanglant a un fil identique : une seule entrée
-  if (intact('magie-du-sang', 'Fer Sanglant')) assert.deepEqual(genres('magie-du-sang', 'Fer Sanglant'), ['Note']);
+  assert.deepEqual(genres('magie-du-sang', 'Fer Sanglant'), ['Note']);
   // Corps de Maverium : trois fils, le troisième est identique à la note
-  if (intact('magie-de-la-terre', 'Corps de Maverium')) assert.deepEqual(genres('magie-de-la-terre', 'Corps de Maverium'), ['Note', 'Commentaire résolu', 'Commentaire résolu']);
+  assert.deepEqual(genres('magie-de-la-terre', 'Corps de Maverium'), ['Note', 'Commentaire résolu', 'Commentaire résolu']);
 });
 
 test('le message de conversation sans rapport avec les règles (Eau, AN46) est écarté, et déclaré comme tel dans l\'extracteur', () => {
@@ -298,10 +326,11 @@ test('les 15 pages citent les 85 notes et les 31 fils du classeur LIGNE PAR LIGN
 });
 
 test('toute altération d\'une page réelle est vue par le contrôle : texte, lignes fusionnées, saut forcé retiré, colonne, ordre, entrée en trop', () => {
-  const sang = page('magie-du-sang');
-  const feu = page('magie-du-feu');
+  // les pages telles que le classeur les donne : le contrôle se juge sur ce texte (le site de dev réécrit librement noms et remarques des sorts)
+  const sang = pageDuClasseur('magie-du-sang');
+  const feu = pageDuClasseur('magie-du-feu');
   const entree = (texte, sort, genre) => texte.split('\n\n').find((b) => b.startsWith(`**${genre} de la cellule « Effets secondaires » du sort « ${sort} »**`));
-  // [nom, page, sort de l'import touché par la mutation, page mutée] ; une mutation d'un sort que le site a renommé ou réécrit est écartée
+  // [nom, page, sort touché par la mutation, page mutée]
   const mutations = [
     ['mot changé dans une note (Sang, Proportion démesurée)', 'magie-du-sang', 'Proportion démesurée', () => sang.replace('monter à 6 de force', 'monter à 5 de force')],
     ['mot ajouté à une note (Sang, Morsure aspirante)', 'magie-du-sang', 'Morsure aspirante', () => sang.replace("Ne marche pas si c'est la barrière qui encaisse le coup", "Ne marche pas si c'est la barrière qui encaisse le coup, normalement")],
@@ -311,31 +340,31 @@ test('toute altération d\'une page réelle est vue par le contrôle : texte, li
       assert.ok(fer[0] && fer[1], 'Fer brûlant porte une note et un fil');
       return feu.replace(`${fer[0]}\n\n${fer[1]}`, `${fer[1]}\n\n${fer[0]}`);
     }],
-    ['deux lignes fusionnées (Glace, Exécution froide BJ67)', 'magie-de-la-glace', 'Exécution froide', () => page('magie-de-la-glace').replace("interrompu.  \nDans le cas", 'interrompu. Dans le cas')],
-    ['saut de ligne forcé retiré (Glace BJ67) : Markdown fusionnerait les deux lignes', 'magie-de-la-glace', 'Exécution froide', () => page('magie-de-la-glace').replace("interrompu.  \nDans le cas", "interrompu.\nDans le cas")],
+    ['deux lignes fusionnées (Glace, Exécution froide BJ67)', 'magie-de-la-glace', 'Exécution froide', () => pageDuClasseur('magie-de-la-glace').replace("interrompu.  \nDans le cas", 'interrompu. Dans le cas')],
+    ['saut de ligne forcé retiré (Glace BJ67) : Markdown fusionnerait les deux lignes', 'magie-de-la-glace', 'Exécution froide', () => pageDuClasseur('magie-de-la-glace').replace("interrompu.  \nDans le cas", "interrompu.\nDans le cas")],
     ['puces fusionnées en un paragraphe (Sang, Annulation)', 'magie-du-sang', 'Annulation', () => sang.replace("- Inutile contre les infirmités, la fatigue physique, les croix.\n- Ne marche pas sur les effets magie niveau 3 ou plus\n- Soigne d'un cran les altérations d'états.", "- Inutile contre les infirmités, la fatigue physique, les croix. - Ne marche pas sur les effets magie niveau 3 ou plus - Soigne d'un cran les altérations d'états.")],
-    ['ligne vide retirée entre deux paragraphes (Arcane, Forge-Magie)', 'magie-de-larcane', 'Forge-Magie', () => page('magie-de-larcane').replace('**Note de la cellule « Effets secondaires » du sort « Forge-Magie »**\n\nExemple :\n\nUn caillou', '**Note de la cellule « Effets secondaires » du sort « Forge-Magie »**\n\nExemple :\nUn caillou')],
+    ['ligne vide retirée entre deux paragraphes (Arcane, Forge-Magie)', 'magie-de-larcane', 'Forge-Magie', () => pageDuClasseur('magie-de-larcane').replace('**Note de la cellule « Effets secondaires » du sort « Forge-Magie »**\n\nExemple :\n\nUn caillou', '**Note de la cellule « Effets secondaires » du sort « Forge-Magie »**\n\nExemple :\nUn caillou')],
     ['entrée supprimée (Sang, Attirance)', 'magie-du-sang', 'Attirance', () => sang.replace(/\*\*Note de la cellule « Effets secondaires » du sort « Attirance »\*\* : [^\n]*\n\n/, '')],
     ['entrée citée deux fois (Sang, Coagulation)', 'magie-du-sang', 'Coagulation', () => sang.replace(/(\*\*Note de la cellule « Effets secondaires » du sort « Coagulation »\*\* : [^\n]*\n\n)/, '$1$1')],
   ];
-  assert.ok(ecartsPage('magie-du-sang', sang).length === 0 && ecartsPage('magie-du-feu', feu).length === 0, 'les pages d\'origine sont conformes');
-  const retenues = mutations.filter(([, slug, sort]) => intact(slug, sort));
-  assert.ok(retenues.length >= 5, 'au moins cinq mutations sur des sorts que le site n’a pas touchés');
-  for (const [nom, slug, , muter] of retenues) {
+  for (const slug of new Set(mutations.map(([, x]) => x))) assert.deepEqual(ecartsPage(slug, pageDuClasseur(slug), { dImport: true }), [], `${slug} : la page d'origine est conforme`);
+  for (const [nom, slug, , muter] of mutations) {
     const mutee = muter();
-    assert.notEqual(mutee, page(slug), `${nom} : la mutation s'applique`);
-    assert.ok(ecartsPage(slug, mutee).length > 0, `${nom} : non vu par le contrôle`);
+    assert.notEqual(mutee, pageDuClasseur(slug), `${nom} : la mutation s'applique`);
+    assert.ok(ecartsPage(slug, mutee, { dImport: true }).length > 0, `${nom} : non vu par le contrôle`);
   }
 });
 
 test('citation fidèle des blancs : espace insécable de fin de ligne, lignes vides multiples, liste collée au texte qui la précède (Terre BJ13, Lumière BJ43)', () => {
-  const terre = page('magie-de-la-terre');
-  if (intact('magie-de-la-terre', 'Appel aux Golems')) assert.ok(terre.includes('Pour voir les golems possibles\u00a0\n\n\nChaque niveau de puissance de la créature invoquée double'), 'NBSP et deux lignes vides conservés');
-  const lumiere = page('magie-de-la-lumiere');
+  // à l'import, sans condition (le site de dev peut réécrire ces remarques) ; aujourd'hui, la citation ligne par ligne des sorts intacts (blancs de
+  // bord près, NBSP compris) est vérifiée par la comparaison à la copie de contrôle
+  const terre = pageDImport('magie-de-la-terre');
+  assert.ok(terre.includes('Pour voir les golems possibles\u00a0\n\n\nChaque niveau de puissance de la créature invoquée double'), 'NBSP et deux lignes vides conservés');
+  const lumiere = pageDImport('magie-de-la-lumiere');
   // la note et le fil de la cellule portent la même liste (« prochain sort », corrigé dans les deux depuis la migration 0003)
-  if (intact('magie-de-la-lumiere', 'Croisade lumineuse')) assert.equal(lumiere.split("Liste des amplifications :\n- Permet d'encaisser le prochain sort d'ombre").length - 1, 2, 'pas de ligne vide ajoutée avant la liste, ni dans la note ni dans le fil');
-  const necro = page('magie-de-la-necromancie');
-  if (intact('magie-de-la-necromancie', 'Animation de mort')) assert.ok(necro.includes('possibles <https://maverick-jdr.fandom.com/fr/wiki/Mort-Vivant_(Invocation)>'), 'URL : lien automatique, adresse intacte');
+  assert.equal(lumiere.split("Liste des amplifications :\n- Permet d'encaisser le prochain sort d'ombre").length - 1, 2, 'pas de ligne vide ajoutée avant la liste, ni dans la note ni dans le fil');
+  const necro = pageDImport('magie-de-la-necromancie');
+  assert.ok(necro.includes('possibles <https://maverick-jdr.fandom.com/fr/wiki/Mort-Vivant_(Invocation)>'), 'URL : lien automatique, adresse intacte');
 });
 
 test('rendu réel : le processeur Markdown du site affiche chaque note et chaque fil avec les mêmes lignes, puces et paragraphes que le classeur', async () => {
@@ -354,9 +383,10 @@ test('rendu réel : le processeur Markdown du site affiche chaque note et chaque
   assert.equal(vues, referenceDuSite().length, '116 à l’import : 85 notes et 31 fils');
 });
 
-test('rendu réel : la même vérification refuse une page dont Markdown fusionnerait deux lignes (saut forcé retiré)', async (t) => {
-  if (!intact('magie-de-la-glace', 'Exécution froide')) return t.skip('Exécution froide modifiée par le site de dev');
-  const glace = page('magie-de-la-glace').replace("interrompu.  \nDans le cas", "interrompu.\nDans le cas");
+test('rendu réel : la même vérification refuse une page dont Markdown fusionnerait deux lignes (saut forcé retiré)', async () => {
+  // la page telle que le classeur la donne (le site de dev réécrit librement la remarque d'Exécution froide)
+  const glace = pageDuClasseur('magie-de-la-glace').replace("interrompu.  \nDans le cas", "interrompu.\nDans le cas");
+  assert.notEqual(glace, pageDuClasseur('magie-de-la-glace'), 'la mutation s’applique');
   const a = reference().find((e) => e.page === 'magie-de-la-glace' && e.cellule === 'BJ67');
   const rendues = await entreesRendues(section(glace));
   const rendue = rendues.find((e) => e.sort === a.sort && e.genre === 'Note');

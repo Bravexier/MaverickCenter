@@ -163,6 +163,8 @@ test('aller-retour : santé et chakra offerts (nombre en cache « 5.0 » du clas
     for (const colonne of ['sante_offerte', 'chakra_offert']) {
       const final = allerRetour('magie', m, colonne, '77');
       const changees = lignesChangees(corpsDe(m.id), final);
+      // un nombre déjà réécrit par le site de dev s'écrit sans « .0 » : l'aller-retour redonne la page à l'octet près
+      if (!changees.length && corpsDe(m.id).split('\n').some((l) => l.endsWith(` : ${m[colonne]}`))) continue;
       assert.equal(changees.length, 1, `${m.id} ${colonne} : seule la ligne du nombre`);
       const [ecrite, remise] = changees[0];
       assert.equal(ecrite, `${remise}.0`, `${m.id} ${colonne}`);
@@ -479,7 +481,9 @@ test('pages qui citent un sort : le titre « ## Effet "Nom" » du bestiaire suit
   for (const e of effets) {
     const libelle = e.libelle.replace(`"${e.nom}"`, '"Manteau sombre"');
     const apres = corpsAvecTitreRenomme(e.corps_md, e.libelle, libelle);
-    assert.deepEqual(lignesChangees(e.corps_md, apres), [['## Effet "Manteau noir"', '## Effet "Manteau sombre"']], e.creature_id);
+    // le nom du sort tel que la base l'écrit aujourd'hui (le site de dev peut le renommer)
+    assert.notEqual(libelle, e.libelle, e.creature_id);
+    assert.deepEqual(lignesChangees(e.corps_md, apres), [[`## ${e.libelle}`, `## ${libelle}`]], e.creature_id);
     assert.equal(corpsAvecTitreRenomme(e.corps_md, e.libelle, e.libelle), e.corps_md);
   }
 });

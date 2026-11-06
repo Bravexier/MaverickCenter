@@ -18,6 +18,7 @@ import {
 import { chargerInvocations } from '../src/lib/bestiaire-db.mjs';
 import { FPVSIA as FPVSIA_DES_CARTES } from '../src/lib/monstre-champs.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const { lignes } = chargerInvocations(db);
@@ -87,7 +88,6 @@ test('parNpm : une valeur par groupe de NPM qui se suivent', () => {
 
 test('toute la base : au NPM 1, chaque carte redit ce qu’elle écrit sans « /NPM » ; chaque formule « /NPM » se lit', () => {
   const sansNpm = (t) => t.replaceAll('/NPM', '');
-  let variables = 0;
   for (const l of lignes) {
     const d = l.donneesNpm;
     const un = creatureAuNpm(d, 1);
@@ -106,12 +106,17 @@ test('toute la base : au NPM 1, chaque carte redit ce qu’elle écrit sans « /
     // au NPM 5, tous les bonus comptés ou signalés
     const cinq = caracteristiquesAuNpm(d.fpvsia, d.bonus, 5);
     assert.equal(cinq.comptes.length + cinq.nonComptes.length, l.bonus.length, l.id);
-    if (varieAvecLeNpm(d)) variables += 1;
-    // une marionnette (une créature par NPM, décision R53) ne change pas avec le NPM
-    if (l.bloc.startsWith('NPM ')) assert.equal(varieAvecLeNpm(d), false, l.id);
   }
-  // les golems et les non-morts changent tous avec le NPM
-  assert.equal(variables, lignes.filter((l) => !l.bloc.startsWith('NPM ')).length);
+});
+
+// Qui porte un « /NPM » dépend du texte des cartes (santé, armure, attaques…) : le compte se lit à l'import (test/aide-base-d-import.mjs), jamais sur
+// l'état courant, qu'une modification de ces textes ne doit pas faire échouer.
+test('à l’import : les golems et les non-morts changent tous avec le NPM ; une marionnette (une créature par NPM, décision R53) jamais', () => {
+  const importees = chargerInvocations(baseDImport()).lignes;
+  const marionnettes = importees.filter((l) => l.bloc.startsWith('NPM '));
+  assert.ok(marionnettes.length > 0 && marionnettes.length < importees.length, 'des marionnettes et des créatures à un seul bloc de NPM');
+  for (const l of marionnettes) assert.equal(varieAvecLeNpm(l.donneesNpm), false, l.id);
+  assert.deepEqual(importees.filter((l) => !l.bloc.startsWith('NPM ') && !varieAvecLeNpm(l.donneesNpm)).map((l) => l.id), []);
 });
 
 test('Golem de chair au NPM 3 : 60 de santé, 6 d’armure physique et magique', () => {

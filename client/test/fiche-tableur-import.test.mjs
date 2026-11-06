@@ -10,8 +10,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
-import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
+import { trouverRacine } from '../src/lib/donnees.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
 import { attributsDe, competencesDe, degatsDArme, maitriseDArme, trouver } from '../src/lib/fiche-moteur.mjs';
 import { valeurAuNm } from '../src/lib/sort-maitrise.mjs';
@@ -28,8 +27,13 @@ import {
 } from '../src/lib/fiche-tableur-export.mjs';
 import { entrainementEnLignes, ficheVide, ligneDeRetrait, PREFIXE_DE_RETRAIT, sansPartiesRetirees } from '../src/lib/fiche-format.mjs';
 import { analyserXml, enfantNomme, enfantsNommes, texteDe } from '../src/lib/xml-mini.mjs';
+import { reglesDImport } from './aide-base-d-import.mjs';
 
-const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(ouvrirBase({ sansExemples: false })))); // tel que la page le reçoit
+// les fiches auto (Lucien, Louise) et les classeurs écrits ici nomment dons, sorts, armes et matériaux tels que l'import les a nommés, et le moteur lit
+// ses règles dans les textes : la lecture s'épingle sur l'état d'import de la base (le site de dev réécrit librement noms, textes et valeurs ;
+// test/aide-base-d-import.mjs). ficheDuClasseur retrouve dons et sorts par leur nom : un don renommé sur le site ne se reconnaît plus dans un classeur
+// écrit avant (question au propriétaire).
+const regles = reglesDImport(); // tel que la page le reçoit
 
 const grille = (qui) => JSON.parse(readFileSync(new URL(`./fixtures/fiche-auto-${qui}.json`, import.meta.url), 'utf8')).values;
 const LUCIEN = grille('lucien');

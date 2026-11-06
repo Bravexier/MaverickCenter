@@ -22,20 +22,27 @@ import {
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { optionsDuChoix, TABLES } from '../src/lib/edition-modele.mjs';
 import { comparerBases } from '../src/lib/notes-de-version.mjs';
+import { cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const racine = dossierTemporaire('edition-armures');
 let compteur = 0;
-const vivante = () => ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, `b${(compteur += 1)}`) }).chemin);
+const vivante = (regles = cheminBase({ sansExemples: false })) => ouvrirBaseVivante(preparerBaseVivante({ regles, dossier: join(racine, `b${(compteur += 1)}`) }).chemin);
+/** Les outils d'un essai sur une base vivante : le service, une ligne, le corps d'une page. */
+function outils(base) {
+  const service = { base: () => base, etat: () => ({}), edition: true };
+  return {
+    enregistrer: (operations) =>
+      traiter({ methode: 'POST', chemin: '/api/edition/', entetes: { 'content-type': 'application/json' }, corps: JSON.stringify({ page: `${PAGE_DES_ARMURES}/`, operations }) }, service),
+    ligne: (sql, ...p) => base.prepare(sql).get(...p),
+    contient: (id, fin) => base.prepare('SELECT corps_md FROM page WHERE id = ?').get(id).corps_md.split('\n').some((l) => l.endsWith(fin)),
+  };
+}
 const db = vivante();
 const reference = lireTables(db);
-const service = { base: () => db, etat: () => ({}), edition: true };
-const enregistrer = (operations) =>
-  traiter({ methode: 'POST', chemin: '/api/edition/', entetes: { 'content-type': 'application/json' }, corps: JSON.stringify({ page: `${PAGE_DES_ARMURES}/`, operations }) }, service);
-const ligne = (sql, ...p) => db.prepare(sql).get(...p);
+const { enregistrer, ligne, contient } = outils(db);
 const lignes = (sql, ...p) => db.prepare(sql).all(...p).map((l) => ({ ...l }));
 const corps = (id, base = db) => base.prepare('SELECT corps_md FROM page WHERE id = ?').get(id).corps_md;
-const contient = (id, fin) => corps(id).split('\n').some((l) => l.endsWith(fin));
 
 test('le modèle : armure, pièce, forme, bouclier, poids et amélioration se modifient ; ni création ni suppression ; AP et AM saisis, défense écrite refaite', () => {
   for (const t of ['armure', 'armure_emplacement', 'bouclier_classe', 'bouclier', 'bouclier_poids', 'amelioration_equipement']) assert.ok(TABLES[t], t);
@@ -64,7 +71,9 @@ test('armure de la grille : AP, AM, résistance, faiblesse et prix refont la dé
 });
 
 test('armure : une case AP ou AM vidée n’a pas de bonus (« Aucune » quand les deux le sont) ; la défense écrite de la source reste tant qu’elle dit la même chose ; elle ne se saisit plus', () => {
-  // « +7AP+12AM » (sans espace, tel qu'écrit dans l'onglet) : une autre case modifiée ne la réécrit pas
+  // « +7AP+12AM » (sans espace, tel qu'écrit dans l'onglet) : une autre case modifiée ne la réécrit pas ; sur les règles d'import (une AP ou une AM
+  // modifiée sur le site de dev réécrit la défense, la base courante peut n'en garder aucune)
+  const { enregistrer, ligne, contient } = outils(vivante(cheminDImport()));
   const source = ligne("SELECT * FROM armure WHERE stats_brut GLOB '*AP+*AM' ORDER BY ordre LIMIT 1");
   assert.ok(source, 'une défense écrite sans espace dans la source');
   assert.equal(enregistrer([{ op: 'modifier', table: 'armure', cle: { id: source.id }, valeurs: { solidite: source.solidite + 1, ap: String(source.ap) } }]).statut, 200);
@@ -137,16 +146,17 @@ test('bouclier, forme, poids et pièce : colonnes tirées et lignes du corps ; u
   assert.equal(enregistrer([{ op: 'modifier', table: 'bouclier_classe', cle: { id: f.id }, valeurs: { prix_brut: 'cher' } }]).statut, 400);
 
   const p = ligne('SELECT * FROM bouclier_poids ORDER BY ordre LIMIT 1');
-  assert.equal(enregistrer([{ op: 'modifier', table: 'bouclier_poids', cle: { id: p.id }, valeurs: { force_brut: '2 de Force minimum' } }]).statut, 200);
+  const force = (p.force_min ?? 0) + 1; // une autre Force que celle en place (lue avant d'écrire)
+  assert.equal(enregistrer([{ op: 'modifier', table: 'bouclier_poids', cle: { id: p.id }, valeurs: { force_brut: `${force} de Force minimum` } }]).statut, 200);
   const pApres = ligne('SELECT * FROM bouclier_poids WHERE id = ?', p.id);
-  assert.equal(pApres.force_min, 2);
+  assert.equal(pApres.force_min, force);
   assert.ok(corps(PAGE_DES_BOUCLIERS).split('\n').includes(ligneDePoids(pApres)));
   assert.equal(enregistrer([{ op: 'modifier', table: 'bouclier_poids', cle: { id: p.id }, valeurs: { force_brut: 'beaucoup' } }]).statut, 400);
 
   const piece = ligne("SELECT * FROM armure_emplacement WHERE id = 'casque'");
   assert.equal(enregistrer([{ op: 'modifier', table: 'armure_emplacement', cle: { id: piece.id }, valeurs: { cout_brut: '200 RF / 2 RO' } }]).statut, 200);
   assert.equal(ligne("SELECT cout_rf FROM armure_emplacement WHERE id = 'casque'").cout_rf, 200);
-  assert.ok(corps(PAGE_DES_ARMURES).split('\n').includes('| Casque | 200 RF / 2 RO |'));
+  assert.ok(corps(PAGE_DES_ARMURES).split('\n').includes(`| ${piece.nom} | 200 RF / 2 RO |`));
   assert.equal(enregistrer([{ op: 'modifier', table: 'armure_emplacement', cle: { id: piece.id }, valeurs: { cout_brut: '2 RO' } }]).statut, 400);
   // la ligne du bouclier : « 250 RF / Classe », sans montant fixe
   const ligneDuBouclier = ligne("SELECT * FROM armure_emplacement WHERE id = 'bouclier'");
@@ -156,10 +166,12 @@ test('bouclier, forme, poids et pièce : colonnes tirées et lignes du corps ; u
 
 test('améliorations d’armure et de bouclier : coût et effet refont RO, matériaux (R76), AP, AM, crans, et la ligne TOTAL de leur tableau', () => {
   const armure = ligne("SELECT * FROM amelioration_equipement WHERE cible = 'armure' AND niveau = 3");
-  let r = enregistrer([{ op: 'modifier', table: 'amelioration_equipement', cle: { id: armure.id }, valeurs: { cout_brut: '350 + 1 Matériau', effet_brut: '+7 AP/AM, +1 cran de solidité' } }]);
+  // un coût et un effet autres que ceux en place (lus avant d'écrire : le site de dev a pu les changer)
+  const [roA, apA] = armure.cout_ro === 350 ? [360, 8] : [350, 7];
+  let r = enregistrer([{ op: 'modifier', table: 'amelioration_equipement', cle: { id: armure.id }, valeurs: { cout_brut: `${roA} + 1 Matériau`, effet_brut: `+${apA} AP/AM, +1 cran de solidité` } }]);
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
   const aApres = ligne('SELECT * FROM amelioration_equipement WHERE id = ?', armure.id);
-  assert.deepEqual([aApres.cout_ro, aApres.cout_materiaux, aApres.bonus_ap, aApres.bonus_am, aApres.bonus_cran], [350, 1, 7, 7, 1]);
+  assert.deepEqual([aApres.cout_ro, aApres.cout_materiaux, aApres.bonus_ap, aApres.bonus_am, aApres.bonus_cran], [roA, 1, apA, apA, 1]);
   const totalA = totalDesAmeliorationsDeProtection('armure', lignes("SELECT * FROM amelioration_equipement WHERE cible = 'armure'"));
   assert.equal(ligne("SELECT total_brut FROM amelioration_total WHERE cible = 'armure'").total_brut, totalA);
   assert.ok(corps(PAGE_DES_ARMURES).split('\n').includes(ligneDAmelioration(aApres)));
@@ -178,17 +190,20 @@ test('améliorations d’armure et de bouclier : coût et effet refont RO, maté
   for (const valeurs of [{ cout_materiaux: '2' }, { bonus_cran: 'oui' }, { cout_ro: '' }, { cout_ro: '-5' }]) {
     assert.equal(enregistrer([{ op: 'modifier', table: 'amelioration_equipement', cle: { id: bouclier.id }, valeurs }]).statut, 400, JSON.stringify(valeurs));
   }
-  r = enregistrer([{ op: 'modifier', table: 'amelioration_equipement', cle: { id: bouclier.id }, valeurs: { cout_ro: '250', cout_materiaux: '1', bonus_ap: '7', bonus_cran: '1' } }]);
+  // un coût et un AP autres que ceux en place (lus avant d'écrire : le site de dev a pu les changer), pour que la note de version les voie
+  const ro = bouclier.cout_ro === 250 ? 260 : 250;
+  const ap = bouclier.bonus_ap === 7 ? 8 : 7;
+  r = enregistrer([{ op: 'modifier', table: 'amelioration_equipement', cle: { id: bouclier.id }, valeurs: { cout_ro: String(ro), cout_materiaux: '1', bonus_ap: String(ap), bonus_cran: '1' } }]);
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
   let bApres = ligne('SELECT * FROM amelioration_equipement WHERE id = ?', bouclier.id);
-  assert.deepEqual([bApres.cout_ro, bApres.cout_materiaux, bApres.bonus_ap, bApres.bonus_am, bApres.bonus_cran], [250, 1, 7, null, 1]);
-  assert.deepEqual([bApres.cout_brut, bApres.effet_brut], ['250 + 1 Matériau', '+7 AP, +1 cran de solidité']);
+  assert.deepEqual([bApres.cout_ro, bApres.cout_materiaux, bApres.bonus_ap, bApres.bonus_am, bApres.bonus_cran], [ro, 1, ap, null, 1]);
+  assert.deepEqual([bApres.cout_brut, bApres.effet_brut], [`${ro} + 1 Matériau`, `+${ap} AP, +1 cran de solidité`]);
   assert.ok(corps(PAGE_DES_BOUCLIERS).split('\n').includes(ligneDAmelioration(bApres)), 'la ligne du corps suit');
   // « Non » : la case vidée (NULL)
   r = enregistrer([{ op: 'modifier', table: 'amelioration_equipement', cle: { id: bouclier.id }, valeurs: { cout_materiaux: '', bonus_cran: '' } }]);
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
   bApres = ligne('SELECT * FROM amelioration_equipement WHERE id = ?', bouclier.id);
-  assert.deepEqual([bApres.cout_materiaux, bApres.bonus_cran, bApres.cout_brut, bApres.effet_brut], [null, null, '250', '+7 AP']);
+  assert.deepEqual([bApres.cout_materiaux, bApres.bonus_cran, bApres.cout_brut, bApres.effet_brut], [null, null, String(ro), `+${ap} AP`]);
   // une case enregistrée à la même valeur ne réécrit pas l'écriture de la source (« +4 AP + matériaux » au +2)
   const deux = ligne("SELECT * FROM amelioration_equipement WHERE cible = 'bouclier' AND niveau = 2");
   assert.equal(enregistrer([{ op: 'modifier', table: 'amelioration_equipement', cle: { id: deux.id }, valeurs: { bonus_ap: String(deux.bonus_ap), cout_materiaux: deux.cout_materiaux ? '1' : '' } }]).statut, 200);
@@ -245,7 +260,8 @@ test('rejeu du journal (livraison) : les mêmes lignes et les mêmes corps de pa
 });
 
 test('rejeu d’un lot noté avant la saisie de l’AP et de l’AM et des cases d’une amélioration de bouclier : rejoué s’il s’y lit exactement, sinon en conflit expliqué', () => {
-  const neuve = vivante();
+  // les règles d'import : ces lots sont écrits comme le site de dev les notait sur elles (cases d'amélioration, défense écrite)
+  const neuve = vivante(cheminDImport());
   const armure = neuve.prepare("SELECT * FROM armure WHERE sorte = 'combinaison' ORDER BY ordre DESC LIMIT 1").get();
   const autre = neuve.prepare("SELECT * FROM armure WHERE sorte = 'combinaison' AND id <> ? ORDER BY ordre DESC LIMIT 1").get(armure.id);
   const bouclier = neuve.prepare('SELECT * FROM bouclier ORDER BY id DESC LIMIT 1').get();
@@ -290,7 +306,7 @@ test('rejeu d’un lot noté avant la saisie de l’AP et de l’AM et des cases
 
 /** Rejoue des lots notés à l'ancienne sur des règles neuves : la base, l'état de chaque lot ({ etat, detail } de sa première modification). */
 function rejouerDesLots(fabriquer) {
-  const neuve = vivante();
+  const neuve = vivante(cheminDImport()); // les règles d'import, sur lesquelles ces lots ont été notés
   const lot = (table, cle, avant, apres) => {
     const { id, instant } = nouveauLot();
     return { id, fait_le: instant, page_id: null, resume: 'ancien lot', modifications: [{ rang: 1, table, cle, operation: 'modifier', avant, apres }] };

@@ -11,17 +11,17 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { enregistrerFiche } from '../serveur/fiches.mjs';
-import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { libelleDuControle, LIBELLES_DES_CONTROLES } from '../src/lib/fiche-controles.mjs';
 import { ficheVide, sansPartiesRetirees } from '../src/lib/fiche-format.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
-import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { partiesDeLArme } from '../src/lib/fiche-tableur-export.mjs';
 import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { baseDImport, cheminDImport, reglesDImport } from './aide-base-d-import.mjs';
 
-const db = ouvrirBase({ sansExemples: false });
-const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que la page le reçoit
+// les règles (textes et valeurs que le site de dev modifie librement) : épinglées sur leur état d'import (test/aide-base-d-import.mjs)
+const db = baseDImport();
+const regles = reglesDImport(); // tel que la page le reçoit
 const script = readFileSync(new URL('../src/scripts/fiche.mjs', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../src/styles/fiche/fiche.css', import.meta.url), 'utf8');
 
@@ -188,7 +188,7 @@ test('R167 : un sort « Fer » d’un autre élément que l’arme élémentaire
 test('R167 : contrôle arme_elementaire_hors_magie (vue v_personnage_controle, par le service) : une arme élémentaire d’une magie que le personnage n’a pas, libellée ; ses magies, rien', (t) => {
   assert.ok(LIBELLES_DES_CONTROLES.arme_elementaire_hors_magie);
   assert.notEqual(libelleDuControle('arme_elementaire_hors_magie'), 'arme_elementaire_hors_magie');
-  const vivante = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: dossierTemporaire('armes-elementaires', { t }) }).chemin);
+  const vivante = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminDImport(), dossier: dossierTemporaire('armes-elementaires', { t }) }).chemin);
   try {
     const regle = (f) => enregistrerFiche(vivante, f).controles.filter((c) => c.regle === 'arme_elementaire_hors_magie').map((c) => c.detail);
     const feu = elementaire('epee', FEU);

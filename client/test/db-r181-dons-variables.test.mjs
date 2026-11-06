@@ -12,6 +12,7 @@ import { test } from 'node:test';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 
 const MAGE_BLEU = 'classes/mage-bleu';
 const SAPHIR = 'classes/mage-bleu#specialite:mage-saphir';
@@ -86,17 +87,29 @@ test('R181 : chaque entrée est citée telle quelle — la ligne de la source = 
 
 test('R181 : capacite_variable — les cinq dons « Variable » du Mage Bleu, la magie innée ou acquise lue dans leur texte', () => {
   const db = ouvrirBase({ sansExemples: false });
-  const variables = db.prepare(`SELECT c.id, c.effet, v.magie FROM capacite c LEFT JOIN capacite_variable v ON v.capacite_id = c.id
-    WHERE c.type = 'variable' ORDER BY c.id`).all();
-  assert.deepEqual(variables.map((r) => [r.id, r.magie]), [
+  const ATTENDUS = [
     [DON('mime'), 'innee'], [DON('mimetisme'), 'innee'], [DON('principale'), 'innee'], [DON('secondaire'), 'acquise'], [DON('ultime-raison'), 'innee'],
-  ]);
+  ];
+  // La liste complète se lit à l'import : le site de dev ne modifie pas la colonne magie, mais il supprime un don (ENTITES.capacite, suppression), et
+  // capacite_variable part avec lui (ON DELETE CASCADE) ; le type et l'effet d'un don y sont aussi modifiables. À l'import, les dons de type
+  // « Variable » sont ces cinq, chacun dans capacite_variable, et leur texte dit la magie.
+  const importe = baseDImport();
+  assert.deepEqual(importe.prepare('SELECT capacite_id, magie FROM capacite_variable ORDER BY capacite_id').all().map((r) => [r.capacite_id, r.magie]), ATTENDUS);
+  const variables = importe.prepare(`SELECT c.id, c.effet, v.magie FROM capacite c LEFT JOIN capacite_variable v ON v.capacite_id = c.id
+    WHERE c.type = 'variable' ORDER BY c.id`).all();
+  assert.deepEqual(variables.map((r) => [r.id, r.magie]), ATTENDUS, 'rien d’autre qu’un don « Variable »');
+  // Sur l'état courant, l'invariant seul : chaque ligne restante est l'un des cinq dons, avec la magie que la migration 0088 lui a donnée (innée ou acquise).
+  const attendue = new Map(ATTENDUS);
+  for (const r of db.prepare('SELECT capacite_id, magie FROM capacite_variable').all()) {
+    assert.ok(attendue.has(r.capacite_id), `${r.capacite_id} : pas un des cinq dons « Variable »`);
+    assert.ok(['innee', 'acquise'].includes(r.magie), r.capacite_id);
+    assert.equal(r.magie, attendue.get(r.capacite_id), r.capacite_id);
+  }
   for (const r of variables) {
     const vise = /lié à sa magie (innée|acquise)/.exec(r.effet);
     assert.ok(vise, r.id);
     assert.equal(r.magie, normalize(vise[1]), `${r.id} : « ${vise[0]} »`);
   }
-  assert.equal(db.prepare('SELECT count(*) AS n FROM capacite_variable').get().n, variables.length, 'rien d’autre qu’un don « Variable »');
   assert.equal(db.prepare(`SELECT count(*) AS n FROM capacite_variable v JOIN capacite c ON c.id = v.capacite_id
     WHERE NOT EXISTS (SELECT 1 FROM classe_annexe x WHERE x.classe_id = c.classe_id)`).get().n, 0, 'la classe du don a son tableau');
 });

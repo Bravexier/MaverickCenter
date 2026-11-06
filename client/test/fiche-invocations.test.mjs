@@ -6,6 +6,7 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
+import { baseDImport, reglesDImport } from './aide-base-d-import.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que la page le reçoit
@@ -83,15 +84,22 @@ test('sacrificeDuSort : l’effet de la carte sacrifiée (« Manteau noir »), l
     assert.equal(r.lignes.length, e.n);
     for (const x of r.lignes) assert.ok(x.creature.id && x.texte);
   }
-  assert.ok(regles.tableaux_de_sacrifice.length > 0);
-  for (const t of regles.tableaux_de_sacrifice) {
-    const r = M.sacrificeDuSort(regles, t.sort_id);
-    assert.equal(r.type, 'tableau');
-    assert.equal(r.lignes.length, db.prepare('SELECT count(*) AS n FROM amelioration_cadaverique a JOIN sort s ON s.magie_id = a.magie_id WHERE s.id = ?').get(t.sort_id).n);
-    // le sort porte le nom écrit dans le titre du tableau de son invocation
-    const titre = db.prepare('SELECT tableau_titre FROM invocation WHERE id = ?').get(t.invocation_id).tableau_titre;
-    const nom = db.prepare('SELECT nom FROM sort WHERE id = ?').get(t.sort_id).nom;
-    assert.equal(titre.toLocaleLowerCase('fr').includes(nom.toLocaleLowerCase('fr')), true, `${titre} / ${nom}`);
+  // le tableau d'une invocation se rattache au sort dont son titre écrit le nom (lib/bestiaire-db.mjs#tableauxDesSorts) : le site de dev renomme l'un
+  // et réécrit l'autre librement, ce qui défait le rattachement (question au propriétaire) ; la règle s'épingle sur l'état d'import
+  // (test/aide-base-d-import.mjs), la base courante sur ses invariants
+  for (const [r0, base, quand] of [[reglesDImport(), baseDImport(), 'import'], [regles, db, 'aujourd’hui']]) {
+    if (quand === 'import') assert.ok(r0.tableaux_de_sacrifice.length > 0, 'Amélioration cadavérique');
+    for (const t of r0.tableaux_de_sacrifice) {
+      const r = M.sacrificeDuSort(r0, t.sort_id);
+      assert.equal(r.type, 'tableau', quand);
+      assert.equal(r.lignes.length, base.prepare('SELECT count(*) AS n FROM amelioration_cadaverique a JOIN sort s ON s.magie_id = a.magie_id WHERE s.id = ?').get(t.sort_id).n, quand);
+      // le sort porte le nom écrit dans le titre du tableau de son invocation
+      const titre = base.prepare('SELECT tableau_titre FROM invocation WHERE id = ?').get(t.invocation_id).tableau_titre;
+      const nom = base.prepare('SELECT nom FROM sort WHERE id = ?').get(t.sort_id).nom;
+      assert.equal(titre.toLocaleLowerCase('fr').includes(nom.toLocaleLowerCase('fr')), true, `${quand} : ${titre} / ${nom}`);
+    }
+    // un sort qui invoque sans rien donner au sacrifice
+    const sacrifie = (id) => r0.tableaux_de_sacrifice.some((t) => t.sort_id === id) || r0.invocations.some((i) => i.creatures.some((c) => c.effets.some((e) => e.sort_id === id)));
+    assert.equal(M.sacrificeDuSort(r0, r0.invocations.find((i) => !sacrifie(i.sort_id)).sort_id), null, quand);
   }
-  assert.equal(M.sacrificeDuSort(regles, regles.invocations[0].sort_id), null);
 });

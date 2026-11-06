@@ -14,12 +14,18 @@ import {
 } from '../src/lib/armes-rendu.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { classeDeMagie } from '../src/lib/palette-css.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 
-const db = ouvrirBase({ sansExemples: false });
-const armes = chargerArmes(db);
-const contexte = contexteDesArmes(db);
-const ligneDe = (f, ae) => htmlDeLigneDArmeElementaire(ae, { type: f.type_elementaire, solidite: armes.solidite_elementaire }, contexte);
-const avecType = armes.familles.filter((f) => f.type_elementaire);
+/** Les armes d'une base, et la ligne d'une arme élémentaire telle que la page la rend. */
+function lesArmes(db) {
+  const armes = chargerArmes(db);
+  const contexte = contexteDesArmes(db);
+  return { armes, contexte, avecType: armes.familles.filter((f) => f.type_elementaire), ligneDe: (f, ae) => htmlDeLigneDArmeElementaire(ae, { type: f.type_elementaire, solidite: armes.solidite_elementaire }, contexte) };
+}
+// le rendu de la base d'aujourd'hui (le site de dev en modifie librement noms, valeurs et textes) ; les valeurs de la décision (+8, solidité 4, D8,
+// portée 2-10, « Arc de Sang »…) se lisent dans l'état d'import (test/aide-base-d-import.mjs)
+const { armes, contexte, avecType, ligneDe } = lesArmes(ouvrirBase({ sansExemples: false }));
+const dImport = lesArmes(baseDImport());
 const attribut = (html, nom) => html.match(new RegExp(` data-${nom}="([^"]*)"`))?.[1] ?? null;
 
 test('R167 : chaque arme élémentaire, deux lignes (`tr.arme` puis `tr.arme-suite`) sur le fond de sa magie, ancre unique, en lecture sur le site de dev', () => {
@@ -50,6 +56,7 @@ test('R167 : chaque arme élémentaire, deux lignes (`tr.arme` puis `tr.arme-sui
 });
 
 test('R167 : le dé et la portée de son type (rien de l’arme d’origine ; Pugilat selon la Force), +8, solidité 4, la compétence au choix du porteur', () => {
+  const { armes, avecType, ligneDe } = dImport;
   assert.equal(armes.solidite_elementaire, 4);
   const competencesAttendues = (type) => (type === 'arc' ? ['arc', 'arme-legere'] : type === 'arbalete' ? ['arbalete'] : ['arme-legere', 'arme-lourde']);
   for (const f of avecType) {
@@ -69,7 +76,8 @@ test('R167 : le dé et la portée de son type (rien de l’arme d’origine ; Pu
 });
 
 test('R167 : Arc court (ou n’importe quel arc) → « Arc de Sang », D8, portée 2-10, +8, solidité 4 ; au +5 : D8+18, solidité 5', () => {
-  const arc = armes.familles.find((f) => f.armes.some((a) => a.nom === 'Arc court'));
+  const { armes, ligneDe } = dImport;
+  const arc = armes.familles.find((f) => f.armes.some((a) => a.id === 'ressources/armes#arme:arc:arc-court'));
   assert.ok(arc, 'la famille de l’Arc court');
   const sang = arc.armes_elementaires.find((ae) => ae.magie_id === 'magies/magie-du-sang');
   assert.equal(sang.nom, 'Arc de Sang');

@@ -13,6 +13,7 @@ import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { coutEnUneCase, repartirLeCout } from '../src/lib/sort-cout.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 
 const racine = trouverRacine();
 const dossier = join(racine, 'data', 'migrations');
@@ -164,8 +165,11 @@ test('notes de cellule : la trace (note_cellule) et la remarque du sort se disen
   }
 });
 
-test('pages Markdown de la base (page.corps_md) : plus de forme fautive là où le registre en corrige une dans le texte du sort', () => {
-  const pages = new Map(db.prepare("SELECT id, corps_md FROM page WHERE id LIKE 'magies/%'").all().map((p) => [p.id, p.corps_md ?? '']));
+test('pages Markdown de la base (page.corps_md) : plus de forme fautive là où le registre en corrige une dans le texte du sort (à l’import)', () => {
+  // les pages des magies telles que les migrations les ont laissées (test/aide-base-d-import.mjs) : le site de dev, source de ce qu'il modifie, réécrit
+  // les cases des sorts, et la page en est refaite ; une forme « fautive » peut y revenir légitimement (« totalement insensible aux » des effets de
+  // Dissolution, quand sa remarque, corrigée en « Totalement… », est réécrite)
+  const pages = new Map(baseDImport().prepare("SELECT id, corps_md FROM page WHERE id LIKE 'magies/%'").all().map((p) => [p.id, p.corps_md ?? '']));
   let verifiees = 0;
   for (const c of corrections) {
     if (c.table !== 'magie' && c.table !== 'sort') continue;

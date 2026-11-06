@@ -269,7 +269,8 @@ test('liens [[…]] de l’ancienne valeur : reposés tant que leur texte est é
   for (const m of metiers.filter((x) => /\[\[Alchimie primitive\|alchimie primitive\]\]/.test(x.corps))) {
     const l1 = { ...m.ligne, artisanat_brut: m.ligne.artisanat_brut.replace(/\[[^\]]*\]$/, '[FORCE + AGILITÉ]') };
     const c1 = corpsApres(m.corps, m.ligne, l1);
-    assert.match(c1, /l’\[\[Alchimie primitive\|alchimie primitive\]\] \\\[FORCE \+ AGILITÉ\\\]/, m.id);
+    // le lien reste, puis le reste de l'artisanat (que le site de dev peut réécrire) jusqu'au nouveau test
+    assert.match(c1, /l’\[\[Alchimie primitive\|alchimie primitive\]\][^\n]* \\\[FORCE \+ AGILITÉ\\\]\n/, m.id);
     assert.equal(sansLiens(c1), corpsDeMetier(l1));
   }
 });

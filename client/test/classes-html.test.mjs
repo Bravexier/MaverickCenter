@@ -4,17 +4,21 @@
 // Ce test lit le site construit : il ne tourne qu'après `npm run build` (la CI l'exécute juste après) et se saute sinon.
 //   node --test test/classes-html.test.mjs
 // Le site de dev crée et supprime des spécialités et des dons (D11) : les comptes se comparent aux lignes de la base, classe par classe (plateau de
-// lib/classes-db.mjs) ; les exemples de l'onglet (Barde, Orios) ne valent que pour une classe que le site n'a pas remaniée.
+// lib/classes-db.mjs) ; les exemples de l'onglet (Archimage, Barde, Orios) se vérifient sur l'état d'import (test/aide-base-d-import.mjs), et seul
+// l'ordre de la page du Barde se saute, visiblement, quand le site l'a remanié.
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { htmlDuRepereMagique } from '../src/lib/classe-dons-rendu.mjs';
+import { CLASSE_MAGIQUE_HORS_CATEGORIE } from '../src/lib/classe-magique.mjs';
 import { chargerClasses } from '../src/lib/classes-db.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { CLASS_COLORS } from '../src/lib/class-groups.mjs';
 import { cssDesFamilles } from '../src/lib/palette-css.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 
 const dossier = fileURLToPath(new URL('../dist/classes/', import.meta.url));
 const present = existsSync(dossier);
@@ -33,6 +37,19 @@ const compte = (html, motif) => (html.match(motif) ?? []).length;
 const db = ouvrirBase({ sansExemples: false });
 const { classes } = chargerClasses(db);
 const historique = historiqueSite(db);
+// les classes dans l'état d'import (test/aide-base-d-import.mjs) : les exemples de l'onglet (Archimage, Barde, Orios) s'y vérifient sans condition
+const importees = chargerClasses(baseDImport()).classes;
+/** Les spécialités d'une classe (colonnes de son étage « specialites »), [] si elle n'en a pas. */
+const colonnesDe = (classe) => classe.plateau.find((e) => e.forme === 'specialites')?.specialites ?? [];
+/** Les spécialités qui font de la classe une classe magique (le don de la spécialité le dit : lib/classe-assemblage.mjs#ditClasseMagique). */
+const magiquesDe = (classe) => (classe.amMagique === null ? [] : colonnesDe(classe).filter((c) => c.cartouche?.classeMagique));
+/** Un texte en motif d'expression régulière, tel quel. */
+const litteral = (t) => String(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+/** Le nom courant d'une ligne de la base, lu par son id (le site de dev renomme dons et spécialités). */
+const nomDe = (table, id) => db.prepare(`SELECT nom FROM ${table} WHERE id = ?`).get(id).nom;
+const echapper = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+/** Un texte de la page (HTML échappé) en motif d'expression régulière. */
+const motif = (t) => echapper(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 /** Une classe que le site n'a pas remaniée (aucun don ni spécialité créé ou supprimé, aucune nature changée). */
 const intacte = (slug) => {
   const id = `classes/${slug}`;
@@ -98,11 +115,8 @@ test('dons : un par don de la classe, chacun avec son ancre ; les choix sont enc
   const parClasse = new Map();
   for (const k of historique.lignesDImport('capacite')) parClasse.set(k.classe_id, (parClasse.get(k.classe_id) ?? 0) + 1);
   for (const [id, n] of parClasse) assert.equal(n, id === 'classes/archimage' ? 14 : 17, id);
-  if (intacte('archimage')) {
-    const archimage = page('archimage');
-    assert.equal(compte(archimage, /class="choix choix--2"/g), 1);
-    assert.equal(compte(archimage, /class="choix choix--3"/g), 3);
-  }
+  // l'Archimage à l'import : un choix de deux, trois choix de trois (la page rend ceux de la base courante : boucle ci-dessus)
+  assert.deepEqual(attendu(importees.get('classes/archimage')).choix, { 2: 1, 3: 3 }, 'Archimage à l’import : ses choix');
   assert.equal(compte(page('archimage'), /class="specialite"/g), 0, 'Archimage : pas de spécialité (le site ne lui en crée pas)');
 });
 
@@ -111,7 +125,6 @@ test('spécialités en onglets : un lien d’onglet par spécialité (gauche pui
     const n = attendu(classes.get(`classes/${slug}`)).onglets;
     const onglets = [...html.matchAll(/<a class="onglet( is-active)?" id="(onglet-[^"]+)" href="#(specialite-[^"]+)">/g)];
     assert.equal(onglets.length, n, `${slug} : un onglet par spécialité`);
-    if (intacte(slug) && slug !== 'archimage') assert.equal(n, 2, `${slug} : deux spécialités (onglet de l’import)`);
     if (!n) continue;
     assert.deepEqual(onglets.map((o) => Boolean(o[1])), onglets.map((_, i) => i === 0), `${slug} : le premier onglet est ouvert`);
     const panneaux = [...html.matchAll(/<section class="specialite( is-active)?" id="(specialite-[^"]+)"/g)];
@@ -121,7 +134,15 @@ test('spécialités en onglets : un lien d’onglet par spécialité (gauche pui
     assert.match(html, new RegExp(`class="onglets onglets--${n}"`));
     assert.match(html, /data-onglets/);
   }
-  if (intacte('barde')) assert.match(page('barde'), /id="onglet-danseur" href="#specialite-danseur">\s*<span class="onglet__surtitre">Spécialité<\/span>\s*<span class="onglet__nom"[^>]*>DANSEUR<\/span>/);
+  // le nom de chaque onglet : celui de sa spécialité dans la base courante (le site de dev le renomme)
+  for (const { slug, html } of pages) {
+    for (const { specialite: s } of colonnesDe(classes.get(`classes/${slug}`))) {
+      assert.match(html, new RegExp(`id="onglet-${litteral(s.slug)}" href="#${litteral(s.ancre)}">\\s*<span class="onglet__surtitre">Spécialité</span>\\s*<span class="onglet__nom"[^>]*>${motif(s.nom)}</span>`), `${slug} : l’onglet ${s.id}`);
+    }
+  }
+  // à l'import : deux spécialités par classe, sauf l'Archimage (aucune) ; le Barde, Danseur puis Ménestrel, aux noms de l'onglet
+  for (const [id, classe] of importees) assert.equal(colonnesDe(classe).length, id === 'classes/archimage' ? 0 : 2, `${id} : ses spécialités à l’import`);
+  assert.deepEqual(colonnesDe(importees.get('classes/barde')).map((c) => [c.specialite.ancre, c.specialite.nom]), [['specialite-danseur', 'DANSEUR'], ['specialite-menestrel', 'MÉNESTREL']]);
 });
 
 test('Barde : l’ordre de l’onglet (Prestation, Son perturbant, les spécialités, Chant double) et les paires du Ménestrel', { ...options, ...(present && !intacte('barde') ? { skip: 'Barde remanié sur le site de dev' } : {}) }, () => {
@@ -131,17 +152,34 @@ test('Barde : l’ordre de l’onglet (Prestation, Son perturbant, les spéciali
   const menestrel = html.slice(html.indexOf('id="specialite-menestrel"'), html.indexOf('id="don-barde-chant-double"'));
   // un choix = ce qui suit son cadre jusqu'au choix suivant (les cartes contiennent des blocs vides cachés, champs modifiables du site de dev)
   const paires = menestrel.split('<div class="choix choix--2"').slice(1).map((m) => [...m.matchAll(/class="don__nom"[^>]*><a [^>]*>([^<]+)</g)].map((x) => x[1]));
-  assert.deepEqual(paires, [['Nouvel accord', 'Écho'], ['Ballade guerrière', 'Amplification'], ['Exaltation', 'Touérk !']]);
+  // les dons de chaque paire, lus par leur id (le site de dev les renomme)
+  assert.deepEqual(paires, [['nouvel-accord', 'echo'], ['balade-guerriere', 'amplification'], ['exaltation', 'touerk']]
+    .map((paire) => paire.map((id) => echapper(nomDe('capacite', `capacites/barde-${id}`)))));
 });
 
 test('bandeau : « Don de départ » en tuiles ; classe magique (+4 AM) par catégorie ou par la spécialité ; classe raciale', options, () => {
   for (const { slug, html } of pages) assert.equal(compte(html, /class="classe-stat[ "]/g), 3, `${slug} : santé, chakra, barrière de départ`);
   assert.match(page('barde'), /<strong>Classe magique<\/strong> \+4 AM de base/);
   assert.match(page('archimage'), /<strong>Classe magique<\/strong> \+4 AM de base/);
-  if (intacte('orios')) assert.match(page('orios'), /<strong>Classe magique<\/strong> avec la spécialité <a href="#specialite-chaman">Chaman<\/a>/);
   assert.match(page('orios'), /<strong>Classe raciale<\/strong> de la race <a href="[^"]*\/races\/orios\/">Orios<\/a>/);
   assert.ok(!page('guerrier').includes('Classe magique'));
-  if (intacte('orios')) assert.match(page('orios'), /class="specialite__magique"[^>]*>\s*Classe magique · \+4 AM/);
+  // classe magique par une spécialité (classe sans catégorie magique, hors Archimage) : la base courante dit lesquelles (le don de la spécialité le dit,
+  // et le site de dev réécrit ce don) ; la page les nomme dans son bandeau, par le nom du don (son cartouche), et marque leur onglet et leur panneau
+  for (const { slug, html } of pages) {
+    const classe = classes.get(`classes/${slug}`);
+    const magiques = magiquesDe(classe);
+    const parSaCategorie = (classe.categorie?.amBase ?? null) !== null || classe.id === CLASSE_MAGIQUE_HORS_CATEGORIE;
+    const liens = magiques.map((c, i) => `${i > 0 ? ' ou ' : ''}<a href="#${echapper(c.specialite.ancre)}">${echapper(c.cartouche.nom)}</a>`).join('');
+    if (!parSaCategorie && magiques.length) assert.ok(html.includes(`<strong>Classe magique</strong> avec la spécialité ${liens} : +${classe.amMagique} AM de base`), `${slug} : le bandeau`);
+    else assert.ok(!html.includes('avec la spécialité <a'), `${slug} : pas de classe magique par une spécialité`);
+    assert.equal(compte(html, /<span class="specialite__magique">\s*Classe magique · \+\d+ AM<\/span>/g), magiques.length, `${slug} : le panneau de chaque spécialité magique`);
+    assert.equal(compte(html, /<span class="onglet__magique"[^>]*>\s*Classe magique · \+\d+ AM\s*<\/span>/g), magiques.length, `${slug} : l’onglet de chaque spécialité magique`);
+  }
+  // à l'import : l'Orios est une classe magique avec la spécialité Chaman (le don « Chaman » le dit), seule
+  const orios = importees.get('classes/orios');
+  assert.deepEqual(magiquesDe(orios).map((c) => [c.specialite.ancre, c.cartouche.nom]), [['specialite-chaman', 'Chaman']]);
+  assert.equal(htmlDuRepereMagique(orios, { classeId: orios.id, amBase: orios.categorie?.amBase ?? null, amMagique: orios.amMagique, note: orios.categorie?.note ?? null }),
+    '<li id="repere-magique"><strong>Classe magique</strong> avec la spécialité <a href="#specialite-chaman">Chaman</a> : +4 AM de base</li>');
 });
 
 test('inventaire : infobulle de l’objet (glossaire) et « ou » entre deux options ; tableau du Mage Bleu par magie', options, () => {

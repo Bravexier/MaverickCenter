@@ -13,16 +13,16 @@ import { enregistrerFiche, lireFiche } from '../serveur/fiches.mjs';
 import { durabiliteDeLArme } from '../src/lib/arme-champs.mjs';
 import { DURABILITE_MIN, forgerArme, forgerArmeElementaire } from '../src/lib/arme-forge.mjs';
 import { chargerArmes, contexteDesArmes } from '../src/lib/armes-db.mjs';
-import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import {
   armesApresChoix, armesApresReglage, armesValables, degatsDArme, degatsDArmeDuMoment, donsAcquis, durabiliteAEcrire, durabiliteDArme, durabiliteMaxDArme,
 } from '../src/lib/fiche-moteur.mjs';
-import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { baseDImport, cheminDImport, reglesDImport } from './aide-base-d-import.mjs';
 
-const db = ouvrirBase({ sansExemples: false });
-const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que la page le reçoit
+// les règles (textes et valeurs que le site de dev modifie librement) : épinglées sur leur état d'import (test/aide-base-d-import.mjs)
+const db = baseDImport();
+const regles = reglesDImport(); // tel que la page le reçoit
 const page = chargerArmes(db);
 const soliditeDeBase = contexteDesArmes(db).soliditeDesArmes;
 const armesDeLaPage = page.familles.flatMap((f) => f.armes);
@@ -233,7 +233,7 @@ test('à l’enregistrement : chaque solidité bornée à son maximum (armesVala
 const racine = dossierTemporaire('durabilite');
 
 test('le service garde la solidité du moment : 0 (cassée), un cran, ou rien (à son maximum)', () => {
-  const vivante = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: racine }).chemin);
+  const vivante = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminDImport(), dossier: racine }).chemin);
   const fiche = { ...ficheVide('Solidité'), armes: [ligne({ durabilite: 0 }), { rang: 2, arme_id: armeDeBase.id, durabilite: 1 }] };
   const { personnage } = enregistrerFiche(vivante, { ...fiche, armes: armesValables(regles, fiche) });
   const relue = lireFiche(vivante, personnage.id);

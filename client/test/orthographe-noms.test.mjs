@@ -10,6 +10,7 @@ import { ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { TABLES_DES_NOTES } from '../src/lib/notes-de-version.mjs';
+import { texteDImport } from './aide-base-d-import.mjs';
 
 const racine = trouverRacine();
 const dossier = join(racine, 'data', 'migrations');
@@ -129,8 +130,9 @@ test('anciennes graphies disparues des textes (hors traces de la source et citat
 
 test('noms gardés tels quels, par décision : graphie majoritaire, mot existant ou trace de la source', () => {
   assert.equal(db.prepare("SELECT nom FROM classe WHERE id = 'classes/ocultomancien'").get().nom, 'Ocultomancien', 'graphie majoritaire (48 contre 3)');
-  assert.ok(db.prepare("SELECT 1 FROM sort WHERE nom = 'Renfermement'").get(), '« renfermement » existe : nom gardé');
-  assert.ok(db.prepare("SELECT 1 FROM sort WHERE nom = 'Explosion glorifique'").get(), '« glorifique » existe (vieilli) : nom gardé');
+  // les noms des sorts sont modifiables sur le site de dev (source de ce qu'il modifie) : gardés à l'import, lus par leur identifiant (figé)
+  assert.equal(texteDImport('sort', { id: 'magies/magie-du-sang#sort:renfermement' }, 'nom'), 'Renfermement', '« renfermement » existe : nom gardé');
+  assert.equal(texteDImport('sort', { id: 'magies/magie-de-la-lumiere#sort:explosion-glorifique' }, 'nom'), 'Explosion glorifique', '« glorifique » existe (vieilli) : nom gardé');
   assert.deepEqual(db.prepare("SELECT nom FROM dieu WHERE id IN ('seraphe', 'seraphin') ORDER BY id").all().map((d) => d.nom), ['Séraphe', 'Séraphin'], 'deux dieux distincts');
   assert.equal(db.prepare("SELECT count(*) AS n FROM ethnie WHERE race_brut = 'Felfle'").get().n, 3, 'colonne « Race » de l’onglet citée telle quelle');
   assert.equal(db.prepare("SELECT sort_nom_brut FROM creature_capacite_sort WHERE capacite_id = 'bestiaire/momie#capacite:sort-supplementaire:npm5' AND rang = 2").get().sort_nom_brut, 'Veilliessement');

@@ -9,9 +9,10 @@ import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { cheminBase, ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
+import { ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { baseDImport, cheminDImport } from './aide-base-d-import.mjs';
 
 const racine = trouverRacine();
 const client = fileURLToPath(new URL('../', import.meta.url));
@@ -78,34 +79,44 @@ test('aucune note de cellule perdue : une remarque par entité qui a des notes, 
   assert.deepEqual(tablesAvecNotes, ['accessoire_effet', 'arme', 'arme_elementaire', 'capacite', 'creature', 'maladie', 'race_don', 'sort']);
   // les notes de l'import (D11 : le site supprime des dons, et leurs notes avec eux ; historique_modification les remet)
   const notesDImport = historique.lignesDImport('note_cellule');
+  // la note et la remarque toutes deux à l'import (test/aide-base-d-import.mjs) : le site de dev réécrit la note d'un don qu'il tient d'accord avec sa
+  // remarque (dons du Médusain, serveur/edition.mjs) ; l'état courant, db:check le contrôle (note dans la remarque d'import ou dans l'actuelle)
+  const imp = baseDImport();
   for (const t of tablesAvecNotes) {
     const attendues = new Set(notesDImport.filter((n) => n.entite_table === t).map((n) => n.entite_id)).size;
     assert.equal(historique.lignesDImport(t).filter((r) => r.remarque !== null).length, attendues, `${t} : lignes avec remarque`);
-    for (const n of db.prepare('SELECT entite_id, cellule, texte FROM note_cellule WHERE entite_table = ?').all(t)) {
+    for (const n of db.prepare('SELECT entite_id FROM note_cellule WHERE entite_table = ?').all(t)) {
       assert.ok(!historique.creee(t, { id: n.entite_id }), `${t}:${n.entite_id} : une ligne créée par le site n’a pas de note de cellule`);
-      const remarque = historique.valeurDImport(t, { id: n.entite_id }, 'remarque');
+    }
+    for (const n of imp.prepare('SELECT entite_id, cellule, texte FROM note_cellule WHERE entite_table = ?').all(t)) {
+      const remarque = imp.prepare(`SELECT remarque FROM "${t}" WHERE id = ?`).get(n.entite_id)?.remarque;
       assert.ok(typeof remarque === 'string' && remarque.includes(n.texte.trim()), `${t}:${n.entite_id} (${n.cellule}) : note absente de la remarque`);
     }
   }
 });
 
 test('la remarque est cherchable (plein texte des entités) et visible dans l’explorateur', () => {
-  // la remarque de Laser noir tant que le site ne l'a pas réécrite, sinon celle (actuelle) d'un autre sort : deux de ses mots
-  const s = db.prepare('SELECT id, remarque FROM sort WHERE remarque IS NOT NULL ORDER BY id = ? DESC, id LIMIT 1').get(LASER_NOIR);
+  // la remarque de Laser noir tant que le site ne l'a pas réécrite, sinon celle (actuelle) du premier sort dont la remarque a un mot de 4 lettres au moins :
+  // deux de ses mots, entre guillemets (un mot comme « NOT » ou « NEAR » serait un opérateur FTS5)
+  const mots = (texte) => texte.toLowerCase().match(/\p{L}{4,}/gu) ?? [];
+  const s = db.prepare("SELECT id, remarque FROM sort WHERE remarque IS NOT NULL AND remarque <> '' ORDER BY id = ? DESC, id").all(LASER_NOIR)
+    .find((r) => mots(r.remarque).length > 0);
+  assert.ok(s, 'un sort dont la remarque a des mots');
   const requete = s.id === LASER_NOIR && !historique.modifiee('sort', { id: LASER_NOIR }, 'remarque')
     ? 'concentration bonus'
-    : (s.remarque.toLowerCase().match(/\p{L}{6,}/gu) ?? []).slice(0, 2).join(' ');
+    : mots(s.remarque).slice(0, 2).map((m) => `"${m}"`).join(' ');
   const trouve = db.prepare("SELECT entite_id FROM entite_fts WHERE entite_fts MATCH ? AND entite_table = 'sort'").all(requete).map((r) => r.entite_id);
   assert.ok(trouve.includes(s.id), `${s.id} : « ${requete} »`);
 });
 
 test('db:check détecte une remarque qui a perdu une note', (t) => {
-  // une note d'un sort que le site n'a jamais touché : une ligne de l'historique serait comparée à sa remarque d'import, qui masquerait le défaut injecté
-  const note = db.prepare("SELECT entite_id, cellule FROM note_cellule WHERE entite_table = 'sort' ORDER BY entite_id = ? DESC, entite_id").all(LASER_NOIR)
-    .find((n) => !historique.touchee('sort', { id: n.entite_id }));
+  // une note d'un sort que le site n'a jamais touché : une ligne de l'historique serait comparée à sa remarque d'import, qui masquerait le défaut injecté.
+  // Dans une copie de la base d'import (test/aide-base-d-import.mjs : les lots du site défaits et retirés de son historique), où aucun sort n'est touché,
+  // même quand le site de dev a réécrit toutes les remarques
+  const note = baseDImport().prepare("SELECT entite_id, cellule FROM note_cellule WHERE entite_table = 'sort' ORDER BY entite_id = ? DESC, entite_id").get(LASER_NOIR);
   const dir = dossierTemporaire('remarque', { t });
   const copie = join(dir, 'm.db');
-  cpSync(cheminBase({ sansExemples: false }), copie);
+  cpSync(cheminDImport(), copie);
   const d = new DatabaseSync(copie);
   d.prepare("UPDATE sort SET remarque = 'autre chose' WHERE id = ?").run(note.entite_id);
   d.close();

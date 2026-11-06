@@ -180,7 +180,8 @@ test('matériau renommé (même ressource que les armures et les boucliers) : le
   const pages = Object.fromEntries(PAGES_DES_MATERIAUX.map((id) => [id, corps(db, id)]));
   const r = enregistrer([{ op: 'modifier', table: 'ressource', cle: { id: avant.id }, valeurs: { nom } }]);
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
-  assert.equal(ligne('SELECT nom_cle FROM ressource WHERE id = ?', avant.id).nom_cle.startsWith('fer-noir-essai'), true, 'clé du nom recalculée');
+  const cle = ligne('SELECT nom_cle FROM ressource WHERE id = ?', avant.id).nom_cle;
+  assert.equal(cle.startsWith(`${avant.nom_cle}-essai-`), true, `clé du nom recalculée : ${cle}`);
   const m = ligne('SELECT * FROM materiau_arme WHERE ressource_id = ?', avant.id);
   assert.ok(corps().split('\n').includes(ligneDeMateriau(nom, m)), 'ligne du tableau des matériaux');
   for (const id of PAGES_DES_MATERIAUX) {
@@ -242,7 +243,9 @@ test('arme supprimée : retirée des fiches qui l’ont, avec une note datée (d
   assert.equal(ligne('SELECT count(*) AS n FROM personnage_arme WHERE personnage_id = ?', fiche).n, 0, 'l’arme a quitté la fiche');
   const notes = ligne('SELECT notes FROM personnage WHERE id = ?', fiche).notes;
   assert.ok(notes.startsWith('Notes du joueur.\n'), 'le texte du joueur reste');
-  assert.match(notes, new RegExp(`l’arme « ${nom} » \\(ÉPÉES, arme 1\\) n’existe plus dans les règles`));
+  // la famille nommée comme la base la nomme (le site de dev peut la renommer)
+  const nomDeFamille = ligne('SELECT nom FROM arme_famille WHERE id = ?', famille).nom;
+  assert.ok(notes.includes(`l’arme « ${nom} » (${nomDeFamille}, arme 1) n’existe plus dans les règles`), notes);
   assert.ok(r.corps.fiches.some((f) => f.fiche === `Témoin ${process.pid}`), 'la fiche est annoncée');
   // une arme de monstre ne se supprime pas ici
   const monstre = ligne("SELECT a.id FROM arme a JOIN arme_famille f ON f.id = a.famille_id WHERE f.maitrisable = 0 LIMIT 1");

@@ -8,10 +8,13 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { reglesDImport } from './aide-base-d-import.mjs';
 
-const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(ouvrirBase({ sansExemples: false })))); // tel que la page le reçoit
+const db = ouvrirBase({ sansExemples: false });
+const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que la page le reçoit
 const fiche = (x = {}) => ({ ...ficheVide('Essai'), race_id: 'races/humain', ...x });
-const xpDuNiveau = (n) => regles.niveaux.find((l) => l.niveau === n).xp_min;
+const xpDuNiveau = (r, n) => r.niveaux.find((l) => l.niveau === n).xp_min;
 const POSTURE = (slug) => `guide/postures#posture:${slug}`;
 const FEU = 'magies/magie-du-feu';
 const GLACE = 'magies/magie-de-la-glace';
@@ -97,6 +100,9 @@ test('R171 : les types d’un coup (Estoc, Taille, Frappe, Magique) et ses élé
 });
 
 test('R171 : un type physique sans élément et « Magique » + élément donnent exactement les dix-sept types d’avant (typesDeDegats), et leur calcul', () => {
+  // sur les règles d'import : les armures se choisissent par leurs valeurs (AP, résistances, solidité), que le site de dev peut modifier ; à l'import,
+  // ce choix trouve toujours ses armures (le calcul comparé est le même moteur, quelles que soient les valeurs)
+  const regles = reglesDImport();
   // les dix-sept coups : un par type d'avant, et réciproquement
   const coups = [...M.TYPES_DE_COUP.filter((t) => t.physique).map((t) => ({ type: t.id })),
     ...M.elementsDeDegats(regles).map((m) => ({ type: 'magique', element: m.id }))];
@@ -114,7 +120,7 @@ test('R171 : un type physique sans élément et « Magique » + élément donnen
     faible: fiche({ magie_innee_id: GLACE, magie_acquise_id: 'magies/magie-de-la-terre', armure_id: faible.id }),
     fenrir: fiche({ race_id: 'races/fenrir', ethnie_id: 'races/fenrir#ethnie:fenrir-de-glace', magie_innee_id: GLACE, bouclier_classe_id: 'ecu', bouclier_materiau_id: 'ressources/armures#materiau:fer' }),
     symbiose: fiche({ magie_innee_id: FEU, magie_acquise_id: GLACE, posture_id: POSTURE('symbiose'), symbiose_magie_id: GLACE }),
-    defensif: fiche({ magie_innee_id: FEU, posture_id: POSTURE('defensif'), xp: xpDuNiveau(9), armure_elementaire_id: element.id }),
+    defensif: fiche({ magie_innee_id: FEU, posture_id: POSTURE('defensif'), xp: xpDuNiveau(regles, 9), armure_elementaire_id: element.id }),
   };
   const reglages = [{}, { reduits: true }, { reduits: true, parade: true }, { don: true }, { reduits: true, don: true, partie: 'bras-droit' }];
   let n = 0;
@@ -136,6 +142,8 @@ test('R171 : un type physique sans élément et « Magique » + élément donnen
 });
 
 test('R171 : un coup Estoc + Feu prend l’AP (avec la résistance de l’armure à l’estoc), puis le palier de résistance au Feu ; la Symbiose de sa magie l’annule', () => {
+  // sur les règles d'import : l'armure se choisit par ses valeurs (AP, résistance à l'estoc), que le site de dev peut modifier
+  const regles = reglesDImport();
   const armure = regles.armures.find((a) => a.ap >= 2 && a.degats.some((r) => r.sens === 'resistance' && r.type === 'estoc' && r.multiplicateur === 1)
     && !a.degats.some((r) => r.type === 'estoc' && r.sens !== 'resistance'));
   assert.ok(armure, 'une armure qui résiste à l’estoc');
@@ -245,22 +253,28 @@ test('R171, Q74 : Passe, Casse et Laiton, une seule case à la fois (choix provi
   assert.notEqual(M.casesDeLaBarriereApres(vide, 'passe', true), vide, 'un nouvel objet');
 });
 
-test('R171 : « Deux fois moins » cochée d’office — « Barrière résistante » contre un type physique, « Barrière isolante » contre un élément ; lue dans le texte du don', () => {
-  // le texte, jamais le nom : sur toute la base, seuls les deux dons du Médusain l'écrivent
-  const textes = [...regles.classes.flatMap((k) => k.dons.map((d) => ({ nom: d.nom, texte: d.effet }))),
-    ...regles.races.flatMap((r) => (r.dons ?? []).map((d) => ({ nom: r.nom, texte: d.texte })))];
+test('R171 : « Deux fois moins » cochée d’office — « Barrière résistante » contre un type physique, « Barrière isolante » contre un élément ; lue dans le texte du don (état d’import)', () => {
+  // le texte, jamais le nom : sur toute la base d'import, seuls les deux dons du Médusain l'écrivent (cherchés par id ; le site de dev peut réécrire
+  // leur texte et leur nom, la règle se lit donc dans l'état d'import)
+  const imp = reglesDImport();
+  const RESISTANTE = 'capacites/medusain-barriere-resistante';
+  const ISOLANTE = 'capacites/medusain-barriere-isolante';
+  const textes = [...imp.classes.flatMap((k) => k.dons.map((d) => ({ id: d.id, texte: d.effet }))),
+    ...imp.races.flatMap((r) => (r.dons ?? []).map((d) => ({ id: `${r.id} ${d.id}`, texte: d.texte })))];
   const lus = textes.map((d) => ({ ...d, lu: M.barriereMoinsToucheeEcrite(d.texte) })).filter((d) => d.lu.physiques || d.lu.magiques);
-  assert.deepEqual(lus.map((d) => [d.nom, d.lu.physiques, d.lu.magiques]).sort(), [['Barrière isolante', false, true], ['Barrière résistante', true, false]]);
+  assert.deepEqual(lus.map((d) => [d.id, d.lu.physiques, d.lu.magiques]).sort(), [[ISOLANTE, false, true], [RESISTANTE, true, false]]);
   assert.deepEqual(M.barriereMoinsToucheeEcrite('Les contrôles mentaux ont deux fois moins d’effets'), { physiques: false, magiques: false });
+  const nomDImport = (id) => imp.classes.flatMap((k) => k.dons).find((d) => d.id === id).nom;
   // un Médusain Hoplite de niveau 20, avec l'un ou l'autre don (des choix exclusifs de sa ligne 43)
   const medusain = (don) => fiche({
-    xp: xpDuNiveau(20), classes: [{ rang: 1, classe_id: 'classes/medusain', specialite_id: 'classes/medusain#specialite:hoplite' }],
+    xp: xpDuNiveau(imp, 20),
+    classes: [{ rang: 1, classe_id: 'classes/medusain', specialite_id: 'classes/medusain#specialite:hoplite' }],
     capacites: don ? [{ capacite_id: don }] : [],
   });
-  const resistante = medusain('capacites/medusain-barriere-resistante');
-  const isolante = medusain('capacites/medusain-barriere-isolante');
-  const office = (f, coup) => M.medusainDOffice(regles, f, coup).coche;
-  assert.deepEqual(M.medusainDOffice(regles, resistante, { type: 'estoc' }), { coche: true, dons: ['Barrière résistante'] });
+  const resistante = medusain(RESISTANTE);
+  const isolante = medusain(ISOLANTE);
+  const office = (f, coup) => M.medusainDOffice(imp, f, coup).coche;
+  assert.deepEqual(M.medusainDOffice(imp, resistante, { type: 'estoc' }), { coche: true, dons: [nomDImport(RESISTANTE)] });
   for (const type of ['estoc', 'taille', 'frappe']) assert.equal(office(resistante, { type }), true, type);
   assert.equal(office(resistante, { type: 'magique', element: FEU }), false, 'un coup magique : pas la résistante');
   assert.equal(office(resistante, { type: 'taille', element: FEU }), true, 'un coup physique avec un élément : l’un ou l’autre suffit');
@@ -272,9 +286,40 @@ test('R171 : « Deux fois moins » cochée d’office — « Barrière résistan
   assert.equal(office(fiche(), { type: 'magique', element: FEU }), false);
   assert.equal(office(resistante, { type: 'magique' }), false, 'Magique sans élément : pas de coup');
   // le don pas encore débloqué (un niveau de classe sous 20) : rien
-  const avant = regles.niveaux.findLast((l) => M.niveauxDeClasse(regles, l.niveau, resistante.mode_classe).classe1 < 20);
+  const avant = imp.niveaux.findLast((l) => M.niveauxDeClasse(imp, l.niveau, resistante.mode_classe).classe1 < 20);
   assert.ok(avant, 'un niveau global sous le niveau de classe 20');
   assert.equal(office({ ...resistante, xp: avant.xp_min }, { type: 'estoc' }), false);
+});
+
+test('R171, aujourd’hui : la case d’office suit le texte courant de chaque don du Médusain (le moteur suit la base, quel que soit le texte)', () => {
+  const medusain = regles.classes.find((k) => k.id === 'classes/medusain');
+  assert.ok(medusain, 'classes/medusain');
+  const vingt = xpDuNiveau(regles, 20);
+  assert.ok(Number.isFinite(vingt), 'le niveau 20');
+  for (const id of ['capacites/medusain-barriere-resistante', 'capacites/medusain-barriere-isolante']) {
+    const don = medusain.dons.find((d) => d.id === id);
+    if (!don) {
+      // supprimé par le site de dev, ou rattaché par lui à une autre classe : plus rien à cocher pour lui (cas admis, vérifié)
+      const h = historiqueSite(db);
+      assert.ok(h.supprimee('capacite', { id }) || h.modifiee('capacite', { id }, 'classe_id'), `${id} absent du Médusain sans que le site l'ait supprimé ni déplacé`);
+      continue;
+    }
+    const f = fiche({
+      xp: vingt, classes: [{ rang: 1, classe_id: 'classes/medusain', specialite_id: 'classes/medusain#specialite:hoplite' }],
+      capacites: [{ capacite_id: id }],
+    });
+    const lu = M.barriereMoinsToucheeEcrite(don.effet);
+    const debloque = M.donsAcquis(regles, f).some((x) => x.dons.some((d) => d.id === id));
+    // un don de la race de l'essai que le site ferait écrire la même phrase compte aussi : lu de la même façon
+    const compte = (l, coup) => (l.physiques && coup.type !== 'magique') || (l.magiques && Boolean(coup.element));
+    const deRace = M.donsDeRace(regles, f).dons.map((d) => M.barriereMoinsToucheeEcrite(d.texte));
+    for (const coup of [{ type: 'estoc' }, { type: 'magique', element: FEU }, { type: 'taille' }]) {
+      const attendu = (debloque && compte(lu, coup)) || deRace.some((l) => compte(l, coup));
+      const r = M.medusainDOffice(regles, f, coup);
+      assert.equal(r.coche, attendu, `${id}, ${JSON.stringify(coup)}`);
+      if (debloque && compte(lu, coup)) assert.ok(r.dons.includes(don.nom), `${id} : le nom courant du don, lu par id`);
+    }
+  }
 });
 
 test('R171, la page (src/scripts/fiche.mjs, lue comme un texte) : type et élément, cases de la barrière et « Appliquer » passent par le moteur', () => {
