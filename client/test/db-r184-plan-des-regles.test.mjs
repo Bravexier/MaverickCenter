@@ -204,8 +204,12 @@ test('R184 : les pages nouvelles, famille docs, résumées par la première phra
     const p = page(id);
     assert.ok(p, id);
     assert.deepEqual([p.origine, p.statut], ['docs', 'draft'], id);
-    const premier = p.corps_md.split('\n').find((l) => l && !l.startsWith('#') && !l.startsWith('<!--') && !l.startsWith('> «'));
-    assert.ok(affiche(premier).startsWith(p.resume), `${id} : « ${p.resume} »`);
+    // le site de dev, source de ce qu'il modifie, peut réécrire le texte sans le résumé (réponse du propriétaire du 2026-11-06 : « Initiative » garde son
+    // ancien résumé quand le site réécrit l'ouverture de son texte) : le résumé est la première phrase du texte courant, ou de l'un des textes que le
+    // site a remplacés ; un résumé écrit par le site est le sien. Pas valeurDImport : des lots rapatriés avant la 0091 la ramèneraient avant elle.
+    const premier = (texte) => affiche(texte.split('\n').find((l) => l && !l.startsWith('#') && !l.startsWith('<!--') && !l.startsWith('> «')));
+    const remplaces = historique.operations('page', { id }).filter((o) => o.operation === 'modifier' && 'corps_md' in o.avant).map((o) => o.avant.corps_md);
+    if (!historique.modifiee('page', { id }, 'resume')) assert.ok([p.corps_md, ...remplaces].some((t) => premier(t).startsWith(p.resume)), `${id} : « ${p.resume} »`);
     const source = db.prepare('SELECT s.texte FROM page_source ps JOIN source s ON s.id = ps.source_id WHERE ps.page_id = ? AND ps.ordre = 0').get(id).texte;
     assert.match(source, /^Google Doc « /, id);
   }

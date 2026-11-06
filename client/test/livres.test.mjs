@@ -9,6 +9,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import GithubSlugger from 'github-slugger';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 import {
   ACCUEIL_DU_GUIDE, ADRESSES_DU_PLAN_PRECEDENT, adresseDeLaPageAbsorbee, adresseDeLaPageRetiree, ANCRES_DES_PAGES_ABSORBEES, ARTISANAT, adresseDuGuide, CHEMIN_DES_REGLES,
   DECOUVRIR, entreesDuMenuLateral, estDansDecouvrir, estDesOnglets, estDuGuideDuMj, filDAriane, GUIDE_DU_MJ, installerLePlan, LIENS_ET_RENCONTRE, menuLateralDe,
@@ -29,6 +30,7 @@ const db = ouvrirBase({ sansExemples: false });
 const pagesDuGuide = db.prepare("SELECT id, titre, resume, statut FROM page WHERE type = 'guide' ORDER BY id").all()
   .map((p) => ({ id: p.id, data: { title: p.titre, summary: p.resume ?? undefined, status: p.statut } }));
 const ids = pagesDuGuide.map((p) => p.id);
+const historique = historiqueSite(db); // ce que le site de dev a changé depuis l'import (lib/historique-site.mjs)
 const PLAN = chargerPlanDesRegles(db);
 const installer = () => installerLePlan(PLAN);
 installer();
@@ -444,6 +446,14 @@ test('R184, R185 : les anciennes adresses figées mènent à la nouvelle adresse
   const avancees = Object.entries(ADRESSES_DU_PLAN_PRECEDENT).filter(([a]) => a.startsWith('regles/avancees/') && a !== 'regles/avancees/');
   assert.equal(avancees.length, 34, 'les 37 pages des Règles avancées au commit 92a123d, moins les 3 supprimées (« Les situations avancées » : éclatée, à part)');
   for (const [adresse, id] of avancees) {
+    // une page supprimée sur le site de dev (« Formule des dégâts », le 2026-11-06) : son ancienne adresse mène à la page 404, sans renvoi vers une
+    // autre page (réponse du propriétaire : « Page 404 » ; R185 (6))
+    if (historique.supprimee('page', { id })) {
+      assert.ok(!ids.includes(id), `${id} : supprimée par le site, absente de la base`);
+      assert.equal(renvoi(`/${adresse}`, { search: '?q=1', hash: '#a' }), null, `${adresse} : la 404`);
+      assert.equal(renvoi(`/${cheminDePage(id)}`), null, `${cheminDePage(id)} : sa dernière adresse aussi`);
+      continue;
+    }
     const attendue = Object.hasOwn(PAGES_ABSORBEES, id) ? adresseDeLaPageAbsorbee(id, cheminDePage) : cheminDePage(id);
     assert.equal(renvoi(`/${adresse}`, { search: '?q=1', hash: '#a' }), `/${attendue}?q=1#a`, adresse);
     assert.ok(ids.includes(id) || Object.hasOwn(PAGES_ABSORBEES, id), `${id} : une page de la base, ou absorbée`);
