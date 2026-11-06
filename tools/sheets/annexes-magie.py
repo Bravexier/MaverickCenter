@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Famille « annexes-magie » : annexes des magies (altérations d'état, météo, modes hyper et super).
+"""Famille « annexes-magie » : annexes des magies (altérations d'état, météo, mode super).
 
 Usage :
     python3 -I tools/sheets/annexes-magie.py --dump <magie-v8.json> --dump <mode-hyper.json> \
@@ -24,14 +24,15 @@ intitulé prend son adresse (« AA1 »). Cellules qui peuvent porter une note, p
   * Altération détats : Nom (juste sous l'intertitre), Magie Liée, Type, Stade 1 à 3 (ou la cellule fusionnée des stades), libellé
     et effet de chaque paire Résistances/Vulnérabilités ;
   * Météo : nom, Description, Effet(s) ;
-  * Mode Hyper et Mode Super (classeur « Mode hyper et co ») : les textes explicatifs et les cellules des tableaux.
+  * Mode Super (classeur « Mode hyper et co ») : le texte explicatif et les cellules du tableau.
 Le script S'ARRÊTE, sans rien écrire, avec un message qui nomme l'onglet et la cellule, si une note :
   * est sur une cellule vide (le dump garde alors v = "" ; la note d'une cellule fusionnée autre que celle en haut à gauche est dans
     ce cas) : aucune place dans la page ;
   * est dans un onglet que ce script ne publie pas (Sommaire, onglet inconnu) : sa justification de non-publication n'est plus
     vraie. Exceptions : les 15 onglets de magie du classeur V8 (MAGIES_TABS), dont les notes sont rendues par tools/sheets/magies.py,
     et les onglets ignorés par décision du propriétaire (IGNORED_TABS : « Statistiques », décision R86 ; « Mode Hyper (Magie) »,
-    décision R184 (9)) ; leurs notes sont comptées et annoncées, pas rendues ici ;
+    décision R184 (9) ; « Mode Hyper » du classeur « Mode hyper et co », décision R187) ; leurs notes sont comptées et annoncées, pas
+    rendues ici ;
   * est sur une cellule que la page ne reprend pas (« sans place prévue ») ;
   * n'est pas retrouvée dans sa page, ou y figure plus d'une fois, ou y figure tronquée (contrôle de couverture, refait sur le TEXTE
     des pages avant toute écriture) : chaque note du dump doit figurer dans la page de son onglet exactement une fois (autant de
@@ -43,7 +44,9 @@ qu'aucun ne soit perdu en silence. État des classeurs au moment de l'import des
 (ni dans Sommaire, Altération détats, Météo, Statistiques et Mode Hyper (Magie) de « Magie V8 », ni dans « Mode hyper et co »). Les
 quatre cellules commentées sont : Sommaire!A1 (26 fils orphelins, onglet non publié), Statistiques!BH27 et AR52 (fils sur des
 compteurs, onglet ignoré), Mode Hyper (Magie)!M43 (fil résolu sur l'effet de « Vide + Nécromancie », onglet ignoré depuis la décision
-R184 (9)). Les pages sont donc inchangées par ce mécanisme.
+R184 (9)). Les pages sont donc inchangées par ce mécanisme. Une note d'un onglet ignoré dont la base garde les données (« Mode Hyper (Magie) »,
+« Mode Hyper ») est relevée par le rapprochement du classeur (tools/sources/rapprocher.mjs : « Note ou commentaire du classeur absent de
+note_cellule »), pas par ce script.
 
 Option --verifier : n'écrit rien. Relit les dumps, recalcule les notes attendues directement dans le JSON brut (sans le code de
 rendu), les cherche dans les pages écrites (texte déséchappé, une occurrence par note, aucune de plus), compare chaque page à ce
@@ -78,14 +81,16 @@ Sources (classeurs Google, copies du Drive du propriétaire, migration 0014) et 
         Une note ou un fil de commentaires de l'onglet n'arrête rien : il est compté et annoncé.
 
   « Mode hyper et co » (1AjQyT-IZMULq6FlgnmVmn2QiQ9AWhhbOgjr-COgMyMo)
-    - onglet « Mode Hyper » -> guide/liste-des-effets-mode-hyper.md
-        Trois textes explicatifs en colonne AA (lignes 1, 14, 30), puis un tableau « Magie/Type | Mono magie |
-        Bi magie » (ligne 2, entrées de 3 lignes fusionnées) et, à partir de la ligne « Race | Effet », un
-        tableau des effets par race. Quatre effets généraux (« Général » : Dégâts physique +15, Soin magique +15,
-        Consommation de chakra = 0 ; « Potentiel illimité » : Dégâts physique neutre, Résistance à la magie) sont
-        dans une cellule fusionnée sur les deux colonnes « Mono magie » ET « Bi magie » (F:Y) : le texte vaut pour
-        les deux cas ; il est donc écrit dans les deux colonnes du tableau (la page ne laisse pas croire qu'il n'y
-        a pas d'effet en bi magie).
+    - onglet « Mode Hyper » : AUCUNE PAGE (décision R187 du propriétaire, 2026-11-06 : « Supprime la liste. Dans le mode hyper
+        rajoute un tableau qui liste les diffents bonus des magie et des races en récupérant directement l'information depuis
+        la DB. »). Ce script en tirait la page guide/liste-des-effets-mode-hyper, un doublon de guide/le-mode-hyper retiré par
+        la migration 0095 ; il ne la produit plus et l'onglet est ignoré comme « Mode Hyper (Magie) » (IGNORED_TABS : ses notes et
+        ses fils n'arrêtent rien, ils sont annoncés). La décision vise la page seule : les données de l'onglet restent en base,
+        que ce script n'écrit pas (elles se mettent à jour par le rapprochement des classeurs, tools/sources/rapprocher.mjs) :
+        ses trois textes explicatifs (AA1, AA14, AA30) dans mode_texte (ids figés « guide/liste-des-effets-mode-hyper#texte:… »,
+        rattachés à guide/le-mode-hyper), leurs constantes dans regle_constante (mode_hyper.*, mode_hyper_100.*), ses tableaux des
+        magies et des races dans mode_hyper_effet (version 'classeur_modes' ; le tableau de guide/le-mode-hyper, R187 (2), se lit
+        en base, lectures `onglet_magie` et `onglet_race`).
     - onglet « Mode Super » -> guide/liste-des-effets-mode-super.md
         Un texte explicatif en colonne AI (ligne 1), puis un tableau « Objet | Effets mode super |
         Description/apparence » (entrées de 4 lignes fusionnées). Le nom du premier objet (A3) est une cellule
@@ -122,11 +127,12 @@ MAGIES_TABS = (
 # y a longtemps ; les résistances d'un couple se calculent depuis les listes de chaque magie (décision R85, vue v_resistance_combinaison).
 # « Mode Hyper (Magie) » (décision R184 (9)) : onglet masqué, une règle obsolète ; sa page guide/mode-hyper-magie est supprimée (la page seule : ses
 # effets restent dans mode_hyper_effet, version 'magie_masque', que ce script n'écrit pas : elle se met à jour par le rapprochement des classeurs).
+# « Mode Hyper » de « Mode hyper et co » (décision R187) : sa page guide/liste-des-effets-mode-hyper, un doublon de guide/le-mode-hyper, est supprimée (la
+# page seule : ses textes, ses constantes et ses effets restent dans mode_texte, regle_constante et mode_hyper_effet, que ce script n'écrit pas).
 IGNORED_TABS = {
     "magie-v8": ("Statistiques", "Mode Hyper (Magie)"),
+    "mode-hyper": ("Mode Hyper",),
 }
-
-TITLE_HYPER_LISTE = "Liste des effets mode hyper"
 
 # Identification des classeurs à partir d'un onglet qui leur est propre.
 WORKBOOKS = [
@@ -143,8 +149,6 @@ WORKBOOKS = [
         "file_id": "1AjQyT-IZMULq6FlgnmVmn2QiQ9AWhhbOgjr-COgMyMo",
     },
 ]
-
-WORKBOOK_TITLES = {wb["key"]: wb["title"] for wb in WORKBOOKS}
 
 
 # ---------------------------------------------------------------------------------------------------------
@@ -239,12 +243,6 @@ class Sheet:
             if self.cells[(r, c)] == value:
                 return (r, c)
         return None
-
-
-def spans_column(sh, r, c, target):
-    """Vrai si la cellule (r, c), en haut à gauche d'une plage fusionnée, s'étend jusqu'à la colonne `target`."""
-    span = sh.merged_from.get((r, c))
-    return span is not None and span[0] <= r <= span[2] and span[1] <= target <= span[3]
 
 
 def read_dump(path):
@@ -531,72 +529,6 @@ def first_sentence(value, start):
     return " ".join(m.group(0).split()) if m else None
 
 
-def page_mode_hyper(sh, wb):
-    title = TITLE_HYPER_LISTE
-    if not same_letters(sh.get(1, 1) or "", title):
-        raise SystemExit("titre de l'onglet « %s » inattendu" % sh.name)
-    c_txt = col_to_num("AA")
-    texts = sorted(r for (r, c) in sh.cells if c == c_txt)
-    summary = first_sentence(sh.get(texts[0], c_txt), "Le Mode Hyper est un état de surpuissance") if texts else None
-    body = []
-    for r in texts:
-        body.append(blocks(sh.get(r, c_txt), headings=True))
-        body += sh.note_blocks([((r, c_txt), a1(r, c_txt))])
-    head = sh.find("Magie/Type")
-    race = sh.find("Race")
-    if not head or not race:
-        raise SystemExit("tableaux introuvables dans « %s »" % sh.name)
-    c_label, c_mono, c_bi = head[1], col_to_num("F"), col_to_num("P")
-    h_mono, h_bi = sh.get(head[0], c_mono), sh.get(head[0], c_bi)
-    rows = []
-    note_targets = []
-    for r in range(head[0] + 1, race[0]):
-        if sh.get(r, c_label) is not None:
-            mono, bi = sh.get(r, c_mono), sh.get(r, c_bi)
-            # Cellule fusionnée sur « Mono magie » ET « Bi magie » : l'effet vaut pour les deux, on l'écrit dans
-            # les deux colonnes (sinon la colonne « Bi magie » vide se lirait « pas d'effet en bi magie »).
-            if bi is None and mono is not None and spans_column(sh, r, c_mono, c_bi):
-                bi = mono
-            rows.append([cell(sh.get(r, c_label)), cell(mono), cell(bi)])
-            name = one_line(sh.get(r, c_label))
-            note_targets += [
-                ((r, c_label), "%s (%s)" % (one_line(sh.get(head[0], c_label)), name)),
-                ((r, c_mono), "%s (%s)" % (one_line(h_mono), name)),
-                ((r, c_bi), "%s (%s)" % (one_line(h_bi), name)),
-            ]
-    body.append("## Effets selon la magie ou le type")
-    body.append(table([esc(sh.get(head[0], c_label)), esc(h_mono), esc(h_bi)], rows))
-    body += sh.note_blocks(note_targets)
-    h_eff = sh.get(race[0], col_to_num("F"))
-    rows = []
-    note_targets = []
-    for r in range(race[0] + 1, max(rr for (rr, _c) in sh.cells) + 1):
-        if sh.get(r, race[1]) is not None:
-            rows.append([cell(sh.get(r, race[1])), cell(sh.get(r, col_to_num("F")))])
-            name = one_line(sh.get(r, race[1]))
-            note_targets += [
-                ((r, race[1]), "%s (%s)" % (one_line(sh.get(race[0], race[1])), name)),
-                ((r, col_to_num("F")), "%s (%s)" % (one_line(h_eff), name)),
-            ]
-    body.append("## Effets selon la race")
-    body.append(table([esc(sh.get(race[0], race[1])), esc(h_eff)], rows))
-    body += sh.note_blocks(note_targets)
-    # Le renvoi « (page « Mode Hyper (Magie) ») » est retiré avec cette page (décision R184 (9)) : seul le bout devenu faux part (R184 (5)).
-    body.append(
-        "*Le classeur « %s » contient, dans un onglet masqué, une autre liste des effets du mode hyper ; "
-        "les deux listes ne donnent pas toujours les mêmes valeurs.*"
-        % WORKBOOK_TITLES["magie-v8"]
-    )
-    return {
-        "slug": "liste-des-effets-mode-hyper",
-        "title": title,
-        "tags": ["mode hyper"],
-        "summary": summary,
-        "tab": sh.name,
-        "body": "\n\n".join(body),
-    }
-
-
 def page_mode_super(sh, wb):
     title = "Liste des effets mode super"
     if not same_letters(sh.get(1, 1) or "", title):
@@ -642,7 +574,6 @@ BUILDERS = {
         ("Météo", page_meteo),
     ],
     "mode-hyper": [
-        ("Mode Hyper", page_mode_hyper),
         ("Mode Super", page_mode_super),
     ],
 }
@@ -652,7 +583,6 @@ BUILDERS = {
 PAGE_OF_TAB = {
     "Altération détats": "liste-des-alterations-d-etat",
     "Météo": "meteo",
-    "Mode Hyper": "liste-des-effets-mode-hyper",
     "Mode Super": "liste-des-effets-mode-super",
 }
 
@@ -900,8 +830,6 @@ def anchor(data, tab):
         return first(head[1], 2) if head else None
     if tab == "Météo":
         return first(col_to_num("B"), 1)
-    if tab == "Mode Hyper":
-        return first(col_to_num("AA"))
     if tab == "Mode Super":
         return first(col_to_num("AI"))
     return None

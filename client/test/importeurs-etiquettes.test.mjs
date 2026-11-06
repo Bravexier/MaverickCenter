@@ -66,6 +66,6 @@ test('R183 (11) : les importeurs des classeurs n’écrivent plus Bouclier, Amé
   assert.deepEqual(tags['ressources/pieces-elementaires'], ['armes', 'armures']);
   assert.deepEqual(tags['ressources/fiche-de-tour'], []);
   assert.equal(tags['guide/mode-hyper-magie'], undefined, 'page supprimée, plus produite par annexes-magie.py (décision R184 (9))');
-  assert.deepEqual(tags['guide/liste-des-effets-mode-hyper'], []);
+  assert.equal(tags['guide/liste-des-effets-mode-hyper'], undefined, 'page supprimée, plus produite par annexes-magie.py (décision R187) : « mode hyper » n’y est plus écrite nulle part');
   assert.deepEqual(tags['guide/liste-des-effets-mode-super'], []);
 });

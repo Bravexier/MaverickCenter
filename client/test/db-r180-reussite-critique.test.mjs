@@ -66,7 +66,12 @@ test('R180 : Mode Hyper de la Lumière — les trois copies (classeur_modes, ong
   assert.deepEqual([effetsDuModeHyper(MONO), effetsDuModeHyper(BI)], [[], []]);
   // la page de la magie, la liste des effets du Mode Hyper, et pas la liste de l'onglet masqué (magie_masque)
   assert.deepEqual(morceauxDuCorpsDeMagie(corps(LUMIERE)).hyper.map((h) => h.effet), [MONO, BI]);
-  assert.ok(corps('guide/liste-des-effets-mode-hyper').includes(`| Lumière | ${MONO} | ${BI} |`));
+  // la page « Liste des effets mode hyper » est retirée depuis le 2026-11-06 (migration 0095, demande du propriétaire : un doublon de
+  // guide/le-mode-hyper, qui affiche le tableau tiré de la base) : sa ligne Lumière se lit dans la version du classeur du Mode Hyper (classeur_modes)
+  assert.equal(db.prepare("SELECT count(*) AS n FROM page WHERE id = 'guide/liste-des-effets-mode-hyper'").get().n, 0);
+  assert.deepEqual(db.prepare(`SELECT libelle, variante, effet FROM mode_hyper_effet WHERE version = 'classeur_modes' AND magie_id = ? AND portee = 'magie'
+                               ORDER BY variante DESC`).all(LUMIERE).map((l) => ({ ...l })),
+  [{ libelle: 'Lumière', variante: 'mono', effet: MONO }, { libelle: 'Lumière', variante: 'bi', effet: BI }]);
   // la page « Mode Hyper (Magie) » qui montrait la liste de l'onglet masqué est retirée (R184 (9), migration 0091) : ses lignes restent (ci-dessus)
   assert.equal(db.prepare("SELECT count(*) AS n FROM page WHERE id = 'guide/mode-hyper-magie'").get().n, 0);
 });
@@ -114,8 +119,9 @@ test('R180 : le guide et le mot-clé « Réussite critique » rappellent le plaf
   assert.ok(reussir.includes('Le score compté est celui du moment, posture comprise, et ce bonus vaut sur tout jet, quelle que soit la posture.'));
   assert.ok(corps('guide/reussites-echecs-et-critiques')
     .includes('la posture offensive pour les six jets d’attaque (*Arc*, *Arbalète*, *Arme Légère*, *Arme Lourde*, *Magie* et *Concentration*)'));
-  // textes copiés des Docs : inchangés (« monte à 10 ou moins », sans plafond)
-  for (const id of ['guide/postures', 'guide/fiche-tableau-posture']) {
+  // textes copiés des Docs : inchangés (« monte à 10 ou moins », sans plafond) ; la transcription du Doc « Guide pour MJ » (guide/postures) est retirée
+  // depuis le 2026-11-06 (migration 0094, demande du propriétaire : un doublon de guide/les-postures)
+  for (const id of ['guide/fiche-tableau-posture']) {
     assert.ok(corps(id).includes('cette réussite critique monte à 10 ou moins'), id);
     assert.ok(!corps(id).includes('1 à 15'), id);
   }

@@ -16,9 +16,12 @@ import { ADRESSES_DU_PLAN_PRECEDENT, adresseDeLaPageAbsorbee, adresseDeLaPageRet
  * Plus de « documents » (la liste des pages de référence) : sa page, « Les documents des règles », est supprimée (R184 (9)).
  * « relations-des-magies » : le tableau « Relations entre magies » de /magies/#relations (components/magie/TableauRelationsMagies.astro, les mêmes
  * données), dans « Résistances et faiblesses » (R185 (4)).
+ * « mode-hyper » : les deux tableaux du Mode Hyper (l'effet de chaque magie, mono et bi-magie, puis la capacité de chaque race ; lib/guide-db.mjs#chargerModeHyper),
+ * dans « Le mode hyper », sous « Ce qu'il donne » (R187 (2) : « Dans le mode hyper rajoute un tableau qui liste les diffents bonus des magie et des races
+ * en récupérant directement l'information depuis la DB »).
  */
 export const BLOCS = [
-  'magie-bonus', 'initiative', 'competences', 'niveaux', 'types-de-don', 'entrainement', 'postures', 'relations-des-magies',
+  'magie-bonus', 'initiative', 'competences', 'niveaux', 'types-de-don', 'entrainement', 'postures', 'relations-des-magies', 'mode-hyper',
   // les personnages fil rouge (lib/guide-fil-rouge.mjs), étape par étape de la création
   'fil-rouge', 'fil-rouge-race', 'fil-rouge-magie', 'fil-rouge-classe', 'fil-rouge-sorts', 'fil-rouge-attributs',
 ];

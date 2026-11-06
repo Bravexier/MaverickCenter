@@ -53,8 +53,10 @@ for (const src of ['page_entite', 'note_cellule', 'ecart_source']) {
 const nc = controleNomCle(db, tables, normalize);
 problemes.push(...nc.problemes.slice(0, 20));
 bilan.colonnes_cle = nc.colonnesVerifiees;
-for (const r of db.prepare('SELECT id, page_id, intitule FROM mode_texte').all()) {
-  if (r.id !== `${r.page_id}#texte:${normalize(r.intitule)}`) problemes.push(`mode_texte ${r.id} : l'identifiant n'est pas page_id#texte:normalize(intitule)`);
+// mode_texte : la fin de l'id suit l'intitulé ; son début est la page de création, contrôlé par le CHECK du schéma (les trois textes du Mode Hyper
+// gardent le préfixe de la page retirée guide/liste-des-effets-mode-hyper, identifiants figés, migration 0095).
+for (const r of db.prepare('SELECT id, intitule FROM mode_texte').all()) {
+  if (!r.id.endsWith(`#texte:${normalize(r.intitule)}`)) problemes.push(`mode_texte ${r.id} : l'identifiant ne finit pas par #texte:normalize(intitule)`);
 }
 for (const r of db.prepare('SELECT id, empreinte, texte, occurrence FROM commentaire_orphelin').all()) {
   const e = createHash('sha256').update(r.texte, 'utf8').digest('hex').slice(0, 12);
@@ -72,9 +74,18 @@ for (const r of db.prepare(`SELECT c.id AS classe, m.ressource_id AS matiere FRO
 }
 
 // Complétude de page_entite : une table dont TOUS les id sont des ids de page (ou '<id de page>#…') est une table d'entités rattachées à une page ;
-// chacune de ses lignes doit avoir sa ligne page_entite (principale = 1 si l'id est celui de la page, sinon 0).
+// chacune de ses lignes doit avoir sa ligne page_entite (principale = 1 si l'id est celui de la page, sinon 0). Une sous-entité dont la page d'origine
+// est retirée garde son id (identifiants figés) : sa page est celle qui l'affiche depuis (PAGES_DES_PREFIXES_RETIRES).
 const pages = new Set(db.prepare('SELECT id FROM page').all().map((r) => r.id));
-const rattachee = (id) => pages.has(id) || (id.includes('#') && pages.has(id.slice(0, id.indexOf('#'))));
+// préfixe d'id d'une page retirée -> page qui présente ses sous-entités : les postures (migration 0094), les textes du Mode Hyper (mode_texte, 0095)
+const PAGES_DES_PREFIXES_RETIRES = { 'guide/postures': 'guide/les-postures', 'guide/liste-des-effets-mode-hyper': 'guide/le-mode-hyper' };
+const pageDuPrefixe = (id) => {
+  if (pages.has(id)) return id;
+  if (!id.includes('#')) return null;
+  const prefixe = id.slice(0, id.indexOf('#'));
+  const page = pages.has(prefixe) ? prefixe : PAGES_DES_PREFIXES_RETIRES[prefixe];
+  return page && pages.has(page) ? page : null;
+};
 const entites = new Map(db.prepare('SELECT entite_table, entite_id, page_id, principale FROM page_entite').all().map((r) => [`${r.entite_table}\u0000${r.entite_id}`, r]));
 const tablesEntites = [];
 for (const t of tables) {
@@ -84,14 +95,14 @@ for (const t of tables) {
   if (!id) continue;
   const ids = db.prepare(`SELECT id FROM "${t.name}"`).all().map((r) => r.id);
   if (!ids.length) continue;
-  const n = ids.filter(rattachee).length;
+  const n = ids.filter((i) => pageDuPrefixe(i) !== null).length;
   if (n === 0) continue;                               // référentiel à clé courte : pas d'entité de page
   if (n !== ids.length) { problemes.push(`${t.name} : ${ids.length - n} ids sur ${ids.length} ne sont pas rattachables à une page (id mixte)`); continue; }
   tablesEntites.push(t.name);
   let manque = 0;
   for (const i of ids) {
     const e = entites.get(`${t.name}\u0000${i}`);
-    const attendue = pages.has(i) ? i : i.slice(0, i.indexOf('#'));
+    const attendue = pageDuPrefixe(i);
     if (!e) { manque += 1; if (manque <= 3) problemes.push(`page_entite : ${t.name}:${i} manque`); continue; }
     if (e.page_id !== attendue) problemes.push(`page_entite : ${t.name}:${i} -> ${e.page_id} (attendu ${attendue})`);
   }

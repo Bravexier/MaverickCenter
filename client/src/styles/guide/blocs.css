@@ -66,6 +66,9 @@
 .guide-table--niveaux tbody tr:nth-child(5n) { border-bottom: 3px solid var(--guide-line); }
 .guide-table--compacte td, .guide-table--compacte th { text-align: center; }
 .guide-table td.guide-nombre { text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* les tableaux du Mode Hyper (bloc mode-hyper) : des phrases ; une case garde une largeur lisible, la zone défile sur un écran étroit */
+.guide-table--hyper td { min-width: 14rem; }
+.guide-table--hyper td.guide-hyper__capacite { min-width: 0; white-space: nowrap; font-weight: 600; }
 .guide-gains { margin: 0; padding-left: 1rem; font-size: var(--fs-md); }
 .guide-rate td { color: var(--danger); font-weight: 600; }
 .guide-note { margin: 0.35rem 0 0; color: var(--muted); font-size: var(--fs-md); }

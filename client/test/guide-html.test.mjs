@@ -255,6 +255,43 @@ test('R185 (4) : « Résistances et faiblesses » montre le tableau « Relations
   assert.equal((corps.match(/tableau-magies--relations/g) ?? []).length, 1, 'une fois');
 });
 
+// Décision R187 (2) (demande du propriétaire du 2026-11-06 : « Dans le mode hyper rajoute un tableau qui liste les diffents bonus des magie et des races en
+// récupérant directement l'information depuis la DB. ») : sous « Ce qu’il donne » de « Le mode hyper », le tableau des magies (« Magie | Mono-Magie |
+// Bi-magie », le Potentiel Illimité sur une ligne « Forme Complète » dont la case tient les deux colonnes) puis celui des races (« Race | Capacité |
+// Effet ») ; chaque nom mène à sa page ; une ligne par effet de mode_hyper_effet (lib/guide-db.mjs#chargerModeHyper).
+test('R187 (2) : « Le mode hyper » montre les deux tableaux du Mode Hyper, magies puis races, sous « Ce qu’il donne », tirés de la base', options, () => {
+  const page = lire(cheminDePage('guide/le-mode-hyper')).main;
+  const region = (nom) => {
+    const debut = page.indexOf(`role="region" aria-label="Mode Hyper : ${nom}"`);
+    assert.ok(debut > 0, nom);
+    return page.slice(debut, page.indexOf('</table>', debut));
+  };
+  const magies = region('l’effet de chaque magie');
+  const races = region('la capacité de chaque race');
+  assert.ok(page.indexOf('id="ce-quil-donne"') < page.indexOf('Mode Hyper : l’effet de chaque magie'), 'sous « Ce qu’il donne »');
+  assert.ok(page.indexOf('Mode Hyper : la capacité de chaque race') < page.indexOf('id="ce-quil-coûte"'), 'avant « Ce qu’il coûte »');
+  // le gabarit commun des tableaux, dans sa zone qui défile
+  for (const html of [magies, races]) assert.match(page.slice(page.lastIndexOf('<div ', page.indexOf(html)), page.indexOf(html)), /^<div class="guide-defile tableau tableau--defile" tabindex="0"/);
+  const entetes = (html) => [...html.slice(html.indexOf('<thead>'), html.indexOf('</thead>')).matchAll(/<th scope="col">([^<]*)<\/th>/g)].map((m) => m[1]);
+  assert.deepEqual(entetes(magies), ['Magie', 'Mono-Magie', 'Bi-magie']);
+  assert.deepEqual(entetes(races), ['Race', 'Capacité', 'Effet']);
+  // une ligne par magie et par race de la base (lectures onglet_magie, onglet_race), chacune liée à sa page
+  const nMagies = db.prepare("SELECT count(DISTINCT magie_id) AS n FROM mode_hyper_effet WHERE version = 'onglet_magie'").get().n;
+  const nRaces = db.prepare("SELECT count(*) AS n FROM mode_hyper_effet WHERE version = 'onglet_race'").get().n;
+  assert.equal((magies.match(/<tr class="couleur-magie-[\w-]+">/g) ?? []).length, nMagies);
+  assert.equal((races.match(/<tr>\s*<th scope="row"><a href=/g) ?? []).length, nRaces);
+  assert.match(magies, /<tr class="couleur-magie-feu">\s*<th scope="row">\s*<a class="guide-magie guide-magie--ligne" href="[^"]*\/magies\/magie-du-feu\/">[\s\S]*?>Feu<\/span>\s*<\/a>\s*<\/th>\s*<td>\s*\(Réaction\) Lors d’une agression[^<]*\(1 fois\/tour\)\s*<\/td>\s*<td>\s*\(Réaction\)[^<]*\(1 fois\/3 tours\)\s*<\/td>\s*<\/tr>/,
+    'le Feu : son nom (celui du site) lié à sa page, Mono-Magie puis Bi-magie');
+  // le Potentiel Illimité : une seule case sur les deux colonnes, son intitulé « Forme Complète » en tête
+  assert.match(magies, /href="[^"]*\/magies\/potentiel-illimite\/">[\s\S]*?<\/a>\s*<\/th>\s*<td colspan="2">\s*<strong>Forme Complète :<\/strong> Résistance à la magie et dégâts physiques neutre\.\s*<\/td>\s*<\/tr>/);
+  assert.equal((magies.match(/colspan=/g) ?? []).length, 1, 'une seule case fusionnée');
+  // une race : son nom lié à sa page, sa capacité, son effet
+  assert.match(races, /<tr>\s*<th scope="row"><a href="[^"]*\/races\/humain\/">Humain<\/a><\/th>\s*<td class="guide-hyper__capacite">Adrénaline<\/td>\s*<td>\s*1d de dégâts en plus/);
+  // un retour à la ligne de l'effet est gardé ; une balise du glossaire est rendue (le middleware), jamais laissée telle quelle
+  assert.match(magies, /source d’eau pour lui et ses alliés\.<br \/>La première attaque subie/);
+  assert.doesNotMatch((magies + races).replace(/ data-balise="[^"]*"/g, ''), /\{\{/, 'balises rendues (la forme source ne reste que dans data-balise)');
+});
+
 test('sous « L’univers », et sous elle seule, la navigation vers Races, Magies et Classes (leurs titres, rien d’autre)', options, () => {
   const univers = lire('decouvrir/l-univers').main;
   const nav = univers.match(/<nav class="guide-rubriques" aria-label="Rubriques">([\s\S]*?)<\/nav>/);

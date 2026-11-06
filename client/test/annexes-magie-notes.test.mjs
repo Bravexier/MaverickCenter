@@ -1,7 +1,10 @@
-// Notes de cellule de la famille « annexes-magie » (tools/sheets/annexes-magie.py : altérations d'état, météo, listes des effets des modes hyper
-// et super). L'onglet « Statistiques » est ignoré (décision R86 : ni ses compteurs ni son tableau des couples de magies, que la vue
-// v_resistance_combinaison remplace depuis la migration 0049), et l'onglet masqué « Mode Hyper (Magie) » aussi (décision R184 (9) : « règle
-// obsolète », sa page guide/mode-hyper-magie est supprimée, la page seule) : leurs notes et leurs fils n'arrêtent rien, ils sont annoncés.
+// Notes de cellule de la famille « annexes-magie » (tools/sheets/annexes-magie.py : altérations d'état, météo, liste des effets du mode super).
+// L'onglet « Statistiques » est ignoré (décision R86 : ni ses compteurs ni son tableau des couples de magies, que la vue v_resistance_combinaison
+// remplace depuis la migration 0049), l'onglet masqué « Mode Hyper (Magie) » aussi (décision R184 (9) : « règle obsolète », sa page
+// guide/mode-hyper-magie est supprimée, la page seule), et l'onglet « Mode Hyper » de « Mode hyper et co » aussi (décision R187 : sa page
+// guide/liste-des-effets-mode-hyper, un doublon de guide/le-mode-hyper, est supprimée, la page seule ; ses textes, constantes et effets restent en
+// base) : leurs notes et leurs fils n'arrêtent rien, ils sont annoncés. Une note de l'onglet « Mode Hyper » ne va plus dans une page : elle est
+// relevée par le rapprochement du classeur (tools/sources/rapprocher.mjs, « Note ou commentaire du classeur absent de note_cellule »).
 //
 // État des sources (contrôlé dans le .xlsx de « Magie Maverick V8 » et dans celui de « Mode hyper et co ») : AUCUN de ces onglets ne porte
 // de note (le petit commentaire jaune, champ `note` du dump). Quatre cellules y portent un commentaire, toutes des FILS de commentaires
@@ -17,6 +20,8 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { instantanesDuRegistre, lireRegistre, rapprocher } from '../../tools/sources/rapprocher.mjs';
+import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const script = fileURLToPath(new URL('../../tools/sheets/annexes-magie.py', import.meta.url));
@@ -29,7 +34,6 @@ const MARQUEUR = '**Note de la cellule « ';
 const PAGES = [
   'liste-des-alterations-d-etat',
   'meteo',
-  'liste-des-effets-mode-hyper',
   'liste-des-effets-mode-super',
 ];
 const lire = (dossier, page) => readFileSync(join(dossier, `${page}.md`), 'utf8');
@@ -39,7 +43,7 @@ const nbNotes = (texte) => texte.split(MARQUEUR).length - 1;
 // Pages réelles
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-test('pages réelles : le périmètre annexes-magie ne porte aucune note de cellule (aucune dans les classeurs), 4 pages présentes', () => {
+test('pages réelles : le périmètre annexes-magie ne porte aucune note de cellule (aucune dans les classeurs), 3 pages présentes', () => {
   for (const page of PAGES) {
     assert.ok(existsSync(join(wikiGuide, `${page}.md`)), `${page} : page absente`);
     assert.equal(nbNotes(lire(wikiGuide, page)), 0, `${page} : une note de cellule est rendue alors que le classeur n'en a pas`);
@@ -48,6 +52,8 @@ test('pages réelles : le périmètre annexes-magie ne porte aucune note de cell
   assert.ok(!existsSync(join(wikiGuide, 'statistiques-resistance-faiblesse.md')), 'la page de l’onglet Statistiques est retirée');
   // décision R184 (9) : « Mode Hyper (Magie) », règle obsolète, la page seule est supprimée
   assert.ok(!existsSync(join(wikiGuide, 'mode-hyper-magie.md')), 'la page de l’onglet Mode Hyper (Magie) est retirée');
+  // décision R187 (migration 0095) : « Supprime la liste. »
+  assert.ok(!existsSync(join(wikiGuide, 'liste-des-effets-mode-hyper.md')), 'la page de l’onglet Mode Hyper est retirée');
 });
 
 test('R184 (9) : rejoué sur les instantanés des classeurs, l’importeur n’écrit plus guide/mode-hyper-magie ni de renvoi vers elle ; le fil M43 de l’onglet est annoncé, onglet ignoré', { skip: sansPython }, (t) => {
@@ -55,17 +61,29 @@ test('R184 (9) : rejoué sur les instantanés des classeurs, l’importeur n’�
   const dumps = ['magie-maverick-v8.json', 'mode-hyper-et-co.json'].flatMap((d) => ['--dump', join(classeurs, d)]);
   const r = spawnSync('python3', ['-I', script, ...dumps, '--out', out], { encoding: 'utf8' });
   assert.equal(r.status, 0, r.stderr);
-  assert.deepEqual(readdirSync(join(out, 'guide')).sort(), PAGES.map((p) => `${p}.md`).sort(), 'les 4 pages, aucune pour l’onglet Mode Hyper (Magie)');
+  assert.deepEqual(readdirSync(join(out, 'guide')).sort(), PAGES.map((p) => `${p}.md`).sort(), 'les 3 pages, aucune pour l’onglet Mode Hyper (Magie)');
   assert.match(r.stdout, /« Mode Hyper \(Magie\) » M43 : 1 fil\(s\) de commentaires, onglet ignoré/);
   for (const page of PAGES) assert.doesNotMatch(lire(join(out, 'guide'), page), /mode-hyper-magie|page « Mode Hyper \(Magie\) »/, page);
-  // seul le renvoi devenu faux est retiré (R184 (5)) : le reste de la phrase est inchangé
-  assert.ok(
-    lire(join(out, 'guide'), 'liste-des-effets-mode-hyper').includes(
-      '*Le classeur « Magie Maverick V8 » contient, dans un onglet masqué, une autre liste des effets du mode hyper ; les deux listes ne donnent pas toujours les mêmes valeurs.*',
-    ),
-  );
   const v = spawnSync('python3', ['-I', script, ...dumps, '--out', out, '--verifier'], { encoding: 'utf8' });
   assert.equal(v.status, 0, v.stderr);
+});
+
+test('R187 : rejoué sur les instantanés des classeurs, l’importeur n’écrit plus guide/liste-des-effets-mode-hyper, ni sa note de fin, ni de renvoi vers elle', { skip: sansPython }, (t) => {
+  const out = dossierTemporaire('annexes-r187-', { t });
+  const dumps = ['magie-maverick-v8.json', 'mode-hyper-et-co.json'].flatMap((d) => ['--dump', join(classeurs, d)]);
+  const r = spawnSync('python3', ['-I', script, ...dumps, '--out', out], { encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  assert.ok(!existsSync(join(out, 'guide', 'liste-des-effets-mode-hyper.md')), 'page supprimée (R187 (1))');
+  assert.doesNotMatch(r.stdout, /liste-des-effets-mode-hyper/);
+  for (const page of PAGES) {
+    const texte = lire(join(out, 'guide'), page);
+    assert.doesNotMatch(texte, /liste-des-effets-mode-hyper|Liste des effets mode hyper/i, page);
+    // la note en italique de fin de la Liste (« … les deux listes ne donnent pas toujours les mêmes valeurs ») part avec la page (R187, P9 de
+    // docs/sql/a-valider.md) : aucune autre page de l'importeur ne la reprend
+    assert.ok(!texte.includes('une autre liste des effets du mode hyper'), page);
+  }
+  // l'onglet est ignoré, pas oublié : il est lu (le dump est reconnu, la page Mode Super est écrite) et une note y serait annoncée
+  assert.ok(existsSync(join(out, 'guide', 'liste-des-effets-mode-super.md')));
 });
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -193,14 +211,11 @@ const ATTENDUES = [
     '**Note de la cellule « Effet(s) »**\n\n- Inutile contre les infirmités, la fatigue physique, les croix.\n- Ne marche pas sur les effets magie niveau 3 ou plus',
   ],
   ['meteo', '## Soleil', `**Note de la cellule « Météo »** : ${N.meteo}`],
-  ['liste-des-effets-mode-hyper', null, `**Note de la cellule « AA1 »** : ${N.texteHyper}`],
-  ['liste-des-effets-mode-hyper', '## Effets selon la magie ou le type', `**Note de la cellule « Mono magie (Sang) »** : ${N.monoHyper}`],
-  ['liste-des-effets-mode-hyper', '## Effets selon la race', `**Note de la cellule « Effet (Humain) »** : ${N.raceHyper}`],
   ['liste-des-effets-mode-super', null, `**Note de la cellule « AI1 »** : ${N.texteSuper}`],
   ['liste-des-effets-mode-super', '## Objets', `**Note de la cellule « Effets mode super (Épée) »** : ${N.objetSuper}`],
 ];
-// Notes du dump dans le périmètre (celle de l'onglet « Sang » relève de magies.py ; celles des onglets ignorés, « Statistiques » (décision R86) et
-// « Mode Hyper (Magie) » (décision R184 (9)), ne sont pas rendues ici).
+// Notes du dump dans le périmètre (celle de l'onglet « Sang » relève de magies.py ; celles des onglets ignorés, « Statistiques » (décision R86),
+// « Mode Hyper (Magie) » (décision R184 (9)) et « Mode Hyper » (décision R187 : N.texteHyper, N.monoHyper, N.raceHyper), ne sont pas rendues ici).
 const TOTAL = ATTENDUES.length;
 
 function section(texte, intertitre) {
@@ -244,7 +259,6 @@ test('notes : le nombre de notes rendues est celui du dump (hors onglets de magi
   assert.deepEqual(parPage, {
     'liste-des-alterations-d-etat': 4,
     meteo: 3,
-    'liste-des-effets-mode-hyper': 3,
     'liste-des-effets-mode-super': 2,
   });
 });
@@ -267,7 +281,7 @@ test('notes : relancé, le script n’écrit plus rien (idempotent) ; une note i
   const second = lancer(ctx);
   assert.equal(second.status, 0, second.stderr);
   assert.equal(second.stdout.split('\n').filter((l) => l.startsWith('écrit')).length, 0, second.stdout);
-  assert.equal(second.stdout.split('\n').filter((l) => l.startsWith('inchangé')).length, 4);
+  assert.equal(second.stdout.split('\n').filter((l) => l.startsWith('inchangé')).length, 3);
   const v8 = magieV8();
   const meteo = v8.sheets.find((s) => s.name === 'Météo');
   meteo.cells.find((c) => c.r === 9 && c.c === 8).note = N.meteo; // même texte que la note de B9
@@ -387,7 +401,7 @@ test('onglet ignoré (« Statistiques », décision R86) : ses notes, compteur o
   const ctx = preparer({ v8, hyper: modeHyper({ notes: false }) });
   const r = lancer(ctx);
   assert.equal(r.status, 0, r.stderr);
-  assert.deepEqual(pagesEcrites(ctx).sort(), PAGES.map((p) => `${p}.md`).sort(), 'les 4 pages, aucune pour l’onglet Statistiques');
+  assert.deepEqual(pagesEcrites(ctx).sort(), PAGES.map((p) => `${p}.md`).sort(), 'les 3 pages, aucune pour l’onglet Statistiques');
   for (const page of PAGES) assert.equal(nbNotes(lire(join(ctx.out, 'guide'), page)), 0, page);
   assert.match(r.stdout, /onglets ignorés.*Statistiques 2/s);
   assert.equal(lancer(ctx, ['--verifier']).status, 0);
@@ -403,11 +417,54 @@ test('onglet ignoré (« Mode Hyper (Magie) », décision R184 (9)) : ses notes 
   const ctx = preparer({ v8, hyper: modeHyper({ notes: false }) });
   const r = lancer(ctx);
   assert.equal(r.status, 0, r.stderr);
-  assert.deepEqual(pagesEcrites(ctx).sort(), PAGES.map((p) => `${p}.md`).sort(), 'les 4 pages, aucune pour l’onglet Mode Hyper (Magie)');
+  assert.deepEqual(pagesEcrites(ctx).sort(), PAGES.map((p) => `${p}.md`).sort(), 'les 3 pages, aucune pour l’onglet Mode Hyper (Magie)');
   for (const page of PAGES) assert.equal(nbNotes(lire(join(ctx.out, 'guide'), page)), 0, page);
   assert.match(r.stdout, /onglets ignorés.*Mode Hyper \(Magie\) 3/s);
   assert.match(r.stdout, /« Mode Hyper \(Magie\) » M2 : 1 fil\(s\) de commentaires, onglet ignoré/);
   assert.equal(lancer(ctx, ['--verifier']).status, 0);
+});
+
+test('onglet ignoré (« Mode Hyper », décision R187) : ses notes, qui allaient dans la Liste, ne vont plus dans aucune page ; elles et ses fils sont annoncés, rien ne s’arrête', { skip: sansPython }, () => {
+  const hyper = modeHyper(); // notes du texte AA1, d'un effet de magie (Mono magie, Sang) et d'un effet de race (Humain), plus celles du Mode Super
+  const mh = hyper.sheets.find((s) => s.name === 'Mode Hyper');
+  mh.cells.push({ r: 40, c: 40, v: '', note: 'Une note sur une cellule vide' }); // refusée dans un onglet publié, pas ici
+  mh.cells.find((c) => c.r === 7 && c.c === 1).threads = [{ text: 'Un fil sur une race', done: true }];
+  const ctx = preparer({ v8: magieV8({ notes: false }), hyper });
+  const r = lancer(ctx);
+  assert.equal(r.status, 0, r.stderr);
+  assert.deepEqual(pagesEcrites(ctx).sort(), PAGES.map((p) => `${p}.md`).sort(), 'les 3 pages, aucune pour l’onglet Mode Hyper');
+  for (const page of PAGES) {
+    const texte = lire(join(ctx.out, 'guide'), page);
+    for (const note of [N.texteHyper, N.monoHyper, N.raceHyper]) assert.ok(!texte.includes(note), `${page} : une note de l’onglet Mode Hyper est rendue`);
+  }
+  assert.equal(nbNotes(lire(join(ctx.out, 'guide'), 'liste-des-effets-mode-super')), 2, 'les notes du Mode Super restent rendues dans sa page');
+  assert.match(r.stdout, /onglets ignorés.*Mode Hyper 4/s);
+  assert.match(r.stdout, /« Mode Hyper » A7 : 1 fil\(s\) de commentaires, onglet ignoré/);
+  assert.equal(lancer(ctx, ['--verifier']).status, 0);
+});
+
+test('R187 : une note de l’onglet « Mode Hyper » va désormais au rapprochement du classeur, qui la relève tant qu’elle n’est pas dans note_cellule', () => {
+  // Les textes, constantes et effets de l'onglet restent en base (mode_texte, regle_constante, mode_hyper_effet) : une note de l'une de leurs cellules
+  // n'a plus de page ; tools/sources/rapprocher.mjs la compare à note_cellule (instantané réel, notes synthétiques sur AA1 et sur un effet de race).
+  const titre = 'Mode hyper et co';
+  const registre = lireRegistre(fileURLToPath(new URL('../../tools/sources/ignorer/mode-hyper-et-co.json', import.meta.url)));
+  const instantanes = instantanesDuRegistre();
+  const db = ouvrirBase({ sansExemples: false });
+  try {
+    const relever = (dump) => rapprocher(db, { classeur: titre, dump, nomDuDump: 'sources/raw/classeurs/mode-hyper-et-co.json', autres: instantanes, ...registre });
+    assert.deepEqual(relever(instantanes[titre]).notes.manquantes, [], 'l’onglet n’a aucune note aujourd’hui');
+    const dump = structuredClone(instantanes[titre]);
+    const onglet = dump.sheets.find((s) => s.name === 'Mode Hyper');
+    const aa1 = onglet.cells.find((c) => c.r === 1 && c.c === 27);
+    assert.ok(typeof aa1?.v === 'string' && aa1.v.includes('Le Mode Hyper est un état de surpuissance'), 'AA1 : le premier texte d’explication (mode_texte)');
+    aa1.note = N.texteHyper;
+    const race = onglet.cells.find((c) => c.r > 63 && c.c === 6 && typeof c.v === 'string' && c.v.trim());
+    race.note = N.raceHyper;
+    const cellules = relever(dump).notes.manquantes.map((m) => m.cellule).sort();
+    assert.deepEqual(cellules, ['Mode Hyper!AA1', `Mode Hyper!F${race.r}`].sort());
+  } finally {
+    db.close();
+  }
 });
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -429,10 +486,10 @@ test('--verifier : au vert sur les pages générées, n’écrit rien, annonce l
   const r = verifier(ctx);
   assert.equal(r.status, 0, r.stderr + r.stdout);
   assert.match(r.stdout, new RegExp(`${TOTAL} note\\(s\\)`));
-  // 4 onglets publiés x 7 rejeux (cellule vide, sans place, note de contrôle acceptée, 4 altérations de page) + onglet inconnu dans
-  // chacun des 2 dumps + onglet Sommaire du classeur V8 + note acceptée dans chacun des 2 onglets ignorés, « Statistiques » (R86) et
-  // « Mode Hyper (Magie) » (R184 (9)) : un rejeu qui disparaît change ce nombre.
-  assert.match(r.stdout, /33 cas d'erreur rejoués/);
+  // 3 onglets publiés x 7 rejeux (cellule vide, sans place, note de contrôle acceptée, 4 altérations de page) + onglet inconnu dans
+  // chacun des 2 dumps + onglet Sommaire du classeur V8 + note acceptée dans chacun des 3 onglets ignorés, « Statistiques » (R86),
+  // « Mode Hyper (Magie) » (R184 (9)) et « Mode Hyper » (R187) : un rejeu qui disparaît change ce nombre.
+  assert.match(r.stdout, /27 cas d'erreur rejoués/);
   assert.deepEqual(PAGES.map((p) => lire(join(ctx.out, 'guide'), p)), avant, '--verifier ne doit rien écrire');
 });
 

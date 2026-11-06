@@ -39,6 +39,11 @@ const PLAN = {
   exploration: [...g(['la-montee-de-niveau', 's-entrainer-et-exercer-un-metier', 'equipement-et-butin', 'l-equipement', 'mordhau-ou-demi-epee',
     'exercer-un-metier']), 'Artisanat', ...g(['les-pieges', 'donjon-pas-bon', 'les-portes', 'distance-et-voyage'])],
 };
+// Trois pages des combats retirées depuis (2026-11-06, migration 0094, demande du propriétaire : « Postures », « Les boss et leurs postures »,
+// « Mode Super ») : le plan et les pages nouvelles de la migration 0091 se lisent sans elles (db-retrait-pages-doublons-des-combats.test.mjs) ;
+// de même la « Liste des effets mode hyper » (2026-11-06, migration 0095 : db-retrait-liste-des-effets-mode-hyper.test.mjs)
+const RETIREES_DEPUIS = g(['postures', 'les-boss-et-leurs-postures', 'le-mode-super', 'liste-des-effets-mode-hyper']);
+const sansLesRetireesDepuis = (ids) => ids.filter((id) => !RETIREES_DEPUIS.includes(id));
 const RETIREES = g(['les-documents-des-regles', 'en-resume-deroulement-d-un-tour', 'mode-hyper-magie', 'aide-memoire', 'resistance-faiblesse-magie',
   'situations-avancees']);
 const NOUVELLES = [...ETAPES, ...g(['equipement-et-butin', 'exercer-un-metier', 'reussites-echecs-et-critiques', 'resistances-et-faiblesses',
@@ -84,11 +89,11 @@ test('R184, R185 : quatre onglets, dans l’ordre de la ligne 2 de la rubrique R
 
 test('R184, R185 : à l’import, chaque menu latéral suit la spécification, une page par entrée, rangs de 1 à n ; « Artisanat » est un lien', () => {
   for (const [onglet, attendu] of Object.entries(PLAN)) {
-    assert.deepEqual(menuDImport(onglet), attendu, onglet);
+    assert.deepEqual(menuDImport(onglet), sansLesRetireesDepuis(attendu), onglet);
     const rangs = ENTREES_D_IMPORT.filter((e) => e.onglet_id === onglet).map((e) => e.rang).sort((a, b) => a - b);
     assert.deepEqual(rangs, rangs.map((_, i) => i + 1), `${onglet} : rangs 1 à ${rangs.length}`);
   }
-  assert.equal(ENTREES_D_IMPORT.length, Object.values(PLAN).flat().length);
+  assert.equal(ENTREES_D_IMPORT.length, sansLesRetireesDepuis(Object.values(PLAN).flat()).length);
   assert.deepEqual(ENTREES_D_IMPORT.filter((e) => e.page_id === null),
     [{ id: 'lien:regles/artisanat', onglet_id: 'exploration', rang: 7, page_id: null, libelle: 'Artisanat', adresse: 'regles/artisanat/' }]);
   // aucune entrée « bientôt » à l'import (spécification, Bilan) ; l'entrée d'une page porte l'id 'page:<id de la page>'
@@ -177,10 +182,11 @@ test('R184 (9), R185 (3) : six pages retirées, avec leurs alias, leurs mots-cl�
   assert.equal(db.prepare('SELECT count(*) AS n FROM source WHERE id NOT IN (SELECT source_id FROM page_source)').get().n, 0, 'aucune source orpheline');
   // « la page seule » (R184 (9)) : les lignes de l'onglet masqué restent
   assert.ok(db.prepare("SELECT count(*) AS n FROM mode_hyper_effet WHERE version = 'magie_masque'").get().n > 0);
-  // E7 : la liste des effets ne renvoie plus à la page retirée
-  const liste = corps('guide/liste-des-effets-mode-hyper');
-  assert.ok(liste.includes('une autre liste des effets du mode hyper ; les deux listes ne donnent pas toujours les mêmes valeurs.'));
-  assert.ok(!liste.includes('Mode Hyper (Magie)'));
+  // E7 : la liste des effets ne renvoyait plus à la page retirée ; la liste est elle-même retirée depuis (migration 0095) : aucune page n'y renvoie,
+  // et la phrase sur l'autre liste de l'onglet masqué reste dans guide/le-mode-hyper (P9)
+  assert.equal(page('guide/liste-des-effets-mode-hyper'), undefined);
+  assert.equal(db.prepare("SELECT count(*) AS n FROM page WHERE instr(corps_md, 'Mode Hyper (Magie)') > 0").get().n, 0);
+  assert.ok(corps('guide/le-mode-hyper').includes('une autre liste des effets du Mode Hyper, aux valeurs différentes : cette liste ne compte pas'));
   // la migration ne fait que retirer : l'historique du site garde ce qui les citait
   assert.match(lire(`data/migrations/${MIGRATION}`), /historique_modification et de note_version_ligne qui les citent restent/);
 });
@@ -200,7 +206,7 @@ test('R184, R185 : les pages absorbées et les pages retitrées gardent leurs an
 test('R184 : les pages nouvelles, famille docs, résumées par la première phrase de leur texte (réponse du propriétaire), et les blocs suivent leur texte', () => {
   const affiche = (s) => s.replace(/\[\[[^\]|]*\|([^\]]*)\]\]/g, '$1').replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/\{\{[^}|]*\|([^}]*)\}\}/g, '$1')
     .replace(/\*\*/g, '').replace(/^- /, '');
-  for (const id of NOUVELLES) {
+  for (const id of sansLesRetireesDepuis(NOUVELLES)) {
     const p = page(id);
     assert.ok(p, id);
     assert.deepEqual([p.origine, p.statut], ['docs', 'draft'], id);

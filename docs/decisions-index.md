@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 186 décisions, de R1 à R186, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 187 décisions, de R1 à R187, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
 
 | Réf. | Sujet | Décision |
 | --- | --- | --- |
@@ -192,3 +192,4 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R184 | Nouveau plan des pages de règles (demande du propriétaire, 2026-11-06). Le… | (1) Le plan. Les rubriques « Créer son personnage », «… |
 | R185 | Suite de R184 (nouveau plan des pages de règles) : points P1 à P8 de `docs… | (1) Le butin : le MJ demande le jet de butin au joueur… |
 | R186 | Coût en santé du chakra dépensé de force sous 0 (demande du propriétaire,… | Chaque point de chakra dépensé de force sous 0 coûte 3… |
+| R187 | Pages en doublon à retirer : la « Liste des effets mode hyper » et trois p… | (1) La « Liste des effets mode hyper » est supprimée,… |

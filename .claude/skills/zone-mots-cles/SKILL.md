@@ -7,10 +7,10 @@ user-invocable: false
 # Mots-clés (glossaire)
 
 ## Fichiers
-- Balises : `client/src/lib/mots-cles-balises.mjs` (lecture, forme canonique `formeCanonique`, rendu `htmlAvecMotsCles`, `texteSansBalises`, `avecLeursBalises`, `zonesDeCode`, `ambiguiteDe`, `EXCLUS`).
+- Balises : `client/src/lib/mots-cles-balises.mjs` (`formeCanonique`, `htmlAvecMotsCles`, `texteSansBalises`, `avecLeursBalises`, `zonesDeCode`, `ambiguiteDe`, `EXCLUS`).
 - Rendu sur tout le site : `src/middleware.mjs` (build et `astro dev`), CSS `styles/global/mots-cles.css`.
 - Vocabulaire : `lib/mots-cles.mjs` (`MOTS_CLES_PROTEGES`), `lib/mots-cles-db.mjs` (`textesDeLaBase`).
-- Site de dev : `src/scripts/edition/mots-cles-vivants.mjs` (vocabulaire vivant ; refait les bulles et rend les balises du HTML posé après le chargement) ; service : `serveur/edition.mjs` (`texteAvecMotsClesCanoniques`, `motCleDe`, `reecrireLesBalises`), `serveur/edition-chronologie.mjs` (`verifierSansSort`, opérations du vocabulaire).
+- Site de dev : `src/scripts/edition/mots-cles-vivants.mjs` (vocabulaire vivant ; refait les bulles et rend les balises du HTML posé après le chargement) ; service : `serveur/edition.mjs` (`texteAvecMotsClesCanoniques`, `reecrireLesBalises`), `serveur/edition-chronologie.mjs` (`verifierSansSort`, opérations du vocabulaire).
 - Importeurs : `tools/db/maverick.py` (`mot_cle`, `poser_les_mots_cles`), `tools/db/homonymes.py` (`MAGIES_HOMONYMES`), `tools/docs/codex.py --vocabulaire`.
 - Page `/recherche/`, index de recherche et gestion du vocabulaire en mode modification (`src/scripts/edition/mots-cles.mjs`, `lib/mots-cles-edition.mjs`) : skill `zone-recherche`.
 
@@ -43,7 +43,7 @@ user-invocable: false
 - Rendues dans les nœuds de texte, une bulle par mot-clé et par page. Jamais dans script, style, textarea, template, code, pre, kbd, samp, svg, math, ni sous `[data-mots-cles-bruts]` (`/donnees/`, aides, dialogues et annonce du mode modification, page Debug), ni dans leurs attributs. `EXCLUS` est la même liste dans `mots-cles-vivants.mjs`.
 - Dans une `.bulle` : le gras seul. Dans un élément focalisable (a, button, summary, label, select, `[tabindex]`) : sans `tabindex` ; dans un bouton ou un résumé : sans bulle.
 - Texte simple dans `<title>`, `<option>` et les attributs de texte (`data-*` JSON compris, sauf `data-balise` et `data-ed…`) ; une entité inconnue n'est pas échappée deux fois (`mots-cles-balises.test.mjs`).
-- Le titre d'une bulle est `htmlDuNomDuMotCle` : « Libellé (ABR) » ; pour une monnaie, le libellé suivi de l'icône. Un mot-clé de monnaie se reconnaît à son id (celui de la table `monnaie`), jamais à son abréviation. Le texte d'une balise, la définition du mode complet et celle de la bulle montrent les monnaies en icônes (R63, R183 (9)) ; le passage Markdown ne lit rien dans une balise, et au rendu son texte affiché et la définition du mode complet passent par `htmlAvecMonnaies`, décomposition comprise (R183 (12)). Le module dépend de `lib/monnaies.mjs`. `/recherche/` : skill `zone-recherche`.
+- Le titre d'une bulle est `htmlDuNomDuMotCle` : « Libellé (ABR) » ; pour une monnaie, le libellé suivi de l'icône. Un mot-clé de monnaie se reconnaît à son id (celui de la table `monnaie`), jamais à son abréviation. Le texte d'une balise, la définition du mode complet et celle de la bulle montrent les monnaies en icônes (R63, R183 (9)) ; le passage Markdown ne lit rien dans une balise, et au rendu son texte affiché et la définition du mode complet passent par `htmlAvecMonnaies`, décomposition comprise (R183 (12)). `/recherche/` : skill `zone-recherche`.
 - L'id `mot-cle-<id>` est réservé aux bulles (posées en fin de page, jamais à la main : skill `ui-infobulles`).
 - Un JSON servi retire lui-même les balises (`texteSansBalises` : `regles.json` sans les définitions, index de recherche).
 - Un découpage lit le texte sans balises ; un affichage morceau par morceau les garde (`avecLeursBalises`).
@@ -63,14 +63,14 @@ user-invocable: false
 ## Importeurs
 - Le `tags:` d'une page s'écrit par libellé : `tools/db/maverick.py#mot_cle` et `serveur/edition.mjs#motCleDe` retrouvent le mot-clé par son écriture.
 - Un import ne crée jamais de mot-clé : une écriture inconnue n'est pas posée, `db:sync-pages` la signale ; `codex.py --vocabulaire`.
-- Le service ne pose sur une page qu'il crée que des mots-clés protégés (une fiche de don : « capacité de classe »).
+- Le service ne pose sur une page qu'il crée que des mots-clés protégés (fiche de don : « capacité de classe »).
 - Le site de dev est la source du vocabulaire (`historique_modification`) : une écriture qu'un mot-clé a quittée mène à lui (renommé) ou au mot-clé qui l'a reçu (fusionné) ; celle d'un mot-clé supprimé n'est pas reposée (`poser_les_mots_cles`, `test/mots-cles-python.test.mjs`).
 - Un homonyme n'est jamais posé par un import (`tools/db/homonymes.py#MAGIES_HOMONYMES` : la magie « corruption » ou « sang » d'un temple du Codex, d'une page de magie, d'une créature invoquée).
-- Un import ne pose jamais les étiquettes de `homonymes.py#ETIQUETTES_NON_POSEES` (Bouclier, Pièce élémentaire, Amélioration, Tour, Mode Hyper, Mode Super), écrites par `equipement.py`, `divers-craft.py` et `annexes-magie.py` (R183 (11)) : un mot-clé créé plus tard ferait poser par le prochain import une étiquette qui ne l'était pas. Test : `importeurs-etiquettes.test.mjs`.
+- Un import ne pose jamais les étiquettes de `homonymes.py#ETIQUETTES_NON_POSEES` (Bouclier, Pièce élémentaire, Amélioration, Tour, Mode Hyper, Mode Super), écrites par `equipement.py`, `divers-craft.py` et `annexes-magie.py` (R183 (11)) ; ce dernier n'écrit plus « Mode Hyper » (plus de page, R187), seulement « Mode Super » : la liste garde ses six étiquettes (un mot-clé créé plus tard ferait poser une étiquette non posée). Test : `importeurs-etiquettes.test.mjs`.
 
 ## Rejeu du journal
 - Ce que le rejeu fait des balises d'un mot-clé supprimé ou fusionné : skill `zone-edition`, « Rejeu du journal ».
-- Un lot d'avant la 0056 qui pose l'étiquette d'un mot-clé absent et non protégé, crée un mot-clé non protégé sans définition ou renomme un mot-clé que les règles n'ont plus est rejoué sans effet, sans conflit (`ancienneEcritureDuGlossaire`, `sansEffet` de l'adaptateur de `rejouer`) ; de même pour le mot-clé libre d'un lot d'avant la 0043 et ce qui suit sur la même ligne ou le même mot-clé. Une insertion qui suit (mot-clé recréé sous le même id, étiquette reposée) est jugée pour elle-même. Un lot d'avant la 0090 voit `cr` reciblé vers `corruption` (`FUSIONS_DE_MIGRATION` : skill `zone-edition`, « Rejeu »).
+- Un lot d'avant la 0056 qui pose l'étiquette d'un mot-clé absent et non protégé, crée un mot-clé non protégé sans définition ou renomme un mot-clé disparu est rejoué sans effet, sans conflit (`ancienneEcritureDuGlossaire`, `sansEffet` de l'adaptateur de `rejouer`) ; de même pour le mot-clé libre d'un lot d'avant la 0043 et ce qui suit sur la même ligne ou le même mot-clé. Une insertion qui suit (mot-clé recréé sous le même id, étiquette reposée) est jugée pour elle-même. Un lot d'avant la 0090 voit `cr` reciblé vers `corruption` (`FUSIONS_DE_MIGRATION` : skill `zone-edition`, « Rejeu »).
 
 ## Tests
 - `mots-cles-balises.test.mjs`, `mots-cles-vivants.test.mjs`, `mots-cles-python.test.mjs`, `texte-en-place-mots-cles.test.mjs`, `importeurs-etiquettes.test.mjs`, `db-lexique-en-mots-cles.test.mjs`, `serveur-edition-rejeu-fusions.test.mjs` (R183). Le test des homonymes du Codex (`codex.test.mjs`, R145, R183) couvre aussi « sang ». Les tests du vocabulaire créent leurs mots-clés d'essai (`test/aide-mots-cles.mjs`).

@@ -12,11 +12,11 @@ user-invocable: false
 - Mise en forme pure : `lib/sort-format.mjs` ; coût : `lib/sort-cout.mjs` ; NM : `lib/sort-maitrise.mjs`.
 - Relations : `lib/magie-relations.mjs` (`entriesAvecRelationsDeLaBase`), `lib/magie-fleches.mjs`, `lib/magie-non-compatible.mjs`.
 - Potentiel Illimité : `lib/potentiel-illimite.mjs` (`NPM_MAX_DU_POTENTIEL`), `components/magie/SortsDuPotentiel.astro`, `styles/magie/potentiel.css`.
-- Gabarit : `components/magie/MagiePage.astro` (avec `MagieSorts`, `TableauNpm`, `LigneDeSort`, `SortDetail`, `MagieAffinites`, `MagieEtats`, `SortsInteractifs`, `Info`, `EtatPastille`) ; il porte le panneau latéral `nav.magies-panneau`.
+- Gabarit : `components/magie/MagiePage.astro` et ses sous-composants (`components/magie/`) ; il porte le panneau latéral `nav.magies-panneau`.
 - Carte de `/magies/` : `components/magie/MagiesConstellation.astro` (`styles/magie/orbit.css`), tableau dessous : `components/magie/TableauRelationsMagies.astro`.
-- CSS : `client/src/styles/magie/*.css` (base, page, sorts, sort-detail, tooltips, creatures, responsive, print, orbit, potentiel, tableaux).
+- CSS : `client/src/styles/magie/*.css`.
 - Corps Markdown tenu d'accord avec les tables : `lib/corps-magies.mjs` (skill `zone-edition`).
-- Import : `tools/sheets/magies.py` ; annexes des magies, 4 pages de `guide/` (altérations d'état, météo, effets du mode hyper et du mode super) : `tools/sheets/annexes-magie.py`. L'onglet « Mode Hyper (Magie) » est ignoré comme « Statistiques » (`IGNORED_TABS`, R184 (9)) : plus de page `guide/mode-hyper-magie` ; les données `mode_hyper_effet` restent.
+- Import : `tools/sheets/magies.py` ; annexes des magies, 3 pages de `guide/` (altérations d'état, météo, effets du mode super) : `tools/sheets/annexes-magie.py`. Les onglets « Mode Hyper (Magie) » (R184 (9)) et « Mode Hyper » de « Mode hyper et co » (R187) sont ignorés (`IGNORED_TABS`) : leurs notes sont relevées par le rapprochement (`note_cellule`) et leurs données restent dans `mode_texte`, `regle_constante` et `mode_hyper_effet`.
 
 ## À lire
 - `docs/content-guide.md`, « Pages de magie : un gabarit commun, alimenté par la base » (tables lues, bannière, tableaux, panneau d'un sort, carte de `/magies/`, Potentiel Illimité).
@@ -56,11 +56,11 @@ user-invocable: false
 - Résistances et vulnérabilités (`MagieAffinites.astro`) : `chargerMagies` expose `resistances[sens].physiques: [{ type, brut }]` (R174, `magie_resistance.cible_physique`). Un groupe « Dégâts physiques » (Estoc, Frappe, Taille dans l'ordre de `RESISTANCES_PHYSIQUES`, sans lien) ne paraît que pour une magie qui a ces lignes (le Potentiel Illimité), le texte cité une fois, tel quel (`test/magies-page.test.mjs`, `magies-html.test.mjs`).
 - Encart de l'altération d'état liée (`etat_magie`) entre la présentation et les résistances (`MagieEtats.astro`).
 - « Magie non compatible » sans le Potentiel Illimité ; « Mono-magie uniquement » pour une magie `magie.mono_magie` (Potentiel Illimité, Corruption excepté Elfe Noir Charbon et Felfe Noir : décision R15, migration `0010-mono-magie`, `lib/magie-non-compatible.mjs`).
-- Un (+) à côté de « Capacité Mode Hyper » au lieu du lien en texte.
+- Un (+) à côté de « Capacité Mode Hyper » au lieu du lien en texte, vers `guide/le-mode-hyper`, titre « Le Mode Hyper » (R187).
 - « Disponibilité par race » : une seule liste, dans l'ordre de `/races/` (`ORDRE_DES_RACES`), sans les races qui n'ont pas la magie.
 - Potentiel Illimité (pas de sorts à lui) : 14 onglets, un par autre magie, avec ses tableaux du NPM 1 au NPM 4 (NPM 3 d'après son Explication, NPM 4 avec le don « Semi-complet » de l'Archimage niveau 20).
 - Carte de `/magies/` : relations au survol d'une magie seulement (grand écran) ; un trait par magie liée, épée au bout de la magie vulnérable, bouclier au bout de celle qui résiste, boucle pour « résiste à elle-même » ; pas d'infobulle sur la carte ; légende sur une ligne ; Potentiel Illimité au centre, disposition symétrique.
-- Panneau latéral sur chaque page de magie (demande du propriétaire : « un panneau latéral qui liste toutes les magies et un bouton "toutes" qui ramène au menu d'avant », avec « les mêmes pastilles de couleur que l'écran de toutes les magies ») : « Toutes » vers `/magies/`, puis une pastille par magie dans l'ordre du classeur (`magie.ordre`), la magie affichée en `aria-current="page"`. Pastilles du dessin commun de `styles/global/pastille.css`, couleur par `classeDeMagie` (`test/palette-css.test.mjs`). Mise en page du menu latéral (`MenuLateral.astro`) : à gauche, collé en haut ; à 56rem ou moins, un `<details data-magies-repli>` replié au-dessus de la page, ouvert sans JavaScript (le test « aucun `<details>` ouvert » des sorts l'exclut).
+- Panneau latéral sur chaque page de magie (demande du propriétaire : « un panneau latéral qui liste toutes les magies et un bouton "toutes" qui ramène au menu d'avant », avec « les mêmes pastilles de couleur que l'écran de toutes les magies ») : « Toutes » vers `/magies/`, puis une pastille par magie dans l'ordre du classeur (`magie.ordre`), la magie affichée en `aria-current="page"`. Pastilles du dessin commun de `styles/global/pastille.css`, couleur par `classeDeMagie` (`test/palette-css.test.mjs`). Menu latéral : à gauche, collé en haut ; à 56rem ou moins, un `<details data-magies-repli>` replié au-dessus de la page, ouvert sans JavaScript (le test « aucun `<details>` ouvert » des sorts l'exclut).
 - Tableau des relations sous la carte : sans ligne ni colonne pour le Potentiel Illimité ; magies dans l'ordre du classeur et dans leur couleur, sans défilement horizontal (`styles/magie/tableaux.css`).
 
 ## Tests

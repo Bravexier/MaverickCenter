@@ -6083,7 +6083,7 @@ Cela dépend de la posture du moment : certaines n’en permettent aucune, d’a
 
 La posture défensive permet aussi l’**intervention** : parer ou esquiver le coup à la place d’un allié adjacent.
 
-Les boss, pensés pour affronter une équipe de quatre joueurs, ont plus de parades et d’esquives que les autres en posture neutre, de vigilance ou de symbiose (voir [[guide/les-boss-et-leurs-postures|Les boss et leurs postures]]).
+Les boss, pensés pour affronter une équipe de quatre joueurs, ont plus de parades et d’esquives que les autres en posture neutre, de vigilance ou de symbiose (voir [[guide/les-postures|Les postures]]).
 
 ### Les attaques de zone
 
@@ -7521,7 +7521,9 @@ S’y ajoutent des effets propres au personnage :
 - celui de **chacune de ses magies**, qui n’est pas le même selon qu’il a une seule magie ou deux : il est sur la page de chaque [magie](/magies/), sous « Capacité Mode Hyper » ;
 - celui de **sa race** : il est sur la page de chaque [race](/races/), sous « Capacité Mode Hyper », avec son nom (l’Adrénaline de l’Humain, par exemple).
 
-La page de chaque magie et de chaque race donne l’effet écrit dans son onglet. La [[guide/liste-des-effets-mode-hyper|Liste des effets mode hyper]] donne, elle, ceux du classeur du Mode Hyper, magie par magie et race par race ; les deux ne disent pas toujours la même chose.
+La page de chaque magie et de chaque race donne l’effet écrit dans son onglet.
+
+<!-- guide:mode-hyper -->
 
 ## Ce qu’il coûte
 
@@ -7559,21 +7561,6 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 Cet état ne dure que **3 tours**. Le personnage revient ensuite au Mode Hyper normal, et cela lui coûte **75 % de son {{chakra|chakra}} maximum**. S’il ne les a plus en réserve, il paie ce qui manque avec sa santé, comme toujours : **3 points de santé pour 1 point de {{chakra|chakra}}**.
 
 *Exemple : avec 80 de {{chakra|chakra}} au maximum, sortir du Mode Hyper 100 % en coûte 60. S’il ne lui en reste que 40, les 20 qui manquent lui coûtent 60 points de santé.*
-', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/le-mode-super', 'guide', 'le-mode-super', 'Mode Super', 'mode-super', 'Le Mode Super est un équivalent moins puissant du Mode Hyper.', NULL, '> « Ne faire plus qu’un avec son objet. »
-
-Le **Mode Super** est un équivalent moins puissant du Mode Hyper. Au lieu d’une symbiose avec soi-même, c’est une symbiose avec un **objet légendaire ou enchanté** : une arme, une armure ou autre. L’aura magique déferle de la même façon, et le personnage change, sous l’effet de sa magie mais aussi de l’objet et de son « concept ».
-
-Pour y entrer, le porteur doit atteindre une parfaite harmonie avec son objet : le MJ en est seul juge.
-
-Le Mode Super donne **+10 aux dégâts physiques**, plus un **effet passif** et un **effet actif** propres à l’objet : voir la [[guide/liste-des-effets-mode-super|Liste des effets mode super]], où certains objets n’ont pas d’effet écrit. Plusieurs de ces objets sont présentés dans le Codex : [[lore/les-outils-legendaires-uniques|Les Outils Légendaires, Uniques]].
-
-Ses limites ressemblent à celles du Mode Hyper, avec quelques différences :
-
-- il dure au plus **le niveau global divisé par 2**, en tours, et ne se prolonge jamais au-delà ;
-- il faut attendre **une semaine** pour qu’il soit de nouveau disponible ;
-- il peut s’activer même si quelqu’un d’autre est déjà en Mode Hyper ou en Mode Super ;
-- le Mode Hyper et le Mode Super peuvent servir dans le même combat, mais pas en même temps.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/le-tour-de-jeu', 'guide', 'le-tour-de-jeu', 'Le tour de jeu', 'le-tour-de-jeu', 'Comment se déroule un combat : l’initiative, puis, à son tour, la posture, le déplacement, les actions rapides (IC) et l’action, et ce qu’on peut faire hors de son tour.', NULL, 'En combat, le temps se découpe en **tours** : chacun agit à son tour, dans l’ordre de l’initiative, puis un nouveau tour commence. Ce qu’on fait pendant le sien tient en quelques étapes, toujours les mêmes.
 
@@ -7686,12 +7673,6 @@ La victime de l’attaque d’opportunité ne peut pas parer ou esquiver, **à m
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/les-attaques-discretes', 'guide', 'les-attaques-discretes', 'Les attaques discrètes', 'les-attaques-discretes', 'Selon comment une situation évolue, il vous est peut-être venu à l''idée d''occire une cible discrètement, sans même qu''elle voie la mort arriver.', NULL, 'Selon comment une situation évolue, il vous est peut-être venu à l''idée d''occire une cible discrètement, sans même qu''elle voie la mort arriver. C''est ce que l''on appelle une attaque discrète (à ne pas confondre avec **l’attaque sournoise** qui vient d’une classe). Cela se traduit par un dé supplémentaire lors de votre jet de dégâts si et seulement si vous êtes en posture discrète (par exemple, au lieu de faire 2d6 avec votre dague, on passe à 3d6). Il est nécessaire de réussir un jet de ruse et qu’aucun ennemi ne vous voie clairement (voir avec le mj). Le fait de passer en mode discret consomme 3IC (2 si le joueur est voleur).
 
 À noter que lors d''une attaque discrète, la cible doit effectuer un jet d’Observation ou de Distinction. Si elle réussit à faire mieux que le jet de discrétion précédent, la discrétion est annulée et donc les dégâts bonus aussi. Concernant la zone de vision d’un ennemi, on peut utiliser leur perception comme échelle (1 point de Perception = 2 cases pour repérer quelqu’un de caché)
-', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/les-boss-et-leurs-postures', 'guide', 'les-boss-et-leurs-postures', 'Les boss et leurs postures', 'les-boss-et-leurs-postures', 'Les boss sont généralement de gros ennemis pensés pour affronter une équipe 4 joueurs, en plus d’avoir bien plus de santé qu’un ennemi classique, ils ont quelques avantages en plus :', NULL, 'Les boss sont généralement de gros ennemis pensés pour affronter une équipe 4 joueurs, en plus d’avoir bien plus de santé qu’un ennemi classique, ils ont quelques avantages en plus :
-
-- Ils ont deux initiatives en un tour, il faut donc lancer deux D20 pour eux quand un tour commence.
-- Leur posture Neutre possède 4 parades/esquives au lieu de 2.
-- Leurs postures Vigilance et Symbiose possèdent 3 parades/esquives au lieu d’une seule.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/les-degats', 'guide', 'les-degats', 'Les dégâts', 'les-degats', 'Ce que perd la cible d’un coup réussi : la formule des dégâts étape par étape, l’armure, et trois exemples.', NULL, 'Un coup a touché, et la cible n’a pas su l’arrêter entièrement (voir [[guide/attaquer-et-se-defendre|Attaquer et se défendre]]). Reste à savoir ce qu’il lui coûte. Arme ou sort, le calcul se fait toujours dans le même ordre.
 
@@ -8117,7 +8098,7 @@ Les boss, pensés pour affronter une équipe de quatre joueurs, se défendent da
 
 Sur la [fiche de personnage](/fiche/), cochez la posture du moment : la fiche recalcule ce qu’elle chiffre, les scores des compétences, l’initiative, l’AP et l’AM, et les dégâts des armes et des sorts.
 
-Le texte d’origine des postures : [[guide/postures|Postures]] (Doc « Guide pour MJ ») et [[guide/fiche-tableau-posture|Tableau Posture]] (Doc « Créer sa fiche de personnage »).
+Le texte d’origine des postures : [[guide/fiche-tableau-posture|Tableau Posture]] (Doc « Créer sa fiche de personnage »).
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/liste-des-alterations-d-etat', 'guide', 'liste-des-alterations-d-etat', 'Liste des altérations d''état', 'liste-des-alterations-detat', NULL, NULL, '## Aveuglement
 
@@ -8403,113 +8384,6 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | --- |
 | Impossible de se défendre et demande un tour complet pour le retirer.<br>Les coups portés sur lui seront automatiquement des coups critiques. |
 ', 'draft', 'annexes', 'Google Sheet « Magie Maverick V8 », onglet « Altération détats »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/liste-des-effets-mode-hyper', 'guide', 'liste-des-effets-mode-hyper', 'Liste des effets mode hyper', 'liste-des-effets-mode-hyper', 'Le Mode Hyper est un état de surpuissance qui se débloque au niveau 2 de personnage.', NULL, '"Ne plus faire qu''un avec soi-même"
-
-## Qu''est-ce que c''est ?
-
-Le Mode Hyper est un état de surpuissance qui se débloque au niveau 2 de personnage.
-
-Il s''agit d''un état où le personnage libère sa puissance cachée en lui, sa magie ne fait plus qu''un avec lui, l''aura magique déferle et ses attributs physiques changent énormément vu que sa magie l''envahit.
-
-Activer le mode hyper ne demande aucun jet de dés et est considéré comme un Instant Cast.
-
-## Fonctionnement
-
-Pendant le mode hyper, le {{chakra|chakra}} est utilisé comme carburant pour le mode hyper, il est consommé à raison de 10% du {{chakra}} max par tour. Cependant, il est impossible de consommer une fiole bleue (ou équivalent qui redonnerait du {{chakra|chakra}}), de faire une méditation ou bien de se reposer. Le {{chakra|chakra}} ne peut pas être régénéré pendant le mode hyper. Le mode hyper peut durer au maximum un nombre de tours équivalent au niveau global divisé par 2, même s''il reste du {{chakra|chakra}} en réserve. Le mode hyper est très épuisant pour le corps et l''esprit.<br>
-Il est utilisé à raison de 1 fois toutes les semaines vu qu''on parle d''un état qui épuise très rapidement le corps.
-
-## Au-delà des limites
-
-Il est bien entendu possible de conserver son mode hyper même si la réserve de {{chakra|chakra}} est épuisée ou bien les tours passés, mais cela aura des conséquences sur le corps et l''esprit.
-
-Maintenir le mode hyper au-delà des limites aura pour conséquence une fois le mode hyper relâché :
-
-- 1 tour supplémentaire : Brise les résistances magiques pendant 24h.
-- 2 tours supplémentaires : Accentue les vulnérabilités pendant 24h. (donne 2 faiblesses aléatoires pour les magies d''Arcane, Corruption et Potentiel illimité)
-- 3 tours supplémentaires : 3 croix caractéristiques aléatoires pendant 24h.
-- 4 tours supplémentaires : Tombe dans le coma avec perte complète de la santé.
-- 5 tours supplémentaires : Mode hyper désactivé, 50% de chance de mourir.
-
-Le Mode Hyper ne peut être enclenché qu''une fois toutes les semaines dans le jeu, et qu''une seule créature sur le terrain ne peut activer son mode hyper pendant 1 combat, il existe des exceptions :
-
-- Les zones où le chakra est tellement présent que le simple fait de respirer permet de récupérer la totalité de son {{chakra|chakra}}, ici tout le monde peut activer son mode hyper et cela sans consommer le {{chakra|chakra}}, mais la limite des 10 tours, elle, reste présente.
-- Un objet magique qui permet d''activer son mode hyper en même temps que quelqu''un d''autre.
-- Autorisation du MJ selon la situation.
-
-## Mode Hyper 100%
-
-Il s''agit d''un état plus puissant du Mode Hyper de base, dans cet état, le lanceur se concentre pour renfermer l''aura de chakra qui déferle en mode Hyper. Une fois scellée à l''intérieur de son corps, la puissance du lanceur est à son paroxysme.
-
-L''appellation "100%" vient du fait que le lanceur est à pleine puissance tant que l''aura est enfouie en lui, ainsi de nouveaux bonus s''offrent à lui en 100% :
-
-- Le {{chakra}} ne s''évapore plus.
-- Toutes les postures sont activées et ne possèdent plus d''inconvénients.
-- Tous les sorts peuvent être surchargés (leur donnant 1d de dégâts en plus)
-- Toutes les attaques physiques et magiques infligent +10 dégâts en plus du mode hyper d''avant.
-
-En revanche, l''état 100% ne peut pas être conservé éternellement, il ne dure que 3 tours et après le lanceur revient dans le Mode Hyper normal, consommant au passage 75% de son {{chakra}} Max (Prudence, si vous n''avez pas 75% de {{chakra}} courant en réserve, le manque sera pris dans les PV).
-
-Le Mode Hyper 100% n''est disponible qu''au niveau 10 de personnage.
-
-## Effets selon la magie ou le type
-
-| Magie/Type | Mono magie | Bi magie |
-| --- | --- | --- |
-| Général | Immunité à la magie innée | Très résistant aux deux magies |
-| Général | Dégâts de la magie +15 | Dégâts de la magie +7 |
-| Général | Dégâts physiques +15 | Dégâts physiques +15 |
-| Général | Soin magique +15 | Soin magique +15 |
-| Général | Consommation de {{chakra\|chakra}} = 0 | Consommation de {{chakra\|chakra}} = 0 |
-| Potentiel illimité | Dégâts physiques neutres, Résistance à la magie | Dégâts physiques neutres, Résistance à la magie |
-| Sang | Permet de récupérer 10 sang par tour au lieu de 1. | Divise par 2 le coût en sang pour les sorts. |
-| Arcane | Les sorts amplifications deviennent des IC le temps du mode hyper (sauf les sorts niveau de puissance 5). | Chaque tour, une amplification est un IC (seulement le premier IC). (sauf les sorts niveau de puissance 5). |
-| Corruption | Le {{chakra\|chakra}} active directement les effets secondaires | Divise par 2 le cout en {{corruption\|corruption}} des sorts. |
-| Temps/Espace | Donne l''état "Célérité" (voir le sort lvl 4) pendant le mode hyper, le sort portail passe à ICx3 et le sort téléportation passe à ICx2. | Donne l''état "Image diffuse" (voir le sort lvl 4) pendant le mode hyper, les clones se rechargent à hauteur de 1 par tour. |
-| Vide | Impose un désavantage (jette 2d100, garde le moins bon) aux ennemis qui tentent des attaques contre lui. | Impose un désavantage (jette 2d100, garde le moins bon) à la première attaque tentée contre lui. |
-| Nécromancie | Permet d''avoir deux invocations au lieu d''une seule. Passe le sort animation de mort en IC (ICx2 si jamais il est déjà en ic) | Permet d''avoir deux invocations au lieu d''une seule. |
-| Feu | (Réaction) Lors d''une agression, permet de répondre par une contre-attaque magique de l''élément feu qui infligera 2d6/NPM dégâts. (1 fois/tour) | (Réaction) Lors d''une agression, permet de répondre par une contre-attaque magique de l''élément feu qui infligera 2d6/NPM dégâts. (1 fois/3 tours) |
-| Eau | L''utilisateur du mode hyper est considéré comme une source d''eau pour lui et ses alliés.<br>La première attaque subie réduit ses dégâts finaux de 20%. | L''utilisateur du mode hyper est considéré comme une source d''eau QUE pour lui.<br>La première attaque subie réduit ses dégâts finaux de 20%. |
-| Glace | L''armure magique (AM) de base augmente de 25. | L''armure magique (AM) de base augmente de 10. |
-| Terre | L''armure physique (AP) de base augmente de 25. | L''armure physique (AP) de base augmente de 10. |
-| Vent | Chaque attaque physique libère une lame de vent blanche qui inflige 1d6/NPM de dégâts qui va ignorer les AP et AM sur 8 cases de distance. Dégâts non élémentaires. | Chaque attaque physique libère une lame de vent blanche qui inflige 1d6/NPM de dégâts sur 6 cases de distance. Dégâts non élémentaires. |
-| Foudre | Toutes les attaques physiques de contact sont enchaînées d''un éclair blanc qui inflige 1d8/NPM de dégâts qui va ignorer les AM et AP. Dégâts non élémentaires. | Toutes les attaques physiques de contact sont enchaînées d''un éclair blanc qui inflige 1d8/NPM de dégâts. Dégâts non élémentaires. |
-| Lumière | Les soins, les protections et les amplifications deviennent des IC le temps du mode hyper (sauf les sorts niveau de puissance 5). | Chaque tour, un soin, une protection ou une amplification est un IC (seulement le premier IC). (sauf les sorts niveau de puissance 5). |
-| Ombre | Les sorts entraves deviennent des IC le temps du mode hyper (sauf les sorts niveau de puissance 5). | Chaque tour, une entrave est un IC (seulement le premier IC). (sauf les sorts niveau de puissance 5). |
-
-## Effets selon la race
-
-| Race | Effet |
-| --- | --- |
-| Humain | 1d de dégâts en plus pour toutes les attaques produites, +2 à la Vitesse et les altérations d''états "peur", "fatigue" et "couardise" ne fonctionnent pas." |
-| Elfe forestier | Chaque test d''Agilité se fait à 95% et impossible d''imposer de malus dessus. |
-| Elfe noir | Permet de synthétiser un poison unique sur l''arme principale, inflige "poison 1" pendant tout le monde hyper. L''ennemi doit faire un jet de vigueur tous les débuts de tour pour ne pas encaisser les dégâts. |
-| Elfe argenté | Toutes les attaques magiques sont imparables. |
-| Elfe doré | Les sorts infligent un stade au-dessus de leur altération d''état. |
-| Farfadet | Permet d''avoir accès à tous les sorts de votre/vos magies, qui correspond à votre niveau puissance magique et inférieur. |
-| Felfe | Peut voler, les dégâts et soins magiques sont augmentés de 2d, ceux qui doivent faire des jets pour esquiver les effets secondaires des sorts ont leur score divisé par 2. |
-| Nain | 2d de dégâts physiques en plus. Le sort malédiction ne marche. |
-| Majin | La portée des attaques augmente de 2. |
-| Hujin | Diminue d''un cran les dés des attaques physiques ou magiques subies |
-| Drakos | (Action) Permet une attaque de souffle de l''élément de la magie innée, inflige 3d6/NPM dégâts et possède une portée de 4. Elle ne bénéficie pas des boosts de dégâts donnés par le mode hyper ou autre (mais est influencée par les postures). Demande un jet qui est choisi entre toutes les compétences d''attaques disponibles. |
-| Mort-vivant | Régénère 20% de santé au début de son tour. |
-| Orios | Chaque test de Force se fait à 95% et impossible d''imposer de malus dessus, immunisé aux peurs. |
-| Drassah''thac | Permet de relancer un jet de dés (alliés, ennemis, soi-même), peu importe la nature (2 fois/Mode Hyper). |
-| Fenrir | Chaque test de Perception se fait à 95% et impossible d''imposer de malus dessus, impossible de prendre d''attaques surprises, cachées ou sournoises. |
-| Kitsune | Choisit quand il commence le tour de jeu. |
-| Olwman | Peut se déplacer gratuitement de 2 cases et ce n''importe quand durant le tour. (1 fois par tour) |
-| Rokh | Chaque attaque physique ou magique se suit d''un appel d''une [Élément Innée] blanche [dégâts non élémentaires] qui inflige +1dx\* de dégâts en plus. \*le dégât est calqué sur le dégâts de l''arme ou du sort utilisé |
-| Minotaure | Les coups avec les cornes ou sabots infligent 20% des PV actuels à la cible (une seule fois par mode hyper). |
-| Namazus | La prochaine attaque avec une arme inflige "saignement 1" pendant tout le mode hyper. L''ennemi doit faire un jet de vigueur tous les débuts de tour pour ne pas encaisser les dégâts. |
-| Satyre | Impose un malus de 10% (augmente de 5% au niveau 10 global) à tous les jets des ennemis dans un rayon de 5 cases ou moins. |
-| Médusain | Chaque attaque physique va se suivre d''un tentacule qui touche la cible et lui inflige l''altération d''état malgré la protection. |
-| Lamia | Permet de cracher un venin à 3PO qui est capable d''empoisonner et de paralyser pendant 3 tours, oblige 2 jets de vigueur pour résister aux deux effets. |
-| Jackalope | +3 Vitesse |
-| Marcass | Les AP et AM naturels s’ajoutent à toute réduction de dégâts, quel que soit le type d’attaque. |
-| Anansi | Les attaques vont obtenir un effet secondaire selon la magie innée : Arcane = Vampirise 1d6 {{barriere\|barrière}} à la cible \| Nécromancie= Inflige Poison 1 automatiquement \| Ombre = Réduit de 5 l''initiative de la cible touchée pour le prochain tour |
-| Goleois | Augmente les dégâts de tous les alliés de 5, le temps du mode hyper. |
-
-*Le classeur « Magie Maverick V8 » contient, dans un onglet masqué, une autre liste des effets du mode hyper ; les deux listes ne donnent pas toujours les mêmes valeurs.*
-', 'draft', 'annexes', 'Google Sheet « Mode hyper et co », onglet « Mode Hyper »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/liste-des-effets-mode-super', 'guide', 'liste-des-effets-mode-super', 'Liste des effets mode super', 'liste-des-effets-mode-super', 'C''est un équivalent du mode hyper mais en moins puissant.', NULL, '"Ne faire plus qu''un avec son objet"
 
 ## Qu''est-ce que c''est ?
@@ -8789,67 +8663,6 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 Bien entendu, cette technique avancée implique une prise de risque pour l''état de l''arme, utiliser une arme de cette façon fait que vous avez 30% de chance d''abîmer votre arme (lui faire perdre un cran de solidité).
 
 *Exemple : Si vous faites plus de 70 dans votre jet d''attaque avec arme en mordhau, votre arme perd immédiatement un cran de solidité.*
-', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/postures', 'guide', 'postures', 'Postures', 'postures', 'Dans un combat, il existe de nombreuses postures qui vont influencer votre façon de jouer, il en existe 6 avec des effets propres.', NULL, 'Dans un combat, il existe de nombreuses postures qui vont influencer votre façon de jouer, il en existe 6 avec des effets propres :
-
-## Offensif
-
-C''est la posture d''attaque par excellence, si on veut taper et faire beaucoup de dégâts c''est la posture idéale. Ses effets sont :
-
-- **Dégâts maximum :** Armes ou Magie, les dégâts seront au minimum avec les bonus. [Exemple : 2d6+2 de dégâts en offensif fera automatiquement 14 dégâts, les jets de dés ne sont pas à faire vu que c''est le maximum que l''on prend]
-- **+5% à la réussite critique :** La réussite critique (ou coup critique) est de base à 5 ou moins, grâce à la posture offensive, cette réussite critique monte à 10 ou moins.
-- **Malus de 10% pour toucher une cible :** La posture diminue la chance que vous avez de toucher votre cible.
-- **Esquive/Parade impossible :** Pas besoin d''expliquer, la posture vous empêche d''esquiver ou de parer une agression ennemie.
-
-## Défensif
-
-En opposition avec la posture offensive, la posture défensive est faite pour quelqu''un qui souhaite couvrir ses alliés ou bien se protéger de multiples assauts. Ses effets sont :
-
-- **+2AP/AM :** L’armure physique et magique augmente quand cette posture est prise. Cela augmente de +2 tous les 4 niveaux globaux du personnage.
-- **Parade/Esquive illimitée :** Permet d''esquiver ou de parer tous les coups dans un tour MAIS dès que le nombre de parade/esquive est au-delà de deux = chaque coup va diminuer la réussite de la prochaine parade/esquive de 10%.
-- **Provocation :** Permet en échange d''un bon dialogue ou d''un jet de diplomatie, intimidation ou manipulation réussi, d''obliger un adversaire à venir vous attaquer que vous pendant 1 tour.
-- **Intervention :** Permet de parer/esquiver le coup à la place d''un allié adjacent.
-- **+5% à la réussite critique avec une défense :** La réussite critique (ou coup critique) est de base à 5 ou moins, grâce à la posture défensive, cette réussite critique monte à 10 ou moins quand on esquive ou pare une attaque.
-- **Divise les dégâts par 2 infligés :** Armes ou Magie, les dégâts infligés seront divisés par 2, cette division intervient AVANT le calcul de l’armure.
-
-## Neutre
-
-L''entre-deux de la posture offensive et défensive, la posture neutre permet d''infliger les dégâts normaux en plus de bénéficier de parade ou esquive. Ses effets sont :
-
-- **+5% pour un jet V ou S :** Permet d''avoir un bonus de 5% à tout jet impliquant la caractéristique Social ou Volonté.
-- **2 esquives/parades par tour :** Permet d''esquiver ou de parer deux fois par tour.
-
-## Focus
-
-Cette posture permet de rester concentré et permet une meilleure efficacité avec la magie. Ses effets sont :
-
-- **+10% à la réussite :** Peu importe le type de jet, il bénéficie d’un bonus de 10% à la réussite.
-- **-1 tour de charge :** Permet de retirer le tour de charge des sorts de niveau 5 de puissance et de retirer le tour de charge lors de certaines actions. Casse le tour de charge de la capacité "Préparation" du Mage Rouge et Vert.
-- **Augmente le cran de dé de dégâts/soin :** Permet d’augmenter d’un cran la nature des dés qui seront lancés pour le sortilèges (le D6 devient D8, etc… en sachant qu’il n’y pas plus haut que le D20)
-- **Esquive/Parade impossible :** Pas besoin d''expliquer, la posture vous empêche d''esquiver ou de parer une agression ennemie.
-
-## Vigilance
-
-Cette posture permet d''être bien plus attentif à ce qu''il se passe autour de soi mais aussi dans le combat. Ses effets sont :
-
-- **+5% pour un jet de Perception :** Permet d''avoir un bonus de 5% à tout jet impliquant la caractéristique Perception.
-- **+2 Initiative :** Permet d''avoir un bonus d''initiative de +2 lors du début de chaque tour.
-- **Peut anticiper les actions adverses :** Permet grâce un jet d''observation d''avoir une info intéressante sur la prochaine action de l''adversaire, voir le mj pour ça.
-- **Repérer un adversaire invisible devient un IC :** Permet à l’action “estimer la position d’un ennemi invisible ou discret” de devenir un IC.
-- **Peut repérer 1d4 résistance/vulnérabilité :** Permet d’utiliser un IC pour détecter une résistance ou vulnérabilité aléatoire de l’ennemi.
-- **Une seule parade/esquive par tour :** Permet d''esquiver ou de parer une fois par tour.
-
-## Symbiose
-
-Cette posture étrange permet d''être en parfaite fusion avec sa magie, dans cette posture vous êtes presque comme un élémentaire. Il faut savoir que cette posture permet d''être meilleur avec sa magie mais dans le cas où vous êtes bi-magie, vous devez choisir une magie avec qui faire équipe et délaisser l''autre le temps de la posture. Ses effets sont :
-
-- **+5 dégâts/soin avec une magie :** Permet d''infliger un bonus de dégâts de +5 ou alors un bonus de +5 avec un sort de soin. Cela augmente de +2 tous les niveaux de puissance magique (le premier niveau ne compte pas)
-- **+4 AM :** Permet d''avoir une plus grande armure magique dans cette posture. Cela augmente de +2 tous les niveaux de puissance magique (le premier niveau ne compte pas)
-- **Immunité à la magie de la symbiose :** La magie avec laquelle vous avez fait la symbiose vous envahit et vous devenez totalement immunisé à celle-ci.
-- **+1 tour d''effet pour les effets secondaires avec des tours :** Si votre sortilège possède un effet qui dure sur plusieurs tours, la posture permet d''ajouter 1 tour gratuitement.
-- **Une seule parade/esquive par tour :** Permet d''esquiver ou de parer une fois par tour.
-- **Impossible d''utiliser les objets et armes (sauf forgemagie) :** Vous êtes quasiment un élémentaire, les armes physiques et les objets ne sont pas dans votre optique (“Forgemagie”, “Forge de ses morts”, Bâton magique et les parchemins ne sont pas interdits)
-- **Une seule magie active :** Quand vous avez 2 magies, 1 de ces magies doit être désactivée temporairement, ainsi tous ses avantages et inconvénients sont annulés également.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/premiers-sorts', 'guide', 'premiers-sorts', 'Étape 5 : choisir ses premiers sorts', 'etape-5-choisir-ses-premiers-sorts', 'Tout le monde a une magie innée, donc tout le monde a au moins un sort.', NULL, 'Tout le monde a une magie innée, donc tout le monde a au moins un sort. Le nombre de sorts dépend de deux choses : des **conditions** que remplit le personnage et de sa **puissance magique**.
 

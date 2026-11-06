@@ -32,7 +32,6 @@ INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/l-embuscade', 0, '
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/le-mode-hyper', 0, 'Le Mode Hyper et le Mode Super', 'le-mode-hyper-et-le-mode-super');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/les-attaques-d-opportunite', 0, 'Les attaques d''opportunité', 'les-attaques-dopportunite');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/les-attaques-discretes', 0, 'Les attaques discrètes', 'les-attaques-discretes');
-INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/les-boss-et-leurs-postures', 0, 'Les boss et leurs postures', 'les-boss-et-leurs-postures');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/les-neuf-alignements', 0, 'Loyal Bon', 'loyal-bon');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/les-neuf-alignements', 1, 'Loyal Neutre', 'loyal-neutre');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/les-neuf-alignements', 2, 'Loyal Mauvais', 'loyal-mauvais');
@@ -45,6 +44,7 @@ INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/les-pieges', 0, 'T
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/les-pieges', 1, 'Déclencheur', 'declencheur');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/les-portes', 0, 'Les herses', 'les-herses');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/les-portes', 1, 'Les portes magiques', 'les-portes-magiques');
+INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/les-postures', 0, 'Postures', 'postures');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/mordhau-ou-demi-epee', 0, 'Mordhau ou Demi épée', 'mordhau-ou-demi-epee');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/prise-en-tenaille-et-zone-d-influence', 0, 'La prise en tenaille', 'la-prise-en-tenaille');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/prise-en-tenaille-et-zone-d-influence', 1, 'Les situations avancées', 'les-situations-avancees');

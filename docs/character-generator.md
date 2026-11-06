@@ -253,7 +253,7 @@ bouton (au-dessus quand la place manque), bornée à l'écran, téléphone compr
   Bimane, cumulables ; Équilibré et Équilibre s'en retranchent (texte des dons), Directrice, Fausse Patte et Ravageur sont signalés. Plus de case « Ambidextrie ».
 - **Postures et Mode Hyper** : une **case par posture**, ses effets toujours lisibles, **avantages en vert, inconvénients en rouge** (décision R47,
   `posture_effet.inconvenient`), sur deux lignes : Offensif, Neutre, Défensif, puis Focus, Vigilance, Symbiose (`regles.ordre_postures`) ; un clic choisit la
-  posture du moment. À droite, une fois débloqués (`modeHyperDe` : niveaux 2 et 10, page « Liste des effets mode hyper »), les cases du **Mode Hyper** (effets
+  posture du moment. À droite, une fois débloqués (`modeHyperDe` : niveaux 2 et 10, constantes `mode_hyper.niveau_deblocage` et `mode_hyper.niveau_100` ; puces et suite du Mode Hyper 100 % lues dans son texte `mode_texte`, R187), les cases du **Mode Hyper** (effets
   de base de la fiche, décision R5 ; effet de la magie, « Mono-Magie » ou « Bi-magie » ; effet de la race, R13) et du **Mode Hyper 100 %**,
   chacune dans la classe de son mode (`mode_hyper.classe`, `mode_hyper.cent.classe` de `regles.json` : famille `mode` de la palette). **Activables**
   (décision R172, « Deux cases activables, comme les postures ») : le nom de la case est le bouton qui la coche (`aria-pressed`, pleine comme la posture

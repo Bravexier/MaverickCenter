@@ -195,10 +195,19 @@ export const adresseDeLaPageAbsorbee = (ancienne, cheminDe) => {
 
 /**
  * Les pages supprimées sans renvoi (R184 (9), R185 (6) : « Leurs adresses mènent à la page 404 par défaut ») : ni dans la base, ni dans le plan, ni dans
- * aucune liste de renvois (verifierLePlan arrête le build si l'une revient sans être rangée). Leur contenu se lit ailleurs ou n'est plus tenu.
+ * aucune liste de renvois (verifierLePlan arrête le build si l'une revient sans être rangée). Leur contenu se lit ailleurs ou n'est plus tenu. Leur id
+ * reste réservé : une page créée sur le site de dev ne le reprend pas (serveur/edition-plan.mjs#idPris).
+ *   - R184 (9) : « Les documents des règles », « En résumé : déroulement d'un tour », « Aide-mémoire », « Mode Hyper (Magie) » ;
+ *   - 2026-11-06, migration 0094 (demande du propriétaire : « Il y a 4 pages à supprimer car inutile ou doublon. * Postures * Les boss et leurs
+ *     postures * Le mode hyper * Mode super » ; « Le mode hyper » reste, a-t-il précisé) : « Postures » (doublon de guide/les-postures, où mène son
+ *     alias ; les ids des postures gardent son préfixe, guide/postures#posture:…, identifiants figés), « Les boss et leurs postures » (son texte est
+ *     dans guide/les-postures, ## Les boss), « Le Mode Super » ;
+ *   - R187 (1), migration 0095 (même jour : « Supprime la liste ») : la « Liste des effets mode hyper », doublon de guide/le-mode-hyper, qui porte
+ *     maintenant le tableau des effets des magies et des races (bloc mode-hyper, lib/guide.mjs#BLOCS).
  */
 export const PAGES_SUPPRIMEES = Object.freeze([
   'guide/les-documents-des-regles', 'guide/en-resume-deroulement-d-un-tour', 'guide/aide-memoire', 'guide/mode-hyper-magie',
+  'guide/postures', 'guide/les-boss-et-leurs-postures', 'guide/le-mode-super', 'guide/liste-des-effets-mode-hyper',
 ]);
 
 /**
@@ -243,15 +252,16 @@ export function adresseDuGuide(id) {
  * Les pages qui étaient dans les Règles avancées (/regles/avancees/<slug>/, du 2026-11-05 à R184), sauf les pages supprimées (PAGES_SUPPRIMEES : la
  * page 404) : liste figée, relevée au commit 92a123d (les 19 pages nommées par l'ancien plan, les 14 pages « Fiche de personnage : … », et les pages
  * qu'il ne nommait pas). Chacune mène à sa page, ou à celle qui l'absorbe (ADRESSES_DU_PLAN_PRECEDENT) ; « Les situations avancées », éclatée, à la page
- * de son ancre (PAGES_ECLATEES_DU_GUIDE).
+ * de son ancre (PAGES_ECLATEES_DU_GUIDE). « Postures », supprimée le 2026-11-06 (migration 0094), et la « Liste des effets
+ * mode hyper », supprimée le même jour (R187, migration 0095), en sont sorties comme « Mode Hyper (Magie) ».
  */
 const ANCIENNES_REGLES_AVANCEES = Object.freeze([
   'actions-et-mouvements', 'alignement', 'alterations-d-etats-et-mode-hyper', 'attaque-et-defense', 'distance-et-voyage', 'donjon-pas-bon',
   'fiche-accessoires-et-ceinture', 'fiche-armure-defense-bouclier', 'fiche-attributs', 'fiche-capacites-dons', 'fiche-caracteristiques', 'fiche-classe',
   'fiche-competences', 'fiche-experience-niveau-global', 'fiche-inventaire-sac-a-dos', 'fiche-maitrise-darme-et-armes', 'fiche-personnage',
   'fiche-tableau-magie', 'fiche-tableau-posture', 'fiche-tableau-resistances-faiblesses', 'formule-des-degats', 'jet-de-des', 'le-mode-hyper',
-  'les-neuf-alignements', 'les-pieges', 'les-portes', 'liste-des-alterations-d-etat', 'liste-des-effets-mode-hyper', 'liste-des-effets-mode-super',
-  'meteo', 'postures', 'resistance-faiblesse-magie', 'situations-avancees', 'utiliser-ce-wiki', 'vitesse-et-portee',
+  'les-neuf-alignements', 'les-pieges', 'les-portes', 'liste-des-alterations-d-etat', 'liste-des-effets-mode-super',
+  'meteo', 'resistance-faiblesse-magie', 'situations-avancees', 'utiliser-ce-wiki', 'vitesse-et-portee',
 ]);
 
 /** Les six étapes de la création : pages du 2026-10-16 au 2026-10-18 (/decouvrir/<slug>/), puis fusionnées, de nouveau des pages depuis R184. */
@@ -293,7 +303,8 @@ const ANCRES_DE_LA_CREATION = Object.freeze({
 
 /**
  * Les anciennes ancres des sections de « Les situations avancées » (R185 (3), relevées au commit 92a123d) : chacune mène à la page qui porte maintenant
- * son texte ; « La prise en tenaille » à sa section de la page de la tenaille.
+ * son texte ; « La prise en tenaille » à sa section de la page de la tenaille ; « Les boss et leurs postures », dont la page est supprimée (migration
+ * 0094, PAGES_SUPPRIMEES), à la section « Les boss » de la page des postures, qui porte son texte.
  */
 const ANCRES_DES_SITUATIONS_AVANCEES = Object.freeze({
   'la-prise-en-tenaille': 'regles/prise-en-tenaille-et-zone-d-influence/#la-prise-en-tenaille',
@@ -301,7 +312,7 @@ const ANCRES_DES_SITUATIONS_AVANCEES = Object.freeze({
   'les-attaques-discrètes': adresseDuGuide('guide/les-attaques-discretes'),
   'les-attaques-dopportunité': adresseDuGuide('guide/les-attaques-d-opportunite'),
   'lembuscade': adresseDuGuide('guide/l-embuscade'),
-  'les-boss-et-leurs-postures': adresseDuGuide('guide/les-boss-et-leurs-postures'),
+  'les-boss-et-leurs-postures': `${adresseDuGuide('guide/les-postures')}#les-boss`,
   'rater-ses-sortilèges': adresseDuGuide('guide/rater-ses-sortileges'),
   'mordhau-ou-demi-épée': adresseDuGuide('guide/mordhau-ou-demi-epee'),
 });

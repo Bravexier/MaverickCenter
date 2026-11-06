@@ -128,7 +128,9 @@ Le chemin utilisé est en deux temps, rejouable :
 un import n'en crée jamais). Un mot-clé créé plus tard peut donc faire poser par le prochain import une étiquette qui ne l'était pas : la liste commune
 `tools/db/homonymes.py` dit celles que les extracteurs n'écrivent pas. `MAGIES_HOMONYMES` : la magie homonyme d'un mot-clé d'un autre sens (« corruption »,
 « sang ») ; `ETIQUETTES_NON_POSEES` : les étiquettes des mots-clés venus du Lexique (migration 0090) Bouclier, Pièce élémentaire et Amélioration
-(`equipement.py`), Tour (`divers-craft.py`), Mode Hyper et Mode Super (`annexes-magie.py`), exclues de l'import par la décision R183 (11). Test :
+(`equipement.py`), Tour (`divers-craft.py`), Mode Hyper et Mode Super (`annexes-magie.py` ; Mode Hyper n'a plus de page où se poser depuis le retrait
+de `guide/liste-des-effets-mode-hyper`, décision R187 : l'importeur ignore l'onglet « Mode Hyper », dont les textes, les constantes et les effets restent
+en base), exclues de l'import par la décision R183 (11). Test :
 `client/test/importeurs-etiquettes.test.mjs`, qui rejoue les trois extracteurs sur les instantanés de `sources/raw/classeurs/`.
 
 Obtenir les données d'un classeur, par ordre de préférence :
@@ -153,7 +155,9 @@ Obtenir les données d'un classeur, par ordre de préférence :
    « Commentaire résolu de la cellule … » ; une capacité de classe porte sa note en ligne, « Note de cellule : … ») et leur `--verifier` recompte chaque note depuis le dump : une note absente, dupliquée, tronquée ou
    déplacée fait échouer la vérification. Un dump produit sans les notes (ancien convertisseur) est refusé par `invocations.py` au lieu d'effacer
    les notes déjà écrites (`--accepter-notes-retirees` pour une suppression voulue). Le fil de 26 commentaires ancré en `Sommaire!A1` du classeur
-   de magie n'est rattaché à aucune page (listé par `annexes-magie.py`). `corriger-dump.py` corrige le champ `note`, pas encore `threads`.
+   de magie n'est rattaché à aucune page (listé par `annexes-magie.py`). Les notes et les fils d'un onglet ignoré par `annexes-magie.py` (« Statistiques »,
+   R86 ; « Mode Hyper (Magie) », R184 (9) ; « Mode Hyper » de « Mode hyper et co », R187) sont annoncés, pas rendus : ceux des deux onglets dont la base
+   garde les données sont relevés par le rapprochement (`note_cellule`). `corriger-dump.py` corrige le champ `note`, pas encore `threads`.
 
 **Coquilles et fautes d'orthographe** : les classeurs en contiennent (« Chasseur prime » pour « Chasseur de primes ») et le propriétaire du
 projet demande de les corriger. Une correction n'est jamais faite dans une page générée (la prochaine importation l'écraserait) mais dans le

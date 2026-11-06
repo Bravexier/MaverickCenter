@@ -124,14 +124,19 @@ test('le guide du site : chaque page de Découvrir, de la création du personnag
   const ouEst = Object.fromEntries(pagesDuGuide.flatMap((p) => morceauxDuChapitre(p.body).filter((m) => m.bloc).map((m) => [m.bloc, p.id])));
   assert.deepEqual(
     Object.fromEntries(['fil-rouge', 'fil-rouge-race', 'magie-bonus', 'fil-rouge-magie', 'fil-rouge-classe', 'competences', 'fil-rouge-sorts', 'initiative',
-      'fil-rouge-attributs', 'types-de-don', 'relations-des-magies'].map((b) => [b, ouEst[b]])),
+      'fil-rouge-attributs', 'types-de-don', 'relations-des-magies', 'mode-hyper'].map((b) => [b, ouEst[b]])),
     {
       'fil-rouge': 'guide/creer-son-personnage', 'fil-rouge-race': 'guide/choisir-sa-race', 'magie-bonus': 'guide/choisir-ses-magies',
       'fil-rouge-magie': 'guide/choisir-ses-magies', 'fil-rouge-classe': 'guide/choisir-sa-classe', competences: 'guide/caracteristiques-et-competences',
       'fil-rouge-sorts': 'guide/premiers-sorts', initiative: 'guide/finaliser-son-personnage', 'fil-rouge-attributs': 'guide/finaliser-son-personnage',
-      'types-de-don': 'guide/finaliser-son-personnage', 'relations-des-magies': 'guide/resistances-et-faiblesses',
+      'types-de-don': 'guide/finaliser-son-personnage', 'relations-des-magies': 'guide/resistances-et-faiblesses', 'mode-hyper': 'guide/le-mode-hyper',
     },
   );
+  // R187 (2) : les tableaux du Mode Hyper dans « Le mode hyper », sous « Ce qu’il donne » (le dernier intertitre avant le bloc), avant « Ce qu’il coûte »
+  const hyper = morceauxDuChapitre(parId.get('guide/le-mode-hyper').body);
+  const iHyper = hyper.findIndex((m) => m.bloc === 'mode-hyper');
+  assert.equal([...hyper[iHyper - 1].markdown.matchAll(/^## (.+)$/gm)].map((m) => m[1]).at(-1), 'Ce qu’il donne');
+  assert.match(hyper[iHyper + 1].markdown, /^\s*## Ce qu’il coûte/);
   const relations = morceauxDuChapitre(parId.get('guide/resistances-et-faiblesses').body);
   assert.deepEqual(relations.slice(0, 2).map((m) => ('bloc' in m ? m.bloc : 'texte')), ['texte', 'relations-des-magies']);
   assert.match(relations[0].markdown.trim(), /^[^\n]+$/, 'un seul paragraphe avant le tableau');

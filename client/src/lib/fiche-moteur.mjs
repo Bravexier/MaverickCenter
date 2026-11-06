@@ -3737,7 +3737,7 @@ export function bonusDePostureSurCompetence(posture, k) {
 
 /**
  * Le Mode Hyper et le Mode Hyper 100 % du personnage (demande du propriétaire : leurs cases à côté des postures, une fois débloqués) : débloqués au niveau
- * global qu'écrit la page « Liste des effets mode hyper » (2 et 10) ; les effets de base de la fiche (décision R5), l'effet de chaque magie du personnage
+ * global des constantes `mode_hyper.niveau_deblocage` et `mode_hyper.niveau_100` (2 et 10, lues en base : décision R187) ; les effets de base de la fiche (décision R5), l'effet de chaque magie du personnage
  * (« Mono-Magie » ou « Bi-magie » selon qu'il en a une ou deux) et celui de sa race (décision R13), avec
  * ce que chacun change aux valeurs (`chiffres` : lib/mode-hyper-texte.mjs) ; ceux du Mode Hyper 100 %. null sans ces règles.
  * Décision R172 (« Deux cases activables, comme les postures ») : `actif` (personnage.mode_hyper, et débloqué), `cent.actif` (personnage.mode_hyper_100,
