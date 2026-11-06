@@ -12,8 +12,6 @@ INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/actions-et-mouveme
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/actions-et-mouvements', 2, 'Action rapide', 'action-rapide');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/alignement', 0, 'Faire évoluer les scores', 'faire-evoluer-les-scores');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/alignement', 1, 'Les 4 tendances', 'les-4-tendances');
-INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/alterations-d-etats-et-mode-hyper', 0, 'Altérations d''états', 'alterations-detats');
-INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/alterations-d-etats-et-mode-hyper', 1, 'Mode Hyper', 'mode-hyper');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/attaque-et-defense', 0, 'Localisation des dégâts', 'localisation-des-degats');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/bienvenue', 0, 'Guide du joueur', 'guide-du-joueur');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/blessures-et-etats', 0, 'Blessures et états', 'blessures-et-etats');

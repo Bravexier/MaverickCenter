@@ -5967,14 +5967,6 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 Le détail de chaque altération, stade par stade, est dans [[guide/liste-des-alterations-d-etat|la liste des altérations d’état]] ; sur la page d’une magie, le nom d’une altération montre ses effets au survol.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/alterations-d-etats-et-mode-hyper', 'guide', 'alterations-d-etats-et-mode-hyper', 'Altérations d''états et Mode Hyper', 'alterations-detats-et-mode-hyper', 'Il s''agit d''un changement de condition auprès du joueur.', NULL, '## Altérations d''états
-
-Il s''agit d''un changement de condition auprès du joueur. Cela inflige des malus à la cible qui a plus qu''intérêt à rapidement s''en débarrasser. Il existe de nombreux types d''altérations d''états qu’on peut retrouver [ici](https://docs.google.com/spreadsheets/u/0/d/1fF2buZjbCm3xdQ-Qa8vRecxj03do3hsE8_k_cfYnIR0/edit).
-
-## Mode Hyper
-
-Retrouvez les informations et les explications du monde hyper [ici](https://docs.google.com/spreadsheets/u/0/d/1AjQyT-IZMULq6FlgnmVmn2QiQ9AWhhbOgjr-COgMyMo/edit).
-', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/attaque-et-defense', 'guide', 'attaque-et-defense', 'Attaque et Défense', 'attaque-et-defense', 'Quand une attaque est prodiguée, un jet de D100 est nécessaire pour réussir l''action (il faut faire son score ou moins pour réussir).', NULL, '## Attaque
 
 Quand une attaque est prodiguée, un jet de D100 est nécessaire pour réussir l''action (il faut faire son score ou moins pour réussir).
@@ -6757,7 +6749,7 @@ Voici les compétences qui existent avec leurs caractéristiques associées :
 
 *Vie en nature (Intelligence) :* Comprendre la nature, ses bienfaits.
 
-*Vigueur (Volonté) :* Mieux résister aux [[Altérations d''états et Mode Hyper|altérations d''états]] physiques comme le poison, les maladies ou les brûlures
+*Vigueur (Volonté) :* Mieux résister aux [[guide/alterations-d-etats|altérations d''états]] physiques comme le poison, les maladies ou les brûlures
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-experience-niveau-global', 'guide', 'fiche-experience-niveau-global', 'Fiche de personnage : Expérience/Niveau global', 'fiche-de-personnage-experience-niveau-global', 'Il s''agit de là où on note le total d''expérience accumulé par le personnage ainsi que son niveau global.', NULL, 'Il s''agit de là où on note le total d''expérience accumulé par le personnage ainsi que son niveau global, nous allons voir ici en détail l’expérience nécessaire pour chaque niveau et ce que ces derniers apportent :
 
@@ -6914,7 +6906,7 @@ Cette posture étrange permet d''être en parfaite fusion avec sa magie, dans ce
 
 ## Mode Hyper
 
-Voici le tableau où on rassemble les informations sur le [[Altérations d''états et Mode Hyper|mode hyper]] du personnage, allez [ici](https://docs.google.com/spreadsheets/u/0/d/1AjQyT-IZMULq6FlgnmVmn2QiQ9AWhhbOgjr-COgMyMo/edit) pour en savoir davantage.
+Voici le tableau où on rassemble les informations sur le [[guide/le-mode-hyper|mode hyper]] du personnage, allez [ici](https://docs.google.com/spreadsheets/u/0/d/1AjQyT-IZMULq6FlgnmVmn2QiQ9AWhhbOgjr-COgMyMo/edit) pour en savoir davantage.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-tableau-resistances-faiblesses', 'guide', 'fiche-tableau-resistances-faiblesses', 'Fiche de personnage : Tableau Résistances/Faiblesses', 'fiche-de-personnage-tableau-resistances-faiblesses', 'Ceci est le tableau où on va inscrire les résistances et faiblesses de votre personnage, tout est lié avec vos magies.', NULL, 'Ceci est le tableau où on va inscrire les résistances et faiblesses de votre personnage, tout est lié avec vos magies et tout est indiqué [[guide/resistances-et-faiblesses|ici]].
 
@@ -7030,7 +7022,7 @@ Le MJ peut déployer la carte mais il peut ne pas la déployer si jamais il juge
 - *La portée*
 - *[[Postures]]*
 - *[[Résistance/Faiblesse Magie|Résistances/Faiblesses magique]]*
-- *[[Altérations d''états et Mode Hyper|Altérations d’états]]*
+- *[[guide/alterations-d-etats|Altérations d’états]]*
 - *Mode Hyper*
 - *[[Les situations avancées]]*
 - *En résumé*
@@ -7099,7 +7091,7 @@ Rien n''empêche un mj de faire comme le souhaite mais bien entendu il ne s''agi
 
 ## Le cas de la compétence « survie »
 
-Comme expliqué dans les compétences et les [[Altérations d''états et Mode Hyper|altérations d''états]] (voir combat), le coma est une source de stress car la vie d''un personnage repose sur un jet de survie réussi, trop d''échecs ou un échec critique peut être fatal.
+Comme expliqué dans les compétences et les [[guide/alterations-d-etats|altérations d''états]] (voir combat), le coma est une source de stress car la vie d''un personnage repose sur un jet de survie réussi, trop d''échecs ou un échec critique peut être fatal.
 
 Le mj peut laisser les joueurs faire leur jet de survie ou alors il peut faire lui-même les jets de survie et avoir la capacité de tricher pour leur bien, un échec critique n''est jamais loin.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
