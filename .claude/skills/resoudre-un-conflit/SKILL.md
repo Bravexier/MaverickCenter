@@ -32,7 +32,7 @@ On rebase la branche sur sa base et on en résout les conflits sans attendre (de
 
 Ces noms sont ceux de `tools/flux-git/etat-regles.mjs#NATURES` : `node tools/flux-git/etat-branche.mjs` classe ainsi chaque fichier en conflit (`docs/flux-git.md`).
 
-**Au milieu d'un rebase en pause**, l'auteur ne lance que l'outil qui refait son fichier (`db:migrate`, `db:doc`, `npm install --package-lock-only`). Il ne lance pas ses contrôles complets : les commits suivants de la branche ne sont pas encore rejoués, et les contrôles viennent à l'étape 4.
+**Au milieu d'un rebase en pause**, l'auteur ne lance que l'outil qui refait son fichier (`db:migrate`, `db:doc`, `npm install --package-lock-only`). Il ne lance ni contrôle ni test : les commits suivants de la branche ne sont pas encore rejoués, et le recouvrement se donne à l'étape 4.
 
 **Avant de continuer**, aucun marqueur ne doit rester dans les fichiers qui étaient en conflit. On liste ces fichiers avec `git diff --name-only --diff-filter=U` (avant le `git add`), puis on lance `git grep -nE '^(<<<<<<<|>>>>>>>)( |$)' -- <ces fichiers>`. Il ne doit rien trouver : rc=1 est le bon résultat. On ne se sert pas de `git diff --check`, qui signale aussi les espaces de fin de ligne.
 
@@ -47,15 +47,15 @@ Ne rebase qu'à ton tour (`publier-une-branche`, L'ordre de passage).
    - Sinon, laisser le rebase en pause et rendre aussitôt un rapport « bloqué » : les fichiers, la nature du conflit, les deux versions. Rien d'autre ne tourne dans l'arbre pendant ce temps (un seul lot qui écrit). Le chef lance le membre qui résout, puis te relance pour vérifier les marqueurs, faire `git add` et `git rebase --continue`.
    - Une résolution impossible dans ce lot (un choix du propriétaire, par exemple) : `git rebase --abort`. La branche revient à son état d'avant, qui reste aussi dans `ORIG_HEAD` et le reflog. Rapport « bloqué ». On ne pousse jamais un état à moitié résolu.
 4. **Rebase fini.**
-   - Le rapport liste les fichiers que la base a changés et que le lot touche aussi (le **recouvrement**). Les tests à relancer sont ceux de `npm run test:cible -- --apres-rebase`, un seul jeu, sur ce recouvrement (ajoute `--fichiers <fichiers résolus à la main>`) ; recouvrement vide : aucun test. Le chef les fait lancer (`choisir-les-tests`).
+   - Le rapport liste les fichiers que la base a changés et que le lot touche aussi (le **recouvrement**). `tech-publication` ne lance aucun test : il donne ce recouvrement par `npm run test:cible -- --apres-rebase --liste` (ajoute `--fichiers <fichiers résolus à la main>`). Vide : aucun test, il pousse. Sinon, le chef fait passer ce seul jeu par `tech-qualite` (`npm run test:cible -- --apres-rebase`, `choisir-les-tests`), puis relance `tech-publication` pour pousser.
    - Une résolution de sens faite après la relecture de `tech-qualite` a sa relecture courte, limitée à son diff.
-5. **Pousser** quand tout est vert.
+5. **Pousser** quand le recouvrement est vide, ou que `tech-qualite` l'a passé au vert.
    - Le push forcé de SA PROPRE branche (`feature/<nom>` ou `hotfix/<nom>` créée par nous) après un rebase est TOUJOURS autorisé (choix du propriétaire, 2026-10-29) : on ne le lui redemande pas. Sans `--force-if-includes` : cette forme n'est pas dans la liste autorisée de `.claude/settings.json` ; c'est le `git fetch --prune origin` juste avant et l'étape 1 qui évitent d'écraser un commit distant.
    - Une branche déjà poussée : `git fetch --prune origin` puis `git push --force-with-lease origin <branche>`.
    - La première fois : `git push -u --force-with-lease origin <branche>` (après le même `fetch`).
    - Jamais de push forcé sur `dev`, `master` ni sur la branche d'un autre ; jamais `--force` ou `-f` seuls.
    - En cas d'erreur réseau, jusqu'à 4 reprises, après 2 s, 4 s, 8 s puis 16 s.
-6. **Le rapport** dit : rebase fait ou non, chaque conflit et qui l'a résolu, les contrôles relancés, le commit poussé.
+6. **Le rapport** dit : rebase fait ou non, chaque conflit et qui l'a résolu, le recouvrement (ou son résultat), la pointe d'avant le rebase (`git rev-parse ORIG_HEAD`), les fichiers résolus à la main, le commit poussé. `tech-qualite` lance `--apres-rebase --avant <sha> [--fichiers …]`.
 
 ## Ce qui ne se fait jamais
 

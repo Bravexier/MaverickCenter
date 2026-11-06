@@ -38,6 +38,6 @@ Mesure d'abord (`wc -c`), puis décide.
 3. **Rédaction.** Suis `tenir-un-skill`. Aucun récit, aucune date.
 4. **Renvois.** `git grep` de l'ancien nom dans `.claude/`, `CLAUDE.md`, `docs/` : tout renvoi est mis à jour. Pour un skill qui disparaît ou change de nom, signale-le au `leader-technique` : les fiches d'agents et `CLAUDE.md` sont à la session principale.
 5. **Liste.** La section « Les skills » de `docs/equipe.md` cite chaque skill ; le test le vérifie.
-6. **Validation.** `node --test test/instructions-claude.test.mjs` depuis `client/`.
+6. **Validation.** `tech-qualite` passe `test/instructions-claude.test.mjs` en fin de lot ; tu ne lances aucun test.
 
 Ton rapport donne : la décision et la ligne de la grille qui la justifie (tailles avant et après), la partition, le résultat du script d'écarts, les renvois mis à jour.

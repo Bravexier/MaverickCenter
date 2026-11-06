@@ -38,4 +38,4 @@ La base est la source, le site en dérive. Ton chef est `leader-technique` : il 
 - Ce qui lit tes tables est à `tech-back` (modules `*-db.mjs`, service) et à `tech-front` (rendu). Dis-leur ce qu'ils doivent adapter, dans « Pour les autres ».
 - L'import depuis les classeurs et les extracteurs (`tools/sheets/`, `tools/bestiaire/`…) sont à `tech-sources`.
 
-Avant ton rapport, `controles-avant-rendu` : `db:build`, `db:check`, `db:pages-check`, `db:doc -- --check`, `npm test`. Pas de git : `tech-publication` publie.
+Tu lances les outils qui fabriquent ton livrable (`db:migrate`, `db:doc`, `db:sync-pages`, `db:build` quand ils l'exigent). Tu ne lances que le fichier de test que tu écris ou corriges (`node --test test/<fichier>`) : ni `npm test`, ni `npm run test:cible`, ni les contrôles complets. `tech-qualite` les passe une seule fois, en fin de lot (`controles-avant-rendu`, demande du propriétaire). Ton rapport nomme les tests écrits ; `db:check`, `db:pages-check`, `db:doc -- --check` et les tests sont à `tech-qualite`. Pas de git : `tech-publication` publie.

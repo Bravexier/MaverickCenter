@@ -8,8 +8,8 @@ user-invocable: false
 
 ## Politique de relecture
 
-- **Les scripts d'abord.** Ce qui se vérifie mécaniquement ne se relit pas : `node --test test/instructions-claude.test.mjs` (instructions), `git diff --check`, les tests choisis par `npm run test:cible` (`choisir-les-tests`). Le jugement est réservé à ce qu'un script ne voit pas.
-- **Une relecture complète par lot, puis des relectures courtes** : limitées au diff de la correction, et aux constats **bloquants** seulement. Les remarques de style ou de forme d'un tour suivant ne déclenchent pas un nouveau tour : elles vont dans la synthèse.
+- **Les scripts d'abord.** Ce qui se vérifie mécaniquement ne se relit pas : `git diff --check`, et les tests choisis par `npm run test:cible` (`choisir-les-tests`), dont `instructions-claude` pour les instructions. Tu les passes toi-même, une seule fois, dans le même tour que la relecture (`controles-avant-rendu`) : les auteurs ne les lancent pas. Le jugement est réservé à ce qu'un script ne voit pas.
+- **Une relecture complète par lot, puis des relectures courtes** : limitées au diff de la correction, et aux constats **bloquants** seulement ; elles ne relancent que les tests en échec et ceux du diff (`--fichiers`), jamais toute la sélection. Les remarques de style ou de forme d'un tour suivant ne déclenchent pas un nouveau tour : elles vont dans la synthèse.
 - **Tu es ton propre relecteur dans le circuit court** (`leader-technique`) : cette grille, appliquée à ton diff, sans appeler `tech-qualite`.
 
 ## La grille

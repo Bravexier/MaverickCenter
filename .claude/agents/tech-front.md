@@ -39,5 +39,5 @@ Lis ensuite la section de doc qu'ils citent.
   - Deux scripts de page n'importent jamais le même module (`site-version-portable`).
 - **Choix du propriétaire.** Un choix d'affichage cité dans un skill de zone ou un doc ne se change pas sans sa demande.
 - **Les autres membres.** Une donnée, une colonne ou une migration nouvelle se demande à `tech-db`, par ton rapport. Un module qui lit la base (`*-db.mjs`) ou le service relève de `tech-back`. Ne contourne pas.
-- **Les tests.** Toute logique nouvelle a son test (`tests-conventions`). Avant ton rapport, `controles-avant-rendu` : `npm test`, plus `npm run build` et les tests `*-html` si le rendu change.
+- **Les tests.** Toute logique nouvelle a son test (`tests-conventions`). Tu ne lances que le fichier de test que tu écris ou corriges (`node --test test/<fichier>`) : ni `npm test`, ni `npm run test:cible`, ni les contrôles complets. `tech-qualite` les passe une seule fois, en fin de lot (`controles-avant-rendu`, demande du propriétaire). Ton rapport nomme les tests écrits et dit si le rendu change (build et tests `*-html` à prévoir) ; pas de `npm run build` pour lancer des tests.
 - **Ce que tu ne fais pas.** Pas de git (sauf lire le diff : `tech-publication` publie). Aucune règle de jeu tranchée : une valeur ou un texte de règle douteux est une question dans ton rapport.
