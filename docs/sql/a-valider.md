@@ -1,7 +1,7 @@
 # Ce qu'il reste à valider sur la base de données
 
 Deux listes : les **choix de forme** du schéma (ce que tu peux relire dans [`apercu.md`](apercu.md)) et les **questions de contenu** que les sources ne tranchent pas.
-Les décisions déjà prises sont dans [`../decisions-regles.md`](../decisions-regles.md) (R1 à R185, liste à jour) ; la conception complète est dans [`conception.md`](conception.md) (§2 conventions, §12 points ouverts).
+Les décisions déjà prises sont dans [`../decisions-regles.md`](../decisions-regles.md) (R1 à R186, liste à jour) ; la conception complète est dans [`conception.md`](conception.md) (§2 conventions, §12 points ouverts).
 
 ## 1. Choix de forme du schéma
 
@@ -264,7 +264,7 @@ une page supprimée. Les sections déplacées se lisent à leur nouvelle place (
 | G6 | Les postures, La magie en jeu | Focus : « Casse le tour de charge de la capacité "Préparation" du Mage Rouge et Vert » (les deux originaux), mais seul le Mage Rouge a un don « Préparation » (table `capacite`) | Phrase de la source gardée, rien de déduit |
 | G7 | Le Mode Hyper, Aide-mémoire | Mode Hyper dans les zones saturées de chakra : « mais la limite des 10 tours, elle, reste présente » (« Mode hyper et co », AA14), alors que la durée est ailleurs le niveau global ÷ 2 (`regle_constante` `mode_hyper.duree_diviseur_niveau`) | La phrase de la source, sans formule à la place |
 | G8 | Le Mode Hyper | Durée du Mode Hyper (niveau global ÷ 2) pour un niveau impair : aucun arrondi écrit | Pas d'arrondi (exemple au niveau 8) |
-| G9 | Le Mode Hyper | Mode Hyper maintenu chakra épuisé : la consommation de 10 % se paie-t-elle alors en santé (2 santé par chakra manquant, R18) ? Non écrit | Les deux règles, sans les relier |
+| G9 | Le Mode Hyper | Mode Hyper maintenu chakra épuisé : la consommation de 10 % se paie-t-elle alors en santé (3 santé par chakra manquant, R18, valeur de R186) ? Non écrit | Les deux règles, sans les relier |
 | G10 | Le Mode Hyper | Moment de la consommation de chakra : « à la fin du tour du joueur » n'est écrit que par la fiche auto (`mode_hyper_effet` version fiche, rang 8), dont R87 écarte les règles ; « Mode hyper et co » écrit « 10% du Chakra max par tour » | « 10 % du maximum à chaque tour », sans moment |
 | G11 | Le Mode Hyper | Effet Mode Hyper de l'Espace/Temps : « Mode hyper et co » (mono : l'état « Célérité », portail à ICx3, téléportation à ICx2 ; bi : « Image diffuse ») ou l'onglet de la magie de « Magie Maverick V8 » (mono : « il peut décider de bouger ou non » ; bi : « Il ne peut pas être bougé ») ? La fiche du site lit la page de la magie | Aucun effet recopié ; la page dit que les deux sources ne disent pas toujours la même chose |
 | G12 | Le Mode Hyper | Effets Mode Hyper des races : la liste de « Mode hyper et co » diffère de l'onglet de la race (Elfe argenté : « Toutes les attaques magiques sont imparables » / « Tous les sortilèges d'attaques sont imparables » ; Lamia : le venin à 3 PO / « (Action) […] empoisonné 2 et paralysé 2 ») ; R13 ne tranche qu'entre la fiche auto et l'onglet | Rien de recopié ; même constat que G11 |
@@ -312,7 +312,7 @@ une page supprimée. Les sections déplacées se lisent à leur nouvelle place (
 **Déjà tranchés par une décision, suivis par les pages** (l'original écrit encore autrement ; rien à faire, pour mémoire) : « parmi les 23
 disponibles » → 27 races (R1) ; « Prouesse (Volonté) » → Calme (R4) ; acquis « dans la limite de 5 par point de caractéristique de base » →
 caractéristique totale, magie innée comprise (R41) ; bonus notés « dans la case Acquis » et case Entraînement « pour noter » → l'Acquis se calcule,
-l'entraînement en lignes (R104) ; « pas de chakra = pas de sortilèges » → 2 santé par chakra manquant (R18) ; exemple 2 de la formule des dégâts
+l'entraînement en lignes (R104) ; « pas de chakra = pas de sortilèges » → 3 santé par chakra manquant (R18, valeur de R186) ; exemple 2 de la formule des dégâts
 « 16.5 », « donc 16 » → 18,5 et 18 (R17) ; arrondi à l'étape 6 de l'exemple 2 → seul le résultat final est arrondi (R98) ; division de la posture
 défensive « AVANT le calcul de l'armure » → étape 4, avant l'armure (R100) ; Symbiose « +5 » / « +6 » → +5 (R100) ; armure « divisé en 6 morceaux »
 avec une « Dur. (durabilité comme pour les armes) » → une armure complète, une solidité par partie, la base écrivant « solidité » (R93, R95) ; prix

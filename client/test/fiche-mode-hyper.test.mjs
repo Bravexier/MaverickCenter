@@ -4,8 +4,8 @@
 // avec deux, R5 ; tous ses sorts pour le Potentiel Illimité), soins (+15), coût des sorts (0 chakra, R18), résistances (immunité, grande résistance,
 // Potentiel Illimité : +1 cran et malus physique annulé, R174) et les effets de magie et de race lus dans leur texte (Glace, Terre, Humain, Nain, Felfe,
 // Jackalope, Marcass) ; le Mode Hyper 100 % cumule les avantages des postures (R100) sans leurs inconvénients et ajoute +10 à toutes les attaques ;
-// les jauges, par un bouton : un tour retire ⌊10 %⌋ du chakra maximum, la sortie du Mode Hyper 100 % en consomme ⌊75 %⌋ (R175), le manque payé 2 santé
-// pour 1 chakra (R18). Un sort préparé en Mode Hyper ou au 100 % garde leurs bonus après leur fin (R172, Q82 : prepare_hyper, prepare_cent, migration
+// les jauges, par un bouton : un tour retire ⌊10 %⌋ du chakra maximum, la sortie du Mode Hyper 100 % en consomme ⌊75 %⌋ (R175), le manque payé 3 santé
+// pour 1 chakra (R186, au lieu des 2 de R18), sans toucher à la barrière. Un sort préparé en Mode Hyper ou au 100 % garde leurs bonus après leur fin (R172, Q82 : prepare_hyper, prepare_cent, migration
 // 0086 ; au 100 %, le dé de race aussi : Q84). Le Marcass en Mode Hyper : AP naturelle + AM naturelle + l'armure portée sur tout coup ; « L'attaque ignore l'armure » met tout à 0 (R178).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -586,19 +586,19 @@ test('R172 (C3) : +10 dégâts à toutes les attaques en Mode Hyper 100 %, en pl
   assert.ok(!moment(cent, PREMIER_SOIN).dsb.detail.some((l) => l.nom === 'Mode Hyper 100 %'), 'pas les soins');
 });
 
-test('R172 (C4), R175, R18 : jauges — 65 de chakra maximum : 6 par tour, 48 à la sortie ; avec 40 de chakra, la sortie coûte 40 chakra et 16 santé', () => {
+test('R172 (C4), R175, R186 : jauges — 65 de chakra maximum : 6 par tour, 48 à la sortie ; avec 40 de chakra, la sortie coûte 40 chakra et 24 santé', () => {
   const a = { ...M.attributsDe(regles, fiche()), chakra: 65, sante: 50, corruptionMax: 65 };
   const tour = M.tourDeModeHyper(regles, enHyper(), a);
   assert.deepEqual([tour.cout, tour.chakra, tour.sante, tour.ecrit], [6, { avant: 65, apres: 59 }, { avant: 50, apres: 50 }, { chakra_actuel: 59 }], 'la santé n’est écrite que si elle change');
   assert.equal(M.tourDeModeHyper(regles, enHyper({}, { cent: true }), a), null, 'pas en Mode Hyper 100 % : « le chakra ne s’évapore plus »');
   assert.equal(M.tourDeModeHyper(regles, fiche(), a), null, 'pas hors Mode Hyper');
   const sortie = M.finDuModeHyperCent(regles, enHyper({ chakra_actuel: 40 }, { cent: true }), a);
-  assert.deepEqual([sortie.cout, sortie.manque, sortie.chakra, sortie.sante], [48, 8, { avant: 40, apres: 0 }, { avant: 50, apres: 34 }]);
-  assert.deepEqual(sortie.ecrit, { chakra_actuel: 0, sante_actuelle: 34, mode_hyper_100: 0 }, 'le 100 % décoché, le Mode Hyper reste');
+  assert.deepEqual([sortie.cout, sortie.manque, sortie.chakra, sortie.sante], [48, 8, { avant: 40, apres: 0 }, { avant: 50, apres: 26 }]);
+  assert.deepEqual(sortie.ecrit, { chakra_actuel: 0, sante_actuelle: 26, mode_hyper_100: 0 }, 'le 100 % décoché, le Mode Hyper reste');
   assert.equal(M.finDuModeHyperCent(regles, enHyper(), a), null);
   // la santé peut devenir négative (R171) ; le chakra ne descend pas sous 0
   const vide = M.payerDuChakra(regles, fiche({ chakra_actuel: 0, sante_actuelle: 10 }), 48, a);
-  assert.deepEqual(vide.ecrit, { chakra_actuel: 0, sante_actuelle: 10 - 96 });
+  assert.deepEqual(vide.ecrit, { chakra_actuel: 0, sante_actuelle: 10 - 144 });
 });
 
 test('R172 : tableur — l’état et le compteur dans la note (« Mode Hyper : actif, 100 %, semaine 0/1 »), relus tels quels', () => {
@@ -619,4 +619,30 @@ test('R172 : tableur — l’état et le compteur dans la note (« Mode Hyper : 
   const marcass = fiche({ race_id: 'races/marcass', ethnie_id: 'races/marcass#ethnie:marcass-feu' }, 10);
   assert.equal(cellulesDeLaFiche(regles, marcass, { date: '30/10/2026' }).cellules[ORDINATEUR.armure.amBase], 6);
   // relu par l'import : l'aller-retour du .xlsx (test/fiche-tableur-aller-retour.test.mjs, « Bérénice » en Mode Hyper 100 %, compteur à 0)
+});
+
+test('R186 : chaque point de chakra dépensé de force sous 0 coûte 3 santé (au lieu de 2, R18), un prix qui ignore la barrière', () => {
+  assert.equal(M.SANTE_PAR_CHAKRA_MANQUANT, 3, '« ne coûte plus 2 santé mais 3! »');
+  const a = { ...M.attributsDe(regles, fiche()), chakra: 65, sante: 50, barriere: 10, corruptionMax: 65 };
+  // manque partiel, sortie du Mode Hyper 100 % : 48 dus, 40 payés en chakra, 8 × 3 = 24 santé
+  const sortie = M.finDuModeHyperCent(regles, enHyper({ chakra_actuel: 40, sante_actuelle: 50, barriere_actuelle: 7 }, { cent: true }), a);
+  assert.deepEqual([sortie.manque, sortie.chakra.apres, sortie.sante.apres], [8, 0, 26]);
+  assert.deepEqual(sortie.ecrit, { chakra_actuel: 0, sante_actuelle: 26, mode_hyper_100: 0 }, 'la barrière n’est pas écrite');
+  // tour de Mode Hyper : 6 dus, 4 de chakra, 2 manquants → 6 santé de plus
+  const tour = M.tourDeModeHyper(regles, enHyper({ chakra_actuel: 4, sante_actuelle: 50, barriere_actuelle: 7 }), a);
+  assert.deepEqual([tour.cout, tour.manque, tour.sante], [6, 2, { avant: 50, apres: 44 }]);
+  assert.deepEqual(tour.ecrit, { chakra_actuel: 0, sante_actuelle: 44 });
+  // chakra déjà à 0 : tout le coût en santé ; santé déjà négative : elle continue de baisser (R171)
+  assert.deepEqual(M.payerDuChakra(regles, fiche({ chakra_actuel: 0, sante_actuelle: 0 }), 48, a).ecrit, { chakra_actuel: 0, sante_actuelle: -144 });
+  assert.deepEqual(M.payerDuChakra(regles, fiche({ chakra_actuel: 0, sante_actuelle: -5 }), 2, a).ecrit, { chakra_actuel: 0, sante_actuelle: -11 });
+  // aucun manque : la santé n'est pas écrite
+  assert.deepEqual(M.payerDuChakra(regles, fiche({ chakra_actuel: 30, sante_actuelle: 50 }), 6, a).ecrit, { chakra_actuel: 24 });
+  // l'exemple du propriétaire : coût 5, 10 santé, 2 chakra, 3 de barrière → 1 santé, 0 chakra, 3 de barrière
+  const exemple = M.payerDuChakra(regles, fiche({ chakra_actuel: 2, sante_actuelle: 10, barriere_actuelle: 3 }), 5, a);
+  assert.deepEqual([exemple.manque, exemple.chakra, exemple.sante], [3, { avant: 2, apres: 0 }, { avant: 10, apres: 1 }]);
+  assert.deepEqual(exemple.ecrit, { chakra_actuel: 0, sante_actuelle: 1 }, 'aucune clé de barrière : elle reste à 3');
+  // l'infobulle des boutons des jauges suit la constante, sans chiffre en dur
+  const script = readFileSync(new URL('../src/scripts/fiche.mjs', import.meta.url), 'utf8');
+  assert.doesNotMatch(script, /payé \d+ santé pour 1 chakra/);
+  assert.match(script, /payé \$\{SANTE_PAR_CHAKRA_MANQUANT\} santé pour 1 chakra[^`]*R186/);
 });

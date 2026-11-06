@@ -2,7 +2,7 @@
   {
     "libelle": "Chakra",
     "motif": "chakras?",
-    "description": "Énergie consommée lors de l'utilisation de magie. Quand le chakra est épuisé, la santé est consommée à la hauteur de 2 points pour un de Chakra.",
+    "description": "Énergie consommée lors de l'utilisation de magie. Quand le chakra est épuisé, la santé est consommée à la hauteur de 3 points pour un de Chakra.",
     "exclus": [
       "Académie de Chakra",
       "Académie du Chakra",

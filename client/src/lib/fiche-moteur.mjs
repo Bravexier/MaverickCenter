@@ -3907,13 +3907,17 @@ export function modeHyperValable(regles, fiche) {
   return { mode_hyper, mode_hyper_100: mode_hyper && h.cent.debloque && entier(fiche.mode_hyper_100) === 1 ? 1 : 0 };
 }
 
-/** « 2 santé pour 1 chakra » manquant (décision R18 : « il paye de la santé à la place à la hauteur de 2 santé pour 1 chakra ») : aucune table ne le porte. */
-export const SANTE_PAR_CHAKRA_MANQUANT = 2;
+/**
+ * « 3 santé pour 1 chakra » manquant (décision R186 : « Tout point de chakra dépensé (de force) sous 0 ne coûte plus 2 santé mais 3! », qui remplace la
+ * valeur de R18) : aucune table ne le porte.
+ */
+export const SANTE_PAR_CHAKRA_MANQUANT = 3;
 
 /**
- * Payer `cout` chakra avec les jauges du moment (décision R18) : le chakra du moment paie ce qu'il peut, sans descendre sous 0 ; le chakra qui manque se
- * paie 2 santé pour 1 chakra, la santé pouvant devenir négative (R171). { ecrit: { chakra_actuel, sante_actuelle? }, cout, chakra: { avant, apres },
- * sante: { avant, apres }, manque }.
+ * Payer `cout` chakra avec les jauges du moment (décisions R18, R186) : le chakra du moment paie ce qu'il peut, sans descendre sous 0 ; le chakra qui
+ * manque se paie SANTE_PAR_CHAKRA_MANQUANT santé pour 1 chakra, la santé pouvant devenir négative (R171). Ce prix en santé ignore la barrière (R186 : « Si
+ * c'est pas précisé ce prix de santé ignore la barrière ») : il est retiré de la santé directement, jamais par degatsALaBarriere, et la barrière n'est ni
+ * lue ni écrite. { ecrit: { chakra_actuel, sante_actuelle? }, cout, chakra: { avant, apres }, sante: { avant, apres }, manque }.
  */
 export function payerDuChakra(regles, fiche, cout, attributs = attributsDe(regles, fiche)) {
   const jauges = valeursDuMoment(regles, fiche, attributs);
@@ -3942,7 +3946,7 @@ export function tourDeModeHyper(regles, fiche, attributs = attributsDe(regles, f
 
 /**
  * Le bouton « Fin du Mode Hyper 100 % » (décision R172 : « sortir du Mode Hyper 100 % consomme 75 % du chakra maximum (un coût, pas un retour du
- * chakra à 75 %) et ramène au Mode Hyper ») : ⌊75 % du chakra maximum⌋ (R175 : 65 → 48), payé par payerDuChakra (40 de chakra : 40 chakra et 16 santé) ;
+ * chakra à 75 %) et ramène au Mode Hyper ») : ⌊75 % du chakra maximum⌋ (R175 : 65 → 48), payé par payerDuChakra (40 de chakra : 40 chakra et 24 santé, R186) ;
  * la case du Mode Hyper 100 % se décoche (`ecrit.mode_hyper_100` : 0), le Mode Hyper reste. null hors du Mode Hyper 100 %.
  */
 export function finDuModeHyperCent(regles, fiche, attributs = attributsDe(regles, fiche)) {

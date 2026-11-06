@@ -23,7 +23,7 @@ import { chargerFilRouge, FIL_ROUGE } from '../src/lib/guide-fil-rouge.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import { attributsDe } from '../src/lib/fiche-moteur.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
-import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { cleDeLigne, historiqueSite } from '../src/lib/historique-site.mjs';
 import { buildIndex, entryUrl, splitFrontmatter } from '../src/lib/wikilinks.mjs';
 
 const PREMIER = 'guide/bienvenue';
@@ -241,18 +241,66 @@ test('les personnages fil rouge : des choix permis par la base, et des attributs
   if (intact('mage')) assert.deepEqual([mage.attributs.sante, mage.attributs.chakra, mage.attributs.barriere], [8, 24, 13]);
 });
 
-test('décisions R17 et R18 : l’exemple 2 des dégâts donne 18 ; à court de chakra, toujours 2 santé pour 1 chakra', () => {
+test('décision R17 : l’exemple 2 des dégâts donne 18', () => {
   // le texte tel que l'import l'a écrit (corrigé selon les décisions) : le site de dev, source des données qu'il modifie, peut le réécrire depuis
   const corps = (id) => historique.valeurDImport('page', { id }, 'corps_md', pagesDuGuide.find((p) => p.id === id).body);
   assert.match(corps('guide/formule-des-degats'), /total de 18\.5 dégâts[\s\S]*donc 18 dégâts[\s\S]*J'ai pris 18 points de dégâts/);
   assert.doesNotMatch(corps('guide/formule-des-degats'), /16\.5/);
   assert.match(corps('guide/les-degats'), /37 ÷ 2 = 18,5, arrondi à \*\*18 dégâts\*\*/);
-  for (const id of ['guide/la-magie-en-jeu', 'guide/le-mode-hyper']) assert.match(corps(id), /2 points de santé pour 1 point de chakra/, id);
-  assert.match(corps('guide/le-mode-hyper'), /\| Coût des sorts en chakra \| 0 \| 0 \|/);
-  assert.match(corps('guide/le-mode-hyper'), /10 % du maximum par tour/);
-  // « la règle des 2 points de santé pour chaque point de chakra en dessous de zéro c'est tout le temps » : sortie du Mode Hyper 100 % comprise
-  assert.match(corps('guide/le-mode-hyper'), /75 % de son chakra maximum\*\* ; s’il ne les a pas, il paie ce qui manque avec sa santé, comme toujours : \*\*2 points de santé pour 1 point de chakra\*\*/);
-  assert.match(corps('guide/la-magie-en-jeu'), /tarif de tout chakra dépensé sans l’avoir/);
+});
+
+// Décisions R18 et R186 : le texte tel que la migration 0093 (data/migrations/0093-r186-chakra-negatif-3-sante.sql) l'a laissé. Pas valeurDImport :
+// le site de dev avait déjà réécrit trois de ces lignes (et créé le mot-clé `chakra`), valeurDImport rendrait l'état d'avant lui, donc d'avant la 0093
+// (le tarif 2 de R18, l'ancien plan du Mode Hyper d'avant R184 ; undefined pour le mot-clé). Seuls les lots rapatriés APRÈS la 0093 (absents de
+// fixtures/lots-avant-0093.json, liste figée : fait_le est l'heure du lot sur le site de dev) se défont (skill tests-conventions).
+const LOTS_AVANT_0093 = new Set(JSON.parse(readFileSync(new URL('./fixtures/lots-avant-0093.json', import.meta.url), 'utf8')).lots);
+function valeurDe0093(table, ligne, colonne) {
+  const cle = cleDeLigne(db, table, ligne);
+  const texte = JSON.stringify(cle);
+  const ops = historique.entrees.filter((e) => !LOTS_AVANT_0093.has(e.lot) && e.table === table && e.texte === texte);
+  const actuelle = db.prepare(`SELECT * FROM "${table}" WHERE ${Object.keys(cle).map((k) => `"${k}" = ?`).join(' AND ')}`).get(...Object.values(cle));
+  const avant = ops.reduceRight((l, o) => (o.operation === 'inserer' ? null : o.operation === 'supprimer' ? { ...o.avant } : l && { ...l, ...o.avant }), actuelle ? { ...actuelle } : null);
+  return avant?.[colonne];
+}
+
+test('décisions R18 et R186 : à court de chakra, chaque point qui manque coûte 3 points de santé, tout le temps (sortie du Mode Hyper 100 % comprise) ; tout coût payé en santé ignore la barrière', () => {
+  const corps = (id) => valeurDe0093('page', { id }, 'corps_md');
+  const etape6 = corps('guide/finaliser-son-personnage');
+  assert.match(etape6, /À court de \{\{chakra\|chakra\}\}, on peut quand même en dépenser : chaque point qui manque coûte 3 points de santé\./);
+  const magie = corps('guide/la-magie-en-jeu');
+  assert.match(magie, /il paie ce qui manque avec sa santé, à raison de \*\*3 points de santé pour 1 point de \{\{chakra\|chakra\}\}\*\*\. C’est le tarif de tout \{\{chakra\|chakra\}\} dépensé sans l’avoir, en Mode Hyper ou non\./);
+  // R186 : « Si c'est pas précisé ce prix de santé ignore la barrière », élargie à « Oui, tous les coûts » (« Tout coût payé en santé ignore la
+  // barrière, sauf texte contraire »), et l'exemple du propriétaire (10 santé, 2 chakra, 3 barrière, sort à 5)
+  assert.match(magie, /en Mode Hyper ou non\. Sauf si un texte le précise, tout coût payé en santé ignore la \{\{barriere\|barrière\}\} : elle ne l’absorbe pas\. C’est vrai de ce prix comme du coût en santé d’un sort ou d’un don\.\n\n\*Exemple : il reste 3 de \{\{chakra\|chakra\}\} au personnage, et son sort en coûte 7\. Il dépense ses 3 points, et les 4 qui manquent lui coûtent 12 points de santé\.\*\n\n\*Exemple : un sort coûte 5 de \{\{chakra\|chakra\}\} à un personnage qui a 10 de santé, 2 de \{\{chakra\|chakra\}\} et 3 de \{\{barriere\|barrière\}\}\. Il dépense ses 2 points, et les 3 qui manquent lui coûtent 9 points de santé : il finit à 1 de santé, 0 de \{\{chakra\|chakra\}\} et 3 de \{\{barriere\|barrière\}\}\.\*/);
+  assert.match(magie, /son sort en coûte 7\. Il dépense ses 3 points, et les 4 qui manquent lui coûtent 12 points de santé\./);
+  // R18, première moitié (inchangée par R186) : en Mode Hyper, les sorts ne coûtent plus de chakra, le mode en brûle 10 % du maximum par tour
+  assert.match(magie, /En Mode Hyper, les sorts ne coûtent plus de \{\{chakra\|chakra\}\}, mais le mode lui-même en brûle 10 % du maximum à chaque tour/);
+  assert.match(corps('guide/le-mode-hyper'), /ses sorts ne coûtent \*\*plus de \{\{chakra\|chakra\}\}\*\*/);
+  assert.match(corps('guide/le-mode-hyper'), /\*\*10 % du maximum à chaque tour\*\*/);
+  assert.match(corps('guide/le-mode-hyper'), /À court de \{\{chakra\|chakra\}\}, en Mode Hyper ou non, on peut toujours en dépenser : chaque point qui manque se paie de \*\*3 points de santé\*\*\./);
+  // « la règle des 2 points de santé pour chaque point de chakra en dessous de zéro c'est tout le temps » (R18), 3 depuis R186 : sortie du Mode Hyper
+  // 100 % comprise (la phrase est dans la page « Mode Hyper 100 % » depuis R184)
+  const cent = corps('guide/le-mode-hyper-100');
+  assert.match(cent, /cela lui coûte \*\*75 % de son \{\{chakra\|chakra\}\} maximum\*\*\. S’il ne les a plus en réserve, il paie ce qui manque avec sa santé, comme toujours : \*\*3 points de santé pour 1 point de \{\{chakra\|chakra\}\}\*\*\./);
+  assert.match(cent, /S’il ne lui en reste que 40, les 20 qui manquent lui coûtent 60 points de santé\./);
+  // R186 élargie, dans « Et la barrière ? » de Les dégâts, juste après la phrase des coups
+  assert.match(corps('guide/les-degats'), /Elle prend les coups avant la santé, sauf contre-indication : [^\n]*\(voir \[\[guide\/blessures-et-etats\|Blessures et états\]\]\)\. Un coût payé en santé \(\{\{chakra\|chakra\}\} manquant, coût d’un sort ou d’un don\) ne passe pas par elle, sauf si un texte le précise\./);
+  const chakra = valeurDe0093('mot_cle', { id: 'chakra' }, 'description');
+  assert.match(chakra, /Quand le chakra est épuisé, la santé est consommée à la hauteur de 3 points pour un de Chakra\./);
+  for (const [id, texte] of [['guide/finaliser-son-personnage', etape6], ['guide/la-magie-en-jeu', magie], ['guide/le-mode-hyper', corps('guide/le-mode-hyper')], ['guide/le-mode-hyper-100', cent], ['mot_cle chakra', chakra]]) {
+    assert.doesNotMatch(texte, /\b2 points de santé pour 1|coûte 2 points de santé|se paie de \*\*2 points de santé|2 points pour un de Chakra/, `${id} : plus l'ancien tarif de R18`);
+  }
+  // les entrées de l'outil de balisage (tools/glossaire) : un nouveau passage de l'outil ne ramène pas l'ancienne définition
+  for (const fichier of ['chakra-barriere.json', 'corruption.json']) {
+    const entree = JSON.parse(readFileSync(new URL(`../../tools/glossaire/${fichier}`, import.meta.url), 'utf8')).find((m) => m.libelle === 'Chakra');
+    assert.match(entree.description, /la santé est consommée à la hauteur de 3 points pour un de Chakra\./, fichier);
+  }
+});
+
+test('décision R186, invariant du texte courant : dans les pages du guide, chaque exemple « les N qui manquent lui coûtent M points de santé » compte 3 santé par chakra', () => {
+  const exemples = pagesDuGuide.flatMap((p) => [...p.body.matchAll(/les (\d+) qui manquent lui coûtent (\d+) points de santé/g)].map((m) => [p.id, Number(m[1]), Number(m[2])]));
+  assert.ok(exemples.length >= 3, 'les exemples de La magie en jeu et du Mode Hyper 100 %');
+  for (const [id, manque, sante] of exemples) assert.equal(sante, 3 * manque, `${id} : ${manque} chakra manquants`);
 });
 
 test('décision R149 (G40) : les deux pages du guide et le mot-clé « Maîtrise d’arme » écrivent le plafond de maîtrise d’arme, 4 points, donc 5 dés, sans plus de « et ainsi de suite »', () => {

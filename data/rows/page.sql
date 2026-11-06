@@ -6927,7 +6927,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 Les attributs se calculent à partir de la race, de la ou des classes et des magies :
 
 - **Santé** (les points de vie) : celle de la race, de la ou des classes et des magies qui en offrent. À 0 ou moins, le personnage tombe dans le coma et doit faire des jets de survie : un seul réussi le stabilise, trois ratés et il meurt.
-- **{{chakra}}** (les points de magie, que dépensent les sorts) : celui de la race, de la ou des classes et des magies. À court de {{chakra|chakra}}, on peut quand même en dépenser : chaque point qui manque coûte 2 points de santé.
+- **{{chakra}}** (les points de magie, que dépensent les sorts) : celui de la race, de la ou des classes et des magies. À court de {{chakra|chakra}}, on peut quand même en dépenser : chaque point qui manque coûte 3 points de santé.
 - **{{barriere}}** : une seconde peau magique, qui protège la chair. Elle vaut la moitié du {{chakra|chakra}}, plus les bonus de la race et de la classe. Le mythril la traverse, et le maverium la brise à son contact.
 - **{{corruption}}** : son maximum est celui du {{chakra|chakra}}. La {{corruption|corruption}} est un poison du {{chakra|chakra}} : chaque point de {{corruption|corruption}} prend la place d’un point de {{chakra|chakra}}. Si elle atteint son maximum, le personnage a deux semaines, dans le jeu, pour en retirer au moins un point ; sinon il meurt et devient une abomination. Seuls ceux qui ont la Corruption en magie innée ou acquise ne risquent pas cette mort, mais la {{corruption|corruption}} prend aussi la place de leur {{chakra|chakra}}. Le Potentiel Illimité, même s’il peut s’en servir, peut en mourir s’il en cumule trop.
 - **Âme** ou **Sang**, la « 4ᵉ barre » : seulement pour la Nécromancie et la magie du Sang. C’est une réserve de 10 points que demandent certains sorts, et qui se recharge de 1 point par tour en combat.
@@ -7353,9 +7353,11 @@ Le coût en {{chakra|chakra}} écrit sur le sort se paie selon le résultat du j
 
 ### À court de chakra
 
-Un personnage qui n’a plus assez de {{chakra|chakra}} peut quand même lancer son sort : il paie ce qui manque avec sa santé, à raison de **2 points de santé pour 1 point de {{chakra|chakra}}**. C’est le tarif de tout {{chakra|chakra}} dépensé sans l’avoir, en Mode Hyper ou non.
+Un personnage qui n’a plus assez de {{chakra|chakra}} peut quand même lancer son sort : il paie ce qui manque avec sa santé, à raison de **3 points de santé pour 1 point de {{chakra|chakra}}**. C’est le tarif de tout {{chakra|chakra}} dépensé sans l’avoir, en Mode Hyper ou non. Sauf si un texte le précise, tout coût payé en santé ignore la {{barriere|barrière}} : elle ne l’absorbe pas. C’est vrai de ce prix comme du coût en santé d’un sort ou d’un don.
 
-*Exemple : il reste 3 de {{chakra|chakra}} au personnage, et son sort en coûte 7. Il dépense ses 3 points, et les 4 qui manquent lui coûtent 8 points de santé.*
+*Exemple : il reste 3 de {{chakra|chakra}} au personnage, et son sort en coûte 7. Il dépense ses 3 points, et les 4 qui manquent lui coûtent 12 points de santé.*
+
+*Exemple : un sort coûte 5 de {{chakra|chakra}} à un personnage qui a 10 de santé, 2 de {{chakra|chakra}} et 3 de {{barriere|barrière}}. Il dépense ses 2 points, et les 3 qui manquent lui coûtent 9 points de santé : il finit à 1 de santé, 0 de {{chakra|chakra}} et 3 de {{barriere|barrière}}.*
 
 En Mode Hyper, les sorts ne coûtent plus de {{chakra|chakra}}, mais le mode lui-même en brûle 10 % du maximum à chaque tour (voir [[guide/le-mode-hyper|Le Mode Hyper]]).
 
@@ -7529,7 +7531,7 @@ La page de chaque magie et de chaque race donne l’effet écrit dans son onglet
 
 *Exemple : un personnage de niveau 8, qui a 60 de {{chakra|chakra}} au maximum, en perd 6 à chaque tour de Mode Hyper, pendant 4 tours au plus ; ses sorts, eux, ne lui coûtent rien pendant ce temps.*
 
-À court de {{chakra|chakra}}, en Mode Hyper ou non, on peut toujours en dépenser : chaque point qui manque se paie de **2 points de santé**.
+À court de {{chakra|chakra}}, en Mode Hyper ou non, on peut toujours en dépenser : chaque point qui manque se paie de **3 points de santé**.
 
 ## Au-delà des limites
 
@@ -7554,9 +7556,9 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 - chaque sort peut être surchargé, ce qui lui donne un dé de dégâts de plus ;
 - toutes les attaques, physiques et magiques, font **+10 dégâts**, en plus de ceux du Mode Hyper.
 
-Cet état ne dure que **3 tours**. Le personnage revient ensuite au Mode Hyper normal, et cela lui coûte **75 % de son {{chakra|chakra}} maximum**. S’il ne les a plus en réserve, il paie ce qui manque avec sa santé, comme toujours : **2 points de santé pour 1 point de {{chakra|chakra}}**.
+Cet état ne dure que **3 tours**. Le personnage revient ensuite au Mode Hyper normal, et cela lui coûte **75 % de son {{chakra|chakra}} maximum**. S’il ne les a plus en réserve, il paie ce qui manque avec sa santé, comme toujours : **3 points de santé pour 1 point de {{chakra|chakra}}**.
 
-*Exemple : avec 80 de {{chakra|chakra}} au maximum, sortir du Mode Hyper 100 % en coûte 60. S’il ne lui en reste que 40, les 20 qui manquent lui coûtent 40 points de santé.*
+*Exemple : avec 80 de {{chakra|chakra}} au maximum, sortir du Mode Hyper 100 % en coûte 60. S’il ne lui en reste que 40, les 20 qui manquent lui coûtent 60 points de santé.*
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/le-mode-super', 'guide', 'le-mode-super', 'Mode Super', 'mode-super', 'Le Mode Super est un équivalent moins puissant du Mode Hyper.', NULL, '> « Ne faire plus qu’un avec son objet. »
 
@@ -7734,7 +7736,7 @@ Le détail est dans [[guide/attaquer-et-se-defendre|Attaquer et se défendre]], 
 
 La {{barriere|barrière}} est une seconde peau magique qui protège la chair : une sorte de santé magique, qui vaut la moitié du {{chakra|chakra}} total (plus ce qu’offrent certaines races et classes). Plus un personnage a de {{chakra|chakra}}, plus sa {{barriere|barrière}} est grande ; mais certains matériaux d’arme la contrent, comme le **Mythril**, qui passe à travers, ou le **Maverium**, qui la brise à son contact, si colossale soit-elle. Une arme de **Laiton**, elle, fait des dégâts doublés contre la {{barriere|barrière}} (voir l’onglet [Matériaux](/ressources/composants/#materiaux) des composants).
 
-Elle prend les coups avant la santé, sauf contre-indication : une fois qu’elle est vide, ce qui reste des dégâts baisse la santé, qui peut alors devenir négative (voir [[guide/blessures-et-etats|Blessures et états]]). Deux dons du Médusain la rendent moins touchée : « La barrière prend deux fois moins de dégâts physiques » (Barrière résistante) et « … magiques » (Barrière isolante). Contre une arme de Laiton, ces deux effets se compensent ; une arme de Maverium, elle, casse la barrière sans tenir compte du Médusain.
+Elle prend les coups avant la santé, sauf contre-indication : une fois qu’elle est vide, ce qui reste des dégâts baisse la santé, qui peut alors devenir négative (voir [[guide/blessures-et-etats|Blessures et états]]). Un coût payé en santé ({{chakra|chakra}} manquant, coût d’un sort ou d’un don) ne passe pas par elle, sauf si un texte le précise. Deux dons du Médusain la rendent moins touchée : « La barrière prend deux fois moins de dégâts physiques » (Barrière résistante) et « … magiques » (Barrière isolante). Contre une arme de Laiton, ces deux effets se compensent ; une arme de Maverium, elle, casse la barrière sans tenir compte du Médusain.
 
 ## La fiche fait le calcul
 
