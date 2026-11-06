@@ -9,6 +9,7 @@ import { copyFileSync, readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { TABLES_DES_NOTES } from '../src/lib/notes-de-version.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 
@@ -17,6 +18,7 @@ const LISTE = 'guide/liste-des-effets-mode-hyper';
 const HYPER = 'guide/le-mode-hyper';
 const lire = (chemin) => readFileSync(new URL(`../../${chemin}`, import.meta.url), 'utf8');
 const db = ouvrirBase({ sansExemples: false });
+const h = historiqueSite(db);
 const page = (id) => db.prepare('SELECT * FROM page WHERE id = ?').get(id);
 const corps = (id) => page(id).corps_md;
 const IDS_DES_TEXTES = ['ne-plus-faire-quun-avec-soi-meme', 'au-dela-des-limites', 'mode-hyper-100'].map((s) => `${LISTE}#texte:${s}`);
@@ -116,13 +118,22 @@ test('0095 : guide/le-mode-hyper garde la première phrase, suivie du marqueur d
   assert.ok(hyper.includes('## Sur la fiche du site\n'));
 });
 
-test('0095 : le menu « Les combats » sans la Liste, rangs de 1 à 19', () => {
-  const entrees = db.prepare("SELECT page_id, rang FROM regles_onglet_entree WHERE onglet_id = 'combats' ORDER BY rang, id").all();
-  assert.deepEqual(entrees.map((e) => e.page_id), ['le-tour-de-jeu', 'initiative', 'attaquer-et-se-defendre', 'attaque-et-defense',
+test('0095 : le menu « Les combats » sans la Liste, rangs de 1 à 19 (état d’import) ; le menu courant suit les éditions du site', () => {
+  // l'état d'import : le menu tel que les migrations l'ont laissé, les éditions du site défaites
+  const entree = (e) => ({ id: e.id, page_id: e.page_id });
+  const parRang = (a, b) => a.rang - b.rang || (a.id < b.id ? -1 : 1);
+  const importees = h.lignesDImport('regles_onglet_entree').filter((e) => e.onglet_id === 'combats').sort(parRang);
+  assert.deepEqual(importees.map((e) => e.page_id), ['le-tour-de-jeu', 'initiative', 'attaquer-et-se-defendre', 'attaque-et-defense',
     'les-attaques-d-opportunite', 'les-attaques-discretes', 'l-embuscade', 'vitesse-deplacement-et-portee', 'actions-et-mouvements', 'vitesse-et-portee',
     'prise-en-tenaille-et-zone-d-influence', 'deplacement-ou-sortie-de-la-zone-d-influence', 'les-degats', 'formule-des-degats', 'les-postures',
     'le-mode-hyper', 'le-mode-hyper-100', 'liste-des-effets-mode-super', 'blessures-et-etats'].map((s) => `guide/${s}`));
-  assert.deepEqual(entrees.map((e) => e.rang), entrees.map((_, i) => i + 1));
+  assert.deepEqual(importees.map((e) => e.rang), importees.map((_, i) => i + 1));
+  // le menu courant : les mêmes entrées, moins celles que le site a supprimées, plus celles qu'il a créées
+  const actuelles = db.prepare("SELECT id, page_id FROM regles_onglet_entree WHERE onglet_id = 'combats'").all().map(entree);
+  const attendues = importees.filter((e) => !h.supprimee('regles_onglet_entree', { id: e.id })).map(entree)
+    .concat(actuelles.filter((e) => h.creee('regles_onglet_entree', { id: e.id })));
+  const tri = (l) => l.map((e) => JSON.stringify(e)).sort();
+  assert.deepEqual(tri(actuelles), tri(attendues));
 });
 
 test('0095 rejouée sur son propre résultat : rien ne change (table reconstruite à l’identique, UPDATE gardés)', (t) => {
