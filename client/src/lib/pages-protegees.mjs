@@ -21,14 +21,14 @@ import { PAGES_ABSORBEES, PAGES_DE_LA_CREATION, PAR_OU_COMMENCER, RUBRIQUES_SOUS
 /**
  * Les pages du guide dont le code lit le texte, une section ou l'identifiant (page → qui la lit). Une page ajoutée au code s'ajoute ici : le test
  * garde-fou (test/pages-protegees.test.mjs) refuse un « 'guide/<slug>' » écrit dans client/src/ hors de lib/livres.mjs (ses listes sont lues plus
- * haut) qui ne serait pas dans cette liste, sauf une adresse d'avant qui n'est plus une page de la base.
+ * haut) qui ne serait pas dans cette liste, sauf une adresse d'avant qui n'est plus une page de la base. Les ids des postures (guide/postures#posture:…,
+ * identifiants figés) gardent le préfixe d'une page supprimée le 2026-11-06 (migration 0094, lib/livres.mjs#PAGES_SUPPRIMEES) : ce ne sont plus une page.
  */
 export const PAGES_LUES_PAR_LE_CODE = Object.freeze({
   'guide/l-equipement': 'lib/ceinture-db.mjs lit sa section « La ceinture » (onglet Ceinture de l’équipement)',
   'guide/fiche-accessoires-et-ceinture': 'lib/ceinture-db.mjs la lit (onglet Ceinture de l’équipement)',
   'guide/s-entrainer-et-exercer-un-metier': 'lib/fiche-regles.mjs y renvoie l’aide du champ « Entraînement » de la fiche (décision R71)',
-  'guide/liste-des-effets-mode-hyper': 'lib/fiche-regles.mjs lit ses niveaux du Mode Hyper ; les pages des races et des magies y renvoient',
-  'guide/postures': 'les postures de la fiche (lib/fiche-regles.mjs, lib/fiche-tableur-*.mjs) ont leur identifiant sous elle (guide/postures#posture:…)',
+  'guide/le-mode-hyper': 'les pages des magies et des races y renvoient sous « Capacité Mode Hyper » (décision R187)',
 });
 
 /** Les tables dont une clé étrangère vers `page` n'est pas une protection : une citation (lib/citations-db.mjs), l'entrée de menu de la page. */

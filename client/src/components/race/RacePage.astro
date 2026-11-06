@@ -31,7 +31,9 @@ const hybride = race.hybride;
 // jamais un style
 const pageDe = (id: string) => entries.find((e) => e.id === id);
 const pageClasseRaciale = race.classeRaciale ? pageDe(race.classeRaciale.id) : undefined;
-const pageModeHyper = pageDe('guide/liste-des-effets-mode-hyper');
+// sous « Capacité Mode Hyper » : la page « Le mode hyper », qui porte le tableau des capacités de toutes les races (R187 : la « Liste des effets mode
+// hyper » est supprimée, ses renvois visent cette page)
+const pageModeHyper = pageDe('guide/le-mode-hyper');
 
 const relations = relationsDeRace(races.relations, race.id);
 const aPresentation = race.descriptionGenerale.length > 0 || race.description.length > 0 || race.histoire.length > 0;
@@ -210,7 +212,7 @@ const nav = [
     race.hyper && (
       <section class="race-section" id="mode-hyper" aria-labelledby="mode-hyper-titre">
         <h2 id="mode-hyper-titre">Capacité Mode Hyper</h2>
-        {pageModeHyper && <p class="muted"><a href={pageHref(pageModeHyper.id)}>Liste des effets mode hyper</a></p>}
+        {pageModeHyper && <p class="muted"><a href={pageHref(pageModeHyper.id)}>Le Mode Hyper</a></p>}
         <article class="race-hyper">
           <h3 data-ed={attributEd('mode_hyper_effet', { id: race.hyper.id }, 'nom')}>{race.hyper.nom}</h3>
           <div data-ed={attributEd('mode_hyper_effet', { id: race.hyper.id }, 'effet')} data-ed-rendu="blocs"><Texte blocs={race.hyper.blocs} /></div>

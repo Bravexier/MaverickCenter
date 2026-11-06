@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 93 : 209 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 95 : 209 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -129,7 +129,7 @@ Provenance au niveau de la page : une entrée de frontmatter `sources` = une lig
 
 ### `page_entite`
 
-Lien page -> entité typée. Chaque importeur de domaine écrit ses lignes (test de complétude : db:check). Convention d'id : l'entité qui a SA page réutilise l'id de la page (principale = 1) ; une sous-entité a l'id '<id de la page qui la contient>#<sorte>:<slug>' (principale = 0). `entite_table` n'est pas une clé étrangère (SQLite ne vise pas une table variable) : db:check vérifie que (entite_table, entite_id) existe.
+Lien page -> entité typée. Chaque importeur de domaine écrit ses lignes (test de complétude : db:check). Convention d'id : l'entité qui a SA page réutilise l'id de la page (principale = 1) ; une sous-entité a l'id '<id de la page qui la contient>#<sorte>:<slug>' (principale = 0). Exception : les postures (« guide/postures#posture:… », ids figés) sont rattachées à guide/les-postures, qui affiche leur tableau, depuis le retrait de la page guide/postures (migration 0094). De même, les trois textes du Mode Hyper (mode_texte, « guide/liste-des-effets-mode-hyper#texte:… », ids figés) sont rattachés à guide/le-mode-hyper depuis le retrait de la page « Liste des effets mode hyper » (migration 0095). db:check contrôle leur page par la table de ces préfixes retirés (client/scripts/db-check.mjs#PAGES_DES_PREFIXES_RETIRES). `entite_table` n'est pas une clé étrangère (SQLite ne vise pas une table variable) : db:check vérifie que (entite_table, entite_id) existe.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -292,7 +292,7 @@ Valeurs par palier de niveau global lues dans les formules de la fiche (BDD!K28,
 
 ### `regle_constante`
 
-Constantes chiffrées de règle. Une ligne = une phrase d'un texte de règle (nature 'texte' : page du guide ou cellule de texte d'un classeur, `texte` = la phrase telle qu'écrite) ou un facteur écrit dans une formule de la fiche (nature 'formule', `texte` = le fragment de formule). Le chargeur vérifie que `texte` figure bien dans la cellule ou la page citée. Les règles qui restent du texte sont dans les pages (corps_md).
+Constantes chiffrées de règle. Une ligne = une phrase d'un texte de règle (nature 'texte' : page du guide ou cellule de texte d'un classeur, `texte` = la phrase telle qu'écrite) ou un facteur écrit dans une formule de la fiche (nature 'formule', `texte` = le fragment de formule). Le chargeur vérifie que `texte` figure bien dans la cellule ou la page citée. Les règles qui restent du texte sont dans les pages (corps_md). Les douze constantes `mode_hyper.*` et `mode_hyper_100.*` (classeur « Mode hyper et co ») sont rattachées à guide/le-mode-hyper depuis le retrait de la page « Liste des effets mode hyper » (migration 0095) : leur phrase se lit dans la cellule citée (mode_texte.texte, ou la cellule du tableau pour les dégâts et le soin), pas dans le corps de la page.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -350,15 +350,15 @@ Les quatre types de don (guide « Capacités/Don »). Le domaine classes écrit 
 
 ### `posture`
 
-▸ POSTURES DE COMBAT Six postures. Trois textes coexistent : le tableau de la fiche (Personnage!BA16:BR25, versions courtes), la page « Tableau Posture » du Google Doc de la fiche et la page « Postures » du guide MJ. Ils diffèrent par endroits (voir ecart_source).
+▸ POSTURES DE COMBAT Six postures. Trois textes coexistent : le tableau de la fiche (Personnage!BA16:BR25, versions courtes), la page « Tableau Posture » du Google Doc de la fiche et la page « Postures » du Google Doc « Guide pour MJ ». Ils diffèrent par endroits (voir ecart_source). La page du wiki qui transcrivait celle du guide MJ (guide/postures) est retirée (migration 0094, demande du propriétaire : un doublon de guide/les-postures) ; les ids gardent son préfixe (identifiants figés) et page_entite rattache les postures à guide/les-postures.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
 | `id` | TEXT | oui | PK |  |
-| `nom` | TEXT | oui | unique | « Offensif » (titre de la page « Postures ») |
-| `ordre` | INTEGER | oui | unique | ordre de la page « Postures » |
+| `nom` | TEXT | oui | unique | « Offensif » (titre de la page « Postures » du guide MJ) |
+| `ordre` | INTEGER | oui | unique | ordre de la page « Postures » du guide MJ |
 | `libelle_fiche` | TEXT | oui | unique | libellé du tableau de la fiche : « OFFENSIF », « DEFENSIF » |
-| `description` | TEXT | oui |  | paragraphe de présentation de la page « Postures » (avant « Ses effets sont : ») |
+| `description` | TEXT | oui |  | paragraphe de présentation de la page « Postures » du guide MJ (avant « Ses effets sont : ») |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
 | `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
@@ -754,7 +754,7 @@ Effets d'une météo : une ligne « - … » de la cellule « Effet(s) » = une 
 
 ### `mode_texte`
 
-Textes d'explication du classeur « Mode hyper et co » (Mode Hyper!AA1, AA14, AA30 ; Mode Super!AI1) : cellule entière, telle quelle. Les chiffres qu'ils contiennent (niveau 2, 10 %, durée = niveau ÷ 2…) sont aussi dans regle_constante.
+Textes d'explication du classeur « Mode hyper et co » (Mode Hyper!AA1, AA14, AA30 ; Mode Super!AI1) : cellule entière, telle quelle. Les chiffres qu'ils contiennent (niveau 2, 10 %, durée = niveau ÷ 2…) sont aussi dans regle_constante. Les trois textes du Mode Hyper gardent le préfixe de la page « Liste des effets mode hyper » (guide/liste-des-effets-mode-hyper, identifiants figés : les registres de corrections les citent) ; la page est retirée (migration 0095, demande du propriétaire : un doublon de guide/le-mode-hyper) et ils sont rattachés à guide/le-mode-hyper. Le dernier CHECK n'admet que cette exception.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |

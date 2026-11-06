@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 93;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 95;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -189,6 +189,10 @@ CREATE INDEX page_source_source ON page_source (source_id);
 
 -- Lien page -> entité typée. Chaque importeur de domaine écrit ses lignes (test de complétude : db:check). Convention d'id : l'entité qui a SA
 -- page réutilise l'id de la page (principale = 1) ; une sous-entité a l'id '<id de la page qui la contient>#<sorte>:<slug>' (principale = 0).
+-- Exception : les postures (« guide/postures#posture:… », ids figés) sont rattachées à guide/les-postures, qui affiche leur tableau, depuis le retrait de
+-- la page guide/postures (migration 0094). De même, les trois textes du Mode Hyper (mode_texte, « guide/liste-des-effets-mode-hyper#texte:… », ids
+-- figés) sont rattachés à guide/le-mode-hyper depuis le retrait de la page « Liste des effets mode hyper » (migration 0095). db:check contrôle leur
+-- page par la table de ces préfixes retirés (client/scripts/db-check.mjs#PAGES_DES_PREFIXES_RETIRES).
 -- `entite_table` n'est pas une clé étrangère (SQLite ne vise pas une table variable) : db:check vérifie que (entite_table, entite_id) existe.
 CREATE TABLE page_entite (
   entite_table TEXT    NOT NULL CHECK (length(entite_table) > 0 AND entite_table NOT GLOB '*[^a-z_]*'),   -- 'magie', 'sort', 'classe', 'race'…
@@ -404,6 +408,9 @@ CREATE TABLE seuil_niveau (
 -- classeur, `texte` = la phrase telle qu'écrite) ou un facteur écrit dans une formule de la fiche (nature 'formule', `texte` = le
 -- fragment de formule). Le chargeur vérifie que `texte` figure bien dans la cellule ou la page citée. Les règles qui restent du
 -- texte sont dans les pages (corps_md).
+-- Les douze constantes `mode_hyper.*` et `mode_hyper_100.*` (classeur « Mode hyper et co ») sont rattachées à guide/le-mode-hyper depuis le retrait de
+-- la page « Liste des effets mode hyper » (migration 0095) : leur phrase se lit dans la cellule citée (mode_texte.texte, ou la cellule du tableau
+-- pour les dégâts et le soin), pas dans le corps de la page.
 CREATE TABLE regle_constante (
   id         TEXT    NOT NULL PRIMARY KEY,                   -- 'caracteristique.base_min', 'competence.acquis_max_par_point_caracteristique'…
   valeur     INTEGER NOT NULL,
@@ -457,13 +464,15 @@ CREATE TABLE type_don (
 
 -- ▸ POSTURES DE COMBAT
 -- Six postures. Trois textes coexistent : le tableau de la fiche (Personnage!BA16:BR25, versions courtes), la page « Tableau Posture »
--- du Google Doc de la fiche et la page « Postures » du guide MJ. Ils diffèrent par endroits (voir ecart_source).
+-- du Google Doc de la fiche et la page « Postures » du Google Doc « Guide pour MJ ». Ils diffèrent par endroits (voir ecart_source).
+-- La page du wiki qui transcrivait celle du guide MJ (guide/postures) est retirée (migration 0094, demande du propriétaire : un doublon de
+-- guide/les-postures) ; les ids gardent son préfixe (identifiants figés) et page_entite rattache les postures à guide/les-postures.
 CREATE TABLE posture (
   id          TEXT    NOT NULL PRIMARY KEY CHECK (id GLOB 'guide/postures#posture:*'),
-  nom         TEXT    NOT NULL UNIQUE CHECK (length(nom) > 0),                       -- « Offensif » (titre de la page « Postures »)
-  ordre       INTEGER NOT NULL UNIQUE CHECK (ordre >= 1),    -- ordre de la page « Postures »
+  nom         TEXT    NOT NULL UNIQUE CHECK (length(nom) > 0),                       -- « Offensif » (titre de la page « Postures » du guide MJ)
+  ordre       INTEGER NOT NULL UNIQUE CHECK (ordre >= 1),    -- ordre de la page « Postures » du guide MJ
   libelle_fiche TEXT  NOT NULL UNIQUE,                       -- libellé du tableau de la fiche : « OFFENSIF », « DEFENSIF »
-  description TEXT    NOT NULL,                              -- paragraphe de présentation de la page « Postures » (avant « Ses effets sont : »)
+  description TEXT    NOT NULL,                              -- paragraphe de présentation de la page « Postures » du guide MJ (avant « Ses effets sont : »)
   origine     TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'fiche'),
   source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0),
   remarque TEXT   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
@@ -1035,6 +1044,9 @@ CREATE INDEX meteo_effet_element ON meteo_effet (element_magie_id, degats) WHERE
 
 -- Textes d'explication du classeur « Mode hyper et co » (Mode Hyper!AA1, AA14, AA30 ; Mode Super!AI1) : cellule entière, telle quelle.
 -- Les chiffres qu'ils contiennent (niveau 2, 10 %, durée = niveau ÷ 2…) sont aussi dans regle_constante.
+-- Les trois textes du Mode Hyper gardent le préfixe de la page « Liste des effets mode hyper » (guide/liste-des-effets-mode-hyper, identifiants
+-- figés : les registres de corrections les citent) ; la page est retirée (migration 0095, demande du propriétaire : un doublon de guide/le-mode-hyper)
+-- et ils sont rattachés à guide/le-mode-hyper. Le dernier CHECK n'admet que cette exception.
 CREATE TABLE mode_texte (
   id         TEXT    NOT NULL PRIMARY KEY CHECK (instr(id, '#texte:') > 0),   -- '<page>#texte:<normalize(intitule)>' (db:check recalcule la fin)
   mode       TEXT    NOT NULL CHECK (mode IN ('hyper', 'super')),
@@ -1046,7 +1058,8 @@ CREATE TABLE mode_texte (
   source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
   remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   UNIQUE (mode, rang),
-  CHECK (substr(id, 1, length(page_id) + 7) = page_id || '#texte:')
+  CHECK (substr(id, 1, length(page_id) + 7) = page_id || '#texte:'
+      OR (page_id = 'guide/le-mode-hyper' AND id GLOB 'guide/liste-des-effets-mode-hyper#texte:*'))
 ) STRICT;
 
 CREATE INDEX mode_texte_page ON mode_texte (page_id);

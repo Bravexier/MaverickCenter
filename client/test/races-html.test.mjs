@@ -71,6 +71,16 @@ test('sections de l’onglet : présentation, histoire, avantages, dons, Mode Hy
   assert.match(page('drakos'), /<dt>Santé de départ<\/dt>\s*<dd[^>]*>13<\/dd>/);
 });
 
+// Sous « Capacité Mode Hyper », le lien mène à la page « Le mode hyper » (R187 : la « Liste des effets mode hyper » est supprimée, ses renvois visent
+// cette page, qui porte le tableau des capacités de toutes les races).
+test('Mode Hyper : le lien sous le titre mène à « Le Mode Hyper » (R187), plus à la liste supprimée', options, () => {
+  for (const { slug, html } of pages) {
+    const section = html.slice(html.indexOf('<section class="race-section" id="mode-hyper"'), html.indexOf('</section>', html.indexOf('id="mode-hyper"')));
+    assert.match(section, /<h2 id="mode-hyper-titre">Capacité Mode Hyper<\/h2>\s*<p class="muted"><a href="[^"]*\/regles\/le-mode-hyper\/">Le Mode Hyper<\/a><\/p>/, slug);
+    assert.ok(!html.includes('liste-des-effets-mode-hyper') && !html.includes('Liste des effets mode hyper'), `${slug} : un renvoi à la liste supprimée`);
+  }
+});
+
 test('relations : Elfe noir en deux blocs (Charbon, Salé), la matrice entre ses peuples ; une race sans peuple le dit', options, () => {
   const html = page('elfe-noir');
   const voit = html.slice(html.indexOf('Comment ses peuples voient les autres'), html.indexOf('Comment les autres voient ses peuples'));

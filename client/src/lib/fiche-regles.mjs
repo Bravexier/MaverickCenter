@@ -79,7 +79,8 @@ const CONSTANTES = [
   'inventaire.colonnes_de_depart', 'inventaire.lignes_par_colonne', 'inventaire.colonnes_max', 'inventaire.emplacements_force_2',
   'inventaire.emplacements_force_3', 'inventaire.emplacements_force_4', 'inventaire.force_tout_l_inventaire', 'ceinture.exemplaires_par_emplacement',
   // le Mode Hyper activable (décision R172) : ses bonus (R5 : « 15/7 »), sa consommation par tour, son coût de sortie du Mode Hyper 100 % (arrondis à
-  // l'inférieur, R175), son usage « 1 fois toutes les semaines » ; telles qu'écrites par la page « Liste des effets mode hyper » (Mode hyper et co)
+  // l'inférieur, R175), son usage « 1 fois toutes les semaines » ; telles qu'écrites par le classeur « Mode hyper et co », onglet Mode Hyper (rattachées à la
+  // page « Le mode hyper » depuis le retrait de la « Liste des effets mode hyper », décision R187)
   'mode_hyper.degats_physique', 'mode_hyper.degats_magie_mono', 'mode_hyper.degats_magie_bi', 'mode_hyper.soin_magique',
   'mode_hyper.conso_chakra_pct_max_par_tour', 'mode_hyper.usage_par_semaine', 'mode_hyper_100.degats_bonus', 'mode_hyper_100.cout_chakra_pct_max',
   // la réussite critique (décision R180, migration 0087) : sa base, les deux paliers du score du moment (le second, bonus total), son plafond (base comprise)
@@ -539,7 +540,8 @@ function reglesDeLaBase(db) {
       ...(etiquettesDesSorts.get(s.id)?.includes('sort-fer') ? { fer: true } : {}),
     }));
 
-  // Postures (sélecteur de la page, demande du propriétaire) : les six, dans l'ordre de la page « Postures », leur couleur et leurs effets du tableau de la fiche.
+  // Postures (sélecteur de la page, demande du propriétaire) : les six, dans l'ordre de la page « Postures » du Doc « Guide pour MJ » (posture.ordre ; la page
+  // du site qui les montre est « Les postures », depuis le retrait de la page « Postures », décision R187), leur couleur et leurs effets du tableau de la fiche.
   // Avantages et inconvénients (décision R47, migration 0031) : `inconvenients` = les rangs des lignes du tableau de la fiche qui sont des inconvénients
   // (posture_effet.inconvenient), les autres sont des avantages ; `ordre_postures` : l'ordre des cases sur la fiche (demande du propriétaire : Offensif,
   // Neutre, Défensif, puis Focus, Vigilance, Symbiose).
@@ -561,18 +563,26 @@ function reglesDeLaBase(db) {
       critique: { posture: critiqueDe(p.id, 'posture') },
     }));
 
-  // Mode Hyper et Mode Hyper 100 % (demande du propriétaire : leurs cases à côté des postures, quand ils sont débloqués) : les niveaux et le Mode Hyper 100 %
-  // tels qu'écrits par la page « Liste des effets mode hyper » (« se débloque au niveau 2 », « n'est disponible qu'au niveau 10 ») ; les effets de base de la
-  // fiche (mode_hyper_effet version 'fiche', valeurs retenues par la décision R5) ; l'effet de chaque magie (onglet de la magie, comme sa page) et de chaque race
-  // (onglet de la race, décision R13).
-  const pageHyper = sansBalises(db, db.prepare("SELECT corps_md FROM page WHERE id = 'guide/liste-des-effets-mode-hyper'").get()?.corps_md ?? '');
-  const niveauHyper = /se d[ée]bloque au niveau (\d+)/.exec(pageHyper)?.[1];
-  const sectionCent = /## Mode Hyper 100 ?%\s*\n([\s\S]*?)(?=\n## |$)/.exec(pageHyper)?.[1] ?? '';
-  const niveauCent = /disponible qu['’]au niveau (\d+)/.exec(sectionCent)?.[1];
-  if (!niveauHyper || !niveauCent) throw new Error('page « Liste des effets mode hyper » : niveaux du Mode Hyper et du Mode Hyper 100 % introuvables');
+  // Mode Hyper et Mode Hyper 100 % (demande du propriétaire : leurs cases à côté des postures, quand ils sont débloqués), lus en base, jamais dans le texte
+  // d'une page (décision R187 (4) : « La fiche garde les mêmes valeurs et les mêmes textes ») : les niveaux, constantes de regle_constante tirées des textes
+  // du classeur « Mode hyper et co » (`mode_hyper.niveau_deblocage` : « se débloque au niveau 2 de personnage », AA1 ; `mode_hyper.niveau_100` : « n'est
+  // disponible qu'au niveau 10 de personnage », AA30) ; les puces du Mode Hyper 100 % et sa phrase « En revanche, … », lues dans son texte d'explication
+  // (mode_texte, cellule AA30 entière : ses ids gardent le préfixe de la page « Liste des effets mode hyper », retirée par la migration 0095, identifiants
+  // figés) ; les effets de base de la fiche (mode_hyper_effet version 'fiche', valeurs retenues par la décision R5) ; l'effet de chaque magie (onglet de la
+  // magie, comme sa page) et de chaque race (onglet de la race, décision R13).
+  const niveauDuMode = (id) => {
+    const r = db.prepare('SELECT valeur FROM regle_constante WHERE id = ?').get(id);
+    if (!r) throw new Error(`regle_constante « ${id} » absente de la base : niveau du Mode Hyper introuvable (décision R187)`);
+    return r.valeur;
+  };
+  const TEXTE_DU_CENT = 'guide/liste-des-effets-mode-hyper#texte:mode-hyper-100';
+  const texteDuCent = lignes(db, 'SELECT texte FROM mode_texte WHERE id = ?', TEXTE_DU_CENT)[0]?.texte;
+  if (!texteDuCent) throw new Error(`mode_texte « ${TEXTE_DU_CENT} » absent de la base : texte du Mode Hyper 100 % introuvable (décision R187)`);
+  const effetsDuCent = [...texteDuCent.matchAll(/^- (.+)$/gm)].map((m) => m[1].trim());
+  if (!effetsDuCent.length) throw new Error(`mode_texte « ${TEXTE_DU_CENT} » : aucun effet du Mode Hyper 100 % (puces « - … ») dans son texte`);
   const effetsHyperDesMagies = lignes(db, "SELECT magie_id, variante, effet FROM mode_hyper_effet WHERE version = 'onglet_magie' AND portee = 'magie'");
   const mode_hyper = {
-    niveau: Number(niveauHyper),
+    niveau: niveauDuMode('mode_hyper.niveau_deblocage'),
     effets: lignes(db, "SELECT effet FROM mode_hyper_effet WHERE version = 'fiche' AND portee = 'general' ORDER BY rang").map((r) => r.effet),
     magies: Object.fromEntries([...parCle(effetsHyperDesMagies, 'magie_id')]
       .map(([id, rows]) => [id, Object.fromEntries(rows.map((r) => [r.variante, r.effet]))])),
@@ -586,9 +596,9 @@ function reglesDeLaBase(db) {
     classe: classeDuModeHyper('hyper'),
     cent: {
       classe: classeDuModeHyper('cent'),
-      niveau: Number(niveauCent),
-      effets: [...sectionCent.matchAll(/^- (.+)$/gm)].map((m) => m[1].trim()),
-      suite: /^En revanche, (.+)$/m.exec(sectionCent)?.[1]?.trim() ?? null,
+      niveau: niveauDuMode('mode_hyper.niveau_100'),
+      effets: effetsDuCent,
+      suite: /^En revanche, (.+)$/m.exec(texteDuCent)?.[1]?.trim() ?? null,
     },
   };
 

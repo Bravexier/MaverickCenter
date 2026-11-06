@@ -433,7 +433,9 @@ Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, tes
   lignes physiques (`magie_resistance.cible_physique`, décision R174 : le Potentiel Illimité, « Surtension corporelle ») a de plus un groupe « Dégâts physiques » (Estoc, Frappe,
   Taille, dans l'ordre de la fiche : `RESISTANCES_PHYSIQUES` de `lib/fiche-moteur.mjs`, sans lien), suivi une fois de la phrase de la source, telle qu'écrite ; les autres magies
   n'ont pas ce groupe.
-- **Capacité Mode Hyper** : un (+) à côté du titre mène à la liste des effets mode hyper (plus de lien en texte).
+- **Capacité Mode Hyper** : un (+) à côté du titre (titre et `aria-label` « Le Mode Hyper ») mène à la page « Le mode hyper » (`guide/le-mode-hyper`),
+  qui porte le tableau des effets de toutes les magies (plus de lien en texte). Sur une page de race, le lien « Le Mode Hyper » sous le titre y mène
+  aussi. Depuis R187, la « Liste des effets mode hyper » est supprimée et ses renvois visent cette page (`test/magies-html.test.mjs`, `test/races-html.test.mjs`).
 - **Aucune virgule dans les données** : une liste devient des pastilles (une par élément), les bonus du D/S/B (« +8 dégâts, +2AM ») sont un élément par ligne, « 4.0 » s'affiche « 4 », les précisions entre
   parenthèses passent en petit (parenthèses gardées), un coût qui écrirait encore deux coûts en une case (« 5 + 1 âme ») serait séparé en coût et supplément (il n'y en a plus : décisions R105, R106), les types et les marques (IC, imparable, inesquivable) sont des pastilles.
   Le texte des cellules n'est jamais réécrit.
@@ -1408,7 +1410,15 @@ dev (un commit la change) ni cherchée par la recherche.
   `test/livres.test.mjs` et `test/site-html.test.mjs` le vérifient), requête et ancre écrite gardées. Les six étapes de la création, fusionnées dans
   « Créer son personnage » du 2026-10-18 à R184, sont redevenues des pages sous leur id (`/regles/<étape>/`).
 - **Pages supprimées sans renvoi** (`PAGES_SUPPRIMEES`, R184 (9), R185 (6)) : « Les documents des règles », « En résumé : déroulement d'un tour »,
-  « Aide-mémoire », « Mode Hyper (Magie) ». Leurs adresses mènent à la page 404 ; `verifierLePlan` arrête le build si l'une revient sans place.
+  « Aide-mémoire », « Mode Hyper (Magie) » ; puis « Postures », « Les boss et leurs postures » et « Le Mode Super » (migration `0094`, demande du
+  propriétaire du 2026-11-06 : « inutile ou doublon » ; « Le Mode Hyper » reste), et la « Liste des effets mode hyper » (R187 (1), migration `0095`,
+  même jour : « Supprime la liste »), doublon de « Le mode hyper », qui porte maintenant ses tableaux (bloc `mode-hyper`). Leurs adresses mènent à la page 404 ; `verifierLePlan` arrête le
+  build si l'une revient sans place, et leur id reste réservé (une page créée sur le site de dev prend un suffixe, `serveur/edition-plan.mjs#idPris`).
+  « Postures » et la Liste sortent aussi des anciennes Règles avancées (`/regles/avancees/postures/` et `/regles/avancees/liste-des-effets-mode-hyper/`
+  donnent la 404, comme `/regles/avancees/mode-hyper-magie/`) ;
+  l'alias « Postures » nomme `guide/les-postures`, et les six postures gardent leur id `guide/postures#posture:…` (identifiants figés), rattachées à
+  `guide/les-postures`. L'ancienne section « Les boss et leurs postures » de « Les situations avancées » mène à la section « Les boss » de
+  `guide/les-postures` (`/regles/les-postures/#les-boss`, `PAGES_ECLATEES_DU_GUIDE`).
 - **Pages retirées dont le contenu se lit ailleurs** (`PAGES_RETIREES` : page retirée → `{ vers, adresses }`, adresses relatives à la racine du site) :
   le Lexique, devenu des mots-clés (migration `0090`). Ses anciennes adresses (`regles/lexique/`, `guide/lexique/`) mènent à `vers` (`recherche/`) par
   la page 404 (`renvoisDuGuide`), requête et ancre d'origine gardées (`/regles/lexique/?q=AM` → `/recherche/?q=AM`), et un lien Markdown écrit vers
@@ -1440,7 +1450,13 @@ dev (un commit la change) ni cherchée par la recherche.
   remplacée au rendu par un tableau lu dans la base (`lib/guide-db.mjs`, `components/guide/GuideBloc.astro`), sur toute page du guide : progression
   (`niveau_global`), postures, compétences, initiative, ce que donne chaque magie, types de don, entraînement, personnages fil rouge, et
   `relations-des-magies` (le tableau « Relations entre magies » de `/magies/#relations`, par son composant `components/magie/TableauRelationsMagies.astro`,
-  juste après le premier paragraphe de « Résistances et faiblesses », R185 (4))… Plus de bloc `sommaire` (demande du propriétaire du 2026-10-18 :
+  juste après le premier paragraphe de « Résistances et faiblesses », R185 (4)), et `mode-hyper` (R187 (2), `chargerModeHyper`, dans « Le mode
+  hyper » sous « Ce qu'il donne ») : deux tableaux, sans intitulé au-dessus, chacun dans sa zone qui défile. Le premier, « Magie | Mono-Magie |
+  Bi-magie » (lecture `onglet_magie` de `mode_hyper_effet`, R172), a une ligne par magie dans l'ordre de la source, le nom du site en pastille de sa
+  couleur liée à sa page ; le Potentiel Illimité y tient une seule case sur les deux colonnes (`colspan="2"`), précédée de son intitulé en gras
+  « Forme Complète : ». Le second, « Race | Capacité | Effet » (lecture `onglet_race`, R13, R178), a une ligne par race, le nom lié à sa page. Les
+  effets sont tels quels : chaque ligne rendue comme une phrase de la base (`rendreLigne` : `[[liens]]`, typographie), les retours à la ligne gardés
+  (`<br />`), les balises `{{…}}` rendues par le middleware… Plus de bloc `sommaire` (demande du propriétaire du 2026-10-18 :
   « Dans la page de bienvenue, retire le sommaire »), ni `magies` (la liste des 15 magies, qui quitte « L’univers » à sa refonte), ni `documents` (sa
   page est supprimée, R184 (9)) : un marqueur inconnu arrête le rendu. Depuis R184, les blocs de la création sont dans la page de leur étape
   (`fil-rouge-race` dans « Choisir sa race », `magie-bonus` et `fil-rouge-magie` dans « Choisir ses magies »…). Ne jamais

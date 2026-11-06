@@ -539,11 +539,14 @@ test('décision R174 : le Potentiel Illimité montre sa vulnérabilité physique
   }
 });
 
-test('Mode Hyper : plus de texte « Liste des effets mode hyper », un (+) à côté du titre mène à la liste', options, () => {
+// Le (+) de « Capacité Mode Hyper » mène à la page « Le mode hyper » (R187 : la « Liste des effets mode hyper » est supprimée, ses renvois visent cette page,
+// qui porte le tableau des effets de toutes les magies).
+test('Mode Hyper : plus de texte de lien ; un (+) à côté du titre mène à « Le Mode Hyper » (R187), plus à la liste supprimée', options, () => {
   for (const { slug, html } of pages) {
     const titre = html.match(/<h2 id="mode-hyper-titre">[\s\S]*?<\/h2>/)?.[0] ?? '';
-    assert.match(titre, /Capacité Mode Hyper\s*<a class="lien-plus no-print" href="[^"]*\/regles\/liste-des-effets-mode-hyper\/" title="Liste des effets mode hyper" aria-label="Liste des effets mode hyper"><span aria-hidden="true">\+<\/span><\/a>/, slug);
+    assert.match(titre, /Capacité Mode Hyper\s*<a class="lien-plus no-print" href="[^"]*\/regles\/le-mode-hyper\/" title="Le Mode Hyper" aria-label="Le Mode Hyper"><span aria-hidden="true">\+<\/span><\/a>/, slug);
     assert.ok(!html.includes('>Liste des effets mode hyper</a>'), `${slug} : le texte du lien est revenu`);
+    assert.ok(!html.includes('liste-des-effets-mode-hyper'), `${slug} : un renvoi à la liste supprimée`);
   }
 });
 

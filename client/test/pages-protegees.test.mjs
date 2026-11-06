@@ -70,8 +70,9 @@ test('raisonsDeProtection : les pages que le plan du site nomme (lib/livres.mjs)
     assert.ok(raisons(db, id).includes(raison), `${id} : ${raison} (${raisons(db, id).join(', ')})`);
   }
   // la cible d'un renvoi d'une ancienne adresse (ADRESSES_DU_PLAN_PRECEDENT, PAGES_ECLATEES_DU_GUIDE) n'est pas protégée (choix du leader-technique :
-  // supprimée, l'ancienne adresse mène à la 404, R185, P6)
-  for (const id of ['guide/le-mode-hyper', 'guide/l-embuscade']) {
+  // supprimée, l'ancienne adresse mène à la 404, R185, P6) ; « Le mode hyper », cible de /regles/avancees/, est protégé par ailleurs (les pages des magies
+  // et des races y renvoient, R187) : une autre cible d'une ancienne adresse
+  for (const id of ['guide/campagne-ou-scenario-one-shot', 'guide/l-embuscade']) {
     ajouter(id);
     assert.deepEqual(raisons(db, id), [], id);
   }

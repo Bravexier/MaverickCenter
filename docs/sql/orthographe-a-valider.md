@@ -499,6 +499,8 @@ Gardés tels quels :
 
 #### guide/liste-des-effets-mode-hyper
 
+La page est supprimée (R187, migration `0095-retrait-liste-des-effets-mode-hyper`) : les numéros de ligne sont ceux de l'ancienne page. Les quatre phrases restent en base, dans `mode_hyper_effet` (lecture `classeur_modes` : Elfe noir L80, Farfadet L83, Nain L85, Rokh L95). Celles du Farfadet (L83) et du Rokh (L95) sont aussi dans la lecture `onglet_race`, et le tableau de `guide/le-mode-hyper` les affiche.
+
 - **L80** — « pendant tout le monde hyper » — « monde » semble une faute de frappe pour « mode » (cf. L97 « pendant tout le mode hyper »), mais la correction remplace un mot existant par un autre. → pendant tout le mode hyper
 - **L83** — « qui correspond à votre niveau puissance magique » — Antécédent de « qui » incertain (sorts ou magies) ; il manque aussi « de » devant « puissance » (ajout de mot). → qui correspondent à votre niveau de puissance magique
 - **L85** — « Le sort malédiction ne marche. » — Négation incomplète : il manque « pas » (ou « plus ») ; corriger demande d'ajouter un mot. → Le sort malédiction ne marche pas.

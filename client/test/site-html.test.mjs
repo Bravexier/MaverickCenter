@@ -98,7 +98,9 @@ test('la page 404 renvoie les anciennes adresses /wiki/… vers les nouvelles', 
   // les pages supprimées (R184 (9), R185 (6) : « page 404 ») : ni construites ni renvoyées
   for (const supprimee of PAGES_SUPPRIMEES) {
     const slug = supprimee.slice('guide/'.length);
-    assert.ok(Object.keys(renvois).every((k) => !k.includes(slug)) && Object.values(renvois).every((v) => !v.includes(slug)), `${supprimee} : aucun renvoi`);
+    // un segment d'adresse, pas une sous-chaîne : « postures » (supprimée le 2026-11-06, migration 0094) est dans « les-postures », qui garde ses adresses
+    const aPourSegment = (adresse) => adresse.split(/[/?#]/).includes(slug);
+    assert.ok(Object.keys(renvois).every((k) => !aPourSegment(k)) && Object.values(renvois).every((v) => !aPourSegment(v)), `${supprimee} : aucun renvoi`);
     assert.ok(!existsSync(join(dist, 'regles', slug)), `${supprimee} : plus construite`);
   }
   // les pages découpées en plusieurs (data-eclatees, avec celles de l'équipement) : « Créer son personnage » des six étapes, « Les situations avancées »
@@ -113,6 +115,8 @@ test('la page 404 renvoie les anciennes adresses /wiki/… vers les nouvelles', 
       if (ancre) assert.match(lire(join(chemin, 'index.html')), new RegExp(`<h[2-6] id="${ancre}"`), `${cible} : ancre absente`);
     }
   }
+  // « Les boss et leurs postures », supprimée le 2026-11-06 (migration 0094) : son ancienne section mène à « ## Les boss » de la page des postures
+  assert.equal(eclatees['guide/situations-avancees/'].anciennesAncres['les-boss-et-leurs-postures'], 'regles/les-postures/#les-boss');
   assert.ok(!existsSync(join(dist, 'decouvrir', 'creer-son-personnage')), '/decouvrir/creer-son-personnage/ n’est plus construite');
   assert.equal(renvois['decouvrir/campagne-ou-scenario-one-shot/'], 'mj/campagne-ou-scenario-one-shot/');
   // la page Liens, supprimée le 2026-10-22 : son ancienne adresse n'est plus renvoyée nulle part (réponse du propriétaire du 2026-10-23 : « supprimer ce
