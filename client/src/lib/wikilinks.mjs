@@ -5,11 +5,13 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { parse as parseYaml } from 'yaml';
-import { normalize } from './text.mjs';
 import { TYPE_KEYS } from './types.mjs';
 import { cheminDePage } from './metiers.mjs';
+import { WIKILINK_SOURCE, buildIndex, extractLinks, resolve } from './wikilinks-resolution.mjs';
 
-const WIKILINK_SOURCE = String.raw`\[\[([^\[\]|]+?)(?:\|([^\[\]]+?))?\]\]`;
+// L'index, la résolution et l'extraction des liens sont dans lib/wikilinks-resolution.mjs (sans dépendance : le service les emploie aussi,
+// lib/citations-db.mjs) ; ils restent exportés d'ici, comme avant.
+export { buildIndex, extractLinks, resolve };
 
 /** Découpe un fichier Markdown en { data, body } (frontmatter YAML optionnel). */
 export function splitFrontmatter(raw) {
@@ -45,45 +47,6 @@ export function scanContent(contentDir, { includeExamples = true } = {}) {
     }
   }
   return entries;
-}
-
-/** Construit la table clé normalisée -> pages. `entries` : { id, type, slug, title, aliases }. */
-export function buildIndex(entries) {
-  const keys = new Map();
-  const add = (key, entry) => {
-    if (!key) return;
-    const list = keys.get(key) ?? [];
-    if (!list.includes(entry)) list.push(entry);
-    keys.set(key, list);
-  };
-  for (const entry of entries) {
-    add(normalize(entry.slug), entry);
-    add(normalize(entry.title), entry);
-    for (const alias of entry.aliases) add(normalize(alias), entry);
-  }
-  return { entries, keys, byId: new Map(entries.map((e) => [e.id, e])) };
-}
-
-/** @returns {{ entry?: object, ambiguous?: object[] } | null} */
-export function resolve(index, target) {
-  const wanted = target.trim();
-  if (wanted.includes('/')) {
-    const entry = index.byId.get(wanted.toLowerCase());
-    if (entry) return { entry };
-    // sinon : un titre qui contient une barre oblique (« Résistance/Faiblesse Magie »), cherché comme un titre
-  }
-  const hits = index.keys.get(normalize(wanted));
-  if (!hits) return null;
-  return hits.length === 1 ? { entry: hits[0] } : { ambiguous: hits };
-}
-
-/** Cibles `[[…]]` d'un corps Markdown, hors blocs et codes en ligne. */
-export function extractLinks(body) {
-  const clean = body.replace(/```[\s\S]*?```/g, '').replace(/`[^`\n]*`/g, '');
-  return [...clean.matchAll(new RegExp(WIKILINK_SOURCE, 'g'))].map((m) => ({
-    target: m[1].trim(),
-    label: (m[2] ?? m[1]).trim(),
-  }));
 }
 
 /** Adresse d'une page (un métier : sa ligne du tableau de /metiers/, voir metiers.mjs). */

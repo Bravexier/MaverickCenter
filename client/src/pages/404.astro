@@ -1,7 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import { RENVOIS_DES_PAGES_ECLATEES } from '../lib/equipement.mjs';
-import { PAGES_ECLATEES_DU_GUIDE } from '../lib/livres.mjs';
+import { pagesEclateesDuGuide } from '../lib/livres.mjs';
 import { renvoisDuGuide } from '../lib/metiers.mjs';
 import { loadWiki, url } from '../lib/wiki';
 
@@ -9,9 +9,12 @@ import { loadWiki, url } from '../lib/wiki';
 // calculées au build depuis le plan et passées au script (data-renvois) ; les pages éclatées en plusieurs (l'ancienne page « Équipement » en cinq
 // pages, la page « Pièces élémentaires » dans Armes et Armures : lib/equipement.mjs#RENVOIS_DES_PAGES_ECLATEES ; « Créer son personnage » quand elle
 // portait les six étapes, « Les situations avancées » : lib/livres.mjs#PAGES_ECLATEES_DU_GUIDE), passées de même (data-eclatees) : nav.mjs, seul
-// module du script, n'importe ni le plan ni lib/equipement.mjs.
-const renvois = renvoisDuGuide((await loadWiki()).entries.map((e) => e.id));
-const eclatees = { ...RENVOIS_DES_PAGES_ECLATEES, ...PAGES_ECLATEES_DU_GUIDE };
+// module du script, n'importe ni le plan ni lib/equipement.mjs. Une cible absente (une page des Règles supprimée sur le site de dev) est sautée : son
+// ancienne adresse donne la 404 (R185 (6) ; renvoisDuGuide, pagesEclateesDuGuide).
+const ids = (await loadWiki()).entries.map((e) => e.id);
+const renvois = renvoisDuGuide(ids);
+const charges = new Set(ids);
+const eclatees = { ...RENVOIS_DES_PAGES_ECLATEES, ...pagesEclateesDuGuide((id: string) => charges.has(id)) };
 ---
 
 <Base title="Page introuvable" edition="404">

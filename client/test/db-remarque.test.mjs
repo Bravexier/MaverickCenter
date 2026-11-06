@@ -32,9 +32,10 @@ const tablesAvecNotes = db.prepare("SELECT DISTINCT entite_table AS t FROM note_
 // 0010 : mono-magie (R15) ; 0015 : la magie innée qui réserve et impose une classe (R23) ; 0019 : celle qui la ferme (R25) ; 0022 : la race à une seule magie (R28) ;
 // 0030 : la famille d'armes sans maîtrise (R45) ; 0037 : l'usage d'un effet d'accessoire (action, usage compté : R54) ; 0063 : le coût secondaire
 // d'un sort (R105) ; 0069 : la catégorie d'une famille d'armes, contact ou à distance (R127) ; 0077 : son nom de lecture figé (R159) ; 0081 (R167) : le
-// type élémentaire d'une famille d'armes, le coût élémentaire d'une amélioration d'arme (tableau fondu, table reconstruite avec sa colonne en dernier).
+// type élémentaire d'une famille d'armes, le coût élémentaire d'une amélioration d'arme (tableau fondu, table reconstruite avec sa colonne en dernier) ;
+// 0092 : le rang d'une race dans le menu des races et la liste /races/ (race.rang_liste, ajoutée par ALTER TABLE après la remarque).
 const APRES_REMARQUE = {
-  sort: ['mode_brut', 'bonus_maitrise', 'cout_secondaire'], mode_hyper_effet: ['nom'], magie: ['mono_magie'], race: ['mono_magie'], classe: ['magie_innee_id', 'magie_innee_exclue_id'],
+  sort: ['mode_brut', 'bonus_maitrise', 'cout_secondaire'], mode_hyper_effet: ['nom'], magie: ['mono_magie'], race: ['mono_magie', 'rang_liste'], classe: ['magie_innee_id', 'magie_innee_exclue_id'],
   arme_famille: ['maitrisable', 'categorie', 'nom_lecture', 'type_elementaire_id'], accessoire_effet: ['usage'], bouclier: ['poids_id'], amelioration_equipement: ['cout_elementaire_brut'],
 };
 // Tables d'entités créées APRÈS 0002 par une migration qui leur donne directement leur `remarque` (0007 : les dons raciaux de l'onglet de la race ;

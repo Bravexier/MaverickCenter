@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 91 : 209 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 92 : 209 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -184,7 +184,7 @@ Annonces placées par le site (migration 0068) : aujourd'hui l'encart « Notre p
 
 ### `regles_onglet`
 
-Plan des onglets de la rubrique Règles (migration 0091, décisions R184 et R185 : « Fiche de personnage », « Mécaniques générales », « Les combats », « Exploration », après Découvrir et L'univers, que le site écrit lui-même) : un onglet, son titre, sa place et la page qu'il ouvre. Son menu latéral est la liste de ses entrées (regles_onglet_entree), dans l'ordre de `rang`. Liste fermée : l'édition n'en crée ni n'en retire (choix du leader-technique : le plan est une donnée de la base, qu'un lot suivant rendra modifiable sur le site de dev ; pas encore dans lib/edition-modele.mjs#TABLES). La page d'ouverture est une entrée page de l'onglet (clé étrangère composée vers regles_onglet_entree, vérifiée à la fin de la transaction : un onglet et ses entrées s'écrivent ensemble) : déplacer cette page dans un autre onglet, ou la supprimer, est refusé tant qu'une autre page n'ouvre pas l'onglet. Pas de provenance (origine, source_ref : feuille de route, retirées à la 1.0).
+Plan des onglets de la rubrique Règles (migration 0091, décisions R184 et R185 : « Fiche de personnage », « Mécaniques générales », « Les combats », « Exploration », après Découvrir et L'univers, que le site écrit lui-même) : un onglet, son titre, sa place et la page qu'il ouvre. Son menu latéral est la liste de ses entrées (regles_onglet_entree), dans l'ordre de `rang`. Liste fermée, que l'édition du site de dev ne modifie pas : elle n'en crée ni n'en retire, et l'ordre des onglets comme leur page d'ouverture sont fixes (choix du propriétaire, lot de l'édition des menus : « Non, fixe ») ; seules leurs entrées se modifient. La page d'ouverture est une entrée page de l'onglet (clé étrangère composée vers regles_onglet_entree, vérifiée à la fin de la transaction : un onglet et ses entrées s'écrivent ensemble) : déplacer cette page dans un autre onglet, ou la supprimer, est refusé tant qu'une autre page n'ouvre pas l'onglet. Pas de provenance (origine, source_ref : feuille de route, retirées à la 1.0).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -195,7 +195,7 @@ Plan des onglets de la rubrique Règles (migration 0091, décisions R184 et R185
 
 ### `regles_onglet_entree`
 
-Une entrée du menu latéral d'un onglet des Règles, à sa place (`rang`). Trois sortes, exactement une par ligne : * une page (`page_id`, une page `guide/…`) : son titre est celui de la page ; id 'page:<id de la page>' ; une page n'est que dans un onglet (UNIQUE) ; * un lien vers une adresse du site qui n'est pas une page du guide (`libelle` et `adresse`) : « Artisanat » (regles/artisanat/), id 'lien:<adresse sans la barre finale>' ; * une entrée grisée « bientôt » (`libelle` seul) : une puce du propriétaire sans texte encore (R184 (1)) ; aucune aujourd'hui, id 'bientot:<clé>'. `rang` n'est pas UNIQUE dans l'onglet (comme panneau_regles_bloc.ordre) : SQLite contrôle une contrainte UNIQUE ligne par ligne, et un déplacement par glisser-déposer renumérote plusieurs entrées dans un même lot ; à égalité, l'id départage. Retirer une page retire son entrée (ON DELETE CASCADE), sauf la page d'ouverture d'un onglet (regles_onglet). Pas de provenance (origine, source_ref : feuille de route, retirées à la 1.0).
+Une entrée du menu latéral d'un onglet des Règles, à sa place (`rang`). Trois sortes, exactement une par ligne : * une page (`page_id`, une page `guide/…`) : son titre est celui de la page ; id 'page:<id de la page>' ; une page n'est que dans un onglet (UNIQUE) ; * un lien vers une adresse du site qui n'est pas une page du guide (`libelle` et `adresse`) : « Artisanat » (regles/artisanat/), id 'lien:<adresse sans la barre finale>' ; * une entrée grisée « bientôt » (`libelle` seul) : une puce du propriétaire sans texte encore (R184 (1)) ; aucune aujourd'hui, id 'bientot:<clé>'. `rang` n'est pas UNIQUE dans l'onglet (comme panneau_regles_bloc.ordre) : SQLite contrôle une contrainte UNIQUE ligne par ligne, et un déplacement par glisser-déposer renumérote plusieurs entrées dans un même lot ; à égalité, l'id départage. Retirer une page retire son entrée (ON DELETE CASCADE), sauf la page d'ouverture d'un onglet (regles_onglet). Les entrées se modifient par l'édition du site de dev (choix du propriétaire, lot de l'édition des menus) : leur ordre par glisser-déposer (entrées « bientôt » comprises), l'onglet d'une page, une page des Règles créée (en fin de menu, ou à la place d'une entrée « bientôt » qu'elle remplit) ou supprimée. Pas de provenance (origine, source_ref : feuille de route, retirées à la 1.0).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -1149,6 +1149,7 @@ RACE : une ligne par race (27 dans les cinq onglets du classeur ; le guide dit �
 | `source_ref` | TEXT | oui |  | « Fiche auto V15.2.2 › Race › A3:W3 ; Les races › première feuille › A2:B2 » |
 | `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 | `mono_magie` | INTEGER | oui |  | 1 = « Une seule magie autorisé » (inconvénients de l'onglet de la race) : pas de magie acquise, quelle que soit l'innée (décision R28 du propriétaire : la Lamia ; migration 0022) |
+| `rang_liste` | INTEGER | non |  | ordre du menu latéral des races, de la liste /races/ et du tableau des magies innées en bas de /races/ (migration 0092 ; réponse du propriétaire) ; distinct de `ordre`. La fiche et /magies/ gardent l'ordre du code (client/src/lib/race-kinds.mjs#ORDRE_DES_RACES). NULL : pas encore rangée, en fin de liste, par nom. Pas UNIQUE : un réordonnancement renumérote plusieurs races dans un même lot (à égalité, le nom). Valeur d'import : celle de ORDRE_DES_RACES, pures puis hybrides, de 1 à 27. |
 
 ### `race_restriction_carac`
 

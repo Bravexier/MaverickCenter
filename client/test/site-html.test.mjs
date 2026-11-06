@@ -12,7 +12,7 @@ import { htmlAvecMotsCles, pageAvecMotsCles } from '../src/lib/mots-cles-balises
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { trierVersions } from '../src/lib/notes-de-version.mjs';
 import {
-  ADRESSES_DU_PLAN_PRECEDENT, ANCRES_DES_PAGES_ABSORBEES, PAGES_ABSORBEES, PAGES_DE_LA_CREATION, PAGES_ECLATEES_DU_GUIDE, PAGES_RETIREES, PAGES_SUPPRIMEES, PAR_OU_COMMENCER, partieDeLaPage,
+  ADRESSES_DU_PLAN_PRECEDENT, ANCRES_DES_PAGES_ABSORBEES, PAGES_ABSORBEES, PAGES_DE_LA_CREATION, PAGES_ECLATEES_DU_GUIDE, pagesEclateesDuGuide, PAGES_RETIREES, PAGES_SUPPRIMEES, PAR_OU_COMMENCER, partieDeLaPage,
 } from '../src/lib/livres.mjs';
 import { cheminDePage } from '../src/lib/metiers.mjs';
 import { classeDePartie, classesDeLaPalette, cssDeLaPalette, cssDesFamilles } from '../src/lib/palette-css.mjs';
@@ -103,8 +103,10 @@ test('la page 404 renvoie les anciennes adresses /wiki/… vers les nouvelles', 
   }
   // les pages découpées en plusieurs (data-eclatees, avec celles de l'équipement) : « Créer son personnage » des six étapes, « Les situations avancées »
   const eclatees = decoder('eclatees');
-  for (const [adresse, attendue] of Object.entries(PAGES_ECLATEES_DU_GUIDE)) assert.deepEqual(eclatees[adresse], attendue, adresse);
-  for (const { defaut, anciennesAncres } of Object.values(PAGES_ECLATEES_DU_GUIDE)) {
+  // sans les cibles absentes (une page des Règles supprimée sur le site de dev : son ancienne adresse donne la 404, R185 (6) ; pagesEclateesDuGuide)
+  const presentes = pagesEclateesDuGuide((id) => construite(id));
+  for (const adresse of Object.keys(PAGES_ECLATEES_DU_GUIDE)) assert.deepEqual(eclatees[adresse], presentes[adresse], adresse);
+  for (const { defaut, anciennesAncres } of Object.values(presentes)) {
     for (const cible of [defaut, ...Object.values(anciennesAncres)]) {
       const [chemin, ancre] = cible.split('#');
       assert.ok(existsSync(join(dist, chemin, 'index.html')), `${cible} : page construite`);

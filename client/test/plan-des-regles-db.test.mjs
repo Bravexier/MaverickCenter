@@ -36,8 +36,10 @@ test('R184 : le plan de la base, onglet par onglet et entrée par entrée, dans 
   const onglets = db.prepare('SELECT id, titre, ouverture_page_id FROM regles_onglet ORDER BY ordre, id').all();
   assert.deepEqual(plan.map((o) => [o.id, o.titre, o.ouverture]), onglets.map((o) => [o.id, o.titre, o.ouverture_page_id]));
   for (const o of plan) {
-    const lignes = db.prepare('SELECT page_id, libelle, adresse FROM regles_onglet_entree WHERE onglet_id = ? ORDER BY rang, id').all(o.id);
+    const lignes = db.prepare('SELECT id, rang, page_id, libelle, adresse FROM regles_onglet_entree WHERE onglet_id = ? ORDER BY rang, id').all(o.id);
     assert.deepEqual(o.entrees.map((e) => e.page ?? e.libelle ?? e.bientot), lignes.map((l) => l.page_id ?? l.libelle), o.id);
+    // l'id et le rang de chaque ligne (data-ed-entree, data-ed-rang du menu latéral : le mode modification réordonne par eux)
+    assert.deepEqual(o.entrees.map((e) => [e.id, e.rang]), lignes.map((l) => [l.id, l.rang]), o.id);
     // la page d'ouverture est une page du menu de l'onglet
     assert.ok(o.entrees.some((e) => e.page === o.ouverture), `${o.id} : ouvre sur ${o.ouverture}`);
   }
@@ -45,10 +47,10 @@ test('R184 : le plan de la base, onglet par onglet et entrée par entrée, dans 
   assert.deepEqual(plan.map((o) => o.titre), ['Fiche de personnage', 'Mécaniques générales', 'Les combats', 'Exploration']);
   const exploration = plan.find((o) => o.id === 'exploration').entrees;
   const i = exploration.findIndex((e) => e.adresse === 'regles/artisanat/');
-  assert.deepEqual(exploration[i], { libelle: 'Artisanat', adresse: 'regles/artisanat/' });
-  assert.deepEqual(exploration[i - 1], { page: 'guide/exercer-un-metier' });
-  // une entrée de page ne porte que son id (le titre est celui de la page)
-  for (const e of plan.flatMap((o) => o.entrees)) if (e.page) assert.deepEqual(Object.keys(e), ['page']);
+  assert.deepEqual(exploration[i], { id: 'lien:regles/artisanat', rang: exploration[i].rang, libelle: 'Artisanat', adresse: 'regles/artisanat/' });
+  assert.deepEqual(exploration[i - 1], { id: 'page:guide/exercer-un-metier', rang: exploration[i - 1].rang, page: 'guide/exercer-un-metier' });
+  // une entrée de page ne porte que l'id de la page, et l'id et le rang de sa ligne (le titre est celui de la page)
+  for (const e of plan.flatMap((o) => o.entrees)) if (e.page) assert.deepEqual(Object.keys(e), ['id', 'rang', 'page']);
 });
 
 test('l’ordre : les onglets par `ordre` puis par id, les entrées par `rang` puis par id ; les trois formes d’entrée ; tout est gelé', () => {
@@ -71,7 +73,10 @@ test('l’ordre : les onglets par `ordre` puis par id, les entrées par `rang` p
   assert.deepEqual(plan[0], {
     id: 'zeta', titre: 'Zêta', ouverture: 'guide/b',
     // à rang égal (2), l'id départage : page:guide/a avant page:guide/b
-    entrees: [{ libelle: 'Artisanat', adresse: 'regles/artisanat/' }, { page: 'guide/a' }, { page: 'guide/b' }, { bientot: 'Les donjons' }],
+    entrees: [
+      { id: 'lien:regles/artisanat', rang: 1, libelle: 'Artisanat', adresse: 'regles/artisanat/' }, { id: 'page:guide/a', rang: 2, page: 'guide/a' },
+      { id: 'page:guide/b', rang: 2, page: 'guide/b' }, { id: 'bientot:donjons', rang: 3, bientot: 'Les donjons' },
+    ],
   });
   assert.ok(Object.isFrozen(plan) && Object.isFrozen(plan[0]) && Object.isFrozen(plan[0].entrees) && Object.isFrozen(plan[0].entrees[0]));
   db.close();
@@ -83,5 +88,5 @@ test('une base d’avant la migration 0091 n’a pas de plan : [] ; une entrée 
   db.close();
   // la table refuse une telle ligne (ses CHECK) : seule une ligne lue ailleurs pourrait l'être
   assert.throws(() => entreeDuPlan({ id: 'lien:x', page_id: null, libelle: 'X', adresse: null }), /entrée illisible : lien:x/);
-  assert.deepEqual(entreeDuPlan({ id: 'bientot:x', page_id: null, libelle: 'X', adresse: null }), { bientot: 'X' });
+  assert.deepEqual(entreeDuPlan({ id: 'bientot:x', page_id: null, libelle: 'X', adresse: null }), { id: 'bientot:x', rang: null, bientot: 'X' });
 });

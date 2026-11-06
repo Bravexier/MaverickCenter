@@ -26,6 +26,8 @@
 //   GET  /api/edition/pages/        les pages du wiki (id, titre) : cibles d'un lien posé dans le texte du guide
 //   GET  /api/edition/mots-cles/    le vocabulaire des mots-clés, avec leurs pages et ceux dont le site se sert (/recherche/ en mode modification)
 //   GET  /api/edition/chronologie/  les événements de la chronologie dans l'ordre de lecture avec leurs catégories, et les catégories (surcouche de la frise)
+//   GET  /api/edition/plan/         le plan vivant des Règles (onglets, page d'ouverture, entrées de chaque menu ; pour chaque page : sa protection et
+//                                   ses citations) et les races par groupe dans l'ordre de leur liste — serveur/edition-plan.mjs#planVivant
 //   POST /api/edition/race/         { race } → magies innées et relations de la race, dans la base vivante
 //   POST /api/edition/classe/       { classe } → spécialités, dons, choix et fiches qui les citent (ajout et suppression depuis sa page)
 //   POST /api/edition/bestiaire/    { connues, logo } → l'ordre des lignes du tableau des monstres, et la ligne et la carte de celles que la page n'a pas
@@ -88,6 +90,7 @@ import { ligneSansImage } from '../src/lib/edition-modele.mjs';
 import { journalExporte, lignesEnAttente } from './edition-journal.mjs';
 import { conflitsDuJournal, resoudreLeConflit } from './edition-conflits.mjs';
 import { chronologieVivante, donneesDEvenement, vocabulaire } from './edition-chronologie.mjs';
+import { planVivant } from './edition-plan.mjs';
 import {
   actualiserLancement, CONFIRMATION, enregistrerBrouillon, enregistrerMajeure, ErreurNotes, estLiberable, figerLot, leverMaintenance, libererLot, lireLot,
   lireReference, noteEnPreparation, occupe,
@@ -290,7 +293,7 @@ function traiterTipeee(service, brut, reste, permis) {
 /** Les routes /api/edition/… (site de dev seulement). */
 function traiterEdition(requete, service, action, reste, permis) {
   if (!service.edition) return erreur(403, 'L’édition des règles n’est ouverte que sur le site de dev.');
-  if (reste.length || !['en-attente', 'lignes', 'listes', 'pages', 'mots-cles', 'chronologie', 'journal', 'race', 'classe', 'bestiaire', 'portrait', 'evenement', undefined].includes(action)) {
+  if (reste.length || !['en-attente', 'lignes', 'listes', 'pages', 'mots-cles', 'chronologie', 'plan', 'journal', 'race', 'classe', 'bestiaire', 'portrait', 'evenement', undefined].includes(action)) {
     return erreur(404, 'Adresse inconnue.');
   }
   const refus = action === undefined || ['lignes', 'race', 'classe', 'bestiaire', 'portrait', 'evenement'].includes(action) ? permis('POST') : permis('GET');
@@ -303,6 +306,7 @@ function traiterEdition(requete, service, action, reste, permis) {
   if (action === 'pages') return json(200, { pages: pagesDuWiki(db) });
   if (action === 'mots-cles') return json(200, { motsCles: vocabulaire(db) });
   if (action === 'chronologie') return json(200, chronologieVivante(db));
+  if (action === 'plan') return json(200, planVivant(db));
   if (action === 'journal') {
     const jour = new Date().toISOString().slice(0, 10);
     return json(200, journalExporte(db), { 'Content-Disposition': `attachment; filename="journal-edition-${jour}.json"` });

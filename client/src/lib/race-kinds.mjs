@@ -18,8 +18,11 @@ const baseName = (title) => normalize(title);
 export const HYBRIDES_SANS_CLASSE_RACIALE = new Set(['races/drassahthac']);
 
 /**
- * Ordre d'affichage des races, races pures puis hybrides (demande du propriétaire, liste de /races/). Ce n'est pas
- * l'ordre de l'onglet « Race » de la fiche (race.ordre dans la base). Une race absente de la liste vient après, par titre.
+ * Ordre figé des races, races pures puis hybrides (demande du propriétaire, ancienne liste de /races/) : celui de la fiche (lib/fiche-regles.mjs) et de
+ * /magies/ (lib/magie-relations.mjs#racesOfMagie), qui ne bougent pas (réponse du propriétaire « /races/ suit, le reste figé »). Ce n'est ni l'ordre de
+ * l'onglet « Race » de la fiche (race.ordre dans la base) ni celui de la liste des races, qui se réordonne sur le site de dev (race.rang_liste,
+ * migration 0092 : menu latéral des races, /races/, tableau des magies innées ; lib/races-db.mjs#comparerRangsDeListe, passé à groupRaces). Une race
+ * absente de la liste vient après, par titre.
  */
 export const ORDRE_DES_RACES = [
   // pures
@@ -70,20 +73,21 @@ const rang = (race) => {
 };
 const byOrdre = (a, b) => rang(a) - rang(b) || a.data.title.localeCompare(b.data.title, 'fr');
 
-/** Races dans l'ordre de la liste /races/ (ORDRE_DES_RACES, pures puis hybrides) ; une race absente de la liste vient après, par titre. */
+/** Races dans l'ordre figé ORDRE_DES_RACES (pures puis hybrides : la fiche, /magies/) ; une race absente de la liste vient après, par titre. */
 export const dansLOrdreDesRaces = (races) => [...races].sort(byOrdre);
 
 /**
- * Range les races en groupes (pures puis hybrides, chacun avec sa nature, dont la page pose la classe de couleur), chacun dans l'ordre de
- * ORDRE_DES_RACES ; un groupe vide est omis.
+ * Range les races en groupes (pures puis hybrides, chacun avec sa nature, dont la page pose la classe de couleur) ; un groupe vide est omis. Chaque
+ * groupe dans l'ordre `ordre` (un comparateur de deux entrées) : celui de la liste des races pour le menu latéral, /races/ et le tableau des magies
+ * innées (lib/races.ts#ordreDeLaListeDesRaces : race.rang_liste, migration 0092) ; sans lui, l'ordre figé ORDRE_DES_RACES.
  * `entries` contient les pages de races ET de classes (les classes servent à reconnaître les hybrides).
  */
-export function groupRaces(entries) {
+export function groupRaces(entries, ordre = byOrdre) {
   const races = entries.filter((e) => e.id.startsWith('races/'));
   return RACE_GROUPS.map((g) => ({
     key: g.key,
     label: g.label,
     nature: g.kind,
-    entries: races.filter((r) => raceKind(entries, r) === g.kind).sort(byOrdre),
+    entries: races.filter((r) => raceKind(entries, r) === g.kind).sort(ordre),
   })).filter((g) => g.entries.length > 0);
 }

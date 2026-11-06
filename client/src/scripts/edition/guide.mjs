@@ -7,8 +7,11 @@
 // ou supprimer une ligne ou une colonne, couleur des cases), les mots-clés du glossaire (texte-en-place.mjs#outilsDesMotsCles). À l'enregistrement,
 // le HTML de chaque morceau modifié est réécrit en Markdown (lib/markdown-edition.mjs) et remis à sa place dans le corps de la page, autour des blocs ;
 // son HTML assaini part avec, comme aperçu montré tant que la page construite ne l'a pas (surcouche).
-import { cleDeLigne } from '../../lib/edition-modele.mjs';
-import { arbreDuDom, classeDeCouleurDeCase, COULEURS_DE_CASE, decouperCorps, htmlSur, recomposerCorps, versMarkdown } from '../../lib/markdown-edition.mjs';
+// Le résumé d'une page du guide (une ligne : sommaires, recherche ; demandé à la création d'une page des Règles, lot de l'édition des menus) se modifie
+// juste sous le titre, en mode modification seulement (`page.resume` de lib/edition-modele.mjs#TABLES ; pas celui d'une page du Codex, que le service
+// refuse) ; la liste « Onglet » et « Supprimer » d'une page des Règles viennent dessous (src/scripts/edition/menus.mjs).
+import { attributEd, cleDeLigne } from '../../lib/edition-modele.mjs';
+import { arbreDuDom, classeDeCouleurDeCase, COULEURS_DE_CASE, decouperCorps, etatDeLApercu, htmlSur, recomposerCorps, versMarkdown } from '../../lib/markdown-edition.mjs';
 import { editeurEnPlace, outilsDesMotsCles } from './texte-en-place.mjs';
 
 const ETIQUETTES_COULEUR = { rouge: 'Rouge', orange: 'Orange', jaune: 'Jaune', vert: 'Vert', bleu: 'Bleu', violet: 'Violet', gris: 'Gris' };
@@ -22,6 +25,7 @@ const etat = {
   envoye: null, // aperçu envoyé avec le dernier enregistrement
   barre: null,
   abandon: null,
+  resume: null, // le champ du résumé, posé sous le titre le temps du mode modification
 };
 
 const corpsId = () => document.querySelector('[data-ed-corps]')?.dataset.edCorps ?? null;
@@ -184,6 +188,23 @@ function barreDOutils(ed) {
   return barre;
 }
 
+/** Le résumé d'une page du guide, sous son titre : un champ `data-ed` de la ligne `page` (déjà chargée avec le titre), monté par l'éditeur commun. */
+function poserLeResume(ed, id) {
+  const titre = document.querySelector('#guide-titre');
+  if (!titre || etat.resume) return;
+  const p = document.createElement('p');
+  p.className = 'ed-resume-page';
+  const libelle = document.createElement('span');
+  libelle.className = 'ed-libelle';
+  libelle.textContent = 'Résumé (sommaires, recherche)';
+  const champ = document.createElement('span');
+  champ.setAttribute('data-ed', attributEd('page', { id }, 'resume'));
+  p.append(libelle, champ);
+  titre.after(p);
+  ed.monterChamps(p);
+  etat.resume = p;
+}
+
 // --- Extension --------------------------------------------------------------------------------------------------------------------------------
 export const guide = {
   nom: 'guide',
@@ -195,11 +216,12 @@ export const guide = {
   surcouche(ed, lignes) {
     const id = corpsId();
     const enAttente = lignes.find((l) => l.table === 'page' && l.cle?.id === id && 'apercu' in l);
-    if (!enAttente) return;
     const morceaux = morceauxDeLaPage();
-    if (Array.isArray(enAttente.apercu) && enAttente.apercu.length === morceaux.length) {
+    // une page créée sur le site de dev, sans aperçu : edition/nouvelles.mjs l'a dessinée depuis son texte actuel, qui se modifie en place
+    const quoi = etatDeLApercu(enAttente, morceaux.length);
+    if (quoi === 'apercu') {
       morceaux.forEach((m, i) => (m.innerHTML = assainir(enAttente.apercu[i])));
-    } else {
+    } else if (quoi === 'perime') {
       etat.perime = true;
       ed.annoncer('Le texte de cette page a changé depuis la construction du site : il s’affichera à la prochaine mise à jour du site.');
     }
@@ -209,6 +231,7 @@ export const guide = {
     const id = corpsId();
     const ligne = ed.lignes?.get(cleDeLigne('page', { id }));
     const morceaux = morceauxDeLaPage();
+    if (ligne && id.startsWith('guide/')) poserLeResume(ed, id);
     if (!ligne || !morceaux.length) return;
     if (etat.perime || decouperCorps(ligne.corps_md).filter((m) => m.visible).length !== morceaux.length) {
       ed.annoncer('Le texte de cette page ne peut pas être modifié ici tant que le site n’a pas été reconstruit (le titre, si).', 'erreur');
@@ -274,7 +297,8 @@ export const guide = {
     }
     etat.abandon?.abort();
     etat.barre?.remove();
-    Object.assign(etat, { actif: false, barre: null, abandon: null });
+    etat.resume?.remove();
+    Object.assign(etat, { actif: false, barre: null, abandon: null, resume: null });
   },
 
   apresEnregistrement(ed, resultat) {

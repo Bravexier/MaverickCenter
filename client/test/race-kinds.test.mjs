@@ -46,7 +46,7 @@ test('racialClassOf rend la page de la classe raciale, raceOfClass la race à la
   assert.equal(raceOfClass(ALL, CLASSES[3]), null);
 });
 
-test('groupRaces : races pures puis races hybrides, chacune dans l’ordre du propriétaire', () => {
+test('groupRaces sans ordre : races pures puis races hybrides, chacune dans l’ordre figé du propriétaire (ORDRE_DES_RACES : la fiche, /magies/)', () => {
   const groups = groupRaces([medusain, orios, lamia, humain, drassahthac, ...CLASSES]);
   assert.deepEqual(groups.map((g) => [g.key, g.label, ids(g.entries)]), [
     ['pures', 'Races pures', ['races/humain', 'races/lamia']],
@@ -57,6 +57,18 @@ test('groupRaces : races pures puis races hybrides, chacune dans l’ordre du pr
 test('groupRaces : une race absente de l’ordre du propriétaire vient après les autres, par titre sans tenir compte des accents', () => {
   const groups = groupRaces([race('Zébu'), race('Écureuil', 'ecureuil'), lamia, humain, ...CLASSES]);
   assert.deepEqual(ids(groups[0].entries), ['races/humain', 'races/lamia', 'races/ecureuil', 'races/zébu']);
+});
+
+// Réponse du propriétaire « /races/ suit, le reste figé » (migration 0092) : le menu latéral des races, /races/ et le tableau des magies innées passent
+// l'ordre de la liste (race.rang_liste, lib/races.ts#ordreDeLaListeDesRaces) ; groupRaces garde les groupes par nature, l'ordre vient de l'appelant
+test('groupRaces avec un ordre : toujours pures puis hybrides, chaque groupe trié par le comparateur reçu (rang_liste), jamais mêlés', () => {
+  const rangs = new Map([['races/medusain', 1], ['races/orios', 2], ['races/drassahthac', 3], ['races/lamia', 4], ['races/humain', 5]]);
+  const ordre = (a, b) => rangs.get(a.id) - rangs.get(b.id);
+  const groups = groupRaces([humain, orios, lamia, medusain, drassahthac, ...CLASSES], ordre);
+  assert.deepEqual(groups.map((g) => [g.key, ids(g.entries)]), [
+    ['pures', ['races/lamia', 'races/humain']],
+    ['hybrides', ['races/medusain', 'races/orios', 'races/drassahthac']],
+  ]);
 });
 
 test('groupRaces : chaque groupe porte sa nature, dont la page pose la classe de couleur (celle du bandeau des pages de race)', () => {

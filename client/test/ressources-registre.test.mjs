@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { lireSchema } from '../src/lib/schema-doc.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { ENTITES, TABLES } from '../src/lib/edition-modele.mjs';
-import { capacitesDe, defautsDuRegistre, HORS_RESSOURCE, MODULES, OPERATIONS_DU_LOT, RESSOURCES, tablesDe, tablesModifiables } from '../src/lib/ressources.mjs';
+import { capacitesDe, defautsDuRegistre, HORS_RESSOURCE, MODULES, OPERATIONS_DU_LOT, RESSOURCES, TABLES_SANS_ECRITURE_DIRECTE, tablesDe, tablesModifiables } from '../src/lib/ressources.mjs';
 import { domainesDeLaChronologie } from '../serveur/edition-chronologie.mjs';
 import { operationsDuBestiaire } from '../serveur/edition-bestiaire.mjs';
 
@@ -130,7 +130,14 @@ test('registre : chaque ligne d’un enfant, d’une dérivée ou d’une extens
 
 test('registre : tout ce que le site de dev sait déjà écrire est joignable par l’API (TABLES modifiables, ENTITES créées et supprimées, opérations du lot)', { skip: Boolean(seulModule) }, () => {
   const modifiables = new Set(RESSOURCES.flatMap((r) => [...tablesModifiables(r), ...(r.enfants ?? []).flatMap(tablesModifiables)]));
-  assert.deepEqual(Object.keys(TABLES).filter((t) => !modifiables.has(t)), [], 'tables de TABLES sans ressource qui les modifie');
+  assert.deepEqual(Object.keys(TABLES).filter((t) => !modifiables.has(t) && !Object.hasOwn(TABLES_SANS_ECRITURE_DIRECTE, t)), [], 'tables de TABLES sans ressource qui les modifie');
+  // les exceptions : des tables de TABLES, rangées dans une ressource en lecture seule (le menu d'un onglet des Règles), jamais modifiables par l'API
+  for (const t of Object.keys(TABLES_SANS_ECRITURE_DIRECTE)) {
+    assert.ok(TABLES[t], `${t} : une table de TABLES`);
+    assert.ok(!modifiables.has(t), `${t} : aucune ressource ne la modifie`);
+    const objets = RESSOURCES.flatMap((r) => [r, ...(r.enfants ?? [])]).filter((o) => o.table === t);
+    assert.ok(objets.length && objets.every((o) => o.lectureSeule && !capacitesDe(o).modifier && !capacitesDe(o).creer && !capacitesDe(o).supprimer), `${t} : en lecture seule`);
+  }
   const ecritures = RESSOURCES.flatMap((r) => [r, ...(r.enfants ?? [])]).map((r) => r.ecriture ?? {});
   const creees = new Set(ecritures.map((e) => e.creer).filter(Boolean));
   const supprimees = new Set(ecritures.map((e) => e.supprimer).filter(Boolean));

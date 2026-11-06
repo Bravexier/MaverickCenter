@@ -310,6 +310,18 @@ export function arbreDuDom(noeud) {
 const MARQUEUR = /^<!--\s*guide:([a-z-]+)\s*-->[ \t]*$/gm;
 
 /**
+ * Ce que l'éditeur du guide fait d'une ligne `page` en attente (GET /api/edition/en-attente/ : { creee, apercu? }) pour la page affichée, qui a
+ * `morceaux` morceaux de texte : 'apercu' (l'aperçu envoyé avec la dernière modification, un HTML par morceau, se pose à leur place), 'perime' (le texte
+ * a changé sans aperçu utilisable : il ne se modifie pas ici avant la reconstruction du site) ou null (rien à faire : aucun texte changé, ou une page
+ * CRÉÉE sur le site de dev sans aperçu, que edition/nouvelles.mjs a dessinée depuis son texte actuel : son « À compléter. » se modifie en place).
+ */
+export function etatDeLApercu(enAttente, morceaux) {
+  if (!enAttente || !('apercu' in enAttente)) return null;
+  if (Array.isArray(enAttente.apercu)) return enAttente.apercu.length === morceaux ? 'apercu' : 'perime';
+  return enAttente.creee ? null : 'perime';
+}
+
+/**
  * Le corps d'une page coupé en morceaux de texte et marqueurs de bloc, SANS rien perdre (contrairement à lib/guide.mjs#morceauxDuChapitre) :
  * [{ texte } | { marqueur, bloc }] ; leur concaténation redonne le corps. `visible` : un morceau de texte que la page affiche (non vide).
  */

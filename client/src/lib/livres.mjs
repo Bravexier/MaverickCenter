@@ -324,6 +324,39 @@ export const PAGES_ECLATEES_DU_GUIDE = gele({
   'guide/situations-avancees/': situationsAvancees,
 });
 
+/**
+ * La page `guide/…` servie à une adresse du guide, relative à la racine du site (« regles/l-embuscade/ », « regles/<slug>/#ancre », « decouvrir/ ») ; la
+ * requête et l'ancre ne comptent pas : l'inverse d'adresseDuGuide. null pour toute autre adresse.
+ */
+export function pageDuGuideALAdresse(adresse) {
+  const chemin = String(adresse).replace(/[?#].*$/, '');
+  if (chemin === DECOUVRIR.chemin) return DECOUVRIR.accueil;
+  const m = chemin.match(/^(?:decouvrir|regles|mj)\/([a-z0-9]+(?:-[a-z0-9]+)*)\/$/);
+  return m ? `guide/${m[1]}` : null;
+}
+
+/**
+ * PAGES_ECLATEES_DU_GUIDE sans ses cibles absentes (`existe(id)` : la page est chargée), pour la page 404 (pages/404.astro) et les liens écrits
+ * (lib/guide-rendu.ts). Une page des Règles supprimée sur le site de dev peut être la cible d'un renvoi figé (rien ne la protège pour cela :
+ * lib/pages-protegees.mjs) ; son ancienne adresse mène alors à la 404, comme une page supprimée (R185 (6), « Page 404 ») :
+ *   - une ancienne ancre dont la page manque est retirée : l'adresse mène à `defaut`, l'ancre gardée (une ancre ne peut pas, seule, donner la 404) ;
+ *   - une page éclatée dont la page `defaut` manque est retirée entière : son adresse donne la 404, un lien écrit vers elle reste tel qu'écrit.
+ * Une cible qui n'est pas une page du guide reste. Toutes les pages là : les objets de PAGES_ECLATEES_DU_GUIDE, inchangés.
+ */
+export function pagesEclateesDuGuide(existe) {
+  const presente = (adresse) => {
+    const id = pageDuGuideALAdresse(adresse);
+    return id === null || Boolean(existe(id));
+  };
+  const sortie = {};
+  for (const [adresse, r] of Object.entries(PAGES_ECLATEES_DU_GUIDE)) {
+    if (!presente(r.defaut)) continue;
+    const ancres = Object.entries(r.anciennesAncres).filter(([, cible]) => presente(cible));
+    sortie[adresse] = ancres.length === Object.keys(r.anciennesAncres).length ? r : gele({ ...r, anciennesAncres: gele(Object.fromEntries(ancres)) });
+  }
+  return gele(sortie);
+}
+
 // ---- Le plan des onglets (base, installé) ----------------------------------------------------------------------------------------------------------
 
 let plan = null;
@@ -333,7 +366,8 @@ let plan = null;
  * adresse } | { bientot }] }], dans l'ordre), une fois, là où les pages se chargent : lib/wiki.ts au build, le service à son démarrage (notes de
  * version). Un nouvel appel le remplace. Contrôle sa forme : chaque onglet a un id, un titre et au moins une entrée ; chaque entrée est d'une seule
  * sorte ; une page n'est que dans une entrée ; la page d'ouverture est une page de son onglet. Les pages elles-mêmes se contrôlent au build
- * (verifierLePlan). Rend le plan installé : les onglets gelés, chacun avec son `chemin` (`regles/<id>/`).
+ * (verifierLePlan). Rend le plan installé : les onglets gelés, chacun avec son `chemin` (`regles/<id>/`). Une entrée garde l'`id` et le `rang` de sa
+ * ligne quand le plan les donne (la base : le menu latéral les pose pour le mode modification du site de dev, editionDuMenuLateral).
  */
 export function installerLePlan(onglets) {
   if (!Array.isArray(onglets)) throw new Error('plan des règles : une liste d’onglets est attendue (lib/plan-des-regles-db.mjs#chargerPlanDesRegles)');
@@ -348,11 +382,16 @@ export function installerLePlan(onglets) {
     const entrees = o.entrees.map((e) => {
       const sortes = ['page', 'adresse', 'bientot'].filter((k) => e && typeof e[k] === 'string' && e[k]);
       if (sortes.length !== 1 || ('adresse' in e && !e.libelle)) throw new Error(`plan des règles : entrée illisible dans « ${o.titre} » (${JSON.stringify(e)})`);
+      // l'id et le rang de la ligne (la base), gardés pour le mode modification ; un plan d'essai peut ne pas les avoir
+      const ligne = {
+        ...(typeof e.id === 'string' && e.id ? { id: e.id } : {}),
+        ...(Number.isInteger(e.rang) ? { rang: e.rang } : {}),
+      };
       if (sortes[0] === 'page') {
         if (places.has(e.page)) throw new Error(`plan des règles : ${e.page} est dans deux entrées (« ${places.get(e.page).onglet.titre} », « ${o.titre} »)`);
-        return gele({ page: e.page });
+        return gele({ ...ligne, page: e.page });
       }
-      return sortes[0] === 'adresse' ? gele({ libelle: e.libelle, adresse: e.adresse }) : gele({ bientot: e.bientot });
+      return gele(sortes[0] === 'adresse' ? { ...ligne, libelle: e.libelle, adresse: e.adresse } : { ...ligne, bientot: e.bientot });
     });
     const onglet = gele({ id: o.id, titre: o.titre, chemin: `${CHEMIN_DES_REGLES}${o.id}/`, ouverture: o.ouverture, rang: rang + 1, entrees: Object.freeze(entrees) });
     entrees.forEach((e, ordre) => { if (e.page) places.set(e.page, { onglet, ordre }); });
@@ -435,21 +474,35 @@ export function placeDansLeGuide(id) {
 
 /**
  * Le menu latéral d'un onglet (components/guide/MenuLateral.astro), ses entrées dans l'ordre du plan : la page chargée pour une entrée page (`entries` :
- * { id, data: { title } } ; une page absente est sautée, verifierLePlan la signale), l'entrée telle quelle pour un lien ({ libelle, adresse }) ou une
- * entrée « bientôt » ({ bientot }).
+ * { id, data: { title } } ; une page absente est sautée, verifierLePlan la signale), un lien ({ libelle, adresse }) ou une entrée « bientôt »
+ * ({ bientot }).
  */
 export function entreesDuMenuLateral(onglet, entries) {
   const parId = new Map(entries.map((e) => [e.id, e]));
-  return onglet.entrees.map((e) => (e.page ? parId.get(e.page) : e)).filter(Boolean);
+  // un lien ou une entrée « bientôt » sans l'id et le rang de sa ligne (editionDuMenuLateral les donne à part) : une entrée qui a un `id` est une page
+  return onglet.entrees.map((e) => (e.page ? parId.get(e.page) : e.adresse ? { libelle: e.libelle, adresse: e.adresse } : { bientot: e.bientot })).filter(Boolean);
 }
 
 /**
- * Le menu latéral d'une page `guide/…` : { rubrique: { titre, chemin } (son onglet), pages (entreesDuMenuLateral) }, ou null (Découvrir, Guide du MJ,
- * fixture). Le plan installé.
+ * Ce que le menu latéral d'un onglet pose pour le mode modification du site de dev (components/guide/MenuLateral.astro, prop `edition` ;
+ * scripts/edition/menus.mjs) : { menu: `onglet:<id>` (data-ed-menu), entrees: [{ id, rang }] (data-ed-entree, data-ed-rang : l'id et le rang de la ligne
+ * de regles_onglet_entree, null sans eux), une par entrée de entreesDuMenuLateral, dans le même ordre (une page absente est sautée de même) }.
+ */
+export function editionDuMenuLateral(onglet, entries) {
+  const charges = new Set(entries.map((e) => e.id));
+  return {
+    menu: `onglet:${onglet.id}`,
+    entrees: onglet.entrees.filter((e) => !e.page || charges.has(e.page)).map((e) => ({ id: e.id ?? null, rang: e.rang ?? null })),
+  };
+}
+
+/**
+ * Le menu latéral d'une page `guide/…` : { rubrique: { titre, chemin } (son onglet), pages (entreesDuMenuLateral), edition (editionDuMenuLateral) }, ou
+ * null (Découvrir, Guide du MJ, fixture). Le plan installé.
  */
 export function menuLateralDe(id, entries) {
   const onglet = ongletDe(id);
-  return onglet ? { rubrique: onglet, pages: entreesDuMenuLateral(onglet, entries) } : null;
+  return onglet ? { rubrique: onglet, pages: entreesDuMenuLateral(onglet, entries), edition: editionDuMenuLateral(onglet, entries) } : null;
 }
 
 /**
@@ -472,7 +525,9 @@ export function filDAriane(id) {
  *   - toute page `guide/…` chargée qui n'est pas d'exemple est rangée (Découvrir, un onglet, le Guide du MJ) : pas d'onglet « Autre » (R185, P7) ;
  *   - aucune page des onglets ne prend un nom réservé (nomsReserves), aucune entrée lien ne mène sous /guide/ ;
  *   - aucune page absorbée, retirée ou supprimée n'est revenue, et chaque page qui en absorbe une est rangée.
- * Rend `entries`.
+ * La cible d'un renvoi figé d'une ancienne adresse (ADRESSES_DU_PLAN_PRECEDENT, PAGES_ECLATEES_DU_GUIDE) n'a pas à exister : une page des Règles
+ * supprimée sur le site de dev peut l'être ; l'ancienne adresse mène alors à la 404 (R185 (6) ; lib/metiers.mjs#renvoisDuGuide, pagesEclateesDuGuide,
+ * lib/guide.mjs#adresseDesAnciensLiens la sautent). Rend `entries`.
  */
 export function verifierLePlan(entries) {
   const { onglets } = lePlan();

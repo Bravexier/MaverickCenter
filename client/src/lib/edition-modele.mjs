@@ -203,7 +203,13 @@ export const TABLES = {
   // les magies innées et les relations entre peuples ont leurs opérations (`magies_innees`, `relations`)
   race: {
     libelle: 'Race',
-    colonnes: { presentation: { type: 'texte', libelle: 'Présentation' } },
+    colonnes: {
+      presentation: { type: 'texte', libelle: 'Présentation' },
+      // la place de la race dans le menu latéral des races, la liste /races/ et le tableau des magies innées (migration 0092 ; réponse du propriétaire
+      // « /races/ suit, le reste figé ») : réordonnée par glisser-déposer dans son groupe (opération `ordonner`, serveur/edition-plan.mjs) ; pas
+      // UNIQUE ; la fiche et /magies/ gardent l'ordre du code (lib/race-kinds.mjs#ORDRE_DES_RACES), race.ordre celui de l'onglet « Race »
+      rang_liste: { type: 'entier', libelle: 'Rang dans la liste des races', min: 1 },
+    },
   },
   race_onglet: {
     libelle: 'Onglet de la race',
@@ -635,6 +641,21 @@ export const TABLES = {
     colonnes: {
       titre: { type: 'ligne', libelle: 'Titre', requis: true },
       corps_md: { type: 'markdown', libelle: 'Texte', requis: true },
+      // le résumé d'une page du guide (sommaires, recherche ; demandé à la création d'une page des Règles) : pas celui d'une page du Codex (sa première
+      // phrase, tirée du document) ni d'une page typée (refait depuis ses tables) : serveur/edition.mjs#PAGE le refuse
+      resume: { type: 'ligne', libelle: 'Résumé', requis: true },
+    },
+  },
+  // Le menu latéral d'un onglet des Règles (migration 0091, R184, R185 ; lot de l'édition des menus, demandes du propriétaire « changer l'ordre des menu
+  // latéraux (par un glisser déposer) », « Oui, par une liste ») : l'onglet d'une page (une liste « Onglet » : la page passe en fin du menu de l'autre
+  // onglet ; refusé pour une page d'ouverture d'onglet, un lien ou une entrée « bientôt ») et sa place (`rang`, jamais unique : à égalité, l'id) ; l'ordre
+  // d'un menu se donne d'un bloc par l'opération `ordonner` ; une entrée naît et part avec sa page (ENTITES.page_des_regles) ; serveur/edition-plan.mjs.
+  // Les onglets eux-mêmes (regles_onglet : ordre, titre, page d'ouverture) sont fixes (réponse « Non, fixe »)
+  regles_onglet_entree: {
+    libelle: 'Entrée du menu d’un onglet des Règles',
+    colonnes: {
+      onglet_id: { type: 'choix', libelle: 'Onglet', requis: true, liste: 'onglets' },
+      rang: { type: 'entier', libelle: 'Place dans le menu', requis: true, min: 1 },
     },
   },
 };
@@ -917,6 +938,22 @@ export const ENTITES = {
       titre: { type: 'ligne', libelle: 'Titre (une tuile seulement)' },
       texte: { type: 'markdown', libelle: 'Texte', requis: true },
       apres: { type: 'entier', libelle: 'Après le bloc de rang (vide : à la fin)', min: 1 },
+    },
+  },
+  // une page des Règles (lot de l'édition des menus et des pages, réponses du propriétaire « Pages des Règles », « Titre, onglet, résumé ») : titre, onglet
+  // et résumé obligatoires, le texte (« À compléter. ») s'écrit ensuite en place ; adresse tirée du titre (normalize) puis figée, /regles/<slug>/ ; en
+  // fin du menu de l'onglet, ou à la place d'une entrée « bientôt » qu'elle remplit (`bientot` : son id ; titre = son libellé, onglet = le sien) ;
+  // supprimée seulement si rien ne la protège (lib/pages-protegees.mjs) ni ne la cite (lib/citations-db.mjs) : serveur/edition-plan.mjs
+  page_des_regles: {
+    table: 'page',
+    libelle: 'page des Règles',
+    nouveau: 'Nouvelle page des Règles',
+    suppression: true,
+    champs: {
+      titre: { type: 'ligne', libelle: 'Titre', requis: true },
+      onglet_id: { type: 'choix', libelle: 'Onglet', requis: true, liste: 'onglets' },
+      resume: { type: 'ligne', libelle: 'Résumé', requis: true },
+      bientot: { type: 'ligne', libelle: 'Entrée « bientôt » remplie (vide : en fin de menu)' },
     },
   },
   // un don de classe (« capacité », D11) : sa place vient du bouton (classe, spécialité, ou le don `avec` dont il devient une option : même ligne, même

@@ -13,6 +13,7 @@ import { groupClasses } from '../../lib/class-groups.mjs';
 import { groupRaces } from '../../lib/race-kinds.mjs';
 import { groupByClass } from '../../lib/capacites.mjs';
 import { loadMagies } from '../../lib/magies';
+import { ordreDeLaListeDesRaces } from '../../lib/races';
 import { ouvrirBase } from '../../lib/donnees.mjs';
 import { chargerMetiers, contexteDesMetiers, PAGE_DES_REGLES } from '../../lib/metiers.mjs';
 import { chargerBestiaire } from '../../lib/bestiaire-db.mjs';
@@ -39,9 +40,10 @@ const magiesIndex = dbMagies
   : [];
 // Les classes sont présentées en pastilles (sur le modèle de la carte des magies), une colonne par catégorie (voir lib/class-groups.mjs) ; les autres types en liste alphabétique.
 const classGroups = type === 'classes' ? groupClasses(list) : [];
-// Les races sont présentées en pastilles (sur le modèle de la carte des magies et des classes), pures à gauche et hybrides à droite, dans l'ordre du
-// propriétaire (lib/race-kinds.mjs), l'accroche en infobulle. Le tableau des magies innées de toutes les races est en bas de la page.
-const raceGroups = type === 'races' ? groupRaces(entries) : [];
+// Les races sont présentées en pastilles (sur le modèle de la carte des magies et des classes), pures à gauche et hybrides à droite, dans l'ordre de la
+// liste des races (race.rang_liste, migration 0092, réordonnée sur le site de dev : lib/races.ts#ordreDeLaListeDesRaces ; réponse du propriétaire
+// « /races/ suit, le reste figé »), l'accroche en infobulle. Le tableau des magies innées de toutes les races est en bas de la page, dans le même ordre.
+const raceGroups = type === 'races' ? groupRaces(entries, ordreDeLaListeDesRaces()) : [];
 // Les dons de classe (pages `capacites/…`) sont rangés par classe (une fiche par don : plus de 600).
 const capaciteGroups = type === 'capacites' ? groupByClass(entries) : [];
 // Les métiers : un long tableau (lib/metiers.mjs, components/metier/MetiersTableau.astro), sans page par métier ; la page des règles est citée au-dessus.

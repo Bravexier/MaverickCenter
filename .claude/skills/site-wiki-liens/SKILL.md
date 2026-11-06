@@ -1,7 +1,7 @@
 ---
 name: site-wiki-liens
 description: "Pages du wiki fabriquées depuis la base (client/src/content/wiki), index et résolution des [[liens]] (wikilinks.mjs, wiki.ts), adresses /<type>/<slug>/ et renvois de la page 404, HIDE_EXAMPLES, Markdown d'Astro 7, maillage. À charger avant de lire, modifier ou relire ces fichiers."
-paths: ["client/astro.config.mjs", "client/src/content.config.ts", "client/src/lib/wikilinks.mjs", "client/src/lib/wiki.ts", "client/src/lib/types.mjs", "client/src/lib/autolink.mjs", "client/src/pages/?type?/**", "client/src/pages/pages.astro", "client/src/pages/404.astro", "client/scripts/db-export-pages.mjs", "client/scripts/autolink*", "client/test/wikilinks.test.mjs", "client/test/autolink.test.mjs", "client/test/site-html.test.mjs"]
+paths: ["client/astro.config.mjs", "client/src/content.config.ts", "client/src/lib/wikilinks.mjs", "client/src/lib/wikilinks-resolution.mjs", "client/src/lib/wiki.ts", "client/src/lib/types.mjs", "client/src/lib/autolink.mjs", "client/src/pages/?type?/**", "client/src/pages/pages.astro", "client/src/pages/404.astro", "client/scripts/db-export-pages.mjs", "client/scripts/autolink*", "client/test/wikilinks.test.mjs", "client/test/autolink.test.mjs", "client/test/site-html.test.mjs"]
 user-invocable: false
 ---
 # Pages du wiki et liens
@@ -11,7 +11,7 @@ user-invocable: false
 ## Fichiers
 
 - `client/src/content/wiki/<type>/*.md` : les pages du wiki (types dans `src/lib/types.mjs`).
-- `client/src/lib/wikilinks.mjs` : index des pages (`scanContent`, `buildIndex`), résolution des `[[liens]]` (`resolve`, `extractLinks`), plugin remark (`remarkWikilinks`).
+- `client/src/lib/wikilinks.mjs` : index des pages (`scanContent`), plugin remark (`remarkWikilinks`) ; il importe `yaml` et réexporte `buildIndex`, `resolve`, `extractLinks`, définis dans `lib/wikilinks-resolution.mjs` (sans dépendance : le service, sans paquet npm, les emploie, `lib/citations-db.mjs`). Une logique de liens utile au service va dans `wikilinks-resolution.mjs`, jamais dans `wikilinks.mjs`.
 - `client/src/lib/wiki.ts` : chargement des pages (`loadWiki`) et graphe (liens sortants, rétroliens ; plus rien ne les affiche).
 - `client/src/content.config.ts` : la collection `wiki` et son `generateId`.
 - `client/astro.config.mjs` : processeur Markdown et index des liens du plugin.

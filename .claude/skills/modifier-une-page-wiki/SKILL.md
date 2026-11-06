@@ -9,7 +9,7 @@ Les fichiers `client/src/content/wiki/<type>/<slug>.md` sont **fabriqués** depu
 
 1. Depuis `client/` : `npm run db:export-pages`, s'ils manquent.
 2. Modifier le `.md` fabriqué : texte, `title`, `aliases`, `tags` écrits par libellé, `summary`. Le format du frontmatter est décrit dans `docs/content-guide.md`.
-3. `npm run db:sync-pages`, puis **lire sa sortie**. Une page ajoutée à la main doit avoir une première source « Google Doc « … » » (famille `docs`), ou `status: example`. Sinon elle est refusée, et le prochain `db:export-pages` efface le `.md`.
+3. `npm run db:sync-pages`, puis **lire sa sortie**. Une page ajoutée à la main doit avoir une première source « Google Doc « … » » (famille `docs`), ou `status: example`, ou « Site de dev › » (une page créée sur le site de dev, acceptée dans la famille de son type : `guide/` → `docs`, `tools/db/pages_md.py#FAMILLE_DES_PAGES_DU_SITE`). Sinon elle est refusée, et le prochain `db:export-pages` efface le `.md`.
 4. Commiter `data/rows` seulement, jamais le `.md`.
 5. Les contrôles (`db:pages-check`, `npm run test:cible`, `npm run build` si le rendu change) sont passés par `tech-qualite` en fin de lot (`controles-avant-rendu`) : l'auteur ne lance que `db:sync-pages` et son test.
 

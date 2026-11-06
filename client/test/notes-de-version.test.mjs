@@ -10,7 +10,7 @@ import { planifier } from '../../tools/flux-git/regles.mjs';
 import {
   bilan, comparerBases, DOMAINES, PAGES_RETIREES_DU_GUIDE, TABLES_DES_NOTES, TABLES_LUES, trierVersions, versionCourte, versionDeLivraison,
 } from '../src/lib/notes-de-version.mjs';
-import { installerLePlan, PAGES_ABSORBEES, PAGES_RETIREES, PAGES_SUPPRIMEES } from '../src/lib/livres.mjs';
+import { installerLePlan, ongletsDesRegles, PAGES_ABSORBEES, PAGES_RETIREES, PAGES_SUPPRIMEES } from '../src/lib/livres.mjs';
 import { TABLES } from '../src/lib/edition-modele.mjs';
 import {
   TITRES_DOMAINES, diffMots, echapper, htmlDeLaListe, htmlDeLaNote, htmlDuTexteLibre, lancementAffiche, markdownDeLaNote, neutraliserMarqueur,
@@ -341,6 +341,56 @@ test('guide : une page qui n’a plus de place dans le plan (PAGES_RETIREES, PAG
   assert.equal(comparerBases(avant, modifiee).find((l) => l.entite === 'Lexique').groupe, PAGES_RETIREES_DU_GUIDE);
   // plus aucune rubrique de l'ancien plan
   assert.ok(!lignes.some((l) => ['Les bases', 'Règles avancées'].includes(l.groupe)));
+});
+
+test('plan des Règles et liste des races (lot de l’édition des menus) : une ligne par menu dont l’ordre change, « Onglet » d’une page déplacée, l’ordre des races en une ligne', () => {
+  const page = (id, titre) => ({ id, type: 'guide', statut: 'draft', titre, corps_md: 'Texte.', donnees: null });
+  const onglets = [
+    { id: 'mecaniques-generales', titre: 'Mécaniques générales', ordre: 2, ouverture_page_id: 'guide/reussir-une-action' },
+    { id: 'combats', titre: 'Les combats', ordre: 3, ouverture_page_id: 'guide/le-tour-de-jeu' },
+  ];
+  const entree = (onglet, rang, pageId, libelle = null) => ({ id: pageId ? `page:${pageId}` : `bientot:${libelle}`, onglet_id: onglet, rang, page_id: pageId, libelle, adresse: null });
+  const race = (id, nom, rang) => ({ id, nom, ordre: rang, presentation: null, rang_liste: rang });
+  const pages = [page('guide/reussir-une-action', 'Réussir une action'), page('guide/resistances-et-faiblesses', 'Résistances et faiblesses'),
+    page('guide/meteo', 'Météo'), page('guide/le-tour-de-jeu', 'Le tour de jeu'), page('guide/initiative', 'Initiative')];
+  const ref = { tables: {
+    page: pages, regles_onglet: onglets,
+    regles_onglet_entree: [entree('mecaniques-generales', 1, 'guide/reussir-une-action'), entree('mecaniques-generales', 2, 'guide/resistances-et-faiblesses'),
+      entree('mecaniques-generales', 3, 'guide/meteo'), entree('mecaniques-generales', 4, null, 'Plus tard'), entree('combats', 1, 'guide/le-tour-de-jeu'),
+      entree('combats', 2, 'guide/initiative')],
+    race: [race('races/humain', 'Humain', 1), race('races/nain', 'Nain', 2), race('races/elfe', 'Elfe', 3)],
+  } };
+  const dev = { tables: {
+    page: [...pages, page('guide/nouvelle', 'Nouvelle page')], regles_onglet: onglets,
+    // « Mécaniques générales » réordonnée (la Météo partie dans « Les combats ») ; « Les combats » garde son ordre, la Météo et une page créée à la fin
+    regles_onglet_entree: [entree('mecaniques-generales', 2, 'guide/reussir-une-action'), entree('mecaniques-generales', 1, 'guide/resistances-et-faiblesses'),
+      entree('mecaniques-generales', 4, null, 'Plus tard'), entree('combats', 1, 'guide/le-tour-de-jeu'), entree('combats', 2, 'guide/initiative'),
+      entree('combats', 3, 'guide/meteo'), entree('combats', 4, 'guide/nouvelle')],
+    race: [race('races/humain', 'Humain', 2), race('races/nain', 'Nain', 1), race('races/elfe', 'Elfe', 3), race('races/neuve', 'Neuve', 4)],
+  } };
+  // le plan installé est celui de la base de dev (serveur/notes-de-version.mjs#noteEnPreparation) ; celui du fichier est remis à la fin
+  const plan = ongletsDesRegles();
+  installerLePlan(dev.tables.regles_onglet.map((o) => ({ id: o.id, titre: o.titre, ouverture: o.ouverture_page_id,
+    entrees: dev.tables.regles_onglet_entree.filter((e) => e.onglet_id === o.id).sort((a, b) => a.rang - b.rang).map((e) => (e.page_id ? { page: e.page_id } : { bientot: e.libelle })) })));
+  try {
+    const cle = (l) => `${l.domaine} | ${l.groupe ?? ''} | ${l.entite} | ${l.champ ?? '(entité)'} | ${l.nature} | ${l.avant ?? ''} → ${l.apres ?? ''}`;
+    assert.deepEqual(comparerBases(ref, dev).map(cle), [
+      'races |  | Liste des races | Ordre de la liste | modifie | Humain · Nain → Nain · Humain',
+      'races | Neuve | Neuve | (entité) | ajoute |  → Neuve',
+      'guide | Mécaniques générales | Menu « Mécaniques générales » | Ordre du menu | modifie | Réussir une action · Résistances et faiblesses → Résistances et faiblesses · Réussir une action',
+      'guide | Les combats | Météo | Onglet | modifie | Mécaniques générales → Les combats',
+      'guide | Les combats | Nouvelle page | (entité) | ajoute |  → Nouvelle page',
+    ]);
+    // rien quand l'ordre ne change pas (rangs renumérotés compris) ; rien tant que la production n'a pas le plan ni la colonne rang_liste
+    const renumerote = structuredClone(ref);
+    renumerote.tables.regles_onglet_entree.forEach((e) => { e.rang *= 10; });
+    renumerote.tables.race.forEach((r) => { r.rang_liste += 5; });
+    assert.deepEqual(comparerBases(ref, renumerote), []);
+    const ancienne = { tables: { page: pages, race: ref.tables.race.map(({ rang_liste: _r, ...r }) => r) } };
+    assert.deepEqual(comparerBases(ancienne, { tables: { ...dev.tables, page: pages, race: dev.tables.race.slice(0, 3) } }), []);
+  } finally {
+    installerLePlan(plan);
+  }
 });
 
 test('guide : une page inchangée n’est jamais rangée (la comparaison ne demande pas le plan pour elle)', () => {

@@ -87,7 +87,7 @@ test('R184 : le plan des onglets vient de la base, installé ; sans lui, une fon
   // l'Artisanat : une entrée lien d'Exploration (R184 (11)), juste après « Exercer un métier » ; aucune entrée « bientôt » aujourd'hui
   const exploration = ongletsDesRegles().find((o) => o.id === 'exploration');
   const i = exploration.entrees.findIndex((e) => e.adresse === ARTISANAT.chemin);
-  assert.deepEqual(exploration.entrees[i], { libelle: 'Artisanat', adresse: 'regles/artisanat/' });
+  assert.deepEqual(exploration.entrees[i], { id: 'lien:regles/artisanat', rang: exploration.entrees[i].rang, libelle: 'Artisanat', adresse: 'regles/artisanat/' });
   assert.equal(exploration.entrees[i - 1].page, 'guide/exercer-un-metier');
   assert.equal(ongletDuLien(ARTISANAT.chemin), exploration);
   assert.equal(ongletDuLien('regles/inconnue/'), null);
@@ -119,6 +119,9 @@ test('installerLePlan contrôle la forme du plan : onglet vide ou nommé deux fo
     assert.throws(() => installerLePlan([onglet('a', [{ page: 'guide/x' }], 'guide/y')]), /guide\/y, ouverte à \/regles\/a\/, n’est pas une page de « Onglet a »/);
     const plan = installerLePlan([onglet('a', [{ page: 'guide/x' }, { bientot: 'Les donjons' }, { libelle: 'Artisanat', adresse: 'regles/artisanat/' }])]);
     assert.deepEqual(plan[0].entrees, [{ page: 'guide/x' }, { bientot: 'Les donjons' }, { libelle: 'Artisanat', adresse: 'regles/artisanat/' }]);
+    // l'id et le rang de la ligne, quand le plan les donne (la base), restent : le menu latéral les pose pour le mode modification ; rien d'autre
+    const lu = installerLePlan([onglet('a', [{ id: 'page:guide/x', rang: 3, page: 'guide/x', autre: 1 }, { id: 'bientot:d', rang: 4, bientot: 'D' }, { id: '', rang: 'x', libelle: 'A', adresse: 'regles/a/' }])]);
+    assert.deepEqual(lu[0].entrees, [{ id: 'page:guide/x', rang: 3, page: 'guide/x' }, { id: 'bientot:d', rang: 4, bientot: 'D' }, { libelle: 'A', adresse: 'regles/a/' }]);
   } finally {
     installer();
   }
@@ -255,6 +258,73 @@ test('le menu latéral d’un onglet : ses entrées dans l’ordre du plan (page
     installer();
   }
   for (const id of ['guide/bienvenue', 'guide/l-univers', 'guide/un-maitre-du-jeu', FIXTURE, 'races/elfe']) assert.equal(menuLateralDe(id, pagesDuGuide), null, id);
+});
+
+// Lot de l'édition des menus (« changer l'ordre des menu latéraux (par un glisser déposer) ») : le menu latéral pose l'id et le rang de chaque ligne de
+// regles_onglet_entree (data-ed-entree, data-ed-rang), une par entrée affichée, dans l'ordre ; l'onglet en data-ed-menu (scripts/edition/menus.mjs)
+test('le menu latéral d’un onglet porte, pour le mode modification, l’id et le rang de chaque ligne de regles_onglet_entree, entrée par entrée', () => {
+  for (const onglet of ongletsDesRegles()) {
+    const { pages, edition } = menuLateralDe(onglet.ouverture, pagesDuGuide);
+    assert.equal(edition.menu, `onglet:${onglet.id}`);
+    assert.equal(edition.entrees.length, pages.length, onglet.id);
+    const lignes = db.prepare('SELECT id, rang, page_id, libelle FROM regles_onglet_entree WHERE onglet_id = ? ORDER BY rang, id').all(onglet.id);
+    assert.deepEqual(edition.entrees, lignes.map((l) => ({ id: l.id, rang: l.rang })), onglet.id);
+    pages.forEach((p, i) => assert.equal(edition.entrees[i].id, p.id ? `page:${p.id}` : lignes[i].id, `${onglet.id} : entrée ${i}`));
+  }
+  // une page absente est sautée des deux côtés : les deux listes restent alignées
+  const sansMeteo = pagesDuGuide.filter((p) => p.id !== 'guide/meteo');
+  const onglet = ongletDe('guide/meteo');
+  const { menu, entrees } = Livres.editionDuMenuLateral(onglet, sansMeteo);
+  assert.equal(menu, `onglet:${onglet.id}`);
+  assert.equal(entrees.length, entreesDuMenuLateral(onglet, sansMeteo).length);
+  assert.ok(!entrees.some((e) => e.id === 'page:guide/meteo'));
+});
+
+// R185 (6) (« Page 404 ») : une page des Règles supprimée sur le site de dev (rien ne la protège parce qu'un renvoi figé la vise : lib/pages-protegees.mjs)
+// laisse son ancienne adresse à la 404 ; le plan strict ne s'arrête pas pour elle.
+test('R185 (6) : une cible de renvoi figé absente n’arrête pas le build ; la page 404 et les liens écrits la sautent', () => {
+  // des pages que visent les renvois figés, et que rien ne protège (ni création du personnage, ni ouverture, ni absorption)
+  const cible = 'guide/l-embuscade'; // une section de « Les situations avancées » (PAGES_ECLATEES_DU_GUIDE)
+  const precedente = 'guide/meteo'; // /regles/avancees/meteo/ (ADRESSES_DU_PLAN_PRECEDENT)
+  assert.equal(Livres.pageDuGuideALAdresse(adresseDuGuide(cible)), cible);
+  assert.equal(Livres.pageDuGuideALAdresse('regles/prise-en-tenaille-et-zone-d-influence/#la-prise-en-tenaille'), 'guide/prise-en-tenaille-et-zone-d-influence');
+  assert.equal(Livres.pageDuGuideALAdresse('decouvrir/'), 'guide/bienvenue');
+  assert.equal(Livres.pageDuGuideALAdresse('mj/un-maitre-du-jeu/?a=1'), 'guide/un-maitre-du-jeu');
+  assert.equal(Livres.pageDuGuideALAdresse('ressources/armes/'), null);
+  // toutes les pages là : les objets de PAGES_ECLATEES_DU_GUIDE, inchangés
+  assert.deepEqual(Livres.pagesEclateesDuGuide((id) => ids.includes(id)), PAGES_ECLATEES_DU_GUIDE);
+  assert.equal(Livres.pagesEclateesDuGuide((id) => ids.includes(id))['decouvrir/creer-son-personnage/'], PAGES_ECLATEES_DU_GUIDE['decouvrir/creer-son-personnage/']);
+  // un plan où les deux cibles manquent (pages supprimées : ni dans la base, ni dans le plan)
+  const restants = ids.filter((id) => id !== cible && id !== precedente);
+  const pages = pagesDuGuide.filter((p) => restants.includes(p.id));
+  try {
+    installerLePlan(PLAN.map((o) => ({ ...o, entrees: o.entrees.filter((e) => e.page !== cible && e.page !== precedente) })));
+    assert.equal(verifierLePlan(pages), pages, 'le plan strict tient : une cible de renvoi absente n’est pas une page manquante');
+    // la page 404 : plus de renvoi vers elle, son ancienne adresse reste introuvable
+    const renvois = renvoisDuGuide(restants);
+    assert.equal(Object.hasOwn(renvois, 'regles/avancees/meteo/'), false);
+    const eclatees = { ...RENVOIS_DES_PAGES_ECLATEES, ...Livres.pagesEclateesDuGuide((id) => restants.includes(id)) };
+    const vers = (adresse, hash = '') => adresseDeRenvoi(adresse, { base: '/', renvois, eclatees, hash });
+    assert.equal(vers('/regles/avancees/meteo/'), null, 'la 404');
+    // une ancienne ancre dont la page manque : la page qui garde le reste (`defaut`), l'ancre gardée ; les autres ancres inchangées
+    assert.equal(vers('/guide/situations-avancees/', '#lembuscade'), '/regles/prise-en-tenaille-et-zone-d-influence/#lembuscade');
+    assert.equal(vers('/guide/situations-avancees/', '#les-attaques-discrètes'), '/regles/les-attaques-discretes/');
+    assert.ok(!Object.values(eclatees['guide/situations-avancees/'].anciennesAncres).includes(adresseDuGuide(cible)));
+    // une page éclatée dont la page `defaut` manque : retirée entière (son adresse donne la 404)
+    const sansDefaut = Livres.pagesEclateesDuGuide((id) => id !== 'guide/creer-son-personnage');
+    assert.equal(Object.hasOwn(sansDefaut, 'decouvrir/creer-son-personnage/'), false);
+    assert.ok(Object.hasOwn(sansDefaut, 'guide/situations-avancees/'));
+    // un lien écrit vers l'ancienne adresse : tel qu'écrit (la 404), jamais vers la page supprimée
+    const options = { cheminDe: cheminDePage, existe: (id) => restants.includes(id), accueil: ACCUEIL_DU_GUIDE };
+    assert.equal(Guide.adresseDesAnciensLiens('regles/avancees/meteo/', options), 'regles/avancees/meteo/');
+    assert.equal(Guide.adresseDesAnciensLiens('guide/meteo/#pluie', options), 'guide/meteo/#pluie');
+  } finally {
+    installer();
+  }
+  // lib/guide-rendu.ts et la page 404 lisent la liste filtrée, jamais PAGES_ECLATEES_DU_GUIDE telle quelle
+  const rendu = readFileSync(new URL('../src/lib/guide-rendu.ts', import.meta.url), 'utf8');
+  assert.match(rendu, /\.\.\.pagesEclateesDuGuide\(\(page: string\) => pages\.has\(page\)\)/);
+  assert.doesNotMatch(rendu, /\.\.\.PAGES_ECLATEES_DU_GUIDE/);
 });
 
 test('plus de livre : ni précédent ni suivant ; le fil d’Ariane mène à l’onglet de la page, à Découvrir ou au Guide du MJ', () => {
@@ -451,7 +521,7 @@ test('nav.mjs et livres.mjs n’importent rien (le script de la page 404 importe
   }
   const page404 = readFileSync(new URL('../src/pages/404.astro', import.meta.url), 'utf8');
   assert.match(page404, /data-renvois=\{JSON\.stringify\(renvois\)\}/);
-  assert.match(page404, /const eclatees = \{ \.\.\.RENVOIS_DES_PAGES_ECLATEES, \.\.\.PAGES_ECLATEES_DU_GUIDE \};/);
+  assert.match(page404, /const eclatees = \{ \.\.\.RENVOIS_DES_PAGES_ECLATEES, \.\.\.pagesEclateesDuGuide\(\(id: string\) => charges\.has\(id\)\) \};/);
   assert.match(page404, /data-eclatees=\{JSON\.stringify\(eclatees\)\}/);
   assert.match(page404, /adresseDeRenvoi\(location\.pathname, \{\s*base, renvois: lire\(introuvable\.dataset\.renvois\), eclatees: lire\(introuvable\.dataset\.eclatees\)/);
   assert.deepEqual([...page404.slice(page404.indexOf('<script>')).matchAll(/^\s*import .* from '([^']+)';$/gm)].map((m) => m[1]), ['../lib/nav.mjs']);

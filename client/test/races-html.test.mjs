@@ -8,7 +8,9 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { classeDeMagie, cssDeLaPalette, cssDesFamilles } from '../src/lib/palette-css.mjs';
-import { ORDRE_DES_RACES, RACE_COLORS } from '../src/lib/race-kinds.mjs';
+import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { RACE_COLORS } from '../src/lib/race-kinds.mjs';
+import { racesParNature } from '../src/lib/races-db.mjs';
 
 const dossier = fileURLToPath(new URL('../dist/races/', import.meta.url));
 const present = existsSync(dossier);
@@ -21,6 +23,11 @@ const pages = present
       .filter((p) => p.html.includes('class="race-hero"'))
   : [];
 const page = (slug) => pages.find((p) => p.slug === slug)?.html ?? '';
+// L'ordre de la liste des races (race.rang_liste, migration 0092 ; réponse du propriétaire « /races/ suit, le reste figé ») : le menu latéral des races,
+// /races/ et le tableau des magies innées le suivent ; il se réordonne sur le site de dev, l'état courant de la base fait foi (lib/races-db.mjs#racesParNature,
+// la règle du service ; sa valeur d'import, l'ancien ORDRE_DES_RACES : test/db-rang-des-races.test.mjs)
+const groupesDeLaBase = racesParNature(ouvrirBase());
+const slugsDe = (groupe) => groupesDeLaBase[groupe].map((r) => r.id.slice('races/'.length));
 const ids = (html) => [...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]);
 const main = (html) => html.slice(html.indexOf('<main'), html.indexOf('</main>'));
 
@@ -103,15 +110,12 @@ const pastillesDe = (html) =>
     .map((m) => ({ slug: m[1], attributs: m[2], nom: m[3].replace(/&#39;/g, "'") }));
 const nomsDe = (html) => pastillesDe(html).map((p) => p.nom);
 
-test('liste des races : deux groupes de pastilles, pures puis hybrides, dans l’ordre du propriétaire', options, () => {
+test('liste des races : deux groupes de pastilles, pures puis hybrides, chacun dans l’ordre de la liste (race.rang_liste)', options, () => {
   assert.match(liste, /class="races-pastilles"/);
   assert.ok(liste.indexOf('id="pures"') < liste.indexOf('id="hybrides"'));
-  assert.deepEqual(nomsDe(colonne('pures')), [
-    'Humain', 'Nain', 'Elfe forestier', 'Elfe doré', 'Elfe argenté', 'Elfe noir', 'Farfadet', 'Felfe', 'Majin', 'Hujin', 'Drakos', 'Lamia', 'Mort-vivant',
-  ]);
-  assert.deepEqual(nomsDe(colonne('hybrides')), [
-    "Drassah'thac", 'Orios', 'Fenrir', 'Kitsune', 'Olwman', 'Rokh', 'Namazu', 'Minotaure', 'Satyre', 'Médusain', 'Jackalope', 'Marcass', 'Anansi', 'Goleois',
-  ]);
+  assert.deepEqual(pastillesDe(colonne('pures')).map((p) => p.slug), slugsDe('pures'));
+  assert.deepEqual(pastillesDe(colonne('hybrides')).map((p) => p.slug), slugsDe('hybrides'));
+  assert.equal(slugsDe('pures').length + slugsDe('hybrides').length, 27);
 });
 
 test('liste des races : chaque groupe dans la couleur du bandeau des pages de race, avec le nombre de ses races', options, () => {
@@ -159,7 +163,7 @@ test('magies innées d’une race : chaque pastille dans la couleur de sa magie,
 });
 
 // Le tableau des magies innées de toutes les races, en bas de /races/ (components/magie/TableauMagiesInnees.astro) : il remplace /races-et-magies/.
-test('liste des races : tableau des magies innées en bas de page, races dans l’ordre des listes, magies dans l’ordre du classeur et dans leur couleur', options, () => {
+test('liste des races : tableau des magies innées en bas de page, races dans l’ordre des listes (race.rang_liste), magies dans l’ordre du classeur et dans leur couleur', options, () => {
   assert.ok(!liste.includes('races-et-magies'), 'plus de lien vers l’ancienne page');
   const debut = liste.indexOf('<section id="magies-innees"');
   assert.ok(debut > liste.indexOf('id="hybrides"'), 'après les deux listes');
@@ -175,6 +179,7 @@ test('liste des races : tableau des magies innées en bas de page, races dans l�
   assert.doesNotMatch(tableau.slice(0, tableau.indexOf('</table>')), /style=/, 'aucun style dans le tableau');
   const lignes = [...tableau.matchAll(/<th scope="row" class="tableau-magies__nom"><a href="[^"]*\/races\/([^/"]+)\/">([^<]+)<\/a><\/th>(.*?)<\/tr>/g)].filter((m) => m[1] !== 'exemple-race');
   assert.deepEqual(lignes.map((m) => m[2].replace(/&#39;/g, "'")), [...nomsDe(colonne('pures')), ...nomsDe(colonne('hybrides'))]);
+  assert.deepEqual(lignes.map((m) => m[1]), [...slugsDe('pures'), ...slugsDe('hybrides')], 'l’ordre de la liste des races');
   const pastilles = (slug) => (lignes.find((m) => m[1] === slug)[3].match(/class="tableau-magies__point couleur-magie-[\w-]+"/g) ?? []).length;
   assert.equal(pastilles('humain'), 15);
   assert.equal(pastilles('nain'), 5);
@@ -194,8 +199,8 @@ test('pages de race : le lien « Voir le tableau » mène au tableau de /races/'
 // Demande du propriétaire : « Je veux comme pour chronologie, et les bases, un menu latéral qui récapitule toutes les races sur le menu d'une race
 // ouverte. » (components/race/MenuDesRaces.astro, sur le menu latéral commun des Bases :
 // components/guide/MenuLateral.astro, ses classes `lateral*` et sa feuille).
-test('pages de race : à gauche le menu latéral de toutes les races (une seule liste, pures puis hybrides, ordre du propriétaire, la race ouverte marquée), à droite la page', options, () => {
-  const attendu = ORDRE_DES_RACES.map((id) => id.slice('races/'.length));
+test('pages de race : à gauche le menu latéral de toutes les races (une seule liste, pures puis hybrides, ordre de la liste, la race ouverte marquée), à droite la page', options, () => {
+  const attendu = [...slugsDe('pures'), ...slugsDe('hybrides')];
   for (const { slug, html } of pages) {
     const m = main(html);
     const nav = m.match(/<nav class="lateral-menu" aria-label="Races">([\s\S]*?)<\/nav>/);
@@ -204,7 +209,7 @@ test('pages de race : à gauche le menu latéral de toutes les races (une seule 
     assert.match(nav[1], /<details class="lateral-menu__repli" open data-lateral-repli>/, `${slug} : ouvert sans JavaScript`);
     assert.match(nav[1], /<p class="lateral-menu__titre"><a href="[^"]*\/races\/">Races<\/a><\/p>/, `${slug} : titre lié à /races/`);
     // réponse du propriétaire : « Une seule liste » (sans titre de groupe, comme le menu des Bases)
-    assert.equal((nav[1].match(/<ol class="lateral-menu__liste">/g) ?? []).length, 1, `${slug} : une seule liste`);
+    assert.equal((nav[1].match(/<ol class="lateral-menu__liste"[ >]/g) ?? []).length, 1, `${slug} : une seule liste`);
     assert.ok(!nav[1].includes('lateral-menu__groupe') && !nav[1].includes('Races pures'), `${slug} : sans titre de groupe`);
     const entrees = [...nav[1].matchAll(/<a class="lateral-menu__lien" href="[^"]*\/races\/([^/"]+)\/"( aria-current="page")?>/g)]
       .filter((e) => e[1] !== 'exemple-race');
@@ -214,5 +219,29 @@ test('pages de race : à gauche le menu latéral de toutes les races (une seule 
     const droite = m.slice(m.indexOf('<div class="lateral-page">'));
     assert.match(droite, /<p class="muted"><a href="[^"]*\/">Accueil<\/a> › <a href="[^"]*\/races\/">Races<\/a>/, `${slug} : fil d'Ariane à droite`);
     assert.ok(droite.includes('class="race-hero"'), `${slug} : gabarit à droite`);
+  }
+});
+
+// Lot de l'édition des menus (« changer l'ordre des menu latéraux (par un glisser déposer) », réponse « Règles + Races ») : le menu latéral des races porte,
+// pour le mode modification du site de dev (src/scripts/edition/menus.mjs), le menu (`data-ed-menu="races"`) et, sur chaque race, son id, son rang dans la
+// liste et son groupe (`data-ed-entree`, `data-ed-rang`, `data-ed-groupe` : une race reste dans le sien) ; rien ne change à l'affichage
+test('pages de race : le menu latéral porte l’id, le rang (race.rang_liste) et le groupe de chaque race, pour le glisser-déposer du site de dev', options, () => {
+  const rangs = new Map([...groupesDeLaBase.pures, ...groupesDeLaBase.hybrides].map((r) => [r.id, r.rang_liste]));
+  const groupes = new Map([...groupesDeLaBase.pures.map((r) => [r.id, 'pures']), ...groupesDeLaBase.hybrides.map((r) => [r.id, 'hybrides'])]);
+  for (const { slug, html } of pages) {
+    const nav = main(html).match(/<nav class="lateral-menu" aria-label="Races">([\s\S]*?)<\/nav>/)[1];
+    assert.match(nav, /<ol class="lateral-menu__liste" data-ed-menu="races">/, `${slug} : le menu`);
+    const lignes = [...nav.matchAll(/<li([^>]*)><a class="lateral-menu__lien" href="[^"]*\/races\/([^/"]+)\/"/g)].filter((m) => m[2] !== 'exemple-race');
+    assert.equal(lignes.length, 27, slug);
+    for (const [, attributs, race] of lignes) {
+      const id = `races/${race}`;
+      const attribut = (nom) => attributs.match(new RegExp(` ${nom}="([^"]*)"`))?.[1];
+      assert.equal(attribut('data-ed-entree'), id, `${slug} : ${race}`);
+      assert.equal(attribut('data-ed-groupe'), groupes.get(id), `${slug} : ${race}`);
+      assert.equal(attribut('data-ed-rang'), rangs.get(id) === null ? undefined : String(rangs.get(id)), `${slug} : ${race}`);
+    }
+    // les pures d'abord, d'un bloc, puis les hybrides : un groupe est contigu (le glisser-déposer le borne)
+    const suite = lignes.map((m) => m[1].match(/data-ed-groupe="([^"]+)"/)[1]);
+    assert.deepEqual(suite, [...suite].sort((a, b) => (a === b ? 0 : a === 'pures' ? -1 : 1)), `${slug} : groupes contigus`);
   }
 });

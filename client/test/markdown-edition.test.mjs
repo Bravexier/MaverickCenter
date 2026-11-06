@@ -9,7 +9,7 @@ import { test } from 'node:test';
 import { splitFrontmatter } from '../src/lib/wikilinks.mjs';
 import { avecPhraseDesArmesDeDepart } from '../src/lib/armes-rendu.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
-import { COULEURS_DE_CASE, decouperCorps, htmlSur, recomposerCorps, versMarkdown } from '../src/lib/markdown-edition.mjs';
+import { COULEURS_DE_CASE, decouperCorps, etatDeLApercu, htmlSur, recomposerCorps, versMarkdown } from '../src/lib/markdown-edition.mjs';
 import { fragmentsAjoutes } from '../src/lib/markdown-sur.mjs';
 import { texteDePageModifiable } from '../src/lib/edition-modele.mjs';
 import { htmlAvecMotsCles, lireBalises } from '../src/lib/mots-cles-balises.mjs';
@@ -279,4 +279,16 @@ test('aller-retour sur tous les blocs des panneaux de règles : le HTML ne chang
   }
   assert.ok(blocs.some((b) => /^\{\{[^{}]+:\}\}$/.test(b.texte.trim())), 'au moins une tuile qui n’est qu’une balise en mode complet');
   assert.ok(differents > 0, 'au moins un bloc dont le Markdown relu n’est pas le texte de la base (comparer au texte de la base ferait un faux changement)');
+});
+
+// Essai dans Chromium (tech-qualite) : une page des Règles créée sur le site de dev (ligne en attente { creee: true, apercu: null }) était prise pour un texte
+// « périmé » : son « À compléter. » ne se modifiait pas en place. Une page créée est dessinée depuis son texte actuel (edition/nouvelles.mjs) : rien à faire.
+test('etatDeLApercu : l’aperçu posé, un texte périmé, ou rien — une page créée sans aperçu se modifie en place', () => {
+  assert.equal(etatDeLApercu(undefined, 1), null, 'aucune ligne en attente');
+  assert.equal(etatDeLApercu({ table: 'page', creee: false }, 1), null, 'le titre seul a changé (pas d’aperçu)');
+  assert.equal(etatDeLApercu({ creee: false, apercu: ['<p>x</p>', '<p>y</p>'] }, 2), 'apercu');
+  assert.equal(etatDeLApercu({ creee: false, apercu: ['<p>x</p>'] }, 2), 'perime', 'pas autant de morceaux');
+  assert.equal(etatDeLApercu({ creee: false, apercu: null }, 1), 'perime', 'un texte changé sans aperçu');
+  assert.equal(etatDeLApercu({ creee: true, apercu: null }, 1), null, 'une page créée : son texte « À compléter. » se modifie en place');
+  assert.equal(etatDeLApercu({ creee: true, apercu: ['<p>Écrit.</p>'] }, 1), 'apercu', 'une page créée puis écrite : l’aperçu');
 });

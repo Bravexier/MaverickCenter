@@ -19,13 +19,26 @@ import { entryHref, url, type WikiEntry } from '../../lib/wiki';
 // Petit écran (<= 56rem, comme la chronologie) : le menu replié au-dessus de la page (un <details> : le titre de la rubrique et celui de la page
 // affichée), un appui l'ouvre. Sans JavaScript il reste ouvert (attribut `open` du build) ; le script en ligne qui le suit le replie sur petit écran et
 // le rouvre sur grand écran (il n'importe rien : aucun module partagé entre scripts de page, skill site-version-portable). Un seul menu par page.
+// Mode modification du site de dev (lot de l'édition des menus ; demande du propriétaire : « changer l'ordre des menu latéraux (par un glisser
+// déposer) », réponse « Règles + Races ») : `edition`, facultatif, pose sur la liste le menu qu'elle est (`data-ed-menu` : `onglet:<id>`, lib/livres.mjs
+// #editionDuMenuLateral ; `races`, components/race/MenuDesRaces.astro) et, sur chaque entrée (même ordre que `pages`), l'id et le rang de sa ligne
+// (`data-ed-entree`, `data-ed-rang` : regles_onglet_entree, ou la race et son rang_liste) et, pour les races, son groupe (`data-ed-groupe` : pures ou
+// hybrides ; une race reste dans le sien). Le glisser-déposer, l'ajout et la suppression d'une page : src/scripts/edition/menus.mjs. Rien ne change
+// à l'affichage.
 type Entree = WikiEntry | { libelle: string; adresse: string } | { bientot: string };
+type EntreeModifiable = { id: string | null; rang: number | null; groupe?: string };
 interface Props {
   rubrique: { titre: string; chemin: string };
   pages: Entree[];
   entry: { id: string; data: { title: string } };
+  edition?: { menu: string; entrees: EntreeModifiable[] };
 }
-const { rubrique, pages, entry } = Astro.props;
+const { rubrique, pages, entry, edition } = Astro.props;
+/** Les attributs du mode modification de la i-ième entrée (aucun sans `edition`). */
+const ed = (i: number) => {
+  const e = edition?.entrees[i];
+  return e ? { 'data-ed-entree': e.id ?? undefined, 'data-ed-rang': e.rang ?? undefined, 'data-ed-groupe': e.groupe } : {};
+};
 ---
 
 <style is:inline set:html={menuLateralCss}></style>
@@ -37,15 +50,15 @@ const { rubrique, pages, entry } = Astro.props;
         <span class="lateral-menu__resume-page">{entry.data.title}</span>
       </summary>
       <p class="lateral-menu__titre"><a href={url(rubrique.chemin)}>{rubrique.titre}</a></p>
-      <ol class="lateral-menu__liste">
+      <ol class="lateral-menu__liste" data-ed-menu={edition?.menu}>
         {
-          pages.map((p) =>
+          pages.map((p, i) =>
             'bientot' in p ? (
-              <li><span class="lateral-menu__bientot nav-soon">{p.bientot} <small>(bientôt)</small></span></li>
+              <li {...ed(i)}><span class="lateral-menu__bientot nav-soon">{p.bientot} <small>(bientôt)</small></span></li>
             ) : 'adresse' in p ? (
-              <li><a class="lateral-menu__lien" href={url(p.adresse)} aria-current={p.adresse === `${entry.id}/` ? 'page' : undefined}>{p.libelle}</a></li>
+              <li {...ed(i)}><a class="lateral-menu__lien" href={url(p.adresse)} aria-current={p.adresse === `${entry.id}/` ? 'page' : undefined}>{p.libelle}</a></li>
             ) : (
-              <li><a class="lateral-menu__lien" href={entryHref(p)} aria-current={p.id === entry.id ? 'page' : undefined}>{p.data.title}</a></li>
+              <li {...ed(i)}><a class="lateral-menu__lien" href={entryHref(p)} aria-current={p.id === entry.id ? 'page' : undefined}>{p.data.title}</a></li>
             ),
           )
         }

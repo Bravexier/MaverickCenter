@@ -20,6 +20,9 @@
 //   { op: 'magies_innees', race, magies: [ids] }                                                             magies innées d'une race
 //   { op: 'categories', evenement, categories: [ids], avant?: [ids] }                                        catégories d'un événement de la chronologie
 //   { op: 'fusionner_mots_cles', mot_cle, dans }                                                             un mot-clé rejoint un autre (ses pages le suivent)
+//   { op: 'ordonner', onglet, ids } | { op: 'ordonner', races: 'pures' | 'hybrides', ids }                   l'ordre d'un menu d'onglet des Règles (tous ses
+//                      identifiants d'entrée) ou d'un groupe de la liste des races (serveur/edition-plan.mjs) ; une page des Règles se crée et se
+//                      supprime par `creer` / `supprimer` de l'entité page_des_regles, son onglet change par `modifier` de regles_onglet_entree
 // Glossaire des mots-clés (migration 0056, lib/mots-cles-balises.mjs) : toute valeur texte d'un lot (CHAMPS_DE_TEXTE de lib/edition-modele.mjs : colonnes
 // « ligne », « texte », « markdown » d'une modification ou d'une création) est enregistrée sous sa forme canonique, l'id du mot-clé pour ref — « {{id}} »,
 // « {{id|texte}} » si un autre texte que le libellé est écrit, « {{id:}} » dans un texte mis en forme (markdown) ; « {{id|texte}} » toujours dans un texte
@@ -90,6 +93,8 @@ import { contexteDuCorpsDesPotions, domainesDesConsommables, niveauxDAlchimie, r
 import { corpsDeLaPotionApres, ErreurCorpsPotions, estUnePotion, pageDeLaPotion, TABLES_DES_POTIONS } from '../src/lib/corps-potions.mjs';
 import { categoriesDeLaChronologie, domainesDeLaChronologie } from './edition-chronologie.mjs';
 import { domainesDesPanneaux } from './edition-panneaux.mjs';
+import { domainesDuPlan } from './edition-plan.mjs';
+import { raisonsDeProtection } from '../src/lib/pages-protegees.mjs';
 import {
   corpsAvecMateriauRenomme, corpsDesArmesApres, ErreurCorpsArmes, PAGE_DES_ARMES, PAGES_DES_MATERIAUX, TABLES_DE_LA_PAGE_DES_ARMES,
 } from '../src/lib/corps-armes.mjs';
@@ -136,7 +141,7 @@ export const provenance = (instant) => `Site de dev › édition du ${instant.sl
  * Famille (page.origine) d'une page créée depuis le site, par type : celle des pages du même type (une race comme les races importées…). La provenance
  * « Site de dev › … » de sa première source la rattache à la même famille dans tools/db/pages_md.py#origine_migration (FAMILLE_DES_PAGES_DU_SITE).
  */
-export const FAMILLE_DES_PAGES_DU_SITE = { metiers: 'docs', races: 'races', classes: 'classes', capacites: 'classes' };
+export const FAMILLE_DES_PAGES_DU_SITE = { metiers: 'docs', races: 'races', classes: 'classes', capacites: 'classes', guide: 'docs' };
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 // Outils communs aux dérivations
@@ -174,9 +179,17 @@ function ecrirePage(ctx, pageId, changes) {
   if (Object.keys(changes).length && lireLigne(ctx.db, 'page', { id: pageId })) ctx.w.modifier('page', { id: pageId }, changes);
 }
 
-/** Supprime une page du wiki et ce qui la décrit (alias, mots-clés, sources, entités rattachées), chaque ligne notée au journal. */
-function supprimerPage(ctx, pageId) {
+/**
+ * Supprime une page du wiki et ce qui la décrit (alias, mots-clés, sources, entités rattachées), chaque ligne notée au journal. Une page du guide
+ * (`guide/…` : une page des Règles, serveur/edition-plan.mjs) n'est jamais supprimée si une raison la protège (lib/pages-protegees.mjs, la seule
+ * source) : 409, même si l'appelant ne l'a pas regardé ; les autres pages (métier, don) partent avec leur entité, qui les retire elle-même.
+ */
+export function supprimerPage(ctx, pageId) {
   const { db, w } = ctx;
+  if (String(pageId).startsWith('guide/')) {
+    const raisons = raisonsDeProtection(db, pageId);
+    if (raisons.length) throw new ErreurEdition(409, `${pageId} ne se supprime pas : ${raisons.map((r) => r.texte).join(' ; ')}.`, { page: pageId, raisons });
+  }
   const sources = db.prepare('SELECT source_id FROM page_source WHERE page_id = ?').all(pageId).map((s) => s.source_id);
   for (const table of ['alias', 'page_tag', 'page_source']) {
     for (const l of db.prepare(`SELECT * FROM "${table}" WHERE page_id = ?`).all(pageId)) w.supprimer(table, cleDe(db, table, l));
@@ -755,6 +768,8 @@ const RACE = {
       id, nom: valeurs.nom, ordre: ordreSuivant(db, 'race'), presentation: valeurs.presentation ?? null, sante: null, chakra_depart: null, barriere_bonus: null,
       vitesse_terre: null, vitesse_nage: null, ap: null, am: null, divers: null, don_base_brut: null, don_base_nom: null, don_base_type: null, don_base_effets: null,
       origine: 'races', source_ref: source, remarque: null, mono_magie: 0,
+      // en fin de la liste des races (menu latéral, /races/ : migration 0092), dans son groupe (pures ou hybrides) ; réordonnée ensuite par `ordonner`
+      rang_liste: ordreSuivant(db, 'race', 'rang_liste'),
     });
     w.inserer('page_entite', { entite_table: 'race', entite_id: id, page_id: id, principale: 1, origine: 'races' });
     const onglet = db.prepare('SELECT 1 FROM race_onglet WHERE onglet = ?').get(valeurs.nom) ? `${valeurs.nom} (${slug})` : valeurs.nom;
@@ -1366,11 +1381,13 @@ const premiereSource = (db, pageId) =>
   db.prepare('SELECT s.texte FROM page_source ps JOIN source s ON s.id = ps.source_id WHERE ps.page_id = ? ORDER BY ps.ordre LIMIT 1').get(pageId)?.texte ?? null;
 
 const PAGE = {
-  colonnes(ctx, ligne) {
+  colonnes(ctx, ligne, valeurs = {}) {
     // le guide et le Codex (lib/edition-modele.mjs#texteDePageModifiable)
     if (!texteDePageModifiable(ligne.type, premiereSource(ctx.db, ligne.id))) {
       throw refus(`${ligne.id} : seules les pages du guide et du Codex se modifient ici (les autres pages suivent leurs tables)`);
     }
+    // le résumé d'une page du guide seulement (celui du Codex est la première phrase du document, tirée à l'import)
+    if ('resume' in valeurs && ligne.type !== 'guide') throw refus(`${ligne.id} : le résumé ne se modifie que pour une page du guide`);
     try {
       morceauxDuChapitre(ligne.corps_md); // un bloc inconnu (`<!-- guide:… -->`) arrêterait le build
     } catch (e) {
@@ -1433,11 +1450,21 @@ const ARMURES = domainesDesArmures({ refus, ErreurEdition, synchroniser });
 const COMPOSANTS = domainesDesComposants({ refus, ErreurEdition, synchroniser, provenance, idDejaEmploye });
 const CONSOMMABLES = domainesDesConsommables({ refus, ErreurEdition, synchroniser });
 
+/**
+ * Le plan des Règles (menus des onglets, pages des Règles créées et supprimées) et l'ordre de la liste des races (serveur/edition-plan.mjs) : le domaine
+ * de regles_onglet_entree, la création et la suppression d'une page des Règles (ENTITES.page_des_regles, sur la table page), l'opération `ordonner`.
+ */
+const PLAN = domainesDuPlan({ refus, ErreurEdition, creerPage, supprimerPage, idDejaEmploye, A_COMPLETER });
+
 /** Ce que l'édition sait faire, table par table : colonnes recalculées dans la ligne, dérivations ailleurs, création, suppression. */
 const DOMAINES = {
   metier: METIER, magie: MAGIE, magie_role: MAGIE_ROLE, mode_hyper_effet: MODE_HYPER_EFFET, sort: SORT, race: RACE, race_onglet: RACE_ONGLET,
   race_don: RACE_DON, race_don_tableau_colonne: tableDeLOnglet('race_don_tableau_colonne'),
-  race_don_tableau_cellule: tableDeLOnglet('race_don_tableau_cellule'), peuple: PEUPLE, classe: CLASSE, specialite: SPECIALITE, capacite: CAPACITE, page: PAGE,
+  race_don_tableau_cellule: tableDeLOnglet('race_don_tableau_cellule'), peuple: PEUPLE, classe: CLASSE, specialite: SPECIALITE, capacite: CAPACITE,
+  // une page du guide ou du Codex (titre, texte, résumé) ; une page des Règles créée ou supprimée (serveur/edition-plan.mjs)
+  page: { ...PAGE, ...PLAN.page },
+  // le menu latéral d'un onglet des Règles : l'onglet d'une page, sa place (serveur/edition-plan.mjs)
+  regles_onglet_entree: PLAN.entree,
   // le bestiaire : espèce, carte de monstre, rubriques d'une carte (serveur/edition-bestiaire.mjs)
   ...domainesDuBestiaire({ refus, ErreurEdition, synchroniser, provenance, idDejaEmploye, ordreSuivant, reference }),
   // la page des armes : armes, matériaux, améliorations d'arme (serveur/edition-armes.mjs)
@@ -2273,7 +2300,7 @@ function supprimer(ctx, op) {
   return DOMAINES[entite.table].supprimer(ctx, op.cle, op).resume;
 }
 
-const OPERATIONS = { modifier, creer, supprimer, relations, magies_innees: magiesInnees, ...CHRONOLOGIE.operations, ...operationsDuBestiaire({ refus, ErreurEdition, provenance }) };
+const OPERATIONS = { modifier, creer, supprimer, relations, magies_innees: magiesInnees, ordonner: PLAN.ordonner, ...CHRONOLOGIE.operations, ...operationsDuBestiaire({ refus, ErreurEdition, provenance }) };
 
 /**
  * Applique un lot dans la base vivante, d'un bloc : tout passe ou rien n'est écrit (ErreurEdition : statut HTTP, message en français).
@@ -2331,7 +2358,14 @@ export function enregistrer(db, corps, { instant, id, auteurId = null } = {}) {
     // les notes des fiches touchées, dans la transaction du lot (SQL direct, hors du journal) : un refus plus haut les aurait annulées avec le reste
     const fiches = noterLesRetraits(db, ctx.retraits, instant);
     w.terminer(resumes.join(' ; '));
-    db.exec('COMMIT');
+    try {
+      db.exec('COMMIT');
+    } catch (e) {
+      // une contrainte vérifiée à la fin de la transaction (clé étrangère différée : la page d'ouverture d'un onglet des Règles, regles_onglet) : un
+      // refus 422 comme une contrainte refusée en cours de lot, pas une erreur du service ; la transaction, encore ouverte, est annulée plus bas
+      if (refuseeParLaBase(e)) throw new ErreurEdition(422, messageSqlite(e));
+      throw e;
+    }
     ouverte = false;
     const vues = new Map();
     for (const l of w.lignes) vues.set(`${l.table}\u0000${JSON.stringify(l.cle)}`, l);
@@ -2414,6 +2448,8 @@ export function listes(db) {
     motsCles: motsClesDeLaBase(db).sort(parLibelle),
     // les catégories de la chronologie (cases du formulaire « Nouvel événement » ; la page les relit avec la chronologie vivante)
     categoriesChronologie: categoriesDeLaChronologie(db),
+    // les onglets des Règles, dans leur ordre (liste « Onglet » d'une page des Règles, formulaire « Nouvelle page des Règles ») ; vide avant la 0091
+    onglets: tableExiste(db, 'regles_onglet') ? db.prepare('SELECT id AS valeur, titre AS libelle FROM regles_onglet ORDER BY ordre, id').all() : [],
   };
 }
 
