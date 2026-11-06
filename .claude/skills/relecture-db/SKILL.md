@@ -81,8 +81,8 @@ Gravités : **bloquant** (donnée fausse, intégrité rompue, perte possible), *
 
 Par lots thématiques, une branche et une PR par lot (`docs/flux-git.md`). Un changement de schéma : `tech-db` modifie `data/schema.sql`, écrit
 `data/migrations/NNNN-<nom>.sql` et la passe par `npm run db:migrate` (avant de commiter le schéma : elle part du schéma du dernier commit), puis
-`npm run db:doc`, `db:build`, `db:check` et `npm test`, avec un test dans `client/test/` ; le SQL du site ou du service : `tech-back`.
-`tech-qualite` relit ; `tech-publication` publie. Une question au propriétaire n'est corrigée qu'une fois tranchée (`docs/decisions-regles.md`).
+`npm run db:doc` (et `db:build` si un outil l'exige), avec un test dans `client/test/`, dont il ne lance que le fichier (`node --test test/<fichier>`) ; le SQL du site ou du service : `tech-back`.
+`tech-qualite` relit et passe en fin de lot `db:check`, `db:pages-check`, `db:doc -- --check` et `npm run test:cible` (`controles-avant-rendu`) ; `tech-publication` publie. Une question au propriétaire n'est corrigée qu'une fois tranchée (`docs/decisions-regles.md`).
 
 ## Garde-fous
 

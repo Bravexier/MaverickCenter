@@ -13,7 +13,7 @@ Un changement de structure, ou une correction de données qu'aucun outil n'écri
    - Une migration cassante écrit son SQL explicite (table reconstruite, valeurs recopiées).
    - Un lot de corrections a son registre `NNNN-<nom>.json` à côté.
 3. **L'application.** Depuis `client/`, **avant que le schéma soit commité** par `tech-publication` (la migration part du schéma du dernier commit) : `npm run db:migrate -- ../data/migrations/NNNN-<nom>.sql`. Elle réécrit `data/rows`, ou n'écrit rien si le schéma obtenu n'est pas exactement `schema.sql`.
-4. **La doc et les contrôles**, depuis `client/` : `npm run db:doc` (régénère `docs/sql/structure.md` et `apercu.md`), `db:build`, `db:check`, `db:pages-check`, `npm test`.
+4. **La doc**, depuis `client/` : `npm run db:doc` (régénère `docs/sql/structure.md` et `apercu.md`), et `db:build` quand un outil l'exige. **Les contrôles** (`db:check`, `db:pages-check`, `db:doc -- --check`, `npm run test:cible`) sont passés par `tech-qualite` en fin de lot (`controles-avant-rendu`) : l'auteur ne lance que le fichier de test qu'il écrit (`node --test test/<fichier>`).
 5. **Les suites dans le code.**
    - Une table ajoutée se range dans le registre de l'API (`client/src/lib/ressources/` ou `HORS_RESSOURCE` : `zone-api-rest`).
    - Une table des sections 13, 14 ou 15 va dans ses listes (`zone-fiches-base`, `zone-edition`).

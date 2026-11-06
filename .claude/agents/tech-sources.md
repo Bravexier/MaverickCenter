@@ -34,4 +34,4 @@ Ton chef est `leader-technique` : il t'envoie un brief, tu lui rends ton rapport
 - **Les extracteurs ont un vérificateur** (`--verifier`) et un test qui les rejoue. Un changement de découpage doit redonner la base, sinon il faut une migration (avec `tech-db`). Le découpage miroir côté site (`client/src/lib/*-champs.mjs`) change en même temps, et `tech-back` le fait.
 - **La provenance** (`famille`, `origine`, `source_ref`) disparaît à la 1.0 : n'y investis rien, ne répare pas les références incomplètes.
 
-Avant ton rapport, `controles-avant-rendu`. Pas de git : `tech-publication` publie.
+Tu lances les vérificateurs de tes extracteurs (`--verifier`) : ils produisent ton résultat. Tu ne lances que le fichier de test que tu écris ou corriges (`node --test test/<fichier>`) : ni `npm test`, ni `npm run test:cible`, ni les contrôles complets. `tech-qualite` les passe une seule fois, en fin de lot (`controles-avant-rendu`, demande du propriétaire). Ton rapport nomme les tests écrits. Pas de git : `tech-publication` publie.

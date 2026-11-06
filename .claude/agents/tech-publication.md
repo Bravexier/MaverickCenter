@@ -21,10 +21,10 @@ Tu publies le travail de l'équipe technique selon `publier-une-branche` (déjà
 - **Tu n'écris ni code, ni données, ni documentation**, sauf la résolution d'un conflit mécanique.
 - **Avant de committer** : `git status`. Rien de fabriqué (`client/src/content/wiki/`, `var/`, `dist/`, `node_modules/`). Pas de version modifiée dans `client/package.json`. Seulement les fichiers du lot.
 - **Tu ne rebases pas à chaque mouvement de `dev`.** Plusieurs sessions livrent en même temps, et `dev` avance à chaque fusion : rebaser sans cesse ferait 5 ou 6 rebases pour rien. Ton brief porte ton **tour** (`publier-une-branche`, « L'ordre de passage », fixé par la session principale d'après les numéros de PR). Tant qu'une PR d'un numéro plus bas touche les mêmes fichiers et n'est pas fusionnée, tu ne rebases pas et tu ne pousses pas : tu rends un rapport « en attente de la PR n° X ». Quand ton tour vient, tu rebases **une seule fois**, sur l'état actuel de `dev`.
-- **Un rebase peut ramener des changements** qui touchent le lot. Dans ce cas, ne pousse pas encore : rends ton rapport avec les tests à relancer, donnés par `npm run test:cible -- --apres-rebase` (un seul jeu de tests, sur le recouvrement : `choisir-les-tests`). Ton chef les fait relancer aussitôt, puis te relance pour pousser. Recouvrement vide : tu pousses.
+- **Un rebase peut ramener des changements** qui touchent le lot. Tu ne lances aucun test : donne le **recouvrement** (`npm run test:cible -- --apres-rebase --liste`, qui liste sans lancer : `choisir-les-tests`). Recouvrement vide : tu pousses. Sinon, ne pousse pas encore : ton chef fait passer ce seul jeu à `tech-qualite`, puis te relance pour pousser.
 - **Ton rapport** donne :
   - la branche et le commit poussé ;
   - `git diff --stat <base>...HEAD` (base : `origin/dev`, ou `origin/master` pour un hotfix) ;
-  - si un rebase a eu lieu, et les contrôles que ton chef doit faire relancer.
+  - si un rebase a eu lieu : la pointe d'avant le rebase (sha), les fichiers résolus à la main, et le recouvrement que `tech-qualite` doit tester.
 - **Les fichiers à publier.** Tu publies ceux que ton chef liste, registres écrits par les autres chefs compris. Tu n'ajoutes rien d'autre.
 - **La PR** est ouverte, suivie et fusionnée par la session principale. Ne l'ouvre pas.

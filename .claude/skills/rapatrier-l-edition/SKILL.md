@@ -14,8 +14,9 @@ Détail : `docs/serveur.md`, « Édition des règles » (rapatriement).
 ```bash
 cd client
 npm run db:appliquer-edition -- <chemin/journal-edition-AAAA-MM-JJ.json>   # rejoue le journal sur data/rows ; rien n'est écrit en cas de conflit
-npm run db:build && npm run db:check && npm test
 ```
+
+L'auteur ne lance que cet outil. `db:build`, `db:check` et `npm run test:cible` sont passés par `tech-qualite` en fin de lot (`controles-avant-rendu`).
 
 - **Conflit.** Un lot en conflit n'écrit rien. Rapporter le message tel quel au chef : c'est le propriétaire qui dit quoi refaire sur le site de dev, jamais une correction à la main de `data/rows`.
 - **Historique.** Les modifications rejouées entrent dans `historique_modification` avec une version vide. Un lot déjà présent dans l'historique n'est pas repris.

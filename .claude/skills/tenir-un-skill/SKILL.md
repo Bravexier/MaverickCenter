@@ -39,6 +39,6 @@ Les auteurs d'un changement ne modifient pas un skill : ils le signalent, dans l
 1. Lis le skill en entier et le diff du lot. Vérifie que le changement est bien un invariant ou un choix du propriétaire, pas un détail d'implémentation : sinon, ne l'écris pas et dis pourquoi.
 2. Écris-le dans la bonne section, après avoir retiré ce qui devient faux.
 3. Un skill créé ou renommé : mets à jour la section « Les skills » de `docs/equipe.md` et les renvois (`git grep` de l'ancien nom).
-4. Valide : `node --test test/instructions-claude.test.mjs` depuis `client/`.
+4. Valide : `wc -c` et, si tu découpes, `skills-ecarts.mjs`. Tu ne lances aucun test : `tech-qualite` passe `test/instructions-claude.test.mjs` en fin de lot.
 
-Ton rapport donne : les skills touchés, leur taille avant et après, les demandes refusées avec la raison, et le résultat du test.
+Ton rapport donne : les skills touchés, leur taille avant et après, les demandes refusées avec la raison (le test est passé ensuite par `tech-qualite`).

@@ -27,7 +27,7 @@ Les instructions générales (`CLAUDE.md`, fiches d'agents, ce document hors sa 
 | Technique | `tech-back` | Service, API, édition et mise à jour du site de dev, modules qui lisent ou écrivent la base, performance, hébergement, CI | `client/serveur/`, `client/scripts/`, les modules de base de `src/lib` (liste fermée dans `leader-technique`), `deploy/`, `.github/`, `tools/flux-git/`, `.gitignore`, `.nvmrc`, `api/` (sur demande), `docs/serveur.md`, `api.md`, `flux-git.md`, ses tests | opus, high |
 | Technique | `tech-db` | La base : schéma, migrations, `data/rows` par les outils, pages du wiki (`db:sync-pages`), vues, index, intégrité, optimisation | `data/`, `tools/db/`, `docs/sql/` (hors questions des chefs et rapprochement), ses tests | opus, high |
 | Technique | `tech-sources` | Import des sources : originaux Google (R83), exports bruts, importeurs et extracteurs, rapprochement des classeurs | `sources/`, `tools/` (hors `db/`, `flux-git/`, `build-artifact.mjs`), `docs/sources.md`, `codex.md`, `fiche-auto.md`, `sql/rapprochement-classeurs.md`, ses tests | opus, high |
-| Technique | `tech-qualite` | Tests et qualité : relecture indépendante de chaque lot et des instructions, couverture, contrôles, diagnostic de la CI | `client/test/` : aides, tests transverses (`site-html`, `defilement`, `tableaux`, `infobulles`), tests manquants | opus, high (sonnet pour un lot sans migration, SQL, instructions ni plus de 300 lignes) |
+| Technique | `tech-qualite` | Tests et qualité : seul à lancer les tests et contrôles d'un lot, une fois en fin de lot ; relecture indépendante de chaque lot et des instructions, couverture, diagnostic de la CI | `client/test/` : aides, tests transverses (`site-html`, `defilement`, `tableaux`, `infobulles`), tests manquants | opus, high (sonnet pour un lot sans migration, SQL, instructions ni plus de 300 lignes) |
 | Technique | `tech-skills` | Les skills : seul habilité à les créer, modifier, resserrer ou éclater ; décide s'il faut éclater (`eclater-un-skill`) ; tient la section « Les skills » de ce document | `.claude/skills/**`, la section « Les skills » de ce document | sonnet, high (opus pour éclater un skill de plus de 20 Ko) |
 | Technique | `tech-publication` | Git : branche, commits, rebase automatique juste après le dernier commit et résolution des conflits, push | git, et la résolution des conflits mécaniques | haiku, medium |
 | Game Design | `gd-dons` | Classes, spécialités, dons de classe ; monstres et leurs capacités | rien (rapport) | sonnet, high |
@@ -49,7 +49,7 @@ Chaque agent n'a que les outils de son rôle :
 - **Équipe technique.** Read, Grep, Glob, Edit, Write, Bash, Skill.
   - `tech-sources` a en plus `ToolSearch` et les outils Google en lecture seule (Drive, Sheets, Docs), pour les originaux.
   - `tech-publication` n'a que Read, Grep, Glob, Edit (pour résoudre un conflit mécanique) et Bash.
-  - `tech-skills` n'a pas d'outil de lancement ni de git ; il lance des scripts (`wc`, `skills-ecarts.mjs`, le test des instructions).
+  - `tech-skills` n'a pas d'outil de lancement ni de git ; il lance des scripts (`wc`, `skills-ecarts.mjs`), pas de test.
 - **Skills préchargés.** Tous les membres préchargent `format-de-rapport`. Les analystes préchargent aussi `verifier-une-source`, l'équipe technique `tests-conventions`. Quelques membres préchargent en plus le skill de leur rôle : `base-sqlite`, `revue-de-diff`, `publier-une-branche`, `resoudre-un-conflit`, et pour `tech-skills` `tenir-un-skill` et `eclater-un-skill`.
 
 ## Choix des modèles
@@ -75,7 +75,7 @@ Le détail est dans le skill `circuit-des-demandes`.
    - le site et les événements des PR à `leader-technique`.
 2. **Le travail d'équipe.** Le chef cadre et ne lance que les membres concernés, en parallèle si leurs tâches sont indépendantes. Il fait circuler entre eux ce qui touche plusieurs domaines, puis rend une synthèse.
 3. **Une règle qui change le site.** `game-design` lance `leader-technique` avec sa spécification comme cahier des charges. Il vérifie ensuite que le livré dit bien la règle. À l'inverse, un lot technique qui change une règle ou le lore sans spécification passe, avant publication, au chef du domaine pour un verdict.
-4. **Côté technique.** Un petit lot suit le circuit court (voir `leader-technique`). Les tests lancés sont ceux que sélectionne `npm run test:cible`, un seul jeu après un simple rebase (skill `choisir-les-tests`). `tech-qualite` relit chaque lot une fois, en dernier. Juste après le dernier commit, `tech-publication` rebase sur la base et résout les conflits (ceux de données ou de sens par leur auteur), puis pousse. La session principale ouvre la PR vers `dev`, la corrige automatiquement avec le `leader-technique` (CI rouge, conflit, revue) et la fusionne dès que la CI est verte.
+4. **Côté technique.** Un petit lot suit le circuit court (voir `leader-technique`). Les tests ne passent qu'une fois par lot, par `tech-qualite`, en fin de lot et avant la validation du `leader-technique` : ceux que sélectionne `npm run test:cible`, avec les contrôles (skill `choisir-les-tests`). Les auteurs ne lancent que le test qu'ils écrivent ; une correction ne relance que les tests en échec et ceux de son diff, un rebase que le recouvrement. `tech-qualite` relit le lot dans le même tour. Juste après le dernier commit, `tech-publication` rebase sur la base et résout les conflits (ceux de données ou de sens par leur auteur), puis pousse. La session principale ouvre la PR vers `dev`, la corrige automatiquement avec le `leader-technique` (CI rouge, conflit, revue) et la fusionne dès que la CI est verte.
 5. **Les doutes.** Un doute se pose à celui qui a fait la demande. Ce que seul le propriétaire peut trancher remonte jusqu'à la session principale, qui le lui demande. La réponse est consignée (`consigner-une-decision`).
 
 Les membres d'une équipe se parlent par leur chef : il relaie, ou relance un membre avec `SendMessage`. Les chefs se lancent et se relancent librement. La profondeur est de trois niveaux sous la session principale : un chef lancé par un chef ne lance aucun chef, pas même celui qui l'a lancé, et met sa demande dans son rapport.
@@ -98,10 +98,10 @@ Un seul lot écrit à la fois dans l'arbre de travail, sur sa branche créée d'
 | `modifier-une-page-wiki` | Texte et frontmatter d'une page (`db:sync-pages`) | `tech-db` |
 | `rapatrier-l-edition` | Reprendre un journal du site de dev | `tech-db` |
 | `tests-conventions` | Écrire un test | équipe technique |
-| `choisir-les-tests` | Quels tests lancer pour un lot, un correctif ou un rebase (`npm run test:cible`) | équipe technique, session principale |
+| `choisir-les-tests` | Un seul passage de tests par lot, par `tech-qualite` (`npm run test:cible`) ; reprises et rebase limités | `tech-qualite`, `leader-technique`, `tech-publication`, session principale |
 | `tenir-un-skill` | Créer, modifier, resserrer un skill : contenu, budget, format | `tech-skills` |
 | `eclater-un-skill` | Décider d'éclater, condenser ou fusionner un skill | `tech-skills` |
-| `controles-avant-rendu` | Contrôles à lancer selon le changement | équipe technique |
+| `controles-avant-rendu` | Contrôles d'un lot selon le changement, passés une fois en fin de lot | `tech-qualite` (`leader-technique` en circuit court) |
 | `revue-de-diff` | Relire un lot | `tech-qualite` |
 | `revue-sql` | Juger du SQL et la base | `tech-db`, `tech-qualite` |
 | `diagnostiquer-la-ci` | Une CI rouge | `tech-qualite`, `leader-technique` |

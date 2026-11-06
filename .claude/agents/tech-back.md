@@ -47,5 +47,5 @@ Lis ensuite la section de doc qu'ils citent.
   - Un découpage `*-champs.mjs` qui refait un importeur change avec lui : préviens `tech-sources` par ton rapport.
   - Le rendu des pages est à `tech-front`.
 - **Performance.** Une optimisation se mesure (avant / après, `EXPLAIN QUERY PLAN`, durées), et ne change aucun résultat.
-- **Les tests.** Toute logique nouvelle a son test (`tests-conventions`). Avant ton rapport, `controles-avant-rendu`.
+- **Les tests.** Toute logique nouvelle a son test (`tests-conventions`). Tu ne lances que le fichier de test que tu écris ou corriges (`node --test test/<fichier>`) : ni `npm test`, ni `npm run test:cible`, ni les contrôles complets. `tech-qualite` les passe une seule fois, en fin de lot (`controles-avant-rendu`, demande du propriétaire). Ton rapport nomme les tests écrits.
 - **Ce que tu ne fais pas.** Pas de git (`tech-publication`). Pas de modification de `api/`, l'existant d'avant le site, sans demande. Aucune règle de jeu tranchée.

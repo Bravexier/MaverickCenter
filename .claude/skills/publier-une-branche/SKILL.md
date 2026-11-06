@@ -21,12 +21,12 @@ Règles du propriétaire, en détail dans `docs/flux-git.md` (code : `tools/flux
   1. `git fetch --prune origin`, puis reprendre les commits que la branche distante aurait reçus (`resoudre-un-conflit`, étape 1) ;
   2. si la base a bougé (`git merge-base --is-ancestor <base> HEAD` échoue), et seulement à son tour (« L'ordre de passage »), `git rebase <base>`. La branche de refusion de `master` dans `dev` ne se rebase jamais (`docs/flux-git.md`) ;
   3. résoudre les conflits aussitôt : mécaniques par `tech-publication`, données, schéma et sens par leur auteur (`resoudre-un-conflit`) ;
-  4. après un rebase, signaler au chef les contrôles que les changements reçus touchent : il les fait relancer (`controles-avant-rendu`) avant le push ;
+  4. après un rebase, donner le recouvrement (`npm run test:cible -- --apres-rebase --liste`, sans rien lancer) : vide, on pousse ; sinon le chef le fait passer par `tech-qualite` avant le push (`choisir-les-tests`) ;
   5. pousser.
 
   **Jamais de fusion de la base dans la branche.** La seule exception est la refusion de `master` dans `dev`, décrite dans `docs/flux-git.md`.
 - **Le push.** Après un `git fetch --prune origin` juste avant : `git push -u --force-with-lease origin <branche>` la première fois, `git push --force-with-lease origin <branche>` ensuite. Le push forcé de SA PROPRE branche (`feature/<nom>` ou `hotfix/<nom>` créée par nous) après un rebase est TOUJOURS autorisé (choix du propriétaire, 2026-10-29) : on ne le lui redemande pas. Sans `--force-if-includes` : cette forme n'est pas dans la liste autorisée de `.claude/settings.json`. Jamais de push forcé sur `dev`, `master` ni sur la branche d'un autre, jamais `--force` ou `-f` seuls, jamais de rebase d'une branche qui n'est pas la nôtre. En cas d'erreur réseau, jusqu'à 4 reprises, après 2 s, 4 s, 8 s puis 16 s.
-- **Le rapport** donne : la branche, le commit, le résumé du diff (`git diff --stat <base>...HEAD`), et s'il y a eu un rebase, les contrôles à relancer.
+- **Le rapport** donne : la branche, le commit, le résumé du diff (`git diff --stat <base>...HEAD`), et s'il y a eu un rebase, le recouvrement à tester, la pointe d'avant le rebase (`--avant <sha>`) et les fichiers résolus à la main (`resoudre-un-conflit`).
 
 ## L'ordre de passage
 
@@ -34,7 +34,7 @@ Règle du propriétaire (`CLAUDE.md`, « Git ») : éviter une suite de rebases 
 - **L'ordre** : parmi les PR ouvertes vers `dev` dont les fichiers se recoupent, numéro croissant. Une PR sans recouvrement n'attend personne : elle est fusionnée dès que sa CI est verte.
 - **Exception** : demande explicite et urgente du propriétaire → cette PR passe en tête, les autres s'alignent derrière elle sans changer leur ordre entre elles.
 - **Qui impose** : la session principale (seule à avoir les outils GitHub). Elle liste les PR ouvertes vers dev et leurs fichiers, calcule les recouvrements, et pose UN commentaire par PR concernée : l'ordre complet, et « ne rebase ni ne pousse avant la fusion de #N ; ensuite un seul rebase sur dev à jour ». Elle n'en repose un que si l'ordre change. Les autres sessions le reçoivent par leur abonnement à leur PR.
-- **Chaque PR, à son tour** : un seul rebase sur l'état actuel de dev, `test:cible -- --apres-rebase`, push, CI, fusion par la session principale, qui prévient la suivante (commentaire « à toi »).
+- **Chaque PR, à son tour** : un seul rebase sur l'état actuel de dev, le recouvrement (`--apres-rebase --liste`, passé par `tech-qualite` s'il n'est pas vide), push, CI, fusion par la session principale, qui prévient la suivante (commentaire « à toi »).
 - **Pas de rebase « pour suivre dev » pendant l'attente.** Si la PR en tête est bloquée (CI rouge qu'elle corrige, ou plus de réponse), la session principale le dit au propriétaire plutôt que de réordonner seule.
 - **Commentaires GitHub** : footer d'attribution habituel.
 
