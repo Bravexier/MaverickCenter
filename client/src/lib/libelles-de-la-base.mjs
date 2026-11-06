@@ -119,8 +119,8 @@ export const NOMS_DES_TABLES = Object.freeze({
   recette_ingredient: 'Élément de recette',
   recette_produit: 'Produit de recette',
   regle_constante: 'Constante de règle',
-  // le menu latéral d'un onglet des Règles (migration 0091, R184) : une page retirée par un lot emporte son entrée (ON DELETE CASCADE)
-  regles_onglet_entree: 'Entrée du menu d’un onglet des Règles',
+  // un onglet des Règles (migration 0091, R184), cité par son menu latéral (regles_onglet_entree, dans TABLES : son nom vient de là) ; fixe
+  regles_onglet: 'Onglet des Règles',
   sort_mot_cle: 'Étiquette du sort',
   // les fiches de personnage (section 13) qui citent une table écrite : jamais écrites par l'édition des règles
   personnage: 'Fiche de personnage',
@@ -298,7 +298,7 @@ export const NOMS_DES_COLONNES = geler({
   monstre_espece_lieu: { lieu: 'Lieu' },
   monstre_rubrique: { rubrique: 'Rubrique' },
   note_cellule: { cellule: 'Cellule', repond_a: 'Répond à' },
-  page: { type: 'Rubrique du wiki', slug: 'Adresse', resume: 'Résumé', donnees: 'Données', statut: 'Statut' },
+  page: { type: 'Rubrique du wiki', slug: 'Adresse', donnees: 'Données', statut: 'Statut' },
   page_entite: { principale: 'Page principale' },
   personnage_don_obtenu: { source: 'Don « Variable »', entree_id: 'Entrée obtenue' },
   panneau_regles_bloc: { tuile: 'Genre du bloc' },
@@ -311,6 +311,8 @@ export const NOMS_DES_COLONNES = geler({
   race_don: { slug: 'Identifiant court', forme: 'Forme', ethnie_id: 'Ethnie de la fiche' },
   race_don_tableau_cellule: { ligne: 'Ligne', colonne: 'Colonne' },
   race_onglet: { onglet: 'Onglet', dons_rubrique: 'Rubrique des dons', dons_rubrique_nom: 'Colonne du nom du don', dons_rubrique_don: 'Colonne du don' },
+  regles_onglet: { ouverture_page_id: 'Page d’ouverture' },
+  regles_onglet_entree: { adresse: 'Adresse du lien' },
   relation_peuple: { ligne_peuple_id: 'Peuple qui voit', colonne_peuple_id: 'Peuple vu', echelle_id: 'Niveau de relation' },
   sort: {
     ic_direct: 'IC', ic_nm_min: 'IC à partir du NM', imparable: 'Imparable', inesquivable: 'Inesquivable', cout_chakra: 'Coût en chakra',

@@ -206,6 +206,48 @@ body:not(.ed-mode) :is(.ed-capacite, .ed-ajout-capacite) { display: none; }
   .ed-capacite, .ed-ajout-capacite { display: none !important; }
 }
 
+/* Menus latéraux (src/scripts/edition/menus.mjs, glisser.mjs ; lot de l'édition des menus) : une poignée devant chaque entrée, à saisir à la souris, au
+   doigt ou au clavier ; `touch-action: none` sur la poignée seule (le doigt y fait glisser l'entrée, ailleurs la page défile) ; l'entrée glissée
+   soulignée ; « + Ajouter une page » sous le menu d'un onglet, « Créer la page » sur une entrée « bientôt ». Aucune couleur écrite : les jetons du thème. */
+.ed-menu-modifiable > li { display: flex; align-items: center; gap: 0.15rem; flex-wrap: wrap; }
+.ed-menu-modifiable > li > :is(.lateral-menu__lien, .lateral-menu__bientot) { flex: 1 1 8rem; min-width: 0; }
+.ed-poignee {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.9rem;
+  min-height: 2.2rem;
+  padding: 0;
+  color: var(--muted);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: grab;
+  touch-action: none;
+}
+.ed-poignee svg { width: 1.05rem; height: 1.05rem; }
+.ed-poignee:hover { color: var(--accent); border-color: var(--border); }
+.ed-poignee:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; color: var(--accent); }
+.ed-glisse { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); outline: 2px dashed var(--accent); outline-offset: -2px; border-radius: var(--radius-sm); }
+body.ed-glisse-en-cours, body.ed-glisse-en-cours * { cursor: grabbing !important; user-select: none; -webkit-user-select: none; }
+.ed-creer-bientot { font-size: var(--fs-xs); padding: 0.1rem 0.5rem; margin: 0 0 0.25rem 2.05rem; }
+.ed-ajout-page { margin: 0.5rem 0 0 0.85rem; }
+/* l'annonce d'un déplacement, pour les lecteurs d'écran seulement */
+.ed-annonce-menu { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+/* Sous le titre d'une page du guide : son résumé (edition/guide.mjs), puis, pour une page des Règles, la liste « Onglet » et « Supprimer » (edition/menus.mjs) */
+.ed-resume-page { display: grid; gap: 0.15rem; margin: -0.25rem 0 0.6rem; }
+.ed-resume-page .ed-libelle { margin: 0; }
+.ed-page-regles { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.5rem 1rem; margin: 0 0 1rem; }
+.ed-page-regles__onglet { display: grid; gap: 0.15rem; }
+.ed-page-regles__onglet .ed-saisie { width: auto; min-width: 14rem; }
+.ed-page-regles__onglet .ed-saisie:disabled { opacity: 0.7; cursor: not-allowed; }
+.ed-page-regles .ed-aide { font-size: var(--fs-sm); color: var(--muted); }
+.ed-page-regles.ed-supprime { opacity: 1; text-decoration: none; }
+.ed-page-regles.ed-supprime .ed-page-regles__onglet { opacity: 0.45; }
+/* un refus de suppression (409) : les pages qui citent la page, en liens, ou les raisons qui la protègent */
+.ed-refus { margin: 0.35rem 0 0; padding-left: 1.2rem; white-space: normal; }
+.ed-refus li + li { margin-top: 0.15rem; }
+
 /* Page d'une entité créée depuis le site, avant la prochaine version du site (page 404 du site de dev) */
 .ed-page-nouvelle { display: grid; gap: 1rem; }
 .ed-page-nouvelle .banner { margin: 0; }

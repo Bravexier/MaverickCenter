@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 91;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 92;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -264,11 +264,11 @@ CREATE TABLE annonce (
 
 -- Plan des onglets de la rubrique Règles (migration 0091, décisions R184 et R185 : « Fiche de personnage », « Mécaniques générales », « Les combats »,
 -- « Exploration », après Découvrir et L'univers, que le site écrit lui-même) : un onglet, son titre, sa place et la page qu'il ouvre. Son menu latéral
--- est la liste de ses entrées (regles_onglet_entree), dans l'ordre de `rang`. Liste fermée : l'édition n'en crée ni n'en retire (choix du
--- leader-technique : le plan est une donnée de la base, qu'un lot suivant rendra modifiable sur le site de dev ; pas encore dans
--- lib/edition-modele.mjs#TABLES). La page d'ouverture est une entrée page de l'onglet (clé étrangère composée vers regles_onglet_entree, vérifiée à
--- la fin de la transaction : un onglet et ses entrées s'écrivent ensemble) : déplacer cette page dans un autre onglet, ou la supprimer, est refusé
--- tant qu'une autre page n'ouvre pas l'onglet. Pas de provenance (origine, source_ref : feuille de route, retirées à la 1.0).
+-- est la liste de ses entrées (regles_onglet_entree), dans l'ordre de `rang`. Liste fermée, que l'édition du site de dev ne modifie pas : elle n'en
+-- crée ni n'en retire, et l'ordre des onglets comme leur page d'ouverture sont fixes (choix du propriétaire, lot de l'édition des menus : « Non,
+-- fixe ») ; seules leurs entrées se modifient. La page d'ouverture est une entrée page de l'onglet (clé étrangère composée vers regles_onglet_entree,
+-- vérifiée à la fin de la transaction : un onglet et ses entrées s'écrivent ensemble) : déplacer cette page dans un autre onglet, ou la supprimer, est
+-- refusé tant qu'une autre page n'ouvre pas l'onglet. Pas de provenance (origine, source_ref : feuille de route, retirées à la 1.0).
 CREATE TABLE regles_onglet (
   id                TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0 AND id NOT GLOB '*[^a-z0-9-]*' AND id NOT GLOB '*--*' AND id NOT GLOB '-*' AND id NOT GLOB '*-'),
                                                        -- 'fiche-de-personnage', 'mecaniques-generales', 'combats', 'exploration'
@@ -287,7 +287,9 @@ CREATE TABLE regles_onglet (
 --   * une entrée grisée « bientôt » (`libelle` seul) : une puce du propriétaire sans texte encore (R184 (1)) ; aucune aujourd'hui, id 'bientot:<clé>'.
 -- `rang` n'est pas UNIQUE dans l'onglet (comme panneau_regles_bloc.ordre) : SQLite contrôle une contrainte UNIQUE ligne par ligne, et un déplacement
 -- par glisser-déposer renumérote plusieurs entrées dans un même lot ; à égalité, l'id départage. Retirer une page retire son entrée (ON DELETE CASCADE),
--- sauf la page d'ouverture d'un onglet (regles_onglet). Pas de provenance (origine, source_ref : feuille de route, retirées à la 1.0).
+-- sauf la page d'ouverture d'un onglet (regles_onglet). Les entrées se modifient par l'édition du site de dev (choix du propriétaire, lot de l'édition
+-- des menus) : leur ordre par glisser-déposer (entrées « bientôt » comprises), l'onglet d'une page, une page des Règles créée (en fin de menu, ou à la
+-- place d'une entrée « bientôt » qu'elle remplit) ou supprimée. Pas de provenance (origine, source_ref : feuille de route, retirées à la 1.0).
 CREATE TABLE regles_onglet_entree (
   id        TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0),
   onglet_id TEXT    NOT NULL REFERENCES regles_onglet(id),
@@ -1590,6 +1592,11 @@ CREATE TABLE race (
   remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   mono_magie      INTEGER NOT NULL CHECK (mono_magie IN (0, 1)),   -- 1 = « Une seule magie autorisé » (inconvénients de l'onglet de la race) : pas de magie
                                               -- acquise, quelle que soit l'innée (décision R28 du propriétaire : la Lamia ; migration 0022)
+  rang_liste      INTEGER CHECK (rang_liste IS NULL OR rang_liste >= 1),   -- ordre du menu latéral des races, de la liste /races/ et du tableau des
+                                              -- magies innées en bas de /races/ (migration 0092 ; réponse du propriétaire) ; distinct de `ordre`. La fiche
+                                              -- et /magies/ gardent l'ordre du code (client/src/lib/race-kinds.mjs#ORDRE_DES_RACES). NULL : pas encore
+                                              -- rangée, en fin de liste, par nom. Pas UNIQUE : un réordonnancement renumérote plusieurs races dans un même
+                                              -- lot (à égalité, le nom). Valeur d'import : celle de ORDRE_DES_RACES, pures puis hybrides, de 1 à 27.
   CHECK ((don_base_nom IS NULL) = (don_base_type IS NULL) AND (don_base_nom IS NULL) = (don_base_effets IS NULL)),
   CHECK (don_base_nom IS NULL OR don_base_brut IS NOT NULL)
 ) STRICT;

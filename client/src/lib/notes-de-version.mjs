@@ -83,7 +83,7 @@ export const TABLES_LUES = [
   'arme', 'arme_famille', 'arme_type', 'materiau_arme', 'ressource', 'amelioration_equipement', 'gemme', 'bois', 'ingredient_alchimie', 'monnaie', 'materiau',
   'armure', 'armure_emplacement', 'bouclier_classe', 'bouclier', 'bouclier_poids',
   'evenement', 'evenement_extrait', 'evenement_categorie', 'categorie_chronologie', 'mot_cle', 'panneau_regles', 'panneau_regles_bloc', 'composant_onglet',
-  'potion', 'niveau_alchimie', 'annonce',
+  'potion', 'niveau_alchimie', 'annonce', 'regles_onglet', 'regles_onglet_entree',
 ];
 
 /** Les ressources de la page des composants, par genre (dans l'ordre de la page), et leur groupe dans la note. */
@@ -166,7 +166,8 @@ const DEFINITIONS = [
     ordre: (r, x) => [...x.ordreClasse(r.classe_id), 2, r.niveau ?? 0, r.ligne ?? 0, r.rang ?? 0, r.nom],
   },
   {
-    table: 'race', domaine: 'races', cle: ['id'], colonnes: colonnesDe('race'), genre: 'Race',
+    // la place d'une race dans la liste (rang_liste, migration 0092) n'est pas listée race par race : comparerOrdreDesRaces la dit en une ligne
+    table: 'race', domaine: 'races', cle: ['id'], colonnes: colonnesDe('race').filter((c) => c.colonne !== 'rang_liste'), genre: 'Race',
     groupe: (r) => r.nom, entite: (r) => r.nom, ordre: (r, x) => [x.ordreRace(r.id), 0],
   },
   {
@@ -528,9 +529,16 @@ function contexte(ref, dev) {
       const c = ligne('classe', id);
       return [ligne('categorie_classe', c?.categorie_id)?.ordre ?? 0, c?.ordre ?? 0];
     },
+    /**
+     * La place d'une race dans la note : celle de la liste des races (rang_liste, migration 0092 : le menu latéral et /races/), lue dans dev d'abord ;
+     * à défaut (une race sans rang, ou une base d'avant la 0092 : une race retirée que seule la production a), l'ordre du code (ORDRE_DES_RACES),
+     * puis après toutes, par race.ordre.
+     */
     ordreRace: (id) => {
+      const l = ligne('race', id);
+      if (typeof l?.rang_liste === 'number') return l.rang_liste;
       const i = ORDRE_DES_RACES.indexOf(id);
-      return i < 0 ? ORDRE_DES_RACES.length + (ligne('race', id)?.ordre ?? 0) : i;
+      return i < 0 ? 1000 + (l?.ordre ?? 0) : i + 1;
     },
     /**
      * Le nom d'un bloc de panneau de règles : le titre d'une tuile, sinon ses premiers mots entre guillemets (« Toutes les armes ont de base… ») ; une
@@ -720,6 +728,99 @@ function comparerOrdreDesBlocs(ref, dev, x) {
   return sortie;
 }
 
+/**
+ * La partie d'une suite qui change d'ordre entre deux listes des mêmes éléments (`avant`, `apres` : des clés, dans leur ordre, réduites aux éléments
+ * des deux côtés), de la première à la dernière place qui diffère : { avant, apres } (les clés de ces places), ou null si l'ordre est le même.
+ */
+function partieDeplacee(avant, apres) {
+  let debut = 0;
+  while (debut < avant.length && avant[debut] === apres[debut]) debut += 1;
+  if (debut === avant.length) return null;
+  let fin = avant.length - 1;
+  while (fin > debut && avant[fin] === apres[fin]) fin -= 1;
+  return { avant: avant.slice(debut, fin + 1), apres: apres.slice(debut, fin + 1) };
+}
+
+/** Le libellé d'une entrée du menu d'un onglet des Règles : le titre de sa page (dev d'abord), son libellé sinon (un lien, une entrée « bientôt »). */
+const nomDEntree = (e, x) => (e.page_id ? x.ligne('page', e.page_id)?.titre ?? e.page_id : e.libelle ?? e.id);
+
+/**
+ * Le plan des Règles (tables regles_onglet, regles_onglet_entree : migration 0091 ; lot de l'édition des menus), dit en deux sortes de lignes, au domaine
+ * du guide, sous l'onglet :
+ *   - une page qui change d'onglet : « Onglet : Les combats → Exploration », sur la page (déplacée dans l'autre onglet), rangée comme elle ;
+ *   - l'ordre d'un menu, une ligne par onglet dont les entrées présentes des deux côtés ne se lisent plus dans le même ordre : « Ordre du menu : A · B →
+ *     B · A », de la première à la dernière place qui diffère (comme l'ordre des blocs d'un panneau). Une entrée ajoutée (une page créée) ou retirée (une
+ *     page supprimée, ou partie dans un autre onglet) ne compte pas : sa page le dit.
+ * Rien tant que la production n'a pas le plan.
+ */
+function comparerPlanDesRegles(ref, dev, x) {
+  const a = lignesDe(ref, 'regles_onglet_entree');
+  const b = lignesDe(dev, 'regles_onglet_entree');
+  if (!a || !b) return [];
+  const onglets = new Map([...(lignesDe(ref, 'regles_onglet') ?? []), ...(lignesDe(dev, 'regles_onglet') ?? [])].map((o) => [o.id, o]));
+  const titreDOnglet = (id) => onglets.get(id)?.titre ?? id;
+  const rangDOnglet = (id) => onglets.get(id)?.ordre ?? 0;
+  const sortie = [];
+  const avantParId = new Map(a.map((e) => [e.id, e]));
+  for (const e of b) {
+    const avant = avantParId.get(e.id);
+    if (!e.page_id || !avant || avant.onglet_id === e.onglet_id) continue;
+    const page = x.ligne('page', e.page_id);
+    const place = placeDeLaPage(e.page_id);
+    sortie.push(ligneDeNote({
+      def: { table: 'regles_onglet_entree' }, domaine: 'guide', groupe: place.rubrique, entite: page?.titre ?? e.page_id,
+      ordre: [place.rang, place.ordre ?? 999, page?.titre ?? e.page_id, 0], champ: 'Onglet', colonne: null, nature: 'modifie',
+      avant: titreDOnglet(avant.onglet_id), apres: titreDOnglet(e.onglet_id), cle: { id: e.id },
+    }));
+  }
+  const parOnglet = (rows) => {
+    const m = new Map();
+    for (const e of [...rows].sort((p, q) => p.rang - q.rang || (p.id < q.id ? -1 : p.id > q.id ? 1 : 0))) (m.get(e.onglet_id) ?? m.set(e.onglet_id, []).get(e.onglet_id)).push(e);
+    return m;
+  };
+  const menusAvant = parOnglet(a);
+  for (const [onglet, entrees] of parOnglet(b)) {
+    const avant = menusAvant.get(onglet);
+    if (!avant) continue;
+    const ici = new Set(entrees.map((e) => e.id));
+    const la = new Set(avant.map((e) => e.id));
+    const partie = partieDeplacee(avant.filter((e) => ici.has(e.id)).map((e) => e.id), entrees.filter((e) => la.has(e.id)).map((e) => e.id));
+    if (!partie) continue;
+    const parId = new Map([...avant, ...entrees].map((e) => [e.id, e]));
+    const dire = (ids) => ids.map((id) => nomDEntree(parId.get(id), x)).join(' · ');
+    sortie.push(ligneDeNote({
+      def: { table: 'regles_onglet_entree' }, domaine: 'guide', groupe: titreDOnglet(onglet), entite: `Menu « ${titreDOnglet(onglet)} »`,
+      ordre: [rangDOnglet(onglet), -1], champ: 'Ordre du menu', colonne: null, nature: 'modifie', avant: dire(partie.avant), apres: dire(partie.apres),
+      cle: { onglet_id: onglet },
+    }));
+  }
+  return sortie;
+}
+
+/**
+ * L'ordre de la liste des races (race.rang_liste, migration 0092 : le menu latéral des races, /races/ et le tableau des magies innées), en une ligne
+ * quand les races des deux côtés ne s'y lisent plus dans le même ordre : « Ordre de la liste : Nain · Humain → Humain · Nain » (de la première à la
+ * dernière place qui diffère ; tri `rang_liste IS NULL, rang_liste, nom`). Une race ajoutée ou retirée est dite par la table race. Rien tant que la
+ * production n'a pas la colonne.
+ */
+function comparerOrdreDesRaces(ref, dev) {
+  const a = lignesDe(ref, 'race');
+  const b = lignesDe(dev, 'race');
+  if (!a?.length || !b?.length || !('rang_liste' in a[0]) || !('rang_liste' in b[0])) return [];
+  const trier = (rows) => [...rows].sort((p, q) => Number(p.rang_liste === null) - Number(q.rang_liste === null) || (p.rang_liste ?? 0) - (q.rang_liste ?? 0)
+    || (p.nom < q.nom ? -1 : p.nom > q.nom ? 1 : 0));
+  const ici = new Set(b.map((r) => r.id));
+  const la = new Set(a.map((r) => r.id));
+  const partie = partieDeplacee(trier(a).filter((r) => ici.has(r.id)).map((r) => r.id), trier(b).filter((r) => la.has(r.id)).map((r) => r.id));
+  if (!partie) return [];
+  const noms = new Map([...a, ...b].map((r) => [r.id, r.nom]));
+  const dire = (ids) => ids.map((id) => noms.get(id)).join(' · ');
+  return [ligneDeNote({
+    def: { table: 'race' }, domaine: 'races', groupe: null, entite: 'Liste des races', ordre: [-1], champ: 'Ordre de la liste', colonne: null,
+    nature: 'modifie', avant: dire(partie.avant), apres: dire(partie.apres), cle: {},
+  })];
+}
+
 /** Relations entre peuples : « <peuple> voit <peuple> : Neutre → Haine » (sens R12 : la ligne voit la colonne). */
 function comparerRelations(ref, dev, x) {
   const devRows = lignesDe(dev, 'relation_peuple');
@@ -776,6 +877,8 @@ export function comparerBases(ref, dev) {
     ...comparerRelations(ref, dev, x),
     ...comparerCategoriesDesEvenements(ref, dev, x),
     ...comparerOrdreDesBlocs(ref, dev, x),
+    ...comparerPlanDesRegles(ref, dev, x),
+    ...comparerOrdreDesRaces(ref, dev),
   ];
   const rangDomaine = (d) => DOMAINES.findIndex((x_) => x_.id === d);
   lignes.sort((p, q) => rangDomaine(p.domaine) - rangDomaine(q.domaine) || comparerOrdres(p.ordre, q.ordre));

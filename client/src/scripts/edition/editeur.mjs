@@ -340,7 +340,9 @@ export function demarrer(racine, etatService) {
           ed_.ligne = e.corps.ligne;
         }
       }
-      annoncer(`Non enregistré : ${e.message}${conflit}`, 'erreur');
+      // un refus qu'une extension sait détailler (une page des Règles citée ou protégée : les pages qui la citent, en liens ; edition/menus.mjs)
+      const detaille = conflit ? null : actives().map((x) => x.refus?.(ed, e)).find(Boolean);
+      annoncer(detaille ?? `Non enregistré : ${e.message}${conflit}`, 'erreur');
     } finally {
       occupe = false;
       confirmer.disabled = false;

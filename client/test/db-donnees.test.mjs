@@ -63,7 +63,7 @@ test('la base contient les domaines : pages, magies et sorts, classes et capacit
   assert.equal(n('race_onglet'), n('race'), 'chaque race a son onglet');
   assert.equal(n('magie'), pagesDuType('magies'), 'une ligne magie par page de magie');
   // décision R1 (27 races et non 23) : les 27 races de la liste du propriétaire sont là ; une race créée depuis le site ne la contredit pas
-  assert.equal(ORDRE_DES_RACES.length, 27);
+  assert.equal(historique.effectifDImport('race'), 27, 'décision R1 : 27 races à l’import');
   const races = new Set(db.prepare('SELECT id FROM race').all().map((r) => r.id));
   for (const id of ORDRE_DES_RACES) assert.ok(races.has(id), `décision R1 : ${id}`);
   for (const t of ['ressource', 'recette', 'arme', 'armure', 'metier', 'etat', 'peuple', 'note_cellule', 'ecart_source']) assert.ok(n(t) > 0, `${t} est rempli`);

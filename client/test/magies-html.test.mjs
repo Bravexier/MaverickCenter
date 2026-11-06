@@ -501,7 +501,9 @@ const page = (slug) => pages.find((p) => p.slug === slug)?.html ?? '';
 const texteDe = (html) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 const carteNonCompatible = (html) => contenu(html, html.indexOf('<article class="affinite affinite--incompatible">'), 'article');
 
-test('disponibilité par race : une seule liste, dans l’ordre de /races/, sans races pures / hybrides, sans les races qui ne l’ont pas, sans lien vers le tableau', options, () => {
+// L'ordre figé ORDRE_DES_RACES (l'ancien ordre de /races/) : /magies/ le garde quand /races/ suit race.rang_liste (réponse du propriétaire « /races/ suit,
+// le reste figé », migration 0092)
+test('disponibilité par race : une seule liste, dans l’ordre figé ORDRE_DES_RACES, sans races pures / hybrides, sans les races qui ne l’ont pas, sans lien vers le tableau', options, () => {
   for (const { slug, html } of pages) {
     const section = contenu(html, html.indexOf('<section class="relations" id="races-disponibles"'), 'section');
     for (const interdit of ['Races pures', 'Races hybrides', 'ne peuvent pas l’avoir', '<details', 'Voir le tableau de toutes les races', '#magies-innees']) {
@@ -510,7 +512,7 @@ test('disponibilité par race : une seule liste, dans l’ordre de /races/, sans
     assert.equal([...section.matchAll(/<ul class="chips">/g)].length, 1, `${slug} : une seule liste`);
     const races = [...section.matchAll(/<a class="chip" href="[^"]*\/races\/([^/"]+)\/">/g)].map((m) => `races/${m[1]}`);
     assert.ok(races.length > 0, slug);
-    assert.deepEqual(races, ORDRE_DES_RACES.filter((r) => races.includes(r)), `${slug} : ordre de /races/`);
+    assert.deepEqual(races, ORDRE_DES_RACES.filter((r) => races.includes(r)), `${slug} : ordre figé ORDRE_DES_RACES`);
   }
   // le Feu : races pures et hybrides mêlées, dans l'ordre de la liste
   const feu = page('magie-du-feu');

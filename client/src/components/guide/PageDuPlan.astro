@@ -15,7 +15,8 @@ import { loadWiki, typeOf, url, type WikiEntry } from '../../lib/wiki';
 // `ouverture` : l'adresse d'un onglet (/regles/<onglet>/) ou des Règles (/regles/ : le premier onglet ; pages/regles/[...page].astro,
 // pages/regles/index.astro), qui montre la page d'ouverture de l'onglet ; pour ne pas faire deux pages du même texte aux yeux des moteurs de
 // recherche, elle désigne l'adresse propre de cette page comme canonique (<link rel="canonical">). Son titre est celui de l'onglet.
-// Mode modification du site de dev (demande du propriétaire) : titre et texte modifiables (src/scripts/edition/guide.mjs), adresses des onglets comprises.
+// Mode modification du site de dev (demande du propriétaire) : titre, résumé et texte modifiables (src/scripts/edition/guide.mjs), adresses des onglets
+// comprises ; le menu latéral (ordre, onglet de la page, ajout et suppression d'une page : src/scripts/edition/menus.mjs).
 interface Props {
   entry: WikiEntry;
   ouverture?: boolean;
@@ -36,7 +37,7 @@ const menu = menuLateralDe(entry.id, entries);
   {ouverture && <link slot="tete" rel="canonical" href={url(cheminDePage(entry.id))} />}
   {
     menu ? (
-      <MenuLateral rubrique={menu.rubrique} pages={menu.pages} entry={entry}>
+      <MenuLateral rubrique={menu.rubrique} pages={menu.pages} entry={entry} edition={menu.edition}>
         <PageDuGuide entry={entry} entries={entries} modifiable={modifiable} />
       </MenuLateral>
     ) : (

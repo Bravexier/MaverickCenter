@@ -239,6 +239,16 @@ export const TRADUCTIONS = {
       },
     },
   },
+  ordonner: {
+    // l'ordre du menu latéral d'un onglet des Règles, d'un bloc (serveur/edition-plan.mjs) : l'onglet est l'élément de l'adresse
+    ACTION: {
+      table: 'regles_onglet',
+      champs: { ids: { type: 'categories', libelle: 'Les identifiants de toutes les entrées du menu, dans le nouvel ordre', requis: true } },
+      traduire({ ligne, valeurs }) {
+        return { operations: [{ op: 'ordonner', onglet: ligne.id, ids: valeurs.ids }] };
+      },
+    },
+  },
 };
 
 /** La traduction d'une méthode (ou d'une action : 'ACTION') d'un objet du registre, ou null. */

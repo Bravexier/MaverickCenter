@@ -105,9 +105,10 @@ def emit_frontmatter(p):
 EQUIPEMENT = {'equipement-inventaire', 'armes', 'armures', 'bouclier', 'baton-magique', 'livre-parchemin', 'accessoires', 'pieces-elementaires'}
 CRAFT = {'familiers', 'maison', 'machine-de-guerresiege', 'fievre-des-marais', 'maladie', 'fiche-de-tour'}
 # Pages créées depuis le site de dev (client/serveur/edition.mjs#creerPage, FAMILLE_DES_PAGES_DU_SITE) : provenance « Site de dev › édition du AAAA-MM-JJ »,
-# famille des pages de leur type.
+# famille des pages de leur type. Une page des Règles (guide/…) créée sur le site entre en famille `docs`, sans source Google Doc : pas de nouvelle
+# famille (la provenance sera retirée à la 1.0).
 SITE_DE_DEV = 'Site de dev › '
-FAMILLE_DES_PAGES_DU_SITE = {'metiers': 'docs', 'races': 'races', 'classes': 'classes', 'capacites': 'classes'}
+FAMILLE_DES_PAGES_DU_SITE = {'metiers': 'docs', 'races': 'races', 'classes': 'classes', 'capacites': 'classes', 'guide': 'docs'}
 
 
 def origine_migration(type_, slug, statut, sources):

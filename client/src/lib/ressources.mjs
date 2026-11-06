@@ -10,7 +10,7 @@
 //   - supprimer (DELETE) : l'entité ENTITES nommée par `ecriture.supprimer` (qui doit avoir `suppression`), avec ses retraits des fiches (R42…) ;
 //   - ou une opération du lot (`operations`, `actions` : OPERATIONS_DU_LOT) quand le site de dev écrit la table par elle et non par TABLES ou ENTITES
 //     (cases des relations entre peuples, magies innées d'une race, catégories d'un événement, valeurs propres d'une capacité de monstre, fusion de
-//     deux mots-clés) : serveur/ressources.mjs#TRADUCTIONS traduit la requête en cette opération.
+//     deux mots-clés, ordre du menu d'un onglet des Règles) : serveur/ressources.mjs#TRADUCTIONS traduit la requête en cette opération.
 // Une ressource sans `ecriture` ni opération, et dont aucune table n'est dans TABLES, est en lecture seule : l'API le dit (405) au lieu d'écrire en SQL
 // direct.
 //
@@ -129,7 +129,16 @@ export function cleDuSegment(segment, colonnes, entieres = []) {
  * Les opérations du lot du service d'édition (serveur/edition.mjs#OPERATIONS) qu'une ressource peut nommer dans `operations` ou `actions` : celles qui
  * écrivent des tables que ni TABLES ni ENTITES ne décrivent (test/ressources-registre.test.mjs : chacune existe au service, chacune est joignable).
  */
-export const OPERATIONS_DU_LOT = ['relations', 'magies_innees', 'categories', 'valeurs_de_capacite', 'fusionner_mots_cles'];
+export const OPERATIONS_DU_LOT = ['relations', 'magies_innees', 'categories', 'valeurs_de_capacite', 'fusionner_mots_cles', 'ordonner'];
+
+/**
+ * Les tables de lib/edition-modele.mjs#TABLES qu'aucune ressource ne laisse modifier directement (lectureSeule), avec la raison : le site de dev les
+ * écrit par ses pages, et l'API par une autre voie (test/ressources-registre.test.mjs les exempte de « toute table de TABLES a sa ressource »).
+ */
+export const TABLES_SANS_ECRITURE_DIRECTE = Object.freeze({
+  regles_onglet_entree: 'le menu d’un onglet des Règles reste en lecture seule (choix du leader-technique) : son ordre par l’action `ordre` de '
+    + 'onglets-des-regles, une entrée naît et part avec sa page des Règles (pages-du-guide)',
+});
 
 /** Les méthodes qu'une opération du lot peut servir. */
 const METHODES_D_OPERATION = ['POST', 'PATCH', 'DELETE'];

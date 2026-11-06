@@ -126,7 +126,7 @@ test('le fil d’Ariane : Découvrir, l’onglet de la page, Guide du MJ ; la co
 const menuLateral = (main, titre) => {
   const nav = main.match(new RegExp(`<nav class="lateral-menu" aria-label="${titre}">([\\s\\S]*?)<\\/nav>`));
   assert.ok(nav, `le menu latéral « ${titre} »`);
-  const entrees = [...nav[1].matchAll(/<li><a class="lateral-menu__lien" href="([^"]+)"( aria-current="page")?>([^<]+)<\/a><\/li>/g)]
+  const entrees = [...nav[1].matchAll(/<li(?: [^>]*)?><a class="lateral-menu__lien" href="([^"]+)"( aria-current="page")?>([^<]+)<\/a><\/li>/g)]
     .map((m) => [m[1], m[3].replace(/&#39;/g, "'").replace(/&amp;/g, '&').replace(/&quot;/g, '"'), Boolean(m[2])]);
   return { entrees, html: nav[1] };
 };
@@ -286,6 +286,31 @@ test('/mj/ et /regles/artisanat/ : le titre et le résumé de chaque page, liés
   assert.deepEqual(entrees.map((e) => e[0]), entreesDuMenuLateral(ongletDe('guide/les-pieges'), pagesConstruites).map((e) => `/${e.id ? cheminDePage(e.id) : e.adresse}`));
   assert.match(html, /<a href="\/regles\/exploration\/" aria-current="true">Exploration<\/a>/);
   assert.match(html, /data-group="regles" aria-pressed="true" aria-current="true"/, 'la rubrique Règles ouverte');
+  // lot de l'édition des menus : l'Artisanat reçoit le mode modification du site de dev (son menu se réordonne, « + Ajouter une page »)
+  assert.match(html, /<div data-edition data-api="\/api\/" data-page="regles\/artisanat"/, 'le mode modification');
+  assert.match(main, /<ol class="lateral-menu__liste" data-ed-menu="onglet:exploration">/);
+});
+
+// Lot de l'édition des menus (« changer l'ordre des menu latéraux (par un glisser déposer) ») : chaque menu d'onglet porte son onglet (data-ed-menu) et,
+// sur chaque entrée, l'id et le rang de sa ligne de regles_onglet_entree (data-ed-entree, data-ed-rang) : le mode modification réordonne par eux
+// (src/scripts/edition/menus.mjs, opération `ordonner`) ; une entrée de page se retrouve par l'id de sa page (`page:<id>`), dont elle montre le titre
+test('le menu latéral de chaque onglet porte l’id et le rang de chaque ligne de regles_onglet_entree, dans l’ordre, pour le mode modification', options, () => {
+  for (const onglet of ongletsDesRegles()) {
+    const { main } = lire(onglet.chemin.slice(0, -1));
+    const nav = main.match(new RegExp(`<nav class="lateral-menu" aria-label="${echappe(onglet.titre)}">([\\s\\S]*?)<\\/nav>`))[1];
+    assert.match(nav, new RegExp(`<ol class="lateral-menu__liste" data-ed-menu="onglet:${onglet.id}">`), onglet.id);
+    const lignes = db.prepare('SELECT id, rang, page_id FROM regles_onglet_entree WHERE onglet_id = ? ORDER BY rang, id').all(onglet.id)
+      .filter((l) => l.page_id === null || pageDe(l.page_id));
+    const posees = [...nav.matchAll(/<li data-ed-entree="([^"]+)" data-ed-rang="(\d+)">(?:<a class="lateral-menu__lien" href="([^"]+)"[^>]*>([^<]+)<\/a>)?/g)];
+    assert.deepEqual(posees.map((m) => [m[1], Number(m[2])]), lignes.map((l) => [l.id, l.rang]), `${onglet.id} : les lignes de la base, dans l’ordre`);
+    assert.equal((nav.match(/<li[ >]/g) ?? []).length, posees.length, `${onglet.id} : chaque entrée porte les siens`);
+    for (const [, id, , href, titre] of posees) {
+      if (!id.startsWith('page:')) continue;
+      const page = pageDe(id.slice('page:'.length));
+      assert.equal(href, `/${cheminDePage(page.id)}`, id);
+      assert.equal(titre.replace(/&#39;/g, "'").replace(/&amp;/g, '&').replace(/&quot;/g, '"'), page.titre, `${id} : le titre de la page`);
+    }
+  }
 });
 
 test('Découvrir : une page par entrée du menu, dans l’ordre ; plus de « Rejoindre une partie » (ni au menu, ni construite)', options, () => {

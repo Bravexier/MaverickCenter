@@ -10,6 +10,7 @@ import { copyFileSync, readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const MIGRATION = '0091-r184-plan-des-regles.sql';
@@ -59,34 +60,68 @@ function copie(t) {
   return base;
 }
 
-test('R184, R185 : quatre onglets, dans l’ordre de la ligne 2 de la rubrique Règles, chacun avec sa page d’ouverture', () => {
-  assert.deepEqual(db.prepare('SELECT id, titre, ordre, ouverture_page_id FROM regles_onglet ORDER BY ordre, id').all().map((r) => ({ ...r })), [
-    { id: 'fiche-de-personnage', titre: 'Fiche de personnage', ordre: 1, ouverture_page_id: 'guide/creer-son-personnage' },
-    { id: 'mecaniques-generales', titre: 'Mécaniques générales', ordre: 2, ouverture_page_id: 'guide/reussir-une-action' },
-    { id: 'combats', titre: 'Les combats', ordre: 3, ouverture_page_id: 'guide/le-tour-de-jeu' },
-    { id: 'exploration', titre: 'Exploration', ordre: 4, ouverture_page_id: 'guide/la-montee-de-niveau' },
-  ]);
+// Le site de dev est la source de ce qu'il modifie : l'édition réordonne les entrées des menus, change une page d'onglet, crée ou supprime une page des
+// Règles (lot de l'édition des menus). Le plan de la migration 0091 se lit donc dans l'historique (lignesDImport) ; l'état courant, par des invariants.
+const historique = historiqueSite(db);
+const ENTREES_D_IMPORT = historique.lignesDImport('regles_onglet_entree');
+/** Le menu d'un onglet à l'import, dans l'ordre (rang, puis id) : l'id de la page, ou le libellé d'une entrée qui n'est pas une page. */
+const menuDImport = (onglet) => ENTREES_D_IMPORT.filter((e) => e.onglet_id === onglet)
+  .sort((a, b) => a.rang - b.rang || (a.id < b.id ? -1 : 1)).map((e) => e.page_id ?? e.libelle);
+const ONGLETS = [
+  { id: 'fiche-de-personnage', titre: 'Fiche de personnage', ordre: 1, ouverture_page_id: 'guide/creer-son-personnage' },
+  { id: 'mecaniques-generales', titre: 'Mécaniques générales', ordre: 2, ouverture_page_id: 'guide/reussir-une-action' },
+  { id: 'combats', titre: 'Les combats', ordre: 3, ouverture_page_id: 'guide/le-tour-de-jeu' },
+  { id: 'exploration', titre: 'Exploration', ordre: 4, ouverture_page_id: 'guide/la-montee-de-niveau' },
+];
+
+test('R184, R185 : quatre onglets, dans l’ordre de la ligne 2 de la rubrique Règles, chacun avec sa page d’ouverture ; l’édition n’y touche pas', () => {
+  const tri = (l) => [...l].sort((a, b) => a.ordre - b.ordre || (a.id < b.id ? -1 : 1));
+  assert.deepEqual(tri(historique.lignesDImport('regles_onglet')).map((r) => ({ ...r })), ONGLETS);
+  // l'ordre des onglets et leur page d'ouverture sont fixes (choix du propriétaire : « Non, fixe ») : l'état courant est celui de l'import
+  assert.deepEqual(db.prepare('SELECT id, titre, ordre, ouverture_page_id FROM regles_onglet ORDER BY ordre, id').all().map((r) => ({ ...r })), ONGLETS);
+  assert.equal(historique.tables().includes('regles_onglet'), false, 'aucune modification du site sur regles_onglet');
 });
 
-test('R184, R185 : chaque menu latéral suit la spécification, une page par entrée, sans rang en double ; « Artisanat » est un lien', () => {
+test('R184, R185 : à l’import, chaque menu latéral suit la spécification, une page par entrée, rangs de 1 à n ; « Artisanat » est un lien', () => {
   for (const [onglet, attendu] of Object.entries(PLAN)) {
-    assert.deepEqual(menu(db, onglet), attendu, onglet);
-    const rangs = db.prepare('SELECT rang FROM regles_onglet_entree WHERE onglet_id = ? ORDER BY rang').all(onglet).map((r) => r.rang);
+    assert.deepEqual(menuDImport(onglet), attendu, onglet);
+    const rangs = ENTREES_D_IMPORT.filter((e) => e.onglet_id === onglet).map((e) => e.rang).sort((a, b) => a - b);
     assert.deepEqual(rangs, rangs.map((_, i) => i + 1), `${onglet} : rangs 1 à ${rangs.length}`);
   }
-  assert.deepEqual({ ...db.prepare("SELECT * FROM regles_onglet_entree WHERE page_id IS NULL").get() },
-    { id: 'lien:regles/artisanat', onglet_id: 'exploration', rang: 7, page_id: null, libelle: 'Artisanat', adresse: 'regles/artisanat/' });
-  // aucune entrée « bientôt » (spécification, Bilan) ; l'entrée d'une page porte l'id 'page:<id de la page>'
-  assert.equal(db.prepare("SELECT count(*) AS n FROM regles_onglet_entree WHERE id GLOB 'bientot:*'").get().n, 0);
-  assert.equal(db.prepare("SELECT count(*) AS n FROM regles_onglet_entree WHERE page_id IS NOT NULL AND id <> 'page:' || page_id").get().n, 0);
+  assert.equal(ENTREES_D_IMPORT.length, Object.values(PLAN).flat().length);
+  assert.deepEqual(ENTREES_D_IMPORT.filter((e) => e.page_id === null),
+    [{ id: 'lien:regles/artisanat', onglet_id: 'exploration', rang: 7, page_id: null, libelle: 'Artisanat', adresse: 'regles/artisanat/' }]);
+  // aucune entrée « bientôt » à l'import (spécification, Bilan) ; l'entrée d'une page porte l'id 'page:<id de la page>'
+  assert.equal(ENTREES_D_IMPORT.filter((e) => e.id.startsWith('bientot:')).length, 0);
+  assert.equal(ENTREES_D_IMPORT.filter((e) => e.page_id !== null && e.id !== `page:${e.page_id}`).length, 0);
+});
+
+test('plan courant : ids des trois sortes d’entrées, pages du guide seulement, chaque onglet ouvert sur une page de son menu, « Artisanat » en Exploration', () => {
+  const entrees = db.prepare('SELECT * FROM regles_onglet_entree').all();
+  for (const e of entrees) {
+    if (e.page_id !== null) assert.equal(e.id, `page:${e.page_id}`, e.id);
+    else if (e.adresse !== null) assert.equal(e.id, `lien:${e.adresse.replace(/\/$/, '')}`, e.id);
+    else assert.match(e.id, /^bientot:[a-z0-9-]+$/, e.id);
+  }
+  assert.equal(db.prepare("SELECT count(*) AS n FROM regles_onglet_entree e JOIN page p ON p.id = e.page_id WHERE p.type <> 'guide'").get().n, 0);
+  for (const { id, ouverture_page_id: ouverture } of ONGLETS) {
+    assert.equal(db.prepare('SELECT onglet_id FROM regles_onglet_entree WHERE page_id = ?').get(ouverture)?.onglet_id, id, `${id} : ${ouverture}`);
+  }
+  // un lien ne change pas d'onglet (seule une page en change)
+  assert.equal(db.prepare("SELECT onglet_id FROM regles_onglet_entree WHERE id = 'lien:regles/artisanat'").get()?.onglet_id, 'exploration');
 });
 
 test('R184 (P7) : toute page guide/… a sa place : dans un onglet des Règles, ou hors sujet (Découvrir, L’univers, Guide du MJ), ou fixture', () => {
+  const HORS_PLAN = ['guide/bienvenue draft', 'guide/campagne-ou-scenario-one-shot draft', 'guide/guide-pour-mj-maverick draft',
+    'guide/l-univers draft', 'guide/un-maitre-du-jeu draft', 'guide/utiliser-ce-wiki example'];
+  // à l'import
+  const dansLePlan = new Set(ENTREES_D_IMPORT.map((e) => e.page_id).filter(Boolean));
+  const horsPlanDImport = historique.lignesDImport('page').filter((p) => p.type === 'guide' && !dansLePlan.has(p.id)).map((p) => `${p.id} ${p.statut}`).sort();
+  assert.deepEqual(horsPlanDImport, HORS_PLAN);
+  // aujourd'hui : une page créée sur le site entre dans un onglet ; une page hors plan ne peut qu'avoir été retirée
   const horsPlan = db.prepare(`SELECT id, statut FROM page WHERE type = 'guide'
     AND id NOT IN (SELECT page_id FROM regles_onglet_entree WHERE page_id IS NOT NULL) ORDER BY id`).all().map((r) => `${r.id} ${r.statut}`);
-  assert.deepEqual(horsPlan, ['guide/bienvenue draft', 'guide/campagne-ou-scenario-one-shot draft', 'guide/guide-pour-mj-maverick draft',
-    'guide/l-univers draft', 'guide/un-maitre-du-jeu draft', 'guide/utiliser-ce-wiki example']);
-  assert.equal(db.prepare("SELECT count(*) AS n FROM regles_onglet_entree e JOIN page p ON p.id = e.page_id WHERE p.type <> 'guide'").get().n, 0);
+  assert.deepEqual(horsPlan.filter((p) => !HORS_PLAN.includes(p)), []);
 });
 
 test('regles_onglet_entree : une page, un lien ou une entrée « bientôt », exactement ; une page n’est que dans un onglet', (t) => {

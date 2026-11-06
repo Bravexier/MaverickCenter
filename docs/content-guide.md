@@ -69,8 +69,12 @@ voir l'exception ci-dessus).
 carte des magies et de la page des classes (demande du propriétaire), en deux groupes côte à côte, races pures à gauche et hybrides à droite, l'un sous l'autre
 sur un écran étroit. Chaque groupe a sa couleur, celle du bandeau des pages de race (`RACE_COLORS` dans `lib/race-kinds.mjs`, source unique) ; repère visuel
 sans valeur de règle. La liste, `RacePage.astro` et la fiche posent la classe de la nature (`couleur-race-pure`, `couleur-race-hybride` : famille `race` de
-la palette, émise par la page), jamais un style (« Couleurs du site : la palette en classes »). L'ordre est celui du propriétaire (`ORDRE_DES_RACES`, différent de l'ordre de l'onglet « Race » de la fiche) ;
-une race absente de cette liste vient après les autres, par titre. Une pastille ne porte que le nom de la race ; son accroche est en infobulle (`Infobulles.astro`,
+la palette, émise par la page), jamais un style (« Couleurs du site : la palette en classes »). L'ordre est celui de la liste des races, une donnée de la base
+(`race.rang_liste`, migration `0092`, d'abord l'ancien ordre du propriétaire ; réponse du propriétaire « /races/ suit, le reste figé ») : la liste, le menu latéral
+des races et le tableau des magies innées le suivent (`lib/races.ts#ordreDeLaListeDesRaces`, passé à `lib/race-kinds.mjs#groupRaces`, qui garde les groupes par
+nature), et il se réordonne sur le site de dev, chaque race dans son groupe (glisser-déposer du menu latéral, `docs/serveur.md`, « Plan des Règles et liste des
+races ») ; une race sans rang (créée sur le site de dev) vient après les autres de son groupe, par nom. La fiche et `/magies/` gardent l'ordre figé du code
+(`ORDRE_DES_RACES`), et l'ordre de l'onglet « Race » de la fiche (`race.ordre`) est un autre ordre encore. Une pastille ne porte que le nom de la race ; son accroche est en infobulle (`Infobulles.astro`,
 `title` sans JavaScript) ; ni magies innées ni classe raciale : le tableau du bas de page donne les magies innées, la page de la race sa classe raciale.
 
 **Tableaux des magies** (demande du propriétaire, qui remplacent l'ancienne page `/wiki/races-et-magies/`, supprimée) : en bas de `/races/`, les magies innées
@@ -411,8 +415,8 @@ Les 15 pages de `/magies/<magie>/` ne sont **pas** rendues depuis leur Markdown 
 des tables typées de la base, lues par `client/src/lib/magies-db.mjs` : `magie`, `magie_role`, `magie_resistance`, `etat`, `v_magie_incompatible`, `magie_ethnie_secondaire`, `mode_hyper_effet`,
 `sort`, `sort_type`, `sort_mode`, `sort_bonus_maitrise`, `sort_etat`, `etat`, `etat_magie`, `etat_stade`, `invocation`, `invocation_bloc`, `creature`, `caracteristique`, `creature_caracteristique`, `creature_bonus_npm`, `creature_attaque`, `creature_capacite`, `creature_effet`, `amelioration_cadaverique`, `regle_magie`.
 Le corps Markdown de la page (fabriqué depuis `data/rows`) ne sert plus qu'à la recherche plein texte et aux `[[liens]]`. Restent lus dans le front matter : le titre, les alias, le statut, et la
-section « Disponibilité par race » (`magies_innees` des pages de race, avec l'exception du Nain, voir plus haut) : **une seule liste**, les races qui peuvent l'avoir en magie innée, dans l'ordre de `/races/`
-(`ORDRE_DES_RACES`), sans séparer races pures et hybrides, sans la liste des races qui ne le peuvent pas ni lien vers le tableau de `/races/` (demande du propriétaire). Une page de magie sans ligne dans `magie` (la magie d'exemple) garde le rendu Markdown.
+section « Disponibilité par race » (`magies_innees` des pages de race, avec l'exception du Nain, voir plus haut) : **une seule liste**, les races qui peuvent l'avoir en magie innée, dans l'ordre figé
+`ORDRE_DES_RACES` (l'ancien ordre de `/races/`, qui suit maintenant `race.rang_liste` : réponse du propriétaire « /races/ suit, le reste figé »), sans séparer races pures et hybrides, sans la liste des races qui ne le peuvent pas ni lien vers le tableau de `/races/` (demande du propriétaire). Une page de magie sans ligne dans `magie` (la magie d'exemple) garde le rendu Markdown.
 
 **Pour changer une magie ou un sort, on change la base, pas le `.md` fabriqué** (une modification du `.md` n'a plus d'effet sur ces pages). Aucun importeur ne réécrit encore ces lignes depuis les classeurs :
 le changement passe par une migration `data/migrations/NNNN-<nom>.sql` appliquée par `npm run db:migrate` (voir `docs/sql/remplissage.md`). Les notes de cellule d'un sort sont dans sa colonne `remarque`
@@ -513,8 +517,9 @@ typées lues par `client/src/lib/races-db.mjs`, jamais le Markdown. **Aucun tabl
   à son propre niveau (« Humain » suivi de « Central · Désertique »). Les relations entre peuples d'une même race sont dans une petite matrice. Une race sans peuple dans l'onglet (Anansi, Farfadet, Goleois) le dit.
 - **Menu latéral de toutes les races** (demande du propriétaire : « comme pour chronologie, et les bases, un menu latéral qui récapitule toutes les races sur le menu d'une race ouverte ») :
   `components/race/MenuDesRaces.astro`, posé par `pages/[type]/[slug].astro` autour de la page (fil d'Ariane, gabarit, pied de page) quand la race a ses lignes dans la base. Le menu latéral
-  commun des onglets des Règles (`components/guide/MenuLateral.astro`, la page passée en contenu ; classes `lateral*`, feuille `styles/guide/menu-lateral.css`) : à gauche les races de `/races/` dans le même ordre (`groupRaces` : pures puis hybrides, `ORDRE_DES_RACES`),
+  commun des onglets des Règles (`components/guide/MenuLateral.astro`, la page passée en contenu ; classes `lateral*`, feuille `styles/guide/menu-lateral.css`) : à gauche les races de `/races/` dans le même ordre (`groupRaces` : pures puis hybrides, chaque groupe dans l'ordre de `race.rang_liste`),
   en une seule liste sans titre de groupe (réponse du propriétaire : « Une seule liste »), la race ouverte marquée (`aria-current`), l'accent du site (réponse : « Accent du site ») ; petit écran (<= 56rem), le menu replié au-dessus de la page, ouvert sans JavaScript.
+  Chaque race y porte son id, son rang et son groupe (`data-ed-entree`, `data-ed-rang`, `data-ed-groupe`) : sur le site de dev, le menu se réordonne par glisser-déposer, une race dans son groupe (les pages des Règles, ci-dessous : « Les pages du guide »).
 - Le CSS est dans `client/src/styles/race/`, injecté par `RacePage.astro` (`?raw`) seulement, comme celui des magies (le menu latéral, lui, lit `styles/guide/menu-lateral.css` par `MenuLateral.astro`). `test/races-html.test.mjs` contrôle le site construit (la CI le lance après le build).
 
 **Pour changer une race, on change la base** (une migration `data/migrations/NNNN-<nom>.sql`, voir `docs/sql/remplissage.md`) : modifier le `.md` fabriqué n'a plus d'effet sur la page.
@@ -1314,8 +1319,31 @@ dev (un commit la change) ni cherchée par la recherche.
   `test/nav.test.mjs` les compare à la table `regles_onglet`. Fil d'Ariane « Accueil › <onglet> ». La page « Artisanat » (`/regles/artisanat/`) est
   une entrée lien d'Exploration : elle est à côté de ce menu, son entrée marquée, et l'onglet marqué au menu du site. Le mode modification du site de
   dev porte sur la page affichée (adresses des onglets comprises). Le texte des pages reste celui de la base : rien n'est réécrit.
+  **Sur le site de dev** (lot de l'édition des menus ; demandes du propriétaire : « changer l'ordre des menu latéraux (par un glisser déposer) », « ajouter
+  / supprimer une page » ; réponses « Règles + Races », « Oui, par une liste », « Titre, onglet, résumé », « Refus si citée, puis 404 » ;
+  `src/scripts/edition/menus.mjs`, le geste `glisser.mjs`, la logique `lib/ordre-des-menus.mjs` ; le service : `docs/serveur.md`, « Plan des Règles et
+  liste des races ») : le menu latéral de chaque onglet (et de l'Artisanat) porte son onglet (`data-ed-menu="onglet:<id>"`) et, sur chaque entrée, l'id
+  et le rang de sa ligne de `regles_onglet_entree` (`data-ed-entree`, `data-ed-rang` ; `lib/livres.mjs#editionDuMenuLateral`). En mode modification :
+  une poignée devant chaque entrée (pages, lien, « bientôt ») la fait glisser à la souris ou au doigt (Pointer Events ; `touch-action: none` sur la
+  poignée seule ; défilement automatique ; Échap annule) ou au clavier (↑ ↓, Début, Fin ; la nouvelle place annoncée, `aria-live`) ; sur petit écran le
+  menu replié s'ouvre ; « Enregistrer » envoie une opération `ordonner` par menu changé. Sous le menu d'un onglet, **« + Ajouter une page »** : titre,
+  onglet (celui du menu) et résumé, tous obligatoires, sans source ; l'adresse `/regles/<slug>/` est tirée du titre et figée ; la page est créée tout de
+  suite, en fin de menu, avec le texte « À compléter. », puis s'ouvre : tant que le site n'est pas reconstruit, la 404 la dessine (menu latéral, fil
+  d'Ariane, titre, texte en place, bandeau « Page créée sur le site de dev » ; `edition/nouvelles.mjs`). Une entrée « bientôt » a **« Créer la page »**
+  (son libellé pour titre, son onglet ; la page prend sa place). Sous le titre d'une page du guide, son **résumé** (une ligne ; `edition/guide.mjs`),
+  puis, pour une page des Règles, la liste **« Onglet »** (la page passe en fin du menu de l'autre onglet, son adresse ne change pas ; désactivée pour
+  la page d'ouverture d'un onglet) et **« Supprimer »**, absent seulement pour une page que le service protège (`protection` de
+  `GET /api/edition/plan/`, `lib/ordre-des-menus.mjs#boutonSupprimer`) : une page citée le garde, et son refus liste en liens les textes qui la citent,
+  à corriger d'abord (décision du leader-technique) ; la suppression part avec « Enregistrer », après confirmation, puis on revient à l'onglet. Les
+  menus sont redessinés d'après le plan vivant (`GET /api/edition/plan/`) au chargement quand le plan a changé depuis la construction, en passant en
+  mode modification et après l'enregistrement ; avant la reconstruction, une page supprimée mais encore construite montre à la place de son texte un
+  avis « Page supprimée sur le site de dev » et un lien vers son onglet, et `/races/` (pastilles et tableau des magies innées) suit le nouvel ordre
+  des races, comme leur menu ; le libellé d'une entrée de page suit le titre de
+  la page modifié (demande du propriétaire : « Changer le titre avec l'édition devrai aussi changer le nom sur le menu lattéral »), même pendant sa
+  saisie. Les onglets eux-mêmes (ordre, titre, ouverture) restent fixes (réponse « Non, fixe »).
   **Plan strict** (`verifierLePlan`, au build) : toute page `guide/…` qui n'est pas d'exemple est dans Découvrir, un onglet ou le Guide du MJ, sinon
-  le build s'arrête en la nommant (l'ajouter à `regles_onglet_entree`) ; une page d'exemple (la fixture `guide/utiliser-ce-wiki`) garde une adresse
+  le build s'arrête en la nommant (l'ajouter à `regles_onglet_entree`) ; la cible d'un renvoi figé d'une ancienne adresse (ci-dessous) peut, elle,
+  manquer (une page des Règles supprimée sur le site de dev : rien ne la protège pour cela) : son ancienne adresse donne alors la 404 (R185 (6)) ; une page d'exemple (la fixture `guide/utiliser-ce-wiki`) garde une adresse
   de repli à `/regles/<slug>/`, sans entrée de menu ni fil d'Ariane. Plus de « Les bases » ni de « Règles avancées » (R184) : leurs anciennes
   adresses sont renvoyées (plus bas). Le Lexique (2026-11-05, « Supprime la page lexique. ») : ses entrées sont des mots-clés du glossaire (migration
   `0090`), ses adresses `/regles/lexique/` et `/guide/lexique/` mènent à `/recherche/` (`PAGES_RETIREES`, ci-dessous).
@@ -1395,7 +1423,9 @@ dev (un commit la change) ni cherchée par la recherche.
   `/guide/` et `/guide/<slug>/` (renvois calculés au build, `lib/metiers.mjs#renvoisDuGuide`) ; les adresses des plans précédents
   (`ADRESSES_DU_PLAN_PRECEDENT` : `/decouvrir/<étape>/` des six étapes, `/decouvrir/le-jeu-de-role/`, `/decouvrir/campagne-ou-scenario-one-shot/`,
   `/regles/avancees/`, qui mène au Mode Hyper, et chaque `/regles/avancees/<slug>/` relevée au commit 92a123d) ; les pages découpées en plusieurs,
-  selon l'ancre (`PAGES_ECLATEES_DU_GUIDE`, au format des pages éclatées de l'équipement, passées à la page 404 par `data-eclatees`) :
+  selon l'ancre (`PAGES_ECLATEES_DU_GUIDE`, au format des pages éclatées de l'équipement, passées à la page 404 par `data-eclatees` sans leurs cibles
+  absentes, `pagesEclateesDuGuide` : une ancienne ancre dont la page manque mène à la page qui garde le reste, une page éclatée dont cette page manque
+  donne la 404) :
   `/decouvrir/creer-son-personnage/` mène à `/regles/creer-son-personnage/`, et chacune de ses anciennes ancres d'étape (`#étape-5--choisir-ses-premiers-sorts`)
   ou de sous-intertitre (`#une-ou-deux-classes--le-biclassage`) à la page de l'étape ; `/regles/avancees/situations-avancees/` et
   `/guide/situations-avancees/` à la page de la tenaille, chaque ancienne section à sa page. Une page découpée qui garde son adresse (« Réussir une

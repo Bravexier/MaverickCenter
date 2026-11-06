@@ -135,6 +135,7 @@ pour recommencer.
 | `races/<race>/acces-aux-magies/<magie>/` | `PATCH` | `magies_innees` | Rend une magie accessible ou non en magie innée (`accessible` : 1 ou 0) dans la matrice de la fiche (R8), pour une race dont l'onglet ne limite pas ses magies (sinon `409`) : c'est ainsi qu'une race créée reçoit ses magies |
 | `evenements/<événement>/categories/` | `POST`, `DELETE` | `categories` | Pose une catégorie sur l'événement (`categorie_id`), l'en retire |
 | `monstres/<carte>/valeurs-de-capacites/` | `POST`, `PATCH`, `DELETE` | `valeurs_de_capacite` | Pose une valeur propre (`rang`, `numero`, `valeur`), la change, l'efface (R69) ; la valeur commune (ou `null`) n'est jamais écrite : elle efface la valeur propre (`element: null` dans la réponse) |
+| `onglets-des-regles/<onglet>/ordre/` | `POST` | `ordonner` | L'ordre du menu latéral de l'onglet, d'un bloc : `ids`, tous les identifiants de ses entrées dans le nouvel ordre (`409` si la liste n'est pas exactement celle du menu) ; les rangs qu'occupait le menu sont redonnés, seules les entrées qui changent de place sont écrites |
 | `mots-cles/<mot-clé>/fusion/` | `POST` | `fusionner_mots_cles` | Verse les pages du mot-clé dans `dans`, y recible ses balises (« {{id}} » des textes), puis le retire du vocabulaire ; un `PATCH` qui renomme vers l'écriture d'un autre mot-clé répond `409` avec cette action toute prête (`action: { methode, adresse, corps }`) |
 
 Les références « @i » d'un lot à plusieurs opérations (créer une spécialité puis son don dans la même requête) restent sur `POST /api/edition/`.
@@ -319,7 +320,7 @@ la ressource ne prend que les lignes de la table qui passent sa condition.
 
 | Adresse | Élément | Table | Écritures | Sous-ressources |
 | --- | --- | --- | --- | --- |
-| `pages-du-guide/` | Pages du guide | `page` (partie) | modifier | — |
+| `pages-du-guide/` | Pages du guide | `page` (partie) | créer, modifier, supprimer | — |
 | `pages-du-codex/` | Pages du Codex | `page` (partie) | modifier | — |
 | `pages/` | Pages du wiki | `page` (partie) | lecture seule | — |
 | `annonces/` | Annonces | `annonce` | modifier | — |
@@ -339,8 +340,13 @@ la ressource ne prend que les lignes de la table qui passent sa condition.
 
 `onglets-des-regles/` est le plan de la rubrique Règles (migration 0091, décisions R184 et R185) : les quatre onglets qui suivent Découvrir et
 L'univers, chacun avec sa page d'ouverture, et leur menu latéral en sous-ressource `entrees` (une page du guide, un lien comme « Artisanat », ou une
-entrée « bientôt »), dans l'ordre de `rang`. En lecture seule tant que le site de dev ne modifie pas le plan ; le site le lit au build par
-`client/src/lib/plan-des-regles-db.mjs`.
+entrée « bientôt »), dans l'ordre de `rang`. Les onglets sont fixes (ordre, titre, page d'ouverture : réponse du propriétaire « Non, fixe ») ;
+leur menu se modifie sur le site de dev (lot de l'édition des menus, `serveur/edition-plan.mjs`), mais la sous-ressource `entrees` reste en lecture
+seule ici (choix du leader-technique ; `lib/ressources.mjs#TABLES_SANS_ECRITURE_DIRECTE`, bien que `regles_onglet_entree` soit dans `TABLES`) :
+l'ordre d'un menu passe par l'action `ordre` de l'onglet, et une entrée naît et part avec sa page des Règles, créée (`POST pages-du-guide/` :
+`titre`, `onglet_id`, `resume`, et `bientot` pour remplir une entrée « bientôt ») ou supprimée (`DELETE pages-du-guide/<page>/` : `409` pour une
+page protégée, avec `raisons`, ou citée, avec `citations` ; `400` pour une page de Découvrir ou du Guide du MJ). Le site lit le plan au build par
+`client/src/lib/plan-des-regles-db.mjs`. Le résumé d'une page du guide (`resume`) se modifie par `PATCH pages-du-guide/<page>/`.
 
 `mots-cles/` liste et cherche (`?q=`) aussi l'abréviation (`abreviation`, migration 0090 : « AM », `NULL` sans), qui se donne à la création et se
 modifie par `PATCH` ; la ref d'une balise du glossaire peut être l'id, l'écriture ou l'abréviation du mot-clé (enregistrée sous l'id :

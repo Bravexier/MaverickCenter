@@ -24,7 +24,7 @@ import { couleurDeMagie, texteSurCouleur } from '../src/lib/sort-format.mjs';
 import { cssDeLaPalette } from '../src/lib/palette-css.mjs';
 import { adresseDePage, cheminDePage } from '../src/lib/metiers.mjs';
 import { adresseDeRenvoi } from '../src/lib/nav.mjs';
-import { PAGES_ECLATEES_DU_GUIDE } from '../src/lib/livres.mjs';
+import { pagesEclateesDuGuide } from '../src/lib/livres.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
 import { chargerPanneau } from '../src/lib/panneaux-regles-db.mjs';
@@ -252,8 +252,10 @@ test('l’ancienne page « Équipement », « Bâton magique » et « Pièces é
   const page404 = readFileSync(join(dist, '404.html'), 'utf8');
   const attribut = page404.match(/ data-eclatees="([^"]*)"/)?.[1] ?? '';
   const lu = attribut.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#38;|&amp;/g, '&');
-  // avec ceux des pages du guide découpées en plusieurs (lib/livres.mjs#PAGES_ECLATEES_DU_GUIDE, R184 : /decouvrir/creer-son-personnage/, « Les situations avancées »)
-  assert.deepEqual(JSON.parse(lu || 'null'), JSON.parse(JSON.stringify({ ...RENVOIS_DES_PAGES_ECLATEES, ...PAGES_ECLATEES_DU_GUIDE })),
+  // avec ceux des pages du guide découpées en plusieurs (lib/livres.mjs#PAGES_ECLATEES_DU_GUIDE, R184 : /decouvrir/creer-son-personnage/, « Les situations avancées »),
+  // sans leurs cibles absentes (une page des Règles supprimée sur le site de dev : la 404, R185 (6) ; lib/livres.mjs#pagesEclateesDuGuide)
+  const guideConstruit = (id) => existsSync(join(dist, cheminDePage(id), 'index.html'));
+  assert.deepEqual(JSON.parse(lu || 'null'), JSON.parse(JSON.stringify({ ...RENVOIS_DES_PAGES_ECLATEES, ...pagesEclateesDuGuide(guideConstruit) })),
     'les renvois des pages éclatées, pour le script de la page 404');
 });
 

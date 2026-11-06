@@ -15,7 +15,9 @@ export const RESSOURCES = [
       'valeurs de départ, avantages, inconvénients, don de base ; ses dons raciaux, son tableau de dons, ses bornes de caractéristiques et ses matrices ' +
       'd’accès de la fiche en sous-ressources ; une race créée reçoit « À compléter. » et 0, rien n’est déduit (ni magie innée, ni classe accessible : ses ' +
       'magies innées se posent ensuite par la matrice, sous-ressource acces-aux-magies), et le service lui crée aussi son peuple du même nom dans la ' +
-      'matrice « Relation entre les races », avec sa case « Même peuple » face à lui-même ; une race ne se supprime pas.',
+      'matrice « Relation entre les races », avec sa case « Même peuple » face à lui-même ; sa place dans la liste des races (`rang_liste`, migration ' +
+      '0092 : menu latéral, /races/, tableau des magies innées ; pas l’ordre de la fiche) se modifie, une race créée la prend en fin de liste ; une race ' +
+      'ne se supprime pas.',
     table: 'race',
     extensions: [{ table: 'race_onglet', parent: { race_id: 'id' } }],
     enfants: [

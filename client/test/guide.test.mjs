@@ -275,9 +275,11 @@ test('décision R149 (G40) : les deux pages du guide et le mot-clé « Maîtrise
 test('R184 (1) : le menu latéral d’un onglet rend une entrée « bientôt » grisée, sans lien, et une entrée lien par son libellé (aucune « bientôt » aujourd’hui : lu dans le composant)', () => {
   const menu = readFileSync(new URL('../src/components/guide/MenuLateral.astro', import.meta.url), 'utf8');
   // une entrée « bientôt » : la classe du menu du site (.nav-soon, grisée), « (bientôt) » comme au menu du site, jamais un <a>
-  assert.match(menu, /'bientot' in p \? \(\s*<li><span class="lateral-menu__bientot nav-soon">\{p\.bientot\} <small>\(bientôt\)<\/small><\/span><\/li>/);
+  // (chaque entrée porte en plus les attributs du mode modification, `ed(i)` : lot de l'édition des menus)
+  assert.match(menu, /'bientot' in p \? \(\s*<li \{\.\.\.ed\(i\)\}><span class="lateral-menu__bientot nav-soon">\{p\.bientot\} <small>\(bientôt\)<\/small><\/span><\/li>/);
   // un lien : son adresse relative à la racine (url), marqué quand il mène à la page affichée
   assert.match(menu, /<a class="lateral-menu__lien" href=\{url\(p\.adresse\)\} aria-current=\{p\.adresse === `\$\{entry\.id\}\/` \? 'page' : undefined\}>\{p\.libelle\}<\/a>/);
-  // les props des pages de race ne changent pas (components/race/MenuDesRaces.astro : rubrique, pages, entry)
-  assert.match(readFileSync(new URL('../src/components/race/MenuDesRaces.astro', import.meta.url), 'utf8'), /<MenuLateral rubrique=\{rubrique\} pages=\{races\} entry=\{entry\}>/);
+  // les props des pages de race ne changent pas (components/race/MenuDesRaces.astro : rubrique, pages, entry), plus `edition`, facultative
+  assert.match(readFileSync(new URL('../src/components/race/MenuDesRaces.astro', import.meta.url), 'utf8'), /<MenuLateral rubrique=\{rubrique\} pages=\{races\} entry=\{entry\} edition=\{edition\}>/);
+  assert.match(menu, /edition\?: \{ menu: string; entrees: EntreeModifiable\[\] \};/, '`edition` facultative : les appelants sans elle ne changent pas');
 });

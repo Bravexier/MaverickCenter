@@ -79,6 +79,11 @@ test('le Markdown est celui de l’importeur (échappements, listes, retours à 
 
 // Colonnes que le site modifie (lib/edition-modele.mjs#TABLES) dans les tables de la race : chacune est recalculée dans le corps
 const MODIFIABLES = Object.entries(TABLES).filter(([t]) => t === 'race' || t.startsWith('race_') || t === 'mode_hyper_effet');
+/**
+ * Les colonnes modifiables qui ne s'écrivent pas dans le corps de la page de la race : `race.rang_liste`, la place de la race dans la liste des races
+ * (menu latéral, /races/, tableau des magies innées : migration 0092, lot de l'édition des menus), un ordre et non un texte de l'onglet.
+ */
+const HORS_DU_CORPS = { race: ['rang_liste'] };
 const CLES = {
   race: ['id'], race_onglet: ['race_id'], race_don: ['id'], race_don_tableau_colonne: ['race_id', 'rang'],
   race_don_tableau_cellule: ['race_id', 'ligne', 'colonne'], mode_hyper_effet: ['id'],
@@ -95,6 +100,7 @@ test('chaque colonne modifiable, sur chaque race : la valeur modifiée remplace 
     for (const [table, { colonnes }] of MODIFIABLES) {
       for (const ligne of avant[table]) {
         for (const [colonne, champ] of Object.entries(colonnes)) {
+          if (HORS_DU_CORPS[table]?.includes(colonne)) continue;
           // un don unique n'a pas d'étiquette (CHECK) ; on ne pose pas de nom de don sur une ethnie dont l'onglet n'a pas de rubrique « Nom »
           if (table === 'race_don' && colonne === 'etiquette' && ligne.forme !== 'ethnie') continue;
           if (table === 'race_don' && colonne === 'nom' && ligne.nom === null) continue;

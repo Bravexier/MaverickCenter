@@ -29,10 +29,15 @@ export const RESSOURCES = [
       'Docs « Règle du jeu/Guide pour MJ » et « Créer sa fiche de personnage », et quatre pages tirées des classeurs : la liste des altérations d’état, la ' +
       'météo, les effets des modes hyper et super) ; le titre et le texte (Markdown) ' +
       'se modifient par le service : ni HTML brut ni lien non sûr ajouté, blocs <!-- guide:… --> connus seulement, un titre qui est déjà le nom d’une ' +
-      'autre page refusé (409), l’ancien titre devient un alias ; l’identifiant <type>/<slug> et l’adresse ne changent jamais ; le résumé ne se ' +
-      'modifie pas ; ni création ni suppression.',
+      'autre page refusé (409), l’ancien titre devient un alias ; l’identifiant <type>/<slug> et l’adresse ne changent jamais ; le résumé (une ' +
+      'ligne) se modifie aussi. Une page des Règles (les quatre onglets) se crée — titre, onglet et résumé obligatoires, texte « À compléter. », ' +
+      'adresse tirée du titre puis figée, en fin du menu de l’onglet ou à la place d’une entrée « bientôt » (`bientot`) — et se supprime avec son ' +
+      'entrée de menu, sauf une page protégée (409 avec ses raisons : clé étrangère, famille tirée d’un classeur, ouverture d’onglet, page nommée ' +
+      'par le plan du site ou lue par le code, bloc tiré de la base) ou citée par une autre (409 avec les citations) ; une page de Découvrir ou du ' +
+      'Guide du MJ ne se supprime pas (400).',
     table: 'page',
     condition: { type: ['guide'] },
+    ecriture: { creer: 'page_des_regles', supprimer: 'page_des_regles' },
     libelle: 'titre',
     liste: ['id', 'titre', 'resume', 'origine', 'statut', 'source_ref'],
     recherche: ['titre', 'resume'],
@@ -96,7 +101,8 @@ export const RESSOURCES = [
       'Le plan de la rubrique Règles (migration 0091, décisions R184 et R185) : les onglets qui suivent Découvrir et L’univers (« Fiche de ' +
       'personnage », « Mécaniques générales », « Les combats », « Exploration »), dans l’ordre de `ordre` (à égalité, l’identifiant), chacun avec son ' +
       'titre et la page montrée à son adresse (`ouverture_page_id`, une page de son menu, pas forcément la première) ; son menu latéral en ' +
-      'sous-ressource ; liste fermée, en lecture seule (le site de dev ne modifie pas encore le plan).',
+      'sous-ressource ; liste fermée, en lecture seule (l’ordre des onglets et leur page d’ouverture sont fixes) ; l’action `ordre` donne l’ordre de ' +
+      'son menu d’un bloc.',
     table: 'regles_onglet',
     libelle: 'titre',
     liste: ['id', 'titre', 'ordre', 'ouverture_page_id'],
@@ -114,7 +120,21 @@ export const RESSOURCES = [
           'Le menu latéral de l’onglet, dans l’ordre de `rang` (à égalité, l’identifiant) : une page du guide (`page_id`, identifiant « page:<id de ' +
           'la page> », son libellé est le titre de la page ; une page n’est que dans un onglet), un lien vers une autre adresse du site (`libelle` ' +
           'et `adresse`, « lien:… » : « Artisanat », regles/artisanat/) ou une entrée grisée « bientôt » (`libelle` seul, « bientot:… », aucune ' +
-          'aujourd’hui) ; une page retirée emporte son entrée, sauf la page d’ouverture d’un onglet, refusée ; en lecture seule.',
+          'aujourd’hui) ; une page retirée emporte son entrée, sauf la page d’ouverture d’un onglet, refusée ; en lecture seule ici (décision du ' +
+          'leader-technique : le site de dev change l’onglet d’une page par sa page, l’ordre par l’action `ordre` de l’onglet, une entrée naît et ' +
+          'part avec sa page des Règles, pages-du-guide).',
+        lectureSeule: true,
+      },
+    ],
+    actions: [
+      {
+        cle: 'ordre',
+        nom: 'Ordonner le menu de l’onglet',
+        description:
+          'L’ordre du menu latéral de l’onglet, d’un bloc : `ids`, tous les identifiants de ses entrées (pages, liens, entrées « bientôt ») dans le ' +
+          'nouvel ordre ; 409 si la liste n’est pas exactement celle du menu (une entrée ajoutée, retirée ou passée dans un autre onglet entre-temps) ; ' +
+          'les rangs qu’occupait le menu sont redonnés dans ce nouvel ordre, seules les entrées qui changent de place sont écrites.',
+        op: 'ordonner',
       },
     ],
   },
