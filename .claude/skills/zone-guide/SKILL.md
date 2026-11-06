@@ -67,6 +67,6 @@ user-invocable: false
 
 ## Tests
 
-- `test/livres.test.mjs`, `test/guide.test.mjs`, `test/guide-html.test.mjs` épinglent le plan. `test/guide.test.mjs` épingle aussi le plafond de maîtrise d'arme (4 points, 5 dés, R149) dans deux pages (« Caractéristiques et compétences », « L'équipement ») et le mot-clé `maitrise-darme`.
+- `test/livres.test.mjs`, `test/guide.test.mjs`, `test/guide-html.test.mjs` épinglent le plan. `test/guide.test.mjs` épingle aussi le plafond de maîtrise d'arme (4 points, 5 dés, R149) dans deux pages (« Caractéristiques et compétences », « L'équipement ») et le mot-clé `maitrise-darme`. Il épingle le tarif du chakra manquant (R18, R186 : 3 santé ; tout coût en santé ignore la barrière) dans `finaliser-son-personnage`, `la-magie-en-jeu`, `le-mode-hyper`, `le-mode-hyper-100`, `les-degats` et le mot-clé `chakra`, lus tels que la 0093 les a laissés (`fixtures/lots-avant-0093.json`).
 - `test/db-r184-plan-des-regles.test.mjs` (tables, ouverture, ids), `test/plan-des-regles-db.test.mjs` (`chargerPlanDesRegles`), `test/guide-sans-chapitres.test.mjs` (migration 0064), `test/markdown-edition.test.mjs`, `test/serveur-edition-guide.test.mjs`.
 - `test/guide-html.test.mjs` (Bienvenue construite ; ni rétroliens ni sources dans dist/), `test/gabarits-sources.test.mjs` (aucun gabarit n'annonce de sources).

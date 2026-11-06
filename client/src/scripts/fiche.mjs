@@ -47,7 +47,7 @@ import {
   carteDeMaitrise, compteurDeMaitrise, infobulleDeClasse, infobulleDeSpecialite, infobulleDuDonAChoisir,
   infobulleDArme, infobulleDArmeElementaire, infobulleDArmure, infobulleDArmureElementaire, infobulleDeMetier, infobulleDeSort, TYPES_DE_DON, groupesDArmesParMaitrise, ligneDeMaitrise, maitriseApresChoix, maitriseChoixValables, maitrisesParFamille, presentationDuCompteurDeMaitrise, sourcesDeMaitrise,
   armeDeLaLigne, armesElementairesProposees, effetDeLArmeElementaire, sortsFerDAutreElement,
-  finDuModeHyperCent, modeHyperApres, modeHyperValable, semaineDuModeHyperApres, tourDeModeHyper,
+  finDuModeHyperCent, modeHyperApres, modeHyperValable, SANTE_PAR_CHAKRA_MANQUANT, semaineDuModeHyperApres, tourDeModeHyper,
   actionsDeLaFiche, actionsUsageSansObjetRetire, actionsUsageValables, consommerLAction, finDeCombat, finDeCombatMontree, passifsDeLaFiche, REMONTEES, remonterLAction,
   donsObtenusApresChoix, donsObtenusValables, donsVariables, infobulleDEntree, refusDuDon, texteDuDonVariable,
 } from '../lib/fiche-moteur.mjs';
@@ -1872,7 +1872,7 @@ function construirePostures() {
       bouton.hidden = !r;
       infobulle(bouton, r ? [`${r.pourcent} % du chakra maximum (${calcul.attributs.chakra}), arrondi à l’inférieur : ${r.cout} chakra`,
         `Chakra ${r.chakra.avant} → ${r.chakra.apres}`,
-        ...(r.manque ? [`Chakra manquant : ${r.manque}, payé 2 santé pour 1 chakra (décision R18) : santé ${r.sante.avant} → ${r.sante.apres}`] : [])].join('\n') : '');
+        ...(r.manque ? [`Chakra manquant : ${r.manque}, payé ${SANTE_PAR_CHAKRA_MANQUANT} santé pour 1 chakra, sans toucher à la barrière (décision R186) : santé ${r.sante.avant} → ${r.sante.apres}`] : [])].join('\n') : '');
     });
     return bouton;
   };

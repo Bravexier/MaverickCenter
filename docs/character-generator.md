@@ -261,10 +261,11 @@ bouton (au-dessus quand la place manque), bornée à l'écran, téléphone compr
   qu'avec le Mode Hyper, décocher le Mode Hyper décoche aussi le 100 % ; une case cochée au-dessus du niveau du personnage est décochée
   (`modeHyperValable`). Sous le Mode Hyper, le **compteur « une fois par semaine »** (« Oui, compteur manuel » : `personnage.mode_hyper_semaine`, NULL au
   maximum, la constante `mode_hyper.usage_par_semaine`) : consommé à l'activation, remonté seulement à la main (boutons − et +, `semaineDuModeHyperApres`) ;
-  à 0, la case est grisée, comme une action épuisée. **Boutons des jauges** (R172, R175, R18 ; fonctions pures `tourDeModeHyper`, `finDuModeHyperCent`,
+  à 0, la case est grisée, comme une action épuisée. **Boutons des jauges** (R172, R175, R18, R186 ; fonctions pures `tourDeModeHyper`, `finDuModeHyperCent`,
   `payerDuChakra`) : « Tour de Mode Hyper » (Mode Hyper actif hors 100 %) retire ⌊10 % du chakra maximum⌋ ; « Fin du Mode Hyper 100 % » consomme
   ⌊75 % du chakra maximum⌋, décoche le 100 % et laisse le Mode Hyper (65 de chakra maximum : 6 par tour, 48 à la sortie) ; le chakra qui manque se paie
-  2 santé pour 1 chakra, le chakra ne descend pas sous 0, la santé peut devenir négative (R171) ; le coût en infobulle. Le dépassement de durée (R161)
+  3 santé pour 1 chakra (R186, `SANTE_PAR_CHAKRA_MANQUANT`), un prix qui ignore la barrière (elle ne l'absorbe pas et ne baisse pas, R186), le chakra
+  ne descend pas sous 0, la santé peut devenir négative (R171) ; le coût en infobulle. Le dépassement de durée (R161)
   n'est pas appliqué.
   **Le Mode Hyper actif recalcule** (`modeHyperDuMoment`, constantes `mode_hyper.*` de la base) : dégâts des armes +15 ; dégâts des sorts de ses magies
   +15 avec une seule magie, +7 avec deux (R5 ; le Potentiel Illimité : tous ses sorts) ; soins des sorts +15 ; coût des sorts : 0 chakra (R18 ; le coût
