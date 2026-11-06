@@ -20,6 +20,7 @@ Un changement de structure, ou une correction de données qu'aucun outil n'écri
    - La base vivante d'un serveur n'est pas migrée mais reconstruite (`COLONNES_RETIREES`, `TABLES_RETIREES`, conversions : `zone-service`).
    - Le compteur de tables, de vues et de clés étrangères suit dans `base-sqlite` et dans les tests qui l'épinglent.
    - Une valeur importée d'un classeur que la migration change de façon voulue (décision R…) a son entrée `voulus` dans le registre `tools/sources/ignorer/<classeur>.json`, avec sa raison (`docs/sources.md`, « Rapprochement d'un classeur ») : `tech-sources` l'écrit. Sans elle, le test de rapprochement d'un classeur `rapproche` est rouge.
+   - Une migration qui fond un mot-clé dans un autre ajoute son entrée à `serveur/edition.mjs#FUSIONS_DE_MIGRATION` (`zone-edition`, « Rejeu ») : sinon un lot du journal en attente écrit des balises orphelines que `db:check` refuse, ou voit de faux conflits.
    - Une valeur que le site de dev a pu modifier : le rejeu du journal ne doit pas tomber en conflit sur elle (`zone-edition`, adaptateurs des anciennes écritures ; test du rejeu).
 6. **Le test.** Un test dans `client/test/` épingle la migration (ce qu'elle change, et la décision R… si elle en applique une). `tech-qualite` le relit avec la grille `revue-sql`.
 

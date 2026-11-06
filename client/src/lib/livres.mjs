@@ -75,7 +75,7 @@ export const DECOUVRIR = gele({
 });
 
 /**
- * Les bases : douze pages, sans groupes ni partie (l'accent du site), dans l'ordre du menu latéral (components/guide/MenuLateral.astro) ; chaque page à
+ * Les bases : onze pages, sans groupes ni partie (l'accent du site), dans l'ordre du menu latéral (components/guide/MenuLateral.astro) ; chaque page à
  * /regles/<slug>/. `accueil` est null : aucune page n'est servie à /regles/ sous cette adresse ; /regles/ (pages/regles/index.astro) montre le menu et
  * la page `ouverture` (« Réussir une action » : réponse du propriétaire du 2026-11-05), dont l'adresse canonique reste /regles/<slug>/.
  */
@@ -83,7 +83,6 @@ export const LES_BASES = gele({
   id: 'bases', titre: 'Les bases', chemin: 'regles/', accueil: null, ouverture: 'guide/reussir-une-action', pages: Object.freeze([
     'guide/reussir-une-action', 'guide/le-tour-de-jeu', 'guide/attaquer-et-se-defendre', 'guide/l-equipement', 'guide/les-degats', 'guide/les-postures',
     'guide/la-magie-en-jeu', 'guide/blessures-et-etats', 'guide/la-montee-de-niveau', 'guide/s-entrainer-et-exercer-un-metier', 'guide/aide-memoire',
-    'guide/lexique',
   ]),
 });
 
@@ -223,6 +222,32 @@ export const ANCRES_DES_PAGES_ABSORBEES = Object.freeze({
 
 /** L'adresse où mène une page fusionnée (`ancienne`, une clé de PAGES_ABSORBEES) : la page qui l'absorbe (`cheminDe` : lib/metiers.mjs#cheminDePage), à son ancre. */
 export const adresseDeLaPageAbsorbee = (ancienne, cheminDe) => `${cheminDe(PAGES_ABSORBEES[ancienne])}#${ANCRES_DES_PAGES_ABSORBEES[ancienne]}`;
+
+/**
+ * Les pages retirées du site dont le contenu se lit ailleurs que dans une page (ni absorbées par une autre, ni simplement effacées) : page retirée →
+ * { vers : l'adresse où mène chacune de ses anciennes adresses, relative à la racine du site ; adresses : ses anciennes adresses, relatives elles aussi }.
+ * Le Lexique (« Les bases », /regles/lexique/ ; /guide/lexique/ avant l'éclatement du guide) est devenu des mots-clés du glossaire (migration 0090, demande
+ * du propriétaire du 2026-11-05 : « Supprime la page lexique. Toutes les informations comprises dedans doivent être converties en mot-clés. ») : ses
+ * adresses mènent à /recherche/ (réponse du propriétaire : « Rediriger vers /recherche/ »), la requête et l'ancre d'origine gardées (page 404 :
+ * lib/metiers.mjs#renvoisDuGuide), comme un lien Markdown écrit vers elles (lib/guide.mjs#adresseDesAnciensLiens). Elles ne sont plus dans la base
+ * (verifierLePlan). Une page simplement effacée, sans renvoi (« Rejoindre une partie », « Liens »), n'est pas ici : la page 404 la dit introuvable.
+ */
+export const PAGES_RETIREES = Object.freeze({
+  'guide/lexique': gele({ vers: 'recherche/', adresses: Object.freeze(['guide/lexique/', 'regles/lexique/']) }),
+});
+
+/**
+ * L'adresse où mène un chemin écrit vers une page retirée (PAGES_RETIREES), relatif à la racine du site, requête et ancre comprises
+ * (« regles/lexique/#acquis », « guide/lexique ») : sa destination, la requête et l'ancre écrites gardées ; null pour tout autre chemin, et pour une page
+ * retirée que `existe(id)` dit chargée.
+ */
+export function adresseDeLaPageRetiree(chemin, { existe = () => false } = {}) {
+  const m = String(chemin).match(/^([^?#]*?)\/?((?:[?#].*)?)$/);
+  if (!m) return null;
+  const adresse = `${m[1]}/`;
+  for (const [id, { vers, adresses }] of Object.entries(PAGES_RETIREES)) if (adresses.includes(adresse) && !existe(id)) return `${vers}${m[2]}`;
+  return null;
+}
 
 /**
  * Les adresses du plan précédent (livres Découvrir et Les bases, 2026-10-18) qui ont changé, hors pages absorbées : adresse → page qui y est maintenant.
@@ -389,6 +414,9 @@ export function verifierLePlan(entries) {
   for (const [ancienne, nouvelle] of Object.entries(PAGES_ABSORBEES)) {
     if (parId.has(ancienne)) throw new Error(`plan du guide : ${ancienne} est absorbée par ${nouvelle} et ne doit plus être dans la base`);
     if (!vues.has(nouvelle)) throw new Error(`plan du guide : ${nouvelle}, qui absorbe ${ancienne}, n'est pas dans le plan`);
+  }
+  for (const [retiree, { vers }] of Object.entries(PAGES_RETIREES)) {
+    if (parId.has(retiree)) throw new Error(`plan du guide : ${retiree} est retirée (ses adresses mènent à /${vers}) et ne doit plus être dans la base`);
   }
   return entries;
 }

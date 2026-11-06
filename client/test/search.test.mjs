@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { filtrerMotsCles, searchIndex } from '../src/lib/search.mjs';
+import { cleDeRecherche, filtrerMotsCles, searchIndex } from '../src/lib/search.mjs';
 
 const doc = (title, extra = {}) => ({ title, aliases: [], tags: [], summary: '', text: '', ...extra });
 const index = [
@@ -33,4 +33,13 @@ test('mots-clés de la page de recherche : tous sans recherche, sinon ceux qui c
   assert.deepEqual(filtrerMotsCles(cles, 'armure MAGIQUE'), ['armure-magique']);
   assert.deepEqual(filtrerMotsCles(cles, 'Alchîmie'), ['alchimie']);
   assert.deepEqual(filtrerMotsCles(cles, 'glace'), []);
+});
+
+test('cleDeRecherche : l’écriture d’un mot-clé, suivie de son abréviation normalisée (migration 0090 : « AM » trouve « Armure magique »)', () => {
+  assert.equal(cleDeRecherche({ cle: 'armure-magique', abreviation: 'AM' }), 'armure-magique|am');
+  assert.equal(cleDeRecherche({ cle: 'nature', abreviation: 'Nat.' }), 'nature|nat');
+  assert.equal(cleDeRecherche({ cle: 'feu', abreviation: null }), 'feu');
+  assert.equal(cleDeRecherche({ cle: 'feu' }), 'feu');
+  assert.equal(cleDeRecherche({ cle: 'feu', abreviation: '…' }), 'feu', 'une abréviation sans lettre ni chiffre : rien à chercher');
+  assert.deepEqual(filtrerMotsCles([cleDeRecherche({ cle: 'armure-magique', abreviation: 'AM' }), 'feu'], 'am'), ['armure-magique|am']);
 });

@@ -45,3 +45,14 @@ export function filtrerMotsCles(cles, query) {
   const tokens = normalize(query).split('-').filter(Boolean);
   return cles.filter((cle) => tokens.every((token) => cle.includes(token)));
 }
+
+/**
+ * Ce que filtrerMotsCles cherche dans un mot-clé de /recherche/ : son écriture (`cle`), suivie de son abréviation normalisée quand il en a une
+ * (mot_cle.abreviation, migration 0090 : « AM » trouve « Armure magique »), séparées par « | », que normalize ne produit pas (un mot cherché ne se lit
+ * jamais à cheval sur les deux).
+ * @param {{ cle: string, abreviation?: string | null }} motCle
+ */
+export function cleDeRecherche({ cle, abreviation }) {
+  const abr = abreviation ? normalize(abreviation) : '';
+  return abr ? `${cle}|${abr}` : cle;
+}

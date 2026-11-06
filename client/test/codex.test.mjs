@@ -141,6 +141,34 @@ test('mots-clés du Codex : seuls ceux du vocabulaire, dans son écriture (un im
   for (const f of porteuses) assert.equal(tagsDe(f), '["codex", "Flammes"]', f);
 });
 
+// R145 (demande du propriétaire du 2026-10-18 : « Seulement là où il est pertinent ») et R183 (migration 0090 : « Sang », la quatrième barre de la
+// magie du Sang, mot-clé du glossaire venu du Lexique) : la magie du Sang est un homonyme (tools/db/homonymes.py#MAGIES_HOMONYMES), l'import ne pose
+// pas le mot-clé « Sang » sur ses temples. Sur l'export du Codex du dépôt (sources/raw/), sans dump.
+test('R145, R183 : l’import du Codex ne pose pas le mot-clé « Sang » sur les temples de la magie du Sang (Confrérie du Sang, Pointe de Sang)', (t) => {
+  // les deux pages sont bien celles que le découpage range sous « Magie de Sang » (codex.py#MAGIES : 'Magie de Sang' -> 'sang')
+  const doc = readFileSync(join(racine, 'sources', 'raw', `${ID}.md`), 'utf8');
+  const section = doc.slice(doc.indexOf('\n## Magie de Sang\n'), doc.indexOf('\n## ', doc.indexOf('\n## Magie de Sang\n') + 1));
+  assert.match(section, /^### Confrérie du Sang \(Temple du sang\)$/m);
+  assert.match(section, /La Pointe de Sang/);
+  for (const [nom, vocabulaire] of [
+    ['un vocabulaire d’essai', "INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES ('codex', 'codex', 'codex', NULL), ('sang', 'Sang', 'sang', 'La quatrième barre.');\n"],
+    ['le vocabulaire de data/rows', null],
+  ]) {
+    const tmp = dossierTemporaire('codex-sang', { t });
+    const args = ['--out', tmp, '--historique', join(tmp, 'absent.sql')];
+    if (vocabulaire) {
+      writeFileSync(join(tmp, 'mot_cle.sql'), vocabulaire);
+      args.push('--vocabulaire', join(tmp, 'mot_cle.sql'));
+    }
+    const r = codexPy(...args);
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    const tags = (f) => JSON.parse(readFileSync(join(tmp, 'lore', f), 'utf8').match(/^tags: (.*)$/m)[1]);
+    for (const page of ['confrerie-du-sang', 'la-pointe-de-sang']) assert.deepEqual(tags(`${page}.md`), ['codex'], `${nom} : lore/${page}`);
+    assert.deepEqual(readdirSync(join(tmp, 'lore')).filter((f) => f.endsWith('.md') && tags(f).some((e) => normalize(e) === 'sang')), [], nom);
+  }
+  assert.ok(db.prepare("SELECT 1 FROM mot_cle WHERE libelle_cle = 'sang'").get(), 'le mot-clé « Sang » existe (0090) : le vocabulaire de data/rows le contient');
+});
+
 test('pages du Codex : type lore, famille docs, brouillon, la copie du propriétaire en seconde source, le mot-clé « codex »', () => {
   assert.equal(pagesDuCodex.length, 116);
   for (const p of pagesDuCodex) {

@@ -594,12 +594,15 @@ export const TABLES = {
   // reste ; une balise d'un texte de case, « {{id|texte}} », garde le texte écrit, une balise d'un texte mis en forme, « {{id}} », montre le nouveau
   // libellé) ; vers l'écriture d'un autre mot-clé : refusé, la page propose de les fusionner
   // (opération `fusionner_mots_cles`) ; les mots-clés dont le site se sert ne se renomment pas (lib/mots-cles.mjs#MOTS_CLES_PROTEGES), mais leur
-  // définition se modifie ; une définition vidée : NULL (pas encore décrit)
+  // définition se modifie ; une définition vidée : NULL (pas encore décrit) ; l'abréviation (migration 0090, réponse du propriétaire : « Modifiable et
+  // affichée »), qu'une balise peut citer comme l'écriture : vidée, NULL ; sans ambiguïté avec un autre mot-clé
+  // (lib/mots-cles-balises.mjs#fautesDeLAbreviation, la règle de db:check ; serveur/edition.mjs#refuserLAbreviation)
   mot_cle: {
     libelle: 'Mot-clé',
     colonnes: {
       libelle: { type: 'ligne', libelle: 'Mot-clé', requis: true },
       description: { type: 'texte', libelle: 'Définition' },
+      abreviation: { type: 'ligne', libelle: 'Abréviation' },
     },
   },
   // Panneaux de règles (migration 0056 ; demande du propriétaire, 2026-10-16 : « Il faudrait que ce champ texte soit modifiable sur son titre, et son
@@ -887,8 +890,8 @@ export const ENTITES = {
     suppression: true,
     champs: { libelle: { type: 'ligne', libelle: 'Catégorie', requis: true } },
   },
-  // un mot-clé du glossaire (/recherche/), son libellé et sa définition ; supprimé, il est retiré de toutes les pages qui le portent et de tous les textes
-  // qui le citent (sa balise devient son texte simple ; sauf les mots-clés dont le site se sert : lib/mots-cles.mjs)
+  // un mot-clé du glossaire (/recherche/), son libellé, sa définition et son abréviation (migration 0090) ; supprimé, il est retiré de toutes les pages qui
+  // le portent et de tous les textes qui le citent (sa balise devient son texte simple ; sauf les mots-clés dont le site se sert : lib/mots-cles.mjs)
   mot_cle: {
     table: 'mot_cle',
     libelle: 'mot-clé',
@@ -897,6 +900,7 @@ export const ENTITES = {
     champs: {
       libelle: { type: 'ligne', libelle: 'Mot-clé', requis: true },
       description: { type: 'texte', libelle: 'Définition' },
+      abreviation: { type: 'ligne', libelle: 'Abréviation' },
     },
   },
   // un bloc d'un panneau de règles (« + Texte », « + Tuile » sous un bloc, en mode modification) : inséré après le bloc de rang `apres` (les blocs suivants

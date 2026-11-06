@@ -100,6 +100,8 @@ neutralisée et signalée sur la sortie d'erreur).
 """
 import argparse
 import copy
+import functools
+import importlib.util
 import json
 import os
 import re
@@ -407,7 +409,19 @@ def yaml_str(value):
     return json.dumps(value, ensure_ascii=False)
 
 
+@functools.lru_cache(maxsize=None)
+def etiquettes_non_posees():
+    """tools/db/homonymes.py#ETIQUETTES_NON_POSEES (décision R183 (11) : étiquettes d'un mot-clé de la migration 0090 que l'import n'écrit pas),
+    chargé par son chemin : `python3 -I`."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "db", "homonymes.py")
+    spec = importlib.util.spec_from_file_location("homonymes", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.ETIQUETTES_NON_POSEES
+
+
 def front_matter(title, tags, summary, workbook, tab):
+    tags = [t for t in tags if t not in etiquettes_non_posees()]   # R183 (11) : « mode hyper », « mode super »
     lines = [
         "---",
         "title: " + yaml_str(title),

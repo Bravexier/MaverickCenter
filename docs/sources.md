@@ -124,6 +124,13 @@ Le chemin utilisé est en deux temps, rejouable :
    `status: draft` et une entrée `sources:` qui désigne l'onglet d'origine. Ces `.md` sont un dossier de travail (fabriqué depuis la base
    par `npm run db:export-pages`, ignoré par git) : après l'extracteur, `npm run db:sync-pages` recopie les pages modifiées dans `data/rows`, qui est ce qu'on commite.
 
+**Les étiquettes (`tags:`) qu'écrit un extracteur** ne sont posées que si un mot-clé du glossaire a la même écriture (`tools/db/maverick.py#mot_cle` :
+un import n'en crée jamais). Un mot-clé créé plus tard peut donc faire poser par le prochain import une étiquette qui ne l'était pas : la liste commune
+`tools/db/homonymes.py` dit celles que les extracteurs n'écrivent pas. `MAGIES_HOMONYMES` : la magie homonyme d'un mot-clé d'un autre sens (« corruption »,
+« sang ») ; `ETIQUETTES_NON_POSEES` : les étiquettes des mots-clés venus du Lexique (migration 0090) Bouclier, Pièce élémentaire et Amélioration
+(`equipement.py`), Tour (`divers-craft.py`), Mode Hyper et Mode Super (`annexes-magie.py`), exclues de l'import par la décision R183 (11). Test :
+`client/test/importeurs-etiquettes.test.mjs`, qui rejoue les trois extracteurs sur les instantanés de `sources/raw/classeurs/`.
+
 Obtenir les données d'un classeur, par ordre de préférence :
 
 1. **Connecteur Google Sheets** (session Claude, autorisation « Sheets » complète) : `get_spreadsheet` avec `includeGridData`,

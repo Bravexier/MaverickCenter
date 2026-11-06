@@ -6,7 +6,7 @@
 // glossaire : tous les mots-clés, avec leur définition (demande du propriétaire du 2026-10-16).
 // Fonctions pures, sans dépendance navigateur ni Astro : le script de /recherche/ (src/scripts/recherche.mjs, seul script de page à l'importer) et la page
 // construite (le nombre de pages de chaque mot-clé : le même calcul des deux côtés).
-import { filtrerMotsCles } from './search.mjs';
+import { cleDeRecherche, filtrerMotsCles } from './search.mjs';
 
 /** Le paramètre de l'adresse qui désigne un mot-clé : /recherche/?mot-cle=<id>. */
 export const PARAMETRE_MOT_CLE = 'mot-cle';
@@ -48,24 +48,26 @@ export function elementsDuMotCle(index, id) {
 
 /**
  * Ce que la page montre pour le mot-clé `id` de l'adresse : `{ existe: false }` pour un id que le vocabulaire n'a pas (un mot-clé supprimé ou fusionné
- * depuis, une adresse mal écrite), sinon `{ existe: true, libelle, definition, pages }` (`definition` : '' tant qu'il n'est pas décrit).
- * @param {Map<string, string | { libelle: string, definition?: string | null }>} vocabulaire les mots-clés : id → libellé, ou { libelle, definition }
- *   (ceux qui n'ont aucune page visible compris)
+ * depuis, une adresse mal écrite), sinon `{ existe: true, libelle, abreviation, definition, pages }` (`definition` : '' tant qu'il n'est pas décrit ;
+ * `abreviation` : null sans abréviation). Son nom affiché (abréviation, icône d'une monnaie) et sa définition rendue viennent de la page construite
+ * (lib/mots-cles-balises.mjs#htmlDeLaPastille, #htmlDeLaDefinition) : ce module ne lit aucune monnaie.
+ * @param {Map<string, string | { libelle: string, abreviation?: string | null, definition?: string | null }>} vocabulaire les mots-clés : id → libellé,
+ *   ou { libelle, abreviation, definition } (ceux qui n'ont aucune page visible compris)
  */
 export function vueDuMotCle(index, id, vocabulaire) {
   if (!vocabulaire.has(id)) return { existe: false };
   const m = vocabulaire.get(id);
-  const { libelle, definition } = typeof m === 'string' ? { libelle: m, definition: '' } : m;
-  return { existe: true, libelle, definition: definition ?? '', pages: elementsDuMotCle(index, id) };
+  const { libelle, abreviation = null, definition } = typeof m === 'string' ? { libelle: m, definition: '' } : m;
+  return { existe: true, libelle, abreviation: abreviation || null, definition: definition ?? '', pages: elementsDuMotCle(index, id) };
 }
 
 /**
- * Les mots-clés de la liste que la page affiche : ceux dont l'écriture (`cle` : normalize du libellé, jamais l'id) contient chaque mot cherché
- * (lib/search.mjs#filtrerMotsCles) et que porte au moins une page visible (`n`) ; `tous` : aussi ceux qu'aucune ne porte (le glossaire de /recherche/,
- * qui les montre tous depuis la migration 0056).
- * @param {{ cle: string, n: number }[]} motsCles
+ * Les mots-clés de la liste que la page affiche : ceux dont l'écriture (`cle` : normalize du libellé, jamais l'id) ou l'abréviation (`abreviation`,
+ * migration 0090 : « AM » trouve « Armure magique ») contient chaque mot cherché (lib/search.mjs#filtrerMotsCles, #cleDeRecherche) et que porte au moins
+ * une page visible (`n`) ; `tous` : aussi ceux qu'aucune ne porte (le glossaire de /recherche/, qui les montre tous depuis la migration 0056).
+ * @param {{ cle: string, abreviation?: string | null, n: number }[]} motsCles
  */
 export function motsClesAffiches(motsCles, query, { tous = false } = {}) {
-  const gardes = new Set(filtrerMotsCles(motsCles.map((m) => m.cle), query));
-  return motsCles.filter((m) => gardes.has(m.cle) && (tous || m.n > 0));
+  const gardes = new Set(filtrerMotsCles(motsCles.map(cleDeRecherche), query));
+  return motsCles.filter((m) => gardes.has(cleDeRecherche(m)) && (tous || m.n > 0));
 }

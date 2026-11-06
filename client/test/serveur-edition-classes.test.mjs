@@ -89,7 +89,8 @@ test('créer une classe dans une catégorie : page (mot-clé de la catégorie : 
   const c = ligne('SELECT * FROM classe WHERE id = ?', id);
   assert.deepEqual([c.categorie_id, c.sante_depart, c.ordre], ['classe-magique', 6, ordre], 'à la suite des classes de la base');
   const tags = lignes('SELECT m.libelle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE t.page_id = ? ORDER BY t.ordre', id).map((t) => t.libelle);
-  assert.deepEqual(tags, ['classe', 'magique']);
+  // les mots-clés protégés se reconnaissent à leur écriture (libelle_cle) : leur libellé peut changer (« Classe », R183)
+  assert.deepEqual(tags.map(normalize), ['classe', 'magique']);
   const groupe = groupClasses([{ id, data: { title: nom, tags } }])[0];
   assert.equal(groupe.key, 'magiques');
   assert.equal(ligne('SELECT count(*) AS n FROM race_classe WHERE classe_id = ? AND accessible = 0', id).n, ligne('SELECT count(*) AS n FROM race').n);

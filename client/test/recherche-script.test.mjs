@@ -7,6 +7,8 @@
 //   node --test test/recherche-script.test.mjs
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { htmlDeLaDefinition, htmlDeLaPastille } from '../src/lib/mots-cles-balises.mjs';
+import { normalize } from '../src/lib/text.mjs';
 import { attendre, cliquer, el, fauxDocument } from './aide-faux-dom.mjs';
 
 // l'index (lib/recherche-index.ts) : un événement n'a aucun mot-clé, les libellés de ses catégories sont ses `tags`
@@ -37,7 +39,8 @@ async function charger(adresse) {
   const vue = el('section', { id: 'vue-du-mot-cle', hidden: '' },
     el('a', { id: 'tous-les-mots-cles', href: '/recherche/' }), el('h2', { id: 'titre-mot-cle' }), el('p', { id: 'vue-du-mot-cle-definition', hidden: '' }),
     el('p', { id: 'vue-du-mot-cle-compte' }),
-    el('ul', { id: 'vue-du-mot-cle-pages', hidden: '' }));
+    el('ul', { id: 'vue-du-mot-cle-pages', hidden: '' }),
+    el('div', { id: 'definitions-des-mots-cles', hidden: '' }));
   const document = fauxDocument(el('div', { 'data-recherche': '', 'data-lien-mot-cle': '/recherche/?mot-cle=' },
     el('form', { id: 'search-form', 'data-index-url': '/search-index.json', 'data-base': '/', 'data-suffix': '' }, el('input', { id: 'q' })),
     el('p', { id: 'status' }),
@@ -238,4 +241,65 @@ test('la liste redessinée par l’éditeur (site de dev) est relue : nouveaux m
   assert.equal(p.pile().length, 1, 'ouverte par son adresse : remplacée');
   assert.equal(p.vue.hidden, true);
   assert.ok(p.liste.children.every((li) => !li.hidden), 'en mode modification, tous les mots-clés, même sans élément');
+});
+
+test('décision du propriétaire (2026-11-05, « Modifiable et affichée ») : l’abréviation d’un mot-clé le fait trouver (« AM » → « Armure magique ») ; la vue reprend le nom et la définition rendus par la page (monnaies en icônes, R63)', async () => {
+  const p = await charger('/recherche/');
+  // la liste et les définitions rendues au build (lib/mots-cles-balises.mjs#htmlDeLaPastille, #htmlDeLaDefinition), ou par l'extension de l'éditeur
+  const pastille = (id, libelle, extra, html) => {
+    const li = motCle(id, normalize(libelle), 0, libelle, extra);
+    li.children[0].innerHTML = html;
+    return li;
+  };
+  p.liste.append(
+    pastille('armure-magique', 'Armure magique', { 'data-abreviation': 'AM', 'data-definition': 'Protège des sorts.' }, htmlDeLaPastille({ libelle: 'Armure magique', abreviation: 'AM', n: 0 })),
+    pastille('ro', 'Ricken d’or', { 'data-abreviation': 'RO', 'data-definition': '1 RO = 100 RF.' }, htmlDeLaPastille({ id: 'ro', libelle: 'Ricken d’or', abreviation: 'RO', n: 0 })));
+  const definitions = p.$('definitions-des-mots-cles');
+  for (const [id, texte] of [['armure-magique', 'Protège des sorts.'], ['ro', '1 RO = 100 RF.']]) {
+    const d = el('div', { 'data-definition-de': id });
+    d.innerHTML = htmlDeLaDefinition(texte);
+    definitions.append(d);
+  }
+  p.document.dispatchEvent(new CustomEvent('recherche:mots-cles', { detail: { gestion: false } }));
+  await attendre();
+  const visibles = () => p.liste.children.filter((li) => !li.hidden).map((li) => li.dataset.id);
+  const q = p.$('q');
+  for (const saisie of ['AM', 'am', 'armure']) {
+    q.value = saisie;
+    q.dispatchEvent(new Event('input'));
+    await attendre();
+    assert.deepEqual(visibles(), ['armure-magique'], saisie);
+  }
+  q.value = '';
+  q.dispatchEvent(new Event('input'));
+  await attendre();
+  cliquer(p.liste.children.at(-2).children[0], p.liste);
+  await attendre();
+  assert.equal(p.$('titre-mot-cle').textContent, 'Mot-clé « Armure magique (AM) »');
+  assert.equal(p.document.title, 'Mot-clé « Armure magique (AM) » — Recherche — Maverick Center');
+  assert.equal(p.$('vue-du-mot-cle-definition').textContent, 'Protège des sorts.');
+  // une monnaie (R183) : « Ricken d’or » et son icône, au titre comme dans la définition ; aucune abréviation visible (R63)
+  cliquer(p.$('tous-les-mots-cles'), p.vue);
+  await attendre();
+  cliquer(p.liste.children.at(-1).children[0], p.liste);
+  await attendre();
+  assert.ok(p.$('titre-mot-cle').querySelector('.piece.piece--ro'), 'l’icône au titre');
+  assert.equal(p.$('titre-mot-cle').textContent, 'Mot-clé « Ricken d’or  »');
+  assert.equal(p.document.title, 'Mot-clé « Ricken d’or » — Recherche — Maverick Center', 'le titre de l’onglet : sans icône ni abréviation');
+  const definition = p.$('vue-du-mot-cle-definition');
+  assert.equal(definition.hidden, false);
+  assert.ok(definition.querySelector('.piece.piece--ro') && definition.querySelector('.piece.piece--rf'), 'les monnaies de la définition en icônes');
+  assert.doesNotMatch(definition.textContent, /R[OF]/);
+  // sans abréviation ni définition rendue : le libellé seul, comme avant
+  cliquer(p.$('tous-les-mots-cles'), p.vue);
+  await attendre();
+  cliquer(p.liste.children[0].children[0], p.liste);
+  await attendre();
+  assert.equal(p.$('titre-mot-cle').textContent, 'Mot-clé « Peuple »');
+  // une définition sans rendu (pas encore posée par l'extension) : son texte tel quel
+  cliquer(p.$('tous-les-mots-cles'), p.vue);
+  await attendre();
+  cliquer(p.liste.children[2].children[0], p.liste);
+  await attendre();
+  assert.equal(p.$('vue-du-mot-cle-definition').textContent, 'Un mot-clé du glossaire qu’aucune page ne porte encore.');
 });

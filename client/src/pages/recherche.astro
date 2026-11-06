@@ -4,11 +4,12 @@ import rechercheCss from '../styles/recherche/recherche.css?raw';
 import { url } from '../lib/wiki';
 import { indexDeRecherche } from '../lib/recherche-index';
 import { comptesDesMotsCles, PARAMETRE_MOT_CLE } from '../lib/recherche-mots-cles.mjs';
+import { htmlDeLaDefinition, htmlDeLaPastille } from '../lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../lib/mots-cles-db.mjs';
 import { ouvrirBase } from '../lib/donnees.mjs';
 
 // Recherche (menu Outils) : plus de barre de recherche dans l'en-tête, la recherche est cette page, mêlée aux mots-clés (demande du propriétaire).
-// Sans recherche, tous les mots-clés ; en tapant, les mots-clés dont l'écriture correspond puis les pages et les événements trouvés (lib/search.mjs ; un
+// Sans recherche, tous les mots-clés ; en tapant, les mots-clés dont l'écriture ou l'abréviation correspond puis les pages et les événements trouvés (lib/search.mjs ; un
 // événement de la chronologie se trouve par son texte et par les libellés de ses catégories : lib/recherche-index.ts).
 // Les mots-clés sont le glossaire de la base (table mot_cle, migrations 0043 et 0056 ; demande du propriétaire du 2026-10-16 : « Le mot-clé devra désormais
 // servir un peu comme un glossaire ») : TOUS, même ceux qu'aucune page ne porte, chacun avec le nombre de pages visibles qui le portent ou le citent (pages
@@ -22,7 +23,14 @@ import { ouvrirBase } from '../lib/donnees.mjs';
 // commence par « mot-cle- » : c'est celui des bulles du glossaire (« mot-cle-<id> », lib/mots-cles-balises.mjs#idDeBulle).
 const index = await indexDeRecherche();
 const comptes = comptesDesMotsCles(index);
-const motsCles = chargerVocabulaire(ouvrirBase()).map((m) => ({ id: m.id, libelle: m.libelle, cle: m.libelle_cle, definition: m.description, n: comptes.get(m.id) ?? 0 }));
+// L'abréviation d'un mot-clé (migration 0090 ; réponse du propriétaire du 2026-11-05 : « Modifiable et affichée ») suit son libellé dans sa pastille,
+// « Armure magique (AM) · 3 » (une monnaie : « Ricken d’or » et son icône, R63 ; lib/mots-cles-balises.mjs#htmlDeLaPastille, le même HTML que l'extension
+// de l'éditeur), et la recherche le trouve par elle (data-abreviation). La définition de chaque mot-clé décrit est rendue ici, monnaies en icônes (R63) et
+// balises rendues par le middleware (#definitions-des-mots-cles, [data-definition-de] : htmlDeLaDefinition) : la vue d'un mot-clé la recopie, son
+// script ne lit aucune monnaie (il n'importe pas lib/monnaies.mjs : skill site-version-portable).
+const motsCles = chargerVocabulaire(ouvrirBase()).map((m) => ({
+  id: m.id, libelle: m.libelle, abreviation: m.abreviation || null, cle: m.libelle_cle, definition: m.description, n: comptes.get(m.id) ?? 0,
+}));
 const lienDuMotCle = `${url('recherche/')}?${PARAMETRE_MOT_CLE}=`;
 ---
 
@@ -42,9 +50,9 @@ const lienDuMotCle = `${url('recherche/')}?${PARAMETRE_MOT_CLE}=`;
       <ul class="tags" id="liste-mots-cles">
         {
           motsCles.map((m) => (
-            <li data-id={m.id} data-cle={m.cle} data-n={m.n} data-libelle={m.libelle} data-definition={m.definition || undefined}>
+            <li data-id={m.id} data-cle={m.cle} data-n={m.n} data-libelle={m.libelle} data-abreviation={m.abreviation ?? undefined} data-definition={m.definition || undefined}>
               <a class="badge" href={`${lienDuMotCle}${encodeURIComponent(m.id)}`} data-bulle={m.definition ? `mot-cle-${m.id}` : undefined}
-                aria-describedby={m.definition ? `mot-cle-${m.id}` : undefined}>{m.libelle}{m.n > 0 && ` (${m.n})`}</a>
+                aria-describedby={m.definition ? `mot-cle-${m.id}` : undefined} set:html={htmlDeLaPastille(m)} />
             </li>
           ))
         }
@@ -58,6 +66,9 @@ const lienDuMotCle = `${url('recherche/')}?${PARAMETRE_MOT_CLE}=`;
       <p id="vue-du-mot-cle-definition" class="recherche-definition" hidden></p>
       <p id="vue-du-mot-cle-compte" class="muted"></p>
       <ul id="vue-du-mot-cle-pages" class="entry-list" hidden></ul>
+      <div id="definitions-des-mots-cles" hidden>
+        {motsCles.filter((m) => m.definition).map((m) => <div data-definition-de={m.id} set:html={htmlDeLaDefinition(m.definition)} />)}
+      </div>
     </section>
 
     <section class="recherche-pages" id="pages-trouvees" aria-labelledby="titre-pages" hidden>

@@ -6,7 +6,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { planifier } from '../../tools/flux-git/regles.mjs';
-import { bilan, comparerBases, DOMAINES, TABLES_DES_NOTES, TABLES_LUES, trierVersions, versionCourte, versionDeLivraison } from '../src/lib/notes-de-version.mjs';
+import {
+  bilan, comparerBases, DOMAINES, PAGES_RETIREES_DU_GUIDE, TABLES_DES_NOTES, TABLES_LUES, trierVersions, versionCourte, versionDeLivraison,
+} from '../src/lib/notes-de-version.mjs';
+import { PAGES_RETIREES } from '../src/lib/livres.mjs';
 import { TABLES } from '../src/lib/edition-modele.mjs';
 import {
   TITRES_DOMAINES, diffMots, echapper, htmlDeLaListe, htmlDeLaNote, htmlDuTexteLibre, lancementAffiche, markdownDeLaNote, neutraliserMarqueur,
@@ -300,6 +303,21 @@ test('guide : une page fusionnée dans une autre (lib/livres.mjs#PAGES_ABSORBEES
   delete dev.tables.page[1];
   dev.tables.page = dev.tables.page.filter(Boolean);
   assert.equal(comparerBases(ref, dev).find((l) => l.entite === 'Météo').groupe, 'Règles avancées');
+});
+
+test('guide : une page retirée du plan (lib/livres.mjs#PAGES_RETIREES : le Lexique, migration 0090) se range sous « Pages retirées », après le Guide du MJ, jamais dans les Règles avancées', () => {
+  assert.ok(Object.hasOwn(PAGES_RETIREES, 'guide/lexique'));
+  const page = (id, titre) => ({ id, type: 'guide', statut: 'draft', titre, corps_md: 'Texte.', donnees: null });
+  const ref = { tables: { page: [page('guide/lexique', 'Lexique'), page('guide/meteo', 'Météo'), page('guide/un-maitre-du-jeu', 'Un maître du jeu')] } };
+  const dev = { tables: { page: [] } };
+  const lignes = comparerBases(ref, dev).filter((l) => l.table_nom === 'page');
+  assert.deepEqual(lignes.map((l) => [l.entite, l.nature, l.groupe]), [
+    ['Météo', 'retire', 'Règles avancées'], ['Un maître du jeu', 'retire', 'Guide du MJ'], ['Lexique', 'retire', PAGES_RETIREES_DU_GUIDE],
+  ]);
+  // modifiée (une note d'avant son retrait) : même rubrique
+  const avant = { tables: { page: [page('guide/lexique', 'Lexique')] } };
+  const modifiee = { tables: { page: [{ ...page('guide/lexique', 'Lexique'), corps_md: 'Autre texte.' }] } };
+  assert.equal(comparerBases(avant, modifiee).find((l) => l.entite === 'Lexique').groupe, PAGES_RETIREES_DU_GUIDE);
 });
 
 test('guide : l’annonce de l’encart IRL (migration 0068) vide n’est pas listée ; écrite, vidée ou changée, son texte se lit', () => {

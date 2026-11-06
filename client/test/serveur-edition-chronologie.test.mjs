@@ -430,7 +430,8 @@ test('spécialité créée puis renommée (migration 0056) : la fiche de son don
   const don = ligne('SELECT id FROM capacite WHERE specialite_id = ?', specialite).id;
   const motsClesDuDon = () => lignes('SELECT m.libelle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE t.page_id = ? ORDER BY t.ordre', don).map((m) => m.libelle);
   assert.deepEqual(motsClesDuDon(), ['capacité de classe'], 'ni la classe ni la spécialité');
-  assert.deepEqual(lignes('SELECT m.libelle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE t.page_id = ?', classe).map((m) => m.libelle).sort(), ['classe', 'magique'], 'la classe : ses mots-clés protégés');
+  // les mots-clés protégés se reconnaissent à leur écriture (libelle_cle) : leur libellé peut changer (« Classe », R183)
+  assert.deepEqual(lignes('SELECT m.libelle_cle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE t.page_id = ?', classe).map((m) => m.libelle_cle).sort(), ['classe', 'magique'], 'la classe : ses mots-clés protégés');
   const apres = motLibre('Voie seconde');
   ok(enregistrer([{ op: 'modifier', table: 'specialite', cle: { id: specialite }, valeurs: { nom: apres } }]));
   assert.deepEqual(motsClesDuDon(), ['capacité de classe']);

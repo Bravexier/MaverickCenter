@@ -5985,7 +5985,7 @@ Les chiffres de chaque posture sont dans le tableau de [[guide/les-postures|Les 
 - **Les NM** : 3 au plus sur un sort, qu’ils viennent des niveaux, d’un livre de sort ou du MJ.
 - **Les emplacements de sorts** : chaque condition remplie (une magie innée, une magie acquise, une classe magique, une seconde classe magique) en donne autant que la puissance magique ; jamais d’emplacement en plus.
 - **La quatrième barre** (les âmes de la Nécromancie, le Sang de la magie du Sang) : 10 points, qui se rechargent de 1 par tour en combat.
-- **Les mages de la Corruption** : le coût de leurs sorts passe dans leur {{corruption|corruption}} ; lancer un sort en puisant dans cette réserve (ses effets « Si {{cr}} ») coûte le double en {{corruption|corruption}}.
+- **Les mages de la Corruption** : le coût de leurs sorts passe dans leur {{corruption|corruption}} ; lancer un sort en puisant dans cette réserve (ses effets « Si {{corruption|CR}} ») coûte le double en {{corruption|corruption}}.
 
 Le détail : [[guide/la-magie-en-jeu|La magie en jeu]].
 
@@ -7565,7 +7565,7 @@ La Nécromancie et la magie du Sang ont une réserve à elles, la **quatrième b
 
 Pour la plupart des personnages, la {{corruption|corruption}} est un poison mortel ; pour tous, chaque point prend la place d’un point de {{chakra|chakra}} (voir [[guide/blessures-et-etats|Blessures et états]]).
 
-Les mages de la Corruption s’en servent au contraire comme d’une réserve. À chaque sort, son coût en {{chakra|chakra}} passe dans leur {{corruption|corruption}} : un sort qui coûte 4 leur donne 4 de {{corruption|corruption}}. Ils peuvent ensuite puiser dans cette réserve pour lancer les mêmes sorts avec des effets en plus, en payant le double du coût en {{corruption|corruption}} (8 pour un sort à 4). Les effets marqués « Si {{cr}} » sont ceux d’un sort lancé ainsi, en utilisant la {{corruption|corruption}}. Ailleurs, dans les dégâts, soins ou {{barriere|barrière}} d’un sort (D/S/B) ou dans ses effets, « N {{cr}} » fait monter la {{corruption|corruption}} de la cible, sauf le sort de soin Retrait, qui en retire ; dans un coût, c’est la {{corruption|corruption}} à dépenser. L’inverse ne marche pas : la {{corruption|corruption}} ne redonne jamais de {{chakra|chakra}}. Et, comme pour tous, chaque point de {{corruption|corruption}} empêche de récupérer un point de {{chakra|chakra}} : c’est en gros la même réserve, remplie avec autre chose ; seule la mort au maximum leur est épargnée, s’ils ont la Corruption en magie innée ou acquise. Le Potentiel Illimité, même s’il peut s’en servir, peut en mourir s’il en cumule trop.
+Les mages de la Corruption s’en servent au contraire comme d’une réserve. À chaque sort, son coût en {{chakra|chakra}} passe dans leur {{corruption|corruption}} : un sort qui coûte 4 leur donne 4 de {{corruption|corruption}}. Ils peuvent ensuite puiser dans cette réserve pour lancer les mêmes sorts avec des effets en plus, en payant le double du coût en {{corruption|corruption}} (8 pour un sort à 4). Les effets marqués « Si {{corruption|CR}} » sont ceux d’un sort lancé ainsi, en utilisant la {{corruption|corruption}}. Ailleurs, dans les dégâts, soins ou {{barriere|barrière}} d’un sort (D/S/B) ou dans ses effets, « N {{corruption|CR}} » fait monter la {{corruption|corruption}} de la cible, sauf le sort de soin Retrait, qui en retire ; dans un coût, c’est la {{corruption|corruption}} à dépenser. L’inverse ne marche pas : la {{corruption|corruption}} ne redonne jamais de {{chakra|chakra}}. Et, comme pour tous, chaque point de {{corruption|corruption}} empêche de récupérer un point de {{chakra|chakra}} : c’est en gros la même réserve, remplie avec autre chose ; seule la mort au maximum leur est épargnée, s’ils ont la Corruption en magie innée ou acquise. Le Potentiel Illimité, même s’il peut s’en servir, peut en mourir s’il en cumule trop.
 
 ## Les sorts IC
 
@@ -8309,152 +8309,6 @@ Sur la [fiche de personnage](/fiche/), cochez la posture du moment : la fiche re
 
 Le texte d’origine des postures : [[guide/postures|Postures]] (Doc « Guide pour MJ ») et [[guide/fiche-tableau-posture|Tableau Posture]] (Doc « Créer sa fiche de personnage »).
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/lexique', 'guide', 'lexique', 'Lexique', 'lexique', 'Les mots et les abréviations du jeu, de « Acquis » à « Zone d’influence », chacun avec la page qui l’explique.', NULL, 'Les mots et les abréviations du jeu, rangés dans l’ordre alphabétique. Chaque définition renvoie à la page qui en parle. Celles du glossaire du site sont reprises telles quelles, et la page [Recherche](/recherche/) les réunit toutes. Les noms de l’univers (dieux, lieux, factions…) sont dans le [[Glossaire]] du Codex.
-
-## A
-
-- **Acquis** : les points d’une compétence qui ne se répartissent pas, mais se gagnent : par l’entraînement, les dons de la race, de l’ethnie et de la classe, l’armure portée, le métier et les accessoires, et la fiche de personnage du site les additionne. En règle générale, ils ne dépassent pas 5 par point de la caractéristique, le +1 de la magie innée compris ([[guide/reussir-une-action|Réussir une action]]).
-- **Action** : l’action principale du tour, qui sert à attaquer, à lancer un sort, à utiliser un objet, à sprinter, à utiliser un don de type *Action* ou à faire une quatrième action rapide ([[guide/le-tour-de-jeu|Le tour de jeu]]).
-- **Action rapide** : voir *IC*.
-- **Alignement** : la morale du personnage. Il évolue au fil de l’aventure, selon ses actes, ses décisions et ses paroles, et le MJ en tient les quatre scores : Loyal, Chaotique, Bon et Mauvais ([[Alignement]]).
-- **Altération d’état** : un changement de la condition d’un personnage (poison, brûlure, peur, paralysie…) qui lui inflige des malus, souvent pendant plusieurs tours. Il en existe vingt, physiques ou mentales, et la plupart ont trois stades, de plus en plus forts ([[guide/blessures-et-etats|Blessures et états]]).
-- **AM** (armure magique) : les points que l’armure retire aux dégâts des sorts. L’AM vient de la race, de l’ethnie, des classes magiques (4 chacune : voir *Classe magique*), des accessoires et de l’armure portée ([[guide/l-equipement|L’équipement]]).
-- **Âme**, **Sang** : la quatrième barre des utilisateurs de la Nécromancie (les âmes) et de la magie du Sang (le Sang). C’est une réserve de 10 points, qui se recharge de 1 par tour en combat et que demandent certains de leurs sorts ([[guide/la-magie-en-jeu|La magie en jeu]]).
-- **Amélioration** : le niveau d’une arme (de +1 à +10), d’une armure ou d’un bouclier (de +1 à +5). Le niveau choisi donne le bonus qu’il écrit, qui est déjà le total : +10 aux dégâts pour une arme +5, +10 AP et +10 AM pour une armure +5, +10 AP pour un bouclier +5. On paie toutes les étapes, une à une, sans en sauter aucune. Les crans de {{solidite|solidité}} : pour une arme, +1 du +5 au +9 et +2 au +10 ; pour une armure, +1 au +4 comme au +5 ; pour un bouclier, les crans s’additionnent, +1 du +1 au +4 et +2 au +5 ([[guide/l-equipement|L’équipement]]).
-- **AP** (armure physique) : les points que l’armure retire aux dégâts des armes. Contre un coup d’estoc, de taille ou de frappe, l’armure portée les compte double ou moitié, selon qu’elle y résiste ou y est faible ([[guide/les-degats|Les dégâts]]).
-- **Artisanat** : fabriquer des objets, ce que seuls certains métiers permettent : il faut le bon métier. La compétence d’artisanat vaut 10 × la première caractéristique du métier + 10 × la seconde ([[guide/s-entrainer-et-exercer-un-metier|S’entraîner et exercer un métier]]).
-- **Attaque d’opportunité** : une attaque offerte hors de son tour, quand un adversaire rate son attaque contre vous sur un échec critique, quand il sort de votre zone d’influence (sauf si c’est vous qui l’en faites sortir), ou quand un don le permet. Une seule par tour et par joueur, sauf don qui en permet plus, et seulement une action simple ([[guide/attaquer-et-se-defendre|Attaquer et se défendre]]).
-- **Attaque discrète** : frapper une cible qui ne vous voit pas venir, pour un dé de dégâts en plus. À ne pas confondre avec l’attaque sournoise, qui vient d’une classe ([[guide/attaquer-et-se-defendre|Attaquer et se défendre]]).
-- **Attaque gratuite** : l’attaque que permet un adversaire qui quitte votre zone d’influence. Le [[guide/guide-pour-mj-maverick|Doc « Guide pour MJ »]] range aussi ce cas parmi les attaques d’opportunité (voir *Attaque d’opportunité* et *Zone d’influence*).
-- **Attributs** : les valeurs de base du personnage (santé, {{chakra|chakra}}, {{barriere|barrière}}, {{corruption|corruption}}, vitesse, initiative, armure de base), et la quatrième barre pour la Nécromancie et la magie du Sang ([[guide/creer-son-personnage|Créer son personnage]]).
-
-## B
-
-- {{barriere:}} Abrégée BA, elle vaut la moitié du {{chakra|chakra}} total, plus les bonus de la race et de la classe. Certains matériaux d’arme la contrent : le Mythril passe à travers, le Maverium la brise à son contact ([[guide/les-degats|Les dégâts]]). Le [[Glossaire]] du Codex précise qu’elle prend les coups avant la santé, sauf contre-indication.
-- **Battlemap** : voir *Carte de combat*.
-- **Biclassage** : avoir deux classes. On peut commencer avec deux classes, chacune au niveau 1 et gagnant 1 niveau par niveau global ; avec une seule, qui commence au niveau 2 et en gagne 2 par niveau global jusqu’au niveau 20, qu’elle atteint au niveau global 10, une seconde classe est prise automatiquement au niveau global 11 et reçoit la suite. Au niveau global 20, tout personnage a donc deux classes au niveau 20 ([[guide/creer-son-personnage|Créer son personnage]]).
-- **Boss** : un ennemi pensé pour affronter une équipe de quatre joueurs. Il a deux initiatives par tour, et plus de parades et d’esquives que les autres dans certaines postures ([[guide/situations-avancees|Les situations avancées]]).
-- **Bouclier** : une forme, sa classe de 1 à 5 (Bocle, Targe, Bouclier Rond, Écu, Pavois), et une matière, qui donne sa solidité. Ses AP et son AM ne comptent que sur une parade partielle faite avec lui, et son poids demande une Force minimum ([[guide/l-equipement|L’équipement]]).
-
-## C
-
-- **Campagne** : une aventure en plusieurs séances, qui part d’un point A pour arriver à un point B ; les joueurs y font partie de l’écriture de l’histoire. Voir aussi *One shot* ([[guide/campagne-ou-scenario-one-shot|« Campagne » ou « Scénario one shot » ?]]).
-- **Caractéristiques** : les six valeurs de base du personnage, Force, Volonté, Intelligence, Perception, Social et Agilité, de 1 à 4 en règle générale (5 avec le +1 de la magie innée). Chacune compte dix fois dans le score de ses cinq compétences ([[guide/creer-son-personnage|Créer son personnage]]).
-- **Carte de combat** (*battlemap*) : une carte quadrillée vue de haut, où le MJ dessine les obstacles d’un combat et où l’on compte les distances en cases. Il peut s’en passer pour un combat rapide ([[guide/le-tour-de-jeu|Le tour de jeu]]).
-- **Ceinture** : trois emplacements pour des objets à portée de main (fioles, carquois, bâtons magiques…), qui s’utilisent en une action rapide au lieu d’une action entière ; au plus 3 exemplaires du même objet dans chacun ([[guide/l-equipement|L’équipement]]).
-- {{chakra:}} Abrégé CK, il compte les points de magie du personnage, que dépensent ses sorts, et vient de la race, de la ou des classes et des magies ([[guide/la-magie-en-jeu|La magie en jeu]]).
-- **Classe** : la façon de se battre du personnage. Elle a son propre niveau, et lui donne de la santé, du {{chakra|chakra}} et de la {{barriere|barrière}}, des maîtrises d’armes et d’armures, un équipement de départ et des dons. Les [classes](/classes/) se rangent en cinq catégories : physiques au corps à corps, physiques à distance, magiques, raciales et spéciales.
-- **Classe magique** : une classe de la catégorie des classes magiques ; l’[[classes/archimage|Archimage]], rangée dans les classes spéciales, en est une aussi. Elle donne 4 AM et compte comme une condition pour les emplacements de sorts. La seconde spécialité de chaque classe raciale, et celle du [[classes/flagelleur|Flagelleur]], donne elle aussi 4 AM ([les classes](/classes/)).
-- **Classe raciale** : la classe propre à une race hybride, qui porte son nom. Le Drassah’thac, hybride, n’en a pas.
-- **Coma** : l’état d’un personnage dont la santé tombe à 0 ou moins. Inconscient, il fait des jets de *Survie* : un seul réussi le stabilise, trois ratés et il meurt ([[guide/blessures-et-etats|Blessures et états]]).
-- **Compétence** : un savoir-faire lié à une caractéristique (*Diplomatie*, *Esquive*, *Magie*…), avec son score. Il y en a trente, cinq par caractéristique ([[guide/creer-son-personnage|Créer son personnage]]).
-- {{corruption:}} Voir [[guide/blessures-et-etats|Blessures et états]].
-- **Coût secondaire** : ce qu’un sort coûte en plus de son {{chakra|chakra}} (des âmes pour la Nécromancie, du Sang pour la magie du Sang, ou autre chose encore, comme une part de la santé) ([[guide/la-magie-en-jeu|La magie en jeu]]).
-- {{cr:}} Voir [[guide/la-magie-en-jeu|La magie en jeu]].
-- **Créature invoquée** : une créature appelée par un sort. Ce sont les morts de l’Animation de mort (Nécromancie), les golems de l’Appel aux Golems (Terre), les marionnettes de la Marionnette de l’ombre (Ombre). Elle n’a pas d’échelle de puissance : son rang est un NPM ([le bestiaire](/bestiaire/)).
-- **Croix** : une marque sous une caractéristique, laissée par une blessure grave, un traumatisme, une maladie, une mauvaise nuit ou certaines altérations d’état. Une croix retire 20 % à tous les jets de la caractéristique ; deux la rendent inutilisable, elle et ses compétences ([[guide/reussir-une-action|Réussir une action]]).
-
-## D
-
-- **D100, D20, d6…** : un dé à 100, 20, 6… faces. Le nombre écrit devant dit combien de dés lancer, et ce qui suit le « + » s’ajoute : « 2d6+2 », ce sont deux dés à six faces, additionnés, plus 2 ([[guide/bienvenue|Bienvenue dans Maverick]]).
-- **Défense partielle** : une parade ou une esquive réussie, mais moins bonne que l’attaque. Les dégâts sont divisés par 2. Si c’est une *parade partielle* faite au bouclier, ses AP et son AM comptent : c’est le seul cas où ils comptent ([[guide/attaquer-et-se-defendre|Attaquer et se défendre]]).
-- **Dégâts** : ce que perd la cible d’un coup réussi, en santé ou en {{barriere|barrière}}, une fois retirée son armure ([[guide/les-degats|Les dégâts]]).
-- **Dieu inné**, **dieu choisi** : le dieu inné est la divinité de la magie innée du personnage (l’Espace/Temps en a deux) ; le dieu choisi, facultatif, est celui qu’il décide de prier (le Glossaire du Codex le nomme *dieu acquis*).
-- **Don** : une capacité particulière, donnée par la race, par la classe ou par les événements de l’aventure. Un don est *passif* (toujours effectif), *actif* (à déclarer pour que son effet fonctionne), d’*action* (il prend l’action du tour) ou de *réaction* (il se joue en dehors de son tour) ([[guide/creer-son-personnage|Créer son personnage]]).
-- **Don de base** : le don que donne la race, *Méditation* (pour récupérer du {{chakra|chakra}}) ou *Repos* (pour récupérer de la santé et du {{chakra|chakra}}) ; une action, trois fois par jour ([[guide/blessures-et-etats|Blessures et états]]).
-
-## E
-
-- **Échec critique** : un résultat de 96 à 100 au D100. L’action rate complètement, et cela coûte quelque chose : un sort au double de son coût, une défense où l’armure ne compte plus… ([[guide/reussir-une-action|Réussir une action]]).
-- **Embuscade** : consommer l’action de son tour pour attendre un ennemi, et lui porter une attaque d’opportunité dès qu’il entre dans la zone voulue. La posture de vigilance la déjoue ([[guide/attaquer-et-se-defendre|Attaquer et se défendre]]).
-- **Emplacement de sort** : la place d’un sort sur la fiche. Chaque condition remplie (une magie innée, une magie acquise, une classe magique, une seconde classe magique) en donne autant que la puissance magique ([[guide/creer-son-personnage|Créer son personnage]]).
-- **Entraînement** : un jet de D100 qui fait gagner des points d’acquis dans une compétence, auprès d’un entraîneur ou d’un PNJ important. Il ne fait progresser que 15 compétences au plus, et chacune de 10 % au plus ([[guide/s-entrainer-et-exercer-un-metier|S’entraîner et exercer un métier]]).
-- **EP** (échelle de puissance) : la classification indicative de la puissance d’un monstre, que donne sa carte du [bestiaire](/bestiaire/). Les créatures invoquées n’en ont pas.
-- **Esquive** : éviter un coup, avec la compétence *Esquive* (Agilité). Voir aussi *Parade* et *Défense partielle*.
-- **Ethnie** : une variante d’une race, comme le Felfe Forestier ou l’Orios de Sang, qui peut avoir ses propres dons et bonus ([les races](/races/)).
-
-## F
-
-- **Faiblesse** : voir *Résistance*.
-
-## I
-
-- **IC** (*Instant Cast*), ou **action rapide** (le Doc « Guide pour MJ » dit aussi *action bonus*) : une action qui ne prend pas l’action du tour. Trois au plus par tour, jamais deux fois la même, toujours avant l’action ; un sort IC ne consomme pas le tour, sauf sur un échec critique ([[guide/le-tour-de-jeu|Le tour de jeu]]).
-- **Initiative** (INI) : ce qui fixe l’ordre de jeu en combat. À chaque tour, chacun lance 1D20 et ajoute un bonus qui dépend de son Agilité ; on joue du plus haut résultat au plus bas ([[guide/le-tour-de-jeu|Le tour de jeu]]).
-- **Intervention** : en posture défensive, parer ou esquiver un coup à la place d’un allié adjacent ([[guide/les-postures|Les postures]]).
-
-## M
-
-- **Magie acquise** : une seconde magie, facultative. Toutes les magies ne se mélangent pas, et avec deux magies, les sorts de niveau 5 restent fermés ([[guide/creer-son-personnage|Créer son personnage]]).
-- **Magie innée** : la magie de naissance, héritée de l’un des parents, sauf si un dieu intervient ; tout le monde en a une. Elle donne +1 dans une caractéristique et relie le personnage à son dieu inné ([[guide/l-univers|L’univers]]).
-- **Maîtrise d’arme** : le savoir-faire avec une catégorie d’arme. Sans maîtrise, l’arme lance 1 dé de dégâts ; chaque point de maîtrise en ajoute un, jusqu’à 4 points au plus par catégorie, donc 5 dés. Les points de toutes les sources s’additionnent, jusqu’à ce plafond ; au-delà, la fiche le signale, et les points en trop ne donnent pas de dé ([[guide/l-equipement|L’équipement]]).
-- **Métier** : un savoir-faire choisi à la création ou plus tard dans l’aventure. Il donne des bonus d’acquis ou d’attribut, des objets de départ et, pour certains, l’artisanat ([les métiers](/metiers/)).
-- **MJ** (maître du jeu) : celui qui raconte l’histoire, joue les PNJ et les monstres, et juge de ce qui est possible, improbable ou impossible ([[guide/un-maitre-du-jeu|Un maître du Jeu]]).
-- **Mode Hyper** : l’état de surpuissance qui s’ouvre au niveau 2 : pour quelques tours, une fois par semaine, la magie du personnage ne fait plus qu’un avec lui. Le Mode Hyper 100 %, plus puissant encore, s’ouvre au niveau 10 ([[guide/le-mode-hyper|Le Mode Hyper et le Mode Super]]).
-- **Mode Super** : un équivalent moins puissant du Mode Hyper : une symbiose avec un objet légendaire ou enchanté ([[guide/le-mode-hyper|Le Mode Hyper et le Mode Super]]).
-- **Monnaies** : le Ricken de fer (RF), le Ricken d’or (RO) et la Pierre précieuse (PP). 1 RO = 100 RF, et 1 PP = 1 000 RO.
-- {{mordhau:}} Voir [[guide/l-equipement|L’équipement]].
-
-## N
-
-- **Naturel** (Nat.) : les points de compétence que l’on répartit soi-même, à la création (100 points, 20 au plus dans une compétence) puis à chaque niveau ([[guide/creer-son-personnage|Créer son personnage]]).
-- **Négatif maximal** : l’opposé de la santé maximum (−30 pour 30 de santé). Un personnage dans le coma qui y descend n’a droit qu’à un seul jet de survie, et à deux fois ce négatif, il meurt sur le coup ([[guide/blessures-et-etats|Blessures et états]]).
-- **Niveau de classe** : le niveau propre à chaque classe, qui suit le niveau global. La classe donne ses dons à ses niveaux 1, 5, 10, 15 et 20, et sa spécialité à son niveau 10 ([[guide/la-montee-de-niveau|La montée de niveau]]).
-- **Niveau global** : le niveau du personnage, de 1 à 20, que fixe son total d’expérience. Il règle le niveau de ses classes et sa puissance magique ([[guide/la-montee-de-niveau|La montée de niveau]]).
-- **NM** (niveau de maîtrise) : ce qui renforce un sort, de 0 à 3 NM ; ce que chacun lui apporte est écrit sur le sort. Il se gagne par niveau, par la lecture d’un livre de sort ou en cadeau du MJ ([[guide/la-magie-en-jeu|La magie en jeu]]).
-- **NPM** (niveau de puissance magique) : le niveau d’un sort, de 1 à 5. Un sort n’est accessible que si la puissance magique du personnage atteint son NPM ; la page de chaque [magie](/magies/) range ses sorts par NPM.
-
-## O
-
-- **One shot** (scénario) : une histoire jouée en une seule séance, avec une fin fermée, qui ne laisse pas de suite. Voir aussi *Campagne* ([[guide/campagne-ou-scenario-one-shot|« Campagne » ou « Scénario one shot » ?]]).
-
-## P
-
-- **Parade** : bloquer un coup avec son arme ou son bouclier, avec la compétence *Parade* (Force). Voir aussi *Esquive* et *Défense partielle*.
-- **Pièce élémentaire** : une pièce qui, posée sur une arme, une armure ou un vêtement, le transforme pour toujours en un équipement chargé de sa magie ; les bonus d’origine sont perdus ([[ressources/pieces-elementaires|Pièces élémentaires]]).
-- **PJ**, **PNJ** : un personnage joueur, celui qu’incarne un joueur ; un personnage non joueur, que joue le MJ, comme tous ceux que croisent les personnages.
-- **Portée** (PO) : la distance qu’un sort ou une action peut atteindre. Celle d’une arme est le nombre de cases que parcourt son projectile, 1 pour une arme qui n’en écrit pas ; chaque diagonale y compte pour 2 cases ([[guide/attaquer-et-se-defendre|Attaquer et se défendre]]).
-- **Posture** : l’attitude de combat que l’on déclare au début de son tour. Il en existe six : Offensif, Défensif, Neutre, Focus, Vigilance et Symbiose ([[guide/les-postures|Les postures]]).
-- **Prétiré** : une fiche de personnage créée sur le site, visible de tous ; la liste des [personnages](/personnages/) les réunit.
-- **Puissance magique** : le niveau de magie du personnage, de 1 à 5, qui augmente avec son niveau global. Elle dit jusqu’à quel NPM il peut lancer des sorts, et multiplie ses emplacements de sorts ([[guide/la-montee-de-niveau|La montée de niveau]]).
-
-## R
-
-- **Race pure**, **race hybride** : les deux familles de races. Une race hybride a sa classe raciale, sauf le Drassah’thac ([[guide/l-univers|L’univers]]).
-- **RC** : voir *Réussite critique*.
-- {{recharge-longue:}} Une propriété de certaines [armes](/ressources/equipement/#armes).
-- {{recharge-tres-longue:}} Une propriété de certaines [armes](/ressources/equipement/#armes).
-- **Remède** : une potion contre une altération d’état. Le mineur la réduit d’un cran, le majeur de deux, le parfait la soigne entièrement ([[guide/blessures-et-etats|Blessures et états]]).
-- **Résistance**, **faiblesse** (ou vulnérabilité) : ce qui fait prendre deux fois moins de dégâts d’une magie, ou deux fois plus. Elles se comptent en crans qui s’additionnent : deux résistances à la même magie font une grande résistance, deux faiblesses une grande vulnérabilité, une résistance et une faiblesse s’annulent. L’armure, elle, résiste ou est faible à des types de coups physiques ([[guide/les-degats|Les dégâts]]).
-- **Réussite critique** (RC) : un résultat de 1 à 5 au D100, que des bonus élargissent (posture, score au-delà de 95 %, dons, sorts…), jamais au-delà de 1 à 15. L’action réussit de façon exceptionnelle : en attaque, les dégâts de base sont doublés ([[guide/reussir-une-action|Réussir une action]]).
-
-## S
-
-- **Santé** : les points de vie du personnage. À 0 ou moins, il tombe dans le coma ([[guide/blessures-et-etats|Blessures et états]]).
-- **Score** : le pourcentage de réussite d’une compétence, qui vaut 10 × la caractéristique + les points naturels + les points acquis. Il faut faire son score ou moins au D100 pour réussir ([[guide/reussir-une-action|Réussir une action]]).
-- {{solidite:}} Elle compte les mauvais coups (un coup critique, le coup d’un adversaire très fort…) qu’un équipement peut encaisser. Une armure en a une par partie (le casque, le torse, chaque bras, chaque jambe), sauf une armure à cran de solidité uni, qui n’en a qu’une ([[guide/l-equipement|L’équipement]]).
-- **Spécialité** : l’embranchement d’une classe, qui se choisit quand elle atteint le niveau 10 ; la page de la classe en donne les dons ([les classes](/classes/)).
-- **Sprint** : doubler la distance parcourue pendant son tour. C’est l’action du tour : impossible d’attaquer après un sprint ([[guide/le-tour-de-jeu|Le tour de jeu]]).
-
-## T
-
-- **Tenaille** (prise en) : un ennemi encerclé au corps à corps par des alliés placés sur des cases opposées ; chaque allié de plus donne un avantage, jusqu’à quatre ([[guide/attaquer-et-se-defendre|Attaquer et se défendre]]).
-- **Tour** : en combat, le temps se découpe en tours ; chacun agit à son tour, dans l’ordre de l’initiative, puis un nouveau tour commence ([[guide/le-tour-de-jeu|Le tour de jeu]]).
-- **Tour de charge** : le tour passé à charger un sort de niveau 5 avant de le lancer. La posture Focus le supprime ([[guide/la-magie-en-jeu|La magie en jeu]]).
-
-## V
-
-- **Vitesse** : le nombre de cases que le personnage parcourt en un tour. Il en a deux, sur terre et à la nage : celles de sa race, que l’équipement, les accessoires et les sorts peuvent changer ([[guide/le-tour-de-jeu|Le tour de jeu]]).
-- **Vulnérabilité** : voir *Résistance*.
-
-## X
-
-- **XP** : les points d’expérience. Leur total fixe le niveau global ([[guide/la-montee-de-niveau|La montée de niveau]]).
-
-## Z
-
-- **Zone d’influence** : les cases devant un adversaire, derrière lui, à sa gauche et à sa droite. Y entrer puis la traverser lui permet une attaque d’opportunité ; la quitter, une attaque gratuite, que le Doc « Guide pour MJ » range aussi parmi les attaques d’opportunité ([[guide/le-tour-de-jeu|Le tour de jeu]]).
-', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/liste-des-alterations-d-etat', 'guide', 'liste-des-alterations-d-etat', 'Liste des altérations d''état', 'liste-des-alterations-detat', NULL, NULL, '## Aveuglement
 
 - **Magie Liée** : Lumière
@@ -18807,29 +18661,29 @@ Attention, si le {{chakra|chakra}} permet d''obtenir de la {{corruption|corrupti
 
 | Niveau | Nom | Type | Coût | Portée | Zone | D/S/B | Effets secondaires |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1.0 | Boule sombre | Attaque | 4.0 | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Si {{cr\|CR}} : +1d de dégâts. |
-| 1.0 | Tir d''huile | Attaque | 4.0 | 9 (+2/NM) | 1.0 | 2d6 dégâts | Si {{cr\|CR}} : Inflige 3 {{corruption\|corruption}}. |
-| 1.0 | Verrouillage Simple | Entrave | 4.0 | 6.0 | 1.0 | Bloque la posture Neutre | Dure 2 tours (+1/NM)<br>Si {{cr\|CR}} : Le changement de posture est aléatoire. |
-| 1.0 | Verrouillage Visible | Entrave | 4.0 | 6.0 | 1.0 | Bloque la posture Vigilance | Dure 2 tours (+1/NM)<br>Si {{cr\|CR}} : Le changement de posture est aléatoire. |
-| 1.0 | Retrait | Soin (IC) | 5.0 | 1.0 | 1.0 | 2d6 {{cr\|CR}} (+1d/NM) | Retire de la {{corruption\|corruption}} d''une cible pour la mettre dans la réserve. |
-| 2.0 | Aiguisage magique | Amplification (IC pour 3 NM) | 6.0 | 1.0 | 1.0 | / | Permet d''augmenter la réussite critique de 2% au prochain sort.<br>Si {{cr\|CR}} : Bonus de +5 dégâts en plus. |
+| 1.0 | Boule sombre | Attaque | 4.0 | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Si {{corruption\|CR}} : +1d de dégâts. |
+| 1.0 | Tir d''huile | Attaque | 4.0 | 9 (+2/NM) | 1.0 | 2d6 dégâts | Si {{corruption\|CR}} : Inflige 3 {{corruption\|corruption}}. |
+| 1.0 | Verrouillage Simple | Entrave | 4.0 | 6.0 | 1.0 | Bloque la posture Neutre | Dure 2 tours (+1/NM)<br>Si {{corruption\|CR}} : Le changement de posture est aléatoire. |
+| 1.0 | Verrouillage Visible | Entrave | 4.0 | 6.0 | 1.0 | Bloque la posture Vigilance | Dure 2 tours (+1/NM)<br>Si {{corruption\|CR}} : Le changement de posture est aléatoire. |
+| 1.0 | Retrait | Soin (IC) | 5.0 | 1.0 | 1.0 | 2d6 {{corruption\|CR}} (+1d/NM) | Retire de la {{corruption\|corruption}} d''une cible pour la mettre dans la réserve. |
+| 2.0 | Aiguisage magique | Amplification (IC pour 3 NM) | 6.0 | 1.0 | 1.0 | / | Permet d''augmenter la réussite critique de 2% au prochain sort.<br>Si {{corruption\|CR}} : Bonus de +5 dégâts en plus. |
 | 2.0 | Fer corrompu | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Imprègne l''arme d''une énergie mauvaise : pendant 3 tours, chacune de ses attaques inflige 5 points de {{corruption\|corruption}} à la cible. |
-| 2.0 | Souffle noir | Entrave | 7.0 | 2 (+1/NM) | Cône | Retire du 2d10 de {{chakra\|chakra}} à la cible | Si {{cr\|CR}} : Inflige 2d6 de {{corruption\|corruption}} en plus. |
-| 2.0 | Pétrole | Entrave (IC pour 3 NM) | 8.0 | 5.0 | 5x3 | Divise par 2 la vitesse et le bonus initiative | Pose une zone qui ralentit ceux qui sont dedans. Capable de brûler.<br>Si {{cr\|CR}} : Bloque entièrement les cibles. |
-| 2.0 | Vague déferlante | Attaque | 9.0 | 5.0 | 1.0 | 5d6 dégâts (+5/NM) | Peut être surchargé (15 {{chakra\|chakra}} en + = 1 dé en +) (maximum 75 {{chakra\|chakra}} en surcharge)<br>Si {{cr\|CR}} = Ignore 50% de l''AM. |
-| 3.0 | Mine noire | Attaque/Construction<br>(Inesquivable) | 14.0 | 6.0 | 1.0 | 7d6 dégâts (+3/NM) | Pose une mine qui explose quand une cible touche la zone. Ne se voit pas.<br>Si {{cr\|CR}} : Inflige 10 {{corruption\|corruption}} |
-| 3.0 | Laser noir | Attaque | 12.0 | 7.0 | 1.0 | 23 dégâts | Ignore totalement les AM et la {{barriere\|barrière}}. Augmente la réussite critique de 1%/NM.<br>Si {{cr\|CR}} : La cible a -20% pour le jet de défense |
-| 3.0 | Fouet ténébreux | Attaque/Entrave | 13.0 | 5.0 | 1.0 | 7d6 dégâts | Si jet de fermeté raté : Inflige 3 (+2/NM) {{corruption\|corruption}}.<br>Si {{cr\|CR}} : Fait reculer la cible de 1 case. |
-| 3.0 | Plaie suintante | Entrave (IC pour 3NM) | 12.0 | 3.0 | 1.0 | Bloque la {{barriere\|barrière}} | Si jet de fermeté raté : Empêche la régénération de la {{barriere\|barrière}} pour 3 tours.<br>Si {{cr\|CR}} : L''inflige automatiquement. |
-| 3.0 | Aura de frayeur | Entrave (IC pour 3 NM) | 14.0 | Soi-même | Cercle de 2 | / | Dure 3 tours. Si jet de Calme raté = Impossibilité pour la cible d''approcher. Si {{cr\|CR}} : Ceux qui ratent le jet fuient. |
-| 4.0 | Pour moi ! | Attaque | 19.0 | 1.0 | 1.0 | 5d6 + 25 dégâts | Si {{cr\|CR}} : Retire un effet positif de la cible et le transforme en 1d10 {{barriere\|barrière}} pour le lanceur. |
-| 4.0 | Grenade Collante | Attaque | 23.0 | 6.0 | Cercle de 3 | 8d6 + 35 dégâts | Explose dans 1 tour, inflige d''énormes dégâts de zone. (3NM = La grenade colle la cible)<br>Si {{cr\|CR}} : Le sort est inesquivable. |
-| 4.0 | Verrouillage Magique | Entrave | 20.0 | 6.0 | 1.0 | Bloque la posture Focus et Symbiose | Dure 2 tours (+1/NM)<br>Si {{cr\|CR}} : Le changement de posture est aléatoire. |
-| 4.0 | Verrouillage Physique | Entrave | 20.0 | 6.0 | 1.0 | Bloque la posture Offensif et Défensif | Dure 2 tours (+1/NM)<br>Si {{cr\|CR}} : Le changement de posture est aléatoire. |
+| 2.0 | Souffle noir | Entrave | 7.0 | 2 (+1/NM) | Cône | Retire du 2d10 de {{chakra\|chakra}} à la cible | Si {{corruption\|CR}} : Inflige 2d6 de {{corruption\|corruption}} en plus. |
+| 2.0 | Pétrole | Entrave (IC pour 3 NM) | 8.0 | 5.0 | 5x3 | Divise par 2 la vitesse et le bonus initiative | Pose une zone qui ralentit ceux qui sont dedans. Capable de brûler.<br>Si {{corruption\|CR}} : Bloque entièrement les cibles. |
+| 2.0 | Vague déferlante | Attaque | 9.0 | 5.0 | 1.0 | 5d6 dégâts (+5/NM) | Peut être surchargé (15 {{chakra\|chakra}} en + = 1 dé en +) (maximum 75 {{chakra\|chakra}} en surcharge)<br>Si {{corruption\|CR}} = Ignore 50% de l''AM. |
+| 3.0 | Mine noire | Attaque/Construction<br>(Inesquivable) | 14.0 | 6.0 | 1.0 | 7d6 dégâts (+3/NM) | Pose une mine qui explose quand une cible touche la zone. Ne se voit pas.<br>Si {{corruption\|CR}} : Inflige 10 {{corruption\|corruption}} |
+| 3.0 | Laser noir | Attaque | 12.0 | 7.0 | 1.0 | 23 dégâts | Ignore totalement les AM et la {{barriere\|barrière}}. Augmente la réussite critique de 1%/NM.<br>Si {{corruption\|CR}} : La cible a -20% pour le jet de défense |
+| 3.0 | Fouet ténébreux | Attaque/Entrave | 13.0 | 5.0 | 1.0 | 7d6 dégâts | Si jet de fermeté raté : Inflige 3 (+2/NM) {{corruption\|corruption}}.<br>Si {{corruption\|CR}} : Fait reculer la cible de 1 case. |
+| 3.0 | Plaie suintante | Entrave (IC pour 3NM) | 12.0 | 3.0 | 1.0 | Bloque la {{barriere\|barrière}} | Si jet de fermeté raté : Empêche la régénération de la {{barriere\|barrière}} pour 3 tours.<br>Si {{corruption\|CR}} : L''inflige automatiquement. |
+| 3.0 | Aura de frayeur | Entrave (IC pour 3 NM) | 14.0 | Soi-même | Cercle de 2 | / | Dure 3 tours. Si jet de Calme raté = Impossibilité pour la cible d''approcher. Si {{corruption\|CR}} : Ceux qui ratent le jet fuient. |
+| 4.0 | Pour moi ! | Attaque | 19.0 | 1.0 | 1.0 | 5d6 + 25 dégâts | Si {{corruption\|CR}} : Retire un effet positif de la cible et le transforme en 1d10 {{barriere\|barrière}} pour le lanceur. |
+| 4.0 | Grenade Collante | Attaque | 23.0 | 6.0 | Cercle de 3 | 8d6 + 35 dégâts | Explose dans 1 tour, inflige d''énormes dégâts de zone. (3NM = La grenade colle la cible)<br>Si {{corruption\|CR}} : Le sort est inesquivable. |
+| 4.0 | Verrouillage Magique | Entrave | 20.0 | 6.0 | 1.0 | Bloque la posture Focus et Symbiose | Dure 2 tours (+1/NM)<br>Si {{corruption\|CR}} : Le changement de posture est aléatoire. |
+| 4.0 | Verrouillage Physique | Entrave | 20.0 | 6.0 | 1.0 | Bloque la posture Offensif et Défensif | Dure 2 tours (+1/NM)<br>Si {{corruption\|CR}} : Le changement de posture est aléatoire. |
 | 4.0 | Pluie huileuse | Météo | 50% corruption | Soi-même | Terrain | / | Pose la météo "Pluie pétrole" pendant 2 tours (+1/NM). |
-| 5.0 | Une tu meurs | Attaque | 55 (-5/NM) | 1.0 | 1.0 | 30 dégâts perce AM/tour | Inflige une blessure qui va infliger des dégâts pendant 3 tours.<br>Si {{cr\|CR}} : Ignore la {{barriere\|barrière}}. |
+| 5.0 | Une tu meurs | Attaque | 55 (-5/NM) | 1.0 | 1.0 | 30 dégâts perce AM/tour | Inflige une blessure qui va infliger des dégâts pendant 3 tours.<br>Si {{corruption\|CR}} : Ignore la {{barriere\|barrière}}. |
 | 5.0 | Sapeur | Entrave | X Corruption | 3 (+1/NM) | 1.0 | / | Donne autant de {{corruption\|corruption}} à la cible que la réserve actuelle de {{corruption\|corruption}}. |
-| 5.0 | Eau noire | Entrave | 45 (-5/NM) | Vue | Terrain | Retire les résistances magiques | Baisse d''un cran les résistances magiques pendant 3 tours.<br>Si {{cr\|CR}} : Les retire complètement |
+| 5.0 | Eau noire | Entrave | 45 (-5/NM) | Vue | Terrain | Retire les résistances magiques | Baisse d''un cran les résistances magiques pendant 3 tours.<br>Si {{corruption\|CR}} : Les retire complètement |
 
 ## Notes et commentaires des sorts
 
@@ -25988,7 +25842,7 @@ Puis lancer 1d20 pour déterminer le bonus d''acquis
 | 2.0 | Permet de relancer un jet, peu importe lequel, l''objet se brise après | Niveau 3 | Opale + Perle | 89 Ro |
 | 3.0 | Permet d''avoir un IC supplémentaire | Niveau 2 | Diamant rose + Opale | 50 Ro |
 | 4.0 | Les soins avec les kits redonnent +5 santé en plus | Niveau 1 | Saphir + Opale | 27 Ro |
-| 5.0 | Permet de relancer une fois un test de compétence (1d30) (ne peut être changé) (1 fois/jour) | Niveau 4 | Gypse + Gypse | 90 Ro |
+| 5.0 | Permet de relancer une fois un test de compétence (1d100) (ne peut être changé) (1 fois/jour) | Niveau 4 | Gypse + Gypse | 90 Ro |
 | 6.0 | Avantage pour retirer une altération d''état (une fois par combat) | Niveau 2 | Malachite + Malachite | 33 Ro |
 | 7.0 | Permet une fois par combat de permettre à une invocation de relancer un jet raté | Niveau 1 | Ambre + Malachite | 25 Ro |
 | 8.0 | Réduit le niveau d''une porte de 1d4 niveaux | Niveau 1 | Émeraude + Améthyste | 27 Ro |

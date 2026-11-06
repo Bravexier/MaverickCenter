@@ -56,17 +56,21 @@ test('élément ↔ mot-clé : les pages portent leurs mots-clés ; un événeme
 test('vue d’un mot-clé : son libellé et ses pages ; un id que le vocabulaire n’a pas « n’existe plus »', () => {
   const libelles = new Map([['peuple', 'Peuple'], ['magie', 'magie'], ['vide', 'Vide']]);
   const v = vueDuMotCle(index, 'peuple', libelles);
-  assert.deepEqual(Object.keys(v).sort(), ['definition', 'existe', 'libelle', 'pages']);
+  assert.deepEqual(Object.keys(v).sort(), ['abreviation', 'definition', 'existe', 'libelle', 'pages']);
   assert.equal(v.existe, true);
   assert.equal(v.libelle, 'Peuple');
   assert.deepEqual(v.pages.map((e) => e.title), ['Elfe', 'Nain']);
   assert.deepEqual(vueDuMotCle(index, 'supprime', libelles), { existe: false }, 'supprimé ou fusionné depuis');
   assert.deepEqual(vueDuMotCle(index, 'sans-categorie', libelles), { existe: false }, '« Sans catégorie » n’est plus un choix de la recherche');
-  assert.deepEqual(vueDuMotCle(index, 'vide', libelles), { existe: true, libelle: 'Vide', definition: '', pages: [] }, 'un mot-clé sans page visible existe');
+  assert.deepEqual(vueDuMotCle(index, 'vide', libelles), { existe: true, libelle: 'Vide', abreviation: null, definition: '', pages: [] }, 'un mot-clé sans page visible existe');
   // le glossaire (migration 0056) : la définition avec le libellé
   const glossaire = new Map([['vide', { libelle: 'Vide', definition: 'Rien dedans.' }], ['peuple', { libelle: 'Peuple', definition: null }]]);
-  assert.deepEqual(vueDuMotCle(index, 'vide', glossaire), { existe: true, libelle: 'Vide', definition: 'Rien dedans.', pages: [] });
+  assert.deepEqual(vueDuMotCle(index, 'vide', glossaire), { existe: true, libelle: 'Vide', abreviation: null, definition: 'Rien dedans.', pages: [] });
   assert.equal(vueDuMotCle(index, 'peuple', glossaire).definition, '', 'pas encore décrit');
+  // l'abréviation (migration 0090, « Modifiable et affichée ») ; son nom affiché vient de la page construite (lib/mots-cles-balises.mjs#htmlDeLaPastille)
+  const abreges = new Map([['armure-magique', { libelle: 'Armure magique', abreviation: 'AM', definition: 'x' }], ['vide', { libelle: 'Vide', abreviation: '' }]]);
+  assert.deepEqual(vueDuMotCle(index, 'armure-magique', abreges), { existe: true, libelle: 'Armure magique', abreviation: 'AM', definition: 'x', pages: [] });
+  assert.equal(vueDuMotCle(index, 'vide', abreges).abreviation, null, 'une abréviation vide : aucune');
 });
 
 test('liste des mots-clés : filtrée par l’écriture (pas l’id), sans ceux qui n’ont aucun élément visible, sauf en mode modification', () => {
@@ -84,6 +88,17 @@ test('liste des mots-clés : filtrée par l’écriture (pas l’id), sans ceux 
   assert.deepEqual(ids(motsClesAffiches(motsCles, 'aide de')), ['aide']);
   assert.deepEqual(ids(motsClesAffiches(motsCles, 'demo')), []);
   assert.deepEqual(ids(motsClesAffiches(motsCles, 'démo', { tous: true })), ['demo']);
+  // l'abréviation (migration 0090) : « AM » trouve « Armure magique », quelle que soit la casse ; un mot cherché ne se lit pas à cheval sur l'écriture et
+  // l'abréviation
+  const abreges = [...motsCles, { id: 'armure-magique', cle: 'armure-magique', abreviation: 'AM', n: 0 }, { id: 'nature', cle: 'nature', abreviation: 'Nat.', n: 1 }];
+  assert.deepEqual(ids(motsClesAffiches(abreges, 'AM', { tous: true })), ['armure-magique']);
+  assert.deepEqual(ids(motsClesAffiches(abreges, 'am', { tous: true })), ['armure-magique']);
+  assert.deepEqual(ids(motsClesAffiches(abreges, 'am')), [], 'sans page visible : hors du mode modification');
+  assert.deepEqual(ids(motsClesAffiches(abreges, 'nat.')), ['nature']);
+  assert.deepEqual(ids(motsClesAffiches(abreges, 'armure')), [], 'par l’écriture, sans page visible : absent');
+  assert.deepEqual(ids(motsClesAffiches(abreges, 'armure', { tous: true })), ['armure-magique'], 'par l’écriture, toujours');
+  assert.deepEqual(ids(motsClesAffiches(abreges, 'magique am', { tous: true })), ['armure-magique'], 'un mot dans l’écriture, l’autre dans l’abréviation');
+  assert.deepEqual(ids(motsClesAffiches(abreges, 'equeam', { tous: true })), [], 'jamais à cheval');
 });
 
 test('le vocabulaire de la base : chaque mot-clé des pages y a son id, retrouvé par son écriture', () => {
@@ -232,7 +247,10 @@ test('mots-clés protégés : la liste de lib/mots-cles.mjs est faite d’écrit
 test('le script de /recherche/ n’importe que lib/recherche-mots-cles.mjs et lib/search.mjs, qu’aucun autre script de page n’importe', () => {
   const imports = (chemin) => [...readFileSync(chemin, 'utf8').matchAll(/^import\s[^;]*?from '([^']+)';$/gm)].map((m) => m[1]);
   assert.deepEqual(imports(new URL('../src/scripts/recherche.mjs', import.meta.url)), ['../lib/recherche-mots-cles.mjs', '../lib/search.mjs']);
+  // ni lib/mots-cles.mjs (la chaîne de l'édition) ni lib/monnaies.mjs (seul src/scripts/accessoires.mjs l'importe) : le nom et la définition
+  // rendus (abréviation, icône d'une monnaie) viennent de la page construite
   assert.deepEqual(imports(new URL('../src/lib/recherche-mots-cles.mjs', import.meta.url)), ['./search.mjs'], 'rien de lourd dans le navigateur (pas lib/mots-cles.mjs)');
+  assert.deepEqual(imports(new URL('../src/lib/search.mjs', import.meta.url)), ['./text.mjs'], 'search.mjs : normalize seul');
   const scripts = new URL('../src/scripts/', import.meta.url);
   for (const nom of readdirSync(scripts, { recursive: true }).filter((n) => n.endsWith('.mjs') && n !== 'recherche.mjs')) {
     assert.deepEqual(imports(new URL(nom, scripts)).filter((m) => /\/(recherche-mots-cles|search)\.mjs$/.test(m)), [], nom);

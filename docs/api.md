@@ -149,11 +149,11 @@ adaptées, jamais leurs noms ; le lot porte la page `api/v1/<ressource>[/<sous-r
 | --- | --- |
 | `200` `201` | Lu, modifié, supprimé ; créé (`Location`) |
 | `304` | `If-None-Match` égal à la version (détail) |
-| `400` | Corps illisible ou qui n'est pas un objet JSON, rien à modifier, colonne ou paramètre inconnu, valeur refusée par le service d'édition (type, bornes, champ obligatoire, balise du glossaire qui ne cite aucun mot-clé : `refs`), `limite` hors bornes |
+| `400` | Corps illisible ou qui n'est pas un objet JSON, rien à modifier, colonne ou paramètre inconnu, valeur refusée par le service d'édition (type, bornes, champ obligatoire, balise du glossaire qui ne cite aucun mot-clé : `refs`, abréviation d'un mot-clé mal écrite : `champ: "abreviation"`), `limite` hors bornes |
 | `403` | Hors du site de dev (tout `/api/v1/`) ; écriture qui vient d'un autre site (`Sec-Fetch-Site`) |
 | `404` | Ressource, sous-ressource ou ligne inconnue (ou hors de la ressource) ; extension absente au `PATCH` |
 | `405` | Méthode que la ressource n'a pas : `Allow` donne la liste exacte, le corps la raison (lecture seule ; ni le service d'édition ni une opération du lot ne le font, et par quelles méthodes la ressource s'écrit) et les `capacites` |
-| `409` | `If-Match` périmé ; refus du service d'édition (élément cité par d'autres règles, mot-clé protégé, dernier bloc d'un événement, maîtrise d'arme illisible dans une classe ou un don, don à plus d'une part de maîtrise à choisir, nom de famille d'armes déjà pris ou qui changerait une maîtrise existante, avec la liste dans `sources` : décision R159…) |
+| `409` | `If-Match` périmé ; refus du service d'édition (élément cité par d'autres règles, mot-clé protégé, dernier bloc d'un événement, maîtrise d'arme illisible dans une classe ou un don, don à plus d'une part de maîtrise à choisir, nom de famille d'armes déjà pris ou qui changerait une maîtrise existante, avec la liste dans `sources` : décision R159 ; abréviation d'un mot-clé qui est l'id, l'écriture ou l'abréviation d'un autre, ou mot-clé créé ou renommé vers l'abréviation d'un autre : `champ: "abreviation"`, `mot_cle` : l'autre…) |
 | `413` | Corps de plus de 1 Mio |
 | `415` | Écriture sans `Content-Type: application/json` |
 | `422` | Refusé par la base (contrainte CHECK, UNIQUE, NOT NULL, clé étrangère) ou valeur que les importeurs ne sauraient pas relire ; une gemme ou un bois du Potentiel Illimité (`POST /api/v1/gemmes/`, `POST /api/v1/bois/`) : « Le Potentiel Illimité n’a ni gemme, ni bois, ni bâton magique, ni pièce élémentaire (décision R160). » |
@@ -335,6 +335,10 @@ la ressource ne prend que les lignes de la table qui passent sa condition.
 | `liens/` | Liens entre pages | `lien` | lecture seule | — |
 | `notes-de-version/` | Notes de version | `note_version` | lecture seule | `lignes` |
 | `historique/` | Historique des modifications | `historique_modification` | lecture seule | — |
+
+`mots-cles/` liste et cherche (`?q=`) aussi l'abréviation (`abreviation`, migration 0090 : « AM », `NULL` sans), qui se donne à la création et se
+modifie par `PATCH` ; la ref d'une balise du glossaire peut être l'id, l'écriture ou l'abréviation du mot-clé (enregistrée sous l'id :
+[`content-guide.md`](content-guide.md), « Mots-clés (glossaire) »).
 
 Les tables qui ne sont pas des éléments (tables de détail refaites par le service, vues de recherche, fiches de personnages, journal) sont rangées
 dans `HORS_RESSOURCE` de leur module, avec la raison : `test/ressources-registre.test.mjs` exige que chaque table de `data/schema.sql` soit rangée une

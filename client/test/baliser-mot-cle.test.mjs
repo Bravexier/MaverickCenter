@@ -3,7 +3,8 @@
 // modifie, jamais un nom ni une rubrique de carte découpée), puis, sur une copie de data/rows et un mot d'essai, le chemin entier : mot-clé créé par le
 // service, textes réécrits sans que rien ne change à l'écran (le texte sans balises est celui d'avant), journal rapatrié sans conflit ; puis
 // (2026-10-18 : « Seulement là où il est pertinent ») un second passage qui retire les balises là où le mot n'a plus le sens du mot-clé, et l'entrée de
-// la Corruption (tools/glossaire/corruption.json : « CR », décisions R103 et R140 ; définitions selon R141 à R143 et R146).
+// la Corruption (tools/glossaire/corruption.json : « CR », décisions R103 et R140, balisé `{{corruption|CR}}` depuis R183 (3) ; définitions selon R141 à
+// R143 et R146).
 //   node --test test/baliser-mot-cle.test.mjs
 import assert from 'node:assert/strict';
 import { cpSync, readFileSync } from 'node:fs';
@@ -18,6 +19,7 @@ import { TABLES, typeDeTexte } from '../src/lib/edition-modele.mjs';
 import { formesNonCanoniques, texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { GABARIT_DE_CARTE, SENS_DEFENSE } from '../src/lib/monstre-champs.mjs';
+import { normalize } from '../src/lib/text.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const ROWS = fileURLToPath(new URL('../../data/rows', import.meta.url));
@@ -169,16 +171,19 @@ test('entrée de la Corruption : Chakra et Barrière repris (leurs écritures ex
       else assert.ok(TEXTES.some((t) => `${t.table}.${t.colonne}` === e), e);
     }
   }
-  const cr = mots.find((m) => m.libelle === 'CR');
+  // « CR » fondu dans « Corruption » (R183 (3), réponse du propriétaire « Fusionner dans Corruption ») : l'entrée de l'écriture « CR » vise le mot-clé
+  // `corruption` par son libellé (l'outil retrouve le mot-clé par son écriture et en crée un s'il manque : une entrée « CR » recréerait `cr`) ; sans
+  // définition (elle n'est posée que sur un mot-clé créé) : celle de la base porte R103 et R140 (test/db-lexique-en-mots-cles.test.mjs, R183 (3))
+  assert.ok(!mots.some((m) => normalize(m.libelle) === 'cr'), 'aucune entrée ne vise un mot-clé `cr`');
+  const cr = mots.find((m) => m.motif === 'CR');
+  assert.equal(cr.libelle, 'Corruption');
   assert.equal(cr.casse, true);
-  // R103 (« Si CR ») et R140 (dans le coût, la corruption à dépenser ; dans le D/S/B ou les effets, celle que reçoit la cible, Retrait en retire)
-  assert.match(cr.description, /si le sort est lancé en utilisant la corruption/);
-  assert.match(cr.description, /fait monter la corruption de la cible \(le sort de soin Retrait en retire\)/);
-  assert.match(cr.description, /dans le coût, c'est la corruption à dépenser/);
-  // « CR » partout où il s'écrit (R140), jamais « cr » (un autre mot)
+  assert.equal(cr.description, undefined);
+  // « CR » partout où il s'écrit (R140), jamais « cr » (un autre mot) ; la balise cite `corruption` et garde le texte « CR »
   assert.equal(cr.contextes, undefined);
-  assert.equal(baliserLeMot('Si CR : +1d. 2d6 CR (+1d/NM). 2d6 cr. Si CR = ignore 50% de l’AM.', { id: 'cr', libelle: 'CR', ...cr }).texte,
-    'Si {{cr|CR}} : +1d. 2d6 {{cr|CR}} (+1d/NM). 2d6 cr. Si {{cr|CR}} = ignore 50% de l’AM.');
+  assert.equal(baliserLeMot('Si CR : +1d. 2d6 CR (+1d/NM). 2d6 cr. Si CR = ignore 50% de l’AM.', { id: 'corruption', ...cr }).texte,
+    'Si {{corruption|CR}} : +1d. 2d6 {{corruption|CR}} (+1d/NM). 2d6 cr. Si {{corruption|CR}} = ignore 50% de l’AM.');
+  assert.equal(baliserLeMot('Si CR : +1d.', { id: 'corruption', ...cr, markdown: true }).texte, 'Si {{corruption|CR}} : +1d.');
   // R141 : « abomination », seule ; R146 : seule la Corruption innée ou acquise ne risque pas la mort, pas le Potentiel Illimité ; R142 : la corruption prend quand même la place du chakra ; R143.
   // La définition de l'entrée est la trace de ce que le service a écrit (lot du 2026-10-22) : l'outil ne la pose que sur un mot-clé qu'il crée, et la
   // définition affichée est celle de la base (mot_cle.description), que le site de dev peut modifier ensuite.

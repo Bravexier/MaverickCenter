@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 182 décisions, de R1 à R182, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 183 décisions, de R1 à R183, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
 
 | Réf. | Sujet | Décision |
 | --- | --- | --- |
@@ -188,3 +188,4 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R180 | Nerf de la réussite critique (demande du propriétaire, avec un message du… | (1) Surplus. Un score de compétence de 96 à 102 % donn… |
 | R181 | Dons « Variable » du Mage Bleu (Mimétisme, niveau 1 : « Permet d'avoir un… | La liste est le tableau du bas de la fiche de la class… |
 | R182 | Suite de R180 (réussite critique), questions Q89, Q90, Q91 et lecture du D… | (1) Échec critique : de 96 à 100, c'est toujours un éc… |
+| R183 | Le Lexique converti en mots-clés (demande du propriétaire, 2026-11-05). La… | (1) La page Lexique est supprimée : chaque entrée devi… |
