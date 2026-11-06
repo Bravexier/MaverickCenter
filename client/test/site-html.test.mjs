@@ -65,7 +65,12 @@ test('la page 404 renvoie les anciennes adresses /wiki/… vers les nouvelles', 
     assert.ok(slug && slug.startsWith('guide/'), `${e.path} : renvoi absent`);
   }
   const adressesRetirees = Object.values(PAGES_RETIREES).flatMap((p) => p.adresses);
-  assert.equal(Object.keys(renvois).length, guide.length + 1 + Object.keys(PAGES_ABSORBEES).length + Object.keys(ADRESSES_DU_PLAN_PRECEDENT).length + adressesRetirees.length);
+  // une adresse des plans précédents n'est renvoyée que si sa page (ou celle qui l'absorbe) est construite : sans les pages d'exemple
+  // (HIDE_EXAMPLES=1, build de la CI), /regles/avancees/utiliser-ce-wiki/ (la fixture) ne l'est pas
+  const construite = (id) => existsSync(join(dist, cheminDePage(PAGES_ABSORBEES[id] ?? id), 'index.html'));
+  const precedentes = Object.entries(ADRESSES_DU_PLAN_PRECEDENT).filter(([, id]) => construite(id)).length;
+  assert.equal(Object.keys(renvois).length, guide.length + 1 + Object.keys(PAGES_ABSORBEES).length + precedentes + adressesRetirees.length);
+  for (const [adresse, id] of Object.entries(ADRESSES_DU_PLAN_PRECEDENT)) assert.equal(Object.hasOwn(renvois, adresse), construite(id), `${adresse} : renvoyée si et seulement si ${id} est construite`);
   // le Lexique, devenu des mots-clés (migration 0090, « Supprime la page lexique. ») : ses adresses mènent à /recherche/ (« Rediriger vers /recherche/ »)
   assert.equal(renvois['regles/lexique/'], 'recherche/');
   assert.equal(renvois['guide/lexique/'], 'recherche/');
