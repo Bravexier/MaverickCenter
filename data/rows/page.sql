@@ -7583,14 +7583,37 @@ Pour suivre le combat, le MJ peut déployer une **carte de combat** (*battlemap*
 
 Au début du combat, le MJ prépare de quoi noter les initiatives de tous, joueurs et ennemis, et la carte s’il en faut une. Puis chaque tour suit ces étapes :
 
-1. **L’initiative.** Le MJ annonce le début du tour. Chaque joueur lance 1D20 et ajoute le bonus d’initiative de son personnage, qui vient de son Agilité (le tableau est dans [[guide/finaliser-son-personnage|Créer son personnage]]) ; le MJ fait de même pour les PNJ et les ennemis. On joue du plus haut résultat au plus bas. Les initiatives se relancent **à chaque tour**.
-2. **Les effets de début de tour.** Avant de faire quoi que ce soit, le personnage dont c’est le tour subit ce qui le frappe en début de tour : poison, brûlure… (voir [[guide/alterations-d-etats|Blessures et états]]).
-3. **La posture.** Il déclare sa posture de combat. Elle décide en grande partie de ce qu’il pourra faire ensuite : attaquer plus fort, se défendre, se concentrer sur sa magie… (voir [[guide/les-postures|Les postures]]). Le MJ, lui, peut annoncer celle de ses ennemis à demi-mot, pour laisser les joueurs la deviner.
-4. **Le déplacement.** Il parcourt autant de cases que sa vitesse le permet, ou moins : rien ne l’oblige à tout utiliser, et il peut en garder pour après son action, ou ne pas bouger du tout.
-5. **Les actions rapides (IC).** Il peut en faire jusqu’à trois, jamais deux fois la même, et **toujours avant son action**.
-6. **L’action.** C’est l’action principale de son tour : attaquer avec son arme, lancer un sort, utiliser un objet, sprinter, utiliser un don de type *Action*, ou faire une quatrième action rapide.
-7. **La fin du déplacement.** S’il lui reste du déplacement, il peut l’utiliser maintenant.
-8. **La fin du tour.** On passe au suivant.
+### 1. L’initiative
+
+Le MJ annonce le début du tour. Chaque joueur lance 1D20 et ajoute le bonus d’initiative de son personnage, qui vient de son Agilité (le tableau est dans [[guide/finaliser-son-personnage|Créer son personnage]]) ; le MJ fait de même pour les PNJ et les ennemis. On joue du plus haut résultat au plus bas. Les initiatives se relancent **à chaque tour**.
+
+### 2. Les effets de début de tour
+
+Avant de faire quoi que ce soit, le personnage dont c’est le tour subit ce qui le frappe en début de tour : poison, brûlure… (voir [[guide/alterations-d-etats|Blessures et états]]).
+
+### 3. La posture
+
+Il déclare sa posture de combat. Elle décide en grande partie de ce qu’il pourra faire ensuite : attaquer plus fort, se défendre, se concentrer sur sa magie… (voir [[guide/les-postures|Les postures]]). Le MJ, lui, peut annoncer celle de ses ennemis à demi-mot, pour laisser les joueurs la deviner.
+
+### 4. Le déplacement
+
+Il parcourt autant de cases que sa vitesse le permet, ou moins : rien ne l’oblige à tout utiliser, et il peut en garder pour après son action, ou ne pas bouger du tout.
+
+### 5. Les actions rapides (IC)
+
+Il peut en faire jusqu’à trois, jamais deux fois la même, et **toujours avant son action**.
+
+### 6. L’action
+
+C’est l’action principale de son tour : attaquer avec son arme, lancer un sort, utiliser un objet, sprinter, utiliser un don de type *Action*, ou faire une quatrième action rapide.
+
+### 7. La fin du déplacement
+
+S’il lui reste du déplacement, il peut l’utiliser maintenant.
+
+### 8. La fin du tour
+
+On passe au suivant.
 
 ## Hors de son tour : réagir
 
