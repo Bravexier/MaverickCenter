@@ -9,7 +9,8 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { chargerInvocations } from '../src/lib/bestiaire-db.mjs';
-import { chargerMagies } from '../src/lib/magies-db.mjs';
+import { ancreDeLEtat, chargerMagies } from '../src/lib/magies-db.mjs';
+import { ancresDuCorps } from '../src/lib/ancres-figees.mjs';
 import { DEGATS_PHYSIQUES } from '../src/lib/fiche-moteur.mjs';
 import { entriesAvecRelationsDeLaBase, relationMatrix } from '../src/lib/magie-relations.mjs';
 import { splitFrontmatter } from '../src/lib/wikilinks.mjs';
@@ -382,16 +383,19 @@ test('altération d’état liée à chaque magie (etat_magie) : une pour les 14
 });
 
 test('altérations d’état : chaque état a sa section sur la page « Liste des altérations d’état » (l’ancre du lien existe, à l’import)', () => {
-  // le lien d'un état mène à la page ; l'intertitre qu'il vise, dans le texte de la page tel que l'import l'a écrit (le site de dev, source de ce qu'il
-  // modifie, peut le réécrire ; ce que devient alors l'ancre est du code, hors de ce test)
+  // le lien d'un état vise l'ancre figée `#<segment de l'id>` (magies-db.mjs#ancreDeLEtat, migration 0100), jamais le nom. À l'import, l'intertitre
+  // qui porte cette ancre a pour texte le nom de l'état ; la marque `{#…}` se lit par lib/ancres-figees.mjs, pas par le texte brut de la ligne. Le
+  // site de dev (source de ce qu'il modifie) peut renommer l'intertitre ou l'état : sur l'état courant, le lien mène seulement à la bonne page.
   const page = texteDImport('page', { id: 'guide/liste-des-alterations-d-etat' }, 'corps_md');
-  const titres = new Set([...page.matchAll(/^## (.+?)\s*$/gm)].map((t) => t[1]));
-  assert.equal(m.etats.size, 20);
-  assert.ok(db.prepare("SELECT 1 FROM page WHERE id = 'guide/liste-des-alterations-d-etat'").get(), 'la page des altérations');
-  for (const e of m.etats.values()) {
+  const titreParAncre = new Map(ancresDuCorps(page).filter((a) => a.niveau === 2).map((a) => [a.ancre, a.texte]));
+  const aLImport = chargerMagies(baseDImport());
+  assert.equal(aLImport.etats.size, 20);
+  for (const e of aLImport.etats.values()) {
     assert.equal(e.pageId, 'guide/liste-des-alterations-d-etat');
-    assert.ok(titres.has(e.nom), `titre « ${e.nom} » sur la page`);
+    assert.equal(titreParAncre.get(ancreDeLEtat(e.id)), e.nom, `intertitre {#${ancreDeLEtat(e.id)}} « ${e.nom} » sur la page`);
   }
+  assert.ok(db.prepare("SELECT 1 FROM page WHERE id = 'guide/liste-des-alterations-d-etat'").get(), 'la page des altérations');
+  for (const e of m.etats.values()) assert.equal(e.pageId, 'guide/liste-des-alterations-d-etat', e.id);
   for (const s of m.sorts.values()) for (const e of s.etats) assert.ok(m.etats.has(e.etatId), `${s.id} : ${e.etatId}`);
 });
 

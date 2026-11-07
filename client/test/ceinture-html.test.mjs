@@ -341,8 +341,8 @@ test('les liens mènent à des pages construites et à des ancres qui existent (
   for (const a of ancres) assert.ok(main.includes(`id="${a}"`), `ancre absente de la page : #${a}`);
   assert.ok(liens.includes('/ressources/armes/#famille-bombes') && !ancres.includes('famille-bombes'), 'les bombes, sur la page Armes');
   for (const p of objets.tableaux.filter((t) => t.pages).flatMap((t) => t.pages)) assert.ok(liens.includes(`/${p.id}/`), `la page ${p.id}`);
-  // les pages du guide d'où viennent les règles, quand la page les montre : la section se cherche à son intertitre, que le site de dev renomme
-  // (lib/ceinture-db.mjs#sectionDuCorps ; renommé, la page n'a plus de règles : question au propriétaire)
+  // les pages du guide d'où viennent les règles, quand la page les montre : la section se rattache par l'ancre figée de son intertitre
+  // (lib/ancres-figees.mjs ; lib/ceinture-db.mjs#ANCRE_DES_REGLES, #ANCRE_DE_LA_REFERENCE), que le renommage de l'intertitre sur le site de dev ne change pas
   if (objets.regles.ceinture || objets.regles.reference) {
     for (const s of [objets.sources.chapitre, objets.sources.reference].filter(Boolean)) assert.ok(liens.includes(`/${cheminDePage(s.id)}`), `la page du guide ${s.id}`);
   }

@@ -376,14 +376,27 @@ const segment = (id) => String(id ?? '').split(/[#:/]/).pop();
 
 /**
  * Les entrées de `liste` qu'écrit `texte` : celles dont le nom a sa clé ; à défaut, celles dont une autre écriture la porte (`autres(x)` : par défaut le
- * dernier segment de l'identifiant, l'ancienne graphie). [] pour un texte vide.
+ * dernier segment de l'identifiant, l'ancienne graphie) ; à défaut, celles qui ont porté ce nom avant un renommage sur le site de dev (`noms_d_avant`
+ * d'un don ou d'un sort, lib/fiche-regles.mjs : une fiche écrite avant le renommage se relit). Le nom actuel passe toujours avant un nom d'avant ; deux
+ * entrées du même nom d'avant restent ambiguës (unSeul), jamais départagées par vraisemblance. [] pour un texte vide.
  */
 function retrouver(liste, texte, { nom = (x) => x.nom, autres = (x) => [segment(x.id)] } = {}) {
   const k = cle(texte);
   if (!k) return [];
   const parNom = liste.filter((x) => cle(nom(x)) === k);
-  return parNom.length ? parNom : liste.filter((x) => autres(x).some((a) => a === k));
+  if (parNom.length) return parNom;
+  const parAutre = liste.filter((x) => autres(x).some((a) => a === k));
+  return parAutre.length ? parAutre : liste.filter((x) => aPorteLeNom(x, k));
 }
+
+/** L'entrée (don, sort) a porté le nom de clé `k` avant un renommage sur le site de dev (`noms_d_avant`, lib/fiche-regles.mjs). */
+const aPorteLeNom = (x, k) => (x?.noms_d_avant ?? []).some((n) => cle(n) === k);
+
+/** Les entrées de `liste` que `nomme(x)` désigne par leur nom actuel ; à défaut, celles qui ont porté le nom `texte` avant un renommage. */
+const parNomOuDAvant = (liste, texte, nomme) => {
+  const actuels = liste.filter(nomme);
+  return actuels.length ? actuels : liste.filter((x) => aPorteLeNom(x, cle(texte)));
+};
 
 /**
  * La famille d'armes qu'écrit un classeur, parmi `familles` : par son nom, sinon par son nom de lecture (décision R159, migration 0077 : une fiche
@@ -402,6 +415,14 @@ function sansLesMains(nom) {
 }
 
 // ------------------------------------------------------------------ l'import
+
+/**
+ * Un libellé qui écrit le nom d'un don, tel qu'une fiche écrite sous chacun de ses noms d'avant l'écrivait (`noms_d_avant`, lib/fiche-regles.mjs) : la
+ * première occurrence du nom actuel remplacée, mot pour mot (un remplaçant en fonction : un nom écrit avec « $& » ou « $' » n'est pas un motif de
+ * String.prototype.replace) ; [] sans noms d'avant ou quand le libellé n'écrit pas le nom.
+ */
+export const libellesSousLesNomsDAvant = (libelle, don) => (!don?.noms_d_avant || !String(libelle ?? '').includes(don.nom) ? []
+  : don.noms_d_avant.map((n) => String(libelle).replace(don.nom, () => n)));
 
 /**
  * La fiche que décrit l'onglet « Personnage » d'un classeur (voir l'en-tête). `feuille` : `{ cellules: Map, images }` (lib/tableur-lecture.mjs,
@@ -424,6 +445,11 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   const remarques = [];
   const perdu = (ligne) => nonRepris.push(ligne);
   const nomDe = (liste, id) => trouver(liste, id)?.nom ?? id;
+  // un libellé qui écrit le nom d'un don (« <don> (<classe>) » d'une source de maîtrise, le nom d'un choix d'acquis ou de résistance) tel qu'une fiche
+  // écrite avant un renommage du don sur le site de dev l'écrivait : le nom actuel remplacé par chacun de ses noms d'avant (`noms_d_avant`,
+  // lib/fiche-regles.mjs) ; [] pour une autre source (classe, race, accessoire) ou un don jamais renommé
+  const donsParId = new Map((regles.classes ?? []).flatMap((c) => (c.dons ?? []).map((d) => [d.id, d])));
+  const libellesDAvant = (libelle, source) => libellesSousLesNomsDAvant(libelle, donsParId.get(source));
   const libelleDEmplacement = (e) => EMPLACEMENTS_ACCESSOIRES.find(([k]) => k === e)?.[1] ?? NOMS_DES_EMPLACEMENTS_D_ACCESSOIRE[e] ?? e;
 
   /** Un nombre lu là où la fiche veut un entier : décimal, arrondi vers le bas, et une remarque (« Bourse (or) : « 12,5 » lu 12 »). */
@@ -814,7 +840,8 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   for (const ligne of notee('maitriseChoix')) {
     const quoi = `Maîtrise d'arme au choix « ${ligne} »`;
     const lu = lireChoixDeMaitrise(ligne);
-    const source = lu && sourcesAChoisir.find((s) => cle(s.titre) === cle(lu.titre) && !f.maitrise_choix.some((x) => x.source === s.source));
+    const libresDeMaitrise = sourcesAChoisir.filter((s) => !f.maitrise_choix.some((x) => x.source === s.source));
+    const [source] = lu ? parNomOuDAvant(libresDeMaitrise.map((s) => ({ ...s, noms_d_avant: libellesDAvant(s.titre, s.source) })), lu.titre, (s) => cle(s.titre) === cle(lu.titre)) : [];
     if (!source) {
       perdu(`${quoi} : ${lu ? 'aucune source de maîtrise de ce nom dans les classes et les dons de la fiche' : 'illisible (une source, puis une famille par point)'}`);
       continue;
@@ -840,7 +867,8 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     const quoi = `Don obtenu « ${ligne} »`;
     const lu = lireDonObtenu(ligne);
     const classe = lu && (regles.classes ?? []).find((c) => cle(c.nom) === cle(lu.classe));
-    const don = classe && (classe.dons ?? []).find((d) => d.magie_visee && cle(d.nom) === cle(lu.don));
+    const variables = classe ? (classe.dons ?? []).filter((d) => d.magie_visee) : [];
+    const [don] = parNomOuDAvant(variables, lu?.don, (d) => cle(d.nom) === cle(lu.don));
     const magie = don && (regles.magies ?? []).find((m) => cle(m.nom) === cle(lu.magie));
     const entree = magie && (classe.entrees ?? []).find((e) => e.magie_id === magie.id && cle(e.nom) === cle(lu.entree));
     if (!lu) perdu(`${quoi} : illisible (un don « Variable » et sa classe, puis une entrée et sa magie)`);
@@ -894,7 +922,8 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     const coupe = ligne.lastIndexOf(' : ');
     const [nom, valeur] = coupe < 0 ? ['', ligne] : [ligne.slice(0, coupe), ligne.slice(coupe + 3).trim()];
     const quoi = `Acquis au choix « ${ligne} »`;
-    const libres = choixDesDons.filter((c) => cle(c.nom) === cle(nom) && !f.acquis_choix.some((y) => y.source === c.source && y.rang === c.rang));
+    const libres = parNomOuDAvant(choixDesDons.map((c) => ({ ...c, noms_d_avant: libellesDAvant(c.nom, c.source) })), nom, (c) => cle(c.nom) === cle(nom))
+      .filter((c) => !f.acquis_choix.some((y) => y.source === c.source && y.rang === c.rang));
     const choix = libres.find((c) => c.repartition || (c.arme ? armeNommee(c, valeur) : c.options.includes(competenceNommee(valeur)?.id))) ?? null;
     if (!choix) {
       perdu(`${quoi} : ${libres.length ? 'pas une option de ce don' : 'aucun choix d’acquis de ce nom dans les dons de la fiche'}`);
@@ -941,7 +970,8 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     const coupe = ligne.lastIndexOf(' : ');
     const [nom, valeur] = coupe < 0 ? ['', ligne] : [ligne.slice(0, coupe), ligne.slice(coupe + 3).trim()];
     const quoi = `Résistance au choix « ${ligne} »`;
-    const libres = resistancesAChoisir.filter((c) => cle(c.nom) === cle(nom) && !f.resistance_choix.some((y) => y.source === c.source && y.rang === c.rang));
+    const libres = parNomOuDAvant(resistancesAChoisir.map((c) => ({ ...c, noms_d_avant: libellesDAvant(c.nom, c.source) })), nom, (c) => cle(c.nom) === cle(nom))
+      .filter((c) => !f.resistance_choix.some((y) => y.source === c.source && y.rang === c.rang));
     const etat = (regles.etats ?? []).find((e) => cle(e.nom) === cle(valeur));
     const magie = (regles.magies ?? []).find((m) => cle(m.nom) === cle(valeur));
     const choix = libres.find((c) => (c.magie ? magie && c.options.includes(magie.id) : etat && c.options.includes(etat.id))) ?? null;
@@ -1134,8 +1164,10 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
       continue;
     }
     for (const o of offerts) {
-      const choisis = f.sorts.map((s) => trouver(regles.sorts, s.sort_id)).filter((s) => s && nomme(o)(s));
-      const candidats = [choisis, sortsDesLivres(regles, f).filter(nomme(o)), regles.sorts.filter(nomme(o))].find((c) => c.length) ?? [];
+      const choisis = f.sorts.map((s) => trouver(regles.sorts, s.sort_id)).filter(Boolean);
+      // le nom actuel d'abord, dans les trois listes ; puis un nom d'avant un renommage sur le site de dev (`noms_d_avant`), dans les trois listes
+      const listes = [choisis, sortsDesLivres(regles, f), regles.sorts];
+      const candidats = [...listes.map((l) => l.filter(nomme(o))), ...listes.map((l) => l.filter((s) => aPorteLeNom(s, cle(o.nom))))].find((c) => c.length) ?? [];
       if (candidats.length !== 1) {
         perdu(`NM offerts : « ${o.nom} » (livre ${o.livre}, MJ ${o.cadeau}) ${candidats.length ? 'désigne plusieurs sorts' : 'introuvable dans les règles'}`);
         continue;
@@ -1160,7 +1192,8 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
       continue;
     }
     const lu = lireSortPrepare(v);
-    const lignes = f.sorts.filter((s) => cle(nomDe(regles.sorts, s.sort_id)) === cle(lu.nom) || segment(s.sort_id) === cle(lu.nom));
+    const lignes = parNomOuDAvant(f.sorts.map((s) => ({ ligne: s, noms_d_avant: trouver(regles.sorts, s.sort_id)?.noms_d_avant })), lu?.nom,
+      (x) => cle(nomDe(regles.sorts, x.ligne.sort_id)) === cle(lu.nom) || segment(x.ligne.sort_id) === cle(lu.nom)).map((x) => x.ligne);
     if (lignes.length !== 1) {
       perdu(`Sort préparé : « ${v} » ne désigne pas un sort de la liste`);
       continue;

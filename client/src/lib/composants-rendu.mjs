@@ -64,10 +64,13 @@ export const htmlDesConversions = (m, monnaies) => {
   return c.length ? htmlAvecMonnaies(`1 ${m.abreviation} = ${c.map((x) => `${milliers(x.valeur)} ${x.vers.abreviation}`).join(' = ')}`) : '<span class="muted">Unité</span>';
 };
 
-/** Une monnaie : Nom | Symbole (son icône) | Valeur en RF (non modifiable) | Conversions (refaites par l'extension de l'éditeur après un enregistrement). */
+/**
+ * Une monnaie : Nom (figé : « Figer les noms », R193, il se donne à la création, edition-modele.mjs#TABLES.monnaie) | Symbole (son icône, l'abréviation
+ * modifiable) | Valeur en RF (non modifiable, R61) | Conversions (refaites par l'extension de l'éditeur après un enregistrement).
+ */
 export const htmlDeLigneDeMonnaie = (m, monnaies) =>
   `<tr class="composant" id="${e(`monnaie-${m.id}`)}" data-monnaie="${e(m.id)}" data-valeur="${e(m.valeur_rf)}"${attributsDeLigne('monnaie', { id: m.id }, m.valeur_rf === 1 ? 'L’unité des monnaies ne se supprime pas' : '', [m.nom, m.abreviation])}>`
-  + `<th scope="row" class="comp-nom" data-ed="${ed('monnaie', { id: m.id }, 'nom')}">${e(m.nom)}</th>`
+  + `<th scope="row" class="comp-nom">${e(m.nom)}</th>`
   + `<td class="comp-abr" data-abreviation="${e(m.abreviation)}" data-ed="${ed('monnaie', { id: m.id }, 'abreviation')}" data-ed-rendu="monnaie-symbole">${rendu('monnaie-symbole', m.abreviation)}</td>`
   + `<td>${rendu('monnaie-valeur', m.valeur_rf)}</td>`
   + `<td class="comp-conversions" data-conversions>${htmlDesConversions(m, monnaies)}</td></tr>`;

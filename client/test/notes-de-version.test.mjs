@@ -166,14 +166,17 @@ test('composants (migration 0040) : monnaie, objet de l’onglet sous son tablea
     gemme: [gemme('x#gemme:rubis', '40 RO')],
   } };
   const dev = { tables: {
-    monnaie: [{ id: 'pp', nom: 'Pierre précieuse taillée', abreviation: 'PP', valeur_rf: 100000 }],
+    monnaie: [{ id: 'pp', nom: 'Pierre précieuse taillée', abreviation: 'PPT', valeur_rf: 100000 }],
     ressource: [r('x#materiel:briquet', 'materiel', 'Briquet', { section: 'MATOS AVENTURES', prix_brut: '12 RO' }), r('x#gemme:rubis', 'gemme', 'Rubis'),
       r('x#gemme:quartz', 'gemme', 'Quartz'), r('x#potion:petite', 'potion', 'Petite fiole rouge', { prix_brut: '2 RO' })],
     gemme: [gemme('x#gemme:rubis', '45 RO'), gemme('x#gemme:quartz', '1 RO')],
   } };
   const lignes = comparerBases(ref, dev).filter((l) => l.domaine === 'composants');
   const de = (entite, champ = null) => lignes.find((l) => l.entite === entite && l.champ === champ);
-  assert.deepEqual([de('Pierre précieuse taillée', 'Nom').avant, de('Pierre précieuse taillée', 'Nom').apres], ['Pierre précieuse', 'Pierre précieuse taillée']);
+  // le nom d'une monnaie est figé (« Figer les noms », R193 : hors de TABLES.monnaie) : un nom changé autrement (migration) n'est pas une ligne de la
+  // note, la monnaie est nommée par celui de dev ; l'abréviation, modifiable, l'est
+  assert.ok(!lignes.some((l) => l.table_nom === 'monnaie' && l.champ === 'Nom'), 'R193 : le nom d’une monnaie n’est pas listé');
+  assert.deepEqual([de('Pierre précieuse taillée', 'Abréviation').avant, de('Pierre précieuse taillée', 'Abréviation').apres], ['PP', 'PPT']);
   assert.equal(de('Briquet', 'Prix (« 2 RO », « 100 RF / 1 RO »)').groupe, 'Matos › MATOS AVENTURES');
   assert.equal(de('Rubis', 'Prix de la gemme commune (« 50 RO »)').apres, '45 RO');
   assert.equal(lignes.filter((l) => l.entite === 'Quartz').length, 1, 'la gemme créée : une ligne (sa ressource), pas une de plus pour ses prix');

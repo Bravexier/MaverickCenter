@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 98 : 212 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 100 : 212 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -1125,7 +1125,7 @@ Les entrées du tableau libre, une par ligne « (Type) Nom. Effet » du texte d'
 
 ### `capacite_variable`
 
-La liste d'un don « Variable » (capacite.type = 'variable' ; décision R181, migration 0088) : le don obtient une entrée du tableau libre de sa classe (classe_annexe_entree), sur la ligne de la magie que son texte vise. `magie` : 'innee' (« lié à sa magie innée » : Mimétisme, Mime, Principale, Ultime raison) ou 'acquise' (« lié à sa magie acquise » : Secondaire, la « mention contraire » de R181 ; sans magie acquise, il ne se choisit pas : règle don_obtenu_sans_magie_acquise de v_personnage_controle). Écrite par la migration d'après le texte du don, relu par test/db-r181-dons-variables.test.mjs ; un don « Variable » créé sur le site de dev n'y est pas (il n'obtient rien).
+La liste d'un don « Variable » (capacite.type = 'variable' ; décision R181, migration 0088) : le don obtient une entrée du tableau libre de sa classe (classe_annexe_entree), sur la ligne de la magie que son texte vise. `magie` : 'innee' (« lié à sa magie innée » : Mimétisme, Mime, Principale, Ultime raison) ou 'acquise' (« lié à sa magie acquise » : Secondaire, la « mention contraire » de R181 ; sans magie acquise, il ne se choisit pas : règle don_obtenu_sans_magie_acquise de v_personnage_controle). Écrite par la migration d'après le texte du don, relu par test/db-r181-dons-variables.test.mjs. Le site de dev l'écrit, noté au journal : à la création d'un don « Variable » (réponse du propriétaire « Demander la magie » : la magie est exigée, serveur/edition.mjs#magieDuDonVariable) et au changement de type (« Demander ou retirer » : passer à « Variable » demande la magie, quitter « Variable » retire la ligne, serveur/edition.mjs#suivreLaMagieDuDon).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -1134,7 +1134,7 @@ La liste d'un don « Variable » (capacite.type = 'variable' ; décision R181, m
 
 ### `capacite_npm_plafond`
 
-Plafond de NPM qu'un don acquis relève (décision R188, migration 0097) : « Semi-complet » de l'Archimage, 4 (« Permet d'utiliser les sorts de lvl 4 de puissance. »). N'a d'effet que si la magie innée du personnage a un plafond (magie_npm_plafond) : plafond effectif = max(plafond de la magie innée, plafonds des dons acquis, v_personnage_don_acquis) ; il relève le plafond sans ouvrir un NPM que le niveau n'ouvre pas (R188 (1) : min avec la puissance magique du niveau, R16). Règle sort_puissance de v_personnage_controle ; lib/fiche-regles.mjs, `classes[].dons[].npm_plafond`. Écrite par la migration, jamais relue du texte du don ; le site de dev ne l'écrit pas (un don supprimé emporte sa ligne).
+Plafond de NPM qu'un don acquis relève (décision R188, migration 0097) : « Semi-complet » de l'Archimage, 4 (« Permet d'utiliser les sorts de lvl 4 de puissance. »). N'a d'effet que si la magie innée du personnage a un plafond (magie_npm_plafond) : plafond effectif = max(plafond de la magie innée, plafonds des dons acquis, v_personnage_don_acquis) ; il relève le plafond sans ouvrir un NPM que le niveau n'ouvre pas (R188 (1) : min avec la puissance magique du niveau, R16). Règle sort_puissance de v_personnage_controle ; lib/fiche-regles.mjs, `classes[].dons[].npm_plafond`. Écrite par la migration, jamais relue du texte du don ; le site de dev ne l'écrit pas, mais un don supprimé sur le site retire sa ligne, notée au journal (serveur/edition.mjs#retirerDon, qui appelle serveur/edition.mjs#retirerLesReglesDuDon).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -1143,7 +1143,7 @@ Plafond de NPM qu'un don acquis relève (décision R188, migration 0097) : « Se
 
 ### `capacite_condition_emplacements`
 
-Dons acquis qui comptent comme une condition de plus dans le nombre d'emplacements de sorts, exactement comme une magie acquise (décision R189, migration 0097) : « Grimoire » de l'Archimage (« Permet de débloquer les emplacements de sorts de magie acquise. »). Il ne donne pas de seconde magie (R176) : ni Mode Hyper, ni Symbiose, ni palier NPM 5 réservé aux personnages sans magie acquise. Lu par le moteur seulement (lib/fiche-regles.mjs, `classes[].dons[].condition_emplacements` ; lib/fiche-moteur.mjs#emplacementsDeSorts) : aucune règle de v_personnage_controle (aucun contrôle ne compte les emplacements). Écrite par la migration, jamais relue du texte du don ; le site de dev ne l'écrit pas (un don supprimé emporte sa ligne).
+Dons acquis qui comptent comme une condition de plus dans le nombre d'emplacements de sorts, exactement comme une magie acquise (décision R189, migration 0097) : « Grimoire » de l'Archimage (« Permet de débloquer les emplacements de sorts de magie acquise. »). Il ne donne pas de seconde magie (R176) : ni Mode Hyper, ni Symbiose, ni palier NPM 5 réservé aux personnages sans magie acquise. Lu par le moteur seulement (lib/fiche-regles.mjs, `classes[].dons[].condition_emplacements` ; lib/fiche-moteur.mjs#emplacementsDeSorts) : aucune règle de v_personnage_controle (aucun contrôle ne compte les emplacements). Écrite par la migration, jamais relue du texte du don ; le site de dev ne l'écrit pas, mais un don supprimé sur le site retire sa ligne, notée au journal (serveur/edition.mjs#retirerDon, qui appelle serveur/edition.mjs#retirerLesReglesDuDon).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -1410,6 +1410,7 @@ INVOCATION : une ligne par onglet du classeur (3) Une « invocation » est un TY
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
 | `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
+| `tableau_sort_id` | TEXT | non | → sort.id |  |
 
 ### `invocation_capacite_commune`
 
@@ -3182,7 +3183,7 @@ Coût d'invocation : il n'est PAS sur la carte, il est écrit sur le SORT qui in
 
 *vue*
 
-Arme avec les valeurs « effectives » : portée écrite dans l'effet, sinon portée par défaut du type (BDD!AF de la fiche) ; solidité de l'arme nue (2 crans de base, règle de l'onglet, corrigée par « 1 seul cran » / « ±1 cran » de l'effet : sans matériau ni amélioration) ; libellés de famille et de type.
+Arme avec les valeurs « effectives » : portée écrite dans l'effet, sinon portée par défaut du type (BDD!AF de la fiche) ; solidité de l'arme nue (2 crans de base, règle de l'onglet, corrigée par « 1 seul cran » / « ±1 cran » de l'effet : sans matériau ni amélioration), jamais moins de 1 (décision R51 : « il est impossible de descendre à moins de 1 », sur la valeur fixée comme sur la valeur corrigée ; la même que lib/arme-champs.mjs#durabiliteDeLArme, migration 0099) ; libellés de famille et de type.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |

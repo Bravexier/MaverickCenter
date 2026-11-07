@@ -466,13 +466,14 @@ export const TABLES = {
       effet: { type: 'texte', libelle: 'Effet', requis: true },
     },
   },
-  // les monnaies (MONNAIE et CONVERTISSEUR de l'onglet) : le nom et l'abréviation ; la valeur en RF ne se modifie pas (demande du propriétaire, décision
-  // R61 : « Les valeurs ne sont effectivement pas modifiables. Elles servent de valeur utile pour les calculs et de potentiel tooltip »), elle se donne à
-  // la création
+  // les monnaies (MONNAIE et CONVERTISSEUR de l'onglet) : l'abréviation (sauf celle du RF, du RO et de la PP, refusée par le service : R61) ; la valeur en
+  // RF ne se modifie pas (demande du propriétaire, décision R61 : « Les valeurs ne sont effectivement pas modifiables. Elles servent de valeur utile pour les
+  // calculs et de potentiel tooltip »), elle se donne à la création ; le nom non plus (réponse du propriétaire : « Figer les noms », R193 ; les noms du RF, du RO
+  // et de la PP sont ceux des infobulles, lib/monnaies.mjs#MONNAIES_DU_JEU), il se donne à la création. Un lot du journal noté avant ce choix qui renomme
+  // une monnaie est en conflit au rejeu (serveur/edition.mjs#ecrituresFigees)
   monnaie: {
     libelle: 'Monnaie',
     colonnes: {
-      nom: { type: 'ligne', libelle: 'Nom', requis: true },
       abreviation: { type: 'ligne', libelle: 'Abréviation', requis: true },
     },
   },
@@ -684,6 +685,30 @@ export const texteDePageModifiable = (type, premiereSource) => type === 'guide' 
  * et des messages (« Nouvelle spécialité »), par défaut « Nouveau <libellé> ».
  */
 const champsDe = (table, colonnes) => Object.fromEntries(colonnes.map((c) => [c, TABLES[table].colonnes[c]]));
+/**
+ * La magie que vise un don « Variable » (décision R181 : la magie innée du personnage, ou sa magie acquise pour « Secondaire » ; table capacite_variable,
+ * CHECK magie IN ('innee', 'acquise')), demandée à la création d'un don de type « Variable » (réponse du propriétaire : « Demander la magie ») ; les
+ * libellés sont ceux des fiches de règles (« Magie innée », « Magie acquise »). Le service l'exige pour un don « Variable » et la refuse pour un autre
+ * type (serveur/edition.mjs#magieDuDonVariable). Aussi quand le type d'un don existant change (réponse du propriétaire : « Demander ou retirer », R192) :
+ * CHAMPS_HORS_COLONNES.capacite.magie.
+ */
+export const MAGIES_D_UN_DON_VARIABLE = Object.freeze([
+  Object.freeze({ valeur: 'innee', libelle: 'Magie innée' }),
+  Object.freeze({ valeur: 'acquise', libelle: 'Magie acquise' }),
+]);
+const CHAMP_DE_LA_MAGIE_D_UN_DON_VARIABLE = Object.freeze({
+  type: 'choix', libelle: 'Magie liée (don « Variable »)', choix: MAGIES_D_UN_DON_VARIABLE,
+  aide: 'Seulement pour un don de type « Variable », et alors obligatoire à sa création ou quand son type y passe : la liste de ses dons est celle de cette magie du personnage (R181).',
+});
+/**
+ * Les clés qu'une opération « modifier » accepte dans ses `valeurs` en plus des colonnes de TABLES : elles ne s'écrivent pas dans la ligne, le domaine du
+ * service les lit (serveur/edition.mjs#modifier). `capacite.magie` : la magie que vise un don dont le type passe à « Variable » (décision R181 ; réponse
+ * du propriétaire « Demander ou retirer », R192 : « Passer à « Variable » demande la magie (innée ou acquise) ; quitter « Variable » retire le lien à la
+ * magie. ») ; serveur/edition.mjs#suivreLaMagieDuDon. L'API /api/v1/ les accepte au PATCH de la ressource de la table.
+ */
+export const CHAMPS_HORS_COLONNES = Object.freeze({
+  capacite: Object.freeze({ magie: CHAMP_DE_LA_MAGIE_D_UN_DON_VARIABLE }),
+});
 /** Nature d'une race (demande du propriétaire : une race hybride peut être créée avant sa classe raciale ; lib/race-kinds.mjs). */
 const NATURES_DE_RACE = [
   { valeur: 'pure', libelle: 'Race pure' },
@@ -863,7 +888,9 @@ export const ENTITES = {
     nouveau: 'Nouvelle monnaie',
     suppression: true,
     champs: {
-      ...champsDe('monnaie', ['nom', 'abreviation']),
+      // le nom se donne ici une fois pour toutes (« Figer les noms », R193 : il n'est plus dans TABLES.monnaie)
+      nom: { type: 'ligne', libelle: 'Nom', requis: true },
+      ...champsDe('monnaie', ['abreviation']),
       valeur_rf: { type: 'entier', libelle: 'Valeur en RF', requis: true, min: 2 },
     },
   },
@@ -880,6 +907,7 @@ export const ENTITES = {
       description: { type: 'texte', libelle: 'Description' },
       don_nom: { type: 'ligne', libelle: 'Nom du don de spécialité (niveau 10)', requis: true },
       don_type: { type: 'choix', libelle: 'Type du don de spécialité', requis: true, choix: TYPES_DE_DON_SAISIE },
+      don_magie: CHAMP_DE_LA_MAGIE_D_UN_DON_VARIABLE,
       don_precision: { type: 'ligne', libelle: 'Précision du type (« 2 fois/combat »)' },
       don_effet: { type: 'texte', libelle: 'Effet du don de spécialité', aide: 's’il dit « considérer comme classe magique », la spécialité donne +4 AM (R7)' },
     },
@@ -982,6 +1010,7 @@ export const ENTITES = {
       niveau: { type: 'choix', libelle: 'Niveau de classe', choix: NIVEAUX_DE_DON.map((n) => ({ valeur: String(n), libelle: `Niveau ${n}` })) },
       nom: { type: 'ligne', libelle: 'Nom du don', requis: true },
       type: { type: 'choix', libelle: 'Type', requis: true, choix: TYPES_DE_DON_SAISIE },
+      magie: CHAMP_DE_LA_MAGIE_D_UN_DON_VARIABLE,
       precision: { type: 'ligne', libelle: 'Précision du type (« 2 fois/combat »)' },
       effet: { type: 'texte', libelle: 'Effet' },
     },

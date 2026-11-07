@@ -7,20 +7,30 @@
 // Fonctions pures, sans dépendance (sauf lib/mots-cles-balises.mjs).
 import { texteSansBalises } from './mots-cles-balises.mjs';
 
-/** Un nombre écrit à la française : espaces des milliers, virgule décimale (« 1 000 », « 1,5 »). */
+/** Un nombre écrit à la française : espaces des milliers (espace, insécable ou fine insécable), virgule décimale (« 1 000 », « 1,5 »). */
 const nombre = (t) => Number(String(t).replace(/\s+/g, '').replace(',', '.'));
 
 /**
- * Le prix en RF d'une écriture de prix (ressource.prix_rf, gemme.prix_*_rf) : « 100 RF » → 100, « 2 RO » / « 2 Ro » → 200 (1 RO = 100 RF, CONVERTISSEUR de
- * l'onglet « Équipement inventaire »), « 1 000 RF / 10 RO » → 1000 ; les deux écritures en désaccord → null ; rien de lisible → null.
+ * Le premier montant écrit dans une monnaie (`abreviation` : « RF », « RO », casse indifférente), lu à la française : « 1 000 RF » → 1000 (espace des
+ * milliers, insécable ou fine insécable comprises), « 0,6 Ro » → 0.6 ; null s'il n'est pas écrit. Le texte se lit sans les balises du glossaire. Partagé
+ * avec lib/arme-champs.mjs (prix d'un matériau d'arme), pour que les deux lisent un prix de la même façon.
+ */
+export function montantEcrit(texte, abreviation) {
+  const m = new RegExp(String.raw`(\d[\d\s]*(?:[.,]\d+)?)\s*${abreviation}\b`, 'i').exec(String(texteSansBalises(String(texte ?? ''))));
+  if (!m) return null;
+  const v = nombre(m[1]);
+  return Number.isFinite(v) ? v : null;
+}
+
+/**
+ * Le prix en RF d'une écriture de prix (ressource.prix_rf, gemme.prix_*_rf, materiau_arme.prix_rf) : « 100 RF » → 100, « 2 RO » / « 2 Ro » → 200 (1 RO =
+ * 100 RF, CONVERTISSEUR de l'onglet « Équipement inventaire »), « 1 000 RF / 10 RO » → 1000 ; les deux écritures en désaccord → null ; rien de lisible → null.
  */
 export function prixEnRf(prixBrut) {
   if (prixBrut === null || prixBrut === undefined) return null;
-  const texte = String(texteSansBalises(String(prixBrut)));
-  const rf = /(\d[\d\s]*(?:[.,]\d+)?)\s*RF\b/i.exec(texte);
-  const ro = /(\d[\d\s]*(?:[.,]\d+)?)\s*RO\b/i.exec(texte);
-  const enRf = rf ? nombre(rf[1]) : null;
-  const deRo = ro ? Math.round(nombre(ro[1]) * 100) : null;
+  const enRf = montantEcrit(prixBrut, 'RF');
+  const ro = montantEcrit(prixBrut, 'RO');
+  const deRo = ro === null ? null : Math.round(ro * 100);
   if (enRf !== null && deRo !== null) return enRf === deRo ? enRf : null;
   const v = enRf ?? deRo;
   return v === null || !Number.isFinite(v) ? null : v;

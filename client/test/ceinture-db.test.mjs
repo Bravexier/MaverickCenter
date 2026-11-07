@@ -5,18 +5,24 @@
 // les pages du guide : les tests contrôlent des invariants (la vue suit les tables, la page suit les sections), et ce qui vient de l'import (les
 // contenants que le guide nomme, les sections des pages) est lu tel que l'import l'a laissé (lib/historique-site.mjs).
 import assert from 'node:assert/strict';
+import { copyFileSync } from 'node:fs';
+import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import {
-  CHAPITRE_DE_LA_CEINTURE, FAMILLE_DES_BATONS, FAMILLES_DE_LA_CEINTURE, ONGLET_DES_BATONS, PAGE_DE_REFERENCE, TITRE_DE_LA_REFERENCE, TITRE_DES_REGLES,
-  chargerObjetsDeCeinture, sectionDuCorps,
+  ANCRE_DE_LA_REFERENCE, ANCRE_DES_REGLES, CHAPITRE_DE_LA_CEINTURE, FAMILLE_DES_BATONS, FAMILLES_DE_LA_CEINTURE, ONGLET_DES_BATONS, PAGE_DE_REFERENCE,
+  TITRE_DE_LA_REFERENCE, TITRE_DES_REGLES, chargerObjetsDeCeinture, sectionDuCorps,
 } from '../src/lib/ceinture-db.mjs';
 import { ancreDObjet, ancreDePotions, htmlDeLigneDePotion, htmlDeLignes } from '../src/lib/ceinture-rendu.mjs';
 import { SOUS_ONGLETS_DE_LA_CEINTURE } from '../src/lib/equipement.mjs';
 import { AFFINITE_DES_PHILTRES, caracteristiqueDesCompetences, couleurDePotion } from '../src/lib/alchimie-couleurs.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
+import { ancresDuCorps, sectionParAncre } from '../src/lib/ancres-figees.mjs';
+import { cheminBase } from '../src/lib/donnees.mjs';
+import { texteDImport } from './aide-base-d-import.mjs';
+import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const db = ouvrirBase();
 const vue = db.prepare('SELECT famille, ressource_id, baton_id FROM v_objet_ceinture').all().map((l) => ({ ...l }));
@@ -125,14 +131,18 @@ test('chargement : dans une page, les potions dans l’ordre où la page les éc
 
 test('règles : les sections des pages du guide ; l’import les écrivait, la page suit leur texte actuel', () => {
   const sections = [
-    ['ceinture', CHAPITRE_DE_LA_CEINTURE, TITRE_DES_REGLES, /emplacements/],
-    ['reference', PAGE_DE_REFERENCE, TITRE_DE_LA_REFERENCE, /non exhaustive/], // la liste du guide n'est pas exhaustive : la page le montre
+    ['ceinture', CHAPITRE_DE_LA_CEINTURE, ANCRE_DES_REGLES, TITRE_DES_REGLES, /emplacements/],
+    ['reference', PAGE_DE_REFERENCE, ANCRE_DE_LA_REFERENCE, TITRE_DE_LA_REFERENCE, /non exhaustive/], // la liste du guide n'est pas exhaustive : la page le montre
   ];
-  for (const [regle, id, titre, attendu] of sections) {
-    const importe = historique.valeurDImport('page', { id }, 'corps_md');
-    assert.match(sectionDuCorps(importe, titre) ?? '', attendu, `${id} : l’import écrit la section « ${titre ?? 'introduction'} »`);
+  for (const [regle, id, ancre, titre, attendu] of sections) {
+    // à l'import (la migration 0100 a le dernier mot : test/aide-base-d-import.mjs), l'ancre est au bout de l'intertitre d'origine, et la section la suit
+    const importe = texteDImport('page', { id }, 'corps_md') ?? '';
+    const intertitre = ancresDuCorps(importe).find((a) => a.ancre === ancre);
+    assert.equal(intertitre && `${'#'.repeat(intertitre.niveau)} ${intertitre.texte}`, titre, `${id} : l’import pose « {#${ancre}} » sur « ${titre} »`);
+    assert.match(sectionParAncre(importe, ancre) ?? '', attendu, `${id} : l’import écrit la section « ${titre} »`);
     const actuel = db.prepare('SELECT corps_md FROM page WHERE id = ?').get(id)?.corps_md;
-    assert.equal(objets.regles[regle], actuel === undefined ? null : sectionDuCorps(actuel, titre), `${regle} : la page suit le texte actuel`);
+    // la section se rattache à l'ancre figée de son intertitre seule (lib/ancres-figees.mjs) : sans elle, pas de section, quel que soit l'intertitre
+    assert.equal(objets.regles[regle], actuel === undefined ? null : sectionParAncre(actuel, ancre), `${regle} : la page suit le texte actuel`);
     if (objets.regles[regle]) assert.ok(!objets.regles[regle].split('\n').some((l) => /^#{1,2} /.test(l)), `${regle} : la section seule, sans le titre suivant`);
   }
   for (const [source, id] of [['chapitre', CHAPITRE_DE_LA_CEINTURE], ['reference', PAGE_DE_REFERENCE]]) {
@@ -149,6 +159,51 @@ test('sectionDuCorps : une section jusqu’au titre suivant de même niveau ou p
   assert.equal(sectionDuCorps(corps, '## B'), 'Texte B.');
   assert.equal(sectionDuCorps(corps, '## C'), null);
   assert.equal(sectionDuCorps('## A\n\nTexte.', null), null, 'pas d’introduction');
+});
+
+test('règles de la ceinture : rattachées par l’ancre seule ; l’intertitre d’origine sans son ancre ne donne plus la section (plus de repli)', (t) => {
+  const chemin = fichierTemporaire('maverick.db', 'ceinture-db', { t });
+  copyFileSync(cheminBase(), chemin);
+  const base = new DatabaseSync(chemin);
+  t.after(() => base.close());
+  base.exec('PRAGMA foreign_keys = ON');
+  for (const [regle, id, ancre, titre] of [['ceinture', CHAPITRE_DE_LA_CEINTURE, ANCRE_DES_REGLES, TITRE_DES_REGLES], ['reference', PAGE_DE_REFERENCE, ANCRE_DE_LA_REFERENCE, TITRE_DE_LA_REFERENCE]]) {
+    // la page de la copie : l'intertitre d'origine, sans ancre, puis un intertitre quelconque qui porte l'ancre (textes posés par le test)
+    const corps = `Intro.\n\n${titre}\n\nTexte d’origine.\n\n## Intertitre d’essai {#${ancre}}\n\nTexte par l’ancre.\n\n## Suite\n\nAutre.`;
+    base.prepare('UPDATE page SET corps_md = ? WHERE id = ?').run(corps, id);
+    assert.equal(chargerObjetsDeCeinture(base).regles[regle], 'Texte par l’ancre.', `${regle} : la section de l’ancre, pas celle de l’intertitre d’origine`);
+    // l'ancre retirée : plus de section, même si l'intertitre d'origine reste écrit
+    base.prepare('UPDATE page SET corps_md = ? WHERE id = ?').run(corps.replace(` {#${ancre}}`, ''), id);
+    assert.equal(chargerObjetsDeCeinture(base).regles[regle], null, `${regle} : sans ancre, aucun repli sur « ${titre} »`);
+  }
+});
+
+test('règles de la ceinture : renommer l’intertitre sur le site de dev ne coupe pas le rattachement (ancre figée, lib/ancres-figees.mjs)', (t) => {
+  const chemin = fichierTemporaire('maverick.db', 'ceinture-db', { t });
+  copyFileSync(cheminBase(), chemin);
+  const base = new DatabaseSync(chemin);
+  t.after(() => base.close());
+  base.exec('PRAGMA foreign_keys = ON');
+  const corpsDe = (id) => base.prepare('SELECT corps_md FROM page WHERE id = ?').get(id)?.corps_md;
+  const ecrire = (id, corps) => base.prepare('UPDATE page SET corps_md = ? WHERE id = ?').run(corps, id);
+  for (const [regle, id, ancre, titre] of [['ceinture', CHAPITRE_DE_LA_CEINTURE, ANCRE_DES_REGLES, TITRE_DES_REGLES], ['reference', PAGE_DE_REFERENCE, ANCRE_DE_LA_REFERENCE, TITRE_DE_LA_REFERENCE]]) {
+    // la page de la copie porte l'ancre sur l'intertitre de la section (posée ici si la base ne l'écrit pas encore ; une section que le site de dev a
+    // déjà coupée de son intertitre d'origine se recrée, son texte posé par le test)
+    let corps = corpsDe(id);
+    assert.ok(corps !== undefined, `${id} : la page existe`);
+    if (!ancresDuCorps(corps).some((a) => a.ancre === ancre)) {
+      const lignes = corps.split('\n');
+      const i = lignes.findIndex((l) => l.trim() === titre);
+      corps = i >= 0 ? lignes.map((l, j) => (j === i ? `${titre} {#${ancre}}` : l)).join('\n') : `${corps}\n\n${titre} {#${ancre}}\n\nTexte d’essai.\n`;
+      ecrire(id, corps);
+    }
+    const avant = chargerObjetsDeCeinture(base).regles[regle];
+    assert.ok(avant, `${regle} : la section, par son ancre`);
+    // l'intertitre renommé, l'ancre gardée (l'éditeur la réécrit : data-ancre-figee)
+    ecrire(id, corps.split('\n').map((l) => (ancresDuCorps(l)[0]?.ancre === ancre ? `${l.match(/^#+/)[0]} Intertitre d’essai {#${ancre}}` : l)).join('\n'));
+    assert.equal(sectionDuCorps(corpsDe(id), titre), null, `${regle} : l’intertitre d’origine n’est plus écrit`);
+    assert.equal(chargerObjetsDeCeinture(base).regles[regle], avant, `${regle} : la même section après le renommage`);
+  }
 });
 
 test('rendu : l’ancre du tableau d’une page de potions, unique par page (un tableau par page, côte à côte : demande du propriétaire, 2026-10-17)', () => {

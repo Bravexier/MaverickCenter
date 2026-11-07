@@ -28,8 +28,8 @@ export const RESSOURCES = [
       'latéral, dont le plan est la ressource onglets-des-regles, et le Guide du MJ (/mj/…) ; pages écrites pour le site et pages de référence (Google ' +
       'Docs « Règle du jeu/Guide pour MJ » et « Créer sa fiche de personnage », et quatre pages tirées des classeurs : la liste des altérations d’état, la ' +
       'météo, les effets des modes hyper et super) ; le titre et le texte (Markdown) ' +
-      'se modifient par le service : ni HTML brut ni lien non sûr ajouté, blocs <!-- guide:… --> connus seulement, un titre qui est déjà le nom d’une ' +
-      'autre page refusé (409), l’ancien titre devient un alias ; l’identifiant <type>/<slug> et l’adresse ne changent jamais ; le résumé (une ' +
+      'se modifient par le service : ni HTML brut ni lien non sûr ajouté, blocs <!-- guide:… --> connus seulement, ancre figée d’un intertitre (« {#ancre} ») ni ' +
+      'retirée, ni renommée, ni doublée (400), un titre qui est déjà le nom d’une autre page refusé (409), l’ancien titre devient un alias ; l’identifiant <type>/<slug> et l’adresse ne changent jamais ; le résumé (une ' +
       'ligne) se modifie aussi. Une page des Règles (les quatre onglets) se crée — titre, onglet et résumé obligatoires, texte « À compléter. », ' +
       'adresse tirée du titre puis figée, en fin du menu de l’onglet ou à la place d’une entrée « bientôt » (`bientot`) — et se supprime avec son ' +
       'entrée de menu, sauf une page protégée (409 avec ses raisons : clé étrangère, famille tirée d’un classeur, ouverture d’onglet, page nommée ' +

@@ -36,7 +36,7 @@ site : la palette en classes »), `lib/chronologie-db.mjs`
 (chargeur, choix du filtre), `components/chronologie/Chronologie.astro` (la mise en page, les chevrons et leur script qui suit le filtre, les gestes),
 `Frise.astro` (la frise, le filtre et son script, le défilement) et `ChronologieEvenement.astro` (la page d'un événement), `styles/chronologie/chronologie.css`
 (inséré en `?raw`), `pages/chronologie/index.astro` et `[slug].astro`. Site de dev : `serveur/edition-chronologie.mjs` (service), `src/scripts/edition/chronologie.mjs`
-(l'extension de l'éditeur), `lib/chronologie-rendu.mjs` (rendu d'un événement dans le navigateur, pour la surcouche). Tests : `client/test/chronologie.test.mjs`
+(l'extension de l'éditeur), `lib/chronologie-rendu.mjs` (rendu d'un événement dans le navigateur, pour la surcouche : la chaîne Markdown du build, typographie comprise, comparée au build par `chronologie-rendu.test.mjs`). Tests : `client/test/chronologie.test.mjs`
 (logique et base), `chronologie-html.test.mjs` (site construit), `chronologie-filtre.test.mjs` (scripts du filtre et des chevrons, en faux navigateur),
 `serveur-edition-chronologie.test.mjs` (le service).
 

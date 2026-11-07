@@ -3,7 +3,7 @@ import Base from '../../layouts/Base.astro';
 import EquipementPage from '../../components/equipement/EquipementPage.astro';
 import CeinturePanneau from '../../components/ceinture/CeinturePanneau.astro';
 import { chargerBatons } from '../../lib/batons-db.mjs';
-import { chargerObjetsDeCeinture, TITRE_DE_LA_REFERENCE, TITRE_DES_REGLES } from '../../lib/ceinture-db.mjs';
+import { ANCRE_DE_LA_REFERENCE, ANCRE_DES_REGLES, chargerObjetsDeCeinture } from '../../lib/ceinture-db.mjs';
 import { pageDeLEquipement } from '../../lib/equipement.mjs';
 import { panneauRendu } from '../../lib/equipement-rendu';
 import { ouvrirBase } from '../../lib/donnees.mjs';
@@ -17,9 +17,10 @@ const page = pageDeLEquipement('ceinture')!;
 const db = ouvrirBase();
 const batons = chargerBatons(db);
 const ceinture = chargerObjetsDeCeinture(db);
-// une section de règles que sa page n'écrit plus (titre renommé sur le site de dev) : la page reste construite, sans elle, et le build le dit
-for (const [cle, source, titre] of [['ceinture', ceinture.sources.chapitre, TITRE_DES_REGLES], ['reference', ceinture.sources.reference, TITRE_DE_LA_REFERENCE]] as const) {
-  if (!ceinture.regles[cle]) console.warn(`[ceinture] la page ${source?.id ?? '(absente)'} n'écrit plus la section « ${titre} » : la page Ceinture s'en passe`);
+// une section de règles que sa page n'a plus (intertitre de l'ancre figée retiré sur le site de dev ; le renommer ne la coupe pas) : la page reste
+// construite, sans elle, et le build le dit. Elle se rattache par l'ancre seule (lib/ceinture-db.mjs) : le message cite l'ancre, pas le texte du titre
+for (const [cle, source, ancre] of [['ceinture', ceinture.sources.chapitre, ANCRE_DES_REGLES], ['reference', ceinture.sources.reference, ANCRE_DE_LA_REFERENCE]] as const) {
+  if (!ceinture.regles[cle]) console.warn(`[ceinture] la page ${source?.id ?? '(absente)'} n'a plus d'intertitre d'ancre figée « {#${ancre}} » : la page Ceinture s'en passe`);
 }
 const rendreDe = async (md: string | null, source: { id: string } | null) => (md && source ? await rendreMarkdown(md, source.id) : null);
 const reglesCeinture = {

@@ -12,6 +12,12 @@
 /** Solidité minimale d'une arme, en crans (décision R51). */
 export const DURABILITE_MIN = 1;
 
+/**
+ * Le matériau par défaut d'une arme (décision R49 : « son matériau (par défaut le fer) ») : la ressource « Fer » du tableau des matériaux d'arme, par
+ * son identifiant figé. Jamais par son nom ni son nom_cle : le site de dev renomme une ressource (nom_cle recalculé) sans changer son id.
+ */
+export const MATERIAU_PAR_DEFAUT = 'ressources/armures#materiau:fer';
+
 /** Un nombre écrit à la française : « 1 220 ». */
 export const nombre = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 

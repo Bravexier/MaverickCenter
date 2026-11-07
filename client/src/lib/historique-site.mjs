@@ -15,10 +15,12 @@
 //   h.lignesDImport('classe', lignes?)         les lignes d'avant toute édition : insérées retirées, supprimées remises, valeurs « avant » rétablies
 //   h.effectifDImport('capacite')              le nombre de ces lignes
 //   h.lignesRemaniees('capacite', ['nature'])  les lignes créées ou supprimées par le site, ou dont il a réécrit ces colonnes
+//   valeursDAvant(db, 'sort', 'nom')           les noms qu'une ligne a portés avant l'actuel (Map(texte de clé → [noms])) : une fiche écrite avant un
+//                                              renommage se relit (lib/fiche-regles.mjs, `noms_d_avant`)
 //
 // Clé d'une ligne : l'objet des colonnes de clé primaire, dans l'ordre de la clé (comme cleDe de serveur/edition-journal.mjs, qui écrit le journal,
 // et comme `cle` des registres des migrations 0005 et 0006). Ordre de lecture : (fait_le, lot_id, rang).
-// Sans dépendance (ni node:, ni Astro) : le module reçoit une base node:sqlite ouverte. Utilisé par les tests et par scripts/db-check.mjs.
+// Sans dépendance (ni node:, ni Astro) : le module reçoit une base node:sqlite ouverte. Utilisé par les tests, par scripts/db-check.mjs et par lib/fiche-regles.mjs (valeursDAvant).
 
 const structures = new WeakMap(); // db -> Map(table -> { colonnes, cle } | null)
 
@@ -70,6 +72,51 @@ export function lireHistorique(db) {
         cle, texte: JSON.stringify(cle), operation: m.operation, avant: lireJson(m.avant), apres: lireJson(m.apres),
       };
     });
+}
+
+/**
+ * Les modifications du journal de la base vivante (table `modification`, section 14 de data/schema.sql) pas encore rapatriées dans data/rows
+ * (`etat` 'en_attente' : ni intégrées, donc absentes de historique_modification, ni en conflit, donc appliquées), dans l'ordre (fait_le du lot, lot,
+ * rang), sous la forme de lireHistorique ; [] pour une base sans journal (data/rows le garde vide).
+ */
+function lireJournalEnAttente(db) {
+  const existe = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'modification'").get();
+  if (!existe) return [];
+  return db
+    .prepare(`SELECT m.lot_id, m.rang, l.fait_le, m.table_nom, m.cle, m.operation, m.avant, m.apres FROM modification m JOIN modification_lot l ON l.id = m.lot_id
+              WHERE m.etat = 'en_attente' ORDER BY l.fait_le, m.lot_id, m.rang`)
+    .all()
+    .map((m) => {
+      const cle = cleDeLigne(db, m.table_nom, JSON.parse(m.cle));
+      return { lot: m.lot_id, rang: m.rang, faitLe: m.fait_le, table: m.table_nom, cle, texte: JSON.stringify(cle), operation: m.operation, avant: lireJson(m.avant), apres: lireJson(m.apres) };
+    });
+}
+
+/**
+ * Les valeurs qu'une colonne a portées avant sa valeur actuelle, ligne par ligne, d'après historique_modification puis le journal de la base vivante pas
+ * encore rapatrié (lireJournalEnAttente : le site de dev lui-même) : Map(texte de la clé (texteDeCle) → [valeurs, de la plus ancienne à la plus
+ * récente]), sans doublon, sans null, sans la dernière valeur écrite (l'actuelle). Une ligne que le site n'a jamais renommée n'y est pas. Pour retrouver
+ * une ligne par un nom qu'elle a porté : une fiche écrite avant un renommage sur le site de dev (lib/fiche-regles.mjs, `noms_d_avant` ;
+ * lib/fiche-tableur-import.mjs). L'identifiant, figé, ne change jamais ; seul le nom se cherche ainsi.
+ */
+export function valeursDAvant(db, table, colonne) {
+  const suites = new Map(); // texte de clé -> valeurs dans l'ordre
+  for (const e of [...lireHistorique(db), ...lireJournalEnAttente(db)]) {
+    if (e.table !== table) continue;
+    const valeurs = [];
+    if (e.operation === 'inserer' && e.apres && colonne in e.apres) valeurs.push(e.apres[colonne]);
+    else if (e.operation === 'modifier' && e.apres && colonne in e.apres) valeurs.push(e.avant?.[colonne], e.apres[colonne]);
+    if (!valeurs.length) continue;
+    if (!suites.has(e.texte)) suites.set(e.texte, []);
+    suites.get(e.texte).push(...valeurs);
+  }
+  const resultat = new Map();
+  for (const [texte, valeurs] of suites) {
+    const actuelle = valeurs.at(-1);
+    const avant = [...new Set(valeurs.filter((v) => v !== null && v !== undefined && v !== actuelle))];
+    if (avant.length) resultat.set(texte, avant);
+  }
+  return resultat;
 }
 
 /**

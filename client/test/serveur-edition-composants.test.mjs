@@ -105,23 +105,27 @@ test('ingrédient : type et affinité refont type, majeur et affinité (créée 
   assert.equal(enregistrer([{ op: 'modifier', table: 'ingredient_alchimie', cle: catalyseur, valeurs: { type_brut: 'Fruit (majeur)' } }]).statut, 400, 'seul un amplificateur est majeur');
 });
 
-test('monnaie (décision R61) : sa valeur ne se modifie pas, l’abréviation du RF, du RO et de la PP non plus ; une monnaie créée a sa ligne du CONVERTISSEUR ; l’unité ne se supprime pas', () => {
+test('monnaie (décision R61, « Figer les noms », R193) : ni sa valeur ni son nom ne se modifient, l’abréviation du RF, du RO et de la PP non plus ; une monnaie créée a sa ligne du CONVERTISSEUR ; l’unité ne se supprime pas', () => {
+  assert.ok(!('nom' in TABLES.monnaie.colonnes), 'le nom n’est plus une colonne modifiable');
+  assert.equal(ENTITES.monnaie.champs.nom?.requis, true, 'il se donne à la création');
   for (const id of ['rf', 'ro', 'pp']) {
+    const avant = ligne('SELECT * FROM monnaie WHERE id = ?', id);
     assert.equal(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id }, valeurs: { valeur_rf: 7 } }]).statut, 400, `${id} : valeur`);
     assert.equal(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id }, valeurs: { abreviation: 'XX' } }]).statut, 400, `${id} : abréviation`);
+    assert.equal(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id }, valeurs: { nom: `${avant.nom} taillée` } }]).statut, 400, `${id} : nom`);
+    assert.deepEqual({ ...ligne('SELECT * FROM monnaie WHERE id = ?', id) }, { ...avant }, `${id} : rien n’a changé`);
   }
-  const pp = ligne("SELECT nom FROM monnaie WHERE id = 'pp'").nom;
-  ok(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id: 'pp' }, valeurs: { nom: `${pp} taillée` } }]));
-  assert.ok(lignesDe(PAGE_DE_L_INVENTAIRE).includes(`- ${pp} taillée : PP`), 'la liste MONNAIE suit le nom');
-  ok(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id: 'pp' }, valeurs: { nom: pp } }]));
   assert.equal(enregistrer([{ op: 'supprimer', entite: 'monnaie', cle: { id: 'rf' } }]).statut, 409);
   const r = enregistrer([{ op: 'creer', entite: 'monnaie', valeurs: { nom: `Ricken d’argent ${process.pid}`, abreviation: `RA${process.pid}`, valeur_rf: 10 } }]);
   ok(r);
   const id = r.corps.crees[0].id;
   assert.equal(ligne('SELECT convertisseur_brut FROM monnaie WHERE id = ?', id).convertisseur_brut, `1 RA${process.pid} : 10 RF`);
   assert.ok(lignesDe(PAGE_DE_L_INVENTAIRE).includes(`- 1 RA${process.pid} : 10 RF`));
+  assert.equal(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id }, valeurs: { nom: `Ricken d’étain ${process.pid}` } }]).statut, 400, 'le nom d’une monnaie créée non plus');
+  ok(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id }, valeurs: { abreviation: `RB${process.pid}` } }]));
+  assert.ok(lignesDe(PAGE_DE_L_INVENTAIRE).includes(`- 1 RB${process.pid} : 10 RF`), 'le CONVERTISSEUR suit l’abréviation');
   ok(enregistrer([{ op: 'supprimer', entite: 'monnaie', cle: { id } }]));
-  assert.ok(!corps(PAGE_DE_L_INVENTAIRE).includes(`RA${process.pid}`));
+  assert.ok(!corps(PAGE_DE_L_INVENTAIRE).includes(`RB${process.pid}`));
 });
 
 test('composant créé à la fin de son tableau (ligne de l’onglet), puis supprimé : il quitte l’onglet, et l’inventaire d’une fiche le garde sous son nom', () => {
@@ -255,7 +259,7 @@ test('ni HTML brut ni lien non sûr dans les pages qui écrivent un composant ; 
   for (const [id, valeurs] of [['ro', { valeur_rf: 1000 }], ['ro', { abreviation: 'RX' }], ['rf', { abreviation: 'RFX' }]]) {
     assert.equal(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id }, valeurs }]).statut, 400, `${id} ${JSON.stringify(valeurs)}`);
   }
-  ok(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id: 'ro' }, valeurs: { nom: 'Ricken d’or' } }]));
+  assert.equal(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id: 'ro' }, valeurs: { nom: 'Ricken d’or' } }]).statut, 400, 'le nom ne se modifie pas');
 });
 
 test('OBJETS_AU_CATALOGUE : exactement les tables des fiches qui citent une ressource ; à la reconstruction, l’objet d’une ressource disparue reste sous son nom', () => {

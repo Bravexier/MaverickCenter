@@ -26,7 +26,16 @@ export const ISSUES_SAINES = Object.freeze({
   deja_la: 'déjà dans les règles livrées',
   derivee: 'recalculée d’après sa source',
   sans_effet: 'sans effet aujourd’hui',
+  // une règle en données d'un don que le lot supprime aussi (serveur/edition-conflits.mjs#suiventLeDon) : pas de choix à elle ; son don (`don` de la
+  // modification, son libellé) est nommé par issueDeLaSaine
+  suit_le_don: 'suit son don : retirée avec lui, gardée s’il reste',
 });
+
+/** Ce que devient une modification saine, en texte (ISSUES_SAINES) ; une règle qui suit son don le nomme (« suit son don (Don « X ») : … »). */
+export function issueDeLaSaine(s) {
+  if (s.issue === 'suit_le_don' && s.don) return `suit son don (${s.don}) : retirée avec lui, gardée s’il reste`;
+  return ISSUES_SAINES[s.issue] ?? s.issue;
+}
 
 const OPERATIONS = Object.freeze({ modifier: 'modification', inserer: 'création', supprimer: 'suppression' });
 
@@ -214,16 +223,21 @@ export function htmlDuConflit(c, k, { listes = {} } = {}) {
 
 /** Un lot en conflit : en-tête, modifications saines, conflits, envoi (`debut` : le rang du premier conflit dans la page). */
 export function htmlDuLot(lot, { listes = {}, debut = 0 } = {}) {
-  const saines = lot.saines?.length
-    ? `<details class="nv-conflit-lot__saines"><summary>${lot.saines.length} modification${lot.saines.length > 1 ? 's' : ''} saine${lot.saines.length > 1 ? 's' : ''} de ce lot (sans conflit)</summary><ul>${lot.saines
-      .map((s) => `<li>${echapper(s.libelle)}${colonnesDeLaSaine(s).length ? ` (${echapper(colonnesDeLaSaine(s).join(', '))})` : ''} <span class="nv-conflit__operation">${echapper(OPERATIONS[s.operation] ?? s.operation)}</span> : ${echapper(ISSUES_SAINES[s.issue] ?? s.issue)}</li>`).join('')}</ul></details>`
-    : '<p class="nv-conflit-lot__saines">Aucune modification saine dans ce lot : seulement les conflits ci-dessous.</p>';
   const n = lot.conflits?.length ?? 0;
+  // sans conflit à trancher (ses règles en conflit suivent leur don : serveur/edition-conflits.mjs#suiventLeDon), ses modifications se montrent dépliées
+  const saines = lot.saines?.length
+    ? `<details class="nv-conflit-lot__saines"${n ? '' : ' open'}><summary>${lot.saines.length} modification${lot.saines.length > 1 ? 's' : ''} saine${lot.saines.length > 1 ? 's' : ''} de ce lot (sans conflit)</summary><ul>${lot.saines
+      .map((s) => `<li>${echapper(s.libelle)}${colonnesDeLaSaine(s).length ? ` (${echapper(colonnesDeLaSaine(s).join(', '))})` : ''} <span class="nv-conflit__operation">${echapper(OPERATIONS[s.operation] ?? s.operation)}</span> : ${echapper(issueDeLaSaine(s))}</li>`).join('')}</ul></details>`
+    : '<p class="nv-conflit-lot__saines">Aucune modification saine dans ce lot : seulement les conflits ci-dessous.</p>';
+  const suivent = (lot.saines ?? []).some((s) => s.issue === 'suit_le_don');
+  const consigne = n
+    ? `${n} conflit${n > 1 ? 's' : ''} : choisissez pour chacun. Le lot reste en attente, entier, tant qu’un choix manque ; une fois résolu, ses modifications saines et vos choix 1 et 3 forment une nouvelle modification du site de dev (elle partira avec la prochaine mise à jour) ; le choix 2 laisse la règle livrée.`
+    : `Aucun choix à faire${suivent ? ' : chaque règle en conflit suit son don, que ce lot supprime aussi' : ''}. Le lot reste en attente tant qu’il n’est pas résolu ; « Résoudre ce lot » fait de ses modifications une nouvelle modification du site de dev (elle partira avec la prochaine mise à jour).`;
   return `<form class="nv-conflit-lot" data-nv-lot="${echapper(lot.lot)}" data-nv-empreinte="${echapper(lot.empreinte)}">
     <h4 class="nv-conflit-lot__titre">Lot du ${echapper(instantLisible(lot.fait_le))} : ${echapper(lot.resume ?? lot.lot)}</h4>
     ${lot.detail_lisible ? `<p class="nv-conflit-lot__detail">Au rejeu : ${echapper(lot.detail_lisible)}</p>` : ''}
     ${saines}
-    <p>${n} conflit${n > 1 ? 's' : ''} : choisissez pour chacun. Le lot reste en attente, entier, tant qu’un choix manque ; une fois résolu, ses modifications saines et vos choix 1 et 3 forment une nouvelle modification du site de dev (elle partira avec la prochaine mise à jour) ; le choix 2 laisse la règle livrée.</p>
+    <p class="nv-conflit-lot__consigne">${echapper(consigne)}</p>
     ${(lot.conflits ?? []).map((c, i) => htmlDuConflit(c, debut + i, { listes })).join('')}
     <p class="nv-message" data-nv-lot-message aria-live="polite" hidden></p>
     <div class="nv-dev__actions"><button type="submit" class="nv-principal">Résoudre ce lot</button></div>

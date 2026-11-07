@@ -21,7 +21,9 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { instantanesDuRegistre, lireRegistre, rapprocher } from '../../tools/sources/rapprocher.mjs';
+import { ANCRE_FIGEE, ancreDuTitre } from '../src/lib/ancres-figees.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { ancreDeLEtat } from '../src/lib/magies-db.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const script = fileURLToPath(new URL('../../tools/sheets/annexes-magie.py', import.meta.url));
@@ -84,6 +86,36 @@ test('R187 : rejoué sur les instantanés des classeurs, l’importeur n’écri
   }
   // l'onglet est ignoré, pas oublié : il est lu (le dump est reconnu, la page Mode Super est écrite) et une note y serait annoncée
   assert.ok(existsSync(join(out, 'guide', 'liste-des-effets-mode-super.md')));
+});
+
+test('ancres figées : rejoué sur l’instantané, chaque intertitre d’état porte « {#<ancre>} », l’ancre de l’id figé de sa ligne `etat` (une par état, aucune de plus)', { skip: sansPython }, (t) => {
+  // Lot « Défauts du code » : le lien d'une altération vise `#<segment après « #etat: » de l'id>` (lib/magies-db.mjs#ancreDeLEtat) ; l'importeur pose
+  // cette ancre (table ANCRES_DES_ETATS, jamais un slug du nom), pour que son --verifier redonne la page que la migration a marquée. La table `etat`
+  // n'est pas modifiable sur le site (lib/edition-modele.mjs) et ses ids sont figés : l'égalité des deux ensembles est un invariant de l'état courant.
+  // La base partagée d'ouvrirBase n'est pas fermée ici (le test R187 plus bas la ferme, en dernier).
+  const out = dossierTemporaire('annexes-ancres-', { t });
+  const dumps = ['magie-maverick-v8.json', 'mode-hyper-et-co.json'].flatMap((d) => ['--dump', join(classeurs, d)]);
+  const r = spawnSync('python3', ['-I', script, ...dumps, '--out', out], { encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  const titres = lire(join(out, 'guide'), 'liste-des-alterations-d-etat').split('\n').filter((l) => /^#{1,6} /.test(l));
+  const ancres = titres.map((l) => ancreDuTitre(l)?.ancre);
+  assert.ok(titres.length > 0);
+  titres.forEach((l, i) => assert.ok(ancres[i] && ANCRE_FIGEE.test(ancres[i]), `intertitre sans ancre figée : ${l}`));
+  assert.equal(new Set(ancres).size, ancres.length, 'deux intertitres ne portent jamais la même ancre');
+  const ids = ouvrirBase({ sansExemples: false }).prepare('SELECT id FROM etat').all().map((e) => ancreDeLEtat(e.id));
+  assert.deepEqual([...ancres].sort(), ids.sort(), 'une ancre par ligne `etat`, celle de son id');
+  const v = spawnSync('python3', ['-I', script, ...dumps, '--out', out, '--verifier'], { encoding: 'utf8' });
+  assert.equal(v.status, 0, v.stderr);
+});
+
+test('ancres figées : un état dont le nom n’a pas d’ancre dans la table de l’importeur arrête tout, rien n’est écrit (l’ancre ne s’invente pas)', { skip: sansPython }, () => {
+  const v8 = magieV8({ notes: false });
+  v8.sheets.find((s) => s.name === 'Altération détats').cells.find((c) => c.r === 8 && c.c === 1).v = 'État inconnu';
+  const ctx = preparer({ v8, hyper: modeHyper({ notes: false }) });
+  const r = lancer(ctx);
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /« État inconnu » sans ancre figée/);
+  assert.deepEqual(pagesEcrites(ctx), []);
 });
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -194,12 +226,12 @@ function modeHyper({ notes = true, extra = [] } = {}) {
   };
 }
 
-// Chaque entrée : page, section (intertitre `## …` ou null = tout le corps), bloc Markdown exact attendu, texte de la note (dump).
+// Chaque entrée : page, section (ligne d'intertitre `## …` exacte, ancre figée comprise, ou null = tout le corps), bloc Markdown exact attendu, texte de la note (dump).
 const ATTENDUES = [
-  ['liste-des-alterations-d-etat', '## Saignement', `**Note de la cellule « Type »** : ${N.type}`],
-  ['liste-des-alterations-d-etat', '## Saignement', `**Note de la cellule « Stade 2 »** : ${N.stade}`],
-  ['liste-des-alterations-d-etat', '## Saignement', `**Note de la cellule « Sensibilité »** : ${N.paire}`],
-  ['liste-des-alterations-d-etat', '## Brûlure', `**Note de la cellule « Nom »** : ${N.nom}`],
+  ['liste-des-alterations-d-etat', '## Saignement {#saignement}', `**Note de la cellule « Type »** : ${N.type}`],
+  ['liste-des-alterations-d-etat', '## Saignement {#saignement}', `**Note de la cellule « Stade 2 »** : ${N.stade}`],
+  ['liste-des-alterations-d-etat', '## Saignement {#saignement}', `**Note de la cellule « Sensibilité »** : ${N.paire}`],
+  ['liste-des-alterations-d-etat', '## Brûlure {#brulure}', `**Note de la cellule « Nom »** : ${N.nom}`],
   [
     'meteo',
     '## Pluie',
@@ -488,8 +520,9 @@ test('--verifier : au vert sur les pages générées, n’écrit rien, annonce l
   assert.match(r.stdout, new RegExp(`${TOTAL} note\\(s\\)`));
   // 3 onglets publiés x 7 rejeux (cellule vide, sans place, note de contrôle acceptée, 4 altérations de page) + onglet inconnu dans
   // chacun des 2 dumps + onglet Sommaire du classeur V8 + note acceptée dans chacun des 3 onglets ignorés, « Statistiques » (R86),
-  // « Mode Hyper (Magie) » (R184 (9)) et « Mode Hyper » (R187) : un rejeu qui disparaît change ce nombre.
-  assert.match(r.stdout, /27 cas d'erreur rejoués/);
+  // « Mode Hyper (Magie) » (R184 (9)) et « Mode Hyper » (R187) + état sans ancre figée (lot « Défauts du code ») : un rejeu qui disparaît
+  // change ce nombre.
+  assert.match(r.stdout, /28 cas d'erreur rejoués/);
   assert.deepEqual(PAGES.map((p) => lire(join(ctx.out, 'guide'), p)), avant, '--verifier ne doit rien écrire');
 });
 

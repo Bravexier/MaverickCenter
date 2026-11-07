@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 191 décisions, de R1 à R191, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 193 décisions, de R1 à R193, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
 
 | Réf. | Sujet | Décision |
 | --- | --- | --- |
@@ -197,3 +197,5 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R189 | Le passif « Grimoire » de l'Archimage (remarque du propriétaire, 2026-11-0… | « Grimoire » acquis compte comme une condition de plus… |
 | R190 | Le Lexique mène au Glossaire (lot « mots-clés = liens », demande du propri… | `/regles/lexique/` mène à `/regles/glossaire/`, et non… |
 | R191 | Le libellé « (classe) » dans le glossaire (lot « mots-clés = liens », 2026… | « (classe) » est admis dans le libellé des mots-clés (… |
+| R192 | Suite de R181 et de R42 : le don « Variable » modifié sur le site de dev (… | (1) Création : un don « Variable » se crée avec la mag… |
+| R193 | Suite de R61 : le nom d'une monnaie (lot « Défauts du code »). R61 interdi… | Le nom d'une monnaie ne se modifie plus sur le site de… |

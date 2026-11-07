@@ -29,6 +29,7 @@ import {
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { comptesDesMotsCles, elementsDuMotCle } from '../src/lib/recherche-mots-cles.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const VOCABULAIRE = [
@@ -257,16 +258,28 @@ test('R4 (relecture) : un mot-clé de monnaie se reconnaît à son id, figé, ce
   }
   // une abréviation de monnaie sur un autre mot-clé : une abréviation comme une autre
   assert.equal(htmlDuNomDuMotCle({ id: 'rouge', libelle: 'Rouge', abreviation: 'RO' }), 'Rouge (RO)');
-  // la correspondance : les ids de MONNAIES_DU_JEU sont ceux de la table `monnaie`, et chacun est le mot-clé de sa monnaie (R183), du même nom
-  const db = new DatabaseSync(cheminBase(), { readOnly: true });
-  const monnaies = db.prepare('SELECT id, nom, abreviation FROM monnaie ORDER BY id').all();
+  // la correspondance, à l'import (le libellé d'un mot-clé se modifie sur le site de dev, le nom d'une monnaie est figé : R193) : les ids de
+  // MONNAIES_DU_JEU sont ceux de la table `monnaie`, et chacun est le mot-clé de sa monnaie (R183), du même nom
+  const importee = baseDImport();
+  const monnaies = importee.prepare('SELECT id, nom, abreviation FROM monnaie ORDER BY id').all();
   assert.deepEqual(monnaies.map((m) => [m.id, m.abreviation]), Object.entries(MONNAIES_DU_JEU).map(([abr, m]) => [m.id, abr]).sort());
   for (const m of monnaies) {
-    const motCle = db.prepare('SELECT libelle FROM mot_cle WHERE id = ?').get(m.id);
+    const motCle = importee.prepare('SELECT libelle FROM mot_cle WHERE id = ?').get(m.id);
     assert.ok(motCle, `${m.id} : le mot-clé de sa monnaie`);
     assert.equal(normalize(motCle.libelle), normalize(m.nom), `${m.id} : le nom de sa monnaie`);
   }
-  db.close();
+  // aujourd'hui : une monnaie du jeu encore présente garde l'abréviation de ses prix et de son icône (le service refuse de la changer : R61,
+  // serveur/edition-composants.mjs#MONNAIE) ; le site de dev peut créer d'autres monnaies, ou supprimer le RO et la PP (pas l'unité, le RF)
+  const db = new DatabaseSync(cheminBase(), { readOnly: true });
+  try {
+    const parId = new Map(db.prepare('SELECT id, abreviation, valeur_rf FROM monnaie').all().map((m) => [m.id, m]));
+    for (const [abr, m] of Object.entries(MONNAIES_DU_JEU)) {
+      if (parId.has(m.id)) assert.equal(parId.get(m.id).abreviation, abr, `${m.id} : l’abréviation de ses prix`);
+    }
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM monnaie WHERE valeur_rf = 1').get().n, 1, 'une seule unité, que le site ne supprime pas');
+  } finally {
+    db.close();
+  }
 });
 
 test('décisions R63, R183 (9) (« R63 est respectée partout ») et R183 (12) (« Décomposer comme ailleurs ») : le texte d’une balise et la définition du mode complet montrent les monnaies en icônes ; un montant écrit dans une balise se décompose', () => {

@@ -41,8 +41,8 @@
 // Node seulement (node:sqlite), sans dépendance.
 import { existsSync, readFileSync } from 'node:fs';
 import {
-  CHAMPS_DE_TEXTE, colonnesImage, contrainteR160, ENTITES, ErreurValeur, ligneSansImage, MOT_CLE_RACE_HYBRIDE, OBJETS_PAR_MAGIE, REFUS_R160, TABLES,
-  texteDePageModifiable, typeDeTexte, valeurDuChamp,
+  CHAMPS_DE_TEXTE, CHAMPS_HORS_COLONNES, colonnesImage, contrainteR160, ENTITES, ErreurValeur, ligneSansImage, MAGIES_D_UN_DON_VARIABLE, MOT_CLE_RACE_HYBRIDE, OBJETS_PAR_MAGIE,
+  REFUS_R160, TABLES, texteDePageModifiable, typeDeTexte, valeurDuChamp,
 } from '../src/lib/edition-modele.mjs';
 import {
   RIEN, artisanatBrut, corpsDeMetier, decouperBonus, decouperEquipement, famillesDeRecette, testDArtisanat,
@@ -68,6 +68,7 @@ import {
 import { HYBRIDES_SANS_CLASSE_RACIALE, TAG_RACE_HYBRIDE } from '../src/lib/race-kinds.mjs';
 import { morceauxDuChapitre } from '../src/lib/guide.mjs';
 import { parLibelle, raisonDeProtection } from '../src/lib/mots-cles.mjs';
+import { raisonDesAncresRompues } from '../src/lib/ancres-figees.mjs';
 import { decouperCorps } from '../src/lib/markdown-edition.mjs';
 import { fragmentsAjoutes, messageDeRefus } from '../src/lib/markdown-sur.mjs';
 import {
@@ -86,6 +87,7 @@ import { ADRESSE_DU_GLOSSAIRE, adresseDeLaPage, adressesDuSite } from '../src/li
 import { fauteDeLaCouleur } from '../src/lib/palette-css.mjs';
 import { baliseDuLien, convertirLesLiens, liensDuTexte, tableDeConversion } from '../src/lib/liens-en-mots-cles.mjs';
 import { buildIndex, resolve as resoudreLeLien } from '../src/lib/wikilinks-resolution.mjs';
+import { citationsBloquantes, citationsDesPages } from '../src/lib/citations-db.mjs';
 import { ErreurHttp, jsonOuNull } from './partage.mjs';
 import { ErreurJournal, ORDRE_DE_REJEU, cleDe, lireLigne, nouveauLot, ouvrirLot, rejouer, structure } from './edition-journal.mjs';
 import {
@@ -113,7 +115,8 @@ import { contexteDesArmes } from '../src/lib/armes-db.mjs';
 import { poidsDeBouclier } from '../src/lib/armures-db.mjs';
 import { echellesDesCartes, magiesDesCibles, renvoisAuxDegatsMoyens } from '../src/lib/bestiaire-db.mjs';
 import {
-  libelleDeFiche, noterLesRetraits, nouveauxRetraitsDeFiches, numerosDesFichesDeJoueur, ordreDesLibelles, retirerDesFiches,
+  libelleDeFiche, magiesDesDonsVariables, noterLesRetraits, nouveauxRetraitsDeFiches, numerosDesFichesDeJoueur, ordreDesLibelles, retirerDesFiches,
+  retirerLesChoixDesDonsChanges,
 } from './fiches-retraits.mjs';
 
 /** Nombre maximal d'opérations dans un lot (une page en envoie quelques dizaines). */
@@ -1248,10 +1251,11 @@ function colonnesDuTypeDeDon(typeBrut) {
  * Insère un don à une place déjà choisie : sa fiche (capacites/<slug> : titre, résumé, corps, donnees, mots-clés, une source « Site de dev › … »), sa ligne
  * de capacite, son page_entite. Identifiant et titre tirés une fois du nom (lib/dons-edition.mjs), jamais recalculés ensuite. Rend la ligne.
  */
-function creerDon(ctx, { classe, specialite = null, niveau, nature, ligne, rang, nom, typeBrut, effet = null }) {
+function creerDon(ctx, { classe, specialite = null, niveau, nature, ligne, rang, nom, typeBrut, effet = null, magie = null }) {
   const { db, w, instant } = ctx;
   const colonnes = colonnesDuTypeDeDon(typeBrut);
   if (!colonnes.type) throw refus(`Type « ${typeBrut} » : le premier mot doit être Passif, Actif, Action, Réaction ou Variable`);
+  const variable = magieDuDonVariable(db, colonnes.type, magie);
   const id = idDeDon({ slugClasse: slugDeClasse(classe.id), nom, niveau, rang }, (x) => idDeDonPris(db, x));
   const titre = titreDeDon({ nom, classeNom: classe.nom, niveau }, (cle) => titrePris(db, cle));
   if (!titre) throw new ErreurEdition(409, `Un don « ${nom} » existe déjà dans cette classe, aussi au niveau ${niveau} : choisissez un autre nom.`);
@@ -1267,8 +1271,59 @@ function creerDon(ctx, { classe, specialite = null, niveau, nature, ligne, rang,
   });
   w.inserer('capacite', don);
   w.inserer('page_entite', { entite_table: 'capacite', entite_id: id, page_id: id, principale: 1, origine: 'classes' });
+  if (variable) w.inserer('capacite_variable', { capacite_id: id, magie: variable });
   if (effet !== null) suivreLesSourcesDuDon(ctx, don, effet);
   return don;
+}
+
+/**
+ * La magie que vise un don créé (capacite_variable.magie, décision R181) : exigée pour un don « Variable » (réponse du propriétaire : « Demander la
+ * magie »), `innee` ou `acquise` (lib/edition-modele.mjs#MAGIES_D_UN_DON_VARIABLE) ; refusée pour un autre type (rien ne la lirait). Null pour un don
+ * qui n'est pas « Variable », ou sur une base d'avant la migration 0088 (sans la table : la magie n'a nulle part où s'écrire). Refus 400.
+ */
+function magieDuDonVariable(db, type, magie) {
+  if (type !== 'variable') {
+    if (magieDonnee(magie)) throw refus('seul un don de type « Variable » vise une magie (laissez « Magie liée » vide).');
+    return null;
+  }
+  if (!MAGIES_D_UN_DON_VARIABLE.some((m) => m.valeur === magie)) {
+    throw refus(`un don « Variable » vise une magie du personnage (décision R181) : choisissez ${MAGIES_D_UN_DON_VARIABLE.map((m) => `« ${m.libelle} »`).join(' ou ')}.`);
+  }
+  return tableExiste(db, 'capacite_variable') ? magie : null;
+}
+
+const magieDonnee = (magie) => magie !== null && magie !== undefined && magie !== '';
+
+/**
+ * La magie que vise un don dont le type change (décision R181 ; réponse du propriétaire « Demander ou retirer », R192 : « Passer à « Variable » demande la
+ * magie (innée ou acquise) ; quitter « Variable » retire le lien à la magie. »), après l'écriture de sa ligne (CAPACITE.deriver) ; `annexes` : les
+ * clés hors colonnes de l'opération « modifier » (CHAMPS_HORS_COLONNES.capacite : `magie`).
+ * - Un don qui n'est pas (ou plus) « Variable » : sa ligne capacite_variable est supprimée, notée au journal (ligne `avant` complète) ; une magie
+ *   envoyée est refusée (400), comme à la création.
+ * - Un don « Variable » : la magie envoyée (innée ou acquise, sinon 400 qui cite R181) écrit sa ligne, insérée ou modifiée (un don déjà « Variable »
+ *   change ainsi de magie, type touché ou non) ; sans magie, un don qui y PASSE est refusé (400 qui cite R181), sauf s'il a déjà sa ligne (le lot en
+ *   conflit que la résolution refait l'a écrite avant), et un don qui l'était déjà garde la sienne.
+ * `annexes` null (la re-dérivation de la résolution d'un lot en conflit, OUTILS_DE_RESOLUTION) : rien n'est exigé, le lot porte ses propres lignes ; seul
+ * le retrait vaut. Rien sur une base d'avant la migration 0088 (sans la table), où la magie reste contrôlée. Les choix des fiches (personnage_don_obtenu)
+ * d'un don qui quitte « Variable » ou change de magie partent à la fin du lot, quelle que soit l'écriture (enregistrer : retirerLesChoixDesDonsChanges).
+ */
+function suivreLaMagieDuDon(ctx, avant, apres, annexes) {
+  const { db, w } = ctx;
+  const magie = magieDonnee(annexes?.magie) ? annexes.magie : null;
+  // refus d'une magie envoyée pour un autre type, ou hors de la liste
+  const voulue = magie === null ? null : magieDuDonVariable(db, apres.type, magie);
+  if (!tableExiste(db, 'capacite_variable')) return;
+  const ligne = db.prepare('SELECT * FROM capacite_variable WHERE capacite_id = ?').get(apres.id);
+  if (apres.type !== 'variable') {
+    if (ligne) w.supprimer('capacite_variable', { capacite_id: apres.id });
+    return;
+  }
+  if (voulue === null) {
+    if (ligne || !annexes || avant.type === 'variable') return;
+    throw refus(`le type passe à « Variable » : un don « Variable » vise une magie du personnage (décision R181) : choisissez ${MAGIES_D_UN_DON_VARIABLE.map((m) => `« ${m.libelle} »`).join(' ou ')} (« Magie liée »).`);
+  }
+  if (!ligne) w.inserer('capacite_variable', { capacite_id: apres.id, magie: voulue });
+  else if (ligne.magie !== voulue) w.modifier('capacite_variable', { capacite_id: apres.id }, { magie: voulue });
 }
 
 /**
@@ -1313,13 +1368,34 @@ function verifierLesDonsQuiSuivent(db, classeId) {
 }
 
 /**
- * Retire un don : ses notes de cellule, ses sources de maîtrise d'arme, sa ligne, puis sa fiche (alias, mots-clés, sources, entités rattachées) ; dans
- * l'ordre des clés étrangères.
+ * Les règles en données d'un don : les tables qui citent `capacite` en ON DELETE CASCADE, hors des sources de maîtrise d'arme (maitrise_arme_part,
+ * capacite_nm_gagne : refaites par le lecteur, suivreLesSourcesDuDon) — la magie que vise un don « Variable » (R181, migration 0088), le plafond de NPM
+ * qu'il relève (R188) et la condition d'emplacements de sorts (R189, migration 0097). Toutes citent le don par `capacite_id`. Liste comparée au schéma
+ * (test/serveur-edition-regles-du-don.test.mjs) ; scripts/mise-a-jour-github.mjs#TABLES_DES_REGLES_DU_DON la recopie.
+ */
+export const TABLES_DES_REGLES_DU_DON = Object.freeze(['capacite_condition_emplacements', 'capacite_npm_plafond', 'capacite_variable']);
+
+/**
+ * Retire les règles en données du don `id` (TABLES_DES_REGLES_DU_DON) en les notant au journal par `w`, avant le don : la cascade du schéma n'en retire
+ * alors rien hors du journal, que la mise à jour refuserait (fichier hors des tables du lot). Réponse du propriétaire : « Autoriser et journaliser ».
+ * Aussi pour la résolution d'un lot en conflit (OUTILS_DE_RESOLUTION, serveur/edition-conflits.mjs#avantLaSuppression).
+ */
+export function retirerLesReglesDuDon(db, w, id) {
+  for (const t of TABLES_DES_REGLES_DU_DON) {
+    if (!tableExiste(db, t)) continue; // base d'avant la migration de la table
+    for (const l of db.prepare(`SELECT * FROM "${t}" WHERE capacite_id = ?`).all(id)) w.supprimer(t, cleDe(db, t, l));
+  }
+}
+
+/**
+ * Retire un don : ses notes de cellule, ses sources de maîtrise d'arme, ses règles en données (TABLES_DES_REGLES_DU_DON), sa ligne, puis sa fiche
+ * (alias, mots-clés, sources, entités rattachées) ; dans l'ordre des clés étrangères, tout noté au journal.
  */
 function retirerDon(ctx, don) {
   const { db, w } = ctx;
   for (const n of db.prepare("SELECT * FROM note_cellule WHERE entite_table = 'capacite' AND entite_id = ?").all(don.id)) w.supprimer('note_cellule', cleDe(db, 'note_cellule', n));
   suivreLesSourcesDuDon(ctx, don, null);
+  retirerLesReglesDuDon(db, w, don.id);
   w.supprimer('capacite', { id: don.id });
   supprimerPage(ctx, don.id);
 }
@@ -1361,7 +1437,7 @@ const SPECIALITE = {
     if (ligne === null) throw new ErreurEdition(409, 'Plus de place libre dans la grille de la classe à ce niveau.');
     const cartouche = creerDon(ctx, {
       classe, specialite, niveau: NIVEAU_DES_SPECIALITES, nature: 'specialite', ligne, rang: 1, nom: v.don_nom,
-      typeBrut: typeBrutDeSaisie(v.don_type, v.don_precision), effet: v.don_effet ?? null,
+      typeBrut: typeBrutDeSaisie(v.don_type, v.don_precision), effet: v.don_effet ?? null, magie: v.don_magie ?? null,
     });
     suivreDonneesDesDons(ctx, classe.id); // les autres dons de spécialité : choix exclusif avec le nouveau
     suivrePageDeClasse(ctx, classe.id, (L) => ({ ...L, specialites: L.specialites.filter((s) => s.id !== id), dons: L.dons.filter((d) => d.id !== cartouche.id) }));
@@ -1392,7 +1468,9 @@ const CAPACITE = {
   colonnes(_ctx, ligne) {
     return ligne.type_brut ? colonnesDuTypeDeDon(ligne.type_brut) : { type: null, limite_nombre: null, limite_periode: null };
   },
-  deriver(ctx, avant, apres) {
+  deriver(ctx, avant, apres, annexes = null) {
+    // la magie qu'il vise s'il est « Variable » (R181, « Demander ou retirer », R192) : avant tout le reste, son refus n'attend pas les dérivations
+    suivreLaMagieDuDon(ctx, avant, apres, annexes);
     // ses sources de maîtrise d'arme et ses NM de sorts gagnés, lus dans son effet (décisions R148 à R151, R154), qu'il ait une fiche ou non
     if (apres.effet !== avant.effet) suivreLesSourcesDuDon(ctx, apres, apres.effet);
     const classe = lireLigne(ctx.db, 'classe', { id: apres.classe_id });
@@ -1458,7 +1536,7 @@ const CAPACITE = {
       // un don seul sur sa ligne est reçu sans choix ; dans une spécialité, le schéma n'a pas cette nature : 'choix' (seul, jusqu'à ce qu'une option le rejoigne)
       place = { specialite, niveau, nature: specialite ? 'choix' : natureHorsSpecialite(1), ligne, rang: 1 };
     }
-    const don = creerDon(ctx, { classe, ...place, nom: v.nom, typeBrut: typeBrutDeSaisie(v.type, v.precision), effet: v.effet ?? null });
+    const don = creerDon(ctx, { classe, ...place, nom: v.nom, typeBrut: typeBrutDeSaisie(v.type, v.precision), effet: v.effet ?? null, magie: v.magie ?? null });
     suivreDonneesDesDons(ctx, classe.id); // choix exclusifs des deux côtés, nature et rang des voisins
     suivrePageDeClasse(ctx, classe.id, (L) => ({ ...L, dons: L.dons.filter((d) => d.id !== don.id) }));
     return { id: don.id, resume: `Don créé : ${v.nom} (${classe.nom}, niveau ${place.niveau}${voisin ? `, au choix avec ${voisin.nom}` : ''})` };
@@ -1918,7 +1996,9 @@ export function adaptateurDuJournal(db) {
   const resistances = ancienneEcritureDesResistances();
   const armures = ancienneEcritureDesArmures(db);
   const couts = ancienneEcritureDuCout();
-  return (m) => couts(armures(resistances(capacites(glossaire(liens(fusions(motsCles(m))))))));
+  const figees = ecrituresFigees(db);
+  const ancres = ecrituresQuiRompentLesAncres(db);
+  return (m) => ancres(figees(couts(armures(resistances(capacites(glossaire(liens(fusions(motsCles(m))))))))));
 }
 
 /** La table de conversion des liens de la migration 0098 (undefined : pas encore lue ; null : registre absent). */
@@ -2006,6 +2086,52 @@ export function ancienneEcritureDesLiens(db, table = tableDesLiensDeLa0098()) {
 }
 
 /**
+ * Un lot du journal noté avant la garde des ancres figées (modifier, ancresRompuesParLesValeurs) qui retire, renomme ou double une ancre que les règles
+ * ont (adaptateur de edition-journal.mjs#rejouer, comme ecrituresFigees) : une forme ancienne sans équivalent (`conflit`, avec la raison qui nomme
+ * l'ancre) — son lot entier est en conflit au rejeu (service, mise à jour, db:appliquer-edition), et sur la page « Mise à jour » la modification n'a que
+ * le choix 2 (la règle livrée). Le texte comparé est celui des règles (la ligne telle qu’avant le rejeu du journal, comme ecrituresFigees), pas l’`avant` du lot : une
+ * ancre que les règles ont reçue depuis (migration 0100) compte. Une valeur déjà dans les règles passe.
+ */
+export function ecrituresQuiRompentLesAncres(db) {
+  return (m) => {
+    if (m.operation !== 'modifier' || m.conflit || m.sansEffet || !tableExiste(db, m.table_nom)) return m;
+    const apres = jsonOuNull(m.apres) ?? {};
+    if (!Object.keys(apres).some((c) => typeDeTexte(m.table_nom, c) === 'markdown')) return m;
+    const cle = JSON.parse(m.cle);
+    const ligne = lireLigne(db, m.table_nom, cle);
+    const raison = ligne ? ancresRompuesParLesValeurs(m.table_nom, cle, ligne, apres) : null;
+    return raison ? { ...m, conflit: raison } : m;
+  };
+}
+
+/**
+ * Les colonnes que le site de dev a modifiées un temps, puis qu'un choix du propriétaire a figées (sorties de TABLES, lib/edition-modele.mjs) : table →
+ * { colonne → la raison dite au rejeu }. Le service les refuse depuis ; un lot noté avant passe par ecrituresFigees.
+ */
+export const COLONNES_FIGEES = Object.freeze({
+  monnaie: Object.freeze({ nom: 'le nom d’une monnaie ne se modifie plus sur le site de dev (réponse du propriétaire : « Figer les noms », R193)' }),
+});
+
+/**
+ * Un lot noté avant qu'une colonne de COLONNES_FIGEES ne soit figée (adaptateur de edition-journal.mjs#rejouer) : une modification qui y écrit une
+ * valeur que les règles n'ont pas est une forme ancienne sans équivalent (`conflit`, avec la raison) — son lot entier est en conflit au rejeu (service,
+ * mise à jour, db:appliquer-edition), et sur la page « Mise à jour » elle n'a que le choix 2 (la règle livrée), les autres modifications du lot
+ * repartant telles quelles. Ni appliquée (la colonne ne se modifie plus) ni ignorée sans trace (le site de dev l'avait faite) : la même conduite qu'une
+ * écriture sur un mot-clé que les règles ont fusionné (ancienneEcritureDesFusions). Une valeur déjà dans les règles passe (« intégrée »). L'insertion
+ * d'une ligne neuve (une monnaie créée, son nom donné à la création) n'est pas visée.
+ */
+export function ecrituresFigees(db) {
+  return (m) => {
+    const figees = COLONNES_FIGEES[m.table_nom];
+    if (!figees || m.operation !== 'modifier' || m.conflit || m.sansEffet || !tableExiste(db, m.table_nom)) return m;
+    const apres = jsonOuNull(m.apres) ?? {};
+    const ligne = lireLigne(db, m.table_nom, JSON.parse(m.cle));
+    const ecrites = Object.keys(apres).filter((c) => Object.hasOwn(figees, c) && !(ligne && ligne[c] === apres[c]));
+    return ecrites.length ? { ...m, conflit: ecrites.map((c) => figees[c]).join(' ; ') } : m;
+  };
+}
+
+/**
  * Les mots-clés qu'une migration a fondus dans un autre, comme une fusion du site (lib/mots-cles-balises.mjs#reciblerLeMotCle) : `source` quitte le
  * vocabulaire, ses balises et ses étiquettes citent `cible` ; `texte` : ce qu'une balise sans texte de la source montrait (son libellé), écrit dans la
  * balise reciblée. Migration 0090 (décision R183 (3), « Fusionner dans Corruption ») : « CR » dans « Corruption ».
@@ -2072,18 +2198,21 @@ export function ancienneEcritureDesFusions(db) {
 /**
  * Ce dont la résolution d'un lot en conflit (serveur/edition-conflits.mjs, /mise-a-jour/) a besoin du service d'édition, sans en ouvrir le reste :
  * `modifier(ctx, op)` (l'opération « modifier » d'un lot : valeurDuChamp, forme canonique des balises, Markdown sûr, colonnes X_cle et du domaine,
- * dérivations, notées par ctx.w), `deriver(ctx, table, avant, apres)` (les dérivations du domaine d'une table : lignes de détail, corps de page),
+ * dérivations, notées par ctx.w ; sans exiger ce que le lot porte dans ses lignes : la magie d'un don « Variable »), `deriver(ctx, table, avant, apres)` (les dérivations du domaine d'une table : lignes de détail, corps de page),
  * `completerLesMetiers`, `balisesRetireesParLeLot`, `balisesDesColonnesDerivees` (comme rejouerLeJournal) et `refuseeParLaBase` (une contrainte de la
  * base : 422).
  */
 export const OUTILS_DE_RESOLUTION = Object.freeze({
-  modifier: (ctx, op) => modifier(ctx, op),
+  // la résolution refait les choix du lot, qui porte ses propres lignes (la magie d'un don « Variable » : suivreLaMagieDuDon) : rien n'est exigé
+  modifier: (ctx, op) => modifier(ctx, op, { exiger: false }),
   deriver: (ctx, table, avant, apres) => DOMAINES[table]?.deriver?.(ctx, avant, apres),
   aUneDerivation: (table) => typeof DOMAINES[table]?.deriver === 'function',
   completerLesMetiers: (db, ids) => completerLesMetiers(db, ids),
   balisesRetireesParLeLot: (db, lot) => balisesRetireesParLeLot(db, lot),
   balisesDesColonnesDerivees: (db) => balisesDesColonnesDerivees(db),
   refuseeParLaBase: (e) => refuseeParLaBase(e),
+  retirerLesReglesDuDon: (db, w, id) => retirerLesReglesDuDon(db, w, id),
+  liensRompusParLeLot: (db, lot, options) => liensRompusParLeLot(db, lot, options),
 });
 
 /**
@@ -2110,7 +2239,14 @@ export function rejouerLeJournal(db, sortie = {}, { horsControleParLot = [] } = 
     // les balises d'un mot-clé supprimé ou fusionné, dans les textes que le lot n'a pas réécrits : au moment où il est rejoué, dans son lot ; puis les
     // sources de maîtrise d'arme des classes et des dons que le lot touche, refaites par le lecteur (un lot noté avant la migration 0076 ne les écrit pas :
     // serveur/edition-maitrises.mjs#sourcesRefaitesParLeLot)
-    apresLeLot: (lot) => [...balisesRetireesParLeLot(db, lot), ...sourcesRefaitesParLeLot(db, lot)],
+    // et une page des Règles que le lot supprime alors qu'un texte qui reste la cite le met en conflit (liensRompusParLeLot)
+    apresLeLot: (lot, issues = []) => {
+      const ecrites = [...balisesRetireesParLeLot(db, lot), ...sourcesRefaitesParLeLot(db, lot)];
+      // seules les suppressions que le lot fait (« applique ») : une page que les règles n'ont déjà plus (retirée par une migration) n'est pas de son fait
+      const rompus = liensRompusParLeLot(db, lot, { faites: lot.filter((_m, i) => issues[i] === 'applique') });
+      if (rompus.length) throw new Error(rompus.map((r) => r.raison).join(' ; '));
+      return ecrites;
+    },
   });
   // `balises` : réécritures des balises d'un mot-clé retiré (balisesRetireesParLeLot), hors journal, comptées comme des lignes rejouées pour les pages
   const balises = appliquees.filter((m) => m.balises);
@@ -2122,6 +2258,9 @@ export function rejouerLeJournal(db, sortie = {}, { horsControleParLot = [] } = 
   // un mot-clé supprimé (ou fusionné) : rejoué clés coupées, la cascade de son schéma retire aussi ses lignes que le lot n'a pas notées (les pages
   // d'exemple, absentes de la base du site de dev) — page_tag peut donc changer au-delà du journal ; un mot-clé créé pour un lot d'avant 0043 : mot_cle
   if (reelles.some((m) => m.table === 'mot_cle' && m.operation === 'supprimer')) completees.add('page_tag');
+  // un don supprimé par un lot noté avant que ses règles en données ne soient notées (retirerLesReglesDuDon) : rejoué clés coupées, la cascade de son
+  // schéma retire aussi ces lignes — TABLES_DES_REGLES_DU_DON peut donc changer au-delà du journal (scripts/mise-a-jour-github.mjs#tablesDuLot de même)
+  if (reelles.some((m) => m.table === 'capacite' && m.operation === 'supprimer')) for (const t of TABLES_DES_REGLES_DU_DON) completees.add(t);
   if (appliquees.some((m) => m.synthetique && m.table === 'mot_cle')) completees.add('mot_cle');
   for (const m of [...balises, ...sources]) completees.add(m.table);
   // les pages typées refaites depuis leurs tables, réécritures des balises comprises (dans l'ordre du rejeu) : `page`, au-delà du journal pour elles
@@ -2138,6 +2277,52 @@ const q = (c) => (c === 'rowid' ? 'rowid' : `"${c}"`);
 const lignesAvecBalises = (db, table, colonne, cle) => db.prepare(`SELECT ${cle.map(q).join(', ')}, ${q(colonne)} AS texte__ FROM "${table}" WHERE instr(${q(colonne)}, '{{') > 0`).all();
 const reecrireLeTexte = (db, table, colonne, cle, ligne, texte) => db.prepare(`UPDATE "${table}" SET ${q(colonne)} = ? WHERE ${cle.map((c) => `${q(c)} = ?`).join(' AND ')}`)
   .run(texte, ...cle.map((c) => ligne[c]));
+
+/**
+ * Les pages des Règles (page `guide/…`) qu'un lot vient de supprimer (`lot` : ses modifications, telles que le journal les note : table_nom, rang,
+ * avant) et qu'un texte de la base cite encore : [{ rang (la suppression de la page), rangs (elle et les suppressions du lot qui citent la page par
+ * page_id : entrée de menu, alias, étiquettes, sources), page, citations, raison }]. Le service refuse cette suppression tant qu'une page la cite
+ * (serveur/edition-plan.mjs) ; au rejeu, le lot qui retirait la citation peut être en conflit (les règles ont changé son texte), ou les règles livrées
+ * la citer depuis : la supprimer laisserait un lien cassé (« Aucune référence n'est jamais laissée rompue », docs/serveur.md). Les citations sont
+ * celles du service (lib/citations-db.mjs : lien [[…]] par titre, alias, slug ou identifiant, la page retirée entrant dans l'index avec son titre et
+ * les alias que le lot lui retire ; adresse écrite ; bloc de la chronologie ; mot-clé dont l'adresse mène à la page, et ses balises, la page retirée
+ * entrant aussi dans l'index des adresses), sauf celles d'une page d'exemple (citationsBloquantes) et d'une colonne
+ * dérivée (colonneDerivee : refaite depuis ses tables après le rejeu, qui sont lues, elles). Rejeu (rejouerLeJournal, `apresLeLot`) : le lot passe
+ * en conflit avec `raison` ; examen d'un lot en conflit (serveur/edition-conflits.mjs#examiner) : la suppression n'a que le choix 2, jusqu'à ce que la
+ * citation soit retirée (le lot qui la retirait résolu d'abord). Une page encore dans la base n'est pas regardée ; `faites` : les modifications du lot
+ * qui ont été écrites (rejeu : issue « applique » — une page que les règles n'avaient déjà plus, retirée par une migration, n'est pas du fait du lot).
+ */
+export function liensRompusParLeLot(db, lot, { faites = lot } = {}) {
+  const avantDe = (m) => (typeof m.avant === 'string' ? jsonOuNull(m.avant) : m.avant);
+  const supprimees = [];
+  for (const m of faites) {
+    if ((m.table_nom ?? m.table) !== 'page' || m.operation !== 'supprimer') continue;
+    const avant = avantDe(m);
+    if (typeof avant?.id !== 'string' || avant.type !== 'guide' || lireLigne(db, 'page', { id: avant.id })) continue;
+    supprimees.push({ m, avant });
+  }
+  if (!supprimees.length) return [];
+  const alias = new Map();
+  for (const m of lot) {
+    if ((m.table_nom ?? m.table) !== 'alias' || m.operation !== 'supprimer') continue;
+    const a = avantDe(m);
+    if (typeof a?.page_id === 'string' && typeof a.texte === 'string') (alias.get(a.page_id) ?? alias.set(a.page_id, []).get(a.page_id)).push(a.texte);
+  }
+  const absentes = supprimees.map(({ avant }) => ({ id: avant.id, type: avant.type, slug: avant.slug, titre: avant.titre, alias: alias.get(avant.id) ?? [] }));
+  const parPage = citationsDesPages(db, absentes.map((p) => p.id), { absentes });
+  const rompus = [];
+  for (const { m, avant } of supprimees) {
+    const citations = citationsBloquantes(parPage.get(avant.id)).filter((c) => !colonneDerivee(c.table, c.cle, c.colonne));
+    if (!citations.length) continue;
+    const noms = [...new Set(citations.map((c) => c.libelle))];
+    const raison = `la page des Règles « ${avant.titre} » est supprimée alors que ${noms.slice(0, 5).map((n) => `« ${n} »`).join(', ')}${noms.length > 5 ? '…' : ''}`
+      + ` la ${noms.length > 1 ? 'citent' : 'cite'} encore : son lien serait cassé. Retirez d'abord ce lien (le lot qui le retirait est peut-être en conflit), ou gardez la page`;
+    // la suppression de la page et celles de ce qui la décrit dans le même lot (entrée de menu, alias, étiquettes, sources, entités : supprimerPage)
+    const rangs = lot.filter((x) => x === m || (x.operation === 'supprimer' && avantDe(x)?.page_id === avant.id)).map((x) => x.rang);
+    rompus.push({ rang: m.rang, rangs, page: avant.id, citations, raison });
+  }
+  return rompus;
+}
 
 /**
  * Après chaque lot rejoué (edition-journal.mjs#rejouer : `apresLeLot`, dans le lot et annulé avec lui) : un mot-clé que le lot a supprimé — ou fusionné
@@ -2435,7 +2620,34 @@ function clesDeNom(db, table, valeurs) {
   return sortie;
 }
 
-function modifier(ctx, op) {
+/**
+ * Sépare des `valeurs` d'une opération « modifier » les clés hors colonnes de sa table (lib/edition-modele.mjs#CHAMPS_HORS_COLONNES), contrôlées par
+ * leur champ (refus 400) : { colonnes, annexes }. `annexes` : un objet (vide si rien n'est envoyé), que le domaine lit (CAPACITE.deriver).
+ */
+function separerLesAnnexes(table, valeurs) {
+  const champs = CHAMPS_HORS_COLONNES[table] ?? {};
+  const colonnes = {};
+  const annexes = {};
+  for (const [c, brute] of Object.entries(valeurs)) {
+    if (!Object.hasOwn(champs, c)) {
+      colonnes[c] = brute;
+      continue;
+    }
+    try {
+      annexes[c] = valeurDuChamp(champs[c], brute);
+    } catch (e) {
+      if (e instanceof ErreurValeur) throw refus(`${TABLES[table].libelle} : ${e.message}`);
+      throw e;
+    }
+  }
+  return { colonnes, annexes };
+}
+
+/**
+ * L'opération « modifier ». `exiger` faux (la résolution d'un lot en conflit, OUTILS_DE_RESOLUTION) : le domaine reçoit `annexes` null, rien de ce que
+ * le lot porte lui-même dans ses lignes n'est exigé (la magie d'un don qui passe à « Variable » : suivreLaMagieDuDon).
+ */
+function modifier(ctx, op, { exiger = true } = {}) {
   const { db, w } = ctx;
   const { table } = op;
   if (!TABLES[table]) throw refus(`table « ${table} » : pas modifiable depuis le site`);
@@ -2443,7 +2655,8 @@ function modifier(ctx, op) {
   if (!op.valeurs || typeof op.valeurs !== 'object' || Array.isArray(op.valeurs)) throw refus(`${table} : valeurs attendues`);
   const avant = lireLigne(db, table, op.cle);
   if (!avant) throw new ErreurEdition(404, `${TABLES[table].libelle} introuvable : ${JSON.stringify(op.cle)}`);
-  const validees = valeursValidees(ctx, table, op.valeurs, avant);
+  const { colonnes: envoyees, annexes } = separerLesAnnexes(table, op.valeurs);
+  const validees = valeursValidees(ctx, table, envoyees, avant);
   const valeurs = valeursCanoniques(table, avant, validees);
   if (op.avant && typeof op.avant === 'object') {
     // une image se compare par son empreinte (la page n'en a que le résumé : ligneSansImage), qu'elle soit modifiée ou non : un recadrage seul d'une
@@ -2463,10 +2676,28 @@ function modifier(ctx, op) {
   const domaine = DOMAINES[table];
   const ligne = { ...avant, ...valeurs };
   const toutes = { ...valeurs, ...clesDeNom(db, table, valeurs), ...(domaine?.colonnes ? domaine.colonnes(ctx, ligne, valeurs, avant) : {}) };
+  // les ancres figées des intertitres (lib/ancres-figees.mjs) : un texte qui en retire, en renomme ou en double une est refusé (400), l'API /api/v1/
+  // et la résolution d'un conflit comprises ; une ancre ajoutée, ou l'intertitre renommé qui garde la sienne, passent
+  const ancres = ancresRompuesParLesValeurs(table, cleDe(db, table, avant), avant, valeurs);
+  if (ancres) throw refus(`${TABLES[table].libelle} ${avant.titre ?? avant.nom ?? JSON.stringify(op.cle)} : ${ancres}`);
   const apercu = table === 'page' && 'corps_md' in valeurs ? apercuDe(op, toutes.corps_md ?? ligne.corps_md) : null;
   const apres = w.modifier(table, op.cle, toutes, { apercu });
-  if (domaine?.deriver) domaine.deriver(ctx, avant, apres);
-  return `${TABLES[table].libelle} ${avant.nom ?? avant.titre ?? JSON.stringify(op.cle)} : ${Object.keys(valeurs).map((c) => TABLES[table].colonnes[c].libelle).join(', ')}`;
+  if (domaine?.deriver) domaine.deriver(ctx, avant, apres, exiger ? annexes : null);
+  const libelles = [...Object.keys(valeurs).map((c) => TABLES[table].colonnes[c].libelle), ...Object.keys(annexes).map((c) => CHAMPS_HORS_COLONNES[table][c].libelle)];
+  return `${TABLES[table].libelle} ${avant.nom ?? avant.titre ?? JSON.stringify(op.cle)} : ${libelles.join(', ')}`;
+}
+
+/**
+ * La raison qui refuse des valeurs écrites dans une ligne parce qu'elles rompent une ancre figée d'intertitre (lib/ancres-figees.mjs#raisonDesAncresRompues),
+ * ou null. Seuls les textes Markdown (typeDeTexte : là où un intertitre se rend) que l'édition écrit elle-même : une colonne dérivée (colonneDerivee : le
+ * corps d'une page typée, refait depuis ses tables) n'est pas regardée. `avant` : la ligne telle que dans la base ; `valeurs` : colonne → valeur écrite.
+ */
+function ancresRompuesParLesValeurs(table, cle, avant, valeurs) {
+  const raisons = Object.keys(valeurs)
+    .filter((c) => typeDeTexte(table, c) === 'markdown' && typeof avant?.[c] === 'string' && avant[c] !== valeurs[c] && !colonneDerivee(table, cle, c))
+    .map((c) => raisonDesAncresRompues(avant[c], typeof valeurs[c] === 'string' ? valeurs[c] : null))
+    .filter(Boolean);
+  return raisons.length ? raisons.join(' ; ') : null;
 }
 
 /** Créations dont le refus commence par le nom saisi : une page en envoie plusieurs dans un lot (la file de la page d'une classe, D11). */
@@ -2551,6 +2782,8 @@ export function enregistrer(db, corps, { instant, id, auteurId = null } = {}) {
     const w = ouvrirLot(db, { id, instant, pageId, auteurId });
     // retraits : les fiches de personnage dont une suppression retire un élément (R42), notées une fois par fiche en fin de lot
     const ctx = { db, w, instant, crees: [], retraits: nouveauxRetraitsDeFiches() };
+    // la magie de chaque don « Variable » avant le lot : un don qui quitte ce type ou change de magie perd les choix des fiches (R181)
+    const variablesAvant = magiesDesDonsVariables(db);
     const resumes = [];
     corps.operations.forEach((op, i) => {
       ctx.operation = i;
@@ -2569,6 +2802,9 @@ export function enregistrer(db, corps, { instant, id, auteurId = null } = {}) {
       annuler();
       return { lot: null, modifications: 0, crees: [], lignes: [], fiches: [] };
     }
+    // un don « Variable » qui a quitté ce type ou changé de magie (décision R181 ; réponses du propriétaire « Retirés avec une note », R192) : les dons obtenus
+    // des fiches partent, une ligne datée chacun, comme pour un don supprimé (R42) ; quelle que soit l'opération qui l'a écrit (page, /api/v1/)
+    retirerLesChoixDesDonsChanges(db, variablesAvant, ctx.retraits);
     // les notes des fiches touchées, dans la transaction du lot (SQL direct, hors du journal) : un refus plus haut les aurait annulées avec le reste
     const fiches = noterLesRetraits(db, ctx.retraits, instant);
     w.terminer(resumes.join(' ; '));
@@ -2728,7 +2964,8 @@ export function donneesDeRace(db, raceId) {
  * L'état vivant d'une classe pour sa page en mode modification (D11 : ajouter ou supprimer une spécialité ou un don) : ses spécialités et ses dons
  * (toutes les colonnes), les choix (v_capacite_exclusive), les types de don du guide, le bonus d'armure magique d'une classe magique, et les fiches de
  * personnage qui citent chaque spécialité ou don ({ [id]: [libellés] } : celles dont la ligne sera retirée si on la supprime, une information pour la
- * confirmation et plus un blocage, décision R42 ; le nom d'un prétiré, une fiche de joueur sans son nom : libelleDeFiche). La page en tire son plateau de dons par le
+ * confirmation et plus un blocage, décision R42 ; le nom d'un prétiré, une fiche de joueur sans son nom : libelleDeFiche), et la magie que vise chaque
+ * don « Variable » (`variables` : { [id du don]: 'innee' | 'acquise' }, décision R181). La page en tire son plateau de dons par le
  * même assemblage que le build (lib/classe-assemblage.mjs) et ce qu'elle propose (lib/dons-edition.mjs#permissions).
  */
 export function donneesDeClasse(db, classeId) {
@@ -2758,6 +2995,12 @@ export function donneesDeClasse(db, classeId) {
     (fiches[r.id] ??= []).push(libelleDeFiche(r, numeros));
   }
   for (const liste of Object.values(fiches)) liste.sort(ordreDesLibelles); // l'ordre de la réponse du lot (noterLesRetraits)
+  // la magie que vise chaque don « Variable » de la classe, spécialités comprises (décision R181, capacite_variable) : le formulaire d'un don en part
+  // (src/scripts/edition/classes.mjs#magieActuelle) ; vide sur une base d'avant la migration 0088
+  const variables = tableExiste(db, 'capacite_variable')
+    ? Object.fromEntries(db.prepare('SELECT v.capacite_id, v.magie FROM capacite_variable v JOIN capacite k ON k.id = v.capacite_id WHERE k.classe_id = ? ORDER BY v.capacite_id')
+      .all(classe.id).map((l) => [l.capacite_id, l.magie]))
+    : {};
   return {
     classe: { id: classe.id, nom: classe.nom, categorie_id: classe.categorie_id },
     categorie: lireLigne(db, 'categorie_classe', { id: classe.categorie_id }),
@@ -2769,5 +3012,6 @@ export function donneesDeClasse(db, classeId) {
     typesDon: db.prepare('SELECT id, nom, definition FROM type_don ORDER BY ordre').all(),
     amMagique: db.prepare('SELECT am_base FROM categorie_classe WHERE am_base IS NOT NULL').all().map((c) => c.am_base)[0] ?? null,
     fiches,
+    variables,
   };
 }

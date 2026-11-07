@@ -44,7 +44,7 @@
 // Chaque écriture réussie est notée au journal du service : « api v1 : <MÉTHODE> <adresse> → lot <id> » (catégorie edition), avec le nombre de fiches
 // adaptées, jamais leurs noms.
 // N'importe que node: et des modules de client/ (serveur/livraison.mjs#modulesDuServeur).
-import { ENTITES, ErreurValeur, TABLES, ligneSansImage, valeurDuChamp } from '../src/lib/edition-modele.mjs';
+import { CHAMPS_HORS_COLONNES, ENTITES, ErreurValeur, TABLES, ligneSansImage, valeurDuChamp } from '../src/lib/edition-modele.mjs';
 import {
   actionDe, capacitesDe, champFige, cleDuSegment, colonneFigee, enfantDe, MODULES, operationDe, RESSOURCES, ressourceDe, segmentDeCle, tablesDe,
   tablesModifiables,
@@ -727,6 +727,9 @@ function ressourceDecrite(db, r, { lesListes, exemples }) {
     extensions: (r.extensions ?? []).map((e) => ({
       table: e.table, parent: e.parent, colonnes: colonnesDecrites(db, e.table, capacites.modifier && !patch && ecrites.has(e.table), lesListes),
     })),
+    // les clés que le PATCH accepte en plus des colonnes (lib/edition-modele.mjs#CHAMPS_HORS_COLONNES : la magie d'un don qui passe à « Variable », R181)
+    ...(capacites.modifier && !patch && ecrites.has(r.table) && CHAMPS_HORS_COLONNES[r.table]
+      ? { hors_colonnes: Object.entries(CHAMPS_HORS_COLONNES[r.table]).map(([nom, champ]) => champDecrit(nom, champ, lesListes)) } : {}),
     creation: creationDecrite(db, r, lesListes),
     suppression: suppressionDecrite(r),
     ...(patch ? { modification: { operation: patch.op } } : {}),
@@ -913,9 +916,12 @@ function modifier(db, service, vue, ligne, corps, etiquettes, parent, adresse) {
   const ecrites = tablesModifiables(vue.objet);
   const extensions = vue.enfant ? [] : vue.ressource.extensions ?? [];
   const parTable = new Map();
+  // une clé hors colonnes de la table principale (lib/edition-modele.mjs#CHAMPS_HORS_COLONNES : la magie d'un don qui passe à « Variable », R181) :
+  // passée telle quelle au service d'édition, qui la contrôle
+  const horsColonnes = vue.enfant ? {} : CHAMPS_HORS_COLONNES[vue.table] ?? {};
   const ajouter = (table, colonne, v) => {
     if (!ecrites.includes(table)) throw new ErreurApi(400, `${table} : en lecture seule ici (rien ne s’y modifie par l’API).`);
-    if (!TABLES[table].colonnes[colonne]) {
+    if (!TABLES[table].colonnes[colonne] && !(table === vue.table && Object.hasOwn(horsColonnes, colonne))) {
       throw new ErreurApi(400, `« ${colonne} » ne se modifie pas (${table} : ${Object.keys(TABLES[table].colonnes).join(', ')}).`);
     }
     const figee = table === vue.table ? colonneFigee(vue.objet, colonne, ligne) : null;
@@ -926,7 +932,7 @@ function modifier(db, service, vue, ligne, corps, etiquettes, parent, adresse) {
     const extension = extensions.find((e) => e.table === k);
     if (extension && v && typeof v === 'object' && !Array.isArray(v)) {
       for (const [c, x] of Object.entries(v)) ajouter(k, c, x);
-    } else if (vue.colonnes.includes(k)) ajouter(vue.table, k, v);
+    } else if (vue.colonnes.includes(k) || Object.hasOwn(horsColonnes, k)) ajouter(vue.table, k, v);
     else {
       const noms = extensions.map((e) => e.table);
       throw new ErreurApi(400, `« ${k} » : ni une colonne de ${vue.table}${noms.length ? `, ni une extension (${noms.join(', ')})` : ''}.`);
@@ -942,7 +948,7 @@ function modifier(db, service, vue, ligne, corps, etiquettes, parent, adresse) {
     const op = { op: 'modifier', table, cle: cleDe(db, table, ligneDeTable), valeurs: v };
     if (etiquettes) {
       const lue = ligneSansImage(table, ligneDeTable);
-      op.avant = Object.fromEntries(Object.keys(v).map((c) => [c, lue[c] ?? null]));
+      op.avant = Object.fromEntries(Object.keys(v).filter((c) => c in lue).map((c) => [c, lue[c] ?? null]));
     }
     operations.push(op);
   }

@@ -6538,7 +6538,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 6 emplacements pour y mettre des accessoires aux effets variés. Plus d’info dans “[Ressources et craft](https://docs.google.com/spreadsheets/u/0/d/1KkOG6FYjIf62Y_xLQxIE8aQTZFLlKPXmCB9e7XU3-vw/edit)” et l’onglet “Accessoires”.
 
-## Ceinture
+## Ceinture {#ceinture}
 
 La ceinture est un accessoire que tout le monde possède (sauf si vous avez les parties à l''air ... évidemment) qui possède 3 emplacements d''objets rapides. Ces emplacements permettent l''utilisation d''objet en IC (ou 2 IC pour certains comme allumer un objet ou faire des soins physiques) là où avant c''était une action complète, voici une petite liste non exhaustive des objets qui peuvent être mis sur la ceinture :
 
@@ -7246,7 +7246,7 @@ Tous les boucliers, avec leur poids et leur prix, sont dans l’onglet {{bouclie
 - La fiche compte leurs effets : un point de caractéristique (sans dépasser 4 ni les limites de la race), des points acquis dans une compétence au choix de la caractéristique visée, des dégâts, de l’armure…
 - Un accessoire **maudit** a l’effet contraire de celui qui est écrit : +1 en Force devient −1 en Force. Il ne peut être retiré que par un enchanteur, contre le prix que l’accessoire devrait coûter. Une malédiction qui tombe en tirant un accessoire le rend maudit, et l’on refait le tirage à partir de l’étape 2, au même emplacement ; une seconde malédiction le détruit.
 
-## La ceinture
+## La ceinture {#la-ceinture}
 
 Tout le monde a une ceinture. Elle a **trois emplacements** d’objets rapides : un objet rangé à la ceinture s’utilise en une action rapide (IC), ou en deux pour allumer quelque chose ou faire des soins physiques, là où il faudrait sinon toute l’action.
 
@@ -8092,7 +8092,7 @@ Sur la {{fiche-de-personnage|fiche de personnage}}, cochez la posture du moment 
 
 Le texte d’origine des postures : {{fiche-de-personnage-tableau-posture|Tableau Posture}} (Doc « Créer sa fiche de personnage »).
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/liste-des-alterations-d-etat', 'guide', 'liste-des-alterations-d-etat', 'Liste des altérations d''état', 'liste-des-alterations-detat', NULL, NULL, '## Aveuglement
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/liste-des-alterations-d-etat', 'guide', 'liste-des-alterations-d-etat', 'Liste des altérations d''état', 'liste-des-alterations-detat', NULL, NULL, '## Aveuglement {#aveuglement}
 
 - **Magie Liée** : Lumière
 - **Type** : Physique
@@ -8109,7 +8109,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 - **Résistances** : Effet négatif divisé par 2
 - **Grande résistance** : 2 fois + de chances d''y résister
 
-## Brûlure
+## Brûlure {#brulure}
 
 - **Magie Liée** : Feu
 - **Type** : Physique
@@ -8126,7 +8126,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 - **Résistances** : 5% de dégâts en moins
 - **Grande résistance** : Dure 1 Tour de moins.
 
-## Confusion
+## Confusion {#confusion}
 
 - **Magie Liée** : Eau
 - **Type** : Mental
@@ -8143,7 +8143,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 - **Résistances** : Jette deux dés 100 et prend le meilleur résultat
 - **Grande résistance** : Permet de lancer un jet de chance si la cible à attaquer est un allié
 
-## Enragé
+## Enragé {#enrage}
 
 - **Magie Liée** : Vide
 - **Type** : Mental
@@ -8160,7 +8160,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 - **Résistances** : Jet de chance pour ne pas frapper un allié si c''est la cible la plus proche
 - **Grande résistance** : Jette deux d100 pour la fermeté, prends le meilleur.
 
-## Fatigue
+## Fatigue {#fatigue}
 
 - **Magie Liée** : Temps/<br>Espace
 - **Type** : Physique
@@ -8177,7 +8177,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 - **Résistances** : Permet de choisir entre la Force ou l''Agilité pour le malus du stade 2
 - **Grande résistance** : Le stade 3 met deux croix aléatoires au lieu d''une croix partout.
 
-## Gel
+## Gel {#gel}
 
 - **Magie Liée** : Glace
 - **Type** : Physique
@@ -8194,7 +8194,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 - **Résistances** : - 1 Tour
 - **Grande résistance** : La vitesse n''est plus réduite.
 
-## Paralysie
+## Paralysie {#paralysie}
 
 - **Magie Liée** : Foudre
 - **Type** : Physique
@@ -8211,7 +8211,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 - **Résistances** : Jette deux d100 pour la Vigueur, prends le meilleur.
 - **Grande résistance** : - 1 Tour
 
-## Peur
+## Peur {#peur}
 
 - **Magie Liée** : Ombre
 - **Type** : Mental
@@ -8228,7 +8228,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 - **Résistances** : Divise par 2 l''effet négatif.
 - **Grande résistance** : 2 fois plus de chance de résister à l''altération.
 
-## Pétrifié
+## Pétrifié {#petrifie}
 
 - **Magie Liée** : Terre
 - **Type** : Physique
@@ -8245,7 +8245,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 - **Résistances** : Le malus de vitesse passe à -1.
 - **Grande résistance** : Le Stade 3 ne s''applique pas.
 
-## Poison
+## Poison {#poison}
 
 - **Magie Liée** : Nécromancie
 - **Type** : Physique
@@ -8262,7 +8262,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 - **Résistances** : Dégâts divisés par 2.
 - **Grande résistance** : - 1 Tour.
 
-## Saignement
+## Saignement {#saignement}
 
 - **Magie Liée** : Sang
 - **Type** : Physique
@@ -8279,7 +8279,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 - **Résistances** : Dégâts divisés par 2.
 - **Grande résistance** : Dure que 3 Tours.
 
-## Surcharge Magique
+## Surcharge Magique {#surcharge-magique}
 
 - **Magie Liée** : Arcane/<br>Corruption
 - **Type** : Mental
@@ -8296,7 +8296,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 - **Résistances** : - 1 Tour
 - **Grande résistance** : La {{barriere|barrière}} n''est pas impactée
 
-## Surdité
+## Surdité {#surdite}
 
 - **Magie Liée** : Vent
 - **Type** : Physique
@@ -8313,7 +8313,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 - **Résistances** : - 1 Tour
 - **Grande résistance** : Les malus sont divisés par 2.
 
-## Agrippé
+## Agrippé {#aggripe}
 
 - **Magie Liée** : /
 - **Type** : Physique
@@ -8322,7 +8322,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | --- |
 | Impossible de bouger.<br>Un jet d''Athlétisme/Équilibre est nécessaire pour sortir de l''entrave. |
 
-## Coma
+## Coma {#coma}
 
 - **Magie Liée** : /
 - **Type** : Physique
@@ -8331,7 +8331,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | --- | --- | --- |
 | Le personnage est inconscient et doit faire 3 jets de survie s''il ne veut pas mourir.<br>Une réussite et le personnage est stabilisé, 3 échecs et c''est la MORT ! | Si le personnage a atteint son négatif maximal (le négatif égal à ses pv max) il n''aura qu''un SEUL et UNIQUE jet de survie. S''il est raté c''est la MORT ! | Si le personnage a atteint son double négatif maximal, il est MORT. |
 
-## Couardise
+## Couardise {#couardise}
 
 - **Magie Liée** : /
 - **Type** : Mental
@@ -8340,7 +8340,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | --- |
 | Impossible d''attaquer une cible qui a plus de santé. Force un jet de fermeté ou de calme à chaque tentative d''attaque ou d''entrave directe sur l''adversaire.<br>Dure 4 tours.<br>(Les boss et mini boss ne peuvent pas l''infliger) |
 
-## Enchevêtré
+## Enchevêtré {#enchevetre}
 
 - **Magie Liée** : /
 - **Type** : Physique
@@ -8349,7 +8349,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | --- |
 | Ne peut pas se déplacer et l''assaillant non plus.<br>Les attaques physiques ont les dégâts divisés par 2. |
 
-## Étourdi
+## Étourdi {#etourdi}
 
 - **Magie Liée** : /
 - **Type** : Physique
@@ -8358,7 +8358,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | --- |
 | Impossible de faire le déplacement ET l''action dans le même tour. Les IC deviennent des actions. |
 
-## Folie de Guerre
+## Folie de Guerre {#folle-de-guerre}
 
 - **Magie Liée** : /
 - **Type** : Mental
@@ -8367,7 +8367,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | --- |
 | - Impossible d''attendre, doit avancer vers l''ennemi.<br>- Insensible à tout contrôle mental ou à la peur. |
 
-## Sans Défense
+## Sans Défense {#sans-defense}
 
 - **Magie Liée** : /
 - **Type** : Physique

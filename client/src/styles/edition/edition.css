@@ -184,6 +184,9 @@ textarea.ed-saisie--ligne { resize: none; min-height: 0; }
 .ed-capacite .ed-libelle { margin: 0; }
 .ed-capacite__valeurs { display: grid; gap: 0.3rem; }
 .ed-capacite__valeurs[hidden] { display: none; }
+/* la « Magie liée » d'un don « Variable » sous son type (edition/classes.mjs, R181) : affichée seulement quand le type saisi est « Variable » */
+.ed-magie-du-don { display: flex; flex-wrap: wrap; align-items: center; gap: 0.2rem 0.5rem; margin-top: 0.3rem; }
+.ed-magie-du-don[hidden] { display: none; }
 .ed-emplacement { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.55rem; }
 .ed-emplacement > .ed-libelle { min-width: 4.2rem; }
 .ed-curseur { flex: 1 1 8rem; min-width: 6rem; margin: 0; accent-color: var(--accent); }

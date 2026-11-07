@@ -411,8 +411,8 @@ test('pages de magie : curseur du NPM des cartes, améliorations d’« Amélior
   }
   // les marionnettes (une créature par NPM) : pas de curseur
   assert.doesNotMatch(page('magie-de-lombre'), /<input[^>]* data-npm-page/);
-  // le tableau d'une invocation se rattache au sort qui porte le nom écrit dans son titre (lib/bestiaire-db.mjs#tableauxDesSorts) : le site de dev
-  // renomme l'un et réécrit l'autre ; à l'import, un sort le désigne (test/aide-base-d-import.mjs) ; la page rend le rattachement de la base courante
+  // le tableau d'une invocation se rattache au sort que désigne invocation.tableau_sort_id (id figé, lib/bestiaire-db.mjs#tableauxDesSorts) : à l'import,
+  // un sort le désigne (test/aide-base-d-import.mjs) ; la page rend le rattachement de la base courante
   assert.ok([...chargerMagies(baseDImport()).sorts.values()].some((s) => s.ameliorations), 'à l’import, un sort désigne le tableau de son invocation');
   // sur les pages qui ont leurs propres sorts, autant de sections que de sorts qui ont un tableau rattaché dans la base courante (aucune si le site de
   // dev a défait tous les rattachements), puis chacune, dans le détail de son sort, vérifiée

@@ -9,7 +9,7 @@ import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { rejouerLeJournal } from '../serveur/edition.mjs';
 import { chargerJournal, journalExporte } from '../serveur/edition-journal.mjs';
-import { analyserEffetDArme, totalDesAmeliorations } from '../src/lib/arme-champs.mjs';
+import { analyserEffetDArme, prixEnRf as prixEnRfDArme, totalDesAmeliorations } from '../src/lib/arme-champs.mjs';
 import { ligneDAmelioration, ligneDArme, ligneDeMateriau, ligneDeRemarque, ligneDuTotal, PAGE_DES_ARMES, PAGES_DES_MATERIAUX } from '../src/lib/corps-armes.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
@@ -119,6 +119,44 @@ test('matériau : ses effets (modifiés depuis la page « Composants », R62) re
   const apres = ligne('SELECT * FROM materiau_arme WHERE ressource_id = ?', avant.ressource_id);
   assert.deepEqual([apres.bonus_degats, apres.cran_solidite, apres.effet_secondaire, apres.prix_brut, apres.prix_rf], [11, 2, 'Brille dans le noir', '250 RO', 25000]);
   assert.ok(corps().split('\n').includes(ligneDeMateriau(nom, apres)));
+});
+
+test('matériau (R62, R49) : seul un prix changé de la ressource se recopie dans materiau_arme ; une autre colonne (description) n’y touche pas ; le prix se lit avec l’espace des milliers', () => {
+  // une base à part : on y pose un prix de l'onglet Armes qui diffère de celui de la ressource (le cas des RF d'un zéro oublié dans la source)
+  const base = vivante();
+  const envoyer = (operations) => traiter({ methode: 'POST', chemin: '/api/edition/', entetes: { 'content-type': 'application/json' },
+    corps: JSON.stringify({ page: 'ressources/composants/', operations }) }, { base: () => base, etat: () => ({}), edition: true });
+  try {
+    const id = base.prepare("SELECT r.id FROM ressource r JOIN materiau_arme m ON m.ressource_id = r.id WHERE r.id LIKE '%:cuivre'").get().id;
+    const ressource = base.prepare('SELECT * FROM ressource WHERE id = ?').get(id);
+    const propre = `${ressource.prix_brut ?? ''} (onglet Armes)`;
+    const ancienne = { ...base.prepare('SELECT * FROM materiau_arme WHERE ressource_id = ?').get(id) };
+    base.prepare('UPDATE materiau_arme SET prix_brut = ?, prix_rf = ? WHERE ressource_id = ?').run(propre, prixEnRfDArme(propre), id);
+    const avant = { ...base.prepare('SELECT * FROM materiau_arme WHERE ressource_id = ?').get(id) };
+    // sa ligne du corps de la page des armes, comme le service l'écrirait
+    const page = corps(base);
+    assert.ok(page.split('\n').includes(ligneDeMateriau(ressource.nom, ancienne)));
+    base.prepare('UPDATE page SET corps_md = ? WHERE id = ?').run(page.replace(ligneDeMateriau(ressource.nom, ancienne), ligneDeMateriau(ressource.nom, avant)), PAGE_DES_ARMES);
+    const notees = () => base.prepare("SELECT count(*) AS n FROM modification WHERE table_nom = 'materiau_arme'").get().n;
+    const n0 = notees();
+    // la description seule (mutation de la prose) : materiau_arme ne bouge pas, rien n'est noté pour lui
+    const r = envoyer([{ op: 'modifier', table: 'ressource', cle: { id }, valeurs: { description: `${ressource.description ?? ''} Essai.` } }]);
+    assert.equal(r.statut, 200, JSON.stringify(r.corps));
+    assert.deepEqual({ ...base.prepare('SELECT * FROM materiau_arme WHERE ressource_id = ?').get(id) }, avant);
+    assert.equal(notees(), n0);
+    // le prix changé (espace des milliers insécable, puis fine insécable) : recopié, et lu de la même façon par les deux modules
+    for (const prix of ['2 500 RF / 25 RO', '3 000 RF / 30 RO']) {
+      const p = envoyer([{ op: 'modifier', table: 'ressource', cle: { id }, valeurs: { prix_brut: prix } }]);
+      assert.equal(p.statut, 200, JSON.stringify(p.corps));
+      const m = base.prepare('SELECT * FROM materiau_arme WHERE ressource_id = ?').get(id);
+      const rf = base.prepare('SELECT prix_rf FROM ressource WHERE id = ?').get(id).prix_rf;
+      assert.deepEqual([m.prix_brut, m.prix_rf, prixEnRfDArme(m.prix_brut)], [prix, rf, rf], prix);
+      assert.ok(rf >= 1000, `${prix} : ${rf}`);
+      assert.ok(corps(base).split('\n').includes(ligneDeMateriau(ressource.nom, m)), `${prix} : la ligne du corps suit`);
+    }
+  } finally {
+    base.close();
+  }
 });
 
 test('amélioration d’arme : coût et effet refont RO, matériaux, bonus et crans, et la ligne TOTAL ; le coût élémentaire de la ligne (R167) reste ; celle d’une armure élémentaire est refusée', () => {

@@ -257,8 +257,8 @@ test('matériaux : toute la ligne dans leur couleur, prix en RO, effets en morce
   const avecBonus = armes.materiaux.map((m) => RENDUS_DES_ARMES['materiau-effet'](m.ligne.effet_brut)).filter((h) => h.includes('materiau-effet__bonus'));
   assert.ok(avecBonus.length > 0);
   for (const h of avecBonus) assert.match(h, /^<span class="materiau-effet"[^>]*><span class="materiau-effet__bonus"><span class="materiau-effet__mot">Dégâts <\/span>[+−]\d+<\/span>(<span class="materiau-effet__(cran|secondaire)">[^<]+<\/span>)*<\/span>$/);
-  // le fer, matériau par défaut : lib/armes-db.mjs le reconnaît à son nom, que le site de dev renomme (question au propriétaire) ; la règle s'épingle
-  // sur l'état d'import (test/aide-base-d-import.mjs), la page en pose un au plus
+  // le fer, matériau par défaut (R49) : lib/armes-db.mjs le reconnaît à son id figé (arme-forge.mjs#MATERIAU_PAR_DEFAUT ; un renommage ne le perd pas :
+  // test/armes-materiau-par-defaut.test.mjs) ; à l'import, c'est le fer (test/aide-base-d-import.mjs) ; la page en pose un au plus
   assert.deepEqual(chargerArmes(baseDImport()).materiaux.filter((m) => m.defaut).map((m) => m.ligne.ressource_id), ['ressources/armures#materiau:fer']);
   assert.ok(armes.materiaux.filter((m) => m.defaut).length <= 1 && (main.match(/ data-defaut="1"/g) ?? []).length === armes.materiaux.filter((m) => m.defaut).length);
   assert.equal([...main.matchAll(/<tr class="amelioration" id="amelioration-(\d+)"/g)].length, armes.ameliorations.length);

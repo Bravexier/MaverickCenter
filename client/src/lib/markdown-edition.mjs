@@ -1,12 +1,13 @@
 // Éditeur visuel du guide (site de dev, src/scripts/edition/guide.mjs) : le texte d'une page se modifie en place (texte, liens, mise en page, tableaux
 // et couleur de leurs cases : demande du propriétaire), puis cet HTML est réécrit en Markdown, le format des pages (page.corps_md).
-// Ici, sans dépendance navigateur ni Astro (dépendance : lib/mots-cles-balises.mjs) : un arbre simple { type: 'texte', valeur } | { type: 'element', nom,
-// attributs, enfants } (le script le tire du DOM, les tests d'un HTML analysé) → Markdown, dans les écritures du site : liens [[cible|texte]] (attribut
+// Ici, sans dépendance navigateur ni Astro (dépendances : lib/mots-cles-balises.mjs, lib/ancres-figees.mjs) : un arbre simple { type: 'texte', valeur }
+// | { type: 'element', nom, attributs, enfants } (le script le tire du DOM, les tests d'un HTML analysé) → Markdown, dans les écritures du site : liens [[cible|texte]] (attribut
 // data-cible posé par lib/wikilinks.mjs), tableaux GFM, couleur de case « {couleur:vert} » en tête de case (lib/markdown-couleurs.mjs), mots-clés du
 // glossaire (lib/mots-cles-balises.mjs : un `strong.mot-cle` (ou `a.mot-cle`, un mot-clé à adresse) redevient sa balise avec le texte qu'il montre, « {{id|texte}} » — le service la ramène à
 // « {{id}} » quand ce texte est le libellé du mot-clé, la forme canonique d'un texte mis en forme —, le mode complet `span.mot-cle-definition` « {{id:}} »,
-// « | » échappé dans une case de tableau). test/markdown-edition.test.mjs rejoue l'aller-retour Markdown → HTML → Markdown → HTML sur toutes les pages
-// du guide : le rendu ne change pas.
+// « | » échappé dans une case de tableau), ancre figée d'un intertitre « {#ancre} » (`data-ancre-figee`, lib/ancres-figees.mjs).
+// test/markdown-edition.test.mjs rejoue l'aller-retour Markdown → HTML → Markdown → HTML sur toutes les pages du guide : le rendu ne change pas.
+import { ANCRE_FIGEE } from './ancres-figees.mjs';
 import { lireUneBalise } from './mots-cles-balises.mjs';
 
 /**
@@ -234,7 +235,7 @@ function liste(n, o, profondeur, alterne = false) {
   const sorties = items.map((li) => {
     const marque = ordonnee ? `${numero++}${alterne ? ')' : '.'} ` : alterne ? '* ' : '- ';
     const retrait = ' '.repeat(marque.length);
-    const corps = blocs(li.enfants ?? [], o, profondeur + 1, { serre: !lache }).replace(/^\n+/, '');
+    const corps = blocs(li.enfants ?? [], o, profondeur + 1, { serre: !lache, marqueParente: ordonnee ? null : marque.trim() }).replace(/^\n+/, '');
     const [premiere = '', ...suite] = corps.split('\n');
     return `${marque}${premiere}${suite.map((l) => (l ? `\n${retrait}${l}` : '\n')).join('')}`;
   });
@@ -248,8 +249,15 @@ function bloc(n, o, profondeur, alterne = false) {
     case 'h3':
     case 'h4':
     case 'h5':
-    case 'h6':
-      return `${'#'.repeat(Number(n.nom[1]))} ${sansSautsDeBord(enLigne(n.enfants ?? [], o).trim())}`;
+    case 'h6': {
+      // une ancre figée (lib/ancres-figees.mjs, posée par remarkAncresFigees) se réécrit au bout de la ligne : renommer l'intertitre la garde. Une
+      // seule fois par texte : un intertitre coupé en deux dans l'éditeur (le navigateur recopie les attributs sur la seconde moitié) la laisse à la première
+      const ancre = attribut(n, 'data-ancre-figee');
+      const neuve = ancre && ANCRE_FIGEE.test(ancre) && !o.ancresEcrites.has(ancre);
+      if (neuve) o.ancresEcrites.add(ancre);
+      const marque = neuve ? ` {#${ancre}}` : '';
+      return `${'#'.repeat(Number(n.nom[1]))} ${sansSautsDeBord(enLigne(n.enfants ?? [], o).trim())}${marque}`;
+    }
     case 'ul':
     case 'ol':
       return liste(n, o, profondeur, alterne);
@@ -277,17 +285,31 @@ function bloc(n, o, profondeur, alterne = false) {
   }
 }
 
-function blocs(enfants, o, profondeur = 0, { serre = false } = {}) {
+/**
+ * `marqueParente` : la marque (« - » ou « * ») de l'item de liste à puces dont ces blocs sont le contenu. Un premier bloc qui est une liste à puces ou
+ * un filet s'écrit sur la ligne de cette marque : il prend l'autre caractère, sinon une ligne faite de la même marque répétée (« - - - », « * * * »,
+ * « - --- », par ex. une liste imbriquée à item vide) serait relue comme un filet <hr>, pas comme des listes.
+ */
+function blocs(enfants, o, profondeur = 0, { serre = false, marqueParente = null } = {}) {
   const sorties = [];
   let precedent = null;
   let alterne = false;
   for (const n of morceaux(enfants)) {
-    // deux listes de même sorte qui se suivent (« - » puis « * » dans une page du Codex) : la seconde prend l'autre marque
+    const premier = sorties.length === 0 && marqueParente !== null && estElement(n);
+    if (premier && n.nom === 'hr') {
+      sorties.push(marqueParente === '-' ? '***' : '---');
+      alterne = false;
+      precedent = n;
+      continue;
+    }
+    // deux listes de même sorte qui se suivent (« - » puis « * » dans une page du Codex) : la seconde prend l'autre marque ; la première liste à
+    // puces d'un item à puces prend la marque que l'item n'a pas
     const suit = estElement(n) && (n.nom === 'ul' || n.nom === 'ol') && precedent?.nom === n.nom;
-    const t = bloc(n, o, profondeur, suit && !alterne);
+    const alt = premier && n.nom === 'ul' ? marqueParente === '-' : suit && !alterne;
+    const t = bloc(n, o, profondeur, alt);
     if (t.trim() === '') continue;
     sorties.push(t);
-    alterne = suit && !alterne;
+    alterne = alt;
     precedent = n;
   }
   return sorties.join(serre ? '\n' : '\n\n');
@@ -298,7 +320,7 @@ function blocs(enfants, o, profondeur = 0, { serre = false } = {}) {
  * déploiement retiré, comme les liens Markdown du guide s'écrivent : « /races/ »).
  */
 export function versMarkdown(enfants, { lienRelatif } = {}) {
-  return `${blocs(enfants, { lienRelatif }).replace(/\n{3,}/g, '\n\n').trim()}\n`;
+  return `${blocs(enfants, { lienRelatif, ancresEcrites: new Set() }).replace(/\n{3,}/g, '\n\n').trim()}\n`;
 }
 
 /** Un arbre simple d'après un nœud du DOM (navigateur) : texte, ou élément avec ses attributs et ses enfants. */
@@ -401,6 +423,8 @@ function attributsSurs(n, nom) {
     return a.join('');
   }
   if (/^h[1-6]$/.test(nom) && /^[a-z0-9-]+$/.test(attribut(n, 'id') ?? '')) garder('id', attribut(n, 'id'));
+  // l'ancre figée d'un intertitre (lib/ancres-figees.mjs) : versMarkdown la réécrit en « {#ancre} »
+  if (/^h[1-6]$/.test(nom) && ANCRE_FIGEE.test(attribut(n, 'data-ancre-figee') ?? '')) garder('data-ancre-figee', attribut(n, 'data-ancre-figee'));
   if (nom === 'ol' && /^\d+$/.test(attribut(n, 'start') ?? '')) garder('start', attribut(n, 'start'));
   if (nom === 'code') {
     const langue = classes(n).find((c) => /^language-[a-z0-9-]+$/.test(c));

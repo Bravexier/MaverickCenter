@@ -14,6 +14,7 @@ import { TYPES } from './types.mjs';
 import { loadWiki, typeOf } from './wiki';
 import { adresseDePage } from './metiers.mjs';
 import { sansMarqueurs } from './guide.mjs';
+import { sansAncresFigees } from './ancres-figees.mjs';
 import { ouvrirBase } from './donnees.mjs';
 import { chargerChronologie } from './chronologie-db.mjs';
 import { adresseDEvenement, libelleDeDate } from './chronologie.mjs';
@@ -73,7 +74,8 @@ async function construire(): Promise<ElementDeRecherche[]> {
     const { chemin, ancre } = adresseDePage(entry.id);
     const corps = entry.body ?? '';
     // le texte des panneaux de règles de la page d'abord (le corps peut dépasser la limite de plainText)
-    const texte = [panneaux.get(entry.id) ?? '', sansMarqueurs(corps)].filter(Boolean).join('\n\n');
+    // ni les marqueurs de bloc du guide ni les ancres figées des intertitres (`{#…}`, lib/ancres-figees.mjs) : on cherche le texte affiché
+    const texte = [panneaux.get(entry.id) ?? '', sansAncresFigees(sansMarqueurs(corps))].filter(Boolean).join('\n\n');
     return {
       title: sans(entry.data.title),
       type: TYPES[typeOf(entry)].singular,

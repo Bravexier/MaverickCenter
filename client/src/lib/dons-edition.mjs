@@ -310,3 +310,37 @@ export function operationsDuLot({ champs = [], specialitesSupprimees = [], creat
   for (const id of donsSupp) operations.push({ op: 'supprimer', entite: 'capacite', cle: { id } });
   return operations;
 }
+
+/**
+ * Le champ « Magie liée » d'un don « Variable » (décision R181 : la liste de ses dons est celle de la magie innée du personnage, ou de sa magie acquise)
+ * dans un formulaire de l'éditeur, à la création d'un don (réponse du propriétaire : « Demander la magie ») comme quand le type d'un don existant change
+ * (réponse du propriétaire : « Demander ou retirer », R192 — « Passer à « Variable » demande la magie (innée ou acquise) ; quitter « Variable » retire le
+ * lien à la magie. ») ; le service décide (serveur/edition.mjs#magieDuDonVariable, #suivreLaMagieDuDon).
+ *   - `variable` : le type choisi ou saisi est « Variable » (lib/classe-champs.mjs#analyserTypeDeDon, le premier mot) ;
+ *   - `etaitVariable` : le don l'était déjà (modification d'un don existant ; faux à la création) ;
+ *   - `magie` : la valeur choisie ('' : aucune) ; `actuelle` : sa magie en base quand on la connaît (null sinon).
+ * Rend { visible, requis, envoyer, erreur } : le champ ne s'affiche (et ne part) que pour un type « Variable » ; il est exigé quand le don le devient
+ * (création comprise) ; `envoyer` est la magie à mettre dans l'opération (`magie`, `don_magie`), null quand rien n'est à envoyer (autre type : le
+ * service retire le lien ; don déjà « Variable » sans choix, ou le même choix : il garde la sienne) ; `erreur` le refus à afficher, ou null.
+ */
+export function champDeLaMagieDuDon({ variable, etaitVariable = false, magie = '', actuelle = null }) {
+  if (!variable) return { visible: false, requis: false, envoyer: null, erreur: null };
+  const requis = !etaitVariable;
+  const choisie = String(magie ?? '').trim();
+  if (!choisie) {
+    return { visible: true, requis, envoyer: null, erreur: requis ? 'un don « Variable » vise une magie du personnage (décision R181) : choisissez sa « Magie liée ».' : null };
+  }
+  return { visible: true, requis, envoyer: etaitVariable && choisie === actuelle ? null : choisie, erreur: null };
+}
+
+/**
+ * Les opérations d'un lot avec la magie d'un don existant (`id`) : ajoutée aux valeurs de son opération « modifier » (celle de son type, s'il a changé),
+ * ou une opération à elle (`{ op: 'modifier', table: 'capacite', cle: { id }, valeurs: { magie } }` : une magie seule change celle d'un don déjà
+ * « Variable »). `magie` null : les opérations telles quelles.
+ */
+export function avecLaMagieDuDon(operations, id, magie) {
+  if (magie === null || magie === undefined || magie === '') return operations;
+  const vise = (op) => op.op === 'modifier' && op.table === 'capacite' && op.cle?.id === id;
+  if (!operations.some(vise)) return [...operations, { op: 'modifier', table: 'capacite', cle: { id }, valeurs: { magie } }];
+  return operations.map((op) => (vise(op) ? { ...op, valeurs: { ...op.valeurs, magie } } : op));
+}

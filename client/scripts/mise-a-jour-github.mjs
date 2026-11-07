@@ -241,10 +241,13 @@ export function verifierSimulation(donnees, essai) {
  * lot : tablesAvecBalises), et `page` (les pages typées refaites depuis les lignes ainsi réécrites : recalculerLesPages) ; une ligne page_tag notée avant
  * la migration 0043 (avec sa colonne `libelle`) peut faire créer son mot-clé ; un lot qui touche une classe ou un don (classe, classe_maitrise_arme,
  * capacite), ou une famille d'armes (arme_famille : décision R159, toutes les sources), voit ses sources de maîtrise d'arme refaites par le lecteur
- * (serveur/edition-maitrises.mjs#sourcesRefaitesParLeLot : TABLES_DES_SOURCES).
+ * (serveur/edition-maitrises.mjs#sourcesRefaitesParLeLot : TABLES_DES_SOURCES) ; un don supprimé par un lot noté avant que ses règles en données ne
+ * le soient (serveur/edition.mjs#retirerLesReglesDuDon) les retire par la cascade de son schéma (TABLES_DES_REGLES_DU_DON).
  */
 // serveur/edition-maitrises.mjs#TABLES_DES_SOURCES, recopiée (test/mise-a-jour-github.test.mjs les compare)
 export const TABLES_DES_SOURCES_DE_MAITRISE = Object.freeze(['maitrise_arme_part', 'maitrise_arme_part_famille', 'capacite_nm_gagne']);
+// serveur/edition.mjs#TABLES_DES_REGLES_DU_DON, recopiée (test/serveur-edition-regles-du-don.test.mjs les compare)
+export const TABLES_DES_REGLES_DU_DON = Object.freeze(['capacite_condition_emplacements', 'capacite_npm_plafond', 'capacite_variable']);
 
 export function tablesDuLot(donnees, { tablesAvecBalises: balises = [] } = {}) {
   const tables = new Set();
@@ -260,6 +263,7 @@ export function tablesDuLot(donnees, { tablesAvecBalises: balises = [] } = {}) {
       }
       if (m.table === 'page_tag' && (ancienne(m.avant) || ancienne(m.apres))) tables.add('mot_cle');
       if (['classe', 'classe_maitrise_arme', 'capacite', 'arme_famille'].includes(m.table)) for (const t of TABLES_DES_SOURCES_DE_MAITRISE) tables.add(t);
+      if (m.table === 'capacite' && m.operation === 'supprimer') for (const t of TABLES_DES_REGLES_DU_DON) tables.add(t);
     }
   }
   if (motCleRetire) {

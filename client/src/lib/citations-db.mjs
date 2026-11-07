@@ -39,10 +39,15 @@ function colonnesDeCle(db, table) {
  * cite (null hors de la table page) ; `libelle` : ce qui cite, en français (le titre de la page, « Chronologie › <événement> », sinon le nom de la
  * table et la clé) ; `exemple` : la page qui cite est une page d'exemple (ne bloque pas). Une ligne qui cite deux fois la même page par la même
  * colonne n'est rendue qu'une fois. Un seul passage sur les textes de la base, quel que soit le nombre de pages demandées (GET /api/edition/plan/).
+ * `absentes` : des pages qui ne sont plus dans la base, telles qu'elles étaient ([{ id, type, slug, titre, alias: [textes] }] : une page qu'un lot
+ * rejoué vient de supprimer, serveur/edition.mjs#liensRompusParLeLot) ; elles entrent dans l'index des liens comme les autres, sans quoi un lien écrit
+ * par leur titre ou un alias (« [[Titre]] », « [[alias|texte]] ») ne se résoudrait plus vers elles, et dans l'index des adresses (leur adresse,
+ * lib/adresses-db.mjs#adresseDeLaPage), sans quoi le mot-clé dont l'adresse y mène et ses balises ne les citeraient plus.
  * @param {import('node:sqlite').DatabaseSync} db
  * @param {Iterable<string>} ids
+ * @param {{ absentes?: { id: string, type: string, slug: string, titre: string, alias?: string[] }[] }} [options]
  */
-export function citationsDesPages(db, ids) {
+export function citationsDesPages(db, ids, { absentes = [] } = {}) {
   const voulues = new Set(ids);
   const sortie = new Map([...voulues].map((id) => [id, []]));
   if (!voulues.size) return sortie;
@@ -50,7 +55,11 @@ export function citationsDesPages(db, ids) {
   const parId = new Map(pages.map((p) => [p.id, p]));
   const alias = new Map();
   for (const a of db.prepare('SELECT page_id, texte FROM alias ORDER BY page_id, ordre').all()) (alias.get(a.page_id) ?? alias.set(a.page_id, []).get(a.page_id)).push(a.texte);
-  const index = buildIndex(pages.map((p) => ({ id: p.id, type: p.type, slug: p.slug, title: p.titre, aliases: alias.get(p.id) ?? [] })));
+  const enPlus = absentes.filter((p) => !parId.has(p.id));
+  const index = buildIndex([
+    ...pages.map((p) => ({ id: p.id, type: p.type, slug: p.slug, title: p.titre, aliases: alias.get(p.id) ?? [] })),
+    ...enPlus.map((p) => ({ id: p.id, type: p.type, slug: p.slug, title: p.titre, aliases: p.alias ?? [] })),
+  ]);
   // les slugs des pages demandées que les adresses écrites désignent (guide/<slug> et /regles/<slug>/ : les pages du guide)
   const parSlug = new Map([...voulues].filter((id) => id.startsWith('guide/')).map((id) => [id.slice('guide/'.length), id]));
   const vues = new Set();
@@ -68,8 +77,9 @@ export function citationsDesPages(db, ids) {
     sortie.get(id).push({ table, cle, colonne, comment, page: page ? { id: page.id, titre: page.titre } : null, libelle, exemple: page?.statut === 'example' });
   };
 
-  // les mots-clés qui mènent à une des pages demandées (migration 0098 : mot_cle.url ; aucun sur une base d'avant)
-  const adresses = indexDesAdresses(db, { exemples: true });
+  // les mots-clés qui mènent à une des pages demandées (migration 0098 : mot_cle.url ; aucun sur une base d'avant) ; une page absente entre dans
+  // l'index à son adresse, sans quoi le mot-clé qui y mène, et ses balises, ne la citeraient plus (liensRompusParLeLot)
+  const adresses = indexDesAdresses(db, { exemples: true, enPlus: enPlus.map((p) => p.id) });
   const motsCles = motsClesDeLaBase(db);
   const vocabulaire = vocabulaireDesMotsCles(motsCles);
   const pageDuMotCle = new Map();
@@ -127,12 +137,12 @@ export function citationsDesPages(db, ids) {
 }
 
 /**
- * Les citations de la page `id` dans la base (citationsDesPages) : [{ table, cle, colonne, comment, page, libelle, exemple }], celles des pages
- * d'exemple en dernier.
+ * Les citations de la page `id` dans la base (citationsDesPages, `options` comprises) : [{ table, cle, colonne, comment, page, libelle, exemple }],
+ * celles des pages d'exemple en dernier.
  * @param {import('node:sqlite').DatabaseSync} db
  * @param {string} id
  */
-export const citationsDe = (db, id) => citationsDesPages(db, [id]).get(id);
+export const citationsDe = (db, id, options = {}) => citationsDesPages(db, [id], options).get(id);
 
 /** Les citations qui empêchent une suppression : toutes, sauf celles des pages d'exemple. */
 export const citationsBloquantes = (citations) => citations.filter((c) => !c.exemple);

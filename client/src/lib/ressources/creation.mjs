@@ -215,12 +215,17 @@ export const RESSOURCES = [
     description:
       'Les dons de classe (« capacités » du classeur, une page chacun) : niveau, type, effet et remarque ; les choix « l’un OU l’autre » se lisent dans leur ' +
       'place sur l’onglet (ligne, rang, nature), qui ne se modifie pas ; un don créé se place à la fin de son niveau ou en option d’un choix (niveaux 1, 5, 10, ' +
-      '15, 20 : R44), un don supprimé est retiré des fiches avec une note datée (R42).',
+      '15, 20 : R44), un don supprimé est retiré des fiches avec une note datée (R42) et emporte ses règles en données (magie d’un don « Variable », ' +
+      'plafond de NPM, condition d’emplacements) ; un don de type « Variable » se crée avec la magie qu’il vise (`magie` : magie innée ou acquise, R181), ' +
+      'refusée pour un autre type ; un PATCH qui fait passer son type à « Variable » la demande aussi (`magie`), un type qui quitte « Variable » la retire.',
     table: 'capacite',
     // les NM de sorts gagnés que le texte du don écrit (« Gagne 4 niveaux de maîtrise (NM). », décision R154), lus par lib/maitrise-arme.mjs
-    // la magie que vise un don « Variable » (capacite_variable, décision R181, migration 0088 : écrite par la migration d'après le texte du don, pas encore
-    // refaite par le service d'édition) ; le plafond de NPM qu'un don relève (capacite_npm_plafond, R188) et les dons qui comptent comme une condition
-    // d'emplacements de sorts (capacite_condition_emplacements, R189) : migration 0097, écrits par la migration seulement (jamais lus dans le texte du don)
+    // la magie que vise un don « Variable » (capacite_variable, décision R181, migration 0088 : écrite par la migration d'après le texte du don ; pour un
+    // don « Variable » créé, d'après le champ `magie` de sa création, « Demander la magie » : serveur/edition.mjs#magieDuDonVariable ; pour un type changé,
+    // « Demander ou retirer », R192 : la clé `magie` du PATCH, serveur/edition.mjs#suivreLaMagieDuDon) ; le plafond de NPM
+    // qu'un don relève (capacite_npm_plafond, R188) et les dons qui comptent comme une condition d'emplacements de sorts (capacite_condition_emplacements,
+    // R189) : migration 0097, écrits par la migration seulement (jamais lus dans le texte du don). Un don supprimé les retire, notées au journal
+    // (serveur/edition.mjs#retirerLesReglesDuDon)
     derivees: [
       { table: 'capacite_nm_gagne', parent: { capacite_id: 'id' } }, { table: 'capacite_variable', parent: { capacite_id: 'id' } },
       { table: 'capacite_npm_plafond', parent: { capacite_id: 'id' } }, { table: 'capacite_condition_emplacements', parent: { capacite_id: 'id' } },
