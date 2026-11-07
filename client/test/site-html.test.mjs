@@ -77,9 +77,10 @@ test('plus rien sous /guide/ (éclatement du guide, 2026-10-18) : ni page, ni li
     .filter((f) => /(?:href|action|src)="\/guide\/|"path":"guide\//.test(readFileSync(f, 'utf8')));
   assert.deepEqual(avecGuide.map((f) => relative(dist, f)), [], 'aucun lien vers /guide/');
   const guide = JSON.parse(lire('search-index.json')).filter((e) => e.type === 'Guide');
-  // une entrée par page du guide de la base (le site de dev en crée et en supprime : le nombre suit la base, pas un seuil)
-  const duGuide = ouvrirBase({ sansExemples: false }).prepare("SELECT statut FROM page WHERE type = 'guide'").all()
-    .filter((p) => process.env.HIDE_EXAMPLES !== '1' || p.statut !== 'example');
+  // une entrée par page du guide de la base (le site de dev en crée et en supprime : le nombre suit la base, pas un seuil) ; une page d'exemple ne
+  // compte que si elle est construite (le build de la CI tourne avec HIDE_EXAMPLES=1, que `node --test` ne reçoit pas)
+  const duGuide = ouvrirBase({ sansExemples: false }).prepare("SELECT id, statut FROM page WHERE type = 'guide'").all()
+    .filter((p) => p.statut !== 'example' || existsSync(join(dist, cheminDePage(p.id), 'index.html')));
   assert.ok(guide.length > 0 && guide.length === duGuide.length, `${guide.length} pages du guide dans l’index, ${duGuide.length} dans la base`);
   assert.ok(guide.every((e) => /^(?:decouvrir|regles|mj)\//.test(e.path)), 'les pages du guide à leurs nouvelles adresses');
 });
