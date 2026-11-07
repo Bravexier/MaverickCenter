@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { isMagicalClass, isMagicalSpecialization } from '../src/lib/classe-magique.mjs';
 
-const classe = (slug, title, ...tags) => ({ id: `classes/${slug}`, data: { title, tags: ['classe', ...tags] } });
+// les mots-clés d'une page par leur id (`data.mots_cles` : lib/wiki.ts ; décision R195)
+const classe = (slug, title, ...ids) => ({ id: `classes/${slug}`, data: { title, mots_cles: ['classe', ...ids] } });
 const cartouche = (classeSlug, slug, specialite, rang, body = '') => ({
   id: `capacites/${classeSlug}-${slug}`,
   data: { title: `${specialite} (${classeSlug})`, classe: `classes/${classeSlug}`, nature: 'specialite', specialite, niveau: 10, rang, ligne: 22 },
@@ -10,10 +11,10 @@ const cartouche = (classeSlug, slug, specialite, rang, body = '') => ({
 });
 
 const barde = classe('barde', 'Barde', 'magique');
-const guerrier = classe('guerrier', 'Guerrier', 'càc');
+const guerrier = classe('guerrier', 'Guerrier', 'cac');
 const archer = classe('archer', 'Archer', 'distance');
-const orios = classe('orios', 'Orios', 'hybride animal');
-const archimage = classe('archimage', 'Archimage', 'spéciale');
+const orios = classe('orios', 'Orios', 'hybride-animal');
+const archimage = classe('archimage', 'Archimage', 'speciale');
 const flagelleur = classe('flagelleur', 'Flagelleur', 'hybride');
 // Textes des cartouches de niveau 10 de l'onglet « Orios » (cellules X23 et AA23).
 const vaTEnGuerre = cartouche('orios', 'va-t-en-guerre', 'VA-T-EN GUERRE', 1, '+5% Arme légères et lourdes, +5% Arc. Maîtrise les Armures Intermédiaires, 2 points de maîtrise à répartir.');

@@ -307,6 +307,8 @@ export const NOMS_DES_COLONNES = geler({
   monstre_espece_bloc: { titre: 'Titre du bloc' },
   monstre_espece_lieu: { lieu: 'Lieu' },
   monstre_rubrique: { rubrique: 'Rubrique' },
+  // le verrou d'un mot-clé (migration 0110, décisions R218, R219) : hors de TABLES, aucune route ne l'écrit ; un lot ancien peut le porter
+  mot_cle: { verrou: 'Verrou' },
   note_cellule: { cellule: 'Cellule', repond_a: 'Répond à' },
   page: { type: 'Rubrique du wiki', slug: 'Adresse', donnees: 'Données', statut: 'Statut' },
   page_entite: { principale: 'Page principale' },

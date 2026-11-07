@@ -5,6 +5,7 @@ import { cheminDePage } from './metiers.mjs';
 import { ouvrirBase } from './donnees.mjs';
 import { installerLePlan } from './livres.mjs';
 import { chargerPlanDesRegles } from './plan-des-regles-db.mjs';
+import { avecLesMotsCles, motsClesDesPages } from './pages-db.mjs';
 
 export type WikiEntry = CollectionEntry<'wiki'>;
 export type TypeKey = keyof typeof TYPES;
@@ -27,7 +28,10 @@ let cache: ReturnType<typeof compute> | undefined;
 
 async function compute() {
   const hideExamples = process.env.HIDE_EXAMPLES === '1';
-  const entries = (await getCollection('wiki', ({ data }) => !(hideExamples && data.status === 'example'))).sort(byTitle);
+  // chaque page avec ses mots-clés par id (`data.mots_cles`, lus dans page_tag) : les règles qui rangent les classes et les races les lisent par leur
+  // id, jamais par l'écriture du `tags:` (décision R195 : un mot-clé renommé ne déplace aucune page ; lib/pages-db.mjs#motsClesDesPages)
+  const pages = await getCollection('wiki', ({ data }) => !(hideExamples && data.status === 'example'));
+  const entries = (avecLesMotsCles(pages, motsClesDesPages(ouvrirBase())) as (WikiEntry & { data: { mots_cles: string[] } })[]).sort(byTitle);
   const byId = new Map(entries.map((e) => [e.id, e]));
   const index = buildIndex(
     entries.map((e) => ({ id: e.id, type: typeOf(e), slug: slugOf(e), title: e.data.title, aliases: e.data.aliases })),

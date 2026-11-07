@@ -13,6 +13,7 @@ import { asymmetricChoices, capacitesOfClass, checkSelection, nomCapacite, nomsS
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { SPECIALITES_MAX } from '../src/lib/dons-edition.mjs';
+import { avecLesMotsCles, motsClesDesPages } from '../src/lib/pages-db.mjs';
 import { splitFrontmatter } from '../src/lib/wikilinks.mjs';
 
 const dir = fileURLToPath(new URL('../src/content/wiki', import.meta.url));
@@ -22,11 +23,13 @@ const load = (type) =>
     .map((f) => ({ id: `${type}/${f.replace(/\.md$/, '')}`, ...splitFrontmatter(readFileSync(`${dir}/${type}/${f}`, 'utf8')) }))
     .filter((e) => e.data.status !== 'example');
 
-const classes = load('classes');
-const capacites = load('capacites');
+const db = ouvrirBase({ sansExemples: false });
+// les mots-clés de chaque page par leur id (`data.mots_cles`), comme lib/wiki.ts les pose (décision R195 : jamais par leur écriture)
+const motsCles = motsClesDesPages(db);
+const classes = avecLesMotsCles(load('classes'), motsCles);
+const capacites = avecLesMotsCles(load('capacites'), motsCles);
 const all = [...classes, ...capacites];
 const id = (slug) => `capacites/${slug}`;
-const db = ouvrirBase({ sansExemples: false });
 const historique = historiqueSite(db);
 // une page telle que l'import l'a écrite (titre, champs structurés, corps), avant les modifications du site de dev ; les pages qu'il a créées sont retirées
 const versImport = (e) => {
@@ -46,7 +49,8 @@ const pagesSupprimees = historique.lignesDImport('page')
   .map((p) => ({
     id: p.id,
     body: p.corps_md,
-    data: { ...JSON.parse(p.donnees ?? '{}'), title: p.titre, status: p.statut, tags: tagsImport.filter((t) => t.page_id === p.id).sort((a, b) => a.ordre - b.ordre).map((t) => t.libelle ?? motsClesImport.get(t.tag_id) ?? t.tag_id) },
+    data: { ...JSON.parse(p.donnees ?? '{}'), title: p.titre, status: p.statut, tags: tagsImport.filter((t) => t.page_id === p.id).sort((a, b) => a.ordre - b.ordre).map((t) => t.libelle ?? motsClesImport.get(t.tag_id) ?? t.tag_id),
+      mots_cles: tagsImport.filter((t) => t.page_id === p.id).sort((a, b) => a.ordre - b.ordre).map((t) => t.tag_id) },
   }));
 const allImport = [...all.filter((e) => !historique.creee('page', { id: e.id })).map(versImport), ...pagesSupprimees];
 // les classes dont le site a créé ou supprimé une spécialité ou un don, ou changé la nature, la ligne ou la spécialité d'un don : leurs formes de
@@ -225,15 +229,15 @@ test('type magique : catégories, spécialités reconnues et Archimage', () => {
   // aujourd'hui : magique par le mot-clé de sa catégorie, l'Archimage, et toute classe raciale qui a ses dons (une classe créée depuis le site n'en a pas)
   const magiques = classes.filter((c) => isMagicalClass(all, c));
   assert.ok(magiques.some((c) => c.id === 'classes/archimage'));
-  assert.ok(classes.filter((c) => (c.data.tags ?? []).includes('magique')).every((c) => magiques.includes(c)));
-  for (const c of classes.filter((x) => (x.data.tags ?? []).includes('hybride animal') && !classesRemaniees.has(x.id))) {
+  assert.ok(classes.filter((c) => c.data.mots_cles.includes('magique')).every((c) => magiques.includes(c)));
+  for (const c of classes.filter((x) => x.data.mots_cles.includes('hybride-animal') && !classesRemaniees.has(x.id))) {
     if (capacites.some((k) => k.data.classe === c.id)) assert.ok(magiques.includes(c), `${c.id} : classe raciale`);
   }
   // à l'import (pages telles que l'import les a écrites) : 23 classes magiques, Flagelleur compris
   const magiquesImport = classesImport.filter((c) => isMagicalClass(allImport, c));
   assert.equal(magiquesImport.length, 23);
   assert.ok(magiquesImport.some((c) => c.id === 'classes/flagelleur'), 'le Flagelleur écrit « concidérée » : faute de frappe comprise');
-  for (const c of classesImport.filter((x) => (x.data.tags ?? []).includes('hybride animal'))) assert.ok(magiquesImport.includes(c), `${c.id} : classe raciale`);
+  for (const c of classesImport.filter((x) => x.data.mots_cles.includes('hybride-animal'))) assert.ok(magiquesImport.includes(c), `${c.id} : classe raciale`);
   const specialiteFlagelleur = capacitesImport.find((e) => e.id === 'capacites/flagelleur-masochiste');
   const specialiteOrios = capacitesImport.find((e) => e.id === 'capacites/orios-chaman');
   assert.equal(isMagicalSpecialization(specialiteFlagelleur), true);

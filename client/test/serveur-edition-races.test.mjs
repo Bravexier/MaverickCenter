@@ -12,7 +12,7 @@ import { A_COMPLETER } from '../serveur/edition.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { chargerRaces } from '../src/lib/races-db.mjs';
 import { relationsDeRace } from '../src/lib/race-relations.mjs';
-import { raceKind } from '../src/lib/race-kinds.mjs';
+import { raceKind, TAG_RACE_HYBRIDE } from '../src/lib/race-kinds.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
@@ -72,13 +72,14 @@ test('créer une race hybride : page (mot-clé « race hybride »), race, onglet
   assert.equal(race.ordre, ordre, 'à la suite des races de la base');
   assert.equal(ligne('SELECT histoire FROM race_onglet WHERE race_id = ?', ID_LYCAN).histoire, A_COMPLETER);
   assert.equal(ligne('SELECT description_generale FROM race_onglet WHERE race_id = ?', ID_LYCAN).description_generale, 'Les loups-garous.');
-  assert.deepEqual(lignes('SELECT m.libelle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE t.page_id = ? ORDER BY t.ordre', ID_LYCAN).map((t) => t.libelle), ['race', 'race hybride']);
+  // par leur id (décision R195 : leur libellé se modifie) ; « race hybride » créé avec la première race hybride, sous son id
+  assert.deepEqual(lignes('SELECT tag_id FROM page_tag WHERE page_id = ? ORDER BY ordre', ID_LYCAN).map((t) => t.tag_id), ['race', TAG_RACE_HYBRIDE]);
   assert.equal(ligne('SELECT count(*) AS n FROM race_magie WHERE race_id = ? AND accessible = 0', ID_LYCAN).n, ligne('SELECT count(*) AS n FROM magie').n);
   assert.equal(ligne('SELECT count(*) AS n FROM race_classe WHERE race_id = ?', ID_LYCAN).n, ligne('SELECT count(*) AS n FROM classe').n);
   assert.equal(ligne('SELECT race_id FROM peuple WHERE id = ?', PEUPLE_LYCAN).race_id, ID_LYCAN);
   const races = chargerRaces(db);
   assert.equal(races.races.get(ID_LYCAN).hybride, true, 'lib/races-db.mjs');
-  const entree = { id: ID_LYCAN, data: { title: LYCAN, tags: ['race', 'race hybride'] } };
+  const entree = { id: ID_LYCAN, data: { title: LYCAN, mots_cles: ['race', TAG_RACE_HYBRIDE] } };
   assert.equal(raceKind([entree], entree), 'hybride', 'lib/race-kinds.mjs');
   assert.equal(enregistrer([{ op: 'creer', entite: 'race', valeurs: { nom: LYCAN, nature: 'pure' } }]).statut, 409);
   assert.equal(enregistrer([{ op: 'creer', entite: 'race', valeurs: { nom: 'Autre', nature: 'mixte' } }]).statut, 400);

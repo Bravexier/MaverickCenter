@@ -4,8 +4,13 @@
 // dev) : une écriture inconnue n'est pas posée, poser_les_mots_cles la rend pour que db:sync-pages la signale.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { MOT_CLE_DE_CATEGORIE } from '../src/lib/classe-champs.mjs';
+import { MOTS_CLES_PROTEGES } from '../src/lib/mots-cles.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const outils = fileURLToPath(new URL('../../tools/db/', import.meta.url));
 const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
@@ -52,4 +57,106 @@ print(json.dumps(r))
   assert.deepEqual(r.page_tag, [[0, 'civilisation'], [3, 'guide']], 'ni le supprimé, ni l’inconnu, ni deux fois le même ; l’ordre garde sa place');
   assert.deepEqual(r.inconnues, ['mrode', 'nouveau'], 'les écritures non posées sont rendues, pour être signalées');
   assert.deepEqual(r.vocabulaire, [['civilisation'], ['guide']], 'le vocabulaire n’a pas bougé');
+});
+
+// Les mots-clés protégés (lib/mots-cles.mjs#MOTS_CLES_PROTEGES, par id ; décision R195 : le site les reconnaît à leur id) : un importeur les pose par
+// leur id, jamais par leur écriture. Il écrit dans `tags:` le libellé courant du mot-clé de cet id (maverick.py#libelle_protege, codex.py
+// Vocabulaire.protege), qui ne mène qu'à lui (libelle_cle unique) : un autre mot-clé qui a pris l'écriture d'origine d'un protégé (« codex »,
+// « classe », « race »…) ne reçoit pas ses pages. Vocabulaire d'essai : chaque protégé renommé « Essai <id> », et un leurre `leurre-<id>` qui porte
+// l'écriture <id> (le cas que la recherche par écriture faisait mal).
+const racine = fileURLToPath(new URL('../../', import.meta.url));
+
+function vocabulaireDEssai(t) {
+  const fichier = join(dossierTemporaire('mots-cles-proteges-', { t }), 'mot_cle.sql');
+  const lignes = [...MOTS_CLES_PROTEGES.keys()].filter((id) => id !== 'race-hybride').flatMap((id) => [
+    `INSERT INTO mot_cle (id, libelle, libelle_cle) VALUES ('${id}', 'Essai ${id}', 'essai-${id}');`,
+    `INSERT INTO mot_cle (id, libelle, libelle_cle) VALUES ('leurre-${id}', '${id}', '${id}');`,
+  ]);
+  writeFileSync(fichier, `${lignes.join('\n')}\n`);
+  return fichier;
+}
+
+/** Lance un script Python (`python3 -I -c`) qui a `maverick as T` et `db` (le vocabulaire `vocabulaire` chargé), et rend son JSON. */
+function python(script, vocabulaire) {
+  const p = spawnSync('python3', ['-I', '-c', `
+import json, os, re, sqlite3, sys
+sys.path.insert(0, ${JSON.stringify(outils)})
+import maverick as T
+VOCABULAIRE = ${JSON.stringify(vocabulaire ?? '')}
+db = sqlite3.connect(':memory:')
+db.execute(re.search(r'CREATE TABLE mot_cle \\([\\s\\S]*?\\) STRICT;', open(T.SCHEMA, encoding='utf-8').read()).group(0))
+if VOCABULAIRE:
+    db.executescript(open(VOCABULAIRE, encoding='utf-8').read())
+${script}`], { encoding: 'utf8' });
+  assert.equal(p.status, 0, p.stderr);
+  return JSON.parse(p.stdout);
+}
+
+/** Les mots-clés que db:sync-pages poserait pour le `tags:` de chaque page .md de `dossier/famille` : { 'famille/slug': [ids] }. */
+function posesParPage(dossier, familles, vocabulaire) {
+  const pages = {};
+  for (const famille of familles) {
+    for (const f of readdirSync(join(dossier, famille)).filter((n) => n.endsWith('.md'))) {
+      pages[`${famille}/${f.slice(0, -3)}`] = JSON.parse(/^tags: (.*)$/m.exec(readFileSync(join(dossier, famille, f), 'utf8'))[1]);
+    }
+  }
+  return python(`print(json.dumps({p: [i for _, i in T.mots_cles_poses(db, e)[0]] for p, e in ${JSON.stringify(pages)}.items()}))`, vocabulaire);
+}
+
+test('maverick.py#MOTS_CLES_PROTEGES recopie les ids de lib/mots-cles.mjs#MOTS_CLES_PROTEGES', { skip: sansPython }, () => {
+  assert.deepEqual(python('print(json.dumps(sorted(T.MOTS_CLES_PROTEGES)))'), [...MOTS_CLES_PROTEGES.keys()].sort());
+});
+
+test('maverick.py#libelle_protege : le libellé courant de l’id, qui mène à lui et pas au mot-clé qui a pris son écriture d’origine', { skip: sansPython }, (t) => {
+  const vocabulaire = vocabulaireDEssai(t);
+  const r = python(`
+libelle = T.libelle_protege('codex', VOCABULAIRE)
+try:
+    T.libelle_protege('leurre-codex', VOCABULAIRE)
+    refus = None
+except ValueError as e:
+    refus = str(e)
+print(json.dumps({'libelle': libelle, 'pose': T.mot_cle(db, libelle), 'ecriture': T.mot_cle(db, 'codex'), 'absent': T.libelle_protege('race-hybride', VOCABULAIRE),
+                  'refus': refus, 'sans_vocabulaire': T.libelle_protege('codex', os.path.join(os.path.dirname(VOCABULAIRE), 'absent.sql'))}))`, vocabulaire);
+  assert.equal(r.libelle, 'Essai codex');
+  assert.equal(r.pose, 'codex', 'le libellé courant mène au protégé');
+  assert.equal(r.ecriture, 'leurre-codex', 'l’écriture d’origine mène au mot-clé qui l’a prise : c’est pourquoi l’importeur pose par id');
+  assert.equal(r.absent, null, 'un protégé absent du vocabulaire n’est pas écrit (un import ne crée jamais de mot-clé)');
+  assert.equal(r.sans_vocabulaire, null);
+  assert.ok(r.refus, 'un id non protégé est refusé');
+});
+
+test('classes.py, relations-races.py, races.py et codex.py posent leurs mots-clés protégés par id, jamais sur le mot-clé qui a pris leur écriture', { skip: sansPython }, (t) => {
+  const vocabulaire = vocabulaireDEssai(t);
+  const out = dossierTemporaire('mots-cles-proteges-out-', { t });
+  for (const famille of ['classes', 'capacites', 'ressources']) mkdirSync(join(out, famille), { recursive: true });
+  const classeurs = join(racine, 'sources/raw/classeurs');
+  const lancer = (script, ...args) => {
+    const p = spawnSync('python3', ['-I', join(racine, script), ...args, '--out', out, '--vocabulaire', vocabulaire], { encoding: 'utf8' });
+    assert.equal(p.status, 0, `${script} : ${p.stderr || p.stdout}`);
+  };
+  lancer('tools/sheets/classes.py', '--dump', join(classeurs, 'classe-maverick-v7.json'), '--sans-liens');
+  lancer('tools/sheets/relations-races.py', '--dump', join(classeurs, 'les-races.json'));
+  lancer('tools/docs/codex.py', '--historique', join(out, 'sans-historique.sql'));
+  const poses = posesParPage(out, ['classes', 'capacites', 'lore'], vocabulaire);
+  const categories = new Set(Object.values(MOT_CLE_DE_CATEGORIE));
+  const pages = Object.entries(poses);
+  assert.ok(pages.some(([p]) => p.startsWith('classes/')) && pages.some(([p]) => p.startsWith('capacites/')) && pages.some(([p]) => p.startsWith('lore/')));
+  for (const [page, ids] of pages) {
+    assert.ok(!ids.some((i) => i.startsWith('leurre-')), `${page} : ${ids} (un mot-clé qui a pris l’écriture d’un protégé)`);
+    if (page.startsWith('classes/')) {
+      assert.equal(ids[0], 'classe', page);
+      assert.ok(ids.length === 2 && categories.has(ids[1]), `${page} : ${ids} (la catégorie de la classe)`);
+    } else if (page.startsWith('capacites/')) assert.deepEqual(ids, ['capacite-de-classe'], page);
+    else if (page === 'lore/relations-entre-les-races') assert.deepEqual(ids, ['race'], page);
+    else assert.deepEqual(ids, ['codex'], page);
+  }
+  // races.py (son dump de l'index n'a pas d'instantané) : le `tags:` d'une page de race
+  const races = python(`
+import importlib.util
+spec = importlib.util.spec_from_file_location('races', ${JSON.stringify(join(racine, 'tools/sheets/races.py'))})
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+m.VOCABULAIRE = VOCABULAIRE
+print(json.dumps([i for _, i in T.mots_cles_poses(db, m.tags_of_race())[0]]))`, vocabulaire);
+  assert.deepEqual(races, ['race']);
 });

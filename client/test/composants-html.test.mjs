@@ -104,6 +104,14 @@ test('les champs du mode modification se relisent ; un composant cité ne se sup
   assert.ok(main.includes(echapper(attributEd('gemme', { ressource_id: gemme.id }, 'quart_parfaite_brut'))));
 });
 
+test('décision R219 (3) : l’onglet Monnaie est figé — dans son panneau, seuls le titre et la note de l’onglet se modifient, le symbole suit la base en lecture', options, () => {
+  const p = panneau('monnaie');
+  assert.ok(p.includes('data-monnaie='), 'le panneau des monnaies');
+  const eds = [...p.matchAll(/data-ed="([^"]+)"/g)].map((m) => lireAttributEd(m[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#39;/g, "'")));
+  assert.deepEqual([...new Set(eds.map((e) => e.table))], ['composant_onglet'], 'aucune case d’une monnaie ne se modifie');
+  for (const m of c.monnaies) assert.ok(p.includes(`data-ed-lecture="${echapper(attributEd('monnaie', { id: m.id }, 'abreviation'))}"`), `${m.id} : son symbole suit la base`);
+});
+
 test('les monnaies en icônes dans les tables (décision R61) : plus d’abréviation dans une case de tableau ; le type de chaque matériau (R62)', options, () => {
   for (const page of ['ressources/composants', 'ressources/equipement-inventaire', 'ressources/livre-parchemin', 'ressources/armes', 'ressources/armures',
     'ressources/bouclier', 'ressources/objets-a-la-ceinture', 'ressources/accessoires']) {

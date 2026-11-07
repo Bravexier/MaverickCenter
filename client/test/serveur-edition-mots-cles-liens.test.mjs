@@ -2,7 +2,8 @@
 // « url », « URL interne seulement » ; les [[…]] et les liens Markdown internes deviennent des balises) :
 //   - le modèle : `url` (type « adresse ») et `couleur` (type « couleur ») dans TABLES et ENTITES, hors CHAMPS_DE_TEXTE ; une couleur écrite en minuscules ;
 //   - GET /api/edition/mots-cles/ : url, couleur, classe de chaque mot-clé, et la feuille de leurs classes (`css`) ;
-//   - création (url et couleur écrites seulement si elles sont données), modification (protégés compris), refus 400 { champ } (jamais 409) : forme,
+//   - création (url et couleur écrites seulement si elles sont données), modification (d'un mot-clé non verrouillé : un verrouillé, 409, décisions
+//     R218, R219), refus 400 { champ } (jamais 409) : forme,
 //     page inexistante, couleur inconnue ; l'existence de la page se lit dans la base vivante, ancre et requête non vérifiées ;
 //   - fusion : la cible garde son lien et sa couleur, prend ceux de la source qu'elle n'a pas (noté au journal), et le résumé dit ce qu'elle garde ;
 //   - un lien saisi dans un texte (CHAMPS_DE_TEXTE) : `[[…]]` et `[texte](/…)` ajoutés deviennent la balise du seul mot-clé qui mène à leur page, sinon
@@ -19,7 +20,6 @@ import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.
 import { CHAMPS_DE_TEXTE, ENTITES, TABLES, valeurDuChamp } from '../src/lib/edition-modele.mjs';
 import { classeDuMotCle, PREFIXE_DE_CLASSE } from '../src/lib/mots-cles-liens.mjs';
 import { cssDesMotsCles } from '../src/lib/palette-css.mjs';
-import { raisonDeProtection } from '../src/lib/mots-cles.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { cheminDImport } from './aide-base-d-import.mjs';
@@ -115,27 +115,32 @@ test('créer un mot-clé avec un lien et une couleur ; sans eux, rien n’est é
   assert.equal(nombre(), avant, 'rien d’écrit');
 });
 
-test('modifier le lien et la couleur : vidés (NULL), changés, protégés compris ; 400 { champ } jamais 409 ; inchangés, pas contrôlés', () => {
-  const { lot, motCle, nombre } = nouvelle();
+test('modifier le lien et la couleur : vidés (NULL), changés ; 400 { champ } jamais 409 ; inchangés, pas contrôlés ; ceux d’un mot-clé verrouillé, non (409)', () => {
+  const { lot, motCle, nombre, motLibre } = nouvelle();
   const modifier = (id, valeurs) => lot([{ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs }]);
-  ok(modifier('drakos', { url: '', couleur: '' }));
-  assert.deepEqual([motCle('drakos').url, motCle('drakos').couleur], [null, null]);
-  ok(modifier('drakos', { url: '/races/drakos/', couleur: 'race:hybride' }));
-  assert.deepEqual([motCle('drakos').url, motCle('drakos').couleur], ['/races/drakos/', 'race:hybride']);
-  // un mot-clé dont le site se sert (MOTS_CLES_PROTEGES) : son lien et sa couleur se modifient
-  assert.ok(raisonDeProtection('codex'), '« codex » est protégé');
-  ok(modifier('codex', { url: '/lore/', couleur: '#00aa00' }));
-  assert.deepEqual([motCle('codex').url, motCle('codex').couleur], ['/lore/', '#00aa00']);
-  ok(modifier('codex', { url: '/lore/codex/', couleur: null }));
+  // un mot-clé créé (non verrouillé, même avec une adresse : décision R219 (5))
+  const id = ok(creerMotCle(lot, { libelle: motLibre('Essai lien modifié'), url: '/races/drakos/', couleur: 'race:pure' })).crees[0].id;
+  ok(modifier(id, { url: '', couleur: '' }));
+  assert.deepEqual([motCle(id).url, motCle(id).couleur], [null, null]);
+  ok(modifier(id, { url: '/lore/', couleur: '#00AA00' }));
+  assert.deepEqual([motCle(id).url, motCle(id).couleur], ['/lore/', '#00aa00']);
+  ok(modifier(id, { url: '/races/drakos/', couleur: 'race:hybride' }));
   const avant = nombre();
   for (const [valeurs, champ] of [[{ url: '/lore/pas-de-page-d-essai/' }, 'url'], [{ url: 'lore/codex/' }, 'url'], [{ couleur: '#abc' }, 'couleur']]) {
-    const r = modifier('codex', valeurs);
+    const r = modifier(id, valeurs);
     assert.equal(r.statut, 400, JSON.stringify(r.corps));
     assert.equal(r.corps.champ, champ);
   }
   assert.equal(nombre(), avant);
   // une adresse en place, que la règle refuserait, ne bloque pas une autre modification (elle n'est contrôlée que si elle change)
-  ok(modifier('codex', { description: `${motCle('codex').description ?? ''} (essai)`.trim(), url: '/lore/codex/' }));
+  ok(modifier(id, { description: 'Essai.', url: '/races/drakos/' }));
+  // un mot-clé à adresse des règles, un mot-clé dont le site se sert : verrouillés (migration 0110), ni lien ni couleur ne se modifient
+  for (const verrouille of ['drakos', 'codex']) {
+    const lu = motCle(verrouille);
+    assert.equal(lu.verrou, 1, verrouille);
+    for (const valeurs of [{ url: '' }, { couleur: '#00aa00' }]) assert.equal(modifier(verrouille, valeurs).statut, 409, `${verrouille} ${JSON.stringify(valeurs)}`);
+    assert.deepEqual(motCle(verrouille), lu);
+  }
 });
 
 test('fusion : la cible garde son lien et sa couleur, prend ceux de la source qu’elle n’a pas (noté au journal) ; le résumé dit ce qu’elle garde', () => {
@@ -166,6 +171,13 @@ test('fusion : la cible garde son lien et sa couleur, prend ceux de la source qu
   const r3 = fusionner(s3, c2);
   assert.equal(db.prepare("SELECT count(*) AS n FROM modification WHERE lot_id = ? AND table_nom = 'mot_cle' AND operation = 'modifier'").get(r3.lot).n, 0);
   assert.doesNotMatch(db.prepare('SELECT resume FROM modification_lot WHERE id = ?').get(r3.lot).resume, /prend|garde/);
+  // une cible verrouillée (décisions R218, R219 (4)) : elle ne prend rien, aucune modification de mot_cle n'est notée, le résumé le dit
+  const verrouillee = db.prepare('SELECT * FROM mot_cle WHERE verrou = 1 AND (url IS NULL OR couleur IS NULL) AND id NOT IN (SELECT mot_cle_id FROM sort_mot_cle) ORDER BY id LIMIT 1').get();
+  const s4 = creer({ libelle: 'Essai source quatre', url: '/races/drakos/', couleur: '#445566' });
+  const r4 = fusionner(s4, verrouillee.id);
+  assert.deepEqual(motCle(verrouillee.id), { ...verrouillee });
+  assert.equal(db.prepare("SELECT count(*) AS n FROM modification WHERE lot_id = ? AND table_nom = 'mot_cle' AND operation = 'modifier'").get(r4.lot).n, 0);
+  assert.match(db.prepare('SELECT resume FROM modification_lot WHERE id = ?').get(r4.lot).resume, /verrouillé, n’en prend pas (le lien|la couleur)/);
 });
 
 test('un lien saisi devient la balise du seul mot-clé qui mène à sa page ; externe, dans un code, déjà là : gardé ; sinon 400 { champ, liens } qui renvoie au Glossaire', () => {

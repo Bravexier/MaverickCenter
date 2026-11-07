@@ -8,6 +8,7 @@ Usage (bibliothèque standard uniquement ; relançable, mêmes fichiers à l'ide
         [--xlsx <classeur.xlsx> | --sans-liens] --out client/src/content/wiki
     python3 -I tools/sheets/classes.py --dump <classes-v7.json> [--xlsx <classeur.xlsx> | --sans-liens] \
         --out client/src/content/wiki --verifier
+    (--vocabulaire <mot_cle.sql> : les mots-clés, data/rows/mot_cle.sql par défaut ; les protégés s'écrivent avec leur libellé courant)
 
 Régénération complète, notes de cellule comprises (le dump vient de xlsx_to_json.py ; corrections avant l'extracteur) :
 
@@ -115,7 +116,8 @@ Pages de capacités (capacites/<slug>.md) : frontmatter (listes YAML en ligne), 
     title      « <Nom> (<Classe>) » : nom de la capacité tel qu'écrit (aux espaces de bord près), nom de l'onglet ; si sa clé de wiki (text.mjs#normalize) est déjà prise par une autre capacité ou par
                une page de classe, « , niveau N » est ajouté
     aliases    []
-    tags       ["capacité de classe", "<classe en minuscules>", "<spécialité en minuscules si elle existe>"]
+    tags       ["capacité de classe", "<classe en minuscules>", "<spécialité en minuscules si elle existe>"] ; « capacité de classe » : le
+               libellé courant du mot-clé protégé `capacite-de-classe` (vocabulaire, --vocabulaire), absent s'il n'y est pas
     summary    l'effet entier s'il tient sur une ligne de 120 caractères au plus, sinon sa première phrase ; si la première
                ligne n'est qu'une étiquette entre parenthèses (« (Rage) », « (Posture Focus) », « (Contre Neutre) »...) et que
                l'effet est sur la ligne suivante, l'étiquette suivie de la première phrase de cette ligne (extrait littéral,
@@ -220,7 +222,10 @@ FILE_ID = "1Pyg4GSUlFrvNaTg3bi6uXlehg1MuRHmkyfPO6s5K72I"
 URL = "https://docs.google.com/spreadsheets/d/%s/edit" % FILE_ID
 CATEGORY = "classes"
 CAP_CATEGORY = "capacites"
-CAP_TAG = "capacité de classe"
+# Mots-clés protégés (client/src/lib/mots-cles.mjs#MOTS_CLES_PROTEGES) : posés par leur id, écrits dans `tags:` avec leur libellé courant
+# (protected_tag : tools/db/maverick.py#libelle_protege), jamais par leur écriture, qu'un autre mot-clé pourrait prendre sur le site de dev.
+CAP_TAG = "capacite-de-classe"   # chaque fiche de capacité
+CLASS_TAG = "classe"             # chaque page de classe
 # Les cartouches de spécialité d'une même ligne (« Danseur » / « Ménestrel ») s'excluent : True les relie par
 # choix_exclusif_avec (comme les autres capacités d'une même ligne) ; False ne laisse que la clé `specialite` les distinguer.
 CARTOUCHES_EXCLUSIFS_DANS_CHOIX = True
@@ -238,15 +243,33 @@ GLOSSARY_TITLE = "Objets des inventaires de départ"
 SUMMARY_SHEET = "Sommaire"
 IGNORED_SHEETS = {"Combo stat"}  # statistiques d'usage : décrites dans le rapport, non publiées
 
-# Catégories du Sommaire (texte exact de la cellule d'en-tête) -> tag
+# Catégories du Sommaire (texte exact de la cellule d'en-tête) -> id du mot-clé protégé de la catégorie (libellés d'import : « càc », « distance »,
+# « magique », « hybride », « hybride animal », « spéciale »)
 CATEGORY_TAGS = {
-    "Classe Physique Corps à Corps": "càc",
+    "Classe Physique Corps à Corps": "cac",
     "Classe Physique Distance": "distance",
     "Classe Magique": "magique",
     "Classe Hybride": "hybride",
-    "Classe Hybride Animal": "hybride animal",
-    "Classe spéciale": "spéciale",
+    "Classe Hybride Animal": "hybride-animal",
+    "Classe spéciale": "speciale",
 }
+VOCABULAIRE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "data", "rows", "mot_cle.sql")   # --vocabulaire
+
+
+def protected_tag(ident):
+    """L'écriture de `tags:` du mot-clé protégé d'id `ident` : son libellé courant dans le vocabulaire (VOCABULAIRE, --vocabulaire), ou None s'il n'y
+    est pas (non écrit : un import ne crée jamais de mot-clé). tools/db/maverick.py, chargé par son chemin : `python3 -I` n'ajoute pas tools/db à
+    sys.path."""
+    dossier = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "db")
+    if dossier not in sys.path:
+        sys.path.insert(0, dossier)
+    import maverick
+    return maverick.libelle_protege(ident, VOCABULAIRE)
+
+
+def present(tags):
+    """Les étiquettes écrites : sans celles d'un mot-clé protégé absent du vocabulaire (None)."""
+    return [t for t in tags if t is not None]
 # Catégories dont les classes portent le nom d'une race : leur titre peut être celui de la page de la race (aucun suffixe).
 SHARED_WITH_RACE_CATEGORIES = {"Classe Hybride Animal"}
 
@@ -1207,7 +1230,7 @@ def capacity_summary(effect):
 
 def render_capacity(cap):
     ab = cap["ab"]
-    tags = [CAP_TAG, cap["sheet"].lower()] + ([cap["spec"].lower()] if cap["spec"] else [])
+    tags = present([protected_tag(CAP_TAG), cap["sheet"].lower()] + ([cap["spec"].lower()] if cap["spec"] else []))
     L = ["---", "title: " + yaml_str(cap["title"]), "aliases: []", "tags: " + yaml_list(tags)]
     summary = capacity_summary(ab["desc"])
     if summary:
@@ -1896,7 +1919,7 @@ def verify(args):
             if f.get("niveau") != a["niveau"] or f.get("ligne") != a["row"] or f.get("nature") != a["nature"]:
                 failures.append("%s : niveau/ligne/nature %r/%r/%r au lieu de %r/%r/%r"
                                 % (where, f.get("niveau"), f.get("ligne"), f.get("nature"), a["niveau"], a["row"], a["nature"]))
-            wanted_tags = [CAP_TAG, name.lower()] + ([a["spec"].lower()] if a["spec"] else [])
+            wanted_tags = present([protected_tag(CAP_TAG), name.lower()] + ([a["spec"].lower()] if a["spec"] else []))
             if f.get("tags") != wanted_tags:
                 failures.append("%s : tags %r au lieu de %r" % (where, f.get("tags"), wanted_tags))
             if f.get("classe") != "classes/" + slugify(name) or f.get("aliases") != [] or f.get("status") != "draft":
@@ -2261,7 +2284,7 @@ def build(sheets, class_names, links):
         category = category_of[name]
         title = name
         cfg = dict(sheet=name, title=title, slug=slugify(name), aliases=[], category=category,
-                   category_notes=summary["notes"].get(category, []), tags=["classe", CATEGORY_TAGS[category]])
+                   category_notes=summary["notes"].get(category, []), tags=present([protected_tag(CLASS_TAG), protected_tag(CATEGORY_TAGS[category])]))
         sh = Sheet(sheets[name])
         try:
             page = parse_class(sh, name)
@@ -2309,7 +2332,12 @@ def main(argv=None):
     ap.add_argument("--out", required=True, help="racine du wiki (client/src/content/wiki)")
     ap.add_argument("--verifier", action="store_true",
                     help="n'écrit rien : contrôle les pages déjà écrites contre le dump (relecture indépendante)")
+    ap.add_argument("--vocabulaire",
+                    help="les mots-clés (data/rows/mot_cle.sql par défaut) : libellé courant des mots-clés protégés écrits dans `tags:`")
     args = ap.parse_args(argv)
+    if args.vocabulaire:
+        global VOCABULAIRE
+        VOCABULAIRE = args.vocabulaire
 
     if args.verifier:
         return verify(args)

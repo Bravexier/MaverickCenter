@@ -172,17 +172,20 @@ export const RESSOURCES = [
       'vers l’abréviation d’un autre (409) ; la fusion (action « fusion », opération `fusionner_mots_cles`) verse ses pages dans l’autre mot-clé (une page ' +
       'qui avait les deux perd seulement l’ancien) et y recible ses balises, puis le retire du vocabulaire ; un mot-clé créé n’a pas de page ; il ne se ' +
       'supprime que si rien ne le mentionne (décision R196) : une page qui le porte ou une balise qui le cite, pages d’exemple comprises, refusent la ' +
-      'suppression (409, `mentions` : la liste des endroits, page, ou table et ligne), aucun texte n’est réécrit ; les mots-clés que le rejeu des ' +
-      'migrations 0090 et 0098 vise ne se suppriment pas (409) ; ceux dont le site se sert pour ranger ses pages (catégories de /classes/, « classe », « race », « race hybride », « capacité ' +
-      'de classe », « métier », « codex »), « Sort grenade » (décision R114) et « Sort fer » (décision R164), dont la fiche se sert, ne se renomment, ne se suppriment ni ne se ' +
-      'créent seuls (409), leur définition se modifie ; un mot-clé qui étiquette un sort (sous-ressource `mots-cles` des sorts, migrations 0067 et 0079) ne ' +
+      'suppression (409, `mentions` : la liste des endroits, page, ou table et ligne), aucun texte n’est réécrit. Le verrou (`verrou`, migration 0110, ' +
+      'décisions R218 et R219 ; en lecture seule : aucune route ne l’écrit, un POST ou un PATCH qui le porte est refusé en 400) : un mot-clé verrouillé ' +
+      '(1 : ceux qui mènent à une page, ceux des monnaies et ceux dont le site se sert pour ranger ses pages ou reconnaître un sort) ne se modifie ' +
+      'pas (409, quel que soit le champ), ne se supprime pas, même sans mention (409), et ne se fusionne pas dans un autre (409) ; il se pose encore ' +
+      'sur une page, se cite par une balise et reçoit la fusion d’un autre mot-clé ; un mot-clé créé n’est pas verrouillé (0), même avec un lien. ' +
+      'Un mot-clé non verrouillé se modifie entièrement (décision R195 : le site reconnaît ceux dont il se sert à leur id, jamais à leur écriture). ' +
+      'Un mot-clé qui étiquette un sort (sous-ressource `mots-cles` des sorts, migrations 0067 et 0079) ne ' +
       'se supprime ni ne se fusionne (409). Un lien (`url`, migration 0098 : les liens des textes devenus des balises) : une adresse interne, relative ' +
       'à la racine du site et sans le préfixe de déploiement (« /races/elfe/ », « /metiers/#metier-mineur »), dont le chemin mène à une page du site, ' +
       'une rubrique ou une route fixe (400 sinon ; l’ancre et la requête ne sont pas vérifiées) ; une balise du mot-clé mène à cette adresse, et un ' +
       'lien `[[…]]` ou `[texte](/…)` saisi dans un texte devient la balise du seul mot-clé qui mène à sa page (400 s’il n’y en a aucun ou plusieurs). ' +
       'Une couleur (`couleur`) : « #rrggbb » (minuscules) ou « <famille>:<id> » d’une couleur de la palette du site (« classe:melee », 400 sinon). ' +
-      'Les deux se modifient pour tous les mots-clés, protégés compris ; vidés, NULL. Une fusion garde le lien et la couleur de la cible, et lui donne ' +
-      'ceux de la source qu’elle n’a pas.',
+      'Les deux se modifient pour tout mot-clé non verrouillé ; vidés, NULL. Une fusion garde le lien et la couleur de la cible, et lui donne ' +
+      'ceux de la source qu’elle n’a pas, sauf à une cible verrouillée, qui garde les siens.',
     table: 'mot_cle',
     libelle: 'libelle',
     enfants: [
@@ -198,7 +201,7 @@ export const RESSOURCES = [
           'pas) ; aucune opération du site ne pose ni ne retire un mot-clé sur une page : en lecture seule.',
       },
     ],
-    liste: ['id', 'libelle', 'libelle_cle', 'description', 'abreviation', 'url', 'couleur'],
+    liste: ['id', 'libelle', 'libelle_cle', 'description', 'abreviation', 'url', 'couleur', 'verrou'],
     recherche: ['libelle', 'description', 'abreviation', 'url'],
     tri: 'libelle_cle',
     ecriture: { creer: 'mot_cle', supprimer: 'mot_cle' },
@@ -208,7 +211,8 @@ export const RESSOURCES = [
         nom: 'Fusionner dans un autre mot-clé',
         description:
           'Le mot-clé rejoint `dans` (l’identifiant d’un autre mot-clé) : ses pages passent à `dans` (une page qui avait les deux perd seulement ' +
-          'l’ancien), puis il quitte le vocabulaire ; ni l’un ni l’autre ne peut être un mot-clé dont le site se sert ou qui étiquette un sort (409).',
+          'l’ancien), puis il quitte le vocabulaire ; le mot-clé fusionné ne peut pas être verrouillé (décisions R218, R219 : 409), `dans` le peut ' +
+          '(il garde alors son lien et sa couleur) ; ni l’un ni l’autre ne peut étiqueter un sort (409).',
         op: 'fusionner_mots_cles',
       },
     ],

@@ -270,11 +270,11 @@ test('R183 (8), Q-F : chaque définition que la 0090 crée ou fusionne commence 
 test('R183 (8), Q-G : « Classe » et « Métier », même id et même libelle_cle ; les étiquettes protégées qui rangent les pages les retrouvent', () => {
   for (const [id, libelle] of [['classe', 'Classe'], ['metier', 'Métier']]) {
     assert.equal(dImport(id, 'libelle'), libelle, `${id} : le libellé écrit par la migration`);
-    // l'état courant : une étiquette protégée ne change pas de clé (lib/mots-cles.mjs#MOTS_CLES_PROTEGES)
+    assert.equal(dImport(id, 'libelle_cle'), id, `${id} : la même clé, écrite par la migration`);
+    // l'état courant : une étiquette protégée se reconnaît à son id (lib/mots-cles.mjs#MOTS_CLES_PROTEGES) ; son libellé se modifie (décision R195)
     const m = motCle(id);
-    assert.equal(m.libelle_cle, id);
     assert.equal(normalize(m.libelle), m.libelle_cle);
-    assert.ok(MOTS_CLES_PROTEGES.has(m.libelle_cle), `${id} : protégé par sa clé`);
+    assert.ok(MOTS_CLES_PROTEGES.has(m.id), `${id} : protégé par son id`);
     assert.ok(db.prepare('SELECT count(*) AS n FROM page_tag WHERE tag_id = ?').get(id).n > 0, `${id} : toujours posé sur ses pages`);
   }
 });

@@ -5,6 +5,7 @@ Usage (bibliothèque standard uniquement ; relançable, mêmes fichiers à l'ide
 
     python3 -I tools/sheets/races.py --dump <races-index.json> --dump <fiche-auto-v15.json> --dump <les-races.json> \
         --out /home/user/MaverickCenter/client/src/content/wiki
+    (--vocabulaire <mot_cle.sql> : les mots-clés, data/rows/mot_cle.sql par défaut ; le mot-clé protégé `race` s'écrit avec son libellé courant)
 
 Les trois dumps sont obligatoires ; chacun est reconnu à son contenu (l'ordre des `--dump` n'a pas d'importance) :
 l'index des races (une seule feuille), la fiche personnage (onglets « Race », « Bonus Race », « Accessibilité de
@@ -227,7 +228,26 @@ import unicodedata
 
 CATEGORY = "races"
 STATUS = "draft"
-TAGS = ["race"]
+TAG_RACE = "race"   # id du mot-clé protégé posé sur chaque page de race (protected_tag)
+VOCABULAIRE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "data", "rows", "mot_cle.sql")   # --vocabulaire
+
+
+def protected_tag(ident):
+    """L'écriture de `tags:` du mot-clé protégé d'id `ident` (client/src/lib/mots-cles.mjs#MOTS_CLES_PROTEGES : posé par son id, jamais par son
+    écriture, qu'un autre mot-clé pourrait prendre sur le site de dev) : son libellé courant dans le vocabulaire (VOCABULAIRE, --vocabulaire), ou None
+    s'il n'y est pas (non écrit : un import ne crée jamais de mot-clé). tools/db/maverick.py#libelle_protege, chargé par son chemin : `python3 -I`
+    n'ajoute pas tools/db à sys.path."""
+    dossier = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "db")
+    if dossier not in sys.path:
+        sys.path.insert(0, dossier)
+    import maverick
+    return maverick.libelle_protege(ident, VOCABULAIRE)
+
+
+def tags_of_race():
+    """Le `tags:` d'une page de race : le mot-clé protégé `race` (son libellé courant), rien s'il n'est pas au vocabulaire."""
+    return [t for t in [protected_tag(TAG_RACE)] if t is not None]
+
 
 INDEX_TITLE = "Les races"
 INDEX_ID = "150Q6SJi4ft0oROtwT6snMAZUdWMVtkblxwYY9TqxV4Q"
@@ -1665,7 +1685,7 @@ def render_page(ctx):
     L = ["---",
          "title: " + yaml_str(name),
          "aliases: []",
-         "tags: " + yaml_list(TAGS)]
+         "tags: " + yaml_list(tags_of_race())]
     if summary:
         L.append("summary: " + yaml_str(summary))
     L.append(MAGIC_FIELD + ": " + yaml_list(magic_ok))
@@ -3017,7 +3037,12 @@ def main(argv=None):
                     help="n'écrit rien : recalcule %s depuis les dumps (matrice + exceptions de RACE_DETAIL_OVERRIDES), relit "
                          "les onglets, refait les contrôles (couverture, magies, ethnies, écarts) et compare aux pages "
                          "existantes" % MAGIC_FIELD)
+    ap.add_argument("--vocabulaire",
+                    help="les mots-clés (data/rows/mot_cle.sql par défaut) : libellé courant des mots-clés protégés écrits dans `tags:`")
     args = ap.parse_args(argv)
+    if args.vocabulaire:
+        global VOCABULAIRE
+        VOCABULAIRE = args.vocabulaire
     if args.verifier:
         run_verifier(args.dump, args.out)
         return

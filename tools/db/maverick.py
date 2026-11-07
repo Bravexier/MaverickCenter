@@ -93,7 +93,8 @@ def mot_cle(db, libelle):
     Le site de dev est la source du vocabulaire (historique_modification) : une écriture qu'un mot-clé a quittée (renommé) mène à lui ; celle d'un
     mot-clé fusionné, au mot-clé qui l'a reçu (quand une page est passée de l'un à l'autre : _vocabulaire_du_site) ; celle d'un mot-clé supprimé, et
     toute écriture inconnue du vocabulaire, ne mènent à rien : None (l'appelant ne pose pas le mot-clé). Un import ne supprime jamais un mot-clé ;
-    l'écriture d'un mot-clé existant ne change pas (elle se change sur /recherche/ du site de dev)."""
+    l'écriture d'un mot-clé existant ne change pas (elle se change sur /recherche/ du site de dev). Un importeur pose un mot-clé protégé par son id
+    (libelle_protege), pas par son écriture."""
     cle = normalize(libelle)
     if not cle:
         raise ValueError(f'mot-clé sans lettre ni chiffre : {libelle!r}')
@@ -132,6 +133,48 @@ def poser_les_mots_cles(db, page_id, libelles):
     for i, ident in poses:
         db.execute('INSERT INTO page_tag (page_id, ordre, tag_id) VALUES (?,?,?)', (page_id, i, ident))
     return inconnues
+
+
+# --------------------------------------------------------------------------------------------------------------------
+# Mots-clés protégés : ceux que le site lit par leur id ; un importeur les pose par leur id, jamais par leur écriture
+# --------------------------------------------------------------------------------------------------------------------
+# Copie des clés de client/src/lib/mots-cles.mjs#MOTS_CLES_PROTEGES (la source : catégories de classe, colonnes de /classes/, race hybride, don de classe,
+# classe, race, métier, codex, étiquettes de sort ; décision R195 : le site les reconnaît à leur id). Test : client/test/mots-cles-python.test.mjs.
+MOTS_CLES_PROTEGES = frozenset({
+    'cac', 'distance', 'magique', 'hybride', 'hybride-animal', 'speciale', 'race-hybride', 'capacite-de-classe', 'classe', 'race', 'metier', 'codex',
+    'sort-grenade', 'sort-fer'})
+
+VOCABULAIRE = os.path.join(HERE, '..', '..', 'data', 'rows', 'mot_cle.sql')   # le vocabulaire courant (export de la table mot_cle)
+_LIBELLES = {}   # chemin du vocabulaire -> {id: libellé courant}
+
+
+def libelles_du_vocabulaire(chemin=VOCABULAIRE, schema=SCHEMA):
+    """{id: libellé courant} des mots-clés d'un export de la table mot_cle (data/rows/mot_cle.sql par défaut) ; {} s'il n'existe pas."""
+    cle = (os.path.abspath(chemin), os.path.abspath(schema))
+    if cle not in _LIBELLES:
+        libelles = {}
+        if os.path.exists(chemin):
+            with open(schema, encoding='utf-8') as f:
+                table = re.search(r'CREATE TABLE mot_cle \([\s\S]*?\) STRICT;', f.read()).group(0)
+            db = sqlite3.connect(':memory:')
+            db.execute(table)
+            with open(chemin, encoding='utf-8') as f:
+                db.executescript(f.read())
+            libelles = dict(db.execute('SELECT id, libelle FROM mot_cle'))
+            db.close()
+        _LIBELLES[cle] = libelles
+    return _LIBELLES[cle]
+
+
+def libelle_protege(ident, chemin=VOCABULAIRE, schema=SCHEMA):
+    """L'écriture à mettre dans le `tags:` d'une page pour y poser le mot-clé protégé d'id `ident` : son libellé courant (vocabulaire `chemin`), ou None
+    s'il n'est pas au vocabulaire (l'importeur ne l'écrit pas : un import ne crée jamais de mot-clé, migration 0056). ValueError pour un id non protégé.
+    Le libellé courant mène à son mot-clé et à lui seul (libelle_cle unique, que mot_cle() cherche d'abord) : un autre mot-clé qui prendrait l'écriture
+    d'origine d'un protégé (« codex ») ne reçoit pas ses pages. mot_cle() ne résout pas l'id d'un protégé avant le libellé : db:sync-pages relit aussi
+    les `tags:` qu'écrit db:export-pages (libellés courants), où cette écriture serait celle de l'autre mot-clé."""
+    if ident not in MOTS_CLES_PROTEGES:
+        raise ValueError(f'{ident!r} : pas un mot-clé protégé (client/src/lib/mots-cles.mjs#MOTS_CLES_PROTEGES)')
+    return libelles_du_vocabulaire(chemin, schema).get(ident)
 
 
 def lire_schema(chemin=SCHEMA):

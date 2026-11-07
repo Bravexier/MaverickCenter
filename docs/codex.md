@@ -73,7 +73,8 @@ vocabulaire géré sur le site (migration 0043, page Recherche) : une page dont 
 modifiée (gardée telle quelle à l'écriture, ses mots-clés non comparés au document : sinon l'ancienne écriture reviendrait). Depuis la migration 0056
 (glossaire), un import ne crée jamais de mot-clé : le script n'écrit que les mots-clés du vocabulaire (`data/rows/mot_cle.sql`, option `--vocabulaire` ;
 `vocabulaire()` → `Vocabulaire`, même règle que `tools/db/maverick.py#mot_cle`), dans son écriture ; les étiquettes de partie (« divinité », « faction »…) ne sont plus
-dans le vocabulaire, chaque page ne porte que « codex ». `--verifier` refait le découpage attendu avec le vocabulaire **de l'état d'import**
+dans le vocabulaire, chaque page ne porte que « codex », posé par son id (`MOT_CLE_DU_CODEX`, `Vocabulaire.protege` : son libellé courant, jamais le
+mot-clé qui aurait pris l'écriture « codex » ; `docs/sources.md`). `--verifier` refait le découpage attendu avec le vocabulaire **de l'état d'import**
 (`Vocabulaire(…, etat_d_import=True)` : l'historique du site rejoué à l'envers sur `mot_cle`) : un mot-clé que le site a supprimé (R196 : seulement
 s'il n'est mentionné nulle part), créé ou déplacé (adresse changée) ne change pas les renvois que l'import a écrits (par ex. deux mots-clés pour une
 page, renvoi en texte simple, dont l'un est supprimé). L'écriture des pages garde le vocabulaire courant (une balise ne cite qu'un mot-clé qui existe).

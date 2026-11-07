@@ -53,7 +53,9 @@ const retiresPar = (r) => REECRITURES_APRES_0098.filter((t) => t.table === r.tab
 const baliseOuReecriture = (r, v) => v.includes(r.balise) || retiresPar(r).some((t) => v.includes(t.apres));
 
 test('0098 : couleur et url en dernier dans mot_cle et dans v_mot_cle', () => {
-  assert.deepEqual(db.prepare('PRAGMA table_info(mot_cle)').all().map((c) => c.name).slice(-3), ['abreviation', 'couleur', 'url']);
+  // les colonnes ajoutées après la 0098 viennent ensuite (`verrou`, 0110 : décisions R218, R219)
+  const AJOUTEES_APRES_0098 = new Set(['verrou']);
+  assert.deepEqual(db.prepare('PRAGMA table_info(mot_cle)').all().map((c) => c.name).filter((c) => !AJOUTEES_APRES_0098.has(c)).slice(-3), ['abreviation', 'couleur', 'url']);
   assert.deepEqual(db.prepare('PRAGMA table_info(v_mot_cle)').all().map((c) => c.name).slice(-3), ['abreviation', 'couleur', 'url']);
   assert.equal(db.prepare('PRAGMA user_version').get().user_version >= 98, true);
 });

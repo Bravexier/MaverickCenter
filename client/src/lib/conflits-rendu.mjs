@@ -102,6 +102,8 @@ export function raisonDuChoix(conflit, n) {
     return 'impossible ici';
   }
   if (n === 2) return conflit.refus_2 ? `la règle livrée ne se recalcule pas : ${conflit.refus_2}` : 'impossible ici';
+  // une ligne gelée (un mot-clé verrouillé, une monnaie : décisions R218, R219) : la raison du service
+  if (conflit.refus_3) return conflit.refus_3;
   if (conflit.colonne && !conflit.saisie) return 'une image ne se saisit pas ici';
   return 'seul un champ se saisit à la main (pas une ligne entière)';
 }

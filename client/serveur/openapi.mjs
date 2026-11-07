@@ -223,15 +223,19 @@ function cheminsDeRessource(r, tag) {
       responses: { 200: reponse(`Une page de ${r.noms.toLowerCase()}.`, ref('schemas', 'Liste')), ...ERREURS_DE_LECTURE },
     },
   };
+  // une table figée (catalogue `figee` : lib/edition-modele.mjs#TABLES_FIGEES, les monnaies, décision R219 (3)) : ses écritures sont décrites, mais
+  // refusées en 409 ; ni corps de création ni clé de modification d'exemple (un client qui les enverrait tels quels serait refusé)
+  const figee = r.figee ?? null;
+  const refusDuGel = figee ? `\n\nRefusé (409) : ${figee}.` : '';
   if (r.capacites.creer) {
     const sansRetour = r.capacites.supprimer ? null : creationSansRetour(r.nom);
     chemins[base].post = {
       operationId: `creer_${id}`,
       tags: [tag],
       summary: `Créer : ${r.nom}`,
-      description: `Crée par ${ecritPar(r.creation)} : un lot du journal du site de dev. Rend 201, l’adresse de la ligne créée (Location) et son détail.${sansRetour ? `\n\n${sansRetour}` : ''}`,
+      description: `Crée par ${ecritPar(r.creation)} : un lot du journal du site de dev. Rend 201, l’adresse de la ligne créée (Location) et son détail.${sansRetour ? `\n\n${sansRetour}` : ''}${refusDuGel}`,
       ...(sansRetour ? { 'x-sans-retour': sansRetour } : {}),
-      requestBody: corpsDeCreation(r.creation, r.exemple, { sansExemple: Boolean(sansRetour), quoi: r.nom.toLowerCase() }),
+      requestBody: corpsDeCreation(r.creation, r.exemple, { sansExemple: Boolean(sansRetour) || Boolean(figee), quoi: r.nom.toLowerCase() }),
       responses: { 201: reponse('Créé.', ref('schemas', 'DetailEcrit'), { headers: { Location: { schema: { type: 'string' } }, ETag: { schema: { type: 'string' } } } }), ...ERREURS_D_ECRITURE },
     };
   }
@@ -258,9 +262,9 @@ function cheminsDeRessource(r, tag) {
       operationId: `modifier_${id}`,
       tags: [tag],
       summary: `Modifier : ${r.nom}`,
-      description: `Modifie les colonnes envoyées par ${r.modification ? ecritPar(r.modification) : 'le service d’édition'} (un lot du journal) ; If-Match (facultatif) : la version lue, sinon 409 avec la version à jour.`,
-      parameters: [...cleDExemple, ref('parameters', 'IfMatch')],
-      requestBody: corpsDeModification(r.colonnes, r.extensions, r.exemple, r.hors_colonnes),
+      description: `Modifie les colonnes envoyées par ${r.modification ? ecritPar(r.modification) : 'le service d’édition'} (un lot du journal) ; If-Match (facultatif) : la version lue, sinon 409 avec la version à jour.${refusDuGel}`,
+      parameters: [...(r.exemple?.gelee ? [] : cleDExemple), ref('parameters', 'IfMatch')],
+      requestBody: corpsDeModification(r.colonnes, r.extensions, r.exemple?.gelee ? null : r.exemple, r.hors_colonnes),
       responses: { 200: reponse('Modifié (lot : null si rien ne changeait).', ref('schemas', 'DetailEcrit')), ...ERREURS_D_ECRITURE },
     };
   }
@@ -271,7 +275,7 @@ function cheminsDeRessource(r, tag) {
       summary: `Supprimer : ${r.nom}`,
       description: r.suppression.operation
         ? `Retire la ligne par ${ecritPar(r.suppression)} ; elle se repose par POST. If-Match facultatif.`
-        : `Supprime par ${ecritPar(r.suppression)} ; ce que les fiches de personnage en avaient leur est retiré avec une note datée (décision R42 : réponse \`fiches\`). If-Match facultatif.`,
+        : `Supprime par ${ecritPar(r.suppression)} ; ce que les fiches de personnage en avaient leur est retiré avec une note datée (décision R42 : réponse \`fiches\`). If-Match facultatif.${refusDuGel}`,
       // une suppression d'entité ne se défait pas (identifiant figé, retraits des fiches) ; une ligne retirée par une opération du lot se repose
       ...(r.suppression.operation ? {} : { 'x-sans-retour': SUPPRESSION_SANS_RETOUR }),
       parameters: [ref('parameters', 'IfMatch')],

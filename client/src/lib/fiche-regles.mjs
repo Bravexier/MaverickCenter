@@ -58,10 +58,13 @@ const parCle = (rows, cle, valeur = (r) => r) => {
   return m;
 };
 
-/** Entrées minimales (id, titre, tags) des pages de races et de classes : pour réutiliser raceKind et la couleur de la catégorie (classeDUneClasse), comme /races/ et /classes/. */
+/**
+ * Entrées minimales (id, titre, mots-clés par id) des pages de races et de classes : pour réutiliser raceKind et la couleur de la catégorie
+ * (classeDUneClasse), comme /races/ et /classes/ ; les mots-clés lus par leur id (page_tag.tag_id : décision R195, un renommage ne change rien).
+ */
 function entreesDesPages(db) {
-  const tags = parCle(lignes(db, "SELECT t.page_id, m.libelle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE t.page_id LIKE 'classes/%' OR t.page_id LIKE 'races/%' ORDER BY t.page_id, t.ordre"), 'page_id', (r) => r.libelle);
-  return lignes(db, "SELECT id, titre FROM page WHERE type IN ('classes', 'races')").map((p) => ({ id: p.id, data: { title: p.titre, tags: tags.get(p.id) ?? [] } }));
+  const motsCles = parCle(lignes(db, "SELECT page_id, tag_id FROM page_tag WHERE page_id LIKE 'classes/%' OR page_id LIKE 'races/%' ORDER BY page_id, ordre"), 'page_id', (r) => r.tag_id);
+  return lignes(db, "SELECT id, titre FROM page WHERE type IN ('classes', 'races')").map((p) => ({ id: p.id, data: { title: p.titre, mots_cles: motsCles.get(p.id) ?? [] } }));
 }
 
 // Les « sauf » d'une maîtrise au choix écrits autrement que le bandeau de leur famille (décision R138), rattachés dans lib/maitrise-arme.mjs avec la
@@ -265,7 +268,7 @@ function reglesDeLaBase(db) {
     FROM race r JOIN race_onglet o ON o.race_id = r.id`)
     .sort((a, b) => rangDeRace(a.id) - rangDeRace(b.id) || a.nom.localeCompare(b.nom, 'fr'))
     .map((r) => {
-      const entree = entrees.find((e) => e.id === r.id) ?? { id: r.id, data: { title: r.nom, tags: [] } };
+      const entree = entrees.find((e) => e.id === r.id) ?? { id: r.id, data: { title: r.nom, mots_cles: [] } };
       const nature = raceKind(entrees, entree);
       return {
         // sa couleur : la classe de sa nature (lib/palette-css.mjs, famille `race`, celle de /races/ et des pages de race), jamais un hex
@@ -471,7 +474,7 @@ function reglesDeLaBase(db) {
     FROM classe c JOIN categorie_classe k ON k.id = c.categorie_id ORDER BY c.ordre`)
     .map((c) => {
       const dons = capacites.get(c.id) ?? [];
-      const entree = entrees.find((e) => e.id === c.id) ?? { id: c.id, data: { title: c.nom, tags: [] } };
+      const entree = entrees.find((e) => e.id === c.id) ?? { id: c.id, data: { title: c.nom, mots_cles: [] } };
       const parSpecialite = (specialiteId) =>
         groupesDeChoix(dons.filter((d) => d.nature === 'choix' && d.specialite_id === specialiteId).map((d) => ({ ...d, alternatives: alternatives.get(d.id) ?? [] })))
           .filter((g) => g.options.length > 1)

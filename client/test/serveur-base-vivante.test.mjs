@@ -159,13 +159,14 @@ test('une page qui a des [[liens]] supprimée sur le site, puis la base refaite 
   assert.ok(sortant && vise, 'des métiers liés dans les règles');
   const vivante = ouvrirBaseVivante(chemin);
   // depuis la migration 0098, un métier visé par un lien est l'adresse d'un mot-clé : le service refuse sa suppression tant que ce lien reste
-  // (serveur/edition.mjs#refuserSiUnMotCleYMene) ; le même lot le vide d'abord
+  // (serveur/edition.mjs#refuserSiUnMotCleYMene) ; le même lot le vide d'abord. Un mot-clé à adresse est verrouillé depuis la migration 0110 (décisions
+  // R218, R219) : le lot est écrit comme avant le verrou (`gel` faux), un lot ancien que le rejeu laisse passer (R219 (6))
   const parPage = citationsDesPages(vivante, [sortant, vise]);
   const motsCles = [sortant, vise].flatMap((id) => parPage.get(id).filter((c) => c.table === 'mot_cle' && c.comment === 'mot-cle').map((c) => c.cle.id));
   enregistrer(vivante, { page: 'metiers/', operations: [
     ...[...new Set(motsCles)].map((id) => ({ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { url: '' } })),
     ...[sortant, vise].map((id) => ({ op: 'supprimer', entite: 'metier', cle: { id } })),
-  ] });
+  ] }, { gel: false });
   assert.equal(vivante.prepare('SELECT count(*) AS n FROM lien WHERE page_id IN (?, ?) OR cible_page_id IN (?, ?)').get(sortant, vise, sortant, vise).n, 0, 'cascade de SQLite');
   vivante.close();
   const r = preparerBaseVivante({ regles: regles("UPDATE race SET nom = 'Humain (livraison)' WHERE id = 'races/humain'"), dossier });

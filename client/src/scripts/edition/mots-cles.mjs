@@ -1,36 +1,42 @@
 // Extension de l'éditeur : le glossaire des mots-clés sur /regles/glossaire/ (pages/regles/glossaire.astro ; réponses du propriétaire du 2026-11-06, Q6
 // et Q7 : toute la gestion du vocabulaire, jusque-là sur /recherche/, est sur le Glossaire, plus l'adresse et la couleur) — demandes du propriétaire :
-// « en mode édition seulement », « supprimer / ajouter / Modifier des mots clés. Une suppression d'un mot clé le supprimera de tous les endroits qui le
-// référencent » ; puis (2026-10-16, migration 0056) « Le mot-clé aura son ID, son texte et une description ».
+// « en mode édition seulement », « supprimer / ajouter / Modifier des mots clés » ; puis (2026-10-16, migration 0056) « Le mot-clé aura son ID, son
+// texte et une description ».
 //   - au chargement (surcouche) : la liste relue dans la base vivante (GET /api/edition/mots-cles/ : le site construit est en retard sur le site de dev),
 //     définitions, bulles et feuille des couleurs comprises (mots-cles-vivants.mjs suit le vocabulaire relu et réécrit la feuille avec `css`) ;
-//   - au crayon (debut) : une liste de gestion — pour chaque mot-clé, la balise à copier (« {{id}} »), son libellé modifiable (champ commun :
-//     mot_cle.libelle), son abréviation (mot_cle.abreviation, migration 0090 ; réponse du propriétaire du 2026-11-05 : « Modifiable et affichée » ; vidée,
-//     NULL), ses pages (leur nombre), son adresse (mot_cle.url, migration 0098 : une balise de ce mot-clé est un lien vers elle ; vidée, NULL), sa couleur
-//     (mot_cle.couleur : la liste des couleurs du site, groupées par famille, et le cercle d'une autre couleur, editeur.mjs#controleDeCouleur ; réponses
-//     Q3, Q4), sa définition (mot_cle.description), « Fusionner dans… » et « Supprimer » (mis en file, envoyés avec « Enregistrer ») ; un mot-clé dont le
-//     site se sert (lib/mots-cles.mjs) n'a ni saisie du libellé ni bouton, sa raison est écrite, mais sa définition, son abréviation, son adresse et sa
-//     couleur se modifient ; « + Ajouter un mot-clé » le crée tout de suite, avec sa définition, son abréviation, son adresse et sa couleur
-//     (ENTITES.mot_cle) ; ce que le service refuse (400 : abréviation, adresse ou couleur mal écrite ; 409 : abréviation prise par un autre mot-clé ;
-//     `champ`) l'est comme tout refus du lot ;
+//   - au crayon (debut) : une liste de gestion — pour chaque mot-clé, la balise à copier (« {{id}} »), son libellé (mot_cle.libelle ; décision R195 :
+//     modifiable pour tout mot-clé non verrouillé), son abréviation (mot_cle.abreviation, migration 0090 ; vidée, NULL), ses pages (leur nombre), son
+//     adresse (mot_cle.url, migration 0098 : une balise de ce mot-clé est un lien vers elle ; vidée, NULL), sa couleur (mot_cle.couleur : la liste des
+//     couleurs du site, groupées par famille, et le cercle d'une autre couleur, editeur.mjs#controleDeCouleur ; réponses Q3, Q4), sa définition
+//     (mot_cle.description), le menu déroulant des endroits qui le mentionnent (décision R196 (2), `mentions` du service : lib/mentions-des-mots-cles.mjs),
+//     « Fusionner dans… » et « Supprimer » (mis en file, envoyés avec « Enregistrer » ; « Supprimer » seulement quand rien ne le mentionne, R196) ;
+//     un mot-clé verrouillé (mot_cle.verrou = 1, migration 0110 ; décisions R218, R219 (7) : « un cadenas sur la ligne, champs désactivés, la raison en
+//     infobulle ») a son cadenas, ses champs désactivés, ni « Supprimer » ni « Fusionner dans… », mais reste une cible de fusion et garde son menu des
+//     mentions ; « + Ajouter un mot-clé » le crée tout de suite (non verrouillé, R219 (5)), avec sa définition, son abréviation, son adresse et sa couleur
+//     (ENTITES.mot_cle) ; ce que le service refuse (400 : abréviation, adresse ou couleur mal écrite ; 409 : abréviation prise par un autre mot-clé,
+//     mot-clé verrouillé, mot-clé mentionné ; `champ`) l'est comme tout refus du lot ;
 //   - à l'enregistrement (verifier) : ce que le service ne pourrait pas jouer est refusé avant toute question (noms échangés en boucle, mot-clé qui reçoit
 //     une fusion et serait supprimé) ; un renommage vers une écriture qui reste prise après le lot propose la fusion ; suppressions et fusions sont
-//     confirmées une fois, avec ce qu'elles retirent ; (operations) fusions et suppressions passent avant les renommages, chacun dans un ordre que le
-//     service accepte (lib/mots-cles-edition.mjs) ;
+//     confirmées une fois ; (operations) fusions et suppressions passent avant les renommages, chacun dans un ordre que le service accepte
+//     (lib/mots-cles-edition.mjs) ;
 //   - en sortant (fin, après un enregistrement aussi) : la liste relue dans la base vivante.
+// Hors du mode modification, rien ne montre le verrou (R219 (7)).
 // La page (src/scripts/glossaire.mjs : le filtre) relit la liste à l'évènement « glossaire:mots-cles » (detail.gestion : la liste de gestion est
 // affichée) ; chaque mot-clé y est un <li data-id data-cle data-n data-libelle data-abreviation data-definition data-url data-couleur> (absents sans
 // valeur), la ligne de lecture le HTML de la page construite (lib/mots-cles-balises.mjs#htmlDeLaLigneDuGlossaire), dont les balises de la définition
 // sont rendues par mots-cles-vivants.mjs dès qu'elle est posée. Les catégories des événements de la chronologie se gèrent sur /chronologie/.
 import { attributEd, cleDeLigne, ENTITES } from '../../lib/edition-modele.mjs';
-import { parLibelle, raisonDeProtection } from '../../lib/mots-cles.mjs';
+import { cheminDePage } from '../../lib/metiers.mjs';
+import { estVerrouille, parLibelle } from '../../lib/mots-cles.mjs';
 import {
-  cibleSaisie, ciblesDeFusion, compteDesElements, confirmationDesRetraits, erreurDesRetraits, examinerLesRenommages, operationsDuVocabulaire,
+  cibleSaisie, ciblesDeFusion, compteDesElements, confirmationDesRetraits, endroitsDesMentions, erreurDesRetraits, examinerLesRenommages, fusionOfferte,
+  INFOBULLE_DU_VERROU, operationsDuVocabulaire, suppressionOfferte,
 } from '../../lib/mots-cles-edition.mjs';
 import { htmlDeLaLigneDuGlossaire } from '../../lib/mots-cles-balises.mjs';
 import { definirLeVocabulaire } from './mots-cles-vivants.mjs';
 
-let vocabulaire = null; // [{ id, libelle, libelle_cle, description, abreviation, url, couleur, pages, protege }] de la base vivante ; null : pas encore lu
+// [{ id, libelle, libelle_cle, description, abreviation, url, couleur, pages, verrou, mentions }] de la base vivante ; null : pas encore lu
+let vocabulaire = null;
 const suppressions = new Set();
 const fusions = new Map(); // source → cible (« Fusionner dans… »)
 let renommagesEnFusion = new Map(); // source → cible : renommages acceptés en fusion (verifier), envoyés par operations
@@ -89,20 +95,25 @@ const bouton = (texte, classe) => {
   return b;
 };
 
-/** Remet chaque ligne de la liste de gestion dans l'état de la file : supprimée, fusionnée, ou rien ; boutons permis ou non. */
+/**
+ * Remet chaque ligne de la liste de gestion dans l'état de la file : supprimée, fusionnée, ou rien ; boutons permis ou non. Une ligne verrouillée n'a
+ * aucun bouton ; une ligne mentionnée n'a que « Fusionner dans… » (R196).
+ */
 function etatDesLignes() {
   for (const li of liste()?.querySelectorAll('li.ed-mot-cle') ?? []) {
     const { id } = li.dataset;
     const suppression = li.querySelector('.ed-mot-cle__supprimer');
     const fusion = li.querySelector('.ed-mot-cle__fusionner');
-    if (!suppression || !fusion) continue; // mot-clé protégé
+    if (!fusion) continue; // mot-clé verrouillé
     const supprime = suppressions.has(id);
     const cible = fusions.get(id);
     li.classList.toggle('ed-supprime', supprime);
     li.classList.toggle('ed-fusionne', Boolean(cible));
-    suppression.setAttribute('aria-pressed', String(supprime));
-    suppression.textContent = supprime ? 'Sera supprimé — annuler' : 'Supprimer';
-    suppression.disabled = Boolean(cible);
+    if (suppression) {
+      suppression.setAttribute('aria-pressed', String(supprime));
+      suppression.textContent = supprime ? 'Sera supprimé — annuler' : 'Supprimer';
+      suppression.disabled = Boolean(cible);
+    }
     fusion.setAttribute('aria-pressed', String(Boolean(cible)));
     fusion.textContent = cible ? `Sera fusionné dans « ${motCle(cible)?.libelle ?? cible} » — annuler` : 'Fusionner dans…';
     fusion.disabled = supprime;
@@ -123,7 +134,7 @@ function demanderLaCible(m, choisir) {
   titre.textContent = `Fusionner « ${m.libelle} » dans…`;
   const aide = document.createElement('p');
   aide.className = 'ed-aide';
-  aide.textContent = `Ses pages (${compteDesElements(m)}) porteront le mot-clé choisi, puis « ${m.libelle} » disparaîtra (à l’enregistrement). Les mots-clés dont le site se sert ne sont pas proposés.`;
+  aide.textContent = `Ses pages (${compteDesElements(m)}) porteront le mot-clé choisi, puis « ${m.libelle} » disparaîtra (à l’enregistrement).`;
   const label = document.createElement('label');
   const libelle = document.createElement('span');
   libelle.className = 'ed-libelle';
@@ -156,7 +167,7 @@ function demanderLaCible(m, choisir) {
     e.preventDefault();
     const cible = cibleSaisie(cibles, saisie.value);
     if (!cible) {
-      erreur.textContent = 'Choisissez un mot-clé de la liste (ni lui-même, ni un mot-clé dont le site se sert, ni un mot-clé qui disparaît).';
+      erreur.textContent = 'Choisissez un mot-clé de la liste (ni lui-même, ni un mot-clé qui disparaît).';
       erreur.hidden = false;
       return;
     }
@@ -166,9 +177,56 @@ function demanderLaCible(m, choisir) {
   dialogue.showModal();
 }
 
+// Le cadenas d'un mot-clé verrouillé (décision R219 (7)) : une icône au trait, du même dessin que le crayon de l'éditeur (editeur.mjs#CRAYON)
+const CADENAS = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+
 /**
- * Une ligne de la liste de gestion : la balise à copier, le libellé (saisie commune, sauf mot-clé protégé), l'abréviation (saisie commune, pour tous), ses
- * pages, l'adresse et la couleur (saisies communes, pour tous), la définition (saisie commune, pour tous), puis les boutons ou la raison de la protection.
+ * Le menu déroulant des endroits qui mentionnent le mot-clé (décision R196 (2) : « un menu déroulant qui liste toutes les pages qui mentionne le mot clé
+ * en question ») : une page en lien (lib/metiers.mjs#cheminDePage), un texte qu'aucune page ne montre par son nom ; null quand le service ne donne pas
+ * les mentions.
+ */
+function menuDesMentions(ed, m) {
+  const endroits = endroitsDesMentions(m);
+  if (!endroits) return null;
+  const menu = document.createElement('details');
+  menu.className = 'ed-mot-cle__mentions';
+  if (!endroits.length) menu.dataset.vide = '';
+  const resume = document.createElement('summary');
+  resume.textContent = endroits.length ? `${endroits.length} ${endroits.length > 1 ? 'mentions' : 'mention'}` : 'Aucune mention';
+  const ul = document.createElement('ul');
+  for (const x of endroits) {
+    const li = document.createElement('li');
+    if (x.page) {
+      const a = document.createElement('a');
+      a.href = `${ed?.base || '/'}${cheminDePage(x.page)}`;
+      a.textContent = x.libelle;
+      li.append(a);
+    } else {
+      li.textContent = x.libelle;
+    }
+    if (x.exemple) li.dataset.exemple = '';
+    ul.append(li);
+  }
+  menu.append(resume, ul);
+  return menu;
+}
+
+/**
+ * Un mot-clé verrouillé (décisions R218, R219 (7)) : ses saisies montées par l'éditeur désactivées (leur valeur ne change pas : aucune opération ne part),
+ * la raison en infobulle sur chaque champ (la saisie désactivée ne reçoit pas le pointeur : styles/edition/edition.css).
+ */
+function verrouiller(li) {
+  if (!li.hasAttribute('data-verrou')) return;
+  for (const champ of li.querySelectorAll('[data-ed]')) {
+    champ.title = INFOBULLE_DU_VERROU;
+    for (const saisie of champ.querySelectorAll('textarea, input, select, button')) saisie.disabled = true;
+  }
+}
+
+/**
+ * Une ligne de la liste de gestion : la balise à copier, le libellé, l'abréviation, ses pages, l'adresse, la couleur et la définition (saisies communes),
+ * puis ses outils : le menu des mentions (R196 (2)) et, pour un mot-clé verrouillé, le cadenas (R219 (7)), sinon « Fusionner dans… » et, s'il n'est
+ * mentionné nulle part, « Supprimer ».
  */
 function ligneDeGestion(ed, m) {
   const li = document.createElement('li');
@@ -176,81 +234,86 @@ function ligneDeGestion(ed, m) {
   // la balise à copier, son aide et la définition telle qu'enregistrée (balises comprises) : telles qu'écrites, jamais rendues (mots-cles-vivants.mjs)
   li.setAttribute('data-mots-cles-bruts', '');
   decrire(li, m);
+  const verrouille = estVerrouille(m);
   const balise = document.createElement('code');
   balise.className = 'ed-mot-cle__balise';
   balise.textContent = `{{${m.id}}}`;
   balise.title = `À écrire dans un texte pour citer ce mot-clé (en gras, sa définition en infobulle) ; « {{${m.id}|texte}} » pour un autre texte affiché, « {{${m.id}:}} » pour « Libellé : définition »${m.abreviation ? ` ; « {{${m.abreviation}}} » pour son abréviation` : ''}`;
-  const nom = document.createElement('span');
-  nom.className = 'ed-mot-cle__nom';
-  nom.textContent = m.libelle;
-  // l'abréviation, saisie commune pour tous (protégés compris), à côté du libellé ; vide : pas d'abréviation (NULL)
-  const abreviation = document.createElement('span');
-  abreviation.className = 'ed-mot-cle__abreviation';
-  abreviation.dataset.ed = attributEd('mot_cle', { id: m.id }, 'abreviation');
-  abreviation.textContent = m.abreviation ?? '';
+  // chaque champ, une saisie commune ; vide : NULL (sauf le libellé, requis)
+  const champ = (classe, colonne, valeur) => {
+    const span = document.createElement('span');
+    span.className = classe;
+    span.dataset.ed = attributEd('mot_cle', { id: m.id }, colonne);
+    span.textContent = valeur ?? '';
+    return span;
+  };
+  const nom = champ('ed-mot-cle__nom', 'libelle', m.libelle);
+  // l'abréviation, à côté du libellé
+  const abreviation = champ('ed-mot-cle__abreviation', 'abreviation', m.abreviation);
   const compte = document.createElement('span');
   compte.className = 'ed-mot-cle__compte';
   compte.textContent = compteDesElements(m);
-  // l'adresse (une balise de ce mot-clé est un lien vers elle) et la couleur, saisies communes pour tous (protégés compris) ; vides : NULL
-  const lien = document.createElement('span');
-  lien.className = 'ed-mot-cle__lien';
-  lien.dataset.ed = attributEd('mot_cle', { id: m.id }, 'url');
-  lien.textContent = m.url ?? '';
-  const couleur = document.createElement('span');
-  couleur.className = 'ed-mot-cle__couleur';
-  couleur.dataset.ed = attributEd('mot_cle', { id: m.id }, 'couleur');
-  couleur.textContent = m.couleur ?? '';
-  const definition = document.createElement('span');
-  definition.className = 'ed-mot-cle__definition';
-  definition.dataset.ed = attributEd('mot_cle', { id: m.id }, 'description');
-  definition.textContent = m.description ?? '';
+  // l'adresse (une balise de ce mot-clé est un lien vers elle) et la couleur
+  const lien = champ('ed-mot-cle__lien', 'url', m.url);
+  const couleur = champ('ed-mot-cle__couleur', 'couleur', m.couleur);
+  const definition = champ('ed-mot-cle__definition', 'description', m.description);
   li.append(balise, nom, abreviation, compte, lien, couleur, definition);
-  if (m.protege) {
-    li.classList.add('ed-mot-cle--protege');
-    const raison = document.createElement('span');
-    raison.className = 'ed-mot-cle__protege';
-    raison.textContent = `Protégé : il ${m.protege} (sa définition, son abréviation, son adresse et sa couleur se modifient).`;
-    li.append(raison);
-    return li;
-  }
-  nom.dataset.ed = attributEd('mot_cle', { id: m.id }, 'libelle');
   const outils = document.createElement('span');
   outils.className = 'ed-mot-cle__outils';
-  const fusion = bouton('Fusionner dans…', 'ed-outil ed-mot-cle__fusionner');
-  fusion.setAttribute('aria-pressed', 'false');
-  fusion.title = 'Ses pages portent un autre mot-clé, puis il disparaît (à l’enregistrement)';
-  fusion.addEventListener('click', () => {
-    if (fusions.delete(m.id)) {
-      etatDesLignes();
-      return;
-    }
-    // un mot-clé qui en reçoit un autre peut être fusionné à son tour : la file part dans l'ordre (« A » dans « X », puis « X » dans « Y ») ; un mot-clé
-    // déjà en file (supprimé ou fusionné) n'est jamais proposé comme cible (ciblesDeFusion)
-    demanderLaCible(m, (cible) => {
-      fusions.set(m.id, cible.id);
+  const mentions = menuDesMentions(ed, m);
+  if (mentions) outils.append(mentions);
+  li.append(outils);
+  if (verrouille) {
+    li.classList.add('ed-mot-cle--verrouille');
+    li.setAttribute('data-verrou', '');
+    const cadenas = document.createElement('span');
+    cadenas.className = 'ed-mot-cle__verrou';
+    cadenas.setAttribute('role', 'img');
+    cadenas.setAttribute('aria-label', INFOBULLE_DU_VERROU);
+    cadenas.title = INFOBULLE_DU_VERROU;
+    cadenas.innerHTML = CADENAS;
+    outils.append(cadenas);
+    return li;
+  }
+  if (fusionOfferte(m)) {
+    const fusion = bouton('Fusionner dans…', 'ed-outil ed-mot-cle__fusionner');
+    fusion.setAttribute('aria-pressed', 'false');
+    fusion.title = 'Ses pages portent un autre mot-clé, puis il disparaît (à l’enregistrement)';
+    fusion.addEventListener('click', () => {
+      if (fusions.delete(m.id)) {
+        etatDesLignes();
+        return;
+      }
+      // un mot-clé qui en reçoit un autre peut être fusionné à son tour : la file part dans l'ordre (« A » dans « X », puis « X » dans « Y ») ; un mot-clé
+      // déjà en file (supprimé ou fusionné) n'est jamais proposé comme cible (ciblesDeFusion)
+      demanderLaCible(m, (cible) => {
+        fusions.set(m.id, cible.id);
+        ed.marquerModifie();
+        etatDesLignes();
+      });
+    });
+    outils.append(fusion);
+  }
+  if (suppressionOfferte(m)) {
+    const suppression = bouton('Supprimer', 'ed-outil ed-outil--danger ed-mot-cle__supprimer');
+    suppression.setAttribute('aria-pressed', 'false');
+    suppression.title = 'Le retirer du vocabulaire (à l’enregistrement)';
+    suppression.addEventListener('click', () => {
+      if (suppressions.delete(m.id)) {
+        etatDesLignes();
+        return;
+      }
+      const recoit = [...fusions].find(([, cible]) => cible === m.id);
+      if (recoit) {
+        ed.annoncer(`« ${m.libelle} » doit recevoir « ${motCle(recoit[0])?.libelle} » (fusion en attente) : annulez cette fusion avant de le supprimer.`, 'erreur');
+        return;
+      }
+      suppressions.add(m.id);
       ed.marquerModifie();
       etatDesLignes();
     });
-  });
-  const suppression = bouton('Supprimer', 'ed-outil ed-outil--danger ed-mot-cle__supprimer');
-  suppression.setAttribute('aria-pressed', 'false');
-  suppression.title = 'Le retirer de toutes les pages qui le portent, puis du vocabulaire (à l’enregistrement)';
-  suppression.addEventListener('click', () => {
-    if (suppressions.delete(m.id)) {
-      etatDesLignes();
-      return;
-    }
-    const recoit = [...fusions].find(([, cible]) => cible === m.id);
-    if (recoit) {
-      ed.annoncer(`« ${m.libelle} » doit recevoir « ${motCle(recoit[0])?.libelle} » (fusion en attente) : annulez cette fusion avant de le supprimer.`, 'erreur');
-      return;
-    }
-    suppressions.add(m.id);
-    ed.marquerModifie();
-    etatDesLignes();
-  });
-  outils.append(fusion, suppression);
-  li.append(outils);
+    outils.append(suppression);
+  }
   return li;
 }
 
@@ -269,15 +332,19 @@ function dessinerLaGestion(ed) {
   ul.className = 'ed-mots-cles';
   ul.replaceChildren(...vocabulaire.map((m) => ligneDeGestion(ed, m)));
   ed.monterChamps(ul);
+  for (const li of ul.querySelectorAll('li[data-verrou]')) verrouiller(li);
   etatDesLignes();
   annoncerLaListe(true);
 }
 
-/** Un mot-clé créé : ajouté au vocabulaire et, en mode modification, à sa place dans la liste de gestion. */
+/**
+ * Un mot-clé créé : ajouté au vocabulaire et, en mode modification, à sa place dans la liste de gestion ; il n'est pas verrouillé (décision R219 (5)) et
+ * rien ne le mentionne encore.
+ */
 function ajouter(ed, ligne) {
   const m = {
     id: ligne.id, libelle: ligne.libelle, libelle_cle: ligne.libelle_cle, description: ligne.description ?? null, abreviation: ligne.abreviation ?? null,
-    url: ligne.url ?? null, couleur: ligne.couleur ?? null, pages: 0, protege: raisonDeProtection(ligne.libelle_cle),
+    url: ligne.url ?? null, couleur: ligne.couleur ?? null, pages: 0, verrou: 0, mentions: [],
   };
   vocabulaire = [...(vocabulaire ?? []).filter((x) => x.id !== m.id), m].sort(parLibelle);
   ed.lignes?.set(cleDeLigne('mot_cle', { id: m.id }), { ...ligne });
@@ -288,6 +355,7 @@ function ajouter(ed, ligne) {
   const suivant = vocabulaire[vocabulaire.indexOf(m) + 1];
   ul.insertBefore(li, suivant ? ul.querySelector(`li[data-id="${CSS.escape(suivant.id)}"]`) : null);
   ed.monterChamps(li);
+  verrouiller(li);
   annoncerLaListe(true);
   return li;
 }

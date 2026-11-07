@@ -1,11 +1,14 @@
 // La gestion du glossaire des mots-clés sur /regles/glossaire/ en mode modification (site de dev ; demande du propriétaire : « en mode édition seulement »,
-// « supprimer / ajouter / Modifier des mots clés. Une suppression d'un mot clé le supprimera de tous les endroits qui le référencent ») : ce que
-// l'extension de l'éditeur (src/scripts/edition/mots-cles.mjs) décide avant d'envoyer le lot, en fonctions pures (sans dépendance navigateur ni Astro).
-// Le vocabulaire est celui du service (GET /api/edition/mots-cles/ : [{ id, libelle, libelle_cle, description, pages, protege }], `pages` = le nombre de
-// pages qui le portent, `protege` = la raison pour laquelle un mot-clé dont le site se sert ne bouge pas, lib/mots-cles.mjs ; les événements de la
-// chronologie ont des catégories). Un mot-clé supprimé quitte aussi les textes qui le citent (sa balise devient son texte simple), un mot-clé fusionné y
-// est remplacé par l'autre (serveur/edition.mjs#reecrireLesBalises). Le service refait tous les contrôles (serveur/edition-chronologie.mjs) : ici, de quoi proposer la fusion avant l'envoi,
-// dire ce qu'une suppression retire et ranger les opérations du lot.
+// « supprimer / ajouter / Modifier des mots clés ») : ce que l'extension de l'éditeur (src/scripts/edition/mots-cles.mjs) décide avant d'envoyer le lot,
+// en fonctions pures (sans dépendance navigateur ni Astro). Le vocabulaire est celui du service (GET /api/edition/mots-cles/ : [{ id, libelle,
+// libelle_cle, description, abreviation, url, couleur, pages, verrou, mentions }], `pages` = le nombre de pages qui le portent ; `verrou` = 1 pour un
+// mot-clé verrouillé, migration 0110, décisions R218, R219 : ni ses champs ni sa suppression ni sa fusion dans un autre ne se font depuis le site, mais il
+// reçoit la fusion d'un autre ; `mentions` = les endroits qui le mentionnent, lib/mentions-des-mots-cles.mjs, décision R196). Un mot-clé ne se supprime
+// que si rien ne le mentionne (R196 : la cascade de la demande d'origine, « Une suppression d'un mot clé le supprimera de tous les endroits qui le
+// référencent », est abandonnée) ; un mot-clé fusionné est remplacé par l'autre dans les textes qui le citent (serveur/edition.mjs#reecrireLesBalises).
+// Le service refait tous les contrôles (serveur/edition-chronologie.mjs) : ici, de quoi proposer la fusion avant l'envoi, nommer les mentions, dire ce
+// qu'un retrait fait et ranger les opérations du lot.
+import { estVerrouille } from './mots-cles.mjs';
 import { normalize } from './text.mjs';
 
 const nombre = (n, un, plusieurs) => `${n} ${n > 1 ? plusieurs : un}`;
@@ -14,11 +17,50 @@ const nombre = (n, un, plusieurs) => `${n} ${n > 1 ? plusieurs : un}`;
 export const compteDesElements = ({ pages = 0 } = {}) => nombre(pages, 'page', 'pages');
 
 /**
- * Les mots-clés dans lesquels `id` peut être fusionné : ni lui-même, ni un mot-clé dont le site se sert (le service refuse la fusion dans les deux sens),
- * ni un mot-clé qui disparaît dans le même lot (`retires` : supprimé, ou fusionné à son tour dans un autre).
+ * L'infobulle du cadenas et des champs désactivés d'un mot-clé verrouillé, en mode modification (décision R219 (7) : « un cadenas sur la ligne, champs
+ * désactivés, la raison en infobulle » ; texte fixé par le leader-technique d'après R218 (3), « empêche purement et simplement toute suppression ou
+ * modification du site »).
+ */
+export const INFOBULLE_DU_VERROU = 'Verrouillé : ni modification ni suppression sur le site (R218).';
+
+/**
+ * Les endroits qui mentionnent un mot-clé (décision R196 (2) : « un menu déroulant qui liste toutes les pages qui mentionne le mot clé en question »),
+ * nommés une fois chacun : `mentions` du vocabulaire du service ([{ libelle, page: { id, titre } | null, exemple, … }], lib/mentions-des-mots-cles.mjs ;
+ * une page qui le porte et le cite n'en fait qu'un), dans leur ordre : [{ libelle, page: id | null, exemple }]. null quand le service ne les donne pas.
+ */
+export function endroitsDesMentions(m) {
+  if (!Array.isArray(m?.mentions)) return null;
+  const vus = new Map();
+  for (const x of m.mentions) {
+    const page = x.page?.id ?? null;
+    const libelle = String(x.libelle ?? page ?? '');
+    const k = `${page ?? ''}\u0000${libelle}`;
+    if (!vus.has(k)) vus.set(k, { libelle, page, exemple: Boolean(x.exemple) });
+  }
+  return [...vus.values()];
+}
+
+/**
+ * Vrai si la ligne du mot-clé offre « Supprimer » : jamais pour un mot-clé verrouillé (R218 (3)), et seulement quand la liste de ses mentions est vide
+ * (R196 (2) : « Le mot clé n'est supprimable que si cette liste est vide ») ; sans la liste (service qui ne la donne pas), le bouton reste et le service
+ * juge (409 avec `mentions`).
+ */
+export function suppressionOfferte(m) {
+  if (estVerrouille(m)) return false;
+  const endroits = endroitsDesMentions(m);
+  return endroits === null || endroits.length === 0;
+}
+
+/** Vrai si la ligne du mot-clé offre « Fusionner dans… » : jamais depuis un mot-clé verrouillé (la fusion le supprimerait : R218 (3), R219 (4)). */
+export const fusionOfferte = (m) => !estVerrouille(m);
+
+/**
+ * Les mots-clés dans lesquels `id` peut être fusionné : ni lui-même, ni un mot-clé qui disparaît dans le même lot (`retires` : supprimé, ou fusionné à
+ * son tour dans un autre). Un mot-clé verrouillé est une cible (R219 (4) : il « reçoit la fusion d'un autre mot-clé », sans en prendre l'adresse ni la
+ * couleur).
  */
 export function ciblesDeFusion(vocabulaire, id, { retires = new Set() } = {}) {
-  return vocabulaire.filter((m) => m.id !== id && !m.protege && !retires.has(m.id));
+  return vocabulaire.filter((m) => m.id !== id && !retires.has(m.id));
 }
 
 /** Le mot-clé que désigne la saisie du choix « Fusionner dans… » : celui des `cibles` qui s'écrit pareil (normalize du libellé) ; null sinon. */
@@ -48,9 +90,9 @@ function ordonner(elements, avant) {
 /**
  * Les renommages du lot (`renommages` : [{ id, avant, libelle }], les libellés saisis qui ont changé) confrontés au vocabulaire et à ce que le lot retire
  * (`retires` : mots-clés supprimés ou fusionnés, dont l'écriture se libère avant les renommages). Une écriture n'est « prise » que si elle le reste après le
- * lot : celle d'un mot-clé gardé dont l'écriture ne change pas. Rend `{ erreur }` pour un lot impossible (écriture vide, écriture d'un mot-clé dont le site
- * se sert, deux mots-clés renommés pareil, noms échangés en boucle), sinon `{ aFusionner }` : [{ id, avant, libelle, dans }] les renommages vers une
- * écriture prise (`dans` : le mot-clé qui la garde), que la page propose de changer en fusion. Les autres renommages passent tels quels, dans l'ordre où
+ * lot : celle d'un mot-clé gardé dont l'écriture ne change pas. Rend `{ erreur }` pour un lot impossible (écriture vide, deux mots-clés renommés pareil,
+ * noms échangés en boucle), sinon `{ aFusionner }` : [{ id, avant, libelle, dans }] les renommages vers une écriture prise (`dans` : le mot-clé qui la
+ * garde, verrouillé ou non : R219 (4)), que la page propose de changer en fusion. Les autres renommages passent tels quels, dans l'ordre où
  * chacun libère l'écriture du suivant (operationsDuVocabulaire) : « A » renommé librement et « B » qui prend l'ancien nom de « A », ou « B » fusionné dans
  * « C » et « A » qui prend l'ancien nom de « B ».
  */
@@ -70,7 +112,6 @@ export function examinerLesRenommages(vocabulaire, renommages, { retires = new S
     const cle = nouvelles.get(r.id);
     const autre = stables.get(cle);
     if (autre && autre.id !== r.id) {
-      if (autre.protege) return { erreur: `« ${r.libelle} » s’écrit comme « ${autre.libelle} », un mot-clé dont le site se sert (il ${autre.protege}) : choisissez une autre écriture.` };
       aFusionner.push({ ...r, dans: autre.id });
       continue;
     }
@@ -138,10 +179,8 @@ export function confirmationDesRetraits(vocabulaire, { suppressions = new Set(),
   const parId = new Map(vocabulaire.map((m) => [m.id, m]));
   const nom = (id) => `« ${parId.get(id)?.libelle ?? id} »`;
   const lignes = [];
-  for (const id of suppressions) {
-    const m = parId.get(id);
-    lignes.push(`- ${nom(id)} sera retiré de ${compteDesElements(m)} et des textes qui le citent (sa balise y devient son texte), puis supprimé.`);
-  }
+  // R196 : un mot-clé supprimé n'est mentionné nulle part (le service refuse sinon) ; plus rien n'est retiré des pages ni des textes
+  for (const id of suppressions) lignes.push(`- ${nom(id)} sera supprimé.`);
   for (const [source, cible] of fusions) {
     const m = parId.get(source);
     lignes.push(`- ${nom(source)} sera fusionné dans ${nom(cible)} : ses pages (${compteDesElements(m)}) et les textes qui le citent porteront ${nom(cible)}, puis ${nom(source)} disparaîtra.`);

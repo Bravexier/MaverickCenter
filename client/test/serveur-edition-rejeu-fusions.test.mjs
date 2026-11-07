@@ -2,7 +2,9 @@
 // « {{corruption|CR}} ») : serveur/edition.mjs#ancienneEcritureDesFusions lit ses balises et ses étiquettes de `cr` comme la migration a réécrit les
 // règles. Les deux constats de la relecture (tech-qualite) : sans lui, un tel lot écrivait « {{cr}} » tel quel (db:check le refuse), et voyait un faux
 // conflit sur un texte que la migration a reciblé (l'effet de « Aiguisage magique » : « les règles ont changé effets autrement »). Une écriture sur la
-// ligne `cr` elle-même reste un vrai conflit (choix : rien n'est reporté sur « Corruption »).
+// ligne `cr` elle-même reste un vrai conflit (choix : rien n'est reporté sur « Corruption »). Décision R211 (« Les rendre supprimables ») : la cible
+// supprimée depuis (elle se supprime dès que rien ne la mentionne), un tel lot écrit du texte simple et aucune étiquette vers elle. Les essais de
+// l'adaptateur choisissent l'état de la cible dans leur copie des règles (remise depuis l'import, ou retirée), sans supposer celui du site de dev.
 //   node --test test/serveur-edition-rejeu-fusions.test.mjs
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -18,6 +20,7 @@ import { ancienneEcritureDesFusions, FUSIONS_DE_MIGRATION, rejouerLeJournal } fr
 import { chargerJournal, journalExporte } from '../serveur/edition-journal.mjs';
 import { formesNonCanoniques, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
+import { baseDImport, lotsAvant, remettreDepuisLImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { reglesAvecDesMotsClesDEssai } from './aide-mots-cles.mjs';
 
@@ -27,6 +30,28 @@ const dossier = dossierTemporaire('rejeu-fusions');
 const regles = reglesAvecDesMotsClesDEssai(join(dossier, 'regles'));
 let n = 0;
 const vivante = () => ouvrirBaseVivante(preparerBaseVivante({ regles: regles.base, dossier: join(dossier, `b${(n += 1)}`) }).chemin);
+/** Les règles telles que la migration 0090 les a trouvées : la cible (`corruption`, créée par le site de dev avant elle) y est. */
+const dImport0090 = () => baseDImport({ garder: lotsAvant('0090') });
+/**
+ * Une copie des règles des tests, la cible d'une fusion de migration (`corruption`) présente (remise telle que la 0090 l'a trouvée si le site de dev l'a
+ * supprimée depuis : décision R211) ou absente (retirée, avec ses étiquettes).
+ */
+const reglesOuLaCible = ({ cible }) => {
+  const chemin = join(dossier, `copie-${(n += 1)}.db`);
+  cpSync(regles.base, chemin);
+  const db = new DatabaseSync(chemin);
+  const { cible: id } = FUSIONS_DE_MIGRATION[0];
+  if (cible) {
+    db.exec('PRAGMA foreign_keys = ON');
+    remettreDepuisLImport(db, 'mot_cle', { id }, { dImport: dImport0090() });
+  } else {
+    db.exec('PRAGMA foreign_keys = OFF');
+    for (const sql of ['DELETE FROM sort_mot_cle WHERE mot_cle_id = ?', 'DELETE FROM page_tag WHERE tag_id = ?', 'DELETE FROM mot_cle WHERE id = ?']) db.prepare(sql).run(id);
+  }
+  return db;
+};
+const modification = (table, operation, cle, avant, apres) => ({ lot_id: 'l', rang: 0, table_nom: table, operation, cle: JSON.stringify(cle),
+  avant: avant && JSON.stringify(avant), apres: apres && JSON.stringify(apres) });
 
 const SORT = 'magies/magie-de-la-corruption#sort:aiguisage-magique';
 const AJOUT_PAGE = '\n\nEssai de rejeu : {{corruption|CR}}, {{corruption:}} et {{corruption|la CR}}.\n\n| a | b |\n| --- | --- |\n| x | {{corruption\\|CR}} |\n';
@@ -39,15 +64,15 @@ test('FUSIONS_DE_MIGRATION : « CR » dans « Corruption » (migration 0090, R18
   assert.deepEqual(FUSIONS_DE_MIGRATION.map((f) => ({ ...f })), [{ source: 'cr', cible: 'corruption', texte: 'CR', migration: '0090' }]);
   const db = new DatabaseSync(regles.base, { readOnly: true });
   assert.equal(db.prepare("SELECT 1 FROM mot_cle WHERE id = 'cr'").get(), undefined);
-  assert.equal(db.prepare("SELECT abreviation FROM mot_cle WHERE id = 'corruption'").get().abreviation, 'CR');
   db.close();
+  // l'abréviation, telle que la migration l'a écrite (elle se modifie sur le site de dev)
+  assert.equal(dImport0090().prepare("SELECT abreviation FROM mot_cle WHERE id = 'corruption'").get().abreviation, 'CR');
 });
 
 test('adaptateur : balises (avant et apres, toute table), étiquettes de page et de sort (clé comprise, sans doublon) ; la ligne `cr` elle-même inchangée', () => {
-  const db = new DatabaseSync(regles.base, { readOnly: true });
+  const db = reglesOuLaCible({ cible: true });
   const adapter = ancienneEcritureDesFusions(db);
-  const m = (table, operation, cle, avant, apres) => ({ lot_id: 'l', rang: 0, table_nom: table, operation, cle: JSON.stringify(cle),
-    avant: avant && JSON.stringify(avant), apres: apres && JSON.stringify(apres) });
+  const m = modification;
   const texte = adapter(m('sort', 'modifier', { id: SORT }, { effets: 'a {{cr|CR}} b' }, { effets: '{{cr}} {{cr:}} {{cr :}} {{cr\\|x}} {{crane|y}} {{corruption|CR}}' }));
   assert.deepEqual(JSON.parse(texte.avant), { effets: 'a {{corruption|CR}} b' });
   assert.deepEqual(JSON.parse(texte.apres), { effets: '{{corruption|CR}} {{corruption:}} {{corruption:}} {{corruption\\|x}} {{crane|y}} {{corruption|CR}}' });
@@ -77,6 +102,67 @@ test('adaptateur : balises (avant et apres, toute table), étiquettes de page et
   const lu = m('sort', 'modifier', { id: SORT }, { effets: '{{cr|CR}}' }, { effets: '{{cr|CR}} x' });
   assert.equal(ancienneEcritureDesFusions(ancienne)(lu), lu);
   ancienne.close();
+});
+
+test('R211 : la cible supprimée depuis, l’adaptateur écrit du texte simple (le texte écrit, sinon « CR ») et les étiquettes vers `cr` sont sans effet', () => {
+  const db = reglesOuLaCible({ cible: false });
+  const adapter = ancienneEcritureDesFusions(db);
+  const m = modification;
+  const texte = adapter(m('sort', 'modifier', { id: SORT }, { effets: 'a {{cr|CR}} b' }, { effets: '{{cr}} {{cr|x}} {{crane|y}}' }));
+  assert.deepEqual(JSON.parse(texte.avant), { effets: 'a CR b' });
+  assert.deepEqual(JSON.parse(texte.apres), { effets: 'CR x {{crane|y}}' }, 'une autre balise reste');
+  // un texte mis en forme (Markdown), mode complet et case de tableau compris : aucune balise de `cr` ni de la cible
+  const page = db.prepare("SELECT id FROM page WHERE type = 'guide' ORDER BY id LIMIT 1").get().id;
+  const corps = adapter(m('page', 'modifier', { id: page }, { corps_md: 'x' }, { corps_md: AJOUT_PAGE_AVANT_0090 }));
+  const ecrit = JSON.parse(corps.apres).corps_md;
+  assert.doesNotMatch(ecrit, /\{\{(?:cr|corruption)\b/, ecrit);
+  assert.match(ecrit, /Essai de rejeu : CR, CR et la CR\./);
+  assert.match(ecrit, /\| x \| CR \|/);
+  // une étiquette de page ou de sort vers `cr` : sans effet (le mot-clé n'existe plus)
+  const page2 = db.prepare('SELECT id FROM page ORDER BY id LIMIT 1').get().id;
+  assert.equal(adapter(m('page_tag', 'inserer', { page_id: page2, ordre: 9 }, null, { page_id: page2, ordre: 9, tag_id: 'cr' })).sansEffet, true);
+  assert.equal(adapter(m('page_tag', 'modifier', { page_id: page2, ordre: 0 }, { tag_id: 'essai-glossaire-c' }, { tag_id: 'cr' })).sansEffet, true);
+  assert.equal(adapter(m('sort_mot_cle', 'inserer', { sort_id: SORT, mot_cle_id: 'cr' }, null, { sort_id: SORT, mot_cle_id: 'cr' })).sansEffet, true);
+  // la ligne `cr` elle-même : rendue telle quelle (le rejeu la met en conflit)
+  const surCr = m('mot_cle', 'modifier', { id: 'cr' }, { description: 'Ancienne.' }, { description: 'Nouvelle.' });
+  assert.equal(adapter(surCr), surCr);
+  db.close();
+});
+
+test('R211, rejeu : un lot d’avant 0090 rejoué sur des règles sans la cible n’écrit aucune balise vers elle ni vers `cr`, sans conflit', () => {
+  // le lot, fait par le service sur une base qui a la cible, puis récrit dans le journal comme le site de dev le notait avant la 0090
+  const site = vivante();
+  if (!site.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(FUSIONS_DE_MIGRATION[0].cible)) {
+    site.exec('PRAGMA foreign_keys = ON');
+    remettreDepuisLImport(site, 'mot_cle', { id: FUSIONS_DE_MIGRATION[0].cible }, { dImport: dImport0090() });
+  }
+  const page = site.prepare("SELECT id, corps_md FROM page WHERE type = 'guide' AND statut <> 'example' AND instr(corps_md, '{{') = 0 ORDER BY id LIMIT 1").get();
+  const r = traiter({ methode: 'POST', chemin: '/api/edition/', entetes: { 'content-type': 'application/json' },
+    corps: JSON.stringify({ page: `${page.id}/`, operations: [{ op: 'modifier', table: 'page', cle: { id: page.id }, valeurs: { corps_md: `${page.corps_md}${AJOUT_PAGE}` } }] }) },
+  { base: () => site, etat: () => ({}), edition: true });
+  assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  const journal = journalExporte(site);
+  site.close();
+  for (const m of journal.lots.flatMap((l) => l.modifications)) {
+    if (m.table === 'page' && typeof m.apres?.corps_md === 'string') m.apres.corps_md = m.apres.corps_md.replace(AJOUT_PAGE, AJOUT_PAGE_AVANT_0090);
+  }
+  // les règles sans la cible (supprimée sur le site de dev, rapatriée : R211)
+  const neuve = vivante();
+  neuve.exec('PRAGMA foreign_keys = OFF');
+  for (const sql of ['DELETE FROM sort_mot_cle WHERE mot_cle_id = ?', 'DELETE FROM page_tag WHERE tag_id = ?', 'DELETE FROM mot_cle WHERE id = ?']) {
+    neuve.prepare(sql).run(FUSIONS_DE_MIGRATION[0].cible);
+  }
+  neuve.exec('BEGIN');
+  chargerJournal(neuve, journal);
+  const bilan = rejouerLeJournal(neuve, {});
+  neuve.exec('COMMIT');
+  assert.equal(bilan.conflits, 0, JSON.stringify(bilan));
+  const corps = neuve.prepare('SELECT corps_md FROM page WHERE id = ?').get(page.id).corps_md;
+  assert.ok(corps.startsWith(page.corps_md), 'le texte d’avant');
+  const ajout = corps.slice(page.corps_md.length);
+  assert.doesNotMatch(ajout, /\{\{/, ajout);
+  assert.match(ajout, /Essai de rejeu : CR, CR et la CR\./);
+  neuve.close();
 });
 
 test('rejeu et db:appliquer-edition d’un lot d’avant 0090 : pas de faux conflit sur « Aiguisage magique », des balises canoniques (db:check), l’étiquette reciblée ; une écriture sur `cr` en conflit', { skip: sansPython }, () => {

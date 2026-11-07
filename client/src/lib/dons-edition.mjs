@@ -20,8 +20,8 @@ export const SPECIALITES_MAX = 2;
 /** Mots du type d'un don proposés à la saisie : ceux que lib/classe-champs.mjs#analyserTypeDeDon reconnaît (capacite.type n'est jamais vide). */
 export const TYPES_DE_DON_SAISIE = ['Passif', 'Actif', 'Action', 'Réaction', 'Variable'].map((valeur) => ({ valeur, libelle: valeur }));
 
-/** Mot-clé que portent toutes les fiches de dons (render_capacity : CAP_TAG). */
-export const MOT_CLE_DES_DONS = 'capacité de classe';
+/** L'id (figé) du mot-clé que portent toutes les fiches de dons (render_capacity : CAP_TAG, écrit « capacité de classe » à l'import ; décision R195). */
+export const MOT_CLE_DES_DONS = 'capacite-de-classe';
 
 const sansNull = (v) => v ?? '';
 
@@ -99,8 +99,8 @@ export function donneesDeDon(don, { specialites, donsDeLaClasse, alternatives = 
 }
 
 /**
- * Mots-clés de la fiche d'un nouveau don : « capacité de classe » seul, le mot-clé dont le site se sert pour ranger les fiches de dons (lib/mots-cles.mjs).
- * Depuis la migration 0056 (les mots-clés deviennent un glossaire, ceux des pages retirés), ni la classe ni la spécialité.
+ * Mots-clés (ids) de la fiche d'un nouveau don : « capacité de classe » seul, le mot-clé dont le site se sert pour ranger les fiches de dons
+ * (lib/mots-cles.mjs). Depuis la migration 0056 (les mots-clés deviennent un glossaire, ceux des pages retirés), ni la classe ni la spécialité.
  */
 export const motsClesDeDon = () => [MOT_CLE_DES_DONS];
 

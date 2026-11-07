@@ -11,7 +11,7 @@
 //   - le plan vivant pour la page (GET /api/edition/plan/ : planVivant).
 // Les onglets eux-mêmes (regles_onglet) ne changent jamais ici. Les outils communs du service (refus, ErreurEdition, creerPage, supprimerPage,
 // idDejaEmploye, A_COMPLETER) sont donnés par serveur/edition.mjs, sans import en retour. Node seulement (node:sqlite), sans dépendance.
-import { citationsBloquantes, citationsDe, citationsDesPages } from '../src/lib/citations-db.mjs';
+import { citationsBloquantes, citationsDe, citationsDesPages, motsClesVerrouillesQuiYMenent, refusDuMotCleVerrouille } from '../src/lib/citations-db.mjs';
 import { adresseDuGuide, NOMS_RESERVES, PAGES_ABSORBEES, PAGES_RETIREES, PAGES_SUPPRIMEES } from '../src/lib/livres.mjs';
 import { raisonsDeProtection } from '../src/lib/pages-protegees.mjs';
 import { racesParNature } from '../src/lib/races-db.mjs';
@@ -166,7 +166,8 @@ export function domainesDuPlan({ refus, ErreurEdition, creerPage, supprimerPage,
 
     /**
      * Une page des Règles retirée : 404 inconnue ; 400 si ce n'est pas une page d'un onglet des Règles ; 409 si une raison la protège (`details.raisons`
-     * : lib/pages-protegees.mjs) ; 409 si d'autres pages la citent (`details.citations` : lib/citations-db.mjs, sauf les pages d'exemple). Tout est
+     * : lib/pages-protegees.mjs) ; 409 si un mot-clé verrouillé y mène (décision R221, `details.mots_cles_verrouilles` : son lien ne change pas) ; 409
+     * si d'autres pages la citent (`details.citations` : lib/citations-db.mjs, sauf les pages d'exemple). Tout est
      * contrôlé avant la moindre écriture. Son entrée de menu est retirée, puis la page et ce qui la décrit (supprimerPage) ; son adresse donne la 404.
      */
     supprimer(ctx, cle) {
@@ -183,6 +184,9 @@ export function domainesDuPlan({ refus, ErreurEdition, creerPage, supprimerPage,
         throw new ErreurEdition(409, `« ${ligne.titre} » ne se supprime pas : ${raisons.map((r) => r.texte).join(' ; ')}.`, { page: id, raisons });
       }
       const citations = citationsBloquantes(citationsDe(db, id));
+      // un mot-clé verrouillé qui y mène : son lien ne se change ni ne se vide, la page reste (décision R221)
+      const verrouilles = motsClesVerrouillesQuiYMenent(db, citations);
+      if (verrouilles.length) throw new ErreurEdition(409, refusDuMotCleVerrouille(ligne.titre, verrouilles), { page: id, citations, mots_cles_verrouilles: verrouilles });
       if (citations.length) {
         const noms = [...new Set(citations.map((c) => c.libelle))];
         throw new ErreurEdition(409, `« ${ligne.titre} » est citée par ${noms.length > 1 ? `${noms.length} textes` : 'un texte'} (${noms.slice(0, 5).join(', ')}${noms.length > 5 ? '…' : ''}) : retirez d’abord ces liens.`,

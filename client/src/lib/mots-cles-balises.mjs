@@ -20,8 +20,10 @@
 //   - un texte de case (champs « ligne », « texte » : cases, effets, descriptions des tables, définitions des mots-clés) porte toujours le texte de chaque
 //     balise, « {{id|texte}} » (le libellé du moment si rien n'est écrit), et jamais le mode complet : il se lit sans le vocabulaire (texteSansBalises
 //     sans vocabulaire rend le texte affiché) — ce que lisent les découpages des importeurs et de l'édition, et la fiche de personnage.
-// Renommer un mot-clé ne réécrit aucun texte ; le supprimer remplace ses balises par leur texte simple (retirerLeMotCle), le fusionner les fait citer
-// l'autre (reciblerLeMotCle). Une balise que le vocabulaire n'a pas (un texte d'avant la suppression de son mot-clé) s'affiche en texte simple, sans gras.
+// Renommer un mot-clé ne réécrit aucun texte ; le fusionner fait citer l'autre à ses balises (reciblerLeMotCle). Il ne se supprime que si rien ne le
+// mentionne (décision R196 : lib/mentions-des-mots-cles.mjs), et un mot-clé verrouillé ni ne se modifie ni ne se supprime depuis le site (mot_cle.verrou,
+// migration 0110 ; décisions R218, R219) : retirerLeMotCle (ses balises en texte simple) ne sert plus qu'au rejeu des lots anciens du journal
+// (serveur/edition.mjs). Une balise que le vocabulaire n'a pas (un texte d'avant la suppression de son mot-clé) s'affiche en texte simple, sans gras.
 // Le texte d'une balise est du texte simple : sa mise en forme Markdown la couperait. Une capacité (de monstre, de classe) qui porte le nom d'un mot-clé
 // reste la capacité : seule une balise fait un mot-clé.
 // Rendu HTML (htmlAvecMotsCles, pageAvecMotsCles : le middleware du site, src/middleware.mjs ; le même HTML que src/scripts/edition/mots-cles-vivants.mjs) :
@@ -624,7 +626,7 @@ export function htmlDuNomDuMotCle({ id, libelle, abreviation }) {
 
 /**
  * L'abréviation de la monnaie dont `id` est le mot-clé (« RO » pour `ro`), ou null : un mot-clé de monnaie se reconnaît à son id, figé, celui de sa
- * monnaie (table `monnaie`, lib/monnaies.mjs#MONNAIES_DU_JEU : rf, ro, pp ; R183), jamais à son abréviation, qui se modifie sur /recherche/.
+ * monnaie (table `monnaie`, lib/monnaies.mjs#MONNAIES_DU_JEU : rf, ro, pp ; R183), jamais à son abréviation.
  */
 const abreviationDeLaMonnaie = (id) => Object.entries(MONNAIES_DU_JEU).find(([, x]) => x.id === id)?.[0] ?? null;
 

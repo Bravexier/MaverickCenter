@@ -2,8 +2,9 @@
 //
 // La catégorie vient de l'import : le Sommaire du classeur « Classe Maverick V7 » range chaque classe sous un intitulé
 // (« Classe Physique Corps à Corps », « Classe Physique Distance », « Classe Magique », « Classe Hybride Animal »,
-// « Classe Hybride », « Classe spéciale »), et l'extracteur le pose en tag sur la page. On regroupe d'après ces tags :
-// aucune catégorie n'est déduite du contenu d'une classe.
+// « Classe Hybride », « Classe spéciale »), et l'extracteur le pose en mot-clé sur la page (page_tag). On regroupe d'après ces mots-clés, reconnus
+// par leur id (figé), jamais par leur écriture : un mot-clé renommé sur le site de dev ne déplace aucune classe (décision R195) ; aucune catégorie
+// n'est déduite du contenu d'une classe.
 //
 // Les cinq catégories demandées par le propriétaire du projet, dans l'ordre des colonnes de /classes/ :
 //   Physiques Mêlée     = « Classe Physique Corps à Corps »
@@ -14,15 +15,16 @@
 // Exception décidée par le propriétaire : le Parleur, rangé « Physique Corps à Corps » par le classeur, est présenté
 // sous « Spéciales » (voir CLASS_OVERRIDES). Une classe sans catégorie reconnue n'est jamais perdue : elle va dans
 // « Non classées », sous « Spéciales ».
-import { normalize } from './text.mjs';
-
-/** key = ancre HTML ; tags = tags posés par l'import (comparés sans casse ni accents). */
+/**
+ * key = ancre HTML ; motsCles = ids des mots-clés que l'import pose (page_tag.tag_id : « càc », « distance », « magique », « hybride animal »,
+ * « hybride », « spéciale » à l'import), lus dans `data.mots_cles` d'une page (lib/wiki.ts, lib/pages-db.mjs#motsClesDesPages).
+ */
 export const CLASS_GROUPS = [
-  { key: 'melee', label: 'Physiques Mêlée', tags: ['càc'] },
-  { key: 'distance', label: 'Physiques Distance', tags: ['distance'] },
-  { key: 'magiques', label: 'Magiques', tags: ['magique'] },
-  { key: 'raciales', label: 'Raciales', tags: ['hybride animal'] },
-  { key: 'speciales', label: 'Spéciales', tags: ['hybride', 'spéciale'] },
+  { key: 'melee', label: 'Physiques Mêlée', motsCles: ['cac'] },
+  { key: 'distance', label: 'Physiques Distance', motsCles: ['distance'] },
+  { key: 'magiques', label: 'Magiques', motsCles: ['magique'] },
+  { key: 'raciales', label: 'Raciales', motsCles: ['hybride-animal'] },
+  { key: 'speciales', label: 'Spéciales', motsCles: ['hybride', 'speciale'] },
 ];
 
 /** Pages présentées ailleurs que dans la catégorie de leur tag : id de page -> clé de catégorie. */
@@ -33,18 +35,23 @@ const UNCLASSIFIED = { key: 'non-classees', label: 'Non classées' };
 
 const byLabel = (a, b) => a.data.title.localeCompare(b.data.title, 'fr');
 
-// Catégorie d'une page : l'exception éventuelle, sinon la première catégorie (dans l'ordre d'affichage) dont un tag figure sur la page.
+// Catégorie d'une page : l'exception éventuelle, sinon la première catégorie (dans l'ordre d'affichage) dont un mot-clé (son id) figure sur la page.
 function findGroup(entry) {
   const forced = CLASS_GROUPS.find((g) => g.key === CLASS_OVERRIDES[entry.id]);
   if (forced) return forced;
-  const tags = new Set((entry.data.tags ?? []).map(normalize));
-  return CLASS_GROUPS.find((group) => group.tags.some((tag) => tags.has(normalize(tag)))) ?? null;
+  return groupeDesMotsCles(entry.data?.mots_cles ?? []);
+}
+
+/** La catégorie de /classes/ que donnent des mots-clés (leurs ids, page_tag.tag_id), sans l'exception du Parleur : la première dans l'ordre d'affichage ; null sinon. */
+export function groupeDesMotsCles(ids) {
+  const poses = new Set(ids);
+  return CLASS_GROUPS.find((group) => group.motsCles.some((id) => poses.has(id))) ?? null;
 }
 
 /**
  * Range des pages de classes dans les cinq catégories, dans l'ordre, sans catégorie vide ; chaque liste est triée par nom.
  * Une catégorie a une section (label null) ; « Spéciales » en a une seconde, « Non classées », s'il reste des classes sans catégorie.
- * @param {{ id: string, data: { title: string, tags?: string[] } }[]} entries
+ * @param {{ id: string, data: { title: string, mots_cles?: string[] } }[]} entries
  * @returns {{ key: string, label: string, sections: { key: string, label: string | null, entries: object[] }[] }[]}
  */
 export function groupClasses(entries) {

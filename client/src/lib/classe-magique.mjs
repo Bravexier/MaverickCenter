@@ -1,5 +1,4 @@
 import { capacitesOfClass } from './capacites.mjs';
-import { normalize } from './text.mjs';
 
 const fold = (text) => String(text).normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
 
@@ -17,9 +16,12 @@ export function isMagicalSpecialization(specialization) {
   return specialization?.data.nature === 'specialite' && ditClasseMagique(specialization.body);
 }
 
-/** Classe magique d'après sa catégorie ou ses règles ; avec une spécialité, teste cette spécialité précise. */
+/**
+ * Classe magique d'après sa catégorie ou ses règles ; avec une spécialité, teste cette spécialité précise. La catégorie est le mot-clé `magique`, lu par
+ * son id (`data.mots_cles` : lib/wiki.ts, lib/pages-db.mjs#motsClesDesPages ; renommé, il ne change rien : décision R195).
+ */
 export function isMagicalClass(entries, classEntry, specialization = null) {
-  const tags = new Set((classEntry.data.tags ?? []).map(normalize));
+  const tags = new Set(classEntry.data.mots_cles ?? []);
   if (specialization) {
     if (specialization.data.nature !== 'specialite' || specialization.data.classe !== classEntry.id) return false;
     // Le Sommaire du classeur « Classe Maverick V7 » indique +4 AM par classe magique.

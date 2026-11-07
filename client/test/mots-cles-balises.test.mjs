@@ -268,14 +268,13 @@ test('R4 (relecture) : un mot-clé de monnaie se reconnaît à son id, figé, ce
     assert.ok(motCle, `${m.id} : le mot-clé de sa monnaie`);
     assert.equal(normalize(motCle.libelle), normalize(m.nom), `${m.id} : le nom de sa monnaie`);
   }
-  // aujourd'hui : une monnaie du jeu encore présente garde l'abréviation de ses prix et de son icône (le service refuse de la changer : R61,
-  // serveur/edition-composants.mjs#MONNAIE) ; le site de dev peut créer d'autres monnaies, ou supprimer le RO et la PP (pas l'unité, le RF)
+  // aujourd'hui : l'abréviation d'une monnaie, celles du RF, du RO et de la PP comprises, se modifie sur le site de dev (décision R195 (2) : elle ne
+  // change pas dans les règles, R61, mais le site ne l'empêche pas ; serveur/edition-composants.mjs#MONNAIE) ; restent une seule unité, que le site ne
+  // supprime pas, et deux monnaies qui ne s'écrivent pas de la même façon, sans égard à la casse
   const db = new DatabaseSync(cheminBase(), { readOnly: true });
   try {
-    const parId = new Map(db.prepare('SELECT id, abreviation, valeur_rf FROM monnaie').all().map((m) => [m.id, m]));
-    for (const [abr, m] of Object.entries(MONNAIES_DU_JEU)) {
-      if (parId.has(m.id)) assert.equal(parId.get(m.id).abreviation, abr, `${m.id} : l’abréviation de ses prix`);
-    }
+    const abreviations = db.prepare('SELECT abreviation FROM monnaie').all().map((m) => m.abreviation.toLowerCase());
+    assert.equal(new Set(abreviations).size, abreviations.length, 'des abréviations distinctes');
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM monnaie WHERE valeur_rf = 1').get().n, 1, 'une seule unité, que le site ne supprime pas');
   } finally {
     db.close();
@@ -576,14 +575,25 @@ test('service (D2) : le mode complet refusé dans un texte de case (message clai
   s.ok([{ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { description: `Voir {{${nouveau}|celui-ci}}.` } }]);
 });
 
-test('service : la définition se modifie (même d’un mot-clé protégé, dont le libellé ne change pas) ; vidée : pas encore décrit ; GET /api/edition/mots-cles/ la rend', () => {
+test('service : la définition d’un mot-clé non verrouillé se modifie, son libellé aussi (R195) ; vidée : pas encore décrit ; celle d’un mot-clé verrouillé, non (R218, R219) ; GET /api/edition/mots-cles/ la rend', () => {
   const s = service();
-  const magique = s.ligne("SELECT * FROM mot_cle WHERE libelle_cle = 'magique'");
-  s.ok([{ op: 'modifier', table: 'mot_cle', cle: { id: magique.id }, valeurs: { description: 'Une classe magique.' }, avant: { description: magique.description } }]);
-  assert.equal(s.ligne('SELECT description FROM mot_cle WHERE id = ?', magique.id).description, 'Une classe magique.');
-  assert.equal(s.lot([{ op: 'modifier', table: 'mot_cle', cle: { id: magique.id }, valeurs: { libelle: 'Magie' } }]).statut, 409, 'le libellé d’un protégé ne change pas');
-  s.ok([{ op: 'modifier', table: 'mot_cle', cle: { id: magique.id }, valeurs: { description: '' } }]);
-  assert.equal(s.ligne('SELECT description FROM mot_cle WHERE id = ?', magique.id).description, null, 'NULL : pas encore décrit');
+  // un mot-clé des règles non verrouillé, décrit (le site de dev a pu le vider : on en prend un qui l'est)
+  const libre = s.ligne('SELECT * FROM mot_cle WHERE verrou = 0 AND description IS NOT NULL ORDER BY id LIMIT 1');
+  s.ok([{ op: 'modifier', table: 'mot_cle', cle: { id: libre.id }, valeurs: { description: 'Une définition d’essai.' }, avant: { description: libre.description } }]);
+  assert.equal(s.ligne('SELECT description FROM mot_cle WHERE id = ?', libre.id).description, 'Une définition d’essai.');
+  // décision R195 : « Un mot clé peut toujours être changé [dans] tous les champs (sauf l'id technique clé primaire) », s'il n'est pas verrouillé
+  const renomme = s.libre('Essai renommé R195');
+  s.ok([{ op: 'modifier', table: 'mot_cle', cle: { id: libre.id }, valeurs: { libelle: renomme } }]);
+  assert.equal(s.ligne('SELECT libelle FROM mot_cle WHERE id = ?', libre.id).libelle, renomme, 'le libellé se modifie (R195)');
+  s.ok([{ op: 'modifier', table: 'mot_cle', cle: { id: libre.id }, valeurs: { description: '' } }]);
+  assert.equal(s.ligne('SELECT description FROM mot_cle WHERE id = ?', libre.id).description, null, 'NULL : pas encore décrit');
+  // un mot-clé dont le site se sert est verrouillé (R219 (2)) : ni sa définition ni son libellé ne se modifient
+  const magique = s.ligne("SELECT * FROM mot_cle WHERE id = 'magique'");
+  for (const valeurs of [{ description: 'Une classe magique.' }, { libelle: s.libre('Magie') }]) {
+    const r = s.lot([{ op: 'modifier', table: 'mot_cle', cle: { id: magique.id }, valeurs }]);
+    assert.equal(r.statut, 409, JSON.stringify(r.corps));
+  }
+  assert.deepEqual(s.ligne("SELECT * FROM mot_cle WHERE id = 'magique'"), magique);
   const id = s.creerMotCle(s.libre('Essai décrit'), 'Ce qu’il veut dire.');
   const sans = s.creerMotCle(s.libre('Essai sans définition'));
   const v = s.appel('GET', '/api/edition/mots-cles/');
@@ -657,8 +667,9 @@ test('service : une page créée depuis le site ne porte que les mots-clés dont
   for (let i = 2; s.ligne('SELECT 1 FROM classe WHERE nom = ?', nom); i += 1) nom = `Classe du glossaire ${i}`;
   const classe = s.ok([{ op: 'creer', entite: 'classe', valeurs: { categorie_id: 'classe-magique', nom } }], 'classes/').crees[0].id;
   const don = s.ok([{ op: 'creer', entite: 'capacite', valeurs: { classe_id: classe, niveau: '1', nom: 'Don du glossaire', type: 'Passif' } }], classe).crees[0].id;
-  const tags = (page) => s.db.prepare('SELECT m.libelle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE t.page_id = ? ORDER BY t.ordre').all(page).map((m) => m.libelle);
-  assert.deepEqual(tags(don), ['capacité de classe']);
-  assert.deepEqual(tags(classe).sort(), ['Classe', 'magique'], 'le libellé « Classe » (R183 (8))');
+  // par leur id : leur libellé se modifie sur le site de dev (R183 (8) : « Classe » ; décision R195)
+  const tags = (page) => s.db.prepare('SELECT tag_id FROM page_tag WHERE page_id = ? ORDER BY ordre').all(page).map((m) => m.tag_id);
+  assert.deepEqual(tags(don), ['capacite-de-classe']);
+  assert.deepEqual(tags(classe).sort(), ['classe', 'magique']);
   assert.deepEqual(s.db.prepare('SELECT id FROM mot_cle ORDER BY id').all().map((m) => m.id), avant);
 });

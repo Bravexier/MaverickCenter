@@ -12,6 +12,7 @@ import { ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { magiesOfRace } from '../src/lib/magie-relations.mjs';
 import { raceKind } from '../src/lib/race-kinds.mjs';
+import { avecLesMotsCles, motsClesDesPages } from '../src/lib/pages-db.mjs';
 import { chargerRaces } from '../src/lib/races-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { splitFrontmatter } from '../src/lib/wikilinks.mjs';
@@ -31,7 +32,8 @@ const pages = (type) =>
     .filter((f) => f.endsWith('.md'))
     .map((f) => ({ id: `${type}/${f.replace(/\.md$/, '')}`, ...splitFrontmatter(readFileSync(join(dir, type, f), 'utf8')) }))
     .filter((e) => e.data.status !== 'example');
-const entries = [...pages('races'), ...pages('magies'), ...pages('classes')];
+// les mots-clés de chaque page par leur id (`data.mots_cles`), comme lib/wiki.ts les pose (décision R195)
+const entries = avecLesMotsCles([...pages('races'), ...pages('magies'), ...pages('classes')], motsClesDesPages(db));
 const texteDe = (blocs) => blocs.flatMap((b) => ('items' in b ? b.items : [b.texte])).join('\n');
 
 test('migration 0007 : les tables de l’onglet se relisent depuis les pages, à l’identique (tools/db/races_onglet.py --verifier)', () => {

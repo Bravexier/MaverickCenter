@@ -200,8 +200,10 @@ test('les monnaies supprimées (le CONVERTISSEUR vidé), puis un mot-clé : rapa
   const v = ouvrirBaseVivante(cm);
   const PAGE = 'ressources/equipement-inventaire';
   const monnaies = v.prepare('SELECT id FROM monnaie WHERE valeur_rf <> 1 ORDER BY valeur_rf').all().map((m) => m.id);
-  for (const id of monnaies) enregistrer(v, { page: 'ressources/composants/', operations: [{ op: 'supprimer', entite: 'monnaie', cle: { id } }] });
-  // un mot-clé que le service accepte de supprimer (le premier de la base qui n'est ni protégé ni une étiquette de sort)
+  // l'onglet Monnaie est figé depuis la décision R219 (3) : les suppressions sont écrites comme avant le gel (`gel` faux), des lots anciens que le rejeu
+  // laisse passer (R220 (1))
+  for (const id of monnaies) enregistrer(v, { page: 'ressources/composants/', operations: [{ op: 'supprimer', entite: 'monnaie', cle: { id } }] }, { gel: false });
+  // un mot-clé que le service accepte de supprimer (le premier de la base qui n'est ni verrouillé, ni mentionné, ni une étiquette de sort)
   const supprime = v.prepare('SELECT id FROM mot_cle ORDER BY id').all().map((m) => m.id).find((id) => {
     try {
       enregistrer(v, { page: 'regles/glossaire/', operations: [{ op: 'supprimer', entite: 'mot_cle', cle: { id } }] });

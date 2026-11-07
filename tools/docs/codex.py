@@ -71,6 +71,9 @@ VOCABULAIRE = os.path.join(RACINE, 'data', 'rows', 'mot_cle.sql')
 
 # Mots-clés : une étiquette de navigation par partie (ce ne sont pas des faits du lore). Une page ne porte que ceux du vocabulaire du site de dev
 # (migration 0056 : un import ne crée jamais de mot-clé, ceux qui manquent ne sont pas écrits : vocabulaire()) ; depuis 0056, « codex » seul.
+# MOT_CLE_DU_CODEX : l'id du mot-clé posé sur chaque page (protégé, client/src/lib/mots-cles.mjs#MOTS_CLES_PROTEGES) : posé par son id, écrit avec
+# son libellé courant (Vocabulaire.protege), jamais retrouvé par son écriture (un autre mot-clé pourrait la prendre).
+MOT_CLE_DU_CODEX = 'codex'
 PARTIES = {
     'Au début …': 'histoire',
     'Les Divinités': 'divinité',
@@ -274,11 +277,13 @@ class Codex:
         slug = T.normalize(titre)
         if slug in self.pages:
             raise ValueError(f'deux pages pour le même titre : {titre!r}')
-        tags = ['codex'] + [t for t in tags if t]
+        tags = [MOT_CLE_DU_CODEX] + [t for t in tags if t]
         if self.vocabulaire:
-            # ceux du vocabulaire seulement, dans son écriture (celle que db:export-pages écrit), une fois chacun ; une étiquette de partie n'est
-            # jamais le mot-clé d'une page (Vocabulaire.etiquette : « Mrode », « Erisia », « Glossaire » de la migration 0098)
-            tags = list(dict.fromkeys(libelle for libelle in [self.vocabulaire(tags[0])] + [self.vocabulaire.etiquette(t) for t in tags[1:]] if libelle))
+            # ceux du vocabulaire seulement, dans son écriture (celle que db:export-pages écrit), une fois chacun ; « codex » par son id
+            # (Vocabulaire.protege) ; une étiquette de partie n'est jamais le mot-clé d'une page (Vocabulaire.etiquette : « Mrode », « Erisia »,
+            # « Glossaire » de la migration 0098)
+            tags = list(dict.fromkeys(libelle for libelle in [self.vocabulaire.protege(tags[0])] + [self.vocabulaire.etiquette(t) for t in tags[1:]]
+                                      if libelle))
         p = dict(slug=slug, titre=titre, corps=nettoyer_lignes(corps), tags=tags,
                  resume=resume if resume is not None else premiere_phrase(corps), aliases=list(aliases))
         self.pages[slug] = p
@@ -524,6 +529,7 @@ def decouper_adresse(adresse):
 
 class Vocabulaire:
     """Les mots-clés du vocabulaire (data/rows/mot_cle.sql, historique du site de dev compris). Un import ne crée jamais de mot-clé (migration 0056).
+    - protege(id) : le libellé courant du mot-clé protégé de cet id, ou None (un protégé se pose par son id) ;
     - appelé (écriture) : le libellé du mot-clé qu'elle désigne, ou None ; même règle que l'import des pages (tools/db/maverick.py#mot_cle : une
       écriture qu'un mot-clé renommé a quittée mène à lui), db:sync-pages ne poserait pas une écriture inconnue ;
     - etiquette(écriture) : de même, mais None pour le mot-clé d'une page (mot_cle.url, migration 0098 : « Mrode », « Erisia », « Glossaire ») : une
@@ -594,6 +600,14 @@ class Vocabulaire:
 
     def __call__(self, ecriture):
         return self.libelle(T.mot_cle(self.db, ecriture))
+
+    def protege(self, ident):
+        """Le libellé courant du mot-clé protégé d'id `ident` (tools/db/maverick.py#MOTS_CLES_PROTEGES), ou None s'il n'est pas au vocabulaire : un
+        importeur pose un protégé par son id, jamais par son écriture (que le site pourrait donner à un autre mot-clé)."""
+        if ident not in T.MOTS_CLES_PROTEGES:
+            raise ValueError(f'{ident!r} : pas un mot-clé protégé')
+        trouve = self.db.execute('SELECT libelle FROM mot_cle WHERE id = ?', (ident,)).fetchone()
+        return trouve[0] if trouve else None
 
     def etiquette(self, ecriture):
         ident = T.mot_cle(self.db, ecriture)

@@ -47,7 +47,8 @@ test('type d’un don : type et limite de capacite pour les 660 dons', () => {
 
 test('mot-clé de page de chaque catégorie : celui des classes en place', () => {
   for (const c of classes) {
-    const tag = db.prepare('SELECT m.libelle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE t.page_id = ? AND t.ordre = 1').get(c.id)?.libelle;
+    // par son id (décision R195 : son libellé se modifie sur le site de dev)
+    const tag = db.prepare('SELECT tag_id FROM page_tag WHERE page_id = ? AND ordre = 1').get(c.id)?.tag_id;
     assert.equal(MOT_CLE_DE_CATEGORIE[c.categorie_id], tag, c.id);
   }
 });

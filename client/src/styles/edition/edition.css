@@ -342,8 +342,8 @@ body.ed-glisse-en-cours, body.ed-glisse-en-cours * { cursor: grabbing !important
 .ed-preg-outils .ed-outil { font-size: var(--fs-xs); padding: 0.1rem 0.55rem; }
 
 /* Mots-clés (/regles/glossaire/, src/scripts/edition/mots-cles.mjs) : la liste de gestion du glossaire — la balise à copier, le libellé, son abréviation,
-   ce qui le porte, puis les boutons ou la raison de la protection d'un mot-clé dont le site se sert ; dessous, son lien et sa couleur (migration 0098),
-   puis, sur toute la largeur, sa définition */
+   ce qui le porte, puis ses outils (le menu des endroits qui le mentionnent, R196 (2) ; les boutons, ou le cadenas d'un mot-clé verrouillé, R219 (7)) ;
+   dessous, son lien et sa couleur (migration 0098), puis, sur toute la largeur, sa définition */
 .ed-mots-cles { list-style: none; padding: 0; margin: 0.4rem 0; }
 .ed-mots-cles li[hidden] { display: none; }
 .ed-mot-cle {
@@ -359,7 +359,7 @@ body.ed-glisse-en-cours, body.ed-glisse-en-cours * { cursor: grabbing !important
 .ed-mot-cle__nom { grid-area: nom; }
 .ed-mot-cle__abreviation { grid-area: abreviation; }
 .ed-mot-cle__compte { grid-area: compte; }
-.ed-mot-cle__outils, .ed-mot-cle__protege { grid-area: outils; }
+.ed-mot-cle__outils { grid-area: outils; }
 .ed-mot-cle__definition { grid-area: definition; }
 .ed-mot-cle__lien { grid-area: lien; }
 .ed-mot-cle__couleur { grid-area: couleur; }
@@ -379,9 +379,18 @@ body.ed-glisse-en-cours, body.ed-glisse-en-cours * { cursor: grabbing !important
 .ed-couleur-choix__cercle::-webkit-color-swatch { border: none; border-radius: 50%; }
 .ed-couleur-choix__cercle::-moz-color-swatch { border: none; border-radius: 50%; }
 .ed-mot-cle__compte { font-size: var(--fs-md); color: var(--muted); }
-.ed-mot-cle__outils { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.4rem; }
-.ed-mot-cle__protege { font-size: var(--fs-md); color: var(--muted); font-style: italic; }
-.ed-mot-cle--protege .ed-mot-cle__nom { font-weight: 600; }
+.ed-mot-cle__outils { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: flex-start; gap: 0.4rem; }
+/* le menu des mentions : sa liste ouverte défile au-delà d'une hauteur (la molette passe à la page au bout : pas d'overscroll-behavior, skill ui-defilement) */
+.ed-mot-cle__mentions { font-size: var(--fs-md); }
+.ed-mot-cle__mentions > summary { cursor: pointer; color: var(--muted); }
+.ed-mot-cle__mentions[data-vide] > summary { cursor: default; list-style: none; }
+.ed-mot-cle__mentions > ul { max-height: 14rem; overflow: auto; margin: 0.2rem 0 0; padding-left: 1.2rem; }
+.ed-mot-cle__mentions li[data-exemple] { font-style: italic; }
+/* un mot-clé verrouillé (R219 (7)) : le cadenas, ses saisies désactivées ; le pointeur passe au champ, qui porte l'infobulle */
+.ed-mot-cle__verrou { display: inline-flex; inline-size: 1.25rem; block-size: 1.25rem; color: var(--muted); }
+.ed-mot-cle__verrou svg { inline-size: 100%; block-size: 100%; }
+.ed-mot-cle--verrouille .ed-champ { cursor: not-allowed; }
+.ed-mot-cle--verrouille :is(textarea, input, select):disabled { pointer-events: none; opacity: 0.6; }
 .ed-fusionne { opacity: 0.55; }
 .ed-fusionne .ed-mot-cle__fusionner { opacity: 1; }
 .ed-mot-cle__fusionner[aria-pressed='true'] { color: var(--surface); background: var(--accent); }

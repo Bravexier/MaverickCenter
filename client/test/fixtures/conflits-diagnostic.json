@@ -114,13 +114,13 @@
    ]
   },
   {
-   "lot": "2026-11-07T12:47:05.582Z-000000-ea6873b4-41ba-4553-b2f0-50e407c03e7e",
-   "fait_le": "2026-11-07T12:47:05Z",
+   "lot": "2026-11-07T18:22:12.780Z-000000-8ffa256b-ab3a-4187-b9ef-00fd3474e037",
+   "fait_le": "2026-11-07T18:22:12Z",
    "page_id": "guide/la-magie-en-jeu",
    "resume": "Page La magie en jeu : Texte ; Métier Forgeron : Description",
-   "detail": "lot 2026-11-07T12:47:05.582Z-000000-ea6873b4-41ba-4553-b2f0-50e407c03e7e : page {\"id\":\"guide/la-magie-en-jeu\"} : les règles ont changé corps_md autrement",
+   "detail": "lot 2026-11-07T18:22:12.780Z-000000-8ffa256b-ab3a-4187-b9ef-00fd3474e037 : page {\"id\":\"guide/la-magie-en-jeu\"} : les règles ont changé corps_md autrement",
    "detail_lisible": "Page « La magie en jeu » : les règles ont changé « Texte » autrement",
-   "empreinte": "653428f467f44b99b10bf1f0287cf140",
+   "empreinte": "e8a9a2a048879ad41c503a7852479b7b",
    "saines": [
     {
      "rang": 2,
@@ -187,13 +187,13 @@
    ]
   },
   {
-   "lot": "2026-11-07T12:47:05.615Z-000000-3d4291b3-1e7f-4dd4-babe-0066af826359",
-   "fait_le": "2026-11-07T12:47:05Z",
+   "lot": "2026-11-07T18:22:12.806Z-000000-266eb106-0784-4c32-aeb8-544deeae5ca0",
+   "fait_le": "2026-11-07T18:22:12Z",
    "page_id": "guide/le-mode-hyper",
    "resume": "Page Le Mode Hyper : Texte",
-   "detail": "lot 2026-11-07T12:47:05.615Z-000000-3d4291b3-1e7f-4dd4-babe-0066af826359 : page {\"id\":\"guide/le-mode-hyper\"} : la ligne n’existe plus dans les règles",
+   "detail": "lot 2026-11-07T18:22:12.806Z-000000-266eb106-0784-4c32-aeb8-544deeae5ca0 : page {\"id\":\"guide/le-mode-hyper\"} : la ligne n’existe plus dans les règles",
    "detail_lisible": "Page guide/le-mode-hyper : la ligne n’existe plus dans les règles",
-   "empreinte": "361c92ee6779f39ec14f117b061126a5",
+   "empreinte": "7a0a07a1a00f09f8ab73182030139ec0",
    "saines": [],
    "conflits": [
     {
@@ -236,13 +236,13 @@
    ]
   },
   {
-   "lot": "2026-11-07T12:47:05.621Z-000000-f79fbb98-2cd6-4f26-bda2-4817851c3bb7",
-   "fait_le": "2026-11-07T12:47:05Z",
+   "lot": "2026-11-07T18:22:12.810Z-000000-8ecbd726-b54b-42e5-9b18-caee86a20b72",
+   "fait_le": "2026-11-07T18:22:12Z",
    "page_id": "guide/s-entrainer-et-exercer-un-metier",
    "resume": "Page S’entraîner : Texte",
-   "detail": "lot 2026-11-07T12:47:05.621Z-000000-f79fbb98-2cd6-4f26-bda2-4817851c3bb7 : page {\"id\":\"guide/s-entrainer-et-exercer-un-metier\"} : les règles ont changé corps_md autrement",
+   "detail": "lot 2026-11-07T18:22:12.810Z-000000-8ecbd726-b54b-42e5-9b18-caee86a20b72 : page {\"id\":\"guide/s-entrainer-et-exercer-un-metier\"} : les règles ont changé corps_md autrement",
    "detail_lisible": "Page « S’entraîner » : les règles ont changé « Texte » autrement",
-   "empreinte": "39430d36d3deae36f4e2ba0773f098bc",
+   "empreinte": "219b8f62182ba82c50dcdabb88c6099b",
    "saines": [],
    "conflits": [
     {
@@ -289,13 +289,13 @@
    ]
   },
   {
-   "lot": "2026-11-07T12:47:05.626Z-000000-951a63ca-dea4-4bf3-a0fd-84f557920240",
-   "fait_le": "2026-11-07T12:47:05Z",
+   "lot": "2026-11-07T18:22:12.813Z-000000-51127456-210c-41b2-bef8-f848e6b4df62",
+   "fait_le": "2026-11-07T18:22:12Z",
    "page_id": "metiers/forgeron",
    "resume": "Métier Forgeron : Bonus",
-   "detail": "lot 2026-11-07T12:47:05.626Z-000000-951a63ca-dea4-4bf3-a0fd-84f557920240 : metier {\"id\":\"metiers/forgeron\"} : les règles ont changé bonus_brut autrement",
+   "detail": "lot 2026-11-07T18:22:12.813Z-000000-51127456-210c-41b2-bef8-f848e6b4df62 : metier {\"id\":\"metiers/forgeron\"} : les règles ont changé bonus_brut autrement",
    "detail_lisible": "Métier « Forgeron » : les règles ont changé « Bonus » autrement",
-   "empreinte": "0a558e38c026add870351741abef4af0",
+   "empreinte": "affd3cc7074d2861aaa43363e7fc588a",
    "saines": [
     {
      "rang": 2,
@@ -374,13 +374,13 @@
    ]
   },
   {
-   "lot": "2026-11-07T12:47:05.636Z-000000-8b7e4f3a-adf1-4cf7-b9df-dc54ec5f6bb3",
-   "fait_le": "2026-11-07T12:47:05Z",
+   "lot": "2026-11-07T18:22:12.819Z-000000-65e5e92f-e9b7-497c-9af2-8e5f77549d40",
+   "fait_le": "2026-11-07T18:22:12Z",
    "page_id": "recherche/",
    "resume": "Mot-clé supprimé : Essai conflits étiquette",
-   "detail": "lot 2026-11-07T12:47:05.636Z-000000-8b7e4f3a-adf1-4cf7-b9df-dc54ec5f6bb3 : sort_mot_cle : clé étrangère rompue vers mot_cle",
+   "detail": "lot 2026-11-07T18:22:12.819Z-000000-65e5e92f-e9b7-497c-9af2-8e5f77549d40 : sort_mot_cle : clé étrangère rompue vers mot_cle",
    "detail_lisible": "Étiquette du sort : clé étrangère rompue vers Mot-clé",
-   "empreinte": "07ce9e93be22dc09aa728ec0e326385d",
+   "empreinte": "5cccd6fe3ba7b3bbb51786dc8d2b26a2",
    "saines": [],
    "conflits": [
     {
@@ -408,7 +408,8 @@
        "description": "Mot-clé d’essai des conflits (test/serveur-edition-conflits.test.mjs).",
        "abreviation": null,
        "couleur": null,
-       "url": null
+       "url": null,
+       "verrou": 0
       },
       "libelles": {
        "id": "Identifiant",
@@ -416,7 +417,8 @@
        "description": "Définition",
        "abreviation": "Abréviation",
        "couleur": "Couleur",
-       "url": "Lien"
+       "url": "Lien",
+       "verrou": "Verrou"
       }
      },
      "version_2": {
@@ -427,7 +429,8 @@
        "description": "Mot-clé d’essai des conflits (test/serveur-edition-conflits.test.mjs).",
        "abreviation": null,
        "couleur": null,
-       "url": null
+       "url": null,
+       "verrou": 0
       },
       "libelles": {
        "id": "Identifiant",
@@ -435,7 +438,8 @@
        "description": "Définition",
        "abreviation": "Abréviation",
        "couleur": "Couleur",
-       "url": "Lien"
+       "url": "Lien",
+       "verrou": "Verrou"
       }
      },
      "choix_possibles": [
@@ -445,13 +449,13 @@
    ]
   },
   {
-   "lot": "2026-11-07T12:47:05.704Z-000000-260836a3-73aa-4eb7-9b78-947a1f544955",
-   "fait_le": "2026-11-07T12:47:05Z",
+   "lot": "2026-11-07T18:22:12.872Z-000000-e9754b55-8eb6-49e8-b302-89b4fc2bb400",
+   "fait_le": "2026-11-07T18:22:12Z",
    "page_id": "metiers/acrobate",
    "resume": "Métier Acrobate : Nom",
-   "detail": "lot 2026-11-07T12:47:05.704Z-000000-260836a3-73aa-4eb7-9b78-947a1f544955 : metier {\"id\":\"metiers/acrobate\"} : les règles ont changé nom, nom_cle autrement",
+   "detail": "lot 2026-11-07T18:22:12.872Z-000000-e9754b55-8eb6-49e8-b302-89b4fc2bb400 : metier {\"id\":\"metiers/acrobate\"} : les règles ont changé nom, nom_cle autrement",
    "detail_lisible": "Métier « Acrobate des règles (essai des conflits) » : les règles ont changé « Nom » autrement",
-   "empreinte": "c95e7100219b48e583b12ca7fbbcc71c",
+   "empreinte": "99ed6e00ac63f3fa201059b4d40e5d45",
    "saines": [],
    "conflits": [
     {

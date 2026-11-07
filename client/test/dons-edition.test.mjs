@@ -127,7 +127,7 @@ test('donneesDeDon : rang du don reçu sans choix (de haut en bas), du cartouche
 
 test('mots-clés d’une fiche de don, groupe d’un emplacement, nature hors spécialité, liste des fiches', () => {
   // migration 0056 : les mots-clés sont un glossaire, une fiche de don ne porte que celui dont le site se sert (ni la classe ni la spécialité)
-  assert.deepEqual(motsClesDeDon(), ['capacité de classe']);
+  assert.deepEqual(motsClesDeDon(), ['capacite-de-classe'], 'par son id (décision R195 : son libellé se modifie)');
   assert.deepEqual(groupeDe(GUERRIER[4], GUERRIER).map((d) => d.nom), ['Duelliste', 'Coup dur']);
   assert.deepEqual(groupeDe(GUERRIER[2], GUERRIER).map((d) => d.nom), ['Épéiste'], 'un cartouche par spécialité');
   assert.equal(natureHorsSpecialite(1), 'classe');

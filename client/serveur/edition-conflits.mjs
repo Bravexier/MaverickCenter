@@ -26,7 +26,7 @@
 // est synchrone : rien d'autre ne s'intercale). Node seulement, sans dépendance.
 import { createHash } from 'node:crypto';
 import { ErreurJournal, lireLigne, modifierSansNoter, nouveauLot, ouvrirLot, parcourirUnLot, rompuesDuLot, rupturesEnPlace, structure } from './edition-journal.mjs';
-import { ErreurEdition, OUTILS_DE_RESOLUTION as OUTILS, TABLES_DES_REGLES_DU_DON, adaptateurDuJournal, colonneDerivee, messageSqlite, recalculerLesPages } from './edition.mjs';
+import { ErreurEdition, OUTILS_DE_RESOLUTION as OUTILS, TABLES_DES_REGLES_DU_DON, adaptateurDuJournal, colonneDerivee, messageSqlite, raisonDuGel, recalculerLesPages } from './edition.mjs';
 import { TABLES_DES_SOURCES, sourcesAvantLaSuppression, sourcesRefaitesParLaResolution } from './edition-maitrises.mjs';
 import {
   detacherDesFiches, magiesDesDonsVariables, noterLesRetraits, nouveauxRetraitsDeFiches, retirerDesFiches, retirerLesChoixDesDonsChanges,
@@ -477,6 +477,25 @@ export function detailLisible(detail, libelles = [], db = null) {
 const saisieDe = (champ) => JSON.parse(JSON.stringify(champ));
 
 /**
+ * Pourquoi le choix 3 d'un champ manque : la ligne est gelée (serveur/edition.mjs#raisonDuGel : un mot-clé verrouillé, une monnaie), et une valeur
+ * saisie à la résolution serait une modification nouvelle, que le verrou vise (décisions R218 (3), R219 (6), R220 (1) : seuls le lot ancien, choix 1,
+ * et la règle livrée, choix 2, passent). Null sinon. La ligne est lue telle que le parcours la laisse, sinon la règle livrée.
+ */
+function refusDuChoix3(db, table, cle, ligne) {
+  const l = lireLigne(db, table, cle) ?? ligne;
+  return l ? raisonDuGel(table, l) : null;
+}
+
+/**
+ * Les choix d'un champ en conflit (`choix` : sans le 3 ; `gel` : refusDuChoix3) : `choix_possibles` (le 3 en plus, sauf une image ou une ligne
+ * gelée), `entre` (refus_1…), la saisie, et `refus_3` (la raison du gel) quand le 3 manque pour elle.
+ */
+const choixDuChamp = (champ, image, gel, choix, entre = {}) => {
+  const saisissable = Boolean(champ) && !image;
+  return { choix_possibles: saisissable && !gel ? [...choix, 3] : choix, ...entre, saisie: saisissable && !gel ? saisieDe(champ) : null, ...(saisissable && gel ? { refus_3: gel } : {}) };
+};
+
+/**
  * Les conflits d'une modification du parcours, sous la forme de la page (sans `refus_1` ni les rattachements des clés étrangères) : `libelle` et
  * `raison_lisible` (raisonLisible) pour la page, `raison` comme trace.
  */
@@ -487,6 +506,7 @@ function conflitsDeLEntree(e, db) {
   };
   const ligneEntiere = { colonne: null, colonne_libelle: null, avant: null, apercu: null, saisie: null };
   if (e.genre === 'colonnes') {
+    const gel = refusDuChoix3(db, e.table, e.cle, e.ligne);
     return e.colonnes.map((c) => {
       const champ = TABLES[e.table]?.colonnes[c];
       const image = champ?.type === 'image';
@@ -494,7 +514,7 @@ function conflitsDeLEntree(e, db) {
         ...base, id: `${e.rang}:${c}`, colonne: c, colonne_libelle: libelleDeColonne(e.table, c), genre: champ ? 'champ' : 'hors_modele',
         version_1: valeurVue(e.table, c, e.apres[c]), version_2: valeurVue(e.table, c, e.ligne?.[c]), avant: valeurVue(e.table, c, e.avant?.[c]),
         apercu: e.table === 'page' && c === 'corps_md' ? e.apercu : null,
-        choix_possibles: champ && !image ? [1, 2, 3] : [1, 2], saisie: champ && !image ? saisieDe(champ) : null,
+        ...choixDuChamp(champ, image, gel, [1, 2]),
       };
     });
   }
@@ -601,7 +621,7 @@ function examiner(db, lot, lignes, instant, abandons, deja) {
         rang, table: d.table, cle: d.cle, operation: 'modifier', libelle: libelleDeLigne(d.table, e.ligne, d.cle, db), raison: texte, raison_lisible: raisonLisible(d.table, texte),
         id: `${rang}:${colonne}`, colonne, colonne_libelle: champ.libelle, genre: 'champ', version_1: valeurVue(d.table, colonne, d.final[colonne]),
         version_2: valeurVue(d.table, colonne, d.original[colonne]), avant: valeurVue(d.table, colonne, d.original[colonne]),
-        apercu: colonne === 'corps_md' ? d.apercu : null, choix_possibles: image ? [2] : [2, 3], refus_1: raison, saisie: image ? null : saisieDe(champ),
+        apercu: colonne === 'corps_md' ? d.apercu : null, ...choixDuChamp(champ, image, refusDuChoix3(db, d.table, d.cle, e.ligne), [2], { refus_1: raison }),
       });
     }
   }
@@ -732,6 +752,8 @@ function choixControles(diag, choix) {
     const r = choix[c.id];
     const n = typeof r === 'number' ? r : r?.choix;
     if (n === undefined || n === null) throw erreur(400, `${c.libelle}${c.colonne_libelle ? ` (${c.colonne_libelle})` : ''} : choisissez 1, 2 ou 3.`);
+    // une ligne gelée : pas de valeur saisie, ce serait une modification nouvelle (refusDuChoix3 ; décisions R218 (3), R219 (6))
+    if (n === 3 && c.refus_3) throw erreur(409, `${c.libelle} (${c.colonne_libelle}) : pas de valeur saisie, seuls les choix 1 et 2 restent. ${c.refus_3}`, { conflit: c.id, lot: diag });
     if (!CHOIX.includes(n) || !c.choix_possibles.includes(n)) throw erreur(400, `${c.libelle}${c.colonne_libelle ? ` (${c.colonne_libelle})` : ''} : choix ${JSON.stringify(n)} impossible ici (${c.choix_possibles.join(', ')}).`);
     if (n === 3 && (r === null || typeof r !== 'object' || !('valeur' in r))) throw erreur(400, `${c.libelle} (${c.colonne_libelle}) : la valeur saisie manque (choix 3).`);
     sortie.set(c.id, { choix: n, valeur: n === 3 ? r.valeur : undefined });
@@ -742,8 +764,9 @@ function choixControles(diag, choix) {
 /**
  * Résout un lot en conflit (POST /api/mise-a-jour/conflits/ { lot, empreinte, choix }) : une seule transaction (BEGIN IMMEDIATE, clés étrangères
  * différées puis contrôlées), le nouveau lot du journal (`nouveau_lot` : null si tout est au choix 2 et rien de sain n'est à réécrire), l'ancien
- * marqué résolu. Refus (ErreurEdition) : 404 lot inconnu ou sans conflit, 409 déjà résolu, diagnostic changé (empreinte) ou une ligne qui ne passe plus
- * avec ces choix (`details.lot` : le diagnostic à jour), 400 choix manquant ou impossible, valeur refusée par l'éditeur, 422 contrainte de la base.
+ * marqué résolu. Refus (ErreurEdition) : 404 lot inconnu ou sans conflit, 409 déjà résolu, choix 3 sur une ligne gelée (`refus_3`), diagnostic
+ * changé (empreinte) ou une ligne qui ne passe plus avec ces choix (`details.lot` : le diagnostic à jour), 400 choix manquant ou impossible,
+ * valeur refusée par l'éditeur, 422 contrainte de la base.
  * @returns {{ lot: string, nouveau_lot: string | null, modifications: number, lignes: object[], fiches: object[], resolution: object[] }}
  */
 export function resoudreLeConflit(db, corps, { instant, id } = {}) {

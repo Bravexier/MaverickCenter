@@ -168,7 +168,7 @@ test('fusions en chaîne (S dans N créé, puis N dans M) que les règles neuves
   ouvertes.push(base);
   const lot = serviceDe(base, 'recherche/');
   const proteges = [...MOTS_CLES_PROTEGES.keys()];
-  const choisir = (sauf) => base.prepare(`SELECT m.id FROM mot_cle m WHERE m.libelle_cle NOT IN (${proteges.map(() => '?').join(', ')}) AND m.id NOT IN (${sauf.map(() => '?').join(', ')})
+  const choisir = (sauf) => base.prepare(`SELECT m.id FROM mot_cle m WHERE m.id NOT IN (${proteges.map(() => '?').join(', ')}) AND m.id NOT IN (${sauf.map(() => '?').join(', ')})
     AND (SELECT count(*) FROM page_tag t WHERE t.tag_id = m.id) BETWEEN 1 AND 3
     AND NOT EXISTS (SELECT 1 FROM page_tag a JOIN page_tag b ON a.page_id = b.page_id WHERE a.tag_id = m.id AND b.tag_id IN (${sauf.map(() => '?').join(', ')}))
     ORDER BY m.id LIMIT 1`).get(...proteges, ...sauf, ...sauf).id;
@@ -257,7 +257,8 @@ test('lot d’avant la migration 0043, mot-clé libre (D4) : sans effet depuis 0
   // B : le site de dev fusionne un mot-clé S dans ce mot-clé : S part (la fusion le voulait), ses étiquettes ne passent pas à un mot-clé que 0056 n'a pas
   const b = siteDAvant0056();
   const proteges = [...MOTS_CLES_PROTEGES.keys()];
-  const s = b.base.prepare(`SELECT m.id FROM mot_cle m WHERE m.libelle_cle NOT IN (${proteges.map(() => '?').join(', ')}) AND (SELECT count(*) FROM page_tag t WHERE t.tag_id = m.id) BETWEEN 1 AND 3
+  // non verrouillé : un mot-clé verrouillé ne se fusionne pas dans un autre (décisions R218, R219)
+  const s = b.base.prepare(`SELECT m.id FROM mot_cle m WHERE m.id NOT IN (${proteges.map(() => '?').join(', ')}) AND m.verrou = 0 AND (SELECT count(*) FROM page_tag t WHERE t.tag_id = m.id) BETWEEN 1 AND 3
     AND NOT EXISTS (SELECT 1 FROM page_tag t WHERE t.tag_id = m.id AND t.page_id = ?) ORDER BY m.id LIMIT 1`).get(...proteges, page).id;
   const pagesDeS = b.base.prepare('SELECT page_id FROM page_tag WHERE tag_id = ? ORDER BY page_id').all(s).map((t) => t.page_id);
   serviceDe(b.base, 'recherche/')([{ op: 'fusionner_mots_cles', mot_cle: s, dans: v }]);

@@ -2,11 +2,14 @@
 // du 2026-11-06, Q6 et Q7 ; demande du propriétaire : en mode modification, « supprimer / ajouter /
 // Modifier des mots clés », une suppression le retirant de tout ce qui le porte), exécutée dans un faux navigateur avec un faux éditeur : la liste relue
 // dans la base vivante (des pages seulement : les événements de la chronologie ont des catégories, pas de mot-clé), la liste de gestion (libellé
-// modifiable, protégés sans saisie ni bouton, suppression et fusion en file), la création immédiate, les confirmations et l'ordre des opérations du lot,
-// le retour à la liste de lecture ; depuis la migration 0056 (glossaire), la définition de chaque mot-clé (saisie commune, protégés compris), sa balise à
-// copier et la ligne du Glossaire dans la liste de lecture ; depuis la migration 0098, son adresse et sa couleur (saisies communes, la feuille des
-// couleurs du service réécrite). Puis, de bout en bout contre le vrai service (serveur/api.mjs sur une copie de la base) : renommages en rotation, en
-// chaîne, noms échangés, fusions en chaîne — le lot que la page envoie est accepté, ou refusé avant toute question ; l'adresse et la couleur enregistrées.
+// modifiable, suppression et fusion en file), la création immédiate, les confirmations et l'ordre des opérations du lot, le retour à la liste de lecture ;
+// depuis la migration 0056 (glossaire), la définition de chaque mot-clé (saisie commune), sa balise à copier et la ligne du Glossaire dans la liste de
+// lecture ; depuis la migration 0098, son adresse et sa couleur (saisies communes, la feuille des couleurs du service réécrite) ; depuis la migration 0110
+// (décisions R218, R219 (7)), un mot-clé verrouillé : un cadenas, ses champs désactivés, la raison en infobulle, ni suppression ni fusion depuis lui, mais
+// une cible de fusion ; rien de tout cela hors du mode modification ; le menu des endroits qui le mentionnent, « Supprimer » pour une liste vide seulement
+// (R196 (2)). Puis, de bout en bout contre le vrai service (serveur/api.mjs sur une copie de la base) : renommages en rotation, en chaîne, noms échangés,
+// fusions en chaîne, fusion dans un mot-clé verrouillé — le lot que la page envoie est accepté, ou refusé avant toute question ; l'adresse et la couleur
+// enregistrées.
 //   node --test test/edition-mots-cles.test.mjs
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
@@ -17,17 +20,20 @@ import { cheminBase } from '../src/lib/donnees.mjs';
 import { cleDeLigne, lireAttributEd } from '../src/lib/edition-modele.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { htmlDeLaLigneDuGlossaire } from '../src/lib/mots-cles-balises.mjs';
+import { cheminDePage } from '../src/lib/metiers.mjs';
+import { endroitsDesMentions, fusionOfferte, INFOBULLE_DU_VERROU, suppressionOfferte } from '../src/lib/mots-cles-edition.mjs';
 import { htmlDePiece } from '../src/lib/monnaies.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { attendre, cliquer, el, Element, fauxDocument } from './aide-faux-dom.mjs';
 
-// GET /api/edition/mots-cles/ : [{ id, libelle, libelle_cle, description, url, couleur, pages, protege }] (description : NULL tant qu'il n'est pas décrit)
-const v = (id, libelle, pages = 0, protege = null, description = null) => ({ id, libelle, libelle_cle: normalize(libelle), description, url: null, couleur: null, pages, protege });
+// GET /api/edition/mots-cles/ : [{ id, libelle, libelle_cle, description, url, couleur, pages, verrou, mentions? }] (description : NULL tant qu'il n'est pas
+// décrit ; verrou : 1 pour un mot-clé verrouillé, migration 0110 ; mentions : absentes ici, le service qui ne les donne pas laisse « Supprimer »)
+const v = (id, libelle, pages = 0, verrou = 0, description = null) => ({ id, libelle, libelle_cle: normalize(libelle), description, url: null, couleur: null, pages, verrou });
 const VIVANT = [
   v('aide', 'aide', 3),
-  v('feu', 'Feu', 2, null, 'Ce qui brûle.'),
+  v('feu', 'Feu', 2, 0, 'Ce qui brûle.'),
   v('guide', 'guide', 5),
-  v('magique', 'Magique', 12, 'range les classes dans la colonne « Magiques » de /classes/'),
+  v('magique', 'Magique', 12, 1),
   v('peuple', 'peuple', 1),
 ];
 
@@ -80,7 +86,7 @@ async function monter({ confirmations = [], service = null, vocabulaire = VIVANT
       if (chemin === 'edition/mots-cles/') return { motsCles: vivant.map((m) => ({ ...m })), css: CSS_DU_SERVICE };
       const op = corps.operations[0];
       const ligne = { id: normalize(op.valeurs.libelle), libelle: op.valeurs.libelle, libelle_cle: normalize(op.valeurs.libelle) };
-      vivant = [...vivant, { ...ligne, pages: 0, protege: null }];
+      vivant = [...vivant, { ...ligne, pages: 0, verrou: 0 }];
       return { lignes: [{ table: 'mot_cle', cle: { id: ligne.id }, ligne }] };
     },
     // comme editeur.mjs#monterChamps : une saisie sur chaque [data-ed] dont la ligne est chargée
@@ -130,9 +136,16 @@ test('au chargement : la liste relue dans la base vivante (nombre de pages, ordr
   assert.deepEqual(p.evenements, [{ gestion: false }], 'la page relit la liste');
   // la feuille des couleurs des mots-clés, celle du service (mots-cles-vivants.mjs)
   assert.equal(p.document.querySelector('style[data-couleurs-mots-cles]')?.textContent, CSS_DU_SERVICE);
+  // hors du mode modification, un mot-clé verrouillé est une ligne comme les autres (décision R219 (7))
+  const magique = ligne(p.liste, 'magique');
+  const lue = el('ul');
+  lue.innerHTML = htmlDeLaLigneDuGlossaire({ ...VIVANT[3], n: 12 }, { base: '/', lienDesPages: '/recherche/?mot-cle=' });
+  assert.equal(magique.outerHTML, lue.children[0].outerHTML, 'le même HTML que la page construite');
+  assert.equal(magique.hasAttribute('data-verrou'), false);
+  assert.equal(p.liste.querySelector('.ed-mot-cle__verrou'), null, 'pas de cadenas');
 });
 
-test('au crayon : la liste de gestion ; un mot-clé protégé n’a ni saisie ni bouton, sa raison est écrite ; « + Ajouter » crée tout de suite', async () => {
+test('au crayon : la liste de gestion ; décisions R218, R219 (7) : un mot-clé verrouillé a son cadenas, ses champs désactivés, la raison en infobulle, aucun bouton ; « + Ajouter » crée tout de suite', async () => {
   const p = await monter();
   await p.motsCles.surcouche(p.ed, []);
   p.ed.enEdition = true;
@@ -143,17 +156,28 @@ test('au crayon : la liste de gestion ; un mot-clé protégé n’a ni saisie ni
   assert.deepEqual(p.evenements.at(-1), { gestion: true });
   const feu = ligne(p.liste, 'feu');
   assert.equal(feu.querySelector('.ed-mot-cle__compte').textContent, '2 pages');
-  assert.equal(bouton(feu, 'ed-mot-cle__supprimer').title, 'Le retirer de toutes les pages qui le portent, puis du vocabulaire (à l’enregistrement)');
+  assert.ok(bouton(feu, 'ed-mot-cle__supprimer') && bouton(feu, 'ed-mot-cle__fusionner'), 'non verrouillé : « Supprimer » et « Fusionner dans… »');
+  assert.doesNotMatch(bouton(feu, 'ed-mot-cle__supprimer').title, /pages qui le portent/, 'R196 : la suppression ne retire plus rien des pages');
+  assert.equal(feu.hasAttribute('data-verrou'), false);
   assert.deepEqual(lireAttributEd(feu.querySelector('[data-ed]').dataset.ed), lireAttributEd(JSON.stringify(['mot_cle', { id: 'feu' }, 'libelle'])));
   assert.equal(p.saisie('feu').controle.value, 'Feu', 'la saisie part de la base vivante');
   assert.equal(feu.querySelector('.ed-mot-cle__balise').textContent, '{{feu}}', 'la balise à copier');
   assert.equal(p.definition('feu').controle.value, 'Ce qui brûle.', 'la définition, saisie commune');
   assert.equal(p.definition('aide').controle.value, '', 'pas encore décrit');
+  assert.ok(!p.saisie('feu').controle.disabled && !p.definition('feu').controle.disabled, 'non verrouillé : ses champs se modifient');
   const magique = ligne(p.liste, 'magique');
-  assert.equal(magique.querySelector('.ed-mot-cle__nom').hasAttribute('data-ed'), false, 'protégé : pas de saisie du libellé');
-  assert.ok(p.definition('magique'), 'protégé : sa définition se modifie');
-  assert.equal(magique.querySelector('button'), null, 'protégé : pas de bouton');
-  assert.equal(magique.querySelector('.ed-mot-cle__protege').textContent, 'Protégé : il range les classes dans la colonne « Magiques » de /classes/ (sa définition, son abréviation, son adresse et sa couleur se modifient).');
+  assert.ok(magique.hasAttribute('data-verrou') && magique.classList.contains('ed-mot-cle--verrouille'), 'la ligne verrouillée est marquée');
+  const cadenas = magique.querySelector('.ed-mot-cle__verrou');
+  assert.ok(cadenas?.querySelector('svg'), 'un cadenas sur la ligne');
+  assert.equal(cadenas.getAttribute('aria-label'), INFOBULLE_DU_VERROU);
+  assert.equal(cadenas.title, INFOBULLE_DU_VERROU, 'la raison en infobulle');
+  const champs = [...p.editeurs].filter(([c]) => c.closest('li') === magique);
+  assert.deepEqual(champs.map(([, e]) => e.info.colonne).sort(), ['abreviation', 'couleur', 'description', 'libelle', 'url'], 'tous ses champs, montés');
+  for (const [c, e] of champs) {
+    assert.equal(e.controle.disabled, true, `${e.info.colonne} : désactivé`);
+    assert.equal(c.title, INFOBULLE_DU_VERROU, `${e.info.colonne} : la raison en infobulle`);
+  }
+  assert.equal(magique.querySelector('button'), null, 'verrouillé : ni « Supprimer » ni « Fusionner dans… »');
   // création immédiate, à sa place dans la liste
   const ajouter = p.document.querySelector('.ed-outils-mots-cles').querySelector('button');
   assert.equal(ajouter.textContent, '+ Ajouter un mot-clé');
@@ -182,10 +206,11 @@ test('suppression et fusion en file, confirmées une fois avec ce qu’elles ret
   assert.equal(bouton(aide, 'ed-mot-cle__fusionner').disabled, true);
   cliquer(bouton(ligne(p.liste, 'peuple'), 'ed-mot-cle__fusionner'));
   const boite = p.document.body.querySelector('dialog');
-  assert.deepEqual(boite.querySelector('datalist').children.map((o) => o.getAttribute('value')), ['Feu', 'guide'], 'ni lui-même, ni un protégé, ni un mot-clé supprimé');
-  boite.querySelector('input').value = 'Magique';
+  assert.deepEqual(boite.querySelector('datalist').children.map((o) => o.getAttribute('value')), ['Feu', 'guide', 'Magique'],
+    'ni lui-même, ni un mot-clé supprimé ; un mot-clé verrouillé est une cible (R219 (4))');
+  boite.querySelector('input').value = 'peuple';
   boite.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true }));
-  assert.equal(boite.querySelector('.ed-erreur').hidden, false, 'un protégé ne se choisit pas');
+  assert.equal(boite.querySelector('.ed-erreur').hidden, false, 'pas lui-même');
   boite.querySelector('input').value = 'GUIDE';
   boite.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true }));
   assert.equal(p.document.body.querySelector('dialog'), null, 'la boîte se ferme');
@@ -199,7 +224,7 @@ test('suppression et fusion en file, confirmées une fois avec ce qu’elles ret
   assert.equal(p.motsCles.verifier(p.ed, p.editeurs), null);
   assert.equal(p.questions.length, 2);
   assert.match(p.questions[0], /^« Guide » s’écrit comme « guide » : fusionner « Feu » dans « guide » \?\nSes pages \(2 pages\) porteront « guide »/);
-  assert.match(p.questions[1], /« aide » sera retiré de 3 pages et des textes qui le citent \(sa balise y devient son texte\), puis supprimé\./);
+  assert.match(p.questions[1], /« aide » sera supprimé\./);
   assert.match(p.questions[1], /« peuple » sera fusionné dans « guide » : ses pages \(1 page\) et les textes qui le citent/);
   assert.ok(p.questions.every((q) => !/événement/.test(q)), 'plus d’événement dans les confirmations');
   const renommages = [{ op: 'modifier', table: 'mot_cle', cle: { id: 'feu' }, valeurs: { libelle: 'Guide' }, avant: { libelle: 'Feu' } }];
@@ -228,8 +253,11 @@ test('refus : renommage vers l’écriture d’un autre sans accepter la fusion 
   await attendre();
   p.saisie('feu').controle.value = 'aide';
   assert.match(p.motsCles.verifier(p.ed, p.editeurs), /^Non enregistré : « aide » s’écrit comme le mot-clé « aide »/);
+  // vers l'écriture d'un mot-clé verrouillé : la fusion dans lui est proposée (R219 (4)), acceptée
   p.saisie('feu').controle.value = 'Magique';
-  assert.match(p.motsCles.verifier(p.ed, p.editeurs), /dont le site se sert/, 'jamais fusionné dans un mot-clé protégé');
+  assert.equal(p.motsCles.verifier(p.ed, p.editeurs), null);
+  assert.match(p.questions.at(-1), /fusionner « Feu » dans « Magique »/);
+  assert.deepEqual(p.motsCles.operations(p.ed, []), [{ op: 'fusionner_mots_cles', mot_cle: 'feu', dans: 'magique' }]);
   p.saisie('feu').controle.value = 'Feu';
   cliquer(bouton(ligne(p.liste, 'aide'), 'ed-mot-cle__supprimer'));
   globalThis.confirm = () => false;
@@ -377,9 +405,9 @@ test('service : un mot-clé qui reçoit une fusion n’est pas supprimé dans le
   assert.deepEqual(s.motCle(X.id), { id: X.id, libelle: X.libelle });
 });
 
-test('décision du propriétaire (2026-11-05, « Modifiable et affichée ») : l’abréviation à côté du libellé, en data-abreviation ; au crayon, saisie commune pour tous, protégés compris', async () => {
-  const abreges = [...VIVANT.slice(0, 3), { ...v('magique', 'Magique', 12, 'range les classes dans la colonne « Magiques » de /classes/'), abreviation: 'Mag.' },
-    { ...v('armure-magique', 'Armure magique', 0, null, 'Protège des sorts.'), abreviation: 'AM' }, { ...v('ro', 'Ricken d’or', 0, null, '1 RO = 100 RF.'), abreviation: 'RO' }];
+test('décision du propriétaire (2026-11-05, « Modifiable et affichée ») : l’abréviation à côté du libellé, en data-abreviation ; au crayon, saisie commune, désactivée pour un mot-clé verrouillé', async () => {
+  const abreges = [...VIVANT.slice(0, 3), { ...v('magique', 'Magique', 12, 1), abreviation: 'Mag.' },
+    { ...v('armure-magique', 'Armure magique', 0, 0, 'Protège des sorts.'), abreviation: 'AM' }, { ...v('ro', 'Ricken d’or', 0, 1, '1 RO = 100 RF.'), abreviation: 'RO' }];
   const p = await monter({ vocabulaire: abreges });
   await p.motsCles.surcouche(p.ed, []);
   const am = ligne(p.liste, 'armure-magique');
@@ -409,7 +437,10 @@ test('décision du propriétaire (2026-11-05, « Modifiable et affichée ») : l
   assert.deepEqual([...gestion.children].map((c) => c.className).slice(0, 3), ['ed-mot-cle__balise', 'ed-mot-cle__nom', 'ed-mot-cle__abreviation'], 'à côté du libellé');
   assert.equal(p.abreviation('armure-magique').controle.value, 'AM', 'la saisie part de la base vivante');
   assert.equal(p.abreviation('feu').controle.value, '', 'sans abréviation : vide');
-  assert.equal(p.abreviation('magique').controle.value, 'Mag.', 'protégé : son abréviation se modifie');
+  assert.equal(p.abreviation('magique').controle.value, 'Mag.', 'verrouillé : son abréviation montrée…');
+  assert.equal(p.abreviation('magique').controle.disabled, true, '… et désactivée (R218 (3))');
+  assert.equal(p.abreviation('ro').controle.disabled, true, 'une monnaie verrouillée : son abréviation ne se modifie pas');
+  assert.equal(p.abreviation('armure-magique').controle.disabled, false);
   assert.match(gestion.querySelector('.ed-mot-cle__balise').title, /« \{\{AM\}\} » pour son abréviation/);
   assert.equal(p.ed.lignes.get(cleDeLigne('mot_cle', { id: 'feu' })).abreviation, null, 'NULL tel qu’enregistré');
 });
@@ -446,8 +477,8 @@ test('service : l’abréviation modifiée sur le Glossaire est enregistrée, vi
   assert.equal(abreviation(A.id), null, 'vidée : NULL');
 });
 
-test('migration 0098 : au crayon, l’adresse et la couleur de chaque mot-clé, saisies communes pour tous (protégés compris), parties de la base vivante', async () => {
-  const colores = [{ ...v('elfe', 'Elfe', 4, null, 'Un peuple.'), url: '/races/elfe/', couleur: 'race:pure' }, ...VIVANT];
+test('migration 0098 : au crayon, l’adresse et la couleur de chaque mot-clé, saisies communes (désactivées pour un mot-clé verrouillé), parties de la base vivante', async () => {
+  const colores = [{ ...v('elfe', 'Elfe', 4, 0, 'Un peuple.'), url: '/races/elfe/', couleur: 'race:pure' }, ...VIVANT];
   const p = await monter({ vocabulaire: colores });
   await p.motsCles.surcouche(p.ed, []);
   // la lecture : le libellé est un lien vers son adresse, la pastille porte sa couleur
@@ -464,7 +495,8 @@ test('migration 0098 : au crayon, l’adresse et la couleur de chaque mot-clé, 
     ['ed-mot-cle__balise', 'ed-mot-cle__nom', 'ed-mot-cle__abreviation', 'ed-mot-cle__compte', 'ed-mot-cle__lien', 'ed-mot-cle__couleur', 'ed-mot-cle__definition']);
   assert.deepEqual([p.adresse('elfe').controle.value, p.couleur('elfe').controle.value], ['/races/elfe/', 'race:pure'], 'la saisie part de la base vivante');
   assert.deepEqual([p.adresse('feu').controle.value, p.couleur('feu').controle.value], ['', ''], 'sans adresse ni couleur : vides');
-  assert.ok(p.adresse('magique') && p.couleur('magique'), 'protégé : son adresse et sa couleur se modifient');
+  assert.ok(p.adresse('magique') && p.couleur('magique'), 'verrouillé : son adresse et sa couleur montrées…');
+  assert.ok(p.adresse('magique').controle.disabled && p.couleur('magique').controle.disabled, '… et désactivées (R218 (3))');
   const lue = p.ed.lignes.get(cleDeLigne('mot_cle', { id: 'feu' }));
   assert.deepEqual([lue.url, lue.couleur], [null, null], 'NULL tel qu’enregistré');
   assert.deepEqual(gestion.dataset.couleur, 'race:pure');
@@ -502,4 +534,108 @@ test('service : l’adresse et la couleur saisies sur le Glossaire sont enregist
   r = await avec({ url: '', couleur: '' });
   assert.equal(r.refus, undefined, r.refus?.message);
   assert.deepEqual(valeurs(), { url: null, couleur: null }, 'vidées : NULL');
+});
+
+// --- Décision R196 (2) : le menu des endroits qui mentionnent un mot-clé ; « Supprimer » pour une liste vide seulement ----------------------------------
+// `mentions` : celles du service (lib/mentions-des-mots-cles.mjs#mentionsDesMotsCles : { table, cle, colonne, comment, page, libelle, exemple }).
+const PAGE_DE_REGLE = { table: 'page_tag', cle: { page_id: 'regles/essai', ordre: 1 }, colonne: 'tag_id', comment: 'etiquette', page: { id: 'regles/essai', titre: 'Essai' }, libelle: 'Essai', exemple: false };
+const MENTIONS = {
+  aide: [
+    PAGE_DE_REGLE,
+    { ...PAGE_DE_REGLE, table: 'page', cle: { id: 'regles/essai' }, colonne: 'corps', comment: 'balise' }, // la même page, par une balise : un seul endroit
+    { table: 'competence', cle: { id: 'x' }, colonne: 'description', comment: 'balise', page: null, libelle: 'Compétence › x', exemple: false },
+    { ...PAGE_DE_REGLE, page: { id: 'exemples/demo', titre: 'Démo' }, libelle: 'Démo', exemple: true },
+  ],
+  feu: [],
+  magique: [PAGE_DE_REGLE],
+};
+const AVEC_MENTIONS = VIVANT.map((m) => (MENTIONS[m.id] ? { ...m, mentions: MENTIONS[m.id] } : m));
+
+test('décision R196 (2), fonctions pures : les endroits nommés une fois ; « Supprimer » ni pour un mot-clé mentionné ni pour un verrouillé (R218), « Fusionner dans… » sauf depuis un verrouillé', () => {
+  assert.deepEqual(endroitsDesMentions({ mentions: MENTIONS.aide }), [
+    { libelle: 'Essai', page: 'regles/essai', exemple: false },
+    { libelle: 'Compétence › x', page: null, exemple: false },
+    { libelle: 'Démo', page: 'exemples/demo', exemple: true },
+  ]);
+  assert.deepEqual(endroitsDesMentions({ mentions: [] }), []);
+  assert.equal(endroitsDesMentions({}), null, 'le service ne les donne pas');
+  assert.equal(suppressionOfferte({ mentions: [] }), true, 'liste vide : supprimable');
+  assert.equal(suppressionOfferte({ mentions: MENTIONS.aide }), false, 'mentionné : non');
+  assert.equal(suppressionOfferte({}), true, 'sans la liste, le service juge');
+  assert.equal(suppressionOfferte({ verrou: 1, mentions: [] }), false, 'verrouillé : jamais, même sans mention');
+  assert.equal(fusionOfferte({ verrou: 0 }), true);
+  assert.equal(fusionOfferte({ verrou: 1 }), false);
+  assert.equal(fusionOfferte({}), true, 'une base d’avant la migration 0110 : rien n’est verrouillé');
+});
+
+test('décision R196 (2), au crayon : chaque mot-clé a le menu de ses mentions (pages en liens), verrouillé compris ; « Supprimer » seulement pour une liste vide', async () => {
+  const p = await monter({ vocabulaire: AVEC_MENTIONS });
+  await p.motsCles.surcouche(p.ed, []);
+  assert.equal(p.liste.querySelector('.ed-mot-cle__mentions'), null, 'hors du mode modification : pas de menu');
+  p.ed.enEdition = true;
+  p.motsCles.debut(p.ed);
+  await attendre();
+  const aide = ligne(p.liste, 'aide');
+  const menu = aide.querySelector('details.ed-mot-cle__mentions');
+  assert.ok(menu?.querySelector('summary'), 'un menu déroulant');
+  const items = menu.querySelectorAll('li');
+  assert.equal(items.length, 3, 'un endroit par page ou par texte');
+  assert.equal(items[0].querySelector('a').href, `/${cheminDePage('regles/essai')}`, 'une page : un lien vers elle');
+  assert.equal(items[1].querySelector('a'), null, 'un texte qu’aucune page ne montre : nommé, sans lien');
+  assert.ok(items[2].hasAttribute('data-exemple'), 'une page d’exemple compte, marquée');
+  assert.equal(bouton(aide, 'ed-mot-cle__supprimer'), null, 'mentionné : pas de « Supprimer »');
+  assert.ok(bouton(aide, 'ed-mot-cle__fusionner'), 'mentionné : la fusion reste (elle reporte ses mentions)');
+  const feu = ligne(p.liste, 'feu');
+  assert.ok(feu.querySelector('details.ed-mot-cle__mentions').hasAttribute('data-vide'));
+  assert.equal(feu.querySelectorAll('.ed-mot-cle__mentions li').length, 0);
+  assert.ok(bouton(feu, 'ed-mot-cle__supprimer'), 'liste vide : « Supprimer »');
+  const magique = ligne(p.liste, 'magique');
+  assert.equal(magique.querySelectorAll('.ed-mot-cle__mentions li').length, 1, 'verrouillé : son menu des mentions aussi');
+  assert.equal(magique.querySelector('button'), null);
+  // un mot-clé que le service ne décrit pas (sans `mentions`) : pas de menu, « Supprimer » reste (le service juge, 409 avec `mentions`)
+  assert.equal(ligne(p.liste, 'guide').querySelector('.ed-mot-cle__mentions'), null);
+  assert.ok(bouton(ligne(p.liste, 'guide'), 'ed-mot-cle__supprimer'));
+  // « aide » dans « feu » : la file marche sans « Supprimer » sur la ligne
+  cliquer(bouton(aide, 'ed-mot-cle__fusionner'));
+  const boite = p.document.body.querySelector('dialog');
+  boite.querySelector('input').value = 'Feu';
+  boite.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true }));
+  assert.ok(aide.classList.contains('ed-fusionne'));
+  assert.deepEqual(p.motsCles.operations(p.ed, []), [{ op: 'fusionner_mots_cles', mot_cle: 'aide', dans: 'feu' }]);
+  // un mot-clé créé : non verrouillé (R219 (5)), rien ne le mentionne
+  cliquer(p.document.querySelector('.ed-outils-mots-cles').querySelector('button'));
+  await p.formulaires[0].valider({ libelle: 'Bestiaire', description: '' });
+  const cree = ligne(p.liste, 'bestiaire');
+  assert.equal(cree.hasAttribute('data-verrou'), false);
+  assert.ok(cree.querySelector('.ed-mot-cle__mentions').hasAttribute('data-vide'));
+  assert.ok(bouton(cree, 'ed-mot-cle__supprimer') && !p.saisie('bestiaire').controle.disabled);
+});
+
+test('décisions R218, R219 (4), contre le service : un mot-clé verrouillé (verrou = 1 dans la copie) est désactivé sur la page et reçoit la fusion d’un autre', async () => {
+  const s = await surLeService({ A: 'Essai verrou aa', B: 'Essai verrou zz' }, {});
+  const { A, B } = s.mots;
+  // A verrouillé dans la copie (aucune route n'écrit `verrou` : seule une migration le fait), la page relue au crayon
+  s.db.prepare('UPDATE mot_cle SET verrou = 1 WHERE id = ?').run(A.id);
+  s.ed.enEdition = false;
+  s.motsCles.fin(s.ed);
+  await attendre();
+  s.editeurs.clear();
+  s.ed.enEdition = true;
+  s.motsCles.debut(s.ed);
+  await attendre();
+  const a = ligne(s.liste, A.id);
+  assert.ok(a.hasAttribute('data-verrou'), 'le verrou lu dans GET /api/edition/mots-cles/');
+  assert.equal(a.querySelector('button'), null);
+  assert.equal(s.saisie(A.id).controle.disabled, true);
+  // B fusionné dans A : A est proposé, le lot passe, A garde son id et son libellé
+  cliquer(bouton(ligne(s.liste, B.id), 'ed-mot-cle__fusionner'));
+  const boite = s.document.body.querySelector('dialog');
+  assert.ok(boite.querySelector('datalist').children.some((o) => o.getAttribute('value') === A.libelle), 'le verrouillé est une cible');
+  boite.querySelector('input').value = A.libelle;
+  boite.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true }));
+  const r = await s.enregistrer();
+  assert.equal(r.refus, undefined, r.refus?.message);
+  assert.deepEqual(r.operations, [{ op: 'fusionner_mots_cles', mot_cle: B.id, dans: A.id }]);
+  assert.equal(s.motCle(B.id), null, 'B fusionné');
+  assert.deepEqual(s.motCle(A.id), { id: A.id, libelle: A.libelle });
 });

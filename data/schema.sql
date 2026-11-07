@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 109;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 110;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -161,11 +161,17 @@ CREATE TABLE mot_cle (
                                                                  -- lib/palette-css.mjs#idDeCouleur : « magie:sang », « classe:melee », « race:pure »,
                                                                  -- « partie:creer ») ou « #rrggbb » (minuscules) ; NULL : aucune. Que la référence nomme
                                                                  -- une couleur de la palette ne se lit pas en SQL. Migration 0098, ajoutée en dernier
-  url         TEXT    CHECK (url IS NULL OR (url GLOB '/*' AND url NOT GLOB '//*' AND url NOT GLOB '*[^!-~]*' AND instr(url, '\') = 0))
+  url         TEXT    CHECK (url IS NULL OR (url GLOB '/*' AND url NOT GLOB '//*' AND url NOT GLOB '*[^!-~]*' AND instr(url, '\') = 0)),
                                                                  -- l'adresse où mène le mot-clé : interne seulement, relative à la racine du site, sans le
                                                                  -- préfixe de déploiement (« /races/humain/ », « /metiers/#metier-mineur », « /fiche/ ») ;
                                                                  -- ni « //hôte », ni espace, ni caractère hors ASCII imprimable, ni « \ ». NULL : aucune.
                                                                  -- Migration 0098, ajoutée en dernier
+  verrou      INTEGER NOT NULL DEFAULT 0 CHECK (verrou IN (0,1))  -- 1 : le mot-clé est verrouillé (décisions R218, R219) ; le site de dev n'en modifie aucun champ
+                                                                 -- (libellé, définition, abréviation, adresse, couleur) et ne le supprime pas, ni par
+                                                                 -- fusion dans un autre ; il se pose, se cite et reçoit une fusion. Aucune route n'écrit
+                                                                 -- verrou : il ne change que par une migration (« seul un admin », à venir). 0 par défaut :
+                                                                 -- un mot-clé créé plus tard n'est pas verrouillé (R219 (5)), sauf race-hybride (R220 (2)).
+                                                                 -- Le rejeu du journal ne le contrôle pas (R219 (6)). Migration 0110, ajoutée en dernier
 ) STRICT;
 
 -- Mots-clés d'une page (frontmatter `tags`, dans l'ordre) : l'écriture est celle du vocabulaire (mot_cle.libelle ; jusqu'à la migration 0043, chaque page

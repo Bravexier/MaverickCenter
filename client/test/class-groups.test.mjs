@@ -2,21 +2,22 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { CLASS_COLORS, CLASS_GROUPS, classCategory, classColor, groupClasses, groupeDeCouleur } from '../src/lib/class-groups.mjs';
 
-const page = (title, ...tags) => ({ id: `classes/${title.toLowerCase()}`, data: { title, tags: ['classe', ...tags] } });
+// les mots-clés d'une page par leur id (`data.mots_cles` : lib/wiki.ts) ; ses libellés (`tags`), eux, peuvent être n'importe quoi (décision R195)
+const page = (title, ...ids) => ({ id: `classes/${title.toLowerCase()}`, data: { title, tags: ['Classe', ...ids.map((x) => `libellé ${x}`)], mots_cles: ['classe', ...ids] } });
 const titles = (section) => section.entries.map((e) => e.data.title);
 const keys = (groups) => groups.map((g) => g.key);
 
 const sample = [
   page('Mage', 'magique'),
-  page('Parleur', 'càc'),
-  page('Guerrier', 'càc'),
+  page('Parleur', 'cac'),
+  page('Guerrier', 'cac'),
   page('Archer', 'distance'),
-  page('Kitsune', 'hybride animal'),
-  page('Archimage', 'spéciale'),
+  page('Kitsune', 'hybride-animal'),
+  page('Archimage', 'speciale'),
   page('Flagelleur', 'hybride'),
-  page('Bimane', 'càc'),
+  page('Bimane', 'cac'),
   page('Arbalétrier', 'distance'),
-  page('Anansi', 'hybride animal'),
+  page('Anansi', 'hybride-animal'),
 ];
 
 test('cinq catégories, dans l’ordre : physiques mêlée, physiques distance, magiques, raciales, spéciales', () => {
@@ -42,7 +43,7 @@ test('« Spéciales » réunit l’Archimage (spéciale), le Flagelleur (hybride
 });
 
 test('une classe sans catégorie reconnue n’est pas perdue : section « Non classées », sous « Spéciales »', () => {
-  const groups = groupClasses([...sample, page('Mystère', 'autre-chose'), { id: 'classes/sans', data: { title: 'Sans tags', tags: [] } }]);
+  const groups = groupClasses([...sample, page('Mystère', 'autre-chose'), { id: 'classes/sans', data: { title: 'Sans tags', tags: [], mots_cles: [] } }]);
   const last = groups.at(-1);
   assert.equal(last.key, 'speciales');
   assert.deepEqual(last.sections.at(-1), { key: 'non-classees', label: 'Non classées', entries: last.sections.at(-1).entries });
@@ -58,46 +59,52 @@ test('les catégories vides sont omises', () => {
   assert.deepEqual(groupClasses([]), []);
 });
 
-test('les tags sont comparés sans tenir compte de la casse ni des accents', () => {
-  const groups = groupClasses([page('A', 'CÀC'), page('B', 'Distance'), page('C', 'SPECIALE'), page('D', 'Hybride Animal')]);
+test('R195 : les catégories se lisent par l’id du mot-clé, jamais par son écriture (un mot-clé renommé ne déplace aucune classe)', () => {
+  const groups = groupClasses([page('A', 'cac'), page('B', 'distance'), page('C', 'speciale'), page('D', 'hybride-animal')]);
   assert.deepEqual(keys(groups), ['melee', 'distance', 'raciales', 'speciales']);
+  // l'écriture d'origine dans les libellés, sans l'id : non classée
+  const ecrite = { id: 'classes/e', data: { title: 'E', tags: ['Classe', 'cac'], mots_cles: ['classe'] } };
+  assert.equal(classCategory(ecrite), null);
+  // l'id, sous un autre libellé : rangée
+  const renommee = { id: 'classes/f', data: { title: 'F', tags: ['Classe', 'Corps à corps'], mots_cles: ['classe', 'cac'] } };
+  assert.equal(classCategory(renommee).key, 'melee');
 });
 
 test('« hybride » (Flagelleur) et « hybride animal » (classes raciales) ne se confondent pas', () => {
   assert.equal(classCategory(page('Flagelleur', 'hybride')).key, 'speciales');
-  assert.equal(classCategory(page('Fenrir', 'hybride animal')).key, 'raciales');
+  assert.equal(classCategory(page('Fenrir', 'hybride-animal')).key, 'raciales');
 });
 
 test('une classe qui porte deux tags de catégorie n’apparaît qu’une fois, dans la première catégorie affichée', () => {
-  const groups = groupClasses([page('Double', 'magique', 'càc')]);
+  const groups = groupClasses([page('Double', 'magique', 'cac')]);
   assert.deepEqual(keys(groups), ['melee']);
   assert.deepEqual(titles(groups[0].sections[0]), ['Double']);
 });
 
 test('le tri ne modifie pas la liste d’origine', () => {
-  const input = [page('Zèbre', 'càc'), page('Abeille', 'càc')];
+  const input = [page('Zèbre', 'cac'), page('Abeille', 'cac')];
   const copy = [...input];
   groupClasses(input);
   assert.deepEqual(input, copy);
 });
 
 test('le tri suit le titre, une classe raciale portant le nom de sa race', () => {
-  const [raciales] = groupClasses([page('Mage Bleu', 'hybride animal'), page('Mage', 'hybride animal')]);
+  const [raciales] = groupClasses([page('Mage Bleu', 'hybride-animal'), page('Mage', 'hybride-animal')]);
   assert.deepEqual(titles(raciales.sections[0]), ['Mage', 'Mage Bleu']);
 });
 
 test('classCategory donne la catégorie d’une classe, ou rien pour une autre page', () => {
-  assert.deepEqual(classCategory(page('Guerrier', 'càc')), { key: 'melee', label: 'Physiques Mêlée' });
+  assert.deepEqual(classCategory(page('Guerrier', 'cac')), { key: 'melee', label: 'Physiques Mêlée' });
   assert.deepEqual(classCategory(page('Archer', 'distance')), { key: 'distance', label: 'Physiques Distance' });
   assert.deepEqual(classCategory(page('Mage', 'magique')), { key: 'magiques', label: 'Magiques' });
-  assert.deepEqual(classCategory(page('Kitsune', 'hybride animal')), { key: 'raciales', label: 'Raciales' });
-  assert.deepEqual(classCategory(page('Archimage', 'spéciale')), { key: 'speciales', label: 'Spéciales' });
+  assert.deepEqual(classCategory(page('Kitsune', 'hybride-animal')), { key: 'raciales', label: 'Raciales' });
+  assert.deepEqual(classCategory(page('Archimage', 'speciale')), { key: 'speciales', label: 'Spéciales' });
   assert.equal(classCategory(page('Mystère', 'autre')), null);
 });
 
 test('l’exception du Parleur suit l’identifiant de la page, pas son titre ni ses tags', () => {
-  assert.equal(classCategory({ id: 'classes/parleur', data: { title: 'Autre titre', tags: ['classe', 'càc'] } }).key, 'speciales');
-  assert.equal(classCategory({ id: 'classes/autre-page', data: { title: 'Parleur', tags: ['classe', 'càc'] } }).key, 'melee');
+  assert.equal(classCategory({ id: 'classes/parleur', data: { title: 'Autre titre', mots_cles: ['classe', 'cac'] } }).key, 'speciales');
+  assert.equal(classCategory({ id: 'classes/autre-page', data: { title: 'Parleur', mots_cles: ['classe', 'cac'] } }).key, 'melee');
 });
 
 test('couleur d’une classe d’après sa catégorie : rouge (mêlée), vert (distance), bleu (magiques), violet (raciales), jaune (spéciales, Parleur compris)', () => {

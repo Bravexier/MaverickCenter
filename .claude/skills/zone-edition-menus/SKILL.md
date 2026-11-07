@@ -18,7 +18,7 @@ user-invocable: false
 ## Choix du propriétaire
 - Ordre des menus par glisser-déposer : les 4 onglets des Règles, l'Artisanat et les races ; entrées « bientôt » déplaçables ; ordre des onglets fixe.
 - Pages des Règles ajoutées et supprimées (Guide du MJ, Découvrir et pages typées hors périmètre). Création : titre, onglet, résumé, tous obligatoires, texte écrit ensuite en place, aucune source ; adresse `/regles/<slug>/` tirée du titre et figée ; page en fin de menu. Une entrée « bientôt » se remplit (son libellé pour titre). L'onglet d'une page se change par une liste, l'adresse reste.
-- Suppression : refusée tant qu'une page la cite (le service donne la liste), puis son adresse donne la 404 ; pas de table des renvois. Aucun bouton « Supprimer » sur une page protégée (`boutonSupprimer`, décision du leader-technique) ; une page seulement citée garde le bouton, et le refus 409 liste les textes qui la citent.
+- Suppression : refusée tant qu'une page la cite (le service donne la liste), puis son adresse donne la 404 ; pas de table des renvois. Aucun bouton « Supprimer » sur une page protégée (`boutonSupprimer`, décision du leader-technique) ; une page seulement citée garde le bouton, et le refus 409 liste les textes qui la citent. Une page que l'adresse d'un mot-clé verrouillé vise ne se supprime pas (R221) : 409 avec `details.mots_cles_verrouilles` (`citations-db.mjs#motsClesVerrouillesQuiYMenent`, `refusDuMotCleVerrouille`, appelés par `edition-plan.mjs`) ; le bouton ne le prévoit pas, le service tranche (R221).
 - Un titre modifié change le libellé de son entrée de menu (« Changer le titre avec l'édition devrai aussi changer le nom sur le menu lattéral »).
 
 ## Invariants
