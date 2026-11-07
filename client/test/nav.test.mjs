@@ -18,8 +18,9 @@ test('le menu a les rubriques et les entrées voulues par le propriétaire, dans
   assert.deepEqual(plan, [
     // « Le menu "Découvrir" sera renommé "Règles", le sous-menu "Bienvenue" sera renommé "Découvrir" » ; « Efface la page "Rejoindre une partie" et son
     // lien. » (2026-11-05) ; les onglets des Règles (R184 : ligne 2 = Découvrir, L'univers, Fiche de personnage, Mécaniques générales, Les combats,
-    // Exploration ; plus de Créer son personnage, Les bases ni Règles avancées)
-    'Règles : Découvrir, L’univers, Fiche de personnage, Mécaniques générales, Les combats, Exploration',
+    // Exploration ; plus de Créer son personnage, Les bases ni Règles avancées) ; puis le Glossaire (réponses du propriétaire du 2026-11-06, Q6 et Q7 :
+    // « Glossaire » dans le menu Règles, après Exploration, une page seule)
+    'Règles : Découvrir, L’univers, Fiche de personnage, Mécaniques générales, Les combats, Exploration, Glossaire',
     // « renommer le menu "Règles" en "Personnage" » ; « Famillier devrai être dans Personnage » (sic, réponse du 2026-10-29)
     'Personnage : Races, Magies, Classes, Métiers, Familiers',
     // « Entre le nouvellement créé "Personnage" et "Espace Joueur" il faudra un nouveau menu : "Equipement" » : cinq pages séparées, libellés « Comme
@@ -35,6 +36,7 @@ test('le menu a les rubriques et les entrées voulues par le propriétaire, dans
   assert.deepEqual(NAV.find((g) => g.key === 'joueur').items.filter((i) => i.path).map((i) => i.path), ['fiche/', 'personnages/'], 'la fiche, puis la liste des personnages');
   assert.deepEqual(NAV.find((g) => g.key === 'regles').items.map((i) => i.path), [
     'decouvrir/', 'decouvrir/l-univers/', 'regles/fiche-de-personnage/', 'regles/mecaniques-generales/', 'regles/combats/', 'regles/exploration/',
+    'regles/glossaire/',
   ]);
   assert.deepEqual(NAV.find((g) => g.key === 'personnage').items.map((i) => i.path), ['races/', 'magies/', 'classes/', 'metiers/', 'ressources/familiers/']);
   assert.deepEqual(NAV.find((g) => g.key === 'equipement').items.map((i) => i.path), [
@@ -254,12 +256,15 @@ test('la page Debug n’est au menu que sur le site de dev (demande du propriét
   assert.doesNotMatch(base, /group\.items\.map\(/, 'jamais toutes les entrées');
 });
 
-test('R184 : les onglets des Règles au menu (ligne 2, après Découvrir et L’univers) sont ceux de la table regles_onglet, dans son ordre (libellé = titre, chemin = regles/<id>/)', () => {
+test('R184 : les onglets des Règles au menu (ligne 2, après Découvrir et L’univers, avant le Glossaire) sont ceux de la table regles_onglet, dans son ordre (libellé = titre, chemin = regles/<id>/)', () => {
   // nav.mjs n'importe rien (le script de la page 404 l'importe) : ses libellés et chemins sont écrits à part, et doivent suivre le plan de la base
   const onglets = ouvrirBase().prepare('SELECT id, titre FROM regles_onglet ORDER BY ordre, id').all();
   assert.ok(onglets.length >= 4, `${onglets.length} onglets`);
   const regles = NAV.find((g) => g.key === 'regles');
-  assert.deepEqual(regles.items.slice(2).map((i) => [i.label, i.path]), onglets.map((o) => [o.titre, `regles/${o.id}/`]));
+  assert.deepEqual(regles.items.slice(2, -1).map((i) => [i.label, i.path]), onglets.map((o) => [o.titre, `regles/${o.id}/`]));
+  // le Glossaire, en dernier : une page seule (pages/regles/glossaire.astro), pas un onglet du plan ; son nom est réservé (lib/livres.mjs#NOMS_RESERVES)
+  assert.deepEqual(regles.items.at(-1), { label: 'Glossaire', path: 'regles/glossaire/' });
+  assert.ok(!onglets.some((o) => o.id === 'glossaire'), 'pas un onglet');
   assert.deepEqual(regles.items.slice(0, 2).map((i) => [i.label, i.path]), [['Découvrir', 'decouvrir/'], ['L’univers', 'decouvrir/l-univers/']]);
   // toute page sous regles/ (pages des onglets à plat, Artisanat, anciennes adresses) ouvre les Règles ; l'onglet marqué vient du plan (Base.astro#entree)
   assert.deepEqual(regles.autres, ['regles/']);

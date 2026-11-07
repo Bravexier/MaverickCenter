@@ -1,4 +1,4 @@
-// La gestion du glossaire des mots-clés sur /recherche/ en mode modification (site de dev ; demande du propriétaire : « en mode édition seulement »,
+// La gestion du glossaire des mots-clés sur /regles/glossaire/ en mode modification (site de dev ; demande du propriétaire : « en mode édition seulement »,
 // « supprimer / ajouter / Modifier des mots clés. Une suppression d'un mot clé le supprimera de tous les endroits qui le référencent ») : ce que
 // l'extension de l'éditeur (src/scripts/edition/mots-cles.mjs) décide avant d'envoyer le lot, en fonctions pures (sans dépendance navigateur ni Astro).
 // Le vocabulaire est celui du service (GET /api/edition/mots-cles/ : [{ id, libelle, libelle_cle, description, pages, protege }], `pages` = le nombre de
@@ -175,3 +175,45 @@ export function operationsDuVocabulaire(operations, { suppressions = new Set(), 
     ...ordre,
   ];
 }
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// La couleur d'un mot-clé (migration 0098 ; réponses du propriétaire Q3, Q4 : deux sélecteurs, « une liste des couleurs prédéfinies » — toutes les
+// familles de la palette, groupées par famille, chaque couleur désignée par l'élément de référence — et un cercle qui donne la couleur écrite)
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+
+/** Une couleur écrite : « #rrggbb » (minuscules à l'enregistrement). */
+const HEX = /^#[0-9a-f]{6}$/i;
+
+/**
+ * Les choix de la liste des couleurs d'un mot-clé : `groupes` = [{ famille, libelle, couleurs: [{ valeur: 'famille:id', libelle, classe, fond }] }]
+ * (ce que la page fournit, `data-couleurs` de pages/regles/glossaire.astro : la palette entière, que le navigateur n'importe pas) ; rend
+ * [{ valeur: '', libelle: 'Aucune' }, { groupe, options: [{ valeur, libelle, classe }] }…] et, pour une valeur que la liste n'a pas (une couleur écrite,
+ * ou une référence inconnue : jamais perdue sans que personne n'y touche), une dernière option qui la montre (`ecrite: true`).
+ */
+export function optionsDeCouleur(groupes, valeur = '') {
+  const options = [{ valeur: '', libelle: 'Aucune' }];
+  for (const g of groupes ?? []) {
+    options.push({ groupe: g.libelle, options: (g.couleurs ?? []).map((c) => ({ valeur: c.valeur, libelle: c.libelle, classe: c.classe })) });
+  }
+  const v = String(valeur ?? '');
+  const connue = !v || (groupes ?? []).some((g) => (g.couleurs ?? []).some((c) => c.valeur === v));
+  if (!connue) options.push({ valeur: v, libelle: HEX.test(v) ? `Couleur choisie (${v.toLowerCase()})` : v, ecrite: true });
+  return options;
+}
+
+/**
+ * La couleur que montre le cercle (`<input type="color">`, qui ne prend qu'un « #rrggbb ») pour la valeur `valeur` : elle-même pour une couleur écrite, le
+ * fond de la couleur de la palette qu'une référence nomme (`groupes`, fond rendu lisible : celui de sa classe), sinon `defaut`.
+ */
+export function couleurDuCercle(groupes, valeur, defaut = '#808080') {
+  const v = String(valeur ?? '');
+  if (HEX.test(v)) return v.toLowerCase();
+  for (const g of groupes ?? []) for (const c of g.couleurs ?? []) if (c.valeur === v && HEX.test(c.fond ?? '')) return c.fond.toLowerCase();
+  return defaut;
+}
+
+/** La valeur enregistrée d'une couleur saisie : « #rrggbb » en minuscules, une référence telle quelle, '' (aucune : NULL). */
+export const valeurDeCouleur = (saisie) => {
+  const v = String(saisie ?? '').trim();
+  return HEX.test(v) ? v.toLowerCase() : v;
+};

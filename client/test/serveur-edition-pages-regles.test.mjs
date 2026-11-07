@@ -25,6 +25,7 @@ import { cheminBase } from '../src/lib/donnees.mjs';
 import { ENTITES } from '../src/lib/edition-modele.mjs';
 import { installerLePlan, NOMS_RESERVES, PAGES_SUPPRIMEES, verifierLePlan } from '../src/lib/livres.mjs';
 import { emettrePage, lirePages } from '../src/lib/pages-db.mjs';
+import { cheminDePage } from '../src/lib/metiers.mjs';
 import { chargerPlanDesRegles } from '../src/lib/plan-des-regles-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
@@ -182,19 +183,25 @@ test('supprimer une page des Règles : 404, 400 hors des onglets, 409 protégée
   assert.ok(protegee.corps.raisons.some((r) => r.raison === 'ouverture'), JSON.stringify(protegee.corps));
   assert.equal(nombre(), avant, 'rien d’écrit');
 
-  // une page créée, citée par une autre page créée : refusée tant que le lien reste
+  // une page créée, citée par une autre page créée : refusée tant que le lien reste. Depuis la migration 0098, un lien est la balise d'un mot-clé qui
+  // mène à la page : le mot-clé (son adresse) et la balise la citent tous les deux
   const cible = ok(creer(lot, { titre: titreLibre(db, 'Page citée d’essai'), onglet_id: 'combats', resume: 'Citée.' })).crees[0].id;
   const titreCible = db.prepare('SELECT titre FROM page WHERE id = ?').get(cible).titre;
   const citante = ok(creer(lot, { titre: titreLibre(db, 'Page qui cite d’essai'), onglet_id: 'combats', resume: 'Cite.' })).crees[0].id;
+  assert.equal(lot([{ op: 'modifier', table: 'page', cle: { id: citante }, valeurs: { corps_md: `Voir [[${titreCible}]].` } }]).statut, 400, 'aucun mot-clé ne mène à la page');
+  const motCle = ok(lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: titreLibre(db, 'Mot-clé de la page citée'), url: `/${cheminDePage(cible)}` } }])).crees[0].id;
   ok(lot([{ op: 'modifier', table: 'page', cle: { id: citante }, valeurs: { corps_md: `Voir [[${titreCible}]].` } }]));
+  assert.equal(db.prepare('SELECT corps_md FROM page WHERE id = ?').get(citante).corps_md, `Voir {{${motCle}|${titreCible}}}.\n`, 'le lien devenu la balise du mot-clé');
   const avantRefus = nombre();
   const citee = supprimer(cible);
   assert.equal(citee.statut, 409, JSON.stringify(citee.corps));
-  assert.deepEqual(citee.corps.citations.map((c) => [c.table, c.cle.id, c.comment]), [['page', citante, 'lien']]);
-  assert.match(citee.corps.erreur, /citée par un texte/);
+  assert.deepEqual(citee.corps.citations.map((c) => [c.table, c.cle.id, c.comment]).sort(), [['mot_cle', motCle, 'mot-cle'], ['page', citante, 'balise']]);
+  assert.match(citee.corps.erreur, /citée par 2 textes \(Mot-clé « .* » \(son lien\), /);
   assert.equal(nombre(), avantRefus);
-  // le lien retiré, seule une page d'exemple la cite encore : elle se supprime
+  // la balise retirée, le mot-clé mène encore à la page : refusée ; son lien retiré, seule une page d'exemple la cite encore : elle se supprime
   ok(lot([{ op: 'modifier', table: 'page', cle: { id: citante }, valeurs: { corps_md: 'Plus de lien.' } }]));
+  assert.deepEqual(supprimer(cible).corps.citations.map((c) => [c.table, c.comment]), [['mot_cle', 'mot-cle']]);
+  ok(lot([{ op: 'modifier', table: 'mot_cle', cle: { id: motCle }, valeurs: { url: null } }]));
   const exemple = db.prepare("SELECT id, corps_md FROM page WHERE type = 'guide' AND statut = 'example' ORDER BY id").get();
   ok(lot([{ op: 'modifier', table: 'page', cle: { id: exemple.id }, valeurs: { corps_md: `${exemple.corps_md}\nVoir [[${titreCible}]].` } }]));
   const r = ok(supprimer(cible));

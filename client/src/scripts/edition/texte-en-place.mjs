@@ -1,6 +1,6 @@
 // L'éditeur de texte en place du mode modification (contenteditable + barre d'outils), partagé par le texte du guide et du Codex (edition/guide.mjs), les
 // descriptions de la chronologie (edition/chronologie.mjs) et les blocs des panneaux de règles (edition/panneaux.mjs) : la sélection dans les zones
-// modifiables, les commandes de mise en forme, les liens (vers une page du wiki : [[cible|texte]], ou une adresse web ; retirer un lien), les mots-clés du
+// modifiables, les commandes de mise en forme, les liens (vers une page : par un mot-clé qui y mène, sa balise ; ou une adresse web ; retirer un lien), les mots-clés du
 // glossaire (ces zones sont des textes mis en forme : lib/mots-cles-balises.mjs), une petite boîte de saisie, et la barre d'outils.
 // Les mots-clés du glossaire s'y lisent et s'y modifient en balises écrites, comme dans le Markdown (demande du propriétaire du 2026-10-17 : « Quand je
 // passe en mode édition le texte devrai remettre le texte en mode Markdown […] je ne vois pas {{Recharge Longue}} ») : à l'entrée, chaque mot-clé rendu
@@ -10,14 +10,13 @@
 // La barre d'outils se tient à gauche de l'écran, à la hauteur de la zone où est le curseur (demande du 2026-10-17 : hauteurDeLaBarre).
 // Le HTML d'une zone est réécrit en Markdown par lib/markdown-edition.mjs (versMarkdown) ; ce module ne touche qu'au DOM.
 import { arbreDuDom, baliseEcrite } from '../../lib/markdown-edition.mjs';
-import { cheminDePage } from '../../lib/metiers.mjs';
 import { lireBalises, motCleDeLaRef } from '../../lib/mots-cles-balises.mjs';
 import { normalize } from '../../lib/text.mjs';
 import { vocabulaireVivant } from './mots-cles-vivants.mjs';
 
 const echapper = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 /** Les mots-clés rendus (lib/mots-cles-balises.mjs#htmlDeLaBalise) qu'une zone montre en balises écrites en mode modification. */
-const MOTS_CLES_RENDUS = 'strong.mot-cle[data-mot-cle], b.mot-cle[data-mot-cle], span.mot-cle-definition[data-mot-cle]';
+const MOTS_CLES_RENDUS = 'strong.mot-cle[data-mot-cle], b.mot-cle[data-mot-cle], a.mot-cle[data-mot-cle], span.mot-cle-definition[data-mot-cle]';
 /** L'écran assez large pour la barre d'outils à gauche (styles/edition/edition.css, même seuil) ; plus étroit, elle reste en haut. */
 const BARRE_A_GAUCHE = '(min-width: 48rem)';
 const libelleDePage = (p) => `${p.titre} — ${p.id}`;
@@ -154,44 +153,27 @@ export function editeurEnPlace(zones) {
     commande(ed, 'formatBlock', cible);
   }
 
-  /** Pose (ou change) un lien vers une page du wiki sur le texte choisi : il s'écrira [[cible|texte]]. */
-  async function lienWiki(ed) {
+  /**
+   * Lie le texte choisi à une page par un mot-clé qui y mène (migration 0098 ; réponse du propriétaire : « une balise dont le mot-clé a une URL est un
+   * lien ») : le choix parmi les mots-clés qui ont une adresse, puis le texte devient sa balise, comme l'outil « Mot-clé » (motCle) ; le curseur dans une
+   * balise, change son mot-clé. Un lien vers une page s'écrit donc toujours par un mot-clé (le service convertit un [[…]] saisi : serveur/edition.mjs) ;
+   * une page sans mot-clé se lie après en avoir créé un sur /regles/glossaire/ (adresse comprise).
+   */
+  async function lienMotCle(ed) {
     const r = plage();
     if (!r) return ed.annoncer('Choisissez d’abord le texte à lier (ou placez le curseur là où le lien doit aller).');
-    let pages;
-    try {
-      pages = await pagesDuWiki(ed);
-    } catch (e) {
-      return ed.annoncer(`Liste des pages indisponible : ${e.message}`, 'erreur');
-    }
-    const existant = proche(r, 'a, span.wikilink');
-    const actuelle = existant?.dataset.cible ? pages.find((p) => p.id === existant.dataset.cible || normalize(p.titre) === normalize(existant.dataset.cible)) : null;
-    demander(ed, {
-      titre: existant ? 'Changer le lien' : 'Lien vers une page du wiki',
-      aide: 'Tapez quelques lettres du titre puis choisissez la page. Le texte choisi reste le texte du lien.',
-      libelle: 'Page',
-      valeur: actuelle ? libelleDePage(actuelle) : '',
-      suggestions: pages.map(libelleDePage),
+    const autour = baliseAutour(r);
+    await choisirUnMotCle(ed, {
+      titre: autour ? 'Changer le mot-clé du lien' : 'Lien par un mot-clé',
+      aide: 'Tapez quelques lettres du mot-clé puis choisissez-le : seuls ceux qui mènent à une page sont proposés. Le texte choisi devient sa balise, « {{id}} » (le libellé du mot-clé) ou « {{id|texte}} » (un autre texte) : une fois enregistré, c’est un lien vers sa page, en gras. Une page sans mot-clé : créez-le d’abord sur le Glossaire, avec son lien.',
+      valeur: autour?.balise.ref ?? '',
       bouton: 'Lier',
-      valider(saisie) {
-        const page = pageChoisie(pages, saisie);
-        if (!page) throw new Error('Page introuvable : choisissez-la dans la liste.');
-        const href = `${(ed.base || '/').replace(/\/?$/, '/')}${cheminDePage(page.id)}`;
-        return () => {
-          if (existant) {
-            const lien = document.createElement('a');
-            lien.className = 'wikilink';
-            lien.dataset.cible = page.id;
-            lien.href = href;
-            lien.append(...existant.childNodes);
-            existant.replaceWith(lien);
-          } else {
-            restaurer(r);
-            const texte = r.toString().trim() || page.titre;
-            document.execCommand('insertHTML', false, `<a class="wikilink" data-cible="${echapper(page.id)}" href="${echapper(href)}">${echapper(texte)}</a>`);
-          }
-          ed.marquerModifie();
-        };
+      filtre: (m) => Boolean(m.url),
+      poser(m) {
+        const ecrit = autour ? (autour.balise.complet ? null : autour.balise.texte) : r.toString().replace(/[{}\n]+/g, ' ').replace(/\s+/g, ' ').trim() || null;
+        const ecriture = ecrit === null || ecrit === m.libelle ? `{{${m.id}}}` : `{{${m.id}|${ecrit}}}`;
+        if (autour) remplacerLaBalise(ed, autour, ecriture);
+        else insererLaBalise(ed, r, ecriture);
       },
     });
   }
@@ -268,8 +250,11 @@ export function editeurEnPlace(zones) {
     ed.marquerModifie();
   }
 
-  /** Le mot-clé du glossaire à choisir (petite boîte, suggestions du vocabulaire vivant), puis `poser(mot-clé)`. */
-  async function choisirUnMotCle(ed, { titre, aide, valeur = '', bouton, poser }) {
+  /**
+   * Le mot-clé du glossaire à choisir (petite boîte, suggestions du vocabulaire vivant ; `filtre` : ceux qui sont proposés et acceptés), puis
+   * `poser(mot-clé)`.
+   */
+  async function choisirUnMotCle(ed, { titre, aide, valeur = '', bouton, poser, filtre = () => true }) {
     let vocabulaire;
     try {
       vocabulaire = await vocabulaireVivant(ed);
@@ -277,10 +262,10 @@ export function editeurEnPlace(zones) {
       return ed.annoncer(`Glossaire indisponible : ${e.message}`, 'erreur');
     }
     demander(ed, {
-      titre, aide, libelle: 'Mot-clé', valeur, bouton, suggestions: vocabulaire.liste.map(libelleDeMotCle),
+      titre, aide, libelle: 'Mot-clé', valeur, bouton, suggestions: vocabulaire.liste.filter(filtre).map(libelleDeMotCle),
       valider(saisie) {
         const m = motCleChoisi(vocabulaire, saisie);
-        if (!m) throw new Error('Mot-clé introuvable : choisissez-le dans la liste (un mot-clé se crée sur la page Recherche, en mode modification).');
+        if (!m || !filtre(m)) throw new Error('Mot-clé introuvable : choisissez-le dans la liste (un mot-clé se crée sur la page Glossaire, en mode modification).');
         return () => poser(m);
       },
     });
@@ -439,7 +424,7 @@ export function editeurEnPlace(zones) {
     }, { signal });
   }
 
-  return { plage, restaurer, proche, commande, bloc, lienWiki, lienWeb, retirerLien, motCle, definition, barre, rendreModifiable };
+  return { plage, restaurer, proche, commande, bloc, lienMotCle, lienWeb, retirerLien, motCle, definition, barre, rendreModifiable };
 }
 
 /** Le groupe « Mots-clés » d'une barre d'outils (barre(ed, groupes, …)) pour l'éditeur en place `texte` (editeurEnPlace) : mot-clé, définition. */

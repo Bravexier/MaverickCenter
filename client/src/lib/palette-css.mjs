@@ -346,3 +346,53 @@ export const classeDEvenement = (id) => `couleur-evenement-${idDeCouleur(id)}`;
  */
 export const cssDesEvenements = (couleurs) =>
   [...(couleurs ?? [])].map(([id, fond]) => `.${classeDEvenement(id)}{--couleur:${fond};--couleur-texte:${texteSurCouleur(fond)}}`).join('');
+
+/**
+ * La couleur de la palette qu'une référence de mot-clé nomme (« classe:melee », « magie:espace-temps » : migration 0098, mot_cle.couleur ; id = celui de
+ * sa classe, idDeCouleur de la clé du module) : { famille, cle, classe, fond, texte } (couleursDeLaPalette), ou null si la palette ne la connaît pas.
+ */
+export function couleurDeReference(reference) {
+  const m = /^([a-z]+):([a-z0-9-]+)$/.exec(String(reference ?? ''));
+  if (!m || !Object.hasOwn(FAMILLES_DE_LA_PALETTE, m[1])) return null;
+  return couleursDeLaPalette([m[1]]).find((c) => idDeCouleur(c.cle) === m[2]) ?? null;
+}
+
+/**
+ * La faute de la couleur d'un mot-clé (mot_cle.couleur, migration 0098), ou null : « #rrggbb » en minuscules, ou une référence « <famille>:<id> » que
+ * la palette connaît (couleurDeReference). Ici et non dans lib/mots-cles-liens.mjs : elle lit la palette, qu'un script de page n'importe jamais.
+ */
+export function fauteDeLaCouleur(couleur) {
+  if (typeof couleur !== 'string' || !couleur) return 'une couleur est attendue';
+  if (/^#[0-9a-f]{6}$/.test(couleur)) return null;
+  if (/^#[0-9a-fA-F]{6}$/.test(couleur)) return 'une couleur écrite s’écrit en minuscules (« #rrggbb »)';
+  const m = /^([a-z]+):([a-z0-9]+(?:-[a-z0-9]+)*)$/.exec(couleur);
+  if (!m) return 'une couleur s’écrit « #rrggbb » ou « <famille>:<id> » d’une couleur du site (« classe:melee », « magie:feu »)';
+  if (!Object.hasOwn(FAMILLES_DE_LA_PALETTE, m[1])) return `« ${m[1]} » n’est pas une famille de couleurs du site (${Object.keys(FAMILLES_DE_LA_PALETTE).join(', ')})`;
+  if (!couleurDeReference(couleur)) return `la famille « ${m[1]} » n’a pas de couleur « ${m[2]} »`;
+  return null;
+}
+
+/**
+ * La feuille des mots-clés colorés (migration 0098) d'après [{ id, couleur }] (lib/mots-cles-db.mjs#motsClesDeLaBase, GET /api/edition/mots-cles/) :
+ * pour une couleur écrite, la règle de sa classe `.couleur-mot-cle-<id>{--couleur:…;--couleur-texte:…}` (le fond rendu lisible, le texte de
+ * texteSurCouleur, comme une couleur des règles) ; pour une référence d'une famille d'une zone (FAMILLES_DES_ZONES), la règle de sa classe de la
+ * palette (les familles de FAMILLES_DE_CHAQUE_PAGE sont déjà sur chaque page, cssDeLaPalette) ; une référence inconnue n'a pas de règle. Une règle par
+ * classe, dans l'ordre des mots-clés. Émise par la mise en page (tech-front), réécrite par le site de dev quand le vocabulaire change.
+ */
+export function cssDesMotsCles(motsCles) {
+  const regles = new Map();
+  for (const m of motsCles ?? []) {
+    const couleur = m?.couleur;
+    if (typeof couleur !== 'string' || !couleur) continue;
+    if (/^#[0-9a-f]{6}$/.test(couleur)) {
+      const classe = `couleur-mot-cle-${m.id}`;
+      const fond = lisible(couleur);
+      if (!regles.has(classe)) regles.set(classe, `.${classe}{--couleur:${fond};--couleur-texte:${texteSurCouleur(fond)}}`);
+      continue;
+    }
+    const c = couleurDeReference(couleur);
+    if (!c || FAMILLES_DE_CHAQUE_PAGE.includes(c.famille) || regles.has(c.classe)) continue;
+    regles.set(c.classe, `.${c.classe}{--couleur:${c.fond};--couleur-texte:${c.texte}}`);
+  }
+  return [...regles.values()].join('');
+}

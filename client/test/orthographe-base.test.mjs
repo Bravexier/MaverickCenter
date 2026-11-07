@@ -12,6 +12,8 @@ import { ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { TABLES_DES_NOTES } from '../src/lib/notes-de-version.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
+import { ecrituresDuTexte } from './aide-ecritures-du-lien.mjs';
 
 const racine = trouverRacine();
 const dossier = join(racine, 'data', 'migrations');
@@ -137,7 +139,8 @@ const supprimeesPar = (migration) => {
 // Corrections d'une phrase retirée depuis d'une page restée, sur décision du propriétaire : R184 (7) (« Supprime tous les doublons. Là où il y avais la
 // liste des résistances et faiblesses renvoie désormais à cette nouvelle page »), retouche E12 de la spécification de game-design (db:sync-pages, même
 // lot que la migration 0091) : la phrase sur les crans de « Fiche de personnage : Tableau Résistances/Faiblesses » est retirée, son lien « ici » vise
-// la page « Résistances et faiblesses ».
+// la page « Résistances et faiblesses ». Le renvoi se lit tel que la 0091 l'a écrit, ou avec la balise que la migration 0098 a faite de son lien
+// (test/aide-ecritures-du-lien.mjs ; mots-clés de la base d'import, comme la cellule lue par valeurDImport).
 const DOUBLONS_R184 = [{ table: 'page', cle: { id: 'guide/fiche-tableau-resistances-faiblesses' }, col: 'corps_md',
   renvoi: 'tout est indiqué [[guide/resistances-et-faiblesses|ici]].', phrase: 'Ce que vous devez savoir c’est que les résistances et faiblesses communiquent' }];
 const doublonR184 = (c) => DOUBLONS_R184.find((r) => r.table === c.table && r.col === c.col && JSON.stringify(r.cle) === JSON.stringify(c.cle));
@@ -173,7 +176,7 @@ test('base : chaque correction est faite (le texte corrigé est dans sa cellule,
     }
     const d = doublonR184(c);
     if (d && !v.includes(c.apres)) {
-      assert.ok(v.includes(d.renvoi) && !v.includes(d.phrase), `${c.table} ${JSON.stringify(c.cle)} : la phrase en double retirée, le renvoi en place (R184 (7))`);
+      assert.ok(ecrituresDuTexte(baseDImport(), d.renvoi).some((f) => v.includes(f)) && !v.includes(d.phrase), `${c.table} ${JSON.stringify(c.cle)} : la phrase en double retirée, le renvoi en place (R184 (7))`);
       continue;
     }
     const n = changee(c);

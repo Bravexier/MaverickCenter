@@ -1,13 +1,15 @@
 // Les citations d'une page dans la base (lib/citations-db.mjs ; lot de l'édition des menus et des pages, réponse du propriétaire « Refus si citée, puis
 // 404 ») : un lien du wiki `[[…]]` résolu comme le site (titre, slug, alias, identifiant ; un lien ambigu compte), un lien écrit vers /regles/<slug>/ ou
 // guide/<slug>, la légende d'un bloc de la chronologie ; jamais la page elle-même, jamais une colonne de clé ; une citation depuis une page d'exemple
-// est marquée (elle ne bloque pas). Sur une base synthétique (le schéma), puis contre la table `lien` que db:derive tire des mêmes textes.
+// est marquée (elle ne bloque pas) ; depuis la migration 0098, la balise d'un mot-clé qui mène à la page, et ce mot-clé. Sur une base synthétique (le
+// schéma), puis contre la table `lien` que db:derive tire des mêmes textes.
 //   node --test test/citations-db.test.mjs
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { citationsBloquantes, citationsDe, citationsDesPages } from '../src/lib/citations-db.mjs';
+import { adresseDeLaPage } from '../src/lib/adresses-db.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 
 /** Une base au schéma de data/schema.sql (clés étrangères non contrôlées : seules les lignes utiles à l'essai). */
@@ -68,6 +70,31 @@ test('citationsDe : lien du wiki (titre, alias, identifiant, résumé), adresse 
   db.close();
 });
 
+test('migration 0098 : la balise d’un mot-clé qui mène à la page la cite (texte mis en forme ou de case, hors code), et le mot-clé lui-même par son lien', () => {
+  const db = baseDEssai();
+  const page = db.prepare("INSERT INTO page (id, type, slug, titre, titre_cle, resume, corps_md, statut, origine) VALUES (?, ?, ?, ?, ?, NULL, ?, ?, 'docs')");
+  db.prepare('INSERT INTO mot_cle (id, libelle, libelle_cle, url) VALUES (?, ?, ?, ?)').run('la-cible', 'La cible', 'la-cible', `${adresseDeLaPage('guide/la-cible')}#une-ancre`);
+  db.prepare("INSERT INTO mot_cle (id, libelle, libelle_cle, url) VALUES ('route', 'Route', 'route', '/fiche/')").run();
+  db.prepare("INSERT INTO mot_cle (id, libelle, libelle_cle) VALUES ('sans-lien', 'Sans lien', 'sans-lien')").run();
+  page.run('guide/par-balise', 'guide', 'par-balise', 'Par balise', 'par-balise', 'Voir {{la-cible}}, {{route}} et {{sans-lien}}.', 'draft');
+  page.run('guide/balise-en-code', 'guide', 'balise-en-code', 'Balise en code', 'balise-en-code', 'Pas une balise : `{{la-cible}}`.', 'draft');
+  page.run('lore/exemple-balise', 'lore', 'exemple-balise', 'Exemple balise', 'exemple-balise', 'Voir {{la-cible|ici}}.', 'example');
+  db.prepare("INSERT INTO evenement_extrait (evenement_id, rang, page_id, texte, origine, source_ref) VALUES ('fondation', 2, NULL, 'Voir {{la-cible|la cible}}.', 'chronologie', 'essai')").run();
+  const citations = citationsDe(db, 'guide/la-cible');
+  const nouvelles = citations.filter((c) => ['balise', 'mot-cle'].includes(c.comment)).map((c) => `${c.table} ${JSON.stringify(c.cle)} ${c.colonne} ${c.comment}${c.exemple ? ' (exemple)' : ''}`);
+  assert.deepEqual(nouvelles.sort(), [
+    'evenement_extrait {"evenement_id":"fondation","rang":2} texte balise',
+    'mot_cle {"id":"la-cible"} url mot-cle',
+    'page {"id":"guide/par-balise"} corps_md balise',
+    'page {"id":"lore/exemple-balise"} corps_md balise (exemple)',
+  ].sort());
+  assert.equal(citations.find((c) => c.comment === 'mot-cle').libelle, 'Mot-clé « La cible » (son lien)');
+  // l'adresse du mot-clé n'est pas lue comme une adresse écrite dans un texte ; un mot-clé vers une route sans page ne cite rien
+  assert.ok(!citations.some((c) => c.table === 'mot_cle' && c.cle.id === 'la-cible' && c.comment === 'adresse'));
+  assert.deepEqual(citationsBloquantes(citations).filter((c) => c.comment === 'balise').length, 2);
+  db.close();
+});
+
 test('citationsDesPages : un lien ambigu cite chacune de ses candidates ; une page que rien ne cite : liste vide ; une seule lecture pour plusieurs pages', () => {
   const db = baseDEssai();
   const m = citationsDesPages(db, ['guide/doublon', 'races/doublon', 'guide/ambigu', 'guide/la-cible']);
@@ -79,13 +106,13 @@ test('citationsDesPages : un lien ambigu cite chacune de ses candidates ; une pa
   db.close();
 });
 
-test('base du dépôt : les liens [[…]] lus dans les textes des pages sont ceux que db:derive a résolus (table lien, candidats des liens ambigus)', () => {
+test('base du dépôt : les liens [[…]] et les balises à adresse (migration 0098) lus dans les textes des pages sont ceux que db:derive a résolus (table lien, candidats des liens ambigus)', () => {
   const db = ouvrirBase({ sansExemples: false });
   const ids = db.prepare("SELECT page_id FROM regles_onglet_entree WHERE page_id IS NOT NULL ORDER BY page_id").all().map((r) => r.page_id);
   assert.ok(ids.length > 40, 'les pages des onglets des Règles');
   const toutes = citationsDesPages(db, ids);
   for (const id of ids) {
-    const lues = new Set(toutes.get(id).filter((c) => c.table === 'page' && c.comment === 'lien' && c.colonne === 'corps_md').map((c) => c.cle.id));
+    const lues = new Set(toutes.get(id).filter((c) => c.table === 'page' && ['lien', 'balise'].includes(c.comment) && c.colonne === 'corps_md').map((c) => c.cle.id));
     const derivees = new Set(db.prepare(`
       SELECT page_id FROM lien WHERE cible_page_id = ? AND etat = 'resolu' AND page_id <> ?
       UNION SELECT page_id FROM lien_candidat WHERE candidat_page_id = ? AND page_id <> ?`).all(id, id, id, id).map((r) => r.page_id));

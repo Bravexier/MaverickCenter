@@ -9,15 +9,24 @@
 //     modification, zone d'annonce, page Debug, /donnees/), ni dans une zone en cours de saisie (contenteditable, champ de l'éditeur) — ni dans leurs
 //     attributs ; les attributs de texte (title, data-infobulle, aria-label, aria-description, alt) en ont le texte simple ; dans une bulle, un mot-clé est
 //     en gras sans bulle ni focus, dans un élément qui a le focus sans tabindex, dans un bouton ou un résumé sans bulle.
+// Liens et couleurs (migration 0098) : un mot-clé à adresse est un lien (préfixé de la base du site, `ed.base`), hors d'un lien, d'un bouton, d'un
+// résumé, d'une étiquette, d'une liste ou d'une bulle ; un mot-clé coloré porte sa classe ; la feuille des mots-clés colorés (`<style
+// data-couleurs-mots-cles>`, émise par layouts/Base.astro) est réécrite avec celle du service (GET /api/edition/mots-cles/ : `css`,
+// lib/palette-css.mjs#cssDesMotsCles, que cette chaîne n'importe pas) quand le glossaire la donne, ou quand une classe du vocabulaire vivant y manque.
+// Le suffixe « (classe) » (R191) : hors des pages Glossaire, Recherche et Données, le libellé d'un mot-clé (balise sans texte écrit, mode complet, titre
+// et texte de sa bulle, texte simple des attributs et des listes) le perd, comme au middleware ; la page se lit dans son adresse (`location.pathname`,
+// base du site comprise : lib/mots-cles-balises.mjs#libelleEntierSur).
 // Rien n'est écrit qui ne change : un texte ou un attribut sans balise lisible (« {{ » seul) reste tel quel, et l'observateur ne relit que ce qui a une
 // balise (pas de boucle avec ses propres écritures). Au chargement, seuls les éléments qui ont une balise sont parcourus.
 // Fonctions du DOM ; le rendu est celui de lib/mots-cles-balises.mjs (le même HTML que le middleware). Absent de la version portable (chaîne de l'édition).
 import {
-  ACTIONS, ATTRIBUTS_DE_TEXTE, EXCLUS as ELEMENTS_EXCLUS, FOCALISABLES, htmlDeLaBalise, htmlDeLaBulle, idDeBulle, lireBalises, lireUneBalise, motCleDeLaRef,
-  texteSansBalises, vocabulaireDesMotsCles,
+  ACTIONS, ATTRIBUTS_DE_TEXTE, EXCLUS as ELEMENTS_EXCLUS, FOCALISABLES, htmlDeLaBalise, htmlDeLaBulle, idDeBulle, libelleEntierSur, lireBalises, lireUneBalise,
+  motCleDeLaRef, SANS_LIEN, texteSansBalises, vocabulaireDesMotsCles,
 } from '../../lib/mots-cles-balises.mjs';
+import { classeDuMotCle } from '../../lib/mots-cles-liens.mjs';
 
 let vocabulaire = null; // le vocabulaire vivant (vocabulaireDesMotsCles), null tant qu'il n'est pas lu
+let base = '/'; // le préfixe des adresses des mots-clés (`ed.base`)
 let observateur = null;
 let enAttente = new Set(); // nœuds ajoutés ou changés, traités ensemble à la microtâche suivante
 
@@ -28,7 +37,11 @@ const ATTRIBUTS = ATTRIBUTS_DE_TEXTE.filter((a) => !['content', 'placeholder'].i
 /** Un élément qui a déjà le focus (un mot-clé dedans : sans tabindex) ; un élément dont un appui fait une action (sans bulle). */
 const FOCUS = [...FOCALISABLES, '[tabindex]'].join(', ');
 const ACTION = ACTIONS.join(', ');
+/** Un élément dans lequel un mot-clé à adresse n'est pas un lien (lib/mots-cles-balises.mjs#SANS_LIEN) ; une bulle non plus. */
+const SANS_LIEN_SELECTEUR = [...SANS_LIEN, '.bulle'].join(', ');
 const aUneBalise = (t) => typeof t === 'string' && t.includes('{{') && lireBalises(t).length > 0;
+/** Vrai si la page montre le libellé entier des mots-clés (R191 : Glossaire, Recherche, Données) ; ailleurs, sans le suffixe « (classe) ». */
+export const libelleEntierIci = () => typeof location !== 'undefined' && libelleEntierSur(location.pathname, { base });
 
 const fragmentDe = (html) => {
   const t = document.createElement('template');
@@ -38,11 +51,43 @@ const fragmentDe = (html) => {
 
 /**
  * Ce que permet l'endroit où se trouve `el` (options de htmlDeLaBalise) : ni focus dans un élément focalisable ou une bulle, ni bulle dans un bouton, un
- * résumé ou une bulle.
+ * résumé ou une bulle, ni lien dans un lien, un bouton, un résumé, une étiquette, une liste ou une bulle ; les adresses préfixées de la base du site ;
+ * le libellé entier ou sans le suffixe « (classe) » selon la page (libelleEntierIci, R191).
  */
 export function contexteDe(el) {
   const bulle = Boolean(el?.closest('.bulle'));
-  return { sansFocus: bulle || Boolean(el?.closest(FOCUS)), sansBulle: bulle || Boolean(el?.closest(ACTION)) };
+  return {
+    sansFocus: bulle || Boolean(el?.closest(FOCUS)), sansBulle: bulle || Boolean(el?.closest(ACTION)), sansLien: Boolean(el?.closest(SANS_LIEN_SELECTEUR)), base,
+    libelleEntier: libelleEntierIci(),
+  };
+}
+
+/** La feuille des mots-clés colorés de la page (layouts/Base.astro), créée au besoin. */
+function feuilleDesMotsCles() {
+  let feuille = document.querySelector('style[data-couleurs-mots-cles]');
+  if (!feuille) {
+    feuille = document.createElement('style');
+    feuille.setAttribute('data-couleurs-mots-cles', '');
+    document.head.append(feuille);
+  }
+  return feuille;
+}
+
+/** Réécrit la feuille des mots-clés colorés avec `css` (celle du service : GET /api/edition/mots-cles/), seulement si elle change. */
+export function definirLaFeuille(css) {
+  if (typeof css !== 'string' || typeof document === 'undefined') return;
+  const feuille = feuilleDesMotsCles();
+  if (feuille.textContent !== css) feuille.textContent = css;
+}
+
+/**
+ * Les classes des mots-clés colorés du vocabulaire vivant qu'aucune feuille de la page ne définit (une couleur donnée sur le site de dev depuis la
+ * construction) : la feuille du service est alors relue.
+ */
+function classesSansFeuille() {
+  if (!vocabulaire || typeof document === 'undefined') return [];
+  const feuilles = [...document.querySelectorAll('style')].map((s) => s.textContent).join('');
+  return [...new Set(vocabulaire.liste.map(classeDuMotCle).filter(Boolean))].filter((c) => !feuilles.includes(`.${c}{`));
 }
 
 /**
@@ -59,12 +104,13 @@ export async function vocabulaireVivant(ed, { frais = false } = {}) {
 /** La bulle du mot-clé `id` dans la page, refaite d'après le vocabulaire (retirée s'il n'est plus décrit) ; les déclencheurs suivent. */
 export function assurerLaBulle(id) {
   if (!vocabulaire || !unVraiDom()) return;
-  const html = htmlDeLaBulle(id, vocabulaire);
+  const html = htmlDeLaBulle(id, vocabulaire, { libelleEntier: libelleEntierIci() });
   const enPlace = document.getElementById(idDeBulle(id));
   if (html) {
     const bulle = fragmentDe(html).firstElementChild;
     if (enPlace) {
       if (enPlace.innerHTML !== bulle.innerHTML) enPlace.replaceChildren(...bulle.childNodes);
+      if (enPlace.className !== bulle.className) enPlace.className = bulle.className; // sa couleur suit celle du mot-clé
     } else document.body.append(bulle);
     return;
   }
@@ -83,7 +129,7 @@ const unVraiDom = () => typeof document !== 'undefined' && typeof document.creat
 function nettoyerLAttribut(el, a) {
   const v = el.getAttribute(a);
   if (!aUneBalise(v) || el.closest(EXCLUS)) return;
-  const nette = texteSansBalises(v, vocabulaire);
+  const nette = texteSansBalises(v, vocabulaire, { libelleEntier: libelleEntierIci() });
   if (nette !== v) el.setAttribute(a, nette);
 }
 
@@ -107,7 +153,7 @@ function rendreDans(racine) {
     const balises = lireBalises(n.nodeValue);
     if (!balises.length) continue;
     if (n.parentElement.closest('option, optgroup')) {
-      n.nodeValue = texteSansBalises(n.nodeValue, vocabulaire); // un choix d'une liste n'a que du texte
+      n.nodeValue = texteSansBalises(n.nodeValue, vocabulaire, { libelleEntier: libelleEntierIci() }); // un choix d'une liste n'a que du texte
       continue;
     }
     const contexte = contexteDe(n.parentElement);
@@ -158,9 +204,13 @@ function rafraichir() {
   for (const id of ids) assurerLaBulle(id);
 }
 
-/** Change le vocabulaire vivant (le glossaire relu après un enregistrement, sur /recherche/) : la page le suit aussitôt. */
-export function definirLeVocabulaire(liste) {
+/**
+ * Change le vocabulaire vivant (le glossaire relu après un enregistrement, sur /regles/glossaire/) : la page le suit aussitôt ; `css` : la feuille des
+ * mots-clés colorés du service, qui remplace celle de la page.
+ */
+export function definirLeVocabulaire(liste, { css } = {}) {
   vocabulaire = vocabulaireDesMotsCles(liste);
+  definirLaFeuille(css);
   rafraichir();
   if (typeof document !== 'undefined') rendreDans(document.body);
 }
@@ -178,11 +228,14 @@ function traiter() {
  * un texte où « {{ » n'ouvre aucune balise n'est ni réécrit ni relu.
  */
 export async function glossaireVivant(ed) {
+  if (typeof ed.base === 'string' && ed.base) base = ed.base;
   try {
     await vocabulaireVivant(ed); // la page suit aussitôt (definirLeVocabulaire)
   } catch {
     return; // sans vocabulaire, la page garde ce que le build a rendu
   }
+  // une couleur donnée sur le site de dev depuis la construction : la feuille du service
+  if (classesSansFeuille().length) ed.appel('GET', 'edition/mots-cles/').then((r) => definirLaFeuille(r?.css)).catch(() => {});
   if (observateur || !unVraiDom()) return;
   observateur = new MutationObserver((changements) => {
     const vide = !enAttente.size;

@@ -183,8 +183,11 @@ const melange = (couleur, fond, part) => {
   return `#${c.map((v, i) => Math.round(v * part + f[i] * (1 - part)).toString(16).padStart(2, '0')).join('')}`;
 };
 
-/** Les règles des feuilles en ligne de la page : Map(classe → { propriété: valeur }) pour chaque `.classe{…}` d'une balise <style>. */
-const reglesDeLaPage = () => new Map([...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].flatMap((m) => [...m[1].matchAll(/\.([a-z0-9-]+)\{([^{}]*)\}/g)])
+/**
+ * Les règles des feuilles en ligne de la page : Map(classe → { propriété: valeur }) pour chaque `.classe{…}` d'une balise <style>, attributs compris
+ * (`<style data-couleurs-mots-cles>`, la feuille des mots-clés colorés de layouts/Base.astro, sur chaque page).
+ */
+const reglesDeLaPage = () => new Map([...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].flatMap((m) => [...m[1].matchAll(/\.([a-z0-9-]+)\{([^{}]*)\}/g)])
   .map(([, classe, corps]) => [classe, Object.fromEntries(corps.split(';').filter(Boolean).map((d) => d.split(':')))]));
 
 test('chaque potion sur la couleur de la règle du site (son essence, ou la caractéristique d’un philtre, au niveau de son palier) ; les carquois et sacs sans couleur', options, () => {

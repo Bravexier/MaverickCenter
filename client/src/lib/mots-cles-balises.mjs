@@ -31,9 +31,19 @@
 // data-ed…) : le texte simple. Un mot-clé dans une bulle (`.bulle`) est en gras sans bulle ni focus ; dans un élément qui a déjà le focus (a, button,
 // summary, label, select, [tabindex]), sans tabindex ; dans un bouton ou un résumé de `details`, sans bulle non plus (le toucher ferait l'action). Une
 // bulle par mot-clé employé (et décrit) et par page, posée avant </body> : le système unique d'infobulles du site (components/Infobulles.astro).
+// Liens et couleurs (migration 0098 ; réponses du propriétaire du 2026-11-06) : un mot-clé qui a une adresse (mot_cle.url) est un lien vers elle,
+// préfixée de la base du site (hors d'un lien, d'un bouton, d'un résumé, d'une étiquette, d'une liste ou d'une bulle : le gras seul), sans adresse il
+// n'est pas cliquable ; un mot-clé coloré (mot_cle.couleur) porte sa classe (lib/mots-cles-liens.mjs#classeDuMotCle) sur sa balise, sur le bloc du mode
+// complet et sur sa bulle (habillage).
+// Le suffixe « (classe) » (R191) : le mot-clé d'une classe raciale qui porte le nom de sa race s'écrit « Orios (classe) » (Q14), mais hors des pages
+// Glossaire, Recherche et Données (PAGES_AU_LIBELLE_ENTIER) il s'affiche sous le nom seul, titre de sa bulle compris (libelleAffiche) : le rendu HTML
+// (htmlDeLaBalise, htmlDeLaBulle, htmlAvecMotsCles, pageAvecMotsCles) reçoit `libelleEntier` (faux par défaut ; le middleware et
+// src/scripts/edition/mots-cles-vivants.mjs le tirent de l'adresse de la page : libelleEntierSur) ; le texte simple (texteSansBalises, ce que lisent les
+// JSON, la recherche, les découpages et la base) garde le libellé entier par défaut.
 // Fonctions pures, sans dépendance navigateur ni Astro (dépendances : lib/text.mjs, lib/monnaies.mjs pour les monnaies d’une bulle) : partagées par le middleware, la recherche, les règles de la fiche, le
 // service (serveur/edition.mjs), db:check et la chaîne de l'édition du site de dev (src/scripts/edition/).
 import { htmlAvecMonnaies, htmlDePiece, MONNAIES_DU_JEU } from './monnaies.mjs';
+import { cheminDeLAdresse, classeDuMotCle } from './mots-cles-liens.mjs';
 import { libelleAvecAbreviation, normalize } from './text.mjs';
 
 /** Une balise : « {{ », la ref, un séparateur facultatif (« | », ou « \| » dans une case de tableau Markdown) et son texte, « }} ». */
@@ -42,6 +52,35 @@ const BALISE = /\{\{([^{}|\n]+?)(?:(\\?\|)([^{}\n]*?))?\}\}/g;
 /** L'id de la bulle d'un mot-clé dans la page (une par mot-clé employé). */
 export const idDeBulle = (id) => `mot-cle-${id}`;
 const BULLE_DE_MOT_CLE = /^mot-cle-([a-z0-9-]+)$/;
+
+/**
+ * Les pages où le libellé d'un mot-clé s'affiche entier, suffixe « (classe) » compris (R191 : « « (classe) » est admis dans le libellé des mots-clés et
+ * sur trois pages : Glossaire, Recherche et Données ») : le Glossaire, la Recherche, et Données avec toutes ses sous-pages (RUBRIQUES_AU_LIBELLE_ENTIER).
+ */
+export const PAGES_AU_LIBELLE_ENTIER = Object.freeze(['/regles/glossaire/', '/recherche/', '/donnees/']);
+const RUBRIQUES_AU_LIBELLE_ENTIER = Object.freeze(['/donnees/']);
+/** Le suffixe que R191 retire hors des trois pages (« Orios (classe) » → « Orios »), à la fin du libellé, quelle que soit la casse. */
+const SUFFIXE_DE_CLASSE = /\s*\(classe\)\s*$/i;
+
+/**
+ * Vrai si la page d'adresse `chemin` (« /recherche/ », « /MaverickCenter/donnees/mot_cle/ », « /regles/glossaire/index.html » ; requête et ancre
+ * ignorées) montre le libellé entier des mots-clés (PAGES_AU_LIBELLE_ENTIER, R191) ; `base` : le préfixe de déploiement à retirer.
+ */
+export function libelleEntierSur(chemin, { base = '/' } = {}) {
+  const c = cheminDeLAdresse(String(chemin ?? '').replace(/(^|\/)index\.html?(?=$|[?#])/, '$1'), { base });
+  return PAGES_AU_LIBELLE_ENTIER.includes(c) || RUBRIQUES_AU_LIBELLE_ENTIER.some((r) => c.startsWith(r));
+}
+
+/**
+ * Le libellé d'un mot-clé tel qu'une page le montre (R191, seconde réponse du propriétaire : « Hors des trois pages, on affiche le nom sans le suffixe
+ * « (classe) », y compris dans le titre de l'infobulle ») : `entier` (une page de PAGES_AU_LIBELLE_ENTIER), le libellé tel quel ; sinon sans le
+ * suffixe final « (classe) » (« Orios (classe) » → « Orios »). Un libellé qui ne serait que le suffixe reste tel quel.
+ */
+export function libelleAffiche(m, { entier = false } = {}) {
+  const libelle = String(m?.libelle ?? '');
+  if (entier) return libelle;
+  return libelle.replace(SUFFIXE_DE_CLASSE, '') || libelle;
+}
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 // Lecture
@@ -162,15 +201,17 @@ export function lireUneBalise(brut) {
 }
 
 /**
- * Le vocabulaire prêt à résoudre les refs : { parId, parCle, parAbreviation, liste } d'après [{ id, libelle, libelle_cle?, description?, abreviation? }]
- * (lib/mots-cles-db.mjs, GET /api/edition/mots-cles/ : `description` NULL tant que le mot-clé n'est pas décrit, '' ici ; `abreviation` NULL sans
- * abréviation, migration 0090 ; `parAbreviation` : normalize(abreviation) → mot-clé) ; un vocabulaire déjà prêt est rendu tel quel, null reste null.
+ * Le vocabulaire prêt à résoudre les refs : { parId, parCle, parAbreviation, liste } d'après [{ id, libelle, libelle_cle?, description?, abreviation?,
+ * url?, couleur? }] (lib/mots-cles-db.mjs, GET /api/edition/mots-cles/ : `description` NULL tant que le mot-clé n'est pas décrit, '' ici ; `abreviation`
+ * NULL sans abréviation, migration 0090 ; `url` et `couleur` NULL sans adresse ni couleur, migration 0098 ; `parAbreviation` : normalize(abreviation) →
+ * mot-clé) ; un vocabulaire déjà prêt est rendu tel quel, null reste null.
  */
 export function vocabulaireDesMotsCles(motsCles) {
   if (!motsCles) return null;
   if (motsCles.parId instanceof Map) return motsCles;
   const liste = [...motsCles].map((m) => ({
     id: m.id, libelle: m.libelle, libelle_cle: m.libelle_cle ?? normalize(m.libelle), description: m.description ?? '', abreviation: m.abreviation ?? null,
+    url: typeof m.url === 'string' && m.url ? m.url : null, couleur: typeof m.couleur === 'string' && m.couleur ? m.couleur : null,
   }));
   const parAbreviation = new Map();
   for (const m of liste) if (typeof m.abreviation === 'string' && normalize(m.abreviation)) parAbreviation.set(normalize(m.abreviation), m);
@@ -264,23 +305,25 @@ function texteEcrit(b, m) {
  * Le texte simple d'une balise : sans vocabulaire, le texte écrit, sinon la ref ; avec, le texte écrit, sinon le libellé, et pour le mode complet
  * « Libellé : définition » (« Libellé » seul tant qu'il n'est pas décrit, ou avec `definitions: false` : la fiche de personnage). Une balise inconnue :
  * le texte écrit, sinon la ref. `profondeur` : une définition qui cite un mot-clé en mode complet n'en donne que le libellé (pas de boucle).
+ * `libelleEntier` (vrai par défaut : JSON, recherche, découpages, base) : faux, le libellé sans le suffixe « (classe) » (libelleAffiche, R191).
  */
-export function texteDeLaBalise(b, vocabulaire = null, { profondeur = 0, definitions = true } = {}) {
+export function texteDeLaBalise(b, vocabulaire = null, { profondeur = 0, definitions = true, libelleEntier = true } = {}) {
   const m = vocabulaire ? motCleDeLaRef(vocabulaire, b.ref) : null;
   if (!m) return b.texte ?? b.ref;
-  if (!b.complet) return texteEcrit(b, m) ?? m.libelle;
-  const definition = definitions && profondeur === 0 && m.description ? espaces(texteSansBalises(m.description, vocabulaire, { profondeur: 1 })) : '';
-  return definition ? `${m.libelle} : ${definition}` : m.libelle;
+  const libelle = libelleAffiche(m, { entier: libelleEntier });
+  if (!b.complet) return texteEcrit(b, m) ?? libelle;
+  const definition = definitions && profondeur === 0 && m.description ? espaces(texteSansBalises(m.description, vocabulaire, { profondeur: 1, libelleEntier })) : '';
+  return definition ? `${libelle} : ${definition}` : libelle;
 }
 
 /**
  * Le texte sans ses balises, chacune remplacée par son texte simple (texteDeLaBalise) : ce que lisent les découpages (sans vocabulaire : un texte de case
  * porte le texte de chaque balise), la recherche, la fiche. `markdown` : une balise dans un code reste écrite.
  */
-export function texteSansBalises(texte, vocabulaire = null, { profondeur = 0, definitions = true, markdown = false } = {}) {
+export function texteSansBalises(texte, vocabulaire = null, { profondeur = 0, definitions = true, markdown = false, libelleEntier = true } = {}) {
   if (typeof texte !== 'string' || !texte.includes('{{')) return texte;
   const v = vocabulaireDesMotsCles(vocabulaire);
-  return remplacer(texte, (b) => texteDeLaBalise(b, v, { profondeur, definitions }), { markdown });
+  return remplacer(texte, (b) => texteDeLaBalise(b, v, { profondeur, definitions, libelleEntier }), { markdown });
 }
 
 /** `texte` dont chaque balise est remplacée par `par(balise)` (une chaîne), ou gardée si `par` rend null. */
@@ -508,12 +551,6 @@ const reecrire = (t) => echapper(t).replaceAll(ENTITE_INCONNUE, '&');
 const lire = (t) => decoderHtml(t, { inconnues: true });
 
 /**
- * Le HTML d'une balise : un mot-clé connu en gras (`strong.mot-cle`, avec sa bulle quand il est décrit), le mode complet (`span.mot-cle-definition`),
- * une balise inconnue en texte simple. `b` est lue dans un texte (son texte écrit : texte simple, échappé ici). `sansFocus` : dans un élément qui a déjà le
- * focus (lien, bouton, résumé, étiquette, liste, [tabindex]) ou dans une bulle, pas de tabindex ; `sansBulle` : dans un bouton, un résumé de `details`
- * ou une bulle, ni bulle ni focus (le gras seul). Rend { html, id } (id : le mot-clé dont la bulle est à poser, ou null).
- */
-/**
  * Le texte affiché d'une balise, en HTML (décision R63, R183 (9) : « R63 est respectée partout ») : chaque abréviation de monnaie en icône (« {{RO}} »
  * montre l'icône du Ricken d'or, pas « RO »), et un montant écrit dans la balise se décompose comme dans le texte courant (R183 (12) : « Décomposer
  * comme ailleurs » ; « {{prix-fixe|1245,5 RO}} » montre « 1 [PP] 245 [RO] 50 [RF] »). Le passage Markdown, lui, garde la balise entière et n'y lit
@@ -521,26 +558,55 @@ const lire = (t) => decoderHtml(t, { inconnues: true });
  */
 const htmlDuTexteDeLaBalise = (texte) => htmlAvecMonnaies(texte);
 
-export function htmlDeLaBalise(b, vocabulaire, { sansFocus = false, sansBulle = false } = {}) {
+/**
+ * L'adresse d'un lien de mot-clé (migration 0098) : son `url` (relative à la racine du site, sans le préfixe de déploiement) préfixée de `base`
+ * (import.meta.env.BASE_URL au build, `ed.base` sur le site de dev : « /MaverickCenter/ » + « /races/elfe/ » → « /MaverickCenter/races/elfe/ ») ; null
+ * pour un mot-clé sans adresse.
+ */
+export function adresseDuMotCle(m, base = '/') {
+  if (typeof m?.url !== 'string' || !m.url) return null;
+  return `${String(base ?? '/').replace(/\/+$/, '')}${m.url}`;
+}
+
+/**
+ * Le HTML d'une balise (réponses du propriétaire du 2026-11-06 sur les liens et les couleurs des mots-clés) : un mot-clé connu en gras — un lien vers son
+ * adresse (`a.mot-cle`, adresseDuMotCle) quand il en a une, sinon `strong.mot-cle` (pas cliquable) —, avec sa bulle quand il est décrit (un mot-clé sans
+ * définition est en gras, cliquable s'il a une adresse, sans bulle) ; le mode complet (`span.mot-cle-definition`, dont le nom est le lien) ; une balise
+ * inconnue en texte simple. Un mot-clé coloré porte la classe de sa couleur (lib/mots-cles-liens.mjs#classeDuMotCle : celle de la palette, ou
+ * `couleur-mot-cle-<id>`), sur la balise et sur le bloc du mode complet (styles/global/mots-cles.css). `b` est lue dans un texte (son texte écrit : texte
+ * simple, échappé ici). `sansFocus` : dans un élément qui a déjà le focus (lien, bouton, résumé, étiquette, liste, [tabindex]) ou dans une bulle, pas de
+ * tabindex ; `sansBulle` : dans un bouton, un résumé de `details` ou une bulle, ni bulle ni focus (le gras seul) ; `sansLien` : dans un lien, un bouton,
+ * un résumé, une étiquette, une liste ou une bulle, pas de lien (un lien n'en contient pas d'autre ; une bulle se lit sans y cliquer) ; `base` : le
+ * préfixe de déploiement des adresses ; `libelleEntier` : le libellé entier (une page de PAGES_AU_LIBELLE_ENTIER), sinon sans le suffixe « (classe) »
+ * (libelleAffiche, R191). Rend { html, id } (id : le mot-clé dont la bulle est à poser, ou null).
+ */
+export function htmlDeLaBalise(b, vocabulaire, { sansFocus = false, sansBulle = false, sansLien = false, base = '/', libelleEntier = false } = {}) {
   const m = motCleDeLaRef(vocabulaire, b.ref);
   if (!m) return { html: echapper(b.texte ?? b.ref), id: null };
   const balise = echapper(b.brut);
+  const classe = classeDuMotCle(m);
+  const adresse = sansLien ? null : adresseDuMotCle(m, base);
+  const lien = adresse ? ` href="${echapper(adresse)}"` : '';
+  const classes = (nom) => (classe ? `${nom} ${classe}` : nom);
+  const libelle = libelleAffiche(m, { entier: libelleEntier });
   if (b.complet) {
     // la définition du mode complet : un texte courant du glossaire, ses monnaies en icônes comme dans sa bulle (R63, R183 (9))
-    const definition = m.description ? espaces(texteSansBalises(m.description, vocabulaire, { profondeur: 1 })) : '';
+    const definition = m.description ? espaces(texteSansBalises(m.description, vocabulaire, { profondeur: 1, libelleEntier })) : '';
+    const nom = adresse ? 'a' : 'strong';
     return {
-      html: `<span class="mot-cle-definition" data-mot-cle="${m.id}" data-balise="${balise}"><strong class="mot-cle-definition__nom">${echapper(m.libelle)}</strong>`
+      html: `<span class="${classes('mot-cle-definition')}" data-mot-cle="${m.id}" data-balise="${balise}"><${nom} class="mot-cle-definition__nom"${lien}>${echapper(libelle)}</${nom}>`
         + `${definition ? ` : <span class="mot-cle-definition__texte">${htmlAvecMonnaies(definition)}</span>` : ''}</span>`,
       id: null,
     };
   }
-  const texte = htmlDuTexteDeLaBalise(texteEcrit(b, m) ?? m.libelle);
-  if (!m.description || sansBulle) return { html: `<strong class="mot-cle" data-mot-cle="${m.id}" data-balise="${balise}">${texte}</strong>`, id: null };
+  const texte = htmlDuTexteDeLaBalise(texteEcrit(b, m) ?? libelle);
+  const nom = adresse ? 'a' : 'strong';
+  const debut = `<${nom} class="${classes('mot-cle')}"${lien} data-mot-cle="${m.id}"`;
+  if (!m.description || sansBulle) return { html: `${debut} data-balise="${balise}">${texte}</${nom}>`, id: null };
   const bulle = idDeBulle(m.id);
-  return {
-    html: `<strong class="mot-cle" data-mot-cle="${m.id}" data-bulle="${bulle}" aria-describedby="${bulle}"${sansFocus ? '' : ' tabindex="0"'} data-balise="${balise}">${texte}</strong>`,
-    id: m.id,
-  };
+  // un lien a déjà le focus : pas de tabindex
+  const focus = sansFocus || adresse ? '' : ' tabindex="0"';
+  return { html: `${debut} data-bulle="${bulle}" aria-describedby="${bulle}"${focus} data-balise="${balise}">${texte}</${nom}>`, id: m.id };
 }
 
 /**
@@ -570,6 +636,38 @@ const abreviationDeLaMonnaie = (id) => Object.entries(MONNAIES_DU_JEU).find(([, 
  */
 export const htmlDeLaPastille = ({ id, libelle, abreviation, n }) => `<span class="recherche-nom">${htmlDuNomDuMotCle({ id, libelle, abreviation })}</span>${n > 0 ? ` · ${n}` : ''}`;
 
+/** Le nombre de pages d'un mot-clé, en toutes lettres (« 1 page », « 3 pages », « aucune page »). */
+const nombreDePages = (n) => (n > 0 ? `${n} page${n > 1 ? 's' : ''}` : 'aucune page');
+
+/**
+ * La ligne d'un mot-clé dans la liste du Glossaire (/regles/glossaire/ ; réponses du propriétaire du 2026-11-06, Q6 et Q7 : tous les mots-clés, avec ou
+ * sans définition ; le libellé, un lien quand il a une adresse ; l'abréviation ; la pastille de sa couleur ; la définition ; le nombre de ses pages, un
+ * lien vers leur liste sur /recherche/). Le même HTML au build (pages/regles/glossaire.astro) et dans l'extension de l'éditeur
+ * (src/scripts/edition/mots-cles.mjs), un `<li>` qui porte ce que lisent le script de la page et l'éditeur : data-id, data-cle (son écriture),
+ * data-n (ses pages), data-libelle, data-abreviation, data-definition, data-url, data-couleur (absents sans valeur). `m` : { id, libelle, libelle_cle,
+ * abreviation, description, url, couleur, n } ; `base` : le préfixe de déploiement des adresses ; `lienDesPages` : l'adresse de la liste des pages d'un
+ * mot-clé, à laquelle s'ajoute son id (« /recherche/?mot-cle= »). La définition garde ses balises (le middleware, ou mots-cles-vivants.mjs sur le site
+ * de dev, les rendent), ses monnaies en icônes (R63) ; le nom d'une monnaie : son libellé et son icône, sans abréviation (R63, R183 (9)).
+ */
+export function htmlDeLaLigneDuGlossaire(m, { base = '/', lienDesPages = '/recherche/?mot-cle=' } = {}) {
+  const n = Number(m.n ?? m.pages) || 0;
+  const definition = m.description ?? m.definition ?? '';
+  const abreviation = typeof m.abreviation === 'string' && m.abreviation.trim() && !abreviationDeLaMonnaie(m.id) ? m.abreviation.trim() : null;
+  const classe = classeDuMotCle(m);
+  const adresse = adresseDuMotCle(m, base);
+  const attributs = [['data-id', m.id], ['data-cle', m.libelle_cle ?? m.cle ?? normalize(m.libelle)], ['data-n', String(n)], ['data-libelle', m.libelle],
+    ['data-abreviation', m.abreviation || null], ['data-definition', definition || null], ['data-url', m.url || null], ['data-couleur', m.couleur || null]]
+    .filter(([, v]) => v !== null && v !== undefined).map(([k, v]) => ` ${k}="${echapper(v)}"`).join('');
+  const nom = htmlDuNomDuMotCle({ id: m.id, libelle: m.libelle, abreviation: null });
+  return `<li class="glossaire-mot"${attributs}>`
+    + `<span class="glossaire-mot__pastille${classe ? ` ${classe}` : ''}" aria-hidden="true"></span>`
+    + `<span class="glossaire-mot__tete">${adresse ? `<a class="glossaire-mot__nom" href="${echapper(adresse)}">${nom}</a>` : `<strong class="glossaire-mot__nom">${nom}</strong>`}`
+    + `${abreviation ? ` <span class="glossaire-mot__abreviation">${echapper(abreviation)}</span>` : ''}`
+    + ` <a class="glossaire-mot__pages" href="${echapper(`${lienDesPages}${encodeURIComponent(m.id)}`)}">${nombreDePages(n)}</a></span>`
+    + (definition ? `<span class="glossaire-mot__definition">${htmlDeLaDefinition(definition)}</span>` : '<span class="glossaire-mot__definition glossaire-mot__definition--vide">Pas encore de définition.</span>')
+    + '</li>';
+}
+
 /**
  * La définition d'un mot-clé telle que la vue de /recherche/ la montre : ses monnaies en icônes (décision R63), ses balises gardées telles qu'écrites
  * (le middleware, ou src/scripts/edition/mots-cles-vivants.mjs sur le site de dev, les rendent ensuite) ; '' sans définition. Rendue au build
@@ -581,18 +679,21 @@ export const htmlDeLaDefinition = (description) => htmlAvecMonnaies(description 
 /**
  * La bulle d'un mot-clé décrit (posée une fois par page, hors de toute zone modifiable) ; '' pour un mot-clé inconnu ou sans définition. Son titre est
  * son nom (htmlDuNomDuMotCle : « Armure magique (AM) », « Ricken d’or » et son icône) : la balise `{{AM}}` montre « AM », sa bulle dit ce qu'elle abrège.
+ * `libelleEntier` : le libellé entier (une page de PAGES_AU_LIBELLE_ENTIER), sinon sans le suffixe « (classe) », titre compris (libelleAffiche, R191).
  */
-export function htmlDeLaBulle(id, vocabulaire) {
+export function htmlDeLaBulle(id, vocabulaire, { libelleEntier = false } = {}) {
   const m = vocabulaireDesMotsCles(vocabulaire)?.parId.get(id);
   if (!m?.description) return '';
   // la bulle garde les retours à la ligne de la définition (white-space: pre-line, styles/global/infobulles.css)
-  const definition = texteSansBalises(m.description, vocabulaire, { profondeur: 1 }).trim();
+  const definition = texteSansBalises(m.description, vocabulaire, { profondeur: 1, libelleEntier }).trim();
   // les monnaies de la définition en icônes, comme dans tout texte courant (décision R63 : « Monnaies : le Ricken de fer (RF)… », migration 0090)
-  return `<span class="bulle" role="tooltip" id="${idDeBulle(m.id)}" hidden><strong class="bulle__titre">${htmlDuNomDuMotCle(m)}</strong><span class="bulle__texte">${htmlAvecMonnaies(definition)}</span></span>`;
+  // un mot-clé coloré habille sa bulle de sa couleur (filet, titre : styles/global/mots-cles.css), comme une page colorée les siennes
+  const classe = classeDuMotCle(m);
+  return `<span class="${classe ? `bulle ${classe}` : 'bulle'}" role="tooltip" id="${idDeBulle(m.id)}" hidden><strong class="bulle__titre">${htmlDuNomDuMotCle({ ...m, libelle: libelleAffiche(m, { entier: libelleEntier }) })}</strong><span class="bulle__texte">${htmlAvecMonnaies(definition)}</span></span>`;
 }
 
-/** Les bulles des mots-clés `ids` (dans l'ordre), mises bout à bout. */
-export const htmlDesBulles = (ids, vocabulaire) => ids.map((id) => htmlDeLaBulle(id, vocabulaire)).join('');
+/** Les bulles des mots-clés `ids` (dans l'ordre), mises bout à bout ; `libelleEntier` : celui de htmlDeLaBulle. */
+export const htmlDesBulles = (ids, vocabulaire, { libelleEntier = false } = {}) => ids.map((id) => htmlDeLaBulle(id, vocabulaire, { libelleEntier })).join('');
 
 /** Éléments dont le contenu n'est pas du HTML (le parseur le lit jusqu'à leur balise fermante) : recopiés tels quels, sauf <title> (texte simple). */
 const CONTENU_BRUT = new Set(['script', 'style', 'textarea', 'title', 'xmp', 'noembed', 'noframes', 'plaintext']);
@@ -605,6 +706,13 @@ const ELEMENTS_FOCALISABLES = new Set(FOCALISABLES);
 /** Éléments dont un appui fait une action : un mot-clé dedans n'a pas de bulle (le toucher l'ouvrirait en faisant l'action). */
 export const ACTIONS = Object.freeze(['button', 'summary']);
 const ELEMENTS_ACTIONS = new Set(ACTIONS);
+/**
+ * Éléments dans lesquels un mot-clé à adresse n'est pas un lien (le gras seul, sa bulle gardée hors d'un bouton ou d'un résumé) : un lien n'en contient
+ * pas d'autre, un appui sur un bouton, un résumé, une étiquette ou une liste fait déjà son action. Pas `[tabindex]` : un élément qui prend le focus sans
+ * action (une cellule, une carte) garde le lien. Une bulle (`.bulle`) non plus : elle se lit sans y cliquer.
+ */
+export const SANS_LIEN = FOCALISABLES;
+const ELEMENTS_SANS_LIEN = new Set(SANS_LIEN);
 /** Éléments qui n'ont que du texte (le navigateur y retire toute balise) : une balise y devient son texte simple. */
 const TEXTE_SEUL = new Set(['option', 'optgroup']);
 const VIDES = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr', 'keygen']);
@@ -618,27 +726,27 @@ const JETON = /<!--[\s\S]*?-->|<![^>]*>|<\?[^>]*>|<\/?([a-zA-Z][^\s/>]*)((?:[^>"
 const ATTRIBUT = /([^\s"'>/=]+)(\s*=\s*)("([^"]*)"|'([^']*)'|[^\s"'=<>`]+)/g;
 
 /** La valeur d'un attribut data-* : du JSON (ses chaînes sans balises, JSON toujours valide) ou du texte. */
-function valeurSansBalises(valeur, vocabulaire) {
+function valeurSansBalises(valeur, vocabulaire, libelleEntier) {
   const t = valeur.trim();
   if (t.startsWith('[') || t.startsWith('{')) {
     try {
-      const sans = (x) => (typeof x === 'string' ? texteSansBalises(x, vocabulaire) : Array.isArray(x) ? x.map(sans)
+      const sans = (x) => (typeof x === 'string' ? texteSansBalises(x, vocabulaire, { libelleEntier }) : Array.isArray(x) ? x.map(sans)
         : x && typeof x === 'object' ? Object.fromEntries(Object.entries(x).map(([k, y]) => [k, sans(y)])) : x);
       return JSON.stringify(sans(JSON.parse(valeur)));
     } catch {
       // pas du JSON : du texte
     }
   }
-  return texteSansBalises(valeur, vocabulaire);
+  return texteSansBalises(valeur, vocabulaire, { libelleEntier });
 }
 
 /** Une balise d'ouverture dont les attributs de texte (et data-*, sauf ceux que les scripts relisent tels quels) ont perdu leurs balises. */
-function baliseOuvranteSansBalises(tag, vocabulaire) {
+function baliseOuvranteSansBalises(tag, vocabulaire, libelleEntier) {
   return tag.replace(ATTRIBUT, (tout, nom, egal, valeur, dbl, simple) => {
     const n = nom.toLowerCase();
     if (!(ATTRIBUTS_LUS.has(n) || (n.startsWith('data-') && !ATTRIBUT_BRUT.test(n))) || !valeur.includes('{{')) return tout;
     const brut = lire(dbl ?? simple ?? valeur);
-    const nette = n.startsWith('data-') ? valeurSansBalises(brut, vocabulaire) : texteSansBalises(brut, vocabulaire);
+    const nette = n.startsWith('data-') ? valeurSansBalises(brut, vocabulaire, libelleEntier) : texteSansBalises(brut, vocabulaire, { libelleEntier });
     return `${nom}${egal}"${reecrire(nette)}"`;
   });
 }
@@ -666,21 +774,28 @@ const classesDe = (attributs) => {
 /**
  * Un HTML (une page entière ou un fragment) dont les balises des nœuds de texte sont rendues (htmlDeLaBalise) et celles des attributs de texte et du
  * <title> sont du texte simple ; rien (ni texte ni attribut) dans script, style, textarea, template, code, pre, kbd, samp, svg, math, ni sous
- * [data-mots-cles-bruts]. Rend { html, employes } : les mots-clés décrits que la page emploie (balises, et déclencheurs `data-bulle="mot-cle-<id>"` déjà
- * écrits : les pastilles du glossaire de /recherche/), dans l'ordre, sans leurs bulles (htmlDesBulles).
+ * [data-mots-cles-bruts]. Un mot-clé à adresse n'est un lien que hors d'un lien, d'un bouton, d'un résumé, d'une étiquette, d'une liste et d'une bulle
+ * (ELEMENTS_SANS_LIEN). `base` : le préfixe de déploiement des adresses (import.meta.env.BASE_URL) ; `libelleEntier` : la page est l'une de
+ * PAGES_AU_LIBELLE_ENTIER (libelleEntierSur), le libellé entier partout (balises, texte simple), sinon sans le suffixe « (classe) » (R191). Rend { html, employes } : les mots-clés décrits que
+ * la page emploie (balises, et déclencheurs `data-bulle="mot-cle-<id>"` déjà écrits : les pastilles du glossaire de /recherche/), dans l'ordre, sans
+ * leurs bulles (htmlDesBulles).
  */
-export function htmlAvecMotsCles(html, vocabulaire) {
+export function htmlAvecMotsCles(html, vocabulaire, { base = '/', libelleEntier = false } = {}) {
   const v = vocabulaireDesMotsCles(vocabulaire);
   const employes = [];
   if (typeof html !== 'string' || !v || (!html.includes('{{') && !html.includes('data-bulle="mot-cle-'))) return { html, employes };
-  const pile = []; // { nom, exclu, focus, action, bulle, texteSeul }
-  const n = { exclu: 0, focus: 0, action: 0, bulle: 0, texteSeul: 0 };
+  const pile = []; // { nom, exclu, focus, action, lien, bulle, texteSeul }
+  const n = { exclu: 0, focus: 0, action: 0, lien: 0, bulle: 0, texteSeul: 0 };
   let sortie = '';
   let i = 0;
   const texte = (t) => {
     if (n.exclu || !t.includes('{{')) sortie += t;
-    else if (n.texteSeul) sortie += reecrire(texteSansBalises(lire(t), v));
-    else sortie += texteAvecMotsCles(t, v, employes, { sansFocus: n.focus > 0 || n.bulle > 0, sansBulle: n.action > 0 || n.bulle > 0 });
+    else if (n.texteSeul) sortie += reecrire(texteSansBalises(lire(t), v, { libelleEntier }));
+    else {
+      sortie += texteAvecMotsCles(t, v, employes, {
+        sansFocus: n.focus > 0 || n.bulle > 0, sansBulle: n.action > 0 || n.bulle > 0, sansLien: n.lien > 0 || n.bulle > 0, base, libelleEntier,
+      });
+    }
   };
   const compter = (e, sens) => {
     for (const k of Object.keys(n)) if (e[k]) n[k] += sens;
@@ -704,7 +819,7 @@ export function htmlAvecMotsCles(html, vocabulaire) {
     const brut = /\sdata-mots-cles-bruts(?=[\s=>/]|$)/i.test(attributs);
     // les attributs d'un élément exclu (ou d'une zone brute) gardent leurs balises, comme son texte
     const exclu = n.exclu > 0 || brut || ELEMENTS_EXCLUS.has(nom) || (CONTENU_BRUT.has(nom) && nom !== 'title');
-    sortie += exclu || !jeton.includes('{{') ? jeton : baliseOuvranteSansBalises(jeton, v);
+    sortie += exclu || !jeton.includes('{{') ? jeton : baliseOuvranteSansBalises(jeton, v, libelleEntier);
     if (!exclu) {
       const bulle = /\sdata-bulle\s*=\s*"([^"]*)"/i.exec(attributs)?.[1];
       const id = bulle && BULLE_DE_MOT_CLE.exec(bulle)?.[1];
@@ -715,7 +830,7 @@ export function htmlAvecMotsCles(html, vocabulaire) {
       fermeture.lastIndex = i;
       const f = fermeture.exec(html);
       const contenu = html.slice(i, f ? f.index : html.length);
-      sortie += nom === 'title' && !exclu && contenu.includes('{{') ? reecrire(texteSansBalises(lire(contenu), v)) : contenu;
+      sortie += nom === 'title' && !exclu && contenu.includes('{{') ? reecrire(texteSansBalises(lire(contenu), v, { libelleEntier })) : contenu;
       if (f) sortie += f[0];
       i = f ? fermeture.lastIndex : html.length;
       JETON.lastIndex = i;
@@ -727,6 +842,7 @@ export function htmlAvecMotsCles(html, vocabulaire) {
       exclu: ELEMENTS_EXCLUS.has(nom) || brut,
       focus: ELEMENTS_FOCALISABLES.has(nom) || /\stabindex\s*=/i.test(attributs),
       action: ELEMENTS_ACTIONS.has(nom),
+      lien: ELEMENTS_SANS_LIEN.has(nom),
       bulle: classesDe(attributs).includes('bulle'),
       texteSeul: TEXTE_SEUL.has(nom),
     };
@@ -738,14 +854,15 @@ export function htmlAvecMotsCles(html, vocabulaire) {
 }
 
 /**
- * Une page HTML entière avec ses mots-clés rendus (htmlAvecMotsCles) et la bulle de chacun avant </body> (à la fin pour un fragment), sauf une bulle déjà
- * dans la page. Sans balise ni déclencheur de bulle de mot-clé : la page telle quelle.
+ * Une page HTML entière avec ses mots-clés rendus (htmlAvecMotsCles, `base` : le préfixe des adresses ; `libelleEntier` : celui de htmlAvecMotsCles,
+ * bulles comprises) et la bulle de chacun avant </body> (à la fin pour un fragment), sauf une bulle déjà dans la page. Sans balise ni déclencheur de
+ * bulle de mot-clé : la page telle quelle.
  */
-export function pageAvecMotsCles(html, vocabulaire) {
-  const { html: rendu, employes } = htmlAvecMotsCles(html, vocabulaire);
+export function pageAvecMotsCles(html, vocabulaire, { base = '/', libelleEntier = false } = {}) {
+  const { html: rendu, employes } = htmlAvecMotsCles(html, vocabulaire, { base, libelleEntier });
   const bulles = employes.filter((id) => !rendu.includes(`id="${idDeBulle(id)}"`));
   if (!bulles.length) return rendu;
   const fin = rendu.lastIndexOf('</body>');
-  const ajout = htmlDesBulles(bulles, vocabulaire);
+  const ajout = htmlDesBulles(bulles, vocabulaire, { libelleEntier });
   return fin < 0 ? rendu + ajout : `${rendu.slice(0, fin)}${ajout}${rendu.slice(fin)}`;
 }

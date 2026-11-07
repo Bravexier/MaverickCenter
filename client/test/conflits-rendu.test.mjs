@@ -11,11 +11,12 @@ import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import {
-  colonnesDeLaSaine, corpsDeLaResolution, erreurDeSaisie, htmlDesConflits, htmlDuConflit, htmlDuLot, libelleDuChoix, messageDeResolution, optionsDeLaSaisie,
+  colonnesDeLaSaine, corpsDeLaResolution, erreurDeSaisie, htmlDeLaSaisie, htmlDesConflits, htmlDuConflit, htmlDuLot, libelleDuChoix, messageDeResolution, optionsDeLaSaisie,
   raisonDuChoix, raisonDuConflit, texteDeLaVersion, texteDeValeur,
 } from '../src/lib/conflits-rendu.mjs';
 import { TABLES } from '../src/lib/edition-modele.mjs';
 import { htmlAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
+import { fauteDeFormeDeLUrl } from '../src/lib/mots-cles-liens.mjs';
 import { nomDeColonne, nomDeTable } from '../src/lib/libelles-de-la-base.mjs';
 
 const DIAG = JSON.parse(readFileSync(new URL('./fixtures/conflits-diagnostic.json', import.meta.url), 'utf8'));
@@ -332,6 +333,29 @@ test('le corps de la résolution : un choix par conflit, la saisie du 3 contrôl
   assert.equal(erreurDeSaisie({ type: 'reel', libelle: 'Zoom' }, '1,5'), null);
   assert.equal(erreurDeSaisie({ type: 'choix', libelle: 'C', choix: [{ valeur: 'a' }] }, 'z'), '« C » : valeur hors de la liste');
   assert.equal(erreurDeSaisie({ type: 'ligne', libelle: 'Bonus', vide: '' }, ''), null, 'un champ non requis se vide');
+});
+
+test('migration 0098 : l’adresse et la couleur d’un mot-clé se saisissent en une ligne, avec leur aide ; une forme impossible est refusée avant l’envoi (le service refait tout)', () => {
+  const lien = { type: 'adresse', libelle: 'Lien' };
+  const couleur = { type: 'couleur', libelle: 'Couleur' };
+  for (const [s, valeur, aide] of [[lien, '/races/humain/', 'depuis sa racine'], [couleur, 'magie:feu', '« #rrggbb »']]) {
+    const html = htmlDeLaSaisie({ saisie: s, colonne_libelle: s.libelle, version_1: { genre: 'valeur', valeur } }, 'c1');
+    assert.match(html, new RegExp(`<input type="text" id="c1" data-nv-valeur aria-label="[^"]*" value="${valeur.replace(/[/]/g, '\\/')}">`), s.type);
+    assert.ok(html.includes(aide), `${s.type} : ${html}`);
+  }
+  for (const v of ['/races/humain/', '/magies/#relations', '']) assert.equal(erreurDeSaisie(lien, v), null, v);
+  for (const v of ['races/humain/', '//hote/x', 'https://example.org/', '/a b', '/a\\b', '/a"b/', "/a'b/", '/a<b/', '/a>b/', '/a`b/', '/x/?q="1"', '/x/#a<b']) {
+    assert.match(erreurDeSaisie(lien, v), /^« Lien » : adresse d’une page du site/, v);
+  }
+  // la même règle de forme que lib/mots-cles-liens.mjs#fauteDeFormeDeLUrl (que ce module n'importe pas : skill site-version-portable), sur chaque
+  // caractère ASCII et quelques écritures : refusée ici si et seulement si elle l'est là
+  const essais = ['/', '/races/humain/', '/magies/#relations', '/x/?q=1&r=2', '/a b', '/a\tb', '//x', 'x/', '/é/', '/a\\b',
+    ...Array.from({ length: 128 }, (_, i) => `/a${String.fromCharCode(i)}b/`)];
+  for (const v of essais.filter((x) => x.trim() === x && x)) {
+    assert.equal(erreurDeSaisie(lien, v) === null, fauteDeFormeDeLUrl(v) === null, JSON.stringify(v));
+  }
+  for (const v of ['magie:feu', '#12ab9f', '#12AB9F', 'classe:melee', '']) assert.equal(erreurDeSaisie(couleur, v), null, v);
+  for (const v of ['feu', '#12ab9', 'magie:', 'Magie Feu']) assert.match(erreurDeSaisie(couleur, v), /^« Couleur » : « #rrggbb »/, v);
 });
 
 test('le message après l’envoi', () => {

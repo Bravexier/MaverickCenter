@@ -15,11 +15,10 @@ Les fichiers `client/src/content/wiki/<type>/<slug>.md` sont **fabriqués** depu
 
 À savoir :
 
-- **Pages typées.** Les pages de magie, race, classe, métier, arme, bestiaire, équipement… sont rendues depuis les **tables**. Leur `.md` ne sert qu'à la recherche et aux `[[liens]]` : changer la donnée se fait dans les tables, par une migration (`ecrire-une-migration`) ou depuis le site de dev.
+- **Pages typées.** Les pages de magie, race, classe, métier, arme, bestiaire, équipement… sont rendues depuis les **tables**. Leur `.md` ne sert qu'à la recherche et aux liens : changer la donnée se fait dans les tables, par une migration (`ecrire-une-migration`) ou depuis le site de dev.
 - **Pages créées par un importeur.** Les familles autres que `docs` et `exemple` voient leurs pages créées par leur importeur.
 - **Mots-clés.** Un import ne crée jamais de mot-clé : une écriture inconnue n'est pas posée, et `db:sync-pages` la signale (`zone-mots-cles`).
 - **Maillage automatique.** `npm run autolink -- --write` modifie les `.md` fabriqués : le faire suivre de `db:sync-pages`.
 - **Page retirée.** `db:sync-pages` retire aussi ses lignes d'import (`page_source`) sans écrire dans `historique_modification` : `lignesDImport('page_source')` en compte moins. Un test qui compte des renvois d'import (`test/sources-copies.test.mjs`) devient rouge : mettre son nombre à jour, avec un commentaire daté.
-- **Ancre.** Un `[[cible#ancre]]` n'est pas résolu : le lien serait « introuvable » (`lib/wikilinks-resolution.mjs#resolve` cherche l'id entier). Pour viser une section, écrire un lien Markdown `[texte](/regles/<slug>/#ancre)`, qui n'est pas suivi dans la table `lien`.
-- **Titre cité par un texte copié.** Une page retirée dont un texte copié d'une source cite le titre en `[[Titre]]` garde ce lien résolu par un alias posé sur la page qui reprend son contenu ; le texte copié n'est pas réécrit (précédents : migration 0091, « Postures » en 0094).
+- **Liens.** Un lien vers une page ou une section s'écrit avec la balise d'un mot-clé dont l'adresse y mène (`{{id}}`, `{{id|texte}}` ; l'adresse peut porter une ancre). `[[…]]` et `[texte](/…)` sont refusés par `db:check` hors pages d'exemple. Une page sans mot-clé qui y mène se lie après avoir donné l'adresse à un mot-clé (Glossaire du site de dev, ou migration) : skill `zone-mots-cles-liens`.
 - **Texte copié.** Le Codex, les citations « telles quelles » et les extraits de la chronologie ne se réécrivent pas (`verifier-une-source`).

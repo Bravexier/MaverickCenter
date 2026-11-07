@@ -11,6 +11,8 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { morceauxDuChapitre } from '../src/lib/guide.mjs';
 import { htmlAvecMotsCles, pageAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
+import { classeDuMotCle } from '../src/lib/mots-cles-liens.mjs';
+import { cssDesMotsClesDuSite } from '../src/lib/couleur-de-la-page.mjs';
 import { trierVersions } from '../src/lib/notes-de-version.mjs';
 import {
   ADRESSES_DU_PLAN_PRECEDENT, ANCRES_DES_PAGES_ABSORBEES, PAGES_ABSORBEES, PAGES_DE_LA_CREATION, PAGES_ECLATEES_DU_GUIDE, pageDuGuideALAdresse, pagesEclateesDuGuide, PAGES_RETIREES, PAGES_SUPPRIMEES, PAR_OU_COMMENCER, partieDeLaPage,
@@ -99,9 +101,10 @@ test('la page 404 renvoie les anciennes adresses /wiki/… vers les nouvelles', 
   const precedentes = Object.entries(ADRESSES_DU_PLAN_PRECEDENT).filter(([, id]) => construite(id)).length;
   assert.equal(Object.keys(renvois).length, guide.length + 1 + Object.keys(PAGES_ABSORBEES).length + precedentes + adressesRetirees.length);
   for (const [adresse, id] of Object.entries(ADRESSES_DU_PLAN_PRECEDENT)) assert.equal(Object.hasOwn(renvois, adresse), construite(id), `${adresse} : renvoyée si et seulement si ${id} est construite`);
-  // le Lexique, devenu des mots-clés (migration 0090, « Supprime la page lexique. ») : ses adresses mènent à /recherche/ (« Rediriger vers /recherche/ »)
-  assert.equal(renvois['regles/lexique/'], 'recherche/');
-  assert.equal(renvois['guide/lexique/'], 'recherche/');
+  // le Lexique, devenu des mots-clés (migration 0090, « Supprime la page lexique. ») : ses adresses menaient à /recherche/ (« Rediriger vers
+  // /recherche/ »), elles mènent au Glossaire depuis qu'il a sa page (réponses du propriétaire du 2026-11-06)
+  assert.equal(renvois['regles/lexique/'], 'regles/glossaire/');
+  assert.equal(renvois['guide/lexique/'], 'regles/glossaire/');
   assert.ok(!existsSync(join(dist, 'regles', 'lexique')), '/regles/lexique/ n’est plus construite');
   for (const ancienne of Object.keys(PAGES_ABSORBEES)) {
     const slug = ancienne.slice('guide/'.length);
@@ -332,7 +335,7 @@ test('/recherche/ : la recherche et le glossaire des mots-clés (tous, liens ?mo
   const comptes = new Map();
   for (const e of index) for (const id of new Set(e.motsCles)) comptes.set(id, (comptes.get(id) ?? 0) + 1);
   // la liste : le glossaire, tout le vocabulaire (même un mot-clé qu'aucune page visible ne porte), chaque mot-clé décrit avec sa définition en infobulle
-  const vocabulaire = new Map(base.prepare('SELECT id, libelle, libelle_cle, description, abreviation FROM mot_cle').all().map((m) => [m.id, m]));
+  const vocabulaire = new Map(base.prepare('SELECT id, libelle, libelle_cle, description, abreviation, couleur FROM mot_cle').all().map((m) => [m.id, m]));
   const liste = html.slice(html.indexOf('<ul class="tags" id="liste-mots-cles">'), html.indexOf('id="aucun-mot-cle"'));
   const motsCles = [...liste.matchAll(/<li data-id="([^"]+)" data-cle="([^"]+)" data-n="(\d+)" data-libelle="[^"]*"( data-abreviation="[^"]*")?( data-definition="[^"]*")?>\s*<a class="badge" href="\/recherche\/\?mot-cle=([^"]+)"( data-bulle="mot-cle-[^"]+" aria-describedby="mot-cle-[^"]+")?>(<span class="recherche-nom">(?:[^<]|<span class="piece [^>]*><\/span>)*<\/span>(?: · \d+)?)<\/a>\s*<\/li>/g)];
   assert.equal(motsCles.length, (liste.match(/<li /g) ?? []).length, 'chaque mot-clé a la forme attendue');
@@ -354,8 +357,10 @@ test('/recherche/ : la recherche et le glossaire des mots-clés (tous, liens ?mo
     const decrit = Boolean(vocabulaire.get(id)?.description);
     assert.equal(Boolean(definition), decrit, `${id} : sa définition`);
     assert.equal(Boolean(bulle), decrit, `${id} : l’infobulle de sa définition`);
-    if (decrit) assert.equal((html.match(new RegExp(`<span class="bulle" role="tooltip" id="mot-cle-${id}" hidden>`, 'g')) ?? []).length, 1, `${id} : sa bulle, une fois`);
-    if (decrit) assert.ok(html.includes(`<span class="bulle" role="tooltip" id="mot-cle-${id}" hidden><strong class="bulle__titre">${nom}</strong>`), `${id} : le titre de sa bulle`);
+    // sa bulle, habillée de sa couleur (migration 0098 : la classe du mot-clé coloré)
+    const bulleDe = `<span class="${['bulle', classeDuMotCle(m)].filter(Boolean).join(' ')}" role="tooltip" id="mot-cle-${id}" hidden>`;
+    if (decrit) assert.equal(html.split(bulleDe).length - 1, 1, `${id} : sa bulle, une fois`);
+    if (decrit) assert.ok(html.includes(`${bulleDe}<strong class="bulle__titre">${nom}</strong>`), `${id} : le titre de sa bulle`);
     // la définition rendue que recopie la vue du mot-clé (monnaies en icônes, R63 ; balises rendues par le middleware), une par mot-clé décrit
     assert.equal((html.match(new RegExp(`<div data-definition-de="${id}">`, 'g')) ?? []).length, decrit ? 1 : 0, `${id} : sa définition rendue`);
   }
@@ -666,7 +671,8 @@ test('couleurs des magies : jamais en style sur une page construite, toujours pa
   for (const [rel, attendu] of Object.entries(zones)) assert.match(avecMagie.get(rel) ?? '', attendu, rel);
   // « L’univers » ne liste plus les quinze magies (le bloc `guide:magies` a quitté la page) : son texte renvoie à la carte des magies
   const univers = readFileSync(join(dist, 'decouvrir/l-univers/index.html'), 'utf8');
-  assert.match(univers, /<a href="[^"]*\/magies\/">carte des magies<\/a>/, 'L’univers : le lien vers la carte des magies');
+  // (un lien du texte est la balise d'un mot-clé à adresse depuis la migration 0098 : `a.mot-cle`)
+  assert.match(univers, /<a class="mot-cle" href="[^"]*\/magies\/" data-mot-cle="magies"[^>]*>carte des magies<\/a>/, 'L’univers : le lien vers la carte des magies');
   assert.doesNotMatch(univers, /<ul class="guide-magies"/, 'L’univers : plus de liste des magies');
   assert.ok([...avecMagie.values()].some((html) => /<tr class="couleur-magie-[\w-]+">\s*<th scope="row">\s*<a class="guide-magie guide-magie--ligne"/.test(html)), 'le tableau de ce que donne chaque magie (guide)');
   // la fiche et les personnages posent leurs classes au navigateur : leurs noms viennent de la page ou de regles.json (test/fiche-html.test.mjs)
@@ -898,16 +904,23 @@ test('couleurs des parties du guide : jamais en style sur une page construite, t
       const jetons = classe.split(/\s+/);
       if (!jetons.some((c) => CLASSE_DES_PARTIES.test(c) || ELEMENTS_DES_PARTIES.has(c))) continue;
       assert.doesNotMatch(balise, /\bstyle="/, `${rel} : un style sur un élément d’une partie : ${balise.slice(0, 160)}`);
+      // un mot-clé coloré d'une partie (migration 0098 : sa balise, sa tuile, sa bulle) : sa classe vient de la feuille des mots-clés colorés, sur chaque
+      // page ; il n'est pas une page qui pose la couleur d'une partie
+      // (et sa pastille sur le Glossaire)
+      const motCle = jetons.some((c) => ['mot-cle', 'mot-cle-definition', 'bulle', 'glossaire-mot__pastille'].includes(c));
       for (const c of jetons.filter((x) => CLASSE_DES_PARTIES.test(x))) {
         assert.ok(html.includes(`.${c}{`), `${rel} : la classe ${c} n’est pas dans une feuille de la page`);
-        parPage.set(rel, new Set([...(parPage.get(rel) ?? []), c]));
+        if (!motCle) parPage.set(rel, new Set([...(parPage.get(rel) ?? []), c]));
       }
     }
-    if (/\.couleur-partie-[a-z-]+\{/.test(html)) {
+    // la feuille des parties d'une page, hors de celle des mots-clés colorés (layouts/Base.astro, sur chaque page) ; le Glossaire émet toutes les
+    // familles d'une zone, pour les pastilles et le choix de la couleur d'un mot-clé (pages/regles/glossaire.astro, test/palette-css.test.mjs)
+    const sansMotsCles = html.replace(/<style data-couleurs-mots-cles>[^<]*<\/style>/, '');
+    if (/\.couleur-partie-[a-z-]+\{/.test(sansMotsCles) && rel !== 'regles/glossaire/index.html') {
       assert.ok(parPage.has(rel), `${rel} : la feuille des parties sans aucune classe posée`);
       // (la fiche l'émet avec ses autres familles d'une zone, FAMILLES_DE_LA_FICHE : test/palette-css.test.mjs)
       if (rel !== 'fiche/index.html') assert.equal(html.split(`<style>${feuille}</style>`).length - 1, 1, `${rel} : la feuille des parties, une fois`);
-      assert.equal(html.split('.couleur-partie-creer{').length - 1, 1, `${rel} : une seule feuille des parties`);
+      assert.equal(sansMotsCles.split('.couleur-partie-creer{').length - 1, 1, `${rel} : une seule feuille des parties`);
     }
   }
   // les pages qui les posent : les deux de Découvrir, l'accueil, la fiche, et la création du personnage (introduction et six étapes, PAGES_DE_LA_CREATION,
@@ -935,11 +948,14 @@ test('/archives/, /mise-a-jour/ et /maintenance/ : aucune feuille de zone de la 
     const html = lire(rel);
     assert.doesNotMatch(html, /\bstyle="/, `${rel} : un style`);
     assert.equal(html.split(`<style>${palette}</style>`).length - 1, 1, `${rel} : la feuille de chaque page, une fois`);
-    // toute classe de couleur de la page est dans la feuille de chaque page : aucune famille d'une zone, ni second rang des caractéristiques, ni
+    // la feuille des mots-clés colorés (migration 0098), sur chaque page aussi (layouts/Base.astro)
+    const motsCles = cssDesMotsClesDuSite();
+    assert.equal(html.split(`<style data-couleurs-mots-cles>${motsCles}</style>`).length - 1, 1, `${rel} : la feuille des mots-clés colorés, une fois`);
+    // toute classe de couleur de la page est dans l'une de ces deux feuilles : aucune autre famille d'une zone, ni second rang des caractéristiques, ni
     // combinaison de potion, ni événement de la chronologie
     const classes = [...html.matchAll(/\.(couleur-[a-z0-9-]+)\{/g)].map((m) => m[1]);
     assert.ok(classes.length > 30, `${rel} : ${classes.length} classes`);
-    for (const c of classes) assert.ok(palette.includes(`.${c}{`), `${rel} : ${c} n’est pas de la feuille de chaque page`);
+    for (const c of classes) assert.ok(palette.includes(`.${c}{`) || motsCles.includes(`.${c}{`), `${rel} : ${c} n’est pas de la feuille de chaque page`);
     assert.doesNotMatch(html, /data-couleurs-chronologie/, rel);
     // la feuille de la page, insérée telle quelle : sans hex ni fonction de couleur écrite (le voile : noir de mélange)
     const feuille = readFileSync(new URL(`../src/styles/${source}`, import.meta.url), 'utf8');

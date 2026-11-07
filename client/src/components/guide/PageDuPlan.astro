@@ -33,6 +33,7 @@ const menu = menuLateralDe(entry.id, entries);
   description={entry.data.summary}
   edition={modifiable ? entry.id : undefined}
   entree={menu ? menu.rubrique.chemin : undefined}
+  couleurPropre
 >
   {ouverture && <link slot="tete" rel="canonical" href={url(cheminDePage(entry.id))} />}
   {

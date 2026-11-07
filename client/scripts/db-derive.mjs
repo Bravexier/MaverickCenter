@@ -1,5 +1,8 @@
 // `npm run db:build` l'enchaîne après db-build.mjs : recalcule les tables DÉRIVÉES (lien, lien_candidat, page_fts, puis data/derive.sql -> entite_fts)
 // à partir des tables de base. Réutilise le code du site (wikilinks.mjs, text.mjs) : les règles de résolution ne sont écrites qu'une fois.
+// Les liens d'une page (table `lien`, vue `lien_page`) : ses `[[…]]` (il n'en reste que sur les pages d'exemple), puis, depuis la migration 0098 (les
+// liens devenus des balises), chaque balise du glossaire dont le mot-clé a une adresse qui mène à une page (lib/adresses-db.mjs#pageDeLAdresse ; une
+// rubrique ou une route sans page n'est pas un lien de page) : `cible` = l'id du mot-clé, `ancre` = le texte affiché, `etat` = 'resolu'.
 //
 //   node scripts/db-derive.mjs [<base.db>] [--sans-exemples] [--derive-sql <chemin>]     (défauts : var/maverick.db, data/derive.sql)
 //
@@ -17,14 +20,22 @@ const RACINE = fileURLToPath(new URL('../../', import.meta.url));   // racine du
 const LIB = process.env.MAVERICK_LIB ?? fileURLToPath(new URL('../src/lib', import.meta.url));   // client/src/lib : les règles de résolution des liens ne sont écrites qu'une fois
 const { buildIndex, extractLinks, resolve } = await import(pathToFileURL(`${LIB}/wikilinks.mjs`).href);
 const { normalize } = await import(pathToFileURL(`${LIB}/text.mjs`).href);
+const { lireBalises, motCleDeLaRef, texteDeLaBalise, texteSansBalises, vocabulaireDesMotsCles } = await import(pathToFileURL(`${LIB}/mots-cles-balises.mjs`).href);
+const { motsClesDeLaBase } = await import(pathToFileURL(`${LIB}/mots-cles-db.mjs`).href);
+const { indexDesAdresses, pageDeLAdresse } = await import(pathToFileURL(`${LIB}/adresses-db.mjs`).href);
 
 const args = process.argv.slice(2);
 const dbPath = chemin(args[0] && !args[0].startsWith('--') ? args[0] : chemin(RACINE, 'var', 'maverick.db'));
 const deriveSql = chemin(args.includes('--derive-sql') ? args[args.indexOf('--derive-sql') + 1] : chemin(RACINE, 'data', 'derive.sql'));
 
-/** Texte brut pour la recherche : même nettoyage que client/src/pages/search-index.json.ts, sans la coupe à 4000 caractères. */
-function textePlein(corps) {
-  return corps
+/**
+ * Texte brut pour la recherche, tel qu'il s'affiche : chaque balise du glossaire devient son texte affiché (le texte écrit, ou le libellé du mot-clé ;
+ * « Libellé : définition » pour le mode complet ; une balise dans un code reste écrite : lib/mots-cles-balises.mjs#texteSansBalises) — depuis la
+ * migration 0098, un lien est une balise sans texte, « {{lequipement}} », et seul son libellé, « L’équipement », se lit ; puis même nettoyage que
+ * lib/recherche-index.ts#plainText, sans la coupe à 4000 caractères.
+ */
+function textePlein(corps, vocabulaire) {
+  return texteSansBalises(corps, vocabulaire, { markdown: true })
     .replace(/\[\[([^\[\]|]+?)(?:\|([^\[\]]+?))?\]\]/g, (_, cible, ancre) => ancre ?? cible)
     .replace(/[#>*_`|]/g, ' ')
     .replace(/\s+/g, ' ')
@@ -76,19 +87,39 @@ try {
   const insLien = db.prepare('INSERT INTO lien (page_id, position, cible, ancre, etat, cible_page_id) VALUES (?, ?, ?, ?, ?, ?)');
   const insCand = db.prepare('INSERT INTO lien_candidat (page_id, position, candidat_page_id) VALUES (?, ?, ?)');
   const etats = { resolu: 0, introuvable: 0, ambigu: 0 };
+  // les balises dont le mot-clé mène à une page (migration 0098) : l'adresse de chaque mot-clé, résolue une fois
+  const vocabulaire = vocabulaireDesMotsCles(motsClesDeLaBase(db));
+  const adresses = indexDesAdresses(db, { exemples: true });
+  const pageDuMotCle = new Map(motsClesDeLaBase(db).filter((m) => m.url).map((m) => [m.id, pageDeLAdresse(adresses, m.url)]));
+  let balises = 0;
   for (const p of pages) {
-    extractLinks(p.corps_md).forEach(({ target, label }, position) => {
+    const wiki = extractLinks(p.corps_md);
+    wiki.forEach(({ target, label }, position) => {
       const r = resolve(index, target);
       const etat = r?.entry ? 'resolu' : r?.ambiguous ? 'ambigu' : 'introuvable';
       insLien.run(p.id, position, target, label, etat, r?.entry?.id ?? null);
       for (const c of r?.ambiguous ?? []) insCand.run(p.id, position, c.id);
       etats[etat] += 1;
     });
+    let position = wiki.length;
+    for (const b of lireBalises(p.corps_md, { markdown: true })) {
+      const m = motCleDeLaRef(vocabulaire, b.ref);
+      const cible = m ? pageDuMotCle.get(m.id) ?? null : null;
+      if (!cible) continue;
+      insLien.run(p.id, position, m.id, texteDeLaBalise(b, vocabulaire, { definitions: false }), 'resolu', cible);
+      position += 1;
+      etats.resolu += 1;
+      balises += 1;
+    }
   }
+  bilan.liensDesBalises = balises;
 
+  // le titre, le résumé et le corps tels qu'ils s'affichent (balises remplacées par leur texte : lib/recherche-index.ts fait de même pour l'index du site)
   const insFts = db.prepare('INSERT INTO page_fts (page_id, titre, alias, tag, resume, texte) VALUES (?, ?, ?, ?, ?, ?)');
+  const sans = (t) => texteSansBalises(t, vocabulaire);
   for (const p of pages) {
-    insFts.run(p.id, p.titre, (aliasParPage.get(p.id) ?? []).join('\n'), (tagsParPage.get(p.id) ?? []).join('\n'), p.resume ?? '', textePlein(p.corps_md));
+    insFts.run(p.id, sans(p.titre), (aliasParPage.get(p.id) ?? []).join('\n'), (tagsParPage.get(p.id) ?? []).join('\n'), sans(p.resume ?? ''),
+      textePlein(p.corps_md, vocabulaire));
   }
 
   const nbCles = db.prepare('SELECT count(*) AS n, count(DISTINCT cle) AS d FROM cle_page').get();

@@ -18,7 +18,7 @@ user-invocable: false
 - Node ≥ 22.13, `node:sqlite`, aucun paquet npm. Il répond sous `/api/` : prétirés (liste, lecture, création, modification avec `version`, suppression), portrait, contrôles de `v_personnage_controle` (ils signalent, ne bloquent jamais).
 - Il écrit dans la base vivante `db/vivante.db` = copie de `site/donnees/maverick.db` + lignes de la section 13, refaite quand les règles changent (fiches reprises ; archives dans `db/archives/`).
 - À la reconstruction, un don, une spécialité, un sort (avec son livre), un métier ou une arme (R52) disparu est retiré des fiches avec une note datée (R42, `serveur/fiches-retraits.mjs`), liste dans `/api/etat`. Toute autre référence rompue : rien ne change et `/api/etat` dit pourquoi.
-- Livré avec le site : `serveur/livraison.mjs` le copie dans `dist/_serveur/` avec `version.json`. Prétirés seulement, pas de comptes.
+- Livré : `serveur/livraison.mjs` le copie dans `dist/_serveur/` avec `version.json` et `FICHIERS_JOINTS` (instantané Tipeee, registre de la 0098 lu au rejeu). Prétirés seulement, pas de comptes.
 - `/api/etat` (site de dev) : `modifications.en_attente`, `modifications.conflit` et `modifications.lots_en_conflit` ne comptent que les lots à résoudre (`edition-conflits.mjs#compterLesConflits`).
 
 ## Invariants

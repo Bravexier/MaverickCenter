@@ -19,8 +19,10 @@ import { ouvrirBase } from '../lib/donnees.mjs';
 // sa définition, puis les pages qui le portent ou le citent (demande du propriétaire : « cliquer sur un mot clé lance une recherche sur ce mot clé et
 // liste les éléments qui ont ce mot clé ») ; les pastilles des pages du wiki y mènent, et les anciennes adresses /tags/<clé>/ aussi (page 404,
 // lib/nav.mjs#nouvelleAdresse).
-// Sur le site de dev, le vocabulaire se modifie ici (src/scripts/edition/mots-cles.mjs). CSS : styles/recherche/, inséré ici (?raw). Aucun id de la page ne
-// commence par « mot-cle- » : c'est celui des bulles du glossaire (« mot-cle-<id> », lib/mots-cles-balises.mjs#idDeBulle).
+// Le vocabulaire se modifie sur le Glossaire (/regles/glossaire/, en mode modification sur le site de dev : src/scripts/edition/mots-cles.mjs ; réponses
+// du propriétaire du 2026-11-06) : cette page ne fait plus que chercher, et liste toujours les mots-clés ; leurs pastilles mènent toujours à la liste de
+// leurs pages (?mot-cle=<id>), jamais à l'adresse du mot-clé (réponse Q12). CSS : styles/recherche/, inséré ici (?raw). Aucun id de la page ne commence
+// par « mot-cle- » : c'est celui des bulles du glossaire (« mot-cle-<id> », lib/mots-cles-balises.mjs#idDeBulle).
 const index = await indexDeRecherche();
 const comptes = comptesDesMotsCles(index);
 // L'abréviation d'un mot-clé (migration 0090 ; réponse du propriétaire du 2026-11-05 : « Modifiable et affichée ») suit son libellé dans sa pastille,
@@ -34,7 +36,7 @@ const motsCles = chargerVocabulaire(ouvrirBase()).map((m) => ({
 const lienDuMotCle = `${url('recherche/')}?${PARAMETRE_MOT_CLE}=`;
 ---
 
-<Base title="Recherche" description="Rechercher dans le site : les pages, les événements de la chronologie et le glossaire des mots-clés" edition="recherche/">
+<Base title="Recherche" description="Rechercher dans le site : les pages, les événements de la chronologie et le glossaire des mots-clés">
   <style is:inline set:html={rechercheCss}></style>
   <div class="recherche" data-recherche data-lien-mot-cle={lienDuMotCle}>
     <h1>Recherche</h1>
@@ -76,7 +78,7 @@ const lienDuMotCle = `${url('recherche/')}?${PARAMETRE_MOT_CLE}=`;
       <ul id="results" class="entry-list"></ul>
     </section>
 
-    <p class="muted recherche-voir-aussi">Voir aussi l’<a href={url('pages/')}>index alphabétique de toutes les pages</a> et la <a href={url('donnees/')}>base de données</a>.</p>
+    <p class="muted recherche-voir-aussi">Voir aussi le <a href={url('regles/glossaire/')}>glossaire</a>, l’<a href={url('pages/')}>index alphabétique de toutes les pages</a> et la <a href={url('donnees/')}>base de données</a>.</p>
   </div>
 </Base>
 

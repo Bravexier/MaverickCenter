@@ -1,6 +1,6 @@
 ---
 name: site-wiki-liens
-description: "Pages du wiki fabriquées depuis la base (client/src/content/wiki), index et résolution des [[liens]] (wikilinks.mjs, wiki.ts), adresses /<type>/<slug>/ et renvois de la page 404, HIDE_EXAMPLES, Markdown d'Astro 7, maillage. À charger avant de lire, modifier ou relire ces fichiers."
+description: "Pages du wiki fabriquées depuis la base (client/src/content/wiki), index et résolution des [[liens]] des pages d'exemple (wikilinks.mjs, wiki.ts), adresses /<type>/<slug>/ et renvois de la page 404, HIDE_EXAMPLES, Markdown d'Astro 7, maillage. À charger avant de lire, modifier ou relire ces fichiers."
 paths: ["client/astro.config.mjs", "client/src/content.config.ts", "client/src/lib/wikilinks.mjs", "client/src/lib/wikilinks-resolution.mjs", "client/src/lib/wiki.ts", "client/src/lib/types.mjs", "client/src/lib/autolink.mjs", "client/src/pages/?type?/**", "client/src/pages/pages.astro", "client/src/pages/404.astro", "client/scripts/db-export-pages.mjs", "client/scripts/autolink*", "client/test/wikilinks.test.mjs", "client/test/autolink.test.mjs", "client/test/site-html.test.mjs"]
 user-invocable: false
 ---
@@ -30,7 +30,7 @@ user-invocable: false
 - Astro 7 utilise Sätteri comme processeur Markdown par défaut, qui n'exécute pas les plugins remark. `astro.config.mjs` force `unified()` de `@astrojs/markdown-remark` pour le plugin des `[[liens]]` (et ceux des couleurs de case et des monnaies) : ne pas le retirer.
 - L'index des liens du plugin est lu une fois au démarrage (`scanContent`) ; les pages (`wiki.ts`) sont rechargées par Astro. Les deux doivent rester d'accord sur l'id d'une page (`<type>/<slug>`, d'où `generateId` dans `content.config.ts`). Après l'ajout d'un nouveau fichier de contenu, relancer `npm run dev`.
 - `HIDE_EXAMPLES=1` filtre les pages d'exemple (`status: example`) à deux endroits qui doivent rester d'accord : `scanContent` (index des liens, dans `astro.config.mjs`) et `loadWiki` (`src/lib/wiki.ts`). La base ouverte au build (`lib/donnees.mjs#ouvrirBase`) le suit aussi. `HIDE_EXAMPLES=1 npm run build` donne la version à montrer.
-- Les liens `[[…]]` cassés produisent un avertissement `[wikilinks]` au build.
+- Un lien vers une page est la balise d'un mot-clé à adresse (skill `zone-mots-cles-liens`) : les `[[…]]` ne restent que dans les pages d'exemple et la section 15, d'où le plugin remark gardé ; cassés, ils produisent un avertissement `[wikilinks]` au build.
 - Astro met le rendu Markdown en cache dans `client/node_modules/.astro/` (clé = contenu du fichier). Après une modification du plugin des `[[liens]]` sans toucher aux pages, supprimer ce dossier avant de reconstruire, sinon l'ancien rendu est réutilisé (la CI repart de zéro).
 
 ## Adresses (demande du propriétaire)
@@ -45,6 +45,9 @@ user-invocable: false
 ## Maillage automatique
 
 `npm run autolink` (aperçu) ou `npm run autolink -- --write` (écrit dans les `.md` fabriqués, à faire suivre de `npm run db:sync-pages`). Règles, exclusions (`TYPES_SANS_MAILLAGE` de `src/lib/autolink.mjs`, `client/scripts/autolink-ignore.txt`) : `docs/content-guide.md`, « Maillage automatique ».
+- Il pose `{{id}}` ou `{{id|texte}}` d'un mot-clé à adresse (`ciblesDuVocabulaire`), jamais un `[[…]]`, et ne crée jamais de mot-clé : une page sans mot-clé qui y mène n'est pas une cible.
+- `TYPES_SANS_MAILLAGE` comprend `metiers` (corps = rendu de sa ligne) et `lore` (réécrit à l'identique par `codex.py` et `relations-races.py`).
+- Il reste un outil d'aperçu, relu avant `--write` (choix du leader-technique).
 
 ## Tests
 

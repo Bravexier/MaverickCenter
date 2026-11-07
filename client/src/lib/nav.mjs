@@ -34,7 +34,9 @@ export const NAV = [
     // personnage », « Mécaniques générales », « Les combats », « Exploration » ; aucun onglet « Autre »), chacun à regles/<onglet>/, ouvert sur sa
     // page d'ouverture à côté de son menu latéral (lib/livres.mjs). Plus d'entrée « Créer son personnage » (l'introduction de l'onglet Fiche de
     // personnage), « Les bases » ni « Règles avancées ». `autres` : toute page sous regles/ (les pages des onglets, à plat, et l'Artisanat) ouvre les
-    // Règles ; l'onglet marqué vient du plan (`entree` de layouts/Base.astro), pas de l'adresse.
+    // Règles ; l'onglet marqué vient du plan (`entree` de layouts/Base.astro), pas de l'adresse. Puis le Glossaire (/regles/glossaire/ : la liste de
+    // tous les mots-clés ; réponses du propriétaire du 2026-11-06 : « Glossaire » dans le menu Règles, après Exploration, une page seule), qui n'est pas
+    // un onglet du plan (table regles_onglet).
     autres: ['regles/'],
     items: [
       { label: 'Découvrir', path: 'decouvrir/' },
@@ -43,6 +45,7 @@ export const NAV = [
       { label: 'Mécaniques générales', path: 'regles/mecaniques-generales/' },
       { label: 'Les combats', path: 'regles/combats/' },
       { label: 'Exploration', path: 'regles/exploration/' },
+      { label: 'Glossaire', path: 'regles/glossaire/' },
     ],
   },
   {

@@ -8,6 +8,7 @@ import Edition from '../components/edition/Edition.astro';
 import Infobulles from '../components/Infobulles.astro';
 import { cssDesAttributs } from '../lib/attributs-couleurs.mjs';
 import { cssDeLaPalette } from '../lib/palette-css.mjs';
+import { classeDeLaPageDuSite, cssDesMotsClesDuSite } from '../lib/couleur-de-la-page.mjs';
 
 interface Props {
   title: string;
@@ -22,8 +23,13 @@ interface Props {
    * page elle-même ayant `aria-current="page"`).
    */
   entree?: string;
+  /**
+   * La page pose elle-même sa couleur principale (les gabarits des magies, des classes, des races et du guide : lib/couleur-de-la-page.mjs#classeDeLaPage) :
+   * <main> n'en prend pas.
+   */
+  couleurPropre?: boolean;
 }
-const { title, description = 'Wiki et outils pour le JDR Maverick', edition, maintenance = false, entree } = Astro.props;
+const { title, description = 'Wiki et outils pour le JDR Maverick', edition, maintenance = false, entree, couleurPropre = false } = Astro.props;
 // Version portable (tools/build-artifact.mjs, INLINE_CSS=1) : pas de service, donc pas de mode modification.
 const portable = process.env.INLINE_CSS === '1';
 
@@ -40,6 +46,9 @@ const balise = !portable && !maintenance && process.env.SITE_METRIQUES_PAGES !==
 // La page mesurée : son chemin construit (jamais l'adresse de la barre, ses paramètres ni ce qu'une adresse inconnue fait servir à la page 404) :
 // autant de pages que le site en construit, pas plus.
 const pageMesuree = Astro.url.pathname;
+// La couleur principale d'une page vers laquelle mène un mot-clé coloré (réponse Q5 du propriétaire, migration 0098) : sur <main>, pour une page qui
+// n'a pas de gabarit coloré (`couleurPropre`) ; aucune au départ (les mots-clés colorés mènent aux pages des magies, classes, races et du guide).
+const couleurDeLaPage = couleurPropre || maintenance ? null : classeDeLaPageDuSite(Astro.url.pathname, null, { base });
 ---
 
 <!doctype html>
@@ -55,6 +64,9 @@ const pageMesuree = Astro.url.pathname;
     {/* la palette du site en classes (`.couleur-<famille>-<id>` : --couleur, --couleur-texte ; magies, attributs, caractéristiques, affinités), fabriquée
         depuis les modules des règles : lib/palette-css.mjs (choix du propriétaire du 2026-10-22, « Module JS → classe ») */}
     <style is:inline set:html={cssDeLaPalette()}></style>
+    {/* les classes des mots-clés colorés (migration 0098 : une couleur écrite, ou une famille d'une zone de la palette) : leurs balises, leurs bulles et
+        la page vers laquelle ils mènent (lib/couleur-de-la-page.mjs) ; le site de dev la réécrit quand le glossaire change (mots-cles-vivants.mjs) */}
+    <style is:inline data-couleurs-mots-cles set:html={cssDesMotsClesDuSite()}></style>
     <title>{site.test ? '[TEST] ' : ''}{title === 'Accueil' ? 'Maverick Center' : `${title} — Maverick Center`}</title>
     {/* ce qu'une page ajoute à son en-tête (la fiche : sa politique de Referer, pour la connexion à Google) */}
     <slot name="tete" />
@@ -136,7 +148,7 @@ const pageMesuree = Astro.url.pathname;
         </div>
       </div>
     </header>
-    <main>
+    <main class={couleurDeLaPage ? `page-coloree ${couleurDeLaPage}` : undefined}>
       <slot />
     </main>
     <footer class="site-footer">

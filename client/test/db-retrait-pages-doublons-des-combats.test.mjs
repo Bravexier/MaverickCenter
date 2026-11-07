@@ -14,7 +14,10 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { lireBalises, motCleDeLaRef } from '../src/lib/mots-cles-balises.mjs';
+import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { baseDImport, lotsAvant } from './aide-base-d-import.mjs';
+import { ecrituresDuLien, ecrituresDuTexte, motsClesVers } from './aide-ecritures-du-lien.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { ecritParLeSite, lignesQuiCitent } from './aide-page-retiree.mjs';
 
@@ -29,6 +32,14 @@ const pageApres = (id) => apres0095().prepare('SELECT * FROM page WHERE id = ?')
 const corpsApres = (id) => pageApres(id).corps_md;
 const RETIREES = ['guide/postures', 'guide/les-boss-et-leurs-postures', 'guide/le-mode-super'];
 const POSTURES = ['defensif', 'focus', 'neutre', 'offensif', 'symbiose', 'vigilance'].map((s) => `guide/postures#posture:${s}`);
+// La migration 0098 a fait des [[…]] des balises de mots-clés à adresse : un texte des migrations 0094 et 0095 se lit sous l'une ou l'autre écriture
+// (test/aide-ecritures-du-lien.mjs), sans figer celle de la 0098 ; sur l'état courant, un lien est un [[…]] ou la balise d'un mot-clé qui mène à la page.
+/** Le texte `corps` porte la balise d'un mot-clé de `base` dont l'adresse mène à la page `cible`. */
+function baliseVers(base, corps, cible) {
+  const vers = new Set(motsClesVers(base, cible).map((m) => m.id));
+  const vocabulaire = chargerVocabulaire(base);
+  return lireBalises(corps, { markdown: true }).some((b) => vers.has(motCleDeLaRef(vocabulaire, b.ref)?.id));
+}
 
 test('0094 : les trois pages retirées, avec leurs lignes d’import, leur alias, leur entrée de menu, leurs liens ; aucune source orpheline', () => {
   for (const id of RETIREES) {
@@ -64,7 +75,7 @@ test('0094 : « Le Mode Hyper » reste (R187) et 0094 n’y touche pas : sa page
   assert.equal(pageApres(HYPER)?.titre, 'Le Mode Hyper');
   assert.deepEqual(base.prepare('SELECT texte FROM alias WHERE page_id = ?').all(HYPER).map((r) => r.texte), ['Le Mode Hyper et le Mode Super']);
   assert.equal(base.prepare('SELECT onglet_id FROM regles_onglet_entree WHERE page_id = ?').get(HYPER)?.onglet_id, 'combats');
-  assert.ok(corpsApres('guide/les-postures').includes('(voir [[guide/le-mode-hyper|Le Mode Hyper]])'));
+  assert.ok(ecrituresDuTexte(base, '(voir [[guide/le-mode-hyper|Le Mode Hyper]])').some((f) => corpsApres('guide/les-postures').includes(f)));
   // l'état courant : la page reste (sauf suppression par le site), avec son entrée de menu ; les liens suivent le texte des postures
   if (!page(HYPER)) {
     assert.ok(h.supprimee('page', { id: HYPER }), `${HYPER} absente sans que le site l'ait supprimée`);
@@ -75,7 +86,9 @@ test('0094 : « Le Mode Hyper » reste (R187) et 0094 n’y touche pas : sa page
   if (!h.modifiee('regles_onglet_entree', { id: entree.id }, 'onglet_id')) assert.equal(entree.onglet_id, 'combats');
   const postures = page('guide/les-postures')?.corps_md ?? '';
   const lie = db.prepare("SELECT count(*) AS n FROM lien WHERE page_id = 'guide/les-postures' AND cible_page_id = ?").get(HYPER).n > 0;
-  if (postures.includes(`[[${HYPER}|`) || postures.includes(`[[${HYPER}]]`)) assert.ok(lie, 'le renvoi écrit dans guide/les-postures est résolu');
+  if (postures.includes(`[[${HYPER}|`) || postures.includes(`[[${HYPER}]]`) || baliseVers(db, postures, HYPER)) {
+    assert.ok(lie, 'le renvoi écrit dans guide/les-postures est résolu');
+  }
 });
 
 // La « Liste des effets mode hyper » est retirée à son tour par la migration 0095 (db-retrait-liste-des-effets-mode-hyper.test.mjs) : rangs de 1 à 19.
@@ -119,20 +132,30 @@ test('0094 : identifiants figés : les six postures gardent leur id sous guide/p
 
 test('0094 : les liens écrits vers les pages retirées mènent à la page qui reprend leur contenu ; le texte copié d’un Doc ne change pas', () => {
   // les textes tels que la migration les a écrits (le site peut les réécrire depuis)
+  // (le lien de la migration, ou la balise que la 0098 en a faite)
+  const base = apres0095();
   const postures = corpsApres('guide/les-postures');
-  assert.ok(postures.endsWith('Le texte d’origine des postures : [[guide/fiche-tableau-posture|Tableau Posture]] (Doc « Créer sa fiche de personnage »).\n'));
+  assert.ok(ecrituresDuTexte(base, 'Le texte d’origine des postures : [[guide/fiche-tableau-posture|Tableau Posture]] (Doc « Créer sa fiche de personnage »).\n')
+    .some((f) => postures.endsWith(f)));
   assert.ok(!postures.includes('Doc « Guide pour MJ ») et'));
   const attaquer = corpsApres('guide/attaquer-et-se-defendre');
-  assert.ok(attaquer.includes('ont plus de parades et d’esquives que les autres en posture neutre, de vigilance ou de symbiose (voir [[guide/les-postures|Les postures]]).'));
+  assert.ok(ecrituresDuTexte(base, 'ont plus de parades et d’esquives que les autres en posture neutre, de vigilance ou de symbiose (voir [[guide/les-postures|Les postures]]).')
+    .some((f) => attaquer.includes(f)));
   assert.ok(!attaquer.includes('les-boss-et-leurs-postures'));
-  // le sommaire transcrit du Doc « Guide pour MJ » garde « [[Postures]] » : un alias de guide/les-postures le résout
-  assert.ok(corpsApres('guide/guide-pour-mj-maverick').includes('- *[[Postures]]*\n'));
+  // le sommaire transcrit du Doc « Guide pour MJ » garde « [[Postures]] » (un alias de guide/les-postures le résout), ou la balise que la 0098 en a faite
+  assert.ok(ecrituresDuLien(base, 'guide/les-postures', 'Postures', '[[Postures]]').some((f) => corpsApres('guide/guide-pour-mj-maverick').includes(`- *${f}*\n`)));
   assert.deepEqual(apres0095().prepare("SELECT page_id, texte FROM alias WHERE cle = 'postures'").all().map((r) => ({ ...r })), [{ page_id: 'guide/les-postures', texte: 'Postures' }]);
   // l'état courant : « [[Postures]] », s'il est encore écrit, mène à la page que l'alias « postures » désigne
   const vers = db.prepare("SELECT page_id FROM alias WHERE cle = 'postures'").get()?.page_id;
   const liens = db.prepare("SELECT cible_page_id, etat FROM lien WHERE page_id = 'guide/guide-pour-mj-maverick' AND cible = 'Postures'").all().map((r) => ({ ...r }));
   if (vers) for (const l of liens) assert.deepEqual(l, { cible_page_id: vers, etat: 'resolu' });
-  if ((page('guide/guide-pour-mj-maverick')?.corps_md ?? '').includes('[[Postures]]')) assert.ok(liens.length > 0, '« [[Postures]] » est un lien');
+  const mj = page('guide/guide-pour-mj-maverick')?.corps_md ?? '';
+  if (mj.includes('[[Postures]]')) assert.ok(liens.length > 0, '« [[Postures]] » est un lien');
+  // la balise d'un mot-clé qui mène à cette page, si elle est écrite, est une ligne de lien résolue vers elle
+  if (vers && baliseVers(db, mj, vers)) {
+    assert.ok(db.prepare("SELECT count(*) AS n FROM lien WHERE page_id = 'guide/guide-pour-mj-maverick' AND cible_page_id = ? AND etat = 'resolu'").get(vers).n > 0,
+      `la balise vers ${vers} est un lien`);
+  }
 });
 
 test('0094 rejouée sur son propre résultat : rien ne change (UPDATE gardés par le texte d’avant, alias ajouté une fois)', (t) => {

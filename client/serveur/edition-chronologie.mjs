@@ -15,6 +15,8 @@ import { dateDansLeTexte, ecritureReservee, erreurDeDate, libelleDeDate, ordonne
 import { fragmentsAjoutes, messageDeRefus } from '../src/lib/markdown-sur.mjs';
 import { raisonDeProtection } from '../src/lib/mots-cles.mjs';
 import { reciblerLeMotCle, retirerLeMotCle } from '../src/lib/mots-cles-balises.mjs';
+import { classeDuMotCle } from '../src/lib/mots-cles-liens.mjs';
+import { cssDesMotsCles } from '../src/lib/palette-css.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { lireLigne } from './edition-journal.mjs';
 
@@ -68,29 +70,44 @@ export function chronologieVivante(db) {
 }
 
 /**
- * Le vocabulaire des mots-clés pour /recherche/ en mode modification (GET /api/edition/mots-cles/) : [{ id, libelle, libelle_cle, description,
- * abreviation, pages, protege }] (`description` : la définition telle qu'enregistrée, NULL tant qu'il n'est pas décrit ; `abreviation` : NULL sans
- * abréviation, et sur une base d'avant la migration 0090 ; `protege` : la raison pour laquelle il ne se renomme, ne se supprime ni ne se fusionne,
- * lib/mots-cles.mjs ; null sinon : sa définition et son abréviation, elles, se modifient toujours), triés par libellé.
+ * Le vocabulaire des mots-clés pour le Glossaire (/regles/glossaire/) en mode modification (GET /api/edition/mots-cles/) : [{ id, libelle, libelle_cle,
+ * description, abreviation, url, couleur, classe, pages, protege }] (`description` : la définition telle qu'enregistrée, NULL tant qu'il n'est pas décrit ;
+ * `abreviation` : NULL sans abréviation, et sur une base d'avant la migration 0090 ; `url`, `couleur` : l'adresse et la couleur, migration 0098, NULL
+ * sans elles et sur une base d'avant ; `classe` : la classe de sa couleur, lib/mots-cles-liens.mjs#classeDuMotCle, null sans couleur ; `protege` : la
+ * raison pour laquelle il ne se renomme, ne se supprime ni ne se fusionne, lib/mots-cles.mjs ; null sinon : sa définition, son abréviation, son adresse
+ * et sa couleur, elles, se modifient toujours), triés par libellé.
  * @param {import('node:sqlite').DatabaseSync} db
  */
 export function vocabulaire(db) {
-  // `*` : la vue d'avant la migration 0090 n'a pas la colonne abreviation
+  // `*` : la vue d'avant la migration 0090 n'a pas la colonne abreviation, celle d'avant la 0098 ni couleur ni url
   return db.prepare('SELECT * FROM v_mot_cle').all()
-    .map(({ id, libelle, libelle_cle: cle, description, abreviation, nb_pages: pages }) => ({
-      id, libelle, libelle_cle: cle, description, abreviation: abreviation ?? null, pages, protege: raisonDeProtection(cle),
+    .map(({ id, libelle, libelle_cle: cle, description, abreviation, couleur, url, nb_pages: pages }) => ({
+      id, libelle, libelle_cle: cle, description, abreviation: abreviation ?? null, url: url ?? null, couleur: couleur ?? null,
+      classe: classeDuMotCle({ id, couleur }), pages, protege: raisonDeProtection(cle),
     }))
     .sort((a, b) => a.libelle.localeCompare(b.libelle, 'fr', { sensitivity: 'base' }) || a.id.localeCompare(b.id));
+}
+
+/**
+ * Le vocabulaire et sa feuille (GET /api/edition/mots-cles/) : { motsCles: vocabulaire(db), css } — `css` : les règles des classes des mots-clés
+ * colorés (lib/palette-css.mjs#cssDesMotsCles), que la page réécrit sans importer la palette.
+ * @param {import('node:sqlite').DatabaseSync} db
+ */
+export function vocabulaireEtFeuille(db) {
+  const motsCles = vocabulaire(db);
+  return { motsCles, css: cssDesMotsCles(motsCles) };
 }
 
 /**
  * Les domaines de la chronologie et des mots-clés ({ table: { colonnes, deriver?, creer, supprimer } }) et les opérations du lot qu'ils ajoutent
  * ({ categories, fusionner_mots_cles }) : voir serveur/edition.mjs#DOMAINES et #OPERATIONS.
  * @param {{ refus: Function, ErreurEdition: Function, provenance: Function, idDejaEmploye: Function, rangLibre: Function, creerMotCle: Function,
- *   refuserLAbreviation: Function, reecrireLesBalises: Function, vocabulaireVivant: Function, tableExiste: Function }} outils
+ *   refuserLAbreviation: Function, refuserLeLien: Function, refuserLaCouleur: Function, reecrireLesBalises: Function, vocabulaireVivant: Function,
+ *   tableExiste: Function }} outils
  */
 export function domainesDeLaChronologie({
-  refus, ErreurEdition, provenance, idDejaEmploye, rangLibre, creerMotCle, refuserLAbreviation, reecrireLesBalises, vocabulaireVivant, tableExiste,
+  refus, ErreurEdition, provenance, idDejaEmploye, rangLibre, creerMotCle, refuserLAbreviation, refuserLeLien, refuserLaCouleur, reecrireLesBalises,
+  vocabulaireVivant, tableExiste,
 }) {
   /** Refus d'une date que la table n'accepte pas, avec le message de lib/chronologie.mjs#erreurDeDate. */
   function verifierLaDate(e, quoi) {
@@ -298,18 +315,22 @@ export function domainesDeLaChronologie({
     // la définition (même d'un mot-clé dont le site se sert) : vidée, NULL ; renommer ne réécrit aucun texte (pages et balises citent l'id : une balise
     // d'un texte de case garde le texte écrit, une balise d'un texte mis en forme montre le nouveau libellé) ; vers l'écriture d'un autre mot-clé,
     // refusé (la page propose la fusion) ; l'abréviation (migration 0090, protégés compris : elle ne change ni l'id ni l'écriture) : vidée, NULL ; une
-    // abréviation, ou une écriture renommée, qu'une balise ne lirait pas sans ambiguïté : refusée (serveur/edition.mjs#refuserLAbreviation)
+    // abréviation, ou une écriture renommée, qu'une balise ne lirait pas sans ambiguïté : refusée (serveur/edition.mjs#refuserLAbreviation) ; l'adresse
+    // et la couleur (migration 0098, protégés compris) : vidées, NULL ; une adresse qui ne mène à aucune page du site, une couleur que la palette ne
+    // connaît pas : refusées, 400 (serveur/edition.mjs#refuserLeLien, #refuserLaCouleur ; l'existence de la page se lit dans la base vivante)
     colonnes(ctx, ligne, valeurs, avant) {
       const sortie = 'description' in valeurs ? { description: ligne.description || null } : {};
       const renomme = renommage(ctx, ligne, valeurs, avant);
       if ('abreviation' in valeurs || 'libelle' in valeurs) {
         refuserLAbreviation(ctx.db, { id: avant.id, libelle: ligne.libelle, libelle_cle: normalize(ligne.libelle), abreviation: ligne.abreviation ?? null });
       }
+      if ('url' in valeurs && (ligne.url ?? null) !== (avant.url ?? null)) refuserLeLien(ctx.db, { libelle: ligne.libelle, url: ligne.url ?? null });
+      if ('couleur' in valeurs && (ligne.couleur ?? null) !== (avant.couleur ?? null)) refuserLaCouleur({ libelle: ligne.libelle, couleur: ligne.couleur ?? null });
       return { ...sortie, ...renomme };
     },
     /**
-     * Un mot-clé du glossaire, son libellé, sa définition et son abréviation, sans page (il se pose ensuite) ; refusé s'il s'écrit comme un mot-clé
-     * existant, ou si son abréviation ne convient pas (serveur/edition.mjs#creerMotCle).
+     * Un mot-clé du glossaire, son libellé, sa définition, son abréviation, son adresse et sa couleur (migration 0098), sans page (il se pose ensuite) ;
+     * refusé s'il s'écrit comme un mot-clé existant, ou si son abréviation, son adresse ou sa couleur ne conviennent pas (serveur/edition.mjs#creerMotCle).
      */
     creer(ctx, valeurs) {
       const { db } = ctx;
@@ -319,7 +340,7 @@ export function domainesDeLaChronologie({
       if (existant) throw new ErreurEdition(409, `Le mot-clé « ${existant.libelle} » existe déjà.`);
       // un mot-clé dont le site se sert se pose avec les pages qu'il range (une race hybride, une classe…) : créé seul, il ne se retirerait plus
       if (raisonDeProtection(cle)) throw new ErreurEdition(409, `« ${valeurs.libelle} » est l’écriture d’un mot-clé dont le site se sert : il vient avec ses pages.`);
-      const id = creerMotCle(ctx, valeurs.libelle, valeurs.description ?? null, valeurs.abreviation ?? null);
+      const id = creerMotCle(ctx, valeurs.libelle, valeurs.description ?? null, valeurs.abreviation ?? null, { url: valeurs.url ?? null, couleur: valeurs.couleur ?? null });
       return { id, resume: `Mot-clé créé : ${valeurs.libelle}` };
     },
     /**
@@ -381,7 +402,9 @@ export function domainesDeLaChronologie({
   /**
    * `{ op: 'fusionner_mots_cles', mot_cle, dans }` : le mot-clé `mot_cle` rejoint `dans` (ses pages passent à `dans`, sans doublon : une
    * page qui avait les deux perd seulement l'ancien ; les balises qui le citent citent `dans`, leur texte gardé), puis quitte le vocabulaire. Ni l'un ni
-   * l'autre ne peut être un mot-clé dont le site se sert, ni un mot-clé qui étiquette un sort (verifierSansSort).
+   * l'autre ne peut être un mot-clé dont le site se sert, ni un mot-clé qui étiquette un sort (verifierSansSort). L'adresse et la couleur (migration
+   * 0098) : la cible garde les siennes ; celle qu'elle n'a pas, elle la prend de la source, par une modification notée au journal ; quand les deux en
+   * ont une, la cible garde la sienne et le résumé le dit.
    */
   function fusionner(ctx, op) {
     const { db, w } = ctx;
@@ -399,10 +422,24 @@ export function domainesDeLaChronologie({
       if (db.prepare('SELECT 1 FROM page_tag WHERE page_id = ? AND tag_id = ?').get(t.page_id, cible.id)) w.supprimer('page_tag', { page_id: t.page_id, ordre: t.ordre });
       else w.modifier('page_tag', { page_id: t.page_id, ordre: t.ordre }, { tag_id: cible.id });
     }
+    // l'adresse et la couleur (migration 0098 ; colonnes absentes d'une base d'avant : rien à reprendre)
+    const reprises = {};
+    const gardees = [];
+    for (const [colonne, nom] of [['url', 'le lien'], ['couleur', 'la couleur']]) {
+      const deLaSource = source[colonne] ?? null;
+      if (deLaSource === null) continue;
+      if ((cible[colonne] ?? null) === null) reprises[colonne] = deLaSource;
+      else if (cible[colonne] !== deLaSource) gardees.push(nom);
+    }
+    if (Object.keys(reprises).length) w.modifier('mot_cle', { id: cible.id }, reprises);
     // au rejeu, les textes que le site de dev n'avait pas (pages d'exemple, règles d'une autre base) citent la cible eux aussi : le rejeu la reconnaît
     // aux étiquettes et aux balises que ce lot reporte (serveur/edition.mjs#cibleReportee, balisesRetireesParLeLot)
     w.supprimer('mot_cle', { id: source.id });
-    return `Mot-clé « ${source.libelle} » fusionné dans « ${cible.libelle} »`;
+    const precisions = [
+      ...(Object.keys(reprises).length ? [`il en prend ${Object.keys(reprises).map((c) => (c === 'url' ? 'le lien' : 'la couleur')).join(' et ')}`] : []),
+      ...(gardees.length ? [`« ${cible.libelle} » garde ${gardees.join(' et ')}`] : []),
+    ];
+    return `Mot-clé « ${source.libelle} » fusionné dans « ${cible.libelle} »${precisions.length ? ` (${precisions.join(' ; ')})` : ''}`;
   }
 
   return {

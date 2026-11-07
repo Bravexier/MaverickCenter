@@ -51,7 +51,7 @@ const markdownDe = (ed, el) => versMarkdown(enfantsDe(el), { lienRelatif: lienRe
 
 // --- Sélection, commandes, liens : l'éditeur en place partagé (texte-en-place.mjs), sur les morceaux du corps -----------------------------------
 const texte = editeurEnPlace(() => etat.morceaux);
-const { plage, proche, commande, bloc, lienWiki, lienWeb, retirerLien } = texte;
+const { plage, proche, commande, bloc, lienMotCle, lienWeb, retirerLien } = texte;
 
 // --- Tableaux ---------------------------------------------------------------------------------------------------------------------------------
 const caseCourante = (r) => proche(r, 'td, th');
@@ -155,7 +155,7 @@ const OUTILS = [
     ['Effacer', 'Retirer gras, italique et barré du texte choisi', (ed) => commande(ed, 'removeFormat')],
   ]],
   ['Liens', [
-    ['Lien page', 'Lien vers une page du wiki', lienWiki],
+    ['Lien page', 'Lier le texte à une page par un mot-clé qui y mène', lienMotCle],
     ['Lien web', 'Lien vers une adresse web', lienWeb],
     ['Sans lien', 'Retirer le lien (le texte reste)', retirerLien],
   ]],

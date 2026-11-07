@@ -28,7 +28,7 @@ import { pagesEclateesDuGuide } from '../src/lib/livres.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
 import { chargerPanneau } from '../src/lib/panneaux-regles-db.mjs';
-import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
+import { adresseDuMotCle, motsClesCites, texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { ancreDuPanneau } from '../src/lib/panneaux-regles-rendu.mjs';
 import { texteDesPiecesElementaires } from '../src/lib/pieces-elementaires.mjs';
@@ -245,13 +245,24 @@ test('l’ancienne page « Équipement », « Bâton magique » et « Pièces é
   const anciennes = new RegExp(`href="[^"]*/(${chemins.join('|')})/`);
   const pages = readdirSync(dist, { recursive: true }).filter((n) => n.endsWith('.html') && n !== '404.html' && !n.startsWith('donnees') && !n.startsWith('debug'));
   for (const nom of pages) assert.ok(!anciennes.test(readFileSync(join(dist, nom), 'utf8')), nom);
-  // le chapitre « L'équipement » du guide cite la page « Bouclier » (migration 0046) : son lien mène à la page Boucliers ; ses liens écrits vers
-  // l'ancienne page « Équipement » (« [Armures](/ressources/equipement/#armures) », migration 0053) mènent à leur page, l'adresse écrite gardée
-  // (data-lien-ecrit : lib/guide-rendu.ts), sans passer par la page 404 que la version portable n'a pas
+  // le chapitre « L'équipement » du guide cite la page « Bouclier » (migration 0046) : son lien mène à la page Boucliers ; ses liens vers l'ancienne
+  // page « Équipement » (« [Armures](/ressources/equipement/#armures) », migration 0053) et « [[ressources/pieces-elementaires]] » sont devenus des
+  // balises de mots-clés à adresse (migration 0098 : un lien est la balise d'un mot-clé qui a une adresse). Sur l'état courant (le texte se modifie
+  // sur le site de dev), chaque mot-clé à adresse que le chapitre cite est rendu en lien vers son adresse (celle de la base, lue par son id), et
+  // chaque lien de mot-clé du chapitre mène à une page construite, sans passer par la page 404 que la version portable n'a pas (l'ancre n'est pas
+  // vérifiée : ni le service ni db:check ne la vérifient, skill zone-mots-cles-liens). La conversion des liens : test/db-liens-en-mots-cles.test.mjs.
   const guide = readFileSync(join(dist, ...cheminDePage('guide/l-equipement').split('/').filter(Boolean), 'index.html'), 'utf8');
   assert.ok(guide.includes(`href="/${cheminDePage('ressources/bouclier')}"`));
-  assert.ok(guide.includes('<a href="/ressources/armures/" data-lien-ecrit="/ressources/equipement/#armures">'), 'un lien écrit vers un ancien onglet');
-  assert.ok(guide.includes(`href="/ressources/armes/#${ANCRE_DES_PIECES_ELEMENTAIRES}" class="wikilink" data-cible="${PAGE_DES_PIECES_ELEMENTAIRES}"`), '[[ressources/pieces-elementaires]]');
+  const corps = base.prepare('SELECT corps_md FROM page WHERE id = ?').get('guide/l-equipement')?.corps_md ?? '';
+  const parId = new Map(vocabulaire.map((m) => [m.id, m]));
+  for (const id of motsClesCites(corps, vocabulaire, { markdown: true }).filter((x) => parId.get(x)?.url)) {
+    assert.match(guide, new RegExp(`<a class="mot-cle(?:-definition__nom)?[^"]*" href="${echapper(adresseDuMotCle(parId.get(id))).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`), `${id} : un lien vers son adresse`);
+  }
+  const liensDesMotsCles = [...guide.matchAll(/<a class="mot-cle(?:-definition__nom)?(?: [^"]*)?" href="([^"]+)"/g)].map(([, href]) => href);
+  for (const href of liensDesMotsCles) {
+    const chemin = decodeURIComponent(href.replace(/[?#].*$/, ''));
+    assert.ok(existsSync(join(dist, ...chemin.split('/').filter(Boolean), 'index.html')) || existsSync(join(dist, ...chemin.split('/').filter(Boolean))), `${href} : une page construite`);
+  }
   // la page 404 emporte les renvois des pages éclatées (data-eclatees), lus par son script (lib/nav.mjs#adresseDeRenvoi)
   const page404 = readFileSync(join(dist, '404.html'), 'utf8');
   const attribut = page404.match(/ data-eclatees="([^"]*)"/)?.[1] ?? '';

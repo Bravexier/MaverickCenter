@@ -110,6 +110,19 @@ const valeurDeDepart = (conflit) => {
   return String(v);
 };
 
+/** L'aide d'une adresse de mot-clé (mot_cle.url, migration 0098 : lib/mots-cles-liens.mjs, que ce module n'importe pas : skill site-version-portable). */
+const AIDE_ADRESSE = 'adresse d’une page du site depuis sa racine, « /races/elfe/ », vide : aucune';
+/** L'aide d'une couleur de mot-clé (mot_cle.couleur, migration 0098). */
+const AIDE_COULEUR = '« #rrggbb », ou « famille:id » d’une couleur du site (« magie:feu »), vide : aucune';
+/**
+ * La forme d'une adresse et d'une couleur de mot-clé : la même règle que lib/mots-cles-liens.mjs#fauteDeFormeDeLUrl (« / » au début, pas « // », ASCII
+ * imprimable sans aucun blanc, ni « \ », ni « " », « ' », « < », « > », « ` ») et #lireLaCouleur, recopiée ici (ce module n'importe que
+ * lib/notes-de-version-rendu.mjs : skill site-version-portable) ; test/conflits-rendu.test.mjs compare les deux règles. Le service refait tout.
+ */
+const FORME_D_ADRESSE = /^\/(?!\/)[!-~]*$/;
+const CARACTERES_REFUSES_D_ADRESSE = /["'<>`\\]/;
+const FORME_DE_COULEUR = /^(?:#[0-9a-f]{6}|[a-z]+:[a-z0-9]+(?:-[a-z0-9]+)*)$/;
+
 /** La saisie du choix 3, d'après le type de la colonne (comme l'éditeur : src/scripts/edition/editeur.mjs#controleDe). */
 export function htmlDeLaSaisie(conflit, id, listes = {}) {
   const s = conflit.saisie;
@@ -127,11 +140,12 @@ export function htmlDeLaSaisie(conflit, id, listes = {}) {
     const bornes = `${s.min !== undefined ? ` data-min="${s.min}"` : ''}${s.max !== undefined ? ` data-max="${s.max}"` : ''}`;
     controle = `<input type="text" inputmode="${s.type === 'entier' ? 'numeric' : 'decimal'}" ${commun}${bornes} value="${echapper(depart)}">`;
   } else {
-    // ligne, catégories (« id1, id2 ») : une ligne de texte
+    // ligne, catégories (« id1, id2 »), adresse et couleur d'un mot-clé (migration 0098) : une ligne de texte
     controle = `<input type="text" ${commun} value="${echapper(depart)}">`;
   }
   const aide = [s.requis ? 'obligatoire' : null, s.min !== undefined ? `au moins ${s.min}` : null, s.max !== undefined ? `au plus ${s.max}` : null,
-    s.type === 'markdown' ? 'Markdown de la page, comme dans l’éditeur' : null, s.type === 'categories' ? 'identifiants séparés par des virgules' : null].filter(Boolean);
+    s.type === 'markdown' ? 'Markdown de la page, comme dans l’éditeur' : null, s.type === 'categories' ? 'identifiants séparés par des virgules' : null,
+    s.type === 'adresse' ? AIDE_ADRESSE : null, s.type === 'couleur' ? AIDE_COULEUR : null].filter(Boolean);
   return `<label for="${id}">${echapper(s.libelle ?? conflit.colonne_libelle ?? '')}${aide.length ? ` <span class="nv-conflit__aide">(${echapper(aide.join(', '))})</span>` : ''}</label>${controle}`;
 }
 
@@ -150,6 +164,8 @@ export function erreurDeSaisie(saisie, brute) {
     if (saisie.max !== undefined && n > saisie.max) return `« ${nom} » : au plus ${saisie.max}`;
   }
   if (saisie?.type === 'choix' && saisie.choix && !saisie.choix.some((c) => String(c.valeur) === texte)) return `« ${nom} » : valeur hors de la liste`;
+  if (saisie?.type === 'adresse' && (!FORME_D_ADRESSE.test(texte) || CARACTERES_REFUSES_D_ADRESSE.test(texte))) return `« ${nom} » : ${AIDE_ADRESSE}`;
+  if (saisie?.type === 'couleur' && !FORME_DE_COULEUR.test(texte.toLowerCase())) return `« ${nom} » : ${AIDE_COULEUR}`;
   return null;
 }
 

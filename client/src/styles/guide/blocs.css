@@ -2,7 +2,8 @@
    MJ), des pages simples depuis la refonte du 2026-10-18 (plus de livre : ni flèches, ni pagination, ni glissement du doigt) ; leurs couleurs et les blocs
    tirés de la base (components/guide/GuideBloc.astro). */
 /* Couleur du groupe de la page : la classe de sa partie (`.couleur-partie-…`, lib/palette-css.mjs#classeDePartie d'après lib/livres.mjs#partieDeLaPage),
-   posée sur la page (sans elle, l'accent du site : pages des onglets des Règles hors création du personnage, Guide du MJ) : --guide pour les aplats (texte blanc dessus,
+   ou celle du mot-clé coloré qui mène à la page (migration 0098, lib/couleur-de-la-page.mjs : d'une autre famille, ou écrite), avec le repère
+   `.guide-reference--couleur`, posée sur la page (sans elle, l'accent du site : pages des onglets des Règles hors création du personnage, Guide du MJ) : --guide pour les aplats (texte blanc dessus,
    --guide-sur), --guide-texte pour un texte coloré sur la feuille (éclairci en thème sombre). */
 .guide-reference {
   --guide: var(--accent);
@@ -23,11 +24,11 @@
    personnage fil rouge), en thème clair : la couleur de la partie assombrie par le calcul, mêlée de 10 % de noir (le vert de « Créer son personnage »
    n'atteignait que 4,48:1 sur le fond de la page ; réponse du propriétaire du 2026-10-23 : « Comme les cartes du fil rouge (Recommandé) » : skill
    zone-guide) ; en thème sombre, la couleur éclaircie des blocs plus bas (d'un poids plus fort) ; une page sans partie garde l'accent du site */
-.guide-reference[class*='couleur-partie-'] { --guide: var(--couleur); --guide-sur: var(--couleur-texte); --guide-texte: color-mix(in srgb, var(--guide) 90%, #000); }
+.guide-reference.guide-reference--couleur { --guide: var(--couleur); --guide-sur: var(--couleur-texte); --guide-texte: color-mix(in srgb, var(--guide) 90%, #000); }
 /* la couleur de la partie ne se lit que sur l'élément qui porte sa classe ; ses enfants ne l'héritent pas (--couleur et --couleur-texte remis à leur
    valeur initiale, celle d'avant la classe : un bloc sans classe propre garde son repli, `var(--couleur, var(--guide))` ; une classe propre, d'un poids
    plus fort que :where(), l'emporte toujours) */
-:where(.guide-reference[class*='couleur-partie-']) > * { --couleur: initial; --couleur-texte: initial; }
+:where(.guide-reference.guide-reference--couleur) > * { --couleur: initial; --couleur-texte: initial; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .guide-reference { --guide-texte: color-mix(in srgb, var(--guide) 45%, #fff); }
 }

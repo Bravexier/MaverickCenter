@@ -90,9 +90,12 @@ const FUSIONS = {
   metier: 'Un savoir-faire choisi à la création ou plus tard dans l’aventure.',
 };
 
-test('0090 : mot_cle.abreviation, ajoutée en dernier, NULL ou non vide ; la vue v_mot_cle la donne', () => {
-  assert.equal(db.prepare('PRAGMA table_info(mot_cle)').all().at(-1).name, 'abreviation');
-  assert.equal(db.prepare('PRAGMA table_info(v_mot_cle)').all().at(-1).name, 'abreviation');
+test('0090 : mot_cle.abreviation, NULL ou non vide ; la vue v_mot_cle la donne', () => {
+  // cherchée par son nom : la 0090 l'a ajoutée en dernier, mais des colonnes ont suivi (couleur, url : migration 0098)
+  const colonne = (table) => db.prepare(`PRAGMA table_info(${table})`).all().find((c) => c.name === 'abreviation');
+  assert.equal(colonne('mot_cle')?.type, 'TEXT');
+  assert.equal(colonne('mot_cle')?.notnull, 0);
+  assert.ok(colonne('v_mot_cle'), 'v_mot_cle donne l’abréviation');
   const schema = new DatabaseSync(':memory:');
   try {
     schema.exec(readFileSync(new URL('../../data/schema.sql', import.meta.url), 'utf8'));

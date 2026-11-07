@@ -1,0 +1,8796 @@
+{
+ "migration": "0098-liens-en-mots-cles",
+ "description": "Les mots-clés que la migration crée (ou dont elle complète l’adresse : origine « existant ») et les liens qu’elle remplace par leur balise. `origine` : « lien » (une page ou une route visée par un lien), « couleur » (une page colorée que rien ne vise : Q8), « existant ». `cles` : les clés sous lesquelles un lien [[…]] trouve la page (lib/liens-en-mots-cles.mjs#clesDeCible : « id:<id de la page> » ou normalize de la cible, celles sans ambiguïté de l’index des liens) ; `adresses` : les adresses des liens Markdown qui y mènent. lib/liens-en-mots-cles.mjs#tableDeConversion en fait la table de convertirLesLiens. `remplacements` : table, clé, colonne, lien tel qu’écrit, balise, nombre d’occurrences. `anciennesAncres` : les liens dont l’ancre ou la requête est perdue.",
+ "motsCles": [
+  {
+   "id": "400",
+   "libelle": "400",
+   "url": "/lore/400/",
+   "couleur": null,
+   "page": "lore/400",
+   "origine": "lien",
+   "cles": [
+    "400",
+    "id:lore/400"
+   ],
+   "adresses": [
+    "/lore/400/"
+   ]
+  },
+  {
+   "id": "academie-de-larcane",
+   "libelle": "Académie de l’arcane",
+   "url": "/lore/academie-de-larcane/",
+   "couleur": null,
+   "page": "lore/academie-de-larcane",
+   "origine": "lien",
+   "cles": [
+    "academie-de-larcane",
+    "id:lore/academie-de-larcane",
+    "temple-de-larcane"
+   ],
+   "adresses": [
+    "/lore/academie-de-larcane/"
+   ]
+  },
+  {
+   "id": "accessoires",
+   "libelle": "Accessoires",
+   "url": "/ressources/accessoires/",
+   "couleur": null,
+   "page": "ressources/accessoires",
+   "origine": "lien",
+   "cles": [
+    "accessoires",
+    "id:ressources/accessoires"
+   ],
+   "adresses": [
+    "/ressources/accessoires/",
+    "/ressources/equipement/#accessoires"
+   ]
+  },
+  {
+   "id": "alchimie",
+   "libelle": "Alchimie",
+   "url": "/ressources/alchimie/",
+   "couleur": null,
+   "page": "ressources/alchimie",
+   "origine": "lien",
+   "cles": [
+    "alchimie",
+    "id:ressources/alchimie"
+   ],
+   "adresses": [
+    "/ressources/alchimie/"
+   ]
+  },
+  {
+   "id": "alchimie-primitive",
+   "libelle": "Alchimie primitive",
+   "url": "/ressources/alchimie-primitive/",
+   "couleur": null,
+   "page": "ressources/alchimie-primitive",
+   "origine": "lien",
+   "cles": [
+    "alchimie-primitive",
+    "id:ressources/alchimie-primitive"
+   ],
+   "adresses": [
+    "/ressources/alchimie-primitive/"
+   ]
+  },
+  {
+   "id": "alignement",
+   "libelle": "Alignement",
+   "url": "/regles/alignement/",
+   "couleur": null,
+   "page": "guide/alignement",
+   "origine": "existant",
+   "cles": [
+    "alignement",
+    "faire-evoluer-les-scores",
+    "id:guide/alignement",
+    "les-4-tendances"
+   ],
+   "adresses": [
+    "/regles/alignement/"
+   ]
+  },
+  {
+   "id": "alteration-detat",
+   "libelle": "Altération d’état",
+   "url": "/regles/alterations-d-etats/",
+   "couleur": null,
+   "page": "guide/alterations-d-etats",
+   "origine": "existant",
+   "cles": [
+    "alterations-d-etats",
+    "alterations-detats",
+    "id:guide/alterations-d-etats"
+   ],
+   "adresses": [
+    "/regles/alterations-d-etats/"
+   ]
+  },
+  {
+   "id": "anansi",
+   "libelle": "Anansi",
+   "url": "/races/anansi/",
+   "couleur": "race:hybride",
+   "page": "races/anansi",
+   "origine": "couleur",
+   "cles": [
+    "id:races/anansi"
+   ],
+   "adresses": [
+    "/races/anansi/"
+   ]
+  },
+  {
+   "id": "anansi-classe",
+   "libelle": "Anansi (classe)",
+   "url": "/classes/anansi/",
+   "couleur": "classe:raciales",
+   "page": "classes/anansi",
+   "origine": "couleur",
+   "cles": [
+    "id:classes/anansi"
+   ],
+   "adresses": [
+    "/classes/anansi/"
+   ]
+  },
+  {
+   "id": "anna",
+   "libelle": "Anna",
+   "url": "/lore/anna/",
+   "couleur": null,
+   "page": "lore/anna",
+   "origine": "lien",
+   "cles": [
+    "anna",
+    "id:lore/anna"
+   ],
+   "adresses": [
+    "/lore/anna/"
+   ]
+  },
+  {
+   "id": "arbaletrier",
+   "libelle": "Arbalétrier",
+   "url": "/classes/arbaletrier/",
+   "couleur": "classe:distance",
+   "page": "classes/arbaletrier",
+   "origine": "couleur",
+   "cles": [
+    "arbaletrier",
+    "id:classes/arbaletrier"
+   ],
+   "adresses": [
+    "/classes/arbaletrier/"
+   ]
+  },
+  {
+   "id": "archer",
+   "libelle": "Archer",
+   "url": "/classes/archer/",
+   "couleur": "classe:distance",
+   "page": "classes/archer",
+   "origine": "couleur",
+   "cles": [
+    "archer",
+    "id:classes/archer"
+   ],
+   "adresses": [
+    "/classes/archer/"
+   ]
+  },
+  {
+   "id": "archimage",
+   "libelle": "Archimage",
+   "url": "/classes/archimage/",
+   "couleur": "classe:speciales",
+   "page": "classes/archimage",
+   "origine": "lien",
+   "cles": [
+    "archimage",
+    "id:classes/archimage"
+   ],
+   "adresses": [
+    "/classes/archimage/"
+   ]
+  },
+  {
+   "id": "armes",
+   "libelle": "Armes",
+   "url": "/ressources/armes/",
+   "couleur": null,
+   "page": "ressources/armes",
+   "origine": "lien",
+   "cles": [
+    "armes",
+    "id:ressources/armes"
+   ],
+   "adresses": [
+    "/ressources/armes/",
+    "/ressources/equipement/",
+    "/ressources/equipement/#armes"
+   ]
+  },
+  {
+   "id": "armures",
+   "libelle": "Armures",
+   "url": "/ressources/armures/",
+   "couleur": null,
+   "page": "ressources/armures",
+   "origine": "lien",
+   "cles": [
+    "armures",
+    "id:ressources/armures"
+   ],
+   "adresses": [
+    "/ressources/armures/",
+    "/ressources/equipement/#armures"
+   ]
+  },
+  {
+   "id": "artisanat",
+   "libelle": "Artisanat",
+   "url": "/regles/artisanat/",
+   "couleur": null,
+   "route": "/regles/artisanat/",
+   "origine": "existant",
+   "cles": [],
+   "adresses": [
+    "/regles/artisanat/"
+   ]
+  },
+  {
+   "id": "attaque-discrete",
+   "libelle": "Attaque discrète",
+   "url": "/regles/les-attaques-discretes/",
+   "couleur": null,
+   "page": "guide/les-attaques-discretes",
+   "origine": "existant",
+   "cles": [
+    "id:guide/les-attaques-discretes",
+    "les-attaques-discretes"
+   ],
+   "adresses": [
+    "/regles/les-attaques-discretes/"
+   ]
+  },
+  {
+   "id": "attaque-dopportunite",
+   "libelle": "Attaque d’opportunité",
+   "url": "/regles/les-attaques-d-opportunite/",
+   "couleur": null,
+   "page": "guide/les-attaques-d-opportunite",
+   "origine": "existant",
+   "cles": [
+    "id:guide/les-attaques-d-opportunite",
+    "les-attaques-d-opportunite",
+    "les-attaques-dopportunite"
+   ],
+   "adresses": [
+    "/regles/les-attaques-d-opportunite/"
+   ]
+  },
+  {
+   "id": "attaque-et-defense",
+   "libelle": "Attaque et Défense",
+   "url": "/regles/attaque-et-defense/",
+   "couleur": null,
+   "page": "guide/attaque-et-defense",
+   "origine": "lien",
+   "cles": [
+    "attaque-et-defense",
+    "id:guide/attaque-et-defense",
+    "localisation-des-degats"
+   ],
+   "adresses": [
+    "/regles/attaque-et-defense/"
+   ]
+  },
+  {
+   "id": "attaquer-et-se-defendre",
+   "libelle": "Attaquer et se défendre",
+   "url": "/regles/attaquer-et-se-defendre/",
+   "couleur": null,
+   "page": "guide/attaquer-et-se-defendre",
+   "origine": "lien",
+   "cles": [
+    "attaquer-et-se-defendre",
+    "id:guide/attaquer-et-se-defendre"
+   ],
+   "adresses": [
+    "/regles/attaquer-et-se-defendre/"
+   ]
+  },
+  {
+   "id": "aurora",
+   "libelle": "Aurora",
+   "url": "/lore/aurora/",
+   "couleur": null,
+   "page": "lore/aurora",
+   "origine": "lien",
+   "cles": [
+    "aurora",
+    "id:lore/aurora"
+   ],
+   "adresses": [
+    "/lore/aurora/"
+   ]
+  },
+  {
+   "id": "balogne",
+   "libelle": "Balogne",
+   "url": "/lore/balogne/",
+   "couleur": null,
+   "page": "lore/balogne",
+   "origine": "lien",
+   "cles": [
+    "balogne",
+    "id:lore/balogne"
+   ],
+   "adresses": [
+    "/lore/balogne/"
+   ]
+  },
+  {
+   "id": "barde",
+   "libelle": "Barde",
+   "url": "/classes/barde/",
+   "couleur": "classe:magiques",
+   "page": "classes/barde",
+   "origine": "couleur",
+   "cles": [
+    "barde",
+    "id:classes/barde"
+   ],
+   "adresses": [
+    "/classes/barde/"
+   ]
+  },
+  {
+   "id": "bardiche-du-bourreau-dechire",
+   "libelle": "Bardiche du Bourreau déchiré",
+   "url": "/lore/bardiche-du-bourreau-dechire/",
+   "couleur": null,
+   "page": "lore/bardiche-du-bourreau-dechire",
+   "origine": "lien",
+   "cles": [
+    "bardiche-du-bourreau-dechire",
+    "id:lore/bardiche-du-bourreau-dechire"
+   ],
+   "adresses": [
+    "/lore/bardiche-du-bourreau-dechire/"
+   ]
+  },
+  {
+   "id": "barrage-argente",
+   "libelle": "Barrage Argenté",
+   "url": "/lore/barrage-argente/",
+   "couleur": null,
+   "page": "lore/barrage-argente",
+   "origine": "lien",
+   "cles": [
+    "barrage-argente",
+    "id:lore/barrage-argente"
+   ],
+   "adresses": [
+    "/lore/barrage-argente/"
+   ]
+  },
+  {
+   "id": "baton-de-la-destruction",
+   "libelle": "Bâton de la destruction",
+   "url": "/lore/baton-de-la-destruction/",
+   "couleur": null,
+   "page": "lore/baton-de-la-destruction",
+   "origine": "lien",
+   "cles": [
+    "baton-de-la-destruction",
+    "id:lore/baton-de-la-destruction"
+   ],
+   "adresses": [
+    "/lore/baton-de-la-destruction/"
+   ]
+  },
+  {
+   "id": "baton-magique",
+   "libelle": "Bâton magique",
+   "url": "/ressources/objets-a-la-ceinture/#batons-magiques",
+   "couleur": null,
+   "page": "ressources/baton-magique",
+   "origine": "lien",
+   "cles": [
+    "baton-magique",
+    "id:ressources/baton-magique"
+   ],
+   "adresses": [
+    "/ressources/equipement/#batons-magiques",
+    "/ressources/objets-a-la-ceinture/#batons-magiques"
+   ]
+  },
+  {
+   "id": "bauc",
+   "libelle": "Bauc",
+   "url": "/lore/bauc/",
+   "couleur": null,
+   "page": "lore/bauc",
+   "origine": "lien",
+   "cles": [
+    "bauc",
+    "id:lore/bauc"
+   ],
+   "adresses": [
+    "/lore/bauc/"
+   ]
+  },
+  {
+   "id": "bestiaire",
+   "libelle": "Bestiaire",
+   "url": "/bestiaire/",
+   "couleur": null,
+   "route": "/bestiaire/",
+   "origine": "lien",
+   "cles": [],
+   "adresses": [
+    "/bestiaire/"
+   ]
+  },
+  {
+   "id": "bienvenue-dans-maverick",
+   "libelle": "Bienvenue dans Maverick",
+   "url": "/decouvrir/",
+   "couleur": "partie:decouvrir",
+   "page": "guide/bienvenue",
+   "origine": "couleur",
+   "cles": [
+    "bienvenue",
+    "bienvenue-dans-maverick",
+    "guide-du-joueur",
+    "id:guide/bienvenue"
+   ],
+   "adresses": [
+    "/decouvrir/"
+   ]
+  },
+  {
+   "id": "bimane",
+   "libelle": "Bimane",
+   "url": "/classes/bimane/",
+   "couleur": "classe:melee",
+   "page": "classes/bimane",
+   "origine": "lien",
+   "cles": [
+    "bimane",
+    "id:classes/bimane"
+   ],
+   "adresses": [
+    "/classes/bimane/"
+   ]
+  },
+  {
+   "id": "blessure-et-mort",
+   "libelle": "Blessure et mort",
+   "url": "/regles/blessures-et-etats/",
+   "couleur": null,
+   "page": "guide/blessures-et-etats",
+   "origine": "lien",
+   "cles": [
+    "blessure-et-mort",
+    "blessures-et-etats",
+    "id:guide/blessures-et-etats"
+   ],
+   "adresses": [
+    "/regles/blessures-et-etats/"
+   ]
+  },
+  {
+   "id": "bois-du-printemps",
+   "libelle": "Bois du printemps",
+   "url": "/lore/bois-du-printemps/",
+   "couleur": null,
+   "page": "lore/bois-du-printemps",
+   "origine": "lien",
+   "cles": [
+    "bois-du-printemps",
+    "id:lore/bois-du-printemps"
+   ],
+   "adresses": [
+    "/lore/bois-du-printemps/"
+   ]
+  },
+  {
+   "id": "bouclier",
+   "libelle": "Bouclier",
+   "url": "/ressources/bouclier/",
+   "couleur": null,
+   "page": "ressources/bouclier",
+   "origine": "existant",
+   "cles": [
+    "bouclier",
+    "id:ressources/bouclier"
+   ],
+   "adresses": [
+    "/ressources/bouclier/",
+    "/ressources/equipement/#boucliers"
+   ]
+  },
+  {
+   "id": "brock",
+   "libelle": "Brock",
+   "url": "/lore/brock/",
+   "couleur": null,
+   "page": "lore/brock",
+   "origine": "lien",
+   "cles": [
+    "brock",
+    "id:lore/brock"
+   ],
+   "adresses": [
+    "/lore/brock/"
+   ]
+  },
+  {
+   "id": "camnau",
+   "libelle": "Camnau",
+   "url": "/lore/camnau/",
+   "couleur": null,
+   "page": "lore/camnau",
+   "origine": "lien",
+   "cles": [
+    "camnau",
+    "id:lore/camnau"
+   ],
+   "adresses": [
+    "/lore/camnau/"
+   ]
+  },
+  {
+   "id": "capse",
+   "libelle": "Capse",
+   "url": "/lore/capse/",
+   "couleur": null,
+   "page": "lore/capse",
+   "origine": "lien",
+   "cles": [
+    "capse",
+    "id:lore/capse"
+   ],
+   "adresses": [
+    "/lore/capse/"
+   ]
+  },
+  {
+   "id": "ceinture",
+   "libelle": "Ceinture",
+   "url": "/ressources/objets-a-la-ceinture/",
+   "couleur": null,
+   "route": "/ressources/objets-a-la-ceinture/",
+   "origine": "existant",
+   "cles": [],
+   "adresses": [
+    "/ressources/equipement/#ceinture-consommables",
+    "/ressources/objets-a-la-ceinture/"
+   ]
+  },
+  {
+   "id": "celsius",
+   "libelle": "Celsius",
+   "url": "/lore/celsius/",
+   "couleur": null,
+   "page": "lore/celsius",
+   "origine": "lien",
+   "cles": [
+    "celsius",
+    "id:lore/celsius"
+   ],
+   "adresses": [
+    "/lore/celsius/"
+   ]
+  },
+  {
+   "id": "champicer",
+   "libelle": "Champicer",
+   "url": "/lore/champicer/",
+   "couleur": null,
+   "page": "lore/champicer",
+   "origine": "lien",
+   "cles": [
+    "champicer",
+    "id:lore/champicer"
+   ],
+   "adresses": [
+    "/lore/champicer/"
+   ]
+  },
+  {
+   "id": "champieu",
+   "libelle": "Champieu",
+   "url": "/lore/champieu/",
+   "couleur": null,
+   "page": "lore/champieu",
+   "origine": "lien",
+   "cles": [
+    "champieu",
+    "id:lore/champieu"
+   ],
+   "adresses": [
+    "/lore/champieu/"
+   ]
+  },
+  {
+   "id": "chapelle-des-os",
+   "libelle": "Chapelle des Os",
+   "url": "/lore/chapelle-des-os/",
+   "couleur": null,
+   "page": "lore/chapelle-des-os",
+   "origine": "lien",
+   "cles": [
+    "chapelle-des-os",
+    "id:lore/chapelle-des-os",
+    "temple-de-la-necromancie"
+   ],
+   "adresses": [
+    "/lore/chapelle-des-os/"
+   ]
+  },
+  {
+   "id": "chargement-mage-vert",
+   "libelle": "Chargement (Mage Vert)",
+   "url": "/capacites/mage-vert-chargement/",
+   "couleur": null,
+   "page": "capacites/mage-vert-chargement",
+   "origine": "lien",
+   "cles": [
+    "chargement-mage-vert",
+    "id:capacites/mage-vert-chargement",
+    "mage-vert-chargement"
+   ],
+   "adresses": [
+    "/capacites/mage-vert-chargement/"
+   ]
+  },
+  {
+   "id": "chronologie",
+   "libelle": "Chronologie",
+   "url": "/chronologie/",
+   "couleur": null,
+   "route": "/chronologie/",
+   "origine": "lien",
+   "cles": [],
+   "adresses": [
+    "/chronologie/"
+   ]
+  },
+  {
+   "id": "classe",
+   "libelle": "Classe",
+   "url": "/classes/",
+   "couleur": null,
+   "route": "/classes/",
+   "origine": "existant",
+   "cles": [],
+   "adresses": [
+    "/classes/"
+   ]
+  },
+  {
+   "id": "clerc",
+   "libelle": "Clerc",
+   "url": "/classes/clerc/",
+   "couleur": "classe:magiques",
+   "page": "classes/clerc",
+   "origine": "couleur",
+   "cles": [
+    "clerc",
+    "id:classes/clerc"
+   ],
+   "adresses": [
+    "/classes/clerc/"
+   ]
+  },
+  {
+   "id": "cloche-dor",
+   "libelle": "Cloche d’or",
+   "url": "/lore/cloche-dor/",
+   "couleur": null,
+   "page": "lore/cloche-dor",
+   "origine": "lien",
+   "cles": [
+    "cloche-dor",
+    "id:lore/cloche-dor"
+   ],
+   "adresses": [
+    "/lore/cloche-dor/"
+   ]
+  },
+  {
+   "id": "codex",
+   "libelle": "codex",
+   "url": "/lore/codex/",
+   "couleur": null,
+   "page": "lore/codex",
+   "origine": "existant",
+   "cles": [
+    "codex",
+    "id:lore/codex"
+   ],
+   "adresses": [
+    "/lore/codex/"
+   ]
+  },
+  {
+   "id": "collines-humides",
+   "libelle": "Collines humides",
+   "url": "/lore/collines-humides/",
+   "couleur": null,
+   "page": "lore/collines-humides",
+   "origine": "lien",
+   "cles": [
+    "collines-humides",
+    "id:lore/collines-humides"
+   ],
+   "adresses": [
+    "/lore/collines-humides/"
+   ]
+  },
+  {
+   "id": "compagnie-du-fer-noir",
+   "libelle": "Compagnie du Fer Noir",
+   "url": "/lore/compagnie-du-fer-noir/",
+   "couleur": null,
+   "page": "lore/compagnie-du-fer-noir",
+   "origine": "lien",
+   "cles": [
+    "compagnie-du-fer-noir",
+    "id:lore/compagnie-du-fer-noir"
+   ],
+   "adresses": [
+    "/lore/compagnie-du-fer-noir/"
+   ]
+  },
+  {
+   "id": "composants",
+   "libelle": "Composants",
+   "url": "/ressources/composants/",
+   "couleur": null,
+   "route": "/ressources/composants/",
+   "origine": "lien",
+   "cles": [],
+   "adresses": [
+    "/ressources/composants/",
+    "/ressources/composants/#materiaux"
+   ]
+  },
+  {
+   "id": "confrerie-du-sang",
+   "libelle": "Confrérie du Sang",
+   "url": "/lore/confrerie-du-sang/",
+   "couleur": null,
+   "page": "lore/confrerie-du-sang",
+   "origine": "lien",
+   "cles": [
+    "confrerie-du-sang",
+    "id:lore/confrerie-du-sang",
+    "temple-du-sang"
+   ],
+   "adresses": [
+    "/lore/confrerie-du-sang/"
+   ]
+  },
+  {
+   "id": "couturier",
+   "libelle": "Couturier",
+   "url": "/metiers/#metier-couturier",
+   "couleur": null,
+   "page": "metiers/couturier",
+   "origine": "lien",
+   "cles": [
+    "couturier",
+    "id:metiers/couturier"
+   ],
+   "adresses": [
+    "/metiers/#metier-couturier"
+   ]
+  },
+  {
+   "id": "creer-son-personnage",
+   "libelle": "Créer son personnage",
+   "url": "/regles/creer-son-personnage/",
+   "couleur": "partie:creer",
+   "page": "guide/creer-son-personnage",
+   "origine": "lien",
+   "cles": [
+    "creer-son-personnage",
+    "id:guide/creer-son-personnage"
+   ],
+   "adresses": [
+    "/regles/creer-son-personnage/"
+   ]
+  },
+  {
+   "id": "croc-du-volcan",
+   "libelle": "Croc du Volcan",
+   "url": "/lore/croc-du-volcan/",
+   "couleur": null,
+   "page": "lore/croc-du-volcan",
+   "origine": "lien",
+   "cles": [
+    "croc-du-volcan",
+    "id:lore/croc-du-volcan"
+   ],
+   "adresses": [
+    "/lore/croc-du-volcan/"
+   ]
+  },
+  {
+   "id": "cuirasse",
+   "libelle": "Cuirassé",
+   "url": "/classes/cuirasse/",
+   "couleur": "classe:melee",
+   "page": "classes/cuirasse",
+   "origine": "couleur",
+   "cles": [
+    "cuirasse",
+    "id:classes/cuirasse"
+   ],
+   "adresses": [
+    "/classes/cuirasse/"
+   ]
+  },
+  {
+   "id": "degats",
+   "libelle": "Dégâts",
+   "url": "/regles/les-degats/",
+   "couleur": null,
+   "page": "guide/les-degats",
+   "origine": "existant",
+   "cles": [
+    "id:guide/les-degats",
+    "les-degats"
+   ],
+   "adresses": [
+    "/regles/les-degats/"
+   ]
+  },
+  {
+   "id": "des",
+   "libelle": "Dés",
+   "url": "/regles/jet-de-des/",
+   "couleur": null,
+   "page": "guide/jet-de-des",
+   "origine": "existant",
+   "cles": [
+    "id:guide/jet-de-des",
+    "jet-de-des"
+   ],
+   "adresses": [
+    "/regles/jet-de-des/"
+   ]
+  },
+  {
+   "id": "dimitri",
+   "libelle": "Dimitri",
+   "url": "/lore/dimitri/",
+   "couleur": null,
+   "page": "lore/dimitri",
+   "origine": "lien",
+   "cles": [
+    "dimitri",
+    "id:lore/dimitri"
+   ],
+   "adresses": [
+    "/lore/dimitri/"
+   ]
+  },
+  {
+   "id": "dombourg",
+   "libelle": "Dombourg",
+   "url": "/lore/dombourg/",
+   "couleur": null,
+   "page": "lore/dombourg",
+   "origine": "lien",
+   "cles": [
+    "dombourg",
+    "id:lore/dombourg"
+   ],
+   "adresses": [
+    "/lore/dombourg/"
+   ]
+  },
+  {
+   "id": "donjon-pas-bon",
+   "libelle": "Donjon Pas bon",
+   "url": "/regles/donjon-pas-bon/",
+   "couleur": null,
+   "page": "guide/donjon-pas-bon",
+   "origine": "lien",
+   "cles": [
+    "donjon-pas-bon",
+    "id:guide/donjon-pas-bon",
+    "type-de-donjon"
+   ],
+   "adresses": [
+    "/regles/donjon-pas-bon/"
+   ]
+  },
+  {
+   "id": "double-coup-mage-rouge",
+   "libelle": "Double coup (Mage Rouge)",
+   "url": "/capacites/mage-rouge-double-coup/",
+   "couleur": null,
+   "page": "capacites/mage-rouge-double-coup",
+   "origine": "lien",
+   "cles": [
+    "double-coup-mage-rouge",
+    "id:capacites/mage-rouge-double-coup",
+    "mage-rouge-double-coup"
+   ],
+   "adresses": [
+    "/capacites/mage-rouge-double-coup/"
+   ]
+  },
+  {
+   "id": "double-coup-mage-vert",
+   "libelle": "Double coup (Mage Vert)",
+   "url": "/capacites/mage-vert-double-coup/",
+   "couleur": null,
+   "page": "capacites/mage-vert-double-coup",
+   "origine": "lien",
+   "cles": [
+    "double-coup-mage-vert",
+    "id:capacites/mage-vert-double-coup",
+    "mage-vert-double-coup"
+   ],
+   "adresses": [
+    "/capacites/mage-vert-double-coup/"
+   ]
+  },
+  {
+   "id": "dragon",
+   "libelle": "Dragon",
+   "url": "/lore/dragon/",
+   "couleur": null,
+   "page": "lore/dragon",
+   "origine": "lien",
+   "cles": [
+    "dragon",
+    "id:lore/dragon"
+   ],
+   "adresses": [
+    "/lore/dragon/"
+   ]
+  },
+  {
+   "id": "drakos",
+   "libelle": "Drakos",
+   "url": "/races/drakos/",
+   "couleur": "race:pure",
+   "page": "races/drakos",
+   "origine": "lien",
+   "cles": [
+    "drakos",
+    "id:races/drakos"
+   ],
+   "adresses": [
+    "/races/drakos/"
+   ]
+  },
+  {
+   "id": "drassah",
+   "libelle": "Drassah",
+   "url": "/lore/drassah/",
+   "couleur": null,
+   "page": "lore/drassah",
+   "origine": "lien",
+   "cles": [
+    "drassah",
+    "id:lore/drassah"
+   ],
+   "adresses": [
+    "/lore/drassah/"
+   ]
+  },
+  {
+   "id": "drassahthac",
+   "libelle": "Drassah'thac",
+   "url": "/races/drassahthac/",
+   "couleur": "race:hybride",
+   "page": "races/drassahthac",
+   "origine": "lien",
+   "cles": [
+    "drassahthac",
+    "id:races/drassahthac"
+   ],
+   "adresses": [
+    "/races/drassahthac/"
+   ]
+  },
+  {
+   "id": "eaunoire",
+   "libelle": "Eaunoire",
+   "url": "/lore/eaunoire/",
+   "couleur": null,
+   "page": "lore/eaunoire",
+   "origine": "lien",
+   "cles": [
+    "eaunoir",
+    "eaunoire",
+    "id:lore/eaunoire"
+   ],
+   "adresses": [
+    "/lore/eaunoire/"
+   ]
+  },
+  {
+   "id": "eglise-du-sel",
+   "libelle": "Église du Sel",
+   "url": "/lore/eglise-du-sel/",
+   "couleur": null,
+   "page": "lore/eglise-du-sel",
+   "origine": "lien",
+   "cles": [
+    "eglise-du-sel",
+    "id:lore/eglise-du-sel"
+   ],
+   "adresses": [
+    "/lore/eglise-du-sel/"
+   ]
+  },
+  {
+   "id": "eirnn",
+   "libelle": "Eirnn",
+   "url": "/lore/eirnn/",
+   "couleur": null,
+   "page": "lore/eirnn",
+   "origine": "lien",
+   "cles": [
+    "eirnn",
+    "id:lore/eirnn"
+   ],
+   "adresses": [
+    "/lore/eirnn/"
+   ]
+  },
+  {
+   "id": "elfe-argente",
+   "libelle": "Elfe argenté",
+   "url": "/races/elfe-argente/",
+   "couleur": "race:pure",
+   "page": "races/elfe-argente",
+   "origine": "couleur",
+   "cles": [
+    "elfe-argente",
+    "id:races/elfe-argente"
+   ],
+   "adresses": [
+    "/races/elfe-argente/"
+   ]
+  },
+  {
+   "id": "elfe-dore",
+   "libelle": "Elfe doré",
+   "url": "/races/elfe-dore/",
+   "couleur": "race:pure",
+   "page": "races/elfe-dore",
+   "origine": "couleur",
+   "cles": [
+    "elfe-dore",
+    "id:races/elfe-dore"
+   ],
+   "adresses": [
+    "/races/elfe-dore/"
+   ]
+  },
+  {
+   "id": "elfe-forestier",
+   "libelle": "Elfe forestier",
+   "url": "/races/elfe-forestier/",
+   "couleur": "race:pure",
+   "page": "races/elfe-forestier",
+   "origine": "couleur",
+   "cles": [
+    "elfe-forestier",
+    "id:races/elfe-forestier"
+   ],
+   "adresses": [
+    "/races/elfe-forestier/"
+   ]
+  },
+  {
+   "id": "elfe-noir",
+   "libelle": "Elfe noir",
+   "url": "/races/elfe-noir/",
+   "couleur": "race:pure",
+   "page": "races/elfe-noir",
+   "origine": "couleur",
+   "cles": [
+    "elfe-noir",
+    "id:races/elfe-noir"
+   ],
+   "adresses": [
+    "/races/elfe-noir/"
+   ]
+  },
+  {
+   "id": "embuscade",
+   "libelle": "Embuscade",
+   "url": "/regles/l-embuscade/",
+   "couleur": null,
+   "page": "guide/l-embuscade",
+   "origine": "existant",
+   "cles": [
+    "id:guide/l-embuscade",
+    "l-embuscade",
+    "lembuscade"
+   ],
+   "adresses": [
+    "/regles/l-embuscade/"
+   ]
+  },
+  {
+   "id": "empire-argente",
+   "libelle": "Empire Argenté",
+   "url": "/lore/empire-argente/",
+   "couleur": null,
+   "page": "lore/empire-argente",
+   "origine": "lien",
+   "cles": [
+    "empire-argente",
+    "id:lore/empire-argente"
+   ],
+   "adresses": [
+    "/lore/empire-argente/"
+   ]
+  },
+  {
+   "id": "empire-humain",
+   "libelle": "Empire Humain",
+   "url": "/lore/empire-humain/",
+   "couleur": null,
+   "page": "lore/empire-humain",
+   "origine": "lien",
+   "cles": [
+    "empire-humain",
+    "id:lore/empire-humain"
+   ],
+   "adresses": [
+    "/lore/empire-humain/"
+   ]
+  },
+  {
+   "id": "eoline",
+   "libelle": "Éoline",
+   "url": "/lore/eoline/",
+   "couleur": null,
+   "page": "lore/eoline",
+   "origine": "lien",
+   "cles": [
+    "eoline",
+    "id:lore/eoline"
+   ],
+   "adresses": [
+    "/lore/eoline/"
+   ]
+  },
+  {
+   "id": "episir",
+   "libelle": "Épisir",
+   "url": "/lore/episir/",
+   "couleur": null,
+   "page": "lore/episir",
+   "origine": "lien",
+   "cles": [
+    "episir",
+    "id:lore/episir"
+   ],
+   "adresses": [
+    "/lore/episir/"
+   ]
+  },
+  {
+   "id": "erisia",
+   "libelle": "Erisia",
+   "url": "/lore/erisia/",
+   "couleur": null,
+   "page": "lore/erisia",
+   "origine": "lien",
+   "cles": [
+    "erisia",
+    "id:lore/erisia"
+   ],
+   "adresses": [
+    "/lore/erisia/"
+   ]
+  },
+  {
+   "id": "etape-1-imaginer-son-personnage-et-choisir-sa-race",
+   "libelle": "Étape 1 : imaginer son personnage et choisir sa race",
+   "url": "/regles/choisir-sa-race/",
+   "couleur": "partie:creer",
+   "page": "guide/choisir-sa-race",
+   "origine": "couleur",
+   "cles": [
+    "choisir-sa-race",
+    "etape-1-imaginer-son-personnage-et-choisir-sa-race",
+    "id:guide/choisir-sa-race"
+   ],
+   "adresses": [
+    "/regles/choisir-sa-race/"
+   ]
+  },
+  {
+   "id": "etape-2-choisir-ses-magies",
+   "libelle": "Étape 2 : choisir ses magies",
+   "url": "/regles/choisir-ses-magies/",
+   "couleur": "partie:creer",
+   "page": "guide/choisir-ses-magies",
+   "origine": "lien",
+   "cles": [
+    "choisir-ses-magies",
+    "etape-2-choisir-ses-magies",
+    "id:guide/choisir-ses-magies"
+   ],
+   "adresses": [
+    "/regles/choisir-ses-magies/"
+   ]
+  },
+  {
+   "id": "etape-3-choisir-sa-classe",
+   "libelle": "Étape 3 : choisir sa classe",
+   "url": "/regles/choisir-sa-classe/",
+   "couleur": "partie:creer",
+   "page": "guide/choisir-sa-classe",
+   "origine": "lien",
+   "cles": [
+    "choisir-sa-classe",
+    "etape-3-choisir-sa-classe",
+    "id:guide/choisir-sa-classe"
+   ],
+   "adresses": [
+    "/regles/choisir-sa-classe/"
+   ]
+  },
+  {
+   "id": "etape-4-repartir-caracteristiques-et-competences",
+   "libelle": "Étape 4 : répartir caractéristiques et compétences",
+   "url": "/regles/caracteristiques-et-competences/",
+   "couleur": "partie:creer",
+   "page": "guide/caracteristiques-et-competences",
+   "origine": "lien",
+   "cles": [
+    "caracteristiques-et-competences",
+    "etape-4-repartir-caracteristiques-et-competences",
+    "id:guide/caracteristiques-et-competences"
+   ],
+   "adresses": [
+    "/regles/caracteristiques-et-competences/"
+   ]
+  },
+  {
+   "id": "etape-5-choisir-ses-premiers-sorts",
+   "libelle": "Étape 5 : choisir ses premiers sorts",
+   "url": "/regles/premiers-sorts/",
+   "couleur": "partie:creer",
+   "page": "guide/premiers-sorts",
+   "origine": "lien",
+   "cles": [
+    "etape-5-choisir-ses-premiers-sorts",
+    "id:guide/premiers-sorts",
+    "premiers-sorts"
+   ],
+   "adresses": [
+    "/regles/premiers-sorts/"
+   ]
+  },
+  {
+   "id": "etape-6-finaliser-son-personnage",
+   "libelle": "Étape 6 : finaliser son personnage",
+   "url": "/regles/finaliser-son-personnage/",
+   "couleur": "partie:creer",
+   "page": "guide/finaliser-son-personnage",
+   "origine": "lien",
+   "cles": [
+    "etape-6-finaliser-son-personnage",
+    "finaliser-son-personnage",
+    "id:guide/finaliser-son-personnage"
+   ],
+   "adresses": [
+    "/regles/finaliser-son-personnage/"
+   ]
+  },
+  {
+   "id": "evravonie",
+   "libelle": "Evravonie",
+   "url": "/lore/evravonie/",
+   "couleur": null,
+   "page": "lore/evravonie",
+   "origine": "lien",
+   "cles": [
+    "evravonie",
+    "id:lore/evravonie"
+   ],
+   "adresses": [
+    "/lore/evravonie/"
+   ]
+  },
+  {
+   "id": "excalibur",
+   "libelle": "Excalibur",
+   "url": "/lore/excalibur/",
+   "couleur": null,
+   "page": "lore/excalibur",
+   "origine": "lien",
+   "cles": [
+    "excalibur",
+    "id:lore/excalibur"
+   ],
+   "adresses": [
+    "/lore/excalibur/"
+   ]
+  },
+  {
+   "id": "farfadet",
+   "libelle": "Farfadet",
+   "url": "/races/farfadet/",
+   "couleur": "race:pure",
+   "page": "races/farfadet",
+   "origine": "couleur",
+   "cles": [
+    "farfadet",
+    "id:races/farfadet"
+   ],
+   "adresses": [
+    "/races/farfadet/"
+   ]
+  },
+  {
+   "id": "felfe",
+   "libelle": "Felfe",
+   "url": "/races/felfe/",
+   "couleur": "race:pure",
+   "page": "races/felfe",
+   "origine": "couleur",
+   "cles": [
+    "felfe",
+    "id:races/felfe"
+   ],
+   "adresses": [
+    "/races/felfe/"
+   ]
+  },
+  {
+   "id": "fenrir",
+   "libelle": "Fenrir",
+   "url": "/races/fenrir/",
+   "couleur": "race:hybride",
+   "page": "races/fenrir",
+   "origine": "couleur",
+   "cles": [
+    "id:races/fenrir"
+   ],
+   "adresses": [
+    "/races/fenrir/"
+   ]
+  },
+  {
+   "id": "fenrir-classe",
+   "libelle": "Fenrir (classe)",
+   "url": "/classes/fenrir/",
+   "couleur": "classe:raciales",
+   "page": "classes/fenrir",
+   "origine": "couleur",
+   "cles": [
+    "id:classes/fenrir"
+   ],
+   "adresses": [
+    "/classes/fenrir/"
+   ]
+  },
+  {
+   "id": "fiche-de-personnage",
+   "libelle": "Fiche de personnage",
+   "url": "/fiche/",
+   "couleur": null,
+   "route": "/fiche/",
+   "origine": "lien",
+   "cles": [],
+   "adresses": [
+    "/fiche/"
+   ]
+  },
+  {
+   "id": "fiche-de-personnage-accessoires-et-ceinture",
+   "libelle": "Fiche de personnage : Accessoires et Ceinture",
+   "url": "/regles/fiche-accessoires-et-ceinture/",
+   "couleur": null,
+   "page": "guide/fiche-accessoires-et-ceinture",
+   "origine": "lien",
+   "cles": [
+    "fiche-accessoires-et-ceinture",
+    "fiche-de-personnage-accessoires-et-ceinture",
+    "id:guide/fiche-accessoires-et-ceinture"
+   ],
+   "adresses": [
+    "/regles/fiche-accessoires-et-ceinture/"
+   ]
+  },
+  {
+   "id": "fiche-de-personnage-armure-defense-bouclier",
+   "libelle": "Fiche de personnage : Armure/Défense/Bouclier",
+   "url": "/regles/fiche-armure-defense-bouclier/",
+   "couleur": null,
+   "page": "guide/fiche-armure-defense-bouclier",
+   "origine": "lien",
+   "cles": [
+    "armure-defense-bouclier",
+    "fiche-armure-defense-bouclier",
+    "fiche-de-personnage-armure-defense-bouclier",
+    "id:guide/fiche-armure-defense-bouclier"
+   ],
+   "adresses": [
+    "/regles/fiche-armure-defense-bouclier/"
+   ]
+  },
+  {
+   "id": "fiche-de-personnage-experience-niveau-global",
+   "libelle": "Fiche de personnage : Expérience/Niveau global",
+   "url": "/regles/fiche-experience-niveau-global/",
+   "couleur": null,
+   "page": "guide/fiche-experience-niveau-global",
+   "origine": "lien",
+   "cles": [
+    "experience-niveau-global",
+    "fiche-de-personnage-experience-niveau-global",
+    "fiche-experience-niveau-global",
+    "id:guide/fiche-experience-niveau-global"
+   ],
+   "adresses": [
+    "/regles/fiche-experience-niveau-global/"
+   ]
+  },
+  {
+   "id": "fiche-de-personnage-inventaire-sac-a-dos",
+   "libelle": "Fiche de personnage : Inventaire/Sac à dos",
+   "url": "/regles/fiche-inventaire-sac-a-dos/",
+   "couleur": null,
+   "page": "guide/fiche-inventaire-sac-a-dos",
+   "origine": "lien",
+   "cles": [
+    "fiche-de-personnage-inventaire-sac-a-dos",
+    "fiche-inventaire-sac-a-dos",
+    "id:guide/fiche-inventaire-sac-a-dos",
+    "inventaire-sac-a-dos"
+   ],
+   "adresses": [
+    "/regles/fiche-inventaire-sac-a-dos/"
+   ]
+  },
+  {
+   "id": "fiche-de-personnage-maitrise-darme-et-armes",
+   "libelle": "Fiche de personnage : Maîtrise d’arme et Armes",
+   "url": "/regles/fiche-maitrise-darme-et-armes/",
+   "couleur": null,
+   "page": "guide/fiche-maitrise-darme-et-armes",
+   "origine": "lien",
+   "cles": [
+    "fiche-de-personnage-maitrise-darme-et-armes",
+    "fiche-maitrise-darme-et-armes",
+    "id:guide/fiche-maitrise-darme-et-armes",
+    "maitrise-darme"
+   ],
+   "adresses": [
+    "/regles/fiche-maitrise-darme-et-armes/"
+   ]
+  },
+  {
+   "id": "fiche-de-personnage-tableau-posture",
+   "libelle": "Fiche de personnage : Tableau Posture",
+   "url": "/regles/fiche-tableau-posture/",
+   "couleur": null,
+   "page": "guide/fiche-tableau-posture",
+   "origine": "lien",
+   "cles": [
+    "fiche-de-personnage-tableau-posture",
+    "fiche-tableau-posture",
+    "id:guide/fiche-tableau-posture",
+    "tableau-posture"
+   ],
+   "adresses": [
+    "/regles/fiche-tableau-posture/"
+   ]
+  },
+  {
+   "id": "flagelleur",
+   "libelle": "Flagelleur",
+   "url": "/classes/flagelleur/",
+   "couleur": "classe:speciales",
+   "page": "classes/flagelleur",
+   "origine": "lien",
+   "cles": [
+    "flagelleur",
+    "id:classes/flagelleur"
+   ],
+   "adresses": [
+    "/classes/flagelleur/"
+   ]
+  },
+  {
+   "id": "foret-colossale",
+   "libelle": "Forêt colossale",
+   "url": "/lore/foret-colossale/",
+   "couleur": null,
+   "page": "lore/foret-colossale",
+   "origine": "lien",
+   "cles": [
+    "foret-colossale",
+    "id:lore/foret-colossale"
+   ],
+   "adresses": [
+    "/lore/foret-colossale/"
+   ]
+  },
+  {
+   "id": "foret-de-lete",
+   "libelle": "Forêt de l’été",
+   "url": "/lore/foret-de-lete/",
+   "couleur": null,
+   "page": "lore/foret-de-lete",
+   "origine": "lien",
+   "cles": [
+    "foret-de-lete",
+    "id:lore/foret-de-lete"
+   ],
+   "adresses": [
+    "/lore/foret-de-lete/"
+   ]
+  },
+  {
+   "id": "forgeron",
+   "libelle": "Forgeron",
+   "url": "/metiers/#metier-forgeron",
+   "couleur": null,
+   "page": "metiers/forgeron",
+   "origine": "lien",
+   "cles": [
+    "forgeron",
+    "id:metiers/forgeron"
+   ],
+   "adresses": [
+    "/metiers/#metier-forgeron"
+   ]
+  },
+  {
+   "id": "formule-des-degats",
+   "libelle": "Formule des dégâts",
+   "url": "/regles/formule-des-degats/",
+   "couleur": null,
+   "page": "guide/formule-des-degats",
+   "origine": "lien",
+   "cles": [
+    "formule-des-degats",
+    "id:guide/formule-des-degats"
+   ],
+   "adresses": [
+    "/regles/formule-des-degats/"
+   ]
+  },
+  {
+   "id": "foudre-etincelante",
+   "libelle": "Foudre étincelante",
+   "url": "/lore/foudre-etincelante/",
+   "couleur": null,
+   "page": "lore/foudre-etincelante",
+   "origine": "lien",
+   "cles": [
+    "foudre-etincelante",
+    "id:lore/foudre-etincelante"
+   ],
+   "adresses": [
+    "/lore/foudre-etincelante/"
+   ]
+  },
+  {
+   "id": "frappeur",
+   "libelle": "Frappeur",
+   "url": "/classes/frappeur/",
+   "couleur": "classe:melee",
+   "page": "classes/frappeur",
+   "origine": "couleur",
+   "cles": [
+    "frappeur",
+    "id:classes/frappeur"
+   ],
+   "adresses": [
+    "/classes/frappeur/"
+   ]
+  },
+  {
+   "id": "glossaire",
+   "libelle": "Glossaire",
+   "url": "/lore/glossaire/",
+   "couleur": null,
+   "page": "lore/glossaire",
+   "origine": "lien",
+   "cles": [
+    "glossaire",
+    "id:lore/glossaire"
+   ],
+   "adresses": [
+    "/lore/glossaire/"
+   ]
+  },
+  {
+   "id": "goleois",
+   "libelle": "Goleois",
+   "url": "/races/goleois/",
+   "couleur": "race:hybride",
+   "page": "races/goleois",
+   "origine": "couleur",
+   "cles": [
+    "id:races/goleois"
+   ],
+   "adresses": [
+    "/races/goleois/"
+   ]
+  },
+  {
+   "id": "goleois-classe",
+   "libelle": "Goleois (classe)",
+   "url": "/classes/goleois/",
+   "couleur": "classe:raciales",
+   "page": "classes/goleois",
+   "origine": "couleur",
+   "cles": [
+    "id:classes/goleois"
+   ],
+   "adresses": [
+    "/classes/goleois/"
+   ]
+  },
+  {
+   "id": "grelon",
+   "libelle": "Grelon",
+   "url": "/lore/grelon/",
+   "couleur": null,
+   "page": "lore/grelon",
+   "origine": "lien",
+   "cles": [
+    "grelon",
+    "id:lore/grelon"
+   ],
+   "adresses": [
+    "/lore/grelon/"
+   ]
+  },
+  {
+   "id": "grenadier",
+   "libelle": "Grenadier",
+   "url": "/classes/grenadier/",
+   "couleur": "classe:distance",
+   "page": "classes/grenadier",
+   "origine": "couleur",
+   "cles": [
+    "grenadier",
+    "id:classes/grenadier"
+   ],
+   "adresses": [
+    "/classes/grenadier/"
+   ]
+  },
+  {
+   "id": "guerisseurs-silencieux",
+   "libelle": "Guérisseurs silencieux",
+   "url": "/lore/guerisseurs-silencieux/",
+   "couleur": null,
+   "page": "lore/guerisseurs-silencieux",
+   "origine": "lien",
+   "cles": [
+    "guerisseurs-silencieux",
+    "id:lore/guerisseurs-silencieux"
+   ],
+   "adresses": [
+    "/lore/guerisseurs-silencieux/"
+   ]
+  },
+  {
+   "id": "guerrier",
+   "libelle": "Guerrier",
+   "url": "/classes/guerrier/",
+   "couleur": "classe:melee",
+   "page": "classes/guerrier",
+   "origine": "couleur",
+   "cles": [
+    "guerrier",
+    "id:classes/guerrier"
+   ],
+   "adresses": [
+    "/classes/guerrier/"
+   ]
+  },
+  {
+   "id": "guide-pour-mj-maverick",
+   "libelle": "Guide pour MJ - Maverick",
+   "url": "/mj/guide-pour-mj-maverick/",
+   "couleur": null,
+   "page": "guide/guide-pour-mj-maverick",
+   "origine": "lien",
+   "cles": [
+    "guide-pour-mj-maverick",
+    "id:guide/guide-pour-mj-maverick"
+   ],
+   "adresses": [
+    "/mj/guide-pour-mj-maverick/"
+   ]
+  },
+  {
+   "id": "hache-du-bourreau-dechire",
+   "libelle": "Hache du Bourreau déchiré",
+   "url": "/lore/hache-du-bourreau-dechire/",
+   "couleur": null,
+   "page": "lore/hache-du-bourreau-dechire",
+   "origine": "lien",
+   "cles": [
+    "hache-du-bourreau-dechire",
+    "id:lore/hache-du-bourreau-dechire"
+   ],
+   "adresses": [
+    "/lore/hache-du-bourreau-dechire/"
+   ]
+  },
+  {
+   "id": "hujin",
+   "libelle": "Hujin",
+   "url": "/races/hujin/",
+   "couleur": "race:pure",
+   "page": "races/hujin",
+   "origine": "couleur",
+   "cles": [
+    "hujin",
+    "id:races/hujin"
+   ],
+   "adresses": [
+    "/races/hujin/"
+   ]
+  },
+  {
+   "id": "humain",
+   "libelle": "Humain",
+   "url": "/races/humain/",
+   "couleur": "race:pure",
+   "page": "races/humain",
+   "origine": "lien",
+   "cles": [
+    "humain",
+    "id:races/humain"
+   ],
+   "adresses": [
+    "/races/humain/"
+   ]
+  },
+  {
+   "id": "jackalope",
+   "libelle": "Jackalope",
+   "url": "/races/jackalope/",
+   "couleur": "race:hybride",
+   "page": "races/jackalope",
+   "origine": "couleur",
+   "cles": [
+    "id:races/jackalope"
+   ],
+   "adresses": [
+    "/races/jackalope/"
+   ]
+  },
+  {
+   "id": "jackalope-classe",
+   "libelle": "Jackalope (classe)",
+   "url": "/classes/jackalope/",
+   "couleur": "classe:raciales",
+   "page": "classes/jackalope",
+   "origine": "couleur",
+   "cles": [
+    "id:classes/jackalope"
+   ],
+   "adresses": [
+    "/classes/jackalope/"
+   ]
+  },
+  {
+   "id": "kitsune",
+   "libelle": "Kitsune",
+   "url": "/races/kitsune/",
+   "couleur": "race:hybride",
+   "page": "races/kitsune",
+   "origine": "couleur",
+   "cles": [
+    "id:races/kitsune"
+   ],
+   "adresses": [
+    "/races/kitsune/"
+   ]
+  },
+  {
+   "id": "kitsune-classe",
+   "libelle": "Kitsune (classe)",
+   "url": "/classes/kitsune/",
+   "couleur": "classe:raciales",
+   "page": "classes/kitsune",
+   "origine": "couleur",
+   "cles": [
+    "id:classes/kitsune"
+   ],
+   "adresses": [
+    "/classes/kitsune/"
+   ]
+  },
+  {
+   "id": "la-confrerie-des-brandes-sacrileges",
+   "libelle": "La Confrérie des Brandes Sacrilèges",
+   "url": "/lore/la-confrerie-des-brandes-sacrileges/",
+   "couleur": null,
+   "page": "lore/la-confrerie-des-brandes-sacrileges",
+   "origine": "lien",
+   "cles": [
+    "id:lore/la-confrerie-des-brandes-sacrileges",
+    "la-confrerie-des-brandes-sacrileges"
+   ],
+   "adresses": [
+    "/lore/la-confrerie-des-brandes-sacrileges/"
+   ]
+  },
+  {
+   "id": "la-magie-en-jeu",
+   "libelle": "La magie en jeu",
+   "url": "/regles/la-magie-en-jeu/",
+   "couleur": null,
+   "page": "guide/la-magie-en-jeu",
+   "origine": "lien",
+   "cles": [
+    "id:guide/la-magie-en-jeu",
+    "la-magie-en-jeu"
+   ],
+   "adresses": [
+    "/regles/la-magie-en-jeu/"
+   ]
+  },
+  {
+   "id": "la-main-sanglante",
+   "libelle": "La main sanglante",
+   "url": "/lore/la-main-sanglante/",
+   "couleur": null,
+   "page": "lore/la-main-sanglante",
+   "origine": "lien",
+   "cles": [
+    "id:lore/la-main-sanglante",
+    "la-main-sanglante"
+   ],
+   "adresses": [
+    "/lore/la-main-sanglante/"
+   ]
+  },
+  {
+   "id": "la-montee-de-niveau",
+   "libelle": "La montée de niveau",
+   "url": "/regles/la-montee-de-niveau/",
+   "couleur": null,
+   "page": "guide/la-montee-de-niveau",
+   "origine": "lien",
+   "cles": [
+    "id:guide/la-montee-de-niveau",
+    "la-montee-de-niveau"
+   ],
+   "adresses": [
+    "/regles/la-montee-de-niveau/"
+   ]
+  },
+  {
+   "id": "la-pointe-de-sang",
+   "libelle": "La pointe de sang",
+   "url": "/lore/la-pointe-de-sang/",
+   "couleur": null,
+   "page": "lore/la-pointe-de-sang",
+   "origine": "lien",
+   "cles": [
+    "id:lore/la-pointe-de-sang",
+    "la-pointe-de-sang"
+   ],
+   "adresses": [
+    "/lore/la-pointe-de-sang/"
+   ]
+  },
+  {
+   "id": "la-vitesse-et-la-portee",
+   "libelle": "La Vitesse et la Portée",
+   "url": "/regles/vitesse-et-portee/",
+   "couleur": null,
+   "page": "guide/vitesse-et-portee",
+   "origine": "lien",
+   "cles": [
+    "id:guide/vitesse-et-portee",
+    "la-portee",
+    "la-vitesse",
+    "la-vitesse-et-la-portee",
+    "vitesse-et-portee"
+   ],
+   "adresses": [
+    "/regles/vitesse-et-portee/"
+   ]
+  },
+  {
+   "id": "lame-seuil",
+   "libelle": "Lame-Seuil",
+   "url": "/lore/lame-seuil/",
+   "couleur": null,
+   "page": "lore/lame-seuil",
+   "origine": "lien",
+   "cles": [
+    "id:lore/lame-seuil",
+    "lame-seuil"
+   ],
+   "adresses": [
+    "/lore/lame-seuil/"
+   ]
+  },
+  {
+   "id": "lamia",
+   "libelle": "Lamia",
+   "url": "/races/lamia/",
+   "couleur": "race:pure",
+   "page": "races/lamia",
+   "origine": "couleur",
+   "cles": [
+    "id:races/lamia",
+    "lamia"
+   ],
+   "adresses": [
+    "/races/lamia/"
+   ]
+  },
+  {
+   "id": "lance-du-bourreau-dechire",
+   "libelle": "Lance du Bourreau déchiré",
+   "url": "/lore/lance-du-bourreau-dechire/",
+   "couleur": null,
+   "page": "lore/lance-du-bourreau-dechire",
+   "origine": "lien",
+   "cles": [
+    "id:lore/lance-du-bourreau-dechire",
+    "lance-du-bourreau-dechire"
+   ],
+   "adresses": [
+    "/lore/lance-du-bourreau-dechire/"
+   ]
+  },
+  {
+   "id": "lanceur",
+   "libelle": "Lanceur",
+   "url": "/classes/lanceur/",
+   "couleur": "classe:distance",
+   "page": "classes/lanceur",
+   "origine": "couleur",
+   "cles": [
+    "id:classes/lanceur",
+    "lanceur"
+   ],
+   "adresses": [
+    "/classes/lanceur/"
+   ]
+  },
+  {
+   "id": "lancier",
+   "libelle": "Lancier",
+   "url": "/classes/lancier/",
+   "couleur": "classe:melee",
+   "page": "classes/lancier",
+   "origine": "couleur",
+   "cles": [
+    "id:classes/lancier",
+    "lancier"
+   ],
+   "adresses": [
+    "/classes/lancier/"
+   ]
+  },
+  {
+   "id": "le-tour-de-jeu",
+   "libelle": "Le tour de jeu",
+   "url": "/regles/le-tour-de-jeu/",
+   "couleur": null,
+   "page": "guide/le-tour-de-jeu",
+   "origine": "lien",
+   "cles": [
+    "id:guide/le-tour-de-jeu",
+    "le-tour-de-jeu"
+   ],
+   "adresses": [
+    "/regles/le-tour-de-jeu/"
+   ]
+  },
+  {
+   "id": "lequipement",
+   "libelle": "L’équipement",
+   "url": "/regles/l-equipement/",
+   "couleur": null,
+   "page": "guide/l-equipement",
+   "origine": "lien",
+   "cles": [
+    "id:guide/l-equipement",
+    "l-equipement",
+    "lequipement"
+   ],
+   "adresses": [
+    "/regles/l-equipement/"
+   ]
+  },
+  {
+   "id": "les-actions-et-mouvements",
+   "libelle": "Les Actions et mouvements",
+   "url": "/regles/actions-et-mouvements/",
+   "couleur": null,
+   "page": "guide/actions-et-mouvements",
+   "origine": "lien",
+   "cles": [
+    "action-rapide",
+    "actions-et-mouvements",
+    "ic",
+    "ic-ou-action-rapide",
+    "id:guide/actions-et-mouvements",
+    "les-actions-et-mouvements"
+   ],
+   "adresses": [
+    "/regles/actions-et-mouvements/"
+   ]
+  },
+  {
+   "id": "les-belladones-fleurissantes",
+   "libelle": "Les Belladones Fleurissantes",
+   "url": "/lore/les-belladones-fleurissantes/",
+   "couleur": null,
+   "page": "lore/les-belladones-fleurissantes",
+   "origine": "lien",
+   "cles": [
+    "id:lore/les-belladones-fleurissantes",
+    "les-belladones-fleurissantes"
+   ],
+   "adresses": [
+    "/lore/les-belladones-fleurissantes/"
+   ]
+  },
+  {
+   "id": "les-civilisations",
+   "libelle": "Les Civilisations",
+   "url": "/lore/les-civilisations/",
+   "couleur": null,
+   "page": "lore/les-civilisations",
+   "origine": "lien",
+   "cles": [
+    "id:lore/les-civilisations",
+    "les-civilisations"
+   ],
+   "adresses": [
+    "/lore/les-civilisations/"
+   ]
+  },
+  {
+   "id": "les-divinites",
+   "libelle": "Les Divinités",
+   "url": "/lore/les-divinites/",
+   "couleur": null,
+   "page": "lore/les-divinites",
+   "origine": "lien",
+   "cles": [
+    "id:lore/les-divinites",
+    "les-divinites"
+   ],
+   "adresses": [
+    "/lore/les-divinites/"
+   ]
+  },
+  {
+   "id": "les-embaumeurs",
+   "libelle": "Les embaumeurs",
+   "url": "/lore/les-embaumeurs/",
+   "couleur": null,
+   "page": "lore/les-embaumeurs",
+   "origine": "lien",
+   "cles": [
+    "id:lore/les-embaumeurs",
+    "les-embaumeurs"
+   ],
+   "adresses": [
+    "/lore/les-embaumeurs/"
+   ]
+  },
+  {
+   "id": "les-exaltes",
+   "libelle": "Les Exaltés",
+   "url": "/lore/les-exaltes/",
+   "couleur": null,
+   "page": "lore/les-exaltes",
+   "origine": "lien",
+   "cles": [
+    "id:lore/les-exaltes",
+    "les-exaltes"
+   ],
+   "adresses": [
+    "/lore/les-exaltes/"
+   ]
+  },
+  {
+   "id": "les-flammes-bleues",
+   "libelle": "Les Flammes Bleues",
+   "url": "/lore/les-flammes-bleues/",
+   "couleur": null,
+   "page": "lore/les-flammes-bleues",
+   "origine": "lien",
+   "cles": [
+    "id:lore/les-flammes-bleues",
+    "les-flammes-bleues"
+   ],
+   "adresses": [
+    "/lore/les-flammes-bleues/"
+   ]
+  },
+  {
+   "id": "les-guerisseurs",
+   "libelle": "Les Guérisseurs",
+   "url": "/lore/les-guerisseurs/",
+   "couleur": null,
+   "page": "lore/les-guerisseurs",
+   "origine": "lien",
+   "cles": [
+    "id:lore/les-guerisseurs",
+    "les-guerisseurs"
+   ],
+   "adresses": [
+    "/lore/les-guerisseurs/"
+   ]
+  },
+  {
+   "id": "les-impacts-mineur-et-majeur",
+   "libelle": "Les Impacts mineur et majeur",
+   "url": "/lore/les-impacts-mineur-et-majeur/",
+   "couleur": null,
+   "page": "lore/les-impacts-mineur-et-majeur",
+   "origine": "lien",
+   "cles": [
+    "id:lore/les-impacts-mineur-et-majeur",
+    "les-impacts-mineur-et-majeur"
+   ],
+   "adresses": [
+    "/lore/les-impacts-mineur-et-majeur/"
+   ]
+  },
+  {
+   "id": "les-jardiniers-mycillis",
+   "libelle": "Les Jardiniers Mycillis",
+   "url": "/lore/les-jardiniers-mycillis/",
+   "couleur": null,
+   "page": "lore/les-jardiniers-mycillis",
+   "origine": "lien",
+   "cles": [
+    "id:lore/les-jardiniers-mycillis",
+    "les-jardiniers-mycillis"
+   ],
+   "adresses": [
+    "/lore/les-jardiniers-mycillis/"
+   ]
+  },
+  {
+   "id": "les-neuf-alignements",
+   "libelle": "Les neuf alignements",
+   "url": "/regles/les-neuf-alignements/",
+   "couleur": null,
+   "page": "guide/les-neuf-alignements",
+   "origine": "lien",
+   "cles": [
+    "chaotique-bon",
+    "chaotique-mauvais",
+    "chaotique-neutre",
+    "id:guide/les-neuf-alignements",
+    "les-neuf-alignements",
+    "loyal-bon",
+    "loyal-mauvais",
+    "loyal-neutre",
+    "neutre-bon",
+    "neutre-mauvais"
+   ],
+   "adresses": [
+    "/regles/les-neuf-alignements/"
+   ]
+  },
+  {
+   "id": "les-outils-legendaires-uniques",
+   "libelle": "Les Outils Légendaires, Uniques",
+   "url": "/lore/les-outils-legendaires-uniques/",
+   "couleur": null,
+   "page": "lore/les-outils-legendaires-uniques",
+   "origine": "lien",
+   "cles": [
+    "id:lore/les-outils-legendaires-uniques",
+    "les-outils-legendaires-uniques"
+   ],
+   "adresses": [
+    "/lore/les-outils-legendaires-uniques/"
+   ]
+  },
+  {
+   "id": "les-pieges",
+   "libelle": "Les pièges",
+   "url": "/regles/les-pieges/",
+   "couleur": null,
+   "page": "guide/les-pieges",
+   "origine": "lien",
+   "cles": [
+    "declencheur",
+    "id:guide/les-pieges",
+    "les-pieges",
+    "types-de-pieges-possible"
+   ],
+   "adresses": [
+    "/regles/les-pieges/"
+   ]
+  },
+  {
+   "id": "les-portes",
+   "libelle": "Les portes",
+   "url": "/regles/les-portes/",
+   "couleur": null,
+   "page": "guide/les-portes",
+   "origine": "lien",
+   "cles": [
+    "id:guide/les-portes",
+    "les-herses",
+    "les-portes",
+    "les-portes-magiques"
+   ],
+   "adresses": [
+    "/regles/les-portes/"
+   ]
+  },
+  {
+   "id": "les-races-non-jouable",
+   "libelle": "Les races non-jouable",
+   "url": "/lore/les-races-non-jouable/",
+   "couleur": null,
+   "page": "lore/les-races-non-jouable",
+   "origine": "lien",
+   "cles": [
+    "id:lore/les-races-non-jouable",
+    "les-races-non-jouable"
+   ],
+   "adresses": [
+    "/lore/les-races-non-jouable/"
+   ]
+  },
+  {
+   "id": "liste-des-alterations-detat",
+   "libelle": "Liste des altérations d'état",
+   "url": "/regles/liste-des-alterations-d-etat/",
+   "couleur": null,
+   "page": "guide/liste-des-alterations-d-etat",
+   "origine": "lien",
+   "cles": [
+    "id:guide/liste-des-alterations-d-etat",
+    "liste-des-alterations-d-etat",
+    "liste-des-alterations-detat"
+   ],
+   "adresses": [
+    "/regles/liste-des-alterations-d-etat/"
+   ]
+  },
+  {
+   "id": "livre-parchemin",
+   "libelle": "Livre/Parchemin",
+   "url": "/ressources/livre-parchemin/",
+   "couleur": null,
+   "page": "ressources/livre-parchemin",
+   "origine": "lien",
+   "cles": [
+    "id:ressources/livre-parchemin",
+    "livre-parchemin"
+   ],
+   "adresses": [
+    "/ressources/livre-parchemin/"
+   ]
+  },
+  {
+   "id": "londolor",
+   "libelle": "Londolor",
+   "url": "/lore/londolor/",
+   "couleur": null,
+   "page": "lore/londolor",
+   "origine": "lien",
+   "cles": [
+    "id:lore/londolor",
+    "londolor"
+   ],
+   "adresses": [
+    "/lore/londolor/"
+   ]
+  },
+  {
+   "id": "lordre-de-lacier",
+   "libelle": "L’Ordre de l’acier",
+   "url": "/lore/lordre-de-lacier/",
+   "couleur": null,
+   "page": "lore/lordre-de-lacier",
+   "origine": "lien",
+   "cles": [
+    "id:lore/lordre-de-lacier",
+    "lordre-de-lacier"
+   ],
+   "adresses": [
+    "/lore/lordre-de-lacier/"
+   ]
+  },
+  {
+   "id": "lunivers",
+   "libelle": "L’univers",
+   "url": "/decouvrir/l-univers/",
+   "couleur": "partie:decouvrir",
+   "page": "guide/l-univers",
+   "origine": "lien",
+   "cles": [
+    "id:guide/l-univers",
+    "l-univers",
+    "lunivers"
+   ],
+   "adresses": [
+    "/decouvrir/l-univers/"
+   ]
+  },
+  {
+   "id": "maclier",
+   "libelle": "Maclier",
+   "url": "/classes/maclier/",
+   "couleur": "classe:magiques",
+   "page": "classes/maclier",
+   "origine": "couleur",
+   "cles": [
+    "id:classes/maclier",
+    "maclier"
+   ],
+   "adresses": [
+    "/classes/maclier/"
+   ]
+  },
+  {
+   "id": "mage",
+   "libelle": "Mage",
+   "url": "/classes/mage/",
+   "couleur": "classe:magiques",
+   "page": "classes/mage",
+   "origine": "lien",
+   "cles": [
+    "id:classes/mage",
+    "mage"
+   ],
+   "adresses": [
+    "/classes/mage/"
+   ]
+  },
+  {
+   "id": "mage-bleu",
+   "libelle": "Mage Bleu",
+   "url": "/classes/mage-bleu/",
+   "couleur": "classe:magiques",
+   "page": "classes/mage-bleu",
+   "origine": "couleur",
+   "cles": [
+    "id:classes/mage-bleu",
+    "mage-bleu"
+   ],
+   "adresses": [
+    "/classes/mage-bleu/"
+   ]
+  },
+  {
+   "id": "mage-rouge",
+   "libelle": "Mage Rouge",
+   "url": "/classes/mage-rouge/",
+   "couleur": "classe:magiques",
+   "page": "classes/mage-rouge",
+   "origine": "couleur",
+   "cles": [
+    "id:classes/mage-rouge",
+    "mage-rouge"
+   ],
+   "adresses": [
+    "/classes/mage-rouge/"
+   ]
+  },
+  {
+   "id": "mage-vert",
+   "libelle": "Mage Vert",
+   "url": "/classes/mage-vert/",
+   "couleur": "classe:magiques",
+   "page": "classes/mage-vert",
+   "origine": "lien",
+   "cles": [
+    "id:classes/mage-vert",
+    "mage-vert"
+   ],
+   "adresses": [
+    "/classes/mage-vert/"
+   ]
+  },
+  {
+   "id": "magie-de-la-corruption",
+   "libelle": "Magie de la Corruption",
+   "url": "/magies/magie-de-la-corruption/",
+   "couleur": "magie:corruption",
+   "page": "magies/magie-de-la-corruption",
+   "origine": "lien",
+   "cles": [
+    "id:magies/magie-de-la-corruption",
+    "magie-de-la-corruption"
+   ],
+   "adresses": [
+    "/magies/magie-de-la-corruption/"
+   ]
+  },
+  {
+   "id": "magie-de-la-foudre",
+   "libelle": "Magie de la Foudre",
+   "url": "/magies/magie-de-la-foudre/",
+   "couleur": "magie:foudre",
+   "page": "magies/magie-de-la-foudre",
+   "origine": "couleur",
+   "cles": [
+    "id:magies/magie-de-la-foudre",
+    "magie-de-la-foudre"
+   ],
+   "adresses": [
+    "/magies/magie-de-la-foudre/"
+   ]
+  },
+  {
+   "id": "magie-de-la-glace",
+   "libelle": "Magie de la Glace",
+   "url": "/magies/magie-de-la-glace/",
+   "couleur": "magie:glace",
+   "page": "magies/magie-de-la-glace",
+   "origine": "couleur",
+   "cles": [
+    "id:magies/magie-de-la-glace",
+    "magie-de-la-glace"
+   ],
+   "adresses": [
+    "/magies/magie-de-la-glace/"
+   ]
+  },
+  {
+   "id": "magie-de-la-lumiere",
+   "libelle": "Magie de la Lumière",
+   "url": "/magies/magie-de-la-lumiere/",
+   "couleur": "magie:lumiere",
+   "page": "magies/magie-de-la-lumiere",
+   "origine": "couleur",
+   "cles": [
+    "id:magies/magie-de-la-lumiere",
+    "magie-de-la-lumiere"
+   ],
+   "adresses": [
+    "/magies/magie-de-la-lumiere/"
+   ]
+  },
+  {
+   "id": "magie-de-la-necromancie",
+   "libelle": "Magie de la Nécromancie",
+   "url": "/magies/magie-de-la-necromancie/",
+   "couleur": "magie:necromancie",
+   "page": "magies/magie-de-la-necromancie",
+   "origine": "couleur",
+   "cles": [
+    "id:magies/magie-de-la-necromancie",
+    "magie-de-la-necromancie",
+    "necromancie"
+   ],
+   "adresses": [
+    "/magies/magie-de-la-necromancie/"
+   ]
+  },
+  {
+   "id": "magie-de-la-terre",
+   "libelle": "Magie de la Terre",
+   "url": "/magies/magie-de-la-terre/",
+   "couleur": "magie:terre",
+   "page": "magies/magie-de-la-terre",
+   "origine": "couleur",
+   "cles": [
+    "id:magies/magie-de-la-terre",
+    "magie-de-la-terre"
+   ],
+   "adresses": [
+    "/magies/magie-de-la-terre/"
+   ]
+  },
+  {
+   "id": "magie-de-larcane",
+   "libelle": "Magie de l'Arcane",
+   "url": "/magies/magie-de-larcane/",
+   "couleur": "magie:arcane",
+   "page": "magies/magie-de-larcane",
+   "origine": "couleur",
+   "cles": [
+    "id:magies/magie-de-larcane",
+    "magie-de-larcane"
+   ],
+   "adresses": [
+    "/magies/magie-de-larcane/"
+   ]
+  },
+  {
+   "id": "magie-de-leau",
+   "libelle": "Magie de l'Eau",
+   "url": "/magies/magie-de-leau/",
+   "couleur": "magie:eau",
+   "page": "magies/magie-de-leau",
+   "origine": "couleur",
+   "cles": [
+    "id:magies/magie-de-leau",
+    "magie-de-leau"
+   ],
+   "adresses": [
+    "/magies/magie-de-leau/"
+   ]
+  },
+  {
+   "id": "magie-de-lespace-temps",
+   "libelle": "Magie de l'Espace/Temps",
+   "url": "/magies/magie-de-lespace-temps/",
+   "couleur": "magie:espace-temps",
+   "page": "magies/magie-de-lespace-temps",
+   "origine": "couleur",
+   "cles": [
+    "espace-temps",
+    "id:magies/magie-de-lespace-temps",
+    "magie-de-lespace-temps",
+    "temps-espace"
+   ],
+   "adresses": [
+    "/magies/magie-de-lespace-temps/"
+   ]
+  },
+  {
+   "id": "magie-de-lombre",
+   "libelle": "Magie de l'Ombre",
+   "url": "/magies/magie-de-lombre/",
+   "couleur": "magie:ombre",
+   "page": "magies/magie-de-lombre",
+   "origine": "couleur",
+   "cles": [
+    "id:magies/magie-de-lombre",
+    "magie-de-lombre"
+   ],
+   "adresses": [
+    "/magies/magie-de-lombre/"
+   ]
+  },
+  {
+   "id": "magie-du-feu",
+   "libelle": "Magie du Feu",
+   "url": "/magies/magie-du-feu/",
+   "couleur": "magie:feu",
+   "page": "magies/magie-du-feu",
+   "origine": "couleur",
+   "cles": [
+    "id:magies/magie-du-feu",
+    "magie-du-feu"
+   ],
+   "adresses": [
+    "/magies/magie-du-feu/"
+   ]
+  },
+  {
+   "id": "magie-du-sang",
+   "libelle": "Magie du Sang",
+   "url": "/magies/magie-du-sang/",
+   "couleur": "magie:sang",
+   "page": "magies/magie-du-sang",
+   "origine": "couleur",
+   "cles": [
+    "id:magies/magie-du-sang",
+    "magie-du-sang"
+   ],
+   "adresses": [
+    "/magies/magie-du-sang/"
+   ]
+  },
+  {
+   "id": "magie-du-vent",
+   "libelle": "Magie du Vent",
+   "url": "/magies/magie-du-vent/",
+   "couleur": "magie:vent",
+   "page": "magies/magie-du-vent",
+   "origine": "couleur",
+   "cles": [
+    "id:magies/magie-du-vent",
+    "magie-du-vent"
+   ],
+   "adresses": [
+    "/magies/magie-du-vent/"
+   ]
+  },
+  {
+   "id": "magie-du-vide",
+   "libelle": "Magie du Vide",
+   "url": "/magies/magie-du-vide/",
+   "couleur": "magie:vide",
+   "page": "magies/magie-du-vide",
+   "origine": "couleur",
+   "cles": [
+    "id:magies/magie-du-vide",
+    "magie-du-vide"
+   ],
+   "adresses": [
+    "/magies/magie-du-vide/"
+   ]
+  },
+  {
+   "id": "magies",
+   "libelle": "Magies",
+   "url": "/magies/",
+   "couleur": null,
+   "route": "/magies/",
+   "origine": "lien",
+   "cles": [],
+   "adresses": [
+    "/magies/",
+    "/magies/#relations"
+   ]
+  },
+  {
+   "id": "majin",
+   "libelle": "Majin",
+   "url": "/races/majin/",
+   "couleur": "race:pure",
+   "page": "races/majin",
+   "origine": "couleur",
+   "cles": [
+    "id:races/majin",
+    "majin"
+   ],
+   "adresses": [
+    "/races/majin/"
+   ]
+  },
+  {
+   "id": "maladie",
+   "libelle": "Maladie",
+   "url": "/ressources/maladie/",
+   "couleur": null,
+   "page": "ressources/maladie",
+   "origine": "lien",
+   "cles": [
+    "id:ressources/maladie",
+    "maladie"
+   ],
+   "adresses": [
+    "/ressources/maladie/"
+   ]
+  },
+  {
+   "id": "marais-fangeux",
+   "libelle": "Marais fangeux",
+   "url": "/lore/marais-fangeux/",
+   "couleur": null,
+   "page": "lore/marais-fangeux",
+   "origine": "lien",
+   "cles": [
+    "id:lore/marais-fangeux",
+    "marais-fangeux"
+   ],
+   "adresses": [
+    "/lore/marais-fangeux/"
+   ]
+  },
+  {
+   "id": "marais-vert",
+   "libelle": "Marais vert",
+   "url": "/lore/marais-vert/",
+   "couleur": null,
+   "page": "lore/marais-vert",
+   "origine": "lien",
+   "cles": [
+    "id:lore/marais-vert",
+    "marais-vert"
+   ],
+   "adresses": [
+    "/lore/marais-vert/"
+   ]
+  },
+  {
+   "id": "marcass",
+   "libelle": "Marcass",
+   "url": "/races/marcass/",
+   "couleur": "race:hybride",
+   "page": "races/marcass",
+   "origine": "couleur",
+   "cles": [
+    "id:races/marcass"
+   ],
+   "adresses": [
+    "/races/marcass/"
+   ]
+  },
+  {
+   "id": "marcass-classe",
+   "libelle": "Marcass (classe)",
+   "url": "/classes/marcass/",
+   "couleur": "classe:raciales",
+   "page": "classes/marcass",
+   "origine": "couleur",
+   "cles": [
+    "id:classes/marcass"
+   ],
+   "adresses": [
+    "/classes/marcass/"
+   ]
+  },
+  {
+   "id": "martiale",
+   "libelle": "Martiale",
+   "url": "/classes/martiale/",
+   "couleur": "classe:melee",
+   "page": "classes/martiale",
+   "origine": "couleur",
+   "cles": [
+    "id:classes/martiale",
+    "martiale"
+   ],
+   "adresses": [
+    "/classes/martiale/"
+   ]
+  },
+  {
+   "id": "medecin-sans-frontiere",
+   "libelle": "Médecin sans frontière",
+   "url": "/lore/medecin-sans-frontiere/",
+   "couleur": null,
+   "page": "lore/medecin-sans-frontiere",
+   "origine": "lien",
+   "cles": [
+    "id:lore/medecin-sans-frontiere",
+    "medecin-sans-frontiere"
+   ],
+   "adresses": [
+    "/lore/medecin-sans-frontiere/"
+   ]
+  },
+  {
+   "id": "medusain",
+   "libelle": "Médusain",
+   "url": "/races/medusain/",
+   "couleur": "race:hybride",
+   "page": "races/medusain",
+   "origine": "couleur",
+   "cles": [
+    "id:races/medusain"
+   ],
+   "adresses": [
+    "/races/medusain/"
+   ]
+  },
+  {
+   "id": "medusain-classe",
+   "libelle": "Médusain (classe)",
+   "url": "/classes/medusain/",
+   "couleur": "classe:raciales",
+   "page": "classes/medusain",
+   "origine": "couleur",
+   "cles": [
+    "id:classes/medusain"
+   ],
+   "adresses": [
+    "/classes/medusain/"
+   ]
+  },
+  {
+   "id": "mercenaire",
+   "libelle": "Mercenaire",
+   "url": "/classes/mercenaire/",
+   "couleur": "classe:melee",
+   "page": "classes/mercenaire",
+   "origine": "lien",
+   "cles": [
+    "id:classes/mercenaire",
+    "mercenaire"
+   ],
+   "adresses": [
+    "/classes/mercenaire/"
+   ]
+  },
+  {
+   "id": "meteo",
+   "libelle": "Météo",
+   "url": "/regles/meteo/",
+   "couleur": null,
+   "page": "guide/meteo",
+   "origine": "lien",
+   "cles": [
+    "id:guide/meteo",
+    "meteo"
+   ],
+   "adresses": [
+    "/regles/meteo/"
+   ]
+  },
+  {
+   "id": "metier",
+   "libelle": "Métier",
+   "url": "/metiers/",
+   "couleur": null,
+   "route": "/metiers/",
+   "origine": "existant",
+   "cles": [],
+   "adresses": [
+    "/metiers/"
+   ]
+  },
+  {
+   "id": "mineur",
+   "libelle": "Mineur",
+   "url": "/metiers/#metier-mineur",
+   "couleur": null,
+   "page": "metiers/mineur",
+   "origine": "lien",
+   "cles": [
+    "id:metiers/mineur",
+    "mineur"
+   ],
+   "adresses": [
+    "/metiers/#metier-mineur"
+   ]
+  },
+  {
+   "id": "minotaure",
+   "libelle": "Minotaure",
+   "url": "/races/minotaure/",
+   "couleur": "race:hybride",
+   "page": "races/minotaure",
+   "origine": "couleur",
+   "cles": [
+    "id:races/minotaure"
+   ],
+   "adresses": [
+    "/races/minotaure/"
+   ]
+  },
+  {
+   "id": "minotaure-classe",
+   "libelle": "Minotaure (classe)",
+   "url": "/classes/minotaure/",
+   "couleur": "classe:raciales",
+   "page": "classes/minotaure",
+   "origine": "couleur",
+   "cles": [
+    "id:classes/minotaure"
+   ],
+   "adresses": [
+    "/classes/minotaure/"
+   ]
+  },
+  {
+   "id": "mirada",
+   "libelle": "Mirada",
+   "url": "/lore/mirada/",
+   "couleur": null,
+   "page": "lore/mirada",
+   "origine": "lien",
+   "cles": [
+    "id:lore/mirada",
+    "mirada"
+   ],
+   "adresses": [
+    "/lore/mirada/"
+   ]
+  },
+  {
+   "id": "mode-hyper",
+   "libelle": "Mode Hyper",
+   "url": "/regles/le-mode-hyper/",
+   "couleur": null,
+   "page": "guide/le-mode-hyper",
+   "origine": "existant",
+   "cles": [
+    "id:guide/le-mode-hyper",
+    "le-mode-hyper",
+    "le-mode-hyper-et-le-mode-super"
+   ],
+   "adresses": [
+    "/regles/le-mode-hyper/"
+   ]
+  },
+  {
+   "id": "moine",
+   "libelle": "Moine",
+   "url": "/classes/moine/",
+   "couleur": "classe:melee",
+   "page": "classes/moine",
+   "origine": "couleur",
+   "cles": [
+    "id:classes/moine",
+    "moine"
+   ],
+   "adresses": [
+    "/classes/moine/"
+   ]
+  },
+  {
+   "id": "mont-cendre",
+   "libelle": "Mont cendré",
+   "url": "/lore/mont-cendre/",
+   "couleur": null,
+   "page": "lore/mont-cendre",
+   "origine": "lien",
+   "cles": [
+    "id:lore/mont-cendre",
+    "mont-cendre"
+   ],
+   "adresses": [
+    "/lore/mont-cendre/"
+   ]
+  },
+  {
+   "id": "monts-couloirs",
+   "libelle": "Monts Couloirs",
+   "url": "/lore/monts-couloirs/",
+   "couleur": null,
+   "page": "lore/monts-couloirs",
+   "origine": "lien",
+   "cles": [
+    "id:lore/monts-couloirs",
+    "monts-couloirs"
+   ],
+   "adresses": [
+    "/lore/monts-couloirs/"
+   ]
+  },
+  {
+   "id": "mora",
+   "libelle": "Mora",
+   "url": "/lore/mora/",
+   "couleur": null,
+   "page": "lore/mora",
+   "origine": "lien",
+   "cles": [
+    "id:lore/mora",
+    "mora"
+   ],
+   "adresses": [
+    "/lore/mora/"
+   ]
+  },
+  {
+   "id": "morfot",
+   "libelle": "Morfot",
+   "url": "/lore/morfot/",
+   "couleur": null,
+   "page": "lore/morfot",
+   "origine": "lien",
+   "cles": [
+    "id:lore/morfot",
+    "morfot"
+   ],
+   "adresses": [
+    "/lore/morfot/"
+   ]
+  },
+  {
+   "id": "mort-vivant",
+   "libelle": "Mort-vivant",
+   "url": "/races/mort-vivant/",
+   "couleur": "race:pure",
+   "page": "races/mort-vivant",
+   "origine": "couleur",
+   "cles": [
+    "id:races/mort-vivant",
+    "mort-vivant"
+   ],
+   "adresses": [
+    "/races/mort-vivant/"
+   ]
+  },
+  {
+   "id": "mrode",
+   "libelle": "Mrode",
+   "url": "/lore/mrode/",
+   "couleur": null,
+   "page": "lore/mrode",
+   "origine": "lien",
+   "cles": [
+    "id:lore/mrode",
+    "mrode"
+   ],
+   "adresses": [
+    "/lore/mrode/"
+   ]
+  },
+  {
+   "id": "nain",
+   "libelle": "Nain",
+   "url": "/races/nain/",
+   "couleur": "race:pure",
+   "page": "races/nain",
+   "origine": "lien",
+   "cles": [
+    "id:races/nain",
+    "nain"
+   ],
+   "adresses": [
+    "/races/nain/"
+   ]
+  },
+  {
+   "id": "namazu",
+   "libelle": "Namazu",
+   "url": "/races/namazu/",
+   "couleur": "race:hybride",
+   "page": "races/namazu",
+   "origine": "couleur",
+   "cles": [
+    "id:races/namazu"
+   ],
+   "adresses": [
+    "/races/namazu/"
+   ]
+  },
+  {
+   "id": "namazu-classe",
+   "libelle": "Namazu (classe)",
+   "url": "/classes/namazu/",
+   "couleur": "classe:raciales",
+   "page": "classes/namazu",
+   "origine": "couleur",
+   "cles": [
+    "id:classes/namazu"
+   ],
+   "adresses": [
+    "/classes/namazu/"
+   ]
+  },
+  {
+   "id": "notix",
+   "libelle": "Notix",
+   "url": "/lore/notix/",
+   "couleur": null,
+   "page": "lore/notix",
+   "origine": "lien",
+   "cles": [
+    "id:lore/notix",
+    "notix"
+   ],
+   "adresses": [
+    "/lore/notix/"
+   ]
+  },
+  {
+   "id": "oceane",
+   "libelle": "Océane",
+   "url": "/lore/oceane/",
+   "couleur": null,
+   "page": "lore/oceane",
+   "origine": "lien",
+   "cles": [
+    "id:lore/oceane",
+    "oceane"
+   ],
+   "adresses": [
+    "/lore/oceane/"
+   ]
+  },
+  {
+   "id": "ocultomancien",
+   "libelle": "Ocultomancien",
+   "url": "/classes/ocultomancien/",
+   "couleur": "classe:magiques",
+   "page": "classes/ocultomancien",
+   "origine": "lien",
+   "cles": [
+    "id:classes/ocultomancien",
+    "ocultomancien"
+   ],
+   "adresses": [
+    "/classes/ocultomancien/"
+   ]
+  },
+  {
+   "id": "olwman",
+   "libelle": "Olwman",
+   "url": "/races/olwman/",
+   "couleur": "race:hybride",
+   "page": "races/olwman",
+   "origine": "couleur",
+   "cles": [
+    "id:races/olwman"
+   ],
+   "adresses": [
+    "/races/olwman/"
+   ]
+  },
+  {
+   "id": "olwman-classe",
+   "libelle": "Olwman (classe)",
+   "url": "/classes/olwman/",
+   "couleur": "classe:raciales",
+   "page": "classes/olwman",
+   "origine": "couleur",
+   "cles": [
+    "id:classes/olwman"
+   ],
+   "adresses": [
+    "/classes/olwman/"
+   ]
+  },
+  {
+   "id": "onir",
+   "libelle": "Onir",
+   "url": "/lore/onir/",
+   "couleur": null,
+   "page": "lore/onir",
+   "origine": "lien",
+   "cles": [
+    "id:lore/onir",
+    "onir"
+   ],
+   "adresses": [
+    "/lore/onir/"
+   ]
+  },
+  {
+   "id": "ordre-de-gardecroc",
+   "libelle": "Ordre de Gardecroc",
+   "url": "/lore/ordre-de-gardecroc/",
+   "couleur": null,
+   "page": "lore/ordre-de-gardecroc",
+   "origine": "lien",
+   "cles": [
+    "id:lore/ordre-de-gardecroc",
+    "ordre-de-gardecroc"
+   ],
+   "adresses": [
+    "/lore/ordre-de-gardecroc/"
+   ]
+  },
+  {
+   "id": "ordre-de-la-glace-rouge",
+   "libelle": "Ordre de la Glace Rouge",
+   "url": "/lore/ordre-de-la-glace-rouge/",
+   "couleur": null,
+   "page": "lore/ordre-de-la-glace-rouge",
+   "origine": "lien",
+   "cles": [
+    "id:lore/ordre-de-la-glace-rouge",
+    "ordre-de-la-glace-rouge"
+   ],
+   "adresses": [
+    "/lore/ordre-de-la-glace-rouge/"
+   ]
+  },
+  {
+   "id": "ordre-de-la-mort",
+   "libelle": "Ordre de la mort",
+   "url": "/lore/ordre-de-la-mort/",
+   "couleur": null,
+   "page": "lore/ordre-de-la-mort",
+   "origine": "lien",
+   "cles": [
+    "id:lore/ordre-de-la-mort",
+    "ordre-de-la-mort"
+   ],
+   "adresses": [
+    "/lore/ordre-de-la-mort/"
+   ]
+  },
+  {
+   "id": "ordre-des-abeilles",
+   "libelle": "Ordre des Abeilles",
+   "url": "/lore/ordre-des-abeilles/",
+   "couleur": null,
+   "page": "lore/ordre-des-abeilles",
+   "origine": "lien",
+   "cles": [
+    "id:lore/ordre-des-abeilles",
+    "ordre-des-abeilles"
+   ],
+   "adresses": [
+    "/lore/ordre-des-abeilles/"
+   ]
+  },
+  {
+   "id": "ordre-du-brai",
+   "libelle": "Ordre du brai",
+   "url": "/lore/ordre-du-brai/",
+   "couleur": null,
+   "page": "lore/ordre-du-brai",
+   "origine": "lien",
+   "cles": [
+    "id:lore/ordre-du-brai",
+    "ordre-du-brai"
+   ],
+   "adresses": [
+    "/lore/ordre-du-brai/"
+   ]
+  },
+  {
+   "id": "ordre-solaire",
+   "libelle": "Ordre Solaire",
+   "url": "/lore/ordre-solaire/",
+   "couleur": null,
+   "page": "lore/ordre-solaire",
+   "origine": "lien",
+   "cles": [
+    "id:lore/ordre-solaire",
+    "ordre-solaire"
+   ],
+   "adresses": [
+    "/lore/ordre-solaire/"
+   ]
+  },
+  {
+   "id": "origine-du-monde",
+   "libelle": "Origine du monde",
+   "url": "/lore/origine-du-monde/",
+   "couleur": null,
+   "page": "lore/origine-du-monde",
+   "origine": "lien",
+   "cles": [
+    "id:lore/origine-du-monde",
+    "origine-du-monde"
+   ],
+   "adresses": [
+    "/lore/origine-du-monde/"
+   ]
+  },
+  {
+   "id": "orios",
+   "libelle": "Orios",
+   "url": "/races/orios/",
+   "couleur": "race:hybride",
+   "page": "races/orios",
+   "origine": "lien",
+   "cles": [
+    "id:races/orios"
+   ],
+   "adresses": [
+    "/races/orios/"
+   ]
+  },
+  {
+   "id": "orios-classe",
+   "libelle": "Orios (classe)",
+   "url": "/classes/orios/",
+   "couleur": "classe:raciales",
+   "page": "classes/orios",
+   "origine": "couleur",
+   "cles": [
+    "id:classes/orios"
+   ],
+   "adresses": [
+    "/classes/orios/"
+   ]
+  },
+  {
+   "id": "parleur",
+   "libelle": "Parleur",
+   "url": "/classes/parleur/",
+   "couleur": "classe:speciales",
+   "page": "classes/parleur",
+   "origine": "couleur",
+   "cles": [
+    "id:classes/parleur",
+    "parleur"
+   ],
+   "adresses": [
+    "/classes/parleur/"
+   ]
+  },
+  {
+   "id": "piece-elementaire",
+   "libelle": "Pièce élémentaire",
+   "url": "/ressources/armes/#pieces-elementaires",
+   "couleur": null,
+   "page": "ressources/pieces-elementaires",
+   "origine": "existant",
+   "cles": [
+    "id:ressources/pieces-elementaires",
+    "piece-elementaire",
+    "pieces-elementaires"
+   ],
+   "adresses": [
+    "/ressources/armes/#pieces-elementaires"
+   ]
+  },
+  {
+   "id": "plaine-brillante",
+   "libelle": "Plaine brillante",
+   "url": "/lore/plaine-brillante/",
+   "couleur": null,
+   "page": "lore/plaine-brillante",
+   "origine": "lien",
+   "cles": [
+    "id:lore/plaine-brillante",
+    "plaine-brillante"
+   ],
+   "adresses": [
+    "/lore/plaine-brillante/"
+   ]
+  },
+  {
+   "id": "plaines-seches",
+   "libelle": "Plaines sèches",
+   "url": "/lore/plaines-seches/",
+   "couleur": null,
+   "page": "lore/plaines-seches",
+   "origine": "lien",
+   "cles": [
+    "id:lore/plaines-seches",
+    "plaines-seches"
+   ],
+   "adresses": [
+    "/lore/plaines-seches/"
+   ]
+  },
+  {
+   "id": "plateau-tonnerre",
+   "libelle": "Plateau Tonnerre",
+   "url": "/lore/plateau-tonnerre/",
+   "couleur": null,
+   "page": "lore/plateau-tonnerre",
+   "origine": "lien",
+   "cles": [
+    "id:lore/plateau-tonnerre",
+    "plateau-tonnerre"
+   ],
+   "adresses": [
+    "/lore/plateau-tonnerre/"
+   ]
+  },
+  {
+   "id": "posture",
+   "libelle": "Posture",
+   "url": "/regles/les-postures/",
+   "couleur": null,
+   "page": "guide/les-postures",
+   "origine": "existant",
+   "cles": [
+    "id:guide/les-postures",
+    "les-postures",
+    "postures"
+   ],
+   "adresses": [
+    "/regles/les-postures/"
+   ]
+  },
+  {
+   "id": "potentiel-illimite",
+   "libelle": "Potentiel illimité",
+   "url": "/magies/potentiel-illimite/",
+   "couleur": "magie:potentiel-illimite",
+   "page": "magies/potentiel-illimite",
+   "origine": "lien",
+   "cles": [
+    "absolu-incomplet",
+    "id:magies/potentiel-illimite",
+    "magie-universelle",
+    "potentiel-illimite"
+   ],
+   "adresses": [
+    "/magies/potentiel-illimite/"
+   ]
+  },
+  {
+   "id": "preparation-mage-rouge",
+   "libelle": "Préparation (Mage Rouge)",
+   "url": "/capacites/mage-rouge-preparation/",
+   "couleur": null,
+   "page": "capacites/mage-rouge-preparation",
+   "origine": "lien",
+   "cles": [
+    "id:capacites/mage-rouge-preparation",
+    "mage-rouge-preparation",
+    "preparation-mage-rouge"
+   ],
+   "adresses": [
+    "/capacites/mage-rouge-preparation/"
+   ]
+  },
+  {
+   "id": "pugiliste",
+   "libelle": "Pugiliste",
+   "url": "/classes/pugiliste/",
+   "couleur": "classe:melee",
+   "page": "classes/pugiliste",
+   "origine": "couleur",
+   "cles": [
+    "id:classes/pugiliste",
+    "pugiliste"
+   ],
+   "adresses": [
+    "/classes/pugiliste/"
+   ]
+  },
+  {
+   "id": "race",
+   "libelle": "race",
+   "url": "/races/",
+   "couleur": null,
+   "route": "/races/",
+   "origine": "existant",
+   "cles": [],
+   "adresses": [
+    "/races/"
+   ]
+  },
+  {
+   "id": "rater-ses-sortileges",
+   "libelle": "Rater ses sortilèges",
+   "url": "/regles/rater-ses-sortileges/",
+   "couleur": null,
+   "page": "guide/rater-ses-sortileges",
+   "origine": "lien",
+   "cles": [
+    "id:guide/rater-ses-sortileges",
+    "rater-ses-sortileges"
+   ],
+   "adresses": [
+    "/regles/rater-ses-sortileges/"
+   ]
+  },
+  {
+   "id": "regles-des-metiers",
+   "libelle": "Règles des métiers",
+   "url": "/metiers/regles-des-metiers/",
+   "couleur": null,
+   "page": "metiers/regles-des-metiers",
+   "origine": "lien",
+   "cles": [
+    "id:metiers/regles-des-metiers",
+    "metier-2-0",
+    "regles-des-metiers"
+   ],
+   "adresses": [
+    "/metiers/regles-des-metiers/"
+   ]
+  },
+  {
+   "id": "relations-entre-les-races",
+   "libelle": "Relations entre les races",
+   "url": "/lore/relations-entre-les-races/",
+   "couleur": null,
+   "page": "lore/relations-entre-les-races",
+   "origine": "lien",
+   "cles": [
+    "id:lore/relations-entre-les-races",
+    "relations-entre-les-races"
+   ],
+   "adresses": [
+    "/lore/relations-entre-les-races/"
+   ]
+  },
+  {
+   "id": "republique-forestier",
+   "libelle": "République Forestier",
+   "url": "/lore/republique-forestier/",
+   "couleur": null,
+   "page": "lore/republique-forestier",
+   "origine": "lien",
+   "cles": [
+    "id:lore/republique-forestier",
+    "republique-forestier"
+   ],
+   "adresses": [
+    "/lore/republique-forestier/"
+   ]
+  },
+  {
+   "id": "republique-noire",
+   "libelle": "République Noire",
+   "url": "/lore/republique-noire/",
+   "couleur": null,
+   "page": "lore/republique-noire",
+   "origine": "lien",
+   "cles": [
+    "id:lore/republique-noire",
+    "republique-noire"
+   ],
+   "adresses": [
+    "/lore/republique-noire/"
+   ]
+  },
+  {
+   "id": "resistances-et-faiblesses",
+   "libelle": "Résistances et faiblesses",
+   "url": "/regles/resistances-et-faiblesses/",
+   "couleur": null,
+   "page": "guide/resistances-et-faiblesses",
+   "origine": "lien",
+   "cles": [
+    "id:guide/resistances-et-faiblesses",
+    "resistance-faiblesse-magie",
+    "resistance-faiblesses-magique",
+    "resistances-et-faiblesses"
+   ],
+   "adresses": [
+    "/regles/resistances-et-faiblesses/"
+   ]
+  },
+  {
+   "id": "reussir-une-action",
+   "libelle": "Réussir une action",
+   "url": "/regles/reussir-une-action/",
+   "couleur": null,
+   "page": "guide/reussir-une-action",
+   "origine": "lien",
+   "cles": [
+    "id:guide/reussir-une-action",
+    "reussir-une-action"
+   ],
+   "adresses": [
+    "/regles/reussir-une-action/"
+   ]
+  },
+  {
+   "id": "rokh",
+   "libelle": "Rokh",
+   "url": "/races/rokh/",
+   "couleur": "race:hybride",
+   "page": "races/rokh",
+   "origine": "couleur",
+   "cles": [
+    "id:races/rokh"
+   ],
+   "adresses": [
+    "/races/rokh/"
+   ]
+  },
+  {
+   "id": "rokh-classe",
+   "libelle": "Rokh (classe)",
+   "url": "/classes/rokh/",
+   "couleur": "classe:raciales",
+   "page": "classes/rokh",
+   "origine": "couleur",
+   "cles": [
+    "id:classes/rokh"
+   ],
+   "adresses": [
+    "/classes/rokh/"
+   ]
+  },
+  {
+   "id": "ruines-rouges",
+   "libelle": "Ruines Rouges",
+   "url": "/lore/ruines-rouges/",
+   "couleur": null,
+   "page": "lore/ruines-rouges",
+   "origine": "lien",
+   "cles": [
+    "id:lore/ruines-rouges",
+    "ruines-rouges"
+   ],
+   "adresses": [
+    "/lore/ruines-rouges/"
+   ]
+  },
+  {
+   "id": "satyre",
+   "libelle": "Satyre",
+   "url": "/races/satyre/",
+   "couleur": "race:hybride",
+   "page": "races/satyre",
+   "origine": "couleur",
+   "cles": [
+    "id:races/satyre"
+   ],
+   "adresses": [
+    "/races/satyre/"
+   ]
+  },
+  {
+   "id": "satyre-classe",
+   "libelle": "Satyre (classe)",
+   "url": "/classes/satyre/",
+   "couleur": "classe:raciales",
+   "page": "classes/satyre",
+   "origine": "couleur",
+   "cles": [
+    "id:classes/satyre"
+   ],
+   "adresses": [
+    "/classes/satyre/"
+   ]
+  },
+  {
+   "id": "saugnane",
+   "libelle": "Saugnane",
+   "url": "/lore/saugnane/",
+   "couleur": null,
+   "page": "lore/saugnane",
+   "origine": "lien",
+   "cles": [
+    "id:lore/saugnane",
+    "saugnane"
+   ],
+   "adresses": [
+    "/lore/saugnane/"
+   ]
+  },
+  {
+   "id": "selcalibur",
+   "libelle": "Selcalibur",
+   "url": "/lore/selcalibur/",
+   "couleur": null,
+   "page": "lore/selcalibur",
+   "origine": "lien",
+   "cles": [
+    "id:lore/selcalibur",
+    "selcalibur"
+   ],
+   "adresses": [
+    "/lore/selcalibur/"
+   ]
+  },
+  {
+   "id": "sentrainer",
+   "libelle": "S’entraîner",
+   "url": "/regles/s-entrainer-et-exercer-un-metier/",
+   "couleur": null,
+   "page": "guide/s-entrainer-et-exercer-un-metier",
+   "origine": "lien",
+   "cles": [
+    "id:guide/s-entrainer-et-exercer-un-metier",
+    "s-entrainer-et-exercer-un-metier",
+    "sentrainer",
+    "sentrainer-et-exercer-un-metier"
+   ],
+   "adresses": [
+    "/regles/s-entrainer-et-exercer-un-metier/"
+   ]
+  },
+  {
+   "id": "seraphe",
+   "libelle": "Séraphe",
+   "url": "/lore/seraphe/",
+   "couleur": null,
+   "page": "lore/seraphe",
+   "origine": "lien",
+   "cles": [
+    "id:lore/seraphe",
+    "seraphe"
+   ],
+   "adresses": [
+    "/lore/seraphe/"
+   ]
+  },
+  {
+   "id": "seraphin",
+   "libelle": "Séraphin",
+   "url": "/lore/seraphin/",
+   "couleur": null,
+   "page": "lore/seraphin",
+   "origine": "lien",
+   "cles": [
+    "id:lore/seraphin",
+    "seraphin"
+   ],
+   "adresses": [
+    "/lore/seraphin/"
+   ]
+  },
+  {
+   "id": "signe-des-pirates",
+   "libelle": "Signe des pirates",
+   "url": "/lore/signe-des-pirates/",
+   "couleur": null,
+   "page": "lore/signe-des-pirates",
+   "origine": "lien",
+   "cles": [
+    "id:lore/signe-des-pirates",
+    "signe-des-pirates"
+   ],
+   "adresses": [
+    "/lore/signe-des-pirates/"
+   ]
+  },
+  {
+   "id": "situation-actuelle",
+   "libelle": "Situation actuelle",
+   "url": "/lore/situation-actuelle/",
+   "couleur": null,
+   "page": "lore/situation-actuelle",
+   "origine": "lien",
+   "cles": [
+    "id:lore/situation-actuelle",
+    "situation-actuelle"
+   ],
+   "adresses": [
+    "/lore/situation-actuelle/"
+   ]
+  },
+  {
+   "id": "soir-matin",
+   "libelle": "Soir-matin",
+   "url": "/lore/soir-matin/",
+   "couleur": null,
+   "page": "lore/soir-matin",
+   "origine": "lien",
+   "cles": [
+    "id:lore/soir-matin",
+    "soir-matin"
+   ],
+   "adresses": [
+    "/lore/soir-matin/"
+   ]
+  },
+  {
+   "id": "super-gemme",
+   "libelle": "Super Gemme",
+   "url": "/lore/super-gemme/",
+   "couleur": null,
+   "page": "lore/super-gemme",
+   "origine": "lien",
+   "cles": [
+    "id:lore/super-gemme",
+    "super-gemme"
+   ],
+   "adresses": [
+    "/lore/super-gemme/"
+   ]
+  },
+  {
+   "id": "temple-de-la-foudre",
+   "libelle": "Temple de la Foudre",
+   "url": "/lore/temple-de-la-foudre/",
+   "couleur": null,
+   "page": "lore/temple-de-la-foudre",
+   "origine": "lien",
+   "cles": [
+    "id:lore/temple-de-la-foudre",
+    "temple-de-la-foudre"
+   ],
+   "adresses": [
+    "/lore/temple-de-la-foudre/"
+   ]
+  },
+  {
+   "id": "temple-de-la-glace",
+   "libelle": "Temple de la Glace",
+   "url": "/lore/temple-de-la-glace/",
+   "couleur": null,
+   "page": "lore/temple-de-la-glace",
+   "origine": "lien",
+   "cles": [
+    "id:lore/temple-de-la-glace",
+    "temple-de-la-glace"
+   ],
+   "adresses": [
+    "/lore/temple-de-la-glace/"
+   ]
+  },
+  {
+   "id": "temple-de-la-lumiere",
+   "libelle": "Temple de la Lumière",
+   "url": "/lore/temple-de-la-lumiere/",
+   "couleur": null,
+   "page": "lore/temple-de-la-lumiere",
+   "origine": "lien",
+   "cles": [
+    "id:lore/temple-de-la-lumiere",
+    "temple-de-la-lumiere"
+   ],
+   "adresses": [
+    "/lore/temple-de-la-lumiere/"
+   ]
+  },
+  {
+   "id": "temple-de-la-terre",
+   "libelle": "Temple de la Terre",
+   "url": "/lore/temple-de-la-terre/",
+   "couleur": null,
+   "page": "lore/temple-de-la-terre",
+   "origine": "lien",
+   "cles": [
+    "id:lore/temple-de-la-terre",
+    "temple-de-la-terre"
+   ],
+   "adresses": [
+    "/lore/temple-de-la-terre/"
+   ]
+  },
+  {
+   "id": "temple-de-leau",
+   "libelle": "Temple de l’Eau",
+   "url": "/lore/temple-de-leau/",
+   "couleur": null,
+   "page": "lore/temple-de-leau",
+   "origine": "lien",
+   "cles": [
+    "id:lore/temple-de-leau",
+    "temple-de-leau"
+   ],
+   "adresses": [
+    "/lore/temple-de-leau/"
+   ]
+  },
+  {
+   "id": "temple-de-lespace-temps",
+   "libelle": "Temple de l’Espace/Temps",
+   "url": "/lore/temple-de-lespace-temps/",
+   "couleur": null,
+   "page": "lore/temple-de-lespace-temps",
+   "origine": "lien",
+   "cles": [
+    "id:lore/temple-de-lespace-temps",
+    "temple-de-lespace-temps"
+   ],
+   "adresses": [
+    "/lore/temple-de-lespace-temps/"
+   ]
+  },
+  {
+   "id": "temple-de-lombre",
+   "libelle": "Temple de l’Ombre",
+   "url": "/lore/temple-de-lombre/",
+   "couleur": null,
+   "page": "lore/temple-de-lombre",
+   "origine": "lien",
+   "cles": [
+    "id:lore/temple-de-lombre",
+    "temple-de-lombre"
+   ],
+   "adresses": [
+    "/lore/temple-de-lombre/"
+   ]
+  },
+  {
+   "id": "temple-de-vent",
+   "libelle": "Temple de Vent",
+   "url": "/lore/temple-de-vent/",
+   "couleur": null,
+   "page": "lore/temple-de-vent",
+   "origine": "lien",
+   "cles": [
+    "id:lore/temple-de-vent",
+    "temple-de-vent"
+   ],
+   "adresses": [
+    "/lore/temple-de-vent/"
+   ]
+  },
+  {
+   "id": "temple-du-feu",
+   "libelle": "Temple du Feu",
+   "url": "/lore/temple-du-feu/",
+   "couleur": null,
+   "page": "lore/temple-du-feu",
+   "origine": "lien",
+   "cles": [
+    "id:lore/temple-du-feu",
+    "temple-du-feu"
+   ],
+   "adresses": [
+    "/lore/temple-du-feu/"
+   ]
+  },
+  {
+   "id": "temple-du-savoir",
+   "libelle": "Temple du Savoir",
+   "url": "/lore/temple-du-savoir/",
+   "couleur": null,
+   "page": "lore/temple-du-savoir",
+   "origine": "lien",
+   "cles": [
+    "id:lore/temple-du-savoir",
+    "temple-du-savoir",
+    "temple-du-vide"
+   ],
+   "adresses": [
+    "/lore/temple-du-savoir/"
+   ]
+  },
+  {
+   "id": "temple-noir",
+   "libelle": "Temple noir",
+   "url": "/lore/temple-noir/",
+   "couleur": null,
+   "page": "lore/temple-noir",
+   "origine": "lien",
+   "cles": [
+    "id:lore/temple-noir",
+    "temple-de-la-corruption",
+    "temple-noir"
+   ],
+   "adresses": [
+    "/lore/temple-noir/"
+   ]
+  },
+  {
+   "id": "temples-cultes-guildes",
+   "libelle": "Temples/Cultes/Guildes",
+   "url": "/lore/temples-cultes-guildes/",
+   "couleur": null,
+   "page": "lore/temples-cultes-guildes",
+   "origine": "lien",
+   "cles": [
+    "id:lore/temples-cultes-guildes",
+    "temples-cultes-guildes"
+   ],
+   "adresses": [
+    "/lore/temples-cultes-guildes/"
+   ]
+  },
+  {
+   "id": "tenaille",
+   "libelle": "Tenaille",
+   "url": "/regles/prise-en-tenaille-et-zone-d-influence/",
+   "couleur": null,
+   "page": "guide/prise-en-tenaille-et-zone-d-influence",
+   "origine": "existant",
+   "cles": [
+    "id:guide/prise-en-tenaille-et-zone-d-influence",
+    "la-prise-en-tenaille",
+    "la-prise-en-tenaille-et-zone-dinfluence",
+    "les-situations-avancees",
+    "prise-en-tenaille-et-zone-d-influence"
+   ],
+   "adresses": [
+    "/regles/prise-en-tenaille-et-zone-d-influence/"
+   ]
+  },
+  {
+   "id": "terre-grise",
+   "libelle": "Terre grise",
+   "url": "/lore/terre-grise/",
+   "couleur": null,
+   "page": "lore/terre-grise",
+   "origine": "lien",
+   "cles": [
+    "id:lore/terre-grise",
+    "terre-grise"
+   ],
+   "adresses": [
+    "/lore/terre-grise/"
+   ]
+  },
+  {
+   "id": "tisseurs-de-soi",
+   "libelle": "Tisseurs de soi",
+   "url": "/lore/tisseurs-de-soi/",
+   "couleur": null,
+   "page": "lore/tisseurs-de-soi",
+   "origine": "lien",
+   "cles": [
+    "id:lore/tisseurs-de-soi",
+    "tisseurs-de-soi"
+   ],
+   "adresses": [
+    "/lore/tisseurs-de-soi/"
+   ]
+  },
+  {
+   "id": "tofrom",
+   "libelle": "Tofrom",
+   "url": "/lore/tofrom/",
+   "couleur": null,
+   "page": "lore/tofrom",
+   "origine": "lien",
+   "cles": [
+    "id:lore/tofrom",
+    "tofrom"
+   ],
+   "adresses": [
+    "/lore/tofrom/"
+   ]
+  },
+  {
+   "id": "tounne",
+   "libelle": "Tounne",
+   "url": "/lore/tounne/",
+   "couleur": null,
+   "page": "lore/tounne",
+   "origine": "lien",
+   "cles": [
+    "id:lore/tounne",
+    "tounne"
+   ],
+   "adresses": [
+    "/lore/tounne/"
+   ]
+  },
+  {
+   "id": "tueur",
+   "libelle": "Tueur",
+   "url": "/classes/tueur/",
+   "couleur": "classe:melee",
+   "page": "classes/tueur",
+   "origine": "couleur",
+   "cles": [
+    "id:classes/tueur",
+    "tueur"
+   ],
+   "adresses": [
+    "/classes/tueur/"
+   ]
+  },
+  {
+   "id": "umbro",
+   "libelle": "Umbro",
+   "url": "/lore/umbro/",
+   "couleur": null,
+   "page": "lore/umbro",
+   "origine": "lien",
+   "cles": [
+    "id:lore/umbro",
+    "umbro"
+   ],
+   "adresses": [
+    "/lore/umbro/"
+   ]
+  },
+  {
+   "id": "un-maitre-du-jeu",
+   "libelle": "Un maître du Jeu",
+   "url": "/mj/un-maitre-du-jeu/",
+   "couleur": null,
+   "page": "guide/un-maitre-du-jeu",
+   "origine": "lien",
+   "cles": [
+    "id:guide/un-maitre-du-jeu",
+    "maitre-du-jeu-conseils",
+    "un-maitre-du-jeu"
+   ],
+   "adresses": [
+    "/mj/un-maitre-du-jeu/"
+   ]
+  },
+  {
+   "id": "vampires-primordiaux",
+   "libelle": "Vampires primordiaux",
+   "url": "/lore/vampires-primordiaux/",
+   "couleur": null,
+   "page": "lore/vampires-primordiaux",
+   "origine": "lien",
+   "cles": [
+    "id:lore/vampires-primordiaux",
+    "vampires-primordiaux"
+   ],
+   "adresses": [
+    "/lore/vampires-primordiaux/"
+   ]
+  },
+  {
+   "id": "ville-oeil",
+   "libelle": "Ville-Oeil",
+   "url": "/lore/ville-oeil/",
+   "couleur": null,
+   "page": "lore/ville-oeil",
+   "origine": "lien",
+   "cles": [
+    "id:lore/ville-oeil",
+    "ville-oeil"
+   ],
+   "adresses": [
+    "/lore/ville-oeil/"
+   ]
+  },
+  {
+   "id": "voleur",
+   "libelle": "Voleur",
+   "url": "/classes/voleur/",
+   "couleur": "classe:melee",
+   "page": "classes/voleur",
+   "origine": "lien",
+   "cles": [
+    "id:classes/voleur",
+    "voleur"
+   ],
+   "adresses": [
+    "/classes/voleur/"
+   ]
+  },
+  {
+   "id": "volt",
+   "libelle": "Volt",
+   "url": "/lore/volt/",
+   "couleur": null,
+   "page": "lore/volt",
+   "origine": "lien",
+   "cles": [
+    "id:lore/volt",
+    "volt"
+   ],
+   "adresses": [
+    "/lore/volt/"
+   ]
+  },
+  {
+   "id": "xendown",
+   "libelle": "Xendown",
+   "url": "/lore/xendown/",
+   "couleur": null,
+   "page": "lore/xendown",
+   "origine": "lien",
+   "cles": [
+    "id:lore/xendown",
+    "xendown"
+   ],
+   "adresses": [
+    "/lore/xendown/"
+   ]
+  }
+ ],
+ "remplacements": [
+  {
+   "table": "competence",
+   "cle": {
+    "id": "vigueur"
+   },
+   "colonne": "description",
+   "lien": "[[guide/alterations-d-etats|altérations d'états]]",
+   "balise": "{{alteration-detat|altérations d'états}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/actions-et-mouvements"
+   },
+   "colonne": "corps_md",
+   "lien": "[[La Vitesse et la Portée|la vitesse]]",
+   "balise": "{{la-vitesse-et-la-portee|la vitesse}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/actions-et-mouvements"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Jet de dés|jet de dés]]",
+   "balise": "{{des|jet de dés}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/alignement"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/les-neuf-alignements|Les neuf alignements]]",
+   "balise": "{{les-neuf-alignements}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/alterations-d-etats"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/liste-des-alterations-d-etat|la liste des altérations d’état]]",
+   "balise": "{{liste-des-alterations-detat|la liste des altérations d’état}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/alterations-d-etats"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/reussir-une-action|Réussir une action]]",
+   "balise": "{{reussir-une-action}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/alterations-d-etats"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/le-tour-de-jeu|Le tour de jeu]]",
+   "balise": "{{le-tour-de-jeu}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/attaque-et-defense"
+   },
+   "colonne": "corps_md",
+   "lien": "[[La Vitesse et la Portée|la vitesse]]",
+   "balise": "{{la-vitesse-et-la-portee|la vitesse}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/attaquer-et-se-defendre"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/prise-en-tenaille-et-zone-d-influence|La prise en tenaille et zone d’influence]]",
+   "balise": "{{tenaille|La prise en tenaille et zone d’influence}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/attaquer-et-se-defendre"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/les-attaques-d-opportunite|Les attaques d'opportunité]]",
+   "balise": "{{attaque-dopportunite|Les attaques d'opportunité}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/attaquer-et-se-defendre"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/les-attaques-discretes|Les attaques discrètes]]",
+   "balise": "{{attaque-discrete|Les attaques discrètes}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/attaquer-et-se-defendre"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/guide-pour-mj-maverick|Doc « Guide pour MJ »]]",
+   "balise": "{{guide-pour-mj-maverick|Doc « Guide pour MJ »}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/attaquer-et-se-defendre"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/attaque-et-defense|Attaque et Défense]]",
+   "balise": "{{attaque-et-defense}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/attaquer-et-se-defendre"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/reussir-une-action|Réussir une action]]",
+   "balise": "{{reussir-une-action}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/attaquer-et-se-defendre"
+   },
+   "colonne": "corps_md",
+   "lien": "[armes](/ressources/equipement/#armes)",
+   "balise": "{{armes|armes}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/attaquer-et-se-defendre"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/l-equipement|L’équipement]]",
+   "balise": "{{lequipement}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/attaquer-et-se-defendre"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/les-postures|Les postures]]",
+   "balise": "{{posture|Les postures}}",
+   "compte": 3
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/attaquer-et-se-defendre"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/l-embuscade|L’embuscade]]",
+   "balise": "{{embuscade|L’embuscade}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/attaquer-et-se-defendre"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/les-degats|Les dégâts]]",
+   "balise": "{{degats|Les dégâts}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/attaquer-et-se-defendre"
+   },
+   "colonne": "corps_md",
+   "lien": "[[classes/bimane|Bimane]]",
+   "balise": "{{bimane}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/attaquer-et-se-defendre"
+   },
+   "colonne": "corps_md",
+   "lien": "[[classes/voleur|voleur]]",
+   "balise": "{{voleur|voleur}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/bienvenue"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/creer-son-personnage|Créer son personnage]]",
+   "balise": "{{creer-son-personnage}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/bienvenue"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/la-montee-de-niveau|La montée de niveau]]",
+   "balise": "{{la-montee-de-niveau}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/bienvenue"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/reussir-une-action|Réussir une action]]",
+   "balise": "{{reussir-une-action}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/bienvenue"
+   },
+   "colonne": "corps_md",
+   "lien": "[[races/drassahthac|Drassah’thac]]",
+   "balise": "{{drassahthac|Drassah’thac}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/bienvenue"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/l-univers|L’univers]]",
+   "balise": "{{lunivers}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/bienvenue"
+   },
+   "colonne": "corps_md",
+   "lien": "[[races/humain|humains]]",
+   "balise": "{{humain|humains}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/bienvenue"
+   },
+   "colonne": "corps_md",
+   "lien": "[[races/drakos|Drakos]]",
+   "balise": "{{drakos}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/bienvenue"
+   },
+   "colonne": "corps_md",
+   "lien": "[[races/orios|Orios]]",
+   "balise": "{{orios}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/bienvenue"
+   },
+   "colonne": "corps_md",
+   "lien": "[[races/nain|nains]]",
+   "balise": "{{nain|nains}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/blessures-et-etats"
+   },
+   "colonne": "corps_md",
+   "lien": "[Consommables](/ressources/equipement/#ceinture-consommables)",
+   "balise": "{{ceinture|Consommables}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/blessures-et-etats"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/la-magie-en-jeu|La magie en jeu]]",
+   "balise": "{{la-magie-en-jeu}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/blessures-et-etats"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/le-mode-hyper|Le Mode Hyper]]",
+   "balise": "{{mode-hyper|Le Mode Hyper}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/blessures-et-etats"
+   },
+   "colonne": "corps_md",
+   "lien": "[[ressources/alchimie|alchimie]]",
+   "balise": "{{alchimie|alchimie}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/blessures-et-etats"
+   },
+   "colonne": "corps_md",
+   "lien": "[[ressources/maladie|Maladie]]",
+   "balise": "{{maladie}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/blessures-et-etats"
+   },
+   "colonne": "corps_md",
+   "lien": "[les races](/races/)",
+   "balise": "{{race|les races}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/caracteristiques-et-competences"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/reussir-une-action|Réussir une action]]",
+   "balise": "{{reussir-une-action}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/caracteristiques-et-competences"
+   },
+   "colonne": "corps_md",
+   "lien": "[armes](/ressources/equipement/#armes)",
+   "balise": "{{armes|armes}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/choisir-sa-classe"
+   },
+   "colonne": "corps_md",
+   "lien": "[[classes/flagelleur|Flagelleur]]",
+   "balise": "{{flagelleur}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/choisir-sa-classe"
+   },
+   "colonne": "corps_md",
+   "lien": "[classes](/classes/)",
+   "balise": "{{classe|classes}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/choisir-sa-race"
+   },
+   "colonne": "corps_md",
+   "lien": "[27 races](/races/)",
+   "balise": "{{race|27 races}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/choisir-ses-magies"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/resistances-et-faiblesses|Résistances et faiblesses]]",
+   "balise": "{{resistances-et-faiblesses}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/choisir-ses-magies"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Magie de la Corruption|Corruption]]",
+   "balise": "{{magie-de-la-corruption|Corruption}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/choisir-ses-magies"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Potentiel Illimité]]",
+   "balise": "{{potentiel-illimite|Potentiel Illimité}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/creer-son-personnage"
+   },
+   "colonne": "corps_md",
+   "lien": "[fiche de personnage](/fiche/)",
+   "balise": "{{fiche-de-personnage|fiche de personnage}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/distance-et-voyage"
+   },
+   "colonne": "corps_md",
+   "lien": "[[La Vitesse et la Portée|La vitesse]]",
+   "balise": "{{la-vitesse-et-la-portee|La vitesse}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/donjon-pas-bon"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Les pièges]]",
+   "balise": "{{les-pieges}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/equipement-et-butin"
+   },
+   "colonne": "corps_md",
+   "lien": "[Équipement](/ressources/equipement/)",
+   "balise": "{{armes|Équipement}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/equipement-et-butin"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/l-equipement|L'équipement]]",
+   "balise": "{{lequipement|L'équipement}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/equipement-et-butin"
+   },
+   "colonne": "corps_md",
+   "lien": "[matériau](/ressources/composants/)",
+   "balise": "{{composants|matériau}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/equipement-et-butin"
+   },
+   "colonne": "corps_md",
+   "lien": "[[metiers/couturier|couturier]]",
+   "balise": "{{couturier|couturier}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/equipement-et-butin"
+   },
+   "colonne": "corps_md",
+   "lien": "[Artisanat](/regles/artisanat/)",
+   "balise": "{{artisanat}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/equipement-et-butin"
+   },
+   "colonne": "corps_md",
+   "lien": "[[metiers/forgeron|forgeron]]",
+   "balise": "{{forgeron|forgeron}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/equipement-et-butin"
+   },
+   "colonne": "corps_md",
+   "lien": "[bestiaire](/bestiaire/)",
+   "balise": "{{bestiaire|bestiaire}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/exercer-un-metier"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/s-entrainer-et-exercer-un-metier|S’entraîner]]",
+   "balise": "{{sentrainer}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/exercer-un-metier"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/reussir-une-action|Réussir une action]]",
+   "balise": "{{reussir-une-action}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/exercer-un-metier"
+   },
+   "colonne": "corps_md",
+   "lien": "[Composants](/ressources/composants/)",
+   "balise": "{{composants}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/exercer-un-metier"
+   },
+   "colonne": "corps_md",
+   "lien": "[tableau des métiers](/metiers/)",
+   "balise": "{{metier|tableau des métiers}}",
+   "compte": 2
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/exercer-un-metier"
+   },
+   "colonne": "corps_md",
+   "lien": "[Artisanat](/regles/artisanat/)",
+   "balise": "{{artisanat}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/exercer-un-metier"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Règles des métiers]]",
+   "balise": "{{regles-des-metiers}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-competences"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/alterations-d-etats|altérations d'états]]",
+   "balise": "{{alteration-detat|altérations d'états}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-competences"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Jet de dés|jet de dés]]",
+   "balise": "{{des|jet de dés}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-maitrise-darme-et-armes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[La Vitesse et la Portée|la portée]]",
+   "balise": "{{la-vitesse-et-la-portee|la portée}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-personnage"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Alignement]]",
+   "balise": "{{alignement}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-tableau-posture"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/le-mode-hyper|mode hyper]]",
+   "balise": "{{mode-hyper|mode hyper}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-tableau-resistances-faiblesses"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/resistances-et-faiblesses|ici]]",
+   "balise": "{{resistances-et-faiblesses|ici}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/finaliser-son-personnage"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/s-entrainer-et-exercer-un-metier|S’entraîner et exercer un métier]]",
+   "balise": "{{sentrainer|S’entraîner et exercer un métier}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/finaliser-son-personnage"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/la-montee-de-niveau|La montée de niveau]]",
+   "balise": "{{la-montee-de-niveau}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/finaliser-son-personnage"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/le-tour-de-jeu|action rapide (IC)]]",
+   "balise": "{{le-tour-de-jeu|action rapide (IC)}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/finaliser-son-personnage"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/l-equipement|L’équipement]]",
+   "balise": "{{lequipement}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/finaliser-son-personnage"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Règles des métiers]]",
+   "balise": "{{regles-des-metiers}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/finaliser-son-personnage"
+   },
+   "colonne": "corps_md",
+   "lien": "[métier](/metiers/)",
+   "balise": "{{metier|métier}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/finaliser-son-personnage"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Alignement]]",
+   "balise": "{{alignement}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/guide-pour-mj-maverick"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Résistance/Faiblesse Magie|Résistances/Faiblesses magique]]",
+   "balise": "{{resistances-et-faiblesses|Résistances/Faiblesses magique}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/guide-pour-mj-maverick"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/alterations-d-etats|Altérations d’états]]",
+   "balise": "{{alteration-detat|Altérations d’états}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/guide-pour-mj-maverick"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Les Actions et mouvements|IC ou Action rapide]]",
+   "balise": "{{les-actions-et-mouvements|IC ou Action rapide}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/guide-pour-mj-maverick"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Un maître du Jeu|Maître du jeu, Conseils]]",
+   "balise": "{{un-maitre-du-jeu|Maître du jeu, Conseils}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/guide-pour-mj-maverick"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Attaque et Défense|Attaque et défense]]",
+   "balise": "{{attaque-et-defense|Attaque et défense}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/guide-pour-mj-maverick"
+   },
+   "colonne": "corps_md",
+   "lien": "[[La Vitesse et la Portée|La vitesse]]",
+   "balise": "{{la-vitesse-et-la-portee|La vitesse}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/guide-pour-mj-maverick"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Donjon Pas bon|Donjon pas bon]]",
+   "balise": "{{donjon-pas-bon|Donjon pas bon}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/guide-pour-mj-maverick"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Les situations avancées]]",
+   "balise": "{{tenaille|Les situations avancées}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/guide-pour-mj-maverick"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Formule des dégâts]]",
+   "balise": "{{formule-des-degats}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/guide-pour-mj-maverick"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Alignement]]",
+   "balise": "{{alignement}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/guide-pour-mj-maverick"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Postures]]",
+   "balise": "{{posture|Postures}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/initiative"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/attaque-et-defense|Attaque et Défense]]",
+   "balise": "{{attaque-et-defense}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/initiative"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/les-postures|Les postures]]",
+   "balise": "{{posture|Les postures}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/jet-de-des"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/alterations-d-etats|altérations d'états]]",
+   "balise": "{{alteration-detat|altérations d'états}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-equipement"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/fiche-maitrise-darme-et-armes|Maîtrise d’arme et Armes]]",
+   "balise": "{{fiche-de-personnage-maitrise-darme-et-armes|Maîtrise d’arme et Armes}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-equipement"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/fiche-accessoires-et-ceinture|Accessoires et Ceinture]]",
+   "balise": "{{fiche-de-personnage-accessoires-et-ceinture|Accessoires et Ceinture}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-equipement"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/fiche-armure-defense-bouclier|Armure/Défense/Bouclier]]",
+   "balise": "{{fiche-de-personnage-armure-defense-bouclier|Armure/Défense/Bouclier}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-equipement"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/attaquer-et-se-defendre|Attaquer et se défendre]]",
+   "balise": "{{attaquer-et-se-defendre}}",
+   "compte": 2
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-equipement"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/fiche-inventaire-sac-a-dos|Inventaire/Sac à dos]]",
+   "balise": "{{fiche-de-personnage-inventaire-sac-a-dos|Inventaire/Sac à dos}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-equipement"
+   },
+   "colonne": "corps_md",
+   "lien": "[[ressources/pieces-elementaires|Pièces élémentaires]]",
+   "balise": "{{piece-elementaire|Pièces élémentaires}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-equipement"
+   },
+   "colonne": "corps_md",
+   "lien": "[[ressources/pieces-elementaires|pièce élémentaire]]",
+   "balise": "{{piece-elementaire|pièce élémentaire}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-equipement"
+   },
+   "colonne": "corps_md",
+   "lien": "[Accessoires](/ressources/equipement/#accessoires)",
+   "balise": "{{accessoires}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-equipement"
+   },
+   "colonne": "corps_md",
+   "lien": "[Boucliers](/ressources/equipement/#boucliers)",
+   "balise": "{{bouclier|Boucliers}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-equipement"
+   },
+   "colonne": "corps_md",
+   "lien": "[Armures](/ressources/equipement/#armures)",
+   "balise": "{{armures}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-equipement"
+   },
+   "colonne": "corps_md",
+   "lien": "[[classes/ocultomancien|Ocultomancien]]",
+   "balise": "{{ocultomancien}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-equipement"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/le-tour-de-jeu|Le tour de jeu]]",
+   "balise": "{{le-tour-de-jeu}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-equipement"
+   },
+   "colonne": "corps_md",
+   "lien": "[armes](/ressources/equipement/#armes)",
+   "balise": "{{armes|armes}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-equipement"
+   },
+   "colonne": "corps_md",
+   "lien": "[Composants](/ressources/composants/)",
+   "balise": "{{composants}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-equipement"
+   },
+   "colonne": "corps_md",
+   "lien": "[Équipement](/ressources/equipement/)",
+   "balise": "{{armes|Équipement}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-equipement"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/les-postures|Les postures]]",
+   "balise": "{{posture|Les postures}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-equipement"
+   },
+   "colonne": "corps_md",
+   "lien": "[[classes/flagelleur|Flagelleur]]",
+   "balise": "{{flagelleur}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-equipement"
+   },
+   "colonne": "corps_md",
+   "lien": "[[classes/mercenaire|Mercenaire]]",
+   "balise": "{{mercenaire}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-equipement"
+   },
+   "colonne": "corps_md",
+   "lien": "[[classes/archimage|Archimage]]",
+   "balise": "{{archimage}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-equipement"
+   },
+   "colonne": "corps_md",
+   "lien": "[[classes/mage-vert|Mage Vert]]",
+   "balise": "{{mage-vert}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-equipement"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/les-degats|Les dégâts]]",
+   "balise": "{{degats|Les dégâts}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-equipement"
+   },
+   "colonne": "corps_md",
+   "lien": "[les classes](/classes/)",
+   "balise": "{{classe|les classes}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-equipement"
+   },
+   "colonne": "corps_md",
+   "lien": "[[classes/mage|Mage]]",
+   "balise": "{{mage}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "colonne": "corps_md",
+   "lien": "[[lore/les-impacts-mineur-et-majeur|les Impacts, majeurs et mineurs]]",
+   "balise": "{{les-impacts-mineur-et-majeur|les Impacts, majeurs et mineurs}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Les Outils Légendaires, Uniques|armes et objets légendaires]]",
+   "balise": "{{les-outils-legendaires-uniques|armes et objets légendaires}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Relations entre les races|les relations entre les peuples]]",
+   "balise": "{{relations-entre-les-races|les relations entre les peuples}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "colonne": "corps_md",
+   "lien": "[[lore/temple-de-lespace-temps|Temple de l’Espace/Temps]]",
+   "balise": "{{temple-de-lespace-temps}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/choisir-ses-magies|la création du personnage]]",
+   "balise": "{{etape-2-choisir-ses-magies|la création du personnage}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Temples/Cultes/Guildes|temples, cultes et guildes]]",
+   "balise": "{{temples-cultes-guildes|temples, cultes et guildes}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/creer-son-personnage|Créer son personnage]]",
+   "balise": "{{creer-son-personnage}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Les races non-jouable|races qu’on ne joue pas]]",
+   "balise": "{{les-races-non-jouable|races qu’on ne joue pas}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "colonne": "corps_md",
+   "lien": "[[lore/situation-actuelle|la situation actuelle]]",
+   "balise": "{{situation-actuelle|la situation actuelle}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "colonne": "corps_md",
+   "lien": "[[lore/origine-du-monde|l’ère des Élémentaires]]",
+   "balise": "{{origine-du-monde|l’ère des Élémentaires}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "colonne": "corps_md",
+   "lien": "[[lore/ordre-des-abeilles|Ordre des Abeilles]]",
+   "balise": "{{ordre-des-abeilles}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "colonne": "corps_md",
+   "lien": "[[lore/la-main-sanglante|La main sanglante]]",
+   "balise": "{{la-main-sanglante}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "colonne": "corps_md",
+   "lien": "[[lore/la-pointe-de-sang|La pointe de sang]]",
+   "balise": "{{la-pointe-de-sang}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "colonne": "corps_md",
+   "lien": "[[lore/republique-noire|République noire]]",
+   "balise": "{{republique-noire|République noire}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "colonne": "corps_md",
+   "lien": "[[lore/ruines-rouges|ruines de Noname]]",
+   "balise": "{{ruines-rouges|ruines de Noname}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "colonne": "corps_md",
+   "lien": "[[lore/empire-humain|Empire humain]]",
+   "balise": "{{empire-humain|Empire humain}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "colonne": "corps_md",
+   "lien": "[[lore/ordre-du-brai|Ordre du brai]]",
+   "balise": "{{ordre-du-brai}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Les Civilisations|civilisations]]",
+   "balise": "{{les-civilisations|civilisations}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "colonne": "corps_md",
+   "lien": "[[lore/terre-grise|la Terre grise]]",
+   "balise": "{{terre-grise|la Terre grise}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "colonne": "corps_md",
+   "lien": "[[lore/marais-vert|Marais vert]]",
+   "balise": "{{marais-vert}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "colonne": "corps_md",
+   "lien": "[[lore/lame-seuil|Lame-Seuil]]",
+   "balise": "{{lame-seuil}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "colonne": "corps_md",
+   "lien": "[[races/humain|des humains]]",
+   "balise": "{{humain|des humains}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "colonne": "corps_md",
+   "lien": "[carte des magies](/magies/)",
+   "balise": "{{magies|carte des magies}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "colonne": "corps_md",
+   "lien": "[chronologie](/chronologie/)",
+   "balise": "{{chronologie|chronologie}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Les Divinités|divinités]]",
+   "balise": "{{les-divinites|divinités}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "colonne": "corps_md",
+   "lien": "[bestiaire](/bestiaire/)",
+   "balise": "{{bestiaire|bestiaire}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Glossaire|glossaire]]",
+   "balise": "{{glossaire|glossaire}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "colonne": "corps_md",
+   "lien": "[[lore/erisia|Erisia]]",
+   "balise": "{{erisia}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "colonne": "corps_md",
+   "lien": "[[lore/mirada|Mirada]]",
+   "balise": "{{mirada}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "colonne": "corps_md",
+   "lien": "[[lore/mrode|Mrode]]",
+   "balise": "{{mrode}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "colonne": "corps_md",
+   "lien": "[classes](/classes/)",
+   "balise": "{{classe|classes}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "colonne": "corps_md",
+   "lien": "[magies](/magies/)",
+   "balise": "{{magies|magies}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "colonne": "corps_md",
+   "lien": "[races](/races/)",
+   "balise": "{{race|races}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Codex]]",
+   "balise": "{{codex|Codex}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/la-magie-en-jeu"
+   },
+   "colonne": "corps_md",
+   "lien": "[[capacites/mage-rouge-double-coup|Double coup du Mage Rouge]]",
+   "balise": "{{double-coup-mage-rouge|Double coup du Mage Rouge}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/la-magie-en-jeu"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/resistances-et-faiblesses|Résistances et faiblesses]]",
+   "balise": "{{resistances-et-faiblesses}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/la-magie-en-jeu"
+   },
+   "colonne": "corps_md",
+   "lien": "[Bâtons magiques](/ressources/equipement/#batons-magiques)",
+   "balise": "{{baton-magique|Bâtons magiques}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/la-magie-en-jeu"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/rater-ses-sortileges|Rater ses sortilèges]]",
+   "balise": "{{rater-ses-sortileges}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/la-magie-en-jeu"
+   },
+   "colonne": "corps_md",
+   "lien": "[[ressources/livre-parchemin|Livres et parchemins]]",
+   "balise": "{{livre-parchemin|Livres et parchemins}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/la-magie-en-jeu"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/la-montee-de-niveau|La montée de niveau]]",
+   "balise": "{{la-montee-de-niveau}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/la-magie-en-jeu"
+   },
+   "colonne": "corps_md",
+   "lien": "[[capacites/mage-rouge-preparation|Préparation]]",
+   "balise": "{{preparation-mage-rouge|Préparation}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/la-magie-en-jeu"
+   },
+   "colonne": "corps_md",
+   "lien": "[[capacites/mage-vert-double-coup|du Mage Vert]]",
+   "balise": "{{double-coup-mage-vert|du Mage Vert}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/la-magie-en-jeu"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/blessures-et-etats|Blessures et états]]",
+   "balise": "{{blessure-et-mort|Blessures et états}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/la-magie-en-jeu"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/reussir-une-action|Réussir une action]]",
+   "balise": "{{reussir-une-action}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/la-magie-en-jeu"
+   },
+   "colonne": "corps_md",
+   "lien": "[[capacites/mage-vert-chargement|Chargement]]",
+   "balise": "{{chargement-mage-vert|Chargement}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/la-magie-en-jeu"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/premiers-sorts|Créer son personnage]]",
+   "balise": "{{etape-5-choisir-ses-premiers-sorts|Créer son personnage}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/la-magie-en-jeu"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/le-tour-de-jeu|Le tour de jeu]]",
+   "balise": "{{le-tour-de-jeu}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/la-magie-en-jeu"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/le-mode-hyper|Le Mode Hyper]]",
+   "balise": "{{mode-hyper|Le Mode Hyper}}",
+   "compte": 2
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/la-magie-en-jeu"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/les-postures|Les postures]]",
+   "balise": "{{posture|Les postures}}",
+   "compte": 2
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/la-magie-en-jeu"
+   },
+   "colonne": "corps_md",
+   "lien": "[fiche de personnage](/fiche/)",
+   "balise": "{{fiche-de-personnage|fiche de personnage}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/la-magie-en-jeu"
+   },
+   "colonne": "corps_md",
+   "lien": "[bestiaire](/bestiaire/)",
+   "balise": "{{bestiaire|bestiaire}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/la-magie-en-jeu"
+   },
+   "colonne": "corps_md",
+   "lien": "[les magies](/magies/)",
+   "balise": "{{magies|les magies}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/la-montee-de-niveau"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/fiche-experience-niveau-global|Fiche de personnage : Expérience/Niveau global]]",
+   "balise": "{{fiche-de-personnage-experience-niveau-global}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/la-montee-de-niveau"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/s-entrainer-et-exercer-un-metier|S’entraîner et exercer un métier]]",
+   "balise": "{{sentrainer|S’entraîner et exercer un métier}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/la-montee-de-niveau"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/caracteristiques-et-competences|Créer son personnage]]",
+   "balise": "{{etape-4-repartir-caracteristiques-et-competences|Créer son personnage}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/la-montee-de-niveau"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/le-mode-hyper|Le Mode Hyper et le Mode Super]]",
+   "balise": "{{mode-hyper|Le Mode Hyper et le Mode Super}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/la-montee-de-niveau"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/choisir-sa-classe|Créer son personnage]]",
+   "balise": "{{etape-3-choisir-sa-classe|Créer son personnage}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/la-montee-de-niveau"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/la-magie-en-jeu|La magie en jeu]]",
+   "balise": "{{la-magie-en-jeu}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/la-montee-de-niveau"
+   },
+   "colonne": "corps_md",
+   "lien": "[fiche de personnage](/fiche/)",
+   "balise": "{{fiche-de-personnage|fiche de personnage}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/la-montee-de-niveau"
+   },
+   "colonne": "corps_md",
+   "lien": "[classe](/classes/)",
+   "balise": "{{classe|classe}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/le-mode-hyper"
+   },
+   "colonne": "corps_md",
+   "lien": "[accessoires](/ressources/equipement/#accessoires)",
+   "balise": "{{accessoires|accessoires}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/le-mode-hyper"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/blessures-et-etats|Blessures et états]]",
+   "balise": "{{blessure-et-mort|Blessures et états}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/le-mode-hyper"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/reussir-une-action|Réussir une action]]",
+   "balise": "{{reussir-une-action}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/le-mode-hyper"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/le-tour-de-jeu|Le tour de jeu]]",
+   "balise": "{{le-tour-de-jeu}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/le-mode-hyper"
+   },
+   "colonne": "corps_md",
+   "lien": "[fiche de personnage](/fiche/)",
+   "balise": "{{fiche-de-personnage|fiche de personnage}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/le-mode-hyper"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/meteo|Météo]]",
+   "balise": "{{meteo}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/le-mode-hyper"
+   },
+   "colonne": "corps_md",
+   "lien": "[magie](/magies/)",
+   "balise": "{{magies|magie}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/le-mode-hyper"
+   },
+   "colonne": "corps_md",
+   "lien": "[race](/races/)",
+   "balise": "{{race}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/le-mode-hyper-100"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/les-postures|Les postures]]",
+   "balise": "{{posture|Les postures}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/le-tour-de-jeu"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/actions-et-mouvements|Les actions et mouvements]]",
+   "balise": "{{les-actions-et-mouvements|Les actions et mouvements}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/le-tour-de-jeu"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/attaquer-et-se-defendre|Attaquer et se défendre]]",
+   "balise": "{{attaquer-et-se-defendre}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/le-tour-de-jeu"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/guide-pour-mj-maverick|Guide pour MJ - Maverick]]",
+   "balise": "{{guide-pour-mj-maverick}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/le-tour-de-jeu"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/finaliser-son-personnage|Créer son personnage]]",
+   "balise": "{{etape-6-finaliser-son-personnage|Créer son personnage}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/le-tour-de-jeu"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/vitesse-et-portee|La vitesse et la portée]]",
+   "balise": "{{la-vitesse-et-la-portee|La vitesse et la portée}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/le-tour-de-jeu"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/alterations-d-etats|Blessures et états]]",
+   "balise": "{{alteration-detat|Blessures et états}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/le-tour-de-jeu"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/l-equipement|L’équipement]]",
+   "balise": "{{lequipement}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/le-tour-de-jeu"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/les-postures|Les postures]]",
+   "balise": "{{posture|Les postures}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-attaques-d-opportunite"
+   },
+   "colonne": "corps_md",
+   "lien": "[[La Vitesse et la Portée|la portée]]",
+   "balise": "{{la-vitesse-et-la-portee|la portée}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-degats"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/resistances-et-faiblesses|Résistances et faiblesses]]",
+   "balise": "{{resistances-et-faiblesses}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-degats"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/attaquer-et-se-defendre|Attaquer et se défendre]]",
+   "balise": "{{attaquer-et-se-defendre}}",
+   "compte": 2
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-degats"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/guide-pour-mj-maverick|Doc « Guide pour MJ »]]",
+   "balise": "{{guide-pour-mj-maverick|Doc « Guide pour MJ »}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-degats"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/blessures-et-etats|Blessures et états]]",
+   "balise": "{{blessure-et-mort|Blessures et états}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-degats"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/formule-des-degats|Formule des dégâts]]",
+   "balise": "{{formule-des-degats}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-degats"
+   },
+   "colonne": "corps_md",
+   "lien": "[Matériaux](/ressources/composants/#materiaux)",
+   "balise": "{{composants|Matériaux}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-degats"
+   },
+   "colonne": "corps_md",
+   "lien": "[Armures](/ressources/equipement/#armures)",
+   "balise": "{{armures}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-degats"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/le-mode-hyper|Le Mode Hyper]]",
+   "balise": "{{mode-hyper|Le Mode Hyper}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-degats"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/l-equipement|L’équipement]]",
+   "balise": "{{lequipement}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-degats"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/les-postures|Les postures]]",
+   "balise": "{{posture|Les postures}}",
+   "compte": 2
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-degats"
+   },
+   "colonne": "corps_md",
+   "lien": "[fiche de personnage](/fiche/)",
+   "balise": "{{fiche-de-personnage|fiche de personnage}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-postures"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/guide-pour-mj-maverick|Doc « Guide pour MJ »]]",
+   "balise": "{{guide-pour-mj-maverick|Doc « Guide pour MJ »}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-postures"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/fiche-tableau-posture|Tableau Posture]]",
+   "balise": "{{fiche-de-personnage-tableau-posture|Tableau Posture}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-postures"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/reussir-une-action|Réussir une action]]",
+   "balise": "{{reussir-une-action}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-postures"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/la-magie-en-jeu|La magie en jeu]]",
+   "balise": "{{la-magie-en-jeu}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-postures"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/le-tour-de-jeu|Le tour de jeu]]",
+   "balise": "{{le-tour-de-jeu}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-postures"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/le-mode-hyper|Le Mode Hyper]]",
+   "balise": "{{mode-hyper|Le Mode Hyper}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-postures"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/l-embuscade|L'embuscade]]",
+   "balise": "{{embuscade|L'embuscade}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-postures"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/les-degats|Les dégâts]]",
+   "balise": "{{degats|Les dégâts}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-postures"
+   },
+   "colonne": "corps_md",
+   "lien": "[fiche de personnage](/fiche/)",
+   "balise": "{{fiche-de-personnage|fiche de personnage}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/premiers-sorts"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/la-montee-de-niveau|La montée de niveau]]",
+   "balise": "{{la-montee-de-niveau}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/premiers-sorts"
+   },
+   "colonne": "corps_md",
+   "lien": "[magie](/magies/)",
+   "balise": "{{magies|magie}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/prise-en-tenaille-et-zone-d-influence"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/les-attaques-d-opportunite|Les attaques d'opportunité]]",
+   "balise": "{{attaque-dopportunite|Les attaques d'opportunité}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/resistances-et-faiblesses"
+   },
+   "colonne": "corps_md",
+   "lien": "[Relations entre magies](/magies/#relations)",
+   "balise": "{{magies|Relations entre magies}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/resistances-et-faiblesses"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/le-mode-hyper|Le Mode Hyper]]",
+   "balise": "{{mode-hyper|Le Mode Hyper}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/resistances-et-faiblesses"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/l-equipement|L’équipement]]",
+   "balise": "{{lequipement}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/resistances-et-faiblesses"
+   },
+   "colonne": "corps_md",
+   "lien": "[fiche de personnage](/fiche/)",
+   "balise": "{{fiche-de-personnage|fiche de personnage}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/resistances-et-faiblesses"
+   },
+   "colonne": "corps_md",
+   "lien": "[magie](/magies/)",
+   "balise": "{{magies|magie}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/reussir-une-action"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/s-entrainer-et-exercer-un-metier|S’entraîner et exercer un métier]]",
+   "balise": "{{sentrainer|S’entraîner et exercer un métier}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/reussir-une-action"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/caracteristiques-et-competences|Créer son personnage]]",
+   "balise": "{{etape-4-repartir-caracteristiques-et-competences|Créer son personnage}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/reussir-une-action"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/attaquer-et-se-defendre|Attaquer et se défendre]]",
+   "balise": "{{attaquer-et-se-defendre}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/reussir-une-action"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/la-montee-de-niveau|La montée de niveau]]",
+   "balise": "{{la-montee-de-niveau}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/reussir-une-action"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/attaque-et-defense|Attaque et Défense]]",
+   "balise": "{{attaque-et-defense}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/reussir-une-action"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/les-postures|Les postures]]",
+   "balise": "{{posture|Les postures}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/reussir-une-action"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/jet-de-des|Jet de dés]]",
+   "balise": "{{des|Jet de dés}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/reussir-une-action"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/les-portes|Les portes]]",
+   "balise": "{{les-portes}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/reussir-une-action"
+   },
+   "colonne": "corps_md",
+   "lien": "[fiche de personnage](/fiche/)",
+   "balise": "{{fiche-de-personnage|fiche de personnage}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/reussites-echecs-et-critiques"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/reussir-une-action|Réussir une action]]",
+   "balise": "{{reussir-une-action}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/reussites-echecs-et-critiques"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/les-postures|Les postures]]",
+   "balise": "{{posture|Les postures}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/s-entrainer-et-exercer-un-metier"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/reussir-une-action|Réussir une action]]",
+   "balise": "{{reussir-une-action}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/s-entrainer-et-exercer-un-metier"
+   },
+   "colonne": "corps_md",
+   "lien": "[[guide/la-magie-en-jeu|La magie en jeu]]",
+   "balise": "{{la-magie-en-jeu}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/s-entrainer-et-exercer-un-metier"
+   },
+   "colonne": "corps_md",
+   "lien": "[fiche de personnage](/fiche/)",
+   "balise": "{{fiche-de-personnage|fiche de personnage}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[La Confrérie des Brandes Sacrilèges]]",
+   "balise": "{{la-confrerie-des-brandes-sacrileges}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Les Outils Légendaires, Uniques]]",
+   "balise": "{{les-outils-legendaires-uniques}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Bardiche du Bourreau déchiré]]",
+   "balise": "{{bardiche-du-bourreau-dechire}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Les Belladones Fleurissantes]]",
+   "balise": "{{les-belladones-fleurissantes}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Les Impacts mineur et majeur]]",
+   "balise": "{{les-impacts-mineur-et-majeur}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Hache du Bourreau déchiré]]",
+   "balise": "{{hache-du-bourreau-dechire}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Lance du Bourreau déchiré]]",
+   "balise": "{{lance-du-bourreau-dechire}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Temple de l’Espace/Temps]]",
+   "balise": "{{temple-de-lespace-temps}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Bâton de la destruction]]",
+   "balise": "{{baton-de-la-destruction}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Les Jardiniers Mycillis]]",
+   "balise": "{{les-jardiniers-mycillis}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Ordre de la Glace Rouge]]",
+   "balise": "{{ordre-de-la-glace-rouge}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Guérisseurs silencieux]]",
+   "balise": "{{guerisseurs-silencieux}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Médecin sans frontière]]",
+   "balise": "{{medecin-sans-frontiere}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Temples/Cultes/Guildes]]",
+   "balise": "{{temples-cultes-guildes}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Compagnie du Fer Noir]]",
+   "balise": "{{compagnie-du-fer-noir}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Les races non-jouable]]",
+   "balise": "{{les-races-non-jouable}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Académie de l’arcane]]",
+   "balise": "{{academie-de-larcane}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[République Forestier]]",
+   "balise": "{{republique-forestier}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Temple de la Lumière]]",
+   "balise": "{{temple-de-la-lumiere}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Vampires primordiaux]]",
+   "balise": "{{vampires-primordiaux}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Temple de la Foudre]]",
+   "balise": "{{temple-de-la-foudre}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Foudre étincelante]]",
+   "balise": "{{foudre-etincelante}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[L’Ordre de l’acier]]",
+   "balise": "{{lordre-de-lacier}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Les Flammes Bleues]]",
+   "balise": "{{les-flammes-bleues}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Ordre de Gardecroc]]",
+   "balise": "{{ordre-de-gardecroc}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Ordre des Abeilles]]",
+   "balise": "{{ordre-des-abeilles}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Situation actuelle]]",
+   "balise": "{{situation-actuelle}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Temple de la Glace]]",
+   "balise": "{{temple-de-la-glace}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Temple de la Terre]]",
+   "balise": "{{temple-de-la-terre}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Bois du printemps]]",
+   "balise": "{{bois-du-printemps}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Confrérie du Sang]]",
+   "balise": "{{confrerie-du-sang}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[La main sanglante]]",
+   "balise": "{{la-main-sanglante}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[La pointe de sang]]",
+   "balise": "{{la-pointe-de-sang}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Les Civilisations]]",
+   "balise": "{{les-civilisations}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Signe des pirates]]",
+   "balise": "{{signe-des-pirates}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Temple de l’Ombre]]",
+   "balise": "{{temple-de-lombre}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Collines humides]]",
+   "balise": "{{collines-humides}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Ordre de la mort]]",
+   "balise": "{{ordre-de-la-mort}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Origine du monde]]",
+   "balise": "{{origine-du-monde}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Plaine brillante]]",
+   "balise": "{{plaine-brillante}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Plateau Tonnerre]]",
+   "balise": "{{plateau-tonnerre}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[République Noire]]",
+   "balise": "{{republique-noire}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Temple du Savoir]]",
+   "balise": "{{temple-du-savoir}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Barrage Argenté]]",
+   "balise": "{{barrage-argente}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Chapelle des Os]]",
+   "balise": "{{chapelle-des-os}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Forêt colossale]]",
+   "balise": "{{foret-colossale}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Les Guérisseurs]]",
+   "balise": "{{les-guerisseurs}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Temple de l’Eau]]",
+   "balise": "{{temple-de-leau}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Tisseurs de soi]]",
+   "balise": "{{tisseurs-de-soi}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Croc du Volcan]]",
+   "balise": "{{croc-du-volcan}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Empire Argenté]]",
+   "balise": "{{empire-argente}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Forêt de l’été]]",
+   "balise": "{{foret-de-lete}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Les embaumeurs]]",
+   "balise": "{{les-embaumeurs}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Marais fangeux]]",
+   "balise": "{{marais-fangeux}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Monts Couloirs]]",
+   "balise": "{{monts-couloirs}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Plaines sèches]]",
+   "balise": "{{plaines-seches}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Temple de Vent]]",
+   "balise": "{{temple-de-vent}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Église du Sel]]",
+   "balise": "{{eglise-du-sel}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Empire Humain]]",
+   "balise": "{{empire-humain}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Les Divinités]]",
+   "balise": "{{les-divinites}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Ordre du brai]]",
+   "balise": "{{ordre-du-brai}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Ordre Solaire]]",
+   "balise": "{{ordre-solaire}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Ruines Rouges]]",
+   "balise": "{{ruines-rouges}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Temple du Feu]]",
+   "balise": "{{temple-du-feu}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Cloche d’or]]",
+   "balise": "{{cloche-dor}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Les Exaltés]]",
+   "balise": "{{les-exaltes}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Marais vert]]",
+   "balise": "{{marais-vert}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Mont cendré]]",
+   "balise": "{{mont-cendre}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Super Gemme]]",
+   "balise": "{{super-gemme}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Temple noir]]",
+   "balise": "{{temple-noir}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Terre grise]]",
+   "balise": "{{terre-grise}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Lame-Seuil]]",
+   "balise": "{{lame-seuil}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Selcalibur]]",
+   "balise": "{{selcalibur}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Soir-matin]]",
+   "balise": "{{soir-matin}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Ville-Oeil]]",
+   "balise": "{{ville-oeil}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Champicer]]",
+   "balise": "{{champicer}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Evravonie]]",
+   "balise": "{{evravonie}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Excalibur]]",
+   "balise": "{{excalibur}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Glossaire]]",
+   "balise": "{{glossaire}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Champieu]]",
+   "balise": "{{champieu}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Dombourg]]",
+   "balise": "{{dombourg}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Eaunoire]]",
+   "balise": "{{eaunoire}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Londolor]]",
+   "balise": "{{londolor}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Saugnane]]",
+   "balise": "{{saugnane}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Séraphin]]",
+   "balise": "{{seraphin}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Balogne]]",
+   "balise": "{{balogne}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Celsius]]",
+   "balise": "{{celsius}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Dimitri]]",
+   "balise": "{{dimitri}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Drassah]]",
+   "balise": "{{drassah}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Séraphe]]",
+   "balise": "{{seraphe}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Xendown]]",
+   "balise": "{{xendown}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Aurora]]",
+   "balise": "{{aurora}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Camnau]]",
+   "balise": "{{camnau}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Dragon]]",
+   "balise": "{{dragon}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Éoline]]",
+   "balise": "{{eoline}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Épisir]]",
+   "balise": "{{episir}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Erisia]]",
+   "balise": "{{erisia}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Grelon]]",
+   "balise": "{{grelon}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Mirada]]",
+   "balise": "{{mirada}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Morfot]]",
+   "balise": "{{morfot}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Océane]]",
+   "balise": "{{oceane}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Tofrom]]",
+   "balise": "{{tofrom}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Tounne]]",
+   "balise": "{{tounne}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Brock]]",
+   "balise": "{{brock}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Capse]]",
+   "balise": "{{capse}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Eirnn]]",
+   "balise": "{{eirnn}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Mrode]]",
+   "balise": "{{mrode}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Notix]]",
+   "balise": "{{notix}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Umbro]]",
+   "balise": "{{umbro}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Anna]]",
+   "balise": "{{anna}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Bauc]]",
+   "balise": "{{bauc}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Mora]]",
+   "balise": "{{mora}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Onir]]",
+   "balise": "{{onir}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Volt]]",
+   "balise": "{{volt}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/codex"
+   },
+   "colonne": "corps_md",
+   "lien": "[[400]]",
+   "balise": "{{400}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/empire-humain"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Cloche d’or]]",
+   "balise": "{{cloche-dor}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/empire-humain"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Champieu]]",
+   "balise": "{{champieu}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/empire-humain"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Dombourg]]",
+   "balise": "{{dombourg}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/empire-humain"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Xendown]]",
+   "balise": "{{xendown}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/erisia"
+   },
+   "colonne": "corps_md",
+   "lien": "[[République Forestier]]",
+   "balise": "{{republique-forestier}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/erisia"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Signe des pirates]]",
+   "balise": "{{signe-des-pirates}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/erisia"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Plateau Tonnerre]]",
+   "balise": "{{plateau-tonnerre}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/erisia"
+   },
+   "colonne": "corps_md",
+   "lien": "[[République Noire]]",
+   "balise": "{{republique-noire}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/erisia"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Barrage Argenté]]",
+   "balise": "{{barrage-argente}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/erisia"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Empire Argenté]]",
+   "balise": "{{empire-argente}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/erisia"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Empire Humain]]",
+   "balise": "{{empire-humain}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/erisia"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Ruines Rouges]]",
+   "balise": "{{ruines-rouges}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/erisia"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Cloche d’or]]",
+   "balise": "{{cloche-dor}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/erisia"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Marais vert]]",
+   "balise": "{{marais-vert}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/erisia"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Champieu]]",
+   "balise": "{{champieu}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/erisia"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Dombourg]]",
+   "balise": "{{dombourg}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/erisia"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Londolor]]",
+   "balise": "{{londolor}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/erisia"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Xendown]]",
+   "balise": "{{xendown}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-civilisations"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Erisia]]",
+   "balise": "{{erisia}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-civilisations"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Mrode]]",
+   "balise": "{{mrode}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-divinites"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Evravonie]]",
+   "balise": "{{evravonie}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-divinites"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Eaunoire]]",
+   "balise": "{{eaunoire}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-divinites"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Séraphin]]",
+   "balise": "{{seraphin}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-divinites"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Celsius]]",
+   "balise": "{{celsius}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-divinites"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Dimitri]]",
+   "balise": "{{dimitri}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-divinites"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Drassah]]",
+   "balise": "{{drassah}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-divinites"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Séraphe]]",
+   "balise": "{{seraphe}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-divinites"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Aurora]]",
+   "balise": "{{aurora}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-divinites"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Éoline]]",
+   "balise": "{{eoline}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-divinites"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Mirada]]",
+   "balise": "{{mirada}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-divinites"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Morfot]]",
+   "balise": "{{morfot}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-divinites"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Océane]]",
+   "balise": "{{oceane}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-divinites"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Tofrom]]",
+   "balise": "{{tofrom}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-divinites"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Brock]]",
+   "balise": "{{brock}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-divinites"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Capse]]",
+   "balise": "{{capse}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-divinites"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Eirnn]]",
+   "balise": "{{eirnn}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-divinites"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Notix]]",
+   "balise": "{{notix}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-divinites"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Umbro]]",
+   "balise": "{{umbro}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-divinites"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Anna]]",
+   "balise": "{{anna}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-divinites"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Bauc]]",
+   "balise": "{{bauc}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-divinites"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Mora]]",
+   "balise": "{{mora}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-divinites"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Onir]]",
+   "balise": "{{onir}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-divinites"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Volt]]",
+   "balise": "{{volt}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-outils-legendaires-uniques"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Bardiche du Bourreau déchiré]]",
+   "balise": "{{bardiche-du-bourreau-dechire}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-outils-legendaires-uniques"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Hache du Bourreau déchiré]]",
+   "balise": "{{hache-du-bourreau-dechire}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-outils-legendaires-uniques"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Lance du Bourreau déchiré]]",
+   "balise": "{{lance-du-bourreau-dechire}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-outils-legendaires-uniques"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Bâton de la destruction]]",
+   "balise": "{{baton-de-la-destruction}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-outils-legendaires-uniques"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Foudre étincelante]]",
+   "balise": "{{foudre-etincelante}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-outils-legendaires-uniques"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Les Guérisseurs]]",
+   "balise": "{{les-guerisseurs}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-outils-legendaires-uniques"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Croc du Volcan]]",
+   "balise": "{{croc-du-volcan}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-outils-legendaires-uniques"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Super Gemme]]",
+   "balise": "{{super-gemme}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-outils-legendaires-uniques"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Lame-Seuil]]",
+   "balise": "{{lame-seuil}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-outils-legendaires-uniques"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Selcalibur]]",
+   "balise": "{{selcalibur}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-outils-legendaires-uniques"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Soir-matin]]",
+   "balise": "{{soir-matin}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-outils-legendaires-uniques"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Champicer]]",
+   "balise": "{{champicer}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-outils-legendaires-uniques"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Excalibur]]",
+   "balise": "{{excalibur}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-outils-legendaires-uniques"
+   },
+   "colonne": "corps_md",
+   "lien": "[[400]]",
+   "balise": "{{400}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-races-non-jouable"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Vampires primordiaux]]",
+   "balise": "{{vampires-primordiaux}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/les-races-non-jouable"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Dragon]]",
+   "balise": "{{dragon}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/mrode"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Temple de Vent|Temple du Vent]]",
+   "balise": "{{temple-de-vent|Temple du Vent}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/mrode"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Temple de la Terre]]",
+   "balise": "{{temple-de-la-terre}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/mrode"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Bois du printemps]]",
+   "balise": "{{bois-du-printemps}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/mrode"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Collines humides]]",
+   "balise": "{{collines-humides}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/mrode"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Plaine brillante]]",
+   "balise": "{{plaine-brillante}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/mrode"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Forêt colossale]]",
+   "balise": "{{foret-colossale}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/mrode"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Forêt de l’été]]",
+   "balise": "{{foret-de-lete}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/mrode"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Marais fangeux]]",
+   "balise": "{{marais-fangeux}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/mrode"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Monts Couloirs]]",
+   "balise": "{{monts-couloirs}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/mrode"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Plaines sèches]]",
+   "balise": "{{plaines-seches}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/mrode"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Mont cendré]]",
+   "balise": "{{mont-cendre}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/mrode"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Terre grise]]",
+   "balise": "{{terre-grise}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/mrode"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Ville-Oeil]]",
+   "balise": "{{ville-oeil}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/mrode"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Saugnane]]",
+   "balise": "{{saugnane}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/mrode"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Balogne]]",
+   "balise": "{{balogne}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/mrode"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Camnau]]",
+   "balise": "{{camnau}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/mrode"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Épisir]]",
+   "balise": "{{episir}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/mrode"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Grelon]]",
+   "balise": "{{grelon}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/mrode"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Tounne]]",
+   "balise": "{{tounne}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/temples-cultes-guildes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[La Confrérie des Brandes Sacrilèges]]",
+   "balise": "{{la-confrerie-des-brandes-sacrileges}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/temples-cultes-guildes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Les Belladones Fleurissantes]]",
+   "balise": "{{les-belladones-fleurissantes}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/temples-cultes-guildes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Temple de l’Espace/Temps]]",
+   "balise": "{{temple-de-lespace-temps}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/temples-cultes-guildes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Les Jardiniers Mycillis]]",
+   "balise": "{{les-jardiniers-mycillis}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/temples-cultes-guildes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Ordre de la Glace Rouge]]",
+   "balise": "{{ordre-de-la-glace-rouge}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/temples-cultes-guildes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Guérisseurs silencieux]]",
+   "balise": "{{guerisseurs-silencieux}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/temples-cultes-guildes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Médecin sans frontière]]",
+   "balise": "{{medecin-sans-frontiere}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/temples-cultes-guildes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Compagnie du Fer Noir]]",
+   "balise": "{{compagnie-du-fer-noir}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/temples-cultes-guildes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Académie de l’arcane]]",
+   "balise": "{{academie-de-larcane}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/temples-cultes-guildes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Temple de la Lumière]]",
+   "balise": "{{temple-de-la-lumiere}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/temples-cultes-guildes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Temple de la Foudre]]",
+   "balise": "{{temple-de-la-foudre}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/temples-cultes-guildes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[L’Ordre de l’acier]]",
+   "balise": "{{lordre-de-lacier}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/temples-cultes-guildes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Les Flammes Bleues]]",
+   "balise": "{{les-flammes-bleues}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/temples-cultes-guildes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Ordre de Gardecroc]]",
+   "balise": "{{ordre-de-gardecroc}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/temples-cultes-guildes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Ordre des Abeilles]]",
+   "balise": "{{ordre-des-abeilles}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/temples-cultes-guildes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Temple de la Glace]]",
+   "balise": "{{temple-de-la-glace}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/temples-cultes-guildes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Temple de la Terre]]",
+   "balise": "{{temple-de-la-terre}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/temples-cultes-guildes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Confrérie du Sang]]",
+   "balise": "{{confrerie-du-sang}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/temples-cultes-guildes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[La main sanglante]]",
+   "balise": "{{la-main-sanglante}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/temples-cultes-guildes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[La pointe de sang]]",
+   "balise": "{{la-pointe-de-sang}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/temples-cultes-guildes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Temple de l’Ombre]]",
+   "balise": "{{temple-de-lombre}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/temples-cultes-guildes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Ordre de la mort]]",
+   "balise": "{{ordre-de-la-mort}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/temples-cultes-guildes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Temple du Savoir]]",
+   "balise": "{{temple-du-savoir}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/temples-cultes-guildes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Chapelle des Os]]",
+   "balise": "{{chapelle-des-os}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/temples-cultes-guildes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Temple de l’Eau]]",
+   "balise": "{{temple-de-leau}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/temples-cultes-guildes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Tisseurs de soi]]",
+   "balise": "{{tisseurs-de-soi}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/temples-cultes-guildes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Les embaumeurs]]",
+   "balise": "{{les-embaumeurs}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/temples-cultes-guildes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Temple de Vent]]",
+   "balise": "{{temple-de-vent}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/temples-cultes-guildes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Église du Sel]]",
+   "balise": "{{eglise-du-sel}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/temples-cultes-guildes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Ordre du brai]]",
+   "balise": "{{ordre-du-brai}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/temples-cultes-guildes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Ordre Solaire]]",
+   "balise": "{{ordre-solaire}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/temples-cultes-guildes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Temple du Feu]]",
+   "balise": "{{temple-du-feu}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/temples-cultes-guildes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Les Exaltés]]",
+   "balise": "{{les-exaltes}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/temples-cultes-guildes"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Temple noir]]",
+   "balise": "{{temple-noir}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "metiers/alchimiste"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Alchimie primitive|alchimie primitive]]",
+   "balise": "{{alchimie-primitive|alchimie primitive}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "metiers/apothicaire"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Alchimie primitive|alchimie primitive]]",
+   "balise": "{{alchimie-primitive|alchimie primitive}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "metiers/regles-des-metiers"
+   },
+   "colonne": "corps_md",
+   "lien": "[[Mineur]]",
+   "balise": "{{mineur}}",
+   "compte": 1
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/fiole-rose"
+   },
+   "colonne": "corps_md",
+   "lien": "[[La Vitesse et la Portée|la vitesse]]",
+   "balise": "{{la-vitesse-et-la-portee|la vitesse}}",
+   "compte": 1
+  },
+  {
+   "table": "metier",
+   "cle": {
+    "id": "metiers/alchimiste"
+   },
+   "colonne": "artisanat_texte",
+   "lien": "alchimie primitive",
+   "balise": "{{alchimie-primitive|alchimie primitive}}",
+   "compte": 1
+  },
+  {
+   "table": "metier",
+   "cle": {
+    "id": "metiers/alchimiste"
+   },
+   "colonne": "artisanat_brut",
+   "lien": "alchimie primitive",
+   "balise": "{{alchimie-primitive|alchimie primitive}}",
+   "compte": 1
+  },
+  {
+   "table": "metier",
+   "cle": {
+    "id": "metiers/apothicaire"
+   },
+   "colonne": "artisanat_texte",
+   "lien": "alchimie primitive",
+   "balise": "{{alchimie-primitive|alchimie primitive}}",
+   "compte": 1
+  },
+  {
+   "table": "metier",
+   "cle": {
+    "id": "metiers/apothicaire"
+   },
+   "colonne": "artisanat_brut",
+   "lien": "alchimie primitive",
+   "balise": "{{alchimie-primitive|alchimie primitive}}",
+   "compte": 1
+  }
+ ],
+ "anciennesAncres": [
+  {
+   "texte": "page.corps_md {\"id\":\"guide/blessures-et-etats\"} [Consommables](/ressources/equipement/#ceinture-consommables)",
+   "adresse": "/ressources/objets-a-la-ceinture/#ceinture-consommables"
+  },
+  {
+   "texte": "page.corps_md {\"id\":\"guide/les-degats\"} [Matériaux](/ressources/composants/#materiaux)",
+   "adresse": "/ressources/composants/#materiaux"
+  },
+  {
+   "texte": "page.corps_md {\"id\":\"guide/resistances-et-faiblesses\"} [Relations entre magies](/magies/#relations)",
+   "adresse": "/magies/#relations"
+  }
+ ]
+}
