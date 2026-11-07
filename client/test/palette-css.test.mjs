@@ -333,7 +333,7 @@ test('aucune couleur écrite dans le module de la palette ; la palette posée su
 
 const construit = existsSync(new URL('../dist/index.html', import.meta.url));
 test('la palette dans les pages construites', construit ? {} : { skip: 'site non construit (npm run build)' }, () => {
-  // la page construite, sans la feuille des mots-clés colorés (sur chaque page depuis la migration 0096 : les familles d'une zone qu'un mot-clé nomme ;
+  // la page construite, sans la feuille des mots-clés colorés (sur chaque page depuis la migration 0098 : les familles d'une zone qu'un mot-clé nomme ;
   // test « mots-clés colorés » plus bas) : ce qui suit vérifie où chaque page émet les familles qu'elle pose
   const page = (rel) => {
     const construite = new URL(`../dist/${rel}`, import.meta.url);
@@ -871,7 +871,7 @@ test('les classes de ce lot posées par les pages, l’éditeur et la fiche : de
     assert.doesNotMatch(lire(f), /--couleur-(?:classe|texte-classe|race)|style=\{?`?["']?--c/, f);
   }
   assert.match(lire('src/components/classes/ClassesPastilles.astro'), /<section class=\{`classes-groupe \$\{classeDeCategorie\(group\.key\)\}`\} id=\{group\.key\}>/);
-  // la page d'une classe ou d'une race : la couleur du mot-clé coloré qui y mène, sinon celle de sa catégorie ou de sa nature (migration 0096, réponse Q5
+  // la page d'une classe ou d'une race : la couleur du mot-clé coloré qui y mène, sinon celle de sa catégorie ou de sa nature (migration 0098, réponse Q5
   // du propriétaire : lib/couleur-de-la-page.mjs#classeDeLaPage, une classe de la palette ou d'un mot-clé)
   assert.match(lire('src/components/classes/ClassePage.astro'), /const couleur = classeDeLaPageDuSite\(entryHref\(entry\), classeDUneClasse\(entry\), \{ base: import\.meta\.env\.BASE_URL \}\);[^]*<div class=\{`classe \$\{couleur\}`\}/);
   assert.match(lire('src/components/race/RacesPastilles.astro'), /<section class=\{`races-groupe \$\{classeDeRace\(group\.nature\)\}`\} id=\{group\.key\}>/);
@@ -1380,7 +1380,7 @@ test('les classes des événements posées par la frise, la page et l’éditeur
 const PARTIE = "[class*='couleur-partie-']";
 /**
  * La page du guide qui a une couleur (`.guide-reference--couleur`, posé avec sa classe par components/guide/PageDuGuide.astro) : celle de sa partie, ou
- * celle du mot-clé coloré qui y mène (migration 0096, lib/couleur-de-la-page.mjs : d'une autre famille, ou écrite) ; blocs.css la lit sur ce repère,
+ * celle du mot-clé coloré qui y mène (migration 0098, lib/couleur-de-la-page.mjs : d'une autre famille, ou écrite) ; blocs.css la lit sur ce repère,
  * plus sur `[class*='couleur-partie-']`.
  */
 const PAGE_COLOREE = '.guide-reference--couleur';
@@ -1437,7 +1437,7 @@ test('les feuilles des parties du guide lisent les propriétés que pose la clas
     ".attribut[data-a='barre4'][class*='couleur-magie-']", '.posture-carte__magie', ".resistances__table tr[class*='couleur-palier-']", '.fiche .invocation-choix--magie']);
   assert.deepEqual(lecteurs(blocs).filter((s) => s.includes('guide-reference')), [`.guide-reference${PAGE_COLOREE}`], 'le guide : la page seule');
   // les gabarits posent les classes, jamais un style : ni --couleur-partie, ni --sommaire-couleur, ni --c des cartes, ni --etape ; la page du guide, la
-  // couleur du mot-clé coloré qui y mène, sinon celle de sa partie (migration 0096, réponse Q5 du propriétaire)
+  // couleur du mot-clé coloré qui y mène, sinon celle de sa partie (migration 0098, réponse Q5 du propriétaire)
   const page = lire('src/components/guide/PageDuGuide.astro');
   assert.ok(page.includes('const couleur = classeDeLaPageDuSite(url(ici), classeDePartie(partieDeLaPage(entry.id)), { base: import.meta.env.BASE_URL });'));
   assert.ok(page.includes("<div class:list={['guide-reference', couleur && ['guide-reference--couleur', couleur]]}>"));
@@ -2113,11 +2113,11 @@ test('les cases de tableau dans les pages construites : jamais `data-couleur` sa
   }
 });
 
-// Lot des mots-clés à adresse et colorés (migration 0096 ; réponses du propriétaire du 2026-11-06, Q5 et Q13 : la balise, la tuile du mode complet,
+// Lot des mots-clés à adresse et colorés (migration 0098 ; réponses du propriétaire du 2026-11-06, Q5 et Q13 : la balise, la tuile du mode complet,
 // l'habillage de la bulle et la page vers laquelle mène le mot-clé prennent sa couleur ; « il ne faut pas de changement par rapport à avant en terme de
 // résultat »). La feuille des mots-clés colorés est posée sur chaque page par layouts/Base.astro (une couleur écrite, ou une famille d'une zone qu'un
 // mot-clé nomme) : son poids est borné ; les feuilles du lot ne lisent la couleur que sur l'élément qui porte la classe, et n'écrivent aucune couleur.
-test('mots-clés colorés (migration 0096) : la feuille de chaque page, d’un poids borné ; les feuilles du lot lisent la classe, sans couleur écrite', async () => {
+test('mots-clés colorés (migration 0098) : la feuille de chaque page, d’un poids borné ; les feuilles du lot lisent la classe, sans couleur écrite', async () => {
   const { cssDesMotsClesDuSite } = await import('../src/lib/couleur-de-la-page.mjs');
   const base = lire('src/layouts/Base.astro');
   assert.match(base, /<style is:inline data-couleurs-mots-cles set:html=\{cssDesMotsClesDuSite\(\)\}><\/style>/);
@@ -2144,7 +2144,7 @@ test('mots-clés colorés (migration 0096) : la feuille de chaque page, d’un p
   assert.match(lire('src/pages/regles/glossaire.astro'), /<style is:inline set:html=\{cssDesFamilles\(FAMILLES_DES_ZONES\)\}><\/style>/);
 });
 
-test('mots-clés colorés (migration 0096) : « rendu identique » — chaque page vers laquelle mène un mot-clé coloré garde la classe qu’elle avait (magie, catégorie de classe, nature de race, partie du guide)', async () => {
+test('mots-clés colorés (migration 0098) : « rendu identique » — chaque page vers laquelle mène un mot-clé coloré garde la classe qu’elle avait (magie, catégorie de classe, nature de race, partie du guide)', async () => {
   const { classeDeLaPage } = await import('../src/lib/couleur-de-la-page.mjs');
   const { chargerVocabulaire } = await import('../src/lib/mots-cles-db.mjs');
   const { racesParNature } = await import('../src/lib/races-db.mjs');
@@ -2152,7 +2152,7 @@ test('mots-clés colorés (migration 0096) : « rendu identique » — chaque pa
   const db = ouvrirBase();
   const vocabulaire = chargerVocabulaire(db);
   const chemin = (id) => `/${cheminDePage(id).replace(/^\//, '')}`;
-  // la couleur que chaque page avait avant la migration 0096 (celle que son gabarit posait)
+  // la couleur que chaque page avait avant la migration 0098 (celle que son gabarit posait)
   const avant = [];
   for (const m of db.prepare('SELECT id, nom FROM magie').all()) avant.push([m.id, classeDeMagie(m.nom)]);
   const tags = (id) => db.prepare('SELECT m.libelle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE t.page_id = ? ORDER BY t.ordre').all(id).map((r) => r.libelle);

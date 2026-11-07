@@ -29,7 +29,7 @@ interface Props {
 const { entry, entries, race, races, statusNote } = Astro.props;
 const hybride = race.hybride;
 // la couleur de la race, sur toute la page : la classe de sa nature (lib/palette-css.mjs, famille `race`, une famille d'une zone que la page émet),
-// jamais un style ; celle du mot-clé coloré qui mène à la page d'abord (réponse Q5 du propriétaire, migration 0096 : lib/couleur-de-la-page.mjs)
+// jamais un style ; celle du mot-clé coloré qui mène à la page d'abord (réponse Q5 du propriétaire, migration 0098 : lib/couleur-de-la-page.mjs)
 const couleur = classeDeLaPageDuSite(entryHref(entry), classeDeRace(hybride ? 'hybride' : 'pure'), { base: import.meta.env.BASE_URL });
 const pageDe = (id: string) => entries.find((e) => e.id === id);
 const pageClasseRaciale = race.classeRaciale ? pageDe(race.classeRaciale.id) : undefined;

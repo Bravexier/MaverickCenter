@@ -46,7 +46,7 @@ const balise = !portable && !maintenance && process.env.SITE_METRIQUES_PAGES !==
 // La page mesurée : son chemin construit (jamais l'adresse de la barre, ses paramètres ni ce qu'une adresse inconnue fait servir à la page 404) :
 // autant de pages que le site en construit, pas plus.
 const pageMesuree = Astro.url.pathname;
-// La couleur principale d'une page vers laquelle mène un mot-clé coloré (réponse Q5 du propriétaire, migration 0096) : sur <main>, pour une page qui
+// La couleur principale d'une page vers laquelle mène un mot-clé coloré (réponse Q5 du propriétaire, migration 0098) : sur <main>, pour une page qui
 // n'a pas de gabarit coloré (`couleurPropre`) ; aucune au départ (les mots-clés colorés mènent aux pages des magies, classes, races et du guide).
 const couleurDeLaPage = couleurPropre || maintenance ? null : classeDeLaPageDuSite(Astro.url.pathname, null, { base });
 ---
@@ -64,7 +64,7 @@ const couleurDeLaPage = couleurPropre || maintenance ? null : classeDeLaPageDuSi
     {/* la palette du site en classes (`.couleur-<famille>-<id>` : --couleur, --couleur-texte ; magies, attributs, caractéristiques, affinités), fabriquée
         depuis les modules des règles : lib/palette-css.mjs (choix du propriétaire du 2026-10-22, « Module JS → classe ») */}
     <style is:inline set:html={cssDeLaPalette()}></style>
-    {/* les classes des mots-clés colorés (migration 0096 : une couleur écrite, ou une famille d'une zone de la palette) : leurs balises, leurs bulles et
+    {/* les classes des mots-clés colorés (migration 0098 : une couleur écrite, ou une famille d'une zone de la palette) : leurs balises, leurs bulles et
         la page vers laquelle ils mènent (lib/couleur-de-la-page.mjs) ; le site de dev la réécrit quand le glossaire change (mots-cles-vivants.mjs) */}
     <style is:inline data-couleurs-mots-cles set:html={cssDesMotsClesDuSite()}></style>
     <title>{site.test ? '[TEST] ' : ''}{title === 'Accueil' ? 'Maverick Center' : `${title} — Maverick Center`}</title>

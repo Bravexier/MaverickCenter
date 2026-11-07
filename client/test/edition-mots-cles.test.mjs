@@ -4,7 +4,7 @@
 // dans la base vivante (des pages seulement : les événements de la chronologie ont des catégories, pas de mot-clé), la liste de gestion (libellé
 // modifiable, protégés sans saisie ni bouton, suppression et fusion en file), la création immédiate, les confirmations et l'ordre des opérations du lot,
 // le retour à la liste de lecture ; depuis la migration 0056 (glossaire), la définition de chaque mot-clé (saisie commune, protégés compris), sa balise à
-// copier et la ligne du Glossaire dans la liste de lecture ; depuis la migration 0096, son adresse et sa couleur (saisies communes, la feuille des
+// copier et la ligne du Glossaire dans la liste de lecture ; depuis la migration 0098, son adresse et sa couleur (saisies communes, la feuille des
 // couleurs du service réécrite). Puis, de bout en bout contre le vrai service (serveur/api.mjs sur une copie de la base) : renommages en rotation, en
 // chaîne, noms échangés, fusions en chaîne — le lot que la page envoie est accepté, ou refusé avant toute question ; l'adresse et la couleur enregistrées.
 //   node --test test/edition-mots-cles.test.mjs
@@ -160,7 +160,7 @@ test('au crayon : la liste de gestion ; un mot-clé protégé n’a ni saisie ni
   cliquer(ajouter);
   assert.doesNotMatch(p.formulaires[0].aide, /événement/, 'un mot-clé ne se pose plus sur un événement');
   assert.deepEqual(p.formulaires[0].champs.map((c) => [c.nom, c.type]), [['libelle', 'ligne'], ['description', 'texte'], ['abreviation', 'ligne'], ['url', 'adresse'], ['couleur', 'couleur']],
-    'créé avec sa définition et son abréviation (migration 0090), son adresse et sa couleur (migration 0096)');
+    'créé avec sa définition et son abréviation (migration 0090), son adresse et sa couleur (migration 0098)');
   await p.formulaires[0].valider({ libelle: 'Bestiaire', description: '' });
   assert.ok(p.appels.some(([m, c, corps]) => m === 'POST' && c === 'edition/' && JSON.stringify(corps) === JSON.stringify({ page: 'regles/glossaire/', operations: [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: 'Bestiaire', description: '' } }] })));
   assert.deepEqual(p.liste.children.map((li) => li.dataset.id), ['aide', 'bestiaire', 'feu', 'guide', 'magique', 'peuple']);
@@ -446,7 +446,7 @@ test('service : l’abréviation modifiée sur le Glossaire est enregistrée, vi
   assert.equal(abreviation(A.id), null, 'vidée : NULL');
 });
 
-test('migration 0096 : au crayon, l’adresse et la couleur de chaque mot-clé, saisies communes pour tous (protégés compris), parties de la base vivante', async () => {
+test('migration 0098 : au crayon, l’adresse et la couleur de chaque mot-clé, saisies communes pour tous (protégés compris), parties de la base vivante', async () => {
   const colores = [{ ...v('elfe', 'Elfe', 4, null, 'Un peuple.'), url: '/races/elfe/', couleur: 'race:pure' }, ...VIVANT];
   const p = await monter({ vocabulaire: colores });
   await p.motsCles.surcouche(p.ed, []);

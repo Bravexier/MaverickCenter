@@ -42,15 +42,15 @@ Carte & lieux reste « bientôt » (E6 de la [feuille de route](feuille-de-route
 - Résumé : le sous-titre d'une divinité, sinon la première phrase de la page.
 - Mots-clés : « codex », la partie (divinité, faction, civilisation…), la magie d'un temple (nom de la magie dans la base), le continent.
 - Le renvoi « Voir “Temple du Vent” » (Mrode) devient un lien vers « Temple de Vent », le titre de la section des temples.
-- **Les liens sont des balises de mots-clés** (migration 0096 : « tous les liens deviendront des mots-clés et tous les mots-clés deviendront des liens »).
+- **Les liens sont des balises de mots-clés** (migration 0098 : « tous les liens deviendront des mots-clés et tous les mots-clés deviendront des liens »).
   Un renvoi (sommaires, « Voir aussi », renvoi du document) s'écrit avec la balise du mot-clé dont l'adresse (`mot_cle.url`) mène à la page visée,
   `/lore/<slug>/` sans ancre : `{{id}}` quand le texte affiché est son libellé d'import (celui d'avant un renommage sur le site, qui ne réécrit aucun
   texte : la page redonnée reste la même), `{{id|texte}}` sinon (`{{temple-de-vent|Temple du Vent}}`) ; jamais un
   `[[…]]`, que `db:check` refuse. Un import ne crée jamais de mot-clé : sans **exactement un** mot-clé pour la page, le renvoi est écrit en texte simple
   et le script le signale (« renvoi sans mot-clé, écrit en texte simple », à l'écriture et au `--verifier`) ; il se répare en donnant l'adresse à un
   mot-clé sur le site de dev, puis en relançant le script (`Codex.lien`). Le mot-clé d'une page (« Mrode », « Erisia », « Glossaire », créés par la
-  0096) n'est jamais posé comme étiquette de partie (`Vocabulaire.etiquette`) : les pages ne gardent que « codex ».
-- L'état d'import d'une page modifiée par le site, relu dans l'historique, peut dater d'avant la 0096 : `--verifier` y lit ses `[[…]]` comme le script
+  0098) n'est jamais posé comme étiquette de partie (`Vocabulaire.etiquette`) : les pages ne gardent que « codex ».
+- L'état d'import d'une page modifiée par le site, relu dans l'historique, peut dater d'avant la 0098 : `--verifier` y lit ses `[[…]]` comme le script
   les écrit aujourd'hui (`liens_en_balises`), comme la migration a converti la page de la base.
 - Un nouvel export : le remplacer dans `sources/raw/`, puis `python3 -I tools/docs/codex.py`, `--verifier`, `npm run db:sync-pages` (depuis `client/`).
   Puis la chronologie, qui cite le texte des pages : `node tools/chronologie/chronologie.mjs --verifier` ; un extrait à reprendre se corrige dans

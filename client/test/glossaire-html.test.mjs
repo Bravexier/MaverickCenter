@@ -1,4 +1,4 @@
-// Le site CONSTRUIT et la migration 0096 (réponses du propriétaire du 2026-11-06, transmises par le leader-technique) :
+// Le site CONSTRUIT et la migration 0098 (réponses du propriétaire du 2026-11-06, transmises par le leader-technique) :
 //   - le Glossaire (/regles/glossaire/, Q6 et Q7) : au menu Règles après Exploration ; la liste de TOUS les mots-clés (libellé, un lien s'il a une
 //     adresse ; abréviation ; pastille de sa couleur ; définition, ses balises rendues ; ses pages, un lien vers /recherche/?mot-cle=<id>) ; les couleurs
 //     que propose le mode modification (data-couleurs) ; le Lexique y mène ; /recherche/ ne gère plus le vocabulaire ;

@@ -12,7 +12,7 @@ user-invocable: false
 - Vocabulaire : `lib/mots-cles.mjs` (`MOTS_CLES_PROTEGES`), `lib/mots-cles-db.mjs` (`textesDeLaBase`).
 - Site de dev : `src/scripts/edition/mots-cles-vivants.mjs` (vocabulaire vivant ; refait les bulles et rend les balises du HTML posé après le chargement) ; service : `serveur/edition.mjs` (`texteAvecMotsClesCanoniques`, `reecrireLesBalises`), `serveur/edition-chronologie.mjs` (`verifierSansSort`, opérations du vocabulaire).
 - Importeurs : `tools/db/maverick.py` (`mot_cle`, `poser_les_mots_cles`), `tools/db/homonymes.py` (`MAGIES_HOMONYMES`), `tools/docs/codex.py --vocabulaire`.
-- Sous-skills : skill `zone-mots-cles-liens` (adresse et couleur d'un mot-clé, liens convertis, migration 0096), skill `zone-mots-cles-balisage` (baliser un mot dans tous les textes). Le Glossaire `/regles/glossaire/` et la gestion du vocabulaire : skill `zone-glossaire` ; `/recherche/` et son index : skill `zone-recherche`.
+- Sous-skills : skill `zone-mots-cles-liens` (adresse et couleur d'un mot-clé, liens convertis, migration 0098), skill `zone-mots-cles-balisage` (baliser un mot dans tous les textes). Le Glossaire `/regles/glossaire/` et la gestion du vocabulaire : skill `zone-glossaire` ; `/recherche/` et son index : skill `zone-recherche`.
 
 ## À lire
 - `docs/content-guide.md`, « Mots-clés (glossaire) » : écritures, forme canonique, refus, renommer / supprimer / fusionner, ce qui n'est pas un mot-clé.
@@ -20,7 +20,7 @@ user-invocable: false
 - La forme canonique est aussi à appliquer côté édition : skill `zone-edition`. La chronologie a des catégories, pas des mots-clés : skill `zone-chronologie`.
 
 ## Le glossaire (table `mot_cle`)
-- Migrations `0043`, `0056` (et `0058` pour « Solidité »), `0090` (R183 : le Lexique converti en mots-clés), `0096` (`couleur`, `url`). Colonnes : `id` figé, `libelle`, `libelle_cle` = `normalize`, `description` (la définition), `abreviation` (une par mot-clé, NULL sinon), `couleur` et `url` (NULL sinon).
+- Migrations `0043`, `0056` (et `0058` pour « Solidité »), `0090` (R183 : le Lexique converti en mots-clés), `0098` (`couleur`, `url`). Colonnes : `id` figé, `libelle`, `libelle_cle` = `normalize`, `description` (la définition), `abreviation` (une par mot-clé, NULL sinon), `couleur` et `url` (NULL sinon).
 - La définition est NULL tant qu'elle n'est pas écrite, partout (base, service, `mots-cles-db.mjs`) ; elle se lit `?? ''`.
 - La 0056 n'a gardé sur les pages que `MOTS_CLES_PROTEGES` et le glossaire ; les ids des 400 mots-clés retirés peuvent resservir.
 - Une page porte un mot-clé par `page_tag.tag_id` (`ON DELETE CASCADE`) ; un sort, en étiquette, par `sort_mot_cle` (migration 0067, sans cascade : R114 ; « Sort fer » sur les 13 sorts « Fer… », migration 0079 : R164).
@@ -70,7 +70,7 @@ user-invocable: false
 
 ## Rejeu du journal
 - Un lot d'avant la 0056 (étiquette d'un mot-clé absent et non protégé, mot-clé non protégé créé sans définition, mot-clé disparu renommé) ou le mot-clé libre d'un lot d'avant la 0043 sont rejoués sans effet, sans conflit (`ancienneEcritureDuGlossaire`, `sansEffet` ; détail : `docs/serveur.md`, « Édition des règles (site de dev) »).
-- Balises d'un mot-clé supprimé ou fusionné, lots d'avant la 0090 (`cr`) et la 0096 (liens) : skill `zone-edition`, « Rejeu du journal ».
+- Balises d'un mot-clé supprimé ou fusionné, lots d'avant la 0090 (`cr`) et la 0098 (liens) : skill `zone-edition`, « Rejeu du journal ».
 
 ## Tests
 - `mots-cles-balises.test.mjs`, `mots-cles-abreviation.test.mjs`, `mots-cles-vivants.test.mjs`, `mots-cles-python.test.mjs`, `texte-en-place-mots-cles.test.mjs`, `importeurs-etiquettes.test.mjs`, `db-lexique-en-mots-cles.test.mjs`, `serveur-edition-rejeu-fusions.test.mjs` (R183). Le test des homonymes du Codex (`codex.test.mjs`, R145, R183) couvre aussi « sang ». Les tests du vocabulaire créent leurs mots-clés d'essai (`test/aide-mots-cles.mjs`).

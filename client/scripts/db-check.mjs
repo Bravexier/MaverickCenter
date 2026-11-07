@@ -3,7 +3,7 @@
 // Contrôles : integrity_check, foreign_key_check ; entités adressées par (entite_table, entite_id) (page_entite, note_cellule, ecart_source)
 // qui doivent exister ; complétude de page_entite (toute entité rattachée à une page y figure) ; trace des corrections (le texte corrigé est dans les
 // lignes typées qui couvrent la cellule, l'ancien n'y est plus) ; tables dérivées cohérentes avec leurs sources ; balises du glossaire, lien et couleur
-// des mots-clés, aucun lien `[[…]]` ni Markdown interne dans les textes (migration 0096).
+// des mots-clés, aucun lien `[[…]]` ni Markdown interne dans les textes (migration 0098).
 import { DatabaseSync } from 'node:sqlite';
 import { createHash } from 'node:crypto';
 import { pathToFileURL, fileURLToPath } from 'node:url';
@@ -260,7 +260,7 @@ if (noms.has('mot_cle')) {
   bilan.balises_mots_cles = balises;
   bilan.colonnes_de_texte = colonnesLues;
 
-  // Liens devenus des mots-clés (migration 0096, lib/mots-cles-liens.mjs) : l'adresse d'un mot-clé est interne, de la forme du CHECK, et son chemin est
+  // Liens devenus des mots-clés (migration 0098, lib/mots-cles-liens.mjs) : l'adresse d'un mot-clé est interne, de la forme du CHECK, et son chemin est
   // une adresse du site (lib/adresses-db.mjs#adressesDuSite : une page qui n'est pas d'exemple, une rubrique, une route fixe ; l'ancre et la requête ne
   // sont pas vérifiées) ; sa couleur est « #rrggbb » ou une référence que la palette connaît (lib/palette-css.mjs#fauteDeLaCouleur) ; et plus aucun
   // texte des règles et des pages (textesDeLaBase : ni les sections 13 à 15, ni les tables dérivées, ni les traces) n'écrit de lien `[[…]]` ni de lien
@@ -297,7 +297,7 @@ if (noms.has('mot_cle')) {
         for (const l of liensDuTexte(r.texte__, { markdown })) {
           if (l.sorte === 'markdown' && lienGarde(l.cible)) continue;
           liensRestes += 1;
-          if (liensRestes <= 20) problemes.push(`${table}.${colonne} ${cle.map((c) => r[`k_${c}`]).join('|')} : le lien « ${l.brut} » s’écrit avec la balise du mot-clé de sa page (migration 0096)`);
+          if (liensRestes <= 20) problemes.push(`${table}.${colonne} ${cle.map((c) => r[`k_${c}`]).join('|')} : le lien « ${l.brut} » s’écrit avec la balise du mot-clé de sa page (migration 0098)`);
         }
       }
     }

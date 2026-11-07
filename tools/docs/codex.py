@@ -28,7 +28,7 @@ Découpage (une page = une section du document) :
     « GLOSSAIRE »                  une page
 et une page de sommaire par partie qui en a plusieurs, plus `lore/codex` (sommaire du document). Une section vide du document n'a pas de page.
 
-Renvois (sommaires, « Voir aussi », renvoi « Voir “X” … » du document) : la balise du mot-clé qui mène à la page visée (mot_cle.url, migration 0096 :
+Renvois (sommaires, « Voir aussi », renvoi « Voir “X” … » du document) : la balise du mot-clé qui mène à la page visée (mot_cle.url, migration 0098 :
 les liens sont devenus des mots-clés), « {{id}} » quand le texte affiché est son libellé, « {{id|texte}} » sinon ; jamais un [[lien]]. Un import ne
 crée jamais de mot-clé : sans exactement un mot-clé pour la page, le texte simple, signalé « renvoi sans mot-clé » (Codex.lien). Une étiquette de
 partie (PARTIES, continent, magie) n'est jamais le mot-clé d'une page (Vocabulaire.etiquette).
@@ -275,7 +275,7 @@ class Codex:
         tags = ['codex'] + [t for t in tags if t]
         if self.vocabulaire:
             # ceux du vocabulaire seulement, dans son écriture (celle que db:export-pages écrit), une fois chacun ; une étiquette de partie n'est
-            # jamais le mot-clé d'une page (Vocabulaire.etiquette : « Mrode », « Erisia », « Glossaire » de la migration 0096)
+            # jamais le mot-clé d'une page (Vocabulaire.etiquette : « Mrode », « Erisia », « Glossaire » de la migration 0098)
             tags = list(dict.fromkeys(libelle for libelle in [self.vocabulaire(tags[0])] + [self.vocabulaire.etiquette(t) for t in tags[1:]] if libelle))
         p = dict(slug=slug, titre=titre, corps=nettoyer_lignes(corps), tags=tags,
                  resume=resume if resume is not None else premiere_phrase(corps), aliases=list(aliases))
@@ -285,7 +285,7 @@ class Codex:
 
     def lien(self, titre, texte=None):
         """Le renvoi vers la page `titre` du Codex (lore/<normalize(titre)>), affiché `texte` (le titre par défaut) : la balise du mot-clé qui mène à
-        cette page (migration 0096 : les liens sont devenus des mots-clés, mot_cle.url), « {{id}} » quand le texte affiché est son libellé,
+        cette page (migration 0098 : les liens sont devenus des mots-clés, mot_cle.url), « {{id}} » quand le texte affiché est son libellé,
         « {{id|texte}} » sinon (lib/liens-en-mots-cles.mjs#baliseDuLien, la forme canonique d'un texte mis en forme). Un import ne crée jamais de
         mot-clé : s'il n'y en a pas exactement un pour cette page (ou si le texte ne peut pas être celui d'une balise), le texte simple, signalé
         (self.sans_lien)."""
@@ -524,7 +524,7 @@ class Vocabulaire:
     """Les mots-clés du vocabulaire (data/rows/mot_cle.sql, historique du site de dev compris). Un import ne crée jamais de mot-clé (migration 0056).
     - appelé (écriture) : le libellé du mot-clé qu'elle désigne, ou None ; même règle que l'import des pages (tools/db/maverick.py#mot_cle : une
       écriture qu'un mot-clé renommé a quittée mène à lui), db:sync-pages ne poserait pas une écriture inconnue ;
-    - etiquette(écriture) : de même, mais None pour le mot-clé d'une page (mot_cle.url, migration 0096 : « Mrode », « Erisia », « Glossaire ») : une
+    - etiquette(écriture) : de même, mais None pour le mot-clé d'une page (mot_cle.url, migration 0098 : « Mrode », « Erisia », « Glossaire ») : une
       étiquette de partie du Codex (PARTIES, continent, magie) n'en est jamais un, ses pages ne portaient que « codex » ;
     - mots_cles_de_l_adresse(adresse) : [(id, libellé d'import)] des mots-clés qui mènent à cette adresse (« /lore/mrode/ ») : leur url, requête
       ignorée et sans ancre, a le même chemin (lib/mots-cles-liens.mjs#motsClesDeLAdresse) ;
@@ -710,7 +710,7 @@ def pages_sur_disque(out):
 
 
 def liens_en_balises(texte, codex):
-    """Les liens [[cible|texte]] d'un texte d'import d'avant la migration 0096 (l'état d'import d'une page modifiée par le site de dev, relu dans
+    """Les liens [[cible|texte]] d'un texte d'import d'avant la migration 0098 (l'état d'import d'une page modifiée par le site de dev, relu dans
     l'historique) devenus les renvois que le découpage écrit aujourd'hui (Codex.lien) : la migration a converti de même la page de la base."""
     return WIKILIEN.sub(lambda m: codex.lien(m.group(1).strip(), (m.group(2) or m.group(1)).strip()), texte)
 

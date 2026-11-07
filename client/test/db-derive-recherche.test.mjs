@@ -1,5 +1,5 @@
 // La recherche plein texte de la base (table page_fts, remplie par scripts/db-derive.mjs#textePlein) indexe le texte tel qu'il s'affiche : depuis la
-// migration 0096, un lien est une balise du glossaire, souvent sans texte (« {{orios}} », « {{lequipement}} »), et le mot affiché est le libellé du
+// migration 0098, un lien est une balise du glossaire, souvent sans texte (« {{orios}} », « {{lequipement}} »), et le mot affiché est le libellé du
 // mot-clé (« Orios », « L’équipement ») ; chaque balise est donc remplacée par son texte affiché (le texte écrit, sinon le libellé ; « Libellé :
 // définition » pour le mode complet : lib/mots-cles-balises.mjs#texteSansBalises), dans le corps, le titre et le résumé. L'id d'un mot-clé n'est pas
 // indexé. Base construite depuis data/rows dans un dossier temporaire, une page d'essai réécrite avant db-derive.
@@ -23,7 +23,7 @@ test('page_fts : une page qui cite {{orios}} est trouvée par « Orios » ; une 
   const base = join(dossierTemporaire('derive-recherche', { t }), 'regles.db');
   lancer('db-build.mjs', ['--out', base]);
   const db = new DatabaseSync(base);
-  assert.equal(db.prepare("SELECT libelle FROM mot_cle WHERE id = 'orios'").get()?.libelle, 'Orios', 'le mot-clé de la race (migration 0096)');
+  assert.equal(db.prepare("SELECT libelle FROM mot_cle WHERE id = 'orios'").get()?.libelle, 'Orios', 'le mot-clé de la race (migration 0098)');
   // un mot-clé d'essai dont l'id ne partage aucun mot avec son libellé, et un autre en mode complet (sa définition s'affiche)
   const insMotCle = db.prepare('INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES (?, ?, ?, ?)');
   insMotCle.run('qxwv-lien', 'Zorglubienne écarlate', normalize('Zorglubienne écarlate'), null);

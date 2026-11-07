@@ -174,7 +174,7 @@ export const RESSOURCES = [
       'il est retiré de toutes les pages qui le portent et de tous les textes qui le citent (sa balise devient son texte simple) ; ceux dont le site se sert pour ranger ses pages (catégories de /classes/, « classe », « race », « race hybride », « capacité ' +
       'de classe », « métier », « codex »), « Sort grenade » (décision R114) et « Sort fer » (décision R164), dont la fiche se sert, ne se renomment, ne se suppriment ni ne se ' +
       'créent seuls (409), leur définition se modifie ; un mot-clé qui étiquette un sort (sous-ressource `mots-cles` des sorts, migrations 0067 et 0079) ne ' +
-      'se supprime ni ne se fusionne (409). Un lien (`url`, migration 0096 : les liens des textes devenus des balises) : une adresse interne, relative ' +
+      'se supprime ni ne se fusionne (409). Un lien (`url`, migration 0098 : les liens des textes devenus des balises) : une adresse interne, relative ' +
       'à la racine du site et sans le préfixe de déploiement (« /races/elfe/ », « /metiers/#metier-mineur »), dont le chemin mène à une page du site, ' +
       'une rubrique ou une route fixe (400 sinon ; l’ancre et la requête ne sont pas vérifiées) ; une balise du mot-clé mène à cette adresse, et un ' +
       'lien `[[…]]` ou `[texte](/…)` saisi dans un texte devient la balise du seul mot-clé qui mène à sa page (400 s’il n’y en a aucun ou plusieurs). ' +

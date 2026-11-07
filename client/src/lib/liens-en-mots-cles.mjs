@@ -1,12 +1,12 @@
-// Les liens d'un texte devenus des balises du glossaire (migration 0096, data/migrations/0096-liens-en-mots-cles.sql ; réponses du propriétaire du
+// Les liens d'un texte devenus des balises du glossaire (migration 0098, data/migrations/0098-liens-en-mots-cles.sql ; réponses du propriétaire du
 // 2026-11-06 : `mot_cle` gagne une couleur et une adresse, et « les [[…]] et les liens Markdown internes [texte](/…) deviennent des balises ») : un lien
 // `[[cible]]`, `[[cible|texte]]` ou `[texte](/adresse)` qui mène à une page (ou à une route du site) devient la balise du mot-clé de cette page, son
 // texte affiché gardé : « {{id}} » quand il est le libellé du mot-clé, « {{id|texte}} » sinon (« {{id\|texte}} » sur une ligne de tableau Markdown) ;
 // dans un texte de case, « {{id|texte}} » toujours (la forme canonique de lib/mots-cles-balises.mjs#formeCanonique). Un lien dans un code
 // (lib/mots-cles-balises.mjs#zonesDeCode) reste tel quel ; un lien que la table ne connaît pas aussi (`restes`).
-// La table de conversion vient du registre de la migration (data/migrations/0096-liens-en-mots-cles.json : `motsCles`, chacun avec ses `cles` de lien
+// La table de conversion vient du registre de la migration (data/migrations/0098-liens-en-mots-cles.json : `motsCles`, chacun avec ses `cles` de lien
 // `[[…]]` et ses `adresses` de lien Markdown) : tableDeConversion. Le générateur de la migration (scripts/liens-en-mots-cles.mjs) s'en sert ; le rejeu
-// du journal du site de dev aussi (un lot d'avant la 0096 qui écrit encore un lien).
+// du journal du site de dev aussi (un lot d'avant la 0098 qui écrit encore un lien).
 // Pur, sans dépendance navigateur ni Astro (dépendances : lib/wikilinks-resolution.mjs, lib/mots-cles-balises.mjs, lib/text.mjs).
 import { dansUneLigneDeTableau, zonesDeCode } from './mots-cles-balises.mjs';
 import { normalize } from './text.mjs';

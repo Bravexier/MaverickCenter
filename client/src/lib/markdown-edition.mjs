@@ -32,7 +32,7 @@ const estElement = (n) => n?.type === 'element';
 const estBloc = (n) => estElement(n) && BLOCS.has(n.nom);
 const ignore = (n) => estElement(n) && (IGNORES.has(n.nom) || attribut(n, 'data-ed-ignorer') !== null);
 const ID_DE_MOT_CLE = /^[a-z0-9-]+$/;
-// un mot-clé rendu : `strong.mot-cle`, ou `a.mot-cle` quand il a une adresse (migration 0096 : lib/mots-cles-balises.mjs#htmlDeLaBalise)
+// un mot-clé rendu : `strong.mot-cle`, ou `a.mot-cle` quand il a une adresse (migration 0098 : lib/mots-cles-balises.mjs#htmlDeLaBalise)
 const estUnMotCle = (n) => (n.nom === 'strong' || n.nom === 'b' || n.nom === 'a') && classes(n).includes('mot-cle') && ID_DE_MOT_CLE.test(attribut(n, 'data-mot-cle') ?? '');
 /** La classe de la couleur d'un mot-clé rendu (lib/mots-cles-liens.mjs#classeDuMotCle), gardée par l'aperçu ; null sans elle. */
 const classeDeCouleur = (n) => classes(n).find((c) => /^couleur-[a-z0-9]+(?:-[a-z0-9]+)+$/.test(c)) ?? null;

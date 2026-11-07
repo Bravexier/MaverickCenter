@@ -207,7 +207,7 @@ test('chaque page `guide/…` de la base a une adresse à elle, jamais sous /gui
 
 test('les adresses du plan n’entrent en conflit ni avec un type de page, ni avec une page Astro, ni avec un onglet, ni entre elles', () => {
   for (const r of ['decouvrir', 'regles', 'mj']) assert.ok(!TYPE_KEYS.includes(r), `${r} est un type de page`);
-  // le Glossaire (pages/regles/glossaire.astro, migration 0096) : aucune page des onglets ne prend son adresse
+  // le Glossaire (pages/regles/glossaire.astro, migration 0098) : aucune page des onglets ne prend son adresse
   assert.deepEqual(NOMS_RESERVES, ['artisanat', 'avancees', 'glossaire']);
   assert.deepEqual(nomsReserves(), ['artisanat', 'avancees', 'glossaire', 'fiche-de-personnage', 'mecaniques-generales', 'combats', 'exploration']);
   const slugs = ids.filter((id) => cheminDePage(id).startsWith('regles/')).map((id) => id.slice('guide/'.length));

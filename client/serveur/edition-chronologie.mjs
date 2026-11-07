@@ -72,14 +72,14 @@ export function chronologieVivante(db) {
 /**
  * Le vocabulaire des mots-clés pour le Glossaire (/regles/glossaire/) en mode modification (GET /api/edition/mots-cles/) : [{ id, libelle, libelle_cle,
  * description, abreviation, url, couleur, classe, pages, protege }] (`description` : la définition telle qu'enregistrée, NULL tant qu'il n'est pas décrit ;
- * `abreviation` : NULL sans abréviation, et sur une base d'avant la migration 0090 ; `url`, `couleur` : l'adresse et la couleur, migration 0096, NULL
+ * `abreviation` : NULL sans abréviation, et sur une base d'avant la migration 0090 ; `url`, `couleur` : l'adresse et la couleur, migration 0098, NULL
  * sans elles et sur une base d'avant ; `classe` : la classe de sa couleur, lib/mots-cles-liens.mjs#classeDuMotCle, null sans couleur ; `protege` : la
  * raison pour laquelle il ne se renomme, ne se supprime ni ne se fusionne, lib/mots-cles.mjs ; null sinon : sa définition, son abréviation, son adresse
  * et sa couleur, elles, se modifient toujours), triés par libellé.
  * @param {import('node:sqlite').DatabaseSync} db
  */
 export function vocabulaire(db) {
-  // `*` : la vue d'avant la migration 0090 n'a pas la colonne abreviation, celle d'avant la 0096 ni couleur ni url
+  // `*` : la vue d'avant la migration 0090 n'a pas la colonne abreviation, celle d'avant la 0098 ni couleur ni url
   return db.prepare('SELECT * FROM v_mot_cle').all()
     .map(({ id, libelle, libelle_cle: cle, description, abreviation, couleur, url, nb_pages: pages }) => ({
       id, libelle, libelle_cle: cle, description, abreviation: abreviation ?? null, url: url ?? null, couleur: couleur ?? null,
@@ -316,7 +316,7 @@ export function domainesDeLaChronologie({
     // d'un texte de case garde le texte écrit, une balise d'un texte mis en forme montre le nouveau libellé) ; vers l'écriture d'un autre mot-clé,
     // refusé (la page propose la fusion) ; l'abréviation (migration 0090, protégés compris : elle ne change ni l'id ni l'écriture) : vidée, NULL ; une
     // abréviation, ou une écriture renommée, qu'une balise ne lirait pas sans ambiguïté : refusée (serveur/edition.mjs#refuserLAbreviation) ; l'adresse
-    // et la couleur (migration 0096, protégés compris) : vidées, NULL ; une adresse qui ne mène à aucune page du site, une couleur que la palette ne
+    // et la couleur (migration 0098, protégés compris) : vidées, NULL ; une adresse qui ne mène à aucune page du site, une couleur que la palette ne
     // connaît pas : refusées, 400 (serveur/edition.mjs#refuserLeLien, #refuserLaCouleur ; l'existence de la page se lit dans la base vivante)
     colonnes(ctx, ligne, valeurs, avant) {
       const sortie = 'description' in valeurs ? { description: ligne.description || null } : {};
@@ -329,7 +329,7 @@ export function domainesDeLaChronologie({
       return { ...sortie, ...renomme };
     },
     /**
-     * Un mot-clé du glossaire, son libellé, sa définition, son abréviation, son adresse et sa couleur (migration 0096), sans page (il se pose ensuite) ;
+     * Un mot-clé du glossaire, son libellé, sa définition, son abréviation, son adresse et sa couleur (migration 0098), sans page (il se pose ensuite) ;
      * refusé s'il s'écrit comme un mot-clé existant, ou si son abréviation, son adresse ou sa couleur ne conviennent pas (serveur/edition.mjs#creerMotCle).
      */
     creer(ctx, valeurs) {
@@ -403,7 +403,7 @@ export function domainesDeLaChronologie({
    * `{ op: 'fusionner_mots_cles', mot_cle, dans }` : le mot-clé `mot_cle` rejoint `dans` (ses pages passent à `dans`, sans doublon : une
    * page qui avait les deux perd seulement l'ancien ; les balises qui le citent citent `dans`, leur texte gardé), puis quitte le vocabulaire. Ni l'un ni
    * l'autre ne peut être un mot-clé dont le site se sert, ni un mot-clé qui étiquette un sort (verifierSansSort). L'adresse et la couleur (migration
-   * 0096) : la cible garde les siennes ; celle qu'elle n'a pas, elle la prend de la source, par une modification notée au journal ; quand les deux en
+   * 0098) : la cible garde les siennes ; celle qu'elle n'a pas, elle la prend de la source, par une modification notée au journal ; quand les deux en
    * ont une, la cible garde la sienne et le résumé le dit.
    */
   function fusionner(ctx, op) {
@@ -422,7 +422,7 @@ export function domainesDeLaChronologie({
       if (db.prepare('SELECT 1 FROM page_tag WHERE page_id = ? AND tag_id = ?').get(t.page_id, cible.id)) w.supprimer('page_tag', { page_id: t.page_id, ordre: t.ordre });
       else w.modifier('page_tag', { page_id: t.page_id, ordre: t.ordre }, { tag_id: cible.id });
     }
-    // l'adresse et la couleur (migration 0096 ; colonnes absentes d'une base d'avant : rien à reprendre)
+    // l'adresse et la couleur (migration 0098 ; colonnes absentes d'une base d'avant : rien à reprendre)
     const reprises = {};
     const gardees = [];
     for (const [colonne, nom] of [['url', 'le lien'], ['couleur', 'la couleur']]) {

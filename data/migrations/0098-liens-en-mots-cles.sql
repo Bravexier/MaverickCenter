@@ -1,19 +1,24 @@
--- 0096-liens-en-mots-cles : les liens des textes deviennent des balises du glossaire, et un mot-clé gagne une couleur et une adresse.
+-- 0098-liens-en-mots-cles : les liens des textes deviennent des balises du glossaire, et un mot-clé gagne une couleur et une adresse.
 -- Réponses du propriétaire (2026-11-06, transmises par le leader-technique) : « mot_cle » gagne « couleur » et « url », NULL par défaut, ajoutées en
 -- dernier, une URL interne seulement ; les [[…]] et les liens Markdown internes [texte](/…) deviennent des balises ; un mot-clé par page visée
 -- (libellé = titre de la page, url = son adresse, ni définition ni abréviation : aucune n'est inventée) ; un mot-clé existant de même libelle_cle ne
 -- reçoit que l'url (et la couleur) : « alignement », « artisanat », « bouclier », « ceinture », « codex » (« Le mot-clé existant prend l'URL ») ;
+-- « Fusionner dans l'existant » : « Pour chaque paire, le mot-clé existant prend l'URL de la page, comme Bouclier et Ceinture, et les liens convertis
+-- le visent. Le texte affiché reste le même, et le mot-clé nouveau n'est pas créé. » (13 pages ou routes, liste de FUSIONS_DANS_L_EXISTANT du
+-- générateur ; « Classe → /classes/, Métier → /metiers/, race → /races/ » ; « Résistance » : « Aucun, garder le nouveau ») ;
 -- la couleur est une référence « <famille>:<id> » (l'id de la classe CSS de la palette, lib/palette-css.mjs#idDeCouleur) ou « #rrggbb » ; « il ne faut pas de changement par rapport à avant en terme de résultat. Tu feras donc en sorte que
 -- le mot clé reprenne la couleur de la page d'avant » ; « Un mot-clé par page colorée » (aussi pour celles que rien ne vise ; la couleur calculée des
 -- classes et des races recopiée, gel accepté) ; un lien vers une route sans page devient le mot-clé de la route, libellé du menu du site ; homonymes
 -- race/classe : « La race garde le nom » (la classe : « <Nom> (classe) »).
--- FICHIER GÉNÉRÉ par client/scripts/liens-en-mots-cles.mjs depuis la base construite à la version 95 (ne pas le modifier à la main) ; registre :
--- 0096-liens-en-mots-cles.json (chaque mot-clé, ses écritures de lien, chaque remplacement). Migration de STRUCTURE et de DONNÉES ; rien ne va dans
+-- FICHIER GÉNÉRÉ par client/scripts/liens-en-mots-cles.mjs depuis la base construite à la version 97 (ne pas le modifier à la main) ; registre :
+-- 0098-liens-en-mots-cles.json (chaque mot-clé, ses écritures de lien, chaque remplacement). Migration de STRUCTURE et de DONNÉES ; rien ne va dans
 -- historique_modification (la migration n'est pas une modification du site de dev).
 --   1. mot_cle.couleur, mot_cle.url (ADD COLUMN nullable, en dernier) ; la vue v_mot_cle les donne (refaite, en dernier). Qu'une référence de couleur
 --      nomme une couleur de la palette (lib/palette-css.mjs#FAMILLES_DE_LA_PALETTE) ne se lit pas en SQL.
---   2. « alignement », « artisanat », « bouclier », « ceinture » et « codex » gardent id et définition, et reçoivent l'url de leur page (et sa
---      couleur si elle en a une).
+--   2. « alignement », « artisanat », « bouclier », « ceinture » et « codex », et les 13 mots-clés des fusions (« posture », « mode-hyper »,
+--      « alteration-detat », « classe », « race », « metier », « degats », « embuscade », « attaque-dopportunite », « piece-elementaire »,
+--      « attaque-discrete », « tenaille », « des ») gardent id, libellé et définition, et reçoivent l'url de leur page ou de leur route (et sa couleur
+--      si elle en a une).
 --   3. Les mots-clés nouveaux : chaque page visée par un lien, chaque page colorée (magies, classes, races, pages de Découvrir et de la création du
 --      personnage), chaque route visée sans page ; ni définition ni abréviation.
 --   4. Les textes : chaque lien devient la balise de son mot-clé, son texte affiché gardé (« {{id}} » quand c'est le libellé), dans la forme canonique
@@ -32,16 +37,29 @@ CREATE VIEW v_mot_cle AS
     (SELECT count(*) FROM page_tag t WHERE t.tag_id = m.id) AS nb_pages,
     m.description,                                                         -- la définition du glossaire (migration 0056 ; NULL : pas encore décrit)
     m.abreviation,                                                         -- l'abréviation (migration 0090 ; NULL : aucune)
-    m.couleur,                                                             -- la référence de couleur (migration 0096 ; NULL : aucune)
-    m.url                                                                  -- l'adresse interne où mène le mot-clé (migration 0096 ; NULL : aucune)
+    m.couleur,                                                             -- la référence de couleur (migration 0098 ; NULL : aucune)
+    m.url                                                                  -- l'adresse interne où mène le mot-clé (migration 0098 ; NULL : aucune)
   FROM mot_cle m;
 
 -- 2. Les mots-clés existants qui mènent à une page ou à une route (id et définition gardés)
 UPDATE mot_cle SET url = '/regles/alignement/', couleur = NULL WHERE id = 'alignement';
+UPDATE mot_cle SET url = '/regles/alterations-d-etats/', couleur = NULL WHERE id = 'alteration-detat';
 UPDATE mot_cle SET url = '/regles/artisanat/', couleur = NULL WHERE id = 'artisanat';
+UPDATE mot_cle SET url = '/regles/les-attaques-discretes/', couleur = NULL WHERE id = 'attaque-discrete';
+UPDATE mot_cle SET url = '/regles/les-attaques-d-opportunite/', couleur = NULL WHERE id = 'attaque-dopportunite';
 UPDATE mot_cle SET url = '/ressources/bouclier/', couleur = NULL WHERE id = 'bouclier';
 UPDATE mot_cle SET url = '/ressources/objets-a-la-ceinture/', couleur = NULL WHERE id = 'ceinture';
+UPDATE mot_cle SET url = '/classes/', couleur = NULL WHERE id = 'classe';
 UPDATE mot_cle SET url = '/lore/codex/', couleur = NULL WHERE id = 'codex';
+UPDATE mot_cle SET url = '/regles/les-degats/', couleur = NULL WHERE id = 'degats';
+UPDATE mot_cle SET url = '/regles/jet-de-des/', couleur = NULL WHERE id = 'des';
+UPDATE mot_cle SET url = '/regles/l-embuscade/', couleur = NULL WHERE id = 'embuscade';
+UPDATE mot_cle SET url = '/metiers/', couleur = NULL WHERE id = 'metier';
+UPDATE mot_cle SET url = '/regles/le-mode-hyper/', couleur = NULL WHERE id = 'mode-hyper';
+UPDATE mot_cle SET url = '/ressources/armes/#pieces-elementaires', couleur = NULL WHERE id = 'piece-elementaire';
+UPDATE mot_cle SET url = '/regles/les-postures/', couleur = NULL WHERE id = 'posture';
+UPDATE mot_cle SET url = '/races/', couleur = NULL WHERE id = 'race';
+UPDATE mot_cle SET url = '/regles/prise-en-tenaille-et-zone-d-influence/', couleur = NULL WHERE id = 'tenaille';
 
 -- 3. Les mots-clés nouveaux (par id)
 INSERT INTO mot_cle (id, libelle, libelle_cle, description, abreviation, couleur, url) VALUES
@@ -50,8 +68,6 @@ INSERT INTO mot_cle (id, libelle, libelle_cle, description, abreviation, couleur
   ('accessoires', 'Accessoires', 'accessoires', NULL, NULL, NULL, '/ressources/accessoires/'),
   ('alchimie', 'Alchimie', 'alchimie', NULL, NULL, NULL, '/ressources/alchimie/'),
   ('alchimie-primitive', 'Alchimie primitive', 'alchimie-primitive', NULL, NULL, NULL, '/ressources/alchimie-primitive/'),
-  ('alterations-detats', 'Altérations d’états', 'alterations-detats', NULL, NULL, NULL, '/regles/alterations-d-etats/'),
-  ('alterations-detats-et-mode-hyper', 'Altérations d''états et Mode Hyper', 'alterations-detats-et-mode-hyper', NULL, NULL, NULL, '/regles/alterations-d-etats-et-mode-hyper/'),
   ('anansi', 'Anansi', 'anansi', NULL, NULL, 'race:hybride', '/races/anansi/'),
   ('anansi-classe', 'Anansi (classe)', 'anansi-classe', NULL, NULL, 'classe:raciales', '/classes/anansi/'),
   ('anna', 'Anna', 'anna', NULL, NULL, NULL, '/lore/anna/'),
@@ -84,7 +100,6 @@ INSERT INTO mot_cle (id, libelle, libelle_cle, description, abreviation, couleur
   ('chapelle-des-os', 'Chapelle des Os', 'chapelle-des-os', NULL, NULL, NULL, '/lore/chapelle-des-os/'),
   ('chargement-mage-vert', 'Chargement (Mage Vert)', 'chargement-mage-vert', NULL, NULL, NULL, '/capacites/mage-vert-chargement/'),
   ('chronologie', 'Chronologie', 'chronologie', NULL, NULL, NULL, '/chronologie/'),
-  ('classes', 'Classes', 'classes', NULL, NULL, NULL, '/classes/'),
   ('clerc', 'Clerc', 'clerc', NULL, NULL, 'classe:magiques', '/classes/clerc/'),
   ('cloche-dor', 'Cloche d’or', 'cloche-dor', NULL, NULL, NULL, '/lore/cloche-dor/'),
   ('collines-humides', 'Collines humides', 'collines-humides', NULL, NULL, NULL, '/lore/collines-humides/'),
@@ -155,7 +170,6 @@ INSERT INTO mot_cle (id, libelle, libelle_cle, description, abreviation, couleur
   ('humain', 'Humain', 'humain', NULL, NULL, 'race:pure', '/races/humain/'),
   ('jackalope', 'Jackalope', 'jackalope', NULL, NULL, 'race:hybride', '/races/jackalope/'),
   ('jackalope-classe', 'Jackalope (classe)', 'jackalope-classe', NULL, NULL, 'classe:raciales', '/classes/jackalope/'),
-  ('jet-de-des', 'Jet de dés', 'jet-de-des', NULL, NULL, NULL, '/regles/jet-de-des/'),
   ('kitsune', 'Kitsune', 'kitsune', NULL, NULL, 'race:hybride', '/races/kitsune/'),
   ('kitsune-classe', 'Kitsune (classe)', 'kitsune-classe', NULL, NULL, 'classe:raciales', '/classes/kitsune/'),
   ('la-confrerie-des-brandes-sacrileges', 'La Confrérie des Brandes Sacrilèges', 'la-confrerie-des-brandes-sacrileges', NULL, NULL, NULL, '/lore/la-confrerie-des-brandes-sacrileges/'),
@@ -163,23 +177,17 @@ INSERT INTO mot_cle (id, libelle, libelle_cle, description, abreviation, couleur
   ('la-main-sanglante', 'La main sanglante', 'la-main-sanglante', NULL, NULL, NULL, '/lore/la-main-sanglante/'),
   ('la-montee-de-niveau', 'La montée de niveau', 'la-montee-de-niveau', NULL, NULL, NULL, '/regles/la-montee-de-niveau/'),
   ('la-pointe-de-sang', 'La pointe de sang', 'la-pointe-de-sang', NULL, NULL, NULL, '/lore/la-pointe-de-sang/'),
-  ('la-prise-en-tenaille-et-zone-dinfluence', 'La prise en tenaille et zone d’influence', 'la-prise-en-tenaille-et-zone-dinfluence', NULL, NULL, NULL, '/regles/prise-en-tenaille-et-zone-d-influence/'),
   ('la-vitesse-et-la-portee', 'La Vitesse et la Portée', 'la-vitesse-et-la-portee', NULL, NULL, NULL, '/regles/vitesse-et-portee/'),
   ('lame-seuil', 'Lame-Seuil', 'lame-seuil', NULL, NULL, NULL, '/lore/lame-seuil/'),
   ('lamia', 'Lamia', 'lamia', NULL, NULL, 'race:pure', '/races/lamia/'),
   ('lance-du-bourreau-dechire', 'Lance du Bourreau déchiré', 'lance-du-bourreau-dechire', NULL, NULL, NULL, '/lore/lance-du-bourreau-dechire/'),
   ('lanceur', 'Lanceur', 'lanceur', NULL, NULL, 'classe:distance', '/classes/lanceur/'),
   ('lancier', 'Lancier', 'lancier', NULL, NULL, 'classe:melee', '/classes/lancier/'),
-  ('le-mode-hyper', 'Le Mode Hyper', 'le-mode-hyper', NULL, NULL, NULL, '/regles/le-mode-hyper/'),
   ('le-tour-de-jeu', 'Le tour de jeu', 'le-tour-de-jeu', NULL, NULL, NULL, '/regles/le-tour-de-jeu/'),
-  ('lembuscade', 'L’embuscade', 'lembuscade', NULL, NULL, NULL, '/regles/l-embuscade/'),
   ('lequipement', 'L’équipement', 'lequipement', NULL, NULL, NULL, '/regles/l-equipement/'),
   ('les-actions-et-mouvements', 'Les Actions et mouvements', 'les-actions-et-mouvements', NULL, NULL, NULL, '/regles/actions-et-mouvements/'),
-  ('les-attaques-discretes', 'Les attaques discrètes', 'les-attaques-discretes', NULL, NULL, NULL, '/regles/les-attaques-discretes/'),
-  ('les-attaques-dopportunite', 'Les attaques d''opportunité', 'les-attaques-dopportunite', NULL, NULL, NULL, '/regles/les-attaques-d-opportunite/'),
   ('les-belladones-fleurissantes', 'Les Belladones Fleurissantes', 'les-belladones-fleurissantes', NULL, NULL, NULL, '/lore/les-belladones-fleurissantes/'),
   ('les-civilisations', 'Les Civilisations', 'les-civilisations', NULL, NULL, NULL, '/lore/les-civilisations/'),
-  ('les-degats', 'Les dégâts', 'les-degats', NULL, NULL, NULL, '/regles/les-degats/'),
   ('les-divinites', 'Les Divinités', 'les-divinites', NULL, NULL, NULL, '/lore/les-divinites/'),
   ('les-embaumeurs', 'Les embaumeurs', 'les-embaumeurs', NULL, NULL, NULL, '/lore/les-embaumeurs/'),
   ('les-exaltes', 'Les Exaltés', 'les-exaltes', NULL, NULL, NULL, '/lore/les-exaltes/'),
@@ -191,7 +199,6 @@ INSERT INTO mot_cle (id, libelle, libelle_cle, description, abreviation, couleur
   ('les-outils-legendaires-uniques', 'Les Outils Légendaires, Uniques', 'les-outils-legendaires-uniques', NULL, NULL, NULL, '/lore/les-outils-legendaires-uniques/'),
   ('les-pieges', 'Les pièges', 'les-pieges', NULL, NULL, NULL, '/regles/les-pieges/'),
   ('les-portes', 'Les portes', 'les-portes', NULL, NULL, NULL, '/regles/les-portes/'),
-  ('les-postures', 'Les postures', 'les-postures', NULL, NULL, NULL, '/regles/les-postures/'),
   ('les-races-non-jouable', 'Les races non-jouable', 'les-races-non-jouable', NULL, NULL, NULL, '/lore/les-races-non-jouable/'),
   ('liste-des-alterations-detat', 'Liste des altérations d''état', 'liste-des-alterations-detat', NULL, NULL, NULL, '/regles/liste-des-alterations-d-etat/'),
   ('livre-parchemin', 'Livre/Parchemin', 'livre-parchemin', NULL, NULL, NULL, '/ressources/livre-parchemin/'),
@@ -230,7 +237,6 @@ INSERT INTO mot_cle (id, libelle, libelle_cle, description, abreviation, couleur
   ('medusain-classe', 'Médusain (classe)', 'medusain-classe', NULL, NULL, 'classe:raciales', '/classes/medusain/'),
   ('mercenaire', 'Mercenaire', 'mercenaire', NULL, NULL, 'classe:melee', '/classes/mercenaire/'),
   ('meteo', 'Météo', 'meteo', NULL, NULL, NULL, '/regles/meteo/'),
-  ('metiers', 'Métiers', 'metiers', NULL, NULL, NULL, '/metiers/'),
   ('mineur', 'Mineur', 'mineur', NULL, NULL, NULL, '/metiers/#metier-mineur'),
   ('minotaure', 'Minotaure', 'minotaure', NULL, NULL, 'race:hybride', '/races/minotaure/'),
   ('minotaure-classe', 'Minotaure (classe)', 'minotaure-classe', NULL, NULL, 'classe:raciales', '/classes/minotaure/'),
@@ -261,14 +267,12 @@ INSERT INTO mot_cle (id, libelle, libelle_cle, description, abreviation, couleur
   ('orios', 'Orios', 'orios', NULL, NULL, 'race:hybride', '/races/orios/'),
   ('orios-classe', 'Orios (classe)', 'orios-classe', NULL, NULL, 'classe:raciales', '/classes/orios/'),
   ('parleur', 'Parleur', 'parleur', NULL, NULL, 'classe:speciales', '/classes/parleur/'),
-  ('pieces-elementaires', 'Pièces élémentaires', 'pieces-elementaires', NULL, NULL, NULL, '/ressources/armes/#pieces-elementaires'),
   ('plaine-brillante', 'Plaine brillante', 'plaine-brillante', NULL, NULL, NULL, '/lore/plaine-brillante/'),
   ('plaines-seches', 'Plaines sèches', 'plaines-seches', NULL, NULL, NULL, '/lore/plaines-seches/'),
   ('plateau-tonnerre', 'Plateau Tonnerre', 'plateau-tonnerre', NULL, NULL, NULL, '/lore/plateau-tonnerre/'),
   ('potentiel-illimite', 'Potentiel illimité', 'potentiel-illimite', NULL, NULL, 'magie:potentiel-illimite', '/magies/potentiel-illimite/'),
   ('preparation-mage-rouge', 'Préparation (Mage Rouge)', 'preparation-mage-rouge', NULL, NULL, NULL, '/capacites/mage-rouge-preparation/'),
   ('pugiliste', 'Pugiliste', 'pugiliste', NULL, NULL, 'classe:melee', '/classes/pugiliste/'),
-  ('races', 'Races', 'races', NULL, NULL, NULL, '/races/'),
   ('rater-ses-sortileges', 'Rater ses sortilèges', 'rater-ses-sortileges', NULL, NULL, NULL, '/regles/rater-ses-sortileges/'),
   ('regles-des-metiers', 'Règles des métiers', 'regles-des-metiers', NULL, NULL, NULL, '/metiers/regles-des-metiers/'),
   ('relations-entre-les-races', 'Relations entre les races', 'relations-entre-les-races', NULL, NULL, NULL, '/lore/relations-entre-les-races/'),
@@ -316,25 +320,25 @@ INSERT INTO mot_cle (id, libelle, libelle_cle, description, abreviation, couleur
   ('xendown', 'Xendown', 'xendown', NULL, NULL, NULL, '/lore/xendown/');
 
 -- 4. Les liens des textes devenus des balises (une instruction par lien distinct d'un texte)
-UPDATE competence SET description = replace(description, '[[Altérations d''états et Mode Hyper|altérations d''états]]', '{{alterations-detats-et-mode-hyper|altérations d''états}}') WHERE "id" = 'vigueur' AND instr(description, '[[Altérations d''états et Mode Hyper|altérations d''états]]') > 0;
+UPDATE competence SET description = replace(description, '[[guide/alterations-d-etats|altérations d''états]]', '{{alteration-detat|altérations d''états}}') WHERE "id" = 'vigueur' AND instr(description, '[[guide/alterations-d-etats|altérations d''états]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[La Vitesse et la Portée|la vitesse]]', '{{la-vitesse-et-la-portee|la vitesse}}') WHERE "id" = 'guide/actions-et-mouvements' AND instr(corps_md, '[[La Vitesse et la Portée|la vitesse]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[Jet de dés|jet de dés]]', '{{jet-de-des|jet de dés}}') WHERE "id" = 'guide/actions-et-mouvements' AND instr(corps_md, '[[Jet de dés|jet de dés]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[Jet de dés|jet de dés]]', '{{des|jet de dés}}') WHERE "id" = 'guide/actions-et-mouvements' AND instr(corps_md, '[[Jet de dés|jet de dés]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/les-neuf-alignements|Les neuf alignements]]', '{{les-neuf-alignements}}') WHERE "id" = 'guide/alignement' AND instr(corps_md, '[[guide/les-neuf-alignements|Les neuf alignements]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/liste-des-alterations-d-etat|la liste des altérations d’état]]', '{{liste-des-alterations-detat|la liste des altérations d’état}}') WHERE "id" = 'guide/alterations-d-etats' AND instr(corps_md, '[[guide/liste-des-alterations-d-etat|la liste des altérations d’état]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/reussir-une-action|Réussir une action]]', '{{reussir-une-action}}') WHERE "id" = 'guide/alterations-d-etats' AND instr(corps_md, '[[guide/reussir-une-action|Réussir une action]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/le-tour-de-jeu|Le tour de jeu]]', '{{le-tour-de-jeu}}') WHERE "id" = 'guide/alterations-d-etats' AND instr(corps_md, '[[guide/le-tour-de-jeu|Le tour de jeu]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[La Vitesse et la Portée|la vitesse]]', '{{la-vitesse-et-la-portee|la vitesse}}') WHERE "id" = 'guide/attaque-et-defense' AND instr(corps_md, '[[La Vitesse et la Portée|la vitesse]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[guide/prise-en-tenaille-et-zone-d-influence|La prise en tenaille et zone d’influence]]', '{{la-prise-en-tenaille-et-zone-dinfluence}}') WHERE "id" = 'guide/attaquer-et-se-defendre' AND instr(corps_md, '[[guide/prise-en-tenaille-et-zone-d-influence|La prise en tenaille et zone d’influence]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[guide/les-attaques-d-opportunite|Les attaques d''opportunité]]', '{{les-attaques-dopportunite}}') WHERE "id" = 'guide/attaquer-et-se-defendre' AND instr(corps_md, '[[guide/les-attaques-d-opportunite|Les attaques d''opportunité]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[guide/les-attaques-discretes|Les attaques discrètes]]', '{{les-attaques-discretes}}') WHERE "id" = 'guide/attaquer-et-se-defendre' AND instr(corps_md, '[[guide/les-attaques-discretes|Les attaques discrètes]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[guide/prise-en-tenaille-et-zone-d-influence|La prise en tenaille et zone d’influence]]', '{{tenaille|La prise en tenaille et zone d’influence}}') WHERE "id" = 'guide/attaquer-et-se-defendre' AND instr(corps_md, '[[guide/prise-en-tenaille-et-zone-d-influence|La prise en tenaille et zone d’influence]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[guide/les-attaques-d-opportunite|Les attaques d''opportunité]]', '{{attaque-dopportunite|Les attaques d''opportunité}}') WHERE "id" = 'guide/attaquer-et-se-defendre' AND instr(corps_md, '[[guide/les-attaques-d-opportunite|Les attaques d''opportunité]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[guide/les-attaques-discretes|Les attaques discrètes]]', '{{attaque-discrete|Les attaques discrètes}}') WHERE "id" = 'guide/attaquer-et-se-defendre' AND instr(corps_md, '[[guide/les-attaques-discretes|Les attaques discrètes]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/guide-pour-mj-maverick|Doc « Guide pour MJ »]]', '{{guide-pour-mj-maverick|Doc « Guide pour MJ »}}') WHERE "id" = 'guide/attaquer-et-se-defendre' AND instr(corps_md, '[[guide/guide-pour-mj-maverick|Doc « Guide pour MJ »]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/attaque-et-defense|Attaque et Défense]]', '{{attaque-et-defense}}') WHERE "id" = 'guide/attaquer-et-se-defendre' AND instr(corps_md, '[[guide/attaque-et-defense|Attaque et Défense]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/reussir-une-action|Réussir une action]]', '{{reussir-une-action}}') WHERE "id" = 'guide/attaquer-et-se-defendre' AND instr(corps_md, '[[guide/reussir-une-action|Réussir une action]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[armes](/ressources/equipement/#armes)', '{{armes|armes}}') WHERE "id" = 'guide/attaquer-et-se-defendre' AND instr(corps_md, '[armes](/ressources/equipement/#armes)') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/l-equipement|L’équipement]]', '{{lequipement}}') WHERE "id" = 'guide/attaquer-et-se-defendre' AND instr(corps_md, '[[guide/l-equipement|L’équipement]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[guide/les-postures|Les postures]]', '{{les-postures}}') WHERE "id" = 'guide/attaquer-et-se-defendre' AND instr(corps_md, '[[guide/les-postures|Les postures]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[guide/l-embuscade|L’embuscade]]', '{{lembuscade}}') WHERE "id" = 'guide/attaquer-et-se-defendre' AND instr(corps_md, '[[guide/l-embuscade|L’embuscade]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[guide/les-degats|Les dégâts]]', '{{les-degats}}') WHERE "id" = 'guide/attaquer-et-se-defendre' AND instr(corps_md, '[[guide/les-degats|Les dégâts]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[guide/les-postures|Les postures]]', '{{posture|Les postures}}') WHERE "id" = 'guide/attaquer-et-se-defendre' AND instr(corps_md, '[[guide/les-postures|Les postures]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[guide/l-embuscade|L’embuscade]]', '{{embuscade|L’embuscade}}') WHERE "id" = 'guide/attaquer-et-se-defendre' AND instr(corps_md, '[[guide/l-embuscade|L’embuscade]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[guide/les-degats|Les dégâts]]', '{{degats|Les dégâts}}') WHERE "id" = 'guide/attaquer-et-se-defendre' AND instr(corps_md, '[[guide/les-degats|Les dégâts]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[classes/bimane|Bimane]]', '{{bimane}}') WHERE "id" = 'guide/attaquer-et-se-defendre' AND instr(corps_md, '[[classes/bimane|Bimane]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[classes/voleur|voleur]]', '{{voleur|voleur}}') WHERE "id" = 'guide/attaquer-et-se-defendre' AND instr(corps_md, '[[classes/voleur|voleur]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/creer-son-personnage|Créer son personnage]]', '{{creer-son-personnage}}') WHERE "id" = 'guide/bienvenue' AND instr(corps_md, '[[guide/creer-son-personnage|Créer son personnage]]') > 0;
@@ -348,15 +352,15 @@ UPDATE page SET corps_md = replace(corps_md, '[[races/orios|Orios]]', '{{orios}}
 UPDATE page SET corps_md = replace(corps_md, '[[races/nain|nains]]', '{{nain|nains}}') WHERE "id" = 'guide/bienvenue' AND instr(corps_md, '[[races/nain|nains]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[Consommables](/ressources/equipement/#ceinture-consommables)', '{{ceinture|Consommables}}') WHERE "id" = 'guide/blessures-et-etats' AND instr(corps_md, '[Consommables](/ressources/equipement/#ceinture-consommables)') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/la-magie-en-jeu|La magie en jeu]]', '{{la-magie-en-jeu}}') WHERE "id" = 'guide/blessures-et-etats' AND instr(corps_md, '[[guide/la-magie-en-jeu|La magie en jeu]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[guide/le-mode-hyper|Le Mode Hyper]]', '{{le-mode-hyper}}') WHERE "id" = 'guide/blessures-et-etats' AND instr(corps_md, '[[guide/le-mode-hyper|Le Mode Hyper]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[guide/le-mode-hyper|Le Mode Hyper]]', '{{mode-hyper|Le Mode Hyper}}') WHERE "id" = 'guide/blessures-et-etats' AND instr(corps_md, '[[guide/le-mode-hyper|Le Mode Hyper]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[ressources/alchimie|alchimie]]', '{{alchimie|alchimie}}') WHERE "id" = 'guide/blessures-et-etats' AND instr(corps_md, '[[ressources/alchimie|alchimie]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[ressources/maladie|Maladie]]', '{{maladie}}') WHERE "id" = 'guide/blessures-et-etats' AND instr(corps_md, '[[ressources/maladie|Maladie]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[les races](/races/)', '{{races|les races}}') WHERE "id" = 'guide/blessures-et-etats' AND instr(corps_md, '[les races](/races/)') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[les races](/races/)', '{{race|les races}}') WHERE "id" = 'guide/blessures-et-etats' AND instr(corps_md, '[les races](/races/)') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/reussir-une-action|Réussir une action]]', '{{reussir-une-action}}') WHERE "id" = 'guide/caracteristiques-et-competences' AND instr(corps_md, '[[guide/reussir-une-action|Réussir une action]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[armes](/ressources/equipement/#armes)', '{{armes|armes}}') WHERE "id" = 'guide/caracteristiques-et-competences' AND instr(corps_md, '[armes](/ressources/equipement/#armes)') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[classes/flagelleur|Flagelleur]]', '{{flagelleur}}') WHERE "id" = 'guide/choisir-sa-classe' AND instr(corps_md, '[[classes/flagelleur|Flagelleur]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[classes](/classes/)', '{{classes|classes}}') WHERE "id" = 'guide/choisir-sa-classe' AND instr(corps_md, '[classes](/classes/)') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[27 races](/races/)', '{{races|27 races}}') WHERE "id" = 'guide/choisir-sa-race' AND instr(corps_md, '[27 races](/races/)') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[classes](/classes/)', '{{classe|classes}}') WHERE "id" = 'guide/choisir-sa-classe' AND instr(corps_md, '[classes](/classes/)') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[27 races](/races/)', '{{race|27 races}}') WHERE "id" = 'guide/choisir-sa-race' AND instr(corps_md, '[27 races](/races/)') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/resistances-et-faiblesses|Résistances et faiblesses]]', '{{resistances-et-faiblesses}}') WHERE "id" = 'guide/choisir-ses-magies' AND instr(corps_md, '[[guide/resistances-et-faiblesses|Résistances et faiblesses]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[Magie de la Corruption|Corruption]]', '{{magie-de-la-corruption|Corruption}}') WHERE "id" = 'guide/choisir-ses-magies' AND instr(corps_md, '[[Magie de la Corruption|Corruption]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[Potentiel Illimité]]', '{{potentiel-illimite|Potentiel Illimité}}') WHERE "id" = 'guide/choisir-ses-magies' AND instr(corps_md, '[[Potentiel Illimité]]') > 0;
@@ -373,43 +377,43 @@ UPDATE page SET corps_md = replace(corps_md, '[bestiaire](/bestiaire/)', '{{best
 UPDATE page SET corps_md = replace(corps_md, '[[guide/s-entrainer-et-exercer-un-metier|S’entraîner]]', '{{sentrainer}}') WHERE "id" = 'guide/exercer-un-metier' AND instr(corps_md, '[[guide/s-entrainer-et-exercer-un-metier|S’entraîner]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/reussir-une-action|Réussir une action]]', '{{reussir-une-action}}') WHERE "id" = 'guide/exercer-un-metier' AND instr(corps_md, '[[guide/reussir-une-action|Réussir une action]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[Composants](/ressources/composants/)', '{{composants}}') WHERE "id" = 'guide/exercer-un-metier' AND instr(corps_md, '[Composants](/ressources/composants/)') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[tableau des métiers](/metiers/)', '{{metiers|tableau des métiers}}') WHERE "id" = 'guide/exercer-un-metier' AND instr(corps_md, '[tableau des métiers](/metiers/)') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[tableau des métiers](/metiers/)', '{{metier|tableau des métiers}}') WHERE "id" = 'guide/exercer-un-metier' AND instr(corps_md, '[tableau des métiers](/metiers/)') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[Artisanat](/regles/artisanat/)', '{{artisanat}}') WHERE "id" = 'guide/exercer-un-metier' AND instr(corps_md, '[Artisanat](/regles/artisanat/)') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[Règles des métiers]]', '{{regles-des-metiers}}') WHERE "id" = 'guide/exercer-un-metier' AND instr(corps_md, '[[Règles des métiers]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[Altérations d''états et Mode Hyper|altérations d''états]]', '{{alterations-detats-et-mode-hyper|altérations d''états}}') WHERE "id" = 'guide/fiche-competences' AND instr(corps_md, '[[Altérations d''états et Mode Hyper|altérations d''états]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[Jet de dés|jet de dés]]', '{{jet-de-des|jet de dés}}') WHERE "id" = 'guide/fiche-competences' AND instr(corps_md, '[[Jet de dés|jet de dés]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[guide/alterations-d-etats|altérations d''états]]', '{{alteration-detat|altérations d''états}}') WHERE "id" = 'guide/fiche-competences' AND instr(corps_md, '[[guide/alterations-d-etats|altérations d''états]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[Jet de dés|jet de dés]]', '{{des|jet de dés}}') WHERE "id" = 'guide/fiche-competences' AND instr(corps_md, '[[Jet de dés|jet de dés]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[La Vitesse et la Portée|la portée]]', '{{la-vitesse-et-la-portee|la portée}}') WHERE "id" = 'guide/fiche-maitrise-darme-et-armes' AND instr(corps_md, '[[La Vitesse et la Portée|la portée]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[Alignement]]', '{{alignement}}') WHERE "id" = 'guide/fiche-personnage' AND instr(corps_md, '[[Alignement]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[Altérations d''états et Mode Hyper|mode hyper]]', '{{alterations-detats-et-mode-hyper|mode hyper}}') WHERE "id" = 'guide/fiche-tableau-posture' AND instr(corps_md, '[[Altérations d''états et Mode Hyper|mode hyper]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[guide/le-mode-hyper|mode hyper]]', '{{mode-hyper|mode hyper}}') WHERE "id" = 'guide/fiche-tableau-posture' AND instr(corps_md, '[[guide/le-mode-hyper|mode hyper]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/resistances-et-faiblesses|ici]]', '{{resistances-et-faiblesses|ici}}') WHERE "id" = 'guide/fiche-tableau-resistances-faiblesses' AND instr(corps_md, '[[guide/resistances-et-faiblesses|ici]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/s-entrainer-et-exercer-un-metier|S’entraîner et exercer un métier]]', '{{sentrainer|S’entraîner et exercer un métier}}') WHERE "id" = 'guide/finaliser-son-personnage' AND instr(corps_md, '[[guide/s-entrainer-et-exercer-un-metier|S’entraîner et exercer un métier]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/la-montee-de-niveau|La montée de niveau]]', '{{la-montee-de-niveau}}') WHERE "id" = 'guide/finaliser-son-personnage' AND instr(corps_md, '[[guide/la-montee-de-niveau|La montée de niveau]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/le-tour-de-jeu|action rapide (IC)]]', '{{le-tour-de-jeu|action rapide (IC)}}') WHERE "id" = 'guide/finaliser-son-personnage' AND instr(corps_md, '[[guide/le-tour-de-jeu|action rapide (IC)]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/l-equipement|L’équipement]]', '{{lequipement}}') WHERE "id" = 'guide/finaliser-son-personnage' AND instr(corps_md, '[[guide/l-equipement|L’équipement]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[Règles des métiers]]', '{{regles-des-metiers}}') WHERE "id" = 'guide/finaliser-son-personnage' AND instr(corps_md, '[[Règles des métiers]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[métier](/metiers/)', '{{metiers|métier}}') WHERE "id" = 'guide/finaliser-son-personnage' AND instr(corps_md, '[métier](/metiers/)') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[métier](/metiers/)', '{{metier|métier}}') WHERE "id" = 'guide/finaliser-son-personnage' AND instr(corps_md, '[métier](/metiers/)') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[Alignement]]', '{{alignement}}') WHERE "id" = 'guide/finaliser-son-personnage' AND instr(corps_md, '[[Alignement]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[Résistance/Faiblesse Magie|Résistances/Faiblesses magique]]', '{{resistances-et-faiblesses|Résistances/Faiblesses magique}}') WHERE "id" = 'guide/guide-pour-mj-maverick' AND instr(corps_md, '[[Résistance/Faiblesse Magie|Résistances/Faiblesses magique]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[Altérations d''états et Mode Hyper|Altérations d’états]]', '{{alterations-detats-et-mode-hyper|Altérations d’états}}') WHERE "id" = 'guide/guide-pour-mj-maverick' AND instr(corps_md, '[[Altérations d''états et Mode Hyper|Altérations d’états]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[guide/alterations-d-etats|Altérations d’états]]', '{{alteration-detat|Altérations d’états}}') WHERE "id" = 'guide/guide-pour-mj-maverick' AND instr(corps_md, '[[guide/alterations-d-etats|Altérations d’états]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[Les Actions et mouvements|IC ou Action rapide]]', '{{les-actions-et-mouvements|IC ou Action rapide}}') WHERE "id" = 'guide/guide-pour-mj-maverick' AND instr(corps_md, '[[Les Actions et mouvements|IC ou Action rapide]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[Un maître du Jeu|Maître du jeu, Conseils]]', '{{un-maitre-du-jeu|Maître du jeu, Conseils}}') WHERE "id" = 'guide/guide-pour-mj-maverick' AND instr(corps_md, '[[Un maître du Jeu|Maître du jeu, Conseils]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[Attaque et Défense|Attaque et défense]]', '{{attaque-et-defense|Attaque et défense}}') WHERE "id" = 'guide/guide-pour-mj-maverick' AND instr(corps_md, '[[Attaque et Défense|Attaque et défense]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[La Vitesse et la Portée|La vitesse]]', '{{la-vitesse-et-la-portee|La vitesse}}') WHERE "id" = 'guide/guide-pour-mj-maverick' AND instr(corps_md, '[[La Vitesse et la Portée|La vitesse]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[Donjon Pas bon|Donjon pas bon]]', '{{donjon-pas-bon|Donjon pas bon}}') WHERE "id" = 'guide/guide-pour-mj-maverick' AND instr(corps_md, '[[Donjon Pas bon|Donjon pas bon]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[Les situations avancées]]', '{{la-prise-en-tenaille-et-zone-dinfluence|Les situations avancées}}') WHERE "id" = 'guide/guide-pour-mj-maverick' AND instr(corps_md, '[[Les situations avancées]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[Les situations avancées]]', '{{tenaille|Les situations avancées}}') WHERE "id" = 'guide/guide-pour-mj-maverick' AND instr(corps_md, '[[Les situations avancées]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[Formule des dégâts]]', '{{formule-des-degats}}') WHERE "id" = 'guide/guide-pour-mj-maverick' AND instr(corps_md, '[[Formule des dégâts]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[Alignement]]', '{{alignement}}') WHERE "id" = 'guide/guide-pour-mj-maverick' AND instr(corps_md, '[[Alignement]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[Postures]]', '{{les-postures|Postures}}') WHERE "id" = 'guide/guide-pour-mj-maverick' AND instr(corps_md, '[[Postures]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[Postures]]', '{{posture|Postures}}') WHERE "id" = 'guide/guide-pour-mj-maverick' AND instr(corps_md, '[[Postures]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/attaque-et-defense|Attaque et Défense]]', '{{attaque-et-defense}}') WHERE "id" = 'guide/initiative' AND instr(corps_md, '[[guide/attaque-et-defense|Attaque et Défense]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[guide/les-postures|Les postures]]', '{{les-postures}}') WHERE "id" = 'guide/initiative' AND instr(corps_md, '[[guide/les-postures|Les postures]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[Altérations d''états et Mode Hyper|altérations d''états]]', '{{alterations-detats-et-mode-hyper|altérations d''états}}') WHERE "id" = 'guide/jet-de-des' AND instr(corps_md, '[[Altérations d''états et Mode Hyper|altérations d''états]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[guide/les-postures|Les postures]]', '{{posture|Les postures}}') WHERE "id" = 'guide/initiative' AND instr(corps_md, '[[guide/les-postures|Les postures]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[guide/alterations-d-etats|altérations d''états]]', '{{alteration-detat|altérations d''états}}') WHERE "id" = 'guide/jet-de-des' AND instr(corps_md, '[[guide/alterations-d-etats|altérations d''états]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/fiche-maitrise-darme-et-armes|Maîtrise d’arme et Armes]]', '{{fiche-de-personnage-maitrise-darme-et-armes|Maîtrise d’arme et Armes}}') WHERE "id" = 'guide/l-equipement' AND instr(corps_md, '[[guide/fiche-maitrise-darme-et-armes|Maîtrise d’arme et Armes]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/fiche-accessoires-et-ceinture|Accessoires et Ceinture]]', '{{fiche-de-personnage-accessoires-et-ceinture|Accessoires et Ceinture}}') WHERE "id" = 'guide/l-equipement' AND instr(corps_md, '[[guide/fiche-accessoires-et-ceinture|Accessoires et Ceinture]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/fiche-armure-defense-bouclier|Armure/Défense/Bouclier]]', '{{fiche-de-personnage-armure-defense-bouclier|Armure/Défense/Bouclier}}') WHERE "id" = 'guide/l-equipement' AND instr(corps_md, '[[guide/fiche-armure-defense-bouclier|Armure/Défense/Bouclier]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/attaquer-et-se-defendre|Attaquer et se défendre]]', '{{attaquer-et-se-defendre}}') WHERE "id" = 'guide/l-equipement' AND instr(corps_md, '[[guide/attaquer-et-se-defendre|Attaquer et se défendre]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/fiche-inventaire-sac-a-dos|Inventaire/Sac à dos]]', '{{fiche-de-personnage-inventaire-sac-a-dos|Inventaire/Sac à dos}}') WHERE "id" = 'guide/l-equipement' AND instr(corps_md, '[[guide/fiche-inventaire-sac-a-dos|Inventaire/Sac à dos]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[ressources/pieces-elementaires|Pièces élémentaires]]', '{{pieces-elementaires}}') WHERE "id" = 'guide/l-equipement' AND instr(corps_md, '[[ressources/pieces-elementaires|Pièces élémentaires]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[ressources/pieces-elementaires|pièce élémentaire]]', '{{pieces-elementaires|pièce élémentaire}}') WHERE "id" = 'guide/l-equipement' AND instr(corps_md, '[[ressources/pieces-elementaires|pièce élémentaire]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[ressources/pieces-elementaires|Pièces élémentaires]]', '{{piece-elementaire|Pièces élémentaires}}') WHERE "id" = 'guide/l-equipement' AND instr(corps_md, '[[ressources/pieces-elementaires|Pièces élémentaires]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[ressources/pieces-elementaires|pièce élémentaire]]', '{{piece-elementaire|pièce élémentaire}}') WHERE "id" = 'guide/l-equipement' AND instr(corps_md, '[[ressources/pieces-elementaires|pièce élémentaire]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[Accessoires](/ressources/equipement/#accessoires)', '{{accessoires}}') WHERE "id" = 'guide/l-equipement' AND instr(corps_md, '[Accessoires](/ressources/equipement/#accessoires)') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[Boucliers](/ressources/equipement/#boucliers)', '{{bouclier|Boucliers}}') WHERE "id" = 'guide/l-equipement' AND instr(corps_md, '[Boucliers](/ressources/equipement/#boucliers)') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[Armures](/ressources/equipement/#armures)', '{{armures}}') WHERE "id" = 'guide/l-equipement' AND instr(corps_md, '[Armures](/ressources/equipement/#armures)') > 0;
@@ -418,13 +422,13 @@ UPDATE page SET corps_md = replace(corps_md, '[[guide/le-tour-de-jeu|Le tour de 
 UPDATE page SET corps_md = replace(corps_md, '[armes](/ressources/equipement/#armes)', '{{armes|armes}}') WHERE "id" = 'guide/l-equipement' AND instr(corps_md, '[armes](/ressources/equipement/#armes)') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[Composants](/ressources/composants/)', '{{composants}}') WHERE "id" = 'guide/l-equipement' AND instr(corps_md, '[Composants](/ressources/composants/)') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[Équipement](/ressources/equipement/)', '{{armes|Équipement}}') WHERE "id" = 'guide/l-equipement' AND instr(corps_md, '[Équipement](/ressources/equipement/)') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[guide/les-postures|Les postures]]', '{{les-postures}}') WHERE "id" = 'guide/l-equipement' AND instr(corps_md, '[[guide/les-postures|Les postures]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[guide/les-postures|Les postures]]', '{{posture|Les postures}}') WHERE "id" = 'guide/l-equipement' AND instr(corps_md, '[[guide/les-postures|Les postures]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[classes/flagelleur|Flagelleur]]', '{{flagelleur}}') WHERE "id" = 'guide/l-equipement' AND instr(corps_md, '[[classes/flagelleur|Flagelleur]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[classes/mercenaire|Mercenaire]]', '{{mercenaire}}') WHERE "id" = 'guide/l-equipement' AND instr(corps_md, '[[classes/mercenaire|Mercenaire]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[classes/archimage|Archimage]]', '{{archimage}}') WHERE "id" = 'guide/l-equipement' AND instr(corps_md, '[[classes/archimage|Archimage]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[classes/mage-vert|Mage Vert]]', '{{mage-vert}}') WHERE "id" = 'guide/l-equipement' AND instr(corps_md, '[[classes/mage-vert|Mage Vert]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[guide/les-degats|Les dégâts]]', '{{les-degats}}') WHERE "id" = 'guide/l-equipement' AND instr(corps_md, '[[guide/les-degats|Les dégâts]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[les classes](/classes/)', '{{classes|les classes}}') WHERE "id" = 'guide/l-equipement' AND instr(corps_md, '[les classes](/classes/)') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[guide/les-degats|Les dégâts]]', '{{degats|Les dégâts}}') WHERE "id" = 'guide/l-equipement' AND instr(corps_md, '[[guide/les-degats|Les dégâts]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[les classes](/classes/)', '{{classe|les classes}}') WHERE "id" = 'guide/l-equipement' AND instr(corps_md, '[les classes](/classes/)') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[classes/mage|Mage]]', '{{mage}}') WHERE "id" = 'guide/l-equipement' AND instr(corps_md, '[[classes/mage|Mage]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[lore/les-impacts-mineur-et-majeur|les Impacts, majeurs et mineurs]]', '{{les-impacts-mineur-et-majeur|les Impacts, majeurs et mineurs}}') WHERE "id" = 'guide/l-univers' AND instr(corps_md, '[[lore/les-impacts-mineur-et-majeur|les Impacts, majeurs et mineurs]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[Les Outils Légendaires, Uniques|armes et objets légendaires]]', '{{les-outils-legendaires-uniques|armes et objets légendaires}}') WHERE "id" = 'guide/l-univers' AND instr(corps_md, '[[Les Outils Légendaires, Uniques|armes et objets légendaires]]') > 0;
@@ -456,9 +460,9 @@ UPDATE page SET corps_md = replace(corps_md, '[[Glossaire|glossaire]]', '{{gloss
 UPDATE page SET corps_md = replace(corps_md, '[[lore/erisia|Erisia]]', '{{erisia}}') WHERE "id" = 'guide/l-univers' AND instr(corps_md, '[[lore/erisia|Erisia]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[lore/mirada|Mirada]]', '{{mirada}}') WHERE "id" = 'guide/l-univers' AND instr(corps_md, '[[lore/mirada|Mirada]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[lore/mrode|Mrode]]', '{{mrode}}') WHERE "id" = 'guide/l-univers' AND instr(corps_md, '[[lore/mrode|Mrode]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[classes](/classes/)', '{{classes|classes}}') WHERE "id" = 'guide/l-univers' AND instr(corps_md, '[classes](/classes/)') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[classes](/classes/)', '{{classe|classes}}') WHERE "id" = 'guide/l-univers' AND instr(corps_md, '[classes](/classes/)') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[magies](/magies/)', '{{magies|magies}}') WHERE "id" = 'guide/l-univers' AND instr(corps_md, '[magies](/magies/)') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[races](/races/)', '{{races|races}}') WHERE "id" = 'guide/l-univers' AND instr(corps_md, '[races](/races/)') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[races](/races/)', '{{race|races}}') WHERE "id" = 'guide/l-univers' AND instr(corps_md, '[races](/races/)') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[Codex]]', '{{codex|Codex}}') WHERE "id" = 'guide/l-univers' AND instr(corps_md, '[[Codex]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[capacites/mage-rouge-double-coup|Double coup du Mage Rouge]]', '{{double-coup-mage-rouge|Double coup du Mage Rouge}}') WHERE "id" = 'guide/la-magie-en-jeu' AND instr(corps_md, '[[capacites/mage-rouge-double-coup|Double coup du Mage Rouge]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/resistances-et-faiblesses|Résistances et faiblesses]]', '{{resistances-et-faiblesses}}') WHERE "id" = 'guide/la-magie-en-jeu' AND instr(corps_md, '[[guide/resistances-et-faiblesses|Résistances et faiblesses]]') > 0;
@@ -473,19 +477,19 @@ UPDATE page SET corps_md = replace(corps_md, '[[guide/reussir-une-action|Réussi
 UPDATE page SET corps_md = replace(corps_md, '[[capacites/mage-vert-chargement|Chargement]]', '{{chargement-mage-vert|Chargement}}') WHERE "id" = 'guide/la-magie-en-jeu' AND instr(corps_md, '[[capacites/mage-vert-chargement|Chargement]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/premiers-sorts|Créer son personnage]]', '{{etape-5-choisir-ses-premiers-sorts|Créer son personnage}}') WHERE "id" = 'guide/la-magie-en-jeu' AND instr(corps_md, '[[guide/premiers-sorts|Créer son personnage]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/le-tour-de-jeu|Le tour de jeu]]', '{{le-tour-de-jeu}}') WHERE "id" = 'guide/la-magie-en-jeu' AND instr(corps_md, '[[guide/le-tour-de-jeu|Le tour de jeu]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[guide/le-mode-hyper|Le Mode Hyper]]', '{{le-mode-hyper}}') WHERE "id" = 'guide/la-magie-en-jeu' AND instr(corps_md, '[[guide/le-mode-hyper|Le Mode Hyper]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[guide/les-postures|Les postures]]', '{{les-postures}}') WHERE "id" = 'guide/la-magie-en-jeu' AND instr(corps_md, '[[guide/les-postures|Les postures]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[guide/le-mode-hyper|Le Mode Hyper]]', '{{mode-hyper|Le Mode Hyper}}') WHERE "id" = 'guide/la-magie-en-jeu' AND instr(corps_md, '[[guide/le-mode-hyper|Le Mode Hyper]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[guide/les-postures|Les postures]]', '{{posture|Les postures}}') WHERE "id" = 'guide/la-magie-en-jeu' AND instr(corps_md, '[[guide/les-postures|Les postures]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[fiche de personnage](/fiche/)', '{{fiche-de-personnage|fiche de personnage}}') WHERE "id" = 'guide/la-magie-en-jeu' AND instr(corps_md, '[fiche de personnage](/fiche/)') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[bestiaire](/bestiaire/)', '{{bestiaire|bestiaire}}') WHERE "id" = 'guide/la-magie-en-jeu' AND instr(corps_md, '[bestiaire](/bestiaire/)') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[les magies](/magies/)', '{{magies|les magies}}') WHERE "id" = 'guide/la-magie-en-jeu' AND instr(corps_md, '[les magies](/magies/)') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/fiche-experience-niveau-global|Fiche de personnage : Expérience/Niveau global]]', '{{fiche-de-personnage-experience-niveau-global}}') WHERE "id" = 'guide/la-montee-de-niveau' AND instr(corps_md, '[[guide/fiche-experience-niveau-global|Fiche de personnage : Expérience/Niveau global]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/s-entrainer-et-exercer-un-metier|S’entraîner et exercer un métier]]', '{{sentrainer|S’entraîner et exercer un métier}}') WHERE "id" = 'guide/la-montee-de-niveau' AND instr(corps_md, '[[guide/s-entrainer-et-exercer-un-metier|S’entraîner et exercer un métier]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/caracteristiques-et-competences|Créer son personnage]]', '{{etape-4-repartir-caracteristiques-et-competences|Créer son personnage}}') WHERE "id" = 'guide/la-montee-de-niveau' AND instr(corps_md, '[[guide/caracteristiques-et-competences|Créer son personnage]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[guide/le-mode-hyper|Le Mode Hyper et le Mode Super]]', '{{le-mode-hyper|Le Mode Hyper et le Mode Super}}') WHERE "id" = 'guide/la-montee-de-niveau' AND instr(corps_md, '[[guide/le-mode-hyper|Le Mode Hyper et le Mode Super]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[guide/le-mode-hyper|Le Mode Hyper et le Mode Super]]', '{{mode-hyper|Le Mode Hyper et le Mode Super}}') WHERE "id" = 'guide/la-montee-de-niveau' AND instr(corps_md, '[[guide/le-mode-hyper|Le Mode Hyper et le Mode Super]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/choisir-sa-classe|Créer son personnage]]', '{{etape-3-choisir-sa-classe|Créer son personnage}}') WHERE "id" = 'guide/la-montee-de-niveau' AND instr(corps_md, '[[guide/choisir-sa-classe|Créer son personnage]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/la-magie-en-jeu|La magie en jeu]]', '{{la-magie-en-jeu}}') WHERE "id" = 'guide/la-montee-de-niveau' AND instr(corps_md, '[[guide/la-magie-en-jeu|La magie en jeu]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[fiche de personnage](/fiche/)', '{{fiche-de-personnage|fiche de personnage}}') WHERE "id" = 'guide/la-montee-de-niveau' AND instr(corps_md, '[fiche de personnage](/fiche/)') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[classe](/classes/)', '{{classes|classe}}') WHERE "id" = 'guide/la-montee-de-niveau' AND instr(corps_md, '[classe](/classes/)') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[classe](/classes/)', '{{classe|classe}}') WHERE "id" = 'guide/la-montee-de-niveau' AND instr(corps_md, '[classe](/classes/)') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[accessoires](/ressources/equipement/#accessoires)', '{{accessoires|accessoires}}') WHERE "id" = 'guide/le-mode-hyper' AND instr(corps_md, '[accessoires](/ressources/equipement/#accessoires)') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/blessures-et-etats|Blessures et états]]', '{{blessure-et-mort|Blessures et états}}') WHERE "id" = 'guide/le-mode-hyper' AND instr(corps_md, '[[guide/blessures-et-etats|Blessures et états]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/reussir-une-action|Réussir une action]]', '{{reussir-une-action}}') WHERE "id" = 'guide/le-mode-hyper' AND instr(corps_md, '[[guide/reussir-une-action|Réussir une action]]') > 0;
@@ -493,16 +497,16 @@ UPDATE page SET corps_md = replace(corps_md, '[[guide/le-tour-de-jeu|Le tour de 
 UPDATE page SET corps_md = replace(corps_md, '[fiche de personnage](/fiche/)', '{{fiche-de-personnage|fiche de personnage}}') WHERE "id" = 'guide/le-mode-hyper' AND instr(corps_md, '[fiche de personnage](/fiche/)') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/meteo|Météo]]', '{{meteo}}') WHERE "id" = 'guide/le-mode-hyper' AND instr(corps_md, '[[guide/meteo|Météo]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[magie](/magies/)', '{{magies|magie}}') WHERE "id" = 'guide/le-mode-hyper' AND instr(corps_md, '[magie](/magies/)') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[race](/races/)', '{{races|race}}') WHERE "id" = 'guide/le-mode-hyper' AND instr(corps_md, '[race](/races/)') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[guide/les-postures|Les postures]]', '{{les-postures}}') WHERE "id" = 'guide/le-mode-hyper-100' AND instr(corps_md, '[[guide/les-postures|Les postures]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[race](/races/)', '{{race}}') WHERE "id" = 'guide/le-mode-hyper' AND instr(corps_md, '[race](/races/)') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[guide/les-postures|Les postures]]', '{{posture|Les postures}}') WHERE "id" = 'guide/le-mode-hyper-100' AND instr(corps_md, '[[guide/les-postures|Les postures]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/actions-et-mouvements|Les actions et mouvements]]', '{{les-actions-et-mouvements|Les actions et mouvements}}') WHERE "id" = 'guide/le-tour-de-jeu' AND instr(corps_md, '[[guide/actions-et-mouvements|Les actions et mouvements]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/attaquer-et-se-defendre|Attaquer et se défendre]]', '{{attaquer-et-se-defendre}}') WHERE "id" = 'guide/le-tour-de-jeu' AND instr(corps_md, '[[guide/attaquer-et-se-defendre|Attaquer et se défendre]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/guide-pour-mj-maverick|Guide pour MJ - Maverick]]', '{{guide-pour-mj-maverick}}') WHERE "id" = 'guide/le-tour-de-jeu' AND instr(corps_md, '[[guide/guide-pour-mj-maverick|Guide pour MJ - Maverick]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/finaliser-son-personnage|Créer son personnage]]', '{{etape-6-finaliser-son-personnage|Créer son personnage}}') WHERE "id" = 'guide/le-tour-de-jeu' AND instr(corps_md, '[[guide/finaliser-son-personnage|Créer son personnage]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/vitesse-et-portee|La vitesse et la portée]]', '{{la-vitesse-et-la-portee|La vitesse et la portée}}') WHERE "id" = 'guide/le-tour-de-jeu' AND instr(corps_md, '[[guide/vitesse-et-portee|La vitesse et la portée]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[guide/alterations-d-etats|Blessures et états]]', '{{alterations-detats|Blessures et états}}') WHERE "id" = 'guide/le-tour-de-jeu' AND instr(corps_md, '[[guide/alterations-d-etats|Blessures et états]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[guide/alterations-d-etats|Blessures et états]]', '{{alteration-detat|Blessures et états}}') WHERE "id" = 'guide/le-tour-de-jeu' AND instr(corps_md, '[[guide/alterations-d-etats|Blessures et états]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/l-equipement|L’équipement]]', '{{lequipement}}') WHERE "id" = 'guide/le-tour-de-jeu' AND instr(corps_md, '[[guide/l-equipement|L’équipement]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[guide/les-postures|Les postures]]', '{{les-postures}}') WHERE "id" = 'guide/le-tour-de-jeu' AND instr(corps_md, '[[guide/les-postures|Les postures]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[guide/les-postures|Les postures]]', '{{posture|Les postures}}') WHERE "id" = 'guide/le-tour-de-jeu' AND instr(corps_md, '[[guide/les-postures|Les postures]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[La Vitesse et la Portée|la portée]]', '{{la-vitesse-et-la-portee|la portée}}') WHERE "id" = 'guide/les-attaques-d-opportunite' AND instr(corps_md, '[[La Vitesse et la Portée|la portée]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/resistances-et-faiblesses|Résistances et faiblesses]]', '{{resistances-et-faiblesses}}') WHERE "id" = 'guide/les-degats' AND instr(corps_md, '[[guide/resistances-et-faiblesses|Résistances et faiblesses]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/attaquer-et-se-defendre|Attaquer et se défendre]]', '{{attaquer-et-se-defendre}}') WHERE "id" = 'guide/les-degats' AND instr(corps_md, '[[guide/attaquer-et-se-defendre|Attaquer et se défendre]]') > 0;
@@ -511,24 +515,24 @@ UPDATE page SET corps_md = replace(corps_md, '[[guide/blessures-et-etats|Blessur
 UPDATE page SET corps_md = replace(corps_md, '[[guide/formule-des-degats|Formule des dégâts]]', '{{formule-des-degats}}') WHERE "id" = 'guide/les-degats' AND instr(corps_md, '[[guide/formule-des-degats|Formule des dégâts]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[Matériaux](/ressources/composants/#materiaux)', '{{composants|Matériaux}}') WHERE "id" = 'guide/les-degats' AND instr(corps_md, '[Matériaux](/ressources/composants/#materiaux)') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[Armures](/ressources/equipement/#armures)', '{{armures}}') WHERE "id" = 'guide/les-degats' AND instr(corps_md, '[Armures](/ressources/equipement/#armures)') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[guide/le-mode-hyper|Le Mode Hyper]]', '{{le-mode-hyper}}') WHERE "id" = 'guide/les-degats' AND instr(corps_md, '[[guide/le-mode-hyper|Le Mode Hyper]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[guide/le-mode-hyper|Le Mode Hyper]]', '{{mode-hyper|Le Mode Hyper}}') WHERE "id" = 'guide/les-degats' AND instr(corps_md, '[[guide/le-mode-hyper|Le Mode Hyper]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/l-equipement|L’équipement]]', '{{lequipement}}') WHERE "id" = 'guide/les-degats' AND instr(corps_md, '[[guide/l-equipement|L’équipement]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[guide/les-postures|Les postures]]', '{{les-postures}}') WHERE "id" = 'guide/les-degats' AND instr(corps_md, '[[guide/les-postures|Les postures]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[guide/les-postures|Les postures]]', '{{posture|Les postures}}') WHERE "id" = 'guide/les-degats' AND instr(corps_md, '[[guide/les-postures|Les postures]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[fiche de personnage](/fiche/)', '{{fiche-de-personnage|fiche de personnage}}') WHERE "id" = 'guide/les-degats' AND instr(corps_md, '[fiche de personnage](/fiche/)') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/guide-pour-mj-maverick|Doc « Guide pour MJ »]]', '{{guide-pour-mj-maverick|Doc « Guide pour MJ »}}') WHERE "id" = 'guide/les-postures' AND instr(corps_md, '[[guide/guide-pour-mj-maverick|Doc « Guide pour MJ »]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/fiche-tableau-posture|Tableau Posture]]', '{{fiche-de-personnage-tableau-posture|Tableau Posture}}') WHERE "id" = 'guide/les-postures' AND instr(corps_md, '[[guide/fiche-tableau-posture|Tableau Posture]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/reussir-une-action|Réussir une action]]', '{{reussir-une-action}}') WHERE "id" = 'guide/les-postures' AND instr(corps_md, '[[guide/reussir-une-action|Réussir une action]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/la-magie-en-jeu|La magie en jeu]]', '{{la-magie-en-jeu}}') WHERE "id" = 'guide/les-postures' AND instr(corps_md, '[[guide/la-magie-en-jeu|La magie en jeu]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/le-tour-de-jeu|Le tour de jeu]]', '{{le-tour-de-jeu}}') WHERE "id" = 'guide/les-postures' AND instr(corps_md, '[[guide/le-tour-de-jeu|Le tour de jeu]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[guide/le-mode-hyper|Le Mode Hyper]]', '{{le-mode-hyper}}') WHERE "id" = 'guide/les-postures' AND instr(corps_md, '[[guide/le-mode-hyper|Le Mode Hyper]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[guide/l-embuscade|L''embuscade]]', '{{lembuscade|L''embuscade}}') WHERE "id" = 'guide/les-postures' AND instr(corps_md, '[[guide/l-embuscade|L''embuscade]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[guide/les-degats|Les dégâts]]', '{{les-degats}}') WHERE "id" = 'guide/les-postures' AND instr(corps_md, '[[guide/les-degats|Les dégâts]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[guide/le-mode-hyper|Le Mode Hyper]]', '{{mode-hyper|Le Mode Hyper}}') WHERE "id" = 'guide/les-postures' AND instr(corps_md, '[[guide/le-mode-hyper|Le Mode Hyper]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[guide/l-embuscade|L''embuscade]]', '{{embuscade|L''embuscade}}') WHERE "id" = 'guide/les-postures' AND instr(corps_md, '[[guide/l-embuscade|L''embuscade]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[guide/les-degats|Les dégâts]]', '{{degats|Les dégâts}}') WHERE "id" = 'guide/les-postures' AND instr(corps_md, '[[guide/les-degats|Les dégâts]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[fiche de personnage](/fiche/)', '{{fiche-de-personnage|fiche de personnage}}') WHERE "id" = 'guide/les-postures' AND instr(corps_md, '[fiche de personnage](/fiche/)') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/la-montee-de-niveau|La montée de niveau]]', '{{la-montee-de-niveau}}') WHERE "id" = 'guide/premiers-sorts' AND instr(corps_md, '[[guide/la-montee-de-niveau|La montée de niveau]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[magie](/magies/)', '{{magies|magie}}') WHERE "id" = 'guide/premiers-sorts' AND instr(corps_md, '[magie](/magies/)') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[guide/les-attaques-d-opportunite|Les attaques d''opportunité]]', '{{les-attaques-dopportunite}}') WHERE "id" = 'guide/prise-en-tenaille-et-zone-d-influence' AND instr(corps_md, '[[guide/les-attaques-d-opportunite|Les attaques d''opportunité]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[guide/les-attaques-d-opportunite|Les attaques d''opportunité]]', '{{attaque-dopportunite|Les attaques d''opportunité}}') WHERE "id" = 'guide/prise-en-tenaille-et-zone-d-influence' AND instr(corps_md, '[[guide/les-attaques-d-opportunite|Les attaques d''opportunité]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[Relations entre magies](/magies/#relations)', '{{magies|Relations entre magies}}') WHERE "id" = 'guide/resistances-et-faiblesses' AND instr(corps_md, '[Relations entre magies](/magies/#relations)') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[guide/le-mode-hyper|Le Mode Hyper]]', '{{le-mode-hyper}}') WHERE "id" = 'guide/resistances-et-faiblesses' AND instr(corps_md, '[[guide/le-mode-hyper|Le Mode Hyper]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[guide/le-mode-hyper|Le Mode Hyper]]', '{{mode-hyper|Le Mode Hyper}}') WHERE "id" = 'guide/resistances-et-faiblesses' AND instr(corps_md, '[[guide/le-mode-hyper|Le Mode Hyper]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/l-equipement|L’équipement]]', '{{lequipement}}') WHERE "id" = 'guide/resistances-et-faiblesses' AND instr(corps_md, '[[guide/l-equipement|L’équipement]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[fiche de personnage](/fiche/)', '{{fiche-de-personnage|fiche de personnage}}') WHERE "id" = 'guide/resistances-et-faiblesses' AND instr(corps_md, '[fiche de personnage](/fiche/)') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[magie](/magies/)', '{{magies|magie}}') WHERE "id" = 'guide/resistances-et-faiblesses' AND instr(corps_md, '[magie](/magies/)') > 0;
@@ -537,12 +541,12 @@ UPDATE page SET corps_md = replace(corps_md, '[[guide/caracteristiques-et-compet
 UPDATE page SET corps_md = replace(corps_md, '[[guide/attaquer-et-se-defendre|Attaquer et se défendre]]', '{{attaquer-et-se-defendre}}') WHERE "id" = 'guide/reussir-une-action' AND instr(corps_md, '[[guide/attaquer-et-se-defendre|Attaquer et se défendre]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/la-montee-de-niveau|La montée de niveau]]', '{{la-montee-de-niveau}}') WHERE "id" = 'guide/reussir-une-action' AND instr(corps_md, '[[guide/la-montee-de-niveau|La montée de niveau]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/attaque-et-defense|Attaque et Défense]]', '{{attaque-et-defense}}') WHERE "id" = 'guide/reussir-une-action' AND instr(corps_md, '[[guide/attaque-et-defense|Attaque et Défense]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[guide/les-postures|Les postures]]', '{{les-postures}}') WHERE "id" = 'guide/reussir-une-action' AND instr(corps_md, '[[guide/les-postures|Les postures]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[guide/jet-de-des|Jet de dés]]', '{{jet-de-des}}') WHERE "id" = 'guide/reussir-une-action' AND instr(corps_md, '[[guide/jet-de-des|Jet de dés]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[guide/les-postures|Les postures]]', '{{posture|Les postures}}') WHERE "id" = 'guide/reussir-une-action' AND instr(corps_md, '[[guide/les-postures|Les postures]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[guide/jet-de-des|Jet de dés]]', '{{des|Jet de dés}}') WHERE "id" = 'guide/reussir-une-action' AND instr(corps_md, '[[guide/jet-de-des|Jet de dés]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/les-portes|Les portes]]', '{{les-portes}}') WHERE "id" = 'guide/reussir-une-action' AND instr(corps_md, '[[guide/les-portes|Les portes]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[fiche de personnage](/fiche/)', '{{fiche-de-personnage|fiche de personnage}}') WHERE "id" = 'guide/reussir-une-action' AND instr(corps_md, '[fiche de personnage](/fiche/)') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/reussir-une-action|Réussir une action]]', '{{reussir-une-action}}') WHERE "id" = 'guide/reussites-echecs-et-critiques' AND instr(corps_md, '[[guide/reussir-une-action|Réussir une action]]') > 0;
-UPDATE page SET corps_md = replace(corps_md, '[[guide/les-postures|Les postures]]', '{{les-postures}}') WHERE "id" = 'guide/reussites-echecs-et-critiques' AND instr(corps_md, '[[guide/les-postures|Les postures]]') > 0;
+UPDATE page SET corps_md = replace(corps_md, '[[guide/les-postures|Les postures]]', '{{posture|Les postures}}') WHERE "id" = 'guide/reussites-echecs-et-critiques' AND instr(corps_md, '[[guide/les-postures|Les postures]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/reussir-une-action|Réussir une action]]', '{{reussir-une-action}}') WHERE "id" = 'guide/s-entrainer-et-exercer-un-metier' AND instr(corps_md, '[[guide/reussir-une-action|Réussir une action]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[[guide/la-magie-en-jeu|La magie en jeu]]', '{{la-magie-en-jeu}}') WHERE "id" = 'guide/s-entrainer-et-exercer-un-metier' AND instr(corps_md, '[[guide/la-magie-en-jeu|La magie en jeu]]') > 0;
 UPDATE page SET corps_md = replace(corps_md, '[fiche de personnage](/fiche/)', '{{fiche-de-personnage|fiche de personnage}}') WHERE "id" = 'guide/s-entrainer-et-exercer-un-metier' AND instr(corps_md, '[fiche de personnage](/fiche/)') > 0;

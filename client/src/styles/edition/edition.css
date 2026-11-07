@@ -339,7 +339,7 @@ body.ed-glisse-en-cours, body.ed-glisse-en-cours * { cursor: grabbing !important
 .ed-preg-outils .ed-outil { font-size: var(--fs-xs); padding: 0.1rem 0.55rem; }
 
 /* Mots-clés (/regles/glossaire/, src/scripts/edition/mots-cles.mjs) : la liste de gestion du glossaire — la balise à copier, le libellé, son abréviation,
-   ce qui le porte, puis les boutons ou la raison de la protection d'un mot-clé dont le site se sert ; dessous, son lien et sa couleur (migration 0096),
+   ce qui le porte, puis les boutons ou la raison de la protection d'un mot-clé dont le site se sert ; dessous, son lien et sa couleur (migration 0098),
    puis, sur toute la largeur, sa définition */
 .ed-mots-cles { list-style: none; padding: 0; margin: 0.4rem 0; }
 .ed-mots-cles li[hidden] { display: none; }

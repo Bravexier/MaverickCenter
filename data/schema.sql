@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 97;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 98;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -107,7 +107,7 @@ CREATE TABLE alias (
 CREATE INDEX alias_cle   ON alias (cle);
 
 -- Vocabulaire des mots-clés, devenu un glossaire : un mot-clé = son id, son libellé et sa définition (migrations 0043 et 0056). Demandes du
--- propriétaire : sur /recherche/, en mode modification, « supprimer / ajouter / modifier des mots clés » ; une suppression le retire de tous les
+-- propriétaire : en mode modification, « supprimer / ajouter / modifier des mots clés » (page Glossaire, /regles/glossaire/) ; une suppression le retire de tous les
 -- endroits qui le citent (0043 : les pages qui le portent, page_tag, par ON DELETE CASCADE) ; le 2026-10-16, la refonte en glossaire (0056) :
 -- `description` est la définition, texte simple, balises du glossaire comprises (forme canonique) ; NULL : pas encore décrit. Dans un texte
 -- (corps d'une page, bloc d'un panneau de règles, définition…), le mot-clé n'est jamais repéré tout seul : une balise explicite le cite, « {{<ref>}} » (le mot-clé en gras, sa définition en infobulle),
@@ -131,11 +131,13 @@ CREATE INDEX alias_cle   ON alias (cle);
 -- mot-clés ») : une entrée = un mot-clé, un doublon fusionné dans le mot-clé existant (id gardé), un renvoi (« voir … ») = une définition qui cite
 -- l'autre mot-clé ; l'abréviation que l'entrée écrivait (« AM », « INI ») est la colonne `abreviation`. « CR » y a rejoint « Corruption » (réponse du
 -- propriétaire : « Fusionner dans Corruption ») : l'id `cr` n'existe plus, « CR » est l'abréviation de `corruption`.
--- Le 2026-11-06, les liens des textes sont devenus des balises (migration 0096, générée par client/scripts/liens-en-mots-cles.mjs ; réponses du
+-- Le 2026-11-06, les liens des textes sont devenus des balises (migration 0098, générée par client/scripts/liens-en-mots-cles.mjs ; réponses du
 -- propriétaire : `couleur` et `url`, « NULL par défaut, ajoutées en dernier », « URL interne seulement » ; les [[…]] et les liens Markdown internes
 -- [texte](/…) deviennent des balises ; un mot-clé par page visée, libellé = titre de la page, url = son adresse, sans définition ni abréviation ; un
 -- mot-clé existant de même écriture garde id et définition et ne reçoit que l'url, « alignement », « artisanat », « bouclier », « ceinture »,
--- « codex » (« Le mot-clé existant prend l'URL ») ; « il ne faut pas de changement par rapport à avant en terme de résultat. Tu feras donc en sorte
+-- « codex » (« Le mot-clé existant prend l'URL ») ; 13 pages ou routes fondues dans un mot-clé existant qui prend leur url, sans mot-clé nouveau,
+-- les balises gardant le texte affiché (« Fusionner dans l'existant » : « posture », « mode-hyper », « classe », « race », « metier », « tenaille »,
+-- « des »… : client/scripts/liens-en-mots-cles.mjs#FUSIONS_DANS_L_EXISTANT) ; « il ne faut pas de changement par rapport à avant en terme de résultat. Tu feras donc en sorte
 -- que le mot clé reprenne la couleur de la page d'avant » ; « Un mot-clé par page colorée » ; une route sans page (/fiche/, /magies/…) a le mot-clé
 -- du libellé de son menu ; homonymes race/classe : « La race garde le nom », la classe s'écrit « <Nom> (classe) »).
 -- Les pages d'exemple gardent leurs liens ; lib/liens-en-mots-cles.mjs#convertirLesLiens convertit un texte avec la table du registre de la migration.
@@ -158,12 +160,12 @@ CREATE TABLE mot_cle (
                                                                  -- (lib/palette-css.mjs#FAMILLES_DE_LA_PALETTE ; id = celui de sa classe CSS,
                                                                  -- lib/palette-css.mjs#idDeCouleur : « magie:sang », « classe:melee », « race:pure »,
                                                                  -- « partie:creer ») ou « #rrggbb » (minuscules) ; NULL : aucune. Que la référence nomme
-                                                                 -- une couleur de la palette ne se lit pas en SQL. Migration 0096, ajoutée en dernier
+                                                                 -- une couleur de la palette ne se lit pas en SQL. Migration 0098, ajoutée en dernier
   url         TEXT    CHECK (url IS NULL OR (url GLOB '/*' AND url NOT GLOB '//*' AND url NOT GLOB '*[^!-~]*' AND instr(url, '\') = 0))
                                                                  -- l'adresse où mène le mot-clé : interne seulement, relative à la racine du site, sans le
                                                                  -- préfixe de déploiement (« /races/humain/ », « /metiers/#metier-mineur », « /fiche/ ») ;
                                                                  -- ni « //hôte », ni espace, ni caractère hors ASCII imprimable, ni « \ ». NULL : aucune.
-                                                                 -- Migration 0096, ajoutée en dernier
+                                                                 -- Migration 0098, ajoutée en dernier
 ) STRICT;
 
 -- Mots-clés d'une page (frontmatter `tags`, dans l'ordre) : l'écriture est celle du vocabulaire (mot_cle.libelle ; jusqu'à la migration 0043, chaque page
@@ -3009,7 +3011,9 @@ CREATE TABLE baton_magique (
 ) STRICT;
 
 -- Métiers (Google Doc « MÉTIER » : une page par métier, 72). `bonus_brut`, `artisanat_brut`, `equipement_brut`, `avantage_brut` sont les
--- quatre champs de la page, tels qu'écrits (liens [[…]] et échappements Markdown retirés). Artisanat (décision R34) : un texte libre (ce que le
+-- quatre champs de la page, tels qu'écrits (liens [[…]] et échappements Markdown retirés ; depuis la migration 0098, le lien « alchimie primitive »
+-- d'Alchimiste et d'Apothicaire y est la balise du mot-clé de sa page, « {{alchimie-primitive|alchimie primitive}} », dans `artisanat_brut` comme
+-- dans `artisanat_texte`, et le corps de leur page la rend : lib/corps-metiers.mjs#corpsDeMetier). Artisanat (décision R34) : un texte libre (ce que le
 -- métier fabrique, `artisanat_texte`) et deux caractéristiques (`test_carac_1_id`, `test_carac_2_id`) ; la compétence d'artisanat vaut 10 × la
 -- première + 10 × la seconde (regle_constante 'metier.artisanat_par_point_caracteristique'). Sur le site de dev, ce sont ces trois colonnes qui se
 -- modifient ; `artisanat_brut`, `test_brut` et `peut_fabriquer` en sont recalculés.
@@ -3838,15 +3842,15 @@ CREATE VIEW lien_page AS
 CREATE VIEW lien_a_creer AS
   SELECT page_id, position, cible, ancre, etat FROM lien WHERE etat <> 'resolu';
 
--- Le vocabulaire des mots-clés et les pages qui les portent (page /recherche/ du site de dev : un mot-clé supprimé est retiré de nb_pages pages),
--- avec sa définition (glossaire, migration 0056), son abréviation (migration 0090), sa couleur et son adresse (migration 0096).
+-- Le vocabulaire des mots-clés et les pages qui les portent (page Glossaire du site de dev, /regles/glossaire/ : un mot-clé supprimé est retiré de
+-- nb_pages pages), avec sa définition (glossaire, migration 0056), son abréviation (migration 0090), sa couleur et son adresse (migration 0098).
 CREATE VIEW v_mot_cle AS
   SELECT m.id, m.libelle, m.libelle_cle,
     (SELECT count(*) FROM page_tag t WHERE t.tag_id = m.id) AS nb_pages,
     m.description,                                                         -- la définition du glossaire (migration 0056 ; NULL : pas encore décrit)
     m.abreviation,                                                         -- l'abréviation (migration 0090 ; NULL : aucune)
-    m.couleur,                                                             -- la référence de couleur (migration 0096 ; NULL : aucune)
-    m.url                                                                  -- l'adresse interne où mène le mot-clé (migration 0096 ; NULL : aucune)
+    m.couleur,                                                             -- la référence de couleur (migration 0098 ; NULL : aucune)
+    m.url                                                                  -- l'adresse interne où mène le mot-clé (migration 0098 ; NULL : aucune)
   FROM mot_cle m;
 
 -- Relation d'incompatibilité symétrique : (a, b) est présent dans les deux sens dès que l'un des deux cite l'autre.

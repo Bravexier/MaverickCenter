@@ -1,5 +1,5 @@
 // Maillage automatique : transforme les mentions d'un mot-clé à adresse (son libellé, ou le titre ou un alias de la page où il mène) en balises de ce
-// mot-clé. Depuis la migration 0096 (décision du propriétaire : « tous les liens deviendront des mots-clés et tous les mots-clés deviendront des
+// mot-clé. Depuis la migration 0098 (décision du propriétaire : « tous les liens deviendront des mots-clés et tous les mots-clés deviendront des
 // liens »), un lien est la balise d'un mot-clé dont `mot_cle.url` porte l'adresse : « {{id}} » quand le texte est son libellé, « {{id|texte}} » sinon
 // (forme canonique d'un texte mis en forme, lib/mots-cles-balises.mjs#formeCanonique) ; jamais un [[lien]], que db:check refuse. Le maillage ne crée
 // jamais de mot-clé : une page sans mot-clé qui y mène n'est pas une cible (ciblesDuVocabulaire).
@@ -36,7 +36,7 @@ const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
  * Types dont le corps est refait depuis les tables par l'édition du site de dev, en entier ou par sections (rendus des importeurs : lib/corps-races.mjs,
  * corps-classes.mjs, corps-magies.mjs, corps-metiers.mjs) : une balise posée dans leur corps serait perdue à la première modification, et
  * tools/db/races_onglet.py --verifier comme test/corps-classes refusent un corps qui ne redit pas l'importeur ; le corps d'un métier est exactement le
- * rendu de sa ligne depuis la migration 0096 (corps_md === corpsDeMetier(ligne), test/corps-metiers.test.mjs). De même les pages `lore`, que leur
+ * rendu de sa ligne depuis la migration 0098 (corps_md === corpsDeMetier(ligne), test/corps-metiers.test.mjs). De même les pages `lore`, que leur
  * importeur réécrit à l'identique : le Codex (tools/docs/codex.py, dont --verifier veut chaque page à l'octet près du découpage) et « Relations entre
  * les races » (tools/sheets/relations-races.py). Le maillage ne les modifie pas (leurs mots-clés restent des cibles).
  */

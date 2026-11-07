@@ -817,7 +817,7 @@ const FORMES = {
 };
 const CLES_ENTETE = ['title', 'aliases', 'tags', 'summary', 'sources', 'status'];
 
-// les renvois posés par `npm run autolink` (depuis la migration 0096 : des balises de mots-clés, {{id}} ou {{id|texte}} ; avant, des [[liens]]) et les
+// les renvois posés par `npm run autolink` (depuis la migration 0098 : des balises de mots-clés, {{id}} ou {{id|texte}} ; avant, des [[liens]]) et les
 // balises du glossaire, lus par le texte qu'ils affichent (texteSansBalises, avec le vocabulaire de la base : {{id}} affiche le libellé)
 let vocabulaire;
 const vocabulaireDeLaBase = () => (vocabulaire ??= chargerVocabulaire(ouvrirBase({ sansExemples: false })));
@@ -951,10 +951,10 @@ for (const [nomDuCas, [alterer, attendu]] of Object.entries(ALTERATIONS)) {
 }
 
 test('pages réelles, sans dump : balises posées par `npm run autolink` (anciens liens `[[…]]` compris) et page retouchée (statut verified) ne sont pas des écarts', () => {
-  // le maillage pose « {{id}} » (le texte est le libellé du mot-clé) ou « {{id|texte}} » (migration 0096) ; un ancien [[lien]] reste lu
+  // le maillage pose « {{id}} » (le texte est le libellé du mot-clé) ou « {{id|texte}} » (migration 0098) ; un ancien [[lien]] reste lu
   const v = vocabulaireDeLaBase();
   const necro = v.find((m) => m.id === 'magie-de-la-necromancie');
-  assert.ok(necro, 'le mot-clé de la page de la Nécromancie (0096)');
+  assert.ok(necro, 'le mot-clé de la page de la Nécromancie (0098)');
   const balise = (t) => t.replace('Terre + Espace/Temps', '{{terre|Terre}} + {{magie-de-lespace-temps|Espace/Temps}}');
   assert.deepEqual(problemesStructure(tel('golem-de-rouage', balise)), []);
   const charcabe = famille.find((p) => p.slug === 'charcabe').texte;

@@ -251,7 +251,7 @@ test('aperçu assaini : un mot-clé et le mode complet gardent leurs classes, le
   assert.doesNotMatch(htmlSur(enfants('<strong class="mot-cle" data-mot-cle="X Y" data-balise="{{x}}">t</strong>')), /data-mot-cle/, 'un id qui n’en est pas un');
 });
 
-// Un mot-clé qui a une adresse est un lien (`a.mot-cle`, migration 0096 ; réponse du propriétaire : « une balise dont le mot-clé a une URL est un lien »),
+// Un mot-clé qui a une adresse est un lien (`a.mot-cle`, migration 0098 ; réponse du propriétaire : « une balise dont le mot-clé a une URL est un lien »),
 // coloré par sa classe : l'éditeur le relit en balise comme `strong.mot-cle` (sinon l'aller-retour l'écrirait en lien Markdown), l'aperçu assaini garde
 // son adresse et sa classe de couleur, rien d'autre.
 const GLOSSAIRE_A_LIENS = [
@@ -259,7 +259,7 @@ const GLOSSAIRE_A_LIENS = [
   { id: 'feu', libelle: 'Feu', description: '', url: '/magies/magie-du-feu/', couleur: '#ff4500' },
 ];
 
-test('mots-clés à adresse (migration 0096) : le lien relu en balise, mode complet compris ; l’aperçu assaini garde l’adresse et la couleur', async () => {
+test('mots-clés à adresse (migration 0098) : le lien relu en balise, mode complet compris ; l’aperçu assaini garde l’adresse et la couleur', async () => {
   const md = 'Les {{elfe|elfes}}, le {{feu}} et {{elfe:}}.';
   const html = htmlAvecMotsCles(await rendre(md), GLOSSAIRE_A_LIENS, { base: '/MaverickCenter/' }).html;
   assert.match(html, /<a class="mot-cle couleur-race-pure" href="\/MaverickCenter\/races\/elfe\/" data-mot-cle="elfe" data-bulle="mot-cle-elfe" aria-describedby="mot-cle-elfe" data-balise="\{\{elfe\|elfes\}\}">elfes<\/a>/);

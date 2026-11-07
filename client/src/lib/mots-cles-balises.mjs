@@ -31,7 +31,7 @@
 // data-ed…) : le texte simple. Un mot-clé dans une bulle (`.bulle`) est en gras sans bulle ni focus ; dans un élément qui a déjà le focus (a, button,
 // summary, label, select, [tabindex]), sans tabindex ; dans un bouton ou un résumé de `details`, sans bulle non plus (le toucher ferait l'action). Une
 // bulle par mot-clé employé (et décrit) et par page, posée avant </body> : le système unique d'infobulles du site (components/Infobulles.astro).
-// Liens et couleurs (migration 0096 ; réponses du propriétaire du 2026-11-06) : un mot-clé qui a une adresse (mot_cle.url) est un lien vers elle,
+// Liens et couleurs (migration 0098 ; réponses du propriétaire du 2026-11-06) : un mot-clé qui a une adresse (mot_cle.url) est un lien vers elle,
 // préfixée de la base du site (hors d'un lien, d'un bouton, d'un résumé, d'une étiquette, d'une liste ou d'une bulle : le gras seul), sans adresse il
 // n'est pas cliquable ; un mot-clé coloré (mot_cle.couleur) porte sa classe (lib/mots-cles-liens.mjs#classeDuMotCle) sur sa balise, sur le bloc du mode
 // complet et sur sa bulle (habillage).
@@ -169,7 +169,7 @@ export function lireUneBalise(brut) {
 /**
  * Le vocabulaire prêt à résoudre les refs : { parId, parCle, parAbreviation, liste } d'après [{ id, libelle, libelle_cle?, description?, abreviation?,
  * url?, couleur? }] (lib/mots-cles-db.mjs, GET /api/edition/mots-cles/ : `description` NULL tant que le mot-clé n'est pas décrit, '' ici ; `abreviation`
- * NULL sans abréviation, migration 0090 ; `url` et `couleur` NULL sans adresse ni couleur, migration 0096 ; `parAbreviation` : normalize(abreviation) →
+ * NULL sans abréviation, migration 0090 ; `url` et `couleur` NULL sans adresse ni couleur, migration 0098 ; `parAbreviation` : normalize(abreviation) →
  * mot-clé) ; un vocabulaire déjà prêt est rendu tel quel, null reste null.
  */
 export function vocabulaireDesMotsCles(motsCles) {
@@ -523,7 +523,7 @@ const lire = (t) => decoderHtml(t, { inconnues: true });
 const htmlDuTexteDeLaBalise = (texte) => htmlAvecMonnaies(texte);
 
 /**
- * L'adresse d'un lien de mot-clé (migration 0096) : son `url` (relative à la racine du site, sans le préfixe de déploiement) préfixée de `base`
+ * L'adresse d'un lien de mot-clé (migration 0098) : son `url` (relative à la racine du site, sans le préfixe de déploiement) préfixée de `base`
  * (import.meta.env.BASE_URL au build, `ed.base` sur le site de dev : « /MaverickCenter/ » + « /races/elfe/ » → « /MaverickCenter/races/elfe/ ») ; null
  * pour un mot-clé sans adresse.
  */

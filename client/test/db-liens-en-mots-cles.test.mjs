@@ -1,12 +1,13 @@
-// Migration data/migrations/0096-liens-en-mots-cles.sql (générée par scripts/liens-en-mots-cles.mjs ; réponses du propriétaire du 2026-11-06 : `mot_cle`
+// Migration data/migrations/0098-liens-en-mots-cles.sql (générée par scripts/liens-en-mots-cles.mjs ; réponses du propriétaire du 2026-11-06 : `mot_cle`
 // gagne `couleur` et `url`, « NULL par défaut, ajoutées en dernier », « URL interne seulement » ; les [[…]] et les liens Markdown internes [texte](/…)
 // deviennent des balises, un mot-clé par page visée, libellé = titre de la page, sans définition ; « il ne faut pas de changement par rapport à avant en
 // terme de résultat. Tu feras donc en sorte que le mot clé reprenne la couleur de la page d'avant » ; « Un mot-clé par page colorée » ; une route sans
 // page a le libellé de son menu ; un mot-clé existant de même écriture : « Le mot-clé existant prend l'URL » ; homonymes race/classe : « La race garde
-// le nom ») et la conversion pure lib/liens-en-mots-cles.mjs.
+// le nom » ; « Fusionner dans l'existant » : « Pour chaque paire, le mot-clé existant prend l'URL de la page, comme Bouclier et Ceinture, et les liens
+// convertis le visent. Le texte affiché reste le même, et le mot-clé nouveau n'est pas créé. ») et la conversion pure lib/liens-en-mots-cles.mjs.
 // Lecture seule de la base construite ; les contraintes se vérifient sur une base en mémoire faite de data/schema.sql. Le site de dev est la source de
 // ce qu'il modifie (tests-conventions) : ce que la migration a écrit ne se compare qu'aux lignes qu'aucun lot rapatrié après elle (absent de
-// fixtures/lots-avant-0096.json) n'a retouchées ; l'état courant se contrôle par des invariants (aucun lien hors exemples et codes, formes canoniques,
+// fixtures/lots-avant-0098.json) n'a retouchées ; l'état courant se contrôle par des invariants (aucun lien hors exemples et codes, formes canoniques,
 // couleurs de la palette).
 //   node --test test/db-liens-en-mots-cles.test.mjs
 import assert from 'node:assert/strict';
@@ -20,29 +21,34 @@ import { convertirLesLiens, liensDuTexte, tableDeConversion } from '../src/lib/l
 import { cheminDePage } from '../src/lib/metiers.mjs';
 import { formesNonCanoniques } from '../src/lib/mots-cles-balises.mjs';
 import { motsClesDeLaBase, textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
+import { FUSIONS_DANS_L_EXISTANT, MOTS_CLES_EXISTANTS_REPRIS } from '../scripts/liens-en-mots-cles.mjs';
+import { baseDImport, lotsAvant } from './aide-base-d-import.mjs';
 import { FAMILLES_DE_LA_PALETTE, classeDeMagie, idDeCouleur } from '../src/lib/palette-css.mjs';
 import { normalize } from '../src/lib/text.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
-const REGISTRE = JSON.parse(readFileSync(new URL('../../data/migrations/0096-liens-en-mots-cles.json', import.meta.url), 'utf8'));
-const MIGRATION = readFileSync(new URL('../../data/migrations/0096-liens-en-mots-cles.sql', import.meta.url), 'utf8');
+const REGISTRE = JSON.parse(readFileSync(new URL('../../data/migrations/0098-liens-en-mots-cles.json', import.meta.url), 'utf8'));
+const MIGRATION = readFileSync(new URL('../../data/migrations/0098-liens-en-mots-cles.sql', import.meta.url), 'utf8');
 const SCHEMA = readFileSync(new URL('../../data/schema.sql', import.meta.url), 'utf8');
-const LOTS_AVANT_0096 = new Set(JSON.parse(readFileSync(new URL('./fixtures/lots-avant-0096.json', import.meta.url), 'utf8')).lots);
-// les lignes retouchées par un lot rapatrié après la 0096 : « table|clé JSON »
-const retouchees = new Set(historiqueSite(db).entrees.filter((e) => !LOTS_AVANT_0096.has(e.lot)).map((e) => `${e.table}|${e.texte}`));
+const LOTS_AVANT_0098 = new Set(JSON.parse(readFileSync(new URL('./fixtures/lots-avant-0098.json', import.meta.url), 'utf8')).lots);
+// les lignes retouchées par un lot rapatrié après la 0098 : « table|clé JSON »
+const retouchees = new Set(historiqueSite(db).entrees.filter((e) => !LOTS_AVANT_0098.has(e.lot)).map((e) => `${e.table}|${e.texte}`));
 const intacte = (table, cle) => !retouchees.has(`${table}|${JSON.stringify(cle)}`);
 const motCle = (id) => db.prepare('SELECT * FROM mot_cle WHERE id = ?').get(id);
 const texte = (table, colonne, id) => db.prepare(`SELECT "${colonne}" AS v FROM "${table}" WHERE id = ?`).get(id)?.v;
 const pageExemple = new Set(db.prepare("SELECT id FROM page WHERE statut = 'example'").all().map((p) => p.id));
 const LIENS_GARDES = ['/#lien-discord'];
+/** La base telle que la 0098 l'a laissée : seuls les lots rapatriés après elle (absents de fixtures/lots-avant-0098.json) sont défaits. */
+const apres0098 = () => baseDImport({ garder: lotsAvant('0098') });
+const texteApres0098 = (table, colonne, id) => apres0098().prepare(`SELECT "${colonne}" AS v FROM "${table}" WHERE id = ?`).get(id)?.v;
 
-test('0096 : couleur et url en dernier dans mot_cle et dans v_mot_cle', () => {
+test('0098 : couleur et url en dernier dans mot_cle et dans v_mot_cle', () => {
   assert.deepEqual(db.prepare('PRAGMA table_info(mot_cle)').all().map((c) => c.name).slice(-3), ['abreviation', 'couleur', 'url']);
   assert.deepEqual(db.prepare('PRAGMA table_info(v_mot_cle)').all().map((c) => c.name).slice(-3), ['abreviation', 'couleur', 'url']);
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version >= 96, true);
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version >= 98, true);
 });
 
-test('0096 : la base refuse une couleur qui n’est ni « famille:id » ni « #rrggbb », et une adresse externe', () => {
+test('0098 : la base refuse une couleur qui n’est ni « famille:id » ni « #rrggbb », et une adresse externe', () => {
   const m = new DatabaseSync(':memory:');
   m.exec(SCHEMA);
   const poser = (couleur, url) => m.prepare("INSERT INTO mot_cle (id, libelle, libelle_cle, couleur, url) VALUES ('x', 'X', 'x', ?, ?)").run(couleur, url);
@@ -55,14 +61,17 @@ test('0096 : la base refuse une couleur qui n’est ni « famille:id » ni « #r
   m.close();
 });
 
-test('0096 : les mots-clés du registre (Q1, Q8, Q10) — comptes, libellés, adresses, sans définition', () => {
+test('0098 : les mots-clés du registre (Q1, Q8, Q10) — comptes, libellés, adresses, sans définition', () => {
   const par = (o) => REGISTRE.motsCles.filter((m) => m.origine === o);
   assert.equal(par('couleur').length + par('lien').length + par('existant').length, REGISTRE.motsCles.length);
   assert.equal(REGISTRE.motsCles.filter((m) => m.couleur).length, 90, 'Q8 : un mot-clé coloré par page colorée (15 magies, 39 classes, 27 races, 9 pages du guide)');
-  assert.deepEqual(REGISTRE.motsCles.filter((m) => m.route).map((m) => [m.route, m.libelle]).sort(), [
-    ['/bestiaire/', 'Bestiaire'], ['/chronologie/', 'Chronologie'], ['/classes/', 'Classes'], ['/fiche/', 'Fiche de personnage'], ['/magies/', 'Magies'],
-    ['/metiers/', 'Métiers'], ['/races/', 'Races'], ['/regles/artisanat/', 'Artisanat'], ['/ressources/composants/', 'Composants'],
-    ['/ressources/objets-a-la-ceinture/', 'Ceinture'],
+  // une route sans page : le libellé de son menu (Q10) ; celles qu'un mot-clé existant reprend gardent le sien (« Classe → /classes/, Métier →
+  // /metiers/, race → /races/ » ; artisanat et ceinture, de même écriture)
+  assert.deepEqual(REGISTRE.motsCles.filter((m) => m.route).map((m) => [m.route, m.id, m.libelle, m.origine]).sort(), [
+    ['/bestiaire/', 'bestiaire', 'Bestiaire', 'lien'], ['/chronologie/', 'chronologie', 'Chronologie', 'lien'], ['/classes/', 'classe', 'Classe', 'existant'],
+    ['/fiche/', 'fiche-de-personnage', 'Fiche de personnage', 'lien'], ['/magies/', 'magies', 'Magies', 'lien'], ['/metiers/', 'metier', 'Métier', 'existant'],
+    ['/races/', 'race', 'race', 'existant'], ['/regles/artisanat/', 'artisanat', 'Artisanat', 'existant'],
+    ['/ressources/composants/', 'composants', 'Composants', 'lien'], ['/ressources/objets-a-la-ceinture/', 'ceinture', 'Ceinture', 'existant'],
   ]);
   const crees = new Set(MIGRATION.slice(MIGRATION.indexOf('-- 3. '), MIGRATION.indexOf('-- 4. ')).match(/^ {2}\('[^']+'/gm).map((l) => l.slice(4, -1)));
   for (const r of REGISTRE.motsCles) {
@@ -86,18 +95,66 @@ test('0096 : les mots-clés du registre (Q1, Q8, Q10) — comptes, libellés, ad
   assert.ok(!REGISTRE.motsCles.some((m) => m.id === 'cr'), 'un id retiré n’est jamais réutilisé');
 });
 
-test('0096 : un mot-clé existant de même écriture garde id et définition et ne reçoit que l’url (« Le mot-clé existant prend l’URL »)', () => {
+test('0098 : un mot-clé existant, de même écriture ou fusionné, garde id, libellé et définition et ne reçoit que l’url (« Le mot-clé existant prend l’URL »)', () => {
   const repris = REGISTRE.motsCles.filter((m) => m.origine === 'existant');
   assert.deepEqual(repris.map((m) => [m.id, m.url]), [
-    ['alignement', '/regles/alignement/'], ['artisanat', '/regles/artisanat/'], ['bouclier', '/ressources/bouclier/'],
-    ['ceinture', '/ressources/objets-a-la-ceinture/'], ['codex', '/lore/codex/'],
+    ['alignement', '/regles/alignement/'], ['alteration-detat', '/regles/alterations-d-etats/'], ['artisanat', '/regles/artisanat/'],
+    ['attaque-discrete', '/regles/les-attaques-discretes/'], ['attaque-dopportunite', '/regles/les-attaques-d-opportunite/'],
+    ['bouclier', '/ressources/bouclier/'], ['ceinture', '/ressources/objets-a-la-ceinture/'], ['classe', '/classes/'], ['codex', '/lore/codex/'],
+    ['degats', '/regles/les-degats/'], ['des', '/regles/jet-de-des/'], ['embuscade', '/regles/l-embuscade/'], ['metier', '/metiers/'],
+    ['mode-hyper', '/regles/le-mode-hyper/'], ['piece-elementaire', '/ressources/armes/#pieces-elementaires'], ['posture', '/regles/les-postures/'],
+    ['race', '/races/'], ['tenaille', '/regles/prise-en-tenaille-et-zone-d-influence/'],
   ]);
+  assert.deepEqual(repris.map((m) => m.id), [...MOTS_CLES_EXISTANTS_REPRIS, ...Object.values(FUSIONS_DANS_L_EXISTANT)].sort());
+  assert.equal(repris.filter((m) => m.couleur).length, 0, 'aucune page reprise n’est colorée (sinon l’existant en prendrait la couleur)');
   const section2 = MIGRATION.slice(MIGRATION.indexOf('-- 2. '), MIGRATION.indexOf('-- 3. ')).split('\n').filter((l) => l.startsWith('UPDATE'));
   assert.deepEqual(section2, repris.map((m) => `UPDATE mot_cle SET url = '${m.url}', couleur = ${m.couleur ? `'${m.couleur}'` : 'NULL'} WHERE id = '${m.id}';`),
     'ni le libellé ni la définition ne changent');
 });
 
-test('0096 : homonymes race/classe — « La race garde le nom », la classe prend « (classe) »', () => {
+test('0098 : « Fusionner dans l’existant » — le mot-clé existant prend l’URL, les liens le visent avec leur texte affiché, aucun mot-clé nouveau', () => {
+  // 13 paires : la page ou la route, le mot-clé existant (« Résistance » : « Aucun, garder le nouveau »)
+  assert.deepEqual(Object.entries(FUSIONS_DANS_L_EXISTANT).sort(), [
+    ['/classes/', 'classe'], ['/metiers/', 'metier'], ['/races/', 'race'], ['guide/alterations-d-etats', 'alteration-detat'],
+    ['guide/jet-de-des', 'des'], ['guide/l-embuscade', 'embuscade'], ['guide/le-mode-hyper', 'mode-hyper'],
+    ['guide/les-attaques-d-opportunite', 'attaque-dopportunite'], ['guide/les-attaques-discretes', 'attaque-discrete'], ['guide/les-degats', 'degats'],
+    ['guide/les-postures', 'posture'], ['guide/prise-en-tenaille-et-zone-d-influence', 'tenaille'], ['ressources/pieces-elementaires', 'piece-elementaire'],
+  ]);
+  const crees = new Set(MIGRATION.slice(MIGRATION.indexOf('-- 3. '), MIGRATION.indexOf('-- 4. ')).match(/^ {2}\('[^']+'/gm).map((l) => l.slice(4, -1)));
+  for (const [cible, id] of Object.entries(FUSIONS_DANS_L_EXISTANT)) {
+    const menent = REGISTRE.motsCles.filter((m) => (m.page ?? m.route) === cible);
+    assert.deepEqual(menent.map((m) => [m.id, m.origine]), [[id, 'existant']], `${cible} : seul l’existant y mène`);
+    assert.ok(!crees.has(id), `${id} n’est pas créé`);
+  }
+  // les mots-clés que la page aurait eus (normalize de son titre ou du libellé du menu) ne sont pas créés
+  for (const id of ['les-postures', 'le-mode-hyper', 'alterations-detats', 'classes', 'races', 'metiers', 'les-degats', 'lembuscade',
+    'les-attaques-dopportunite', 'pieces-elementaires', 'les-attaques-discretes', 'la-prise-en-tenaille-et-zone-dinfluence', 'jet-de-des']) {
+    assert.ok(!crees.has(id) && !REGISTRE.motsCles.some((m) => m.id === id), id);
+  }
+  // « Résistances et faiblesses » et « Liste des altérations d'état » gardent le mot-clé créé
+  assert.deepEqual(['guide/resistances-et-faiblesses', 'guide/liste-des-alterations-d-etat'].map((p) => REGISTRE.motsCles.find((m) => m.page === p)).map((m) => [m.id, m.origine]),
+    [['resistances-et-faiblesses', 'lien'], ['liste-des-alterations-detat', 'lien']]);
+  assert.ok(!REGISTRE.motsCles.some((m) => m.id === 'resistance'));
+  // le texte affiché est gardé : « {{id}} » seulement quand il est le libellé de l'existant
+  const fondus = new Map(REGISTRE.motsCles.filter((m) => Object.values(FUSIONS_DANS_L_EXISTANT).includes(m.id)).map((m) => [m.id, m]));
+  const sur = REGISTRE.remplacements.filter((r) => fondus.has(/^\{\{([a-z0-9-]+)/.exec(r.balise)[1]));
+  assert.ok(sur.length >= 40, `${sur.length} liens convertis vers un existant`);
+  for (const r of sur) {
+    const [lien] = liensDuTexte(r.lien);
+    const m = fondus.get(/^\{\{([a-z0-9-]+)/.exec(r.balise)[1]);
+    const attendue = r.table === 'page' && lien.texte === m.libelle ? `{{${m.id}}}` : `{{${m.id}|${lien.texte}}}`;
+    assert.equal(r.balise.replace('\\|', '|'), attendue, `${r.table} ${r.cle.id} ${r.lien}`);
+  }
+  const remplacement = (id, lien) => REGISTRE.remplacements.find((r) => r.cle.id === id && r.lien === lien)?.balise;
+  assert.equal(remplacement('guide/attaquer-et-se-defendre', '[[guide/les-postures|Les postures]]'), '{{posture|Les postures}}');
+  assert.equal(remplacement('guide/reussir-une-action', '[[guide/jet-de-des|Jet de dés]]'), '{{des|Jet de dés}}');
+  assert.equal(remplacement('guide/choisir-sa-classe', '[classes](/classes/)'), '{{classe|classes}}');
+  assert.equal(remplacement('guide/le-mode-hyper', '[race](/races/)'), '{{race}}', 'le texte est le libellé de l’existant');
+  assert.equal(remplacement('guide/attaquer-et-se-defendre', '[[guide/prise-en-tenaille-et-zone-d-influence|La prise en tenaille et zone d’influence]]'),
+    '{{tenaille|La prise en tenaille et zone d’influence}}');
+});
+
+test('0098 : homonymes race/classe — « La race garde le nom », la classe prend « (classe) »', () => {
   const de = (page) => REGISTRE.motsCles.find((m) => m.page === page);
   assert.deepEqual([de('races/orios').id, de('races/orios').libelle], ['orios', 'Orios']);
   assert.deepEqual([de('classes/orios').id, de('classes/orios').libelle], ['orios-classe', 'Orios (classe)']);
@@ -106,7 +163,7 @@ test('0096 : homonymes race/classe — « La race garde le nom », la classe pre
   assert.equal(REGISTRE.motsCles.filter((m) => m.page?.startsWith('classes/') && m.libelle.endsWith(' (classe)')).length, 13);
 });
 
-test('0096 : chaque mot-clé coloré reprend la couleur de sa page (Q5, Q9), une couleur de la palette', () => {
+test('0098 : chaque mot-clé coloré reprend la couleur de sa page (Q5, Q9), une couleur de la palette', () => {
   const de = (page) => REGISTRE.motsCles.find((m) => m.page === page);
   assert.equal(de('magies/magie-du-sang').couleur, 'magie:sang');
   assert.equal(de('magies/magie-du-sang').couleur, `magie:${classeDeMagie('Sang').slice('couleur-magie-'.length)}`);
@@ -123,7 +180,7 @@ test('0096 : chaque mot-clé coloré reprend la couleur de sa page (Q5, Q9), une
   }
 });
 
-test('0096 : quelques liens convertis, leur texte affiché gardé', () => {
+test('0098 : quelques liens convertis, leur texte affiché gardé', () => {
   const remplacement = (table, id, lien) => REGISTRE.remplacements.find((r) => r.table === table && r.cle.id === id && r.lien === lien);
   assert.equal(remplacement('page', 'guide/actions-et-mouvements', '[[La Vitesse et la Portée|la vitesse]]').balise, '{{la-vitesse-et-la-portee|la vitesse}}');
   assert.equal(remplacement('page', 'metiers/regles-des-metiers', '[[Mineur]]').balise, '{{mineur}}');
@@ -133,12 +190,14 @@ test('0096 : quelques liens convertis, leur texte affiché gardé', () => {
   assert.equal(remplacement('page', 'guide/la-magie-en-jeu', '[Bâtons magiques](/ressources/equipement/#batons-magiques)').balise.startsWith('{{baton-magique|'), true);
   assert.equal(remplacement('page', 'guide/resistances-et-faiblesses', '[Relations entre magies](/magies/#relations)').balise, '{{magies|Relations entre magies}}');
   assert.equal(REGISTRE.anciennesAncres.length, 3, 'ancres perdues : #ceinture-consommables, #materiaux, #relations');
-  assert.equal(remplacement('competence', 'vigueur', "[[Altérations d'états et Mode Hyper|altérations d'états]]").balise, "{{alterations-detats-et-mode-hyper|altérations d'états}}");
-  if (intacte('competence', { id: 'vigueur' })) assert.match(texte('competence', 'description', 'vigueur'), /^Mieux résister aux \{\{alterations-detats-et-mode-hyper\|altérations d'états\}\} physiques/);
-  if (intacte('page', { id: 'guide/bienvenue' })) assert.match(texte('page', 'corps_md', 'guide/bienvenue'), /\[sur la page d’accueil\]\(\/#lien-discord\)/, 'Q10 : le lien vers l’accueil reste');
+  // la compétence Vigueur : le lien que la 0096 (retrait de « Altérations d'états et Mode Hyper ») a écrit vers « Altérations d'états » vise le mot-clé
+  // existant « Altération d'état » (« Fusionner dans l'existant »)
+  assert.equal(remplacement('competence', 'vigueur', "[[guide/alterations-d-etats|altérations d'états]]").balise, "{{alteration-detat|altérations d'états}}");
+  assert.match(texteApres0098('competence', 'description', 'vigueur'), /^Mieux résister aux \{\{alteration-detat\|altérations d'états\}\} physiques/);
+  assert.match(texteApres0098('page', 'corps_md', 'guide/bienvenue'), /\[sur la page d’accueil\]\(\/#lien-discord\)/, 'Q10 : le lien vers l’accueil reste');
 });
 
-test('0096 : les métiers Alchimiste et Apothicaire — la balise à la source, le corps rendu de la ligne', () => {
+test('0098 : les métiers Alchimiste et Apothicaire — la balise à la source, le corps rendu de la ligne', () => {
   for (const id of ['metiers/alchimiste', 'metiers/apothicaire']) {
     const ligne = db.prepare('SELECT * FROM metier WHERE id = ?').get(id);
     if (intacte('metier', { id })) assert.match(ligne.artisanat_texte, /l’\{\{alchimie-primitive\|alchimie primitive\}\}$/, id);
@@ -147,7 +206,7 @@ test('0096 : les métiers Alchimiste et Apothicaire — la balise à la source, 
   }
 });
 
-test('0096 : plus aucun lien interne hors pages d’exemple, codes et section 15 ; formes canoniques', () => {
+test('0098 : plus aucun lien interne hors pages d’exemple, codes et section 15 ; formes canoniques', () => {
   const vocabulaire = motsClesDeLaBase(db);
   const restes = [];
   for (const col of textesDeLaBase(db)) {

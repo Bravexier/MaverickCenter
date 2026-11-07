@@ -268,9 +268,9 @@ test('le vrai service : GET /api/tipeee/ en HTTP, le dernier texte gardé à cô
 });
 
 test('livraison : l’instantané (sources/tipeee/bienvenue.json) copié dans _serveur/sources/, compté dans l’empreinte ; absent, rien n’est copié', () => {
-  // le premier fichier joint ; le second est le registre de la migration 0096 (serveur/edition.mjs#tableDesLiensDeLa0096), absent du faux dépôt
+  // le premier fichier joint ; le second est le registre de la migration 0098 (serveur/edition.mjs#tableDesLiensDeLa0098), absent du faux dépôt
   assert.deepEqual(FICHIERS_JOINTS[0], { source: `../${CHEMIN_INSTANTANE}`, cible: CHEMIN_INSTANTANE });
-  assert.deepEqual(FICHIERS_JOINTS.slice(1), [{ source: '../data/migrations/0096-liens-en-mots-cles.json', cible: 'data/migrations/0096-liens-en-mots-cles.json' }]);
+  assert.deepEqual(FICHIERS_JOINTS.slice(1), [{ source: '../data/migrations/0098-liens-en-mots-cles.json', cible: 'data/migrations/0098-liens-en-mots-cles.json' }]);
   const depot = join(racine, 'faux-depot');
   const client = join(depot, 'client');
   mkdirSync(join(client, 'serveur'), { recursive: true });

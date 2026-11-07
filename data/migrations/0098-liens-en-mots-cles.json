@@ -1,5 +1,5 @@
 {
- "migration": "0096-liens-en-mots-cles",
+ "migration": "0098-liens-en-mots-cles",
  "description": "Les mots-clés que la migration crée (ou dont elle complète l’adresse : origine « existant ») et les liens qu’elle remplace par leur balise. `origine` : « lien » (une page ou une route visée par un lien), « couleur » (une page colorée que rien ne vise : Q8), « existant ». `cles` : les clés sous lesquelles un lien [[…]] trouve la page (lib/liens-en-mots-cles.mjs#clesDeCible : « id:<id de la page> » ou normalize de la cible, celles sans ambiguïté de l’index des liens) ; `adresses` : les adresses des liens Markdown qui y mènent. lib/liens-en-mots-cles.mjs#tableDeConversion en fait la table de convertirLesLiens. `remplacements` : table, clé, colonne, lien tel qu’écrit, balise, nombre d’occurrences. `anciennesAncres` : les liens dont l’ancre ou la requête est perdue.",
  "motsCles": [
   {
@@ -97,35 +97,19 @@
    ]
   },
   {
-   "id": "alterations-detats",
-   "libelle": "Altérations d’états",
+   "id": "alteration-detat",
+   "libelle": "Altération d’état",
    "url": "/regles/alterations-d-etats/",
    "couleur": null,
    "page": "guide/alterations-d-etats",
-   "origine": "lien",
+   "origine": "existant",
    "cles": [
     "alterations-d-etats",
+    "alterations-detats",
     "id:guide/alterations-d-etats"
    ],
    "adresses": [
     "/regles/alterations-d-etats/"
-   ]
-  },
-  {
-   "id": "alterations-detats-et-mode-hyper",
-   "libelle": "Altérations d'états et Mode Hyper",
-   "url": "/regles/alterations-d-etats-et-mode-hyper/",
-   "couleur": null,
-   "page": "guide/alterations-d-etats-et-mode-hyper",
-   "origine": "lien",
-   "cles": [
-    "alterations-d-etats-et-mode-hyper",
-    "alterations-detats-et-mode-hyper",
-    "id:guide/alterations-d-etats-et-mode-hyper",
-    "mode-hyper"
-   ],
-   "adresses": [
-    "/regles/alterations-d-etats-et-mode-hyper/"
    ]
   },
   {
@@ -259,6 +243,37 @@
    "cles": [],
    "adresses": [
     "/regles/artisanat/"
+   ]
+  },
+  {
+   "id": "attaque-discrete",
+   "libelle": "Attaque discrète",
+   "url": "/regles/les-attaques-discretes/",
+   "couleur": null,
+   "page": "guide/les-attaques-discretes",
+   "origine": "existant",
+   "cles": [
+    "id:guide/les-attaques-discretes",
+    "les-attaques-discretes"
+   ],
+   "adresses": [
+    "/regles/les-attaques-discretes/"
+   ]
+  },
+  {
+   "id": "attaque-dopportunite",
+   "libelle": "Attaque d’opportunité",
+   "url": "/regles/les-attaques-d-opportunite/",
+   "couleur": null,
+   "page": "guide/les-attaques-d-opportunite",
+   "origine": "existant",
+   "cles": [
+    "id:guide/les-attaques-d-opportunite",
+    "les-attaques-d-opportunite",
+    "les-attaques-dopportunite"
+   ],
+   "adresses": [
+    "/regles/les-attaques-d-opportunite/"
    ]
   },
   {
@@ -652,12 +667,12 @@
    ]
   },
   {
-   "id": "classes",
-   "libelle": "Classes",
+   "id": "classe",
+   "libelle": "Classe",
    "url": "/classes/",
    "couleur": null,
    "route": "/classes/",
-   "origine": "lien",
+   "origine": "existant",
    "cles": [],
    "adresses": [
     "/classes/"
@@ -825,6 +840,36 @@
    ],
    "adresses": [
     "/classes/cuirasse/"
+   ]
+  },
+  {
+   "id": "degats",
+   "libelle": "Dégâts",
+   "url": "/regles/les-degats/",
+   "couleur": null,
+   "page": "guide/les-degats",
+   "origine": "existant",
+   "cles": [
+    "id:guide/les-degats",
+    "les-degats"
+   ],
+   "adresses": [
+    "/regles/les-degats/"
+   ]
+  },
+  {
+   "id": "des",
+   "libelle": "Dés",
+   "url": "/regles/jet-de-des/",
+   "couleur": null,
+   "page": "guide/jet-de-des",
+   "origine": "existant",
+   "cles": [
+    "id:guide/jet-de-des",
+    "jet-de-des"
+   ],
+   "adresses": [
+    "/regles/jet-de-des/"
    ]
   },
   {
@@ -1069,6 +1114,22 @@
    ],
    "adresses": [
     "/races/elfe-noir/"
+   ]
+  },
+  {
+   "id": "embuscade",
+   "libelle": "Embuscade",
+   "url": "/regles/l-embuscade/",
+   "couleur": null,
+   "page": "guide/l-embuscade",
+   "origine": "existant",
+   "cles": [
+    "id:guide/l-embuscade",
+    "l-embuscade",
+    "lembuscade"
+   ],
+   "adresses": [
+    "/regles/l-embuscade/"
    ]
   },
   {
@@ -1740,21 +1801,6 @@
    ]
   },
   {
-   "id": "jet-de-des",
-   "libelle": "Jet de dés",
-   "url": "/regles/jet-de-des/",
-   "couleur": null,
-   "page": "guide/jet-de-des",
-   "origine": "lien",
-   "cles": [
-    "id:guide/jet-de-des",
-    "jet-de-des"
-   ],
-   "adresses": [
-    "/regles/jet-de-des/"
-   ]
-  },
-  {
    "id": "kitsune",
    "libelle": "Kitsune",
    "url": "/races/kitsune/",
@@ -1858,24 +1904,6 @@
    ]
   },
   {
-   "id": "la-prise-en-tenaille-et-zone-dinfluence",
-   "libelle": "La prise en tenaille et zone d’influence",
-   "url": "/regles/prise-en-tenaille-et-zone-d-influence/",
-   "couleur": null,
-   "page": "guide/prise-en-tenaille-et-zone-d-influence",
-   "origine": "lien",
-   "cles": [
-    "id:guide/prise-en-tenaille-et-zone-d-influence",
-    "la-prise-en-tenaille",
-    "la-prise-en-tenaille-et-zone-dinfluence",
-    "les-situations-avancees",
-    "prise-en-tenaille-et-zone-d-influence"
-   ],
-   "adresses": [
-    "/regles/prise-en-tenaille-et-zone-d-influence/"
-   ]
-  },
-  {
    "id": "la-vitesse-et-la-portee",
    "libelle": "La Vitesse et la Portée",
    "url": "/regles/vitesse-et-portee/",
@@ -1969,22 +1997,6 @@
    ]
   },
   {
-   "id": "le-mode-hyper",
-   "libelle": "Le Mode Hyper",
-   "url": "/regles/le-mode-hyper/",
-   "couleur": null,
-   "page": "guide/le-mode-hyper",
-   "origine": "lien",
-   "cles": [
-    "id:guide/le-mode-hyper",
-    "le-mode-hyper",
-    "le-mode-hyper-et-le-mode-super"
-   ],
-   "adresses": [
-    "/regles/le-mode-hyper/"
-   ]
-  },
-  {
    "id": "le-tour-de-jeu",
    "libelle": "Le tour de jeu",
    "url": "/regles/le-tour-de-jeu/",
@@ -1997,22 +2009,6 @@
    ],
    "adresses": [
     "/regles/le-tour-de-jeu/"
-   ]
-  },
-  {
-   "id": "lembuscade",
-   "libelle": "L’embuscade",
-   "url": "/regles/l-embuscade/",
-   "couleur": null,
-   "page": "guide/l-embuscade",
-   "origine": "lien",
-   "cles": [
-    "id:guide/l-embuscade",
-    "l-embuscade",
-    "lembuscade"
-   ],
-   "adresses": [
-    "/regles/l-embuscade/"
    ]
   },
   {
@@ -2051,37 +2047,6 @@
    ]
   },
   {
-   "id": "les-attaques-discretes",
-   "libelle": "Les attaques discrètes",
-   "url": "/regles/les-attaques-discretes/",
-   "couleur": null,
-   "page": "guide/les-attaques-discretes",
-   "origine": "lien",
-   "cles": [
-    "id:guide/les-attaques-discretes",
-    "les-attaques-discretes"
-   ],
-   "adresses": [
-    "/regles/les-attaques-discretes/"
-   ]
-  },
-  {
-   "id": "les-attaques-dopportunite",
-   "libelle": "Les attaques d'opportunité",
-   "url": "/regles/les-attaques-d-opportunite/",
-   "couleur": null,
-   "page": "guide/les-attaques-d-opportunite",
-   "origine": "lien",
-   "cles": [
-    "id:guide/les-attaques-d-opportunite",
-    "les-attaques-d-opportunite",
-    "les-attaques-dopportunite"
-   ],
-   "adresses": [
-    "/regles/les-attaques-d-opportunite/"
-   ]
-  },
-  {
    "id": "les-belladones-fleurissantes",
    "libelle": "Les Belladones Fleurissantes",
    "url": "/lore/les-belladones-fleurissantes/",
@@ -2109,21 +2074,6 @@
    ],
    "adresses": [
     "/lore/les-civilisations/"
-   ]
-  },
-  {
-   "id": "les-degats",
-   "libelle": "Les dégâts",
-   "url": "/regles/les-degats/",
-   "couleur": null,
-   "page": "guide/les-degats",
-   "origine": "lien",
-   "cles": [
-    "id:guide/les-degats",
-    "les-degats"
-   ],
-   "adresses": [
-    "/regles/les-degats/"
    ]
   },
   {
@@ -2301,22 +2251,6 @@
    ],
    "adresses": [
     "/regles/les-portes/"
-   ]
-  },
-  {
-   "id": "les-postures",
-   "libelle": "Les postures",
-   "url": "/regles/les-postures/",
-   "couleur": null,
-   "page": "guide/les-postures",
-   "origine": "lien",
-   "cles": [
-    "id:guide/les-postures",
-    "les-postures",
-    "postures"
-   ],
-   "adresses": [
-    "/regles/les-postures/"
    ]
   },
   {
@@ -2889,12 +2823,12 @@
    ]
   },
   {
-   "id": "metiers",
-   "libelle": "Métiers",
+   "id": "metier",
+   "libelle": "Métier",
    "url": "/metiers/",
    "couleur": null,
    "route": "/metiers/",
-   "origine": "lien",
+   "origine": "existant",
    "cles": [],
    "adresses": [
     "/metiers/"
@@ -2956,6 +2890,22 @@
    ],
    "adresses": [
     "/lore/mirada/"
+   ]
+  },
+  {
+   "id": "mode-hyper",
+   "libelle": "Mode Hyper",
+   "url": "/regles/le-mode-hyper/",
+   "couleur": null,
+   "page": "guide/le-mode-hyper",
+   "origine": "existant",
+   "cles": [
+    "id:guide/le-mode-hyper",
+    "le-mode-hyper",
+    "le-mode-hyper-et-le-mode-super"
+   ],
+   "adresses": [
+    "/regles/le-mode-hyper/"
    ]
   },
   {
@@ -3343,12 +3293,12 @@
    ]
   },
   {
-   "id": "pieces-elementaires",
-   "libelle": "Pièces élémentaires",
+   "id": "piece-elementaire",
+   "libelle": "Pièce élémentaire",
    "url": "/ressources/armes/#pieces-elementaires",
    "couleur": null,
    "page": "ressources/pieces-elementaires",
-   "origine": "lien",
+   "origine": "existant",
    "cles": [
     "id:ressources/pieces-elementaires",
     "piece-elementaire",
@@ -3404,6 +3354,22 @@
    ]
   },
   {
+   "id": "posture",
+   "libelle": "Posture",
+   "url": "/regles/les-postures/",
+   "couleur": null,
+   "page": "guide/les-postures",
+   "origine": "existant",
+   "cles": [
+    "id:guide/les-postures",
+    "les-postures",
+    "postures"
+   ],
+   "adresses": [
+    "/regles/les-postures/"
+   ]
+  },
+  {
    "id": "potentiel-illimite",
    "libelle": "Potentiel illimité",
    "url": "/magies/potentiel-illimite/",
@@ -3452,12 +3418,12 @@
    ]
   },
   {
-   "id": "races",
-   "libelle": "Races",
+   "id": "race",
+   "libelle": "race",
    "url": "/races/",
    "couleur": null,
    "route": "/races/",
-   "origine": "lien",
+   "origine": "existant",
    "cles": [],
    "adresses": [
     "/races/"
@@ -3962,6 +3928,24 @@
    ]
   },
   {
+   "id": "tenaille",
+   "libelle": "Tenaille",
+   "url": "/regles/prise-en-tenaille-et-zone-d-influence/",
+   "couleur": null,
+   "page": "guide/prise-en-tenaille-et-zone-d-influence",
+   "origine": "existant",
+   "cles": [
+    "id:guide/prise-en-tenaille-et-zone-d-influence",
+    "la-prise-en-tenaille",
+    "la-prise-en-tenaille-et-zone-dinfluence",
+    "les-situations-avancees",
+    "prise-en-tenaille-et-zone-d-influence"
+   ],
+   "adresses": [
+    "/regles/prise-en-tenaille-et-zone-d-influence/"
+   ]
+  },
+  {
    "id": "terre-grise",
    "libelle": "Terre grise",
    "url": "/lore/terre-grise/",
@@ -4150,8 +4134,8 @@
     "id": "vigueur"
    },
    "colonne": "description",
-   "lien": "[[Altérations d'états et Mode Hyper|altérations d'états]]",
-   "balise": "{{alterations-detats-et-mode-hyper|altérations d'états}}",
+   "lien": "[[guide/alterations-d-etats|altérations d'états]]",
+   "balise": "{{alteration-detat|altérations d'états}}",
    "compte": 1
   },
   {
@@ -4171,7 +4155,7 @@
    },
    "colonne": "corps_md",
    "lien": "[[Jet de dés|jet de dés]]",
-   "balise": "{{jet-de-des|jet de dés}}",
+   "balise": "{{des|jet de dés}}",
    "compte": 1
   },
   {
@@ -4231,7 +4215,7 @@
    },
    "colonne": "corps_md",
    "lien": "[[guide/prise-en-tenaille-et-zone-d-influence|La prise en tenaille et zone d’influence]]",
-   "balise": "{{la-prise-en-tenaille-et-zone-dinfluence}}",
+   "balise": "{{tenaille|La prise en tenaille et zone d’influence}}",
    "compte": 1
   },
   {
@@ -4241,7 +4225,7 @@
    },
    "colonne": "corps_md",
    "lien": "[[guide/les-attaques-d-opportunite|Les attaques d'opportunité]]",
-   "balise": "{{les-attaques-dopportunite}}",
+   "balise": "{{attaque-dopportunite|Les attaques d'opportunité}}",
    "compte": 1
   },
   {
@@ -4251,7 +4235,7 @@
    },
    "colonne": "corps_md",
    "lien": "[[guide/les-attaques-discretes|Les attaques discrètes]]",
-   "balise": "{{les-attaques-discretes}}",
+   "balise": "{{attaque-discrete|Les attaques discrètes}}",
    "compte": 1
   },
   {
@@ -4311,7 +4295,7 @@
    },
    "colonne": "corps_md",
    "lien": "[[guide/les-postures|Les postures]]",
-   "balise": "{{les-postures}}",
+   "balise": "{{posture|Les postures}}",
    "compte": 3
   },
   {
@@ -4321,7 +4305,7 @@
    },
    "colonne": "corps_md",
    "lien": "[[guide/l-embuscade|L’embuscade]]",
-   "balise": "{{lembuscade}}",
+   "balise": "{{embuscade|L’embuscade}}",
    "compte": 1
   },
   {
@@ -4331,7 +4315,7 @@
    },
    "colonne": "corps_md",
    "lien": "[[guide/les-degats|Les dégâts]]",
-   "balise": "{{les-degats}}",
+   "balise": "{{degats|Les dégâts}}",
    "compte": 1
   },
   {
@@ -4471,7 +4455,7 @@
    },
    "colonne": "corps_md",
    "lien": "[[guide/le-mode-hyper|Le Mode Hyper]]",
-   "balise": "{{le-mode-hyper}}",
+   "balise": "{{mode-hyper|Le Mode Hyper}}",
    "compte": 1
   },
   {
@@ -4501,7 +4485,7 @@
    },
    "colonne": "corps_md",
    "lien": "[les races](/races/)",
-   "balise": "{{races|les races}}",
+   "balise": "{{race|les races}}",
    "compte": 1
   },
   {
@@ -4541,7 +4525,7 @@
    },
    "colonne": "corps_md",
    "lien": "[classes](/classes/)",
-   "balise": "{{classes|classes}}",
+   "balise": "{{classe|classes}}",
    "compte": 1
   },
   {
@@ -4551,7 +4535,7 @@
    },
    "colonne": "corps_md",
    "lien": "[27 races](/races/)",
-   "balise": "{{races|27 races}}",
+   "balise": "{{race|27 races}}",
    "compte": 1
   },
   {
@@ -4721,7 +4705,7 @@
    },
    "colonne": "corps_md",
    "lien": "[tableau des métiers](/metiers/)",
-   "balise": "{{metiers|tableau des métiers}}",
+   "balise": "{{metier|tableau des métiers}}",
    "compte": 2
   },
   {
@@ -4750,8 +4734,8 @@
     "id": "guide/fiche-competences"
    },
    "colonne": "corps_md",
-   "lien": "[[Altérations d'états et Mode Hyper|altérations d'états]]",
-   "balise": "{{alterations-detats-et-mode-hyper|altérations d'états}}",
+   "lien": "[[guide/alterations-d-etats|altérations d'états]]",
+   "balise": "{{alteration-detat|altérations d'états}}",
    "compte": 1
   },
   {
@@ -4761,7 +4745,7 @@
    },
    "colonne": "corps_md",
    "lien": "[[Jet de dés|jet de dés]]",
-   "balise": "{{jet-de-des|jet de dés}}",
+   "balise": "{{des|jet de dés}}",
    "compte": 1
   },
   {
@@ -4790,8 +4774,8 @@
     "id": "guide/fiche-tableau-posture"
    },
    "colonne": "corps_md",
-   "lien": "[[Altérations d'états et Mode Hyper|mode hyper]]",
-   "balise": "{{alterations-detats-et-mode-hyper|mode hyper}}",
+   "lien": "[[guide/le-mode-hyper|mode hyper]]",
+   "balise": "{{mode-hyper|mode hyper}}",
    "compte": 1
   },
   {
@@ -4861,7 +4845,7 @@
    },
    "colonne": "corps_md",
    "lien": "[métier](/metiers/)",
-   "balise": "{{metiers|métier}}",
+   "balise": "{{metier|métier}}",
    "compte": 1
   },
   {
@@ -4890,8 +4874,8 @@
     "id": "guide/guide-pour-mj-maverick"
    },
    "colonne": "corps_md",
-   "lien": "[[Altérations d'états et Mode Hyper|Altérations d’états]]",
-   "balise": "{{alterations-detats-et-mode-hyper|Altérations d’états}}",
+   "lien": "[[guide/alterations-d-etats|Altérations d’états]]",
+   "balise": "{{alteration-detat|Altérations d’états}}",
    "compte": 1
   },
   {
@@ -4951,7 +4935,7 @@
    },
    "colonne": "corps_md",
    "lien": "[[Les situations avancées]]",
-   "balise": "{{la-prise-en-tenaille-et-zone-dinfluence|Les situations avancées}}",
+   "balise": "{{tenaille|Les situations avancées}}",
    "compte": 1
   },
   {
@@ -4981,7 +4965,7 @@
    },
    "colonne": "corps_md",
    "lien": "[[Postures]]",
-   "balise": "{{les-postures|Postures}}",
+   "balise": "{{posture|Postures}}",
    "compte": 1
   },
   {
@@ -5001,7 +4985,7 @@
    },
    "colonne": "corps_md",
    "lien": "[[guide/les-postures|Les postures]]",
-   "balise": "{{les-postures}}",
+   "balise": "{{posture|Les postures}}",
    "compte": 1
   },
   {
@@ -5010,8 +4994,8 @@
     "id": "guide/jet-de-des"
    },
    "colonne": "corps_md",
-   "lien": "[[Altérations d'états et Mode Hyper|altérations d'états]]",
-   "balise": "{{alterations-detats-et-mode-hyper|altérations d'états}}",
+   "lien": "[[guide/alterations-d-etats|altérations d'états]]",
+   "balise": "{{alteration-detat|altérations d'états}}",
    "compte": 1
   },
   {
@@ -5071,7 +5055,7 @@
    },
    "colonne": "corps_md",
    "lien": "[[ressources/pieces-elementaires|Pièces élémentaires]]",
-   "balise": "{{pieces-elementaires}}",
+   "balise": "{{piece-elementaire|Pièces élémentaires}}",
    "compte": 1
   },
   {
@@ -5081,7 +5065,7 @@
    },
    "colonne": "corps_md",
    "lien": "[[ressources/pieces-elementaires|pièce élémentaire]]",
-   "balise": "{{pieces-elementaires|pièce élémentaire}}",
+   "balise": "{{piece-elementaire|pièce élémentaire}}",
    "compte": 1
   },
   {
@@ -5171,7 +5155,7 @@
    },
    "colonne": "corps_md",
    "lien": "[[guide/les-postures|Les postures]]",
-   "balise": "{{les-postures}}",
+   "balise": "{{posture|Les postures}}",
    "compte": 1
   },
   {
@@ -5221,7 +5205,7 @@
    },
    "colonne": "corps_md",
    "lien": "[[guide/les-degats|Les dégâts]]",
-   "balise": "{{les-degats}}",
+   "balise": "{{degats|Les dégâts}}",
    "compte": 1
   },
   {
@@ -5231,7 +5215,7 @@
    },
    "colonne": "corps_md",
    "lien": "[les classes](/classes/)",
-   "balise": "{{classes|les classes}}",
+   "balise": "{{classe|les classes}}",
    "compte": 1
   },
   {
@@ -5551,7 +5535,7 @@
    },
    "colonne": "corps_md",
    "lien": "[classes](/classes/)",
-   "balise": "{{classes|classes}}",
+   "balise": "{{classe|classes}}",
    "compte": 1
   },
   {
@@ -5571,7 +5555,7 @@
    },
    "colonne": "corps_md",
    "lien": "[races](/races/)",
-   "balise": "{{races|races}}",
+   "balise": "{{race|races}}",
    "compte": 1
   },
   {
@@ -5721,7 +5705,7 @@
    },
    "colonne": "corps_md",
    "lien": "[[guide/le-mode-hyper|Le Mode Hyper]]",
-   "balise": "{{le-mode-hyper}}",
+   "balise": "{{mode-hyper|Le Mode Hyper}}",
    "compte": 2
   },
   {
@@ -5731,7 +5715,7 @@
    },
    "colonne": "corps_md",
    "lien": "[[guide/les-postures|Les postures]]",
-   "balise": "{{les-postures}}",
+   "balise": "{{posture|Les postures}}",
    "compte": 2
   },
   {
@@ -5801,7 +5785,7 @@
    },
    "colonne": "corps_md",
    "lien": "[[guide/le-mode-hyper|Le Mode Hyper et le Mode Super]]",
-   "balise": "{{le-mode-hyper|Le Mode Hyper et le Mode Super}}",
+   "balise": "{{mode-hyper|Le Mode Hyper et le Mode Super}}",
    "compte": 1
   },
   {
@@ -5841,7 +5825,7 @@
    },
    "colonne": "corps_md",
    "lien": "[classe](/classes/)",
-   "balise": "{{classes|classe}}",
+   "balise": "{{classe|classe}}",
    "compte": 1
   },
   {
@@ -5921,7 +5905,7 @@
    },
    "colonne": "corps_md",
    "lien": "[race](/races/)",
-   "balise": "{{races|race}}",
+   "balise": "{{race}}",
    "compte": 1
   },
   {
@@ -5931,7 +5915,7 @@
    },
    "colonne": "corps_md",
    "lien": "[[guide/les-postures|Les postures]]",
-   "balise": "{{les-postures}}",
+   "balise": "{{posture|Les postures}}",
    "compte": 1
   },
   {
@@ -5991,7 +5975,7 @@
    },
    "colonne": "corps_md",
    "lien": "[[guide/alterations-d-etats|Blessures et états]]",
-   "balise": "{{alterations-detats|Blessures et états}}",
+   "balise": "{{alteration-detat|Blessures et états}}",
    "compte": 1
   },
   {
@@ -6011,7 +5995,7 @@
    },
    "colonne": "corps_md",
    "lien": "[[guide/les-postures|Les postures]]",
-   "balise": "{{les-postures}}",
+   "balise": "{{posture|Les postures}}",
    "compte": 1
   },
   {
@@ -6101,7 +6085,7 @@
    },
    "colonne": "corps_md",
    "lien": "[[guide/le-mode-hyper|Le Mode Hyper]]",
-   "balise": "{{le-mode-hyper}}",
+   "balise": "{{mode-hyper|Le Mode Hyper}}",
    "compte": 1
   },
   {
@@ -6121,7 +6105,7 @@
    },
    "colonne": "corps_md",
    "lien": "[[guide/les-postures|Les postures]]",
-   "balise": "{{les-postures}}",
+   "balise": "{{posture|Les postures}}",
    "compte": 2
   },
   {
@@ -6191,7 +6175,7 @@
    },
    "colonne": "corps_md",
    "lien": "[[guide/le-mode-hyper|Le Mode Hyper]]",
-   "balise": "{{le-mode-hyper}}",
+   "balise": "{{mode-hyper|Le Mode Hyper}}",
    "compte": 1
   },
   {
@@ -6201,7 +6185,7 @@
    },
    "colonne": "corps_md",
    "lien": "[[guide/l-embuscade|L'embuscade]]",
-   "balise": "{{lembuscade|L'embuscade}}",
+   "balise": "{{embuscade|L'embuscade}}",
    "compte": 1
   },
   {
@@ -6211,7 +6195,7 @@
    },
    "colonne": "corps_md",
    "lien": "[[guide/les-degats|Les dégâts]]",
-   "balise": "{{les-degats}}",
+   "balise": "{{degats|Les dégâts}}",
    "compte": 1
   },
   {
@@ -6251,7 +6235,7 @@
    },
    "colonne": "corps_md",
    "lien": "[[guide/les-attaques-d-opportunite|Les attaques d'opportunité]]",
-   "balise": "{{les-attaques-dopportunite}}",
+   "balise": "{{attaque-dopportunite|Les attaques d'opportunité}}",
    "compte": 1
   },
   {
@@ -6271,7 +6255,7 @@
    },
    "colonne": "corps_md",
    "lien": "[[guide/le-mode-hyper|Le Mode Hyper]]",
-   "balise": "{{le-mode-hyper}}",
+   "balise": "{{mode-hyper|Le Mode Hyper}}",
    "compte": 1
   },
   {
@@ -6361,7 +6345,7 @@
    },
    "colonne": "corps_md",
    "lien": "[[guide/les-postures|Les postures]]",
-   "balise": "{{les-postures}}",
+   "balise": "{{posture|Les postures}}",
    "compte": 1
   },
   {
@@ -6371,7 +6355,7 @@
    },
    "colonne": "corps_md",
    "lien": "[[guide/jet-de-des|Jet de dés]]",
-   "balise": "{{jet-de-des}}",
+   "balise": "{{des|Jet de dés}}",
    "compte": 1
   },
   {
@@ -6411,7 +6395,7 @@
    },
    "colonne": "corps_md",
    "lien": "[[guide/les-postures|Les postures]]",
-   "balise": "{{les-postures}}",
+   "balise": "{{posture|Les postures}}",
    "compte": 1
   },
   {

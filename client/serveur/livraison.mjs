@@ -4,8 +4,8 @@
 // conteneur « serveur » l'exécute (docker-compose.yml), puis se relance quand version.json change. Utilisé par astro.config.mjs ; jamais livré.
 // Hors de ses modules, le service emporte aussi les fichiers de FICHIERS_JOINTS : l'instantané de la partie « Bienvenue » de Tipeee (premier repli
 // de GET /api/tipeee/, serveur/tipeee.mjs), versionné dans sources/ à la racine du dépôt et copié dans _serveur/sources/ ; absent, il n'est pas copié
-// (le service le dit à son démarrage) ; il compte dans l'empreinte du code. Et le registre de la migration 0096 (data/migrations/, copié dans
-// _serveur/data/migrations/) : le rejeu d'un lot d'avant la migration y lit la conversion de ses liens en balises (serveur/edition.mjs#tableDesLiensDeLa0096).
+// (le service le dit à son démarrage) ; il compte dans l'empreinte du code. Et le registre de la migration 0098 (data/migrations/, copié dans
+// _serveur/data/migrations/) : le rejeu d'un lot d'avant la migration y lit la conversion de ses liens en balises (serveur/edition.mjs#tableDesLiensDeLa0098).
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';

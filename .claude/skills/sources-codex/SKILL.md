@@ -34,7 +34,7 @@ user-invocable: false
   `pages_du_site`), et `codex.py` la garde telle quelle à l'écriture.
 - Un import ne crée jamais de mot-clé : le script n'écrit que les mots-clés du vocabulaire (`--vocabulaire`, `vocabulaire()` → `Vocabulaire`), chaque page ne porte que « codex » ; le mot-clé à adresse d'une page n'est jamais posé en étiquette (`Vocabulaire.etiquette`).
 - Un renvoi (sommaires, « Voir aussi ») est la balise du mot-clé dont l'adresse mène à la page (`/lore/<slug>/`, sans ancre) : s'il n'y en a pas exactement un, le renvoi est écrit en texte simple et signalé (`Codex.lien`). `{{id}}` quand le texte est le libellé d'import du mot-clé (un renommage sur le site ne change pas la page redonnée), `{{id|texte}}` sinon ; jamais un `[[…]]` (`db:check`). Détail : `docs/codex.md`.
-- `--verifier` lit un état d'import d'avant la 0096 en convertissant ses `[[…]]` comme le script les écrit (`liens_en_balises`).
+- `--verifier` lit un état d'import d'avant la 0098 en convertissant ses `[[…]]` comme le script les écrit (`liens_en_balises`).
 - Le script n'écrit que dans `lore/`, refuse d'écraser une page qui ne vient pas du document et signale, sans les supprimer, les pages qu'il ne produit plus.
 
 ## Nouvel export

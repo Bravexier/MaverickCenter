@@ -334,7 +334,7 @@ test('le corps de la résolution : un choix par conflit, la saisie du 3 contrôl
   assert.equal(erreurDeSaisie({ type: 'ligne', libelle: 'Bonus', vide: '' }, ''), null, 'un champ non requis se vide');
 });
 
-test('migration 0096 : l’adresse et la couleur d’un mot-clé se saisissent en une ligne, avec leur aide ; une forme impossible est refusée avant l’envoi (le service refait tout)', () => {
+test('migration 0098 : l’adresse et la couleur d’un mot-clé se saisissent en une ligne, avec leur aide ; une forme impossible est refusée avant l’envoi (le service refait tout)', () => {
   const lien = { type: 'adresse', libelle: 'Lien' };
   const couleur = { type: 'couleur', libelle: 'Couleur' };
   for (const [s, valeur, aide] of [[lien, '/races/humain/', 'depuis sa racine'], [couleur, 'magie:feu', '« #rrggbb »']]) {

@@ -314,7 +314,7 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
     le plafond de 4 ko. » ;
   - question « Le Markdown des pages et l'attribut des cases changent-ils ? » ; option retenue : « Garder `{couleur:x}` et `data-couleur`
     (Recommandé) : la classe est posée en plus, par le plugin et par l'éditeur ; le Markdown ne l'écrit jamais. ».
-- **Les couleurs des mots-clés** (migration `0096` ; réponses du propriétaire du 2026-11-06, Q3 à Q5 et Q13) : `mot_cle.couleur` est une référence
+- **Les couleurs des mots-clés** (migration `0098` ; réponses du propriétaire du 2026-11-06, Q3 à Q5 et Q13) : `mot_cle.couleur` est une référence
   `famille:id` d'une couleur de la palette (`magie:feu`, `classe:melee`), ou une couleur écrite `#rrggbb`. La classe d'un mot-clé coloré
   (`lib/mots-cles-liens.mjs#classeDuMotCle`) est celle de la palette, ou `couleur-mot-cle-<id>` pour une couleur écrite (sa règle :
   `palette-css.mjs#cssDesMotsCles`, fond rendu lisible comme une couleur des règles). La feuille des mots-clés colorés (couleurs écrites et familles
@@ -1375,7 +1375,7 @@ dev (un commit la change) ni cherchée par la recherche.
   filet de son titre, ses intertitres et ses blocs dans la couleur de sa partie (`partieDeLaPage`, sans le plan ; la classe `.couleur-partie-<id>` :
   « Couleurs du site : la palette en classes »), une carte de l'accueil aussi. **Les autres pages des onglets n'ont pas de couleur de partie** :
   l'accent du site, comme le Guide du MJ (réponses du propriétaire du 2026-11-05 : « Une seule couleur », puis « Accent du site » ; `partieDeLaPage`
-  rend null). Une page vers laquelle mène un mot-clé coloré prend la couleur de ce mot-clé (migration `0096`, réponse Q5 ; les mots-clés de la
+  rend null). Une page vers laquelle mène un mot-clé coloré prend la couleur de ce mot-clé (migration `0098`, réponse Q5 ; les mots-clés de la
   création et de Découvrir reprennent la couleur de leur partie : le rendu ne change pas) : « Couleurs du site : la palette en classes ».
 - **Toute page du guide est une page simple** (`components/guide/PageDuGuide.astro`, servie par `PageDuPlan.astro`, à côté du menu latéral pour une
   page d'un onglet) : fil d'Ariane vers Découvrir, son onglet ou le Guide du MJ (`filDAriane`), titre, texte coupé à ses blocs tirés de la
@@ -1780,7 +1780,7 @@ mots-clés.
 
 ## Liens entre pages
 
-**Un lien est la balise d'un mot-clé** (migration `0096` ; décision du propriétaire : « tous les liens deviendront des mots-clés et tous les mots-clés
+**Un lien est la balise d'un mot-clé** (migration `0098` ; décision du propriétaire : « tous les liens deviendront des mots-clés et tous les mots-clés
 deviendront des liens »). Un mot-clé qui porte une adresse (`mot_cle.url`, interne, relative à la racine du site, sans le préfixe de déploiement :
 `/races/humain/`, `/metiers/#metier-mineur`) mène à cette adresse ; sa balise s'écrit comme toute balise du glossaire :
 
@@ -1791,6 +1791,10 @@ deviendront des liens »). Un mot-clé qui porte une adresse (`mot_cle.url`, int
 
 - Une page à laquelle aucun mot-clé ne mène ne se lie pas : on donne d'abord l'adresse à un mot-clé (page Glossaire du site de dev, `/regles/glossaire/`). Un import ne crée
   jamais de mot-clé.
+- Un mot-clé du glossaire peut mener à la page qui traite son sujet : la migration `0098` a donné aux mots-clés existants l'adresse de leur page
+  plutôt que d'en créer un second (décision du propriétaire : « Fusionner dans l'existant » ; liste : `FUSIONS_DANS_L_EXISTANT` de
+  `client/scripts/liens-en-mots-cles.mjs`) : `{{posture|Les postures}}` mène à « Les postures », `{{classe|classes}}` à `/classes/`, le texte
+  affiché du lien d'origine gardé. Un tel lien garde l'infobulle de la définition (« Oui, avec infobulle »).
 - `[[Titre]]`, `[[Titre|texte]]` et `[texte](/adresse)` ne s'écrivent plus dans les textes : `db:check` les refuse hors code (sauf pages d'exemple et
   `/#lien-discord`). Saisis sur le site de dev, ils deviennent la balise du seul mot-clé qui mène à la page visée, ou sont refusés
   ([`serveur.md`](serveur.md), « Édition des règles (site de dev) »).

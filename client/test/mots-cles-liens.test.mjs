@@ -1,4 +1,4 @@
-// Le lien et la couleur d'un mot-clé (migration 0096 ; lib/mots-cles-liens.mjs, sans dépendance, et lib/palette-css.mjs#fauteDeLaCouleur,
+// Le lien et la couleur d'un mot-clé (migration 0098 ; lib/mots-cles-liens.mjs, sans dépendance, et lib/palette-css.mjs#fauteDeLaCouleur,
 // #cssDesMotsCles, qui lisent la palette) : forme et chemin d'une adresse, lecture d'une couleur, classe d'un mot-clé, mot-clé d'une page (réponse Q5
 // du propriétaire : parmi les mots-clés colorés qui mènent à la page, ancre ignorée, le premier par ordre alphabétique du libellé), mots-clés d'une
 // adresse (un lien saisi converti par le service), feuille des mots-clés colorés ; puis toute la base : chaque adresse et chaque couleur posées par la
@@ -31,7 +31,7 @@ const lire = (chemin) => readFileSync(fileURLToPath(new URL(`../${chemin}`, impo
 
 test('module sans dépendance : un script de page peut l’importer sans tirer la palette (skill ui-couleurs)', () => {
   assert.doesNotMatch(lire('src/lib/mots-cles-liens.mjs'), /^\s*import\b/m);
-  assert.equal(REGISTRE_DES_LIENS, 'data/migrations/0096-liens-en-mots-cles.json');
+  assert.equal(REGISTRE_DES_LIENS, 'data/migrations/0098-liens-en-mots-cles.json');
   assert.ok(readFileSync(`${RACINE}${REGISTRE_DES_LIENS}`, 'utf8').includes('"motsCles"'), 'le registre de la migration existe');
 });
 
@@ -157,7 +157,7 @@ test('toute la base : chaque adresse et chaque couleur de mot-clé conviennent ;
   const adresses = adressesDuSite(db);
   const avecUrl = motsCles.filter((m) => m.url !== null);
   const colores = motsCles.filter((m) => m.couleur !== null);
-  assert.ok(avecUrl.length >= 274 && colores.length >= 90, `${avecUrl.length} adresses, ${colores.length} couleurs (migration 0096)`);
+  assert.ok(avecUrl.length >= 273 && colores.length >= 90, `${avecUrl.length} adresses, ${colores.length} couleurs (migration 0098)`);
   for (const m of avecUrl) assert.equal(fauteDeLUrl(m.url, adresses), null, `${m.id} : ${m.url}`);
   const classes = new Set(couleursDeLaPalette().map((c) => c.classe));
   for (const m of colores) {
@@ -167,7 +167,7 @@ test('toute la base : chaque adresse et chaque couleur de mot-clé conviennent ;
   }
 });
 
-test('db:check (migration 0096) : un lien mal écrit ou vers aucune page, une couleur inconnue, un lien `[[…]]` ou Markdown interne hors code ; ni une page d’exemple, ni « /#lien-discord »', () => {
+test('db:check (migration 0098) : un lien mal écrit ou vers aucune page, une couleur inconnue, un lien `[[…]]` ou Markdown interne hors code ; ni une page d’exemple, ni « /#lien-discord »', () => {
   const dossier = dossierTemporaire('mots-cles-liens-check');
   const copie = join(dossier, 'check.db');
   cpSync(cheminBase({ sansExemples: false }), copie);

@@ -350,7 +350,7 @@ page protégée, avec `raisons`, ou citée, avec `citations` ; `400` pour une pa
 
 `mots-cles/` liste et cherche (`?q=`) aussi l'abréviation (`abreviation`, migration 0090 : « AM », `NULL` sans), qui se donne à la création et se
 modifie par `PATCH` ; la ref d'une balise du glossaire peut être l'id, l'écriture ou l'abréviation du mot-clé (enregistrée sous l'id :
-[`content-guide.md`](content-guide.md), « Mots-clés (glossaire) »). Elle liste aussi le lien et la couleur (`url`, `couleur`, migration 0096 ; `?q=`
+[`content-guide.md`](content-guide.md), « Mots-clés (glossaire) »). Elle liste aussi le lien et la couleur (`url`, `couleur`, migration 0098 ; `?q=`
 cherche dans le lien), qui se donnent à la création et se modifient par `PATCH`, protégés compris : le lien, une adresse interne relative à la racine
 du site, sans le préfixe de déploiement, dont le chemin mène à une page du site (`/races/drakos/`, `/metiers/#metier-mineur` ; l'ancre et la requête
 ne sont pas vérifiées) ; la couleur, `#rrggbb` ou `<famille>:<id>` d'une couleur de la palette (`classe:melee`) ; refusés en `400` avec

@@ -348,7 +348,7 @@ export const cssDesEvenements = (couleurs) =>
   [...(couleurs ?? [])].map(([id, fond]) => `.${classeDEvenement(id)}{--couleur:${fond};--couleur-texte:${texteSurCouleur(fond)}}`).join('');
 
 /**
- * La couleur de la palette qu'une référence de mot-clé nomme (« classe:melee », « magie:espace-temps » : migration 0096, mot_cle.couleur ; id = celui de
+ * La couleur de la palette qu'une référence de mot-clé nomme (« classe:melee », « magie:espace-temps » : migration 0098, mot_cle.couleur ; id = celui de
  * sa classe, idDeCouleur de la clé du module) : { famille, cle, classe, fond, texte } (couleursDeLaPalette), ou null si la palette ne la connaît pas.
  */
 export function couleurDeReference(reference) {
@@ -358,7 +358,7 @@ export function couleurDeReference(reference) {
 }
 
 /**
- * La faute de la couleur d'un mot-clé (mot_cle.couleur, migration 0096), ou null : « #rrggbb » en minuscules, ou une référence « <famille>:<id> » que
+ * La faute de la couleur d'un mot-clé (mot_cle.couleur, migration 0098), ou null : « #rrggbb » en minuscules, ou une référence « <famille>:<id> » que
  * la palette connaît (couleurDeReference). Ici et non dans lib/mots-cles-liens.mjs : elle lit la palette, qu'un script de page n'importe jamais.
  */
 export function fauteDeLaCouleur(couleur) {
@@ -373,7 +373,7 @@ export function fauteDeLaCouleur(couleur) {
 }
 
 /**
- * La feuille des mots-clés colorés (migration 0096) d'après [{ id, couleur }] (lib/mots-cles-db.mjs#motsClesDeLaBase, GET /api/edition/mots-cles/) :
+ * La feuille des mots-clés colorés (migration 0098) d'après [{ id, couleur }] (lib/mots-cles-db.mjs#motsClesDeLaBase, GET /api/edition/mots-cles/) :
  * pour une couleur écrite, la règle de sa classe `.couleur-mot-cle-<id>{--couleur:…;--couleur-texte:…}` (le fond rendu lisible, le texte de
  * texteSurCouleur, comme une couleur des règles) ; pour une référence d'une famille d'une zone (FAMILLES_DES_ZONES), la règle de sa classe de la
  * palette (les familles de FAMILLES_DE_CHAQUE_PAGE sont déjà sur chaque page, cssDeLaPalette) ; une référence inconnue n'a pas de règle. Une règle par

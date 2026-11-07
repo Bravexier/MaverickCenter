@@ -6,7 +6,7 @@
 // points d'accès JSON, images, base : la recherche et la fiche retirent elles-mêmes les balises de leurs textes) ; une page sans balise passe telle quelle.
 // La version portable (tools/build-artifact.mjs) est construite de même. Sur le site de dev, le HTML qu'un script pose après le chargement (rendus du
 // mode modification, cartes rendues par le service) reçoit ses mots-clés de src/scripts/edition/mots-cles-vivants.mjs, d'après le vocabulaire vivant.
-// Un mot-clé qui a une adresse (migration 0096) est un lien vers elle, préfixée de la base du site (import.meta.env.BASE_URL : SITE_BASE).
+// Un mot-clé qui a une adresse (migration 0098) est un lien vers elle, préfixée de la base du site (import.meta.env.BASE_URL : SITE_BASE).
 import { ouvrirBase } from './lib/donnees.mjs';
 import { pageAvecMotsCles } from './lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from './lib/mots-cles-db.mjs';

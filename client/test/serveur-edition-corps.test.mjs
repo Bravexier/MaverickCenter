@@ -376,7 +376,7 @@ test('chaque corps redit ses tables sur la copie : magies, races, classes, dons,
     assert.equal(corpsDeClasse(L, { choseASavoirSansTexte: choseASavoirSansTexte(c) }), c, classe.id);
   }
   for (const don of lignes('SELECT * FROM capacite')) assert.equal(corpsDeDon(don), pages.get(don.id), don.id);
-  // migration 0096 : plus aucun [[lien]] dans le corps d'un métier, le rendu complet le redonne à l'octet près
+  // migration 0098 : plus aucun [[lien]] dans le corps d'un métier, le rendu complet le redonne à l'octet près
   for (const m of lignes('SELECT * FROM metier')) assert.equal(pages.get(m.id), corpsDeMetier(m), m.id);
 });
 

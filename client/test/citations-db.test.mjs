@@ -1,7 +1,7 @@
 // Les citations d'une page dans la base (lib/citations-db.mjs ; lot de l'édition des menus et des pages, réponse du propriétaire « Refus si citée, puis
 // 404 ») : un lien du wiki `[[…]]` résolu comme le site (titre, slug, alias, identifiant ; un lien ambigu compte), un lien écrit vers /regles/<slug>/ ou
 // guide/<slug>, la légende d'un bloc de la chronologie ; jamais la page elle-même, jamais une colonne de clé ; une citation depuis une page d'exemple
-// est marquée (elle ne bloque pas) ; depuis la migration 0096, la balise d'un mot-clé qui mène à la page, et ce mot-clé. Sur une base synthétique (le
+// est marquée (elle ne bloque pas) ; depuis la migration 0098, la balise d'un mot-clé qui mène à la page, et ce mot-clé. Sur une base synthétique (le
 // schéma), puis contre la table `lien` que db:derive tire des mêmes textes.
 //   node --test test/citations-db.test.mjs
 import assert from 'node:assert/strict';
@@ -70,7 +70,7 @@ test('citationsDe : lien du wiki (titre, alias, identifiant, résumé), adresse 
   db.close();
 });
 
-test('migration 0096 : la balise d’un mot-clé qui mène à la page la cite (texte mis en forme ou de case, hors code), et le mot-clé lui-même par son lien', () => {
+test('migration 0098 : la balise d’un mot-clé qui mène à la page la cite (texte mis en forme ou de case, hors code), et le mot-clé lui-même par son lien', () => {
   const db = baseDEssai();
   const page = db.prepare("INSERT INTO page (id, type, slug, titre, titre_cle, resume, corps_md, statut, origine) VALUES (?, ?, ?, ?, ?, NULL, ?, ?, 'docs')");
   db.prepare('INSERT INTO mot_cle (id, libelle, libelle_cle, url) VALUES (?, ?, ?, ?)').run('la-cible', 'La cible', 'la-cible', `${adresseDeLaPage('guide/la-cible')}#une-ancre`);
@@ -106,7 +106,7 @@ test('citationsDesPages : un lien ambigu cite chacune de ses candidates ; une pa
   db.close();
 });
 
-test('base du dépôt : les liens [[…]] et les balises à adresse (migration 0096) lus dans les textes des pages sont ceux que db:derive a résolus (table lien, candidats des liens ambigus)', () => {
+test('base du dépôt : les liens [[…]] et les balises à adresse (migration 0098) lus dans les textes des pages sont ceux que db:derive a résolus (table lien, candidats des liens ambigus)', () => {
   const db = ouvrirBase({ sansExemples: false });
   const ids = db.prepare("SELECT page_id FROM regles_onglet_entree WHERE page_id IS NOT NULL ORDER BY page_id").all().map((r) => r.page_id);
   assert.ok(ids.length > 40, 'les pages des onglets des Règles');

@@ -9,12 +9,17 @@
 // fixtures/lots-avant-0096.json, se défont) ; l'état courant ne garde que le fonctionnement (la page retirée n'existe plus, rien ne la cite ni n'y mène,
 // les liens qui restent écrits sont résolus, le menu suit les éditions du site, la migration se rejoue). Ce que le site a écrit lui appartient : une page
 // dont il a réécrit le texte ou qu'il a supprimée, une cellule qu'il a écrite, une cible qu'il a supprimée sont admises.
+// La migration 0098 (liens-en-mots-cles) réécrit ensuite chaque lien en balise d'un mot-clé qui mène à la même page, texte affiché gardé : un lien de la
+// 0096 se lit donc sous l'une ou l'autre écriture (ecrituresDuLien), sans figer celle de la 0098.
 import assert from 'node:assert/strict';
 import { copyFileSync, readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
+import { indexDesAdresses, pageDeLAdresse } from '../src/lib/adresses-db.mjs';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { lireBalises, motCleDeLaRef, texteDeLaBalise, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
+import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { buildIndex, extractLinks, resolve } from '../src/lib/wikilinks-resolution.mjs';
 import { baseDImport, lotsAvant } from './aide-base-d-import.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
@@ -46,18 +51,44 @@ function indexDe(base) {
     .map((p) => ({ id: p.id, type: p.type, slug: p.slug, title: p.titre, aliases: alias.get(p.id) ?? [] })));
 }
 
+/** Les mots-clés d'une base dont l'adresse mène à la page `cible` (migration 0098 : un lien y est la balise d'un tel mot-clé). */
+function motsClesVers(base, cible) {
+  const adresses = indexDesAdresses(base, { exemples: true });
+  return motsClesDeLaBase(base).filter((m) => m.url && pageDeLAdresse(adresses, m.url) === cible);
+}
+/**
+ * Les écritures d'un lien vers `cible` au texte affiché `texte` : le « [[cible|texte]] » que la 0096 a écrit, ou la balise d'un mot-clé qui y mène
+ * (« {{id|texte}} », « {{id}} » quand le texte est son libellé), que la 0098 en a faite.
+ */
+function ecrituresDuLien(base, cible, texte) {
+  const formes = [`[[${cible}|${texte}]]`];
+  for (const m of motsClesVers(base, cible)) formes.push(`{{${m.id}|${texte}}}`, ...(m.libelle === texte ? [`{{${m.id}}}`] : []));
+  return formes;
+}
+/** Le texte `avant`, un lien vers `cible` au texte affiché `texte`, puis `apres`, sous chacune de ses écritures dans `base`. */
+const phrasesDuLien = (base, { avant, cible, texte, apres }) => ecrituresDuLien(base, cible, texte).map((f) => `${avant}${f}${apres}`);
+/** Les liens écrits vers `cible` dans un corps (les [[…]] et les balises d'un mot-clé qui y mène), par leur texte affiché, dans l'ordre de la table lien. */
+function liensEcritsVers(base, corps, cible) {
+  const wiki = extractLinks(corps).filter((l) => l.target === cible).map((l) => l.label);
+  const vers = new Set(motsClesVers(base, cible).map((m) => m.id));
+  const vocabulaire = vocabulaireDesMotsCles(motsClesDeLaBase(base));
+  const balises = lireBalises(corps, { markdown: true }).filter((b) => vers.has(motCleDeLaRef(vocabulaire, b.ref)?.id))
+    .map((b) => texteDeLaBalise(b, vocabulaire, { definitions: false }));
+  return { wiki, balises, ids: [...vers] };
+}
+
 // Les quatre liens des pages (le cinquième est dans la description de Vigueur) : où, la page visée, le texte qui l'entoure tel que la migration l'a
 // laissé (le lien avec sa nouvelle cible, texte affiché inchangé)
 const LIENS = [
-  { page: 'guide/fiche-competences', cible: ALTERATIONS,
-    phrase: '*Vigueur (Volonté) :* Mieux résister aux [[guide/alterations-d-etats|altérations d\'états]] physiques comme le poison, les maladies ou les brûlures' },
-  { page: 'guide/jet-de-des', cible: ALTERATIONS,
-    phrase: 'Comme expliqué dans les compétences et les [[guide/alterations-d-etats|altérations d\'états]] (voir combat), le coma est une source de stress' },
-  { page: 'guide/guide-pour-mj-maverick', cible: ALTERATIONS, phrase: '- *[[guide/alterations-d-etats|Altérations d’états]]*\n- *Mode Hyper*\n' },
-  { page: 'guide/fiche-tableau-posture', cible: HYPER,
-    phrase: 'Voici le tableau où on rassemble les informations sur le [[guide/le-mode-hyper|mode hyper]] du personnage, allez [ici]' },
+  { page: 'guide/fiche-competences', cible: ALTERATIONS, avant: '*Vigueur (Volonté) :* Mieux résister aux ', texte: 'altérations d\'états',
+    apres: ' physiques comme le poison, les maladies ou les brûlures' },
+  { page: 'guide/jet-de-des', cible: ALTERATIONS, avant: 'Comme expliqué dans les compétences et les ', texte: 'altérations d\'états',
+    apres: ' (voir combat), le coma est une source de stress' },
+  { page: 'guide/guide-pour-mj-maverick', cible: ALTERATIONS, avant: '- *', texte: 'Altérations d’états', apres: '*\n- *Mode Hyper*\n' },
+  { page: 'guide/fiche-tableau-posture', cible: HYPER, avant: 'Voici le tableau où on rassemble les informations sur le ', texte: 'mode hyper',
+    apres: ' du personnage, allez [ici]' },
 ];
-const VIGUEUR = 'Mieux résister aux [[guide/alterations-d-etats|altérations d\'états]] physiques comme le poison, les maladies ou les brûlures';
+const VIGUEUR = { cible: ALTERATIONS, avant: 'Mieux résister aux ', texte: 'altérations d\'états', apres: ' physiques comme le poison, les maladies ou les brûlures' };
 
 test('0096 : la page retirée, avec ses lignes d’import, ses alias, son entrée de menu, ses liens ; aucune source orpheline', () => {
   assert.equal(page(RETIREE), undefined);
@@ -83,22 +114,31 @@ test('0096 : ses alias « Altérations d’états » et « Mode Hyper » ne sont
 
 test('0096 : les quatre liens des pages visent la page de leur sujet, texte affiché inchangé (texte de la migration) ; les liens écrits sont résolus', () => {
   // les textes tels que la migration les a écrits (le site peut les réécrire depuis)
-  for (const { page: id, phrase } of LIENS) {
-    const corps = corpsApres0096(id);
-    assert.ok(corps.includes(phrase), `${id} : ${phrase}`);
-    assert.ok(!corps.includes(`[[${TITRE}`), `${id} : plus de lien par l’ancien titre`);
+  // (le lien de la 0096, ou la balise que la 0098 en a faite : ecrituresDuLien)
+  const base = apres0096();
+  for (const lien of LIENS) {
+    const corps = corpsApres0096(lien.page);
+    assert.ok(phrasesDuLien(base, lien).some((p) => corps.includes(p)), `${lien.page} : ${lien.avant}…${lien.texte}…${lien.apres}`);
+    assert.ok(!corps.includes(`[[${TITRE}`), `${lien.page} : plus de lien par l’ancien titre`);
   }
-  // l'état courant : chaque lien encore écrit vers la page du sujet est une ligne de lien, résolue vers elle (sauf si le site l'a supprimée)
+  // l'état courant : chaque lien encore écrit vers la page du sujet ([[…]] ou balise d'un mot-clé qui y mène) est une ligne de lien, résolue vers
+  // elle (sauf si le site l'a supprimée)
   for (const { page: id, cible } of LIENS) {
     const corps = page(id)?.corps_md;
     if (corps === undefined) {
       assert.ok(supprimeeParLeSite(id), `${id} absente sans que le site l'ait supprimée`);
       continue;
     }
-    const ecrits = extractLinks(corps).filter((l) => l.target === cible).map((l) => l.label);
-    const liens = db.prepare('SELECT ancre, etat, cible_page_id FROM lien WHERE page_id = ? AND cible = ? ORDER BY position').all(id, cible).map((r) => ({ ...r }));
-    assert.deepEqual(liens.map((l) => l.ancre), ecrits, `${id} : les liens suivent le texte`);
-    if (!supprimeeParLeSite(cible)) for (const l of liens) assert.deepEqual({ etat: l.etat, cible_page_id: l.cible_page_id }, { etat: 'resolu', cible_page_id: cible }, id);
+    const { wiki, balises, ids } = liensEcritsVers(db, corps, cible);
+    const lignes = (cibles) => (cibles.length ? db.prepare(`SELECT ancre, etat, cible_page_id FROM lien WHERE page_id = ? AND cible IN (${cibles.map(() => '?').join(', ')}) ORDER BY position`)
+      .all(id, ...cibles).map((r) => ({ ...r })) : []);
+    const parWiki = lignes([cible]);
+    const parBalise = lignes(ids);
+    assert.deepEqual(parWiki.map((l) => l.ancre), wiki, `${id} : les liens suivent le texte`);
+    assert.deepEqual(parBalise.map((l) => l.ancre), balises, `${id} : les balises qui mènent à la page suivent le texte`);
+    if (!supprimeeParLeSite(cible)) {
+      for (const l of [...parWiki, ...parBalise]) assert.deepEqual({ etat: l.etat, cible_page_id: l.cible_page_id }, { etat: 'resolu', cible_page_id: cible }, id);
+    }
   }
   assert.equal(db.prepare('SELECT count(*) AS n FROM lien WHERE cible_page_id = ?').get(RETIREE).n, 0);
   // un lien par l'ancien titre ou l'ancienne adresse ne vient que d'un texte que le site a réécrit
@@ -109,20 +149,29 @@ test('0096 : les quatre liens des pages visent la page de leur sujet, texte affi
 
 test('0096 : la compétence Vigueur renvoie à « Altérations d’états », lien résolu comme le site le résout', () => {
   // le texte et les titres tels que la migration les a laissés (competence n'est pas écrite par le site, mais les titres et alias le sont)
+  // (le lien de la 0096, ou la balise que la 0098 en a faite : ecrituresDuLien)
   const base = apres0096();
-  assert.equal(base.prepare("SELECT description FROM competence WHERE id = 'vigueur'").get().description, VIGUEUR);
+  assert.ok(phrasesDuLien(base, VIGUEUR).includes(base.prepare("SELECT description FROM competence WHERE id = 'vigueur'").get().description));
   const index = indexDe(base);
   assert.equal(resolve(index, ALTERATIONS)?.entry?.id, ALTERATIONS);
   assert.equal(resolve(index, TITRE), null, 'l’ancien titre ne nomme plus aucune page');
   // l'alias retiré ne fait plus doublon avec le titre de guide/alterations-d-etats (même clé normalisée)
   assert.equal(resolve(index, 'Altérations d\'états')?.entry?.id, ALTERATIONS);
-  // l'état courant : chaque lien écrit dans la description mène à une page (sauf une cible que le site a supprimée), jamais à la page retirée
+  // l'état courant : chaque lien écrit dans la description ([[…]] ou balise d'un mot-clé à adresse) mène à une page (sauf une cible que le site a
+  // supprimée), jamais à la page retirée
   const actuel = indexDe(db);
   const { description } = db.prepare("SELECT description FROM competence WHERE id = 'vigueur'").get();
   for (const { target } of extractLinks(description)) {
     const vers = resolve(actuel, target)?.entry?.id;
     if (vers === undefined) assert.ok(supprimeeParLeSite(target), `${target} : lien non résolu`);
     else assert.notEqual(vers, RETIREE);
+  }
+  const vocabulaire = vocabulaireDesMotsCles(motsClesDeLaBase(db));
+  const adresses = indexDesAdresses(db, { exemples: true });
+  for (const b of lireBalises(description)) {
+    const m = motCleDeLaRef(vocabulaire, b.ref);
+    if (!m?.url) continue;
+    assert.notEqual(pageDeLAdresse(adresses, m.url), RETIREE, `${b.brut} : jamais vers la page retirée`);
   }
 });
 

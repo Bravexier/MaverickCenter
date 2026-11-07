@@ -155,7 +155,7 @@ export const LIENS_ET_RENCONTRE = gele({
 export const PAR_OU_COMMENCER = Object.freeze([...DECOUVRIR.groupes.flatMap((g) => g.pages), 'guide/creer-son-personnage']);
 
 /**
- * Les pages Astro écrites à côté des pages des onglets (regles/artisanat, regles/glossaire : la liste des mots-clés, migration 0096), et l'ancienne
+ * Les pages Astro écrites à côté des pages des onglets (regles/artisanat, regles/glossaire : la liste des mots-clés, migration 0098), et l'ancienne
  * adresse des Règles avancées (/regles/avancees/, renvoyée par la page 404) : aucune page des onglets ne prend ce nom. Les ids des onglets sont réservés
  * de même (nomsReserves : /regles/<onglet>/).
  */

@@ -8,7 +8,7 @@
 // compris. Un champ vide s'écrit « **Libellé :** » sans valeur (« Avantage possible » de l'Artisan). Le nom fait le titre de la page, pas le corps ; la
 // colonne `remarque` n'y est pas écrite (aucun corps de l'import ne porte de remarque : aucune forme à reprendre).
 //
-// Stratégie : REMPLACEMENT DE SECTIONS. Le rendu complet (corpsDeMetier) redonne corps_md à l'octet près pour chaque métier : depuis la migration 0096
+// Stratégie : REMPLACEMENT DE SECTIONS. Le rendu complet (corpsDeMetier) redonne corps_md à l'octet près pour chaque métier : depuis la migration 0098
 // (les liens devenus des balises), le lien [[Alchimie primitive|alchimie primitive]] que le maillage avait posé dans le corps de l'Alchimiste et de
 // l'Apothicaire, et que la table n'avait pas, est devenu une balise de leur ligne (metier.artisanat_texte, artisanat_brut) : aucun corps n'a plus rien
 // que la table n'ait, il n'y a plus de lien à reposer. corpsApres ne réécrit que les champs des colonnes modifiées (un corps écrit sous Windows, un

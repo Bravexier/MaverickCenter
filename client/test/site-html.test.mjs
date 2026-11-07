@@ -357,7 +357,7 @@ test('/recherche/ : la recherche et le glossaire des mots-clés (tous, liens ?mo
     const decrit = Boolean(vocabulaire.get(id)?.description);
     assert.equal(Boolean(definition), decrit, `${id} : sa définition`);
     assert.equal(Boolean(bulle), decrit, `${id} : l’infobulle de sa définition`);
-    // sa bulle, habillée de sa couleur (migration 0096 : la classe du mot-clé coloré)
+    // sa bulle, habillée de sa couleur (migration 0098 : la classe du mot-clé coloré)
     const bulleDe = `<span class="${['bulle', classeDuMotCle(m)].filter(Boolean).join(' ')}" role="tooltip" id="mot-cle-${id}" hidden>`;
     if (decrit) assert.equal(html.split(bulleDe).length - 1, 1, `${id} : sa bulle, une fois`);
     if (decrit) assert.ok(html.includes(`${bulleDe}<strong class="bulle__titre">${nom}</strong>`), `${id} : le titre de sa bulle`);
@@ -671,7 +671,7 @@ test('couleurs des magies : jamais en style sur une page construite, toujours pa
   for (const [rel, attendu] of Object.entries(zones)) assert.match(avecMagie.get(rel) ?? '', attendu, rel);
   // « L’univers » ne liste plus les quinze magies (le bloc `guide:magies` a quitté la page) : son texte renvoie à la carte des magies
   const univers = readFileSync(join(dist, 'decouvrir/l-univers/index.html'), 'utf8');
-  // (un lien du texte est la balise d'un mot-clé à adresse depuis la migration 0096 : `a.mot-cle`)
+  // (un lien du texte est la balise d'un mot-clé à adresse depuis la migration 0098 : `a.mot-cle`)
   assert.match(univers, /<a class="mot-cle" href="[^"]*\/magies\/" data-mot-cle="magies"[^>]*>carte des magies<\/a>/, 'L’univers : le lien vers la carte des magies');
   assert.doesNotMatch(univers, /<ul class="guide-magies"/, 'L’univers : plus de liste des magies');
   assert.ok([...avecMagie.values()].some((html) => /<tr class="couleur-magie-[\w-]+">\s*<th scope="row">\s*<a class="guide-magie guide-magie--ligne"/.test(html)), 'le tableau de ce que donne chaque magie (guide)');
@@ -904,7 +904,7 @@ test('couleurs des parties du guide : jamais en style sur une page construite, t
       const jetons = classe.split(/\s+/);
       if (!jetons.some((c) => CLASSE_DES_PARTIES.test(c) || ELEMENTS_DES_PARTIES.has(c))) continue;
       assert.doesNotMatch(balise, /\bstyle="/, `${rel} : un style sur un élément d’une partie : ${balise.slice(0, 160)}`);
-      // un mot-clé coloré d'une partie (migration 0096 : sa balise, sa tuile, sa bulle) : sa classe vient de la feuille des mots-clés colorés, sur chaque
+      // un mot-clé coloré d'une partie (migration 0098 : sa balise, sa tuile, sa bulle) : sa classe vient de la feuille des mots-clés colorés, sur chaque
       // page ; il n'est pas une page qui pose la couleur d'une partie
       // (et sa pastille sur le Glossaire)
       const motCle = jetons.some((c) => ['mot-cle', 'mot-cle-definition', 'bulle', 'glossaire-mot__pastille'].includes(c));
@@ -948,7 +948,7 @@ test('/archives/, /mise-a-jour/ et /maintenance/ : aucune feuille de zone de la 
     const html = lire(rel);
     assert.doesNotMatch(html, /\bstyle="/, `${rel} : un style`);
     assert.equal(html.split(`<style>${palette}</style>`).length - 1, 1, `${rel} : la feuille de chaque page, une fois`);
-    // la feuille des mots-clés colorés (migration 0096), sur chaque page aussi (layouts/Base.astro)
+    // la feuille des mots-clés colorés (migration 0098), sur chaque page aussi (layouts/Base.astro)
     const motsCles = cssDesMotsClesDuSite();
     assert.equal(html.split(`<style data-couleurs-mots-cles>${motsCles}</style>`).length - 1, 1, `${rel} : la feuille des mots-clés colorés, une fois`);
     // toute classe de couleur de la page est dans l'une de ces deux feuilles : aucune autre famille d'une zone, ni second rang des caractéristiques, ni

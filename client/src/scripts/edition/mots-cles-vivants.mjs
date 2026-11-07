@@ -9,7 +9,7 @@
 //     modification, zone d'annonce, page Debug, /donnees/), ni dans une zone en cours de saisie (contenteditable, champ de l'éditeur) — ni dans leurs
 //     attributs ; les attributs de texte (title, data-infobulle, aria-label, aria-description, alt) en ont le texte simple ; dans une bulle, un mot-clé est
 //     en gras sans bulle ni focus, dans un élément qui a le focus sans tabindex, dans un bouton ou un résumé sans bulle.
-// Liens et couleurs (migration 0096) : un mot-clé à adresse est un lien (préfixé de la base du site, `ed.base`), hors d'un lien, d'un bouton, d'un
+// Liens et couleurs (migration 0098) : un mot-clé à adresse est un lien (préfixé de la base du site, `ed.base`), hors d'un lien, d'un bouton, d'un
 // résumé, d'une étiquette, d'une liste ou d'une bulle ; un mot-clé coloré porte sa classe ; la feuille des mots-clés colorés (`<style
 // data-couleurs-mots-cles>`, émise par layouts/Base.astro) est réécrite avec celle du service (GET /api/edition/mots-cles/ : `css`,
 // lib/palette-css.mjs#cssDesMotsCles, que cette chaîne n'importe pas) quand le glossaire la donne, ou quand une classe du vocabulaire vivant y manque.

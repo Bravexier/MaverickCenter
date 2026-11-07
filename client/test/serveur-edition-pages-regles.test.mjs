@@ -183,7 +183,7 @@ test('supprimer une page des Règles : 404, 400 hors des onglets, 409 protégée
   assert.ok(protegee.corps.raisons.some((r) => r.raison === 'ouverture'), JSON.stringify(protegee.corps));
   assert.equal(nombre(), avant, 'rien d’écrit');
 
-  // une page créée, citée par une autre page créée : refusée tant que le lien reste. Depuis la migration 0096, un lien est la balise d'un mot-clé qui
+  // une page créée, citée par une autre page créée : refusée tant que le lien reste. Depuis la migration 0098, un lien est la balise d'un mot-clé qui
   // mène à la page : le mot-clé (son adresse) et la balise la citent tous les deux
   const cible = ok(creer(lot, { titre: titreLibre(db, 'Page citée d’essai'), onglet_id: 'combats', resume: 'Citée.' })).crees[0].id;
   const titreCible = db.prepare('SELECT titre FROM page WHERE id = ?').get(cible).titre;

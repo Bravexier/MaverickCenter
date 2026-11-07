@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Maillage automatique des pages du wiki (voir src/lib/autolink.mjs pour les règles) : les mentions d'un mot-clé à adresse (migration 0096) deviennent
+// Maillage automatique des pages du wiki (voir src/lib/autolink.mjs pour les règles) : les mentions d'un mot-clé à adresse (migration 0098) deviennent
 // sa balise, {{id}} ou {{id|texte}} ; jamais un [[lien]].
 //   node scripts/autolink.mjs            aperçu : n'écrit rien, affiche statistiques et exemples
 //   node scripts/autolink.mjs --write    applique les balises dans src/content/wiki/**/*.md (puis npm run db:sync-pages)

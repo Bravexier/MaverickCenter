@@ -5,7 +5,7 @@
 //     ambigu dont la page est une candidate compte aussi : la supprimer changerait sa cible) ;
 //   - un lien écrit vers son adresse, `/regles/<slug>/` (ou l'ancienne `/regles/avancees/<slug>/`), ou vers son identifiant `guide/<slug>` ;
 //   - un bloc de description de la chronologie qui la cite pour légende (evenement_extrait.page_id) ;
-//   - depuis la migration 0096 (les liens devenus des balises du glossaire) : une balise dont le mot-clé a une adresse qui mène à la page
+//   - depuis la migration 0098 (les liens devenus des balises du glossaire) : une balise dont le mot-clé a une adresse qui mène à la page
 //     (lib/adresses-db.mjs#pageDeLAdresse ; la supprimer laisserait la balise sans page), et le mot-clé lui-même, dont l'adresse mènerait nulle part
 //     (mot_cle.url : db:check la refuserait) — à retirer d'abord sur /recherche/.
 // Les textes lus sont ceux de lib/mots-cles-db.mjs#textesDeLaBase (toutes les colonnes TEXT des tables des règles, hors traces, tables dérivées,
@@ -22,7 +22,7 @@ import { buildIndex, extractLinks, resolve } from './wikilinks-resolution.mjs';
 /** Un lien écrit vers une page des onglets (/regles/<slug>/, /regles/avancees/<slug>/) ou vers son identifiant (guide/<slug>) : le slug. */
 const ADRESSE_ECRITE = /(?<![a-z0-9_-])(?:regles\/(?:avancees\/)?|guide\/)([a-z0-9]+(?:-[a-z0-9]+)*)(?![a-z0-9_-])/g;
 
-/** Les colonnes de mot_cle qui ne sont pas un texte (migration 0096) : l'adresse et la couleur. */
+/** Les colonnes de mot_cle qui ne sont pas un texte (migration 0098) : l'adresse et la couleur. */
 const COLONNES_DU_LIEN = ['url', 'couleur'];
 
 /** Les colonnes de clé d'une table (primaire et étrangères) : jamais lues comme un texte. */
@@ -35,7 +35,7 @@ function colonnesDeCle(db, table) {
 /**
  * Les citations de chacune des pages `ids` : Map(id → [{ table, cle, colonne, comment, page, libelle, exemple }]) — `comment` : 'lien' (`[[…]]`),
  * 'adresse' (un lien écrit vers son adresse ou son identifiant), 'chronologie' (evenement_extrait.page_id), 'balise' (la balise d'un mot-clé qui y
- * mène, migration 0096), 'mot-cle' (le mot-clé dont l'adresse y mène : table mot_cle, colonne url) ; `page` : { id, titre } de la page qui
+ * mène, migration 0098), 'mot-cle' (le mot-clé dont l'adresse y mène : table mot_cle, colonne url) ; `page` : { id, titre } de la page qui
  * cite (null hors de la table page) ; `libelle` : ce qui cite, en français (le titre de la page, « Chronologie › <événement> », sinon le nom de la
  * table et la clé) ; `exemple` : la page qui cite est une page d'exemple (ne bloque pas). Une ligne qui cite deux fois la même page par la même
  * colonne n'est rendue qu'une fois. Un seul passage sur les textes de la base, quel que soit le nombre de pages demandées (GET /api/edition/plan/).
@@ -68,7 +68,7 @@ export function citationsDesPages(db, ids) {
     sortie.get(id).push({ table, cle, colonne, comment, page: page ? { id: page.id, titre: page.titre } : null, libelle, exemple: page?.statut === 'example' });
   };
 
-  // les mots-clés qui mènent à une des pages demandées (migration 0096 : mot_cle.url ; aucun sur une base d'avant)
+  // les mots-clés qui mènent à une des pages demandées (migration 0098 : mot_cle.url ; aucun sur une base d'avant)
   const adresses = indexDesAdresses(db, { exemples: true });
   const motsCles = motsClesDeLaBase(db);
   const vocabulaire = vocabulaireDesMotsCles(motsCles);
@@ -84,7 +84,7 @@ export function citationsDesPages(db, ids) {
   for (const t of textesDeLaBase(db)) (parTable.get(t.table) ?? parTable.set(t.table, []).get(t.table)).push(t);
   for (const [table, textes] of parTable) {
     const cles = colonnesDeCle(db, table);
-    // l'adresse d'un mot-clé (mot_cle.url, migration 0096) cite sa page comme le mot-clé (plus haut), pas comme une adresse écrite dans un texte
+    // l'adresse d'un mot-clé (mot_cle.url, migration 0098) cite sa page comme le mot-clé (plus haut), pas comme une adresse écrite dans un texte
     const colonnes = textes.filter((t) => !cles.has(t.colonne) && !(table === 'mot_cle' && COLONNES_DU_LIEN.includes(t.colonne))).map((t) => t.colonne);
     if (!colonnes.length) continue;
     const pk = textes[0].cle;

@@ -110,9 +110,9 @@ const valeurDeDepart = (conflit) => {
   return String(v);
 };
 
-/** L'aide d'une adresse de mot-clé (mot_cle.url, migration 0096 : lib/mots-cles-liens.mjs, que ce module n'importe pas : skill site-version-portable). */
+/** L'aide d'une adresse de mot-clé (mot_cle.url, migration 0098 : lib/mots-cles-liens.mjs, que ce module n'importe pas : skill site-version-portable). */
 const AIDE_ADRESSE = 'adresse d’une page du site depuis sa racine, « /races/elfe/ », vide : aucune';
-/** L'aide d'une couleur de mot-clé (mot_cle.couleur, migration 0096). */
+/** L'aide d'une couleur de mot-clé (mot_cle.couleur, migration 0098). */
 const AIDE_COULEUR = '« #rrggbb », ou « famille:id » d’une couleur du site (« magie:feu »), vide : aucune';
 /** La forme d'une adresse et d'une couleur de mot-clé (la règle de lib/mots-cles-liens.mjs#fauteDeFormeDeLUrl et #lireLaCouleur ; le service refait tout). */
 const FORME_D_ADRESSE = /^\/(?!\/)[!-~]*$/;
@@ -135,7 +135,7 @@ export function htmlDeLaSaisie(conflit, id, listes = {}) {
     const bornes = `${s.min !== undefined ? ` data-min="${s.min}"` : ''}${s.max !== undefined ? ` data-max="${s.max}"` : ''}`;
     controle = `<input type="text" inputmode="${s.type === 'entier' ? 'numeric' : 'decimal'}" ${commun}${bornes} value="${echapper(depart)}">`;
   } else {
-    // ligne, catégories (« id1, id2 »), adresse et couleur d'un mot-clé (migration 0096) : une ligne de texte
+    // ligne, catégories (« id1, id2 »), adresse et couleur d'un mot-clé (migration 0098) : une ligne de texte
     controle = `<input type="text" ${commun} value="${echapper(depart)}">`;
   }
   const aide = [s.requis ? 'obligatoire' : null, s.min !== undefined ? `au moins ${s.min}` : null, s.max !== undefined ? `au plus ${s.max}` : null,

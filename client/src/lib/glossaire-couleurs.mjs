@@ -1,4 +1,4 @@
-// Les couleurs qu'un mot-clé peut prendre sur le site de dev (migration 0096 ; réponses du propriétaire du 2026-11-06, Q3 et Q4 : deux sélecteurs, « une
+// Les couleurs qu'un mot-clé peut prendre sur le site de dev (migration 0098 ; réponses du propriétaire du 2026-11-06, Q3 et Q4 : deux sélecteurs, « une
 // liste des couleurs prédéfinies » — toutes les familles de la palette, lib/palette-css.mjs#FAMILLES_DE_LA_PALETTE, couleurs techniques et entrées
 // « par défaut » comprises, groupées par famille, chaque couleur désignée par l'élément de référence (« Feu », « Chakra », « Mythril »…) — et un
 // cercle qui donne une couleur écrite, « #rrggbb »). La page du Glossaire (pages/regles/glossaire.astro) la donne à son script et à l'éditeur

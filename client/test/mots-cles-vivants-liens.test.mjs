@@ -1,4 +1,4 @@
-// Les mots-clés vivants du site de dev (src/scripts/edition/mots-cles-vivants.mjs) et la migration 0096, dans un faux navigateur : un mot-clé à adresse
+// Les mots-clés vivants du site de dev (src/scripts/edition/mots-cles-vivants.mjs) et la migration 0098, dans un faux navigateur : un mot-clé à adresse
 // est un lien préfixé de la base du site (`ed.base`), sauf dans un lien, un bouton, une étiquette ou une bulle (le gras seul) ; un mot-clé coloré porte
 // sa classe, sa bulle aussi ; la feuille des couleurs (`<style data-couleurs-mots-cles>`) est relue au service quand une classe y manque, et réécrite
 // avec celle que donne le glossaire (definirLeVocabulaire(liste, { css })).

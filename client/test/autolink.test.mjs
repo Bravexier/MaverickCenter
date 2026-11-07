@@ -1,4 +1,4 @@
-// Maillage automatique (lib/autolink.mjs, npm run autolink) : depuis la migration 0096, un lien est la balise d'un mot-clé à adresse (mot_cle.url ;
+// Maillage automatique (lib/autolink.mjs, npm run autolink) : depuis la migration 0098, un lien est la balise d'un mot-clé à adresse (mot_cle.url ;
 // décision du propriétaire : « tous les liens deviendront des mots-clés et tous les mots-clés deviendront des liens ») ; le maillage pose « {{id}} » ou
 // « {{id|texte}} », jamais un [[lien]], et ne crée jamais de mot-clé.
 import assert from 'node:assert/strict';
@@ -16,7 +16,8 @@ const cibles = [
   cible('philtre-du-puissant', 'ressources/philtre-du-puissant', 'Philtre du Puissant'),
   cible('alchimie', 'ressources/alchimie', 'Alchimie'),
   cible('postures', 'guide/postures', 'Postures'),
-  cible('jet-de-des', 'guide/jet-de-des', 'Jet de dés', ['Jets de dés']),
+  // « Dés » mène à la page « Jet de dés » (migration 0098, « Fusionner dans l'existant ») : son libellé, puis le titre et l'alias de la page
+  cible('des', 'guide/jet-de-des', 'Dés', ['Jet de dés', 'Jets de dés']),
   cible('neutre-a', 'guide/neutre-a', 'Neutre'),
   cible('neutre-b', 'lore/neutre-b', 'Neutre'),
   cible('marin', 'metiers/marin', 'Marin'),
@@ -60,7 +61,9 @@ test('fold garde la longueur du texte (indices valides) et ignore casse, accents
 test('un titre à plusieurs mots devient la balise de son mot-clé, avec le texte d’origine s’il n’est pas le libellé', () => {
   assert.equal(run('Boire un philtre du puissant.').body, 'Boire un {{philtre-du-puissant|philtre du puissant}}.');
   assert.equal(run('Le Philtre du Puissant aide.').body, 'Le {{philtre-du-puissant}} aide.', 'le libellé : la balise seule');
-  assert.equal(run('Voir jets de dés.').body, 'Voir {{jet-de-des|jets de dés}}.', 'un alias de la page mène à son mot-clé');
+  assert.equal(run('Voir jets de dés.').body, 'Voir {{des|jets de dés}}.', 'un alias de la page mène au mot-clé qui y mène, texte gardé');
+  assert.equal(run('Un jet de dés.').body, 'Un {{des|jet de dés}}.', 'le titre de la page aussi');
+  assert.equal(run('Les Dés roulent.').body, 'Les Dés roulent.', '« Dés » (3 lettres) est trop court pour être lié');
 });
 
 test('un terme d’un seul mot n’est lié que s’il commence par une majuscule', () => {
@@ -143,7 +146,7 @@ test('la liste d’exclusion écarte une locution courante', () => {
 
 test('les pages que l’édition refait depuis les tables (races, classes, dons, magies, métiers) ou que leur importeur réécrit (lore : le Codex) ne reçoivent pas de balises ; leurs mots-clés restent des cibles', () => {
   // une balise posée dans leur corps serait perdue à la première modification (lib/corps-races.mjs, corps-classes.mjs, corps-magies.mjs ; le corps d'un
-  // métier est exactement corpsDeMetier(ligne) depuis la 0096) ou au prochain import (tools/docs/codex.py --verifier : chaque page à l'octet près)
+  // métier est exactement corpsDeMetier(ligne) depuis la 0098) ou au prochain import (tools/docs/codex.py --verifier : chaque page à l'octet près)
   for (const id of ['races/drakos', 'classes/guerrier', 'capacites/guerrier-brave', 'magies/magie-du-feu', 'metiers/forgeron', 'lore/erisia']) {
     assert.equal(aMailler({ id, type: id.split('/')[0] }), false, id);
     assert.equal(aMailler({ id }), false, `${id} (sans type)`);

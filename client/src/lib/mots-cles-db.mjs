@@ -4,7 +4,7 @@
 // tant qu'il n'est pas décrit, ici comme dans la base, le service et GET /api/edition/mots-cles/ ; qui l'affiche écrit `?? ''`). Les pages portent les
 // LIBELLÉS de leurs mots-clés (front matter `tags`, fabriqué par db:export-pages) : l'id d'un libellé est celui du mot-clé qui s'écrit pareil. Son
 // abréviation (`abreviation`, migration 0090 : NULL sans abréviation, et pour une base d'avant), qu'une balise peut citer comme son écriture. Sa
-// couleur et son adresse (`couleur`, `url`, migration 0096 : NULL sans elles, et pour une base d'avant ; lib/mots-cles-liens.mjs).
+// couleur et son adresse (`couleur`, `url`, migration 0098 : NULL sans elles, et pour une base d'avant ; lib/mots-cles-liens.mjs).
 // Et les textes de la base où une balise peut s'écrire (textesDeLaBase : db:check, le rejeu du journal ; hors tables de lib/tables-de-la-base.mjs).
 // Sans dépendance Astro ni navigateur : la base est passée par l'appelant (pages, middleware, service, scripts, tests).
 import { typeDeTexte } from './edition-modele.mjs';
@@ -20,7 +20,7 @@ const colonneExiste = (db, table, colonne) => db.prepare(`PRAGMA table_info("${t
 /**
  * Les mots-clés de la base, lus à chaque appel (sans cache : le service, dont la base change d'un lot à l'autre) : [{ id, libelle, libelle_cle,
  * description, abreviation, couleur, url }], dans l'ordre de la table ; une base d'avant la migration 0056 n'a pas de définitions, une d'avant la 0090
- * pas d'abréviations, une d'avant la 0096 ni couleur ni adresse (NULL) ; vide sans table mot_cle (avant la 0043).
+ * pas d'abréviations, une d'avant la 0098 ni couleur ni adresse (NULL) ; vide sans table mot_cle (avant la 0043).
  * @param {import('node:sqlite').DatabaseSync} db
  */
 export function motsClesDeLaBase(db) {

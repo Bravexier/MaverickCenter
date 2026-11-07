@@ -1,5 +1,5 @@
 // Corps et résumé de la page d'un métier recalculés depuis sa ligne de `metier` (lib/corps-metiers.mjs ; défaut D4 de l'édition du site de dev).
-// 1. Validation sur toute la base construite depuis data/rows : le rendu complet redonne chaque corps à l'octet près (depuis la migration 0096, aucun
+// 1. Validation sur toute la base construite depuis data/rows : le rendu complet redonne chaque corps à l'octet près (depuis la migration 0098, aucun
 //    corps n'a de [[lien]] : celui que le maillage avait posé chez l'Alchimiste et l'Apothicaire est une balise de leur ligne), remplacer un champ par
 //    sa propre valeur redonne le corps à l'octet près, le résumé est celui de la page.
 // 2. Cas de modification synthétiques : valeur sur plusieurs paragraphes (l'Herboriste : plus de paragraphe orphelin), champ vidé, ajouté, retiré,
@@ -42,7 +42,7 @@ test('base : chaque corps a les cinq champs, une fois chacun, dans l’ordre de 
   for (const m of metiers) assert.deepEqual(champsDuCorps(m.corps).map((c) => c.libelle), LIBELLES, m.id);
 });
 
-test('rendu complet : corpsDeMetier(ligne) === corps_md pour tout métier, aucun [[lien]] (migration 0096 : le lien du maillage est une balise de la ligne)', () => {
+test('rendu complet : corpsDeMetier(ligne) === corps_md pour tout métier, aucun [[lien]] (migration 0098 : le lien du maillage est une balise de la ligne)', () => {
   for (const m of metiers) {
     assert.equal(corpsDeMetier(m.ligne), m.corps, m.id);
     assert.deepEqual(extractLinks(m.corps), [], m.id);
@@ -241,7 +241,7 @@ test('retours à la ligne Windows : une valeur en \\r\\n s’écrit en \\n ; un 
   }
 });
 
-test('balise de l’artisanat (Alchimiste, Apothicaire ; migration 0096) : gardée quand le test de fabrication change, comme tout le texte de la ligne', () => {
+test('balise de l’artisanat (Alchimiste, Apothicaire ; migration 0098) : gardée quand le test de fabrication change, comme tout le texte de la ligne', () => {
   for (const m of metiers.filter((x) => (x.ligne.artisanat_brut ?? '').includes('{{alchimie-primitive|alchimie primitive}}'))) {
     const l1 = { ...m.ligne, artisanat_brut: m.ligne.artisanat_brut.replace(/\[[^\]]*\]$/, '[FORCE + AGILITÉ]') };
     const c1 = corpsApres(m.corps, m.ligne, l1);

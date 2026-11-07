@@ -6,7 +6,7 @@
 //     définitions, bulles et feuille des couleurs comprises (mots-cles-vivants.mjs suit le vocabulaire relu et réécrit la feuille avec `css`) ;
 //   - au crayon (debut) : une liste de gestion — pour chaque mot-clé, la balise à copier (« {{id}} »), son libellé modifiable (champ commun :
 //     mot_cle.libelle), son abréviation (mot_cle.abreviation, migration 0090 ; réponse du propriétaire du 2026-11-05 : « Modifiable et affichée » ; vidée,
-//     NULL), ses pages (leur nombre), son adresse (mot_cle.url, migration 0096 : une balise de ce mot-clé est un lien vers elle ; vidée, NULL), sa couleur
+//     NULL), ses pages (leur nombre), son adresse (mot_cle.url, migration 0098 : une balise de ce mot-clé est un lien vers elle ; vidée, NULL), sa couleur
 //     (mot_cle.couleur : la liste des couleurs du site, groupées par famille, et le cercle d'une autre couleur, editeur.mjs#controleDeCouleur ; réponses
 //     Q3, Q4), sa définition (mot_cle.description), « Fusionner dans… » et « Supprimer » (mis en file, envoyés avec « Enregistrer ») ; un mot-clé dont le
 //     site se sert (lib/mots-cles.mjs) n'a ni saisie du libellé ni bouton, sa raison est écrite, mais sa définition, son abréviation, son adresse et sa

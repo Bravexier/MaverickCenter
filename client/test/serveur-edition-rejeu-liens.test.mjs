@@ -1,6 +1,6 @@
-// Le rejeu d'un lot du site de dev noté avant la migration 0096 (les [[…]] et les liens Markdown internes devenus des balises de mots-clés) :
+// Le rejeu d'un lot du site de dev noté avant la migration 0098 (les [[…]] et les liens Markdown internes devenus des balises de mots-clés) :
 // serveur/edition.mjs#ancienneEcritureDesLiens lit ses textes comme la migration a réécrit les règles (la table de conversion de son registre,
-// data/migrations/0096-liens-en-mots-cles.json : tableDesLiensDeLa0096). Sans lui, un tel lot écrirait un lien que db:check refuse, ou verrait un faux
+// data/migrations/0098-liens-en-mots-cles.json : tableDesLiensDeLa0098). Sans lui, un tel lot écrirait un lien que db:check refuse, ou verrait un faux
 // conflit sur un texte que la migration a converti. Une page d'exemple et un lien inconnu restent tels quels ; l'artisanat de l'Alchimiste, dont la
 // migration a balisé le texte simple, l'est de même.
 //   node --test test/serveur-edition-rejeu-liens.test.mjs
@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { appliquerJournal } from '../scripts/db-appliquer-edition.mjs';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
-import { adaptateurDuJournal, ancienneEcritureDesLiens, rejouerLeJournal, tableDesLiensDeLa0096, tableDuRegistreDesLiens } from '../serveur/edition.mjs';
+import { adaptateurDuJournal, ancienneEcritureDesLiens, rejouerLeJournal, tableDesLiensDeLa0098, tableDuRegistreDesLiens } from '../serveur/edition.mjs';
 import { chargerJournal, journalExporte } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { liensDuTexte } from '../src/lib/liens-en-mots-cles.mjs';
@@ -35,15 +35,15 @@ const m = (table, operation, cle, avant, apres) => ({ lot_id: 'l', rang: 0, tabl
 /** Un remplacement du registre sur une page du guide (un seul lien de ce texte dans la page), et l'Alchimiste (texte simple balisé). */
 const SUR_LA_PAGE = REGISTRE.remplacements.find((r) => r.table === 'page' && r.cle.id.startsWith('guide/') && r.compte === 1 && r.lien.startsWith('[['));
 const ALCHIMISTE = REGISTRE.remplacements.find((r) => r.table === 'metier' && r.cle.id === 'metiers/alchimiste' && r.colonne === 'artisanat_texte');
-/** Le texte tel qu'un lot d'avant la 0096 l'a noté : chaque balise que la migration a écrite sur cette ligne redevient ce qu'elle remplaçait. */
-const avant0096 = (table, cle, colonne, texte) => REGISTRE.remplacements
+/** Le texte tel qu'un lot d'avant la 0098 l'a noté : chaque balise que la migration a écrite sur cette ligne redevient ce qu'elle remplaçait. */
+const avant0098 = (table, cle, colonne, texte) => REGISTRE.remplacements
   .filter((r) => r.table === table && r.colonne === colonne && JSON.stringify(r.cle) === JSON.stringify(cle))
   .reduce((t, r) => t.replaceAll(r.balise, r.lien), texte);
 
-test('la table de la 0096 : celle du registre (liens et adresses), et les textes simples balisés (Alchimiste, Apothicaire)', () => {
-  const table = tableDesLiensDeLa0096();
+test('la table de la 0098 : celle du registre (liens et adresses), et les textes simples balisés (Alchimiste, Apothicaire)', () => {
+  const table = tableDesLiensDeLa0098();
   assert.ok(table, `registre ${REGISTRE_DES_LIENS} lu`);
-  assert.equal(tableDesLiensDeLa0096(), table, 'lu une fois');
+  assert.equal(tableDesLiensDeLa0098(), table, 'lu une fois');
   assert.ok(table.parCle.size > 0 && table.parAdresse.size > 0);
   assert.deepEqual([...table.textes.keys()].map((k) => k.split('\u0000')[2]).sort(),
     ['artisanat_brut', 'artisanat_brut', 'artisanat_texte', 'artisanat_texte']);
@@ -51,7 +51,7 @@ test('la table de la 0096 : celle du registre (liens et adresses), et les textes
   assert.deepEqual(tableDuRegistreDesLiens(null).textes, new Map());
 });
 
-test('adaptateur : les liens d’avant 0096 (avant et apres) deviennent les balises de la migration ; exemple, lien inconnu, autre table : tels quels', () => {
+test('adaptateur : les liens d’avant 0098 (avant et apres) deviennent les balises de la migration ; exemple, lien inconnu, autre table : tels quels', () => {
   const db = vivante();
   const adapter = ancienneEcritureDesLiens(db);
   const { id } = SUR_LA_PAGE.cle;
@@ -66,7 +66,7 @@ test('adaptateur : les liens d’avant 0096 (avant et apres) deviennent les bali
   // l'artisanat de l'Alchimiste : le texte simple balisé, une seule fois
   const texte = db.prepare('SELECT artisanat_texte FROM metier WHERE id = ?').get('metiers/alchimiste').artisanat_texte;
   assert.ok(texte.includes(ALCHIMISTE.balise), texte);
-  const ancien = avant0096('metier', ALCHIMISTE.cle, 'artisanat_texte', texte);
+  const ancien = avant0098('metier', ALCHIMISTE.cle, 'artisanat_texte', texte);
   const alch = adapter(m('metier', 'modifier', ALCHIMISTE.cle, { artisanat_texte: ancien }, { artisanat_texte: `${ancien} (essai)` }));
   assert.deepEqual([JSON.parse(alch.avant).artisanat_texte, JSON.parse(alch.apres).artisanat_texte], [texte, `${texte} (essai)`]);
   const deja = m('metier', 'modifier', ALCHIMISTE.cle, { artisanat_texte: texte }, { artisanat_texte: `${texte} (essai)` });
@@ -79,7 +79,7 @@ test('adaptateur : les liens d’avant 0096 (avant et apres) deviennent les bali
   assert.equal(adapter(alias), alias);
   const sans = m('page', 'modifier', { id }, { corps_md: 'x' }, { corps_md: 'y' });
   assert.equal(adapter(sans), sans);
-  // des règles d'avant la 0096 (sans mot_cle.url), ou sans registre : rien n'est adapté
+  // des règles d'avant la 0098 (sans mot_cle.url), ou sans registre : rien n'est adapté
   const ancienne = new DatabaseSync(':memory:');
   ancienne.exec("CREATE TABLE mot_cle (id TEXT PRIMARY KEY, libelle TEXT); INSERT INTO mot_cle VALUES ('drakos', 'Drakos');");
   const lien = m('page', 'modifier', { id }, null, { corps_md: 'Voir [[Drakos]].' });
@@ -92,8 +92,8 @@ test('adaptateur : les liens d’avant 0096 (avant et apres) deviennent les bali
   db.close();
 });
 
-test('rejeu et db:appliquer-edition de lots d’avant 0096 : pas de faux conflit, les balises de la migration, aucun lien (db:check)', { skip: sansPython }, () => {
-  // les lots, faits par le service sur une base d'aujourd'hui, puis récrits dans le journal comme le site de dev les notait avant la 0096
+test('rejeu et db:appliquer-edition de lots d’avant 0098 : pas de faux conflit, les balises de la migration, aucun lien (db:check)', { skip: sansPython }, () => {
+  // les lots, faits par le service sur une base d'aujourd'hui, puis récrits dans le journal comme le site de dev les notait avant la 0098
   const site = vivante();
   const s = { base: () => site, etat: () => ({}), edition: true };
   const lot = (operations, page) => {
@@ -114,12 +114,12 @@ test('rejeu et db:appliquer-edition de lots d’avant 0096 : pas de faux conflit
       if (!['page', 'metier'].includes(x.table) || (x.table === 'page' && x.cle.id !== id)) continue;
       for (const ligne of [x.avant, x.apres]) {
         if (!ligne) continue;
-        for (const [c, v] of Object.entries(ligne)) if (typeof v === 'string') ligne[c] = avant0096(x.table, x.cle, c, v);
+        for (const [c, v] of Object.entries(ligne)) if (typeof v === 'string') ligne[c] = avant0098(x.table, x.cle, c, v);
       }
     }
   }
   const notee = journal.lots[0].modifications.find((x) => x.table === 'page' && x.cle.id === id);
-  assert.ok(notee.avant.corps_md.includes(SUR_LA_PAGE.lien) && !notee.avant.corps_md.includes(SUR_LA_PAGE.balise), 'le lot d’avant 0096 note le lien');
+  assert.ok(notee.avant.corps_md.includes(SUR_LA_PAGE.lien) && !notee.avant.corps_md.includes(SUR_LA_PAGE.balise), 'le lot d’avant 0098 note le lien');
   const verifier = (base) => {
     assert.equal(base.prepare('SELECT corps_md FROM page WHERE id = ?').get(id).corps_md, `${corps}\n\nEssai de rejeu des liens.\n`, 'aucun faux conflit, la balise');
     assert.equal(base.prepare('SELECT artisanat_texte FROM metier WHERE id = ?').get('metiers/alchimiste').artisanat_texte, `${artisanat} (essai)`);

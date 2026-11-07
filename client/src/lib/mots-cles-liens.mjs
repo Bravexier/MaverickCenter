@@ -1,4 +1,4 @@
-// Le lien et la couleur d'un mot-clé du glossaire (migration 0096 ; réponses du propriétaire du 2026-11-06, transmises par le leader-technique :
+// Le lien et la couleur d'un mot-clé du glossaire (migration 0098 ; réponses du propriétaire du 2026-11-06, transmises par le leader-technique :
 // `mot_cle` gagne « couleur » et « url », NULL par défaut, « URL interne seulement » ; les [[…]] et les liens Markdown internes deviennent des balises ;
 // « le mot clé reprenne la couleur de la page d'avant »). Une balise dont le mot-clé a une adresse mène à cette adresse ; sa couleur est une classe.
 //   - L'adresse (`url`) : interne, relative à la racine du site, SANS le préfixe de déploiement (« /races/humain/ », « /metiers/#metier-mineur ») ;
@@ -15,16 +15,16 @@
 // lib/palette-css.mjs), par le service, les scripts db-* et les tests.
 
 /**
- * Le registre de la migration 0096 (relatif à la racine du dépôt) : la table de conversion des liens d'un lot d'avant la migration
+ * Le registre de la migration 0098 (relatif à la racine du dépôt) : la table de conversion des liens d'un lot d'avant la migration
  * (serveur/edition.mjs#ancienneEcritureDesLiens, lib/liens-en-mots-cles.mjs#tableDeConversion), livré avec le service (serveur/livraison.mjs#FICHIERS_JOINTS).
  */
-export const REGISTRE_DES_LIENS = 'data/migrations/0096-liens-en-mots-cles.json';
+export const REGISTRE_DES_LIENS = 'data/migrations/0098-liens-en-mots-cles.json';
 
 /** Le préfixe de la classe d'un mot-clé à couleur écrite (« #rrggbb ») : « couleur-mot-cle-<id> ». */
 export const PREFIXE_DE_CLASSE = 'couleur-mot-cle-';
 
 /**
- * Les liens Markdown internes que la migration 0096 a gardés (une ancre de l'accueil, que rien ne remplace : « /#lien-discord » reste un lien) : ni
+ * Les liens Markdown internes que la migration 0098 a gardés (une ancre de l'accueil, que rien ne remplace : « /#lien-discord » reste un lien) : ni
  * db:check ni le service ne les refusent.
  */
 export const LIENS_GARDES = Object.freeze(['/#lien-discord']);

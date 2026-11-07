@@ -25,7 +25,7 @@
 //   GET  /api/edition/listes/       listes des formulaires (compétences, catégories de classe, races hybrides…)
 //   GET  /api/edition/pages/        les pages du wiki (id, titre) : cibles d'un lien posé dans le texte du guide
 //   GET  /api/edition/mots-cles/    le vocabulaire des mots-clés, avec leurs pages et ceux dont le site se sert (/regles/glossaire/ en mode modification),
-//                                   leur lien, leur couleur et sa classe, et la feuille de ces classes (`css` : migration 0096)
+//                                   leur lien, leur couleur et sa classe, et la feuille de ces classes (`css` : migration 0098)
 //   GET  /api/edition/chronologie/  les événements de la chronologie dans l'ordre de lecture avec leurs catégories, et les catégories (surcouche de la frise)
 //   GET  /api/edition/plan/         le plan vivant des Règles (onglets, page d'ouverture, entrées de chaque menu ; pour chaque page : sa protection et
 //                                   ses citations) et les races par groupe dans l'ordre de leur liste — serveur/edition-plan.mjs#planVivant

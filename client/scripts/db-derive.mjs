@@ -1,6 +1,6 @@
 // `npm run db:build` l'enchaîne après db-build.mjs : recalcule les tables DÉRIVÉES (lien, lien_candidat, page_fts, puis data/derive.sql -> entite_fts)
 // à partir des tables de base. Réutilise le code du site (wikilinks.mjs, text.mjs) : les règles de résolution ne sont écrites qu'une fois.
-// Les liens d'une page (table `lien`, vue `lien_page`) : ses `[[…]]` (il n'en reste que sur les pages d'exemple), puis, depuis la migration 0096 (les
+// Les liens d'une page (table `lien`, vue `lien_page`) : ses `[[…]]` (il n'en reste que sur les pages d'exemple), puis, depuis la migration 0098 (les
 // liens devenus des balises), chaque balise du glossaire dont le mot-clé a une adresse qui mène à une page (lib/adresses-db.mjs#pageDeLAdresse ; une
 // rubrique ou une route sans page n'est pas un lien de page) : `cible` = l'id du mot-clé, `ancre` = le texte affiché, `etat` = 'resolu'.
 //
@@ -31,7 +31,7 @@ const deriveSql = chemin(args.includes('--derive-sql') ? args[args.indexOf('--de
 /**
  * Texte brut pour la recherche, tel qu'il s'affiche : chaque balise du glossaire devient son texte affiché (le texte écrit, ou le libellé du mot-clé ;
  * « Libellé : définition » pour le mode complet ; une balise dans un code reste écrite : lib/mots-cles-balises.mjs#texteSansBalises) — depuis la
- * migration 0096, un lien est une balise sans texte, « {{lequipement}} », et seul son libellé, « L’équipement », se lit ; puis même nettoyage que
+ * migration 0098, un lien est une balise sans texte, « {{lequipement}} », et seul son libellé, « L’équipement », se lit ; puis même nettoyage que
  * lib/recherche-index.ts#plainText, sans la coupe à 4000 caractères.
  */
 function textePlein(corps, vocabulaire) {
@@ -87,7 +87,7 @@ try {
   const insLien = db.prepare('INSERT INTO lien (page_id, position, cible, ancre, etat, cible_page_id) VALUES (?, ?, ?, ?, ?, ?)');
   const insCand = db.prepare('INSERT INTO lien_candidat (page_id, position, candidat_page_id) VALUES (?, ?, ?)');
   const etats = { resolu: 0, introuvable: 0, ambigu: 0 };
-  // les balises dont le mot-clé mène à une page (migration 0096) : l'adresse de chaque mot-clé, résolue une fois
+  // les balises dont le mot-clé mène à une page (migration 0098) : l'adresse de chaque mot-clé, résolue une fois
   const vocabulaire = vocabulaireDesMotsCles(motsClesDeLaBase(db));
   const adresses = indexDesAdresses(db, { exemples: true });
   const pageDuMotCle = new Map(motsClesDeLaBase(db).filter((m) => m.url).map((m) => [m.id, pageDeLAdresse(adresses, m.url)]));

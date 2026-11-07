@@ -38,7 +38,7 @@ Page produite (status draft ; tags « relations », « peuples », « race » ; 
   section « Nom du peuple : comment ce peuple voit les autres » : une ligne `- **niveau** : peuples` par niveau, dans
   l'ordre de l'échelle (du plus favorable au plus défavorable), les peuples dans l'ordre de l'onglet ; un niveau sans
   peuple n'est pas écrit. Les 69 x 69 relations y figurent, chacune une fois (la section d'un peuple le range lui-même
-  sous « Même peuple »). Aucun lien ni balise : depuis la migration 0096, un lien est la balise d'un mot-clé et `db:check`
+  sous « Même peuple »). Aucun lien ni balise : depuis la migration 0098, un lien est la balise d'un mot-clé et `db:check`
   refuse un `[[…]]` ; le maillage automatique (`npm run autolink`) ne touche plus les pages `lore` (TYPES_SANS_MAILLAGE de
   client/src/lib/autolink.mjs). Le vérificateur lit encore `[[T]]` et `[[T|texte]]` comme le texte affiché (ancien maillage).
 

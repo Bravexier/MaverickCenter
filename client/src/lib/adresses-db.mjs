@@ -1,4 +1,4 @@
-// Les adresses du site lues dans la base : où une adresse de mot-clé (mot_cle.url, migration 0096 : lib/mots-cles-liens.mjs) peut mener, et la page
+// Les adresses du site lues dans la base : où une adresse de mot-clé (mot_cle.url, migration 0098 : lib/mots-cles-liens.mjs) peut mener, et la page
 // à laquelle elle mène. Une adresse est relative à la racine du site, sans le préfixe de déploiement, avec la barre finale (« /races/elfe/ »).
 //   - adressesDuSite : le chemin (sans ancre) de chaque page qui n'est pas d'exemple (lib/metiers.mjs#cheminDePage : un métier mène à /metiers/, une
 //     page de l'équipement à la page qui la sert, une page du guide à son adresse dans le plan), la rubrique de chaque type de page (« /magies/ » :

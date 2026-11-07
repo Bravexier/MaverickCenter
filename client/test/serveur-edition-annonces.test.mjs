@@ -73,7 +73,7 @@ test('le modèle et la base : une annonce par encart placé par le site, son tex
 test('le texte de l’annonce : Markdown sûr (ni HTML brut ni lien non sûr), balises du glossaire en forme canonique, vidé = NULL, 409 s’il a changé', () => {
   const { lire, modifier, db } = nouvelle();
   const avant = lire().texte;
-  // un lien interne saisi devient la balise du mot-clé qui mène à sa page (migration 0096 : Découvrir, « bienvenue-dans-maverick »)
+  // un lien interne saisi devient la balise du mot-clé qui mène à sa page (migration 0098 : Découvrir, « bienvenue-dans-maverick »)
   const texte = 'Retrouvez-nous **à la convention** ; voir {{bienvenue-dans-maverick|Bienvenue}}.';
   ok(modifier({ texte: texte.replace('{{bienvenue-dans-maverick|Bienvenue}}', '[[guide/bienvenue|Bienvenue]]') }, { texte: avant }));
   assert.equal(lire().texte, texte);

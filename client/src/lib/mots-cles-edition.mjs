@@ -177,7 +177,7 @@ export function operationsDuVocabulaire(operations, { suppressions = new Set(), 
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
-// La couleur d'un mot-clé (migration 0096 ; réponses du propriétaire Q3, Q4 : deux sélecteurs, « une liste des couleurs prédéfinies » — toutes les
+// La couleur d'un mot-clé (migration 0098 ; réponses du propriétaire Q3, Q4 : deux sélecteurs, « une liste des couleurs prédéfinies » — toutes les
 // familles de la palette, groupées par famille, chaque couleur désignée par l'élément de référence — et un cercle qui donne la couleur écrite)
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 

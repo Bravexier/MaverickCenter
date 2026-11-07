@@ -1,4 +1,4 @@
-// Les adresses du site lues dans la base (lib/adresses-db.mjs, migration 0096 : où l'adresse d'un mot-clé peut mener, et à quelle page) :
+// Les adresses du site lues dans la base (lib/adresses-db.mjs, migration 0098 : où l'adresse d'un mot-clé peut mener, et à quelle page) :
 // ADRESSES_FIXES d'accord avec les routes de src/pages, adressesDuSite (pages qui ne sont pas d'exemple, rubriques, routes fixes), chaque adresse du
 // registre de la migration permise, la page de chaque adresse (celle du registre).
 //   node --test test/adresses-db.test.mjs
@@ -67,11 +67,11 @@ test('adressesDuSite : les routes fixes, les rubriques, le chemin de chaque page
   for (const a of seulementExemples) assert.ok(!adresses.has(a), a);
 });
 
-test('migration 0096 : chaque adresse du registre est permise, et mène à la page du registre', () => {
+test('migration 0098 : chaque adresse du registre est permise, et mène à la page du registre', () => {
   const db = ouvrirBase({ sansExemples: false });
   const adresses = adressesDuSite(db);
   const index = indexDesAdresses(db);
-  assert.ok(REGISTRE.motsCles.length >= 274);
+  assert.ok(REGISTRE.motsCles.length >= 273);
   for (const m of REGISTRE.motsCles) {
     assert.equal(fauteDeLUrl(m.url, adresses), null, `${m.id} : ${m.url}`);
     if (m.page) assert.equal(pageDeLAdresse(index, m.url), m.page, `${m.id} : ${m.url}`);

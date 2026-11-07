@@ -26,7 +26,7 @@ test('texte d’un chapitre : morceaux de texte remplacés autour des blocs tir�
   const avant = page('guide/bienvenue').corps_md;
   // le premier morceau de texte réécrit, les autres (s'il y en a, entre des blocs) tels quels ; plus de bloc « sommaire » dans Bienvenue (2026-10-18)
   const visibles = decouperCorps(avant).filter((m) => m.visible).length;
-  // le lien vers une page s'écrit par la balise du mot-clé qui y mène (migration 0096)
+  // le lien vers une page s'écrit par la balise du mot-clé qui y mène (migration 0098)
   const corps = recomposerCorps(avant, ['## MaverickJDR ?\n\nUn texte **neuf** et un lien vers les {{nain|nains}}.\n', ...Array(visibles - 1).fill(null)]);
   assert.doesNotMatch(corps, /<!-- guide:sommaire -->/);
   const apercu = ['<h2>MaverickJDR ?</h2><p>Un texte <strong>neuf</strong>…</p>', ...Array.from({ length: visibles - 1 }, (_, i) => `<p>${i}</p>`)];

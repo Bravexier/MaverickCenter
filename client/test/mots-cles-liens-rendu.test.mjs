@@ -1,4 +1,4 @@
-// Le rendu des mots-clés à adresse et colorés (migration 0096 ; réponses du propriétaire du 2026-11-06, transmises par le leader-technique) :
+// Le rendu des mots-clés à adresse et colorés (migration 0098 ; réponses du propriétaire du 2026-11-06, transmises par le leader-technique) :
 //   - « une balise dont le mot-clé a une URL est un lien » (clic = son adresse, préfixée de la base du site) ; sans adresse, pas cliquable ; un mot-clé
 //     sans définition : en gras et cliquable, sans bulle (Q11) ;
 //   - Q5, Q13 (« La couleur inclue la tuile (quand on a la définition complète {{X:}} ) et l'habillage de l'infobulle ») : la classe de la couleur du

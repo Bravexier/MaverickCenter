@@ -154,7 +154,7 @@ export function editeurEnPlace(zones) {
   }
 
   /**
-   * Lie le texte choisi à une page par un mot-clé qui y mène (migration 0096 ; réponse du propriétaire : « une balise dont le mot-clé a une URL est un
+   * Lie le texte choisi à une page par un mot-clé qui y mène (migration 0098 ; réponse du propriétaire : « une balise dont le mot-clé a une URL est un
    * lien ») : le choix parmi les mots-clés qui ont une adresse, puis le texte devient sa balise, comme l'outil « Mot-clé » (motCle) ; le curseur dans une
    * balise, change son mot-clé. Un lien vers une page s'écrit donc toujours par un mot-clé (le service convertit un [[…]] saisi : serveur/edition.mjs) ;
    * une page sans mot-clé se lie après en avoir créé un sur /regles/glossaire/ (adresse comprise).

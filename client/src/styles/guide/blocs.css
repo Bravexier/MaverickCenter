@@ -2,7 +2,7 @@
    MJ), des pages simples depuis la refonte du 2026-10-18 (plus de livre : ni flèches, ni pagination, ni glissement du doigt) ; leurs couleurs et les blocs
    tirés de la base (components/guide/GuideBloc.astro). */
 /* Couleur du groupe de la page : la classe de sa partie (`.couleur-partie-…`, lib/palette-css.mjs#classeDePartie d'après lib/livres.mjs#partieDeLaPage),
-   ou celle du mot-clé coloré qui mène à la page (migration 0096, lib/couleur-de-la-page.mjs : d'une autre famille, ou écrite), avec le repère
+   ou celle du mot-clé coloré qui mène à la page (migration 0098, lib/couleur-de-la-page.mjs : d'une autre famille, ou écrite), avec le repère
    `.guide-reference--couleur`, posée sur la page (sans elle, l'accent du site : pages des onglets des Règles hors création du personnage, Guide du MJ) : --guide pour les aplats (texte blanc dessus,
    --guide-sur), --guide-texte pour un texte coloré sur la feuille (éclairci en thème sombre). */
 .guide-reference {

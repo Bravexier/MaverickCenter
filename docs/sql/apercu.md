@@ -310,7 +310,7 @@
 | `cle_page` *(vue)* | Index de résolution des [[liens]] = buildIndex() de wikilinks.mjs : toute clé normalisée -> pages qui la portent (slug, titre ou alias). |  |
 | `lien_page` *(vue)* | Graphe de pages tel que le calcule wiki.ts : paires (depuis, vers) distinctes, liens résolus, sans lien d'une page vers elle-même. |  |
 | `lien_a_creer` *(vue)* | « Pages à créer » : [[liens]] sans page (introuvables) ou ambigus. |  |
-| `v_mot_cle` *(vue)* | Le vocabulaire des mots-clés et les pages qui les portent (page /recherche/ du site de dev : un mot-clé supprimé est retiré de nb_pages pages), avec sa définition (glossaire, migration 0056), son abré |  |
+| `v_mot_cle` *(vue)* | Le vocabulaire des mots-clés et les pages qui les portent (page Glossaire du site de dev, /regles/glossaire/ : un mot-clé supprimé est retiré de nb_pages pages), avec sa définition (glossaire, migrati |  |
 | `v_magie_incompatible` *(vue)* | Relation d'incompatibilité symétrique : (a, b) est présent dans les deux sens dès que l'un des deux cite l'autre. |  |
 | `v_sort_bonus_au_nm` *(vue)* | Les bonus de maîtrise d'un sort À UN NIVEAU DE MAÎTRISE DONNÉ (nm = 0, 1, 2, 3) : une ligne par (bonus, nm). |  |
 | `v_race_carac_borne` *(vue)* | Bornes de saisie d'une caractéristique selon la race, telles que la fiche les calcule (BDD!K2:K24) : '>' est strict (« > 2 » = au moins 3), '<' est strict (« < 4 » = au plus 3), '=' fixe la valeur ; l |  |

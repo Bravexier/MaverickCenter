@@ -38,7 +38,7 @@ interface Props {
   statusNote?: string;
 }
 const { entry, entries, magie, magies, statusNote } = Astro.props;
-// la couleur de la page : celle du mot-clé coloré qui y mène (réponse Q5 du propriétaire, migration 0096 : lib/couleur-de-la-page.mjs), sinon la classe
+// la couleur de la page : celle du mot-clé coloré qui y mène (réponse Q5 du propriétaire, migration 0098 : lib/couleur-de-la-page.mjs), sinon la classe
 // de sa magie (lib/palette-css.mjs, posée sur chaque page par layouts/Base.astro ; styles/magie/base.css en tire --mag)
 const classeDeLaMagie = classeDeLaPageDuSite(pageHref(entry.id), classeDeMagie(magie.nom), { base: import.meta.env.BASE_URL });
 

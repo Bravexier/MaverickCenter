@@ -1,6 +1,6 @@
 /* Les mots-clés du glossaire dans les textes (lib/mots-cles-balises.mjs, posés par src/middleware.mjs ; demande du propriétaire : « Partout où un mot-clé est
    utilisé, il sera affiché en gras. Une infobulle de sa définition sera visible ») :
-   - `.mot-cle` : le mot-clé en gras (`strong`, ou `a` quand il a une adresse : migration 0096, réponse du propriétaire « une balise dont le mot-clé a une
+   - `.mot-cle` : le mot-clé en gras (`strong`, ou `a` quand il a une adresse : migration 0098, réponse du propriétaire « une balise dont le mot-clé a une
      URL est un lien ») ; quand il est décrit (`[data-bulle]`), un soulignement pointillé discret dit qu'il a une définition, dans la bulle commune du site
      (components/Infobulles.astro : survol, focus clavier, toucher) ;
    - `span.mot-cle-definition` : le mode complet, « **Libellé** : définition », dans le fil du texte ;

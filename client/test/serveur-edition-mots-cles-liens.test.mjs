@@ -1,4 +1,4 @@
-// Le lien et la couleur d'un mot-clé au service d'édition (migration 0096 ; réponses du propriétaire du 2026-11-06 : `mot_cle` gagne « couleur » et
+// Le lien et la couleur d'un mot-clé au service d'édition (migration 0098 ; réponses du propriétaire du 2026-11-06 : `mot_cle` gagne « couleur » et
 // « url », « URL interne seulement » ; les [[…]] et les liens Markdown internes deviennent des balises) :
 //   - le modèle : `url` (type « adresse ») et `couleur` (type « couleur ») dans TABLES et ENTITES, hors CHAMPS_DE_TEXTE ; une couleur écrite en minuscules ;
 //   - GET /api/edition/mots-cles/ : url, couleur, classe de chaque mot-clé, et la feuille de leurs classes (`css`) ;

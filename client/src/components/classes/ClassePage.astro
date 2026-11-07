@@ -41,7 +41,7 @@ const compte = (g: Props['groupes'][number]) => g.sections.reduce((n, s) => n + 
 
 // couleur de la catégorie de /classes/ (rouge, vert, bleu, violet, jaune), sur toute la page comme celle d'une magie : la classe de sa catégorie
 // (lib/palette-css.mjs, famille `classe`, une famille d'une zone que la page émet), jamais un style ; celle du mot-clé coloré qui mène à la page d'abord
-// (réponse Q5 du propriétaire, migration 0096 : lib/couleur-de-la-page.mjs)
+// (réponse Q5 du propriétaire, migration 0098 : lib/couleur-de-la-page.mjs)
 const couleur = classeDeLaPageDuSite(entryHref(entry), classeDUneClasse(entry), { base: import.meta.env.BASE_URL });
 // spécialités : celles qui ont des dons (une colonne du plateau ; les deux de l'Archimage n'en ont pas) ; un article caché tant qu'il n'a ni description
 // ni remarque, que le mode modification ouvre pour le remplir (D11 : une spécialité créée sur le site n'a d'abord que son nom)

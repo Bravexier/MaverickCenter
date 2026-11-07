@@ -171,7 +171,7 @@ export function demarrer(racine, etatService) {
 
   // --- Saisies ---------------------------------------------------------------------------------------------------------------------------------
   /**
-   * Les couleurs proposées pour un champ `couleur` (mot_cle.couleur, migration 0096) : `champ.choix`, sinon `ed.listes.couleurs` (posée par l'extension
+   * Les couleurs proposées pour un champ `couleur` (mot_cle.couleur, migration 0098) : `champ.choix`, sinon `ed.listes.couleurs` (posée par l'extension
    * du glossaire), sinon l'attribut `data-couleurs` de la page (pages/regles/glossaire.astro : la palette entière, groupée par famille).
    */
   function couleursProposees(champ) {

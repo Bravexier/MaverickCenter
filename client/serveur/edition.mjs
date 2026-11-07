@@ -33,9 +33,9 @@
 // quitte ses pages et chaque texte qui le cite (sa balise devient son texte simple) ; fusionné, ses balises citent l'autre (reecrireLesBalises : des
 // modifications ordinaires, dérivations et journal compris ; au rejeu, les textes que le site de dev n'avait pas suivent, au moment où sa suppression
 // est rejouée : balisesRetireesParLeLot).
-// Liens (migration 0096 : les [[…]] et les liens Markdown internes sont devenus des balises de mots-clés qui portent une adresse, lib/mots-cles-liens.mjs) :
+// Liens (migration 0098 : les [[…]] et les liens Markdown internes sont devenus des balises de mots-clés qui portent une adresse, lib/mots-cles-liens.mjs) :
 // un lien interne ajouté à un texte (hors code, hors page d'exemple ; un lien externe reste permis) devient la balise du seul mot-clé qui mène à sa page
-// (texteSansLiens), sinon il est refusé (400 { champ, liens }, renvoi au Glossaire) ; un lot d'avant la 0096 se rejoue converti par le registre de la
+// (texteSansLiens), sinon il est refusé (400 { champ, liens }, renvoi au Glossaire) ; un lot d'avant la 0098 se rejoue converti par le registre de la
 // migration (ancienneEcritureDesLiens).
 // Node seulement (node:sqlite), sans dépendance.
 import { existsSync, readFileSync } from 'node:fs';
@@ -218,7 +218,7 @@ export function supprimerPage(ctx, pageId) {
  * Un mot-clé neuf du vocabulaire (noté au journal) : il prend la clé de son libellé pour id, suffixée -2, -3… si cet id est pris ou a déjà servi
  * (historique, journal : un id de mot-clé n'est jamais réutilisé ; les 400 retirés par la migration 0056 peuvent resservir, ils n'y sont pas) ; sa
  * définition, NULL tant qu'il n'est pas décrit ; son abréviation (migration 0090), NULL sans abréviation (la colonne n'est écrite, et notée, que pour une
- * abréviation : un lot sans elle se rejoue sur une base d'avant la 0090) ; de même son adresse et sa couleur (migration 0096, `url`, `couleur` :
+ * abréviation : un lot sans elle se rejoue sur une base d'avant la 0090) ; de même son adresse et sa couleur (migration 0098, `url`, `couleur` :
  * écrites seulement si elles sont données). Refusé si son id ou son écriture est l'abréviation d'un autre mot-clé, ou si son abréviation ne convient
  * pas (refuserLAbreviation), son adresse (refuserLeLien) ou sa couleur (refuserLaCouleur). Rend son id.
  */
@@ -238,7 +238,7 @@ export function creerMotCle(ctx, libelle, description = null, abreviation = null
 }
 
 /**
- * Refus de l'adresse d'un mot-clé (`m` = { libelle, url }, migration 0096 ; NULL est toujours permis) : sa forme (interne, « / » au début, ASCII
+ * Refus de l'adresse d'un mot-clé (`m` = { libelle, url }, migration 0098 ; NULL est toujours permis) : sa forme (interne, « / » au début, ASCII
  * imprimable sans espace ni « \ », la barre finale), puis son chemin, qui doit être celui d'une page du site qui n'est pas d'exemple, d'une rubrique ou
  * d'une route fixe (lib/adresses-db.mjs#adressesDuSite, lu dans la base vivante) ; l'ancre et la requête ne sont pas vérifiées. 400, `champ: 'url'`.
  */
@@ -249,7 +249,7 @@ export function refuserLeLien(db, m) {
 }
 
 /**
- * Refus de la couleur d'un mot-clé (`m` = { libelle, couleur }, migration 0096 ; NULL est toujours permis) : « #rrggbb » ou une référence
+ * Refus de la couleur d'un mot-clé (`m` = { libelle, couleur }, migration 0098 ; NULL est toujours permis) : « #rrggbb » ou une référence
  * « <famille>:<id> » que la palette connaît (lib/palette-css.mjs#fauteDeLaCouleur). 400, `champ: 'couleur'`.
  */
 export function refuserLaCouleur(m) {
@@ -306,7 +306,7 @@ export function motCleDe(ctx, libelle) {
 export const vocabulaireVivant = (db) => vocabulaireDesMotsCles(motsClesDeLaBase(db));
 
 /**
- * La valeur d'un champ texte sans les liens internes qu'elle AJOUTE (migration 0096 : un lien se donne par la balise du mot-clé de sa page) : chaque
+ * La valeur d'un champ texte sans les liens internes qu'elle AJOUTE (migration 0098 : un lien se donne par la balise du mot-clé de sa page) : chaque
  * `[[cible]]`, `[[cible|texte]]` ou `[texte](/adresse)` absent de `avant` (la valeur en place ; hors code dans un texte mis en forme ; un lien externe
  * n'est pas lu, un lien de LIENS_GARDES reste) devient la balise, texte affiché gardé (lib/liens-en-mots-cles.mjs#baliseDuLien, forme canonique de la
  * colonne), du SEUL mot-clé qui mène à l'adresse visée : celle de la page qu'un `[[…]]` désigne (résolu comme le site,
@@ -1887,7 +1887,7 @@ export function adaptateurDuJournal(db) {
   const motsCles = ancienneEcritureDesMotsCles(db);
   // avant le glossaire : une étiquette vers `cr` (absent des règles) y serait sautée au lieu d'être reciblée
   const fusions = ancienneEcritureDesFusions(db);
-  // les liens d'un lot d'avant la 0096, devenus les balises que la migration a écrites (après la fusion : la 0096 ne crée ni ne recible `cr`)
+  // les liens d'un lot d'avant la 0098, devenus les balises que la migration a écrites (après la fusion : la 0098 ne crée ni ne recible `cr`)
   const liens = ancienneEcritureDesLiens(db);
   const glossaire = ancienneEcritureDuGlossaire(db);
   const capacites = ancienneEcritureDesCapacites(db);
@@ -1897,14 +1897,14 @@ export function adaptateurDuJournal(db) {
   return (m) => couts(armures(resistances(capacites(glossaire(liens(fusions(motsCles(m))))))));
 }
 
-/** La table de conversion des liens de la migration 0096 (undefined : pas encore lue ; null : registre absent). */
-let tableDeLa0096;
+/** La table de conversion des liens de la migration 0098 (undefined : pas encore lue ; null : registre absent). */
+let tableDeLa0098;
 
-/** La clé d'un texte de la base dans les remplacements de texte de la 0096 : table, clé, colonne. */
+/** La clé d'un texte de la base dans les remplacements de texte de la 0098 : table, clé, colonne. */
 const cleDuTexte = (table, cle, colonne) => `${table}\u0000${JSON.stringify(cle)}\u0000${colonne}`;
 
 /**
- * La table de conversion des liens de la migration 0096 d'après son registre ({ motsCles, remplacements }) : celle de
+ * La table de conversion des liens de la migration 0098 d'après son registre ({ motsCles, remplacements }) : celle de
  * lib/liens-en-mots-cles.mjs#tableDeConversion, et `textes` (Map cleDuTexte → [{ lien, balise }]) : les remplacements d'un texte simple que la migration
  * a balisé sans qu'il soit un lien (l'artisanat de l'Alchimiste et de l'Apothicaire, dont le lien du maillage n'était que dans le corps de la page :
  * « alchimie primitive » → « {{alchimie-primitive|alchimie primitive}} »).
@@ -1921,29 +1921,29 @@ export function tableDuRegistreDesLiens(registre) {
 }
 
 /**
- * La table de conversion des liens de la migration 0096 (tableDuRegistreDesLiens du registre data/migrations/0096-liens-en-mots-cles.json,
+ * La table de conversion des liens de la migration 0098 (tableDuRegistreDesLiens du registre data/migrations/0098-liens-en-mots-cles.json,
  * lib/mots-cles-liens.mjs#REGISTRE_DES_LIENS), lue une fois : dans le service livré, le registre est joint dans _serveur/
  * (serveur/livraison.mjs#FICHIERS_JOINTS) ; dans le dépôt, il est sous data/ à la racine. null s'il est absent.
  */
-export function tableDesLiensDeLa0096() {
-  if (tableDeLa0096 !== undefined) return tableDeLa0096;
+export function tableDesLiensDeLa0098() {
+  if (tableDeLa0098 !== undefined) return tableDeLa0098;
   const fichier = [new URL(`../${REGISTRE_DES_LIENS}`, import.meta.url), new URL(`../../${REGISTRE_DES_LIENS}`, import.meta.url)].find((u) => existsSync(u));
-  tableDeLa0096 = fichier ? tableDuRegistreDesLiens(JSON.parse(readFileSync(fichier, 'utf8'))) : null;
-  return tableDeLa0096;
+  tableDeLa0098 = fichier ? tableDuRegistreDesLiens(JSON.parse(readFileSync(fichier, 'utf8'))) : null;
+  return tableDeLa0098;
 }
 
 /**
- * Un lot noté avant la migration 0096 (les liens devenus des balises : lib/liens-en-mots-cles.mjs), lu comme la migration a réécrit les règles
+ * Un lot noté avant la migration 0098 (les liens devenus des balises : lib/liens-en-mots-cles.mjs), lu comme la migration a réécrit les règles
  * (adaptateur de edition-journal.mjs#rejouer, modèle : ancienneEcritureDesFusions), quand les règles ont `mot_cle.url` : dans `avant` comme dans
  * `apres`, chaque lien `[[…]]` ou `[texte](/…)` d'un texte que la migration a converti (les colonnes de lib/mots-cles-db.mjs#textesDeLaBase, hors code
  * dans un texte mis en forme) devient la balise que la migration a écrite (convertirLesLiens avec la table de son registre, la forme de la colonne :
  * lib/edition-modele.mjs#typeDeTexte) — sinon le lot écrirait un lien que db:check refuse, ou verrait un faux conflit sur un texte que la migration a
  * converti. Une page d'exemple (que la migration n'a pas touchée) et un lien que la table ne connaît pas (« /#lien-discord ») restent tels quels. Après
- * la 0096, le service n'écrit plus de lien (texteSansLiens) : seul un lot d'avant en porte. Un texte simple que la migration a balisé sur une ligne
+ * la 0098, le service n'écrit plus de lien (texteSansLiens) : seul un lot d'avant en porte. Un texte simple que la migration a balisé sur une ligne
  * donnée (`table.textes` : l'artisanat de l'Alchimiste et de l'Apothicaire) l'est de même, s'il n'a pas déjà sa balise. `table` : la table de
- * conversion (tableDesLiensDeLa0096 ; null : rien n'est adapté).
+ * conversion (tableDesLiensDeLa0098 ; null : rien n'est adapté).
  */
-export function ancienneEcritureDesLiens(db, table = tableDesLiensDeLa0096()) {
+export function ancienneEcritureDesLiens(db, table = tableDesLiensDeLa0098()) {
   if (!table || !tableExiste(db, 'mot_cle') || !structure(db, 'mot_cle').colonnes.includes('url')) return (m) => m;
   const colonnes = new Map();
   for (const t of textesDeLaBase(db)) (colonnes.get(t.table) ?? colonnes.set(t.table, new Map()).get(t.table)).set(t.colonne, t.markdown);

@@ -1,10 +1,11 @@
-// Générateur de la migration 0096 (data/migrations/0096-liens-en-mots-cles.sql et son registre .json) : les liens des textes deviennent des balises
+// Générateur de la migration 0098 (data/migrations/0098-liens-en-mots-cles.sql et son registre .json) : les liens des textes deviennent des balises
 // du glossaire, et `mot_cle` gagne une couleur et une adresse. Réponses du propriétaire du 2026-11-06 (transmises par le leader-technique) :
 //   - `mot_cle` gagne `couleur` et `url`, NULL par défaut, ajoutées en dernier ; une URL interne seulement ;
 //   - Q1 : les `[[…]]` et les liens Markdown internes `[texte](/…)` deviennent des balises ; un mot-clé par page visée : libellé = le titre de la page,
 //     url = son adresse, ni définition (NULL : aucune n'est inventée), ni abréviation ; un mot-clé existant de même libelle_cle ne reçoit que l'url (et
 //     la couleur si la page est colorée) : `alignement`, `artisanat`, `bouclier`, `ceinture`, `codex` (MOTS_CLES_EXISTANTS_REPRIS ; pour les trois
-//     du milieu : « Le mot-clé existant prend l'URL ») ;
+//     du milieu : « Le mot-clé existant prend l'URL ») ; « Fusionner dans l'existant » : 13 pages ou routes dont le mot-clé existant prend l'URL, sans
+//     mot-clé nouveau, les balises gardant le texte affiché (FUSIONS_DANS_L_EXISTANT) ;
 //   - Q3 : la couleur est une référence `<famille>:<id>` (l'id de la classe CSS, lib/palette-css.mjs#idDeCouleur) ou `#rrggbb` ;
 //   - Q5 : « il ne faut pas de changement par rapport à avant en terme de résultat. Tu feras donc en sorte que le mot clé reprenne la couleur de la page
 //     d'avant » : tout mot-clé qui mène à une page colorée reçoit la référence de sa couleur actuelle (couleurDeLaPage : les fonctions du site) ;
@@ -19,7 +20,7 @@
 //     la section 15 (notes de version, historique) n'est jamais convertie (lib/mots-cles-db.mjs#textesDeLaBase ne la lit pas).
 // Toute autre collision de libelle_cle (avec un mot-clé existant, entre deux pages, entre une route et une page) n'est pas tranchée ici : le générateur
 // s'arrête et la liste (question au propriétaire).
-// Lit la base construite (var/maverick.db, npm run db:build) depuis le data/rows d'AVANT la migration (user_version 95) ; la conversion elle-même est
+// Lit la base construite (var/maverick.db, npm run db:build) depuis le data/rows d'AVANT la migration (user_version 97) ; la conversion elle-même est
 // lib/liens-en-mots-cles.mjs#convertirLesLiens (pure, reprise par le rejeu du journal), avec la table du registre.
 //   node scripts/liens-en-mots-cles.mjs            (depuis client/ ; écrit la migration et son registre)
 import { writeFileSync } from 'node:fs';
@@ -40,8 +41,8 @@ import { racesParNature } from '../src/lib/races-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { buildIndex, resolve } from '../src/lib/wikilinks-resolution.mjs';
 
-const NOM = '0096-liens-en-mots-cles';
-const VERSION_AVANT = 95;
+const NOM = '0098-liens-en-mots-cles';
+const VERSION_AVANT = 97;
 const BASE = fileURLToPath(new URL('../../var/maverick.db', import.meta.url));
 const SORTIE = (ext) => fileURLToPath(new URL(`../../data/migrations/${NOM}.${ext}`, import.meta.url));
 
@@ -50,6 +51,31 @@ const SORTIE = (ext) => fileURLToPath(new URL(`../../data/migrations/${NOM}.${ex
  * de la page si elle en a une). `artisanat`, `bouclier`, `ceinture` : réponse du propriétaire, « Le mot-clé existant prend l'URL ».
  */
 export const MOTS_CLES_EXISTANTS_REPRIS = Object.freeze(['alignement', 'artisanat', 'bouclier', 'ceinture', 'codex']);
+
+/**
+ * Les fusions dans un mot-clé existant (page visée → id ; route sans page → id). Décision du propriétaire : « Fusionner dans l'existant » ; option
+ * choisie : « Pour chaque paire, le mot-clé existant prend l'URL de la page, comme Bouclier et Ceinture, et les liens convertis le visent. Le texte
+ * affiché reste le même, et le mot-clé nouveau n'est pas créé. » Comme MOTS_CLES_EXISTANTS_REPRIS : l'existant garde id, libellé et définition (son
+ * infobulle s'affiche sur ces liens : « Oui, avec infobulle »), reçoit l'url (et la couleur si la page en a une) ; les balises gardent le texte
+ * affiché du lien (« {{posture|Les postures}} »). Les routes : « Classe → /classes/, Métier → /metiers/, race → /races/ ». « Tenaille » prend « La
+ * prise en tenaille et zone d'influence », « Dés » prend « Jet de dés ». « Résistance » : « Aucun, garder le nouveau » (« Résistances et faiblesses »
+ * a son mot-clé) ; « Liste des altérations d'état » garde aussi le sien.
+ */
+export const FUSIONS_DANS_L_EXISTANT = Object.freeze({
+  'guide/les-postures': 'posture',
+  'guide/le-mode-hyper': 'mode-hyper',
+  'guide/alterations-d-etats': 'alteration-detat',
+  '/classes/': 'classe',
+  '/races/': 'race',
+  '/metiers/': 'metier',
+  'guide/les-degats': 'degats',
+  'guide/l-embuscade': 'embuscade',
+  'guide/les-attaques-d-opportunite': 'attaque-dopportunite',
+  'ressources/pieces-elementaires': 'piece-elementaire',
+  'guide/les-attaques-discretes': 'attaque-discrete',
+  'guide/prise-en-tenaille-et-zone-d-influence': 'tenaille',
+  'guide/jet-de-des': 'des',
+});
 
 /**
  * Homonymes race/classe (réponse du propriétaire : « La race garde le nom ») : le libellé du mot-clé de la page de classe ; la page de race garde son
@@ -91,7 +117,7 @@ const sql = (v) => (v === null || v === undefined ? 'NULL' : `'${String(v).repla
 /** La référence de couleur d'une classe CSS de la palette (« couleur-magie-sang », famille « magie » → « magie:sang »), ou null. */
 const reference = (famille, classe) => (classe ? `${famille}:${classe.slice(`couleur-${famille}-`.length)}` : null);
 
-export function generer(db, { repris = MOTS_CLES_EXISTANTS_REPRIS } = {}) {
+export function generer(db, { repris = MOTS_CLES_EXISTANTS_REPRIS, fusions = FUSIONS_DANS_L_EXISTANT } = {}) {
   const version = db.prepare('PRAGMA user_version').get().user_version;
   if (version !== VERSION_AVANT) throw new Error(`base à la version ${version} : le générateur lit une base construite à la version ${VERSION_AVANT}`);
   const erreurs = [];
@@ -238,6 +264,16 @@ export function generer(db, { repris = MOTS_CLES_EXISTANTS_REPRIS } = {}) {
       continue;
     }
     const [c] = liste;
+    const fondu = fusions[c.page ?? c.route];
+    if (fondu) {
+      const existant = existants.find((m) => m.id === fondu);
+      if (!existant) {
+        erreurs.push(`FUSIONS_DANS_L_EXISTANT : ${nom(c)} → \`${fondu}\`, mot-clé absent`);
+        continue;
+      }
+      motsCles.push({ ...c, id: existant.id, libelle: existant.libelle, libelle_cle: existant.libelle_cle, origine: 'existant' });
+      continue;
+    }
     const existant = existantParCle.get(cle);
     if (existant) {
       if (!repris.includes(existant.id)) {
@@ -254,6 +290,11 @@ export function generer(db, { repris = MOTS_CLES_EXISTANTS_REPRIS } = {}) {
     motsCles.push({ ...c, id: cle });
   }
   for (const id of repris) if (!motsCles.some((m) => m.id === id)) erreurs.push(`MOTS_CLES_EXISTANTS_REPRIS : aucune page ne mène à \`${id}\``);
+  for (const [cible, id] of Object.entries(fusions)) {
+    if (!motsCles.some((m) => m.id === id && (m.page ?? m.route) === cible)) erreurs.push(`FUSIONS_DANS_L_EXISTANT : ni lien ni couleur ne mène à ${cible} (\`${id}\`)`);
+  }
+  const ids = motsCles.map((m) => m.id);
+  for (const id of new Set(ids.filter((x, i) => ids.indexOf(x) !== i))) erreurs.push(`le mot-clé \`${id}\` reprend deux pages ou routes`);
   if (erreurs.length) return { erreurs };
 
   // la conversion des textes (lib/liens-en-mots-cles.mjs), puis la vérification : chaque texte converti est canonique et la suite de replace() de la
@@ -319,22 +360,27 @@ export function generer(db, { repris = MOTS_CLES_EXISTANTS_REPRIS } = {}) {
   return { motsCles: registreMotsCles, remplacements, anciennesAncres, existants: existants.length };
 }
 
-const ENTETE = `-- 0096-liens-en-mots-cles : les liens des textes deviennent des balises du glossaire, et un mot-clé gagne une couleur et une adresse.
+const ENTETE = `-- ${NOM} : les liens des textes deviennent des balises du glossaire, et un mot-clé gagne une couleur et une adresse.
 -- Réponses du propriétaire (2026-11-06, transmises par le leader-technique) : « mot_cle » gagne « couleur » et « url », NULL par défaut, ajoutées en
 -- dernier, une URL interne seulement ; les [[…]] et les liens Markdown internes [texte](/…) deviennent des balises ; un mot-clé par page visée
 -- (libellé = titre de la page, url = son adresse, ni définition ni abréviation : aucune n'est inventée) ; un mot-clé existant de même libelle_cle ne
 -- reçoit que l'url (et la couleur) : « alignement », « artisanat », « bouclier », « ceinture », « codex » (« Le mot-clé existant prend l'URL ») ;
+-- « Fusionner dans l'existant » : « Pour chaque paire, le mot-clé existant prend l'URL de la page, comme Bouclier et Ceinture, et les liens convertis
+-- le visent. Le texte affiché reste le même, et le mot-clé nouveau n'est pas créé. » (13 pages ou routes, liste de FUSIONS_DANS_L_EXISTANT du
+-- générateur ; « Classe → /classes/, Métier → /metiers/, race → /races/ » ; « Résistance » : « Aucun, garder le nouveau ») ;
 -- la couleur est une référence « <famille>:<id> » (l'id de la classe CSS de la palette, lib/palette-css.mjs#idDeCouleur) ou « #rrggbb » ; « il ne faut pas de changement par rapport à avant en terme de résultat. Tu feras donc en sorte que
 -- le mot clé reprenne la couleur de la page d'avant » ; « Un mot-clé par page colorée » (aussi pour celles que rien ne vise ; la couleur calculée des
 -- classes et des races recopiée, gel accepté) ; un lien vers une route sans page devient le mot-clé de la route, libellé du menu du site ; homonymes
 -- race/classe : « La race garde le nom » (la classe : « <Nom> (classe) »).
--- FICHIER GÉNÉRÉ par client/scripts/liens-en-mots-cles.mjs depuis la base construite à la version 95 (ne pas le modifier à la main) ; registre :
+-- FICHIER GÉNÉRÉ par client/scripts/liens-en-mots-cles.mjs depuis la base construite à la version ${VERSION_AVANT} (ne pas le modifier à la main) ; registre :
 -- ${NOM}.json (chaque mot-clé, ses écritures de lien, chaque remplacement). Migration de STRUCTURE et de DONNÉES ; rien ne va dans
 -- historique_modification (la migration n'est pas une modification du site de dev).
 --   1. mot_cle.couleur, mot_cle.url (ADD COLUMN nullable, en dernier) ; la vue v_mot_cle les donne (refaite, en dernier). Qu'une référence de couleur
 --      nomme une couleur de la palette (lib/palette-css.mjs#FAMILLES_DE_LA_PALETTE) ne se lit pas en SQL.
---   2. « alignement », « artisanat », « bouclier », « ceinture » et « codex » gardent id et définition, et reçoivent l'url de leur page (et sa
---      couleur si elle en a une).
+--   2. « alignement », « artisanat », « bouclier », « ceinture » et « codex », et les 13 mots-clés des fusions (« posture », « mode-hyper »,
+--      « alteration-detat », « classe », « race », « metier », « degats », « embuscade », « attaque-dopportunite », « piece-elementaire »,
+--      « attaque-discrete », « tenaille », « des ») gardent id, libellé et définition, et reçoivent l'url de leur page ou de leur route (et sa couleur
+--      si elle en a une).
 --   3. Les mots-clés nouveaux : chaque page visée par un lien, chaque page colorée (magies, classes, races, pages de Découvrir et de la création du
 --      personnage), chaque route visée sans page ; ni définition ni abréviation.
 --   4. Les textes : chaque lien devient la balise de son mot-clé, son texte affiché gardé (« {{id}} » quand c'est le libellé), dans la forme canonique
@@ -372,8 +418,8 @@ export const VUE = `CREATE VIEW v_mot_cle AS
     (SELECT count(*) FROM page_tag t WHERE t.tag_id = m.id) AS nb_pages,
     m.description,                                                         -- la définition du glossaire (migration 0056 ; NULL : pas encore décrit)
     m.abreviation,                                                         -- l'abréviation (migration 0090 ; NULL : aucune)
-    m.couleur,                                                             -- la référence de couleur (migration 0096 ; NULL : aucune)
-    m.url                                                                  -- l'adresse interne où mène le mot-clé (migration 0096 ; NULL : aucune)
+    m.couleur,                                                             -- la référence de couleur (migration 0098 ; NULL : aucune)
+    m.url                                                                  -- l'adresse interne où mène le mot-clé (migration 0098 ; NULL : aucune)
   FROM mot_cle m;`;
 
 /** Le registre JSON, depuis le résultat de generer(). */

@@ -29,7 +29,7 @@ const TYPE_DE_CHAMP = {
 /** La condition `si` d'un champ ou d'une colonne figés, en texte (« tableau = produit:ANIMAUX ou produit:AUTRES »). */
 const texteDeCondition = (si) => Object.entries(si ?? {}).map(([c, v]) => `${c} = ${v.join(' ou ')}`).join(', ');
 
-/** Ce que la description d'un champ dit de son type, quand le type JSON ne le dit pas (migration 0096 : lien et couleur d'un mot-clé). */
+/** Ce que la description d'un champ dit de son type, quand le type JSON ne le dit pas (migration 0098 : lien et couleur d'un mot-clé). */
 const DIT_DU_TYPE = {
   adresse: ' (adresse interne du site, relative à sa racine, sans le préfixe de déploiement : « /races/elfe/ » ; son chemin mène à une page du site)',
   couleur: ' (« #rrggbb », ou « <famille>:<id> » d’une couleur du site : « classe:melee », « magie:feu »)',
@@ -450,7 +450,7 @@ function cheminsDuService() {
     '/edition/listes/': lectureDuService('edition_listes', 'Listes des formulaires', `Compétences, catégories de classe, races hybrides, espèces de monstres…${SITE_DE_DEV}`),
     '/edition/pages/': lectureDuService('edition_pages', 'Pages du wiki', `Les pages (id, titre) : cibles d’un lien posé dans un texte.${SITE_DE_DEV}`),
     '/edition/mots-cles/': lectureDuService('edition_mots_cles', 'Vocabulaire des mots-clés',
-      `Les mots-clés (\`motsCles\`), leurs pages et ceux dont le site se sert, avec leur lien, leur couleur et sa classe (migration 0096), et la feuille de ces classes (\`css\`).${SITE_DE_DEV}`),
+      `Les mots-clés (\`motsCles\`), leurs pages et ceux dont le site se sert, avec leur lien, leur couleur et sa classe (migration 0098), et la feuille de ces classes (\`css\`).${SITE_DE_DEV}`),
     '/edition/chronologie/': lectureDuService('edition_chronologie', 'Chronologie vivante', `Les événements dans l’ordre de lecture avec leurs catégories, et les catégories.${SITE_DE_DEV}`),
     '/edition/plan/': lectureDuService('edition_plan', 'Plan vivant des Règles', `Les onglets des Règles et les entrées de leurs menus (pour chaque page : sa protection, ses citations, supprimable ou non), et les races par groupe dans l’ordre de leur liste.${SITE_DE_DEV}`),
     '/edition/race/': ecritureDuService('edition_race', 'Données d’une race', `{ race } → magies innées et relations de la race (lecture).${SITE_DE_DEV}`, { race: 'races/humain' }),
