@@ -7,7 +7,8 @@
 // lecture ; depuis la migration 0098, son adresse et sa couleur (saisies communes, la feuille des couleurs du service réécrite) ; depuis la migration 0110
 // (décisions R218, R219 (7)), un mot-clé verrouillé : un cadenas, ses champs désactivés, la raison en infobulle, ni suppression ni fusion depuis lui, mais
 // une cible de fusion ; rien de tout cela hors du mode modification ; le menu des endroits qui le mentionnent, « Supprimer » pour une liste vide seulement
-// (R196 (2)). Puis, de bout en bout contre le vrai service (serveur/api.mjs sur une copie de la base) : renommages en rotation, en chaîne, noms échangés,
+// (R196 (2)) ; « Forcer la suppression » pour un mot-clé mentionné, sauf verrouillé ou refus prévu par le service (R223). Puis, de bout en bout
+// contre le vrai service (serveur/api.mjs sur une copie de la base) : renommages en rotation, en chaîne, noms échangés,
 // fusions en chaîne, fusion dans un mot-clé verrouillé — le lot que la page envoie est accepté, ou refusé avant toute question ; l'adresse et la couleur
 // enregistrées.
 //   node --test test/edition-mots-cles.test.mjs
@@ -21,7 +22,10 @@ import { cleDeLigne, lireAttributEd } from '../src/lib/edition-modele.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { htmlDeLaLigneDuGlossaire } from '../src/lib/mots-cles-balises.mjs';
 import { cheminDePage } from '../src/lib/metiers.mjs';
-import { endroitsDesMentions, fusionOfferte, INFOBULLE_DU_VERROU, suppressionOfferte } from '../src/lib/mots-cles-edition.mjs';
+import {
+  ceQueRemplaceLeForcage, confirmationDesRetraits, endroitsDesMentions, erreurDesRetraits, forcageOffert, fusionOfferte, INFOBULLE_DU_VERROU,
+  operationsDuVocabulaire, raisonSansForcage, suppressionOfferte,
+} from '../src/lib/mots-cles-edition.mjs';
 import { htmlDePiece } from '../src/lib/monnaies.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { attendre, cliquer, el, Element, fauxDocument } from './aide-faux-dom.mjs';
@@ -638,4 +642,142 @@ test('décisions R218, R219 (4), contre le service : un mot-clé verrouillé (ve
   assert.deepEqual(r.operations, [{ op: 'fusionner_mots_cles', mot_cle: B.id, dans: A.id }]);
   assert.equal(s.motCle(B.id), null, 'B fusionné');
   assert.deepEqual(s.motCle(A.id), { id: A.id, libelle: A.libelle });
+});
+
+// --- Décision R223 : forcer la suppression d'un mot-clé mentionné ---------------------------------------------------------------------------------
+// Le Glossaire propose de forcer quand le menu des mentions n'est pas vide, jamais pour un mot-clé verrouillé, et pas quand le service prévoit de refuser
+// le forçage (`refus_du_forcage` non null : la raison est dite à la place du bouton) ; la suppression forcée part dans la même file, avec `forcer: true`,
+// confirmée avec le nombre et les endroits des mentions qu'elle remplace.
+const RAISON = 'Raison de refus rendue par le service.';
+const vocabulaire = VIVANT;
+const renommer = (id, avant, libelle) => ({ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { libelle }, avant: { libelle: avant } });
+const ids = (ops) => ops.map((o) => (o.op === 'modifier' ? `${o.cle.id}→${o.valeurs.libelle}` : o.op === 'supprimer' ? `-${o.cle.id}` : `${o.mot_cle}⇒${o.dans}`));
+
+test('décision R223, fonctions pures : forçage offert si la liste des mentions n’est pas vide, le mot-clé non verrouillé et `refus_du_forcage` null', () => {
+  assert.equal(forcageOffert({ mentions: MENTIONS.aide }), true, 'mentionné, service muet sur le refus : il juge à l’enregistrement');
+  assert.equal(forcageOffert({ mentions: MENTIONS.aide, refus_du_forcage: null }), true);
+  assert.equal(forcageOffert({ mentions: [] }), false, 'liste vide : « Supprimer », tel quel');
+  assert.equal(suppressionOfferte({ mentions: [] }), true);
+  assert.equal(forcageOffert({}), false, 'sans la liste : « Supprimer » reste, rien à forcer');
+  assert.equal(forcageOffert({ verrou: 1, mentions: MENTIONS.aide }), false, 'verrouillé : jamais (R218 (3), R223 (4))');
+  assert.equal(forcageOffert({ verrou: 1, mentions: MENTIONS.aide, refus_du_forcage: null }), false, 'verrouillé : jamais, quoi que dise le service');
+  assert.equal(forcageOffert({ mentions: MENTIONS.aide, refus_du_forcage: RAISON }), false, 'refus prévu : pas de bouton');
+  assert.equal(raisonSansForcage({ mentions: MENTIONS.aide, refus_du_forcage: RAISON }), RAISON, 'la raison, dite à la place du bouton');
+  assert.equal(raisonSansForcage({ mentions: MENTIONS.aide, refus_du_forcage: null }), null);
+  assert.equal(raisonSansForcage({ verrou: 1, mentions: MENTIONS.aide, refus_du_forcage: RAISON }), null, 'verrouillé : le cadenas dit tout');
+  assert.equal(raisonSansForcage({ mentions: [], refus_du_forcage: RAISON }), null, 'liste vide : « Supprimer »');
+  // ce que remplace le forçage : chaque mention comptée (une par texte qui cite, une par étiquette), les endroits nommés une fois
+  const r = ceQueRemplaceLeForcage({ mentions: MENTIONS.aide });
+  const etiquettes = MENTIONS.aide.filter((x) => x.comment === 'etiquette').length;
+  assert.deepEqual([r.mentions, r.citations, r.etiquettes], [MENTIONS.aide.length, MENTIONS.aide.length - etiquettes, etiquettes]);
+  assert.equal(r.endroits.length, endroitsDesMentions({ mentions: MENTIONS.aide }).length);
+  assert.ok(r.texte.startsWith(`${MENTIONS.aide.length} mentions`), r.texte);
+  for (const x of endroitsDesMentions({ mentions: MENTIONS.aide })) assert.ok(r.texte.includes(x.libelle), x.libelle);
+  // au-delà de huit endroits : les autres comptés
+  const beaucoup = Array.from({ length: 11 }, (_, i) => ({ ...PAGE_DE_REGLE, page: { id: `regles/p${i}`, titre: `P${i}` }, libelle: `P${i}` }));
+  const b = ceQueRemplaceLeForcage({ mentions: beaucoup });
+  assert.ok(b.texte.includes('P7') && !b.texte.includes('P8') && b.texte.includes('3 autres'), b.texte);
+});
+
+test('décision R223, fonctions pures : la suppression forcée dans la file (même ordre, `forcer: true`), refusée si le mot-clé reçoit une fusion, confirmée avec ses mentions', () => {
+  const forcages = new Set(['aide']);
+  const ops = operationsDuVocabulaire([renommer('aide', 'aide', 'Aide 2'), renommer('peuple', 'peuple', 'Peuples')], {
+    suppressions: new Set(['feu']), forcages, fusions: new Map([['guide', 'peuple']]), vocabulaire,
+  });
+  assert.deepEqual(ops.slice(0, 3), [
+    { op: 'fusionner_mots_cles', mot_cle: 'guide', dans: 'peuple' },
+    { op: 'supprimer', entite: 'mot_cle', cle: { id: 'feu' } },
+    { op: 'supprimer', entite: 'mot_cle', cle: { id: 'aide' }, forcer: true },
+  ], 'fusions, suppressions, puis les forcées');
+  assert.deepEqual(ids(ops.slice(3)), ['peuple→Peuples'], 'le renommage d’un mot-clé supprimé en forçant est retiré');
+  assert.match(erreurDesRetraits(vocabulaire, { forcages: new Set(['guide']), fusions: new Map([['aide', 'guide']]) }), /reçoit « aide » \(fusion\) et serait supprimé/);
+  assert.equal(erreurDesRetraits(vocabulaire, { forcages, fusions: new Map([['peuple', 'guide']]) }), null);
+  const avecMentions = vocabulaire.map((m) => (m.id === 'aide' ? { ...m, mentions: MENTIONS.aide } : m));
+  const message = confirmationDesRetraits(avecMentions, { forcages });
+  const ligneForcee = message.split('\n').find((l) => l.includes('« aide »'));
+  assert.ok(ligneForcee.includes('R223'), ligneForcee);
+  assert.ok(ligneForcee.includes(ceQueRemplaceLeForcage({ mentions: MENTIONS.aide }).texte), 'le nombre et les endroits des mentions');
+  assert.equal(confirmationDesRetraits(avecMentions, { forcages: new Set() }), null);
+});
+
+test('décision R223, au crayon : « Forcer la suppression » pour un mot-clé mentionné, jamais pour un verrouillé ; refus prévu : la raison à la place ; la file et le lot', async () => {
+  const vocab = AVEC_MENTIONS.map((m) => (m.id === 'peuple' ? { ...m, mentions: [PAGE_DE_REGLE], refus_du_forcage: RAISON } : m));
+  const p = await monter({ vocabulaire: vocab });
+  await p.motsCles.surcouche(p.ed, []);
+  p.ed.enEdition = true;
+  p.motsCles.debut(p.ed);
+  await attendre();
+  const aide = ligne(p.liste, 'aide');
+  const forcer = bouton(aide, 'ed-mot-cle__forcer');
+  assert.ok(forcer, 'mentionné : le forçage est proposé');
+  assert.equal(bouton(aide, 'ed-mot-cle__supprimer'), null, 'mentionné : pas de « Supprimer » ordinaire');
+  assert.ok(forcer.title.includes(ceQueRemplaceLeForcage(vocab.find((m) => m.id === 'aide')).texte), 'l’infobulle dit ce qui sera remplacé');
+  assert.equal(bouton(ligne(p.liste, 'feu'), 'ed-mot-cle__forcer'), null, 'liste vide : « Supprimer » seul');
+  assert.ok(bouton(ligne(p.liste, 'feu'), 'ed-mot-cle__supprimer'));
+  assert.equal(ligne(p.liste, 'magique').querySelector('button'), null, 'verrouillé et mentionné : aucun bouton');
+  assert.equal(ligne(p.liste, 'magique').querySelector('.ed-mot-cle__sans-forcage'), null);
+  const peuple = ligne(p.liste, 'peuple');
+  assert.equal(bouton(peuple, 'ed-mot-cle__forcer'), null, 'refus prévu : pas de bouton');
+  assert.equal(peuple.querySelector('.ed-mot-cle__sans-forcage').title, RAISON, 'la raison en infobulle');
+  assert.ok(peuple.querySelector('.ed-mot-cle__sans-forcage-raison').textContent.includes(RAISON), 'et au bas du menu des mentions (toucher)');
+  assert.ok(bouton(peuple, 'ed-mot-cle__fusionner'), 'la fusion reste');
+  // la file : basculer, annuler, rebasculer ; la fusion de la ligne désactivée
+  cliquer(forcer);
+  assert.ok(aide.classList.contains('ed-supprime'));
+  assert.equal(forcer.getAttribute('aria-pressed'), 'true');
+  assert.equal(bouton(aide, 'ed-mot-cle__fusionner').disabled, true);
+  cliquer(forcer);
+  assert.ok(!aide.classList.contains('ed-supprime'));
+  assert.deepEqual(p.motsCles.operations(p.ed, []), []);
+  cliquer(forcer);
+  assert.equal(p.motsCles.verifier(p.ed, p.editeurs), null);
+  assert.ok(p.questions.at(-1).includes(ceQueRemplaceLeForcage(vocab.find((m) => m.id === 'aide')).texte), 'la confirmation compte les mentions');
+  assert.deepEqual(p.motsCles.operations(p.ed, []), [{ op: 'supprimer', entite: 'mot_cle', cle: { id: 'aide' }, forcer: true }]);
+  // un mot-clé qui reçoit une fusion en attente ne se force pas
+  cliquer(forcer);
+  cliquer(bouton(ligne(p.liste, 'guide'), 'ed-mot-cle__fusionner'));
+  const boite = p.document.body.querySelector('dialog');
+  boite.querySelector('input').value = 'aide';
+  boite.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true }));
+  cliquer(forcer);
+  assert.equal(p.ed.annonces.at(-1)[1], 'erreur');
+  assert.ok(!aide.classList.contains('ed-supprime'));
+  // en sortant : la file vidée
+  p.ed.enEdition = false;
+  p.motsCles.fin(p.ed);
+  await attendre();
+  assert.deepEqual(p.motsCles.operations(p.ed, []), []);
+});
+
+test('décision R223, contre le service : un mot-clé cité se supprime en forçant (sa balise devient son texte affiché) ; cité par une définition verrouillée, le forçage n’est pas offert', async () => {
+  const s = await surLeService({ A: 'Essai forçage aa', B: 'Essai forçage bb', C: 'Essai forçage cc', D: 'Essai forçage dd' }, {});
+  const { A, B, C, D } = s.mots;
+  // B cite A, D cite C, par le chemin normal d'une modification ; puis D verrouillé dans la copie (aucune route n'écrit `verrou`)
+  for (const [qui, cite] of [[B, A], [D, C]]) {
+    const r = traiter({ methode: 'POST', chemin: '/api/edition/', entetes: { 'content-type': 'application/json' }, corps: JSON.stringify({ page: 'regles/glossaire/',
+      operations: [{ op: 'modifier', table: 'mot_cle', cle: { id: qui.id }, valeurs: { description: `Voir {{${cite.id}|texte affiché d’essai}}.` }, avant: { description: null } }] }) }, s.service);
+    assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  }
+  s.db.prepare('UPDATE mot_cle SET verrou = 1 WHERE id = ?').run(D.id);
+  s.ed.enEdition = false;
+  s.motsCles.fin(s.ed);
+  await attendre();
+  s.editeurs.clear();
+  s.ed.enEdition = true;
+  s.motsCles.debut(s.ed);
+  await attendre();
+  const c = ligne(s.liste, C.id);
+  assert.equal(bouton(c, 'ed-mot-cle__forcer'), null, 'cité par la définition d’un verrouillé : le service refuserait, pas de bouton');
+  assert.ok(c.querySelector('.ed-mot-cle__sans-forcage').title, 'la raison du service');
+  assert.equal(ligne(s.liste, D.id).querySelector('button'), null);
+  const a = ligne(s.liste, A.id);
+  assert.equal(bouton(a, 'ed-mot-cle__supprimer'), null);
+  cliquer(bouton(a, 'ed-mot-cle__forcer'));
+  const r = await s.enregistrer();
+  assert.equal(r.refus, undefined, r.refus?.message);
+  assert.deepEqual(r.operations, [{ op: 'supprimer', entite: 'mot_cle', cle: { id: A.id }, forcer: true }]);
+  assert.match(s.questions.at(-1), /^- .* sera supprimé en forçant \(décision R223\) : 1 mention sera remplacée/m);
+  assert.equal(s.motCle(A.id), null, 'A supprimé');
+  const definition = s.db.prepare('SELECT description FROM mot_cle WHERE id = ?').get(B.id).description;
+  assert.ok(!definition.includes('{{') && definition.includes('texte affiché d’essai'), `la balise devient son texte affiché : ${definition}`);
 });

@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 222 décisions, de R1 à R222, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 223 décisions, de R1 à R223, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
 
 | Réf. | Sujet | Décision |
 | --- | --- | --- |
@@ -228,3 +228,4 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R220 | Suite de R219 : le rejeu des lots anciens de l'onglet Monnaie, et le mot-c… | (1) Au rejeu du journal, un lot ancien qui écrivait l'… |
 | R221 | Suite de R219 : une page vers laquelle mène un mot-clé verrouillé (lot « m… | Une page vers laquelle mène un mot-clé verrouillé ne s… |
 | R222 | Suite de R219 : la fusion d'un mot-clé cité dans une définition verrouillé… | (1) La fusion d'un mot-clé est refusée tant que la déf… |
+| R223 | Suite de R196 : forcer la suppression d'un mot-clé mentionné (demande du p… | (1) Sans forçage, rien ne change : la suppression d'un… |

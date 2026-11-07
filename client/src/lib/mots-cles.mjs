@@ -1,5 +1,6 @@
 // Le vocabulaire des mots-clés (table `mot_cle`, migration 0043 ; demande du propriétaire : en mode modification, « supprimer / ajouter /
-// modifier des mots clés » ; depuis la décision R196, un mot-clé ne se supprime que si rien ne le mentionne : lib/mentions-des-mots-cles.mjs ;
+// modifier des mots clés » ; depuis la décision R196, un mot-clé ne se supprime que si rien ne le mentionne : lib/mentions-des-mots-cles.mjs, sauf
+// suppression forcée, décision R223 ;
 // aujourd'hui sur la page Glossaire /regles/glossaire/ ; les événements de la chronologie, eux, ont leurs catégories : lib/chronologie.mjs ; depuis la migration 0056, un glossaire
 // que les textes citent par des balises : lib/mots-cles-balises.mjs).
 // Fonctions et constantes pures, sans dépendance navigateur ni Astro : partagées par le service

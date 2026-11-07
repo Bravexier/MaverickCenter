@@ -119,7 +119,9 @@ ci-dessous) ; ce qui en dépend est recalculé par le service. Une extension abs
 
 **Supprimer** (`DELETE /api/v1/<ressource>/<clé>/`, corps facultatif) : une opération `supprimer` de l'entité de la ressource → `{ supprime, adresse,
 lot, fiches }`. Ce que d'autres règles citent est refusé (`409`, qui les nomme) ; un don, une spécialité, un métier ou une arme est retiré des fiches
-qui l'ont, avec une note datée (R42, R52) ; un composant reste dans l'inventaire sous son nom (R60) ; `fiches` liste les fiches adaptées.
+qui l'ont, avec une note datée (R42, R52) ; un composant reste dans l'inventaire sous son nom (R60) ; `fiches` liste les fiches adaptées. Un mot-clé
+mentionné se supprime en forçant, `?forcer=1` (ou `true` ; ou le corps `{ "forcer": true }` ; décision R223, plus bas) ; `forcer` ailleurs que sur
+un mot-clé, ou avec une autre valeur : `400`.
 
 **Concurrence** : `If-Match` est facultatif. Égal à la `version` lue (celle de toute la représentation), les valeurs lues partent en `avant` dans le
 lot (le contrôle du mode modification) ; périmé, rien n'est écrit et la réponse `409` rend l'état actuel `{ erreur, element, extensions, version }`,
@@ -151,11 +153,11 @@ adaptées, jamais leurs noms ; le lot porte la page `api/v1/<ressource>[/<sous-r
 | --- | --- |
 | `200` `201` | Lu, modifié, supprimé ; créé (`Location`) |
 | `304` | `If-None-Match` égal à la version (détail) |
-| `400` | Corps illisible ou qui n'est pas un objet JSON, rien à modifier, colonne ou paramètre inconnu, valeur refusée par le service d'édition (type, bornes, champ obligatoire, balise du glossaire qui ne cite aucun mot-clé : `refs`, abréviation d'un mot-clé mal écrite : `champ: "abreviation"`, lien ou couleur d'un mot-clé refusés : `champ: "url"`, `champ: "couleur"`, lien saisi qu'aucun mot-clé ne porte : `champ`, `liens`), `limite` hors bornes |
+| `400` | Corps illisible ou qui n'est pas un objet JSON, rien à modifier, colonne ou paramètre inconnu, valeur refusée par le service d'édition (type, bornes, champ obligatoire, balise du glossaire qui ne cite aucun mot-clé : `refs`, abréviation d'un mot-clé mal écrite : `champ: "abreviation"`, lien ou couleur d'un mot-clé refusés : `champ: "url"`, `champ: "couleur"`, lien saisi qu'aucun mot-clé ne porte : `champ`, `liens`), `limite` hors bornes, `forcer` mal écrit ou hors d'un mot-clé (R223) |
 | `403` | Hors du site de dev (tout `/api/v1/`) ; écriture qui vient d'un autre site (`Sec-Fetch-Site`) |
 | `404` | Ressource, sous-ressource ou ligne inconnue (ou hors de la ressource) ; extension absente au `PATCH` |
 | `405` | Méthode que la ressource n'a pas : `Allow` donne la liste exacte, le corps la raison (lecture seule ; ni le service d'édition ni une opération du lot ne le font, et par quelles méthodes la ressource s'écrit) et les `capacites` |
-| `409` | `If-Match` périmé ; refus du service d'édition (élément cité par d'autres règles, mot-clé protégé, dernier bloc d'un événement, maîtrise d'arme illisible dans une classe ou un don, don à plus d'une part de maîtrise à choisir, nom de famille d'armes déjà pris ou qui changerait une maîtrise existante, avec la liste dans `sources` : décision R159 ; abréviation d'un mot-clé qui est l'id, l'écriture ou l'abréviation d'un autre, ou mot-clé créé ou renommé vers l'abréviation d'un autre : `champ: "abreviation"`, `mot_cle` : l'autre…) |
+| `409` | `If-Match` périmé ; refus du service d'édition (élément cité par d'autres règles, mot-clé protégé, dernier bloc d'un événement, maîtrise d'arme illisible dans une classe ou un don, don à plus d'une part de maîtrise à choisir, nom de famille d'armes déjà pris ou qui changerait une maîtrise existante, avec la liste dans `sources` : décision R159 ; abréviation d'un mot-clé qui est l'id, l'écriture ou l'abréviation d'un autre, ou mot-clé créé ou renommé vers l'abréviation d'un autre : `champ: "abreviation"`, `mot_cle` : l'autre ; mot-clé mentionné : `mentions`, `refus_du_forcage` ; suppression forcée refusée : `mots_cles_verrouilles`, `url` ou `mentions_bloquantes`…) |
 | `413` | Corps de plus de 1 Mio |
 | `415` | Écriture sans `Content-Type: application/json` |
 | `422` | Refusé par la base (contrainte CHECK, UNIQUE, NOT NULL, clé étrangère) ou valeur que les importeurs ne sauraient pas relire ; une gemme ou un bois du Potentiel Illimité (`POST /api/v1/gemmes/`, `POST /api/v1/bois/`) : « Le Potentiel Illimité n’a ni gemme, ni bois, ni bâton magique, ni pièce élémentaire (décision R160). » |
@@ -365,7 +367,14 @@ définition d'un mot-clé verrouillé (la sienne comprise) cite cet autre par un
 avec `mots_cles_verrouilles` (décision R222 ; le rejeu, lui, la fait). Une page vers laquelle mène un mot-clé verrouillé (un métier par son ancre, la
 fiche d'un don, une page des Règles) ne se supprime pas : `DELETE` rend `409` avec `mots_cles_verrouilles` (décision R221). Un mot-clé créé vaut `0`,
 même avec un lien. Un mot-clé non verrouillé se modifie entièrement (décision R195) ; il ne se supprime pas tant qu'une page ou un texte le mentionne
-(R196), ni ne se fusionne s'il étiquette un sort (`409`).
+(R196 : `409` avec `mentions`, la liste des endroits, et `refus_du_forcage`, `null` si la suppression forcée passerait, sinon sa raison), ni ne se
+fusionne s'il étiquette un sort (`409`). **La suppression forcée** (`DELETE /api/v1/mots-cles/<id>/?forcer=1`, décision R223) ne lève que le refus des
+mentions : dans le même lot, chaque balise qui le cite (toute forme, ref par id, écriture ou abréviation, pages d'exemple comprises) devient son
+texte affiché en texte simple, sans lien (le libellé pour `{{id}}` et `{{id:}}`, le texte écrit pour `{{id|texte}}`), chaque étiquette de page est retirée, puis le mot-clé est supprimé ; le résumé du lot compte les mentions
+remplacées. Elle reste refusée en `409`, avant toute écriture, pour un mot-clé verrouillé, qui étiquette un sort, cité par la définition d'un mot-clé
+verrouillé (`mots_cles_verrouilles`), dont le lien mène sans ancre à une page de la base (`url`, `page` ; décision R223 (7), ce cas attend une décision du
+propriétaire ; une ancre, une route sans page comme `/fiche/` ou une rubrique comme `/races/` sont épargnées), ou mentionné là où le site ne sait pas remplacer la balise (`mentions_bloquantes`, aussi quand une mention reste après le remplacement :
+le lot est alors annulé). Sans mention, forcer n'écrit rien de plus (la suppression est marquée forcée au résumé du lot, pour le rejeu). Détail : [`serveur.md`](serveur.md), « Édition des règles », ligne « Mots-clés ».
 
 Les monnaies (`/api/v1/monnaies/`) sont en lecture seule de fait : l'onglet Monnaie est figé (décision R219), `POST`, `PATCH` (toute colonne) et
 `DELETE` rendent `409` avec la raison ; le catalogue le dit (`figee`), et la description OpenAPI ne leur donne ni corps de création ni clé de

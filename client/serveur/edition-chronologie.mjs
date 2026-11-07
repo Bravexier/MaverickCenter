@@ -4,12 +4,13 @@
 // vraies catégories stables. […] On peut choisir plusieurs catégories pour chaque entrée, mais pas pour le filtre. Le mode édition ajoute un bouton pour
 // pouvoir créer, modifier et supprimer une catégorie. Une catégorie supprimée la retire de l'entrée » ; sur /recherche/, « en mode édition seulement »,
 // « supprimer / ajouter / Modifier des mots clés », dont la suppression suit depuis la décision R196 « Tous les mots clés je peux être supprimés que
-// dans ils ne sont appelles nulle part » : un mot-clé mentionné ne se supprime pas, la cascade d'avant est abandonnée). Domaines des tables
+// dans ils ne sont appelles nulle part » : un mot-clé mentionné ne se supprime pas, la cascade d'avant est abandonnée ; depuis la décision R223, une
+// suppression forcée remplace chaque balise par son texte affiché, en texte simple). Domaines des tables
 // evenement, evenement_extrait (les blocs de description : texte et lien), categorie_chronologie et mot_cle pour serveur/edition.mjs (DOMAINES), et deux
 // opérations du lot : `categories` (les catégories d'un événement) et `fusionner_mots_cles`. Les mots-clés sont un glossaire (migration 0056 ; demande du
 // propriétaire du 2026-10-16) : un libellé et une définition (NULL tant qu'il n'est pas décrit) ; un texte les cite par une balise (lib/mots-cles-balises.mjs) ;
-// un mot-clé mentionné ne se supprime pas (R196, lib/mentions-des-mots-cles.mjs), un mot-clé fusionné est remplacé par l'autre dans les textes qui le citent
-// (serveur/edition.mjs#reecrireLesBalises).
+// un mot-clé mentionné ne se supprime pas (R196, lib/mentions-des-mots-cles.mjs) sauf en forçant (R223 : ses balises remplacées par leur texte affiché,
+// serveur/edition.mjs#remplacerLesMentions), un mot-clé fusionné est remplacé par l'autre dans les textes qui le citent (serveur/edition.mjs#reecrireLesBalises).
 // Rien n'est déduit : un événement n'a que ce qu'on saisit ; l'ordre de lecture suit la date (lib/chronologie.mjs#ordonner), un événement créé vient après
 // ceux de sa date. Les outils communs du service (refus, creerMotCle, reecrireLesBalises…) sont donnés par serveur/edition.mjs (domainesDeLaChronologie),
 // sans import en retour.
@@ -19,6 +20,7 @@ import { estVerrouille, RAISON_DU_VERROU } from '../src/lib/mots-cles.mjs';
 import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { reciblerLeMotCle } from '../src/lib/mots-cles-balises.mjs';
 import { mentionsDe, mentionsDesMotsCles, texteDesMentions } from '../src/lib/mentions-des-mots-cles.mjs';
+import { indexDesAdresses, pageDeLAdresse } from '../src/lib/adresses-db.mjs';
 import { classeDuMotCle } from '../src/lib/mots-cles-liens.mjs';
 import { cssDesMotsCles } from '../src/lib/palette-css.mjs';
 import { normalize } from '../src/lib/text.mjs';
@@ -82,42 +84,51 @@ export function chronologieVivante(db) {
  * site ; ce qu'il permet encore : lib/mots-cles.mjs#RAISON_DU_VERROU), 0 sinon, et sur une base d'avant la 0110 : tous ses champs, libellé compris, se
  * modifient, décision R195) ; `mentions` : ce qui le mentionne (décision R196 : le menu déroulant du Glossaire, la même forme que le 409 d'une
  * suppression, [{ table, cle, colonne, comment, page: { id, titre } | null, libelle, exemple }] ; [] : rien), lu pour tous en un seul passage sur les
- * textes de la base (lib/mentions-des-mots-cles.mjs#mentionsDesMotsCles), triés par libellé.
+ * textes de la base (lib/mentions-des-mots-cles.mjs#mentionsDesMotsCles), triés par libellé ; `refus_du_forcage` (décision R223) : la raison pour
+ * laquelle sa suppression forcée serait refusée (verrou, étiquette de sort, définition verrouillée qui le cite, lien vers une page, mention que le site
+ * ne sait pas remplacer : le message du 409), null si elle passerait — le Glossaire n'offre pas de la forcer sinon ; absent sans `refusDesForcages`
+ * (serveur/edition.mjs#refusDesForcages, que GET /api/edition/mots-cles/ passe).
  * @param {import('node:sqlite').DatabaseSync} db
+ * @param {{ refusDesForcages?: (db: import('node:sqlite').DatabaseSync, motsCles: object[]) => Map<string, string | null> }} [o]
  */
-export function vocabulaire(db) {
+export function vocabulaire(db, { refusDesForcages = null } = {}) {
   // `*` : la vue d'avant la migration 0090 n'a pas la colonne abreviation, celle d'avant la 0098 ni couleur ni url
   const tous = motsClesDeLaBase(db);
   const verrous = new Map(tous.map((m) => [m.id, m.verrou]));
   const mentions = mentionsDesMotsCles(db, tous.map((m) => m.id));
-  return db.prepare('SELECT * FROM v_mot_cle').all()
+  const liste = db.prepare('SELECT * FROM v_mot_cle').all()
     .map(({ id, libelle, libelle_cle: cle, description, abreviation, couleur, url, nb_pages: pages }) => ({
       id, libelle, libelle_cle: cle, description, abreviation: abreviation ?? null, url: url ?? null, couleur: couleur ?? null,
       classe: classeDuMotCle({ id, couleur }), pages, verrou: verrous.get(id) ?? 0, mentions: mentions.get(id) ?? [],
     }))
     .sort((a, b) => a.libelle.localeCompare(b.libelle, 'fr', { sensitivity: 'base' }) || a.id.localeCompare(b.id));
+  if (!refusDesForcages) return liste;
+  const refus = refusDesForcages(db, liste);
+  return liste.map((m) => ({ ...m, refus_du_forcage: refus.get(m.id) ?? null }));
 }
 
 /**
- * Le vocabulaire et sa feuille (GET /api/edition/mots-cles/) : { motsCles: vocabulaire(db), css } — `css` : les règles des classes des mots-clés
- * colorés (lib/palette-css.mjs#cssDesMotsCles), que la page réécrit sans importer la palette.
+ * Le vocabulaire et sa feuille (GET /api/edition/mots-cles/) : { motsCles: vocabulaire(db, options), css } — `css` : les règles des classes des
+ * mots-clés colorés (lib/palette-css.mjs#cssDesMotsCles), que la page réécrit sans importer la palette.
  * @param {import('node:sqlite').DatabaseSync} db
  */
-export function vocabulaireEtFeuille(db) {
-  const motsCles = vocabulaire(db);
+export function vocabulaireEtFeuille(db, options = {}) {
+  const motsCles = vocabulaire(db, options);
   return { motsCles, css: cssDesMotsCles(motsCles) };
 }
 
 /**
  * Les domaines de la chronologie et des mots-clés ({ table: { colonnes, deriver?, creer, supprimer } }) et les opérations du lot qu'ils ajoutent
- * ({ categories, fusionner_mots_cles }) : voir serveur/edition.mjs#DOMAINES et #OPERATIONS.
+ * ({ categories, fusionner_mots_cles }) : voir serveur/edition.mjs#DOMAINES et #OPERATIONS ; `refusDuForcage` (le refus prévu d'une suppression forcée,
+ * décision R223 : serveur/edition.mjs#refusDesForcages, pour le Glossaire).
  * @param {{ refus: Function, ErreurEdition: Function, provenance: Function, idDejaEmploye: Function, rangLibre: Function, creerMotCle: Function,
  *   refuserLAbreviation: Function, refuserLeLien: Function, refuserLaCouleur: Function, reecrireLesBalises: Function,
- *   definitionsVerrouilleesQuiCitent: Function, vocabulaireVivant: Function, tableExiste: Function }} outils
+ *   definitionsVerrouilleesQuiCitent: Function, mentionsQueLeSiteNeReecritPas: Function, remplacerLesMentions: Function, vocabulaireVivant: Function,
+ *   tableExiste: Function }} outils
  */
 export function domainesDeLaChronologie({
   refus, ErreurEdition, provenance, idDejaEmploye, rangLibre, creerMotCle, refuserLAbreviation, refuserLeLien, refuserLaCouleur, reecrireLesBalises,
-  definitionsVerrouilleesQuiCitent, vocabulaireVivant, tableExiste,
+  definitionsVerrouilleesQuiCitent, mentionsQueLeSiteNeReecritPas, remplacerLesMentions, vocabulaireVivant, tableExiste,
 }) {
   /** Refus d'une date que la table n'accepte pas, avec le message de lib/chronologie.mjs#erreurDeDate. */
   function verifierLaDate(e, quoi) {
@@ -366,26 +377,108 @@ export function domainesDeLaChronologie({
     /**
      * Un mot-clé supprimé, s'il n'est mentionné nulle part (décision R196 : « Le mot clé n'est supprimable que si cette liste est vide ») : une page qui le
      * porte ou une balise qui le cite, pages d'exemple comprises (lib/mentions-des-mots-cles.mjs) refusent la suppression (409, `mentions` : la liste des
-     * endroits) ; plus aucun texte n'est réécrit (la cascade d'avant R196 est abandonnée ; la fusion, elle, reporte les mentions sur la cible). Refusé
-     * aussi, avant tout : un mot-clé verrouillé, même sans mention (décisions R218, R219 : verifierNonVerrouille, qui remplace le refus propre des mots-clés
-     * dont le site se sert) ; un mot-clé qui étiquette un sort (verifierSansSort). Un mot-clé non verrouillé que vise
+     * endroits ; `refus_du_forcage` : null si la suppression forcée passerait, sinon sa raison) ; la fusion, elle, reporte les mentions sur la cible.
+     * Refusé aussi, avant tout : un mot-clé verrouillé, même sans mention (décisions R218, R219 : verifierNonVerrouille, qui remplace le refus propre des
+     * mots-clés dont le site se sert) ; un mot-clé qui étiquette un sort (verifierSansSort). Un mot-clé non verrouillé que vise
      * le rejeu des migrations 0090 ou 0098 se supprime comme les autres (décision R211 : au rejeu d'un lot ancien, l'adaptateur écrit alors du texte
      * simple, serveur/edition.mjs#ancienneEcritureDesFusions, #ancienneEcritureDesLiens).
+     * Suppression forcée (décision R223 ; `op.forcer === true`, `?forcer=1` de DELETE /api/v1/mots-cles/<id>/) : elle ne lève que le refus des mentions.
+     * Après le verrou et l'étiquette de sort, refusDuForcage refuse, avant toute écriture, la définition d'un mot-clé verrouillé qui le cite (409,
+     * `mots_cles_verrouilles`), une adresse qui mène sans ancre à une page de la base (R223 (7), en attendant le lot 2) et une mention que le site ne sait pas
+     * remplacer (`mentions_bloquantes`). Puis chaque mention que liste mentionsDe est remplacée dans le même lot, par le chemin normal d'une
+     * modification (serveur/edition.mjs#remplacerLesMentions : chaque balise devient son texte affiché, lib/mots-cles-balises.mjs#remplacerParLeTexteAffiche ; chaque
+     * étiquette de page est retirée) ; s'il en reste une (un texte qu'aucune dérivation n'a refait), 409 et le lot entier est annulé : aucune balise
+     * orpheline. Le résumé dit le nombre de mentions remplacées. Sans mention, forcer n'écrit rien de plus. Forcée, avec ou sans mention, elle est
+     * marquée en tête du résumé du lot (`ctx.forcees`, serveur/edition.mjs#marqueursDuLot) et se rejoue forcée (R223 (6) :
+     * serveur/edition.mjs#suppressionForcee).
      */
-    supprimer(ctx, cle) {
+    supprimer(ctx, cle, op = {}) {
       const { db, w } = ctx;
       const m = motCle(db, cle?.id);
       if (!m) throw new ErreurEdition(404, `Mot-clé introuvable : ${cle?.id}`);
       verifierNonVerrouille(ctx, m, 'supprime');
       verifierSansSort(db, m, 'supprime');
+      if (op.forcer !== undefined && typeof op.forcer !== 'boolean') throw refus(`Mot-clé « ${m.libelle} » : « forcer » vaut true ou false.`);
       const mentions = mentionsDe(db, m.id);
-      if (mentions.length) {
-        throw new ErreurEdition(409, `Le mot-clé « ${m.libelle} » est mentionné à ${texteDesMentions(mentions)} : retirez d’abord ces mentions (décision R196).`, { mentions });
+      if (mentions.length && op.forcer !== true) {
+        const empeche = refusDuForcage(db, m, mentions, { gel: ctx.gel !== false });
+        throw new ErreurEdition(409, `Le mot-clé « ${m.libelle} » est mentionné à ${texteDesMentions(mentions)} : retirez d’abord ces mentions (décision R196)`
+          + `${empeche ? '' : ', ou forcez sa suppression : chaque balise sera remplacée par son texte affiché (décision R223)'}.`, { mentions, refus_du_forcage: empeche?.message ?? null });
+      }
+      // forcée, avec ou sans mention : marquée au résumé du lot (serveur/edition.mjs#marqueursDuLot), elle se rejoue forcée (R223 (6))
+      if (op.forcer === true) ctx.forcees?.push(m.id);
+      if (!mentions.length) {
+        w.supprimer('mot_cle', { id: m.id });
+        return { id: m.id, resume: `Mot-clé supprimé${op.forcer === true ? ' en forçant (décision R223)' : ''} : ${m.libelle}` };
+      }
+      const empeche = refusDuForcage(db, m, mentions, { gel: ctx.gel !== false });
+      if (empeche) throw empeche;
+      const { balises, etiquettes } = remplacerLesMentions(ctx, m, mentions);
+      const restent = mentionsDe(db, m.id);
+      if (restent.length) {
+        throw new ErreurEdition(409, `Le mot-clé « ${m.libelle} » ne se supprime pas en forçant : ${texteDesMentions(restent)} le ${restent.length > 1 ? 'mentionnent' : 'mentionne'} encore `
+          + 'après le remplacement (un texte que le site ne sait pas réécrire) ; ce cas attend une décision du propriétaire (décision R223), rien n’est écrit.', { mentions: restent, mentions_bloquantes: restent });
       }
       w.supprimer('mot_cle', { id: m.id });
-      return { id: m.id, resume: `Mot-clé supprimé : ${m.libelle}` };
+      const nombres = [
+        ...(balises ? [`${nombre(balises, 'mention remplacée', 'mentions remplacées')} par leur texte affiché`] : []),
+        ...(etiquettes ? [nombre(etiquettes, 'étiquette de page retirée', 'étiquettes de page retirées')] : []),
+      ];
+      return { id: m.id, resume: `Mot-clé supprimé en forçant (décision R223) : ${m.libelle} — ${nombres.join(', ')}` };
     },
   };
+
+  /** L'adresse d'un mot-clé mène-t-elle à une ancre (« /metiers/#metier-mineur ») ? Un « # » suivi d'au moins un caractère (décision R223 (3)). */
+  const adresseAvecAncre = (url) => typeof url === 'string' && /#./.test(url);
+
+  /**
+   * Décision R223 (7) : la page de la base que la suppression forcée devrait supprimer avec le mot-clé (point (3), reporté), ou null. Une adresse à
+   * ancre est épargnée (« /metiers/#metier-mineur ») ; une adresse qui ne mène à aucune page de la base (une route fixe sans page, « /fiche/ »,
+   * « /recherche/ », ou une rubrique, « /races/ » : lib/adresses-db.mjs#pageDeLAdresse rend null) aussi : elle disparaît avec le mot-clé. Le critère
+   * est l'existence d'une page de la base (hors pages d'exemple), pas la liste des routes fixes : « /ressources/armes/ » mène à une page.
+   * `adresses` : l'index déjà lu (indexDesAdresses), sinon lu ici.
+   */
+  const pageQueLeLienSupprimerait = (db, url, adresses = null) =>
+    (typeof url !== 'string' || !url || adresseAvecAncre(url) ? null : pageDeLAdresse(adresses ?? indexDesAdresses(db), url));
+
+  /**
+   * Le refus de la suppression forcée du mot-clé `m` (décision R223), ou null si elle passe — une ErreurEdition 409, dans l'ordre : le verrou (R218 (3),
+   * R223 (4)) ; l'étiquette d'un sort (R196 (3), R114, R164 : le forçage ne lève que le refus des mentions) ; la définition d'un mot-clé verrouillé qui
+   * le cite par une balise (R222 (1), R223 (4) : `mots_cles_verrouilles` ; `verrouilles` : la liste déjà lue, sinon definitionsVerrouilleesQuiCitent) ;
+   * une adresse qui mène sans ancre à une page de la base (R223 (7) : la page serait supprimée, le point (3) est reporté ; `url`, `page` ; une ancre ou
+   * une adresse sans page de la base est épargnée et disparaît avec le mot-clé : pageQueLeLienSupprimerait ; `adresses` : l'index des adresses déjà
+   * lu) ; une mention que le site ne sait pas remplacer (`mentions_bloquantes` :
+   * serveur/edition.mjs#mentionsQueLeSiteNeReecritPas). `gel` faux (un lot ancien refait par un test, comme la fusion) : ni le verrou ni la définition
+   * verrouillée ne sont contrôlés (R219 (6)). `mentions` : mentionsDe(db, m.id).
+   */
+  function refusDuForcage(db, m, mentions, { verrouilles = null, gel = true, adresses = null } = {}) {
+    try {
+      verifierNonVerrouille({ gel }, m, 'supprime');
+      verifierSansSort(db, m, 'supprime');
+    } catch (e) {
+      if (e instanceof ErreurEdition) return e;
+      throw e;
+    }
+    if (gel) {
+      const liste = verrouilles ?? definitionsVerrouilleesQuiCitent(db, m.id);
+      if (liste.length) {
+        const noms = liste.slice(0, 5).map((x) => `« ${x.libelle} »`).join(', ') + (liste.length > 5 ? '…' : '');
+        return new ErreurEdition(409, `Le mot-clé « ${m.libelle} » ne se supprime pas en forçant : ${liste.length > 1 ? `les définitions des mots-clés verrouillés ${noms} le citent` : `la définition du mot-clé verrouillé ${noms} le cite`}, et une définition verrouillée n’est pas réécrite (décisions R222, R223).`,
+          { mots_cles_verrouilles: liste });
+      }
+    }
+    const page = pageQueLeLienSupprimerait(db, m.url, adresses);
+    if (page) {
+      return new ErreurEdition(409, `Le mot-clé « ${m.libelle} » ne se supprime pas en forçant : son lien (${m.url}) mène à une page du site (${page}), et la suppression forcée d’un mot-clé qui mène à une page attend une décision du propriétaire (décision R223 (7)). Retirez d’abord ses mentions, ou son lien.`,
+        { url: m.url, page });
+    }
+    const bloquantes = mentionsQueLeSiteNeReecritPas(db, mentions, { gel });
+    if (bloquantes.length) {
+      return new ErreurEdition(409, `Le mot-clé « ${m.libelle} » ne se supprime pas en forçant : le site ne sait pas remplacer sa mention à ${texteDesMentions(bloquantes)} ; ce cas attend une décision du propriétaire (décision R223). Retirez d’abord ces mentions.`,
+        { mentions, mentions_bloquantes: bloquantes });
+    }
+    return null;
+  }
 
   /** Le renommage d'un mot-clé (MOT_CLE.colonnes) : contrôles, rien d'autre à écrire. */
   function renommage(ctx, ligne, valeurs, avant) {
@@ -468,6 +561,8 @@ export function domainesDeLaChronologie({
     // au rejeu, les textes que le site de dev n'avait pas (pages d'exemple, règles d'une autre base) citent la cible eux aussi : le rejeu la reconnaît
     // aux étiquettes et aux balises que ce lot reporte (serveur/edition.mjs#cibleReportee, balisesRetireesParLeLot)
     w.supprimer('mot_cle', { id: source.id });
+    // marquée au résumé du lot (serveur/edition.mjs#marqueursDuLot) : le rejeu y lit la cible, même quand rien n'a été reporté sur elle
+    ctx.fusions?.push([source.id, cible.id]);
     const precisions = [
       ...(Object.keys(reprises).length ? [`il en prend ${Object.keys(reprises).map((c) => (c === 'url' ? 'le lien' : 'la couleur')).join(' et ')}`] : []),
       ...(gardees.length ? [`« ${cible.libelle} » garde ${gardees.join(' et ')}`] : []),
@@ -479,5 +574,6 @@ export function domainesDeLaChronologie({
   return {
     domaines: { evenement: EVENEMENT, evenement_extrait: EVENEMENT_EXTRAIT, categorie_chronologie: CATEGORIE, mot_cle: MOT_CLE },
     operations: { categories, fusionner_mots_cles: fusionner },
+    refusDuForcage,
   };
 }

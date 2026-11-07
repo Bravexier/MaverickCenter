@@ -1,6 +1,7 @@
 // Les mentions d'un mot-clé dans la base (décision R196 : « Tous les mots clés je peux être supprimés que dans ils ne sont appelles nulle part » ; « Le
 // mot clé n'est supprimable que si cette liste est vide ») : la liste que le service rend avec son refus (serveur/edition-chronologie.mjs#MOT_CLE), que
-// le rejeu met en conflit (serveur/edition.mjs#motsClesEncoreMentionnes) et que le Glossaire montrera (menu déroulant, lot « mots-clés et monnaies »).
+// le rejeu met en conflit (serveur/edition.mjs#motsClesEncoreMentionnes), que le Glossaire montre (menu déroulant) et que la suppression forcée remplace
+// (décision R223 : serveur/edition.mjs#remplacerLesMentions ; vide à la fin, sinon le lot est annulé).
 // Un mot-clé est mentionné (lecture de game-design, R196) :
 //   - par une page qui le porte (page_tag) : `comment: 'etiquette'` ;
 //   - par une balise {{id}} (lib/mots-cles-balises.mjs#lireBalises, l'id, le libellé ou l'abréviation : motCleDeLaRef) dans un texte de la base

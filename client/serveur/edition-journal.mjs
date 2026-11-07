@@ -181,8 +181,9 @@ export function ouvrirLot(db, { id, instant, pageId = null, auteurId = null }) {
     get nombre() {
       return rang;
     },
-    terminer(resume) {
-      db.prepare('UPDATE modification_lot SET resume = ? WHERE id = ?').run(String(resume || 'Modification').slice(0, 500), id);
+    /** `entete` : un texte gardé entier en tête du résumé, hors de sa troncature (le marqueur des suppressions forcées, décision R223 (6)). */
+    terminer(resume, { entete = '' } = {}) {
+      db.prepare('UPDATE modification_lot SET resume = ? WHERE id = ?').run(`${entete}${String(resume || 'Modification').slice(0, 500)}`, id);
     },
   };
 }

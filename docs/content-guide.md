@@ -1794,7 +1794,7 @@ la liste des couleurs du site — toutes les familles de la palette, groupées, 
 lot ; la balise à copier est écrite à côté de chaque mot-clé. Chaque mot-clé a un **menu déroulant des endroits qui le mentionnent** (décision R196 (2) :
 une page qui le porte ou dont un texte le cite par une balise, en lien ; un texte qu'aucune page ne montre, par sa table et sa ligne ; les pages d'exemple
 comptent), et **« Supprimer » n'est offert que si cette liste est vide** (R196 : un mot-clé mentionné ne se supprime pas, le service refuse en `409` avec
-la liste ; plus rien n'est retiré des pages ni des textes). La fusion, elle, reporte ses mentions sur l'autre mot-clé. Un mot-clé **verrouillé**
+la liste ; plus rien n'est retiré des pages ni des textes, sauf en forçant : ci-dessous). La fusion, elle, reporte ses mentions sur l'autre mot-clé. Un mot-clé **verrouillé**
 (`mot_cle.verrou`, migration `0110` ; décisions R218, R219) ne se modifie ni ne se supprime depuis le site : aucun de ses champs (libellé, définition,
 abréviation, adresse, couleur), ni sa suppression, même sans mention, ni sa fusion dans un autre ; il se pose encore sur une page et s'en retire, se cite
 par une balise et **reçoit la fusion** d'un autre mot-clé, sans en prendre l'adresse ni la couleur. Sont verrouillés les mots-clés qui mènent à une page
@@ -1813,6 +1813,25 @@ l'éditeur en place, l'outil « Lien page » lie le texte choisi par un mot-clé
 page créée depuis le site ne porte que les mots-clés dont le site se sert. Les événements de la chronologie n'ont pas d'étiquette (« trop nombreux et
 trop libres », demande du propriétaire) mais des **catégories**, un vocabulaire à part (voir « Chronologie ») ; leurs descriptions peuvent citer des
 mots-clés.
+
+**Forcer la suppression** (décision R223, qui amende R196 pour les mots-clés non verrouillés ; `lib/mots-cles-edition.mjs#forcageOffert`,
+`#ceQueRemplaceLeForcage`) : quand le menu des mentions d'un mot-clé non verrouillé n'est pas vide, sa ligne offre **« Forcer la suppression »** à la place
+de « Supprimer » (le « Supprimer » d'une liste vide reste tel quel). Le forçage se met dans la même file que « Supprimer » et « Fusionner dans… » : il
+s'annule avant l'enregistrement (« Sera supprimé en forçant — annuler »), part après les fusions et les suppressions ordinaires (opération
+`{ op: 'supprimer', entite: 'mot_cle', cle: { id }, forcer: true }`), et la confirmation dit ce qu'il remplace : le nombre des mentions (textes qui le
+citent, étiquettes de page), leurs endroits, et ce que chacune devient. **Ce qu'il remplace** (réponse « Le texte affiché ») : chaque balise qui cite le
+mot-clé, pages d'exemple comprises, devient son texte affiché, en texte simple, sans lien — `{{id}}` et `{{id:}}` donnent le libellé (la définition
+n'est pas reprise), `{{id|texte}}` donne son texte (« les {{elfe|elfes}} » → « les elfes ») ; les étiquettes des pages qui le portent sont retirées ;
+puis le mot-clé est supprimé. **Jamais pour un mot-clé verrouillé** : ni bouton, ni envoi (R218 (3), R223 (4)). **Le service refuse le forçage** (`409`,
+avant toute écriture) quand le mot-clé étiquette un sort (R114, R164 : le forçage ne lève que le refus des mentions), quand la définition d'un mot-clé
+verrouillé le cite (elle n'est pas réécrite, R222 (1) : `mots_cles_verrouilles`), quand le site ne sait pas réécrire une de ses mentions
+(`mentions_bloquantes`), et quand son **adresse** mène à une page de la base sans ancre (`lib/adresses-db.mjs#pageDeLAdresse` ; `/ressources/armes/`, par
+exemple) : la page devrait être supprimée avec lui, ce qui attend une décision du propriétaire (R223 (7), lot 2). Une adresse **épargnée** disparaît
+simplement avec le mot-clé : une adresse à **ancre** (`/metiers/#metier-mineur`) et une adresse qui ne mène à aucune page de la base (une route comme
+`/fiche/` ou `/recherche/`, une rubrique comme `/races/`). `GET /api/edition/mots-cles/` donne pour chaque mot-clé `refus_du_forcage` (`null` si le
+forçage passerait, sinon la raison) : le Glossaire n'offre pas le forçage quand il n'est pas `null`, et met à la place la note « Suppression forcée
+impossible », la raison en infobulle et au bas du menu des mentions (lisible au toucher). Un refus qui n'était pas prévu s'affiche comme tout refus du
+lot. Au rejeu du journal, une suppression forcée se rejoue forcée (R223 (6) : `docs/serveur.md`).
 
 ## Liens entre pages
 

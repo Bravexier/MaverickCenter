@@ -25,7 +25,8 @@
 //   GET  /api/edition/listes/       listes des formulaires (compétences, catégories de classe, races hybrides…)
 //   GET  /api/edition/pages/        les pages du wiki (id, titre) : cibles d'un lien posé dans le texte du guide
 //   GET  /api/edition/mots-cles/    le vocabulaire des mots-clés, avec leurs pages et ceux dont le site se sert (/regles/glossaire/ en mode modification),
-//                                   leur lien, leur couleur et sa classe, et la feuille de ces classes (`css` : migration 0098)
+//                                   leur lien, leur couleur et sa classe, leurs mentions (R196) et le refus prévu de leur suppression forcée
+//                                   (`refus_du_forcage`, R223), et la feuille de ces classes (`css` : migration 0098)
 //   GET  /api/edition/chronologie/  les événements de la chronologie dans l'ordre de lecture avec leurs catégories, et les catégories (surcouche de la frise)
 //   GET  /api/edition/plan/         le plan vivant des Règles (onglets, page d'ouverture, entrées de chaque menu ; pour chaque page : sa protection et
 //                                   ses citations) et les races par groupe dans l'ordre de leur liste — serveur/edition-plan.mjs#planVivant
@@ -86,7 +87,9 @@
 // Pas de comptes : quiconque a le mot de passe du site (nginx) lit et écrit les prétirés. Les écritures exigent un corps JSON
 // (Content-Type: application/json) et refusent une requête qu'un navigateur dit venir d'un autre site (Sec-Fetch-Site) : un formulaire ou un
 // script d'un autre site ne peut pas écrire à la place de quelqu'un de connecté.
-import { ErreurEdition, donneesDeClasse, donneesDeRace, enregistrer, lignesDuBestiaire, listes, lireLignes, pagesDuWiki, portraitDe } from './edition.mjs';
+import {
+  ErreurEdition, donneesDeClasse, donneesDeRace, enregistrer, lignesDuBestiaire, listes, lireLignes, pagesDuWiki, portraitDe, refusDesForcages,
+} from './edition.mjs';
 import { ligneSansImage } from '../src/lib/edition-modele.mjs';
 import { journalExporte, lignesEnAttente } from './edition-journal.mjs';
 import { conflitsDuJournal, resoudreLeConflit } from './edition-conflits.mjs';
@@ -305,7 +308,7 @@ function traiterEdition(requete, service, action, reste, permis) {
   if (action === 'en-attente') return json(200, { lignes: lignesEnAttente(db).map((l) => ({ ...l, ligne: ligneSansImage(l.table, l.ligne) })) });
   if (action === 'listes') return json(200, listes(db));
   if (action === 'pages') return json(200, { pages: pagesDuWiki(db) });
-  if (action === 'mots-cles') return json(200, vocabulaireEtFeuille(db));
+  if (action === 'mots-cles') return json(200, vocabulaireEtFeuille(db, { refusDesForcages }));
   if (action === 'chronologie') return json(200, chronologieVivante(db));
   if (action === 'plan') return json(200, planVivant(db));
   if (action === 'journal') {

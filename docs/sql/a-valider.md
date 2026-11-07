@@ -1,7 +1,7 @@
 # Ce qu'il reste à valider sur la base de données
 
 Deux listes : les **choix de forme** du schéma (ce que tu peux relire dans [`apercu.md`](apercu.md)) et les **questions de contenu** que les sources ne tranchent pas.
-Les décisions déjà prises sont dans [`../decisions-regles.md`](../decisions-regles.md) (R1 à R222, liste à jour) ; la conception complète est dans [`conception.md`](conception.md) (§2 conventions, §12 points ouverts).
+Les décisions déjà prises sont dans [`../decisions-regles.md`](../decisions-regles.md) (R1 à R223, liste à jour) ; la conception complète est dans [`conception.md`](conception.md) (§2 conventions, §12 points ouverts).
 
 ## 1. Choix de forme du schéma
 
@@ -371,3 +371,14 @@ réponse, rien n'est déduit. P1 à P8 sont tranchés par R185 (2026-11-06), P9 
 | P11 | Les situations avancées | La page est entièrement répartie (R185). Son ancienne adresse, et les liens par son titre (sommaire du « Guide pour MJ - Maverick », « Les situations avancées »), mènent où ? | À « La prise en tenaille et zone d'influence », sa première section |
 | P12 | Rater ses sortilèges ; Mordhau ou Demi-épée | Où ranger ces deux situations ? « Rater ses sortilèges » parle du coût d'un sort raté ; « Mordhau ou Demi-épée » double « La solidité d'une arme » de `guide/l-equipement`. | « Rater ses sortilèges » dans Mécaniques générales, après « La magie en jeu » ; « Mordhau ou Demi-épée » dans Exploration, après « L'équipement » (R184 (3) : juste après la page qu'elle étaye) |
 | P13 | Attaquer et se défendre | Sa section « Les situations qui changent la donne » résume la tenaille, l'attaque d'opportunité, l'attaque discrète et l'embuscade, qui ont désormais chacune leur page. Garder ce résumé ? | Le résumé reste ; sa phrase de renvoi mène aux quatre pages |
+
+## 9. Suppression forcée d'un mot-clé dont l'adresse mène à une page : lot 2 reporté (2026-11-07)
+
+R223 (3) : forcée, la suppression d'un mot-clé à adresse supprime la page où elle mène, « Tout supprimer » (« On supprime toujours la page, y compris une race, une classe ou une magie avec ses lignes en base. Seuls les outils et les ancres sont épargnés. »), sauf verrou (R223 (4), R221). Le propriétaire a reporté ce lot (« Plus tard », 2026-11-07) : aujourd'hui, les 275 mots-clés à adresse sont tous verrouillés, et le cas ne naîtra que si un mot-clé non verrouillé reçoit l'adresse d'une page qu'aucun mot-clé verrouillé ne vise (race ou classe créée sur le site de dev, fiche de don, page des Règles ou de ressources). Faits : inventaire de `tech-db` (lot « suppression forcée des mots-clés »). Questions préparées, **non posées** : à poser quand le lot 2 sera repris.
+
+| # | Question | Ce que le site fait en attendant |
+| --- | --- | --- |
+| M1 | **Une page dont le site a besoin** : page d'ouverture d'un onglet, page lue par le code (création du personnage, « Par où commencer ? », règles des métiers…), race, classe ou magie du « fil rouge » du guide (sans elles le site ne se construit pas : Felfe, Majin, Orios, Kitsune, Archer, Mage Rouge…), classe ou magie que le code reconnaît (Archimage, Bimane, Mage Bleu, Parleur, Potentiel illimité, les 14 magies élémentaires). Si un mot-clé non verrouillé y mène : (a) forçage refusé, comme pour un verrou ; (b) page supprimée quand même, code et guide adaptés ; autre | Le forçage d'un mot-clé dont l'adresse mène à une page de la base (hors ancre) est refusé (R223, lot 2 reporté) |
+| M2 | **Les fiches de personnage** qui utilisent une race ou une classe que la suppression emporterait (ou un accessoire, un matériau, une amélioration, que R42, R52 et R60 ne couvrent pas) : (a) forçage refusé tant qu'une fiche l'utilise, en nommant les fiches ; (b) retirée des fiches avec une note datée, comme un don (R42) ; autre | Idem |
+| M3 | **« Avec ses lignes en base » : jusqu'où ?** (a) tout ce qui en dépend : la race emporte sa classe raciale, la classe ses spécialités, ses dons et leurs fiches `/capacites/…` ; (b) ses lignes propres seulement, et le forçage refusé tant qu'une autre entité en dépend (une classe raciale…) ; autre | Idem |
+| M4 | **Les pages « catalogue »** `/ressources/armes/`, `/ressources/armures/`, `/ressources/bouclier/`, `/ressources/accessoires/`, à la fois routes fixes du site et pages de la base qui portent un catalogue (161 armes, 242 armures…) : (a) outils, épargnées (le mot-clé perd seulement son adresse) ; (b) pages, supprimées avec leurs lignes (fiches selon M2) ; autre | Idem |

@@ -8,7 +8,7 @@
 // « | » échappé dans une case de tableau), ancre figée d'un intertitre « {#ancre} » (`data-ancre-figee`, lib/ancres-figees.mjs).
 // test/markdown-edition.test.mjs rejoue l'aller-retour Markdown → HTML → Markdown → HTML sur toutes les pages du guide : le rendu ne change pas.
 import { ANCRE_FIGEE } from './ancres-figees.mjs';
-import { lireUneBalise } from './mots-cles-balises.mjs';
+import { echapperDebutDeLigne, lireUneBalise } from './mots-cles-balises.mjs';
 
 /**
  * Couleurs de case permises : leurs noms seuls (le navigateur reçoit ce module : aucune couleur ici). Leurs valeurs sont celles de
@@ -81,10 +81,6 @@ export function echapperTexte(texte, { tableau = false } = {}) {
   return t;
 }
 
-/** Échappe ce qui ferait d'un début de ligne un titre, une citation, une liste ou une règle. */
-const echapperDebutDeLigne = (ligne) =>
-  ligne.replace(/^(\s*)(#{1,6}\s|>|[-+*]\s|(\d+)([.)])\s)/, (tout, espaces, marque, chiffres, point) =>
-    chiffres ? `${espaces}${chiffres}\\${point} ` : `${espaces}\\${marque}`).replace(/^(\s*)(-{3,}|={3,})\s*$/, '$1\\$2');
 
 /** Le texte en ligne d'une suite de nœuds (gras, italique, code, liens, sauts de ligne) ; `tableau` : dans une case. */
 function enLigne(noeuds, o = {}) {

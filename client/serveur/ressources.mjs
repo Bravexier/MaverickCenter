@@ -24,7 +24,8 @@
 //                                                         par table touchée (colonnes de TABLES seulement) ; If-Match facultatif : égal à la version,
 //                                                         les valeurs lues partent en `avant` ; périmé : 409 { erreur, element, extensions, version }
 //   DELETE /api/v1/<res>/<cle>/                           supprime (ENTITES, avec les retraits des fiches : R42) → { supprime, adresse, lot, fiches } ;
-//                                                         If-Match facultatif (409 si périmé : la suppression emporte les enfants, leur version compte)
+//                                                         If-Match facultatif (409 si périmé : la suppression emporte les enfants, leur version compte) ;
+//                                                         `?forcer=1` (ou `{ "forcer": true }`) : un mot-clé mentionné, supprimé en forçant (R223)
 //   GET|POST /api/v1/<res>/<cle>/<enfant>/               sous-ressource : la liste (mêmes paramètres), la création (le parent vient de l'adresse)
 //   GET|PATCH|DELETE /api/v1/<res>/<cle>/<enfant>/<c>/   une ligne de la sous-ressource
 //   POST   /api/v1/<res>/<cle>/<action>/                  une action du registre sur l'élément (fusionner un mot-clé dans un autre…)
@@ -981,8 +982,26 @@ function modifier(db, service, vue, ligne, corps, etiquettes, parent, adresse) {
   return json(200, { ...d, lot: resultat.lot, fiches: resultat.fiches }, { ETag: `"${d.version}"` });
 }
 
-/** DELETE : l'entité de suppression de la vue, avec sa clé (cleSuppression, sinon la clé primaire de la ligne) ; ou l'opération du lot du DELETE. */
-function supprimer(db, service, vue, ligne, etiquettes, parent, adresse) {
+/**
+ * Le forçage d'un DELETE (décision R223 : la suppression forcée d'un mot-clé mentionné, serveur/edition-chronologie.mjs#MOT_CLE) : `?forcer=1` (ou
+ * `true`), ou `{ "forcer": true }` dans le corps ; `0`, `false` ou absent : pas de forçage. Rend true, false, ou une réponse 400 : une autre valeur, ou
+ * un forçage demandé ailleurs que sur un mot-clé (l'entité de suppression `mot_cle`).
+ */
+function forcageDuDelete(vue, params, corps) {
+  const enParametre = params.has('forcer') ? params.get('forcer') : undefined;
+  const dansLeCorps = corps && typeof corps === 'object' && !Array.isArray(corps) && 'forcer' in corps ? corps.forcer : undefined;
+  if (enParametre !== undefined && !['1', 'true', '0', 'false'].includes(enParametre)) return erreur(400, '« forcer » vaut 1 (ou true), ou 0 (ou false).');
+  if (dansLeCorps !== undefined && typeof dansLeCorps !== 'boolean') return erreur(400, '« forcer » vaut true ou false.');
+  const forcer = enParametre === '1' || enParametre === 'true' || dansLeCorps === true;
+  if (forcer && vue.objet.ecriture?.supprimer !== 'mot_cle') return erreur(400, '« forcer » ne vaut que pour la suppression d’un mot-clé (décision R223).');
+  return forcer;
+}
+
+/**
+ * DELETE : l'entité de suppression de la vue, avec sa clé (cleSuppression, sinon la clé primaire de la ligne) ; ou l'opération du lot du DELETE.
+ * `forcer` : la suppression forcée d'un mot-clé (forcageDuDelete ; `forcer: true` de l'opération du lot).
+ */
+function supprimer(db, service, vue, ligne, etiquettes, parent, adresse, { forcer = false } = {}) {
   const t = traductionDe(vue.objet, 'DELETE');
   if (t) return ecrireParOperation(db, service, vue, 'DELETE', { t, ligne, parent, adresse, etiquettes });
   if (etiquettes) {
@@ -991,7 +1010,8 @@ function supprimer(db, service, vue, ligne, etiquettes, parent, adresse) {
   }
   const ecriture = vue.objet.ecriture;
   const cle = ecriture.cleSuppression ? Object.fromEntries(Object.entries(ecriture.cleSuppression).map(([ce, cl]) => [ce, ligne[cl]])) : cleDe(db, vue.table, ligne);
-  const resultat = ecrire(db, service, { methode: 'DELETE', adresse, page: pageDuLot(vue), operations: [{ op: 'supprimer', entite: ecriture.supprimer, cle }] });
+  const operation = { op: 'supprimer', entite: ecriture.supprimer, cle, ...(forcer ? { forcer: true } : {}) };
+  const resultat = ecrire(db, service, { methode: 'DELETE', adresse, page: pageDuLot(vue), operations: [operation] });
   return json(200, { supprime: vue.cle.length ? segmentDeCle(ligne, vue.cle) : null, adresse, lot: resultat.lot, fiches: resultat.fiches });
 }
 
@@ -1136,7 +1156,9 @@ function router(requete, service, segments, params, refusEcriture, methode) {
     return reponseVersionnee(entetes, d.version, (cache) => json(200, d, cache));
   }
   if (methode === 'PATCH') return modifier(db, service, vue, ligne, corps, etiquettes, parentDeLaVue, adresse);
-  return supprimer(db, service, vue, ligne, etiquettes, parentDeLaVue, adresse);
+  const forcer = forcageDuDelete(vue, params, corps);
+  if (typeof forcer !== 'boolean') return forcer;
+  return supprimer(db, service, vue, ligne, etiquettes, parentDeLaVue, adresse, { forcer });
 }
 
 /** Un segment d'adresse décodé pour un message (tel quel s'il est mal encodé). */
