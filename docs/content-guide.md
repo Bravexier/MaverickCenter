@@ -554,7 +554,11 @@ colonnes partagent une même rangée (sous-grille), si bien que leurs souligneme
 « Classe Physique Corps à Corps », « Classe Physique Distance », « Classe Magique », « Classe Hybride Animal » (raciales), « Classe Hybride » et « Classe spéciale » (spéciales : Flagelleur, Archimage).
 Le Parleur, « corps à corps » dans le Sommaire, est sous « Spéciales » (décision du propriétaire, `CLASS_OVERRIDES`) ; une classe sans catégorie reconnue va dans « Non classées », sous « Spéciales ».
 Chaque colonne prend la couleur de sa catégorie (celle des pages de classe), par la classe de la catégorie (`couleur-classe-<clé>`, famille `classe` de la palette, émise par la page), jamais un style ; le nom d'une classe est son titre : **« (classe) » est supprimé de partout, base comprise** (demande du propriétaire, migration `0009-classes-sans-suffixe`),
-une classe raciale porte le nom de sa race (« Kitsune », page `classes/kitsune`) ;
+une classe raciale porte le nom de sa race (« Kitsune », page `classes/kitsune`) ; seule exception (R191) : le libellé du mot-clé d'une classe raciale
+homonyme de sa race s'écrit « Kitsune (classe) » (la race garde le nom, Q14 de la migration `0098`), et ne s'affiche ainsi que sur trois pages, le
+Glossaire, la Recherche et Données (`/regles/glossaire/`, `/recherche/`, `/donnees/` et ses sous-pages) ; partout ailleurs, balise sans texte écrit,
+mode complet, titre et texte de sa bulle compris, il s'affiche sous le nom seul (« Kitsune » : `lib/mots-cles-balises.mjs#libelleAffiche`, la page lue
+par `libelleEntierSur` au middleware et par `scripts/edition/mots-cles-vivants.mjs` sur le site de dev ; test `classes-html.test.mjs`) ;
 le résumé de la page (`summary`) est dans une **infobulle** (`components/Infobulles.astro` : survol, focus clavier, premier appui au toucher puis le second suit le lien ; `title` sans JavaScript).
 Sur un écran étroit, les colonnes passent à la ligne. Le fil d'Ariane d'une classe mène à sa colonne (`/classes/#raciales`…).
 
@@ -1367,7 +1371,7 @@ dev (un commit la change) ni cherchée par la recherche.
   manquer (une page des Règles supprimée sur le site de dev : rien ne la protège pour cela) : son ancienne adresse donne alors la 404 (R185 (6)) ; une page d'exemple (la fixture `guide/utiliser-ce-wiki`) garde une adresse
   de repli à `/regles/<slug>/`, sans entrée de menu ni fil d'Ariane. Plus de « Les bases » ni de « Règles avancées » (R184) : leurs anciennes
   adresses sont renvoyées (plus bas). Le Lexique (2026-11-05, « Supprime la page lexique. ») : ses entrées sont des mots-clés du glossaire (migration
-  `0090`), ses adresses `/regles/lexique/` et `/guide/lexique/` mènent au Glossaire, `/regles/glossaire/` (`PAGES_RETIREES`, ci-dessous ; à
+  `0090`), ses adresses `/regles/lexique/` et `/guide/lexique/` mènent au Glossaire, `/regles/glossaire/` (R190 ; `PAGES_RETIREES`, ci-dessous ; à
   `/recherche/` jusqu'à ce que le Glossaire ait sa page, réponses du propriétaire du 2026-11-06).
 - **Les couleurs** : Découvrir et **la création du personnage** (« Créer son personnage » et ses six étapes, `PAGES_DE_LA_CREATION`) prennent celles des
   anciennes parties (`PARTIES` ; Découvrir #2a6f97, Créer son personnage #2e7d4f ; Jouer #b03030 et Progresser #6a4a9c ne servent plus qu'à la fiche,
@@ -1446,7 +1450,7 @@ dev (un commit la change) ni cherchée par la recherche.
   `guide/les-postures`. L'ancienne section « Les boss et leurs postures » de « Les situations avancées » mène à la section « Les boss » de
   `guide/les-postures` (`/regles/les-postures/#les-boss`, `PAGES_ECLATEES_DU_GUIDE`).
 - **Pages retirées dont le contenu se lit ailleurs** (`PAGES_RETIREES` : page retirée → `{ vers, adresses }`, adresses relatives à la racine du site) :
-  le Lexique, devenu des mots-clés (migration `0090`). Ses anciennes adresses (`regles/lexique/`, `guide/lexique/`) mènent à `vers` (`regles/glossaire/`) par
+  le Lexique, devenu des mots-clés (migration `0090`). Ses anciennes adresses (`regles/lexique/`, `guide/lexique/`) mènent à `vers` (`regles/glossaire/`, R190) par
   la page 404 (`renvoisDuGuide`), requête et ancre d'origine gardées (`/regles/lexique/?q=AM` → `/regles/glossaire/?q=AM`, que le filtre du Glossaire lit), et un lien Markdown écrit vers
   elles au rendu (`lib/livres.mjs#adresseDeLaPageRetiree`, appelée par `adresseDesAnciensLiens`) ; `verifierLePlan` arrête le build si la page revient
   dans la base. Une page simplement effacée, sans renvoi (« Rejoindre une partie », « Liens »), n'y est pas : la page 404 la dit introuvable. Tests :

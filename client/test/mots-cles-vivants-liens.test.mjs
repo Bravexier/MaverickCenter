@@ -1,7 +1,8 @@
 // Les mots-clés vivants du site de dev (src/scripts/edition/mots-cles-vivants.mjs) et la migration 0098, dans un faux navigateur : un mot-clé à adresse
 // est un lien préfixé de la base du site (`ed.base`), sauf dans un lien, un bouton, une étiquette ou une bulle (le gras seul) ; un mot-clé coloré porte
 // sa classe, sa bulle aussi ; la feuille des couleurs (`<style data-couleurs-mots-cles>`) est relue au service quand une classe y manque, et réécrite
-// avec celle que donne le glossaire (definirLeVocabulaire(liste, { css })).
+// avec celle que donne le glossaire (definirLeVocabulaire(liste, { css })). R191 : hors des pages Glossaire, Recherche et Données (lues dans
+// `location.pathname`, base du site comprise), le libellé d'un mot-clé perd son suffixe « (classe) », titre de sa bulle compris ; sur ces pages, entier.
 //   node --test test/mots-cles-vivants-liens.test.mjs
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -11,6 +12,8 @@ const VOCABULAIRE = [
   { id: 'elfe', libelle: 'Elfe', libelle_cle: 'elfe', description: 'Un peuple.', url: '/races/elfe/', couleur: 'race:pure' },
   { id: 'feu', libelle: 'Feu', libelle_cle: 'feu', description: null, url: '/magies/magie-du-feu/', couleur: '#ff4500' },
   { id: 'mordhau', libelle: 'Mordhau', libelle_cle: 'mordhau', description: 'Une prise.', url: null, couleur: null },
+  // R191 : un mot-clé d'essai de classe raciale (Q14 : « <Titre> (classe) »)
+  { id: 'orios-classe', libelle: 'Orios (classe)', libelle_cle: 'orios (classe)', description: 'Classe raciale.', url: '/classes/orios/', couleur: null },
 ];
 const CSS = '.couleur-mot-cle-feu{--couleur:#ff4500;--couleur-texte:#171210}.couleur-race-pure{--couleur:#2f6a6a;--couleur-texte:#ffffff}';
 
@@ -22,10 +25,13 @@ const document = fauxDocument(
   el('span', { id: 'case', tabindex: '0' }, '{{elfe}}'),
   // rendu au build (vocabulaire d'avant : sans adresse ni couleur), refait d'après le vocabulaire vivant
   el('p', { id: 'construit' }, el('strong', { class: 'mot-cle', 'data-mot-cle': 'elfe', 'data-balise': '{{elfe}}' }, 'Elfe')),
+  el('p', { id: 'classe', title: 'la {{orios-classe}}' }, 'La {{orios-classe}}, {{orios-classe:}}'),
 );
 document.head.append(el('style', { 'data-couleurs-mots-cles': '' }, '.couleur-race-pure{--couleur:#2f6a6a;--couleur-texte:#ffffff}'));
 const { MutationObserver, NodeFilter } = domVivant(document);
-Object.assign(globalThis, { document, MutationObserver, NodeFilter });
+// une page hors des trois (R191), sous la base du site
+const location = { pathname: '/MaverickCenter/classes/orios/' };
+Object.assign(globalThis, { document, MutationObserver, NodeFilter, location });
 const { definirLeVocabulaire, glossaireVivant } = await import('../src/scripts/edition/mots-cles-vivants.mjs');
 const appels = [];
 await glossaireVivant({
@@ -61,9 +67,26 @@ test('la feuille des couleurs : relue au service quand une classe du vocabulaire
   const feuille = () => document.querySelector('style[data-couleurs-mots-cles]').textContent;
   assert.equal(feuille(), CSS);
   // le glossaire relu après un enregistrement : la couleur de « Feu » a changé, et sa bulle suit celle d'« Elfe » retirée
-  definirLeVocabulaire([{ ...VOCABULAIRE[0], couleur: null }, VOCABULAIRE[1], VOCABULAIRE[2]], { css: '.couleur-mot-cle-feu{--couleur:#00ff00}' });
+  definirLeVocabulaire([{ ...VOCABULAIRE[0], couleur: null }, ...VOCABULAIRE.slice(1)], { css: '.couleur-mot-cle-feu{--couleur:#00ff00}' });
   await attendre();
   assert.equal(feuille(), '.couleur-mot-cle-feu{--couleur:#00ff00}');
   assert.match(document.getElementById('mot-cle-elfe').outerHTML, /^<span class="bulle" role="tooltip"/, 'la bulle : sans couleur');
   assert.match(html('construit'), /^<a class="mot-cle" href="\/MaverickCenter\/races\/elfe\/"/);
+});
+
+test('R191 : hors des pages Glossaire, Recherche et Données, le nom sans « (classe) » (balise, tuile, attribut, titre de la bulle) ; sur l’une d’elles, le libellé entier', async () => {
+  const { assurerLaBulle, libelleEntierIci } = await import('../src/scripts/edition/mots-cles-vivants.mjs');
+  assert.equal(libelleEntierIci(), false, location.pathname);
+  assert.match(html('classe'), /^La <a class="mot-cle" href="\/MaverickCenter\/classes\/orios\/" data-mot-cle="orios-classe"[^>]*>Orios<\/a>, <span class="mot-cle-definition" data-mot-cle="orios-classe"[^>]*><a class="mot-cle-definition__nom" href="[^"]*">Orios<\/a>/);
+  assert.equal(document.getElementById('classe').getAttribute('title'), 'la Orios');
+  assert.match(document.getElementById('mot-cle-orios-classe').outerHTML, /<strong class="bulle__titre">Orios<\/strong>/);
+  // sur le Glossaire (sous la base du site) : la bulle refaite et les mots-clés relus montrent le libellé entier
+  location.pathname = '/MaverickCenter/regles/glossaire/';
+  assert.equal(libelleEntierIci(), true);
+  assurerLaBulle('orios-classe');
+  assert.match(document.getElementById('mot-cle-orios-classe').outerHTML, /<strong class="bulle__titre">Orios \(classe\)<\/strong>/);
+  definirLeVocabulaire(VOCABULAIRE);
+  await attendre();
+  assert.match(html('classe'), />Orios \(classe\)<\/a>, <span class="mot-cle-definition"/);
+  location.pathname = '/MaverickCenter/classes/orios/';
 });

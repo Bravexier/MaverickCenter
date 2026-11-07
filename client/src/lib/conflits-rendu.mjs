@@ -114,8 +114,13 @@ const valeurDeDepart = (conflit) => {
 const AIDE_ADRESSE = 'adresse d’une page du site depuis sa racine, « /races/elfe/ », vide : aucune';
 /** L'aide d'une couleur de mot-clé (mot_cle.couleur, migration 0098). */
 const AIDE_COULEUR = '« #rrggbb », ou « famille:id » d’une couleur du site (« magie:feu »), vide : aucune';
-/** La forme d'une adresse et d'une couleur de mot-clé (la règle de lib/mots-cles-liens.mjs#fauteDeFormeDeLUrl et #lireLaCouleur ; le service refait tout). */
+/**
+ * La forme d'une adresse et d'une couleur de mot-clé : la même règle que lib/mots-cles-liens.mjs#fauteDeFormeDeLUrl (« / » au début, pas « // », ASCII
+ * imprimable sans aucun blanc, ni « \ », ni « " », « ' », « < », « > », « ` ») et #lireLaCouleur, recopiée ici (ce module n'importe que
+ * lib/notes-de-version-rendu.mjs : skill site-version-portable) ; test/conflits-rendu.test.mjs compare les deux règles. Le service refait tout.
+ */
 const FORME_D_ADRESSE = /^\/(?!\/)[!-~]*$/;
+const CARACTERES_REFUSES_D_ADRESSE = /["'<>`\\]/;
 const FORME_DE_COULEUR = /^(?:#[0-9a-f]{6}|[a-z]+:[a-z0-9]+(?:-[a-z0-9]+)*)$/;
 
 /** La saisie du choix 3, d'après le type de la colonne (comme l'éditeur : src/scripts/edition/editeur.mjs#controleDe). */
@@ -159,7 +164,7 @@ export function erreurDeSaisie(saisie, brute) {
     if (saisie.max !== undefined && n > saisie.max) return `« ${nom} » : au plus ${saisie.max}`;
   }
   if (saisie?.type === 'choix' && saisie.choix && !saisie.choix.some((c) => String(c.valeur) === texte)) return `« ${nom} » : valeur hors de la liste`;
-  if (saisie?.type === 'adresse' && (!FORME_D_ADRESSE.test(texte) || texte.includes('\\'))) return `« ${nom} » : ${AIDE_ADRESSE}`;
+  if (saisie?.type === 'adresse' && (!FORME_D_ADRESSE.test(texte) || CARACTERES_REFUSES_D_ADRESSE.test(texte))) return `« ${nom} » : ${AIDE_ADRESSE}`;
   if (saisie?.type === 'couleur' && !FORME_DE_COULEUR.test(texte.toLowerCase())) return `« ${nom} » : ${AIDE_COULEUR}`;
   return null;
 }

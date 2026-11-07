@@ -221,7 +221,7 @@ export const PAGES_SUPPRIMEES = Object.freeze([
  * Le Lexique (« Les bases », /regles/lexique/ ; /guide/lexique/ avant l'éclatement du guide) est devenu des mots-clés du glossaire (migration 0090, demande
  * du propriétaire du 2026-11-05 : « Supprime la page lexique. Toutes les informations comprises dedans doivent être converties en mot-clés. ») : ses
  * adresses menaient à /recherche/ (réponse du propriétaire : « Rediriger vers /recherche/ ») ; depuis que la liste des mots-clés a sa page, le Glossaire
- * des Règles (/regles/glossaire/, réponses du propriétaire du 2026-11-06), elles y mènent, la requête et l'ancre d'origine gardées (page 404 :
+ * des Règles (/regles/glossaire/, réponses du propriétaire du 2026-11-06 ; décision R190), elles y mènent, la requête et l'ancre d'origine gardées (page 404 :
  * lib/metiers.mjs#renvoisDuGuide), comme un lien Markdown écrit vers elles (lib/guide.mjs#adresseDesAnciensLiens). Elles ne sont plus dans la base
  * (verifierLePlan). Une page simplement effacée, sans renvoi (« Rejoindre une partie », « Liens », PAGES_SUPPRIMEES), n'est pas ici.
  */

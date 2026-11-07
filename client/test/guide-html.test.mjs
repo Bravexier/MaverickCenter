@@ -164,9 +164,14 @@ const verifierLeMenuLateral = (chemin, page, rubrique, attendues) => {
   // le mode modification du site de dev porte sur la page affichée
   if (modifiable) assert.match(html, new RegExp(`<div data-edition data-api="/api/" data-page="${page.id}"`), `${chemin} : le mode modification`);
   // l'accent du site (« Accent du site ») : aucune couleur de partie ni sa feuille, sauf sur la création du personnage (la partie « creer », R184)
+  // Un mot-clé coloré d'une partie (sa balise, son mode complet, sa bulle) et la feuille des mots-clés colorés (`<style data-couleurs-mots-cles>` de
+  // layouts/Base.astro, sur chaque page : skill zone-mots-cles-liens) ne colorent pas la page : ils sont mis à part.
   if (partieDeLaPage(page.id) === null) {
-    assert.doesNotMatch(html, /class="[^"]*\bcouleur-partie-/, `${chemin} : aucune classe des parties`);
-    assert.doesNotMatch(html, /\.couleur-partie-[a-z-]+\{/, `${chemin} : ni leur feuille`);
+    const DU_MOT_CLE = new Set(['mot-cle', 'mot-cle-definition', 'bulle']);
+    const classesDesParties = [...html.matchAll(/class="([^"]*\bcouleur-partie-[^"]*)"/g)].map(([, c]) => c.split(/\s+/))
+      .filter((classes) => !classes.some((c) => DU_MOT_CLE.has(c)));
+    assert.deepEqual(classesDesParties, [], `${chemin} : aucune classe des parties`);
+    assert.doesNotMatch(html.replace(/<style[^>]*\bdata-couleurs-mots-cles\b[^>]*>[\s\S]*?<\/style>/g, ''), /\.couleur-partie-[a-z-]+\{/, `${chemin} : ni leur feuille`);
   }
   // le menu se lit sans JavaScript : ouvert dans le HTML construit (le script ne le replie que sur petit écran)
   assert.match(menu, /<details class="lateral-menu__repli" open data-lateral-repli>/, `${chemin} : ouvert sans JavaScript`);
@@ -209,7 +214,7 @@ test('R184 : chaque onglet des Règles, à gauche le menu latéral de ses entré
   assert.match(regles, /<a href="\/regles\/fiche-de-personnage\/" aria-current="true">Fiche de personnage<\/a>/);
   // une entrée « bientôt » : aucune aujourd'hui (R184, bilan) ; son rendu (grisée, sans lien) est épinglé par test/livres.test.mjs et le composant
   for (const onglet of onglets) assert.doesNotMatch(sansStyles(lire(onglet.chemin.slice(0, -1)).main), /class="lateral-menu__bientot/);
-  // le Lexique (2026-11-05, migration 0090) : plus construit, son adresse mène à /recherche/ (page 404 : test/site-html.test.mjs)
+  // le Lexique (2026-11-05, migration 0090) : plus construit, son adresse mène au Glossaire, /regles/glossaire/ (R190 ; page 404 : test/site-html.test.mjs)
   assert.ok(!existsSync(join(dist, 'regles', 'lexique')), '/regles/lexique/ n’est plus construite');
   // la fixture (status: example), si elle est construite : son adresse de repli, sans menu latéral
   if (existsSync(join(dist, 'regles', 'utiliser-ce-wiki'))) assert.doesNotMatch(lire('regles/utiliser-ce-wiki').main, /class="lateral/);

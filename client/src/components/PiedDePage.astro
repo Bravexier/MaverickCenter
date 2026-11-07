@@ -1,6 +1,7 @@
 ---
 import { url, type WikiEntry } from '../lib/wiki';
 import { ouvrirBase } from '../lib/donnees.mjs';
+import { libelleAffiche } from '../lib/mots-cles-balises.mjs';
 import { idDuMotCle } from '../lib/mots-cles-db.mjs';
 import { PARAMETRE_MOT_CLE } from '../lib/recherche-mots-cles.mjs';
 
@@ -16,10 +17,11 @@ const { entry } = Astro.props;
 ---
 
 {
-  /* Chaque mot-clé mène à la liste de ses pages et événements sur /recherche/ (?mot-cle=<id> : l'id figé du vocabulaire, lib/mots-cles-db.mjs) */
+  /* Chaque mot-clé mène à la liste de ses pages et événements sur /recherche/ (?mot-cle=<id> : l'id figé du vocabulaire, lib/mots-cles-db.mjs) ;
+     son libellé sans le suffixe « (classe) » (R191 : une page du wiki n'est ni le Glossaire, ni la Recherche, ni Données) */
   entry.data.tags.length > 0 && (
     <ul class="tags" aria-label="Mots-clés">
-      {entry.data.tags.map((tag) => <li><a class="badge" href={`${url('recherche/')}?${PARAMETRE_MOT_CLE}=${encodeURIComponent(idDuMotCle(ouvrirBase(), tag))}`}>{tag}</a></li>)}
+      {entry.data.tags.map((tag) => <li><a class="badge" href={`${url('recherche/')}?${PARAMETRE_MOT_CLE}=${encodeURIComponent(idDuMotCle(ouvrirBase(), tag))}`}>{libelleAffiche({ libelle: tag })}</a></li>)}
     </ul>
   )
 }

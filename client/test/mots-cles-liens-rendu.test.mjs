@@ -5,15 +5,17 @@
 //     mot-clé sur sa balise, sur le bloc du mode complet et sur sa bulle ;
 //   - pas de lien dans un lien, un bouton, un résumé, une étiquette, une liste ni une bulle (le gras seul) ; un élément [tabindex] garde le lien ;
 //   - la page vers laquelle mène un mot-clé coloré prend sa couleur, sinon la sienne d'avant (lib/couleur-de-la-page.mjs) ;
-//   - la ligne du Glossaire (lib/mots-cles-balises.mjs#htmlDeLaLigneDuGlossaire).
+//   - la ligne du Glossaire (lib/mots-cles-balises.mjs#htmlDeLaLigneDuGlossaire) ;
+//   - R191 : le mot-clé d'une classe raciale s'écrit « Orios (classe) » (Q14), mais hors des pages Glossaire, Recherche et Données il s'affiche sous le
+//     nom seul, titre de sa bulle compris (libelleAffiche, libelleEntierSur, option `libelleEntier` du rendu et du middleware).
 //   node --test test/mots-cles-liens-rendu.test.mjs
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { reponseAvecMotsCles } from '../src/middleware.mjs';
+import { optionsDeLaPage, reponseAvecMotsCles } from '../src/middleware.mjs';
 import { classeDeLaPage } from '../src/lib/couleur-de-la-page.mjs';
 import {
-  adresseDuMotCle, htmlAvecMotsCles, htmlDeLaBalise, htmlDeLaBulle, htmlDeLaLigneDuGlossaire, lireUneBalise, pageAvecMotsCles, SANS_LIEN,
-  vocabulaireDesMotsCles,
+  adresseDuMotCle, htmlAvecMotsCles, htmlDeLaBalise, htmlDeLaBulle, htmlDeLaLigneDuGlossaire, libelleAffiche, libelleEntierSur, lireUneBalise,
+  PAGES_AU_LIBELLE_ENTIER, pageAvecMotsCles, SANS_LIEN, texteSansBalises, vocabulaireDesMotsCles,
 } from '../src/lib/mots-cles-balises.mjs';
 
 const VOCABULAIRE = [
@@ -114,4 +116,66 @@ test('Q6, Q7 : la ligne du Glossaire — libellé (lien s’il a une adresse), a
   const ro = htmlDeLaLigneDuGlossaire({ ...V.parId.get('ro'), description: 'Vaut 5 RF, voir {{elfe}}.', n: 1 }, options);
   assert.ok(ro.includes('piece--ro') && !ro.includes('glossaire-mot__abreviation'), ro);
   assert.ok(ro.includes('{{elfe}}') && ro.includes('piece--rf'), ro);
+});
+
+// R191 (seconde réponse du propriétaire : « « Orios » (Recommandé) » — « Hors des trois pages, on affiche le nom sans le suffixe « (classe) », y compris
+// dans le titre de l'infobulle, puisque le suffixe y reste interdit. »). Mots-clés d'essai : le libellé se pose ici, il ne se lit pas dans la base.
+const CLASSES = vocabulaireDesMotsCles([
+  ...VOCABULAIRE,
+  { id: 'orios-classe', libelle: 'Orios (classe)', description: 'Classe raciale ; voir {{goleois-classe}}.', url: '/classes/orios/', couleur: 'classe:raciales' },
+  { id: 'goleois-classe', libelle: 'Goleois (Classe) ', description: null, url: '/classes/goleois/', couleur: null },
+  { id: 'orios', libelle: 'Orios', description: 'Une race.', url: '/races/orios/', couleur: null },
+]);
+
+test('R191 : les trois pages au libellé entier (Glossaire, Recherche, Données et ses sous-pages), base du site retirée ; aucune autre', () => {
+  assert.deepEqual([...PAGES_AU_LIBELLE_ENTIER], ['/regles/glossaire/', '/recherche/', '/donnees/']);
+  for (const chemin of ['/regles/glossaire/', '/regles/glossaire', '/recherche/', '/recherche/?mot-cle=orios-classe', '/recherche/index.html', '/donnees/',
+    '/donnees/mot_cle/', '/donnees/v_mot_cle/index.html']) assert.equal(libelleEntierSur(chemin), true, chemin);
+  assert.equal(libelleEntierSur('/MaverickCenter/regles/glossaire/', { base: '/MaverickCenter/' }), true, 'la base retirée');
+  assert.equal(libelleEntierSur('/MaverickCenter/donnees/mot_cle/', { base: '/MaverickCenter' }), true);
+  for (const chemin of ['/', '', '/classes/orios/', '/races/orios/', '/regles/', '/regles/glossaire-bis/', '/regles/lexique/', '/recherches/',
+    '/donnees-x/', '/guide/recherche/', '/MaverickCenter/classes/orios/']) assert.equal(libelleEntierSur(chemin, { base: '/MaverickCenter/' }), false, chemin);
+  assert.deepEqual(optionsDeLaPage(new URL('http://x/MaverickCenter/recherche/'), '/MaverickCenter/'), { base: '/MaverickCenter/', libelleEntier: true });
+  assert.deepEqual(optionsDeLaPage(new URL('http://x/classes/orios/')), { base: '/', libelleEntier: false });
+  assert.deepEqual(optionsDeLaPage(undefined), { base: '/', libelleEntier: false }, 'sans adresse : hors des trois pages');
+});
+
+test('R191 : libelleAffiche — le suffixe final « (classe) » retiré hors des trois pages, quelle que soit la casse ; rien d’autre ne change', () => {
+  assert.equal(libelleAffiche({ libelle: 'Orios (classe)' }), 'Orios');
+  assert.equal(libelleAffiche({ libelle: 'Goleois (Classe) ' }), 'Goleois');
+  assert.equal(libelleAffiche({ libelle: 'Orios (classe)' }, { entier: true }), 'Orios (classe)');
+  for (const libelle of ['Orios', 'Classe', 'Niveau de classe', '(classe) Orios', 'Orios (classes)', 'Orios (classe) bis']) {
+    assert.equal(libelleAffiche({ libelle }), libelle, libelle);
+  }
+  assert.equal(libelleAffiche({ libelle: '(classe)' }), '(classe)', 'un libellé qui ne serait que le suffixe reste tel quel');
+});
+
+test('R191 : hors des trois pages, la balise sans texte, le mode complet (tuile), la bulle (titre et définition) et le texte simple montrent le nom seul', () => {
+  const sans = htmlDeLaBalise(balise('{{orios-classe}}'), CLASSES);
+  assert.match(sans.html, /^<a class="mot-cle couleur-classe-raciales" href="\/classes\/orios\/" data-mot-cle="orios-classe"[^>]* data-balise="\{\{orios-classe\}\}">Orios<\/a>$/);
+  assert.match(htmlDeLaBalise(balise('{{orios-classe}}'), CLASSES, { libelleEntier: true }).html, />Orios \(classe\)<\/a>$/, 'sur les trois pages : entier');
+  assert.match(htmlDeLaBalise(balise('{{orios-classe|la classe Orios (classe)}}'), CLASSES).html, />la classe Orios \(classe\)<\/a>$/, 'un texte écrit reste tel qu’écrit');
+  const complet = htmlDeLaBalise(balise('{{orios-classe:}}'), CLASSES).html;
+  assert.match(complet, /<a class="mot-cle-definition__nom" href="\/classes\/orios\/">Orios<\/a> : <span class="mot-cle-definition__texte">Classe raciale ; voir Goleois\.<\/span>/);
+  assert.match(htmlDeLaBalise(balise('{{orios-classe:}}'), CLASSES, { libelleEntier: true }).html, />Orios \(classe\)<\/a> : <span class="mot-cle-definition__texte">Classe raciale ; voir Goleois \(Classe\)\.?/);
+  assert.match(htmlDeLaBulle('orios-classe', CLASSES), /<strong class="bulle__titre">Orios<\/strong><span class="bulle__texte">Classe raciale ; voir Goleois\.<\/span>/);
+  assert.match(htmlDeLaBulle('orios-classe', CLASSES, { libelleEntier: true }), /<strong class="bulle__titre">Orios \(classe\)<\/strong>/);
+  // le texte simple : entier par défaut (JSON, recherche, découpages) ; sans le suffixe à la demande
+  assert.equal(texteSansBalises('{{orios-classe}} et {{orios}}', CLASSES), 'Orios (classe) et Orios');
+  assert.equal(texteSansBalises('{{orios-classe}} et {{orios}}', CLASSES, { libelleEntier: false }), 'Orios et Orios');
+});
+
+test('R191 : une page entière hors des trois — ni balise, ni attribut, ni <title>, ni <option>, ni bulle n’écrit « (classe) » ; sur les trois, le libellé entier', async () => {
+  const source = '<html><head><title>{{orios-classe}}</title></head><body><p title="{{orios-classe}}">{{orios-classe}} et {{orios-classe:}}</p>'
+    + '<select><option>{{orios-classe}}</option></select><button>{{orios-classe}}</button></body></html>';
+  const ailleurs = pageAvecMotsCles(source, CLASSES);
+  assert.doesNotMatch(ailleurs.replace(/data-balise="[^"]*"/g, ''), /\(classe\)/i, ailleurs);
+  assert.match(ailleurs, /<span class="bulle couleur-classe-raciales" role="tooltip" id="mot-cle-orios-classe" hidden><strong class="bulle__titre">Orios<\/strong>/);
+  const ici = pageAvecMotsCles(source, CLASSES, { libelleEntier: true });
+  assert.equal((ici.replace(/data-balise="[^"]*"/g, '').match(/Orios \(classe\)/g) ?? []).length, 7, 'titre, attribut, balise, tuile, option, bouton, bulle');
+  // le middleware : d'après l'adresse de la page (optionsDeLaPage)
+  const suite = async () => new Response(source, { headers: { 'content-type': 'text/html' } });
+  const lu = async (chemin) => (await reponseAvecMotsCles(suite, CLASSES.liste, optionsDeLaPage(new URL(`http://x${chemin}`)))).text();
+  assert.doesNotMatch((await lu('/classes/orios/')).replace(/data-balise="[^"]*"/g, ''), /\(classe\)/i);
+  for (const chemin of ['/regles/glossaire/', '/recherche/', '/donnees/mot_cle/']) assert.match(await lu(chemin), /<strong class="bulle__titre">Orios \(classe\)<\/strong>/, chemin);
 });

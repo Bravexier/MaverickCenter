@@ -245,18 +245,26 @@ test('fil d’Ariane d’une classe : sa catégorie, avec l’ancre de sa colonn
   assert.match(page('archer'), /Classes<\/a> › <a href="[^"]*\/classes\/#distance">Physiques Distance<\/a>/);
 });
 
-test('« (classe) » supprimé de partout (migration 0009) : aucune page du wiki construit ne l’écrit ; la classe raciale porte le nom de sa race', options, () => {
+// R191 : « « (classe) » est admis dans le libellé des mots-clés et sur trois pages : Glossaire, Recherche et Données (`/regles/glossaire/`, `/recherche/`,
+// `/donnees/`). Ailleurs, il reste interdit, comme le veut la 0009. » ; hors de ces pages, le mot-clé d'une classe raciale s'affiche sous le nom seul,
+// titre de sa bulle compris (seconde réponse : « « Orios » (Recommandé) ») : le fichier entier est lu, bulles et attributs compris.
+/** Les pages où R191 admet « (classe) » : le Glossaire, la Recherche, Données et ses sous-pages (chemins relatifs à dist/). */
+const admiseParR191 = (relatif) => ['regles/glossaire/index.html', 'recherche/index.html'].includes(relatif) || relatif.startsWith('donnees/');
+
+test('« (classe) » supprimé de partout (migration 0009), sauf sur le Glossaire, la Recherche et Données (R191) : aucune autre page construite ne l’écrit, bulles comprises ; la classe raciale porte le nom de sa race', options, () => {
   const wiki = join(dossier, '..');
   const fautives = [];
   const parcourir = (d) => {
     for (const e of readdirSync(d, { withFileTypes: true })) {
       const chemin = join(d, e.name);
+      const relatif = chemin.slice(wiki.length).replace(/^[\\/]+/, '').split(/[\\/]/).join('/');
       if (e.isDirectory()) parcourir(chemin);
-      else if (e.name.endsWith('.html') && /\(classe\)/i.test(readFileSync(chemin, 'utf8'))) fautives.push(chemin.slice(wiki.length));
+      else if (e.name.endsWith('.html') && !admiseParR191(relatif) && /\(classe\)/i.test(readFileSync(chemin, 'utf8'))) fautives.push(relatif);
     }
   };
   parcourir(wiki);
   assert.deepEqual(fautives, []);
+  assert.ok(['regles/glossaire/index.html', 'recherche/index.html'].every((f) => existsSync(join(wiki, f))), 'les pages admises existent (le test ne passe pas à vide)');
   assert.match(page('orios'), /<h1[^>]*>\s*Orios\s*<\/h1>/);
 });
 

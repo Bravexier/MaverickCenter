@@ -318,7 +318,9 @@ page du site s'écrit par la balise d'un mot-clé qui porte son adresse. Un `[[c
 `LIENS_GARDES`) devient la balise, son texte affiché gardé, du seul mot-clé qui mène à l'adresse visée (celle de la page qu'un `[[…]]` désigne, résolu
 comme le site, ou l'adresse écrite ; même adresse ancre comprise, sinon le même chemin : `motsClesDeLAdresse`), avant la forme canonique
 (`serveur/edition.mjs#texteSansLiens`) ; aucun mot-clé, plusieurs, une cible introuvable ou ambiguë : `400` avec `champ` et `liens`, qui renvoie au
-Glossaire (`/regles/glossaire/`). Une page d'exemple garde ses liens. `db:check` refuse un lien de mot-clé mal écrit ou qui ne mène à aucune adresse du
+Glossaire (`/regles/glossaire/`). Un lien ajouté dont le texte affiché est vide, ou n'est pas un texte simple (une marque Markdown, une balise HTML ou
+du glossaire, un saut de ligne : `TEXTE_DE_LIEN_NON_SIMPLE`), est refusé de même (`400` avec `champ` et `liens`) : le message demande d'écrire la
+balise du mot-clé qui mène à la page avec un texte simple (`{{id}}` ou `{{id|texte}}`). Une page d'exemple garde ses liens. `db:check` refuse un lien de mot-clé mal écrit ou qui ne mène à aucune adresse du
 site, une couleur inconnue de la palette, et tout `[[…]]` ou lien Markdown interne hors code dans ces textes (sauf pages d'exemple et `LIENS_GARDES`).
 `GET /api/edition/mots-cles/` donne le lien, la couleur et la classe de chaque mot-clé (`classeDuMotCle` : `couleur-<famille>-<id>`, ou
 `couleur-mot-cle-<id>` pour une couleur écrite) et la feuille de ces classes (`css`, `lib/palette-css.mjs#cssDesMotsCles`). Une balise dont le mot-clé

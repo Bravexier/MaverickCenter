@@ -16,6 +16,7 @@ import {
 } from '../src/lib/conflits-rendu.mjs';
 import { TABLES } from '../src/lib/edition-modele.mjs';
 import { htmlAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
+import { fauteDeFormeDeLUrl } from '../src/lib/mots-cles-liens.mjs';
 import { nomDeColonne, nomDeTable } from '../src/lib/libelles-de-la-base.mjs';
 
 const DIAG = JSON.parse(readFileSync(new URL('./fixtures/conflits-diagnostic.json', import.meta.url), 'utf8'));
@@ -343,7 +344,16 @@ test('migration 0098 : l’adresse et la couleur d’un mot-clé se saisissent e
     assert.ok(html.includes(aide), `${s.type} : ${html}`);
   }
   for (const v of ['/races/humain/', '/magies/#relations', '']) assert.equal(erreurDeSaisie(lien, v), null, v);
-  for (const v of ['races/humain/', '//hote/x', 'https://example.org/', '/a b', '/a\\b']) assert.match(erreurDeSaisie(lien, v), /^« Lien » : adresse d’une page du site/, v);
+  for (const v of ['races/humain/', '//hote/x', 'https://example.org/', '/a b', '/a\\b', '/a"b/', "/a'b/", '/a<b/', '/a>b/', '/a`b/', '/x/?q="1"', '/x/#a<b']) {
+    assert.match(erreurDeSaisie(lien, v), /^« Lien » : adresse d’une page du site/, v);
+  }
+  // la même règle de forme que lib/mots-cles-liens.mjs#fauteDeFormeDeLUrl (que ce module n'importe pas : skill site-version-portable), sur chaque
+  // caractère ASCII et quelques écritures : refusée ici si et seulement si elle l'est là
+  const essais = ['/', '/races/humain/', '/magies/#relations', '/x/?q=1&r=2', '/a b', '/a\tb', '//x', 'x/', '/é/', '/a\\b',
+    ...Array.from({ length: 128 }, (_, i) => `/a${String.fromCharCode(i)}b/`)];
+  for (const v of essais.filter((x) => x.trim() === x && x)) {
+    assert.equal(erreurDeSaisie(lien, v) === null, fauteDeFormeDeLUrl(v) === null, JSON.stringify(v));
+  }
   for (const v of ['magie:feu', '#12ab9f', '#12AB9F', 'classe:melee', '']) assert.equal(erreurDeSaisie(couleur, v), null, v);
   for (const v of ['feu', '#12ab9', 'magie:', 'Magie Feu']) assert.match(erreurDeSaisie(couleur, v), /^« Couleur » : « #rrggbb »/, v);
 });

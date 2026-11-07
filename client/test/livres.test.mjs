@@ -414,7 +414,7 @@ test('le menu s’accorde au plan : Règles (Découvrir, L’univers, puis les o
   assert.equal(activeGroup(`/${ARTISANAT.chemin}`).key, 'regles', 'l’Artisanat ouvre les Règles (R184)');
 });
 
-test('une page retirée dont le contenu se lit ailleurs (PAGES_RETIREES) : un lien écrit vers une de ses anciennes adresses mène à sa destination, requête et ancre gardées ; le Lexique, au Glossaire (réponses du propriétaire du 2026-11-06)', () => {
+test('une page retirée dont le contenu se lit ailleurs (PAGES_RETIREES) : un lien écrit vers une de ses anciennes adresses mène à sa destination, requête et ancre gardées ; R190 : le Lexique, au Glossaire (réponses du propriétaire du 2026-11-06)', () => {
   assert.equal(adresseDeLaPageRetiree('regles/lexique/'), 'regles/glossaire/');
   assert.equal(adresseDeLaPageRetiree('regles/lexique'), 'regles/glossaire/', 'sans barre de fin');
   assert.equal(adresseDeLaPageRetiree('guide/lexique/#acquis'), 'regles/glossaire/#acquis', 'l’ancre écrite gardée');
