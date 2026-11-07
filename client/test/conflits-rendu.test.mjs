@@ -11,8 +11,8 @@ import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import {
-  colonnesDeLaSaine, corpsDeLaResolution, erreurDeSaisie, htmlDeLaSaisie, htmlDesConflits, htmlDuConflit, htmlDuLot, libelleDuChoix, messageDeResolution, optionsDeLaSaisie,
-  raisonDuChoix, raisonDuConflit, texteDeLaVersion, texteDeValeur,
+  colonnesDeLaSaine, corpsDeLaResolution, erreurDeSaisie, htmlDeLaSaisie, htmlDesConflits, htmlDuConflit, htmlDuLot, instantLisible, libelleDuChoix, messageDeResolution,
+  optionsDeLaSaisie, raisonDuChoix, raisonDuConflit, texteDeLaVersion, texteDeValeur, titreDeLaVersion,
 } from '../src/lib/conflits-rendu.mjs';
 import { TABLES } from '../src/lib/edition-modele.mjs';
 import { htmlAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
@@ -36,20 +36,25 @@ test('le diagnostic enregistré a la forme du service (lots, saines, conflits, c
   }
 });
 
-test('une page du guide modifiée puis réécrite : les deux versions côte à côte, en texte, leurs différences, les trois choix', () => {
+test('une page du guide modifiée puis réécrite : seulement les différences, les deux versions entières repliées, d’où vient chacune, les trois choix', () => {
   const c = MAGIE.conflits[0];
-  const html = htmlDuConflit(c, 0);
-  // version 1 : ce que le site de dev avait écrit ; version 2 : les règles livrées
-  const versions = [...html.matchAll(/<div class="nv-version nv-version--(\d)"><h5 class="nv-version__titre">([^<]+)<\/h5><div class="nv-version__texte">([\s\S]*?)<\/div><\/div>/g)];
-  assert.deepEqual(versions.map((m) => [m[1], m[2]]), [['1', 'Version 1 : ce que le site de dev avait écrit'], ['2', 'Version 2 : ce que disent les règles livrées']]);
+  const html = htmlDuConflit(c, 0, { faitLe: MAGIE.fait_le });
+  // version 1 : modifiée sur le site de dev (par ce lot, daté) ; version 2 : la valeur actuelle, venue de la dernière livraison (demande du 2026-11-07)
+  const entieres = html.match(/<details class="nv-conflit__entieres">([\s\S]*?)<\/details>/)?.[1];
+  assert.ok(entieres, 'les deux versions entières, dans un bloc fermé');
+  const versions = [...entieres.matchAll(/<div class="nv-version nv-version--(\d)"><h5 class="nv-version__titre">([^<]+)<\/h5><div class="nv-version__texte">([\s\S]*?)<\/div><\/div>/g)];
+  assert.deepEqual(versions.map((m) => [m[1], m[2]]), [['1', titreDeLaVersion(1, MAGIE.fait_le)], ['2', titreDeLaVersion(2)]]);
+  assert.ok(titreDeLaVersion(1, MAGIE.fait_le).includes(instantLisible(MAGIE.fait_le)), 'la version 1 datée par son lot');
+  assert.match(titreDeLaVersion(1), /site de dev/);
+  assert.match(titreDeLaVersion(2), /livraison/);
   assert.equal(texte(versions[0][3]), c.version_1.valeur, 'le texte long, lisible en entier');
   assert.equal(texte(versions[1][3]), c.version_2.valeur);
   assert.match(texte(versions[0][3]), /Paragraphe ajouté sur le site de dev/);
   // le Markdown se lit tel quel : aucune balise venue du texte, et l'aperçu HTML de l'éditeur n'est pas posé
   assert.doesNotMatch(versions[0][3], /<(?!\/?(?:del|ins)>)/);
   assert.doesNotMatch(html, /aperçu 0/);
-  // les différences mot à mot (barré : la version 2 seulement ; en gras : la version 1 seulement)
-  const diff = html.match(/<details class="nv-conflit__differences">[\s\S]*?<div class="nv-diff">([\s\S]*?)<\/div><\/details>/)?.[1];
+  // les différences mot à mot (barré : la version 2 seulement ; en gras : la version 1 seulement), montrées d'office, avant les versions entières
+  const diff = html.match(/<div class="nv-conflit__differences">[\s\S]*?<div class="nv-diff">([\s\S]*?)<\/div><\/div><details class="nv-conflit__entieres">/)?.[1];
   assert.ok(diff, 'les différences');
   assert.match(diff, /<ins>[^<]*Paragraphe/);
   assert.match(diff, /<del>[^<]*réécrite/);
@@ -62,13 +67,47 @@ test('une page du guide modifiée puis réécrite : les deux versions côte à c
   assert.match(html, /<p class="nv-conflit__raison">les règles ont changé « Texte » autrement<\/p>/, 'la raison lisible, jamais la trace');
 });
 
+// Demande du propriétaire du 2026-11-07 (« ne se limite qu'à la différence entre les deux ») : un long texte dont un seul paragraphe change ne montre que
+// ce paragraphe et un peu de contexte ; le reste, identique, est replié (lib/diff-replie.mjs), et rien n'est perdu.
+test('un long texte en conflit : seulement le passage qui change, les passages identiques repliés, les deux versions entières dans un bloc fermé', () => {
+  const c = structuredClone(MAGIE.conflits[0]);
+  const paragraphes = Array.from({ length: 40 }, (_, i) => `Paragraphe ${i} identique aux deux versions, assez long pour peser dans la page.`);
+  c.version_2.valeur = paragraphes.join('\n');
+  c.version_1.valeur = paragraphes.map((p, i) => (i === 20 ? `${p} Phrase ajoutée.` : p)).join('\n');
+  const html = htmlDuConflit(c, 0, { faitLe: MAGIE.fait_le });
+  const bloc = html.match(/<div class="nv-conflit__differences">([\s\S]*?)<\/div><\/div><details class="nv-conflit__entieres">/)?.[1];
+  assert.ok(bloc, 'les différences, montrées d’office');
+  const diff = bloc.slice(bloc.indexOf('<div class="nv-diff">'));
+  const replies = [...diff.matchAll(/<details class="nv-diff__replie"><summary>[^<]*<\/summary>([^<]*)<\/details>/g)].map((m) => m[1]);
+  assert.equal(replies.length, 2, 'avant et après le changement');
+  // hors des passages repliés : le paragraphe changé et ses voisins, pas plus
+  const visible = texte(diff.replace(/<details class="nv-diff__replie">[\s\S]*?<\/details>/g, ''));
+  assert.match(visible, /Paragraphe 20 /);
+  assert.match(visible, /Paragraphe 19 /);
+  assert.match(visible, /Paragraphe 21 /);
+  assert.doesNotMatch(visible, /Paragraphe (?:[0-9]|1[0-8]|2[2-9]|3\d) /);
+  assert.ok(visible.length < c.version_1.valeur.length / 5, 'bien plus court que le texte entier');
+  assert.match(diff, /<ins>[^<]*Phrase ajoutée\.<\/ins>/);
+  // rien n'est perdu : visible + replié redonnent la version 1 ; les deux versions entières restent lisibles dans leur bloc fermé
+  assert.equal(texte(diff.replace(/<summary>[^<]*<\/summary>/g, '').replace(/<del>[^<]*<\/del>/g, '')), c.version_1.valeur);
+  assert.ok(texte(html).includes(c.version_1.valeur) && texte(html).includes(c.version_2.valeur));
+});
+
+test('deux textes identiques : les deux versions côte à côte, sans bloc de différences', () => {
+  const c = structuredClone(MAGIE.conflits[0]);
+  c.version_2.valeur = c.version_1.valeur;
+  const html = htmlDuConflit(c, 0);
+  assert.doesNotMatch(html, /nv-conflit__differences|nv-conflit__entieres/);
+  assert.equal([...html.matchAll(/<div class="nv-version nv-version--\d">/g)].length, 2);
+});
+
 // R164 : une balise de plusieurs mots posée sur le site de dev autour d'un texte que les règles livrées ont gardé (« Sort fer ») : les différences
 // (lib/notes-de-version-rendu.mjs#diffMots) la gardent entière dans un seul morceau, et le middleware la rend ; aucune « {{ » dans le texte visible.
 test('les différences d’un conflit : une balise de plusieurs mots posée autour d’un texte existant reste entière et se rend (R164)', () => {
   const c = structuredClone(MAGIE.conflits[0]);
   c.version_1.valeur = 'Lance des {{sort-fer|sorts "fer"}}, perce les défenses.';
   c.version_2.valeur = 'Lance des sorts "fer", perce les défenses.';
-  const diff = htmlDuConflit(c, 0).match(/<div class="nv-diff">([\s\S]*?)<\/div><\/details>/)?.[1];
+  const diff = htmlDuConflit(c, 0).match(/<div class="nv-diff">([\s\S]*?)<\/div><\/div>/)?.[1];
   assert.ok(diff, 'les différences');
   assert.match(diff, /<ins>\{\{sort-fer\|sorts &quot;fer&quot;\}\},<\/ins>/, 'la balise entière dans un seul <ins>');
   for (const m of diff.match(/<(del|ins)>[^<]*<\/\1>/g)) assert.equal(m.split('{{').length, m.split('}}').length, m);
@@ -86,8 +125,10 @@ test('une page retirée des règles : seul le choix 2 (abandonner), la raison di
   assert.match(texte(html), /2 : abandonner cette modification \(la règle livrée reste\)/);
   assert.match(texte(html), /3 : saisir à la main ce qui remplace les deux \(seul un champ se saisit à la main/);
   assert.doesNotMatch(html, /data-nv-saisie/, 'pas de saisie');
-  assert.match(texte(html), /Version 1 : ce que le site de dev avait écritTexte : > « Ne plus faire qu’un avec soi-même. »/);
-  assert.match(texte(html), /Version 2 : ce que disent les règles livréesLigne supprimée : elle n’existe plus dans les règles livrées\./);
+  // une ligne entière face à une ligne supprimée : pas de différences, les deux versions côte à côte, en entier
+  assert.doesNotMatch(html, /nv-conflit__differences|nv-conflit__entieres/);
+  assert.ok(texte(html).includes(`${titreDeLaVersion(1)}${texteDeLaVersion(c.version_1)}`));
+  assert.ok(texte(html).includes(`${titreDeLaVersion(2)}${texteDeLaVersion(c.version_2)}`));
 });
 
 test('une modification sans valeur de champ (référence rompue, forme ancienne) : la raison, et seul le choix 2', () => {
