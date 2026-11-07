@@ -12,7 +12,10 @@ import { test } from 'node:test';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
+import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
+import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { baseDImport, lotsAvant } from './aide-base-d-import.mjs';
+import { ecrituresDuTexte } from './aide-ecritures-du-lien.mjs';
 
 const MIGRATION = '0091-r184-plan-des-regles.sql';
 const lire = (chemin) => readFileSync(new URL(`../../${chemin}`, import.meta.url), 'utf8');
@@ -233,7 +236,10 @@ test('R184, R185 : les pages absorbées et les pages retitrées gardent leurs an
 });
 
 test('R184 : les pages nouvelles, famille docs, résumées par la première phrase de leur texte (réponse du propriétaire), et les blocs suivent leur texte', () => {
-  const affiche = (s) => s.replace(/\[\[[^\]|]*\|([^\]]*)\]\]/g, '$1').replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/\{\{[^}|]*\|([^}]*)\}\}/g, '$1')
+  // le texte affiché : la migration 0098 a fait des [[…]] des balises de mots-clés, dont « {{id}} » affiche le libellé (celui de la base courante, ou
+  // de l'état d'après la migration si le site l'a changé depuis)
+  const vocabulaires = [db, apres0091()].map(chargerVocabulaire);
+  const affiche = (s, v) => texteSansBalises(s, v, { definitions: false }).replace(/\[\[[^\]|]*\|([^\]]*)\]\]/g, '$1').replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/\{\{[^}|]*\|([^}]*)\}\}/g, '$1')
     .replace(/\*\*/g, '').replace(/^- /, '');
   for (const id of sansLesRetireesDepuis(NOUVELLES)) {
     const p = page(id);
@@ -242,9 +248,9 @@ test('R184 : les pages nouvelles, famille docs, résumées par la première phra
     // le site de dev, source de ce qu'il modifie, peut réécrire le texte sans le résumé (réponse du propriétaire du 2026-11-06 : « Initiative » garde son
     // ancien résumé quand le site réécrit l'ouverture de son texte) : le résumé est la première phrase du texte courant, ou de l'un des textes que le
     // site a remplacés ; un résumé écrit par le site est le sien. Pas valeurDImport : des lots rapatriés avant la 0091 la ramèneraient avant elle.
-    const premier = (texte) => affiche(texte.split('\n').find((l) => l && !l.startsWith('#') && !l.startsWith('<!--') && !l.startsWith('> «')));
+    const premiers = (texte) => vocabulaires.map((v) => affiche(texte.split('\n').find((l) => l && !l.startsWith('#') && !l.startsWith('<!--') && !l.startsWith('> «')), v));
     const remplaces = historique.operations('page', { id }).filter((o) => o.operation === 'modifier' && 'corps_md' in o.avant).map((o) => o.avant.corps_md);
-    if (!historique.modifiee('page', { id }, 'resume')) assert.ok([p.corps_md, ...remplaces].some((t) => premier(t).startsWith(p.resume)), `${id} : « ${p.resume} »`);
+    if (!historique.modifiee('page', { id }, 'resume')) assert.ok([p.corps_md, ...remplaces].flatMap(premiers).some((t) => t.startsWith(p.resume)), `${id} : « ${p.resume} »`);
     const source = db.prepare('SELECT s.texte FROM page_source ps JOIN source s ON s.id = ps.source_id WHERE ps.page_id = ? AND ps.ordre = 0').get(id).texte;
     assert.match(source, /^Google Doc « /, id);
   }
@@ -266,17 +272,19 @@ test('R184 : les pages nouvelles, famille docs, résumées par la première phra
 
 test('R184 (5) : les retouches E1 à E12 ; plus aucune phrase ne renvoie « plus haut », « plus bas » ou « sur cette page » vers un texte parti (après la 0091)', () => {
   const corps = corpsApres0091; // le texte tel que la 0091 et db:sync-pages l'ont laissé (le site de dev peut le réécrire depuis)
+  // un passage qui contient un lien : écrit tel que la 0091 l'a laissé, ou avec la balise que la migration 0098 en a faite (ecrituresDuTexte)
+  const contient = (id, modele) => ecrituresDuTexte(apres0091(), modele).some((f) => corps(id).includes(f));
   assert.ok(corps('guide/creer-son-personnage').includes('en six étapes : chaque étape'));                                         // E1
-  assert.ok(corps('guide/exercer-un-metier').includes('(voir « Ses limites » dans [[guide/s-entrainer-et-exercer-un-metier|S’entraîner]])')); // E2
-  assert.ok(corps('guide/reussites-echecs-et-critiques').includes('(voir « Le score » dans [[guide/reussir-une-action|Réussir une action]])')); // E3
-  assert.ok(corps('guide/les-degats').includes('(voir [[guide/resistances-et-faiblesses|Résistances et faiblesses]])'));            // E4
-  assert.ok(corps('guide/le-tour-de-jeu').includes('[[guide/actions-et-mouvements|Les actions et mouvements]] et [[guide/vitesse-et-portee|La vitesse et la portée]] ; sa page')); // E5
+  assert.ok(contient('guide/exercer-un-metier', '(voir « Ses limites » dans [[guide/s-entrainer-et-exercer-un-metier|S’entraîner]])')); // E2
+  assert.ok(contient('guide/reussites-echecs-et-critiques', '(voir « Le score » dans [[guide/reussir-une-action|Réussir une action]])')); // E3
+  assert.ok(contient('guide/les-degats', '(voir [[guide/resistances-et-faiblesses|Résistances et faiblesses]])'));            // E4
+  assert.ok(contient('guide/le-tour-de-jeu', '[[guide/actions-et-mouvements|Les actions et mouvements]] et [[guide/vitesse-et-portee|La vitesse et la portée]] ; sa page')); // E5
   assert.ok(corps('guide/le-mode-hyper').includes('aux valeurs différentes : cette liste ne compte pas'));                            // E6
-  assert.ok(corps('guide/alignement').includes('(voir [[guide/les-neuf-alignements|Les neuf alignements]])'));                       // E9
-  assert.ok(corps('guide/choisir-ses-magies').includes('## Résistances et faiblesses\n\nVoir [[guide/resistances-et-faiblesses|Résistances et faiblesses]].\n')); // E10
-  assert.ok(corps('guide/la-magie-en-jeu').includes('leur page le dit. Voir [[guide/resistances-et-faiblesses|Résistances et faiblesses]].\n')); // E11
+  assert.ok(contient('guide/alignement', '(voir [[guide/les-neuf-alignements|Les neuf alignements]])'));                       // E9
+  assert.ok(contient('guide/choisir-ses-magies', '## Résistances et faiblesses\n\nVoir [[guide/resistances-et-faiblesses|Résistances et faiblesses]].\n')); // E10
+  assert.ok(contient('guide/la-magie-en-jeu', 'leur page le dit. Voir [[guide/resistances-et-faiblesses|Résistances et faiblesses]].\n')); // E11
   const fiche = corps('guide/fiche-tableau-resistances-faiblesses');                                                                 // E12
-  assert.ok(fiche.includes('tout est indiqué [[guide/resistances-et-faiblesses|ici]].') && !fiche.includes('communiquent ensemble'));
+  assert.ok(contient('guide/fiche-tableau-resistances-faiblesses', 'tout est indiqué [[guide/resistances-et-faiblesses|ici]].') && !fiche.includes('communiquent ensemble'));
   for (const id of ['guide/creer-son-personnage', ...ETAPES, 'guide/exercer-un-metier', 'guide/reussites-echecs-et-critiques']) {
     assert.ok(!/sur cette page|, plus haut\)|« Le score » plus haut/.test(corps(id)), id);
   }

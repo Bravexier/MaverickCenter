@@ -600,8 +600,8 @@ export const TABLES = {
     libelle: 'Catégorie',
     colonnes: { libelle: { type: 'ligne', libelle: 'Catégorie', requis: true } },
   },
-  // le vocabulaire des mots-clés, le glossaire (/recherche/ en mode modification ; migration 0056) : renommer un mot-clé ne réécrit aucun texte (son id
-  // reste ; une balise d'un texte de case, « {{id|texte}} », garde le texte écrit, une balise d'un texte mis en forme, « {{id}} », montre le nouveau
+  // le vocabulaire des mots-clés, le glossaire (page Glossaire /regles/glossaire/ en mode modification ; migration 0056) : renommer un mot-clé ne
+  // réécrit aucun texte (son id reste ; une balise d'un texte de case, « {{id|texte}} », garde le texte écrit, une balise d'un texte mis en forme, « {{id}} », montre le nouveau
   // libellé) ; vers l'écriture d'un autre mot-clé : refusé, la page propose de les fusionner
   // (opération `fusionner_mots_cles`) ; les mots-clés dont le site se sert ne se renomment pas (lib/mots-cles.mjs#MOTS_CLES_PROTEGES), mais leur
   // définition se modifie ; une définition vidée : NULL (pas encore décrit) ; l'abréviation (migration 0090, réponse du propriétaire : « Modifiable et
@@ -919,7 +919,7 @@ export const ENTITES = {
     suppression: true,
     champs: { libelle: { type: 'ligne', libelle: 'Catégorie', requis: true } },
   },
-  // un mot-clé du glossaire (/recherche/), son libellé, sa définition et son abréviation (migration 0090) ; supprimé, il est retiré de toutes les pages qui
+  // un mot-clé du glossaire (page Glossaire /regles/glossaire/), son libellé, sa définition et son abréviation (migration 0090) ; supprimé, il est retiré de toutes les pages qui
   // le portent et de tous les textes qui le citent (sa balise devient son texte simple ; sauf les mots-clés dont le site se sert : lib/mots-cles.mjs) ;
   // son adresse et sa couleur (migration 0098), écrites seulement si elles sont données
   mot_cle: {

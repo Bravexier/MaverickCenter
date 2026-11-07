@@ -67,6 +67,24 @@ test('adresse d’un mot-clé : la forme du CHECK, puis un chemin du site (ancre
   assert.match(fauteDeLUrl('https://exemple.org/', adresses), /interne/);
 });
 
+test('adresse d’un mot-clé : ni guillemet, apostrophe, chevron, accent grave ni blanc, nulle part (requête et ancre comprises), au-delà du CHECK', () => {
+  const adresses = new Set(['/races/nain/', '/metiers/']);
+  for (const c of ['"', '\'', '<', '>', '`']) {
+    for (const url of [`/races/nain${c}/`, `/metiers/?tri=${c}nom`, `/metiers/#metier-${c}mineur`, `/metiers/#a?b${c}`]) {
+      assert.match(fauteDeFormeDeLUrl(url), /ne contient ni/, url);
+      assert.match(fauteDeLUrl(url, adresses), /ne contient ni/, `${url} : la même faute par fauteDeLUrl (service et db:check)`);
+    }
+  }
+  for (const blanc of [' ', '\t', '\n', '\r', ' ', ' ', '　']) {
+    for (const url of [`/races/nain/${blanc}`, `/metiers/?tri=${blanc}nom`, `/metiers/#metier${blanc}mineur`]) {
+      assert.match(fauteDeFormeDeLUrl(url), /sans espace ni aucun blanc/, JSON.stringify(url));
+      assert.ok(fauteDeLUrl(url, adresses), JSON.stringify(url));
+    }
+  }
+  // ce que la défense laisse passer : la ponctuation ordinaire d'une adresse, dans le chemin, la requête et l'ancre
+  assert.equal(fauteDeLUrl('/metiers/?tri=nom&ordre=-1;x=(a)#metier-mineur!~*', adresses), null);
+});
+
 test('couleur : lue (écrite ou référence), sa classe (calcul de texte, sans la palette), sa faute (avec la palette)', () => {
   assert.deepEqual(lireLaCouleur('#12abef'), { ecrite: '#12abef' });
   assert.deepEqual(lireLaCouleur('classe:melee'), { famille: 'classe', id: 'melee' });
@@ -167,7 +185,7 @@ test('toute la base : chaque adresse et chaque couleur de mot-clé conviennent ;
   }
 });
 
-test('db:check (migration 0098) : un lien mal écrit ou vers aucune page, une couleur inconnue, un lien `[[…]]` ou Markdown interne hors code ; ni une page d’exemple, ni « /#lien-discord »', () => {
+test('db:check (migration 0098) : un lien mal écrit (guillemet compris) ou vers aucune page, une couleur inconnue, un lien `[[…]]` ou Markdown interne hors code ; ni une page d’exemple, ni « /#lien-discord »', () => {
   const dossier = dossierTemporaire('mots-cles-liens-check');
   const copie = join(dossier, 'check.db');
   cpSync(cheminBase({ sansExemples: false }), copie);
@@ -180,10 +198,12 @@ test('db:check (migration 0098) : un lien mal écrit ou vers aucune page, une co
   const d = new DatabaseSync(copie);
   assert.equal(avant.bilan.liens_mots_cles, d.prepare('SELECT count(*) AS n FROM mot_cle WHERE url IS NOT NULL').get().n);
   assert.equal(avant.bilan.couleurs_mots_cles, d.prepare('SELECT count(*) AS n FROM mot_cle WHERE couleur IS NOT NULL').get().n);
-  const [a, b, c] = d.prepare('SELECT id FROM mot_cle WHERE url IS NULL ORDER BY id LIMIT 3').all().map((m) => m.id);
+  const [a, b, c, e] = d.prepare('SELECT id FROM mot_cle WHERE url IS NULL ORDER BY id LIMIT 4').all().map((m) => m.id);
   d.prepare("UPDATE mot_cle SET url = '/races/pas-de-page-d-essai/' WHERE id = ?").run(a);
   d.prepare("UPDATE mot_cle SET url = '/races/drakos' WHERE id = ?").run(b);
   d.prepare("UPDATE mot_cle SET couleur = 'race:inconnue' WHERE id = ?").run(c);
+  // le CHECK de mot_cle.url l'admet (ASCII imprimable) ; db:check le refuse par la même fonction que le service (fauteDeFormeDeLUrl)
+  d.prepare("UPDATE mot_cle SET url = '/races/drakos/#x\"onmouseover' WHERE id = ?").run(e);
   const page = d.prepare("SELECT id, corps_md FROM page WHERE type = 'guide' AND statut <> 'example' ORDER BY id").get();
   d.prepare('UPDATE page SET corps_md = ? WHERE id = ?').run(`${page.corps_md}\n\nVoir [[Drakos]] et \`[[Drakos]]\`, [Discord](/#lien-discord), [ailleurs](https://exemple.org/).\n`, page.id);
   const metier = d.prepare('SELECT id, description FROM metier ORDER BY id').get();
@@ -197,6 +217,7 @@ test('db:check (migration 0098) : un lien mal écrit ou vers aucune page, une co
   attendu(`mot_cle ${a} : le lien`, /aucune page/);
   attendu(`mot_cle ${b} : le lien`, /barre finale/);
   attendu(`mot_cle ${c} : la couleur`, /pas de couleur/);
+  attendu(`mot_cle ${e} : le lien`, /ne contient ni/);
   attendu(`page.corps_md ${page.id} : le lien « [[Drakos]] »`, /balise/);
   attendu(`metier.description ${metier.id} : le lien « [x](/races/drakos/) »`, /balise/);
   const liens = apres.problemes.filter((p) => p.includes(' : le lien « ') && !p.startsWith('mot_cle '));

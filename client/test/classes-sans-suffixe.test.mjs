@@ -10,14 +10,20 @@ import { HYBRIDES_SANS_CLASSE_RACIALE } from '../src/lib/race-kinds.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 
-test('aucune colonne de texte d’aucune table ne contient « (classe) »', () => {
+// « (classe) » admis dans le libellé des mots-clés (réponse du propriétaire du 2026-11-07 : « Oui, admis là » — « « (classe) » est admis dans le
+// libellé des mots-clés et sur ces trois pages (Glossaire, Recherche, Données). Ailleurs (titres, pages des classes), il reste interdit, comme le veut
+// la 0009. ») : la migration 0098 nomme « <Nom> (classe) » le mot-clé d'une classe homonyme d'une race (Q14, skill zone-mots-cles-liens). Seule cette
+// colonne est admise (la vue v_mot_cle, qui la recopie, n'est pas une table : non balayée ici).
+const ADMISES = new Set(['mot_cle.libelle']);
+
+test('aucune colonne de texte d’aucune table ne contient « (classe) », hors du libellé des mots-clés', () => {
   // hors section 15 (notes de version, historique des modifications du site) : des traces, qui citent la production d'avant la livraison (master
   // peut précéder la migration 0009) et les valeurs au moment de chaque modification (lib/notes-de-version.mjs#TABLES_DES_NOTES)
   const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT GLOB '*_fts*'").all().map((r) => r.name)
     .filter((t) => !TABLES_DES_NOTES.includes(t));
   const trouves = [];
   for (const t of tables) {
-    for (const c of db.prepare(`PRAGMA table_info("${t}")`).all().filter((c) => /TEXT/i.test(c.type))) {
+    for (const c of db.prepare(`PRAGMA table_info("${t}")`).all().filter((c) => /TEXT/i.test(c.type) && !ADMISES.has(`${t}.${c.name}`))) {
       const n = db.prepare(`SELECT count(*) AS n FROM "${t}" WHERE "${c.name}" LIKE '%(classe)%'`).get().n;
       if (n) trouves.push(`${t}.${c.name} : ${n}`);
     }

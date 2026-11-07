@@ -62,15 +62,20 @@ const sansRequete = (adresse) => {
   return ancre ? `${chemin}#${ancre}` : chemin;
 };
 
+/** Les caractères qu'une adresse ne contient jamais, requête et ancre comprises (en plus du CHECK) : ils fermeraient l'attribut ou la balise qui la porte. */
+const CARACTERES_REFUSES = /["'<>`]/;
+
 /**
- * La faute de forme d'une adresse (la règle du CHECK de mot_cle.url), ou null : interne (« / » au début, pas « // »), ASCII imprimable sans espace,
- * sans « \ ».
+ * La faute de forme d'une adresse, ou null : la règle du CHECK de mot_cle.url (interne : « / » au début, pas « // » ; ASCII imprimable, donc sans
+ * aucun blanc ; sans « \ »), plus une défense que le CHECK n'a pas : ni « " », « ' », « < », « > » ni « ` », dans toute l'adresse (requête et
+ * ancre comprises). Le service (serveur/edition.mjs#refuserLeLien) et db:check la suivent par fauteDeLUrl.
  */
 export function fauteDeFormeDeLUrl(url) {
   if (typeof url !== 'string' || !url) return 'une adresse est attendue';
   if (!url.startsWith('/') || url.startsWith('//')) return 'l’adresse doit être interne au site et commencer par « / » (« /races/elfe/ »), sans le préfixe de déploiement';
-  if (/[^!-~]/.test(url)) return 'l’adresse ne s’écrit qu’en caractères ASCII imprimables, sans espace';
+  if (/[^!-~]/.test(url)) return 'l’adresse ne s’écrit qu’en caractères ASCII imprimables, sans espace ni aucun blanc';
   if (url.includes('\\')) return 'l’adresse ne contient pas de « \\ »';
+  if (CARACTERES_REFUSES.test(url)) return 'l’adresse ne contient ni « " », ni « \' », ni « < », ni « > », ni « ` »';
   return null;
 }
 

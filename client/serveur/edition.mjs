@@ -35,7 +35,8 @@
 // est rejouée : balisesRetireesParLeLot).
 // Liens (migration 0098 : les [[…]] et les liens Markdown internes sont devenus des balises de mots-clés qui portent une adresse, lib/mots-cles-liens.mjs) :
 // un lien interne ajouté à un texte (hors code, hors page d'exemple ; un lien externe reste permis) devient la balise du seul mot-clé qui mène à sa page
-// (texteSansLiens), sinon il est refusé (400 { champ, liens }, renvoi au Glossaire) ; un lot d'avant la 0098 se rejoue converti par le registre de la
+// (texteSansLiens), sinon il est refusé (400 { champ, liens }, renvoi au Glossaire), comme un lien dont le texte affiché n'est pas un texte simple
+// (mise en forme, balise : TEXTE_DE_LIEN_NON_SIMPLE) ; un lot d'avant la 0098 se rejoue converti par le registre de la
 // migration (ancienneEcritureDesLiens).
 // Node seulement (node:sqlite), sans dépendance.
 import { existsSync, readFileSync } from 'node:fs';
@@ -306,12 +307,20 @@ export function motCleDe(ctx, libelle) {
 export const vocabulaireVivant = (db) => vocabulaireDesMotsCles(motsClesDeLaBase(db));
 
 /**
+ * Ce qui fait d'un texte affiché de lien saisi autre chose qu'un texte simple : une marque Markdown (« * », « _ », « ` », « ~ », « \ », crochets), une
+ * balise HTML (« < », « > ») ou du glossaire (accolades, « | »), un saut de ligne. Un tel lien est refusé (choix du leader-technique), sinon
+ * lib/liens-en-mots-cles.mjs#baliseDuLien en ferait une balise au texte mis en forme (« [**x**](/races/) » → « {{race|**x**}} »).
+ */
+const TEXTE_DE_LIEN_NON_SIMPLE = /[*_`~\\[\]<>{}|\n\r]/;
+
+/**
  * La valeur d'un champ texte sans les liens internes qu'elle AJOUTE (migration 0098 : un lien se donne par la balise du mot-clé de sa page) : chaque
  * `[[cible]]`, `[[cible|texte]]` ou `[texte](/adresse)` absent de `avant` (la valeur en place ; hors code dans un texte mis en forme ; un lien externe
  * n'est pas lu, un lien de LIENS_GARDES reste) devient la balise, texte affiché gardé (lib/liens-en-mots-cles.mjs#baliseDuLien, forme canonique de la
  * colonne), du SEUL mot-clé qui mène à l'adresse visée : celle de la page qu'un `[[…]]` désigne (résolu comme le site,
  * lib/wikilinks-resolution.mjs ; une page d'exemple n'en a pas), ou l'adresse écrite (lib/mots-cles-liens.mjs#motsClesDeLAdresse). Aucun mot-clé,
- * plusieurs, une cible introuvable ou ambiguë, un texte affiché qu'une balise n'écrit pas : refus 400 { champ, liens }, qui renvoie au Glossaire.
+ * plusieurs, une cible introuvable ou ambiguë : refus 400 { champ, liens }, qui renvoie au Glossaire ; un texte affiché vide ou qui n'est pas un texte
+ * simple (TEXTE_DE_LIEN_NON_SIMPLE) : le même refus, qui demande la balise du mot-clé avec un texte simple.
  * `exemple` : une page d'exemple, dont les liens restent.
  */
 function texteSansLiens(ctx, champ, colonne, valeur, avant, quoi, { exemple = false } = {}) {
@@ -336,9 +345,15 @@ function texteSansLiens(ctx, champ, colonne, valeur, avant, quoi, { exemple = fa
     return r?.entry && r.entry.statut !== 'example' ? adresseDeLaPage(r.entry.id) : null;
   };
   const refuses = [];
+  const nonSimples = [];
   let sortie = '';
   let dernier = 0;
   for (const lien of ajoutes) {
+    if (!lien.texte || TEXTE_DE_LIEN_NON_SIMPLE.test(lien.texte)) {
+      refuses.push(lien.brut);
+      nonSimples.push(lien.brut);
+      continue;
+    }
     const adresse = adresseDuLien(lien);
     const candidats = adresse ? motsClesDeLAdresse(motsCles, adresse) : [];
     const balise = candidats.length === 1
@@ -352,10 +367,19 @@ function texteSansLiens(ctx, champ, colonne, valeur, avant, quoi, { exemple = fa
     dernier = lien.fin;
   }
   if (refuses.length) {
-    const liste = refuses.map((b) => `« ${b} »`).join(', ');
-    throw refus(`${quoi} : ${liste} — un lien vers une page du site s’écrit avec la balise du mot-clé qui y mène (« {{id}} » ou « {{id|texte}} ») ; `
-      + `aucun mot-clé ne mène à ${refuses.length > 1 ? 'ces adresses' : 'cette adresse'}, ou plusieurs : voir le Glossaire (${ADRESSE_DU_GLOSSAIRE}), `
-      + 'où un mot-clé reçoit son lien.', { champ: colonne, liens: refuses });
+    const sansMotCle = refuses.filter((b) => !nonSimples.includes(b));
+    const liste = (l) => l.map((b) => `« ${b} »`).join(', ');
+    const raisons = [];
+    if (nonSimples.length) {
+      raisons.push(`${liste(nonSimples)} : le texte d’un lien n’a ni mise en forme ni balise ; écrire la balise du mot-clé qui mène à la page avec un `
+        + 'texte simple (« {{id}} » ou « {{id|texte}} »)');
+    }
+    if (sansMotCle.length) {
+      raisons.push(`${liste(sansMotCle)} : un lien vers une page du site s’écrit avec la balise du mot-clé qui y mène (« {{id}} » ou « {{id|texte}} ») ; `
+        + `aucun mot-clé ne mène à ${sansMotCle.length > 1 ? 'ces adresses' : 'cette adresse'}, ou plusieurs`);
+    }
+    throw refus(`${quoi} : ${raisons.join(' — ')} — voir le Glossaire (${ADRESSE_DU_GLOSSAIRE}), où un mot-clé reçoit son lien.`,
+      { champ: colonne, liens: refuses });
   }
   return sortie + valeur.slice(dernier);
 }

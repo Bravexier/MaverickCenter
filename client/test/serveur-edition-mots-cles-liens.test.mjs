@@ -6,7 +6,9 @@
 //     page inexistante, couleur inconnue ; l'existence de la page se lit dans la base vivante, ancre et requête non vérifiées ;
 //   - fusion : la cible garde son lien et sa couleur, prend ceux de la source qu'elle n'a pas (noté au journal), et le résumé dit ce qu'elle garde ;
 //   - un lien saisi dans un texte (CHAMPS_DE_TEXTE) : `[[…]]` et `[texte](/…)` ajoutés deviennent la balise du seul mot-clé qui mène à leur page, sinon
-//     400 { champ, liens } (renvoi au Glossaire) ; un lien externe, un lien dans un code, un lien déjà là, une page d'exemple : rien.
+//     400 { champ, liens } (renvoi au Glossaire) ; un lien externe, un lien dans un code, un lien déjà là, une page d'exemple : rien ; un lien dont le
+//     texte affiché porte du Markdown ou une balise (« [**x**](/races/) », « [{{a}}](/x/) ») : refusé de même (choix du leader-technique), avec un
+//     message qui demande la balise du mot-clé avec un texte simple, jamais converti en « {{race|**x**}} ».
 // Les tests lisent l'état avant d'écrire et prennent des noms absents de la base.
 //   node --test test/serveur-edition-mots-cles-liens.test.mjs
 import assert from 'node:assert/strict';
@@ -198,6 +200,42 @@ test('un lien saisi devient la balise du seul mot-clé qui mène à sa page ; ex
   } else {
     assert.doesNotMatch(JSON.stringify(ev.corps), /liens/, `un autre refus que celui des liens : ${JSON.stringify(ev.corps)}`);
   }
+});
+
+test('un lien saisi au texte mis en forme ou balisé : 400 { champ, liens } qui demande la balise avec un texte simple, rien d’écrit, même vers un mot-clé unique', () => {
+  const { db, lot, nombre } = nouvelle();
+  const page = db.prepare("SELECT id, corps_md FROM page WHERE type = 'guide' AND statut <> 'example' AND instr(corps_md, '[[') = 0 AND instr(corps_md, '](/') = 0 ORDER BY id").get();
+  const modifier = (corps) => lot([{ op: 'modifier', table: 'page', cle: { id: page.id }, valeurs: { corps_md: corps } }], `${page.id}/`);
+  // une adresse où mène un seul mot-clé (lue dans la base vivante, jamais supposée) : sans le refus, le lien deviendrait sa balise
+  const adresse = db.prepare("SELECT url FROM mot_cle WHERE url IS NOT NULL AND url NOT LIKE '%#%' AND url NOT LIKE '%?%' GROUP BY url HAVING count(*) = 1 ORDER BY url").get().url;
+  ok(modifier(`${page.corps_md}\n\n[texte simple d’essai](${adresse})\n`));
+  assert.match(db.prepare('SELECT corps_md FROM page WHERE id = ?').get(page.id).corps_md, /\{\{[^{}|]+\|texte simple d’essai\}\}/, 'le témoin : un texte simple passe');
+  const corps = db.prepare('SELECT corps_md FROM page WHERE id = ?').get(page.id).corps_md;
+  const avant = nombre();
+  const nonSimples = [`[**x**](${adresse})`, `[*x*](${adresse})`, `[_x_](${adresse})`, `[~~x~~](${adresse})`,
+    `[<b>x</b>](${adresse})`, `[{{a}}](${adresse})`, `[a\\*b](${adresse})`, `[](${adresse})`, '[[Drakos|**d**]]', '[[Drakos|{{a}}]]'];
+  for (const lien of nonSimples) {
+    const r = modifier(`${corps}\n\nVoir ${lien}.\n`);
+    assert.equal(r.statut, 400, `${lien} : ${JSON.stringify(r.corps)}`);
+    assert.equal(r.corps.champ, 'corps_md');
+    assert.deepEqual(r.corps.liens, [lien]);
+    assert.match(r.corps.erreur, /texte simple/, lien);
+    assert.match(r.corps.erreur, /Glossaire \(\/regles\/glossaire\/\)/);
+    assert.doesNotMatch(r.corps.erreur, /aucun mot-clé ne mène/, `${lien} : le refus dit la vraie raison`);
+  }
+  // un texte de case suit la même règle
+  const metier = db.prepare('SELECT id, description FROM metier ORDER BY id').get();
+  const r = lot([{ op: 'modifier', table: 'metier', cle: { id: metier.id }, valeurs: { description: `${metier.description} Voir [**x**](${adresse}).` } }], 'metiers/');
+  assert.equal(r.statut, 400, JSON.stringify(r.corps));
+  assert.deepEqual(r.corps, { ...r.corps, champ: 'description', liens: [`[**x**](${adresse})`] });
+  // les deux raisons dans un même texte : chaque lien refusé est listé, et le message les dit toutes deux
+  const deux = modifier(`${corps}\n\n[**x**](${adresse}) et [y](/regles/pas-de-page-d-essai/).\n`);
+  assert.equal(deux.statut, 400);
+  assert.deepEqual(deux.corps.liens, [`[**x**](${adresse})`, '[y](/regles/pas-de-page-d-essai/)']);
+  assert.match(deux.corps.erreur, /texte simple/);
+  assert.match(deux.corps.erreur, /aucun mot-clé ne mène/);
+  assert.equal(nombre(), avant, 'rien d’écrit');
+  assert.equal(db.prepare('SELECT corps_md FROM page WHERE id = ?').get(page.id).corps_md, corps);
 });
 
 test('une page d’exemple garde ses liens ; un lien déjà là n’est pas jugé', () => {

@@ -26,6 +26,7 @@ import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { cleDeLigne, historiqueSite } from '../src/lib/historique-site.mjs';
 import { buildIndex, entryUrl, splitFrontmatter } from '../src/lib/wikilinks.mjs';
 import { baseDImport, lotsAvant, texteDImport } from './aide-base-d-import.mjs';
+import { ecrituresDuLien } from './aide-ecritures-du-lien.mjs';
 
 const PREMIER = 'guide/bienvenue';
 
@@ -291,7 +292,11 @@ test('décisions R18 et R186 : à court de chakra, chaque point qui manque coût
   assert.match(cent, /cela lui coûte \*\*75 % de son \{\{chakra\|chakra\}\} maximum\*\*\. S’il ne les a plus en réserve, il paie ce qui manque avec sa santé, comme toujours : \*\*3 points de santé pour 1 point de \{\{chakra\|chakra\}\}\*\*\./);
   assert.match(cent, /S’il ne lui en reste que 40, les 20 qui manquent lui coûtent 60 points de santé\./);
   // R186 élargie, dans « Et la barrière ? » de Les dégâts, juste après la phrase des coups
-  assert.match(corps('guide/les-degats'), /Elle prend les coups avant la santé, sauf contre-indication : [^\n]*\(voir \[\[guide\/blessures-et-etats\|Blessures et états\]\]\)\. Un coût payé en santé \(\{\{chakra\|chakra\}\} manquant, coût d’un sort ou d’un don\) ne passe pas par elle, sauf si un texte le précise\./);
+  // le renvoi : le lien de la 0093, ou la balise que la migration 0098 en a faite (test/aide-ecritures-du-lien.mjs), sans figer celle de la 0098
+  const echapper = (t) => t.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+  const renvoi = ecrituresDuLien(baseDImport({ garder: lotsAvant('0093') }), 'guide/blessures-et-etats', 'Blessures et états').map(echapper).join('|');
+  assert.match(corps('guide/les-degats'), new RegExp(`Elle prend les coups avant la santé, sauf contre-indication : [^\\n]*\\(voir (?:${renvoi})\\)\\. ${
+    echapper('Un coût payé en santé ({{chakra|chakra}} manquant, coût d’un sort ou d’un don) ne passe pas par elle, sauf si un texte le précise.')}`));
   const chakra = valeurDe0093('mot_cle', { id: 'chakra' }, 'description');
   assert.match(chakra, /Quand le chakra est épuisé, la santé est consommée à la hauteur de 3 points pour un de Chakra\./);
   for (const [id, texte] of [['guide/finaliser-son-personnage', etape6], ['guide/la-magie-en-jeu', magie], ['guide/le-mode-hyper', corps('guide/le-mode-hyper')], ['guide/le-mode-hyper-100', cent], ['mot_cle chakra', chakra]]) {
