@@ -1789,7 +1789,7 @@ deviendront des liens »). Un mot-clé qui porte une adresse (`mot_cle.url`, int
 | `{{humain}}` | lien vers l'adresse du mot-clé, affiché par son libellé |
 | `{{humain\|les humains}}` | idem, avec un texte d'affichage différent |
 
-- Une page à laquelle aucun mot-clé ne mène ne se lie pas : on donne d'abord l'adresse à un mot-clé (page Recherche du site de dev). Un import ne crée
+- Une page à laquelle aucun mot-clé ne mène ne se lie pas : on donne d'abord l'adresse à un mot-clé (page Glossaire du site de dev, `/regles/glossaire/`). Un import ne crée
   jamais de mot-clé.
 - `[[Titre]]`, `[[Titre|texte]]` et `[texte](/adresse)` ne s'écrivent plus dans les textes : `db:check` les refuse hors code (sauf pages d'exemple et
   `/#lien-discord`). Saisis sur le site de dev, ils deviennent la balise du seul mot-clé qui mène à la page visée, ou sont refusés

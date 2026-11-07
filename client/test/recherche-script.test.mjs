@@ -1,12 +1,16 @@
 // Le script de /recherche/ (src/scripts/recherche.mjs), exécuté dans un faux navigateur : un mot-clé cliqué affiche ses pages (jamais un événement de la
 // chronologie, qui n'a pas de mot-clé mais des catégories), l'adresse suit (?mot-cle=<id>, pushState) et le retour arrière ramène la liste ; ?mot-cle= est
 // lu au chargement ; un id inconnu (« sans-categorie » compris) « n'existe plus » ; la liste se filtre par l'écriture des mots-clés ; un événement se
-// trouve par une catégorie ; taper depuis la vue d'un mot-clé ouverte par un clic revient en arrière (pas deux entrées identiques dans l'historique) ;
-// la liste redessinée par l'éditeur (évènement « recherche:mots-cles ») est relue. Depuis la migration 0056, la liste est le glossaire : tous les
-// mots-clés, même sans page, et la vue d'un mot-clé montre sa définition.
+// trouve par une catégorie ; taper depuis la vue d'un mot-clé ouverte par un clic revient en arrière (pas deux entrées identiques dans l'historique).
+// Depuis la migration 0056, la liste est le glossaire : tous les mots-clés, même sans page, et la vue d'un mot-clé montre sa définition. La liste est
+// rendue au build et lue au chargement : plus aucun script ne la redessine (la gestion du vocabulaire est sur le Glossaire, évènement
+// « glossaire:mots-cles »), et plus personne n'émet ni n'écoute « recherche:mots-cles ».
 //   node --test test/recherche-script.test.mjs
 import assert from 'node:assert/strict';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { htmlDeLaDefinition, htmlDeLaPastille } from '../src/lib/mots-cles-balises.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { attendre, cliquer, el, fauxDocument } from './aide-faux-dom.mjs';
@@ -23,9 +27,9 @@ const motCle = (id, cle, n, libelle, extra = {}) => el('li', { 'data-id': id, 'd
 let numero = 0;
 /**
  * Charge la page /recherche/ à l'adresse `adresse` et y lance le script ; rend les éléments utiles et l'historique (`pile()` : les adresses jusqu'à
- * l'entrée actuelle ; `retour()` : le bouton Précédent).
+ * l'entrée actuelle ; `retour()` : le bouton Précédent). `avant(document)` complète la page construite avant le script (il la lit au chargement).
  */
-async function charger(adresse) {
+async function charger(adresse, { avant } = {}) {
   let url = new URL(adresse, 'http://site/');
   // l'historique de session : des entrées { href, state }, la position actuelle ; back() est asynchrone (popstate au tour suivant), comme dans un navigateur
   let entrees = [{ href: url.href, state: null }];
@@ -48,6 +52,7 @@ async function charger(adresse) {
     vue,
     el('section', { id: 'pages-trouvees', hidden: '' }, el('ul', { id: 'results' }))));
   document.title = 'Recherche — Maverick Center';
+  avant?.(document);
   const chargements = { n: 0 };
   Object.assign(globalThis, {
     window,
@@ -176,7 +181,7 @@ test('?mot-cle= lu au chargement ; un id inconnu « n’existe plus », « sans-
   assert.equal(vide.vue.hidden, true);
 });
 
-test('clic sur un mot-clé puis saisie (ou recherche, ou liste de gestion) : retour arrière, jamais deux entrées identiques de la liste', async () => {
+test('clic sur un mot-clé puis saisie (ou recherche) : retour arrière, jamais deux entrées identiques de la liste', async () => {
   const p = await charger('/recherche/');
   cliquer(p.liste.children[0].children[0], p.liste);
   await attendre();
@@ -210,58 +215,43 @@ test('clic sur un mot-clé puis saisie (ou recherche, ou liste de gestion) : ret
   await attendre();
   await attendre();
   assert.deepEqual(p.pile().map((a) => new URL(a).search), ['', '?mot-cle=magie-elementaire', '']);
-  // la soumission du formulaire, puis la liste de gestion de l'éditeur : de même
+  // la soumission du formulaire : de même
   cliquer(p.liste.children[0].children[0], p.liste);
   await attendre();
   p.$('search-form').dispatchEvent(new Event('submit', { cancelable: true }));
   await attendre();
   await attendre();
   assert.deepEqual(p.pile().map((a) => new URL(a).search), ['', '?mot-cle=magie-elementaire', ''], 'Chercher');
-  cliquer(p.liste.children[1].children[0], p.liste);
-  await attendre();
-  p.liste.setAttribute('data-gestion', '');
-  p.document.dispatchEvent(new CustomEvent('recherche:mots-cles', { detail: { gestion: true } }));
-  await attendre();
-  await attendre();
-  assert.deepEqual(p.pile().map((a) => new URL(a).search), ['', '?mot-cle=magie-elementaire', ''], 'liste de gestion');
   assert.equal(p.vue.hidden, true);
 });
 
-test('la liste redessinée par l’éditeur (site de dev) est relue : nouveaux mots-clés, liste de gestion qui remplace la vue d’un mot-clé', async () => {
-  const p = await charger('/recherche/?mot-cle=nouveau');
-  assert.equal(p.$('titre-mot-cle').textContent, 'Ce mot-clé n’existe plus', 'pas encore dans la page construite');
-  p.liste.append(motCle('nouveau', 'nouveau', 0, 'Nouveau'));
-  p.document.dispatchEvent(new CustomEvent('recherche:mots-cles', { detail: { gestion: false } }));
-  await attendre();
-  assert.equal(p.$('titre-mot-cle').textContent, 'Mot-clé « Nouveau »', 'créé sur le site de dev : il existe');
-  p.liste.setAttribute('data-gestion', '');
-  p.document.dispatchEvent(new CustomEvent('recherche:mots-cles', { detail: { gestion: true } }));
-  await attendre();
-  assert.equal(p.adresse(), '/recherche/');
-  assert.equal(p.pile().length, 1, 'ouverte par son adresse : remplacée');
-  assert.equal(p.vue.hidden, true);
-  assert.ok(p.liste.children.every((li) => !li.hidden), 'en mode modification, tous les mots-clés, même sans élément');
+test('plus aucun script n’émet ni n’écoute « recherche:mots-cles » : la gestion du vocabulaire est sur le Glossaire (« glossaire:mots-cles »)', () => {
+  const src = fileURLToPath(new URL('../src/', import.meta.url));
+  const fichiers = readdirSync(src, { recursive: true }).filter((f) => /\.(mjs|js|ts|astro)$/.test(f));
+  assert.deepEqual(fichiers.filter((f) => readFileSync(join(src, f), 'utf8').includes('recherche:mots-cles')), []);
+  assert.ok(fichiers.some((f) => readFileSync(join(src, f), 'utf8').includes('glossaire:mots-cles')), 'l’évènement du Glossaire existe');
 });
 
 test('décision du propriétaire (2026-11-05, « Modifiable et affichée ») : l’abréviation d’un mot-clé le fait trouver (« AM » → « Armure magique ») ; la vue reprend le nom et la définition rendus par la page (monnaies en icônes, R63)', async () => {
-  const p = await charger('/recherche/');
-  // la liste et les définitions rendues au build (lib/mots-cles-balises.mjs#htmlDeLaPastille, #htmlDeLaDefinition), ou par l'extension de l'éditeur
+  // la liste et les définitions rendues au build (lib/mots-cles-balises.mjs#htmlDeLaPastille, #htmlDeLaDefinition), lues par le script au chargement
   const pastille = (id, libelle, extra, html) => {
     const li = motCle(id, normalize(libelle), 0, libelle, extra);
     li.children[0].innerHTML = html;
     return li;
   };
-  p.liste.append(
-    pastille('armure-magique', 'Armure magique', { 'data-abreviation': 'AM', 'data-definition': 'Protège des sorts.' }, htmlDeLaPastille({ libelle: 'Armure magique', abreviation: 'AM', n: 0 })),
-    pastille('ro', 'Ricken d’or', { 'data-abreviation': 'RO', 'data-definition': '1 RO = 100 RF.' }, htmlDeLaPastille({ id: 'ro', libelle: 'Ricken d’or', abreviation: 'RO', n: 0 })));
-  const definitions = p.$('definitions-des-mots-cles');
-  for (const [id, texte] of [['armure-magique', 'Protège des sorts.'], ['ro', '1 RO = 100 RF.']]) {
-    const d = el('div', { 'data-definition-de': id });
-    d.innerHTML = htmlDeLaDefinition(texte);
-    definitions.append(d);
-  }
-  p.document.dispatchEvent(new CustomEvent('recherche:mots-cles', { detail: { gestion: false } }));
-  await attendre();
+  const p = await charger('/recherche/', {
+    avant(document) {
+      document.getElementById('liste-mots-cles').append(
+        pastille('armure-magique', 'Armure magique', { 'data-abreviation': 'AM', 'data-definition': 'Protège des sorts.' }, htmlDeLaPastille({ libelle: 'Armure magique', abreviation: 'AM', n: 0 })),
+        pastille('ro', 'Ricken d’or', { 'data-abreviation': 'RO', 'data-definition': '1 RO = 100 RF.' }, htmlDeLaPastille({ id: 'ro', libelle: 'Ricken d’or', abreviation: 'RO', n: 0 })));
+      const definitions = document.getElementById('definitions-des-mots-cles');
+      for (const [id, texte] of [['armure-magique', 'Protège des sorts.'], ['ro', '1 RO = 100 RF.']]) {
+        const d = el('div', { 'data-definition-de': id });
+        d.innerHTML = htmlDeLaDefinition(texte);
+        definitions.append(d);
+      }
+    },
+  });
   const visibles = () => p.liste.children.filter((li) => !li.hidden).map((li) => li.dataset.id);
   const q = p.$('q');
   for (const saisie of ['AM', 'am', 'armure']) {
@@ -296,7 +286,7 @@ test('décision du propriétaire (2026-11-05, « Modifiable et affichée ») : l
   cliquer(p.liste.children[0].children[0], p.liste);
   await attendre();
   assert.equal(p.$('titre-mot-cle').textContent, 'Mot-clé « Peuple »');
-  // une définition sans rendu (pas encore posée par l'extension) : son texte tel quel
+  // une définition sans rendu dans #definitions-des-mots-cles : son texte tel quel
   cliquer(p.$('tous-les-mots-cles'), p.vue);
   await attendre();
   cliquer(p.liste.children[2].children[0], p.liste);

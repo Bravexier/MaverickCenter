@@ -284,8 +284,8 @@ export function refuserLAbreviation(db, m) {
 /**
  * L'id du mot-clé qui s'écrit `libelle` (même clé normalize : « espace temps » = « espace/temps » ; vocabulaire `mot_cle`, migration 0043), pour une page
  * créée depuis le site : seulement un mot-clé dont le site se sert pour ranger ses pages (lib/mots-cles.mjs#MOTS_CLES_PROTEGES), créé s'il manque (noté au
- * journal avant la ligne qui le cite : « race hybride », qui n'est pas encore dans la base) ; tout autre est refusé (le glossaire se tient sur /recherche/,
- * et un import ne crée plus de mot-clé : tools/db/maverick.py#mot_cle). L'écriture d'un mot-clé existant ne change pas.
+ * journal avant la ligne qui le cite : « race hybride », qui n'est pas encore dans la base) ; tout autre est refusé (le vocabulaire se gère sur le
+ * Glossaire, /regles/glossaire/, et un import ne crée plus de mot-clé : tools/db/maverick.py#mot_cle). L'écriture d'un mot-clé existant ne change pas.
  */
 export function motCleDe(ctx, libelle) {
   const cle = normalize(libelle);
@@ -293,7 +293,7 @@ export function motCleDe(ctx, libelle) {
   const trouve = ctx.db.prepare('SELECT id FROM mot_cle WHERE libelle_cle = ?').get(cle);
   if (trouve) return trouve.id;
   if (!raisonDeProtection(cle)) {
-    throw refus(`Mot-clé « ${libelle} » : une page créée depuis le site ne porte que les mots-clés dont le site se sert pour ranger ses pages (le glossaire se tient sur /recherche/).`);
+    throw refus(`Mot-clé « ${libelle} » : une page créée depuis le site ne porte que les mots-clés dont le site se sert pour ranger ses pages (le vocabulaire se gère sur le Glossaire, /regles/glossaire/).`);
   }
   return creerMotCle(ctx, libelle);
 }
@@ -383,7 +383,7 @@ function texteAvecMotsClesCanoniques(ctx, champ, valeur, avant, quoi) {
   const nouvelles = inconnues.filter((r) => !deja.inconnues.includes(r));
   if (nouvelles.length) {
     const liste = nouvelles.map((r) => `« {{${r}}} »`).join(', ');
-    throw refus(`${quoi} : ${liste} ne cite${nouvelles.length > 1 ? 'nt' : ''} aucun mot-clé du vocabulaire (un mot-clé se crée sur /recherche/, en mode modification).`, { refs: nouvelles });
+    throw refus(`${quoi} : ${liste} ne cite${nouvelles.length > 1 ? 'nt' : ''} aucun mot-clé du vocabulaire (un mot-clé se crée sur le Glossaire, /regles/glossaire/, en mode modification).`, { refs: nouvelles });
   }
   if (complets.length) {
     const liste = complets.map((r) => `« {{${r}:}} »`).join(', ');
@@ -2633,7 +2633,7 @@ export function listes(db) {
     magiesSansBois: magiesSansBois(db),
     // les consommables de l'onglet Ceinture : les niveaux d'alchimie (choix « Niveau » d'une potion, rendu « potion-niveau »)
     niveauxDAlchimie: niveauxDAlchimie(db),
-    // le vocabulaire des mots-clés (migration 0043) : leur écriture (pages créées, /recherche/), triés par libellé
+    // le vocabulaire des mots-clés (migration 0043) : leur écriture (pages créées, /regles/glossaire/), triés par libellé
     // (la définition telle qu'enregistrée : NULL tant qu'il n'est pas décrit ; le client affiche `?? ''` ; l'abréviation, migration 0090 : NULL sans)
     motsCles: motsClesDeLaBase(db).sort(parLibelle),
     // les catégories de la chronologie (cases du formulaire « Nouvel événement » ; la page les relit avec la chronologie vivante)

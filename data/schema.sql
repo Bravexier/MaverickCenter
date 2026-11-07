@@ -3795,6 +3795,8 @@ CREATE TABLE lien_candidat (
 -- Recherche plein texte. Accents et casse ignorés ; l'apostrophe sépare deux mots (« l'alchimiste » = « l » + « alchimiste »).
 -- Colonnes : titre, alias (écritures séparées par des retours à la ligne), tag (libellés), resume, texte (corps sans
 -- Markdown : [[a|b]] -> b, caractères # > * _ ` | retirés — même nettoyage que search-index.json.ts, sans la coupe à 4000).
+-- Titre, résumé et texte tels qu'ils s'affichent : chaque balise du glossaire devient son texte affiché, « {{orios}} » -> « Orios »
+-- (lib/mots-cles-balises.mjs#texteSansBalises) ; l'id d'un mot-clé n'est pas indexé.
 -- Pondération conseillée (reprend search.mjs : titre 6, alias 5, mots-clés 4, résumé 2, texte 1) :
 --     ORDER BY bm25(page_fts, 0, 6, 5, 4, 2, 1)       -- le 0 = page_id (colonne non indexée)
 CREATE VIRTUAL TABLE page_fts USING fts5(

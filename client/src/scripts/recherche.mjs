@@ -5,13 +5,13 @@
 // fusionné depuis) : « Ce mot-clé n'existe plus ». Taper ou chercher depuis la vue d'un mot-clé ouverte par un clic de la liste revient à la liste par un
 // retour arrière (l'entrée poussée par le clic est retirée, l'historique ne garde pas deux fois la liste) ; ouverte par son adresse, la vue est remplacée.
 // La liste est le glossaire (migration 0056) : tous les mots-clés, même sans page ; la vue d'un mot-clé montre son libellé, sa définition, puis ses pages.
-// Un script qui redessine la liste l'annonce par l'évènement « recherche:mots-cles » (detail.gestion : une liste de gestion est affichée) : la page la
-// relit alors. (La gestion du vocabulaire, qui le faisait, est passée sur le Glossaire, /regles/glossaire/ : src/scripts/edition/mots-cles.mjs.) Chaque mot-clé de la liste est un <li data-id data-cle data-n data-libelle data-abreviation data-definition> (data-cle : son écriture,
-// que filtre la recherche, comme son abréviation ; data-n : ses pages ; data-abreviation : son abréviation, absente s'il n'en a pas ; data-definition :
-// sa définition, absente tant qu'il n'est pas décrit), dont le lien montre le nom dans un `.recherche-nom` (« Armure magique (AM) », « Ricken d’or » et
-// son icône : lib/mots-cles-balises.mjs#htmlDeLaPastille), que le titre de la vue reprend. La définition que montre la vue est celle que la page
-// construite (ou l'extension, sur le site de dev) a rendue dans #definitions-des-mots-cles ([data-definition-de], monnaies en icônes : R63) : ce script la
-// recopie, il ne lit aucune monnaie ; à défaut, le texte de data-definition.
+// La liste est rendue au build et lue une fois : aucun script ne la redessine (la gestion du vocabulaire est sur le Glossaire, /regles/glossaire/ :
+// src/scripts/edition/mots-cles.mjs, évènement « glossaire:mots-cles »). Chaque mot-clé de la liste est un <li data-id data-cle data-n data-libelle
+// data-abreviation data-definition> (data-cle : son écriture, que filtre la recherche, comme son abréviation ; data-n : ses pages ; data-abreviation :
+// son abréviation, absente s'il n'en a pas ; data-definition : sa définition, absente tant qu'il n'est pas décrit), dont le lien montre le nom dans un
+// `.recherche-nom` (« Armure magique (AM) », « Ricken d’or » et son icône : lib/mots-cles-balises.mjs#htmlDeLaPastille), que le titre de la vue
+// reprend. La définition que montre la vue est celle que la page construite a rendue dans #definitions-des-mots-cles ([data-definition-de], monnaies en
+// icônes : R63) : ce script la recopie, il ne lit aucune monnaie ; à défaut, le texte de data-definition.
 // Script de page (navigateur) : il n'importe que des modules purs qu'aucun autre script de page n'importe (la version portable refuse un module partagé).
 import { adresseAvecMotCle, motCleDeLAdresse, motsClesAffiches, vueDuMotCle } from '../lib/recherche-mots-cles.mjs';
 import { searchIndex } from '../lib/search.mjs';
@@ -31,7 +31,7 @@ const definitionVue = document.getElementById('vue-du-mot-cle-definition');
 const compteVue = document.getElementById('vue-du-mot-cle-compte');
 const vuePages = document.getElementById('vue-du-mot-cle-pages');
 const tousLesMotsCles = document.getElementById('tous-les-mots-cles');
-const definitions = () => document.getElementById('definitions-des-mots-cles'); // relue : l'extension de l'éditeur peut la refaire
+const definitions = document.getElementById('definitions-des-mots-cles');
 
 // data-base : préfixe des pages du site (absolu, ou relatif dans la version portable) ; data-suffix : « index.html » si requis.
 const base = form.dataset.base.replace(/\/?$/, '/');
@@ -40,7 +40,6 @@ const titreDeLaPage = document.title;
 
 let index; // promesse de l'index (chargé une fois : à la première recherche ou au premier mot-clé affiché)
 let motCle = motCleDeLAdresse(location.search); // le mot-clé affiché (son id) ; null : la liste des mots-clés
-let items = []; // les mots-clés de la liste : { li, id, cle, n, libelle, abreviation, definition }
 let demandes = 0; // la dernière vue demandée (un chargement plus ancien ne l'écrase pas)
 // l'entrée de l'historique poussée par un clic dans la liste porte ce jeton (history.state.depuisLaListe) ; un par chargement de la page : après un
 // rechargement, l'entrée d'avant n'est plus ce document, et un retour arrière perdrait la saisie
@@ -49,12 +48,11 @@ const JETON = `${Date.now()}-${Math.random()}`;
 const nombre = (n, un, plusieurs) => `${n} ${n > 1 ? plusieurs : un}`;
 const modifie = (e) => e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey; // nouvel onglet, etc. : le navigateur suit le lien
 
-function lireLaListe() {
-  items = [...liste.querySelectorAll('li[data-id]')].map((li) => ({
-    li, id: li.dataset.id, cle: li.dataset.cle ?? '', n: Number(li.dataset.n) || 0, libelle: li.dataset.libelle ?? '', abreviation: li.dataset.abreviation ?? null,
-    definition: li.dataset.definition ?? '',
-  }));
-}
+// les mots-clés de la liste : { li, id, cle, n, libelle, abreviation, definition }
+const items = [...liste.querySelectorAll('li[data-id]')].map((li) => ({
+  li, id: li.dataset.id, cle: li.dataset.cle ?? '', n: Number(li.dataset.n) || 0, libelle: li.dataset.libelle ?? '', abreviation: li.dataset.abreviation ?? null,
+  definition: li.dataset.definition ?? '',
+}));
 
 function chargerIndex() {
   index ??= fetch(form.dataset.indexUrl)
@@ -120,7 +118,7 @@ function titrer(id, libelle) {
 
 /** La définition du mot-clé `id` dans la vue : celle que la page a rendue ([data-definition-de]), sinon `texte` tel quel ; cachée sans définition. */
 function definir(id, texte) {
-  const rendue = [...(definitions()?.children ?? [])].find((d) => d.dataset.definitionDe === id);
+  const rendue = [...(definitions?.children ?? [])].find((d) => d.dataset.definitionDe === id);
   if (rendue && texte) definitionVue.innerHTML = rendue.innerHTML;
   else definitionVue.textContent = texte ?? '';
   definitionVue.hidden = !texte;
@@ -236,14 +234,6 @@ form.addEventListener('submit', (event) => {
   if (motCle) aller(null, { remplacer: true });
   else chercher();
 });
-// la liste redessinée par l'extension de l'éditeur (site de dev) : relue ; la liste de gestion s'affiche à la place de la vue d'un mot-clé
-document.addEventListener('recherche:mots-cles', (e) => {
-  lireLaListe();
-  if (e.detail?.gestion && motCle) aller(null, { remplacer: true });
-  else afficher();
-});
-
 titreVue.tabIndex = -1;
 input.value = new URLSearchParams(location.search).get('q') ?? '';
-lireLaListe();
 afficher();

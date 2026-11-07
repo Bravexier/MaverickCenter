@@ -70,8 +70,8 @@ export function chronologieVivante(db) {
 }
 
 /**
- * Le vocabulaire des mots-clés pour /recherche/ en mode modification (GET /api/edition/mots-cles/) : [{ id, libelle, libelle_cle, description,
- * abreviation, url, couleur, classe, pages, protege }] (`description` : la définition telle qu'enregistrée, NULL tant qu'il n'est pas décrit ;
+ * Le vocabulaire des mots-clés pour le Glossaire (/regles/glossaire/) en mode modification (GET /api/edition/mots-cles/) : [{ id, libelle, libelle_cle,
+ * description, abreviation, url, couleur, classe, pages, protege }] (`description` : la définition telle qu'enregistrée, NULL tant qu'il n'est pas décrit ;
  * `abreviation` : NULL sans abréviation, et sur une base d'avant la migration 0090 ; `url`, `couleur` : l'adresse et la couleur, migration 0096, NULL
  * sans elles et sur une base d'avant ; `classe` : la classe de sa couleur, lib/mots-cles-liens.mjs#classeDuMotCle, null sans couleur ; `protege` : la
  * raison pour laquelle il ne se renomme, ne se supprime ni ne se fusionne, lib/mots-cles.mjs ; null sinon : sa définition, son abréviation, son adresse
