@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 96 : 209 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 97 : 212 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -10,11 +10,11 @@
 - [0. FAMILLES D'IMPORT](#0-familles-dimport) : `famille`
 - [1. PAGES, LIENS, MOTS-CLÉS, SOURCES (couche générique)](#1-pages-liens-mots-clés-sources-couche-générique) : `type_page`, `page`, `alias`, `mot_cle`, `page_tag`, `source`, `page_source`, `page_entite`, `panneau_regles`, `panneau_regles_bloc`, `composant_onglet`, `annonce`, `regles_onglet`, `regles_onglet_entree`
 - [2. RÈGLES DE LA FICHE : caractéristiques, compétences, niveaux, constantes, postures (famille « fiche »)](#2-règles-de-la-fiche--caractéristiques-compétences-niveaux-constantes-postures-famille--fiche) : `caracteristique`, `competence`, `niveau_global`, `niveau_deblocage`, `seuil_niveau`, `regle_constante`, `entrainement_palier`, `initiative_agilite`, `type_don`, `posture`, `posture_effet`, `posture_critique`
-- [3. MAGIES ET SORTS (famille « magies »)](#3-magies-et-sorts-famille--magies) : `magie`, `magie_role`, `magie_resistance`, `magie_incompatibilite`, `magie_ethnie_secondaire`, `magie_dieu`, `amelioration_cadaverique`, `sort`, `sort_type`, `sort_mode`, `sort_bonus_maitrise`, `sort_etat`, `sort_mot_cle`, `commentaire_orphelin`, `legende_sort`, `regle_magie`
+- [3. MAGIES ET SORTS (famille « magies »)](#3-magies-et-sorts-famille--magies) : `magie`, `magie_role`, `magie_resistance`, `magie_incompatibilite`, `magie_ethnie_secondaire`, `magie_dieu`, `amelioration_cadaverique`, `sort`, `sort_type`, `sort_mode`, `sort_bonus_maitrise`, `sort_etat`, `sort_mot_cle`, `commentaire_orphelin`, `legende_sort`, `regle_magie`, `magie_npm_plafond`
 - [4. ANNEXES DES MAGIES : états, résistances, météo, modes hyper et super (famille « annexes »)](#4-annexes-des-magies--états-résistances-météo-modes-hyper-et-super-famille--annexes) : `resistance_palier`, `etat`, `etat_magie`, `etat_stade`, `etat_palier`, `meteo`, `meteo_effet`, `mode_texte`, `mode_hyper_depassement`, `mode_super_objet`, `mode_hyper_effet`
 - [5. DIEUX](#5-dieux) : `dieu`
 - [5 bis. CHRONOLOGIE : les événements datés du Codex et des races (famille « chronologie » ; migration 0035, docs/chronologie.md)](#5-bis-chronologie--les-événements-datés-du-codex-et-des-races-famille--chronologie---migration-0035-docschronologiemd) : `evenement`, `evenement_extrait`, `categorie_chronologie`, `evenement_categorie`
-- [6. CLASSES, SPÉCIALITÉS, CAPACITÉS (famille « classes »)](#6-classes-spécialités-capacités-famille--classes) : `categorie_classe`, `classe`, `specialite`, `capacite`, `objet_depart`, `classe_objet_depart`, `classe_maitrise_armure`, `classe_maitrise_arme`, `maitrise_arme_part`, `maitrise_arme_part_famille`, `capacite_nm_gagne`, `classe_annexe`, `classe_annexe_entree`, `capacite_variable`
+- [6. CLASSES, SPÉCIALITÉS, CAPACITÉS (famille « classes »)](#6-classes-spécialités-capacités-famille--classes) : `categorie_classe`, `classe`, `specialite`, `capacite`, `objet_depart`, `classe_objet_depart`, `classe_maitrise_armure`, `classe_maitrise_arme`, `maitrise_arme_part`, `maitrise_arme_part_famille`, `capacite_nm_gagne`, `classe_annexe`, `classe_annexe_entree`, `capacite_variable`, `capacite_npm_plafond`, `capacite_condition_emplacements`
 - [7. RACES, ETHNIES, ACCESSIBILITÉS (famille « races »)](#7-races-ethnies-accessibilités-famille--races) : `race`, `race_restriction_carac`, `ethnie`, `ethnie_resistance`, `race_classe`, `race_magie`, `race_onglet`, `race_don`, `race_don_tableau_colonne`, `race_don_tableau_ligne`, `race_don_tableau_cellule`, `race_magie_onglet`, `echelle_relation`, `peuple`, `relation_peuple`
 - [8. BESTIAIRE : invocations et créatures (famille « bestiaire »)](#8-bestiaire--invocations-et-créatures-famille--bestiaire) : `invocation`, `invocation_capacite_commune`, `invocation_resistance`, `invocation_bloc`, `invocation_bloc_magie`, `creature`, `creature_ressource`, `creature_caracteristique`, `creature_bonus_npm`, `creature_attaque`, `creature_attaque_type`, `creature_capacite`, `creature_capacite_sort`, `creature_capacite_resistance`, `creature_effet`
 - [8 bis. BESTIAIRE 2.0 : monstres, butin, échelles de puissance (famille « monstres »)](#8-bis-bestiaire-20--monstres-butin-échelles-de-puissance-famille--monstres) : `monstre_regle`, `monstre_echelle`, `monstre_butin_objet`, `monstre_groupe`, `monstre_espece`, `monstre_espece_lieu`, `monstre_espece_bloc`, `monstre_butin`, `monstre`, `monstre_rubrique`, `monstre_caracteristique`, `monstre_attaque`, `monstre_capacite_commune`, `monstre_capacite`, `monstre_capacite_valeur`, `monstre_defense`
@@ -647,6 +647,15 @@ Règles de magie qui valent pour toutes les magies (Sommaire!A31 : « Règle sp�
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
 
+### `magie_npm_plafond`
+
+Plafond de puissance magique (NPM) des sorts d'un personnage de cette magie innée (décision R188, migration 0097) : le Potentiel Illimité, 3 (son bloc « Explication » : « ne pouvoir atteindre que le niveau 3 de puissance magique maximum »). Il s'ajoute à la table des niveaux (R16) : NPM des sorts = min(puissance magique du niveau, plafond) ; un don acquis peut le relever (capacite_npm_plafond). Il ne borne que le choix des sorts (règle sort_puissance de v_personnage_controle ; lib/fiche-regles.mjs, `magies[].npm_plafond`), jamais la Symbiose, les invocations ni le multiplicateur des emplacements de sorts (R188 (2)). Une magie sans ligne n'a pas de plafond. Valeur de la décision, jamais relue d'un texte ; le site de dev ne l'écrit pas.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `magie_id` | TEXT | oui | PK, → magie.id |  |
+| `npm` | INTEGER | oui |  |  |
+
 ## 4. ANNEXES DES MAGIES : états, résistances, météo, modes hyper et super (famille « annexes »)
 
 ### `resistance_palier`
@@ -1120,6 +1129,23 @@ La liste d'un don « Variable » (capacite.type = 'variable' ; décision R181, m
 | --- | --- | --- | --- | --- |
 | `capacite_id` | TEXT | oui | PK, → capacite.id |  |
 | `magie` | TEXT | oui |  |  |
+
+### `capacite_npm_plafond`
+
+Plafond de NPM qu'un don acquis relève (décision R188, migration 0097) : « Semi-complet » de l'Archimage, 4 (« Permet d'utiliser les sorts de lvl 4 de puissance. »). N'a d'effet que si la magie innée du personnage a un plafond (magie_npm_plafond) : plafond effectif = max(plafond de la magie innée, plafonds des dons acquis, v_personnage_don_acquis) ; il relève le plafond sans ouvrir un NPM que le niveau n'ouvre pas (R188 (1) : min avec la puissance magique du niveau, R16). Règle sort_puissance de v_personnage_controle ; lib/fiche-regles.mjs, `classes[].dons[].npm_plafond`. Écrite par la migration, jamais relue du texte du don ; le site de dev ne l'écrit pas (un don supprimé emporte sa ligne).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `capacite_id` | TEXT | oui | PK, → capacite.id |  |
+| `npm` | INTEGER | oui |  |  |
+
+### `capacite_condition_emplacements`
+
+Dons acquis qui comptent comme une condition de plus dans le nombre d'emplacements de sorts, exactement comme une magie acquise (décision R189, migration 0097) : « Grimoire » de l'Archimage (« Permet de débloquer les emplacements de sorts de magie acquise. »). Il ne donne pas de seconde magie (R176) : ni Mode Hyper, ni Symbiose, ni palier NPM 5 réservé aux personnages sans magie acquise. Lu par le moteur seulement (lib/fiche-regles.mjs, `classes[].dons[].condition_emplacements` ; lib/fiche-moteur.mjs#emplacementsDeSorts) : aucune règle de v_personnage_controle (aucun contrôle ne compte les emplacements). Écrite par la migration, jamais relue du texte du don ; le site de dev ne l'écrit pas (un don supprimé emporte sa ligne).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `capacite_id` | TEXT | oui | PK, → capacite.id |  |
 
 ## 7. RACES, ETHNIES, ACCESSIBILITÉS (famille « races »)
 
@@ -3761,7 +3787,7 @@ Bonus que le métier d'une fiche apporte (décision R33) : une ligne par rang li
 
 *vue*
 
-Dons acquis d'une fiche (décision R32, migration 0076) : le miroir de lib/fiche-moteur.mjs#donsAcquis. Pour chaque classe prise qui a des niveaux (niveau de classe >= 1, v_personnage_niveau ; la seconde d'un mono-classe n'en a qu'au niveau global 11, R2), ses dons jusqu'au niveau de classe atteint, de sa spécialité quand ils en ont une (celle de la fiche), et, pour un don à choix (nature 'choix'), seulement s'il est choisi (personnage_capacite). Sert aux sources de maîtrise d'arme (R148), aux NM gagnés des dons (R154) et aux dons « Variable » du Mage Bleu (R181).
+Dons acquis d'une fiche (décision R32, migration 0076) : le miroir de lib/fiche-moteur.mjs#donsAcquis. Pour chaque classe prise qui a des niveaux (niveau de classe >= 1, v_personnage_niveau ; la seconde d'un mono-classe n'en a qu'au niveau global 11, R2), ses dons jusqu'au niveau de classe atteint, de sa spécialité quand ils en ont une (celle de la fiche), et, pour un don à choix (nature 'choix'), seulement s'il est choisi (personnage_capacite). Sert aux sources de maîtrise d'arme (R148), aux NM gagnés des dons (R154), aux dons « Variable » du Mage Bleu (R181) et au plafond de NPM relevé par un don (R188).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -3833,7 +3859,7 @@ Contrôle des inscriptions dans les groupes : une ligne par anomalie (vide = con
 
 *vue*
 
-Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi. Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45, R73, R95, R96, R100, R104, R118, les maîtrises d'armes de R148 à R151, R154, l'armure de R165, les armes élémentaires de R167 et les dons « Variable » de R181) ; ce qui demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité, poids d'armure portable de R165) n'est pas ici. Toute fiche est contrôlée, même inachevée : il n'y a plus de statut (demande du propriétaire, migration 0038) ; une ligne signale, elle n'empêche pas d'enregistrer.
+Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi. Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45, R73, R95, R96, R100, R104, R118, les maîtrises d'armes de R148 à R151, R154, l'armure de R165, les armes élémentaires de R167, les dons « Variable » de R181 et le plafond de NPM de R188) ; ce qui demande le moteur (bonus de classe, d'équipement, nombre de sorts, poids d'armure portable de R165) n'est pas ici. Toute fiche est contrôlée, même inachevée : il n'y a plus de statut (demande du propriétaire, migration 0038) ; une ligne signale, elle n'empêche pas d'enregistrer.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |

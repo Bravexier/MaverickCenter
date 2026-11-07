@@ -34,7 +34,7 @@ import {
   mettreALaCeinture, objetChoisiDansLaListe, quantiteDuSac, rangerLEmplacement, remplirLEmplacement, suggestionsDeCeinture, utiliserLObjet, ajusterValeurDuMoment, alignementDe, armesApresChoix, armesApresReglage, armesValables, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, choixEnAttente, cleDeChoix, modeHyperDe, niveauDeSpecialite, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
   choisirObjetDeMetier, choixDeMetierValables, classeImposee, classesDe, classesSelonLaMagieInnee, competencesDe, donsAChoisir, donsValables,
   durabiliteAEcrire, durabiliteDArme, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, famillesMaitrisables, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable,
-  magiesInneesPermises, maitriseDArme, maitriseDesSorts, gainsDeNiveau, niveauGlobal, bornesDuNm, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionXp,
+  magiesInneesPermises, maitriseDArme, maitriseDesSorts, gainsDeNiveau, niveauGlobal, bornesDuNm, nmDuSort, npmDesSorts, objetChoisi, objetsDuMetier, progressionXp,
   bornesDuMultiplicateur, livreAuPlafond, livresAEnregistrer, livresApresAjout, livresApresChangement, livresApresRetrait, livresDe, multiplicateurDuCout, sortAuNm, sortPourUnLivre, sortsDesLivres, donDePreparation, jetDuSortPrepare, rappelsDuSortPrepare, sortPrepare, sortsAEnregistrer, texteDuCritiquePrepare, sortsAPreparer, sortsApresLeJet,
   sortsApresChoixDEmplacement, sortsApresPreparation, sortsApresLaSymbiose, nmDuMoment,
   refusClasse, refusMagieAcquise, resistancesDe, sortsParNpm, trouver, ecrireValeurDuMoment, valeursDuMoment,
@@ -865,14 +865,15 @@ const foisDesSorts = new Map();
 
 /**
  * Tableau des sorts (demande du propriétaire) : une ligne par emplacement, chacune avec la liste des sorts possibles (magies du personnage, NPM
- * accessible) moins ceux des autres lignes (lignesDeSorts) ; vider la liste libère l'emplacement ; pas d'emplacement en plus (décision R27). Le NM d'un
+ * des sorts : npmDesSorts, sous le plafond de la décision R188) moins ceux des autres lignes (lignesDeSorts) ; vider la liste libère l'emplacement ; pas d'emplacement en plus (décision R27). Le NM d'un
  * sort se règle à un seul curseur, de 0 à 3 (décision R118 : plus de cases « livre » ni « MJ ») ; de 1 à 3 quand l'entraînement note un livre de ce
  * sort, dont le NM ne compte pas dans le décompte. Les NM du MJ sont ceux de la fiche, notés à côté de la limite des NM (champ nm_mj du gabarit).
  */
 function construireSorts() {
   const emplacements = emplacementsDeSorts(regles, fiche);
   const nm = calcul.nm;
-  const max = npmMax(regles, fiche);
+  // « sorts jusqu'au NPM » : le NPM des sorts (décision R188 : plafonné pour le Potentiel Illimité) ; « × puissance » reste celle du niveau (R188 (2))
+  const max = npmDesSorts(regles, fiche);
   $('emplacements-detail').textContent = emplacements.total
     ? `${emplacements.total} emplacement${emplacements.total > 1 ? 's' : ''} (${emplacements.conditions} condition${emplacements.conditions > 1 ? 's' : ''} × puissance ${emplacements.puissance}), sorts jusqu’au NPM ${max}, ${nm.plafond} NM au plus par sort (dont ${Math.min(nm.plafond, nm.maxParSort)} de niveau).`
     : 'Pas encore d’emplacement de sort : choisissez une magie.';

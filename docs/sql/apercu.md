@@ -1,6 +1,6 @@
 # Aperçu du schéma de la base
 
-> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 209 tables, 2 tables de recherche, 38 vues.
+> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 212 tables, 2 tables de recherche, 38 vues.
 > Ce qui reste à trancher sur le **contenu** (pas sur la forme) est dans [`a-valider.md`](a-valider.md).
 
 **Lecture des colonnes** : **gras** = clé primaire ; `→table` = clé étrangère vers cette table ; `?` = peut être absente (`NULL`, jamais une valeur inventée) ; `+provenance` = `origine` (famille d'import) et `source_ref` (classeur › onglet › plage). Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté.
@@ -55,7 +55,7 @@
 
 ## 3. MAGIES ET SORTS (famille « magies »)
 
-**Relations dans cette section** : `amelioration_cadaverique→magie`, `magie_dieu→magie`, `magie_ethnie_secondaire→magie`, `magie_incompatibilite→magie`, `magie_resistance→magie`, `magie_role→magie`, `sort_bonus_maitrise→sort`, `sort_etat→sort`, `sort_mode→sort`, `sort_mot_cle→sort`, `sort_type→sort`, `sort→magie`
+**Relations dans cette section** : `amelioration_cadaverique→magie`, `magie_dieu→magie`, `magie_ethnie_secondaire→magie`, `magie_incompatibilite→magie`, `magie_npm_plafond→magie`, `magie_resistance→magie`, `magie_role→magie`, `sort_bonus_maitrise→sort`, `sort_etat→sort`, `sort_mode→sort`, `sort_mot_cle→sort`, `sort_type→sort`, `sort→magie`
 
 **Vers d'autres sections** : `magie_dieu→dieu (§5)`, `magie_ethnie_secondaire→ethnie (§7)`, `magie_resistance→etat (§4)`, `magie→caracteristique (§2)`, `magie→page (§1)`, `sort_etat→etat (§4)`, `sort_mot_cle→mot_cle (§1)`
 
@@ -77,6 +77,7 @@
 | `commentaire_orphelin` | Fils de commentaires du Sommaire ancrés en A1 : commentaires de cellules supprimées, sans sort identifiable (certains portent des textes de règle). | **id**, empreinte, occurrence, onglet, cellule, resolu, texte, +provenance |
 | `legende_sort` | Légende commune des 14 tables de sorts (identique dans chaque onglet) : « IC = Instant Cast » et les trois modes d'obtention d'un niveau de maîtrise (N, L, C). | **code**, groupe, libelle, description?, +provenance |
 | `regle_magie` | Règles de magie qui valent pour toutes les magies (Sommaire!A31 : « Règle spéciale pour sort niveau 5 »). | **id**, titre, niveau_sort?, texte, +provenance |
+| `magie_npm_plafond` | Plafond de puissance magique (NPM) des sorts d'un personnage de cette magie innée (décision R188, migration 0097) : le Potentiel Illimité, 3 (son bloc « Explication » : « ne pouvoir atteindre que le n | **magie_id**→magie, npm |
 
 ## 4. ANNEXES DES MAGIES : états, résistances, météo, modes hyper et super (famille « annexes »)
 
@@ -119,7 +120,7 @@
 
 ## 6. CLASSES, SPÉCIALITÉS, CAPACITÉS (famille « classes »)
 
-**Relations dans cette section** : `capacite_nm_gagne→capacite`, `capacite_variable→capacite`, `capacite→classe`, `capacite→specialite`, `classe_annexe_entree→classe_annexe`, `classe_annexe→classe`, `classe_maitrise_arme→classe`, `classe_maitrise_armure→classe`, `classe_objet_depart→classe`, `classe_objet_depart→objet_depart`, `classe→categorie_classe`, `maitrise_arme_part_famille→maitrise_arme_part`, `maitrise_arme_part→capacite`, `maitrise_arme_part→classe_maitrise_arme`, `specialite→classe`
+**Relations dans cette section** : `capacite_condition_emplacements→capacite`, `capacite_nm_gagne→capacite`, `capacite_npm_plafond→capacite`, `capacite_variable→capacite`, `capacite→classe`, `capacite→specialite`, `classe_annexe_entree→classe_annexe`, `classe_annexe→classe`, `classe_maitrise_arme→classe`, `classe_maitrise_armure→classe`, `classe_objet_depart→classe`, `classe_objet_depart→objet_depart`, `classe→categorie_classe`, `maitrise_arme_part_famille→maitrise_arme_part`, `maitrise_arme_part→capacite`, `maitrise_arme_part→classe_maitrise_arme`, `specialite→classe`
 
 **Vers d'autres sections** : `capacite→page (§1)`, `classe_annexe→magie (§3)`, `classe→magie (§3)`, `classe→page (§1)`, `maitrise_arme_part_famille→arme_famille (§9)`, `maitrise_arme_part→arme_famille (§9)`
 
@@ -139,6 +140,8 @@
 | `classe_annexe` | TABLEAU LIBRE D'UN ONGLET Tableau sans titre sous les aptitudes de Mage Bleu (A58:AR127, 14 lignes de 5 rangées : libellé en A, texte en G). | **classe_id**→classe, **rang**, libelle, libelle_cle, magie_id→magie?, texte, +provenance |
 | `classe_annexe_entree` | Les entrées du tableau libre, une par ligne « (Type) Nom. | **id**, classe_id→classe_annexe, annexe_rang→classe_annexe, rang, nom, nom_cle, type, type_brut, limite_brute?, limite_nombre?, limite_periode?, effet, remarque?, +provenance |
 | `capacite_variable` | La liste d'un don « Variable » (capacite.type = 'variable' ; décision R181, migration 0088) : le don obtient une entrée du tableau libre de sa classe (classe_annexe_entree), sur la ligne de la magie que son texte vise. | **capacite_id**→capacite, magie |
+| `capacite_npm_plafond` | Plafond de NPM qu'un don acquis relève (décision R188, migration 0097) : « Semi-complet » de l'Archimage, 4 (« Permet d'utiliser les sorts de lvl 4 de puissance. | **capacite_id**→capacite, npm |
+| `capacite_condition_emplacements` | Dons acquis qui comptent comme une condition de plus dans le nombre d'emplacements de sorts, exactement comme une magie acquise (décision R189, migration 0097) : « Grimoire » de l'Archimage (« Permet | **capacite_id**→capacite |
 
 ## 7. RACES, ETHNIES, ACCESSIBILITÉS (famille « races »)
 

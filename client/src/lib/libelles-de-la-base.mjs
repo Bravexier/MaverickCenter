@@ -39,6 +39,9 @@ export const NOMS_DES_TABLES = Object.freeze({
   // le tableau du Mage Bleu découpé en entrées, et la magie que vise chaque don « Variable » (migration 0088, décision R181) : lus seulement
   classe_annexe_entree: 'Entrée du tableau annexe de la classe',
   capacite_variable: 'Magie visée par le don « Variable »',
+  // le plafond de NPM relevé par un don (R188) et les dons qui comptent comme une condition d'emplacements de sorts (R189), migration 0097 : lus seulement
+  capacite_npm_plafond: 'Plafond de NPM relevé par le don',
+  capacite_condition_emplacements: 'Condition d’emplacements de sorts du don',
   classe_maitrise_arme: 'Maîtrise d’arme de la classe',
   classe_maitrise_armure: 'Maîtrise d’armure de la classe',
   classe_objet_depart: 'Objet de départ de la classe',
@@ -110,6 +113,8 @@ export const NOMS_DES_TABLES = Object.freeze({
   magie_dieu: 'Dieu de la magie',
   magie_ethnie_secondaire: 'Ethnie à magie secondaire',
   magie_incompatibilite: 'Incompatibilité de magie',
+  // le plafond de NPM des sorts d'un personnage de cette magie innée (R188, migration 0097) : lu seulement
+  magie_npm_plafond: 'Plafond de NPM de la magie innée',
   magie_resistance: 'Résistance ou vulnérabilité de magie',
   materiau_bouclier: 'Matériau de bouclier',
   meteo_effet: 'Effet de météo',
@@ -246,6 +251,8 @@ export const NOMS_DES_COLONNES = geler({
   capacite: { ligne: 'Ligne', limite_nombre: 'Nombre d’utilisations', limite_periode: 'Période des utilisations' },
   capacite_nm_gagne: { capacite_id: 'Don de classe', nm: 'NM de sorts gagnés' },
   capacite_variable: { capacite_id: 'Don « Variable »', magie: 'Magie visée' },
+  capacite_npm_plafond: { capacite_id: 'Don de classe', npm: 'Plafond de NPM' },
+  capacite_condition_emplacements: { capacite_id: 'Don de classe' },
   classe_annexe_entree: {
     annexe_rang: 'Ligne du tableau annexe', type_brut: 'Type (tel qu’écrit)', limite_brute: 'Limite (telle qu’écrite)', limite_nombre: 'Nombre d’utilisations',
     limite_periode: 'Période des utilisations', effet: 'Effet',
@@ -272,6 +279,7 @@ export const NOMS_DES_COLONNES = geler({
     onglet: 'Onglet', caracteristique_id: 'Caractéristique bonus (reconnue)', barre4_ressource: 'Ressource de la 4ème barre', barre4_max: 'Maximum de la 4ème barre',
     barre4_regen: 'Régénération de la 4ème barre', incompatibilite_note: 'Note de magie non compatible', mono_magie: 'Mono-magie',
   },
+  magie_npm_plafond: { npm: 'Plafond de NPM' },
   magie_role: { role: 'Rôle (reconnu)' },
   maitrise_arme_part: {
     source_id: 'Source de maîtrise d’arme', capacite_id: 'Don de classe', classe_rang: 'Numéro de la ligne de la classe', points: 'Points de maîtrise',

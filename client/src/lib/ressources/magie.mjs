@@ -77,6 +77,8 @@ export const RESSOURCES = [
         description: 'Les dieux de la magie dans l’ordre d’écriture de la cellule de la fiche auto V15.2.2 (« Notix & Capse ») ; en lecture seule.',
       },
     ],
+    // le plafond de NPM des sorts d'un personnage de cette magie innée (magie_npm_plafond, décision R188, migration 0097 : écrit par la migration seulement)
+    derivees: [{ table: 'magie_npm_plafond', parent: { magie_id: 'id' } }],
     liste: ['id', 'nom', 'ordre', 'sante_offerte', 'chakra_offert', 'caracteristique_id', 'barre4_ressource', 'mono_magie'],
     recherche: ['nom'],
     tri: 'ordre',

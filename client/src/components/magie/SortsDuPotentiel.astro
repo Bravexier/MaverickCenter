@@ -8,8 +8,8 @@ import SortsInteractifs from './SortsInteractifs.astro';
 import TableauNpm from './TableauNpm.astro';
 
 // Sorts du Potentiel Illimité : il pioche ses sorts dans les autres magies (lib/potentiel-illimite.mjs#magiesDuPotentiel). Une magie par onglet, dans
-// l'ordre du classeur et dans sa couleur ; chaque onglet reprend les tableaux de cette magie du NPM 1 au NPM 4, avec le même gabarit que sur sa page
-// (TableauNpm.astro). Les identifiants HTML y sont préfixés du nom court de la magie (`#sort-feu-boule-de-feu`, `#npm-feu-1`) : deux magies peuvent
+// l'ordre du classeur et dans sa couleur ; chaque onglet reprend les tableaux de cette magie du NPM 1 au plus haut NPM qu'il peut choisir (décision
+// R188 : le plafond de la base, lib/potentiel-illimite.mjs#npmMaxDuPotentiel), avec le même gabarit que sur sa page (TableauNpm.astro). Les identifiants HTML y sont préfixés du nom court de la magie (`#sort-feu-boule-de-feu`, `#npm-feu-1`) : deux magies peuvent
 // avoir un sort du même nom. Onglets : components/Onglets.astro, comme les spécialités d'une classe ; une adresse `#sort-…` ouvre l'onglet et le sort.
 interface Props {
   autres: { magie: MagieDb; groupes: { niveau: number; sorts: SortDb[] }[]; total: number }[];

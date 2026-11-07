@@ -455,7 +455,13 @@ bouton (au-dessus quand la place manque), bornée à l'écran, téléphone compr
   - Pas de « Points du MJ » (R148). Rien de calculé ne s'enregistre : la page envoie `maitrise_choix` (`maitriseChoixValables`), jamais `maitrises_armes`.
     Les contrôles `maitrise_*` du service nomment la source et la famille (« Mage Bleu (maîtrise 1) = 1 »).
 - **Sorts** : un tableau d'une ligne par emplacement, sans emplacement en plus (décision R27), chacune avec la liste des sorts possibles moins ceux des autres
-  lignes (`lignesDeSorts`), groupée par NPM, le nom seul, chaque sort sur la couleur de sa magie comme sur les pages de magie, la liste fermée dans celle du
+  lignes (`lignesDeSorts`). Les **emplacements** (`emplacementsDeSorts`) : conditions remplies (magie innée, magie acquise, chaque classe magique, et
+  chaque don acquis marqué `capacite_condition_emplacements` : « Grimoire » de l'Archimage, qui compte **exactement comme une magie acquise** sans en
+  donner une, décision R189) × la puissance magique du niveau (`puissanceMagique`). Les **sorts possibles** (`sortsPossibles`) vont jusqu'au **NPM des
+  sorts** (`npmDesSorts`, décision R188) : la puissance du niveau (`npmMax`), bornée pour une magie innée qui a un plafond (`magie_npm_plafond` : le
+  Potentiel Illimité, 3) relevé par un don acquis (`capacite_npm_plafond` : « Semi-complet », 4), soit min(NPM du niveau, plafond) : le don n'ouvre jamais
+  le NPM 4 avant le niveau global 12. Seul le choix des sorts est plafonné (la mention « sorts jusqu'au NPM » au-dessus du tableau, « NPM … au plus » de la
+  liste de sorts du tableur) ; la Symbiose, les invocations et le multiplicateur des emplacements gardent la puissance du niveau (R188 (2)). La liste est groupée par NPM, le nom seul, chaque sort sur la couleur de sa magie comme sur les pages de magie, la liste fermée dans celle du
   sort choisi (`sortsParNpm`, demande du propriétaire), ce que chaque sort apporte en infobulle (« Listes avec infobulles », plus haut) ; le **NM** d'un sort se règle à **un seul curseur, de 0 à 3** (décision R118, qui précise
   R26 : plus de cases « livre » ni « MJ » ; `bornesDuNm`, `sortAuNm`), **de 1 à 3** quand l'entraînement note un livre de ce sort (« livre » à côté du
   curseur ; la page le borne, la base ne l'impose plus), dont le NM **ne compte pas** dans le décompte ; le livre d'un sort qui n'est pas choisi
@@ -663,7 +669,8 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   attributs comme la fiche automatique (santé, chakra, barrière, vitesse, armure de base, initiative, 4ᵉ barre, Corruption) et valeurs du moment
   (`valeursDuMoment`, `ajusterValeurDuMoment`) ; alignement (`alignementDe`) ; dé d'une famille d'armes selon la Force (`deDeLaFamille`) et maîtrises
   d'armes par source (`sourcesDeMaitrise`, `maitrisesParFamille`, `compteurDeMaitrise`, R148 à R151) ; emplacements de sorts
-  (conditions × puissance magique, R16), sorts possibles, NM ; dons à choisir selon la classe, la spécialité et le niveau de classe ; dons de classe
+  (conditions × puissance magique, R16 ; « Grimoire » compte comme une magie acquise, R189), sorts possibles (jusqu'au NPM des sorts, `npmDesSorts` : le
+  plafond du Potentiel Illimité, R188), NM ; dons à choisir selon la classe, la spécialité et le niveau de classe ; dons de classe
   débloqués (`donsAcquis`) et dons de la race (`donsDeRace`) ; résistances et faiblesses (`resistancesDe`).
 - **Accessoires** (demande du propriétaire : « l'accessoire influe sur le reste de la fiche » ; décision R54 ; **six emplacements**, Chef, Collier, Bracelet 1 et 2,
   Bague 1 et 2, chacun un effet de la table, ni nom ni effet hors table : décision R97) : un tableau Emplacement, Effet, Valeur, Maudit ; la liste des effets
@@ -767,7 +774,7 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
 - **Invocations** (décision R130 : « avoir la liste des invocations possibles pour les sorts qui invoquent des créatures », « Toutes, les miennes
   d'abord ») : sous un sort qui invoque (`regles.invocations`, `creaturesDuSort`), une ligne repliée « Créatures invocables : N à votre portée sur M » :
   celles à la portée du personnage (la combinaison mono et celle de sa seconde magie, l'innée ou l'acquise qui n'est pas celle du sort, jamais le
-  Potentiel Illimité ; une marionnette jusqu'au NPM accessible), puis celles qui demandent un allié (ou au-delà du NPM), un bouton chacune sur la couleur
+  Potentiel Illimité ; une marionnette jusqu'au NPM du niveau, `npmMax`, jamais le plafond des sorts du Potentiel Illimité : R188 (2)), puis celles qui demandent un allié (ou au-delà du NPM), un bouton chacune sur la couleur
   de ses magies ; la carte resserrée de la créature choisie au NPM du sort, le « × N » de son coût (R129 ; `lib/creature-npm.mjs#creatureAuNpm`) ; une
   marionnette est la créature d'un NPM : la choisir règle le « × N ». Sous un sort qui sacrifie une invocation (`sacrificeDuSort`) : l'effet « Manteau noir »
   de la marionnette du NPM du sort, ou toutes les améliorations d'« Amélioration cadavérique » (`regles.tableaux_de_sacrifice`). Le choix d'une créature
@@ -820,7 +827,7 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   change pas) : l'onglet liste les erreurs, puis les avertissements, marqués « Avertissement · » aux couleurs `--warn-text` (`controlesParGravite`) ; son
   compteur compte les erreurs, en rouge, les avertissements dans son infobulle ; sans erreur, il compte les avertissements aux couleurs `--warn-bg` et
   `--warn-text` (`data-avertissement`), et « ✓ » vert sans rien ; le message d'enregistrement dit de même « N règles à revoir, M avertissements ». Ce que la base ne contrôle pas encore (bonus d'équipement, nombre de
-  sorts par emplacement, plafond de NPM du Potentiel Illimité) n'est montré que comme compteur.
+  sorts par emplacement) n'est montré que comme compteur.
 - **Enregistrement** : création (`POST`) puis modification (`PUT` avec la version lue : si quelqu'un a modifié la fiche entre-temps, rien n'est écrasé et
   la page propose de la recharger), suppression (`DELETE` avec la version lue). Sans le service (service arrêté), ou quand il refuse
   l'enregistrement (version changée entre-temps, requête trop volumineuse, fiche refusée), la fiche se remplit et se **télécharge** (« Télécharger »
@@ -1190,12 +1197,12 @@ pas, et la note datée est le seul signal.
   écrites, `maitrise_plafond` « famille = points / 4 », `maitrise_arme_exclue` sur ARME DE MONSTRES, R45 ; l'accessoire a pour source `accessoire:<emplacement>`), gains de niveau (`gains_niveau`, R73 : santé + chakra gagnés = 15 points par niveau à partir du 2,
   plus 1 à 8 par dé atteint, `niveau_global.de_attributs_min` et `de_attributs_max` ; détail « total / à saisir » ou « total / minimum à maximum »), 2ᵉ classe, spécialité
   avant le niveau de classe 10, dons hors classe ou exclusifs, sorts (magie du personnage, toutes pour le Potentiel Illimité ; NPM au plus la puissance magique
-  du niveau, la 5 au niveau 16 et sans magie acquise, R16 ; 3 NM au plus sur un sort ; NM d'un sort sans celui de son livre au plus niveau global − 1 plus les NM du MJ de la fiche, et en tout au plus ceux gagnés — par les niveaux et par les dons acquis qui l'écrivent, `capacite_nm_gagne`, R154 — plus ceux du MJ, R24, R26, R118), bouclier (forme et matière : R96), armure (R95, R165 : une armure, de base ou élémentaire, jamais les deux, `armure_double` ; une amélioration sans son armure, `armure_manquante` ; une armure « Familier », `armure_familier` ; une armure élémentaire d'une magie que le personnage n'a pas, `armure_magie_absente` ; une partie que l'armure n'a pas, `armure_partie_hors_armure`, une armure élémentaire ayant ses six parties ; le poids portable est au moteur), améliorations (celle d'une arme, du catalogue ou élémentaire : cible `arme`, R167), arme élémentaire d'une magie que le personnage n'a ni en innée ni en acquise (`arme_elementaire_hors_magie` « rang : arme élémentaire », R167 ; le Potentiel Illimité n'en ouvre aucune), valeur d'un
+  du niveau, la 5 au niveau 16 et sans magie acquise, R16 ; pour une magie innée qui a un plafond, `magie_npm_plafond` (le Potentiel Illimité, 3), au plus
+  aussi ce plafond, relevé par un don acquis de `capacite_npm_plafond` (« Semi-complet », 4), comme `npmDesSorts` du moteur, R188 ; 3 NM au plus sur un sort ; NM d'un sort sans celui de son livre au plus niveau global − 1 plus les NM du MJ de la fiche, et en tout au plus ceux gagnés — par les niveaux et par les dons acquis qui l'écrivent, `capacite_nm_gagne`, R154 — plus ceux du MJ, R24, R26, R118), bouclier (forme et matière : R96), armure (R95, R165 : une armure, de base ou élémentaire, jamais les deux, `armure_double` ; une amélioration sans son armure, `armure_manquante` ; une armure « Familier », `armure_familier` ; une armure élémentaire d'une magie que le personnage n'a pas, `armure_magie_absente` ; une partie que l'armure n'a pas, `armure_partie_hors_armure`, une armure élémentaire ayant ses six parties ; le poids portable est au moteur), améliorations (celle d'une arme, du catalogue ou élémentaire : cible `arme`, R167), arme élémentaire d'une magie que le personnage n'a ni en innée ni en acquise (`arme_elementaire_hors_magie` « rang : arme élémentaire », R167 ; le Potentiel Illimité n'en ouvre aucune), valeur d'un
   accessoire, dons « Variable » du Mage Bleu (R181 : `don_obtenu_a_choisir` « don », seulement quand sa liste garde une entrée libre, Q96 ;
   `don_obtenu_sans_magie_acquise` « don », Secondaire sans magie acquise ; `don_obtenu_source_perdue` et `don_obtenu_hors_liste` « don = entrée », un
   choix gardé sans effet ; libellés dans `lib/fiche-controles.mjs`, noms par `indexerNoms`) ; une fiche sans race ou sans magie innée (`race_manquante`, `magie_innee_manquante` : contrainte de la table jusqu'à la migration 0038).
-  Toute fiche est contrôlée, même inachevée ; une fiche conforme n'y a aucune ligne. Ce qui demande le moteur (bonus de classe, d'équipement et de race, nombre de sorts, plafond de NPM du
-  Potentiel Illimité, résistances — calculées par le moteur, `resistancesDe` —, valeurs dérivées) n'y est pas encore.
+  Toute fiche est contrôlée, même inachevée ; une fiche conforme n'y a aucune ligne. Ce qui demande le moteur (bonus de classe, d'équipement et de race, nombre de sorts, résistances — calculées par le moteur, `resistancesDe` —, valeurs dérivées) n'y est pas encore.
 
 Les tables restent **vides dans `data/rows`** : les fiches réelles vivent dans la base vivante du service des personnages (`db/` de l'instance,
 [`serveur.md`](serveur.md) : les prétirés dès maintenant, les fiches de joueur à la 1.0), jamais dans git ni dans la base téléchargeable de `/donnees/`. `client/test/personnages-db.test.mjs` crée des fiches dans une copie de la base et vérifie chaque contrôle et chaque règle de

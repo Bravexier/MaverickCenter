@@ -1942,7 +1942,11 @@ export function puissanceMagique(regles, niveau) {
   return Math.max(0, ...regles.niveaux.filter((n) => n.niveau <= niveau && n.puissance_magique).map((n) => n.puissance_magique));
 }
 
-/** Plus haut niveau de sort (NPM) accessible : la puissance magique, sans le palier réservé aux personnages sans magie acquise (v_personnage_controle). */
+/**
+ * Puissance magique (NPM) du niveau pour ce personnage : la puissance magique, sans le palier réservé aux personnages sans magie acquise
+ * (v_personnage_controle). Ni le plafond d'une magie innée ni un don n'y comptent (décision R188 (2)) : la Symbiose, les invocations s'en servent ; le
+ * choix des sorts prend npmDesSorts.
+ */
 export function npmMax(regles, fiche) {
   const niveau = niveauGlobal(regles, fiche.xp);
   return Math.max(0, ...regles.niveaux
@@ -1951,20 +1955,42 @@ export function npmMax(regles, fiche) {
 }
 
 /**
+ * Plus haut NPM des sorts que la fiche choisit (décision R188) : la puissance du niveau (npmMax), bornée par le plafond de sa magie innée quand elle en a
+ * un (`regles.magies[].npm_plafond`, magie_npm_plafond : le Potentiel Illimité), relevé par les dons acquis qui en écrivent un (donsAcquis,
+ * `npm_plafond`, capacite_npm_plafond : « Semi-complet » de l'Archimage) : min(npmMax, max(plafond de la magie, plafonds des dons)). Le don relève le
+ * plafond sans ouvrir un NPM que le niveau n'ouvre pas (R188 (1)). Sans plafond de la magie innée : npmMax. Seul le choix des sorts est plafonné
+ * (R188 (2) : sortsPossibles, les mentions « sorts jusqu'au NPM » de la page et « NPM … au plus » du tableur) ; la Symbiose, les invocations et le
+ * multiplicateur des emplacements gardent la puissance du niveau. Comme la règle sort_puissance de v_personnage_controle.
+ */
+export function npmDesSorts(regles, fiche) {
+  const max = npmMax(regles, fiche);
+  const plafond = trouver(regles.magies ?? [], fiche.magie_innee_id)?.npm_plafond;
+  if (!Number.isInteger(plafond)) return max;
+  const releves = donsAcquis(regles, fiche).flatMap((c) => c.dons.map((d) => d.npm_plafond).filter(Number.isInteger));
+  return Math.min(max, Math.max(plafond, ...releves));
+}
+
+/**
  * Emplacements de sorts (guide, étape 5 ; Doc « Créer sa fiche » › Tableau magie) : conditions remplies (magie innée, magie acquise, chaque classe
- * magique) × puissance magique. Avec deux magies, les emplacements du palier 5 s'ouvrent quand même (correction 29 de la fiche).
+ * magique, chaque don acquis qui compte comme une magie acquise : « Grimoire » de l'Archimage, décision R189, `condition_emplacements` des règles,
+ * capacite_condition_emplacements ; il ne donne pas de seconde magie) × puissance magique du niveau (puissanceMagique, jamais le plafond de R188).
+ * Avec deux magies, les emplacements du palier 5 s'ouvrent quand même (correction 29 de la fiche).
  */
 export function emplacementsDeSorts(regles, fiche) {
-  const conditions = (fiche.magie_innee_id ? 1 : 0) + (fiche.magie_acquise_id ? 1 : 0) + classesDe(regles, fiche).filter((c) => c.magique).length;
+  const dons = donsAcquis(regles, fiche).reduce((n, c) => n + c.dons.filter((d) => d.condition_emplacements).length, 0);
+  const conditions = (fiche.magie_innee_id ? 1 : 0) + (fiche.magie_acquise_id ? 1 : 0) + classesDe(regles, fiche).filter((c) => c.magique).length + dons;
   const puissance = puissanceMagique(regles, niveauGlobal(regles, fiche.xp));
   return { conditions, puissance, total: conditions * puissance };
 }
 
-/** Sorts que la fiche peut prendre : de sa magie innée ou acquise (toutes pour le Potentiel Illimité), jusqu'au NPM accessible. */
+/**
+ * Sorts que la fiche peut prendre : de sa magie innée ou acquise (toutes pour le Potentiel Illimité), jusqu'au NPM des sorts (npmDesSorts : la
+ * puissance du niveau sous le plafond de R188).
+ */
 export function sortsPossibles(regles, fiche) {
   const toutes = fiche.magie_innee_id === POTENTIEL_ILLIMITE;
   const magies = new Set([fiche.magie_innee_id, fiche.magie_acquise_id].filter(Boolean));
-  const max = npmMax(regles, fiche);
+  const max = npmDesSorts(regles, fiche);
   return regles.sorts.filter((s) => (toutes || magies.has(s.magie_id)) && s.niveau <= max);
 }
 
@@ -2164,7 +2190,7 @@ export function livresApresChangement(regles, fiche, ancien, nouveau, { rendre =
 
 /**
  * Tableau des sorts de la page (demande du propriétaire) : une ligne par emplacement. Chaque ligne propose les sorts possibles (sortsPossibles : magies du
- * personnage, NPM accessible) moins ceux déjà pris sur les autres lignes ; le sort de la ligne y reste, même s'il n'est plus possible (`horsDesRegles`),
+ * personnage, NPM des sorts) moins ceux déjà pris sur les autres lignes ; le sort de la ligne y reste, même s'il n'est plus possible (`horsDesRegles`),
  * pour qu'on le voie et qu'on le change. Il n'y a pas d'emplacement en plus (décision R27) : un sort au-delà des emplacements (XP baissée, magie retirée)
  * a sa ligne `enTrop`, à retirer.
  */
@@ -3672,7 +3698,8 @@ export function postureDuMoment(regles, fiche, { cent: centForce } = {}) {
   const ordre = (p) => (regles.ordre_postures ?? []).indexOf(p.id);
   const actives = cent ? [...(regles.postures ?? [])].sort((a, b) => ordre(a) - ordre(b)) : [posture];
   const niveau = niveauGlobal(regles, fiche.xp);
-  // « +2 tous les niveaux de puissance magique » : le NPM accessible (npmMax : le palier 5 n'est pas pour un personnage à magie acquise)
+  // « +2 tous les niveaux de puissance magique » : la puissance du niveau (npmMax : le palier 5 n'est pas pour un personnage à magie acquise), pas le
+  // plafond des sorts de R188 (2)
   const puissance = npmMax(regles, fiche);
   const lignesDe = (p) => p.effets.map((texte, i) => ({ texte, chiffre: p.chiffres?.[i] ?? null, inconvenient: (p.inconvenients ?? []).includes(i + 1) }));
   const r = {
@@ -4344,8 +4371,9 @@ const FOIS_MAX = 99;
 
 /**
  * Les bornes du multiplicateur du coût d'un sort (décision R129), ou null sans multiplicateur : au moins 1 ; le NPM d'une créature jusqu'au NPM
- * accessible du personnage (npmMax ; texte des invocations : « Avoir le bon niveau de puissance magique permet d'avoir des invocations plus
- * puissantes […] seuls les utilisateurs d'une seule magie peuvent invoquer les créatures NPM 5 ») ; un sort dont la remarque écrit un chakra
+ * du niveau du personnage (npmMax : la puissance du niveau, pas le plafond des sorts de R188 (2) ; texte des invocations : « Avoir le bon niveau de
+ * puissance magique permet d'avoir des invocations plus puissantes […] seuls les utilisateurs d'une seule magie peuvent invoquer les créatures
+ * NPM 5 ») ; un sort dont la remarque écrit un chakra
  * maximum en une fois (Charge d'énergie, « 30 chakra maximum en 1 fois », que le propriétaire reprend : « Chargé au maximum 30 chakra »), jusqu'à ce
  * maximum divisé par son coût ; sinon FOIS_MAX.
  */
@@ -4370,7 +4398,8 @@ export function bornesDuMultiplicateur(regles, fiche, sort) {
  * pouvoir invoquer un golem double-magie, il faut posséder une seconde magie ou alors être à proximité d'un allié », « le potentiel illimité ne peut pas
  * faire d'invocation double élément tout seul » : à sa portée, la combinaison mono et celle de sa seconde magie (l'innée ou l'acquise qui n'est pas celle du
  * sort, jamais le Potentiel Illimité) ; deux fois la magie du sort (« Terre + Terre ») demande l'aide d'un allié (`raison` : 'allie'). Une marionnette (une
- * créature par NPM, décision R53) est à sa portée jusqu'au NPM accessible (npmMax ; `raison` : 'npm').
+ * créature par NPM, décision R53) est à sa portée jusqu'au NPM du niveau (npmMax : la puissance du niveau, pas le plafond des sorts de R188 (2) ;
+ * `raison` : 'npm').
  */
 export function creaturesDuSort(regles, fiche, sort) {
   const invocation = (regles.invocations ?? []).find((i) => i.sort_id === sort?.id);

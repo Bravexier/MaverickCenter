@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 96;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 97;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -917,6 +917,16 @@ CREATE TABLE regle_magie (
   source_ref   TEXT    NOT NULL CHECK (length(source_ref) > 0)
 ) STRICT;
 
+-- Plafond de puissance magique (NPM) des sorts d'un personnage de cette magie innée (décision R188, migration 0097) : le Potentiel Illimité, 3 (son
+-- bloc « Explication » : « ne pouvoir atteindre que le niveau 3 de puissance magique maximum »). Il s'ajoute à la table des niveaux (R16) : NPM des sorts
+-- = min(puissance magique du niveau, plafond) ; un don acquis peut le relever (capacite_npm_plafond). Il ne borne que le choix des sorts (règle
+-- sort_puissance de v_personnage_controle ; lib/fiche-regles.mjs, `magies[].npm_plafond`), jamais la Symbiose, les invocations ni le multiplicateur des
+-- emplacements de sorts (R188 (2)). Une magie sans ligne n'a pas de plafond. Valeur de la décision, jamais relue d'un texte ; le site de dev ne l'écrit pas.
+CREATE TABLE magie_npm_plafond (
+  magie_id     TEXT    NOT NULL PRIMARY KEY REFERENCES magie(id),
+  npm          INTEGER NOT NULL CHECK (npm BETWEEN 1 AND 5)
+) STRICT, WITHOUT ROWID;
+
 -- ====================================================================================================================
 -- 4. ANNEXES DES MAGIES : états, résistances, météo, modes hyper et super (famille « annexes »)
 -- Altérations d'état (`etat` : id 'guide/liste-des-alterations-d-etat#etat:<slug>', visé par les autres domaines), résistances, météo, modes.
@@ -1570,6 +1580,25 @@ CREATE TABLE classe_annexe_entree (
 CREATE TABLE capacite_variable (
   capacite_id  TEXT    NOT NULL PRIMARY KEY REFERENCES capacite(id) ON DELETE CASCADE,
   magie        TEXT    NOT NULL CHECK (magie IN ('innee', 'acquise'))
+) STRICT, WITHOUT ROWID;
+
+-- Plafond de NPM qu'un don acquis relève (décision R188, migration 0097) : « Semi-complet » de l'Archimage, 4 (« Permet d'utiliser les sorts de lvl 4 de
+-- puissance. »). N'a d'effet que si la magie innée du personnage a un plafond (magie_npm_plafond) : plafond effectif = max(plafond de la magie innée,
+-- plafonds des dons acquis, v_personnage_don_acquis) ; il relève le plafond sans ouvrir un NPM que le niveau n'ouvre pas (R188 (1) : min avec la puissance
+-- magique du niveau, R16). Règle sort_puissance de v_personnage_controle ; lib/fiche-regles.mjs, `classes[].dons[].npm_plafond`. Écrite par la migration,
+-- jamais relue du texte du don ; le site de dev ne l'écrit pas (un don supprimé emporte sa ligne).
+CREATE TABLE capacite_npm_plafond (
+  capacite_id  TEXT    NOT NULL PRIMARY KEY REFERENCES capacite(id) ON DELETE CASCADE,
+  npm          INTEGER NOT NULL CHECK (npm BETWEEN 1 AND 5)
+) STRICT, WITHOUT ROWID;
+
+-- Dons acquis qui comptent comme une condition de plus dans le nombre d'emplacements de sorts, exactement comme une magie acquise (décision R189, migration
+-- 0097) : « Grimoire » de l'Archimage (« Permet de débloquer les emplacements de sorts de magie acquise. »). Il ne donne pas de seconde magie (R176) : ni
+-- Mode Hyper, ni Symbiose, ni palier NPM 5 réservé aux personnages sans magie acquise. Lu par le moteur seulement (lib/fiche-regles.mjs,
+-- `classes[].dons[].condition_emplacements` ; lib/fiche-moteur.mjs#emplacementsDeSorts) : aucune règle de v_personnage_controle (aucun contrôle ne compte
+-- les emplacements). Écrite par la migration, jamais relue du texte du don ; le site de dev ne l'écrit pas (un don supprimé emporte sa ligne).
+CREATE TABLE capacite_condition_emplacements (
+  capacite_id  TEXT    NOT NULL PRIMARY KEY REFERENCES capacite(id) ON DELETE CASCADE
 ) STRICT, WITHOUT ROWID;
 
 -- ====================================================================================================================
@@ -4700,7 +4729,8 @@ CREATE VIEW v_personnage_metier_bonus AS
 -- Dons acquis d'une fiche (décision R32, migration 0076) : le miroir de lib/fiche-moteur.mjs#donsAcquis. Pour chaque classe prise qui a des niveaux
 -- (niveau de classe >= 1, v_personnage_niveau ; la seconde d'un mono-classe n'en a qu'au niveau global 11, R2), ses dons jusqu'au niveau de classe
 -- atteint, de sa spécialité quand ils en ont une (celle de la fiche), et, pour un don à choix (nature 'choix'), seulement s'il est choisi
--- (personnage_capacite). Sert aux sources de maîtrise d'arme (R148), aux NM gagnés des dons (R154) et aux dons « Variable » du Mage Bleu (R181).
+-- (personnage_capacite). Sert aux sources de maîtrise d'arme (R148), aux NM gagnés des dons (R154), aux dons « Variable » du Mage Bleu (R181) et
+-- au plafond de NPM relevé par un don (R188).
 CREATE VIEW v_personnage_don_acquis AS
   SELECT pc.personnage_id, pc.rang AS classe_rang, pc.classe_id, c.id AS capacite_id
   FROM personnage_classe pc
@@ -4810,8 +4840,8 @@ CREATE VIEW v_groupe_controle AS
 
 -- Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi.
 -- Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45, R73, R95, R96,
--- R100, R104, R118, les maîtrises d'armes de R148 à R151, R154, l'armure de R165, les armes élémentaires de R167 et les dons « Variable » de R181) ; ce qui
--- demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité, poids d'armure portable de R165) n'est pas ici. Toute fiche est
+-- R100, R104, R118, les maîtrises d'armes de R148 à R151, R154, l'armure de R165, les armes élémentaires de R167, les dons « Variable » de R181 et le plafond
+-- de NPM de R188) ; ce qui demande le moteur (bonus de classe, d'équipement, nombre de sorts, poids d'armure portable de R165) n'est pas ici. Toute fiche est
 -- contrôlée, même inachevée : il n'y a plus de statut (demande du propriétaire, migration 0038) ; une ligne signale, elle n'empêche pas d'enregistrer.
 CREATE VIEW v_personnage_controle AS
   -- Race : classe accessible (matrice « Accessibilité de Classe », décision R8)
@@ -4995,7 +5025,9 @@ CREATE VIEW v_personnage_controle AS
   -- comptent, au plus niveau global − 1 plus les NM du MJ sur un sort, au plus les NM gagnés plus ceux du MJ en tout (tant qu'un niveau donne un NM, la
   -- seconde règle implique la première, qui nomme le sort). Le livre d'un sort (personnage_livre_sort, décision R169, migration 0082) n'est ôté que
   -- d'un sort choisi (une ligne de personnage_sort, jointe par la clé primaire du livre : jamais deux lignes) qui a au moins 1 NM (comme
-  -- lib/fiche-moteur.mjs#nmDuSort : jamais moins de 0 NM comptés) ; le livre d'un sort non choisi, en attente, ne change rien
+  -- lib/fiche-moteur.mjs#nmDuSort : jamais moins de 0 NM comptés) ; le livre d'un sort non choisi, en attente, ne change rien. Plafond de NPM (décision
+  -- R188, migration 0097) : une magie innée qui en a un (magie_npm_plafond : le Potentiel Illimité, 3) borne aussi le NPM du sort, relevé par un don acquis
+  -- (capacite_npm_plafond, v_personnage_don_acquis : « Semi-complet », 4) ; NPM au plus min(puissance du niveau, max de ces plafonds)
   SELECT ps.personnage_id, 'sort_hors_magie', ps.sort_id
   FROM personnage_sort ps JOIN sort s ON s.id = ps.sort_id JOIN personnage p ON p.id = ps.personnage_id
   WHERE s.magie_id <> COALESCE(p.magie_innee_id, '') AND s.magie_id <> COALESCE(p.magie_acquise_id, '')
@@ -5006,8 +5038,12 @@ CREATE VIEW v_personnage_controle AS
   JOIN sort s ON s.id = ps.sort_id
   JOIN personnage p ON p.id = ps.personnage_id
   JOIN v_personnage_niveau n ON n.personnage_id = ps.personnage_id
+  LEFT JOIN magie_npm_plafond mp ON mp.magie_id = p.magie_innee_id
   WHERE s.niveau > (SELECT MAX(g.puissance_magique) FROM niveau_global g
                     WHERE g.niveau <= n.niveau_global AND (p.magie_acquise_id IS NULL OR g.puissance_magique_note IS NULL))
+     OR (s.niveau > mp.npm
+         AND NOT EXISTS (SELECT 1 FROM v_personnage_don_acquis a JOIN capacite_npm_plafond c ON c.capacite_id = a.capacite_id
+                         WHERE a.personnage_id = ps.personnage_id AND c.npm >= s.niveau))
   UNION ALL
   SELECT ps.personnage_id, 'sort_nm_plafond', ps.sort_id || ' = ' || ps.niveau_maitrise
   FROM personnage_sort ps
