@@ -1744,21 +1744,26 @@ descriptions peuvent citer des mots-clés.
 
 ## Liens entre pages
 
+**Un lien est la balise d'un mot-clé** (migration `0096` ; décision du propriétaire : « tous les liens deviendront des mots-clés et tous les mots-clés
+deviendront des liens »). Un mot-clé qui porte une adresse (`mot_cle.url`, interne, relative à la racine du site, sans le préfixe de déploiement :
+`/races/humain/`, `/metiers/#metier-mineur`) mène à cette adresse ; sa balise s'écrit comme toute balise du glossaire :
+
 | Écriture | Effet |
 | --- | --- |
-| `[[Titre]]` | lien vers la page dont le titre, l'alias ou le slug correspond |
-| `[[Titre\|texte]]` | idem, avec un texte d'affichage différent |
-| `[[races/elfe]]` | désigne la page sans ambiguïté (utile si deux pages ont le même titre) |
+| `{{humain}}` | lien vers l'adresse du mot-clé, affiché par son libellé |
+| `{{humain\|les humains}}` | idem, avec un texte d'affichage différent |
 
-La casse, les accents et les apostrophes sont ignorés. Les liens sont **résolus au build** :
+- Une page à laquelle aucun mot-clé ne mène ne se lie pas : on donne d'abord l'adresse à un mot-clé (page Recherche du site de dev). Un import ne crée
+  jamais de mot-clé.
+- `[[Titre]]`, `[[Titre|texte]]` et `[texte](/adresse)` ne s'écrivent plus dans les textes : `db:check` les refuse hors code (sauf pages d'exemple et
+  `/#lien-discord`). Saisis sur le site de dev, ils deviennent la balise du seul mot-clé qui mène à la page visée, ou sont refusés
+  ([`serveur.md`](serveur.md), « Édition des règles (site de dev) »).
+- Les pages d'exemple (`status: example`) gardent leurs `[[…]]` : résolus au build (la casse, les accents et les apostrophes ignorés), un lien sans
+  cible s'y affiche en rouge, avec un avertissement `[wikilinks]` et une entrée dans « Pages à créer » de l'index du wiki (`/pages/`).
+- Aucune page n'affiche plus ni « Cette page mentionne » ni « Mentionnée par » (demande du propriétaire du 2026-11-05 : « Supprime ces
+  colonnes de toutes les pages. Elles polluent l'affichage pour rien. ») ; le pied d'une page ne garde que ses mots-clés.
 
-- aucune page n'affiche plus ni « Cette page mentionne » ni « Mentionnée par » (demande du propriétaire du 2026-11-05 : « Supprime ces
-  colonnes de toutes les pages. Elles polluent l'affichage pour rien. ») ; le pied d'une page ne garde que ses mots-clés ;
-- un lien sans cible s'affiche en rouge, un avertissement `[wikilinks]` apparaît au build, et la page figure dans
-  « Pages à créer » de l'index du wiki (`/pages/`) ;
-- un titre porté par plusieurs pages est signalé comme ambigu : utiliser `[[catégorie/slug]]`.
-
-Les `[[…]]` placés dans du code (`` `…` `` ou bloc ```) ne sont pas interprétés.
+Une balise ou un `[[…]]` placé dans du code (`` `…` `` ou bloc ```) n'est pas interprété.
 
 ## Statuts
 
@@ -1775,17 +1780,21 @@ Les `[[…]]` placés dans du code (`` `…` `` ou bloc ```) ne sont pas interpr
 
 ## Maillage automatique
 
-Après un import, `npm run autolink` (depuis `client/`) propose des liens `[[…]]` vers les pages dont le titre ou un alias apparaît
-dans le texte des autres pages. **Sans option, il n'écrit rien** : il affiche les statistiques et les 40 premiers liens ;
-`npm run autolink -- --write` les applique, `-- --verbose` liste tout. Règles (précision d'abord) :
+Après un import, `npm run autolink` (depuis `client/`) propose de baliser les mentions d'un **mot-clé à adresse** dans le texte des pages : son
+libellé, ou le titre ou un alias de la page où il mène quand il est le seul mot-clé à y mener. La mention devient `{{id}}` (le libellé) ou
+`{{id|texte}}` (forme canonique) ; jamais un `[[…]]`. Les mots-clés et leurs adresses sont lus dans la base reconstruite depuis `data/rows` ; une page
+sans mot-clé n'est pas une cible (le maillage ne crée jamais de mot-clé ; l'aperçu les compte, `--verbose` les liste). **Sans option, il n'écrit
+rien** : il affiche les statistiques et les 40 premières balises ; `npm run autolink -- --write` les applique dans les `.md` fabriqués (puis
+`npm run db:sync-pages`), `-- --verbose` liste tout. Règles (précision d'abord) :
 
-- un seul lien par page cible dans une page, jamais vers la page elle-même ni vers un terme de son propre nom ;
-- rien dans le frontmatter, les titres, les tableaux, le code, les liens et URLs existants ;
-- un titre porté par plusieurs pages est ignoré ; un titre d'un seul mot n'est lié que s'il commence par une majuscule ;
+- une seule balise par mot-clé dans une page (une balise déjà écrite compte), jamais vers la page elle-même ni pour un terme de son propre nom ;
+- rien dans le frontmatter, les titres, les tableaux, le code, les balises, liens et URLs existants ;
+- une écriture partagée par plusieurs mots-clés est ignorée ; un terme d'un seul mot n'est balisé que s'il commence par une majuscule ;
 - les locutions courantes qui sont aussi un titre (par exemple « en résumé ») se déclarent dans `client/scripts/autolink-ignore.txt` ;
-- les pages de race, de classe, de don et de magie ne reçoivent pas de liens (`TYPES_SANS_MAILLAGE`, `src/lib/autolink.mjs`) : leur corps est refait
-  depuis les tables par le mode modification (rendu de l'importeur), un lien y serait perdu, et `races_onglet.py --verifier` le refuserait ; elles
-  restent des cibles.
+- les pages de race, de classe, de don, de magie et de métier ne reçoivent pas de balises (`TYPES_SANS_MAILLAGE`, `src/lib/autolink.mjs`) : leur corps
+  est refait depuis les tables par le mode modification (rendu de l'importeur ; le corps d'un métier est exactement le rendu de sa ligne), une balise y
+  serait perdue, et `races_onglet.py --verifier` la refuserait ; les pages `lore` non plus, que leur importeur réécrit à l'identique (le Codex, dont
+  `codex.py --verifier` veut chaque page à l'octet près ; « Relations entre les races »). Leurs mots-clés restent des cibles.
 
-L'outil ne modifie que du balisage de lien (vérifié : en retirant les `[[…]]`, on retrouve exactement le texte d'origine) et
-peut être relancé sans risque après chaque import. Relire le résultat avec `git diff` avant de commiter.
+L'outil ne modifie que du balisage (en remplaçant chaque balise par son texte affiché, on retrouve exactement le texte d'origine) et peut être relancé
+sans risque après chaque import. Relire le résultat avec `git diff` avant de commiter.

@@ -28,6 +28,11 @@ Découpage (une page = une section du document) :
     « GLOSSAIRE »                  une page
 et une page de sommaire par partie qui en a plusieurs, plus `lore/codex` (sommaire du document). Une section vide du document n'a pas de page.
 
+Renvois (sommaires, « Voir aussi », renvoi « Voir “X” … » du document) : la balise du mot-clé qui mène à la page visée (mot_cle.url, migration 0096 :
+les liens sont devenus des mots-clés), « {{id}} » quand le texte affiché est son libellé, « {{id|texte}} » sinon ; jamais un [[lien]]. Un import ne
+crée jamais de mot-clé : sans exactement un mot-clé pour la page, le texte simple, signalé « renvoi sans mot-clé » (Codex.lien). Une étiquette de
+partie (PARTIES, continent, magie) n'est jamais le mot-clé d'une page (Vocabulaire.etiquette).
+
 Le script n'écrit que dans <out>/lore/, refuse d'écraser une page qui ne vient pas de ce document et n'efface rien (une page du document qu'il ne
 produit plus est signalée « orpheline »).
 
@@ -258,7 +263,10 @@ class Codex:
         self.racine = arbre(lignes)
         self.pages = {}       # slug -> page
         self.ordre = []
-        self.vocabulaire = vocabulaire   # écriture -> libellé du mot-clé, ou None (vocabulaire()) ; None : les mots-clés tels que le découpage les donne
+        # Vocabulaire (vocabulaire()) : écriture -> libellé du mot-clé, ou None, et les mots-clés des liens ; None : les mots-clés tels que le découpage
+        # les donne, et aucun lien (texte simple)
+        self.vocabulaire = vocabulaire
+        self.sans_lien = {}   # titre visé -> raison : un renvoi écrit en texte simple, faute d'un mot-clé unique qui mène à sa page (lien())
 
     def page(self, titre, corps, tags, resume=None, aliases=()):
         slug = T.normalize(titre)
@@ -266,17 +274,33 @@ class Codex:
             raise ValueError(f'deux pages pour le même titre : {titre!r}')
         tags = ['codex'] + [t for t in tags if t]
         if self.vocabulaire:
-            # ceux du vocabulaire seulement, dans son écriture (celle que db:export-pages écrit), une fois chacun
-            tags = list(dict.fromkeys(libelle for libelle in map(self.vocabulaire, tags) if libelle))
+            # ceux du vocabulaire seulement, dans son écriture (celle que db:export-pages écrit), une fois chacun ; une étiquette de partie n'est
+            # jamais le mot-clé d'une page (Vocabulaire.etiquette : « Mrode », « Erisia », « Glossaire » de la migration 0096)
+            tags = list(dict.fromkeys(libelle for libelle in [self.vocabulaire(tags[0])] + [self.vocabulaire.etiquette(t) for t in tags[1:]] if libelle))
         p = dict(slug=slug, titre=titre, corps=nettoyer_lignes(corps), tags=tags,
                  resume=resume if resume is not None else premiere_phrase(corps), aliases=list(aliases))
         self.pages[slug] = p
         self.ordre.append(slug)
         return p
 
-    @staticmethod
-    def lien(titre):
-        return f'[[{titre}]]'
+    def lien(self, titre, texte=None):
+        """Le renvoi vers la page `titre` du Codex (lore/<normalize(titre)>), affiché `texte` (le titre par défaut) : la balise du mot-clé qui mène à
+        cette page (migration 0096 : les liens sont devenus des mots-clés, mot_cle.url), « {{id}} » quand le texte affiché est son libellé,
+        « {{id|texte}} » sinon (lib/liens-en-mots-cles.mjs#baliseDuLien, la forme canonique d'un texte mis en forme). Un import ne crée jamais de
+        mot-clé : s'il n'y en a pas exactement un pour cette page (ou si le texte ne peut pas être celui d'une balise), le texte simple, signalé
+        (self.sans_lien)."""
+        texte = titre if texte is None else texte
+        adresse = f'/{TYPE}/{T.normalize(titre)}/'
+        mots = self.vocabulaire.mots_cles_de_l_adresse(adresse) if self.vocabulaire else []
+        if len(mots) != 1:
+            self.sans_lien.setdefault(titre, f'{len(mots)} mot(s)-clé(s) à l’adresse {adresse}' + (f' ({", ".join(i for i, _ in mots)})' if mots else ''))
+            return texte
+        ident, libelle = mots[0]
+        affiche = texte_affiche(texte)
+        if not affiche or re.search(r'[{}|\n\r]', affiche):
+            self.sans_lien.setdefault(titre, f'texte « {texte} » impossible dans une balise')
+            return texte
+        return f'{{{{{ident}}}}}' if affiche == libelle else f'{{{{{ident}|{texte}}}}}'
 
     def entite(self, noeud, tags, niveau=2, voir_aussi=()):
         """Une page pour une section : titre = le nom ; le reste du titre (sous-titre, parenthèse) en italique en tête de page."""
@@ -344,7 +368,7 @@ class Codex:
                 p = self.entite(divinite, [tag, gtag])
                 p['resume'] = nom_et_reste(divinite['titre'])[1] or p['resume']
                 liste.append((p['titre'], p['resume']))
-            corps += ['', f'## {groupe["titre"]}', ''] + [f'- [[{t}]] — {r}' for t, r in liste]
+            corps += ['', f'## {groupe["titre"]}', ''] + [f'- {self.lien(t)} — {r}' for t, r in liste]
             entrees += [(t, 1) for t, _ in liste]
         self.page('Les Divinités', corps, [tag], resume='Le panthéon de Maverick : forces créatrice et destructrice, dieux primordiaux, dieux et autres êtres divins.')
         return [('Les Divinités', 0)] + entrees
@@ -367,7 +391,7 @@ class Codex:
                     continue
                 p = self.entite(ordre, [tag, None if magie in MAGIES_HOMONYMES else magie])   # un homonyme n'est pas posé
                 reste = nom_et_reste(ordre['titre'])[1]
-                liste.append(f'- [[{p["titre"]}]]' + (f' {reste}' if reste else ''))
+                liste.append(f'- {self.lien(p["titre"])}' + (f' {reste}' if reste else ''))
                 entrees.append((p['titre'], 1))
             corps += ['', f'## {section["titre"]}', ''] + rendre(dict(section, enfants=[]), 2, avec_titre=False)
             if corps[-1]:
@@ -379,7 +403,7 @@ class Codex:
     def races(self, partie, tag):
         corps = corps_markdown(partie['lignes'])
         liste = [self.entite(race, [tag])['titre'] for race in partie['enfants'] if not vide(race)]
-        corps += [''] + [f'- [[{t}]]' for t in liste]
+        corps += [''] + [f'- {self.lien(t)}' for t in liste]
         self.page(partie['titre'], corps, [tag])
         return [(partie['titre'], 0)] + [(t, 1) for t in liste]
 
@@ -405,22 +429,22 @@ class Codex:
                     # « Empire Humain » de Mrode : une phrase, puis ses territoires (une page chacun)
                     pages = [self.entite(s, [tag, ctag])['titre'] for s in sous]
                     liste.append(f'- {region["titre"]}' + (f' : {paragraphes[0]}' if paragraphes else ''))
-                    liste += [f'  - [[{t}]]' for t in pages]
+                    liste += [f'  - {self.lien(t)}' for t in pages]
                     noms += [(t, 2) for t in pages]
                 elif sous:
                     # « Empire Humain (Avant 1145) » d'Erisia : sa page, et une page par royaume (provinces en sections)
                     titres = [nom_et_reste(s['titre'])[0] for s in sous]
                     p = self.entite(dict(region, enfants=[]), [tag, ctag], voir_aussi=titres)
                     pages = [self.entite(s, [tag, ctag])['titre'] for s in sous]
-                    liste.append(f'- [[{p["titre"]}]]')
-                    liste += [f'  - [[{t}]]' for t in pages]
+                    liste.append(f'- {self.lien(p["titre"])}')
+                    liste += [f'  - {self.lien(t)}' for t in pages]
                     noms += [(p['titre'], 2)] + [(t, 3) for t in pages]
                 else:
                     p = self.entite(region, [tag, ctag])
-                    liste.append(f'- [[{p["titre"]}]]')
+                    liste.append(f'- {self.lien(p["titre"])}')
                     noms.append((p['titre'], 2))
             self.page(continent['titre'], corps_markdown(continent['lignes']) + [''] + liste, [tag, ctag])
-            corps.append(f'- [[{continent["titre"]}]]')
+            corps.append(f'- {self.lien(continent["titre"])}')
             entrees += [(continent['titre'], 1)] + noms
         self.page('Les Civilisations', corps, [tag])
         return [('Les Civilisations', 0)] + entrees
@@ -435,8 +459,7 @@ class Codex:
         return None
 
     def lien_renvoi(self, titre):
-        cible = RENVOIS.get(titre, titre)
-        return f'[[{cible}]]' if cible == titre else f'[[{cible}|{titre}]]'
+        return self.lien(RENVOIS.get(titre, titre), titre)
 
     def outils(self, partie, tag):
         corps = corps_markdown(partie['lignes'])
@@ -450,7 +473,7 @@ class Codex:
             if corps[-1]:
                 corps.append('')
             # un objet dont la section n'est qu'un gabarit vide (Dague des zéphires, Lame de fer) : son nom, sans page
-            corps += [f'- [[{nom_et_reste(o["titre"])[0]}]]' if not vide(o) else f'- {o["titre"]}' for o in section['enfants']]
+            corps += [f'- {self.lien(nom_et_reste(o["titre"])[0])}' if not vide(o) else f'- {o["titre"]}' for o in section['enfants']]
             entrees += [(t, 1) for t in liste]
         self.page(partie['titre'], corps, [tag], resume='Les armes et objets légendaires ou uniques de Maverick.')
         return [(partie['titre'], 0)] + entrees
@@ -486,24 +509,77 @@ def du_codex(chemin):
     return (data.get('sources') or [None])[0] == SOURCES[0]
 
 
-def vocabulaire(chemin=VOCABULAIRE, historique=HISTORIQUE, schema=SCHEMA):
-    """Les mots-clés qu'une page du Codex peut porter : une fonction écriture -> libellé du mot-clé du vocabulaire (data/rows/mot_cle.sql) qu'elle
-    désigne, ou None. Même règle que l'import des pages (tools/db/maverick.py#mot_cle, historique du site de dev compris : une écriture qu'un mot-clé
-    renommé a quittée mène à lui) : un import ne crée jamais de mot-clé (migration 0056), db:sync-pages ne poserait pas une écriture inconnue."""
-    with open(schema, encoding='utf-8') as f:
-        texte = f.read()
-    db = sqlite3.connect(':memory:')
-    for table in ('mot_cle', 'historique_modification'):
-        db.execute(re.search(rf'CREATE TABLE {table} \([\s\S]*?\) STRICT;', texte).group(0))
-    for fichier in (chemin, historique):
-        if os.path.exists(fichier):
-            with open(fichier, encoding='utf-8') as f:
-                db.executescript(f.read())
+def texte_affiche(texte):
+    """Le texte d'un renvoi tel que le Markdown l'affiche (ses échappements retirés), pour le comparer au libellé (lib/liens-en-mots-cles.mjs#texteAffiche)."""
+    return re.sub(r'\\([\\`*_\[\]|<{}])', r'\1', str(texte))
 
-    def libelle(ecriture):
-        ident = T.mot_cle(db, ecriture)
-        return db.execute('SELECT libelle FROM mot_cle WHERE id = ?', (ident,)).fetchone()[0] if ident else None
-    return libelle
+
+def decouper_adresse(adresse):
+    """(chemin, requête, ancre) d'une adresse (lib/mots-cles-liens.mjs#decouperLAdresse)."""
+    m = re.match(r'^([^?#]*)(\?[^#]*)?(#.*)?$', adresse or '')
+    return m.group(1), (m.group(2) or '')[1:], (m.group(3) or '')[1:]
+
+
+class Vocabulaire:
+    """Les mots-clés du vocabulaire (data/rows/mot_cle.sql, historique du site de dev compris). Un import ne crée jamais de mot-clé (migration 0056).
+    - appelé (écriture) : le libellé du mot-clé qu'elle désigne, ou None ; même règle que l'import des pages (tools/db/maverick.py#mot_cle : une
+      écriture qu'un mot-clé renommé a quittée mène à lui), db:sync-pages ne poserait pas une écriture inconnue ;
+    - etiquette(écriture) : de même, mais None pour le mot-clé d'une page (mot_cle.url, migration 0096 : « Mrode », « Erisia », « Glossaire ») : une
+      étiquette de partie du Codex (PARTIES, continent, magie) n'en est jamais un, ses pages ne portaient que « codex » ;
+    - mots_cles_de_l_adresse(adresse) : [(id, libellé d'import)] des mots-clés qui mènent à cette adresse (« /lore/mrode/ ») : leur url, requête
+      ignorée et sans ancre, a le même chemin (lib/mots-cles-liens.mjs#motsClesDeLAdresse) ;
+    - libelle_de(id) : le libellé du mot-clé d'id `id` (son libellé d'import), ou None.
+    Le libellé d'import : celui d'avant la première modification du libellé par le site de dev (historique_modification), sinon le libellé courant. Un
+    mot-clé renommé sur le site garde ainsi ses balises « {{id}} » (renommer ne réécrit aucun texte, la balise suit le libellé) : l'écriture des pages
+    redonne la même page, et --verifier la compare au document."""
+
+    def __init__(self, chemin=VOCABULAIRE, historique=HISTORIQUE, schema=SCHEMA):
+        with open(schema, encoding='utf-8') as f:
+            texte = f.read()
+        self.db = sqlite3.connect(':memory:')
+        for table in ('mot_cle', 'historique_modification'):
+            self.db.execute(re.search(rf'CREATE TABLE {table} \([\s\S]*?\) STRICT;', texte).group(0))
+        for fichier in (chemin, historique):
+            if os.path.exists(fichier):
+                with open(fichier, encoding='utf-8') as f:
+                    self.db.executescript(f.read())
+        self.d_import = {}   # id -> libellé d'avant la première modification de son libellé par le site
+        for cle, avant, apres in self.db.execute(
+                "SELECT cle, avant, apres FROM historique_modification WHERE table_nom = 'mot_cle' ORDER BY fait_le, lot_id, rang"):
+            ident = json.loads(cle).get('id')
+            avant, apres = json.loads(avant or 'null') or {}, json.loads(apres or 'null') or {}
+            if ident not in self.d_import and ('libelle' in avant or 'libelle' in apres):
+                self.d_import[ident] = avant.get('libelle', apres.get('libelle'))
+        self.par_chemin = {}
+        for ident, url in self.db.execute('SELECT id, url FROM mot_cle WHERE url IS NOT NULL ORDER BY id'):
+            chemin_url, _, ancre = decouper_adresse(url)
+            if not ancre:
+                self.par_chemin.setdefault(chemin_url, []).append((ident, self.libelle_de(ident)))
+
+    def libelle(self, ident):
+        """Le libellé courant (l'écriture d'une étiquette, celle que db:export-pages écrit dans `tags:`)."""
+        return self.db.execute('SELECT libelle FROM mot_cle WHERE id = ?', (ident,)).fetchone()[0] if ident else None
+
+    def __call__(self, ecriture):
+        return self.libelle(T.mot_cle(self.db, ecriture))
+
+    def etiquette(self, ecriture):
+        ident = T.mot_cle(self.db, ecriture)
+        if not ident or self.db.execute('SELECT url FROM mot_cle WHERE id = ?', (ident,)).fetchone()[0] is not None:
+            return None
+        return self.libelle(ident)
+
+    def mots_cles_de_l_adresse(self, adresse):
+        return list(self.par_chemin.get(decouper_adresse(adresse)[0], []))
+
+    def libelle_de(self, ident):
+        trouve = self.db.execute('SELECT libelle FROM mot_cle WHERE id = ?', (ident,)).fetchone()
+        return (self.d_import.get(ident) or trouve[0]) if trouve else None
+
+
+def vocabulaire(chemin=VOCABULAIRE, historique=HISTORIQUE, schema=SCHEMA):
+    """Les mots-clés qu'une page du Codex peut porter, et ceux de ses renvois : Vocabulaire."""
+    return Vocabulaire(chemin, historique, schema)
 
 
 def pages_du_site(historique=HISTORIQUE, schema=SCHEMA, sur_disque=None):
@@ -605,8 +681,15 @@ def ecrire(codex, out, site):
         print(f'  orpheline (plus produite, non supprimée) : {TYPE}/{slug}')
 
 
-def normaliser(texte):
-    t = texte.replace('\\', '')
+BALISE = re.compile(r'\{\{([a-z0-9-]+)(?:(\\?\|)([^{}]*?)|(:))?\}\}')   # une balise du glossaire : {{id}}, {{id|texte}}, {{id\|texte}}, {{id:}}
+WIKILIEN = re.compile(r'\[\[([^\[\]|]+?)(?:\|([^\[\]]+?))?\]\]')         # un lien [[cible]], [[cible|texte]] (lib/wikilinks-resolution.mjs)
+
+
+def normaliser(texte, libelle_de=None):
+    """Le texte comparé ligne à ligne au document : les renvois réduits au texte qu'ils affichent (une balise sans texte, au libellé de son mot-clé,
+    `libelle_de` : id -> libellé), sans échappement, emphase ni titre Markdown, les blancs réduits."""
+    t = BALISE.sub(lambda m: m.group(3) if m.group(2) else ((libelle_de and libelle_de(m.group(1))) or m.group(1)), texte)
+    t = t.replace('\\', '')
     t = re.sub(r'\[\[(?:[^\]|]*\|)?([^\]]*)\]\]', r'\1', t)
     t = re.sub(r'[*#]', '', t)
     return re.sub(r'\s+', ' ', t).strip()
@@ -626,17 +709,28 @@ def pages_sur_disque(out):
     return pages
 
 
+def liens_en_balises(texte, codex):
+    """Les liens [[cible|texte]] d'un texte d'import d'avant la migration 0096 (l'état d'import d'une page modifiée par le site de dev, relu dans
+    l'historique) devenus les renvois que le découpage écrit aujourd'hui (Codex.lien) : la migration a converti de même la page de la base."""
+    return WIKILIEN.sub(lambda m: codex.lien(m.group(1).strip(), (m.group(2) or m.group(1)).strip()), texte)
+
+
 def verifier(lignes, out, site, vocabulaire=None):
     """Contrôles indépendants du découpage (voir l'en-tête), les pages modifiées par le site de dev dans leur état d'import, leurs mots-clés ceux du
-    vocabulaire (Codex(…, vocabulaire)). -> (erreurs, nombre de pages, nombre de pages modifiées par le site)."""
+    vocabulaire (Codex(…, vocabulaire)). -> (erreurs, nombre de pages, nombre de pages modifiées par le site, renvois sans mot-clé)."""
     pages = pages_sur_disque(out)
-    a_l_import = {slug: etat_d_import(t, site.get(slug)) for slug, t in pages.items()}
+    attendu = Codex(lignes, vocabulaire).construire()
+    a_l_import = {}
+    for slug, t in pages.items():
+        data, corps = etat_d_import(t, site.get(slug))
+        a_l_import[slug] = (data, liens_en_balises(corps, attendu) if 'corps' in site.get(slug, {}) else corps)
+    libelle_de = vocabulaire.libelle_de if vocabulaire else None
     erreurs = []
-    tout = '\n'.join(normaliser(corps) for _, corps in a_l_import.values())
+    tout = '\n'.join(normaliser(corps, libelle_de) for _, corps in a_l_import.values())
     titres = set()
     for data, corps in a_l_import.values():
         titres |= {normaliser(data['title'])} | {normaliser(a) for a in data.get('aliases', [])}
-        titres |= {normaliser(m) for m in re.findall(r'^#{1,6} (.*)$', corps, flags=re.M)}
+        titres |= {normaliser(m, libelle_de) for m in re.findall(r'^#{1,6} (.*)$', corps, flags=re.M)}
     absentes = 0
     for i, ligne in enumerate(lignes, 1):
         if not ligne.strip() or IMAGE.match(ligne) or REF_IMAGE.match(ligne) or re.fullmatch(r'\s*(\* )?\*\*[^*]+:\*\*\s*', ligne):
@@ -660,7 +754,6 @@ def verifier(lignes, out, site, vocabulaire=None):
                 erreurs.append(f'(1) ligne absente des pages, ligne {i} : {ligne.strip()[:100]!r}')
     if absentes > 20:
         erreurs.append(f'(1) … {absentes} lignes absentes au total')
-    attendu = Codex(lignes, vocabulaire).construire()
     for slug in sorted(set(attendu.pages) | set(pages)):
         if slug not in pages:
             erreurs.append(f'(3) page manquante sur disque : {TYPE}/{slug}')
@@ -671,7 +764,13 @@ def verifier(lignes, out, site, vocabulaire=None):
                 erreurs.append(f'(3) page modifiée par le site de dev, différente du découpage dans son état d\'import : {TYPE}/{slug}')
         elif pages[slug] != texte_de_page(attendu.pages[slug]):
             erreurs.append(f'(3) page différente du découpage : {TYPE}/{slug}')
-    return erreurs, len(pages), len(set(site) & set(pages))
+    return erreurs, len(pages), len(set(site) & set(pages)), attendu.sans_lien
+
+
+def signaler_sans_lien(sans_lien):
+    """Les renvois écrits en texte simple faute d'un mot-clé unique qui mène à leur page (Codex.lien : un import ne crée jamais de mot-clé)."""
+    for titre, raison in sorted(sans_lien.items()):
+        print(f'  renvoi sans mot-clé, écrit en texte simple : « {titre} » ({raison})')
 
 
 def main(argv):
@@ -682,7 +781,8 @@ def main(argv):
     voc = vocabulaire(option('--vocabulaire', VOCABULAIRE), option('--historique', HISTORIQUE))
     lignes = lire_lignes(source)
     if '--verifier' in argv:
-        erreurs, n, du_site = verifier(lignes, out, site, voc)
+        erreurs, n, du_site, sans_lien = verifier(lignes, out, site, voc)
+        signaler_sans_lien(sans_lien)
         for e in erreurs:
             print(e)
         if erreurs:
@@ -690,7 +790,9 @@ def main(argv):
             return 1
         print(f'{n} pages du Codex conformes au document' + (f' ({du_site} modifiées depuis par le site de dev, contrôlées dans leur état d\'import)' if du_site else ''))
         return 0
-    ecrire(Codex(lignes, voc).construire(), out, site)
+    codex = Codex(lignes, voc).construire()
+    ecrire(codex, out, site)
+    signaler_sans_lien(codex.sans_lien)
     return 0
 
 

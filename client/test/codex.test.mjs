@@ -9,6 +9,7 @@ import { cpSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
+import { indexDesAdresses, pageDeLAdresse } from '../src/lib/adresses-db.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { NAV } from '../src/lib/nav.mjs';
 import { normalize } from '../src/lib/text.mjs';
@@ -203,21 +204,106 @@ test('pages du Codex : type lore, famille docs, brouillon, la copie du propriét
   assert.equal(codex.find((i) => i.label === 'Factions').path, 'lore/temples-cultes-guildes/');
 });
 
-// La sortie de l'import (le texte des pages tel que codex.py l'a écrit), lue avec l'index des pages de la même base d'import (aide-base-d-import.mjs) et
-// la résolution du site (lib/wikilinks-resolution.mjs : slug, titre, alias, `type/slug`) : un titre renommé par le site de dev sans alias (le slug
-// suffit, serveur/edition.mjs#PAGE.deriver) ou une page supprimée depuis n'en fait pas un lien cassé de l'import.
-test('les liens du Codex mènent tous à une page (les sommaires ne citent que des pages produites)', () => {
+// La sortie de l'import (le texte des pages tel que codex.py l'a écrit), lue dans la base d'import (aide-base-d-import.mjs) : un renvoi est la balise du
+// mot-clé dont l'adresse (mot_cle.url) mène à une page de la même base (migration des liens en mots-clés : « tous les liens deviendront des mots-clés et
+// tous les mots-clés deviendront des liens ») ; un [[lien]] encore présent dans l'état d'import d'une page modifiée avant cette migration se résout par
+// le slug, le titre ou un alias (lib/wikilinks-resolution.mjs). Un titre renommé par le site de dev ou une page supprimée depuis n'en fait pas un renvoi cassé.
+test('les renvois du Codex mènent tous à une page (les sommaires ne citent que des pages produites)', () => {
   const base = baseDImport();
   const alias = Map.groupBy(base.prepare('SELECT page_id, texte FROM alias').all(), (a) => a.page_id);
   const index = buildIndex(base.prepare('SELECT id, type, slug, titre FROM page').all()
     .map((p) => ({ id: p.id, type: p.type, slug: p.slug, title: p.titre, aliases: (alias.get(p.id) ?? []).map((a) => a.texte) })));
+  const adresses = indexDesAdresses(base);
+  const motsCles = new Map(base.prepare('SELECT id, url FROM mot_cle').all().map((m) => [m.id, m]));
   const codex = base.prepare('SELECT p.id, p.corps_md FROM page p JOIN page_source ps ON ps.page_id = p.id AND ps.ordre = 0 JOIN source s ON s.id = ps.source_id WHERE s.texte = ? ORDER BY p.id').all(SOURCE);
   assert.equal(codex.length, 116);
   for (const p of codex) {
     for (const [, cible] of p.corps_md.matchAll(/\[\[([^\]|]+)(?:\|[^\]]*)?\]\]/g)) {
       assert.ok(resolve(index, cible), `${p.id} : [[${cible}]] ne mène à aucune page`);
     }
+    for (const [, id] of p.corps_md.matchAll(/\{\{([a-z0-9-]+)(?:\\?\|[^{}]*)?\}\}/g)) {
+      const m = motsCles.get(id);
+      assert.ok(m, `${p.id} : {{${id}}} n’est pas un mot-clé`);
+      if (m.url) assert.ok(pageDeLAdresse(adresses, m.url), `${p.id} : {{${id}}} (${m.url}) ne mène à aucune page`);
+    }
   }
+});
+
+// L'état courant de la base : plus aucun lien dans les pages du Codex, chaque renvoi est la balise d'un mot-clé à adresse ; l'import ne crée jamais de
+// mot-clé (règle de la 0056).
+test('les renvois du Codex : des balises de mots-clés qui mènent chacun à une page, jamais un [[lien]] ni un lien Markdown', () => {
+  const index = indexDesAdresses(db);
+  const motsCles = new Map(db.prepare('SELECT id, libelle, url FROM mot_cle').all().map((m) => [m.id, m]));
+  let renvois = 0;
+  for (const p of pagesDuCodex) {
+    assert.doesNotMatch(p.corps_md, /\[\[|\]\(\//, `${p.id} : un lien est resté`);
+    for (const [, id] of p.corps_md.matchAll(/\{\{([a-z0-9-]+)(?:\\?\|[^{}]*)?\}\}/g)) {
+      const m = motsCles.get(id);
+      assert.ok(m, `${p.id} : {{${id}}} n’est pas un mot-clé`);
+      if (!m.url) continue;   // un mot-clé du glossaire posé par le site de dev ou une migration (« chakra »)
+      assert.ok(pageDeLAdresse(index, m.url), `${p.id} : {{${id}}} (${m.url}) ne mène à aucune page`);
+      renvois += 1;
+    }
+  }
+  assert.ok(renvois >= 200, `${renvois} renvois`);
+});
+
+test('idempotence : une nouvelle écriture des pages du Codex sur la base actuelle n’en change aucune, et chaque renvoi a son mot-clé', (t) => {
+  const tmp = dossierTemporaire('codex-idem', { t });
+  cpSync(join(racine, 'client', 'src', 'content', 'wiki', 'lore'), join(tmp, 'lore'), { recursive: true });
+  const r = codexPy('--out', tmp);
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /^116 pages du Codex \(0 écrites\)/m);
+  assert.doesNotMatch(r.stdout, /renvoi sans mot-clé/);
+  for (const f of readdirSync(join(tmp, 'lore'))) assert.equal(readFileSync(join(tmp, 'lore', f), 'utf8'), readFileSync(join(racine, 'client', 'src', 'content', 'wiki', 'lore', f), 'utf8'), f);
+});
+
+test('un renvoi sans exactement un mot-clé pour sa page : le texte simple, signalé (un import ne crée jamais de mot-clé) ; « {{id|texte}} » quand le texte n’est pas le libellé (d’import : un renommage du site garde « {{id}} ») ; le mot-clé d’une page n’étiquette pas sa partie', (t) => {
+  const tmp = dossierTemporaire('codex-renvois', { t });
+  const vocabulaire = join(tmp, 'mot_cle.sql');
+  writeFileSync(vocabulaire, `INSERT INTO mot_cle (id, libelle, libelle_cle, description, url) VALUES ${[
+    "('codex', 'codex', 'codex', NULL, '/lore/codex/')",
+    "('mrode', 'Mrode', 'mrode', NULL, '/lore/mrode/')",
+    "('erisia', 'Continent d’Erisia', 'continent-derisia', NULL, '/lore/erisia/')",
+    "('temple-de-vent', 'Temple de Vent', 'temple-de-vent', NULL, '/lore/temple-de-vent/')",
+    "('balogne', 'Balogne', 'balogne', NULL, '/lore/balogne/')",
+    "('balogne-bis', 'Balogne bis', 'balogne-bis', NULL, '/lore/balogne/')",
+    "('epee', 'Épée', 'epee', NULL, '/lore/mrode/#epee')",
+  ].join(', ')};\n`);
+  const args = ['--out', tmp, '--vocabulaire', vocabulaire, '--historique', join(tmp, 'absent.sql')];
+  const r = codexPy(...args);
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  const page = (slug) => readFileSync(join(tmp, 'lore', `${slug}.md`), 'utf8');
+  const civilisations = page('les-civilisations');
+  assert.match(civilisations, /^- \{\{mrode\}\}$/m, 'le texte affiché est le libellé : la balise seule');
+  assert.match(civilisations, /^- \{\{erisia\|Erisia\}\}$/m, 'un autre texte que le libellé : « {{id|texte}} »');
+  const mrode = page('mrode');
+  assert.match(mrode, /^- \{\{temple-de-vent\|Temple du Vent\}\}$/m, 'le renvoi « Voir “Temple du Vent” » du document, vers la page « Temple de Vent »');
+  assert.match(mrode, /^ {2}- Saugnane$/m, 'aucun mot-clé pour la page : le texte simple');
+  assert.match(mrode, /^ {2}- Balogne$/m, 'deux mots-clés pour la page : le texte simple');
+  assert.match(mrode, /^tags: \["codex"\]$/m, 'le mot-clé « Mrode » (une adresse) n’étiquette pas les pages du continent');
+  assert.match(page('saugnane'), /^tags: \["codex"\]$/m);
+  for (const f of readdirSync(join(tmp, 'lore')).filter((f) => f.endsWith('.md'))) assert.doesNotMatch(page(f.slice(0, -3)), /\[\[|\]\(\//, f);
+  assert.match(r.stdout, /renvoi sans mot-clé, écrit en texte simple : « Saugnane » \(0 mot\(s\)-clé\(s\) à l’adresse \/lore\/saugnane\/\)/);
+  assert.match(r.stdout, /renvoi sans mot-clé, écrit en texte simple : « Balogne » \(2 mot\(s\)-clé\(s\) à l’adresse \/lore\/balogne\/ \(balogne, balogne-bis\)\)/);
+  // le vérificateur relit les mêmes renvois (même vocabulaire) et les signale aussi
+  const v = codexPy('--verifier', ...args);
+  assert.equal(v.status, 0, v.stdout + v.stderr);
+  assert.match(v.stdout, /renvoi sans mot-clé, écrit en texte simple : « Saugnane »/);
+  // « Mrode » renommé sur le site de dev (renommer ne réécrit aucun texte : « {{mrode}} » suit le libellé) : la page redonnée est la même, « {{mrode}} »
+  writeFileSync(vocabulaire, readFileSync(vocabulaire, 'utf8').replace("('mrode', 'Mrode', 'mrode',", "('mrode', 'Mrode (continent)', 'mrode-continent',"));
+  const historique = join(tmp, 'historique.sql');
+  writeFileSync(historique, "INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres) VALUES "
+    + `('lot-renomme', 1, '2026-11-07T10:00:00Z', 'essai', NULL, 'mot_cle', '{"id":"mrode"}', 'modifier', '{"libelle":"Mrode","libelle_cle":"mrode"}', '{"libelle":"Mrode (continent)","libelle_cle":"mrode-continent"}');\n`);
+  const renomme = ['--out', tmp, '--vocabulaire', vocabulaire, '--historique', historique];
+  const w = codexPy(...renomme);
+  assert.equal(w.status, 0, w.stdout + w.stderr);
+  assert.match(w.stdout, /\(0 écrites\)/);
+  assert.match(page('les-civilisations'), /^- \{\{mrode\}\}$/m);
+  assert.equal(codexPy('--verifier', ...renomme).status, 0);
+  // sans l'historique, le libellé courant n'est plus le texte du document : « {{mrode|Mrode}} »
+  assert.equal(codexPy(...args).status, 0);
+  assert.match(page('les-civilisations'), /^- \{\{mrode\|Mrode\}\}$/m);
 });
 
 test('décision R21 : la divinité de la Corruption s’appelle Eaunoire, la graphie du document « Eaunoir » reste en alias', () => {

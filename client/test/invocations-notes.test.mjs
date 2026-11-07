@@ -13,6 +13,9 @@ import { cpSync, existsSync, readdirSync, readFileSync, writeFileSync } from 'no
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
+import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const script = fileURLToPath(new URL('../../tools/sheets/invocations.py', import.meta.url));
@@ -814,7 +817,12 @@ const FORMES = {
 };
 const CLES_ENTETE = ['title', 'aliases', 'tags', 'summary', 'sources', 'status'];
 
-const sansLiens = (s) => s.replace(/\[\[[^\]|]*\|([^\]]*)\]\]/g, '$1').replace(/\[\[([^\]]*)\]\]/g, '$1');
+// les renvois posés par `npm run autolink` (depuis la migration 0096 : des balises de mots-clés, {{id}} ou {{id|texte}} ; avant, des [[liens]]) et les
+// balises du glossaire, lus par le texte qu'ils affichent (texteSansBalises, avec le vocabulaire de la base : {{id}} affiche le libellé)
+let vocabulaire;
+const vocabulaireDeLaBase = () => (vocabulaire ??= chargerVocabulaire(ouvrirBase({ sansExemples: false })));
+const sansLiens = (s) => texteSansBalises(s.replace(/\[\[[^\]|]*\|([^\]]*)\]\]/g, '$1').replace(/\[\[([^\]]*)\]\]/g, '$1'),
+  s.includes('{{') ? vocabulaireDeLaBase() : null, { markdown: true, definitions: false });
 const sansEchappement = (s) => s.replace(/\\(.)/g, '$1');
 
 function decouper(texte) {
@@ -942,7 +950,19 @@ for (const [nomDuCas, [alterer, attendu]] of Object.entries(ALTERATIONS)) {
   });
 }
 
-test('pages réelles, sans dump : liens `[[…]]` posés par `npm run autolink` et page retouchée (statut verified) ne sont pas des écarts', () => {
+test('pages réelles, sans dump : balises posées par `npm run autolink` (anciens liens `[[…]]` compris) et page retouchée (statut verified) ne sont pas des écarts', () => {
+  // le maillage pose « {{id}} » (le texte est le libellé du mot-clé) ou « {{id|texte}} » (migration 0096) ; un ancien [[lien]] reste lu
+  const v = vocabulaireDeLaBase();
+  const necro = v.find((m) => m.id === 'magie-de-la-necromancie');
+  assert.ok(necro, 'le mot-clé de la page de la Nécromancie (0096)');
+  const balise = (t) => t.replace('Terre + Espace/Temps', '{{terre|Terre}} + {{magie-de-lespace-temps|Espace/Temps}}');
+  assert.deepEqual(problemesStructure(tel('golem-de-rouage', balise)), []);
+  const charcabe = famille.find((p) => p.slug === 'charcabe').texte;
+  assert.match(charcabe, /^\*\*Magie\(s\)\*\* : Nécromancie \+ Feu$/m);
+  assert.deepEqual(problemesStructure(tel('charcabe', (t) => t.replace('** : Nécromancie + Feu', `** : {{${necro.id}|Nécromancie}} + Feu`))), []);
+  // « {{id}} » affiche le libellé du mot-clé : ici « Magie de la Nécromancie », un autre texte que la marge de l'introduction (un écart, vu)
+  assert.notEqual(necro.libelle, 'Nécromancie');
+  assert.notDeepEqual(problemesStructure(tel('charcabe', (t) => t.replace('** : Nécromancie + Feu', `** : {{${necro.id}}} + Feu`))), []);
   const lie = (t) => t.replace('Terre + Espace/Temps', '[[Terre]] + [[Espace/Temps|Espace/Temps]]').replace('Poupée temporelle', '[[Poupée temporelle]]');
   assert.deepEqual(problemesStructure(tel('golem-de-rouage', lie)), []);
   assert.deepEqual(problemesStructure(tel('appel-aux-golems', (t) => t.replace('Golem de rouage', '[[Golem de rouage|Golem de rouage]]'))), []);
