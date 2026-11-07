@@ -147,7 +147,7 @@ test('le script de la page n’importe ni le modèle ni le registre des noms (sk
     return vus;
   };
   const graphe = [...importes(new URL('../src/scripts/mise-a-jour.mjs', import.meta.url))].map((h) => h.replace(/^.*\/src\//, ''));
-  assert.deepEqual(graphe.sort(), ['lib/conflits-rendu.mjs', 'lib/notes-de-version-rendu.mjs']);
+  assert.deepEqual(graphe.sort(), ['lib/conflits-rendu.mjs', 'lib/diff-replie.mjs', 'lib/notes-de-version-rendu.mjs']);
 });
 
 test('le choix 3 ouvre sa saisie ; l’envoi attend un choix par conflit, puis part avec la valeur saisie ; le message dit ce qui est fait', async () => {

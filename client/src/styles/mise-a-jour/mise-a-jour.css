@@ -97,8 +97,13 @@
 .nv-version--2 { border-left: 4px solid var(--good); }
 .nv-version__titre { margin: 0 0 0.3rem; font-size: var(--fs-md); }
 .nv-version__texte { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 24rem; overflow: auto; font-size: var(--fs-lg); }
-.nv-conflit__differences, .nv-conflit__avant { margin: 0.4rem 0; }
-.nv-conflit__differences > summary, .nv-conflit__avant > summary { cursor: pointer; font-size: var(--fs-md); }
+.nv-conflit__differences, .nv-conflit__entieres, .nv-conflit__avant { margin: 0.4rem 0; }
+.nv-conflit__entieres > summary, .nv-conflit__avant > summary { cursor: pointer; font-size: var(--fs-md); }
+.nv-diff__legende { margin: 0.2rem 0; color: var(--muted); font-size: var(--fs-sm); }
+.nv-diff__legende ins { color: var(--amelioration); background: var(--amelioration-fond); }
+.nv-diff__legende del { color: var(--affaiblissement); background: var(--affaiblissement-fond); }
+.nv-diff__replie { color: var(--muted); }
+.nv-diff__replie > summary { cursor: pointer; font-style: italic; font-size: var(--fs-md); }
 .nv-choix-liste { margin: 0.5rem 0 0; padding: 0; list-style: none; }
 .nv-choix { margin: 0.2rem 0; }
 .nv-choix--impossible label { color: var(--muted); }

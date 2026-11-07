@@ -9,15 +9,17 @@
 //     n'est montrée en JSON, aucun nom de table ni de colonne n'est écrit ici (demande du propriétaire du 2026-10-23 : « Un vrai nom serai mieux ») ;
 //   - un lot : sa date, son résumé, la raison du rejeu (`detail_lisible` du service, lue comme la légende de ses conflits ; jamais `detail`, la
 //     trace des lignes du lot, avec son id, sa clé JSON et ses noms de colonnes) ; ses modifications saines (elles repartent telles quelles dans
-//     le nouveau lot) ; puis chaque conflit : la version 1 (ce que le site de dev avait écrit) et la version 2 (ce que disent les règles livrées,
-//     ou « ligne supprimée ») côte à côte, en texte (un long texte se lit en entier, ses retours à la ligne gardés), leurs différences
-//     mot à mot quand ce sont deux textes (lib/notes-de-version-rendu.mjs#diffMots), et le choix 1, 2 ou 3 ; un choix impossible est grisé, avec
+//     le nouveau lot) ; puis chaque conflit : la version 1 (modifiée sur le site de dev, par ce lot) et la version 2 (la valeur actuelle, venue de
+//     la dernière livraison : titreDeLaVersion), ou « ligne supprimée » ; deux textes : seulement leurs différences mot à mot
+//     (lib/notes-de-version-rendu.mjs#diffMots), les passages identiques repliés (lib/diff-replie.mjs ; demande du propriétaire du 2026-11-07), les
+//     deux versions entières dans un bloc fermé ; sinon les deux versions côte à côte, en texte (retours à la ligne gardés) ; et le choix 1, 2 ou 3 ; un choix impossible est grisé, avec
 //     sa raison ; le 3 ouvre une saisie qui suit le type de la colonne (le champ de lib/edition-modele.mjs#TABLES que le service rend : `saisie`) ;
 //   - l'aperçu HTML d'une page modifiée (`apercu`) n'est pas montré : le Markdown de la version 1 se lit tel quel, et aucun HTML reçu n'est posé ;
 //   - le corps de la résolution : { lot, empreinte, choix: { "<id>": { choix, valeur? } } } ; la saisie du 3 passe d'abord les contrôles simples de
 //     l'éditeur (valeur obligatoire, nombre, bornes : erreurDeSaisie, comme lib/edition-modele.mjs#valeurDuChamp), le service refait tous les siens.
-// Fonctions pures (chaîne HTML en sortie, tout texte échappé), sans dépendance hors lib/notes-de-version-rendu.mjs (pur, sans import) : le script
+// Fonctions pures (chaîne HTML en sortie, tout texte échappé), sans dépendance hors lib/notes-de-version-rendu.mjs et lib/diff-replie.mjs (purs, sans import) : le script
 // de la page Mise à jour est le seul à les importer (skill site-version-portable : jamais lib/edition-modele.mjs, que la chaîne de l'édition importe).
+import { replierLeDiff } from './diff-replie.mjs';
 import { diffMots, echapper } from './notes-de-version-rendu.mjs';
 
 /** Ce que devient une modification saine du lot (issue rendue par le service). */
@@ -180,21 +182,45 @@ export function erreurDeSaisie(saisie, brute) {
   return null;
 }
 
-/** Les deux versions côte à côte, puis leurs différences mot à mot quand ce sont deux textes qui diffèrent. */
-function htmlDesVersions(c) {
+/**
+ * D'où vient chaque version (demande du propriétaire du 2026-11-07 : « Il faut aussi clarifié d'où viens la modification de la V1 et de la V2 ») :
+ * la version 1 est la valeur que le lot du journal du site de dev avait écrite ; la version 2 est la valeur de la base vivante d'aujourd'hui
+ * (serveur/edition-conflits.mjs#examinerLeLot : les règles de la dernière livraison du site, plus les autres modifications du site de dev qui sont
+ * passées au rejeu), ou « ligne supprimée ». `faitLe` : l'instant du lot, quand on le connaît.
+ */
+export function titreDeLaVersion(n, faitLe) {
+  if (n === 1) return `Version 1 : modifiée sur le site de dev${faitLe ? ` (ce lot, du ${instantLisible(faitLe)})` : ''}`;
+  return 'Version 2 : la valeur actuelle, venue de la dernière livraison du site (règles livrées)';
+}
+
+/** Un morceau du diff replié (lib/diff-replie.mjs) : « egal » tel quel, « retire » barré (version 2), « ajoute » en gras (version 1), « replie » fermé. */
+function htmlDuMorceau(m) {
+  if (m.type === 'egal') return echapper(m.texte);
+  if (m.type === 'retire') return `<del>${echapper(m.texte)}</del>`;
+  if (m.type === 'ajoute') return `<ins>${echapper(m.texte)}</ins>`;
+  const resume = m.lignes > 1 ? `… ${m.lignes} lignes identiques …` : '… passage identique …';
+  return `<details class="nv-diff__replie"><summary>${resume}</summary>${echapper(m.texte)}</details>`;
+}
+
+/**
+ * Les deux versions. Deux textes qui diffèrent : seulement leurs différences, mot à mot, les passages identiques repliés autour d'un peu de contexte
+ * (demande du propriétaire du 2026-11-07 ; lib/diff-replie.mjs), et les deux versions entières dans un bloc fermé. Sinon (une ligne entière, une
+ * suppression, un nombre, deux textes trop longs pour le détail) : les deux versions côte à côte, en entier.
+ */
+function htmlDesVersions(c, faitLe) {
   const v1 = texteDeLaVersion(c.version_1);
   const v2 = texteDeLaVersion(c.version_2);
-  const version = (n, titre, texte) => `<div class="nv-version nv-version--${n}"><h5 class="nv-version__titre">${titre}</h5><div class="nv-version__texte">${echapper(texte)}</div></div>`;
+  const version = (n, texte) => `<div class="nv-version nv-version--${n}"><h5 class="nv-version__titre">${echapper(titreDeLaVersion(n, faitLe))}</h5><div class="nv-version__texte">${echapper(texte)}</div></div>`;
+  const versions = `<div class="nv-conflit__versions">${version(1, v1)}${version(2, v2)}</div>`;
   const textes = c.version_1?.genre === 'valeur' && c.version_2?.genre === 'valeur' && typeof c.version_1.valeur === 'string' && typeof c.version_2.valeur === 'string';
-  const diff = textes && v1 !== v2 ? diffMots(v2, v1) : null;
-  const differences = diff
-    ? `<details class="nv-conflit__differences"><summary>Différences (barré : seulement dans la version 2 ; en gras : seulement dans la version 1)</summary><div class="nv-diff">${diff
-      .map((d) => (d.type === 'egal' ? echapper(d.texte) : d.type === 'retire' ? `<del>${echapper(d.texte)}</del>` : `<ins>${echapper(d.texte)}</ins>`)).join('')}</div></details>`
-    : '';
+  const morceaux = textes && v1 !== v2 ? replierLeDiff(diffMots(v2, v1)) : null;
   const avant = c.avant?.genre === 'valeur' && texteDeValeur(c.avant.valeur) !== v2
     ? `<details class="nv-conflit__avant"><summary>Ce que le site de dev avait sous les yeux avant sa modification</summary><div class="nv-version__texte">${echapper(texteDeValeur(c.avant.valeur))}</div></details>`
     : '';
-  return `<div class="nv-conflit__versions">${version(1, 'Version 1 : ce que le site de dev avait écrit', v1)}${version(2, 'Version 2 : ce que disent les règles livrées', v2)}</div>${differences}${avant}`;
+  if (!morceaux) return `${versions}${avant}`;
+  const legende = `<p class="nv-diff__legende"><ins>en gras</ins> : seulement dans la version 1 (modifiée sur le site de dev) ; <del>barré</del> : seulement dans la version 2 (la valeur actuelle, venue de la dernière livraison) ; le reste est identique aux deux.</p>`;
+  return `<div class="nv-conflit__differences"><h5 class="nv-version__titre">Ce qui diffère entre les deux versions</h5>${legende}<div class="nv-diff">${morceaux.map(htmlDuMorceau).join('')}</div></div>`
+    + `<details class="nv-conflit__entieres"><summary>Voir les deux versions en entier</summary>${versions}</details>${avant}`;
 }
 
 /** La raison d'un conflit sous sa légende : le texte lisible du service (`raison_lisible`), sinon la trace (`raison`, réponse ancienne). */
@@ -204,7 +230,7 @@ export const raisonDuConflit = (c) => c?.raison_lisible ?? c?.raison ?? null;
 export const colonnesDeLaSaine = (s) => (s?.colonnes_libelles?.length ? s.colonnes_libelles : s?.colonnes ?? []);
 
 /** Un conflit d'un lot : ses deux versions et ses trois choix (`k` : son rang dans la page, pour les identifiants des champs). */
-export function htmlDuConflit(c, k, { listes = {} } = {}) {
+export function htmlDuConflit(c, k, { listes = {}, faitLe = null } = {}) {
   const nom = `nv-conflit-${k}`;
   const titre = `${c.libelle}${c.colonne_libelle ? ` — ${c.colonne_libelle}` : ''}`;
   const choix = [1, 2, 3].map((n) => {
@@ -217,7 +243,7 @@ export function htmlDuConflit(c, k, { listes = {} } = {}) {
   return `<fieldset class="nv-conflit" data-nv-conflit="${echapper(c.id)}" data-nv-nom="${nom}">
     <legend>${echapper(titre)} <span class="nv-conflit__operation">${echapper(OPERATIONS[c.operation] ?? c.operation ?? '')}</span></legend>
     ${raisonDuConflit(c) ? `<p class="nv-conflit__raison">${echapper(raisonDuConflit(c))}</p>` : ''}
-    ${htmlDesVersions(c)}
+    ${htmlDesVersions(c, faitLe)}
     <ul class="nv-choix-liste">${choix}</ul>${saisie}
     <p class="nv-message nv-message--erreur" data-nv-erreur hidden></p>
   </fieldset>`;
@@ -240,7 +266,7 @@ export function htmlDuLot(lot, { listes = {}, debut = 0 } = {}) {
     ${lot.detail_lisible ? `<p class="nv-conflit-lot__detail">Au rejeu : ${echapper(lot.detail_lisible)}</p>` : ''}
     ${saines}
     <p class="nv-conflit-lot__consigne">${echapper(consigne)}</p>
-    ${(lot.conflits ?? []).map((c, i) => htmlDuConflit(c, debut + i, { listes })).join('')}
+    ${(lot.conflits ?? []).map((c, i) => htmlDuConflit(c, debut + i, { listes, faitLe: lot.fait_le })).join('')}
     <p class="nv-message" data-nv-lot-message aria-live="polite" hidden></p>
     <div class="nv-dev__actions"><button type="submit" class="nv-principal">Résoudre ce lot</button></div>
   </form>`;
@@ -260,7 +286,7 @@ export function htmlDesConflits({ lots = [], resolus = [] } = {}, { listes = {},
     return h;
   }).join('');
   const intro = lots.length
-    ? `<p>${lots.length} lot${lots.length > 1 ? 's' : ''} du site de dev ${lots.length > 1 ? 'sont' : 'est'} en conflit avec les règles livrées depuis : ${lots.length > 1 ? 'ils ne partent' : 'il ne part'} pas avec cette mise à jour. Pour chaque conflit, la version 1 est ce que le site de dev avait écrit, la version 2 ce que disent maintenant les règles livrées.</p>`
+    ? `<p>${lots.length} lot${lots.length > 1 ? 's' : ''} du site de dev ${lots.length > 1 ? 'sont' : 'est'} en conflit avec les règles livrées depuis : ${lots.length > 1 ? 'ils ne partent' : 'il ne part'} pas avec cette mise à jour. Pour chaque conflit, la version 1 est la modification faite sur le site de dev (le lot daté ci-dessous) ; la version 2 est la valeur actuelle, venue de la dernière livraison du site (les règles livrées, avec les autres modifications du site de dev qui sont passées). Pour un long texte, seules les différences sont montrées.</p>`
     : '<p>Aucun lot en conflit à résoudre.</p>';
   const anciens = resolus.length ? `<details class="nv-conflits__resolus"><summary>Lots en conflit déjà résolus (${resolus.length})</summary><ul>${resolus.map(htmlDuResolu).join('')}</ul></details>` : '';
   return `<h${niveau} class="nv-conflits__titre">Lignes en conflit</h${niveau}>${intro}${formulaires}${anciens}`;

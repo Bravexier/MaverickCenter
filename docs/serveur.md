@@ -872,7 +872,10 @@ règles d'aujourd'hui, même après une livraison.
   `deja_la`, `derivee`, `sans_effet`, avec ses colonnes si une autre colonne de la même ligne est en conflit), ainsi qu'une règle en données d'un don
   que le lot supprime aussi (`suit_le_don`, avec `don` : le libellé du don ; sans choix, elle suit celui du don, voir « Édition des règles », dons). Chaque conflit porte la
   **version 1** (ce que le site de dev avait écrit : la valeur du lot, et l'aperçu HTML d'une page du guide), la **version 2** (ce que disent les
-  règles livrées : la valeur de la base vivante, ou « ligne supprimée »), ce que le site avait trouvé (`avant`) et les choix permis. Genres : `champ`
+  règles livrées : la valeur de la base vivante, ou « ligne supprimée »), ce que le site avait trouvé (`avant`) et les choix permis. La page
+  (`lib/conflits-rendu.mjs#titreDeLaVersion`) les titre « modifiée sur le site de dev (ce lot, du …) » et « la valeur actuelle, venue de la dernière
+  livraison du site » ; de deux textes, elle ne montre que les différences mot à mot, les passages identiques repliés autour d'une ligne de contexte
+  (`lib/diff-replie.mjs`, demande du propriétaire du 2026-11-07), les deux versions entières dans un bloc fermé. Genres : `champ`
   (une colonne de `TABLES`, id « rang:colonne » ; choix 1, 2, 3 — une image : 1, 2 — ; `saisie` = le champ de `TABLES`, qui fixe le type de la
   valeur saisie), `hors_modele` (une colonne hors du modèle : valeurs brutes, 1 ou 2), `insertion` (la ligne existe déjà, autrement : 1 ou 2),
   `suppression` (la ligne a changé depuis : 1 la supprime, 2 la garde), `ligne_supprimee` (la ligne n'existe plus : seul 2, la version 1 reste
