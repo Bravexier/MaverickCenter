@@ -131,6 +131,14 @@ CREATE INDEX alias_cle   ON alias (cle);
 -- mot-clés ») : une entrée = un mot-clé, un doublon fusionné dans le mot-clé existant (id gardé), un renvoi (« voir … ») = une définition qui cite
 -- l'autre mot-clé ; l'abréviation que l'entrée écrivait (« AM », « INI ») est la colonne `abreviation`. « CR » y a rejoint « Corruption » (réponse du
 -- propriétaire : « Fusionner dans Corruption ») : l'id `cr` n'existe plus, « CR » est l'abréviation de `corruption`.
+-- Le 2026-11-06, les liens des textes sont devenus des balises (migration 0096, générée par client/scripts/liens-en-mots-cles.mjs ; réponses du
+-- propriétaire : `couleur` et `url`, « NULL par défaut, ajoutées en dernier », « URL interne seulement » ; les [[…]] et les liens Markdown internes
+-- [texte](/…) deviennent des balises ; un mot-clé par page visée, libellé = titre de la page, url = son adresse, sans définition ni abréviation ; un
+-- mot-clé existant de même écriture garde id et définition et ne reçoit que l'url, « alignement », « artisanat », « bouclier », « ceinture »,
+-- « codex » (« Le mot-clé existant prend l'URL ») ; « il ne faut pas de changement par rapport à avant en terme de résultat. Tu feras donc en sorte
+-- que le mot clé reprenne la couleur de la page d'avant » ; « Un mot-clé par page colorée » ; une route sans page (/fiche/, /magies/…) a le mot-clé
+-- du libellé de son menu ; homonymes race/classe : « La race garde le nom », la classe s'écrit « <Nom> (classe) »).
+-- Les pages d'exemple gardent leurs liens ; lib/liens-en-mots-cles.mjs#convertirLesLiens convertit un texte avec la table du registre de la migration.
 CREATE TABLE mot_cle (
   id          TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0 AND id NOT GLOB '*[^a-z0-9-]*' AND id NOT GLOB '*--*' AND id NOT GLOB '-*' AND id NOT GLOB '*-'),
   libelle     TEXT    NOT NULL CHECK (length(libelle) > 0),      -- l'écriture affichée partout (pages, /recherche/, balises du glossaire)
@@ -139,12 +147,23 @@ CREATE TABLE mot_cle (
   description TEXT    CHECK (description IS NULL OR length(description) > 0),  -- la définition du glossaire : texte simple, balises du glossaire
                                                                  -- comprises (forme canonique) ; NULL : pas encore décrit (absent = NULL) ;
                                                                  -- migration 0056, ajoutée en dernier
-  abreviation TEXT    CHECK (abreviation IS NULL OR length(abreviation) > 0)   -- l'abréviation du mot-clé, telle qu'écrite (« AM », « Nat. ») ; NULL : aucune.
+  abreviation TEXT    CHECK (abreviation IS NULL OR length(abreviation) > 0),  -- l'abréviation du mot-clé, telle qu'écrite (« AM », « Nat. ») ; NULL : aucune.
                                                                  -- Une seule par mot-clé, que la ref d'une balise peut citer comme l'id ou
                                                                  -- l'écriture : normalize(abreviation) n'est ni l'id, ni le libelle_cle, ni
                                                                  -- l'abréviation d'un autre mot-clé (client/scripts/db-check.mjs le vérifie : la
                                                                  -- règle passe par normalize, qu'un CHECK ne lit pas). Migration 0090 (le Lexique
                                                                  -- converti en mots-clés), ajoutée en dernier
+  couleur     TEXT    CHECK (couleur IS NULL OR couleur GLOB '#[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]' OR (couleur GLOB '[a-z]*:[a-z0-9]*' AND couleur NOT GLOB '*[^a-z0-9:-]*' AND couleur NOT GLOB '*[^a-z]*:*' AND couleur NOT GLOB '*:*:*' AND couleur NOT GLOB '*--*' AND couleur NOT GLOB '*-')),
+                                                                 -- la couleur du mot-clé : une référence « <famille>:<id> » d'une couleur de la palette
+                                                                 -- (lib/palette-css.mjs#FAMILLES_DE_LA_PALETTE ; id = celui de sa classe CSS,
+                                                                 -- lib/palette-css.mjs#idDeCouleur : « magie:sang », « classe:melee », « race:pure »,
+                                                                 -- « partie:creer ») ou « #rrggbb » (minuscules) ; NULL : aucune. Que la référence nomme
+                                                                 -- une couleur de la palette ne se lit pas en SQL. Migration 0096, ajoutée en dernier
+  url         TEXT    CHECK (url IS NULL OR (url GLOB '/*' AND url NOT GLOB '//*' AND url NOT GLOB '*[^!-~]*' AND instr(url, '\') = 0))
+                                                                 -- l'adresse où mène le mot-clé : interne seulement, relative à la racine du site, sans le
+                                                                 -- préfixe de déploiement (« /races/humain/ », « /metiers/#metier-mineur », « /fiche/ ») ;
+                                                                 -- ni « //hôte », ni espace, ni caractère hors ASCII imprimable, ni « \ ». NULL : aucune.
+                                                                 -- Migration 0096, ajoutée en dernier
 ) STRICT;
 
 -- Mots-clés d'une page (frontmatter `tags`, dans l'ordre) : l'écriture est celle du vocabulaire (mot_cle.libelle ; jusqu'à la migration 0043, chaque page
@@ -3818,12 +3837,14 @@ CREATE VIEW lien_a_creer AS
   SELECT page_id, position, cible, ancre, etat FROM lien WHERE etat <> 'resolu';
 
 -- Le vocabulaire des mots-clés et les pages qui les portent (page /recherche/ du site de dev : un mot-clé supprimé est retiré de nb_pages pages),
--- avec sa définition (glossaire, migration 0056) et son abréviation (migration 0090).
+-- avec sa définition (glossaire, migration 0056), son abréviation (migration 0090), sa couleur et son adresse (migration 0096).
 CREATE VIEW v_mot_cle AS
   SELECT m.id, m.libelle, m.libelle_cle,
     (SELECT count(*) FROM page_tag t WHERE t.tag_id = m.id) AS nb_pages,
     m.description,                                                         -- la définition du glossaire (migration 0056 ; NULL : pas encore décrit)
-    m.abreviation                                                          -- l'abréviation (migration 0090 ; NULL : aucune)
+    m.abreviation,                                                         -- l'abréviation (migration 0090 ; NULL : aucune)
+    m.couleur,                                                             -- la référence de couleur (migration 0096 ; NULL : aucune)
+    m.url                                                                  -- l'adresse interne où mène le mot-clé (migration 0096 ; NULL : aucune)
   FROM mot_cle m;
 
 -- Relation d'incompatibilité symétrique : (a, b) est présent dans les deux sens dès que l'un des deux cite l'autre.
