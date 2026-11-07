@@ -11,6 +11,7 @@ import { test } from 'node:test';
 import { lecteurDAcquis } from '../src/lib/acquis-texte.mjs';
 import { corpsDeMagieApres, morceauxDuCorpsDeMagie } from '../src/lib/corps-magies.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { effetsDuModeHyper } from '../src/lib/mode-hyper-texte.mjs';
 import { COMPETENCES_D_ATTAQUE } from '../src/lib/posture-texte.mjs';
 import { baseDImport, texteDImport } from './aide-base-d-import.mjs';
@@ -51,7 +52,9 @@ test('R180 : « Prends ça … » est un IC, écrit dans son effet et sa fiche ;
   assert.deepEqual([i.effet, i.type_brut, i.type, i.limite_nombre, i.limite_periode], [EFFET_PRENDS_CA, 'Actif (3 fois/combat)', 'actif', 3, 'combat']);
   const k = db.prepare('SELECT * FROM capacite WHERE id = ?').get(PRENDS_CA);
   assert.deepEqual({ ...imp.prepare('SELECT corps_md, resume FROM page WHERE id = ?').get(PRENDS_CA) }, { corps_md: `${EFFET_PRENDS_CA}\n`, resume: EFFET_PRENDS_CA });
-  assert.ok(corps(PRENDS_CA).includes(k.effet), 'la fiche du don écrit son effet');
+  // aujourd'hui : la fiche suit l'effet ; un don supprimé par le site de dev (et sa fiche avec lui) est un cas admis, vérifié
+  if (k) assert.ok(corps(PRENDS_CA).includes(k.effet), 'la fiche du don écrit son effet');
+  else assert.ok(historiqueSite(db).supprimee('capacite', { id: PRENDS_CA }), `${PRENDS_CA} absent sans que le site de dev l’ait supprimé`);
   const lire = lecteurDAcquis(db.prepare('SELECT id, nom FROM competence').all());
   assert.deepEqual(lire(EFFET_PRENDS_CA), []);
 });

@@ -209,6 +209,10 @@ retirera alors (`docs/feuille-de-route.md`, réponses du 2026-10-16) ; d'ici là
    - **notes et fils de commentaires** : les mêmes dans le classeur et dans `note_cellule` (et `commentaire_orphelin`).
    Une colonne modifiée par le site de dev **et** dont la cellule a changé (ou une ligne supprimée par le site dont la cellule a changé) est un
    **conflit** : présenté avec les deux valeurs, jamais tranché sans le propriétaire (R83) ; sa réponse s'inscrit dans le registre (`conflits`).
+   Une ligne supprimée par le site (notée dans `historique_modification`) dont les cellules n'ont pas changé n'est jamais un écart : elle est listée à
+   part (« Lignes supprimées par le site de dev »), et ce qui serait « pour mémoire » sur une ligne intacte (casse seule, à relire ailleurs) le reste
+   pour une ligne supprimée ou une colonne modifiée par le site, jamais un conflit. Les libellés des lignes visées par une clé étrangère se lisent eux
+   aussi dans leur état d'import.
    Le registre d'un classeur, `tools/sources/ignorer/<classeur>.json` (forme décrite en tête de `rapprocher.mjs` ; une section inconnue est une
    erreur), ne contient que des entrées **justifiées** (une `raison` chacune) : `regles` (cellules qu'aucune ligne ne cite : titres, statistiques d'usage,
    consignes de navigation ; `nom_d_onglet` pour une bannière qui écrit le nom de son onglet), `libelles` (intitulés de mise en page d'une cellule citée,

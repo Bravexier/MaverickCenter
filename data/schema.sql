@@ -1599,7 +1599,9 @@ CREATE TABLE classe_annexe_entree (
 -- règle don_obtenu_sans_magie_acquise de v_personnage_controle). Écrite par la migration d'après le texte du don, relu par
 -- test/db-r181-dons-variables.test.mjs. Le site de dev l'écrit, noté au journal : à la création d'un don « Variable » (réponse du propriétaire
 -- « Demander la magie » : la magie est exigée, serveur/edition.mjs#magieDuDonVariable) et au changement de type (« Demander ou retirer » : passer à
--- « Variable » demande la magie, quitter « Variable » retire la ligne, serveur/edition.mjs#suivreLaMagieDuDon).
+-- « Variable » demande la magie, quitter « Variable » retire la ligne, serveur/edition.mjs#suivreLaMagieDuDon). Quand un don quitte « Variable » ou
+-- que sa magie visée change (innée ↔ acquise), l'entrée qu'il a obtenue est retirée des fiches (personnage_don_obtenu), avec une note datée, comme pour
+-- un don supprimé (R42 ; décision R192 (3) : serveur/fiches-retraits.mjs#retirerLesChoixDesDonsChanges).
 CREATE TABLE capacite_variable (
   capacite_id  TEXT    NOT NULL PRIMARY KEY REFERENCES capacite(id) ON DELETE CASCADE,
   magie        TEXT    NOT NULL CHECK (magie IN ('innee', 'acquise'))
@@ -3984,7 +3986,10 @@ CREATE VIEW v_creature_meme_bloc AS
 -- Arme avec les valeurs « effectives » : portée écrite dans l'effet, sinon portée par défaut du type (BDD!AF de la fiche) ;
 -- solidité de l'arme nue (2 crans de base, règle de l'onglet, corrigée par « 1 seul cran » / « ±1 cran » de l'effet : sans matériau ni amélioration),
 -- jamais moins de 1 (décision R51 : « il est impossible de descendre à moins de 1 », sur la valeur fixée comme sur la valeur corrigée ; la même que
--- lib/arme-champs.mjs#durabiliteDeLArme, migration 0099) ; libellés de famille et de type.
+-- lib/arme-champs.mjs#durabiliteDeLArme, migration 0099). Ce plancher n'est plus qu'une sécurité : une arme a toujours au moins 1 cran propre
+-- (décision R194 (1) : l'édition, l'API v1 et le rejeu refusent un effet qui en donnerait moins, lib/arme-champs.mjs#refusDesCransPropres,
+-- serveur/edition.mjs#armesSansCranPropre) ; le plancher de R51 joue sur le total, arme + matériau + amélioration (R194 (2),
+-- lib/arme-forge.mjs#forgerArme) ; libellés de famille et de type.
 CREATE VIEW v_arme AS
   SELECT a.id, a.nom, f.nom AS famille, t.nom AS type, a.competence_brut, a.mains, a.cout_ro,
          a.de, a.de_faces, COALESCE(a.bonus_degats, 0) AS bonus_degats_ou_0,

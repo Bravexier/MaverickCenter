@@ -16,6 +16,7 @@ import { texteDePageModifiable } from '../src/lib/edition-modele.mjs';
 import { htmlAvecMotsCles, lireBalises } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { chargerPanneaux } from '../src/lib/panneaux-regles-db.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 // le processeur Markdown du site et la lecture du HTML comme le ferait le navigateur (hast-util-from-html, dépendance de @astrojs/markdown-remark)
 import { DOSSIER_DU_WIKI as dossier, enfantsDuHtml as enfants, normal, rendreCommeLeGuide, rendreLeMarkdown as rendre } from './aide-rendu-du-site.mjs';
 
@@ -297,7 +298,9 @@ test('aller-retour sur tous les blocs des panneaux de règles : le HTML ne chang
   const db = ouvrirBase({ sansExemples: false });
   const vocabulaire = chargerVocabulaire(db);
   const blocs = chargerPanneaux(db).flatMap((p) => p.blocs.map((b) => ({ ...b, retouche: p.id === 'armes' ? avecPhraseDesArmesDeDepart : (h) => h })));
-  assert.ok(blocs.length >= 13, `${blocs.length} blocs`);
+  // tous ceux de la base (le site de dev en crée et en supprime) ; treize au moins à l'import
+  assert.ok(blocs.length > 0, `${blocs.length} blocs`);
+  assert.ok(chargerPanneaux(baseDImport()).flatMap((p) => p.blocs).length >= 13, 'les blocs de l’import');
   const page = async (b, md) => htmlAvecMotsCles(b.retouche(await rendre(md)), vocabulaire).html;
   let differents = 0;
   for (const b of blocs) {

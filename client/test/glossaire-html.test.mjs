@@ -13,9 +13,11 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { cssDesMotsClesDuSite } from '../src/lib/couleur-de-la-page.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { classeDuMotCle } from '../src/lib/mots-cles-liens.mjs';
 import { FAMILLES_DE_LA_PALETTE } from '../src/lib/palette-css.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const present = existsSync(join(dist, 'regles', 'glossaire', 'index.html'));
@@ -44,7 +46,10 @@ test('le Glossaire : au menu Règles après Exploration ; tous les mots-clés, c
     assert.ok(ligne.includes(`<a class="glossaire-mot__pages" href="/recherche/?mot-cle=${encodeURIComponent(m.id)}">`), `${m.id} : ses pages`);
     assert.equal(ligne.includes('glossaire-mot__definition--vide'), !m.description, `${m.id} : sa définition`);
   }
-  assert.ok(liens >= 270, `${liens} libellés liés`);
+  // plus de 270 à l'import (migration 0098) ; sur l'état courant, chacun de la base (le site de dev crée et supprime des mots-clés à adresse)
+  const lies = baseDImport().prepare('SELECT count(*) AS n FROM mot_cle WHERE url IS NOT NULL').get().n;
+  assert.ok(lies >= 270, `${lies} libellés liés à l’import`);
+  assert.equal(liens, vocabulaire.filter((m) => m.url).length);
   // les balises des définitions rendues par le middleware (data-balise les garde)
   assert.doesNotMatch(liste.replace(/ data-[a-z-]+="[^"]*"/g, ''), /\{\{[^{}\n]+\}\}/, 'aucune balise brute');
   // les couleurs que propose le mode modification : toutes les familles de la palette ; leurs feuilles émises par la page
@@ -83,7 +88,8 @@ test('les mots-clés à adresse sont des liens vers une page construite ; la feu
       assert.equal(classes, ['bulle', classeDuMotCle(vocabulaire.get(id))].filter(Boolean).join(' '), `${rel} : la bulle de ${id}`);
     }
   }
-  assert.ok(liens > 100, `${liens} liens de mots-clés`);
+  // des liens dès qu'un mot-clé a une adresse (le site de dev supprime des mots-clés à adresse : leurs balises deviennent du texte)
+  assert.ok(liens > 0 || ![...vocabulaire.values()].some((m) => m.url), `${liens} liens de mots-clés`);
 });
 
 test('« rendu identique » : les pages colorées gardent leur classe (magie, catégorie de classe, nature de race, partie du guide) ; les autres, aucune', options, () => {
@@ -95,7 +101,9 @@ test('« rendu identique » : les pages colorées gardent leur classe (magie, ca
   assert.match(lire(join('races', 'kitsune')), /<div class="race race--hybride couleur-race-hybride">/);
   assert.match(lire(join('regles', 'creer-son-personnage')), /<div class="guide-reference guide-reference--couleur couleur-partie-creer">/);
   assert.match(lire('decouvrir'), /<div class="guide-reference guide-reference--couleur couleur-partie-decouvrir">/);
-  assert.match(lire(join('regles', 'les-degats')), /<div class="guide-reference">/, 'une page des onglets : l’accent du site');
+  // une page des onglets (« Les dégâts », que le site de dev peut supprimer : cas admis, vérifié) : l'accent du site
+  if (existsSync(join(dist, 'regles', 'les-degats', 'index.html'))) assert.match(lire(join('regles', 'les-degats')), /<div class="guide-reference">/, 'une page des onglets : l’accent du site');
+  else assert.ok(historiqueSite(ouvrirBase()).supprimee('page', { id: 'guide/les-degats' }), 'guide/les-degats non construite sans que le site de dev l’ait supprimée');
   // aucune page n'a de couleur sur son <main> au départ (aucun mot-clé coloré ne mène à une page sans gabarit coloré)
   for (const rel of pages()) assert.doesNotMatch(readFileSync(join(dist, rel), 'utf8'), /<main class=/, relative('.', rel));
 });

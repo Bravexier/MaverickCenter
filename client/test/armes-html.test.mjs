@@ -21,6 +21,7 @@ import {
 import { texteDuCoutElementaire } from '../src/lib/arme-forge.mjs';
 import { CLASSE_DES_ARMES_DE_DEPART, classeDeMagie, classeDeMateriau, cssDesFamilles } from '../src/lib/palette-css.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
 import { desSelonLaForce } from '../src/lib/maitrise-arme.mjs';
 import { chargerPanneau } from '../src/lib/panneaux-regles-db.mjs';
@@ -134,10 +135,15 @@ test('colonnes : Nom, Compétence, Type, Dégâts, Type de dégâts, Portée, So
   const tete = main.slice(main.indexOf('<thead>'), main.indexOf('</thead>'));
   const colonnes = [...tete.matchAll(/<th scope="col"(?: class="ed-seul")?>(.*?)<\/th>/g)].map((m) => m[1].replace(/<[^>]+>/g, ''));
   // « Solidité » partout à la place de « Durabilité » : l'en-tête est le mot-clé du glossaire, sa définition en infobulle (migration 0058)
-  // son libellé : celui du mot-clé dans la base (le site de dev le renomme)
-  const solidite = base.prepare("SELECT libelle FROM mot_cle WHERE id = 'solidite'").get().libelle;
+  // son texte : la balise rendue comme au build avec le vocabulaire de la base (le site de dev renomme le mot-clé ; il n'est pas protégé : supprimé, la
+  // balise reste écrite dans le gabarit et le build la rend en texte, ce cas se vérifie explicitement)
+  const solidite = htmlAvecMotsCles('{{solidite}}', chargerVocabulaire(base)).html.replace(/<[^>]+>/g, '');
   assert.deepEqual(colonnes.slice(0, 8), ['Nom', 'Compétence', 'Type', 'Dégâts', 'Type de dégâts', 'Portée', solidite, 'Origine']);
-  assert.ok(tete.includes(`<th scope="col"><strong class="mot-cle" data-mot-cle="solidite" data-bulle="mot-cle-solidite"`));
+  if (base.prepare("SELECT 1 FROM mot_cle WHERE id = 'solidite'").get()) {
+    assert.ok(tete.includes(`<th scope="col"><strong class="mot-cle" data-mot-cle="solidite" data-bulle="mot-cle-solidite"`));
+  } else {
+    assert.ok(historiqueSite(base).supprimee('mot_cle', { id: 'solidite' }), 'le mot-clé « solidite » manque sans que le site de dev l’ait supprimé');
+  }
   assert.ok(!/durabilit/i.test(main.replace(/data-[\w-]*durabilite[\w-]*(="[^"]*")?|arme-bulle-durabilite|arme__durabilite|arme-durabilite/g, '')), 'plus de « durabilité » affichée');
   assert.equal(colonnes.length - 5, COLONNES_D_UNE_ARME);
   assert.equal((tete.match(/class="ed-seul"/g) ?? []).length, 5);

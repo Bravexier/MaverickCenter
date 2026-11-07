@@ -25,6 +25,7 @@ import { cpSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 const lire = (chemin) => readFileSync(fileURLToPath(new URL(`../${chemin}`, import.meta.url)), 'utf8');
@@ -175,7 +176,10 @@ test('toute la base : chaque adresse et chaque couleur de mot-clé conviennent ;
   const adresses = adressesDuSite(db);
   const avecUrl = motsCles.filter((m) => m.url !== null);
   const colores = motsCles.filter((m) => m.couleur !== null);
-  assert.ok(avecUrl.length >= 273 && colores.length >= 90, `${avecUrl.length} adresses, ${colores.length} couleurs (migration 0098)`);
+  // (au moins 273 adresses et 90 couleurs à l'import, migration 0098 ; le site de dev supprime des mots-clés : sur l'état courant, chacun est contrôlé)
+  const dImport = motsClesDeLaBase(baseDImport());
+  const [urlsDImport, couleursDImport] = [dImport.filter((m) => m.url !== null).length, dImport.filter((m) => m.couleur !== null).length];
+  assert.ok(urlsDImport >= 273 && couleursDImport >= 90, `${urlsDImport} adresses, ${couleursDImport} couleurs à l’import (migration 0098)`);
   for (const m of avecUrl) assert.equal(fauteDeLUrl(m.url, adresses), null, `${m.id} : ${m.url}`);
   const classes = new Set(couleursDeLaPalette().map((c) => c.classe));
   for (const m of colores) {

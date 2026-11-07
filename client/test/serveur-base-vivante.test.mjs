@@ -15,6 +15,7 @@ import {
 } from '../serveur/base-vivante.mjs';
 import { enregistrer } from '../serveur/edition.mjs';
 import { lireFiche, listerFiches } from '../serveur/fiches.mjs';
+import { citationsDesPages } from '../src/lib/citations-db.mjs';
 import { trouverRacine } from '../src/lib/donnees.mjs';
 import { COLONNES_RETIREES, TABLES_RETIREES, gainsDeLaProgression } from '../src/lib/fiche-format.mjs';
 import { cheminDImport } from './aide-base-d-import.mjs';
@@ -157,7 +158,14 @@ test('une page qui a des [[liens]] supprimée sur le site, puis la base refaite 
   const vise = valeur(REGLES, "SELECT l.cible_page_id AS id FROM lien l JOIN metier m ON m.id = l.cible_page_id WHERE l.cible_page_id <> ? ORDER BY 1 LIMIT 1", sortant ?? '')?.id;
   assert.ok(sortant && vise, 'des métiers liés dans les règles');
   const vivante = ouvrirBaseVivante(chemin);
-  enregistrer(vivante, { page: 'metiers/', operations: [sortant, vise].map((id) => ({ op: 'supprimer', entite: 'metier', cle: { id } })) });
+  // depuis la migration 0098, un métier visé par un lien est l'adresse d'un mot-clé : le service refuse sa suppression tant que ce lien reste
+  // (serveur/edition.mjs#refuserSiUnMotCleYMene) ; le même lot le vide d'abord
+  const parPage = citationsDesPages(vivante, [sortant, vise]);
+  const motsCles = [sortant, vise].flatMap((id) => parPage.get(id).filter((c) => c.table === 'mot_cle' && c.comment === 'mot-cle').map((c) => c.cle.id));
+  enregistrer(vivante, { page: 'metiers/', operations: [
+    ...[...new Set(motsCles)].map((id) => ({ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { url: '' } })),
+    ...[sortant, vise].map((id) => ({ op: 'supprimer', entite: 'metier', cle: { id } })),
+  ] });
   assert.equal(vivante.prepare('SELECT count(*) AS n FROM lien WHERE page_id IN (?, ?) OR cible_page_id IN (?, ?)').get(sortant, vise, sortant, vise).n, 0, 'cascade de SQLite');
   vivante.close();
   const r = preparerBaseVivante({ regles: regles("UPDATE race SET nom = 'Humain (livraison)' WHERE id = 'races/humain'"), dossier });

@@ -60,7 +60,8 @@ const GUERRIER = 'classes/guerrier';
 const MAITRE = lire(`SELECT s.id FROM specialite s WHERE s.classe_id = ? AND EXISTS (SELECT 1 FROM capacite k WHERE k.specialite_id = s.id AND k.nature = 'specialite')
   ORDER BY s.id = ? DESC, s.rang LIMIT 1`, GUERRIER, `${GUERRIER}#specialite:maitre-darme`)?.id ?? null;
 const BRAVE = lire(`SELECT id FROM capacite WHERE nature = 'classe' ORDER BY classe_id = ? DESC, id = 'capacites/guerrier-brave' DESC, classe_id, ligne, id LIMIT 1`, GUERRIER).id;
-const HERBORISTE = 'metiers/herboriste';
+// un métier, lu dans l'état courant (l'Herboriste s'il est là : le site de dev supprime des métiers)
+const HERBORISTE = lire("SELECT id FROM metier ORDER BY id = 'metiers/herboriste' DESC, id LIMIT 1").id;
 
 // valeurs d'avant (l'ancienne valeur ne doit plus être écrite)
 const avant = {

@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 import { TABLES_DES_NOTES } from '../src/lib/notes-de-version.mjs';
 
 const racine = (chemin) => fileURLToPath(new URL(`../../${chemin}`, import.meta.url));
@@ -50,11 +51,17 @@ test('base : aucune colonne de texte ne cite plus un identifiant d’origine (sa
       for (const c of registre.copies) {
         const n = db.prepare(`SELECT count(*) AS n FROM "${name}" WHERE instr("${col}", ?) > 0`).get(c.avant).n;
         const permis = ORIGINAUX_PERMIS.find((o) => o.titre === c.titre && o.table === name && o.colonne === col)?.n ?? 0;
-        assert.equal(n, permis, `${name}.${col} cite ${c.titre} (${c.avant}) ${n} fois`);
+        // au plus les liens permis (le site de dev supprime des ressources, réécrit leur description) ; exactement eux à l'import (ci-dessous)
+        assert.ok(n <= permis, `${name}.${col} cite ${c.titre} (${c.avant}) ${n} fois, ${permis} permis`);
       }
     }
   }
   assert.ok(colonnes > 500, `${colonnes} colonnes lues`);
+  const dImport = baseDImport();
+  for (const o of ORIGINAUX_PERMIS) {
+    const { avant } = registre.copies.find((c) => c.titre === o.titre);
+    assert.equal(dImport.prepare(`SELECT count(*) AS n FROM "${o.table}" WHERE instr("${o.colonne}", ?) > 0`).get(avant).n, o.n, `${o.table}.${o.colonne} à l’import`);
+  }
 });
 
 test('sources : une ligne par document cité, id dérivé du nouvel identifiant, les renvois des pages comme avant la migration', () => {
@@ -99,12 +106,15 @@ test('sources : une ligne par document cité, id dérivé du nouvel identifiant,
 
 test('liens : les 9 ressources vers le Doc « Alchimie » original, comme le classeur (décision R84, migration 0048) ; le lien du Mage Bleu vers « Familiers » est retiré (migration 0019)', () => {
   const { avant, apres } = parTitre.get('Alchimie');
-  const ressources = (id) => db.prepare('SELECT count(*) AS n FROM ressource WHERE instr(description, ?) > 0').get(id).n;
-  assert.equal(ressources(avant), 9);
-  assert.equal(ressources(apres), 0);
-  // le tableau de la page « Équipement inventaire » les recopie ; les sources des pages d'alchimie restent la copie
+  const ressources = (base, id) => base.prepare('SELECT count(*) AS n FROM ressource WHERE instr(description, ?) > 0').get(id).n;
+  const recopies = (base) => base.prepare("SELECT corps_md FROM page WHERE id = 'ressources/equipement-inventaire'").get().corps_md.split(`/d/${avant}/`).length - 1;
+  // neuf à l'import, dans les ressources et dans le tableau de la page « Équipement inventaire » qui les recopie ; aujourd'hui, la page recopie
+  // celles qui restent (le site de dev supprime des ressources)
+  assert.deepEqual([ressources(baseDImport(), avant), recopies(baseDImport())], [9, 9]);
+  assert.equal(ressources(db, apres), 0);
+  assert.equal(recopies(db), ressources(db, avant));
+  // les sources des pages d'alchimie restent la copie
   const corps = db.prepare("SELECT corps_md FROM page WHERE id = 'ressources/equipement-inventaire'").get().corps_md;
-  assert.equal(corps.split(`/d/${avant}/`).length - 1, 9);
   assert.ok(!corps.includes(apres));
   assert.ok(db.prepare('SELECT count(*) AS n FROM page_source WHERE source_id = ?').get(`google-doc:${apres}`).n > 50);
   assert.equal(db.prepare('SELECT count(*) AS n FROM source WHERE google_id = ?').get(avant).n, 0);

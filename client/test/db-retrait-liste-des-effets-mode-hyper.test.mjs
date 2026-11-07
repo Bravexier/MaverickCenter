@@ -14,7 +14,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
-import { baseDImport, lotsAvant } from './aide-base-d-import.mjs';
+import { baseDImport, cheminDImport, lotsAvant } from './aide-base-d-import.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { citations, ecritParLeSite, lienDuSite, lignesQuiCitent } from './aide-page-retiree.mjs';
 
@@ -154,8 +154,10 @@ test('0095 : le menu « Les combats » sans la Liste, rangs de 1 à 19 (état d�
 });
 
 test('0095 rejouée sur son propre résultat : rien ne change (table reconstruite à l’identique, UPDATE gardés)', (t) => {
+  // son résultat : la base telle que les migrations l'ont laissée (les lots du site d'après la 0095 défaits) ; sur l'état courant, un texte que le site
+  // aurait réécrit avec un ancien lien serait réécrit par le rejeu, sans que la migration ait changé
   const chemin = fichierTemporaire('maverick.db', 'retrait-liste-hyper', { t });
-  copyFileSync(cheminBase({ sansExemples: false }), chemin);
+  copyFileSync(cheminDImport({ garder: lotsAvant('0095') }), chemin);
   const base = new DatabaseSync(chemin);
   t.after(() => base.close());
   const etat = () => [

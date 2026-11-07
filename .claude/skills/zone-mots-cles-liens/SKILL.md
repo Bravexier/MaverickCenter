@@ -8,7 +8,7 @@ user-invocable: false
 
 ## Fichiers
 - `lib/mots-cles-liens.mjs` : forme d'une adresse, lecture et classe d'une couleur, mot-clé d'une page, mots-clés d'une adresse, `LIENS_GARDES`, `REGISTRE_DES_LIENS`. Sans aucun import : un script de page peut l'importer.
-- `lib/adresses-db.mjs` : `adressesDuSite` (où une adresse peut mener), `pageDeLAdresse` (la page où elle mène), `ADRESSES_FIXES`.
+- `lib/adresses-db.mjs` : `adressesDuSite` (où une adresse peut mener), `pageDeLAdresse` (la page où elle mène), `indexDesAdresses(db, { exemples, enPlus })` (l'index des pages par adresse ; `enPlus` : des ids de pages absentes de la base, supprimées par un lot rejoué, que `citationsDesPages` y ajoute pour voir les citations des adresses de mots-clés), `ADRESSES_FIXES`.
 - `lib/liens-en-mots-cles.mjs#convertirLesLiens`, son générateur `scripts/liens-en-mots-cles.mjs` et le registre `data/migrations/0098-liens-en-mots-cles.json`.
 - `lib/couleur-de-la-page.mjs` : la couleur d'une page et la feuille des mots-clés colorés.
 - Rendu d'une balise à adresse ou colorée : skill `zone-mots-cles`. Saisie du lien et de la couleur sur le Glossaire : skill `zone-glossaire`. Fonctions de la palette (`fauteDeLaCouleur`, `cssDesMotsCles`) : skill `ui-couleurs`.
@@ -31,7 +31,7 @@ user-invocable: false
 - Fusion : la cible garde son adresse et sa couleur, et prend celles de la source qu'elle n'a pas (modification notée au journal, le résumé dit ce qu'elle garde).
 - Mots-clés protégés : adresse et couleur modifiables.
 - L'existence de l'adresse se vérifie au service (base vivante) et par `db:check` ; l'ancre et la requête ne sont pas vérifiées.
-- Supprimer une page qu'un mot-clé vise est refusé (409 : citations `mot-cle` et `balise` de `lib/citations-db.mjs`, skill `zone-edition-menus`).
+- Supprimer une page qu'un mot-clé vise est refusé (409 : citations `mot-cle` et `balise` de `lib/citations-db.mjs`, skill `zone-edition-menus`) ; de même la fiche d'un don ou d'une spécialité et l'ancre d'un métier (skill `zone-edition`).
 - Un lien saisi est converti si un seul mot-clé mène à sa cible, sinon refusé (400).
 - Les pages d'exemple gardent leurs `[[…]]`.
 - `npm run autolink` reste un outil d'aperçu relu ; il exclut `lore` et `metiers` (skill `site-wiki-liens`). `codex.py` ne pose jamais le mot-clé d'une page en étiquette (skill `sources-codex`).

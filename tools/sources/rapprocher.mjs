@@ -361,13 +361,17 @@ export function rapprocher(db, {
     }
     return res;
   };
-  // Le libellé d'une ligne visée par une clé étrangère (« Évitée » pour `echelle_id` = 'evitee'), pour le vocabulaire.
+  // Le libellé d'une ligne visée par une clé étrangère (« Évitée » pour `echelle_id` = 'evitee'), pour le vocabulaire : dans son état d'import quand la
+  // colonne visée est sa clé primaire (une ligne visée que le site de dev a supprimée ou renommée garde son libellé d'import).
   const libellesVises = new Map();
   const libellesDe = (table, colonne, v) => {
     const k = `${table}|${colonne}|${v}`;
     if (!libellesVises.has(k)) {
       const cols = db.prepare(`PRAGMA table_info("${table}")`).all().map((c) => c.name).filter((c) => LIBELLES_DE_CIBLE.test(c));
-      const l = cols.length ? db.prepare(`SELECT ${cols.map((c) => `"${c}"`).join(', ')} FROM "${table}" WHERE "${colonne}" = ?`).get(v) : null;
+      const parCle = pkDe(table).length === 1 && pkDe(table)[0] === colonne;
+      const lue = !cols.length ? null : parCle ? h.ligneDImport(table, { [colonne]: v })
+        : db.prepare(`SELECT ${cols.map((c) => `"${c}"`).join(', ')} FROM "${table}" WHERE "${colonne}" = ?`).get(v);
+      const l = lue && Object.fromEntries(cols.map((c) => [c, lue[c] ?? null]));
       libellesVises.set(k, l ? Object.values(l).filter((x) => x !== null) : []);
     }
     return libellesVises.get(k);
@@ -496,6 +500,8 @@ export function rapprocher(db, {
       const heritees = correctionsHeritees(t.name, ligne);
       // Un écart d'une ligne qui cite aussi une source sans instantané (un Google Doc) est « à relire » : la valeur peut venir de cette source.
       const signaler = (ecart, liste) => (ailleurs.size ? R.aRelire.push({ ...ecart, ailleurs: [...ailleurs].join(' ; ') }) : liste.push(ecart));
+      // Le rangement d'un écart, marqué « pour mémoire » quand il ne compte pas (casse seule, ou à relire ailleurs).
+      const rangement = (f, pourMemoire = false) => Object.assign(f, { pourMemoire: pourMemoire || ailleurs.size > 0 });
 
       // Une colonne : la valeur d'import doit se lire dans les cellules (ou, si le propriétaire a tranché un conflit pour le classeur, la valeur actuelle).
       const verifier = (c, lire) => {
@@ -514,7 +520,10 @@ export function rapprocher(db, {
         if (attendue === null || attendue === undefined || attendue === '') return;
         const ecart = lire(attendue);
         if (!ecart) return;
-        if (modifiee && !d) R.conflits.push({ ligne: ident, colonne: c.name, classeur: tout.slice(0, 200), import: importee, site: courante });
+        // Un écart « pour mémoire » (casse seule, valeur à relire dans une source sans instantané) ne dit pas que la cellule a changé : il est rangé
+        // comme pour une ligne intacte, jamais en conflit (une ligne supprimée ou une colonne modifiée par le site de dev est un choix du site).
+        if (ecart.pourMemoire) ecart();
+        else if (modifiee && !d) R.conflits.push({ ligne: ident, colonne: c.name, classeur: tout.slice(0, 200), import: importee, site: courante });
         else if (!actuelle && !d) R.conflits.push({ ligne: ident, colonne: c.name, classeur: tout.slice(0, 200), import: importee, site: null, note: 'ligne supprimée par le site de dev' });
         else ecart();
       };
@@ -526,7 +535,7 @@ export function rapprocher(db, {
             // … ou un jeton entier d'une cellule (« Prix : 4 », « 40% »).
             const jeton = (v) => new RegExp(`(?:^|[^\\p{L}\\p{N}])${comparable(v).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:$|[^\\p{L}\\p{N}])`, 'u').test(tout);
             const lue = [attendue, sansCorrections(attendue, propres, heritees)].some((v) => valeursDesCellules.has(comparable(v)) || jeton(v));
-            return lue ? null : () => signaler({ ligne: ident, colonne: c.name, absent: [String(attendue)], cellules: tout.slice(0, 300) }, R.ecarts);
+            return lue ? null : rangement(() => signaler({ ligne: ident, colonne: c.name, absent: [String(attendue)], cellules: tout.slice(0, 300) }, R.ecarts));
           }
           // Une valeur JSON (`donnees`) : ses feuilles, pas son écriture (les clés ne sont pas dans le classeur).
           const json = feuillesJson(attendue);
@@ -542,14 +551,14 @@ export function rapprocher(db, {
           if (!absents.length) return null;
           // Une valeur que l'import a normalisée (« Combat » -> « combat ») ne diffère que par la casse : listée à part, pas un écart.
           const vraiment = absents.filter((m) => !toutMinuscules.includes(m.toLowerCase()));
-          return () => {
+          return rangement(() => {
             if (!vraiment.length) R.casse.push({ ligne: ident, colonne: c.name, valeur: absents.join(' ‖ ').slice(0, 120) });
             else signaler({ ligne: ident, colonne: c.name, absent: vraiment.slice(0, 3), cellules: tout.slice(0, 300) }, R.ecarts);
-          };
+          }, !vraiment.length);
         });
       }
       for (const c of nombres) {
-        verifier(c, (attendue) => (lus.has(Number(attendue)) ? null : () => signaler({ ligne: ident, colonne: c.name, valeur: attendue, cellules: tout.slice(0, 200) }, R.nombres)));
+        verifier(c, (attendue) => (lus.has(Number(attendue)) ? null : rangement(() => signaler({ ligne: ident, colonne: c.name, valeur: attendue, cellules: tout.slice(0, 200) }, R.nombres))));
       }
     }
     for (const [cleTexte, l] of actuelles) {

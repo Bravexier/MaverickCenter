@@ -525,3 +525,50 @@ test('rejeu du journal (livraison) : les mêmes lignes et le même corps de page
   }
   neuve.close();
 });
+
+test('R194 : une arme a toujours au moins 1 cran propre — création et modification refusées à « 0 seul cran » et pour un delta qui mène à 0 (API v1 comprise, 400), acceptées à 1 ; au rejeu, en conflit', () => {
+  const base = ligne("SELECT valeur FROM constante_equipement WHERE id = 'arme.solidite_base'").valeur;
+  const vers = (n) => `${n - base} cran${Math.abs(n - base) > 1 ? 's' : ''} de solidité`; // un delta qui mène à n crans propres
+  const arme = armeDeLaPage();
+  const modifier = (effet) => enregistrer([{ op: 'modifier', table: 'arme', cle: { id: arme.id }, valeurs: { effet } }]);
+  for (const effet of ['Dégâts taille, 0 seul cran de solidité', `Dégâts taille, ${vers(0)}`]) {
+    const r = modifier(effet);
+    assert.equal(r.statut, 400, `${effet} : ${JSON.stringify(r.corps)}`);
+    assert.match(r.corps.erreur, /au moins 1 cran propre \(décision R194\)/);
+  }
+  assert.equal(ligne('SELECT effet FROM arme WHERE id = ?', arme.id).effet, arme.effet, 'rien n’est écrit');
+  const v1 = appel('PATCH', `/api/v1/armes/${encodeURIComponent(arme.id)}/`, { effet: 'Dégâts taille, 0 seul cran de solidité' });
+  assert.equal(v1.statut, 400, JSON.stringify(v1.corps));
+  // à 1 cran : accepté (le delta de « -1 cran » sur la base de 2, ou « 1 seul cran »)
+  for (const effet of [`Dégâts taille, ${vers(1)}`, 'Dégâts taille, 1 seul cran de solidité']) assert.equal(modifier(effet).statut, 200, effet);
+  const famille = arme.famille_id;
+  const creer = (nom, effet) => enregistrer([{ op: 'creer', entite: 'arme', valeurs: { famille_id: famille, nom: nomLibre(famille, nom), competence_brut: 'Arme Légère', type_id: 'dague', effet, depart_possible: '0' } }]);
+  assert.equal(creer('Lame sans cran', 'Dégâts estoc, 0 seul cran de solidité').statut, 400);
+  assert.equal(creer('Lame d’un cran', 'Dégâts estoc, 1 seul cran de solidité').statut, 200);
+
+  // rejeu : un lot noté avant (le service l'aurait refusé depuis) qui met une arme à 0 est en conflit, rien n'en est écrit
+  const neuve = vivante();
+  try {
+    const cible = neuve.prepare('SELECT * FROM arme WHERE id = ?').get(arme.id);
+    const effet = 'Dégâts taille, 0 seul cran de solidité';
+    const journal = { format: 'maverick-edition/1', lots: [{ id: 'essai-r194', fait_le: '2026-11-07T12:00:00Z', page_id: 'ressources/armes/', resume: 'Arme à 0 cran', modifications: [
+      { rang: 1, table: 'arme', cle: { id: arme.id }, operation: 'modifier', avant: { effet: cible.effet, solidite_fixee: cible.solidite_fixee }, apres: { effet, solidite_fixee: 0 } },
+    ] }] };
+    neuve.exec('PRAGMA foreign_keys = OFF');
+    neuve.exec('BEGIN');
+    chargerJournal(neuve, journal);
+    const bilan = rejouerLeJournal(neuve);
+    neuve.exec('COMMIT');
+    assert.equal(bilan.conflits, 1, JSON.stringify(bilan));
+    assert.equal(neuve.prepare('SELECT effet FROM arme WHERE id = ?').get(arme.id).effet, cible.effet);
+    assert.match(neuve.prepare("SELECT detail FROM modification WHERE lot_id = 'essai-r194'").get()?.detail ?? '', /R194/);
+  } finally {
+    neuve.close();
+  }
+});
+
+test('R194, aujourd’hui : chaque arme de la base a au moins 1 cran propre (sans plancher)', () => {
+  const base = ligne("SELECT valeur FROM constante_equipement WHERE id = 'arme.solidite_base'").valeur;
+  const sous = lignes('SELECT id, solidite_fixee, solidite_delta FROM arme').filter((a) => (a.solidite_fixee ?? base + (a.solidite_delta ?? 0)) < 1);
+  assert.deepEqual(sous, []);
+});

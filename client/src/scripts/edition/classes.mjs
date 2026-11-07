@@ -517,16 +517,20 @@ export const classes = {
       outils(ed);
       return;
     }
+    // deux issues séparées : une erreur levée en branchant (issue réussie) ne repasse pas par l'issue d'échec, qui brancherait les magies une 2e fois
     (chargement ?? charger(ed))
-      .then(() => {
-        if (!ed.enEdition) return;
-        brancherLesMagies(ed);
-        outils(ed);
-      })
-      .catch((e) => {
-        if (ed.enEdition) brancherLesMagies(ed);
-        ed.annoncer(`Classe : ${e.message}`, 'erreur');
-      });
+      .then(
+        () => {
+          if (!ed.enEdition) return;
+          brancherLesMagies(ed);
+          outils(ed);
+        },
+        (e) => {
+          if (ed.enEdition) brancherLesMagies(ed);
+          ed.annoncer(`Classe : ${e.message}`, 'erreur');
+        },
+      )
+      .catch((e) => ed.annoncer(`Classe : ${e.message}`, 'erreur'));
   },
 
   verifier() {

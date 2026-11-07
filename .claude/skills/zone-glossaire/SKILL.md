@@ -19,7 +19,8 @@ user-invocable: false
 ## Choix du propriétaire
 - Une page seule, « Glossaire » au menu Règles après Exploration (Q6) ; toute la gestion du vocabulaire y est (Q7) : `/recherche/` ne fait plus que chercher.
 - La liste montre **tous** les mots-clés, avec ou sans définition : la pastille de sa couleur, son libellé (un lien quand il a une adresse), son abréviation, sa définition (balises rendues, monnaies en icônes, R63), le nombre de ses pages, un lien vers leur liste `/recherche/?mot-cle=<id>`, jamais vers l'adresse du mot-clé (Q12).
-- Gestion « en mode édition seulement » : créer (avec définition, abréviation, lien et couleur), renommer, fusionner, supprimer (« Une suppression d'un mot clé le supprimera de tous les endroits qui le référencent ») ; la balise à copier à côté de chaque mot-clé.
+- Gestion « en mode édition seulement » : créer (avec définition, abréviation, lien et couleur), renommer, fusionner, supprimer ; la balise à copier à côté de chaque mot-clé.
+- Un mot-clé ne se supprime que si rien ne le mentionne (R196, qui abandonne la cascade « Une suppression d'un mot clé le supprimera de tous les endroits qui le référencent ») : le service refuse en 409 avec `mentions` tant qu'une page le porte ou qu'un texte le cite, pages d'exemple comprises (`lib/mentions-des-mots-cles.mjs`, skill `zone-mots-cles`). R196 (2) demande aussi, sur chaque mot-clé du Glossaire, un menu déroulant des pages qui le mentionnent, la suppression n'étant offerte que pour une liste vide : pas encore fait.
 - La couleur se choisit par deux sélecteurs (Q3, Q4) : la liste des couleurs du site, toutes les familles de la palette groupées, chaque couleur nommée par son élément de référence (« Feu », « Chakra », « Mythril »), et un cercle (`<input type="color">`) qui donne `#rrggbb`. Enregistrée en `famille:id` ou `#rrggbb` ; vidée, NULL. Une valeur que la liste n'a pas reste montrée, jamais perdue.
 
 ## Invariants

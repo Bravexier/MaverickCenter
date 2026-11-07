@@ -28,7 +28,9 @@ const avant = lire(rows);
 // des modifications faites sur le site de dev (base vivante), puis le journal tel que /api/edition/journal/ le donne
 const { chemin } = preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(tmp, 'db') });
 const vivante = ouvrirBaseVivante(chemin);
-const bonusEnPlace = vivante.prepare("SELECT bonus_brut FROM metier WHERE id = 'metiers/forgeron'").get().bonus_brut;
+// deux métiers d'essai (« le Forgeron », « l'Acrobate » des commentaires), pris dans l'état courant : le site de dev supprime des métiers
+const [FORGERON, ACROBATE] = vivante.prepare('SELECT id FROM metier ORDER BY id LIMIT 2').all().map((m) => m.id);
+const bonusEnPlace = vivante.prepare("SELECT bonus_brut FROM metier WHERE id = ?").get(FORGERON).bonus_brut;
 const bonus = bonusEnPlace === '+4% Arme lourde' ? '+5% Arme lourde' : '+4% Arme lourde';
 // un nom de race que ni une race ni une page n'ont déjà (le site a pu en créer)
 const libre = (nom) => !vivante.prepare('SELECT 1 FROM race WHERE nom = ? OR id = ? UNION ALL SELECT 1 FROM page WHERE id = ?').get(nom, `races/${normalize(nom)}`, `races/${normalize(nom)}`);
@@ -37,7 +39,7 @@ let nomRace = 'Race d’essai du rapatriement';
 const LOT_1 = 'essai-rapatriement-1';
 const LOT_2 = 'essai-rapatriement-2';
 for (let i = 2; !libre(nomRace); i += 1) nomRace = `Race d’essai du rapatriement ${i}`;
-enregistrer(vivante, { page: 'metiers/', operations: [{ op: 'modifier', table: 'metier', cle: { id: 'metiers/forgeron' }, valeurs: { bonus_brut: bonus } }] }, { instant: '2026-10-10T10:00:00Z', id: LOT_1 });
+enregistrer(vivante, { page: 'metiers/', operations: [{ op: 'modifier', table: 'metier', cle: { id: FORGERON }, valeurs: { bonus_brut: bonus } }] }, { instant: '2026-10-10T10:00:00Z', id: LOT_1 });
 const { crees } = enregistrer(vivante, { page: 'races/', operations: [{ op: 'creer', entite: 'race', valeurs: { nom: nomRace, nature: 'hybride' } }] }, { instant: '2026-10-10T10:05:00Z', id: LOT_2 });
 const idRace = crees.find((c) => c.entite === 'race').id;
 const journal = journalExporte(vivante);
@@ -70,7 +72,7 @@ test('le journal rejoué réécrit data/rows : lignes modifiées et créées, hi
   assert.ok(!changes.includes('modification.sql') && !changes.includes('modification_lot.sql') && !changes.includes('VERSION'), changes.join(', '));
   assert.ok(!changes.includes('sort.sql') && !changes.includes('classe.sql'), 'les tables non touchées ne changent pas');
   const { db } = construire(rows);
-  assert.equal(db.prepare("SELECT bonus_brut FROM metier WHERE id = 'metiers/forgeron'").get().bonus_brut, bonus);
+  assert.equal(db.prepare("SELECT bonus_brut FROM metier WHERE id = ?").get(FORGERON).bonus_brut, bonus);
   assert.equal(db.prepare('SELECT nom FROM race WHERE id = ?').get(idRace).nom, nomRace);
   assert.equal(db.prepare('SELECT count(*) AS n FROM modification').get().n, 0);
   assert.equal(db.prepare('SELECT count(*) AS n FROM modification_lot').get().n, 0);
@@ -81,7 +83,7 @@ test('le journal rejoué réécrit data/rows : lignes modifiées et créées, hi
   assert.ok(historique.every((h) => h.version === null));
   const forgeron = historique.find((h) => h.table_nom === 'metier' && h.lot_id === LOT_1);
   assert.deepEqual([forgeron.operation, JSON.parse(forgeron.cle), JSON.parse(forgeron.avant), JSON.parse(forgeron.apres)],
-    ['modifier', { id: 'metiers/forgeron' }, { bonus_brut: bonusEnPlace }, { bonus_brut: bonus }]);
+    ['modifier', { id: FORGERON }, { bonus_brut: bonusEnPlace }, { bonus_brut: bonus }]);
   const race = historique.find((h) => h.table_nom === 'race');
   assert.deepEqual([race.lot_id, race.operation, JSON.parse(race.cle), race.avant], [LOT_2, 'inserer', { id: idRace }, null]);
   assert.equal(historique[0].resume, journal.lots[0].resume);
@@ -103,8 +105,8 @@ test('conflit (data/rows a changé autrement depuis) : rien n’est écrit, sauf
   cpSync(join(RACINE, 'data', 'rows'), dossier, { recursive: true });
   // le bonus du Forgeron change dans data/rows (base reconstruite, ligne modifiée, réexportée par l'exporteur des importeurs)
   const { db: copie, sortie } = construire(dossier);
-  copie.prepare("UPDATE metier SET bonus_brut = bonus_brut || ' (autre)' WHERE id = 'metiers/forgeron'").run();
-  const bonusChange = copie.prepare("SELECT bonus_brut FROM metier WHERE id = 'metiers/forgeron'").get().bonus_brut;
+  copie.prepare("UPDATE metier SET bonus_brut = bonus_brut || ' (autre)' WHERE id = ?").run(FORGERON);
+  const bonusChange = copie.prepare("SELECT bonus_brut FROM metier WHERE id = ?").get(FORGERON).bonus_brut;
   copie.close();
   const exp = spawnSync('python3', ['-I', join(RACINE, 'tools', 'db', 'exporter.py'), sortie, '--rows', dossier], { encoding: 'utf8' });
   assert.equal(exp.status, 0, exp.stderr);
@@ -118,7 +120,7 @@ test('conflit (data/rows a changé autrement depuis) : rien n’est écrit, sauf
   const force = appliquerJournal(journal, { rows: dossier, ignorerConflits: true });
   assert.equal(force.ecrit, true);
   const { db } = construire(dossier);
-  assert.equal(db.prepare("SELECT bonus_brut FROM metier WHERE id = 'metiers/forgeron'").get().bonus_brut, bonusChange, 'le lot en conflit est écarté');
+  assert.equal(db.prepare("SELECT bonus_brut FROM metier WHERE id = ?").get(FORGERON).bonus_brut, bonusChange, 'le lot en conflit est écarté');
   assert.equal(db.prepare('SELECT count(*) AS n FROM race WHERE id = ?').get(idRace).n, 1, 'les autres lots sont écrits');
   assert.deepEqual(db.prepare("SELECT DISTINCT lot_id FROM historique_modification WHERE lot_id IN (?, ?)").all(LOT_1, LOT_2).map((h) => h.lot_id), [LOT_2],
     'seul le lot écrit est historisé');
@@ -130,11 +132,11 @@ test('un journal rapatrié une seconde fois ne remet jamais une valeur annulée 
   const { chemin: c2 } = preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(tmp, 'db-k') });
   const v = ouvrirBaseVivante(c2);
   const valeur = (id) => v.prepare('SELECT bonus_brut FROM metier WHERE id = ?').get(id).bonus_brut;
-  const a = valeur('metiers/forgeron');
+  const a = valeur(FORGERON);
   const modifier = (id, bonus_brut) => ({ op: 'modifier', table: 'metier', cle: { id }, valeurs: { bonus_brut } });
-  enregistrer(v, { page: 'metiers/', operations: [modifier('metiers/forgeron', '+7% Essai')] }, { instant: '2026-10-12T09:00:00Z', id: 'essai-k1' });
-  enregistrer(v, { page: 'metiers/', operations: [modifier('metiers/forgeron', a), modifier('metiers/acrobate', '+1% Y')] }, { instant: '2026-10-12T09:00:01Z', id: 'essai-k2' });
-  enregistrer(v, { page: 'metiers/', operations: [modifier('metiers/acrobate', '+2% Z')] }, { instant: '2026-10-12T09:00:02Z', id: 'essai-k3' });
+  enregistrer(v, { page: 'metiers/', operations: [modifier(FORGERON, '+7% Essai')] }, { instant: '2026-10-12T09:00:00Z', id: 'essai-k1' });
+  enregistrer(v, { page: 'metiers/', operations: [modifier(FORGERON, a), modifier(ACROBATE, '+1% Y')] }, { instant: '2026-10-12T09:00:01Z', id: 'essai-k2' });
+  enregistrer(v, { page: 'metiers/', operations: [modifier(ACROBATE, '+2% Z')] }, { instant: '2026-10-12T09:00:02Z', id: 'essai-k3' });
   const j = journalExporte(v);
   v.close();
   const rowsK = join(tmp, 'rows-k');
@@ -165,7 +167,7 @@ test('un don créé puis supprimé avant que la base vivante soit refaite (ligne
   const regles = join(tmp, 'regles-f.db');
   cpSync(cheminBase({ sansExemples: false }), regles);
   const r = new DatabaseSync(regles);
-  r.exec("UPDATE metier SET remarque = 'livraison sans rapport' WHERE id = 'metiers/forgeron'");
+  r.prepare("UPDATE metier SET remarque = 'livraison sans rapport' WHERE id = ?").run(FORGERON);
   r.close();
   assert.equal(preparerBaseVivante({ regles, dossier }).refaite, true);
   v = ouvrirBaseVivante(cf);
@@ -189,4 +191,35 @@ test('un don créé puis supprimé avant que la base vivante soit refaite (ligne
   const autre = creer(neuve).crees[0].id;
   neuve.close();
   assert.notEqual(autre, id, 'l’identifiant d’un don supprimé n’est jamais repris');
+});
+
+test('les monnaies supprimées (le CONVERTISSEUR vidé), puis un mot-clé : rapatriées, la page « Équipement inventaire » a le corps que le service lui a écrit', () => {
+  // le rejeu refait le corps depuis celui des règles, monnaie par monnaie, avec la table finale : la liste vidée par la première ne se retrouvait plus
+  // pour la seconde (lib/corps-composants.mjs#corpsAvecMonnaies), et la page gardait les monnaies supprimées
+  const { chemin: cm } = preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(tmp, 'db-monnaies') });
+  const v = ouvrirBaseVivante(cm);
+  const PAGE = 'ressources/equipement-inventaire';
+  const monnaies = v.prepare('SELECT id FROM monnaie WHERE valeur_rf <> 1 ORDER BY valeur_rf').all().map((m) => m.id);
+  for (const id of monnaies) enregistrer(v, { page: 'ressources/composants/', operations: [{ op: 'supprimer', entite: 'monnaie', cle: { id } }] });
+  // un mot-clé que le service accepte de supprimer (le premier de la base qui n'est ni protégé ni une étiquette de sort)
+  const supprime = v.prepare('SELECT id FROM mot_cle ORDER BY id').all().map((m) => m.id).find((id) => {
+    try {
+      enregistrer(v, { page: 'regles/glossaire/', operations: [{ op: 'supprimer', entite: 'mot_cle', cle: { id } }] });
+      return true;
+    } catch {
+      return false;
+    }
+  });
+  assert.ok(supprime, 'un mot-clé supprimé');
+  const duService = v.prepare('SELECT corps_md FROM page WHERE id = ?').get(PAGE).corps_md;
+  const j = journalExporte(v);
+  v.close();
+  const rowsM = join(tmp, 'rows-monnaies');
+  cpSync(join(RACINE, 'data', 'rows'), rowsM, { recursive: true });
+  const r = appliquerJournal(j, { rows: rowsM });
+  assert.equal(r.ecrit, true, JSON.stringify(r.conflits));
+  const { db } = construire(rowsM);
+  assert.deepEqual(db.prepare('SELECT id FROM monnaie WHERE valeur_rf <> 1').all(), []);
+  assert.equal(db.prepare('SELECT corps_md FROM page WHERE id = ?').get(PAGE).corps_md, duService);
+  db.close();
 });

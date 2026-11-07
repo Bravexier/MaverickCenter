@@ -8,6 +8,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { morceauxDuChapitre } from '../src/lib/guide.mjs';
 import { htmlAvecMotsCles, pageAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
@@ -76,7 +77,11 @@ test('plus rien sous /guide/ (éclatement du guide, 2026-10-18) : ni page, ni li
     .filter((f) => /(?:href|action|src)="\/guide\/|"path":"guide\//.test(readFileSync(f, 'utf8')));
   assert.deepEqual(avecGuide.map((f) => relative(dist, f)), [], 'aucun lien vers /guide/');
   const guide = JSON.parse(lire('search-index.json')).filter((e) => e.type === 'Guide');
-  assert.ok(guide.length > 50 && guide.every((e) => /^(?:decouvrir|regles|mj)\//.test(e.path)), 'les pages du guide à leurs nouvelles adresses');
+  // une entrée par page du guide de la base (le site de dev en crée et en supprime : le nombre suit la base, pas un seuil)
+  const duGuide = ouvrirBase({ sansExemples: false }).prepare("SELECT statut FROM page WHERE type = 'guide'").all()
+    .filter((p) => process.env.HIDE_EXAMPLES !== '1' || p.statut !== 'example');
+  assert.ok(guide.length > 0 && guide.length === duGuide.length, `${guide.length} pages du guide dans l’index, ${duGuide.length} dans la base`);
+  assert.ok(guide.every((e) => /^(?:decouvrir|regles|mj)\//.test(e.path)), 'les pages du guide à leurs nouvelles adresses');
 });
 
 test('la page 404 renvoie les anciennes adresses /wiki/… vers les nouvelles', options, async () => {
@@ -319,8 +324,10 @@ test('/recherche/ : la recherche et le glossaire des mots-clés (tous, liens ?mo
   const index = JSON.parse(lire('search-index.json'));
   assert.ok(index.every((e) => Array.isArray(e.motsCles) && !('evenement' in e)), 'motsCles partout, plus de drapeau `evenement`');
   const evenements = index.filter((e) => e.type === 'Événement');
-  assert.ok(evenements.length > 50 && evenements.every((e) => e.path.startsWith('chronologie/')), 'les événements de la chronologie');
   const base = ouvrirBase();
+  // une entrée par événement de la base (lib/recherche-index.ts#chargerChronologie ; le site de dev en crée et en supprime : le nombre suit la base)
+  assert.equal(evenements.length, base.prepare('SELECT count(*) AS n FROM evenement').get().n, 'un événement de l’index par événement de la base');
+  assert.ok(evenements.every((e) => e.path.startsWith('chronologie/')), 'les événements de la chronologie');
   const ids = new Set(base.prepare('SELECT id FROM mot_cle').all().map((m) => m.id));
   assert.ok(evenements.every((e) => e.motsCles.every((id) => ids.has(id))), 'un événement : seulement les mots-clés que citent ses descriptions');
   assert.ok(index.every((e) => ![e.title, e.summary, e.text, ...e.tags, ...e.aliases].some((t) => /\{\{[^{}\n]+\}\}/.test(t ?? ''))), 'aucune balise brute dans l’index');
@@ -364,10 +371,17 @@ test('/recherche/ : la recherche et le glossaire des mots-clés (tous, liens ?mo
     // la définition rendue que recopie la vue du mot-clé (monnaies en icônes, R63 ; balises rendues par le middleware), une par mot-clé décrit
     assert.equal((html.match(new RegExp(`<div data-definition-de="${id}">`, 'g')) ?? []).length, decrit ? 1 : 0, `${id} : sa définition rendue`);
   }
-  // un mot-clé à abréviation (« Armure magique (AM) » à l'import) : son libellé et son abréviation courants, lus par son id
-  const am = vocabulaire.get('armure-magique');
-  const nomDeAm = echappe(am.abreviation ? `${am.libelle} (${am.abreviation})` : am.libelle);
-  assert.ok(motsCles.some((m) => m[1] === am.id && m[8].startsWith(`<span class="recherche-nom">${nomDeAm}</span>`)), `« ${nomDeAm} »`);
+  // les mots-clés à abréviation (« Armure magique (AM) » à l'import) : leur libellé et leur abréviation courants, lus par id, pour chaque mot-clé de la
+  // base hors monnaies (le site de dev en renomme, en vide ou en pose l'abréviation, et en supprime : `armure-magique` n'est pas protégé)
+  const idsDesMonnaies = new Set(Object.values(MONNAIES_DU_JEU).map((x) => x.id));
+  for (const am of [...vocabulaire.values()].filter((m) => !idsDesMonnaies.has(m.id))) {
+    const abr = typeof am.abreviation === 'string' ? am.abreviation.trim() : '';
+    const nomDeAm = echappe(abr ? `${am.libelle} (${abr})` : am.libelle);
+    assert.ok(motsCles.some((m) => m[1] === am.id && m[8].startsWith(`<span class="recherche-nom">${nomDeAm}</span>`)), `« ${nomDeAm} »`);
+  }
+  if (!vocabulaire.has('armure-magique')) {
+    assert.ok(historiqueSite(base).supprimee('mot_cle', { id: 'armure-magique' }), '« armure-magique » manque sans que le site de dev l’ait supprimé');
+  }
   for (const abr of Object.keys(MONNAIES_DU_JEU)) {
     const m = motsCles.find((x) => x[1] === MONNAIES_DU_JEU[abr].id);
     assert.ok(m && m[8].includes(`class="piece piece--${MONNAIES_DU_JEU[abr].id}"`) && !m[8].includes(`(${abr})`), `${abr} : libellé + icône`);
@@ -880,9 +894,11 @@ test('couleurs des événements de la chronologie : jamais en style sur une page
   }
   // la feuille : /chronologie/ et la page de chaque événement, et seulement elles
   const pagesDeLaChronologie = walk(join(dist, 'chronologie')).filter((f) => f.endsWith('index.html')).map((f) => relative(dist, f).split('\\').join('/')).sort();
-  assert.ok(pagesDeLaChronologie.length > 50, `${pagesDeLaChronologie.length} pages de la chronologie`);
+  // /chronologie/ et une page par événement de la base (le site de dev en crée et en supprime : le nombre suit la base)
+  const nEvenements = ouvrirBase().prepare('SELECT count(*) AS n FROM evenement').get().n;
+  assert.equal(pagesDeLaChronologie.length, nEvenements + 1, `${pagesDeLaChronologie.length} pages de la chronologie`);
   assert.deepEqual(avecFeuille.sort(), pagesDeLaChronologie);
-  assert.ok(posees > pagesDeLaChronologie.length * 100, `${posees} classes posées`);
+  assert.ok(posees >= nEvenements * 100, `${posees} classes posées`);
 });
 
 // Lot des parties du guide (même demande, mêmes choix de cadrage : skill ui-couleurs) : sur toute page construite, aucune couleur d'une partie en style

@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const script = fileURLToPath(new URL('../../tools/sheets/invocations.py', import.meta.url));
@@ -952,8 +953,9 @@ for (const [nomDuCas, [alterer, attendu]] of Object.entries(ALTERATIONS)) {
 
 test('pages réelles, sans dump : balises posées par `npm run autolink` (anciens liens `[[…]]` compris) et page retouchée (statut verified) ne sont pas des écarts', () => {
   // le maillage pose « {{id}} » (le texte est le libellé du mot-clé) ou « {{id|texte}} » (migration 0098) ; un ancien [[lien]] reste lu
-  const v = vocabulaireDeLaBase();
-  const necro = v.find((m) => m.id === 'magie-de-la-necromancie');
+  // le mot-clé de la page de la Nécromancie, lu à l'import (0098 ; le site de dev le renomme ou le supprime : une balise qui écrit son texte se lit
+  // sans lui, une balise sans texte affiche alors son id, un autre écart)
+  const necro = chargerVocabulaire(baseDImport()).find((m) => m.id === 'magie-de-la-necromancie');
   assert.ok(necro, 'le mot-clé de la page de la Nécromancie (0098)');
   const balise = (t) => t.replace('Terre + Espace/Temps', '{{terre|Terre}} + {{magie-de-lespace-temps|Espace/Temps}}');
   assert.deepEqual(problemesStructure(tel('golem-de-rouage', balise)), []);

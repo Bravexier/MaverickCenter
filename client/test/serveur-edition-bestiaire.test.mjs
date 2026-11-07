@@ -15,7 +15,6 @@ import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { rejouerLeJournal } from '../serveur/edition.mjs';
 import { chargerJournal, journalExporte } from '../serveur/edition-journal.mjs';
-import { cheminBase } from '../src/lib/donnees.mjs';
 import { CATEGORIES_DE_MONSTRE, ENTITES, journalSansImage, TABLES } from '../src/lib/edition-modele.mjs';
 import { RENDUS, rendreChamp } from '../src/lib/edition-rendu.mjs';
 import { CATEGORIES, GABARIT_DE_CARTE, RUBRIQUES, valeursDeLaCarte } from '../src/lib/monstre-champs.mjs';
@@ -26,11 +25,13 @@ import { comparerBases } from '../src/lib/notes-de-version.mjs';
 import { empreinte, PORTRAIT_MAX, resumeDuPortrait } from '../src/lib/portrait.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { lireTables } from '../serveur/notes-de-version.mjs';
-import { baseDImport, texteDImport } from './aide-base-d-import.mjs';
+import { baseDImport, cheminDImport, texteDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const racine = dossierTemporaire('edition-bestiaire');
-const REGLES = cheminBase({ sansExemples: false });
+// la base vivante part de l'état d'import (test/aide-base-d-import.mjs) : la carte d'essai, ses rubriques et leurs textes y sont ceux du doc, quoi que le
+// site de dev ait créé, réécrit ou supprimé dans le bestiaire (il supprime des cartes et des espèces)
+const REGLES = cheminDImport();
 let n = 0;
 const baseNeuve = () => ouvrirBaseVivante(preparerBaseVivante({ regles: REGLES, dossier: join(racine, `b${(n += 1)}`) }).chemin);
 const db = baseNeuve();

@@ -98,7 +98,13 @@ test('R165 : l’onglet Armures reçoit les 56 armures élémentaires (par magie
   for (const m of e.magies) assert.deepEqual(m.gemme, gemmes.get(m.id) ?? null, m.id);
   // « Rubis pour le Feu » (R165 (2)) : la gemme se cherche par son id (figé) ; son nom, que le site peut changer (ressource.nom), se lit à l'import
   const RUBIS = 'ressources/baton-magique#gemme:rubis';
-  assert.equal(e.magies.find((m) => m.id === 'magies/magie-du-feu').gemme.id, RUBIS, '« Rubis pour le Feu » (R165 (2))');
+  // (la gemme se supprime sur le site de dev, page des composants : le Feu n'a plus de gemme, cas admis et vérifié ; sa magie, elle, ne se modifie pas)
+  const gemmeDuFeu = e.magies.find((m) => m.id === 'magies/magie-du-feu').gemme;
+  if (gemmeDuFeu) assert.equal(gemmeDuFeu.id, RUBIS, '« Rubis pour le Feu » (R165 (2))');
+  else {
+    const h = historiqueSite(db);
+    assert.ok(h.supprimee('gemme', { ressource_id: RUBIS }) || h.supprimee('ressource', { id: RUBIS }), 'le Feu sans gemme sans que le site de dev ait supprimé le Rubis');
+  }
   assert.equal(texteDImport('ressource', { id: RUBIS }, 'nom'), 'Rubis', '« Rubis pour le Feu » (R165 (2)), à l’import');
   assert.deepEqual(armures.ameliorations.armure_elementaire, tous("SELECT * FROM amelioration_equipement WHERE cible = 'armure_elementaire' ORDER BY niveau"));
   assert.equal(armures.totaux.armure_elementaire, db.prepare("SELECT total_brut FROM amelioration_total WHERE cible = 'armure_elementaire'").get()?.total_brut ?? null);

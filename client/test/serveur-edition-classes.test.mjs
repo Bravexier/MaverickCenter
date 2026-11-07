@@ -276,12 +276,24 @@ test('D11 — don de classe : niveau 5 reçu sans choix ; une option à côté e
 });
 
 test('D11 — Archimage : une option de plus à un palier ; un nouveau palier seul est reçu sans choix', () => {
-  // un palier de l'Archimage (Création vivante à l'import), hors du choix miroir Élémentaliste / Occultiste, lu dans l'état courant
-  const palier = ligne(`SELECT * FROM capacite WHERE classe_id = 'classes/archimage' AND nature = 'choix' AND specialite_id IS NULL
-    AND nom_cle NOT IN (SELECT nom_cle FROM specialite WHERE classe_id = 'classes/archimage') ORDER BY id = 'capacites/archimage-creation-vivante' DESC, ligne, rang LIMIT 1`);
-  const groupe = lignes("SELECT * FROM capacite WHERE classe_id = 'classes/archimage' AND ligne = ? AND specialite_id IS NULL", palier.ligne);
-  const nom = nomDeDonLibre('Transmutation d’essai', 'Archimage');
-  const r = creerDon({ classe_id: 'classes/archimage', avec: palier.id, nom, type: 'Passif' });
+  // un palier de l'Archimage (Création vivante à l'import), hors du choix miroir Élémentaliste / Occultiste, lu dans l'état courant ; si le site de dev
+  // les a tous supprimés, le palier à choix d'une autre classe (hors spécialité, hors choix miroir), jamais celui de la classe d'essai C1 (le test
+  // suivant compte sur sa paire « Pas de côté » / « Roulade ») ; s'il n'en reste aucun, une classe d'essai et son palier de deux dons
+  const chercher = () => ligne(`SELECT k.* FROM capacite k WHERE k.nature = 'choix' AND k.specialite_id IS NULL
+    AND k.nom_cle NOT IN (SELECT nom_cle FROM specialite WHERE classe_id = k.classe_id) AND k.classe_id <> ?
+    ORDER BY k.classe_id = 'classes/archimage' DESC, k.id = 'capacites/archimage-creation-vivante' DESC, k.classe_id, k.ligne, k.rang LIMIT 1`, C1.id);
+  if (!chercher()) {
+    const C3 = nouvelleClasse('Veilleur des cols');
+    const premier = creerDon({ classe_id: C3.id, niveau: '5', nom: 'Guet', type: 'Passif' });
+    assert.equal(premier.statut, 200, JSON.stringify(premier.corps));
+    assert.equal(creerDon({ classe_id: C3.id, avec: premier.corps.crees[0].id, nom: 'Signal', type: 'Action' }).statut, 200);
+  }
+  const palier = chercher();
+  assert.ok(palier, 'un palier à choix dans la base');
+  const classeDuPalier = ligne('SELECT nom FROM classe WHERE id = ?', palier.classe_id).nom;
+  const groupe = lignes('SELECT * FROM capacite WHERE classe_id = ? AND ligne = ? AND specialite_id IS NULL', palier.classe_id, palier.ligne);
+  const nom = nomDeDonLibre('Transmutation d’essai', classeDuPalier);
+  const r = creerDon({ classe_id: palier.classe_id, avec: palier.id, nom, type: 'Passif' });
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
   const id = r.corps.crees[0].id;
   assert.deepEqual({ ...ligne('SELECT nature, ligne, niveau, rang FROM capacite WHERE id = ?', id) },
@@ -386,11 +398,18 @@ test('D11 — l’id d’un don supprimé n’est jamais repris', () => {
 });
 
 test('D11 — supprimer un don : note de cellule, fiche, mots-clés, sources, entité rattachée ; le survivant d’un choix (seul dans une spécialité, reçu sans choix hors spécialité)', () => {
-  // un don importé qui a une note de cellule, dans un choix de deux d'une spécialité, qu'aucune fiche ne cite
-  const cible = lignes(`SELECT k.* FROM capacite k JOIN note_cellule n ON n.entite_table = 'capacite' AND n.entite_id = k.id
-    WHERE k.nature = 'choix' AND k.specialite_id IS NOT NULL AND k.id NOT IN (SELECT capacite_id FROM personnage_capacite) ORDER BY k.id`)
+  // un don importé dans un choix de deux d'une spécialité, qu'aucune fiche ne cite : un qui a une note de cellule d'abord ; si le site de dev les a tous
+  // supprimés, le test en pose une sur le don choisi, dans sa copie (la note est toujours vérifiée)
+  const cible = lignes(`SELECT k.* FROM capacite k
+    WHERE k.nature = 'choix' AND k.specialite_id IS NOT NULL AND k.id NOT IN (SELECT capacite_id FROM personnage_capacite)
+    ORDER BY EXISTS (SELECT 1 FROM note_cellule n WHERE n.entite_table = 'capacite' AND n.entite_id = k.id) DESC, k.id`)
     .find((k) => lignes("SELECT id FROM capacite WHERE classe_id = ? AND ligne = ? AND specialite_id = ? AND nature = 'choix'", k.classe_id, k.ligne, k.specialite_id).length === 2);
-  assert.ok(cible, 'un don à note dans un choix de deux');
+  assert.ok(cible, 'un don dans un choix de deux d’une spécialité');
+  if (!ligne("SELECT 1 FROM note_cellule WHERE entite_table = 'capacite' AND entite_id = ?", cible.id)) {
+    db.prepare(`INSERT INTO note_cellule (entite_table, entite_id, rang, champ, texte, origine, source_ref)
+      VALUES ('capacite', ?, 1, 'effet', 'Note d’essai.', 'classes', 'Essai › D11')`).run(cible.id);
+  }
+  assert.ok(ligne("SELECT 1 FROM note_cellule WHERE entite_table = 'capacite' AND entite_id = ?", cible.id), 'un don à note');
   const survivant = lignes("SELECT * FROM capacite WHERE classe_id = ? AND ligne = ? AND specialite_id = ? AND nature = 'choix' AND id <> ?", cible.classe_id, cible.ligne, cible.specialite_id, cible.id)[0];
   const r = supprimer('capacite', cible.id);
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
@@ -581,4 +600,35 @@ test('D11 — messages accordés : « Nouvelle spécialité », « Nouveau don �
   const d = enregistrer([{ op: 'creer', entite: 'capacite', valeurs: { classe_id: C1.id, niveau: '1', type: 'Passif', inconnu: 1 } }]);
   assert.equal(d.statut, 400);
   assert.match(d.corps.erreur, /Nouveau don : le champ « inconnu » ne se donne pas à la création/);
+});
+
+test('un don dont la fiche est citée (le mot-clé dont l’adresse y mène) ne se supprime pas, ni sa spécialité : 409 qui liste les citations ; le lien retiré, il se supprime', () => {
+  // une spécialité supprimable et l'un de ses dons, puis un don reçu sans choix d'une autre classe, lus dans l'état courant ; un mot-clé d'essai mène à
+  // leur fiche (comme « Double coup (Mage Rouge) » à l'import)
+  const specialite = ligne(`SELECT s.* FROM specialite s WHERE EXISTS (SELECT 1 FROM capacite k WHERE k.specialite_id = s.id AND k.nature = 'specialite')
+    ORDER BY s.classe_id <> ?, s.id LIMIT 1`, C1.id);
+  const donDeLaSpecialite = ligne("SELECT * FROM capacite WHERE specialite_id = ? AND nature <> 'specialite' ORDER BY id LIMIT 1", specialite.id)
+    ?? ligne('SELECT * FROM capacite WHERE specialite_id = ? ORDER BY id LIMIT 1', specialite.id);
+  const don = ligne("SELECT * FROM capacite WHERE nature = 'classe' AND specialite_id IS NULL AND classe_id <> ? ORDER BY id LIMIT 1", specialite.classe_id);
+  const motCle = (d, n) => {
+    let libelle = `Lien d’essai vers un don ${n}`;
+    for (let i = 2; ligne('SELECT 1 FROM mot_cle WHERE libelle_cle = ?', normalize(libelle)); i += 1) libelle = `Lien d’essai vers un don ${n} ${i}`;
+    const r = enregistrer([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle, url: `/capacites/${d.id.slice('capacites/'.length)}/` } }]);
+    assert.equal(r.statut, 200, JSON.stringify(r.corps));
+    return r.corps.crees[0].id;
+  };
+  const versLeDon = motCle(don, 1);
+  const refus = supprimer('capacite', don.id);
+  assert.equal(refus.statut, 409, JSON.stringify(refus.corps));
+  assert.match(refus.corps.erreur, /est cité par .* : retirez d’abord ces liens\./);
+  assert.ok(refus.corps.citations.some((c) => c.table === 'mot_cle' && c.cle.id === versLeDon && c.comment === 'mot-cle'), 'le mot-clé et son lien');
+  assert.ok(ligne('SELECT 1 FROM capacite WHERE id = ?', don.id), 'rien n’est écrit');
+  const versLaSpecialite = motCle(donDeLaSpecialite, 2);
+  const refusDeLaSpecialite = supprimer('specialite', specialite.id);
+  assert.equal(refusDeLaSpecialite.statut, 409, JSON.stringify(refusDeLaSpecialite.corps));
+  assert.ok(refusDeLaSpecialite.corps.citations.some((c) => c.cle.id === versLaSpecialite), 'la fiche de l’un de ses dons');
+  // le lien retiré (l'adresse vidée sur le Glossaire) : le don se supprime
+  assert.equal(enregistrer([{ op: 'modifier', table: 'mot_cle', cle: { id: versLeDon }, valeurs: { url: '' } }]).statut, 200);
+  assert.equal(supprimer('capacite', don.id).statut, 200);
+  assert.equal(ligne('SELECT 1 FROM capacite WHERE id = ?', don.id), undefined);
 });
