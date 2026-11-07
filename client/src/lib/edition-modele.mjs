@@ -36,6 +36,10 @@ export { NIVEAUX_DE_DON, NIVEAU_DES_SPECIALITES, SPECIALITES_MAX, TYPES_DE_DON_S
  *   reel     nombre (décimales permises) ;
  *   categories des identifiants de catégories de la chronologie (`categorie_chronologie.id`), sans doublon, dans l'ordre donné : liste JSON, ou texte
  *            « id1, id2 » ; leur existence est contrôlée par le service (formulaire « Nouvel événement ») ;
+ *   adresse  une adresse interne du site, sur une ligne (mot_cle.url, migration 0096 : « /races/elfe/ », relative à la racine, sans le préfixe de
+ *            déploiement ; sa forme et la page visée sont contrôlées par le service, lib/mots-cles-liens.mjs#fauteDeLUrl) ; jamais un texte à balises ;
+ *   couleur  une couleur, sur une ligne (mot_cle.couleur, migration 0096 : « #rrggbb », écrite en minuscules, ou « <famille>:<id> » d'une couleur de la
+ *            palette, contrôlée par le service, lib/palette-css.mjs#fauteDeLaCouleur) ; jamais un texte à balises ;
  *   image    une image en data URL (WebP, JPEG ou PNG, PORTRAIT_MAX caractères au plus, base64 complet et en-tête lisible : lib/portrait.mjs) ;
  *            jamais une saisie de l'éditeur commun (une extension la choisit et la recadre : src/scripts/edition/bestiaire.mjs) ; les réponses de
  *            l'édition (lignes lues, en attente, d'un lot, d'un conflit) n'en donnent que l'empreinte (ligneSansImage), l'image entière passe par
@@ -602,13 +606,17 @@ export const TABLES = {
   // (opération `fusionner_mots_cles`) ; les mots-clés dont le site se sert ne se renomment pas (lib/mots-cles.mjs#MOTS_CLES_PROTEGES), mais leur
   // définition se modifie ; une définition vidée : NULL (pas encore décrit) ; l'abréviation (migration 0090, réponse du propriétaire : « Modifiable et
   // affichée »), qu'une balise peut citer comme l'écriture : vidée, NULL ; sans ambiguïté avec un autre mot-clé
-  // (lib/mots-cles-balises.mjs#fautesDeLAbreviation, la règle de db:check ; serveur/edition.mjs#refuserLAbreviation)
+  // (lib/mots-cles-balises.mjs#fautesDeLAbreviation, la règle de db:check ; serveur/edition.mjs#refuserLAbreviation) ; l'adresse et la couleur
+  // (migration 0096 : les liens devenus des mots-clés), protégés compris : vidées, NULL ; une adresse interne qui mène à une page du site, une couleur
+  // écrite ou de la palette (serveur/edition.mjs#refuserLeLien, #refuserLaCouleur : 400)
   mot_cle: {
     libelle: 'Mot-clé',
     colonnes: {
       libelle: { type: 'ligne', libelle: 'Mot-clé', requis: true },
       description: { type: 'texte', libelle: 'Définition' },
       abreviation: { type: 'ligne', libelle: 'Abréviation' },
+      url: { type: 'adresse', libelle: 'Lien' },
+      couleur: { type: 'couleur', libelle: 'Couleur' },
     },
   },
   // Panneaux de règles (migration 0056 ; demande du propriétaire, 2026-10-16 : « Il faudrait que ce champ texte soit modifiable sur son titre, et son
@@ -912,7 +920,8 @@ export const ENTITES = {
     champs: { libelle: { type: 'ligne', libelle: 'Catégorie', requis: true } },
   },
   // un mot-clé du glossaire (/recherche/), son libellé, sa définition et son abréviation (migration 0090) ; supprimé, il est retiré de toutes les pages qui
-  // le portent et de tous les textes qui le citent (sa balise devient son texte simple ; sauf les mots-clés dont le site se sert : lib/mots-cles.mjs)
+  // le portent et de tous les textes qui le citent (sa balise devient son texte simple ; sauf les mots-clés dont le site se sert : lib/mots-cles.mjs) ;
+  // son adresse et sa couleur (migration 0096), écrites seulement si elles sont données
   mot_cle: {
     table: 'mot_cle',
     libelle: 'mot-clé',
@@ -922,6 +931,8 @@ export const ENTITES = {
       libelle: { type: 'ligne', libelle: 'Mot-clé', requis: true },
       description: { type: 'texte', libelle: 'Définition' },
       abreviation: { type: 'ligne', libelle: 'Abréviation' },
+      url: { type: 'adresse', libelle: 'Lien' },
+      couleur: { type: 'couleur', libelle: 'Couleur' },
     },
   },
   // un bloc d'un panneau de règles (« + Texte », « + Tuile » sous un bloc, en mode modification) : inséré après le bloc de rang `apres` (les blocs suivants
@@ -1031,13 +1042,15 @@ export function valeurDuChamp(champ, brute, nom = champ.libelle) {
   }
   if (brute !== null && brute !== undefined && typeof brute !== 'string' && typeof brute !== 'number') throw new ErreurValeur(`« ${nom} » : texte attendu`);
   let texte = String(brute ?? '').replace(/\r\n?/g, '\n');
-  if (champ.type === 'ligne' || champ.type === 'choix') texte = texte.replace(/\s*\n\s*/g, ' ');
+  if (['ligne', 'choix', 'adresse', 'couleur'].includes(champ.type)) texte = texte.replace(/\s*\n\s*/g, ' ');
   texte = champ.type === 'markdown' ? texte.replace(/\s+$/, '') : texte.trim();
   if (champ.type === 'choix' && champ.choix && texte !== '' && !champ.choix.some((c) => c.valeur === texte)) throw new ErreurValeur(`« ${nom} » : valeur hors de la liste`);
   if (texte === '') {
     if (champ.requis) throw new ErreurValeur(`« ${nom} » : valeur obligatoire`);
     return champ.vide ?? null;
   }
+  // une couleur écrite « #RRGGBB » s'enregistre en minuscules (le CHECK de mot_cle.couleur) ; une référence de la palette reste telle quelle
+  if (champ.type === 'couleur' && /^#[0-9a-f]{6}$/i.test(texte)) return texte.toLowerCase();
   return texte;
 }
 

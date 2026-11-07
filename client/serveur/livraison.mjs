@@ -4,12 +4,14 @@
 // conteneur « serveur » l'exécute (docker-compose.yml), puis se relance quand version.json change. Utilisé par astro.config.mjs ; jamais livré.
 // Hors de ses modules, le service emporte aussi les fichiers de FICHIERS_JOINTS : l'instantané de la partie « Bienvenue » de Tipeee (premier repli
 // de GET /api/tipeee/, serveur/tipeee.mjs), versionné dans sources/ à la racine du dépôt et copié dans _serveur/sources/ ; absent, il n'est pas copié
-// (le service le dit à son démarrage) ; il compte dans l'empreinte du code.
+// (le service le dit à son démarrage) ; il compte dans l'empreinte du code. Et le registre de la migration 0096 (data/migrations/, copié dans
+// _serveur/data/migrations/) : le rejeu d'un lot d'avant la migration y lit la conversion de ses liens en balises (serveur/edition.mjs#tableDesLiensDeLa0096).
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CHEMIN_INSTANTANE } from '../src/lib/tipeee.mjs';
+import { REGISTRE_DES_LIENS } from '../src/lib/mots-cles-liens.mjs';
 
 export const CLIENT = fileURLToPath(new URL('..', import.meta.url));
 /** Dossier du service dans le site construit, et son point d'entrée (chemin relatif à client/, gardé tel quel dans ce dossier). */
@@ -17,7 +19,10 @@ export const DOSSIER_LIVRE = '_serveur';
 export const ENTREE = 'serveur/index.mjs';
 
 /** Fichiers livrés avec le service hors de ses modules : `source` relatif à client/, `cible` relatif au dossier livré. */
-export const FICHIERS_JOINTS = Object.freeze([Object.freeze({ source: `../${CHEMIN_INSTANTANE}`, cible: CHEMIN_INSTANTANE })]);
+export const FICHIERS_JOINTS = Object.freeze([
+  Object.freeze({ source: `../${CHEMIN_INSTANTANE}`, cible: CHEMIN_INSTANTANE }),
+  Object.freeze({ source: `../${REGISTRE_DES_LIENS}`, cible: REGISTRE_DES_LIENS }),
+]);
 
 const IMPORTS = /\b(?:import|export)\s+(?:[^'"`;]*?\s+from\s+)?['"]([^'"]+)['"]|\bimport\(\s*['"]([^'"]+)['"]\s*\)/g;
 

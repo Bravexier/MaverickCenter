@@ -26,7 +26,8 @@ test('texte d’un chapitre : morceaux de texte remplacés autour des blocs tir�
   const avant = page('guide/bienvenue').corps_md;
   // le premier morceau de texte réécrit, les autres (s'il y en a, entre des blocs) tels quels ; plus de bloc « sommaire » dans Bienvenue (2026-10-18)
   const visibles = decouperCorps(avant).filter((m) => m.visible).length;
-  const corps = recomposerCorps(avant, ['## MaverickJDR ?\n\nUn texte **neuf** et un lien vers les [[races/nain|nains]].\n', ...Array(visibles - 1).fill(null)]);
+  // le lien vers une page s'écrit par la balise du mot-clé qui y mène (migration 0096)
+  const corps = recomposerCorps(avant, ['## MaverickJDR ?\n\nUn texte **neuf** et un lien vers les {{nain|nains}}.\n', ...Array(visibles - 1).fill(null)]);
   assert.doesNotMatch(corps, /<!-- guide:sommaire -->/);
   const apercu = ['<h2>MaverickJDR ?</h2><p>Un texte <strong>neuf</strong>…</p>', ...Array.from({ length: visibles - 1 }, (_, i) => `<p>${i}</p>`)];
   const r = enregistrer([{ op: 'modifier', table: 'page', cle: { id: 'guide/bienvenue' }, valeurs: { corps_md: corps }, avant: { corps_md: avant }, apercu }]);
@@ -109,7 +110,7 @@ test('pages du wiki, cibles d’un lien posé dans le texte : toutes sauf les ex
 test('page du Codex (lore tiré du Google Doc « CODEX Maverick ») : titre et texte modifiés comme une page du guide, ni HTML brut ni lien non sûr', () => {
   const id = 'lore/eaunoire';
   const avant = page(id);
-  const corps = `${avant.corps_md.trimEnd()}\n\nUn paragraphe ajouté depuis le site de dev, avec un lien vers les [[races/nain|nains]].\n`;
+  const corps = `${avant.corps_md.trimEnd()}\n\nUn paragraphe ajouté depuis le site de dev, avec un lien vers les {{nain|nains}}.\n`;
   const r = appel('POST', '/api/edition/', { page: id, operations: [{ op: 'modifier', table: 'page', cle: { id }, valeurs: { corps_md: corps, titre: 'Eaunoire la déesse' }, avant: { corps_md: avant.corps_md } }] });
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
   assert.equal(page(id).corps_md, corps);

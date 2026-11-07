@@ -286,8 +286,9 @@ test('rejeu du journal et db:appliquer-edition : l’abréviation créée, modif
   const r = appliquerJournal(journal, { rows });
   assert.deepEqual(r.conflits, []);
   const motCle = readFileSync(join(rows, 'mot_cle.sql'), 'utf8').split('\n');
-  assert.match(motCle.find((l) => l.includes(`VALUES ('${id}',`)), new RegExp(`, '${modifiee}'\\);$`));
-  assert.match(motCle.find((l) => l.includes(`VALUES ('${autre}',`)), /, NULL\);$/);
+  // l'abréviation, puis la couleur et le lien (migration 0096, ajoutés en dernier : NULL ici)
+  assert.match(motCle.find((l) => l.includes(`VALUES ('${id}',`)), new RegExp(`, '${modifiee}', NULL, NULL\\);$`));
+  assert.match(motCle.find((l) => l.includes(`VALUES ('${autre}',`)), /, NULL, NULL, NULL\);$/);
 });
 
 test('API REST : la liste et la recherche des mots-clés donnent l’abréviation ; PATCH la modifie, la refuse comme le service', () => {
@@ -319,9 +320,9 @@ test('le modèle : l’abréviation se modifie et se donne à la création (TABL
   // la balise d'une abréviation de la base se résout
   const v = vocabulaireDesMotsCles(lus);
   for (const m of enBase) assert.equal(motCleDeLaRef(v, m.abreviation)?.id, m.id, m.abreviation);
-  // une base d'avant les migrations 0056 et 0090 : ni définition ni abréviation (NULL)
+  // une base d'avant les migrations 0056, 0090 et 0096 : ni définition, ni abréviation, ni couleur, ni lien (NULL)
   const ancienne = new DatabaseSync(':memory:');
   ancienne.exec("CREATE TABLE mot_cle (id TEXT PRIMARY KEY, libelle TEXT, libelle_cle TEXT); INSERT INTO mot_cle VALUES ('feu', 'Feu', 'feu');");
-  assert.deepEqual(motsClesDeLaBase(ancienne), [{ id: 'feu', libelle: 'Feu', libelle_cle: 'feu', description: null, abreviation: null }]);
+  assert.deepEqual(motsClesDeLaBase(ancienne), [{ id: 'feu', libelle: 'Feu', libelle_cle: 'feu', description: null, abreviation: null, couleur: null, url: null }]);
   ancienne.close();
 });

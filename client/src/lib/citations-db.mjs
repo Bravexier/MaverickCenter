@@ -4,18 +4,26 @@
 //   - un lien du wiki `[[…]]` (résolu comme le site : lib/wikilinks-resolution.mjs, index des titres, slugs et alias de toutes les pages ; un lien
 //     ambigu dont la page est une candidate compte aussi : la supprimer changerait sa cible) ;
 //   - un lien écrit vers son adresse, `/regles/<slug>/` (ou l'ancienne `/regles/avancees/<slug>/`), ou vers son identifiant `guide/<slug>` ;
-//   - un bloc de description de la chronologie qui la cite pour légende (evenement_extrait.page_id).
+//   - un bloc de description de la chronologie qui la cite pour légende (evenement_extrait.page_id) ;
+//   - depuis la migration 0096 (les liens devenus des balises du glossaire) : une balise dont le mot-clé a une adresse qui mène à la page
+//     (lib/adresses-db.mjs#pageDeLAdresse ; la supprimer laisserait la balise sans page), et le mot-clé lui-même, dont l'adresse mènerait nulle part
+//     (mot_cle.url : db:check la refuserait) — à retirer d'abord sur /recherche/.
 // Les textes lus sont ceux de lib/mots-cles-db.mjs#textesDeLaBase (toutes les colonnes TEXT des tables des règles, hors traces, tables dérivées,
 // fiches, journal et notes), sans les colonnes de clé (primaire ou étrangère : une relation, pas un texte ; lib/pages-protegees.mjs en tient
 // compte). La page elle-même ne se cite pas. Une citation depuis une page d'exemple (statut `example`) est rendue avec `exemple: true` : elle ne bloque
 // pas une suppression.
 // Pur, sans dépendance navigateur ni Astro : la base est passée par l'appelant (la base vivante du service, une copie dans les tests).
+import { indexDesAdresses, pageDeLAdresse } from './adresses-db.mjs';
 import { nomDeTable } from './libelles-de-la-base.mjs';
-import { textesDeLaBase } from './mots-cles-db.mjs';
+import { lireBalises, motCleDeLaRef, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
+import { motsClesDeLaBase, textesDeLaBase } from './mots-cles-db.mjs';
 import { buildIndex, extractLinks, resolve } from './wikilinks-resolution.mjs';
 
 /** Un lien écrit vers une page des onglets (/regles/<slug>/, /regles/avancees/<slug>/) ou vers son identifiant (guide/<slug>) : le slug. */
 const ADRESSE_ECRITE = /(?<![a-z0-9_-])(?:regles\/(?:avancees\/)?|guide\/)([a-z0-9]+(?:-[a-z0-9]+)*)(?![a-z0-9_-])/g;
+
+/** Les colonnes de mot_cle qui ne sont pas un texte (migration 0096) : l'adresse et la couleur. */
+const COLONNES_DU_LIEN = ['url', 'couleur'];
 
 /** Les colonnes de clé d'une table (primaire et étrangères) : jamais lues comme un texte. */
 function colonnesDeCle(db, table) {
@@ -26,7 +34,8 @@ function colonnesDeCle(db, table) {
 
 /**
  * Les citations de chacune des pages `ids` : Map(id → [{ table, cle, colonne, comment, page, libelle, exemple }]) — `comment` : 'lien' (`[[…]]`),
- * 'adresse' (un lien écrit vers son adresse ou son identifiant), 'chronologie' (evenement_extrait.page_id) ; `page` : { id, titre } de la page qui
+ * 'adresse' (un lien écrit vers son adresse ou son identifiant), 'chronologie' (evenement_extrait.page_id), 'balise' (la balise d'un mot-clé qui y
+ * mène, migration 0096), 'mot-cle' (le mot-clé dont l'adresse y mène : table mot_cle, colonne url) ; `page` : { id, titre } de la page qui
  * cite (null hors de la table page) ; `libelle` : ce qui cite, en français (le titre de la page, « Chronologie › <événement> », sinon le nom de la
  * table et la clé) ; `exemple` : la page qui cite est une page d'exemple (ne bloque pas). Une ligne qui cite deux fois la même page par la même
  * colonne n'est rendue qu'une fois. Un seul passage sur les textes de la base, quel que soit le nombre de pages demandées (GET /api/edition/plan/).
@@ -54,19 +63,35 @@ export function citationsDesPages(db, ids) {
     const page = table === 'page' ? parId.get(cle.id) ?? null : null;
     const libelle = page ? page.titre
       : table === 'evenement_extrait' ? `Chronologie › ${ligne?.evenement_titre ?? cle.evenement_id}`
-        : `${nomDeTable(table) ?? table} ${Object.values(cle).join(' › ')}`;
+        : table === 'mot_cle' && comment === 'mot-cle' ? `Mot-clé « ${ligne?.libelle ?? cle.id} » (son lien)`
+          : `${nomDeTable(table) ?? table} ${Object.values(cle).join(' › ')}`;
     sortie.get(id).push({ table, cle, colonne, comment, page: page ? { id: page.id, titre: page.titre } : null, libelle, exemple: page?.statut === 'example' });
   };
+
+  // les mots-clés qui mènent à une des pages demandées (migration 0096 : mot_cle.url ; aucun sur une base d'avant)
+  const adresses = indexDesAdresses(db, { exemples: true });
+  const motsCles = motsClesDeLaBase(db);
+  const vocabulaire = vocabulaireDesMotsCles(motsCles);
+  const pageDuMotCle = new Map();
+  for (const m of motsCles) {
+    const id = m.url ? pageDeLAdresse(adresses, m.url) : null;
+    if (id === null || !voulues.has(id)) continue;
+    pageDuMotCle.set(m.id, id);
+    ajouter(id, { table: 'mot_cle', cle: { id: m.id }, colonne: 'url', comment: 'mot-cle', ligne: m });
+  }
 
   const parTable = new Map();
   for (const t of textesDeLaBase(db)) (parTable.get(t.table) ?? parTable.set(t.table, []).get(t.table)).push(t);
   for (const [table, textes] of parTable) {
     const cles = colonnesDeCle(db, table);
-    const colonnes = textes.filter((t) => !cles.has(t.colonne)).map((t) => t.colonne);
+    // l'adresse d'un mot-clé (mot_cle.url, migration 0096) cite sa page comme le mot-clé (plus haut), pas comme une adresse écrite dans un texte
+    const colonnes = textes.filter((t) => !cles.has(t.colonne) && !(table === 'mot_cle' && COLONNES_DU_LIEN.includes(t.colonne))).map((t) => t.colonne);
     if (!colonnes.length) continue;
     const pk = textes[0].cle;
     const q = (c) => (c === 'rowid' ? 'rowid' : `"${c}"`);
-    const ou = colonnes.map((c) => `instr(${q(c)}, '[[') > 0 OR instr(${q(c)}, 'regles/') > 0 OR instr(${q(c)}, 'guide/') > 0`).join(' OR ');
+    const balises = pageDuMotCle.size ? (c) => ` OR instr(${q(c)}, '{{') > 0` : () => '';
+    const ou = colonnes.map((c) => `instr(${q(c)}, '[[') > 0 OR instr(${q(c)}, 'regles/') > 0 OR instr(${q(c)}, 'guide/') > 0${balises(c)}`).join(' OR ');
+    const markdown = new Map(textes.map((t) => [t.colonne, t.markdown]));
     for (const l of db.prepare(`SELECT ${[...new Set([...pk, ...colonnes])].map(q).join(', ')} FROM "${table}" WHERE ${ou}`).all()) {
       const cle = Object.fromEntries(pk.map((c) => [c, l[c]]));
       for (const colonne of colonnes) {
@@ -80,6 +105,12 @@ export function citationsDesPages(db, ids) {
         }
         if (parSlug.size && (v.includes('regles/') || v.includes('guide/'))) {
           for (const m of v.matchAll(ADRESSE_ECRITE)) if (parSlug.has(m[1])) ajouter(parSlug.get(m[1]), { table, cle, colonne, comment: 'adresse' });
+        }
+        if (pageDuMotCle.size && v.includes('{{')) {
+          for (const b of lireBalises(v, { markdown: markdown.get(colonne) })) {
+            const id = pageDuMotCle.get(motCleDeLaRef(vocabulaire, b.ref)?.id);
+            if (id) ajouter(id, { table, cle, colonne, comment: 'balise' });
+          }
         }
       }
     }

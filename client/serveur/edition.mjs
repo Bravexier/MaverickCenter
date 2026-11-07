@@ -33,7 +33,12 @@
 // quitte ses pages et chaque texte qui le cite (sa balise devient son texte simple) ; fusionné, ses balises citent l'autre (reecrireLesBalises : des
 // modifications ordinaires, dérivations et journal compris ; au rejeu, les textes que le site de dev n'avait pas suivent, au moment où sa suppression
 // est rejouée : balisesRetireesParLeLot).
+// Liens (migration 0096 : les [[…]] et les liens Markdown internes sont devenus des balises de mots-clés qui portent une adresse, lib/mots-cles-liens.mjs) :
+// un lien interne ajouté à un texte (hors code, hors page d'exemple ; un lien externe reste permis) devient la balise du seul mot-clé qui mène à sa page
+// (texteSansLiens), sinon il est refusé (400 { champ, liens }, renvoi au Glossaire) ; un lot d'avant la 0096 se rejoue converti par le registre de la
+// migration (ancienneEcritureDesLiens).
 // Node seulement (node:sqlite), sans dépendance.
+import { existsSync, readFileSync } from 'node:fs';
 import {
   CHAMPS_DE_TEXTE, colonnesImage, contrainteR160, ENTITES, ErreurValeur, ligneSansImage, MOT_CLE_RACE_HYBRIDE, OBJETS_PAR_MAGIE, REFUS_R160, TABLES,
   texteDePageModifiable, typeDeTexte, valeurDuChamp,
@@ -71,10 +76,15 @@ import {
 import { empreinte } from '../src/lib/portrait.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import {
-  abreviationsPrises, ambiguiteDe, fautesDeLAbreviation, formeCanonique, lireBalises, motsClesCites, reciblerLeMotCle, retirerLeMotCle, texteSansBalises,
-  vocabulaireDesMotsCles,
+  abreviationsPrises, ambiguiteDe, dansUneLigneDeTableau, fautesDeLAbreviation, formeCanonique, lireBalises, motsClesCites, reciblerLeMotCle, retirerLeMotCle,
+  texteSansBalises, vocabulaireDesMotsCles,
 } from '../src/lib/mots-cles-balises.mjs';
 import { motsClesDeLaBase, textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
+import { fauteDeLUrl, lienGarde, motsClesDeLAdresse, REGISTRE_DES_LIENS } from '../src/lib/mots-cles-liens.mjs';
+import { ADRESSE_DU_GLOSSAIRE, adresseDeLaPage, adressesDuSite } from '../src/lib/adresses-db.mjs';
+import { fauteDeLaCouleur } from '../src/lib/palette-css.mjs';
+import { baliseDuLien, convertirLesLiens, liensDuTexte, tableDeConversion } from '../src/lib/liens-en-mots-cles.mjs';
+import { buildIndex, resolve as resoudreLeLien } from '../src/lib/wikilinks-resolution.mjs';
 import { ErreurHttp, jsonOuNull } from './partage.mjs';
 import { ErreurJournal, ORDRE_DE_REJEU, cleDe, lireLigne, nouveauLot, ouvrirLot, rejouer, structure } from './edition-journal.mjs';
 import {
@@ -208,18 +218,44 @@ export function supprimerPage(ctx, pageId) {
  * Un mot-clé neuf du vocabulaire (noté au journal) : il prend la clé de son libellé pour id, suffixée -2, -3… si cet id est pris ou a déjà servi
  * (historique, journal : un id de mot-clé n'est jamais réutilisé ; les 400 retirés par la migration 0056 peuvent resservir, ils n'y sont pas) ; sa
  * définition, NULL tant qu'il n'est pas décrit ; son abréviation (migration 0090), NULL sans abréviation (la colonne n'est écrite, et notée, que pour une
- * abréviation : un lot sans elle se rejoue sur une base d'avant la 0090). Refusé si son id ou son écriture est l'abréviation d'un autre mot-clé, ou si
- * son abréviation ne convient pas (refuserLAbreviation). Rend son id.
+ * abréviation : un lot sans elle se rejoue sur une base d'avant la 0090) ; de même son adresse et sa couleur (migration 0096, `url`, `couleur` :
+ * écrites seulement si elles sont données). Refusé si son id ou son écriture est l'abréviation d'un autre mot-clé, ou si son abréviation ne convient
+ * pas (refuserLAbreviation), son adresse (refuserLeLien) ou sa couleur (refuserLaCouleur). Rend son id.
  */
-export function creerMotCle(ctx, libelle, description = null, abreviation = null) {
+export function creerMotCle(ctx, libelle, description = null, abreviation = null, { url = null, couleur = null } = {}) {
   const { db, w } = ctx;
   const cle = normalize(libelle);
   if (!cle) throw refus(`Mot-clé « ${libelle} » : il doit contenir au moins une lettre ou un chiffre`);
   let id = cle;
   for (let n = 2; lireLigne(db, 'mot_cle', { id }) || idDejaEmploye(db, ['mot_cle'], id); n += 1) id = `${cle}-${n}`;
   refuserLAbreviation(db, { id, libelle, libelle_cle: cle, abreviation: abreviation || null });
-  w.inserer('mot_cle', { id, libelle, libelle_cle: cle, description: description || null, ...(abreviation ? { abreviation } : {}) });
+  if (url) refuserLeLien(db, { libelle, url });
+  if (couleur) refuserLaCouleur({ libelle, couleur });
+  w.inserer('mot_cle', {
+    id, libelle, libelle_cle: cle, description: description || null, ...(abreviation ? { abreviation } : {}), ...(url ? { url } : {}), ...(couleur ? { couleur } : {}),
+  });
   return id;
+}
+
+/**
+ * Refus de l'adresse d'un mot-clé (`m` = { libelle, url }, migration 0096 ; NULL est toujours permis) : sa forme (interne, « / » au début, ASCII
+ * imprimable sans espace ni « \ », la barre finale), puis son chemin, qui doit être celui d'une page du site qui n'est pas d'exemple, d'une rubrique ou
+ * d'une route fixe (lib/adresses-db.mjs#adressesDuSite, lu dans la base vivante) ; l'ancre et la requête ne sont pas vérifiées. 400, `champ: 'url'`.
+ */
+export function refuserLeLien(db, m) {
+  if (m.url === null || m.url === undefined) return;
+  const faute = fauteDeLUrl(m.url, adressesDuSite(db));
+  if (faute) throw new ErreurEdition(400, `Mot-clé « ${m.libelle} » : le lien « ${m.url} » ne convient pas (${faute}).`, { champ: 'url' });
+}
+
+/**
+ * Refus de la couleur d'un mot-clé (`m` = { libelle, couleur }, migration 0096 ; NULL est toujours permis) : « #rrggbb » ou une référence
+ * « <famille>:<id> » que la palette connaît (lib/palette-css.mjs#fauteDeLaCouleur). 400, `champ: 'couleur'`.
+ */
+export function refuserLaCouleur(m) {
+  if (m.couleur === null || m.couleur === undefined) return;
+  const faute = fauteDeLaCouleur(m.couleur);
+  if (faute) throw new ErreurEdition(400, `Mot-clé « ${m.libelle} » : la couleur « ${m.couleur} » ne convient pas (${faute}).`, { champ: 'couleur' });
 }
 
 /**
@@ -268,6 +304,69 @@ export function motCleDe(ctx, libelle) {
 
 /** Le vocabulaire de la base vivante, prêt à résoudre les refs des balises (lu à chaque besoin : un lot peut le changer). */
 export const vocabulaireVivant = (db) => vocabulaireDesMotsCles(motsClesDeLaBase(db));
+
+/**
+ * La valeur d'un champ texte sans les liens internes qu'elle AJOUTE (migration 0096 : un lien se donne par la balise du mot-clé de sa page) : chaque
+ * `[[cible]]`, `[[cible|texte]]` ou `[texte](/adresse)` absent de `avant` (la valeur en place ; hors code dans un texte mis en forme ; un lien externe
+ * n'est pas lu, un lien de LIENS_GARDES reste) devient la balise, texte affiché gardé (lib/liens-en-mots-cles.mjs#baliseDuLien, forme canonique de la
+ * colonne), du SEUL mot-clé qui mène à l'adresse visée : celle de la page qu'un `[[…]]` désigne (résolu comme le site,
+ * lib/wikilinks-resolution.mjs ; une page d'exemple n'en a pas), ou l'adresse écrite (lib/mots-cles-liens.mjs#motsClesDeLAdresse). Aucun mot-clé,
+ * plusieurs, une cible introuvable ou ambiguë, un texte affiché qu'une balise n'écrit pas : refus 400 { champ, liens }, qui renvoie au Glossaire.
+ * `exemple` : une page d'exemple, dont les liens restent.
+ */
+function texteSansLiens(ctx, champ, colonne, valeur, avant, quoi, { exemple = false } = {}) {
+  if (exemple || !CHAMPS_DE_TEXTE.includes(champ.type) || typeof valeur !== 'string' || (!valeur.includes('[[') && !valeur.includes(']('))) return valeur;
+  const markdown = champ.type === 'markdown';
+  const deja = new Map();
+  for (const l of typeof avant === 'string' ? liensDuTexte(avant, { markdown }) : []) deja.set(l.brut, (deja.get(l.brut) ?? 0) + 1);
+  const ajoutes = liensDuTexte(valeur, { markdown }).filter((l) => {
+    if (l.sorte === 'markdown' && lienGarde(l.cible)) return false;
+    const n = deja.get(l.brut) ?? 0;
+    if (n > 0) deja.set(l.brut, n - 1);
+    return n === 0;
+  });
+  if (!ajoutes.length) return valeur;
+  const { db } = ctx;
+  const motsCles = motsClesDeLaBase(db);
+  let index = null;
+  const adresseDuLien = (lien) => {
+    if (lien.sorte === 'markdown') return lien.cible;
+    index ??= indexDesLiens(db);
+    const r = resoudreLeLien(index, lien.cible);
+    return r?.entry && r.entry.statut !== 'example' ? adresseDeLaPage(r.entry.id) : null;
+  };
+  const refuses = [];
+  let sortie = '';
+  let dernier = 0;
+  for (const lien of ajoutes) {
+    const adresse = adresseDuLien(lien);
+    const candidats = adresse ? motsClesDeLAdresse(motsCles, adresse) : [];
+    const balise = candidats.length === 1
+      ? baliseDuLien(lien, candidats[0], { markdown, tableau: markdown && dansUneLigneDeTableau(valeur, lien.debut) })
+      : null;
+    if (!balise) {
+      refuses.push(lien.brut);
+      continue;
+    }
+    sortie += valeur.slice(dernier, lien.debut) + balise;
+    dernier = lien.fin;
+  }
+  if (refuses.length) {
+    const liste = refuses.map((b) => `« ${b} »`).join(', ');
+    throw refus(`${quoi} : ${liste} — un lien vers une page du site s’écrit avec la balise du mot-clé qui y mène (« {{id}} » ou « {{id|texte}} ») ; `
+      + `aucun mot-clé ne mène à ${refuses.length > 1 ? 'ces adresses' : 'cette adresse'}, ou plusieurs : voir le Glossaire (${ADRESSE_DU_GLOSSAIRE}), `
+      + 'où un mot-clé reçoit son lien.', { champ: colonne, liens: refuses });
+  }
+  return sortie + valeur.slice(dernier);
+}
+
+/** L'index des liens `[[…]]` de la base vivante (titres, slugs et alias de toutes les pages, comme le site : lib/wikilinks-resolution.mjs). */
+function indexDesLiens(db) {
+  const pages = db.prepare('SELECT id, type, slug, titre, statut FROM page').all();
+  const alias = new Map();
+  for (const a of db.prepare('SELECT page_id, texte FROM alias ORDER BY page_id, ordre').all()) (alias.get(a.page_id) ?? alias.set(a.page_id, []).get(a.page_id)).push(a.texte);
+  return buildIndex(pages.map((p) => ({ id: p.id, type: p.type, slug: p.slug, title: p.titre, aliases: alias.get(p.id) ?? [], statut: p.statut })));
+}
 
 /**
  * La valeur d'un champ texte sous sa forme canonique (lib/mots-cles-balises.mjs#formeCanonique : selon le champ, un texte mis en forme ou un texte de
@@ -1439,7 +1538,8 @@ const ANNONCE = {
 
 /** La chronologie (événements, descriptions, catégories) et les mots-clés : leurs domaines et leurs opérations du lot (`categories`, `fusionner_mots_cles`). */
 const CHRONOLOGIE = domainesDeLaChronologie({
-  refus, ErreurEdition, provenance, idDejaEmploye, rangLibre, creerMotCle, refuserLAbreviation, reecrireLesBalises, vocabulaireVivant, tableExiste,
+  refus, ErreurEdition, provenance, idDejaEmploye, rangLibre, creerMotCle, refuserLAbreviation, refuserLeLien, refuserLaCouleur, reecrireLesBalises,
+  vocabulaireVivant, tableExiste,
 });
 
 /** La page des armes (armes, matériaux, améliorations d'arme) et celle des armures et boucliers (serveur/edition-armes.mjs, edition-armures.mjs). */
@@ -1787,12 +1887,98 @@ export function adaptateurDuJournal(db) {
   const motsCles = ancienneEcritureDesMotsCles(db);
   // avant le glossaire : une étiquette vers `cr` (absent des règles) y serait sautée au lieu d'être reciblée
   const fusions = ancienneEcritureDesFusions(db);
+  // les liens d'un lot d'avant la 0096, devenus les balises que la migration a écrites (après la fusion : la 0096 ne crée ni ne recible `cr`)
+  const liens = ancienneEcritureDesLiens(db);
   const glossaire = ancienneEcritureDuGlossaire(db);
   const capacites = ancienneEcritureDesCapacites(db);
   const resistances = ancienneEcritureDesResistances();
   const armures = ancienneEcritureDesArmures(db);
   const couts = ancienneEcritureDuCout();
-  return (m) => couts(armures(resistances(capacites(glossaire(fusions(motsCles(m)))))));
+  return (m) => couts(armures(resistances(capacites(glossaire(liens(fusions(motsCles(m))))))));
+}
+
+/** La table de conversion des liens de la migration 0096 (undefined : pas encore lue ; null : registre absent). */
+let tableDeLa0096;
+
+/** La clé d'un texte de la base dans les remplacements de texte de la 0096 : table, clé, colonne. */
+const cleDuTexte = (table, cle, colonne) => `${table}\u0000${JSON.stringify(cle)}\u0000${colonne}`;
+
+/**
+ * La table de conversion des liens de la migration 0096 d'après son registre ({ motsCles, remplacements }) : celle de
+ * lib/liens-en-mots-cles.mjs#tableDeConversion, et `textes` (Map cleDuTexte → [{ lien, balise }]) : les remplacements d'un texte simple que la migration
+ * a balisé sans qu'il soit un lien (l'artisanat de l'Alchimiste et de l'Apothicaire, dont le lien du maillage n'était que dans le corps de la page :
+ * « alchimie primitive » → « {{alchimie-primitive|alchimie primitive}} »).
+ */
+export function tableDuRegistreDesLiens(registre) {
+  const table = tableDeConversion(registre?.motsCles ?? []);
+  const textes = new Map();
+  for (const r of registre?.remplacements ?? []) {
+    if (liensDuTexte(r.lien, { markdown: true }).length) continue;
+    const cle = cleDuTexte(r.table, r.cle, r.colonne);
+    (textes.get(cle) ?? textes.set(cle, []).get(cle)).push({ lien: r.lien, balise: r.balise });
+  }
+  return { ...table, textes };
+}
+
+/**
+ * La table de conversion des liens de la migration 0096 (tableDuRegistreDesLiens du registre data/migrations/0096-liens-en-mots-cles.json,
+ * lib/mots-cles-liens.mjs#REGISTRE_DES_LIENS), lue une fois : dans le service livré, le registre est joint dans _serveur/
+ * (serveur/livraison.mjs#FICHIERS_JOINTS) ; dans le dépôt, il est sous data/ à la racine. null s'il est absent.
+ */
+export function tableDesLiensDeLa0096() {
+  if (tableDeLa0096 !== undefined) return tableDeLa0096;
+  const fichier = [new URL(`../${REGISTRE_DES_LIENS}`, import.meta.url), new URL(`../../${REGISTRE_DES_LIENS}`, import.meta.url)].find((u) => existsSync(u));
+  tableDeLa0096 = fichier ? tableDuRegistreDesLiens(JSON.parse(readFileSync(fichier, 'utf8'))) : null;
+  return tableDeLa0096;
+}
+
+/**
+ * Un lot noté avant la migration 0096 (les liens devenus des balises : lib/liens-en-mots-cles.mjs), lu comme la migration a réécrit les règles
+ * (adaptateur de edition-journal.mjs#rejouer, modèle : ancienneEcritureDesFusions), quand les règles ont `mot_cle.url` : dans `avant` comme dans
+ * `apres`, chaque lien `[[…]]` ou `[texte](/…)` d'un texte que la migration a converti (les colonnes de lib/mots-cles-db.mjs#textesDeLaBase, hors code
+ * dans un texte mis en forme) devient la balise que la migration a écrite (convertirLesLiens avec la table de son registre, la forme de la colonne :
+ * lib/edition-modele.mjs#typeDeTexte) — sinon le lot écrirait un lien que db:check refuse, ou verrait un faux conflit sur un texte que la migration a
+ * converti. Une page d'exemple (que la migration n'a pas touchée) et un lien que la table ne connaît pas (« /#lien-discord ») restent tels quels. Après
+ * la 0096, le service n'écrit plus de lien (texteSansLiens) : seul un lot d'avant en porte. Un texte simple que la migration a balisé sur une ligne
+ * donnée (`table.textes` : l'artisanat de l'Alchimiste et de l'Apothicaire) l'est de même, s'il n'a pas déjà sa balise. `table` : la table de
+ * conversion (tableDesLiensDeLa0096 ; null : rien n'est adapté).
+ */
+export function ancienneEcritureDesLiens(db, table = tableDesLiensDeLa0096()) {
+  if (!table || !tableExiste(db, 'mot_cle') || !structure(db, 'mot_cle').colonnes.includes('url')) return (m) => m;
+  const colonnes = new Map();
+  for (const t of textesDeLaBase(db)) (colonnes.get(t.table) ?? colonnes.set(t.table, new Map()).get(t.table)).set(t.colonne, t.markdown);
+  const exemples = tableExiste(db, 'page') ? new Set(db.prepare("SELECT id FROM page WHERE statut = 'example'").all().map((p) => p.id)) : new Set();
+  const avecUnLien = (x) => typeof x === 'string' && (x.includes('[[') || x.includes(']('));
+  const balisesDuTexte = table.textes ?? new Map();
+  const tablesBalisees = new Set([...balisesDuTexte.keys()].map((k) => k.slice(0, k.indexOf('\u0000'))));
+  return (m) => {
+    const textes = colonnes.get(m.table_nom);
+    if (!textes || !(avecUnLien(m.avant) || avecUnLien(m.apres) || tablesBalisees.has(m.table_nom))) return m;
+    const cle = jsonOuNull(m.cle);
+    if (m.table_nom === 'page') {
+      const id = jsonOuNull(m.cle)?.id;
+      if (exemples.has(id) || [jsonOuNull(m.avant), jsonOuNull(m.apres)].some((l) => l?.statut === 'example')) return m;
+    }
+    const adapte = { ...m };
+    for (const champ of ['avant', 'apres']) {
+      const lu = jsonOuNull(m[champ]);
+      if (!lu || typeof lu !== 'object') continue;
+      const sortie = { ...lu };
+      let change = false;
+      for (const [c, v] of Object.entries(lu)) {
+        if (typeof v !== 'string' || !textes.has(c)) continue;
+        let texte = avecUnLien(v) ? convertirLesLiens(v, table, { markdown: textes.get(c) }).texte : v;
+        for (const { lien, balise } of balisesDuTexte.get(cleDuTexte(m.table_nom, cle, c)) ?? []) {
+          if (!texte.includes(balise) && texte.includes(lien)) texte = texte.replace(lien, balise);
+        }
+        if (texte === v) continue;
+        sortie[c] = texte;
+        change = true;
+      }
+      if (change) adapte[champ] = JSON.stringify(sortie);
+    }
+    return adapte;
+  };
 }
 
 /**
@@ -2209,7 +2395,10 @@ function valeursValidees(ctx, table, valeurs, avant, colonnesPermises) {
       if (e instanceof ErreurValeur) throw refus(`${modele.libelle} : ${e.message}`);
       throw e;
     }
-    sortie[colonne] = texteAvecMotsClesCanoniques(ctx, champ, sortie[colonne], avant?.[colonne], `${modele.libelle} « ${champ.libelle} »`);
+    const quoi = `${modele.libelle} « ${champ.libelle} »`;
+    const exemple = table === 'page' && avant?.statut === 'example';
+    sortie[colonne] = texteSansLiens(ctx, champ, colonne, sortie[colonne], avant?.[colonne], quoi, { exemple });
+    sortie[colonne] = texteAvecMotsClesCanoniques(ctx, champ, sortie[colonne], avant?.[colonne], quoi);
   }
   return sortie;
 }
@@ -2275,6 +2464,7 @@ function creer(ctx, op) {
       if (e instanceof ErreurValeur) throw refus(`${titre} : ${e.message}`);
       throw e;
     }
+    valeurs[c] = texteSansLiens(ctx, champ, c, valeurs[c], null, `${titre} « ${champ.libelle} »`);
     valeurs[c] = texteAvecMotsClesCanoniques(ctx, champ, valeurs[c], null, `${titre} « ${champ.libelle} »`);
   }
   for (const [c, champ] of Object.entries(entite.champs)) {

@@ -2,7 +2,8 @@
 //   node scripts/db-check.mjs [<base.db>] [--types client/src/lib/types.mjs]   (défauts : var/maverick.db et client/src/lib/types.mjs)   -> JSON { ok, problemes[], bilan } ; code de sortie 1 au moindre problème
 // Contrôles : integrity_check, foreign_key_check ; entités adressées par (entite_table, entite_id) (page_entite, note_cellule, ecart_source)
 // qui doivent exister ; complétude de page_entite (toute entité rattachée à une page y figure) ; trace des corrections (le texte corrigé est dans les
-// lignes typées qui couvrent la cellule, l'ancien n'y est plus) ; tables dérivées cohérentes avec leurs sources.
+// lignes typées qui couvrent la cellule, l'ancien n'y est plus) ; tables dérivées cohérentes avec leurs sources ; balises du glossaire, lien et couleur
+// des mots-clés, aucun lien `[[…]]` ni Markdown interne dans les textes (migration 0096).
 import { DatabaseSync } from 'node:sqlite';
 import { createHash } from 'node:crypto';
 import { pathToFileURL, fileURLToPath } from 'node:url';
@@ -258,6 +259,50 @@ if (noms.has('mot_cle')) {
   }
   bilan.balises_mots_cles = balises;
   bilan.colonnes_de_texte = colonnesLues;
+
+  // Liens devenus des mots-clés (migration 0096, lib/mots-cles-liens.mjs) : l'adresse d'un mot-clé est interne, de la forme du CHECK, et son chemin est
+  // une adresse du site (lib/adresses-db.mjs#adressesDuSite : une page qui n'est pas d'exemple, une rubrique, une route fixe ; l'ancre et la requête ne
+  // sont pas vérifiées) ; sa couleur est « #rrggbb » ou une référence que la palette connaît (lib/palette-css.mjs#fauteDeLaCouleur) ; et plus aucun
+  // texte des règles et des pages (textesDeLaBase : ni les sections 13 à 15, ni les tables dérivées, ni les traces) n'écrit de lien `[[…]]` ni de lien
+  // Markdown interne `[texte](/…)` hors code (lib/liens-en-mots-cles.mjs#liensDuTexte), sauf une page d'exemple et les liens que la migration a gardés
+  // (lib/mots-cles-liens.mjs#LIENS_GARDES).
+  if (colonnes('mot_cle').some((c) => c.name === 'url')) {
+    const { fauteDeLUrl, lienGarde } = await import(pathToFileURL(`${LIB}/mots-cles-liens.mjs`).href);
+    const { adressesDuSite } = await import(pathToFileURL(`${LIB}/adresses-db.mjs`).href);
+    const { fauteDeLaCouleur } = await import(pathToFileURL(`${LIB}/palette-css.mjs`).href);
+    const { liensDuTexte } = await import(pathToFileURL(`${LIB}/liens-en-mots-cles.mjs`).href);
+    const adresses = adressesDuSite(db);
+    let urls = 0;
+    let couleurs = 0;
+    for (const m of motsCles) {
+      if (m.url !== null) {
+        urls += 1;
+        const faute = fauteDeLUrl(m.url, adresses);
+        if (faute) problemes.push(`mot_cle ${m.id} : le lien « ${m.url} » ne convient pas (${faute})`);
+      }
+      if (m.couleur !== null) {
+        couleurs += 1;
+        const faute = fauteDeLaCouleur(m.couleur);
+        if (faute) problemes.push(`mot_cle ${m.id} : la couleur « ${m.couleur} » ne convient pas (${faute})`);
+      }
+    }
+    bilan.liens_mots_cles = urls;
+    bilan.couleurs_mots_cles = couleurs;
+    const exemples = new Set(db.prepare("SELECT id FROM page WHERE statut = 'example'").all().map((p) => p.id));
+    let liensRestes = 0;
+    for (const { table, colonne, cle, markdown } of textesDeLaBase(db)) {
+      const sql = `SELECT ${cle.map((c) => `${q(c)} AS "k_${c}"`).join(', ')}, ${q(colonne)} AS texte__ FROM "${table}" WHERE instr(${q(colonne)}, '[[') > 0 OR instr(${q(colonne)}, '](/') > 0`;
+      for (const r of db.prepare(sql).all()) {
+        if (table === 'page' && exemples.has(r.k_id)) continue;
+        for (const l of liensDuTexte(r.texte__, { markdown })) {
+          if (l.sorte === 'markdown' && lienGarde(l.cible)) continue;
+          liensRestes += 1;
+          if (liensRestes <= 20) problemes.push(`${table}.${colonne} ${cle.map((c) => r[`k_${c}`]).join('|')} : le lien « ${l.brut} » s’écrit avec la balise du mot-clé de sa page (migration 0096)`);
+        }
+      }
+    }
+    if (liensRestes > 20) problemes.push(`liens : ${liensRestes} liens à écrire en balises au total`);
+  }
 }
 
 // Tables dérivées cohérentes avec leurs sources.

@@ -174,7 +174,13 @@ export const RESSOURCES = [
       'il est retiré de toutes les pages qui le portent et de tous les textes qui le citent (sa balise devient son texte simple) ; ceux dont le site se sert pour ranger ses pages (catégories de /classes/, « classe », « race », « race hybride », « capacité ' +
       'de classe », « métier », « codex »), « Sort grenade » (décision R114) et « Sort fer » (décision R164), dont la fiche se sert, ne se renomment, ne se suppriment ni ne se ' +
       'créent seuls (409), leur définition se modifie ; un mot-clé qui étiquette un sort (sous-ressource `mots-cles` des sorts, migrations 0067 et 0079) ne ' +
-      'se supprime ni ne se fusionne (409).',
+      'se supprime ni ne se fusionne (409). Un lien (`url`, migration 0096 : les liens des textes devenus des balises) : une adresse interne, relative ' +
+      'à la racine du site et sans le préfixe de déploiement (« /races/elfe/ », « /metiers/#metier-mineur »), dont le chemin mène à une page du site, ' +
+      'une rubrique ou une route fixe (400 sinon ; l’ancre et la requête ne sont pas vérifiées) ; une balise du mot-clé mène à cette adresse, et un ' +
+      'lien `[[…]]` ou `[texte](/…)` saisi dans un texte devient la balise du seul mot-clé qui mène à sa page (400 s’il n’y en a aucun ou plusieurs). ' +
+      'Une couleur (`couleur`) : « #rrggbb » (minuscules) ou « <famille>:<id> » d’une couleur de la palette du site (« classe:melee », 400 sinon). ' +
+      'Les deux se modifient pour tous les mots-clés, protégés compris ; vidés, NULL. Une fusion garde le lien et la couleur de la cible, et lui donne ' +
+      'ceux de la source qu’elle n’a pas.',
     table: 'mot_cle',
     libelle: 'libelle',
     enfants: [
@@ -190,8 +196,8 @@ export const RESSOURCES = [
           'pas) ; aucune opération du site ne pose ni ne retire un mot-clé sur une page : en lecture seule.',
       },
     ],
-    liste: ['id', 'libelle', 'libelle_cle', 'description', 'abreviation'],
-    recherche: ['libelle', 'description', 'abreviation'],
+    liste: ['id', 'libelle', 'libelle_cle', 'description', 'abreviation', 'url', 'couleur'],
+    recherche: ['libelle', 'description', 'abreviation', 'url'],
     tri: 'libelle_cle',
     ecriture: { creer: 'mot_cle', supprimer: 'mot_cle' },
     actions: [

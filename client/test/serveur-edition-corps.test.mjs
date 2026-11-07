@@ -18,7 +18,7 @@ import { choseASavoirSansTexte, corpsDeClasse, corpsDeDon, resumeDeDon } from '.
 import { donneesDeDon } from '../src/lib/dons-edition.mjs';
 import { jsonCommePython } from '../src/lib/json-python.mjs';
 import { corpsDeMagieApres, morceauxDuCorpsDeMagie } from '../src/lib/corps-magies.mjs';
-import { corpsDeMetier, sansLiens } from '../src/lib/corps-metiers.mjs';
+import { corpsDeMetier } from '../src/lib/corps-metiers.mjs';
 import { corpsDeRace, corpsDeRaceCreee, etatDeRace } from '../src/lib/corps-races.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { emettrePage, lirePages } from '../src/lib/pages-db.mjs';
@@ -376,7 +376,8 @@ test('chaque corps redit ses tables sur la copie : magies, races, classes, dons,
     assert.equal(corpsDeClasse(L, { choseASavoirSansTexte: choseASavoirSansTexte(c) }), c, classe.id);
   }
   for (const don of lignes('SELECT * FROM capacite')) assert.equal(corpsDeDon(don), pages.get(don.id), don.id);
-  for (const m of lignes('SELECT * FROM metier')) assert.equal(sansLiens(pages.get(m.id)), corpsDeMetier(m), m.id);
+  // migration 0096 : plus aucun [[lien]] dans le corps d'un métier, le rendu complet le redonne à l'octet près
+  for (const m of lignes('SELECT * FROM metier')) assert.equal(pages.get(m.id), corpsDeMetier(m), m.id);
 });
 
 test('D11 : spécialité et dons créés, don à note et spécialité importée supprimés, rapatriés : fiches (corps, résumé, donnees), corps de la classe, recherche', () => {
