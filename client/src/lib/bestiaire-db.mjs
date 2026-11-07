@@ -506,22 +506,26 @@ export function chargerInvocations(db) {
 
 /**
  * Le tableau d'une invocation (invocation.tableau_titre : « TABLEAU "AMÉLIORATION CADAVÉRIQUE" », la table amelioration_cadaverique de la magie de son sort)
- * est aussi celui du sort de cette magie qui porte le nom écrit entre guillemets (« Amélioration cadavérique » : « Sacrifie l'invocation pour des
- * amplifications pendant 3 tours (voir invocations) ») : demande du propriétaire, « avoir toutes les améliorations visibles en fonction de l'invocation
- * sacrifiée » (décision R130). Map(id du sort -> { titre, nom (le nom entre guillemets), invocationId, invocation, magieId, lignes: [{ nom, effet }] }),
- * pour les pages de magie (lib/magies-db.mjs) et la fiche (lib/fiche-regles.mjs).
+ * est aussi celui d'un sort de cette magie (« Amélioration cadavérique » : « Sacrifie l'invocation pour des amplifications pendant 3 tours (voir
+ * invocations) ») : demande du propriétaire, « avoir toutes les améliorations visibles en fonction de l'invocation sacrifiée » (décision R130).
+ * Ce sort est désigné par son identifiant figé, invocation.tableau_sort_id (migration 0099), jamais par le nom écrit entre guillemets dans le titre :
+ * le site de dev renomme le sort ou réécrit le titre sans couper le lien. Map(id du sort -> { titre (tableau_titre), nom (le nom courant du sort),
+ * invocationId, invocation, magieId, lignes: [{ nom, effet }] }), pour les pages de magie (lib/magies-db.mjs) et la fiche (lib/fiche-regles.mjs).
+ * Les améliorations restent celles de la magie du sort de l'invocation (amelioration_cadaverique.magie_id) ; la migration ne désigne qu'un sort de
+ * cette magie.
  */
 export function tableauxDesSorts(db) {
   const tableaux = new Map();
   const invocations = db
-    .prepare('SELECT i.id, i.nom, i.tableau_titre, s.magie_id FROM invocation i JOIN sort s ON s.id = i.sort_id WHERE i.tableau_titre IS NOT NULL ORDER BY i.ordre')
+    .prepare(
+      `SELECT i.id, i.nom, i.tableau_titre, t.id AS sort_id, t.nom AS sort_nom, s.magie_id
+       FROM invocation i JOIN sort s ON s.id = i.sort_id JOIN sort t ON t.id = i.tableau_sort_id
+       WHERE i.tableau_titre IS NOT NULL ORDER BY i.ordre`,
+    )
     .all();
+  const ameliorations = db.prepare('SELECT nom, effet FROM amelioration_cadaverique WHERE magie_id = ? ORDER BY rang');
   for (const i of invocations) {
-    const nom = /["“«]\s*([^"”»]+?)\s*["”»]/.exec(i.tableau_titre)?.[1];
-    const sort = nom ? db.prepare('SELECT id FROM sort WHERE magie_id = ? AND nom_cle = ?').get(i.magie_id, normalize(nom)) : null;
-    if (!sort) continue;
-    const lignes = db.prepare('SELECT nom, effet FROM amelioration_cadaverique WHERE magie_id = ? ORDER BY rang').all(i.magie_id);
-    tableaux.set(sort.id, { titre: i.tableau_titre, nom, invocationId: i.id, invocation: i.nom, magieId: i.magie_id, lignes });
+    tableaux.set(i.sort_id, { titre: i.tableau_titre, nom: i.sort_nom, invocationId: i.id, invocation: i.nom, magieId: i.magie_id, lignes: ameliorations.all(i.magie_id) });
   }
   return tableaux;
 }

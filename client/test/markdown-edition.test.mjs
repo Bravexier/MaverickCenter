@@ -10,6 +10,7 @@ import { splitFrontmatter } from '../src/lib/wikilinks.mjs';
 import { avecPhraseDesArmesDeDepart } from '../src/lib/armes-rendu.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { COULEURS_DE_CASE, decouperCorps, etatDeLApercu, htmlSur, recomposerCorps, versMarkdown } from '../src/lib/markdown-edition.mjs';
+import { ancresRompues } from '../src/lib/ancres-figees.mjs';
 import { fragmentsAjoutes } from '../src/lib/markdown-sur.mjs';
 import { texteDePageModifiable } from '../src/lib/edition-modele.mjs';
 import { htmlAvecMotsCles, lireBalises } from '../src/lib/mots-cles-balises.mjs';
@@ -46,6 +47,8 @@ test('aller-retour sur toutes les pages du guide et du Codex : le Markdown réé
       assert.equal(versMarkdown(enfants(await rendrePage(md))), md, `${page.id} : le Markdown réécrit est stable`);
       // ni HTML brut ni lien non sûr ajouté : le service refuserait le texte (lib/markdown-sur.mjs)
       assert.deepEqual(fragmentsAjoutes(m.texte, md), [], `${page.id} : fragments ajoutés par l’éditeur`);
+      // ni ancre figée perdue, renommée ni doublée : le service refuserait le texte (serveur/edition.mjs#modifier, lib/ancres-figees.mjs)
+      assert.deepEqual(ancresRompues(m.texte, md), { retirees: [], doublees: [] }, `${page.id} : ancres figées gardées par l’éditeur`);
       // l'aperçu assaini garde tout ce que le Markdown dit
       assert.equal(versMarkdown(enfants(htmlSur(enfants(html)))), md, `${page.id} : aperçu assaini`);
     }
@@ -151,6 +154,18 @@ test('deux listes de même sorte qui se suivent restent deux listes : la seconde
   assert.equal(md, '- a\n\n* b\n\n- c\n\n1. un\n\n1) deux\n\nfin\n\n- d\n');
   assert.equal(normal(await rendre(md)), normal(html));
   assert.equal(await aller(md), md);
+});
+
+test('liste à puces ou filet en tête d’un item à puces : jamais une ligne que le Markdown relit comme un filet (« - - - », « - --- »)', async () => {
+  // listes imbriquées à item vide, filet seul dans un item, sous des marques « - » et « * », et sous une liste numérotée
+  for (const md of ['Texte.\n\n- a\n- * *\n\nFin.\n', '* - -\n', '- * * *\n', '* ---\n', '1. - - x\n', '- - a\n- b\n', '- * a\n  * b\n\n  - c\n']) {
+    const html = await rendre(md);
+    const ecrit = versMarkdown(enfants(html));
+    assert.equal(normal(await rendre(ecrit)), normal(html), `${JSON.stringify(md)} réécrit ${JSON.stringify(ecrit)}`);
+    assert.equal(await aller(ecrit), ecrit, `${JSON.stringify(ecrit)} : stable`);
+  }
+  // un vrai filet hors d'une liste reste « --- »
+  assert.equal(versMarkdown(enfants('<p>a</p><hr><p>b</p>')), 'a\n\n---\n\nb\n');
 });
 
 test('corps découpé aux blocs tirés de la base : rien ne se perd, seuls les morceaux de texte visibles sont remplacés', () => {

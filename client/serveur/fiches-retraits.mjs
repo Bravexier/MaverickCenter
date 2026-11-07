@@ -1,7 +1,9 @@
 // Fiches de personnage et règles supprimées (décision R42 ; docs/serveur.md, « Fiches de personnage (R42) ») : un don, une spécialité (avec les dons
 // choisis qui en dépendent), un sort (avec son livre, décision R169), un métier, une arme (décision R52) ou le don obtenu d'un don « Variable » du Mage
-// Bleu (décision R181 : l'entrée du tableau, ou le don « Variable », supprimés) que les règles suppriment est RETIRÉ des fiches qui l'utilisent — la fiche reste, seul l'élément part —
-// et une ligne datée par élément s'ajoute à la fin de ses notes (« NOTE », cellule BA53 ; texte : src/lib/fiche-format.mjs#ligneDeRetrait). Deux moments :
+// Bleu (décision R181 : l'entrée du tableau, ou le don « Variable », supprimés ; le don qui n'est plus « Variable » ou qui vise l'autre magie, réponses
+// du propriétaire « Retirés avec une note », R192 : retirerLesChoixDesDonsChanges) que les règles suppriment est RETIRÉ des fiches qui l'utilisent — la
+// fiche reste, seul l'élément part — et une ligne datée par élément s'ajoute à la fin de ses notes (« NOTE », cellule BA53 ; texte :
+// src/lib/fiche-format.mjs#ligneDeRetrait). Deux moments :
 //   - le site de dev supprime une ligne de règle (serveur/edition.mjs : métier, spécialité, don) : retirerDesFiches, AVANT la suppression de la règle
 //     (clés étrangères contrôlées), noms lus dans la base avant qu'elle ne parte ;
 //   - une livraison refait la base vivante (serveur/base-vivante.mjs#transferer) : retirerLesManquants, APRÈS le rejeu du journal (un lot suivant peut
@@ -128,6 +130,58 @@ function donsObtenusDesDons(db, capacites) {
     LEFT JOIN main.magie m ON m.id = x.magie_id
     WHERE o.source IN (SELECT value FROM json_each(?)) ORDER BY p.id, o.source`).all(JSON.stringify(capacites))
     .map((o) => ({ ...o, vise: 'classe_annexe_entree', cle: [o.personnage, o.entree_id], descripteur: descripteurDuDonObtenu(o, 'don') }));
+}
+
+/**
+ * Les magies que visent les dons « Variable » (décision R181, capacite_variable) de la base `base` ('main', ou 'ancienne' à la reconstruction) :
+ * Map(id du don → 'innee' | 'acquise'), vide sans la table (une base d'avant la migration 0088). L'état d'avant que retirerLesChoixDesDonsChanges compare.
+ * @param {import('node:sqlite').DatabaseSync} db
+ * @param {'main' | 'ancienne'} [base]
+ */
+export function magiesDesDonsVariables(db, base = 'main') {
+  if (base !== 'main' && base !== 'ancienne') throw new Error(`base inconnue : ${base}`);
+  if (!db.prepare(`SELECT 1 FROM ${base}.sqlite_master WHERE type = 'table' AND name = 'capacite_variable'`).get()) return new Map();
+  return new Map(db.prepare(`SELECT capacite_id, magie FROM ${base}.capacite_variable`).all().map((l) => [l.capacite_id, l.magie]));
+}
+
+/**
+ * Les dons obtenus (personnage_don_obtenu, `main`) des dons « Variable » de `avant` (magiesDesDonsVariables) qui ne le sont plus (cas « type ») ou qui
+ * visent l'autre magie (cas « magie », `magie_visee` : la nouvelle) : décision R181, réponses du propriétaire « Retirés avec une note », R192 (« Le choix est retiré
+ * des fiches avec une note datée, comme pour un don supprimé (R42). »). Un don resté « Variable » sur la même magie ne touche rien. Seuls les choix dont
+ * le don et l'entrée existent encore dans `main` : un don ou une entrée disparus ont leur retrait à eux (retirerDesFiches, donsObtenusManquants). Rien
+ * sans les tables (une base d'avant la migration 0088).
+ */
+function donsObtenusDesDonsChanges(db, avant) {
+  if (!avant.size || !aLaTable(db, 'personnage_don_obtenu') || !aLaTable(db, 'capacite_variable')) return [];
+  return db.prepare(`SELECT ${champsDeFiche}, o.source, o.entree_id, e.nom, k.nom AS don, c.nom AS classe, m.nom AS magie, v.magie AS magie_visee
+    FROM main.personnage_don_obtenu o JOIN main.personnage p ON p.id = o.personnage_id
+    JOIN main.capacite k ON k.id = o.source
+    JOIN main.classe_annexe_entree e ON e.id = o.entree_id
+    LEFT JOIN main.capacite_variable v ON v.capacite_id = o.source
+    LEFT JOIN main.classe c ON c.id = e.classe_id
+    LEFT JOIN main.classe_annexe x ON x.classe_id = e.classe_id AND x.rang = e.annexe_rang
+    LEFT JOIN main.magie m ON m.id = x.magie_id
+    WHERE o.source IN (SELECT value FROM json_each(?)) ORDER BY p.id, o.source`).all(JSON.stringify([...avant.keys()]))
+    .filter((o) => o.magie_visee !== avant.get(o.source))
+    .map((o) => ({
+      ...o, vise: 'classe_annexe_entree', cle: [o.personnage, o.entree_id],
+      descripteur: { ...descripteurDuDonObtenu(o, o.magie_visee === null ? 'type' : 'magie'), magie_visee: o.magie_visee },
+    }));
+}
+
+/**
+ * Site de dev (un lot, la résolution d'un lot en conflit) : retire des fiches les dons obtenus des dons « Variable » qui ont quitté ce type ou changé de
+ * magie depuis `avant` (magiesDesDonsVariables lu au début de la transaction), une ligne datée par choix (noterLesRetraits) ; décision R181, réponses
+ * du propriétaire « Retirés avec une note », R192. À appeler une fois les écritures du lot faites, avant noterLesRetraits.
+ * @param {import('node:sqlite').DatabaseSync} db
+ * @param {Map<string, string>} avant
+ * @param {Map} acc nouveauxRetraitsDeFiches()
+ */
+export function retirerLesChoixDesDonsChanges(db, avant, acc = nouveauxRetraitsDeFiches()) {
+  // seuls les dons qui ont changé : un lot qui ne touche à aucun don « Variable » ne lit pas les fiches
+  const apres = magiesDesDonsVariables(db);
+  const changes = new Map([...avant].filter(([id, magie]) => apres.get(id) !== magie));
+  return appliquer(db, donsObtenusDesDonsChanges(db, changes), acc);
 }
 
 /**
@@ -334,6 +388,9 @@ export function retirerLesManquants(db, acc = nouveauxRetraitsDeFiches()) {
     aRetirer.push({ ...a, vise: 'arme', cle: [a.personnage, a.rang], descripteur: { nature: 'arme', id: a.id, nom: a.nom ?? null, famille: a.famille ?? null, rang: a.rang } });
   }
   aRetirer.push(...donsObtenusManquants(db));
+  // un don « Variable » qui a quitté ce type ou changé de magie depuis l'ancienne base (une livraison, le rejeu du journal ; R181, « Retirés avec une
+  // note ») : seuls les choix dont le don et l'entrée restent (les autres viennent d'être rangés plus haut)
+  aRetirer.push(...donsObtenusDesDonsChanges(db, magiesDesDonsVariables(db, 'ancienne')));
   // composants : l'objet reste sous son nom, sans lien au catalogue, avec une note (R60, OBJETS_AU_CATALOGUE)
   detacherLesManquantes(db, acc);
   return appliquer(db, aRetirer, acc);

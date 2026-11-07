@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 98;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 100;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -1597,7 +1597,9 @@ CREATE TABLE classe_annexe_entree (
 -- (classe_annexe_entree), sur la ligne de la magie que son texte vise. `magie` : 'innee' (« lié à sa magie innée » : Mimétisme, Mime, Principale,
 -- Ultime raison) ou 'acquise' (« lié à sa magie acquise » : Secondaire, la « mention contraire » de R181 ; sans magie acquise, il ne se choisit pas :
 -- règle don_obtenu_sans_magie_acquise de v_personnage_controle). Écrite par la migration d'après le texte du don, relu par
--- test/db-r181-dons-variables.test.mjs ; un don « Variable » créé sur le site de dev n'y est pas (il n'obtient rien).
+-- test/db-r181-dons-variables.test.mjs. Le site de dev l'écrit, noté au journal : à la création d'un don « Variable » (réponse du propriétaire
+-- « Demander la magie » : la magie est exigée, serveur/edition.mjs#magieDuDonVariable) et au changement de type (« Demander ou retirer » : passer à
+-- « Variable » demande la magie, quitter « Variable » retire la ligne, serveur/edition.mjs#suivreLaMagieDuDon).
 CREATE TABLE capacite_variable (
   capacite_id  TEXT    NOT NULL PRIMARY KEY REFERENCES capacite(id) ON DELETE CASCADE,
   magie        TEXT    NOT NULL CHECK (magie IN ('innee', 'acquise'))
@@ -1607,7 +1609,8 @@ CREATE TABLE capacite_variable (
 -- puissance. »). N'a d'effet que si la magie innée du personnage a un plafond (magie_npm_plafond) : plafond effectif = max(plafond de la magie innée,
 -- plafonds des dons acquis, v_personnage_don_acquis) ; il relève le plafond sans ouvrir un NPM que le niveau n'ouvre pas (R188 (1) : min avec la puissance
 -- magique du niveau, R16). Règle sort_puissance de v_personnage_controle ; lib/fiche-regles.mjs, `classes[].dons[].npm_plafond`. Écrite par la migration,
--- jamais relue du texte du don ; le site de dev ne l'écrit pas (un don supprimé emporte sa ligne).
+-- jamais relue du texte du don ; le site de dev ne l'écrit pas, mais un don supprimé sur le site retire sa ligne, notée au journal
+-- (serveur/edition.mjs#retirerDon, qui appelle serveur/edition.mjs#retirerLesReglesDuDon).
 CREATE TABLE capacite_npm_plafond (
   capacite_id  TEXT    NOT NULL PRIMARY KEY REFERENCES capacite(id) ON DELETE CASCADE,
   npm          INTEGER NOT NULL CHECK (npm BETWEEN 1 AND 5)
@@ -1617,7 +1620,8 @@ CREATE TABLE capacite_npm_plafond (
 -- 0097) : « Grimoire » de l'Archimage (« Permet de débloquer les emplacements de sorts de magie acquise. »). Il ne donne pas de seconde magie (R176) : ni
 -- Mode Hyper, ni Symbiose, ni palier NPM 5 réservé aux personnages sans magie acquise. Lu par le moteur seulement (lib/fiche-regles.mjs,
 -- `classes[].dons[].condition_emplacements` ; lib/fiche-moteur.mjs#emplacementsDeSorts) : aucune règle de v_personnage_controle (aucun contrôle ne compte
--- les emplacements). Écrite par la migration, jamais relue du texte du don ; le site de dev ne l'écrit pas (un don supprimé emporte sa ligne).
+-- les emplacements). Écrite par la migration, jamais relue du texte du don ; le site de dev ne l'écrit pas, mais un don supprimé sur le site retire sa
+-- ligne, notée au journal (serveur/edition.mjs#retirerDon, qui appelle serveur/edition.mjs#retirerLesReglesDuDon).
 CREATE TABLE capacite_condition_emplacements (
   capacite_id  TEXT    NOT NULL PRIMARY KEY REFERENCES capacite(id) ON DELETE CASCADE
 ) STRICT, WITHOUT ROWID;
@@ -1987,10 +1991,16 @@ CREATE TABLE invocation (
                                             -- tableau figure dans les deux classeurs (identité vérifiée à l'import) ; une seule copie, pas de doublon ici.
   origine       TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'bestiaire'),
   source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0),
-  remarque TEXT    -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
+  tableau_sort_id TEXT REFERENCES sort(id) CHECK (tableau_sort_id IS NULL OR tableau_titre IS NOT NULL)
+                                            -- le sort dont le tableau est aussi celui de l'invocation (décision R130 : « Amélioration cadavérique » de la
+                                            -- Nécromancie, qui sacrifie l'invocation), par son id figé : un renommage du sort sur le site de dev ne coupe
+                                            -- pas le lien. Rempli par la migration 0099 depuis le nom entre guillemets de tableau_titre, cherché par nom_cle
+                                            -- dans la magie du sort de l'invocation ; NULL = aucun tableau, ou nom non résolu. Le site ne l'écrit pas.
 ) STRICT;
 
 CREATE INDEX invocation_sort ON invocation (sort_id) WHERE sort_id IS NOT NULL;
+CREATE INDEX invocation_tableau_sort ON invocation (tableau_sort_id) WHERE tableau_sort_id IS NOT NULL;
 
 -- Capacités communes d'une invocation : la liste « ▸ Toutes ces créatures ont ceci en capacité commune » du texte général
 -- (golems : Inerte, Élémentaire ; non-morts : Non-Mort, Élémentaire). Une ligne = un élément de la liste « - Nom. Texte ».
@@ -3972,8 +3982,9 @@ CREATE VIEW v_creature_meme_bloc AS
   FROM creature a JOIN creature b ON b.bloc_id = a.bloc_id AND b.id <> a.id;
 
 -- Arme avec les valeurs « effectives » : portée écrite dans l'effet, sinon portée par défaut du type (BDD!AF de la fiche) ;
--- solidité de l'arme nue (2 crans de base, règle de l'onglet, corrigée par « 1 seul cran » / « ±1 cran » de l'effet : sans matériau ni amélioration) ;
--- libellés de famille et de type.
+-- solidité de l'arme nue (2 crans de base, règle de l'onglet, corrigée par « 1 seul cran » / « ±1 cran » de l'effet : sans matériau ni amélioration),
+-- jamais moins de 1 (décision R51 : « il est impossible de descendre à moins de 1 », sur la valeur fixée comme sur la valeur corrigée ; la même que
+-- lib/arme-champs.mjs#durabiliteDeLArme, migration 0099) ; libellés de famille et de type.
 CREATE VIEW v_arme AS
   SELECT a.id, a.nom, f.nom AS famille, t.nom AS type, a.competence_brut, a.mains, a.cout_ro,
          a.de, a.de_faces, COALESCE(a.bonus_degats, 0) AS bonus_degats_ou_0,
@@ -3981,7 +3992,8 @@ CREATE VIEW v_arme AS
          COALESCE(a.portee_min, t.portee_min) AS portee_min_effective,
          COALESCE(a.portee_max, t.portee_max) AS portee_max_effective,
          CASE WHEN a.portee_min IS NULL THEN 'type' ELSE 'effet' END AS portee_source,
-         COALESCE(a.solidite_fixee, k.valeur + COALESCE(a.solidite_delta, 0)) AS solidite_sans_composition,
+         CASE WHEN COALESCE(a.solidite_fixee, k.valeur + COALESCE(a.solidite_delta, 0)) < 1 THEN 1
+              ELSE COALESCE(a.solidite_fixee, k.valeur + COALESCE(a.solidite_delta, 0)) END AS solidite_sans_composition,
          a.ignore_ap, a.recharge, a.provenance, a.depart_possible, a.effet
   FROM arme a
   JOIN arme_famille f ON f.id = a.famille_id

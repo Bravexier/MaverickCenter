@@ -2,6 +2,7 @@ import { createMarkdownProcessor } from '@astrojs/markdown-remark';
 import { buildIndex, remarkWikilinks } from './wikilinks.mjs';
 import { remarkCouleursDeCase } from './markdown-couleurs.mjs';
 import { remarkMonnaies } from './markdown-monnaies.mjs';
+import { remarkAncresFigees } from './ancres-figees.mjs';
 import { adresseDesAnciensLiens, avecPrefixe, remarkAnciensLiensDuGuide } from './guide.mjs';
 import { ACCUEIL_DU_GUIDE, pagesEclateesDuGuide } from './livres.mjs';
 import { cheminDePage } from './metiers.mjs';
@@ -10,7 +11,7 @@ import { cheminVersUnePageEclatee } from './nav.mjs';
 import { loadWiki, slugOf, typeOf } from './wiki';
 
 // Rendu Markdown des pages du guide (lib/guide.mjs) : une page est coupée à ses blocs tirés de la base, chaque morceau de texte est rendu ici
-// avec les mêmes plugins ([[liens]], couleur des cases, monnaies) que les autres pages (astro.config.mjs), sur l'index des pages chargées (lib/wiki.ts).
+// avec les mêmes plugins ([[liens]], couleur des cases, monnaies, ancres figées des intertitres) que les autres pages (astro.config.mjs), sur l'index des pages chargées (lib/wiki.ts).
 // Un lien Markdown écrit vers une ancienne adresse du guide (« [les postures](/guide/les-postures/) ») mène à la nouvelle adresse de la page
 // (lib/livres.mjs, par lib/guide.mjs#adresseDesAnciensLiens) et garde l'adresse écrite en `data-lien-ecrit` (lib/guide.mjs#remarkAnciensLiensDuGuide) :
 // le texte de la base n'est réécrit ni au rendu ni par l'éditeur du guide, qui la relit (lib/markdown-edition.mjs#versMarkdown). De même, un lien écrit
@@ -33,7 +34,7 @@ async function creer() {
   };
   return createMarkdownProcessor({
     syntaxHighlight: false,
-    remarkPlugins: [[remarkWikilinks, { index, base: import.meta.env.BASE_URL }], remarkCouleursDeCase, remarkMonnaies,
+    remarkPlugins: [[remarkWikilinks, { index, base: import.meta.env.BASE_URL }], remarkCouleursDeCase, remarkMonnaies, remarkAncresFigees,
       [remarkAnciensLiensDuGuide, { base: import.meta.env.BASE_URL, adresse }]],
   });
 }

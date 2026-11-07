@@ -10,6 +10,7 @@ import {
   competencesDArme, coutEnRo, decouperCategorieDArme, decouperNomDArme, durabiliteDeLArme, ECRITURES_DE_COMPETENCE, nomBrutDArme, prixEnRf, prixEnRo,
   totalDesAmeliorations,
 } from '../src/lib/arme-champs.mjs';
+import { prixEnRf as prixEnRfDUneRessource } from '../src/lib/composants-champs.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
@@ -101,13 +102,18 @@ test('durabilité de l’arme nue : celle de la vue v_arme (2 crans de base, rè
   const durabilites = (base) => {
     const solidite = base.prepare("SELECT valeur FROM constante_equipement WHERE id = 'arme.solidite_base'").get().valeur;
     const vue = new Map(base.prepare('SELECT id, solidite_sans_composition FROM v_arme').all().map((v) => [v.id, v.solidite_sans_composition]));
-    return base.prepare('SELECT * FROM arme WHERE effet IS NOT NULL ORDER BY id').all().map((a) => ({ id: a.id, moteur: durabiliteDeLArme(a, solidite), vue: vue.get(a.id) }));
+    const lignes = base.prepare('SELECT * FROM arme ORDER BY id').all();
+    assert.equal(vue.size, lignes.length, 'une ligne de v_arme par arme');
+    return lignes.map((a) => ({ id: a.id, moteur: durabiliteDeLArme(a, solidite), vue: vue.get(a.id) }));
   };
-  // à l'import (test/aide-base-d-import.mjs) : le moteur et la vue disent la même durabilité
-  for (const d of durabilites(baseDImport())) assert.equal(d.moteur, d.vue, d.id);
-  // aujourd'hui (le site de dev modifie librement crans et base) : le moteur, plancher de R51 compris. La vue n'a pas ce plancher (elle peut dire 0) :
-  // écart à R51, à corriger par une migration séparée
-  for (const d of durabilites(db)) assert.equal(d.moteur, Math.max(1, d.vue), d.id);
+  // à l'import (test/aide-base-d-import.mjs) et aujourd'hui (le site de dev modifie librement crans et base) : le moteur et la vue disent la même
+  // durabilité, plancher de R51 compris (migration 0099 ; le plancher lui-même s'essaie sous 1 dans test/db-0099-solidite-et-tableau-du-sort.test.mjs)
+  for (const [base, quand] of [[baseDImport(), 'import'], [db, 'aujourd’hui']]) {
+    for (const d of durabilites(base)) {
+      assert.equal(d.vue, d.moteur, `${quand} : ${d.id}`);
+      assert.ok(d.vue >= 1, `${quand} : ${d.id}`);
+    }
+  }
 });
 
 // Le prix : la colonne materiau_arme.prix_rf est la lecture de sa cellule prix_brut par arme-champs.mjs#prixEnRf (aucune égalité avec le prix de la
@@ -123,6 +129,21 @@ test('matériaux : bonus, cran de solidité, effet secondaire et prix se refont 
   }
   assert.equal(prixEnRo('100 RF / 10 RO'), 10);
   assert.equal(prixEnRo('200 RO'), 200);
+});
+
+test('prix d’un matériau d’arme : lu comme celui de sa ressource (R62), espace des milliers compris (espace, insécable, fine insécable)', () => {
+  for (const espace of [' ', '\u00a0', '\u202f']) {
+    const prix = `1${espace}000 RF / 10 RO`;
+    assert.equal(prixEnRf(prix), 1000, JSON.stringify(prix));
+    assert.equal(prixEnRf(prix), prixEnRfDUneRessource(prix), JSON.stringify(prix));
+    assert.equal(prixEnRo(`1${espace}200 RO`), 1200, JSON.stringify(espace));
+  }
+  // RF et RO en désaccord (un zéro oublié) : null, comme l'importeur ; le RO seul ; le RF seul
+  assert.equal(prixEnRf('100 RF / 10 RO'), null);
+  assert.equal(prixEnRf('8 000 RF / 80 RO'), 8000);
+  assert.equal(prixEnRf('0,5 RO'), 50);
+  assert.equal(prixEnRf('250 RF'), 250);
+  assert.equal(prixEnRo('250 RF'), null);
 });
 
 test('améliorations d’arme : coût (RO, matériaux) et effet (dégâts, crans) se refont ; la ligne TOTAL se refait depuis les niveaux', () => {

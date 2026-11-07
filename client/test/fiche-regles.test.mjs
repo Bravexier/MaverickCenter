@@ -645,7 +645,10 @@ test('décision R181 : les 54 entrées du tableau du Mage Bleu (classes[].entree
   assert.equal(new Set(avecEntrees[0].entrees.map((e) => e.magie_id)).size, 14);
   const visees = Object.fromEntries(regles.classes.flatMap((c) => c.dons).filter((d) => 'magie_visee' in d).map((d) => [d.id, d.magie_visee]));
   assert.deepEqual(visees, Object.fromEntries(db.prepare('SELECT capacite_id, magie FROM capacite_variable ORDER BY capacite_id').all().map((r) => [r.capacite_id, r.magie])));
-  assert.deepEqual(visees, {
+  // les dons « Variable » et leur magie, à l'import : le site de dev change le type d'un don (quitter « Variable » retire sa ligne de
+  // capacite_variable, R192) ou en crée
+  const viseesDImport = Object.fromEntries(reglesDImport().classes.flatMap((c) => c.dons).filter((d) => 'magie_visee' in d).map((d) => [d.id, d.magie_visee]));
+  assert.deepEqual(viseesDImport, {
     'capacites/mage-bleu-mime': 'innee', 'capacites/mage-bleu-mimetisme': 'innee', 'capacites/mage-bleu-principale': 'innee',
     'capacites/mage-bleu-secondaire': 'acquise', 'capacites/mage-bleu-ultime-raison': 'innee',
   });

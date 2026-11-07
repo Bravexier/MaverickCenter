@@ -9,10 +9,10 @@ import assert from 'node:assert/strict';
 import { copyFileSync, readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
-import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
+import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
-import { baseDImport } from './aide-base-d-import.mjs';
+import { baseDImport, cheminDImport } from './aide-base-d-import.mjs';
 
 const MAGE_BLEU = 'classes/mage-bleu';
 const SAPHIR = 'classes/mage-bleu#specialite:mage-saphir';
@@ -98,26 +98,30 @@ test('R181 : capacite_variable — les cinq dons « Variable » du Mage Bleu, la
   const variables = importe.prepare(`SELECT c.id, c.effet, v.magie FROM capacite c LEFT JOIN capacite_variable v ON v.capacite_id = c.id
     WHERE c.type = 'variable' ORDER BY c.id`).all();
   assert.deepEqual(variables.map((r) => [r.id, r.magie]), ATTENDUS, 'rien d’autre qu’un don « Variable »');
-  // Sur l'état courant, l'invariant seul : chaque ligne restante est l'un des cinq dons, avec la magie que la migration 0088 lui a donnée (innée ou acquise).
-  const attendue = new Map(ATTENDUS);
-  for (const r of db.prepare('SELECT capacite_id, magie FROM capacite_variable').all()) {
-    assert.ok(attendue.has(r.capacite_id), `${r.capacite_id} : pas un des cinq dons « Variable »`);
-    assert.ok(['innee', 'acquise'].includes(r.magie), r.capacite_id);
-    assert.equal(r.magie, attendue.get(r.capacite_id), r.capacite_id);
-  }
   for (const r of variables) {
     const vise = /lié à sa magie (innée|acquise)/.exec(r.effet);
     assert.ok(vise, r.id);
     assert.equal(r.magie, normalize(vise[1]), `${r.id} : « ${vise[0]} »`);
   }
-  assert.equal(db.prepare(`SELECT count(*) AS n FROM capacite_variable v JOIN capacite c ON c.id = v.capacite_id
+  assert.equal(importe.prepare(`SELECT count(*) AS n FROM capacite_variable v JOIN capacite c ON c.id = v.capacite_id
     WHERE NOT EXISTS (SELECT 1 FROM classe_annexe x WHERE x.classe_id = c.classe_id)`).get().n, 0, 'la classe du don a son tableau');
+  // Sur l'état courant, les invariants seuls : le site de dev écrit capacite_variable (R192 : un don « Variable » se crée avec sa magie, dans toute
+  // classe ; passer à « Variable » la demande ; quitter « Variable » retire la ligne ; la magie se change). Un don est de type « Variable » ⇔ il a sa
+  // ligne, et la magie visée est innée ou acquise.
+  const typesVariables = db.prepare("SELECT id FROM capacite WHERE type = 'variable' ORDER BY id").all().map((r) => r.id);
+  const lignesCourantes = db.prepare('SELECT capacite_id, magie FROM capacite_variable ORDER BY capacite_id').all();
+  assert.deepEqual(lignesCourantes.map((r) => r.capacite_id), typesVariables, 'un don « Variable » ⇔ une ligne capacite_variable');
+  for (const r of lignesCourantes) assert.ok(['innee', 'acquise'].includes(r.magie), r.capacite_id);
 });
 
-/** Une copie de la base construite, ouverte en écriture, fermée à la fin du test `t`. */
+/**
+ * Une copie de la base dans son état d'import (cheminDImport), ouverte en écriture, fermée à la fin du test `t`. Les scénarios des fiches lisent les dons
+ * du Mage Bleu (type « Variable », niveau, spécialité) et capacite_variable, que le site de dev modifie (R192 : quitter « Variable » retire la ligne) :
+ * ils portent sur l'état d'import, jamais sur l'état courant.
+ */
 function copie(t) {
   const chemin = fichierTemporaire('maverick.db', 'r181', { t });
-  copyFileSync(cheminBase({ sansExemples: false }), chemin);
+  copyFileSync(cheminDImport(), chemin);
   const db = new DatabaseSync(chemin);
   db.exec('PRAGMA foreign_keys = ON');
   t.after(() => db.close());

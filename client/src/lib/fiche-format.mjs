@@ -738,7 +738,9 @@ const positif = (n) => typeof n === 'number' && n > 0;
  *                que le livre (`choisi` faux, `nm` null) ;
  *   don obtenu : « le don obtenu « Moteur thermique » (par le don « Mimétisme », classe Mage Bleu, magie Feu) » (décision R181 : une entrée du tableau du
  *                bas de la classe, personnage_don_obtenu ; `don` : le don « Variable » qui l'obtenait, `classe`, `magie` : la ligne de l'entrée) ; `cas` :
- *                'entree' (l'entrée supprimée des règles) ou 'don' (le don « Variable » supprimé : l'entrée existe encore, la fiche ne l'obtient plus) ;
+ *                'entree' (l'entrée supprimée des règles) ou 'don' (le don « Variable » supprimé : l'entrée existe encore, la fiche ne l'obtient plus),
+ *                'type' (le don n'est plus « Variable ») ou 'magie' (il vise l'autre magie du personnage, `magie_visee` : 'innee' ou 'acquise') : réponses du
+ *                propriétaire « Retirés avec une note », R192, comme un don supprimé (R42) ;
  *   métier     : « le métier « Forgeron » » ;
  *   arme       : « l'arme « Katana » (ÉPÉES, arme 1) » (décision R52) ;
  *   arme élém. : une arme d'avant la migration 0081 (décision R167, armeDAvant ; `cas`) : devenue l'arme élémentaire, « l'arme « Arc long » (ARC, arme 1,
@@ -763,8 +765,8 @@ const positif = (n) => typeof n === 'number' && n > 0;
  *   niveau?: number | null, magie?: string | null, npm?: number | null, nm?: number | null, livre?: boolean, choisi?: boolean,
  *   dons?: string[], devenue?: boolean | string, armureGardee?: boolean, quantite?: number | null, matiere?: string | null, effet?: string | null, texte?: string | null,
  *   ecarte?: boolean, valeur?: number, amelioration?: number | string | null, parties?: string | null, amelioration_devenue?: number | string | null,
- *   elementaire?: boolean, poids?: string, portable?: string, cas?: 'devenue' | 'autre_type' | 'amelioration_seule' | 'entree' | 'don', element?: string,
- *   don?: string | null,
+ *   elementaire?: boolean, poids?: string, portable?: string, cas?: 'devenue' | 'autre_type' | 'amelioration_seule' | 'entree' | 'don' | 'type' | 'magie', element?: string,
+ *   don?: string | null, magie_visee?: 'innee' | 'acquise' | null,
  *   niveau_element?: number | null, niveau_garde?: boolean, materiau?: string | null }} d
  */
 export function descriptionDuRetrait(d) {
@@ -910,6 +912,12 @@ export const ligneDeRetrait = (d, instant) => (d.nature === 'maitrises_armes'
             : d.nature === 'don_obtenu' && d.cas === 'don'
               // décision R181 : l'entrée reste dans les règles, mais le don « Variable » qui l'obtenait n'y est plus
               ? 'n’est plus obtenu : le don qui le donnait n’existe plus dans les règles. Adaptez la fiche à la nouvelle règle.'
+              : d.nature === 'don_obtenu' && d.cas === 'type'
+                // décision R181, réponse du propriétaire « Retirés avec une note », R192 : le don n'est plus « Variable », il n'obtient plus d'entrée
+                ? 'n’est plus obtenu : le don qui le donnait n’est plus un don « Variable ». Adaptez la fiche à la nouvelle règle.'
+                : d.nature === 'don_obtenu' && d.cas === 'magie'
+                  // décision R181, réponse du propriétaire « Retirés avec une note », R192 : le don vise l'autre magie, sa liste n'est plus la même
+                  ? `n’est plus obtenu : le don qui le donnait vise maintenant la magie ${d.magie_visee === 'acquise' ? 'acquise' : 'innée'} du personnage. Choisissez autre chose si la fiche le permet, ou adaptez la fiche à la nouvelle règle.`
               : 'n’existe plus dans les règles. Choisissez autre chose ou adaptez la fiche à la nouvelle règle.'}`);
 
 /** Ordre des retraits d'une fiche : par nature (ORDRE_DES_NATURES), puis par nom ; le même sur le site de dev et à la reconstruction. */

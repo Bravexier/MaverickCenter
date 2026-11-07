@@ -133,6 +133,11 @@ de `guide/liste-des-effets-mode-hyper`, décision R187 : l'importeur ignore l'on
 en base), exclues de l'import par la décision R183 (11). Test :
 `client/test/importeurs-etiquettes.test.mjs`, qui rejoue les trois extracteurs sur les instantanés de `sources/raw/classeurs/`.
 
+**Les ancres figées qu'écrit un extracteur** : `annexes-magie.py` termine chaque intertitre d'état de `guide/liste-des-alterations-d-etat` par
+` {#<ancre>}` (`## Agrippé {#aggripe}`, `docs/content-guide.md`, « Ancres figées des intertitres »), l'ancre étant le segment après `#etat:` de l'id de
+la ligne `etat`, lue dans sa table `ANCRES_DES_ETATS` (nom tel que le classeur l'écrit → ancre), jamais recalculée du nom ; un nom absent de la table
+arrête l'import (test : `client/test/annexes-magie-notes.test.mjs`).
+
 Obtenir les données d'un classeur, par ordre de préférence :
 
 1. **Connecteur Google Sheets** (session Claude, autorisation « Sheets » complète) : `get_spreadsheet` avec `includeGridData`,

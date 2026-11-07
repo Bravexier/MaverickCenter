@@ -26,9 +26,11 @@
 // est synchrone : rien d'autre ne s'intercale). Node seulement, sans dépendance.
 import { createHash } from 'node:crypto';
 import { ErreurJournal, lireLigne, modifierSansNoter, nouveauLot, ouvrirLot, parcourirUnLot, rompuesDuLot, rupturesEnPlace, structure } from './edition-journal.mjs';
-import { ErreurEdition, OUTILS_DE_RESOLUTION as OUTILS, adaptateurDuJournal, colonneDerivee, messageSqlite, recalculerLesPages } from './edition.mjs';
+import { ErreurEdition, OUTILS_DE_RESOLUTION as OUTILS, TABLES_DES_REGLES_DU_DON, adaptateurDuJournal, colonneDerivee, messageSqlite, recalculerLesPages } from './edition.mjs';
 import { TABLES_DES_SOURCES, sourcesAvantLaSuppression, sourcesRefaitesParLaResolution } from './edition-maitrises.mjs';
-import { detacherDesFiches, noterLesRetraits, nouveauxRetraitsDeFiches, retirerDesFiches } from './fiches-retraits.mjs';
+import {
+  detacherDesFiches, magiesDesDonsVariables, noterLesRetraits, nouveauxRetraitsDeFiches, retirerDesFiches, retirerLesChoixDesDonsChanges,
+} from './fiches-retraits.mjs';
 import { TABLES, ligneSansImage } from '../src/lib/edition-modele.mjs';
 import { colonneMasquee, colonneSource, nomDeColonne, nomDeTable } from '../src/lib/libelles-de-la-base.mjs';
 import { instant as maintenant } from './instant.mjs';
@@ -92,12 +94,14 @@ const lignesEnConflit = (db, id) => db.prepare("SELECT * FROM modification WHERE
 
 /**
  * Ce que les fiches perdent quand une ligne de règle part (R42, R52 ; une ressource : R60), avant sa suppression : comme les domaines de l'édition ; et
- * les sources de maîtrise d'arme d'un don ou d'une ligne de classe_maitrise_arme, notées avant elle (pas par la cascade du schéma).
+ * les sources de maîtrise d'arme d'un don ou d'une ligne de classe_maitrise_arme, et les règles en données d'un don (edition.mjs#retirerLesReglesDuDon :
+ * celles qu'un lot noté avant ne retirait pas lui-même), notées avant elle (pas par la cascade du schéma).
  */
 const RETRAITS_PAR_TABLE = Object.freeze({ metier: 'metiers', specialite: 'specialites', capacite: 'capacites', sort: 'sorts', arme: 'armes' });
 function avantLaSuppression(ctx, table, cle) {
   sourcesAvantLaSuppression(ctx.db, ctx.w, table, cle);
   if (typeof cle?.id !== 'string') return;
+  if (table === 'capacite') OUTILS.retirerLesReglesDuDon(ctx.db, ctx.w, cle.id);
   if (RETRAITS_PAR_TABLE[table]) retirerDesFiches(ctx.db, { [RETRAITS_PAR_TABLE[table]]: [cle.id] }, ctx.retraits);
   if (table === 'ressource') detacherDesFiches(ctx.db, [cle.id], ctx.retraits);
 }
@@ -549,6 +553,19 @@ function refaireParLEditeur(ctx, operations, valeursDe, refus = null) {
 }
 
 /**
+ * Les conflits d'une règle en données d'un don (TABLES_DES_REGLES_DU_DON, clé { capacite_id }) dont le don est supprimé par le même lot :
+ * Map(rang de la règle → entrée de la suppression du don). La règle suit le choix du don (examiner).
+ */
+function suiventLeDon(entrees, conflits) {
+  const dons = new Map(entrees.filter((e) => e.issue !== 'saute' && e.table === 'capacite' && e.operation === 'supprimer').map((e) => [e.cle?.id, e]));
+  const suivent = new Map();
+  for (const c of conflits) {
+    if (TABLES_DES_REGLES_DU_DON.includes(c.table) && dons.has(c.cle?.capacite_id)) suivent.set(c.rang, dons.get(c.cle.capacite_id));
+  }
+  return suivent;
+}
+
+/**
  * Une passe de l'examen d'un lot (dans un savepoint que l'appelant annule) : { public (la forme de GET /api/mise-a-jour/conflits/), interne:
  * { idsDuParcours, abandons } }. `abandons` (Map rang → conflit) : les modifications abandonnées d'office (forme ancienne sans équivalent, écriture
  * refusée, clé étrangère rompue, erreur après le lot), que la passe laisse de côté ; elle rend les siennes en plus. `idsDuParcours` : les conflits nés
@@ -602,12 +619,15 @@ function examiner(db, lot, lignes, instant, abandons, deja) {
   // les clés étrangères, choix 2 partout : une rupture abandonne la modification qui l'écrit (ou la suppression qui la cause)
   const parcourues = entrees.filter((e) => e.issue !== 'saute' && !sortants.has(e.rang));
   let rompues = [];
+  let liens = [];
   const apres = essayer(db, 'conflit_apres', () => {
     commeLeRejeu(ctx, entrees, ecritesSansLEditeur(entrees, differees));
     rompues = rompuesDuLot(db, parcourues, { tables: [...new Set(ctx.w.lignes.map((l) => l.table))], deja });
+    // une page des Règles supprimée qu'un texte qui reste cite encore (le lot qui retirait le lien est en conflit) : comme une référence rompue
+    liens = OUTILS.liensRompusParLeLot(db, parcourues.map((e) => e.m), { faites: parcourues.filter((e) => e.issue === 'applique').map((e) => e.m) });
   });
   const raisons = new Map();
-  for (const r of rompues) raisons.set(r.rang, [...(raisons.get(r.rang) ?? []), r.raison]);
+  for (const r of [...rompues, ...liens.flatMap((l) => l.rangs.map((rang) => ({ rang, raison: l.raison })))]) raisons.set(r.rang, [...(raisons.get(r.rang) ?? []), r.raison]);
   if (apres) {
     // après le lot (balises d'un mot-clé retiré, pages refaites) : rattaché aux suppressions de mot-clé, sinon à la première modification
     const rangs = parcourues.filter((e) => e.table === 'mot_cle' && e.operation === 'supprimer').map((e) => e.rang);
@@ -616,12 +636,29 @@ function examiner(db, lot, lignes, instant, abandons, deja) {
   for (const [rang, rs] of raisons) sortants.set(rang, abandon(entrees.find((x) => x.rang === rang), [...new Set(rs)].join(' ; '), db));
   conflits = [...conflits.filter((c) => !sortants.has(c.rang)), ...sortants.values()];
   conflits.sort((a, b) => a.rang - b.rang || String(a.colonne ?? '').localeCompare(String(b.colonne ?? '')));
-  const saines = entrees.filter((e) => e.issue !== 'saute' && !sortants.has(e.rang) && (e.issue !== 'conflit' || (e.genre === 'colonnes' && e.ecrites?.length)))
+  // une règle en données d'un don (TABLES_DES_REGLES_DU_DON) que ce lot retire aussi : pas de choix à elle, elle suit celui du don (réponse du chef
+  // technique, lot « Défauts du code » : jamais une règle sans son don ni un don sans sa règle). Le don supprimé (modification saine, ou choix 1) la retire,
+  // notée (avantLaSuppression → retirerLesReglesDuDon) ; le don gardé (choix 2, ou suppression abandonnée) la garde telle que les règles livrées l'écrivent :
+  // sa propre modification n'est jamais écrite. Elle passe des conflits aux modifications du lot, « suit le don ».
+  const suivent = suiventLeDon(entrees, conflits);
+  conflits = conflits.filter((c) => !suivent.has(c.rang));
+  const saines = entrees.filter((e) => e.issue !== 'saute' && !sortants.has(e.rang) && !suivent.has(e.rang) && (e.issue !== 'conflit' || (e.genre === 'colonnes' && e.ecrites?.length)))
     .map((e) => ({
       rang: e.rang, table: e.table, cle: e.cle, operation: e.operation, libelle: libelleDeLigne(e.table, e.ligne ?? e.apres ?? e.avant, e.cle, db),
       issue: e.issue === 'conflit' ? 'reappliquee' : ISSUES[e.issue],
       ...(e.issue === 'conflit' ? { colonnes: e.ecrites, colonnes_libelles: e.ecrites.map((c) => libelleDeColonne(e.table, c)) } : {}),
     }));
+  for (const [rang, don] of suivent) {
+    const e = entrees.find((x) => x.rang === rang);
+    // la règle dite par le nom de son don (le parcours a pu le retirer déjà : la base ne le nomme plus)
+    const nom = nomDe(don.ligne ?? don.avant);
+    saines.push({
+      rang, table: e.table, cle: e.cle, operation: e.operation, issue: 'suit_le_don',
+      libelle: nom ? `${tableLisible(e.table)} « ${nom} »` : libelleDeLigne(e.table, e.ligne ?? e.apres ?? e.avant, e.cle, db),
+      don: libelleDeLigne(don.table, don.ligne ?? don.avant, don.cle, db),
+    });
+  }
+  saines.sort((a, b) => a.rang - b.rang);
   const empreinte = createHash('sha256').update(JSON.stringify({
     lot: lot.id, saines: saines.map((s) => [s.rang, s.issue, s.colonnes ?? null]), conflits: conflits.map((c) => [c.id, c.genre, c.version_1, c.version_2, c.choix_possibles]),
   })).digest('hex').slice(0, 32);
@@ -724,6 +761,8 @@ export function resoudreLeConflit(db, corps, { instant, id } = {}) {
   try {
     db.exec('PRAGMA defer_foreign_keys = ON');
     const ctx = contexte(db, { id, instant, pageId: lot.page_id });
+    // la magie de chaque don « Variable » avant la résolution : un don que le lot fait quitter ce type ou changer de magie perd les choix des fiches (R181)
+    const variablesAvant = magiesDesDonsVariables(db);
     const lignes = lignesEnConflit(db, lot.id);
     const { entrees, differees } = parcourir(ctx, lignes, new Set(diag.interne.abandons.keys()));
     const ids = entrees.filter((e) => e.issue === 'conflit').flatMap((e) => conflitsDeLEntree(e, db)).map((c) => c.id);
@@ -790,11 +829,19 @@ export function resoudreLeConflit(db, corps, { instant, id } = {}) {
       if (ligne) OUTILS.deriver({ ...ctx, db: vueSansPages(db) }, table, { ...ligne, ...v1 }, ligne);
     }
     commeLeRejeu(ctx, entrees, brutes);
+    // décision R181, « Retirés avec une note », R192 : comme un lot du site de dev (serveur/edition.mjs#enregistrer), une fois toutes les lignes écrites
+    retirerLesChoixDesDonsChanges(db, variablesAvant, ctx.retraits);
     const fiches = noterLesRetraits(db, ctx.retraits, instant);
     const rompues = rompuesDuLot(db, entrees.filter((e) => e.issue !== 'saute'), { tables: [...new Set(ctx.w.lignes.map((l) => l.table))], deja: diag.interne.deja });
     if (rompues.length) {
       throw erreur(409, `Ces choix rompraient une référence : ${[...new Set(rompues.map((r) => r.raison))].slice(0, 5).join(' ; ')}.`, { lot: diag.public });
     }
+    // une page des Règles supprimée (choix 1 d'une suppression en conflit) qu'un texte cite encore : un lien cassé, refusé comme une référence rompue
+    const supprimeesAuChoix1 = new Set(diag.public.conflits.filter((c) => c.genre === 'suppression' && choix.get(c.id).choix === 1).map((c) => c.rang));
+    const liens = OUTILS.liensRompusParLeLot(db, entrees.map((e) => e.m), {
+      faites: entrees.filter((e) => e.issue === 'applique' || supprimeesAuChoix1.has(e.rang)).map((e) => e.m),
+    });
+    if (liens.length) throw erreur(409, `Ces choix casseraient un lien : ${liens.map((l) => l.raison).slice(0, 5).join(' ; ')}.`, { lot: diag.public });
     const ecrit = ctx.w.nombre > 0;
     if (ecrit) ctx.w.terminer(`Résolution du conflit du lot ${lot.id} : ${lot.resume}`);
     else db.prepare('DELETE FROM modification_lot WHERE id = ?').run(id);

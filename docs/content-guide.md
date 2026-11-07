@@ -486,8 +486,9 @@ Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, tes
   **NPM des cartes** (décision R130) : au-dessus de la liste des créatures d'un sort d'invocation dont une carte change avec le NPM (golems, non-morts), un
   curseur « Cartes au NPM » (caché sans JavaScript) pose `data-npm` sur toutes les cartes de la page qui changent avec lui (une bulle par créature et par
   page : tous les curseurs de la page vont ensemble, script de `SortsInteractifs.astro`) ; la carte montre alors ses valeurs à ce NPM (voir `docs/bestiaire.md`).
-  **Amélioration cadavérique** (décision R130 : « avoir tous les améliorations visible en fonction de l'invocation sacrifié ») : le sort qui porte le nom écrit dans
-  le titre du tableau d'une invocation (`invocation.tableau_titre`, `lib/bestiaire-db.mjs#tableauxDesSorts`) montre ce tableau dans son bloc « Règles propres :
+  **Amélioration cadavérique** (décision R130 : « avoir tous les améliorations visible en fonction de l'invocation sacrifié ») : le sort désigné par
+  `invocation.tableau_sort_id` (identifiant figé, migration 0099 ; plus par le nom écrit dans le titre du tableau `invocation.tableau_titre`, qui se renomme sans
+  couper le lien : `lib/bestiaire-db.mjs#tableauxDesSorts`) montre ce tableau dans son bloc « Règles propres :
   selon l'invocation sacrifiée », une ligne par amélioration ; une amélioration qui porte exactement le nom d'une créature de l'invocation montre sa carte en
   infobulle sur le nom de la créature (« S. de pierre », « S. rayonnant », « Zombi obscur » restent des noms, à trancher).
 - **Infobulles** (`components/Infobulles.astro`, commun à tout le site, `Info.astro`, `EtatPastille.astro` ; habillage `styles/global/infobulles.css`) : au survol (la bulle reste ouverte quand le pointeur passe dessus), au focus clavier (Échap ferme la bulle seule, pas le panneau du sort) ou au toucher (un premier appui ouvre la bulle,
@@ -507,8 +508,9 @@ Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, tes
   ouvre son onglet puis le sort ; pas de texte d'aide au-dessus des onglets. Les onglets (script commun avec les spécialités des pages de classe : `components/Onglets.astro`) suivent le motif « tabs » de l'ARIA ; sans JavaScript et à
   l'impression, les 14 magies se suivent, chacune sous son titre. `test/potentiel-illimite.test.mjs` et `test/magies-html.test.mjs` (site construit) le vérifient.
 - **Sources** : ni « Source : … » dans le panneau d'un sort, ni section « Sources » en pied de page des pages de magie (`sources:` reste dans le front matter pour la traçabilité).
-- **Chaque élément renvoie à sa page** : magie → page de la magie, altération d'état → sa section de `/regles/liste-des-alterations-d-etat/` (l'ancre est celle du titre `## <nom>`, vérifiée par
-  le test), créature ou invocation → page du bestiaire, race → page de la race.
+- **Chaque élément renvoie à sa page** : magie → page de la magie, altération d'état → sa section de `/regles/liste-des-alterations-d-etat/` (l'ancre figée de son intertitre, tirée de l'id de l'état et
+  jamais de son nom : `## Brûlure {#brulure}` pour `…#etat:brulure`, `lib/magies-db.mjs#ancreDeLEtat` ; « Ancres figées des intertitres » plus bas ;
+  `test/etat-ancre.test.mjs`), créature ou invocation → page du bestiaire, race → page de la race.
 - `Résistances` et `Vulnérabilités` = `magie_resistance` (cibles « magie » et « état », écriture de la source sur la pastille), `Magie non compatible` = `v_magie_incompatible` (relation symétrique)
   **sans le Potentiel Illimité**, cité dans aucun bloc (il est incompatible avec toutes) ; une magie **mono-magie** (`magie.mono_magie` : Potentiel Illimité, Corruption) affiche à la place
   « Mono-magie uniquement », puis « Excepté pour » et les ethnies de `magie_ethnie_secondaire` (Elfe Noir Charbon, Felfe Noir pour la Corruption) ; décision R15, `lib/magie-non-compatible.mjs`.
@@ -1246,7 +1248,8 @@ Sans JavaScript, les panneaux se suivent, chacun sous son titre.
 **Mode modification** (site de dev, `src/scripts/edition/composants.mjs`, `serveur/edition-composants.mjs`) : le titre de chaque onglet (le titre de son
 panneau, affiché en mode modification ; l'onglet le reprend à l'enregistrement) et sa note (vidée : sans note) — ni création ni suppression d'onglet ;
 chaque case se modifie (nom, prix,
-description, prix d'une gemme, type et affinité d'un ingrédient, nom, abréviation et valeur d'une monnaie) ; ce qui en est tiré est recalculé (prix en RF,
+description, prix d'une gemme, type et affinité d'un ingrédient, abréviation d'une monnaie créée (celles du RF, du RO et de la PP sont refusées, R61) — son nom (« Figer les noms ») et sa valeur en RF (R61) se donnent à
+sa création et ne se modifient plus, `lib/edition-modele.mjs#TABLES.monnaie`) ; ce qui en est tiré est recalculé (prix en RF,
 ligne du CONVERTISSEUR, type sans « (majeur) », marque majeur, affinité — créée si elle est nouvelle). Un bouton « + Ajouter » sous chaque tableau (une
 gemme ou un bois pour une magie qui n'en a pas : « une par magie » ; un « (majeur) » seulement pour un amplificateur) ; « Supprimer » sur chaque ligne que
 rien d'autre ne cite — un composant cité par une armure, une recette, un effet d'accessoire… ne se supprime pas (le bouton grisé dit pourquoi). Un objet
@@ -1808,6 +1811,27 @@ deviendront des liens »). Un mot-clé qui porte une adresse (`mot_cle.url`, int
   colonnes de toutes les pages. Elles polluent l'affichage pour rien. ») ; le pied d'une page ne garde que ses mots-clés.
 
 Une balise ou un `[[…]]` placé dans du code (`` `…` `` ou bloc ```) n'est pas interprété.
+
+## Ancres figées des intertitres
+
+Un intertitre que le code ou un lien vise (une section rattachée à une page, la section d'une altération d'état) porte une **ancre figée** au bout de
+sa ligne : `## La ceinture {#la-ceinture}`. L'ancre est un identifiant : renommer l'intertitre sur le site de dev ne la change pas, et le rattachement
+ou le lien tient (`lib/ancres-figees.mjs`).
+
+- **Forme.** ` {#ancre}` à la fin d'une ligne d'intertitre `#` à `######`, après au moins une espace ; l'ancre en minuscules ASCII, chiffres et tirets
+  entre deux mots (`[a-z0-9]+(-[a-z0-9]+)*`). Ailleurs (paragraphe, code délimité), le texte reste du texte. Deux intertitres d'une page n'ont jamais
+  la même ancre.
+- **Choix de l'ancre.** Celle que l'intertitre avait déjà (le slug du texte d'origine, `la-ceinture`) : les liens d'avant la marque tiennent. Le
+  slug du build garde les accents (`## Brûlure` → `#brûlure`), qu'une ancre figée n'a pas : quand l'ancre vient d'un identifiant (une altération d'état,
+  `…#etat:brulure` → `{#brulure}`), l'adresse de la section change une fois, à la pose de la marque.
+- **Rendu.** Le plugin remark `remarkAncresFigees` (déclaré dans `astro.config.mjs`, `lib/guide-rendu.ts` et l'aide des tests
+  `test/aide-rendu-du-site.mjs`, qui doivent rester d'accord) retire la marque du texte affiché et pose l'ancre en `id` du titre (à la place du slug du
+  texte) et en `data-ancre-figee`. L'éditeur visuel (`lib/markdown-edition.mjs`) relit `data-ancre-figee` et réécrit ` {#ancre}` : une page modifiée sur
+  le site de dev garde ses ancres. La recherche et les résumés lisent le texte sans la marque (`sansAncresFigees`).
+- **Garde du service.** Le service d'édition refuse (`400`, l'ancre nommée) un texte qui retire, renomme ou double une ancre figée ; une ancre
+  ajoutée, ou l'intertitre renommé qui garde la sienne, passent ; au rejeu, un lot plus ancien qui en romprait une est en conflit (`docs/serveur.md`).
+- **Lecture par le code.** `sectionParAncre(corps, ancre)` donne la section (jusqu'à l'intertitre suivant de même niveau ou plus haut), sans lire le
+  texte de l'intertitre (`lib/ceinture-db.mjs` : `ANCRE_DES_REGLES`, `ANCRE_DE_LA_REFERENCE`).
 
 ## Statuts
 

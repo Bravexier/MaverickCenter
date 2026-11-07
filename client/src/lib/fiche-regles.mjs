@@ -14,7 +14,7 @@ import { effetDePosture } from './posture-texte.mjs';
 import { armureNaturelleEcrite, effetsDuModeHyper } from './mode-hyper-texte.mjs';
 import { CLASS_GROUPS, classCategory } from './class-groups.mjs';
 import { competencesDArme, durabiliteDeLArme, porteeDeLArme } from './arme-champs.mjs';
-import { DURABILITE_MIN } from './arme-forge.mjs';
+import { DURABILITE_MIN, MATERIAU_PAR_DEFAUT } from './arme-forge.mjs';
 import { BATON_A_REGLER, contenanceEcrite, effetsDeBaton, exemplairesDeCeintureEcrits, nomDeBaton, sacSansForceEcrit } from './ceinture-texte.mjs';
 import { bonusDeDegatsEcrit } from './degats-texte.mjs';
 import { bonusDeSortsEcrits, preparationEcrite } from './sort-bonus-texte.mjs';
@@ -30,6 +30,7 @@ import {
   classeDeSecondeMagie, classeDuModeHyper, classeDuPoids,
 } from './palette-css.mjs';
 import { normalize } from './text.mjs';
+import { valeursDAvant } from './historique-site.mjs';
 import { chargerVocabulaire } from './mots-cles-db.mjs';
 import { texteSansBalises, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
 import { valeurDuPoids } from './fiche-format.mjs';
@@ -385,6 +386,15 @@ function reglesDeLaBase(db) {
   const amMagique = db.prepare("SELECT am_base FROM categorie_classe WHERE id = 'classe-magique'").get()?.am_base;
   if (!amMagique) throw new Error('categorie_classe « classe-magique » : am_base absent');
   const alternatives = parCle(lignes(db, 'SELECT capacite_id, autre_id FROM v_capacite_exclusive'), 'capacite_id', (r) => r.autre_id);
+  // les noms d'avant un renommage sur le site de dev (lib/historique-site.mjs#valeursDAvant), des dons et des sorts, par id (clé primaire `id` des deux
+  // tables) ; `nomsDAvant` rend { noms_d_avant } sans le nom actuel, ou rien
+  const parId = (table) => new Map([...valeursDAvant(db, table, 'nom')].map(([cle, noms]) => [JSON.parse(cle).id, noms]));
+  const nomsDAvantDesDons = parId('capacite');
+  const nomsDAvantDesSorts = parId('sort');
+  const nomsDAvant = (noms, x) => {
+    const avant = (noms.get(x.id) ?? []).filter((n) => n !== x.nom);
+    return avant.length ? { noms_d_avant: avant } : {};
+  };
   const capacites = parCle(lignes(db, `SELECT id, classe_id, specialite_id, niveau, nature, ligne, rang, nom, type, type_brut, limite_nombre, limite_periode, effet, remarque
                                         FROM capacite`), 'classe_id');
   const specialites = parCle(lignes(db, 'SELECT id, classe_id, rang, nom, description FROM specialite ORDER BY classe_id, rang'), 'classe_id');
@@ -488,6 +498,9 @@ function reglesDeLaBase(db) {
         ...(entreesDesClasses.has(c.id) ? { entrees: entreesDesClasses.get(c.id) } : {}),
         dons: [...dons].sort((a, b) => a.niveau - b.niveau || a.ligne - b.ligne || a.rang - b.rang).map((d) => ({
           id: d.id, nom: d.nom, nature: d.nature, niveau: d.niveau, specialite_id: d.specialite_id, type: d.type, effet: d.effet,
+          // les noms qu'il a portés avant un renommage sur le site de dev (historique_modification) : une fiche écrite avant se relit
+          // (lib/fiche-tableur-import.mjs) ; absent pour un don jamais renommé
+          ...nomsDAvant(nomsDAvantDesDons, d),
           // ce que la cellule de type écrit entre parenthèses (« 2 fois/combat », « 3 tours de recharge »), tel quel, comme la page de la classe
           precision: typeDeDon(d.type_brut).precision,
           // sa limite d'usage, lue dans son type (capacite.limite_nombre, limite_periode : « Actif (2 fois/combat) ») et son genre (décision R173 :
@@ -541,6 +554,8 @@ function reglesDeLaBase(db) {
   const sorts = lignes(db, 'SELECT id, magie_id, nom, niveau, type_brut, cout_brut, cout_secondaire, portee_brut, zone_brut, dsb_brut, effets, remarque FROM sort ORDER BY magie_id, niveau, ordre')
     .map((s) => ({
       id: s.id, magie_id: s.magie_id, nom: s.nom, niveau: s.niveau, type: s.type_brut, cout: s.cout_brut, portee: s.portee_brut, zone: s.zone_brut, dsb: s.dsb_brut, effets: s.effets, remarque: s.remarque,
+      // les noms qu'il a portés avant un renommage sur le site de dev (comme les dons) ; absent pour un sort jamais renommé
+      ...nomsDAvant(nomsDAvantDesSorts, s),
       // le second coût (âmes, Sang… : décision R105) ou sa précision (« Par tour » : R106), sans expression de NM ; absent quand le sort n'en a pas
       ...(s.cout_secondaire ? { cout_secondaire: s.cout_secondaire } : {}),
       modes: modesDesSorts.get(s.id) ?? [],
@@ -657,8 +672,9 @@ function reglesDeLaBase(db) {
         id: m.ressource_id, nom: nomDeRessource(m.ressource_id), bonus_degats: m.bonus_degats, cran_solidite: m.cran_solidite,
         ...(m.effet_secondaire?.trim() ? { effet_secondaire: m.effet_secondaire } : {}),
       })),
-    // le matériau d'une arme choisie, par défaut (décision R49 : « son matériau (par défaut le fer) ») : le fer du tableau des matériaux d'arme
-    materiau_arme_defaut: db.prepare("SELECT m.ressource_id AS id FROM materiau_arme m JOIN ressource r ON r.id = m.ressource_id WHERE r.nom_cle = 'fer'").get()?.id ?? null,
+    // le matériau d'une arme choisie, par défaut (décision R49 : « son matériau (par défaut le fer) ») : le fer du tableau des matériaux d'arme, par son id
+    // figé (arme-forge.mjs#MATERIAU_PAR_DEFAUT), jamais par son nom ; null si le site de dev l'a retiré du tableau
+    materiau_arme_defaut: db.prepare('SELECT ressource_id AS id FROM materiau_arme WHERE ressource_id = ?').get(MATERIAU_PAR_DEFAUT)?.id ?? null,
     // `bonus_ap`, `bonus_am` : l'AP et l'AM d'une amélioration d'armure, d'armure élémentaire ou de bouclier, ceux du niveau choisi (décisions R76, R77)
     // et son coût, tel qu'écrit (`cout`) et en gemmes (cout_gemmes, cout_gemmes_qualite : « commune », « raffinee », « parfaite ») ou en pièces élémentaires
     // (cout_pieces_elementaires) : le tableau d'amélioration des armures élémentaires (décision R165 (2) ; les gemmes sont celles de la magie, table gemme).

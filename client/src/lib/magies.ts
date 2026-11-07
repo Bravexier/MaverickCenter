@@ -1,7 +1,6 @@
 import { chargerInvocations } from './bestiaire-db.mjs';
 import { ouvrirBase } from './donnees.mjs';
-import { chargerMagies } from './magies-db.mjs';
-import { ancreDeTitre } from './sort-format.mjs';
+import { ancreDeLEtat, chargerMagies } from './magies-db.mjs';
 import { cheminDePage } from './metiers.mjs';
 import { url } from './wiki';
 
@@ -39,8 +38,11 @@ export const ordreDesMagies = () => [...loadMagies().magies.values()].sort((a, b
 
 /** Lien vers une page du wiki d'après son id (« bestiaire/golem-de-boue ») ; pour un métier, sa ligne du tableau de /metiers/. */
 export const pageHref = (pageId: string) => url(cheminDePage(pageId));
-/** Lien vers la section d'une altération d'état sur la page « Liste des altérations d'état ». */
-export const etatHref = (etat: { pageId: string; nom: string }) => `${pageHref(etat.pageId)}#${ancreDeTitre(etat.nom)}`;
+/**
+ * Lien vers la section d'une altération d'état sur la page « Liste des altérations d'état » : l'ancre figée de son intertitre, tirée de l'identifiant de
+ * l'état (lib/magies-db.mjs#ancreDeLEtat), jamais de son nom, que le site de dev peut renommer.
+ */
+export const etatHref = (etat: { pageId: string; id: string }) => `${pageHref(etat.pageId)}#${ancreDeLEtat(etat.id)}`;
 /**
  * Identifiant HTML d'un sort (lien profond : `…/magie-du-feu/#sort-boule-de-feu`). `prefixe` distingue les magies d'une page qui en montre
  * plusieurs (`…/potentiel-illimite/#sort-feu-boule-de-feu`) : deux magies peuvent avoir un sort du même nom.

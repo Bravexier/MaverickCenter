@@ -13,8 +13,8 @@
 //   - quitter sans enregistrer : les textes et l'ordre d'avant reviennent (un bloc créé pendant la session reste : il est dans la base) ;
 //   - surcouche (le site construit est en retard sur le site de dev) : chaque ligne d'un bloc modifiée depuis la construction (lignes en attente, et celles
 //     d'un enregistrement) refait son bloc d'après la base vivante quand son texte a changé (empreinte `data-preg-empreinte` ; HTML :
-//     lib/panneaux-regles-rendu.mjs#htmlDuBloc, Markdown rendu par lib/chronologie-rendu.mjs#htmlDuTexte — sans les icônes de monnaie, que seul le build
-//     pose), le place à son ordre de lecture, ou le retire ; le titre d'un panneau ou d'une tuile suit par l'éditeur commun (son `data-ed`). Un bloc à
+//     lib/panneaux-regles-rendu.mjs#htmlDuBloc, Markdown rendu par lib/chronologie-rendu.mjs#htmlDuTexte, comme au build, monnaies en
+//     icônes comprises), le place à son ordre de lecture, ou le retire ; le titre d'un panneau ou d'une tuile suit par l'éditeur commun (son `data-ed`). Un bloc à
 //     refaire quand le mode modification a commencé pendant le rendu (la liste des pages du wiki se lit sur le réseau) n'est pas remplacé sous la saisie :
 //     il l'est à la sortie du mode modification, sauf si une ligne plus récente l'a refait entre-temps (`etat.differees`).
 // Exécutée dans un faux navigateur par test/edition-panneaux.test.mjs (les ordres eux-mêmes : lib/panneaux-regles-db.mjs, test/panneaux-regles.test.mjs).

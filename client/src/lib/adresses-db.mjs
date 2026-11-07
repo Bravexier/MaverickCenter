@@ -65,18 +65,23 @@ export function adressesDuSite(db) {
 
 /**
  * L'index des pages par adresse : { exactes: Map(adresse avec ancre → id), chemins: Map(chemin → id, pages dont l'adresse n'a pas d'ancre) } ; les
- * pages d'exemple n'y sont pas (sauf `exemples`).
+ * pages d'exemple n'y sont pas (sauf `exemples`). `enPlus` : des ids de pages qui ne sont plus dans la base (une page qu'un lot rejoué vient de
+ * supprimer : lib/citations-db.mjs, option `absentes`), indexées après celles de la base, à leur adresse (une page de la base garde la sienne).
  * @param {import('node:sqlite').DatabaseSync} db
+ * @param {{ exemples?: boolean, enPlus?: Iterable<string> }} [options]
  */
-export function indexDesAdresses(db, { exemples = false } = {}) {
+export function indexDesAdresses(db, { exemples = false, enPlus = [] } = {}) {
   const exactes = new Map();
   const chemins = new Map();
-  if (!tableExiste(db, 'page')) return { exactes, chemins };
-  for (const p of db.prepare(`SELECT id FROM page${exemples ? '' : " WHERE statut <> 'example'"} ORDER BY id`).all()) {
-    const adresse = adresseDeLaPage(p.id);
-    if (!exactes.has(adresse)) exactes.set(adresse, p.id);
-    if (!decouperLAdresse(adresse).ancre && !chemins.has(adresse)) chemins.set(adresse, p.id);
+  const indexer = (id) => {
+    const adresse = adresseDeLaPage(id);
+    if (!exactes.has(adresse)) exactes.set(adresse, id);
+    if (!decouperLAdresse(adresse).ancre && !chemins.has(adresse)) chemins.set(adresse, id);
+  };
+  if (tableExiste(db, 'page')) {
+    for (const p of db.prepare(`SELECT id FROM page${exemples ? '' : " WHERE statut <> 'example'"} ORDER BY id`).all()) indexer(p.id);
   }
+  for (const id of enPlus) indexer(id);
   return { exactes, chemins };
 }
 

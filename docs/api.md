@@ -113,8 +113,9 @@ rien n'est déduit). Réponse `201` : le détail créé, plus `lot` et `fiches`,
 l'adresse (le donner aussi dans le corps avec une autre valeur : `400`).
 
 **Modifier** (`PATCH /api/v1/<ressource>/<clé>/`) : `{ "<colonne>": valeur, "<table d'extension>": { "<colonne>": valeur } }`. Une opération
-`modifier` par table touchée, colonnes de `TABLES` seulement (une autre colonne : `400` qui donne la liste) ; ce qui en dépend est recalculé par le
-service. Une extension absente n'est pas créée (`404`, rien n'est écrit). Réponse `200` : le détail relu, plus `lot` et `fiches`, `ETag`.
+`modifier` par table touchée, colonnes de `TABLES` seulement (une autre colonne : `400` qui donne la liste), plus les clés hors colonnes de la table
+principale (`lib/edition-modele.mjs#CHAMPS_HORS_COLONNES`, décrites par le catalogue sous `hors_colonnes` et par OpenAPI : `magie` d'un don de classe,
+ci-dessous) ; ce qui en dépend est recalculé par le service. Une extension absente n'est pas créée (`404`, rien n'est écrit). Réponse `200` : le détail relu, plus `lot` et `fiches`, `ETag`.
 
 **Supprimer** (`DELETE /api/v1/<ressource>/<clé>/`, corps facultatif) : une opération `supprimer` de l'entité de la ressource → `{ supprime, adresse,
 lot, fiches }`. Ce que d'autres règles citent est refusé (`409`, qui les nomme) ; un don, une spécialité, un métier ou une arme est retiré des fiches
@@ -364,10 +365,14 @@ donne chaque source de points de maîtrise d'armes, migration 0076) : une source
 dérivée ne sait pas porter ; `capacite_nm_gagne` (les NM de sorts gagnés d'un don, R154) est une dérivée de `dons-de-classe/`. Toutes trois sont
 refaites par le service d'édition quand une écriture change une ligne de maîtrise d'une classe ou l'effet d'un don (`serveur/edition-maitrises.mjs`),
 jamais écrites directement. `capacite_variable` (la magie que vise un don « Variable » du Mage Bleu, décision R181, migration 0088) est aussi une dérivée de
-`dons-de-classe/`, mais écrite par la migration seulement : le service d'édition ne la refait pas encore (un don « Variable » créé ou réécrit sur le site
-de dev n'y entre pas). De même, écrites par la migration seulement (migration 0097) : `capacite_npm_plafond` (le plafond de NPM des sorts que relève un
-don, R188) et `capacite_condition_emplacements` (les dons qui comptent comme une condition d'emplacements de sorts, R189), dérivées de `dons-de-classe/`,
-et `magie_npm_plafond` (le plafond de NPM des sorts d'une magie innée, R188), dérivée de `magies/`. Les entrées du tableau du Mage Bleu (`classe_annexe_entree`) sont la sous-ressource `entrees-du-tableau` de `classes/`, en
+`dons-de-classe/` : écrite par la migration, et à la création d'un don de type « Variable » d'après son champ `magie` (`innee` ou `acquise`, « Magie
+innée » / « Magie acquise » ; exigé pour ce type, refusé `400` pour un autre ; `don_magie` pour le don d'une spécialité créée : réponse du propriétaire
+« Demander la magie »), et quand un `PATCH` change le type (réponse du propriétaire « Demander ou retirer », R192) : passer à « Variable » exige la clé
+`magie` dans le même corps (`400` qui cite R181 sans elle, rien d'écrit), quitter « Variable » supprime la ligne (une `magie` envoyée alors : `400`) ;
+sur un don déjà « Variable », `magie` seule change la magie visée. Écrites par la migration seulement (migration 0097) : `capacite_npm_plafond` (le plafond
+de NPM des sorts que relève un don, R188) et `capacite_condition_emplacements` (les dons qui comptent comme une condition d'emplacements de sorts, R189),
+dérivées de `dons-de-classe/`, et `magie_npm_plafond` (le plafond de NPM des sorts d'une magie innée, R188), dérivée de `magies/`. Un don supprimé emporte
+ces trois lignes, notées au journal avant lui (réponse du propriétaire : « Autoriser et journaliser »). Les entrées du tableau du Mage Bleu (`classe_annexe_entree`) sont la sous-ressource `entrees-du-tableau` de `classes/`, en
 lecture seule ; les dons obtenus d'une fiche (`personnage_don_obtenu`) sont une partie de la fiche, hors ressource.
 
 Chaque opération du lot du service est joignable par une ressource (`test/ressources-registre.test.mjs` lit `OPERATIONS` dans

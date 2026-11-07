@@ -9,7 +9,7 @@
 //   - quitter sans enregistrer : le texte d'avant revient ;
 //   - surcouche (le site construit est en retard sur le site de dev) : une ligne de l'annonce modifiée depuis la construction (lignes en attente, et celles
 //     d'un enregistrement) refait sa zone d'après la base vivante quand son texte a changé (empreinte `data-annonce-empreinte` ; HTML :
-//     lib/annonces.mjs#contenuDeLAnnonce, Markdown rendu par lib/chronologie-rendu.mjs#htmlDuTexte — sans les icônes de monnaie, que seul le build pose) ;
+//     lib/annonces.mjs#contenuDeLAnnonce, Markdown rendu par lib/chronologie-rendu.mjs#htmlDuTexte, comme au build, monnaies en icônes comprises) ;
 //     pas sous la saisie : à la sortie du mode modification.
 // Exécutée dans un faux navigateur par test/edition-annonces.test.mjs.
 import { contenuDeLAnnonce, empreinteDeLAnnonce } from '../../lib/annonces.mjs';

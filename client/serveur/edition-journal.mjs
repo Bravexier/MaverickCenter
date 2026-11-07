@@ -471,11 +471,11 @@ const decodee = (m) => ({
  * pas d'équivalent, qui met tout son lot en conflit sans le rejouer (serveur/edition-bestiaire.mjs#ancienneEcritureDesCapacites : avant la migration 0044 ;
  * serveur/edition-armures.mjs#ancienneEcritureDesArmures : une défense ou une amélioration de bouclier saisie en un texte qui ne se lit pas exactement
  * dans les cases d'aujourd'hui, demande du propriétaire du 2026-10-17).
- * `apresLeLot(modifications)` : appelée après les modifications de chaque lot qui passe, dans son lot (avant le contrôle de ses clés étrangères, annulée
- * avec lui), avec ses modifications (telles qu'adaptées) ; elle écrit ce que le lot entraîne au-delà de ce qu'il note et rend ces écritures, décodées
+ * `apresLeLot(modifications, issues)` : appelée après les modifications de chaque lot qui passe, dans son lot (avant le contrôle de ses clés étrangères, annulée
+ * avec lui), avec ses modifications (telles qu'adaptées) et leurs issues (`applique`, `integree`, `derivee`, `fantome`, dans le même ordre) ; elle écrit ce que le lot entraîne au-delà de ce qu'il note et rend ces écritures, décodées
  * ({ lot, rang, table, cle, operation, avant, apres, … }), passées à `applique` après celles du lot (serveur/edition.mjs#balisesRetireesParLeLot : les
  * balises d'un mot-clé supprimé ou fusionné, au moment où sa suppression est rejouée) ; une erreur met le lot en conflit.
- * @param {{ derivee?: (table: string, cle: object, colonne: string) => boolean, applique?: (m: object) => void, horsControleParLot?: Iterable<string>, siOrphelines?: Iterable<string>, adapter?: () => (m: object) => object, apresLeLot?: (modifications: object[]) => object[] }} [options]
+ * @param {{ derivee?: (table: string, cle: object, colonne: string) => boolean, applique?: (m: object) => void, horsControleParLot?: Iterable<string>, siOrphelines?: Iterable<string>, adapter?: () => (m: object) => object, apresLeLot?: (modifications: object[], issues: string[]) => object[] }} [options]
  * @returns {{ appliquees: number, integrees: number, conflits: number, lots: number }}
  */
 export function rejouer(db, options = {}) {
@@ -600,7 +600,7 @@ function rejouerUneFois(db, { derivee = () => false, horsControleParLot = [], si
     }
     if (!conflit && apresLeLot) {
       try {
-        entrainees = apresLeLot(modifications) ?? [];
+        entrainees = apresLeLot(modifications, resultats) ?? [];
       } catch (e) {
         conflit = `après le lot : ${e.message}`;
       }

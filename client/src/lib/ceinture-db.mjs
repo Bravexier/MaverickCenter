@@ -9,14 +9,22 @@
 // section « Ceinture » de la page de référence (le texte du Google Doc). Chaque potion porte la couleur que lui donne la règle du site
 // (lib/alchimie-couleurs.mjs : la couleur que le propriétaire a choisie pour sa page, sinon l'affinité de son essence, ou la caractéristique d'un
 // philtre, nuancée selon son niveau d'alchimie ; demande du propriétaire du 2026-10-22 : « Partout il faut utiliser Que les couleurs du site »).
-// Sans dépendance (sauf lib/equipement.mjs et lib/alchimie-couleurs.mjs, purs) : `chargerObjetsDeCeinture` reçoit la base ouverte par lib/donnees.mjs.
+// Sans dépendance (sauf lib/equipement.mjs, lib/alchimie-couleurs.mjs et lib/ancres-figees.mjs, purs) : `chargerObjetsDeCeinture` reçoit la base ouverte par lib/donnees.mjs.
+import { sectionParAncre } from './ancres-figees.mjs';
 import { AFFINITE_DES_PHILTRES, caracteristiqueDesCompetences, couleurDePotion } from './alchimie-couleurs.mjs';
 import { SOUS_ONGLETS_DE_LA_CEINTURE } from './equipement.mjs';
 
-/** Le chapitre du guide dont la section « La ceinture » donne les règles, et la page de référence qui les détaille. */
+/**
+ * Le chapitre du guide dont la section « La ceinture » donne les règles, et la page de référence qui les détaille. Chaque section se rattache par
+ * l'ancre figée de son intertitre seule (lib/ancres-figees.mjs : `## La ceinture {#la-ceinture}`, posée en base par la migration 0100), que le site
+ * de dev ne change pas quand il renomme l'intertitre. TITRE_… : l'intertitre d'origine, tel que l'import l'écrit (le message du build, le test de
+ * l'import), jamais un repli du rattachement.
+ */
 export const CHAPITRE_DE_LA_CEINTURE = 'guide/l-equipement';
+export const ANCRE_DES_REGLES = 'la-ceinture';
 export const TITRE_DES_REGLES = '## La ceinture';
 export const PAGE_DE_REFERENCE = 'guide/fiche-accessoires-et-ceinture';
+export const ANCRE_DE_LA_REFERENCE = 'ceinture';
 export const TITRE_DE_LA_REFERENCE = '## Ceinture';
 
 /** L'id d'un sous-onglet de lib/equipement.mjs, cherché par son id (un sous-onglet renommé ou retiré arrête le chargement, il ne change pas d'ordre en silence). */
@@ -97,8 +105,9 @@ export function chargerObjetsDeCeinture(db) {
   const reference = pageDe(db, PAGE_DE_REFERENCE);
   return {
     regles: {
-      ceinture: chapitre ? sectionDuCorps(chapitre.corps_md, TITRE_DES_REGLES) : null,
-      reference: reference ? sectionDuCorps(reference.corps_md, TITRE_DE_LA_REFERENCE) : null,
+      // l'ancre figée seule : une page qui ne la porte plus n'a plus la section (null), quel que soit le texte de ses intertitres
+      ceinture: chapitre ? sectionParAncre(chapitre.corps_md, ANCRE_DES_REGLES) : null,
+      reference: reference ? sectionParAncre(reference.corps_md, ANCRE_DE_LA_REFERENCE) : null,
     },
     sources: {
       chapitre: chapitre ? { id: chapitre.id, titre: chapitre.titre } : null,

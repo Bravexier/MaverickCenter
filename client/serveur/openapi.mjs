@@ -133,9 +133,11 @@ const modifiables = (colonnes) => colonnes.filter((c) => c.modifiable && c.champ
  * Le corps d'une modification : schéma (colonnes modifiables de la table, et de chaque extension sous son nom) et exemple : une colonne, avec sa
  * valeur actuelle dans la ligne d'exemple (une modification qui ne change rien : `lot` null).
  */
-function corpsDeModification(colonnes, extensions, exemple) {
+function corpsDeModification(colonnes, extensions, exemple, horsColonnes = []) {
   const principales = modifiables(colonnes);
   const proprietes = Object.fromEntries(principales.map((c) => [c.nom, schemaDuChamp(c.champ, { figee: c.figee })]));
+  // une clé hors colonnes (catalogue `hors_colonnes` : la magie d'un don qui passe à « Variable », R181), lue par le service d'édition
+  for (const c of horsColonnes) proprietes[c.nom] = schemaDuChamp(c);
   for (const e of extensions ?? []) {
     const m = modifiables(e.colonnes);
     if (m.length) {
@@ -258,7 +260,7 @@ function cheminsDeRessource(r, tag) {
       summary: `Modifier : ${r.nom}`,
       description: `Modifie les colonnes envoyées par ${r.modification ? ecritPar(r.modification) : 'le service d’édition'} (un lot du journal) ; If-Match (facultatif) : la version lue, sinon 409 avec la version à jour.`,
       parameters: [...cleDExemple, ref('parameters', 'IfMatch')],
-      requestBody: corpsDeModification(r.colonnes, r.extensions, r.exemple),
+      requestBody: corpsDeModification(r.colonnes, r.extensions, r.exemple, r.hors_colonnes),
       responses: { 200: reponse('Modifié (lot : null si rien ne changeait).', ref('schemas', 'DetailEcrit')), ...ERREURS_D_ECRITURE },
     };
   }
@@ -454,7 +456,7 @@ function cheminsDuService() {
     '/edition/chronologie/': lectureDuService('edition_chronologie', 'Chronologie vivante', `Les événements dans l’ordre de lecture avec leurs catégories, et les catégories.${SITE_DE_DEV}`),
     '/edition/plan/': lectureDuService('edition_plan', 'Plan vivant des Règles', `Les onglets des Règles et les entrées de leurs menus (pour chaque page : sa protection, ses citations, supprimable ou non), et les races par groupe dans l’ordre de leur liste.${SITE_DE_DEV}`),
     '/edition/race/': ecritureDuService('edition_race', 'Données d’une race', `{ race } → magies innées et relations de la race (lecture).${SITE_DE_DEV}`, { race: 'races/humain' }),
-    '/edition/classe/': ecritureDuService('edition_classe', 'Données d’une classe', `{ classe } → spécialités, dons, choix et fiches qui les citent (lecture).${SITE_DE_DEV}`, { classe: 'classes/guerrier' }),
+    '/edition/classe/': ecritureDuService('edition_classe', 'Données d’une classe', `{ classe } → spécialités, dons, choix, fiches qui les citent et magie des dons « Variable » (\`variables\`, R181) (lecture).${SITE_DE_DEV}`, { classe: 'classes/guerrier' }),
     '/edition/bestiaire/': ecritureDuService('edition_bestiaire', 'Lignes du bestiaire', `{ connues, logo } → l’ordre des lignes du tableau des monstres, et la ligne et la carte de celles que la page n’a pas (lecture).${SITE_DE_DEV}`, { connues: [], logo: '' }),
     '/edition/evenement/': ecritureDuService('edition_evenement', 'Un événement de la chronologie', `{ evenement } → l’événement, ses blocs et ses catégories (lecture).${SITE_DE_DEV}`, { evenement: '<identifiant>' }, { 404: ref('responses', 'Introuvable') }),
     '/edition/portrait/': ecritureDuService('edition_portrait', 'Portrait d’une carte ou d’une espèce', `{ table, cle } → le portrait en entier et son cadrage (lecture).${SITE_DE_DEV}`, { table: 'monstre', cle: { id: '<identifiant>' } }),

@@ -58,14 +58,15 @@ user-invocable: false
 ## Retraits (décision R42)
 - Un don, une spécialité (avec ses dons choisis), un sort ou un métier (et une arme : R52) supprimé des règles est retiré des fiches : sur le site de dev, dans le lot ; à la livraison, à la reconstruction de la base vivante, après le rejeu.
 - Une ligne datée par élément s'ajoute à la fin de `notes` (`lib/fiche-format.mjs#ligneDeRetrait`). Le descripteur d'un sort porte `livre` et `choisi` : le livre part avec le sort (dont un livre seul), noté « dont 1 de livre » ou « en attente ».
+- Un don qui quitte « Variable » (cas `type`) ou change de magie (cas `magie`) retire les `personnage_don_obtenu` dont il est la source, avec une note datée (R181, réponse du propriétaire « Retirés avec une note »). Au lot, à la résolution d'un conflit et à la livraison : `serveur/fiches-retraits.mjs#retirerLesChoixDesDonsChanges`, comparant à l'état d'avant (`magiesDesDonsVariables`, lu au début de la transaction).
 - Ces écritures se font en SQL direct (`serveur/fiches-retraits.mjs`), jamais par le journal, qui refuse la section 13 (`TABLES_INTERDITES` de `serveur/edition-journal.mjs`). Rien des fiches ne va au journal, dans `data/rows` ni dans un lot.
 - Une race, une classe ou une magie disparue bloque toujours la reconstruction, y compris par un don, une spécialité ou un sort qui en relève (non retiré).
 
 ## Tests
 - `test/personnages-db.test.mjs` : une copie de la base (contrôles de `v_personnage_controle`, visibilité, groupes, maîtrises R148 à R154, `maitrisesDeClasseChoisies`).
-- `test/personnages-armure-elementaire.test.mjs` : la migration 0080 rejouée sur une copie de fiches d'avant (`test/aide-migration-rejouee.mjs`, chaque vue reprenant ensuite sa définition de `data/schema.sql`) ; `test/serveur-armure-elementaire.test.mjs` : la même conversion par le service.
+- `test/personnages-armure-elementaire.test.mjs` : la migration 0080 rejouée sur une copie de fiches d'avant (`test/aide-migration-rejouee.mjs`) ; `test/serveur-armure-elementaire.test.mjs` : la même conversion par le service.
 - `test/db-armes-elementaires.test.mjs` (R167) : `personnage_arme` à un seul modèle et ses deux règles ; le reste : skill `base-sqlite`.
-- `test/db-r172-mode-hyper-activable.test.mjs` (R172, 0084), `test/db-r173-compteurs-d-actions.test.mjs` (R173, 0085), `test/db-r172-sort-prepare-en-mode-hyper.test.mjs` (R172, 0086), `test/db-r182-critique-du-sort-prepare.test.mjs` (R182, 0089) : colonnes, contraintes, fiche d'avant.
+- `test/db-r172-mode-hyper-activable.test.mjs` (0084), `db-r173-compteurs-d-actions` (0085), `db-r172-sort-prepare-en-mode-hyper` (0086), `db-r182-critique-du-sort-prepare` (0089) : colonnes, contraintes, fiche d'avant.
 - `test/db-r181-dons-variables.test.mjs` (R181) : `capacite_variable`, `personnage_don_obtenu` (clés, cascade) et les quatre règles `don_obtenu_*` ; `test/fiche-dons-variables.test.mjs` : le moteur d'accord avec elles (skill `zone-fiche`).
 - `test/personnages-livre-de-sort.test.mjs` (R169) : la migration 0082 ; les deux règles de NM sont dans `personnages-db.test.mjs`.
-- `test/maitrise-arme-sources.test.mjs` (rejeu du lecteur sur les tables de la section 6), `test/serveur-fiches-retraits.test.mjs` (R42), `test/fiche-format-retirees.test.mjs`, `test/tables-de-la-base.test.mjs`.
+- `test/maitrise-arme-sources.test.mjs` (rejeu du lecteur sur les tables de la section 6), `test/serveur-fiches-retraits.test.mjs` (R42), `serveur-edition-don-variable-fiches.test.mjs` (retraits R181), `test/fiche-format-retirees.test.mjs`, `test/tables-de-la-base.test.mjs`.

@@ -16,7 +16,7 @@ Depuis `client/`, Node ≥ 22.12 (`npm ci` si `node_modules` manque). Les tests 
 | Rendu d'une page, composant, style, script, `src/lib` lu au build | `npm run build`, puis `npm run test:cible`. Pour un `.astro`, un style ou `public/`, la sélection prend tous les tests qui lisent `dist/` (règle `rendu`) ; pour un script de page ou un module de rendu, elle ne les prend pas : ajouter les tests `*-html` et de `dist/` de la zone, nommés par `--fichiers` ou cités par son skill ; ce qui diffère entre dev et production (page Debug, éléments du site de dev) : aussi `HIDE_EXAMPLES=1 SITE_MODE=prod npm run build`, puis `node --test test/debug-page.test.mjs test/site-html.test.mjs`, comme la CI (`.github/workflows/ci.yml`) |
 | Tests qui lisent `data/rows`, notes de version, service d'édition | `test/mise-a-jour-simulation.test.mjs` (dans `npm test`) ; le job `simulation-de-mise-a-jour` de la CI rejoue un vrai lot (`zone-mise-a-jour`) |
 | `data/schema.sql`, `data/migrations/`, `data/rows` | `npm run db:build`, `npm run db:check`, `npm run db:pages-check`, `npm run db:doc -- --check` (`docs/sql/structure.md` à jour) |
-| Pages du wiki (`.md` fabriqués) | `npm run db:pages-check` (l'auteur a lancé `db:sync-pages` et lu sa sortie) |
+| Pages du wiki (`.md` fabriqués) | `npm run db:pages-check` (l'auteur a lancé `db:sync-pages` et lu sa sortie). Toujours après `db:export-pages` ou le build (`prebuild` l'enchaîne) : sur des `.md` périmés il est rouge à tort |
 | Scripts de page, imports entre modules de `src/lib` | `node tools/build-artifact.mjs --out <scratchpad>` (version portable : `site-version-portable`) |
 | Service `client/serveur/` | les tests `serveur-*` (dans `npm test`) |
 | `deploy/` | `test/deploy-vps.test.mjs` (dans `npm test`) ; fins de ligne LF |

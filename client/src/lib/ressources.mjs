@@ -5,7 +5,8 @@
 //
 // Une ressource ne fait que DÉCRIRE une table de la base (et ce qui n'existe qu'avec elle) ; elle n'écrit rien elle-même. Toute écriture de l'API
 // passe par le service d'édition (serveur/edition.mjs#enregistrer : un lot du journal, rejoué puis livré dans data/rows par la mise à jour) :
-//   - modifier (PATCH) : les colonnes de TABLES (lib/edition-modele.mjs) de la table principale et de ses extensions, rien d'autre ;
+//   - modifier (PATCH) : les colonnes de TABLES (lib/edition-modele.mjs) de la table principale et de ses extensions, et les clés de CHAMPS_HORS_COLONNES
+//     de la table principale (la magie d'un don qui passe à « Variable », R181 : catalogue `hors_colonnes`), rien d'autre ;
 //   - créer (POST) : l'entité ENTITES nommée par `ecriture.creer` (ses champs, ses refus, son identifiant tiré du nom puis figé) ;
 //   - supprimer (DELETE) : l'entité ENTITES nommée par `ecriture.supprimer` (qui doit avoir `suppression`), avec ses retraits des fiches (R42…) ;
 //   - ou une opération du lot (`operations`, `actions` : OPERATIONS_DU_LOT) quand le site de dev écrit la table par elle et non par TABLES ou ENTITES

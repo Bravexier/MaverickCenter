@@ -30,7 +30,7 @@
 //   GET  /api/edition/plan/         le plan vivant des Règles (onglets, page d'ouverture, entrées de chaque menu ; pour chaque page : sa protection et
 //                                   ses citations) et les races par groupe dans l'ordre de leur liste — serveur/edition-plan.mjs#planVivant
 //   POST /api/edition/race/         { race } → magies innées et relations de la race, dans la base vivante
-//   POST /api/edition/classe/       { classe } → spécialités, dons, choix et fiches qui les citent (ajout et suppression depuis sa page)
+//   POST /api/edition/classe/       { classe } → spécialités, dons, choix, fiches qui les citent et magie des dons « Variable » (ajout et suppression depuis sa page)
 //   POST /api/edition/bestiaire/    { connues, logo } → l'ordre des lignes du tableau des monstres, et la ligne et la carte de celles que la page n'a pas
 //   POST /api/edition/evenement/    { evenement } → un événement de la chronologie, ses blocs de description et ses catégories, dans la base vivante
 //   POST /api/edition/portrait/     { table, cle } → le portrait d'une carte de monstre ou d'une espèce, en entier, et son cadrage (les autres réponses

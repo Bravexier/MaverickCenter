@@ -1,5 +1,5 @@
 // Le rendu Markdown du site, pour les tests : le processeur de @astrojs/markdown-remark avec les plugins du site ([[liens]] sur l'index des pages,
-// couleurs des cases, monnaies en icônes ; astro.config.mjs et lib/guide-rendu.ts), puis les balises du glossaire comme le middleware (src/middleware.mjs,
+// couleurs des cases, monnaies en icônes, ancres figées des intertitres ; astro.config.mjs et lib/guide-rendu.ts), puis les balises du glossaire comme le middleware (src/middleware.mjs,
 // lib/mots-cles-balises.mjs#htmlAvecMotsCles) ; le rendu d'une page du guide (lib/guide-rendu.ts : liens Markdown préfixés, anciennes adresses du guide
 // menées à leur page du plan et gardées en `data-lien-ecrit`) ; et le HTML relu comme un navigateur le lirait (hast-util-from-html, dépendance de
 // @astrojs/markdown-remark) en l'arbre simple de lib/markdown-edition.mjs (celui qu'arbreDuDom tire du DOM). Partagé par test/markdown-edition.test.mjs et
@@ -9,6 +9,7 @@ import { createMarkdownProcessor } from '@astrojs/markdown-remark';
 import { fromHtml } from 'hast-util-from-html';
 import { remarkCouleursDeCase } from '../src/lib/markdown-couleurs.mjs';
 import { remarkMonnaies } from '../src/lib/markdown-monnaies.mjs';
+import { remarkAncresFigees } from '../src/lib/ancres-figees.mjs';
 import { htmlAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { buildIndex, remarkWikilinks, scanContent } from '../src/lib/wikilinks.mjs';
 import { adresseDesAnciensLiens, avecPrefixe, remarkAnciensLiensDuGuide } from '../src/lib/guide.mjs';
@@ -23,7 +24,7 @@ let processeur = null;
 export async function rendreLeMarkdown(md) {
   processeur ??= createMarkdownProcessor({
     syntaxHighlight: false,
-    remarkPlugins: [[remarkWikilinks, { index: buildIndex(scanContent(DOSSIER_DU_WIKI)), base: '/' }], remarkCouleursDeCase, remarkMonnaies],
+    remarkPlugins: [[remarkWikilinks, { index: buildIndex(scanContent(DOSSIER_DU_WIKI)), base: '/' }], remarkCouleursDeCase, remarkMonnaies, remarkAncresFigees],
   });
   return (await (await processeur).render(md, { frontmatter: { status: 'example' } })).code;
 }
@@ -40,7 +41,7 @@ export async function rendreCommeLeGuide(md, base = '/') {
     const adresse = (chemin) => adresseDesAnciensLiens(chemin, { cheminDe: cheminDePage, existe: (id) => ids.has(id), accueil: ACCUEIL_DU_GUIDE });
     processeursDuGuide.set(base, createMarkdownProcessor({
       syntaxHighlight: false,
-      remarkPlugins: [[remarkWikilinks, { index: buildIndex(pages), base }], remarkCouleursDeCase, remarkMonnaies, [remarkAnciensLiensDuGuide, { base, adresse }]],
+      remarkPlugins: [[remarkWikilinks, { index: buildIndex(pages), base }], remarkCouleursDeCase, remarkMonnaies, remarkAncresFigees, [remarkAnciensLiensDuGuide, { base, adresse }]],
     }));
   }
   return (await (await processeursDuGuide.get(base)).render(avecPrefixe(md, base), { frontmatter: { status: 'example' } })).code;

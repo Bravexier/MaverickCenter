@@ -8,6 +8,13 @@ import { ORDRE_CHAMPS_NM } from './sort-maitrise.mjs';
 import { normalize } from './text.mjs';
 
 const apres = (id, separateur) => id.slice(id.indexOf(separateur) + separateur.length);
+
+/**
+ * L'ancre de la section d'une altération d'état sur sa page (« Liste des altérations d'état ») : l'ancre figée de son intertitre (lib/ancres-figees.mjs,
+ * `## Brûlure {#brulure}`), le segment de son identifiant après « #etat: », jamais son nom (lot « Défauts du code », point 7 : renommer l'état ou
+ * l'intertitre sur le site de dev coupait le lien en silence). Les liens (lib/magies.ts#etatHref) et la page la partagent.
+ */
+export const ancreDeLEtat = (etatId) => apres(String(etatId), '#etat:');
 const regrouper = (rows, cle) => {
   const m = new Map();
   for (const r of rows) {
@@ -47,7 +54,7 @@ export function chargerMagies(db) {
         nom: e.nom,
         type: e.type,
         typeBrut: e.type_brut,
-        slug: apres(e.id, '#etat:'),
+        slug: ancreDeLEtat(e.id),
         pageId: e.id.slice(0, e.id.indexOf('#')),
         magiesLiees: (liensParEtat.get(e.id) ?? []).map((m) => ({ id: m.magie_id, nom: m.nom })),
         // stade NULL = la source fusionne les trois stades en une cellule
@@ -197,7 +204,7 @@ export function chargerMagies(db) {
     'sort_id',
   );
 
-  // Le tableau d'invocation que désigne un sort par son nom (« Amélioration cadavérique », décision R130 : bestiaire-db.mjs#tableauxDesSorts) : une amélioration
+  // Le tableau d'invocation rattaché à un sort par son id (invocation.tableau_sort_id, « Amélioration cadavérique », décision R130 : bestiaire-db.mjs#tableauxDesSorts) : une amélioration
   // qui porte exactement le nom d'une créature de l'invocation (normalize) montre sa carte en infobulle ; une autre (« S. de pierre », « S. rayonnant »,
   // « Zombi obscur ») reste un nom : la rapprocher d'une créature serait deviner.
   const tableauxParSort = new Map(

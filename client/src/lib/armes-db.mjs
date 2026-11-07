@@ -4,6 +4,7 @@
 // R45) ; à côté, la fiche de l'arme choisie, les matériaux et les améliorations. Les armes élémentaires (décision R167, migration 0081) sont listées
 // dans le tableau de leur famille (familles[].armes_elementaires), avec la colonne de coût élémentaire du tableau d'amélioration.
 // Sans dépendance (sauf lib/corps-armes.mjs, pur) : `chargerArmes` reçoit la base ouverte par lib/donnees.mjs.
+import { MATERIAU_PAR_DEFAUT } from './arme-forge.mjs';
 import { PAGE_DES_ARMES } from './corps-armes.mjs';
 
 export { PAGE_DES_ARMES };
@@ -96,10 +97,11 @@ export function chargerArmes(db) {
       type_elementaire: types.get(type_elementaire_id) ?? null,
       armes_elementaires: type_elementaire_id ? elementaires.filter((e) => e.type_id === type_elementaire_id) : [],
     }));
-  // le fer : le matériau par défaut (décision R49 : « son matériau (par défaut le fer) »)
+  // le fer : le matériau par défaut (décision R49 : « son matériau (par défaut le fer) »), par son id figé (arme-forge.mjs#MATERIAU_PAR_DEFAUT : un renommage
+  // sur le site de dev ne le perd pas)
   // le prix : celui de la ressource (décision R62 : la page « Composants » est la seule source des matériaux)
-  const materiaux = lignes(db, 'SELECT m.*, r.nom, r.nom_cle, r.prix_brut AS prix_ressource FROM materiau_arme m JOIN ressource r ON r.id = m.ressource_id ORDER BY m.ordre')
-    .map(({ nom, nom_cle, prix_ressource, ...ligne }) => ({ ligne, nom, prix: prix_ressource ?? ligne.prix_brut, defaut: nom_cle === 'fer' }));
+  const materiaux = lignes(db, 'SELECT m.*, r.nom, r.prix_brut AS prix_ressource FROM materiau_arme m JOIN ressource r ON r.id = m.ressource_id ORDER BY m.ordre')
+    .map(({ nom, prix_ressource, ...ligne }) => ({ ligne, nom, prix: prix_ressource ?? ligne.prix_brut, defaut: ligne.ressource_id === MATERIAU_PAR_DEFAUT }));
   const ameliorations = lignes(db, "SELECT * FROM amelioration_equipement WHERE cible = 'arme' ORDER BY niveau");
   const solidite = db.prepare("SELECT valeur FROM constante_equipement WHERE id = 'piece_elementaire.solidite_base'").get();
   const page = db.prepare('SELECT titre, resume, corps_md FROM page WHERE id = ?').get(PAGE_DES_ARMES) ?? null;

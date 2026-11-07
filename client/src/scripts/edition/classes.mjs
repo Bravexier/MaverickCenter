@@ -9,13 +9,22 @@
 //     datée le rappellera : décision R42) ;
 //   - les créations sont mises en file (une carte « sera créé à l'enregistrement » chacune, à modifier ou retirer) et partent avec « Enregistrer », dans
 //     le même lot que les suppressions et les champs modifiés (lib/dons-edition.mjs#operationsDuLot : une création sur une ligne en file la cite « @i ») ;
-//     leurs conséquences (un don qui devient reçu sans choix, les fiches qui perdront une spécialité ou un don…) sont confirmées avant l'envoi.
+//     leurs conséquences (un don qui devient reçu sans choix, les fiches qui perdront une spécialité ou un don…) sont confirmées avant l'envoi ;
+//   - la « Magie liée » d'un don « Variable » (décision R181 ; réponses du propriétaire « Demander la magie » et « Demander ou retirer » : « Passer à
+//     « Variable » demande la magie (innée ou acquise) ; quitter « Variable » retire le lien à la magie. ») : dans le formulaire d'un don ou d'une
+//     spécialité, le champ ne s'affiche et n'est exigé que pour le type « Variable », caché et non envoyé sinon ; sous le type d'un don existant, un choix
+//     de la magie s'affiche quand le type saisi est « Variable » (exigé quand il y passe, la magie actuelle sinon, à changer), et part dans l'opération
+//     « modifier » du don (`magie`) ; quitter « Variable » n'envoie rien, le service retire le lien (lib/dons-edition.mjs#champDeLaMagieDuDon,
+//     #avecLaMagieDuDon).
 import { assemblerClasse } from '../../lib/classe-assemblage.mjs';
+import { analyserTypeDeDon } from '../../lib/classe-champs.mjs';
 import {
   doitRedessiner, empreinteDeStructure, htmlDesDons, htmlDesSpecialites, htmlDuGroupeDeNavigation, htmlDuRepereMagique, lienDesSpecialites,
 } from '../../lib/classe-dons-rendu.mjs';
-import { consequences, libelleDeRetrait, niveauxProposes, nomDuDonSuit, operationsDuLot, permissions } from '../../lib/dons-edition.mjs';
-import { ENTITES } from '../../lib/edition-modele.mjs';
+import {
+  avecLaMagieDuDon, champDeLaMagieDuDon, consequences, libelleDeRetrait, niveauxProposes, nomDuDonSuit, operationsDuLot, permissions,
+} from '../../lib/dons-edition.mjs';
+import { CHAMPS_HORS_COLONNES, ENTITES, MAGIES_D_UN_DON_VARIABLE } from '../../lib/edition-modele.mjs';
 import { echapperHtml } from '../../lib/edition-rendu.mjs';
 
 const racine = () => document.querySelector('.classe[data-ed-classe]');
@@ -26,11 +35,26 @@ let etat = null; // état vivant de la classe (serveur/edition.mjs#donneesDeClas
 let chargement = null;
 let ancresConstruites = null; // ancres des dons de la page construite : leurs fiches existent (un don créé depuis renvoie à son ancre)
 const file = []; // créations en attente : { entite, valeurs, libelle }
+const magiesDesDons = new Map(); // élément [data-ed] du type d'un don → { id, controle, etaitVariable, actuelle, champ, choix } (mode modification)
+
+/** Le type choisi ou saisi est-il « Variable » (le premier mot, comme le service : lib/classe-champs.mjs#analyserTypeDeDon) ? */
+const estVariable = (type) => analyserTypeDeDon(type ?? '').type === 'variable';
+/** Les champs du type et de la magie d'un don dans le formulaire d'une entité (« Magie liée » d'un don « Variable », R181). */
+const CHAMPS_DU_DON_VARIABLE = { capacite: { type: 'type', magie: 'magie' }, specialite: { type: 'don_type', magie: 'don_magie' } };
+/** La magie actuelle d'un don « Variable » (capacite_variable.magie), si l'état vivant de la classe la donne ; null sinon (« inchangée »). */
+const magieActuelle = (id) => etat?.variables?.[id] ?? null;
 const donsSupprimes = new Set();
 const specialitesSupprimees = new Set();
 
 async function charger(ed) {
-  chargement = ed.appel('POST', 'edition/classe/', { classe: classeDeLaPage() }).then((r) => (etat = r));
+  // un échec n'est pas gardé : la prochaine entrée en mode modification relance la lecture
+  chargement = ed.appel('POST', 'edition/classe/', { classe: classeDeLaPage() }).then(
+    (r) => (etat = r),
+    (e) => {
+      chargement = null;
+      throw e;
+    },
+  );
   return chargement;
 }
 
@@ -213,6 +237,14 @@ function formulaire(ed, { entite, fixes, sans, libelle, aide, index = null }) {
     champs: champsDuFormulaire(entite, { sans, valeurs, choix }),
     bouton: index === null ? 'Ajouter' : 'Modifier',
     valider: (saisies) => {
+      const variable = CHAMPS_DU_DON_VARIABLE[entite];
+      if (variable) {
+        // la magie d'un don « Variable » : exigée pour ce type, oubliée pour un autre (champ caché, jamais envoyé)
+        const m = champDeLaMagieDuDon({ variable: estVariable(saisies[variable.type]), magie: saisies[variable.magie] });
+        if (m.erreur) throw new Error(`« ${ENTITES[entite].champs[variable.magie].libelle} » : ${m.erreur}`);
+        if (m.envoyer === null) delete saisies[variable.magie];
+        else saisies[variable.magie] = m.envoyer;
+      }
       for (const [nom, c] of Object.entries(ENTITES[entite].champs)) {
         if (!sans.includes(nom) && (c.requis || (entite === 'capacite' && nom === 'niveau')) && !String(saisies[nom] ?? '').trim()) {
           throw new Error(`« ${c.libelle} » est obligatoire.`);
@@ -226,6 +258,7 @@ function formulaire(ed, { entite, fixes, sans, libelle, aide, index = null }) {
       afficherLaFile(ed);
     },
   });
+  if (CHAMPS_DU_DON_VARIABLE[entite]) suivreLeTypeDuFormulaire(dialogue, CHAMPS_DU_DON_VARIABLE[entite], ENTITES[entite].champs[CHAMPS_DU_DON_VARIABLE[entite].magie].libelle);
   // le nom du don de spécialité reprend celui de la spécialité tant qu'on ne l'a pas changé (lib/dons-edition.mjs#nomDuDonSuit) ; rouvert pour « Modifier »,
   // un nom de don personnalisé reste
   const nom = dialogue.querySelector('[name="nom"]');
@@ -237,6 +270,80 @@ function formulaire(ed, { entite, fixes, sans, libelle, aide, index = null }) {
       precedent = nom.value;
     });
   }
+}
+
+/** Dans un formulaire, la « Magie liée » ne s'affiche (et n'est exigée) que quand le type choisi est « Variable ». */
+function suivreLeTypeDuFormulaire(dialogue, { type, magie }, libelle) {
+  const choixDuType = dialogue.querySelector(`[name="${type}"]`);
+  const choixDeLaMagie = dialogue.querySelector(`[name="${magie}"]`);
+  const champ = choixDeLaMagie?.closest('label');
+  if (!choixDuType || !champ) return;
+  const suivre = () => {
+    const { visible, requis } = champDeLaMagieDuDon({ variable: estVariable(choixDuType.value) });
+    champ.hidden = !visible;
+    choixDeLaMagie.required = requis;
+    const etiquette = champ.querySelector('.ed-libelle');
+    if (etiquette) etiquette.textContent = `${libelle}${requis ? ' *' : ''}`;
+  };
+  choixDuType.addEventListener('change', suivre);
+  choixDuType.addEventListener('input', suivre);
+  suivre();
+}
+
+/**
+ * Mode modification : sous le type de chaque don (son champ `data-ed` type_brut), le choix de sa « Magie liée », affiché quand le type saisi est
+ * « Variable » (R181) : exigé quand le don y passe, sa magie actuelle sinon (« inchangée » quand l'état de la classe ne la donne pas), à changer.
+ */
+function brancherLesMagies(ed) {
+  const champ = CHAMPS_HORS_COLONNES.capacite.magie;
+  for (const [el, e] of ed.editeurs) {
+    if (e.info.table !== 'capacite' || e.info.colonne !== 'type_brut' || magiesDesDons.has(el)) continue;
+    const id = e.info.cle.id;
+    const etaitVariable = estVariable(e.original);
+    const actuelle = etaitVariable ? magieActuelle(id) : null;
+    const label = document.createElement('label');
+    label.className = 'ed-magie-du-don';
+    const etiquette = document.createElement('span');
+    etiquette.className = 'ed-libelle';
+    const choix = document.createElement('select');
+    choix.className = 'ed-saisie';
+    choix.setAttribute('aria-label', champ.libelle);
+    choix.title = champ.aide;
+    choix.append(new Option(etaitVariable && !actuelle ? '— inchangée —' : '— choisir —', ''), ...MAGIES_D_UN_DON_VARIABLE.map((m) => new Option(m.libelle, m.valeur)));
+    choix.value = actuelle ?? '';
+    for (const type of ['click', 'keydown', 'keyup', 'pointerdown']) choix.addEventListener(type, (ev) => ev.stopPropagation());
+    choix.addEventListener('change', () => ed.marquerModifie());
+    label.append(etiquette, choix);
+    e.controle.after(label);
+    const suivi = { id, controle: e.controle, etaitVariable, actuelle, champ: label, choix };
+    const suivre = () => {
+      const { visible, requis } = champDeLaMagieDuDon({ variable: estVariable(e.controle.value), etaitVariable });
+      label.hidden = !visible;
+      etiquette.textContent = `Magie liée${requis ? ' *' : ''}`;
+    };
+    e.controle.addEventListener('input', suivre);
+    suivre();
+    magiesDesDons.set(el, suivi);
+  }
+}
+
+/** Le refus d'un type passé à « Variable » sans magie (R181), avant l'envoi ; null si tout va. */
+function refusDesMagies() {
+  for (const s of magiesDesDons.values()) {
+    const { erreur } = champDeLaMagieDuDon({ variable: estVariable(s.controle.value), etaitVariable: s.etaitVariable, magie: s.choix.value, actuelle: s.actuelle });
+    if (erreur) return `« ${etat?.dons.find((d) => d.id === s.id)?.nom ?? s.id} » : ${erreur}`;
+  }
+  return null;
+}
+
+/** Les opérations du lot avec la magie de chaque don « Variable » choisie sous son type (rien pour un autre type : le service retire le lien). */
+function avecLesMagies(operations) {
+  let sortie = operations;
+  for (const s of magiesDesDons.values()) {
+    const { envoyer } = champDeLaMagieDuDon({ variable: estVariable(s.controle.value), etaitVariable: s.etaitVariable, magie: s.choix.value, actuelle: s.actuelle });
+    sortie = avecLaMagieDuDon(sortie, s.id, envoyer);
+  }
+  return sortie;
 }
 
 const ajouterDon = (ed, { specialite = null, avec = null, libelle, aide }) => () => formulaire(ed, {
@@ -403,11 +510,28 @@ export const classes = {
   },
 
   debut(ed) {
-    if (etat) outils(ed);
-    else (chargement ?? charger(ed)).then(() => ed.enEdition && outils(ed)).catch((e) => ed.annoncer(`Classe : ${e.message}`, 'erreur'));
+    // le choix de la « Magie liée » d'un don « Variable » montre sa magie actuelle, lue dans l'état de la classe (variables) : il ne se pose qu'une fois
+    // l'état chargé, sinon la première entrée en mode modification montrerait « — inchangée — » ; l'état illisible, il se pose quand même
+    if (etat) {
+      brancherLesMagies(ed);
+      outils(ed);
+      return;
+    }
+    (chargement ?? charger(ed))
+      .then(() => {
+        if (!ed.enEdition) return;
+        brancherLesMagies(ed);
+        outils(ed);
+      })
+      .catch((e) => {
+        if (ed.enEdition) brancherLesMagies(ed);
+        ed.annoncer(`Classe : ${e.message}`, 'erreur');
+      });
   },
 
   verifier() {
+    const magie = refusDesMagies();
+    if (magie) return magie;
     if (!etat || (!file.length && !donsSupprimes.size && !specialitesSupprimees.size)) return null;
     try {
       lot([]);
@@ -419,7 +543,8 @@ export const classes = {
     return null;
   },
 
-  operations(_ed, operations) {
+  operations(_ed, champs) {
+    const operations = avecLesMagies(champs);
     if (!etat || (!file.length && !donsSupprimes.size && !specialitesSupprimees.size)) return operations;
     return lot(operations);
   },
@@ -434,6 +559,7 @@ export const classes = {
     for (const el of document.querySelectorAll('.classe .ed-supprime')) el.classList.remove('ed-supprime');
     document.querySelector('#dons.ed-dons-vide')?.remove();
     file.length = 0;
+    magiesDesDons.clear();
     donsSupprimes.clear();
     specialitesSupprimees.clear();
   },

@@ -99,8 +99,10 @@ export function domainesDesComposants({ refus, ErreurEdition, synchroniser, prov
     deriver(ctx, avant, apres) {
       if (avant.genre === 'materiau') {
         suivreLeMateriauRenomme(ctx, avant, apres, ErreurEdition);
-        // décision R62 : la page « Composants » est la seule source ; le prix d'un matériau d'arme est recopié dans materiau_arme (et sa ligne du corps des armes)
-        const ma = lireLigne(ctx.db, 'materiau_arme', { ressource_id: avant.id });
+        // décision R62 : la page « Composants » est la seule source ; le prix d'un matériau d'arme est recopié dans materiau_arme (et sa ligne du corps des
+        // armes) quand le prix de la ressource CHANGE, jamais pour une autre colonne (description, nom) : materiau_arme garde sinon sa propre écriture (les
+        // RO de l'onglet Armes sont ceux de la ressource, R49 ; seuls des RF diffèrent, un zéro oublié dans la source)
+        const ma = avant.prix_brut !== apres.prix_brut ? lireLigne(ctx.db, 'materiau_arme', { ressource_id: avant.id }) : null;
         if (ma && (ma.prix_brut !== apres.prix_brut || ma.prix_rf !== apres.prix_rf)) {
           const nouvelle = ctx.w.modifier('materiau_arme', { ressource_id: avant.id }, { prix_brut: apres.prix_brut, prix_rf: apres.prix_rf });
           suivreLeCorpsDesArmes(ctx, 'materiau_arme', ma, nouvelle, ErreurEdition);

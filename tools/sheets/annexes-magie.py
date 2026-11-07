@@ -63,7 +63,8 @@ Sources (classeurs Google, copies du Drive du propriétaire, migration 0014) et 
         portent aussi, en colonnes AQ/AV, une paire « libellé / effet » (Sensibilité, Grande vulnérabilité,
         Vulnérabilité, Résistances, Grande résistance). Pour certaines altérations la description est une
         seule cellule fusionnée sur les trois colonnes de stades. Une section par altération ; les paires
-        sans effet écrit dans la source sont omises (ce qui est vide reste absent).
+        sans effet écrit dans la source sont omises (ce qui est vide reste absent). L'intertitre de chaque altération
+        porte son ancre figée, « ## <nom> {#<ancre>} » (ANCRES_DES_ETATS : l'id de sa ligne `etat`, jamais un slug du nom).
     - onglet « Météo »              -> guide/meteo.md
         En-têtes B1 Météo | H1 Description | T1 Effet(s) ; une entrée tous les 7 lignes (cellules fusionnées),
         le nom en colonne B, la description en H et les effets (une ligne « - … » par effet) en T.
@@ -427,11 +428,49 @@ def same_letters(a, b):
 # Pages
 # ---------------------------------------------------------------------------------------------------------
 
+# Ancres figées des intertitres d'état (lot « Défauts du code » ; client/src/lib/ancres-figees.mjs, docs/content-guide.md « Ancres figées des
+# intertitres ») : chaque « ## <nom> » de la page porte « {#<ancre>} », l'ancre étant le segment après « #etat: » de l'id figé de l'état dans la
+# table `etat` (que visent les liens : lib/magies-db.mjs#ancreDeLEtat). Aucun outil ne fabrique ces ids (ils viennent de la construction initiale
+# de la base) : la table est donc écrite ici, à la main, par nom tel que la cellule « Nom » de l'onglet l'écrit (one_line), et l'ancre n'est jamais
+# recalculée du nom (un nom corrigé ou renommé ne change pas l'id). « aggripe » et « folle-de-guerre » reprennent les fautes des ids : voulu.
+# Un nom absent de la table arrête le script (une ancre ne s'invente pas : la prendre dans l'id de la ligne `etat`, data/rows/etat.sql).
+ANCRES_DES_ETATS = {
+    "Aveuglement": "aveuglement",
+    "Brûlure": "brulure",
+    "Confusion": "confusion",
+    "Enragé": "enrage",
+    "Fatigue": "fatigue",
+    "Gel": "gel",
+    "Paralysie": "paralysie",
+    "Peur": "peur",
+    "Pétrifié": "petrifie",
+    "Poison": "poison",
+    "Saignement": "saignement",
+    "Surcharge Magique": "surcharge-magique",
+    "Surdité": "surdite",
+    "Aggripé": "aggripe",
+    "Coma": "coma",
+    "Couardise": "couardise",
+    "Enchevêtré": "enchevetre",
+    "Etourdi": "etourdi",
+    "Folle de Guerre": "folle-de-guerre",
+    "Sans Défense": "sans-defense",
+}
+ANCRE_FIGEE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")  # même forme que lib/ancres-figees.mjs#ANCRE_FIGEE
+
+
+def titre_a_ancre(texte, ancre):
+    """Ligne d'intertitre à ancre figée : « ## <texte> {#<ancre>} » (lib/ancres-figees.mjs)."""
+    if not ANCRE_FIGEE.match(ancre):
+        raise SystemExit("ancre figée mal formée : %r" % ancre)
+    return "## %s {#%s}" % (texte, ancre)
+
+
 def page_alterations(sh, wb):
     title = "Liste des altérations d'état"
-    a1 = sh.get(1, 1)
-    if a1 is None or not same_letters(a1, title):
-        raise SystemExit("titre de l'onglet « %s » inattendu : %r" % (sh.name, a1))
+    tete = sh.get(1, 1)
+    if tete is None or not same_letters(tete, title):
+        raise SystemExit("titre de l'onglet « %s » inattendu : %r" % (sh.name, tete))
     # En-têtes (ligne 2), repérés par leur texte.
     header_row = 2
     cols = {}
@@ -446,9 +485,18 @@ def page_alterations(sh, wb):
     c_res = cols["Résistances/Vulnérabilités"]
     rows = sorted(r for (r, c) in sh.cells if c == c_nom and r > header_row)
     body = []
+    ancres = set()
     for r in rows:
         block_end = sh.merged_from[(r, c_nom)][2] if (r, c_nom) in sh.merged_from else r
-        body.append("## " + one_line(sh.get(r, c_nom)))
+        nom = one_line(sh.get(r, c_nom))
+        ancre = ANCRES_DES_ETATS.get(nom)
+        if ancre is None:
+            raise SystemExit("onglet « %s », %s : état « %s » sans ancre figée (ANCRES_DES_ETATS : la prendre dans l'id de sa ligne `etat`, "
+                             "jamais la recalculer du nom)" % (sh.name, a1(r, c_nom), nom))
+        if ancre in ancres:
+            raise SystemExit("onglet « %s », %s : ancre figée « %s » en double" % (sh.name, a1(r, c_nom), ancre))
+        ancres.add(ancre)
+        body.append(titre_a_ancre(nom, ancre))
         body += sh.note_blocks([((r, c_nom), "Nom")])
         info = []
         for header, c in (("Magie Liée", c_mag), ("Type", c_type)):
@@ -903,6 +951,14 @@ def replay_errors(data, wb):
         "ne publie pas",
     )
     if wb["key"] == "magie-v8":
+        # Un état dont le nom n'a pas d'ancre figée arrête le script (l'ancre ne se recalcule jamais du nom).
+        pos = anchor(data, "Altération détats")
+        if pos is not None:
+            renamed = copy.deepcopy(data)
+            for c in _sheet(renamed, "Altération détats")["cells"]:
+                if (c["r"], c["c"]) == pos:
+                    c["v"] = "État de contrôle"
+            expect_stop("état sans ancre figée", renamed, "sans ancre figée")
         expect_stop(
             "note dans l'onglet Sommaire (non publié)",
             with_cell(data, "Sommaire", {"r": FAR[0], "c": FAR[1], "v": "x", "note": CONTROL_NOTE}),

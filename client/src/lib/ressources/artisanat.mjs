@@ -21,8 +21,8 @@ export const RESSOURCES = [
     noms: 'Monnaies',
     description:
       'Les monnaies de l’onglet « Équipement inventaire » (MONNAIE et CONVERTISSEUR) : nom, abréviation, valeur en RF (le Ricken de fer est l’unité, ' +
-      'valeur 1) et ligne du convertisseur telle qu’écrite (recalculée par le service) ; le nom et l’abréviation se modifient, sauf l’abréviation du ' +
-      'RF, du RO et de la PP (celle des prix écrits) ; la valeur se donne à la création et ne se modifie pas (décision R61) ; une monnaie se crée ' +
+      'valeur 1) et ligne du convertisseur telle qu’écrite (recalculée par le service) ; l’abréviation se modifie, sauf celle du RF, du RO et de la PP ' +
+      '(celle des prix écrits) ; le nom et la valeur se donnent à la création et ne se modifient pas (décision R61 ; « Figer les noms », R193) ; une monnaie se crée ' +
       '(identifiant tiré de l’abréviation) et se supprime, sauf l’unité.',
     table: 'monnaie',
     liste: ['id', 'nom', 'abreviation', 'valeur_rf', 'convertisseur_brut'],
