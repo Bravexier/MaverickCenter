@@ -108,7 +108,7 @@ const OUTILS = [
     ['1. Liste', 'Liste numérotée', (ed) => texte.commande(ed, 'insertOrderedList')],
   ]],
   ['Liens', [
-    ['Lien page', 'Lien vers une page du wiki', texte.lienWiki],
+    ['Lien page', 'Lier le texte à une page par un mot-clé qui y mène', texte.lienMotCle],
     ['Lien web', 'Lien vers une adresse web', texte.lienWeb],
     ['Sans lien', 'Retirer le lien (le texte reste)', texte.retirerLien],
   ]],

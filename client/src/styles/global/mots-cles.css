@@ -1,8 +1,13 @@
 /* Les mots-clés du glossaire dans les textes (lib/mots-cles-balises.mjs, posés par src/middleware.mjs ; demande du propriétaire : « Partout où un mot-clé est
    utilisé, il sera affiché en gras. Une infobulle de sa définition sera visible ») :
-   - `strong.mot-cle` : le mot-clé en gras ; quand il est décrit (`[data-bulle]`), un soulignement pointillé discret dit qu'il a une définition, dans la
-     bulle commune du site (components/Infobulles.astro : survol, focus clavier, toucher) ;
-   - `span.mot-cle-definition` : le mode complet, « **Libellé** : définition », dans le fil du texte. */
+   - `.mot-cle` : le mot-clé en gras (`strong`, ou `a` quand il a une adresse : migration 0096, réponse du propriétaire « une balise dont le mot-clé a une
+     URL est un lien ») ; quand il est décrit (`[data-bulle]`), un soulignement pointillé discret dit qu'il a une définition, dans la bulle commune du site
+     (components/Infobulles.astro : survol, focus clavier, toucher) ;
+   - `span.mot-cle-definition` : le mode complet, « **Libellé** : définition », dans le fil du texte ;
+   - un mot-clé coloré (mot_cle.couleur) porte la classe de sa couleur (`couleur-<famille>-<id>` de la palette, ou `couleur-mot-cle-<id>` : --couleur,
+     lib/palette-css.mjs#cssDesMotsCles, feuille émise par layouts/Base.astro) : son texte, la tuile du mode complet et l'habillage de sa bulle prennent
+     cette couleur (réponse du propriétaire : « La couleur inclue la tuile (quand on a la définition complète {{X:}} ) et l'habillage de l'infobulle »).
+     Le texte coloré : la couleur mêlée de noir en thème clair, de blanc en sombre (la formule de --mag-readable des pages de magie, styles/magie/base.css). */
 .mot-cle { font-weight: 700; }
 .mot-cle[data-bulle] {
   cursor: help;
@@ -13,4 +18,40 @@
 }
 .mot-cle[data-bulle]:focus-visible { outline: 2px solid var(--mag, var(--accent)); outline-offset: 2px; border-radius: var(--radius-xxs); }
 a .mot-cle[data-bulle] { cursor: inherit; }
+/* un mot-clé lien : un clic suit son adresse (sa bulle s'ouvre au survol et au focus) */
+a.mot-cle[data-bulle] { cursor: pointer; }
 .mot-cle-definition__nom { font-weight: 700; }
+
+/* la couleur d'un mot-clé coloré */
+:is(.mot-cle, .mot-cle-definition)[class*='couleur-'] { --mot-cle-texte: color-mix(in srgb, var(--couleur) 40%, #000); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) :is(.mot-cle, .mot-cle-definition)[class*='couleur-'] { --mot-cle-texte: color-mix(in srgb, var(--couleur) 55%, #fff); }
+}
+:root[data-theme="dark"] :is(.mot-cle, .mot-cle-definition)[class*='couleur-'] { --mot-cle-texte: color-mix(in srgb, var(--couleur) 55%, #fff); }
+.mot-cle[class*='couleur-'], .mot-cle-definition[class*='couleur-'] > .mot-cle-definition__nom { color: var(--mot-cle-texte); }
+.mot-cle[class*='couleur-']:focus-visible { outline-color: var(--couleur); }
+/* la tuile du mode complet : un fond pâle et un filet de la couleur, dans le fil du texte (sur plusieurs lignes, chaque morceau garde son habillage) */
+.mot-cle-definition[class*='couleur-'] {
+  padding: 0 0.3em;
+  border-left: 3px solid var(--couleur);
+  border-radius: var(--radius-xxs);
+  background: color-mix(in srgb, var(--couleur) 10%, var(--surface));
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+/* l'habillage de sa bulle (filet, fond, titre : styles/global/infobulles.css), comme une page colorée habille les siennes ; seulement la bulle d'un
+   mot-clé (`#mot-cle-<id>`) : les autres bulles colorées (une gemme des accessoires) gardent leur teinte */
+.bulle[id^='mot-cle-'][class*='couleur-'] { --bulle-teinte: var(--couleur); }
+
+/* La page vers laquelle mène un mot-clé coloré, quand elle n'a pas de gabarit coloré (pages des magies, classes, races et du guide : leur gabarit pose
+   la classe) : <main> porte la classe (layouts/Base.astro, `main.page-coloree`, lib/couleur-de-la-page.mjs) ; ses infobulles (--mag) et ses tableaux
+   (--tab, gabarit commun : styles/global/tableaux.css) prennent la couleur, son titre un filet. Les enfants de <main> n'héritent pas de la classe
+   (--couleur et --couleur-texte remis à leur valeur initiale, sans poids, comme sous une page du guide : un bloc sans classe propre garde son repli). */
+main.page-coloree {
+  --mag: var(--couleur);
+  --tab: var(--couleur);
+  --tab-soft: color-mix(in srgb, var(--couleur) 9%, var(--surface));
+  --tab-line: color-mix(in srgb, var(--couleur) 35%, var(--border));
+}
+:where(main.page-coloree) > * { --couleur: initial; --couleur-texte: initial; }
+main.page-coloree h1 { padding-bottom: 0.2rem; border-bottom: 3px solid var(--mag); }

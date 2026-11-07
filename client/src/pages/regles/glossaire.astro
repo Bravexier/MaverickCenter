@@ -1,0 +1,52 @@
+---
+import Base from '../../layouts/Base.astro';
+import glossaireCss from '../../styles/glossaire/glossaire.css?raw';
+import { url } from '../../lib/wiki';
+import { indexDeRecherche } from '../../lib/recherche-index';
+import { comptesDesMotsCles, PARAMETRE_MOT_CLE } from '../../lib/recherche-mots-cles.mjs';
+import { htmlDeLaLigneDuGlossaire } from '../../lib/mots-cles-balises.mjs';
+import { chargerVocabulaire } from '../../lib/mots-cles-db.mjs';
+import { choixDesCouleurs } from '../../lib/glossaire-couleurs.mjs';
+import { cssDesFamilles, FAMILLES_DES_ZONES } from '../../lib/palette-css.mjs';
+import { ouvrirBase } from '../../lib/donnees.mjs';
+
+// Le Glossaire (réponses du propriétaire du 2026-11-06, Q6 et Q7 : une entrée « Glossaire » dans le menu Règles, après Exploration ; une page seule,
+// /regles/glossaire/) : la liste filtrable de TOUS les mots-clés du glossaire (table mot_cle), avec ou sans définition, chacun avec son libellé (un lien
+// vers son adresse quand il en a une, migration 0096), son abréviation, la pastille de sa couleur, sa définition et le nombre de ses pages visibles (pages
+// du wiki et événements de l'index : étiquettes et balises, lib/recherche-index.ts), un lien vers leur liste sur /recherche/ (?mot-cle=<id>).
+// Une ligne : lib/mots-cles-balises.mjs#htmlDeLaLigneDuGlossaire, le même HTML que l'extension de l'éditeur. Le filtre : src/scripts/glossaire.mjs.
+// Sur le site de dev, en mode modification, toute la gestion du vocabulaire est ici (src/scripts/edition/mots-cles.mjs : créer, renommer, définir,
+// abréger, fusionner, supprimer, la balise à copier, l'adresse et la couleur) ; /recherche/ ne fait plus que chercher. Les couleurs que le choix propose
+// (`data-couleurs`, lib/glossaire-couleurs.mjs : toutes les familles de la palette, que le navigateur n'importe pas) et leurs feuilles : les familles
+// d'une zone émises ici (celles de chaque page viennent de layouts/Base.astro), pour que la pastille et la liste les montrent.
+// Aucun id de la page ne commence par « mot-cle- » : c'est celui des bulles du glossaire (lib/mots-cles-balises.mjs#idDeBulle).
+const db = ouvrirBase();
+const comptes = comptesDesMotsCles(await indexDeRecherche());
+const base = import.meta.env.BASE_URL;
+const lienDesPages = `${url('recherche/')}?${PARAMETRE_MOT_CLE}=`;
+const motsCles = chargerVocabulaire(db).map((m) => ({ ...m, n: comptes.get(m.id) ?? 0 }));
+const lignes = motsCles.map((m) => htmlDeLaLigneDuGlossaire(m, { base, lienDesPages })).join('');
+const couleurs = JSON.stringify(choixDesCouleurs(db));
+---
+
+<Base title="Glossaire" description="Le glossaire de Maverick : tous les mots-clés des règles et du lore, leur définition et les pages qui les citent" edition="regles/glossaire/">
+  <style is:inline set:html={glossaireCss}></style>
+  {/* les familles d'une zone de la palette : la pastille d'un mot-clé et le choix de sa couleur en mode modification */}
+  <style is:inline set:html={cssDesFamilles(FAMILLES_DES_ZONES)}></style>
+  <div class="glossaire" data-glossaire data-lien-mot-cle={lienDesPages} data-couleurs={couleurs}>
+    <h1>Glossaire</h1>
+    <p class="glossaire-intro">Les mots-clés des règles et du lore : leur définition, et les pages qui les citent. Un mot-clé en couleur ou souligné mène à sa page.</p>
+    <form class="glossaire-filtre" role="search">
+      <input id="filtre-glossaire" type="search" aria-label="Filtrer le glossaire" placeholder="Filtrer : mot-clé, abréviation, définition…" autocomplete="off" />
+      <span id="glossaire-compte" class="muted" aria-live="polite">{motsCles.length} mots-clés</span>
+    </form>
+    <noscript><p class="banner">Le filtre demande JavaScript ; la liste est complète sans lui.</p></noscript>
+    <ul class="glossaire-liste" id="liste-mots-cles" set:html={lignes} />
+    <p id="aucun-mot-cle" class="muted" hidden>Aucun mot-clé ne correspond.</p>
+    <p class="muted glossaire-voir-aussi">Chercher dans tout le site : la <a href={url('recherche/')}>recherche</a>.</p>
+  </div>
+</Base>
+
+<script>
+  import '../../scripts/glossaire.mjs';
+</script>

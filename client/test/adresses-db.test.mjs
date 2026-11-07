@@ -19,10 +19,10 @@ const REGISTRE = JSON.parse(readFileSync(join(RACINE, REGISTRE_DES_LIENS), 'utf8
 /** Les pages du site de dev seulement (et la page 404) : aucun mot-clé n'y mène. */
 const HORS_DES_ADRESSES = ['/404/', '/debug/', '/maintenance/', '/mise-a-jour/'];
 /**
- * Les adresses fixes que leur page n'a pas encore : la page du Glossaire (/regles/glossaire/), que les refus du service citent, est créée dans le
- * même lot côté pages (tech-front) ; tolérée tant que son fichier manque. Une fois la page créée (fichier statique ou page du guide), elle sort d'ici.
+ * Les adresses fixes que leur page n'a pas encore (tolérées tant que leur fichier manque ; une fois la page créée, elle sort d'ici) : aucune depuis la
+ * page du Glossaire (pages/regles/glossaire.astro).
  */
-const A_VENIR = [ADRESSE_DU_GLOSSAIRE];
+const A_VENIR = [];
 
 /** Les routes statiques de src/pages (fichiers .astro sans paramètre) : « /x/ » pour x.astro et x/index.astro. */
 function routesStatiques(dossier = PAGES) {
@@ -38,9 +38,10 @@ function routesStatiques(dossier = PAGES) {
   return routes.sort();
 }
 
-test('ADRESSES_FIXES : chaque route statique de src/pages (hors site de dev et 404), chaque rubrique d’un type, rien d’autre (le Glossaire à venir toléré)', () => {
+test('ADRESSES_FIXES : chaque route statique de src/pages (hors site de dev et 404), chaque rubrique d’un type, rien d’autre', () => {
   const statiques = routesStatiques();
   assert.ok(statiques.includes('/fiche/') && statiques.includes('/regles/artisanat/'), statiques.join(' '));
+  assert.ok(statiques.includes(ADRESSE_DU_GLOSSAIRE), 'la page du Glossaire (pages/regles/glossaire.astro)');
   for (const r of statiques) if (!HORS_DES_ADRESSES.includes(r)) assert.ok(ADRESSES_FIXES.includes(r), `${r} : une route du site absente de ADRESSES_FIXES`);
   const rubriques = Object.keys(TYPES).map((t) => `/${t}/`);
   for (const a of ADRESSES_FIXES) {

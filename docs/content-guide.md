@@ -314,6 +314,23 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
     le plafond de 4 ko. » ;
   - question « Le Markdown des pages et l'attribut des cases changent-ils ? » ; option retenue : « Garder `{couleur:x}` et `data-couleur`
     (Recommandé) : la classe est posée en plus, par le plugin et par l'éditeur ; le Markdown ne l'écrit jamais. ».
+- **Les couleurs des mots-clés** (migration `0096` ; réponses du propriétaire du 2026-11-06, Q3 à Q5 et Q13) : `mot_cle.couleur` est une référence
+  `famille:id` d'une couleur de la palette (`magie:feu`, `classe:melee`), ou une couleur écrite `#rrggbb`. La classe d'un mot-clé coloré
+  (`lib/mots-cles-liens.mjs#classeDuMotCle`) est celle de la palette, ou `couleur-mot-cle-<id>` pour une couleur écrite (sa règle :
+  `palette-css.mjs#cssDesMotsCles`, fond rendu lisible comme une couleur des règles). La feuille des mots-clés colorés (couleurs écrites et familles
+  d'une zone qu'un mot-clé nomme ; les familles de chaque page y sont déjà) est émise sur chaque page par `layouts/Base.astro`
+  (`<style data-couleurs-mots-cles>`, `lib/couleur-de-la-page.mjs#cssDesMotsClesDuSite`, environ 0,6 ko, plafond épinglé à 1,5 ko), et réécrite sur
+  le site de dev avec celle du service (`GET /api/edition/mots-cles/`, `css`). **Prennent la couleur du mot-clé** (réponse Q13 : « La couleur inclue
+  la tuile (quand on a la définition complète {{X:}} ) et l'habillage de l'infobulle ») : sa balise (le texte, la couleur mêlée de 60 % de noir en
+  clair, de 45 % de blanc en sombre, la formule de `--mag-readable`), la tuile du mode complet (filet et fond pâle), l'habillage de sa bulle (filet,
+  fond, titre : `--bulle-teinte`), et **la page vers laquelle mène son adresse** (réponse Q5, `lib/couleur-de-la-page.mjs#classeDeLaPage` : le mot-clé
+  coloré qui y mène, ancre ignorée, le premier par libellé ; à défaut, la couleur que la page avait). Les gabarits des magies, des classes, des races
+  et du guide posent cette classe à la place de la leur ; toute autre page la reçoit sur son `<main>` (`main.page-coloree` : infobulles, tableaux,
+  filet du titre), seulement quand un mot-clé coloré y mène. Les 90 mots-clés colorés de la migration reprennent chacun la couleur de sa page : le rendu
+  ne change pas (« il ne faut pas de changement par rapport à avant en terme de résultat » ; `test/palette-css.test.mjs`, `test/glossaire-html.test.mjs`).
+  Les tuiles des listes (`/classes/`, `/races/`, l'accueil), la carte de `/magies/`, les puces et les tableaux gardent leurs couleurs. `blocs.css` lit la
+  couleur d'une page du guide sur son repère `.guide-reference--couleur` (plus sur `[class*='couleur-partie-']`), pour qu'une couleur d'une autre
+  famille s'y lise aussi.
 - **Deux couleurs d'une famille sur un même élément** (le dégradé de l'innée vers l'acquise des cadres de la fiche et des lignes de `/personnages/`,
   une créature ou une cible de défense à deux magies, le trait d'une relation de la carte de `/magies/`, une arme de deux compétences) : une classe ne
   pose qu'une `--couleur`. La première est la classe de sa couleur (`--couleur`, `--couleur-texte`) ; la seconde, sa **classe de second rang**
@@ -1311,7 +1328,7 @@ dev (un commit la change) ni cherchée par la recherche.
   gardent la leur) ; l'adresse ne dépend pas du plan (`adresseDuGuide` : la chaîne de l'édition du navigateur, qui ne le reçoit pas, la calcule
   aussi). Chaque onglet est à `/regles/<onglet>/` (`pages/regles/[...page].astro`), qui montre sa page d'ouverture sous le titre de l'onglet, avec
   un `<link rel="canonical">` vers `/regles/<slug>/` ; `/regles/` (`pages/regles/index.astro`) montre celle du premier onglet. Les ids des onglets,
-  `artisanat` et `avancees` sont des noms réservés (`nomsReserves`) : aucune page ne les prend. Chaque page est à côté du **menu latéral** de son
+  `artisanat`, `avancees` et `glossaire` (la page du Glossaire) sont des noms réservés (`nomsReserves`) : aucune page ne les prend. Chaque page est à côté du **menu latéral** de son
   onglet, sur le modèle de la chronologie (demande du propriétaire du 2026-11-05 pour Les bases : « Pour la présation je préfèrera un menu latéral
   sous le même modèle que la chronologie. » ; réponse « Comme la chronologie (Recommandé) ») : `components/guide/MenuLateral.astro` met à gauche, en
   vertical, les entrées de l'onglet (une seule liste, sans groupes ; l'entrée affichée marquée, `aria-current`) et à droite le texte de la page
@@ -1350,14 +1367,16 @@ dev (un commit la change) ni cherchée par la recherche.
   manquer (une page des Règles supprimée sur le site de dev : rien ne la protège pour cela) : son ancienne adresse donne alors la 404 (R185 (6)) ; une page d'exemple (la fixture `guide/utiliser-ce-wiki`) garde une adresse
   de repli à `/regles/<slug>/`, sans entrée de menu ni fil d'Ariane. Plus de « Les bases » ni de « Règles avancées » (R184) : leurs anciennes
   adresses sont renvoyées (plus bas). Le Lexique (2026-11-05, « Supprime la page lexique. ») : ses entrées sont des mots-clés du glossaire (migration
-  `0090`), ses adresses `/regles/lexique/` et `/guide/lexique/` mènent à `/recherche/` (`PAGES_RETIREES`, ci-dessous).
+  `0090`), ses adresses `/regles/lexique/` et `/guide/lexique/` mènent au Glossaire, `/regles/glossaire/` (`PAGES_RETIREES`, ci-dessous ; à
+  `/recherche/` jusqu'à ce que le Glossaire ait sa page, réponses du propriétaire du 2026-11-06).
 - **Les couleurs** : Découvrir et **la création du personnage** (« Créer son personnage » et ses six étapes, `PAGES_DE_LA_CREATION`) prennent celles des
   anciennes parties (`PARTIES` ; Découvrir #2a6f97, Créer son personnage #2e7d4f ; Jouer #b03030 et Progresser #6a4a9c ne servent plus qu'à la fiche,
   Pour aller plus loin #5a6470 plus à rien ; valeurs dans `lib/parties-couleurs.mjs`), qui restent celles des quatre zones de la fiche : la page a le
   filet de son titre, ses intertitres et ses blocs dans la couleur de sa partie (`partieDeLaPage`, sans le plan ; la classe `.couleur-partie-<id>` :
   « Couleurs du site : la palette en classes »), une carte de l'accueil aussi. **Les autres pages des onglets n'ont pas de couleur de partie** :
   l'accent du site, comme le Guide du MJ (réponses du propriétaire du 2026-11-05 : « Une seule couleur », puis « Accent du site » ; `partieDeLaPage`
-  rend null).
+  rend null). Une page vers laquelle mène un mot-clé coloré prend la couleur de ce mot-clé (migration `0096`, réponse Q5 ; les mots-clés de la
+  création et de Découvrir reprennent la couleur de leur partie : le rendu ne change pas) : « Couleurs du site : la palette en classes ».
 - **Toute page du guide est une page simple** (`components/guide/PageDuGuide.astro`, servie par `PageDuPlan.astro`, à côté du menu latéral pour une
   page d'un onglet) : fil d'Ariane vers Découvrir, son onglet ou le Guide du MJ (`filDAriane`), titre, texte coupé à ses blocs tirés de la
   base, puis ses mots-clés (`components/PiedDePage.astro`). **Plus aucune source sous une page**, quelle qu'elle soit (réponse du
@@ -1427,8 +1446,8 @@ dev (un commit la change) ni cherchée par la recherche.
   `guide/les-postures`. L'ancienne section « Les boss et leurs postures » de « Les situations avancées » mène à la section « Les boss » de
   `guide/les-postures` (`/regles/les-postures/#les-boss`, `PAGES_ECLATEES_DU_GUIDE`).
 - **Pages retirées dont le contenu se lit ailleurs** (`PAGES_RETIREES` : page retirée → `{ vers, adresses }`, adresses relatives à la racine du site) :
-  le Lexique, devenu des mots-clés (migration `0090`). Ses anciennes adresses (`regles/lexique/`, `guide/lexique/`) mènent à `vers` (`recherche/`) par
-  la page 404 (`renvoisDuGuide`), requête et ancre d'origine gardées (`/regles/lexique/?q=AM` → `/recherche/?q=AM`), et un lien Markdown écrit vers
+  le Lexique, devenu des mots-clés (migration `0090`). Ses anciennes adresses (`regles/lexique/`, `guide/lexique/`) mènent à `vers` (`regles/glossaire/`) par
+  la page 404 (`renvoisDuGuide`), requête et ancre d'origine gardées (`/regles/lexique/?q=AM` → `/regles/glossaire/?q=AM`, que le filtre du Glossaire lit), et un lien Markdown écrit vers
   elles au rendu (`lib/livres.mjs#adresseDeLaPageRetiree`, appelée par `adresseDesAnciensLiens`) ; `verifierLePlan` arrête le build si la page revient
   dans la base. Une page simplement effacée, sans renvoi (« Rejoindre une partie », « Liens »), n'y est pas : la page 404 la dit introuvable. Tests :
   `test/livres.test.mjs`, `test/site-html.test.mjs`.
@@ -1627,7 +1646,7 @@ propriétaire ; « durabilité » n'est plus écrit nulle part sur le site (sauf
   renommages). Une écriture autre que le libellé est enregistrée comme un texte écrit : `{{solidité}}` devient `{{solidite|solidité}}` ; une abréviation,
   elle, est enregistrée **telle qu'écrite dans la base**, quelle que soit la casse tapée (une abréviation est un sigle ; R140 écrit « CR » en majuscules ; R183) :
   `{{AM}}` et `{{am}}` deviennent `{{armure-magique|AM}}` (il s'affiche « AM »), `{{cr}}`, `{{Cr}}` et `{{CR}}` deviennent `{{corruption|CR}}`. La balise à copier est écrite à côté
-  de chaque mot-clé sur `/recherche/` en mode modification. **La base ne garde que des ids** : le service enregistre la forme canonique (ci-dessous) et
+  de chaque mot-clé sur le Glossaire (`/regles/glossaire/`) en mode modification. **La base ne garde que des ids** : le service enregistre la forme canonique (ci-dessous) et
   `db:check` refuse toute autre écriture (même règle), sauf le libellé écrit en texte dans un texte mis en forme (`{{id|Libellé}}`, que le service
   ramène à `{{id}}` : le corps d'une page typée l'écrit, un renommage peut en faire un).
 - **Dans une case de tableau Markdown**, le séparateur s'écrit `\|` : `| Arbalète | {{recharge-longue\|à recharger}} |` (sinon la case s'arrête au
@@ -1636,6 +1655,9 @@ propriétaire ; « durabilité » n'est plus écrit nulle part sur le site (sauf
 - **Partout** : corps des pages du guide et du Codex, descriptions de la chronologie, textes des tables (effet d'une arme, rubrique d'une carte de
   monstre, effet d'un don, description d'une capacité de monstre…), blocs des panneaux de règles, définition d'un autre mot-clé (citée en texte simple).
   Le site les rend à la construction (`src/middleware.mjs`, `lib/mots-cles-balises.mjs`) : une bulle par mot-clé et par page, posée en fin de page ;
+  un mot-clé qui a une adresse est un **lien** (`a.mot-cle`, l'adresse préfixée de la base du site ; « Liens entre pages »), sans adresse il n'est pas
+  cliquable ; un mot-clé sans définition est en gras, sans bulle (et cliquable s'il a une adresse : réponse Q11) ; un mot-clé coloré porte la classe de
+  sa couleur (« Couleurs du site ») ; dans un lien, un bouton, un résumé, une étiquette, une liste ou une bulle, pas de lien (le gras seul) ;
   dans une bulle, un mot-clé est en gras sans bulle ; dans un bouton ou un résumé de `details`, en gras sans bulle (le toucher ferait l'action) ; dans un
   `title`, un `alt`, une description de page ou un attribut lu par un script, le texte simple. Rien n'est rendu dans le code (`code`, `pre`, ni dans
   leurs attributs), ni sur `/donnees/`, ni dans les textes d'aide du mode modification et la page Debug (les valeurs telles qu'écrites,
@@ -1720,27 +1742,41 @@ homonyme d'une magie (`tools/db/homonymes.py#MAGIES_HOMONYMES`, lu par `tools/do
 temple du Codex, ni la page de la magie, ni une créature invoquée de la Corruption ne reçoit le mot-clé « Corruption » de sa magie (le mot-clé est la
 jauge ; un homonyme n'est jamais lié implicitement).
 
-Chaque mot-clé a son adresse, `/recherche/?mot-cle=<id>` (son libellé, sa définition, puis les pages qui le portent ou le citent) ; renommé, il garde son
-adresse. La page Recherche est le glossaire : tous les mots-clés, même sans page, chacun avec l'infobulle de sa définition. **L'abréviation** d'un
-mot-clé (réponse du propriétaire du 2026-11-05 : « Modifiable et affichée ») suit son libellé entre parenthèses, « Armure magique (AM) », dans sa
-pastille, avant le nombre de ses pages après « · » (réponse : « Armure magique (AM) · 3 » ; sans abréviation, « Feu · 2 » ; sans page, pas de nombre),
-dans le titre de sa vue (« Mot-clé « Armure magique (AM) » ») et dans le titre de sa bulle, partout sur le site
-(`lib/mots-cles-balises.mjs#htmlDuNomDuMotCle`, `htmlDeLaPastille`, `htmlDeLaBulle`) : `{{AM}}` montre « AM », sa bulle dit « Armure magique (AM) ». Une
-**monnaie** (les mots-clés `rf`, `ro`, `pp`, reconnus à leur id, figé, celui de la table `monnaie`, jamais à leur abréviation, qui se modifie) montre
-son libellé suivi de l'icône de la monnaie, jamais « (RO) » (réponse : « Libellé + icône » ; R63). Le texte affiché d'une balise et la définition du
-mode complet ont aussi leurs monnaies en icônes (R63, R183 (9) : « R63 est respectée partout ») : `{{RO}}` montre l'icône du Ricken d'or ; un montant
-écrit dans une balise se décompose comme ailleurs (R183 (12) : `{{prix-fixe|1245,5 RO}}` montre « 1 [PP] 245 [RO] 50 [RF] » ; `htmlDeLaBalise`). La définition que montre la vue d'un mot-clé est rendue au build (`#definitions-des-mots-cles`,
-`[data-definition-de]` : `htmlDeLaDefinition`, monnaies en icônes, balises rendues par le middleware), et sur le site de dev par l'extension de
-l'éditeur ; le script de la page la recopie sans lire aucune monnaie (il n'importe pas `lib/monnaies.mjs`). Le mode complet (`{{id:}}`) garde
-« **Libellé** : définition ». La recherche de la page trouve un mot-clé par son écriture **ou** son abréviation (« AM » trouve « Armure magique » :
-`lib/search.mjs#cleDeRecherche`). Sur le site de dev, en mode modification, elle crée (avec sa définition et son abréviation), renomme, fusionne et
-supprime un mot-clé, et modifie son abréviation (une saisie à côté du libellé ; vidée, NULL ; un refus du service, 400 ou 409, s'affiche comme tout
-refus du lot) ; les mots-clés dont le site se sert ne se renomment ni ne se suppriment, leur définition et leur abréviation se modifient. La page et
-l'extension de l'éditeur ne se parlent que par l'évènement `recherche:mots-cles` et les `li[data-id][data-cle][data-n][data-libelle]`, plus
-`data-abreviation` et `data-definition` quand le mot-clé en a, le `.recherche-nom` de chaque pastille et les `[data-definition-de]` de
-`#definitions-des-mots-cles`. Une page créée depuis le site ne porte que ces mots-clés-là. Les événements de la chronologie n'ont pas
-d'étiquette (« trop nombreux et trop libres », demande du propriétaire) mais des **catégories**, un vocabulaire à part (voir « Chronologie ») ; leurs
-descriptions peuvent citer des mots-clés.
+Chaque mot-clé a la liste de ses pages, `/recherche/?mot-cle=<id>` (son libellé, sa définition, puis les pages qui le portent ou le citent) ; renommé,
+il la garde. Les pastilles du pied d'une page et de `/recherche/` y mènent toujours, jamais à l'adresse du mot-clé (réponse Q12).
+
+**Le Glossaire** (`/regles/glossaire/` ; réponses du propriétaire du 2026-11-06, Q6 et Q7 : une entrée « Glossaire » dans le menu Règles, après
+Exploration, une page seule ; le Lexique y mène) : la liste filtrable de **tous** les mots-clés, avec ou sans définition, chacun avec son libellé (un
+lien vers son adresse quand il en a une), son abréviation, la pastille de sa couleur, sa définition (balises rendues, monnaies en icônes) et le nombre de
+ses pages (un lien vers leur liste sur `/recherche/`). Une ligne : `lib/mots-cles-balises.mjs#htmlDeLaLigneDuGlossaire`, le même HTML au build et dans
+l'extension de l'éditeur ; le filtre (libellé, abréviation, définition, sans casse ni accents ; `?q=` dans l'adresse) : `src/scripts/glossaire.mjs`, qui
+n'importe que `lib/glossaire-filtre.mjs`. **L'abréviation** d'un mot-clé (réponse du propriétaire du 2026-11-05 : « Modifiable et affichée ») suit son
+libellé entre parenthèses, « Armure magique (AM) », dans sa pastille de `/recherche/`, avant le nombre de ses pages après « · » (réponse : « Armure
+magique (AM) · 3 » ; sans abréviation, « Feu · 2 » ; sans page, pas de nombre), dans le titre de sa vue (« Mot-clé « Armure magique (AM) » ») et dans
+le titre de sa bulle, partout sur le site (`lib/mots-cles-balises.mjs#htmlDuNomDuMotCle`, `htmlDeLaPastille`, `htmlDeLaBulle`) : `{{AM}}` montre « AM »,
+sa bulle dit « Armure magique (AM) » ; sur le Glossaire, elle est à côté du libellé. Une **monnaie** (les mots-clés `rf`, `ro`, `pp`, reconnus à leur
+id, figé, celui de la table `monnaie`, jamais à leur abréviation, qui se modifie) montre son libellé suivi de l'icône de la monnaie, jamais « (RO) »
+(réponse : « Libellé + icône » ; R63). Le texte affiché d'une balise et la définition du mode complet ont aussi leurs monnaies en icônes (R63, R183 (9) :
+« R63 est respectée partout ») : `{{RO}}` montre l'icône du Ricken d'or ; un montant écrit dans une balise se décompose comme ailleurs (R183 (12) :
+`{{prix-fixe|1245,5 RO}}` montre « 1 [PP] 245 [RO] 50 [RF] » ; `htmlDeLaBalise`). La définition que montre la vue d'un mot-clé de `/recherche/` est
+rendue au build (`#definitions-des-mots-cles`, `[data-definition-de]` : `htmlDeLaDefinition`, monnaies en icônes, balises rendues par le middleware) ;
+le script de la page la recopie sans lire aucune monnaie (il n'importe pas `lib/monnaies.mjs`). Le mode complet (`{{id:}}`) garde « **Libellé** :
+définition ». La recherche de `/recherche/` trouve un mot-clé par son écriture **ou** son abréviation (« AM » trouve « Armure magique » :
+`lib/search.mjs#cleDeRecherche`) ; elle ne gère plus le vocabulaire.
+
+**Gérer le vocabulaire** (site de dev, mode modification du Glossaire ; `src/scripts/edition/mots-cles.mjs`) : créer un mot-clé (avec sa définition,
+son abréviation, son adresse et sa couleur), le renommer, le fusionner, le supprimer, et modifier sa définition, son abréviation (une saisie à côté du
+libellé ; vidée, NULL), son **adresse** (« Lien » : interne, `/races/humain/` ; vidée, NULL) et sa **couleur** (réponses Q3 et Q4 : deux sélecteurs,
+la liste des couleurs du site — toutes les familles de la palette, groupées, chaque couleur nommée par son élément de référence, « Feu », « Chakra »,
+« Mythril » : `lib/glossaire-couleurs.mjs`, que la page donne en `data-couleurs` — et un cercle, `<input type="color">`, qui donne une couleur écrite
+`#rrggbb` ; enregistrée en `famille:id` ou `#rrggbb` ; vidée, NULL) ; un refus du service (400 ou 409, avec `champ`) s'affiche comme tout refus du
+lot ; la balise à copier est écrite à côté de chaque mot-clé. Les mots-clés dont le site se sert ne se renomment ni ne se suppriment ; leur définition,
+leur abréviation, leur adresse et leur couleur se modifient. La page et l'extension ne se parlent que par l'évènement `glossaire:mots-cles` et les
+`li[data-id][data-cle][data-n][data-libelle]`, plus `data-abreviation`, `data-definition`, `data-url` et `data-couleur` quand le mot-clé en a. Dans
+l'éditeur en place, l'outil « Lien page » lie le texte choisi par un mot-clé qui a une adresse (sa balise) ; « Lien web » garde les adresses web. Une
+page créée depuis le site ne porte que les mots-clés dont le site se sert. Les événements de la chronologie n'ont pas d'étiquette (« trop nombreux et
+trop libres », demande du propriétaire) mais des **catégories**, un vocabulaire à part (voir « Chronologie ») ; leurs descriptions peuvent citer des
+mots-clés.
 
 ## Liens entre pages
 

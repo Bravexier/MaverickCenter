@@ -1,0 +1,34 @@
+/* Le Glossaire (/regles/glossaire/) : le filtre, puis un mot-clé par ligne — la pastille de sa couleur, son libellé (un lien vers sa page quand il en a
+   une), son abréviation, le nombre de ses pages (un lien vers leur liste sur /recherche/), puis sa définition. Inséré par pages/regles/glossaire.astro
+   (?raw). La pastille lit la couleur de la classe du mot-clé (`couleur-…` : --couleur, lib/palette-css.mjs), posée sur elle seule ; sans couleur, un
+   cercle vide. Aucune couleur écrite (skill ui-couleurs). */
+.glossaire-intro { max-width: 46rem; }
+.glossaire-filtre { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.8rem; margin: 0.8rem 0 0.4rem; }
+.glossaire-filtre input { flex: 1 1 16rem; max-width: 32rem; }
+.glossaire-liste { list-style: none; padding: 0; margin: 0.6rem 0; max-width: 52rem; }
+.glossaire-liste li[hidden] { display: none; }
+.glossaire-mot {
+  display: grid;
+  grid-template-columns: 1rem 1fr;
+  grid-template-areas: 'pastille tete' '. definition';
+  align-items: baseline;
+  gap: 0.15rem 0.6rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.glossaire-mot__pastille {
+  grid-area: pastille;
+  align-self: center;
+  inline-size: 0.8rem;
+  block-size: 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+}
+.glossaire-mot__pastille[class*='couleur-'] { border-color: var(--couleur); background: var(--couleur); }
+.glossaire-mot__tete { grid-area: tete; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.6rem; }
+.glossaire-mot__nom { font-weight: 700; }
+.glossaire-mot__abreviation { padding: 0 0.4rem; border: 1px solid var(--border); border-radius: var(--radius-pill); font-size: var(--fs-sm); color: var(--muted); }
+.glossaire-mot__pages { margin-left: auto; font-size: var(--fs-sm); color: var(--muted); }
+.glossaire-mot__definition { grid-area: definition; display: block; white-space: pre-line; }
+.glossaire-mot__definition--vide { color: var(--muted); font-style: italic; }
+.glossaire-voir-aussi { margin-top: 1.5rem; }

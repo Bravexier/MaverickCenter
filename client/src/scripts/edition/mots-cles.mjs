@@ -1,44 +1,45 @@
-// Extension de l'éditeur : le glossaire des mots-clés sur /recherche/ (pages/recherche.astro) — demandes du propriétaire : « en mode édition seulement »,
-// « supprimer / ajouter / Modifier des mots clés. Une suppression d'un mot clé le supprimera de tous les endroits qui le référencent » ; puis (2026-10-16,
-// migration 0056) « Le mot-clé aura son ID, son texte et une description ».
+// Extension de l'éditeur : le glossaire des mots-clés sur /regles/glossaire/ (pages/regles/glossaire.astro ; réponses du propriétaire du 2026-11-06, Q6
+// et Q7 : toute la gestion du vocabulaire, jusque-là sur /recherche/, est sur le Glossaire, plus l'adresse et la couleur) — demandes du propriétaire :
+// « en mode édition seulement », « supprimer / ajouter / Modifier des mots clés. Une suppression d'un mot clé le supprimera de tous les endroits qui le
+// référencent » ; puis (2026-10-16, migration 0056) « Le mot-clé aura son ID, son texte et une description ».
 //   - au chargement (surcouche) : la liste relue dans la base vivante (GET /api/edition/mots-cles/ : le site construit est en retard sur le site de dev),
-//     définitions et bulles comprises (mots-cles-vivants.mjs suit le vocabulaire relu) ;
+//     définitions, bulles et feuille des couleurs comprises (mots-cles-vivants.mjs suit le vocabulaire relu et réécrit la feuille avec `css`) ;
 //   - au crayon (debut) : une liste de gestion — pour chaque mot-clé, la balise à copier (« {{id}} »), son libellé modifiable (champ commun :
 //     mot_cle.libelle), son abréviation (mot_cle.abreviation, migration 0090 ; réponse du propriétaire du 2026-11-05 : « Modifiable et affichée » ; vidée,
-//     NULL), sa définition (mot_cle.description), ses pages (leur nombre), « Fusionner dans… » et « Supprimer » (mis en file, envoyés avec
-//     « Enregistrer ») ; un mot-clé dont le site se sert (lib/mots-cles.mjs) n'a ni saisie du libellé ni bouton, sa raison est écrite, mais sa définition
-//     et son abréviation se modifient ; « + Ajouter un mot-clé » le crée tout de suite, avec sa définition et son abréviation (ENTITES.mot_cle) ; une
-//     abréviation que le service refuse (400 : mal écrite ; 409 : prise par un autre mot-clé, `champ: 'abreviation'`) l'est comme tout refus du lot ;
+//     NULL), ses pages (leur nombre), son adresse (mot_cle.url, migration 0096 : une balise de ce mot-clé est un lien vers elle ; vidée, NULL), sa couleur
+//     (mot_cle.couleur : la liste des couleurs du site, groupées par famille, et le cercle d'une autre couleur, editeur.mjs#controleDeCouleur ; réponses
+//     Q3, Q4), sa définition (mot_cle.description), « Fusionner dans… » et « Supprimer » (mis en file, envoyés avec « Enregistrer ») ; un mot-clé dont le
+//     site se sert (lib/mots-cles.mjs) n'a ni saisie du libellé ni bouton, sa raison est écrite, mais sa définition, son abréviation, son adresse et sa
+//     couleur se modifient ; « + Ajouter un mot-clé » le crée tout de suite, avec sa définition, son abréviation, son adresse et sa couleur
+//     (ENTITES.mot_cle) ; ce que le service refuse (400 : abréviation, adresse ou couleur mal écrite ; 409 : abréviation prise par un autre mot-clé ;
+//     `champ`) l'est comme tout refus du lot ;
 //   - à l'enregistrement (verifier) : ce que le service ne pourrait pas jouer est refusé avant toute question (noms échangés en boucle, mot-clé qui reçoit
 //     une fusion et serait supprimé) ; un renommage vers une écriture qui reste prise après le lot propose la fusion ; suppressions et fusions sont
 //     confirmées une fois, avec ce qu'elles retirent ; (operations) fusions et suppressions passent avant les renommages, chacun dans un ordre que le
 //     service accepte (lib/mots-cles-edition.mjs) ;
 //   - en sortant (fin, après un enregistrement aussi) : la liste relue dans la base vivante.
-// La page (src/scripts/recherche.mjs) relit la liste à l'évènement « recherche:mots-cles » (detail.gestion : la liste de gestion est affichée) ; chaque
-// mot-clé y est un <li data-id data-cle data-n data-libelle data-abreviation data-definition> (data-n : ses pages ; data-abreviation : absente sans
-// abréviation). Sa pastille montre le libellé suivi de l'abréviation, « Armure magique (AM) · 3 » (une monnaie : « Ricken d’or » et son icône, R63) :
-// le HTML de la page construite (lib/mots-cles-balises.mjs#htmlDeLaPastille). La liste de lecture refaite, la définition rendue de chaque mot-clé décrit
-// l'est aussi (#definitions-des-mots-cles, [data-definition-de] : htmlDeLaDefinition, monnaies en icônes ; ses balises, rendues par
-// mots-cles-vivants.mjs dès qu'elle est posée), que la vue d'un mot-clé recopie. Les catégories des événements de la chronologie se gèrent sur
-// /chronologie/.
+// La page (src/scripts/glossaire.mjs : le filtre) relit la liste à l'évènement « glossaire:mots-cles » (detail.gestion : la liste de gestion est
+// affichée) ; chaque mot-clé y est un <li data-id data-cle data-n data-libelle data-abreviation data-definition data-url data-couleur> (absents sans
+// valeur), la ligne de lecture le HTML de la page construite (lib/mots-cles-balises.mjs#htmlDeLaLigneDuGlossaire), dont les balises de la définition
+// sont rendues par mots-cles-vivants.mjs dès qu'elle est posée. Les catégories des événements de la chronologie se gèrent sur /chronologie/.
 import { attributEd, cleDeLigne, ENTITES } from '../../lib/edition-modele.mjs';
 import { parLibelle, raisonDeProtection } from '../../lib/mots-cles.mjs';
 import {
   cibleSaisie, ciblesDeFusion, compteDesElements, confirmationDesRetraits, erreurDesRetraits, examinerLesRenommages, operationsDuVocabulaire,
 } from '../../lib/mots-cles-edition.mjs';
-import { htmlDeLaDefinition, htmlDeLaPastille } from '../../lib/mots-cles-balises.mjs';
+import { htmlDeLaLigneDuGlossaire } from '../../lib/mots-cles-balises.mjs';
 import { definirLeVocabulaire } from './mots-cles-vivants.mjs';
 
-let vocabulaire = null; // [{ id, libelle, libelle_cle, description, abreviation, pages, protege }] de la base vivante ; null : pas encore lu
+let vocabulaire = null; // [{ id, libelle, libelle_cle, description, abreviation, url, couleur, pages, protege }] de la base vivante ; null : pas encore lu
 const suppressions = new Set();
 const fusions = new Map(); // source → cible (« Fusionner dans… »)
 let renommagesEnFusion = new Map(); // source → cible : renommages acceptés en fusion (verifier), envoyés par operations
 let lectures = 0; // la dernière lecture du vocabulaire demandée
 let session = 0; // le passage en mode modification en cours (une lecture finie après la sortie ne dessine pas la liste de gestion)
 
-const racine = () => document.querySelector('[data-recherche]');
+const racine = () => document.querySelector('[data-glossaire]');
 const liste = () => document.getElementById('liste-mots-cles');
-const annoncerLaListe = (gestion) => document.dispatchEvent(new CustomEvent('recherche:mots-cles', { detail: { gestion } }));
+const annoncerLaListe = (gestion) => document.dispatchEvent(new CustomEvent('glossaire:mots-cles', { detail: { gestion } }));
 const retires = () => new Set([...suppressions, ...fusions.keys()]);
 const motCle = (id) => vocabulaire?.find((m) => m.id === id) ?? null;
 
@@ -46,10 +47,10 @@ const motCle = (id) => vocabulaire?.find((m) => m.id === id) ?? null;
 async function relire(ed) {
   const n = ++lectures;
   try {
-    const { motsCles } = await ed.appel('GET', 'edition/mots-cles/');
+    const { motsCles, css } = await ed.appel('GET', 'edition/mots-cles/');
     if (n !== lectures) return false;
     vocabulaire = motsCles;
-    definirLeVocabulaire(motsCles); // les mots-clés et les bulles de la page suivent (définitions modifiées)
+    definirLeVocabulaire(motsCles, { css }); // les mots-clés, les bulles et la feuille des couleurs de la page suivent
     return true;
   } catch (e) {
     if (n === lectures) ed.annoncer(`La liste des mots-clés du site de dev n’a pas pu être lue : ${e.message}`, 'erreur');
@@ -57,53 +58,26 @@ async function relire(ed) {
   }
 }
 
-/** Les attributs que lit la page (src/scripts/recherche.mjs) : id, écriture, nombre de pages, libellé, abréviation, définition. */
+/** Les attributs que lit la page (src/scripts/glossaire.mjs) : id, écriture, nombre de pages, libellé, abréviation, définition, adresse, couleur. */
 function decrire(li, m) {
   Object.assign(li.dataset, { id: m.id, cle: m.libelle_cle, n: String(m.pages), libelle: m.libelle });
-  if (m.abreviation) li.dataset.abreviation = m.abreviation;
-  else delete li.dataset.abreviation;
-  if (m.description) li.dataset.definition = m.description;
-  else delete li.dataset.definition;
-}
-
-/** Les définitions rendues que recopie la vue d'un mot-clé (src/scripts/recherche.mjs), refaites d'après la base vivante, comme la page construite. */
-function dessinerLesDefinitions() {
-  const conteneur = document.getElementById('definitions-des-mots-cles');
-  if (!conteneur || !vocabulaire) return;
-  conteneur.replaceChildren(...vocabulaire.filter((m) => m.description).map((m) => {
-    const d = document.createElement('div');
-    d.dataset.definitionDe = m.id;
-    d.innerHTML = htmlDeLaDefinition(m.description);
-    return d;
-  }));
+  for (const [attribut, valeur] of [['abreviation', m.abreviation], ['definition', m.description], ['url', m.url], ['couleur', m.couleur]]) {
+    if (valeur) li.dataset[attribut] = valeur;
+    else delete li.dataset[attribut];
+  }
 }
 
 /**
- * La liste de lecture (comme la page construite, avec les comptes et les définitions de la base vivante) : un lien /recherche/?mot-cle=<id> par mot-clé,
- * l'infobulle de sa définition quand il en a une (sa bulle : mots-cles-vivants.mjs).
+ * La liste de lecture (comme la page construite, avec les comptes, les définitions, les adresses et les couleurs de la base vivante) : la ligne de chaque
+ * mot-clé (lib/mots-cles-balises.mjs#htmlDeLaLigneDuGlossaire ; les balises de sa définition : mots-cles-vivants.mjs).
  */
-function dessinerLaLecture() {
+function dessinerLaLecture(ed) {
   const ul = liste();
   if (!ul || !vocabulaire) return;
   ul.removeAttribute('data-gestion');
-  ul.className = 'tags';
-  const lien = racine().dataset.lienMotCle;
-  const lignes = vocabulaire.map((m) => {
-    const li = document.createElement('li');
-    decrire(li, m);
-    const a = document.createElement('a');
-    a.className = 'badge';
-    a.href = `${lien}${encodeURIComponent(m.id)}`;
-    a.innerHTML = htmlDeLaPastille({ id: m.id, libelle: m.libelle, abreviation: m.abreviation, n: m.pages });
-    if (m.description) {
-      a.dataset.bulle = `mot-cle-${m.id}`;
-      a.setAttribute('aria-describedby', `mot-cle-${m.id}`);
-    }
-    li.append(a);
-    return li;
-  });
-  ul.replaceChildren(...lignes);
-  dessinerLesDefinitions();
+  ul.className = 'glossaire-liste';
+  const options = { base: ed?.base || '/', lienDesPages: racine()?.dataset.lienMotCle ?? '/recherche/?mot-cle=' };
+  ul.innerHTML = vocabulaire.map((m) => htmlDeLaLigneDuGlossaire({ ...m, n: m.pages }, options)).join('');
   annoncerLaListe(false);
 }
 
@@ -194,7 +168,7 @@ function demanderLaCible(m, choisir) {
 
 /**
  * Une ligne de la liste de gestion : la balise à copier, le libellé (saisie commune, sauf mot-clé protégé), l'abréviation (saisie commune, pour tous), ses
- * pages, la définition (saisie commune, pour tous), puis les boutons ou la raison de la protection.
+ * pages, l'adresse et la couleur (saisies communes, pour tous), la définition (saisie commune, pour tous), puis les boutons ou la raison de la protection.
  */
 function ligneDeGestion(ed, m) {
   const li = document.createElement('li');
@@ -217,16 +191,25 @@ function ligneDeGestion(ed, m) {
   const compte = document.createElement('span');
   compte.className = 'ed-mot-cle__compte';
   compte.textContent = compteDesElements(m);
+  // l'adresse (une balise de ce mot-clé est un lien vers elle) et la couleur, saisies communes pour tous (protégés compris) ; vides : NULL
+  const lien = document.createElement('span');
+  lien.className = 'ed-mot-cle__lien';
+  lien.dataset.ed = attributEd('mot_cle', { id: m.id }, 'url');
+  lien.textContent = m.url ?? '';
+  const couleur = document.createElement('span');
+  couleur.className = 'ed-mot-cle__couleur';
+  couleur.dataset.ed = attributEd('mot_cle', { id: m.id }, 'couleur');
+  couleur.textContent = m.couleur ?? '';
   const definition = document.createElement('span');
   definition.className = 'ed-mot-cle__definition';
   definition.dataset.ed = attributEd('mot_cle', { id: m.id }, 'description');
   definition.textContent = m.description ?? '';
-  li.append(balise, nom, abreviation, compte, definition);
+  li.append(balise, nom, abreviation, compte, lien, couleur, definition);
   if (m.protege) {
     li.classList.add('ed-mot-cle--protege');
     const raison = document.createElement('span');
     raison.className = 'ed-mot-cle__protege';
-    raison.textContent = `Protégé : il ${m.protege} (sa définition et son abréviation se modifient).`;
+    raison.textContent = `Protégé : il ${m.protege} (sa définition, son abréviation, son adresse et sa couleur se modifient).`;
     li.append(raison);
     return li;
   }
@@ -279,6 +262,7 @@ function dessinerLaGestion(ed) {
   for (const m of vocabulaire) {
     ed.lignes?.set(cleDeLigne('mot_cle', { id: m.id }), {
       id: m.id, libelle: m.libelle, libelle_cle: m.libelle_cle, description: m.description ?? null, abreviation: m.abreviation ?? null,
+      url: m.url ?? null, couleur: m.couleur ?? null,
     });
   }
   ul.setAttribute('data-gestion', '');
@@ -292,8 +276,8 @@ function dessinerLaGestion(ed) {
 /** Un mot-clé créé : ajouté au vocabulaire et, en mode modification, à sa place dans la liste de gestion. */
 function ajouter(ed, ligne) {
   const m = {
-    id: ligne.id, libelle: ligne.libelle, libelle_cle: ligne.libelle_cle, description: ligne.description ?? null, abreviation: ligne.abreviation ?? null, pages: 0,
-    protege: raisonDeProtection(ligne.libelle_cle),
+    id: ligne.id, libelle: ligne.libelle, libelle_cle: ligne.libelle_cle, description: ligne.description ?? null, abreviation: ligne.abreviation ?? null,
+    url: ligne.url ?? null, couleur: ligne.couleur ?? null, pages: 0, protege: raisonDeProtection(ligne.libelle_cle),
   };
   vocabulaire = [...(vocabulaire ?? []).filter((x) => x.id !== m.id), m].sort(parLibelle);
   ed.lignes?.set(cleDeLigne('mot_cle', { id: m.id }), { ...ligne });
@@ -310,10 +294,10 @@ function ajouter(ed, ligne) {
 
 export const motsCles = {
   nom: 'mots-cles',
-  actif: (doc) => Boolean(doc.querySelector('[data-recherche]')),
+  actif: (doc) => Boolean(doc.querySelector('[data-glossaire]')),
 
   async surcouche(ed) {
-    if ((await relire(ed)) && !ed.enEdition) dessinerLaLecture();
+    if ((await relire(ed)) && !ed.enEdition) dessinerLaLecture(ed);
   },
 
   debut(ed) {
@@ -332,6 +316,7 @@ export const motsCles = {
           if (!ligne) return;
           ajouter(ed, ligne)?.scrollIntoView({ block: 'center' });
           definirLeVocabulaire(vocabulaire);
+          relire(ed); // la feuille des couleurs du service (un mot-clé créé avec sa couleur)
           ed.annoncer(`Mot-clé créé : ${ligne.libelle} (balise « {{${ligne.id}}} »).`);
         },
       }),
@@ -376,9 +361,9 @@ export const motsCles = {
     fusions.clear();
     renommagesEnFusion = new Map();
     document.querySelector('.ed-outils-mots-cles')?.remove();
-    dessinerLaLecture(); // tout de suite, puis avec ce que l'enregistrement a changé
+    dessinerLaLecture(ed); // tout de suite, puis avec ce que l'enregistrement a changé
     relire(ed).then((lu) => {
-      if (lu && !ed.enEdition) dessinerLaLecture();
+      if (lu && !ed.enEdition) dessinerLaLecture(ed);
     });
   },
 };

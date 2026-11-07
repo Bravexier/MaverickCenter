@@ -3,7 +3,7 @@
 // Ici, sans dépendance navigateur ni Astro (dépendance : lib/mots-cles-balises.mjs) : un arbre simple { type: 'texte', valeur } | { type: 'element', nom,
 // attributs, enfants } (le script le tire du DOM, les tests d'un HTML analysé) → Markdown, dans les écritures du site : liens [[cible|texte]] (attribut
 // data-cible posé par lib/wikilinks.mjs), tableaux GFM, couleur de case « {couleur:vert} » en tête de case (lib/markdown-couleurs.mjs), mots-clés du
-// glossaire (lib/mots-cles-balises.mjs : un `strong.mot-cle` redevient sa balise avec le texte qu'il montre, « {{id|texte}} » — le service la ramène à
+// glossaire (lib/mots-cles-balises.mjs : un `strong.mot-cle` (ou `a.mot-cle`, un mot-clé à adresse) redevient sa balise avec le texte qu'il montre, « {{id|texte}} » — le service la ramène à
 // « {{id}} » quand ce texte est le libellé du mot-clé, la forme canonique d'un texte mis en forme —, le mode complet `span.mot-cle-definition` « {{id:}} »,
 // « | » échappé dans une case de tableau). test/markdown-edition.test.mjs rejoue l'aller-retour Markdown → HTML → Markdown → HTML sur toutes les pages
 // du guide : le rendu ne change pas.
@@ -32,7 +32,10 @@ const estElement = (n) => n?.type === 'element';
 const estBloc = (n) => estElement(n) && BLOCS.has(n.nom);
 const ignore = (n) => estElement(n) && (IGNORES.has(n.nom) || attribut(n, 'data-ed-ignorer') !== null);
 const ID_DE_MOT_CLE = /^[a-z0-9-]+$/;
-const estUnMotCle = (n) => (n.nom === 'strong' || n.nom === 'b') && classes(n).includes('mot-cle') && ID_DE_MOT_CLE.test(attribut(n, 'data-mot-cle') ?? '');
+// un mot-clé rendu : `strong.mot-cle`, ou `a.mot-cle` quand il a une adresse (migration 0096 : lib/mots-cles-balises.mjs#htmlDeLaBalise)
+const estUnMotCle = (n) => (n.nom === 'strong' || n.nom === 'b' || n.nom === 'a') && classes(n).includes('mot-cle') && ID_DE_MOT_CLE.test(attribut(n, 'data-mot-cle') ?? '');
+/** La classe de la couleur d'un mot-clé rendu (lib/mots-cles-liens.mjs#classeDuMotCle), gardée par l'aperçu ; null sans elle. */
+const classeDeCouleur = (n) => classes(n).find((c) => /^couleur-[a-z0-9]+(?:-[a-z0-9]+)+$/.test(c)) ?? null;
 const estUneDefinition = (n) => n.nom === 'span' && classes(n).includes('mot-cle-definition') && ID_DE_MOT_CLE.test(attribut(n, 'data-mot-cle') ?? '');
 
 /**
@@ -379,7 +382,10 @@ function attributsSurs(n, nom) {
   // un mot-clé du glossaire (lib/mots-cles-balises.mjs#htmlDeLaBalise) : sa classe, son id, sa balise et sa bulle (celle de la page), rien d'autre
   if (estUnMotCle(n) || estUneDefinition(n)) {
     const id = attribut(n, 'data-mot-cle');
-    garder('class', estUnMotCle(n) ? 'mot-cle' : 'mot-cle-definition');
+    const couleur = classeDeCouleur(n);
+    const classe = estUnMotCle(n) ? 'mot-cle' : 'mot-cle-definition';
+    garder('class', couleur ? `${classe} ${couleur}` : classe);
+    if (nom === 'a' && ADRESSE_SURE.test(attribut(n, 'href') ?? '')) garder('href', attribut(n, 'href'));
     garder('data-mot-cle', id);
     if (estUnMotCle(n) && attribut(n, 'data-bulle') === `mot-cle-${id}`) {
       garder('data-bulle', `mot-cle-${id}`);
@@ -389,8 +395,9 @@ function attributsSurs(n, nom) {
     if (lireUneBalise(attribut(n, 'data-balise') ?? '')) garder('data-balise', attribut(n, 'data-balise'));
     return a.join('');
   }
-  if ((nom === 'strong' || nom === 'span') && ['mot-cle-definition__nom', 'mot-cle-definition__texte'].some((c) => classes(n).includes(c))) {
+  if ((nom === 'strong' || nom === 'span' || nom === 'a') && ['mot-cle-definition__nom', 'mot-cle-definition__texte'].some((c) => classes(n).includes(c))) {
     garder('class', classes(n).includes('mot-cle-definition__nom') ? 'mot-cle-definition__nom' : 'mot-cle-definition__texte');
+    if (nom === 'a' && ADRESSE_SURE.test(attribut(n, 'href') ?? '')) garder('href', attribut(n, 'href'));
     return a.join('');
   }
   if (/^h[1-6]$/.test(nom) && /^[a-z0-9-]+$/.test(attribut(n, 'id') ?? '')) garder('id', attribut(n, 'id'));

@@ -155,10 +155,11 @@ export const LIENS_ET_RENCONTRE = gele({
 export const PAR_OU_COMMENCER = Object.freeze([...DECOUVRIR.groupes.flatMap((g) => g.pages), 'guide/creer-son-personnage']);
 
 /**
- * Les pages Astro écrites à côté des pages des onglets (regles/artisanat), et l'ancienne adresse des Règles avancées (/regles/avancees/, renvoyée par la
- * page 404) : aucune page des onglets ne prend ce nom. Les ids des onglets sont réservés de même (nomsReserves : /regles/<onglet>/).
+ * Les pages Astro écrites à côté des pages des onglets (regles/artisanat, regles/glossaire : la liste des mots-clés, migration 0096), et l'ancienne
+ * adresse des Règles avancées (/regles/avancees/, renvoyée par la page 404) : aucune page des onglets ne prend ce nom. Les ids des onglets sont réservés
+ * de même (nomsReserves : /regles/<onglet>/).
  */
-export const NOMS_RESERVES = Object.freeze(['artisanat', 'avancees']);
+export const NOMS_RESERVES = Object.freeze(['artisanat', 'avancees', 'glossaire']);
 
 /**
  * Les pages fusionnées dans une autre : page retirée → page qui l'absorbe. Elles ne sont plus dans la base ; leurs anciennes adresses mènent à la page
@@ -219,12 +220,13 @@ export const PAGES_SUPPRIMEES = Object.freeze([
  * { vers : l'adresse où mène chacune de ses anciennes adresses, relative à la racine du site ; adresses : ses anciennes adresses, relatives elles aussi }.
  * Le Lexique (« Les bases », /regles/lexique/ ; /guide/lexique/ avant l'éclatement du guide) est devenu des mots-clés du glossaire (migration 0090, demande
  * du propriétaire du 2026-11-05 : « Supprime la page lexique. Toutes les informations comprises dedans doivent être converties en mot-clés. ») : ses
- * adresses mènent à /recherche/ (réponse du propriétaire : « Rediriger vers /recherche/ »), la requête et l'ancre d'origine gardées (page 404 :
+ * adresses menaient à /recherche/ (réponse du propriétaire : « Rediriger vers /recherche/ ») ; depuis que la liste des mots-clés a sa page, le Glossaire
+ * des Règles (/regles/glossaire/, réponses du propriétaire du 2026-11-06), elles y mènent, la requête et l'ancre d'origine gardées (page 404 :
  * lib/metiers.mjs#renvoisDuGuide), comme un lien Markdown écrit vers elles (lib/guide.mjs#adresseDesAnciensLiens). Elles ne sont plus dans la base
  * (verifierLePlan). Une page simplement effacée, sans renvoi (« Rejoindre une partie », « Liens », PAGES_SUPPRIMEES), n'est pas ici.
  */
 export const PAGES_RETIREES = Object.freeze({
-  'guide/lexique': gele({ vers: 'recherche/', adresses: Object.freeze(['guide/lexique/', 'regles/lexique/']) }),
+  'guide/lexique': gele({ vers: 'regles/glossaire/', adresses: Object.freeze(['guide/lexique/', 'regles/lexique/']) }),
 });
 
 /**

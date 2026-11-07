@@ -1,6 +1,7 @@
 ---
 import { nombre, sortsParNpm } from '../../lib/sort-format.mjs';
 import { classeDeMagie, cssDesFamilles } from '../../lib/palette-css.mjs';
+import { classeDeLaPageDuSite } from '../../lib/couleur-de-la-page.mjs';
 import magieBaseCss from '../../styles/magie/base.css?raw';
 import magiePageCss from '../../styles/magie/page.css?raw';
 import magieSortsCss from '../../styles/magie/sorts.css?raw';
@@ -37,8 +38,9 @@ interface Props {
   statusNote?: string;
 }
 const { entry, entries, magie, magies, statusNote } = Astro.props;
-// la couleur de la page : la classe de sa magie (lib/palette-css.mjs, posée sur chaque page par layouts/Base.astro ; styles/magie/base.css en tire --mag)
-const classeDeLaMagie = classeDeMagie(magie.nom);
+// la couleur de la page : celle du mot-clé coloré qui y mène (réponse Q5 du propriétaire, migration 0096 : lib/couleur-de-la-page.mjs), sinon la classe
+// de sa magie (lib/palette-css.mjs, posée sur chaque page par layouts/Base.astro ; styles/magie/base.css en tire --mag)
+const classeDeLaMagie = classeDeLaPageDuSite(pageHref(entry.id), classeDeMagie(magie.nom), { base: import.meta.env.BASE_URL });
 
 // Champs modifiables sur le site de dev (lib/edition-modele.mjs) : chaque élément qui affiche une colonne de la base porte son attribut `data-ed` ;
 // un champ vide est rendu caché (`data-ed-cadre`), pour pouvoir être rempli en mode modification.

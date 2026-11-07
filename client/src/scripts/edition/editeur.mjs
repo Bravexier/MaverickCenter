@@ -12,6 +12,7 @@ import css from '../../styles/edition/edition.css?raw';
 import { annonceDesFiches, cleDeLigne, lireAttributEd, optionsDuChoix } from '../../lib/edition-modele.mjs';
 import { CONTEXTE_PASTILLE, rendreChamp } from '../../lib/edition-rendu.mjs';
 import { EXTENSIONS } from './extensions.mjs';
+import { couleurDuCercle, optionsDeCouleur, valeurDeCouleur } from '../../lib/mots-cles-edition.mjs';
 import { glossaireVivant } from './mots-cles-vivants.mjs';
 import { libelleDePage, pageChoisie, pagesDuWiki } from './texte-en-place.mjs';
 
@@ -169,10 +170,76 @@ export function demarrer(racine, etatService) {
   }
 
   // --- Saisies ---------------------------------------------------------------------------------------------------------------------------------
+  /**
+   * Les couleurs proposées pour un champ `couleur` (mot_cle.couleur, migration 0096) : `champ.choix`, sinon `ed.listes.couleurs` (posée par l'extension
+   * du glossaire), sinon l'attribut `data-couleurs` de la page (pages/regles/glossaire.astro : la palette entière, groupée par famille).
+   */
+  function couleursProposees(champ) {
+    if (champ.choix) return champ.choix;
+    if (ed.listes.couleurs) return ed.listes.couleurs;
+    try {
+      return JSON.parse(document.querySelector('[data-couleurs]')?.dataset.couleurs ?? '[]');
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * La saisie d'une couleur (réponses du propriétaire Q3, Q4) : la liste des couleurs du site, groupées par famille (lib/mots-cles-edition.mjs#optionsDeCouleur,
+   * chaque option porte la classe de sa couleur), et un cercle (`<input type="color">`) dont la couleur choisie devient la valeur, « #rrggbb ». Un élément
+   * qui a une `value` (la valeur à enregistrer : une référence « famille:id », « #rrggbb » ou '' pour aucune) et émet `input` comme une saisie simple.
+   */
+  function controleDeCouleur(champ, valeur) {
+    const groupes = couleursProposees(champ);
+    const boite = document.createElement('span');
+    boite.className = 'ed-couleur-choix';
+    const liste = document.createElement('select');
+    liste.className = 'ed-couleur-choix__liste';
+    liste.setAttribute('aria-label', `${champ.libelle} : couleurs du site`);
+    const cercle = document.createElement('input');
+    cercle.type = 'color';
+    cercle.className = 'ed-couleur-choix__cercle';
+    cercle.setAttribute('aria-label', `${champ.libelle} : une autre couleur`);
+    cercle.title = 'Une autre couleur que celles du site';
+    const poser = (v) => {
+      liste.replaceChildren();
+      for (const o of optionsDeCouleur(groupes, v)) {
+        if (o.groupe) {
+          const g = document.createElement('optgroup');
+          g.label = o.groupe;
+          for (const c of o.options) {
+            const option = new Option(c.libelle, c.valeur);
+            if (c.classe) option.className = c.classe;
+            g.append(option);
+          }
+          liste.append(g);
+        } else liste.append(new Option(o.libelle, o.valeur));
+      }
+      liste.value = v;
+      cercle.value = couleurDuCercle(groupes, v);
+    };
+    poser(valeurDeCouleur(valeur));
+    liste.addEventListener('change', () => {
+      cercle.value = couleurDuCercle(groupes, liste.value);
+      boite.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    cercle.addEventListener('input', (e) => {
+      e.stopPropagation(); // l'évènement de la boîte suit, une fois la valeur posée
+      poser(valeurDeCouleur(cercle.value));
+      boite.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    liste.addEventListener('input', (e) => e.stopPropagation());
+    Object.defineProperty(boite, 'value', { get: () => valeurDeCouleur(liste.value), set: (v) => poser(valeurDeCouleur(v)) });
+    boite.append(liste, cercle);
+    return boite;
+  }
+
   function controleDe(info, valeur, { suivi = true } = {}) {
     const { champ } = info;
     let controle;
-    if (champ.type === 'texte' || champ.type === 'markdown') {
+    if (champ.type === 'couleur') {
+      controle = controleDeCouleur(champ, valeur);
+    } else if (champ.type === 'texte' || champ.type === 'markdown') {
       controle = document.createElement('textarea');
       controle.rows = Math.min(14, Math.max(2, String(valeur ?? '').split('\n').length + 1));
     } else if (champ.type === 'choix') {
@@ -374,9 +441,14 @@ export function demarrer(racine, etatService) {
    *   categories plusieurs catégories de la chronologie (`c.choix`, sinon `ed.listes.categoriesChronologie`) : une case à cocher chacune ; une catégorie
    *              se crée par le bouton « Catégories » de la chronologie ; rend la liste des ids cochés
    *   page       une page du wiki (GET /api/edition/pages/, lue à la première saisie), saisie à suggestions ; rend son id, ou '' (aucune)
+   *   couleur    une couleur (controleDeCouleur) : la liste des couleurs du site et le cercle ; rend « famille:id », « #rrggbb » ou ''
    */
   function champAPart(c) {
     const id = `ed-champ-${Math.random().toString(36).slice(2)}`;
+    if (c.type === 'couleur') {
+      const element = controleDeCouleur(c, c.valeur ?? '');
+      return { element, lire: () => element.value };
+    }
     if (c.type === 'page') {
       const saisie = document.createElement('input');
       saisie.className = 'ed-saisie';
@@ -434,7 +506,7 @@ export function demarrer(racine, etatService) {
   }
 
   /**
-   * Ouvre un formulaire : `champs` = [{ nom, libelle, type ('ligne' | 'texte' | 'markdown' | 'entier' | 'choix' | 'categories' | 'page'), requis,
+   * Ouvre un formulaire : `champs` = [{ nom, libelle, type ('ligne' | 'texte' | 'markdown' | 'entier' | 'choix' | 'categories' | 'page' | 'adresse' | 'couleur'), requis,
    * choix: [{ valeur, libelle }], aide, valeur }]. `valider(valeurs)` est appelé à l'envoi ; s'il lève une erreur, son message s'affiche et le
    * formulaire reste ouvert.
    */
@@ -461,7 +533,7 @@ export function demarrer(racine, etatService) {
       const span = document.createElement('span');
       span.className = 'ed-libelle';
       span.textContent = `${c.libelle}${c.requis ? ' *' : ''}`;
-      if (c.type === 'categories' || c.type === 'page') {
+      if (c.type === 'categories' || c.type === 'page' || c.type === 'couleur') {
         const { element, lire } = champAPart(c);
         aPart.set(c.nom, lire);
         label.append(span, element);

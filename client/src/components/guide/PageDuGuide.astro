@@ -6,6 +6,7 @@ import GuideBloc from './GuideBloc.astro';
 import { morceauxDuChapitre } from '../../lib/guide.mjs';
 import { estDuGuideDuMj, filDAriane, partieDeLaPage, RUBRIQUES_SOUS_LA_PAGE } from '../../lib/livres.mjs';
 import { classeDePartie, cssDesParties } from '../../lib/palette-css.mjs';
+import { classeDeLaPageDuSite } from '../../lib/couleur-de-la-page.mjs';
 import { rendreMarkdown } from '../../lib/guide-rendu';
 import { attributEd } from '../../lib/edition-modele.mjs';
 import { cheminDePage } from '../../lib/metiers.mjs';
@@ -33,7 +34,8 @@ interface Props {
 const { entry, entries, modifiable } = Astro.props;
 const fil = filDAriane(entry.id);
 const ici = cheminDePage(entry.id);
-const couleur = classeDePartie(partieDeLaPage(entry.id));
+// la couleur du mot-clé coloré qui mène à la page d'abord (réponse Q5 du propriétaire, migration 0096 : lib/couleur-de-la-page.mjs), sinon celle de sa partie
+const couleur = classeDeLaPageDuSite(url(ici), classeDePartie(partieDeLaPage(entry.id)), { base: import.meta.env.BASE_URL });
 // Badge « Guide » et ligne « Aussi appelé » : seulement dans le Guide du MJ, ni dans Découvrir ni dans les onglets des Règles (réponse du propriétaire
 // du 2026-11-05 : « Retirer, comme Les bases » ; « Les deux rubriques ont la même présentation : le titre, puis le texte, sans badge « Guide » ni ligne
 // « Aussi appelé ». »).
@@ -48,8 +50,9 @@ const css = [blocsCss, magieTooltipsCss].join('\n');
 ---
 
 <style is:inline set:html={css}></style>
-{/* la feuille des parties du guide (une famille d'une zone de la palette) : seulement sur une page qui en pose la classe */}
-{couleur && <style is:inline set:html={cssDesParties()}></style>}
+{/* la feuille des parties du guide (une famille d'une zone de la palette) : seulement sur une page qui en pose la classe (une autre couleur, celle d'un
+    mot-clé : dans la feuille des mots-clés colorés, layouts/Base.astro) */}
+{couleur?.startsWith('couleur-partie-') && <style is:inline set:html={cssDesParties()}></style>}
 <div class:list={['guide-reference', couleur && ['guide-reference--couleur', couleur]]}>
   <p class="muted guide-fil">
     <a href={url()}>Accueil</a>{

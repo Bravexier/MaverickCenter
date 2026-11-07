@@ -207,14 +207,15 @@ test('chaque page `guide/…` de la base a une adresse à elle, jamais sous /gui
 
 test('les adresses du plan n’entrent en conflit ni avec un type de page, ni avec une page Astro, ni avec un onglet, ni entre elles', () => {
   for (const r of ['decouvrir', 'regles', 'mj']) assert.ok(!TYPE_KEYS.includes(r), `${r} est un type de page`);
-  assert.deepEqual(NOMS_RESERVES, ['artisanat', 'avancees']);
-  assert.deepEqual(nomsReserves(), ['artisanat', 'avancees', 'fiche-de-personnage', 'mecaniques-generales', 'combats', 'exploration']);
+  // le Glossaire (pages/regles/glossaire.astro, migration 0096) : aucune page des onglets ne prend son adresse
+  assert.deepEqual(NOMS_RESERVES, ['artisanat', 'avancees', 'glossaire']);
+  assert.deepEqual(nomsReserves(), ['artisanat', 'avancees', 'glossaire', 'fiche-de-personnage', 'mecaniques-generales', 'combats', 'exploration']);
   const slugs = ids.filter((id) => cheminDePage(id).startsWith('regles/')).map((id) => id.slice('guide/'.length));
   for (const nom of nomsReserves()) assert.ok(!slugs.includes(nom), `${nom} : une page prendrait l’adresse réservée /regles/${nom}/`);
-  // les pages Astro écrites à côté des pages du plan : les routes, l'Artisanat, /regles/ (plus de Règles avancées) ; rien d'autre sous ces chemins
+  // les pages Astro écrites à côté des pages du plan : les routes, l'Artisanat, le Glossaire, /regles/ (plus de Règles avancées) ; rien d'autre sous ces chemins
   const pages = new URL('../src/pages/', import.meta.url);
   assert.deepEqual(readdirSync(new URL('decouvrir/', pages)).sort(), ['[...page].astro'], 'plus de page Liens (supprimée le 2026-10-22)');
-  assert.deepEqual(readdirSync(new URL('regles/', pages)).sort(), ['[...page].astro', 'artisanat.astro', 'index.astro'], 'plus de route /regles/avancees/ (R184)');
+  assert.deepEqual(readdirSync(new URL('regles/', pages)).sort(), ['[...page].astro', 'artisanat.astro', 'glossaire.astro', 'index.astro'], 'plus de route /regles/avancees/ (R184) ; le Glossaire');
   assert.deepEqual(readdirSync(new URL('mj/', pages)).sort(), ['[...page].astro', 'index.astro']);
   assert.ok(!existsSync(new URL('guide/', pages)), 'pas de route /guide/');
   assert.equal(ARTISANAT.chemin, 'regles/artisanat/');
@@ -233,7 +234,7 @@ test('le plan est contrôlé au build : une page absente, d’exemple, nommée d
   assert.throws(() => verifierLePlan(avec('guide/une-page-nouvelle')), /plan du guide : guide\/une-page-nouvelle n'est rangée nulle part .*regles_onglet_entree/);
   assert.doesNotThrow(() => verifierLePlan(avec('guide/une-page-d-exemple', 'example')), 'une page d’exemple non rangée : l’adresse de repli, sans entrée');
   assert.throws(() => verifierLePlan(avec('guide/situations-avancees')), /guide\/situations-avancees est absorbée par guide\/prise-en-tenaille-et-zone-d-influence/);
-  assert.throws(() => verifierLePlan(avec('guide/lexique')), /guide\/lexique est retirée \(ses adresses mènent à \/recherche\/\) et ne doit plus être dans la base/);
+  assert.throws(() => verifierLePlan(avec('guide/lexique')), /guide\/lexique est retirée \(ses adresses mènent à \/regles\/glossaire\/\) et ne doit plus être dans la base/);
   assert.throws(() => verifierLePlan(avec('guide/aide-memoire')), /guide\/aide-memoire, supprimée \(R184\), est revenue sans place dans le plan/);
   // HIDE_EXAMPLES=1 : sans les pages d'exemple, le plan tient toujours (aucune n'y est nommée)
   assert.doesNotThrow(() => verifierLePlan(pagesDuGuide.filter((p) => p.data.status !== 'example')));
@@ -402,7 +403,9 @@ test('les pages nommées par le plan : « Par où commencer ? », L’univers et
 test('le menu s’accorde au plan : Règles (Découvrir, L’univers, puis les onglets), Espace MJ (Guide du MJ) ; chaque page ouvre sa rubrique', () => {
   const rubrique = (cle) => NAV.find((g) => g.key === cle);
   assert.deepEqual(rubrique('regles').items.slice(0, 2).map((i) => i.path), DECOUVRIR.groupes[0].pages.map(cheminDePage));
-  assert.deepEqual(rubrique('regles').items.slice(2).map((i) => [i.label, i.path]), ongletsDesRegles().map((o) => [o.titre, o.chemin]));
+  // les onglets, puis le Glossaire (une page seule, hors du plan)
+  assert.deepEqual(rubrique('regles').items.slice(2, -1).map((i) => [i.label, i.path]), ongletsDesRegles().map((o) => [o.titre, o.chemin]));
+  assert.equal(rubrique('regles').items.at(-1).path, 'regles/glossaire/');
   assert.ok(!NAV.some((g) => g.items.some((i) => i.path === ARTISANAT.chemin)), 'l’Artisanat n’est plus au menu du site (menu latéral d’Exploration)');
   assert.ok(rubrique('mj').items.some((i) => i.label === GUIDE_DU_MJ.titre && i.path === GUIDE_DU_MJ.chemin));
   assert.equal(activeGroup('/').key, 'regles', 'l’accueil ouvre les Règles');
@@ -411,21 +414,21 @@ test('le menu s’accorde au plan : Règles (Découvrir, L’univers, puis les o
   assert.equal(activeGroup(`/${ARTISANAT.chemin}`).key, 'regles', 'l’Artisanat ouvre les Règles (R184)');
 });
 
-test('une page retirée dont le contenu se lit ailleurs (PAGES_RETIREES) : un lien écrit vers une de ses anciennes adresses mène à sa destination, requête et ancre gardées', () => {
-  assert.equal(adresseDeLaPageRetiree('regles/lexique/'), 'recherche/');
-  assert.equal(adresseDeLaPageRetiree('regles/lexique'), 'recherche/', 'sans barre de fin');
-  assert.equal(adresseDeLaPageRetiree('guide/lexique/#acquis'), 'recherche/#acquis', 'l’ancre écrite gardée');
-  assert.equal(adresseDeLaPageRetiree('regles/lexique/?q=AM#x'), 'recherche/?q=AM#x', 'la requête avant l’ancre');
+test('une page retirée dont le contenu se lit ailleurs (PAGES_RETIREES) : un lien écrit vers une de ses anciennes adresses mène à sa destination, requête et ancre gardées ; le Lexique, au Glossaire (réponses du propriétaire du 2026-11-06)', () => {
+  assert.equal(adresseDeLaPageRetiree('regles/lexique/'), 'regles/glossaire/');
+  assert.equal(adresseDeLaPageRetiree('regles/lexique'), 'regles/glossaire/', 'sans barre de fin');
+  assert.equal(adresseDeLaPageRetiree('guide/lexique/#acquis'), 'regles/glossaire/#acquis', 'l’ancre écrite gardée');
+  assert.equal(adresseDeLaPageRetiree('regles/lexique/?q=AM#x'), 'regles/glossaire/?q=AM#x', 'la requête avant l’ancre');
   assert.equal(adresseDeLaPageRetiree('regles/lexique/', { existe: (id) => id === 'guide/lexique' }), null, 'revenue dans la base : plus de renvoi');
-  for (const autre of ['regles/', 'regles/meteo/', 'regles/lexiques/', 'lexique/', 'recherche/', '']) assert.equal(adresseDeLaPageRetiree(autre), null, autre);
+  for (const autre of ['regles/', 'regles/meteo/', 'regles/lexiques/', 'lexique/', 'recherche/', 'regles/glossaire/', '']) assert.equal(adresseDeLaPageRetiree(autre), null, autre);
   const options = { cheminDe: cheminDePage, existe: (id) => ids.includes(id), accueil: ACCUEIL_DU_GUIDE };
-  assert.equal(Guide.adresseDesAnciensLiens('guide/lexique/', options), 'recherche/');
-  assert.equal(Guide.adresseDesAnciensLiens('regles/lexique/#acquis', options), 'recherche/#acquis');
+  assert.equal(Guide.adresseDesAnciensLiens('guide/lexique/', options), 'regles/glossaire/');
+  assert.equal(Guide.adresseDesAnciensLiens('regles/lexique/#acquis', options), 'regles/glossaire/#acquis');
   assert.equal(Guide.adresseDesAnciensLiens('regles/meteo/', options), 'regles/meteo/', 'une page du plan : telle qu’écrite');
   const renvois = renvoisDuGuide(ids);
   for (const { vers, adresses } of Object.values(PAGES_RETIREES)) {
     for (const adresse of adresses) assert.equal(renvois[adresse], Guide.adresseDesAnciensLiens(adresse, options), `${adresse} : la page 404 et le lien écrit, même destination`);
-    assert.ok(!ids.some((id) => adresses.includes(cheminDePage(id))) && vers === 'recherche/', 'aucune page du plan à une adresse retirée');
+    assert.ok(!ids.some((id) => adresses.includes(cheminDePage(id))) && vers === 'regles/glossaire/', 'aucune page du plan à une adresse retirée');
   }
 });
 
@@ -646,9 +649,9 @@ test('les anciennes adresses du guide d’avant (/guide/<slug>/, Liens, Rejoindr
     assert.equal(nouvelleAdresse(adresse, '/', renvois), null, `${adresse} : plus de renvoi`);
   }
   assert.ok(Object.keys(renvois).every((k) => !k.includes('liens') && !k.includes('rejoindre-une-partie')));
-  assert.deepEqual(PAGES_RETIREES, { 'guide/lexique': { vers: 'recherche/', adresses: ['guide/lexique/', 'regles/lexique/'] } });
-  for (const adresse of ['/regles/lexique/', '/regles/lexique', '/guide/lexique/', '/wiki/guide/lexique/']) assert.equal(nouvelleAdresse(adresse, '/', renvois), '/recherche/', adresse);
-  assert.equal(adresseComplete(nouvelleAdresse('/regles/lexique/', '/', renvois), '?q=AM', '#acquis'), '/recherche/?q=AM#acquis');
+  assert.deepEqual(PAGES_RETIREES, { 'guide/lexique': { vers: 'regles/glossaire/', adresses: ['guide/lexique/', 'regles/lexique/'] } });
+  for (const adresse of ['/regles/lexique/', '/regles/lexique', '/guide/lexique/', '/wiki/guide/lexique/']) assert.equal(nouvelleAdresse(adresse, '/', renvois), '/regles/glossaire/', adresse);
+  assert.equal(adresseComplete(nouvelleAdresse('/regles/lexique/', '/', renvois), '?q=AM', '#acquis'), '/regles/glossaire/?q=AM#acquis');
   assert.equal(Object.hasOwn(renvoisDuGuide([...ids, 'guide/lexique']), 'regles/lexique/'), false, 'une page retirée revenue : servie, pas renvoyée');
   assert.equal(nouvelleAdresse('/guide/', '/', renvois), '/decouvrir/');
   assert.equal(nouvelleAdresse('/guide/statistiques-resistance-faiblesse/', '/', renvois), '/magies/', 'une page retirée garde son renvoi (PAGES_RENOMMEES)');
