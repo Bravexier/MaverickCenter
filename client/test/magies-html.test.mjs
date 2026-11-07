@@ -12,6 +12,7 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { chargerMagies } from '../src/lib/magies-db.mjs';
 import { classeDeMagie, cssDeLaPalette } from '../src/lib/palette-css.mjs';
 import { ENCOMBREMENT, liaisonsEntreMagies, POINTES, segmentCoupe } from '../src/lib/magie-fleches.mjs';
+import { npmMaxDuPotentiel } from '../src/lib/potentiel-illimite.mjs';
 import { sansBonus } from '../src/lib/sort-maitrise.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
 import { tuilesDeCapacites } from './aide-bestiaire.mjs';
@@ -465,7 +466,8 @@ test('/races-et-magies/ n’existe plus et aucune page de magie n’y renvoie', 
 });
 
 // Page du Potentiel Illimité (components/magie/SortsDuPotentiel.astro) : il pioche ses sorts dans les autres magies. Une magie par onglet, dans l'ordre
-// du classeur ; chaque onglet reprend les tableaux de cette magie du NPM 1 au NPM 4 (demande du propriétaire), avec le gabarit de sa page (TableauNpm.astro).
+// du classeur ; chaque onglet reprend les tableaux de cette magie du NPM 1 à son plafond (demande du propriétaire ; décision R188 : la donnée,
+// lib/potentiel-illimite.mjs#npmMaxDuPotentiel, 4 à l'import), avec le gabarit de sa page (TableauNpm.astro).
 const ongletsDuPotentiel = () =>
   [...potentiel.matchAll(/<a class="onglet autre-magie__onglet (couleur-magie-[\w-]+)( is-active)?" id="onglet-([^"]+)" href="#(sorts-[^"]+)">\s*([^<]+?)\s*<\/a>/g)].map(
     (m) => ({ actif: Boolean(m[2]), cle: m[3], panneau: m[4], couleur: m[1], nom: m[5] }),
@@ -500,26 +502,29 @@ test('Potentiel Illimité : 14 onglets, un par autre magie, dans l’ordre du cl
   assert.doesNotMatch(potentiel, /role="tab(list|panel)?"/);
 });
 
-test('Potentiel Illimité : chaque onglet reprend, du NPM 1 au NPM 4, les tableaux de sa magie tels que sur sa page (mêmes lignes, mêmes détails)', options, () => {
+test('Potentiel Illimité : chaque onglet reprend, du NPM 1 à son plafond (R188), les tableaux de sa magie tels que sur sa page (mêmes lignes, mêmes détails)', options, () => {
   let total = 0;
+  const plafond = npmMaxDuPotentiel(chargerMagies(ouvrirBase()).magies);
+  assert.ok(Number.isInteger(plafond), 'R188 : le plafond du Potentiel Illimité est en base');
   for (const panneau of panneauxDuPotentiel()) {
     const cle = panneau.id.slice('sorts-'.length);
     const slug = panneau.html.match(/<h3 class="autre-magie__titre" id="[^"]+"><a href="[^"]*\/magies\/([^/"]+)\/">/)?.[1];
     const page = pages.find((p) => p.slug === slug)?.html;
     assert.ok(page, `${cle} : le titre du panneau mène à la page de sa magie`);
     const niveaux = [...panneau.html.matchAll(/<section class="npm" id="npm-([^"]+)"/g)].map((m) => m[1]);
-    assert.deepEqual(niveaux, [1, 2, 3, 4].map((n) => `${cle}-${n}`), `${cle} : NPM 1 à 4, pas de NPM 5`);
+    assert.deepEqual(niveaux, Array.from({ length: plafond }, (_, i) => `${cle}-${i + 1}`), `${cle} : NPM 1 à ${plafond}, aucun au-dessus`);
     assert.match(panneau.html, /<h4 class="npm__titre">/, `${cle} : titres des tableaux sous le titre de la magie`);
     // même gabarit : à l'identifiant près (préfixé du nom court de la magie) et au numéro des infobulles, chaque ligne est celle de la page de la magie
-    const surSaPage = lignesDeSort(page.slice(page.indexOf('id="npm-1"'), page.indexOf('id="npm-5"')));
+    const fin = page.indexOf(`id="npm-${plafond + 1}"`);
+    const surSaPage = lignesDeSort(page.slice(page.indexOf('id="npm-1"'), fin < 0 ? undefined : fin));
     const ici = lignesDeSort(panneau.html);
-    assert.equal(ici.length, 20, `${cle} : 5 sorts par NPM`);
+    assert.equal(ici.length, 5 * plafond, `${cle} : 5 sorts par NPM`);
     const bulles = (html) => html.replace(/"etat-\d+"/g, '"etat-n"');
     const sansPrefixe = (html) => html.replace(new RegExp(`(id|aria-controls|aria-labelledby)="(sort|detail|fiche)-${cle}-`, 'g'), '$1="$2-');
     assert.deepEqual(ici.map((l) => bulles(sansPrefixe(l.html))), surSaPage.map((l) => bulles(l.html)), `${cle} : lignes reprises de sa page`);
     total += ici.length;
   }
-  assert.equal(total, 280);
+  assert.equal(total, 14 * 5 * plafond);
   assert.ok(!potentiel.includes('class="info"'), 'pas de règle du NPM 5 sur cette page');
   assert.match(potentiel, /<tbody class="sort" id="sort-feu-boule-de-feu"[ >]/, 'lien profond vers un sort : #sort-<magie>-<sort>');
 });

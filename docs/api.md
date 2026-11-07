@@ -360,7 +360,9 @@ dérivée ne sait pas porter ; `capacite_nm_gagne` (les NM de sorts gagnés d'un
 refaites par le service d'édition quand une écriture change une ligne de maîtrise d'une classe ou l'effet d'un don (`serveur/edition-maitrises.mjs`),
 jamais écrites directement. `capacite_variable` (la magie que vise un don « Variable » du Mage Bleu, décision R181, migration 0088) est aussi une dérivée de
 `dons-de-classe/`, mais écrite par la migration seulement : le service d'édition ne la refait pas encore (un don « Variable » créé ou réécrit sur le site
-de dev n'y entre pas). Les entrées du tableau du Mage Bleu (`classe_annexe_entree`) sont la sous-ressource `entrees-du-tableau` de `classes/`, en
+de dev n'y entre pas). De même, écrites par la migration seulement (migration 0097) : `capacite_npm_plafond` (le plafond de NPM des sorts que relève un
+don, R188) et `capacite_condition_emplacements` (les dons qui comptent comme une condition d'emplacements de sorts, R189), dérivées de `dons-de-classe/`,
+et `magie_npm_plafond` (le plafond de NPM des sorts d'une magie innée, R188), dérivée de `magies/`. Les entrées du tableau du Mage Bleu (`classe_annexe_entree`) sont la sous-ressource `entrees-du-tableau` de `classes/`, en
 lecture seule ; les dons obtenus d'une fiche (`personnage_don_obtenu`) sont une partie de la fiche, hors ressource.
 
 Chaque opération du lot du service est joignable par une ressource (`test/ressources-registre.test.mjs` lit `OPERATIONS` dans

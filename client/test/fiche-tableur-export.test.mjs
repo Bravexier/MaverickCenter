@@ -508,7 +508,7 @@ test('fiche riche : sorts (titre, magies, 20 lignes au NM du sort avec les acces
   const e = M.emplacementsDeSorts(regles, f);
   const nm = M.maitriseDesSorts(regles, f);
   assert.ok(nm.mj > 0);
-  assert.equal(c[S.titre], `LISTE DE SORTS — ${e.total} emplacements · NPM ${M.npmMax(regles, f)} au plus · NM ${nm.comptes}/${nm.disponibles} + ${nm.mj} du MJ`);
+  assert.equal(c[S.titre], `LISTE DE SORTS — ${e.total} emplacements · NPM ${M.npmDesSorts(regles, f)} au plus · NM ${nm.comptes}/${nm.disponibles} + ${nm.mj} du MJ`);
   assert.equal(c[S.magieInnee], nomDe('magies', riche.magie_innee_id));
   assert.equal(c[S.magieAcquise], nomDe('magies', riche.magie_acquise_id));
   const acc = M.accessoiresDesSorts(regles, f);

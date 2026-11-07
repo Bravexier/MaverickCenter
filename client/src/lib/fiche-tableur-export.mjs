@@ -41,7 +41,7 @@ import { ARMURE_ENTIERE, PARTIES_DE_FICHE, gainsDeLaProgression } from './fiche-
 import {
   EMPLACEMENTS_ACCESSOIRES, accessoiresDesSorts, acquisChoixGardes, alignementDe, artisanatDe, bouclierDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, budgetCaracteristiques,
   caracteristiquesCompletes, caracteristiquesDe, choixEnAttente, classesDe, competencesDe, degatsDArme, donDeBase, donsAcquis, donsDeRace, durabiliteDArme,
-  armureParPartie, emplacementsDeSorts, livresDe, maitriseDesSorts, maitrisesParFamille, modeHyperDe, nmDuSort, npmMax, partiesDeLArmure, progressionXp, resistancesDe, sortPrepare,
+  armureParPartie, emplacementsDeSorts, livresDe, maitriseDesSorts, maitrisesParFamille, modeHyperDe, nmDuSort, npmDesSorts, partiesDeLArmure, progressionXp, resistancesDe, sortPrepare,
   sourcesDeMaitrise, trouver, valeursDuMoment, armeDeLaLigne, typeDegatsChoisi, typesDeDegats, actionsDeLaFiche, donsVariables,
 } from './fiche-moteur.mjs';
 import {
@@ -1246,10 +1246,11 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
     ecrire(cases.effet, texte, RELUE);
   });
 
-  // sorts : titre, magies, une ligne par sort dans l'ordre de la fiche (au NM du sort, comme construireSorts) ; seuls le nom et le NM sont relus
+  // sorts : titre, magies, une ligne par sort dans l'ordre de la fiche (au NM du sort, comme construireSorts) ; seuls le nom et le NM sont relus. « NPM … au
+  // plus » : le NPM des sorts (npmDesSorts : sous le plafond de la décision R188), comme « sorts jusqu'au NPM » de la page
   const emplacements = emplacementsDeSorts(regles, f);
   const nmDeLaFiche = maitriseDesSorts(regles, f);
-  ecrire(O.sorts.titre, `LISTE DE SORTS — ${emplacements.total} emplacement${emplacements.total > 1 ? 's' : ''} · NPM ${npmMax(regles, f)} au plus · NM ${nmDeLaFiche.comptes}/${nmDeLaFiche.disponibles}${nmDeLaFiche.mj ? ` + ${nmDeLaFiche.mj} du MJ` : ''}`);
+  ecrire(O.sorts.titre, `LISTE DE SORTS — ${emplacements.total} emplacement${emplacements.total > 1 ? 's' : ''} · NPM ${npmDesSorts(regles, f)} au plus · NM ${nmDeLaFiche.comptes}/${nmDeLaFiche.disponibles}${nmDeLaFiche.mj ? ` + ${nmDeLaFiche.mj} du MJ` : ''}`);
   if (innee) ecrire(O.sorts.magieInnee, innee.nom);
   if (acquise) ecrire(O.sorts.magieAcquise, acquise.nom);
   const acc = accessoiresDesSorts(regles, f);

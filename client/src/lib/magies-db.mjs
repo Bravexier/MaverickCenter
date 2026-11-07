@@ -77,6 +77,11 @@ export function chargerMagies(db) {
     all(`SELECT s.magie_id, s.rang, s.ethnie_brut, s.ethnie_id FROM magie_ethnie_secondaire s ORDER BY s.magie_id, s.rang`),
     'magie_id',
   );
+  // Plafond de NPM des sorts d'un personnage de cette magie innée (magie_npm_plafond : décision R188, migration 0097 ; le Potentiel Illimité, sans table de
+  // sorts à lui) et le plus haut plafond qu'un don acquis relève (capacite_npm_plafond : « Semi-complet » de l'Archimage), qui ne vaut que pour une magie
+  // qui a un plafond : valeurs de la base, jamais relues d'un texte
+  const npmPlafonds = new Map(all('SELECT magie_id, npm FROM magie_npm_plafond').map((r) => [r.magie_id, r.npm]));
+  const npmPlafondDesDons = all('SELECT MAX(npm) AS npm FROM capacite_npm_plafond')[0]?.npm ?? null;
 
   const cibleMagie = (r) => ({ id: r.cible_magie_id, brut: r.cible_brut });
   const cibleEtat = (r) => ({ id: r.cible_etat_id, brut: r.cible_brut });
@@ -129,6 +134,10 @@ export function chargerMagies(db) {
       ethniesSecondaires: (ethnies.get(m.id) ?? []).map((e) => ({ nom: e.ethnie_brut, pageId: e.ethnie_id.slice(0, e.ethnie_id.indexOf('#')) })),
       // altérations d'état liées à la magie (colonne « Magie Liée » de la Liste des altérations d'état : table etat_magie), dans l'ordre de l'onglet
       etats: [...etats.values()].filter((e) => e.magiesLiees.some((l) => l.id === m.id)).map((e) => e.id),
+      // R188 : `npmPlafond`, le NPM le plus haut des sorts qu'un personnage de cette magie innée choisit (null sans plafond) ; `npmPlafondAvecDon`, ce
+      // plafond relevé par le meilleur don (max(npmPlafond, plafonds de capacite_npm_plafond) ; null sans plafond) : le NPM le plus haut que sa page montre
+      npmPlafond: npmPlafonds.get(m.id) ?? null,
+      npmPlafondAvecDon: npmPlafonds.has(m.id) ? Math.max(npmPlafonds.get(m.id), npmPlafondDesDons ?? 0) : null,
       sorts: [],
     });
   }

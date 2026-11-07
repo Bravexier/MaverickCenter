@@ -300,6 +300,8 @@ function reglesDeLaBase(db) {
                                                  FROM magie_resistance ORDER BY magie_id, sens, cible_type, rang`), 'magie_id',
     (r) => ({ type: r.cible_type, id: r.cible_id, crans: r.sens === 'resistance' ? 1 : -1 }));
   const etatDeMagie = new Map(lignes(db, 'SELECT magie_id, etat_id FROM etat_magie').map((r) => [r.magie_id, r.etat_id]));
+  // plafond de NPM des sorts d'un personnage de cette magie innée (magie_npm_plafond : décision R188, migration 0097 ; le Potentiel Illimité)
+  const npmPlafondDesMagies = new Map(lignes(db, 'SELECT magie_id, npm FROM magie_npm_plafond').map((r) => [r.magie_id, r.npm]));
   const magies = lignes(db, `
     SELECT id, nom, caracteristique_id, caracteristique_brut, sante_offerte, chakra_offert, mono_magie, barre4_ressource, barre4_max, explication FROM magie ORDER BY ordre`)
     .map((m) => ({
@@ -314,6 +316,9 @@ function reglesDeLaBase(db) {
       // l'explication de la magie, telle qu'écrite (magie.explication ; null sinon) : le moteur y lit ce qui borne le poids portable (décision R165 (6),
       // Potentiel Illimité : « Impossible de porter des armures lourdes ou boucliers lourds même si la classe vous le permet »), dans le texte
       explication: m.explication ?? null,
+      // le plafond de NPM des sorts qu'il choisit quand c'est sa magie innée (magie_npm_plafond, décision R188) : NPM des sorts = min(puissance magique du
+      // niveau, max(ce plafond, `npm_plafond` des dons acquis)) ; il ne borne que le choix des sorts (R188 (2)) ; null sans plafond
+      npm_plafond: npmPlafondDesMagies.get(m.id) ?? null,
     }));
 
   const dieux = lignes(db, 'SELECT id, nom FROM dieu ORDER BY ordre_choix IS NULL, ordre_choix, nom');
@@ -345,7 +350,8 @@ function reglesDeLaBase(db) {
   // magie innée qui réserve et impose la classe (classe.magie_innee_id : l'Archimage et le Potentiel Illimité, décision R23), ou qui la ferme
   // (classe.magie_innee_exclue_id : le Mage Bleu et le Potentiel Illimité, décision R25) ; maîtrises d'armes de la classe (classe_maitrise_arme, avec
   // leur source et leurs parts : décisions R148 à R151) ; ses dons, pour le rappel des dons débloqués (demande du propriétaire), avec les parts de
-  // maîtrise d'arme que donne chacun (`maitrise`, maitrise_arme_part : ses points, R32, R148) et ses NM de sorts gagnés (`nm_gagnes`, R154).
+  // maîtrise d'arme que donne chacun (`maitrise`, maitrise_arme_part : ses points, R32, R148), ses NM de sorts gagnés (`nm_gagnes`, R154), le plafond de
+  // NPM qu'il relève (`npm_plafond`, R188) et s'il compte comme une condition d'emplacements de sorts (`condition_emplacements`, R189).
   // bonus de dégâts d'arme qu'écrit un don passif (lib/degats-texte.mjs : pastille des dégâts des armes, demande du propriétaire) ; rien sinon
   // et ses bonus de sorts (coût, dégâts, soin, portée : lib/sort-bonus-texte.mjs, décision R102)
   const degatsEcrits = (d) => {
@@ -415,6 +421,11 @@ function reglesDeLaBase(db) {
     if (n !== 1) throw new Error(`maitrise_arme_part : ${p.source_id} suit la maîtrise au choix de ${p.classe_id}, qui en a ${n} (une seule attendue, R151)`);
   }
   const nmGagnes = new Map(lignes(db, 'SELECT capacite_id, nm FROM capacite_nm_gagne').map((r) => [r.capacite_id, r.nm]));
+  // Plafond de NPM qu'un don acquis relève (capacite_npm_plafond : décision R188, migration 0097 ; « Semi-complet » de l'Archimage), seulement pour une
+  // magie innée qui a un plafond (`magies[].npm_plafond`) ; dons qui comptent comme une condition de plus dans les emplacements de sorts, comme une magie
+  // acquise (capacite_condition_emplacements : décision R189 ; « Grimoire »). Valeurs de la base, jamais relues du texte du don
+  const npmPlafondDesDons = new Map(lignes(db, 'SELECT capacite_id, npm FROM capacite_npm_plafond').map((r) => [r.capacite_id, r.npm]));
+  const conditionsDEmplacements = new Set(lignes(db, 'SELECT capacite_id FROM capacite_condition_emplacements').map((r) => r.capacite_id));
   // Dons « Variable » du Mage Bleu (décision R181, migration 0088) : la magie que vise chaque don (capacite_variable.magie : 'innee', ou 'acquise' pour
   // Secondaire), et les entrées du tableau du bas de l'onglet de sa classe (classe_annexe_entree), dans l'ordre du tableau (une ligne par magie, puis
   // l'ordre du texte) : { id, magie_id (celle de sa ligne, classe_annexe.magie_id), rang (dans sa ligne), nom, type ('passif', 'actif', 'action',
@@ -489,6 +500,10 @@ function reglesDeLaBase(db) {
           ...(nmGagnes.has(d.id) ? { nm_gagnes: nmGagnes.get(d.id) } : {}),
           // un don « Variable » (décision R181) : la magie que vise sa liste, 'innee' ou 'acquise' (capacite_variable) ; absente pour un autre don
           ...(magiesVisees.has(d.id) ? { magie_visee: magiesVisees.get(d.id) } : {}),
+          // le plafond de NPM qu'il relève (capacite_npm_plafond : R188) et s'il compte comme une condition d'emplacements de sorts
+          // (capacite_condition_emplacements : R189) ; absents pour un autre don
+          ...(npmPlafondDesDons.has(d.id) ? { npm_plafond: npmPlafondDesDons.get(d.id) } : {}),
+          ...(conditionsDEmplacements.has(d.id) ? { condition_emplacements: true } : {}),
           // exemplaires du même objet sur un emplacement de ceinture que le don permet (« Permet d'avoir 4 fois… », Mercenaire « Organisé » ; décision R89)
           ...(exemplairesDeCeintureEcrits(d.effet) ? { exemplaires_ceinture: exemplairesDeCeintureEcrits(d.effet) } : {}),
           ...(sacSansForceEcrit(d.effet) ? { sac_sans_force: true } : {}),

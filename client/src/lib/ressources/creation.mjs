@@ -219,8 +219,12 @@ export const RESSOURCES = [
     table: 'capacite',
     // les NM de sorts gagnés que le texte du don écrit (« Gagne 4 niveaux de maîtrise (NM). », décision R154), lus par lib/maitrise-arme.mjs
     // la magie que vise un don « Variable » (capacite_variable, décision R181, migration 0088 : écrite par la migration d'après le texte du don, pas encore
-    // refaite par le service d'édition)
-    derivees: [{ table: 'capacite_nm_gagne', parent: { capacite_id: 'id' } }, { table: 'capacite_variable', parent: { capacite_id: 'id' } }],
+    // refaite par le service d'édition) ; le plafond de NPM qu'un don relève (capacite_npm_plafond, R188) et les dons qui comptent comme une condition
+    // d'emplacements de sorts (capacite_condition_emplacements, R189) : migration 0097, écrits par la migration seulement (jamais lus dans le texte du don)
+    derivees: [
+      { table: 'capacite_nm_gagne', parent: { capacite_id: 'id' } }, { table: 'capacite_variable', parent: { capacite_id: 'id' } },
+      { table: 'capacite_npm_plafond', parent: { capacite_id: 'id' } }, { table: 'capacite_condition_emplacements', parent: { capacite_id: 'id' } },
+    ],
     liste: ['id', 'nom', 'classe_id', 'specialite_id', 'niveau', 'nature', 'type_brut'],
     recherche: ['nom'],
     tri: 'classe_id',
