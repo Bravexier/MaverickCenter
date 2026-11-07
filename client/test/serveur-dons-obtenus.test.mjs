@@ -12,11 +12,13 @@ import { beforeEach, test } from 'node:test';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { donneesDeClasse, enregistrer } from '../serveur/edition.mjs';
 import { enregistrerFiche, lireFiche } from '../serveur/fiches.mjs';
-import { cheminBase } from '../src/lib/donnees.mjs';
 import { ficheVide, jourDuRetrait } from '../src/lib/fiche-format.mjs';
+import { cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
-const REGLES = cheminBase({ sansExemples: false });
+// les règles dans leur état d'import (test/aide-base-d-import.mjs) : les retraits attendus citent les noms de l'import (« Mime », « Mage Bleu »,
+// « Feu ») ; le site de dev peut les changer dans la base courante (demande du propriétaire)
+const REGLES = cheminDImport();
 const MAGE_BLEU = 'classes/mage-bleu';
 const SAPHIR = 'classes/mage-bleu#specialite:mage-saphir';
 const DON = (nom) => `capacites/mage-bleu-${nom}`;

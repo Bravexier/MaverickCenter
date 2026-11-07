@@ -13,7 +13,8 @@ import {
   plage, rapport, rapprocher, remplacer, sansCorrections,
 } from '../../tools/sources/rapprocher.mjs';
 import { texteDInstantane } from '../../tools/sources/instantane.mjs';
-import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
+import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { baseDImport, cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire, fichierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const racine = new URL('../../', import.meta.url);
@@ -102,6 +103,10 @@ for (const c of registre.classeurs.filter((x) => x.etat === 'rapproche')) {
   });
 }
 
+// Les essais qui changent une cellule (ou une ligne) lisent la base dans son état d'import (aide-base-d-import.mjs) : le site de dev est la source de
+// ce qu'il modifie, et une ligne qu'il a réécrite ferait d'une cellule changée un conflit (ou une ligne de plus touchée), pas l'écart attendu. Ce qui
+// est épinglé est la sortie de l'outil à partir de sa source (l'instantané) et de la base telle que l'import l'a écrite, jamais un texte courant.
+const dbImport = baseDImport();
 const v7 = registre.classeurs.find((x) => x.titre === 'Classe Maverick V7');
 const avecCellule = (onglet, r, c, changer) => {
   const dump = structuredClone(instantanes[v7.titre]);
@@ -118,18 +123,18 @@ test('le rapprochement voit un mot changé, un nombre changé et une cellule ajo
   const mot = guerrier.cells.find((x) => typeof x.v === 'string' && x.v.includes('dégâts') && x !== niveau);
   mot.v = mot.v.replace('dégâts', 'soins');
   guerrier.cells.push({ r: 99, c: 2, v: 'Nouvelle règle' });
-  const R = relever(db, v7, dump);
+  const R = relever(dbImport, v7, dump);
   assert.equal(R.nombres.length, 1, 'le niveau changé');
   assert.ok(R.ecarts.length >= 1, 'le mot changé (base -> classeur)');
   assert.ok(R.motsAbsents.some((m) => m.mots.includes('soins')), 'le mot changé (classeur -> base)');
   assert.deepEqual(R.nonCitees.map((x) => `${x.onglet}!${x.cellule}`), ['Guerrier!B99']);
 });
 
-// Le site de dev est la source de ce qu'il modifie : une copie de la base où le site a supprimé ou modifié un don.
+// Le site de dev est la source de ce qu'il modifie : une copie de la base d'import où le site a supprimé ou modifié un don (son seul historique).
 const dossier = dossierTemporaire('rapprochement');
 const copieAvec = (nom, ecrire) => {
   const fichier = join(dossier, `${nom}.db`);
-  copyFileSync(cheminBase({ sansExemples: false }), fichier);
+  copyFileSync(cheminDImport(), fichier);
   const w = new DatabaseSync(fichier);
   w.exec('PRAGMA foreign_keys = OFF');
   const id = 'capacites/anansi-piege-toile';
@@ -161,7 +166,7 @@ test('une colonne modifiée par le site de dev n’est pas un écart ; si sa cel
   });
   const R = relever(base, v7);
   assert.equal(nombreDEcarts(R), 0, rapport(R, { exemples: 20 }));
-  // (les autres modifications du site de dev, de vraies modifications rapatriées dans data/rows, ne sont pas celles du test)
+  // (la copie part de l'état d'import : seule la modification du test est dans son historique)
   const duTest = (x) => x.ligne === 'capacite {"id":"capacites/anansi-piege-toile"}';
   assert.deepEqual(R.site.modifiees.filter(duTest).map((x) => [x.colonne, x.import, x.actuelle]), [['nom', 'Piège-toile', 'Toile piégée']]);
   const C = relever(base, v7, avecCellule('Anansi', 11, 18, () => 'Piège-soie'));
@@ -176,8 +181,8 @@ test('une colonne modifiée par le site de dev n’est pas un écart ; si sa cel
 test('une mise à jour du classeur : chaque cellule changée et les lignes de la base qu’elle touche (le contrôle que le rapprochement par ligne ne fait pas)', () => {
   // Une barrière de 1 devenue 5 : la ligne de la classe écrit déjà « 5 » ailleurs (classe de bouclier), le rapprochement ne la voit pas ; le diff, si.
   const apres = avecCellule('Guerrier', 5, 5, () => 5);
-  assert.equal(nombreDEcarts(relever(db, v7, apres)), 0, 'limite documentée du rapprochement par ligne');
-  assert.deepEqual(changements(db, { classeur: v7.titre, avant: instantanes[v7.titre], apres }), [
+  assert.equal(nombreDEcarts(relever(dbImport, v7, apres)), 0, 'limite documentée du rapprochement par ligne');
+  assert.deepEqual(changements(dbImport, { classeur: v7.titre, avant: instantanes[v7.titre], apres }), [
     { onglet: 'Guerrier', cellule: 'E5', avant: '1', apres: '5', lignes: ['classe {"id":"classes/guerrier"}'] },
   ]);
 });

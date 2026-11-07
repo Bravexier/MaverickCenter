@@ -11,10 +11,10 @@ import { traiter } from '../serveur/api.mjs';
 import { TABLES_VIVANTES, ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { DEPART_DES_COLONNES_AJOUTEES, PAGE_D_AVANT, enregistrerFiche, expliquer, LIGNES_MAX, lireFiche, listerFiches, ordreDe } from '../serveur/fiches.mjs';
 import { demarrerService, guetteur } from '../serveur/service.mjs';
-import { cheminBase } from '../src/lib/donnees.mjs';
 import { COLONNES_DU_SERVICE, COLONNES_RETIREES, HORS_FICHE, PARTIES_DE_FICHE, PARTIES_RETIREES, TABLES_RETIREES, ficheVide, jourDuRetrait } from '../src/lib/fiche-format.mjs';
 import { adresseDuPortrait } from '../src/lib/personnages-liste.mjs';
 import { empreinte } from '../src/lib/portrait.mjs';
+import { cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 /** Images écrites par Chromium (test/portrait.test.mjs) : WebP, JPEG et PNG de 3 × 2 pixels. */
@@ -23,7 +23,9 @@ const IMAGES = JSON.parse(readFileSync(new URL('./fixtures/portraits.json', impo
 const octetsDe = (dataUrl) => Buffer.from(dataUrl.slice(dataUrl.indexOf(',') + 1), 'base64');
 
 const racine = dossierTemporaire('api');
-const REGLES = cheminBase({ sansExemples: false });
+// les règles dans leur état d'import (test/aide-base-d-import.mjs) : la fiche conforme, les noms et les dés des messages attendus sont ceux de l'import ;
+// le site de dev peut tout changer de la base courante (textes et valeurs : demande du propriétaire), ce qui ne dit rien du service
+const REGLES = cheminDImport();
 const VERSION_DU_SCHEMA = new DatabaseSync(REGLES, { readOnly: true }).prepare('PRAGMA user_version').get().user_version;
 const { chemin } = preparerBaseVivante({ regles: REGLES, dossier: join(racine, 'db') });
 const db = ouvrirBaseVivante(chemin);

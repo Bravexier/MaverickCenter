@@ -15,6 +15,7 @@ import {
   DECOUVRIR, estDansDecouvrir, estDesOnglets, estDuGuideDuMj, installerLePlan, ongletDe, PAGES_ABSORBEES, PAGES_RETIREES, PAGES_SUPPRIMEES, PARTIES, pagesDeLaRubrique,
 } from '../src/lib/livres.mjs';
 import { chargerPlanDesRegles } from '../src/lib/plan-des-regles-db.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 
 const racine = (chemin) => fileURLToPath(new URL(`../../${chemin}`, import.meta.url));
 const lire = (chemin) => readFileSync(racine(chemin), 'utf8');
@@ -118,8 +119,10 @@ test('le plan garde l’ordre de lecture de l’ancien guide dans Découvrir, et
   for (const p of registre.pages.filter((x) => sansPlace(x.id))) assert.equal(ongletDe(p.id), null, p.id);
   const numeros = pagesDeLaRubrique(DECOUVRIR).map((p) => parId.get(p.id)?.chapitre).filter((n) => n !== undefined);
   assert.deepEqual(numeros, [1, 3], 'Découvrir : Bienvenue, L’univers');
-  // l'ordre des onglets est celui du propriétaire (R184, R185), plus celui des anciens chapitres ; la création du personnage (5 à 11) le garde
-  const fiche = ongletDe('guide/creer-son-personnage').entrees.map((e) => parId.get(e.page)?.chapitre).filter((n) => n !== undefined);
+  // l'ordre des onglets est celui du propriétaire (R184, R185), plus celui des anciens chapitres ; la création du personnage (5 à 11) le garde, dans le
+  // plan de l'import (le site de dev réordonne les menus et change une page d'onglet : test/aide-base-d-import.mjs)
+  const ficheDImport = chargerPlanDesRegles(baseDImport()).find((o) => o.entrees.some((e) => e.page === 'guide/creer-son-personnage'));
+  const fiche = ficheDImport.entrees.map((e) => parId.get(e.page)?.chapitre).filter((n) => n !== undefined);
   assert.deepEqual(fiche, [5, 6, 7, 8, 9, 10, 11]);
   for (const p of registre.pages.filter((x) => !sansPlace(x.id))) {
     const id = placeDe(p.id);

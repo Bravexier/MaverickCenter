@@ -12,6 +12,7 @@ import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { journalExporte } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
+import { cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
@@ -50,13 +51,21 @@ test('R31 : liste changée sans la phrase, phrase réécrite sans la liste (mêm
   assert.equal(v.status, 0, v.stdout + v.stderr);
   assert.match(v.stdout, /conformes aux pages/);
 
-  // une race que le site n'a pas touchée reste contrôlée comme à l'import : sa liste modifiée hors du site est un écart
-  const fichier = join(rows, 'race_magie_onglet.sql');
+  // une race que le site n'a pas touchée reste contrôlée comme à l'import : sa liste modifiée hors du site est un écart. Sur les lignes de la base
+  // dans son état d'import (aide-base-d-import.mjs, exportées par tools/db/maverick.py#exporter) : le site de dev peut avoir touché la phrase ou la
+  // liste de chaque race, une race « non touchée » ne se suppose pas dans data/rows.
+  const rowsDImport = join(tmp, 'rows-import');
+  const exporter = spawnSync('python3', ['-I', '-c', 'import sqlite3, sys; sys.path.insert(0, sys.argv[1]); import maverick as T; T.exporter(sqlite3.connect(sys.argv[2]), sys.argv[3])',
+    join(RACINE, 'tools', 'db'), cheminDImport(), rowsDImport], { encoding: 'utf8' });
+  assert.equal(exporter.status, 0, exporter.stderr);
+  const temoin = verifier(rowsDImport);
+  assert.equal(temoin.status, 0, temoin.stdout + temoin.stderr);
+  const fichier = join(rowsDImport, 'race_magie_onglet.sql');
   const lignes = readFileSync(fichier, 'utf8').split('\n');
   const kitsune = lignes.findIndex((l) => l.includes("VALUES ('races/kitsune'"));
   assert.ok(kitsune > 0, 'le Kitsune a une liste d’onglet');
   writeFileSync(fichier, lignes.filter((_, i) => i !== kitsune).join('\n'));
-  const ecart = verifier(rows);
+  const ecart = verifier(rowsDImport);
   assert.equal(ecart.status, 1, ecart.stdout + ecart.stderr);
   assert.match(ecart.stdout, /race_magie_onglet : /);
 });

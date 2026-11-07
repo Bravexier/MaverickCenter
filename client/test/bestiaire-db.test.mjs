@@ -8,6 +8,7 @@ import { CATEGORIES, chargerBestiaire, libelleDuBloc, optionsDeFacette, tableauD
 import { echellesEcrites, GABARIT_DE_CARTE, RUBRIQUES, SENS_DEFENSE } from '../src/lib/monstre-champs.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const { monstres, invocations } = chargerBestiaire(db);
@@ -109,7 +110,9 @@ test('filtres des monstres : chaque option compte les lignes qui portent sa vale
     assert.equal(o.libelle, ecritures[0].t, o.valeur);
     assert.equal(o.nombre, ecritures.reduce((k, x) => k + x.n, 0), o.valeur);
   }
-  assert.ok(options('type').length < types.length, 'des écritures réunies');
+  // à l'import, le doc écrit des types de plusieurs façons, que les options réunissent (le type d'un monstre est modifiable sur le site de dev)
+  const typesDImport = baseDImport().prepare('SELECT DISTINCT type_brut AS t FROM monstre WHERE type_brut IS NOT NULL').all().map((r) => r.t);
+  assert.ok(new Set(typesDImport.map(normalize)).size < typesDImport.length, 'des écritures réunies');
 });
 
 test('optionsDeFacette : effectifs, libellés et ordre voulu', () => {

@@ -21,10 +21,11 @@ import {
 import { adresseDePage, cheminDePage } from '../src/lib/metiers.mjs';
 import { chargerFilRouge, FIL_ROUGE } from '../src/lib/guide-fil-rouge.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
-import { attributsDe } from '../src/lib/fiche-moteur.mjs';
+import { attributsDe, maitriseDArme } from '../src/lib/fiche-moteur.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { cleDeLigne, historiqueSite } from '../src/lib/historique-site.mjs';
 import { buildIndex, entryUrl, splitFrontmatter } from '../src/lib/wikilinks.mjs';
+import { baseDImport, lotsAvant, texteDImport } from './aide-base-d-import.mjs';
 
 const PREMIER = 'guide/bienvenue';
 
@@ -106,10 +107,15 @@ test('le guide du site : chaque page de Découvrir, de la création du personnag
     assert.ok(parId.has(id), `${id} : page absente`);
     assert.ok(parId.get(id).data.summary, `${id} : résumé absent`);
   }
-  // toutes les pages du guide (Découvrir, onglets, Guide du MJ) : un bloc est appelé une seule fois, chaque bloc déclaré l'est
+  // toutes les pages du guide (Découvrir, onglets, Guide du MJ) : un bloc est appelé une seule fois (un marqueur inconnu lève une erreur) ; le texte est
+  // modifiable sur le site de dev, source de ce qu'il modifie : que chaque bloc déclaré soit appelé, et où, se lit dans l'état écrit par les migrations (ci-dessous)
   const blocs = pagesDuGuide.flatMap((p) => morceauxDuChapitre(p.body).filter((m) => m.bloc).map((m) => m.bloc));
   assert.equal(new Set(blocs).size, blocs.length, 'un bloc est appelé une seule fois dans tout le guide');
-  assert.deepEqual([...blocs].sort(), [...BLOCS].sort(), 'chaque bloc déclaré est utilisé, une fois');
+  // l'état écrit par les migrations (0091 : R184 ; 0095 : R187…) : seuls les lots rapatriés après la 0093 sont défaits (aucun entre la 0090 et la
+  // 0093 ; test/aide-base-d-import.mjs, fixtures/lots-avant-0093.json)
+  const corpsDesMigrations = baseDImport({ garder: lotsAvant('0093') }).prepare("SELECT id, corps_md AS body FROM page WHERE type = 'guide' AND corps_md IS NOT NULL").all();
+  const blocsDesMigrations = corpsDesMigrations.flatMap((p) => morceauxDuChapitre(p.body).filter((m) => m.bloc).map((m) => m.bloc));
+  assert.deepEqual([...blocsDesMigrations].sort(), [...BLOCS].sort(), 'chaque bloc déclaré est utilisé, une fois (état des migrations)');
   // plus de sommaire dans Bienvenue (demande du propriétaire du 2026-10-18 : « Dans la page de bienvenue, retire le sommaire ») : plus de bloc « sommaire »
   assert.equal(BLOCS.includes('sommaire'), false);
   assert.throws(() => morceauxDuChapitre('<!-- guide:sommaire -->\n'), /bloc inconnu « sommaire »/);
@@ -120,8 +126,8 @@ test('le guide du site : chaque page de Découvrir, de la création du personnag
   assert.equal(BLOCS.includes('documents'), false);
   assert.throws(() => morceauxDuChapitre('<!-- guide:documents -->\n'), /bloc inconnu « documents »/);
   // R184 : les blocs ont suivi leur texte dans les pages des étapes ; R185 (4) : le tableau des relations dans « Résistances et faiblesses », juste après
-  // son premier paragraphe
-  const ouEst = Object.fromEntries(pagesDuGuide.flatMap((p) => morceauxDuChapitre(p.body).filter((m) => m.bloc).map((m) => [m.bloc, p.id])));
+  // son premier paragraphe (état des migrations : le site de dev peut réécrire le texte autour d'un bloc)
+  const ouEst = Object.fromEntries(corpsDesMigrations.flatMap((p) => morceauxDuChapitre(p.body).filter((m) => m.bloc).map((m) => [m.bloc, p.id])));
   assert.deepEqual(
     Object.fromEntries(['fil-rouge', 'fil-rouge-race', 'magie-bonus', 'fil-rouge-magie', 'fil-rouge-classe', 'competences', 'fil-rouge-sorts', 'initiative',
       'fil-rouge-attributs', 'types-de-don', 'relations-des-magies', 'mode-hyper'].map((b) => [b, ouEst[b]])),
@@ -133,11 +139,12 @@ test('le guide du site : chaque page de Découvrir, de la création du personnag
     },
   );
   // R187 (2) : les tableaux du Mode Hyper dans « Le mode hyper », sous « Ce qu’il donne » (le dernier intertitre avant le bloc), avant « Ce qu’il coûte »
-  const hyper = morceauxDuChapitre(parId.get('guide/le-mode-hyper').body);
+  // (texte et intertitres tels que les migrations les ont écrits)
+  const hyper = morceauxDuChapitre(corpsDesMigrations.find((p) => p.id === 'guide/le-mode-hyper').body);
   const iHyper = hyper.findIndex((m) => m.bloc === 'mode-hyper');
   assert.equal([...hyper[iHyper - 1].markdown.matchAll(/^## (.+)$/gm)].map((m) => m[1]).at(-1), 'Ce qu’il donne');
   assert.match(hyper[iHyper + 1].markdown, /^\s*## Ce qu’il coûte/);
-  const relations = morceauxDuChapitre(parId.get('guide/resistances-et-faiblesses').body);
+  const relations = morceauxDuChapitre(corpsDesMigrations.find((p) => p.id === 'guide/resistances-et-faiblesses').body);
   assert.deepEqual(relations.slice(0, 2).map((m) => ('bloc' in m ? m.bloc : 'texte')), ['texte', 'relations-des-magies']);
   assert.match(relations[0].markdown.trim(), /^[^\n]+$/, 'un seul paragraphe avant le tableau');
 });
@@ -218,32 +225,26 @@ test('les personnages fil rouge : des choix permis par la base, et des attributs
     const a = attributsDe(regles, { ...ficheVide(p.id), race_id: p.race, ethnie_id: p.ethnie, magie_innee_id: p.magie, classes: [{ rang: 1, classe_id: p.classe, specialite_id: null }] });
     assert.deepEqual([g.attributs.sante, g.attributs.chakra, g.attributs.barriere, g.attributs.am], [a.sante, a.chakra, a.barriere, a.am], p.id);
   }
-  // (b) les chiffres de la fiche auto V15.2.2, tant que le site de dev (source des données qu'il modifie) n'a changé aucune des cellules en jeu
-  const intact = (id) => {
-    const p = FIL_ROUGE.find((x) => x.id === id);
-    return ![
-      ['race_onglet', { race_id: p.race }, ['sante_depart', 'chakra_depart', 'barriere_bonus']],
-      ['classe', { id: p.classe }, ['sante_depart', 'chakra_depart', 'barriere_depart']],
-      ['magie', { id: p.magie }, ['sante_offerte', 'chakra_offert', 'barre4_ressource', 'barre4_max']],
-      ['ethnie', { id: p.ethnie }, ['bonus_pv', 'bonus_chakra', 'bonus_barriere', 'bonus_am']],
-      ['race', { id: p.race }, ['am']],
-    ].some(([table, cle, colonnes]) => colonnes.some((c) => historique.touchee(table, cle, c)));
-  };
-  const guerrier = fil.find((p) => p.id === 'guerrier');
-  if (intact('guerrier')) {
-    // Orios (20 santé, 1 chakra) + Guerrier (9 santé, 0 chakra, 1 barrière) + Sang (10 santé, 0 chakra)
-    assert.deepEqual([guerrier.attributs.sante, guerrier.attributs.chakra, guerrier.attributs.barriere], [39, 1, 1]);
-    assert.deepEqual(guerrier.attributs.quatriemeBarre, { ressource: 'Sang', max: 10 });
-  }
-  const barde = fil.find((p) => p.id === 'barde');
+  // (b) les chiffres de la fiche auto V15.2.2, sur l'état d'import (test/aide-base-d-import.mjs : le site de dev, source des données qu'il modifie, peut
+  // changer la santé, le chakra ou la barrière d'une race, d'une classe, d'une magie ou d'une ethnie) ; sur l'état courant, le (a) suffit : le guide
+  // calcule comme le moteur de la fiche, quelles que soient les valeurs
+  const filDImport = chargerFilRouge(baseDImport());
+  const dImport = (id) => filDImport.find((p) => p.id === id);
+  // Orios (20 santé, 1 chakra) + Guerrier (9 santé, 0 chakra, 1 barrière) + Sang (10 santé, 0 chakra)
+  const guerrier = dImport('guerrier');
+  assert.deepEqual([guerrier.attributs.sante, guerrier.attributs.chakra, guerrier.attributs.barriere], [39, 1, 1], 'guerrier, à l’import');
+  assert.deepEqual(guerrier.attributs.quatriemeBarre, { ressource: 'Sang', max: 10 }, 'guerrier, à l’import');
   // Kitsune (8, 12) + Barde (2, 6, barrière 2) + Vent (0, 5) : chakra 23, barrière 11 + 2
-  if (intact('barde')) assert.deepEqual([barde.attributs.sante, barde.attributs.chakra, barde.attributs.barriere, barde.attributs.am], [10, 23, 13, 4]);
-  assert.equal(barde.emplacements, 2, 'magie innée + classe magique, puissance 1');
+  const barde = dImport('barde');
+  assert.deepEqual([barde.attributs.sante, barde.attributs.chakra, barde.attributs.barriere, barde.attributs.am], [10, 23, 13, 4], 'barde, à l’import');
+  // les emplacements de sort suivent la règle (magie innée + classe magique, puissance 1), pas une valeur modifiable
+  assert.equal(fil.find((p) => p.id === 'barde').emplacements, 2, 'magie innée + classe magique, puissance 1');
   assert.equal(fil.find((p) => p.id === 'archer').emplacements, 1, 'archer : la magie innée seule');
   const mage = fil.find((p) => p.id === 'mage');
-  assert.deepEqual([mage.magie.nom, mage.emplacements], ['Feu', 2]);
+  assert.deepEqual([mage.magie.id, mage.emplacements], ['magies/magie-du-feu', 2]);
   // Majin (8, 10) + Mage Rouge (0, 9, barrière 1) + Feu (0, 5) : chakra 24, barrière 12 + 1
-  if (intact('mage')) assert.deepEqual([mage.attributs.sante, mage.attributs.chakra, mage.attributs.barriere], [8, 24, 13]);
+  const mageDImport = dImport('mage');
+  assert.deepEqual([mageDImport.magie.nom, mageDImport.attributs.sante, mageDImport.attributs.chakra, mageDImport.attributs.barriere], ['Feu', 8, 24, 13], 'mage, à l’import');
 });
 
 test('décision R17 : l’exemple 2 des dégâts donne 18', () => {
@@ -321,19 +322,24 @@ test('décision R186 : dans les pages du guide que le site de dev n’a pas ré�
   }
 });
 
-test('décision R149 (G40) : les deux pages du guide et le mot-clé « Maîtrise d’arme » écrivent le plafond de maîtrise d’arme, 4 points, donc 5 dés, sans plus de « et ainsi de suite »', () => {
+test('décision R149 (G40) : le plafond de maîtrise d’arme, 4 points, donc 5 dés, est celui du moteur ; les deux pages du guide et le mot-clé « Maîtrise d’arme » l’écrivent, sans plus de « et ainsi de suite » (état d’import)', () => {
   // « 4 points au plus par famille, donc 5 dés. Les points de toutes les sources s'additionnent, jusqu'à ce plafond ; au-delà, la fiche le signale,
-  // et les points en trop ne donnent pas de dé » (R149) ; les pages disent « catégorie » pour la famille d'armes (R150). Un invariant du texte courant
-  // (data/rows), pas la valeur d'import : le site de dev a réécrit trois de ces pages depuis l'import, dont le texte n'écrivait pas le plafond. La
-  // quatrième, le Lexique, est devenue des mots-clés (migration 0090) : sa phrase est la définition du mot-clé `maitrise-darme`.
-  const maitrise = db.prepare("SELECT description FROM mot_cle WHERE id = 'maitrise-darme'").get()?.description;
-  assert.ok(maitrise, 'le mot-clé « Maîtrise d’arme » et sa définition');
-  // R184 : la phrase de la création est partie avec l'étape 4 (guide/caracteristiques-et-competences) ; l'Aide-mémoire est supprimée (R184 (9))
-  for (const [id, texte] of [...['guide/caracteristiques-et-competences', 'guide/l-equipement'].map((id) => [id, pagesDuGuide.find((p) => p.id === id).body]),
-    ['mot_cle maitrise-darme', maitrise]]) {
+  // et les points en trop ne donnent pas de dé » (R149) ; les pages disent « catégorie » pour la famille d'armes (R150). La règle vit dans le moteur
+  // (constantes maitrise_arme.des_sans_maitrise et maitrise_arme.des_max, lib/fiche-moteur.mjs#maitriseDArme ; le calcul : test/fiche-moteur.test.mjs).
+  const { desSansMaitrise, desMax, pointsMax } = maitriseDArme(chargerReglesDeFiche(db));
+  assert.deepEqual([desSansMaitrise, pointsMax, desMax], [1, 4, 5]);
+  // Les phrases sont du texte, modifiable sur le site de dev (source de ce qu'il modifie) : lues dans l'état d'import (test/aide-base-d-import.mjs ;
+  // les cellules que db:sync-pages ou une migration ont écrites après le site y sont gardées). R184 : la phrase de la création est partie avec l'étape 4
+  // (guide/caracteristiques-et-competences) ; l'Aide-mémoire est supprimée (R184 (9)) ; le Lexique est devenu des mots-clés (migration 0090) : sa phrase
+  // est la définition du mot-clé `maitrise-darme`.
+  for (const [id, texte] of [['guide/caracteristiques-et-competences', texteDImport('page', { id: 'guide/caracteristiques-et-competences' }, 'corps_md')],
+    ['guide/l-equipement', texteDImport('page', { id: 'guide/l-equipement' }, 'corps_md')],
+    ['mot_cle maitrise-darme', texteDImport('mot_cle', { id: 'maitrise-darme' }, 'description')]]) {
+    assert.ok(texte, `${id} : le texte (à l’import)`);
     const desDeMaitrise = texte.split('\n').filter((ligne) => /point de maîtrise/.test(ligne) && /\bdés?\b/.test(ligne));
     assert.ok(desDeMaitrise.length > 0, `${id} : la phrase des dés de maîtrise`);
-    assert.ok(desDeMaitrise.some((ligne) => /\b4 points\b/.test(ligne) && /\b5 dés\b/.test(ligne) && /plafond/.test(ligne)), `${id} : le plafond, 4 points, 5 dés`);
+    assert.ok(desDeMaitrise.some((ligne) => new RegExp(`\\b${pointsMax} points\\b`).test(ligne) && new RegExp(`\\b${desMax} dés\\b`).test(ligne) && /plafond/.test(ligne)),
+      `${id} : le plafond du moteur, ${pointsMax} points, ${desMax} dés`);
     for (const ligne of desDeMaitrise) assert.doesNotMatch(ligne, /ainsi de suite|etc\./, id);
   }
 });

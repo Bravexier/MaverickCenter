@@ -10,6 +10,7 @@ import { after, test } from 'node:test';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const h = historiqueSite(db);
@@ -179,7 +180,8 @@ test('R167 : une arme élémentaire a la solidité d’une pièce élémentaire 
   assert.equal(c.unite, 'crans');
   assert.equal(c.source_ref, 'Ressources et Craft › Pièces élémentaires › A3');
   assert.ok(parCase('Pièces élémentaires', 'A3').includes(c.texte), c.texte);
-  const crans = (n) => db.prepare("SELECT COALESCE(bonus_cran, 0) AS c FROM amelioration_equipement WHERE cible = 'arme' AND niveau = ?").get(n).c;
+  // les crans de la ligne d'amélioration à l'import (bonus_cran est modifiable sur le site de dev : une valeur changée là est une règle changée)
+  const crans = (n) => baseDImport().prepare("SELECT COALESCE(bonus_cran, 0) AS c FROM amelioration_equipement WHERE cible = 'arme' AND niveau = ?").get(n).c;
   assert.deepEqual([4, 5, 9, 10].map((n) => c.valeur + crans(n)), [4, 5, 5, 6]);   // rien au +1…+4, 1 au +5…+9, 2 au +10
   // aucune constante propre aux armes élémentaires (celle de la première version de la migration n'existe pas)
   assert.equal(db.prepare("SELECT count(*) AS n FROM constante_equipement WHERE id = 'arme_elementaire.solidite_base'").get().n, 0);

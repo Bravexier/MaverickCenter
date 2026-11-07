@@ -25,9 +25,12 @@ import { feuilleDeGrille, ficheDuClasseur, REMARQUE_MAITRISES_CSV } from '../src
 import { chargerFilRouge, FIL_ROUGE } from '../src/lib/guide-fil-rouge.mjs';
 import { ecrireXlsx, zonesDuClasseur } from '../src/lib/tableur-ecriture.mjs';
 import { lireClasseur } from '../src/lib/tableur-lecture.mjs';
+import { baseDImport, reglesDImport } from './aide-base-d-import.mjs';
 
-const db = ouvrirBase({ sansExemples: false });
-const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que la page le reçoit
+// le tableur lit et écrit les noms, et le moteur lit ses règles dans les textes : tout est épinglé sur l'état d'import de la base (le site de dev
+// réécrit librement noms, textes et valeurs ; test/aide-base-d-import.mjs) ; le test « aujourd’hui » refait la chaîne sur la base courante
+const db = baseDImport();
+let regles = reglesDImport(); // tel que la page le reçoit
 const DATE = '15/10/2026';
 const MODELE = await modeleXlsx();
 const LOGO = partiesDuModele().get('xl/media/image1.png');
@@ -818,6 +821,24 @@ test('les personnages fil rouge du guide : relus tels quels, point fixe', async 
       classes: [{ rang: 1, classe_id: choix.classe, specialite_id: null }],
     };
     await verifier(f, p.id);
+  }
+});
+
+test('aujourd’hui (la base courante, noms, textes et valeurs du site de dev compris) : les personnages fil rouge relus tels quels, point fixe', async () => {
+  const dImport = regles;
+  const courante = ouvrirBase({ sansExemples: false });
+  regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(courante)));
+  try {
+    for (const p of chargerFilRouge(courante)) {
+      const choix = FIL_ROUGE.find((x) => x.id === p.id);
+      const f = {
+        ...ficheVide(p.titre), race_id: choix.race, ethnie_id: choix.ethnie, magie_innee_id: choix.magie,
+        classes: [{ rang: 1, classe_id: choix.classe, specialite_id: null }],
+      };
+      await verifier(f, p.id);
+    }
+  } finally {
+    regles = dImport;
   }
 });
 

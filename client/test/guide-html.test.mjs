@@ -19,11 +19,15 @@ import { morceauxDuChapitre } from '../src/lib/guide.mjs';
 import { decouperCorps } from '../src/lib/markdown-edition.mjs';
 import { classeDePartie, cssDesFamilles } from '../src/lib/palette-css.mjs';
 import {
-  ARTISANAT, DECOUVRIR, entreesDuMenuLateral, estDuGuideDuMj, GUIDE_DU_MJ, installerLePlan, ongletDe, ongletsDesRegles, PAGES_ABSORBEES, PAGES_DE_LA_CREATION,
+  ARTISANAT, DECOUVRIR, entreesDuMenuLateral, estDuGuideDuMj, GUIDE_DU_MJ, installerLePlan, ongletsDesRegles, PAGES_ABSORBEES, PAGES_DE_LA_CREATION,
   PAGES_SUPPRIMEES, pagesDeLaRubrique, partieDeLaPage,
 } from '../src/lib/livres.mjs';
 import { chargerPlanDesRegles } from '../src/lib/plan-des-regles-db.mjs';
 import { cheminDePage } from '../src/lib/metiers.mjs';
+import { chargerModeHyper } from '../src/lib/guide-db.mjs';
+import { chargerFilRouge } from '../src/lib/guide-fil-rouge.mjs';
+import { baseDImport, texteDImport } from './aide-base-d-import.mjs';
+import { htmlParLignes, premiersMotsAffiches, texteAffiche } from './aide-texte-affiche.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const present = existsSync(join(dist, 'decouvrir', 'index.html'));
@@ -40,6 +44,13 @@ const pagesConstruites = db.prepare("SELECT id, titre, resume, corps_md, statut 
   .map((p) => ({ ...p, data: { title: p.titre, summary: p.resume ?? undefined, status: p.statut } }));
 const pageDe = (id) => pagesConstruites.find((p) => p.id === id);
 const echappe = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+/** L'onglet courant d'une page des onglets des Règles (le site de dev range une page dans un autre onglet) : son fil d'Ariane. */
+const filDeLOnglet = (id) => {
+  const o = db.prepare('SELECT o.id, o.titre FROM regles_onglet_entree e JOIN regles_onglet o ON o.id = e.onglet_id WHERE e.page_id = ?').get(id);
+  return `<a href="/">Accueil</a> › <a href="/regles/${o.id}/">${echappe(o.titre)}</a>`;
+};
+/** Les premiers mots d'un effet du Mode Hyper de la base, rendu comme au build (GuideBloc.astro#effetEnHtml : test/aide-texte-affiche.mjs) puis affiché. */
+const premiersMots = async (texte, n = 6) => premiersMotsAffiches(await htmlParLignes(texte, db), n);
 /** La page qui appelle un bloc (`<!-- guide:<bloc> -->`) : chaque bloc est appelé une fois dans tout le guide (test/guide.test.mjs). */
 const pageDuBloc = (bloc) => pagesConstruites.find((p) => morceauxDuChapitre(p.corps_md).some((m) => m.bloc === bloc));
 
@@ -91,10 +102,8 @@ test('le fil d’Ariane : Découvrir, l’onglet de la page, Guide du MJ ; la co
   assert.equal(fil('decouvrir/l-univers'), '<a href="/">Accueil</a> › <a href="/decouvrir/">Découvrir</a>');
   // R184 : « Accueil › <onglet> », l'onglet de la page dans le plan de la base
   assert.equal(fil('regles/creer-son-personnage'), '<a href="/">Accueil</a> › <a href="/regles/fiche-de-personnage/">Fiche de personnage</a>');
-  assert.equal(fil('regles/premiers-sorts'), '<a href="/">Accueil</a> › <a href="/regles/fiche-de-personnage/">Fiche de personnage</a>');
-  assert.equal(fil('regles/meteo'), '<a href="/">Accueil</a> › <a href="/regles/mecaniques-generales/">Mécaniques générales</a>');
-  assert.equal(fil('regles/les-degats'), '<a href="/">Accueil</a> › <a href="/regles/combats/">Les combats</a>');
-  assert.equal(fil('regles/les-pieges'), '<a href="/">Accueil</a> › <a href="/regles/exploration/">Exploration</a>');
+  // une page du menu d'un onglet : l'onglet où la base la range (le site de dev la déplace)
+  for (const id of ['guide/premiers-sorts', 'guide/meteo', 'guide/les-degats', 'guide/les-pieges']) assert.equal(fil(cheminDePage(id).slice(0, -1)), filDeLOnglet(id), id);
   assert.equal(fil('regles/combats'), '<a href="/">Accueil</a> › <a href="/regles/combats/">Les combats</a>', '/regles/combats/ : le fil de sa page d’ouverture');
   assert.equal(fil('regles'), '<a href="/">Accueil</a> › <a href="/regles/fiche-de-personnage/">Fiche de personnage</a>', '/regles/ : le premier onglet');
   assert.equal(fil('mj/campagne-ou-scenario-one-shot'), '<a href="/">Accueil</a> › <a href="/mj/">Guide du MJ</a>');
@@ -222,11 +231,20 @@ test('les tableaux viennent de la base : progression, postures, compétences, ma
   assert.equal((competences.match(/class="guide-competences__groupe /g) ?? []).length, 6);
   assert.deepEqual([...competences.matchAll(/<section class="guide-competences__groupe (couleur-caracteristique-[\w-]+)" aria-labelledby/g)].map((m) => m[1]),
     ['force', 'volonte', 'intelligence', 'perception', 'social', 'agilite'].map((c) => `couleur-caracteristique-${c}`), 'Force, Volonté, Intelligence, Perception, Social, Agilité');
-  assert.match(lireBloc('magie-bonus'), /<span class="guide-carac couleur-caracteristique-social">Social<\/span>/, '+1 en Social du Feu');
+  // la caractéristique du Feu (+1 en Social à l'import : test/aide-base-d-import.mjs) ; la page montre celle de la base courante
+  assert.equal(texteDImport('magie', { id: 'magies/magie-du-feu' }, 'caracteristique_id'), 'social', '+1 en Social du Feu, à l’import');
+  const feu = db.prepare("SELECT c.id, c.nom FROM magie m JOIN caracteristique c ON c.id = m.caracteristique_id WHERE m.id = 'magies/magie-du-feu'").get();
+  assert.ok(lireBloc('magie-bonus').includes(`<span class="guide-carac couleur-caracteristique-${feu.id}">${echappe(feu.nom)}</span>`), `+1 en ${feu.nom} du Feu`);
   for (const html of [postures, competences]) assert.doesNotMatch(html, /class="guide-(?:posture|competences__groupe|carac)[^"]*" style=/, 'aucune couleur en style');
   const attributs = lireBloc('fil-rouge-attributs');
   assert.ok((attributs.match(/class="guide-fil-rouge__perso"/g) ?? []).length >= 4);
-  assert.match(attributs, /20 de la race \+ 9 de la classe \+ 10 de la magie = 39/, 'santé du guerrier orios');
+  // la santé du guerrier orios, terme à terme (comme components/guide/GuideBloc.astro) : à l'import, 20 + 9 + 10 = 39 (test/aide-base-d-import.mjs) ; la
+  // page rend les valeurs de la base courante (le site de dev les modifie)
+  const calcul = (termes, total) => `${termes.filter(([v], i) => i === 0 || v).map(([v, d]) => `${v ?? 0} ${d}`).join(' + ')} = ${total}`;
+  const santeDe = (p) => calcul([[p.race.sante, 'de la race'], [p.classe.sante, 'de la classe'], [p.magie?.sante, 'de la magie'], [p.ethnie?.sante, 'de l’ethnie']], p.attributs.sante);
+  const guerrierOrios = (base) => chargerFilRouge(base).find((p) => p.race.id === 'races/orios' && p.classe.id === 'classes/guerrier');
+  assert.equal(santeDe(guerrierOrios(baseDImport())), '20 de la race + 9 de la classe + 10 de la magie = 39', 'santé du guerrier orios, à l’import');
+  assert.ok(attributs.includes(echappe(santeDe(guerrierOrios(db)))), 'santé du guerrier orios');
   assert.doesNotMatch(lireBloc('fil-rouge'), /<em>à préciser<\/em>/, 'les quatre magies innées sont connues');
   // R184 : plus de bloc « documents » (sa page est supprimée) ; les blocs ont suivi leur texte dans les pages des étapes
   assert.equal(pageDuBloc('documents'), undefined);
@@ -259,7 +277,7 @@ test('R185 (4) : « Résistances et faiblesses » montre le tableau « Relations
 // récupérant directement l'information depuis la DB. ») : sous « Ce qu’il donne » de « Le mode hyper », le tableau des magies (« Magie | Mono-Magie |
 // Bi-magie », le Potentiel Illimité sur une ligne « Forme Complète » dont la case tient les deux colonnes) puis celui des races (« Race | Capacité |
 // Effet ») ; chaque nom mène à sa page ; une ligne par effet de mode_hyper_effet (lib/guide-db.mjs#chargerModeHyper).
-test('R187 (2) : « Le mode hyper » montre les deux tableaux du Mode Hyper, magies puis races, sous « Ce qu’il donne », tirés de la base', options, () => {
+test('R187 (2) : « Le mode hyper » montre les deux tableaux du Mode Hyper, magies puis races, sous « Ce qu’il donne », tirés de la base', options, async () => {
   const page = lire(cheminDePage('guide/le-mode-hyper')).main;
   const region = (nom) => {
     const debut = page.indexOf(`role="region" aria-label="Mode Hyper : ${nom}"`);
@@ -268,8 +286,16 @@ test('R187 (2) : « Le mode hyper » montre les deux tableaux du Mode Hyper, mag
   };
   const magies = region('l’effet de chaque magie');
   const races = region('la capacité de chaque race');
-  assert.ok(page.indexOf('id="ce-quil-donne"') < page.indexOf('Mode Hyper : l’effet de chaque magie'), 'sous « Ce qu’il donne »');
-  assert.ok(page.indexOf('Mode Hyper : la capacité de chaque race') < page.indexOf('id="ce-quil-coûte"'), 'avant « Ce qu’il coûte »');
+  // sous « Ce qu’il donne », avant « Ce qu’il coûte » : la place du bloc dans le texte de la page, que le site de dev réécrit (intertitres compris) ; à
+  // l'import (test/aide-base-d-import.mjs) ; la page rend les deux tableaux, magies puis races
+  const morceaux = morceauxDuChapitre(texteDImport('page', { id: 'guide/le-mode-hyper' }, 'corps_md'));
+  const i = morceaux.findIndex((m) => m.bloc === 'mode-hyper');
+  const avant = morceaux.slice(0, i).map((m) => m.markdown ?? '').join('\n');
+  const apres = morceaux.slice(i + 1).map((m) => m.markdown ?? '').join('\n');
+  const donne = avant.search(/^## Ce qu['’]il donne\s*$/m);
+  assert.ok(i > 0 && donne >= 0 && !/^## /m.test(avant.slice(donne + 3)), 'sous « Ce qu’il donne », à l’import');
+  assert.match(apres, /^## Ce qu['’]il coûte\s*$/m, 'avant « Ce qu’il coûte », à l’import');
+  assert.ok(page.indexOf('Mode Hyper : l’effet de chaque magie') < page.indexOf('Mode Hyper : la capacité de chaque race'), 'magies puis races');
   // le gabarit commun des tableaux, dans sa zone qui défile
   for (const html of [magies, races]) assert.match(page.slice(page.lastIndexOf('<div ', page.indexOf(html)), page.indexOf(html)), /^<div class="guide-defile tableau tableau--defile" tabindex="0"/);
   const entetes = (html) => [...html.slice(html.indexOf('<thead>'), html.indexOf('</thead>')).matchAll(/<th scope="col">([^<]*)<\/th>/g)].map((m) => m[1]);
@@ -280,15 +306,34 @@ test('R187 (2) : « Le mode hyper » montre les deux tableaux du Mode Hyper, mag
   const nRaces = db.prepare("SELECT count(*) AS n FROM mode_hyper_effet WHERE version = 'onglet_race'").get().n;
   assert.equal((magies.match(/<tr class="couleur-magie-[\w-]+">/g) ?? []).length, nMagies);
   assert.equal((races.match(/<tr>\s*<th scope="row"><a href=/g) ?? []).length, nRaces);
-  assert.match(magies, /<tr class="couleur-magie-feu">\s*<th scope="row">\s*<a class="guide-magie guide-magie--ligne" href="[^"]*\/magies\/magie-du-feu\/">[\s\S]*?>Feu<\/span>\s*<\/a>\s*<\/th>\s*<td>\s*\(Réaction\) Lors d’une agression[^<]*\(1 fois\/tour\)\s*<\/td>\s*<td>\s*\(Réaction\)[^<]*\(1 fois\/3 tours\)\s*<\/td>\s*<\/tr>/,
-    'le Feu : son nom (celui du site) lié à sa page, Mono-Magie puis Bi-magie');
-  // le Potentiel Illimité : une seule case sur les deux colonnes, son intitulé « Forme Complète » en tête
-  assert.match(magies, /href="[^"]*\/magies\/potentiel-illimite\/">[\s\S]*?<\/a>\s*<\/th>\s*<td colspan="2">\s*<strong>Forme Complète :<\/strong> Résistance à la magie et dégâts physiques neutre\.\s*<\/td>\s*<\/tr>/);
+  // les textes sont ceux de la base courante (lib/guide-db.mjs#chargerModeHyper ; le site de dev les réécrit) : le Feu, son nom lié à sa page, Mono-Magie
+  // puis Bi-magie
+  const hyper = chargerModeHyper(db);
+  const ligne = (html, debut) => html.slice(html.indexOf(debut), html.indexOf('</tr>', html.indexOf(debut)));
+  const feu = hyper.magies.lignes.find((m) => m.id === 'magies/magie-du-feu');
+  const ligneDuFeu = ligne(magies, '<tr class="couleur-magie-feu">');
+  assert.match(ligneDuFeu, new RegExp(`^<tr class="couleur-magie-feu">\\s*<th scope="row">\\s*<a class="guide-magie guide-magie--ligne" href="[^"]*/magies/magie-du-feu/">[\\s\\S]*?>${echappe(feu.nom)}</span>\\s*</a>\\s*</th>\\s*<td>[\\s\\S]*</td>\\s*<td>[\\s\\S]*</td>\\s*$`),
+    'le Feu : son nom (celui du site) lié à sa page, deux cases');
+  const cases = ligneDuFeu.split('<td>').slice(1).map(texteAffiche);
+  for (const [k, c] of feu.cellules.entries()) {
+    const debut = await premiersMots(c.effet);
+    assert.ok(cases[k].includes(debut), `le Feu, case ${k + 1} : « ${debut} »`);
+  }
+  // le Potentiel Illimité : une seule case sur les deux colonnes, son intitulé (« Forme Complète ») en tête
+  const pi = hyper.magies.lignes.find((m) => m.id === 'magies/potentiel-illimite');
+  const ligneDuPi = magies.slice(magies.lastIndexOf('<tr', magies.indexOf('/magies/potentiel-illimite/')), magies.indexOf('</tr>', magies.indexOf('/magies/potentiel-illimite/')));
+  assert.match(ligneDuPi, new RegExp(`<td colspan="2">\\s*<strong>${echappe(pi.cellules[0].intitule)} :</strong>`));
+  assert.ok(texteAffiche(ligneDuPi).includes(await premiersMots(pi.cellules[0].effet)), 'le Potentiel Illimité : son effet');
   assert.equal((magies.match(/colspan=/g) ?? []).length, 1, 'une seule case fusionnée');
   // une race : son nom lié à sa page, sa capacité, son effet
-  assert.match(races, /<tr>\s*<th scope="row"><a href="[^"]*\/races\/humain\/">Humain<\/a><\/th>\s*<td class="guide-hyper__capacite">Adrénaline<\/td>\s*<td>\s*1d de dégâts en plus/);
-  // un retour à la ligne de l'effet est gardé ; une balise du glossaire est rendue (le middleware), jamais laissée telle quelle
-  assert.match(magies, /source d’eau pour lui et ses alliés\.<br \/>La première attaque subie/);
+  const humain = hyper.races.lignes.find((r) => r.id === 'races/humain');
+  const ligneHumain = ligne(races, '/races/humain/');
+  assert.ok(ligneHumain.startsWith(`/races/humain/">${echappe(humain.nom)}</a></th>`), 'l’Humain : son nom lié à sa page');
+  assert.match(ligneHumain, new RegExp(`<td class="guide-hyper__capacite">${echappe(humain.capacite)}</td>\\s*<td>`), 'sa capacité');
+  assert.ok(texteAffiche(ligneHumain).includes(await premiersMots(humain.effet)), 'son effet');
+  // un retour à la ligne d'un effet est gardé ; une balise du glossaire est rendue (le middleware), jamais laissée telle quelle
+  const surDeuxLignes = hyper.magies.lignes.flatMap((m) => m.cellules).filter((c) => /\S\n\S/.test(c.effet.trim()));
+  assert.equal((magies.match(/<br \/>/g) ?? []).length >= surDeuxLignes.length, true, 'un retour à la ligne par effet écrit sur deux lignes');
   assert.doesNotMatch((magies + races).replace(/ data-balise="[^"]*"/g, ''), /\{\{/, 'balises rendues (la forme source ne reste que dans data-balise)');
 });
 
@@ -320,7 +365,7 @@ test('/mj/ et /regles/artisanat/ : le titre et le résumé de chaque page, liés
   const { html, main } = lire('regles/artisanat');
   const { entrees } = menuLateral(main, 'Exploration');
   assert.deepEqual(entrees.filter((e) => e[2]).map((e) => [e[0], e[1]]), [['/regles/artisanat/', 'Artisanat']]);
-  assert.deepEqual(entrees.map((e) => e[0]), entreesDuMenuLateral(ongletDe('guide/les-pieges'), pagesConstruites).map((e) => `/${e.id ? cheminDePage(e.id) : e.adresse}`));
+  assert.deepEqual(entrees.map((e) => e[0]), entreesDuMenuLateral(ongletsDesRegles().find((o) => o.id === 'exploration'), pagesConstruites).map((e) => `/${e.id ? cheminDePage(e.id) : e.adresse}`));
   assert.match(html, /<a href="\/regles\/exploration\/" aria-current="true">Exploration<\/a>/);
   assert.match(html, /data-group="regles" aria-pressed="true" aria-current="true"/, 'la rubrique Règles ouverte');
   // lot de l'édition des menus : l'Artisanat reçoit le mode modification du site de dev (son menu se réordonne, « + Ajouter une page »)

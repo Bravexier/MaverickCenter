@@ -7,7 +7,10 @@
 //   - posture_critique sans ligne 'don_de_posture' : « Sci du Crit » n'est que mentionné sur la fiche, jamais compté (Q90 : « Tout jet d'attaque au
 //     corps à corps », armes de contact seulement, jamais un sort).
 // Pages du guide passées par db:sync-pages : l'échec critique au-delà de 95 % (Q89) et le paragraphe « Le sort préparé ». Les écritures se font dans
-// une COPIE de la base construite, jamais dans var/maverick.db ni dans data/rows.
+// une COPIE de la base construite, jamais dans var/maverick.db ni dans data/rows. Les textes (pages du guide, effet et remarque des dons) sont
+// modifiables sur le site de dev, source de ce qu'il modifie : ceux que la décision a fait écrire se lisent dans l'état d'import
+// (test/aide-base-d-import.mjs) ; le moteur (Sci du Crit mentionné, jamais compté ; plage figée du sort préparé) : test/fiche-critique.test.mjs,
+// test/fiche-critique-sort-prepare.test.mjs.
 import assert from 'node:assert/strict';
 import { copyFileSync, readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
@@ -15,6 +18,7 @@ import { test } from 'node:test';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { rejouerLaMigration } from './aide-migration-rejouee.mjs';
+import { texteDImport } from './aide-base-d-import.mjs';
 
 const MIGRATION = '0089-r182-critique-du-sort-prepare.sql';
 const AVEC_PREPARE = 'personnage_sort_prepare_critique_avec_prepare';
@@ -22,7 +26,7 @@ const BORNES = 'personnage_sort_prepare_critique_bornes';
 const INSTANT = '2026-10-30T12:00:00Z';
 const lire = (chemin) => readFileSync(new URL(`../../${chemin}`, import.meta.url), 'utf8');
 const db = ouvrirBase({ sansExemples: false });
-const corps = (id) => db.prepare('SELECT corps_md FROM page WHERE id = ?').get(id).corps_md;
+const corpsDImport = (id) => texteDImport('page', { id }, 'corps_md');
 const constante = (id) => db.prepare('SELECT valeur FROM regle_constante WHERE id = ?').get(id).valeur;
 
 /** Une copie de la base construite, ouverte en écriture, fermée à la fin du test `t`, avec un prétiré minimal `p` et deux de ses sorts. */
@@ -111,20 +115,20 @@ test('R182 (Q90) : posture_critique n’a plus aucune ligne de don de posture ; 
   const { base } = copie(t);
   assert.throws(() => base.prepare("INSERT INTO posture_critique (posture_id, bonus, competence_id) VALUES ('guide/postures#posture:offensif', 'don_de_posture', 'arme-legere')").run(),
     { message: /CHECK constraint failed: bonus IN/ });
-  // le don lui-même ne change pas : son texte reste tel quel (mentionné sur la fiche)
-  assert.equal(db.prepare("SELECT effet FROM capacite WHERE id = 'capacites/martiale-sci-du-crit'").get().effet, '(Posture Offensif)\nAugmente la réussite critique de +5%.');
+  // le don lui-même ne change pas : son texte reste tel quel (mentionné sur la fiche), à l'import
+  assert.equal(texteDImport('capacite', { id: 'capacites/martiale-sci-du-crit' }, 'effet'), '(Posture Offensif)\nAugmente la réussite critique de +5%.');
 });
 
 test('R182 (Q89, Q91) : le guide dit l’échec critique au-delà de 95 % et le sort préparé (critique de la préparation, Double coup), décisions citées', () => {
-  // « Les quatre résultats » de « Réussir une action » est devenu la page « Réussites / échecs / critiques » (R184, migration 0091)
-  const critiques = corps('guide/reussites-echecs-et-critiques');
+  // « Les quatre résultats » de « Réussir une action » est devenu la page « Réussites / échecs / critiques » (R184, migration 0091) ; textes de l'import
+  const critiques = corpsDImport('guide/reussites-echecs-et-critiques');
   const ECHEC = 'C’est vrai même pour un score au-delà de 95 % : de 96 à 100, le jet reste un échec critique.';
   assert.ok(critiques.includes(ECHEC));
   const debut = critiques.indexOf('## L’échec critique : de 96 à 100');
   assert.ok(debut >= 0);
   const section = critiques.slice(debut);
   assert.ok(section.includes(ECHEC), 'dans la section « L’échec critique : de 96 à 100 »');
-  const magie = corps('guide/la-magie-en-jeu');
+  const magie = corpsDImport('guide/la-magie-en-jeu');
   const lancer = magie.slice(magie.indexOf('## Lancer un sort'), magie.indexOf('## Ce que coûte un sort'));
   assert.ok(lancer.includes('### Le sort préparé'), 'sous « Lancer un sort »');
   for (const phrase of [
@@ -137,9 +141,9 @@ test('R182 (Q89, Q91) : le guide dit l’échec critique au-delà de 95 % et le 
   const sources = (id) => db.prepare(`SELECT s.texte FROM page_source ps JOIN source s ON s.id = ps.source_id WHERE ps.page_id = ?`).all(id).map((r) => r.texte).join('\n');
   for (const r of ['R115', 'R179', 'R182']) assert.match(sources('guide/la-magie-en-jeu'), new RegExp(`\\b${r}\\b`), r);
   assert.match(sources('guide/reussir-une-action'), /\bR182\b/);
-  // la remarque citée de Double coup (Classe Maverick V7) que le guide reprend, intacte
+  // la remarque citée de Double coup (Classe Maverick V7) que le guide reprend, intacte (à l'import)
   for (const id of ['capacites/mage-rouge-double-coup', 'capacites/mage-vert-double-coup']) {
-    assert.ok(db.prepare('SELECT remarque FROM capacite WHERE id = ?').get(id).remarque
+    assert.ok(texteDImport('capacite', { id }, 'remarque')
       .startsWith("Dans le cas d'un critique, ce sera que pour le premier coup, les prochains c'est fixé à 40 de réussite."), id);
   }
 });

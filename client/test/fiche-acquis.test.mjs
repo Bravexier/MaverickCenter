@@ -7,13 +7,12 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { COMPETENCES_D_ARME, lecteurDAcquis } from '../src/lib/acquis-texte.mjs';
 import { COMPETENCES_D_ARME as COMPETENCES_DES_ARMES } from '../src/lib/arme-champs.mjs';
-import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { acquisRetires, descriptionDuRetrait, entrainementEnLignes, ficheVide, ligneDeRetrait, sansPartiesRetirees } from '../src/lib/fiche-format.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
-import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
+import { reglesDImport } from './aide-base-d-import.mjs';
 
-const db = ouvrirBase({ sansExemples: false });
-const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que la page le reçoit
+// les règles (textes et valeurs que le site de dev modifie librement) : épinglées sur leur état d'import (test/aide-base-d-import.mjs)
+const regles = reglesDImport(); // tel que la page le reçoit
 const lire = lecteurDAcquis(regles.competences);
 /** Les raisons d'un bonus non compté que rend le lecteur ('arme_choisie' : celle du moteur, quand la classe n'a pas de maîtrise au choix lisible, R119). */
 const RAISONS = ['situation', 'arme_choisie', 'mj', 'inconnue'];

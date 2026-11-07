@@ -9,6 +9,7 @@ import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { bonusDeMaitrise, COLONNES_NM } from '../src/lib/sort-analyse.mjs';
 import { texteDeBonus } from '../src/lib/sort-maitrise.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 
@@ -26,15 +27,16 @@ test('groupe entre parenthèses seul dans sa phrase : contexte de l’import (sa
   assert.equal(texteDeBonus(lignes), 'Effets : Réduit de 5 l\'initiative de l’adversaire pour le prochain tour. (+2/NM)');
 });
 
-test('rejoué sur les sorts de la base : chaque groupe seul dans sa phrase redonne exactement le contexte de sort_bonus_maitrise', () => {
+/** Rejoue bonusDeMaitrise sur les sorts de `base` : chaque groupe seul dans sa phrase redonne le contexte de sort_bonus_maitrise. Rend le nombre vu. */
+function rejouerLesGroupesSeuls(base) {
   const phrasesDe = (texte) => texte.split('\n').flatMap((l) => l.split(/(?<=\.)\s+/)).map((p) => p.trim().replace(/\.$/, ''));
   let vus = 0;
-  for (const s of db.prepare('SELECT * FROM sort ORDER BY id').all()) {
+  for (const s of base.prepare('SELECT * FROM sort ORDER BY id').all()) {
     for (const champ of ['effets', 'remarque']) {
       const texte = s[COLONNES_NM[champ]];
       if (!texte) continue;
       const trouves = bonusDeMaitrise(champ, texte);
-      for (const b of db.prepare('SELECT rang, texte_brut, contexte FROM sort_bonus_maitrise WHERE sort_id = ? AND champ = ? ORDER BY rang').all(s.id, champ)) {
+      for (const b of base.prepare('SELECT rang, texte_brut, contexte FROM sort_bonus_maitrise WHERE sort_id = ? AND champ = ? ORDER BY rang').all(s.id, champ)) {
         const seul = phrasesDe(texte).some((p) => /^\([^()]*\)$/.test(p) && p.includes(b.texte_brut));
         if (!seul) continue;
         vus += 1;
@@ -42,5 +44,16 @@ test('rejoué sur les sorts de la base : chaque groupe seul dans sa phrase redon
       }
     }
   }
+  return vus;
+}
+
+test('rejoué sur les sorts de l’import : chaque groupe seul dans sa phrase redonne exactement le contexte de sort_bonus_maitrise (au moins 10)', () => {
+  // le nombre de groupes seuls dépend des textes : il se compte sur les textes que l'import a écrits, que le site de dev peut réécrire
+  const vus = rejouerLesGroupesSeuls(baseDImport());
   assert.ok(vus >= 10, `${vus} groupes seuls dans leur phrase`);
+});
+
+test('aujourd’hui : sur les sorts de la base courante, chaque groupe seul dans sa phrase redonne le contexte de sort_bonus_maitrise (le site le refait)', () => {
+  // aucun seuil : le site de dev peut réécrire ou vider les effets et remarques ; seul l'accord entre le texte et sort_bonus_maitrise est vérifié
+  rejouerLesGroupesSeuls(db);
 });

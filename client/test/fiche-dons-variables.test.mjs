@@ -10,15 +10,15 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { enregistrerFiche } from '../serveur/fiches.mjs';
-import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { LIBELLES_DES_CONTROLES } from '../src/lib/fiche-controles.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
-import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { baseDImport, cheminDImport, reglesDImport } from './aide-base-d-import.mjs';
 
-const db = ouvrirBase({ sansExemples: false });
-const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que la page le reçoit
+// les règles (textes et valeurs que le site de dev modifie librement) : épinglées sur leur état d'import (test/aide-base-d-import.mjs)
+const db = baseDImport();
+const regles = reglesDImport(); // tel que la page le reçoit
 const MAGE_BLEU = 'classes/mage-bleu';
 const SAPHIR = 'classes/mage-bleu#specialite:mage-saphir';
 const DON = (nom) => `capacites/mage-bleu-${nom}`;
@@ -193,7 +193,7 @@ test('R181 : un choix hors de la liste (magie innée changée) est sans effet, s
 });
 
 test('R181 : les choix à faire du moteur (nature don_obtenu) sont les règles don_obtenu_a_choisir de la base ; les choix gardés, ses autres règles', (t) => {
-  const { chemin } = preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(dossierTemporaire('fiche-dons-variables', { t }), 'db') });
+  const { chemin } = preparerBaseVivante({ regles: cheminDImport(), dossier: join(dossierTemporaire('fiche-dons-variables', { t }), 'db') });
   const vivante = ouvrirBaseVivante(chemin);
   t.after(() => vivante.close());
   const enBase = (f) => enregistrerFiche(vivante, f).controles.filter((c) => c.regle.startsWith('don_obtenu')).map((c) => [c.regle, c.detail]).sort();

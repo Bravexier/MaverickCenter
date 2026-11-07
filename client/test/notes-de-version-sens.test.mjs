@@ -7,11 +7,21 @@ import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { analyserDegats, analyserDuree } from '../src/lib/sort-analyse.mjs';
 import { SENS, sensDuChangement } from '../src/lib/notes-de-version-sens.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
+// les sorts et les dons d'aujourd'hui (le site de dev réécrit leurs cases) : les balayages y vérifient des invariants ; les exemples et les comptes
+// se lisent dans l'état d'import (test/aide-base-d-import.mjs), par identifiant
 const sorts = db.prepare('SELECT * FROM sort ORDER BY id').all();
-const sort = (nom) => sorts.find((s) => s.nom === nom);
 const dons = db.prepare('SELECT id, nom, type_brut FROM capacite ORDER BY id').all();
+const importe = baseDImport();
+const sortsDImport = importe.prepare('SELECT * FROM sort ORDER BY id').all();
+const donsDImport = importe.prepare('SELECT id, nom, type_brut FROM capacite ORDER BY id').all();
+const JAVELOT_SOMBRE = 'magies/magie-de-lombre#sort:javelot-sombre';
+const REGENERATION = 'magies/magie-de-la-lumiere#sort:regeneration';
+const FLASH = 'magies/magie-de-la-lumiere#sort:flash';
+const CONTESTE = 'capacites/mage-bleu-conteste';
+const sort = (id) => sortsDImport.find((s) => s.id === id);
 const sens = (table, colonne, avant, apres) => sensDuChangement(table, colonne, avant, apres).sens;
 const INVERSE = { amelioration: 'affaiblissement', affaiblissement: 'amelioration', neutre: 'neutre' };
 const COLONNES_DE_SORT = ['nom', 'type_brut', 'cout_brut', 'cout_secondaire', 'portee_brut', 'zone_brut', 'dsb_brut', 'effets', 'remarque', 'texte_niveau5'];
@@ -19,8 +29,8 @@ const COLONNES_DE_SORT = ['nom', 'type_brut', 'cout_brut', 'cout_secondaire', 'p
 // --- Lectures ----------------------------------------------------------------------------------------------------------------------------------
 
 test('analyserDegats : sommes de dés et de nombres suivies d’un seul effet', () => {
-  assert.equal(sort('Javelot sombre').dsb_brut, '7d6 + 15 dégâts');
-  assert.deepEqual(analyserDegats(sort('Javelot sombre').dsb_brut), {
+  assert.equal(sort(JAVELOT_SOMBRE).dsb_brut, '7d6 + 15 dégâts');
+  assert.deepEqual(analyserDegats(sort(JAVELOT_SOMBRE).dsb_brut), {
     lisible: true, des: [{ nombre: 7, faces: 6 }], fixe: 15, pourcent: false, signe: 1, queue: 'dégâts', moyenne: 39.5,
   });
   assert.deepEqual(analyserDegats('3D6 dégâts'), { lisible: true, des: [{ nombre: 3, faces: 6 }], fixe: 0, pourcent: false, signe: 1, queue: 'dégâts', moyenne: 10.5 });
@@ -47,21 +57,22 @@ test('analyserDegats : illisible plutôt que deviné', () => {
 });
 
 test('analyserDegats sur les 322 sorts : 178 cases D/S/B lisibles sur 218 écrites, chacune d’un seul effet', () => {
-  const ecrites = sorts.filter((s) => s.dsb_brut !== null);
-  const lues = ecrites.map((s) => ({ s, a: analyserDegats(s.dsb_brut) })).filter(({ a }) => a.lisible);
-  assert.equal(sorts.length, 322);
-  // seuils et non égalités : la base change ; un recul net dirait qu’une lecture s’est perdue
-  assert.ok(ecrites.length >= 200, `${ecrites.length} cases écrites`);
-  assert.ok(lues.length >= 170, `${lues.length} cases lisibles`);
-  for (const { s, a } of lues) {
+  const lire = (liste) => liste.filter((s) => s.dsb_brut !== null).map((s) => ({ s, a: analyserDegats(s.dsb_brut) }));
+  // aujourd'hui : chaque case lisible est d'un seul effet, avec une quantité
+  for (const { s, a } of [...lire(sorts), ...lire(sortsDImport)].filter(({ a }) => a.lisible)) {
     assert.ok(!/[+,=]/.test(a.queue), `${s.id} : ${s.dsb_brut}`);
     assert.ok(a.des.length > 0 || a.fixe > 0, `${s.id} : une quantité`);
     if (a.moyenne !== null) assert.equal(Math.sign(a.moyenne), a.signe, s.id);
   }
+  // à l'import (seuils et non égalités : un recul net dirait qu'une lecture s'est perdue)
+  const ecrites = lire(sortsDImport);
+  assert.equal(sortsDImport.length, 322);
+  assert.ok(ecrites.length >= 200, `${ecrites.length} cases écrites`);
+  assert.ok(ecrites.filter(({ a }) => a.lisible).length >= 170, 'cases lisibles');
 });
 
 test('analyserDuree : une seule durée « Dure N tour(s) » ou « pendant N tour(s) »', () => {
-  assert.deepEqual(analyserDuree(sort('Régénération').effets), { tours: 3 });
+  assert.deepEqual(analyserDuree(sort(REGENERATION).effets), { tours: 3 });
   assert.deepEqual(analyserDuree('Une créature dite mécanique agit de manière incohérente pendant 1 tour (+1 tour/NM).'), { tours: 1 });
   assert.deepEqual(analyserDuree('DURE 2 TOURS'), { tours: 2 });
   assert.deepEqual(analyserDuree('Pendant 4 tours, la cible saigne.'), { tours: 4 });
@@ -69,15 +80,15 @@ test('analyserDuree : une seule durée « Dure N tour(s) » ou « pendant N tour
   assert.equal(analyserDuree('Invoque la météo « Neige » pour 3 tours (+1/NM).'), null);
   assert.equal(analyserDuree('Durent 3 tours.'), null);
   assert.equal(analyserDuree(null), null);
-  const avecDuree = sorts.filter((s) => analyserDuree(s.effets) !== null);
-  assert.ok(avecDuree.length >= 75, `${avecDuree.length} sorts avec une durée`);
-  for (const s of avecDuree) assert.ok(Number.isInteger(analyserDuree(s.effets).tours), s.id);
+  for (const s of sorts.filter((x) => analyserDuree(x.effets) !== null)) assert.ok(Number.isInteger(analyserDuree(s.effets).tours), s.id);
+  const avecDuree = sortsDImport.filter((s) => analyserDuree(s.effets) !== null);
+  assert.ok(avecDuree.length >= 75, `${avecDuree.length} sorts avec une durée (à l’import)`);
 });
 
 // --- Exemples du propriétaire ------------------------------------------------------------------------------------------------------------------
 
 test('Flash : coût « 6 » → « 8 (-1/NM) » = valeur affaiblie et NM ajouté qui baisse le coût, donc neutre', () => {
-  assert.equal(sort('Flash').cout_brut, '6');
+  assert.equal(sort(FLASH).cout_brut, '6');
   assert.deepEqual(sensDuChangement('sort', 'cout_brut', '6', '8 (-1/NM)'), {
     sens: 'neutre',
     parties: [
@@ -88,7 +99,7 @@ test('Flash : coût « 6 » → « 8 (-1/NM) » = valeur affaiblie et NM ajouté
 });
 
 test('Flash : portée « 6 (+1/NM) » → « 6 » = NM retiré, affaiblissement (valeur égale : aucune partie)', () => {
-  assert.equal(sort('Flash').portee_brut, '6 (+1/NM)');
+  assert.equal(sort(FLASH).portee_brut, '6 (+1/NM)');
   assert.deepEqual(sensDuChangement('sort', 'portee_brut', '6 (+1/NM)', '6'), {
     sens: 'affaiblissement',
     parties: [{ partie: 'nm', avant: '+1/NM', apres: null, sens: 'affaiblissement' }],
@@ -96,7 +107,7 @@ test('Flash : portée « 6 (+1/NM) » → « 6 » = NM retiré, affaiblissement 
 });
 
 test('Régénération : effets reformulés = neutre', () => {
-  const avant = sort('Régénération').effets;
+  const avant = sort(REGENERATION).effets;
   assert.equal(avant, 'Dure 3 tours (+1/NM). Vu que c\'est une régénération, la santé récupérée par tour se détermine au premier jet.');
   const apres = 'Dure 3 tours (+1/NM). La santé récupérée par tour se détermine au premier jet, car c\'est une régénération.';
   assert.deepEqual(sensDuChangement('sort', 'effets', avant, apres), {
@@ -121,7 +132,7 @@ test('Javelot sombre : « 7D6 + 15 dégâts » → « 6D6 + 20 dégâts » = moy
 });
 
 test('Contesté ! : « Réaction (3 fois/combat) » → « Réaction (2 fois/combat) » = moins d’utilisations, affaiblissement', () => {
-  const conteste = dons.find((d) => d.nom === 'Contesté !');
+  const conteste = donsDImport.find((d) => d.id === CONTESTE);
   assert.equal(conteste.type_brut, 'Réaction (3 fois/combat)');
   assert.deepEqual(sensDuChangement('capacite', 'type_brut', conteste.type_brut, 'Réaction (2 fois/combat)'), { sens: 'affaiblissement', parties: null });
   assert.equal(sens('capacite', 'type_brut', 'Réaction (2 fois/combat)', 'Réaction (3 fois/combat)'), 'amelioration');
@@ -211,7 +222,7 @@ test('nombre de tours : augmenté = amélioration, réduit = affaiblissement (du
 });
 
 test('effet secondaire : ajouté = amélioration, retiré = affaiblissement, reformulé = neutre', () => {
-  const avant = sort('Flash').effets;
+  const avant = sort(FLASH).effets;
   const apres = `${avant} Inflige Brûlure stade 1.`;
   assert.deepEqual(sensDuChangement('sort', 'effets', avant, apres), {
     sens: 'amelioration',
@@ -366,30 +377,37 @@ const formeValide = (r, message) => {
 };
 
 test('322 sorts : une valeur réelle inchangée est neutre ; chaque case comparée à celle du sort suivant ne lève rien, et l’inverse inverse le sens', () => {
-  assert.equal(sorts.length, 322);
-  const compte = Object.fromEntries(SENS.map((s) => [s, 0]));
-  for (const c of COLONNES_DE_SORT) {
-    for (let i = 0; i < sorts.length; i++) {
-      const a = sorts[i][c];
-      const b = sorts[(i + 1) % sorts.length][c];
-      assert.deepEqual(sensDuChangement('sort', c, a, a), { sens: 'neutre', parties: null }, `${sorts[i].id} : ${c}`);
-      const r = sensDuChangement('sort', c, a, b);
-      const r2 = sensDuChangement('sort', c, b, a);
-      formeValide(r, `${sorts[i].id} : ${c}`);
-      formeValide(r2, `${sorts[i].id} : ${c} (inverse)`);
-      assert.equal(r2.sens, INVERSE[r.sens], `${sorts[i].id} : ${c} : ${JSON.stringify(a)} ⇄ ${JSON.stringify(b)}`);
-      compte[r.sens] += 1;
+  /** Le balayage d'une liste de sorts (invariants) ; rend le compte des sens. */
+  const balayer = (liste) => {
+    const compte = Object.fromEntries(SENS.map((s) => [s, 0]));
+    for (const c of COLONNES_DE_SORT) {
+      for (let i = 0; i < liste.length; i++) {
+        const a = liste[i][c];
+        const b = liste[(i + 1) % liste.length][c];
+        assert.deepEqual(sensDuChangement('sort', c, a, a), { sens: 'neutre', parties: null }, `${liste[i].id} : ${c}`);
+        const r = sensDuChangement('sort', c, a, b);
+        const r2 = sensDuChangement('sort', c, b, a);
+        formeValide(r, `${liste[i].id} : ${c}`);
+        formeValide(r2, `${liste[i].id} : ${c} (inverse)`);
+        assert.equal(r2.sens, INVERSE[r.sens], `${liste[i].id} : ${c} : ${JSON.stringify(a)} ⇄ ${JSON.stringify(b)}`);
+        compte[r.sens] += 1;
+      }
     }
-  }
-  // les colonnes lues donnent des couleurs, les autres jamais
+    // les colonnes qui ne sont pas lues ne donnent jamais de couleur
+    for (const c of ['nom', 'type_brut', 'remarque', 'texte_niveau5']) {
+      for (let i = 0; i < liste.length; i++) assert.equal(sens('sort', c, liste[i][c], liste[(i + 1) % liste.length][c]), 'neutre');
+    }
+    return compte;
+  };
+  balayer(sorts);
+  // à l'import : les 322 sorts, et les colonnes lues donnent des couleurs
+  assert.equal(sortsDImport.length, 322);
+  const compte = balayer(sortsDImport);
   assert.ok(compte.amelioration > 100 && compte.affaiblissement > 100, JSON.stringify(compte));
-  for (const c of ['nom', 'type_brut', 'remarque', 'texte_niveau5']) {
-    for (let i = 0; i < sorts.length; i++) assert.equal(sens('sort', c, sorts[i][c], sorts[(i + 1) % sorts.length][c]), 'neutre');
-  }
 });
 
 test('dons : un type réel inchangé est neutre ; chaque type comparé au suivant ne lève rien, et l’inverse inverse le sens', () => {
-  assert.ok(dons.length > 600);
+  assert.ok(donsDImport.length > 600, 'à l’import');
   for (let i = 0; i < dons.length; i++) {
     const a = dons[i].type_brut;
     const b = dons[(i + 1) % dons.length].type_brut;

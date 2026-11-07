@@ -66,8 +66,12 @@ test('rang_liste : NULL accepté, deux rangs égaux acceptés (un réordonnancem
   const ranger = (id, rang) => base.prepare('UPDATE race SET rang_liste = ? WHERE id = ?').run(rang, id);
   ranger('races/goleois', null);
   assert.equal(base.prepare("SELECT rang_liste FROM race WHERE id = 'races/goleois'").get().rang_liste, null);
-  ranger('races/nain', 1);
-  assert.equal(base.prepare('SELECT count(*) AS n FROM race WHERE rang_liste = 1').get().n, 2);
+  // deux races au même rang : le rang courant de l'Humain (le site de dev réordonne les races), donné au Nain
+  const rang = base.prepare("SELECT rang_liste FROM race WHERE id = 'races/humain'").get().rang_liste ?? 1;
+  ranger('races/humain', rang);
+  ranger('races/nain', rang);
+  assert.ok(base.prepare('SELECT count(*) AS n FROM race WHERE rang_liste = ?').get(rang).n >= 2);
+  assert.equal(base.prepare("SELECT count(*) AS n FROM race WHERE id IN ('races/humain', 'races/nain') AND rang_liste = ?").get(rang).n, 2);
   assert.throws(() => ranger('races/humain', 0), /CHECK constraint failed/);
   assert.throws(() => ranger('races/humain', -3), /CHECK constraint failed/);
 });

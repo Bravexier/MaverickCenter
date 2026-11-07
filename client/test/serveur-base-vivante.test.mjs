@@ -15,12 +15,15 @@ import {
 } from '../serveur/base-vivante.mjs';
 import { enregistrer } from '../serveur/edition.mjs';
 import { lireFiche, listerFiches } from '../serveur/fiches.mjs';
-import { cheminBase, trouverRacine } from '../src/lib/donnees.mjs';
+import { trouverRacine } from '../src/lib/donnees.mjs';
 import { COLONNES_RETIREES, TABLES_RETIREES, gainsDeLaProgression } from '../src/lib/fiche-format.mjs';
+import { cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const racine = dossierTemporaire('vivante');
-const REGLES = cheminBase({ sansExemples: false });
+// les règles dans leur état d'import (test/aide-base-d-import.mjs) : les lignes de retrait attendues citent les noms et les dés de l'import (R153,
+// R167) ; le site de dev peut tout changer de la base courante (textes et valeurs : demande du propriétaire), ce qui ne dit rien de la base vivante
+const REGLES = cheminDImport();
 const INSTANT = '2026-10-10T12:00:00Z';
 
 // chaque cas écrit ses copies de la base dans son propre dossier, supprimé dès qu'il a fini, réussi ou non (toutes gardées jusqu'à la fin du

@@ -10,15 +10,19 @@ import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import {
   effetDeLArmeElementaire, infobulleDArme, infobulleDArmeElementaire, infobulleDArmure, infobulleDArmureElementaire, infobulleDeMetier, infobulleDeSort, trouver,
 } from '../src/lib/fiche-moteur.mjs';
+import { reglesDImport } from './aide-base-d-import.mjs';
 
+// les règles d'aujourd'hui (le site de dev en modifie librement textes et valeurs) : chaque infobulle est celle de sa ligne ; les exemples (un sort sans
+// D/S/B, une arme sans effet, un multiplicateur…) se cherchent dans l'état d'import (test/aide-base-d-import.mjs)
 const regles = chargerReglesDeFiche(ouvrirBase({ sansExemples: false }));
+const imp = reglesDImport();
 
 test('infobulleDeMetier : « Libellé : texte » de chaque champ de `apport`, dans son ordre ; sans apport, aucune infobulle', () => {
   for (const m of regles.metiers) {
     const attendu = m.apport.map((a) => `${a.libelle} : ${a.texte}`).join('\n') || null;
     assert.equal(infobulleDeMetier(m), attendu, m.id);
   }
-  assert.ok(regles.metiers.every((m) => infobulleDeMetier(m)?.startsWith('Bonus : ')), 'chaque métier de la base a ses bonus');
+  assert.ok(imp.metiers.every((m) => infobulleDeMetier(m)?.startsWith('Bonus : ')), 'chaque métier de l’import a ses bonus');
   assert.equal(infobulleDeMetier({ id: 'x', nom: 'X', apport: [] }), null);
   assert.equal(infobulleDeMetier(null), null);
 });
@@ -32,11 +36,11 @@ test('infobulleDeSort : « Magie, NPM n », puis Type, Coût, Coût secondaire, 
       .map(([l, c]) => `${l} : ${s[c]}`)].join('\n');
     assert.equal(infobulleDeSort(s, m), attendu, s.id);
   }
-  const avecRemarque = regles.sorts.find((s) => s.remarque && s.cout_secondaire) ?? regles.sorts.find((s) => s.remarque);
-  const texte = infobulleDeSort(avecRemarque, trouver(regles.magies, avecRemarque.magie_id));
+  const avecRemarque = imp.sorts.find((s) => s.remarque && s.cout_secondaire) ?? imp.sorts.find((s) => s.remarque);
+  const texte = infobulleDeSort(avecRemarque, trouver(imp.magies, avecRemarque.magie_id));
   assert.ok(texte.includes(`Remarque : ${avecRemarque.remarque}`), 'la remarque telle qu’écrite, sauts de ligne compris');
   assert.ok(texte.includes(`Effets : ${avecRemarque.effets ?? ''}`) || !avecRemarque.effets);
-  const sansDsb = regles.sorts.find((s) => !s.dsb);
+  const sansDsb = imp.sorts.find((s) => !s.dsb);
   assert.ok(!infobulleDeSort(sansDsb, null).includes('D/S/B'), 'un champ vide omis');
   assert.ok(!infobulleDeSort(sansDsb, null).includes('NPM'), 'sans magie : pas de ligne de magie');
   assert.equal(infobulleDeSort(null), null);
@@ -51,8 +55,8 @@ test('infobulleDArme : « Effet : <effet> » de chaque arme du catalogue, tel qu
     const effet = texteSansBalises(effets.get(a.id));
     assert.equal(infobulleDArme(a), effet && effet.trim() ? `Effet : ${effet}` : null, a.id);
   }
-  assert.ok(regles.armes.some((a) => infobulleDArme(a) === null), 'une arme sans effet : pas d’infobulle');
-  assert.ok(regles.armes.some((a) => infobulleDArme(a)?.startsWith('Effet : ')));
+  assert.ok(imp.armes.some((a) => infobulleDArme(a) === null), 'une arme sans effet : pas d’infobulle');
+  assert.ok(imp.armes.some((a) => infobulleDArme(a)?.startsWith('Effet : ')));
   assert.equal(infobulleDArme(null), null);
 });
 
@@ -65,8 +69,8 @@ test('infobulleDArmeElementaire (R167) : « Arme élémentaire : <magie> », pui
     assert.equal(texte, [`Arme élémentaire : ${m.nom}`, ...effetDeLArmeElementaire(a, type)].join('\n'), a.id);
     if (a.capacite_texte) assert.ok(texte.includes(a.capacite_texte), `${a.id} : sa capacité telle qu’écrite`);
   }
-  const arbalete = regles.armes_elementaires.find((a) => trouver(regles.types_elementaires, a.type_id)?.ignore_ap);
-  assert.ok(infobulleDArmeElementaire(arbalete, trouver(regles.types_elementaires, arbalete.type_id), null).includes('AP'), '« Ignore N AP » de son type');
+  const arbalete = imp.armes_elementaires.find((a) => trouver(imp.types_elementaires, a.type_id)?.ignore_ap);
+  assert.ok(infobulleDArmeElementaire(arbalete, trouver(imp.types_elementaires, arbalete.type_id), null).includes('AP'), '« Ignore N AP » de son type');
   assert.equal(infobulleDArmeElementaire(null), null);
 });
 
@@ -82,8 +86,8 @@ test('infobulleDArmure : Solidité (« uni »), Résistance et Faiblesse (« ×2
     ].filter(Boolean).join('\n') || null;
     assert.equal(infobulleDArmure(a), attendu, a.id);
   }
-  assert.ok(regles.armures.some((a) => infobulleDArmure(a)?.includes('×2 ')), 'un multiplicateur écrit « ×2 »');
-  assert.ok(regles.armures.some((a) => infobulleDArmure(a)?.includes('Effet : ')), 'une armure particulière et son effet');
+  assert.ok(imp.armures.some((a) => infobulleDArmure(a)?.includes('×2 ')), 'un multiplicateur écrit « ×2 »');
+  assert.ok(imp.armures.some((a) => infobulleDArmure(a)?.includes('Effet : ')), 'une armure particulière et son effet');
   assert.ok(regles.armures_elementaires.length > 0);
   for (const a of regles.armures_elementaires) {
     const m = trouver(regles.magies, a.magie_id);

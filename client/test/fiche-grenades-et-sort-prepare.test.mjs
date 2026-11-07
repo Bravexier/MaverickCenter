@@ -8,18 +8,18 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
-import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { corpsDeDon, resumeDeDon } from '../src/lib/corps-classes.mjs';
 import { MOTS_CLES_PROTEGES } from '../src/lib/mots-cles.mjs';
 import { bonusDeSortsEcrits, ETIQUETTES_DES_SORTS, preparationEcrite } from '../src/lib/sort-bonus-texte.mjs';
 import { valeurAuNm } from '../src/lib/sort-maitrise.mjs';
+import { baseDImport, reglesDImport } from './aide-base-d-import.mjs';
 
-const db = ouvrirBase({ sansExemples: false });
-const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que la page le reçoit
+// les règles (textes et valeurs que le site de dev modifie librement) : épinglées sur leur état d'import (test/aide-base-d-import.mjs)
+const db = baseDImport();
+const regles = reglesDImport(); // tel que la page le reçoit
 const lignes = (sql, ...p) => db.prepare(sql).all(...p).map((l) => ({ ...l }));
 const xpDuNiveau = (n) => regles.niveaux.find((l) => l.niveau === n).xp_min;
 const POSTURE = (slug) => `guide/postures#posture:${slug}`;

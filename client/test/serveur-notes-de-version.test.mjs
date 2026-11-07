@@ -30,7 +30,7 @@ const reference = join(racine, 'reference.db');
 copyFileSync(regles, reference);
 {
   const ref = new DatabaseSync(reference);
-  const sort = ref.prepare("SELECT id, cout_brut FROM sort WHERE cout_brut GLOB '[0-9]' ORDER BY id LIMIT 1").get();
+  const sort = ref.prepare("SELECT id, cout_brut FROM sort WHERE cout_brut GLOB '[0-9]*' AND NOT cout_brut GLOB '*[^0-9]*' ORDER BY id LIMIT 1").get(); // un coût en nombre seul
   ref.prepare('UPDATE sort SET cout_brut = ?, cout_chakra = ? WHERE id = ?').run(String(Number(sort.cout_brut) + 2), Number(sort.cout_brut) + 2, sort.id);
   ref.exec("PRAGMA foreign_keys = OFF; DELETE FROM metier_bonus WHERE metier_id = 'metiers/forgeron'; DELETE FROM metier_recette_famille WHERE metier_id = 'metiers/forgeron'; DELETE FROM metier WHERE id = 'metiers/forgeron'");
   ref.close();
@@ -78,7 +78,9 @@ test('la note en préparation : production (référence) → dev, version cible,
   assert.ok(cout, 'le coût baissé');
   assert.equal(cout.sens, 'amelioration');
   assert.equal(Number(cout.avant), Number(cout.apres) + 2);
-  assert.ok(n.lignes.some((l) => l.domaine === 'metiers' && l.entite === 'Forgeron' && l.nature === 'ajoute'));
+  // le métier nommé comme la base le nomme (le site de dev peut le renommer)
+  const forgeron = db.prepare("SELECT nom FROM metier WHERE id = 'metiers/forgeron'").get().nom;
+  assert.ok(n.lignes.some((l) => l.domaine === 'metiers' && l.entite === forgeron && l.nature === 'ajoute'));
   assert.equal(n.bilan.total, n.lignes.length);
   const sans = appel('GET', '/api/mise-a-jour/', undefined, { ...service, reference: join(racine, 'absente.db') }).corps;
   assert.equal(sans.lignes, null);

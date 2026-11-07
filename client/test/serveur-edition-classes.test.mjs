@@ -298,12 +298,15 @@ test('D11 — Archimage : une option de plus à un palier ; un nouveau palier se
   const option = creerDon({ classe_id: 'classes/archimage', avec: 'capacites/archimage-occultiste', nom: nomDeDonLibre('Troisième voie', 'Archimage'), type: 'Passif' });
   assert.equal(option.statut, 409, JSON.stringify(option.corps));
   const miroirs = lignes("SELECT nom FROM capacite WHERE classe_id = 'classes/archimage' AND ligne = ? ORDER BY rang", donDe('capacites/archimage-occultiste').ligne).map((k) => k.nom);
-  assert.ok(option.corps.erreur.includes(`Le choix ${miroirs.join(' / ')} donne les spécialités de la classe Archimage à la fiche de personnage : il ne reçoit pas d’option ici`), option.corps.erreur);
+  // les noms tels que la base les écrit aujourd'hui (le site de dev peut les changer)
+  const archimage = ligne("SELECT nom FROM classe WHERE id = 'classes/archimage'").nom;
+  assert.ok(option.corps.erreur.includes(`Le choix ${miroirs.join(' / ')} donne les spécialités de la classe ${archimage} à la fiche de personnage : il ne reçoit pas d’option ici`), option.corps.erreur);
   assert.deepEqual(lignes("SELECT id FROM capacite WHERE classe_id = 'classes/archimage' AND ligne = ?", donDe('capacites/archimage-occultiste').ligne).map((k) => k.id),
     ['capacites/archimage-elementaliste', 'capacites/archimage-occultiste'], 'rien d’écrit');
   const miroir = supprimer('capacite', 'capacites/archimage-elementaliste');
   assert.equal(miroir.statut, 409);
-  assert.match(miroir.corps.erreur, /« Élémentaliste » est aussi une spécialité de la classe Archimage pour la fiche de personnage : il ne se supprime pas d’ici/);
+  const elementaliste = ligne("SELECT nom FROM capacite WHERE id = 'capacites/archimage-elementaliste'").nom;
+  assert.ok(miroir.corps.erreur.includes(`« ${elementaliste} » est aussi une spécialité de la classe ${archimage} pour la fiche de personnage : il ne se supprime pas d’ici`), miroir.corps.erreur);
   const s = supprimer('specialite', 'classes/archimage#specialite:occultiste');
   assert.equal(s.statut, 409);
   assert.match(s.corps.erreur, /ne se modifient pas ici/);

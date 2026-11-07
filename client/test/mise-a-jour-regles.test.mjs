@@ -94,7 +94,8 @@ test('le lot appliqué : la note écrite, le journal historisé, seuls les fichi
   assert.deepEqual(notes.filter((n) => n.version === ATTENDUE), [nouvelle]);
   assert.ok(notes.every((n) => n.exemple === 0), 'les notes d’exemple (lorem ipsum) sont retirées');
   assert.deepEqual(notes.filter((n) => n.version !== ATTENDUE), notesAvant, 'les vraies notes déjà livrées restent');
-  const forgeron = lire("SELECT champ, avant, apres FROM note_version_ligne WHERE table_nom = 'metier' AND entite = 'Forgeron'");
+  // l'entité nommée comme la base la nomme (le site de dev peut renommer le métier : cherché par identifiant)
+  const forgeron = lire("SELECT champ, avant, apres FROM note_version_ligne WHERE table_nom = 'metier' AND entite = (SELECT nom FROM metier WHERE id = 'metiers/forgeron')");
   assert.ok(forgeron.some((l) => l.champ === 'Bonus' && l.apres === BONUS), JSON.stringify(forgeron));
   // les lignes du journal du lot (l'historique peut déjà contenir des modifications livrées ou rapatriées avant)
   const lots = journal.lots.map((l) => `'${l.id}'`).join(', ');

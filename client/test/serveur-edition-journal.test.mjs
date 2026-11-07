@@ -8,11 +8,13 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { FICHIER_BASE, ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { ErreurJournal, chargerJournal, journalExporte, lignesEnAttente, ouvrirLot, rejouer } from '../serveur/edition-journal.mjs';
-import { cheminBase } from '../src/lib/donnees.mjs';
+import { cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const racine = dossierTemporaire('journal');
-const REGLES = cheminBase({ sansExemples: false });
+// les règles dans leur état d'import (test/aide-base-d-import.mjs) : les essais écrivent dans les lignes du Forgeron telles que l'import les a faites
+// (son bonus « +3% Arme lourde OU Arme légère », un rang à deux options) ; le site de dev peut les changer dans la base courante (demande du propriétaire)
+const REGLES = cheminDImport();
 let compteur = 0;
 const nouveau = (prefixe) => join(racine, `${prefixe}-${(compteur += 1)}`);
 const INSTANT = '2026-10-10T12:00:00Z';

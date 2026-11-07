@@ -111,6 +111,7 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   - Le code qui touche au DOM va dans `src/scripts/`.
   - Deux scripts de page n'importent jamais le même module.
 - **Tests.** Toute logique de règle ou de lien nouvelle a son test dans `client/test/`, écrit par son auteur (skill `tests-conventions`).
+  - **Pas de texte figé** (demande du propriétaire) : un test ne porte pas sur le contenu d'un texte modifiable sur le site de dev (corps, résumé, titre, effet…), mais sur le fonctionnement du site, les formules et les règles elles-mêmes. Une modification faite sur le site de dev ne fait jamais échouer la suite.
   - **Un seul passage par lot, par `tech-qualite`** (demande du propriétaire) : en fin de lot, avant la validation du `leader-technique`, il lance les tests pertinents (`npm run test:cible`, skill `choisir-les-tests`) et les contrôles. En circuit court, le `leader-technique` fait ce passage lui-même, une fois, à la fin.
   - Les auteurs ne lancent que le test qu'ils écrivent. Après une correction, on ne relance que les tests en échec et ceux de son diff ; après un rebase, le recouvrement s'il n'est pas vide.
   - La CI lance la suite entière. Jamais un test sauté pour obtenir du vert.

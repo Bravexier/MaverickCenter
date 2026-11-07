@@ -10,6 +10,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { after, test } from 'node:test';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
+import { texteDImport } from './aide-base-d-import.mjs';
 
 const PI = 'magies/potentiel-illimite';
 const CITATION = 'Surtension corporelle (Vulnérabilité contre les dégâts physiques';
@@ -30,8 +31,9 @@ test('R174 : le Potentiel Illimité a une vulnérabilité à chacun des trois ty
     magie_id: PI, sens: 'vulnerabilite', cible_type: 'physique', rang: i + 1, cible_magie_id: null, cible_etat_id: null, cible_physique: cible,
     cible_brut: CITATION, source_ref: 'Magie Maverick V8 › Potentiel illimité (magie diffi › A26',
   })));
-  // la citation est celle de la magie, telle qu'écrite dans la base
-  assert.ok(db.prepare('SELECT explication FROM magie WHERE id = ?').get(PI).explication.includes(`- ${CITATION}, `));
+  // la citation est celle de la magie, telle qu'écrite dans la base à l'import (l'explication est modifiable sur le site de dev, source de ce qu'il
+  // modifie : les trois lignes ci-dessus portent la règle ; le moteur la lit dans test/fiche-resistances-physiques.test.mjs)
+  assert.ok(texteDImport('magie', { id: PI }, 'explication').includes(`- ${CITATION}, `));
 });
 
 test('R174 : rien d\'autre ne change — aucune autre ligne physique, aucune cible physique hors de cible_type « physique », le PI sans liste de magie ni d\'état', () => {

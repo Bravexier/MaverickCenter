@@ -3,6 +3,9 @@
 // au total, plafond 15) et les jets où compte le bonus de critique d'une posture sont des données. Migration
 // data/migrations/0087-r180-reussite-critique.sql ; pages du guide passées par db:sync-pages. Lecture seule de la base construite. Les lignes
 // 'don_de_posture' de posture_critique sont retirées par R182 (migration 0089 : test/db-r182-critique-du-sort-prepare.test.mjs).
+// Les textes (effets de sorts et de dons, Mode Hyper, pages du guide, mots-clés) sont modifiables sur le site de dev, source de ce qu'il modifie : ceux
+// que la décision a fait écrire se lisent dans l'état d'import (test/aide-base-d-import.mjs) ; l'état courant, par les colonnes structurées et les
+// constantes, et par l'accord des pages avec leurs lignes. Le calcul du critique est épinglé dans le moteur (test/fiche-critique.test.mjs).
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { lecteurDAcquis } from '../src/lib/acquis-texte.mjs';
@@ -10,9 +13,11 @@ import { corpsDeMagieApres, morceauxDuCorpsDeMagie } from '../src/lib/corps-magi
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { effetsDuModeHyper } from '../src/lib/mode-hyper-texte.mjs';
 import { COMPETENCES_D_ATTAQUE } from '../src/lib/posture-texte.mjs';
+import { baseDImport, texteDImport } from './aide-base-d-import.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const corps = (id) => db.prepare('SELECT corps_md FROM page WHERE id = ?').get(id).corps_md;
+const corpsDImport = (id) => texteDImport('page', { id }, 'corps_md');
 
 const AFFUTAGE = 'magies/magie-de-la-foudre#sort:affutage';
 const PRENDS_CA = 'capacites/moine-prend-ca';
@@ -25,33 +30,34 @@ const DEFENSIF = 'guide/postures#posture:defensif';
 const SIX_JETS = ['arbalete', 'arc', 'arme-legere', 'arme-lourde', 'concentration', 'magie'];
 
 test('R180 : Affûtage coûte 4 chakra, garde son effet « 2% (+1/NM) » et n’a pas de coût secondaire ; la ligne du tableau de sa page suit', () => {
+  // le coût, le type et l'effet sont modifiables sur le site de dev (une valeur changée là est une règle changée) : tels que la décision les a écrits,
+  // à l'import, et la ligne du tableau de sa page avec eux
+  const i = baseDImport().prepare('SELECT * FROM sort WHERE id = ?').get(AFFUTAGE);
+  assert.deepEqual([i.cout_brut, i.cout_chakra, i.cout_secondaire, i.type_brut], ['4', 4, null, 'Amplification\n(IC)']);
+  assert.equal(i.effets, "Permet d'augmenter la réussite critique de 2% (+1/NM) à la prochaine attaque avec une arme.");
+  assert.equal(morceauxDuCorpsDeMagie(corpsDImport('magies/magie-de-la-foudre')).sorts.find((c) => c[1] === i.nom)[3], '4.0');
+  // aujourd'hui : la page est d'accord avec la ligne (le module de l'édition n'y change rien), la ligne cherchée par le nom courant
   const s = db.prepare('SELECT * FROM sort WHERE id = ?').get(AFFUTAGE);
-  assert.equal(s.cout_brut, '4');
-  assert.equal(s.cout_chakra, 4);
-  assert.equal(s.cout_secondaire, null);
-  assert.equal(s.effets, "Permet d'augmenter la réussite critique de 2% (+1/NM) à la prochaine attaque avec une arme.");
-  assert.equal(s.type_brut, 'Amplification\n(IC)');
   const page = corps('magies/magie-de-la-foudre');
-  const ligne = morceauxDuCorpsDeMagie(page).sorts.find((c) => c[1] === 'Affûtage');
-  assert.equal(ligne[3], '4.0');
-  // la page est d'accord avec la ligne : le module de l'édition n'y change rien
+  assert.ok(morceauxDuCorpsDeMagie(page).sorts.some((c) => c[1] === s.nom), 'la ligne du sort dans le tableau de sa page');
   assert.equal(corpsDeMagieApres(page, 'sort', { ...s }, { ...s }), page);
 });
 
 test('R180 : « Prends ça … » est un IC, écrit dans son effet et sa fiche ; son type et sa limite ne changent pas ; aucun bonus de compétence n’y est lu', () => {
+  // l'effet, le type et sa limite, et la fiche du don, tels que la décision les a écrits (état d'import : le site de dev les modifie) ; aujourd'hui,
+  // la fiche suit l'effet de la ligne
+  const imp = baseDImport();
+  const i = imp.prepare('SELECT * FROM capacite WHERE id = ?').get(PRENDS_CA);
+  assert.deepEqual([i.effet, i.type_brut, i.type, i.limite_nombre, i.limite_periode], [EFFET_PRENDS_CA, 'Actif (3 fois/combat)', 'actif', 3, 'combat']);
   const k = db.prepare('SELECT * FROM capacite WHERE id = ?').get(PRENDS_CA);
-  assert.equal(k.effet, EFFET_PRENDS_CA);
-  assert.equal(k.type_brut, 'Actif (3 fois/combat)');
-  assert.equal(k.type, 'actif');
-  assert.deepEqual([k.limite_nombre, k.limite_periode], [3, 'combat']);
-  const p = db.prepare('SELECT corps_md, resume FROM page WHERE id = ?').get(PRENDS_CA);
-  assert.deepEqual({ ...p }, { corps_md: `${EFFET_PRENDS_CA}\n`, resume: EFFET_PRENDS_CA });
+  assert.deepEqual({ ...imp.prepare('SELECT corps_md, resume FROM page WHERE id = ?').get(PRENDS_CA) }, { corps_md: `${EFFET_PRENDS_CA}\n`, resume: EFFET_PRENDS_CA });
+  assert.ok(corps(PRENDS_CA).includes(k.effet), 'la fiche du don écrit son effet');
   const lire = lecteurDAcquis(db.prepare('SELECT id, nom FROM competence').all());
-  assert.deepEqual(lire(k.effet), []);
+  assert.deepEqual(lire(EFFET_PRENDS_CA), []);
 });
 
 test('R180 : Mode Hyper de la Lumière — les trois copies (classeur_modes, onglet_magie, fiche), mono et bi, ajoutent les amplifications ; magie_masque intacte', () => {
-  const lignes = db.prepare(`SELECT version, variante, effet FROM mode_hyper_effet
+  const lignes = baseDImport().prepare(`SELECT version, variante, effet FROM mode_hyper_effet
                              WHERE magie_id = ? AND magie2_id IS NULL AND portee = 'magie' ORDER BY version, variante`).all(LUMIERE);
   assert.deepEqual(lignes.map((l) => ({ ...l })), [
     { version: 'classeur_modes', variante: 'bi', effet: BI },
@@ -64,12 +70,17 @@ test('R180 : Mode Hyper de la Lumière — les trois copies (classeur_modes, ong
   ]);
   // le texte ne chiffre rien que la fiche applique (lib/mode-hyper-texte.mjs)
   assert.deepEqual([effetsDuModeHyper(MONO), effetsDuModeHyper(BI)], [[], []]);
-  // la page de la magie, la liste des effets du Mode Hyper, et pas la liste de l'onglet masqué (magie_masque)
-  assert.deepEqual(morceauxDuCorpsDeMagie(corps(LUMIERE)).hyper.map((h) => h.effet), [MONO, BI]);
+  // la page de la magie, la liste des effets du Mode Hyper, et pas la liste de l'onglet masqué (magie_masque) : à l'import, et aujourd'hui la page
+  // suit les lignes de l'onglet de la magie (onglet_magie, lib/corps-magies.mjs)
+  assert.deepEqual(morceauxDuCorpsDeMagie(corpsDImport(LUMIERE)).hyper.map((h) => h.effet), [MONO, BI]);
+  const onglet = db.prepare(`SELECT effet FROM mode_hyper_effet WHERE magie_id = ? AND magie2_id IS NULL AND portee = 'magie' AND version = 'onglet_magie'
+                             ORDER BY variante = 'bi', variante`).all(LUMIERE).map((l) => l.effet);
+  assert.deepEqual(morceauxDuCorpsDeMagie(corps(LUMIERE)).hyper.map((h) => h.effet), onglet);
   // la page « Liste des effets mode hyper » est retirée depuis le 2026-11-06 (migration 0095, demande du propriétaire : un doublon de
-  // guide/le-mode-hyper, qui affiche le tableau tiré de la base) : sa ligne Lumière se lit dans la version du classeur du Mode Hyper (classeur_modes)
+  // guide/le-mode-hyper, qui affiche le tableau tiré de la base) : sa ligne Lumière se lit dans la version du classeur du Mode Hyper (classeur_modes),
+  // à l'import (l'effet est modifiable sur le site de dev)
   assert.equal(db.prepare("SELECT count(*) AS n FROM page WHERE id = 'guide/liste-des-effets-mode-hyper'").get().n, 0);
-  assert.deepEqual(db.prepare(`SELECT libelle, variante, effet FROM mode_hyper_effet WHERE version = 'classeur_modes' AND magie_id = ? AND portee = 'magie'
+  assert.deepEqual(baseDImport().prepare(`SELECT libelle, variante, effet FROM mode_hyper_effet WHERE version = 'classeur_modes' AND magie_id = ? AND portee = 'magie'
                                ORDER BY variante DESC`).all(LUMIERE).map((l) => ({ ...l })),
   [{ libelle: 'Lumière', variante: 'mono', effet: MONO }, { libelle: 'Lumière', variante: 'bi', effet: BI }]);
   // la page « Mode Hyper (Magie) » qui montrait la liste de l'onglet masqué est retirée (R184 (9), migration 0091) : ses lignes restent (ci-dessus)
@@ -88,7 +99,8 @@ test('R180 : les nombres du critique sont des constantes de règle, chacune cit�
   for (const l of lignes) {
     const page = PAGE_DE_LA_CONSTANTE[l.id] ?? 'guide/reussir-une-action';
     assert.deepEqual([l.unite, l.nature, l.page_id, l.source_ref], ['%', 'texte', page, 'Décision R180 du propriétaire'], l.id);
-    assert.ok(corps(page).includes(l.texte), `${l.id} : « ${l.texte} » dans la page ${page}`);
+    // la phrase citée, dans le texte de la page tel que la décision l'a écrit (état d'import : le site de dev peut le réécrire depuis)
+    assert.ok(corpsDImport(page).includes(l.texte), `${l.id} : « ${l.texte} » dans la page ${page}`);
   }
 });
 
@@ -109,21 +121,22 @@ test('R180 : le guide et le mot-clé « Réussite critique » rappellent le plaf
   const PLAFOND = /jamais (?:au-delà de |dépasser |)1 à 15|ne dépasse jamais(?: \*\*)? ?1 à 15/;
   // R184 et R185 (migration 0091) : « Les quatre résultats » de « Réussir une action » est la page des critiques, la tenaille de « Les situations
   // avancées » est la page de la tenaille ; l'aide-mémoire est retiré
+  // (textes de l'état d'import : le site de dev, source de ce qu'il modifie, peut les réécrire depuis ; le plafond lui-même est critique.plafond)
   for (const id of ['guide/reussites-echecs-et-critiques', 'guide/les-postures', 'guide/attaquer-et-se-defendre', 'guide/prise-en-tenaille-et-zone-d-influence']) {
-    assert.match(corps(id), PLAFOND, id);
+    assert.match(corpsDImport(id), PLAFOND, id);
   }
   // le Lexique est devenu des mots-clés (migration 0090) : sa phrase est la définition du mot-clé `reussite-critique` (abréviation RC)
-  assert.match(db.prepare("SELECT description FROM mot_cle WHERE id = 'reussite-critique'").get()?.description ?? '', PLAFOND, 'mot_cle reussite-critique');
-  const reussir = corps('guide/reussir-une-action');
+  assert.match(texteDImport('mot_cle', { id: 'reussite-critique' }, 'description') ?? '', PLAFOND, 'mot_cle reussite-critique');
+  const reussir = corpsDImport('guide/reussir-une-action');
   assert.ok(reussir.includes('Au-delà de 95 %, le surplus élargit la réussite critique : de 96 à 102 %, +2 % ; à partir de 103 %, +5 % au total.'));
   assert.ok(reussir.includes('Le score compté est celui du moment, posture comprise, et ce bonus vaut sur tout jet, quelle que soit la posture.'));
-  assert.ok(corps('guide/reussites-echecs-et-critiques')
+  assert.ok(corpsDImport('guide/reussites-echecs-et-critiques')
     .includes('la posture offensive pour les six jets d’attaque (*Arc*, *Arbalète*, *Arme Légère*, *Arme Lourde*, *Magie* et *Concentration*)'));
-  // textes copiés des Docs : inchangés (« monte à 10 ou moins », sans plafond) ; la transcription du Doc « Guide pour MJ » (guide/postures) est retirée
-  // depuis le 2026-11-06 (migration 0094, demande du propriétaire : un doublon de guide/les-postures)
+  // textes copiés des Docs : inchangés (« monte à 10 ou moins », sans plafond), à l'import ; la transcription du Doc « Guide pour MJ » (guide/postures)
+  // est retirée depuis le 2026-11-06 (migration 0094, demande du propriétaire : un doublon de guide/les-postures)
   for (const id of ['guide/fiche-tableau-posture']) {
-    assert.ok(corps(id).includes('cette réussite critique monte à 10 ou moins'), id);
-    assert.ok(!corps(id).includes('1 à 15'), id);
+    assert.ok(corpsDImport(id).includes('cette réussite critique monte à 10 ou moins'), id);
+    assert.ok(!corpsDImport(id).includes('1 à 15'), id);
   }
   assert.equal(db.prepare("SELECT count(*) AS n FROM posture_effet WHERE texte LIKE '%1 à 15%' OR texte LIKE '%103%'").get().n, 0);
 });

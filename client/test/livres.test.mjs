@@ -24,13 +24,18 @@ import { RENVOIS_DES_PAGES_ECLATEES } from '../src/lib/equipement.mjs';
 import { chargerPlanDesRegles } from '../src/lib/plan-des-regles-db.mjs';
 import { TYPE_KEYS, TYPES } from '../src/lib/types.mjs';
 import * as Livres from '../src/lib/livres.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 
-const db = ouvrirBase({ sansExemples: false });
-// les pages du guide de la base, comme loadWiki les donne aux routes ({ id, data: { title, summary, status } })
-const pagesDuGuide = db.prepare("SELECT id, titre, resume, statut FROM page WHERE type = 'guide' ORDER BY id").all()
+// Le site de dev réécrit les pages du guide (titre, texte, intertitres), les crée, les supprime, et range le menu latéral de chaque onglet (onglet et
+// place de chaque entrée, regles_onglet_entree) : le plan et les renvois figés s'épinglent sur l'état d'import de la base (test/aide-base-d-import.mjs) ;
+// le test « aujourd’hui » contrôle la base courante par invariants (le plan s'installe et tient, chaque renvoi figé mène à une page servie ou à la 404).
+const db = baseDImport();
+/** Les pages du guide d'une base, comme loadWiki les donne aux routes ({ id, data: { title, summary, status } }). */
+const pagesDe = (base) => base.prepare("SELECT id, titre, resume, statut FROM page WHERE type = 'guide' ORDER BY id").all()
   .map((p) => ({ id: p.id, data: { title: p.titre, summary: p.resume ?? undefined, status: p.statut } }));
+const pagesDuGuide = pagesDe(db);
 const ids = pagesDuGuide.map((p) => p.id);
-const historique = historiqueSite(db); // ce que le site de dev a changé depuis l'import (lib/historique-site.mjs)
+const historique = historiqueSite(db); // ce que le site de dev a changé depuis l'import (lib/historique-site.mjs) : rien, dans la base d'import ; le test « aujourd’hui » lit la base courante
 const PLAN = chargerPlanDesRegles(db);
 const installer = () => installerLePlan(PLAN);
 installer();
@@ -569,6 +574,58 @@ test('R184, R185 : les anciennes adresses figées mènent à la nouvelle adresse
   assert.equal(lienEcrit('regles/avancees/mode-hyper-magie/'), 'regles/avancees/mode-hyper-magie/', 'une page supprimée : telle qu’écrite (la 404)');
   assert.equal(lienEcrit('regles/avancees/postures/'), 'regles/avancees/postures/', 'une page supprimée (0094) : telle qu’écrite (la 404)');
   assert.equal(adresseEclatee('regles/creer-son-personnage/', eclatees), null, 'la nouvelle adresse n’est pas éclatée');
+});
+
+test('aujourd’hui (la base courante : pages, titres, intertitres et menus modifiés, créés ou supprimés sur le site de dev) : le plan s’installe et tient ; chaque page a une place ; chaque renvoi figé mène à une page servie, ou à la 404', () => {
+  const courante = ouvrirBase({ sansExemples: false });
+  const pages = pagesDe(courante);
+  const presentes = new Set(pages.map((p) => p.id));
+  const supprimees = historiqueSite(courante);
+  try {
+    installerLePlan(chargerPlanDesRegles(courante));
+    assert.equal(verifierLePlan(pages), pages, 'le plan de la base courante tient');
+    for (const { id } of pages) {
+      const places = [estDansDecouvrir(id), estDuGuideDuMj(id), estDesOnglets(id)].filter(Boolean).length;
+      assert.equal(places, id === FIXTURE ? 0 : 1, `${id} : une place et une seule`);
+    }
+    // le menu latéral de chaque onglet : une entrée par ligne de regles_onglet_entree dont la page est là, dans l'ordre des rangs (à égalité, l'id)
+    for (const onglet of ongletsDesRegles()) {
+      const { pages: entrees, edition } = menuLateralDe(onglet.ouverture, pages);
+      const lignes = courante.prepare('SELECT id, rang, page_id FROM regles_onglet_entree WHERE onglet_id = ? ORDER BY rang, id').all(onglet.id)
+        .filter((l) => !l.page_id || presentes.has(l.page_id));
+      assert.deepEqual(edition.entrees, lignes.map((l) => ({ id: l.id, rang: l.rang })), onglet.id);
+      assert.deepEqual(entrees.map((e) => e.id ?? null), lignes.map((l) => l.page_id ?? null), onglet.id);
+    }
+    // les renvois figés (page 404 et liens écrits), là où la page visée est servie : sa page, quel que soit le texte qu'elle porte aujourd'hui ;
+    // une page supprimée sur le site : la 404 (R185 (6)). L'intertitre visé se contrôle sur l'état d'import (tests ci-dessus).
+    const renvois = renvoisDuGuide([...presentes]);
+    const eclatees = { ...RENVOIS_DES_PAGES_ECLATEES, ...Livres.pagesEclateesDuGuide((id) => presentes.has(id)) };
+    const vers = (adresse, hash = '') => adresseDeRenvoi(adresse, { base: '/', renvois, eclatees, hash });
+    const servie = (adresse) => {
+      const id = Livres.pageDuGuideALAdresse(adresse.replace(/^\//, ''));
+      return id === null || presentes.has(id);
+    };
+    for (const [ancienne, r] of Object.entries(PAGES_ECLATEES_DU_GUIDE)) {
+      const page = vers(`/${ancienne}`);
+      assert.ok(page === null ? !presentes.has(Livres.pageDuGuideALAdresse(r.defaut)) : servie(page), `/${ancienne} → ${page}`);
+      for (const ancre of Object.keys(r.anciennesAncres)) {
+        const cible = vers(`/${ancienne}`, `#${ancre}`);
+        assert.ok(cible === null || servie(cible), `/${ancienne}#${ancre} → ${cible}`);
+      }
+    }
+    for (const [adresse, id] of Object.entries(ADRESSES_DU_PLAN_PRECEDENT)) {
+      const cible = vers(`/${adresse}`);
+      if (presentes.has(id)) assert.equal(cible, `/${Object.hasOwn(PAGES_ABSORBEES, id) ? adresseDeLaPageAbsorbee(id, cheminDePage) : cheminDePage(id)}`, adresse);
+      else if (supprimees.supprimee('page', { id })) assert.equal(cible, null, `${adresse} : la 404`);
+      else assert.ok(cible === null || servie(cible), `${adresse} → ${cible}`);
+    }
+    for (const [ancienne, nouvelle] of Object.entries(PAGES_ABSORBEES)) {
+      const cible = vers(`/${ancienne}/`); // /guide/<slug>/
+      assert.ok(presentes.has(nouvelle) ? cible?.startsWith(`/${cheminDePage(nouvelle)}`) : cible === null || servie(cible), `${ancienne} → ${cible}`);
+    }
+  } finally {
+    installer();
+  }
 });
 
 test('les anciennes adresses du guide d’avant (/guide/<slug>/, Liens, Rejoindre une partie, Lexique) : inchangées', () => {

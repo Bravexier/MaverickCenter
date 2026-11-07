@@ -12,6 +12,7 @@ import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { POIDS_DES_ARMURES, valeurDuPoids } from '../src/lib/fiche-format.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
+import { texteDImport } from './aide-base-d-import.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const regles = chargerReglesDeFiche(db);
@@ -95,7 +96,10 @@ test('R165 : l’onglet Armures reçoit les 56 armures élémentaires (par magie
   assert.deepEqual(e.magies.map((m) => m.nom), ['Sang', 'Arcane', 'Corruption', 'Espace/Temps', 'Vide', 'Nécromancie', 'Feu', 'Eau', 'Glace', 'Terre', 'Vent', 'Foudre', 'Lumière', 'Ombre']);
   const gemmes = new Map(tous('SELECT g.magie_id, g.ressource_id AS id, r.nom FROM gemme g JOIN ressource r ON r.id = g.ressource_id').map((g) => [g.magie_id, { id: g.id, nom: g.nom }]));
   for (const m of e.magies) assert.deepEqual(m.gemme, gemmes.get(m.id) ?? null, m.id);
-  assert.equal(e.magies.find((m) => m.id === 'magies/magie-du-feu').gemme.nom, 'Rubis', '« Rubis pour le Feu » (R165 (2))');
+  // « Rubis pour le Feu » (R165 (2)) : la gemme se cherche par son id (figé) ; son nom, que le site peut changer (ressource.nom), se lit à l'import
+  const RUBIS = 'ressources/baton-magique#gemme:rubis';
+  assert.equal(e.magies.find((m) => m.id === 'magies/magie-du-feu').gemme.id, RUBIS, '« Rubis pour le Feu » (R165 (2))');
+  assert.equal(texteDImport('ressource', { id: RUBIS }, 'nom'), 'Rubis', '« Rubis pour le Feu » (R165 (2)), à l’import');
   assert.deepEqual(armures.ameliorations.armure_elementaire, tous("SELECT * FROM amelioration_equipement WHERE cible = 'armure_elementaire' ORDER BY niveau"));
   assert.equal(armures.totaux.armure_elementaire, db.prepare("SELECT total_brut FROM amelioration_total WHERE cible = 'armure_elementaire'").get()?.total_brut ?? null);
   assert.equal(e.solidite_base, regles.constantes['piece_elementaire.solidite_base']);

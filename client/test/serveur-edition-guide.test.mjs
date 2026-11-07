@@ -9,6 +9,7 @@ import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.
 import { journalExporte } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { decouperCorps, recomposerCorps } from '../src/lib/markdown-edition.mjs';
+import { normalize } from '../src/lib/text.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const racine = dossierTemporaire('edition-guide');
@@ -18,6 +19,8 @@ const service = { base: () => db, etat: () => ({}), edition: true };
 const appel = (methode, chemin_, corps) => traiter({ methode, chemin: chemin_, entetes: { 'content-type': 'application/json' }, corps: corps && JSON.stringify(corps) }, service);
 const enregistrer = (operations) => appel('POST', '/api/edition/', { page: 'guide/bienvenue', operations });
 const page = (id) => db.prepare('SELECT * FROM page WHERE id = ?').get(id);
+// le titre en place avant les essais (celui de l'import, « Bienvenue dans Maverick », ou celui que le site de dev lui a donné depuis)
+const TITRE_AVANT = page('guide/bienvenue').titre;
 
 test('texte d’un chapitre : morceaux de texte remplacés autour des blocs tirés de la base, aperçu noté et rendu en attente', () => {
   const avant = page('guide/bienvenue').corps_md;
@@ -41,9 +44,14 @@ test('titre changé : clé de titre recalculée, l’ancien titre devient un ali
   const p = page('guide/bienvenue');
   assert.equal(p.titre, 'Bienvenue à Maverick');
   assert.equal(p.titre_cle, 'bienvenue-a-maverick');
+  // les autres noms de la page : celui de l'import (« Guide du joueur ») et l'ancien titre, ajouté au renommage (d'autres, d'un renommage fait sur le site
+  // de dev, peuvent y être)
   const alias = db.prepare("SELECT texte, cle FROM alias WHERE page_id = 'guide/bienvenue' ORDER BY ordre").all().map((a) => a.texte);
-  assert.deepEqual(alias, ['Guide du joueur', 'Bienvenue dans Maverick']);
-  assert.equal(db.prepare("SELECT page_id FROM cle_page WHERE cle = 'bienvenue-dans-maverick'").get().page_id, 'guide/bienvenue');
+  assert.ok(alias.includes('Guide du joueur'), JSON.stringify(alias));
+  if (TITRE_AVANT !== p.titre) {
+    assert.equal(alias.at(-1), TITRE_AVANT, 'l’ancien titre, dernier autre nom');
+    assert.equal(db.prepare('SELECT page_id FROM cle_page WHERE cle = ?').get(normalize(TITRE_AVANT)).page_id, 'guide/bienvenue');
+  }
   // un titre qui est déjà le nom d'une autre page rendrait les liens ambigus
   const refus = enregistrer([{ op: 'modifier', table: 'page', cle: { id: 'guide/bienvenue' }, valeurs: { titre: 'Humain' } }]);
   assert.equal(refus.statut, 409);

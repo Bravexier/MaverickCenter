@@ -16,7 +16,7 @@ user-invocable: false
 
 ## À lire
 
-- `docs/content-guide.md`, « Les pages du guide : rubriques et sommaires » : plan, menu latéral, couleurs, Artisanat, liens de l'accueil, anciennes adresses, blocs, textes, fil rouge, édition.
+- `docs/content-guide.md`, « Les pages du guide : rubriques et sommaires ».
 - `docs/sql/a-valider.md` §6 (écarts original ↔ base), §8 (points ouverts de R184).
 - Texte d'une page : skill `modifier-une-page-wiki`. Menu : `zone-menu`. Accueil, liens Discord et Tipeee, annonce : `zone-accueil`. Adresses et `[[liens]]` : `site-wiki-liens`. Éditeur en place : `zone-edition`. Mots-clés : `zone-mots-cles`. Tables du plan : `base-sqlite`. Lot de mise à jour : `zone-mise-a-jour`.
 
@@ -45,7 +45,7 @@ user-invocable: false
   - `PAGES_ECLATEES_DU_GUIDE` (`pagesEclateesDuGuide(existe)` retire les cibles absentes : sans cible, 404 ; une ancienne ancre sans page mène à celle qui garde le reste ; même format que `RENVOIS_DES_PAGES_ECLATEES` de l'équipement, skill `zone-equipement` ; `data-eclatees`) : `/decouvrir/creer-son-personnage/` (chaque étape et sous-intertitre à sa page, le reste à l'introduction) et « Les situations avancées » (chaque section à sa page, le reste à la tenaille ; l'ancre `#les-boss-et-leurs-postures` mène à `/regles/les-postures/#les-boss`).
   - `PAGES_ABSORBEES` (`le-jeu-de-role` dans Bienvenue, `resistance-faiblesse-magie` dans Résistances et faiblesses, `situations-avancees` dans la prise en tenaille) ; `ANCRES_DES_PAGES_ABSORBEES` mène à l'intertitre où se lit le contenu, comparé aux intertitres (`test/livres.test.mjs`) et au site construit.
   - `livres.mjs#PAGES_RETIREES` : le Lexique, devenu des mots-clés (R183), `/regles/lexique/` et `/guide/lexique/` mènent à `/recherche/` (`adresseDeLaPageRetiree`).
-  - `PAGES_SUPPRIMEES` (8 pages : R184 (9), puis la migration 0094 et R187 (1) ; R185 (6)) : 404 sans renvoi ; `verifierLePlan` arrête le build si l'une revient. Elle sort de `ANCIENNES_REGLES_AVANCEES`. Les tests comparent un segment d'adresse (`aPourSegment`), pas une sous-chaîne.
+  - `PAGES_SUPPRIMEES` (8 pages : R184 (9), migration 0094, R187 (1), R185 (6)) : 404 sans renvoi ; `verifierLePlan` arrête le build si l'une revient. Elle sort de `ANCIENNES_REGLES_AVANCEES`. Les tests comparent un segment d'adresse (`aPourSegment`), pas une sous-chaîne.
 - La cible d'un renvoi peut être supprimée sur le site de dev (R185 (6)) ; `lib/pages-protegees.mjs` (seule source de la protection, skill `zone-edition-menus`) protège les pages des listes de `livres.mjs` : `PAGES_DE_LA_CREATION`, `PAR_OU_COMMENCER`, `PAGES_ABSORBEES`, `RUBRIQUES_SOUS_LA_PAGE`.
 - `nav.mjs` n'importe pas `livres.mjs` : la page 404 reçoit les renvois au build (`data-renvois`).
 - Le texte de la base n'est réécrit ni au rendu ni à la modification (`test/markdown-edition.test.mjs`).
@@ -63,10 +63,12 @@ user-invocable: false
 - Les pages de Découvrir et de l'ancien guide sont réécrites d'après la base, les originaux et les décisions (demande du propriétaire) ; écarts dans `docs/sql/a-valider.md` §6, rien d'appliqué (R83). Aucun chiffre d'un bloc n'y est recopié.
 - La découpe en onglets **déplace le texte tel quel** (R184 (1)). Une phrase rendue fausse perd son bout faux (« plus haut », « sur cette page ») ou prend un lien vers la page qui porte le texte (R184 (5)).
 - Le code en lit quelques-unes (`## La ceinture`, « case Entraînement »…) : les garder (`docs/content-guide.md`).
-- Source première d'une page ajoutée à la main ou créée sur le site de dev : skill `modifier-une-page-wiki`.
 
 ## Tests
 
-- `test/livres.test.mjs`, `test/guide.test.mjs`, `test/guide-html.test.mjs` épinglent le plan. `test/guide.test.mjs` épingle aussi le plafond de maîtrise d'arme (4 points, 5 dés, R149) dans « Caractéristiques et compétences » et « L'équipement » et le mot-clé `maitrise-darme`, et le tarif du chakra manquant (R18, R186 : 3 santé ; tout coût en santé ignore la barrière) dans `finaliser-son-personnage`, `la-magie-en-jeu`, `le-mode-hyper`, `le-mode-hyper-100`, `les-degats` et le mot-clé `chakra`, lus tels que la 0093 les a laissés (`fixtures/lots-avant-0093.json`).
-- `test/db-r184-plan-des-regles.test.mjs` (tables, ouverture, ids), `test/plan-des-regles-db.test.mjs` (`chargerPlanDesRegles`), `test/guide-sans-chapitres.test.mjs` (migration 0064), `test/markdown-edition.test.mjs`, `test/serveur-edition-guide.test.mjs`.
+- `test/livres.test.mjs`, `test/guide.test.mjs`, `test/guide-html.test.mjs` épinglent le plan (skill `tests-conventions`).
+  - Le plan et les renvois s'épinglent sur l'état d'import (`aide-base-d-import.mjs`) ; un test final « aujourd'hui » garde les invariants de la base courante (le plan tient, une place par page, un renvoi mène à une page servie ou à la 404).
+  - Les blocs `<!-- guide:… -->` : leur place se lit dans l'état des migrations (`baseDImport({ garder: lotsAvant('0093') })`) ; sur l'état courant, seulement « un bloc au plus une fois ».
+  - R149 (4 points, 5 dés) est épinglé par le moteur (`maitriseDArme`), la phrase des pages « Caractéristiques et compétences » et « L'équipement » et du mot-clé `maitrise-darme` lue à l'import. Le tarif du chakra manquant (R18, R186 : 3 santé ; tout coût en santé ignore la barrière) est lu dans `finaliser-son-personnage`, `la-magie-en-jeu`, `le-mode-hyper`, `le-mode-hyper-100`, `les-degats` et le mot-clé `chakra`, tels que la 0093 les a laissés (`fixtures/lots-avant-0093.json`).
+- `test/db-r184-plan-des-regles.test.mjs` (tables, ouverture, ids ; ses pages d'essai se choisissent dans le plan courant : le site change une page d'onglet), `test/plan-des-regles-db.test.mjs` (`chargerPlanDesRegles` ; l'ordre attendu se lit dans le plan d'import, le site réordonne les menus), `test/guide-sans-chapitres.test.mjs` (migration 0064), `test/markdown-edition.test.mjs`, `test/serveur-edition-guide.test.mjs`.
 - `test/guide-mode-hyper.test.mjs` et `test/guide-html.test.mjs` (R187 (2) ; Bienvenue construite ; ni rétroliens ni sources dans dist/), `test/gabarits-sources.test.mjs` (aucun gabarit n'annonce de sources).

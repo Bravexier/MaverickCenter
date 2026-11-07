@@ -8,6 +8,7 @@ import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { facesDuDe, gemmesAuChoix, prixDeLAccessoire, qualiteDeGemme, QUALITES_DE_GEMME } from '../src/lib/accessoires-generateur.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { classeDeMagie } from '../src/lib/palette-css.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 
 const db = ouvrirBase();
 const a = chargerAccessoires(db);
@@ -93,10 +94,12 @@ test('consignes des étapes : le texte sous chaque étape, sans les lignes du d�
 });
 
 test('prix d’un accessoire = quarts de gemme à la qualité du niveau + monture du niveau : la composition des prix écrits du tableau', () => {
-  const monture = new Map(a.montures.map((m) => [m.niveau, m.prix_ro]));
+  // à l'import : le prix des gemmes est modifiable sur le site de dev (une valeur changée là est une règle changée), le prix écrit du tableau non
+  const i = chargerAccessoires(baseDImport());
+  const monture = new Map(i.montures.map((m) => [m.niveau, m.prix_ro]));
   const ecarts = [];
   let verifies = 0;
-  for (const e of a.proprietes.flatMap((p) => p.effets)) {
+  for (const e of i.proprietes.flatMap((p) => p.effets)) {
     const rangs = e.gemmes.map((r) => r.map((g) => g.id));
     if (e.prix_ro === null || !e.niveau || !rangs.length || gemmesAuChoix(rangs).max) continue;
     const q = qualiteDeGemme(e.niveau).id;

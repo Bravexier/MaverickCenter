@@ -11,6 +11,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { lireSchema } from '../src/lib/schema-doc.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 import { ENTITES, TABLES } from '../src/lib/edition-modele.mjs';
 import { capacitesDe, defautsDuRegistre, HORS_RESSOURCE, MODULES, OPERATIONS_DU_LOT, RESSOURCES, TABLES_SANS_ECRITURE_DIRECTE, tablesDe, tablesModifiables } from '../src/lib/ressources.mjs';
 import { domainesDeLaChronologie } from '../serveur/edition-chronologie.mjs';
@@ -181,16 +182,19 @@ test('registre : jamais une table des fiches, du journal ni des notes de version
 
 test('registre : les descriptions citent la base telle qu’écrite (noms, décisions), sans rien ajouter', () => {
   const r = (cle) => RESSOURCES.find((x) => x.cle === cle);
+  // les descriptions sont des textes du code, écrits d'après l'import : leurs noms se comparent à la base d'import (le site de dev peut renommer un
+  // emplacement ou un sort dans la base courante ; test/aide-base-d-import.mjs)
+  const dImport = baseDImport();
   // les emplacements d'armure, chacun tel qu'écrit (« Jambe Droit », coquille de la source comprise)
-  const emplacements = db.prepare('SELECT nom FROM armure_emplacement ORDER BY ordre').all().map((x) => x.nom);
+  const emplacements = dImport.prepare('SELECT nom FROM armure_emplacement ORDER BY ordre').all().map((x) => x.nom);
   assert.ok(emplacements.length >= 8);
   for (const nom of emplacements) assert.ok(r('emplacements-d-armure').description.includes(`« ${nom} »`), nom);
   // le sort qui invoque les non-morts et son invocation, sous leurs noms de la base
   const cadaverique = r('ameliorations-cadaveriques').description;
   const sort = /le sort « ([^»]+) »/.exec(cadaverique)?.[1];
   const invocation = /l’invocation s’appelle « ([^»]+) »/.exec(cadaverique)?.[1];
-  assert.ok(db.prepare("SELECT 1 FROM sort WHERE nom = ? AND magie_id = 'magies/magie-de-la-necromancie'").get(sort), `sort « ${sort} »`);
-  assert.ok(db.prepare('SELECT 1 FROM invocation WHERE nom = ?').get(invocation), `invocation « ${invocation} »`);
+  assert.ok(dImport.prepare("SELECT 1 FROM sort WHERE nom = ? AND magie_id = 'magies/magie-de-la-necromancie'").get(sort), `sort « ${sort} »`);
+  assert.ok(dImport.prepare('SELECT 1 FROM invocation WHERE nom = ?').get(invocation), `invocation « ${invocation} »`);
   // R67 : les capacités des créatures invoquées et les bonus du Mage Bleu restent à part ; elle ne parle pas des dons de classe
   const r67 = readFileSync(new URL('../../docs/decisions-regles.md', import.meta.url), 'utf8').split('\n').find((l) => l.startsWith('| R67 |'));
   assert.match(r67, /Mage Bleu/);

@@ -12,10 +12,11 @@ import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.
 import { rejouerLeJournal } from '../serveur/edition.mjs';
 import { chargerJournal, nouveauLot } from '../serveur/edition-journal.mjs';
 import { coutEnUneCase as coutDeLaCaseDuCorps, morceauxDuCorpsDeMagie } from '../src/lib/corps-magies.mjs';
-import { cheminBase, ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
+import { ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { analyserCout, mentionneUnNm } from '../src/lib/sort-analyse.mjs';
 import { coutEnUneCase, ecritUnSecondCout, repartirLeCout } from '../src/lib/sort-cout.mjs';
+import { baseDImport, cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const RACINE = trouverRacine();
@@ -167,7 +168,9 @@ test('corps Markdown des pages de magie : la case « Coût » écrit les deux co
 
 const racine = dossierTemporaire('cout-secondaire');
 let compteur = 0;
-const vivante = () => ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, `b${(compteur += 1)}`) }).chemin);
+// les bases vivantes partent de l'état d'import (test/aide-base-d-import.mjs) : le site de dev modifie librement coûts et textes des sorts, les exemples
+// ci-dessous (un sort de chaque forme) y sont lus
+const vivante = () => ouvrirBaseVivante(preparerBaseVivante({ regles: cheminDImport(), dossier: join(racine, `b${(compteur += 1)}`) }).chemin);
 const base = vivante();
 const service = { base: () => base, etat: () => ({}), edition: true };
 const modifier = (cle, valeurs) => traiter({
@@ -175,9 +178,10 @@ const modifier = (cle, valeurs) => traiter({
   corps: JSON.stringify({ page: 'magies/x', operations: [{ op: 'modifier', table: 'sort', cle, valeurs }] }),
 }, service);
 const lire = (id, b = base) => ({ ...b.prepare('SELECT cout_brut, cout_secondaire, cout_chakra, cout_ressource, cout_ressource_valeur FROM sort WHERE id = ?').get(id) });
-// lus dans la base (le site de dev est la source de ce qu'il modifie) : un sort à chakra et âmes, un sans chakra (Sang seul), deux sans second coût,
-// un dont le coût secondaire est une précision (décision R106 : « Par tour et par cible »)
-const premier = (f) => sorts.find(f)?.id ?? null;
+// lus dans la base d'import : un sort à chakra et âmes, un sans chakra (Sang seul), deux sans second coût, un dont le coût secondaire est une précision
+// (décision R106 : « Par tour et par cible »)
+const sortsDImport = baseDImport().prepare('SELECT * FROM sort ORDER BY id').all();
+const premier = (f) => sortsDImport.find(f)?.id ?? null;
 const NECRO = premier((s) => /^[1-9]\d*$/.test(s.cout_brut) && /^\d+ âmes?$/.test(s.cout_secondaire ?? ''));
 const SANS_CHAKRA = premier((s) => s.cout_brut === '0' && /^\d+ Sang$/.test(s.cout_secondaire ?? ''));
 const SIMPLE = premier((s) => /^[1-9]\d*$/.test(s.cout_brut) && s.cout_secondaire === null);

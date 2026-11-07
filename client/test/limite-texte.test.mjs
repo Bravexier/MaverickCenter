@@ -7,10 +7,14 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { genreDeLaPeriode, GENRES_DE_LIMITE, limiteEcrite, seBriseEcrit, typeDActionEcrit } from '../src/lib/limite-texte.mjs';
 import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
+import { baseDImport, reglesDImport } from './aide-base-d-import.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const q = (sql) => db.prepare(sql).all().map((l) => ({ ...l }));
 const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db)));
+// les textes et les limites que le site de dev modifie librement : les relevés (aucune période en texte, six précisions illisibles, « Noyau dur ») se
+// font dans l'état d'import (test/aide-base-d-import.mjs) ; la base d'aujourd'hui ne garde que les invariants (chaque lecture exportée telle quelle)
+const qDImport = (sql) => baseDImport().prepare(sql).all().map((l) => ({ ...l }));
 /** Un texte qui parle d'une limite d'usage : la lecture doit en rendre une, ou le texte est dans la liste de ceux que R173 laisse en texte. */
 const PARLE_D_UNE_LIMITE = /(?:\d+|une(?: seule)?) fois ?(?:\/|par )|recharge|par combat|\/combat|24 ?h/i;
 
@@ -21,10 +25,10 @@ test('décision R173 : le genre de chaque période (combat, à la main, rappel, 
   for (const p of ['tour', '2 tours', 'mode hyper', 'personnage', 'Personnage', 'allié', 'ennemi', 'dialogue']) assert.equal(genreDeLaPeriode(p), 'rappel', p);
   for (const p of ['Case', 'munitions/Combat', '']) assert.equal(genreDeLaPeriode(p), 'texte', p);
   // toutes les périodes des dons de classe (capacite.limite_periode) ont un genre lu, aucune n'est « texte »
-  const periodes = q('SELECT DISTINCT limite_periode AS p FROM capacite WHERE limite_periode IS NOT NULL').map((r) => r.p);
+  const periodes = qDImport('SELECT DISTINCT limite_periode AS p FROM capacite WHERE limite_periode IS NOT NULL').map((r) => r.p);
   assert.deepEqual(periodes.filter((p) => genreDeLaPeriode(p) === 'texte'), []);
   // les six précisions illisibles (« X tour/combat », « 3 tours de recharge », « 2 CK/Case », « 10 munitions/Combat », « Coût 10 chakra ») n'ont pas de limite
-  const illisibles = q("SELECT type_brut FROM capacite WHERE type IN ('action', 'actif', 'reaction') AND type_brut LIKE '%(%' AND limite_nombre IS NULL").map((r) => texteSansBalises(r.type_brut));
+  const illisibles = qDImport("SELECT type_brut FROM capacite WHERE type IN ('action', 'actif', 'reaction') AND type_brut LIKE '%(%' AND limite_nombre IS NULL").map((r) => texteSansBalises(r.type_brut));
   assert.equal(illisibles.length, 6);
   for (const t of illisibles) assert.equal(limiteEcrite(t), null, t);
 });
@@ -111,6 +115,6 @@ test('décision R173 : la limite de chaque don de classe est celle de son type, 
     const attendu = c.limite_nombre !== null && c.limite_periode ? { nombre: c.limite_nombre, periode: c.limite_periode, genre: genreDeLaPeriode(c.limite_periode) } : null;
     assert.deepEqual(d.limite ?? null, attendu, d.id);
   }
-  const noyau = regles.classes.flatMap((c) => c.dons).find((d) => d.id === 'capacites/flagelleur-noyau-dur');
+  const noyau = reglesDImport().classes.flatMap((c) => c.dons).find((d) => d.id === 'capacites/flagelleur-noyau-dur');
   assert.deepEqual([noyau.type, noyau.limite], ['passif', { nombre: 1, periode: 'combat', genre: 'combat' }]);
 });

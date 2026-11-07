@@ -34,6 +34,7 @@ import {
 import { sansBonus } from '../src/lib/sort-maitrise.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { baseDImport, texteDImport } from './aide-base-d-import.mjs';
 
 const textes = (segs) => segs.map((s) => (s.modif ? `(${s.texte})` : s.texte)).join(' ');
 
@@ -231,7 +232,10 @@ test('15 magies : 14 ont 23 sorts (5 par NPM de 1 à 4, 3 au NPM 5), Potentiel I
     assert.deepEqual(sortsParNpm(magie.sorts).map((g) => [g.niveau, g.sorts.length]), [[1, 5], [2, 5], [3, 5], [4, 5], [5, 3]], magie.id);
   }
   assert.equal(m.magies.get('magies/potentiel-illimite').sorts.length, 0);
-  assert.equal(m.magies.get('magies/potentiel-illimite').banniere, 'MAGIE DIFFICILE À JOUER !!');
+  // la bannière, un texte modifiable sur le site de dev (source de ce qu'il modifie) : celle de la base, telle quelle ; à l'import, celle du classeur
+  const banniere = db.prepare("SELECT banniere FROM magie WHERE id = 'magies/potentiel-illimite'").get().banniere;
+  assert.equal(m.magies.get('magies/potentiel-illimite').banniere, banniere);
+  assert.equal(texteDImport('magie', { id: 'magies/potentiel-illimite' }, 'banniere'), 'MAGIE DIFFICILE À JOUER !!');
 });
 
 test('identifiants de sort : « <magie>#sort:<slug> », slug unique dans la magie, deux magies peuvent avoir un sort du même nom', () => {
@@ -255,8 +259,10 @@ test('chaque sort : nom, au moins un type, effets secondaires ; aucune cellule n
 });
 
 test('la remarque du sort (note de cellule) vient de sort.remarque : une remarque affichée par sort qui en a une', () => {
-  const avec = db.prepare("SELECT id, remarque FROM sort WHERE remarque IS NOT NULL AND remarque <> ''").all();
-  assert.equal(avec.length, 97);
+  // 97 à l'import ; le site de dev (source de ce qu'il modifie) peut en écrire, en réécrire ou en vider depuis
+  const remarques = "SELECT id, remarque FROM sort WHERE remarque IS NOT NULL AND remarque <> ''";
+  assert.equal(baseDImport().prepare(remarques).all().length, 97);
+  const avec = db.prepare(remarques).all();
   for (const r of avec) {
     const s = m.sorts.get(r.id);
     const affiche = s.remarque.map((b) => (b.liste ? b.items.join(' ') : b.texte)).join(' ');
@@ -265,8 +271,11 @@ test('la remarque du sort (note de cellule) vient de sort.remarque : une remarqu
       for (const ligne of para.split('\n').map((l) => l.replace(/^[-•]\s+/, '').trim()).filter(Boolean)) assert.ok(affiche.includes(ligne), `${r.id} : « ${ligne} »`);
     }
   }
-  assert.deepEqual(m.sorts.get('magies/magie-du-feu#sort:rai-solaire').remarque, [{ liste: false, texte: 'Peut prendre un tour de concentration pour donner un bonus de +10 dégâts.' }]);
-  assert.equal(m.sorts.get('magies/magie-du-feu#sort:boule-de-feu').remarque.length, 0, 'pas de remarque inventée');
+  // un sort sans remarque n'en affiche aucune ; à l'import, la remarque de Rai solaire est un paragraphe, Boule de feu n'en a pas
+  for (const s of m.sorts.values()) if (!avec.some((r) => r.id === s.id)) assert.equal(s.remarque.length, 0, `${s.id} : pas de remarque inventée`);
+  assert.deepEqual(blocsDeTexte(texteDImport('sort', { id: 'magies/magie-du-feu#sort:rai-solaire' }, 'remarque')),
+    [{ liste: false, texte: 'Peut prendre un tour de concentration pour donner un bonus de +10 dégâts.' }]);
+  assert.equal(blocsDeTexte(texteDImport('sort', { id: 'magies/magie-du-feu#sort:boule-de-feu' }, 'remarque')).length, 0, 'pas de remarque inventée');
 });
 
 test('le chargeur ne dépend pas de la table note_cellule (simple trace, appelée à disparaître)', () => {
@@ -286,8 +295,9 @@ test('le chargeur ne dépend pas de la table note_cellule (simple trace, appelé
 });
 
 test('texte du sort de niveau 5 : seuls les sorts qui en ont un le portent', () => {
-  const avec = db.prepare("SELECT id FROM sort WHERE texte_niveau5 IS NOT NULL AND texte_niveau5 <> ''").all().map((r) => r.id);
-  assert.ok(avec.length >= 15);
+  const textes = "SELECT id FROM sort WHERE texte_niveau5 IS NOT NULL AND texte_niveau5 <> ''";
+  assert.ok(baseDImport().prepare(textes).all().length >= 15, 'à l’import (le texte est modifiable sur le site de dev)');
+  const avec = db.prepare(textes).all().map((r) => r.id);
   for (const s of m.sorts.values()) assert.equal(s.incantation !== null, avec.includes(s.id), s.id);
   for (const s of m.sorts.values()) if (s.incantation) assert.equal(s.niveau, 5, `${s.id} : un texte de sort est au NPM 5`);
 });
@@ -371,11 +381,13 @@ test('altération d’état liée à chaque magie (etat_magie) : une pour les 14
   }
 });
 
-test('altérations d’état : chaque état a sa section sur la page « Liste des altérations d’état » (l’ancre du lien existe)', () => {
-  const racine = fileURLToPath(new URL('../src/content/wiki/', import.meta.url));
-  const page = readFileSync(join(racine, 'guide', 'liste-des-alterations-d-etat.md'), 'utf8');
+test('altérations d’état : chaque état a sa section sur la page « Liste des altérations d’état » (l’ancre du lien existe, à l’import)', () => {
+  // le lien d'un état mène à la page ; l'intertitre qu'il vise, dans le texte de la page tel que l'import l'a écrit (le site de dev, source de ce qu'il
+  // modifie, peut le réécrire ; ce que devient alors l'ancre est du code, hors de ce test)
+  const page = texteDImport('page', { id: 'guide/liste-des-alterations-d-etat' }, 'corps_md');
   const titres = new Set([...page.matchAll(/^## (.+?)\s*$/gm)].map((t) => t[1]));
   assert.equal(m.etats.size, 20);
+  assert.ok(db.prepare("SELECT 1 FROM page WHERE id = 'guide/liste-des-alterations-d-etat'").get(), 'la page des altérations');
   for (const e of m.etats.values()) {
     assert.equal(e.pageId, 'guide/liste-des-alterations-d-etat');
     assert.ok(titres.has(e.nom), `titre « ${e.nom} » sur la page`);
@@ -389,14 +401,22 @@ test('mode hyper de chaque magie (onglet de la magie) : mono et bi-magie, ou for
 });
 
 test('ressources offertes, rôles et 4ème barre', () => {
-  const sang = m.magies.get('magies/magie-du-sang');
+  // modifiables sur le site de dev (une valeur changée là est une règle changée) : les valeurs de l'import, lues par le même chargeur ; aujourd'hui,
+  // le chargeur rend celles de la base
+  const i = chargerMagies(baseDImport());
+  const sang = i.magies.get('magies/magie-du-sang');
   assert.equal(sang.sante, 10);
   assert.equal(sang.chakra, 0);
   assert.equal(sang.barre4.ressource, 'sang');
-  assert.equal(m.magies.get('magies/magie-du-feu').barre4, null);
-  assert.deepEqual(m.magies.get('magies/magie-du-feu').roles.map((r) => r.brut), ['DÉGÂTS', 'ENTRAVE', 'RENFORCEMENT']);
-  assert.equal(m.magies.get('magies/potentiel-illimite').caracteristique.brut, 'AU CHOIX ou ALÉATOIRE');
-  assert.equal(m.magies.get('magies/magie-du-feu').caracteristique.brut, 'SOCIAL');
+  assert.equal(i.magies.get('magies/magie-du-feu').barre4, null);
+  assert.deepEqual(i.magies.get('magies/magie-du-feu').roles.map((r) => r.brut), ['DÉGÂTS', 'ENTRAVE', 'RENFORCEMENT']);
+  assert.equal(i.magies.get('magies/potentiel-illimite').caracteristique.brut, 'AU CHOIX ou ALÉATOIRE');
+  assert.equal(i.magies.get('magies/magie-du-feu').caracteristique.brut, 'SOCIAL');
+  for (const r of db.prepare('SELECT id, sante_offerte, chakra_offert, caracteristique_brut, barre4_texte FROM magie').all()) {
+    const x = m.magies.get(r.id);
+    assert.deepEqual([x.sante, x.chakra, x.caracteristique?.brut ?? null, x.barre4?.texte ?? null], [r.sante_offerte, r.chakra_offert, r.caracteristique_brut || null, r.barre4_texte || null], r.id);
+    assert.deepEqual(x.roles.map((l) => l.brut), db.prepare('SELECT role_brut FROM magie_role WHERE magie_id = ? ORDER BY rang').all(r.id).map((l) => l.role_brut), r.id);
+  }
 });
 
 test('règle spéciale du NPM 5 : lue dans la base, pour l’infobulle du titre du tableau ; la liste des lanceurs, la légende et la source n’y sont plus', () => {

@@ -63,21 +63,26 @@ test('une ressource qui n’est pas un composant (un livre) ne se modifie pas ic
 });
 
 test('gemme : prix modifiés (en RF recalculés), nom et description ; ses lignes des bâtons et des accessoires suivent, effets d’accessoire compris', () => {
-  const g = ligne("SELECT r.*, g.* FROM gemme g JOIN ressource r ON r.id = g.ressource_id WHERE r.nom_cle = 'ambre'");
-  ok(enregistrer([{ op: 'modifier', table: 'gemme', cle: { ressource_id: g.ressource_id }, valeurs: { prix_commune_brut: '55 RO', quart_parfaite_brut: '60 Ro' } }]));
+  // cherchées par identifiant, nommées comme la base les nomme (le site de dev peut renommer une gemme, une magie, changer un prix)
+  const g = ligne("SELECT r.*, g.* FROM gemme g JOIN ressource r ON r.id = g.ressource_id WHERE r.id = 'ressources/baton-magique#gemme:ambre'");
+  const grenat = ligne("SELECT nom FROM ressource WHERE id = 'ressources/baton-magique#gemme:grenat'").nom;
+  const tete = (page) => lignesDe(page).find((l) => l.split(' | ')[1] === g.nom).split(' | ')[0]; // la case de la magie, avant la gemme
+  const [teteBatons, teteAccessoires] = [tete(PAGE_DES_BATONS), tete(PAGE_DES_ACCESSOIRES)];
+  const [ro, quart] = g.prix_commune_rf === 5500 ? [56, 61] : [55, 60];
+  ok(enregistrer([{ op: 'modifier', table: 'gemme', cle: { ressource_id: g.ressource_id }, valeurs: { prix_commune_brut: `${ro} RO`, quart_parfaite_brut: `${quart} Ro` } }]));
   const apres = ligne('SELECT * FROM gemme WHERE ressource_id = ?', g.ressource_id);
-  assert.deepEqual([apres.prix_commune_rf, apres.quart_parfaite_rf], [5500, 6000]);
-  assert.ok(lignesDe(PAGE_DES_BATONS).some((l) => l.startsWith(`| Terre | ${g.nom} |`) && l.includes('| 55 RO |')));
-  assert.ok(lignesDe(PAGE_DES_ACCESSOIRES).some((l) => l.startsWith(`| Terre | ${g.nom} |`) && l.includes('| 60 Ro |')));
+  assert.deepEqual([apres.prix_commune_rf, apres.quart_parfaite_rf], [ro * 100, quart * 100]);
+  assert.ok(lignesDe(PAGE_DES_BATONS).some((l) => l.startsWith(`${teteBatons} | ${g.nom} |`) && l.includes(`| ${ro} RO |`)));
+  assert.ok(lignesDe(PAGE_DES_ACCESSOIRES).some((l) => l.startsWith(`${teteAccessoires} | ${g.nom} |`) && l.includes(`| ${quart} Ro |`)));
   const nom = nomLibre('Ambre essai');
   ok(enregistrer([{ op: 'modifier', table: 'ressource', cle: { id: g.ressource_id }, valeurs: { nom } }]));
-  assert.ok(lignesDe(PAGE_DES_BATONS).some((l) => l.startsWith(`| Terre | ${nom} |`)));
-  assert.ok(corps(PAGE_DES_ACCESSOIRES).includes(`${nom} + Grenat`), 'la combinaison « Ambre + Grenat » d’un effet suit');
-  assert.ok(!/\| Ambre \+ /.test(corps(PAGE_DES_ACCESSOIRES)));
+  assert.ok(lignesDe(PAGE_DES_BATONS).some((l) => l.startsWith(`${teteBatons} | ${nom} |`)));
+  assert.ok(corps(PAGE_DES_ACCESSOIRES).includes(`${nom} + ${grenat}`), 'la combinaison « Ambre + Grenat » d’un effet suit');
+  assert.ok(!corps(PAGE_DES_ACCESSOIRES).includes(`| ${g.nom} + `));
 });
 
 test('matériau : prix et description dans les tableaux des armures et des boucliers ; renommé, aussi la page des armes et la monture', () => {
-  const m = ligne("SELECT * FROM ressource WHERE genre = 'materiau' AND nom_cle = 'mythril'");
+  const m = ligne("SELECT * FROM ressource WHERE id = 'ressources/armures#materiau:mythril'");
   ok(enregistrer([{ op: 'modifier', table: 'ressource', cle: { id: m.id }, valeurs: { prix_brut: '210 RO', description: 'Description d’essai.' } }]));
   for (const id of [PAGE_DES_ARMURES, PAGE_DES_BOUCLIERS]) {
     assert.ok(lignesDe(id).some((l) => l.startsWith(`| ${m.nom} | 210 RO | Description d’essai. |`)), id);
@@ -89,7 +94,8 @@ test('matériau : prix et description dans les tableaux des armures et des boucl
 });
 
 test('ingrédient : type et affinité refont type, majeur et affinité (créée si nouvelle) ; sa ligne de la liste d’ingrédients suit', () => {
-  const i = ligne("SELECT r.nom, i.* FROM ingredient_alchimie i JOIN ressource r ON r.id = i.ressource_id WHERE i.categorie = 'amplificateur' AND i.majeur = 1 ORDER BY i.ressource_id LIMIT 1");
+  // un amplificateur (majeur à l'import ; le site de dev peut changer son type)
+  const i = ligne("SELECT r.nom, i.* FROM ingredient_alchimie i JOIN ressource r ON r.id = i.ressource_id WHERE i.categorie = 'amplificateur' ORDER BY i.majeur DESC, i.ressource_id LIMIT 1");
   ok(enregistrer([{ op: 'modifier', table: 'ingredient_alchimie', cle: { ressource_id: i.ressource_id }, valeurs: { type_brut: 'Baie (majeur)', affinite_brut: 'Vitesse + Santé + Coma' } }]));
   const apres = ligne('SELECT * FROM ingredient_alchimie WHERE ressource_id = ?', i.ressource_id);
   assert.deepEqual([apres.type, apres.majeur, apres.affinite_id], ['Baie', 1, 'coma+sante+vitesse']);
@@ -143,11 +149,11 @@ test('composant créé à la fin de son tableau (ligne de l’onglet), puis supp
 });
 
 test('un composant cité par d’autres règles ne se supprime pas (un matériau des armures, une gemme d’accessoire)', () => {
-  const fer = ligne("SELECT id FROM ressource WHERE genre = 'materiau' AND nom_cle = 'fer'");
+  const fer = ligne("SELECT id FROM ressource WHERE id = 'ressources/armures#materiau:fer'");
   const r = enregistrer([{ op: 'supprimer', entite: 'materiau', cle: { ressource_id: fer.id } }]);
   assert.equal(r.statut, 409);
   assert.match(r.corps.erreur ?? JSON.stringify(r.corps), /armure/);
-  const grenat = ligne("SELECT id FROM ressource WHERE genre = 'gemme' AND nom_cle = 'grenat'");
+  const grenat = ligne("SELECT id FROM ressource WHERE id = 'ressources/baton-magique#gemme:grenat'");
   assert.equal(enregistrer([{ op: 'supprimer', entite: 'gemme', cle: grenat }]).statut, 409);
 });
 
@@ -272,7 +278,7 @@ test('OBJETS_AU_CATALOGUE : exactement les tables des fiches qui citent une ress
 });
 
 test('matériau (décision R62) : type d’après l’armure (sa fiche d’armure suit), « Autres » refusé pour un matériau d’armure ; créé avec son type, puis supprimé', () => {
-  const titane = ligne("SELECT r.id, r.nom, m.type FROM ressource r JOIN materiau m ON m.ressource_id = r.id WHERE r.nom_cle = 'titane'");
+  const titane = ligne("SELECT r.id, r.nom, m.type FROM ressource r JOIN materiau m ON m.ressource_id = r.id WHERE r.id = 'ressources/armures#materiau:titane'");
   const autre = titane.type === 'Lourd' ? 'Intermédiaire' : 'Lourd';
   ok(enregistrer([{ op: 'modifier', table: 'materiau', cle: { ressource_id: titane.id }, valeurs: { type: autre } }]));
   assert.equal(ligne('SELECT type FROM materiau_armure WHERE ressource_id = ?', titane.id).type, autre, 'la fiche d’armure suit');

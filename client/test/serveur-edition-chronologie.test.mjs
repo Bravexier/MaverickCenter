@@ -327,6 +327,8 @@ test('mots-clés qui étiquettent un sort (sort_mot_cle, migration 0067, décisi
   assert.deepEqual(etiquettes(), [...ETIQUETTE_D_ESSAI.sorts].sort());
   const libre = creerMotCle(motLibre('Essai sans étiquette'));
   const vocabulaireAvant = lignes('SELECT * FROM mot_cle ORDER BY id');
+  // les sorts nommés comme la base les nomme (le site de dev peut les renommer), dans l'ordre de leur clé de nom
+  const sorts = lignes(`SELECT nom FROM sort WHERE id IN (${ETIQUETTE_D_ESSAI.sorts.map(() => '?').join(', ')}) ORDER BY nom_cle, id`, ...ETIQUETTE_D_ESSAI.sorts).map((x) => `« ${x.nom} »`).join(', ');
   for (const [quoi, operation, action] of [
     ['suppression', { op: 'supprimer', entite: 'mot_cle', cle: { id: etiquette.id } }, 'supprime'],
     ['fusion du mot-clé dans un autre', { op: 'fusionner_mots_cles', mot_cle: etiquette.id, dans: libre }, 'fusionne'],
@@ -334,7 +336,7 @@ test('mots-clés qui étiquettent un sort (sort_mot_cle, migration 0067, décisi
   ]) {
     const r = enregistrer([operation]);
     assert.equal(r.statut, 409, `${quoi} : ${JSON.stringify(r.corps)}`);
-    assert.equal(r.corps.erreur, `operations[0] : Le mot-clé « ${etiquette.libelle} » ne se ${action} pas depuis le site : il étiquette 2 sorts (« Boule de feu », « Cautérisation »), une règle posée par décision du propriétaire.`, quoi);
+    assert.equal(r.corps.erreur, `operations[0] : Le mot-clé « ${etiquette.libelle} » ne se ${action} pas depuis le site : il étiquette 2 sorts (${sorts}), une règle posée par décision du propriétaire.`, quoi);
     assert.deepEqual(lignes('SELECT * FROM mot_cle ORDER BY id'), vocabulaireAvant, `${quoi} : rien n’est écrit`);
     assert.deepEqual(etiquettes(), [...ETIQUETTE_D_ESSAI.sorts].sort(), `${quoi} : les étiquettes restent`);
   }

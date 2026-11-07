@@ -13,6 +13,7 @@ import { COULEUR_SANS_TYPE, COULEURS_DES_POIDS } from '../src/lib/equipement-cou
 import { classeDuPoids, FAMILLES_DE_LA_PALETTE, PAR_DEFAUT } from '../src/lib/palette-css.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const registre = JSON.parse(readFileSync(new URL('../../data/migrations/0054-poids-des-boucliers.json', import.meta.url), 'utf8'));
@@ -42,8 +43,10 @@ test('la base dans son état d’import est le registre : chaque bouclier a le p
     assert.equal(l.poids_id, b.poids_id, b.id);
     assert.equal(l.source_ref, `Ressources et Craft › Bouclier › ${b.cellule}`, b.id);
   }
-  // les poids existent (clé étrangère), dans l'ordre de la liste de l'onglet, avec leur Force minimum
-  const poids = poidsDeBouclier(db);
+  // les poids existent (clé étrangère), dans l'ordre de la liste de l'onglet ; à l'import, avec leur Force minimum et leur nom (modifiables sur le site
+  // de dev : une valeur changée là est une règle changée)
+  assert.deepEqual(poidsDeBouclier(db).map((p) => [p.id, p.valeur]), [['leger', 'leger'], ['moyen', 'moyen'], ['lourd', 'lourd'], ['tres-lourd', 'tres-lourd']]);
+  const poids = poidsDeBouclier(baseDImport());
   assert.deepEqual(poids.map((p) => [p.id, p.force_min, p.valeur, p.libelle]), [['leger', 1, 'leger', 'Léger'], ['moyen', 2, 'moyen', 'Moyen'], ['lourd', 3, 'lourd', 'Lourd'], ['tres-lourd', 4, 'tres-lourd', 'Très lourd']]);
 });
 

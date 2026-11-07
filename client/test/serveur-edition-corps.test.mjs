@@ -236,10 +236,11 @@ test('magie : présentation (et résumé), description physique, rôle, Mode Hyp
   const c = corps(FEU);
   const m = morceauxDuCorpsDeMagie(c);
   assert.ok(c.includes(nouveau.presentation));
-  assert.ok(!c.includes(debut(avant.feu.description)), 'ancienne présentation');
+  // l'ancien texte cherché là où il était (le texte courant, que le site de dev peut réécrire, peut se retrouver dans une autre rubrique)
+  assert.ok(!m.tete.join('\n').includes(debut(avant.feu.description)), 'ancienne présentation');
   assert.equal(ligne('SELECT resume FROM page WHERE id = ?', FEU).resume, 'La magie zorglubpresentation brûle sans fin.');
   assert.ok(section(c, 'Description physique').includes(nouveau.physique));
-  assert.ok(!c.includes(debut(avant.feu.description_physique)), 'ancienne description physique');
+  assert.ok(!section(c, 'Description physique').includes(debut(avant.feu.description_physique)), 'ancienne description physique');
   assert.equal(m.roles[avant.roleFeu.rang - 1], nouveau.role);
   assert.ok(!m.roles.includes(avant.roleFeu.role_brut));
   assert.equal(m.hyper.find((h) => h.variante === 'Mono-Magie').effet, nouveau.hyperFeu);
@@ -278,16 +279,17 @@ test('formes que races_onglet.py ne relit pas : identifiant d’un don changé, 
 test('race : histoire, santé, avantages, don de base, case du tableau, magies innées, don racial, Mode Hyper (les citations de la fiche restent)', () => {
   const c = corps(DRAKOS);
   assert.ok(section(c, 'Histoire').includes(nouveau.histoire));
-  assert.ok(!c.includes(debut(avant.drakos.histoire)));
+  assert.ok(!section(c, 'Histoire').includes(debut(avant.drakos.histoire)));
   const stats = section(c, 'Caractéristiques de départ').split('\n').filter((l) => l.startsWith('| '));
   assert.equal(casesDe(stats[2])[0], String(nouveau.sante));
   const ecart = c.split('\n').find((l) => l.startsWith('| Santé de départ<br>'));
   assert.equal(casesDe(ecart)[1], String(nouveau.sante), 'colonne « Onglet (retenu) » du tableau des écarts');
   assert.ok(section(c, 'Avantage(s) et inconvénient(s)').includes(`**Avantage(s)** : ${nouveau.avantages}`));
-  assert.ok(!section(c, 'Avantage(s) et inconvénient(s)').includes(debut(avant.drakos.avantages)));
+  assert.ok(!section(c, 'Avantage(s) et inconvénient(s)').split('**Inconvénient(s)**')[0].includes(debut(avant.drakos.avantages)));
   assert.equal(section(c, 'Don de base').split('\n').slice(2).join('\n').trim(), nouveau.donBase);
   const eth = section(c, 'Ethnies et dons raciaux');
-  const sang = eth.split('\n').find((l) => l.startsWith('| Sang |'));
+  // la ligne de la case modifiée, par son rang (sa première case, que le site de dev peut réécrire, ne la désigne pas) : en-tête, séparateur, puis les lignes
+  const sang = eth.split('\n').filter((l) => l.startsWith('| '))[1 + avant.caseDrakos.ligne];
   assert.equal(casesDe(sang)[1], nouveau.case);
   assert.ok(!sang.includes(avant.caseDrakos.valeur));
   const magies = section(c, 'Magies accessibles');
@@ -308,9 +310,9 @@ test('classe : santé, maîtrises, présentation (et résumé), spécialité ren
   assert.ok(section(c, 'Don de départ').includes(`| ${g.sante_depart}.0 | ${avant.guerrier.chakra_depart}.0 | ${avant.guerrier.barriere_depart}.0 |`));
   assert.ok(!c.includes(`| ${avant.guerrier.sante_depart}.0 | ${avant.guerrier.chakra_depart}.0 |`));
   assert.ok(section(c, 'Maîtrise Arme', '###').includes('- Maîtrise zorglubarme'));
-  assert.ok(!c.includes(avant.guerrier.maitrise_arme.split('\n')[0]));
+  assert.ok(!section(c, 'Maîtrise Arme', '###').includes(avant.guerrier.maitrise_arme.split('\n')[0]));
   assert.ok(section(c, avant.guerrier.description_titre).includes(g.description));
-  assert.ok(!c.includes(debut(avant.guerrier.description)));
+  assert.ok(!section(c, avant.guerrier.description_titre).includes(debut(avant.guerrier.description)));
   assert.equal(ligne('SELECT resume FROM page WHERE id = ?', GUERRIER).resume, 'Le Guerrier zorglubclasse frappe fort.');
   if (MAITRE) {
     assert.ok(c.split('\n').includes(`### ${nouveau.maitre}`));

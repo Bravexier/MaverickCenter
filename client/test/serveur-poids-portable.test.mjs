@@ -15,17 +15,20 @@ import { ficheVide, ligneDeRetrait, PREFIXE_DE_RETRAIT } from '../src/lib/fiche-
 import * as M from '../src/lib/fiche-moteur.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { COLONNES_LUES, lecteurDuPoidsPortable, poidsPortableDeLaBase } from '../src/lib/poids-portable-db.mjs';
+import { cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const dossier = dossierTemporaire('poids-portable');
-const REGLES = cheminBase({ sansExemples: false });
+// les poids que les dons écrivent dans leurs textes (Nain, Lamia, Cuirassé…) : épinglés sur leur état d'import (test/aide-base-d-import.mjs), le
+// site de dev réécrit librement ces textes ; sur la base courante, l'équivalence base / moteur seule (premier test)
+const REGLES = cheminDImport();
+const COURANTE = cheminBase({ sansExemples: false });
 const INSTANT = '2026-10-23T08:00:00Z';
 const lecture = new DatabaseSync(REGLES, { readOnly: true });
 after(() => lecture.close());
 const tout = (sql, ...p) => lecture.prepare(sql).all(...p).map((r) => ({ ...r }));
 const un = (sql, ...p) => lecture.prepare(sql).get(...p);
 const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(lecture))); // tel que la page le reçoit
-const XP_MAX = un('SELECT max(xp_min) AS x FROM niveau_global').x;
 const FEU = 'magies/magie-du-feu';
 const MAGE = 'classes/mage';
 const CUIRASSE = 'classes/cuirasse';
@@ -35,9 +38,9 @@ const LOURDE = un("SELECT id FROM armure WHERE type = 'Lourd' AND solidite_uni I
 const VETEMENT = un("SELECT id FROM armure WHERE type = 'Vêtement' ORDER BY ordre LIMIT 1").id;
 const EL_FEU_LEGER = un("SELECT id FROM armure_elementaire WHERE magie_id = ? AND categorie = 'Léger'", FEU).id;
 
-function nouvelleCopie(nom) {
+function nouvelleCopie(nom, regles = REGLES) {
   const chemin = join(dossier, nom);
-  copyFileSync(REGLES, chemin);
+  copyFileSync(regles, chemin);
   const db = new DatabaseSync(chemin);
   db.exec('PRAGMA foreign_keys = ON');
   return db;
@@ -58,40 +61,58 @@ function poser(db, id, { classes = [], choix = [], ...colonnes } = {}) {
 }
 const lignesDeRetrait = (notes) => (notes ?? '').split('\n').filter((l) => l.includes(PREFIXE_DE_RETRAIT));
 
+/** Une fiche par classe et par race (ethnie, magie innée, niveau, spécialité, dons à choix variés) posée dans `db` ; rend leurs identifiants. */
+function poserLesFiches(db) {
+  const tout = (sql, ...p) => db.prepare(sql).all(...p).map((r) => ({ ...r })); // les lignes de cette base (le site de dev crée des classes)
+  const XP_MAX = db.prepare('SELECT max(xp_min) AS x FROM niveau_global').get().x;
+  const classes = tout('SELECT id FROM classe ORDER BY ordre').map((c) => c.id);
+  const specialites = new Map(tout('SELECT classe_id, id FROM specialite ORDER BY classe_id, rang').map((s) => [s.classe_id, s.id]));
+  const choixDe = (classe) => tout("SELECT id FROM capacite WHERE classe_id = ? AND nature = 'choix'", classe).map((c) => c.id);
+  const races = [...tout('SELECT race_id AS id FROM race_onglet ORDER BY race_id').map((r) => r.id), null];
+  const ethnies = new Map(races.map((r) => [r, tout('SELECT id FROM ethnie WHERE race_id = ? ORDER BY id', r).map((e) => e.id)]));
+  const magies = [...tout('SELECT id FROM magie ORDER BY ordre').map((m) => m.id), null];
+  const ids = [];
+  let n = 0;
+  db.exec('BEGIN');
+  classes.forEach((classe, i) => races.forEach((race, j) => {
+    const k = i * races.length + j;
+    const ethniesDeLaRace = ethnies.get(race) ?? [];
+    const seconde = classes[(i + 1 + j) % classes.length];
+    const bi = k % 4 === 3;
+    const avecSpecialite = k % 2 === 0 && specialites.has(classe);
+    const id = `eq-${n++}`;
+    poser(db, id, {
+      race_id: race, ethnie_id: ethniesDeLaRace.length ? ethniesDeLaRace[k % (ethniesDeLaRace.length + 1)] ?? null : null,
+      magie_innee_id: magies[k % magies.length], mode_classe: bi ? 'bi' : 'mono', xp: [0, XP_MAX, Math.floor(XP_MAX / 3)][Math.floor(k / 3) % 3],
+      classes: [[classe, avecSpecialite ? specialites.get(classe) : null], ...(k % 3 === 0 ? [] : [[seconde]])],
+      choix: k % 5 === 0 ? [] : choixDe(classe),
+    });
+    ids.push(id);
+  }));
+  poser(db, 'eq-sans-classe', { race_id: null, magie_innee_id: null });
+  ids.push('eq-sans-classe');
+  // tout Nain, ethnie choisie ou non (« Oui, tout Nain (Recommandé) ») : Mage 1, Cuirassé 3
+  poser(db, 'eq-nain-sans-ethnie-mage', { race_id: 'races/nain', ethnie_id: null, classes: [[MAGE]] });
+  poser(db, 'eq-nain-sans-ethnie-cuirasse', { race_id: 'races/nain', ethnie_id: null, classes: [[CUIRASSE]] });
+  ids.push('eq-nain-sans-ethnie-mage', 'eq-nain-sans-ethnie-cuirasse');
+  db.exec('COMMIT');
+  return ids;
+}
+
 test('R165 (6) : le poids portable lu dans la base est celui du moteur de la fiche, sur chaque classe, race, ethnie, magie innée, niveau, spécialité, don à choix', () => {
+  // la base courante, quels que soient ses textes : la base et le moteur disent le même poids
+  const courante = nouvelleCopie('equivalence-courante.db', COURANTE);
+  try {
+    const reglesCourantes = JSON.parse(JSON.stringify(chargerReglesDeFiche(courante)));
+    const lire = lecteurDuPoidsPortable(courante);
+    for (const id of poserLesFiches(courante)) assert.deepEqual(lire(id), M.poidsPortableDe(reglesCourantes, lireFiche(courante, id)), id);
+  } finally {
+    courante.close();
+  }
+  // la base d'import : la même équivalence, et chaque cas de la décision y passe
   const db = nouvelleCopie('equivalence.db');
   try {
-    const classes = tout('SELECT id FROM classe ORDER BY ordre').map((c) => c.id);
-    const specialites = new Map(tout('SELECT classe_id, id FROM specialite ORDER BY classe_id, rang').map((s) => [s.classe_id, s.id]));
-    const choixDe = (classe) => tout("SELECT id FROM capacite WHERE classe_id = ? AND nature = 'choix'", classe).map((c) => c.id);
-    const races = [...tout('SELECT race_id AS id FROM race_onglet ORDER BY race_id').map((r) => r.id), null];
-    const ethnies = new Map(races.map((r) => [r, tout('SELECT id FROM ethnie WHERE race_id = ? ORDER BY id', r).map((e) => e.id)]));
-    const magies = [...tout('SELECT id FROM magie ORDER BY ordre').map((m) => m.id), null];
-    const ids = [];
-    let n = 0;
-    db.exec('BEGIN');
-    classes.forEach((classe, i) => races.forEach((race, j) => {
-      const k = i * races.length + j;
-      const ethniesDeLaRace = ethnies.get(race) ?? [];
-      const seconde = classes[(i + 1 + j) % classes.length];
-      const bi = k % 4 === 3;
-      const avecSpecialite = k % 2 === 0 && specialites.has(classe);
-      const id = `eq-${n++}`;
-      poser(db, id, {
-        race_id: race, ethnie_id: ethniesDeLaRace.length ? ethniesDeLaRace[k % (ethniesDeLaRace.length + 1)] ?? null : null,
-        magie_innee_id: magies[k % magies.length], mode_classe: bi ? 'bi' : 'mono', xp: [0, XP_MAX, Math.floor(XP_MAX / 3)][Math.floor(k / 3) % 3],
-        classes: [[classe, avecSpecialite ? specialites.get(classe) : null], ...(k % 3 === 0 ? [] : [[seconde]])],
-        choix: k % 5 === 0 ? [] : choixDe(classe),
-      });
-      ids.push(id);
-    }));
-    poser(db, 'eq-sans-classe', { race_id: null, magie_innee_id: null });
-    ids.push('eq-sans-classe');
-    // tout Nain, ethnie choisie ou non (« Oui, tout Nain (Recommandé) ») : Mage 1, Cuirassé 3
-    poser(db, 'eq-nain-sans-ethnie-mage', { race_id: 'races/nain', ethnie_id: null, classes: [[MAGE]] });
-    poser(db, 'eq-nain-sans-ethnie-cuirasse', { race_id: 'races/nain', ethnie_id: null, classes: [[CUIRASSE]] });
-    ids.push('eq-nain-sans-ethnie-mage', 'eq-nain-sans-ethnie-cuirasse');
-    db.exec('COMMIT');
+    const ids = poserLesFiches(db);
     const lire = lecteurDuPoidsPortable(db);
     const vus = new Set();
     for (const id of ids) {

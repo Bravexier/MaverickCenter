@@ -9,12 +9,15 @@ import { copyFileSync, existsSync, readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { cheminBase, trouverRacine } from '../src/lib/donnees.mjs';
+import { trouverRacine } from '../src/lib/donnees.mjs';
+import { cheminDImport, texteDImport } from './aide-base-d-import.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const racine = trouverRacine();
 const copie = fichierTemporaire('maverick.db', 'personnages');
-copyFileSync(cheminBase({ sansExemples: false }), copie);
+// les règles des fiches (maîtrises, gains, bornes, dons…) se modifient sur le site de dev : leurs valeurs précises se lisent dans l'état d'import
+// (test/aide-base-d-import.mjs), le contrôle de la vue y est épinglé
+copyFileSync(cheminDImport(), copie);
 const db = new DatabaseSync(copie);
 db.exec('PRAGMA foreign_keys = ON');
 
@@ -739,10 +742,11 @@ test('décision R20 : l’Elfe Noir Charbon et le Felfe Noir peuvent acquérir l
 });
 
 test('décision R23 : l’Archimage est réservée au Potentiel Illimité inné, qui l’impose en classe 1 (« Chose à savoir » de l’Archimage)', () => {
-  // La règle est une donnée de la classe (migration 0015), tirée du bloc « CHOSE A SAVOIR » de son onglet
+  // La règle est une donnée de la classe (migration 0015), tirée du bloc « CHOSE A SAVOIR » de son onglet, lu dans son état d'import (le site de dev
+  // réécrit ce texte : test/aide-base-d-import.mjs) ; le moteur de la fiche l'applique aussi (test/fiche-moteur.test.mjs)
   assert.deepEqual(db.prepare('SELECT id, magie_innee_id FROM classe WHERE magie_innee_id IS NOT NULL').all().map((r) => ({ ...r })),
     [{ id: 'classes/archimage', magie_innee_id: 'magies/potentiel-illimite' }]);
-  assert.match(db.prepare("SELECT chose_a_savoir FROM classe WHERE id = 'classes/archimage'").get().chose_a_savoir,
+  assert.match(texteDImport('classe', { id: 'classes/archimage' }, 'chose_a_savoir'),
     /vous ne pouvez pas la prendre si vous n'êtes pas du potentiel illimité et est imposée quand vous êtes du potentiel illimité/);
   assert.throws(() => db.prepare("UPDATE classe SET magie_innee_id = 'magies/potentiel-illimite' WHERE id = 'classes/mage'").run(), /UNIQUE/,
     'une magie innée impose au plus une classe');
@@ -785,7 +789,8 @@ test('décision R23 : l’Archimage est réservée au Potentiel Illimité inné,
 test('décision R25 : le Mage Bleu est fermé au Potentiel Illimité, à tous les rangs (« Chose à savoir » du Mage Bleu)', () => {
   assert.deepEqual(db.prepare('SELECT id, magie_innee_exclue_id FROM classe WHERE magie_innee_exclue_id IS NOT NULL').all().map((r) => ({ ...r })),
     [{ id: 'classes/mage-bleu', magie_innee_exclue_id: 'magies/potentiel-illimite' }]);
-  assert.match(db.prepare("SELECT chose_a_savoir FROM classe WHERE id = 'classes/mage-bleu'").get().chose_a_savoir, /Un potentiel illimité ne peut pas avoir cette classe\./);
+  // la phrase de la classe, dans son état d'import (le site de dev la réécrit : test/aide-base-d-import.mjs)
+  assert.match(texteDImport('classe', { id: 'classes/mage-bleu' }, 'chose_a_savoir'), /Un potentiel illimité ne peut pas avoir cette classe\./);
   const pi = { magie_innee_id: 'magies/potentiel-illimite', caracteristique_magie_id: 'force', mode_classe: 'bi' };
   personnageValide('r25-pi', pi);
   db.prepare("UPDATE personnage_classe SET classe_id = 'classes/archimage' WHERE personnage_id = 'r25-pi'").run();
@@ -805,7 +810,8 @@ test('décision R25 : le Mage Bleu est fermé au Potentiel Illimité, à tous le
 
 test('décision R28 : la Lamia n’a qu’une magie, pas de magie acquise (« Une seule magie autorisé », onglet de la race)', () => {
   assert.deepEqual(db.prepare('SELECT id FROM race WHERE mono_magie = 1').all().map((r) => r.id), ['races/lamia']);
-  assert.match(db.prepare("SELECT inconvenients FROM race_onglet WHERE race_id = 'races/lamia'").get().inconvenients, /Une seule magie autorisé/);
+  // la phrase de l'onglet, dans son état d'import (le site de dev la réécrit : test/aide-base-d-import.mjs)
+  assert.match(texteDImport('race_onglet', { race_id: 'races/lamia' }, 'inconvenients'), /Une seule magie autorisé/);
   const lamia = { race_id: 'races/lamia', ethnie_id: 'races/lamia#ethnie:lamia' };
   const r28 = (id) => controle(id).filter((c) => c.regle === 'race_mono_magie');
   personnageValide('r28-lamia', { ...lamia, magie_acquise_id: 'magies/magie-de-leau' });
@@ -1055,7 +1061,8 @@ test('décision R19 : jusqu’à deux croix par caractéristique, la règle du g
   assert.throws(() => db.prepare("UPDATE personnage_caracteristique SET croix = 3 WHERE personnage_id = 'croix' AND caracteristique_id = 'force'").run(), /CHECK/);
   const malus = Object.fromEntries(db.prepare("SELECT id, valeur FROM regle_constante WHERE id LIKE 'competence.croix_%'").all().map((r) => [r.id, r.valeur]));
   assert.deepEqual(malus, { 'competence.croix_1_malus': -20, 'competence.croix_2_malus': -1000 });
-  const page = db.prepare("SELECT corps_md FROM page WHERE id = 'guide/fiche-caracteristiques'").get().corps_md;
+  // la règle du guide, dans son état d'import (le site de dev réécrit la page : test/aide-base-d-import.mjs)
+  const page = texteDImport('page', { id: 'guide/fiche-caracteristiques' }, 'corps_md');
   assert.match(page, /1 croix, malus de 20% pour tout test en rapport avec cette caractéristique\./);
   assert.match(page, /2 croix, impossibilité d'utiliser les compétences liées à cette caractéristique\./);
 });

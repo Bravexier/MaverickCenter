@@ -12,6 +12,8 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { chargerMagies } from '../src/lib/magies-db.mjs';
 import { classeDeMagie, cssDeLaPalette } from '../src/lib/palette-css.mjs';
 import { ENCOMBREMENT, liaisonsEntreMagies, POINTES, segmentCoupe } from '../src/lib/magie-fleches.mjs';
+import { sansBonus } from '../src/lib/sort-maitrise.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 import { tuilesDeCapacites } from './aide-bestiaire.mjs';
 
 const dossier = fileURLToPath(new URL('../dist/magies/', import.meta.url));
@@ -276,11 +278,18 @@ test('niveaux de maîtrise : plus de colonne « Maîtrise » ; chaque bonus du t
       pastilles += 1;
     }
   }
-  // 72 bonus de la colonne Type + 190 des cellules Coût, Portée, Zone, D/S/B (test/maitrise-sorts.test.mjs)
-  assert.equal(pastilles, 262);
+  // une pastille par bonus de la base (sort_bonus_maitrise, que le site de dev dérive des cellules qu'il réécrit) ; à l'import, 72 bonus de la colonne
+  // Type + 190 des cellules Coût, Portée, Zone, D/S/B (test/maitrise-sorts.test.mjs)
+  const compter = (db) => db.prepare("SELECT count(*) AS n FROM sort_bonus_maitrise WHERE champ IN ('type', 'cout', 'portee', 'zone', 'dsb')").get().n;
+  assert.equal(pastilles, compter(ouvrirBase()));
+  assert.equal(compter(baseDImport()), 262, 'à l’import');
+  // Boule de feu : sa valeur de base, puis chacun de ses bonus en pastille (ceux de la base courante)
   const feu = pages.find((p) => p.slug === 'magie-du-feu').html;
   const bdf = contenu(feu, feu.indexOf('<tbody class="sort" id="sort-boule-de-feu"'), 'tbody');
-  assert.match(bdf, /<span class="val">2d6 dégâts<\/span> <span class="nm">\+1d6\/NM<\/span>/);
+  const boule = chargerMagies(ouvrirBase()).sorts.get('magies/magie-du-feu#sort:boule-de-feu');
+  const echapper = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  assert.ok(bdf.includes(`<span class="val">${echapper(sansBonus(boule.dsbBrut, boule.bonus, 'dsb'))}</span>`), 'Boule de feu : sa valeur de base');
+  for (const b of boule.bonus.filter((x) => x.champ === 'dsb')) assert.ok(bdf.includes(`<span class="nm">${echapper(b.texteBrut.trim())}</span>`), `Boule de feu : ${b.texteBrut}`);
 });
 
 test('coût (décisions R105, R106) : pas de colonne « Coût secondaire » ; le coût secondaire sous le coût, dans sa case, caché quand le sort n’en a pas', options, () => {
@@ -310,8 +319,12 @@ test('coût (décisions R105, R106) : pas de colonne « Coût secondaire » ; le
     });
     assert.deepEqual(secondaires.filter(Boolean).sort(), siens.filter((s) => s.cout_secondaire).map((s) => s.cout_secondaire).sort(), p.slug);
   }
-  const html = (slug) => pages.find((p) => p.slug === slug)?.html ?? '';
-  assert.ok(html('magie-du-sang').includes('1 Sang') && html('magie-du-feu').includes('20% PV') && html('magie-de-larcane').includes('Par tour et par cible'));
+  // des coûts secondaires que la migration 0063 a répartis (R105) : dans l'état d'import (test/aide-base-d-import.mjs) ; la page rend ceux de la base
+  // courante (ci-dessus)
+  const dImport = baseDImport().prepare('SELECT magie_id, cout_secondaire FROM sort WHERE cout_secondaire IS NOT NULL').all();
+  for (const [magie, texte] of [['magie-du-sang', '1 Sang'], ['magie-du-feu', '20% PV'], ['magie-de-larcane', 'Par tour et par cible']]) {
+    assert.ok(dImport.some((x) => x.magie_id === `magies/${magie}` && x.cout_secondaire.includes(texte)), `${magie} : « ${texte} » à l’import`);
+  }
 });
 
 test('panneau d’un sort : un seul cadre « Effets » par sort, les règles d’invocation et l’annexe sont repliées par défaut', options, () => {
@@ -330,8 +343,11 @@ test('créatures invoquées (et celles de « Manteau noir ») : un bouton par cr
   const { lignes } = chargerInvocations(db);
   const parSlug = new Map(lignes.map((l) => [l.id.slice(l.id.indexOf('/') + 1), l]));
   // les améliorations d'« Amélioration cadavérique » qui portent le nom d'une créature (décision R130 : sa carte en infobulle)
-  const ameliorees = [...chargerMagies(db).sorts.values()].flatMap((s) => s.ameliorations?.lignes ?? []).filter((a) => a.creature).length;
-  assert.ok(ameliorees > 0);
+  // (le tableau se rattache au sort, et l'amélioration à la créature, par leur nom, que le site de dev réécrit : décision R130, code de lib/bestiaire-db.mjs ;
+  // il y en a dans l'état d'import, test/aide-base-d-import.mjs)
+  const ameliorationsDe = (base) => [...chargerMagies(base).sorts.values()].flatMap((s) => s.ameliorations?.lignes ?? []).filter((a) => a.creature).length;
+  const ameliorees = ameliorationsDe(db);
+  assert.ok(ameliorationsDe(baseDImport()) > 0, 'à l’import');
   // les créatures citées par page : les sorts d'invocation (Terre, Nécromancie, Ombre), « Manteau noir » (Ombre), « Amélioration cadavérique »
   // (Nécromancie), et tout cela dans le Potentiel Illimité
   const attendu = { 'magie-de-la-necromancie': [28, 28 + ameliorees], 'magie-de-la-terre': [30, 30], 'magie-de-lombre': [5, 10], 'potentiel-illimite': [63, 68 + ameliorees] };
@@ -394,16 +410,28 @@ test('pages de magie : curseur du NPM des cartes, améliorations d’« Amélior
   }
   // les marionnettes (une créature par NPM) : pas de curseur
   assert.doesNotMatch(page('magie-de-lombre'), /<input[^>]* data-npm-page/);
-  const amelioration = [...sorts.values()].find((s) => s.ameliorations);
-  assert.ok(amelioration, 'un sort désigne le tableau de son invocation');
-  const html = page(amelioration.magieId.slice(amelioration.magieId.indexOf('/') + 1));
-  const debut = html.indexOf('Règles propres : selon l’invocation sacrifiée');
-  assert.ok(debut > 0, 'la section du sort');
-  const tableau = html.slice(debut, html.indexOf('</table>', debut));
-  assert.equal([...tableau.matchAll(/<tr><th scope="row">/g)].length, amelioration.ameliorations.lignes.length, 'une ligne par amélioration');
-  // une amélioration au nom d'une créature : sa carte en infobulle, sous le nom de la créature
-  for (const a of amelioration.ameliorations.lignes.filter((x) => x.creature)) {
-    assert.ok(tableau.includes(`data-bulle="bulle-creature-${a.creature.id.slice(a.creature.id.indexOf('/') + 1)}"`), a.nom);
+  // le tableau d'une invocation se rattache au sort qui porte le nom écrit dans son titre (lib/bestiaire-db.mjs#tableauxDesSorts) : le site de dev
+  // renomme l'un et réécrit l'autre ; à l'import, un sort le désigne (test/aide-base-d-import.mjs) ; la page rend le rattachement de la base courante
+  assert.ok([...chargerMagies(baseDImport()).sorts.values()].some((s) => s.ameliorations), 'à l’import, un sort désigne le tableau de son invocation');
+  // sur les pages qui ont leurs propres sorts, autant de sections que de sorts qui ont un tableau rattaché dans la base courante (aucune si le site de
+  // dev a défait tous les rattachements), puis chacune, dans le détail de son sort, vérifiée
+  const SECTION = 'Règles propres : selon l’invocation sacrifiée';
+  const rattaches = [...sorts.values()].filter((s) => s.ameliorations);
+  const sections = avecSorts.reduce((n, p) => n + p.html.split(SECTION).length - 1, 0);
+  assert.equal(sections, rattaches.length, 'une section par sort qui a un tableau rattaché dans la base, aucune sans');
+  for (const amelioration of rattaches) {
+    const html = page(amelioration.magieId.slice(amelioration.magieId.indexOf('/') + 1));
+    const detail = html.indexOf(`id="detail-${amelioration.slug}-titre"`);
+    assert.ok(detail > 0, `${amelioration.id} : le détail du sort`);
+    const suivant = html.indexOf('<div class="sort-detail" role="region"', detail);
+    const debut = html.indexOf(SECTION, detail);
+    assert.ok(debut > 0 && (suivant < 0 || debut < suivant), `${amelioration.id} : la section, dans le détail du sort`);
+    const tableau = html.slice(debut, html.indexOf('</table>', debut));
+    assert.equal([...tableau.matchAll(/<tr><th scope="row">/g)].length, amelioration.ameliorations.lignes.length, `${amelioration.id} : une ligne par amélioration`);
+    // une amélioration au nom d'une créature : sa carte en infobulle, sous le nom de la créature
+    for (const a of amelioration.ameliorations.lignes.filter((x) => x.creature)) {
+      assert.ok(tableau.includes(`data-bulle="bulle-creature-${a.creature.id.slice(a.creature.id.indexOf('/') + 1)}"`), `${amelioration.id} : ${a.nom}`);
+    }
   }
 });
 

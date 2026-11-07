@@ -13,6 +13,7 @@ import {
 } from '../src/lib/corps-races.mjs';
 import { cheminBase, ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { TABLES } from '../src/lib/edition-modele.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
@@ -195,14 +196,21 @@ test('présentation, description, Mode Hyper et ethnies : section ajoutée, reti
   assert.ok(p.startsWith('Une race \\*trapue\\*.\n\n## Présentation\n'));
   const goleois = etats.get('races/goleois');
   const h = corpsDeRace(corps.get('races/goleois'), modifier(goleois, 'mode_hyper_effet', { race_id: 'races/goleois' }, { effet: 'Premier effet.\n\n- puce' }), goleois);
-  assert.match(sectionDe(h, 'Capacité Mode Hyper'), /^\*\*Digne chef\*\*\n\nPremier effet\.\n\n- puce\n$/m);
-  assert.match(h, /^\| Capacité Mode Hyper<br>\(fiche : colonne « Capacité Hyper », sans nom de capacité\) \| Digne chef<br>Premier effet\.<br><br>\\- puce \| Augmente les dégâts de tous l/m);
-  assert.doesNotMatch(h, /Digne chef<br>Augmente/, 'la colonne de l’onglet suit, celle de la fiche reste');
+  // le nom de la capacité tel que la base l'écrit aujourd'hui (le site de dev peut le changer)
+  const nomHyper = executer("SELECT nom FROM mode_hyper_effet WHERE race_id = 'races/goleois' AND version = 'onglet_race'")[0].nom;
+  assert.ok(sectionDe(h, 'Capacité Mode Hyper').includes(`\n\n**${escInline(nomHyper)}**\n\nPremier effet.\n\n- puce\n`));
+  // le tableau des écarts : la colonne de l'onglet suit, celle de la fiche reste (la case de la page d'avant, telle quelle)
+  const ecart = (c) => c.split('\n').find((l) => l.startsWith('| Capacité Mode Hyper<br>(fiche : colonne « Capacité Hyper », sans nom de capacité) | '));
+  const casesDeLEcart = (l) => l.slice(2, -2).split(/(?<!\\) \| /);
+  const [libelleAvant, , ficheAvant] = casesDeLEcart(ecart(corps.get('races/goleois')));
+  assert.deepEqual(casesDeLEcart(ecart(h)), [libelleAvant, `${celluleMd(nomHyper)}<br>Premier effet.<br><br>\\- puce`, ficheAvant]);
   // Elfe noir : l'ethnie « Elfe Charbon » renommée ; la colonne de la fiche (sous-race « Elfe Noir Charbon ») ne bouge pas
   const elfe = etats.get('races/elfe-noir');
   const renomme = modifier(elfe, 'race_don', { id: 'races/elfe-noir#don:elfe-charbon' }, { etiquette: 'Elfe Charbon des cendres', texte: '- Nouveau don.' });
   const e = corpsDeRace(corps.get('races/elfe-noir'), renomme, elfe);
-  assert.match(sectionDe(e, 'Ethnies et dons raciaux'), /^### Elfe Charbon des cendres\n\n\*\*Nom\*\* : Sang corrompu\n\n\*\*Don\*\*\n\n- Nouveau don\.\n\n\*\*Fiche de personnage V15\.2\.2\*\* : sous-race « Elfe Noir Charbon »/m);
+  // le nom du don tel que la base l'écrit aujourd'hui (le site de dev peut le changer)
+  const nomDuDon = executer("SELECT nom FROM race_don WHERE id = 'races/elfe-noir#don:elfe-charbon'")[0].nom;
+  assert.ok(sectionDe(e, 'Ethnies et dons raciaux').includes(`\n### Elfe Charbon des cendres\n\n**Nom** : ${escInline(nomDuDon)}\n\n**Don**\n\n- Nouveau don.\n\n**Fiche de personnage V15.2.2** : sous-race « Elfe Noir Charbon »`));
   assert.match(e, /^\| Don de l'ethnie « Elfe Charbon des cendres »<br>\(fiche : sous-race « Elfe Noir Charbon », colonne « Descriptif »\) \| \\- Nouveau don\. \| /m);
   assert.doesNotMatch(e, /« Elfe Charbon »/);
 });
@@ -214,12 +222,23 @@ test('tableau en panneaux : en-têtes, cases et titre (Drakos, Mort-vivant)', ()
   apres = modifier(apres, 'race_onglet', { race_id: 'races/drakos' }, { dons_tableau_titre: 'Écailles' });
   const c = corpsDeRace(corps.get('races/drakos'), apres, drakos);
   const eth = sectionDe(c, 'Ethnies et dons raciaux');
-  assert.match(eth, /^### Écailles\n\nNombre : 15\.\n\n\| Magie innée \| AP \/ AM \| /m);
-  assert.match(eth, /^\| Feu ardent \| 4AP\/0AM \| 5% Intimidation \| Brûlure \| Drakos Rouge \|$/m);
+  // le tableau d'avant, case par case (les textes que le site de dev peut réécrire sont lus dans la page) : seuls changent l'en-tête 2 et la case (8, 1)
+  const tableau = (section) => {
+    const lignes = section.split('\n');
+    const i = lignes.findIndex((l) => l.startsWith('| '));
+    const fin = lignes.findIndex((l, k) => k > i && !l.startsWith('| '));
+    return lignes.slice(i, fin).map((l) => l.slice(2, -2).split(/(?<!\\) \| /));
+  };
+  const avant = tableau(sectionDe(corps.get('races/drakos'), 'Ethnies et dons raciaux'));
+  const attendu = avant.map((l) => [...l]);
+  attendu[0][1] = 'AP / AM';
+  attendu[2 + 8 - 1][0] = 'Feu ardent';
+  assert.ok(eth.startsWith(`## Ethnies et dons raciaux\n\n### Écailles\n\nNombre : ${drakos.race_don_tableau_ligne.length}.\n\n| `), eth.slice(0, 200));
+  assert.deepEqual(tableau(eth), attendu);
   const mort = etats.get('races/mort-vivant');
   const titre = corpsDeRace(corps.get('races/mort-vivant'), modifier(mort, 'race_onglet', { race_id: 'races/mort-vivant' }, { dons_tableau_titre: 'Raisons de la mort' }), mort);
-  assert.match(sectionDe(titre, 'Ethnies et dons raciaux'), /^### Raisons de la mort\n\nNombre : 12\.\n/m);
-  assert.doesNotMatch(titre, /Tableau de l'onglet « Mort-vivant »/);
+  assert.match(sectionDe(titre, 'Ethnies et dons raciaux'), new RegExp(`^### Raisons de la mort\\n\\nNombre : ${mort.race_don_tableau_ligne.length}\\.\\n`, 'm'));
+  assert.doesNotMatch(titre, /Tableau de l'onglet « /, 'le titre par défaut (sans titre écrit) a disparu');
 });
 
 test('race créée depuis le site : corps complet tiré de ses seules tables, sans section de la fiche', () => {
@@ -347,7 +366,11 @@ test('races_onglet.py relit dans les corps recalculés exactement les tables mod
   assert.deepEqual(relire(MODIFICATIONS), { ecarts: [] });
   // témoin : les mêmes modifications sans recalculer les corps, races_onglet.py y voit les anciennes valeurs
   const temoin = relire(MODIFICATIONS, { recalculer: false });
+  // R31 : la liste des magies innées d'une race dont le site de dev a modifié la liste ou la phrase « Inconvénient(s) » fait foi, races_onglet.py ne la
+  // compare plus à la phrase (listes_du_site) : la magie retirée au Rokh ne se voit que si le site n'y a pas touché
+  const h = historiqueSite(ouvrirBase({ sansExemples: false }));
+  const rokhDuSite = h.modifiee('race_onglet', { race_id: 'races/rokh' }, 'inconvenients') || h.lignesTouchees('race_magie_onglet').some((c) => c.race_id === 'races/rokh');
   assert.deepEqual(temoin.ecarts.map((e) => e.split(' : ')[0]).sort(), [
-    'mode_hyper_effet', 'note_cellule', 'race_don', 'race_don_tableau_cellule', 'race_don_tableau_colonne', 'race_magie_onglet', 'race_onglet',
+    'mode_hyper_effet', 'note_cellule', 'race_don', 'race_don_tableau_cellule', 'race_don_tableau_colonne', ...(rokhDuSite ? [] : ['race_magie_onglet']), 'race_onglet',
   ]);
 });

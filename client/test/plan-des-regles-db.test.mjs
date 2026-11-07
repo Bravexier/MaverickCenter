@@ -8,6 +8,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { chargerPlanDesRegles, entreeDuPlan } from '../src/lib/plan-des-regles-db.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 
 const SCHEMA = readFileSync(new URL('../../data/schema.sql', import.meta.url), 'utf8');
 /** Le `CREATE TABLE` d'une table, tel que data/schema.sql l'écrit (jusqu'à son `) STRICT;`). */
@@ -43,11 +44,13 @@ test('R184 : le plan de la base, onglet par onglet et entrée par entrée, dans 
     // la page d'ouverture est une page du menu de l'onglet
     assert.ok(o.entrees.some((e) => e.page === o.ouverture), `${o.id} : ouvre sur ${o.ouverture}`);
   }
-  // R184 (1), (11) : les quatre onglets après Découvrir et L'univers ; « Artisanat » est un lien, juste après « Exercer un métier »
+  // R184 (1), (11) : les quatre onglets après Découvrir et L'univers (fixes) ; « Artisanat » est un lien, en Exploration (un lien ne change pas
+  // d'onglet), juste après « Exercer un métier » à l'import (le site de dev réordonne les menus : test/aide-base-d-import.mjs)
   assert.deepEqual(plan.map((o) => o.titre), ['Fiche de personnage', 'Mécaniques générales', 'Les combats', 'Exploration']);
-  const exploration = plan.find((o) => o.id === 'exploration').entrees;
+  const artisanat = plan.find((o) => o.id === 'exploration').entrees.find((e) => e.adresse === 'regles/artisanat/');
+  assert.deepEqual(artisanat, { id: 'lien:regles/artisanat', rang: artisanat.rang, libelle: 'Artisanat', adresse: 'regles/artisanat/' });
+  const exploration = chargerPlanDesRegles(baseDImport()).find((o) => o.id === 'exploration').entrees;
   const i = exploration.findIndex((e) => e.adresse === 'regles/artisanat/');
-  assert.deepEqual(exploration[i], { id: 'lien:regles/artisanat', rang: exploration[i].rang, libelle: 'Artisanat', adresse: 'regles/artisanat/' });
   assert.deepEqual(exploration[i - 1], { id: 'page:guide/exercer-un-metier', rang: exploration[i - 1].rang, page: 'guide/exercer-un-metier' });
   // une entrée de page ne porte que l'id de la page, et l'id et le rang de sa ligne (le titre est celui de la page)
   for (const e of plan.flatMap((o) => o.entrees)) if (e.page) assert.deepEqual(Object.keys(e), ['id', 'rang', 'page']);
