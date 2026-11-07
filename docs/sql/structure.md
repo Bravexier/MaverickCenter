@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 100 : 212 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 109 : 212 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -235,7 +235,7 @@ Les 30 compétences : 5 par caractéristique (Personnage!B22:B36 et O22:O36). «
 | `caracteristique_id` | TEXT | oui | → caracteristique.id |  |
 | `ordre` | INTEGER | oui | unique | ordre de la fiche (blocs de 5 par caractéristique) |
 | `libelle_fiche` | TEXT | oui | unique | « Arme Lourde (F) » tel qu'écrit dans la cellule |
-| `description` | TEXT | non |  | phrase du guide « Compétences » (italiques retirés, [[liens]] conservés) ; NULL quand le guide ne décrit pas cette compétence (Calme : le guide écrit « Prouesse », voir ecart_source) |
+| `description` | TEXT | non |  | phrase du guide « Compétences » (italiques retirés, [[liens]] conservés) ; NULL quand le guide ne décrit pas cette compétence. Calme : le guide décrit « Prouesse », son ancien nom (décision R204, migration 0102) : sa phrase est celle de Calme ; l'écart des deux noms reste dans ecart_source |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
 | `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
@@ -434,7 +434,7 @@ Rôles de la magie (bloc « ROLES » : trois cellules, de gauche à droite). `ra
 
 ### `magie_resistance`
 
-Résistances et vulnérabilités de la magie (4 blocs de l'onglet : « Résistance magique », « Vulnérabilité magique », « Résistance altération d'état », « Vulnérabilité altération d'état » ; « Aucune » = aucune ligne). Une ligne = un nom de la liste, dans l'ordre de la source (rang). cible_type = 'magie' : cible_magie_id renseigné (liste de noms de magies). cible_type = 'etat' : cible_etat_id renseigné. La source écrit « Gelé » et « Pétrification » là où la liste des altérations dit « Gel » et « Pétrifié » : le rapprochement est fait par l'importeur (table d'alias explicite) ; cible_brut garde l'écriture d'origine. Les lignes 'etat' sont, d'après la fiche (spécification resist.total-etat), l'image des lignes 'magie' par la colonne « Magie Liée » de la liste des altérations ; elles sont conservées parce que la source les écrit. cible_type = 'physique' : cible_physique renseigné, un des trois types de dégâts physiques (estoc, taille, frappe : le vocabulaire de creature_attaque_type). Décision R174 (migration 0083) : le malus « Surtension corporelle » du Potentiel Illimité (magie.explication : « Surtension corporelle (Vulnérabilité contre les dégâts physiques ») est un palier personnel, un cran de moins à chacun des trois types (sens 'vulnerabilite', rangs 1 à 3 : estoc, taille, frappe) ; cible_brut garde ce texte, le même sur les trois lignes. Ses crans s'additionnent comme ceux d'une magie (resistance_palier, R155) ; leur annulation en Mode Hyper (R172, R174) n'est pas une donnée de cette table.
+Résistances et vulnérabilités de la magie (4 blocs de l'onglet : « Résistance magique », « Vulnérabilité magique », « Résistance altération d'état », « Vulnérabilité altération d'état » ; « Aucune » = aucune ligne). Une ligne = un nom de la liste, dans l'ordre de la source (rang). cible_type = 'magie' : cible_magie_id renseigné (liste de noms de magies). cible_type = 'etat' : cible_etat_id renseigné. La source écrit « Gelé » et « Pétrification » là où la liste des altérations dit « Gel » et « Pétrifié » : le rapprochement est fait par l'importeur (table d'alias explicite) ; cible_brut garde l'écriture d'origine, sauf « Gelé », écrit « Gel » depuis la décision R205 (migration 0103, registre 0103-r205-etat-gel.json). Les lignes 'etat' sont, d'après la fiche (spécification resist.total-etat), l'image des lignes 'magie' par la colonne « Magie Liée » de la liste des altérations ; elles sont conservées parce que la source les écrit. cible_type = 'physique' : cible_physique renseigné, un des trois types de dégâts physiques (estoc, taille, frappe : le vocabulaire de creature_attaque_type). Décision R174 (migration 0083) : le malus « Surtension corporelle » du Potentiel Illimité (magie.explication : « Surtension corporelle (Vulnérabilité contre les dégâts physiques ») est un palier personnel, un cran de moins à chacun des trois types (sens 'vulnerabilite', rangs 1 à 3 : estoc, taille, frappe) ; cible_brut garde ce texte, le même sur les trois lignes. Ses crans s'additionnent comme ceux d'une magie (resistance_palier, R155) ; leur annulation en Mode Hyper (R172, R174) n'est pas une donnée de cette table.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -1793,7 +1793,7 @@ Butin d'une espèce : le tableau « Score (3d100) | Butin possible », une ligne
 
 ### `monstre`
 
-MONSTRE : une carte « NOM Créature échelle N » ; « Type | Alignement | Catégorie » sur la ligne suivante. Valeurs typées seulement quand l'écriture est sans ambiguïté (sinon NULL ; la rubrique garde le texte) : sante / chakra / barriere : la ligne « Santé : 70 Chakra : 0 Barrière : 0 » (pas les valeurs « EP 1 : 20 … » d'une carte qui varie selon l'échelle) ; armure_physique / armure_magique : « 4 armure physique / 2 armure magique » ou « 4 AP / 2 AM » (PAS « 0 points d'armure / 8 résistance magique » : le rapprochement de ces mots avec l'armure physique et magique est une question au propriétaire, docs/bestiaire.md) ; vitesse_sol / vitesse_nage : « 4 cases sol / 4 cases nage ».
+MONSTRE : une carte « NOM Créature échelle N » ; « Type | Alignement | Catégorie » sur la ligne suivante. Valeurs typées seulement quand l'écriture est sans ambiguïté (sinon NULL ; la rubrique garde le texte) : sante / chakra / barriere : la ligne « Santé : 70 Chakra : 0 Barrière : 0 » (pas les valeurs « EP 1 : 20 … » d'une carte qui varie selon l'échelle) ; armure_physique / armure_magique : « 4 armure physique / 2 armure magique » ou « 4 AP / 2 AM » ; « points d'armure » et « résistance magique » sont les anciens noms de l'AP et de l'AM (décision R209 (5) : la migration 0106 les a réécrits, lib/monstre-champs.mjs#defense lit aussi l'ancienne écriture) ; NULL sans nombre (« ? », « ∞ », une valeur par EP) ; vitesse_sol / vitesse_nage : « 4 cases sol / 4 cases nage ».
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -2065,7 +2065,7 @@ Matériau d'armure : « Fiches des matières de la grille » (en-têtes de colon
 | --- | --- | --- | --- | --- |
 | `ressource_id` | TEXT | oui | PK, → ressource.id |  |
 | `type` | TEXT | oui |  |  |
-| `prix` | REAL | non |  | « Prix : 1,5 » -> 1.5 ; l'unité n'est pas écrite dans la fiche (RO d'après le recoupement avec « Prix matériaux », à confirmer) |
+| `prix` | REAL | non |  | « Prix : 1,5 » -> 1.5 ; l'unité n'est pas écrite dans la fiche : RO (R207 (2), « Il y a un tableau pour ça ») |
 | `prix_brut` | TEXT | non |  |  |
 | `stats_brut` | TEXT | oui |  | « +2AP +4AM » |
 | `ap` | INTEGER | non |  | N de « +NAP » ; NULL si « AP » n'est pas écrit (la fiche compte 0) |
@@ -2484,7 +2484,7 @@ Emplacements d'armure = onglet Armures › FABRICATION (« Armure | Coût ») : 
 
 ### `armure`
 
-Armures : 231 combinaisons de deux matières (grille matière x matière de l'onglet Armures) + 11 armures particulières (vêtements, cottes de mailles, armure montagne, armures de familiers).
+Armures : 231 combinaisons de deux matières (grille matière x matière de l'onglet Armures) + 11 armures particulières (vêtements, cottes de mailles, armure montagne, armures de familiers). Décision R207 (1), E6 (migration 0105) : le type, l'AP, l'AM et le prix d'une combinaison se calculent d'après ses deux matériaux : type = le plus lourd (materiau_armure.type) ; ap, am = la somme de ceux des deux matériaux (R75) ; prix = « Armure Complète » (armure_emplacement 'armure-complete') + constante_equipement 'armure.unites_par_materiau' (6) x le prix de chaque matériau (ressource, R62 ; R93). Une armure particulière garde ses valeurs écrites (R80). Registres : data/migrations/0105-r207-armures-boucliers-et-fabrication.json (AP, AM), 0108-r207-prix-des-armures.json (prix).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -2495,7 +2495,7 @@ Armures : 231 combinaisons de deux matières (grille matière x matière de l'on
 | `materiau_ligne_id` | TEXT | non | → ressource.id | combinaison : matière en tête de ligne de la grille |
 | `materiau_colonne_id` | TEXT | non | → ressource.id | combinaison : matière en tête de colonne |
 | `type` | TEXT | oui |  |  |
-| `prix` | REAL | non |  | « Prix : 2 050 » -> 2050.0 ; « ???? » -> NULL ; unité non écrite |
+| `prix` | REAL | non |  | « Prix : 2 050 » -> 2050.0 ; « ???? » -> NULL ; en RO (R79, R207 (2)) |
 | `prix_brut` | TEXT | non |  |  |
 | `stats_brut` | TEXT | oui |  | « +10AP +14AM », « Aucune » |
 | `ap` | INTEGER | non |  | N de « +NAP » ; NULL si AP n'est pas écrit (« Aucune » aussi) : la fiche compte 0 |
@@ -2586,7 +2586,7 @@ Poids de boucliers (onglet Bouclier, liste « Léger / Moyen / Lourd / Très lou
 
 ### `bouclier`
 
-Boucliers préfabriqués (100 : 5 classes x 20 matériaux). Le poids de chacun est la couleur de fond de sa case dans l'onglet (vert Léger, jaune Moyen, orange Lourd, rouge Très lourd : décision R92, migration 0054) ; la liste des poids elle-même n'est pas reliée aux classes : aucun lien n'est déduit.
+Boucliers préfabriqués (100 : 5 classes x 20 matériaux). Le poids de chacun est la couleur de fond de sa case dans l'onglet (vert Léger, jaune Moyen, orange Lourd, rouge Très lourd : décision R92, migration 0054) ; la liste des poids elle-même n'est pas reliée aux classes : aucun lien n'est déduit. Décision R207 (1), E6 (migration 0105) : ap, am = classe x AP ou AM du matériau (materiau_bouclier) ; prix = classe x prix du matériau (ressource, R62) + le prix de sa forme (bouclier_classe.prix, RO par classe : « Coût (RO) : 2,5 / Classe » ; R49, R79). « 250 RF / Classe » d'armure_emplacement 'bouclier' n'en est qu'une autre écriture.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -2594,7 +2594,7 @@ Boucliers préfabriqués (100 : 5 classes x 20 matériaux). Le poids de chacun e
 | `classe_id` | TEXT | oui | → bouclier_classe.id |  |
 | `materiau_id` | TEXT | oui | → ressource.id |  |
 | `nom` | TEXT | oui |  | « Bocle Corne » (sic : la matière s'écrit Corne/Os ailleurs) |
-| `prix` | REAL | non |  | NULL si « Prix : » est vide (Bouclier Rond Argent) |
+| `prix` | REAL | non |  | en RO (R79) ; « Prix : » vide du Bouclier Rond Argent : le prix calculé (R207, migration 0105) |
 | `prix_brut` | TEXT | non |  |  |
 | `defense_brut` | TEXT | oui |  | « +20AP +25AM » |
 | `ap` | INTEGER | non |  |  |

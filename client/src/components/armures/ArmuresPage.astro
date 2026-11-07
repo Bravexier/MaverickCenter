@@ -94,7 +94,9 @@ const cumulElementaire = (niveau: number) => coutElementaireEcrit(ameliorationEl
 <style is:inline set:html={couleurs}></style>
 {/* components/equipement/EquipementPage.astro pose `html.js` (sans JavaScript, ni fiche ni choix : styles/armures/armures.css) et le titre de la page
    (`h1#titre-armures`, `h1#titre-boucliers`) */}
-<div class="armures" data-armures>
+{/* `data-unites-par-materiau` : les unités de chaque matériau d'une armure (constante_equipement 'armure.unites_par_materiau', R93, R207 (1) :
+   chargerArmures().unitesParMateriau), que le script de la page compte quand il refait un prix */}
+<div class="armures" data-armures data-unites-par-materiau={armures.unitesParMateriau}>
   {/* les icônes des monnaies (lib/monnaies.mjs), que le script de la page reprend pour les coûts qu'il écrit (aucun module partagé avec lui) */}
   {Object.keys(MONNAIES_DU_JEU).map((abr) => <template data-armures-piece={abr} set:html={htmlDePiece(abr)}></template>)}
 
@@ -117,7 +119,7 @@ const cumulElementaire = (niveau: number) => coutElementaireEcrit(ameliorationEl
             data-ed={attributEd('armure_emplacement', { id: armures.fabricationDeLArmure.id }, 'cout_brut')}
             data-ed-rendu="piece-cout"
             set:html={RENDUS_DES_ARMURES['piece-cout'](armures.fabricationDeLArmure.cout_brut, armures.fabricationDeLArmure)}
-          />, et 6 unités de chacun de ses deux matériaux, achetées ou fournies.
+          />, et {armures.unitesParMateriau} unités de chacun de ses deux matériaux, achetées ou fournies.
         </p>
       )
     }
@@ -143,7 +145,7 @@ const cumulElementaire = (niveau: number) => coutElementaireEcrit(ameliorationEl
                 <thead>
                   <tr>
                     <th scope="col">Matière</th><th scope="col">Défense</th><th scope="col" title="Crans de solidité">Sol.</th><th scope="col">Prix</th>
-                    <th scope="col" title="Pour une armure : les 6 unités de ce matériau qu’elle demande (décision R93)">Prix ×6</th>
+                    <th scope="col" title={`Pour une armure : les ${armures.unitesParMateriau} unités de ce matériau qu’elle demande (décision R93)`}>Prix ×{armures.unitesParMateriau}</th>
                   </tr>
                 </thead>
                 <tbody>{armures.materiaux.map((m) => <Fragment set:html={htmlDeLigneDeMateriau(m, t.role)} />)}</tbody>
@@ -224,7 +226,7 @@ const cumulElementaire = (niveau: number) => coutElementaireEcrit(ameliorationEl
                     <th scope="col">Nom</th><th scope="col">Matériaux</th><th scope="col">Type</th>
                     <th scope="col" title="Armure physique">AP</th><th scope="col" title="Armure magique">AM</th>
                     <th scope="col">{'{{solidite}}'}</th><th scope="col">Résistance</th><th scope="col">Faiblesse</th>
-                    <th scope="col" title="La fabrication de l’armure complète + 6 unités de chaque matériau, achetées (décision R93)">Prix</th>
+                    <th scope="col" title={`La fabrication de l’armure complète + ${armures.unitesParMateriau} unités de chaque matériau, achetées (décision R93)`}>Prix</th>
                   </tr>
                 </thead>
                 <tbody>{g.armures.map((a) => <Fragment set:html={htmlDeLigneDArmure(a, contexte)} />)}</tbody>
@@ -258,7 +260,8 @@ const cumulElementaire = (niveau: number) => coutElementaireEcrit(ameliorationEl
         </Tableau>
         {/* le tableau « Armure » de l'onglet « Pièces élémentaires » (décision R165 (2)) : à la place du précédent une fois l'élément et le poids choisis ;
             le coût de la ligne tel qu'écrit, le coût cumulé (atteindre +N coûte les lignes +1 à +N), l'effet de la ligne ; le script nomme les gemmes
-            par celle de la magie choisie ; aucun RO */}
+            par celle de la magie choisie ; aucun RO ; la note nomme le métier qui l'améliore (décision R207 (4), Q58 : « Armurier pour les armures »,
+            le mot-clé `armurier`, lien vers sa section de /metiers/) */}
         <Tableau
           id="ameliorations-armure-elementaire"
           titre="Améliorations d’une armure élémentaire"
@@ -266,7 +269,7 @@ const cumulElementaire = (niveau: number) => coutElementaireEcrit(ameliorationEl
           bloc="armures-bloc"
           class="armures-ameliorations armures-ameliorations--elementaire"
           classeTable="armures-table armures-table--ameliorations table-donnees--serree"
-          note="« Chaque cout est cumulatif » : atteindre +N coûte les lignes +1 à +N, en gemmes de la magie de l’armure ; l’effet est celui de la ligne +N (décision R165)."
+          note="« Chaque cout est cumulatif » : atteindre +N coûte les lignes +1 à +N, en gemmes de la magie de l’armure ; l’effet est celui de la ligne +N (décision R165). L’amélioration revient à l’{{armurier}}."
         >
           <thead><tr><th scope="col">Niveau</th><th scope="col">Coût</th><th scope="col" title="Les lignes +1 à +N">Coût cumulé</th><th scope="col">Effet</th></tr></thead>
           <tbody>

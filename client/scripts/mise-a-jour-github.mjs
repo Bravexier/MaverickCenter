@@ -242,10 +242,21 @@ export function verifierSimulation(donnees, essai) {
  * la migration 0043 (avec sa colonne `libelle`) peut faire créer son mot-clé ; un lot qui touche une classe ou un don (classe, classe_maitrise_arme,
  * capacite), ou une famille d'armes (arme_famille : décision R159, toutes les sources), voit ses sources de maîtrise d'arme refaites par le lecteur
  * (serveur/edition-maitrises.mjs#sourcesRefaitesParLeLot : TABLES_DES_SOURCES) ; un don supprimé par un lot noté avant que ses règles en données ne
- * le soient (serveur/edition.mjs#retirerLesReglesDuDon) les retire par la cascade de son schéma (TABLES_DES_REGLES_DU_DON).
+ * le soient (serveur/edition.mjs#retirerLesReglesDuDon) les retire par la cascade de son schéma (TABLES_DES_REGLES_DU_DON) ; un lot qui écrit une entrée
+ * du calcul des armures et des boucliers (décision R207 (1) : TABLES_DES_ENTREES_DU_CALCUL) peut réécrire armures, boucliers et pages
+ * (TABLES_DES_VALEURS_CALCULEES).
  */
 // serveur/edition-maitrises.mjs#TABLES_DES_SOURCES, recopiée (test/mise-a-jour-github.test.mjs les compare)
 export const TABLES_DES_SOURCES_DE_MAITRISE = Object.freeze(['maitrise_arme_part', 'maitrise_arme_part_famille', 'capacite_nm_gagne']);
+/**
+ * Les colonnes calculées d'après les matériaux (décision R207 (1)) : un lot qui écrit une de leurs entrées peut faire réécrire, au rejeu, les armures, les
+ * boucliers et le corps de leurs pages (serveur/edition-armures.mjs#valeursCalculeesParLeLot ; mêmes listes que TABLES_DES_ENTREES_DU_CALCUL et
+ * TABLES_DES_VALEURS_CALCULEES, recopiées : comparées par test/serveur-edition-armures.test.mjs).
+ */
+export const TABLES_DES_ENTREES_DU_CALCUL = Object.freeze([
+  'ressource', 'materiau', 'materiau_armure', 'materiau_bouclier', 'armure_emplacement', 'bouclier_classe', 'constante_equipement',
+]);
+export const TABLES_DES_VALEURS_CALCULEES = Object.freeze(['armure', 'bouclier', 'page']);
 // serveur/edition.mjs#TABLES_DES_REGLES_DU_DON, recopiée (test/serveur-edition-regles-du-don.test.mjs les compare)
 export const TABLES_DES_REGLES_DU_DON = Object.freeze(['capacite_condition_emplacements', 'capacite_npm_plafond', 'capacite_variable']);
 
@@ -264,6 +275,7 @@ export function tablesDuLot(donnees, { tablesAvecBalises: balises = [] } = {}) {
       if (m.table === 'page_tag' && (ancienne(m.avant) || ancienne(m.apres))) tables.add('mot_cle');
       if (['classe', 'classe_maitrise_arme', 'capacite', 'arme_famille'].includes(m.table)) for (const t of TABLES_DES_SOURCES_DE_MAITRISE) tables.add(t);
       if (m.table === 'capacite' && m.operation === 'supprimer') for (const t of TABLES_DES_REGLES_DU_DON) tables.add(t);
+      if (TABLES_DES_ENTREES_DU_CALCUL.includes(m.table)) for (const t of TABLES_DES_VALEURS_CALCULEES) tables.add(t);
     }
   }
   if (motCleRetire) {

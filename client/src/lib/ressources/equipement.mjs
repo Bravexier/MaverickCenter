@@ -165,10 +165,17 @@ export const RESSOURCES = [
       'Les armures de l’onglet « Armures » : les combinaisons de deux matières (grille matière × matière) et les armures particulières (vêtements, ' +
       'cottes de mailles, armure montagne, armures de familiers) : type, prix (en RO : décision R79), AP et AM, solidité, résistances et faiblesses (une ' +
       'ligne par type de dégâts dans le détail, le multiplicateur « x2 » tel qu’écrit), effet ; le nom d’une combinaison ne suit pas le renommage ' +
-      'd’une matière ; les cases se modifient (nom, type, AP et AM, chacun dans sa case, solidité, résistance et faiblesse d’une combinaison, effet ' +
-      'd’une armure particulière, prix) et le service en tire le prix, la défense écrite (« +10AP +14AM », refaite depuis l’AP et l’AM) et les ' +
+      'd’une matière ; le type, l’AP, l’AM et le prix d’une combinaison se calculent d’après ses deux matériaux (décision R207 : le plus lourd des ' +
+      'deux, la somme de leurs AP et AM, « Armure Complète » + les unités de chaque matériau, armure.unites_par_materiau, au prix de la page ' +
+      'Composants) et suivent leurs ' +
+      'modifications ; les cases se modifient (nom, solidité, résistance et faiblesse d’une combinaison ; type, AP et AM, chacun dans sa case, effet ' +
+      'et prix d’une armure particulière) et le service en tire le prix, la défense écrite (« +10AP +14AM », refaite depuis l’AP et l’AM) et les ' +
       'résistances ; ni création ni suppression (les fiches les citent).',
     table: 'armure',
+    colonnesFigees: Object.fromEntries(['type', 'ap', 'am', 'prix_brut'].map((c) => [c, {
+      raison: 'calculé d’après les deux matériaux de l’armure (décision R207) : suit la page Composants et le coût de fabrication de l’armure complète',
+      si: { sorte: ['combinaison'] },
+    }])),
     derivees: [{ table: 'armure_degats', parent: { armure_id: 'id' } }],
     liste: ['id', 'nom', 'sorte', 'type', 'ap', 'am', 'solidite', 'prix_brut'],
     recherche: ['nom', 'effet'],
@@ -222,8 +229,11 @@ export const RESSOURCES = [
     description:
       'Les boucliers préfabriqués de l’onglet « Bouclier » (une classe × une matière, décision R78) : nom, prix, AP et AM, la défense écrite (« +20AP ' +
       '+25AM », refaite depuis l’AP et l’AM), poids (la couleur de sa case dans l’onglet : décision R92) ; le nom ne suit pas le renommage d’une ' +
-      'matière ; le nom, l’AP, l’AM, le prix et le poids se modifient (le service en tire le prix et la défense écrite), ni création ni suppression.',
+      'matière ; l’AP, l’AM et le prix se calculent d’après la forme et la matière (décision R207 : classe × AP ou AM de la matière ; classe × prix ' +
+      'de la matière + prix de la forme) et suivent leurs modifications ; le nom et le poids se modifient, ni création ni suppression.',
     table: 'bouclier',
+    colonnesFigees: Object.fromEntries(['ap', 'am', 'prix_brut'].map((c) => [c,
+      'calculé d’après la forme et la matière du bouclier (décision R207) : suit la page Composants et le prix de la forme'])),
     liste: ['id', 'nom', 'classe_id', 'materiau_id', 'prix_brut', 'ap', 'am', 'poids_id'],
     recherche: ['nom'],
     tri: 'nom',

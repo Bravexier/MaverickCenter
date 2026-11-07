@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 197 décisions, de R1 à R197, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 210 décisions, de R1 à R210, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
 
 | Réf. | Sujet | Décision |
 | --- | --- | --- |
@@ -203,3 +203,16 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R195 | Suite de R61 et de R193 : les champs d'un mot-clé, et l'abréviation du RF,… | (1) Tous les champs d'un mot-clé se modifient toujours… |
 | R196 | Suite de R195 : quand un mot-clé se supprime (lot « Tests et suppressions… | (1) Un mot-clé ne se supprime que si rien ne le mentio… |
 | R197 | Suite de R196 : quand une monnaie se supprime (lot « Tests et suppressions… | (1) Une ligne de la table `monnaie` ne se supprime que… |
+| R198 | Les postures : écarts entre le Doc « Guide pour MJ » (MJ-orig), le Doc « C… | (1) Défensif (G1) : le malus de 10 % ne vaut qu'au-del… |
+| R199 | Attaque, défense et dégâts : questions G25 à G28 et G41 de la refonte des… | (1) Défense (G27) : au D100, un meilleur résultat est… |
+| R200 | Le Mode Hyper : questions G7 à G12 de la refonte des pages du guide et P9… | (1) Durée (G8) : ⌊niveau global ÷ 2⌋, toujours à l'inf… |
+| R201 | La barrière : questions G13 et G14 de la refonte des pages du guide (`docs… | (1) G14 : règle universelle : sauf indication contrair… |
+| R202 | Création du personnage et classes : questions du `docs/sql/a-valider.md` §… | (1) Plafond : une caractéristique vaut toujours 4 au p… |
+| R203 | Plancher de la réussite critique (Q97, suite de R180 et R182) : un accesso… | La plage de réussite critique ne descend jamais sous «… |
+| R204 | Calme et sa description (B13, suite de R4) : Calme n'a pas de description… | « Prouesse » est l'ancien nom de Calme : la phrase « F… |
+| R205 | Magies : D/S/B, sorts sans chakra, état « Gel », chakra épuisé, Exécution… | (1) D/S/B : D = Dégâts, S = Soin ; le B est oublié par… |
+| R206 | Créatures invoquées au NPM (suite de R130 ; questions Q35 à Q38 et Q40 de… | (1) Q35 : le « +10% Barrière » vaut par NPM de la créa… |
+| R207 | Armes, armures et artisanat (questions Q57, Q58, Q60 et la 2ᵉ partie de Q6… | (1) E6 : le type, les AP et AM des armures composées (… |
+| R208 | Métiers (points « Métiers » du §2 et G20 à G24 du §6 de `docs/sql/a-valide… | (1) Un objet de départ marqué « (Arme) » va dans l'inv… |
+| R209 | Bestiaire (§2 « Bestiaire » et §4 D4 de `docs/sql/a-valider.md` ; question… | (1) FPVSIA = Force, Perception, Volonté, Social, Intel… |
+| R210 | Magies innées d'une race vidées sur le site de dev (C5, `docs/sql/a-valide… | Une race a forcément des magies innées possibles. Le p… |

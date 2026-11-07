@@ -942,8 +942,8 @@ test('sort préparé (décision R115, migration 0067) : marque, jet et posture e
     [[{ ...sorts[0], prepare_cent: 1 }, sorts[1]], /^sorts\[0\] : un sort préparé au Mode Hyper 100 % l’est aussi en Mode Hyper \(décision R172\)$/],
     // décision R182 (migration 0089) : la réussite critique figée hors du sort préparé, ou hors de 1 à 15 (4 est possible : accessoire maudit, R180)
     [[sorts[0], { ...sorts[1], prepare_critique: 5 }], /^sorts\[1\] : seul le sort préparé a une réussite critique figée à sa préparation \(décision R182\)$/],
-    [[{ ...sorts[0], prepare_critique: 0 }, sorts[1]], /^sorts\[0\] : la réussite critique figée d’un sort préparé \(1 à N\) a un N de 1 à 15 \(décisions R180, R182\)$/],
-    [[{ ...sorts[0], prepare_critique: 16 }, sorts[1]], /^sorts\[0\] : la réussite critique figée d’un sort préparé \(1 à N\) a un N de 1 à 15 \(décisions R180, R182\)$/],
+    [[{ ...sorts[0], prepare_critique: 0 }, sorts[1]], /^sorts\[0\] : la réussite critique figée d’un sort préparé \(1 à N\) a un N de 1 à 15 : jamais sous « 1 à 1 » \(décision R203\), jamais au-delà du plafond \(décisions R180, R182\)$/],
+    [[{ ...sorts[0], prepare_critique: 16 }, sorts[1]], /^sorts\[0\] : la réussite critique figée d’un sort préparé \(1 à N\) a un N de 1 à 15 : jamais sous « 1 à 1 » \(décision R203\), jamais au-delà du plafond \(décisions R180, R182\)$/],
     [[{ ...sorts[0], prepare_posture_id: 'guide/postures#posture:inconnue' }, sorts[1]], /^sorts : « prepare_posture_id » = « guide\/postures#posture:inconnue » n’existe pas dans les règles/],
   ]) {
     const avant = lire(p.id);

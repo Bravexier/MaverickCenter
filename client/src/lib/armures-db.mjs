@@ -10,8 +10,8 @@
 import { PAGE_DES_ARMURES, PAGE_DES_BOUCLIERS } from './corps-composants.mjs';
 import { cleDeMateriau } from './materiaux-couleurs.mjs';
 import { prixEnRo } from './arme-champs.mjs';
-import { coutDeLaPiece } from './armure-champs.mjs';
-import { prixDeLArmure, UNITES_PAR_MATERIAU } from './armure-forge.mjs';
+import { coutDeLaPiece, coutParClasseDuBouclier } from './armure-champs.mjs';
+import { defenseDeLaCombinaison, defenseDuBouclier, prixDeLArmure, prixDuBouclier, typeDeLaCombinaison } from './armure-forge.mjs';
 import { POIDS_DES_ARMURES, valeurDuPoids } from './fiche-format.mjs';
 
 export { PAGE_DES_ARMURES, PAGE_DES_BOUCLIERS };
@@ -32,6 +32,85 @@ export const coutDeFabrication = (ligne) => {
 };
 
 const lignes = (db, sql, ...p) => db.prepare(sql).all(...p).map((l) => ({ ...l }));
+
+/**
+ * Les entrées des calculs de la décision R207 (1), E6 (« D'après les matériaux (+ cout de fabrication pour le prix) »), lues dans la base :
+ *   ro          : la valeur du RO en RF (monnaie 'ro', non modifiable : R61) ;
+ *   unites      : constante_equipement 'armure.unites_par_materiau' (6 : R93, migration 0105) ;
+ *   fabrication : le coût de « Armure Complète » (armure_emplacement 'armure-complete', cout_rf), en RO ; null s'il n'a pas de montant ;
+ *   materiauxArmure : Map ressource_id → { type, ap, am, prix } (materiau_armure ; prix : celui de la ressource, page Composants, R62, en RO) ;
+ *   materiauxBouclier : Map ressource_id → { ap, am, prix } (materiau_bouclier ; prix de la ressource, en RO) ;
+ *   formes      : Map id → { classe, prix } (bouclier_classe ; prix : le coût de fabrication de la forme, en RO, celui que suit le prix d'un bouclier).
+ */
+export function entreesDesCalculs(db) {
+  const ro = db.prepare("SELECT valeur_rf FROM monnaie WHERE id = 'ro'").get()?.valeur_rf;
+  if (!ro) throw new Error('monnaie « ro » absente de la base');
+  const unites = db.prepare("SELECT valeur FROM constante_equipement WHERE id = 'armure.unites_par_materiau'").get();
+  if (!unites) throw new Error('constante_equipement « armure.unites_par_materiau » absente de la base');
+  const enRo = (rf) => (rf === null || rf === undefined ? null : rf / ro);
+  const fabrication = db.prepare('SELECT cout_rf FROM armure_emplacement WHERE id = ?').get(FABRICATION_DE_L_ARMURE);
+  return {
+    ro,
+    unites: unites.valeur,
+    fabrication: enRo(fabrication?.cout_rf),
+    materiauxArmure: new Map(db.prepare('SELECT m.ressource_id, m.type, m.ap, m.am, r.prix_rf FROM materiau_armure m JOIN ressource r ON r.id = m.ressource_id').all()
+      .map((m) => [m.ressource_id, { type: m.type, ap: m.ap, am: m.am, prix: enRo(m.prix_rf) }])),
+    materiauxBouclier: new Map(db.prepare('SELECT m.ressource_id, m.ap, m.am, r.prix_rf FROM materiau_bouclier m JOIN ressource r ON r.id = m.ressource_id').all()
+      .map((m) => [m.ressource_id, { ap: m.ap, am: m.am, prix: enRo(m.prix_rf) }])),
+    formes: new Map(db.prepare('SELECT id, classe, prix FROM bouclier_classe').all().map((f) => [f.id, { classe: f.classe, prix: f.prix }])),
+  };
+}
+
+/**
+ * Les valeurs calculées de la décision R207 (1), E6 (lib/armure-forge.mjs) : { armures: Map id → { type, ap, am, prix } (les armures de la grille,
+ * sorte 'combinaison' : type = le plus lourd des deux matériaux, AP et AM = leur somme, prix = « Armure Complète » + `unites` × le prix de chaque
+ * matériau ; une armure particulière garde ses valeurs écrites, R80), boucliers: Map id → { ap, am, prix } (AP et AM = classe × ceux de la matière, prix =
+ * classe × prix de la matière + prix de la forme) }. Un prix inconnu (matériau sans prix) donne null ; un type que les matériaux ne donnent pas, null.
+ */
+export function valeursCalculees(db, entrees = entreesDesCalculs(db)) {
+  const { unites, fabrication, materiauxArmure, materiauxBouclier, formes } = entrees;
+  const armures = new Map();
+  for (const a of db.prepare("SELECT id, materiau_ligne_id, materiau_colonne_id FROM armure WHERE sorte = 'combinaison'").all()) {
+    const [m1, m2] = [materiauxArmure.get(a.materiau_ligne_id), materiauxArmure.get(a.materiau_colonne_id)];
+    armures.set(a.id, {
+      type: typeDeLaCombinaison(m1?.type, m2?.type),
+      ...defenseDeLaCombinaison(m1, m2),
+      prix: prixDeLArmure(fabrication, [m1?.prix ?? null, m2?.prix ?? null], unites).achetes,
+    });
+  }
+  const boucliers = new Map();
+  for (const b of db.prepare('SELECT id, classe_id, materiau_id FROM bouclier').all()) {
+    const forme = formes.get(b.classe_id);
+    const matiere = materiauxBouclier.get(b.materiau_id);
+    boucliers.set(b.id, { ...defenseDuBouclier(forme?.classe ?? null, matiere), prix: prixDuBouclier(forme?.classe, matiere?.prix, forme?.prix) });
+  }
+  return { armures, boucliers };
+}
+
+/**
+ * Les écarts entre le prix de chaque forme de bouclier (bouclier_classe.prix, en RO : le terme de fabrication que suit le prix d'un bouclier, décision
+ * R207 (1), choix de game-design) et la ligne « Bouclier » du tableau FABRICATION (armure_emplacement 'bouclier', « 250 RF / Classe »), qui n'en est
+ * qu'une autre écriture : classe × le montant en RF par classe ÷ la valeur du RO. Des messages (avertissements de client/scripts/db-check.mjs) : une
+ * forme dont le prix diffère, ou une ligne « Bouclier » qui ne s'écrit pas « N RF / Classe » ; [] quand tout s'accorde (ou sans ligne « Bouclier »).
+ */
+export function ecartsDeFabricationDuBouclier(db) {
+  const ligne = db.prepare('SELECT cout_brut FROM armure_emplacement WHERE id = ?').get(PIECE_DU_BOUCLIER);
+  if (!ligne) return [];
+  const ro = db.prepare("SELECT valeur_rf FROM monnaie WHERE id = 'ro'").get()?.valeur_rf;
+  if (!ro) return [];
+  const formes = db.prepare('SELECT id, classe, prix FROM bouclier_classe ORDER BY classe').all();
+  const parClasse = coutParClasseDuBouclier(ligne.cout_brut);
+  if (parClasse === null) {
+    return [`armure_emplacement ${PIECE_DU_BOUCLIER} : « ${ligne.cout_brut} » ne s’écrit pas « N RF / Classe » ; le prix d’un bouclier suit bouclier_classe.prix (décision R207 (1))`];
+  }
+  const ecarts = [];
+  for (const f of formes) {
+    if (Math.round(f.prix * ro) === f.classe * parClasse) continue;
+    ecarts.push(`bouclier_classe ${f.id} : prix ${f.prix} RO, mais « ${ligne.cout_brut} » (armure_emplacement ${PIECE_DU_BOUCLIER}) donne `
+      + `${(f.classe * parClasse) / ro} RO pour la classe ${f.classe} ; le prix d’un bouclier suit bouclier_classe.prix (décision R207 (1))`);
+  }
+  return ecarts;
+}
 
 // les ancres des lignes : celles du rendu (lib/armures-rendu.mjs), qui les pose
 export { ancreDArmure, ancreDeBouclier } from './armures-rendu.mjs';
@@ -70,9 +149,10 @@ export const poidsDeBouclier = (db) => lignes(db, 'SELECT * FROM bouclier_poids 
  *                     fabrication est sur la page « Composants » : lib/composants-db.mjs) ;
  *   combinaisons    : les armures de deux matières (grille), dans l'ordre de l'onglet, chacune avec `m1`, `m2` (clés de ses matières : ligne, colonne) et
  *                     `prix_calcule` (RO, null si un prix manque) : la fabrication de l'armure complète + 6 unités de chaque matériau (décision R93 ;
- *                     le prix écrit dans la grille, `prix_brut`, n'est plus affiché) ;
+ *                     R207 (1), E6 : valeursCalculees, égal à `prix`, que le service recalcule quand un matériau ou la fabrication change) ;
  *   particulieres   : les armures particulières (vêtements, cottes de mailles, armure montagne, armures de familiers) ;
  *   fabricationDeLArmure, fabricationDuBouclier : les lignes « Armure Complète » et « Bouclier » du tableau FABRICATION (armure_emplacement) ;
+ *   unitesParMateriau : constante_equipement 'armure.unites_par_materiau' (6 : R93), les unités de chaque matériau d'une armure ;
  *   ameliorations   : { armure: [...], bouclier: [...], armure_elementaire: [...] } (amelioration_equipement, par niveau, toutes ses colonnes : pour une
  *                     armure élémentaire, +1 à +5, cout_brut tel qu'écrit, cout_gemmes et cout_gemmes_qualite — « commune », « raffinee », « parfaite » —
  *                     ou cout_pieces_elementaires, effet_brut, bonus_ap, bonus_am, bonus_cran ; décision R165 (2) : coût cumulé, effet de la ligne) ;
@@ -96,23 +176,21 @@ export function chargerArmures(db) {
     ligne, cle: cleDeMateriau(ligne.ressource_id), nom, type: type_materiau ?? ligne.type ?? 'Autres', prix: prix_ressource ?? ligne.prix_brut ?? null,
     description: description ?? null,
   });
+  // les unités de chaque matériau d'une armure (constante_equipement 'armure.unites_par_materiau' : R93, R207 (1))
+  const { unites } = entreesDesCalculs(db);
   const materiaux = lignes(db, `SELECT m.*, r.nom, r.prix_brut AS prix_ressource, r.description, t.type AS type_materiau FROM materiau_armure m
     JOIN ressource r ON r.id = m.ressource_id LEFT JOIN materiau t ON t.ressource_id = m.ressource_id ORDER BY m.ordre`).map(materiau)
     .map((m) => {
       const ro = prixEnRo(m.prix);
-      return { ...m, prix_armure: ro === null ? null : Math.round(UNITES_PAR_MATERIAU * ro * 100) / 100 };
+      return { ...m, prix_armure: ro === null ? null : Math.round(unites * ro * 100) / 100 };
     });
   const armures = lignes(db, 'SELECT * FROM armure ORDER BY ordre');
   const emplacement = (id) => lignes(db, 'SELECT * FROM armure_emplacement WHERE id = ?', id)[0] ?? null;
   const fabricationDeLArmure = emplacement(FABRICATION_DE_L_ARMURE);
-  // le prix d'une armure de la grille (décision R93) : celui des matériaux tels que la page les affiche (prix de la ressource, R62)
-  const prixDesMateriaux = new Map(materiaux.map((m) => [m.ligne.ressource_id, prixEnRo(m.prix)]));
+  // le prix d'une armure de la grille (décisions R93, R207 (1) E6) : la formule commune (valeursCalculees), celle que le service garde dans armure.prix
+  const calculees = valeursCalculees(db).armures;
   const combinaisons = armures.filter((a) => a.sorte === 'combinaison')
-    .map((a) => ({
-      ...a, m1: cleDeMateriau(a.materiau_ligne_id), m2: cleDeMateriau(a.materiau_colonne_id),
-      prix_calcule: prixDeLArmure(coutDeFabrication(fabricationDeLArmure),
-        [a.materiau_ligne_id, a.materiau_colonne_id].map((id) => prixDesMateriaux.get(id) ?? null)).achetes,
-    }));
+    .map((a) => ({ ...a, m1: cleDeMateriau(a.materiau_ligne_id), m2: cleDeMateriau(a.materiau_colonne_id), prix_calcule: calculees.get(a.id)?.prix ?? null }));
   const particulieres = armures.filter((a) => a.sorte === 'particuliere');
   const ameliorations = (cible) => lignes(db, 'SELECT * FROM amelioration_equipement WHERE cible = ? ORDER BY niveau', cible);
   const total = (cible) => db.prepare('SELECT total_brut FROM amelioration_total WHERE cible = ?').get(cible)?.total_brut ?? null;
@@ -149,6 +227,7 @@ export function chargerArmures(db) {
     particulieres,
     fabricationDeLArmure,
     fabricationDuBouclier: emplacement(PIECE_DU_BOUCLIER),
+    unitesParMateriau: unites,
     ameliorations: { armure: ameliorations('armure'), bouclier: ameliorations('bouclier'), armure_elementaire: ameliorations('armure_elementaire') },
     totaux: { armure: total('armure'), bouclier: total('bouclier'), armure_elementaire: total('armure_elementaire') },
     elementaires: { poids: [...POIDS_DES_ARMURES], magies: magiesElementaires, armures: armuresElementaires, solidite_base: solidite.valeur },

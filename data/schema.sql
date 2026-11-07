@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 100;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 109;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -358,8 +358,9 @@ CREATE TABLE competence (
   ordre              INTEGER NOT NULL UNIQUE CHECK (ordre BETWEEN 1 AND 30),   -- ordre de la fiche (blocs de 5 par caractéristique)
   libelle_fiche      TEXT    NOT NULL UNIQUE,               -- « Arme Lourde (F) » tel qu'écrit dans la cellule
   description        TEXT,                                  -- phrase du guide « Compétences » (italiques retirés, [[liens]] conservés) ;
-                                                            -- NULL quand le guide ne décrit pas cette compétence (Calme : le guide écrit « Prouesse »,
-                                                            -- voir ecart_source)
+                                                            -- NULL quand le guide ne décrit pas cette compétence. Calme : le guide décrit
+                                                            -- « Prouesse », son ancien nom (décision R204, migration 0102) : sa phrase est celle de
+                                                            -- Calme ; l'écart des deux noms reste dans ecart_source
   origine            TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'fiche'),
   source_ref         TEXT    NOT NULL CHECK (length(source_ref) > 0),
   remarque TEXT   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
@@ -592,7 +593,8 @@ CREATE INDEX magie_role_role ON magie_role (role);
 --   cible_type = 'magie' : cible_magie_id renseigné (liste de noms de magies).
 --   cible_type = 'etat'  : cible_etat_id renseigné. La source écrit « Gelé » et « Pétrification » là où la liste des
 --                          altérations dit « Gel » et « Pétrifié » : le rapprochement est fait par l'importeur (table
---                          d'alias explicite) ; cible_brut garde l'écriture d'origine.
+--                          d'alias explicite) ; cible_brut garde l'écriture d'origine, sauf « Gelé », écrit « Gel » depuis la
+--                          décision R205 (migration 0103, registre 0103-r205-etat-gel.json).
 -- Les lignes 'etat' sont, d'après la fiche (spécification resist.total-etat), l'image des lignes 'magie' par la colonne
 -- « Magie Liée » de la liste des altérations ; elles sont conservées parce que la source les écrit.
 --   cible_type = 'physique' : cible_physique renseigné, un des trois types de dégâts physiques (estoc, taille, frappe : le vocabulaire de
@@ -731,7 +733,7 @@ CREATE TABLE sort (
                                                         -- 'unique' = « 1 » (une seule case/cible) ; 'rectangle' = « NxM » ou « Rectangle … » ;
                                                         -- 'autre' = texte non reconnu (voir zone_brut)
   zone_taille           INTEGER CHECK (zone_taille >= 0),   -- premier nombre de « Cercle de N », « Ligne de N », « Carré … N », « Croix de N », « N cibles »
-  -- Dégâts / Soin / Bonus (colonne « D/S/B »)
+  -- D/S/B : D = Dégâts, S = Soin (R205), B non défini (colonne « D/S/B »)
   dsb_brut              TEXT,                           -- NULL quand la cellule vaut « / » (la fiche la traite comme vide)
   -- Effets
   effets                TEXT,                           -- colonne « Effets secondaires » (jamais vide dans les 322 sorts)
@@ -2471,8 +2473,9 @@ CREATE TABLE monstre_butin (
 -- MONSTRE : une carte « NOM   Créature échelle N » ; « Type | Alignement | Catégorie » sur la ligne suivante.
 -- Valeurs typées seulement quand l'écriture est sans ambiguïté (sinon NULL ; la rubrique garde le texte) :
 --   sante / chakra / barriere : la ligne « Santé : 70  Chakra : 0  Barrière : 0 » (pas les valeurs « EP 1 : 20 … » d'une carte qui varie selon l'échelle) ;
---   armure_physique / armure_magique : « 4 armure physique / 2 armure magique » ou « 4 AP / 2 AM » (PAS « 0 points d'armure / 8 résistance magique » :
---     le rapprochement de ces mots avec l'armure physique et magique est une question au propriétaire, docs/bestiaire.md) ;
+--   armure_physique / armure_magique : « 4 armure physique / 2 armure magique » ou « 4 AP / 2 AM » ; « points d'armure » et « résistance magique » sont
+--     les anciens noms de l'AP et de l'AM (décision R209 (5) : la migration 0106 les a réécrits, lib/monstre-champs.mjs#defense lit aussi l'ancienne
+--     écriture) ; NULL sans nombre (« ? », « ∞ », une valeur par EP) ;
 --   vitesse_sol / vitesse_nage : « 4 cases sol / 4 cases nage ».
 CREATE TABLE monstre (
   id              TEXT    NOT NULL PRIMARY KEY,
@@ -2801,7 +2804,7 @@ CREATE INDEX materiau_arme_bonus ON materiau_arme (bonus_degats);
 CREATE TABLE materiau_armure (
   ressource_id  TEXT    NOT NULL PRIMARY KEY REFERENCES ressource(id),
   type          TEXT    NOT NULL CHECK (type IN ('Léger', 'Intermédiaire', 'Lourd')),
-  prix          REAL    CHECK (prix IS NULL OR prix >= 0),   -- « Prix : 1,5 » -> 1.5 ; l'unité n'est pas écrite dans la fiche (RO d'après le recoupement avec « Prix matériaux », à confirmer)
+  prix          REAL    CHECK (prix IS NULL OR prix >= 0),   -- « Prix : 1,5 » -> 1.5 ; l'unité n'est pas écrite dans la fiche : RO (R207 (2), « Il y a un tableau pour ça »)
   prix_brut     TEXT,
   stats_brut    TEXT    NOT NULL,                     -- « +2AP +4AM »
   ap            INTEGER,                              -- N de « +NAP » ; NULL si « AP » n'est pas écrit (la fiche compte 0)
@@ -3288,6 +3291,10 @@ CREATE TABLE armure_emplacement (
 
 -- Armures : 231 combinaisons de deux matières (grille matière x matière de l'onglet Armures) + 11 armures particulières
 -- (vêtements, cottes de mailles, armure montagne, armures de familiers).
+-- Décision R207 (1), E6 (migration 0105) : le type, l'AP, l'AM et le prix d'une combinaison se calculent d'après ses deux matériaux : type = le plus
+-- lourd (materiau_armure.type) ; ap, am = la somme de ceux des deux matériaux (R75) ; prix = « Armure Complète » (armure_emplacement 'armure-complete')
+-- + constante_equipement 'armure.unites_par_materiau' (6) x le prix de chaque matériau (ressource, R62 ; R93). Une armure particulière garde ses
+-- valeurs écrites (R80). Registres : data/migrations/0105-r207-armures-boucliers-et-fabrication.json (AP, AM), 0108-r207-prix-des-armures.json (prix).
 CREATE TABLE armure (
   id               TEXT    NOT NULL PRIMARY KEY,      -- 'ressources/armures#armure:peau-peau', '…#armure:cuir-peau', '…#armure:tenue-du-flagelleur'
   sorte            TEXT    NOT NULL CHECK (sorte IN ('combinaison', 'particuliere')),
@@ -3296,7 +3303,7 @@ CREATE TABLE armure (
   materiau_ligne_id    TEXT REFERENCES ressource(id), -- combinaison : matière en tête de ligne de la grille
   materiau_colonne_id  TEXT REFERENCES ressource(id), -- combinaison : matière en tête de colonne
   type             TEXT    NOT NULL CHECK (type IN ('Vêtement', 'Léger', 'Intermédiaire', 'Lourd', 'Familier')),
-  prix             REAL    CHECK (prix IS NULL OR prix >= 0),   -- « Prix : 2 050 » -> 2050.0 ; « ???? » -> NULL ; unité non écrite
+  prix             REAL    CHECK (prix IS NULL OR prix >= 0),   -- « Prix : 2 050 » -> 2050.0 ; « ???? » -> NULL ; en RO (R79, R207 (2))
   prix_brut        TEXT,
   stats_brut       TEXT    NOT NULL,                  -- « +10AP +14AM », « Aucune »
   ap               INTEGER,                           -- N de « +NAP » ; NULL si AP n'est pas écrit (« Aucune » aussi) : la fiche compte 0
@@ -3395,12 +3402,15 @@ CREATE TABLE bouclier_poids (
 
 -- Boucliers préfabriqués (100 : 5 classes x 20 matériaux). Le poids de chacun est la couleur de fond de sa case dans l'onglet (vert Léger, jaune Moyen,
 -- orange Lourd, rouge Très lourd : décision R92, migration 0054) ; la liste des poids elle-même n'est pas reliée aux classes : aucun lien n'est déduit.
+-- Décision R207 (1), E6 (migration 0105) : ap, am = classe x AP ou AM du matériau (materiau_bouclier) ; prix = classe x prix du matériau (ressource, R62)
+-- + le prix de sa forme (bouclier_classe.prix, RO par classe : « Coût (RO) : 2,5 / Classe » ; R49, R79). « 250 RF / Classe » d'armure_emplacement
+-- 'bouclier' n'en est qu'une autre écriture.
 CREATE TABLE bouclier (
   id            TEXT    NOT NULL PRIMARY KEY,         -- 'ressources/bouclier#bouclier:ecu:fer-noir'
   classe_id     TEXT    NOT NULL REFERENCES bouclier_classe(id),
   materiau_id   TEXT    NOT NULL REFERENCES ressource(id),
   nom           TEXT    NOT NULL CHECK (length(nom) > 0),                     -- « Bocle Corne » (sic : la matière s'écrit Corne/Os ailleurs)
-  prix          REAL    CHECK (prix IS NULL OR prix >= 0),   -- NULL si « Prix : » est vide (Bouclier Rond Argent)
+  prix          REAL    CHECK (prix IS NULL OR prix >= 0),   -- en RO (R79) ; « Prix : » vide du Bouclier Rond Argent : le prix calculé (R207, migration 0105)
   prix_brut     TEXT,
   defense_brut  TEXT    NOT NULL,                     -- « +20AP +25AM »
   ap            INTEGER,
@@ -4560,10 +4570,11 @@ CREATE TABLE personnage_sort (
   -- N (figée à la préparation) », la plage de critique de Concentration au moment de la préparation (posture, score du moment et sources permanentes de
   -- R180), enregistrée à la préparation, jamais recalculée ; NULL tant qu'elle n'est pas notée (une fiche d'avant 0089 la garde NULL). Comme le jet,
   -- seulement sur le sort préparé (personnage_sort_prepare_critique_avec_prepare) : « Lâcher le sort » la remet à NULL. Bornes
-  -- (personnage_sort_prepare_critique_bornes) : de 1, le bas de la plage « 1 à N » (N ≥ 1 : un accessoire maudit retire de la réussite critique,
-  -- R180 et R54, et Concentration peut n'avoir que 1 à 4), à 15, regle_constante 'critique.plafond' ; un CHECK ne lit pas une autre table, le
-  -- plafond est écrit ici et test/db-r182-critique-du-sort-prepare.test.mjs le compare à regle_constante (une constante changée demande une
-  -- migration). « Double coup » (niveau 20) : seul le premier relâchement peut être un critique, les suivants sont fixés à 40 de réussite
+  -- (personnage_sort_prepare_critique_bornes) : de 1, regle_constante 'critique.plancher' (décision R203, migration 0101 : la plage ne descend
+  -- jamais sous « 1 à 1 » ; des accessoires maudits qui retirent de la réussite critique, R180 et R54, la ramènent au plus à 1 à 1, le moteur
+  -- borne le bonus total : une plage calculée sous 1 n'existe plus, la préparation n'est donc jamais refusée pour elle), à 15, regle_constante
+  -- 'critique.plafond' ; un CHECK ne lit pas une autre table, les bornes sont écrites ici et test/db-r182-critique-du-sort-prepare.test.mjs compare
+  -- le plafond à regle_constante (une constante changée demande une migration). « Double coup » (niveau 20) : seul le premier relâchement peut être un critique, les suivants sont fixés à 40 de réussite
   -- (un rappel de la fiche, rien n'est stocké).
   prepare            INTEGER NOT NULL DEFAULT 0 CHECK (prepare IN (0, 1)),   -- 1 = le sort préparé de la fiche (R115)
   prepare_jet        INTEGER CHECK (prepare_jet IS NULL OR (prepare = 1 AND prepare_jet BETWEEN 1 AND 100)),   -- jet de magie (D100)

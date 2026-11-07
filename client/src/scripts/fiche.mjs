@@ -1858,7 +1858,8 @@ function construirePostures() {
   const cartesHyper = $('postures-hyper');
   cartesHyper.hidden = !hyper?.debloque;
   // un bouton des jauges (décision R172) : ce qu'il coûtera, en infobulle ; appliqué, l'écriture du moteur telle quelle
-  const boutonDeJauges = (texte, calculer) => {
+  // `moment` : quand le coût se paie, en tête de l'infobulle (« en fin de tour » pour un tour de Mode Hyper, décision R200 (3))
+  const boutonDeJauges = (texte, calculer, moment = null) => {
     const bouton = el('button', {
       type: 'button', class: 'posture-carte__jauges',
       onclick: () => {
@@ -1871,7 +1872,7 @@ function construirePostures() {
     synchro(() => {
       const r = calculer();
       bouton.hidden = !r;
-      infobulle(bouton, r ? [`${r.pourcent} % du chakra maximum (${calcul.attributs.chakra}), arrondi à l’inférieur : ${r.cout} chakra`,
+      infobulle(bouton, r ? [`${r.pourcent} % du chakra maximum (${calcul.attributs.chakra}), arrondi à l’inférieur${moment ? `, ${moment}` : ''} : ${r.cout} chakra`,
         `Chakra ${r.chakra.avant} → ${r.chakra.apres}`,
         ...(r.manque ? [`Chakra manquant : ${r.manque}, payé ${SANTE_PAR_CHAKRA_MANQUANT} santé pour 1 chakra, sans toucher à la barrière (décision R186) : santé ${r.sante.avant} → ${r.sante.apres}`] : [])].join('\n') : '');
     });
@@ -1913,7 +1914,8 @@ function construirePostures() {
     const plus = el('button', { type: 'button', class: 'ajuster', 'aria-label': 'Utilisations de la semaine : une de plus', title: 'Remonter le compteur (à la main, une nouvelle semaine)', onclick: ajusterSemaine(1) }, '+');
     const semaine = el('span', { class: 'posture-carte__semaine', title: 'Une fois par semaine : consommé à l’activation, remonté à la main' }, el('span', {}, 'Cette semaine '), moins, compte, plus);
     carteHyper.append(el('div', { class: 'posture-carte__suivi' }, semaine,
-      boutonDeJauges('Tour de Mode Hyper', () => tourDeModeHyper(regles, fiche, calcul.attributs))));
+      // décision R200 (3) : la consommation a lieu à la fin du tour du joueur
+      boutonDeJauges('Tour de Mode Hyper', () => tourDeModeHyper(regles, fiche, calcul.attributs), 'en fin de tour')));
     synchro(() => {
       const h = modeHyperDe(regles, fiche);
       nomHyper.setAttribute('aria-pressed', String(h.actif));

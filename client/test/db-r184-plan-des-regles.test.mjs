@@ -211,12 +211,13 @@ test('R184 (9), R185 (3) : six pages retirées, avec leurs alias, leurs mots-cl�
   assert.equal(db.prepare('SELECT count(*) AS n FROM source WHERE id NOT IN (SELECT source_id FROM page_source)').get().n, 0, 'aucune source orpheline');
   // « la page seule » (R184 (9)) : les lignes de l'onglet masqué restent
   assert.ok(db.prepare("SELECT count(*) AS n FROM mode_hyper_effet WHERE version = 'magie_masque'").get().n > 0);
-  // E7 : la liste des effets ne renvoyait plus à la page retirée ; la liste est elle-même retirée depuis (migration 0095) : aucune page n'y renvoie,
-  // et la phrase sur l'autre liste de l'onglet masqué reste dans guide/le-mode-hyper (P9) : textes tels que les migrations les ont écrits (le site de
-  // dev peut les réécrire depuis)
+  // E7 : la liste des effets ne renvoyait plus à la page retirée ; la liste est elle-même retirée depuis (migration 0095) : aucune page n'y renvoie.
+  // La phrase sur l'autre liste de l'onglet masqué, que la 0091 gardait dans guide/le-mode-hyper (P9), est retirée depuis par la 0104 (R200 (5),
+  // « P9. Oui ») : migration postérieure, l'une ou l'autre écriture. Textes tels que les migrations les ont écrits (le site de dev peut les réécrire)
   assert.equal(page('guide/liste-des-effets-mode-hyper'), undefined);
   assert.equal(apres0091().prepare("SELECT count(*) AS n FROM page WHERE instr(corps_md, 'Mode Hyper (Magie)') > 0").get().n, 0);
-  assert.ok(corpsApres0091('guide/le-mode-hyper').includes('une autre liste des effets du Mode Hyper, aux valeurs différentes : cette liste ne compte pas'));
+  const hyper = corpsApres0091('guide/le-mode-hyper');
+  assert.ok(hyper.includes('une autre liste des effets du Mode Hyper, aux valeurs différentes : cette liste ne compte pas') || !hyper.includes('onglet masqué'));
   // la migration ne fait que retirer : l'historique du site garde ce qui les citait
   assert.match(lire(`data/migrations/${MIGRATION}`), /historique_modification et de note_version_ligne qui les citent restent/);
 });
@@ -295,7 +296,8 @@ test('R184 (5) : les retouches E1 à E12 ; plus aucune phrase ne renvoie « plus
   assert.ok(contient('guide/reussites-echecs-et-critiques', '(voir « Le score » dans [[guide/reussir-une-action|Réussir une action]])')); // E3
   assert.ok(contient('guide/les-degats', '(voir [[guide/resistances-et-faiblesses|Résistances et faiblesses]])'));            // E4
   assert.ok(contient('guide/le-tour-de-jeu', '[[guide/actions-et-mouvements|Les actions et mouvements]] et [[guide/vitesse-et-portee|La vitesse et la portée]] ; sa page')); // E5
-  assert.ok(corps('guide/le-mode-hyper').includes('aux valeurs différentes : cette liste ne compte pas'));                            // E6
+  // E6 : phrase retirée depuis par la 0104 (R200 (5), P9) : l'une ou l'autre écriture
+  assert.ok(corps('guide/le-mode-hyper').includes('aux valeurs différentes : cette liste ne compte pas') || !corps('guide/le-mode-hyper').includes('onglet masqué')); // E6
   assert.ok(contient('guide/alignement', '(voir [[guide/les-neuf-alignements|Les neuf alignements]])'));                       // E9
   assert.ok(contient('guide/choisir-ses-magies', '## Résistances et faiblesses\n\nVoir [[guide/resistances-et-faiblesses|Résistances et faiblesses]].\n')); // E10
   assert.ok(contient('guide/la-magie-en-jeu', 'leur page le dit. Voir [[guide/resistances-et-faiblesses|Résistances et faiblesses]].\n')); // E11

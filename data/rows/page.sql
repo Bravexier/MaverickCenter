@@ -4824,7 +4824,7 @@ Armure de cuir/bois
 | NÉCROMANCIE | (Passif) Squelettique. Augmente d''un cran la résistance aux dégâts d''estoc des armures. Être sans armure donne 2AP base.<br>(Actif 2 fois/combat) Attaque poison. La prochaine attaque réussie obligera le jet de vigueur à l''adversaire pour ne pas qu''il prenne "poison 1".<br>(Passif) Chair de mort. Avantage sur les jets contre le poison ou le contrôle mental.<br>(Passif) Attrape-moi !. Augmente les jets de défense de 2% par créature empoisonnée sur le terrain. |
 | FEU | (Passif) Moteur thermique. Si un dégât de l''élément feu est encaissé, les dégâts augmentent de +3 et la vitesse de 1 pendant 2 tours.<br>(Passif) Déflagration. Sacrifie les AP ou AM pour les ajouter à ses dégâts pendant 2 tours.<br>(Passif) Éponge à soin. Obtient un bonus de +4 à chaque soin obtenu (magique ou potion).<br>(Passif) Sang de feu. Sur les terrains ou météos où le feu est avantagé : +3 dégâts, +1 AP. Sur les terrains ou météos où le feu est désavantagé : -3 dégâts, -1 AP |
 | EAU | (Passif) Gluant. Augmente d''un cran la résistance aux dégâts de frappe des armures mais augmente la faiblesse à la foudre.<br>(Passif) Réparation. Récupère 1d4 barrière chaque début de tour. (ne marche pas quand coma).<br>(Passif) Aisance marine. +1 vitesse dans l''eau.<br>(Passif) Mucus. Annule les 4 premiers dégâts magiques encaissés. Se recharge tous les débuts de tour. |
-| GLACE | (Actif 2 fois/combat) Attaque glaçante. La prochaine attaque réussie obligera le jet de vigueur à l''adversaire pour ne pas qu''il prenne "gelé 1".<br>(Passif) Neige permanente. Quand la météo neige est invoquée, elle perdurera tant que personne ne la change.<br>(Passif) Peau froide. +2 AM de base.<br>(Passif) Pas de la neige. Ignore totalement les malus des terrains liés à la neige/glace. |
+| GLACE | (Actif 2 fois/combat) Attaque glaçante. La prochaine attaque réussie obligera le jet de vigueur à l''adversaire pour ne pas qu''il prenne "gel 1".<br>(Passif) Neige permanente. Quand la météo neige est invoquée, elle perdurera tant que personne ne la change.<br>(Passif) Peau froide. +2 AM de base.<br>(Passif) Pas de la neige. Ignore totalement les malus des terrains liés à la neige/glace. |
 | TERRE | (Passif) Racine. Tant qu''il est sur de la terre, cette créature récupère 3 santé au début de son tour.<br>(Passif) Grimpeur. Avantage sur le jet pour grimper un mur.<br>(Passif) Peau dure. +2 AP de base.<br>(Passif\] Sujet épineux. En posture de défense, cette créature inflige 4 dégâts lors d''une parade parfaite. |
 | VENT | (Passif) Charge sans peur. Permet d''avoir un bonus de +4 au jet d''initiative.<br>(Action) Crache spore. Crache des spores qui obligent toutes les créatures à 2 cases de lui de réussir un jet de vigueur, si elles ratent, elles sont "étourdies" pendant 1 tour.<br>(Passif) Chute douce. Dégâts de chute divisés par 2 (AVANT L''ARMURE).<br>(Passif) Courant rapide. Si cette créature termine son tour sans ennemi adjacent à lui = +2 INI pour le prochain tour. |
 | FOUDRE | (Passif) Paratonnerre. Attire les sorts de la foudre ou bien la foudre naturelle sur lui-même. (S''il est dans la portée du sort)<br>(Passif) Pied véloce. +1 vitesse au sol en cas de météo “orage” ou “champ magnétique”.<br>(Passif) Dynamo. Gagne +3 dégâts de foudre (cumulable 3 fois) pour la prochaine action lorsque la foudre magique ou naturelle le touche.<br>(Passif) Prédateur cinétique. Si cette créature a parcouru 4 cases ou plus en ligne droite pour atteindre sa cible = +5% à la réussite de sa prochaine attaque. |
@@ -6022,12 +6022,12 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 L’attaquant lance un D100 et doit faire son score ou moins dans la compétence qui sert à l’attaque :
 
-- **avec une arme**, la compétence de l’arme, que donne la colonne *Compétence* de la page des {{armes|armes}} : *Arme Légère* (Agilité), *Arme Lourde* (Force), *Arc* (Force) ou *Arbalète* (Perception) ; certaines armes en écrivent deux (Lourde / Légère, Arc / Légère) ;
+- **avec une arme**, la compétence de l’arme, que donne la colonne *Compétence* de la page des {{armes|armes}} : *Arme Légère* (Agilité), *Arme Lourde* (Force), *Arc* (Force) ou *Arbalète* (Perception) ; certaines armes en écrivent deux (Lourde / Légère, Arc / Légère) : le joueur choisit alors celle des deux qui sert ;
 - **avec un sort**, la compétence *Magie* (Intelligence) ; les mages rouge, bleu et vert lancent les leurs avec *Concentration* (Volonté).
 
 Deux résultats sortent de l’ordinaire :
 
-- **Réussite critique (1 à 5)** : les dégâts de base sont doublés, et la cible ne peut bloquer le coup que par une réussite critique meilleure que celle de l’attaquant. La posture offensive l’élargit à 1 à 10 sur les six jets d’attaque, *Concentration* comprise ; d’autres bonus (un score au-delà de 95 %, un don, un sort, la tenaille…) l’élargissent encore, sans jamais dépasser 1 à 15 (voir {{reussir-une-action}}).
+- **Réussite critique (1 à 5)** : les dégâts de l’attaque, bonus compris, sont doublés, et la cible ne peut bloquer le coup que par une réussite critique meilleure que celle de l’attaquant. La posture offensive l’élargit à 1 à 10 sur les six jets d’attaque, *Concentration* comprise ; d’autres bonus (un score au-delà de 95 %, un don, un sort, la tenaille…) l’élargissent encore, sans jamais dépasser 1 à 15 (voir {{reussir-une-action}}).
 - **Échec critique (96 à 100)** : la cible peut riposter par une attaque d’opportunité, ou désarmer l’attaquant si c’est possible ; le MJ peut aussi en décider autrement.
 
 ### Une arme dans chaque main
@@ -6056,13 +6056,15 @@ Attaquée, la cible peut tenter :
 - une **parade**, avec son arme ou son bouclier : compétence *Parade* (Force) ;
 - une **esquive** : compétence *Esquive* (Agilité).
 
-C’est un jet de D100, possible seulement si sa posture le permet et qu’il lui reste des défenses pour le tour. Pour bloquer entièrement le coup, deux conditions : **réussir son jet, et faire un résultat égal ou meilleur que celui de l’attaquant.**
+C’est un jet de D100, possible seulement si sa posture le permet et qu’il lui reste des défenses pour le tour. Pour bloquer entièrement le coup, deux conditions : **réussir son jet, et faire un résultat égal ou inférieur à celui de l’attaquant.** Au D100, un meilleur résultat est un résultat plus bas.
+
+*Exemple : l’attaquant touche avec un résultat de 30. La cible réussit sa parade avec un résultat de 25 : 25 est plus bas que 30, le coup est entièrement bloqué.*
 
 | Résultat de la défense | Ce qui se passe |
 | --- | --- |
-| Réussie, et égale ou meilleure que l’attaque | Le coup est entièrement bloqué. |
-| Réussie, mais moins bonne que l’attaque | **Défense partielle** : les dégâts finaux sont divisés par 2. Si c’est une parade au bouclier, ses AP ou son AM comptent à ce moment-là. |
-| Ratée, même avec un meilleur résultat que l’attaque | La défense échoue : les dégâts sont entiers. |
+| Réussie, avec un résultat égal ou inférieur à celui de l’attaque | Le coup est entièrement bloqué. |
+| Réussie, mais avec un résultat supérieur à celui de l’attaque | **Défense partielle** : les dégâts finaux sont divisés par 2. Si c’est une parade au bouclier, ses AP ou son AM comptent à ce moment-là. |
+| Ratée, même avec un résultat inférieur à celui de l’attaque | La défense échoue : les dégâts sont entiers. |
 
 Là encore, les critiques changent tout :
 
@@ -6071,7 +6073,7 @@ Là encore, les critiques changent tout :
 
 ### Combien de défenses par tour ?
 
-Cela dépend de la posture du moment : certaines n’en permettent aucune, d’autres un nombre limité par tour, et la posture défensive les permet sans limite, mais chaque défense y fait baisser la réussite de la suivante : dès la première selon le Doc « Créer sa fiche de personnage », au-delà de deux selon le {{guide-pour-mj-maverick|Doc « Guide pour MJ »}}. Les chiffres de chaque posture sont dans {{posture|Les postures}}.
+Cela dépend de la posture du moment : certaines n’en permettent aucune, d’autres un nombre limité par tour, et la posture défensive les permet sans limite, mais au-delà de deux parades ou esquives, chaque défense y fait baisser la réussite de la suivante. Les chiffres de chaque posture sont dans {{posture|Les postures}}.
 
 La posture défensive permet aussi l’**intervention** : parer ou esquiver le coup à la place d’un allié adjacent.
 
@@ -6416,7 +6418,7 @@ Ils montrent quatre façons de se battre : harceler l’ennemi de loin à l’ar
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/deplacement-ou-sortie-de-la-zone-d-influence', 'guide', 'deplacement-ou-sortie-de-la-zone-d-influence', 'Le déplacement ou la sortie de la zone d''influence', 'le-deplacement-ou-la-sortie-de-la-zone-dinfluence', 'Lorsqu''un personnage se déplace et entre dans la zone d''influence d''un adversaire (avant, arrière, gauche ou droite), puis souhaite la traverser, il permet à cet adversaire de réaliser une attaque d''opportunité.', NULL, 'Lorsqu''un personnage se déplace et entre dans la zone d''influence d''un adversaire (avant, arrière, gauche ou droite), puis souhaite la traverser, il permet à cet adversaire de réaliser une attaque d''opportunité.
 
-Si un personnage souhaite quitter une zone d''influence, l''adversaire peut effectuer une attaque gratuite contre lui.
+Si un personnage souhaite quitter une zone d''influence, l''adversaire peut effectuer une {{attaque-dopportunite|attaque d''opportunité}} contre lui, avec ses limites.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/distance-et-voyage', 'guide', 'distance-et-voyage', 'Distance et voyage', 'distance-et-voyage', 'Dans Maverick, il est possible de faire de longs voyages et il est important de calculer le temps de voyage pour les joueurs.', NULL, 'Dans Maverick, il est possible de faire de longs voyages et il est important de calculer le temps de voyage pour les joueurs.
 
@@ -6491,10 +6493,10 @@ Tout ceci ne sont que des exemples, n’hésitez pas à être créatif !
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/equipement-et-butin', 'guide', 'equipement-et-butin', 'Équipement et butin', 'equipement-et-butin', 'Votre personnage peut équiper deux armes, une armure, qui se porte entière, du casque aux jambes, un bouclier, selon sa classe, six accessoires (le chef, le collier, deux bracelets et deux bagues) et, à sa ceinture, trois objets rapides ; le reste va dans son sac.', NULL, '## L''équipement
 Votre personnage peut équiper **deux armes**, **une armure**, qui se porte entière, du casque aux jambes, **un bouclier**, selon sa classe, **six accessoires** (le chef, le collier, deux bracelets et deux bagues) et, à sa **ceinture**, trois objets rapides ; le reste va dans son **sac**. Chacun a ses règles dans {{lequipement|L''équipement}}, et tout l''équipement du jeu, avec ses prix, est sur la page {{armes|Équipement}}.
 
-Une pièce d''équipement s''achète, se trouve dans un butin, ou se fait fabriquer. Un forgeron, un PNJ, peut la fabriquer pour vous. Un personnage peut aussi la fabriquer lui-même s''il a le bon métier : {{forgeron|forgeron}} pour les armes, les armures lourdes et les boucliers ; travailleur du cuir ou {{couturier|couturier}} pour les armures plus légères, selon leurs matériaux (voir {{artisanat}}).
+Une pièce d''équipement s''achète, se trouve dans un butin, ou se fait fabriquer. Un forgeron, un PNJ, peut la fabriquer pour vous. Un personnage peut aussi la fabriquer lui-même s''il a le bon métier : {{forgeron|forgeron}} pour les armes, les armures lourdes et les boucliers ; {{maroquinier|maroquinier}} ou {{couturier|couturier}} pour les armures plus légères, selon leurs matériaux (voir {{artisanat}}).
 
 ## Le butin
-Quand un joueur fouille un ennemi vaincu, ou cherche quelque chose dans un lieu, un coffre…, le MJ lui demande un jet de butin. Le butin se joue sur le résultat de **3D100** : plus le score est bas, plus la découverte est fabuleuse. On peut y trouver une pièce d''équipement, un {{composants|matériau}}, ou autre chose. Dans le {{bestiaire|bestiaire}}, la carte de chaque monstre donne son butin possible par tranche de score, selon que l''ennemi est simple, mini-boss ou boss. Ce tableau n''est qu''une indication : le MJ peut réarranger le butin à sa guise.
+Quand un joueur fouille un ennemi vaincu, ou cherche quelque chose dans un lieu, un coffre…, le MJ lui demande un jet de butin. Le butin se joue sur le résultat de **3D100**, les trois dés additionnés : plus le total est bas, plus la découverte est fabuleuse. On peut y trouver une pièce d''équipement, un {{composants|matériau}}, ou autre chose. Dans le {{bestiaire|bestiaire}}, la carte de chaque monstre donne son butin possible par tranche de score, selon que l''ennemi est simple, mini-boss ou boss. Ce tableau n''est qu''une indication : le MJ peut réarranger le butin à sa guise.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/exercer-un-metier', 'guide', 'exercer-un-metier', 'Exercer un métier', 'exercer-un-metier', 'Un métier se choisit à la création du personnage, ou plus tard, au cours d’une aventure.', NULL, 'Un métier se choisit à la création du personnage, ou plus tard, au cours d’une aventure. Il se note dans la case **Métier** des dons. Tous les métiers sont dans le {{metier|tableau des métiers}} : ce que chacun donne, ce qu’il permet de fabriquer, son équipement de départ et, sous sa ligne, sa description.
 
@@ -6502,7 +6504,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 Selon le métier :
 
-- **un avantage sur un jet**, quand le métier s’applique à la situation. *Exemple : en explorant une caverne, un mineur fait son jet d’Orientation avec un avantage.*
+- **un avantage sur un jet**, quand le métier s’applique à la situation : c’est le MJ qui le décide. *Exemple : en explorant une caverne, un mineur fait son jet d’Orientation avec un avantage.*
 - **des points d’acquis** dans une ou plusieurs compétences : l’astronome gagne +3 % en Orientation et +3 % en Observation. Quand le métier laisse le choix (le forgeron : +3 % en *Arme Lourde* ou en *Arme Légère*), on choisit la compétence sur sa fiche.
 - **un bonus d’attribut** : à l’initiative, à la vitesse au sol pour le sprint ou à la vitesse de nage.
 - **des objets de départ**, ajoutés à l’inventaire à la création du personnage : un kit de réparation d’arme et un maillet en fer pour le forgeron, une longue-vue pour l’astronome. Quand le métier propose un objet ou un autre, on en choisit un.
@@ -6733,7 +6735,7 @@ Voici les compétences qui existent avec leurs caractéristiques associées :
 
 *Parade (Force) :* Une compétence utilisée pour bloquer les coups avec une arme ou un bouclier.
 
-*Prouesse (Volonté) :* Faire preuve de sang-froid dans les situations dangereuses.
+*Calme (Volonté) :* Faire preuve de sang-froid dans les situations dangereuses.
 
 *Psychologie (Intelligence) :* Permet de comprendre la psychologie de sa cible, déceler le mensonge dans le comportement et les paroles.
 
@@ -6920,7 +6922,7 @@ Les attributs se calculent à partir de la race, de la ou des classes et des mag
 
 - **Santé** (les points de vie) : celle de la race, de la ou des classes et des magies qui en offrent. À 0 ou moins, le personnage tombe dans le coma et doit faire des jets de survie : un seul réussi le stabilise, trois ratés et il meurt.
 - **{{chakra}}** (les points de magie, que dépensent les sorts) : celui de la race, de la ou des classes et des magies. À court de {{chakra|chakra}}, on peut quand même en dépenser : chaque point qui manque coûte 3 points de santé.
-- **{{barriere}}** : une seconde peau magique, qui protège la chair. Elle vaut la moitié du {{chakra|chakra}}, plus les bonus de la race et de la classe. Le mythril la traverse, et le maverium la brise à son contact.
+- **{{barriere}}** : une seconde peau magique, qui protège la chair. Elle vaut la moitié du {{chakra|chakra}}, arrondie à l’inférieur, plus les bonus de la race et de la classe. Le mythril la traverse, et le maverium la brise à son contact.
 - **{{corruption}}** : son maximum est celui du {{chakra|chakra}}. La {{corruption|corruption}} est un poison du {{chakra|chakra}} : chaque point de {{corruption|corruption}} prend la place d’un point de {{chakra|chakra}}. Si elle atteint son maximum, le personnage a deux semaines, dans le jeu, pour en retirer au moins un point ; sinon il meurt et devient une abomination. Seuls ceux qui ont la Corruption en magie innée ou acquise ne risquent pas cette mort, mais la {{corruption|corruption}} prend aussi la place de leur {{chakra|chakra}}. Le Potentiel Illimité, même s’il peut s’en servir, peut en mourir s’il en cumule trop.
 - **Âme** ou **Sang**, la « 4ᵉ barre » : seulement pour la Nécromancie et la magie du Sang. C’est une réserve de 10 points que demandent certains sorts, et qui se recharge de 1 point par tour en combat.
 - **Vitesse** : celle de la race, sur terre et à la nage, en cases par tour. Une armure de la catégorie « Lourd » retire 1 point de vitesse et rend la vitesse de nage nulle (0).
@@ -6955,7 +6957,7 @@ Chaque don est de l’un de ces quatre types :
 - **Les accessoires** : six emplacements, sur la tête, au cou, aux poignets et aux doigts, pour des objets aux effets variés.
 - **Le sac** : la Force dit combien d’emplacements il a, de 24 avec 1 en Force à 48 dès 5 en Force ; chaque emplacement porte un objet et sa quantité. L’inventaire de départ est celui de la ou des classes (étape 3), plus les objets de départ du métier s’il en prend un à la création.
 - **La ceinture** : tout le monde en a une, avec trois emplacements pour des objets à portée de main (fioles, carquois, bâtons magiques…), qui s’utilisent en une {{le-tour-de-jeu|action rapide (IC)}} au lieu d’une action entière. Un emplacement prend au plus 3 exemplaires du même objet. Les carquois et les sacs de bombes ou de pierres doivent y être pour servir ; le bouclier, lui, n’y va pas.
-- **La bourse** : il existe trois monnaies, le Ricken de fer, le Ricken d’or et la Pierre précieuse. À la création, lancez 1D20 : le résultat est votre or de départ.
+- **La bourse** : il existe trois monnaies, le Ricken de fer, le Ricken d’or et la Pierre précieuse. À la création, lancez 1D20 : le résultat est votre or de départ, en Ricken d’or (RO).
 
 ## L’alignement
 
@@ -7351,7 +7353,7 @@ Un personnage qui n’a plus assez de {{chakra|chakra}} peut quand même lancer 
 
 *Exemple : un sort coûte 5 de {{chakra|chakra}} à un personnage qui a 10 de santé, 2 de {{chakra|chakra}} et 3 de {{barriere|barrière}}. Il dépense ses 2 points, et les 3 qui manquent lui coûtent 9 points de santé : il finit à 1 de santé, 0 de {{chakra|chakra}} et 3 de {{barriere|barrière}}.*
 
-En Mode Hyper, les sorts ne coûtent plus de {{chakra|chakra}}, mais le mode lui-même en brûle 10 % du maximum à chaque tour (voir {{mode-hyper|Le Mode Hyper}}).
+En Mode Hyper, les sorts ne coûtent plus de {{chakra|chakra}}, mais le mode lui-même en brûle 10 % du maximum à la fin de chaque tour du joueur (voir {{mode-hyper|Le Mode Hyper}}).
 
 ### La quatrième barre
 
@@ -7421,7 +7423,7 @@ Certains sorts invoquent des créatures : les morts de l’Animation de mort (N�
 
 Pour aller plus loin : {{rater-ses-sortileges}} et {{la-montee-de-niveau}}.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/la-montee-de-niveau', 'guide', 'la-montee-de-niveau', 'La montée de niveau', 'la-montee-de-niveau', 'Du niveau 1 au niveau 20 : l’expérience qu’il faut pour chaque niveau, et ce que chacun apporte en compétences, caractéristiques, santé et chakra, niveaux de classe, magie et Mode Hyper.', NULL, 'Au fil de ses aventures, le personnage accumule de l’**expérience** (XP). Son total d’expérience fixe son **niveau global**, de 1 à 20 : dès qu’il atteint l’expérience demandée pour un niveau, il y passe. Le niveau global règle à son tour le niveau de ses classes et sa puissance magique, et dit ce que le personnage a à répartir.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/la-montee-de-niveau', 'guide', 'la-montee-de-niveau', 'La montée de niveau', 'la-montee-de-niveau', 'Du niveau 1 au niveau 20 : l’expérience qu’il faut pour chaque niveau, et ce que chacun apporte en compétences, caractéristiques, santé et chakra, niveaux de classe, magie et Mode Hyper.', NULL, 'Au fil de ses aventures, le personnage accumule de l’**expérience** (XP). Son total d’expérience fixe son **niveau global**, de 1 à 20 : dès qu’il atteint l’expérience demandée pour un niveau, il y passe. Le niveau global règle à son tour le niveau de ses classes et sa puissance magique, et dit ce que le personnage a à répartir. L’expérience que rapporte une aventure n’a pas de valeur prédéfinie : c’est le MJ qui la décide.
 
 Sur la {{fiche-de-personnage|fiche de personnage}} du site, il suffit de noter l’expérience : le niveau suit, et la jauge d’XP montre le chemin parcouru jusqu’au niveau suivant.
 
@@ -7493,7 +7495,7 @@ Le **Mode Hyper** est un état de surpuissance, qui s’ouvre au **niveau 2** du
 
 Cette dernière règle a ses exceptions :
 
-- les lieux où le chakra est si présent que respirer suffit à récupérer tout son {{chakra|chakra}} : là, tout le monde peut activer son Mode Hyper, et sans même consommer de {{chakra|chakra}} ; mais la limite des 10 tours, elle, reste présente ;
+- les lieux où le chakra est si présent que respirer suffit à récupérer tout son {{chakra|chakra}} : là, tout le monde peut activer son Mode Hyper, et sans même consommer de {{chakra|chakra}} ; mais sa durée, elle, reste limitée par le niveau (voir « Ce qu’il coûte ») ;
 - un objet magique qui permet de l’activer en même temps que quelqu’un d’autre (parmi les effets d’{{accessoires|accessoires}} : « Permet d’avoir son mode hyper en même temps qu’un autre ») ;
 - l’accord du MJ, selon la situation.
 
@@ -7519,13 +7521,13 @@ La page de chaque magie et de chaque race donne l’effet écrit dans son onglet
 
 ## Ce qu’il coûte
 
-- Le Mode Hyper se nourrit de {{chakra|chakra}} : il en brûle **10 % du maximum à chaque tour**.
+- Le Mode Hyper se nourrit de {{chakra|chakra}} : il en brûle **10 % du maximum à chaque tour**, à la fin du tour du joueur.
 - Tant qu’il dure, le {{chakra|chakra}} ne se récupère pas : ni fiole bleue (ni rien d’autre qui en redonne), ni méditation, ni repos.
-- Il dure au plus **le niveau global divisé par 2**, en tours, même s’il reste du {{chakra|chakra}} en réserve. Un effet d’accessoire y ajoute un tour (pas au Mode Hyper 100 %).
+- Il dure au plus **le niveau global divisé par 2, arrondi à l’inférieur**, en tours, même s’il reste du {{chakra|chakra}} en réserve. Un effet d’accessoire y ajoute un tour (pas au Mode Hyper 100 %).
 
-*Exemple : un personnage de niveau 8, qui a 60 de {{chakra|chakra}} au maximum, en perd 6 à chaque tour de Mode Hyper, pendant 4 tours au plus ; ses sorts, eux, ne lui coûtent rien pendant ce temps.*
+*Exemple : un personnage de niveau 8, qui a 60 de {{chakra|chakra}} au maximum, en perd 6 à chaque tour de Mode Hyper, pendant 4 tours au plus ; ses sorts, eux, ne lui coûtent rien pendant ce temps. Au niveau 9, il durerait aussi 4 tours au plus : 9 ÷ 2 = 4,5, arrondi à 4.*
 
-À court de {{chakra|chakra}}, en Mode Hyper ou non, on peut toujours en dépenser : chaque point qui manque se paie de **3 points de santé**.
+À court de {{chakra|chakra}}, en Mode Hyper ou non, on peut toujours en dépenser : chaque point qui manque se paie de **3 points de santé**. Il en va de même des 10 % que le Mode Hyper brûle à la fin du tour : si le {{chakra|chakra}} est épuisé, ce qui manque se paie en santé, 3 points par point de {{chakra|chakra}}, sans toucher la {{barriere|barrière}}.
 
 ## Au-delà des limites
 
@@ -7540,8 +7542,6 @@ On peut garder son Mode Hyper au-delà de ses limites, quand la réserve de {{ch
 ## Sur la fiche du site
 
 Sur la {{fiche-de-personnage|fiche de personnage}} du site, le Mode Hyper apparaît à côté des postures dès le niveau 2, et le Mode Hyper 100 % au niveau 10. Comme une posture, il s’active d’une case : la fiche compte alors ses bonus, ses résistances et les effets chiffrés de votre magie et de votre race. Deux boutons retirent le chakra de chaque tour et celui de la sortie du Mode Hyper 100 %, et un compteur garde son usage de la semaine.
-
-Le classeur des magies garde, dans un onglet masqué, une autre liste des effets du Mode Hyper, aux valeurs différentes : cette liste ne compte pas, ce sont les valeurs données plus haut (+15, et +7 avec deux magies) qui valent.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/le-mode-hyper-100', 'guide', 'le-mode-hyper-100', 'Mode Hyper 100 %', 'mode-hyper-100', 'Dès le niveau 10, le personnage peut aller plus loin.', NULL, 'Dès le **niveau 10**, le personnage peut aller plus loin. Il se concentre pour renfermer en lui l’aura qui déferle en Mode Hyper : une fois scellée dans son corps, sa puissance est à son comble. D’où le nom : il est à pleine puissance tant que l’aura reste enfouie. Pendant ce temps :
 
@@ -7572,7 +7572,7 @@ Avant de faire quoi que ce soit, le personnage dont c’est le tour subit ce qui
 
 ### 3. La posture
 
-Il déclare sa posture de combat. Elle décide en grande partie de ce qu’il pourra faire ensuite : attaquer plus fort, se défendre, se concentrer sur sa magie… (voir {{posture|Les postures}}). Le MJ, lui, peut annoncer celle de ses ennemis à demi-mot, pour laisser les joueurs la deviner.
+Il prend sa posture de combat, ou change celle qu’il avait : on garde sa posture tant qu’on n’en change pas. Elle décide en grande partie de ce qu’il pourra faire ensuite : attaquer plus fort, se défendre, se concentrer sur sa magie… (voir {{posture|Les postures}}). Le MJ, lui, peut annoncer celle de ses ennemis à demi-mot, pour laisser les joueurs la deviner.
 
 ### 4. Le déplacement
 
@@ -7675,7 +7675,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ## Le calcul, étape par étape
 
 1. **La posture de l’attaquant règle les dés.** En posture offensive, les dégâts sont au maximum et l’on ne lance pas les dés : 2d6+2 font 14, 6d6+4 font 40. En posture focus, les dés de dégâts des sorts montent d’un cran : D4, D6, D8, D10, D12, puis D20, jamais au-delà.
-2. **On lance les dés** de l’arme ou du sort, et l’on ajoute leurs bonus.
+2. **On lance les dés** de l’arme ou du sort, et l’on ajoute leurs bonus, ainsi que les bonus fixes de dégâts : viser la tête (+10), la tenaille (+4), le +8 d’un échec critique en défense, le Mode Hyper… Ils comptent avec les dégâts de base.
 3. **Réussite critique de l’attaquant** : les dégâts sont multipliés par 2.
 4. **Attaquant en posture défensive** : ses dégâts sont divisés par 2, avant de retirer l’armure. Cette posture divise les dégâts que l’on inflige, pas ceux que l’on reçoit.
 5. **On retire l’armure de la cible** : son armure physique (AP) contre une arme, son armure magique (AM) contre un sort.
@@ -7718,7 +7718,7 @@ Les trois exemples du {{guide-pour-mj-maverick|Doc « Guide pour MJ »}}, refait
 
 ## Ce qui ajoute des dégâts
 
-D’autres règles ajoutent des dégâts à l’attaque :
+D’autres règles ajoutent des dégâts à l’attaque. Ils comptent avec les dégâts de base (étape 2) : une réussite critique les double donc aussi.
 
 - **viser la tête** : +10 dégâts, au prix de −25 % pour toucher ;
 - **la prise en tenaille** : +4 dégâts à deux alliés, +4 encore à trois ;
@@ -7730,7 +7730,7 @@ Le détail est dans {{attaquer-et-se-defendre}}, {{mode-hyper|Le Mode Hyper}} et
 
 ## Et la barrière ?
 
-La {{barriere|barrière}} est une seconde peau magique qui protège la chair : une sorte de santé magique, qui vaut la moitié du {{chakra|chakra}} total (plus ce qu’offrent certaines races et classes). Plus un personnage a de {{chakra|chakra}}, plus sa {{barriere|barrière}} est grande ; mais certains matériaux d’arme la contrent, comme le **Mythril**, qui passe à travers, ou le **Maverium**, qui la brise à son contact, si colossale soit-elle. Une arme de **Laiton**, elle, fait des dégâts doublés contre la {{barriere|barrière}} (voir l’onglet {{composants|Matériaux}} des composants).
+La {{barriere|barrière}} est une seconde peau magique qui protège la chair : une sorte de santé magique, qui vaut la moitié du {{chakra|chakra}} total, arrondie à l’inférieur (plus ce qu’offrent certaines races et classes). Plus un personnage a de {{chakra|chakra}}, plus sa {{barriere|barrière}} est grande ; mais certains matériaux d’arme la contrent, comme le **Mythril**, qui passe à travers, ou le **Maverium**, qui la brise à son contact, si colossale soit-elle. Une arme de **Laiton**, elle, fait des dégâts doublés contre la {{barriere|barrière}} (voir l’onglet {{composants|Matériaux}} des composants).
 
 Elle prend les coups avant la santé, sauf contre-indication : une fois qu’elle est vide, ce qui reste des dégâts baisse la santé, qui peut alors devenir négative (voir {{blessure-et-mort|Blessures et états}}). Un coût payé en santé ({{chakra|chakra}} manquant, coût d’un sort ou d’un don) ne passe pas par elle, sauf si un texte le précise. Deux dons du Médusain la rendent moins touchée : « La barrière prend deux fois moins de dégâts physiques » (Barrière résistante) et « … magiques » (Barrière isolante). Contre une arme de Laiton, ces deux effets se compensent ; une arme de Maverium, elle, casse la barrière sans tenir compte du Médusain.
 
@@ -8004,7 +8004,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 ## Déclarer sa posture
 
-- Au début de son tour, une fois subis les effets du début du tour (poison, brûlure…), chaque personnage **déclare sa posture, avant de faire quoi que ce soit d’autre** (voir {{le-tour-de-jeu}}).
+- **On garde sa posture tant qu’on n’en change pas.** C’est au début de son tour, une fois subis les effets du début du tour (poison, brûlure…), et avant de faire quoi que ce soit d’autre, qu’un personnage prend sa posture ou en change (voir {{le-tour-de-jeu}}).
 - Ce choix décide en grande partie de ce qu’il pourra faire ensuite : attaquer, lancer ses sorts, mais aussi se défendre quand ce n’est pas son tour, car c’est sa posture qui dit combien de fois il peut parer ou esquiver.
 - Le MJ joue aussi des postures pour ses ennemis. Il peut les annoncer à demi-mot, pour laisser les joueurs deviner à quoi ils ont affaire.
 
@@ -8030,8 +8030,8 @@ La posture de l’attaque : pour frapper et faire le plus de dégâts possible.
 À l’opposé de l’offensive : pour couvrir ses alliés ou tenir face à de nombreux assauts.
 
 - **Plus d’armure** : +2 AP et +2 AM, et 2 de plus tous les 4 niveaux globaux. Soit +2 du niveau 1 au niveau 4, +4 du 5 au 8, +6 du 9 au 12, +8 du 13 au 16 et +10 du 17 au 20.
-- **Parades et esquives sans limite** : autant de défenses qu’il y a de coups, mais chacune fait baisser de 10 % la réussite de la suivante. Le Doc « Créer sa fiche de personnage » compte ce malus dès la première défense ; le {{guide-pour-mj-maverick|Doc « Guide pour MJ »}} seulement au-delà de deux.
-- **Provocation** : en échange d’un bon dialogue et d’un jet réussi de *Diplomatie*, d’*Intimidation* ou de *Manipulation*, un adversaire est obligé de n’attaquer que vous pendant 1 tour. (Le Doc « Guide pour MJ » se contente du dialogue **ou** du jet.)
+- **Parades et esquives sans limite** : autant de défenses qu’il y a de coups, mais au-delà de deux parades ou esquives, chacune fait baisser de 10 % la réussite de la suivante.
+- **Provocation** : en échange d’un bon dialogue ou d’un jet réussi de *Diplomatie*, d’*Intimidation* ou de *Manipulation*, un adversaire est obligé de n’attaquer que vous pendant 1 tour.
 - **Intervention** : parer ou esquiver un coup à la place d’un allié adjacent. Ce n’est pas possible si vous êtes tous les deux pris dans la même attaque de zone.
 - **Réussite critique à 10 ou moins** quand vous parez ou esquivez ; toutes sources ensemble, elle ne dépasse jamais 1 à 15.
 - **Contre une attaque d’opportunité**, seule la posture défensive permet de parer ou d’esquiver.
@@ -8049,7 +8049,7 @@ L’entre-deux : des dégâts normaux, et de quoi se défendre.
 La concentration : pour une magie plus efficace.
 
 - **+10 % à la réussite**, quel que soit le jet.
-- **Plus de tour de charge** : les sorts de niveau 5 se lancent sans tour de charge (voir {{la-magie-en-jeu}}), comme certaines actions. La posture casse aussi le tour de charge de la capacité *Préparation* du Mage Rouge et Vert.
+- **Plus de tour de charge** : les sorts de niveau 5 se lancent sans tour de charge (voir {{la-magie-en-jeu}}), comme certaines actions. La posture casse aussi le tour de charge des capacités *Préparation* (Mage Rouge) et *Chargement* (Mage Vert).
 - **Des dés plus forts** pour les dégâts et les soins des sorts : chaque dé monte d’un cran, D4, D6, D8, D10, D12, puis D20, jamais au-delà.
 - *Inconvénient* : **ni parade ni esquive**.
 
@@ -8059,9 +8059,9 @@ L’attention : pour voir venir, autour de soi comme dans le combat.
 
 - **+5 % aux jets de Perception**.
 - **+2 à l’initiative**, au début de chaque tour.
-- **Anticiper l’adversaire** : un jet d’*Observation* (ou de *Distinction*, d’après le Doc « Créer sa fiche de personnage ») donne une information utile sur sa prochaine action ; voyez avec le MJ.
+- **Anticiper l’adversaire** : un jet d’*Observation* donne une information utile sur sa prochaine action ; voyez avec le MJ.
 - **Repérer un ennemi invisible** : estimer la position d’un ennemi invisible ou discret devient une action rapide (IC).
-- **Repérer 1d4 résistance/vulnérabilité**, comme l’écrivent les deux documents : une action rapide (IC) permet de détecter une résistance ou une vulnérabilité de l’ennemi, prise au hasard.
+- **Repérer 1d4 résistances ou vulnérabilités** : une action rapide (IC) permet de détecter 1d4 résistances ou vulnérabilités de l’ennemi.
 - **Déjouer une embuscade** : un personnage en vigilance qui entre dans la zone d’une embuscade l’annule (voir {{embuscade|L''embuscade}}).
 - *Inconvénient* : **une seule parade ou esquive par tour**.
 
@@ -8072,8 +8072,7 @@ Une posture étrange : le personnage fusionne avec sa magie et devient presque u
 - **+5 aux dégâts et aux soins** des sorts de sa magie, et 2 de plus par niveau de puissance magique au-delà du premier : +5 au premier niveau, puis +7, +9, +11, et +13 au cinquième, qu’un personnage à deux magies n’atteint pas.
 - **+4 AM**, et 2 de plus par niveau de puissance magique au-delà du premier : +4, puis +6, +8, +10 et +12.
 - **Immunité à la magie de la symbiose** : elle vous envahit, et vous y devenez totalement immunisé.
-- Le Doc « Guide pour MJ » ajoute **un tour d’effet gratuit** aux effets de vos sorts qui durent plusieurs tours ; le Doc « Créer sa fiche de personnage » ne le dit pas.
-- *Inconvénient* : **ni armes ni objets**, sauf la Forgemagie (un sort qui crée des armes faites de magie) ; les bâtons magiques restent permis ; le Doc « Guide pour MJ » permet aussi la « Forge de ses morts » et les parchemins.
+- *Inconvénient* : **ni armes ni objets** : on ne peut que lancer des sorts, et la Forgemagie (qui crée des armes faites de magie) et la « Forge de ses morts » en sont. Les parchemins restent permis, et les effets passifs restent actifs : accessoires, bâtons magiques, armure et bouclier portés.
 - Exception (décision R167) : l’arme élémentaire de la magie de la symbiose reste utilisable et reçoit le bonus de dégâts de la posture ; les autres armes restent interdites (décision R112).
 - *Inconvénient* : **une seule parade ou esquive par tour**.
 - *Inconvénient* : **une seule magie active** : avec deux magies, l’autre est désactivée le temps de la posture, et tous ses avantages et ses inconvénients avec elle.
@@ -8384,7 +8383,7 @@ C''est un équivalent du mode hyper mais en moins puissant. Au lieu de faire une
 
 Il est nécessaire au porteur de l''arme de réussir à attendre une parfaite harmonie avec son objet pour ne faire plus qu''un avec ce dernier. Les maîtres du jeu seront seuls juges de ça.
 
-Tout comme le mode hyper, le mode super est limité dans le temps, au maximum un nombre de tours équivalent au niveau global divisé par 2. Contrairement au mode hyper, il n''y a pas de possibilité d''aller au-delà des limites mais il est possible d''activer le mode super malgré que quelqu''un utilise son mode hyper ou super. Il est nécessaire d''attendre 1 semaine pour que le mode super soit de nouveau disponible (comme pour le mode hyper) et il est possible d''utiliser le mode hyper et super dans le même combat, pas en même temps.
+Tout comme le mode hyper, le mode super est limité dans le temps, au maximum un nombre de tours équivalent au niveau global divisé par 2, arrondi à l''inférieur. Contrairement au mode hyper, il n''y a pas de possibilité d''aller au-delà des limites mais il est possible d''activer le mode super malgré que quelqu''un utilise son mode hyper ou super. Il est nécessaire d''attendre 1 semaine pour que le mode super soit de nouveau disponible (comme pour le mode hyper) et il est possible d''utiliser le mode hyper et super dans le même combat, pas en même temps.
 
 ## Bonus du Mode Super
 
@@ -8695,7 +8694,7 @@ La réussite critique ne dépasse jamais 1 à 15, toutes sources ensemble, tenai
 
 ## Les zones d’influence
 
-Les cases devant un adversaire, derrière lui, à sa gauche et à sa droite forment sa **zone d’influence**. Entrer dans la zone d’influence d’un adversaire puis la traverser lui permet une attaque d’opportunité ; la quitter lui permet une attaque gratuite, que le Doc « Guide pour MJ » range aussi parmi les attaques d’opportunité (voir {{attaque-dopportunite|Les attaques d''opportunité}}).
+Les cases devant un adversaire, derrière lui, à sa gauche et à sa droite forment sa **zone d’influence**. Entrer dans la zone d’influence d’un adversaire puis la traverser lui permet une attaque d’opportunité ; la quitter aussi, avec les limites de toute attaque d’opportunité (voir {{attaque-dopportunite|Les attaques d''opportunité}}).
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/rater-ses-sortileges', 'guide', 'rater-ses-sortileges', 'Rater ses sortilèges', 'rater-ses-sortileges', 'Cela arrive à tout le monde de rater des sorts, lors d’un échec d’un sort, la moitié du coût en chakra est quand même consommé.', NULL, 'Cela arrive à tout le monde de rater des sorts, lors d’un échec d’un sort, la moitié du coût en {{chakra|chakra}} est quand même consommé. Si le nombre est impair, la règle de Maverick dit “toujours arrondi à l’inférieur”
 
@@ -8716,7 +8715,7 @@ Chaque magie possède ses efficacités, ses résistances et ses vulnérabilités
 - Le duo Ombre/Lumière fonctionne en dualité, ils sont efficaces mutuellement et résistent à eux-mêmes.
 - Le duo Vide/Espace Temps fonctionne en dualité, ils sont efficaces mutuellement et résistent à eux-mêmes.
 
-La posture **Vigilance** permet de repérer une résistance ou une vulnérabilité d’un ennemi, prise au hasard.
+La posture **Vigilance** permet de repérer 1d4 résistances ou vulnérabilités d’un ennemi.
 
 Les dégâts physiques ont aussi leurs paliers, estoc, frappe et taille, qui se comptent de la même façon. Le Potentiel Illimité a un cran de moins contre chacun (« Surtension corporelle ») : il prend deux fois plus de dégâts physiques que les autres. Ce malus est annulé tant que dure son Mode Hyper (voir {{mode-hyper|Le Mode Hyper}}).
 
@@ -8788,7 +8787,7 @@ L’action réussit de façon exceptionnelle, et mérite une récompense à sa m
 
 Certaines postures de combat élargissent la réussite critique : la posture offensive pour les six jets d’attaque (*Arc*, *Arbalète*, *Arme Légère*, *Arme Lourde*, *Magie* et *Concentration*), la posture défensive pour parer ou esquiver (le détail est dans {{posture|Les postures}}). Prendre un ennemi en tenaille à quatre donne aussi +5 % de réussite critique aux alliés. Un score au-delà de 95 % l’élargit encore (voir « Le score » dans {{reussir-une-action}}), comme certains dons, sorts, armes et accessoires.
 
-Mais **la réussite critique ne dépasse jamais 1 à 15, toutes sources ensemble** (posture, score, dons, sorts, armes, accessoires, tenaille).
+Mais **la réussite critique ne dépasse jamais 1 à 15, toutes sources ensemble** (posture, score, dons, sorts, armes, accessoires, tenaille). À l’autre bout, elle **ne descend jamais sous 1 à 1**, même quand des accessoires maudits la réduisent.
 
 Une réussite critique ne rend pas tout possible : certaines actions restent impossibles, quels que soient les efforts. Le MJ peut toutefois laisser tenter une action normalement irréalisable, mais encore possible en théorie : elle ne réussira alors que sur une réussite critique. Il reste seul juge de ce qui est possible, improbable ou impossible.
 
@@ -18275,7 +18274,7 @@ Les utilisateurs de la glace ont les mèches bleu cyan, des cheveux assez courts
 - **Chakra offert** : 5.0
 - **Caractéristiques bonus** : INTELLIGENCE
 - **Résistance magique** : Glace, Nécromancie, Sang
-- **Résistance altération d''état** : Gelé, Poison, Saignement
+- **Résistance altération d''état** : Gel, Poison, Saignement
 - **Vulnérabilité magique** : Feu, Vent
 - **Vulnérabilité altération d''état** : Brûlure, Surdité
 
@@ -18511,7 +18510,7 @@ Les nécromanciens sont généralement plus minces que la moyenne, voire maigres
 - **Résistance magique** : Nécromancie, Sang, Foudre
 - **Résistance altération d''état** : Poison, Saignement, Paralysie
 - **Vulnérabilité magique** : Glace, Eau
-- **Vulnérabilité altération d''état** : Gelé, Confusion
+- **Vulnérabilité altération d''état** : Gel, Confusion
 - **Magie non compatible** : Sang
 
 ## Capacité Mode Hyper
@@ -19261,7 +19260,7 @@ Les utilisateurs du feu ont certaines mèches rouges vif, les yeux rouges lors d
 - **Chakra offert** : 5.0
 - **Caractéristiques bonus** : SOCIAL
 - **Résistance magique** : Feu, Glace, Terre
-- **Résistance altération d''état** : Brûlure, Gelé, Pétrification
+- **Résistance altération d''état** : Brûlure, Gel, Pétrification
 - **Vulnérabilité magique** : Eau, Vent
 - **Vulnérabilité altération d''état** : Confusion, Surdité
 
@@ -19377,7 +19376,7 @@ La magie du Sang marque beaucoup sur la taille et la musculature qui est plus é
 - **Résistance magique** : Sang, Eau, Terre
 - **Résistance altération d''état** : Saignement, Confusion, Pétrification
 - **Vulnérabilité magique** : Glace, Nécromancie
-- **Vulnérabilité altération d''état** : Gelé, Poison
+- **Vulnérabilité altération d''état** : Gel, Poison
 - **Magie non compatible** : Arcane, Espace/Temps, Corruption, Nécromancie
 
 ## Capacité Mode Hyper
@@ -19506,7 +19505,7 @@ Les spécialistes du Vent ont les cheveux mi-longs, mèches vert clair, les yeux
 - **Chakra offert** : 5.0
 - **Caractéristiques bonus** : AGILITÉ
 - **Résistance magique** : Vent, Feu, Glace
-- **Résistance altération d''état** : Surdité, Brûlure, Gelé
+- **Résistance altération d''état** : Surdité, Brûlure, Gel
 - **Vulnérabilité magique** : Foudre, Terre
 - **Vulnérabilité altération d''état** : Paralysie, Pétrification
 
@@ -25259,7 +25258,7 @@ Puis lancer 1d20 pour déterminer le bonus d''acquis
 | 12.0 | (Action) Rend le lanceur Insensible pendant 3 tours. | Niveau 5 | Gypse + Onyx | 249 Ro |
 | 13.0 | Augmente le malus de visée de 5% pour toutes les parties du corps (sauf torse) | Niveau 3 | Diamant rose + Rubis | 102 Ro |
 | 14.0 | Les AP de base augmentent de 5 | Niveau 4 | Ambre + Malachite | 97 Ro |
-| 15.0 | Résistance Glace et Gelé | Niveau 3 | Turquoise + Turquoise | 84 Ro |
+| 15.0 | Résistance Glace et Gel | Niveau 3 | Turquoise + Turquoise | 84 Ro |
 | 16.0 | Résistance Terre et Pétrification | Niveau 3 | Ambre + Ambre | 94 Ro |
 | 17.0 | Résistance Vent et Surdité | Niveau 3 | Émeraude + Émeraude | 74 Ro |
 | 18.0 | Résistance Foudre et Paralysie | Niveau 3 | Topaze + Topaze | 74 Ro |
@@ -25636,7 +25635,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'docs', 'Google Doc « Alchimie »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('ressources/armes', 'ressources', 'armes', 'Armes', 'armes', 'Toutes les armes ont de base 2 crans de solidité,  les armes de corps à corps non spécifiées n''ont que 1 de portée', NULL, 'Toutes les armes ont de base 2 crans de solidité,  les armes de corps à corps non spécifiées n''ont que 1 de portée
 
-Pour fabriquer une arme, il faut avoir un lingot , un peu de bois, un fourneau, une enclume et être le métier forgeron (le métier n''est pas obligatoire mais il est recommandé car il permet d''esquiver un énorme malus de 40% à la fabrication). Les caractéristiques Force et Intelligence seront utilisées lors du test d''artisanat.
+Pour fabriquer une arme, il faut avoir un lingot , un peu de bois, un fourneau, une enclume et être le métier forgeron (le métier n''est pas obligatoire mais il est recommandé car il permet d''esquiver un énorme malus de 40% à la fabrication). Les caractéristiques Force et Volonté seront utilisées lors du test d''artisanat.
 
 Pour recycler ou reforger une arme, le métier de forgeron est INDISPENSABLE.
 
@@ -26109,7 +26108,7 @@ Note de mise en page : la source présente cette liste sous forme de grille (« 
 | Bois | Écailles | Armure Bois/Écailles | 499 | Intermédiaire | +9AP +9AM | 2 | Taille | Estoc |
 | Bois | Vif Argent | Armure Bois/Vif Argent | 1 819 | Intermédiaire | +11AP +11AM | 2 | x2 Taille | x2 Frappe |
 | Bois | Argent | Armure Bois/Argent | 229 | Lourd | +11AP +1AM | 2 | x2 Taille | x2 Frappe |
-| Bois | Fonte | Armure Bois/Fonte | 259 | Lourd | +17AP +1AM | 1 | x2 Taille | x2 Frappe |
+| Bois | Fonte | Armure Bois/Fonte | 259 | Lourd | +16AP +1AM | 1 | x2 Taille | x2 Frappe |
 | Bois | Bronze | Armure Bois/Bronze | 529 | Lourd | +7AP +7AM | 2 | Estoc/Taille | x2 Frappe |
 | Bois | Laiton | Armure Bois/Laiton | 559 | Lourd | +6AP +13AM | 2 | Taille | Estoc |
 | Bois | Or | Armure Bois/Or | 619 | Lourd | +13AP +6AM | 2 |  | Frappe |
@@ -26170,28 +26169,28 @@ Note de mise en page : la source présente cette liste sous forme de grille (« 
 | Chitine | Fer | Armure Chitine/Fer | 160 | Intermédiaire | +9AP +1AM | 3 | Estoc/Taille | x2 Frappe |
 | Chitine | Acier | Armure Chitine/Acier | 220 | Intermédiaire | +11AP +1AM | 3 | Estoc/Taille | x2 Frappe |
 | Chitine | Fer Noir | Armure Chitine/Fer Noir | 310 | Intermédiaire | +10AP +3AM | 3 | x2 Estoc | x2 Frappe |
-| Chitine | Corne/Os | Armure Chitine/Corne | 280 | Intermédiaire | +13AP +2AM | 3 |  | Estoc |
+| Chitine | Corne/Os | Armure Chitine/Corne | 280 | Intermédiaire | +13AP +1AM | 3 |  | Estoc |
 | Chitine | Cuivre | Armure Chitine/Cuivre | 340 | Intermédiaire | +7AP +7AM | 2 | x2 Estoc | x2 Frappe |
 | Chitine | Écailles | Armure Chitine/Écailles | 580 | Intermédiaire | +13AP +9AM | 3 |  | Estoc |
 | Chitine | Vif Argent | Armure Chitine/Vif Argent | 1 900 | Intermédiaire | +15AP +11AM | 3 | Estoc/Taille | x2 Frappe |
 | Chitine | Argent | Armure Chitine/Argent | 310 | Lourd | +15AP +1AM | 3 | Estoc/Taille | x2 Frappe |
 | Chitine | Fonte | Armure Chitine/Fonte | 340 | Lourd | +20AP +1AM | 2 | Estoc/Taille | x2 Frappe |
 | Chitine | Bronze | Armure Chitine/Bronze | 610 | Lourd | +11AP +7AM | 3 | x2 Estoc | x2 Frappe |
-| Chitine | Laiton | Armure Chitine/Laiton | 630 | Lourd | +10AP +13AM | 3 |  | Frappe |
-| Chitine | Or | Armure Chitine/Or | 690 | Lourd | +17AP +6AM | 3 | Estoc | Taille |
-| Chitine | Titane | Armure Chitine/Titane | 1 290 | Lourd | +18AP +8AM | 3 | Taille | Frappe |
-| Chitine | Maverium | Armure Chitine/Maverium | 2 490 | Lourd | +25AP +21AM | 3 | Estoc/Taille | x2 Frappe |
+| Chitine | Laiton | Armure Chitine/Laiton | 640 | Lourd | +10AP +13AM | 3 |  | Frappe |
+| Chitine | Or | Armure Chitine/Or | 700 | Lourd | +17AP +6AM | 3 | Estoc | Taille |
+| Chitine | Titane | Armure Chitine/Titane | 1 300 | Lourd | +18AP +8AM | 3 | Taille | Frappe |
+| Chitine | Maverium | Armure Chitine/Maverium | 2 500 | Lourd | +25AP +21AM | 3 | Estoc/Taille | x2 Frappe |
 
 ### Ligne : Mythril
 
 | Ligne | Colonne | Nom | Prix | Type | Stats | Solidité | Résistance | Faiblesse |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Mythril | Mythril | Armure Mythril complète | 2 400 | Léger | +16AP +20AM | 4 | Taille | Frappe |
+| Mythril | Mythril | Armure Mythril complète | 2 410 | Léger | +16AP +20AM | 4 | Taille | Frappe |
 | Mythril | Fer | Armure Mythril/Fer | 1 270 | Intermédiaire | +12AP +10AM | 3 | x2 Taille | x2 Frappe |
 | Mythril | Acier | Armure Mythril/Acier | 1 330 | Intermédiaire | +14AP+10AM | 3 | x2 Taille | x2 Frappe |
 | Mythril | Fer Noir | Armure Mythril/Fer Noir | 1 420 | Intermédiaire | +13AP +12AM | 3 | Estoc/Taille | x2 Frappe |
 | Mythril | Corne/Os | Armure Mythril/Corne | 1 390 | Intermédiaire | +16AP+10AM | 3 | Taille | Estoc |
-| Mythril | Cuivre | Armure Mythril/Cuivre | 1 450 | Intermédiaire | +12AP +16AM | 3 | Estoc/Taille | x2 Frappe |
+| Mythril | Cuivre | Armure Mythril/Cuivre | 1 450 | Intermédiaire | +10AP +16AM | 3 | Estoc/Taille | x2 Frappe |
 | Mythril | Écailles | Armure Mythril/Écailles | 1 690 | Intermédiaire | +16AP +18AM | 4 | Taille | Estoc |
 | Mythril | Vif Argent | Armure Mythril/Vif Argent | 3 010 | Intermédiaire | +18AP +20AM | 4 | x2 Taille | x2 Frappe |
 | Mythril | Argent | Armure Mythril/Argent | 1 420 | Lourd | +18AP +10AM | 3 | x2 Taille | x2 Frappe |
@@ -26225,7 +26224,7 @@ Note de mise en page : la source présente cette liste sous forme de grille (« 
 
 | Ligne | Colonne | Nom | Prix | Type | Stats | Solidité | Résistance | Faiblesse |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Acier | Acier | Armure Acier complète | 240 | Intermédiaire | +12AP | 3 | Taille | Frappe |
+| Acier | Acier | Armure Acier complète | 250 | Intermédiaire | +12AP | 3 | Taille | Frappe |
 | Acier | Fer Noir | Armure Acier/Fer Noir | 340 | Intermédiaire | +11AP +2AM | 3 | Estoc/Taille | x2 Frappe |
 | Acier | Corne/Os | Armure Acier/Corne | 310 | Intermédiaire | +14AP | 3 | Taille | Estoc |
 | Acier | Cuivre | Armure Acier/Cuivre | 370 | Intermédiaire | +8AP +6AM | 2 | Estoc/Taille | x2 Frappe |
@@ -26243,11 +26242,11 @@ Note de mise en page : la source présente cette liste sous forme de grille (« 
 
 | Ligne | Colonne | Nom | Prix | Type | Stats | Solidité | Résistance | Faiblesse |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Fer Noir | Fer Noir | Armure Fer Noir complète | 420 | Intermédiaire | +10AP +4AM | 3 | Estoc | Frappe |
+| Fer Noir | Fer Noir | Armure Fer Noir complète | 430 | Intermédiaire | +10AP +4AM | 3 | Estoc | Frappe |
 | Fer Noir | Corne/Os | Armure Fer Noir/Corne | 400 | Intermédiaire | +13AP +2AM | 3 |  | Estoc |
 | Fer Noir | Cuivre | Armure Fer Noir/Cuivre | 460 | Intermédiaire | +7AP +8AM | 2 | x2 Estoc | x2 Frappe |
 | Fer Noir | Écailles | Armure Fer Noir/Écailles | 700 | Intermédiaire | +13AP +10AM | 3 |  | Estoc |
-| Fer Noir | Vif Argent | Armure Fer Noir/Vif-Argent | 2 210 | Intermédiaire | +15AP +12AM | 3 | Estoc/Taille | x2 Frappe |
+| Fer Noir | Vif Argent | Armure Fer Noir/Vif-Argent | 2 020 | Intermédiaire | +15AP +12AM | 3 | Estoc/Taille | x2 Frappe |
 | Fer Noir | Argent | Armure Fer Noir/Argent | 430 | Lourd | +15AP +2AM | 3 | Estoc/Taille | x2 Frappe |
 | Fer Noir | Fonte | Armure Fer Noir/Fonte | 460 | Lourd | +20AP +2AM | 2 | Estoc/Taille | x2 Frappe |
 | Fer Noir | Bronze | Armure Fer Noir/Bronze | 730 | Lourd | +11AP +8AM | 3 | x2 Estoc | x2 Frappe |
@@ -26266,11 +26265,11 @@ Note de mise en page : la source présente cette liste sous forme de grille (« 
 | Corne/Os | Vif Argent | Armure Corne/Vif Argent | 1 990 | Intermédiaire | +18AP +10AM | 3 | Taille | Estoc |
 | Corne/Os | Argent | Armure Corne/Argent | 400 | Lourd | +18AP | 3 | Taille | Estoc |
 | Corne/Os | Fonte | Armure Corne/Fonte | 430 | Lourd | +23AP | 2 | Taille | Estoc |
-| Corne/Os | Bronze | Armure Corne/Bronze | 800 | Lourd | +14AP +6AM | 3 |  | Frappe |
-| Corne/Os | Laiton | Armure Corne/Laiton | 830 | Lourd | +13AP +12AM | 3 | x2 Frappe | x2 Estoc |
-| Corne/Os | Or | Armure Corne/Or | 890 | Lourd | +20AP +5AM | 3 | x2 Frappe | Estoc/Taille |
-| Corne/Os | Titane | Armure Corne/Titane | 1 490 | Lourd | +21AP +7AM | 3 | Taille/Frappe | x2 Estoc |
-| Corne/Os | Maverium | Armure Corne/Maverium | 2 690 | Lourd | +28AP +20AM | 3 | Taille | Estoc |
+| Corne/Os | Bronze | Armure Corne/Bronze | 700 | Lourd | +14AP +6AM | 3 |  | Frappe |
+| Corne/Os | Laiton | Armure Corne/Laiton | 730 | Lourd | +13AP +12AM | 3 | x2 Frappe | x2 Estoc |
+| Corne/Os | Or | Armure Corne/Or | 790 | Lourd | +20AP +5AM | 3 | x2 Frappe | Estoc/Taille |
+| Corne/Os | Titane | Armure Corne/Titane | 1 390 | Lourd | +21AP +7AM | 3 | Taille/Frappe | x2 Estoc |
+| Corne/Os | Maverium | Armure Corne/Maverium | 2 590 | Lourd | +28AP +20AM | 3 | Taille | Estoc |
 
 ### Ligne : Cuivre
 
@@ -26278,14 +26277,14 @@ Note de mise en page : la source présente cette liste sous forme de grille (« 
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Cuivre | Cuivre | Armure Cuivre complète | 490 | Intermédiaire | +4AP +12AM | 2 | Estoc | Frappe |
 | Cuivre | Écailles | Armure Cuivre/Écailles | 730 | Intermédiaire | +10AP +14AM | 3 |  | Estoc |
-| Cuivre | Vif Argent | Armure Cuivre/Vif Argent | 2 050 | Intermédiaire | +16AP +10AM | 3 | Estoc/Taille | x2 Frappe |
+| Cuivre | Vif Argent | Armure Cuivre/Vif Argent | 2 050 | Intermédiaire | +12AP +16AM | 3 | Estoc/Taille | x2 Frappe |
 | Cuivre | Argent | Armure Cuivre/Argent | 460 | Lourd | +12AP +6AM | 2 | Estoc/Taille | x2 Frappe |
 | Cuivre | Fonte | Armure Cuivre/Fonte | 490 | Lourd | +17AP +6AM | 1 | Estoc/Taille | x2 Frappe |
-| Cuivre | Bronze | Armure Cuivre/Bronze | 860 | Lourd | +8AP +12AM | 3 | x2 Estoc | x2 Frappe |
-| Cuivre | Laiton | Armure Cuivre/Laiton | 890 | Lourd | +7AP +18AM | 2 |  | Frappe |
-| Cuivre | Or | Armure Cuivre/Or | 950 | Lourd | +14AP +11AM | 2 | Estoc | Taille |
-| Cuivre | Titane | Armure Cuivre/Titane | 1 550 | Lourd | +15AP +13AM | 3 | Taille | Frappe |
-| Cuivre | Maverium | Armure Cuivre/Maverium | 2 750 | Lourd | +22AP +26AM | 3 | Estoc/Taille | x2 Frappe |
+| Cuivre | Bronze | Armure Cuivre/Bronze | 760 | Lourd | +8AP +12AM | 3 | x2 Estoc | x2 Frappe |
+| Cuivre | Laiton | Armure Cuivre/Laiton | 790 | Lourd | +7AP +18AM | 2 |  | Frappe |
+| Cuivre | Or | Armure Cuivre/Or | 850 | Lourd | +14AP +11AM | 2 | Estoc | Taille |
+| Cuivre | Titane | Armure Cuivre/Titane | 1 450 | Lourd | +15AP +13AM | 3 | Taille | Frappe |
+| Cuivre | Maverium | Armure Cuivre/Maverium | 2 650 | Lourd | +22AP +26AM | 3 | Estoc/Taille | x2 Frappe |
 
 ### Ligne : Écailles
 
@@ -26298,7 +26297,7 @@ Note de mise en page : la source présente cette liste sous forme de grille (« 
 | Écailles | Bronze | Armure Écailles/Bronze | 1 000 | Lourd | +14AP +14AM | 4 |  | Frappe |
 | Écailles | Laiton | Armure Écailles/Laiton | 1 030 | Lourd | +13AP +20AM | 3 | Frappe | Estoc |
 | Écailles | Or | Armure Écailles/Or | 1 090 | Lourd | +20AP +13AM | 3 | x2 Frappe | Estoc/Taille |
-| Écailles | Titane | Armure Écailles/Titane | 1 690 | Lourd | +21AP +13AM | 4 | Taille/Frappe | x2 Estoc |
+| Écailles | Titane | Armure Écailles/Titane | 1 690 | Lourd | +21AP +15AM | 4 | Taille/Frappe | x2 Estoc |
 | Écailles | Maverium | Armure Écailles/Maverium | 2 890 | Lourd | +28AP +28AM | 4 | Taille | Estoc |
 
 ### Ligne : Vif Argent
@@ -26361,7 +26360,7 @@ Note de mise en page : la source présente cette liste sous forme de grille (« 
 | Ligne | Colonne | Nom | Prix | Type | Stats | Solidité | Résistance | Faiblesse |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Or | Or | Armure Or complète | 1 210 | Lourd | +24AP +10AM | 3 | Frappe | Taille |
-| Or | Titane | Armure Or/Titane | 1 810 | Lourd | +25AP +13AM | 3 | Frappe | Estoc |
+| Or | Titane | Armure Or/Titane | 1 810 | Lourd | +25AP +12AM | 3 | Frappe | Estoc |
 | Or | Maverium | Armure Or/Maverium | 3 010 | Lourd | +32AP +25AM | 3 |  | Frappe |
 
 ### Ligne : Titane
@@ -26402,7 +26401,7 @@ Le porteur agit ainsi comme une sorte de source d''énergie pour le bâton, sans
 
 ## COMMENT FABRIQUER UN BÂTON MAGIQUE ?
 
-Morceau du bon bois + La bonne gemme + Test de Volonté + Intelligence = Bâton élémentaire vierge
+Morceau du bon bois + La bonne gemme + Test de Perception + Volonté = Bâton élémentaire vierge
 
 ## MATÉRIAUX NÉCESSAIRES PAR MAGIE
 
@@ -26584,7 +26583,7 @@ Pour répondre c''est oui et non :
 | Cellulose | Targe Cellulose | 17 | +6AM |
 | Corail | Targe Corail | 25 | +2AP +4AM |
 | Chitine | Targe Chitine | 35 | +6AP |
-| Mythril | Targe Mythril | 404 | +8AP +10AM |
+| Mythril | Targe Mythril | 405 | +8AP +10AM |
 | Fer | Targe Fer | 25 | +4AP |
 | Acier | Targe Acier | 45 | +6AP |
 | Fer Noir | Targe Fer Noir | 75 | +4AP +2AM |
@@ -26594,10 +26593,10 @@ Pour répondre c''est oui et non :
 | Vif-Argent | Targe Vif-Argent | 605 | +10AP +10AM |
 | Argent | Targe Argent | 75 | +10AP |
 | Fonte | Targe Fonte | 85 | +14AP |
-| Bronze | Targe Bronze | 172,5 | +6AP +6AM |
+| Bronze | Targe Bronze | 175 | +6AP +6AM |
 | Laiton | Targe Laiton | 185 | +6AP +12AM |
 | Or | Targe Or | 205 | +12AP +6AM |
-| Titane | Targe Titane | 404 | +14AP +8AM |
+| Titane | Targe Titane | 405 | +14AP +8AM |
 | Maverium | Targe Maverium | 805 | +20AP +20AM |
 
 ### Bouclier Rond
@@ -26605,7 +26604,7 @@ Pour répondre c''est oui et non :
 | Matière | Nom | Prix | Défense |
 | --- | --- | --- | --- |
 | Cuir | Bouclier Rond Cuir | 13,5 | +3AP |
-| Bois | Bouclier Rond Bois | 10,5 | +3AP +3AM |
+| Bois | Bouclier Rond Bois | 12 | +3AP +3AM |
 | Cellulose | Bouclier Rond Cellulose | 25,5 | +9AM |
 | Corail | Bouclier Rond Corail | 37,5 | +3AP +6AM |
 | Chitine | Bouclier Rond Chitine | 52,5 | +9AP |
@@ -26617,7 +26616,7 @@ Pour répondre c''est oui et non :
 | Cuivre | Bouclier Rond Cuivre | 127,5 | +3AP +9AM |
 | Écailles | Bouclier Rond Écailles | 247,5 | +12AP +12AM |
 | Vif-Argent | Bouclier Rond Vif-Argent | 907,5 | +15AP +15AM |
-| Argent | Bouclier Rond Argent |  | +15AP |
+| Argent | Bouclier Rond Argent | 112,5 | +15AP |
 | Fonte | Bouclier Rond Fonte | 127,5 | +21AP |
 | Bronze | Bouclier Rond Bronze | 262,5 | +9AP +9AM |
 | Laiton | Bouclier Rond Laiton | 277,5 | +9AP +18AM |
@@ -26662,14 +26661,14 @@ Pour répondre c''est oui et non :
 | Mythril | Pavois Mythril | 1012,5 | +20AP +25AM |
 | Fer | Pavois Fer | 62,5 | +10AP |
 | Acier | Pavois Acier | 112,5 | +15AP |
-| Fer Noir | Pavois Fer Noir | 197,5 | +10AP +5AM |
-| Corne/Os | Pavois Corne | 172,5 | +20AP |
+| Fer Noir | Pavois Fer Noir | 187,5 | +10AP +5AM |
+| Corne/Os | Pavois Corne | 162,5 | +20AP |
 | Cuivre | Pavois Cuivre | 212,5 | +5AP +15AM |
-| Écailles | Pavois Écailles | 424,5 | +20AP +20AM |
+| Écailles | Pavois Écailles | 412,5 | +20AP +20AM |
 | Vif-Argent | Pavois Vif-Argent | 1512,5 | +25AP +25AM |
-| Argent | Pavois Argent | 197,5 | +25AP |
+| Argent | Pavois Argent | 187,5 | +25AP |
 | Fonte | Pavois Fonte | 212,5 | +35AP |
-| Bronze | Pavois Bronze | 442,5 | +15AP +15AM |
+| Bronze | Pavois Bronze | 437,5 | +15AP +15AM |
 | Laiton | Pavois Laiton | 462,5 | +15AP +30AM |
 | Or | Pavois Or | 512,5 | +30AP +15AM |
 | Titane | Pavois Titane | 1012,5 | +35AP +20AM |
@@ -28056,7 +28055,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 ## Altératis Cyan
 
-**Effets** : -20% de chance de résister à Gelé.
+**Effets** : -20% de chance de résister à Gel.
 
 **Nature** : Virus (Système Sanguin)
 

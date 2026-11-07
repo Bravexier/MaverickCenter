@@ -100,7 +100,9 @@ import {
   operationsDuBestiaire,
 } from './edition-bestiaire.mjs';
 import { contexteDuCorpsDesArmes, domainesDesArmes } from './edition-armes.mjs';
-import { ameliorationsParCible, ancienneEcritureDesArmures, domainesDesArmures } from './edition-armures.mjs';
+import {
+  ameliorationsParCible, ancienneEcritureDesArmures, domainesDesArmures, ecrituresDesValeursCalculees, TABLES_DES_VALEURS_CALCULEES, valeursCalculeesParLeLot,
+} from './edition-armures.mjs';
 import { corpsDesArmuresApres, ErreurCorpsArmures, pageDeLaLigne as pageDesArmuresDeLaLigne, TABLES_DES_PAGES_DES_ARMURES } from '../src/lib/corps-armures.mjs';
 import { contexteDuCorpsDesComposants, domainesDesComposants, magiesSansBois, magiesSansGemme } from './edition-composants.mjs';
 import { corpsDuComposantApres, ErreurCorpsComposants, pagesDuComposant, TABLES_DES_COMPOSANTS } from '../src/lib/corps-composants.mjs';
@@ -971,6 +973,7 @@ function relations(ctx, op) {
 /**
  * Magies innées d'une race : { op: 'magies_innees', race, magies: [ids] }. La liste de l'onglet prime quand la race en a une (décision R11 :
  * race_magie_onglet), sinon la matrice de la fiche (R8 : race_magie) ; la liste `magies_innees` de la page de la race suit (liens races ↔ magies).
+ * Une liste vide est refusée (400, décision R210 : une race a au moins une magie innée possible).
  */
 function magiesInnees(ctx, op) {
   const { db, w, instant } = ctx;
@@ -980,6 +983,9 @@ function magiesInnees(ctx, op) {
   const magies = db.prepare('SELECT id, nom, ordre FROM magie ORDER BY ordre').all();
   const voulues = new Set(op.magies);
   for (const m of voulues) if (!magies.some((x) => x.id === m)) throw refus(`Magies innées : magie inconnue (${m})`);
+  // décision R210 : une race a forcément des magies innées possibles ; une liste vidée retomberait sur la matrice de la fiche (race_magie) pour une race
+  // qui a une liste d'onglet, ou laisserait la race sans magie. Refus avant d'écrire, rien ne change (la création d'une race, brouillon, n'est pas visée)
+  if (!voulues.size) throw refus('Magies innées : une race a au moins une magie innée possible.');
   const choisies = magies.filter((m) => voulues.has(m.id));
   const enPlace = db.prepare('SELECT * FROM race_magie_onglet WHERE race_id = ? ORDER BY rang').all(race.id);
   if (enPlace.length) {
@@ -2036,7 +2042,7 @@ export function recalculerLesPages(db, modifications) {
 
 /**
  * L'adaptateur du rejeu (edition-journal.mjs#rejouer : `adapter`) : les formes d'avant les migrations 0043 (mots-clés), 0044 (capacités de monstre
- * communes), 0056 (glossaire) et 0063 (coût secondaire des sorts), et d'avant la saisie de l'AP et de l'AM et des cases d'une amélioration de bouclier
+ * communes), 0056 (glossaire), 0063 (coût secondaire des sorts) et 0103 (l'état « Gel », décision R205 : ancienneEcritureDuGel), et d'avant la saisie de l'AP et de l'AM et des cases d'une amélioration de bouclier
  * (demande du propriétaire du 2026-10-17 : serveur/edition-armures.mjs#ancienneEcritureDesArmures), lues dans la forme des règles de `db`. Le même pour
  * l'examen d'un lot en conflit (serveur/edition-conflits.mjs).
  */
@@ -2049,12 +2055,130 @@ export function adaptateurDuJournal(db) {
   const glossaire = ancienneEcritureDuGlossaire(db);
   const capacites = ancienneEcritureDesCapacites(db);
   const resistances = ancienneEcritureDesResistances();
+  // l'état « Gelé » des textes de règles, devenu « Gel » (décision R205 (3), migration 0103)
+  const gel = ancienneEcritureDuGel(db);
   const armures = ancienneEcritureDesArmures(db);
+  // une colonne calculée d'après les matériaux écrite directement (décision R207 (1)) : en conflit, choix 2 seul
+  const calculees = ecrituresDesValeursCalculees(db);
   const couts = ancienneEcritureDuCout();
   const figees = ecrituresFigees(db);
   const ancres = ecrituresQuiRompentLesAncres(db);
   const sansCran = armesSansCranPropre(db);
-  return (m) => sansCran(ancres(figees(couts(armures(resistances(capacites(glossaire(liens(fusions(motsCles(m)))))))))));
+  return (m) => sansCran(ancres(figees(couts(calculees(armures(gel(resistances(capacites(glossaire(liens(fusions(motsCles(m)))))))))))));
+}
+
+/**
+ * Les textes de règles où la migration 0103 a écrit l'état « Gel » à la place de « Gelé » (décision R205 (3), registre
+ * data/migrations/0103-r205-etat-gel.json) : table → colonnes ; et les pages dont le corps a suivi (le Mage Bleu, rendu de ses tables). monstre_defense,
+ * qui dérive des rubriques, a sa cible et sa clé (cible_cle) refaites.
+ */
+export const TEXTES_DU_GEL = Object.freeze({
+  magie_resistance: ['cible_brut'], monstre_rubrique: ['texte'], accessoire_effet: ['libelle'], maladie: ['effets'],
+  monstre_capacite_commune: ['description'], classe_annexe: ['texte'], classe_annexe_entree: ['effet'], page: ['corps_md'],
+});
+export const PAGES_DU_GEL = Object.freeze(['classes/mage-bleu']);
+/** L'état écrit « Gelé » (mot entier : ni « Gelée », ni « Gelés »), ou « gelé N » avec un stade : les motifs de la migration 0103. */
+const ETAT_GELE = /(?<!\p{L})Gelé(?!\p{L})|(?<!\p{L})gelé(?= \d)/u;
+/** Un texte réécrit comme la migration 0103 : « Gelé » → « Gel », « gelé N » / « Gelé N » → « gel N » / « Gel N ». */
+export const ecritureDuGel = (t) => t.replace(/(?<!\p{L})([Gg])elé(?= \d)/gu, '$1el').replace(/(?<!\p{L})Gelé(?!\p{L})/gu, 'Gel');
+
+/**
+ * Un lot du journal noté avant la migration 0103 (décision R205 (3) : « Il faut écrire "Gel" ») lu comme la migration a réécrit les règles (adaptateur
+ * de edition-journal.mjs#rejouer, modèle : serveur/edition-bestiaire.mjs#ancienneEcritureDesResistances) : sans lui, son `avant` qui écrit encore
+ * « Gelé » ne serait plus celui des règles et le lot tomberait en conflit. Un lot est d'avant la 0103 quand une de ses modifications a un `avant` qui
+ * écrit l'état « Gelé » dans un texte de TEXTES_DU_GEL (ou une cible `gele` de monstre_defense) **là où la ligne attendue ne l'écrit pas** : la ligne
+ * telle que les lots précédents du journal, adaptés, l'ont laissée, ou à défaut celle de `db` (les règles au début d'une passe du rejeu ; la ligne en
+ * place pour l'examen d'un lot). Un `avant` qui écrit « Gelé » parce qu'un lot noté après la 0103 l'a retapé (le site de dev l'écrit, puis un autre lot
+ * modifie de nouveau la ligne) est la ligne attendue : ce lot n'est pas d'avant la 0103 et reste tel quel (sinon son `avant` réécrit en « Gel » ne
+ * serait plus la ligne, et il tomberait en conflit). Un lot d'avant la 0103 a chacune de ses modifications sur ces textes réécrite, `avant` comme
+ * `apres` (un texte qu'il garde ou qu'il crée prend « Gel », comme les règles ; les lignes de monstre_defense qu'il refait suivent leur rubrique : cible
+ * « Gel », clé `gel`). Un emploi adjectival (« sol gelé ») et les autres pages ne sont jamais touchés. Le lot de chaque modification est lu une fois
+ * dans `modification` de `db`, avant qu'aucune de ses modifications ne compte dans les lignes attendues ; les modifications passent dans l'ordre du
+ * rejeu (une fabrique par passe : edition-journal.mjs#rejouer, `adapter`).
+ */
+export function ancienneEcritureDuGel(db) {
+  const colonnesDe = (table, cle) => {
+    if (table === 'monstre_defense') return ['cible'];
+    if (table === 'page' && !PAGES_DU_GEL.includes(cle?.id)) return [];
+    return TEXTES_DU_GEL[table] ?? [];
+  };
+  const tables = ['monstre_defense', ...Object.keys(TEXTES_DU_GEL)];
+  // la ligne attendue avant le lot suivant (table, clé → ligne ; null : supprimée), d'après les modifications déjà passées, telles qu'adaptées
+  const attendues = new Map();
+  const cleDeLaLigne = (table, cle) => `${table}\u0000${JSON.stringify(Object.entries(cle ?? {}).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))}`;
+  const ligneAttendue = (table, cle) => {
+    const k = cleDeLaLigne(table, cle);
+    if (attendues.has(k)) return attendues.get(k);
+    try {
+      return cle && typeof cle === 'object' ? lireLigne(db, table, cle) : null;
+    } catch {
+      return null; // une clé illisible : le rejeu dira le conflit
+    }
+  };
+  const ecritAvant0103 = (table, cle, avant) => {
+    if (!avant || typeof avant !== 'object') return false;
+    const attendue = ligneAttendue(table, cle);
+    if (table === 'monstre_defense' && avant.cible_cle === 'gele') return attendue?.cible_cle !== 'gele';
+    return colonnesDe(table, cle).some((c) => typeof avant[c] === 'string' && ETAT_GELE.test(avant[c]) && avant[c] !== (attendue?.[c] ?? null));
+  };
+  const parLot = new Map(); // lot → noté avant la 0103 ?
+  const lotAvant0103 = (lot) => {
+    if (!parLot.has(lot)) {
+      const lignes = tableExiste(db, 'modification')
+        ? db.prepare(`SELECT table_nom, cle, avant FROM modification WHERE lot_id = ? AND table_nom IN (${tables.map(() => '?').join(', ')}) ORDER BY rang`)
+          .all(lot, ...tables)
+        : [];
+      // la première modification du lot sur chaque ligne : les suivantes partent de ce que le lot a lui-même écrit
+      const vues = new Set();
+      parLot.set(lot, lignes.some((l) => {
+        const cle = jsonOuNull(l.cle);
+        const k = cleDeLaLigne(l.table_nom, cle);
+        if (vues.has(k)) return false;
+        vues.add(k);
+        return ecritAvant0103(l.table_nom, cle, jsonOuNull(l.avant));
+      }));
+    }
+    return parLot.get(lot);
+  };
+  const reecrire = (table, cle, ligne) => {
+    if (!ligne || typeof ligne !== 'object') return null;
+    const sortie = { ...ligne };
+    for (const c of colonnesDe(table, cle)) if (typeof sortie[c] === 'string') sortie[c] = ecritureDuGel(sortie[c]);
+    if (table === 'monstre_defense' && sortie.cible_cle === 'gele') sortie.cible_cle = 'gel';
+    return Object.keys(sortie).some((c) => sortie[c] !== ligne[c]) ? sortie : null;
+  };
+  // la ligne que la modification (adaptée) laisse : la suivante sur la même ligne part d'elle
+  const noter = (m, cle) => {
+    const k = cleDeLaLigne(m.table_nom, cle);
+    if (m.operation === 'supprimer') {
+      attendues.set(k, null);
+      return;
+    }
+    const apres = jsonOuNull(m.apres);
+    if (!apres || typeof apres !== 'object') return;
+    attendues.set(k, { ...(m.operation === 'inserer' ? {} : ligneAttendue(m.table_nom, cle) ?? {}), ...apres });
+  };
+  return (m) => {
+    if (!tables.includes(m.table_nom)) return m;
+    const cle = jsonOuNull(m.cle);
+    // le lot se juge avant que ses propres modifications ne comptent dans les lignes attendues
+    const avant0103 = lotAvant0103(m.lot_id);
+    let sortie = m;
+    if (!m.conflit && avant0103) {
+      const adapte = { ...m };
+      let change = false;
+      for (const champ of ['avant', 'apres']) {
+        const lu = jsonOuNull(m[champ]);
+        const reecrit = reecrire(m.table_nom, cle, lu);
+        if (!reecrit) continue;
+        adapte[champ] = JSON.stringify(reecrit);
+        change = true;
+      }
+      if (change) sortie = adapte;
+    }
+    noter(sortie, cle);
+    return sortie;
+  };
 }
 
 /** La table de conversion des liens de la migration 0098 (undefined : pas encore lue ; null : registre absent). */
@@ -2319,13 +2443,15 @@ export function rejouerLeJournal(db, sortie = {}, { horsControleParLot = [] } = 
     // sources de maîtrise d'arme des classes et des dons que le lot touche, refaites par le lecteur (un lot noté avant la migration 0076 ne les écrit pas :
     // serveur/edition-maitrises.mjs#sourcesRefaitesParLeLot)
     // et une page des Règles que le lot supprime alors qu'un texte qui reste la cite le met en conflit (liensRompusParLeLot)
+    // et les colonnes calculées d'après les matériaux (décision R207 (1)), refaites après un lot qui écrit une de leurs entrées (un lot noté avant R207
+    // ne les note pas : serveur/edition-armures.mjs#valeursCalculeesParLeLot)
     // décision R196 : une suppression ancienne d'un mot-clé encore mentionné (ce que le lot ne retire pas lui-même) met son lot en conflit
     avantLeLot: (lot) => {
       const mentionnes = motsClesEncoreMentionnes(db, lot);
       if (mentionnes.length) throw new Error(mentionnes.map((r) => r.raison).join(' ; '));
     },
     apresLeLot: (lot, issues = []) => {
-      const ecrites = [...balisesRetireesParLeLot(db, lot), ...sourcesRefaitesParLeLot(db, lot)];
+      const ecrites = [...balisesRetireesParLeLot(db, lot), ...sourcesRefaitesParLeLot(db, lot), ...valeursCalculeesParLeLot(db, lot)];
       // seules les suppressions que le lot fait (« applique ») : une page que les règles n'ont déjà plus (retirée par une migration) n'est pas de son fait
       const rompus = liensRompusParLeLot(db, lot, { faites: lot.filter((_m, i) => issues[i] === 'applique') });
       if (rompus.length) throw new Error(rompus.map((r) => r.raison).join(' ; '));
@@ -2336,7 +2462,9 @@ export function rejouerLeJournal(db, sortie = {}, { horsControleParLot = [] } = 
   const balises = appliquees.filter((m) => m.balises);
   // `sources` : les sources de maîtrise d'arme refaites après un lot (sourcesRefaitesParLeLot), hors journal ; elles ne font aucune page
   const sources = appliquees.filter((m) => m.sources);
-  const reelles = appliquees.filter((m) => !m.synthetique && !m.balises && !m.sources);
+  // `calculees` : les colonnes calculées refaites après un lot (valeursCalculeesParLeLot), hors journal ; elles refont la ligne du corps de leur page
+  const calculees = appliquees.filter((m) => m.calculees);
+  const reelles = appliquees.filter((m) => !m.synthetique && !m.balises && !m.sources && !m.calculees);
   const metiers = new Set(reelles.filter((m) => m.table === 'metier' || m.table === 'metier_bonus').map((m) => m.cle?.metier_id ?? m.cle?.id));
   const completees = completerLesMetiers(db, metiers);
   // un mot-clé supprimé (ou fusionné) : rejoué clés coupées, la cascade de son schéma retire aussi ses lignes que le lot n'a pas notées (les pages
@@ -2350,6 +2478,7 @@ export function rejouerLeJournal(db, sortie = {}, { horsControleParLot = [] } = 
   // les pages typées refaites depuis leurs tables, réécritures des balises comprises (dans l'ordre du rejeu) : `page`, au-delà du journal pour elles
   const pages = recalculerLesPages(db, appliquees.filter((m) => !m.synthetique && !m.sources));
   if (balises.length && pages.pages.length) completees.add('page');
+  if (calculees.length) for (const t of TABLES_DES_VALEURS_CALCULEES) completees.add(t);
   // ce qui reste dans les colonnes dérivées (pages d'exemple, texte d'une page typée qu'aucune ligne ne refait), après les pages refaites
   for (const t of balisesDesColonnesDerivees(db)) completees.add(t);
   Object.assign(sortie, pages, { tablesCompletees: [...completees] });

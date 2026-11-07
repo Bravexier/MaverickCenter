@@ -1,0 +1,18 @@
+{
+ "migration": "0109-r207-panneau-des-batons",
+ "decision": "R207",
+ "description": "Décision R207 (3) (tests de fabrication, « Le doc métier fait foi », réponses du propriétaire du 2026-11-07), suite de la 0105 : le bloc du panneau de règles « Bâtons magiques » qui recopie la phrase de la page ressources/baton-magique dit le test de l'Enchanteur, Perception + Volonté. `textes` : le fragment remplacé (présent une seule fois dans la valeur d'avant). Ce n'est pas une correction d'orthographe : rien sous `corrections` (tools/sources/rapprocher.mjs) ; le rapprochement des classeurs ne compare pas panneau_regles_bloc.",
+ "textes": [
+  {
+   "table": "panneau_regles_bloc",
+   "cle": {
+    "panneau_id": "batons-magiques",
+    "rang": 2
+   },
+   "col": "texte",
+   "decision": "R207 (3) : Enchanteur",
+   "avant": "Morceau du bon bois + La bonne gemme + Test de Volonté + Intelligence = Bâton élémentaire vierge",
+   "apres": "Morceau du bon bois + La bonne gemme + Test de Perception + Volonté = Bâton élémentaire vierge"
+  }
+ ]
+}

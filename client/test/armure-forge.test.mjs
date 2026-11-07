@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   ameliorationDArmure, ameliorationDeBouclier, ameliorationElementaire, choixDArmureApres, coutDeLaLigneElementaire, coutElementaireEcrit, deLaGemme,
-  estElementaire, forgerArmure, forgerArmureElementaire, forgerBouclier, nombre, piecesDuMontant, prixDeLArmure, QUALITES_DES_GEMMES, UNITES_PAR_MATERIAU,
+  estElementaire, forgerArmure, forgerArmureElementaire, forgerBouclier, nombre, piecesDuMontant, prixDeLArmure, QUALITES_DES_GEMMES,
 } from '../src/lib/armure-forge.mjs';
 import { montantDecompose, MONNAIES_DU_JEU } from '../src/lib/monnaies.mjs';
 
@@ -20,33 +20,35 @@ const CUIR_PEAU = { ap: 3, am: null, solidite: 1, prix: 28 };
 const CUIR = { nom: 'Cuir', prix_ro: 2 };
 const PEAU = { nom: 'Peau', prix_ro: 1 };
 const FABRICATION = 10;
+// les unités de chaque matériau (constante_equipement 'armure.unites_par_materiau', R93 : « 6 unités d'un matériau 1, et 6 d'un matériau 2 ») : passées
+// par l'appelant, qui les lit en base (lib/armures-db.mjs#chargerArmures, `unitesParMateriau`)
+const UNITES = 6;
 
 test('décision R93 : le prix d’une armure de la grille = 10 RO de fabrication + 6 unités de chaque matériau, achetées (ou fournies : la fabrication seule)', () => {
-  assert.equal(UNITES_PAR_MATERIAU, 6);
   // « Armure Cuir/Peau » : 10 + 6 × 2 + 6 × 1 = 28, le prix écrit dans la grille (comme 213 des 231 armures)
-  assert.deepEqual(prixDeLArmure(FABRICATION, [2, 1]), { fabrication: 10, materiaux: 18, achetes: 28, fournis: 10 });
+  assert.deepEqual(prixDeLArmure(FABRICATION, [2, 1], UNITES), { fabrication: 10, materiaux: 18, achetes: 28, fournis: 10 });
   // « Armure Peau/Bois » : 10 + 6 + 6 × 1,5 = 25 ; « Armure Peau/Mythril » : 10 + 6 + 1 200 = 1 216
-  assert.equal(prixDeLArmure(FABRICATION, [1, 1.5]).achetes, 25);
-  assert.equal(prixDeLArmure(FABRICATION, [1, 200]).achetes, 1216);
+  assert.equal(prixDeLArmure(FABRICATION, [1, 1.5], UNITES).achetes, 25);
+  assert.equal(prixDeLArmure(FABRICATION, [1, 200], UNITES).achetes, 1216);
   // « Armure Corne/Bronze » : la grille écrit 800, le calcul donne 10 + 180 + 510 = 700 (« le prix est toujours de 6 unités… »)
-  assert.equal(prixDeLArmure(FABRICATION, [30, 85]).achetes, 700);
+  assert.equal(prixDeLArmure(FABRICATION, [30, 85], UNITES).achetes, 700);
   // un prix inconnu (matériau ou fabrication) : pas de prix, rien n'est deviné
-  assert.equal(prixDeLArmure(FABRICATION, [2, null]).achetes, null);
-  assert.deepEqual(prixDeLArmure(null, [2, 1]), { fabrication: null, materiaux: 18, achetes: null, fournis: null });
+  assert.equal(prixDeLArmure(FABRICATION, [2, null], UNITES).achetes, null);
+  assert.deepEqual(prixDeLArmure(null, [2, 1], UNITES), { fabrication: null, materiaux: 18, achetes: null, fournis: null });
 });
 
 test('décision R93 : l’armure forgée est toujours complète ; son coût suit les matériaux (achetés ou fournis), pas le prix écrit dans la grille', () => {
-  const f = forgerArmure({ ...CUIR_PEAU, prix: 9999 }, AMELIORATIONS_D_ARMURE, 0, { fabrication: FABRICATION, materiaux: [CUIR, PEAU] });
+  const f = forgerArmure({ ...CUIR_PEAU, prix: 9999 }, AMELIORATIONS_D_ARMURE, 0, { fabrication: FABRICATION, unites: UNITES, materiaux: [CUIR, PEAU] });
   assert.deepEqual([f.ap.total, f.am.total, f.solidite.total], [3, 0, 1]);
   assert.deepEqual(f.cout, {
     prix: 28, fabrication: 10, materiaux: [{ nom: 'Cuir', prix_ro: 2, unites: 6, total: 12 }, { nom: 'Peau', prix_ro: 1, unites: 6, total: 6 }],
     amelioration: 0, materiaux_amelioration: 0, total: 28, total_fournis: 10,
   });
   // une armure d'un seul matériau : 12 unités de ce matériau (« Armure de Cuir complète » : 10 + 24 = 34)
-  const cuir = forgerArmure(CUIR_PEAU, AMELIORATIONS_D_ARMURE, 0, { fabrication: FABRICATION, materiaux: [CUIR, CUIR] });
+  const cuir = forgerArmure(CUIR_PEAU, AMELIORATIONS_D_ARMURE, 0, { fabrication: FABRICATION, unites: UNITES, materiaux: [CUIR, CUIR] });
   assert.deepEqual([cuir.cout.materiaux, cuir.cout.total], [[{ nom: 'Cuir', prix_ro: 2, unites: 12, total: 24 }], 34]);
   // un prix de matériau inconnu : pas de total acheté, le total fourni reste
-  const inconnu = forgerArmure(CUIR_PEAU, AMELIORATIONS_D_ARMURE, 0, { fabrication: FABRICATION, materiaux: [CUIR, { nom: 'Peau', prix_ro: null }] });
+  const inconnu = forgerArmure(CUIR_PEAU, AMELIORATIONS_D_ARMURE, 0, { fabrication: FABRICATION, unites: UNITES, materiaux: [CUIR, { nom: 'Peau', prix_ro: null }] });
   assert.deepEqual([inconnu.cout.total, inconnu.cout.total_fournis], [null, 10]);
 });
 
@@ -54,7 +56,7 @@ test('décision R77 : une amélioration d’armure +N coûte les niveaux +1 à +
   assert.deepEqual(ameliorationDArmure(AMELIORATIONS_D_ARMURE, 4), { niveau: 4, ro: 800, materiaux: 2, bonus_ap: 8, bonus_am: 8, bonus_cran: 1 });
   assert.deepEqual(ameliorationDArmure(AMELIORATIONS_D_ARMURE, 5), { niveau: 5, ro: 1300, materiaux: 2, bonus_ap: 10, bonus_am: 10, bonus_cran: 1 }, 'la ligne TOTAL : 1 300 Ro + 2 Matériaux');
   assert.deepEqual(ameliorationDArmure(AMELIORATIONS_D_ARMURE, 0), { niveau: 0, ro: 0, materiaux: 0, bonus_ap: 0, bonus_am: 0, bonus_cran: 0 });
-  const f = forgerArmure(CUIR_PEAU, AMELIORATIONS_D_ARMURE, 5, { fabrication: FABRICATION, materiaux: [CUIR, PEAU] });
+  const f = forgerArmure(CUIR_PEAU, AMELIORATIONS_D_ARMURE, 5, { fabrication: FABRICATION, unites: UNITES, materiaux: [CUIR, PEAU] });
   assert.deepEqual([f.ap.total, f.am.total, f.solidite.total], [13, 10, 2]);
   // le coût : le prix de l'armure et les RO des niveaux ; les matériaux de l'amélioration comptés sans prix (la source ne dit pas lequel des deux)
   assert.deepEqual([f.cout.total, f.cout.total_fournis, f.cout.materiaux_amelioration], [1328, 1310, 2]);
@@ -171,5 +173,5 @@ test('R165 (4) : le choix de la page — élément et poids choisis, les matéri
 test('R165 : les armures ordinaires et les boucliers ne changent pas (le tableau élémentaire n’a ni RO ni matériaux)', () => {
   // une armure ordinaire ignore les colonnes des gemmes : son amélioration ne lit que RO et matériaux
   assert.deepEqual(ameliorationDArmure(AMELIORATIONS_ELEMENTAIRES, 5), { niveau: 5, ro: 0, materiaux: 0, bonus_ap: 10, bonus_am: 10, bonus_cran: 1 });
-  assert.deepEqual(forgerArmure(CUIR_PEAU, AMELIORATIONS_D_ARMURE, 2, { fabrication: FABRICATION, materiaux: [CUIR, PEAU] }).cout.total, 228);
+  assert.deepEqual(forgerArmure(CUIR_PEAU, AMELIORATIONS_D_ARMURE, 2, { fabrication: FABRICATION, unites: UNITES, materiaux: [CUIR, PEAU] }).cout.total, 228);
 });

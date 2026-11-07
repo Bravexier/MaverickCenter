@@ -312,5 +312,14 @@ const liens = n('SELECT count(*) AS n FROM lien');
 bilan.liens = liens;
 bilan.entite_fts = n('SELECT count(*) AS n FROM entite_fts');
 if (bilan.entite_fts === 0 && n('SELECT count(*) AS n FROM page_entite') > 0) problemes.push('entite_fts vide : data/derive.sql non exécuté');   // vide = normal tant qu'aucun domaine typé n'est porté (lot 1)
-process.stdout.write(JSON.stringify({ ok: problemes.length === 0, problemes: problemes.slice(0, 40), nbProblemes: problemes.length, bilan }) + '\n');
+// Avertissements : ce qui mérite un regard sans rendre la base fausse (le code de sortie ne change pas).
+// Le coût de fabrication d'un bouclier (décision R207 (1), choix de game-design) : le prix d'un bouclier suit bouclier_classe.prix (RO, par forme) ;
+// « 250 RF / Classe » de la ligne « Bouclier » du tableau FABRICATION (armure_emplacement) n'en est qu'une autre écriture, modifiable à part sur le site
+// de dev : une forme dont le prix ne vaut plus classe × ce montant est signalée (lib/armures-db.mjs#ecartsDeFabricationDuBouclier).
+const avertissements = [];
+if (noms.has('bouclier_classe') && noms.has('armure_emplacement')) {
+  const { ecartsDeFabricationDuBouclier } = await import(pathToFileURL(`${LIB}/armures-db.mjs`).href);
+  avertissements.push(...ecartsDeFabricationDuBouclier(db));
+}
+process.stdout.write(JSON.stringify({ ok: problemes.length === 0, problemes: problemes.slice(0, 40), nbProblemes: problemes.length, avertissements, bilan }) + '\n');
 process.exit(problemes.length ? 1 : 0);

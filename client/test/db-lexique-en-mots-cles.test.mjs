@@ -152,7 +152,11 @@ test('0090 : les définitions venues du Lexique sont des textes de case — ni l
   // la page citée entre parenthèses est retirée (« Retirer la référence ») ; un lien dans la phrase garde son texte affiché
   assert.ok(dImport('acquis', 'description').endsWith('le +1 de la magie innée compris.'));
   assert.ok(dImport('echec-critique', 'description').endsWith('une défense où l’armure ne compte plus…'));
-  assert.ok(dImport('barriere', 'description').includes('le Maverium la brise à son contact. Le Glossaire du Codex précise qu’elle prend les coups avant la santé'));
+  // la phrase qui suit (le renvoi au Glossaire du Codex devenu texte) est retirée depuis par la 0104 (R201 (1) : la règle est dite comme règle du jeu,
+  // plus attribuée au Codex) : migration postérieure, l'une ou l'autre écriture
+  const barriere = dImport('barriere', 'description');
+  assert.ok(barriere.includes('le Maverium la brise à son contact.'));
+  assert.ok(barriere.includes('le Maverium la brise à son contact. Le Glossaire du Codex précise qu’elle prend les coups avant la santé') || !barriere.includes('Codex'));
   assert.ok(dImport('campagne', 'description').includes('Voir aussi {{one-shot|One shot}}'));
 });
 

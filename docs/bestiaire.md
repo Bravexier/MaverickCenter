@@ -37,9 +37,11 @@ et `carte.css` — la carte d'un monstre ou d'une créature invoquée, partagée
   `data-npms`, regroupées quand elles se suivent identiques) à côté de l'écrite (`data-npm-ecrit`, seule montrée sans JavaScript et à l'impression), une
   valeur calculée soulignée avec l'écriture en infobulle (`.bcalcul`) ; une capacité ou une résistance « (NPM n) » porte `data-npm-min` et se cache en dessous
   (`styles/bestiaire/carte.css`). Les valeurs : `lib/creature-npm.mjs` (« X/NPM » = X × NPM ; « 2 Armure Physique et Magique/NPM » = 2 × NPM chacune ;
-  « 1d8/NPM » = 3d8 et « 1d6+2/NPM » = 1d6+6 au NPM 3 ; « +1 Force au niveau 2 magique » à partir du NPM 2, la case changée soulignée avec l'écrite et ses
+  « 1d8/NPM » = 3d8 et « 1d6+2/NPM » = 1d6+6 au NPM 3, « 1d6+2/NPM dégâts sonores/NPM » = 3d6+6 (le second « /NPM » multiplie aussi les dés, décision
+  R206 (4)) ; « +1 Force au niveau 2 magique » à partir du NPM 2, la case changée soulignée avec l'écrite et ses
   bonus en infobulle, les bonus écrits restant sous les cases ; « +1 Force/Agilité » non compté, il reste écrit), d'après les valeurs typées de l'import
-  (`donneesNpm`). Une marionnette (une créature par NPM) n'a pas de curseur ; sa carte garde le coût écrit (« +10% Barrière » : question Q35).
+  (`donneesNpm`). Une marionnette (une créature par NPM) n'a pas de curseur ; sa carte donne le coût à son NPM, le « +10% Barrière » compris (« 15 + 30 %
+  Barrière » au NPM 3, décision R206 (1) : `coutAuNpm`).
 
   Un clic sur une créature (une **case**) ouvre sa carte à côté (`CarteInvoquee.astro`), comme pour les monstres. La recherche n'allume, dans une ligne,
   que les cases qu'elle trouve (l'autre est estompée), sans lire « Même combinaison » de la carte, qui nomme la voisine (`data-hors-recherche`) ; les
@@ -341,7 +343,8 @@ que chaque ligne de texte gardée est écrite dans le doc.
 - `monstre_capacite_commune` (469 capacités communes, rangées par le registre `tools/bestiaire/capacites.json` : décisions R66 à R69, migration
   `0044-capacites-communes`).
 
-Rien n'est déduit : une valeur n'est typée que si son écriture est sans ambiguïté (sinon `NULL`, le texte de la rubrique fait foi). Deux transformations :
+Rien n'est déduit : une valeur n'est typée que si son écriture est sans ambiguïté (sinon `NULL`, le texte de la rubrique fait foi ; « N points
+d'armure / N résistance magique » se lit comme l'AP et l'AM depuis la décision R209 (5)). Deux transformations :
 le nom d'une carte, écrit en capitales, est remis en minuscules avec la casse que le doc donne à chaque mot ailleurs (`nom_brut` garde l'original) ; et
 quatre graphies que la base a déjà corrigées partout sont corrigées ici aussi (`CORRECTIONS` : « le Démon d'Eau Noire » → « Eaunoire », décision R21 ;
 « Occultomancien » → « Ocultomancien » et « purée de poix » → « purée de pois », migration 0006 ; « ect » → « etc », migration 0005).
@@ -351,6 +354,17 @@ lignes du doc, les deux casses de « résistance »), « Grande(s) Vulnérabilit
 « faiblesse », « Grande(s )Vulnérabilité(s) »), « Double(s) Résistance(s) Dégâts(/Effets) ÷4 » → « Grande(s) Résistance(s) Dégâts(/Effets) ÷3 » (10 :
 la correction passe avant le classement, ces cartes et leurs cibles sont rangées en `grande_resistance`) ; et « Sensibilité(s) Dégâts x8 » → « x4 »
 (compétences des golems de verre I à III).
+L'état « Gel » de la décision R205 (« Il faut écrire "Gel" », migration `0103-r205-etat-gel`) : « Gelé » d'une liste de cibles devient « Gel » (83
+lignes du doc : la ligne entière est une liste « A, B, Gelé », préfixe « Guerrier : » admis, jamais une phrase) et « gelé 1 » / « Gelé 1 » des
+capacités Élément Glace devient « gel 1 » / « Gel 1 » (8 lignes ; le registre des capacités écrit de même) ; un adjectif (« piège gelé ») reste. Les
+anciens noms de l'AP et de l'AM de la décision R209 (5) (migration `0106-r209-bestiaire`) : la ligne de défense entière « N points d'armure / N
+résistance magique » devient « N armure physique / N armure magique » (115 lignes, 93 cartes ; motif partagé avec la migration,
+`lib/monstre-champs.mjs#LIGNE_DE_DEFENSE_ANCIENNE`).
+Deux corrections ne valent que pour une espèce (`CORRECTIONS_D_ESPECE`, décision R209, migration `0106-r209-bestiaire`), le doc écrivant ailleurs la
+même chose : l'immunité « Poison, Maladie, Enragé, Peur, Fatigue » des trois Momies devient « Poison, Maladie, Peur, Fatigue » (R209 (3) : « Enragé »
+est leur vulnérabilité ; les autres cartes qui l'écrivent ne changent pas) ; la carte « CUIRASSE ABÎMÉ » de la Hallebarde amochée s'appelle
+« HALLEBARDE AMOCHÉE » (R209 (4)) mais garde l'identifiant tiré du nom que le doc écrit (`monstres/hallebarde-amochee#carte:cuirasse-abime`) ; la
+carte de la Cuirasse abîmée garde son nom.
 
 Deux brouillons du doc, « Réanimé (EP5) (a continuer) » et « Vouivre squelette (EP8) (a refaire) », ne sont pas repris (décision R58 : « Oui » à
 « Faut-il les retirer ? ») : leur titre borne l'espèce qui les précède (`TITRE_BROUILLON`) ; avant la migration `0039-bestiaire-reponses`, la carte
@@ -363,19 +377,26 @@ L'index « Ennemi par EP » de l'introduction n'est pas repris : il ne liste que
 ## Questions au propriétaire
 
 1. **« Golem de corail » est écrit deux fois** (lignes 12652 et 12934 de l'export), avec une description un peu différente et des compétences à +15 %
-   dans l'une, +10 % dans l'autre. Les deux sont gardés (`monstres/golem-de-corail` et `monstres/golem-de-corail-2`) : lequel fait foi ?
-2. **« Hallebarde amochée »** a une carte nommée « CUIRASSE ABÎMÉ » (ligne 18857), comme l'espèce « Cuirasse abîmée » : copier-coller à corriger ?
-3. **« N points d'armure / N résistance magique »** (environ 90 cartes) : est-ce l'armure physique et l'armure magique (AP / AM) ? Tant que ce n'est pas
-   tranché, ces cartes n'ont pas de valeurs typées de défense (le texte s'affiche, le tri par défense les met à la fin).
+   dans l'une, +10 % dans l'autre. Les deux sont gardés (`monstres/golem-de-corail` et `monstres/golem-de-corail-2`) : lequel fait foi ? En attente.
+2. ~~**« Hallebarde amochée »** a une carte nommée « CUIRASSE ABÎMÉ » (ligne 18857), comme l'espèce « Cuirasse abîmée » : copier-coller à corriger ?~~
+   **Tranché** (décision R209 (4), « Oublie de modification de nom dans la carte ») : la carte s'appelle « Hallebarde amochée » (`nom_brut`
+   « HALLEBARDE AMOCHÉE »), son identifiant `monstres/hallebarde-amochee#carte:cuirasse-abime` ne change pas (migration `0106-r209-bestiaire`).
+3. ~~**« N points d'armure / N résistance magique »** (environ 90 cartes) : est-ce l'armure physique et l'armure magique (AP / AM) ?~~ **Tranché**
+   (décision R209 (5), « C'est l'ancien de AP et AM ») : les 93 rubriques de défense écrivent « N armure physique / N armure magique » (motif ancré
+   sur la ligne entière, `lib/monstre-champs.mjs#LIGNE_DE_DEFENSE_ANCIENNE`) et leurs valeurs se lisent comme l'AP et l'AM (`defense`, qui lit aussi
+   l'ancienne écriture) : 87 cartes ont désormais `armure_physique` et `armure_magique` ; les 6 sans nombre (« ? », « ∞ », une valeur par EP) restent
+   sans valeur (migration `0106-r209-bestiaire`).
 4. Les monstres n'ont pas de page à eux (une ligne et sa carte dans le tableau) : en faut-il une, comme les créatures invoquées ?
 5. Les **créatures invoquées** ne se modifient pas encore depuis le bestiaire (elles viennent des sorts du classeur « Invocation ») : faut-il les ouvrir
    aussi au mode modification ?
 6. **Blob blanc** : sa ligne 61-100 donne « Gelée coco » (la gelée supérieure du Blob transparent ; son mini-boss est pourtant le Blob pêche), la
    définition « Gelée pêche » dit « Chair supérieure de blob transparent », et sa description est mot pour mot celle du Blob transparent : copier-coller ?
-   Réponse : « Possible… » (2026-10-14) ; rien n'est changé tant que le texte à écrire (« Gelée pêche », « blob blanc », quelle description) n'est pas donné.
+   Réponse : « Possible… » (2026-10-14) ; rien n'est changé tant que le texte à écrire (« Gelée pêche », « blob blanc », quelle description) n'est pas donné :
+   la description reste à fournir.
 7. La note « *Parmi Rouge, Jaune, Vert foncé, Brun » retirée du butin du Blob métallique (R58) expliquait l'astérisque de « Gelée aléatoire* » :
-   faut-il l'ajouter au glossaire (« Gelée aléatoire : parmi rouge, jaune, vert foncé, brun ») ? Réponse : « Je sais pas » (2026-10-14) ; la note
-   reste hors du site.
-8. **Momies** (Momie, Momie royale, Momie surveillante) : « Enragé » est à la fois dans « Vulnérabilité(s) Dégâts x2 » et dans « Immunité(s) »
-   (lignes 20809-20819, 20877-20885 et 20944-20952 de l'export). Laquelle fait foi ? Les deux sont gardées en attendant (relecture de la base du
-   2026-10-15, constat D4).
+   faut-il l'ajouter au glossaire (« Gelée aléatoire : parmi rouge, jaune, vert foncé, brun ») ? **Tranché** (décision R209 (6), « Non ») : la note
+   reste hors du site, « Gelée aléatoire » n'entre pas au glossaire.
+8. ~~**Momies** (Momie, Momie royale, Momie surveillante) : « Enragé » est à la fois dans « Vulnérabilité(s) Dégâts x2 » et dans « Immunité(s) »
+   (lignes 20809-20819, 20877-20885 et 20944-20952 de l'export). Laquelle fait foi ?~~ **Tranché** (décision R209 (3), « La vulnérabilité ») :
+   l'immunité des trois cartes devient « Poison, Maladie, Peur, Fatigue » et leur ligne `monstre_defense` immunité « Enragé » est retirée ; la
+   vulnérabilité reste (migration `0106-r209-bestiaire`). Les autres cartes qui écrivent « Poison, Maladie, Enragé, Peur, Fatigue » ne changent pas.

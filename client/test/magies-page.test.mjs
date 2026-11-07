@@ -329,8 +329,13 @@ test('résistances et vulnérabilités : listes de la base, dans l’ordre de la
   const feu = m.magies.get('magies/magie-du-feu');
   assert.deepEqual(feu.resistances.resistance.magies.map((r) => r.id), ['magies/magie-du-feu', 'magies/magie-de-la-glace', 'magies/magie-de-la-terre']);
   assert.deepEqual(feu.resistances.vulnerabilite.magies.map((r) => r.id), ['magies/magie-de-leau', 'magies/magie-du-vent']);
-  assert.deepEqual(feu.resistances.resistance.etats.map((r) => m.etats.get(r.id).nom), ['Brûlure', 'Gel', 'Pétrifié']);
-  assert.deepEqual(feu.resistances.resistance.etats.map((r) => r.brut), ['Brûlure', 'Gelé', 'Pétrification'], 'écriture de la source gardée (le nom de l’état est dans l’infobulle)');
+  // les altérations d'état de la Résistance du Feu : celles de la base, par leur id figé, dans l'ordre de la source, chacune sous l'écriture de sa cellule
+  // (`cible_brut`, que le site de dev et les migrations peuvent réécrire : « Gel » depuis la décision R205), jamais sous le nom de l'état (dans l'infobulle)
+  const etatsDuFeu = db.prepare("SELECT cible_etat_id AS id, cible_brut AS brut FROM magie_resistance WHERE magie_id = 'magies/magie-du-feu' AND sens = 'resistance' AND cible_type = 'etat' ORDER BY rang")
+    .all().map((l) => ({ ...l }));
+  assert.ok(etatsDuFeu.length > 0);
+  assert.deepEqual(feu.resistances.resistance.etats.map((r) => r.id), etatsDuFeu.map((l) => l.id));
+  assert.deepEqual(feu.resistances.resistance.etats.map((r) => r.brut), etatsDuFeu.map((l) => l.brut), 'écriture de la source gardée (le nom de l’état est dans l’infobulle)');
   assert.deepEqual(m.magies.get('magies/potentiel-illimite').resistances.resistance, { magies: [], etats: [], physiques: [] }, '« Aucune » = aucune ligne');
   assert.deepEqual(feu.resistances.vulnerabilite.physiques, [], 'une magie sans ligne physique : une liste vide');
   let physiques = 0;

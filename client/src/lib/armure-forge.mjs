@@ -8,7 +8,7 @@
 //     amélioration +N coûte les niveaux +1 à +N (« il faut faire toutes les étapes une à une ») et donne l'AP, l'AM et les crans écrits au niveau N,
 //     pour l'armure entière (décision R77) ; une armure particulière n'a que le prix écrit de l'armure entière et s'améliore aussi (décision R80) ; un
 //     « Matériau » d'une amélioration d'armure est compté sans prix (la source ne dit pas lequel des deux matériaux de l'armure : rien n'en est déduit).
-//   - Bouclier : une forme + une matière (décision R78) ; prix et défense ceux du bouclier préfabriqué, solidité celle de la matière ; une amélioration +N
+//   - Bouclier : une forme + une matière (décision R78) ; prix et défense ceux du bouclier préfabriqué (calculés d'après la forme et la matière : R207 (1)), solidité celle de la matière ; une amélioration +N
 //     coûte les niveaux +1 à +N, donne l'AP écrit au niveau N et les crans de tous les niveaux +1 à +N (« cumulés », décision R76) ; ses matériaux (1 aux
 //     +2 et +4, R76) sont la matière du bouclier, achetée ou fournie.
 //   - Armure élémentaire (décision R165) : une armure transformée par une pièce élémentaire devient l'armure de sa magie et de son poids ; AP, AM et
@@ -45,21 +45,58 @@ export function piecesDuMontant(ro) {
 /** Un montant arrondi au Ricken de fer (0,01 RO). */
 const arrondi = (n) => Math.round(n * 100) / 100;
 
-/** Unités de chacun des deux matériaux d'une armure complète (décision R93 : « le prix est toujours de 6 unités d'un matériau 1, et 6 d'un matériau 2 »). */
-export const UNITES_PAR_MATERIAU = 6;
-
 /**
- * Le prix d'une armure de la grille (décision R93) : la fabrication de l'armure complète (ligne « Armure Complète » du tableau FABRICATION, 10 RO) +
- * 6 unités de chacun de ses deux matériaux, à leur prix (celui de la page Composants : R62), en RO.
+ * Le prix d'une armure de la grille (décisions R93, R207 (1) E6) : la fabrication de l'armure complète (ligne « Armure Complète » du tableau
+ * FABRICATION, 10 RO) + `unites` unités de chacun de ses deux matériaux, à leur prix (celui de la page Composants : R62), en RO.
  * @param {number | null} fabrication  en RO
  * @param {(number | null)[]} prix  les prix en RO du matériau 1 et du matériau 2 (le même deux fois pour une armure d'un seul matériau)
- * @returns {{ fabrication: number | null, materiaux: number | null, achetes: number | null, fournis: number | null }}  les RO des 12 unités, le prix
+ * @param {number} unites  les unités de chaque matériau : constante_equipement 'armure.unites_par_materiau' (R93 : « 6 unités d'un matériau 1, et 6 d'un
+ *   matériau 2 »), lue par lib/armures-db.mjs (`unitesParMateriau` de chargerArmures)
+ * @returns {{ fabrication: number | null, materiaux: number | null, achetes: number | null, fournis: number | null }}  les RO des unités, le prix
  *   matériaux achetés (null si un prix manque), le prix matériaux fournis (la fabrication seule)
  */
-export function prixDeLArmure(fabrication, prix) {
+export function prixDeLArmure(fabrication, prix, unites) {
   const f = fabrication ?? null;
-  const materiaux = prix.every((p) => p !== null && p !== undefined) ? arrondi(prix.reduce((s, p) => s + UNITES_PAR_MATERIAU * p, 0)) : null;
+  const materiaux = prix.every((p) => p !== null && p !== undefined) ? arrondi(prix.reduce((s, p) => s + unites * p, 0)) : null;
   return { fabrication: f, materiaux, achetes: f === null || materiaux === null ? null : arrondi(f + materiaux), fournis: f };
+}
+
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+// Décision R207 (1), E6 (« D'après les matériaux (+ cout de fabrication pour le prix) ») : le type, l'AP, l'AM et le prix d'une armure de la grille et
+// d'un bouclier se calculent d'après leurs matériaux ; les mêmes formules pour la page (lib/armures-db.mjs), le service d'édition qui les recalcule
+// (serveur/edition-armures.mjs#suivreLesValeursCalculees) et les tests. Une armure particulière garde ses valeurs écrites (R80).
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+
+/** Les types d'un matériau d'armure (materiau_armure.type), du plus léger au plus lourd. */
+export const TYPES_DES_MATERIAUX = Object.freeze(['Léger', 'Intermédiaire', 'Lourd']);
+
+/** Le type d'une armure de la grille : le plus lourd de ses deux matériaux ; null si l'un n'a pas un type de TYPES_DES_MATERIAUX. */
+export function typeDeLaCombinaison(type1, type2) {
+  const [a, b] = [TYPES_DES_MATERIAUX.indexOf(type1), TYPES_DES_MATERIAUX.indexOf(type2)];
+  return a < 0 || b < 0 ? null : TYPES_DES_MATERIAUX[Math.max(a, b)];
+}
+
+/** Une somme d'AP ou d'AM : un terme absent compte 0, une somme nulle n'est pas écrite (null, comme « AP » absent de la case : R75). */
+const sommeDeDefense = (a, b) => (a ?? 0) + (b ?? 0) || null;
+
+/** L'AP et l'AM d'une armure de la grille : la somme de ceux de ses deux matériaux (R75) ; `m1`, `m2` : { ap, am } (materiau_armure). */
+export function defenseDeLaCombinaison(m1, m2) {
+  return { ap: sommeDeDefense(m1?.ap, m2?.ap), am: sommeDeDefense(m1?.am, m2?.am) };
+}
+
+/** L'AP et l'AM d'un bouclier : la classe de sa forme × ceux de sa matière (materiau_bouclier ; null quand la matière n'en écrit pas). */
+export function defenseDuBouclier(classe, matiere) {
+  const fois = (n) => (n === null || n === undefined ? null : classe * n);
+  return { ap: fois(matiere?.ap), am: fois(matiere?.am) };
+}
+
+/**
+ * Le prix d'un bouclier, en RO : la classe de sa forme × le prix de sa matière (page Composants, R62) + le prix de sa forme (bouclier_classe.prix, le
+ * coût de fabrication par forme : « Coût (RO) : 2,5 / Classe ») ; null si un prix manque.
+ */
+export function prixDuBouclier(classe, prixMatiere, prixForme) {
+  if ([classe, prixMatiere, prixForme].some((x) => x === null || x === undefined)) return null;
+  return arrondi(classe * prixMatiere + prixForme);
 }
 
 /** Les niveaux faits pour une amélioration +N : les niveaux +1 à +N. */
@@ -105,8 +142,9 @@ export function ameliorationDeBouclier(ameliorations, niveau) {
  *   `prix` : son prix écrit, lu pour une armure particulière seulement)
  * @param {{ niveau: number, cout_ro: number | null, cout_materiaux: number | null, bonus_ap: number | null, bonus_am: number | null, bonus_cran: number | null }[]} ameliorations
  * @param {number} niveau amélioration choisie (0 : aucune)
- * @param {{ fabrication: number | null, materiaux: { nom: string, prix_ro: number | null }[] } | null} composition  pour une armure de la grille : la
- *   fabrication de l'armure complète (RO) et ses deux matériaux (prixDeLArmure) ; null pour une armure particulière (son prix écrit : R80)
+ * @param {{ fabrication: number | null, unites: number, materiaux: { nom: string, prix_ro: number | null }[] } | null} composition  pour une armure de la
+ *   grille : la fabrication de l'armure complète (RO), les unités de chaque matériau (constante 'armure.unites_par_materiau', `unitesParMateriau` de
+ *   lib/armures-db.mjs#chargerArmures) et ses deux matériaux (prixDeLArmure) ; null pour une armure particulière (son prix écrit : R80)
  */
 export function forgerArmure(armure, ameliorations, niveau = 0, composition = null) {
   const amelioration = ameliorationDArmure(ameliorations, niveau);
@@ -118,13 +156,14 @@ export function forgerArmure(armure, ameliorations, niveau = 0, composition = nu
   solidite.total = solidite.armure + solidite.amelioration;
   let base = { prix: armure.prix ?? null, fabrication: null, materiaux: [], fournis: null };
   if (composition) {
-    const p = prixDeLArmure(composition.fabrication, composition.materiaux.map((m) => m.prix_ro ?? null));
+    const { unites } = composition;
+    const p = prixDeLArmure(composition.fabrication, composition.materiaux.map((m) => m.prix_ro ?? null), unites);
     // les unités de chaque matériau ; une armure d'un seul matériau (« Armure de Cuir complète ») : 12 unités de ce matériau
     const materiaux = [];
     for (const m of composition.materiaux) {
       const deja = materiaux.find((x) => x.nom === m.nom);
-      if (deja) deja.unites += UNITES_PAR_MATERIAU;
-      else materiaux.push({ nom: m.nom, prix_ro: m.prix_ro ?? null, unites: UNITES_PAR_MATERIAU });
+      if (deja) deja.unites += unites;
+      else materiaux.push({ nom: m.nom, prix_ro: m.prix_ro ?? null, unites });
     }
     for (const m of materiaux) m.total = m.prix_ro === null ? null : arrondi(m.unites * m.prix_ro);
     base = { prix: p.achetes, fabrication: p.fabrication, materiaux, fournis: p.fournis };
@@ -151,7 +190,8 @@ export function forgerArmure(armure, ameliorations, niveau = 0, composition = nu
 
 /**
  * Le bouclier forgé (décision R78 : une forme + une matière).
- * @param {{ ap: number | null, am: number | null, prix: number | null }} bouclier  le bouclier préfabriqué (prix et défense écrits)
+ * @param {{ ap: number | null, am: number | null, prix: number | null }} bouclier  le bouclier préfabriqué : sa défense et son prix, calculés d'après
+ *   sa forme et sa matière (décision R207 (1), E6 : defenseDuBouclier, prixDuBouclier ; bouclier.ap, am, prix les gardent, recalculés par le service)
  * @param {{ nom: string, solidite: number, prix_ro: number | null }} matiere  la matière (fiche des matières pour boucliers ; prix de la ressource, R62)
  * @param {{ niveau: number, cout_ro: number | null, cout_materiaux: number | null, bonus_ap: number | null, bonus_am: number | null, bonus_cran: number | null }[]} ameliorations
  * @param {number} niveau amélioration choisie (0 : aucune)

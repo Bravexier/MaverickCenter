@@ -580,7 +580,7 @@ test('opérations du lot (registre `operations`, `actions`) : chaque traduction 
   assert.deepEqual(c.ressources.find((r) => r.cle === 'mots-cles').actions.map((a) => [a.cle, a.operation, a.champs.map((x) => x.nom).join()]), [['fusion', 'fusionner_mots_cles', 'dans']]);
 });
 
-test('opérations du lot : une race créée par l’API reçoit ses magies innées par la matrice (acces-aux-magies) ; une race que l’onglet limite, par sa liste', () => {
+test('opérations du lot : une race créée par l’API reçoit ses magies innées par la matrice (acces-aux-magies) ; une race que l’onglet limite, par sa liste ; R210 : jamais aucune', () => {
   const race = ok(appel('POST', '/api/v1/races/', { nom: nomLibre('Race de l’API v1', 'race', 'races'), nature: 'pure' }), 201);
   // comme le dit la description de « races » : son peuple du même nom et sa case « Même peuple »
   const peuple = ligne('SELECT * FROM peuple WHERE race_id = ?', race.element.id);
@@ -600,6 +600,15 @@ test('opérations du lot : une race créée par l’API reçoit ses magies inné
   const refus = appel('POST', `${race.adresse}magies-innees-de-l-onglet/`, { magie_id: magie });
   assert.equal(refus.statut, 409);
   assert.match(refus.corps.erreur, /acces-aux-magies/);
+  // décision R210 : une race a forcément des magies innées possibles ; retirer sa seule magie accessible est refusé (400), rien ne change
+  const matriceAvant = lignes('SELECT magie_id, accessible, valeur_brut FROM race_magie WHERE race_id = ? ORDER BY magie_id', race.element.id);
+  const vide = appel('PATCH', caseDeLaMatrice, { accessible: 0 });
+  assert.equal(vide.statut, 400, JSON.stringify(vide.corps));
+  assert.match(vide.corps.erreur, /au moins une magie innée/);
+  assert.deepEqual(lignes('SELECT magie_id, accessible, valeur_brut FROM race_magie WHERE race_id = ? ORDER BY magie_id', race.element.id), matriceAvant, 'rien d’écrit');
+  // avec une autre magie accessible, la première se retire
+  const seconde = ligne('SELECT id FROM magie WHERE id <> ? ORDER BY ordre LIMIT 1', magie).id;
+  ok(appel('PATCH', `${race.adresse}acces-aux-magies/${seg(seconde)}/`, { accessible: 1 }));
   ok(appel('PATCH', caseDeLaMatrice, { accessible: 0 }));
   assert.equal(ligne('SELECT accessible FROM race_magie WHERE race_id = ? AND magie_id = ?', race.element.id, magie).accessible, 0);
 

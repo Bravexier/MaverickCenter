@@ -29,6 +29,7 @@ user-invocable: false
 - Les dons suivent la disposition de l'onglet (`plateauDeDons`). Les choix sont ceux de la vue `v_capacite_exclusive`, encadrés avec « ou », options côte à côte ; le test vérifie que disposition et vue coïncident.
 - Règle des choix : les dons d'une même ligne de l'onglet s'excluent (`choix_exclusif_avec`, symétrique) ; une spécialité exclut l'autre et tous ses dons ; un don seul sur sa ligne est reçu sans choix. L'Archimage n'a pas de spécialité mais des groupes de 2 ou 3 dons par palier.
 - Spécialités en onglets (script `components/Onglets.astro`) : le premier à gauche, le second à droite. Un lien `#don-…` ouvre le bon onglet. Sans JavaScript, tout est affiché.
+- Le « Don de départ » est celui du niveau 1 : l'encadré santé, chakra, barrière ; les choix des niveaux 10, 15 et 20 dépendent de la spécialité (R202 (2)).
 - Le +4 AM d'une classe raciale se lit dans le texte du don de niveau 10 de sa 2ᵉ spécialité (« considérer comme classe magique ») ; le site lit cette phrase, il ne devine pas la spécialité (R7).
 - Le CSS (`client/src/styles/classe/`) est inséré par `ClassePage.astro` en `?raw`, seulement.
 - Une page construite avant une création ou une suppression de don est redessinée par le mode modification avec le même HTML (`classe-dons-rendu.mjs`, testé contre le site construit).

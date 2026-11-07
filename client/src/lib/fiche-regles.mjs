@@ -84,8 +84,10 @@ const CONSTANTES = [
   // page « Le mode hyper » depuis le retrait de la « Liste des effets mode hyper », décision R187)
   'mode_hyper.degats_physique', 'mode_hyper.degats_magie_mono', 'mode_hyper.degats_magie_bi', 'mode_hyper.soin_magique',
   'mode_hyper.conso_chakra_pct_max_par_tour', 'mode_hyper.usage_par_semaine', 'mode_hyper_100.degats_bonus', 'mode_hyper_100.cout_chakra_pct_max',
-  // la réussite critique (décision R180, migration 0087) : sa base, les deux paliers du score du moment (le second, bonus total), son plafond (base comprise)
+  // la réussite critique (décision R180, migration 0087) : sa base, les deux paliers du score du moment (le second, bonus total), son plafond (base comprise),
+  // et son plancher (décision R203, migration 0101 : la plage ne descend jamais sous « 1 à 1 », le bonus total y est ramené)
   'critique.base', 'critique.palier_1_score_min', 'critique.palier_1_bonus', 'critique.palier_2_score_min', 'critique.palier_2_bonus', 'critique.plafond',
+  'critique.plancher',
 ];
 
 /** @param {import('node:sqlite').DatabaseSync} db */
@@ -138,7 +140,8 @@ function reglesDeLaBase(db) {
 
   // Résistances (tableau « Résistance / Faiblesse » de la fiche auto V15.2.2, demande du propriétaire) : les six paliers (Personnage!BA2:BI12), les
   // altérations d'état, et ce que les dons écrivent en toutes lettres (lib/resistance-texte.mjs) : les cibles sont les magies et les altérations, sous
-  // leur nom et sous les écritures que les importeurs leur ont rapprochées (magie_resistance, ethnie_resistance : « Gelé », « Pétrification »).
+  // leur nom et sous les écritures que les importeurs leur ont rapprochées (magie_resistance, ethnie_resistance : « Pétrification » ; l'état « Gel » s'écrit
+  // « Gel » depuis la décision R205, migration 0103).
   // `multiplicateur` : celui des dégâts subis (« dégâts subis ÷2 » : 0,5), que le calcul des dégâts reçus applique (décision R98)
   const resistance_paliers = lignes(db, 'SELECT id, libelle, valeur_min, valeur_max, multiplicateur, effet_brut FROM resistance_palier ORDER BY ordre')
     // `classe` : la classe de la couleur du palier (lib/palette-css.mjs, famille `palier` ; null pour un palier sans couleur), jamais un hex

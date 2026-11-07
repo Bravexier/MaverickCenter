@@ -14,9 +14,17 @@ import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { chargerPanneau, chargerPanneaux, ordonnerBlocs, ordresApresDeplacement, ordresApresInsertion } from '../src/lib/panneaux-regles-db.mjs';
 import { ancreDuPanneau, empreinteDuTexte, htmlDesBlocs, htmlDuBloc } from '../src/lib/panneaux-regles-rendu.mjs';
+import { ecrituresReecrites } from './aide-textes-reecrits.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const historique = historiqueSite(db);
+// Les fragments que les migrations de R207 ont réécrits (registres `textes` : une entrée par remplacement, `avant` présent une fois dans la valeur
+// d'avant) : la 0105 change le test du Forgeron dans le bloc 1 du panneau Armes et dans le corps de ressources/armes, celui de l'Enchanteur dans le corps
+// de ressources/baton-magique, la 0109 dans le bloc 2 du panneau Bâtons magiques ; la 0108 des prix d'armure. La valeur d'import d'une cellule que le
+// site a modifiée est celle d'avant la migration, celle d'une cellule intacte celle d'après : chaque côté se lit sous l'une ou l'autre écriture, sans
+// figer le texte.
+/** Les écritures d'une cellule : telle quelle, et réécrite par les registres de R207 (test/aide-textes-reecrits.mjs). */
+const ecrituresR203 = ecrituresReecrites('0105-r207-armures-boucliers-et-fabrication', '0108-r207-prix-des-armures', '0109-r207-panneau-des-batons');
 
 test('un panneau par page du wiki servie par les pages de l’équipement : (id, page_id) de panneau_regles = (ancre, page) de PAGES_SERVIES_PAR_L_EQUIPEMENT', () => {
   const lignes = db.prepare('SELECT id, page_id FROM panneau_regles ORDER BY id').all().map((l) => [l.id, l.page_id]);
@@ -66,8 +74,11 @@ test('l’import : chaque bloc se lit mot pour mot dans le corps de sa page tel 
   for (const b of blocs) {
     if (/^\{\{[a-z0-9-]+:?\}\}$/.test(b.texte)) continue; // une tuile de balise seule ({{mot:}}, ou {{mot}} si le dev l'a réécrite)
     const page = panneaux.find((p) => p.id === b.panneau_id).page_id;
-    // une balise du glossaire posée après la copie (« 2 crans de {{solidite|solidité}} », migration 0058) se lit par son texte écrit
-    assert.ok(historique.valeurDImport('page', { id: page }, 'corps_md').includes(texteSansBalises(b.texte)), `${b.panneau_id} ${b.rang} : copié de ${page}`);
+    // une balise du glossaire posée après la copie (« 2 crans de {{solidite|solidité}} », migration 0058) se lit par son texte écrit ; un fragment
+    // réécrit par une migration de R207 (« Force et Volonté », R207 (3)) s'admet sous l'une ou l'autre écriture, de chaque côté
+    const corps = ecrituresR203('page', { id: page }, 'corps_md', historique.valeurDImport('page', { id: page }, 'corps_md'));
+    const bloc = ecrituresR203('panneau_regles_bloc', { panneau_id: b.panneau_id, rang: b.rang }, 'texte', b.texte).map((t) => texteSansBalises(t));
+    assert.ok(corps.some((c) => bloc.some((t) => c.includes(t))), `${b.panneau_id} ${b.rang} : copié de ${page}`);
   }
 });
 

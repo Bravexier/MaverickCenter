@@ -262,7 +262,8 @@ bouton (au-dessus quand la place manque), bornée à l'écran, téléphone compr
   (`modeHyperValable`). Sous le Mode Hyper, le **compteur « une fois par semaine »** (« Oui, compteur manuel » : `personnage.mode_hyper_semaine`, NULL au
   maximum, la constante `mode_hyper.usage_par_semaine`) : consommé à l'activation, remonté seulement à la main (boutons − et +, `semaineDuModeHyperApres`) ;
   à 0, la case est grisée, comme une action épuisée. **Boutons des jauges** (R172, R175, R18, R186 ; fonctions pures `tourDeModeHyper`, `finDuModeHyperCent`,
-  `payerDuChakra`) : « Tour de Mode Hyper » (Mode Hyper actif hors 100 %) retire ⌊10 % du chakra maximum⌋ ; « Fin du Mode Hyper 100 % » consomme
+  `payerDuChakra`) : « Tour de Mode Hyper » (Mode Hyper actif hors 100 %) retire ⌊10 % du chakra maximum⌋, à la fin du tour du joueur (décision R200 (3) : son
+  infobulle le dit, « en fin de tour ») ; « Fin du Mode Hyper 100 % » consomme
   ⌊75 % du chakra maximum⌋, décoche le 100 % et laisse le Mode Hyper (65 de chakra maximum : 6 par tour, 48 à la sortie) ; le chakra qui manque se paie
   3 santé pour 1 chakra (R186, `SANTE_PAR_CHAKRA_MANQUANT`), un prix qui ignore la barrière (elle ne l'absorbe pas et ne baisse pas, R186), le chakra
   ne descend pas sous 0, la santé peut devenir négative (R171) ; le coût en infobulle. Le dépassement de durée (R161)
@@ -408,11 +409,14 @@ bouton (au-dessus quand la place manque), bornée à l'écran, téléphone compr
   **Réussite critique** (décision R180) : chaque compétence porte son bonus de réussite critique **du moment** (`competencesDe` : `critique`,
   `critiqueDe` ; null à deux croix), en infobulle du score dès qu'il n'est pas nul (`lignesDuCritique` : le total et la plage, « Réussite critique :
   +10 % (1 à 15) », une ligne par origine, « +5 % (score de 103 % et plus) », « +5 % (posture Offensif) », « +1 % (Accessoire : Collier) », et
-  « Plafond : +12 % ramené à +10 % (jamais plus de 1 à 15) » quand le plafond rogne). Les origines : le **palier**, lu sur le score du
+  « Plafond : +12 % ramené à +10 % (jamais plus de 1 à 15) » quand le plafond rogne, « Plancher : -6 % ramené à -4 % (jamais moins de 1 à 1) » quand
+  le plancher relève : décision R203). Les origines : le **palier**, lu sur le score du
   moment (posture comprise : 113 en Offensif donne 103), de 96 à 102 % +2, à partir de 103 % +5 au total, sans borne haute, sur tout jet ; la
   **posture** (ci-dessous, « Posture du moment ») ; un **accessoire** porté « Augmente la réussite critique de N%, peu importe le jet. »
   (`critiqueDeLAccessoire`), sur toutes les compétences (maudit : l'effet contraire, R54). Le total est **plafonné** pour que la base (5) plus le bonus
-  ne dépasse pas 15. Les nombres viennent des constantes `critique.*` de `regle_constante` (`regles.constantes`), les compétences de `posture_critique`
+  ne dépasse pas 15, et **relevé** pour que la plage ne descende jamais sous « 1 à 1 » (décision R203, constante `critique.plancher` : six
+  accessoires maudits sur un score sans palier donnent −6, ramené à −4, « 1 à 1 » ; la plage figée d'un sort préparé ne descend donc jamais sous 1).
+  Les nombres viennent des constantes `critique.*` de `regle_constante` (`regles.constantes`), les compétences de `posture_critique`
   (`regles.postures[].critique`), jamais du code.
   **Un don de posture est mentionné, jamais compté** (décision R182 (3), Q90 : « Tout jet d'attaque au corps à corps », « Le mentionner seulement ») :
   un don acquis, passif, dont le texte s'ouvre sur « (Posture X) » et écrit « Augmente la réussite critique de +N% » (`lib/critique-texte.mjs#critiqueDuDon`,

@@ -118,9 +118,11 @@ test('0095 : guide/le-mode-hyper garde la première phrase, suivie du marqueur d
   assert.equal(hyper.match(/<!--\s*guide:/g)?.length, 1);
   assert.ok(!hyper.includes('ne disent pas toujours la même chose'));
   assert.ok(!hyper.includes('liste-des-effets-mode-hyper'));
-  // la section « Sur la fiche du site » et sa phrase sur l'onglet masqué restent (P9 de docs/sql/a-valider.md)
-  assert.ok(hyper.endsWith('Le classeur des magies garde, dans un onglet masqué, une autre liste des effets du Mode Hyper, aux valeurs différentes : '
-    + 'cette liste ne compte pas, ce sont les valeurs données plus haut (+15, et +7 avec deux magies) qui valent.\n'));
+  // la section « Sur la fiche du site » reste ; sa phrase sur l'onglet masqué, que la 0095 gardait (P9 de docs/sql/a-valider.md), est retirée depuis
+  // par la 0104 (R200 (5), « P9. Oui ») : migration postérieure, l'une ou l'autre écriture (la page finit sur cette phrase, ou ne la cite plus)
+  const PHRASE_P9 = 'Le classeur des magies garde, dans un onglet masqué, une autre liste des effets du Mode Hyper, aux valeurs différentes : '
+    + 'cette liste ne compte pas, ce sont les valeurs données plus haut (+15, et +7 avec deux magies) qui valent.';
+  assert.ok(hyper.endsWith(`${PHRASE_P9}\n`) || !hyper.includes('onglet masqué'));
   assert.ok(hyper.includes('## Sur la fiche du site\n'));
   // l'état courant (le site peut réécrire la page, ou la supprimer) : aucun renvoi vers la Liste hors d'un texte que le site a écrit, le tableau tiré
   // de la base au plus une fois

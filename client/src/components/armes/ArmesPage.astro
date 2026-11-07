@@ -207,7 +207,8 @@ const coutCumule = (niveau: number) => {
 
         <Tableau id="ameliorations-arme" titre="Améliorations" compte={`+1 à +${armes.ameliorations.length}`} bloc="armes-famille" class="armes-ameliorations" classeTable="armes-table armes-table--ameliorations table-donnees--serree"
           note="Une amélioration +N demande les coûts des niveaux +1 à +N ; un « Matériel » est une unité du matériau de l’arme.">
-          <p slot="avant" class="tableau__note armes-famille__note js-seul armes-ameliorations__note-elementaire">Arme élémentaire : une amélioration +N demande les gemmes des niveaux +1 à +N, celles de la magie de l’arme.</p>
+          {/* le métier qui l'améliore (décision R207 (4), Q58 : « Forgeron pour les armes ») : le mot-clé `forgeron`, lien vers sa section de /metiers/ */}
+          <p slot="avant" class="tableau__note armes-famille__note js-seul armes-ameliorations__note-elementaire">Arme élémentaire : une amélioration +N demande les gemmes des niveaux +1 à +N, celles de la magie de l’arme. Elle revient au {'{{forgeron}}'}.</p>
           <thead><tr><th scope="col">Niveau</th><th scope="col" class="amelioration__cout">Coût</th><th scope="col" class="amelioration__cout-elementaire">Coût élémentaire</th><th scope="col">Effet</th></tr></thead>
           <tbody>
             <tr class="amelioration amelioration--aucune js-seul-ligne" data-niveau="0">

@@ -1,0 +1,30 @@
+{
+ "migration": "0107-r198-r200-posture-et-mode-hyper",
+ "decisions": [
+  "R198",
+  "R200"
+ ],
+ "description": "Suite de la 0104 (même méthode) : deux textes mis d'accord avec R198 (6) et R200 (3). `textes` : une entrée par remplacement ; `avant` et `apres` sont le fragment qui change (présent une seule fois dans la valeur d'avant). Pas sous `corrections` : ce ne sont pas des corrections d'un classeur (tools/sources/rapprocher.mjs lit `corrections`).",
+ "textes": [
+  {
+   "table": "mot_cle",
+   "cle": {
+    "id": "posture"
+   },
+   "col": "description",
+   "decision": "R198 (6)",
+   "avant": "que l’on déclare au début de son tour.",
+   "apres": "que l’on prend ou change au début de son tour : on garde sa posture tant qu’on n’en change pas."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/la-magie-en-jeu"
+   },
+   "col": "corps_md",
+   "decision": "R200 (3)",
+   "avant": "en brûle 10 % du maximum à chaque tour",
+   "apres": "en brûle 10 % du maximum à la fin de chaque tour du joueur"
+  }
+ ]
+}

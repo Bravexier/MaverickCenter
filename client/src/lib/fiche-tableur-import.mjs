@@ -1203,10 +1203,10 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
       perdu(`Sort préparé : « ${v} » : jet de magie hors de ${bornes.min} à ${bornes.max}`);
       continue;
     }
-    // la plage de réussite critique figée à la préparation (décision R182 (4), « critique 1 à N ») : relue telle quelle, N de 1 (le bas de la plage ;
-    // un accessoire maudit la fait descendre sous critique.base, R180 et R54) au plafond (constante critique.plafond), comme le CHECK de
-    // personnage_sort.prepare_critique, jamais recalculée ; absente, NULL
-    const plage = { min: 1, max: regles.constantes['critique.plafond'] };
+    // la plage de réussite critique figée à la préparation (décision R182 (4), « critique 1 à N ») : relue telle quelle, N du plancher (constante
+    // critique.plancher, décision R203 : un accessoire maudit la fait descendre sous critique.base, R180 et R54, jamais sous « 1 à 1 ») au plafond
+    // (constante critique.plafond), comme le CHECK de personnage_sort.prepare_critique, jamais recalculée ; absente, NULL
+    const plage = { min: regles.constantes['critique.plancher'], max: regles.constantes['critique.plafond'] };
     if (lu.critique !== null && (lu.critique < plage.min || lu.critique > plage.max)) {
       perdu(`Sort préparé : « ${v} » : réussite critique « 1 à ${lu.critique} » hors des plages possibles (de « 1 à ${plage.min} » à « 1 à ${plage.max} »)`);
       continue;

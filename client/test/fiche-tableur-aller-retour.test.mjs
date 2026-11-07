@@ -451,6 +451,18 @@ test('sort préparé en Mode Hyper ou au Mode Hyper 100 % (décision R172, Q82) 
   const hors = ficheDuClasseur(regles, classeur.feuille('Personnage'), { nomFichier: 'essai.xlsx', date: DATE, logo: LOGO, empreintePortrait: null });
   assert.deepEqual(hors.nonRepris, ['Sort préparé : « Boule de feu (jet 57, critique 1 à 16) » : réussite critique « 1 à 16 » hors des plages possibles (de « 1 à 1 » à « 1 à 15 »)']);
   assert.ok(hors.fiche.sorts.every((s) => !s.prepare && s.prepare_critique == null));
+  // le bas des plages est la constante critique.plancher (décision R203 : jamais sous « 1 à 1 »), lue dans les règles : un plancher d'essai plus haut
+  // (sous le plafond) refuse une plage qu'il ne couvre plus, et le message le dit
+  const plancher = regles.constantes['critique.plafond'] - 1;
+  const sous = await lireClasseur(await ecrireXlsx(MODELE, {
+    cellules: { ...a.cellules, [ORDINATEUR.note]: note.replace('critique 1 à 16', `critique 1 à ${plancher - 1}`) }, remplis: a.remplis, alignements: a.alignements,
+    descriptionImage: 'logo', titre: f.nom,
+  }), { nom: 'essai.xlsx' });
+  const reglesDEssai = { ...regles, constantes: { ...regles.constantes, 'critique.plancher': plancher } };
+  assert.deepEqual(ficheDuClasseur(reglesDEssai, sous.feuille('Personnage'), { nomFichier: 'essai.xlsx', date: DATE, logo: LOGO, empreintePortrait: null }).nonRepris,
+    [`Sort préparé : « Boule de feu (jet 57, critique 1 à ${plancher - 1}) » : réussite critique « 1 à ${plancher - 1} » hors des plages possibles `
+      + `(de « 1 à ${plancher} » à « 1 à ${regles.constantes['critique.plafond']} »)`]);
+  assert.equal(regles.constantes['critique.plancher'], db.prepare("SELECT valeur FROM regle_constante WHERE id = 'critique.plancher'").get().valeur, 'R203 : lue dans la base');
   // la lecture : « Mode Hyper 100 % » vaut aussi le Mode Hyper ; un seul Mode Hyper par ligne
   assert.deepEqual(lireSortPrepare('Boule de feu (jet 57, Mode Hyper)'), { nom: 'Boule de feu', jet: 57, posture: null, hyper: true, cent: false, critique: null });
   assert.deepEqual(lireSortPrepare('Boule de feu (Mode Hyper 100 %)'), { nom: 'Boule de feu', jet: null, posture: null, hyper: true, cent: true, critique: null });

@@ -5,7 +5,8 @@
 //   - Page Armures : choisir un matériau dans chacun des deux tableaux donne l'armure de la grille (dans un ordre comme dans l'autre) ; une ligne de la
 //     liste choisit l'armure et ses deux matériaux, une armure particulière se choisit seule (sans matériau : la source ne lui donne que le prix de
 //     l'armure entière, décision R80). La fiche s'ouvre à côté : toujours l'armure complète (une armure ne se fabrique plus pièce par pièce, décision
-//     R93), dont le prix est la fabrication de l'armure complète (`[data-armures-fabrication]`) + 6 unités de chacun des deux matériaux, achetées ou
+//     R93), dont le prix est la fabrication de l'armure complète (`[data-armures-fabrication]`) + 6 unités (`data-unites-par-materiau`, la constante
+//     'armure.unites_par_materiau' : R207 (1)) de chacun des deux matériaux, achetées ou
 //     fournies (R93 ; une armure particulière : son prix écrit, R80) ; l'amélioration en change la défense, la solidité et le coût (lib/armure-forge.mjs,
 //     décision R77). Le prix de chaque armure de la liste est calculé de même au build (lib/armures-db.mjs) ; le script le refait quand un prix de
 //     matériau ou la fabrication est réécrit (mode modification : évènement « armures:rafraichir »).
@@ -33,7 +34,7 @@
 // Seuls imports : lib/armure-forge.mjs (le calcul) et lib/armures-tri.mjs (le tri de la liste des boucliers), qu'aucun autre script de page n'importe.
 import {
   choixDArmureApres, coutDeLaLigneElementaire, coutElementaireEcrit, estElementaire, forgerArmure, forgerArmureElementaire, forgerBouclier, nombre,
-  piecesDuMontant, prixDeLArmure, UNITES_PAR_MATERIAU,
+  piecesDuMontant, prixDeLArmure, prixDuBouclier,
 } from '../lib/armure-forge.mjs';
 import { ordonner, triSuivant } from '../lib/armures-tri.mjs';
 
@@ -128,6 +129,9 @@ if (racine) {
   const ligneDeMateriau = (role, cle) => (cle ? racine.querySelector(`[data-choix="${role}"] tr.pmat[data-materiau="${CSS.escape(cle)}"]`) : null);
   const videDeLArmure = A.fiche?.innerHTML ?? '';
 
+  /** Les unités de chaque matériau d'une armure (constante_equipement 'armure.unites_par_materiau', posée par la page : R93, R207 (1)). */
+  const unites = Number(racine.dataset.unitesParMateriau);
+
   /** La fabrication de l'armure complète (RO), telle qu'affichée (rendu « piece-cout ») : comptée dans le prix de chaque armure de la grille (R93). */
   const fabricationDeLArmure = () => nombreOuNul(racine.querySelector('[data-armures-fabrication] .pcout')?.dataset.ro);
 
@@ -139,20 +143,36 @@ if (racine) {
 
   /**
    * Les prix calculés de la page, refaits d'après les prix des matériaux et la fabrication tels qu'affichés (au chargement, ceux du build sont les
-   * mêmes) : le prix de 6 unités de chaque matériau des deux tableaux de choix (« Prix ×6 », pour une armure) et celui de chaque armure de la grille dans
-   * la liste (décision R93).
+   * mêmes) : le prix de `unites` unités de chaque matériau des deux tableaux de choix (« Prix ×6 », pour une armure) et celui de chaque armure de la
+   * grille dans la liste (décisions R93, R207 (1)) ; sur la page Boucliers, celui de chaque bouclier de la liste (prixDesBoucliers).
    */
   function prixDeLaListe() {
     for (const tr of racine.querySelectorAll('[data-choix="m1"] tr.pmat, [data-choix="m2"] tr.pmat')) {
       const p = lireMateriau(tr)?.prix_ro ?? null;
-      ecrirePrix(tr.querySelector('[data-prix-armure]'), p === null ? null : Math.round(UNITES_PAR_MATERIAU * p * 100) / 100);
+      ecrirePrix(tr.querySelector('[data-prix-armure]'), p === null ? null : Math.round(unites * p * 100) / 100);
     }
     const fabrication = fabricationDeLArmure();
     for (const tr of racine.querySelectorAll('tr.armure[data-m1]')) {
       const cellule = tr.querySelector('.armure__prix[data-prix-calcule]');
       if (!cellule) continue;
       const prix = [tr.dataset.m1, tr.dataset.m2].map((cle) => lireMateriau(ligneDeMateriau('m1', cle))?.prix_ro ?? null);
-      ecrirePrix(cellule, prixDeLArmure(fabrication, prix).achetes);
+      ecrirePrix(cellule, prixDeLArmure(fabrication, prix, unites).achetes);
+    }
+    prixDesBoucliers();
+  }
+
+  /**
+   * Le prix de chaque bouclier de la liste, refait d'après le prix de sa forme et celui de sa matière tels qu'affichés (décision R207 (1), E6 : la classe
+   * de la forme × le prix de la matière + le prix de la forme, lib/armure-forge.mjs#prixDuBouclier) : le prix d'une forme réécrit en mode modification
+   * (le service recalcule les boucliers, l'éditeur ne réécrit que la forme). Au chargement, ceux du build sont les mêmes.
+   */
+  function prixDesBoucliers() {
+    for (const tr of racine.querySelectorAll('tr.bouclier[data-forme][data-matiere]')) {
+      const forme = racine.querySelector(`tr.forme[data-forme="${CSS.escape(tr.dataset.forme)}"]`);
+      const matiere = racine.querySelector(`[data-choix="matiere"] tr.pmat[data-materiau="${CSS.escape(tr.dataset.matiere)}"]`);
+      if (!forme || !matiere) continue;
+      const prixForme = nombreOuNul(forme.querySelector('.forme__prix .pprix')?.dataset.ro);
+      ecrirePrix(tr.querySelector('.bouclier__prix'), prixDuBouclier(nombreOuNul(forme.dataset.classe), lireMateriau(matiere)?.prix_ro ?? null, prixForme));
     }
   }
 
@@ -298,7 +318,7 @@ if (racine) {
     }
     const a = lireArmure(ligne);
     const mats = a.particuliere ? [] : [lireMateriau(A.m1), lireMateriau(A.m2)].filter(Boolean);
-    const composition = a.particuliere ? null : { fabrication: fabricationDeLArmure(), materiaux: mats };
+    const composition = a.particuliere ? null : { fabrication: fabricationDeLArmure(), unites, materiaux: mats };
     const f = forgerArmure({ ap: a.ap, am: a.am, solidite: a.solidite, prix: a.prix }, ameliorations('armure'), A.niveau, composition);
     const niveau = A.niveau ? `Amélioration +${A.niveau}` : 'Sans amélioration';
     const c = f.cout;
