@@ -172,7 +172,12 @@ export const RESSOURCES = [
       'vers l’abréviation d’un autre (409) ; la fusion (action « fusion », opération `fusionner_mots_cles`) verse ses pages dans l’autre mot-clé (une page ' +
       'qui avait les deux perd seulement l’ancien) et y recible ses balises, puis le retire du vocabulaire ; un mot-clé créé n’a pas de page ; il ne se ' +
       'supprime que si rien ne le mentionne (décision R196) : une page qui le porte ou une balise qui le cite, pages d’exemple comprises, refusent la ' +
-      'suppression (409, `mentions` : la liste des endroits, page, ou table et ligne), aucun texte n’est réécrit. Le verrou (`verrou`, migration 0110, ' +
+      'suppression (409, `mentions` : la liste des endroits, page, ou table et ligne ; `refus_du_forcage` : null si la suppression forcée passerait, ' +
+      'sinon sa raison), aucun texte n’est réécrit ; DELETE `?forcer=1` (ou le corps `{ "forcer": true }`) la force (décision R223) : dans le même lot, ' +
+      'chaque balise qui le cite devient son texte affiché (le libellé, ou le texte écrit de « {{id|texte}} ») en texte simple et chaque étiquette de page est retirée ; le forçage reste refusé (409, avant ' +
+      'toute écriture) pour un mot-clé verrouillé, qui étiquette un sort, cité par la définition d’un mot-clé verrouillé (`mots_cles_verrouilles`), ' +
+      'dont le lien mène sans ancre à une page de la base (une ancre, une route sans page ou une rubrique sont épargnées, R223 (7)), ou mentionné là où le site ne sait pas remplacer la balise ' +
+      '(`mentions_bloquantes`). Le verrou (`verrou`, migration 0110, ' +
       'décisions R218 et R219 ; en lecture seule : aucune route ne l’écrit, un POST ou un PATCH qui le porte est refusé en 400) : un mot-clé verrouillé ' +
       '(1 : ceux qui mènent à une page, ceux des monnaies et ceux dont le site se sert pour ranger ses pages ou reconnaître un sort) ne se modifie ' +
       'pas (409, quel que soit le champ), ne se supprime pas, même sans mention (409), et ne se fusionne pas dans un autre (409) ; il se pose encore ' +

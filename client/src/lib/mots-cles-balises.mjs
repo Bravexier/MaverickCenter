@@ -21,8 +21,9 @@
 //     balise, « {{id|texte}} » (le libellé du moment si rien n'est écrit), et jamais le mode complet : il se lit sans le vocabulaire (texteSansBalises
 //     sans vocabulaire rend le texte affiché) — ce que lisent les découpages des importeurs et de l'édition, et la fiche de personnage.
 // Renommer un mot-clé ne réécrit aucun texte ; le fusionner fait citer l'autre à ses balises (reciblerLeMotCle). Il ne se supprime que si rien ne le
-// mentionne (décision R196 : lib/mentions-des-mots-cles.mjs), et un mot-clé verrouillé ni ne se modifie ni ne se supprime depuis le site (mot_cle.verrou,
-// migration 0110 ; décisions R218, R219) : retirerLeMotCle (ses balises en texte simple) ne sert plus qu'au rejeu des lots anciens du journal
+// mentionne (décision R196 : lib/mentions-des-mots-cles.mjs), sauf suppression forcée (décision R223 : chaque balise devient son texte affiché, en texte simple,
+// remplacerParLeTexteAffiche), et un mot-clé verrouillé ni ne se modifie ni ne se supprime depuis le site (mot_cle.verrou, migration 0110 ; décisions R218,
+// R219, forçage compris) : retirerLeMotCle (ses balises en texte simple) ne sert plus qu'au rejeu des lots anciens du journal
 // (serveur/edition.mjs). Une balise que le vocabulaire n'a pas (un texte d'avant la suppression de son mot-clé) s'affiche en texte simple, sans gras.
 // Le texte d'une balise est du texte simple : sa mise en forme Markdown la couperait. Une capacité (de monstre, de classe) qui porte le nom d'un mot-clé
 // reste la capacité : seule une balise fait un mot-clé.
@@ -409,6 +410,14 @@ const pourLeMarkdown = (t, tableau) => {
   const e = String(t).replace(/([\\`*_[\]])/g, '\\$1').replace(/<(?=[a-zA-Z/!?])/g, '\\<');
   return tableau ? e.replace(/\|/g, '\\|') : e;
 };
+/**
+ * Échappe ce qui ferait d'un début de ligne un titre, une citation, une liste ou une règle (l'éditeur en place, lib/markdown-edition.mjs, et le texte
+ * qui remplace une balise en tête de ligne : remplacerParLeTexteAffiche).
+ */
+export const echapperDebutDeLigne = (ligne) =>
+  ligne.replace(/^(\s*)(#{1,6}\s|>|[-+*]\s|(\d+)([.)])\s)/, (tout, espaces, marque, chiffres, point) =>
+    chiffres ? `${espaces}${chiffres}\\${point} ` : `${espaces}\\${marque}`).replace(/^(\s*)(-{3,}|={3,})\s*$/, '$1\\$2');
+
 /** Le texte d'une balise d'un texte Markdown, tel qu'il s'affiche (ses échappements retirés). */
 const texteAffiche = (t) => String(t).replace(/\\([\\`*_[\]|<{}])/g, '$1');
 /** Un libellé qu'une balise ne saurait pas porter en texte écrit (accolades, retour à la ligne). */
@@ -504,6 +513,42 @@ export function retirerLeMotCle(texte, vocabulaire, id, { markdown = false } = {
     if (motCleDeLaRef(v, b.ref)?.id !== id) return null;
     const simple = espaces(texteDeLaBalise(b, v));
     return markdown ? pourLeMarkdown(simple, dansUneLigneDeTableau(texte, b.debut)) : simple;
+  }, { markdown });
+}
+
+/**
+ * Décision R223 (2) : le texte qui remplace une balise `b` du mot-clé `m` supprimé en forçant, en texte simple, sans lien — « le texte affiché »
+ * (réponse du propriétaire, option b) : « {{x}} » donne le libellé du mot-clé, « {{x|texte}} » le texte écrit (« les {{elfe|elfes}} » devient « les
+ * elfes », « {{armure-magique|AM}} » devient « AM »), « {{x:}} », le mode complet, le libellé seul. Une ref écrite autrement que l'id (une autre casse,
+ * l'abréviation) montre ce qu'elle montrait (texteEcrit, comme texteDeLaBalise). Le texte rendu tel qu'il s'affiche : dans un texte mis en forme, les
+ * échappements du texte écrit retirés (`markdown`), remplacerParLeTexteAffiche le réécrit ensuite pour sa place.
+ */
+export function texteQuiRemplaceLaBalise(b, m, { markdown = false } = {}) {
+  if (b.complet) return m.libelle;
+  const ecrit = texteEcrit(b, m);
+  if (ecrit === null) return m.libelle;
+  return markdown ? texteAffiche(ecrit) : ecrit;
+}
+
+/**
+ * Le texte dont chaque balise qui cite le mot-clé `id` (par son id, son écriture ou son abréviation) devient le texte de texteQuiRemplaceLaBalise (la
+ * suppression forcée, décision R223 : serveur/edition.mjs#remplacerLesMentions, et son rejeu, serveur/edition.mjs#balisesRetireesParLeLot), espaces
+ * réduites. `markdown` (un texte mis en forme) : échappé pour que le texte rendu se montre tel quel (« * », « _ », « [ », « ` », « \ », « < » devant
+ * une lettre, « { » et « } », et « | » sur une ligne de tableau, comme lib/markdown-edition.mjs#echapperTexte) ; une balise dans un code est gardée
+ * telle quelle. Un texte de case reçoit le texte brut : il se lit sans Markdown, et les pages qui le montrent dans un tableau l'échappent
+ * (lib/corps-*.mjs). `vocabulaire` : il doit encore connaître `id` (le mot-clé tel qu'avant sa suppression).
+ */
+export function remplacerParLeTexteAffiche(texte, vocabulaire, id, { markdown = false } = {}) {
+  if (typeof texte !== 'string' || !texte.includes('{{')) return texte;
+  const v = vocabulaireDesMotsCles(vocabulaire);
+  return remplacer(texte, (b) => {
+    const m = motCleDeLaRef(v, b.ref);
+    if (m?.id !== id) return null;
+    const simple = espaces(texteQuiRemplaceLaBalise(b, m, { markdown }));
+    if (!markdown) return simple;
+    const echappe = pourLeMarkdown(simple, dansUneLigneDeTableau(texte, b.debut)).replace(/[{}]/g, '\\$&');
+    // en tête de ligne (rien que des blancs avant la balise), « 1. x », « - x », « # x », « > x » ne deviennent ni liste, ni titre, ni citation
+    return /^[ \t]*$/.test(texte.slice(texte.lastIndexOf('\n', b.debut - 1) + 1, b.debut)) ? echapperDebutDeLigne(echappe) : echappe;
   }, { markdown });
 }
 

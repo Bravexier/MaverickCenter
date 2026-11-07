@@ -29,10 +29,10 @@
 // de case (ligne, texte), qui se lit ainsi sans le vocabulaire — : ce que voient les dérivations et ce que note le journal ; la ref saisie peut être l'id,
 // l'écriture ou l'abréviation (migration 0090) du mot-clé. Refusés (400) : une balise dont la ref n'est pas un mot-clé, ou vise deux mots-clés (l'id
 // de l'un et l'écriture ou l'abréviation d'un autre : lib/mots-cles-balises.mjs#ambiguiteDe ; sauf si la valeur d'avant l'avait déjà), et le mode complet dans
-// un texte de case ; une balise dans un code d'un texte mis en forme reste telle quelle. Renommer un mot-clé ne réécrit aucun texte. Un mot-clé supprimé
-// quitte ses pages et chaque texte qui le cite (sa balise devient son texte simple) ; fusionné, ses balises citent l'autre (reecrireLesBalises : des
-// modifications ordinaires, dérivations et journal compris ; au rejeu, les textes que le site de dev n'avait pas suivent, au moment où sa suppression
-// est rejouée : balisesRetireesParLeLot).
+// un texte de case ; une balise dans un code d'un texte mis en forme reste telle quelle. Renommer un mot-clé ne réécrit aucun texte. Un mot-clé ne se
+// supprime que si rien ne le mentionne (décision R196), sauf en forçant (décision R223 : il quitte ses pages et chaque balise qui le cite devient son
+// texte affiché, remplacerLesMentions) ; fusionné, ses balises citent l'autre (reecrireLesBalises). Ce sont des modifications ordinaires, dérivations et
+// journal compris ; au rejeu, les textes que le site de dev n'avait pas suivent, au moment où la suppression est rejouée : balisesRetireesParLeLot.
 // Liens (migration 0098 : les [[…]] et les liens Markdown internes sont devenus des balises de mots-clés qui portent une adresse, lib/mots-cles-liens.mjs) :
 // un lien interne ajouté à un texte (hors code, hors page d'exemple ; un lien externe reste permis) devient la balise du seul mot-clé qui mène à sa page
 // (texteSansLiens), sinon il est refusé (400 { champ, liens }, renvoi au Glossaire), comme un lien dont le texte affiché n'est pas un texte simple
@@ -79,16 +79,16 @@ import { empreinte } from '../src/lib/portrait.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import {
   abreviationsPrises, ambiguiteDe, dansUneLigneDeTableau, fautesDeLAbreviation, formeCanonique, lireBalises, motCleDeLaRef, motsClesCites, reciblerLeMotCle,
-  retirerLeMotCle, texteSansBalises, vocabulaireDesMotsCles,
+  remplacerParLeTexteAffiche, retirerLeMotCle, texteSansBalises, vocabulaireDesMotsCles,
 } from '../src/lib/mots-cles-balises.mjs';
 import { motsClesDeLaBase, textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { fauteDeLUrl, lienGarde, motsClesDeLAdresse, REGISTRE_DES_LIENS } from '../src/lib/mots-cles-liens.mjs';
-import { ADRESSE_DU_GLOSSAIRE, adresseDeLaPage, adressesDuSite } from '../src/lib/adresses-db.mjs';
+import { ADRESSE_DU_GLOSSAIRE, adresseDeLaPage, adressesDuSite, indexDesAdresses } from '../src/lib/adresses-db.mjs';
 import { fauteDeLaCouleur } from '../src/lib/palette-css.mjs';
 import { baliseDuLien, convertirLesLiens, liensDuTexte, motCleDuLien, tableDeConversion } from '../src/lib/liens-en-mots-cles.mjs';
 import { buildIndex, resolve as resoudreLeLien } from '../src/lib/wikilinks-resolution.mjs';
 import { citationsBloquantes, citationsDesPages, motsClesVerrouillesQuiYMenent, refusDuMotCleVerrouille } from '../src/lib/citations-db.mjs';
-import { mentionsDesMotsCles, texteDesMentions } from '../src/lib/mentions-des-mots-cles.mjs';
+import { mentionsDe, mentionsDesMotsCles, texteDesMentions } from '../src/lib/mentions-des-mots-cles.mjs';
 import { analyserEffetDArme, refusDesCransPropres } from '../src/lib/arme-champs.mjs';
 import { ErreurHttp, jsonOuNull } from './partage.mjs';
 import { ErreurJournal, ORDRE_DE_REJEU, cleDe, lireLigne, nouveauLot, ouvrirLot, rejouer, structure } from './edition-journal.mjs';
@@ -482,19 +482,117 @@ function reecrireLesBalises(ctx, id, reecrire, { sauf = null } = {}) {
 }
 
 /**
+ * Décision R223 (2) : les mentions `mentions` (mentionsDe) du mot-clé `m`, que sa suppression forcée remplace dans le lot, chacune par le chemin normal
+ * d'une modification (journal, dérivations) : une balise d'une colonne de texte du modèle devient le libellé (lib/mots-cles-balises.mjs#
+ * remplacerParLeTexteAffiche) par l'opération « modifier » (forme canonique, Markdown sûr, ancres, colonnes dérivées et pages refaites, gel de `ctx.gel`) ;
+ * une étiquette de page est retirée ; une colonne hors du modèle suit la dérivation de sa ligne ; puis ce qui reste dans une colonne dérivée (le corps
+ * ou le résumé d'une page typée que ses tables ne refont pas : une page d'exemple, un texte d'import) est réécrit comme le rejeu le fait
+ * (balisesDesColonnesDerivees), noté au journal. Les mentions que le site ne sait pas remplacer sont refusées avant (mentionsQueLeSiteNeReecritPas) ;
+ * MOT_CLE.supprimer vérifie ensuite qu'il n'en reste aucune. Rend { balises, etiquettes } : les nombres de mentions remplacées et d'étiquettes retirées.
+ */
+function remplacerLesMentions(ctx, m, mentions) {
+  const { db, w } = ctx;
+  const vocabulaire = vocabulaireVivant(db);
+  const remplace = (table, colonne, texte) => remplacerParLeTexteAffiche(texte, vocabulaire, m.id, { markdown: typeDeTexte(table, colonne) === 'markdown' });
+  const parLigne = new Map();
+  for (const x of mentions) {
+    if (x.comment !== 'balise' || (x.table === 'page' && colonneDerivee('page', x.cle, x.colonne))) continue;
+    const champ = TABLES[x.table]?.colonnes?.[x.colonne];
+    if (!champ || !CHAMPS_DE_TEXTE.includes(champ.type)) continue; // hors du modèle : refaite par la dérivation de sa ligne
+    const k = `${x.table}\u0000${JSON.stringify(x.cle)}`;
+    if (!parLigne.has(k)) parLigne.set(k, { table: x.table, cle: x.cle, colonnes: new Set() });
+    parLigne.get(k).colonnes.add(x.colonne);
+  }
+  for (const { table, cle, colonnes } of parLigne.values()) {
+    const ligne = lireLigne(db, table, cle);
+    if (!ligne) continue;
+    const valeurs = {};
+    for (const c of colonnes) {
+      const texte = remplace(table, c, ligne[c]);
+      if (texte !== ligne[c]) valeurs[c] = texte;
+    }
+    if (Object.keys(valeurs).length) modifier(ctx, { op: 'modifier', table, cle: cleDe(db, table, ligne), valeurs });
+  }
+  const etiquettes = mentions.filter((x) => x.comment === 'etiquette');
+  for (const x of etiquettes) w.supprimer('page_tag', x.cle);
+  for (const x of mentionsDe(db, m.id)) {
+    if (x.comment !== 'balise' || x.table !== 'page' || !colonneDerivee('page', x.cle, x.colonne)) continue;
+    const ligne = lireLigne(db, 'page', x.cle);
+    const texte = remplace('page', x.colonne, ligne?.[x.colonne]);
+    if (ligne && texte !== ligne[x.colonne]) w.modifier('page', cleDe(db, 'page', ligne), { [x.colonne]: texte });
+  }
+  return { balises: mentions.length - etiquettes.length, etiquettes: etiquettes.length };
+}
+
+/**
  * Décision R222 (1) : les mots-clés verrouillés (raisonDuGel) dont la définition, ou un autre texte de la ligne, cite le mot-clé `id` par une balise
  * (son id, son écriture ou son abréviation : motsClesCites, comme reecrireLesBalises) : [{ id, libelle }], par écriture. Un mot écrit sans balise
  * n'est pas une citation. La fusion de `id` est refusée tant que la liste n'est pas vide (serveur/edition-chronologie.mjs#fusionner). Vide sur une
  * base d'avant la 0110.
  */
 function definitionsVerrouilleesQuiCitent(db, id) {
-  if (!structure(db, 'mot_cle').colonnes.includes('verrou')) return [];
+  return definitionsVerrouilleesQuiCitentChacun(db).get(id) ?? [];
+}
+
+/**
+ * definitionsVerrouilleesQuiCitent pour tous les mots-clés en un seul passage : Map(id cité → [{ id, libelle }], par écriture) ; un mot-clé que rien
+ * de verrouillé ne cite est absent. Le vocabulaire du Glossaire en tire le refus prévu d'une suppression forcée (décision R223 (4) : refusDesForcages).
+ */
+function definitionsVerrouilleesQuiCitentChacun(db) {
+  const sortie = new Map();
+  if (!structure(db, 'mot_cle').colonnes.includes('verrou')) return sortie;
   const vocabulaire = vocabulaireVivant(db);
   const colonnes = Object.entries(TABLES.mot_cle.colonnes).filter(([, champ]) => CHAMPS_DE_TEXTE.includes(champ.type)).map(([c]) => c);
-  return db.prepare(`SELECT * FROM mot_cle WHERE verrou = 1 AND (${colonnes.map((c) => `instr("${c}", '{{') > 0`).join(' OR ')}) ORDER BY libelle_cle, id`).all()
-    .filter((m) => m.id !== id && colonnes.some((c) => typeof m[c] === 'string'
-      && motsClesCites(m[c], vocabulaire, { markdown: TABLES.mot_cle.colonnes[c].type === 'markdown' }).includes(id)))
-    .map((m) => ({ id: m.id, libelle: m.libelle }));
+  for (const m of db.prepare(`SELECT * FROM mot_cle WHERE verrou = 1 AND (${colonnes.map((c) => `instr("${c}", '{{') > 0`).join(' OR ')}) ORDER BY libelle_cle, id`).all()) {
+    const cites = new Set(colonnes.flatMap((c) => (typeof m[c] === 'string'
+      ? motsClesCites(m[c], vocabulaire, { markdown: TABLES.mot_cle.colonnes[c].type === 'markdown' }) : [])));
+    for (const id of cites) {
+      if (id === m.id) continue;
+      if (!sortie.has(id)) sortie.set(id, []);
+      sortie.get(id).push({ id: m.id, libelle: m.libelle });
+    }
+  }
+  return sortie;
+}
+
+/**
+ * Décision R223 (2) et le statu quo de son lot 1 : les mentions d'un mot-clé (lib/mentions-des-mots-cles.mjs#mentionsDe) que sa suppression forcée ne
+ * saurait pas remplacer par le chemin normal d'une modification — à refuser avant toute écriture. Se remplacent :
+ *   - une étiquette de page (page_tag), retirée ;
+ *   - une balise d'une colonne de texte du modèle (CHAMPS_DE_TEXTE de TABLES), par l'opération « modifier » — sauf une table figée (TABLES_FIGEES : une
+ *     monnaie), la page qui ne se modifie pas ici (texteDePageModifiable : ni guide ni Codex) et, `gel` vrai, la définition d'un mot-clé verrouillé
+ *     (raisonDuGel ; refusée avant, avec sa liste : definitionsVerrouilleesQuiCitent) ;
+ *   - une balise d'une colonne dérivée (colonneDerivee : le corps et le résumé d'une page typée, pages d'exemple comprises) : refaite depuis les tables
+ *     réécrites, ou réécrite elle-même (serveur/edition-chronologie.mjs#MOT_CLE, comme le rejeu : balisesDesColonnesDerivees) ;
+ *   - une balise d'une colonne hors du modèle tirée d'une autre de la même ligne qui se remplace (metier.artisanat_brut d'artisanat_texte,
+ *     materiau_arme.effet_secondaire de l'effet) : refaite par la dérivation de son domaine ; MOT_CLE.supprimer vérifie à la fin qu'il ne reste rien.
+ * Rend les mentions bloquantes (la forme de mentionsDe), [] si toutes se remplacent.
+ */
+function mentionsQueLeSiteNeReecritPas(db, mentions, { gel = true } = {}) {
+  const reecrite = (x) => {
+    if (x.comment === 'etiquette') return true;
+    if (x.table === 'page' && colonneDerivee('page', x.cle, x.colonne)) return true;
+    const champ = TABLES[x.table]?.colonnes?.[x.colonne];
+    if (!champ || !CHAMPS_DE_TEXTE.includes(champ.type) || TABLES_FIGEES[x.table]) return false;
+    const ligne = lireLigne(db, x.table, x.cle);
+    if (!ligne) return false;
+    if (x.table === 'page' && !texteDePageModifiable(ligne.type, premiereSource(db, ligne.id))) return false;
+    return !(gel && raisonDuGel(x.table, ligne));
+  };
+  const ok = new Set(mentions.filter(reecrite).map((x) => `${x.table}\u0000${JSON.stringify(x.cle)}`));
+  return mentions.filter((x) => !reecrite(x) && !(x.comment === 'balise' && !TABLES[x.table]?.colonnes?.[x.colonne] && ok.has(`${x.table}\u0000${JSON.stringify(x.cle)}`)));
+}
+
+/**
+ * Le refus prévu de la suppression forcée de chacun des mots-clés `motsCles` ([{ id, libelle, url, verrou, mentions }], le vocabulaire du Glossaire :
+ * serveur/edition-chronologie.mjs#vocabulaire) : Map(id → la raison, ou null si elle passerait). Les mêmes contrôles que MOT_CLE.supprimer, dans le
+ * même ordre (verrou, étiquette de sort, définition verrouillée qui le cite, adresse qui mène sans ancre à une page de la base, mentions que le site ne réécrit pas),
+ * sauf le contrôle final (les dérivations qui refont les textes hors du modèle), que seul l'enregistrement fait.
+ */
+export function refusDesForcages(db, motsCles) {
+  const verrouilles = definitionsVerrouilleesQuiCitentChacun(db);
+  const adresses = indexDesAdresses(db);
+  return new Map(motsCles.map((m) => [m.id, CHRONOLOGIE.refusDuForcage(db, m, m.mentions ?? [], { verrouilles: verrouilles.get(m.id) ?? [], adresses })?.message ?? null]));
 }
 
 /**
@@ -1724,7 +1822,7 @@ const ANNONCE = {
 /** La chronologie (événements, descriptions, catégories) et les mots-clés : leurs domaines et leurs opérations du lot (`categories`, `fusionner_mots_cles`). */
 const CHRONOLOGIE = domainesDeLaChronologie({
   refus, ErreurEdition, provenance, idDejaEmploye, rangLibre, creerMotCle, refuserLAbreviation, refuserLeLien, refuserLaCouleur, reecrireLesBalises,
-  definitionsVerrouilleesQuiCitent, vocabulaireVivant, tableExiste,
+  definitionsVerrouilleesQuiCitent, mentionsQueLeSiteNeReecritPas, remplacerLesMentions, vocabulaireVivant, tableExiste,
 });
 
 /** La page des armes (armes, matériaux, améliorations d'arme) et celle des armures et boucliers (serveur/edition-armes.mjs, edition-armures.mjs). */
@@ -2455,7 +2553,8 @@ export function ancienneEcritureDesFusions(db) {
  * `modifier(ctx, op)` (l'opération « modifier » d'un lot : valeurDuChamp, forme canonique des balises, Markdown sûr, colonnes X_cle et du domaine,
  * dérivations, notées par ctx.w ; sans exiger ce que le lot porte dans ses lignes : la magie d'un don « Variable »), `deriver(ctx, table, avant, apres)` (les dérivations du domaine d'une table : lignes de détail, corps de page),
  * `completerLesMetiers`, `balisesRetireesParLeLot`, `balisesDesColonnesDerivees` (comme rejouerLeJournal), `refuseeParLaBase` (une contrainte de la
- * base : 422), `liensRompusParLeLot` et `motsClesEncoreMentionnes` (décision R196 : la suppression d'un mot-clé encore mentionné, choix 2 seul).
+ * base : 422), `liensRompusParLeLot` et `motsClesEncoreMentionnes` (décision R196 : la suppression d'un mot-clé encore mentionné, choix 2 seul),
+ * `separerLeMarqueur` (les marqueurs du lot résolu, repris en tête du résumé du nouveau lot : décision R223 (6)).
  */
 export const OUTILS_DE_RESOLUTION = Object.freeze({
   // la résolution refait les choix du lot, qui porte ses propres lignes (la magie d'un don « Variable » : suivreLaMagieDuDon) : rien n'est exigé
@@ -2470,6 +2569,7 @@ export const OUTILS_DE_RESOLUTION = Object.freeze({
   retirerLesReglesDuDon: (db, w, id) => retirerLesReglesDuDon(db, w, id),
   liensRompusParLeLot: (db, lot, options) => liensRompusParLeLot(db, lot, options),
   motsClesEncoreMentionnes: (db, lot) => motsClesEncoreMentionnes(db, lot),
+  separerLeMarqueur: (resume) => separerLeMarqueur(resume),
 });
 
 /**
@@ -2551,7 +2651,8 @@ const reecrireLeTexte = (db, table, colonne, cle, ligne, texte) => db.prepare(`U
  * suppressions de page_tag, la dernière valeur qu'il écrit dans un texte) et des colonnes dérivées (refaites depuis leurs tables) :
  * [{ id, mentions, raison }]. Le service refuse une telle suppression depuis R196 ; un lot noté avant (la cascade réécrivait les textes que le site
  * modifie, pas les autres ni les pages d'exemple) passe en conflit, et à la résolution sa suppression n'a que le choix 2 (serveur/edition-conflits.mjs#examiner,
- * par OUTILS_DE_RESOLUTION). `lot` : ses modifications, décodées ou telles que le journal les note (table_nom, cle et apres en JSON).
+ * par OUTILS_DE_RESOLUTION). Une suppression forcée (décision R223 (6), suppressionForcee) n'est pas visée : elle se rejoue forcée. `lot` : ses
+ * modifications, décodées ou telles que le journal les note (table_nom, cle et apres en JSON).
  */
 export function motsClesEncoreMentionnes(db, lot) {
   const lu = (v) => (typeof v === 'string' ? jsonOuNull(v) : v);
@@ -2570,7 +2671,9 @@ export function motsClesEncoreMentionnes(db, lot) {
   const entier = lots.length && tableExiste(db, 'modification')
     ? db.prepare(`SELECT lot_id, rang, table_nom, cle, operation, avant, apres FROM modification WHERE lot_id IN (${lots.map(() => '?').join(', ')}) ORDER BY lot_id, rang`).all(...lots)
     : [];
-  const ids = supprimes.filter((id) => !cibleReportee(lot, id) && !cibleReportee(entier, id));
+  // une suppression forcée (décision R223 (6) : suppressionForcee, le marqueur du résumé de son lot) se rejoue forcée : ses mentions présentes au rejeu
+  // sont remplacées par leur texte affiché après le lot (balisesRetireesParLeLot), aucune ne la met en conflit
+  const ids = supprimes.filter((id) => !suppressionForcee(db, lot, id) && !cibleDeLaFusion(db, lot, id) && !cibleReportee(entier, id));
   if (!ids.length) return [];
   const ligneDe = (table, cle) => `${table}\u0000${JSON.stringify(cle)}`;
   const supprimees = new Set(lot.filter((m) => m.operation === 'supprimer').map((m) => ligneDe(tableDe(m), lu(m.cle))));
@@ -2676,7 +2779,8 @@ function balisesRetireesParLeLot(db, lot) {
     if (m.table_nom !== 'mot_cle' || m.operation !== 'supprimer' || m.sansEffet) continue;
     const ligne = jsonOuNull(m.avant);
     if (typeof ligne?.id !== 'string' || lireLigne(db, 'mot_cle', { id: ligne.id })) continue;
-    retires.push({ m, ligne, cible: cibleReportee(lot, ligne.id) });
+    const forcee = suppressionForcee(db, lot, ligne.id);
+    retires.push({ m, ligne, cible: forcee ? null : cibleDeLaFusion(db, lot, ligne.id), forcee });
   }
   if (!retires.length) return [];
   const actuels = motsClesDeLaBase(db);
@@ -2690,11 +2794,7 @@ function balisesRetireesParLeLot(db, lot) {
       const cleDeLigne = Object.fromEntries(cle.map((c) => [c, l[c]]));
       if (colonneDerivee(table, cleDeLigne, colonne)) continue;
       let texte = l.texte__;
-      for (const r of retires) {
-        texte = r.cible && presents.has(r.cible)
-          ? reciblerLeMotCle(texte, vocabulaire, r.ligne.id, r.cible, { markdown })
-          : retirerLeMotCle(texte, vocabulaire, r.ligne.id, { markdown });
-      }
+      for (const r of retires) texte = sansLeMotCleRetire(texte, vocabulaire, r, r.cible && presents.has(r.cible), { markdown });
       if (texte === l.texte__) continue;
       reecrireLeTexte(db, table, colonne, cle, l, texte);
       ecrites.push({ lot: lotId, rang, table, cle: cleDeLigne, operation: 'modifier', avant: { [colonne]: l.texte__ }, apres: { [colonne]: texte }, balises: true });
@@ -2712,13 +2812,15 @@ function balisesRetireesParLeLot(db, lot) {
  */
 function balisesDesColonnesDerivees(db) {
   if (!tableExiste(db, 'mot_cle')) return [];
-  const journal = db.prepare(`SELECT m.* FROM modification m JOIN modification_lot l ON l.id = m.lot_id WHERE m.etat <> 'conflit' ORDER BY ${ORDRE_DE_REJEU}`).all();
+  const journal = db.prepare(`SELECT m.*, l.resume FROM modification m JOIN modification_lot l ON l.id = m.lot_id WHERE m.etat <> 'conflit' ORDER BY ${ORDRE_DE_REJEU}`).all();
   const retires = [];
   for (const m of journal) {
     if (m.table_nom !== 'mot_cle' || m.operation !== 'supprimer' || m.avant === null) continue;
     const ligne = jsonOuNull(m.avant);
     if (typeof ligne?.id !== 'string' || lireLigne(db, 'mot_cle', { id: ligne.id })) continue;
-    retires.push({ ligne, cible: cibleReportee(journal.filter((x) => x.lot_id === m.lot_id), ligne.id) });
+    const { forcees, fusions } = marqueursDuResume(m.resume);
+    const forcee = forcees.has(ligne.id);
+    retires.push({ ligne, cible: forcee ? null : fusions.get(ligne.id) ?? cibleReportee(journal.filter((x) => x.lot_id === m.lot_id), ligne.id), forcee });
   }
   if (!retires.length) return [];
   const actuels = motsClesDeLaBase(db);
@@ -2731,9 +2833,7 @@ function balisesDesColonnesDerivees(db) {
       if (!colonneDerivee(table, Object.fromEntries(cle.map((c) => [c, l[c]])), colonne)) continue;
       let texte = l.texte__;
       retires.forEach((r, i) => {
-        texte = r.cible && (presents.has(r.cible) || plusTard(i, r.cible))
-          ? reciblerLeMotCle(texte, vocabulaire, r.ligne.id, r.cible, { markdown })
-          : retirerLeMotCle(texte, vocabulaire, r.ligne.id, { markdown });
+        texte = sansLeMotCleRetire(texte, vocabulaire, r, r.cible && (presents.has(r.cible) || plusTard(i, r.cible)), { markdown });
       });
       if (texte === l.texte__) continue;
       reecrireLeTexte(db, table, colonne, cle, l, texte);
@@ -2742,6 +2842,96 @@ function balisesDesColonnesDerivees(db) {
   }
   return [...touchees];
 }
+
+/**
+ * Le texte d'un mot-clé retiré par un lot rejoué (`r` : { ligne, cible, forcee }), dans balisesRetireesParLeLot et balisesDesColonnesDerivees : ses
+ * balises citent la cible d'une fusion (`reciblee` : elle existe, ou un lot suivant la retire à son tour) ; celles d'une suppression forcée deviennent
+ * leur texte affiché (décision R223 (6) : remplacerParLeTexteAffiche, comme au service) ; sinon leur texte simple (retirerLeMotCle : une suppression non forcée,
+ * ou d'avant R196, dont il ne reste que des pages d'exemple et des colonnes dérivées).
+ */
+function sansLeMotCleRetire(texte, vocabulaire, r, reciblee, { markdown = false } = {}) {
+  if (reciblee) return reciblerLeMotCle(texte, vocabulaire, r.ligne.id, r.cible, { markdown });
+  if (r.forcee) return remplacerParLeTexteAffiche(texte, vocabulaire, r.ligne.id, { markdown });
+  return retirerLeMotCle(texte, vocabulaire, r.ligne.id, { markdown });
+}
+
+/**
+ * Les marqueurs des mots-clés retirés par un lot, en tête de son résumé (modification_lot.resume), que le journal garde partout où il va (export,
+ * rapatriement, mise à jour, résolution d'un conflit) et que le rejeu lit au lieu de deviner d'après ce que le lot écrit :
+ *   - « [suppression forcée R223 : id, id] » : les suppressions forcées (décision R223 (6) : elles se rejouent forcées), avec ou sans mention
+ *     (serveur/edition-chronologie.mjs#MOT_CLE.supprimer, `forcer: true` : `ctx.forcees`) ;
+ *   - « [fusion des mots-clés : source > cible, …] » : les fusions (serveur/edition-chronologie.mjs#fusionner : `ctx.fusions`), dont la cible se lit
+ *     ainsi même quand le lot n'a rien reporté sur elle (la source n'était portée que par des pages qui portaient déjà la cible).
+ * enregistrer les pose (marqueursDuLot), hors de la troncature du résumé (edition-journal.mjs#ouvrirLot, `terminer(…, { entete })`), et neutralise ces
+ * motifs dans les résumés des opérations, où un nom saisi pourrait les écrire (neutraliserLeMarqueur) ; la résolution d'un conflit les reprend en tête
+ * (separerLeMarqueur). Les ids des mots-clés sont figés, sans espace, virgule, chevron ni crochet : les listes sont exactes. Un lot d'avant R223 n'en a
+ * pas : une suppression ancienne (cascade d'avant R196 comprise) n'est jamais forcée, et la cible d'une fusion ancienne se lit à ce que le lot reporte
+ * (cibleReportee).
+ */
+const ID = '[a-z0-9-]+';
+const MARQUEURS = Object.freeze({
+  forcees: new RegExp(`^\\[suppression forcée R223 : (${ID}(?:, ${ID})*)\\] `),
+  fusions: new RegExp(`^\\[fusion des mots-clés : (${ID} > ${ID}(?:, ${ID} > ${ID})*)\\] `),
+});
+
+/** L'en-tête d'un lot (`forcees` : ids ; `fusions` : [source, cible]) : '' sans rien à marquer. */
+export function marqueursDuLot({ forcees = [], fusions = [] } = {}) {
+  return (forcees.length ? `[suppression forcée R223 : ${[...new Set(forcees)].join(', ')}] ` : '')
+    + (fusions.length ? `[fusion des mots-clés : ${fusions.map(([a, b]) => `${a} > ${b}`).join(', ')}] ` : '');
+}
+
+/** Un résumé d'opération où les motifs des marqueurs sont neutralisés (« [suppression forcée R223 », « [fusion des mots-clés » : « ( » au lieu de « [ »). */
+export const neutraliserLeMarqueur = (texte) => String(texte).replace(/\[(suppression forcée R223|fusion des mots-clés)/g, '($1');
+
+/** Le résumé d'un lot séparé en { entete : ses marqueurs en tête, '' sans eux ; reste : le résumé sans eux }. */
+export function separerLeMarqueur(resume) {
+  let reste = String(resume ?? '');
+  let entete = '';
+  for (let m = null; (m = MARQUEURS.forcees.exec(reste) ?? MARQUEURS.fusions.exec(reste));) {
+    entete += m[0];
+    reste = reste.slice(m[0].length);
+  }
+  return { entete, reste };
+}
+
+/** Ce que les marqueurs d'un résumé de lot disent : { forcees: Set(id), fusions: Map(source → cible) }, vides sans marqueur. */
+export function marqueursDuResume(resume) {
+  const { entete } = separerLeMarqueur(resume);
+  const forcees = new Set();
+  const fusions = new Map();
+  for (const morceau of entete.match(/\[[^\]]*\] /g) ?? []) {
+    const f = MARQUEURS.forcees.exec(morceau);
+    if (f) for (const id of f[1].split(', ')) forcees.add(id);
+    const u = MARQUEURS.fusions.exec(morceau);
+    if (u) for (const paire of u[1].split(', ')) fusions.set(...paire.split(' > '));
+  }
+  return { forcees, fusions };
+}
+
+/** Les ids que le résumé d'un lot marque comme supprimés en forçant (marqueursDuResume). */
+export const suppressionsForceesDuResume = (resume) => marqueursDuResume(resume).forcees;
+
+/** Les marqueurs des lots de `lot` (ses modifications, décodées ou telles que le journal les note : elles portent `lot_id`), lus dans `db`. */
+function marqueursDesLots(db, lot) {
+  const sortie = { forcees: new Set(), fusions: new Map() };
+  if (!tableExiste(db, 'modification_lot')) return sortie;
+  const resume = db.prepare('SELECT resume FROM modification_lot WHERE id = ?');
+  for (const l of new Set(lot.map((m) => m.lot_id).filter((x) => typeof x === 'string'))) {
+    const { forcees, fusions } = marqueursDuResume(resume.get(l)?.resume);
+    for (const id of forcees) sortie.forcees.add(id);
+    for (const [a, b] of fusions) sortie.fusions.set(a, b);
+  }
+  return sortie;
+}
+
+/**
+ * La suppression du mot-clé `id` notée dans `lot` est-elle forcée (décision R223 (6)) ? Lue au marqueur du résumé de son lot, jamais à ce que le lot
+ * écrit : une fusion dont la source n'était portée que par des pages qui portaient déjà la cible, ou une cascade d'avant R196, écrivent la même chose.
+ */
+export const suppressionForcee = (db, lot, id) => typeof id === 'string' && marqueursDesLots(db, lot).forcees.has(id);
+
+/** La cible de la fusion du mot-clé `id` notée dans `lot` : celle du marqueur du résumé de son lot, sinon ce que le lot reporte (cibleReportee). */
+const cibleDeLaFusion = (db, lot, id) => marqueursDesLots(db, lot).fusions.get(id) ?? cibleReportee(lot, id);
 
 /**
  * La cible d'une fusion du mot-clé `id`, d'après les autres modifications de son lot (`lot`) : une étiquette passée de `id` à un autre mot-clé (page_tag),
@@ -3116,6 +3306,8 @@ function supprimer(ctx, op) {
   const entite = ENTITES[op.entite];
   if (!entite?.suppression) throw refus(`entité « ${op.entite} » : pas de suppression depuis le site`);
   if (!op.cle || typeof op.cle !== 'object') throw refus(`${entite.libelle} : clé attendue`);
+  // le forçage n'est qu'une option de la suppression d'un mot-clé (décision R223 : serveur/edition-chronologie.mjs#MOT_CLE.supprimer), comme dans /api/v1/
+  if (op.forcer !== undefined && entite.table !== 'mot_cle') throw refus(`${entite.libelle} : « forcer » ne vaut que pour la suppression d’un mot-clé (décision R223).`);
   // une table figée (TABLES_FIGEES : les monnaies) : 409 après le 404, comme une modification (raisonDuGel)
   if (TABLES_FIGEES[entite.table] && ctx.gel !== false) {
     const ligne = lireLigne(ctx.db, entite.table, op.cle);
@@ -3163,7 +3355,8 @@ export function enregistrer(db, corps, { instant, id, auteurId = null, gel = tru
   try {
     const w = ouvrirLot(db, { id, instant, pageId, auteurId });
     // retraits : les fiches de personnage dont une suppression retire un élément (R42), notées une fois par fiche en fin de lot
-    const ctx = { db, w, instant, crees: [], retraits: nouveauxRetraitsDeFiches(), gel };
+    // forcees, fusions : les mots-clés supprimés en forçant (décision R223) et fusionnés, marqués en tête du résumé du lot (marqueursDuLot)
+    const ctx = { db, w, instant, crees: [], retraits: nouveauxRetraitsDeFiches(), gel, forcees: [], fusions: [] };
     // la magie de chaque don « Variable » avant le lot : un don qui quitte ce type ou change de magie perd les choix des fiches (R181)
     const variablesAvant = magiesDesDonsVariables(db);
     const resumes = [];
@@ -3189,7 +3382,7 @@ export function enregistrer(db, corps, { instant, id, auteurId = null, gel = tru
     retirerLesChoixDesDonsChanges(db, variablesAvant, ctx.retraits);
     // les notes des fiches touchées, dans la transaction du lot (SQL direct, hors du journal) : un refus plus haut les aurait annulées avec le reste
     const fiches = noterLesRetraits(db, ctx.retraits, instant);
-    w.terminer(resumes.join(' ; '));
+    w.terminer(resumes.map(neutraliserLeMarqueur).join(' ; '), { entete: marqueursDuLot(ctx) });
     try {
       db.exec('COMMIT');
     } catch (e) {

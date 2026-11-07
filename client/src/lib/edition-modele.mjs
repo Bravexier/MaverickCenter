@@ -968,7 +968,8 @@ export const ENTITES = {
     champs: { libelle: { type: 'ligne', libelle: 'Catégorie', requis: true } },
   },
   // un mot-clé du glossaire (page Glossaire /regles/glossaire/), son libellé, sa définition et son abréviation (migration 0090) ; il ne se supprime que si rien ne le
-  // mentionne (décision R196 : serveur/edition-chronologie.mjs#MOT_CLE, lib/mentions-des-mots-cles.mjs) et s'il n'est pas verrouillé (décisions R218, R219) ;
+  // mentionne (décision R196 : serveur/edition-chronologie.mjs#MOT_CLE, lib/mentions-des-mots-cles.mjs), sauf suppression forcée (`forcer: true` de
+  // l'opération, décision R223 : ses balises remplacées par leur texte affiché), et s'il n'est pas verrouillé (décisions R218, R219, forçage compris) ;
   // son adresse et sa couleur (migration 0098), écrites seulement si elles sont données ; créé non verrouillé, même avec une adresse (R219 (5) : `verrou`
   // n'est pas un champ, serveur/edition.mjs#creerMotCle), sauf `race-hybride` créé par le service avec la première race hybride (R220 (2))
   mot_cle: {

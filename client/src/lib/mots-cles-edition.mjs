@@ -1,11 +1,13 @@
 // La gestion du glossaire des mots-clés sur /regles/glossaire/ en mode modification (site de dev ; demande du propriétaire : « en mode édition seulement »,
 // « supprimer / ajouter / Modifier des mots clés ») : ce que l'extension de l'éditeur (src/scripts/edition/mots-cles.mjs) décide avant d'envoyer le lot,
 // en fonctions pures (sans dépendance navigateur ni Astro). Le vocabulaire est celui du service (GET /api/edition/mots-cles/ : [{ id, libelle,
-// libelle_cle, description, abreviation, url, couleur, pages, verrou, mentions }], `pages` = le nombre de pages qui le portent ; `verrou` = 1 pour un
-// mot-clé verrouillé, migration 0110, décisions R218, R219 : ni ses champs ni sa suppression ni sa fusion dans un autre ne se font depuis le site, mais il
-// reçoit la fusion d'un autre ; `mentions` = les endroits qui le mentionnent, lib/mentions-des-mots-cles.mjs, décision R196). Un mot-clé ne se supprime
-// que si rien ne le mentionne (R196 : la cascade de la demande d'origine, « Une suppression d'un mot clé le supprimera de tous les endroits qui le
-// référencent », est abandonnée) ; un mot-clé fusionné est remplacé par l'autre dans les textes qui le citent (serveur/edition.mjs#reecrireLesBalises).
+// libelle_cle, description, abreviation, url, couleur, pages, verrou, mentions, refus_du_forcage }], `pages` = le nombre de pages qui le portent ;
+// `verrou` = 1 pour un mot-clé verrouillé, migration 0110, décisions R218, R219 : ni ses champs ni sa suppression ni sa fusion dans un autre ne se font
+// depuis le site, mais il reçoit la fusion d'un autre ; `mentions` = les endroits qui le mentionnent, lib/mentions-des-mots-cles.mjs, décision R196 ;
+// `refus_du_forcage` = null si sa suppression forcée passerait, sinon la raison du refus, décision R223). Un mot-clé ne se supprime que si rien ne le
+// mentionne (R196 : la cascade de la demande d'origine, « Une suppression d'un mot clé le supprimera de tous les endroits qui le référencent », est
+// abandonnée), sauf en forçant (R223 : chaque citation garde son texte affiché, sans lien, et les étiquettes des pages sont retirées ; jamais pour un
+// mot-clé verrouillé) ; un mot-clé fusionné est remplacé par l'autre dans les textes qui le citent (serveur/edition.mjs#reecrireLesBalises).
 // Le service refait tous les contrôles (serveur/edition-chronologie.mjs) : ici, de quoi proposer la fusion avant l'envoi, nommer les mentions, dire ce
 // qu'un retrait fait et ranger les opérations du lot.
 import { estVerrouille } from './mots-cles.mjs';
@@ -49,6 +51,28 @@ export function suppressionOfferte(m) {
   if (estVerrouille(m)) return false;
   const endroits = endroitsDesMentions(m);
   return endroits === null || endroits.length === 0;
+}
+
+/**
+ * Vrai si la ligne du mot-clé offre « Forcer la suppression » (décision R223 (1), (4)) : un mot-clé non verrouillé dont la liste des mentions n'est pas
+ * vide (le « Supprimer » d'une liste vide reste tel quel : suppressionOfferte), et dont le service ne prévoit pas de refuser le forçage
+ * (`refus_du_forcage` null ; absent, le service juge à l'enregistrement). Sans la liste des mentions, rien à forcer : « Supprimer » reste.
+ */
+export function forcageOffert(m) {
+  if (estVerrouille(m)) return false;
+  const endroits = endroitsDesMentions(m);
+  return Boolean(endroits?.length) && !raisonSansForcage(m);
+}
+
+/**
+ * La raison pour laquelle le forçage n'est pas offert à un mot-clé non verrouillé et mentionné (`refus_du_forcage` du service : verrou, étiquette de
+ * sort, définition verrouillée qui le cite, adresse vers une page, mention que le site ne sait pas remplacer ; décision R223), que la ligne montre à la
+ * place du bouton ; null sinon (verrouillé : le cadenas dit déjà tout ; liste vide : « Supprimer »).
+ */
+export function raisonSansForcage(m) {
+  if (estVerrouille(m) || !endroitsDesMentions(m)?.length) return null;
+  const r = m.refus_du_forcage;
+  return typeof r === 'string' && r.trim() ? r : null;
 }
 
 /** Vrai si la ligne du mot-clé offre « Fusionner dans… » : jamais depuis un mot-clé verrouillé (la fusion le supprimerait : R218 (3), R219 (4)). */
@@ -147,15 +171,15 @@ export function examinerLesRenommages(vocabulaire, renommages, { retires = new S
 }
 
 /**
- * Les fusions et suppressions en file (`fusions` : Map source → cible) que le service ne pourrait pas jouer dans un même lot : un mot-clé qui reçoit une
- * fusion et serait supprimé, ou des fusions en boucle. Rend le message de refus, ou null. Le reste se joue dans l'ordre (operationsDuVocabulaire : « A »
+ * Les fusions et suppressions en file (`fusions` : Map source → cible ; `forcages` : les suppressions forcées, R223) que le service ne pourrait pas jouer
+ * dans un même lot : un mot-clé qui reçoit une fusion et serait supprimé (forcé ou non), ou des fusions en boucle. Rend le message de refus, ou null. Le reste se joue dans l'ordre (operationsDuVocabulaire : « A »
  * dans « X » avant « X » dans « Y »).
  */
-export function erreurDesRetraits(vocabulaire, { suppressions = new Set(), fusions = new Map() }) {
+export function erreurDesRetraits(vocabulaire, { suppressions = new Set(), forcages = new Set(), fusions = new Map() }) {
   const parId = new Map(vocabulaire.map((m) => [m.id, m]));
   const nom = (id) => `« ${parId.get(id)?.libelle ?? id} »`;
   for (const [source, cible] of fusions) {
-    if (suppressions.has(cible)) {
+    if (suppressions.has(cible) || forcages.has(cible)) {
       return `${nom(cible)} reçoit ${nom(source)} (fusion) et serait supprimé dans le même enregistrement : enregistrez d’abord la fusion, puis supprimez ${nom(cible)}.`;
     }
   }
@@ -171,16 +195,45 @@ export function erreurDesRetraits(vocabulaire, { suppressions = new Set(), fusio
   return null;
 }
 
+/** Le nombre d'endroits nommés dans la confirmation d'une suppression forcée ; au-delà, « et N autres ». */
+const ENDROITS_NOMMES = 8;
+
 /**
- * Le message qui confirme, en une fois, les suppressions et les fusions en file (`fusions` : Map source → cible), avec ce qu'elles retirent ; null s'il
- * n'y en a aucune.
+ * Ce que remplace la suppression forcée du mot-clé `m` (décision R223 (2), réponse « Le texte affiché ») : le nombre de ses mentions (`mentions` du
+ * service : une par texte qui le cite, `comment: 'balise'`, et une par page qui le porte, `comment: 'etiquette'`), leurs endroits (endroitsDesMentions,
+ * une page d'exemple marquée) et ce que chacune devient. Rend { mentions, citations, etiquettes, endroits: [libellé…], texte }.
  */
-export function confirmationDesRetraits(vocabulaire, { suppressions = new Set(), fusions = new Map() }) {
+export function ceQueRemplaceLeForcage(m) {
+  const toutes = Array.isArray(m?.mentions) ? m.mentions : [];
+  const etiquettes = toutes.filter((x) => x.comment === 'etiquette').length;
+  const citations = toutes.length - etiquettes;
+  const endroits = (endroitsDesMentions(m) ?? []).map((x) => (x.exemple ? `${x.libelle} (exemple)` : x.libelle));
+  const nommes = endroits.slice(0, ENDROITS_NOMMES).join(', ') + (endroits.length > ENDROITS_NOMMES ? ` et ${nombre(endroits.length - ENDROITS_NOMMES, 'autre', 'autres')}` : '');
+  const detail = [
+    ...(citations ? [nombre(citations, 'texte qui le cite', 'textes qui le citent')] : []),
+    ...(etiquettes ? [nombre(etiquettes, 'étiquette de page', 'étiquettes de page')] : []),
+  ].join(', ');
+  const devenir = [
+    ...(citations ? ['chaque citation gardera son texte affiché, sans lien'] : []),
+    ...(etiquettes ? ['les étiquettes des pages seront retirées'] : []),
+  ].join(', et ');
+  const texte = `${nombre(toutes.length, 'mention sera remplacée', 'mentions seront remplacées')}${detail ? ` (${detail})` : ''}`
+    + `${nommes ? `, à : ${nommes}` : ''}${devenir ? ` ; ${devenir}` : ''}`;
+  return { mentions: toutes.length, citations, etiquettes, endroits, texte };
+}
+
+/**
+ * Le message qui confirme, en une fois, les suppressions (`forcages` : celles qu'on force, R223) et les fusions en file (`fusions` : Map source →
+ * cible), avec ce qu'elles retirent ou remplacent ; null s'il n'y en a aucune.
+ */
+export function confirmationDesRetraits(vocabulaire, { suppressions = new Set(), forcages = new Set(), fusions = new Map() }) {
   const parId = new Map(vocabulaire.map((m) => [m.id, m]));
   const nom = (id) => `« ${parId.get(id)?.libelle ?? id} »`;
   const lignes = [];
   // R196 : un mot-clé supprimé n'est mentionné nulle part (le service refuse sinon) ; plus rien n'est retiré des pages ni des textes
   for (const id of suppressions) lignes.push(`- ${nom(id)} sera supprimé.`);
+  // R223 : forcée, la suppression remplace ses mentions (chaque balise par son texte affiché, en texte simple ; les étiquettes retirées)
+  for (const id of forcages) lignes.push(`- ${nom(id)} sera supprimé en forçant (décision R223) : ${ceQueRemplaceLeForcage(parId.get(id)).texte}.`);
   for (const [source, cible] of fusions) {
     const m = parId.get(source);
     lignes.push(`- ${nom(source)} sera fusionné dans ${nom(cible)} : ses pages (${compteDesElements(m)}) et les textes qui le citent porteront ${nom(cible)}, puis ${nom(source)} disparaîtra.`);
@@ -191,13 +244,13 @@ export function confirmationDesRetraits(vocabulaire, { suppressions = new Set(),
 
 /**
  * Les opérations du lot : les fusions (`fusions` : Map source → cible, celles de « Fusionner dans… » et les renommages acceptés en fusion), puis les
- * suppressions, puis les autres opérations (renommages) ; un renommage d'un mot-clé qui disparaît dans le lot est retiré. Fusions et suppressions d'abord :
- * l'écriture d'un mot-clé qui disparaît se libère pour un renommage du même lot. Les fusions se suivent de sorte qu'un mot-clé reçoive les autres avant
+ * suppressions (les forcées, `forcages`, après les autres et avec `forcer: true` : décision R223), puis les autres opérations (renommages) ; un
+ * renommage d'un mot-clé qui disparaît dans le lot est retiré. Fusions et suppressions d'abord : l'écriture d'un mot-clé qui disparaît se libère pour un renommage du même lot. Les fusions se suivent de sorte qu'un mot-clé reçoive les autres avant
  * d'être fusionné à son tour ; les renommages, de sorte que chacun passe après celui qui libère son écriture (l'écriture actuelle d'un mot-clé : celle du
  * `vocabulaire`, à défaut celle de `avant.libelle`).
  */
-export function operationsDuVocabulaire(operations, { suppressions = new Set(), fusions = new Map(), vocabulaire = [] }) {
-  const retires = new Set([...suppressions, ...fusions.keys()]);
+export function operationsDuVocabulaire(operations, { suppressions = new Set(), forcages = new Set(), fusions = new Map(), vocabulaire = [] }) {
+  const retires = new Set([...suppressions, ...forcages, ...fusions.keys()]);
   const entrees = [...fusions];
   const listeDesFusions = ordonner(entrees, ([source]) => entrees.filter(([, cible]) => cible === source));
   const gardees = operations.filter((op) => !(op.table === 'mot_cle' && retires.has(op.cle?.id)));
@@ -211,6 +264,7 @@ export function operationsDuVocabulaire(operations, { suppressions = new Set(), 
   return [
     ...listeDesFusions.map(([source, cible]) => ({ op: 'fusionner_mots_cles', mot_cle: source, dans: cible })),
     ...[...suppressions].map((id) => ({ op: 'supprimer', entite: 'mot_cle', cle: { id } })),
+    ...[...forcages].filter((id) => !suppressions.has(id)).map((id) => ({ op: 'supprimer', entite: 'mot_cle', cle: { id }, forcer: true })),
     ...ordre,
   ];
 }

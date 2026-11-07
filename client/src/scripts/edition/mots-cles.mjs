@@ -10,11 +10,14 @@
 //     couleurs du site, groupées par famille, et le cercle d'une autre couleur, editeur.mjs#controleDeCouleur ; réponses Q3, Q4), sa définition
 //     (mot_cle.description), le menu déroulant des endroits qui le mentionnent (décision R196 (2), `mentions` du service : lib/mentions-des-mots-cles.mjs),
 //     « Fusionner dans… » et « Supprimer » (mis en file, envoyés avec « Enregistrer » ; « Supprimer » seulement quand rien ne le mentionne, R196) ;
+//     un mot-clé mentionné, à la place de « Supprimer », « Forcer la suppression » (décision R223 : mis en file comme les autres, confirmé avec ce qu'il
+//     remplace), sauf quand le service prévoit de refuser le forçage (`refus_du_forcage`) : une note « Suppression forcée impossible » dit pourquoi (en
+//     infobulle, et au bas du menu des mentions) ;
 //     un mot-clé verrouillé (mot_cle.verrou = 1, migration 0110 ; décisions R218, R219 (7) : « un cadenas sur la ligne, champs désactivés, la raison en
 //     infobulle ») a son cadenas, ses champs désactivés, ni « Supprimer » ni « Fusionner dans… », mais reste une cible de fusion et garde son menu des
 //     mentions ; « + Ajouter un mot-clé » le crée tout de suite (non verrouillé, R219 (5)), avec sa définition, son abréviation, son adresse et sa couleur
 //     (ENTITES.mot_cle) ; ce que le service refuse (400 : abréviation, adresse ou couleur mal écrite ; 409 : abréviation prise par un autre mot-clé,
-//     mot-clé verrouillé, mot-clé mentionné ; `champ`) l'est comme tout refus du lot ;
+//     mot-clé verrouillé, mot-clé mentionné, refus du forçage ; `champ`) l'est comme tout refus du lot ;
 //   - à l'enregistrement (verifier) : ce que le service ne pourrait pas jouer est refusé avant toute question (noms échangés en boucle, mot-clé qui reçoit
 //     une fusion et serait supprimé) ; un renommage vers une écriture qui reste prise après le lot propose la fusion ; suppressions et fusions sont
 //     confirmées une fois ; (operations) fusions et suppressions passent avant les renommages, chacun dans un ordre que le service accepte
@@ -29,8 +32,8 @@ import { attributEd, cleDeLigne, ENTITES } from '../../lib/edition-modele.mjs';
 import { cheminDePage } from '../../lib/metiers.mjs';
 import { estVerrouille, parLibelle } from '../../lib/mots-cles.mjs';
 import {
-  cibleSaisie, ciblesDeFusion, compteDesElements, confirmationDesRetraits, endroitsDesMentions, erreurDesRetraits, examinerLesRenommages, fusionOfferte,
-  INFOBULLE_DU_VERROU, operationsDuVocabulaire, suppressionOfferte,
+  ceQueRemplaceLeForcage, cibleSaisie, ciblesDeFusion, compteDesElements, confirmationDesRetraits, endroitsDesMentions, erreurDesRetraits,
+  examinerLesRenommages, forcageOffert, fusionOfferte, INFOBULLE_DU_VERROU, operationsDuVocabulaire, raisonSansForcage, suppressionOfferte,
 } from '../../lib/mots-cles-edition.mjs';
 import { htmlDeLaLigneDuGlossaire } from '../../lib/mots-cles-balises.mjs';
 import { definirLeVocabulaire } from './mots-cles-vivants.mjs';
@@ -38,6 +41,7 @@ import { definirLeVocabulaire } from './mots-cles-vivants.mjs';
 // [{ id, libelle, libelle_cle, description, abreviation, url, couleur, pages, verrou, mentions }] de la base vivante ; null : pas encore lu
 let vocabulaire = null;
 const suppressions = new Set();
+const forcages = new Set(); // suppressions forcées (« Forcer la suppression », décision R223)
 const fusions = new Map(); // source → cible (« Fusionner dans… »)
 let renommagesEnFusion = new Map(); // source → cible : renommages acceptés en fusion (verifier), envoyés par operations
 let lectures = 0; // la dernière lecture du vocabulaire demandée
@@ -46,7 +50,7 @@ let session = 0; // le passage en mode modification en cours (une lecture finie 
 const racine = () => document.querySelector('[data-glossaire]');
 const liste = () => document.getElementById('liste-mots-cles');
 const annoncerLaListe = (gestion) => document.dispatchEvent(new CustomEvent('glossaire:mots-cles', { detail: { gestion } }));
-const retires = () => new Set([...suppressions, ...fusions.keys()]);
+const retires = () => new Set([...suppressions, ...forcages, ...fusions.keys()]);
 const motCle = (id) => vocabulaire?.find((m) => m.id === id) ?? null;
 
 /** Relit le vocabulaire dans la base vivante ; vrai si cette lecture est la dernière demandée et a réussi. */
@@ -96,16 +100,18 @@ const bouton = (texte, classe) => {
 };
 
 /**
- * Remet chaque ligne de la liste de gestion dans l'état de la file : supprimée, fusionnée, ou rien ; boutons permis ou non. Une ligne verrouillée n'a
- * aucun bouton ; une ligne mentionnée n'a que « Fusionner dans… » (R196).
+ * Remet chaque ligne de la liste de gestion dans l'état de la file : supprimée (forcée ou non), fusionnée, ou rien ; boutons permis ou non. Une ligne
+ * verrouillée n'a aucun bouton ; une ligne mentionnée a « Fusionner dans… » et, si le service ne le refuse pas, « Forcer la suppression » (R196, R223).
  */
 function etatDesLignes() {
   for (const li of liste()?.querySelectorAll('li.ed-mot-cle') ?? []) {
     const { id } = li.dataset;
     const suppression = li.querySelector('.ed-mot-cle__supprimer');
+    const forcage = li.querySelector('.ed-mot-cle__forcer');
     const fusion = li.querySelector('.ed-mot-cle__fusionner');
     if (!fusion) continue; // mot-clé verrouillé
-    const supprime = suppressions.has(id);
+    const force = forcages.has(id);
+    const supprime = suppressions.has(id) || force;
     const cible = fusions.get(id);
     li.classList.toggle('ed-supprime', supprime);
     li.classList.toggle('ed-fusionne', Boolean(cible));
@@ -113,6 +119,11 @@ function etatDesLignes() {
       suppression.setAttribute('aria-pressed', String(supprime));
       suppression.textContent = supprime ? 'Sera supprimé — annuler' : 'Supprimer';
       suppression.disabled = Boolean(cible);
+    }
+    if (forcage) {
+      forcage.setAttribute('aria-pressed', String(force));
+      forcage.textContent = force ? 'Sera supprimé en forçant — annuler' : 'Forcer la suppression';
+      forcage.disabled = Boolean(cible);
     }
     fusion.setAttribute('aria-pressed', String(Boolean(cible)));
     fusion.textContent = cible ? `Sera fusionné dans « ${motCle(cible)?.libelle ?? cible} » — annuler` : 'Fusionner dans…';
@@ -208,6 +219,14 @@ function menuDesMentions(ed, m) {
     ul.append(li);
   }
   menu.append(resume, ul);
+  // la raison pour laquelle le forçage n'est pas offert (décision R223 : `refus_du_forcage`), lisible aussi au toucher, où l'infobulle ne s'ouvre pas
+  const raison = raisonSansForcage(m);
+  if (raison) {
+    const p = document.createElement('p');
+    p.className = 'ed-mot-cle__sans-forcage-raison';
+    p.textContent = `Suppression forcée impossible : ${raison}`;
+    menu.append(p);
+  }
   return menu;
 }
 
@@ -224,9 +243,28 @@ function verrouiller(li) {
 }
 
 /**
+ * Met en file (ou retire de la file) la suppression du mot-clé `m`, forcée ou non (`file` : suppressions ou forcages) ; un mot-clé qui doit recevoir une
+ * fusion en attente ne se supprime pas.
+ */
+function basculerLaSuppression(ed, m, file) {
+  if (file.delete(m.id)) {
+    etatDesLignes();
+    return;
+  }
+  const recoit = [...fusions].find(([, cible]) => cible === m.id);
+  if (recoit) {
+    ed.annoncer(`« ${m.libelle} » doit recevoir « ${motCle(recoit[0])?.libelle} » (fusion en attente) : annulez cette fusion avant de le supprimer.`, 'erreur');
+    return;
+  }
+  file.add(m.id);
+  ed.marquerModifie();
+  etatDesLignes();
+}
+
+/**
  * Une ligne de la liste de gestion : la balise à copier, le libellé, l'abréviation, ses pages, l'adresse, la couleur et la définition (saisies communes),
  * puis ses outils : le menu des mentions (R196 (2)) et, pour un mot-clé verrouillé, le cadenas (R219 (7)), sinon « Fusionner dans… » et, s'il n'est
- * mentionné nulle part, « Supprimer ».
+ * mentionné nulle part, « Supprimer » ; mentionné, « Forcer la suppression », ou la note qui dit pourquoi le service la refuserait (R223).
  */
 function ligneDeGestion(ed, m) {
   const li = document.createElement('li');
@@ -298,21 +336,25 @@ function ligneDeGestion(ed, m) {
     const suppression = bouton('Supprimer', 'ed-outil ed-outil--danger ed-mot-cle__supprimer');
     suppression.setAttribute('aria-pressed', 'false');
     suppression.title = 'Le retirer du vocabulaire (à l’enregistrement)';
-    suppression.addEventListener('click', () => {
-      if (suppressions.delete(m.id)) {
-        etatDesLignes();
-        return;
-      }
-      const recoit = [...fusions].find(([, cible]) => cible === m.id);
-      if (recoit) {
-        ed.annoncer(`« ${m.libelle} » doit recevoir « ${motCle(recoit[0])?.libelle} » (fusion en attente) : annulez cette fusion avant de le supprimer.`, 'erreur');
-        return;
-      }
-      suppressions.add(m.id);
-      ed.marquerModifie();
-      etatDesLignes();
-    });
+    suppression.addEventListener('click', () => basculerLaSuppression(ed, m, suppressions));
     outils.append(suppression);
+  }
+  if (forcageOffert(m)) {
+    const forcage = bouton('Forcer la suppression', 'ed-outil ed-outil--danger ed-mot-cle__forcer');
+    forcage.setAttribute('aria-pressed', 'false');
+    forcage.title = `Le supprimer malgré ses mentions (à l’enregistrement, décision R223) : ${ceQueRemplaceLeForcage(m).texte}`;
+    forcage.addEventListener('click', () => basculerLaSuppression(ed, m, forcages));
+    outils.append(forcage);
+  } else {
+    const raison = raisonSansForcage(m);
+    if (raison) {
+      const note = document.createElement('span');
+      note.className = 'ed-mot-cle__sans-forcage';
+      note.setAttribute('tabindex', '0'); // l'infobulle s'ouvre aussi au clavier
+      note.textContent = 'Suppression forcée impossible';
+      note.title = raison;
+      outils.append(note);
+    }
   }
   return li;
 }
@@ -400,7 +442,7 @@ export const motsCles = {
   verifier(ed, editeurs) {
     renommagesEnFusion = new Map();
     if (!vocabulaire) return null;
-    const impossible = erreurDesRetraits(vocabulaire, { suppressions, fusions });
+    const impossible = erreurDesRetraits(vocabulaire, { suppressions, forcages, fusions });
     if (impossible) return `Non enregistré : ${impossible}`;
     const renommages = [...editeurs.values()]
       .filter((e) => e.info.table === 'mot_cle' && e.info.colonne === 'libelle' && e.controle.value !== e.original)
@@ -414,18 +456,21 @@ export const motsCles = {
       if (!confirm(question)) return `Non enregistré : « ${r.libelle} » s’écrit comme le mot-clé « ${cible.libelle} ». Choisissez une autre écriture, ou acceptez de les fusionner.`;
       renommagesEnFusion.set(r.id, r.dans);
     }
-    const question = confirmationDesRetraits(vocabulaire, { suppressions, fusions });
+    const question = confirmationDesRetraits(vocabulaire, { suppressions, forcages, fusions });
     if (question && !confirm(question)) return 'Enregistrement annulé : rien n’a été envoyé.';
     return null;
   },
 
   operations(_ed, operations) {
-    return operationsDuVocabulaire(operations, { suppressions, fusions: new Map([...fusions, ...renommagesEnFusion]), vocabulaire: vocabulaire ?? [] });
+    return operationsDuVocabulaire(operations, {
+      suppressions, forcages, fusions: new Map([...fusions, ...renommagesEnFusion]), vocabulaire: vocabulaire ?? [],
+    });
   },
 
   fin(ed) {
     session += 1;
     suppressions.clear();
+    forcages.clear();
     fusions.clear();
     renommagesEnFusion = new Map();
     document.querySelector('.ed-outils-mots-cles')?.remove();

@@ -278,7 +278,8 @@ function cheminsDeRessource(r, tag) {
         : `Supprime par ${ecritPar(r.suppression)} ; ce que les fiches de personnage en avaient leur est retiré avec une note datée (décision R42 : réponse \`fiches\`). If-Match facultatif.${refusDuGel}`,
       // une suppression d'entité ne se défait pas (identifiant figé, retraits des fiches) ; une ligne retirée par une opération du lot se repose
       ...(r.suppression.operation ? {} : { 'x-sans-retour': SUPPRESSION_SANS_RETOUR }),
-      parameters: [ref('parameters', 'IfMatch')],
+      // la suppression forcée d'un mot-clé mentionné (décision R223 : ?forcer=1 ; serveur/ressources.mjs#forcageDuDelete)
+      parameters: [ref('parameters', 'IfMatch'), ...(r.table === 'mot_cle' ? [ref('parameters', 'forcer')] : [])],
       responses: { 200: reponse('Supprimé.', ref('schemas', 'Suppression')), ...ERREURS_D_ECRITURE },
     };
   }
@@ -594,6 +595,15 @@ const COMPOSANTS = {
     limite: { name: 'limite', in: 'query', required: false, description: 'Taille de la page (1 à 500).', schema: { type: 'integer', minimum: 1, maximum: 500, default: 50 } },
     decalage: { name: 'decalage', in: 'query', required: false, description: 'Nombre de lignes sautées.', schema: { type: 'integer', minimum: 0, default: 0 } },
     IfMatch: { name: 'If-Match', in: 'header', required: false, description: 'La version lue (ETag : toute la représentation, sous-ressources et tables dérivées comprises) : refus 409 si elle a changé depuis.', schema: { type: 'string' } },
+    forcer: {
+      name: 'forcer', in: 'query', required: false,
+      description: 'Mot-clé mentionné (décision R223) : 1 (ou true) supprime en forçant — chaque balise qui le cite devient son texte affiché (le libellé pour {{id}} et {{id:}}, le texte écrit pour {{id|texte}}), en texte simple, '
+        + 'chaque étiquette de page est retirée, dans le même lot ; sans forçage, 409 avec `mentions` (décision R196) et `refus_du_forcage`. Refusé '
+        + 'quand même (409, avant toute écriture) : un mot-clé verrouillé, qui étiquette un sort, cité par la définition d’un mot-clé verrouillé '
+        + '(`mots_cles_verrouilles`), dont le lien mène sans ancre à une page de la base (une ancre, une route sans page ou une rubrique sont épargnées), ou mentionné là où le site ne sait pas '
+        + 'remplacer sa balise (`mentions_bloquantes`). Aussi `{ "forcer": true }` dans le corps.',
+      schema: { type: 'string', enum: ['1', 'true', '0', 'false'] },
+    },
     IfNoneMatch: { name: 'If-None-Match', in: 'header', required: false, description: 'La version déjà connue (ETag : toute la représentation, sous-ressources et tables dérivées comprises) : 304 si elle n’a pas changé.', schema: { type: 'string' } },
   },
   responses: {

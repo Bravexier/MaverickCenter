@@ -75,7 +75,9 @@ export function lotsEnConflit(db) {
 /** Les lots déjà résolus (les RESOLUS_MONTRES plus récents) : { lot, fait_le, resume, resolu_le, resolu_par, resolution }. */
 export function lotsResolus(db) {
   return db.prepare(`SELECT id AS lot, fait_le, resume, resolu_le, resolu_par, resolution FROM modification_lot WHERE resolu_le IS NOT NULL
-    ORDER BY resolu_le DESC, id DESC LIMIT ?`).all(RESOLUS_MONTRES).map((l) => ({ ...l, resolution: json(l.resolution) }));
+    ORDER BY resolu_le DESC, id DESC LIMIT ?`).all(RESOLUS_MONTRES)
+    // le résumé montré sans les marqueurs du rejeu (décision R223 (6) : serveur/edition.mjs#marqueursDuLot), gardés au journal
+    .map((l) => ({ ...l, resume: OUTILS.separerLeMarqueur(l.resume).reste, resolution: json(l.resolution) }));
 }
 
 /** Le nombre de lots et de modifications en conflit à résoudre (/api/etat, note en préparation). */
@@ -594,7 +596,8 @@ function suiventLeDon(entrees, conflits) {
 function examiner(db, lot, lignes, instant, abandons, deja) {
   const ctx = contexte(db, { id: nouveauLot().id, instant, pageId: lot.page_id });
   // décision R196 : la suppression d'un mot-clé qu'un endroit mentionne encore (sur la base telle que le lot la trouve, comme le crochet `avantLeLot`
-  // du rejeu : serveur/edition.mjs#motsClesEncoreMentionnes) n'a que le choix 2 — sinon le choix 1, ou la suppression saine, referait la cascade
+  // du rejeu : serveur/edition.mjs#motsClesEncoreMentionnes) n'a que le choix 2 — sinon le choix 1, ou la suppression saine, referait la cascade ; une
+  // suppression forcée n'y est pas (décision R223 (6) : elle se rejoue forcée, ses balises remplacées par leur texte affiché)
   const mentionnes = new Map(OUTILS.motsClesEncoreMentionnes(db, lignes.filter((m) => !abandons.has(m.rang))).map((r) => [r.id, r.raison]));
   const { entrees, differees } = parcourir(ctx, lignes, new Set(abandons.keys()));
   const duParcours = entrees.filter((e) => e.issue === 'conflit').flatMap((e) => conflitsDeLEntree(e, db));
@@ -690,7 +693,8 @@ function examiner(db, lot, lignes, instant, abandons, deja) {
   })).digest('hex').slice(0, 32);
   return {
     public: {
-      lot: lot.id, fait_le: lot.fait_le, page_id: lot.page_id, resume: lot.resume, detail: lignes[0]?.detail ?? null,
+      // le résumé montré sans les marqueurs du rejeu (décision R223 (6)) ; la résolution relit le lot entier (lireLot), marqueurs compris
+      lot: lot.id, fait_le: lot.fait_le, page_id: lot.page_id, resume: OUTILS.separerLeMarqueur(lot.resume).reste, detail: lignes[0]?.detail ?? null,
       detail_lisible: detailLisible(lignes[0]?.detail ?? null, [...conflits, ...saines], db), empreinte, saines, conflits,
     },
     interne: { idsDuParcours, abandons: sortants },
@@ -872,7 +876,9 @@ export function resoudreLeConflit(db, corps, { instant, id } = {}) {
     });
     if (liens.length) throw erreur(409, `Ces choix casseraient un lien : ${liens.map((l) => l.raison).slice(0, 5).join(' ; ')}.`, { lot: diag.public });
     const ecrit = ctx.w.nombre > 0;
-    if (ecrit) ctx.w.terminer(`Résolution du conflit du lot ${lot.id} : ${lot.resume}`);
+    // le marqueur des suppressions forcées du lot résolu (décision R223 (6)) reste en tête du résumé, hors de sa troncature
+    const { entete, reste } = OUTILS.separerLeMarqueur(lot.resume);
+    if (ecrit) ctx.w.terminer(`Résolution du conflit du lot ${lot.id} : ${reste}`, { entete });
     else db.prepare('DELETE FROM modification_lot WHERE id = ?').run(id);
     const marque = db.prepare('UPDATE modification_lot SET resolu_le = ?, resolu_par = ?, resolution = ? WHERE id = ? AND resolu_le IS NULL')
       .run(instant, ecrit ? id : null, JSON.stringify(resolution), lot.id);
