@@ -121,7 +121,7 @@ export function chargerMagies(db) {
       monoMagie: m.mono_magie === 1,
       roles: (roles.get(m.id) ?? []).map((r) => ({ rang: r.rang, role: r.role, brut: r.role_brut })),
       // « Aucune » dans la source = aucune ligne
-      // chaque élément : { id de la magie ou de l'état visé, brut = écriture de la source (« Gelé », « Pétrification ») } ; `physiques` :
+      // chaque élément : { id de la magie ou de l'état visé, brut = écriture de la source (« Pétrification » ; l'état « Gel » s'écrit « Gel », décision R205) } ; `physiques` :
       // { type de dégâts physiques, brut } (R174), dans l'ordre de la table (rang : estoc, taille, frappe)
       resistances: {
         resistance: {

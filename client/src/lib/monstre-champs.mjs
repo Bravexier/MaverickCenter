@@ -400,8 +400,9 @@ export function cibles(texte) {
  * La magie qui va avec chaque cible d'une vulnérabilité ou d'une résistance (demande du propriétaire : « rajouter les couleurs des vulnérabilités et
  * résistances selon la couleur de la magie qui va avec ») : { cible normalisée : [noms de magie] }. Une magie se nomme elle-même (« Feu ») ; une
  * altération d'état a sa magie liée (table etat_magie : « Brûlure » -> Feu, « Surcharge Magique » -> Corruption et Arcane). Écritures du bestiaire
- * rapprochées : « Temps/Espace » (la magie liée du tableau des altérations s'écrit « Temps/ Espace ») ; « Pétrification », « Gelé », « Enragée »
- * (l'état « Pétrifié », « Gel », « Enragé »). Rien d'autre : « Frappe », « Maladie », « Contrôle mentale »… restent sans magie.
+ * rapprochées : « Temps/Espace » (la magie liée du tableau des altérations s'écrit « Temps/ Espace ») ; « Pétrification », « Enragée » (l'état
+ * « Pétrifié », « Enragé »). L'état « Gel » s'écrit « Gel » (décision R205, migration 0103) : la clé `gele` (« Gelé ») n'est plus gardée que pour les
+ * anciens textes. Rien d'autre : « Frappe », « Maladie », « Contrôle mentale »… restent sans magie.
  * `magies` : [noms] ; `etats` : [{ nom, magie }] (une ligne par magie liée, dans l'ordre de leur rang).
  */
 const CIBLES_RAPPROCHEES = { 'temps-espace': 'espace-temps', petrification: 'petrifie', gele: 'gel', enragee: 'enrage' };
@@ -420,13 +421,24 @@ export function attributs(texte) {
 }
 
 /**
- * « 4 armure physique / 2 armure magique (Peau) » ou « 4 AP / 2 AM » -> { armure_physique, armure_magique } ; « 0 points d'armure / 8 résistance magique »
- * n'est pas lu (le rapprochement de ces mots avec l'armure physique et magique attend le propriétaire : docs/bestiaire.md).
+ * « 4 armure physique / 2 armure magique (Peau) » ou « 4 AP / 2 AM » -> { armure_physique, armure_magique }. Décision R209 (5) : « points d'armure » et
+ * « résistance magique » sont les anciens noms de l'AP et de l'AM (« C'est l'ancien de AP et AM ») ; la migration 0106 les a réécrits dans la base,
+ * mais l'ancienne écriture (« 0 points d'armure / 8 résistance magique », export du doc, texte d'un lot du journal noté avant 0106) se lit de même.
+ * Une carte sans nombre (« ? », « ∞ », valeurs par EP sur plusieurs lignes) n'a pas de valeur (null).
  */
 export function defense(texte) {
-  const d = String(texte ?? '').match(/^(\d+) (?:armure physique|AP) ?\/ ?(\d+) (?:armure magique|AM)\b/i);
+  const d = String(texte ?? '').match(/^(\d+) (?:armure physique|AP|points d[’']armure) ?\/ ?(\d+) (?:armure magique|AM|résistance magique)\b/i);
   return { armure_physique: d ? Number(d[1]) : null, armure_magique: d ? Number(d[2]) : null };
 }
+
+/**
+ * Décision R209 (5) : une ligne de défense écrite avec les anciens noms (« 3 points d'armure / 0 résistance magique (Peau) », « EP 2 : 7 points
+ * d'armure / 7 résistance magique (Peau) ») réécrite « 3 armure physique / 0 armure magique (Peau) ». Le motif porte sur la ligne ENTIÈRE (préfixe
+ * « EP N : » facultatif, nombre ou « ? » / « ∞ », matière entre parenthèses facultative) : la « résistance magique » d'une tactique n'est pas touchée.
+ * Le même motif sert à la migration 0106 et à son test.
+ */
+export const LIGNE_DE_DEFENSE_ANCIENNE = /^((?:EP \d+ : )?)(\d+|\?|∞) points d[’']armure \/ (\d+|\?|∞) résistance magique((?: \([^()\n]+\))?)$/;
+export const ligneDeDefenseRenommee = (ligne) => ligne.replace(LIGNE_DE_DEFENSE_ANCIENNE, '$1$2 armure physique / $3 armure magique$4');
 
 /** « 4 cases sol / 4 cases nage » -> { vitesse_sol, vitesse_nage }. */
 export function vitesse(texte) {

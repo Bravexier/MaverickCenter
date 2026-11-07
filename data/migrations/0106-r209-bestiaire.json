@@ -1,0 +1,2372 @@
+{
+ "migration": "0106-r209-bestiaire",
+ "decision": "R209",
+ "description": "Décision R209 (3), (4) et (5) (réponses du propriétaire du 2026-11-07). `corrections` : une entrée par cellule réécrite (valeur entière) : les 93 rubriques de défense (« N points d'armure / N résistance magique » -> « N armure physique / N armure magique », motif ancré sur la ligne entière : lib/monstre-champs.mjs#LIGNE_DE_DEFENSE_ANCIENNE), l'immunité des trois Momies (sans « Enragé », qui reste leur vulnérabilité) et le nom de la carte de la Hallebarde amochée (nom, nom_brut, nom_cle ; identifiant inchangé). `derivees` : ce que le site tire des rubriques (lib/monstre-champs.mjs#valeursDeLaCarte), recalculé : monstre.armure_physique / armure_magique (87 cartes) et monstre_defense (immunités des Momies, renumérotées). `sans_nombre` : les 6 cartes réécrites dont la défense reste sans valeur (« ? », « ∞ », une valeur par EP). `comptes` : les nombres de lignes.",
+ "comptes": {
+  "defense": 93,
+  "momies": 3,
+  "armures_typees": 87,
+  "defense_supprimees": 9,
+  "defense_inserees": 6
+ },
+ "corrections": [
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/amphilactrus#carte:jeune-amphilactrus",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "0 points d'armure / 8 résistance magique (Peau)",
+   "apres": "0 armure physique / 8 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-beige#carte:blob-beige",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "0 points d'armure / 0 résistance magique (Peau)",
+   "apres": "0 armure physique / 0 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-beige#carte:blob-de-la-lumiere",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "0 points d'armure / 6 résistance magique (Peau)",
+   "apres": "0 armure physique / 6 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-beige#carte:blob-vanille",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "0 points d'armure / 3 résistance magique (Peau)",
+   "apres": "0 armure physique / 3 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-blanc#carte:blob-blanc",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "0 points d'armure / 0 résistance magique (Peau)",
+   "apres": "0 armure physique / 0 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-blanc#carte:blob-de-larcane",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "0 points d'armure / 4 résistance magique (Peau)",
+   "apres": "0 armure physique / 4 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-blanc#carte:blob-peche",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "0 points d'armure / 2 résistance magique (Peau)",
+   "apres": "0 armure physique / 2 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-bleu#carte:blob-bleu",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "0 points d'armure / 2 résistance magique (Peau)",
+   "apres": "0 armure physique / 2 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-bleu#carte:blob-de-leau",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "0 points d'armure / 6 résistance magique (Peau)",
+   "apres": "0 armure physique / 6 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-bleu#carte:blob-prune",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "0 points d'armure / 4 résistance magique (Peau)",
+   "apres": "0 armure physique / 4 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-bordeaux#carte:blob-bordeaux",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "0 points d'armure / 0 résistance magique (Peau)",
+   "apres": "0 armure physique / 0 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-bordeaux#carte:blob-du-sang",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "0 points d'armure / 0 résistance magique (Peau)",
+   "apres": "0 armure physique / 0 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-bordeaux#carte:blob-grenade",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "0 points d'armure / 0 résistance magique (Peau)",
+   "apres": "0 armure physique / 0 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-brun#carte:blob-brun",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "5 points d'armure / 0 résistance magique (Peau)",
+   "apres": "5 armure physique / 0 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-brun#carte:blob-cacao",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "8 points d'armure / 0 résistance magique (Peau)",
+   "apres": "8 armure physique / 0 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-brun#carte:blob-de-la-terre",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "10 points d'armure / 0 résistance magique (Peau)",
+   "apres": "10 armure physique / 0 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-cyan#carte:blob-cyan",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "0 points d'armure / 5 résistance magique (Peau)",
+   "apres": "0 armure physique / 5 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-cyan#carte:blob-de-la-glace",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "0 points d'armure / 10 résistance magique (Peau)",
+   "apres": "0 armure physique / 10 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-cyan#carte:blob-menthe",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "0 points d'armure / 8 résistance magique (Peau)",
+   "apres": "0 armure physique / 8 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-jaune#carte:blob-citron",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "0 points d'armure / 0 résistance magique (Peau)",
+   "apres": "0 armure physique / 0 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-jaune#carte:blob-de-la-foudre",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "0 points d'armure / 0 résistance magique (Peau)",
+   "apres": "0 armure physique / 0 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-jaune#carte:blob-jaune",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "0 points d'armure / 0 résistance magique (Peau)",
+   "apres": "0 armure physique / 0 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-mauve#carte:blob-de-lombre",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "6 points d'armure / 0 résistance magique (Peau)",
+   "apres": "6 armure physique / 0 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-mauve#carte:blob-mauve",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "0 points d'armure / 0 résistance magique (Peau)",
+   "apres": "0 armure physique / 0 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-mauve#carte:blob-raisin",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "3 points d'armure / 0 résistance magique (Peau)",
+   "apres": "3 armure physique / 0 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-noir#carte:blob-de-la-corruption",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "0 points d'armure / 4 résistance magique (Peau)",
+   "apres": "0 armure physique / 4 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-noir#carte:blob-noir",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "0 points d'armure / 0 résistance magique (Peau)",
+   "apres": "0 armure physique / 0 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-noir#carte:blob-reglisse",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "0 points d'armure / 2 résistance magique (Peau)",
+   "apres": "0 armure physique / 2 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-rose#carte:blob-de-lespace-temps",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "3 points d'armure / 3 résistance magique (Peau)",
+   "apres": "3 armure physique / 3 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-rose#carte:blob-litchi",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "3 points d'armure / 3 résistance magique (Peau)",
+   "apres": "3 armure physique / 3 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-rose#carte:blob-rose",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "3 points d'armure / 3 résistance magique (Peau)",
+   "apres": "3 armure physique / 3 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-rouge#carte:blob-du-feu",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "0 points d'armure / 0 résistance magique (Peau)",
+   "apres": "0 armure physique / 0 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-rouge#carte:blob-fraise",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "0 points d'armure / 0 résistance magique (Peau)",
+   "apres": "0 armure physique / 0 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-rouge#carte:blob-rouge",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "0 points d'armure / 0 résistance magique (Peau)",
+   "apres": "0 armure physique / 0 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-transparent#carte:blob-coco",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "0 points d'armure / 8 résistance magique (Peau)",
+   "apres": "0 armure physique / 8 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-transparent#carte:blob-du-vide",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "0 points d'armure / ∞ résistance magique (Peau)",
+   "apres": "0 armure physique / ∞ armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-transparent#carte:blob-transparent",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "0 points d'armure / 6 résistance magique (Peau)",
+   "apres": "0 armure physique / 6 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-vert#carte:blob-du-vent",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "0 points d'armure / 0 résistance magique (Peau)",
+   "apres": "0 armure physique / 0 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-vert#carte:blob-kiwi",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "0 points d'armure / 0 résistance magique (Peau)",
+   "apres": "0 armure physique / 0 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-vert#carte:blob-vert",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "0 points d'armure / 0 résistance magique (Peau)",
+   "apres": "0 armure physique / 0 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-vert-fonce#carte:blob-corossol",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "4 points d'armure / 0 résistance magique (Peau)",
+   "apres": "4 armure physique / 0 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-vert-fonce#carte:blob-de-la-necromancie",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "5 points d'armure / 0 résistance magique (Peau)",
+   "apres": "5 armure physique / 0 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-vert-fonce#carte:blob-vert-fonce",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "2 points d'armure / 0 résistance magique (Peau)",
+   "apres": "2 armure physique / 0 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/fourbraise#carte:fourbraise-chevaleresse",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "3 points d'armure / 0 résistance magique (Peau)",
+   "apres": "3 armure physique / 0 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/fourbraise#carte:fourbraise-ouvriere",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "3 points d'armure / 0 résistance magique (Peau)",
+   "apres": "3 armure physique / 0 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/fourbraise#carte:fourbraise-soldat",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "3 points d'armure / 0 résistance magique (Peau)",
+   "apres": "3 armure physique / 0 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/irapullum#carte:irapullum",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "6 points d'armure / 0 résistance magique (Peau)",
+   "apres": "6 armure physique / 0 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/irapullum#carte:irapullum-sanglant",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "6 points d'armure / 0 résistance magique (Peau)",
+   "apres": "6 armure physique / 0 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/irapullum#carte:irapullum-vorace",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "7 points d'armure / 0 résistance magique (Peau)",
+   "apres": "7 armure physique / 0 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/mordor#carte:mordor-chasseur",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "17 points d'armure / 10 résistance magique (Peau)",
+   "apres": "17 armure physique / 10 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/mordor#carte:mordor-collectionneur",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "20 points d'armure / 15 résistance magique (Peau)",
+   "apres": "20 armure physique / 15 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/mordor#carte:mordor-pilleur",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "15 points d'armure / 8 résistance magique (Peau)",
+   "apres": "15 armure physique / 8 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/moustique-bordeaux#carte:moustique-bordeaux",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "0 points d'armure / 0 résistance magique (Peau)",
+   "apres": "0 armure physique / 0 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/moustique-bordeaux#carte:moustique-du-sang",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "4 points d'armure / 2 résistance magique (Peau)",
+   "apres": "4 armure physique / 2 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/moustique-bordeaux#carte:moustique-sanguin",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "3 points d'armure / 0 résistance magique (Peau)",
+   "apres": "3 armure physique / 0 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/noye#carte:noye",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "2 points d'armure / 2 résistance magique (Peau)",
+   "apres": "2 armure physique / 2 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/noye#carte:noye-corrosif",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "2 points d'armure / 6 résistance magique (Peau)",
+   "apres": "2 armure physique / 6 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/os-du-froid#carte:os-du-blizzard",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "8 points d'armure / 24 résistance magique (Armure)",
+   "apres": "8 armure physique / 24 armure magique (Armure)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/os-du-froid#carte:os-du-froid",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "8 points d'armure / 16 résistance magique (Armure)",
+   "apres": "8 armure physique / 16 armure magique (Armure)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/os-du-froid#carte:os-du-givre",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "8 points d'armure / 20 résistance magique (Armure)",
+   "apres": "8 armure physique / 20 armure magique (Armure)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/ottar-chariot#carte:ottar-chariot",
+    "rang": 5
+   },
+   "col": "texte",
+   "avant": "EP 1 : 20 points d'armure / 20 résistance magique (Armure)\nEP 2 : 30 points d'armure / 30 résistance magique (Armure)\nEP 3 : 40 points d'armure / 40 résistance magique (Armure)\nEP 4 : 50 points d'armure / 50 résistance magique (Armure)\nEP 5 : 60 points d'armure / 60 résistance magique (Armure)\nEP 6 : 70 points d'armure / 70 résistance magique (Armure)\nEP 7 : 80 points d'armure / 80 résistance magique (Armure)\nEP 8 : 100 points d'armure / 100 résistance magique (Armure)\nEP 9 : 120 points d'armure / 120 résistance magique (Armure)\nEP 10 : 140 points d'armure / 140 résistance magique (Armure)",
+   "apres": "EP 1 : 20 armure physique / 20 armure magique (Armure)\nEP 2 : 30 armure physique / 30 armure magique (Armure)\nEP 3 : 40 armure physique / 40 armure magique (Armure)\nEP 4 : 50 armure physique / 50 armure magique (Armure)\nEP 5 : 60 armure physique / 60 armure magique (Armure)\nEP 6 : 70 armure physique / 70 armure magique (Armure)\nEP 7 : 80 armure physique / 80 armure magique (Armure)\nEP 8 : 100 armure physique / 100 armure magique (Armure)\nEP 9 : 120 armure physique / 120 armure magique (Armure)\nEP 10 : 140 armure physique / 140 armure magique (Armure)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/presque-ottar#carte:presque-ottar",
+    "rang": 5
+   },
+   "col": "texte",
+   "avant": "EP 1 : 5 points d'armure / 5 résistance magique (Peau)\nEP 2 : 7 points d'armure / 7 résistance magique (Peau)\nEP 3 : 10 points d'armure / 10 résistance magique (Peau)\nEP 4 : 13 points d'armure / 13 résistance magique (Peau)\nEP 5 : 17 points d'armure / 17 résistance magique (Peau)\nEP 6 : 20 points d'armure / 20 résistance magique (Peau)\nEP 7 : 23 points d'armure / 23 résistance magique (Peau)\nEP 8 : 26 points d'armure / 26 résistance magique (Peau)\nEP 9 : 30 points d'armure / 30 résistance magique (Peau)\nEP 10 : 33 points d'armure / 33 résistance magique (Peau)",
+   "apres": "EP 1 : 5 armure physique / 5 armure magique (Peau)\nEP 2 : 7 armure physique / 7 armure magique (Peau)\nEP 3 : 10 armure physique / 10 armure magique (Peau)\nEP 4 : 13 armure physique / 13 armure magique (Peau)\nEP 5 : 17 armure physique / 17 armure magique (Peau)\nEP 6 : 20 armure physique / 20 armure magique (Peau)\nEP 7 : 23 armure physique / 23 armure magique (Peau)\nEP 8 : 26 armure physique / 26 armure magique (Peau)\nEP 9 : 30 armure physique / 30 armure magique (Peau)\nEP 10 : 33 armure physique / 33 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/salithre#carte:salithre-arcanique",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "12 points d'armure / 8 résistance magique (Peau)",
+   "apres": "12 armure physique / 8 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/salithre#carte:salithre-de-plage",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "12 points d'armure / 0 résistance magique (Peau)",
+   "apres": "12 armure physique / 0 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/salithre#carte:salithre-de-roche",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "12 points d'armure / 4 résistance magique (Peau)",
+   "apres": "12 armure physique / 4 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/sanglier#carte:gros-sanglier",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "2 points d'armure / 0 résistance magique",
+   "apres": "2 armure physique / 0 armure magique",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/sanglier#carte:sanglier",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "2 points d'armure / 0 résistance magique",
+   "apres": "2 armure physique / 0 armure magique",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/sanglier#carte:sanglier-de-terre",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "2 points d'armure / 0 résistance magique",
+   "apres": "2 armure physique / 0 armure magique",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/saurotudo#carte:saurotudo-jeune",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "15 points d'armure / 0 résistance magique (Peau)",
+   "apres": "15 armure physique / 0 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/soldat-de-fer#carte:general-de-fer",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "12 points d'armure / 12 résistance magique (Peau)",
+   "apres": "12 armure physique / 12 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/soldat-de-fer#carte:lieutenant-de-fer",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "8 points d'armure / 8 résistance magique (Peau)",
+   "apres": "8 armure physique / 8 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/soldat-de-fer#carte:soldat-de-fer",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "4 points d'armure / 4 résistance magique (Peau)",
+   "apres": "4 armure physique / 4 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/solecorche#carte:solecorche",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "5 points d'armure / 5 résistance magique (Peau)",
+   "apres": "5 armure physique / 5 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/solecorche#carte:solecorche-astral",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "7 points d'armure / 7 résistance magique (Peau)",
+   "apres": "7 armure physique / 7 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/solecorche#carte:solecorche-brillant",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "7 points d'armure / 7 résistance magique (Peau)",
+   "apres": "7 armure physique / 7 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/squelette-archer#carte:squelette-arbaletrier",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "8 points d'armure / 0 résistance magique (Armure)",
+   "apres": "8 armure physique / 0 armure magique (Armure)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/squelette-archer#carte:squelette-archer",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "6 points d'armure / 0 résistance magique (Armure)",
+   "apres": "6 armure physique / 0 armure magique (Armure)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/squelette-archer#carte:squelette-soldat",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "10 points d'armure / 4 résistance magique (Armure)",
+   "apres": "10 armure physique / 4 armure magique (Armure)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/squelette-de-pierre#carte:squelette-de-montagne",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "30 points d'armure / 30 résistance magique (Armure)",
+   "apres": "30 armure physique / 30 armure magique (Armure)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/squelette-de-pierre#carte:squelette-de-pierre",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "5 points d'armure / 5 résistance magique (Peau)",
+   "apres": "5 armure physique / 5 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/squelette-de-pierre#carte:squelette-de-roche",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "5 points d'armure / 10 résistance magique (Peau)",
+   "apres": "5 armure physique / 10 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/squelette-mauvais#carte:squelette-mauvais-colerique",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "15 points d'armure / 15 résistance magique (Peau)",
+   "apres": "15 armure physique / 15 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/squelette-mauvais#carte:squelette-mauvais-determine",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "20 points d'armure / 20 résistance magique (Peau)",
+   "apres": "20 armure physique / 20 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/squelette-mauvais#carte:squelette-mauvais-puissant",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "20 points d'armure / 20 résistance magique (Peau)",
+   "apres": "20 armure physique / 20 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/squelette-venin#carte:squelette-poison",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "6 points d'armure / 8 résistance magique (Peau)",
+   "apres": "6 armure physique / 8 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/squelette-venin#carte:squelette-toxique",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "8 points d'armure / 8 résistance magique (Peau)",
+   "apres": "8 armure physique / 8 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/squelette-venin#carte:squelette-venin",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "4 points d'armure / 4 résistance magique (Peau)",
+   "apres": "4 armure physique / 4 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/voromorphe#carte:voromorphe-adulte",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "? points d'armure / ? résistance magique (Peau)",
+   "apres": "? armure physique / ? armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/voromorphe#carte:voromorphe-apex",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "? points d'armure / ? résistance magique (Peau)",
+   "apres": "? armure physique / ? armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/voromorphe#carte:voromorphe-jeune",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "? points d'armure / ? résistance magique (Peau)",
+   "apres": "? armure physique / ? armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/zompi#carte:zompi",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "2 points d'armure / 6 résistance magique (Peau)",
+   "apres": "2 armure physique / 6 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/zompi#carte:zompi-claqueur",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "4 points d'armure / 10 résistance magique (Peau)",
+   "apres": "4 armure physique / 10 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/zompi#carte:zompiceps",
+    "rang": 3
+   },
+   "col": "texte",
+   "avant": "4 points d'armure / 10 résistance magique (Peau)",
+   "apres": "4 armure physique / 10 armure magique (Peau)",
+   "decision": "R209 (5)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/momie#carte:momie",
+    "rang": 9
+   },
+   "col": "texte",
+   "avant": "Poison, Maladie, Enragé, Peur, Fatigue",
+   "apres": "Poison, Maladie, Peur, Fatigue",
+   "decision": "R209 (3)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/momie#carte:momie-royale",
+    "rang": 9
+   },
+   "col": "texte",
+   "avant": "Poison, Maladie, Enragé, Peur, Fatigue",
+   "apres": "Poison, Maladie, Peur, Fatigue",
+   "decision": "R209 (3)"
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/momie#carte:momie-surveillante",
+    "rang": 9
+   },
+   "col": "texte",
+   "avant": "Poison, Maladie, Enragé, Peur, Fatigue",
+   "apres": "Poison, Maladie, Peur, Fatigue",
+   "decision": "R209 (3)"
+  },
+  {
+   "table": "monstre",
+   "cle": {
+    "id": "monstres/hallebarde-amochee#carte:cuirasse-abime"
+   },
+   "col": "nom",
+   "avant": "Cuirasse abîmé",
+   "apres": "Hallebarde amochée",
+   "decision": "R209 (4)"
+  },
+  {
+   "table": "monstre",
+   "cle": {
+    "id": "monstres/hallebarde-amochee#carte:cuirasse-abime"
+   },
+   "col": "nom_brut",
+   "avant": "CUIRASSE ABÎMÉ",
+   "apres": "HALLEBARDE AMOCHÉE",
+   "decision": "R209 (4)"
+  },
+  {
+   "table": "monstre",
+   "cle": {
+    "id": "monstres/hallebarde-amochee#carte:cuirasse-abime"
+   },
+   "col": "nom_cle",
+   "avant": "cuirasse-abime",
+   "apres": "hallebarde-amochee",
+   "decision": "R209 (4)"
+  }
+ ],
+ "derivees": {
+  "monstre": [
+   {
+    "cle": {
+     "id": "monstres/amphilactrus#carte:jeune-amphilactrus"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 0,
+     "armure_magique": 8
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-beige#carte:blob-beige"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 0,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-beige#carte:blob-de-la-lumiere"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 0,
+     "armure_magique": 6
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-beige#carte:blob-vanille"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 0,
+     "armure_magique": 3
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-blanc#carte:blob-blanc"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 0,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-blanc#carte:blob-de-larcane"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 0,
+     "armure_magique": 4
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-blanc#carte:blob-peche"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 0,
+     "armure_magique": 2
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-bleu#carte:blob-bleu"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 0,
+     "armure_magique": 2
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-bleu#carte:blob-de-leau"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 0,
+     "armure_magique": 6
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-bleu#carte:blob-prune"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 0,
+     "armure_magique": 4
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-bordeaux#carte:blob-bordeaux"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 0,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-bordeaux#carte:blob-du-sang"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 0,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-bordeaux#carte:blob-grenade"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 0,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-brun#carte:blob-brun"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 5,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-brun#carte:blob-cacao"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 8,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-brun#carte:blob-de-la-terre"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 10,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-cyan#carte:blob-cyan"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 0,
+     "armure_magique": 5
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-cyan#carte:blob-de-la-glace"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 0,
+     "armure_magique": 10
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-cyan#carte:blob-menthe"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 0,
+     "armure_magique": 8
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-jaune#carte:blob-citron"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 0,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-jaune#carte:blob-de-la-foudre"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 0,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-jaune#carte:blob-jaune"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 0,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-mauve#carte:blob-de-lombre"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 6,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-mauve#carte:blob-mauve"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 0,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-mauve#carte:blob-raisin"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 3,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-noir#carte:blob-de-la-corruption"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 0,
+     "armure_magique": 4
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-noir#carte:blob-noir"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 0,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-noir#carte:blob-reglisse"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 0,
+     "armure_magique": 2
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-rose#carte:blob-de-lespace-temps"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 3,
+     "armure_magique": 3
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-rose#carte:blob-litchi"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 3,
+     "armure_magique": 3
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-rose#carte:blob-rose"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 3,
+     "armure_magique": 3
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-rouge#carte:blob-du-feu"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 0,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-rouge#carte:blob-fraise"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 0,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-rouge#carte:blob-rouge"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 0,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-transparent#carte:blob-coco"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 0,
+     "armure_magique": 8
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-transparent#carte:blob-transparent"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 0,
+     "armure_magique": 6
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-vert#carte:blob-du-vent"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 0,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-vert#carte:blob-kiwi"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 0,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-vert#carte:blob-vert"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 0,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-vert-fonce#carte:blob-corossol"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 4,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-vert-fonce#carte:blob-de-la-necromancie"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 5,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/blob-vert-fonce#carte:blob-vert-fonce"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 2,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/fourbraise#carte:fourbraise-chevaleresse"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 3,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/fourbraise#carte:fourbraise-ouvriere"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 3,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/fourbraise#carte:fourbraise-soldat"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 3,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/irapullum#carte:irapullum"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 6,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/irapullum#carte:irapullum-sanglant"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 6,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/irapullum#carte:irapullum-vorace"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 7,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/mordor#carte:mordor-chasseur"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 17,
+     "armure_magique": 10
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/mordor#carte:mordor-collectionneur"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 20,
+     "armure_magique": 15
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/mordor#carte:mordor-pilleur"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 15,
+     "armure_magique": 8
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/moustique-bordeaux#carte:moustique-bordeaux"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 0,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/moustique-bordeaux#carte:moustique-du-sang"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 4,
+     "armure_magique": 2
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/moustique-bordeaux#carte:moustique-sanguin"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 3,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/noye#carte:noye"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 2,
+     "armure_magique": 2
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/noye#carte:noye-corrosif"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 2,
+     "armure_magique": 6
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/os-du-froid#carte:os-du-blizzard"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 8,
+     "armure_magique": 24
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/os-du-froid#carte:os-du-froid"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 8,
+     "armure_magique": 16
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/os-du-froid#carte:os-du-givre"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 8,
+     "armure_magique": 20
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/salithre#carte:salithre-arcanique"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 12,
+     "armure_magique": 8
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/salithre#carte:salithre-de-plage"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 12,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/salithre#carte:salithre-de-roche"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 12,
+     "armure_magique": 4
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/sanglier#carte:gros-sanglier"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 2,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/sanglier#carte:sanglier"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 2,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/sanglier#carte:sanglier-de-terre"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 2,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/saurotudo#carte:saurotudo-jeune"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 15,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/soldat-de-fer#carte:general-de-fer"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 12,
+     "armure_magique": 12
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/soldat-de-fer#carte:lieutenant-de-fer"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 8,
+     "armure_magique": 8
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/soldat-de-fer#carte:soldat-de-fer"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 4,
+     "armure_magique": 4
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/solecorche#carte:solecorche"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 5,
+     "armure_magique": 5
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/solecorche#carte:solecorche-astral"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 7,
+     "armure_magique": 7
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/solecorche#carte:solecorche-brillant"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 7,
+     "armure_magique": 7
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/squelette-archer#carte:squelette-arbaletrier"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 8,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/squelette-archer#carte:squelette-archer"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 6,
+     "armure_magique": 0
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/squelette-archer#carte:squelette-soldat"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 10,
+     "armure_magique": 4
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/squelette-de-pierre#carte:squelette-de-montagne"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 30,
+     "armure_magique": 30
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/squelette-de-pierre#carte:squelette-de-pierre"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 5,
+     "armure_magique": 5
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/squelette-de-pierre#carte:squelette-de-roche"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 5,
+     "armure_magique": 10
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/squelette-mauvais#carte:squelette-mauvais-colerique"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 15,
+     "armure_magique": 15
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/squelette-mauvais#carte:squelette-mauvais-determine"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 20,
+     "armure_magique": 20
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/squelette-mauvais#carte:squelette-mauvais-puissant"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 20,
+     "armure_magique": 20
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/squelette-venin#carte:squelette-poison"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 6,
+     "armure_magique": 8
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/squelette-venin#carte:squelette-toxique"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 8,
+     "armure_magique": 8
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/squelette-venin#carte:squelette-venin"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 4,
+     "armure_magique": 4
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/zompi#carte:zompi"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 2,
+     "armure_magique": 6
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/zompi#carte:zompi-claqueur"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 4,
+     "armure_magique": 10
+    }
+   },
+   {
+    "cle": {
+     "id": "monstres/zompi#carte:zompiceps"
+    },
+    "avant": {
+     "armure_physique": null,
+     "armure_magique": null
+    },
+    "apres": {
+     "armure_physique": 4,
+     "armure_magique": 10
+    }
+   }
+  ],
+  "monstre_defense": {
+   "supprimees": [
+    {
+     "monstre_id": "monstres/momie#carte:momie",
+     "sens": "immunite",
+     "rang": 3,
+     "cible": "Enragé",
+     "cible_cle": "enrage"
+    },
+    {
+     "monstre_id": "monstres/momie#carte:momie",
+     "sens": "immunite",
+     "rang": 4,
+     "cible": "Peur",
+     "cible_cle": "peur"
+    },
+    {
+     "monstre_id": "monstres/momie#carte:momie",
+     "sens": "immunite",
+     "rang": 5,
+     "cible": "Fatigue",
+     "cible_cle": "fatigue"
+    },
+    {
+     "monstre_id": "monstres/momie#carte:momie-royale",
+     "sens": "immunite",
+     "rang": 3,
+     "cible": "Enragé",
+     "cible_cle": "enrage"
+    },
+    {
+     "monstre_id": "monstres/momie#carte:momie-royale",
+     "sens": "immunite",
+     "rang": 4,
+     "cible": "Peur",
+     "cible_cle": "peur"
+    },
+    {
+     "monstre_id": "monstres/momie#carte:momie-royale",
+     "sens": "immunite",
+     "rang": 5,
+     "cible": "Fatigue",
+     "cible_cle": "fatigue"
+    },
+    {
+     "monstre_id": "monstres/momie#carte:momie-surveillante",
+     "sens": "immunite",
+     "rang": 3,
+     "cible": "Enragé",
+     "cible_cle": "enrage"
+    },
+    {
+     "monstre_id": "monstres/momie#carte:momie-surveillante",
+     "sens": "immunite",
+     "rang": 4,
+     "cible": "Peur",
+     "cible_cle": "peur"
+    },
+    {
+     "monstre_id": "monstres/momie#carte:momie-surveillante",
+     "sens": "immunite",
+     "rang": 5,
+     "cible": "Fatigue",
+     "cible_cle": "fatigue"
+    }
+   ],
+   "inserees": [
+    {
+     "monstre_id": "monstres/momie#carte:momie",
+     "sens": "immunite",
+     "rang": 3,
+     "cible": "Peur",
+     "cible_cle": "peur"
+    },
+    {
+     "monstre_id": "monstres/momie#carte:momie",
+     "sens": "immunite",
+     "rang": 4,
+     "cible": "Fatigue",
+     "cible_cle": "fatigue"
+    },
+    {
+     "monstre_id": "monstres/momie#carte:momie-royale",
+     "sens": "immunite",
+     "rang": 3,
+     "cible": "Peur",
+     "cible_cle": "peur"
+    },
+    {
+     "monstre_id": "monstres/momie#carte:momie-royale",
+     "sens": "immunite",
+     "rang": 4,
+     "cible": "Fatigue",
+     "cible_cle": "fatigue"
+    },
+    {
+     "monstre_id": "monstres/momie#carte:momie-surveillante",
+     "sens": "immunite",
+     "rang": 3,
+     "cible": "Peur",
+     "cible_cle": "peur"
+    },
+    {
+     "monstre_id": "monstres/momie#carte:momie-surveillante",
+     "sens": "immunite",
+     "rang": 4,
+     "cible": "Fatigue",
+     "cible_cle": "fatigue"
+    }
+   ]
+  }
+ },
+ "sans_nombre": [
+  {
+   "monstre_id": "monstres/blob-transparent#carte:blob-du-vide",
+   "texte": "0 armure physique / ∞ armure magique (Peau)"
+  },
+  {
+   "monstre_id": "monstres/ottar-chariot#carte:ottar-chariot",
+   "texte": "EP 1 : 20 armure physique / 20 armure magique (Armure)\nEP 2 : 30 armure physique / 30 armure magique (Armure)\nEP 3 : 40 armure physique / 40 armure magique (Armure)\nEP 4 : 50 armure physique / 50 armure magique (Armure)\nEP 5 : 60 armure physique / 60 armure magique (Armure)\nEP 6 : 70 armure physique / 70 armure magique (Armure)\nEP 7 : 80 armure physique / 80 armure magique (Armure)\nEP 8 : 100 armure physique / 100 armure magique (Armure)\nEP 9 : 120 armure physique / 120 armure magique (Armure)\nEP 10 : 140 armure physique / 140 armure magique (Armure)"
+  },
+  {
+   "monstre_id": "monstres/presque-ottar#carte:presque-ottar",
+   "texte": "EP 1 : 5 armure physique / 5 armure magique (Peau)\nEP 2 : 7 armure physique / 7 armure magique (Peau)\nEP 3 : 10 armure physique / 10 armure magique (Peau)\nEP 4 : 13 armure physique / 13 armure magique (Peau)\nEP 5 : 17 armure physique / 17 armure magique (Peau)\nEP 6 : 20 armure physique / 20 armure magique (Peau)\nEP 7 : 23 armure physique / 23 armure magique (Peau)\nEP 8 : 26 armure physique / 26 armure magique (Peau)\nEP 9 : 30 armure physique / 30 armure magique (Peau)\nEP 10 : 33 armure physique / 33 armure magique (Peau)"
+  },
+  {
+   "monstre_id": "monstres/voromorphe#carte:voromorphe-adulte",
+   "texte": "? armure physique / ? armure magique (Peau)"
+  },
+  {
+   "monstre_id": "monstres/voromorphe#carte:voromorphe-apex",
+   "texte": "? armure physique / ? armure magique (Peau)"
+  },
+  {
+   "monstre_id": "monstres/voromorphe#carte:voromorphe-jeune",
+   "texte": "? armure physique / ? armure magique (Peau)"
+  }
+ ]
+}

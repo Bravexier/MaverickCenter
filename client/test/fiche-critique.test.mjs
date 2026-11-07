@@ -39,7 +39,8 @@ const deLaBase = (posture, bonus) => lignes('SELECT competence_id FROM posture_c
 const constante = (id) => db.prepare('SELECT valeur FROM regle_constante WHERE id = ?').get(id).valeur;
 
 test('R180 : les constantes et les jets de la réussite critique viennent de la base', () => {
-  for (const id of ['critique.base', 'critique.palier_1_score_min', 'critique.palier_1_bonus', 'critique.palier_2_score_min', 'critique.palier_2_bonus', 'critique.plafond']) {
+  for (const id of ['critique.base', 'critique.palier_1_score_min', 'critique.palier_1_bonus', 'critique.palier_2_score_min', 'critique.palier_2_bonus', 'critique.plafond',
+    'critique.plancher']) {
     assert.equal(regles.constantes[id], constante(id), id);
   }
   for (const p of regles.postures) {
@@ -212,6 +213,41 @@ test('R180 (2), R182 (3) : le plafond — palier 5 + Offensif 5 + deux accessoir
   // sans Sci du Crit, le même total : la mention n'y entre pas
   const sans = competence(avecScores(heros({ posture_id: POSTURE('offensif'), accessoires, capacites: [] }), { 'arme-lourde': 120 }), 'arme-lourde');
   assert.deepEqual([sans.critique.brut, sans.critique.bonus, sans.critique.plage, sans.critique.mentions], [12, 10, 15, []]);
+});
+
+test('R203, Q97 : le plancher — six accessoires maudits sur Concentration à 60 % ramènent le bonus à la plage « 1 à 1 » ; à 103 %, rien ne change', () => {
+  const emplacements = ['chef', 'collier', 'bracelet-1', 'bracelet-2', 'bague-1', 'bague-2'];
+  const accessoires = emplacements.map((emplacement) => ({ emplacement, accessoire_effet_id: ACCESSOIRE, valeur: null, maudit: 1 }));
+  const malus = -regles.accessoires.find((a) => a.id === ACCESSOIRE).critique; // R54 : l'effet contraire
+  const [base, plancher, plafond, palier2] = ['critique.base', 'critique.plancher', 'critique.plafond', 'critique.palier_2_bonus'].map((id) => constante(id));
+  assert.ok(base + 6 * malus < plancher, 'l’exemple de la décision descend bien sous le plancher');
+
+  // sans posture, Concentration à 60 % (aucun palier) : brut −6, plage « 1 à 1 » (et non « 1 à −1 »)
+  const bas = competence(avecScores(fiche({ accessoires }), { concentration: 60 }), 'concentration');
+  assert.equal(bas.scoreDuMoment, 60);
+  assert.deepEqual(origines(bas), emplacements.map(() => ['accessoire', malus]));
+  const c = bas.critique;
+  assert.deepEqual([c.brut, c.rogne, c.releve, c.bonus, c.plage, c.plancher], [6 * malus, 0, plancher - base - 6 * malus, plancher - base, plancher, plancher]);
+  const lignesBas = M.lignesDuCritique(c);
+  assert.equal(lignesBas[0], `Réussite critique : ${plancher - base} % (1 à ${plancher})`);
+  assert.equal(lignesBas.at(-1), `Plancher : ${6 * malus} % ramené à ${plancher - base} % (jamais moins de 1 à ${plancher})`);
+  assert.ok(!lignesBas.some((l) => l.startsWith('Plafond')));
+
+  // à 103 % (le second palier), les mêmes accessoires : le plancher ne joue pas (1 à 4 à l'import)
+  const haut = competence(avecScores(fiche({ accessoires }), { concentration: 103 }), 'concentration').critique;
+  const attendue = base + palier2 + 6 * malus;
+  assert.ok(attendue >= plancher && attendue <= plafond);
+  assert.deepEqual([haut.brut, haut.rogne, haut.releve, haut.bonus, haut.plage], [palier2 + 6 * malus, 0, 0, palier2 + 6 * malus, attendue]);
+  assert.ok(!M.lignesDuCritique(haut).some((l) => l.startsWith('Plancher')));
+
+  // le sort préparé fige la plage du moment (R182 (4)) : jamais sous le plancher
+  for (const k of regles.competences) {
+    const f = avecScores(fiche({ accessoires }), { [k.id]: 1 });
+    const p = M.competencesDe(regles, f).find((x) => x.id === k.id).critique?.plage;
+    if (p !== undefined) assert.ok(p >= plancher, k.id);
+  }
+  const prepa = M.critiqueAlaPreparation(regles, avecScores(fiche({ accessoires }), { [regles.sort_prepare.competence_id]: 60 }));
+  assert.equal(prepa, plancher);
 });
 
 test('R180 : une compétence à deux croix (inutilisable, R19) n’a pas de réussite critique', () => {

@@ -461,7 +461,17 @@ test('R167 : le tableau des améliorations a ses deux colonnes de coût (matéri
     const cumul = a.niveau > 1 ? texteDuCoutElementaire(armes.couts_elementaires.find((c) => c.niveau === a.niveau), null) : '';
     assert.ok(tableau.includes(`<td class="amelioration__cout-elementaire">${htmlDuCoutElementaire(a, cumul)}</td>`), `+${a.niveau} : son coût élémentaire, le cumul en infobulle`);
   }
-  assert.match(tableau, /<p class="tableau__note armes-famille__note js-seul armes-ameliorations__note-elementaire">Arme élémentaire : [^<]+<\/p>/);
+  const note = /<p class="tableau__note armes-famille__note js-seul armes-ameliorations__note-elementaire">Arme élémentaire : [\s\S]*?<\/p>/.exec(tableau)?.[0];
+  assert.ok(note, 'la note de l’arme élémentaire');
+  // décision R207 (4), Q58 : l'amélioration revient au Forgeron, le mot-clé `forgeron` (sa section de /metiers/ quand il a une adresse, libellé et
+  // adresse lus dans la base : le site de dev les modifie)
+  const forgeron = base.prepare("SELECT libelle, url FROM mot_cle WHERE id = 'forgeron'").get();
+  assert.ok(forgeron, 'le mot-clé forgeron (migration 0104)');
+  assert.match(note, forgeron.url
+    ? new RegExp(`<a class="mot-cle[^"]*" href="[^"]*${forgeron.url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}" data-mot-cle="forgeron"`)
+    : /<strong class="mot-cle[^"]*" data-mot-cle="forgeron"/);
+  assert.ok(note.includes(`>${echapper(forgeron.libelle)}</`), 'son libellé');
+  assert.ok(!note.includes('Métier à définir'));
   assert.match(main, /<p class="tableau__note armes-famille__note js-seul armes-materiaux__note-elementaire">Une arme élémentaire n’a pas de matériau\.<\/p>/);
   // la feuille : une seule colonne de coût avec JavaScript (le coût matériel, ou l'élémentaire avec `armes--elementaire`), les deux sans JavaScript et
   // en mode modification ; les matériaux grisés

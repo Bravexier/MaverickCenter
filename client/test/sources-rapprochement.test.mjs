@@ -273,9 +273,9 @@ test('les tolérances du rapprochement, sur un classeur synthétique : première
     CREATE TABLE page_entite (entite_table TEXT, entite_id TEXT, page_id TEXT);
     CREATE TABLE note_cellule (entite_table TEXT, entite_id TEXT, rang INTEGER, texte TEXT, nature TEXT, source_ref TEXT, PRIMARY KEY (entite_table, entite_id, rang));
     CREATE TABLE commentaire_orphelin (id TEXT PRIMARY KEY, occurrence INTEGER, texte TEXT, source_ref TEXT);
-    CREATE TABLE chose (id TEXT PRIMARY KEY, nom TEXT, source_ref TEXT);
+    CREATE TABLE chose (id TEXT PRIMARY KEY, nom TEXT, source_ref TEXT, valeur INTEGER);
   `);
-  const ajouter = base.prepare('INSERT INTO chose VALUES (?, ?, ?)');
+  const ajouter = base.prepare('INSERT INTO chose (id, nom, source_ref) VALUES (?, ?, ?)');
   ajouter.run('a', 'Alpha', 'Essai › première feuille › A1');                          // le premier onglet, sous le nom que lui donne l'import des races
   ajouter.run('b', 'Vert', 'Essai › Liste › B2 (liste déroulante, rang 2)');           // une saisie vide : sa liste de validation
   ajouter.run('c', "La lame d'Eaunoire", 'Essai › Texte › A1');                         // un écart voulu (décision), déclaré
@@ -283,17 +283,23 @@ test('les tolérances du rapprochement, sur un classeur synthétique : première
   ajouter.run('e', 'Bêta\nGamma', 'Essai › Texte › A3 ; Autre › Feuille › A1');          // une ligne qui cite deux classeurs
   ajouter.run('f', 'Delta\nEpsilon', 'Essai › Texte › A4 ; Google Doc « Notes » › Section'); // … dont l'un sans instantané
   ajouter.run('g', 'un\ndeux', 'Essai › Liste › D1:D2');                                 // la source d'une copie
+  // un nombre changé par une décision (R207 : l'AP d'une armure calculé d'après ses matériaux), déclaré en écart voulu, écrit en texte
+  base.prepare("INSERT INTO chose (id, nom, source_ref, valeur) VALUES ('h', NULL, 'Essai › Texte › A5', 16)").run();
   const dump = { sheets: [
     { name: 'Sommaire', cells: [{ r: 1, c: 1, v: 'Alpha' }] },
     { name: 'Liste', validations: [{ range: 'B2', type: 'list', formula1: '"Rouge,Vert"' }], cells: [{ r: 1, c: 4, v: 'un' }, { r: 2, c: 4, v: 'deux' }] },
     { name: 'Texte', cells: [
       { r: 1, c: 1, v: "La lame d'eau noire" }, { r: 2, c: 1, v: 'xy', threads: [{ text: 'salut', done: true }] }, { r: 3, c: 1, v: 'Bêta' }, { r: 4, c: 1, v: 'Delta' },
+      { r: 5, c: 1, v: 17 },
     ] },
     { name: 'Copie', cells: [{ r: 1, c: 1, v: 'un' }, { r: 2, c: 1, v: 'deux' }] },
   ] };
   const autres = { Autre: { sheets: [{ name: 'Feuille', cells: [{ r: 1, c: 1, v: 'Gamma' }] }] } };
   const registre = {
-    voulus: [{ table: 'chose', cle: { id: 'c' }, colonne: 'nom', avant: "d'eau noire", apres: "d'Eaunoire", raison: 'décision' }],
+    voulus: [
+      { table: 'chose', cle: { id: 'c' }, colonne: 'nom', avant: "d'eau noire", apres: "d'Eaunoire", raison: 'décision' },
+      { table: 'chose', cle: { id: 'h' }, colonne: 'valeur', avant: '17', apres: '16', raison: 'décision' },
+    ],
     commentaires: [{ onglet: 'Texte', cellule: 'A2', texte: 'salut', raison: 'conversation' }],
     copies: [{ onglet: 'Copie', plage: 'A1:A2', de: { onglet: 'Liste', plage: 'D1:D2' }, raison: 'copie' }],
   };
@@ -303,6 +309,10 @@ test('les tolérances du rapprochement, sur un classeur synthétique : première
   // Chaque tolérance retirée ou contredite redevient un écart.
   const sans = (cle) => rapprocher(base, { classeur: 'Essai', dump, autres, ...registre, [cle]: [] });
   assert.ok(sans('voulus').ecarts.length && sans('voulus').motsAbsents.length, 'écart voulu non déclaré');
+  assert.deepEqual(sans('voulus').nombres.map((x) => [x.ligne, x.colonne, x.valeur]), [['chose {"id":"h"}', 'valeur', 16]], 'nombre voulu non déclaré');
+  // un écart voulu d'un nombre ne vaut que pour sa colonne, et que si la cellule écrit son `avant`
+  const autreAvant = rapprocher(base, { classeur: 'Essai', dump, autres, ...registre, voulus: [...registre.voulus.slice(0, 1), { ...registre.voulus[1], avant: '18' }] });
+  assert.equal(autreAvant.nombres.length, 1, 'l’avant d’un nombre voulu doit se lire dans la cellule');
   assert.equal(sans('commentaires').notes.manquantes.length, 1, 'commentaire non déclaré');
   assert.equal(sans('copies').nonCitees.length, 2, 'copie non déclarée');
   const copieChangee = structuredClone(dump);

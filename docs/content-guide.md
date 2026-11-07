@@ -835,7 +835,10 @@ ne sert qu'à la recherche et aux `[[liens]]`, et suit les tables à chaque modi
   (boutons désactivés, aucun marqué, une note le dit), l'amélioration repart de « Aucune » (une adresse garde son niveau). Sa fiche
   (`lib/arme-forge.mjs#forgerArmeElementaire`) : type, mains et « Arme élémentaire », ses types de dégâts et sa portée, sa magie en pastille (sa classe), Dégâts = dé du type + 8 + l'effet de la
   ligne (Arc de Sang +5 : D8+18), Solidité = 4 + les crans de la ligne (4, 5 du +5 au +9, 6 au +10), Coût = les gemmes de sa magie cumulées
-  (« 6 communes + 3 raffinées de Grenat » au +5), sans RO ni « [Métier à définir] » ; pas de fer (R49 ne s'applique pas). Adresse :
+  (« 6 communes + 3 raffinées de Grenat » au +5), sans RO ; pas de fer (R49 ne s'applique pas). Le métier qui l'améliore est le **Forgeron**
+  (décision R207 (4), Q58 : « Forgeron pour les armes, Armurier pour les armures ») : la note du tableau des améliorations le nomme par le mot-clé
+  `forgeron` (lien vers sa section de `/metiers/`), comme celle du tableau des améliorations d'une armure élémentaire nomme l'**Armurier** (`armurier`) ;
+  la page copiée « Pièces élémentaires » garde son « [Métier à définir] ». Adresse :
   `?arme=arme-elementaire-<type>-<magie>&amelioration=N` (l'ancre de sa ligne) ; un `?materiau=` posé avec elle est ignoré et n'est pas réécrit. Sans
   JavaScript et en mode modification, les deux colonnes de coût se voient ; en mode modification, ses lignes sont en lecture (leur source est la page
   « Pièces élémentaires ») : ni champ, ni Supprimer, et une arme créée prend place avant elles.
@@ -895,11 +898,13 @@ page « Équipement » depuis la migration `0053-liens-page-equipement` ; au ren
   des armures : **les armures particulières en premier** (Nom, Type, AP, AM, Solidité « uni », Effet, Prix ; demande du propriétaire, 2026-10-16 : « tu
   met le tableau "Armure particulières" en tout premier de la liste des armures »), puis les armures de la grille par type (Nom, Matériaux, Type, AP,
   AM, Solidité, Résistance, Faiblesse, Prix ; « séparer les colonnes d'AP et d'AM », demande du propriétaire, 2026-10-16, comme dans la liste des
-  boucliers) ; une ligne choisit l'armure (et ses deux matériaux). **L'AP et l'AM sont deux valeurs de la base, chacune modifiable dans sa case**
-  (demande du propriétaire, 2026-10-17 : « C'est en base que les deux devraient être séparées et donc éditable aussi »), voir « AP et AM » plus bas. Une armure **ne se fabrique plus pièce par pièce, seulement
+  boucliers) ; une ligne choisit l'armure (et ses deux matériaux). **L'AP et l'AM sont deux valeurs de la base, chacune dans sa case** (demande du
+  propriétaire, 2026-10-17 : « C'est en base que les deux devraient être séparées et donc éditable aussi »), **calculées** pour une armure de la grille
+  et un bouclier (décision R207 (1), E6), voir « AP et AM » plus bas. Une armure **ne se fabrique plus pièce par pièce, seulement
   complète** (décision R93) : plus de tableau FABRICATION ; les paragraphes des règles de l'onglet sur la création par pièces sont
   retirés du texte de la page (« Suppression de la création par pièces », décision R95, migration `0055`), et donc du panneau de règles de l'onglet. **Prix d'une armure de la grille** (R93) : la fabrication de l'armure complète (ligne « Armure Complète » du tableau FABRICATION,
-  10 RO, écrite dans la phrase du prix au-dessus des matériaux, modifiable sur le site de dev) + 6 unités de chacun de ses deux matériaux, au prix de la
+  10 RO, écrite dans la phrase du prix au-dessus des matériaux, modifiable sur le site de dev) + 6 unités de chacun de ses deux matériaux (constante
+  `armure.unites_par_materiau`, posée en `data-unites-par-materiau` pour le script de la page : R207 (1)), au prix de la
   page Composants (R62) ; calculé partout (au build : `lib/armures-db.mjs#chargerArmures`, `prix_calcule` ; le script de la page le refait quand un prix
   de matériau ou la fabrication est réécrit), le prix écrit dans la grille n'est plus lu ni modifiable ; une armure particulière garde son prix écrit.
 - **Fiche de l'armure** (à côté, dans un panneau qui suit le défilement et remonte à la fiche quand on choisit une autre armure ; sur un écran étroit,
@@ -925,7 +930,8 @@ page « Équipement » depuis la migration `0053-liens-page-equipement` ; au ren
   l'**effet de la ligne**, sans cumul (au +5 : +10 AP/AM, +1 cran). Une fois l'élément choisi, chaque gemme est **nommée par la gemme de la magie**
   (table `gemme`), avec la qualité écrite par la source : « 2 gemmes communes de Rubis », « 5 gemmes parfaites d’Améthyste » (forme choisie par
   `tech-front` : le nom de la gemme en complément, sans accord à faire) ; la pièce du +5 s'écrit « 1 pièce élémentaire ». **Aucune conversion en RO**,
-  ni coût de transformation, ni métier. **Choisir de nouveau un matériau** (ou une armure de la liste) **vide le choix élément/poids**. Logique pure
+  ni coût de transformation ; la note du tableau nomme le métier qui l'améliore, l'**Armurier** (mot-clé `armurier`, lien vers `/metiers/` ; décision
+  R207 (4), Q58). **Choisir de nouveau un matériau** (ou une armure de la liste) **vide le choix élément/poids**. Logique pure
   (testée) dans `lib/armure-forge.mjs` : `ameliorationElementaire`, `coutElementaireEcrit`, `forgerArmureElementaire`, `choixDArmureApres` (le
   basculement matériaux/élément). Les 56 armures sont rendues cachées (`[data-armures-elementaires]`), lues par le script. Adresse :
   `?element-armure=<magie>&poids-armure=<poids>&amelioration-elementaire=<niveau>` (ex. `?element-armure=magie-du-feu&poids-armure=leger`).
@@ -951,8 +957,12 @@ page « Équipement » depuis la migration `0053-liens-page-equipement` ; au ren
 - État dans l'adresse : `?materiau1=…&materiau2=…&amelioration-armure=N` (ou `?armure=<ancre>` pour une armure particulière),
   `&forme=…&matiere=…&amelioration-bouclier=N` (un ancien `piece=…` est ignoré : R93) ; l'onglet dans l'ancre (`#armures`, `#boucliers`) ; une ancre `#armure-…` ou `#bouclier-…` choisit la ligne.
 - **AP et AM** (demande du propriétaire, 2026-10-17 : « L'édition des colonne AP et AM est mal pris en compte. C'est en base que les deux devraient être
-  séparées et donc éditable aussi » ; « Même remarque sur les AP / AM mais pour les armures ») : pour une armure (de la grille ou particulière) et un
-  bouclier, les colonnes `ap` et `am` sont les valeurs saisies, chacune dans sa case (un entier, signe permis ; vide = pas de bonus, « — » dans la liste,
+  séparées et donc éditable aussi » ; « Même remarque sur les AP / AM mais pour les armures ») : les colonnes `ap` et `am`, chacune dans sa case. Depuis
+  la décision R207 (1), E6 (« D'après les matériaux (+ cout de fabrication pour le prix) »), le **type, l'AP et l'AM d'une armure de la grille** (le
+  plus lourd des deux types, la somme des AP et des AM) et l'**AP, l'AM et le prix d'un bouclier** (classe de la forme × ceux de la matière ; prix :
+  classe × prix de la matière + prix de la forme) **se calculent** (`lib/armure-forge.mjs`, recalculés par le service) : leurs cases sont en lecture
+  (`data-ed-lecture`, jamais `data-ed` : le service refuse ces colonnes), et le script de la page refait le prix des boucliers quand le prix d'une
+  forme change. Seule une armure particulière (R80) garde des valeurs saisies (un entier, signe permis ; vide = pas de bonus, « — » dans la liste,
   0 dans la fiche) ; la défense écrite (`armure.stats_brut`, `bouclier.defense_brut`) n'est plus une case : le service la refait depuis l'AP et l'AM
   (`lib/armure-champs.mjs#defenseEcrite` : « +10AP +14AM », « +2AM », « Aucune » quand les deux sont vides), et la garde telle qu'écrite tant qu'elle se lit
   exactement en ces valeurs (`defenseExacte` : l'écriture de la source, « +13AP+12AM » sans espace, reste) ; elle ne sert plus qu'au corps Markdown (recherche) et
@@ -979,7 +989,7 @@ page « Équipement » depuis la migration `0053-liens-page-equipement` ; au ren
 - **Choix Oui / Non** (coût en matériaux, cran) : une valeur de la base que la liste n'a pas (un « 2 ») garde son option dans la saisie
   (`lib/edition-modele.mjs#optionsDuChoix`) : rien n'est envoyé tant qu'on n'y touche pas.
 - **Mode modification** (site de dev) : rien ne se sélectionne, tous les tableaux s'ouvrent (la liste des boucliers et celle des poids comprises) ; les
-  cases des armures et des boucliers (nom, AP, AM, prix, poids au choix pour un bouclier), des formes, des poids, des améliorations (coût et effet écrits
+  cases des armures et des boucliers (nom, poids au choix pour un bouclier ; type, AP, AM et prix pour une armure particulière seulement, R207 (1)), des formes, des poids, des améliorations (coût et effet écrits
   pour une armure, quatre cases pour un bouclier) et le coût de fabrication du bouclier (sous les formes) se modifient, les matériaux
   restent en lecture (R62) ; ni création ni suppression. Voir `docs/serveur.md`, « Édition ».
 - `test/armure-champs.test.mjs` (découpages rejoués sur toute la base), `armure-forge.test.mjs` (décisions R75 à R80, R93), `corps-armures.test.mjs`,

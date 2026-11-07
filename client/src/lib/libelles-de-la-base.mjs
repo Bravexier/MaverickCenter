@@ -267,6 +267,8 @@ export const NOMS_DES_COLONNES = geler({
     classe_max: 'Classe de bouclier maximale',
   },
   classe_objet_depart: { texte: 'Objet (tel qu’écrit)' },
+  // une constante d'équipement (lue par le calcul des armures, décision R207 (1) : `armure.unites_par_materiau`, une entrée du calcul) : l'unité du nombre
+  constante_equipement: { unite: 'Unité' },
   ecart_source: { source_a: 'Source A', valeur_a: 'Valeur A', source_b: 'Source B', valeur_b: 'Valeur B', detail: 'Détail' },
   evenement_extrait: { section: 'Section de la page', date_brut: 'Date (telle qu’écrite)' },
   gemme: {

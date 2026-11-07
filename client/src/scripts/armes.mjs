@@ -247,7 +247,8 @@ if (racine) {
 
   /**
    * La fiche d'une arme élémentaire (décision R167) : son type et sa magie (sans matériau), trois tuiles (dégâts : dé du type + 8 + l'effet de la ligne ;
-   * solidité : 4 + les crans de la ligne ; coût : les gemmes de sa magie cumulées du +1 au +N, sans RO ni « [Métier à définir] »), puis ses effets
+   * solidité : 4 + les crans de la ligne ; coût : les gemmes de sa magie cumulées du +1 au +N, sans RO ; le métier qui l'améliore, le Forgeron (décision R207 (4)),
+   * est nommé par la note du tableau des améliorations), puis ses effets
    * (capacité, ce qu'écrit l'en-tête de son type) et sa remarque.
    */
   function rendreFicheElementaire() {

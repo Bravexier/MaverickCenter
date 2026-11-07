@@ -281,7 +281,8 @@ export function htmlDesEffetsElementaires(ae, type) {
  * (lib/palette-css.mjs#classeDeMagie : le fond, et le texte de texteSurCouleur ; jamais un style). Ses valeurs sont celles de R167 : son nom, le dé et la
  * portée de son type (« rien de l'arme d'origine » ; Pugilat selon la Force), « +8 Dégâts » (`bonus_degats`), la solidité de base d'une arme élémentaire
  * (4), sa compétence au choix du porteur, ses types de dégâts (physiques de son type, puis sa magie : htmlDesTypesDeDegatsElementaires), sa capacité ;
- * ni origine, ni prix (ni le « [Métier à définir] » de la page source).
+ * ni origine, ni prix ; le métier qui l'améliore (le Forgeron, décision R207 (4), Q58 ; « [Métier à définir] » dans la page copiée « Pièces
+ * élémentaires ») est nommé par la note du tableau des améliorations (components/armes/ArmesPage.astro).
  * En lecture sur le site de dev (sa source est la page « Pièces élémentaires ») : aucun `data-ed`, les colonnes du mode modification vides.
  * Le script de la page lit `data-elementaire` (sa magie), `data-gemme` (la gemme de sa magie, celle du coût élémentaire) et les `data-…` des cellules.
  * `ae` : la ligne (familles[].armes_elementaires) ; `type` : familles[].type_elementaire ; `solidite` : chargerArmes().solidite_elementaire.

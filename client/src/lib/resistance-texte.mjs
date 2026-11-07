@@ -55,7 +55,7 @@ const SI_MAGIE_INNEE = /\bdans le cas d[eu] (?:la )?(.+?),\s*lancer un (d\d+) po
 /**
  * Lecteur des résistances écrites dans un texte, pour un jeu de cibles connues.
  * @param {{ type: 'magie' | 'etat', id: string, nom: string }[]} cibles  magies et altérations d'état, sous chacune de leurs écritures
- *   (le nom, et les écritures que les importeurs ont rapprochées : « Gelé » et « Pétrification » pour les altérations « Gel » et « Pétrifié »)
+ *   (le nom, et les écritures que les importeurs ont rapprochées : « Pétrification » pour l'altération « Pétrifié » ; l'état s'écrit « Gel », décision R205)
  */
 export function lecteurDeResistances(cibles) {
   const entrees = cibles

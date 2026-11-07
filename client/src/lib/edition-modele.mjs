@@ -11,8 +11,8 @@
 // lib/mots-cles-balises.mjs) : le service l'enregistre sous sa forme canonique, qui dépend de la colonne (typeDeTexte : « {{id}} » dans un texte mis en
 // forme, « {{id|texte}} » toujours dans un texte de case, le mode complet refusé), et refuse une balise qui ne cite aucun mot-clé (serveur/edition.mjs).
 // Colonnes modifiables sans création ni suppression : celles des armures, des pièces d'armure, des formes, des poids et des boucliers préfabriqués, et des
-// améliorations d'armure et de bouclier (page des armures, serveur/edition-armures.mjs ; l'AP et l'AM d'une armure et d'un bouclier sont deux cases, la
-// défense écrite en est refaite : demande du propriétaire, 2026-10-17) ; celles des potions (consommables de l'onglet Ceinture,
+// améliorations d'armure et de bouclier (page des armures, serveur/edition-armures.mjs ; l'AP et l'AM d'une armure particulière sont deux cases, la
+// défense écrite en est refaite : demande du propriétaire, 2026-10-17 ; ceux d'une armure de la grille et d'un bouclier se calculent, R207 (1)) ; celles des potions (consommables de l'onglet Ceinture,
 // serveur/edition-consommables.mjs) ; le texte d'une annonce (l'encart « Notre prochaine rencontre IRL » sur l'accueil, migration 0068).
 // Fonctions et constantes pures, sans dépendance (sauf lib/dons-edition.mjs, lib/portrait.mjs, lib/arme-champs.mjs, lib/armure-champs.mjs et
 // lib/potentiel-illimite.mjs, purs eux aussi) : partagées par le service, les gabarits Astro et le script des pages (src/scripts/edition.mjs).
@@ -521,7 +521,9 @@ export const TABLES = {
       nom: { type: 'ligne', libelle: 'Nom', requis: true },
       type: { type: 'choix', libelle: 'Type', requis: true, choix: TYPES_D_ARMURE.map((t) => ({ valeur: t, libelle: t })) },
       // l'armure physique et l'armure magique, deux cases (demande du propriétaire, 2026-10-17 : « C'est en base que les deux devraient être séparées et
-      // donc éditable aussi ») ; vide : pas de bonus. La défense écrite (`stats_brut`) en est refaite par le service (lib/armure-champs.mjs#defenseEcrite)
+      // donc éditable aussi ») ; vide : pas de bonus. La défense écrite (`stats_brut`) en est refaite par le service (lib/armure-champs.mjs#defenseEcrite).
+      // Type, AP, AM et prix d'une armure de la grille se calculent d'après ses deux matériaux (décision R207 (1), E6) : le service ne les accepte que pour
+      // une armure particulière (R80 ; serveur/edition-armures.mjs#COLONNES_CALCULEES_DE_LA_GRILLE)
       ap: { type: 'entier', libelle: 'AP (armure physique ; vide : aucune)' },
       am: { type: 'entier', libelle: 'AM (armure magique ; vide : aucune)' },
       solidite: { type: 'entier', libelle: 'Solidité (crans)', requis: true, min: 0 },
@@ -549,14 +551,15 @@ export const TABLES = {
       prix_brut: { type: 'ligne', libelle: 'Prix (RO : « 2,5 »)', requis: true },
     },
   },
-  // un bouclier préfabriqué (une forme et une matière, décision R78) : son nom, sa défense et son prix tels qu'écrits, et son poids (la couleur de sa
-  // case dans l'onglet : décision R92, migration 0054 ; un des poids de la liste, lib/armures-db.mjs#poidsDeBouclier, obligatoire : chaque case de
-  // la source a une couleur)
+  // un bouclier préfabriqué (une forme et une matière, décision R78) : son nom et son poids (la couleur de sa case dans l'onglet : décision R92, migration
+  // 0054 ; un des poids de la liste, lib/armures-db.mjs#poidsDeBouclier, obligatoire : chaque case de la source a une couleur). Son AP, son AM et son prix
+  // se calculent d'après sa forme et sa matière (décision R207 (1), E6) : ils restent ici pour que leurs cases (`data-ed-lecture`) suivent la ligne
+  // renvoyée, comme ceux de l'armure de la grille, mais le service refuse une valeur changée (serveur/edition-armures.mjs#COLONNES_CALCULEES_DU_BOUCLIER)
+  // et les refait quand la matière (page Composants) ou le prix de la forme change (serveur/edition-armures.mjs#suivreLesValeursCalculees)
   bouclier: {
     libelle: 'Bouclier',
     colonnes: {
       nom: { type: 'ligne', libelle: 'Nom', requis: true },
-      // l'AP et l'AM, deux cases comme pour une armure (demande du propriétaire, 2026-10-17) ; la défense écrite (`defense_brut`) en est refaite
       ap: { type: 'entier', libelle: 'AP (armure physique ; vide : aucune)' },
       am: { type: 'entier', libelle: 'AM (armure magique ; vide : aucune)' },
       prix_brut: { type: 'ligne', libelle: 'Prix (RO : « 202,5 »)' },

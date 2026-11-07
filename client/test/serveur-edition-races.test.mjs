@@ -95,6 +95,27 @@ test('magies innées : la matrice de la fiche (R8), ou la liste de l’onglet qu
   assert.equal(enregistrer([{ op: 'magies_innees', race: 'races/nain', magies: ['magies/inconnue'] }]).statut, 400);
 });
 
+test('R210 : une liste de magies innées vide est refusée (400, avec son message) ; ni la liste de l’onglet, ni la matrice, ni la page ne changent', () => {
+  // le Nain (liste d'onglet, R11) et une race sans liste d'onglet, qui lit la matrice de la fiche (R8 : choisie par id dans l'état courant) ; l'état
+  // est lu avant d'écrire
+  const sansListe = ligne(`SELECT r.id FROM race r WHERE NOT EXISTS (SELECT 1 FROM race_magie_onglet o WHERE o.race_id = r.id)
+    AND EXISTS (SELECT 1 FROM race_magie m WHERE m.race_id = r.id AND m.accessible = 1) ORDER BY r.id LIMIT 1`).id;
+  const etat = (race) => ({
+    onglet: lignes('SELECT * FROM race_magie_onglet WHERE race_id = ? ORDER BY rang', race).map((l) => ({ ...l })),
+    matrice: lignes('SELECT * FROM race_magie WHERE race_id = ? ORDER BY magie_id', race).map((l) => ({ ...l })),
+    page: ligne('SELECT donnees, corps_md FROM page WHERE id = ?', race),
+  });
+  for (const race of ['races/nain', sansListe]) {
+    const avant = etat(race);
+    assert.ok(avant.onglet.length || avant.matrice.some((m) => m.accessible === 1), `${race} : des magies innées possibles`);
+    const r = enregistrer([{ op: 'magies_innees', race, magies: [] }]);
+    assert.equal(r.statut, 400, JSON.stringify(r.corps));
+    assert.equal(r.corps.erreur, 'operations[0] : Magies innées : une race a au moins une magie innée possible.');
+    assert.deepEqual(etat(race), avant, `${race} : rien n’a changé`);
+  }
+  assert.ok(!lignes('SELECT 1 FROM race_magie_onglet WHERE race_id = ?', sansListe).length, 'la race sans liste n’en reçoit pas');
+});
+
 test('relations entre peuples : placer une race dans un niveau (case créée ou changée), retirer une case ; le tableau de la race suit', () => {
   const r = enregistrer([{ op: 'relations', cases: [
     { voit: PEUPLE_LYCAN, vu: peuple('humain-central'), echelle: 'haine' },

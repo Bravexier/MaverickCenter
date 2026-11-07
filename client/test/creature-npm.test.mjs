@@ -75,10 +75,38 @@ test('coût d’une invocation au NPM : « 20 + 4 âmes » au NPM 4 d’Animatio
   assert.equal(coutAuNpm('5', 'Par NPM de la créature invoquée. +1 Âme par NPM de la créature invoquée.', 4), '20 + 4 âmes');
   assert.equal(coutAuNpm('5', 'Par NPM de la créature invoquée. +1 Âme par NPM de la créature invoquée.', 1), '5 + 1 âme');
   assert.equal(coutAuNpm('6', 'Par NPM de la créature invoquée', 3), '18');
-  // un autre second coût (« +10% Barrière » de la Marionnette de l'ombre) : à trancher, le coût reste tel qu'écrit
-  assert.equal(coutAuNpm('5', 'Par NPM de la créature invoquée. +10% Barrière', 3), null);
+  // un autre second coût, inconnu : le coût reste tel qu'écrit
+  assert.equal(coutAuNpm('5', 'Par NPM de la créature invoquée. +2 Sang', 3), null);
   assert.equal(coutAuNpm('7', 'Par NPM de la créature sacrifiée', 3), null);
   assert.equal(coutAuNpm('X', 'Par NPM de la créature invoquée', 3), null);
+});
+
+test('R206 (1), Q35 : le « +10% Barrière » de la Marionnette de l’ombre vaut par NPM — « 15 + 30 % Barrière » au NPM 3', () => {
+  // la forme de la réponse du propriétaire (« C'est 10% par NPM donc oui c'est +30% barrière au NPM3 »)
+  assert.equal(coutAuNpm('5', 'Par NPM de la créature invoquée. +10% Barrière', 3), '15 + 30 % Barrière');
+  assert.equal(coutAuNpm('5', 'Par NPM de la créature invoquée. +10% Barrière', 1), '5 + 10 % Barrière');
+  assert.equal(coutAuNpm('5', 'Par NPM de la créature invoquée. + 10 % barrière.', 5), '25 + 50 % Barrière');
+  // la base : chaque carte de marionnette dont le sort écrit un pourcentage de barrière le reçoit multiplié par son NPM (décision R53 : une par NPM)
+  for (const l of lignes.filter((x) => x.coutNpm && x.npmDuBloc)) {
+    const pct = /^Par NPM de la créature invoquée\.?\s*\+\s*(\d+)\s*%\s*Barrière\.?$/i.exec(l.coutNpm.secondaire ?? '');
+    const cout = /^\d+$/.test(String(l.coutNpm.cout).trim()) ? Number(l.coutNpm.cout) : null;
+    if (!pct || cout === null) continue;
+    assert.equal(coutAuNpm(l.coutNpm.cout, l.coutNpm.secondaire, l.npmDuBloc), `${cout * l.npmDuBloc} + ${Number(pct[1]) * l.npmDuBloc} % Barrière`, l.id);
+  }
+});
+
+test('R206 (4), Q38 : « 1d6+2/NPM dégâts sonores/NPM » (le second « /NPM ») multiplie aussi les dés — 1d6+2 à 5d6+10 ; sans second « /NPM », 1d6+6 au NPM 3', () => {
+  const cri = { brut: 'Cri - 1d6+2/NPM dégâts sonores/NPM (Cône, Portée 1 - 4)', formule: '1d6+2/NPM', des: 1, faces: 6, bonus: 2, parNpm: true };
+  assert.deepEqual(NPMS.map((n) => attaqueAuNpm(cri, n)), ['1d6+2', '2d6+4', '3d6+6', '4d6+8', '5d6+10'].map((f) => `Cri - ${f} dégâts sonores (Cône, Portée 1 - 4)`));
+  const simple = { brut: 'Arc - 1d6+2/NPM dégâts de taille', formule: '1d6+2/NPM', des: 1, faces: 6, bonus: 2, parNpm: true };
+  assert.equal(attaqueAuNpm(simple, 3), 'Arc - 1d6+6 dégâts de taille');
+  // la base : une attaque « NdF+K/NPM … /NPM » vaut (N × NPM)dF+(K × NPM), sans « /NPM » restant
+  for (const l of lignes) {
+    for (const a of l.donneesNpm.attaques.filter((x) => x.parNpm && x.des != null && x.bonus != null && x.formule.includes('/NPM'))) {
+      const deux = a.brut.slice(a.brut.indexOf(a.formule) + a.formule.length).includes('/NPM');
+      assert.match(attaqueAuNpm(a, 3), new RegExp(`${a.des * (deux ? 3 : 1)}d${a.faces}\\+${a.bonus * 3}(?!\\d)`), `${l.id} : ${a.brut}`);
+    }
+  }
 });
 
 test('parNpm : une valeur par groupe de NPM qui se suivent', () => {

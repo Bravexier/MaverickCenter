@@ -281,7 +281,10 @@ const CHECKS_DE_LA_FICHE = Object.freeze({
   personnage_sort_prepare_cent_avec_prepare_hyper: 'un sort préparé au Mode Hyper 100 % l’est aussi en Mode Hyper (décision R172)',
   // la réussite critique figée du sort préparé (migration 0089, contraintes nommées)
   personnage_sort_prepare_critique_avec_prepare: 'seul le sort préparé a une réussite critique figée à sa préparation (décision R182)',
-  personnage_sort_prepare_critique_bornes: 'la réussite critique figée d’un sort préparé (1 à N) a un N de 1 à 15 (décisions R180, R182)',
+  // la plage ne descend jamais sous « 1 à 1 » (décision R203) : le moteur y ramène le bonus total, une préparation n'est donc jamais refusée pour une
+  // plage calculée sous 1 ; seule une valeur envoyée hors des bornes l'est
+  personnage_sort_prepare_critique_bornes: 'la réussite critique figée d’un sort préparé (1 à N) a un N de 1 à 15 : jamais sous « 1 à 1 » (décision R203), '
+    + 'jamais au-delà du plafond (décisions R180, R182)',
 });
 
 /** Message d’une contrainte de la base, en français (exporté pour les tests). */

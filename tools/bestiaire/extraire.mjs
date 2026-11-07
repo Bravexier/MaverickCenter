@@ -11,13 +11,14 @@
 // quand l'écriture est sans ambiguïté (sinon NULL, le texte reste). Seule exception, les capacités (décisions R66 à R69) : chaque capacité écrite sur une
 // carte est rangée sous une capacité commune par le registre tools/bestiaire/capacites.json (monstre_capacite_commune, monstre_capacite,
 // monstre_capacite_valeur), et la rubrique « Capacité(s) » ne garde que sa place (texte vide).
-// Transformations : les graphies que la base a déjà corrigées partout et les multiplicateurs de la décision R155 (CORRECTIONS) ; et le nom d'une carte, écrit en capitales dans le doc (« AMBLYPYGE DE BRAI ») ; `nom` le remet en minuscules en gardant la
+// Transformations : les graphies que la base a déjà corrigées partout, les multiplicateurs de la décision R155, l'état « Gel » (R205) et les anciens noms
+// de l'AP et de l'AM (R209) (CORRECTIONS) ; trois lignes et un nom de carte d'une seule espèce (R209, CORRECTIONS_D_ESPECE) ; et le nom d'une carte, écrit en capitales dans le doc (« AMBLYPYGE DE BRAI ») ; `nom` le remet en minuscules en gardant la
 // casse que le doc donne ailleurs à chaque mot (titre de l'espèce, puis texte courant : « Amblypyge de brai », « Élémentaire de l'Eau ») et les chiffres romains
 // en capitales (« Golem de fer II ») ; `nom_brut` garde l'original.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { normalize } from '../../client/src/lib/text.mjs';
-import { bornes, categorieDe, emplacements, lieux, SENS_DEFENSE, valeursDeLaCarte } from '../../client/src/lib/monstre-champs.mjs';
+import { bornes, categorieDe, emplacements, LIGNE_DE_DEFENSE_ANCIENNE, lieux, SENS_DEFENSE, valeursDeLaCarte } from '../../client/src/lib/monstre-champs.mjs';
 
 export const DOCUMENT = 'Bestiaire 2.0';
 
@@ -71,6 +72,10 @@ const TITRE_DE_BLOC = (l) => /\p{Lu}.*\p{Lu}.*\p{Lu}/u.test(l) && !/\p{Ll}/u.tes
  * R155 : « Oui là aussi c'est x3 et pas 4... », « Pareil remplace double résistance par Grande résistance », « Oui x4 aussi ») ne touchent qu'une ligne
  * entière, compactée : un titre de résistance ou de vulnérabilité (15, 22 et 10 lignes du doc), « Sensibilité(s) Dégâts x8 » (3) ; seul le
  * multiplicateur change (et « Double » -> « Grande »), et la correction passe avant le classement de la rubrique (RUBRIQUES, sur le titre corrigé).
+ * Décision R205 (« Il faut écrire "Gel" ») : l'état s'écrit « Gel » ; seules deux écritures changent, l'état dans une liste de cibles (vulnérabilités,
+ * résistances, immunités : la ligne entière est une liste « A, B, Gelé, C », préfixe « Guerrier : » admis) et l'état suivi de son stade (« “gelé 1” »
+ * des capacités Élément Glace) ; un adjectif (« piège gelé », « os gelés ») reste. Décision R209 (5) (« C'est l'ancien de AP et AM ») : une ligne de
+ * défense entière « N points d'armure / N résistance magique » s'écrit « N armure physique / N armure magique » (motif partagé avec la migration 0106).
  */
 export const CORRECTIONS = [
   [/le Démon d'Eau Noire/g, 'Eaunoire', 'décision R21, migration 0012-eaunoire'],
@@ -93,7 +98,36 @@ export const CORRECTIONS = [
   [/^Double\(s\) (Résistance\(s\) Dégâts(?:\/Effets)?) ÷4$/, 'Grande(s) $1 ÷3', 'décision R155, migration 0075-r155-titres-du-bestiaire'],
   // la sensibilité des golems de verre I à III, x4 (compétences)
   [/^(Sensibilité\(s\) Dégâts) x8$/, '$1 x4', 'décision R155, migration 0075-r155-titres-du-bestiaire'],
+  // l'état « Gelé » d'une liste de cibles (« Eau, Glace, Confusion, Gelé », « Mage : Glace, Feu, Gelé ») : « Gel » ; la ligne n'est faite que d'éléments
+  // sans point, virgule ni deux-points (une phrase n'est jamais touchée)
+  [/(?<=^(?:[^,.:]+ : )?(?:[^,.:]+, )*)Gelé(?=(?:, [^,.:]+)*$)/g, 'Gel', 'décision R205, migration 0103-r205-etat-gel'],
+  // l'état suivi de son stade (« “gelé 1” », « “Gelé 1” » : capacités Élément Glace) : « gel 1 », « Gel 1 »
+  [/\b([Gg])elé(?= \d)/g, '$1el', 'décision R205, migration 0103-r205-etat-gel'],
+  // la ligne de défense écrite avec les anciens noms de l'AP et de l'AM (lib/monstre-champs.mjs#LIGNE_DE_DEFENSE_ANCIENNE, ancré sur la ligne entière)
+  [LIGNE_DE_DEFENSE_ANCIENNE, '$1$2 armure physique / $3 armure magique$4', 'décision R209 (5), migration 0106-r209-bestiaire'],
 ];
+
+/**
+ * Corrections d'une seule espèce (décision R209, migration 0106-r209-bestiaire), que le doc écrit ailleurs à l'identique et qui ne vont donc pas dans
+ * CORRECTIONS : [espèce, quoi, avant, après, origine]. `quoi` : une rubrique (la ligne entière `avant` de cette rubrique, dans chaque carte de l'espèce,
+ * devient `après`, avant la lecture des valeurs de la carte) ou « nom » (le nom de la carte, écrit en capitales ; son identifiant reste tiré du nom que
+ * le doc écrit : identifiants figés).
+ */
+export const CORRECTIONS_D_ESPECE = [
+  // R209 (3), « D4 / bestiaire Q8. La vulnérabilité » : « Enragé » est une vulnérabilité des Momies, pas une immunité (leurs trois cartes) ; les neuf
+  // autres cartes qui écrivent « Enragé » en immunité ne changent pas
+  ['monstres/momie', 'immunite', 'Poison, Maladie, Enragé, Peur, Fatigue', 'Poison, Maladie, Peur, Fatigue', 'décision R209 (3), migration 0106-r209-bestiaire'],
+  // R209 (4), « Oublie de modification de nom dans la carte » : la carte de la Hallebarde amochée prend le nom de son espèce ; son identifiant reste
+  // monstres/hallebarde-amochee#carte:cuirasse-abime, et la carte de la Cuirasse abîmée garde son nom
+  ['monstres/hallebarde-amochee', 'nom', 'CUIRASSE ABÎMÉ', 'HALLEBARDE AMOCHÉE', 'décision R209 (4), migration 0106-r209-bestiaire'],
+];
+/** Les corrections d'une espèce pour `quoi` (« nom » ou une rubrique) : [[avant, après]]. */
+const correctionsDe = (espece, quoi) => CORRECTIONS_D_ESPECE.filter(([e, q]) => e === espece && q === quoi).map(([, , avant, apres]) => [avant, apres]);
+/** Un texte de rubrique, chaque ligne entière corrigée pour l'espèce (CORRECTIONS_D_ESPECE). */
+const corrigerPourLEspece = (texte, espece, rubrique) => {
+  const paires = correctionsDe(espece, rubrique);
+  return paires.length ? texte.split('\n').map((l) => paires.find(([avant]) => avant === l)?.[1] ?? l).join('\n') : texte;
+};
 /** Une ligne du doc, blancs de mise en page (espaces, insécables) réduits et corrections déjà décidées appliquées. */
 export const compacter = (l) => CORRECTIONS.reduce((t, [motif, par]) => t.replace(motif, par), l.replace(/[ \u00a0]+/g, ' ').trim());
 /** Lignes d'un passage -> texte : blancs de mise en page réduits, cellules de tableau (tabulation) sur leur ligne, paragraphes séparés par une ligne vide. */
@@ -299,7 +333,9 @@ function placementsDe(ecrites, registre, ou) {
 /** Une carte de monstre : de son en-tête (« NOM   Créature échelle 2 ») à `fin` (exclue). */
 function carte(L, debut, fin, espece, rang, casse, registre) {
   const m = L[debut].match(/^(.*?)\s*Créature échelle\s*(.*?)\s*$/);
-  const nomBrut = compacter(m[1]);
+  // l'identifiant vient du nom que le doc écrit ; le nom affiché, de ce nom corrigé pour l'espèce (CORRECTIONS_D_ESPECE)
+  const nomDuDoc = compacter(m[1]);
+  const nomBrut = correctionsDe(espece.id, 'nom').find(([avant]) => avant === nomDuDoc)?.[1] ?? nomDuDoc;
   let i = debut + 1;
   while (i < fin && !L[i].trim()) i++;
   const [type_brut = null, alignement_brut = null, categorie_brut = null] = L[i].split('|').map((p) => compacter(p) || null);
@@ -320,14 +356,16 @@ function carte(L, debut, fin, espece, rang, casse, registre) {
     else if (s) throw new Error(`ligne hors rubrique « ${s} » (${ref(i)})`);
   }
   if (rubriques.length === 0) throw new Error(`carte sans rubrique (${ref(debut)})`);
-  const ecrites = rubriques.map((x, k) => ({ rang: k + 1, rubrique: x.rubrique, titre: x.rubrique === 'attributs' ? null : x.titre, texte: texteDe(x.lignes), source_ref: ref(x.debut) }));
+  const ecrites = rubriques.map((x, k) => ({
+    rang: k + 1, rubrique: x.rubrique, titre: x.rubrique === 'attributs' ? null : x.titre, texte: corrigerPourLEspece(texteDe(x.lignes), espece.id, x.rubrique), source_ref: ref(x.debut),
+  }));
   const v = valeursDeLaCarte(ecrites);
   // la rubrique « Capacité(s) » ne garde que sa place et son titre : ses capacités sont rangées par le registre (R66)
   const r = ecrites.map((x) => (x.rubrique === 'capacites' ? { ...x, texte: '' } : x));
   const [ep_min, ep_max] = bornes(m[2]);
   const cle = normalize(nomBrut);
   return {
-    id: `${espece.id}#carte:${cle}`,
+    id: `${espece.id}#carte:${normalize(nomDuDoc)}`,
     espece_id: espece.id,
     rang,
     nom: casse(nomBrut, espece.nom),

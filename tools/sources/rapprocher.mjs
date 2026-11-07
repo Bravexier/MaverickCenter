@@ -37,7 +37,8 @@
 //   libelles  [{ mots?: "regex d'un mot", valeurs?: "regex de la cellule", onglets?, plages?, raison }]  libellés de mise en page d'une cellule citée :
 //             les mots qui répondent à `mots` (tous si `mots` manque) d'une cellule dont la valeur répond à `valeurs` (« ^Lvl \d+$ » : « Lvl » seul) ;
 //   voulus    [{ table, cle: { … }, colonne, avant, apres, raison }]                       écarts voulus hors des registres d'orthographe (décision R…,
-//             migration de données) : `avant` est l'écriture du classeur, `apres` celle de la base ;
+//             migration de données) : `avant` est l'écriture du classeur, `apres` celle de la base (en texte ; pour une colonne numérique, le
+//             nombre écrit en texte : « 17 » -> « 16 ») ;
 //   conflits  [{ table, cle, colonne, garder: "site" | "classeur", valeur_classeur, decide_le, raison }]  décisions du propriétaire (la valeur retenue
 //             compte dans les deux sens) ;
 //   copies    [{ onglet, plage, de: { classeur?, onglet, plage }, raison }]                   plage qui recopie une autre plage (même suite de valeurs non
@@ -330,6 +331,9 @@ export function rapprocher(db, {
   };
   for (const cs of registresDOrthographe()) for (const c of cs) inscrire(c, c.col);
   for (const v of voulus) inscrire(v, v.colonne);
+  // Les écarts voulus seuls, par (table, clé, colonne) : un nombre de la base se lit aussi par eux (pas par les registres d'orthographe).
+  const voulusParColonne = new Map();
+  for (const v of voulus) ajouter(voulusParColonne, cleK(v.table, cleDeCorrection(v), v.colonne), v);
   // Identifiants des documents Google remplacés par ceux des copies (migration 0014, registre `copies` : avant -> apres) : un lien du classeur original
   // vers un autre document, recopié dans la base, cite la copie.
   const chemin0014 = resolve(RACINE, 'data', 'migrations', '0014-sources-copies-drive.json');
@@ -557,8 +561,11 @@ export function rapprocher(db, {
           }, !vraiment.length);
         });
       }
+      // Un nombre se lit dans les cellules ; ou c'est l'`apres` d'un écart voulu de sa colonne (`voulus`, nombres écrits en texte) dont l'`avant` s'y lit.
+      const voulusDe = (col) => (voulusParColonne.get(cleK(t.name, cleLigne, col)) ?? []).filter((v) => v.avant !== '' && Number.isFinite(Number(v.avant)) && Number.isFinite(Number(v.apres)));
       for (const c of nombres) {
-        verifier(c, (attendue) => (lus.has(Number(attendue)) ? null : rangement(() => signaler({ ligne: ident, colonne: c.name, valeur: attendue, cellules: tout.slice(0, 200) }, R.nombres))));
+        const lu = (attendue) => lus.has(Number(attendue)) || voulusDe(c.name).some((v) => Number(v.apres) === Number(attendue) && lus.has(Number(v.avant)));
+        verifier(c, (attendue) => (lu(attendue) ? null : rangement(() => signaler({ ligne: ident, colonne: c.name, valeur: attendue, cellules: tout.slice(0, 200) }, R.nombres))));
       }
     }
     for (const [cleTexte, l] of actuelles) {

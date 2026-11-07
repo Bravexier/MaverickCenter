@@ -6,8 +6,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
-import { compacter, CORRECTIONS, ecartsDuRegistre, extraireBestiaire, lignesDuDoc, lignesSql, lireRegistre } from '../../tools/bestiaire/extraire.mjs';
-import { avecLesValeurs, emplacements } from '../src/lib/monstre-champs.mjs';
+import { compacter, CORRECTIONS, CORRECTIONS_D_ESPECE, ecartsDuRegistre, extraireBestiaire, lignesDuDoc, lignesSql, lireRegistre } from '../../tools/bestiaire/extraire.mjs';
+import { avecLesValeurs, emplacements, LIGNE_DE_DEFENSE_ANCIENNE } from '../src/lib/monstre-champs.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { normalize } from '../src/lib/text.mjs';
@@ -87,34 +87,43 @@ test('chaque carte : une catégorie, des rubriques, un nom remis en minuscules q
 });
 
 test('rien n’est inventé : chaque ligne de texte gardée (rubriques, capacités, butin, descriptions, glossaire) est écrite dans le doc', () => {
-  // les lignes du doc, aux corrections déjà décidées pour toute la base près (CORRECTIONS : test suivant)
+  // les lignes du doc, aux corrections déjà décidées pour toute la base près (CORRECTIONS : test suivant) ; une ligne corrigée pour une seule espèce
+  // (CORRECTIONS_D_ESPECE, décision R209) ne se lit que dans la rubrique de cette espèce, et sa ligne d'avant est une ligne du doc
   const doc = new Set(lignesDuDoc(texte).map((l) => compacter(l.replace(/\t/g, ' '))).filter(Boolean));
-  const verifier = (t, ou) => {
-    for (const l of String(t ?? '').split('\n').filter(Boolean)) assert.ok(doc.has(l), `${ou} : « ${l} » n’est pas une ligne du doc`);
+  const verifier = (t, ou, admises = []) => {
+    for (const l of String(t ?? '').split('\n').filter(Boolean)) assert.ok(doc.has(l) || admises.includes(l), `${ou} : « ${l} » n’est pas une ligne du doc`);
   };
+  const corrigees = (carte, rubrique) => CORRECTIONS_D_ESPECE.filter(([e, q]) => e === carte.espece_id && q === rubrique).map(([, , avant, apres]) => {
+    assert.ok(doc.has(avant), `${carte.id} : « ${avant} » est une ligne du doc`);
+    return apres;
+  });
   for (const g of b.groupes) verifier(g.description, g.id);
   for (const e of b.especes) {
     verifier(e.description, e.id);
     for (const x of e.blocs) verifier(x.texte, `${e.id} bloc ${x.titre}`);
     for (const x of e.butin) verifier(x.texte, `${e.id} butin ${x.score_brut}`);
   }
-  for (const c of cartes) for (const r of c.rubriques) verifier(r.texte, `${c.id} ${r.rubrique}`);
+  for (const c of cartes) for (const r of c.rubriques) verifier(r.texte, `${c.id} ${r.rubrique}`, corrigees(c, r.rubrique));
   // les capacités telles que le doc les écrit (la rubrique « Capacité(s) » n'est plus en base qu'un repère vide : décision R66)
   for (const c of cartes) verifier(c.texteDesCapacites, `${c.id} capacités`);
   for (const g of b.glossaire) assert.ok(doc.has(`${g.nom}. ${g.texte}`), g.nom);
   for (const r of b.regles) assert.ok(doc.has(`* ${r.texte}`), r.texte);
 });
 
-test('corrections : seulement les graphies que la base a déjà corrigées partout et les multiplicateurs de R155, chacune présente dans le doc', () => {
+test('corrections : seulement les graphies que la base a déjà corrigées partout, les multiplicateurs de R155, l’état « Gel » (R205) et les anciens noms de l’AP et de l’AM (R209), chacune présente dans le doc', () => {
   assert.deepEqual(CORRECTIONS.map(([, , origine]) => origine.match(/\d{4}-[a-z0-9-]+/)[0]), [
     '0012-eaunoire', '0006-orthographe-noms', '0006-orthographe-noms', '0005-orthographe-base',
     ...Array(4).fill('0039-bestiaire-reponses'),
     ...Array(4).fill('0075-r155-titres-du-bestiaire'),
+    ...Array(2).fill('0103-r205-etat-gel'),
+    '0106-r209-bestiaire',
   ]);
   // décision R57 : les fautes du butin, à leur seule place dans le doc (une case, une ligne de trois cases, un nom du glossaire) ; le nom corrigé du
   // glossaire garde son identifiant. Décision R155 : les lignes entières des titres (Grande résistance ÷4 : 15 ; Grande vulnérabilité x4 : 22 ; Double
-  // résistance ÷4 : 10) et la sensibilité x8 des golems de verre I à III (3) ; les motifs sont ancrés sur la ligne (drapeau m ici).
-  assert.deepEqual(CORRECTIONS.slice(4).map(([motif]) => texte.match(new RegExp(motif.source, 'gm')).length), [1, 1, 1, 3, 15, 22, 10, 3]);
+  // résistance ÷4 : 10) et la sensibilité x8 des golems de verre I à III (3) ; les motifs sont ancrés sur la ligne (drapeau m ici). Décision R205 :
+  // « Gelé » dans 83 listes de cibles et « gelé 1 » dans les capacités Élément Glace ; décision R209 (5) : les lignes de défense à l'ancienne (export
+  // brut ici, blancs non réduits : le test suivant compte les lignes compactées).
+  assert.deepEqual(CORRECTIONS.slice(4).map(([motif]) => texte.match(new RegExp(motif.source, 'gm')).length), [1, 1, 1, 3, 15, 22, 10, 3, 83, 6, 112]);
   assert.deepEqual(b.glossaire.filter((g) => g.id === 'peau-du-radrak').map((g) => g.nom), ['Peau de radrak']);
   for (const [motif] of CORRECTIONS) assert.match(texte, new RegExp(motif.source, motif.flags.replace('g', '') + 'm'), `${motif} : écrit dans le doc`);
   assert.ok(b.especes.some((e) => /Eaunoire a sauvé les exilés/.test(e.description ?? '')), 'la déesse de la Corruption s’appelle Eaunoire (R21)');
@@ -151,6 +160,35 @@ test('R155 : les titres des cartes en ÷3 / x3, la Double résistance rangée en
   assert.equal(rubriques.filter((r) => r.texte.split('\n').includes('Double(s) Vulnérabilité(s) Dégâts x2')).length, 1);
 });
 
+test('R205 et R209 : l’état « Gel », les Momies, la carte de la Hallebarde amochée, les anciens noms de l’AP et de l’AM, rejoués par l’extracteur', () => {
+  // les lignes du doc (blancs réduits) que touche chaque correction : 83 listes de cibles et 8 capacités « gelé 1 » (R205), 115 lignes de défense (R209)
+  const L = lignesDuDoc(texte).map((l) => l.replace(/\t/g, ' ').replace(/[  ]+/g, ' ').trim());
+  const touchees = (origine) => CORRECTIONS.filter(([, , o]) => o.includes(origine)).map(([motif]) => L.filter((l) => new RegExp(motif.source).test(l)).length);
+  assert.deepEqual(touchees('0103-r205-etat-gel'), [83, 8]);
+  assert.deepEqual(touchees('0106-r209-bestiaire'), [115]);
+  // R205 (3) : plus aucun « Gelé » d'état dans une rubrique ni une capacité ; l'adjectif d'une description reste (« piège gelé »)
+  const rubriques = cartes.flatMap((c) => c.rubriques.map((r) => ({ ...r, carte: c })));
+  assert.deepEqual(rubriques.filter((r) => /\bGelé(?![\p{L}])|gelé \d/u.test(r.texte)).map((r) => r.carte.id), []);
+  assert.deepEqual(cartes.flatMap((c) => c.capacitesEcrites).filter((x) => /[Gg]elé/.test(x.texte)), []);
+  assert.ok(cartes.flatMap((c) => c.defenses).some((x) => x.cible === 'Gel'), 'l’état « Gel » est une cible des défenses');
+  assert.ok(b.especes.some((e) => /piège gelé/.test(e.description ?? '')), 'un adjectif n’est pas l’état');
+  // R209 (3) : l'immunité des trois Momies n'a plus « Enragé », qui reste leur vulnérabilité ; une autre immunité qui l'écrit ne change pas
+  const momies = cartes.filter((c) => c.espece_id === 'monstres/momie');
+  assert.equal(momies.length, 3);
+  for (const c of momies) {
+    assert.deepEqual(c.defenses.filter((x) => /^Enrag/.test(x.cible)).map((x) => x.sens), ['vulnerabilite'], c.id);
+    assert.deepEqual(c.defenses.filter((x) => x.sens === 'immunite').map((x) => x.rang), [1, 2, 3, 4], `${c.id} : immunités renumérotées`);
+  }
+  assert.ok(rubriques.some((r) => r.carte.espece_id !== 'monstres/momie' && r.rubrique === 'immunite' && /\bEnragé\b/.test(r.texte)), 'les autres cartes gardent leur immunité');
+  // R209 (4) : la carte « CUIRASSE ABÎMÉ » de la Hallebarde amochée prend le nom de son espèce, son identifiant figé ; celle de la Cuirasse abîmée garde le sien
+  const hallebarde = cartes.filter((c) => c.espece_id === 'monstres/hallebarde-amochee');
+  assert.deepEqual(hallebarde.map((c) => [c.id, c.nom, c.nom_brut, c.nom_cle]), [
+    ['monstres/hallebarde-amochee#carte:cuirasse-abime', 'Hallebarde amochée', 'HALLEBARDE AMOCHÉE', 'hallebarde-amochee'],
+  ]);
+  assert.deepEqual(cartes.filter((c) => c.espece_id === 'monstres/cuirasse-abimee').map((c) => [c.id, c.nom_brut]), [['monstres/cuirasse-abimee#carte:cuirasse-abime', 'CUIRASSE ABÎMÉ']]);
+  assert.equal(L.filter((l) => /^CUIRASSE ABÎMÉ Créature échelle/.test(l)).length, 2, 'le doc écrit les deux cartes sous ce nom');
+});
+
 test('valeurs typées : seulement quand l’écriture est sans ambiguïté, et conformes au texte de la carte', () => {
   for (const c of cartes) {
     const de = (cle) => c.rubriques.filter((r) => r.rubrique === cle).map((r) => r.texte).join('\n');
@@ -161,8 +199,24 @@ test('valeurs typées : seulement quand l’écriture est sans ambiguïté, et c
     for (const a of c.attaques) assert.ok(de('degats').includes(`${a.nom}`) && de('degats').includes(a.texte), `${c.id} : ${a.nom}`);
     for (const x of c.defenses) assert.ok(de(x.sens).includes(x.cible), `${c.id} : ${x.sens} ${x.cible}`);
   }
-  // « points d'armure / résistance magique » : PAS rapproché de l'armure physique et magique (question au propriétaire, docs/bestiaire.md)
-  assert.ok(cartes.some((c) => c.armure_physique === null && /points d'armure/.test(c.rubriques.find((r) => r.rubrique === 'defense')?.texte ?? '')));
+  // décision R209 (5) : « points d'armure » et « résistance magique » sont les anciens noms de l'AP et de l'AM ; plus aucune carte ne les écrit, les
+  // 93 cartes qui les écrivaient ont leurs valeurs (lues comme l'AP et l'AM), sauf les 6 sans nombre (« ? », « ∞ », une valeur par EP), qui restent sans valeur
+  const L = lignesDuDoc(texte);
+  const ligneDe = (r) => Number(r.source_ref.match(/ligne (\d+)$/)[1]);
+  const blancsReduits = (l) => l.replace(/\t/g, ' ').replace(/[ \u00a0]+/g, ' ').trim();
+  const anciennes = cartes.filter((c) => {
+    const k = c.rubriques.findIndex((r) => r.rubrique === 'defense');
+    if (k < 0) return false;
+    // les lignes du doc de la rubrique : de son titre (exclu) au titre de la rubrique suivante
+    const lignes = L.slice(ligneDe(c.rubriques[k]), c.rubriques[k + 1] ? ligneDe(c.rubriques[k + 1]) - 1 : undefined);
+    assert.ok(!/points d.armure|résistance magique/.test(c.rubriques[k].texte), `${c.id} : plus de défense à l’ancienne`);
+    return lignes.some((l) => LIGNE_DE_DEFENSE_ANCIENNE.test(blancsReduits(l)));
+  });
+  assert.equal(anciennes.length, 93);
+  assert.deepEqual(anciennes.filter((c) => c.armure_physique === null).map((c) => c.id).sort(), [
+    'monstres/blob-transparent#carte:blob-du-vide', 'monstres/ottar-chariot#carte:ottar-chariot', 'monstres/presque-ottar#carte:presque-ottar',
+    'monstres/voromorphe#carte:voromorphe-adulte', 'monstres/voromorphe#carte:voromorphe-apex', 'monstres/voromorphe#carte:voromorphe-jeune',
+  ]);
 });
 
 test('le manifeste des sources cite la copie du doc, l’original en second', () => {

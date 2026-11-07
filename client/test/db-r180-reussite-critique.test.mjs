@@ -2,7 +2,8 @@
 // Hyper, les amplifications de la Lumière deviennent aussi des IC (mêmes exceptions) ; les nombres du critique (base 5, paliers 96 et 103, +2 et +5
 // au total, plafond 15) et les jets où compte le bonus de critique d'une posture sont des données. Migration
 // data/migrations/0087-r180-reussite-critique.sql ; pages du guide passées par db:sync-pages. Lecture seule de la base construite. Les lignes
-// 'don_de_posture' de posture_critique sont retirées par R182 (migration 0089 : test/db-r182-critique-du-sort-prepare.test.mjs).
+// 'don_de_posture' de posture_critique sont retirées par R182 (migration 0089 : test/db-r182-critique-du-sort-prepare.test.mjs). Le plancher de la plage
+// (« 1 à 1 » au moins, R203, migration 0101) est la constante critique.plancher, citée dans la même page que le plafond.
 // Les textes (effets de sorts et de dons, Mode Hyper, pages du guide, mots-clés) sont modifiables sur le site de dev, source de ce qu'il modifie : ceux
 // que la décision a fait écrire se lisent dans l'état d'import (test/aide-base-d-import.mjs) ; l'état courant, par les colonnes structurées et les
 // constantes, et par l'accord des pages avec leurs lignes. Le calcul du critique est épinglé dans le moteur (test/fiche-critique.test.mjs).
@@ -90,18 +91,24 @@ test('R180 : Mode Hyper de la Lumière — les trois copies (classeur_modes, ong
   assert.equal(db.prepare("SELECT count(*) AS n FROM page WHERE id = 'guide/mode-hyper-magie'").get().n, 0);
 });
 
-// Les phrases de la base et du plafond sont parties dans la page des critiques avec « Les quatre résultats » (R184, migration 0091 : page_id suit).
-const PAGE_DE_LA_CONSTANTE = { 'critique.base': 'guide/reussites-echecs-et-critiques', 'critique.plafond': 'guide/reussites-echecs-et-critiques' };
+// Les phrases de la base et du plafond sont parties dans la page des critiques avec « Les quatre résultats » (R184, migration 0091 : page_id suit) ;
+// le plancher (R203, migration 0101) y est écrit à côté du plafond.
+const PAGE_DE_LA_CONSTANTE = {
+  'critique.base': 'guide/reussites-echecs-et-critiques', 'critique.plafond': 'guide/reussites-echecs-et-critiques', 'critique.plancher': 'guide/reussites-echecs-et-critiques',
+};
+// La décision qui a posé chaque constante : R180, sauf le plancher de la plage (« 1 à 1 » au moins), R203.
+const DECISION_DE_LA_CONSTANTE = { 'critique.plancher': 'R203' };
 
-test('R180 : les nombres du critique sont des constantes de règle, chacune citée d’une phrase de « Réussir une action » ou de « Réussites / échecs / critiques »', () => {
+test('R180 et R203 : les nombres du critique (plancher de R203 compris) sont des constantes de règle, chacune citée d’une phrase de « Réussir une action » ou de « Réussites / échecs / critiques »', () => {
   const lignes = db.prepare("SELECT id, valeur, unite, nature, texte, page_id, source_ref FROM regle_constante WHERE id LIKE 'critique.%' ORDER BY id").all();
   assert.deepEqual(Object.fromEntries(lignes.map((l) => [l.id, l.valeur])), {
     'critique.base': 5, 'critique.palier_1_bonus': 2, 'critique.palier_1_score_min': 96,
-    'critique.palier_2_bonus': 5, 'critique.palier_2_score_min': 103, 'critique.plafond': 15,
+    'critique.palier_2_bonus': 5, 'critique.palier_2_score_min': 103, 'critique.plafond': 15, 'critique.plancher': 1,
   });
   for (const l of lignes) {
     const page = PAGE_DE_LA_CONSTANTE[l.id] ?? 'guide/reussir-une-action';
-    assert.deepEqual([l.unite, l.nature, l.page_id, l.source_ref], ['%', 'texte', page, 'Décision R180 du propriétaire'], l.id);
+    const decision = DECISION_DE_LA_CONSTANTE[l.id] ?? 'R180';
+    assert.deepEqual([l.unite, l.nature, l.page_id, l.source_ref], ['%', 'texte', page, `Décision ${decision} du propriétaire`], l.id);
     // la phrase citée, dans le texte de la page tel que la décision l'a écrit (état d'import : le site de dev peut le réécrire depuis)
     assert.ok(corpsDImport(page).includes(l.texte), `${l.id} : « ${l.texte} » dans la page ${page}`);
   }

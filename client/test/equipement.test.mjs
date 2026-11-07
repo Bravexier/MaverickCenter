@@ -25,6 +25,7 @@ import { FAMILLE_DES_BATONS, sectionDuCorps } from '../src/lib/ceinture-db.mjs';
 import { ordonnerBlocs } from '../src/lib/panneaux-regles-db.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { ecrituresReecrites, textesReecrits } from './aide-textes-reecrits.mjs';
 
 const db = ouvrirBase();
 const batons = chargerBatons(db);
@@ -219,8 +220,17 @@ test('bâtons : leurs règles (migration 0056) sont le panneau du sous-onglet �
   const blocs = ordonnerBlocs(historique.lignesDImport('panneau_regles_bloc').filter((b) => b.panneau_id === 'batons-magiques'));
   assert.deepEqual(blocs.map((b) => [b.tuile, b.titre]), [[0, null], [1, 'Comment fabriquer un bâton magique ?']]);
   assert.equal(blocs[0].texte, sectionDuCorps(importe, null), 'l’introduction de la page');
-  assert.equal(blocs[1].texte, sectionDuCorps(importe, '## COMMENT FABRIQUER UN BÂTON MAGIQUE ?'), 'la fabrication');
-  assert.match(blocs[1].texte, /Volonté \+ Intelligence/);
+  // R207 (3) : la 0105 réécrit le test de l'Enchanteur dans la page, la 0109 dans le bloc. La valeur d'import d'une cellule que le site a modifiée est
+  // celle d'avant la migration : chaque côté se lit sous l'une ou l'autre écriture (test/aide-textes-reecrits.mjs), sans figer le texte d'après.
+  const R207 = ['0105-r207-armures-boucliers-et-fabrication', '0109-r207-panneau-des-batons'];
+  const ecritures = ecrituresReecrites(...R207);
+  const sections = ecritures('page', { id: PAGE_DES_BATONS }, 'corps_md', importe).map((c) => sectionDuCorps(c, '## COMMENT FABRIQUER UN BÂTON MAGIQUE ?'));
+  const tuile = ecritures('panneau_regles_bloc', { panneau_id: 'batons-magiques', rang: blocs[1].rang }, 'texte', blocs[1].texte);
+  assert.ok(tuile.some((t) => sections.includes(t)), 'la fabrication');
+  // la tuile dit le test de fabrication sous l'une de ses écritures (avant ou après la 0109, lues dans son registre)
+  const r0109 = textesReecrits('0109-r207-panneau-des-batons').filter((t) => t.table === 'panneau_regles_bloc' && t.cle.panneau_id === 'batons-magiques');
+  assert.equal(r0109.length, 1);
+  assert.ok(blocs[1].texte.includes(r0109[0].avant) || blocs[1].texte.includes(r0109[0].apres), 'R207 (3) : le test de fabrication de l’Enchanteur');
   assert.equal(batons.page?.titre, db.prepare('SELECT titre FROM page WHERE id = ?').get(PAGE_DES_BATONS)?.titre);
 });
 

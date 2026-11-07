@@ -18,7 +18,8 @@ interface Props {
 }
 const { magie, magies } = Astro.props;
 
-// Texte du lien = écriture de la source (« Gelé ») ; le nom de l'entité visée (« Gel ») est dans l'infobulle quand il diffère.
+// Texte du lien = écriture de la source (« Pétrification ») ; le nom de l'entité visée (« Pétrifié ») est dans l'infobulle quand il diffère (l'état « Gel »
+// s'écrit « Gel » partout, décision R205).
 const lienMagie = ({ id, brut }: { id: string; brut: string }) => ({ href: pageHref(id), texte: brut, soi: id === magie.id, titre: magies.magies.get(id)!.nom, etat: null, physique: false });
 const lienEtat = ({ id, brut }: { id: string; brut: string }) => ({ href: '', texte: brut, soi: false, titre: '', etat: magies.etats.get(id)!, physique: false });
 const groupePhysique = (physiques: { type: string; brut: string }[]) =>

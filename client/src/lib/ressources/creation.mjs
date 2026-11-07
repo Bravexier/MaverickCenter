@@ -80,8 +80,8 @@ export const RESSOURCES = [
         description:
           'Les magies innées que l’onglet de la race limite (le Nain et les races hybrides à classe raciale), dans l’ordre où il les cite ; la liste prime sur ' +
           'la matrice de la fiche (décisions R11, R31) ; une magie s’y ajoute à la fin (POST) ou s’en retire (DELETE) par l’opération `magies_innees` du ' +
-          'site de dev, seulement pour une race dont l’onglet limite déjà ses magies (sinon : la matrice, acces-aux-magies) ; retirer la dernière rend la ' +
-          'main à la matrice.',
+          'site de dev, seulement pour une race dont l’onglet limite déjà ses magies (sinon : la matrice, acces-aux-magies) ; la dernière ne se retire pas ' +
+          '(400 : une race a au moins une magie innée possible, décision R210).',
         operations: { POST: 'magies_innees', DELETE: 'magies_innees' },
       },
       {
@@ -95,7 +95,7 @@ export const RESSOURCES = [
           'La ligne de la race dans la matrice « Accessibilité Magie » de la fiche auto (une case par magie, 1 = accessible en magie innée), qui fait foi quand ' +
           'l’onglet ne limite pas (décision R8) : une case se modifie (PATCH { accessible: 0 | 1 }) par l’opération `magies_innees` du site de dev, ' +
           'seulement pour une race dont l’onglet ne limite pas ses magies (sinon : magies-innees-de-l-onglet) — c’est ainsi qu’une race créée reçoit ses ' +
-          'magies innées.',
+          'magies innées ; la dernière case accessible ne se ferme pas (400 : une race a au moins une magie innée possible, décision R210).',
         operations: { PATCH: 'magies_innees' },
       },
       {

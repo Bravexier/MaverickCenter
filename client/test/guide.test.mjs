@@ -282,7 +282,8 @@ test('décisions R18 et R186 : à court de chakra, chaque point qui manque coût
   assert.match(magie, /en Mode Hyper ou non\. Sauf si un texte le précise, tout coût payé en santé ignore la \{\{barriere\|barrière\}\} : elle ne l’absorbe pas\. C’est vrai de ce prix comme du coût en santé d’un sort ou d’un don\.\n\n\*Exemple : il reste 3 de \{\{chakra\|chakra\}\} au personnage, et son sort en coûte 7\. Il dépense ses 3 points, et les 4 qui manquent lui coûtent 12 points de santé\.\*\n\n\*Exemple : un sort coûte 5 de \{\{chakra\|chakra\}\} à un personnage qui a 10 de santé, 2 de \{\{chakra\|chakra\}\} et 3 de \{\{barriere\|barrière\}\}\. Il dépense ses 2 points, et les 3 qui manquent lui coûtent 9 points de santé : il finit à 1 de santé, 0 de \{\{chakra\|chakra\}\} et 3 de \{\{barriere\|barrière\}\}\.\*/);
   assert.match(magie, /son sort en coûte 7\. Il dépense ses 3 points, et les 4 qui manquent lui coûtent 12 points de santé\./);
   // R18, première moitié (inchangée par R186) : en Mode Hyper, les sorts ne coûtent plus de chakra, le mode en brûle 10 % du maximum par tour
-  assert.match(magie, /En Mode Hyper, les sorts ne coûtent plus de \{\{chakra\|chakra\}\}, mais le mode lui-même en brûle 10 % du maximum à chaque tour/);
+  // (« à chaque tour » ; « à la fin de chaque tour du joueur » depuis la migration 0107, R200 (3), postérieure : l'une ou l'autre écriture)
+  assert.match(magie, /En Mode Hyper, les sorts ne coûtent plus de \{\{chakra\|chakra\}\}, mais le mode lui-même en brûle 10 % du maximum (?:à chaque tour|à la fin de chaque tour du joueur)/);
   assert.match(corps('guide/le-mode-hyper'), /ses sorts ne coûtent \*\*plus de \{\{chakra\|chakra\}\}\*\*/);
   assert.match(corps('guide/le-mode-hyper'), /\*\*10 % du maximum à chaque tour\*\*/);
   assert.match(corps('guide/le-mode-hyper'), /À court de \{\{chakra\|chakra\}\}, en Mode Hyper ou non, on peut toujours en dépenser : chaque point qui manque se paie de \*\*3 points de santé\*\*\./);

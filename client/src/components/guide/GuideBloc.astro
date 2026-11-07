@@ -74,10 +74,10 @@ const nombre = (n: number) => n.toLocaleString('fr-FR');
 // une section de sa page d'étape dans les autres (« Sa race », « Nos quatre personnages »… : les sous-sections des étapes sont devenues des `##` quand
 // chaque étape est redevenue une page, R184) —, donc un h3.
 const TitreDuPerso = 'h3';
-// La barrière : la moitié du chakra, sans arrondi écrit (Doc « Créer sa fiche de personnage », regle_constante barriere.diviseur_chakra) ; la fiche du
-// site arrondit à l'inférieur (lib/fiche-moteur.mjs), le calcul le dit quand le chakra est impair (question G13, docs/sql/a-valider.md §6).
+// La barrière : la moitié du chakra (Doc « Créer sa fiche de personnage », regle_constante barriere.diviseur_chakra), toujours arrondie à l'inférieur
+// (décision R201 (2), G13, confirme R175 ; lib/fiche-moteur.mjs#attributsDe) : le calcul le dit quand le chakra est impair.
 const moitieDuChakra = (chakra: number) =>
-  chakra % 2 ? 'pour la moitié du chakra (arrondie à l’inférieur par la fiche du site)' : 'pour la moitié du chakra';
+  chakra % 2 ? 'pour la moitié du chakra (arrondie à l’inférieur)' : 'pour la moitié du chakra';
 ---
 
 {

@@ -1,0 +1,1103 @@
+{
+ "migration": "0105-r207-armures-boucliers-et-fabrication",
+ "decision": "R207",
+ "description": "Décision R207 (1) E6 et (3) tests de fabrication (réponses du propriétaire du 2026-11-07). `valeurs` : une entrée par cellule changée (table, clé, colonne, avant, après ; les 42 recettes de bâton magique en une entrée par colonne, `cles`) ; `textes` : les fragments remplacés (présents une seule fois dans la valeur d'avant) ; `prix_d_armure_hors_formule` : les armures de la grille dont le prix écrit s'écarte de la formule E6, NON écrites (hors des écarts listés par la décision ; la page calcule déjà leur prix, R93) ; `constantes_creees` : constante_equipement ajoutée. Ce ne sont pas des corrections d'orthographe : rien sous `corrections` (tools/sources/rapprocher.mjs) ; le rapprochement du classeur « Ressources et Craft » les admet par les `voulus` de tools/sources/ignorer/ressources-et-craft.json.",
+ "formules": {
+  "armure": "type = le plus lourd des types des deux matériaux (materiau_armure.type : Léger < Intermédiaire < Lourd) ; ap, am = somme de ceux des deux matériaux (NULL compte 0 ; somme nulle : NULL) ; prix = armure_emplacement 'armure-complete' (cout_rf / 100) + constante 'armure.unites_par_materiau' x (prix_rf / 100 du matériau 1 + prix_rf / 100 du matériau 2)",
+  "bouclier": "ap, am = bouclier_classe.classe x materiau_bouclier.ap ou am ; prix = classe x prix_rf / 100 du matériau + classe x 2,5 RO (armure_emplacement 'bouclier' : « 250 RF / Classe »)"
+ },
+ "valeurs": [
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-bois-fonte"
+   },
+   "nom": "Armure Bois/Fonte",
+   "colonne": "ap",
+   "avant": 17,
+   "apres": 16,
+   "decision": "R207 (1)"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-bois-fonte"
+   },
+   "nom": "Armure Bois/Fonte",
+   "colonne": "stats_brut",
+   "avant": "+17AP +1AM",
+   "apres": "+16AP +1AM",
+   "decision": "R207 (1)"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-chitine-corne"
+   },
+   "nom": "Armure Chitine/Corne",
+   "colonne": "am",
+   "avant": 2,
+   "apres": 1,
+   "decision": "R207 (1)"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-chitine-corne"
+   },
+   "nom": "Armure Chitine/Corne",
+   "colonne": "stats_brut",
+   "avant": "+13AP +2AM",
+   "apres": "+13AP +1AM",
+   "decision": "R207 (1)"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-mythril-cuivre"
+   },
+   "nom": "Armure Mythril/Cuivre",
+   "colonne": "ap",
+   "avant": 12,
+   "apres": 10,
+   "decision": "R207 (1)"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-mythril-cuivre"
+   },
+   "nom": "Armure Mythril/Cuivre",
+   "colonne": "stats_brut",
+   "avant": "+12AP +16AM",
+   "apres": "+10AP +16AM",
+   "decision": "R207 (1)"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-cuivre-vif-argent"
+   },
+   "nom": "Armure Cuivre/Vif Argent",
+   "colonne": "ap",
+   "avant": 16,
+   "apres": 12,
+   "decision": "R207 (1)"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-cuivre-vif-argent"
+   },
+   "nom": "Armure Cuivre/Vif Argent",
+   "colonne": "am",
+   "avant": 10,
+   "apres": 16,
+   "decision": "R207 (1)"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-cuivre-vif-argent"
+   },
+   "nom": "Armure Cuivre/Vif Argent",
+   "colonne": "stats_brut",
+   "avant": "+16AP +10AM",
+   "apres": "+12AP +16AM",
+   "decision": "R207 (1)"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-ecailles-titane"
+   },
+   "nom": "Armure Écailles/Titane",
+   "colonne": "am",
+   "avant": 13,
+   "apres": 15,
+   "decision": "R207 (1)"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-ecailles-titane"
+   },
+   "nom": "Armure Écailles/Titane",
+   "colonne": "stats_brut",
+   "avant": "+21AP +13AM",
+   "apres": "+21AP +15AM",
+   "decision": "R207 (1)"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-or-titane"
+   },
+   "nom": "Armure Or/Titane",
+   "colonne": "am",
+   "avant": 13,
+   "apres": 12,
+   "decision": "R207 (1)"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-or-titane"
+   },
+   "nom": "Armure Or/Titane",
+   "colonne": "stats_brut",
+   "avant": "+25AP +13AM",
+   "apres": "+25AP +12AM",
+   "decision": "R207 (1)"
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:bouclier-rond:argent"
+   },
+   "nom": "Bouclier Rond Argent",
+   "colonne": "prix",
+   "avant": null,
+   "apres": 112.5,
+   "decision": "R207 (1)"
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:bouclier-rond:argent"
+   },
+   "nom": "Bouclier Rond Argent",
+   "colonne": "prix_brut",
+   "avant": null,
+   "apres": "112,5",
+   "decision": "R207 (1)"
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:bouclier-rond:bois"
+   },
+   "nom": "Bouclier Rond Bois",
+   "colonne": "prix",
+   "avant": 10.5,
+   "apres": 12,
+   "decision": "R207 (1)"
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:bouclier-rond:bois"
+   },
+   "nom": "Bouclier Rond Bois",
+   "colonne": "prix_brut",
+   "avant": "10,5",
+   "apres": "12",
+   "decision": "R207 (1)"
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:pavoi:argent"
+   },
+   "nom": "Pavois Argent",
+   "colonne": "prix",
+   "avant": 197.5,
+   "apres": 187.5,
+   "decision": "R207 (1)"
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:pavoi:argent"
+   },
+   "nom": "Pavois Argent",
+   "colonne": "prix_brut",
+   "avant": "197,5",
+   "apres": "187,5",
+   "decision": "R207 (1)"
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:pavoi:bronze"
+   },
+   "nom": "Pavois Bronze",
+   "colonne": "prix",
+   "avant": 442.5,
+   "apres": 437.5,
+   "decision": "R207 (1)"
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:pavoi:bronze"
+   },
+   "nom": "Pavois Bronze",
+   "colonne": "prix_brut",
+   "avant": "442,5",
+   "apres": "437,5",
+   "decision": "R207 (1)"
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:pavoi:corne-os"
+   },
+   "nom": "Pavois Corne",
+   "colonne": "prix",
+   "avant": 172.5,
+   "apres": 162.5,
+   "decision": "R207 (1)"
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:pavoi:corne-os"
+   },
+   "nom": "Pavois Corne",
+   "colonne": "prix_brut",
+   "avant": "172,5",
+   "apres": "162,5",
+   "decision": "R207 (1)"
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:pavoi:ecailles"
+   },
+   "nom": "Pavois Écailles",
+   "colonne": "prix",
+   "avant": 424.5,
+   "apres": 412.5,
+   "decision": "R207 (1)"
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:pavoi:ecailles"
+   },
+   "nom": "Pavois Écailles",
+   "colonne": "prix_brut",
+   "avant": "424,5",
+   "apres": "412,5",
+   "decision": "R207 (1)"
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:pavoi:fer-noir"
+   },
+   "nom": "Pavois Fer Noir",
+   "colonne": "prix",
+   "avant": 197.5,
+   "apres": 187.5,
+   "decision": "R207 (1)"
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:pavoi:fer-noir"
+   },
+   "nom": "Pavois Fer Noir",
+   "colonne": "prix_brut",
+   "avant": "197,5",
+   "apres": "187,5",
+   "decision": "R207 (1)"
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:targe:bronze"
+   },
+   "nom": "Targe Bronze",
+   "colonne": "prix",
+   "avant": 172.5,
+   "apres": 175,
+   "decision": "R207 (1)"
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:targe:bronze"
+   },
+   "nom": "Targe Bronze",
+   "colonne": "prix_brut",
+   "avant": "172,5",
+   "apres": "175",
+   "decision": "R207 (1)"
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:targe:mythril"
+   },
+   "nom": "Targe Mythril",
+   "colonne": "prix",
+   "avant": 404,
+   "apres": 405,
+   "decision": "R207 (1)"
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:targe:mythril"
+   },
+   "nom": "Targe Mythril",
+   "colonne": "prix_brut",
+   "avant": "404",
+   "apres": "405",
+   "decision": "R207 (1)"
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:targe:titane"
+   },
+   "nom": "Targe Titane",
+   "colonne": "prix",
+   "avant": 404,
+   "apres": 405,
+   "decision": "R207 (1)"
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:targe:titane"
+   },
+   "nom": "Targe Titane",
+   "colonne": "prix_brut",
+   "avant": "404",
+   "apres": "405",
+   "decision": "R207 (1)"
+  },
+  {
+   "table": "recette",
+   "cles": [
+    {
+     "id": "ressources/baton-magique#recette:arcane:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:arcane:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:arcane:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:corruption:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:corruption:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:corruption:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:eau:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:eau:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:eau:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:espace-temps:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:espace-temps:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:espace-temps:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:feu:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:feu:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:feu:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:foudre:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:foudre:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:foudre:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:glace:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:glace:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:glace:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:lumiere:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:lumiere:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:lumiere:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:necromancie:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:necromancie:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:necromancie:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:ombre:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:ombre:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:ombre:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:sang:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:sang:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:sang:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:terre:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:terre:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:terre:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:vent:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:vent:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:vent:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:vide:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:vide:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:vide:3"
+    }
+   ],
+   "colonne": "test_brut",
+   "avant": "Test de Volonté + Intelligence",
+   "apres": "Test de Perception + Volonté",
+   "decision": "R207 (3)"
+  },
+  {
+   "table": "recette",
+   "cles": [
+    {
+     "id": "ressources/baton-magique#recette:arcane:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:arcane:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:arcane:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:corruption:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:corruption:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:corruption:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:eau:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:eau:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:eau:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:espace-temps:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:espace-temps:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:espace-temps:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:feu:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:feu:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:feu:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:foudre:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:foudre:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:foudre:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:glace:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:glace:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:glace:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:lumiere:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:lumiere:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:lumiere:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:necromancie:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:necromancie:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:necromancie:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:ombre:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:ombre:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:ombre:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:sang:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:sang:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:sang:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:terre:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:terre:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:terre:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:vent:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:vent:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:vent:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:vide:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:vide:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:vide:3"
+    }
+   ],
+   "colonne": "test_carac_1_id",
+   "avant": "volonte",
+   "apres": "perception",
+   "decision": "R207 (3)"
+  },
+  {
+   "table": "recette",
+   "cles": [
+    {
+     "id": "ressources/baton-magique#recette:arcane:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:arcane:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:arcane:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:corruption:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:corruption:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:corruption:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:eau:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:eau:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:eau:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:espace-temps:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:espace-temps:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:espace-temps:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:feu:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:feu:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:feu:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:foudre:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:foudre:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:foudre:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:glace:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:glace:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:glace:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:lumiere:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:lumiere:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:lumiere:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:necromancie:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:necromancie:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:necromancie:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:ombre:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:ombre:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:ombre:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:sang:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:sang:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:sang:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:terre:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:terre:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:terre:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:vent:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:vent:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:vent:3"
+    },
+    {
+     "id": "ressources/baton-magique#recette:vide:1"
+    },
+    {
+     "id": "ressources/baton-magique#recette:vide:2"
+    },
+    {
+     "id": "ressources/baton-magique#recette:vide:3"
+    }
+   ],
+   "colonne": "test_carac_2_id",
+   "avant": "intelligence",
+   "apres": "volonte",
+   "decision": "R207 (3)"
+  }
+ ],
+ "textes": [
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "decision": "R207 (1)",
+   "avant": "| Bois | Fonte | Armure Bois/Fonte | 259 | Lourd | +17AP +1AM | 1 | x2 Taille | x2 Frappe |",
+   "apres": "| Bois | Fonte | Armure Bois/Fonte | 259 | Lourd | +16AP +1AM | 1 | x2 Taille | x2 Frappe |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "decision": "R207 (1)",
+   "avant": "| Chitine | Corne/Os | Armure Chitine/Corne | 280 | Intermédiaire | +13AP +2AM | 3 |  | Estoc |",
+   "apres": "| Chitine | Corne/Os | Armure Chitine/Corne | 280 | Intermédiaire | +13AP +1AM | 3 |  | Estoc |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "decision": "R207 (1)",
+   "avant": "| Mythril | Cuivre | Armure Mythril/Cuivre | 1 450 | Intermédiaire | +12AP +16AM | 3 | Estoc/Taille | x2 Frappe |",
+   "apres": "| Mythril | Cuivre | Armure Mythril/Cuivre | 1 450 | Intermédiaire | +10AP +16AM | 3 | Estoc/Taille | x2 Frappe |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "decision": "R207 (1)",
+   "avant": "| Cuivre | Vif Argent | Armure Cuivre/Vif Argent | 2 050 | Intermédiaire | +16AP +10AM | 3 | Estoc/Taille | x2 Frappe |",
+   "apres": "| Cuivre | Vif Argent | Armure Cuivre/Vif Argent | 2 050 | Intermédiaire | +12AP +16AM | 3 | Estoc/Taille | x2 Frappe |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "decision": "R207 (1)",
+   "avant": "| Écailles | Titane | Armure Écailles/Titane | 1 690 | Lourd | +21AP +13AM | 4 | Taille/Frappe | x2 Estoc |",
+   "apres": "| Écailles | Titane | Armure Écailles/Titane | 1 690 | Lourd | +21AP +15AM | 4 | Taille/Frappe | x2 Estoc |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "decision": "R207 (1)",
+   "avant": "| Or | Titane | Armure Or/Titane | 1 810 | Lourd | +25AP +13AM | 3 | Frappe | Estoc |",
+   "apres": "| Or | Titane | Armure Or/Titane | 1 810 | Lourd | +25AP +12AM | 3 | Frappe | Estoc |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/bouclier"
+   },
+   "col": "corps_md",
+   "decision": "R207 (1)",
+   "avant": "| Mythril | Targe Mythril | 404 | +8AP +10AM |",
+   "apres": "| Mythril | Targe Mythril | 405 | +8AP +10AM |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/bouclier"
+   },
+   "col": "corps_md",
+   "decision": "R207 (1)",
+   "avant": "| Bronze | Targe Bronze | 172,5 | +6AP +6AM |",
+   "apres": "| Bronze | Targe Bronze | 175 | +6AP +6AM |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/bouclier"
+   },
+   "col": "corps_md",
+   "decision": "R207 (1)",
+   "avant": "| Titane | Targe Titane | 404 | +14AP +8AM |",
+   "apres": "| Titane | Targe Titane | 405 | +14AP +8AM |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/bouclier"
+   },
+   "col": "corps_md",
+   "decision": "R207 (1)",
+   "avant": "| Bois | Bouclier Rond Bois | 10,5 | +3AP +3AM |",
+   "apres": "| Bois | Bouclier Rond Bois | 12 | +3AP +3AM |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/bouclier"
+   },
+   "col": "corps_md",
+   "decision": "R207 (1)",
+   "avant": "| Argent | Bouclier Rond Argent |  | +15AP |",
+   "apres": "| Argent | Bouclier Rond Argent | 112,5 | +15AP |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/bouclier"
+   },
+   "col": "corps_md",
+   "decision": "R207 (1)",
+   "avant": "| Fer Noir | Pavois Fer Noir | 197,5 | +10AP +5AM |",
+   "apres": "| Fer Noir | Pavois Fer Noir | 187,5 | +10AP +5AM |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/bouclier"
+   },
+   "col": "corps_md",
+   "decision": "R207 (1)",
+   "avant": "| Corne/Os | Pavois Corne | 172,5 | +20AP |",
+   "apres": "| Corne/Os | Pavois Corne | 162,5 | +20AP |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/bouclier"
+   },
+   "col": "corps_md",
+   "decision": "R207 (1)",
+   "avant": "| Écailles | Pavois Écailles | 424,5 | +20AP +20AM |",
+   "apres": "| Écailles | Pavois Écailles | 412,5 | +20AP +20AM |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/bouclier"
+   },
+   "col": "corps_md",
+   "decision": "R207 (1)",
+   "avant": "| Argent | Pavois Argent | 197,5 | +25AP |",
+   "apres": "| Argent | Pavois Argent | 187,5 | +25AP |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/bouclier"
+   },
+   "col": "corps_md",
+   "decision": "R207 (1)",
+   "avant": "| Bronze | Pavois Bronze | 442,5 | +15AP +15AM |",
+   "apres": "| Bronze | Pavois Bronze | 437,5 | +15AP +15AM |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/baton-magique"
+   },
+   "col": "corps_md",
+   "decision": "R207 (3) : Enchanteur",
+   "avant": "Morceau du bon bois + La bonne gemme + Test de Volonté + Intelligence = Bâton élémentaire vierge",
+   "apres": "Morceau du bon bois + La bonne gemme + Test de Perception + Volonté = Bâton élémentaire vierge"
+  },
+  {
+   "table": "panneau_regles_bloc",
+   "cle": {
+    "panneau_id": "armes",
+    "rang": 1
+   },
+   "col": "texte",
+   "decision": "R207 (3) : Forgeron",
+   "avant": "Les caractéristiques Force et Intelligence seront utilisées lors du test d'artisanat.",
+   "apres": "Les caractéristiques Force et Volonté seront utilisées lors du test d'artisanat."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armes"
+   },
+   "col": "corps_md",
+   "decision": "R207 (3) : Forgeron",
+   "avant": "Les caractéristiques Force et Intelligence seront utilisées lors du test d'artisanat.",
+   "apres": "Les caractéristiques Force et Volonté seront utilisées lors du test d'artisanat."
+  }
+ ],
+ "prix_d_armure_hors_formule": [
+  {
+   "id": "ressources/armures#armure:armure-chitine-laiton",
+   "nom": "Armure Chitine/Laiton",
+   "prix": 630,
+   "prix_brut": "630",
+   "prix_calcule": 640
+  },
+  {
+   "id": "ressources/armures#armure:armure-chitine-or",
+   "nom": "Armure Chitine/Or",
+   "prix": 690,
+   "prix_brut": "690",
+   "prix_calcule": 700
+  },
+  {
+   "id": "ressources/armures#armure:armure-chitine-titane",
+   "nom": "Armure Chitine/Titane",
+   "prix": 1290,
+   "prix_brut": "1 290",
+   "prix_calcule": 1300
+  },
+  {
+   "id": "ressources/armures#armure:armure-chitine-maverium",
+   "nom": "Armure Chitine/Maverium",
+   "prix": 2490,
+   "prix_brut": "2 490",
+   "prix_calcule": 2500
+  },
+  {
+   "id": "ressources/armures#armure:armure-mythril-complet",
+   "nom": "Armure Mythril complète",
+   "prix": 2400,
+   "prix_brut": "2 400",
+   "prix_calcule": 2410
+  },
+  {
+   "id": "ressources/armures#armure:armure-acier-complet",
+   "nom": "Armure Acier complète",
+   "prix": 240,
+   "prix_brut": "240",
+   "prix_calcule": 250
+  },
+  {
+   "id": "ressources/armures#armure:armure-fer-noir-complet",
+   "nom": "Armure Fer Noir complète",
+   "prix": 420,
+   "prix_brut": "420",
+   "prix_calcule": 430
+  },
+  {
+   "id": "ressources/armures#armure:armure-fer-noir-vif-argent",
+   "nom": "Armure Fer Noir/Vif-Argent",
+   "prix": 2210,
+   "prix_brut": "2 210",
+   "prix_calcule": 2020
+  },
+  {
+   "id": "ressources/armures#armure:armure-corne-bronze",
+   "nom": "Armure Corne/Bronze",
+   "prix": 800,
+   "prix_brut": "800",
+   "prix_calcule": 700
+  },
+  {
+   "id": "ressources/armures#armure:armure-corne-laiton",
+   "nom": "Armure Corne/Laiton",
+   "prix": 830,
+   "prix_brut": "830",
+   "prix_calcule": 730
+  },
+  {
+   "id": "ressources/armures#armure:armure-corne-or",
+   "nom": "Armure Corne/Or",
+   "prix": 890,
+   "prix_brut": "890",
+   "prix_calcule": 790
+  },
+  {
+   "id": "ressources/armures#armure:armure-corne-titane",
+   "nom": "Armure Corne/Titane",
+   "prix": 1490,
+   "prix_brut": "1 490",
+   "prix_calcule": 1390
+  },
+  {
+   "id": "ressources/armures#armure:armure-corne-maverium",
+   "nom": "Armure Corne/Maverium",
+   "prix": 2690,
+   "prix_brut": "2 690",
+   "prix_calcule": 2590
+  },
+  {
+   "id": "ressources/armures#armure:armure-cuivre-bronze",
+   "nom": "Armure Cuivre/Bronze",
+   "prix": 860,
+   "prix_brut": "860",
+   "prix_calcule": 760
+  },
+  {
+   "id": "ressources/armures#armure:armure-cuivre-laiton",
+   "nom": "Armure Cuivre/Laiton",
+   "prix": 890,
+   "prix_brut": "890",
+   "prix_calcule": 790
+  },
+  {
+   "id": "ressources/armures#armure:armure-cuivre-or",
+   "nom": "Armure Cuivre/Or",
+   "prix": 950,
+   "prix_brut": "950",
+   "prix_calcule": 850
+  },
+  {
+   "id": "ressources/armures#armure:armure-cuivre-titane",
+   "nom": "Armure Cuivre/Titane",
+   "prix": 1550,
+   "prix_brut": "1 550",
+   "prix_calcule": 1450
+  },
+  {
+   "id": "ressources/armures#armure:armure-cuivre-maverium",
+   "nom": "Armure Cuivre/Maverium",
+   "prix": 2750,
+   "prix_brut": "2 750",
+   "prix_calcule": 2650
+  }
+ ],
+ "constantes_creees": [
+  "armure.unites_par_materiau"
+ ]
+}

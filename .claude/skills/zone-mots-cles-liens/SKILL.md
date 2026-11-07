@@ -32,7 +32,7 @@ user-invocable: false
 - Mots-clés protégés : adresse et couleur modifiables.
 - L'existence de l'adresse se vérifie au service (base vivante) et par `db:check` ; l'ancre et la requête ne sont pas vérifiées.
 - Supprimer une page qu'un mot-clé vise est refusé (409 : citations `mot-cle` et `balise` de `lib/citations-db.mjs`, skill `zone-edition-menus`) ; de même la fiche d'un don ou d'une spécialité et l'ancre d'un métier (skill `zone-edition`).
-- Un lien saisi est converti si un seul mot-clé mène à sa cible, sinon refusé (400).
+- Un lien saisi est converti si un seul mot-clé mène à sa cible, sinon refusé (400). Deux mots-clés ne partagent donc jamais une adresse (choix de la migration 0104 : `attaque-gratuite` renvoie à `attaque-dopportunite` par sa définition, sans adresse), sinon un lien saisi vers cette page est refusé (`motsClesDeLAdresse`).
 - Les pages d'exemple gardent leurs `[[…]]`.
 - `npm run autolink` reste un outil d'aperçu relu ; il exclut `lore` et `metiers` (skill `site-wiki-liens`). `codex.py` ne pose jamais le mot-clé d'une page en étiquette (skill `sources-codex`).
 - Routes fixes admises (`ADRESSES_FIXES`) : les routes publiques, jamais Debug, Maintenance ni Mise à jour.

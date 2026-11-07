@@ -821,17 +821,17 @@
   {
    "id": "element-glace",
    "nom": "Élément Glace",
-   "description": "L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “gelé 1”. L’arme peut taper dans l’élément associé."
+   "description": "L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “gel 1”. L’arme peut taper dans l’élément associé."
   },
   {
    "id": "element-glace-2",
    "nom": "Élément Glace",
-   "description": "L’élément d’attaque de cette créature est la Glace avec 25% de chance d’obliger un jet de vigueur à la cible, si elle rate, elle prend “Gelé 1”."
+   "description": "L’élément d’attaque de cette créature est la Glace avec 25% de chance d’obliger un jet de vigueur à la cible, si elle rate, elle prend “Gel 1”."
   },
   {
    "id": "element-glace-3",
    "nom": "Élément Glace",
-   "description": "L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “gelé 1”. L’arme peut taper dans l’élément associé et ses sorts de glace infligent également un bonus de +3 aux dégâts."
+   "description": "L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “gel 1”. L’arme peut taper dans l’élément associé et ses sorts de glace infligent également un bonus de +3 aux dégâts."
   },
   {
    "id": "element-lumiere",
@@ -4022,7 +4022,7 @@
   },
   {
    "nom": "Élément glace",
-   "texte": "L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “gelé 1”. L’arme peut taper dans l’élément associé.",
+   "texte": "L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “gel 1”. L’arme peut taper dans l’élément associé.",
    "placements": [
     {
      "capacite": "element-glace"
@@ -4032,7 +4032,7 @@
   },
   {
    "nom": "Élément Glace",
-   "texte": "L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “gelé 1”. L’arme peut taper dans l’élément associé et ses sorts de glace infligent également un bonus de +3 aux dégâts.",
+   "texte": "L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “gel 1”. L’arme peut taper dans l’élément associé et ses sorts de glace infligent également un bonus de +3 aux dégâts.",
    "placements": [
     {
      "capacite": "element-glace-3"
@@ -4041,7 +4041,7 @@
   },
   {
    "nom": "Élément Glace",
-   "texte": "L’élément d’attaque de cette créature est la Glace avec 25% de chance d’obliger un jet de vigueur à la cible, si elle rate, elle prend “Gelé 1”.",
+   "texte": "L’élément d’attaque de cette créature est la Glace avec 25% de chance d’obliger un jet de vigueur à la cible, si elle rate, elle prend “Gel 1”.",
    "placements": [
     {
      "capacite": "element-glace-2"

@@ -322,6 +322,8 @@ const DEFINITIONS = [
     groupe: () => 'Formes de bouclier', entite: (r) => r.nom, ordre: (r) => [4, r.classe ?? 0],
   },
   {
+    // l'AP, l'AM et le prix d'un bouclier (dans TABLES, en lecture : décision R207 (1), E6, calculés d'après sa forme et sa matière) sont listés quand
+    // une matière ou une forme les change, ce sont des règles du jeu (la défense écrite en est refaite, pas listée)
     table: 'bouclier', domaine: 'armures', cle: ['id'], colonnes: colonnesDe('bouclier'), genre: 'Bouclier',
     groupe: (r, x) => x.nom('bouclier_classe', r.classe_id), entite: (r) => r.nom,
     ordre: (r, x) => [5, x.ligne('bouclier_classe', r.classe_id)?.classe ?? 0, r.nom],

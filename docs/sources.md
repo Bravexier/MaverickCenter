@@ -218,7 +218,8 @@ retirera alors (`docs/feuille-de-route.md`, réponses du 2026-10-16) ; d'ici là
    consignes de navigation ; `nom_d_onglet` pour une bannière qui écrit le nom de son onglet), `libelles` (intitulés de mise en page d'une cellule citée,
    bornés par un motif de la cellule : « Lvl » de « Lvl 5 »), `copies` (plage qui recopie une autre plage, de ce classeur ou d'un autre : vérifiée à
    chaque passage, un écart dès qu'elle diverge), `derivees` (colonnes que l'import calcule, avec le test qui les garantit), `voulus` (écart voulu hors
-   des registres d'orthographe : décision R…, migration de données), `commentaires` (commentaires du classeur que l'import écarte), `conflits`. Une
+   des registres d'orthographe : décision R…, migration de données ; `avant` et `apres` en texte, un nombre aussi : l'`apres` d'une colonne numérique
+   se lit alors si la cellule écrit son `avant`), `commentaires` (commentaires du classeur que l'import écarte), `conflits`. Une
    entrée qui ne couvre plus rien est un écart (à retirer). Jamais une cellule qui porte une règle, un chiffre de jeu ou du lore pour faire baisser le
    compte. Le test fait échouer la CI au moindre écart d'un classeur `rapproche`, avec le relevé complet.
 

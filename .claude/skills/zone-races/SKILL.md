@@ -23,7 +23,7 @@ user-invocable: false
 ## Invariants
 - Une page de race est rendue depuis les tables, jamais depuis son `.md` (recherche et `[[liens]]` seulement). Aucun tableau Markdown. Pour changer une race, on change la base.
 - L'onglet de la race est la source (décision R13) : tables `race_onglet`, `race_don`, `race_don_tableau_*`, `race_magie_onglet`, `mode_hyper_effet` version `onglet_race` (migration `0007-races-onglet`, tirée des pages par `tools/db/races_onglet.py`, dont `--verifier` tourne dans `test/races-onglet.test.mjs`).
-- Magies innées : la matrice de la fiche (R8), sauf `race_magie_onglet` qui prime (R11).
+- Magies innées : la matrice de la fiche (R8), sauf `race_magie_onglet` qui prime (R11). Le site de dev refuse (400) une liste de magies innées vide (« Magies innées : une race a au moins une magie innée possible. », R210, `serveur/edition.mjs#magiesInnees`), qui retomberait sur la matrice ; la création d'une race en brouillon ne change pas. Même refus par `/api/v1/` (400) : la dernière magie innée ne se retire ni de la liste de l'onglet ni de la matrice. Tests : `serveur-edition-races.test.mjs`, `serveur-api-v1.test.mjs`.
 - Relations : la case (ligne A, colonne B) de « Relation entre les races » dit comment A voit B (R12, vue `v_regard_peuple`).
 - `lib/race-relations.mjs` ne regroupe jamais deux peuples dont les relations diffèrent (Elfe Noir Charbon / Salé).
 - Le CSS est dans `client/src/styles/race/`, inséré par `RacePage.astro` en `?raw` seulement, comme celui des magies. Seule exception : `MenuLateral.astro` (via `MenuDesRaces.astro`) insère `styles/guide/menu-lateral.css` (classes `lateral*`) ; un changement de cette feuille change aussi le menu des onglets des Règles.

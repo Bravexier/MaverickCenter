@@ -368,7 +368,7 @@ export function competencesDeContact(regles) {
 
 /**
  * Le bonus de réussite critique d'une compétence au moment présent (décision R180), null à deux croix (`scoreDuMoment` null) :
- * { base, bonus, brut, rogne, plafond, plage, origines: [{ origine: 'palier' | 'posture' | 'accessoire', nom, valeur }], mentions: [{ nom, valeur }] }.
+ * { base, bonus, brut, rogne, releve, plafond, plancher, plage, origines: [{ origine: 'palier' | 'posture' | 'accessoire', nom, valeur }], mentions: [{ nom, valeur }] }.
  * - le palier, lu sur le score du moment (posture comprise : « 113 de base en offensif ça passe à 103 ») : de `critique.palier_1_score_min` (96) à
  *   `critique.palier_2_score_min` − 1 (102), `critique.palier_1_bonus` (+2) ; à partir de `critique.palier_2_score_min` (103), `critique.palier_2_bonus`
  *   (+5 au total), sans borne haute ; « sur tout jet, quelle que soit la posture » ;
@@ -379,14 +379,16 @@ export function competencesDeContact(regles) {
  * des armes de contact (`sources.contact`) : il ne vaut qu'avec une arme de contact (décision R182 (3), Q90 : « Le mentionner seulement ») et dépend de
  * l'arme utilisée (R128) ; jamais dans le total ni le plafond.
  * `brut` : la somme des origines ; `bonus` : rogné pour que la base plus le bonus ne dépasse pas `critique.plafond` (« ne dépasse jamais 1 à 15 », base comprise,
- * « toutes sources ensemble ») ; `rogne` : ce que le plafond retire ; `plage` : base + bonus (« 1 à `plage` »). Toutes les valeurs viennent de
- * regle_constante (`critique.*`), jamais écrites ici.
+ * « toutes sources ensemble ») et relevé pour qu'elle ne descende pas sous `critique.plancher` (décision R203, Q97 : « 1 est le plus bas possible » ; six
+ * accessoires maudits à −1 % sur un score sans palier : brut −6, plage « 1 à 1 », jamais « 1 à −1 ») ; `rogne` : ce que le plafond retire ; `releve` : ce que
+ * le plancher rend (R203) ; `plage` : base + bonus (« 1 à `plage` »). Toutes les valeurs viennent de regle_constante (`critique.*`), jamais écrites ici.
  */
 export function critiqueDe(regles, posture, k, scoreDuMoment, sources = { dons: [], accessoires: [], contact: [] }) {
   if (scoreDuMoment === null || scoreDuMoment === undefined) return null;
   const c = (id) => constante(regles, id);
   const base = c('critique.base');
   const plafond = c('critique.plafond');
+  const plancher = c('critique.plancher');
   const seuil1 = c('critique.palier_1_score_min');
   const seuil2 = c('critique.palier_2_score_min');
   const origines = [];
@@ -400,15 +402,18 @@ export function critiqueDe(regles, posture, k, scoreDuMoment, sources = { dons: 
   const mentions = (sources.dons ?? []).filter((d) => contact && d.critique.postures.some((p) => posture?.noms?.includes(p)))
     .map((d) => ({ nom: d.nom, valeur: d.critique.valeur }));
   const brut = origines.reduce((t, o) => t + o.valeur, 0);
-  const bonus = Math.min(brut, plafond - base);
-  return { base, bonus, brut, rogne: brut - bonus, plafond, plage: base + bonus, origines, mentions };
+  const rogne = Math.max(0, brut - (plafond - base));
+  // le plancher (décision R203) : la plage ne descend jamais sous « 1 à `plancher` », le bonus total y est ramené
+  const releve = Math.max(0, (plancher - base) - (brut - rogne));
+  const bonus = brut - rogne + releve;
+  return { base, bonus, brut, rogne, releve, plafond, plancher, plage: base + bonus, origines, mentions };
 }
 
 const signeDe = (n) => (n > 0 ? `+${n}` : String(n));
 /**
  * Les lignes de l'infobulle du score sur la réussite critique (décision R180 (4) : « elle affiche le bonus de critique dès qu'il n'est pas nul, quelle
  * que soit sa provenance ») : le total et la plage (« Réussite critique : +10 % (1 à 15) »), une ligne par origine (« +5 % (posture Offensif) »), le
- * plafond quand il rogne, puis chaque don de posture mentionné, hors du total (décision R182 (3) : « Sci du Crit : +5 % avec une arme de contact (non
+ * plafond quand il rogne, le plancher quand il relève (décision R203 : « Plancher : -6 % ramené à -4 % (jamais moins de 1 à 1) »), puis chaque don de posture mentionné, hors du total (décision R182 (3) : « Sci du Crit : +5 % avec une arme de contact (non
  * compté) ») ; [] sans bonus ni mention (ou à deux croix).
  */
 export function lignesDuCritique(critique) {
@@ -420,6 +425,8 @@ export function lignesDuCritique(critique) {
     ...critique.origines.map((o) => `${signeDe(o.valeur)} % (${o.nom})`),
     ...(critique.rogne > 0
       ? [`Plafond : ${signeDe(critique.brut)} % ramené à ${signeDe(critique.bonus)} % (jamais plus de 1 à ${critique.plafond})`] : []),
+    ...(critique.releve > 0
+      ? [`Plancher : ${signeDe(critique.brut)} % ramené à ${signeDe(critique.bonus)} % (jamais moins de 1 à ${critique.plancher})`] : []),
     ...mentions,
   ];
 }
@@ -3963,7 +3970,8 @@ export function payerDuChakra(regles, fiche, cout, attributs = attributsDe(regle
 
 /**
  * Le bouton « Tour de Mode Hyper » (décision R172 : « un tour de Mode Hyper retire 10 % du chakra maximum », Mode Hyper actif, pas en Mode Hyper 100 % :
- * « le chakra ne s'évapore plus ») : ⌊10 % du chakra maximum⌋ (R175 : 65 → 6), payé par payerDuChakra. null hors de ce cas.
+ * « le chakra ne s'évapore plus ») : ⌊10 % du chakra maximum⌋ (R175 : 65 → 6), payé par payerDuChakra à la fin du tour du joueur (décision R200 (3) :
+ * « Fin du tour du joueur ») ; le manque se paie en santé (R200 (3), R186). null hors de ce cas.
  */
 export function tourDeModeHyper(regles, fiche, attributs = attributsDe(regles, fiche)) {
   const h = modeHyperDe(regles, fiche);
