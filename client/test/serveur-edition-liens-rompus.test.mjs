@@ -253,3 +253,60 @@ test('rejeu : une page citée par un mot-clé à adresse et ses balises (migrati
     db.close();
   }
 });
+
+test('rejeu : un don ou un métier supprimé sur le site, dont la fiche ou l’ancre est devenue depuis l’adresse d’un mot-clé (règles livrées) — le lot en conflit, sa raison, choix 2 seul ; comme le service le refuse', () => {
+  // le site de dev : un don et un métier créés (livrés ensuite), puis supprimés, chacun dans son lot, quand rien ne les citait
+  const site = nouvelle();
+  let livres;
+  let suite;
+  const cas = [];
+  try {
+    const classe = site.db.prepare("SELECT id FROM classe ORDER BY id = 'classes/guerrier' DESC, id LIMIT 1").get().id;
+    const don = ok(site.lot([{ op: 'creer', entite: 'capacite', valeurs: { classe_id: classe, niveau: '20', nom: titreLibre(site.db, 'Don d’adresse'), type: 'Passif' } }])).crees[0].id;
+    const metier = ok(site.lot([{ op: 'creer', entite: 'metier', valeurs: { nom: titreLibre(site.db, 'Métier d’adresse') } }])).crees[0].id;
+    livres = journalExporte(site.db);
+    ok(site.lot([{ op: 'supprimer', entite: 'capacite', cle: { id: don } }]));
+    ok(site.lot([{ op: 'supprimer', entite: 'metier', cle: { id: metier } }]));
+    for (const id of [don, metier]) cas.push({ id, titre: site.db.prepare('SELECT titre FROM page WHERE id = ?').get(id)?.titre });
+    const deja = new Set(livres.lots.map((l) => l.id));
+    const tout = journalExporte(site.db);
+    suite = { ...tout, lots: tout.lots.filter((l) => !deja.has(l.id)) };
+    assert.equal(suite.lots.length, 2);
+  } finally {
+    site.db.close();
+  }
+  // les règles : le don et le métier livrés, puis un mot-clé dont l'adresse mène à chacun (une migration, ou le site de dev ailleurs)
+  const { db } = nouvelle();
+  try {
+    db.exec('PRAGMA foreign_keys = OFF');
+    db.exec('BEGIN');
+    chargerJournal(db, livres);
+    rejouerLeJournal(db);
+    db.exec('DELETE FROM modification; DELETE FROM modification_lot');
+    for (const c of cas) {
+      c.titre = db.prepare('SELECT titre FROM page WHERE id = ?').get(c.id).titre;
+      const libelle = motCleLibre(db, 'Essai adresse de fiche');
+      c.mot = normalize(libelle);
+      db.prepare('INSERT INTO mot_cle (id, libelle, libelle_cle, url) VALUES (?, ?, ?, ?)').run(c.mot, libelle, c.mot, adresseDeLaPage(c.id));
+    }
+    db.exec('COMMIT');
+    db.exec('BEGIN');
+    chargerJournal(db, suite);
+    rejouerLeJournal(db);
+    db.exec('COMMIT');
+    db.exec('PRAGMA foreign_keys = ON');
+    for (const [i, c] of cas.entries()) {
+      const lot = suite.lots[i].id;
+      const detail = db.prepare("SELECT detail FROM modification WHERE lot_id = ? AND etat = 'conflit' AND table_nom = 'page'").get(lot)?.detail;
+      assert.ok(detail?.includes(c.titre), `${c.id} : ${detail}`);
+      assert.ok(corpsDe(db, c.id) !== undefined, `${c.id} : sa page reste`);
+      const diag = examinerLeLot(db, lot);
+      for (const table of ['page', c.id.startsWith('metiers/') ? 'metier' : 'capacite']) {
+        assert.deepEqual(diag.conflits.find((x) => x.table === table && x.cle.id === c.id)?.choix_possibles, [2], `${c.id} : ${table}`);
+      }
+    }
+    assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
+  } finally {
+    db.close();
+  }
+});

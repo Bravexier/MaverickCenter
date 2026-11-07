@@ -16,10 +16,11 @@ import { prixEnRo } from '../src/lib/arme-champs.mjs';
 import { classeDeMagie, classeDuPoids, classeDuTypeDArmure, cssDesFamilles } from '../src/lib/palette-css.mjs';
 import { ameliorationElementaire, coutElementaireEcrit } from '../src/lib/armure-forge.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
 import { chargerPanneau } from '../src/lib/panneaux-regles-db.mjs';
 import { baseDImport, texteDImport } from './aide-base-d-import.mjs';
-import { verifierLeTexteDuPanneau } from './aide-texte-affiche.mjs';
+import { avecLesMotsCles, verifierLeTexteDuPanneau } from './aide-texte-affiche.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 // les pages Armures et Boucliers (une chacune depuis le 2026-10-29, « Cinq pages séparées ») : le même composant, un panneau chacune
@@ -120,9 +121,15 @@ test('armures : les armures particulières en premier puis la liste par type, un
   }
   // l'en-tête « Solidité » est le mot-clé du glossaire (migration 0058) : le texte des cases, sans leurs balises HTML
   const entetes = [...listes.matchAll(/<thead>([\s\S]*?)<\/thead>/g)].map((m) => [...m[1].matchAll(/<th scope="col"[^>]*>(.*?)<\/th>/g)].map((t) => t[1].replace(/<[^>]+>/g, '')));
-  // son libellé : celui du mot-clé dans la base (le site de dev le renomme)
-  const solidite = db.prepare("SELECT libelle FROM mot_cle WHERE id = 'solidite'").get().libelle;
-  assert.ok(listes.includes(`<th scope="col"><strong class="mot-cle" data-mot-cle="solidite"`) && entetes.every((e) => e.includes(solidite)), 'la définition de la solidité en infobulle');
+  // son texte : la balise rendue comme au build avec le vocabulaire de la base (le site de dev renomme le mot-clé ; il n'est pas protégé : supprimé, la
+  // balise reste écrite dans le gabarit et le build la rend en texte, ce cas se vérifie explicitement)
+  const solidite = avecLesMotsCles('{{solidite}}', db).replace(/<[^>]+>/g, '');
+  if (db.prepare("SELECT 1 FROM mot_cle WHERE id = 'solidite'").get()) {
+    assert.ok(listes.includes(`<th scope="col"><strong class="mot-cle" data-mot-cle="solidite"`), 'la définition de la solidité en infobulle');
+  } else {
+    assert.ok(historiqueSite(db).supprimee('mot_cle', { id: 'solidite' }), 'le mot-clé « solidite » manque sans que le site de dev l’ait supprimé');
+  }
+  assert.ok(entetes.every((e) => e.includes(solidite)), `l’en-tête « ${solidite} » dans chaque liste`);
   assert.deepEqual(entetes[0], ['Nom', 'Type', 'AP', 'AM', solidite, 'Effet', 'Prix'], 'armures particulières');
   for (const e of entetes.slice(1)) assert.deepEqual(e, ['Nom', 'Matériaux', 'Type', 'AP', 'AM', solidite, 'Résistance', 'Faiblesse', 'Prix'], 'armures de la grille');
   assert.ok(p.includes(`data-m1="${a.m1}" data-m2="${a.m2}"`));

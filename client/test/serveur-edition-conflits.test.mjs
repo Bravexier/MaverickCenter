@@ -22,7 +22,7 @@ import { colonneMasquee, nomDeColonne, nomDeTable } from '../src/lib/libelles-de
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { decouperCorps } from '../src/lib/markdown-edition.mjs';
 import { normalize } from '../src/lib/text.mjs';
-import { baseDImport, texteDImport } from './aide-base-d-import.mjs';
+import { baseDImport, remettreDepuisLImport, texteDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const racine = dossierTemporaire('conflits');
@@ -70,18 +70,6 @@ function supprimerAvecSesReferences(db, table, id) {
  * référence vers la page que les règles retirent), puis des règles qui changent ces lignes autrement ; la livraison refait la base vivante et met tous
  * les lots en conflit. Chaque test en prend une copie (`copie()`).
  */
-/** Remet dans `db` (une copie de la base) la ligne `cle` de `table` telle que la base d'import `dImport` l'écrit, si elle n'y est plus. */
-function remettreDepuisLImport(db, dImport, table, cle) {
-  const colonnes = new Set(db.prepare(`PRAGMA table_info("${table}")`).all().map((c) => c.name));
-  assert.ok(colonnes.size && Object.keys(cle).every((k) => colonnes.has(k)), `${table} : table et clé connues`);
-  const ou = Object.keys(cle).map((k) => `"${k}" = ?`).join(' AND ');
-  if (db.prepare(`SELECT 1 FROM "${table}" WHERE ${ou}`).get(...Object.values(cle))) return;
-  const ligne = dImport.prepare(`SELECT * FROM "${table}" WHERE ${ou}`).get(...Object.values(cle));
-  assert.ok(ligne, `${table} ${JSON.stringify(cle)} : ligne de l'import`);
-  const valeurs = Object.entries(ligne).filter(([c]) => colonnes.has(c));
-  db.prepare(`INSERT INTO "${table}" (${valeurs.map(([c]) => `"${c}"`).join(', ')}) VALUES (${valeurs.map(() => '?').join(', ')})`).run(...valeurs.map(([, v]) => v));
-}
-
 const S = {};
 before(() => {
   const r0 = `${chemin('regles')}.db`;
@@ -94,8 +82,10 @@ before(() => {
   S.monstreAncien = capacite.monstre_id;
   S.capaciteAncienne = { monstre_id: capacite.monstre_id, rang: capacite.rang };
   r0db.exec('PRAGMA foreign_keys = ON');
-  remettreDepuisLImport(r0db, dImport, 'monstre', { id: capacite.monstre_id });
-  remettreDepuisLImport(r0db, dImport, 'monstre_capacite', S.capaciteAncienne);
+  remettreDepuisLImport(r0db, 'monstre', { id: capacite.monstre_id });
+  remettreDepuisLImport(r0db, 'monstre_capacite', S.capaciteAncienne);
+  // les deux métiers du scénario (le site de dev supprime des métiers) : leur ligne, leur page et ce qui les compose
+  for (const id of [FORGERON, ACROBATE]) remettreDepuisLImport(r0db, 'metier', { id });
   r0db.prepare('INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES (?, ?, ?, ?)')
     .run(ETIQUETTE.id, ETIQUETTE.libelle, normalize(ETIQUETTE.libelle), 'Mot-clé d’essai des conflits (test/serveur-edition-conflits.test.mjs).');
   r0db.close();

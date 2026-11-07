@@ -947,8 +947,8 @@ export const ENTITES = {
     suppression: true,
     champs: { libelle: { type: 'ligne', libelle: 'Catégorie', requis: true } },
   },
-  // un mot-clé du glossaire (page Glossaire /regles/glossaire/), son libellé, sa définition et son abréviation (migration 0090) ; supprimé, il est retiré de toutes les pages qui
-  // le portent et de tous les textes qui le citent (sa balise devient son texte simple ; sauf les mots-clés dont le site se sert : lib/mots-cles.mjs) ;
+  // un mot-clé du glossaire (page Glossaire /regles/glossaire/), son libellé, sa définition et son abréviation (migration 0090) ; il ne se supprime que si rien ne le
+  // mentionne (décision R196 : serveur/edition-chronologie.mjs#MOT_CLE, lib/mentions-des-mots-cles.mjs ; sauf les mots-clés dont le site se sert : lib/mots-cles.mjs) ;
   // son adresse et sa couleur (migration 0098), écrites seulement si elles sont données
   mot_cle: {
     table: 'mot_cle',

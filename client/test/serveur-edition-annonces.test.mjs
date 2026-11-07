@@ -21,13 +21,14 @@ import { lireTables } from '../serveur/notes-de-version.mjs';
 import { comparerBases } from '../src/lib/notes-de-version.mjs';
 import { chargerJournal, journalExporte } from '../serveur/edition-journal.mjs';
 import { chargerAnnonce, contenuDeLAnnonce, empreinteDeLAnnonce } from '../src/lib/annonces.mjs';
-import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
+import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { ENTITES, TABLES, typeDeTexte } from '../src/lib/edition-modele.mjs';
 import { RESSOURCES } from '../src/lib/ressources.mjs';
 import { installerLePlan, LIENS_ET_RENCONTRE } from '../src/lib/livres.mjs';
 import { chargerPlanDesRegles } from '../src/lib/plan-des-regles-db.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { copieSansNoteEnAttente, versionALaRevision } from './aide-mise-a-jour.mjs';
+import { cheminDImport } from './aide-base-d-import.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 const ROWS = join(RACINE, 'data', 'rows');
@@ -38,7 +39,9 @@ const racine = dossierTemporaire('edition-annonces');
 let compteur = 0;
 /** Une base vivante neuve et son service d'édition. */
 function nouvelle() {
-  const db = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, `b${(compteur += 1)}`) }).chemin);
+  // les règles de l'import (test/aide-base-d-import.mjs) : le mot-clé qui mène à Bienvenue, que le texte d'essai cite, n'est pas protégé (le site de dev
+  // peut le supprimer)
+  const db = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminDImport(), dossier: join(racine, `b${(compteur += 1)}`) }).chemin);
   const service = { base: () => db, etat: () => ({}), edition: true };
   const appel = (methode, chemin, corps) => traiter({ methode, chemin, entetes: { 'content-type': 'application/json' }, corps: corps && JSON.stringify(corps) }, service);
   const enregistrer = (operations) => appel('POST', '/api/edition/', { page: LIENS_ET_RENCONTRE.page, operations });

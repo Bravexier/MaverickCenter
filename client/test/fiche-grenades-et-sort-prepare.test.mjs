@@ -106,7 +106,7 @@ test('R114 : le Grenadier de niveau de classe 20 ajoute +11 aux dégâts des sor
 // ------------------------------------------------------------------ R115 : le sort préparé
 
 test('R115 : seuls « Préparation » (Mage Rouge) et « Chargement » (Mage Vert) permettent de préparer un sort — un sort d’attaque de NPM 1 ou 2 (lus sur toute la base)', () => {
-  const lus = lignes('SELECT id, effet FROM capacite WHERE effet IS NOT NULL').map((d) => [d.id, preparationEcrite(d.effet)]).filter(([, p]) => p);
+  const lus = lignes('SELECT id, effet FROM capacite WHERE effet IS NOT NULL ORDER BY id').map((d) => [d.id, preparationEcrite(d.effet)]).filter(([, p]) => p);
   assert.deepEqual(lus, [
     ['capacites/mage-rouge-preparation', { types: ['attaque'], niveaux: [1, 2] }],
     ['capacites/mage-vert-chargement', { types: ['attaque'], niveaux: [1, 2] }],

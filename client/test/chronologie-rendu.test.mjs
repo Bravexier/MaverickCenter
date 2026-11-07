@@ -15,6 +15,7 @@ import { marquerLaDate, surlignerLaDate } from '../src/lib/chronologie.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { versMarkdown } from '../src/lib/markdown-edition.mjs';
 import { buildIndex, entryUrl, resolve, scanContent } from '../src/lib/wikilinks.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 import { DOSSIER_DU_WIKI, enfantsDuHtml, normal, rendreCommeLeGuide } from './aide-rendu-du-site.mjs';
 
 const pages = scanContent(DOSSIER_DU_WIKI);
@@ -37,9 +38,8 @@ const lu = (html) => normal(toHtml(fromHtml(html, { fragment: true })));
 /** Une cible du texte qui ne mène à aucune page : le build pose un repère « page manquante » que le navigateur, sans l'index, ne pose pas. */
 const cibleAbsente = (texte) => [...String(texte).matchAll(/\[\[([^[\]|]+?)(?:\|[^[\]]+?)?\]\]/g)].some((m) => !resolve(index, m[1].trim())?.entry);
 
-/** Tous les textes de la base que le navigateur rend : [{ ou, texte, dateBrut }]. */
-function textesDeLaBase() {
-  const db = ouvrirBase({ sansExemples: false });
+/** Tous les textes de la base que le navigateur rend (la base courante par défaut) : [{ ou, texte, dateBrut }]. */
+function textesDeLaBase(db = ouvrirBase({ sansExemples: false })) {
   return [
     ...db.prepare('SELECT evenement_id, rang, texte, date_brut FROM evenement_extrait ORDER BY evenement_id, rang').all()
       .map((b) => ({ ou: `evenement_extrait ${b.evenement_id}#${b.rang}`, texte: b.texte, dateBrut: b.date_brut })),
@@ -50,8 +50,9 @@ function textesDeLaBase() {
 }
 
 test('chaque texte de la base : le HTML du navigateur est celui du build, et l’éditeur en place en redonne le même Markdown', async () => {
+  // l'étendue du contrôle se vérifie à l'import (le site de dev crée et supprime des blocs) ; dans la base courante, chaque texte qui reste
+  assert.ok(textesDeLaBase(baseDImport()).length > 100, 'plus de cent textes à l’import');
   const textes = textesDeLaBase();
-  assert.ok(textes.length > 100, `${textes.length} textes`);
   const ecarts = [];
   const markdown = [];
   for (const { ou, texte, dateBrut } of textes) {

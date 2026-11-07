@@ -10,14 +10,15 @@ import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.
 import { COLONNES_FIGEES, ecrituresFigees, rejouerLeJournal } from '../serveur/edition.mjs';
 import { examinerLeLot } from '../serveur/edition-conflits.mjs';
 import { chargerJournal, nouveauLot } from '../serveur/edition-journal.mjs';
-import { cheminBase } from '../src/lib/donnees.mjs';
 import { ENTITES, TABLES } from '../src/lib/edition-modele.mjs';
 import { MONNAIES_DU_JEU } from '../src/lib/monnaies.mjs';
+import { cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const dossier = dossierTemporaire('colonnes-figees');
 let n = 0;
-const vivante = () => ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(dossier, `b${(n += 1)}`) }).chemin);
+// les règles de l'import (test/aide-base-d-import.mjs) : les monnaies du jeu (RO, PP) que le scénario renomme, que le site de dev peut supprimer
+const vivante = () => ouvrirBaseVivante(preparerBaseVivante({ regles: cheminDImport(), dossier: join(dossier, `b${(n += 1)}`) }).chemin);
 
 test('COLONNES_FIGEES : aucune n’est modifiable (TABLES) ; le nom d’une monnaie se donne à sa création seulement', () => {
   for (const [table, colonnes] of Object.entries(COLONNES_FIGEES)) {

@@ -703,6 +703,22 @@ test('action « fusion » d’un mot-clé : le renommage vers l’écriture d’
   ok(appel('DELETE', b.adresse));
 });
 
+test('R196 : DELETE d’un mot-clé mentionné (une balise dans la définition d’un autre) → 409 avec `mentions`, rien d’écrit ; sans mention, il se supprime', () => {
+  const a = ok(appel('POST', '/api/v1/mots-cles/', { libelle: `Mot-clé cité de l’API ${Date.now()}` }), 201);
+  const b = ok(appel('POST', '/api/v1/mots-cles/', { libelle: `Mot-clé qui cite de l’API ${Date.now()}`, description: `Voir {{${a.element.id}}}.` }), 201);
+  const definition = ligne('SELECT description FROM mot_cle WHERE id = ?', b.element.id).description;
+  assert.ok(definition.includes(`{{${a.element.id}`), definition);
+  const refus = appel('DELETE', a.adresse);
+  assert.equal(refus.statut, 409, JSON.stringify(refus.corps));
+  assert.match(refus.corps.erreur, /R196/);
+  assert.deepEqual(refus.corps.mentions.map((m) => [m.table, m.cle, m.colonne, m.comment]), [['mot_cle', { id: b.element.id }, 'description', 'balise']]);
+  assert.ok(ligne('SELECT 1 FROM mot_cle WHERE id = ?', a.element.id), 'rien d’écrit');
+  assert.equal(ligne('SELECT description FROM mot_cle WHERE id = ?', b.element.id).description, definition, 'la balise reste, plus de cascade');
+  ok(appel('DELETE', b.adresse));
+  ok(appel('DELETE', a.adresse));
+  assert.equal(appel('GET', a.adresse).statut, 404);
+});
+
 test('colonnes figées (registre `colonnesFigees`, `champsFiges`) : ce que la page Composants ne montre pas, ou que le service refuse toujours, n’est ni annoncé modifiable ni accepté', () => {
   const c = ok(appel('GET', '/api/v1/'));
   const colonne = (r, nom) => c.ressources.find((x) => x.cle === r).colonnes.find((x) => x.nom === nom);

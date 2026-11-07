@@ -1190,7 +1190,7 @@ test('les couleurs des événements de la chronologie : une classe par événeme
   assert.equal(classeDEvenement('flammes-bleues'), 'couleur-evenement-flammes-bleues');
   assert.equal(classeDEvenement('Âge de fer'), 'couleur-evenement-age-de-fer', 'l’id normalisé (idDeCouleur)');
   const evenements = evenementsDeLaBase();
-  assert.ok(evenements.length >= 70, `${evenements.length} événements`);
+  // tous ceux de la base (le site de dev en crée et en supprime) ; soixante-dix au moins à l'import (ci-dessous)
   const couleurs = couleursDesEvenements(evenements);
   const feuille = regles(cssDesEvenements(couleurs));
   // une règle par événement, dans l'ordre de lecture, aux noms uniques et sans caractère à échapper ; la valeur de la règle, jamais corrigée
@@ -1201,8 +1201,14 @@ test('les couleurs des événements de la chronologie : une classe par événeme
   }
   // le blanc de la règle du site (texteSurCouleur : la luminance reste sous son seuil, de justesse : les teintes visent 4,6:1 avec le blanc)
   for (const c of couleurs.values()) assert.equal(texteSurCouleur(c), '#ffffff', c);
-  assert.equal(couleurs.get(evenements.find((e) => e.epoque === 'inconnue').id), COULEUR_INCONNUE);
-  assert.equal(couleurs.get(evenements.find((e) => e.epoque === 'aujourdhui').id), COULEUR_AUJOURDHUI);
+  // les époques à couleur fixe : chaque événement de la base courante qui en a une, et l'import en a de chacune (le site de dev supprime des événements)
+  const evenementsDImport = chargerChronologie(baseDImport());
+  assert.ok(evenementsDImport.length >= 70, `${evenementsDImport.length} événements à l’import`);
+  const couleursDImport = couleursDesEvenements(evenementsDImport);
+  for (const [epoque, couleur] of [['inconnue', COULEUR_INCONNUE], ['aujourdhui', COULEUR_AUJOURDHUI]]) {
+    assert.equal(couleursDImport.get(evenementsDImport.find((e) => e.epoque === epoque).id), couleur, `${epoque}, à l’import`);
+    for (const e of evenements.filter((x) => x.epoque === epoque)) assert.equal(couleurs.get(e.id), couleur, e.id);
+  }
   assert.equal(cssDesEvenements(new Map()), '');
   assert.equal(cssDesEvenements(null), '');
   // pas une famille fixe : ni dans FAMILLES_DE_LA_PALETTE, ni sur chaque page (Base.astro), dont le plafond de 4 ko tient
@@ -1994,7 +2000,9 @@ test('les étiquettes des genres et des types dans les pages construites : leur 
     }
     assert.doesNotMatch(html, /<span class="(?:genre|don-type)[^"]*"[^>]*style=/, rel);
   }
-  assert.ok(genres > 300 && types > 300, `${genres} genres, ${types} types`);
+  // des centaines de genres (les sorts ne se suppriment pas) ; un type par don des pages de classe (le site de dev supprime des dons : leur nombre
+  // suit la base)
+  assert.ok(genres > 300 && (types > 0 || !ouvrirBase().prepare('SELECT count(*) AS n FROM capacite').get().n), `${genres} genres, ${types} types`);
 });
 
 // Lot 11, les cases de tableau (même demande et mêmes choix de cadrage) : la couleur d'une case du Markdown des pages (« {couleur:vert} »,
@@ -2171,6 +2179,9 @@ test('mots-clés colorés (migration 0098) : « rendu identique » — chaque pa
   // les mots-clés colorés mènent tous à l'une de ces pages (aucune autre page ne prend de couleur au départ)
   const pages = new Set(avant.map(([id]) => chemin(id)));
   const colores = vocabulaire.filter((m) => m.couleur);
-  assert.ok(colores.length >= 90 && parUnMotCle >= 90, `${colores.length} mots-clés colorés, ${parUnMotCle} pages`);
+  // quatre-vingt-dix au moins à l'import (migration 0098 ; le site de dev supprime des mots-clés colorés)
+  const coloresDImport = chargerVocabulaire(baseDImport()).filter((m) => m.couleur).length;
+  assert.ok(coloresDImport >= 90, `${coloresDImport} mots-clés colorés à l’import`);
+  assert.ok(parUnMotCle >= Math.min(1, colores.length), `${colores.length} mots-clés colorés, ${parUnMotCle} pages`);
   assert.deepEqual(colores.filter((m) => !pages.has(m.url)).map((m) => m.id), []);
 });

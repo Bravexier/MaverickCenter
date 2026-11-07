@@ -13,9 +13,11 @@ import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { CASES_RESISTANCES } from '../src/lib/fiche-tableur-cases.mjs';
 import { cellulesDeLaFiche } from '../src/lib/fiche-tableur-export.mjs';
 import { lecteurDeResistances } from '../src/lib/resistance-texte.mjs';
+import { reglesDImport } from './aide-base-d-import.mjs';
 
-const db = ouvrirBase({ sansExemples: false });
-const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que la page le reçoit
+// les règles de l'import, telles que la page les reçoit : les dons lus (« Immunité au … », ceux du Flagelleur, R166, R163) sont des phrases que le site
+// de dev réécrit ou supprime (skill tests-conventions, « Fichier de règles ») ; l'état courant garde ses invariants (dernier test)
+const regles = reglesDImport();
 const FEU = 'magies/magie-du-feu';
 const EAU = 'magies/magie-de-leau';
 const GLACE = 'magies/magie-de-la-glace';
@@ -186,4 +188,9 @@ test('R166 : l’export en tableur écrit les paliers avec l’armure élémenta
   assert.ok(cellule('immunite').split(', ').includes(nom('etats', BRULURE)), 'Brûlure en immunité');
   assert.ok(cellule('grande_resistance').split(', ').includes(nom('magies', GLACE)), 'Glace en grande résistance');
   assert.ok(!Object.values(Object.fromEntries(CASES_RESISTANCES.map((k) => [k.palier, v[k.cibles] ?? '']))).join(', ').split(', ').includes(nom('magies', FEU)), 'le Feu à 0 : nulle part');
+});
+
+test('aujourd’hui : les armures élémentaires et leurs crans lus sur la base courante sont ceux de l’import (tables que le site de dev n’écrit pas)', () => {
+  const courantes = JSON.parse(JSON.stringify(chargerReglesDeFiche(ouvrirBase({ sansExemples: false }))));
+  assert.deepEqual(courantes.armures_elementaires.map((a) => [a.id, a.resistances]), regles.armures_elementaires.map((a) => [a.id, a.resistances]));
 });

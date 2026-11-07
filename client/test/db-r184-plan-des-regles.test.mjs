@@ -11,6 +11,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { raisonsDeProtection } from '../src/lib/pages-protegees.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
@@ -174,7 +175,12 @@ test('regles_onglet : la page d’ouverture est une page de l’onglet ; la reti
   const horsDesCombats = pageDe('<>', 'combats');
   const autreDeLaFiche = pageDe('=', 'fiche-de-personnage');
   assert.ok(horsDesCombats && autreDeLaFiche);
-  const ongletDeLInitiative = base.prepare("SELECT onglet_id FROM regles_onglet_entree WHERE page_id = 'guide/initiative'").get()?.onglet_id;
+  // la page retirée à la fin : l'Initiative, ou, si le site de dev l'a supprimée, une autre page des menus que rien ne protège (rien ne la cite)
+  const aRetirer = base.prepare("SELECT 1 FROM regles_onglet_entree WHERE page_id = 'guide/initiative'").get() ? 'guide/initiative'
+    : base.prepare('SELECT page_id FROM regles_onglet_entree WHERE page_id IS NOT NULL ORDER BY rang, id').all().map((e) => e.page_id)
+      .find((p) => !ouvertures.has(p) && p !== autreDeLaFiche && p !== horsDesCombats && !raisonsDeProtection(base, p).length);
+  assert.ok(aRetirer, 'une page des menus à retirer');
+  const ongletDeLInitiative = base.prepare('SELECT onglet_id FROM regles_onglet_entree WHERE page_id = ?').get(aRetirer)?.onglet_id;
   assert.throws(transaction("UPDATE regles_onglet_entree SET onglet_id = 'combats' WHERE page_id = 'guide/creer-son-personnage'"), /FOREIGN KEY constraint failed/);
   assert.throws(transaction(`UPDATE regles_onglet SET ouverture_page_id = '${horsDesCombats}' WHERE id = 'combats'`), /FOREIGN KEY constraint failed/);
   // retirer une page : ses lignes qui la citent d'abord (liens, sources, mots-clés, alias), la page ensuite
@@ -186,8 +192,8 @@ test('regles_onglet : la page d’ouverture est une page de l’onglet ; la reti
     UPDATE regles_onglet_entree SET onglet_id = 'exploration' WHERE page_id = 'guide/creer-son-personnage'`)();
   assert.equal(menu(base, 'exploration').includes('guide/creer-son-personnage'), true);
   // une page qui n'ouvre aucun onglet se retire avec son entrée (ON DELETE CASCADE)
-  transaction(retirer('guide/initiative'))();
-  assert.equal(menu(base, ongletDeLInitiative).includes('guide/initiative'), false);
+  transaction(retirer(aRetirer))();
+  assert.equal(menu(base, ongletDeLInitiative).includes(aRetirer), false);
 });
 
 test('R184 (9), R185 (3) : six pages retirées, avec leurs alias, leurs mots-clés, leurs renvois, leur écart d’import et les sources qu’elles seules citaient', () => {
@@ -226,13 +232,19 @@ test('R184, R185 : les pages absorbées et les pages retitrées gardent leurs an
   };
   for (const [id, anciens] of Object.entries(ANCIENS)) {
     assert.deepEqual(aliasApres0091(id), anciens, `${id} (après la 0091)`);
-    assert.deepEqual(anciens.filter((a) => !alias(id).includes(a)), [], `${id} : ancien nom perdu`);
+    // une page supprimée par le site de dev part avec ses alias (cas admis, vérifié)
+    if (!page(id)) assert.ok(historique.supprimee('page', { id }), `${id} absente sans que le site de dev l’ait supprimée`);
+    else assert.deepEqual(anciens.filter((a) => !alias(id).includes(a)), [], `${id} : ancien nom perdu`);
   }
   for (const [id, titre] of [['guide/le-mode-hyper', 'Le Mode Hyper'], ['guide/blessures-et-etats', 'Blessure et mort'],
     ['guide/s-entrainer-et-exercer-un-metier', 'S’entraîner']]) {
     assert.equal(pageApres0091(id).titre, titre, id);
   }
-  assert.deepEqual(db.prepare("SELECT tag_id FROM page_tag WHERE page_id = 'guide/mordhau-ou-demi-epee'").all().map((r) => r.tag_id), ['mordhau']);
+  // le mot-clé de la page (après la 0091 ; aujourd'hui, sauf si le site de dev a supprimé la page ou le mot-clé, qui n'est pas protégé)
+  const tagsDe = (base) => base.prepare("SELECT tag_id FROM page_tag WHERE page_id = 'guide/mordhau-ou-demi-epee'").all().map((r) => r.tag_id);
+  assert.deepEqual(tagsDe(apres0091()), ['mordhau']);
+  if (page('guide/mordhau-ou-demi-epee') && db.prepare("SELECT 1 FROM mot_cle WHERE id = 'mordhau'").get()) assert.deepEqual(tagsDe(db), ['mordhau']);
+  else assert.ok(historique.supprimee('page', { id: 'guide/mordhau-ou-demi-epee' }) || historique.supprimee('mot_cle', { id: 'mordhau' }), 'mordhau : ni page ni mot-clé supprimés par le site');
 });
 
 test('R184 : les pages nouvelles, famille docs, résumées par la première phrase de leur texte (réponse du propriétaire), et les blocs suivent leur texte', () => {
@@ -243,7 +255,11 @@ test('R184 : les pages nouvelles, famille docs, résumées par la première phra
     .replace(/\*\*/g, '').replace(/^- /, '');
   for (const id of sansLesRetireesDepuis(NOUVELLES)) {
     const p = page(id);
-    assert.ok(p, id);
+    if (!p) {
+      // supprimée par le site de dev (une page des Règles non protégée) : cas admis, vérifié
+      assert.ok(historique.supprimee('page', { id }), `${id} absente sans que le site de dev l’ait supprimée`);
+      continue;
+    }
     assert.deepEqual([p.origine, p.statut], ['docs', 'draft'], id);
     // le site de dev, source de ce qu'il modifie, peut réécrire le texte sans le résumé (réponse du propriétaire du 2026-11-06 : « Initiative » garde son
     // ancien résumé quand le site réécrit l'ouverture de son texte) : le résumé est la première phrase du texte courant, ou de l'un des textes que le

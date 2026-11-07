@@ -15,6 +15,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { morceauxDuChapitre } from '../src/lib/guide.mjs';
 import { decouperCorps } from '../src/lib/markdown-edition.mjs';
 import { classeDePartie, cssDesFamilles } from '../src/lib/palette-css.mjs';
@@ -72,7 +73,10 @@ test('plus rien sous /guide/ ni /regles/avancees/, ni aux adresses des pages fus
 });
 
 test('chaque page du guide est une page simple : ni flèches, ni pagination, ni ← →, ni glissement du doigt ; titre, texte ; plus de sources', options, () => {
-  assert.ok(pagesConstruites.length > 50, `${pagesConstruites.length} pages construites`);
+  // chaque page du guide de la base est construite (le site de dev en crée et en supprime : le nombre suit la base, pas un seuil)
+  const duGuide = db.prepare("SELECT id, statut FROM page WHERE type = 'guide'").all().filter((p) => process.env.HIDE_EXAMPLES !== '1' || p.statut !== 'example');
+  assert.ok(pagesConstruites.length > 0, `${pagesConstruites.length} pages construites`);
+  assert.deepEqual(duGuide.map((p) => p.id).filter((id) => !pageDe(id)), [], 'les pages du guide de la base qui ne sont pas construites');
   for (const p of pagesConstruites) {
     const { main } = lire(cheminDePage(p.id));
     assert.doesNotMatch(main, /guide-fleche|guide-pagination|guide-voisin|guide-page|data-guide-(?:suivant|precedent|suite)/, `${p.id} : le chrome du livre`);
@@ -103,7 +107,14 @@ test('le fil d’Ariane : Découvrir, l’onglet de la page, Guide du MJ ; la co
   // R184 : « Accueil › <onglet> », l'onglet de la page dans le plan de la base
   assert.equal(fil('regles/creer-son-personnage'), '<a href="/">Accueil</a> › <a href="/regles/fiche-de-personnage/">Fiche de personnage</a>');
   // une page du menu d'un onglet : l'onglet où la base la range (le site de dev la déplace)
-  for (const id of ['guide/premiers-sorts', 'guide/meteo', 'guide/les-degats', 'guide/les-pieges']) assert.equal(fil(cheminDePage(id).slice(0, -1)), filDeLOnglet(id), id);
+  // (les deux dernières ne sont pas protégées : le site de dev peut les supprimer, entrée de menu comprise ; ce cas se vérifie, puis la page passe)
+  for (const id of ['guide/premiers-sorts', 'guide/meteo', 'guide/les-degats', 'guide/les-pieges']) {
+    if (!pageDe(id)) {
+      assert.ok(historiqueSite(db).supprimee('page', { id }), `${id} : absente du site construit sans que le site de dev l’ait supprimée`);
+      continue;
+    }
+    assert.equal(fil(cheminDePage(id).slice(0, -1)), filDeLOnglet(id), id);
+  }
   assert.equal(fil('regles/combats'), '<a href="/">Accueil</a> › <a href="/regles/combats/">Les combats</a>', '/regles/combats/ : le fil de sa page d’ouverture');
   assert.equal(fil('regles'), '<a href="/">Accueil</a> › <a href="/regles/fiche-de-personnage/">Fiche de personnage</a>', '/regles/ : le premier onglet');
   assert.equal(fil('mj/campagne-ou-scenario-one-shot'), '<a href="/">Accueil</a> › <a href="/mj/">Guide du MJ</a>');

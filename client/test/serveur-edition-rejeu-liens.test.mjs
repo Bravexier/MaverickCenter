@@ -6,7 +6,7 @@
 //   node --test test/serveur-edition-rejeu-liens.test.mjs
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, readFileSync } from 'node:fs';
+import { copyFileSync, cpSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
@@ -21,14 +21,13 @@ import { liensDuTexte } from '../src/lib/liens-en-mots-cles.mjs';
 import { formesNonCanoniques, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { REGISTRE_DES_LIENS } from '../src/lib/mots-cles-liens.mjs';
+import { baseDImport, remettreDepuisLImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 const REGISTRE = JSON.parse(readFileSync(join(RACINE, REGISTRE_DES_LIENS), 'utf8'));
 const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
 const dossier = dossierTemporaire('rejeu-liens');
-let n = 0;
-const vivante = () => ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(dossier, `b${(n += 1)}`) }).chemin);
 const m = (table, operation, cle, avant, apres) => ({ lot_id: 'l', rang: 0, table_nom: table, operation, cle: JSON.stringify(cle),
   avant: avant && JSON.stringify(avant), apres: apres && JSON.stringify(apres) });
 
@@ -39,6 +38,45 @@ const ALCHIMISTE = REGISTRE.remplacements.find((r) => r.table === 'metier' && r.
 const avant0098 = (table, cle, colonne, texte) => REGISTRE.remplacements
   .filter((r) => r.table === table && r.colonne === colonne && JSON.stringify(r.cle) === JSON.stringify(cle))
   .reduce((t, r) => t.replaceAll(r.balise, r.lien), texte);
+
+/**
+ * Les lignes du scénario (la page du guide et l'Alchimiste du registre, avec son entité rattachée), remises telles que la base d'import les écrit si le site de dev les a supprimées
+ * (test/aide-base-d-import.mjs, patron : serveur-edition-regles-du-don.test.mjs#remettreLesDonsDImport) : rend le nombre de lignes remises.
+ */
+function remettreLeScenario(db) {
+  const dImport = baseDImport();
+  db.exec('PRAGMA foreign_keys = ON');
+  return remettreDepuisLImport(db, 'page', SUR_LA_PAGE.cle, { enfants: false, dImport }) + remettreDepuisLImport(db, 'metier', ALCHIMISTE.cle, { dImport })
+    // l'entité rattachée du métier (db:check : chaque métier a la sienne)
+    + remettreDepuisLImport(db, 'page_entite', { entite_table: 'metier', entite_id: ALCHIMISTE.cle.id }, { dImport });
+}
+// les règles du scénario (base vivante) et la copie de data/rows que le rapatriement réécrit : l'état courant, ses lignes remises s'il le faut
+const REGLES = join(dossier, 'regles.db');
+copyFileSync(cheminBase({ sansExemples: false }), REGLES);
+const ROWS = (() => {
+  const db = new DatabaseSync(REGLES);
+  try {
+    if (!remettreLeScenario(db)) return join(RACINE, 'data', 'rows');
+  } finally {
+    db.close();
+  }
+  const rows = join(dossier, 'rows');
+  cpSync(join(RACINE, 'data', 'rows'), rows, { recursive: true });
+  const base = join(dossier, 'rows.db');
+  const b = spawnSync(process.execPath, ['--no-warnings', join(RACINE, 'client', 'scripts', 'db-build.mjs'), '--out', base, '--rows', rows], { encoding: 'utf8' });
+  assert.equal(b.status, 0, b.stderr || b.stdout);
+  const db2 = new DatabaseSync(base);
+  try {
+    remettreLeScenario(db2);
+  } finally {
+    db2.close();
+  }
+  const e = spawnSync('python3', ['-I', join(RACINE, 'tools', 'db', 'exporter.py'), base, '--rows', rows], { encoding: 'utf8' });
+  assert.equal(e.status, 0, e.stderr || e.stdout);
+  return rows;
+})();
+let n = 0;
+const vivante = () => ouvrirBaseVivante(preparerBaseVivante({ regles: REGLES, dossier: join(dossier, `b${(n += 1)}`) }).chemin);
 
 test('la table de la 0098 : celle du registre (liens et adresses), et les textes simples balisés (Alchimiste, Apothicaire)', () => {
   const table = tableDesLiensDeLa0098();
@@ -140,7 +178,7 @@ test('rejeu et db:appliquer-edition de lots d’avant 0098 : pas de faux conflit
   neuve.close();
   // db:appliquer-edition, puis db:check (aucun lien, balises canoniques) sur data/rows reconstruit
   const rows = join(dossier, 'rapatriement', 'rows');
-  cpSync(join(RACINE, 'data', 'rows'), rows, { recursive: true });
+  cpSync(ROWS, rows, { recursive: true });
   const r = appliquerJournal(journal, { rows });
   assert.deepEqual(r.conflits, []);
   const base = join(dossier, 'rapatriement', 'regles.db');

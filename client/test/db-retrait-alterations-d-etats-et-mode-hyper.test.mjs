@@ -16,12 +16,12 @@ import { copyFileSync, readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { indexDesAdresses, pageDeLAdresse } from '../src/lib/adresses-db.mjs';
-import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
+import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { lireBalises, motCleDeLaRef, texteDeLaBalise, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { buildIndex, extractLinks, resolve } from '../src/lib/wikilinks-resolution.mjs';
-import { baseDImport, lotsAvant } from './aide-base-d-import.mjs';
+import { baseDImport, cheminDImport, lotsAvant } from './aide-base-d-import.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { citations, ecritParLeSite, lienDuSite } from './aide-page-retiree.mjs';
 
@@ -203,8 +203,10 @@ test('0096 : le menu « Mécaniques générales » sans la page, rangs de 1 à 9
 });
 
 test('0096 rejouée sur son propre résultat : rien ne change (UPDATE gardés)', (t) => {
+  // son résultat : la base telle que la migration l'a laissée (les lots du site d'après la 0096 défaits) ; sur l'état courant, un texte que le site
+  // aurait réécrit avec l'ancien lien serait réécrit par le rejeu, sans que la migration ait changé
   const chemin = fichierTemporaire('maverick.db', 'retrait-alterations-hyper', { t });
-  copyFileSync(cheminBase({ sansExemples: false }), chemin);
+  copyFileSync(cheminDImport({ garder: lotsAvant('0096') }), chemin);
   const base = new DatabaseSync(chemin);
   t.after(() => base.close());
   const etat = () => ['page', 'alias', 'page_source', 'page_tag', 'regles_onglet_entree', 'source', 'competence', 'ecart_source']

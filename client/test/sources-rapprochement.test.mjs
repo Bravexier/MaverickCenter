@@ -178,6 +178,85 @@ test('une colonne modifiée par le site de dev n’est pas un écart ; si sa cel
   base.close();
 });
 
+// Le contrôle par mutation (suppressions du site de dev, lot 3) : des dons supprimés dont la période d'import ne diffère de la cellule que par la casse
+// (« Combat » -> « combat ») sortaient en conflit. Une copie d'import où le site a supprimé TOUTES les lignes qui citent le classeur (chacune notée dans
+// historique_modification) : aucun écart ; les différences de casse restent pour mémoire ; une cellule vraiment changée, ou jamais importée, en reste un.
+test('les lignes supprimées par le site de dev ne sont pas des écarts (même une différence de casse) ; une cellule changée ou non importée l’est toujours', (t) => {
+  const R0 = relever(dbImport, v7);
+  assert.equal(nombreDEcarts(R0), 0, rapport(R0, { exemples: 20 }));
+  assert.ok(R0.casse.length > 0, 'l’import a normalisé la casse d’au moins une valeur du classeur (le cas que la mutation a montré)');
+  const fichier = fichierTemporaire('toutes-supprimees.db', 'rapprochement', { t });
+  copyFileSync(cheminDImport(), fichier);
+  const w = new DatabaseSync(fichier);
+  w.exec('PRAGMA foreign_keys = OFF');
+  const tables = w.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND sql NOT LIKE 'CREATE VIRTUAL%'").all().map((x) => x.name)
+    .filter((nom) => !['correction', 'historique_modification'].includes(nom) && w.prepare(`PRAGMA table_info("${nom}")`).all().some((c) => c.name === 'source_ref'));
+  const sourceRef = new Map();
+  let lot = 0;
+  for (const table of tables) {
+    const pk = w.prepare(`PRAGMA table_info("${table}")`).all().filter((c) => c.pk).sort((a, b) => a.pk - b.pk).map((c) => c.name);
+    if (!pk.length) continue;
+    for (const l of w.prepare(`SELECT * FROM "${table}"`).all()) {
+      if (!citations(l.source_ref).some((x) => x.classeur === v7.titre && !x.page)) continue;
+      const cle = Object.fromEntries(pk.map((k) => [k, l[k]]));
+      sourceRef.set(`${table} ${JSON.stringify(cle)}`, l.source_ref);
+      w.prepare(`DELETE FROM "${table}" WHERE ${pk.map((k) => `"${k}" = ?`).join(' AND ')}`).run(...pk.map((k) => l[k]));
+      lot += 1;
+      w.prepare(`INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres)
+        VALUES (?, 1, '2026-11-07T00:00:00Z', 'test', NULL, ?, ?, 'supprimer', ?, NULL)`).run(`test-suppression-${lot}`, table, JSON.stringify(cle), JSON.stringify(l));
+    }
+  }
+  w.close();
+  const base = new DatabaseSync(fichier, { readOnly: true });
+  try {
+    const R = relever(base, v7);
+    assert.equal(nombreDEcarts(R), 0, rapport(R, { exemples: 20 }));
+    assert.ok(sourceRef.size > 0 && sourceRef.size <= R0.lignes);
+    assert.deepEqual(R.site.supprimees.map((x) => x.ligne).sort(), [...sourceRef.keys()].sort(), 'chaque ligne supprimée est listée à part');
+    assert.deepEqual(R.conflits, []);
+    assert.deepEqual(R.casse.map((x) => `${x.ligne}|${x.colonne}`).sort(), R0.casse.map((x) => `${x.ligne}|${x.colonne}`).sort(), 'la casse reste pour mémoire');
+    // Un vrai écart : les cellules d'une ligne supprimée changent dans le classeur (conflit à trancher), et une cellule nouvelle n'est citée par rien.
+    const { ligne } = R0.casse[0];
+    assert.ok(sourceRef.has(ligne), ligne);
+    const dump = structuredClone(instantanes[v7.titre]);
+    for (const ci of citations(sourceRef.get(ligne)).filter((x) => x.classeur === v7.titre)) {
+      const onglet = dump.sheets.find((s) => s.name === ci.onglet);
+      for (const p of ci.plages) for (const x of onglet.cells) if (x.r >= p.r1 && x.r <= p.r2 && x.c >= p.c1 && x.c <= p.c2 && x.v !== null && x.v !== '') x.v = 'Cellule changée';
+    }
+    dump.sheets.find((s) => s.name === 'Guerrier').cells.push({ r: 99, c: 2, v: 'Nouvelle règle' });
+    const C = relever(base, v7, dump);
+    assert.ok(C.conflits.some((x) => x.ligne === ligne && x.note === 'ligne supprimée par le site de dev'), rapport(C, { exemples: 20 }));
+    assert.deepEqual(C.nonCitees.map((x) => `${x.onglet}!${x.cellule}`), ['Guerrier!B99']);
+    assert.ok(nombreDEcarts(C) >= C.conflits.length + 1);
+  } finally {
+    base.close();
+  }
+});
+
+test('une colonne modifiée par le site de dev dont la valeur d’import ne diffère de sa cellule que par la casse n’est pas un conflit', (t) => {
+  const R0 = relever(dbImport, v7);
+  const { ligne, colonne } = R0.casse.find((x) => x.ligne.startsWith('capacite '));
+  const cle = JSON.parse(ligne.slice('capacite '.length));
+  const fichier = fichierTemporaire('casse-modifiee.db', 'rapprochement', { t });
+  copyFileSync(cheminDImport(), fichier);
+  const w = new DatabaseSync(fichier);
+  const avant = w.prepare(`SELECT "${colonne}" AS v FROM capacite WHERE id = ?`).get(cle.id).v;
+  const apres = `${avant} (site)`;
+  w.prepare(`UPDATE capacite SET "${colonne}" = ? WHERE id = ?`).run(apres, cle.id);
+  w.prepare(`INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres)
+    VALUES ('test-casse', 1, '2026-11-07T00:00:00Z', 'test', NULL, 'capacite', ?, 'modifier', ?, ?)`).run(JSON.stringify(cle), JSON.stringify({ [colonne]: avant }), JSON.stringify({ [colonne]: apres }));
+  w.close();
+  const base = new DatabaseSync(fichier, { readOnly: true });
+  try {
+    const R = relever(base, v7);
+    assert.equal(nombreDEcarts(R), 0, rapport(R, { exemples: 20 }));
+    assert.ok(R.site.modifiees.some((x) => x.ligne === ligne && x.colonne === colonne));
+    assert.ok(R.casse.some((x) => x.ligne === ligne && x.colonne === colonne));
+  } finally {
+    base.close();
+  }
+});
+
 test('une mise à jour du classeur : chaque cellule changée et les lignes de la base qu’elle touche (le contrôle que le rapprochement par ligne ne fait pas)', () => {
   // Une barrière de 1 devenue 5 : la ligne de la classe écrit déjà « 5 » ailleurs (classe de bouclier), le rapprochement ne la voit pas ; le diff, si.
   const apres = avecCellule('Guerrier', 5, 5, () => 5);

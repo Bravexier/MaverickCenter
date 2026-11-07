@@ -16,7 +16,7 @@ import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { lireBalises, motCleDeLaRef } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
-import { baseDImport, lotsAvant } from './aide-base-d-import.mjs';
+import { baseDImport, cheminDImport, lotsAvant } from './aide-base-d-import.mjs';
 import { ecrituresDuLien, ecrituresDuTexte, motsClesVers } from './aide-ecritures-du-lien.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { ecritParLeSite, lignesQuiCitent } from './aide-page-retiree.mjs';
@@ -159,8 +159,10 @@ test('0094 : les liens écrits vers les pages retirées mènent à la page qui r
 });
 
 test('0094 rejouée sur son propre résultat : rien ne change (UPDATE gardés par le texte d’avant, alias ajouté une fois)', (t) => {
+  // son résultat : la base telle que les migrations l'ont laissée (les lots du site d'après la 0095 défaits) ; sur l'état courant, un texte que le site
+  // aurait réécrit avec un ancien lien serait réécrit par le rejeu, sans que la migration ait changé
   const chemin = fichierTemporaire('maverick.db', 'retrait-combats', { t });
-  copyFileSync(cheminBase({ sansExemples: false }), chemin);
+  copyFileSync(cheminDImport({ garder: lotsAvant('0095') }), chemin);
   const base = new DatabaseSync(chemin);
   t.after(() => base.close());
   const etat = () => ['page', 'alias', 'page_entite', 'page_source', 'regles_onglet_entree', 'source']

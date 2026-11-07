@@ -14,7 +14,8 @@ const ligneBrute = new Map(db.prepare('SELECT * FROM metier').all().map((m) => [
 // vérifiés sur la page tant que le site n'a pas réécrit la colonne
 const historique = historiqueSite(db);
 const dImport = (id, colonne) => historique.valeurDImport('metier', { id }, colonne);
-const intact = (id, colonne) => !historique.modifiee('metier', { id }, colonne);
+// (présent et non réécrit : le site de dev supprime aussi des métiers)
+const intact = (id, colonne) => ligneBrute.has(id) && !historique.modifiee('metier', { id }, colonne);
 
 test('un métier est une page du type metiers, sauf la page des règles', () => {
   assert.equal(estUnMetier('metiers/forgeron'), true);

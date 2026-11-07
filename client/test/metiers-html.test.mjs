@@ -9,6 +9,8 @@ import { join, relative } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { ancreDeMetier } from '../src/lib/metiers.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
 import { htmlDuTexteBrut, premiersMotsAffiches, texteAffiche } from './aide-texte-affiche.mjs';
 
@@ -51,6 +53,14 @@ test('un tableau des métiers de la base, aux cinq colonnes demandées, une ancr
   // 72 métiers à l'import (l'état courant en a autant que la base : ci-dessus)
   assert.equal(baseDImport().prepare('SELECT count(*) AS n FROM metier').get().n, 72, 'les métiers de l’import');
   assert.equal(new Set(ids).size, ids.length, 'identifiant en double');
+  if (!effectif) {
+    // le site de dev a supprimé tous les métiers (ils ne se recréent pas) : la page rend la liste simple de son type (src/pages/[type]/index.astro),
+    // sans tableau ; cas admis, vérifié : chaque métier de l'import a été supprimé par le site
+    const h = historiqueSite(db);
+    assert.deepEqual(baseDImport().prepare('SELECT id FROM metier').all().map((m) => m.id).filter((id) => !h.supprimee('metier', { id })), [], 'les métiers absents');
+    assert.doesNotMatch(main, /<table/, 'aucun tableau sans métier');
+    return;
+  }
   const entetes = [...main.slice(main.indexOf('<thead'), main.indexOf('</thead>')).matchAll(/<th[^>]*>([^<]*)<\/th>/g)].map((m) => m[1]);
   assert.deepEqual(entetes, ['Nom', 'Bonus', 'Artisanat', 'Caractéristiques', 'Équipement supplémentaire']);
   assert.equal((main.match(/<td colspan="5">/g) ?? []).length, lignes.length, 'la description s’étend sur les cinq colonnes');
@@ -71,7 +81,9 @@ test('bonus en pastilles de compétence (couleur de la caractéristique) ou d’
   const importe = comptesDesMetiers(baseDImport());
   assert.ok(importe.competences > 100 && importe.initiative >= 1 && importe.textes >= 1, `à l’import : ${JSON.stringify(importe)}`);
   assert.ok(importe.caracteristiques >= 2 * 24, 'à l’import : deux caractéristiques par métier qui fabrique');
-  assert.match(main, /<ul class="metier-objets"><li>/);
+  // une liste par métier qui a des objets de départ dans la base
+  const avecObjets = db.prepare('SELECT count(DISTINCT metier_id) AS n FROM metier_objet_depart').get().n;
+  assert.equal(compte(/<ul class="metier-objets"><li[ >]/g), avecObjets, 'les objets de départ en liste');
   // un objet de départ à choisir : un par rang de la base qui a plusieurs options (le site de dev les modifie)
   const choix = db.prepare('SELECT count(*) AS n FROM (SELECT 1 FROM metier_objet_depart GROUP BY metier_id, rang HAVING count(*) > 1)').get().n;
   assert.equal((main.match(/<li class="metier-objets__choix">/g) ?? []).length, choix, 'un objet de départ à choisir, un par choix de la base');
@@ -82,18 +94,23 @@ test('chaque ligne ouvre sa description juste en dessous ; les aria-* mènent à
   assert.equal((main.match(/class="metier__choisir" aria-expanded="false" aria-controls="detail-metier-/g) ?? []).length, effectif, 'un bouton par métier de la base');
   assert.equal((main.match(/<tr class="metier__detail" id="detail-metier-[^"]+" hidden>/g) ?? []).length, effectif, 'une description par métier de la base');
   for (const [, cible] of main.matchAll(/aria-(?:controls|labelledby)="([^"]+)"/g)) assert.ok(ids.includes(cible), `${cible} introuvable`);
-  // la description du Forgeron (celle de la base) est dans son panneau, sous sa ligne, avec les deux caractéristiques de son artisanat
-  const forgeron = main.slice(main.indexOf('id="metier-forgeron"'), main.indexOf('</tbody>', main.indexOf('id="metier-forgeron"')));
-  const ligne = db.prepare("SELECT description, test_carac_1_id, test_carac_2_id FROM metier WHERE id = 'metiers/forgeron'").get();
-  // la description est posée en texte brut (components/metier/MetiersTableau.astro : pas de Markdown), ses balises du glossaire rendues ; vide, rien
-  const debut = premiersMotsAffiches(htmlDuTexteBrut(ligne.description, db));
-  const detail = forgeron.slice(forgeron.indexOf('<p class="metier-detail__texte"'), forgeron.indexOf('</p>', forgeron.indexOf('<p class="metier-detail__texte"')) + 4);
-  assert.ok(detail.length > 4, 'le paragraphe de la description');
-  if (debut) assert.ok(texteAffiche(detail).includes(debut), `sa description : « ${debut} »`);
-  else assert.equal(texteAffiche(detail).trim(), '', 'description vide dans la base : le paragraphe est vide');
-  for (const carac of [ligne.test_carac_1_id, ligne.test_carac_2_id].filter(Boolean)) {
-    const nom = db.prepare('SELECT nom FROM caracteristique WHERE id = ?').get(carac).nom;
-    assert.ok(forgeron.includes(`title="10 × ${nom}">${nom}</span>`), `${carac} : sa caractéristique`);
+  // la description de chaque métier de la base est dans son panneau, sous sa ligne, avec les deux caractéristiques de son artisanat (les métiers sont lus
+  // dans l'état courant, par id : le site de dev en crée, en renomme et en supprime)
+  for (const ligne of db.prepare('SELECT id, description, test_carac_1_id, test_carac_2_id FROM metier ORDER BY id').all()) {
+    const ancre = ancreDeMetier(ligne.id);
+    const debutDeLigne = main.indexOf(`id="${ancre}"`);
+    assert.ok(debutDeLigne >= 0, `${ligne.id} : sa ligne (${ancre})`);
+    const bloc = main.slice(debutDeLigne, main.indexOf('</tbody>', debutDeLigne));
+    // la description est posée en texte brut (components/metier/MetiersTableau.astro : pas de Markdown), ses balises du glossaire rendues ; vide, rien
+    const debut = premiersMotsAffiches(htmlDuTexteBrut(ligne.description, db));
+    const detail = bloc.slice(bloc.indexOf('<p class="metier-detail__texte"'), bloc.indexOf('</p>', bloc.indexOf('<p class="metier-detail__texte"')) + 4);
+    assert.ok(detail.length > 4, `${ligne.id} : le paragraphe de la description`);
+    if (debut) assert.ok(texteAffiche(detail).includes(debut), `${ligne.id} : sa description « ${debut} »`);
+    else assert.equal(texteAffiche(detail).trim(), '', `${ligne.id} : description vide dans la base, le paragraphe est vide`);
+    for (const carac of [ligne.test_carac_1_id, ligne.test_carac_2_id].filter(Boolean)) {
+      const nom = db.prepare('SELECT nom FROM caracteristique WHERE id = ?').get(carac).nom;
+      assert.ok(bloc.includes(`title="10 × ${nom}">${nom}</span>`), `${ligne.id}, ${carac} : sa caractéristique`);
+    }
   }
 });
 

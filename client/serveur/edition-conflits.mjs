@@ -573,10 +573,16 @@ function suiventLeDon(entrees, conflits) {
  */
 function examiner(db, lot, lignes, instant, abandons, deja) {
   const ctx = contexte(db, { id: nouveauLot().id, instant, pageId: lot.page_id });
+  // décision R196 : la suppression d'un mot-clé qu'un endroit mentionne encore (sur la base telle que le lot la trouve, comme le crochet `avantLeLot`
+  // du rejeu : serveur/edition.mjs#motsClesEncoreMentionnes) n'a que le choix 2 — sinon le choix 1, ou la suppression saine, referait la cascade
+  const mentionnes = new Map(OUTILS.motsClesEncoreMentionnes(db, lignes.filter((m) => !abandons.has(m.rang))).map((r) => [r.id, r.raison]));
   const { entrees, differees } = parcourir(ctx, lignes, new Set(abandons.keys()));
   const duParcours = entrees.filter((e) => e.issue === 'conflit').flatMap((e) => conflitsDeLEntree(e, db));
   const idsDuParcours = duParcours.map((c) => c.id);
   const sortants = new Map(abandons);
+  for (const e of entrees) {
+    if (e.issue !== 'saute' && e.table === 'mot_cle' && e.operation === 'supprimer' && mentionnes.has(e.cle?.id)) sortants.set(e.rang, abandon(e, mentionnes.get(e.cle.id), db));
+  }
   for (const c of duParcours) if (c.genre === 'sans_valeur') sortants.set(c.rang, c);
   let conflits = duParcours.filter((c) => !sortants.has(c.rang));
   // les colonnes du modèle que le site de dev avait écrites et que l'éditeur refuse aujourd'hui (Markdown sûr, bloc inconnu, balise d'un mot-clé

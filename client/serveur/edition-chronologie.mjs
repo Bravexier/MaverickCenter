@@ -3,18 +3,21 @@
 // attribuant une date » ; chaque entrée a une date, un titre, une description et un lien ; « Les mots clés sont trop nombreux et trop libres pour faire de
 // vraies catégories stables. […] On peut choisir plusieurs catégories pour chaque entrée, mais pas pour le filtre. Le mode édition ajoute un bouton pour
 // pouvoir créer, modifier et supprimer une catégorie. Une catégorie supprimée la retire de l'entrée » ; sur /recherche/, « en mode édition seulement »,
-// « supprimer / ajouter / Modifier des mots clés. Une suppression d'un mot clé le supprimera de tous les endroits qui le référencent »). Domaines des tables
+// « supprimer / ajouter / Modifier des mots clés », dont la suppression suit depuis la décision R196 « Tous les mots clés je peux être supprimés que
+// dans ils ne sont appelles nulle part » : un mot-clé mentionné ne se supprime pas, la cascade d'avant est abandonnée). Domaines des tables
 // evenement, evenement_extrait (les blocs de description : texte et lien), categorie_chronologie et mot_cle pour serveur/edition.mjs (DOMAINES), et deux
 // opérations du lot : `categories` (les catégories d'un événement) et `fusionner_mots_cles`. Les mots-clés sont un glossaire (migration 0056 ; demande du
 // propriétaire du 2026-10-16) : un libellé et une définition (NULL tant qu'il n'est pas décrit) ; un texte les cite par une balise (lib/mots-cles-balises.mjs) ;
-// un mot-clé supprimé quitte aussi les textes qui le citent, un mot-clé fusionné y est remplacé par l'autre (serveur/edition.mjs#reecrireLesBalises).
+// un mot-clé mentionné ne se supprime pas (R196, lib/mentions-des-mots-cles.mjs), un mot-clé fusionné est remplacé par l'autre dans les textes qui le citent
+// (serveur/edition.mjs#reecrireLesBalises).
 // Rien n'est déduit : un événement n'a que ce qu'on saisit ; l'ordre de lecture suit la date (lib/chronologie.mjs#ordonner), un événement créé vient après
 // ceux de sa date. Les outils communs du service (refus, creerMotCle, reecrireLesBalises…) sont donnés par serveur/edition.mjs (domainesDeLaChronologie),
 // sans import en retour.
 import { dateDansLeTexte, ecritureReservee, erreurDeDate, libelleDeDate, ordonner } from '../src/lib/chronologie.mjs';
 import { fragmentsAjoutes, messageDeRefus } from '../src/lib/markdown-sur.mjs';
 import { raisonDeProtection } from '../src/lib/mots-cles.mjs';
-import { reciblerLeMotCle, retirerLeMotCle } from '../src/lib/mots-cles-balises.mjs';
+import { reciblerLeMotCle } from '../src/lib/mots-cles-balises.mjs';
+import { mentionsDe, texteDesMentions } from '../src/lib/mentions-des-mots-cles.mjs';
 import { classeDuMotCle } from '../src/lib/mots-cles-liens.mjs';
 import { cssDesMotsCles } from '../src/lib/palette-css.mjs';
 import { normalize } from '../src/lib/text.mjs';
@@ -103,11 +106,11 @@ export function vocabulaireEtFeuille(db) {
  * ({ categories, fusionner_mots_cles }) : voir serveur/edition.mjs#DOMAINES et #OPERATIONS.
  * @param {{ refus: Function, ErreurEdition: Function, provenance: Function, idDejaEmploye: Function, rangLibre: Function, creerMotCle: Function,
  *   refuserLAbreviation: Function, refuserLeLien: Function, refuserLaCouleur: Function, reecrireLesBalises: Function, vocabulaireVivant: Function,
- *   tableExiste: Function }} outils
+ *   tableExiste: Function, motsClesDesAdaptateurs: () => Set<string> }} outils
  */
 export function domainesDeLaChronologie({
   refus, ErreurEdition, provenance, idDejaEmploye, rangLibre, creerMotCle, refuserLAbreviation, refuserLeLien, refuserLaCouleur, reecrireLesBalises,
-  vocabulaireVivant, tableExiste,
+  vocabulaireVivant, tableExiste, motsClesDesAdaptateurs = () => new Set(),
 }) {
   /** Refus d'une date que la table n'accepte pas, avec le message de lib/chronologie.mjs#erreurDeDate. */
   function verifierLaDate(e, quoi) {
@@ -344,8 +347,11 @@ export function domainesDeLaChronologie({
       return { id, resume: `Mot-clé créé : ${valeurs.libelle}` };
     },
     /**
-     * Un mot-clé supprimé : retiré de tous les textes qui le citent (chaque balise devient son texte simple, « Libellé : définition » pour le mode complet),
-     * de toutes les pages qui le portent, puis du vocabulaire ; refusé s'il étiquette un sort (verifierSansSort).
+     * Un mot-clé supprimé, s'il n'est mentionné nulle part (décision R196 : « Le mot clé n'est supprimable que si cette liste est vide ») : une page qui le
+     * porte ou une balise qui le cite, pages d'exemple comprises (lib/mentions-des-mots-cles.mjs) refusent la suppression (409, `mentions` : la liste des
+     * endroits) ; plus aucun texte n'est réécrit (la cascade d'avant R196 est abandonnée ; la fusion, elle, reporte les mentions sur la cible). Refusé
+     * aussi, condition nécessaire : un mot-clé dont le site se sert (verifierNonProtege), qui étiquette un sort (verifierSansSort), que le rejeu des
+     * migrations 0090 et 0098 vise (serveur/edition.mjs#motsClesDesAdaptateurs).
      */
     supprimer(ctx, cle) {
       const { db, w } = ctx;
@@ -353,12 +359,15 @@ export function domainesDeLaChronologie({
       if (!m) throw new ErreurEdition(404, `Mot-clé introuvable : ${cle?.id}`);
       verifierNonProtege(m, 'supprime');
       verifierSansSort(db, m, 'supprime');
-      const avant = vocabulaireVivant(db);
-      const textes = reecrireLesBalises(ctx, m.id, (texte, o) => retirerLeMotCle(texte, avant, m.id, o), { sauf: m.id });
-      const pages = db.prepare('SELECT page_id, ordre FROM page_tag WHERE tag_id = ?').all(m.id);
-      for (const t of pages) w.supprimer('page_tag', { page_id: t.page_id, ordre: t.ordre });
+      if (motsClesDesAdaptateurs().has(m.id)) {
+        throw new ErreurEdition(409, `Le mot-clé « ${m.libelle} » ne se supprime pas depuis le site : le rejeu des modifications d’avant une migration (0090, 0098) écrit ses balises.`);
+      }
+      const mentions = mentionsDe(db, m.id);
+      if (mentions.length) {
+        throw new ErreurEdition(409, `Le mot-clé « ${m.libelle} » est mentionné à ${texteDesMentions(mentions)} : retirez d’abord ces mentions (décision R196).`, { mentions });
+      }
       w.supprimer('mot_cle', { id: m.id });
-      return { id: m.id, resume: `Mot-clé supprimé : ${m.libelle} (retiré de ${pages.length} page(s)${textes ? ` et de ${nombre(textes, 'texte', 'textes')}` : ''})` };
+      return { id: m.id, resume: `Mot-clé supprimé : ${m.libelle}` };
     },
   };
 

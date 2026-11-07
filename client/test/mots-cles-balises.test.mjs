@@ -597,7 +597,7 @@ test('service : la définition se modifie (même d’un mot-clé protégé, dont
   assert.equal(chargerVocabulaire(s.db).find((m) => m.id === sans).description, null, 'lib/mots-cles-db.mjs : NULL aussi');
 });
 
-test('service : supprimer un mot-clé retire ses balises de tous les textes (l’effet d’une arme garde sa recharge, une définition qui le citait aussi) ; fusionner les recible', () => {
+test('service (R196) : un mot-clé cité par une balise ne se supprime pas (409, la liste : l’effet d’une arme, une définition, un événement), rien n’est réécrit ; fusionner recible ; ses balises retirées, il se supprime', () => {
   const s = service();
   const libelleA = s.libre('Essai suppression');
   const libelleB = s.libre('Essai fusion source');
@@ -613,23 +613,32 @@ test('service : supprimer un mot-clé retire ses balises de tous les textes (l�
   assert.equal(s.ligne('SELECT recharge FROM arme WHERE id = ?', arme.id).recharge, 'longue');
   const pageDesArmes = () => s.ligne("SELECT corps_md FROM page WHERE id = 'ressources/armes'").corps_md;
   assert.ok(pageDesArmes().includes(`{{${a}\\|Recharge longue}}`), 'le corps de la page des armes suit (case de tableau : « \\| »)');
-  // suppression
-  const r = s.ok([{ op: 'supprimer', entite: 'mot_cle', cle: { id: a } }]);
-  assert.equal(s.ligne('SELECT 1 FROM mot_cle WHERE id = ?', a), undefined);
-  const apres = s.ligne('SELECT effet, recharge FROM arme WHERE id = ?', arme.id);
-  assert.equal(apres.effet, `${arme.effet}, Recharge longue`, 'la balise devient son texte');
-  assert.equal(apres.recharge, 'longue', 'la recharge reste');
-  assert.ok(!pageDesArmes().includes(`{{${a}`), 'ni dans le corps de la page des armes');
-  assert.equal(s.ligne('SELECT description FROM mot_cle WHERE id = ?', temoin).description, `Voir le A, {{${b}|la source}} et {{${b}|${libelleB}}}.`,
-    'une balise devient son texte, les autres restent (forme canonique d’un texte de case)');
-  assert.equal(description(), `Le ${libelleA} : A., ${libelleA} et {{${b}}}.`, 'un texte mis en forme : le mode complet devient « Libellé : définition »');
-  assert.ok(r.lignes.some((l) => l.table === 'arme' && l.cle.id === arme.id), 'chaque texte réécrit est une ligne du lot (journal)');
+  const definitionDuTemoin = s.ligne('SELECT description FROM mot_cle WHERE id = ?', temoin).description;
+  assert.equal(definitionDuTemoin, `Voir {{${a}|le A}}, {{${b}|la source}} et {{${b}|${libelleB}}}.`, 'forme canonique d’un texte de case');
+  // suppression refusée : la liste des endroits, rien d'écrit (la cascade d'avant R196 est abandonnée)
+  const refus = s.lot([{ op: 'supprimer', entite: 'mot_cle', cle: { id: a } }]);
+  assert.equal(refus.statut, 409, JSON.stringify(refus.corps));
+  assert.match(refus.corps.erreur, /R196/);
+  const endroits = new Set(refus.corps.mentions.map((m) => `${m.table}.${m.colonne}`));
+  for (const e of ['arme.effet', 'mot_cle.description', 'evenement_extrait.texte']) assert.ok(endroits.has(e), `${e} dans ${[...endroits]}`);
+  assert.ok(refus.corps.mentions.some((m) => m.table === 'mot_cle' && m.cle.id === temoin), 'la définition qui le cite');
+  assert.ok(s.ligne('SELECT 1 FROM mot_cle WHERE id = ?', a));
+  assert.deepEqual({ ...s.ligne('SELECT effet, recharge FROM arme WHERE id = ?', arme.id) }, { effet: `${arme.effet}, {{${a}|Recharge longue}}`, recharge: 'longue' });
+  assert.equal(s.ligne('SELECT description FROM mot_cle WHERE id = ?', temoin).description, definitionDuTemoin);
+  assert.equal(description(), `Le {{${a}:}}, {{${a}}} et {{${b}}}.`);
   // fusion : les balises de la source citent la cible, leur texte gardé
   s.ok([{ op: 'fusionner_mots_cles', mot_cle: b, dans: c }]);
-  assert.equal(s.ligne('SELECT description FROM mot_cle WHERE id = ?', temoin).description, `Voir le A, {{${c}|la source}} et {{${c}|${libelleB}}}.`,
+  assert.equal(s.ligne('SELECT description FROM mot_cle WHERE id = ?', temoin).description, `Voir {{${a}|le A}}, {{${c}|la source}} et {{${c}|${libelleB}}}.`,
     'un texte de case garde le texte qu’il montrait');
-  assert.equal(description(), `Le ${libelleA} : A., ${libelleA} et {{${c}}}.`, 'un texte mis en forme suit la cible');
+  assert.equal(description(), `Le {{${a}:}}, {{${a}}} et {{${c}}}.`, 'un texte mis en forme suit la cible');
   assert.equal(s.ligne('SELECT 1 FROM mot_cle WHERE id = ?', b), undefined);
+  // ses balises retirées par la personne (la définition réécrite, l'effet remis, l'événement supprimé) : la liste est vide, il se supprime
+  s.ok([{ op: 'modifier', table: 'mot_cle', cle: { id: temoin }, valeurs: { description: `Voir {{${c}|la source}}.` } }]);
+  s.ok([{ op: 'modifier', table: 'arme', cle: { id: arme.id }, valeurs: { effet: arme.effet } }], 'ressources/armes/');
+  s.ok([{ op: 'supprimer', entite: 'evenement', cle: { id: evenement } }], 'chronologie/');
+  s.ok([{ op: 'supprimer', entite: 'mot_cle', cle: { id: a } }]);
+  assert.equal(s.ligne('SELECT 1 FROM mot_cle WHERE id = ?', a), undefined);
+  assert.ok(!pageDesArmes().includes(`{{${a}`), 'ni dans le corps de la page des armes');
   // plus aucune balise orpheline dans la base
   const orphelines = [];
   const vocabulaire = vocabulaireDesMotsCles(s.db.prepare('SELECT id, libelle FROM mot_cle').all());

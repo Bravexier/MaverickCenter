@@ -29,6 +29,9 @@ user-invocable: false
   propriétaire relit la liste et demande lui-même d'appliquer. Une valeur modifiée des deux côtés (site de dev et classeur) est un conflit, demandé au
   propriétaire à chaque fois, sa réponse inscrite dans `conflits`.
 - La base est lue dans son état d'import (`lignesDImport`) : le site de dev est la source de ce qu'il modifie, ce n'est pas un écart.
+  - Un écart « pour mémoire » (casse seule, ligne à relire dans une source sans instantané) n'est jamais un conflit, même sur une ligne supprimée ou une colonne modifiée par le site.
+  - Une ligne supprimée par le site, sans cellule changée, n'est jamais un écart (listée dans `site.supprimees`) ; une cellule vraiment changée sur une telle ligne reste un conflit (R83).
+  - Le libellé d'une ligne visée par une clé étrangère (« Évitée » pour `echelle_id`) se lit à l'import quand la colonne visée est sa clé primaire (`rapprocher.mjs`, `libellesDe`).
 - Dans les deux sens : chaque ligne typée se lit dans ses cellules (orthographe des migrations défaite) ; chaque cellule non vide est citée ou ignorée avec sa
   raison, et chacun de ses mots se lit dans la base ; notes de cellule et fils de commentaires comparés à `note_cellule` (et `commentaire_orphelin`).
 - Le registre d'un classeur ne contient que des entrées justifiées (une `raison` chacune), dans les sections `regles`, `libelles`, `copies`, `derivees`,

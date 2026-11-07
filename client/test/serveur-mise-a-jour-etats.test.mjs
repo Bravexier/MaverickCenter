@@ -232,6 +232,8 @@ test('après une livraison, le journal livré est intégré : aller-retour, sais
   const dossier = join(racine, 'db-livraison');
   const { chemin } = preparerBaseVivante({ regles, dossier });
   const db = ouvrirBaseVivante(chemin);
+  // deux métiers d'essai (« forgeron », « acrobate »), pris dans l'état courant : le site de dev supprime des métiers
+  const [FORGERON, ACROBATE] = db.prepare('SELECT id FROM metier ORDER BY id LIMIT 2').all().map((m) => m.id);
   const service = { base: () => db, etat: () => ({}), edition: true };
   const enregistrer = (operations) => {
     const r = traiter({ methode: 'POST', chemin: '/api/edition/', entetes: JSON_, corps: JSON.stringify({ page: 'metiers/', operations }) }, service);
@@ -239,12 +241,12 @@ test('après une livraison, le journal livré est intégré : aller-retour, sais
     return r.corps;
   };
   const bonus = (id) => db.prepare('SELECT bonus_brut FROM metier WHERE id = ?').get(id).bonus_brut;
-  const forgeron = bonus('metiers/forgeron');
-  const acrobate = bonus('metiers/acrobate');
-  enregistrer([{ op: 'modifier', table: 'metier', cle: { id: 'metiers/forgeron' }, valeurs: { bonus_brut: '+9% Essai' } }]); // A → B
-  enregistrer([{ op: 'modifier', table: 'metier', cle: { id: 'metiers/forgeron' }, valeurs: { bonus_brut: forgeron } }]); // B → A
-  enregistrer([{ op: 'modifier', table: 'metier', cle: { id: 'metiers/acrobate' }, valeurs: { bonus_brut: '+1% Un' } }]); // X → Y
-  enregistrer([{ op: 'modifier', table: 'metier', cle: { id: 'metiers/acrobate' }, valeurs: { bonus_brut: '+2% Deux' } }]); // Y → Z
+  const forgeron = bonus(FORGERON);
+  const acrobate = bonus(ACROBATE);
+  enregistrer([{ op: 'modifier', table: 'metier', cle: { id: FORGERON }, valeurs: { bonus_brut: '+9% Essai' } }]); // A → B
+  enregistrer([{ op: 'modifier', table: 'metier', cle: { id: FORGERON }, valeurs: { bonus_brut: forgeron } }]); // B → A
+  enregistrer([{ op: 'modifier', table: 'metier', cle: { id: ACROBATE }, valeurs: { bonus_brut: '+1% Un' } }]); // X → Y
+  enregistrer([{ op: 'modifier', table: 'metier', cle: { id: ACROBATE }, valeurs: { bonus_brut: '+2% Deux' } }]); // Y → Z
   const cree = enregistrer([{ op: 'creer', entite: 'metier', valeurs: { nom: 'Métier jetable', description: 'à jeter' } }]);
   const id = cree.lignes.find((x) => x.table === 'metier').cle.id;
   enregistrer([{ op: 'supprimer', entite: 'metier', cle: { id } }]); // créé puis supprimé
@@ -255,7 +257,7 @@ test('après une livraison, le journal livré est intégré : aller-retour, sais
   const nouvelles = join(racine, 'regles-livrees.db');
   copyFileSync(regles, nouvelles);
   const r = new DatabaseSync(nouvelles);
-  r.prepare("UPDATE metier SET bonus_brut = '+2% Deux' WHERE id = 'metiers/acrobate'").run();
+  r.prepare("UPDATE metier SET bonus_brut = '+2% Deux' WHERE id = ?").run(ACROBATE);
   // une version que ces règles (tirées de data/rows) ne portent pas encore
   const livree = versionLibre(r);
   r.prepare("INSERT INTO note_version (version, publiee_le, depuis, texte, lot, exemple) VALUES (?, '2026-10-11', NULL, NULL, 'lot-livraison', 0)").run(livree);
@@ -274,8 +276,8 @@ test('après une livraison, le journal livré est intégré : aller-retour, sais
   const b = ouvrirBaseVivante(refaite.chemin);
   const etats = Object.fromEntries(b.prepare('SELECT etat, count(*) AS n FROM modification GROUP BY etat').all().map((e) => [e.etat, e.n]));
   assert.deepEqual(etats, { integree: attendues }, 'ni en attente, ni en conflit');
-  assert.equal(b.prepare('SELECT bonus_brut FROM metier WHERE id = ?').get('metiers/forgeron').bonus_brut, forgeron, 'la valeur annulée (B) ne revient pas');
-  assert.equal(b.prepare('SELECT bonus_brut FROM metier WHERE id = ?').get('metiers/acrobate').bonus_brut, '+2% Deux');
+  assert.equal(b.prepare('SELECT bonus_brut FROM metier WHERE id = ?').get(FORGERON).bonus_brut, forgeron, 'la valeur annulée (B) ne revient pas');
+  assert.equal(b.prepare('SELECT bonus_brut FROM metier WHERE id = ?').get(ACROBATE).bonus_brut, '+2% Deux');
   assert.equal(b.prepare('SELECT count(*) AS n FROM metier WHERE id = ?').get(id).n, 0);
   assert.equal(integrerLivrees(b), 0, 'idempotent');
   b.close();
