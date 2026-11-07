@@ -1,7 +1,7 @@
 ---
 name: zone-mots-cles-balisage
 description: "Baliser un mot dans tous les textes : outil baliser-mot-cle, entrées tools/glossaire/*.json (Chakra, Barrière, Corruption et CR, Sort fer), exclusions, rapport, migration 0079. À charger avant de lire, modifier ou relire cet outil, ses entrées ou leurs tests."
-paths: ["client/scripts/baliser-mot-cle.mjs", "client/src/lib/glossaire-balisage.mjs", "tools/glossaire/**", "client/test/baliser-mot-cle.test.mjs", "client/test/*glossaire*.test.mjs", "client/test/sorts-fer.test.mjs", "data/migrations/0079-*"]
+paths: ["client/scripts/baliser-mot-cle.mjs", "client/src/lib/glossaire-balisage.mjs", "tools/glossaire/**", "client/test/baliser-mot-cle.test.mjs", "client/test/glossaire-balisage.test.mjs", "client/test/sorts-fer.test.mjs", "data/migrations/0079-*"]
 user-invocable: false
 ---
 # Baliser un mot dans tous les textes

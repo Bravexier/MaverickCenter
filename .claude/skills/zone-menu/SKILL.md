@@ -11,7 +11,7 @@ user-invocable: false
 - Menu : `client/src/lib/nav.mjs` (`NAV`, `entreesDuMenu`, `activeGroup`, `groupIsCurrent`, `legacyWikiRedirect`, `PAGES_RENOMMEES`, `nouvelleAdresse`, `adresseEclatee`, `adresseDeRenvoi`, `cheminVersUnePageEclatee`), `client/src/layouts/Base.astro`.
 - En-tête : `layouts/Base.astro`, `styles/global/site-shell.css`, `public/logo.webp`, `public/favicon.png`, `public/apple-touch-icon.png`.
 
-`Base.astro` porte aussi des scripts d'autres zones : infobulles (skill `ui-infobulles`), maintenance (skill `zone-maintenance`) et bandeau du site de dev (skill `zone-mise-a-jour`), balise des métriques (skill `zone-debug-metriques`).
+`Base.astro` porte aussi des scripts d'autres zones : infobulles (skill `ui-infobulles`), maintenance (skill `zone-maintenance`) et bandeau du site de dev (skill `zone-mise-a-jour`), balise des métriques (skill `zone-debug-metriques`), feuille des mots-clés colorés et couleur de `<main>` (skill `zone-mots-cles-liens`).
 
 ## À lire
 
@@ -20,7 +20,7 @@ user-invocable: false
 ## Menu (arborescence du propriétaire)
 
 - Sept rubriques, dans l'ordre (clé) :
-  - Règles (`regles`, la vitrine, l'accueil l'ouvre) : Découvrir (`/decouvrir/`), L'univers, puis les 4 onglets Fiche de personnage, Mécaniques générales, Les combats, Exploration (`/regles/<onglet>/`) (R184). Plus de « Créer son personnage », « Les bases », « Règles avancées », « Liens » ni « Rejoindre une partie » (demandes du propriétaire) ; aucun onglet « Autre ». `autres: ['regles/']` : toute page sous `regles/` (pages des onglets à plat, Artisanat) ouvre les Règles. L'onglet marqué sur ces pages (`entree` de `Base.astro`, `aria-current`) vient du plan de la base (skill `zone-guide`), jamais de l'adresse.
+  - Règles (`regles`, la vitrine, l'accueil l'ouvre) : Découvrir (`/decouvrir/`), L'univers, puis les 4 onglets Fiche de personnage, Mécaniques générales, Les combats, Exploration (`/regles/<onglet>/`) (R184), puis Glossaire (`/regles/glossaire/`, réponse Q6 du propriétaire ; pas un onglet du plan : skill `zone-glossaire`). Plus de « Créer son personnage », « Les bases », « Règles avancées », « Liens » ni « Rejoindre une partie » (demandes du propriétaire) ; aucun onglet « Autre ». `autres: ['regles/']` : toute page sous `regles/` (pages des onglets à plat, Artisanat) ouvre les Règles. L'onglet marqué sur ces pages (`entree` de `Base.astro`, `aria-current`) vient du plan de la base (skill `zone-guide`), jamais de l'adresse.
   - Personnage (`personnage`) : Races, Magies, Classes, Métiers, Familiers. Familiers mène à `ressources/familiers/` ; son libellé est le titre de la page dans la base, comparé par `test/nav.test.mjs` (réponse du propriétaire : « Famillier devrai être dans Personnage, Le reste dans equipement (sous menu-autres pour commencer) »).
   - Équipement (`equipement`) : une entrée par page de l'équipement, sans ancre (libellé et adresse de `PAGES_DE_L_EQUIPEMENT` : Armes, Armures, Boucliers, Ceinture, Accessoires), puis Livres & Parchemins et « Autres » (`/ressources/`) : la liste de toutes les pages de ressources, provisoire (« pour commencer »). Plus d'entrée unique « Équipement » ni d'onglets de page (skill `zone-equipement`).
   - Espace joueur, Espace MJ, Codex, Outils.
@@ -30,7 +30,7 @@ user-invocable: false
 - Une entrée sans `path` est affichée « bientôt » : la page n'existe pas encore, on n'invente pas de contenu.
 - `autres` = débuts d'adresse des pages de la rubrique hors menu (`capacites/` ouvre le Personnage). `ressources/` ouvre l'Équipement, sauf Familiers, qui ouvre le Personnage par le plus long début d'adresse.
 - `devSeulement` : entrée du site de dev seulement (Debug), retirée par `entreesDuMenu` d'un build `SITE_MODE=prod` et de la version portable.
-- Les chemins de Découvrir et du Guide du MJ sont ceux de `lib/livres.mjs`, recopiés dans `nav.mjs`, qui n'importe rien (le script de la page 404 l'importe) : `test/livres.test.mjs` vérifie leur accord. Les libellés et chemins des onglets sont ceux de la table `regles_onglet` (libellé = titre, chemin = `regles/<id>/`, ordre) : `test/nav.test.mjs` les compare.
+- Les chemins de Découvrir et du Guide du MJ sont ceux de `lib/livres.mjs`, recopiés dans `nav.mjs`, qui n'importe rien (le script de la page 404 l'importe) : `test/livres.test.mjs` vérifie leur accord. Les libellés et chemins des onglets sont ceux de la table `regles_onglet` (libellé = titre, chemin = `regles/<id>/`, ordre) : `test/nav.test.mjs` et `test/livres.test.mjs` les comparent aux entrées `items.slice(2, -1)` des Règles (ni Découvrir, ni L'univers, ni Glossaire).
 - Artisanat (`/regles/artisanat/`) n'est plus au menu Équipement : c'est une entrée du menu latéral d'Exploration (R184). Composants reste dans l'Équipement, son fil d'Ariane mène à l'Artisanat.
 - Une page renommée : son ancienne adresse dans `PAGES_RENOMMEES` (renvoyée par la page 404 via `nouvelleAdresse`) ; il n'y reste que `baton-magique` pour l'équipement. Une page éclatée en plusieurs (l'ancienne `ressources/equipement/`, `ressources/pieces-elementaires/`) : `adresseEclatee` et `adresseDeRenvoi`, avec les renvois `RENVOIS_DES_PAGES_ECLATEES` que la page 404 reçoit par `data-eclatees` (`nav.mjs` n'importe rien) ; règles : skill `zone-equipement`. Adresses du wiki et du guide : skill `site-wiki-liens`.
 

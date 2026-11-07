@@ -13,7 +13,7 @@ user-invocable: false
 - Tableau : `components/metier/MetiersTableau.astro`, CSS `styles/metier/tableau.css` (inséré en `?raw`).
 - Cellules : rendus `metier-bonus`, `metier-artisanat`, `metier-carac`, `metier-equipement` de `lib/edition-rendu.mjs`.
 - Pastilles d'une compétence visée et d'une caractéristique de l'artisanat : la classe de la caractéristique (`couleur-caracteristique-<id>`, `par-defaut` si inconnue ; skill `ui-couleurs`), que `styles/metier/tableau.css` lit en `--couleur` / `--couleur-texte`, jamais un style.
-- Corps Markdown tenu d'accord : `lib/corps-metiers.mjs` (skill `zone-edition`).
+- Corps Markdown tenu d'accord : `lib/corps-metiers.mjs` (skill `zone-edition`). Il est exactement `corpsDeMetier(ligne)`, sans lien à reposer (`corps-metiers.test.mjs`) ; une modification ne réécrit que les champs touchés.
 - `metiers.mjs` porte aussi des adresses d'autres zones (`adresseDePage`, `estServieASonId`, `pageSansAdresse`, `renvoisDuGuide`) : skill `site-wiki-liens`, skill `zone-equipement`, skill `zone-guide`.
 
 ## À lire
@@ -22,7 +22,7 @@ user-invocable: false
 
 ## Invariants
 - Pas de page par métier (demande du propriétaire). `/metiers/` est un tableau tiré de la table `metier` (`chargerMetiers`), la description sous la ligne. Colonnes : Nom, Bonus, Artisanat, Caractéristiques, Équipement supplémentaire.
-- Les pages `metiers/<slug>` restent (recherche, mots-clés, `[[liens]]`), mais `[slug].astro` ne les construit pas. Tout lien vers une page passe par `cheminDePage` (via `entryHref`, `pageHref`, `entryUrl`), qui renvoie un métier à `/metiers/#metier-<slug>`. Ne jamais écrire `${id}/` à la main.
+- Les pages `metiers/<slug>` restent (recherche, mots-clés, liens), mais `[slug].astro` ne les construit pas. Tout lien vers une page passe par `cheminDePage` (via `entryHref`, `pageHref`, `entryUrl`), qui renvoie un métier à `/metiers/#metier-<slug>`. Ne jamais écrire `${id}/` à la main.
 - Seule « Règles des métiers » (`PAGE_DES_REGLES`, sans ligne dans `metier`) garde sa page.
 - Les cellules du tableau sont les rendus de `lib/edition-rendu.mjs` : un seul HTML avec le mode modification.
 - Un nom de compétence dans « Bonus » la lie (`decouperBonus`). Ne rien lier d'autre par vraisemblance.
