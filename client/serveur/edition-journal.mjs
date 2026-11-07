@@ -471,11 +471,13 @@ const decodee = (m) => ({
  * pas d'équivalent, qui met tout son lot en conflit sans le rejouer (serveur/edition-bestiaire.mjs#ancienneEcritureDesCapacites : avant la migration 0044 ;
  * serveur/edition-armures.mjs#ancienneEcritureDesArmures : une défense ou une amélioration de bouclier saisie en un texte qui ne se lit pas exactement
  * dans les cases d'aujourd'hui, demande du propriétaire du 2026-10-17).
+ * `avantLeLot(modifications)` : appelée avant les modifications de chaque lot, sur la base telle que le lot la trouve, avec ses modifications (telles
+ * qu'adaptées) ; une erreur met le lot en conflit, son message pour raison (serveur/edition.mjs#motsClesEncoreMentionnes : décision R196).
  * `apresLeLot(modifications, issues)` : appelée après les modifications de chaque lot qui passe, dans son lot (avant le contrôle de ses clés étrangères, annulée
  * avec lui), avec ses modifications (telles qu'adaptées) et leurs issues (`applique`, `integree`, `derivee`, `fantome`, dans le même ordre) ; elle écrit ce que le lot entraîne au-delà de ce qu'il note et rend ces écritures, décodées
  * ({ lot, rang, table, cle, operation, avant, apres, … }), passées à `applique` après celles du lot (serveur/edition.mjs#balisesRetireesParLeLot : les
  * balises d'un mot-clé supprimé ou fusionné, au moment où sa suppression est rejouée) ; une erreur met le lot en conflit.
- * @param {{ derivee?: (table: string, cle: object, colonne: string) => boolean, applique?: (m: object) => void, horsControleParLot?: Iterable<string>, siOrphelines?: Iterable<string>, adapter?: () => (m: object) => object, apresLeLot?: (modifications: object[], issues: string[]) => object[] }} [options]
+ * @param {{ derivee?: (table: string, cle: object, colonne: string) => boolean, applique?: (m: object) => void, horsControleParLot?: Iterable<string>, siOrphelines?: Iterable<string>, adapter?: () => (m: object) => object, avantLeLot?: (modifications: object[]) => void, apresLeLot?: (modifications: object[], issues: string[]) => object[] }} [options]
  * @returns {{ appliquees: number, integrees: number, conflits: number, lots: number }}
  */
 export function rejouer(db, options = {}) {
@@ -522,7 +524,7 @@ function fantomesDe(modifications, exclus) {
  * Une passe du rejeu (voir rejouer), sans les lots `ecartes` (marqués « conflit », avec leur conflit) : { bilan, appliquees (décodées, pour
  * `applique`), conflits (Map lot → conflit, ceux d'avant compris), aExclure (fantômes encore cités en fin de passe) }.
  */
-function rejouerUneFois(db, { derivee = () => false, horsControleParLot = [], siOrphelines = [], adapter = null, apresLeLot = null } = {}, ecartes = new Map(), exclus = new Set()) {
+function rejouerUneFois(db, { derivee = () => false, horsControleParLot = [], siOrphelines = [], adapter = null, avantLeLot = null, apresLeLot = null } = {}, ecartes = new Map(), exclus = new Set()) {
   const horsControle = new Set(horsControleParLot);
   const orphelines = new Set(siOrphelines);
   const appliquees = [];
@@ -576,7 +578,14 @@ function rejouerUneFois(db, { derivee = () => false, horsControleParLot = [], si
     // n'échoue sans rien expliquer
     const signalee = modifications.find((m) => m.conflit);
     let conflit = signalee ? `${signalee.table_nom} ${signalee.cle} : ${signalee.conflit}` : null;
-    for (const m of signalee ? [] : modifications) {
+    if (!conflit && avantLeLot) {
+      try {
+        avantLeLot(modifications);
+      } catch (e) {
+        conflit = `avant le lot : ${e.message}`;
+      }
+    }
+    for (const m of conflit ? [] : modifications) {
       let r;
       try {
         if (m.sansEffet) r = 'integree'; // une écriture que les règles n'ont plus de raison de faire (adaptateur) : rien d'écrit

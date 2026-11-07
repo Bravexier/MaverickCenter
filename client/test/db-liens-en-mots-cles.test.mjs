@@ -200,6 +200,11 @@ test('0098 : quelques liens convertis, leur texte affiché gardé', () => {
 test('0098 : les métiers Alchimiste et Apothicaire — la balise à la source, le corps rendu de la ligne', () => {
   for (const id of ['metiers/alchimiste', 'metiers/apothicaire']) {
     const ligne = db.prepare('SELECT * FROM metier WHERE id = ?').get(id);
+    if (!ligne) {
+      // supprimé par le site de dev (cas admis, vérifié) : la balise à la source se lit à l'import (test précédent, registre)
+      assert.ok(historiqueSite(db).supprimee('metier', { id }), `${id} absent sans que le site de dev l’ait supprimé`);
+      continue;
+    }
     if (intacte('metier', { id })) assert.match(ligne.artisanat_texte, /l’\{\{alchimie-primitive\|alchimie primitive\}\}$/, id);
     assert.ok(ligne.artisanat_brut.startsWith(`${ligne.artisanat_texte} [`), `${id} : artisanat_brut recopie artisanat_texte`);
     assert.equal(texte('page', 'corps_md', id), corpsDeMetier(ligne), `${id} : corps = corpsDeMetier(ligne)`);

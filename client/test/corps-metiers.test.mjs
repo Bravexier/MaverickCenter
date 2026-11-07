@@ -12,6 +12,7 @@ import { extractLinks } from '../src/lib/wikilinks.mjs';
 import * as corpsMetiers from '../src/lib/corps-metiers.mjs';
 import * as metierChamps from '../src/lib/metier-champs.mjs';
 import { formesNonCanoniques } from '../src/lib/mots-cles-balises.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 
 const {
   CHAMPS_DU_CORPS, champAJour, champDuCorps, champsDuCorps, corpsApres, corpsDeMetier, markdownDeValeur, pageDuMetier, remplacerChampDuCorps, resumeDuMetier,
@@ -48,9 +49,11 @@ test('rendu complet : corpsDeMetier(ligne) === corps_md pour tout métier, aucun
     assert.deepEqual(extractLinks(m.corps), [], m.id);
   }
   // l'Alchimiste et l'Apothicaire : l'ancien [[Alchimie primitive|alchimie primitive]] est la balise de leur artisanat, dans la table comme dans le corps
-  const alchimistes = metiers.filter((m) => /\{\{alchimie-primitive\|alchimie primitive\}\}/.test(m.ligne.artisanat_brut ?? ''));
+  // (à l'import : le site de dev réécrit l'artisanat, supprime des métiers et des mots-clés)
+  const alchimistes = baseDImport().prepare('SELECT m.id, m.artisanat_brut, p.corps_md FROM metier m JOIN page p ON p.id = m.id ORDER BY m.id').all()
+    .filter((m) => /\{\{alchimie-primitive\|alchimie primitive\}\}/.test(m.artisanat_brut ?? ''));
   assert.ok(alchimistes.length >= 2, alchimistes.map((m) => m.id).join(', '));
-  for (const m of alchimistes) assert.ok(m.corps.includes('{{alchimie-primitive|alchimie primitive}}'), m.id);
+  for (const m of alchimistes) assert.ok(m.corps_md.includes('{{alchimie-primitive|alchimie primitive}}'), m.id);
 });
 
 test('remplacement de sections : chaque champ remplacé par sa propre valeur redonne le corps à l’octet près', () => {

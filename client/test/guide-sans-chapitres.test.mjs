@@ -11,6 +11,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 import {
   DECOUVRIR, estDansDecouvrir, estDesOnglets, estDuGuideDuMj, installerLePlan, ongletDe, PAGES_ABSORBEES, PAGES_RETIREES, PAGES_SUPPRIMEES, PARTIES, pagesDeLaRubrique,
 } from '../src/lib/livres.mjs';
@@ -51,7 +52,10 @@ test('registre de la migration 0064 : les 24 chapitres de l’ancien guide, num�
       continue;
     }
     const id = Object.hasOwn(PAGES_ABSORBEES, p.id) ? PAGES_ABSORBEES[p.id] : p.id;
-    assert.equal(db.prepare("SELECT count(*) AS n FROM page WHERE id = ? AND type = 'guide'").get(id).n, 1, `${id} n’existe plus`);
+    // (une page des Règles non protégée se supprime sur le site de dev : cas admis, vérifié)
+    const n = db.prepare("SELECT count(*) AS n FROM page WHERE id = ? AND type = 'guide'").get(id).n;
+    if (!n) assert.ok(historiqueSite(db).supprimee('page', { id }), `${id} n’existe plus, sans que le site de dev l’ait supprimée`);
+    else assert.equal(n, 1, id);
     if (id !== p.id) assert.equal(db.prepare('SELECT count(*) AS n FROM page WHERE id = ?').get(p.id).n, 0, `${p.id} : fusionnée, retirée de la base`);
   }
 });
@@ -126,6 +130,10 @@ test('le plan garde l’ordre de lecture de l’ancien guide dans Découvrir, et
   assert.deepEqual(fiche, [5, 6, 7, 8, 9, 10, 11]);
   for (const p of registre.pages.filter((x) => !sansPlace(x.id))) {
     const id = placeDe(p.id);
+    if (!db.prepare('SELECT 1 FROM page WHERE id = ?').get(id)) {
+      assert.ok(historiqueSite(db).supprimee('page', { id }), `${id} (ancien chapitre ${p.chapitre}) absente sans que le site de dev l’ait supprimée`);
+      continue;
+    }
     const place = estDansDecouvrir(id) ? 'decouvrir' : estDuGuideDuMj(id) ? 'mj' : estDesOnglets(id) ? 'onglet' : null;
     assert.ok(place, `${p.id} (ancien chapitre ${p.chapitre}) n’a plus de place`);
   }

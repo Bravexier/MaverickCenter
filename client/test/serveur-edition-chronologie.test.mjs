@@ -1,7 +1,7 @@
 // Édition de la chronologie et du vocabulaire des mots-clés depuis le site de dev (serveur/edition-chronologie.mjs, migration 0043 ; demandes du
 // propriétaire : modifier, créer avec une date et supprimer un événement ; « Date, Titre, Description, Lien » ; plusieurs catégories par événement, « créer,
-// modifier et supprimer une catégorie. Une catégorie supprimée la retire de l'entrée » ; sur /recherche/, ajouter, renommer et supprimer un mot-clé, « une
-// suppression d'un mot clé le supprimera de tous les endroits qui le référencent »). Les tests lisent l'état avant d'écrire et prennent des noms absents
+// modifier et supprimer une catégorie. Une catégorie supprimée la retire de l'entrée » ; sur /recherche/, ajouter, renommer et supprimer un mot-clé ; depuis
+// la décision R196, « Le mot clé n'est supprimable que si cette liste est vide » : plus de cascade, un refus 409 avec la liste). Les tests lisent l'état avant d'écrire et prennent des noms absents
 // de la base : les essais du site de dev peuvent l'avoir modifiée. Depuis la migration 0056 (glossaire), le vocabulaire importé n'est presque plus posé
 // sur les pages : les règles des tests ont leurs mots-clés d'essai (test/aide-mots-cles.mjs).
 import assert from 'node:assert/strict';
@@ -15,7 +15,8 @@ import { appliquerJournal } from '../scripts/db-appliquer-edition.mjs';
 import { appliquerMiseAJour } from '../scripts/mise-a-jour-regles.mjs';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
-import { rejouerLeJournal } from '../serveur/edition.mjs';
+import { FUSIONS_DE_MIGRATION, rejouerLeJournal, tableDesLiensDeLa0098 } from '../serveur/edition.mjs';
+import { examinerLeLot, resoudreLeConflit } from '../serveur/edition-conflits.mjs';
 import { chargerJournal, journalExporte } from '../serveur/edition-journal.mjs';
 import { SANS_CATEGORIE } from '../src/lib/chronologie.mjs';
 import { chargerChronologie } from '../src/lib/chronologie-db.mjs';
@@ -287,13 +288,65 @@ test('vocabulaire : créer, renommer (l’écriture change partout), refus d’u
   assert.equal(ligne('SELECT 1 FROM mot_cle WHERE id = ?', paire.A), undefined);
   for (const p of pagesDeA) assert.ok(ligne('SELECT 1 FROM page_tag WHERE page_id = ? AND tag_id = ?', p, paire.B), p);
   assert.equal(ligne('SELECT count(*) AS n FROM page_tag WHERE page_id = ? AND tag_id = ?', paire.page_id, paire.B).n, 1, 'pas de doublon');
-  // suppression : de toutes les pages
+  // suppression (décision R196 : « Le mot clé n'est supprimable que si cette liste est vide ») : un mot-clé que des pages portent est refusé, avec
+  // la liste des endroits ; rien n'est écrit
   const r = enregistrer([{ op: 'supprimer', entite: 'mot_cle', cle: { id: surPages.id } }]);
-  ok(r);
-  assert.equal(ligne('SELECT count(*) AS n FROM page_tag WHERE tag_id = ?', surPages.id).n, 0);
-  assert.equal(ligne('SELECT 1 FROM mot_cle WHERE id = ?', surPages.id), undefined);
-  // l'id d'un mot-clé supprimé ne resert pas
-  assert.equal(creerMotCle(surPages.libelle), `${surPages.id}-2`);
+  assert.equal(r.statut, 409, JSON.stringify(r.corps));
+  assert.match(r.corps.erreur, /est mentionné à .* \(décision R196\)/);
+  assert.deepEqual([...new Set(r.corps.mentions.filter((m) => m.comment === 'etiquette').map((m) => m.page.id))].sort(), pages, 'chaque page qui le porte');
+  assert.equal(ligne('SELECT count(*) AS n FROM page_tag WHERE tag_id = ?', surPages.id).n, pages.length);
+  // un mot-clé mentionné nulle part (celui créé plus haut) : supprimé ; son id ne resert pas
+  ok(enregistrer([{ op: 'supprimer', entite: 'mot_cle', cle: { id } }]));
+  assert.equal(ligne('SELECT 1 FROM mot_cle WHERE id = ?', id), undefined);
+  assert.equal(creerMotCle(libelle), `${id}-2`);
+});
+
+test('R196 : une page d’exemple qui porte le mot-clé ou le cite par une balise bloque sa suppression (409, la liste) ; la liste vidée, il se supprime', () => {
+  // une base à lui : les tests du vocabulaire fusionnent et suppriment des mots-clés d'essai dans `db`
+  const base = vivante();
+  const servi = { base: () => base, etat: () => ({}), edition: true };
+  const supprimer = (id) => traiter({ methode: 'POST', chemin: '/api/edition/', entetes: { 'content-type': 'application/json' },
+    corps: JSON.stringify({ page: 'regles/glossaire/', operations: [{ op: 'supprimer', entite: 'mot_cle', cle: { id } }] }) }, servi);
+  const tags = (id) => base.prepare('SELECT page_id FROM page_tag WHERE tag_id = ? ORDER BY page_id').all(id).map((p) => p.page_id);
+  // « Essai démo » n'est porté que par des pages d'exemple (test/aide-mots-cles.mjs) : elles comptent (« Le mot clé n'est supprimable que si cette
+  // liste est vide »)
+  const demo = normalize('Essai démo');
+  const pagesDeDemo = tags(demo);
+  assert.ok(pagesDeDemo.length && pagesDeDemo.every((p) => base.prepare('SELECT statut FROM page WHERE id = ?').get(p).statut === 'example'), pagesDeDemo.join());
+  const porte = supprimer(demo);
+  assert.equal(porte.statut, 409, JSON.stringify(porte.corps));
+  assert.deepEqual(porte.corps.mentions.map((m) => [m.comment, m.page.id, m.exemple]).sort((x, y) => x[1].localeCompare(y[1])), pagesDeDemo.map((p) => ['etiquette', p, true]));
+  assert.deepEqual(tags(demo), pagesDeDemo, 'rien d’écrit');
+  // un mot-clé que seule une balise d'une page d'exemple cite (le test pose le texte dans sa copie)
+  const id = normalize('Essai R196 exemple');
+  base.prepare('INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES (?, ?, ?, ?)').run(id, 'Essai R196 exemple', id, DEFINITION_D_ESSAI);
+  const exemple = base.prepare("SELECT id, corps_md FROM page WHERE statut = 'example' AND corps_md IS NOT NULL ORDER BY id LIMIT 1").get();
+  base.prepare('UPDATE page SET corps_md = ? WHERE id = ?').run(`${exemple.corps_md}\n\nVoir {{${id}}}.\n`, exemple.id);
+  const cite = supprimer(id);
+  assert.equal(cite.statut, 409, JSON.stringify(cite.corps));
+  assert.match(cite.corps.erreur, /R196/);
+  assert.deepEqual(cite.corps.mentions.map((m) => [m.table, m.cle, m.colonne, m.comment, m.page.id, m.exemple]), [['page', { id: exemple.id }, 'corps_md', 'balise', exemple.id, true]]);
+  assert.ok(base.prepare('SELECT corps_md FROM page WHERE id = ?').get(exemple.id).corps_md.includes(`{{${id}}}`), 'plus de cascade : la balise reste');
+  // la balise retirée, la liste est vide : la suppression passe
+  base.prepare('UPDATE page SET corps_md = ? WHERE id = ?').run(exemple.corps_md, exemple.id);
+  assert.equal(supprimer(id).statut, 200);
+  assert.equal(base.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(id), undefined);
+  base.close();
+});
+
+test('R196 (3) : les mots-clés que le rejeu des migrations 0090 (cible d’une fusion) et 0098 (registre des liens) vise ne se suppriment pas (409), comme ceux dont le code se sert', () => {
+  const proteges = new Set(MOTS_CLES_PROTEGES.keys());
+  const supprimable = (m) => m && !proteges.has(m.libelle_cle) && !ligne('SELECT 1 FROM sort_mot_cle WHERE mot_cle_id = ?', m.id);
+  const fusion = FUSIONS_DE_MIGRATION.find((f) => f.migration === '0090');
+  const du0098 = [...tableDesLiensDeLa0098().parCle.values()].map((m) => ligne('SELECT id, libelle_cle FROM mot_cle WHERE id = ?', m.id)).find(supprimable);
+  const vises = [ligne('SELECT id, libelle_cle FROM mot_cle WHERE id = ?', fusion.cible), du0098];
+  assert.ok(vises.every(supprimable), JSON.stringify(vises));
+  for (const m of vises) {
+    const r = enregistrer([{ op: 'supprimer', entite: 'mot_cle', cle: { id: m.id } }]);
+    assert.equal(r.statut, 409, `${m.id} : ${JSON.stringify(r.corps)}`);
+    assert.match(r.corps.erreur, /rejeu des modifications d’avant une migration/, m.id);
+    assert.ok(ligne('SELECT 1 FROM mot_cle WHERE id = ?', m.id), m.id);
+  }
 });
 
 test('mots-clés dont le site se sert : ni renommés (même en casse), ni supprimés, ni fusionnés (dans un sens ou l’autre), ni créés seuls', () => {
@@ -547,9 +600,16 @@ test('rejeu : une ligne créée puis supprimée, que cite une ligne existante, d
     AND (SELECT count(*) FROM page_tag t WHERE t.tag_id = m.id) BETWEEN 1 AND 3 ORDER BY m.id LIMIT 1`).get(...proteges).id;
   const lignes = base.prepare('SELECT page_id, ordre FROM page_tag WHERE tag_id = ?').all(source).map((l) => ({ ...l }));
   lot([{ op: 'fusionner_mots_cles', mot_cle: source, dans: n }]);
-  // puis N est supprimé (ses lignes page_tag avec lui), dans un lot qui ne passera pas au rejeu
-  lot([{ op: 'supprimer', entite: 'mot_cle', cle: { id: n } }]);
-  const dernier = base.prepare("SELECT lot_id, max(rang) AS rang FROM modification WHERE table_nom = 'mot_cle' AND operation = 'supprimer' AND json_extract(cle, '$.id') = ?").get(n);
+  // puis N est supprimé (ses lignes page_tag avec lui), dans un lot qui ne passera pas au rejeu : noté comme avant la décision R196 (le service refuse
+  // depuis la suppression d'un mot-clé que des pages portent)
+  const ancien = { id: `${new Date().toISOString()}-000000-essai-fantome`, n: 0 };
+  base.prepare("INSERT INTO modification_lot (id, fait_le, auteur_id, page_id, resume) VALUES (?, ?, NULL, 'regles/glossaire/', 'Mot-clé supprimé (avant R196)')")
+    .run(ancien.id, new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'));
+  const noter = (table, cle, avant) => base.prepare("INSERT INTO modification (lot_id, rang, table_nom, cle, operation, avant, apres, etat) VALUES (?, ?, ?, ?, 'supprimer', ?, NULL, 'en_attente')")
+    .run(ancien.id, (ancien.n += 1), table, JSON.stringify(cle), JSON.stringify(avant));
+  for (const t of base.prepare('SELECT * FROM page_tag WHERE tag_id = ? ORDER BY page_id, ordre').all(n)) noter('page_tag', { page_id: t.page_id, ordre: t.ordre }, { ...t });
+  noter('mot_cle', { id: n }, { ...base.prepare('SELECT * FROM mot_cle WHERE id = ?').get(n) });
+  const dernier = { lot_id: ancien.id, rang: ancien.n };
   base.prepare("INSERT INTO modification (lot_id, rang, table_nom, cle, operation, avant, apres, etat) VALUES (?, ?, 'evenement', ?, 'modifier', ?, ?, 'en_attente')")
     .run(dernier.lot_id, dernier.rang + 1, JSON.stringify({ id: 'aucun-evenement-de-ce-nom' }), JSON.stringify({ titre: 'x' }), JSON.stringify({ titre: 'y' }));
   const { base: neuve, conflits } = rebatir(base);
@@ -678,8 +738,9 @@ test('lots notés avant la migration 0056 (D4) : un don créé par l’ancien co
   for (const b of [base, neuve.base]) b.close();
 });
 
-test('rejeu (D3) : un mot-clé supprimé ou fusionné sur le site de dev quitte aussi les textes qu’il n’avait pas (pages d’exemple, textes reçus depuis) — retiré ou reciblé, un code gardé', () => {
-  // le site de dev est construit sans les pages d'exemple ; ses lots : « démo » supprimé, « aide » fusionné dans « guide »
+test('rejeu (D3, R196) : un mot-clé fusionné sur le site de dev est reciblé dans les textes qu’il n’avait pas (pages d’exemple, textes reçus depuis), un code gardé ; un mot-clé supprimé que ces textes mentionnent met son lot en conflit', () => {
+  // le site de dev est construit sans les pages d'exemple ; ses lots : « démo » supprimé (il ne porte que des pages d'exemple : le service l'accepte),
+  // « aide » fusionné dans « guide »
   const site = vivante({ sansExemples: true });
   const id = (cle) => site.prepare('SELECT id, libelle FROM mot_cle WHERE libelle_cle = ?').get(cle);
   const demo = id('essai-demo');
@@ -710,14 +771,19 @@ test('rejeu (D3) : un mot-clé supprimé ou fusionné sur le site de dev quitte 
   const bilan = rejouerLeJournal(cible, sortie);
   cible.exec('COMMIT');
   cible.exec('PRAGMA foreign_keys = ON');
-  assert.equal(bilan.conflits, 0);
+  // la suppression de « démo » : en conflit (décision R196 : les textes reçus depuis le mentionnent ; les pages d'exemple, elles, n'arrêtent pas le
+  // rejeu), rien n'en est écrit
+  const conflits = cible.prepare("SELECT table_nom, cle, detail FROM modification WHERE etat = 'conflit'").all();
+  assert.ok(conflits.length > 0 && conflits.every((c) => /encore mentionné .*R196/.test(c.detail)), JSON.stringify(conflits));
+  assert.ok(conflits.some((c) => c.table_nom === 'mot_cle' && JSON.parse(c.cle).id === demo.id));
+  assert.equal(bilan.conflits, conflits.length);
+  assert.ok(cible.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(demo.id), '« démo » reste');
   const page = cible.prepare('SELECT corps_md, resume FROM page WHERE id = ?').get(exemple);
-  // le mode complet devient « Libellé : définition » (sa définition notée par la suppression), « aide » cite « guide », le code reste écrit
-  assert.ok(page.corps_md.endsWith(`\nVoir ${demo.libelle} : ${DEFINITION_D_ESSAI}, {{${guide.id}}} et {{${guide.id}|l’aide}} ; \`{{${demo.id}}}\` reste écrit.\n`),
-    page.corps_md.slice(-200));
-  assert.equal(page.resume, `Résumé {{${guide.id}|aide}} et démo`, 'un texte de case : reciblé (son texte gardé) ou retiré (son texte)');
-  assert.equal(cible.prepare('SELECT effet FROM arme WHERE id = ?').get(arme.id).effet, `${arme.effet}, Démo`, 'un texte que le site de dev n’avait pas');
-  assert.ok(sortie.tablesCompletees.includes('page') && sortie.tablesCompletees.includes('arme'), `tables écrites au-delà du journal : ${sortie.tablesCompletees}`);
+  // « aide » cite « guide », « démo » reste cité, le code reste écrit
+  assert.ok(page.corps_md.endsWith(`\nVoir {{${demo.id}:}}, {{${guide.id}}} et {{${guide.id}|l’aide}} ; \`{{${demo.id}}}\` reste écrit.\n`), page.corps_md.slice(-200));
+  assert.equal(page.resume, `Résumé {{${guide.id}|aide}} et {{${demo.id}|démo}}`, 'un texte de case : reciblé (son texte gardé)');
+  assert.equal(cible.prepare('SELECT effet FROM arme WHERE id = ?').get(arme.id).effet, `${arme.effet}, {{${demo.id}|Démo}}`, 'un texte que le site de dev n’avait pas');
+  assert.ok(sortie.tablesCompletees.includes('page'), `tables écrites au-delà du journal : ${sortie.tablesCompletees}`);
   // plus aucune balise orpheline
   const vocabulaire = vocabulaireDesMotsCles(cible.prepare('SELECT id, libelle FROM mot_cle').all());
   for (const t of [page.corps_md, page.resume, cible.prepare('SELECT effet FROM arme WHERE id = ?').get(arme.id).effet]) {
@@ -744,12 +810,11 @@ function rejouerSur(cible, source) {
   return { sortie, conflits: cible.prepare("SELECT table_nom, cle, detail FROM modification WHERE etat = 'conflit'").all().map((c) => ({ ...c })) };
 }
 
-test('rejeu (D3) : un texte réécrit hors journal (balises d’un mot-clé supprimé ou fusionné), puis modifié sur le site de dev — le lot suivant passe à la livraison', () => {
-  // 1. le site de dev supprime « démo » et fusionne « aide » dans « guide »
+test('rejeu (D3) : un texte réécrit hors journal (balises d’un mot-clé fusionné), puis modifié sur le site de dev — le lot suivant passe à la livraison', () => {
+  // 1. le site de dev fusionne « aide » dans « guide » (une suppression ne réécrit plus rien depuis la décision R196 : test suivant)
   const site = vivante();
   const id = (cle) => site.prepare('SELECT id FROM mot_cle WHERE libelle_cle = ?').get(cle).id;
-  const [demo, aide, guide] = ['essai-demo', 'essai-aide', 'essai-guide'].map(id);
-  serviceDe(site)([{ op: 'supprimer', entite: 'mot_cle', cle: { id: demo } }]);
+  const [aide, guide] = ['essai-aide', 'essai-guide'].map(id);
   serviceDe(site)([{ op: 'fusionner_mots_cles', mot_cle: aide, dans: guide }]);
   // 2. les règles livrées ensuite ont des textes qui les citent (reçus depuis : le service ne les a pas réécrits), un bloc de panneau de règles et l'effet
   // d'un don (sa fiche et la page de sa classe sont refaites depuis les tables)
@@ -757,8 +822,8 @@ test('rejeu (D3) : un texte réécrit hors journal (balises d’un mot-clé supp
   const don = site.prepare("SELECT id, effet FROM capacite WHERE effet IS NOT NULL AND instr(effet, '{{') = 0 ORDER BY id LIMIT 1").get();
   const recus = (db) => {
     db.prepare('UPDATE panneau_regles_bloc SET texte = ? WHERE panneau_id = ? AND rang = ?')
-      .run(`${bloc.texte}\n\nVoir {{${demo}|démo}} et {{${aide}|l’aide}}.`, bloc.panneau_id, bloc.rang);
-    db.prepare('UPDATE capacite SET effet = ? WHERE id = ?').run(`${don.effet} {{${demo}|Démo}}`, don.id);
+      .run(`${bloc.texte}\n\nVoir {{${aide}|l’aide}}.`, bloc.panneau_id, bloc.rang);
+    db.prepare('UPDATE capacite SET effet = ? WHERE id = ?').run(`${don.effet} {{${aide}|Aide}}`, don.id);
   };
   const vivanteRefaite = vivante();
   recus(vivanteRefaite);
@@ -766,10 +831,10 @@ test('rejeu (D3) : un texte réécrit hors journal (balises d’un mot-clé supp
   site.close();
   assert.deepEqual(refaite.conflits, []);
   const lu = vivanteRefaite.prepare('SELECT texte FROM panneau_regles_bloc WHERE panneau_id = ? AND rang = ?').get(bloc.panneau_id, bloc.rang).texte;
-  assert.equal(lu, `${bloc.texte}\n\nVoir démo et {{${guide}|l’aide}}.`, 'retiré, ou reciblé : au moment où le lot est rejoué');
+  assert.equal(lu, `${bloc.texte}\n\nVoir {{${guide}|l’aide}}.`, 'reciblé : au moment où le lot est rejoué');
   const effetLu = vivanteRefaite.prepare('SELECT effet FROM capacite WHERE id = ?').get(don.id).effet;
-  assert.equal(effetLu, `${don.effet} Démo`);
-  assert.ok(!vivanteRefaite.prepare('SELECT corps_md FROM page WHERE id = ?').get(don.id).corps_md.includes(`{{${demo}`), 'la fiche du don refaite depuis sa table');
+  assert.equal(effetLu, `${don.effet} {{${guide}|Aide}}`);
+  assert.ok(!vivanteRefaite.prepare('SELECT corps_md FROM page WHERE id = ?').get(don.id).corps_md.includes(`{{${aide}`), 'la fiche du don refaite depuis sa table');
   assert.ok(['panneau_regles_bloc', 'capacite'].every((t) => refaite.sortie.tablesCompletees.includes(t)), `tables écrites au-delà du journal : ${refaite.sortie.tablesCompletees}`);
   // 3. sur la base vivante refaite, la personne modifie ces deux textes (le service note avant = ce qu'il lit, réécrit)
   serviceDe(vivanteRefaite)([
@@ -788,7 +853,41 @@ test('rejeu (D3) : un texte réécrit hors journal (balises d’un mot-clé supp
   livraison.close();
 });
 
-test('rapatriement et mise à jour sur data/rows : les pages d’exemple (absentes du site de dev) perdent un mot-clé supprimé ou fusionné, rien ne bloque', { skip: sansPython }, () => {
+test('R196, rejeu : la suppression d’un mot-clé que les règles livrées mentionnent depuis met son lot en conflit, rien n’en est écrit, choix 2 seul à la résolution ; sans mention, elle passe', () => {
+  // deux mots-clés des règles mentionnés nulle part : le site de dev les supprime ; les règles livrées ensuite citent le premier dans un bloc de panneau
+  const site = vivante();
+  const livraison = vivante();
+  const [cite, seul] = ['Essai R196 cité', 'Essai R196 seul'].map((libelle) => {
+    const id = normalize(libelle);
+    for (const db of [site, livraison]) db.prepare('INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES (?, ?, ?, ?)').run(id, libelle, id, 'Mot-clé d’essai (R196).');
+    return id;
+  });
+  for (const id of [cite, seul]) serviceDe(site)([{ op: 'supprimer', entite: 'mot_cle', cle: { id } }]);
+  const bloc = livraison.prepare("SELECT panneau_id, rang, texte FROM panneau_regles_bloc WHERE instr(texte, '{{') = 0 ORDER BY panneau_id, rang LIMIT 1").get();
+  livraison.prepare('UPDATE panneau_regles_bloc SET texte = ? WHERE panneau_id = ? AND rang = ?').run(`${bloc.texte} Voir {{${cite}}}.`, bloc.panneau_id, bloc.rang);
+  const r = rejouerSur(livraison, site);
+  site.close();
+  const enConflit = r.conflits.filter((c) => c.table_nom === 'mot_cle');
+  assert.deepEqual(enConflit.map((c) => JSON.parse(c.cle).id), [cite], JSON.stringify(r.conflits));
+  assert.match(enConflit[0].detail, /encore mentionné .*R196/);
+  assert.ok(livraison.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(cite), 'le mot-clé cité reste');
+  assert.equal(livraison.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(seul), undefined, 'l’autre est supprimé');
+  // la page « Mise à jour » : cette suppression n'a que le choix 2 (sinon la résoudre referait la cascade), avec sa raison ; résolue, le mot-clé et sa
+  // balise restent
+  const lotId = livraison.prepare("SELECT DISTINCT lot_id FROM modification WHERE etat = 'conflit' AND table_nom = 'mot_cle'").get().lot_id;
+  const diag = examinerLeLot(livraison, lotId);
+  const conflit = diag.conflits.find((c) => c.table === 'mot_cle');
+  assert.deepEqual([conflit.operation, conflit.cle, conflit.choix_possibles], ['supprimer', { id: cite }, [2]], JSON.stringify(diag.conflits));
+  assert.match(conflit.raison, /encore mentionné .*R196/);
+  assert.ok(!diag.saines.some((x) => x.table === 'mot_cle'), 'pas une modification saine');
+  assert.throws(() => resoudreLeConflit(livraison, { lot: lotId, empreinte: diag.empreinte, choix: { [conflit.id]: { choix: 1 } } }), (e) => e.statut === 400);
+  resoudreLeConflit(livraison, { lot: lotId, empreinte: diag.empreinte, choix: { [conflit.id]: { choix: 2 } } });
+  assert.ok(livraison.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(cite), 'résolu au choix 2 : le mot-clé reste');
+  assert.ok(livraison.prepare('SELECT texte FROM panneau_regles_bloc WHERE panneau_id = ? AND rang = ?').get(bloc.panneau_id, bloc.rang).texte.includes(`{{${cite}}}`), 'sa balise aussi');
+  livraison.close();
+});
+
+test('rapatriement et mise à jour sur data/rows : les pages d’exemple (absentes du site de dev) perdent un mot-clé supprimé ou fusionné, rien ne bloque (R196 : elles n’arrêtent pas le rejeu)', { skip: sansPython }, () => {
   // le site de dev est construit sans les pages d'exemple (HIDE_EXAMPLES=1) ; data/rows les garde, avec leurs mots-clés
   const site = vivante({ sansExemples: true });
   const servi = { base: () => site, etat: () => ({}), edition: true };
@@ -807,7 +906,9 @@ test('rapatriement et mise à jour sur data/rows : les pages d’exemple (absent
   assert.equal(site.prepare('SELECT count(*) AS n FROM page_tag WHERE tag_id = ?').get(demo).n, 0, '« démo » : aucune page au site de dev');
   const cible = site.prepare('SELECT id FROM mot_cle WHERE libelle_cle = ?').get('essai-guide').id;
   lot([{ op: 'supprimer', entite: 'mot_cle', cle: { id: demo } }]);
-  lot([{ op: 'supprimer', entite: 'mot_cle', cle: { id: personnage } }]);
+  // « personnage » est porté par une vraie page : le service refuse sa suppression (décision R196)
+  const refus = traiter({ methode: 'POST', chemin: '/api/edition/', entetes: { 'content-type': 'application/json' }, corps: JSON.stringify({ page: 'recherche/', operations: [{ op: 'supprimer', entite: 'mot_cle', cle: { id: personnage } }] }) }, servi);
+  assert.equal(refus.statut, 409, JSON.stringify(refus.corps));
   const renomme = `Magie (essai ${process.pid})`;
   lot([{ op: 'modifier', table: 'mot_cle', cle: { id: magie }, valeurs: { libelle: renomme } }]);
   lot([{ op: 'fusionner_mots_cles', mot_cle: aide, dans: cible }]);
@@ -821,7 +922,8 @@ test('rapatriement et mise à jour sur data/rows : les pages d’exemple (absent
     return new DatabaseSync(sortie, { readOnly: true });
   };
   const verifier = (base) => {
-    for (const m of [demo, personnage, aide]) assert.equal(base.prepare('SELECT count(*) AS n FROM page_tag WHERE tag_id = ?').get(m).n, 0, m);
+    for (const m of [demo, aide]) assert.equal(base.prepare('SELECT count(*) AS n FROM page_tag WHERE tag_id = ?').get(m).n, 0, m);
+    assert.ok(base.prepare('SELECT count(*) AS n FROM page_tag WHERE tag_id = ?').get(personnage).n > 0, '« personnage » reste');
     assert.equal(base.prepare('SELECT libelle FROM mot_cle WHERE id = ?').get(magie).libelle, renomme);
     assert.ok(base.prepare("SELECT 1 FROM page_tag WHERE page_id = 'magies/exemple-magie' AND tag_id = ?").get(magie), 'l’exemple garde « magie » renommé');
     assert.deepEqual(base.prepare('PRAGMA foreign_key_check').all(), []);

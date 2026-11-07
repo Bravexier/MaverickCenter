@@ -19,10 +19,13 @@ import { cheminBase } from '../src/lib/donnees.mjs';
 import { ENTITES, TABLES } from '../src/lib/edition-modele.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { POTENTIEL_ILLIMITE } from '../src/lib/potentiel-illimite.mjs';
+import { cheminDImport } from './aide-base-d-import.mjs';
 
 const racine = dossierTemporaire('edition-composants');
 let compteur = 0;
-const vivante = () => ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, `b${(compteur += 1)}`) }).chemin);
+// les règles de l'import (test/aide-base-d-import.mjs) : les composants, gemmes et monnaies du jeu (RO, PP) que les essais visent, que le site de dev
+// peut supprimer
+const vivante = () => ouvrirBaseVivante(preparerBaseVivante({ regles: cheminDImport(), dossier: join(racine, `b${(compteur += 1)}`) }).chemin);
 const db = vivante();
 const service = { base: () => db, etat: () => ({}), edition: true };
 const enregistrer = (operations, base = db) =>

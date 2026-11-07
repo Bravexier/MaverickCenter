@@ -162,9 +162,10 @@ test('R145, R183 : l’import du Codex ne pose pas le mot-clé « Sang » sur le
   assert.match(section, /^### Confrérie du Sang \(Temple du sang\)$/m);
   assert.match(section, /La Pointe de Sang/);
   // le mot-clé « Sang » de la base (0090), cherché par son identifiant figé : le site de dev peut le renommer, ses deux écritures sont refusées
+  // (il n'est pas protégé : supprimé par le site, le vocabulaire de data/rows ne l'a plus, et l'import ne peut pas davantage le poser)
   const sang = db.prepare("SELECT libelle FROM mot_cle WHERE id = 'sang'").get();
-  assert.ok(sang, 'le mot-clé « Sang » existe (0090) : le vocabulaire de data/rows le contient');
-  const ecrituresDuSang = new Set(['sang', normalize(sang.libelle)]);
+  if (!sang) assert.ok(historique.supprimee('mot_cle', { id: 'sang' }), 'le mot-clé « Sang » (0090) manque sans que le site de dev l’ait supprimé');
+  const ecrituresDuSang = new Set(['sang', ...(sang ? [normalize(sang.libelle)] : [])]);
   for (const [nom, vocabulaire] of [
     ['un vocabulaire d’essai', "INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES ('codex', 'codex', 'codex', NULL), ('sang', 'Sang', 'sang', 'La quatrième barre.');\n"],
     ['le vocabulaire de data/rows', null],
@@ -232,20 +233,29 @@ test('les renvois du Codex mènent tous à une page (les sommaires ne citent que
 // L'état courant de la base : plus aucun lien dans les pages du Codex, chaque renvoi est la balise d'un mot-clé à adresse ; l'import ne crée jamais de
 // mot-clé (règle de la 0056).
 test('les renvois du Codex : des balises de mots-clés qui mènent chacun à une page, jamais un [[lien]] ni un lien Markdown', () => {
-  const index = indexDesAdresses(db);
-  const motsCles = new Map(db.prepare('SELECT id, libelle, url FROM mot_cle').all().map((m) => [m.id, m]));
-  let renvois = 0;
-  for (const p of pagesDuCodex) {
-    assert.doesNotMatch(p.corps_md, /\[\[|\]\(\//, `${p.id} : un lien est resté`);
-    for (const [, id] of p.corps_md.matchAll(/\{\{([a-z0-9-]+)(?:\\?\|[^{}]*)?\}\}/g)) {
-      const m = motsCles.get(id);
-      assert.ok(m, `${p.id} : {{${id}}} n’est pas un mot-clé`);
-      if (!m.url) continue;   // un mot-clé du glossaire posé par le site de dev ou une migration (« chakra »)
-      assert.ok(pageDeLAdresse(index, m.url), `${p.id} : {{${id}}} (${m.url}) ne mène à aucune page`);
-      renvois += 1;
+  /** Les renvois des pages du Codex dans `base` (chacun vérifié) : leur nombre. */
+  const renvoisDe = (base) => {
+    const index = indexDesAdresses(base);
+    const motsCles = new Map(base.prepare('SELECT id, libelle, url FROM mot_cle').all().map((m) => [m.id, m]));
+    const corps = base.prepare('SELECT corps_md FROM page WHERE id = ?');
+    let renvois = 0;
+    for (const p of pagesDuCodex) {
+      const texte = corps.get(p.id)?.corps_md ?? '';
+      assert.doesNotMatch(texte, /\[\[|\]\(\//, `${p.id} : un lien est resté`);
+      for (const [, id] of texte.matchAll(/\{\{([a-z0-9-]+)(?:\\?\|[^{}]*)?\}\}/g)) {
+        const m = motsCles.get(id);
+        assert.ok(m, `${p.id} : {{${id}}} n’est pas un mot-clé`);
+        if (!m.url) continue;   // un mot-clé du glossaire posé par le site de dev ou une migration (« chakra »)
+        assert.ok(pageDeLAdresse(index, m.url), `${p.id} : {{${id}}} (${m.url}) ne mène à aucune page`);
+        renvois += 1;
+      }
     }
-  }
-  assert.ok(renvois >= 200, `${renvois} renvois`);
+    return renvois;
+  };
+  // sur l'état courant, chaque renvoi (le site de dev supprime des mots-clés à adresse : leurs balises deviennent du texte) ; leur nombre, à l'import
+  renvoisDe(db);
+  const aLImport = renvoisDe(baseDImport());
+  assert.ok(aLImport >= 200, `${aLImport} renvois à l’import`);
 });
 
 test('idempotence : une nouvelle écriture des pages du Codex sur la base actuelle n’en change aucune, et chaque renvoi a son mot-clé', (t) => {
@@ -324,5 +334,52 @@ test('registre de corrections : décrit, appliqué à l’export (qui reste tel 
     assert.equal(c.avant.replace(/\D/g, ''), c.apres.replace(/\D/g, ''), `${c.avant} : un chiffre changerait`);
     assert.ok(brut.includes(c.avant), `« ${c.avant} » : l’export garde le texte du document`);
     assert.ok(corps.includes(c.apres), `« ${c.apres} » : absent des pages`);
+  }
+});
+
+// Le contrôle par mutation (suppressions du site de dev, lot 3) : --verifier refaisait le découpage avec le vocabulaire courant. Un mot-clé que le site
+// a supprimé sans qu'il soit mentionné (R196), créé, ou dont il a changé l'adresse changeait les renvois attendus (« Balogne » : deux mots-clés pour la
+// page, texte simple ; un seul après la suppression, sa balise), et les pages écrites par l'import devenaient des écarts. Le vérificateur relit le
+// vocabulaire de l'état d'import (Vocabulaire(…, etat_d_import=True)) ; un vocabulaire d'import différent de celui des pages reste un écart.
+test('--verifier : les renvois attendus se refont avec le vocabulaire de l’état d’import (mot-clé non mentionné supprimé, créé ou déplacé par le site, R196)', (t) => {
+  const tmp = dossierTemporaire('codex-vocabulaire', { t });
+  const sql = (v) => (v === null ? 'NULL' : `'${String(v).replace(/'/g, "''")}'`);
+  const motsCles = (lignes) => `INSERT INTO mot_cle (id, libelle, libelle_cle, description, url) VALUES ${lignes.map((m) => `(${[m.id, m.libelle, m.libelle_cle, null, m.url].map(sql).join(', ')})`).join(', ')};\n`;
+  const mc = (id, libelle, url) => ({ id, libelle, libelle_cle: id, url });
+  const dImport = [mc('codex', 'codex', '/lore/codex/'), mc('mrode', 'Mrode', '/lore/mrode/'), mc('balogne', 'Balogne', '/lore/balogne/'), mc('balogne-bis', 'Balogne bis', '/lore/balogne/')];
+  const vocabulaire = join(tmp, 'mot_cle.sql');
+  const historique = join(tmp, 'historique.sql');
+  writeFileSync(vocabulaire, motsCles(dImport));
+  // les pages écrites par l'import (aucun historique)
+  const ecrites = codexPy('--out', tmp, '--vocabulaire', vocabulaire, '--historique', join(tmp, 'absent.sql'));
+  assert.equal(ecrites.status, 0, ecrites.stdout + ecrites.stderr);
+  assert.match(ecrites.stdout, /renvoi sans mot-clé, écrit en texte simple : « Balogne » \(2 mot\(s\)-clé\(s\)/);
+  const verifier = () => codexPy('--verifier', '--out', tmp, '--vocabulaire', vocabulaire, '--historique', historique);
+  const op = (rang, id, operation, avant, apres) => `INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres) VALUES `
+    + `('lot-${rang}', 1, '2026-11-07T10:0${rang}:00Z', 'essai', NULL, 'mot_cle', ${sql(JSON.stringify({ id }))}, '${operation}', ${sql(avant && JSON.stringify(avant))}, ${sql(apres && JSON.stringify(apres))});`;
+  const [, mrode, , bis] = dImport;
+  const cree = mc('mrode-bis', 'Mrode bis', '/lore/mrode/');
+  // le site supprime « Balogne bis » (aucune balise ne le cite), crée un second mot-clé vers « Mrode », puis déplace « Mrode » et le remet
+  const courant = [...dImport.filter((m) => m !== bis), cree];
+  const cas = [
+    ['supprimé', dImport.filter((m) => m !== bis), [op(1, bis.id, 'supprimer', { ...bis, description: null }, null)]],
+    ['créé', [...dImport, cree], [op(1, cree.id, 'inserer', null, { ...cree, description: null })]],
+    ['déplacé', dImport.map((m) => (m === mrode ? { ...m, url: '/lore/ailleurs/' } : m)), [op(1, mrode.id, 'modifier', { url: mrode.url }, { url: '/lore/ailleurs/' })]],
+    ['les trois', courant.map((m) => (m === mrode ? { ...m, url: '/lore/ailleurs/' } : m)), [
+      op(1, bis.id, 'supprimer', { ...bis, description: null }, null), op(2, cree.id, 'inserer', null, { ...cree, description: null }),
+      op(3, mrode.id, 'modifier', { url: mrode.url }, { url: '/lore/ailleurs/' }),
+    ]],
+  ];
+  for (const [nom, actuel, lignes] of cas) {
+    writeFileSync(vocabulaire, motsCles(actuel));
+    writeFileSync(historique, `${lignes.join('\n')}\n`);
+    const r = verifier();
+    assert.equal(r.status, 0, `${nom} : ${r.stdout}${r.stderr}`);
+    assert.match(r.stdout, /^116 pages du Codex conformes au document/m, nom);
+    // sans l'historique, le vocabulaire courant passe pour celui de l'import : les renvois attendus changent, un écart
+    writeFileSync(historique, '');
+    const sans = verifier();
+    assert.equal(sans.status, 1, `${nom} sans historique : ${sans.stdout}`);
+    assert.match(sans.stdout, /\(3\) page différente du découpage : lore\//, nom);
   }
 });

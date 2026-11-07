@@ -170,8 +170,10 @@ export const RESSOURCES = [
       'l’action qui fusionne les deux) ; l’abréviation ne s’écrit ni avec « { », « } », « | », ni avec un « : » final, ni comme le mot-clé lui-même ' +
       '(400), ni comme l’id, l’écriture ou l’abréviation d’un autre mot-clé (409, `mot_cle` : cet autre), et un mot-clé ne se crée ni ne se renomme ' +
       'vers l’abréviation d’un autre (409) ; la fusion (action « fusion », opération `fusionner_mots_cles`) verse ses pages dans l’autre mot-clé (une page ' +
-      'qui avait les deux perd seulement l’ancien) et y recible ses balises, puis le retire du vocabulaire ; un mot-clé créé n’a pas de page ; supprimé, ' +
-      'il est retiré de toutes les pages qui le portent et de tous les textes qui le citent (sa balise devient son texte simple) ; ceux dont le site se sert pour ranger ses pages (catégories de /classes/, « classe », « race », « race hybride », « capacité ' +
+      'qui avait les deux perd seulement l’ancien) et y recible ses balises, puis le retire du vocabulaire ; un mot-clé créé n’a pas de page ; il ne se ' +
+      'supprime que si rien ne le mentionne (décision R196) : une page qui le porte ou une balise qui le cite, pages d’exemple comprises, refusent la ' +
+      'suppression (409, `mentions` : la liste des endroits, page, ou table et ligne), aucun texte n’est réécrit ; les mots-clés que le rejeu des ' +
+      'migrations 0090 et 0098 vise ne se suppriment pas (409) ; ceux dont le site se sert pour ranger ses pages (catégories de /classes/, « classe », « race », « race hybride », « capacité ' +
       'de classe », « métier », « codex »), « Sort grenade » (décision R114) et « Sort fer » (décision R164), dont la fiche se sert, ne se renomment, ne se suppriment ni ne se ' +
       'créent seuls (409), leur définition se modifie ; un mot-clé qui étiquette un sort (sous-ressource `mots-cles` des sorts, migrations 0067 et 0079) ne ' +
       'se supprime ni ne se fusionne (409). Un lien (`url`, migration 0098 : les liens des textes devenus des balises) : une adresse interne, relative ' +

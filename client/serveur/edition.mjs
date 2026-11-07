@@ -78,8 +78,8 @@ import {
 import { empreinte } from '../src/lib/portrait.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import {
-  abreviationsPrises, ambiguiteDe, dansUneLigneDeTableau, fautesDeLAbreviation, formeCanonique, lireBalises, motsClesCites, reciblerLeMotCle, retirerLeMotCle,
-  texteSansBalises, vocabulaireDesMotsCles,
+  abreviationsPrises, ambiguiteDe, dansUneLigneDeTableau, fautesDeLAbreviation, formeCanonique, lireBalises, motCleDeLaRef, motsClesCites, reciblerLeMotCle,
+  retirerLeMotCle, texteSansBalises, vocabulaireDesMotsCles,
 } from '../src/lib/mots-cles-balises.mjs';
 import { motsClesDeLaBase, textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { fauteDeLUrl, lienGarde, motsClesDeLAdresse, REGISTRE_DES_LIENS } from '../src/lib/mots-cles-liens.mjs';
@@ -88,6 +88,8 @@ import { fauteDeLaCouleur } from '../src/lib/palette-css.mjs';
 import { baliseDuLien, convertirLesLiens, liensDuTexte, tableDeConversion } from '../src/lib/liens-en-mots-cles.mjs';
 import { buildIndex, resolve as resoudreLeLien } from '../src/lib/wikilinks-resolution.mjs';
 import { citationsBloquantes, citationsDesPages } from '../src/lib/citations-db.mjs';
+import { mentionsDesMotsCles, texteDesMentions } from '../src/lib/mentions-des-mots-cles.mjs';
+import { analyserEffetDArme, refusDesCransPropres } from '../src/lib/arme-champs.mjs';
 import { ErreurHttp, jsonOuNull } from './partage.mjs';
 import { ErreurJournal, ORDRE_DE_REJEU, cleDe, lireLigne, nouveauLot, ouvrirLot, rejouer, structure } from './edition-journal.mjs';
 import {
@@ -590,6 +592,7 @@ const METIER = {
     const { db, w } = ctx;
     const metier = lireLigne(db, 'metier', cle);
     if (!metier) throw new ErreurEdition(404, 'Métier introuvable.');
+    refuserSiUnMotCleYMene(db, metier.id, metier.nom);
     // les fiches qui l'ont le perdent, avec une note datée (R42) : avant sa suppression (clés étrangères contrôlées, son nom encore lisible)
     retirerDesFiches(db, { metiers: [metier.id] }, ctx.retraits);
     for (const t of ['metier_bonus', 'metier_objet_depart', 'metier_recette_famille']) synchroniser(ctx, t, { metier_id: metier.id }, []);
@@ -1454,6 +1457,7 @@ const SPECIALITE = {
     const classe = lireLigne(db, 'classe', { id: s.classe_id });
     const siens = db.prepare('SELECT * FROM capacite WHERE specialite_id = ? ORDER BY ligne, rang').all(s.id);
     if (!siens.some((d) => d.nature === 'specialite')) throw specialitesFigees(classe);
+    refuserSiLesFichesSontCitees(db, siens, s.nom); // la fiche de l'un de ses dons encore citée
     retirerDesFiches(db, { specialites: [s.id], capacites: siens.map((d) => d.id) }, ctx.retraits); // avant leur suppression (clés étrangères contrôlées)
     for (const d of siens) retirerDon(ctx, d);
     for (const l of db.prepare("SELECT * FROM page_entite WHERE entite_table = 'specialite' AND entite_id = ?").all(s.id)) w.supprimer('page_entite', cleDe(db, 'page_entite', l));
@@ -1463,6 +1467,38 @@ const SPECIALITE = {
     return { id: s.id, resume: `Spécialité supprimée : ${s.nom} (${classe.nom}, ${siens.length} don(s))` };
   },
 };
+
+/**
+ * Refus (409) de supprimer des dons dont la fiche (/capacites/…) est encore citée (choix du chef technique, lot « Tests et suppressions ») : le
+ * mot-clé dont l'adresse y mène (db:check refuserait son lien), une balise de ce mot-clé, un lien écrit. Même refus et même message
+ * que pour une page des Règles (serveur/edition-plan.mjs) : on retire d'abord ces liens. Ne bloquent pas : une page d'exemple, une colonne dérivée
+ * (refaite par le service), un don supprimé avec eux (les dons d'une spécialité).
+ */
+function refuserSiLesFichesSontCitees(db, dons, nom) {
+  const ids = new Set(dons.map((d) => d.id));
+  const parPage = citationsDesPages(db, [...ids]);
+  const citations = [...ids].flatMap((id) => citationsBloquantes(parPage.get(id) ?? []))
+    .filter((c) => !colonneDerivee(c.table, c.cle, c.colonne) && !((c.table === 'capacite' || c.table === 'page') && ids.has(c.cle.id)));
+  if (!citations.length) return;
+  const noms = [...new Set(citations.map((c) => c.libelle))];
+  throw new ErreurEdition(409, `« ${nom} » est cité par ${noms.length > 1 ? `${noms.length} textes` : 'un texte'} (${noms.slice(0, 5).join(', ')}${noms.length > 5 ? '…' : ''}) : retirez d’abord ces liens.`,
+    { page: [...ids][0], citations });
+}
+
+/**
+ * Refus (409) de supprimer la page `pageId` (un métier : son ancre `/metiers/#metier-<id>`) tant qu'elle est l'adresse d'un mot-clé (`mot_cle.url`,
+ * migration 0098) : le lien du mot-clé et de ses balises mènerait à une ligne absente (db:check, test metiers-html). Comme pour les dons
+ * (refuserSiLesFichesSontCitees, choix du chef technique, lot « Tests et suppressions ») : on change ou on vide d'abord le lien du mot-clé. Le message
+ * nomme chaque mot-clé ; `details.citations` : les citations de lib/citations-db.mjs (`comment: 'mot-cle'`).
+ */
+function refuserSiUnMotCleYMene(db, pageId, nom) {
+  const citations = (citationsDesPages(db, [pageId]).get(pageId) ?? []).filter((c) => c.table === 'mot_cle' && c.comment === 'mot-cle');
+  if (!citations.length) return;
+  const motsCles = citations.map((c) => lireLigne(db, 'mot_cle', { id: c.cle.id })).filter(Boolean);
+  const noms = motsCles.map((m) => `« ${m.libelle} » (${m.url})`);
+  throw new ErreurEdition(409, `« ${nom} » est l’adresse ${noms.length > 1 ? `des mots-clés ${noms.join(', ')}` : `du mot-clé ${noms[0]}`} : changez ou videz d’abord ${noms.length > 1 ? 'leur lien' : 'son lien'} sur la page Glossaire.`,
+    { page: pageId, citations, mots_cles: motsCles.map((m) => m.id) });
+}
 
 const CAPACITE = {
   colonnes(_ctx, ligne) {
@@ -1556,6 +1592,7 @@ const CAPACITE = {
       throw new ErreurEdition(409, `« ${don.nom} » est le don de la spécialité ${s?.nom ?? don.specialite_id} : supprimez la spécialité (elle emporte ses dons).`);
     }
     if (estMiroir(db, don)) throw new ErreurEdition(409, `« ${don.nom} » est aussi une spécialité de la classe ${classe.nom} pour la fiche de personnage : il ne se supprime pas d’ici.`);
+    refuserSiLesFichesSontCitees(db, [don], don.nom);
     retirerDesFiches(db, { capacites: [don.id] }, ctx.retraits); // avant sa suppression (clés étrangères contrôlées, son nom encore lisible)
     const freres = groupeDe(don, db.prepare('SELECT * FROM capacite WHERE classe_id = ?').all(classe.id)).filter((d) => d.id !== don.id);
     retirerDon(ctx, don);
@@ -1638,10 +1675,28 @@ const ANNONCE = {
   },
 };
 
+/**
+ * Décision R196 (3), garde technique : les mots-clés que le rejeu des migrations vise (la cible d'une fusion, FUSIONS_DE_MIGRATION ; ceux du registre de
+ * la 0098, où l'adaptateur convertit un lien d'un lot ancien : ancienneEcritureDesLiens) ne se suppriment pas, comme ceux dont le code se sert — sinon un
+ * lot ancien rejoué écrirait une balise vers un mot-clé absent. Lus une fois.
+ */
+let motsClesDuRejeu;
+function motsClesDesAdaptateurs() {
+  if (motsClesDuRejeu) return motsClesDuRejeu;
+  const ids = new Set(FUSIONS_DE_MIGRATION.map((f) => f.cible));
+  const table = tableDesLiensDeLa0098();
+  if (table) {
+    for (const m of [...table.parCle.values(), ...table.parAdresse.values()]) ids.add(m.id);
+    for (const remplacements of table.textes.values()) for (const r of remplacements) for (const b of lireBalises(r.balise)) ids.add(b.ref);
+  }
+  motsClesDuRejeu = ids;
+  return ids;
+}
+
 /** La chronologie (événements, descriptions, catégories) et les mots-clés : leurs domaines et leurs opérations du lot (`categories`, `fusionner_mots_cles`). */
 const CHRONOLOGIE = domainesDeLaChronologie({
   refus, ErreurEdition, provenance, idDejaEmploye, rangLibre, creerMotCle, refuserLAbreviation, refuserLeLien, refuserLaCouleur, reecrireLesBalises,
-  vocabulaireVivant, tableExiste,
+  vocabulaireVivant, tableExiste, motsClesDesAdaptateurs,
 });
 
 /** La page des armes (armes, matériaux, améliorations d'arme) et celle des armures et boucliers (serveur/edition-armes.mjs, edition-armures.mjs). */
@@ -1998,7 +2053,8 @@ export function adaptateurDuJournal(db) {
   const couts = ancienneEcritureDuCout();
   const figees = ecrituresFigees(db);
   const ancres = ecrituresQuiRompentLesAncres(db);
-  return (m) => ancres(figees(couts(armures(resistances(capacites(glossaire(liens(fusions(motsCles(m))))))))));
+  const sansCran = armesSansCranPropre(db);
+  return (m) => sansCran(ancres(figees(couts(armures(resistances(capacites(glossaire(liens(fusions(motsCles(m)))))))))));
 }
 
 /** La table de conversion des liens de la migration 0098 (undefined : pas encore lue ; null : registre absent). */
@@ -2105,6 +2161,28 @@ export function ecrituresQuiRompentLesAncres(db) {
 }
 
 /**
+ * Décision R194 au rejeu (adaptateur de edition-journal.mjs#rejouer, comme ecrituresFigees) : un lot qui donnerait à une arme moins de 1 cran propre
+ * (son effet, ou ses colonnes `solidite_fixee` et `solidite_delta`, sur la ligne telle que les règles l'ont) est une forme sans équivalent (`conflit`,
+ * avec la raison de lib/arme-champs.mjs#refusDesCransPropres) : son lot entier est en conflit (service, mise à jour, db:appliquer-edition), le choix 2
+ * seul à la résolution. Le service le refuse depuis (serveur/edition-armes.mjs) ; une arme sans effet (de monstre) garde la base, toujours admise.
+ */
+export function armesSansCranPropre(db) {
+  const base = tableExiste(db, 'constante_equipement') ? db.prepare("SELECT valeur FROM constante_equipement WHERE id = 'arme.solidite_base'").get()?.valeur : undefined;
+  return (m) => {
+    if (m.table_nom !== 'arme' || !['modifier', 'inserer'].includes(m.operation) || m.conflit || m.sansEffet || base === undefined || base === null) return m;
+    const apres = jsonOuNull(m.apres) ?? {};
+    if (!['effet', 'solidite_fixee', 'solidite_delta'].some((c) => c in apres)) return m;
+    const arme = { ...(m.operation === 'modifier' ? lireLigne(db, 'arme', JSON.parse(m.cle)) ?? {} : {}), ...apres };
+    if ('effet' in apres) {
+      const e = analyserEffetDArme(apres.effet);
+      Object.assign(arme, { solidite_fixee: e.solidite_fixee, solidite_delta: e.solidite_delta });
+    }
+    const raison = refusDesCransPropres(arme, base);
+    return raison ? { ...m, conflit: raison } : m;
+  };
+}
+
+/**
  * Les colonnes que le site de dev a modifiées un temps, puis qu'un choix du propriétaire a figées (sorties de TABLES, lib/edition-modele.mjs) : table →
  * { colonne → la raison dite au rejeu }. Le service les refuse depuis ; un lot noté avant passe par ecrituresFigees.
  */
@@ -2199,8 +2277,8 @@ export function ancienneEcritureDesFusions(db) {
  * Ce dont la résolution d'un lot en conflit (serveur/edition-conflits.mjs, /mise-a-jour/) a besoin du service d'édition, sans en ouvrir le reste :
  * `modifier(ctx, op)` (l'opération « modifier » d'un lot : valeurDuChamp, forme canonique des balises, Markdown sûr, colonnes X_cle et du domaine,
  * dérivations, notées par ctx.w ; sans exiger ce que le lot porte dans ses lignes : la magie d'un don « Variable »), `deriver(ctx, table, avant, apres)` (les dérivations du domaine d'une table : lignes de détail, corps de page),
- * `completerLesMetiers`, `balisesRetireesParLeLot`, `balisesDesColonnesDerivees` (comme rejouerLeJournal) et `refuseeParLaBase` (une contrainte de la
- * base : 422).
+ * `completerLesMetiers`, `balisesRetireesParLeLot`, `balisesDesColonnesDerivees` (comme rejouerLeJournal), `refuseeParLaBase` (une contrainte de la
+ * base : 422), `liensRompusParLeLot` et `motsClesEncoreMentionnes` (décision R196 : la suppression d'un mot-clé encore mentionné, choix 2 seul).
  */
 export const OUTILS_DE_RESOLUTION = Object.freeze({
   // la résolution refait les choix du lot, qui porte ses propres lignes (la magie d'un don « Variable » : suivreLaMagieDuDon) : rien n'est exigé
@@ -2213,6 +2291,7 @@ export const OUTILS_DE_RESOLUTION = Object.freeze({
   refuseeParLaBase: (e) => refuseeParLaBase(e),
   retirerLesReglesDuDon: (db, w, id) => retirerLesReglesDuDon(db, w, id),
   liensRompusParLeLot: (db, lot, options) => liensRompusParLeLot(db, lot, options),
+  motsClesEncoreMentionnes: (db, lot) => motsClesEncoreMentionnes(db, lot),
 });
 
 /**
@@ -2240,6 +2319,11 @@ export function rejouerLeJournal(db, sortie = {}, { horsControleParLot = [] } = 
     // sources de maîtrise d'arme des classes et des dons que le lot touche, refaites par le lecteur (un lot noté avant la migration 0076 ne les écrit pas :
     // serveur/edition-maitrises.mjs#sourcesRefaitesParLeLot)
     // et une page des Règles que le lot supprime alors qu'un texte qui reste la cite le met en conflit (liensRompusParLeLot)
+    // décision R196 : une suppression ancienne d'un mot-clé encore mentionné (ce que le lot ne retire pas lui-même) met son lot en conflit
+    avantLeLot: (lot) => {
+      const mentionnes = motsClesEncoreMentionnes(db, lot);
+      if (mentionnes.length) throw new Error(mentionnes.map((r) => r.raison).join(' ; '));
+    },
     apresLeLot: (lot, issues = []) => {
       const ecrites = [...balisesRetireesParLeLot(db, lot), ...sourcesRefaitesParLeLot(db, lot)];
       // seules les suppressions que le lot fait (« applique ») : une page que les règles n'ont déjà plus (retirée par une migration) n'est pas de son fait
@@ -2279,7 +2363,71 @@ const reecrireLeTexte = (db, table, colonne, cle, ligne, texte) => db.prepare(`U
   .run(texte, ...cle.map((c) => ligne[c]));
 
 /**
- * Les pages des Règles (page `guide/…`) qu'un lot vient de supprimer (`lot` : ses modifications, telles que le journal les note : table_nom, rang,
+ * Décision R196 au rejeu (crochet `avantLeLot` de rejouerLeJournal, sur la base telle que le lot la trouve) : les mots-clés que le lot supprime et
+ * qu'un endroit mentionne encore (lib/mentions-des-mots-cles.mjs ; hors des pages d'exemple, choix technique : voir plus bas), hors de ce que le lot retire ou réécrit lui-même (ses
+ * suppressions de page_tag, la dernière valeur qu'il écrit dans un texte) et des colonnes dérivées (refaites depuis leurs tables) :
+ * [{ id, mentions, raison }]. Le service refuse une telle suppression depuis R196 ; un lot noté avant (la cascade réécrivait les textes que le site
+ * modifie, pas les autres ni les pages d'exemple) passe en conflit, et à la résolution sa suppression n'a que le choix 2 (serveur/edition-conflits.mjs#examiner,
+ * par OUTILS_DE_RESOLUTION). `lot` : ses modifications, décodées ou telles que le journal les note (table_nom, cle et apres en JSON).
+ */
+export function motsClesEncoreMentionnes(db, lot) {
+  const lu = (v) => (typeof v === 'string' ? jsonOuNull(v) : v);
+  const tableDe = (m) => m.table_nom ?? m.table;
+  const supprimes = [];
+  for (const m of lot) {
+    if (tableDe(m) !== 'mot_cle' || m.operation !== 'supprimer' || m.sansEffet || m.conflit) continue;
+    const id = lu(m.cle)?.id;
+    if (typeof id === 'string' && lireLigne(db, 'mot_cle', { id })) supprimes.push(id);
+  }
+  if (!supprimes.length) return [];
+  // une fusion (le mot-clé supprimé, ses mentions reportées sur la cible : cibleReportee) n'est pas visée ; elle se reconnaît aussi au lot entier, tel
+  // que le journal le note : le rejeu et l'examen ne passent que ses modifications en attente (ou en conflit), et un report peut être déjà intégré (une
+  // étiquette reportée sur un mot-clé que la migration 0056 n'a pas gardé : sans effet, « intégrée »)
+  const lots = [...new Set(lot.map((m) => m.lot_id).filter((x) => typeof x === 'string'))];
+  const entier = lots.length && tableExiste(db, 'modification')
+    ? db.prepare(`SELECT lot_id, rang, table_nom, cle, operation, avant, apres FROM modification WHERE lot_id IN (${lots.map(() => '?').join(', ')}) ORDER BY lot_id, rang`).all(...lots)
+    : [];
+  const ids = supprimes.filter((id) => !cibleReportee(lot, id) && !cibleReportee(entier, id));
+  if (!ids.length) return [];
+  const ligneDe = (table, cle) => `${table}\u0000${JSON.stringify(cle)}`;
+  const supprimees = new Set(lot.filter((m) => m.operation === 'supprimer').map((m) => ligneDe(tableDe(m), lu(m.cle))));
+  const ecrits = new Map(); // ligne + colonne → la dernière valeur que le lot y écrit
+  for (const m of lot) {
+    if (m.operation !== 'modifier' && m.operation !== 'inserer') continue;
+    for (const [c, v] of Object.entries(lu(m.apres) ?? {})) ecrits.set(`${ligneDe(tableDe(m), lu(m.cle))}\u0000${c}`, v);
+  }
+  const vocabulaire = vocabulaireDesMotsCles(motsClesDeLaBase(db));
+  const parId = mentionsDesMotsCles(db, ids);
+  return ids.flatMap((id) => {
+    const restent = parId.get(id).filter((x) => {
+      // une page d'exemple n'arrête pas le rejeu : absente du site de dev construit sans elles (HIDE_EXAMPLES=1), elle n'y bloquait pas la suppression ;
+      // ses étiquettes partent par la cascade de mot_cle, ses balises par balisesRetireesParLeLot et balisesDesColonnesDerivees
+      if (x.exemple) return false;
+      if (x.table !== 'page_tag' && colonneDerivee(x.table, x.cle, x.colonne)) return false;
+      const ligne = ligneDe(x.table, x.cle);
+      if (supprimees.has(ligne)) return false;
+      const k = `${ligne}\u0000${x.colonne}`;
+      if (!ecrits.has(k)) return true;
+      const v = ecrits.get(k);
+      return x.table === 'page_tag' ? v === id : typeof v === 'string' && lireBalises(v).some((b) => motCleDeLaRef(vocabulaire, b.ref)?.id === id);
+    });
+    return restent.length ? [{ id, mentions: restent, raison: `le mot-clé « ${id} » est encore mentionné à ${texteDesMentions(restent)} (décision R196)` }] : [];
+  });
+}
+
+/**
+ * Les pages dont la suppression, rejouée alors qu'on les cite encore, met le lot en conflit (liensRompusParLeLot), comme le service la refuse : une page
+ * des Règles, par toute citation (serveur/edition-plan.mjs) ; la fiche d'un don (avec lui, ou avec sa spécialité), par toute citation
+ * (refuserSiLesFichesSontCitees) ; un métier, par un mot-clé dont l'adresse mène à son ancre (refuserSiUnMotCleYMene).
+ */
+const PAGES_GARDEES_AU_REJEU = Object.freeze({
+  guide: { quoi: 'la page des Règles', supprime: 'supprimée', la: 'la page', bloque: () => true },
+  capacites: { quoi: 'la fiche du don', supprime: 'supprimée', la: 'le don', bloque: () => true },
+  metiers: { quoi: 'le métier', supprime: 'supprimé', la: 'le métier', bloque: (c) => c.table === 'mot_cle' && c.comment === 'mot-cle' },
+});
+
+/**
+ * Les pages des Règles (page `guide/…`), les fiches de dons et les métiers (PAGES_GARDEES_AU_REJEU) qu'un lot vient de supprimer (`lot` : ses modifications, telles que le journal les note : table_nom, rang,
  * avant) et qu'un texte de la base cite encore : [{ rang (la suppression de la page), rangs (elle et les suppressions du lot qui citent la page par
  * page_id : entrée de menu, alias, étiquettes, sources), page, citations, raison }]. Le service refuse cette suppression tant qu'une page la cite
  * (serveur/edition-plan.mjs) ; au rejeu, le lot qui retirait la citation peut être en conflit (les règles ont changé son texte), ou les règles livrées
@@ -2298,7 +2446,7 @@ export function liensRompusParLeLot(db, lot, { faites = lot } = {}) {
   for (const m of faites) {
     if ((m.table_nom ?? m.table) !== 'page' || m.operation !== 'supprimer') continue;
     const avant = avantDe(m);
-    if (typeof avant?.id !== 'string' || avant.type !== 'guide' || lireLigne(db, 'page', { id: avant.id })) continue;
+    if (typeof avant?.id !== 'string' || !(avant.type in PAGES_GARDEES_AU_REJEU) || lireLigne(db, 'page', { id: avant.id })) continue;
     supprimees.push({ m, avant });
   }
   if (!supprimees.length) return [];
@@ -2312,13 +2460,16 @@ export function liensRompusParLeLot(db, lot, { faites = lot } = {}) {
   const parPage = citationsDesPages(db, absentes.map((p) => p.id), { absentes });
   const rompus = [];
   for (const { m, avant } of supprimees) {
-    const citations = citationsBloquantes(parPage.get(avant.id)).filter((c) => !colonneDerivee(c.table, c.cle, c.colonne));
+    const garde = PAGES_GARDEES_AU_REJEU[avant.type];
+    const citations = citationsBloquantes(parPage.get(avant.id)).filter((c) => !colonneDerivee(c.table, c.cle, c.colonne) && garde.bloque(c));
     if (!citations.length) continue;
     const noms = [...new Set(citations.map((c) => c.libelle))];
-    const raison = `la page des Règles « ${avant.titre} » est supprimée alors que ${noms.slice(0, 5).map((n) => `« ${n} »`).join(', ')}${noms.length > 5 ? '…' : ''}`
-      + ` la ${noms.length > 1 ? 'citent' : 'cite'} encore : son lien serait cassé. Retirez d'abord ce lien (le lot qui le retirait est peut-être en conflit), ou gardez la page`;
-    // la suppression de la page et celles de ce qui la décrit dans le même lot (entrée de menu, alias, étiquettes, sources, entités : supprimerPage)
-    const rangs = lot.filter((x) => x === m || (x.operation === 'supprimer' && avantDe(x)?.page_id === avant.id)).map((x) => x.rang);
+    const raison = `${garde.quoi} « ${avant.titre} » est ${garde.supprime} alors que ${noms.slice(0, 5).map((n) => `« ${n} »`).join(', ')}${noms.length > 5 ? '…' : ''}`
+      + ` la ${noms.length > 1 ? 'citent' : 'cite'} encore : son lien serait cassé. Retirez d'abord ce lien (le lot qui le retirait est peut-être en conflit), ou gardez ${garde.la}`;
+    // la suppression de la page et celles de ce qui la décrit dans le même lot (entrée de menu, alias, étiquettes, sources, entités : supprimerPage), et
+    // pour un don ou un métier, sa ligne et celles qui la composent (même id, capacite_id, metier_id, entite_id)
+    const decrit = (a) => a?.page_id === avant.id || (avant.type !== 'guide' && [a?.id, a?.capacite_id, a?.metier_id, a?.entite_id].includes(avant.id));
+    const rangs = lot.filter((x) => x === m || (x.operation === 'supprimer' && decrit(avantDe(x)))).map((x) => x.rang);
     rompus.push({ rang: m.rang, rangs, page: avant.id, citations, raison });
   }
   return rompus;

@@ -284,10 +284,30 @@ export const porteeDeLArme = (arme) =>
   arme.portee_min === null || arme.portee_min === undefined ? '1' : arme.portee_min === arme.portee_max ? String(arme.portee_min) : `${arme.portee_min}-${arme.portee_max}`;
 
 /**
- * Solidité de l'arme nue, en crans : « 1 seul cran » de son effet, sinon la base de l'onglet (2) corrigée de « ±N cran » (vue v_arme) ; jamais moins de
- * 1 (décision R51).
+ * Les crans propres d'une arme (décision R194), bruts, sans plancher : « 1 seul cran » de son effet (`solidite_fixee`), sinon la base de l'onglet
+ * (`constante_equipement` « arme.solidite_base », 2) corrigée de « ±N cran » (`solidite_delta`).
  */
-export const durabiliteDeLArme = (arme, base) => Math.max(1, arme.solidite_fixee ?? base + (arme.solidite_delta ?? 0));
+export const cransPropresDeLArme = (arme, base) => arme.solidite_fixee ?? base + (arme.solidite_delta ?? 0);
+
+/** Le minimum des crans propres d'une arme (décision R194 (1) : « Aucun type d'arme ne peut être 0 »). */
+export const CRANS_PROPRES_MIN = 1;
+
+/**
+ * Le refus de R194 pour une arme (une ligne avec `nom`, `solidite_fixee`, `solidite_delta`, tirées de son effet), ou null : une arme a toujours au moins 1 cran
+ * propre ; une modification de son effet qui la mettrait sous 1 est refusée (service d'édition, API v1) ou mise en conflit (rejeu du journal).
+ */
+export function refusDesCransPropres(arme, base) {
+  const crans = cransPropresDeLArme(arme, base);
+  if (crans >= CRANS_PROPRES_MIN) return null;
+  return `« ${arme.nom} » : son effet lui donnerait ${crans} cran${Math.abs(crans) > 1 ? 's' : ''} de solidité ; une arme a toujours au moins ${CRANS_PROPRES_MIN} cran propre (décision R194).`;
+}
+
+/**
+ * Solidité de l'arme nue, en crans (cransPropresDeLArme) ; ramenée à 1 au moins par sécurité seulement : d'après R194, une arme a toujours au moins 1
+ * cran propre (le service refuse un effet qui l'en priverait), ce plancher ne joue donc pas. Le plancher de R51 (« jamais moins de 1 ») est celui du
+ * total, arme + matériau + amélioration (lib/arme-forge.mjs#forgerArme).
+ */
+export const durabiliteDeLArme = (arme, base) => Math.max(1, cransPropresDeLArme(arme, base));
 
 // ---------------------------------------------------------------------------------------------------------------------------------- matériaux, améliorations
 

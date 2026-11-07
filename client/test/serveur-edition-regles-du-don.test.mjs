@@ -23,7 +23,7 @@ import { examinerLeLot, resoudreLeConflit } from '../serveur/edition-conflits.mj
 import { chargerJournal, journalExporte } from '../serveur/edition-journal.mjs';
 import { TABLES_DES_SOURCES } from '../serveur/edition-maitrises.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
-import { baseDImport } from './aide-base-d-import.mjs';
+import { baseDImport, remettreDepuisLImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { copieSansNoteEnAttente, ROWS, versionALaRevision } from './aide-mise-a-jour.mjs';
 
@@ -49,14 +49,11 @@ const DONS = (() => {
 function remettreLesDonsDImport(db) {
   const dImport = baseDImport();
   let n = 0;
+  // la ligne, et ce qu'elle cite (la page du don, sa spécialité…) si le site de dev l'a supprimé avec elle (test/aide-base-d-import.mjs)
   const remettre = (table, cle) => {
-    const ou = Object.keys(cle).map((k) => `"${k}" = ?`).join(' AND ');
-    if (db.prepare(`SELECT 1 FROM "${table}" WHERE ${ou}`).get(...Object.values(cle))) return false;
-    const colonnes = new Set(db.prepare(`PRAGMA table_info("${table}")`).all().map((c) => c.name));
-    const valeurs = Object.entries(dImport.prepare(`SELECT * FROM "${table}" WHERE ${ou}`).get(...Object.values(cle))).filter(([c]) => colonnes.has(c));
-    db.prepare(`INSERT INTO "${table}" (${valeurs.map(([c]) => `"${c}"`).join(', ')}) VALUES (${valeurs.map(() => '?').join(', ')})`).run(...valeurs.map(([, v]) => v));
-    n += 1;
-    return true;
+    const remises = remettreDepuisLImport(db, table, cle, { enfants: false, dImport });
+    n += remises;
+    return remises > 0;
   };
   db.exec('PRAGMA foreign_keys = ON');
   for (const [table, id] of Object.entries(DONS)) {

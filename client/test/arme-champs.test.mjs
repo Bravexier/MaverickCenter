@@ -19,7 +19,8 @@ const types = new Map(db.prepare('SELECT * FROM arme_type').all().map((t) => [t.
 const armes = db.prepare('SELECT * FROM arme WHERE effet IS NOT NULL ORDER BY id').all();
 
 test('chaque arme (hors armes de monstres, sans effet) : ses colonnes typées se refont depuis ses cellules', () => {
-  assert.ok(armes.length > 100);
+  // plus de cent à l'import ; sur l'état courant, toutes celles de la base (le site de dev en supprime)
+  assert.ok(baseDImport().prepare('SELECT count(*) AS n FROM arme WHERE effet IS NOT NULL').get().n > 100, 'à l’import');
   for (const a of armes) {
     const colonnes = colonnesDeLArme(a, types.get(a.type_id), caracteristiques, a);
     for (const [c, v] of Object.entries(colonnes)) assert.equal(v, a[c] ?? null, `${a.id} › ${c}`);

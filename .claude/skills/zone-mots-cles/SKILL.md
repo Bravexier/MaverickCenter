@@ -1,7 +1,7 @@
 ---
 name: zone-mots-cles
 description: "Glossaire mot_cle (dont l'abréviation) et balises {{ref}} (rendu par le middleware, lien et couleur d'un mot-clé, forme canonique, db:check), importeurs, MOTS_CLES_PROTEGES et refus du service, lots d'avant 0043 et 0056. À charger avant de lire, modifier ou relire ce code ou un texte qui cite un mot-clé."
-paths: ["client/src/lib/mots-cles.mjs", "client/src/lib/mots-cles-{balises,db}.mjs", "client/src/middleware.mjs", "client/src/styles/global/mots-cles.css", "client/src/scripts/edition/mots-cles-vivants.mjs", "tools/db/homonymes.py", "client/test/mots-cles-{balises,abreviation,python,vivants,vivants-liens,liens-rendu}.test.mjs", "client/test/aide-mots-cles.mjs", "client/test/{texte-en-place-mots-cles,importeurs-etiquettes,db-lexique-en-mots-cles}.test.mjs", "data/migrations/{0043,0056,0058,0090}-*"]
+paths: ["client/src/lib/mots-cles.mjs", "client/src/lib/mots-cles-{balises,db}.mjs", "client/src/lib/mentions-des-mots-cles.mjs", "client/src/middleware.mjs", "client/src/styles/global/mots-cles.css", "client/src/scripts/edition/mots-cles-vivants.mjs", "tools/db/homonymes.py", "client/test/mots-cles-{balises,abreviation,python,vivants,vivants-liens,liens-rendu}.test.mjs", "client/test/mentions-des-mots-cles.test.mjs", "client/test/aide-mots-cles.mjs", "client/test/{texte-en-place-mots-cles,importeurs-etiquettes,db-lexique-en-mots-cles}.test.mjs", "data/migrations/{0043,0056,0058,0090}-*"]
 user-invocable: false
 ---
 # Mots-clés (glossaire)
@@ -58,6 +58,7 @@ user-invocable: false
 ## Vocabulaire : ce que le service refuse
 - `MOTS_CLES_PROTEGES` : ceux dont le site se sert pour ranger ses pages (catégories de `/classes/`, « classe », « race », « race hybride », « capacité de classe », « métier », « codex »), « Sort grenade » (R114) et « Sort fer » (R164), que la fiche lit. Ils ne se suppriment ni ne changent de clé (`409` avec la raison) ; définition, abréviation, adresse et couleur se modifient.
 - Un mot-clé qui étiquette un sort ne se supprime ni ne se fusionne (`409` qui nomme les sorts : `edition-chronologie.mjs#verifierSansSort`, `serveur-edition-chronologie.test.mjs`, R114, R164).
+- Un mot-clé ne se supprime que si rien ne le mentionne (R196 ; `lib/mentions-des-mots-cles.mjs#mentionsDe`, `mentionsDesMotsCles`) : 409 avec `mentions` (page, ou table et ligne). Est une mention l'étiquette d'une page (`page_tag`) et une balise qui le cite par son id, son libellé ou son abréviation dans un texte de la base (`textesDeLaBase`), pages d'exemple comprises. Ne le sont pas : le code qui s'en sert (refus de `MOTS_CLES_PROTEGES`, ci-dessus, condition nécessaire en plus), sa propre définition, son adresse, sa couleur, ni un prix « 100 RO », qui écrit l'abréviation sans balise. La fusion reporte les mentions sur la cible. Test : `mentions-des-mots-cles`.
 - Un renommage vers une écriture déjà prise est une fusion explicite (`fusionner_mots_cles`).
 - L'abréviation : `serveur/edition.mjs#refuserLAbreviation` (création, renommage, abréviation changée) applique la règle de `db:check` : 400 si elle est mal écrite, 409 si un autre mot-clé la prend (`mot_cle` le nomme) ; le détail porte `champ: 'abreviation'`. Lecture : `mots-cles-db.mjs#motsClesDeLaBase`. Adresse et couleur : skill `zone-mots-cles-liens`.
 

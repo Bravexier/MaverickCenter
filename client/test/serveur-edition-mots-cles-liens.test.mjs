@@ -16,20 +16,22 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
-import { cheminBase } from '../src/lib/donnees.mjs';
 import { CHAMPS_DE_TEXTE, ENTITES, TABLES, valeurDuChamp } from '../src/lib/edition-modele.mjs';
 import { classeDuMotCle, PREFIXE_DE_CLASSE } from '../src/lib/mots-cles-liens.mjs';
 import { cssDesMotsCles } from '../src/lib/palette-css.mjs';
 import { raisonDeProtection } from '../src/lib/mots-cles.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { cheminDImport } from './aide-base-d-import.mjs';
 
 const racine = dossierTemporaire('edition-mots-cles-liens');
 let compteur = 0;
 
 /** Une base vivante neuve (règles avec les pages d'exemple) et le service qui l'écrit. */
 function nouvelle() {
-  const db = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, `b${(compteur += 1)}`) }).chemin);
+  // les règles de l'import (test/aide-base-d-import.mjs) : les mots-clés à adresse que les essais citent (« drakos »…) ne sont pas protégés, le site
+  // de dev peut les supprimer
+  const db = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminDImport(), dossier: join(racine, `b${(compteur += 1)}`) }).chemin);
   const service = { base: () => db, etat: () => ({}), edition: true };
   const appel = (methode, chemin, corps) => traiter({ methode, chemin, entetes: { 'content-type': 'application/json' }, corps: corps && JSON.stringify(corps) }, service);
   const lot = (operations, page = 'recherche/') => appel('POST', '/api/edition/', { page, operations });

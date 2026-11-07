@@ -77,7 +77,9 @@ test('migration 0099 : un sort de tableau sans titre ou inconnu est refusé ; re
   assert.equal(resolutionParLeNom(base).has(invocation), false, 'l’ancienne résolution par le nom perdait le lien');
 });
 
-test('R51, migration 0099 : la solidité de v_arme ne descend jamais sous 1, valeur fixée comme valeur corrigée, comme le moteur', (t) => {
+// R194 : une arme a toujours au moins 1 cran propre (le service refuse un effet qui l'en priverait) : ce plancher de la vue et du moteur n'est qu'une
+// sécurité, essayée ici sur des lignes mises sous 1 à la main dans une copie
+test('R51, R194, migration 0099 : la solidité de v_arme ne descend jamais sous 1 (plancher de sécurité), valeur fixée comme valeur corrigée, comme le moteur', (t) => {
   const base = copie(t);
   const solidite = base.prepare("SELECT valeur FROM constante_equipement WHERE id = 'arme.solidite_base'").get().valeur;
   const [corrigee, fixee, haute] = base.prepare('SELECT id FROM arme WHERE solidite_fixee IS NULL ORDER BY id LIMIT 3').all().map((r) => r.id);

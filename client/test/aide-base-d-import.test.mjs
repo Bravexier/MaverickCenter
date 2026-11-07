@@ -9,7 +9,7 @@ import { test } from 'node:test';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
-import { baseDImport, cheminDImport, defaireLeSite, lotsAvant, reglesDImport, texteDImport } from './aide-base-d-import.mjs';
+import { baseDImport, cheminDImport, defaireLeSite, lotsAvant, reglesDImport, remettreDepuisLImport, texteDImport } from './aide-base-d-import.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 
 /** Une copie de la base construite, ramenée à son état d'import (historique vide), ouverte en écriture. */
@@ -113,4 +113,30 @@ test('base d’import de la base construite : historique vide, rien d’écarté
   assert.notEqual(apres, imp);
   for (const { lot_id: lot } of apres.prepare('SELECT DISTINCT lot_id FROM historique_modification').all()) assert.ok(garder.has(lot), lot);
   assert.ok(chargerReglesDeFiche(apres).classes.length > 0);
+});
+
+test('remettreDepuisLImport : une ligne supprimée revient telle qu’à l’import, avec ce qu’elle cite et ce qui la compose ; présente, rien ne change', (t) => {
+  // une copie de l'import dont on retire un métier, sa page et ses bonus (comme le site de dev, qui les supprime ensemble)
+  const chemin = fichierTemporaire('maverick.db', 'remettre-depuis-l-import', { t });
+  copyFileSync(cheminDImport(), chemin);
+  const db = new DatabaseSync(chemin);
+  t.after(() => db.close());
+  const dImport = baseDImport();
+  const id = dImport.prepare('SELECT m.id FROM metier m WHERE EXISTS (SELECT 1 FROM metier_bonus b WHERE b.metier_id = m.id) ORDER BY m.id LIMIT 1').get().id;
+  const etat = (base) => [
+    base.prepare('SELECT * FROM metier WHERE id = ?').get(id), base.prepare('SELECT id, titre, corps_md FROM page WHERE id = ?').get(id),
+    base.prepare('SELECT * FROM metier_bonus WHERE metier_id = ? ORDER BY rang, option').all(id),
+  ].map((x) => JSON.stringify(x));
+  const avant = etat(dImport);
+  db.exec('PRAGMA foreign_keys = OFF');
+  for (const sql of ['DELETE FROM metier_bonus WHERE metier_id = ?', 'DELETE FROM metier WHERE id = ?', 'DELETE FROM page WHERE id = ?']) db.prepare(sql).run(id);
+  db.exec('PRAGMA foreign_keys = ON');
+  assert.notDeepEqual(etat(db), avant);
+  const remises = remettreDepuisLImport(db, 'metier', { id });
+  assert.ok(remises >= 3, `${remises} lignes remises : la page, le métier, ses bonus`);
+  assert.deepEqual(etat(db), avant);
+  assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), [], 'aucune référence rompue');
+  assert.equal(remettreDepuisLImport(db, 'metier', { id }), 0, 'déjà là : rien');
+  assert.throws(() => remettreDepuisLImport(db, 'metier', { id: 'metiers/absent-de-l-import' }), /absente de la base d'import/);
+  assert.throws(() => remettreDepuisLImport(db, 'metier', { colonne_inconnue: 'x' }), /clé inconnue/);
 });

@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { ADRESSE_DU_GLOSSAIRE, ADRESSES_FIXES, adresseDeLaPage, adressesDuSite, indexDesAdresses, pageDeLAdresse } from '../src/lib/adresses-db.mjs';
 import { cheminDeLAdresse, fauteDeLUrl, REGISTRE_DES_LIENS } from '../src/lib/mots-cles-liens.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { baseDImport, lotsAvant } from './aide-base-d-import.mjs';
 import { TYPES } from '../src/lib/types.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
@@ -68,7 +69,9 @@ test('adressesDuSite : les routes fixes, les rubriques, le chemin de chaque page
 });
 
 test('migration 0098 : chaque adresse du registre est permise, et mène à la page du registre', () => {
-  const db = ouvrirBase({ sansExemples: false });
+  // la base telle que la migration l'a laissée : le site de dev supprime depuis des pages que le registre vise (sur l'état courant, un mot-clé à
+  // adresse mène à une page : db:check)
+  const db = baseDImport({ garder: lotsAvant('0098') });
   const adresses = adressesDuSite(db);
   const index = indexDesAdresses(db);
   assert.ok(REGISTRE.motsCles.length >= 273);
@@ -79,7 +82,8 @@ test('migration 0098 : chaque adresse du registre est permise, et mène à la pa
 });
 
 test('pageDeLAdresse : même adresse ancre comprise, sinon le chemin d’une page sans ancre ; une rubrique, une route sans page, une adresse inconnue : null', () => {
-  const db = ouvrirBase({ sansExemples: false });
+  // les pages de l'import (le Mineur, le Drakos, une race d'exemple) : le site de dev supprime des métiers
+  const db = baseDImport();
   const index = indexDesAdresses(db);
   assert.equal(pageDeLAdresse(index, '/metiers/#metier-mineur'), 'metiers/mineur');
   assert.equal(pageDeLAdresse(index, '/metiers/?tri=nom#metier-mineur'), 'metiers/mineur', 'requête ignorée');

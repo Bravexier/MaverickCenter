@@ -18,11 +18,17 @@
 //   cheminDImport(options?)  le fichier de cette base : les règles d'une base vivante d'essai (preparerBaseVivante({ regles: cheminDImport() })).
 //   texteDImport(table, cle, colonne, options?)
 //                            une cellule de cette base (ligne lue par sa clé primaire) ; undefined pour une ligne absente.
+//   remettreDepuisLImport(db, table, cle, { enfants? })
+//                            remet dans une copie (règles d'une base vivante d'essai, data/rows reconstruit) une ligne que le site a supprimée, avec ce
+//                            qu'elle cite et ce qui la compose, telle que l'import l'écrit (patron : serveur-edition-conflits).
 //
-// Les tables dérivées par db-derive.mjs (lien, page_fts, entite_fts) ne sont pas recalculées : celles de la base courante (aucune règle n'y est lue).
+// Les tables dérivées (lien, lien_candidat, page_fts, entite_fts) sont refaites sur la copie par scripts/db-derive.mjs, comme après `db:build` : un
+// lien que portait une balise d'un mot-clé que le site a supprimé (ou une page qu'il a supprimée) y revient avec elle.
 // Les noms aussi reviennent à l'import : un test cherche toujours par identifiant (figé), et bâtit un message attendu avec le nom lu par identifiant.
+import { spawnSync } from 'node:child_process';
 import { copyFileSync, readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
+import { fileURLToPath } from 'node:url';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { cleDeLigne, lireHistorique } from '../src/lib/historique-site.mjs';
@@ -103,6 +109,8 @@ function preparer({ garder = new Set() } = {}) {
   } finally {
     ecriture.close();
   }
+  const derive = spawnSync(process.execPath, ['--no-warnings', fileURLToPath(new URL('../scripts/db-derive.mjs', import.meta.url)), copie], { encoding: 'utf8' });
+  if (derive.status !== 0) throw new Error(`tables dérivées de la base d'import : ${derive.stderr || derive.stdout}`);
   const db = new DatabaseSync(copie, { readOnly: true });
   db.exec('PRAGMA foreign_keys = ON');
   Object.defineProperty(db, 'ecarts', { value: ecarts });
@@ -131,4 +139,45 @@ export function texteDImport(table, cle, colonne, options) {
   if (!colonnesDe(db, table)?.has(colonne)) throw new Error(`${table}.${colonne} : colonne absente de la base`);
   const ligne = db.prepare(`SELECT "${colonne}" AS v FROM "${table}" WHERE ${Object.keys(c).map((k) => `"${k}" = ?`).join(' AND ')}`).get(...Object.values(c));
   return ligne ? ligne.v : undefined;
+}
+
+/**
+ * Remet dans `db` (une copie de la base, ouverte en écriture, clés étrangères contrôlées) la ligne `cle` de `table` telle que la base d'import l'écrit,
+ * si le site de dev l'a supprimée : d'abord les lignes qu'elle cite (clés étrangères, de proche en proche : l'espèce avant la carte, la page avant le
+ * métier ou le don), puis elle, puis (`enfants`, vrai par défaut) les lignes de l'import qui la composent (une table dont la clé étrangère vers elle fait
+ * partie de sa clé primaire : les bonus d'un métier, les rubriques d'une carte). Rend le nombre de lignes remises (0 : elle était là).
+ * @param {import('node:sqlite').DatabaseSync} db
+ * @param {string} table
+ * @param {object} cle les colonnes de sa clé primaire
+ * @param {{ enfants?: boolean, dImport?: import('node:sqlite').DatabaseSync }} [options]
+ */
+export function remettreDepuisLImport(db, table, cle, { enfants = true, dImport = baseDImport() } = {}) {
+  const colonnes = colonnesDe(db, table);
+  if (!colonnes || !Object.keys(cle).every((k) => colonnes.has(k))) throw new Error(`${table} : table ou clé inconnue (${Object.keys(cle).join(', ')})`);
+  const ou = Object.keys(cle).map((k) => `"${k}" = ?`).join(' AND ');
+  if (db.prepare(`SELECT 1 FROM "${table}" WHERE ${ou}`).get(...Object.values(cle))) return 0;
+  const ligne = dImport.prepare(`SELECT * FROM "${table}" WHERE ${ou}`).get(...Object.values(cle));
+  if (!ligne) throw new Error(`${table} ${JSON.stringify(cle)} : absente de la base d'import`);
+  let n = 0;
+  const parents = new Map();
+  for (const f of db.prepare(`PRAGMA foreign_key_list("${table}")`).all()) parents.set(f.id, [...(parents.get(f.id) ?? []), f]);
+  for (const fk of parents.values()) {
+    const cleParent = Object.fromEntries(fk.map((f) => [f.to, ligne[f.from]]));
+    if (Object.values(cleParent).some((v) => v === null || v === undefined)) continue;
+    n += remettreDepuisLImport(db, fk[0].table, cleParent, { enfants: false, dImport });
+  }
+  const valeurs = Object.entries(ligne).filter(([c]) => colonnes.has(c));
+  db.prepare(`INSERT INTO "${table}" (${valeurs.map(([c]) => `"${c}"`).join(', ')}) VALUES (${valeurs.map(() => '?').join(', ')})`).run(...valeurs.map(([, v]) => v));
+  n += 1;
+  if (!enfants) return n;
+  for (const { name } of db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all()) {
+    const cleDeLEnfant = db.prepare(`PRAGMA table_info("${name}")`).all().filter((c) => c.pk).map((c) => c.name);
+    for (const fk of db.prepare(`PRAGMA foreign_key_list("${name}")`).all().filter((f) => f.table === table && cleDeLEnfant.includes(f.from) && f.to in ligne)) {
+      if (!colonnesDe(dImport, name)) continue;
+      for (const enfant of dImport.prepare(`SELECT * FROM "${name}" WHERE "${fk.from}" = ?`).all(ligne[fk.to])) {
+        n += remettreDepuisLImport(db, name, Object.fromEntries(cleDeLEnfant.map((c) => [c, enfant[c]])), { enfants: false, dImport });
+      }
+    }
+  }
+  return n;
 }

@@ -43,6 +43,8 @@ produit plus est signalée « orpheline »).
   (3) les pages sur disque sont exactement celles que produit le découpage, à l'octet près.
 Une page que le site de dev a modifiée (titre, texte ou alias ; demande du propriétaire : « le site est la source » de ce qu'il modifie, docs/serveur.md,
 « Mise à jour ») est contrôlée dans son état d'import, relu dans data/rows/historique_modification.sql (pages_du_site) ; l'écriture ne la touche pas.
+Le découpage attendu se refait avec le vocabulaire de l'état d'import (Vocabulaire(…, etat_d_import=True)) : un mot-clé que le site a créé, supprimé
+(R196 : seulement s'il n'est mentionné nulle part) ou dont il a changé l'adresse ne change pas les renvois que l'import a écrits.
 """
 import json
 import os
@@ -531,9 +533,12 @@ class Vocabulaire:
     - libelle_de(id) : le libellé du mot-clé d'id `id` (son libellé d'import), ou None.
     Le libellé d'import : celui d'avant la première modification du libellé par le site de dev (historique_modification), sinon le libellé courant. Un
     mot-clé renommé sur le site garde ainsi ses balises « {{id}} » (renommer ne réécrit aucun texte, la balise suit le libellé) : l'écriture des pages
-    redonne la même page, et --verifier la compare au document."""
+    redonne la même page, et --verifier la compare au document.
+    `etat_d_import` (--verifier) : le vocabulaire entier tel que l'import l'a laissé, l'historique du site rejoué à l'envers (lignes créées retirées,
+    supprimées remises, colonnes modifiées rendues ; même lecture que client/src/lib/historique-site.mjs#lignesDImport) : les pages sur disque ont été
+    écrites avec lui."""
 
-    def __init__(self, chemin=VOCABULAIRE, historique=HISTORIQUE, schema=SCHEMA):
+    def __init__(self, chemin=VOCABULAIRE, historique=HISTORIQUE, schema=SCHEMA, etat_d_import=False):
         with open(schema, encoding='utf-8') as f:
             texte = f.read()
         self.db = sqlite3.connect(':memory:')
@@ -543,6 +548,8 @@ class Vocabulaire:
             if os.path.exists(fichier):
                 with open(fichier, encoding='utf-8') as f:
                     self.db.executescript(f.read())
+        if etat_d_import:
+            self.defaire_le_site()
         self.d_import = {}   # id -> libellé d'avant la première modification de son libellé par le site
         for cle, avant, apres in self.db.execute(
                 "SELECT cle, avant, apres FROM historique_modification WHERE table_nom = 'mot_cle' ORDER BY fait_le, lot_id, rang"):
@@ -555,6 +562,31 @@ class Vocabulaire:
             chemin_url, _, ancre = decouper_adresse(url)
             if not ancre:
                 self.par_chemin.setdefault(chemin_url, []).append((ident, self.libelle_de(ident)))
+
+    def defaire_le_site(self):
+        """Ramène la table mot_cle à son état d'import : chaque ligne touchée par le site, son historique rejoué à l'envers (historique-site.mjs#versLImport)."""
+        colonnes = [r[1] for r in self.db.execute('PRAGMA table_info(mot_cle)')]
+        operations = {}
+        for cle, operation, avant in self.db.execute(
+                "SELECT cle, operation, avant FROM historique_modification WHERE table_nom = 'mot_cle' ORDER BY fait_le, lot_id, rang"):
+            operations.setdefault(json.loads(cle).get('id'), []).append((operation, json.loads(avant or 'null') or {}))
+        a_l_import = []
+        for ident, ops in operations.items():
+            trouvee = self.db.execute('SELECT * FROM mot_cle WHERE id = ?', (ident,)).fetchone()
+            ligne = dict(zip(colonnes, trouvee)) if trouvee else None
+            for operation, avant in reversed(ops):
+                if operation == 'inserer':
+                    ligne = None
+                elif operation == 'supprimer':
+                    ligne = dict(avant)
+                elif ligne is not None:
+                    ligne.update(avant)
+            a_l_import.append(ligne)
+        # toutes les lignes touchées retirées d'abord (un libellé repris par une ligne créée ne heurte pas celui d'une ligne supprimée), puis remises
+        self.db.executemany('DELETE FROM mot_cle WHERE id = ?', [(ident,) for ident in operations])
+        for ligne in filter(None, a_l_import):
+            cols = [c for c in colonnes if c in ligne]
+            self.db.execute(f'INSERT INTO mot_cle ({", ".join(cols)}) VALUES ({", ".join("?" for _ in cols)})', [ligne[c] for c in cols])
 
     def libelle(self, ident):
         """Le libellé courant (l'écriture d'une étiquette, celle que db:export-pages écrit dans `tags:`)."""
@@ -577,9 +609,9 @@ class Vocabulaire:
         return (self.d_import.get(ident) or trouve[0]) if trouve else None
 
 
-def vocabulaire(chemin=VOCABULAIRE, historique=HISTORIQUE, schema=SCHEMA):
-    """Les mots-clés qu'une page du Codex peut porter, et ceux de ses renvois : Vocabulaire."""
-    return Vocabulaire(chemin, historique, schema)
+def vocabulaire(chemin=VOCABULAIRE, historique=HISTORIQUE, schema=SCHEMA, etat_d_import=False):
+    """Les mots-clés qu'une page du Codex peut porter, et ceux de ses renvois : Vocabulaire (celui de l'état d'import pour --verifier)."""
+    return Vocabulaire(chemin, historique, schema, etat_d_import)
 
 
 def pages_du_site(historique=HISTORIQUE, schema=SCHEMA, sur_disque=None):
@@ -778,7 +810,7 @@ def main(argv):
     source = option('--source', SOURCE)
     out = option('--out', OUT)
     site = pages_du_site(option('--historique', HISTORIQUE), sur_disque=pages_sur_disque(out))
-    voc = vocabulaire(option('--vocabulaire', VOCABULAIRE), option('--historique', HISTORIQUE))
+    voc = vocabulaire(option('--vocabulaire', VOCABULAIRE), option('--historique', HISTORIQUE), etat_d_import='--verifier' in argv)
     lignes = lire_lignes(source)
     if '--verifier' in argv:
         erreurs, n, du_site, sans_lien = verifier(lignes, out, site, voc)
