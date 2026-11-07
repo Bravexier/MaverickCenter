@@ -20,7 +20,7 @@
 | `type_page` | Registre des catégories du wiki : reprend client/src/lib/types.mjs (aujourd'hui une constante JavaScript). | **id**, libelle, singulier, salon_discord, description, ordre |
 | `page` | Une page du wiki = un fichier client/src/content/wiki/<type>/<slug>.md d'aujourd'hui. | **id**, type→type_page, slug, titre, titre_cle, resume?, donnees?, corps_md, statut, +provenance |
 | `alias` | Alias d'une page (frontmatter `aliases`) : autres noms utilisables dans [[ ]]. | **page_id**→page, **ordre**, texte, cle |
-| `mot_cle` | Vocabulaire des mots-clés, devenu un glossaire : un mot-clé = son id, son libellé et sa définition (migrations 0043 et 0056). | **id**, libelle, libelle_cle, description?, abreviation?, couleur?, url? |
+| `mot_cle` | Vocabulaire des mots-clés, devenu un glossaire : un mot-clé = son id, son libellé et sa définition (migrations 0043 et 0056). | **id**, libelle, libelle_cle, description?, abreviation?, couleur?, url?, verrou |
 | `page_tag` | Mots-clés d'une page (frontmatter `tags`, dans l'ordre) : l'écriture est celle du vocabulaire (mot_cle.libelle ; jusqu'à la migration 0043, chaque page gardait la sienne). | **page_id**→page, **ordre**, tag_id→mot_cle |
 | `source` | Provenance au niveau de la page : une entrée de frontmatter `sources` = une ligne (texte exact). | **id**, nature, texte, url?, genre?, google_id?, fichier?, onglets? |
 | `page_source` |  | **page_id**→page, **ordre**, source_id→source |

@@ -136,9 +136,9 @@ export function generer(db, { repris = MOTS_CLES_EXISTANTS_REPRIS, fusions = FUS
   // les couleurs des pages (les fonctions du site : lib/palette-css.mjs)
   const couleurs = new Map();
   for (const m of db.prepare('SELECT id, nom FROM magie').all()) couleurs.set(m.id, reference('magie', classeDeMagie(m.nom)));
-  const tags = db.prepare('SELECT m.libelle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE t.page_id = ? ORDER BY t.ordre');
+  const tags = db.prepare('SELECT tag_id FROM page_tag WHERE page_id = ? ORDER BY ordre');
   for (const p of pages.filter((x) => x.type === 'classes' && !estExemple(x.id))) {
-    couleurs.set(p.id, reference('classe', classeDUneClasse({ id: p.id, data: { tags: tags.all(p.id).map((r) => r.libelle), title: p.titre } })));
+    couleurs.set(p.id, reference('classe', classeDUneClasse({ id: p.id, data: { mots_cles: tags.all(p.id).map((r) => r.tag_id), title: p.titre } })));
   }
   const natures = racesParNature(db);
   for (const r of natures.pures) couleurs.set(r.id, reference('race', classeDeRace('pure')));

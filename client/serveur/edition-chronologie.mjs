@@ -15,9 +15,10 @@
 // sans import en retour.
 import { dateDansLeTexte, ecritureReservee, erreurDeDate, libelleDeDate, ordonner } from '../src/lib/chronologie.mjs';
 import { fragmentsAjoutes, messageDeRefus } from '../src/lib/markdown-sur.mjs';
-import { raisonDeProtection } from '../src/lib/mots-cles.mjs';
+import { estVerrouille, RAISON_DU_VERROU } from '../src/lib/mots-cles.mjs';
+import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { reciblerLeMotCle } from '../src/lib/mots-cles-balises.mjs';
-import { mentionsDe, texteDesMentions } from '../src/lib/mentions-des-mots-cles.mjs';
+import { mentionsDe, mentionsDesMotsCles, texteDesMentions } from '../src/lib/mentions-des-mots-cles.mjs';
 import { classeDuMotCle } from '../src/lib/mots-cles-liens.mjs';
 import { cssDesMotsCles } from '../src/lib/palette-css.mjs';
 import { normalize } from '../src/lib/text.mjs';
@@ -74,19 +75,25 @@ export function chronologieVivante(db) {
 
 /**
  * Le vocabulaire des mots-clés pour le Glossaire (/regles/glossaire/) en mode modification (GET /api/edition/mots-cles/) : [{ id, libelle, libelle_cle,
- * description, abreviation, url, couleur, classe, pages, protege }] (`description` : la définition telle qu'enregistrée, NULL tant qu'il n'est pas décrit ;
+ * description, abreviation, url, couleur, classe, pages, verrou, mentions }] (`description` : la définition telle qu'enregistrée, NULL tant qu'il n'est pas décrit ;
  * `abreviation` : NULL sans abréviation, et sur une base d'avant la migration 0090 ; `url`, `couleur` : l'adresse et la couleur, migration 0098, NULL
- * sans elles et sur une base d'avant ; `classe` : la classe de sa couleur, lib/mots-cles-liens.mjs#classeDuMotCle, null sans couleur ; `protege` : la
- * raison pour laquelle il ne se renomme, ne se supprime ni ne se fusionne, lib/mots-cles.mjs ; null sinon : sa définition, son abréviation, son adresse
- * et sa couleur, elles, se modifient toujours), triés par libellé.
+ * sans elles et sur une base d'avant ; `classe` : la classe de sa couleur, lib/mots-cles-liens.mjs#classeDuMotCle, null sans couleur ; `verrou` : 1 si
+ * le mot-clé est verrouillé (migration 0110, décisions R218, R219 : ni ses champs ni sa suppression, ni sa fusion dans un autre, ne se font depuis le
+ * site ; ce qu'il permet encore : lib/mots-cles.mjs#RAISON_DU_VERROU), 0 sinon, et sur une base d'avant la 0110 : tous ses champs, libellé compris, se
+ * modifient, décision R195) ; `mentions` : ce qui le mentionne (décision R196 : le menu déroulant du Glossaire, la même forme que le 409 d'une
+ * suppression, [{ table, cle, colonne, comment, page: { id, titre } | null, libelle, exemple }] ; [] : rien), lu pour tous en un seul passage sur les
+ * textes de la base (lib/mentions-des-mots-cles.mjs#mentionsDesMotsCles), triés par libellé.
  * @param {import('node:sqlite').DatabaseSync} db
  */
 export function vocabulaire(db) {
   // `*` : la vue d'avant la migration 0090 n'a pas la colonne abreviation, celle d'avant la 0098 ni couleur ni url
+  const tous = motsClesDeLaBase(db);
+  const verrous = new Map(tous.map((m) => [m.id, m.verrou]));
+  const mentions = mentionsDesMotsCles(db, tous.map((m) => m.id));
   return db.prepare('SELECT * FROM v_mot_cle').all()
     .map(({ id, libelle, libelle_cle: cle, description, abreviation, couleur, url, nb_pages: pages }) => ({
       id, libelle, libelle_cle: cle, description, abreviation: abreviation ?? null, url: url ?? null, couleur: couleur ?? null,
-      classe: classeDuMotCle({ id, couleur }), pages, protege: raisonDeProtection(cle),
+      classe: classeDuMotCle({ id, couleur }), pages, verrou: verrous.get(id) ?? 0, mentions: mentions.get(id) ?? [],
     }))
     .sort((a, b) => a.libelle.localeCompare(b.libelle, 'fr', { sensitivity: 'base' }) || a.id.localeCompare(b.id));
 }
@@ -105,12 +112,12 @@ export function vocabulaireEtFeuille(db) {
  * Les domaines de la chronologie et des mots-clés ({ table: { colonnes, deriver?, creer, supprimer } }) et les opérations du lot qu'ils ajoutent
  * ({ categories, fusionner_mots_cles }) : voir serveur/edition.mjs#DOMAINES et #OPERATIONS.
  * @param {{ refus: Function, ErreurEdition: Function, provenance: Function, idDejaEmploye: Function, rangLibre: Function, creerMotCle: Function,
- *   refuserLAbreviation: Function, refuserLeLien: Function, refuserLaCouleur: Function, reecrireLesBalises: Function, vocabulaireVivant: Function,
- *   tableExiste: Function, motsClesDesAdaptateurs: () => Set<string> }} outils
+ *   refuserLAbreviation: Function, refuserLeLien: Function, refuserLaCouleur: Function, reecrireLesBalises: Function,
+ *   definitionsVerrouilleesQuiCitent: Function, vocabulaireVivant: Function, tableExiste: Function }} outils
  */
 export function domainesDeLaChronologie({
   refus, ErreurEdition, provenance, idDejaEmploye, rangLibre, creerMotCle, refuserLAbreviation, refuserLeLien, refuserLaCouleur, reecrireLesBalises,
-  vocabulaireVivant, tableExiste, motsClesDesAdaptateurs = () => new Set(),
+  definitionsVerrouilleesQuiCitent, vocabulaireVivant, tableExiste,
 }) {
   /** Refus d'une date que la table n'accepte pas, avec le message de lib/chronologie.mjs#erreurDeDate. */
   function verifierLaDate(e, quoi) {
@@ -289,10 +296,17 @@ export function domainesDeLaChronologie({
     },
   };
 
-  /** Refus pour un mot-clé dont le site se sert (lib/mots-cles.mjs). */
-  function verifierNonProtege(m, action) {
-    const raison = raisonDeProtection(m.libelle_cle);
-    if (raison) throw new ErreurEdition(409, `Le mot-clé « ${m.libelle} » ne se ${action} pas depuis le site : il ${raison}.`);
+  /**
+   * Refus pour un mot-clé verrouillé (mot_cle.verrou = 1, migration 0110 ; décisions R218, R219) : il ne se supprime pas, même sans mention, ni ne se
+   * fusionne dans un autre (la fusion le supprimerait) ; ses champs, eux, sont refusés par serveur/edition.mjs#raisonDuGel. Les mots-clés dont le site
+   * se sert (lib/mots-cles.mjs#MOTS_CLES_PROTEGES) sont verrouillés : le verrou remplace leur refus propre (R219 (2)).
+   */
+  function verifierNonVerrouille(ctx, m, action) {
+    if (!estVerrouille(m) || ctx.gel === false) return;
+    if (action === 'fusionne') {
+      throw new ErreurEdition(409, `Le mot-clé « ${m.libelle} » est verrouillé : il ne se fusionne pas dans un autre, la fusion le supprimerait (décisions R218, R219) ; un autre mot-clé peut se fusionner dans lui.`);
+    }
+    throw new ErreurEdition(409, `Le mot-clé « ${m.libelle} » est verrouillé : ${RAISON_DU_VERROU}.`);
   }
 
   const nombre = (n, un, plusieurs) => `${n} ${n > 1 ? plusieurs : un}`;
@@ -315,11 +329,13 @@ export function domainesDeLaChronologie({
   }
 
   const MOT_CLE = {
-    // la définition (même d'un mot-clé dont le site se sert) : vidée, NULL ; renommer ne réécrit aucun texte (pages et balises citent l'id : une balise
-    // d'un texte de case garde le texte écrit, une balise d'un texte mis en forme montre le nouveau libellé) ; vers l'écriture d'un autre mot-clé,
-    // refusé (la page propose la fusion) ; l'abréviation (migration 0090, protégés compris : elle ne change ni l'id ni l'écriture) : vidée, NULL ; une
+    // tous les champs d'un mot-clé non verrouillé se modifient, libellé compris (décision R195 : seul l'id reste figé ; le site reconnaît les mots-clés
+    // dont il se sert à leur id, un renommage ne déplace aucune page ni ne change aucun calcul) ; ceux d'un mot-clé verrouillé, aucun (décisions R218,
+    // R219 : serveur/edition.mjs#raisonDuGel, 409 avant ce domaine ; `verrou` n'est pas une colonne de TABLES, aucune route ne l'écrit) ; la définition : vidée, NULL ; renommer ne
+    // réécrit aucun texte (pages et balises citent l'id : une balise d'un texte de case garde le texte écrit, une balise d'un texte mis en forme montre
+    // le nouveau libellé) ; vers l'écriture d'un autre mot-clé, refusé (la page propose la fusion) ; l'abréviation (migration 0090 : elle ne change ni l'id ni l'écriture) : vidée, NULL ; une
     // abréviation, ou une écriture renommée, qu'une balise ne lirait pas sans ambiguïté : refusée (serveur/edition.mjs#refuserLAbreviation) ; l'adresse
-    // et la couleur (migration 0098, protégés compris) : vidées, NULL ; une adresse qui ne mène à aucune page du site, une couleur que la palette ne
+    // et la couleur (migration 0098) : vidées, NULL ; une adresse qui ne mène à aucune page du site, une couleur que la palette ne
     // connaît pas : refusées, 400 (serveur/edition.mjs#refuserLeLien, #refuserLaCouleur ; l'existence de la page se lit dans la base vivante)
     colonnes(ctx, ligne, valeurs, avant) {
       const sortie = 'description' in valeurs ? { description: ligne.description || null } : {};
@@ -334,6 +350,9 @@ export function domainesDeLaChronologie({
     /**
      * Un mot-clé du glossaire, son libellé, sa définition, son abréviation, son adresse et sa couleur (migration 0098), sans page (il se pose ensuite) ;
      * refusé s'il s'écrit comme un mot-clé existant, ou si son abréviation, son adresse ou sa couleur ne conviennent pas (serveur/edition.mjs#creerMotCle).
+     * Son écriture peut être celle qu'avait un mot-clé dont le site se sert (renommé depuis : décision R195) : il prend un autre id (le site reconnaît les
+     * siens à leur id ; creerMotCle n'en prend jamais un). Il n'est pas verrouillé, même avec une adresse (décision R219 (5) ; `verrou` n'est pas un champ
+     * de la création, ENTITES.mot_cle : 400).
      */
     creer(ctx, valeurs) {
       const { db } = ctx;
@@ -341,8 +360,6 @@ export function domainesDeLaChronologie({
       if (!cle) throw refus(`« ${valeurs.libelle} » : un mot-clé contient au moins une lettre ou un chiffre.`);
       const existant = db.prepare('SELECT * FROM mot_cle WHERE libelle_cle = ?').get(cle);
       if (existant) throw new ErreurEdition(409, `Le mot-clé « ${existant.libelle} » existe déjà.`);
-      // un mot-clé dont le site se sert se pose avec les pages qu'il range (une race hybride, une classe…) : créé seul, il ne se retirerait plus
-      if (raisonDeProtection(cle)) throw new ErreurEdition(409, `« ${valeurs.libelle} » est l’écriture d’un mot-clé dont le site se sert : il vient avec ses pages.`);
       const id = creerMotCle(ctx, valeurs.libelle, valeurs.description ?? null, valeurs.abreviation ?? null, { url: valeurs.url ?? null, couleur: valeurs.couleur ?? null });
       return { id, resume: `Mot-clé créé : ${valeurs.libelle}` };
     },
@@ -350,18 +367,17 @@ export function domainesDeLaChronologie({
      * Un mot-clé supprimé, s'il n'est mentionné nulle part (décision R196 : « Le mot clé n'est supprimable que si cette liste est vide ») : une page qui le
      * porte ou une balise qui le cite, pages d'exemple comprises (lib/mentions-des-mots-cles.mjs) refusent la suppression (409, `mentions` : la liste des
      * endroits) ; plus aucun texte n'est réécrit (la cascade d'avant R196 est abandonnée ; la fusion, elle, reporte les mentions sur la cible). Refusé
-     * aussi, condition nécessaire : un mot-clé dont le site se sert (verifierNonProtege), qui étiquette un sort (verifierSansSort), que le rejeu des
-     * migrations 0090 et 0098 vise (serveur/edition.mjs#motsClesDesAdaptateurs).
+     * aussi, avant tout : un mot-clé verrouillé, même sans mention (décisions R218, R219 : verifierNonVerrouille, qui remplace le refus propre des mots-clés
+     * dont le site se sert) ; un mot-clé qui étiquette un sort (verifierSansSort). Un mot-clé non verrouillé que vise
+     * le rejeu des migrations 0090 ou 0098 se supprime comme les autres (décision R211 : au rejeu d'un lot ancien, l'adaptateur écrit alors du texte
+     * simple, serveur/edition.mjs#ancienneEcritureDesFusions, #ancienneEcritureDesLiens).
      */
     supprimer(ctx, cle) {
       const { db, w } = ctx;
       const m = motCle(db, cle?.id);
       if (!m) throw new ErreurEdition(404, `Mot-clé introuvable : ${cle?.id}`);
-      verifierNonProtege(m, 'supprime');
+      verifierNonVerrouille(ctx, m, 'supprime');
       verifierSansSort(db, m, 'supprime');
-      if (motsClesDesAdaptateurs().has(m.id)) {
-        throw new ErreurEdition(409, `Le mot-clé « ${m.libelle} » ne se supprime pas depuis le site : le rejeu des modifications d’avant une migration (0090, 0098) écrit ses balises.`);
-      }
       const mentions = mentionsDe(db, m.id);
       if (mentions.length) {
         throw new ErreurEdition(409, `Le mot-clé « ${m.libelle} » est mentionné à ${texteDesMentions(mentions)} : retirez d’abord ces mentions (décision R196).`, { mentions });
@@ -376,15 +392,11 @@ export function domainesDeLaChronologie({
     if (!('libelle' in valeurs) || ligne.libelle === avant.libelle) return {};
     const cle = normalize(ligne.libelle);
     if (!cle) throw refus(`Mot-clé « ${ligne.libelle} » : il doit contenir au moins une lettre ou un chiffre.`);
-    // l'écriture exacte d'un mot-clé dont le site se sert est lue par ses règles (catégories de /classes/, « capacité de classe », « codex »…) : même
-    // la casse ou un accent ne changent pas
-    verifierNonProtege(avant, 'renomme');
+    // un mot-clé dont le site se sert se renomme aussi (décision R195) : ses règles le lisent par son id (catégories de /classes/, « race hybride »,
+    // « capacité de classe »… : lib/mots-cles.mjs#MOTS_CLES_PROTEGES), jamais par son écriture
     const autre = ctx.db.prepare('SELECT * FROM mot_cle WHERE libelle_cle = ? AND id <> ?').get(cle, avant.id);
     if (autre) {
       throw new ErreurEdition(409, `« ${ligne.libelle} » s’écrit comme le mot-clé « ${autre.libelle} » : fusionnez-les plutôt.`, { fusion: { mot_cle: avant.id, dans: autre.id } });
-    }
-    if (cle !== avant.libelle_cle && raisonDeProtection(cle)) {
-      throw new ErreurEdition(409, `« ${ligne.libelle} » est l’écriture d’un mot-clé dont le site se sert : choisissez-en une autre.`);
     }
     return {};
   }
@@ -410,10 +422,14 @@ export function domainesDeLaChronologie({
 
   /**
    * `{ op: 'fusionner_mots_cles', mot_cle, dans }` : le mot-clé `mot_cle` rejoint `dans` (ses pages passent à `dans`, sans doublon : une
-   * page qui avait les deux perd seulement l'ancien ; les balises qui le citent citent `dans`, leur texte gardé), puis quitte le vocabulaire. Ni l'un ni
-   * l'autre ne peut être un mot-clé dont le site se sert, ni un mot-clé qui étiquette un sort (verifierSansSort). L'adresse et la couleur (migration
-   * 0098) : la cible garde les siennes ; celle qu'elle n'a pas, elle la prend de la source, par une modification notée au journal ; quand les deux en
-   * ont une, la cible garde la sienne et le résumé le dit.
+   * page qui avait les deux perd seulement l'ancien ; les balises qui le citent citent `dans`, leur texte gardé : serveur/edition.mjs#reecrireLesBalises),
+   * puis quitte le vocabulaire. La source ne peut pas être verrouillée (décisions R218, R219 : la fusion la supprimerait) ; la cible le peut (R219 (4) :
+   * un mot-clé verrouillé « reçoit la fusion d'un autre mot-clé »). Tant que la définition d'un mot-clé verrouillé, celle de la cible comprise, cite la
+   * source par une balise, la fusion est refusée avant toute écriture (décision R222 (1) : la définition verrouillée n'est pas réécrite ; 409,
+   * `details.mots_cles_verrouilles`) ; au rejeu (`ctx.gel` faux), elle passe et recible aussi ces balises (R219 (6)).
+   * Ni l'un ni l'autre ne peut étiqueter un sort (verifierSansSort). L'adresse et la couleur (migration 0098) : la cible garde les siennes ; celle
+   * qu'elle n'a pas, elle la prend de la source, par une modification notée au journal, sauf une cible verrouillée, dont aucun champ ne change (lecture
+   * de game-design de R219 (4)) ; quand la cible garde ce que la source avait, le résumé le dit.
    */
   function fusionner(ctx, op) {
     const { db, w } = ctx;
@@ -421,10 +437,17 @@ export function domainesDeLaChronologie({
     const cible = motCle(db, op.dans);
     if (!source || !cible) throw new ErreurEdition(404, `Mot-clé introuvable : ${source ? op.dans : op.mot_cle}`);
     if (source.id === cible.id) throw refus(`« ${source.libelle} » : un mot-clé ne se fusionne pas avec lui-même.`);
-    verifierNonProtege(source, 'fusionne');
-    verifierNonProtege(cible, 'fusionne');
+    verifierNonVerrouille(ctx, source, 'fusionne');
     verifierSansSort(db, source, 'fusionne');
     verifierSansSort(db, cible, 'fusionne');
+    if (ctx.gel !== false) {
+      const verrouilles = definitionsVerrouilleesQuiCitent(db, source.id);
+      if (verrouilles.length) {
+        const noms = verrouilles.slice(0, 5).map((m) => `« ${m.libelle} »`).join(', ') + (verrouilles.length > 5 ? '…' : '');
+        throw new ErreurEdition(409, `Le mot-clé « ${source.libelle} » ne se fusionne pas : ${verrouilles.length > 1 ? `les définitions des mots-clés verrouillés ${noms} le citent` : `la définition du mot-clé verrouillé ${noms} le cite`} (décision R222).`,
+          { mots_cles_verrouilles: verrouilles });
+      }
+    }
     const avant = vocabulaireVivant(db);
     reecrireLesBalises(ctx, source.id, (texte, o) => reciblerLeMotCle(texte, avant, source.id, cible.id, o), { sauf: source.id });
     for (const t of db.prepare('SELECT page_id, ordre FROM page_tag WHERE tag_id = ?').all(source.id)) {
@@ -434,10 +457,11 @@ export function domainesDeLaChronologie({
     // l'adresse et la couleur (migration 0098 ; colonnes absentes d'une base d'avant : rien à reprendre)
     const reprises = {};
     const gardees = [];
+    const laissees = []; // ce qu'une cible verrouillée n'a pas et ne prend pas
     for (const [colonne, nom] of [['url', 'le lien'], ['couleur', 'la couleur']]) {
       const deLaSource = source[colonne] ?? null;
       if (deLaSource === null) continue;
-      if ((cible[colonne] ?? null) === null) reprises[colonne] = deLaSource;
+      if ((cible[colonne] ?? null) === null) (estVerrouille(cible) && ctx.gel !== false ? laissees.push(nom) : (reprises[colonne] = deLaSource));
       else if (cible[colonne] !== deLaSource) gardees.push(nom);
     }
     if (Object.keys(reprises).length) w.modifier('mot_cle', { id: cible.id }, reprises);
@@ -447,6 +471,7 @@ export function domainesDeLaChronologie({
     const precisions = [
       ...(Object.keys(reprises).length ? [`il en prend ${Object.keys(reprises).map((c) => (c === 'url' ? 'le lien' : 'la couleur')).join(' et ')}`] : []),
       ...(gardees.length ? [`« ${cible.libelle} » garde ${gardees.join(' et ')}`] : []),
+      ...(laissees.length ? [`« ${cible.libelle} », verrouillé, n’en prend pas ${laissees.join(' ni ')}`] : []),
     ];
     return `Mot-clé « ${source.libelle} » fusionné dans « ${cible.libelle} »${precisions.length ? ` (${precisions.join(' ; ')})` : ''}`;
   }

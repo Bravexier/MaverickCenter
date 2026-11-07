@@ -9,6 +9,9 @@
 //   - un composant se crée dans un tableau de la page (id tiré du nom une fois, puis figé et jamais réutilisé) ; il ne se supprime que si aucune autre
 //     règle ne le cite (armure, bouclier, recette, effet d'accessoire… : le refus les nomme) ; une fiche de personnage qui l'a dans son inventaire ou sa
 //     ceinture le garde sous son nom, sans lien au catalogue (serveur/fiches-retraits.mjs#detacherDesFiches).
+//   - les monnaies sont figées (décision R219 (3)) : serveur/edition.mjs refuse leur création, leur modification et leur suppression (409,
+//     lib/edition-modele.mjs#TABLES_FIGEES) avant ce domaine, qui ne sert plus qu'à la résolution d'un conflit d'un lot ancien (le rejeu, lui, recopie
+//     les lignes du journal : R220 (1)) et aux dérivations.
 // Les outils communs du service (refus, synchroniser…) sont donnés par serveur/edition.mjs (domainesDesComposants), sans import en retour.
 import { convertisseurDeMonnaie, PRIX_DE_GEMME, prixDeGemmeEnRf, prixEnRf } from '../src/lib/composants-champs.mjs';
 import {

@@ -14,7 +14,7 @@ user-invocable: false
 - Pures ou hybrides, ordre et couleurs : `lib/race-kinds.mjs` (`ORDRE_DES_RACES`, `RACE_COLORS`, `HYBRIDES_SANS_CLASSE_RACIALE`). L'ordre de la liste vient de la base : `lib/races-db.mjs#comparerRangsDeListe`, `lib/races.ts#ordreDeLaListeDesRaces` passé à `groupRaces`.
 - Liste `/races/` : `components/race/RacesPastilles.astro`, `styles/race/liste.css` ; tableau des magies innées : `components/magie/TableauMagiesInnees.astro`.
 - Liens races et magies : `lib/magie-relations.mjs` (partagé avec skill `zone-magies`).
-- Import : `tools/sheets/races.py` (`RACE_DETAIL_OVERRIDES`), `tools/db/races_onglet.py`, `tools/sheets/relations-races.py` (la page `lore/relations-entre-les-races`, onglet « Relation entre les races ») ; corps Markdown tenu d'accord : `lib/corps-races.mjs` (skill `zone-edition`).
+- Import : `tools/sheets/races.py` (`RACE_DETAIL_OVERRIDES`), `tools/db/races_onglet.py`, `tools/sheets/relations-races.py` (la page `lore/relations-entre-les-races`, onglet « Relation entre les races ») ; `races.py` et `relations-races.py` ont `--vocabulaire` (défaut `data/rows/mot_cle.sql`) et posent « race » par son id (skill `zone-mots-cles`) ; corps Markdown tenu d'accord : `lib/corps-races.mjs` (skill `zone-edition`).
 
 ## À lire
 - `docs/content-guide.md`, « Pages de race : un gabarit commun, alimenté par la base ».

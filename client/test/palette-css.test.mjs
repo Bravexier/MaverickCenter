@@ -142,12 +142,13 @@ test('le nom d’une classe : « couleur-<famille>-<id> », l’id = la clé du 
   // lot des catégories de classe, des races et du reste de la fiche
   assert.equal(classeDeCategorie('melee'), 'couleur-classe-melee');
   assert.equal(classeDeCategorie('non-classees'), null, 'pas une catégorie de couleur : une section des Spéciales');
-  assert.equal(classeDUneClasse({ id: 'classes/guerrier', data: { tags: ['classe', 'càc'] } }), 'couleur-classe-melee');
-  assert.equal(classeDUneClasse({ id: 'classes/parleur', data: { tags: ['classe', 'càc'] } }), 'couleur-classe-speciales', 'exception du Parleur');
-  assert.equal(classeDUneClasse({ id: 'classes/x', data: { tags: [] } }), 'couleur-classe-speciales', 'non classée : sous « Spéciales », comme classColor');
-  for (const tags of [['càc'], ['distance'], ['magique'], ['hybride animal'], ['hybride'], []]) {
-    const entree = { id: 'classes/x', data: { tags } };
-    assert.equal(FAMILLES_DE_LA_PALETTE.classe[classeDUneClasse(entree).slice('couleur-classe-'.length)], classColor(entree), tags.join());
+  // les mots-clés d'une classe par leur id (`data.mots_cles` : décision R195)
+  assert.equal(classeDUneClasse({ id: 'classes/guerrier', data: { mots_cles: ['classe', 'cac'] } }), 'couleur-classe-melee');
+  assert.equal(classeDUneClasse({ id: 'classes/parleur', data: { mots_cles: ['classe', 'cac'] } }), 'couleur-classe-speciales', 'exception du Parleur');
+  assert.equal(classeDUneClasse({ id: 'classes/x', data: { mots_cles: [] } }), 'couleur-classe-speciales', 'non classée : sous « Spéciales », comme classColor');
+  for (const ids of [['cac'], ['distance'], ['magique'], ['hybride-animal'], ['hybride'], []]) {
+    const entree = { id: 'classes/x', data: { mots_cles: ids } };
+    assert.equal(FAMILLES_DE_LA_PALETTE.classe[classeDUneClasse(entree).slice('couleur-classe-'.length)], classColor(entree), ids.join());
   }
   assert.equal(classeDeRace('pure'), 'couleur-race-pure');
   assert.equal(classeDeRace('hybride'), 'couleur-race-hybride');
@@ -878,7 +879,7 @@ test('les classes de ce lot posées par les pages, l’éditeur et la fiche : de
   assert.match(lire('src/components/race/RacePage.astro'), /const couleur = classeDeLaPageDuSite\(entryHref\(entry\), classeDeRace\(hybride \? 'hybride' : 'pure'\), \{ base: import\.meta\.env\.BASE_URL \}\);[^]*<div class=\{`race race--\$\{hybride \? 'hybride' : 'pure'\} \$\{couleur\}`\}>/);
   const nouvelles = lire('src/scripts/edition/nouvelles.mjs');
   assert.ok(nouvelles.includes(`<div class="race race--\${hybride ? 'hybride' : 'pure'} \${classeDeRace(hybride ? 'hybride' : 'pure')}">`), 'race créée');
-  assert.ok(nouvelles.includes('const couleur = classeDUneClasse({ id, data: { tags } });') && nouvelles.includes('<div class="classe ${couleur}" data-ed-classe='), 'classe créée');
+  assert.ok(nouvelles.includes('const couleur = classeDUneClasse({ id, data: { mots_cles: motsCles.map((m) => m.id) } });') && nouvelles.includes('<div class="classe ${couleur}" data-ed-classe='), 'classe créée');
   // le script de la fiche : chaque pastille, groupe et choix fait pose une classe (teinteDe), jamais `--c` en style ni une couleur reçue ou écrite
   const fiche = lire('src/scripts/fiche.mjs');
   assert.doesNotMatch(fiche, /style: `--c|--texte-sur-c: \$\{|\bcouleur: (?:'#|r\.couleur|race|k\.couleur|c\.classe)|\.couleur \?\?|#6b5a45|#8a7a66/, 'aucune couleur de race, de classe ni de neutre');
@@ -2163,9 +2164,9 @@ test('mots-clés colorés (migration 0098) : « rendu identique » — chaque pa
   // la couleur que chaque page avait avant la migration 0098 (celle que son gabarit posait)
   const avant = [];
   for (const m of db.prepare('SELECT id, nom FROM magie').all()) avant.push([m.id, classeDeMagie(m.nom)]);
-  const tags = (id) => db.prepare('SELECT m.libelle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE t.page_id = ? ORDER BY t.ordre').all(id).map((r) => r.libelle);
+  const motsCles = (id) => db.prepare('SELECT tag_id FROM page_tag WHERE page_id = ? ORDER BY ordre').all(id).map((r) => r.tag_id);
   for (const p of db.prepare("SELECT id, titre FROM page WHERE type = 'classes' AND statut != 'example'").all()) {
-    avant.push([p.id, classeDUneClasse({ id: p.id, data: { tags: tags(p.id), title: p.titre } })]);
+    avant.push([p.id, classeDUneClasse({ id: p.id, data: { mots_cles: motsCles(p.id), title: p.titre } })]);
   }
   const natures = racesParNature(db);
   for (const r of natures.pures) avant.push([r.id, classeDeRace('pure')]);

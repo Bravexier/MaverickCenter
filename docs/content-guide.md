@@ -1228,7 +1228,8 @@ Artisanat ok ») :
 
 - **Monnaie** (`monnaie`) : nom, symbole (son icône, décision R61), valeur en RF ; les conversions vers les plus petites (« 1 PP = 1 000 RO = 100 000 RF »)
   sont celles qui tombent juste, comme le CONVERTISSEUR de l'onglet (`lib/composants-champs.mjs#conversionsDe`). Le RF est l'unité (il vaut 1 et ne se
-  supprime pas). Les valeurs ne se modifient pas, ni l'abréviation du RF, du RO et de la PP (R61).
+  supprime pas). L'onglet est **figé** sur le site de dev (décision R219 (3) : « Ni création, ni modification, ni suppression dans l'onglet Monnaie ») :
+  ni nom, ni abréviation, ni valeur ne se modifient, aucune monnaie ne se crée ni ne se supprime (les valeurs et le nom l'étaient déjà : R61, R193).
 - **Matériaux** (`ressource` de genre `materiau` et table `materiau`) : la **seule source** des matériaux (décision R62) — matière (dans la couleur de
   l'onglet « Armes » : sa pastille porte la classe `couleur-materiau-<id>`, `par-defaut` sans couleur, que la page émet, `cssDesFamilles(['materiau'])`), type d'après l'armure (Léger, Intermédiaire, Lourd, Autres : migration `0041-materiaux-types`), prix, description, effets sur une
   arme (`materiau_arme`), et ce qui les utilise (armes, armures, boucliers, montures d'accessoire). La **fabrication** d'une matière (sa recette,
@@ -1258,9 +1259,11 @@ Sans JavaScript, les panneaux se suivent, chacun sous son titre.
 **Mode modification** (site de dev, `src/scripts/edition/composants.mjs`, `serveur/edition-composants.mjs`) : le titre de chaque onglet (le titre de son
 panneau, affiché en mode modification ; l'onglet le reprend à l'enregistrement) et sa note (vidée : sans note) — ni création ni suppression d'onglet ;
 chaque case se modifie (nom, prix,
-description, prix d'une gemme, type et affinité d'un ingrédient, abréviation d'une monnaie créée (celles du RF, du RO et de la PP sont refusées, R61) — son nom (« Figer les noms ») et sa valeur en RF (R61) se donnent à
-sa création et ne se modifient plus, `lib/edition-modele.mjs#TABLES.monnaie`) ; ce qui en est tiré est recalculé (prix en RF,
-ligne du CONVERTISSEUR, type sans « (majeur) », marque majeur, affinité — créée si elle est nouvelle). Un bouton « + Ajouter » sous chaque tableau (une
+description, prix d'une gemme, type et affinité d'un ingrédient) ; ce qui en est tiré est recalculé (prix en RF,
+type sans « (majeur) », marque majeur, affinité — créée si elle est nouvelle). L'onglet **Monnaie** n'offre aucun contrôle (R219 (3) : ni « + Ajouter »,
+ni case modifiable, ni « Supprimer » ; seuls le titre et la note de l'onglet se modifient) : le service refuse en `409` toute écriture de la table
+`monnaie` (`lib/edition-modele.mjs#TABLES_FIGEES`, API v1 comprise), sauf au rejeu d'un lot ancien du journal, qui passe (R220 (1) ; le renommage
+d'une monnaie y reste en conflit, R193). Un bouton « + Ajouter » sous chaque autre tableau (une
 gemme ou un bois pour une magie qui n'en a pas : « une par magie » ; un « (majeur) » seulement pour un amplificateur) ; « Supprimer » sur chaque ligne que
 rien d'autre ne cite — un composant cité par une armure, une recette, un effet d'accessoire… ne se supprime pas (le bouton grisé dit pourquoi). Un objet
 supprimé reste dans l'inventaire ou la ceinture d'une fiche de personnage, sous son nom, sans lien au catalogue, avec une note datée qui demande de mettre
@@ -1641,7 +1644,8 @@ entrées de l'ancien Lexique du guide (« CR » y est devenu l'abréviation de C
 sort** (table `sort_mot_cle`, migration `0067`, décision R114) : « Sort grenade » (défini par le propriétaire « Type particulier de sort provoquant une
 explosion localisée ») est posé sur les 14 sorts « Grenade… », et la fiche de personnage reconnaît un sort grenade à cette étiquette, jamais à son nom ;
 de même « Sort fer » (migration `0079`, décision R164 : « Type de sort d'amélioration qui s'applique sur une arme. ») sur les 13 sorts « Fer… », que la
-fiche reconnaît pour « ... Brutale » ; « Sort grenade » et « Sort fer » sont protégés comme les mots-clés qui rangent les pages, et tout mot-clé qui
+fiche reconnaît pour « ... Brutale » ; « Sort grenade » et « Sort fer » sont verrouillés comme les mots-clés qui rangent les pages (voir « Gérer le
+vocabulaire »), et tout mot-clé qui
 étiquette un sort ne se supprime ni ne se fusionne depuis le
 site (`409`, avec les sorts : `serveur/edition-chronologie.mjs#verifierSansSort`) ; ces étiquettes se lisent dans l'API (`/api/v1/sorts/<id>/mots-cles/`),
 en lecture seule. « Solidité » (migration `0058`, demande du propriétaire du 2026-10-17 :
@@ -1772,7 +1776,7 @@ libellé entre parenthèses, « Armure magique (AM) », dans sa pastille de `/re
 magique (AM) · 3 » ; sans abréviation, « Feu · 2 » ; sans page, pas de nombre), dans le titre de sa vue (« Mot-clé « Armure magique (AM) » ») et dans
 le titre de sa bulle, partout sur le site (`lib/mots-cles-balises.mjs#htmlDuNomDuMotCle`, `htmlDeLaPastille`, `htmlDeLaBulle`) : `{{AM}}` montre « AM »,
 sa bulle dit « Armure magique (AM) » ; sur le Glossaire, elle est à côté du libellé. Une **monnaie** (les mots-clés `rf`, `ro`, `pp`, reconnus à leur
-id, figé, celui de la table `monnaie`, jamais à leur abréviation, qui se modifie) montre son libellé suivi de l'icône de la monnaie, jamais « (RO) »
+id, figé, celui de la table `monnaie`, jamais à leur abréviation ; ils sont verrouillés, R218) montre son libellé suivi de l'icône de la monnaie, jamais « (RO) »
 (réponse : « Libellé + icône » ; R63). Le texte affiché d'une balise et la définition du mode complet ont aussi leurs monnaies en icônes (R63, R183 (9) :
 « R63 est respectée partout ») : `{{RO}}` montre l'icône du Ricken d'or ; un montant écrit dans une balise se décompose comme ailleurs (R183 (12) :
 `{{prix-fixe|1245,5 RO}}` montre « 1 [PP] 245 [RO] 50 [RF] » ; `htmlDeLaBalise`). La définition que montre la vue d'un mot-clé de `/recherche/` est
@@ -1787,8 +1791,23 @@ libellé ; vidée, NULL), son **adresse** (« Lien » : interne, `/races/humain/
 la liste des couleurs du site — toutes les familles de la palette, groupées, chaque couleur nommée par son élément de référence, « Feu », « Chakra »,
 « Mythril » : `lib/glossaire-couleurs.mjs`, que la page donne en `data-couleurs` — et un cercle, `<input type="color">`, qui donne une couleur écrite
 `#rrggbb` ; enregistrée en `famille:id` ou `#rrggbb` ; vidée, NULL) ; un refus du service (400 ou 409, avec `champ`) s'affiche comme tout refus du
-lot ; la balise à copier est écrite à côté de chaque mot-clé. Les mots-clés dont le site se sert ne se renomment ni ne se suppriment ; leur définition,
-leur abréviation, leur adresse et leur couleur se modifient. La page et l'extension ne se parlent que par l'évènement `glossaire:mots-cles` et les
+lot ; la balise à copier est écrite à côté de chaque mot-clé. Chaque mot-clé a un **menu déroulant des endroits qui le mentionnent** (décision R196 (2) :
+une page qui le porte ou dont un texte le cite par une balise, en lien ; un texte qu'aucune page ne montre, par sa table et sa ligne ; les pages d'exemple
+comptent), et **« Supprimer » n'est offert que si cette liste est vide** (R196 : un mot-clé mentionné ne se supprime pas, le service refuse en `409` avec
+la liste ; plus rien n'est retiré des pages ni des textes). La fusion, elle, reporte ses mentions sur l'autre mot-clé. Un mot-clé **verrouillé**
+(`mot_cle.verrou`, migration `0110` ; décisions R218, R219) ne se modifie ni ne se supprime depuis le site : aucun de ses champs (libellé, définition,
+abréviation, adresse, couleur), ni sa suppression, même sans mention, ni sa fusion dans un autre ; il se pose encore sur une page et s'en retire, se cite
+par une balise et **reçoit la fusion** d'un autre mot-clé, sans en prendre l'adresse ni la couleur. Sont verrouillés les mots-clés qui mènent à une page
+(leur adresse), ceux des monnaies (RF, RO, PP), des races, des magies et des classes, et ceux dont le site se sert pour ranger ses pages ou reconnaître un
+sort (`lib/mots-cles.mjs#MOTS_CLES_PROTEGES` ; « race hybride » est créé verrouillé avec la première race hybride, R220 (2)) ; un mot-clé créé ensuite ne
+l'est pas (R219 (5)). Le verrou ne change que par une migration (aucune route ne l'écrit ; un rôle d'admin pourra le changer « à l'avenir »). En mode
+modification, sa ligne a un **cadenas**, ses champs sont désactivés et la raison est en infobulle (R219 (7)), avec le texte « Verrouillé : ni
+modification ni suppression sur le site (R218). » ; il n'a ni « Supprimer » ni « Fusionner dans… », mais il est proposé comme cible d'une fusion et
+garde son menu des mentions. Hors du mode modification, rien ne le distingue. Une page vers laquelle mène un mot-clé verrouillé ne se supprime pas sur
+le site, et l'adresse du mot-clé n'est jamais vidée (R221). Un mot-clé que cite une balise de la définition d'un mot-clé verrouillé, celle de la cible
+comprise, ne se fusionne pas tant qu'elle le cite : la définition verrouillée n'est pas réécrite (R222 (1) ; le service refuse en `409` avec la liste
+de ces mots-clés) ; un mot écrit sans balise ne compte pas. Les autres mots-clés se modifient tous, libellé compris (R195). La page et l'extension ne
+se parlent que par l'évènement `glossaire:mots-cles` et les
 `li[data-id][data-cle][data-n][data-libelle]`, plus `data-abreviation`, `data-definition`, `data-url` et `data-couleur` quand le mot-clé en a. Dans
 l'éditeur en place, l'outil « Lien page » lie le texte choisi par un mot-clé qui a une adresse (sa balise) ; « Lien web » garde les adresses web. Une
 page créée depuis le site ne porte que les mots-clés dont le site se sert. Les événements de la chronologie n'ont pas d'étiquette (« trop nombreux et

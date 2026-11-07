@@ -137,7 +137,7 @@ pour recommencer.
 | `evenements/<événement>/categories/` | `POST`, `DELETE` | `categories` | Pose une catégorie sur l'événement (`categorie_id`), l'en retire |
 | `monstres/<carte>/valeurs-de-capacites/` | `POST`, `PATCH`, `DELETE` | `valeurs_de_capacite` | Pose une valeur propre (`rang`, `numero`, `valeur`), la change, l'efface (R69) ; la valeur commune (ou `null`) n'est jamais écrite : elle efface la valeur propre (`element: null` dans la réponse) |
 | `onglets-des-regles/<onglet>/ordre/` | `POST` | `ordonner` | L'ordre du menu latéral de l'onglet, d'un bloc : `ids`, tous les identifiants de ses entrées dans le nouvel ordre (`409` si la liste n'est pas exactement celle du menu) ; les rangs qu'occupait le menu sont redonnés, seules les entrées qui changent de place sont écrites |
-| `mots-cles/<mot-clé>/fusion/` | `POST` | `fusionner_mots_cles` | Verse les pages du mot-clé dans `dans`, y recible ses balises (« {{id}} » des textes), puis le retire du vocabulaire ; un `PATCH` qui renomme vers l'écriture d'un autre mot-clé répond `409` avec cette action toute prête (`action: { methode, adresse, corps }`) |
+| `mots-cles/<mot-clé>/fusion/` | `POST` | `fusionner_mots_cles` | Verse les pages du mot-clé dans `dans`, y recible ses balises (« {{id}} » des textes), puis le retire du vocabulaire (`409` tant que la définition d'un mot-clé verrouillé le cite : R222) ; un `PATCH` qui renomme vers l'écriture d'un autre mot-clé répond `409` avec cette action toute prête (`action: { methode, adresse, corps }`) |
 
 Les références « @i » d'un lot à plusieurs opérations (créer une spécialité puis son don dans la même requête) restent sur `POST /api/edition/`.
 
@@ -352,11 +352,24 @@ page protégée, avec `raisons`, ou citée, avec `citations` ; `400` pour une pa
 `mots-cles/` liste et cherche (`?q=`) aussi l'abréviation (`abreviation`, migration 0090 : « AM », `NULL` sans), qui se donne à la création et se
 modifie par `PATCH` ; la ref d'une balise du glossaire peut être l'id, l'écriture ou l'abréviation du mot-clé (enregistrée sous l'id :
 [`content-guide.md`](content-guide.md), « Mots-clés (glossaire) »). Elle liste aussi le lien et la couleur (`url`, `couleur`, migration 0098 ; `?q=`
-cherche dans le lien), qui se donnent à la création et se modifient par `PATCH`, protégés compris : le lien, une adresse interne relative à la racine
-du site, sans le préfixe de déploiement, dont le chemin mène à une page du site (`/races/drakos/`, `/metiers/#metier-mineur` ; l'ancre et la requête
-ne sont pas vérifiées) ; la couleur, `#rrggbb` ou `<famille>:<id>` d'une couleur de la palette (`classe:melee`) ; refusés en `400` avec
-`champ: "url"` ou `champ: "couleur"`. Un lien `[[…]]` ou `[texte](/…)` saisi dans un texte devient la balise du seul mot-clé qui mène à sa page
-(sinon `400` avec `champ` et `liens`, [`serveur.md`](serveur.md), « Édition des règles »).
+cherche dans le lien), qui se donnent à la création et se modifient par `PATCH` (sauf ceux d'un mot-clé verrouillé, plus bas) : le lien, une adresse
+interne relative à la racine du site, sans le préfixe de déploiement, dont le chemin mène à une page du site (`/races/drakos/`,
+`/metiers/#metier-mineur` ; l'ancre et la requête ne sont pas vérifiées) ; la couleur, `#rrggbb` ou `<famille>:<id>` d'une couleur de la palette
+(`classe:melee`) ; refusés en `400` avec `champ: "url"` ou `champ: "couleur"`. Un lien `[[…]]` ou `[texte](/…)` saisi dans un texte devient la balise
+du seul mot-clé qui mène à sa page (sinon `400` avec `champ` et `liens`, [`serveur.md`](serveur.md), « Édition des règles »). Le verrou d'un mot-clé
+(`verrou`, migration 0110, décisions R218 et R219) se lit dans la liste, le détail et le catalogue (colonne non modifiable) ; aucune route ne l'écrit
+(`400` dans un `POST` ou un `PATCH`). Un mot-clé verrouillé (`1` : ceux qui mènent à une page, ceux des monnaies, ceux dont le site se sert) ne se
+modifie pas par `PATCH`, quel que soit le champ, ne se supprime pas par `DELETE`, même sans mention, et ne se fusionne pas dans un autre (action
+`fusion`) : `409`, avec une raison qui cite R218 et R219 ; un autre mot-clé se fusionne dans lui (il garde son lien et sa couleur), sauf quand la
+définition d'un mot-clé verrouillé (la sienne comprise) cite cet autre par une balise : la fusion est alors refusée en `409`, avant toute écriture,
+avec `mots_cles_verrouilles` (décision R222 ; le rejeu, lui, la fait). Une page vers laquelle mène un mot-clé verrouillé (un métier par son ancre, la
+fiche d'un don, une page des Règles) ne se supprime pas : `DELETE` rend `409` avec `mots_cles_verrouilles` (décision R221). Un mot-clé créé vaut `0`,
+même avec un lien. Un mot-clé non verrouillé se modifie entièrement (décision R195) ; il ne se supprime pas tant qu'une page ou un texte le mentionne
+(R196), ni ne se fusionne s'il étiquette un sort (`409`).
+
+Les monnaies (`/api/v1/monnaies/`) sont en lecture seule de fait : l'onglet Monnaie est figé (décision R219), `POST`, `PATCH` (toute colonne) et
+`DELETE` rendent `409` avec la raison ; le catalogue le dit (`figee`), et la description OpenAPI ne leur donne ni corps de création ni clé de
+modification d'exemple.
 
 Les tables qui ne sont pas des éléments (tables de détail refaites par le service, vues de recherche, fiches de personnages, journal) sont rangées
 dans `HORS_RESSOURCE` de leur module, avec la raison : `test/ressources-registre.test.mjs` exige que chaque table de `data/schema.sql` soit rangée une

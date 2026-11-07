@@ -28,10 +28,10 @@ user-invocable: false
 - Homonymes race et classe : « La race garde le nom », la classe s'écrit « <Titre> (classe) » (Q14) ; hors du Glossaire, de la Recherche et de Données, le mot-clé s'affiche sans le suffixe (R191 : skill `zone-mots-cles`). Collision avec un mot-clé existant : « Le mot-clé existant prend l'URL » (id et définition gardés) ; la liste des mots-clés repris est `MOTS_CLES_EXISTANTS_REPRIS` du générateur, jamais recopiée ici. Résistance : aucun mot-clé fondu, on garde le nouveau.
 
 ## Choix du leader-technique
-- Fusion : la cible garde son adresse et sa couleur, et prend celles de la source qu'elle n'a pas (modification notée au journal, le résumé dit ce qu'elle garde).
-- Mots-clés protégés : adresse et couleur modifiables.
+- Fusion : la cible garde son adresse et sa couleur, et prend celles de la source qu'elle n'a pas, sauf une cible verrouillée, qui garde les siennes (R219 (4) ; modification notée au journal, le résumé dit ce qu'elle garde).
+- Adresse et couleur d'un mot-clé verrouillé : ni l'une ni l'autre ne se modifie (R218, skill `zone-mots-cles`).
 - L'existence de l'adresse se vérifie au service (base vivante) et par `db:check` ; l'ancre et la requête ne sont pas vérifiées.
-- Supprimer une page qu'un mot-clé vise est refusé (409 : citations `mot-cle` et `balise` de `lib/citations-db.mjs`, skill `zone-edition-menus`) ; de même la fiche d'un don ou d'une spécialité et l'ancre d'un métier (skill `zone-edition`).
+- Supprimer une page qu'un mot-clé vise est refusé (409 ; pour un mot-clé verrouillé, aussi longtemps qu'il l'est, et son adresse n'est jamais vidée : R221 ; pour un non verrouillé, la garde des liens rompus : citations `mot-cle` et `balise` de `lib/citations-db.mjs`, skill `zone-edition-menus`) ; de même la fiche d'un don ou d'une spécialité et l'ancre d'un métier (skill `zone-edition`).
 - Un lien saisi est converti si un seul mot-clé mène à sa cible, sinon refusé (400). Deux mots-clés ne partagent donc jamais une adresse (choix de la migration 0104 : `attaque-gratuite` renvoie à `attaque-dopportunite` par sa définition, sans adresse), sinon un lien saisi vers cette page est refusé (`motsClesDeLAdresse`).
 - Les pages d'exemple gardent leurs `[[…]]`.
 - `npm run autolink` reste un outil d'aperçu relu ; il exclut `lore` et `metiers` (skill `site-wiki-liens`). `codex.py` ne pose jamais le mot-clé d'une page en étiquette (skill `sources-codex`).
@@ -47,7 +47,7 @@ user-invocable: false
 - Un import ne crée jamais de mot-clé : une page sans mot-clé qui y mène ne se lie pas (renvoi du Codex en texte simple signalé, page sans cible pour le maillage).
 - Couleur de la page (`classeDeLaPage`, repli : la couleur d'avant) : les gabarits des magies, classes, races et du guide la posent à la place de la leur (`couleurPropre` de `layouts/Base.astro`) ; toute autre page la reçoit sur `<main class="page-coloree …">`, seulement quand un mot-clé coloré y mène. Les tuiles des listes, la carte de `/magies/`, les puces et les tableaux gardent leurs couleurs.
 - Feuille des mots-clés colorés (`cssDesMotsClesDuSite`, `<style data-couleurs-mots-cles>` de `Base.astro`, sur chaque page) : couleurs écrites et familles d'une zone qu'un mot-clé nomme, sous 1,5 ko (`palette-css.test.mjs`) ; le site de dev la remplace par le `css` de `GET /api/edition/mots-cles/` (`mots-cles-vivants.mjs`).
-- Le registre de la 0098 sert au rejeu d'un lot d'avant (`ancienneEcritureDesLiens` : skill `zone-edition`) ; il est livré avec le service (`FICHIERS_JOINTS` : skill `zone-service`). Tables dérivées `lien` et `page_fts` : skill `base-sqlite`.
+- Le registre de la 0098 sert au rejeu d'un lot d'avant (`ancienneEcritureDesLiens` : skill `zone-edition-rejeu`) ; un mot-clé du registre absent de la base (supprimé depuis) y donne du texte simple, le lien redevenant son texte affiché (R211) ; il est livré avec le service (`FICHIERS_JOINTS` : skill `zone-service`). Tables dérivées `lien` et `page_fts` : skill `base-sqlite`.
 
 ## Migration 0098
 - Un mot-clé par page visée ou colorée, libellé = titre de la page, sans définition ni abréviation ; une route sans page prend le libellé de son menu ; un mot-clé existant de même écriture, ou désigné comme le même, prend l'adresse (`MOTS_CLES_EXISTANTS_REPRIS`).

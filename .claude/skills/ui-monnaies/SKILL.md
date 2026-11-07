@@ -16,7 +16,7 @@ user-invocable: false
 - `docs/content-guide.md`, « Composants » (Monnaie) et « Armures et boucliers » (tuiles des fiches).
 
 ## Choix du propriétaire
-- R61 : dans toutes les tables, les abréviations deviennent des icônes. Les valeurs ne se modifient pas, ni l'abréviation du RF, du RO et de la PP (`MONNAIES_DU_JEU`, comparées à la base).
+- R61 : dans toutes les tables, les abréviations deviennent des icônes. Les valeurs ne se modifient pas (`MONNAIES_DU_JEU`, comparées à la base). R219 (3) : l'onglet Monnaie est figé, plus aucune monnaie ne se crée, ne se modifie (abréviation comprise) ni ne se supprime sur le site (skill `zone-composants`).
 - R63 : partout, texte courant compris, les abréviations deviennent des icônes, et un montant s'affiche décomposé dans les trois monnaies : « 1245,5 » RO affiché « 1 [PP] 245 [RO] 50 [RF] ». Affichage seulement : le texte de la base ne change pas.
 
 ## Où c'est appliqué

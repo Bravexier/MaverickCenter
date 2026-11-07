@@ -39,4 +39,19 @@ export function lirePages(db) {
   }));
 }
 
+/**
+ * Les mots-clés de chaque page par leur id (page_tag.tag_id, dans l'ordre de la page) : Map page_id → [id]. Le `tags:` d'un `.md` donne leurs libellés
+ * (l'affichage, la recherche) ; une règle qui range une page (lib/class-groups.mjs, lib/race-kinds.mjs, lib/classe-magique.mjs) lit ces ids, posés en
+ * `data.mots_cles` par lib/wiki.ts (avecLesMotsCles) : un mot-clé renommé sur le site de dev ne déplace aucune page (décision R195). Jamais écrits dans
+ * le `.md` (tools/db/pages_md.py lirait une clé de plus comme un champ de `page.donnees`).
+ */
+export function motsClesDesPages(db) {
+  const m = new Map();
+  for (const r of db.prepare('SELECT page_id, tag_id FROM page_tag ORDER BY page_id, ordre').all()) (m.get(r.page_id) ?? m.set(r.page_id, []).get(r.page_id)).push(r.tag_id);
+  return m;
+}
+
+/** Des pages ({ id, data }) avec leurs mots-clés par id (`data.mots_cles`, motsClesDesPages), sans toucher aux objets reçus. */
+export const avecLesMotsCles = (pages, parPage) => pages.map((e) => ({ ...e, data: { ...e.data, mots_cles: parPage.get(e.id) ?? [] } }));
+
 export const ouvrirEnLectureSeule = (chemin) => new DatabaseSync(chemin, { readOnly: true });

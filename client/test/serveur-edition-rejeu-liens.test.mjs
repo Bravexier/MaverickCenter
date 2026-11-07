@@ -2,7 +2,9 @@
 // serveur/edition.mjs#ancienneEcritureDesLiens lit ses textes comme la migration a réécrit les règles (la table de conversion de son registre,
 // data/migrations/0098-liens-en-mots-cles.json : tableDesLiensDeLa0098). Sans lui, un tel lot écrirait un lien que db:check refuse, ou verrait un faux
 // conflit sur un texte que la migration a converti. Une page d'exemple et un lien inconnu restent tels quels ; l'artisanat de l'Alchimiste, dont la
-// migration a balisé le texte simple, l'est de même.
+// migration a balisé le texte simple, l'est de même. Décision R211 (« Les rendre supprimables ») : un mot-clé du registre supprimé depuis, le lien qui y
+// menait devient du texte simple, et le texte simple de l'Alchimiste n'est pas balisé. Les mots-clés du scénario sont remis s'il le faut (le site de dev
+// peut les supprimer dès que rien ne les mentionne).
 //   node --test test/serveur-edition-rejeu-liens.test.mjs
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -18,10 +20,10 @@ import { adaptateurDuJournal, ancienneEcritureDesLiens, rejouerLeJournal, tableD
 import { chargerJournal, journalExporte } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { liensDuTexte } from '../src/lib/liens-en-mots-cles.mjs';
-import { formesNonCanoniques, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
+import { formesNonCanoniques, lireBalises, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { REGISTRE_DES_LIENS } from '../src/lib/mots-cles-liens.mjs';
-import { baseDImport, remettreDepuisLImport } from './aide-base-d-import.mjs';
+import { baseDImport, lotsAvant, remettreDepuisLImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
@@ -34,6 +36,10 @@ const m = (table, operation, cle, avant, apres) => ({ lot_id: 'l', rang: 0, tabl
 /** Un remplacement du registre sur une page du guide (un seul lien de ce texte dans la page), et l'Alchimiste (texte simple balisé). */
 const SUR_LA_PAGE = REGISTRE.remplacements.find((r) => r.table === 'page' && r.cle.id.startsWith('guide/') && r.compte === 1 && r.lien.startsWith('[['));
 const ALCHIMISTE = REGISTRE.remplacements.find((r) => r.table === 'metier' && r.cle.id === 'metiers/alchimiste' && r.colonne === 'artisanat_texte');
+/** Le mot-clé d'une page du registre, cité par les essais d'un texte de case (« [[Drakos]] »). */
+const DRAKOS = 'drakos';
+/** Les mots-clés du scénario : ceux des deux balises du registre, et celui de « [[Drakos]] ». */
+const MOTS_CLES_DU_SCENARIO = [...new Set([...lireBalises(SUR_LA_PAGE.balise), ...lireBalises(ALCHIMISTE.balise)].map((b) => b.ref)), DRAKOS];
 /** Le texte tel qu'un lot d'avant la 0098 l'a noté : chaque balise que la migration a écrite sur cette ligne redevient ce qu'elle remplaçait. */
 const avant0098 = (table, cle, colonne, texte) => REGISTRE.remplacements
   .filter((r) => r.table === table && r.colonne === colonne && JSON.stringify(r.cle) === JSON.stringify(cle))
@@ -46,7 +52,10 @@ const avant0098 = (table, cle, colonne, texte) => REGISTRE.remplacements
 function remettreLeScenario(db) {
   const dImport = baseDImport();
   db.exec('PRAGMA foreign_keys = ON');
-  return remettreDepuisLImport(db, 'page', SUR_LA_PAGE.cle, { enfants: false, dImport }) + remettreDepuisLImport(db, 'metier', ALCHIMISTE.cle, { dImport })
+  // les mots-clés tels que la migration 0098 les a écrits (décision R211 : le site de dev peut les supprimer dès que rien ne les mentionne)
+  const dImport0098 = baseDImport({ garder: lotsAvant('0098') });
+  const motsCles = MOTS_CLES_DU_SCENARIO.reduce((n, id) => n + remettreDepuisLImport(db, 'mot_cle', { id }, { dImport: dImport0098 }), 0);
+  return motsCles + remettreDepuisLImport(db, 'page', SUR_LA_PAGE.cle, { enfants: false, dImport }) + remettreDepuisLImport(db, 'metier', ALCHIMISTE.cle, { dImport })
     // l'entité rattachée du métier (db:check : chaque métier a la sienne)
     + remettreDepuisLImport(db, 'page_entite', { entite_table: 'metier', entite_id: ALCHIMISTE.cle.id }, { dImport });
 }
@@ -127,6 +136,35 @@ test('adaptateur : les liens d’avant 0098 (avant et apres) deviennent les bali
   // dans l'adaptateur du journal (le rejeu et l'examen d'un lot en conflit)
   const parLeJournal = adaptateurDuJournal(db)(m('metier', 'modifier', { id: metier }, null, { description: 'Voir [[Drakos]].' }));
   assert.deepEqual(JSON.parse(parLeJournal.apres), { description: 'Voir {{drakos|Drakos}}.' });
+  db.close();
+});
+
+test('R211 : un mot-clé du registre supprimé depuis, le lien d’un lot d’avant 0098 qui y menait devient du texte simple ; le texte de l’Alchimiste n’est pas balisé', () => {
+  const db = vivante();
+  const retirer = (id) => {
+    db.exec('PRAGMA foreign_keys = OFF');
+    for (const sql of ['DELETE FROM sort_mot_cle WHERE mot_cle_id = ?', 'DELETE FROM page_tag WHERE tag_id = ?', 'DELETE FROM mot_cle WHERE id = ?']) db.prepare(sql).run(id);
+  };
+  const [dePage] = lireBalises(SUR_LA_PAGE.balise);
+  const [deLAlchimiste] = lireBalises(ALCHIMISTE.balise);
+  const ancien = avant0098('metier', ALCHIMISTE.cle, 'artisanat_texte', db.prepare('SELECT artisanat_texte FROM metier WHERE id = ?').get('metiers/alchimiste').artisanat_texte);
+  for (const id of new Set([DRAKOS, dePage.ref, deLAlchimiste.ref])) retirer(id);
+  const adapter = ancienneEcritureDesLiens(db);
+  const { id } = SUR_LA_PAGE.cle;
+  // un texte mis en forme : le texte affiché du lien ; un autre lien inconnu reste tel quel
+  const lu = adapter(m('page', 'modifier', { id }, { corps_md: `a ${SUR_LA_PAGE.lien} b` }, { corps_md: `a ${SUR_LA_PAGE.lien} b [[Lien inconnu d’essai]]` }));
+  const [lien] = liensDuTexte(SUR_LA_PAGE.lien, { markdown: true });
+  assert.deepEqual(JSON.parse(lu.avant), { corps_md: `a ${lien.texte} b` });
+  assert.deepEqual(JSON.parse(lu.apres), { corps_md: `a ${lien.texte} b [[Lien inconnu d’essai]]` });
+  // un texte de case
+  const metier = db.prepare('SELECT id FROM metier ORDER BY id').get().id;
+  assert.deepEqual(JSON.parse(adapter(m('metier', 'modifier', { id: metier }, null, { description: 'Voir [[Drakos]].' })).apres), { description: 'Voir Drakos.' });
+  // le texte simple que la migration a balisé sur l'Alchimiste : il le reste (aucune balise vers le mot-clé absent)
+  const alch = adapter(m('metier', 'modifier', ALCHIMISTE.cle, { artisanat_texte: ancien }, { artisanat_texte: `${ancien} (essai)` }));
+  assert.ok(![alch.avant, alch.apres].some((x) => x.includes(`{{${deLAlchimiste.ref}`)), alch.apres);
+  // l'adaptateur du journal (rejeu, examen d'un lot en conflit) : aucune balise vers les mots-clés absents
+  const parLeJournal = adaptateurDuJournal(db)(m('metier', 'modifier', { id: metier }, null, { description: 'Voir [[Drakos]].' }));
+  assert.deepEqual(JSON.parse(parLeJournal.apres), { description: 'Voir Drakos.' });
   db.close();
 });
 

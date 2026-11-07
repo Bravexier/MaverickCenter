@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { groupRaces, HYBRIDES_SANS_CLASSE_RACIALE, ORDRE_DES_RACES, RACE_COLORS, raceKind, racialClassOf, raceOfClass } from '../src/lib/race-kinds.mjs';
+import { groupRaces, HYBRIDES_SANS_CLASSE_RACIALE, ORDRE_DES_RACES, RACE_COLORS, raceKind, racialClassOf, raceOfClass, TAG_RACE_HYBRIDE } from '../src/lib/race-kinds.mjs';
 
-const race = (title, slug = title.toLowerCase()) => ({ id: `races/${slug}`, data: { title, tags: ['race'] } });
-const cls = (title, ...tags) => ({ id: `classes/${title.toLowerCase()}`, data: { title, tags: ['classe', ...tags] } });
+// les mots-clés d'une page par leur id (`data.mots_cles` : lib/wiki.ts), jamais par leur écriture (décision R195)
+const race = (title, slug = title.toLowerCase(), ...ids) => ({ id: `races/${slug}`, data: { title, mots_cles: ['race', ...ids] } });
+const cls = (title, ...ids) => ({ id: `classes/${title.toLowerCase()}`, data: { title, mots_cles: ['classe', ...ids] } });
 const ids = (list) => list.map((e) => e.id);
 
 const orios = race('Orios');
@@ -12,10 +13,10 @@ const humain = race('Humain');
 const lamia = race('Lamia');
 const drassahthac = race("Drassah'thac", 'drassahthac');
 const CLASSES = [
-  cls('Orios', 'hybride animal'),
-  cls('Médusain', 'hybride animal'),
-  cls('Guerrier', 'càc'),
-  cls('Lamia', 'spéciale'), // une classe qui porte le nom d'une race mais n'est pas une classe raciale
+  cls('Orios', 'hybride-animal'),
+  cls('Médusain', 'hybride-animal'),
+  cls('Guerrier', 'cac'),
+  cls('Lamia', 'speciale'), // une classe qui porte le nom d'une race mais n'est pas une classe raciale
   cls('Humain', 'magique'),
 ];
 const ALL = [orios, medusain, humain, lamia, drassahthac, ...CLASSES];
@@ -77,6 +78,16 @@ test('groupRaces : chaque groupe porte sa nature, dont la page pose la classe de
   assert.ok(groups.every((g) => !('couleur' in g)), 'plus de couleur : la classe de la nature (lib/palette-css.mjs#classeDeRace)');
   assert.deepEqual(Object.keys(RACE_COLORS), ['pure', 'hybride'], 'une couleur par nature (raceKind)');
   assert.notEqual(RACE_COLORS.pure, RACE_COLORS.hybride);
+});
+
+test('R195 : la classe raciale et la race créée hybride se lisent par l’id du mot-clé, jamais par son écriture', () => {
+  // « race hybride » (TAG_RACE_HYBRIDE) sous un autre libellé : la race reste hybride ; son écriture d'origine sans l'id : pure
+  assert.equal(raceKind([], { id: 'races/lycan', data: { title: 'Lycan', tags: ['Race', 'Hybride (à classe)'], mots_cles: ['race', TAG_RACE_HYBRIDE] } }), 'hybride');
+  assert.equal(raceKind([], { id: 'races/lycan', data: { title: 'Lycan', tags: ['race', 'race hybride'], mots_cles: ['race'] } }), 'pure');
+  // la classe raciale : l'id `hybride-animal`, pas le libellé « hybride animal »
+  const parLibelle = { id: 'classes/orios', data: { title: 'Orios', tags: ['classe', 'hybride animal'], mots_cles: ['classe'] } };
+  assert.equal(racialClassOf([parLibelle], orios), null);
+  assert.equal(racialClassOf([cls('Orios', 'hybride-animal')], orios)?.id, 'classes/orios');
 });
 
 test('ORDRE_DES_RACES : 27 races, chacune une seule fois', () => {

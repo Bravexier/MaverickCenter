@@ -120,24 +120,25 @@ test('le vocabulaire de la base : chaque mot-clé des pages y a son id, retrouv�
 });
 
 // --- Mode modification (lib/mots-cles-edition.mjs) ----------------------------------------------------------------------------------------------
-// le vocabulaire du service (GET /api/edition/mots-cles/) : { id, libelle, libelle_cle, pages, protege }, sans événement
-const v = (id, libelle, pages = 0, protege = null) => ({ id, libelle, libelle_cle: normalize(libelle), pages, protege });
+// le vocabulaire du service (GET /api/edition/mots-cles/) : { id, libelle, libelle_cle, pages, verrou }, sans événement (`verrou` : migration 0110,
+// décisions R218, R219)
+const v = (id, libelle, pages = 0, verrou = 0) => ({ id, libelle, libelle_cle: normalize(libelle), pages, verrou });
 const vocabulaire = [
   v('aide', 'aide', 3),
   v('guide', 'guide', 5),
   v('feu', 'Feu', 2),
-  v('magique', 'Magique', 12, 'range les classes dans la colonne « Magiques » de /classes/'),
+  v('magique', 'Magique', 12, 1),
   v('peuple', 'peuple', 1),
 ];
 
-test('fusion : ni lui-même, ni un mot-clé protégé, ni un mot-clé qui disparaît dans le lot ; la saisie désigne une cible par son écriture', () => {
+test('fusion : ni lui-même, ni un mot-clé qui disparaît dans le lot ; un mot-clé verrouillé est une cible (R219 (4)) ; la saisie désigne une cible par son écriture', () => {
   const ids = (l) => l.map((m) => m.id);
-  assert.deepEqual(ids(ciblesDeFusion(vocabulaire, 'aide')), ['guide', 'feu', 'peuple']);
-  assert.deepEqual(ids(ciblesDeFusion(vocabulaire, 'aide', { retires: new Set(['guide']) })), ['feu', 'peuple']);
+  assert.deepEqual(ids(ciblesDeFusion(vocabulaire, 'aide')), ['guide', 'feu', 'magique', 'peuple']);
+  assert.deepEqual(ids(ciblesDeFusion(vocabulaire, 'aide', { retires: new Set(['guide']) })), ['feu', 'magique', 'peuple']);
   const cibles = ciblesDeFusion(vocabulaire, 'aide');
   assert.equal(cibleSaisie(cibles, 'FEU')?.id, 'feu');
   assert.equal(cibleSaisie(cibles, ' guide ')?.id, 'guide');
-  assert.equal(cibleSaisie(cibles, 'Magique'), null, 'protégé');
+  assert.equal(cibleSaisie(cibles, 'Magique')?.id, 'magique', 'verrouillé : il reçoit la fusion d’un autre');
   assert.equal(cibleSaisie(cibles, 'aide'), null, 'lui-même');
   assert.equal(cibleSaisie(cibles, ''), null);
   assert.equal(cibleSaisie(cibles, 'inconnu'), null);
@@ -147,12 +148,13 @@ test('fusion : ni lui-même, ni un mot-clé protégé, ni un mot-clé qui dispar
   assert.equal(compteDesElements(undefined), '0 page', 'un mot-clé inconnu du vocabulaire lu');
 });
 
-test('renommages : vers l’écriture d’un autre mot-clé, la fusion est proposée ; écriture vide, protégée ou prise deux fois : refus', () => {
+test('renommages : vers l’écriture d’un autre mot-clé, verrouillé ou non, la fusion est proposée ; écriture vide ou prise deux fois : refus', () => {
   assert.deepEqual(examinerLesRenommages(vocabulaire, [{ id: 'aide', avant: 'aide', libelle: 'Aide de jeu' }]), { aFusionner: [] });
   assert.deepEqual(examinerLesRenommages(vocabulaire, [{ id: 'aide', avant: 'aide', libelle: 'Aide' }]), { aFusionner: [] }, 'la casse seule');
   assert.deepEqual(examinerLesRenommages(vocabulaire, [{ id: 'aide', avant: 'aide', libelle: 'Guide' }]).aFusionner, [{ id: 'aide', avant: 'aide', libelle: 'Guide', dans: 'guide' }]);
   assert.match(examinerLesRenommages(vocabulaire, [{ id: 'aide', avant: 'aide', libelle: ' !? ' }]).erreur, /au moins une lettre/);
-  assert.match(examinerLesRenommages(vocabulaire, [{ id: 'aide', avant: 'aide', libelle: 'magique' }]).erreur, /dont le site se sert.*Magiques/);
+  assert.deepEqual(examinerLesRenommages(vocabulaire, [{ id: 'aide', avant: 'aide', libelle: 'magique' }]).aFusionner, [{ id: 'aide', avant: 'aide', libelle: 'magique', dans: 'magique' }],
+    'vers un mot-clé verrouillé : la fusion (R219 (4))');
   assert.match(
     examinerLesRenommages(vocabulaire, [{ id: 'aide', avant: 'aide', libelle: 'Nouveau' }, { id: 'peuple', avant: 'peuple', libelle: 'nouveau' }]).erreur,
     /tous deux renommés/,
@@ -162,7 +164,7 @@ test('renommages : vers l’écriture d’un autre mot-clé, la fusion est propo
   assert.deepEqual(examinerLesRenommages(vocabulaire, [{ id: 'aide', avant: 'aide', libelle: 'Guide' }], { retires: new Set(['aide']) }), { aFusionner: [] });
 });
 
-test('le lot : fusions, puis suppressions, puis renommages (sans ceux des mots-clés qui disparaissent) ; une confirmation qui dit ce qui est retiré', () => {
+test('le lot : fusions, puis suppressions, puis renommages (sans ceux des mots-clés qui disparaissent) ; une confirmation qui dit ce que fait chaque retrait', () => {
   const renommer = (id, libelle) => ({ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { libelle }, avant: { libelle: id } });
   const ops = operationsDuVocabulaire([renommer('aide', 'Guide'), renommer('peuple', 'Peuples'), renommer('feu', 'Feux')], {
     suppressions: new Set(['feu']),
@@ -176,7 +178,8 @@ test('le lot : fusions, puis suppressions, puis renommages (sans ceux des mots-c
   assert.deepEqual(operationsDuVocabulaire([renommer('peuple', 'Peuples')], {}), [renommer('peuple', 'Peuples')]);
   assert.equal(confirmationDesRetraits(vocabulaire, { suppressions: new Set(), fusions: new Map() }), null);
   const message = confirmationDesRetraits(vocabulaire, { suppressions: new Set(['feu']), fusions: new Map([['aide', 'guide']]) });
-  assert.match(message, /^- « Feu » sera retiré de 2 pages et des textes qui le citent \(sa balise y devient son texte\), puis supprimé\.$/m);
+  // R196 : un mot-clé ne se supprime que si rien ne le mentionne, plus rien n'est retiré des pages ni des textes
+  assert.match(message, /^- « Feu » sera supprimé\.$/m);
   assert.match(message, /^- « aide » sera fusionné dans « guide » : ses pages \(3 pages\) et les textes qui le citent porteront « guide », puis « aide » disparaîtra\.$/m);
   assert.doesNotMatch(message, /événement/, 'plus d’événement : ils ont des catégories');
 });
@@ -239,7 +242,7 @@ test('fusions et suppressions : un mot-clé qui reçoit une fusion n’est pas s
   assert.deepEqual(ids(ops), ['aide⇒guide', 'peuple⇒guide', 'guide⇒feu'], '« guide » reçoit les autres avant de partir');
 });
 
-test('mots-clés protégés : la liste de lib/mots-cles.mjs est faite d’écritures (normalize)', () => {
+test('mots-clés protégés : la liste de lib/mots-cles.mjs est faite d’ids (la forme normalize, celle de leur écriture d’origine ; décision R195)', () => {
   for (const cle of MOTS_CLES_PROTEGES.keys()) assert.equal(cle, normalize(cle));
 });
 

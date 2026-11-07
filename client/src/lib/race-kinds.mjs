@@ -6,9 +6,14 @@
 // races de HYBRIDES_SANS_CLASSE_RACIALE (décision R14 du propriétaire) et de celles qu'on a créées hybrides depuis le site de dev avant de leur
 // donner leur classe raciale (mot-clé « race hybride », TAG_RACE_HYBRIDE). Que les races hybrides à classe raciale aient 3 magies innées est un
 // constat de l'import, pas une règle (décision R30) : test/races-magies-content.test.mjs le garde comme effectif de l'import.
+// Les mots-clés d'une page se lisent par leur id (`data.mots_cles` : lib/wiki.ts, lib/pages-db.mjs#motsClesDesPages), jamais par leur écriture : un
+// mot-clé renommé sur le site de dev ne change la nature d'aucune race (décision R195).
 import { normalize } from './text.mjs';
 
-const isRacialClass = (entry) => entry.id.startsWith('classes/') && (entry.data.tags ?? []).some((t) => normalize(t) === 'hybride-animal');
+/** L'id du mot-clé des classes raciales (catégorie « Classe Hybride Animal » : lib/classe-champs.mjs#MOT_CLE_DE_CATEGORIE). */
+const MOT_CLE_CLASSE_RACIALE = 'hybride-animal';
+const porte = (entry, id) => (entry.data?.mots_cles ?? []).includes(id);
+const isRacialClass = (entry) => entry.id.startsWith('classes/') && porte(entry, MOT_CLE_CLASSE_RACIALE);
 const baseName = (title) => normalize(title);
 
 /**
@@ -45,11 +50,12 @@ export function raceOfClass(entries, cls) {
 }
 
 /**
- * Mot-clé (normalisé) d'une race hybride créée depuis le site de dev avant sa classe raciale (lib/edition-modele.mjs#MOT_CLE_RACE_HYBRIDE, demande du
- * propriétaire : « à la création d'une classe raciale, on doit sélectionner une race hybride qui n'en a pas déjà »).
+ * L'id (figé) du mot-clé d'une race hybride créée depuis le site de dev avant sa classe raciale (créé avec la première, écrit
+ * lib/edition-modele.mjs#MOT_CLE_RACE_HYBRIDE ; demande du propriétaire : « à la création d'une classe raciale, on doit sélectionner une race hybride
+ * qui n'en a pas déjà »).
  */
 export const TAG_RACE_HYBRIDE = 'race-hybride';
-const marqueeHybride = (race) => (race.data?.tags ?? []).some((t) => normalize(t) === TAG_RACE_HYBRIDE);
+const marqueeHybride = (race) => porte(race, TAG_RACE_HYBRIDE);
 
 /** @returns {'hybride' | 'pure'} */
 export const raceKind = (entries, race) =>

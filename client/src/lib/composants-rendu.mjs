@@ -1,7 +1,8 @@
 // Rendu HTML des lignes de la page /ressources/composants/ (components/composants/) : le même HTML sert à la page construite et au mode modification du
 // site de dev (src/scripts/edition/composants.mjs, pour un composant créé depuis la construction ; lib/edition-rendu.mjs#RENDUS : une cellule modifiée se
-// réaffiche depuis sa ligne de la base). Chaque champ modifiable porte son `data-ed` ; une ligne porte l'entité qui la crée ou la supprime (`data-entite`,
-// `data-cle`) et, si d'autres règles la citent, pourquoi elle ne se supprime pas (`data-citee`).
+// réaffiche depuis sa ligne de la base). Chaque champ modifiable porte son `data-ed` (une case qui suit la base sans se modifier : `data-ed-lecture`) ;
+// une ligne porte l'entité qui la crée ou la supprime (`data-entite`, `data-cle`) et, si d'autres règles la citent, pourquoi elle ne se supprime pas
+// (`data-citee`).
 // Fonctions pures, chaîne HTML en sortie, tout texte échappé.
 import { conversionsDe, milliers, pourquoiPasSupprimable, prixEnRf } from './composants-champs.mjs';
 import { htmlAvecMonnaies, htmlDePiece, MONNAIES_DU_JEU } from './monnaies.mjs';
@@ -48,7 +49,7 @@ export const RENDUS_DES_COMPOSANTS = {
     return e(valeur).replace(/\n/g, '<br>');
   },
   'monnaie-valeur': (valeur) => `<span class="comp-valeur">${e(milliers(valeur ?? ''))} ${htmlDePiece('RF')}</span>`,
-  // le symbole d'une monnaie : son icône (lib/monnaies.mjs), l'abréviation d'une monnaie créée depuis le site, qui n'en a pas
+  // le symbole d'une monnaie : son icône (lib/monnaies.mjs), sinon l'abréviation (une monnaie créée depuis le site avant R219, qui n'a pas d'icône)
   'monnaie-symbole': (valeur) => (MONNAIES_DU_JEU[String(valeur ?? '').toUpperCase()] ? htmlDePiece(String(valeur).toUpperCase()) : e(valeur ?? '')),
   // la catégorie d'un fruit : celle de l'ingrédient, « majeur » d'après son type (« Fruit (majeur) »)
   'ingredient-categorie': (valeur, ligne) => {
@@ -65,13 +66,15 @@ export const htmlDesConversions = (m, monnaies) => {
 };
 
 /**
- * Une monnaie : Nom (figé : « Figer les noms », R193, il se donne à la création, edition-modele.mjs#TABLES.monnaie) | Symbole (son icône, l'abréviation
- * modifiable) | Valeur en RF (non modifiable, R61) | Conversions (refaites par l'extension de l'éditeur après un enregistrement).
+ * Une monnaie : Nom | Symbole (son icône) | Valeur en RF | Conversions. L'onglet Monnaie est figé (décision R219 (3) : « Ni création, ni modification, ni
+ * suppression dans l'onglet Monnaie » ; lib/edition-modele.mjs#TABLES_FIGEES) : aucune case n'a de `data-ed`, le symbole suit seulement la base
+ * (`data-ed-lecture` : un lot ancien du journal rejoué, R220 (1), se voit avant la reconstruction), et l'extension de l'éditeur n'offre ni ajout ni
+ * suppression (src/scripts/edition/composants.mjs). Le nom (R193) et la valeur (R61) étaient déjà figés.
  */
 export const htmlDeLigneDeMonnaie = (m, monnaies) =>
   `<tr class="composant" id="${e(`monnaie-${m.id}`)}" data-monnaie="${e(m.id)}" data-valeur="${e(m.valeur_rf)}"${attributsDeLigne('monnaie', { id: m.id }, m.valeur_rf === 1 ? 'L’unité des monnaies ne se supprime pas' : '', [m.nom, m.abreviation])}>`
   + `<th scope="row" class="comp-nom">${e(m.nom)}</th>`
-  + `<td class="comp-abr" data-abreviation="${e(m.abreviation)}" data-ed="${ed('monnaie', { id: m.id }, 'abreviation')}" data-ed-rendu="monnaie-symbole">${rendu('monnaie-symbole', m.abreviation)}</td>`
+  + `<td class="comp-abr" data-abreviation="${e(m.abreviation)}" data-ed-lecture="${ed('monnaie', { id: m.id }, 'abreviation')}" data-ed-rendu="monnaie-symbole">${rendu('monnaie-symbole', m.abreviation)}</td>`
   + `<td>${rendu('monnaie-valeur', m.valeur_rf)}</td>`
   + `<td class="comp-conversions" data-conversions>${htmlDesConversions(m, monnaies)}</td></tr>`;
 

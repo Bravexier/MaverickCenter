@@ -466,8 +466,10 @@ export const TABLES = {
       effet: { type: 'texte', libelle: 'Effet', requis: true },
     },
   },
-  // les monnaies (MONNAIE et CONVERTISSEUR de l'onglet) : l'abréviation (sauf celle du RF, du RO et de la PP, refusée par le service : R61) ; la valeur en
-  // RF ne se modifie pas (demande du propriétaire, décision R61 : « Les valeurs ne sont effectivement pas modifiables. Elles servent de valeur utile pour les
+  // les monnaies (MONNAIE et CONVERTISSEUR de l'onglet) : l'onglet est figé (décision R219 (3) : « Ni création, ni modification, ni suppression dans
+  // l'onglet Monnaie » ; TABLES_FIGEES, ci-dessous : le service refuse en 409). L'abréviation reste dans TABLES pour le rejeu d'un lot ancien qui
+  // l'écrivait (il passe : R220 (1)) et pour la résolution d'un conflit. Avant R219 : l'abréviation se modifiait (sauf celle du RF, du RO et de la PP,
+  // R61) ; la valeur en RF ne se modifie pas (demande du propriétaire, décision R61 : « Les valeurs ne sont effectivement pas modifiables. Elles servent de valeur utile pour les
   // calculs et de potentiel tooltip »), elle se donne à la création ; le nom non plus (réponse du propriétaire : « Figer les noms », R193 ; les noms du RF, du RO
   // et de la PP sont ceux des infobulles, lib/monnaies.mjs#MONNAIES_DU_JEU), il se donne à la création. Un lot du journal noté avant ce choix qui renomme
   // une monnaie est en conflit au rejeu (serveur/edition.mjs#ecrituresFigees)
@@ -607,11 +609,13 @@ export const TABLES = {
   // le vocabulaire des mots-clés, le glossaire (page Glossaire /regles/glossaire/ en mode modification ; migration 0056) : renommer un mot-clé ne
   // réécrit aucun texte (son id reste ; une balise d'un texte de case, « {{id|texte}} », garde le texte écrit, une balise d'un texte mis en forme, « {{id}} », montre le nouveau
   // libellé) ; vers l'écriture d'un autre mot-clé : refusé, la page propose de les fusionner
-  // (opération `fusionner_mots_cles`) ; les mots-clés dont le site se sert ne se renomment pas (lib/mots-cles.mjs#MOTS_CLES_PROTEGES), mais leur
-  // définition se modifie ; une définition vidée : NULL (pas encore décrit) ; l'abréviation (migration 0090, réponse du propriétaire : « Modifiable et
+  // (opération `fusionner_mots_cles`) ; tous les champs d'un mot-clé non verrouillé se modifient, libellé compris (décision R195 : le site reconnaît
+  // les siens à leur id, lib/mots-cles.mjs#MOTS_CLES_PROTEGES) ; un mot-clé verrouillé (`verrou` = 1, migration 0110, décisions R218, R219 : ceux à
+  // adresse, des monnaies et dont le site se sert) n'en modifie aucun (serveur/edition.mjs#raisonDuGel : 409) ; `verrou` n'est pas ici : aucune route
+  // ne l'écrit (R218 (4)) ; une définition vidée : NULL (pas encore décrit) ; l'abréviation (migration 0090, réponse du propriétaire : « Modifiable et
   // affichée »), qu'une balise peut citer comme l'écriture : vidée, NULL ; sans ambiguïté avec un autre mot-clé
   // (lib/mots-cles-balises.mjs#fautesDeLAbreviation, la règle de db:check ; serveur/edition.mjs#refuserLAbreviation) ; l'adresse et la couleur
-  // (migration 0098 : les liens devenus des mots-clés), protégés compris : vidées, NULL ; une adresse interne qui mène à une page du site, une couleur
+  // (migration 0098 : les liens devenus des mots-clés) : vidées, NULL ; une adresse interne qui mène à une page du site, une couleur
   // écrite ou de la palette (serveur/edition.mjs#refuserLeLien, #refuserLaCouleur : 400)
   mot_cle: {
     libelle: 'Mot-clé',
@@ -717,8 +721,19 @@ const NATURES_DE_RACE = [
   { valeur: 'pure', libelle: 'Race pure' },
   { valeur: 'hybride', libelle: 'Race hybride (elle aura sa classe raciale)' },
 ];
-/** Le mot-clé d'une race hybride créée depuis le site : il la range parmi les hybrides tant qu'elle n'a pas sa classe raciale. */
+/** L'écriture d'origine du mot-clé d'une race hybride créée depuis le site (créé avec la première, sous l'id lib/race-kinds.mjs#TAG_RACE_HYBRIDE, par lequel il la range parmi les hybrides tant qu'elle n'a pas sa classe raciale ; son libellé se modifie : décision R195). */
 export const MOT_CLE_RACE_HYBRIDE = 'race hybride';
+
+/**
+ * Les tables figées sur le site de dev : table → la raison, telle que le refus du service la dit (409 : serveur/edition.mjs#raisonDuGel, création,
+ * modification de toute colonne, suppression ; l'API v1 comprise). Les monnaies (décision R219 (3) : « Ni création, ni modification, ni suppression dans
+ * l'onglet Monnaie »). Leur entrée de TABLES et d'ENTITES reste, pour le rejeu du journal, qui ne les contrôle pas (R220 (1) : un lot ancien qui
+ * écrivait l'onglet passe ; le renommage, lui, reste en conflit, R193, serveur/edition.mjs#COLONNES_FIGEES). L'onglet n'en offre aucun contrôle en mode
+ * modification.
+ */
+export const TABLES_FIGEES = Object.freeze({
+  monnaie: 'l’onglet Monnaie est figé, ni création, ni modification, ni suppression depuis le site (décision R219)',
+});
 
 export const ENTITES = {
   metier: {
@@ -889,6 +904,8 @@ export const ENTITES = {
     table: 'monnaie',
     libelle: 'monnaie',
     nouveau: 'Nouvelle monnaie',
+    // ni création ni suppression depuis le site : l'onglet est figé (décision R219 (3), TABLES_FIGEES : 409) ; l'entité reste pour le rejeu du
+    // journal (R220 (1)) et pour que l'API v1 réponde 409 avec la raison (POST, DELETE de /api/v1/monnaies/)
     suppression: true,
     champs: {
       // le nom se donne ici une fois pour toutes (« Figer les noms », R193 : il n'est plus dans TABLES.monnaie)
@@ -951,8 +968,9 @@ export const ENTITES = {
     champs: { libelle: { type: 'ligne', libelle: 'Catégorie', requis: true } },
   },
   // un mot-clé du glossaire (page Glossaire /regles/glossaire/), son libellé, sa définition et son abréviation (migration 0090) ; il ne se supprime que si rien ne le
-  // mentionne (décision R196 : serveur/edition-chronologie.mjs#MOT_CLE, lib/mentions-des-mots-cles.mjs ; sauf les mots-clés dont le site se sert : lib/mots-cles.mjs) ;
-  // son adresse et sa couleur (migration 0098), écrites seulement si elles sont données
+  // mentionne (décision R196 : serveur/edition-chronologie.mjs#MOT_CLE, lib/mentions-des-mots-cles.mjs) et s'il n'est pas verrouillé (décisions R218, R219) ;
+  // son adresse et sa couleur (migration 0098), écrites seulement si elles sont données ; créé non verrouillé, même avec une adresse (R219 (5) : `verrou`
+  // n'est pas un champ, serveur/edition.mjs#creerMotCle), sauf `race-hybride` créé par le service avec la première race hybride (R220 (2))
   mot_cle: {
     table: 'mot_cle',
     libelle: 'mot-clé',

@@ -19,15 +19,16 @@ const colonneExiste = (db, table, colonne) => db.prepare(`PRAGMA table_info("${t
 
 /**
  * Les mots-clés de la base, lus à chaque appel (sans cache : le service, dont la base change d'un lot à l'autre) : [{ id, libelle, libelle_cle,
- * description, abreviation, couleur, url }], dans l'ordre de la table ; une base d'avant la migration 0056 n'a pas de définitions, une d'avant la 0090
- * pas d'abréviations, une d'avant la 0098 ni couleur ni adresse (NULL) ; vide sans table mot_cle (avant la 0043).
+ * description, abreviation, couleur, url, verrou }], dans l'ordre de la table ; une base d'avant la migration 0056 n'a pas de définitions, une d'avant la 0090
+ * pas d'abréviations, une d'avant la 0098 ni couleur ni adresse (NULL), une d'avant la 0110 pas de verrou (0 : décisions R218, R219,
+ * lib/mots-cles.mjs#estVerrouille) ; vide sans table mot_cle (avant la 0043).
  * @param {import('node:sqlite').DatabaseSync} db
  */
 export function motsClesDeLaBase(db) {
   if (!tableExiste(db, 'mot_cle')) return [];
-  // un nom de colonne n'est écrit que s'il est l'une de ces quatre, présente dans la table (PRAGMA table_info) ; sinon NULL
-  const colonne = (c) => (colonneExiste(db, 'mot_cle', c) ? c : `NULL AS ${c}`);
-  const optionnelles = ['description', 'abreviation', 'couleur', 'url'].map(colonne).join(', ');
+  // un nom de colonne n'est écrit que s'il est l'une de ces cinq, présente dans la table (PRAGMA table_info) ; sinon NULL (0 pour le verrou)
+  const colonne = (c, defaut = 'NULL') => (colonneExiste(db, 'mot_cle', c) ? c : `${defaut} AS ${c}`);
+  const optionnelles = [...['description', 'abreviation', 'couleur', 'url'].map((c) => colonne(c)), colonne('verrou', '0')].join(', ');
   return db.prepare(`SELECT id, libelle, libelle_cle, ${optionnelles} FROM mot_cle`).all().map((m) => ({ ...m }));
 }
 

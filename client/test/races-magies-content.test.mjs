@@ -16,24 +16,28 @@ import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { magieIndex, relationsOfMagie, unresolvedNames } from '../src/lib/magie-relations.mjs';
+import { avecLesMotsCles, motsClesDesPages } from '../src/lib/pages-db.mjs';
 import { groupRaces, ORDRE_DES_RACES, raceKind, racialClassOf } from '../src/lib/race-kinds.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { splitFrontmatter } from '../src/lib/wikilinks.mjs';
 
 const dir = fileURLToPath(new URL('../src/content/wiki', import.meta.url));
-const load = (type) =>
+const db = ouvrirBase({ sansExemples: false });
+// les mots-clés de chaque page par leur id (`data.mots_cles`), comme lib/wiki.ts les pose (décision R195 : jamais par leur écriture)
+const motsCles = motsClesDesPages(db);
+const load = (type) => avecLesMotsCles(
   readdirSync(`${dir}/${type}`)
     .filter((f) => f.endsWith('.md'))
     .map((f) => ({ id: `${type}/${f.replace(/\.md$/, '')}`, ...splitFrontmatter(readFileSync(`${dir}/${type}/${f}`, 'utf8')) }))
     .filter((e) => e.data.status !== 'example')
-    .map((e) => ({ id: e.id, data: e.data, body: e.body }));
+    .map((e) => ({ id: e.id, data: e.data, body: e.body })),
+  motsCles);
 
 const races = load('races');
 const magies = load('magies');
 const classes = load('classes');
 const all = [...races, ...magies, ...classes];
 // les pages telles que l'import les a écrites : sans les pages créées depuis le site, champs structurés et corps d'avant ses modifications
-const db = ouvrirBase({ sansExemples: false });
 const historique = historiqueSite(db);
 const versImport = (e) => {
   if (!historique.touchee('page', { id: e.id })) return e;

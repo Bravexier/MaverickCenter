@@ -45,8 +45,8 @@ export function chargerRaces(db) {
     all("SELECT id, race_id, nom, effet FROM mode_hyper_effet WHERE version = 'onglet_race' AND portee = 'race'").map((h) => [h.race_id, h]),
   );
   const onglets = new Map(all('SELECT * FROM race_onglet').map((o) => [o.race_id, o]));
-  // races créées hybrides depuis le site de dev, avant leur classe raciale (même règle que lib/race-kinds.mjs#raceKind)
-  const marqueesHybrides = new Set(db.prepare('SELECT t.page_id FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE m.libelle_cle = ?').all(TAG_RACE_HYBRIDE).map((t) => t.page_id));
+  // races créées hybrides depuis le site de dev, avant leur classe raciale (même règle que lib/race-kinds.mjs#raceKind : le mot-clé par son id, R195)
+  const marqueesHybrides = new Set(db.prepare('SELECT page_id FROM page_tag WHERE tag_id = ?').all(TAG_RACE_HYBRIDE).map((t) => t.page_id));
 
   const races = new Map();
   for (const r of all('SELECT * FROM race ORDER BY ordre')) {
@@ -151,7 +151,7 @@ export const comparerRangsDeListe = (a, b) =>
 export function racesParNature(db) {
   const avecRang = db.prepare('PRAGMA table_info(race)').all().some((c) => c.name === 'rang_liste');
   const raciales = new Set(db.prepare("SELECT nom_cle FROM classe WHERE categorie_id = 'classe-hybride-animal'").all().map((c) => c.nom_cle));
-  const marquees = new Set(db.prepare('SELECT t.page_id FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE m.libelle_cle = ?').all(TAG_RACE_HYBRIDE).map((t) => t.page_id));
+  const marquees = new Set(db.prepare('SELECT page_id FROM page_tag WHERE tag_id = ?').all(TAG_RACE_HYBRIDE).map((t) => t.page_id));
   const groupes = { pures: [], hybrides: [] };
   for (const r of db.prepare(`SELECT id, nom, ${avecRang ? 'rang_liste' : 'NULL AS rang_liste'} FROM race`).all()) {
     const hybride = raciales.has(apres(r.id, '/')) || HYBRIDES_SANS_CLASSE_RACIALE.has(r.id) || marquees.has(r.id);

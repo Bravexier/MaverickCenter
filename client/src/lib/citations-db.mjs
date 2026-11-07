@@ -7,7 +7,8 @@
 //   - un bloc de description de la chronologie qui la cite pour légende (evenement_extrait.page_id) ;
 //   - depuis la migration 0098 (les liens devenus des balises du glossaire) : une balise dont le mot-clé a une adresse qui mène à la page
 //     (lib/adresses-db.mjs#pageDeLAdresse ; la supprimer laisserait la balise sans page), et le mot-clé lui-même, dont l'adresse mènerait nulle part
-//     (mot_cle.url : db:check la refuserait) — à retirer d'abord sur /recherche/.
+//     (mot_cle.url : db:check la refuserait) — à retirer d'abord sur /recherche/, sauf celle d'un mot-clé verrouillé, qui ne change pas : la page ne
+//     se supprime pas (décision R221, motsClesVerrouillesQuiYMenent).
 // Les textes lus sont ceux de lib/mots-cles-db.mjs#textesDeLaBase (toutes les colonnes TEXT des tables des règles, hors traces, tables dérivées,
 // fiches, journal et notes), sans les colonnes de clé (primaire ou étrangère : une relation, pas un texte ; lib/pages-protegees.mjs en tient
 // compte). La page elle-même ne se cite pas. Une citation depuis une page d'exemple (statut `example`) est rendue avec `exemple: true` : elle ne bloque
@@ -146,3 +147,22 @@ export const citationsDe = (db, id, options = {}) => citationsDesPages(db, [id],
 
 /** Les citations qui empêchent une suppression : toutes, sauf celles des pages d'exemple. */
 export const citationsBloquantes = (citations) => citations.filter((c) => !c.exemple);
+
+/**
+ * Décision R221 : les mots-clés verrouillés (mot_cle.verrou = 1, migration 0110 ; R218, R219) dont l'adresse mène à la page, parmi ses `citations`
+ * (comment 'mot-cle', citationsDesPages) : [{ id, libelle }], dans l'ordre des citations. Leur adresse ne se change ni ne se vide depuis le site :
+ * la page ne s'y supprime pas. Vide sur une base d'avant la 0110 (sans la colonne).
+ * @param {import('node:sqlite').DatabaseSync} db
+ */
+export function motsClesVerrouillesQuiYMenent(db, citations) {
+  const ids = [...new Set(citations.filter((c) => c.table === 'mot_cle' && c.comment === 'mot-cle').map((c) => c.cle.id))];
+  if (!ids.length || !db.prepare('PRAGMA table_info(mot_cle)').all().some((c) => c.name === 'verrou')) return [];
+  const lire = db.prepare('SELECT id, libelle FROM mot_cle WHERE id = ? AND verrou = 1');
+  return ids.map((id) => lire.get(id)).filter(Boolean).map((m) => ({ id: m.id, libelle: m.libelle }));
+}
+
+/** Décision R221 : le refus de supprimer `nom` (une page, un métier, un don) vers lequel mènent les mots-clés verrouillés `motsCles` (non vide). */
+export function refusDuMotCleVerrouille(nom, motsCles) {
+  const noms = motsCles.map((m) => `« ${m.libelle} »`).join(', ');
+  return `« ${nom} » ne se supprime pas sur le site : ${motsCles.length > 1 ? `les mots-clés verrouillés ${noms} y mènent` : `le mot-clé verrouillé ${noms} y mène`} (décision R221).`;
+}

@@ -205,9 +205,17 @@ test('les exemples de la description servent tels quels (un client qui les enver
     return enfant ? r.enfants.find((e) => e.cle === enfant).table : r.table;
   };
   let lectures = 0;
+  // une table figée (catalogue `figee` : les monnaies, décision R219 (3)) : son PATCH, refusé en 409 quelle que soit la ligne, n'a pas de clé d'exemple
+  const figees = new Set(ok(appel('GET', '/api/v1/')).ressources.filter((x) => x.figee).map((x) => x.cle));
+  assert.ok(figees.has('monnaies'), [...figees].join());
   for (const op of operationsDe(spec).filter((o) => /^\/v1\/[a-z]/.test(o.chemin) && o.chemin !== '/v1/openapi.json' && ['GET', 'PATCH'].includes(o.methode))) {
     const valeurs = { path: Object.fromEntries(op.parametres.filter((p) => p.dans === 'path').map((p) => [p.nom, p.exemple])) };
     const r = requeteDe(op, { valeurs, corps: op.corps?.exemple ?? '' });
+    if (op.methode === 'PATCH' && figees.has(op.chemin.split('/')[2]) && !op.chemin.split('/')[4]) {
+      assert.ok(r.erreurs.length, `${op.id} : pas de clé d’exemple`);
+      assert.match(op.description, /Refusé \(409\) : .*décision R219/, op.id);
+      continue;
+    }
     if (r.erreurs.length) {
       // seule une table encore vide n'a pas de ligne d'exemple (les catégories de la chronologie, créées sur le site de dev)
       assert.equal(ligne(`SELECT count(*) AS n FROM "${tableDe(op.chemin)}"`).n, 0, `${op.id} : ${r.erreurs.join(' ')}`);

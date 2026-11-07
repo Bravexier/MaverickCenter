@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
-import { rejouerLeJournal } from '../serveur/edition.mjs';
+import { enregistrer as enregistrerSansRoute, rejouerLeJournal } from '../serveur/edition.mjs';
 import { chargerJournal, journalExporte } from '../serveur/edition-journal.mjs';
 import { prixEnRf } from '../src/lib/composants-champs.mjs';
 import {
@@ -16,7 +16,7 @@ import {
 import { OBJETS_AU_CATALOGUE, retirerLesManquants } from '../serveur/fiches-retraits.mjs';
 import { ficheVide, TABLES_FICHES } from '../src/lib/fiche-format.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
-import { ENTITES, TABLES } from '../src/lib/edition-modele.mjs';
+import { ENTITES, TABLES, TABLES_FIGEES } from '../src/lib/edition-modele.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { POTENTIEL_ILLIMITE } from '../src/lib/potentiel-illimite.mjs';
 import { cheminDImport, lotsAvant } from './aide-base-d-import.mjs';
@@ -108,27 +108,38 @@ test('ingrédient : type et affinité refont type, majeur et affinité (créée 
   assert.equal(enregistrer([{ op: 'modifier', table: 'ingredient_alchimie', cle: catalyseur, valeurs: { type_brut: 'Fruit (majeur)' } }]).statut, 400, 'seul un amplificateur est majeur');
 });
 
-test('monnaie (décision R61, « Figer les noms », R193) : ni sa valeur ni son nom ne se modifient, l’abréviation du RF, du RO et de la PP non plus ; une monnaie créée a sa ligne du CONVERTISSEUR ; l’unité ne se supprime pas', () => {
+test('monnaie : l’onglet est figé (décision R219 (3)), ni création, ni modification d’une colonne, ni suppression (409, la raison) ; le nom reste hors de TABLES (R193)', () => {
   assert.ok(!('nom' in TABLES.monnaie.colonnes), 'le nom n’est plus une colonne modifiable');
-  assert.equal(ENTITES.monnaie.champs.nom?.requis, true, 'il se donne à la création');
-  for (const id of ['rf', 'ro', 'pp']) {
-    const avant = ligne('SELECT * FROM monnaie WHERE id = ?', id);
-    assert.equal(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id }, valeurs: { valeur_rf: 7 } }]).statut, 400, `${id} : valeur`);
-    assert.equal(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id }, valeurs: { abreviation: 'XX' } }]).statut, 400, `${id} : abréviation`);
-    assert.equal(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id }, valeurs: { nom: `${avant.nom} taillée` } }]).statut, 400, `${id} : nom`);
-    assert.deepEqual({ ...ligne('SELECT * FROM monnaie WHERE id = ?', id) }, { ...avant }, `${id} : rien n’a changé`);
+  assert.ok(TABLES_FIGEES.monnaie, 'la table est figée');
+  const refuse = (r, quoi) => {
+    assert.equal(r.statut, 409, `${quoi} : ${JSON.stringify(r.corps)}`);
+    assert.match(r.corps.erreur, /décision R219/, quoi);
+  };
+  const avant = db.prepare('SELECT * FROM monnaie ORDER BY id').all();
+  const pageAvant = corps(PAGE_DE_L_INVENTAIRE);
+  for (const { id, nom } of avant) {
+    for (const valeurs of [{ abreviation: `XX${process.pid}` }, { valeur_rf: 7 }, { nom: `${nom} taillée` }, { remarque: 'Essai.' }]) {
+      refuse(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id }, valeurs }]), `${id} ${JSON.stringify(valeurs)}`);
+    }
+    refuse(enregistrer([{ op: 'supprimer', entite: 'monnaie', cle: { id } }]), `${id} : suppression`);
   }
-  assert.equal(enregistrer([{ op: 'supprimer', entite: 'monnaie', cle: { id: 'rf' } }]).statut, 409);
-  const r = enregistrer([{ op: 'creer', entite: 'monnaie', valeurs: { nom: `Ricken d’argent ${process.pid}`, abreviation: `RA${process.pid}`, valeur_rf: 10 } }]);
-  ok(r);
-  const id = r.corps.crees[0].id;
+  refuse(enregistrer([{ op: 'creer', entite: 'monnaie', valeurs: { nom: `Ricken d’argent ${process.pid}`, abreviation: `RA${process.pid}`, valeur_rf: 10 } }]), 'création');
+  assert.equal(enregistrer([{ op: 'supprimer', entite: 'monnaie', cle: { id: `inconnue-${process.pid}` } }]).statut, 404, 'une monnaie inconnue : 404 d’abord');
+  assert.deepEqual(db.prepare('SELECT * FROM monnaie ORDER BY id').all(), avant, 'rien n’a changé');
+  assert.equal(corps(PAGE_DE_L_INVENTAIRE), pageAvant);
+});
+
+test('monnaie : un lot écrit avant le gel (R219, `gel` faux : un lot ancien du journal, que le rejeu laisse passer, R220 (1)) — une monnaie créée a sa ligne du CONVERTISSEUR, son abréviation le suit, elle se supprime ; l’unité jamais', () => {
+  const ancien = (operations) => enregistrerSansRoute(db, { page: 'ressources/composants/', operations }, { gel: false });
+  assert.throws(() => ancien([{ op: 'supprimer', entite: 'monnaie', cle: { id: 'rf' } }]), (e) => e.statut === 409, 'l’unité ne se supprime pas');
+  const id = ancien([{ op: 'creer', entite: 'monnaie', valeurs: { nom: `Ricken d’argent ${process.pid}`, abreviation: `RA${process.pid}`, valeur_rf: 10 } }]).crees[0].id;
   assert.equal(ligne('SELECT convertisseur_brut FROM monnaie WHERE id = ?', id).convertisseur_brut, `1 RA${process.pid} : 10 RF`);
   assert.ok(lignesDe(PAGE_DE_L_INVENTAIRE).includes(`- 1 RA${process.pid} : 10 RF`));
-  assert.equal(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id }, valeurs: { nom: `Ricken d’étain ${process.pid}` } }]).statut, 400, 'le nom d’une monnaie créée non plus');
-  ok(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id }, valeurs: { abreviation: `RB${process.pid}` } }]));
+  ancien([{ op: 'modifier', table: 'monnaie', cle: { id }, valeurs: { abreviation: `RB${process.pid}` } }]);
   assert.ok(lignesDe(PAGE_DE_L_INVENTAIRE).includes(`- 1 RB${process.pid} : 10 RF`), 'le CONVERTISSEUR suit l’abréviation');
-  ok(enregistrer([{ op: 'supprimer', entite: 'monnaie', cle: { id } }]));
+  ancien([{ op: 'supprimer', entite: 'monnaie', cle: { id } }]);
   assert.ok(!corps(PAGE_DE_L_INVENTAIRE).includes(`RB${process.pid}`));
+  // le rejeu du journal (test « rejeu du journal (livraison) », plus bas) refait ces lots sur des règles neuves
 });
 
 test('composant créé à la fin de son tableau (ligne de l’onglet), puis supprimé : il quitte l’onglet, et l’inventaire d’une fiche le garde sous son nom', () => {
@@ -254,15 +265,15 @@ test('ingrédient créé à la fin de sa catégorie (sa ligne de la liste d’in
   assert.equal(ligne('SELECT 1 FROM ressource WHERE id = ?', idI), undefined);
 });
 
-test('ni HTML brut ni lien non sûr dans les pages qui écrivent un composant ; le RF et le RO gardent leur abréviation et leur valeur', () => {
+test('ni HTML brut ni lien non sûr dans les pages qui écrivent un composant ; le RF et le RO gardent leur abréviation et leur valeur (R61, R219)', () => {
   const objet = ligne("SELECT id FROM ressource WHERE page_id = ? AND section = 'MATOS AVENTURES' ORDER BY id LIMIT 1", PAGE_DE_L_INVENTAIRE);
   const r = enregistrer([{ op: 'modifier', table: 'ressource', cle: objet, valeurs: { description: '<img src=x onerror=alert(1)>' } }]);
   assert.equal(r.statut, 400, JSON.stringify(r.corps));
   assert.ok(!corps(PAGE_DE_L_INVENTAIRE).includes('onerror'));
-  for (const [id, valeurs] of [['ro', { valeur_rf: 1000 }], ['ro', { abreviation: 'RX' }], ['rf', { abreviation: 'RFX' }]]) {
-    assert.equal(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id }, valeurs }]).statut, 400, `${id} ${JSON.stringify(valeurs)}`);
+  // l'onglet Monnaie est figé (R219 (3)) : 409 avant tout contrôle de la colonne
+  for (const [id, valeurs] of [['ro', { valeur_rf: 1000 }], ['ro', { abreviation: 'RX' }], ['rf', { abreviation: 'RFX' }], ['ro', { nom: 'Ricken d’or' }]]) {
+    assert.equal(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id }, valeurs }]).statut, 409, `${id} ${JSON.stringify(valeurs)}`);
   }
-  assert.equal(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id: 'ro' }, valeurs: { nom: 'Ricken d’or' } }]).statut, 400, 'le nom ne se modifie pas');
 });
 
 test('OBJETS_AU_CATALOGUE : exactement les tables des fiches qui citent une ressource ; à la reconstruction, l’objet d’une ressource disparue reste sous son nom', () => {

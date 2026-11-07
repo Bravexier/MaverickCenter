@@ -45,7 +45,7 @@ const QUALITES = ['Commune', 'Raffinée', 'Parfaite'];
 const contenus: Record<string, Contenu> = {
   monnaie: {
     entetes: ['Nom', 'Symbole', 'Valeur', 'Conversion'], lignes: monnaies.map((m) => htmlDeLigneDeMonnaie(m, monnaies)),
-    ajout: { entite: 'monnaie', libelle: 'une monnaie' },
+    ajout: null, // l'onglet Monnaie est figé : ni création ni suppression depuis le site (décision R219 (3), lib/edition-modele.mjs#TABLES_FIGEES)
   },
   materiaux: {
     entetes: ['Matière', 'Type', 'Prix', 'Description', 'Fabrication', 'Effets sur une arme', 'Utilisé pour'], lignes: composants.materiaux.map(htmlDeLigneDeMateriau),

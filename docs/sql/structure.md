@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 109 : 212 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 110 : 212 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -95,6 +95,7 @@ Vocabulaire des mots-clés, devenu un glossaire : un mot-clé = son id, son libe
 | `abreviation` | TEXT | non |  | l'abréviation du mot-clé, telle qu'écrite (« AM », « Nat. ») ; NULL : aucune. Une seule par mot-clé, que la ref d'une balise peut citer comme l'id ou l'écriture : normalize(abreviation) n'est ni l'id, ni le libelle_cle, ni l'abréviation d'un autre mot-clé (client/scripts/db-check.mjs le vérifie : la règle passe par normalize, qu'un CHECK ne lit pas). Migration 0090 (le Lexique converti en mots-clés), ajoutée en dernier |
 | `couleur` | TEXT | non |  |  |
 | `url` | TEXT | non |  |  |
+| `verrou` | INTEGER | oui |  | 1 : le mot-clé est verrouillé (décisions R218, R219) ; le site de dev n'en modifie aucun champ (libellé, définition, abréviation, adresse, couleur) et ne le supprime pas, ni par fusion dans un autre ; il se pose, se cite et reçoit une fusion. Aucune route n'écrit verrou : il ne change que par une migration (« seul un admin », à venir). 0 par défaut : un mot-clé créé plus tard n'est pas verrouillé (R219 (5)), sauf race-hybride (R220 (2)). Le rejeu du journal ne le contrôle pas (R219 (6)). Migration 0110, ajoutée en dernier |
 
 ### `page_tag`
 

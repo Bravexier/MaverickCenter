@@ -133,6 +133,14 @@ de `guide/liste-des-effets-mode-hyper`, décision R187 : l'importeur ignore l'on
 en base), exclues de l'import par la décision R183 (11). Test :
 `client/test/importeurs-etiquettes.test.mjs`, qui rejoue les trois extracteurs sur les instantanés de `sources/raw/classeurs/`.
 
+**Les mots-clés dont le site se sert** (`client/src/lib/mots-cles.mjs#MOTS_CLES_PROTEGES`, par id : catégories et colonnes de classe, `classe`,
+`capacite-de-classe`, `race`, `metier`, `codex`, étiquettes de sort…) se posent par leur id, jamais par leur écriture, qu'un autre mot-clé pourrait
+prendre : l'extracteur écrit dans `tags:` le libellé courant du mot-clé de cet id (`tools/db/maverick.py#libelle_protege`, vocabulaire
+`data/rows/mot_cle.sql`, option `--vocabulaire` de `classes.py`, `races.py` et `relations-races.py` ; `Vocabulaire.protege` de `codex.py`), qui ne mène
+qu'à lui (`libelle_cle` unique), et rien s'il n'est pas au vocabulaire. `maverick.py#mot_cle`, lui, garde l'écriture d'abord : `db:sync-pages` relit
+aussi les `tags:` qu'écrit `db:export-pages`, où l'écriture d'origine d'un protégé peut être devenue celle d'un autre mot-clé. La liste Python
+(`maverick.py#MOTS_CLES_PROTEGES`) recopie celle du site : `client/test/mots-cles-python.test.mjs` les compare.
+
 **Les ancres figées qu'écrit un extracteur** : `annexes-magie.py` termine chaque intertitre d'état de `guide/liste-des-alterations-d-etat` par
 ` {#<ancre>}` (`## Agrippé {#aggripe}`, `docs/content-guide.md`, « Ancres figées des intertitres »), l'ancre étant le segment après `#etat:` de l'id de
 la ligne `etat`, lue dans sa table `ANCRES_DES_ETATS` (nom tel que le classeur l'écrit → ancre), jamais recalculée du nom ; un nom absent de la table

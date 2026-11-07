@@ -12,7 +12,9 @@ import { couleurDuCercle, optionsDeCouleur, valeurDeCouleur } from '../src/lib/m
 import { lireLaCouleur } from '../src/lib/mots-cles-liens.mjs';
 import { couleursDeLaPalette, FAMILLES_DE_LA_PALETTE, fauteDeLaCouleur } from '../src/lib/palette-css.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { cleDeMagieConnue } from '../src/lib/sort-format.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 import { attendre, el, fauxDocument } from './aide-faux-dom.mjs';
 
 test('normaliser est lib/text.mjs#normalize (recopiée : le script de la page n’importe rien d’autre)', () => {
@@ -79,10 +81,30 @@ test('Q3, Q4 : les couleurs proposées — toutes les familles de la palette (te
     assert.match(c.fond, /^#[0-9a-f]{6}$/, c.valeur);
     assert.ok(c.libelle && !c.libelle.includes(':'), c.valeur);
   }
-  const libelle = (valeur) => toutes.find((c) => c.valeur === valeur)?.libelle;
-  // l'élément de référence, tel que la base ou le site le nomme (réponse Q3 : « Feu », « Chakra », « Mithril »…)
-  assert.deepEqual(['magie:feu', 'magie:espace-temps', 'attribut:chakra', 'materiau:mythril', 'classe:melee', 'race:pure', 'partie:creer', 'magie:par-defaut', 'niveau:3'].map(libelle),
+  const libelleDans = (liste) => (valeur) => liste.find((c) => c.valeur === valeur)?.libelle;
+  const libelle = libelleDans(toutes);
+  // l'élément de référence, tel que la base ou le site le nomme (réponse Q3 : « Feu », « Chakra », « Mithril »…) : l'exemple se lit à l'import (les noms
+  // de la base sont modifiables sur le site de dev : skill tests-conventions, « pas de texte figé »)
+  const BASE = ['magie:feu', 'magie:espace-temps', 'attribut:chakra', 'materiau:mythril'];
+  const MODULES = ['classe:melee', 'race:pure', 'partie:creer', 'magie:par-defaut', 'niveau:3'];
+  assert.deepEqual([...BASE, ...MODULES].map(libelleDans(choixDesCouleurs(baseDImport()).flatMap((g) => g.couleurs))),
     ['Feu', 'Espace/Temps', 'Chakra', 'Mythril', 'Physiques Mêlée', 'Race pure', 'Créer son personnage', 'Par défaut', 'Niveau 3']);
+  // aujourd'hui : un nom de la base suit la ligne lue par son id (figé), ou, si le site l'a supprimée ou renommée hors de la clé, la clé mise en forme
+  const db = ouvrirBase();
+  const nomPar = (sql, id) => db.prepare(sql).get(id)?.nom;
+  const magie = (id, cle) => {
+    const nom = nomPar('SELECT nom FROM magie WHERE id = ?', id);
+    return cleDeMagieConnue(nom) === cle ? nom : undefined;
+  };
+  const courants = [
+    magie('magies/magie-du-feu', 'feu'),
+    magie('magies/magie-de-lespace-temps', 'espace-temps'),
+    nomPar('SELECT libelle AS nom FROM affinite WHERE id = ?', 'chakra'),
+    nomPar('SELECT nom FROM ressource WHERE id = ?', 'ressources/armures#materiau:mythril'),
+  ];
+  assert.deepEqual(BASE.map(libelle), BASE.map((v, i) => courants[i] || libelleDeCle(v.slice(v.indexOf(':') + 1))), 'les noms de la base, lus par id');
+  // les libellés des modules du site (CLASS_GROUPS, LIBELLES_ECRITS, PARTIES) : le site de dev ne les écrit pas
+  assert.deepEqual(MODULES.map(libelle), ['Physiques Mêlée', 'Race pure', 'Créer son personnage', 'Par défaut', 'Niveau 3']);
   assert.equal(libelleDeCle('fer-noir'), 'Fer noir');
   // sans base : les clés mises en forme, les mêmes couleurs
   assert.equal(choixDesCouleurs().flatMap((g) => g.couleurs).length, toutes.length);

@@ -9,10 +9,13 @@
 //     Bois : chaque magie a déjà le sien, le Potentiel Illimité n'en a pas, décision R160 : « Ne rien afficher ») ;
 //   - supprimer : un bouton sur chaque ligne que rien d'autre ne cite (`data-citee` : la raison, en infobulle d'un bouton grisé) ; la suppression part
 //     avec le bouton de confirmation ;
+//   - l'onglet Monnaie est figé (décision R219 (3) : « Ni création, ni modification, ni suppression dans l'onglet Monnaie » ;
+//     lib/edition-modele.mjs#TABLES_FIGEES, que le service refuse en 409) : ni « + Ajouter », ni case modifiable (lib/composants-rendu.mjs), ni
+//     « Supprimer » ; le titre et la note de son onglet restent des champs communs ;
 //   - au chargement, un composant créé ou supprimé depuis la construction du site apparaît ou disparaît (lignes en attente) ;
-//   - une monnaie enregistrée : les conversions de toutes les monnaies sont refaites ;
+//   - une monnaie que la surcouche montre (un lot ancien du journal rejoué, R220 (1)) : les conversions de toutes les monnaies sont refaites ;
 //   - à chaque étape, l'évènement « composants:rafraichir » redemande au script de la page son filtre et ses comptes (aucun module partagé).
-import { champsDeCreationDe, cleDeLigne, ENTITES, sansChoixPossible } from '../../lib/edition-modele.mjs';
+import { champsDeCreationDe, cleDeLigne, ENTITES, sansChoixPossible, TABLES_FIGEES } from '../../lib/edition-modele.mjs';
 import {
   htmlDeLigneDeBois, htmlDeLigneDeGemme, htmlDeLigneDeMateriau, htmlDeLigneDeMonnaie, htmlDeLigneDIngredient, htmlDeLigneDObjet, htmlDesConversions,
 } from '../../lib/composants-rendu.mjs';
@@ -24,6 +27,9 @@ const supprimees = new Map(); // clé de ligne → { entite, cle }
 /** La ligne d'une entité, par sa clé (data-entite, data-cle). */
 const ligneDe = (entite, cle) =>
   [...document.querySelectorAll('[data-composants] tr[data-entite]')].find((tr) => tr.dataset.entite === entite && tr.dataset.cle === JSON.stringify(cle)) ?? null;
+
+/** Vrai pour une entité dont la table est figée sur le site de dev (la monnaie, R219 (3)) : ni ajout ni suppression offerts. */
+const figee = (entite) => Object.hasOwn(TABLES_FIGEES, ENTITES[entite]?.table ?? entite);
 
 const slug = (t) => String(t).normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
@@ -79,6 +85,7 @@ function retirer(entite, cle) {
 }
 
 function boutonSupprimer(tr) {
+  if (figee(tr.dataset.entite)) return;
   const cellule = tr.querySelector('.comp-nom');
   if (!cellule || cellule.querySelector('.ed-supprimer')) return;
   const bouton = document.createElement('button');
@@ -173,6 +180,7 @@ export const composants = {
     if (recherche) recherche.value = '';
     for (const table of r?.querySelectorAll('table[data-ajout]') ?? []) {
       const ajout = JSON.parse(table.dataset.ajout);
+      if (figee(ajout.entite)) continue;
       if (sansChoixPossible(champsDeCreation(ed, ajout.entite, ajout.valeurs ?? {}, ajout.montrer))) continue;
       const bouton = document.createElement('button');
       bouton.type = 'button';

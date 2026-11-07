@@ -44,14 +44,14 @@
 // Chaque écriture réussie est notée au journal du service : « api v1 : <MÉTHODE> <adresse> → lot <id> » (catégorie edition), avec le nombre de fiches
 // adaptées, jamais leurs noms.
 // N'importe que node: et des modules de client/ (serveur/livraison.mjs#modulesDuServeur).
-import { CHAMPS_HORS_COLONNES, ENTITES, ErreurValeur, TABLES, ligneSansImage, valeurDuChamp } from '../src/lib/edition-modele.mjs';
+import { CHAMPS_HORS_COLONNES, ENTITES, ErreurValeur, TABLES, TABLES_FIGEES, ligneSansImage, valeurDuChamp } from '../src/lib/edition-modele.mjs';
 import {
   actionDe, capacitesDe, champFige, cleDuSegment, colonneFigee, enfantDe, MODULES, operationDe, RESSOURCES, ressourceDe, segmentDeCle, tablesDe,
   tablesModifiables,
 } from '../src/lib/ressources.mjs';
 import { TABLES_DES_NOTES } from '../src/lib/tables-de-la-base.mjs';
 import { normalize } from '../src/lib/text.mjs';
-import { ErreurEdition, enregistrer, listes } from './edition.mjs';
+import { ErreurEdition, enregistrer, listes, raisonDuGel } from './edition.mjs';
 import { ErreurHttp, empreinteCourte, entierDeLAdresse, etiquetteCorrespond, etiquettesDe, reponseVersionnee, segmentDecode } from './partage.mjs';
 import { cleDe, lireLigne, structure, TABLES_INTERDITES } from './edition-journal.mjs';
 import { descriptionOpenApi } from './openapi.mjs';
@@ -652,15 +652,22 @@ function exempleAccepte(db, vue, ligne, parent = null) {
   }
 }
 
-/** Un exemple de ligne d'une ressource pour la documentation : la première dans l'ordre par défaut de sa liste qu'accepte son PATCH (null : aucune). */
+/**
+ * Un exemple de ligne d'une ressource pour la documentation : la première dans l'ordre par défaut de sa liste qu'accepte son PATCH (null : aucune),
+ * de préférence une ligne qui n'est pas gelée (serveur/edition.mjs#raisonDuGel : un mot-clé verrouillé, R218, R219) ; si toutes le sont (les monnaies,
+ * R219 (3)), la première, marquée `gelee` (son PATCH serait refusé en 409 : la description ne le propose pas tel quel, serveur/openapi.mjs).
+ */
 function exempleDe(db, vue) {
   try {
     const params = new URLSearchParams({ limite: '200' });
+    let gelee = null;
     for (const element of lister(db, vue, params).elements) {
       const ligne = trouver(db, vue, element.cle);
-      if (ligne && exempleAccepte(db, vue, ligne)) return exempleDeLigne(vue, ligne);
+      if (!ligne || !exempleAccepte(db, vue, ligne)) continue;
+      if (!raisonDuGel(vue.table, ligne)) return exempleDeLigne(vue, ligne);
+      gelee ??= ligne;
     }
-    return null;
+    return gelee ? { ...exempleDeLigne(vue, gelee), gelee: true } : null;
   } catch {
     return null;
   }
@@ -723,6 +730,8 @@ function ressourceDecrite(db, r, { lesListes, exemples }) {
     recherche: vue.recherche,
     tri: vue.tri,
     capacites,
+    // une table figée (lib/edition-modele.mjs#TABLES_FIGEES : les monnaies, décision R219 (3)) : ses écritures répondent 409, la raison
+    ...(TABLES_FIGEES[r.table] ? { figee: TABLES_FIGEES[r.table] } : {}),
     colonnes: colonnesDecrites(db, r.table, capacites.modifier && ecrites.has(r.table), lesListes, { o: r, parOperation: patch?.champs }),
     extensions: (r.extensions ?? []).map((e) => ({
       table: e.table, parent: e.parent, colonnes: colonnesDecrites(db, e.table, capacites.modifier && !patch && ecrites.has(e.table), lesListes),
@@ -913,6 +922,10 @@ function modifier(db, service, vue, ligne, corps, etiquettes, parent, adresse) {
   if (t) return ecrireParOperation(db, service, vue, 'PATCH', { t, corps, ligne, parent, adresse, etiquettes });
   const valeurs = objetAttendu(corps, `Modifier ${vue.objet.nom.toLowerCase()}`);
   if (!Object.keys(valeurs).length) throw new ErreurApi(400, 'Aucune colonne à modifier.');
+  // une ligne gelée (une monnaie, décision R219 (3) ; un mot-clé verrouillé, R218, R219) : 409 quelle que soit la colonne, comme le service le refuse
+  // (serveur/edition.mjs#raisonDuGel) ; avant le contrôle des colonnes, qui dirait 400 pour une colonne hors de TABLES (le nom d'une monnaie, `verrou`)
+  const gelee = vue.enfant ? null : raisonDuGel(vue.table, ligne);
+  if (gelee) throw new ErreurApi(409, gelee);
   const ecrites = tablesModifiables(vue.objet);
   const extensions = vue.enfant ? [] : vue.ressource.extensions ?? [];
   const parTable = new Map();

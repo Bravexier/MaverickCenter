@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 210 décisions, de R1 à R210, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 222 décisions, de R1 à R222, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
 
 | Réf. | Sujet | Décision |
 | --- | --- | --- |
@@ -216,3 +216,15 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R208 | Métiers (points « Métiers » du §2 et G20 à G24 du §6 de `docs/sql/a-valide… | (1) Un objet de départ marqué « (Arme) » va dans l'inv… |
 | R209 | Bestiaire (§2 « Bestiaire » et §4 D4 de `docs/sql/a-valider.md` ; question… | (1) FPVSIA = Force, Perception, Volonté, Social, Intel… |
 | R210 | Magies innées d'une race vidées sur le site de dev (C5, `docs/sql/a-valide… | Une race a forcément des magies innées possibles. Le p… |
+| R211 | Suite de R196 : les mots-clés que visent les rejeux des migrations 0090 et… | (1) Un mot-clé que vise le rejeu des migrations 0090 o… |
+| R212 | Suite de R197 : la bourse des fiches quand une monnaie est supprimée (lot… | (1) La bourse des fiches n'empêche pas la suppression… |
+| R213 | Suite de R197 : l'affichage d'un montant quand une monnaie est supprimée (… | Un montant se décompose avec les monnaies qui restent… |
+| R214 | Suite de R195 (2) : l'abréviation d'une monnaie changée sur le site (lot «… | Changer l'abréviation d'une monnaie la change partout… |
+| R215 | Suite de R212 : le montant d'une case retirée de la bourse (lot « mots-clé… | Le montant d'une case retirée est converti à l'afficha… |
+| R216 | Suite de R212 et de R213 : une monnaie créée sur le site (lot « mots-clés… | Une monnaie créée entre dans la décomposition des mont… |
+| R217 | Suite de R213 : l'infobulle d'une monnaie (lot « mots-clés et monnaies »,… | L'infobulle d'une monnaie ne cite que les monnaies qui… |
+| R218 | Le verrou des mots-clés, à la place des règles des monnaies (demande du pr… | (1) Les règles des monnaies du lot 4 sont abandonnées… |
+| R219 | Suite de R218 : les sept points du verrou laissés ouverts (lot « mots-clés… | (1) « Les pages » : tout mot-clé dont l'adresse (`mot_… |
+| R220 | Suite de R219 : le rejeu des lots anciens de l'onglet Monnaie, et le mot-c… | (1) Au rejeu du journal, un lot ancien qui écrivait l'… |
+| R221 | Suite de R219 : une page vers laquelle mène un mot-clé verrouillé (lot « m… | Une page vers laquelle mène un mot-clé verrouillé ne s… |
+| R222 | Suite de R219 : la fusion d'un mot-clé cité dans une définition verrouillé… | (1) La fusion d'un mot-clé est refusée tant que la déf… |

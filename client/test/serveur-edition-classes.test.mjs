@@ -88,10 +88,10 @@ test('créer une classe dans une catégorie : page (mot-clé de la catégorie : 
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
   const c = ligne('SELECT * FROM classe WHERE id = ?', id);
   assert.deepEqual([c.categorie_id, c.sante_depart, c.ordre], ['classe-magique', 6, ordre], 'à la suite des classes de la base');
-  const tags = lignes('SELECT m.libelle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE t.page_id = ? ORDER BY t.ordre', id).map((t) => t.libelle);
-  // les mots-clés protégés se reconnaissent à leur écriture (libelle_cle) : leur libellé peut changer (« Classe », R183)
-  assert.deepEqual(tags.map(normalize), ['classe', 'magique']);
-  const groupe = groupClasses([{ id, data: { title: nom, tags } }])[0];
+  // les mots-clés protégés se reconnaissent à leur id : leur libellé peut changer (« Classe », R183 ; décision R195)
+  const motsCles = lignes('SELECT tag_id FROM page_tag WHERE page_id = ? ORDER BY ordre', id).map((t) => t.tag_id);
+  assert.deepEqual(motsCles, ['classe', 'magique']);
+  const groupe = groupClasses([{ id, data: { title: nom, mots_cles: motsCles } }])[0];
   assert.equal(groupe.key, 'magiques');
   assert.equal(ligne('SELECT count(*) AS n FROM race_classe WHERE classe_id = ? AND accessible = 0', id).n, ligne('SELECT count(*) AS n FROM race').n);
   for (const [valeurs, motif] of [
@@ -176,7 +176,7 @@ test('D11 — créer une spécialité : ligne, page_entite, don de spécialité 
   const p = ligne('SELECT * FROM page WHERE id = ?', k.id);
   assert.deepEqual([p.type, p.slug, p.titre, p.statut, p.origine, p.resume, p.corps_md],
     ['capacites', `${C1.slug}-lame-courbe`, `Lame courbe (${C1.nom})`, 'draft', 'classes', 'Frappe deux fois.', 'Frappe deux fois.\n']);
-  assert.deepEqual(lignes('SELECT m.libelle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE t.page_id = ? ORDER BY t.ordre', k.id).map((t) => t.libelle), ['capacité de classe'], 'migration 0056 : ni la classe ni la spécialité');
+  assert.deepEqual(lignes('SELECT tag_id FROM page_tag WHERE page_id = ? ORDER BY ordre', k.id).map((t) => t.tag_id), ['capacite-de-classe'], 'migration 0056 : ni la classe ni la spécialité (par son id : R195)');
   const sources = lignes('SELECT s.texte FROM page_source ps JOIN source s ON s.id = ps.source_id WHERE ps.page_id = ?', k.id);
   assert.equal(sources.length, 1);
   assert.match(sources[0].texte, /^Site de dev › édition du /);
@@ -236,7 +236,7 @@ test('D11 — don de spécialité au niveau 15 : nouvelle ligne, seul donc sans 
   const k = donDe(C1.fente);
   assert.deepEqual([k.nature, k.niveau, k.ligne, k.rang, k.specialite_id, k.type, k.limite_nombre], ['choix', 15, 14, 1, C1.spec1, 'actif', 2]);
   assert.equal('choix_exclusif_avec' in donneesDe(C1.fente), false, 'seul sur sa ligne');
-  assert.deepEqual(lignes('SELECT m.libelle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE t.page_id = ? ORDER BY t.ordre', C1.fente).map((t) => t.libelle), ['capacité de classe']);
+  assert.deepEqual(lignes('SELECT tag_id FROM page_tag WHERE page_id = ? ORDER BY ordre', C1.fente).map((t) => t.tag_id), ['capacite-de-classe']);
   // une paire au niveau 20 : le second don cite le premier par « @0 »
   const p = enregistrer([
     { op: 'creer', entite: 'capacite', valeurs: { classe_id: C1.id, specialite_id: C1.spec1, niveau: '20', nom: 'Botte secrète', type: 'Passif' } },

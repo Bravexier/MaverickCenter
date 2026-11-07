@@ -195,7 +195,8 @@ test('service : créer un mot-clé avec son abréviation, la citer « {{ABR}} »
   const note = s.ligne("SELECT apres FROM modification WHERE table_nom = 'mot_cle' AND operation = 'inserer' AND json_extract(cle, '$.id') = ?", id);
   assert.equal(JSON.parse(note.apres).abreviation, abreviation, 'le journal note l’abréviation');
   // citée par son abréviation, dans une autre casse : la forme canonique est l'id, avec l'abréviation telle qu'écrite dans la base
-  const autre = s.ligne("SELECT id, description FROM mot_cle WHERE description IS NOT NULL AND instr(description, '{{') = 0 AND id <> ? ORDER BY id LIMIT 1", id);
+  // un mot-clé non verrouillé (un verrouillé ne se modifie pas : décisions R218, R219)
+  const autre = s.ligne("SELECT id, description FROM mot_cle WHERE description IS NOT NULL AND instr(description, '{{') = 0 AND id <> ? AND verrou = 0 ORDER BY id LIMIT 1", id);
   s.ok(s.lot([{ op: 'modifier', table: 'mot_cle', cle: { id: autre.id }, valeurs: { description: `${autre.description} Voir {{${abreviation.toLowerCase()}}}.` } }]));
   assert.equal(s.ligne('SELECT description FROM mot_cle WHERE id = ?', autre.id).description, `${autre.description} Voir {{${id}|${abreviation}}}.`);
   // GET /api/edition/mots-cles/ et /api/edition/listes/ : l'abréviation
@@ -210,11 +211,10 @@ test('service : créer un mot-clé avec son abréviation, la citer « {{ABR}} »
   assert.equal(s.lot([{ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { abreviation: 'X' }, avant: { abreviation } }]).statut, 409, 'modifiée entre-temps');
   s.ok(s.lot([{ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { abreviation: '' } }]));
   assert.equal(s.ligne('SELECT abreviation FROM mot_cle WHERE id = ?', id).abreviation, null, 'vidée : NULL');
-  // celle d'un mot-clé dont le site se sert se modifie aussi (ni son id ni son écriture ne changent)
-  const magique = s.ligne("SELECT id FROM mot_cle WHERE libelle_cle = 'magique'");
-  const abrMagique = s.libre('ZQM');
-  s.ok(s.lot([{ op: 'modifier', table: 'mot_cle', cle: { id: magique.id }, valeurs: { abreviation: abrMagique } }]));
-  assert.equal(s.ligne('SELECT abreviation FROM mot_cle WHERE id = ?', magique.id).abreviation, abrMagique);
+  // celle d'un mot-clé verrouillé ne se modifie pas (décisions R218, R219 : « magique », dont le site se sert, R219 (2))
+  const magique = s.ligne("SELECT id, abreviation FROM mot_cle WHERE id = 'magique'");
+  assert.equal(s.lot([{ op: 'modifier', table: 'mot_cle', cle: { id: magique.id }, valeurs: { abreviation: s.libre('ZQM') } }]).statut, 409);
+  assert.equal(s.ligne('SELECT abreviation FROM mot_cle WHERE id = ?', magique.id).abreviation, magique.abreviation);
   // la création sans abréviation : NULL
   const sans = s.ok(s.lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: s.libre('Essai sans abrege') } }])).crees[0].id;
   assert.equal(s.ligne('SELECT abreviation FROM mot_cle WHERE id = ?', sans).abreviation, null);
@@ -224,7 +224,8 @@ test('service : refus — une abréviation mal écrite (400), celle d’un autre
   const s = service();
   const id = s.ok(s.lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: s.libre('Essai refus') } }])).crees[0].id;
   const avant = s.ligne('SELECT * FROM mot_cle WHERE id = ?', id);
-  const pris = s.ligne('SELECT id, libelle, abreviation FROM mot_cle WHERE abreviation IS NOT NULL ORDER BY id LIMIT 1');
+  // non verrouillé : sa définition se modifie plus bas (un verrouillé serait refusé avant tout contrôle du texte : R218, R219)
+  const pris = s.ligne('SELECT id, libelle, abreviation FROM mot_cle WHERE abreviation IS NOT NULL AND verrou = 0 ORDER BY id LIMIT 1');
   const sansAbr = s.ligne('SELECT id, libelle FROM mot_cle WHERE abreviation IS NULL AND id <> ? AND id <> libelle_cle ORDER BY id LIMIT 1', id)
     ?? s.ligne('SELECT id, libelle FROM mot_cle WHERE abreviation IS NULL AND id <> ? ORDER BY id LIMIT 1', id);
   const modifier = (abreviation) => s.lot([{ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { abreviation } }]);
@@ -286,9 +287,10 @@ test('rejeu du journal et db:appliquer-edition : l’abréviation créée, modif
   const r = appliquerJournal(journal, { rows });
   assert.deepEqual(r.conflits, []);
   const motCle = readFileSync(join(rows, 'mot_cle.sql'), 'utf8').split('\n');
-  // l'abréviation, puis la couleur et le lien (migration 0098, ajoutés en dernier : NULL ici)
-  assert.match(motCle.find((l) => l.includes(`VALUES ('${id}',`)), new RegExp(`, '${modifiee}', NULL, NULL\\);$`));
-  assert.match(motCle.find((l) => l.includes(`VALUES ('${autre}',`)), /, NULL, NULL, NULL\);$/);
+  // l'abréviation, puis la couleur et le lien (migration 0098 : NULL ici), puis le verrou (migration 0110, ajouté en dernier : 0 pour un mot-clé créé,
+  // décision R219 (5))
+  assert.match(motCle.find((l) => l.includes(`VALUES ('${id}',`)), new RegExp(`, '${modifiee}', NULL, NULL, 0\\);$`));
+  assert.match(motCle.find((l) => l.includes(`VALUES ('${autre}',`)), /, NULL, NULL, NULL, 0\);$/);
 });
 
 test('API REST : la liste et la recherche des mots-clés donnent l’abréviation ; PATCH la modifie, la refuse comme le service', () => {
@@ -320,9 +322,9 @@ test('le modèle : l’abréviation se modifie et se donne à la création (TABL
   // la balise d'une abréviation de la base se résout
   const v = vocabulaireDesMotsCles(lus);
   for (const m of enBase) assert.equal(motCleDeLaRef(v, m.abreviation)?.id, m.id, m.abreviation);
-  // une base d'avant les migrations 0056, 0090 et 0098 : ni définition, ni abréviation, ni couleur, ni lien (NULL)
+  // une base d'avant les migrations 0056, 0090, 0098 et 0110 : ni définition, ni abréviation, ni couleur, ni lien (NULL), ni verrou (0)
   const ancienne = new DatabaseSync(':memory:');
   ancienne.exec("CREATE TABLE mot_cle (id TEXT PRIMARY KEY, libelle TEXT, libelle_cle TEXT); INSERT INTO mot_cle VALUES ('feu', 'Feu', 'feu');");
-  assert.deepEqual(motsClesDeLaBase(ancienne), [{ id: 'feu', libelle: 'Feu', libelle_cle: 'feu', description: null, abreviation: null, couleur: null, url: null }]);
+  assert.deepEqual(motsClesDeLaBase(ancienne), [{ id: 'feu', libelle: 'Feu', libelle_cle: 'feu', description: null, abreviation: null, couleur: null, url: null, verrou: 0 }]);
   ancienne.close();
 });
