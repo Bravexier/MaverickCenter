@@ -4,6 +4,8 @@
 // seule de la base construite.
 // Ces textes (corps des pages, définitions des mots-clés) sont modifiables sur le site de dev, source de ce qu'il modifie : ce que la 0104 a écrit se
 // lit dans l'état de la migration (baseDImport({ garder: lotsAvant('0104') }), skill tests-conventions) ; aucun texte courant n'est figé.
+// La migration 0112 (R231) réécrit ensuite les pages « Attaquer » et « Se défendre » en entier : un fragment de la 0104 qu'elle a remplacé se lit par
+// son registre `textes` (son `avant` le contient, son `apres` est dans le texte ; test/aide-textes-reecrits.mjs), sans figer l'écriture de la 0112.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
@@ -20,12 +22,17 @@ const valeur = (db, t) => db.prepare(`SELECT "${t.col}" AS v FROM "${t.table}" W
 // anticipe en action rapide) : le fragment de la 0104 est admis tel quel ou tel que la 0111 l'a réécrit (registre `textes`, test/aide-textes-reecrits.mjs)
 const REECRITS_PAR_0111 = textesReecrits('0111-relecture-des-regles-contre-les-decisions');
 const memeCellule = (a, b) => a.table === b.table && a.col === b.col && JSON.stringify(a.cle) === JSON.stringify(b.cle);
-const apresOuReecrit = (t, v) => v.includes(t.apres)
-  || v.includes(REECRITS_PAR_0111.filter((x) => memeCellule(x, t)).reduce((s, x) => (s.includes(x.avant) ? s.replace(x.avant, () => x.apres) : s), t.apres));
+const selonLa0111 = (t) => REECRITS_PAR_0111.filter((x) => memeCellule(x, t)).reduce((s, x) => (s.includes(x.avant) ? s.replace(x.avant, () => x.apres) : s), t.apres);
+// La 0112 (R231), postérieure aux deux, réécrit en entier les pages « Attaquer » et « Se défendre » : son `avant` contient le fragment (tel que la 0104
+// ou la 0111 l'a laissé), pas son `apres`, qui est dans `v`. L'une ou l'autre écriture est admise.
+const REECRITS_PAR_0112 = textesReecrits('0112-r231-attaquer-et-se-defendre');
+const reecritPar0112 = (t, fragment) => REECRITS_PAR_0112.filter((r) => memeCellule(r, t) && r.avant.includes(fragment) && !r.apres.includes(fragment));
+const apresOuReecrit = (t, v) => [t.apres, selonLa0111(t)].some((f) => v.includes(f) || reecritPar0112(t, f).some((r) => v.includes(r.apres)));
 
 // Les copies de source ne se réécrivent pas (R198 à R200, « les copies de source restent ») ; seule exception, voulue par le propriétaire : « Prouesse »
-// devient « Calme » dans la page copiée des compétences (R204).
-const COPIES = ['guide/formule-des-degats', 'guide/attaque-et-defense', 'guide/les-attaques-d-opportunite', 'ressources/pieces-elementaires'];
+// devient « Calme » dans la page copiée des compétences (R204). guide/attaque-et-defense n'en est plus une depuis R231 (1) (« Se défendre », réécrite par
+// la migration 0112 ; R199 et R184 (3) amendés pour elle) ; la 0104 n'y avait rien écrit.
+const COPIES = ['guide/formule-des-degats', 'guide/les-attaques-d-opportunite', 'ressources/pieces-elementaires'];
 const estUneCopie = (id) => COPIES.includes(id) || id.startsWith('lore/') || (id.startsWith('guide/fiche-') && id !== 'guide/fiche-competences');
 // R205 (3) : les motifs de la 0103 (l'état écrit « Gelé » mot entier, ou « gelé N » avec un stade).
 const ETAT_GELE = /(?<!\p{L})Gelé(?!\p{L})|(?<!\p{L})gelé(?= \d)/u;
@@ -49,7 +56,7 @@ test('0104 : chaque remplacement est en place dans l’état de la migration (le
   for (const t of registre.textes) {
     const v = valeur(imp, t);
     assert.equal(typeof v, 'string', `${t.cle.id} présent`);
-    if (t.apres) assert.ok(apresOuReecrit(t, v), `${t.cle.id} (${t.decision}) : « ${t.apres.slice(0, 60)}… »`);
+    if (t.apres) assert.ok(apresOuReecrit(t, v), `${t.cle.id} (${t.decision}) : « ${t.apres.slice(0, 60)}… » (ou la réécriture de la 0111 ou de la 0112)`);
     if (!t.apres.includes(t.avant)) assert.ok(!v.includes(t.avant), `${t.cle.id} (${t.decision}) : l’ancien fragment reste`);
   }
 });

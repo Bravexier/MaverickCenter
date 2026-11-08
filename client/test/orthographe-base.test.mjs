@@ -94,6 +94,9 @@ test('registre : ni adresse ni lien [[…]] touchés ; un nom ne change que d’
 const RETIREES = [
   { migration: '0055-armure-une-armure-six-parties.sql', table: 'page', cle: { id: 'ressources/armures' }, col: 'corps_md', apres: 'armure en' },
   { migration: '0055-armure-une-armure-six-parties.sql', table: 'page', cle: { id: 'ressources/armures' }, col: 'corps_md', apres: '2 lingots de fer fassent l' },
+  // décision R231 (« J'aimerai ré écrire les deux pages »), migration 0112 : le corps de « Se défendre » (guide/attaque-et-defense) est réécrit en entier
+  ...['deux conditions doivent', 'être réunies pour', 'Esquive a un', 'case parcourue pour'].map((apres) => (
+    { migration: '0112-r231-attaquer-et-se-defendre.sql', table: 'page', cle: { id: 'guide/attaque-et-defense' }, col: 'corps_md', apres })),
 ];
 const retiree = (c) => RETIREES.find((r) => r.table === c.table && r.col === c.col && JSON.stringify(r.cle) === JSON.stringify(c.cle) && r.apres === c.apres);
 // Corrections dont la valeur a changé depuis par une migration de données, sur décision du propriétaire : décision R155 (« Grande faiblesse :

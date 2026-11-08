@@ -2177,12 +2177,13 @@ test('mots-clés colorés (migration 0098) : « rendu identique » — chaque pa
     assert.equal(classeDeLaPage(vocabulaire, chemin(id), classe), classe, `${id} : la même couleur qu’avant`);
     if (classeDeLaPage(vocabulaire, chemin(id))) parUnMotCle += 1;
   }
-  // les mots-clés colorés mènent tous à l'une de ces pages (aucune autre page ne prend de couleur au départ)
+  // les mots-clés colorés à adresse mènent tous à l'une de ces pages (aucune autre page ne prend de couleur au départ) ; un mot-clé coloré sans adresse
+  // (les compétences et les caractéristiques, R231 (4), migration 0112) ne colore aucune page
   const pages = new Set(avant.map(([id]) => chemin(id)));
   const colores = vocabulaire.filter((m) => m.couleur);
   // quatre-vingt-dix au moins à l'import (migration 0098 ; le site de dev supprime des mots-clés colorés)
   const coloresDImport = chargerVocabulaire(baseDImport()).filter((m) => m.couleur).length;
   assert.ok(coloresDImport >= 90, `${coloresDImport} mots-clés colorés à l’import`);
   assert.ok(parUnMotCle >= Math.min(1, colores.length), `${colores.length} mots-clés colorés, ${parUnMotCle} pages`);
-  assert.deepEqual(colores.filter((m) => !pages.has(m.url)).map((m) => m.id), []);
+  assert.deepEqual(colores.filter((m) => m.url !== null && !pages.has(m.url)).map((m) => m.id), []);
 });

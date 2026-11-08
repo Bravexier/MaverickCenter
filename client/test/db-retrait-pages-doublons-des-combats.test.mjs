@@ -20,6 +20,7 @@ import { baseDImport, cheminDImport, lotsAvant } from './aide-base-d-import.mjs'
 import { ecrituresDuLien, ecrituresDuTexte, motsClesVers } from './aide-ecritures-du-lien.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { ecritParLeSite, lignesQuiCitent } from './aide-page-retiree.mjs';
+import { textesReecrits } from './aide-textes-reecrits.mjs';
 
 const MIGRATION = '0094-retrait-pages-doublons-des-combats.sql';
 const lire = (chemin) => readFileSync(new URL(`../../${chemin}`, import.meta.url), 'utf8');
@@ -139,8 +140,13 @@ test('0094 : les liens écrits vers les pages retirées mènent à la page qui r
     .some((f) => postures.endsWith(f)));
   assert.ok(!postures.includes('Doc « Guide pour MJ ») et'));
   const attaquer = corpsApres('guide/attaquer-et-se-defendre');
-  assert.ok(ecrituresDuTexte(base, 'ont plus de parades et d’esquives que les autres en posture neutre, de vigilance ou de symbiose (voir [[guide/les-postures|Les postures]]).')
-    .some((f) => attaquer.includes(f)));
+  // la phrase des boss, ou, depuis R231 (migration 0112, registre `textes`), la page réécrite en entier qui l'avait (son `avant`), la phrase passée à la
+  // page de la défense (guide/attaque-et-defense, telle que la 0112 l'a écrite)
+  const boss = ecrituresDuTexte(base, 'ont plus de parades et d’esquives que les autres en posture neutre, de vigilance ou de symbiose (voir [[guide/les-postures|Les postures]]).');
+  const r231 = (id) => textesReecrits('0112-r231-attaquer-et-se-defendre').find((t) => t.table === 'page' && t.col === 'corps_md' && t.cle.id === id);
+  assert.ok(boss.some((f) => attaquer.includes(f))
+    || (attaquer === r231('guide/attaquer-et-se-defendre').apres && boss.some((f) => r231('guide/attaquer-et-se-defendre').avant.includes(f)
+      && corpsApres('guide/attaque-et-defense').includes(f))));
   assert.ok(!attaquer.includes('les-boss-et-leurs-postures'));
   // le sommaire transcrit du Doc « Guide pour MJ » garde « [[Postures]] » (un alias de guide/les-postures le résout), ou la balise que la 0098 en a faite
   assert.ok(ecrituresDuLien(base, 'guide/les-postures', 'Postures', '[[Postures]]').some((f) => corpsApres('guide/guide-pour-mj-maverick').includes(`- *${f}*\n`)));

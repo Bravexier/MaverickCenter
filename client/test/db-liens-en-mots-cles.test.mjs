@@ -45,15 +45,20 @@ const texteApres0098 = (table, colonne, id) => apres0098().prepare(`SELECT "${co
 // fois dans la valeur d'avant). R198 retire l'attribution au Doc « Guide pour MJ » : la 0104 ôte la balise {{guide-pour-mj-maverick|Doc « Guide pour MJ »}}
 // que la 0098 avait posée dans guide/attaquer-et-se-defendre et guide/les-postures ; la 0107 en est la suite. La 0111 (relecture des Règles contre les
 // décisions) donne à des liens le titre de leur page (R184 (2), (5), (11), R187 (1)) et renvoie aux pages de la rubrique Équipement au lieu de
-// {{armes|Équipement}}. `intacte` ne voit que les lots du site.
+// {{armes|Équipement}}. La 0112 (R231) réécrit les pages « Attaquer » et « Se défendre » en entier et les renvois des autres pages vers elles.
+// `intacte` ne voit que les lots du site.
 const textesDe = (...noms) => noms.flatMap((nom) => JSON.parse(readFileSync(new URL(`../../data/migrations/${nom}.json`, import.meta.url), 'utf8')).textes);
 const REECRITURES_R198 = textesDe('0104-r198-r208-textes-du-guide', '0107-r198-r200-posture-et-mode-hyper');
-const REECRITURES_APRES_0098 = [...REECRITURES_R198, ...textesDe('0111-relecture-des-regles-contre-les-decisions')];
-/** Les réécritures postérieures (`parmi`) qui retirent la balise `r.balise` de sa cellule (leur `avant` la contient, pas leur `apres`). */
+const REECRITURES_APRES_0098 = [...REECRITURES_R198, ...textesDe('0111-relecture-des-regles-contre-les-decisions', '0112-r231-attaquer-et-se-defendre')];
+/** Les réécritures postérieures (de `parmi`) qui retirent la balise `r.balise` de sa cellule (leur `avant` la contient, pas leur `apres`). */
 const retiresPar = (r, parmi = REECRITURES_APRES_0098) => parmi.filter((t) => t.table === r.table && t.col === r.colonne
   && JSON.stringify(t.cle) === JSON.stringify(r.cle) && t.avant.includes(r.balise) && !t.apres.includes(r.balise));
+/** `fragment` (de la cellule de `r`) est dans `v`, ou une réécriture postérieure l'a remplacé et son `apres` y est, de proche en proche (la 0112
+ * réécrit en entier une page dont la 0104 ou la 0111 avait déjà réécrit un fragment). */
+const ecritOuReecrit = (r, fragment, v, vues = new Set()) => v.includes(fragment) || retiresPar({ ...r, balise: fragment })
+  .filter((t) => !vues.has(t)).some((t) => ecritOuReecrit(r, t.apres, v, new Set([...vues, t])));
 /** La balise de la 0098 est dans `v`, ou une migration postérieure l'a retirée et son `apres` est dans `v` : l'une ou l'autre écriture. */
-const baliseOuReecriture = (r, v) => v.includes(r.balise) || retiresPar(r).some((t) => v.includes(t.apres));
+const baliseOuReecriture = (r, v) => ecritOuReecrit(r, r.balise, v);
 
 test('0098 : couleur et url en dernier dans mot_cle et dans v_mot_cle', () => {
   // les colonnes ajoutées après la 0098 viennent ensuite (`verrou`, 0110 : décisions R218, R219)
@@ -101,7 +106,10 @@ test('0098 : les mots-clés du registre (Q1, Q8, Q10) — comptes, libellés, ad
     assert.equal(m.url, r.url, r.id);
     assert.equal(m.couleur, r.couleur, r.id);
     if (r.origine !== 'existant') {
-      assert.equal(m.libelle, r.libelle, r.id);
+      // le libellé de la 0098, ou celui qu'une migration postérieure a écrit (R231, 0112 : le mot-clé d'une page retitrée suit son titre)
+      const libelles = [r.libelle, ...REECRITURES_APRES_0098.filter((t) => t.table === 'mot_cle' && t.col === 'libelle' && t.cle.id === r.id && t.avant === r.libelle)
+        .map((t) => t.apres)];
+      assert.ok(libelles.includes(m.libelle), `${r.id} : ${m.libelle} (attendu : ${libelles.join(' ou ')})`);
       assert.equal(m.id, normalize(r.libelle), `${r.id} : id = normalize(libellé)`);
       assert.equal(m.description, null, `${r.id} : aucune définition inventée`);
       assert.equal(m.abreviation, null, r.id);
