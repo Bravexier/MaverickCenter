@@ -14,6 +14,8 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { indexDesAdresses, pageDeLAdresse } from '../src/lib/adresses-db.mjs';
 import { adresseDuGuide } from '../src/lib/livres.mjs';
+import { corpsDeMetier } from '../src/lib/corps-metiers.mjs';
+import { decouperArtisanat } from '../src/lib/metier-champs.mjs';
 import { formeCanonique, formesNonCanoniques, lireBalises } from '../src/lib/mots-cles-balises.mjs';
 import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { baseDImport, cheminDImport, lotsAvant } from './aide-base-d-import.mjs';
@@ -41,11 +43,18 @@ const balisesEcrites = (t) => lireBalises(t.apres, { markdown: true }).filter((b
 test('0111 : le registre ne touche que le corps ou le résumé de pages des Règles ; une copie de source seulement par C18 et C19 (R224) ; C1 à C25, chacune sous sa décision quand elle en a une', () => {
   assert.equal(registre.migration, NOM);
   for (const t of registre.textes) {
-    assert.equal(t.table, 'page', t.cle.id);
-    assert.ok(t.col === 'corps_md' || t.col === 'resume', `${t.cle.id} : ${t.col}`);
-    assert.ok(t.cle.id.startsWith('guide/') || estUneCopie(t.cle.id), t.cle.id);
+    // C26 (R230 (1)) : le texte d'artisanat du Bijoutier, sa recopie et le corps de sa page, rendu de la ligne (test « R230 (1) » plus bas)
+    if (t.correction === 'C26') {
+      assert.equal(t.cle.id, 'metiers/bijoutier');
+      assert.ok(['metier.artisanat_texte', 'metier.artisanat_brut', 'page.corps_md'].includes(`${t.table}.${t.col}`), `${t.table}.${t.col}`);
+      assert.match(t.decision, /^R230 \(1\)/);
+    } else {
+      assert.equal(t.table, 'page', t.cle.id);
+      assert.ok(t.col === 'corps_md' || t.col === 'resume', `${t.cle.id} : ${t.col}`);
+      assert.ok(t.cle.id.startsWith('guide/') || estUneCopie(t.cle.id), t.cle.id);
+    }
     assert.notEqual(t.avant, t.apres, t.cle.id);
-    assert.match(t.correction, /^C(2[0-5]|1[0-9]|[1-9])$/, t.cle.id);
+    assert.match(t.correction, /^C(2[0-6]|1[0-9]|[1-9])$/, t.cle.id);
     if (estUneCopie(t.cle.id)) {
       assert.ok(['C18', 'C19'].includes(t.correction), `${t.cle.id} : une copie ne change que par C18 ou C19`);
       assert.ok(t.decision, `${t.cle.id} : sous une décision`);
@@ -54,13 +63,14 @@ test('0111 : le registre ne touche que le corps ou le résumé de pages des Règ
       for (const d of t.decision.match(/R\d+|G\d+/g)) assert.ok([...registre.decisions, ...registre.reponses].includes(d), `${t.correction} : ${d} listée`);
     }
     // la garde de la migration : un UPDATE par entrée, sur la page de l'entrée
-    assert.ok(migration.includes(`WHERE id = '${t.cle.id}' AND length(${t.col})`), `${t.correction} ${t.cle.id}`);
+    assert.ok(migration.includes(`UPDATE ${t.table} SET ${t.col} = replace(`) && migration.includes(`WHERE id = '${t.cle.id}' AND length(${t.col})`),
+      `${t.correction} ${t.cle.id}`);
   }
   // C23 (le titre) n'est pas un remplacement de texte : registre `titres`
   assert.deepEqual([...new Set([...registre.textes, ...registre.titres].map((t) => t.correction))].sort((a, b) => a.slice(1) - b.slice(1)),
-    Array.from({ length: 25 }, (_, i) => `C${i + 1}`), 'les 25 corrections du cahier');
+    Array.from({ length: 26 }, (_, i) => `C${i + 1}`), 'les 26 corrections du cahier');
   assert.deepEqual(registre.titres.map((t) => t.correction), ['C23']);
-  assert.equal(migration.match(/^UPDATE page SET /gm).length, registre.textes.length + registre.titres.length, 'une mise à jour gardée par entrée du registre');
+  assert.equal(migration.match(/^UPDATE (?:page|metier) SET /gm).length, registre.textes.length + registre.titres.length, 'une mise à jour gardée par entrée du registre');
   // R224 (4) (« Rien ajouter ») : la phrase du plafond du Potentiel Illimité n'est plus ajoutée à guide/premiers-sorts
   assert.ok(!registre.textes.some((t) => t.correction === 'C11' && t.cle.id === 'guide/premiers-sorts'));
 });
@@ -233,4 +243,19 @@ test('R228 : le mot-clé mode-super mène à la page du Mode Super, à l’adres
     assert.equal(mc.get(m.id).page, m.page, `${m.id} : son adresse mène à ${m.page}`);
     assert.deepEqual([...mc.values()].filter((x) => x.page === m.page).map((x) => x.id), [m.id], 'une seule adresse mène à la page');
   }
+});
+
+test('R230 (1) (C26) : le texte d’artisanat du Bijoutier, sa recopie et le corps de sa page restent d’accord dans l’état de la migration', () => {
+  const imp = apresLa0111();
+  const c26 = registre.textes.filter((t) => t.correction === 'C26');
+  assert.deepEqual(c26.map((t) => `${t.table}.${t.col}`).sort(), ['metier.artisanat_brut', 'metier.artisanat_texte', 'page.corps_md']);
+  const ligne = imp.prepare("SELECT * FROM metier WHERE id = 'metiers/bijoutier'").get();
+  for (const t of c26) assert.ok(valeur(imp, t).includes(t.apres), `${t.table}.${t.col}`);
+  // artisanat_brut se découpe en artisanat_texte et son test, comme l'édition du site le fait (lib/metier-champs.mjs#decouperArtisanat)
+  const caracteristiques = imp.prepare('SELECT id, nom FROM caracteristique').all();
+  const d = decouperArtisanat(ligne.artisanat_brut, caracteristiques);
+  assert.deepEqual([d.artisanat_texte, d.test_brut, d.test_carac_1_id, d.test_carac_2_id],
+    [ligne.artisanat_texte, ligne.test_brut, ligne.test_carac_1_id, ligne.test_carac_2_id]);
+  // le corps de la page est celui que la ligne rend (lib/corps-metiers.mjs#corpsDeMetier)
+  assert.equal(imp.prepare("SELECT corps_md FROM page WHERE id = 'metiers/bijoutier'").get().corps_md, corpsDeMetier(ligne));
 });

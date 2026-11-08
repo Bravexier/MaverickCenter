@@ -5973,7 +5973,7 @@ Quand une attaque est prodiguée, un jet de D100 est nécessaire pour réussir l
 
 **Cas particuliers :**
 
-Lors d''une réussite critique (score au dé dans la plage de base, voir {{reussites-echecs-et-critiques}}), les dégâts de base seront doublés ! La défense doit faire une réussite critique égale ou plus basse pour réussir à bloquer un tel coup.
+Lors d''une réussite critique (score au dé = 1 - 5 de base, voir {{reussites-echecs-et-critiques}}), les dégâts de base seront doublés ! La défense doit faire une réussite critique égale ou plus basse pour réussir à bloquer un tel coup.
 
 Lors d''un échec critique (score au dé = 96 - 100), la cible bénéficie d''une attaque d''opportunité ou bien peut désarmer la cible (si c’est possible), ou autre idée du mj.
 
@@ -6898,7 +6898,7 @@ Cette posture étrange permet d''être en parfaite fusion avec sa magie, dans ce
 - **+4 AM :** Permet d''avoir une plus grande armure magique dans cette posture. Cela augmente de +2 tous les niveaux de puissance magique (le premier niveau ne compte pas)
 - **Immunité à la magie de la symbiose :** La magie avec laquelle vous avez fait la symbiose vous envahit et vous devenez totalement immunisé à celle-ci.
 - **Une seule parade/esquive par tour :** Permet d''esquiver ou de parer une fois par tour.
-- **Ni armes ni objets, on ne peut que lancer des sorts :** Vous êtes quasiment un élémentaire : la Forgemagie (qui crée des armes faites de magie) et la « Forge de ses morts » en sont. Les parchemins restent permis, et les effets passifs restent actifs : accessoires, bâtons magiques, armure et bouclier portés. L’arme élémentaire de la magie de la symbiose reste utilisable et reçoit le bonus de dégâts de la posture ; les autres armes restent interdites.
+- **Ni armes ni objets, on ne peut que lancer des sorts :** Vous êtes quasiment un élémentaire : la Forgemagie (qui crée des armes faites de magie) et la « Forge de ses morts » sont des sorts. Les parchemins restent permis, et les effets passifs restent actifs : accessoires, bâtons magiques, armure et bouclier portés. L’arme élémentaire de la magie de la symbiose reste utilisable et reçoit le bonus de dégâts de la posture ; les autres armes restent interdites.
 - **Une seule magie active :** Quand vous avez 2 magies, 1 de ces magies doit être désactivée temporairement : elle perd ses sorts et ses résistances et faiblesses, et rien d’autre (son effet de Mode Hyper, sa ressource propre, la santé et le chakra qu’elle offre et le +1 de caractéristique de la magie innée restent).
 
 ## Mode Hyper
@@ -19904,7 +19904,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 **Bonus :** +3% Distinction
 
-**Artisanat possible :** Peut fabriquer les accessoires ou les désenchanter \[VOLONTÉ + PERCEPTION\]
+**Artisanat possible :** Peut fabriquer les accessoires ou les désenchanter, sauf un accessoire maudit, que seul un Enchanteur retire \[VOLONTÉ + PERCEPTION\]
 
 **Équipement supplémentaire possible :** Rien
 

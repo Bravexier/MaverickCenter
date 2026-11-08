@@ -1718,6 +1718,10 @@ function memesOctets(a, b) {
  * accessoires) ; un maximum plus petit que ce calcul donne 0, à vérifier. La remarque dit toujours la déduction (fiche auto de Lucien : « Gains de
  * niveau déduits des maximums du classeur (santé 60, chakra 150) : santé 41, chakra 121 »), et un total hors de ce que donnent les niveaux atteints
  * (gainsDeNiveau : les points d'attributs et les dés bonus, la règle gains_niveau de la base) : « … : hors du total à saisir (152 à 166), à vérifier ».
+ * Décisions R225 et R230 (2) : la santé déduite d'un Potentiel Illimité inné au-delà de son plafond (gainsDeNiveau().potentiel, soit santeDuPotentiel du
+ * moteur : la donnée potentiel_illimite.sante_max_par_niveau × les niveaux qui donnent des points d'attributs + les dés ; la même que la règle
+ * gains_sante_potentiel de la base) est dite aussi, le nom de la magie lu dans les règles : « … : santé au-delà du plafond de Potentiel Illimité (S / au
+ * plus P), à vérifier ». Comme les autres remarques, rien n'est refusé ni réécrit.
  */
 export function gainsDesMaximums(regles, fiche, maxSante, maxChakra) {
   const sans = attributsDe(regles, { ...fiche, gains_sante: 0, gains_chakra: 0 });
@@ -1726,7 +1730,11 @@ export function gainsDesMaximums(regles, fiche, maxSante, maxChakra) {
   const partie = (nom, champ) => `${nom} ${gains[`gains_${champ}`]}${brut[champ] < 0 ? ` (maximum sous les ${sans[champ]} que la fiche calcule sans gains)` : ''}`;
   const attendus = gainsDeNiveau(regles, { ...fiche, ...gains });
   const plage = attendus.min === attendus.max ? String(attendus.min) : `${attendus.min} à ${attendus.max}`;
-  const suite = attendus.hors ? ` : hors du total à saisir (${plage}), à vérifier` : brut.sante < 0 || brut.chakra < 0 ? ' : à vérifier' : '';
+  const potentiel = attendus.potentiel?.depasse
+    ? `santé au-delà du plafond de ${trouver(regles.magies, fiche.magie_innee_id)?.nom ?? fiche.magie_innee_id} (${attendus.sante} / au plus ${attendus.potentiel.plafond})`
+    : null;
+  const ecarts = [attendus.hors ? `hors du total à saisir (${plage})` : null, potentiel].filter(Boolean);
+  const suite = ecarts.length ? ` : ${ecarts.join(', ')}, à vérifier` : brut.sante < 0 || brut.chakra < 0 ? ' : à vérifier' : '';
   return {
     ...gains,
     remarque: `Gains de niveau déduits des maximums du classeur (santé ${maxSante}, chakra ${maxChakra}) : ${partie('santé', 'sante')}, ${partie('chakra', 'chakra')}${suite}`,

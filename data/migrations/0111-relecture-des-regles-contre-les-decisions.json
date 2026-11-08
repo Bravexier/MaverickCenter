@@ -39,12 +39,13 @@
   "R226",
   "R227",
   "R228",
-  "R229"
+  "R229",
+  "R230"
  ],
  "reponses": [
   "G43"
  ],
- "description": "Relecture des pages des Règles contre les décisions (cahier de game-design, C1 à C25 ; R224 à R227), suite des 0104 et 0107 (même méthode). `textes` : une entrée par remplacement ; `avant` et `apres` sont le fragment qui change (présent une seule fois dans la valeur d'avant) ; `correction` : le numéro du cahier ; `decision` : la décision ou la réponse du propriétaire qui la fonde (null : correction du cahier sans numéro de décision). `titres` et `alias` : C23. `mots_cles_crees` : le mot-clé du lien de guide/attaque-et-defense. `mots_cles` : l'adresse du mot-clé mode-super (R228). `constantes` : R225. Pas sous `corrections` : ce ne sont pas des corrections d'un classeur (tools/sources/rapprocher.mjs lit `corrections`). La valeur AP/AM de C15 (9 et 9) est celle de la ligne armure « Armure Bois/Écailles » en base version 110.",
+ "description": "Relecture des pages des Règles contre les décisions (cahier de game-design, C1 à C26 ; R224 à R230), suite des 0104 et 0107 (même méthode). `textes` : une entrée par remplacement ; `avant` et `apres` sont le fragment qui change (présent une seule fois dans la valeur d'avant) ; `correction` : le numéro du cahier ; `decision` : la décision ou la réponse du propriétaire qui la fonde (null : correction du cahier sans numéro de décision). `titres` et `alias` : C23. `mots_cles_crees` : le mot-clé du lien de guide/attaque-et-defense. `mots_cles` : l'adresse du mot-clé mode-super (R228). `constantes` : R225. Pas sous `corrections` : ce ne sont pas des corrections d'un classeur (tools/sources/rapprocher.mjs lit `corrections`). La valeur AP/AM de C15 (9 et 9) est celle de la ligne armure « Armure Bois/Écailles » en base version 110.",
  "textes": [
   {
    "correction": "C1",
@@ -583,7 +584,7 @@
    "col": "corps_md",
    "decision": "R112, R167, R198 (4)",
    "avant": "- **Impossible d'utiliser les objets et armes (sauf forgemagie) :** Vous êtes quasiment un élémentaire, les armes physiques et les objets ne sont pas dans votre optique (la forgemagie est un sort qui permet de créer des armes faites de magie, donc c'est bon)",
-   "apres": "- **Ni armes ni objets, on ne peut que lancer des sorts :** Vous êtes quasiment un élémentaire : la Forgemagie (qui crée des armes faites de magie) et la « Forge de ses morts » en sont. Les parchemins restent permis, et les effets passifs restent actifs : accessoires, bâtons magiques, armure et bouclier portés. L’arme élémentaire de la magie de la symbiose reste utilisable et reçoit le bonus de dégâts de la posture ; les autres armes restent interdites."
+   "apres": "- **Ni armes ni objets, on ne peut que lancer des sorts :** Vous êtes quasiment un élémentaire : la Forgemagie (qui crée des armes faites de magie) et la « Forge de ses morts » sont des sorts. Les parchemins restent permis, et les effets passifs restent actifs : accessoires, bâtons magiques, armure et bouclier portés. L’arme élémentaire de la magie de la symbiose reste utilisable et reçoit le bonus de dégâts de la posture ; les autres armes restent interdites."
   },
   {
    "correction": "C18",
@@ -715,7 +716,7 @@
    "col": "corps_md",
    "decision": "R180, R182, R203",
    "avant": "(score au dé = 1 - 5)",
-   "apres": "(score au dé dans la plage de base, voir {{reussites-echecs-et-critiques}})"
+   "apres": "(score au dé = 1 - 5 de base, voir {{reussites-echecs-et-critiques}})"
   },
   {
    "correction": "C18",
@@ -848,6 +849,39 @@
    "decision": "R227 (1)",
    "avant": "{{forgeron|forgeron}} pour les armes, les armures lourdes et les boucliers ;",
    "apres": "{{forgeron|forgeron}} pour les armes ; {{armurier|armurier}} pour les armures lourdes et les boucliers ;"
+  },
+  {
+   "correction": "C26",
+   "table": "metier",
+   "cle": {
+    "id": "metiers/bijoutier"
+   },
+   "col": "artisanat_texte",
+   "decision": "R230 (1)",
+   "avant": "Peut fabriquer les accessoires ou les désenchanter",
+   "apres": "Peut fabriquer les accessoires ou les désenchanter, sauf un accessoire maudit, que seul un Enchanteur retire"
+  },
+  {
+   "correction": "C26",
+   "table": "metier",
+   "cle": {
+    "id": "metiers/bijoutier"
+   },
+   "col": "artisanat_brut",
+   "decision": "R230 (1)",
+   "avant": "Peut fabriquer les accessoires ou les désenchanter",
+   "apres": "Peut fabriquer les accessoires ou les désenchanter, sauf un accessoire maudit, que seul un Enchanteur retire"
+  },
+  {
+   "correction": "C26",
+   "table": "page",
+   "cle": {
+    "id": "metiers/bijoutier"
+   },
+   "col": "corps_md",
+   "decision": "R230 (1)",
+   "avant": "Peut fabriquer les accessoires ou les désenchanter",
+   "apres": "Peut fabriquer les accessoires ou les désenchanter, sauf un accessoire maudit, que seul un Enchanteur retire"
   },
   {
    "correction": "C25",

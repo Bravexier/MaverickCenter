@@ -1,5 +1,5 @@
--- 0111-relecture-des-regles-contre-les-decisions : relecture des pages des Règles contre les décisions du propriétaire (R224 à R227, réponses du 2026-11-08 ; cahier de
--- game-design, corrections C1 à C25), suite des migrations 0104 et 0107 (même méthode). Migration de DONNÉES et d'une VUE (sections 1, 2 et 13 ;
+-- 0111-relecture-des-regles-contre-les-decisions : relecture des pages des Règles contre les décisions du propriétaire (R224 à R230, réponses du 2026-11-08 ; cahier de
+-- game-design, corrections C1 à C26), suite des migrations 0104 et 0107 (même méthode). Migration de DONNÉES et d'une VUE (sections 1, 2, 9 et 13 ;
 -- PRAGMA user_version 110 -> 111) ; rien ne va dans historique_modification (la migration n'est pas une modification du site de dev). Registre :
 -- 0111-relecture-des-regles-contre-les-decisions.json (`textes` : une entrée par remplacement, avec sa correction C… et sa décision ; `titres`, `alias`, `mots_cles`, `mots_cles_crees`,
 -- `constantes` ; pas sous `corrections` : ce ne sont pas des corrections d'un classeur, tools/sources/rapprocher.mjs lit `corrections`).
@@ -10,6 +10,8 @@
 --     rubrique Équipement) ; défense contre un critique (R226 (1)) ; tours en trop du Mode Hyper au-delà de la durée seulement (R226 (3)) ; Forgeron et
 --     Armurier (R227 (1)) ; santé du Potentiel Illimité (R225).
 --   * Copies de source (C18, C19 ; R224 (1), (2), (3)) : seule la phrase qui contredit une décision change, au plus près des mots de la copie.
+--   * C26 (R230 (1)) : le texte d'artisanat du Bijoutier (metier.artisanat_texte, sa recopie artisanat_brut et le corps de sa page, rendu de la ligne)
+--     ajoute « sauf un accessoire maudit, que seul un Enchanteur retire » (R227 (3)).
 --   * C23 (R226 (4)) : guide/liste-des-effets-mode-super s'intitule « Mode Super » ; l'ancien titre devient un alias ; id et adresse inchangés.
 --   * Mot-clé reussites-echecs-et-critiques créé (C18, guide/attaque-et-defense : le lien vers la page des critiques) : libellé = titre de la page,
 --     sans définition, adresse de la page, verrouillé comme tout mot-clé à adresse (0110, R219 (1)).
@@ -318,7 +320,7 @@ INSERT INTO garde_0111 (quoi, lignes) VALUES ('page guide/fiche-tableau-posture 
 
 -- guide/fiche-tableau-posture (C18, R112, R167, R198 (4))
 UPDATE page SET corps_md = replace(corps_md, '- **Impossible d''utiliser les objets et armes (sauf forgemagie) :** Vous êtes quasiment un élémentaire, les armes physiques et les objets ne sont pas dans votre optique (la forgemagie est un sort qui permet de créer des armes faites de magie, donc c''est bon)',
-  '- **Ni armes ni objets, on ne peut que lancer des sorts :** Vous êtes quasiment un élémentaire : la Forgemagie (qui crée des armes faites de magie) et la « Forge de ses morts » en sont. Les parchemins restent permis, et les effets passifs restent actifs : accessoires, bâtons magiques, armure et bouclier portés. L’arme élémentaire de la magie de la symbiose reste utilisable et reçoit le bonus de dégâts de la posture ; les autres armes restent interdites.')
+  '- **Ni armes ni objets, on ne peut que lancer des sorts :** Vous êtes quasiment un élémentaire : la Forgemagie (qui crée des armes faites de magie) et la « Forge de ses morts » sont des sorts. Les parchemins restent permis, et les effets passifs restent actifs : accessoires, bâtons magiques, armure et bouclier portés. L’arme élémentaire de la magie de la symbiose reste utilisable et reçoit le bonus de dégâts de la posture ; les autres armes restent interdites.')
   WHERE id = 'guide/fiche-tableau-posture' AND length(corps_md) - length(replace(corps_md, '- **Impossible d''utiliser les objets et armes (sauf forgemagie) :** Vous êtes quasiment un élémentaire, les armes physiques et les objets ne sont pas dans votre optique (la forgemagie est un sort qui permet de créer des armes faites de magie, donc c''est bon)', '')) = length('- **Impossible d''utiliser les objets et armes (sauf forgemagie) :** Vous êtes quasiment un élémentaire, les armes physiques et les objets ne sont pas dans votre optique (la forgemagie est un sort qui permet de créer des armes faites de magie, donc c''est bon)');
 INSERT INTO garde_0111 (quoi, lignes) VALUES ('page guide/fiche-tableau-posture : C18 R112, R167, R198 (4)', changes());
 
@@ -390,7 +392,7 @@ INSERT INTO garde_0111 (quoi, lignes) VALUES ('page metiers/regles-des-metiers :
 
 -- guide/attaque-et-defense (C18, R180, R182, R203)
 UPDATE page SET corps_md = replace(corps_md, '(score au dé = 1 - 5)',
-  '(score au dé dans la plage de base, voir {{reussites-echecs-et-critiques}})')
+  '(score au dé = 1 - 5 de base, voir {{reussites-echecs-et-critiques}})')
   WHERE id = 'guide/attaque-et-defense' AND length(corps_md) - length(replace(corps_md, '(score au dé = 1 - 5)', '')) = length('(score au dé = 1 - 5)');
 INSERT INTO garde_0111 (quoi, lignes) VALUES ('page guide/attaque-et-defense : C18 R180, R182, R203', changes());
 
@@ -469,6 +471,30 @@ UPDATE page SET corps_md = replace(corps_md, '{{forgeron|forgeron}} pour les arm
   '{{forgeron|forgeron}} pour les armes ; {{armurier|armurier}} pour les armures lourdes et les boucliers ;')
   WHERE id = 'guide/equipement-et-butin' AND length(corps_md) - length(replace(corps_md, '{{forgeron|forgeron}} pour les armes, les armures lourdes et les boucliers ;', '')) = length('{{forgeron|forgeron}} pour les armes, les armures lourdes et les boucliers ;');
 INSERT INTO garde_0111 (quoi, lignes) VALUES ('page guide/equipement-et-butin : C24 R227 (1)', changes());
+
+-- metier.artisanat_texte
+
+-- metiers/bijoutier (C26, R230 (1))
+UPDATE metier SET artisanat_texte = replace(artisanat_texte, 'Peut fabriquer les accessoires ou les désenchanter',
+  'Peut fabriquer les accessoires ou les désenchanter, sauf un accessoire maudit, que seul un Enchanteur retire')
+  WHERE id = 'metiers/bijoutier' AND length(artisanat_texte) - length(replace(artisanat_texte, 'Peut fabriquer les accessoires ou les désenchanter', '')) = length('Peut fabriquer les accessoires ou les désenchanter');
+INSERT INTO garde_0111 (quoi, lignes) VALUES ('metier metiers/bijoutier : C26 R230 (1)', changes());
+
+-- metier.artisanat_brut
+
+-- metiers/bijoutier (C26, R230 (1))
+UPDATE metier SET artisanat_brut = replace(artisanat_brut, 'Peut fabriquer les accessoires ou les désenchanter',
+  'Peut fabriquer les accessoires ou les désenchanter, sauf un accessoire maudit, que seul un Enchanteur retire')
+  WHERE id = 'metiers/bijoutier' AND length(artisanat_brut) - length(replace(artisanat_brut, 'Peut fabriquer les accessoires ou les désenchanter', '')) = length('Peut fabriquer les accessoires ou les désenchanter');
+INSERT INTO garde_0111 (quoi, lignes) VALUES ('metier metiers/bijoutier : C26 R230 (1)', changes());
+
+-- page.corps_md
+
+-- metiers/bijoutier (C26, R230 (1))
+UPDATE page SET corps_md = replace(corps_md, 'Peut fabriquer les accessoires ou les désenchanter',
+  'Peut fabriquer les accessoires ou les désenchanter, sauf un accessoire maudit, que seul un Enchanteur retire')
+  WHERE id = 'metiers/bijoutier' AND length(corps_md) - length(replace(corps_md, 'Peut fabriquer les accessoires ou les désenchanter', '')) = length('Peut fabriquer les accessoires ou les désenchanter');
+INSERT INTO garde_0111 (quoi, lignes) VALUES ('page metiers/bijoutier : C26 R230 (1)', changes());
 
 -- guide/la-montee-de-niveau (C25, R225)
 UPDATE page SET corps_md = replace(corps_md, 'entre la **santé** et le **{{chakra|chakra}}**.',

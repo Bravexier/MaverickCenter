@@ -1033,7 +1033,9 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
     sans gains (race, ethnie, magies, classes, accessoires : `gainsDesMaximums`) ; une remarque dit la déduction (« Gains de niveau déduits des
     maximums du classeur (santé 60, chakra 150) : santé 41, chakra 121 »), « à vérifier » quand un maximum est sous ce calcul (ramené à 0) ou que le
     total sort de ce que donnent les niveaux atteints (« : hors du total à saisir (152 à 166), à vérifier » : `gainsDeNiveau`, la règle
-    `gains_niveau`) ;
+    `gains_niveau`) ; d'un Potentiel Illimité inné, aussi quand la santé déduite passe son plafond (R225, R230 (2) : « santé au-delà du plafond de
+    Potentiel Illimité (S / au plus P), à vérifier », `gainsDeNiveau().potentiel`, le calcul du moteur et de la règle `gains_sante_potentiel`), sans
+    rien refuser ni réécrire ;
   - **NM** : une fiche auto ne dit pas lesquels viennent d'un livre ou du MJ (R26, R118) : tous comptés, et dit si cela dépasse les NM gagnés ;
   - **maîtrises d'armes** (R148, R152, R153) : les choix se relisent dans les lignes « Maîtrise d'arme au choix » de la note (la source par son titre
     parmi celles de la fiche, chaque famille parmi les options de son point ; un point que la source n'a pas, une famille qu'elle ne propose pas : dits),
