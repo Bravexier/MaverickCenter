@@ -4,8 +4,9 @@
 // accepte les deux, sans figer celle de la 0098 (patron : db-retrait-alterations-d-etats-et-mode-hyper.test.mjs, skill tests-conventions).
 //
 //   motsClesVers(base, cible)                 les mots-clés de `base` dont l'adresse mène à la page `cible`.
-//   ecrituresDuLien(base, cible, texte, lien?) le lien d'avant la 0098 (`lien`, par défaut « [[cible|texte]] »), puis « {{id|texte}} » pour chaque
-//                                             mot-clé qui mène à `cible`, et « {{id}} » quand `texte` est son libellé.
+//   ecrituresDuLien(base, cible, texte, lien?) le lien d'avant la 0098 (`lien`, par défaut « [[cible|texte]] »), puis « {{clé|texte}} » pour chaque
+//                                             mot-clé qui mène à `cible`, et « {{clé}} » quand `texte` est son libellé (la clé, mot_cle.cle, que
+//                                             citent les balises depuis la migration 0113 ; l'id texte d'avant, qui était la clé, sur une base plus ancienne).
 //   ecrituresDuTexte(base, modele)            le texte `modele`, chacun de ses « [[cible|texte]] » pris sous chacune de ses écritures (toutes les
 //                                             combinaisons).
 import { indexDesAdresses, pageDeLAdresse } from '../src/lib/adresses-db.mjs';
@@ -19,11 +20,15 @@ export function motsClesVers(base, cible) {
 
 /**
  * Les écritures d'un lien vers la page `cible` au texte affiché `texte` : `lien`, tel qu'écrit avant la 0098 (« [[cible|texte]] » par défaut ; un
- * « [[Alias]] » se passe ici), ou la balise d'un mot-clé de `base` qui mène à `cible` (« {{id|texte}} », « {{id}} » quand le texte est son libellé).
+ * « [[Alias]] » se passe ici), ou la balise d'un mot-clé de `base` qui mène à `cible` (« {{clé|texte}} », « {{clé}} » quand le texte est son libellé ;
+ * la clé, que citent les balises depuis la migration 0113, jamais l'id entier).
  */
 export function ecrituresDuLien(base, cible, texte, lien = `[[${cible}|${texte}]]`) {
   const formes = [lien];
-  for (const m of motsClesVers(base, cible)) formes.push(`{{${m.id}|${texte}}}`, ...(m.libelle === texte ? [`{{${m.id}}}`] : []));
+  for (const m of motsClesVers(base, cible)) {
+    const ref = m.cle ?? m.id;
+    formes.push(`{{${ref}|${texte}}}`, ...(m.libelle === texte ? [`{{${ref}}}`] : []));
+  }
   return formes;
 }
 

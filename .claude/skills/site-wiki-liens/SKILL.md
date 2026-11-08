@@ -45,7 +45,7 @@ user-invocable: false
 ## Maillage automatique
 
 `npm run autolink` (aperçu) ou `npm run autolink -- --write` (écrit dans les `.md` fabriqués, à faire suivre de `npm run db:sync-pages`). Règles, exclusions (`TYPES_SANS_MAILLAGE` de `src/lib/autolink.mjs`, `client/scripts/autolink-ignore.txt`) : `docs/content-guide.md`, « Maillage automatique ».
-- Il pose `{{id}}` ou `{{id|texte}}` d'un mot-clé à adresse (`ciblesDuVocabulaire`), jamais un `[[…]]`, et ne crée jamais de mot-clé : une page sans mot-clé qui y mène n'est pas une cible.
+- Il pose `{{clé}}` ou `{{clé|texte}}` d'un mot-clé à adresse (`ciblesDuVocabulaire`), jamais un `[[…]]`, et ne crée jamais de mot-clé : une page sans mot-clé qui y mène n'est pas une cible.
 - `TYPES_SANS_MAILLAGE` comprend `metiers` (corps = rendu de sa ligne) et `lore` (réécrit à l'identique par `codex.py` et `relations-races.py`).
 - Il reste un outil d'aperçu, relu avant `--write` (choix du leader-technique).
 

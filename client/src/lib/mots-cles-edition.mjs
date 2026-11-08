@@ -1,7 +1,9 @@
 // La gestion du glossaire des mots-clés sur /regles/glossaire/ en mode modification (site de dev ; demande du propriétaire : « en mode édition seulement »,
 // « supprimer / ajouter / Modifier des mots clés ») : ce que l'extension de l'éditeur (src/scripts/edition/mots-cles.mjs) décide avant d'envoyer le lot,
-// en fonctions pures (sans dépendance navigateur ni Astro). Le vocabulaire est celui du service (GET /api/edition/mots-cles/ : [{ id, libelle,
-// libelle_cle, description, abreviation, url, couleur, pages, verrou, mentions, refus_du_forcage }], `pages` = le nombre de pages qui le portent ;
+// en fonctions pures (sans dépendance navigateur ni Astro). Le vocabulaire est celui du service (GET /api/edition/mots-cles/ : [{ id (entier), libelle,
+// cle, description, url, couleur, pages, verrou, monnaie_id, synonymes, categories, anciennes_cles, mentions, refus_du_forcage }], `pages` = le nombre
+// de pages qui le portent ; `cle` : la clé que citent les balises, recalculée par le service (décision R232) ; `synonymes` : ses écritures secondaires,
+// dans l'ordre (R233) ; `categories` : les ids de ses catégories (R232 (5)) ;
 // `verrou` = 1 pour un mot-clé verrouillé, migration 0110, décisions R218, R219 : ni ses champs ni sa suppression ni sa fusion dans un autre ne se font
 // depuis le site, mais il reçoit la fusion d'un autre ; `mentions` = les endroits qui le mentionnent, lib/mentions-des-mots-cles.mjs, décision R196 ;
 // `refus_du_forcage` = null si sa suppression forcée passerait, sinon la raison du refus, décision R223). Un mot-clé ne se supprime que si rien ne le
@@ -10,6 +12,7 @@
 // mot-clé verrouillé) ; un mot-clé fusionné est remplacé par l'autre dans les textes qui le citent (serveur/edition.mjs#reecrireLesBalises).
 // Le service refait tous les contrôles (serveur/edition-chronologie.mjs) : ici, de quoi proposer la fusion avant l'envoi, nommer les mentions, dire ce
 // qu'un retrait fait et ranger les opérations du lot.
+import { pagesDesMentions } from './mots-cles-balises.mjs';
 import { estVerrouille } from './mots-cles.mjs';
 import { normalize } from './text.mjs';
 
@@ -29,18 +32,9 @@ export const INFOBULLE_DU_VERROU = 'Verrouillé : ni modification ni suppression
  * Les endroits qui mentionnent un mot-clé (décision R196 (2) : « un menu déroulant qui liste toutes les pages qui mentionne le mot clé en question »),
  * nommés une fois chacun : `mentions` du vocabulaire du service ([{ libelle, page: { id, titre } | null, exemple, … }], lib/mentions-des-mots-cles.mjs ;
  * une page qui le porte et le cite n'en fait qu'un), dans leur ordre : [{ libelle, page: id | null, exemple }]. null quand le service ne les donne pas.
+ * La même liste que le menu des pages du tableau du Glossaire (lib/mots-cles-balises.mjs#pagesDesMentions, décision R234 (3)).
  */
-export function endroitsDesMentions(m) {
-  if (!Array.isArray(m?.mentions)) return null;
-  const vus = new Map();
-  for (const x of m.mentions) {
-    const page = x.page?.id ?? null;
-    const libelle = String(x.libelle ?? page ?? '');
-    const k = `${page ?? ''}\u0000${libelle}`;
-    if (!vus.has(k)) vus.set(k, { libelle, page, exemple: Boolean(x.exemple) });
-  }
-  return [...vus.values()];
-}
+export const endroitsDesMentions = (m) => pagesDesMentions(m?.mentions);
 
 /**
  * Vrai si la ligne du mot-clé offre « Supprimer » : jamais pour un mot-clé verrouillé (R218 (3)), et seulement quand la liste de ses mentions est vide
@@ -81,16 +75,46 @@ export const fusionOfferte = (m) => !estVerrouille(m);
 /**
  * Les mots-clés dans lesquels `id` peut être fusionné : ni lui-même, ni un mot-clé qui disparaît dans le même lot (`retires` : supprimé, ou fusionné à
  * son tour dans un autre). Un mot-clé verrouillé est une cible (R219 (4) : il « reçoit la fusion d'un autre mot-clé », sans en prendre l'adresse ni la
- * couleur).
+ * couleur), sauf quand la source a au moins un synonyme (R233 (11), réponse du propriétaire : « Refuser la fusion » ; ses synonymes iraient au
+ * verrouillé, dont les synonymes ne se modifient pas : le service répond 409, `champ: 'synonymes'`).
  */
 export function ciblesDeFusion(vocabulaire, id, { retires = new Set() } = {}) {
-  return vocabulaire.filter((m) => m.id !== id && !retires.has(m.id));
+  const source = vocabulaire.find((m) => m.id === id);
+  const avecSynonymes = (source?.synonymes ?? []).length > 0;
+  return vocabulaire.filter((m) => m.id !== id && !retires.has(m.id) && !(avecSynonymes && estVerrouille(m)));
 }
 
-/** Le mot-clé que désigne la saisie du choix « Fusionner dans… » : celui des `cibles` qui s'écrit pareil (normalize du libellé) ; null sinon. */
+/**
+ * Le mot-clé que désigne la saisie du choix « Fusionner dans… » : parmi les `cibles`, celui dont c'est la clé (normalize), sinon le seul dont c'est le
+ * libellé (un libellé que portent des homonymes ne désigne personne : il faut leur clé, décision R232 (4)) ; null sinon.
+ */
 export function cibleSaisie(cibles, saisie) {
   const cle = normalize(saisie ?? '');
-  return (cle && cibles.find((m) => m.libelle_cle === cle)) || null;
+  if (!cle) return null;
+  const parCle = cibles.find((m) => m.cle === cle);
+  if (parCle) return parCle;
+  const parLibelle = cibles.filter((m) => normalize(m.libelle) === cle);
+  return parLibelle.length === 1 ? parLibelle[0] : null;
+}
+
+/**
+ * Ce que la liste des cibles de « Fusionner dans… » propose d'écrire pour chacune : son libellé, ou sa clé quand un homonyme parmi les `cibles` porte le
+ * même libellé (décision R232 (4) : un libellé partagé est ambigu) ; Map(id → écriture).
+ */
+export function ecrituresDesCibles(cibles) {
+  const compte = new Map();
+  for (const m of cibles) compte.set(normalize(m.libelle), (compte.get(normalize(m.libelle)) ?? 0) + 1);
+  return new Map(cibles.map((m) => [m.id, compte.get(normalize(m.libelle)) > 1 ? m.cle : m.libelle]));
+}
+
+/**
+ * Deux homonymes admis (décision R232 (9) : « Un homonyme doit avoir au moins une catégorie qui lui est propre par rapport à chacun des autres ») :
+ * vrai si chacune des deux listes de catégories (ids) en a une que l'autre n'a pas.
+ */
+export function categoriesDistinctes(a = [], b = []) {
+  const x = new Set([...a].map(Number));
+  const y = new Set([...b].map(Number));
+  return [...x].some((c) => !y.has(c)) && [...y].some((c) => !x.has(c));
 }
 
 /**
@@ -113,14 +137,20 @@ function ordonner(elements, avant) {
 
 /**
  * Les renommages du lot (`renommages` : [{ id, avant, libelle }], les libellés saisis qui ont changé) confrontés au vocabulaire et à ce que le lot retire
- * (`retires` : mots-clés supprimés ou fusionnés, dont l'écriture se libère avant les renommages). Une écriture n'est « prise » que si elle le reste après le
- * lot : celle d'un mot-clé gardé dont l'écriture ne change pas. Rend `{ erreur }` pour un lot impossible (écriture vide, deux mots-clés renommés pareil,
- * noms échangés en boucle), sinon `{ aFusionner }` : [{ id, avant, libelle, dans }] les renommages vers une écriture prise (`dans` : le mot-clé qui la
- * garde, verrouillé ou non : R219 (4)), que la page propose de changer en fusion. Les autres renommages passent tels quels, dans l'ordre où
- * chacun libère l'écriture du suivant (operationsDuVocabulaire) : « A » renommé librement et « B » qui prend l'ancien nom de « A », ou « B » fusionné dans
- * « C » et « A » qui prend l'ancien nom de « B ».
+ * (`retires` : mots-clés supprimés ou fusionnés, dont l'écriture se libère avant les renommages). Un libellé n'est plus unique (décision R232 (4)) : deux
+ * mots-clés qui s'écrivent de la même façon sont admis comme homonymes quand chacun a une catégorie propre face à l'autre (R232 (9) :
+ * categoriesDistinctes, d'après `categories`, Map(id → ids) des catégories que le lot leur donne, sinon les leurs) ; sinon, l'écriture est « prise ». Elle
+ * ne l'est que si elle le reste après le lot : celle d'un mot-clé gardé dont l'écriture ne change pas. Rend `{ erreur }` pour un lot impossible (écriture
+ * vide, deux mots-clés renommés pareil sans catégorie qui les distingue, noms échangés en boucle), sinon `{ aFusionner }` : [{ id, avant, libelle, dans }]
+ * les renommages vers une écriture prise (`dans` : le mot-clé qui la garde, verrouillé ou non : R219 (4)), que la page propose de changer en fusion. Les
+ * autres renommages passent tels quels, dans l'ordre où chacun libère l'écriture du suivant (operationsDuVocabulaire) ; le service juge le reste (une clé
+ * déjà prise, R232 (10)).
  */
-export function examinerLesRenommages(vocabulaire, renommages, { retires = new Set() } = {}) {
+export function examinerLesRenommages(vocabulaire, renommages, { retires = new Set(), categories = new Map() } = {}) {
+  const parId = new Map(vocabulaire.map((m) => [m.id, m]));
+  const ecriture = (m) => normalize(m.libelle ?? '');
+  const catsDe = (id) => categories.get(id) ?? parId.get(id)?.categories ?? [];
+  const confondus = (a, b) => !categoriesDistinctes(catsDe(a), catsDe(b));
   const actifs = renommages.filter((r) => !retires.has(r.id));
   const nouvelles = new Map(); // id → l'écriture saisie
   for (const r of actifs) {
@@ -128,32 +158,39 @@ export function examinerLesRenommages(vocabulaire, renommages, { retires = new S
     if (!cle) return { erreur: `« ${r.avant} » : un mot-clé contient au moins une lettre ou un chiffre.` };
     nouvelles.set(r.id, cle);
   }
-  // les écritures qui restent prises après le lot : celles des mots-clés gardés dont l'écriture ne change pas (la casse seule peut changer)
-  const stables = new Map(vocabulaire.filter((m) => !retires.has(m.id) && (nouvelles.get(m.id) ?? m.libelle_cle) === m.libelle_cle).map((m) => [m.libelle_cle, m]));
-  const prises = new Map(); // écriture → le renommage simple du lot qui la prend
+  // les mots-clés qui gardent leur écriture après le lot (la casse seule peut changer), par écriture : des homonymes peuvent la partager
+  const stables = new Map();
+  for (const m of vocabulaire) {
+    if (retires.has(m.id) || (nouvelles.get(m.id) ?? ecriture(m)) !== ecriture(m)) continue;
+    (stables.get(ecriture(m)) ?? stables.set(ecriture(m), []).get(ecriture(m))).push(m);
+  }
+  const prises = new Map(); // écriture → les renommages simples du lot qui la prennent
   const aFusionner = [];
   for (const r of actifs) {
     const cle = nouvelles.get(r.id);
-    const autre = stables.get(cle);
-    if (autre && autre.id !== r.id) {
+    const autre = (stables.get(cle) ?? []).find((m) => m.id !== r.id && confondus(r.id, m.id));
+    if (autre) {
       aFusionner.push({ ...r, dans: autre.id });
       continue;
     }
-    const deja = prises.get(cle);
-    if (deja && deja.id !== r.id) {
-      return { erreur: `« ${deja.avant} » et « ${r.avant} » seraient tous deux renommés « ${r.libelle} » : fusionnez plutôt l’un dans l’autre (« Fusionner dans… »).` };
+    const deja = (prises.get(cle) ?? []).find((x) => confondus(x.id, r.id));
+    if (deja) {
+      return {
+        erreur: `« ${deja.avant} » et « ${r.avant} » seraient tous deux renommés « ${r.libelle} » sans catégorie qui les distingue (décision R232 (9)) : `
+          + 'donnez à chacun une catégorie propre, ou fusionnez l’un dans l’autre (« Fusionner dans… »).',
+      };
     }
-    prises.set(cle, r);
+    (prises.get(cle) ?? prises.set(cle, []).get(cle)).push(r);
   }
-  // les renommages simples dont chacun attend que le suivant libère son écriture, en boucle (A ↔ B, ou A → B → C → A) : le service refuserait le premier
+  // les renommages simples dont chacun attend que le suivant libère son écriture (sans catégorie qui les distingue), en boucle (A ↔ B, ou A → B → C →
+  // A) : le service refuserait le premier
   const fusionnes = new Set(aFusionner.map((r) => r.id));
   const simples = new Map(actifs.filter((r) => !fusionnes.has(r.id)).map((r) => [r.id, r]));
-  const parEcriture = new Map(vocabulaire.filter((m) => simples.has(m.id)).map((m) => [m.libelle_cle, m.id])); // écriture actuelle → renommage qui la libère
+  const suivant = (id) => [...simples.keys()].find((x) => x !== id && ecriture(parId.get(x) ?? {}) === nouvelles.get(id) && confondus(id, x)) ?? null;
   const vus = new Set();
   for (const depart of simples.keys()) {
     const chemin = [];
-    for (let id = depart; id && !vus.has(id); id = parEcriture.get(nouvelles.get(id))) {
-      if (id === parEcriture.get(nouvelles.get(id))) break; // la casse seule
+    for (let id = depart; id && !vus.has(id); id = suivant(id)) {
       const deja = chemin.indexOf(id);
       if (deja >= 0) {
         const boucle = chemin.slice(deja).map((x) => simples.get(x));
@@ -243,29 +280,79 @@ export function confirmationDesRetraits(vocabulaire, { suppressions = new Set(),
 }
 
 /**
- * Les opérations du lot : les fusions (`fusions` : Map source → cible, celles de « Fusionner dans… » et les renommages acceptés en fusion), puis les
- * suppressions (les forcées, `forcages`, après les autres et avec `forcer: true` : décision R223), puis les autres opérations (renommages) ; un
- * renommage d'un mot-clé qui disparaît dans le lot est retiré. Fusions et suppressions d'abord : l'écriture d'un mot-clé qui disparaît se libère pour un renommage du même lot. Les fusions se suivent de sorte qu'un mot-clé reçoive les autres avant
- * d'être fusionné à son tour ; les renommages, de sorte que chacun passe après celui qui libère son écriture (l'écriture actuelle d'un mot-clé : celle du
- * `vocabulaire`, à défaut celle de `avant.libelle`).
+ * Les synonymes saisis dans la liste d'un mot-clé (une écriture par ligne, dans l'ordre : décision R233, « liste ordonnée » de la réponse T6) : chaque
+ * ligne, espaces réduites, les vides retirées, une écriture répétée (même normalize) gardée une fois, à sa première place.
  */
-export function operationsDuVocabulaire(operations, { suppressions = new Set(), forcages = new Set(), fusions = new Map(), vocabulaire = [] }) {
+export function synonymesSaisis(texte) {
+  const sortie = [];
+  for (const s of String(texte ?? '').split(/\r?\n/).map((x) => x.replace(/\s+/g, ' ').trim()).filter(Boolean)) {
+    if (!sortie.some((x) => normalize(x) === normalize(s))) sortie.push(s);
+  }
+  return sortie;
+}
+
+/**
+ * Les opérations des catégories et des synonymes que le lot change (décisions R232 (5), R233 ; réponse T6) : `saisies` = Map(id → { categories?: [ids],
+ * synonymes?: [écritures] }) lues dans la liste de gestion ; `{ op: 'categories_mot_cle', mot_cle, categories, avant }` pour des catégories qui changent
+ * (même sur un mot-clé verrouillé : R232 (11)), `{ op: 'synonymes_mot_cle', mot_cle, synonymes, avant }` pour des synonymes qui changent (jamais pour un
+ * mot-clé verrouillé : R233 (6), sa liste est désactivée) ; rien pour un mot-clé que le lot retire (`retires`). `avant` : la liste lue (le service
+ * refuse si elle a changé entre-temps). Rend { categories: [op…], synonymes: [op…] }.
+ */
+export function operationsDesListes(vocabulaire, saisies, { retires = new Set() } = {}) {
+  const sortie = { categories: [], synonymes: [] };
+  for (const m of vocabulaire) {
+    const s = saisies.get(m.id);
+    if (!s || retires.has(m.id)) continue;
+    const avantCats = [...(m.categories ?? [])].map(Number).sort((a, b) => a - b);
+    if (Array.isArray(s.categories)) {
+      const cats = [...new Set(s.categories.map(Number))].sort((a, b) => a - b);
+      if (cats.join(',') !== avantCats.join(',')) sortie.categories.push({ op: 'categories_mot_cle', mot_cle: m.id, categories: cats, avant: avantCats });
+    }
+    const avantSyn = [...(m.synonymes ?? [])].map((x) => (typeof x === 'string' ? x : x?.libelle));
+    if (Array.isArray(s.synonymes) && !estVerrouille(m) && s.synonymes.join('\u0000') !== avantSyn.join('\u0000')) {
+      sortie.synonymes.push({ op: 'synonymes_mot_cle', mot_cle: m.id, synonymes: [...s.synonymes], avant: avantSyn });
+    }
+  }
+  return sortie;
+}
+
+/** Vrai si la catégorie `c` ({ mots_cles : le nombre de mots-clés qui la portent }) peut se supprimer : vide (décision R232 (5)). */
+export const suppressionDeCategorieOfferte = (c) => Number(c?.mots_cles ?? 0) === 0;
+
+/**
+ * Les opérations du lot : les fusions (`fusions` : Map source → cible, celles de « Fusionner dans… » et les renommages acceptés en fusion), puis les
+ * suppressions (les forcées, `forcages`, après les autres et avec `forcer: true` : décision R223), puis les catégories des mots-clés (`listes.categories` :
+ * avant les renommages, pour qu'un homonyme créé par un renommage ait déjà ses catégories distinctives, R232 (9)), puis les autres opérations
+ * (renommages, champs, catégories renommées), puis les synonymes (`listes.synonymes` : après les renommages, un synonyme pouvant prendre une écriture
+ * qu'un renommage libère), enfin les catégories supprimées (`categoriesSupprimees` : des ids ; vides, R232 (5)). Un renommage d'un mot-clé qui
+ * disparaît dans le lot est retiré. Fusions et suppressions d'abord : l'écriture d'un mot-clé qui disparaît se libère pour un renommage du même lot.
+ * Les fusions se suivent de sorte qu'un mot-clé reçoive les autres avant d'être fusionné à son tour ; les renommages, de sorte que chacun passe après
+ * celui qui libère son écriture (l'écriture actuelle d'un mot-clé : celle du `vocabulaire`, à défaut celle de `avant.libelle`).
+ */
+export function operationsDuVocabulaire(operations, {
+  suppressions = new Set(), forcages = new Set(), fusions = new Map(), vocabulaire = [], listes = { categories: [], synonymes: [] }, categoriesSupprimees = new Set(),
+}) {
   const retires = new Set([...suppressions, ...forcages, ...fusions.keys()]);
   const entrees = [...fusions];
   const listeDesFusions = ordonner(entrees, ([source]) => entrees.filter(([, cible]) => cible === source));
-  const gardees = operations.filter((op) => !(op.table === 'mot_cle' && retires.has(op.cle?.id)));
-  const ecritures = new Map(vocabulaire.map((m) => [m.id, m.libelle_cle]));
+  const gardees = operations.filter((op) => !(op.table === 'mot_cle' && retires.has(op.cle?.id))
+    && !(op.table === 'categorie_mot_cle' && categoriesSupprimees.has(op.cle?.id)));
+  const ecritures = new Map(vocabulaire.map((m) => [m.id, normalize(m.libelle ?? '')]));
   const renommage = (op) => op.op === 'modifier' && op.table === 'mot_cle' && typeof op.valeurs?.libelle === 'string';
   const actuelle = (op) => ecritures.get(op.cle?.id) ?? normalize(op.avant?.libelle ?? '');
   const renommages = gardees.filter(renommage);
   const ordre = ordonner(gardees, (op) => (renommage(op)
     ? renommages.filter((autre) => autre.cle?.id !== op.cle?.id && actuelle(autre) === normalize(op.valeurs.libelle))
     : []));
+  const sans = (ops) => (ops ?? []).filter((op) => !retires.has(op.mot_cle));
   return [
     ...listeDesFusions.map(([source, cible]) => ({ op: 'fusionner_mots_cles', mot_cle: source, dans: cible })),
     ...[...suppressions].map((id) => ({ op: 'supprimer', entite: 'mot_cle', cle: { id } })),
     ...[...forcages].filter((id) => !suppressions.has(id)).map((id) => ({ op: 'supprimer', entite: 'mot_cle', cle: { id }, forcer: true })),
+    ...sans(listes?.categories),
     ...ordre,
+    ...sans(listes?.synonymes),
+    ...[...categoriesSupprimees].map((id) => ({ op: 'supprimer', entite: 'categorie_mot_cle', cle: { id } })),
   ];
 }
 

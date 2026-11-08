@@ -4,9 +4,9 @@
 // glossaire (ces zones sont des textes mis en forme : lib/mots-cles-balises.mjs), une petite boîte de saisie, et la barre d'outils.
 // Les mots-clés du glossaire s'y lisent et s'y modifient en balises écrites, comme dans le Markdown (demande du propriétaire du 2026-10-17 : « Quand je
 // passe en mode édition le texte devrai remettre le texte en mode Markdown […] je ne vois pas {{Recharge Longue}} ») : à l'entrée, chaque mot-clé rendu
-// redevient « {{id}} », « {{id|texte}} » ou « {{id:}} » (lib/markdown-edition.mjs#baliseEcrite), que l'on peut aussi taper ; les outils (outilsDesMotsCles ;
-// demande du 2026-10-16) écrivent la balise du mot-clé choisi : le texte choisi devient « {{id}} » s'il est son libellé, « {{id|texte}} » sinon, la
-// définition « {{id:}} » ; le curseur dans une balise, ils en changent le mot-clé. Le texte d'une zone n'est rendu (gras, infobulle) qu'une fois enregistré.
+// redevient « {{clé}} », « {{clé|texte}} » ou « {{clé:}} » (lib/markdown-edition.mjs#baliseEcrite), que l'on peut aussi taper ; les outils (outilsDesMotsCles ;
+// demande du 2026-10-16) écrivent la balise du mot-clé choisi : le texte choisi devient « {{clé}} » s'il est son libellé, « {{clé|texte}} » sinon, la
+// définition « {{clé:}} » ; le curseur dans une balise, ils en changent le mot-clé. Le texte d'une zone n'est rendu (gras, infobulle) qu'une fois enregistré.
 // La barre d'outils se tient à gauche de l'écran, à la hauteur de la zone où est le curseur (demande du 2026-10-17 : hauteurDeLaBarre).
 // Le HTML d'une zone est réécrit en Markdown par lib/markdown-edition.mjs (versMarkdown) ; ce module ne touche qu'au DOM.
 import { arbreDuDom, baliseEcrite } from '../../lib/markdown-edition.mjs';
@@ -78,7 +78,7 @@ export const pageChoisie = (pages, saisie) =>
   pages.find((p) => libelleDePage(p) === saisie || p.id === saisie) ?? pages.filter((p) => normalize(p.titre) === normalize(saisie)).at(0) ?? null;
 export { libelleDePage };
 
-const libelleDeMotCle = (m) => `${m.libelle} — ${m.id}`;
+const libelleDeMotCle = (m) => `${m.libelle} — ${m.cle}`;
 /** Le mot-clé choisi dans les suggestions (« Libellé — id »), par son id ou par son écriture ; null sinon. */
 const motCleChoisi = (vocabulaire, saisie) =>
   vocabulaire.liste.find((m) => libelleDeMotCle(m) === saisie) ?? motCleDeLaRef(vocabulaire, saisie.replace(/\s+—\s+[a-z0-9-]+$/, '')) ?? null;
@@ -165,13 +165,13 @@ export function editeurEnPlace(zones) {
     const autour = baliseAutour(r);
     await choisirUnMotCle(ed, {
       titre: autour ? 'Changer le mot-clé du lien' : 'Lien par un mot-clé',
-      aide: 'Tapez quelques lettres du mot-clé puis choisissez-le : seuls ceux qui mènent à une page sont proposés. Le texte choisi devient sa balise, « {{id}} » (le libellé du mot-clé) ou « {{id|texte}} » (un autre texte) : une fois enregistré, c’est un lien vers sa page, en gras. Une page sans mot-clé : créez-le d’abord sur le Glossaire, avec son lien.',
+      aide: 'Tapez quelques lettres du mot-clé puis choisissez-le : seuls ceux qui mènent à une page sont proposés. Le texte choisi devient sa balise, « {{clé}} » (le libellé du mot-clé) ou « {{clé|texte}} » (un autre texte) : une fois enregistré, c’est un lien vers sa page, en gras. Une page sans mot-clé : créez-le d’abord sur le Glossaire, avec son lien.',
       valeur: autour?.balise.ref ?? '',
       bouton: 'Lier',
       filtre: (m) => Boolean(m.url),
       poser(m) {
         const ecrit = autour ? (autour.balise.complet ? null : autour.balise.texte) : r.toString().replace(/[{}\n]+/g, ' ').replace(/\s+/g, ' ').trim() || null;
-        const ecriture = ecrit === null || ecrit === m.libelle ? `{{${m.id}}}` : `{{${m.id}|${ecrit}}}`;
+        const ecriture = ecrit === null || ecrit === m.libelle ? `{{${m.cle}}}` : `{{${m.cle}|${ecrit}}}`;
         if (autour) remplacerLaBalise(ed, autour, ecriture);
         else insererLaBalise(ed, r, ecriture);
       },
@@ -272,8 +272,8 @@ export function editeurEnPlace(zones) {
   }
 
   /**
-   * Le texte choisi devient la balise d'un mot-clé du glossaire : « {{id}} » (son libellé : le texte affiché le suivra), « {{id|texte}} » (un autre
-   * texte) ; le curseur dans une balise, change son mot-clé et garde son texte écrit (le mode complet devient « {{id}} »).
+   * Le texte choisi devient la balise d'un mot-clé du glossaire, par sa clé : « {{clé}} » (son libellé : le texte affiché le suivra), « {{clé|texte}} » (un autre
+   * texte) ; le curseur dans une balise, change son mot-clé et garde son texte écrit (le mode complet devient « {{clé}} »).
    */
   async function motCle(ed) {
     const r = plage();
@@ -281,31 +281,31 @@ export function editeurEnPlace(zones) {
     const autour = baliseAutour(r);
     await choisirUnMotCle(ed, {
       titre: autour ? 'Changer le mot-clé' : 'Mot-clé du glossaire',
-      aide: 'Tapez quelques lettres du mot-clé puis choisissez-le. Le texte choisi devient sa balise, « {{id}} » (le libellé du mot-clé) ou « {{id|texte}} » (un autre texte) : une fois enregistré, il s’affiche en gras, avec la définition du mot-clé en infobulle.',
+      aide: 'Tapez quelques lettres du mot-clé puis choisissez-le. Le texte choisi devient sa balise, « {{clé}} » (le libellé du mot-clé) ou « {{clé|texte}} » (un autre texte) : une fois enregistré, il s’affiche en gras, avec la définition du mot-clé en infobulle.',
       valeur: autour?.balise.ref ?? '',
       bouton: 'Poser',
       poser(m) {
         const ecrit = autour ? (autour.balise.complet ? null : autour.balise.texte) : r.toString().replace(/[{}\n]+/g, ' ').replace(/\s+/g, ' ').trim() || null;
-        const ecriture = ecrit === null || ecrit === m.libelle ? `{{${m.id}}}` : `{{${m.id}|${ecrit}}}`;
+        const ecriture = ecrit === null || ecrit === m.libelle ? `{{${m.cle}}}` : `{{${m.cle}|${ecrit}}}`;
         if (autour) remplacerLaBalise(ed, autour, ecriture);
         else insererLaBalise(ed, r, ecriture);
       },
     });
   }
 
-  /** Écrit la balise du mode complet d'un mot-clé, « {{id:}} » (« Libellé : définition », venue du glossaire) ; le curseur dans une balise, la remplace. */
+  /** Écrit la balise du mode complet d'un mot-clé, « {{clé:}} » (« Libellé : définition », venue du glossaire) ; le curseur dans une balise, la remplace. */
   async function definition(ed) {
     const r = plage();
     if (!r) return ed.annoncer('Placez d’abord le curseur là où la définition doit aller.');
     const autour = baliseAutour(r);
     await choisirUnMotCle(ed, {
       titre: 'Définition d’un mot-clé',
-      aide: 'Sa balise « {{id:}} » s’écrit au curseur : une fois enregistré, le libellé du mot-clé et sa définition s’affichent tels que le glossaire les écrit (« Libellé : définition ») et la suivront quand elle changera.',
+      aide: 'Sa balise « {{clé:}} » s’écrit au curseur : une fois enregistré, le libellé du mot-clé et sa définition s’affichent tels que le glossaire les écrit (« Libellé : définition ») et la suivront quand elle changera.',
       valeur: autour?.balise.ref ?? '',
       bouton: 'Insérer',
       poser(m) {
-        if (autour) remplacerLaBalise(ed, autour, `{{${m.id}:}}`);
-        else insererLaBalise(ed, r, `{{${m.id}:}}`);
+        if (autour) remplacerLaBalise(ed, autour, `{{${m.cle}:}}`);
+        else insererLaBalise(ed, r, `{{${m.cle}:}}`);
       },
     });
   }

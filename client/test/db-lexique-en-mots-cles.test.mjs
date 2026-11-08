@@ -19,13 +19,19 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { cleDeLigne, historiqueSite, texteDeCle } from '../src/lib/historique-site.mjs';
-import { formesNonCanoniques, lireBalises, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
+import { fautesDuSynonyme, formesNonCanoniques, lireBalises, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { MOTS_CLES_PROTEGES } from '../src/lib/mots-cles.mjs';
-import { textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
+import { motsClesDeLaBase, textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
-const motCle = (id) => db.prepare('SELECT * FROM mot_cle WHERE id = ?').get(id);
+// Depuis la migration 0113, un mot-clé a un id entier : ce test nomme les mots-clés de la 0090 par leur ancien id texte, traduit par la correspondance de
+// la 0113 (son registre : id entier, et la clé et le libellé d'alors). La 0115 a fondu « Action bonus » et « Action rapide » dans « Instant Cast » et fait
+// de chaque abréviation un synonyme : son registre garde ce qu'ils étaient (`fusions`) et l'origine de chaque synonyme (`synonymes`).
+const REGISTRE_0113 = new Map(JSON.parse(readFileSync(new URL('../../data/migrations/0113-mots-cles-id-entier.json', import.meta.url), 'utf8')).motsCles.map((m) => [m.ancienId, m]));
+const REGISTRE_0115 = JSON.parse(readFileSync(new URL('../../data/migrations/0115-mots-cles-synonymes.json', import.meta.url), 'utf8'));
+const entier = (ancien) => REGISTRE_0113.get(ancien)?.id;
+const motCle = (ancien) => (entier(ancien) === undefined ? undefined : db.prepare('SELECT * FROM mot_cle WHERE id = ?').get(entier(ancien)));
 const historique = historiqueSite(db);
 // les lots déjà rapatriés quand la 0090 a été écrite (liste figée, fixtures/lots-avant-0090.json) : tout autre lot, quelle que soit sa date (fait_le
 // est l'heure du lot sur le site de dev, pas celle de son rapatriement : scripts/db-appliquer-edition.mjs), retouche ce qu'elle a écrit
@@ -54,7 +60,21 @@ function lectureDe0090(base, entrees) {
   return { valeur, lignes };
 }
 const { valeur: valeurDe0090, lignes: lignesDe0090 } = lectureDe0090(db, historique.entrees);
-const dImport = (id, colonne) => valeurDe0090('mot_cle', { id }, colonne);
+/**
+ * La valeur d'un mot-clé (par son ancien id) telle que la 0090 l'a laissée : `libelle_cle` est sa clé à la 0113 (la même), `abreviation` le synonyme
+ * que la 0115 en a fait (registre) ; un mot-clé fondu par la 0115 se lit dans son registre ; `id` : l'ancien id s'il existait.
+ */
+const dImport = (ancien, colonne) => {
+  const e = REGISTRE_0113.get(ancien);
+  if (!e) return undefined;
+  const fondu = REGISTRE_0115.fusions.find((f) => f.ancienId === ancien);
+  if (colonne === 'libelle_cle') return e.cle;
+  if (colonne === 'abreviation') return fondu ? fondu.abreviation : REGISTRE_0115.synonymes.find((x) => x.motCleId === e.id && x.origine === 'abreviation')?.libelle ?? null;
+  if (fondu) return colonne === 'id' ? ancien : fondu[colonne];
+  const v = valeurDe0090('mot_cle', { id: e.id }, colonne);
+  if (colonne === 'id') return v === undefined ? undefined : ancien;
+  return colonne === 'libelle' ? e.libelleAvant ?? v : v;
+};
 const LEXIQUE = 'guide/lexique';
 // les mots-clés que la 0090 crée (section 2) ou fusionne (section 3), lus dans la migration elle-même
 const MIGRATION = readFileSync(new URL('../../data/migrations/0090-lexique-en-mots-cles.sql', import.meta.url), 'utf8');
@@ -90,35 +110,19 @@ const FUSIONS = {
   metier: 'Un savoir-faire choisi à la création ou plus tard dans l’aventure.',
 };
 
-test('0090 : mot_cle.abreviation, NULL ou non vide ; la vue v_mot_cle la donne', () => {
-  // cherchée par son nom : la 0090 l'a ajoutée en dernier, mais des colonnes ont suivi (couleur, url : migration 0098)
-  const colonne = (table) => db.prepare(`PRAGMA table_info(${table})`).all().find((c) => c.name === 'abreviation');
-  assert.equal(colonne('mot_cle')?.type, 'TEXT');
-  assert.equal(colonne('mot_cle')?.notnull, 0);
-  assert.ok(colonne('v_mot_cle'), 'v_mot_cle donne l’abréviation');
-  const schema = new DatabaseSync(':memory:');
-  try {
-    schema.exec(readFileSync(new URL('../../data/schema.sql', import.meta.url), 'utf8'));
-    const inserer = (abreviation) => schema.prepare('INSERT INTO mot_cle (id, libelle, libelle_cle, abreviation) VALUES (?, ?, ?, ?)').run('essai', 'Essai', 'essai', abreviation);
-    assert.throws(() => inserer(''), /CHECK constraint failed/);
-    inserer(null);
-    schema.exec("UPDATE mot_cle SET abreviation = 'ES' WHERE id = 'essai'");
-    assert.equal(schema.prepare("SELECT abreviation FROM v_mot_cle WHERE id = 'essai'").get().abreviation, 'ES');
-  } finally {
-    schema.close();
-  }
+test('0090 puis 0115 : l’abréviation, colonne de la 0090, est devenue un synonyme (R233 (7)) — ni dans mot_cle ni dans v_mot_cle, la table mot_cle_synonyme', () => {
+  for (const table of ['mot_cle', 'v_mot_cle']) assert.ok(!db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === 'abreviation'), table);
+  assert.ok(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'mot_cle_synonyme'").get());
+  // chaque abréviation de la 0090 est un synonyme de la 0115 (son registre), d'origine « abreviation »
+  for (const [id, abreviation] of Object.entries(ABREVIATIONS)) assert.equal(dImport(id, 'abreviation'), abreviation, id);
 });
 
 test('0090 : les abréviations du Lexique, telles qu’écrites, et « CR » celle de « Corruption » ; chacune sans ambiguïté pour la ref d’une balise', () => {
   for (const [id, abreviation] of Object.entries(ABREVIATIONS)) assert.equal(dImport(id, 'abreviation'), abreviation, id);
-  // la règle de db:check : normalize(abreviation) n'est ni l'id, ni le libelle_cle, ni l'abréviation normalisée d'un autre mot-clé
-  const prises = new Map();
-  for (const m of db.prepare('SELECT id, libelle_cle, abreviation FROM mot_cle').all()) {
-    if (m.abreviation !== null) assert.ok(normalize(m.abreviation), `${m.id} : une abréviation qui contient une lettre ou un chiffre`);
-    for (const cle of new Set([m.id, m.libelle_cle, m.abreviation === null ? null : normalize(m.abreviation)].filter(Boolean))) {
-      assert.ok(!prises.has(cle) || prises.get(cle) === m.id, `« ${cle} » désigne ${prises.get(cle)} et ${m.id}`);
-      prises.set(cle, m.id);
-    }
+  // la règle de db:check, sur l'état courant : un synonyme (l'abréviation en est un) n'est ni le libellé, ni un synonyme, ni la clé d'un autre mot-clé
+  const motsCles = motsClesDeLaBase(db);
+  for (const m of motsCles) {
+    m.synonymes.forEach((x, i) => assert.deepEqual(fautesDuSynonyme(motsCles, m, x, { autres: m.synonymes.slice(0, i) }), [], `${m.id} : « ${x} »`));
   }
 });
 
@@ -136,9 +140,10 @@ test('0090 : les renvois du Lexique citent leur mot-clé ; ses doublons gardent 
 });
 
 test('0090 : les définitions venues du Lexique sont des textes de case — ni lien, ni gras, ni italique, ni mode complet ; balises sous forme canonique', () => {
-  const tous = db.prepare('SELECT id, libelle, libelle_cle, description FROM mot_cle').all();
+  const tous = db.prepare('SELECT id, libelle, cle, description FROM mot_cle').all();
   const vocabulaire = vocabulaireDesMotsCles(tous);
   const venus = new Set([...CREES, ...FUSIONNES]);
+  const venusEntiers = new Set([...venus].map(entier));
   assert.ok(CREES.length >= 90 && FUSIONNES.length >= 8, `${CREES.length} créés, ${FUSIONNES.length} fusionnés lus dans la migration`);
   // ce que la migration a écrit (tel que la 0090 l'a laissé) : un texte de case, sans référence de page, ni lien, ni Markdown
   for (const id of venus) {
@@ -148,7 +153,7 @@ test('0090 : les définitions venues du Lexique sont des textes de case — ni l
     assert.doesNotMatch(d, /\[\[|\]\(|\*/, `${id} : ni lien ni Markdown`);
   }
   // l'état courant : la forme canonique des balises (invariant, comme db:check)
-  for (const m of tous.filter((x) => venus.has(x.id) && x.description)) assert.deepEqual(formesNonCanoniques(m.description, vocabulaire, { markdown: false }), [], m.id);
+  for (const m of tous.filter((x) => venusEntiers.has(x.id) && x.description)) assert.deepEqual(formesNonCanoniques(m.description, vocabulaire, { markdown: false }), [], String(m.id));
   // la page citée entre parenthèses est retirée (« Retirer la référence ») ; un lien dans la phrase garde son texte affiché
   assert.ok(dImport('acquis', 'description').endsWith('le +1 de la magie innée compris.'));
   assert.ok(dImport('echec-critique', 'description').endsWith('une défense où l’armure ne compte plus…'));
@@ -273,9 +278,9 @@ test('R183 (8), Q-G : « Classe » et « Métier », même id et même libelle_c
     assert.equal(dImport(id, 'libelle_cle'), id, `${id} : la même clé, écrite par la migration`);
     // l'état courant : une étiquette protégée se reconnaît à son id (lib/mots-cles.mjs#MOTS_CLES_PROTEGES) ; son libellé se modifie (décision R195)
     const m = motCle(id);
-    assert.equal(normalize(m.libelle), m.libelle_cle);
-    assert.ok(MOTS_CLES_PROTEGES.has(m.id), `${id} : protégé par son id`);
-    assert.ok(db.prepare('SELECT count(*) AS n FROM page_tag WHERE tag_id = ?').get(id).n > 0, `${id} : toujours posé sur ses pages`);
+    assert.equal(normalize(m.libelle), m.cle);
+    assert.ok(MOTS_CLES_PROTEGES.has(m.id), `${id} : protégé par son id (entier depuis la 0113)`);
+    assert.ok(db.prepare('SELECT count(*) AS n FROM page_tag WHERE tag_id = ?').get(m.id).n > 0, `${id} : toujours posé sur ses pages`);
   }
 });
 

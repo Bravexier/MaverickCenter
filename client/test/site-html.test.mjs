@@ -10,7 +10,7 @@ import vm from 'node:vm';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { morceauxDuChapitre } from '../src/lib/guide.mjs';
-import { htmlAvecMotsCles, pageAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
+import { htmlAvecMotsCles, htmlDeLIcone, pageAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { classeDuMotCle } from '../src/lib/mots-cles-liens.mjs';
 import { cssDesMotsClesDuSite } from '../src/lib/couleur-de-la-page.mjs';
@@ -22,7 +22,7 @@ import { cheminDePage } from '../src/lib/metiers.mjs';
 import { classeDePartie, classesDeLaPalette, cssDeLaPalette, cssDesFamilles } from '../src/lib/palette-css.mjs';
 import { cssDesAttributs } from '../src/lib/attributs-couleurs.mjs';
 import { htmlDeLaNote } from '../src/lib/notes-de-version-rendu.mjs';
-import { htmlAvecMonnaies, htmlDePiece, MONNAIES_DU_JEU } from '../src/lib/monnaies.mjs';
+import { htmlAvecMonnaies, MONNAIES_DU_JEU } from '../src/lib/monnaies.mjs';
 import { rendreCommeLeGuide } from './aide-rendu-du-site.mjs';
 
 const dist =fileURLToPath(new URL('../dist/', import.meta.url));
@@ -312,7 +312,7 @@ test('aucun lien vers les classeurs « Familiers » et « Prototype » (demande 
   assert.deepEqual(avecLien, []);
 });
 
-test('/recherche/ : la recherche et le glossaire des mots-clés (tous, liens ?mot-cle=<id>, nombre de pages, définition en infobulle) ; plus de /tags/ (la page 404 y renvoie) ; les pastilles des pages y mènent', options, () => {
+test('/recherche/ : la recherche et le glossaire des mots-clés (tous, liens ?mot-cle=<clé>, nombre de pages, définition en infobulle) ; plus de /tags/ (la page 404 y renvoie) ; les pastilles des pages y mènent', options, () => {
   const html = lire('recherche/index.html');
   assert.match(html, /<form id="search-form" action="\/recherche\/"/);
   assert.match(html, /<div class="recherche" data-recherche data-lien-mot-cle="\/recherche\/\?mot-cle=">/);
@@ -342,65 +342,59 @@ test('/recherche/ : la recherche et le glossaire des mots-clés (tous, liens ?mo
   }
   const comptes = new Map();
   for (const e of index) for (const id of new Set(e.motsCles)) comptes.set(id, (comptes.get(id) ?? 0) + 1);
-  // la liste : le glossaire, tout le vocabulaire (même un mot-clé qu'aucune page visible ne porte), chaque mot-clé décrit avec sa définition en infobulle
-  const vocabulaire = new Map(base.prepare('SELECT id, libelle, libelle_cle, description, abreviation, couleur FROM mot_cle').all().map((m) => [m.id, m]));
+  // la liste : le glossaire, tout le vocabulaire (même un mot-clé qu'aucune page visible ne porte), chaque mot-clé décrit avec sa définition en infobulle ;
+  // un mot-clé : son id entier, sa clé (celle de l'adresse et de sa bulle, décision R232 (3)), ses synonymes et ses clés quittées en JSON (R233 (1))
+  const vocabulaire = new Map(chargerVocabulaire(base).map((m) => [m.id, m]));
   const liste = html.slice(html.indexOf('<ul class="tags" id="liste-mots-cles">'), html.indexOf('id="aucun-mot-cle"'));
-  const motsCles = [...liste.matchAll(/<li data-id="([^"]+)" data-cle="([^"]+)" data-n="(\d+)" data-libelle="[^"]*"( data-abreviation="[^"]*")?( data-definition="[^"]*")?>\s*<a class="badge" href="\/recherche\/\?mot-cle=([^"]+)"( data-bulle="mot-cle-[^"]+" aria-describedby="mot-cle-[^"]+")?>(<span class="recherche-nom">(?:[^<]|<span class="piece [^>]*><\/span>)*<\/span>(?: · \d+)?)<\/a>\s*<\/li>/g)];
+  const motsCles = [...liste.matchAll(/<li data-id="(\d+)" data-cle="([^"]+)" data-n="(\d+)" data-libelle="[^"]*"( data-synonymes="[^"]*")?( data-anciennes-cles="[^"]*")?( data-definition="[^"]*")?>\s*<a class="badge" href="\/recherche\/\?mot-cle=([^"]+)"( data-bulle="mot-cle-[^"]+" aria-describedby="mot-cle-[^"]+")?>(<span class="recherche-nom">(?:[^<]|<span class="piece [^>]*><\/span>)*<\/span>(?: · \d+)?)<\/a>\s*<\/li>/g)];
   assert.equal(motsCles.length, (liste.match(/<li /g) ?? []).length, 'chaque mot-clé a la forme attendue');
   assert.ok(motsCles.length > 0, `${motsCles.length} mots-clés`);
   const echappe = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  for (const [, id, cle, n, abreviation, definition, lien, bulle, texte] of motsCles) {
-    assert.equal(lien, id, 'le lien porte l’id (figé), pas l’écriture');
+  const attribut = (nom, liste) => (liste?.length ? ` ${nom}="${echappe(JSON.stringify(liste))}"` : undefined);
+  for (const [, idTexte, cle, n, synonymes, anciennes, definition, lien, bulle, texte] of motsCles) {
+    const id = Number(idTexte);
+    const m = vocabulaire.get(id);
+    assert.equal(lien, encodeURIComponent(cle), 'le lien porte la clé (R232 (3)), pas l’id');
+    assert.equal(m?.cle, cle, `${id} : sa clé`);
     assert.equal(Number(n), comptes.get(id) ?? 0, `${id} : nombre de pages de l’index`);
     assert.ok(Number(n) > 0 ? texte.endsWith(` · ${n}`) : !/ · \d+$/.test(texte), texte);
-    // l'abréviation (migration 0090 ; réponses du propriétaire du 2026-11-05 : « Modifiable et affichée », « Armure magique (AM) · 3 ») : après le
-    // libellé, en data-abreviation (la recherche la lit) ; sans abréviation, le libellé seul ; une monnaie, son libellé et son icône (R63)
-    const m = vocabulaire.get(id);
-    assert.equal(abreviation, m?.abreviation ? ` data-abreviation="${echappe(m.abreviation)}"` : undefined, `${id} : son abréviation`);
-    // une monnaie : reconnue à son id (celui de la table `monnaie`), l'icône de sa monnaie
-    const monnaie = Object.entries(MONNAIES_DU_JEU).find(([, x]) => x.id === id)?.[0];
-    const nom = monnaie ? `${echappe(m.libelle)} ${htmlDePiece(monnaie)}` : echappe(m?.abreviation ? `${m.libelle} (${m.abreviation})` : m?.libelle);
+    assert.equal(synonymes, attribut('data-synonymes', m.synonymes), `${id} : ses synonymes (la recherche les lit)`);
+    assert.equal(anciennes, attribut('data-anciennes-cles', m.anciennes_cles), `${id} : ses clés quittées`);
+    // la pastille : le libellé seul (R233 (9)), suivi de son icône quand il en a une (R235 (3) : le RF, le RO, la PP ; R63)
+    const nom = m.icone ? `${echappe(m.libelle)} ${htmlDeLIcone(m.icone)}` : echappe(m.libelle);
     assert.equal(texte, `<span class="recherche-nom">${nom}</span>${Number(n) > 0 ? ` · ${n}` : ''}`, `${id} : sa pastille`);
-    assert.equal(vocabulaire.get(id)?.libelle_cle, cle, `${id} : son écriture`);
-    const decrit = Boolean(vocabulaire.get(id)?.description);
+    const decrit = Boolean(m.description);
     assert.equal(Boolean(definition), decrit, `${id} : sa définition`);
     assert.equal(Boolean(bulle), decrit, `${id} : l’infobulle de sa définition`);
-    // sa bulle, habillée de sa couleur (migration 0098 : la classe du mot-clé coloré)
-    const bulleDe = `<span class="${['bulle', classeDuMotCle(m)].filter(Boolean).join(' ')}" role="tooltip" id="mot-cle-${id}" hidden>`;
+    if (decrit) assert.equal(bulle, ` data-bulle="mot-cle-${cle}" aria-describedby="mot-cle-${cle}"`, `${id} : sa bulle, par sa clé`);
+    // sa bulle, habillée de sa couleur (migration 0098 : la classe du mot-clé coloré) ; son titre, le nom de sa pastille
+    const bulleDe = `<span class="${['bulle', classeDuMotCle(m)].filter(Boolean).join(' ')}" role="tooltip" id="mot-cle-${cle}" hidden>`;
     if (decrit) assert.equal(html.split(bulleDe).length - 1, 1, `${id} : sa bulle, une fois`);
     if (decrit) assert.ok(html.includes(`${bulleDe}<strong class="bulle__titre">${nom}</strong>`), `${id} : le titre de sa bulle`);
     // la définition rendue que recopie la vue du mot-clé (monnaies en icônes, R63 ; balises rendues par le middleware), une par mot-clé décrit
     assert.equal((html.match(new RegExp(`<div data-definition-de="${id}">`, 'g')) ?? []).length, decrit ? 1 : 0, `${id} : sa définition rendue`);
   }
-  // les mots-clés à abréviation (« Armure magique (AM) » à l'import) : leur libellé et leur abréviation courants, lus par id, pour chaque mot-clé de la
-  // base hors monnaies (le site de dev en renomme, en vide ou en pose l'abréviation, et en supprime : `armure-magique` n'est pas protégé)
-  const idsDesMonnaies = new Set(Object.values(MONNAIES_DU_JEU).map((x) => x.id));
-  for (const am of [...vocabulaire.values()].filter((m) => !idsDesMonnaies.has(m.id))) {
-    const abr = typeof am.abreviation === 'string' ? am.abreviation.trim() : '';
-    const nomDeAm = echappe(abr ? `${am.libelle} (${abr})` : am.libelle);
-    assert.ok(motsCles.some((m) => m[1] === am.id && m[8].startsWith(`<span class="recherche-nom">${nomDeAm}</span>`)), `« ${nomDeAm} »`);
-  }
-  if (!vocabulaire.has('armure-magique')) {
-    assert.ok(historiqueSite(base).supprimee('mot_cle', { id: 'armure-magique' }), '« armure-magique » manque sans que le site de dev l’ait supprimé');
-  }
   for (const abr of Object.keys(MONNAIES_DU_JEU)) {
-    const m = motsCles.find((x) => x[1] === MONNAIES_DU_JEU[abr].id);
-    assert.ok(m && m[8].includes(`class="piece piece--${MONNAIES_DU_JEU[abr].id}"`) && !m[8].includes(`(${abr})`), `${abr} : libellé + icône`);
+    const motCle = [...vocabulaire.values()].find((x) => x.icone === `monnaie:${MONNAIES_DU_JEU[abr].id}`);
+    if (!motCle) continue; // l'icône d'une monnaie est verrouillée (R235 (5)) : posée à l'import (mots-cles-balises.test.mjs)
+    const m = motsCles.find((x) => Number(x[1]) === motCle.id);
+    assert.ok(m && m[9].includes(`class="piece piece--${MONNAIES_DU_JEU[abr].id}"`) && !m[9].includes(`(${abr})`), `${abr} : libellé + icône`);
   }
   assert.match(html, /<div id="definitions-des-mots-cles" hidden>/);
   const definitions = html.slice(html.indexOf('<div id="definitions-des-mots-cles" hidden>'), html.indexOf('<section class="recherche-pages"'));
   assert.doesNotMatch(definitions.replace(/<[^>]+>/g, ''), /\{\{[^{}\n]+\}\}/, 'les balises des définitions rendues (le texte ; data-balise les garde)');
   assert.match(definitions, /<strong class="mot-cle" data-mot-cle="[^"]+"/, 'un mot-clé cité dans une définition : en gras, comme partout');
-  assert.deepEqual(motsCles.map((m) => m[1]).sort(), [...vocabulaire.keys()].sort(), 'tout le vocabulaire, rien d’autre');
+  assert.deepEqual(motsCles.map((m) => Number(m[1])).sort((x, y) => x - y), [...vocabulaire.keys()].sort((x, y) => x - y), 'tout le vocabulaire, rien d’autre');
   assert.match(html, new RegExp(`<small id="nombre-mots-cles" class="muted">\\(${motsCles.length}\\)</small>`), 'le nombre de mots-clés');
   assert.match(html, /<p id="vue-du-mot-cle-definition" class="recherche-definition" hidden><\/p>/, 'la vue d’un mot-clé : sa définition');
   // plus de pages /tags/ : la page 404 renvoie /tags/<clé>/ vers /recherche/?mot-cle=<clé>
   assert.ok(!existsSync(join(dist, 'tags')), 'dossier dist/tags/');
-  // les pastilles d'une page du wiki mènent à la recherche, par l'id du mot-clé
+  // les pastilles d'une page du wiki mènent à la recherche, par la clé du mot-clé, et montrent son libellé (sans « (classe) » : R232 (4))
   const nain = lire('races/nain/index.html');
   const pastilles = [...nain.slice(nain.indexOf('<ul class="tags" aria-label="Mots-clés">')).split('</ul>')[0].matchAll(/<a class="badge" href="\/recherche\/\?mot-cle=([^"]+)">([^<]+)<\/a>/g)];
   assert.ok(pastilles.length > 0, 'pastilles de la page du Nain');
-  for (const [, id, libelle] of pastilles) assert.equal(vocabulaire.get(id)?.libelle, libelle.replaceAll('&#39;', "'").replaceAll('&amp;', '&'), id);
+  const parCle = new Map([...vocabulaire.values()].map((m) => [m.cle, m]));
+  for (const [, cle, libelle] of pastilles) assert.equal(parCle.get(decodeURIComponent(cle))?.libelle, libelle.replaceAll('&#39;', "'").replaceAll('&amp;', '&'), cle);
   const avecTags = walk(dist).filter((f) => f.endsWith('.html')).filter((f) => /href="\/tags\//.test(readFileSync(f, 'utf8')));
   assert.deepEqual(avecTags, [], 'aucun lien vers /tags/');
 });
@@ -924,15 +918,15 @@ test('couleurs des parties du guide : jamais en style sur une page construite, t
       assert.doesNotMatch(balise, /\bstyle="/, `${rel} : un style sur un élément d’une partie : ${balise.slice(0, 160)}`);
       // un mot-clé coloré d'une partie (migration 0098 : sa balise, sa tuile, sa bulle) : sa classe vient de la feuille des mots-clés colorés, sur chaque
       // page ; il n'est pas une page qui pose la couleur d'une partie
-      // (et sa pastille sur le Glossaire)
-      const motCle = jetons.some((c) => ['mot-cle', 'mot-cle-definition', 'bulle', 'glossaire-mot__pastille'].includes(c));
+      // (et sa ligne dans le tableau du Glossaire, le liseré de sa couleur : décision R234 (1))
+      const motCle = jetons.some((c) => ['mot-cle', 'mot-cle-definition', 'bulle', 'glossaire-mot__ligne', 'glossaire-mot__suite'].includes(c));
       for (const c of jetons.filter((x) => CLASSE_DES_PARTIES.test(x))) {
         assert.ok(html.includes(`.${c}{`), `${rel} : la classe ${c} n’est pas dans une feuille de la page`);
         if (!motCle) parPage.set(rel, new Set([...(parPage.get(rel) ?? []), c]));
       }
     }
     // la feuille des parties d'une page, hors de celle des mots-clés colorés (layouts/Base.astro, sur chaque page) ; le Glossaire émet toutes les
-    // familles d'une zone, pour les pastilles et le choix de la couleur d'un mot-clé (pages/regles/glossaire.astro, test/palette-css.test.mjs)
+    // familles d'une zone, pour le liseré et le choix de la couleur d'un mot-clé (pages/regles/glossaire.astro, test/palette-css.test.mjs)
     const sansMotsCles = html.replace(/<style data-couleurs-mots-cles>[^<]*<\/style>/, '');
     if (/\.couleur-partie-[a-z-]+\{/.test(sansMotsCles) && rel !== 'regles/glossaire/index.html') {
       assert.ok(parPage.has(rel), `${rel} : la feuille des parties sans aucune classe posée`);

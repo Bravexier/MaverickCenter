@@ -33,7 +33,7 @@ import { RENVOIS_DES_PAGES_ECLATEES } from '../src/lib/equipement.mjs';
 import { clesDeCible, convertirLesLiens, decouperAdresse, liensDuTexte, tableDeConversion } from '../src/lib/liens-en-mots-cles.mjs';
 import { ARTISANAT, partieDeLaPage } from '../src/lib/livres.mjs';
 import { cheminDePage } from '../src/lib/metiers.mjs';
-import { abreviationsPrises, formesNonCanoniques } from '../src/lib/mots-cles-balises.mjs';
+import { formesNonCanoniques } from '../src/lib/mots-cles-balises.mjs';
 import { motsClesDeLaBase, textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { adresseDeRenvoi, NAV } from '../src/lib/nav.mjs';
 import { classeDeMagie, classeDePartie, classeDeRace, classeDUneClasse } from '../src/lib/palette-css.mjs';
@@ -244,7 +244,10 @@ export function generer(db, { repris = MOTS_CLES_EXISTANTS_REPRIS, fusions = FUS
 
   // les mots-clés : libellé, clé, id
   const existants = motsClesDeLaBase(db);
-  const existantParCle = new Map(existants.map((m) => [m.libelle_cle, m]));
+  const existantParCle = new Map(existants.map((m) => [m.cle, m]));
+  // l'abréviation (migration 0090) d'un existant, lue comme son synonyme (lib/mots-cles-db.mjs#motsClesDeLaBase sur une base d'avant la 0115) : un
+  // mot-clé nouveau ne prend ni l'id ni l'écriture qui est l'abréviation d'un autre (la règle d'alors)
+  const abreviationsPrises = (m) => existants.filter((x) => x.id !== m.id && x.synonymes.some((a) => [m.id, m.libelle_cle].includes(normalize(a))));
   const idsPris = new Set(existants.map((m) => m.id));
   const idsRetires = new Set([...IDS_RETIRES, ...db.prepare("SELECT json_extract(avant, '$.id') AS id FROM historique_modification WHERE table_nom = 'mot_cle' AND operation = 'supprimer'").all().map((r) => r.id)]);
   const parCle = new Map();
@@ -271,7 +274,7 @@ export function generer(db, { repris = MOTS_CLES_EXISTANTS_REPRIS, fusions = FUS
         erreurs.push(`FUSIONS_DANS_L_EXISTANT : ${nom(c)} → \`${fondu}\`, mot-clé absent`);
         continue;
       }
-      motsCles.push({ ...c, id: existant.id, libelle: existant.libelle, libelle_cle: existant.libelle_cle, origine: 'existant' });
+      motsCles.push({ ...c, id: existant.id, libelle: existant.libelle, libelle_cle: existant.cle, origine: 'existant' });
       continue;
     }
     const existant = existantParCle.get(cle);
@@ -285,7 +288,7 @@ export function generer(db, { repris = MOTS_CLES_EXISTANTS_REPRIS, fusions = FUS
     }
     if (idsPris.has(cle)) erreurs.push(`id « ${cle} » (${nom(c)}) déjà pris par un mot-clé d'un autre libellé`);
     if (idsRetires.has(cle)) erreurs.push(`id « ${cle} » (${nom(c)}) d'un mot-clé retiré`);
-    const prises = abreviationsPrises(existants, { id: cle, libelle_cle: cle });
+    const prises = abreviationsPrises({ id: cle, libelle_cle: cle });
     if (prises.length) erreurs.push(`« ${c.libelle} » (${nom(c)}) est l'abréviation de ${prises.map((m) => `\`${m.id}\``).join(', ')}`);
     motsCles.push({ ...c, id: cle });
   }
@@ -304,7 +307,8 @@ export function generer(db, { repris = MOTS_CLES_EXISTANTS_REPRIS, fusions = FUS
     cles: [...m.cles].sort(), adresses: [...m.adresses].sort(),
   })).sort((a, b) => a.id.localeCompare(b.id));
   const table = tableDeConversion(registreMotsCles);
-  const vocabulaire = [...existants.map((m) => ({ ...m })), ...motsCles.filter((m) => m.origine !== 'existant').map((m) => ({ id: m.id, libelle: m.libelle, libelle_cle: m.libelle_cle, description: null, abreviation: null }))];
+  // avant la migration 0113, une balise citait l'id texte du mot-clé : il tient ici le rôle de la clé (lib/mots-cles-balises.mjs#formesNonCanoniques)
+  const vocabulaire = [...existants.map((m) => ({ ...m, cle: m.id })), ...motsCles.filter((m) => m.origine !== 'existant').map((m) => ({ id: m.id, libelle: m.libelle, cle: m.id, description: null }))];
   const remplacements = [];
   const convertis = new Map(); // page id → texte converti (métiers)
   const appliquer = (t, apres, paires) => {

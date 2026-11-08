@@ -40,7 +40,7 @@ function nouvelle() {
   /** Un libellé de mot-clé que le vocabulaire n'a pas. */
   const motLibre = (base) => {
     let t = base;
-    for (let i = 2; db.prepare('SELECT 1 FROM mot_cle WHERE libelle_cle = ? OR id = ?').get(normalize(t), normalize(t)); i += 1) t = `${base} ${i}`;
+    for (let i = 2; db.prepare('SELECT 1 FROM mot_cle WHERE cle = ?').get(normalize(t)); i += 1) t = `${base} ${i}`;
     return t;
   };
   return { db, appel, lot, motCle, nombre, motLibre };
@@ -70,7 +70,8 @@ test('GET /api/edition/mots-cles/ : url, couleur et classe de chaque mot-clé, e
   const r = appel('GET', '/api/edition/mots-cles/');
   assert.equal(r.statut, 200);
   const { motsCles, css } = r.corps;
-  const drakos = motsCles.find((m) => m.id === 'drakos');
+  // le mot-clé de la race par sa clé (son id est un entier depuis la migration 0113)
+  const drakos = motsCles.find((m) => m.cle === 'drakos');
   assert.deepEqual([drakos.url, drakos.couleur, drakos.classe], ['/races/drakos/', 'race:pure', 'couleur-race-pure']);
   for (const m of motsCles) {
     assert.ok('url' in m && 'couleur' in m && 'classe' in m, m.id);
@@ -116,7 +117,7 @@ test('créer un mot-clé avec un lien et une couleur ; sans eux, rien n’est é
 });
 
 test('modifier le lien et la couleur : vidés (NULL), changés ; 400 { champ } jamais 409 ; inchangés, pas contrôlés ; ceux d’un mot-clé verrouillé, non (409)', () => {
-  const { lot, motCle, nombre, motLibre } = nouvelle();
+  const { db, lot, motCle, nombre, motLibre } = nouvelle();
   const modifier = (id, valeurs) => lot([{ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs }]);
   // un mot-clé créé (non verrouillé, même avec une adresse : décision R219 (5))
   const id = ok(creerMotCle(lot, { libelle: motLibre('Essai lien modifié'), url: '/races/drakos/', couleur: 'race:pure' })).crees[0].id;
@@ -135,7 +136,7 @@ test('modifier le lien et la couleur : vidés (NULL), changés ; 400 { champ } j
   // une adresse en place, que la règle refuserait, ne bloque pas une autre modification (elle n'est contrôlée que si elle change)
   ok(modifier(id, { description: 'Essai.', url: '/races/drakos/' }));
   // un mot-clé à adresse des règles, un mot-clé dont le site se sert : verrouillés (migration 0110), ni lien ni couleur ne se modifient
-  for (const verrouille of ['drakos', 'codex']) {
+  for (const verrouille of ['drakos', 'codex'].map((cle) => db.prepare('SELECT id FROM mot_cle WHERE cle = ?').get(cle).id)) {
     const lu = motCle(verrouille);
     assert.equal(lu.verrou, 1, verrouille);
     for (const valeurs of [{ url: '' }, { couleur: '#00aa00' }]) assert.equal(modifier(verrouille, valeurs).statut, 409, `${verrouille} ${JSON.stringify(valeurs)}`);

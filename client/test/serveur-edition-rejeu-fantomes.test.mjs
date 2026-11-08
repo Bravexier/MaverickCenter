@@ -13,7 +13,7 @@ import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { rejouerLeJournal } from '../serveur/edition.mjs';
 import { journalExporte } from '../serveur/edition-journal.mjs';
-import { MOTS_CLES_PROTEGES } from '../src/lib/mots-cles.mjs';
+import { MOTS_CLES_PROTEGES, RAISONS_DES_MOTS_CLES_PROTEGES } from '../src/lib/mots-cles.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { dossierTemporaire, fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { reglesAvecDesMotsClesDEssai } from './aide-mots-cles.mjs';
@@ -48,8 +48,10 @@ function rebatir(source, regles = null) {
     neuve.prepare('INSERT INTO modification_lot (id, fait_le, auteur_id, page_id, resume) VALUES (?, ?, ?, ?, ?)').run(l.id, l.fait_le, l.auteur_id, l.page_id, l.resume);
   }
   for (const m of source.prepare('SELECT * FROM modification').all()) {
+    if (horsDeLAncienneForme(m.table_nom, JSON.parse(m.avant ?? m.apres ?? 'null'))) continue;
+    const ancienne = (x) => (x === null ? null : JSON.stringify(enAncienneForme(m.table_nom, JSON.parse(x))));
     neuve.prepare('INSERT INTO modification (lot_id, rang, table_nom, cle, operation, avant, apres, etat, detail, apercu) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-      .run(m.lot_id, m.rang, m.table_nom, m.cle, m.operation, m.avant, m.apres, m.etat, m.detail, m.apercu);
+      .run(m.lot_id, m.rang, m.table_nom, ancienne(m.cle), m.operation, ancienne(m.avant), ancienne(m.apres), m.etat, m.detail, m.apercu);
   }
   neuve.exec('PRAGMA foreign_keys = OFF');
   neuve.exec('BEGIN');
@@ -65,7 +67,7 @@ const serviceDe = (base, page = 'chronologie/') => (operations) => {
 };
 const libre = (base, table, colonne, texte) => {
   let t = texte;
-  for (let i = 2; base.prepare(`SELECT 1 FROM ${table} WHERE ${colonne} = ?`).get(colonne.endsWith('_cle') ? normalize(t) : t); i += 1) t = `${texte} ${i}`;
+  for (let i = 2; base.prepare(`SELECT 1 FROM ${table} WHERE ${colonne} = ?`).get(colonne.endsWith('_cle') || colonne === 'cle' ? normalize(t) : t); i += 1) t = `${texte} ${i}`;
   return t;
 };
 const rompues = (base) => base.prepare('PRAGMA foreign_key_check').all().map((x) => `${x.table}->${x.parent}`);
@@ -172,7 +174,7 @@ test('fusions en chaîne (S dans N créé, puis N dans M) que les règles neuves
     AND (SELECT count(*) FROM page_tag t WHERE t.tag_id = m.id) BETWEEN 1 AND 3
     AND NOT EXISTS (SELECT 1 FROM page_tag a JOIN page_tag b ON a.page_id = b.page_id WHERE a.tag_id = m.id AND b.tag_id IN (${sauf.map(() => '?').join(', ')}))
     ORDER BY m.id LIMIT 1`).get(...proteges, ...sauf, ...sauf).id;
-  const n = lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: libre(base, 'mot_cle', 'libelle_cle', 'Essai fantôme N') } }]).crees[0].id;
+  const n = lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: libre(base, 'mot_cle', 'cle', 'Essai fantôme N') } }]).crees[0].id;
   const s = choisir([n]);
   const m = choisir([n, s]);
   const pagesDeS = base.prepare('SELECT page_id, ordre FROM page_tag WHERE tag_id = ?').all(s).map((x) => ({ ...x }));
@@ -197,7 +199,12 @@ test('fusions en chaîne (S dans N créé, puis N dans M) que les règles neuves
 const rapatrier = (base) => {
   const rows = fichierTemporaire('rows', 'rows', { dans: racine });
   cpSync(REGLES.rows, rows, { recursive: true });
-  return { ...appliquerJournal(journalExporte(base), { rows }), rows };
+  const journal = journalExporte(base);
+  for (const l of journal.lots) {
+    l.modifications = l.modifications.filter((m) => !horsDeLAncienneForme(m.table, m.avant ?? m.apres));
+    for (const m of l.modifications) for (const c of ['cle', 'avant', 'apres']) m[c] = enAncienneForme(m.table, m[c]);
+  }
+  return { ...appliquerJournal(journal, { rows }), rows };
 };
 const etatsParLot = (b) => {
   const parLot = new Map();
@@ -207,6 +214,25 @@ const etatsParLot = (b) => {
   }
   return [...parLot.values()].map((s) => [...s].sort().join('+'));
 };
+/**
+ * Les mots-clés libres que l'ancien rejeu avait tirés d'un lot d'avant la 0043 (commeLAncienRejeu) : ancien id texte → l'id entier qu'ils ont dans la
+ * base du test. Le site de dev de ces scénarios est d'avant la migration 0113 : son journal les nomme par leur id texte (et la clé est `libelle_cle`) ;
+ * enAncienneForme y remet les lots que le service du test a notés, avant de les rejouer ou de les rapatrier.
+ */
+const FANTOMES = new Map();
+/** Une ligne qu'un journal d'avant la 0113 n'a pas : la clé quittée d'un mot-clé libre (mot_cle_ancienne_cle, que le service note depuis). */
+const horsDeLAncienneForme = (table, ligne) => table === 'mot_cle_ancienne_cle' && [...FANTOMES.values()].includes(ligne?.mot_cle_id);
+function enAncienneForme(table, valeur) {
+  if (!valeur || typeof valeur !== 'object' || !['mot_cle', 'page_tag'].includes(table)) return valeur;
+  const texte = (n) => [...FANTOMES].find(([, id]) => id === n)?.[0] ?? n;
+  const sortie = {};
+  for (const [c, v] of Object.entries(valeur)) {
+    if ((table === 'mot_cle' && c === 'id') || (table === 'page_tag' && c === 'tag_id')) sortie[c] = texte(v);
+    else if (table === 'mot_cle' && c === 'cle') sortie.libelle_cle = v;
+    else sortie[c] = v;
+  }
+  return sortie;
+}
 /** Un lot d'avant la migration 0043 : une ligne de page_tag avec son `libelle` (l'écriture du mot-clé, que le vocabulaire n'avait pas encore). */
 const lotDAvant0043 = (base, id, fait, rang, operation, ligne) => {
   if (!base.prepare('SELECT 1 FROM modification_lot WHERE id = ?').get(id)) {
@@ -221,13 +247,17 @@ const ordreLibre = (base, page) => base.prepare('SELECT max(ordre) AS m FROM pag
  * synthétiques, jamais notées au journal) ; elles lui sont rendues, pour que ses lots suivants (renommage, fusion, suppression de la page) s'en servent.
  */
 const commeLAncienRejeu = (base, ligne) => {
-  base.prepare('INSERT INTO mot_cle (id, libelle, libelle_cle) VALUES (?, ?, ?)').run(ligne.tag_id, ligne.libelle, normalize(ligne.libelle));
-  base.prepare('INSERT INTO page_tag (page_id, ordre, tag_id) VALUES (?, ?, ?)').run(ligne.page_id, ligne.ordre, ligne.tag_id);
+  // depuis la migration 0113, un id entier dans la base ; le journal de ce site de dev, d'avant la 0113, le nomme par son id texte (enAncienneForme)
+  // un id propre à chaque fantôme du fichier (enAncienneForme les relit tous)
+  const id = FANTOMES.get(ligne.tag_id) ?? Math.max(base.prepare('SELECT max(id) + 1 AS n FROM mot_cle').get().n, ...[...FANTOMES.values()].map((n) => n + 1));
+  FANTOMES.set(ligne.tag_id, id);
+  base.prepare('INSERT INTO mot_cle (id, libelle, cle) VALUES (?, ?, ?)').run(id, ligne.libelle, normalize(ligne.libelle));
+  base.prepare('INSERT INTO page_tag (page_id, ordre, tag_id) VALUES (?, ?, ?)').run(ligne.page_id, ligne.ordre, id);
 };
 
 test('lot d’avant la migration 0043, mot-clé libre (D4) : sans effet depuis 0056 — le mot-clé n’est pas créé, et les lots qui s’en servaient sur le site de dev (renommage, fusion) non plus, sans conflit ; pareil à chaque reconstruction, rapatriement sans conflit', () => {
   const page = REGLES_PAGE();
-  const libelle = libre(vivanteOuverte(), 'mot_cle', 'libelle_cle', 'Voie fantôme');
+  const libelle = libre(vivanteOuverte(), 'mot_cle', 'cle', 'Voie fantôme');
   const v = normalize(libelle);
   /** Un site de dev d'avant 0056 : le lot d'avant 0043 en attente, et le mot-clé que l'ancien rejeu en avait tiré. */
   const siteDAvant0056 = () => {
@@ -243,11 +273,12 @@ test('lot d’avant la migration 0043, mot-clé libre (D4) : sans effet depuis 0
   const a = siteDAvant0056();
   const autre = a.base.prepare('SELECT id FROM mot_cle WHERE id NOT IN (SELECT tag_id FROM page_tag WHERE page_id = ?) AND id <> ? ORDER BY id LIMIT 1').get(page, v).id;
   const reglesChangees = (db) => db.prepare('INSERT INTO page_tag (page_id, ordre, tag_id) VALUES (?, ?, ?)').run(page, a.ligne.ordre, autre);
-  serviceDe(a.base, 'recherche/')([{ op: 'modifier', table: 'mot_cle', cle: { id: v }, valeurs: { libelle: `${libelle} renommée` }, avant: { libelle } }]);
+  serviceDe(a.base, 'recherche/')([{ op: 'modifier', table: 'mot_cle', cle: { id: FANTOMES.get(v) }, valeurs: { libelle: `${libelle} renommée` }, avant: { libelle } }]);
   const a2 = rebatir(a.base, reglesChangees);
-  assert.equal(existe(a2.base, 'SELECT 1 FROM mot_cle WHERE id = ?', v), false, 'le rejeu ne crée plus le mot-clé libre du lot d’avant 0043');
+  assert.equal(existe(a2.base, 'SELECT 1 FROM mot_cle WHERE id = ? OR cle = ?', FANTOMES.get(v), v), false, 'le rejeu ne crée plus le mot-clé libre du lot d’avant 0043');
   assert.equal(a2.base.prepare('SELECT tag_id FROM page_tag WHERE page_id = ? AND ordre = ?').get(page, a.ligne.ordre)?.tag_id, autre, 'la place reste aux règles');
-  assert.deepEqual(etats(a2.base), ['page_tag:inserer=integree', 'mot_cle:modifier=integree'], 'intégrés sans effet, aucun lot en conflit');
+  // le renommage note aussi la clé recalculée (migration 0113 : une seconde ligne de mot_cle)
+  assert.deepEqual(etats(a2.base), ['page_tag:inserer=integree', 'mot_cle:modifier=integree', 'mot_cle:modifier=integree'], 'intégrés sans effet, aucun lot en conflit');
   assert.deepEqual(rompues(a2.base), []);
   const a3 = rebatir(a2.base, reglesChangees);
   assert.deepEqual(etats(a3.base), etats(a2.base));
@@ -261,13 +292,13 @@ test('lot d’avant la migration 0043, mot-clé libre (D4) : sans effet depuis 0
   const s = b.base.prepare(`SELECT m.id FROM mot_cle m WHERE m.id NOT IN (${proteges.map(() => '?').join(', ')}) AND m.verrou = 0 AND (SELECT count(*) FROM page_tag t WHERE t.tag_id = m.id) BETWEEN 1 AND 3
     AND NOT EXISTS (SELECT 1 FROM page_tag t WHERE t.tag_id = m.id AND t.page_id = ?) ORDER BY m.id LIMIT 1`).get(...proteges, page).id;
   const pagesDeS = b.base.prepare('SELECT page_id FROM page_tag WHERE tag_id = ? ORDER BY page_id').all(s).map((t) => t.page_id);
-  serviceDe(b.base, 'recherche/')([{ op: 'fusionner_mots_cles', mot_cle: s, dans: v }]);
+  serviceDe(b.base, 'recherche/')([{ op: 'fusionner_mots_cles', mot_cle: s, dans: FANTOMES.get(v) }]);
   const b2 = rebatir(b.base, reglesChangees);
   const b3 = rebatir(b2.base, reglesChangees);
   for (const [titre, r] of [['1re reconstruction', b2], ['2e reconstruction', b3]]) {
-    assert.equal(existe(r.base, 'SELECT 1 FROM mot_cle WHERE id = ?', v), false, titre);
+    assert.equal(existe(r.base, 'SELECT 1 FROM mot_cle WHERE id = ? OR cle = ?', FANTOMES.get(v), v), false, titre);
     assert.equal(existe(r.base, 'SELECT 1 FROM mot_cle WHERE id = ?', s), false, `${titre} : S fusionné, donc parti`);
-    for (const p of pagesDeS) assert.equal(existe(r.base, 'SELECT 1 FROM page_tag WHERE page_id = ? AND tag_id IN (?, ?)', p, s, v), false, `${titre} : ${p}`);
+    for (const p of pagesDeS) assert.equal(existe(r.base, 'SELECT 1 FROM page_tag WHERE page_id = ? AND tag_id IN (?, ?)', p, s, FANTOMES.get(v)), false, `${titre} : ${p}`);
     assert.ok(!etats(r.base).some((e) => e.endsWith('=conflit')), `${titre} : aucun conflit (${etats(r.base)})`);
     assert.deepEqual(rompues(r.base), [], titre);
   }
@@ -322,39 +353,41 @@ test('clé étrangère composite capacite(specialite_id, classe_id) → speciali
 test('mot-clé libre d’un lot d’avant 0043 posé puis retiré par le journal (D4) : sans effet depuis 0056, ni mot-clé ni étiquette ; le site de dev peut ensuite le créer, une seule fois, et ce mot-clé tient à chaque reconstruction et au rapatriement (qui rejoue avec lui les lots d’avant)', () => {
   const base = vivanteOuverte();
   const page = REGLES_PAGE();
-  const libelle = libre(base, 'mot_cle', 'libelle_cle', 'zz fantome pose retire');
+  const libelle = libre(base, 'mot_cle', 'cle', 'zz fantome pose retire');
   const id = normalize(libelle);
   const ligne = { page_id: page, ordre: ordreLibre(base, page), tag_id: id, libelle };
   lotDAvant0043(base, '2026-10-01T09:00:00.000Z-l1', '2026-10-01T09:00:00Z', 1, 'inserer', ligne);
   lotDAvant0043(base, '2026-10-01T10:00:00.000Z-l2', '2026-10-01T10:00:00Z', 1, 'supprimer', ligne);
   const r1 = rebatir(base);
-  assert.equal(existe(r1.base, 'SELECT 1 FROM mot_cle WHERE id = ?', id), false, 'le mot-clé libre n’est pas créé (0056)');
+  assert.equal(existe(r1.base, 'SELECT 1 FROM mot_cle WHERE cle = ?', id), false, 'le mot-clé libre n’est pas créé (0056)');
   assert.equal(existe(r1.base, 'SELECT 1 FROM page_tag WHERE page_id = ? AND ordre = ?', page, ligne.ordre), false, 'la ligne posée puis retirée n’existe pas');
   assert.deepEqual(etatsParLot(r1.base), ['integree', 'integree']);
-  // après la livraison, le site de dev crée ce mot-clé (sous le même id : rien du journal ne l'a noté) et le renomme
+  // après la livraison, le site de dev crée ce mot-clé (l'id entier suivant, migration 0113 ; sa clé, l'ancien id texte que le lot d'avant 0043
+  // aurait pris) et le renomme
   const cree = serviceDe(r1.base, 'recherche/')([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle, description: 'Définition d’essai.' } }]).crees[0].id;
-  assert.equal(cree, id, 'l’id que le lot d’avant 0043 aurait pris');
+  assert.ok(Number.isInteger(cree));
+  assert.equal(r1.base.prepare('SELECT cle FROM mot_cle WHERE id = ?').get(cree).cle, id);
   const doublon = traiter({ methode: 'POST', chemin: '/api/edition/', entetes: { 'content-type': 'application/json' },
     corps: JSON.stringify({ page: 'recherche/', operations: [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle } }] }) }, { base: () => r1.base, etat: () => ({}), edition: true });
   assert.notEqual(doublon.statut, 200, 'le site ne crée pas un second mot-clé de même écriture');
-  serviceDe(r1.base, 'recherche/')([{ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { libelle: `${libelle} renommé` }, avant: { libelle } }]);
+  serviceDe(r1.base, 'recherche/')([{ op: 'modifier', table: 'mot_cle', cle: { id: cree }, valeurs: { libelle: `${libelle} renommé` }, avant: { libelle } }]);
   const r2 = rebatir(r1.base);
-  assert.equal(r2.base.prepare('SELECT libelle FROM mot_cle WHERE id = ?').get(id)?.libelle, `${libelle} renommé`);
+  assert.equal(r2.base.prepare('SELECT libelle FROM mot_cle WHERE id = ?').get(cree)?.libelle, `${libelle} renommé`);
   assert.deepEqual(etatsParLot(r2.base), ['integree', 'integree', 'en_attente', 'en_attente']);
   // le rapatriement rejoue les lots d'avant (intégrés, pas encore livrés) avec la création : celle-ci n'est pas prise pour leur mot-clé sauté
   const res = rapatrier(r1.base);
   assert.deepEqual(res.conflits, []);
-  assert.ok(readFileSync(join(res.rows, 'mot_cle.sql'), 'utf8').includes(`'${id}', '${libelle} renommé'`), 'data/rows a le mot-clé, renommé');
+  assert.ok(readFileSync(join(res.rows, 'mot_cle.sql'), 'utf8').includes(`(${cree}, '${libelle} renommé'`), 'data/rows a le mot-clé, renommé');
 });
 
 test('mot-clé d’un lot d’avant 0043 écrit de deux façons par deux lots, le premier en conflit : libre, aucun effet depuis 0056 (D4) ; dont le site se sert, l’écriture est celle du lot qui le pose, stable d’une reconstruction à l’autre', () => {
   // « race hybride » : un mot-clé dont le site se sert, que les règles n'ont pas (test/serveur-edition-chronologie.test.mjs le vérifie aussi)
-  for (const [ecrit, protege] of [[libre(vivanteOuverte(), 'mot_cle', 'libelle_cle', 'Élan fantôme'), false], ['Race Hybride', true]]) {
+  for (const [ecrit, protege] of [[libre(vivanteOuverte(), 'mot_cle', 'cle', 'Élan fantôme'), false], ['Race Hybride', true]]) {
     const base = vivanteOuverte();
     const [p1, p2] = base.prepare("SELECT id FROM page WHERE type = 'lore' AND statut <> 'example' ORDER BY id LIMIT 2 OFFSET 7").all().map((p) => p.id);
     const id = normalize(ecrit);
-    assert.equal(existe(base, 'SELECT 1 FROM mot_cle WHERE libelle_cle = ?', id), false, `${ecrit} : absent des règles`);
-    assert.equal(MOTS_CLES_PROTEGES.has(id), protege, ecrit);
+    assert.equal(existe(base, 'SELECT 1 FROM mot_cle WHERE cle = ?', id), false, `${ecrit} : absent des règles`);
+    assert.equal(RAISONS_DES_MOTS_CLES_PROTEGES.has(id), protege, ecrit);
     const l1 = { page_id: p1, ordre: ordreLibre(base, p1), tag_id: id, libelle: ecrit };
     const l2 = { page_id: p2, ordre: ordreLibre(base, p2), tag_id: id, libelle: ecrit.toLowerCase().replace('é', 'e') };
     lotDAvant0043(base, '2026-10-01T09:00:00.000Z-e1', '2026-10-01T09:00:00Z', 1, 'inserer', l1);
@@ -364,9 +397,10 @@ test('mot-clé d’un lot d’avant 0043 écrit de deux façons par deux lots, l
     const regles = (db) => db.prepare('INSERT INTO page_tag (page_id, ordre, tag_id) VALUES (?, ?, ?)').run(p1, l1.ordre, autre);
     const r1 = rebatir(base, regles);
     const r2 = rebatir(r1.base, regles);
-    const motCle = (b) => (b.prepare('SELECT id, libelle FROM mot_cle WHERE id = ?').get(id) ? { ...b.prepare('SELECT id, libelle FROM mot_cle WHERE id = ?').get(id) } : null);
+    // le mot-clé créé par le rejeu a un id entier (migration 0113) : on le suit par sa clé
+    const motCle = (b) => (b.prepare('SELECT libelle FROM mot_cle WHERE cle = ?').get(id) ? { ...b.prepare('SELECT libelle FROM mot_cle WHERE cle = ?').get(id) } : null);
     if (protege) {
-      assert.deepEqual(motCle(r1.base), { id, libelle: l2.libelle }, 'l’écriture du lot qui le pose');
+      assert.deepEqual(motCle(r1.base), { libelle: l2.libelle }, 'l’écriture du lot qui le pose');
       assert.deepEqual(etatsParLot(r1.base), ['conflit', 'en_attente']);
     } else {
       assert.equal(motCle(r1.base), null, 'un mot-clé libre n’est plus créé');
@@ -430,18 +464,18 @@ test('rang d’un bloc de description : jamais redonné ; un bloc supprimé dont
 test('mot-clé libre d’un lot d’avant 0043 sur une page que le site de dev supprime ensuite, puis renommé (D4) : sans effet depuis 0056, la suppression passe, rien de rompu ; rapatriement sans conflit', () => {
   const base = vivanteOuverte();
   const metier = base.prepare("SELECT m.id, pe.page_id AS page FROM metier m JOIN page_entite pe ON pe.entite_id = m.id JOIN page p ON p.id = pe.page_id WHERE p.statut <> 'example' ORDER BY m.id LIMIT 1").get();
-  const libelle = libre(base, 'mot_cle', 'libelle_cle', 'Voie fantôme métier');
+  const libelle = libre(base, 'mot_cle', 'cle', 'Voie fantôme métier');
   const id = normalize(libelle);
   const ligne = { page_id: metier.page, ordre: ordreLibre(base, metier.page), tag_id: id, libelle };
   lotDAvant0043(base, '2026-10-01T09:00:00.000Z-v', '2026-10-01T09:00:00Z', 1, 'inserer', ligne);
   commeLAncienRejeu(base, ligne);
   const lot = serviceDe(base, 'metiers/');
   lot([{ op: 'supprimer', entite: 'metier', cle: { id: metier.id } }]);
-  lot([{ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { libelle: `${libelle} renommée` }, avant: { libelle } }]);
+  lot([{ op: 'modifier', table: 'mot_cle', cle: { id: FANTOMES.get(id) }, valeurs: { libelle: `${libelle} renommée` }, avant: { libelle } }]);
   const r1 = rebatir(base);
   const r2 = rebatir(r1.base);
   for (const [titre, r] of [['1re reconstruction', r1], ['2e reconstruction', r2]]) {
-    assert.equal(existe(r.base, 'SELECT 1 FROM mot_cle WHERE id = ?', id), false, `${titre} : le mot-clé libre n’est pas créé`);
+    assert.equal(existe(r.base, 'SELECT 1 FROM mot_cle WHERE id = ? OR cle = ?', FANTOMES.get(id), id), false, `${titre} : le mot-clé libre n’est pas créé`);
     assert.equal(existe(r.base, 'SELECT 1 FROM metier WHERE id = ?', metier.id), false, `${titre} : le métier est supprimé`);
     assert.equal(existe(r.base, 'SELECT 1 FROM page WHERE id = ?', metier.page), false, `${titre} : sa page aussi`);
     assert.deepEqual(rompues(r.base), [], titre);

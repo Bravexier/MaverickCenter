@@ -1,7 +1,7 @@
 // Les mots-clés du glossaire dans l'éditeur en place (src/scripts/edition/texte-en-place.mjs : guide, Codex, chronologie, panneaux de règles, des textes
 // mis en forme), dans un faux navigateur (test/aide-faux-dom.mjs) ; demande du propriétaire du 2026-10-17 : « Quand je passe en mode édition le texte
 // devrai remettre le texte en mode Markdown […] je ne vois pas {{Recharge Longue}} ». À l'entrée (rendreModifiable), chaque mot-clé rendu redevient sa
-// balise écrite, « {{id}} », « {{id|texte}} », « {{id:}} » (lib/markdown-edition.mjs#baliseEcrite), que le Markdown relit telle quelle ; les outils
+// balise écrite, « {{clé}} », « {{clé|texte}} », « {{clé:}} » (lib/markdown-edition.mjs#baliseEcrite), que le Markdown relit telle quelle ; les outils
 // « Mot-clé » et « Définition » écrivent la balise (execCommand insertText) ou, le curseur dans une balise, en changent le mot-clé ; puis la forme
 // canonique que le service enregistre (lib/mots-cles-balises.mjs#formeCanonique). Et la hauteur de la barre d'outils (hauteurDeLaBarre).
 //   node --test test/texte-en-place-mots-cles.test.mjs
@@ -11,9 +11,10 @@ import { arbreDuDom, baliseEcrite, versMarkdown } from '../src/lib/markdown-edit
 import { formeCanonique } from '../src/lib/mots-cles-balises.mjs';
 import { attendre, domVivant, el, Element, fauxDocument } from './aide-faux-dom.mjs';
 
+// GET /api/edition/mots-cles/ : un id entier (jamais écrit dans un texte) et la clé, que citent les balises (décision R232 (3))
 const VOCABULAIRE = [
-  { id: 'non-mort', libelle: 'Non-mort', libelle_cle: 'non-mort', description: 'Une créature revenue de la mort.' },
-  { id: 'mordhau', libelle: 'Mordhau', libelle_cle: 'mordhau', description: 'Une prise de l’épée par la lame.' },
+  { id: 1, cle: 'non-mort', libelle: 'Non-mort', description: 'Une créature revenue de la mort.' },
+  { id: 2, cle: 'mordhau', libelle: 'Mordhau', description: 'Une prise de l’épée par la lame.' },
 ];
 
 const motCle = (id, texte, balise = `{{${id}}}`) => el('strong', { class: 'mot-cle', 'data-mot-cle': id, 'data-balise': balise, tabindex: '0' }, texte);

@@ -19,6 +19,7 @@ import { decouperArtisanat } from '../src/lib/metier-champs.mjs';
 import { formeCanonique, formesNonCanoniques, lireBalises } from '../src/lib/mots-cles-balises.mjs';
 import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { baseDImport, cheminDImport, lotsAvant } from './aide-base-d-import.mjs';
+import { avecLesClesDe, idDuMotCleNomme } from './aide-mots-cles.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { casDeSantePotentiel, CONSTANTE_SANTE_POTENTIEL, MAGIE_POTENTIEL, plafondDeSantePotentiel } from './aide-sante-potentiel.mjs';
 import { textesReecrits } from './aide-textes-reecrits.mjs';
@@ -33,11 +34,14 @@ const valeur = (db, t) => db.prepare(`SELECT "${t.col}" AS v FROM "${t.table}" W
 const COPIES = ['guide/formule-des-degats', 'guide/attaque-et-defense', 'guide/les-attaques-discretes', 'guide/les-portes', 'guide/alignement',
   'guide/jet-de-des', 'metiers/regles-des-metiers'];
 const estUneCopie = (id) => COPIES.includes(id) || id.startsWith('guide/fiche-');
-/** Le mot-clé de chaque ref et la page où mène son adresse, dans `db`. */
+/** Le mot-clé de chaque id et la page où mène son adresse, dans `db`. */
 function cibles(db) {
   const index = indexDesAdresses(db, { exemples: true });
   return new Map(motsClesDeLaBase(db).map((m) => [m.id, { ...m, page: m.url ? pageDeLAdresse(index, m.url) : null }]));
 }
+// Le registre de la 0111 nomme un mot-clé par son id texte d'alors, que ses balises citent ; depuis la migration 0113, l'id est un entier figé (le
+// registre de la 0113 fait le pont : idDuMotCleNomme) et les balises citent la clé (avecLesClesDe).
+const motCleNomme = (mc, ancienId) => mc.get(idDuMotCleNomme(ancienId));
 /** Les balises que le remplacement `t` écrit (celles de `apres` absentes de `avant`). */
 const balisesEcrites = (t) => lireBalises(t.apres, { markdown: true }).filter((b) => !t.avant.includes(b.brut));
 
@@ -84,9 +88,9 @@ test('0111 : chaque remplacement est en place dans l’état de la migration (le
     assert.equal(typeof v, 'string', `${t.cle.id} présent`);
     // R231 (migration 0112) réécrit en entier « Attaquer » et « Se défendre » : le fragment est admis remplacé par son `avant`, l'`apres` en place
     if (textesReecrits('0112-r231-attaquer-et-se-defendre').some((r) => r.table === t.table && r.col === t.col && JSON.stringify(r.cle) === JSON.stringify(t.cle)
-      && r.avant.includes(t.apres) && !r.apres.includes(t.apres) && v.includes(r.apres))) continue;
-    assert.ok(v.includes(t.apres), `${t.correction} ${t.cle.id} : « ${t.apres.slice(0, 60)}… »`);
-    if (!t.apres.includes(t.avant)) assert.ok(!v.includes(t.avant), `${t.correction} ${t.cle.id} : l’ancien fragment reste`);
+      && r.avant.includes(t.apres) && !r.apres.includes(t.apres) && v.includes(avecLesClesDe(imp, r.apres)))) continue;
+    assert.ok(v.includes(avecLesClesDe(imp, t.apres)), `${t.correction} ${t.cle.id} : « ${t.apres.slice(0, 60)}… »`);
+    if (!t.apres.includes(t.avant)) assert.ok(!v.includes(avecLesClesDe(imp, t.avant)), `${t.correction} ${t.cle.id} : l’ancien fragment reste`);
   }
 });
 
@@ -115,7 +119,7 @@ test('R184 (2), (5), (11), R187 (1) (C4 à C8) : le texte affiché d’un lien q
     const ecrites = balisesEcrites(t);
     assert.equal(ecrites.length, 1, `${t.correction} ${t.cle.id} : une balise réécrite`);
     const [b] = ecrites;
-    const m = mc.get(b.ref);
+    const m = motCleNomme(mc, b.ref);
     assert.ok(m?.page, `${t.correction} ${b.ref} : un mot-clé qui mène à une page`);
     assert.equal(b.texte ?? m.libelle, titre(m.page), `${t.correction} ${t.cle.id} : ${b.brut} -> ${m.page}`);
     // le mot-clé ne change pas, seul le texte affiché (identifiants figés)
@@ -123,9 +127,10 @@ test('R184 (2), (5), (11), R187 (1) (C4 à C8) : le texte affiché d’un lien q
   }
   // C6 : plus aucun lien « Créer son personnage » des pages du guide ne mène ailleurs qu’à l’introduction de la création
   const ailleurs = [];
+  const idDeLaCle = new Map([...mc.values()].map((m) => [m.cle, m.id])); // un texte de la base : la balise cite la clé
   for (const p of imp.prepare("SELECT id, corps_md FROM page WHERE id LIKE 'guide/%' AND instr(corps_md, '|Créer son personnage}}') > 0").all()) {
     for (const b of lireBalises(p.corps_md, { markdown: true })) {
-      if (b.texte === 'Créer son personnage' && mc.get(b.ref)?.page !== 'guide/creer-son-personnage') ailleurs.push(`${p.id} ${b.brut}`);
+      if (b.texte === 'Créer son personnage' && mc.get(idDeLaCle.get(b.ref))?.page !== 'guide/creer-son-personnage') ailleurs.push(`${p.id} ${b.brut}`);
     }
   }
   assert.deepEqual(ailleurs, []);
@@ -139,11 +144,14 @@ test('0111 : chaque balise écrite vise un mot-clé qui a une adresse (C11, C17 
   for (const ref of ['potentiel-illimite', 'armes', 'armures', 'bouclier', 'ceinture', 'accessoires', 'armurier', 'les-neuf-alignements', ...registre.mots_cles_crees.map((m) => m.id)]) {
     assert.ok(refs.has(ref), ref);
   }
-  for (const ref of refs) assert.ok(mc.get(ref)?.url, `${ref} : un mot-clé à adresse`);
+  for (const ref of refs) assert.ok(motCleNomme(mc, ref)?.url, `${ref} : un mot-clé à adresse`);
   // chaque balise écrite l'est sous la forme que le service garde (texteAvecMotsClesCanoniques) : « {{id}} » quand le texte est le libellé du mot-clé,
   // sinon « {{id|texte}} » ; une modification du site de dev ne la réécrit donc pas (serveur-edition-conflits.test.mjs)
   for (const t of registre.textes) {
-    for (const b of balisesEcrites(t)) assert.equal(formeCanonique(b.brut, vocabulaire, { markdown: true }).texte, b.brut, `${t.correction} ${t.cle.id} : ${b.brut}`);
+    for (const b of balisesEcrites(t)) {
+      const brut = avecLesClesDe(imp, b.brut);
+      assert.equal(formeCanonique(brut, vocabulaire, { markdown: true }).texte, brut, `${t.correction} ${t.cle.id} : ${b.brut}`);
+    }
   }
   for (const t of registre.textes) {
     assert.deepEqual(formesNonCanoniques(valeur(imp, t), vocabulaire, { markdown: t.col === 'corps_md' }), [], `${t.correction} ${t.cle.id}.${t.col}`);
@@ -165,14 +173,14 @@ test('R224 (2) : le mot-clé créé par la 0111 mène à sa page, porte son titr
   const mc = cibles(imp);
   assert.ok(registre.mots_cles_crees.length > 0);
   for (const c of registre.mots_cles_crees) {
-    const m = mc.get(c.id);
+    const m = motCleNomme(mc, c.id);
     assert.ok(m, c.id);
     assert.equal(m.page, c.page, `${c.id} : son adresse mène à ${c.page}`);
     assert.equal(m.libelle, imp.prepare('SELECT titre FROM page WHERE id = ?').get(c.page).titre, `${c.id} : libellé = titre de la page`);
-    const ligne = imp.prepare('SELECT description, verrou FROM mot_cle WHERE id = ?').get(c.id);
+    const ligne = imp.prepare('SELECT description, verrou FROM mot_cle WHERE id = ?').get(idDuMotCleNomme(c.id));
     assert.deepEqual([ligne.description, ligne.verrou], [null, 1], c.id);
     // une seule adresse mène à la page (sinon un lien saisi vers elle serait ambigu : lib/mots-cles-liens.mjs#motsClesDeLAdresse)
-    assert.deepEqual([...mc.values()].filter((x) => x.page === c.page).map((x) => x.id), [c.id]);
+    assert.deepEqual([...mc.values()].filter((x) => x.page === c.page).map((x) => x.id), [idDuMotCleNomme(c.id)]);
   }
 });
 
@@ -240,12 +248,12 @@ test('R228 : le mot-clé mode-super mène à la page du Mode Super, à l’adres
   assert.ok(registre.mots_cles.length > 0);
   for (const m of registre.mots_cles) {
     assert.equal(m.decision, 'R228');
-    const ligne = imp.prepare('SELECT url, verrou FROM mot_cle WHERE id = ?').get(m.id);
+    const ligne = imp.prepare('SELECT url, verrou FROM mot_cle WHERE id = ?').get(idDuMotCleNomme(m.id));
     assert.ok(ligne, m.id);
     assert.equal(ligne.url, `/${adresseDuGuide(m.page)}`, `${m.id} : l'adresse de ${m.page}`);
     assert.equal(ligne.verrou, 1, `${m.id} : un mot-clé à adresse est verrouillé (0110)`);
-    assert.equal(mc.get(m.id).page, m.page, `${m.id} : son adresse mène à ${m.page}`);
-    assert.deepEqual([...mc.values()].filter((x) => x.page === m.page).map((x) => x.id), [m.id], 'une seule adresse mène à la page');
+    assert.equal(motCleNomme(mc, m.id).page, m.page, `${m.id} : son adresse mène à ${m.page}`);
+    assert.deepEqual([...mc.values()].filter((x) => x.page === m.page).map((x) => x.id), [idDuMotCleNomme(m.id)], 'une seule adresse mène à la page');
   }
 });
 

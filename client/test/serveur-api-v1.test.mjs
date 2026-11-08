@@ -722,9 +722,10 @@ test('action « fusion » d’un mot-clé : le renommage vers l’écriture d’
 
 test('R196 : DELETE d’un mot-clé mentionné (une balise dans la définition d’un autre) → 409 avec `mentions`, rien d’écrit ; sans mention, il se supprime', () => {
   const a = ok(appel('POST', '/api/v1/mots-cles/', { libelle: `Mot-clé cité de l’API ${Date.now()}` }), 201);
-  const b = ok(appel('POST', '/api/v1/mots-cles/', { libelle: `Mot-clé qui cite de l’API ${Date.now()}`, description: `Voir {{${a.element.id}}}.` }), 201);
+  // la balise cite la clé (migration 0113)
+  const b = ok(appel('POST', '/api/v1/mots-cles/', { libelle: `Mot-clé qui cite de l’API ${Date.now()}`, description: `Voir {{${a.element.cle}}}.` }), 201);
   const definition = ligne('SELECT description FROM mot_cle WHERE id = ?', b.element.id).description;
-  assert.ok(definition.includes(`{{${a.element.id}`), definition);
+  assert.ok(definition.includes(`{{${a.element.cle}`), definition);
   const refus = appel('DELETE', a.adresse);
   assert.equal(refus.statut, 409, JSON.stringify(refus.corps));
   assert.match(refus.corps.erreur, /R196/);

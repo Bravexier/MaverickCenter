@@ -5,7 +5,6 @@
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
-import { nomDeTable } from '../src/lib/libelles-de-la-base.mjs';
 import { mentionsDe, mentionsDesMotsCles, texteDesMentions } from '../src/lib/mentions-des-mots-cles.mjs';
 
 function baseDEssai() {
@@ -48,8 +47,9 @@ test('R196 : chaque endroit qui mentionne le mot-clé, nommé par sa page (étiq
     ['competence', { id: 'nage' }, 'description', 'balise', 'competences/nage', 'Nage', false],
     ['essai_sans_page', { cle: 'k1' }, 'texte', 'balise', null, 'essai_sans_page k1', false],
     ['evenement', { id: 'grand-incendie' }, 'description', 'balise', null, 'Chronologie › Le Grand Incendie', false],
-    // la définition d'un autre mot-clé compte ; la sienne, son adresse et sa couleur non
-    ['mot_cle', { id: 'eau' }, 'description', 'balise', null, `${nomDeTable('mot_cle') ?? 'mot_cle'} eau`, false],
+    // la définition d'un autre mot-clé compte, nommée par son libellé (jamais par son id : un entier depuis la migration 0113) ; la sienne, son adresse
+    // et sa couleur non
+    ['mot_cle', { id: 'eau' }, 'description', 'balise', null, 'Mot-clé « Eau »', false],
     ['page', { id: 'guide/combat' }, 'corps_md', 'balise', 'guide/combat', 'Combat', false],
     // une page d'exemple compte (marquée)
     ['page_tag', { page_id: 'races/exemple-race', ordre: 0 }, 'tag_id', 'etiquette', 'races/exemple-race', 'Race d’exemple', true],

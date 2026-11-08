@@ -1,19 +1,21 @@
 // Page /recherche/ (pages/recherche.astro) : la recherche dans l'index (pages du wiki et événements de la chronologie, /search-index.json), la liste des
 // mots-clés filtrée par leur écriture, et les pages d'un mot-clé (demande du propriétaire : « cliquer sur un mot clé lance une recherche sur ce mot clé
-// et liste les éléments qui ont ce mot clé » ; les événements de la chronologie n'ont pas de mot-clé, mais des catégories) : /recherche/?mot-cle=<id>, état
-// gardé dans l'adresse (history.pushState, retour arrière compris, adresse lue au chargement). Un id que le vocabulaire n'a pas (mot-clé supprimé ou
+// et liste les éléments qui ont ce mot clé » ; les événements de la chronologie n'ont pas de mot-clé, mais des catégories) : /recherche/?mot-cle=<clé>
+// (décision R232 (3) : la clé du mot-clé ; une clé qu'il a quittée, un ancien id texte compris, mène encore à lui : lib/recherche-mots-cles.mjs#idDeLaCle),
+// état gardé dans l'adresse (history.pushState, retour arrière compris, adresse lue au chargement). Une clé que le vocabulaire n'a pas (mot-clé supprimé ou
 // fusionné depuis) : « Ce mot-clé n'existe plus ». Taper ou chercher depuis la vue d'un mot-clé ouverte par un clic de la liste revient à la liste par un
 // retour arrière (l'entrée poussée par le clic est retirée, l'historique ne garde pas deux fois la liste) ; ouverte par son adresse, la vue est remplacée.
 // La liste est le glossaire (migration 0056) : tous les mots-clés, même sans page ; la vue d'un mot-clé montre son libellé, sa définition, puis ses pages.
 // La liste est rendue au build et lue une fois : aucun script ne la redessine (la gestion du vocabulaire est sur le Glossaire, /regles/glossaire/ :
 // src/scripts/edition/mots-cles.mjs, évènement « glossaire:mots-cles »). Chaque mot-clé de la liste est un <li data-id data-cle data-n data-libelle
-// data-abreviation data-definition> (data-cle : son écriture, que filtre la recherche, comme son abréviation ; data-n : ses pages ; data-abreviation :
-// son abréviation, absente s'il n'en a pas ; data-definition : sa définition, absente tant qu'il n'est pas décrit), dont le lien montre le nom dans un
-// `.recherche-nom` (« Armure magique (AM) », « Ricken d’or » et son icône : lib/mots-cles-balises.mjs#htmlDeLaPastille), que le titre de la vue
+// data-synonymes data-anciennes-cles data-definition> (data-id : son id entier, celui des pages de l'index ; data-cle : sa clé ; data-n : ses pages ;
+// data-synonymes : ses synonymes en JSON, que filtre la recherche avec son libellé, R233 (1) ; data-anciennes-cles : les clés qu'il a quittées, en JSON ;
+// tous deux absents s'il n'en a pas ; data-definition : sa définition, absente tant qu'il n'est pas décrit), dont le lien montre le nom dans un
+// `.recherche-nom` (le libellé seul, R233 (9) ; « Ricken d’or » et son icône : lib/mots-cles-balises.mjs#htmlDeLaPastille), que le titre de la vue
 // reprend. La définition que montre la vue est celle que la page construite a rendue dans #definitions-des-mots-cles ([data-definition-de], monnaies en
 // icônes : R63) : ce script la recopie, il ne lit aucune monnaie ; à défaut, le texte de data-definition.
 // Script de page (navigateur) : il n'importe que des modules purs qu'aucun autre script de page n'importe (la version portable refuse un module partagé).
-import { adresseAvecMotCle, motCleDeLAdresse, motsClesAffiches, vueDuMotCle } from '../lib/recherche-mots-cles.mjs';
+import { adresseAvecMotCle, idDeLaCle, motCleDeLAdresse, motsClesAffiches, vueDuMotCle } from '../lib/recherche-mots-cles.mjs';
 import { searchIndex } from '../lib/search.mjs';
 
 const form = document.getElementById('search-form');
@@ -39,7 +41,7 @@ const suffixe = form.dataset.suffix ?? '';
 const titreDeLaPage = document.title;
 
 let index; // promesse de l'index (chargé une fois : à la première recherche ou au premier mot-clé affiché)
-let motCle = motCleDeLAdresse(location.search); // le mot-clé affiché (son id) ; null : la liste des mots-clés
+let motCle = motCleDeLAdresse(location.search); // le mot-clé affiché (la clé de l'adresse) ; null : la liste des mots-clés
 let demandes = 0; // la dernière vue demandée (un chargement plus ancien ne l'écrase pas)
 // l'entrée de l'historique poussée par un clic dans la liste porte ce jeton (history.state.depuisLaListe) ; un par chargement de la page : après un
 // rechargement, l'entrée d'avant n'est plus ce document, et un retour arrière perdrait la saisie
@@ -48,10 +50,20 @@ const JETON = `${Date.now()}-${Math.random()}`;
 const nombre = (n, un, plusieurs) => `${n} ${n > 1 ? plusieurs : un}`;
 const modifie = (e) => e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey; // nouvel onglet, etc. : le navigateur suit le lien
 
-// les mots-clés de la liste : { li, id, cle, n, libelle, abreviation, definition }
+/** Une liste lue dans un attribut JSON ; [] s'il est absent ou illisible. */
+const listeJson = (valeur) => {
+  try {
+    const v = JSON.parse(valeur ?? '[]');
+    return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+};
+
+// les mots-clés de la liste : { li, id (entier), cle, n, libelle, synonymes, anciennes_cles, definition }
 const items = [...liste.querySelectorAll('li[data-id]')].map((li) => ({
-  li, id: li.dataset.id, cle: li.dataset.cle ?? '', n: Number(li.dataset.n) || 0, libelle: li.dataset.libelle ?? '', abreviation: li.dataset.abreviation ?? null,
-  definition: li.dataset.definition ?? '',
+  li, id: Number(li.dataset.id), cle: li.dataset.cle ?? '', n: Number(li.dataset.n) || 0, libelle: li.dataset.libelle ?? '',
+  synonymes: listeJson(li.dataset.synonymes), anciennes_cles: listeJson(li.dataset.anciennesCles), definition: li.dataset.definition ?? '',
 }));
 
 function chargerIndex() {
@@ -77,7 +89,7 @@ function ligneDElement(element) {
   return li;
 }
 
-/** Mots-clés : ceux dont l'écriture ou l'abréviation correspond (tous sans recherche), qu'une page les porte ou non (le glossaire). Rend leur nombre. */
+/** Mots-clés : ceux dont le libellé ou un synonyme correspond (tous sans recherche), qu'une page les porte ou non (le glossaire). Rend leur nombre. */
 function filtrer(query) {
   const gardes = new Set(motsClesAffiches(items, query, { tous: true }));
   for (const m of items) m.li.hidden = !gardes.has(m);
@@ -118,7 +130,7 @@ function titrer(id, libelle) {
 
 /** La définition du mot-clé `id` dans la vue : celle que la page a rendue ([data-definition-de]), sinon `texte` tel quel ; cachée sans définition. */
 function definir(id, texte) {
-  const rendue = [...(definitions?.children ?? [])].find((d) => d.dataset.definitionDe === id);
+  const rendue = [...(definitions?.children ?? [])].find((d) => d.dataset.definitionDe === String(id));
   if (rendue && texte) definitionVue.innerHTML = rendue.innerHTML;
   else definitionVue.textContent = texte ?? '';
   definitionVue.hidden = !texte;
@@ -142,10 +154,12 @@ function montrer(v, id) {
 }
 
 async function afficherLeMotCle() {
-  const id = motCle;
+  const cle = motCle;
+  // la clé de l'adresse désigne l'id entier du mot-clé (sa clé, ou une clé qu'il a quittée) ; inconnue : -1, qu'aucun mot-clé n'a
+  const id = idDeLaCle(items, cle) ?? -1;
   const demande = ++demandes;
   // le vocabulaire de la liste (tous les mots-clés du glossaire) dit si l'id existe et le décrit ; l'index donne ses pages
-  const vocabulaire = new Map(items.map((m) => [m.id, { libelle: m.libelle, abreviation: m.abreviation, definition: m.definition }]));
+  const vocabulaire = new Map(items.map((m) => [m.id, { libelle: m.libelle, synonymes: m.synonymes, definition: m.definition }]));
   if (vocabulaire.has(id)) titrer(id, vocabulaire.get(id).libelle);
   else titreVue.textContent = 'Mot-clé';
   definir(id, vocabulaire.get(id)?.definition ?? '');
@@ -158,7 +172,7 @@ async function afficherLeMotCle() {
     if (demande === demandes) compteVue.textContent = 'Impossible de charger l’index de recherche.';
     return;
   }
-  if (demande !== demandes || motCle !== id) return;
+  if (demande !== demandes || motCle !== cle) return;
   montrer(vueDuMotCle(donnees, id, vocabulaire), id);
 }
 
@@ -187,7 +201,7 @@ function pousseeDepuisLaListe() {
 }
 
 /**
- * Va au mot-clé `id` (null : la liste) ; l'adresse suit (pushState, ou replaceState pour `remplacer`). Revenir à la liste en remplaçant la vue d'un
+ * Va au mot-clé de clé `id` (null : la liste) ; l'adresse suit (pushState, ou replaceState pour `remplacer`). Revenir à la liste en remplaçant la vue d'un
  * mot-clé ouverte par un clic de la liste, c'est retirer l'entrée que ce clic a poussée (history.back : popstate réaffiche la liste, avec la saisie en
  * cours) ; replaceState laisserait deux entrées identiques, et le premier retour arrière ne ferait rien.
  */
@@ -212,7 +226,7 @@ liste.addEventListener('click', (e) => {
   const li = lien?.closest('li[data-id]');
   if (!li || !liste.contains(li) || modifie(e)) return;
   e.preventDefault();
-  aller(li.dataset.id);
+  aller(li.dataset.cle);
   titreVue.focus({ preventScroll: true });
   vue.scrollIntoView({ block: 'nearest' });
 });

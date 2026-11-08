@@ -18,9 +18,10 @@ import {
   changementsNonIndexes, chercherLotDejaFusionne, corpsDePR, creerBundle, enteteAuthentification, enveloppeGit, environnementGit, etatDesChecks,
   fichiersModifies, fusionDansDev, gitLocal, horodatage, horsListe, importerCommit, lireDiffTree, lirePhase, lireStatut, livraisonVersMaster,
   lotsEnAttente, messageAttendu, messageDeFin, neutraliserMarqueur, neutraliserReferences, noteDuCorps, nomDeBranche, pourCommandeDeWorkflow,
-  preparer, sousCommandeGit, tablesAvecBalises, tablesDuLot, TABLES_DES_SOURCES_DE_MAITRISE, verifierCommit, verifierEntrees, verifierPreparation, verifierSimulation,
+  preparer, sousCommandeGit, tablesAvecBalises, tablesDuLot, TABLES_DES_FILLES_DU_MOT_CLE, TABLES_DES_SOURCES_DE_MAITRISE, verifierCommit, verifierEntrees, verifierPreparation, verifierSimulation,
 } from '../scripts/mise-a-jour-github.mjs';
 import { TABLES_DES_SOURCES } from '../serveur/edition-maitrises.mjs';
+import { TABLES_DES_FILLES_DU_MOT_CLE as FILLES_DU_SERVICE } from '../serveur/edition-mots-cles.mjs';
 import { TABLES_DE_LA_NOTE as TABLES_DU_SCRIPT } from '../scripts/mise-a-jour-regles.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
@@ -1043,8 +1044,13 @@ describe('fonctions pures', () => {
     // ce que le rejeu écrit au-delà du journal (serveur/edition.mjs#rejouerLeJournal) : la cascade d'un mot-clé supprimé (pages d'exemple), le mot-clé
     // d'une ligne page_tag notée avant la migration 0043
     const lot = (...modifications) => ({ journal: { lots: [{ modifications }] } });
-    assert.deepEqual(tablesDuLot(lot({ table: 'mot_cle', operation: 'supprimer', avant: { id: 'demo' }, apres: null })), ['mot_cle', 'page', 'page_tag'],
-      'la cascade de page_tag, et les pages typées refaites depuis les lignes dont les balises sont retirées');
+    // (et ses lignes filles, qu'un lot noté avant ne notait pas : catégories, synonymes, clés quittées, la même liste que le service)
+    assert.deepEqual(TABLES_DES_FILLES_DU_MOT_CLE, FILLES_DU_SERVICE);
+    assert.deepEqual(tablesDuLot(lot({ table: 'mot_cle', operation: 'supprimer', avant: { id: 9001 }, apres: null })),
+      ['mot_cle', 'mot_cle_ancienne_cle', 'mot_cle_categorie', 'mot_cle_synonyme', 'page', 'page_tag'],
+      'la cascade de page_tag et des lignes filles, et les pages typées refaites depuis les lignes dont les balises sont retirées');
+    // une monnaie supprimée (un lot ancien, R220 (1)) : son ON DELETE SET NULL vide mot_cle.monnaie_id (migration 0113)
+    assert.deepEqual(tablesDuLot(lot({ table: 'monnaie', operation: 'supprimer', avant: { id: 'po' }, apres: null })), ['monnaie', 'mot_cle']);
     assert.deepEqual(tablesDuLot(lot({ table: 'mot_cle', operation: 'modifier', avant: { libelle: 'a' }, apres: { libelle: 'b' } })), ['mot_cle']);
     assert.deepEqual(tablesDuLot(lot({ table: 'page_tag', operation: 'inserer', avant: null, apres: { page_id: 'p', ordre: 1, tag_id: 'x', libelle: 'X' } })), ['mot_cle', 'page_tag']);
     assert.deepEqual(tablesDuLot(lot({ table: 'page_tag', operation: 'inserer', avant: null, apres: { page_id: 'p', ordre: 1, tag_id: 'x' } })), ['page_tag']);
@@ -1065,7 +1071,7 @@ describe('fonctions pures', () => {
       return ['arme', 'page'];
     };
     assert.deepEqual(tablesDuLot(lot({ table: 'mot_cle', operation: 'supprimer', avant: { id: 'demo' }, apres: null }), { tablesAvecBalises: balises }),
-      ['arme', 'mot_cle', 'page', 'page_tag']);
+      ['arme', 'mot_cle', ...TABLES_DES_FILLES_DU_MOT_CLE, 'page', 'page_tag'].sort());
     assert.deepEqual(tablesDuLot(lot({ table: 'mot_cle', operation: 'modifier', avant: { libelle: 'a' }, apres: { libelle: 'b' } }), { tablesAvecBalises: balises }), ['mot_cle']);
     assert.equal(lues, 1, 'git grep seulement pour un lot qui retire un mot-clé');
     const appels = [];

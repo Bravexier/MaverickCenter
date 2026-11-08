@@ -518,7 +518,8 @@ test('site construit : /debug/ selon le mode — quatre menus fermés (Système,
   const json = main.match(/<script type="application\/json" data-debug-schema>([^<]*)<\/script>/);
   assert.ok(json, 'la structure du schéma, en JSON');
   const structure = JSON.parse(json[1]);
-  assert.equal(structure.tables.filter((t) => t.genre !== 'vue').length, 212);
+  // 216 : les 212 d'avant, plus categorie_mot_cle, mot_cle_categorie, mot_cle_ancienne_cle (migration 0113) et mot_cle_synonyme (0115)
+  assert.equal(structure.tables.filter((t) => t.genre !== 'vue').length, 216);
   assert.equal(structure.tables.filter((t) => t.genre === 'vue').length, 38);
   assert.ok(structure.tables.find((t) => t.nom === 'sort').lignes > 0, 'nombre de lignes du build');
   assert.match(main, /<dialog class="schema-contenu" data-schema-dialogue aria-labelledby="schema-contenu-titre">/);

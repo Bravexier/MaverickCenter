@@ -130,7 +130,7 @@ export function cleDuSegment(segment, colonnes, entieres = []) {
  * Les opérations du lot du service d'édition (serveur/edition.mjs#OPERATIONS) qu'une ressource peut nommer dans `operations` ou `actions` : celles qui
  * écrivent des tables que ni TABLES ni ENTITES ne décrivent (test/ressources-registre.test.mjs : chacune existe au service, chacune est joignable).
  */
-export const OPERATIONS_DU_LOT = ['relations', 'magies_innees', 'categories', 'valeurs_de_capacite', 'fusionner_mots_cles', 'ordonner'];
+export const OPERATIONS_DU_LOT = ['relations', 'magies_innees', 'categories', 'valeurs_de_capacite', 'fusionner_mots_cles', 'categories_mot_cle', 'synonymes_mot_cle', 'ordonner'];
 
 /**
  * Les tables de lib/edition-modele.mjs#TABLES qu'aucune ressource ne laisse modifier directement (lectureSeule), avec la raison : le site de dev les

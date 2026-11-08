@@ -7,9 +7,9 @@
 // note datée : décisions R42, R52, annonceDesFiches), espèce et carte de monstre, capacité d'une carte, capacité de monstre commune, composant, gemme,
 // bois, ingrédient et monnaie (s'ils ne sont cités par aucune autre règle), événement, bloc de description, catégorie (retirée de ses événements),
 // mot-clé (retiré de tout ce qui le porte ou le cite), bloc d'un panneau de règles (pas le dernier de son panneau).
-// Un texte (CHAMPS_DE_TEXTE : champ ligne, texte ou markdown) peut citer un mot-clé du glossaire par une balise (« {{id}} », « {{id|texte}} », « {{id:}} » :
-// lib/mots-cles-balises.mjs) : le service l'enregistre sous sa forme canonique, qui dépend de la colonne (typeDeTexte : « {{id}} » dans un texte mis en
-// forme, « {{id|texte}} » toujours dans un texte de case, le mode complet refusé), et refuse une balise qui ne cite aucun mot-clé (serveur/edition.mjs).
+// Un texte (CHAMPS_DE_TEXTE : champ ligne, texte ou markdown) peut citer un mot-clé du glossaire par une balise (« {{clé}} », « {{clé|texte}} », « {{clé:}} » :
+// lib/mots-cles-balises.mjs) : le service l'enregistre sous sa forme canonique, qui dépend de la colonne (typeDeTexte : « {{clé}} » dans un texte mis en
+// forme, « {{clé|texte}} » toujours dans un texte de case, le mode complet refusé), et refuse une balise qui ne cite aucun mot-clé (serveur/edition.mjs).
 // Colonnes modifiables sans création ni suppression : celles des armures, des pièces d'armure, des formes, des poids et des boucliers préfabriqués, et des
 // améliorations d'armure et de bouclier (page des armures, serveur/edition-armures.mjs ; l'AP et l'AM d'une armure particulière sont deux cases, la
 // défense écrite en est refaite : demande du propriétaire, 2026-10-17 ; ceux d'une armure de la grille et d'un bouclier se calculent, R207 (1)) ; celles des potions (consommables de l'onglet Ceinture,
@@ -36,6 +36,10 @@ export { NIVEAUX_DE_DON, NIVEAU_DES_SPECIALITES, SPECIALITES_MAX, TYPES_DE_DON_S
  *   reel     nombre (décimales permises) ;
  *   categories des identifiants de catégories de la chronologie (`categorie_chronologie.id`), sans doublon, dans l'ordre donné : liste JSON, ou texte
  *            « id1, id2 » ; leur existence est contrôlée par le service (formulaire « Nouvel événement ») ;
+ *   ids      des identifiants entiers (les catégories d'un mot-clé, `categorie_mot_cle.id`, migration 0113), sans doublon, croissants : liste JSON, ou
+ *            texte « 1, 2 » ; leur existence est contrôlée par le service (création d'un mot-clé) ;
+ *   ecritures des écritures sur une ligne (les synonymes d'un mot-clé, migration 0115, décision R233), sans doublon, dans l'ordre donné : liste JSON, ou
+ *            texte « a, b » ; leur forme et leur unicité sont contrôlées par le service (lib/mots-cles-balises.mjs#fautesDuSynonyme) ;
  *   adresse  une adresse interne du site, sur une ligne (mot_cle.url, migration 0098 : « /races/elfe/ », relative à la racine, sans le préfixe de
  *            déploiement ; sa forme et la page visée sont contrôlées par le service, lib/mots-cles-liens.mjs#fauteDeLUrl) ; jamais un texte à balises ;
  *   couleur  une couleur, sur une ligne (mot_cle.couleur, migration 0098 : « #rrggbb », écrite en minuscules, ou « <famille>:<id> » d'une couleur de la
@@ -606,26 +610,35 @@ export const TABLES = {
     libelle: 'Catégorie',
     colonnes: { libelle: { type: 'ligne', libelle: 'Catégorie', requis: true } },
   },
-  // le vocabulaire des mots-clés, le glossaire (page Glossaire /regles/glossaire/ en mode modification ; migration 0056) : renommer un mot-clé ne
-  // réécrit aucun texte (son id reste ; une balise d'un texte de case, « {{id|texte}} », garde le texte écrit, une balise d'un texte mis en forme, « {{id}} », montre le nouveau
-  // libellé) ; vers l'écriture d'un autre mot-clé : refusé, la page propose de les fusionner
-  // (opération `fusionner_mots_cles`) ; tous les champs d'un mot-clé non verrouillé se modifient, libellé compris (décision R195 : le site reconnaît
-  // les siens à leur id, lib/mots-cles.mjs#MOTS_CLES_PROTEGES) ; un mot-clé verrouillé (`verrou` = 1, migration 0110, décisions R218, R219 : ceux à
-  // adresse, des monnaies et dont le site se sert) n'en modifie aucun (serveur/edition.mjs#raisonDuGel : 409) ; `verrou` n'est pas ici : aucune route
-  // ne l'écrit (R218 (4)) ; une définition vidée : NULL (pas encore décrit) ; l'abréviation (migration 0090, réponse du propriétaire : « Modifiable et
-  // affichée »), qu'une balise peut citer comme l'écriture : vidée, NULL ; sans ambiguïté avec un autre mot-clé
-  // (lib/mots-cles-balises.mjs#fautesDeLAbreviation, la règle de db:check ; serveur/edition.mjs#refuserLAbreviation) ; l'adresse et la couleur
-  // (migration 0098 : les liens devenus des mots-clés) : vidées, NULL ; une adresse interne qui mène à une page du site, une couleur
-  // écrite ou de la palette (serveur/edition.mjs#refuserLeLien, #refuserLaCouleur : 400)
+  // le vocabulaire des mots-clés, le glossaire (page Glossaire /regles/glossaire/ en mode modification ; migration 0056) : renommer un mot-clé garde
+  // son id ; sa clé, recalculée (décision R232 (2) : lib/mots-cles-cles.mjs), est réécrite dans chaque balise qui la cite, et l'ancienne est gardée
+  // (mot_cle_ancienne_cle : serveur/edition-mots-cles.mjs) ; le texte écrit d'une balise ne change pas (« {{clé|texte}} » dans un texte de case), une
+  // balise sans texte d'un texte mis en forme (« {{clé}} ») montre le nouveau libellé ; un libellé n'est plus unique (migration
+  // 0113) : un homonyme sans catégorie propre face à chacun des autres, ou dont la clé serait prise, est refusé (409) ; tous les champs d'un mot-clé
+  // non verrouillé se modifient, libellé compris (décision R195 : le site reconnaît les siens à leur id, lib/mots-cles.mjs#MOTS_CLES_PROTEGES) ; un
+  // mot-clé verrouillé (`verrou` = 1, migration 0110, décisions R218, R219 : ceux à adresse, des monnaies et dont le site se sert) n'en modifie aucun
+  // (serveur/edition.mjs#raisonDuGel : 409), ni ses synonymes (R233 (6) : opération `synonymes_mot_cle`) ; ses catégories, si (R232 (11) : opération
+  // `categories_mot_cle`) ; `verrou`, `cle` et `monnaie_id` ne sont pas ici : aucune route ne les écrit (R218 (4) ; la clé est calculée) ; une
+  // définition vidée : NULL (pas encore décrit) ; l'adresse et la couleur (migration 0098 : les liens devenus des mots-clés) : vidées, NULL ; une
+  // adresse interne qui mène à une page du site, une couleur écrite ou de la palette (serveur/edition.mjs#refuserLeLien, #refuserLaCouleur : 400) ;
+  // l'icône (migration 0116, décision R235) : une icône de la liste du site (lib/icones.mjs#ICONES, la liste « icones » de GET /api/edition/listes/ ;
+  // serveur/edition.mjs#refuserLIcone : 400, `champ: 'icone'`), vidée NULL ; couverte par le verrou (R235 (5))
   mot_cle: {
     libelle: 'Mot-clé',
     colonnes: {
       libelle: { type: 'ligne', libelle: 'Mot-clé', requis: true },
       description: { type: 'texte', libelle: 'Définition' },
-      abreviation: { type: 'ligne', libelle: 'Abréviation' },
       url: { type: 'adresse', libelle: 'Lien' },
       couleur: { type: 'couleur', libelle: 'Couleur' },
+      icone: { type: 'choix', libelle: 'Icône', liste: 'icones' },
     },
+  },
+  // les catégories des mots-clés (migration 0113, décision R232 (5) : « sur le site de dev, une catégorie s'ajoute, se renomme, et se supprime si elle
+  // est vide ») : un libellé unique (deux catégories ne s'écrivent pas de la même façon : libelle_cle) ; renommée, elle recalcule la clé des
+  // mots-clés homonymes qui la portent (serveur/edition-mots-cles.mjs)
+  categorie_mot_cle: {
+    libelle: 'Catégorie de mot-clé',
+    colonnes: { libelle: { type: 'ligne', libelle: 'Catégorie', requis: true } },
   },
   // Panneaux de règles (migration 0056 ; demande du propriétaire, 2026-10-16 : « Il faudrait que ce champ texte soit modifiable sur son titre, et son
   // contenu. Son contenu peut d'ailleurs inclure des tuiles génériques (toujours insérables / modifiables en mode édition) ») : le titre d'un panneau
@@ -967,10 +980,12 @@ export const ENTITES = {
     suppression: true,
     champs: { libelle: { type: 'ligne', libelle: 'Catégorie', requis: true } },
   },
-  // un mot-clé du glossaire (page Glossaire /regles/glossaire/), son libellé, sa définition et son abréviation (migration 0090) ; il ne se supprime que si rien ne le
+  // un mot-clé du glossaire (page Glossaire /regles/glossaire/), son libellé, sa définition, ses catégories (migration 0113 : un homonyme en a qui le
+  // distinguent, décision R232 (9)) et ses synonymes (migration 0115, R233) ; son id est le suivant (jamais réutilisé) et sa clé calculée
+  // (serveur/edition-mots-cles.mjs) ; il ne se supprime que si rien ne le
   // mentionne (décision R196 : serveur/edition-chronologie.mjs#MOT_CLE, lib/mentions-des-mots-cles.mjs), sauf suppression forcée (`forcer: true` de
   // l'opération, décision R223 : ses balises remplacées par leur texte affiché), et s'il n'est pas verrouillé (décisions R218, R219, forçage compris) ;
-  // son adresse et sa couleur (migration 0098), écrites seulement si elles sont données ; créé non verrouillé, même avec une adresse (R219 (5) : `verrou`
+  // son adresse, sa couleur (migration 0098) et son icône (migration 0116, R235), écrites seulement si elles sont données ; créé non verrouillé, même avec une adresse (R219 (5) : `verrou`
   // n'est pas un champ, serveur/edition.mjs#creerMotCle), sauf `race-hybride` créé par le service avec la première race hybride (R220 (2))
   mot_cle: {
     table: 'mot_cle',
@@ -980,10 +995,20 @@ export const ENTITES = {
     champs: {
       libelle: { type: 'ligne', libelle: 'Mot-clé', requis: true },
       description: { type: 'texte', libelle: 'Définition' },
-      abreviation: { type: 'ligne', libelle: 'Abréviation' },
       url: { type: 'adresse', libelle: 'Lien' },
       couleur: { type: 'couleur', libelle: 'Couleur' },
+      icone: { type: 'choix', libelle: 'Icône', liste: 'icones' },
+      categories: { type: 'ids', libelle: 'Catégories' },
+      synonymes: { type: 'ecritures', libelle: 'Synonymes' },
     },
+  },
+  // une catégorie des mots-clés (décision R232 (5)) : elle ne se supprime que vide (aucun mot-clé ne la porte : 409 sinon)
+  categorie_mot_cle: {
+    table: 'categorie_mot_cle',
+    libelle: 'catégorie de mot-clé',
+    nouveau: 'Nouvelle catégorie de mot-clé',
+    suppression: true,
+    champs: { libelle: { type: 'ligne', libelle: 'Catégorie', requis: true } },
   },
   // un bloc d'un panneau de règles (« + Texte », « + Tuile » sous un bloc, en mode modification) : inséré après le bloc de rang `apres` (les blocs suivants
   // décalés d'une place), sinon à la fin ; un titre seulement sur une tuile ; rang tiré une fois (le plus grand + 1, journal et historique compris), jamais
@@ -1051,6 +1076,21 @@ export class ErreurValeur extends Error {
  * Texte : fins de ligne unifiées, espaces de bord retirées ; un champ vidé vaut `vide` s'il est défini, sinon NULL (absent = NULL).
  */
 export function valeurDuChamp(champ, brute, nom = champ.libelle) {
+  if (champ.type === 'ids') {
+    const liste = Array.isArray(brute) ? brute : brute === null || brute === undefined ? [] : String(brute).split(',').map((v) => v.trim()).filter(Boolean);
+    const ids = liste.map((v) => (typeof v === 'number' ? v : /^\d+$/.test(String(v).trim()) ? Number(String(v).trim()) : NaN));
+    if (!ids.every((v) => Number.isInteger(v) && v >= 1)) throw new ErreurValeur(`« ${nom} » : identifiants entiers attendus`);
+    if (champ.requis && !ids.length) throw new ErreurValeur(`« ${nom} » : valeur obligatoire`);
+    return [...new Set(ids)].sort((a, b) => a - b);
+  }
+  if (champ.type === 'ecritures') {
+    const liste = Array.isArray(brute) ? brute : brute === null || brute === undefined ? [] : String(brute).split(',');
+    if (!liste.every((v) => typeof v === 'string')) throw new ErreurValeur(`« ${nom} » : écritures attendues`);
+    const ecritures = [];
+    for (const v of liste.map((x) => x.replace(/\s+/g, ' ').trim()).filter(Boolean)) if (!ecritures.includes(v)) ecritures.push(v);
+    if (champ.requis && !ecritures.length) throw new ErreurValeur(`« ${nom} » : valeur obligatoire`);
+    return ecritures;
+  }
   if (champ.type === 'categories') {
     const liste = Array.isArray(brute) ? brute : String(brute ?? '').split(',');
     if (!liste.every((v) => typeof v === 'string')) throw new ErreurValeur(`« ${nom} » : identifiants de catégories attendus`);

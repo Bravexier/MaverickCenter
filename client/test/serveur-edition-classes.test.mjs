@@ -3,6 +3,8 @@
 // une race hybride qui n'en a pas (demande du propriétaire).
 // La base vivante part des règles de data/rows, où le site de dev a pu créer ou renommer : les données d'essai ont des noms absents de la base, et
 // l'état attendu (ordre, races hybrides sans classe raciale) est lu avant d'écrire.
+import { motsClesDesPages } from '../src/lib/pages-db.mjs';
+import { IDS_DES_MOTS_CLES_PROTEGES as ID } from '../src/lib/mots-cles-proteges.mjs';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -90,8 +92,9 @@ test('créer une classe dans une catégorie : page (mot-clé de la catégorie : 
   assert.deepEqual([c.categorie_id, c.sante_depart, c.ordre], ['classe-magique', 6, ordre], 'à la suite des classes de la base');
   // les mots-clés protégés se reconnaissent à leur id : leur libellé peut changer (« Classe », R183 ; décision R195)
   const motsCles = lignes('SELECT tag_id FROM page_tag WHERE page_id = ? ORDER BY ordre', id).map((t) => t.tag_id);
-  assert.deepEqual(motsCles, ['classe', 'magique']);
-  const groupe = groupClasses([{ id, data: { title: nom, mots_cles: motsCles } }])[0];
+  assert.deepEqual(motsCles, [ID.classe, ID.magique], 'par leur id entier (lib/mots-cles-proteges.mjs)');
+  // la page telle que le build la reçoit (lib/pages-db.mjs#motsClesDesPages : les noms des mots-clés protégés, reconnus à leur id)
+  const groupe = groupClasses([{ id, data: { title: nom, mots_cles: motsClesDesPages(db).get(id) } }])[0];
   assert.equal(groupe.key, 'magiques');
   assert.equal(ligne('SELECT count(*) AS n FROM race_classe WHERE classe_id = ? AND accessible = 0', id).n, ligne('SELECT count(*) AS n FROM race').n);
   for (const [valeurs, motif] of [
@@ -176,7 +179,7 @@ test('D11 — créer une spécialité : ligne, page_entite, don de spécialité 
   const p = ligne('SELECT * FROM page WHERE id = ?', k.id);
   assert.deepEqual([p.type, p.slug, p.titre, p.statut, p.origine, p.resume, p.corps_md],
     ['capacites', `${C1.slug}-lame-courbe`, `Lame courbe (${C1.nom})`, 'draft', 'classes', 'Frappe deux fois.', 'Frappe deux fois.\n']);
-  assert.deepEqual(lignes('SELECT tag_id FROM page_tag WHERE page_id = ? ORDER BY ordre', k.id).map((t) => t.tag_id), ['capacite-de-classe'], 'migration 0056 : ni la classe ni la spécialité (par son id : R195)');
+  assert.deepEqual(lignes('SELECT tag_id FROM page_tag WHERE page_id = ? ORDER BY ordre', k.id).map((t) => t.tag_id), [ID['capacite-de-classe']], 'migration 0056 : ni la classe ni la spécialité (par son id : R195)');
   const sources = lignes('SELECT s.texte FROM page_source ps JOIN source s ON s.id = ps.source_id WHERE ps.page_id = ?', k.id);
   assert.equal(sources.length, 1);
   assert.match(sources[0].texte, /^Site de dev › édition du /);
@@ -236,7 +239,7 @@ test('D11 — don de spécialité au niveau 15 : nouvelle ligne, seul donc sans 
   const k = donDe(C1.fente);
   assert.deepEqual([k.nature, k.niveau, k.ligne, k.rang, k.specialite_id, k.type, k.limite_nombre], ['choix', 15, 14, 1, C1.spec1, 'actif', 2]);
   assert.equal('choix_exclusif_avec' in donneesDe(C1.fente), false, 'seul sur sa ligne');
-  assert.deepEqual(lignes('SELECT tag_id FROM page_tag WHERE page_id = ? ORDER BY ordre', C1.fente).map((t) => t.tag_id), ['capacite-de-classe']);
+  assert.deepEqual(lignes('SELECT tag_id FROM page_tag WHERE page_id = ? ORDER BY ordre', C1.fente).map((t) => t.tag_id), [ID['capacite-de-classe']]);
   // une paire au niveau 20 : le second don cite le premier par « @0 »
   const p = enregistrer([
     { op: 'creer', entite: 'capacite', valeurs: { classe_id: C1.id, specialite_id: C1.spec1, niveau: '20', nom: 'Botte secrète', type: 'Passif' } },
@@ -612,7 +615,7 @@ test('un don dont la fiche est citée (le mot-clé dont l’adresse y mène) ne 
   const don = ligne("SELECT * FROM capacite WHERE nature = 'classe' AND specialite_id IS NULL AND classe_id <> ? ORDER BY id LIMIT 1", specialite.classe_id);
   const motCle = (d, n) => {
     let libelle = `Lien d’essai vers un don ${n}`;
-    for (let i = 2; ligne('SELECT 1 FROM mot_cle WHERE libelle_cle = ?', normalize(libelle)); i += 1) libelle = `Lien d’essai vers un don ${n} ${i}`;
+    for (let i = 2; ligne('SELECT 1 FROM mot_cle WHERE cle = ?', normalize(libelle)); i += 1) libelle = `Lien d’essai vers un don ${n} ${i}`;
     const r = enregistrer([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle, url: `/capacites/${d.id.slice('capacites/'.length)}/` } }]);
     assert.equal(r.statut, 200, JSON.stringify(r.corps));
     return r.corps.crees[0].id;

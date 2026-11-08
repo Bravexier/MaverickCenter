@@ -13,7 +13,7 @@ Les catégories sont définies dans `client/src/lib/types.mjs` (`races`, `classe
 ---
 title: Elfe sylvestre          # obligatoire
 aliases: [Elfes des bois]       # autres noms, utilisables dans [[ ]]
-tags: [peuple, forêt]           # mots-clés (vocabulaire mot_cle) : /recherche/?mot-cle=<id>
+tags: [peuple, forêt]           # mots-clés (vocabulaire mot_cle) : /recherche/?mot-cle=<clé>
 summary: Une phrase de résumé.  # affichée dans les listes et la recherche
 sources: [Discord #lien-pour-races, https://docs.google.com/document/d/…]
 status: draft                   # example | draft | verified
@@ -556,11 +556,9 @@ colonnes partagent une même rangée (sous-grille), si bien que leurs souligneme
 « Classe Physique Corps à Corps », « Classe Physique Distance », « Classe Magique », « Classe Hybride Animal » (raciales), « Classe Hybride » et « Classe spéciale » (spéciales : Flagelleur, Archimage).
 Le Parleur, « corps à corps » dans le Sommaire, est sous « Spéciales » (décision du propriétaire, `CLASS_OVERRIDES`) ; une classe sans catégorie reconnue va dans « Non classées », sous « Spéciales ».
 Chaque colonne prend la couleur de sa catégorie (celle des pages de classe), par la classe de la catégorie (`couleur-classe-<clé>`, famille `classe` de la palette, émise par la page), jamais un style ; le nom d'une classe est son titre : **« (classe) » est supprimé de partout, base comprise** (demande du propriétaire, migration `0009-classes-sans-suffixe`),
-une classe raciale porte le nom de sa race (« Kitsune », page `classes/kitsune`) ; seule exception (R191) : le libellé du mot-clé d'une classe raciale
-homonyme de sa race s'écrit « Kitsune (classe) » (la race garde le nom, Q14 de la migration `0098`), et ne s'affiche ainsi que sur trois pages, le
-Glossaire, la Recherche et Données (`/regles/glossaire/`, `/recherche/`, `/donnees/` et ses sous-pages) ; partout ailleurs, balise sans texte écrit,
-mode complet, titre et texte de sa bulle compris, il s'affiche sous le nom seul (« Kitsune » : `lib/mots-cles-balises.mjs#libelleAffiche`, la page lue
-par `libelleEntierSur` au middleware et par `scripts/edition/mots-cles-vivants.mjs` sur le site de dev ; test `classes-html.test.mjs`) ;
+une classe raciale porte le nom de sa race (« Kitsune », page `classes/kitsune`) ; le mot-clé d'une classe raciale homonyme de sa race s'écrit lui
+aussi « Kitsune », avec la catégorie Classe (décision R232 (4), qui remplace R191 : plus de « Kitsune (classe) », sur aucune page) ; leurs clés,
+« kitsune-race » et « kitsune-classe », les distinguent dans les balises et les adresses ;
 le résumé de la page (`summary`) est dans une **infobulle** (`components/Infobulles.astro` : survol, focus clavier, premier appui au toucher puis le second suit le lien ; `title` sans JavaScript).
 Sur un écran étroit, les colonnes passent à la ligne. Le fil d'Ariane d'une classe mène à sa colonne (`/classes/#raciales`…).
 
@@ -1638,12 +1636,15 @@ coupés sur deux cases, « Tenir ... » / « ... ou charger ? », sont voulus : 
 
 Demande du propriétaire du 2026-10-16 : « Le mot-clé devra désormais servir un peu comme un glossaire. Le mot-clé aura son ID, son texte et une
 description. Partout où un mot-clé est utilisé, il sera affiché en gras. Une infobulle de sa définition sera visible. » La table `mot_cle`
-(migrations `0043`, `0056`) est ce **glossaire** : un identifiant figé (tiré une fois du premier libellé), un libellé, son écriture (`libelle_cle`) et
-une **définition** (`description`, NULL tant qu'il n'est pas décrit), et une **abréviation** (`abreviation`, migration `0090` : « AM », « Nat. » ; NULL
-sans abréviation). La migration `0056` a retiré les anciens mots-clés des pages : il reste ceux dont le
+(migrations `0043`, `0056`, puis `0113` à `0115`) est ce **glossaire** : un identifiant entier, figé, qui ne dit rien du mot-clé (décision R232 (1)) ;
+un **libellé**, qui n'est pas unique (R232 (4)) ; une **clé** (`cle`, celle que citent les balises et les adresses), recalculée : le slug du libellé,
+suivi, entre homonymes, des slugs de ses catégories qui ne sont pas communes à tous (« orios-race », « orios-classe » ; R232 (2)) ; des **catégories**
+(`categorie_mot_cle`, `mot_cle_categorie` : aucune, une ou plusieurs ; R232 (5)) ; des **synonymes** (`mot_cle_synonyme`, dans l'ordre : « IC », « Action
+rapide » pour Instant Cast ; les anciennes abréviations en sont devenues, R233 (7)) ; une **définition** (`description`, NULL tant qu'il n'est pas
+décrit) ; et les clés qu'il a quittées (`mot_cle_ancienne_cle` : une balise ou une adresse écrite avant un changement de clé mène encore à lui). La migration `0056` a retiré les anciens mots-clés des pages : il reste ceux dont le
 site se sert pour ranger ses pages (catégories de `/classes/`, « classe », « race », « race hybride », « capacité de classe », « métier », « codex ») et
 ceux du glossaire (Mordhau, Recharge longue, Recharge très longue, Solidité, Chakra, Barrière, Corruption…), auxquels la migration `0090` a ajouté les
-entrées de l'ancien Lexique du guide (« CR » y est devenu l'abréviation de Corruption). Un mot-clé peut aussi **étiqueter un
+entrées de l'ancien Lexique du guide (« CR » y est devenu l'abréviation de Corruption, aujourd'hui l'un de ses synonymes). Un mot-clé peut aussi **étiqueter un
 sort** (table `sort_mot_cle`, migration `0067`, décision R114) : « Sort grenade » (défini par le propriétaire « Type particulier de sort provoquant une
 explosion localisée ») est posé sur les 14 sorts « Grenade… », et la fiche de personnage reconnaît un sort grenade à cette étiquette, jamais à son nom ;
 de même « Sort fer » (migration `0079`, décision R164 : « Type de sort d'amélioration qui s'applique sur une arme. ») sur les 13 sorts « Fer… », que la
@@ -1663,16 +1664,18 @@ propriétaire ; « durabilité » n'est plus écrit nulle part sur le site (sauf
 | `{{non-mort\|non-morts}}` | **non-morts** (le texte écrit), en gras, la définition du mot-clé en infobulle |
 | `{{mordhau:}}` | le **mode complet** : « **Mordhau** : définition », dans le fil du texte (la définition vient du glossaire et la suit) ; `{{mordhau :}}` (une espace avant les deux-points) est la même balise |
 
-- Dans une saisie, la ref est l'**id** du mot-clé, son **écriture** ou son **abréviation**, **quelle que soit la casse** : `{{Recharge longue}}`,
-  `{{recharge longue}}` et `{{recharge-longue}}` citent le même mot-clé ; `{{AM}}`, `{{am}}` et `{{armure-magique}}` aussi (demande du propriétaire du
-  2026-11-05 : « ajuster les balises {{}} pour qu'elle puissent reconnaitre aussi bien l'abréviation que le mot complet »). **La casse écrite est gardée** (demande du propriétaire du 2026-10-17 : « que ça soit insensible à la
-  casse ») : `{{solidité}}` s'affiche « solidité », `{{Solidité}}` « Solidité » ; l'id, ou le libellé écrit tel quel, affiche le libellé (et suit ses
-  renommages). Une écriture autre que le libellé est enregistrée comme un texte écrit : `{{solidité}}` devient `{{solidite|solidité}}` ; une abréviation,
-  elle, est enregistrée **telle qu'écrite dans la base**, quelle que soit la casse tapée (une abréviation est un sigle ; R140 écrit « CR » en majuscules ; R183) :
-  `{{AM}}` et `{{am}}` deviennent `{{armure-magique|AM}}` (il s'affiche « AM »), `{{cr}}`, `{{Cr}}` et `{{CR}}` deviennent `{{corruption|CR}}`. La balise à copier est écrite à côté
-  de chaque mot-clé sur le Glossaire (`/regles/glossaire/`) en mode modification. **La base ne garde que des ids** : le service enregistre la forme canonique (ci-dessous) et
-  `db:check` refuse toute autre écriture (même règle), sauf le libellé écrit en texte dans un texte mis en forme (`{{id|Libellé}}`, que le service
-  ramène à `{{id}}` : le corps d'une page typée l'écrit, un renommage peut en faire un).
+- Dans une saisie, la ref est la **clé** du mot-clé, son **libellé** (quand un seul mot-clé le porte) ou l'un de ses **synonymes**, **quelle que soit
+  la casse** (décisions R232 (3), R233 (1), (10)) : `{{Recharge longue}}`, `{{recharge longue}}` et `{{recharge-longue}}` citent le même mot-clé ;
+  `{{IC}}`, `{{ic}}`, `{{Action rapide}}` et `{{instant-cast}}` aussi. Une clé qu'il a quittée le désigne encore, en dernier. **Le libellé de deux
+  homonymes est ambigu** (R232 (4)) : `{{Orios}}` est refusé, on écrit la clé, `{{orios-race}}` ou `{{orios-classe}}`. **La casse tapée est gardée**
+  (R233 (10), « Garder la casse tapée, incluant les synonymes et abréviations ») : une écriture autre que la clé ou le libellé exact est enregistrée comme
+  le texte affiché — `{{solidité}}` devient `{{solidite|solidité}}`, `{{ic}}` devient `{{instant-cast|ic}}` (il s'affiche « ic »), `{{Action rapide}}`
+  devient `{{instant-cast|Action rapide}}` ; la clé, ou le libellé écrit tel quel, affiche le libellé (et suit ses renommages). La règle d'avant (une
+  abréviation enregistrée comme la base l'écrit, `{{cr}}` → `{{corruption|CR}}`, R183 (2)) est abandonnée pour les nouvelles saisies ; les textes déjà en
+  base ne changent pas. La balise à copier est écrite à côté de chaque mot-clé sur le Glossaire (`/regles/glossaire/`) en mode modification. **La base
+  ne garde que des balises par la clé**, `{{clé…}}` : le service enregistre la forme canonique (ci-dessous) et `db:check` refuse toute autre écriture
+  (même règle), sauf le libellé écrit en texte dans un texte mis en forme (`{{clé|Libellé}}`, que le service ramène à `{{clé}}` : le corps d'une page
+  typée l'écrit, un renommage peut en faire un).
 - **Dans une case de tableau Markdown**, le séparateur s'écrit `\|` : `| Arbalète | {{recharge-longue\|à recharger}} |` (sinon la case s'arrête au
   `|` ; le service réécrit un `|` en `\|` sur une ligne de tableau). Le texte d'une balise est du **texte simple** : ni gras, ni lien, ni accolade, ni
   retour à la ligne dedans.
@@ -1689,34 +1692,39 @@ propriétaire ; « durabilité » n'est plus écrit nulle part sur le site (sauf
   balise a ses monnaies en icônes et un montant s'y décompose comme ailleurs (R183 (12), « Décomposer comme ailleurs » : `{{prix-fixe|1245,5 RO}}`
   montre « 1 [PP] 245 [RO] 50 [RF] ») ; dans un attribut ou une `<option>`, le texte simple, comme le texte courant. La fiche de personnage n'en garde que le
   texte affiché (le texte écrit, ou le libellé ; jamais la définition), l'index de la recherche le texte simple (« Libellé : définition » pour le mode
-  complet) ; `/recherche/?mot-cle=<id>` liste aussi les pages qui **citent** un mot-clé.
-- **Forme canonique** (celle que le service du site de dev enregistre) : la ref est toujours l'id, et selon la colonne :
+  complet) ; `/recherche/?mot-cle=<clé>` liste aussi les pages qui **citent** un mot-clé.
+- **Forme canonique** (celle que le service du site de dev enregistre) : la ref est toujours la clé, et selon la colonne :
   - un **texte mis en forme** (Markdown : corps des pages du guide et du Codex, descriptions de la chronologie, blocs des panneaux de règles) garde
-    `{{id}}` (le texte affiché suit le libellé : un renommage se voit partout), écrit `{{id|texte}}` si un autre texte que le libellé est écrit (le
-    libellé écrit en texte redevient `{{id}}`), et permet le mode complet `{{id:}}`. Une balise dans un **code** (`` `{{id}}` ``, bloc ` ``` ` ou `~~~`) est
+    `{{clé}}` (le texte affiché suit le libellé : un renommage se voit partout), écrit `{{clé|texte}}` si un autre texte que le libellé est écrit (le
+    libellé écrit en texte redevient `{{clé}}`), et permet le mode complet `{{clé:}}`. Une balise dans un **code** (`` `{{clé}}` ``, bloc ` ``` ` ou `~~~`) est
     une écriture littérale : ni mise en forme, ni refusée, ni rendue ;
-  - un **texte de case** (cases, effets, descriptions des tables, définitions des mots-clés) porte toujours le texte de sa balise, `{{id|texte}}` (le
+  - un **texte de case** (cases, effets, descriptions des tables, définitions des mots-clés) porte toujours le texte de sa balise, `{{clé|texte}}` (le
     libellé du moment si rien n'est écrit) : un découpage le lit **sans le vocabulaire** (« Recharge longue » d'un effet d'arme donne toujours la
     recharge longue, quel que soit le libellé du mot-clé). Le mode complet y est **refusé** (« le mode complet ne s'écrit que dans un texte mis en
     forme »). Une case découpée et affichée morceau par morceau (bonus et objets d'un métier, inventaire d'une classe, lieux d'une espèce) garde la
     balise de chaque morceau, que le site met en gras.
-- **Refusés** à l'enregistrement : une balise dont la ref n'est pas un mot-clé, et une ref **ambiguë** (l'id d'un mot-clé et l'écriture d'un autre : un
-  mot-clé renommé dont l'id est devenu l'écriture d'un nouveau ; ou l'abréviation de l'un et l'id ou l'écriture d'un autre ; préciser l'id voulu) — sauf
-  si le texte l'avait déjà ; au rendu, une ref inconnue (texte d'avant la suppression de son mot-clé) s'affiche en texte simple.
-- **L'abréviation** (une par mot-clé, facultative) est sans ambiguïté pour la ref d'une balise : elle contient une lettre ou un chiffre, n'a ni espace
-  autour, ni `{`, `}`, `|`, saut de ligne, ni `:` final (`{{AM:}}` serait le mode complet) ; une fois normalisée, elle n'est ni l'écriture du mot-clé
-  lui-même, ni l'id, l'écriture ou l'abréviation d'un autre mot-clé (elle peut égaler son propre id). `db:check` le contrôle et le service la refuse à
-  l'enregistrement par la même règle (`lib/mots-cles-balises.mjs#fautesDeLAbreviation`) ; il refuse aussi de créer ou de renommer un mot-clé vers
-  l'abréviation d'un autre.
-- **Renommer** un mot-clé ne réécrit aucun texte : un texte de case garde le texte écrit de ses balises, un texte mis en forme montre le nouveau libellé.
-  Le **supprimer** remplace chacune de ses balises par son texte simple (« Libellé : définition » pour le mode complet), partout ; le **fusionner** dans
-  un autre les fait citer l'autre (un texte de case garde le texte qu'il montrait). À la livraison (rejeu du journal), cela vaut aussi pour les textes
-  que le site de dev n'avait pas (pages d'exemple, textes reçus depuis) ; la cible d'une fusion y est reconnue aux étiquettes ou aux balises que le lot a
-  reportées (sinon les balises sont retirées). Dans l'éditeur en place du mode modification (guide, Codex, chronologie, panneaux de règles), les
-  mots-clés s'affichent **en balises écrites**, comme dans le Markdown (demande du propriétaire du 2026-10-17 : « Quand je passe en mode édition le
-  texte devrai remettre le texte en mode Markdown […] je ne vois pas {{Recharge Longue}} ») : on les lit, les tape et les modifie comme le reste du
-  texte ; ils ne sont rendus (gras, infobulle, mode complet) qu'une fois enregistrés. Ses outils « Mot-clé » et « Définition » écrivent la balise du
-  mot-clé choisi à la place du texte choisi (`{{id}}`, `{{id|texte}}`, `{{id:}}`), ou, le curseur dans une balise, en changent le mot-clé.
+- **Refusés** à l'enregistrement : une balise dont la ref n'est pas un mot-clé, et une ref **ambiguë** (le libellé que portent plusieurs homonymes,
+  R232 (4) : le refus nomme leurs clés, à écrire à la place) — sauf si le texte l'avait déjà ; au rendu, une ref inconnue (texte d'avant la suppression
+  de son mot-clé) s'affiche en texte simple.
+- **Les synonymes** (R233) servent à la saisie d'une balise, à la recherche et à l'affichage (« Aussi appelé ») ; la clé n'en dépend pas. Un synonyme est
+  **unique** (R233 (4)) : il contient une lettre ou un chiffre, n'a ni espace autour, ni `{`, `}`, `|`, saut de ligne, ni `:` final (`{{AM:}}` serait le
+  mode complet) ; une fois normalisé, il n'est ni le libellé de son propre mot-clé, ni le libellé, la clé ou un synonyme d'un autre mot-clé.
+  `db:check` le contrôle et le service le refuse par la même règle (`lib/mots-cles-balises.mjs#fautesDuSynonyme`) ; un mot-clé créé ou renommé ne prend
+  pas non plus l'écriture d'un synonyme d'un autre (`synonymesPris`). Ceux d'un mot-clé verrouillé ne se modifient pas (R233 (6)).
+- **Renommer** un mot-clé, **changer ses catégories**, renommer une catégorie qu'il porte, ou **faire apparaître ou disparaître un homonyme**
+  **recalcule sa clé** (R232 (2)) : quand elle change, chaque balise qui la citait est réécrite vers la nouvelle, dans tous les textes de la base, ceux
+  d'un mot-clé verrouillé compris (R232 (3), (11) ; le texte écrit, le séparateur et le mode complet restent), et la clé quittée est gardée
+  (`mot_cle_ancienne_cle`) ; les adresses déjà partagées changent, « c'est voulu ». Un homonyme sans catégorie propre face à chacun des autres, ou dont
+  la clé serait déjà prise, est refusé (R232 (9), (10)). Un texte de case garde le texte écrit de ses balises, un texte mis en forme montre le nouveau
+  libellé. Le **supprimer** n'est possible que si rien ne le mentionne (R196), sauf en forçant (R223 : chaque balise devient son texte affiché, en texte
+  simple) ; le **fusionner** dans un autre les fait citer l'autre (un texte de case garde le texte qu'il montrait). À la livraison (rejeu du journal),
+  cela vaut aussi pour les textes que le site de dev n'avait pas (pages d'exemple, textes reçus depuis) ; la cible d'une fusion y est reconnue aux
+  étiquettes ou aux balises que le lot a reportées (sinon les balises sont retirées). Dans l'éditeur en place du mode modification (guide, Codex,
+  chronologie, panneaux de règles), les mots-clés s'affichent **en balises écrites**, comme dans le Markdown (demande du propriétaire du 2026-10-17 :
+  « Quand je passe en mode édition le texte devrai remettre le texte en mode Markdown […] je ne vois pas {{Recharge Longue}} ») : on les lit, les tape
+  et les modifie comme le reste du texte ; ils ne sont rendus (gras, infobulle, mode complet) qu'une fois enregistrés. Ses outils « Mot-clé » et
+  « Définition » écrivent la balise du mot-clé choisi, par sa clé, à la place du texte choisi (`{{clé}}`, `{{clé|texte}}`, `{{clé:}}`), ou, le curseur
+  dans une balise, en changent le mot-clé.
 - **Ce qui n'est pas un mot-clé** : une capacité (de monstre, de classe) ou une altération d'état qui porte le nom d'un mot-clé reste la capacité ou
   l'état (le Non-mort, type de monstre ET capacité de monstre : la tuile de capacité n'est jamais un mot-clé) ; seule une balise fait un mot-clé. Les
   valeurs « {N} » des capacités communes (une accolade : `{{12}}` est une balise, jamais un emplacement) et la couleur de case « {couleur:x} » ne sont
@@ -1766,56 +1774,86 @@ homonyme d'une magie (`tools/db/homonymes.py#MAGIES_HOMONYMES`, lu par `tools/do
 temple du Codex, ni la page de la magie, ni une créature invoquée de la Corruption ne reçoit le mot-clé « Corruption » de sa magie (le mot-clé est la
 jauge ; un homonyme n'est jamais lié implicitement).
 
-Chaque mot-clé a la liste de ses pages, `/recherche/?mot-cle=<id>` (son libellé, sa définition, puis les pages qui le portent ou le citent) ; renommé,
-il la garde. Les pastilles du pied d'une page et de `/recherche/` y mènent toujours, jamais à l'adresse du mot-clé (réponse Q12).
+Chaque mot-clé a la liste de ses pages, `/recherche/?mot-cle=<clé>` (son libellé, sa définition, puis les pages qui le portent ou le citent) ; sa clé
+suit son libellé et ses catégories (R232 (3)), et une clé qu'il a quittée y mène encore. Les pastilles du pied d'une page et de `/recherche/` y mènent toujours, jamais à l'adresse du mot-clé (réponse Q12).
 
 **Le Glossaire** (`/regles/glossaire/` ; réponses du propriétaire du 2026-11-06, Q6 et Q7 : une entrée « Glossaire » dans le menu Règles, après
-Exploration, une page seule ; le Lexique y mène) : la liste filtrable de **tous** les mots-clés, avec ou sans définition, chacun avec son libellé (un
-lien vers son adresse quand il en a une), son abréviation, la pastille de sa couleur, sa définition (balises rendues, monnaies en icônes) et le nombre de
-ses pages (un lien vers leur liste sur `/recherche/`). Une ligne : `lib/mots-cles-balises.mjs#htmlDeLaLigneDuGlossaire`, le même HTML au build et dans
-l'extension de l'éditeur ; le filtre (libellé, abréviation, définition, sans casse ni accents ; `?q=` dans l'adresse) : `src/scripts/glossaire.mjs`, qui
-n'importe que `lib/glossaire-filtre.mjs`. **L'abréviation** d'un mot-clé (réponse du propriétaire du 2026-11-05 : « Modifiable et affichée ») suit son
-libellé entre parenthèses, « Armure magique (AM) », dans sa pastille de `/recherche/`, avant le nombre de ses pages après « · » (réponse : « Armure
-magique (AM) · 3 » ; sans abréviation, « Feu · 2 » ; sans page, pas de nombre), dans le titre de sa vue (« Mot-clé « Armure magique (AM) » ») et dans
-le titre de sa bulle, partout sur le site (`lib/mots-cles-balises.mjs#htmlDuNomDuMotCle`, `htmlDeLaPastille`, `htmlDeLaBulle`) : `{{AM}}` montre « AM »,
-sa bulle dit « Armure magique (AM) » ; sur le Glossaire, elle est à côté du libellé. Une **monnaie** (les mots-clés `rf`, `ro`, `pp`, reconnus à leur
-id, figé, celui de la table `monnaie`, jamais à leur abréviation ; ils sont verrouillés, R218) montre son libellé suivi de l'icône de la monnaie, jamais « (RO) »
-(réponse : « Libellé + icône » ; R63). Le texte affiché d'une balise et la définition du mode complet ont aussi leurs monnaies en icônes (R63, R183 (9) :
-« R63 est respectée partout ») : `{{RO}}` montre l'icône du Ricken d'or ; un montant écrit dans une balise se décompose comme ailleurs (R183 (12) :
-`{{prix-fixe|1245,5 RO}}` montre « 1 [PP] 245 [RO] 50 [RF] » ; `htmlDeLaBalise`). La définition que montre la vue d'un mot-clé de `/recherche/` est
-rendue au build (`#definitions-des-mots-cles`, `[data-definition-de]` : `htmlDeLaDefinition`, monnaies en icônes, balises rendues par le middleware) ;
-le script de la page la recopie sans lire aucune monnaie (il n'importe pas `lib/monnaies.mjs`). Le mode complet (`{{id:}}`) garde « **Libellé** :
-définition ». La recherche de `/recherche/` trouve un mot-clé par son écriture **ou** son abréviation (« AM » trouve « Armure magique » :
-`lib/search.mjs#cleDeRecherche`) ; elle ne gère plus le vocabulaire.
+Exploration, une page seule ; le Lexique y mène) : le **tableau** de **tous** les mots-clés, avec ou sans définition (décision R234 : « dans le même style
+que les autres », le gabarit commun des tableaux, `components/Tableau.astro`). Un mot-clé y est un `<tbody>` de deux lignes : la sienne, en cinq
+colonnes — **son icône** seule, dans une colonne étroite, en premier (décision R235 (2) ; vide sans icône), **ses noms** (le libellé seul, en gras, R233 (9) ; puis « Aussi appelé : … », tous ses synonymes, l'ancienne abréviation comprise, R233
+(8)), **ses catégories** (leurs libellés, dans l'ordre de leur id, R232 (5)), **son lien** (le titre de la page où mène son adresse, en lien ; l'adresse
+brute quand elle ne mène à aucune page de la base, une route ou une rubrique : réponse T5, `lib/mots-cles-db.mjs#pagesDesLiens`) et **ses pages** (un
+menu déroulant des pages qui le mentionnent : ses mentions au sens de R196, étiquettes et balises, une ligne par page, sans doublon,
+`lib/mots-cles-balises.mjs#pagesDesMentions` ; « Seulement les pages » : le menu ne liste que les pages où l'on peut aller, en lien, et le total au
+résumé ne compte qu'elles, une page d'exemple en italique ; « Aucune page » sinon ; réponse T2 : il remplace l'ancien nombre et l'ancien lien vers
+`/recherche/` ; le menu des mentions du mode modification, lui, les garde toutes) — puis **sa définition**, dans une ligne pleine
+largeur sous la sienne (réponse T3 : « dans une ligne en plus au sein de la ligne du tableau » ; balises rendues, monnaies en icônes, R63 ; « Pas encore
+de définition. » sinon). Un mot-clé **coloré** a ses deux lignes en ligne colorée du gabarit, le fond à peine teinté et le **liseré** de sa couleur à
+gauche, comme les matériaux des armes (R234 (1) ; `tr.ligne-couleur` et la classe de sa couleur) ; les deux lignes se survolent ensemble. Une ligne :
+`lib/mots-cles-balises.mjs#htmlDeLaLigneDuGlossaire`, le même HTML au build et dans l'extension de l'éditeur. **Deux filtres** (R234 (4)) : le texte
+(libellé, synonymes, définition, sans casse ni accents ; `?q=` dans l'adresse) et la **catégorie** (une liste déroulante : toutes, « Sans catégorie »,
+les mots-clés à classer, puis chaque catégorie) ; ils se combinent : `src/scripts/glossaire.mjs`, qui n'importe que `lib/glossaire-filtre.mjs`. Le **nom** d'un mot-clé est son libellé
+seul (R233 (9)), dans le titre de sa bulle, sa pastille de `/recherche/` (« Armure magique · 3 » ; sans page, pas de nombre) et le titre de sa vue
+(`lib/mots-cles-balises.mjs#htmlDuNomDuMotCle`, `htmlDeLaPastille`, `htmlDeLaBulle`) ; sa bulle porte ensuite « Aussi appelé : … » quand il a des
+synonymes (`{{AM}}` montre « AM », sa bulle dit « Armure magique », puis « Aussi appelé : AM »). Deux **homonymes** (R232 (4) : la race et la classe
+raciale « Orios ») s'affichent sous le même libellé sur toutes les pages, plus de suffixe « (classe) » (R191 remplacée) ; leurs clés les distinguent.
+**L'icône** d'un mot-clé (`mot_cle.icone`, migration `0116`, décision R235 : une icône de la liste du site, `lib/icones.mjs`, pour l'instant celles des
+trois monnaies, que le RF, le RO et la PP ont reçues) suit son nom partout où il apparaît : dans le texte d'une balise (après le texte affiché, sauf s'il
+montre déjà ce dessin : `{{ricken-dor|RO}}` est l'icône elle-même), le nom du mode complet, le titre de sa bulle, sa pastille et sa vue de
+`/recherche/` (« Libellé + icône », R63 ; `lib/mots-cles-balises.mjs#htmlDeLIcone`) ; l'affichage passe par `icone`, plus par `monnaie_id`. Dans le
+tableau, l'icône a sa colonne, et le nom est le libellé seul. L'abréviation de sa propre monnaie n'est jamais un « Aussi appelé » (R234 (8), R235 (4)). Le texte affiché d'une balise et la définition du mode complet ont aussi leurs monnaies en icônes (R63,
+R183 (9) : « R63 est respectée partout ») : `{{RO}}` montre l'icône du Ricken d'or ; un montant écrit dans une balise se décompose comme ailleurs
+(R183 (12) : `{{prix-fixe|1245,5 RO}}` montre « 1 [PP] 245 [RO] 50 [RF] » ; `htmlDeLaBalise`). La définition que montre la vue d'un mot-clé de
+`/recherche/` est rendue au build (`#definitions-des-mots-cles`, `[data-definition-de]` par l'id du mot-clé : `htmlDeLaDefinition`, monnaies en icônes,
+balises rendues par le middleware) ; le script de la page la recopie sans lire aucune monnaie (il n'importe pas `lib/monnaies.mjs`). Le mode complet
+(`{{clé:}}`) garde « **Libellé** : définition ». La recherche de `/recherche/` trouve un mot-clé par son libellé **ou** l'un de ses synonymes (« AM »
+trouve « Armure magique » : `lib/search.mjs#cleDeRecherche`) ; son adresse `?mot-cle=<clé>` cite sa clé, et une clé qu'il a quittée (un renommage, un
+homonyme apparu, un ancien id texte d'avant la migration `0113`) y mène encore (`lib/recherche-mots-cles.mjs#idDeLaCle`) ; elle ne gère plus le
+vocabulaire.
 
-**Gérer le vocabulaire** (site de dev, mode modification du Glossaire ; `src/scripts/edition/mots-cles.mjs`) : créer un mot-clé (avec sa définition,
-son abréviation, son adresse et sa couleur), le renommer, le fusionner, le supprimer, et modifier sa définition, son abréviation (une saisie à côté du
-libellé ; vidée, NULL), son **adresse** (« Lien » : interne, `/races/humain/` ; vidée, NULL) et sa **couleur** (réponses Q3 et Q4 : deux sélecteurs,
-la liste des couleurs du site — toutes les familles de la palette, groupées, chaque couleur nommée par son élément de référence, « Feu », « Chakra »,
-« Mythril » : `lib/glossaire-couleurs.mjs`, que la page donne en `data-couleurs` — et un cercle, `<input type="color">`, qui donne une couleur écrite
-`#rrggbb` ; enregistrée en `famille:id` ou `#rrggbb` ; vidée, NULL) ; un refus du service (400 ou 409, avec `champ`) s'affiche comme tout refus du
-lot ; la balise à copier est écrite à côté de chaque mot-clé. Chaque mot-clé a un **menu déroulant des endroits qui le mentionnent** (décision R196 (2) :
-une page qui le porte ou dont un texte le cite par une balise, en lien ; un texte qu'aucune page ne montre, par sa table et sa ligne ; les pages d'exemple
-comptent), et **« Supprimer » n'est offert que si cette liste est vide** (R196 : un mot-clé mentionné ne se supprime pas, le service refuse en `409` avec
-la liste ; plus rien n'est retiré des pages ni des textes, sauf en forçant : ci-dessous). La fusion, elle, reporte ses mentions sur l'autre mot-clé. Un mot-clé **verrouillé**
-(`mot_cle.verrou`, migration `0110` ; décisions R218, R219) ne se modifie ni ne se supprime depuis le site : aucun de ses champs (libellé, définition,
-abréviation, adresse, couleur), ni sa suppression, même sans mention, ni sa fusion dans un autre ; il se pose encore sur une page et s'en retire, se cite
-par une balise et **reçoit la fusion** d'un autre mot-clé, sans en prendre l'adresse ni la couleur. Sont verrouillés les mots-clés qui mènent à une page
-(leur adresse), ceux des monnaies (RF, RO, PP), des races, des magies et des classes, et ceux dont le site se sert pour ranger ses pages ou reconnaître un
-sort (`lib/mots-cles.mjs#MOTS_CLES_PROTEGES` ; « race hybride » est créé verrouillé avec la première race hybride, R220 (2)) ; un mot-clé créé ensuite ne
-l'est pas (R219 (5)). Le verrou ne change que par une migration (aucune route ne l'écrit ; un rôle d'admin pourra le changer « à l'avenir »). En mode
-modification, sa ligne a un **cadenas**, ses champs sont désactivés et la raison est en infobulle (R219 (7)), avec le texte « Verrouillé : ni
-modification ni suppression sur le site (R218). » ; il n'a ni « Supprimer » ni « Fusionner dans… », mais il est proposé comme cible d'une fusion et
-garde son menu des mentions. Hors du mode modification, rien ne le distingue. Une page vers laquelle mène un mot-clé verrouillé ne se supprime pas sur
-le site, et l'adresse du mot-clé n'est jamais vidée (R221). Un mot-clé que cite une balise de la définition d'un mot-clé verrouillé, celle de la cible
-comprise, ne se fusionne pas tant qu'elle le cite : la définition verrouillée n'est pas réécrite (R222 (1) ; le service refuse en `409` avec la liste
-de ces mots-clés) ; un mot écrit sans balise ne compte pas. Les autres mots-clés se modifient tous, libellé compris (R195). La page et l'extension ne
-se parlent que par l'évènement `glossaire:mots-cles` et les
-`li[data-id][data-cle][data-n][data-libelle]`, plus `data-abreviation`, `data-definition`, `data-url` et `data-couleur` quand le mot-clé en a. Dans
-l'éditeur en place, l'outil « Lien page » lie le texte choisi par un mot-clé qui a une adresse (sa balise) ; « Lien web » garde les adresses web. Une
-page créée depuis le site ne porte que les mots-clés dont le site se sert. Les événements de la chronologie n'ont pas d'étiquette (« trop nombreux et
-trop libres », demande du propriétaire) mais des **catégories**, un vocabulaire à part (voir « Chronologie ») ; leurs descriptions peuvent citer des
-mots-clés.
+**Gérer le vocabulaire** (site de dev, mode modification du Glossaire ; `src/scripts/edition/mots-cles.mjs` ; R234 (5), réponse T6 : l'édition dans la
+ligne du tableau) : au crayon, chaque mot-clé devient une ligne de gestion, dans les colonnes du tableau — ses noms : la **balise à copier** (sa clé,
+« {{clé}} »), son **libellé** et ses **synonymes** (une liste ordonnée, un par ligne ; R233 : l'ordre est gardé, une écriture répétée ne compte qu'une
+fois) ; ses **catégories** (une case à cocher par catégorie, choix multiple) ; son **adresse** (« Lien » : interne, `/races/humain/` ; vidée, NULL) ; ce
+qui le porte, le menu de ses mentions et ses outils, et, en première colonne, son **icône** (un choix dans la liste des icônes du site, `icones` de
+`GET /api/edition/mots-cles/` et de `GET /api/edition/listes/` ; vidée, NULL ; R235) — puis, dessous, sa **couleur** (réponses Q3 et Q4 : deux sélecteurs, la liste des couleurs du site —
+toutes les familles de la palette, groupées, chaque couleur nommée par son élément de référence, « Feu », « Chakra », « Mythril » :
+`lib/glossaire-couleurs.mjs`, que la page donne en `data-couleurs` — et un cercle, `<input type="color">`, qui donne une couleur écrite `#rrggbb` ;
+enregistrée en `famille:id` ou `#rrggbb` ; vidée, NULL) et sa **définition**. « + Ajouter un mot-clé » le crée tout de suite, avec sa définition, son
+adresse, sa couleur, son icône, ses catégories et ses synonymes. On le **renomme**, le **fusionne**, le **supprime**, ou on **force** sa suppression (R223,
+ci-dessous). Un renommage vers le libellé d'un autre mot-clé fait deux **homonymes** quand chacun a une catégorie propre face à l'autre (R232 (9) ; les
+cases cochées dans le même lot comptent) ; sinon, la page propose de les fusionner, et un refus laisse le lot non enregistré. **Les catégories** se
+gèrent au-dessus du tableau (R232 (5)) : chacune se renomme (saisie commune), se **supprime si elle est vide** (aucun mot-clé ne la porte : « Supprimer »
+n'est offert qu'alors, mis en file) ; « + Ajouter une catégorie » la crée tout de suite et l'ajoute, non cochée, aux cases de chaque mot-clé. Le lot part
+dans un ordre que le service accepte (`lib/mots-cles-edition.mjs#operationsDuVocabulaire`) : fusions, suppressions, suppressions forcées, catégories des
+mots-clés (`categories_mot_cle`, avant les renommages, pour qu'un homonyme ait déjà ses catégories distinctives), renommages et autres champs, synonymes
+(`synonymes_mot_cle`), catégories supprimées. Un refus du service (400 ou 409, avec `champ` : `categories` pour un homonyme sans catégorie distinctive,
+`libelle` pour une clé déjà prise, `synonymes` pour un synonyme mal écrit ou pris par un autre mot-clé) s'affiche comme tout refus du lot. Chaque
+mot-clé a un **menu déroulant des endroits qui le mentionnent** (décision R196 (2) : une page qui le porte ou dont un texte le cite par une balise, en
+lien ; un texte qu'aucune page ne montre, par sa table et sa ligne ; les pages d'exemple comptent), et **« Supprimer » n'est offert que si cette liste
+est vide** (R196 : un mot-clé mentionné ne se supprime pas, le service refuse en `409` avec la liste ; plus rien n'est retiré des pages ni des textes,
+sauf en forçant : ci-dessous). La fusion, elle, reporte ses mentions sur l'autre mot-clé ; la petite boîte « Fusionner dans… » propose chaque cible par
+son libellé, ou par sa clé quand des homonymes partagent ce libellé ; elle ne propose pas un mot-clé verrouillé quand la source a au moins un synonyme
+(R233 (11), « Refuser la fusion » : le service répond `409`, `champ: 'synonymes'`), mais le propose quand elle n'en a pas. Un mot-clé **verrouillé** (`mot_cle.verrou`, migration `0110` ; décisions R218,
+R219) ne se modifie ni ne se supprime depuis le site : aucun de ses champs (libellé, définition, synonymes (R233 (6)), adresse, couleur, icône (R235 (5))), ni sa
+suppression, même sans mention, ni sa fusion dans un autre ; **ses catégories, si** (R232 (11) : elles ne sont pas couvertes par le verrou) ; il se pose
+encore sur une page et s'en retire, se cite par une balise et **reçoit la fusion** d'un autre mot-clé, sans en prendre l'adresse ni la couleur. Sont
+verrouillés les mots-clés qui mènent à une page (leur adresse), ceux des monnaies (RF, RO, PP), des races, des magies et des classes, et ceux dont le site
+se sert pour ranger ses pages ou reconnaître un sort (`lib/mots-cles.mjs#MOTS_CLES_PROTEGES` ; « race hybride » est créé verrouillé avec la première race
+hybride, R220 (2)) ; un mot-clé créé ensuite ne l'est pas (R219 (5)). Le verrou ne change que par une migration (aucune route ne l'écrit ; un rôle
+d'admin pourra le changer « à l'avenir »). En mode modification, sa ligne a un **cadenas**, ses champs et ses synonymes sont désactivés et la raison est
+en infobulle (R219 (7)), avec le texte « Verrouillé : ni modification ni suppression sur le site (R218). » ; il n'a ni « Supprimer » ni « Fusionner
+dans… », mais il est proposé comme cible d'une fusion et garde son menu des mentions. Hors du mode modification, rien ne le distingue. Une page vers
+laquelle mène un mot-clé verrouillé ne se supprime pas sur le site, et l'adresse du mot-clé n'est jamais vidée (R221). Un mot-clé que cite une balise de
+la définition d'un mot-clé verrouillé, celle de la cible comprise, ne se fusionne pas tant qu'elle le cite : la définition verrouillée n'est pas réécrite
+(R222 (1) ; le service refuse en `409` avec la liste de ces mots-clés) ; un mot écrit sans balise ne compte pas. Les autres mots-clés se modifient tous,
+libellé compris (R195). La page et l'extension ne se parlent que par l'évènement `glossaire:mots-cles` (`detail.gestion` : la gestion est affichée ;
+`detail.categories` : les catégories, pour la liste du filtre) et les `tbody[data-id][data-cle][data-n][data-libelle]`, plus `data-synonymes` et
+`data-categories` (JSON), `data-definition`, `data-url` et `data-couleur` quand le mot-clé en a. Le titre de la page où mène une adresse vient de
+`GET /api/edition/mots-cles/` (`page_du_lien`, `titre_du_lien` ; null : l'adresse brute). Dans l'éditeur en place, l'outil « Lien page » lie le
+texte choisi par un mot-clé qui a une adresse (sa balise, par sa clé) ; « Lien web » garde les adresses web. Une page créée depuis le site ne porte que les
+mots-clés dont le site se sert. Les événements de la chronologie n'ont pas d'étiquette (« trop nombreux et trop libres », demande du propriétaire) mais
+des **catégories**, un vocabulaire à part (voir « Chronologie ») ; leurs descriptions peuvent citer des mots-clés.
 
 **Forcer la suppression** (décision R223, qui amende R196 pour les mots-clés non verrouillés ; `lib/mots-cles-edition.mjs#forcageOffert`,
 `#ceQueRemplaceLeForcage`) : quand le menu des mentions d'un mot-clé non verrouillé n'est pas vide, sa ligne offre **« Forcer la suppression »** à la place
@@ -1823,8 +1861,8 @@ de « Supprimer » (le « Supprimer » d'une liste vide reste tel quel). Le for�
 s'annule avant l'enregistrement (« Sera supprimé en forçant — annuler »), part après les fusions et les suppressions ordinaires (opération
 `{ op: 'supprimer', entite: 'mot_cle', cle: { id }, forcer: true }`), et la confirmation dit ce qu'il remplace : le nombre des mentions (textes qui le
 citent, étiquettes de page), leurs endroits, et ce que chacune devient. **Ce qu'il remplace** (réponse « Le texte affiché ») : chaque balise qui cite le
-mot-clé, pages d'exemple comprises, devient son texte affiché, en texte simple, sans lien — `{{id}}` et `{{id:}}` donnent le libellé (la définition
-n'est pas reprise), `{{id|texte}}` donne son texte (« les {{elfe|elfes}} » → « les elfes ») ; les étiquettes des pages qui le portent sont retirées ;
+mot-clé, pages d'exemple comprises, devient son texte affiché, en texte simple, sans lien — `{{clé}}` et `{{clé:}}` donnent le libellé (la définition
+n'est pas reprise), `{{clé|texte}}` donne son texte (« les {{elfe|elfes}} » → « les elfes ») ; les étiquettes des pages qui le portent sont retirées ;
 puis le mot-clé est supprimé. **Jamais pour un mot-clé verrouillé** : ni bouton, ni envoi (R218 (3), R223 (4)). **Le service refuse le forçage** (`409`,
 avant toute écriture) quand le mot-clé étiquette un sort (R114, R164 : le forçage ne lève que le refus des mentions), quand la définition d'un mot-clé
 verrouillé le cite (elle n'est pas réécrite, R222 (1) : `mots_cles_verrouilles`), quand le site ne sait pas réécrire une de ses mentions
@@ -1900,8 +1938,8 @@ ou le lien tient (`lib/ancres-figees.mjs`).
 ## Maillage automatique
 
 Après un import, `npm run autolink` (depuis `client/`) propose de baliser les mentions d'un **mot-clé à adresse** dans le texte des pages : son
-libellé, ou le titre ou un alias de la page où il mène quand il est le seul mot-clé à y mener. La mention devient `{{id}}` (le libellé) ou
-`{{id|texte}}` (forme canonique) ; jamais un `[[…]]`. Les mots-clés et leurs adresses sont lus dans la base reconstruite depuis `data/rows` ; une page
+libellé, ou le titre ou un alias de la page où il mène quand il est le seul mot-clé à y mener. La mention devient `{{clé}}` (le libellé) ou
+`{{clé|texte}}` (forme canonique) ; jamais un `[[…]]`. Les mots-clés et leurs adresses sont lus dans la base reconstruite depuis `data/rows` ; une page
 sans mot-clé n'est pas une cible (le maillage ne crée jamais de mot-clé ; l'aperçu les compte, `--verbose` les liste). **Sans option, il n'écrit
 rien** : il affiche les statistiques et les 40 premières balises ; `npm run autolink -- --write` les applique dans les `.md` fabriqués (puis
 `npm run db:sync-pages`), `-- --verbose` liste tout. Règles (précision d'abord) :

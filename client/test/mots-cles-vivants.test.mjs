@@ -1,16 +1,18 @@
 // Les mots-clés vivants du site de dev (src/scripts/edition/mots-cles-vivants.mjs) dans un faux navigateur (test/aide-faux-dom.mjs#domVivant) : la page
 // suit le vocabulaire vivant (libellé, bulle refaite, mot-clé supprimé réduit à son texte), le HTML posé ensuite a ses balises rendues comme par le
 // middleware (zones exclues et brutes, bulle, bouton, attributs), et l'observateur ne boucle pas sur ses propres écritures (un « {{ » seul n'est pas une
-// balise : ni réécrit, ni relu).
+// balise : ni réécrit, ni relu). Un mot-clé rendu et sa bulle citent sa clé (R232 (3)) : une clé qui change (renommage) refait la balise sous la
+// nouvelle, et la bulle de l'ancienne disparaît.
 //   node --test test/mots-cles-vivants.test.mjs
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { attendre, domVivant, el, fauxDocument } from './aide-faux-dom.mjs';
 
+// GET /api/edition/mots-cles/ : un id entier, la clé (celle que citent les balises), les synonymes (R233)
 const VOCABULAIRE = [
-  { id: 'non-mort', libelle: 'Non-mort', libelle_cle: 'non-mort', description: 'Une créature revenue de la mort.' },
-  { id: 'mordhau', libelle: 'Mordhau', libelle_cle: 'mordhau', description: 'Une prise de l’épée par la lame.' },
-  { id: 'recharge-longue', libelle: 'Recharge longue', libelle_cle: 'recharge-longue', description: null },
+  { id: 1, cle: 'non-mort', libelle: 'Non-mort', description: 'Une créature revenue de la mort.', synonymes: ['Mort-vivant'] },
+  { id: 2, cle: 'mordhau', libelle: 'Mordhau', description: 'Une prise de l’épée par la lame.' },
+  { id: 3, cle: 'recharge-longue', libelle: 'Recharge longue', description: null },
 ];
 
 const paragraphe = el('p', { id: 'p' }, 'Voir {{non-mort}} et {{inconnu|x}}.');
@@ -40,6 +42,7 @@ test('au chargement : les balises de la page rendues avec le vocabulaire vivant,
     'dans une bulle : ni bulle ni focus');
   assert.match(html('lien'), /data-bulle="mot-cle-mordhau" aria-describedby="mot-cle-mordhau" data-balise="\{\{mordhau\|la prise\}\}">la prise<\/strong><\/a>/, 'dans un lien : sans tabindex');
   assert.ok(document.getElementById('mot-cle-non-mort'), 'la bulle de « Non-mort »');
+  assert.equal(document.getElementById('mot-cle-non-mort').querySelector('.bulle__aussi').textContent, 'Aussi appelé : Mort-vivant', 'ses synonymes (R233 (8))');
   assert.ok(document.getElementById('mot-cle-mordhau'), 'la bulle de « Mordhau »');
   assert.equal(document.getElementById('mot-cle-recharge-longue'), null, 'pas de bulle sans définition');
   // déjà rendus au build : refaits d'après le vocabulaire vivant
@@ -78,18 +81,20 @@ test('pas de boucle : un attribut ou un texte où « {{ » n’ouvre aucune bali
   assert.equal(document.body.innerHTML, stable);
 });
 
-test('le vocabulaire change (glossaire relu) : libellés, mode complet et bulles suivent ; un mot-clé supprimé redevient son texte', async () => {
+test('le vocabulaire change (glossaire relu) : libellés, clés, mode complet et bulles suivent ; un mot-clé supprimé redevient son texte', async () => {
+  // « Non-mort » renommé « Revenant » : sa clé change (R232 (2)), l'ancienne reste une clé quittée
   definirLeVocabulaire([
-    { id: 'non-mort', libelle: 'Mort-vivant', libelle_cle: 'mort-vivant', description: 'Définition revue.' },
-    { id: 'recharge-longue', libelle: 'Recharge longue', libelle_cle: 'recharge-longue', description: 'Désormais décrite.' },
+    { id: 1, cle: 'revenant', libelle: 'Revenant', description: 'Définition revue.', anciennes_cles: ['non-mort'] },
+    { id: 3, cle: 'recharge-longue', libelle: 'Recharge longue', description: 'Désormais décrite.' },
   ]);
   await attendre();
-  assert.match(html('p'), />Mort-vivant<\/strong>/, 'une balise sans texte écrit : le nouveau libellé');
-  assert.equal(document.getElementById('mot-cle-non-mort').textContent, 'Mort-vivantDéfinition revue.', 'la bulle refaite');
+  assert.match(html('p'), /data-mot-cle="revenant" data-bulle="mot-cle-revenant"[^>]*>Revenant<\/strong>/, 'une balise sans texte écrit : le nouveau libellé, la nouvelle clé');
+  assert.equal(document.getElementById('mot-cle-revenant').textContent, 'RevenantDéfinition revue.', 'la bulle refaite, sous la nouvelle clé');
+  assert.equal(document.getElementById('mot-cle-non-mort'), null, 'la bulle de la clé quittée retirée');
   assert.equal(document.getElementById('mot-cle-mordhau'), null, 'Mordhau supprimé : plus de bulle');
   assert.match(html('lien'), /<a id="lien" href="\/x\/">la prise<\/a>/, 'son texte simple');
   assert.ok(document.getElementById('mot-cle-recharge-longue'), 'décrit : sa bulle est posée');
   assert.match(document.getElementById('pose').innerHTML, /data-bulle="mot-cle-recharge-longue"/, 'et ses déclencheurs');
-  assurerLaBulle('non-mort');
-  assert.equal(document.querySelectorAll('#mot-cle-non-mort').length, 1, 'une seule bulle par mot-clé');
+  assurerLaBulle('revenant');
+  assert.equal(document.querySelectorAll('#mot-cle-revenant').length, 1, 'une seule bulle par mot-clé');
 });

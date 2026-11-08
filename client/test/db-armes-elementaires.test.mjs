@@ -9,6 +9,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { after, test } from 'node:test';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { idDuProtege } from '../src/lib/mots-cles-proteges.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
 
@@ -204,9 +205,11 @@ const SORTS_FER = [
 ];
 
 // Les sorts « Fer » (« Les sorts "fer" sont utilisable sur les armes élémentaire mais il faut évidemment qu'il soit du même élement ») se reconnaissent
-// par leur étiquette « Sort fer » (sort_mot_cle 'sort-fer', décision R164, migration 0079), jamais par leur nom.
+// par leur étiquette « Sort fer » (sort_mot_cle, mot-clé protégé `sort-fer`, décision R164, migration 0079), jamais par leur nom.
 test('R167 : les 13 sorts « Fer » portent l’étiquette « Sort fer » (un par magie, ni l’Arcane ni le Potentiel Illimité)', () => {
-  const marques = tout("SELECT s.id, s.magie_id, s.niveau FROM sort_mot_cle m JOIN sort s ON s.id = m.sort_id WHERE m.mot_cle_id = 'sort-fer' ORDER BY s.id");
+  // le mot-clé « Sort fer » par l'id que lui donne la liste des protégés (migration 0113 : un id entier figé)
+  const marques = tout('SELECT s.id, s.magie_id, s.niveau FROM sort_mot_cle m JOIN sort s ON s.id = m.sort_id WHERE m.mot_cle_id = ? ORDER BY s.id',
+    idDuProtege('sort-fer'));
   assert.deepEqual(marques.map((s) => [s.id, h.valeurDImport('sort', { id: s.id }, 'nom'), s.magie_id]), SORTS_FER);
   assert.ok(marques.every((s) => s.niveau === 2));
   for (const [id] of SORTS_FER) assert.match(h.valeurDImport('sort', { id }, 'type_brut'), /^Amplification/);

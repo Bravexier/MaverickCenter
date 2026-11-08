@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 231 décisions, de R1 à R231, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 235 décisions, de R1 à R235, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
 
 | Réf. | Sujet | Décision |
 | --- | --- | --- |
@@ -237,3 +237,7 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R229 | Renvoi « plus haut » de `guide/jet-de-des` (suite de R224 (2) ; question V… | « Comme expliqué plus haut, » est retiré : la phrase d… |
 | R230 | Suite de R227 (3) et de R225 (2026-11-08). (1) Le texte du Bijoutier dans… | (1) Le texte du Bijoutier est aligné sur R227 (3) : il… |
 | R231 | Réécriture des pages « Attaquer et se défendre » et « Attaque et Défense »… | (1) Partage. `guide/attaquer-et-se-defendre` porte tou… |
+| R232 | Refonte de la table des mots-clés, qui remplace R191 (demande du propriéta… | (1) Identifiant : un entier auto-incrémenté, figé comm… |
+| R233 | Les synonymes d'un mot-clé (libellés secondaires), suite de R232 (demande… | (1) Un mot-clé peut avoir des synonymes (libellés seco… |
+| R234 | Le tableau des mots-clés du Glossaire, suite de R232 et R233 (demande du p… | (1) Le tableau des mots-clés du Glossaire (`/regles/gl… |
+| R235 | L'icône d'un mot-clé, suite de R234 (8) (demande du propriétaire, 2026-11-… | (1) Une colonne `icone` du mot-clé, modifiable sur le… |

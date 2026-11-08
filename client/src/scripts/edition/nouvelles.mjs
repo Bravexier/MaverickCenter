@@ -24,6 +24,7 @@ import { entreesDuPlanVivant, htmlDUneEntree } from '../../lib/ordre-des-menus.m
 // la couleur d'une race ou d'une classe créée : la classe de sa nature ou de sa catégorie, comme les gabarits (familles `race` et `classe`, émises avec
 // la page dessinée : la page 404 ne les a pas) ; l'éditeur peut importer la palette (hors version portable : skill ui-couleurs)
 import { classeDUneClasse, classeDeRace, cssDesFamilles } from '../../lib/palette-css.mjs';
+import { nomDuProtege } from '../../lib/mots-cles-proteges.mjs';
 import { TAG_RACE_HYBRIDE } from '../../lib/race-kinds.mjs';
 
 const ed_ = (table, cle, colonne) => echapperHtml(attributEd(table, cle, colonne));
@@ -34,15 +35,19 @@ const idDeLAdresse = (base) => decodeURIComponent(location.pathname.slice(base.l
 const lignesDe = (lignes, table) => lignes.filter((l) => l.table === table && l.ligne);
 /**
  * Les mots-clés d'une page créée, d'après les lignes en attente : page_tag ne garde que l'id du mot-clé (vocabulaire `mot_cle`, migration 0043), par
- * lequel la nature d'une race et la catégorie d'une classe se lisent (décision R195 : jamais par l'écriture) ; son libellé vient d'une ligne mot_cle en
- * attente (mot-clé créé avec la page) ou de la liste du service (`motsCles`). [{ id, libelle }]
+ * lequel la nature d'une race et la catégorie d'une classe se lisent (décision R195 : jamais par l'écriture ; le nom protégé d'un mot-clé,
+ * lib/mots-cles-proteges.mjs#nomDuProtege, d'après son id entier, migration 0113, ou la clé de `race-hybride`) ; son libellé et sa clé viennent d'une
+ * ligne mot_cle en attente (mot-clé créé avec la page) ou de la liste du service (`motsCles`). [{ id, libelle, cle, nom (protégé, ou null) }]
  */
 function motsClesDeLaPage(lignes, id, vocabulaire = []) {
   const connus = new Map([...vocabulaire.map((m) => [m.id, m]), ...lignesDe(lignes, 'mot_cle').map((l) => [l.cle.id, l.ligne])]);
   return lignesDe(lignes, 'page_tag')
     .filter((l) => l.ligne.page_id === id)
     .sort((a, b) => a.ligne.ordre - b.ligne.ordre)
-    .map((l) => ({ id: l.ligne.tag_id, libelle: connus.get(l.ligne.tag_id)?.libelle ?? l.ligne.tag_id }));
+    .map((l) => {
+      const m = { id: l.ligne.tag_id, libelle: connus.get(l.ligne.tag_id)?.libelle ?? String(l.ligne.tag_id), cle: connus.get(l.ligne.tag_id)?.cle ?? null };
+      return { ...m, nom: nomDuProtege(m) };
+    });
 }
 const champsDe = (entite) => Object.entries(ENTITES[entite].champs).map(([nom, c]) => ({ nom, libelle: c.libelle, type: c.type, requis: c.requis, choix: c.choix, liste: c.liste }));
 
@@ -51,7 +56,7 @@ function pageDeRace(lignes, id, vocabulaire) {
   const race = lignesDe(lignes, 'race').find((l) => l.cle.id === id)?.ligne;
   const onglet = lignesDe(lignes, 'race_onglet').find((l) => l.cle.race_id === id)?.ligne;
   if (!race) return null;
-  const hybride = motsClesDeLaPage(lignes, id, vocabulaire).some((m) => m.id === TAG_RACE_HYBRIDE);
+  const hybride = motsClesDeLaPage(lignes, id, vocabulaire).some((m) => m.nom === TAG_RACE_HYBRIDE);
   const r = (c) => ed_('race', { id }, c);
   const o = (c) => ed_('race_onglet', { race_id: id }, c);
   const stat = (libelle, c) => `<div class="race-stat"><dt>${libelle}</dt><dd data-ed="${o(c)}"></dd></div>`;
@@ -86,8 +91,8 @@ function pageDeClasse(lignes, id, vocabulaire) {
   const classe = lignesDe(lignes, 'classe').find((l) => l.cle.id === id)?.ligne;
   if (!classe) return null;
   const motsCles = motsClesDeLaPage(lignes, id, vocabulaire);
-  const tags = motsCles.map((m) => m.libelle);
-  const couleur = classeDUneClasse({ id, data: { mots_cles: motsCles.map((m) => m.id) } });
+  // la catégorie d'une classe se lit par les noms protégés de ses mots-clés (`data.mots_cles`, comme lib/pages-db.mjs#motsClesDesPages)
+  const couleur = classeDUneClasse({ id, data: { mots_cles: motsCles.map((m) => m.nom).filter(Boolean) } });
   const c = (col) => ed_('classe', { id }, col);
   const stat = (libelle, col) => `<div class="classe-stat"><dt>${libelle}</dt><dd data-ed="${c(col)}"></dd></div>`;
   const carte = (titre, col, rendu, balise = 'p') => `<article class="depart-carte" data-ed-cadre="${balise}"><h3>${titre}</h3><${balise} data-ed="${c(col)}"${rendu ? ` data-ed-rendu="${rendu}"` : ''}></${balise}></article>`;
@@ -97,7 +102,7 @@ function pageDeClasse(lignes, id, vocabulaire) {
     html: `<p class="muted"><a href="#">Classes</a></p>
     <div class="classe ${couleur}" data-ed-classe="${echapperHtml(id)}">
       <header class="classe-hero">
-        <p class="classe-hero__surtitre">${echapperHtml(tags.find((t) => t !== 'classe') ?? 'Classe')}</p>
+        <p class="classe-hero__surtitre">${echapperHtml(motsCles.find((m) => m.nom !== 'classe')?.libelle ?? 'Classe')}</p>
         <h1>${echapperHtml(classe.nom)}</h1>
         <dl class="classe-stats">${stat('Santé de départ', 'sante_depart')}${stat('Chakra de départ', 'chakra_depart')}${stat('Barrière de départ', 'barriere_depart')}</dl>
       </header>
@@ -254,13 +259,13 @@ export const nouvelles = {
     if (document.querySelector('.classes-pastilles')) {
       for (const l of lignesDe(lignes, 'classe')) {
         if (!l.creee) continue;
-        pastilleDeClasse(ed, l.ligne, motsClesDeLaPage(lignes, l.cle.id, ed.listes.motsCles).map((m) => m.id));
+        pastilleDeClasse(ed, l.ligne, motsClesDeLaPage(lignes, l.cle.id, ed.listes.motsCles).map((m) => m.nom).filter(Boolean));
       }
     }
     if (document.querySelector('.races-pastilles')) {
       for (const l of lignesDe(lignes, 'race')) {
         if (!l.creee) continue;
-        const hybride = motsClesDeLaPage(lignes, l.cle.id, ed.listes.motsCles).some((m) => m.id === TAG_RACE_HYBRIDE);
+        const hybride = motsClesDeLaPage(lignes, l.cle.id, ed.listes.motsCles).some((m) => m.nom === TAG_RACE_HYBRIDE);
         pastilleDeRace(ed, l.ligne, hybride);
       }
     }

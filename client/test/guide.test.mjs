@@ -4,6 +4,7 @@
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
+import { idDuMotCleNomme } from './aide-mots-cles.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import GithubSlugger from 'github-slugger';
 import { adresseDesAnciensLiens, avecPrefixe, BLOCS, morceauxDuChapitre, remarkAnciensLiensDuGuide, sansMarqueurs } from '../src/lib/guide.mjs';
@@ -303,7 +304,7 @@ test('décisions R18 et R186 : à court de chakra, chaque point qui manque coût
     .flatMap((f) => par0111('page', { id: 'guide/les-degats' }, 'corps_md', f)))].map(echapper).join('|');
   assert.match(corps('guide/les-degats'), new RegExp(`Elle prend les coups avant la santé, sauf contre-indication : [^\\n]*\\(voir (?:${renvoi})\\)\\. ${
     echapper('Un coût payé en santé ({{chakra|chakra}} manquant, coût d’un sort ou d’un don) ne passe pas par elle, sauf si un texte le précise.')}`));
-  const chakra = valeurDe0093('mot_cle', { id: 'chakra' }, 'description');
+  const chakra = valeurDe0093('mot_cle', { id: idDuMotCleNomme('chakra') }, 'description');
   assert.match(chakra, /Quand le chakra est épuisé, la santé est consommée à la hauteur de 3 points pour un de Chakra\./);
   for (const [id, texte] of [['guide/finaliser-son-personnage', etape6], ['guide/la-magie-en-jeu', magie], ['guide/le-mode-hyper', corps('guide/le-mode-hyper')], ['guide/le-mode-hyper-100', cent], ['mot_cle chakra', chakra]]) {
     assert.doesNotMatch(texte, /\b2 points de santé pour 1|coûte 2 points de santé|se paie de \*\*2 points de santé|2 points pour un de Chakra/, `${id} : plus l'ancien tarif de R18`);
@@ -345,7 +346,7 @@ test('décision R149 (G40) : le plafond de maîtrise d’arme, 4 points, donc 5 
   // est la définition du mot-clé `maitrise-darme`.
   for (const [id, texte] of [['guide/caracteristiques-et-competences', texteDImport('page', { id: 'guide/caracteristiques-et-competences' }, 'corps_md')],
     ['guide/l-equipement', texteDImport('page', { id: 'guide/l-equipement' }, 'corps_md')],
-    ['mot_cle maitrise-darme', texteDImport('mot_cle', { id: 'maitrise-darme' }, 'description')]]) {
+    ['mot_cle maitrise-darme', texteDImport('mot_cle', { id: idDuMotCleNomme('maitrise-darme') }, 'description')]]) {
     assert.ok(texte, `${id} : le texte (à l’import)`);
     const desDeMaitrise = texte.split('\n').filter((ligne) => /point de maîtrise/.test(ligne) && /\bdés?\b/.test(ligne));
     assert.ok(desDeMaitrise.length > 0, `${id} : la phrase des dés de maîtrise`);

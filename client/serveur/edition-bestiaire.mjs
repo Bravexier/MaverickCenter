@@ -36,7 +36,7 @@ const portraitDe = (ligne) => Object.fromEntries(COLONNES_DU_PORTRAIT.map((c) =>
 
 /**
  * Ce qu'une description de capacité commune peut écrire (décision R69) : des accolades seulement autour d'un entier, « {10} » (un emplacement de valeur
- * commune 10), ou d'une balise du glossaire des mots-clés (« {{id|texte}} », lib/mots-cles-balises.mjs, que le service a déjà contrôlée) ; renvoie le
+ * commune 10), ou d'une balise du glossaire des mots-clés (« {{clé|texte}} », lib/mots-cles-balises.mjs, que le service a déjà contrôlée) ; renvoie le
  * message du refus, ou null.
  */
 function refusDeDescription(description) {

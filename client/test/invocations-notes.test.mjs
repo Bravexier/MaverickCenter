@@ -952,19 +952,22 @@ for (const [nomDuCas, [alterer, attendu]] of Object.entries(ALTERATIONS)) {
 }
 
 test('pages réelles, sans dump : balises posées par `npm run autolink` (anciens liens `[[…]]` compris) et page retouchée (statut verified) ne sont pas des écarts', () => {
-  // le maillage pose « {{id}} » (le texte est le libellé du mot-clé) ou « {{id|texte}} » (migration 0098) ; un ancien [[lien]] reste lu
-  // le mot-clé de la page de la Nécromancie, lu à l'import (0098 ; le site de dev le renomme ou le supprime : une balise qui écrit son texte se lit
-  // sans lui, une balise sans texte affiche alors son id, un autre écart)
-  const necro = chargerVocabulaire(baseDImport()).find((m) => m.id === 'magie-de-la-necromancie');
+  // le maillage pose « {{clé}} » (le texte est le libellé du mot-clé) ou « {{clé|texte}} » (migrations 0098, 0113) ; un ancien [[lien]] reste lu
+  // le mot-clé de la page de la Nécromancie, lu à l'import par son id entier figé (0098 ; registre de la migration 0113 : son ancien id texte ->
+  // son id ; le site de dev le renomme ou le supprime : une balise qui écrit son texte se lit sans lui, une balise sans texte affiche alors sa clé,
+  // un autre écart)
+  const idNecro = JSON.parse(readFileSync(fileURLToPath(new URL('../../data/migrations/0113-mots-cles-id-entier.json', import.meta.url)), 'utf8'))
+    .motsCles.find((m) => m.ancienId === 'magie-de-la-necromancie')?.id;
+  const necro = chargerVocabulaire(baseDImport()).find((m) => m.id === idNecro);
   assert.ok(necro, 'le mot-clé de la page de la Nécromancie (0098)');
   const balise = (t) => t.replace('Terre + Espace/Temps', '{{terre|Terre}} + {{magie-de-lespace-temps|Espace/Temps}}');
   assert.deepEqual(problemesStructure(tel('golem-de-rouage', balise)), []);
   const charcabe = famille.find((p) => p.slug === 'charcabe').texte;
   assert.match(charcabe, /^\*\*Magie\(s\)\*\* : Nécromancie \+ Feu$/m);
-  assert.deepEqual(problemesStructure(tel('charcabe', (t) => t.replace('** : Nécromancie + Feu', `** : {{${necro.id}|Nécromancie}} + Feu`))), []);
-  // « {{id}} » affiche le libellé du mot-clé : ici « Magie de la Nécromancie », un autre texte que la marge de l'introduction (un écart, vu)
+  assert.deepEqual(problemesStructure(tel('charcabe', (t) => t.replace('** : Nécromancie + Feu', `** : {{${necro.cle}|Nécromancie}} + Feu`))), []);
+  // « {{clé}} » affiche le libellé du mot-clé : ici « Magie de la Nécromancie », un autre texte que la marge de l'introduction (un écart, vu)
   assert.notEqual(necro.libelle, 'Nécromancie');
-  assert.notDeepEqual(problemesStructure(tel('charcabe', (t) => t.replace('** : Nécromancie + Feu', `** : {{${necro.id}}} + Feu`))), []);
+  assert.notDeepEqual(problemesStructure(tel('charcabe', (t) => t.replace('** : Nécromancie + Feu', `** : {{${necro.cle}}} + Feu`))), []);
   const lie = (t) => t.replace('Terre + Espace/Temps', '[[Terre]] + [[Espace/Temps|Espace/Temps]]').replace('Poupée temporelle', '[[Poupée temporelle]]');
   assert.deepEqual(problemesStructure(tel('golem-de-rouage', lie)), []);
   assert.deepEqual(problemesStructure(tel('appel-aux-golems', (t) => t.replace('Golem de rouage', '[[Golem de rouage|Golem de rouage]]'))), []);

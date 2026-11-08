@@ -5967,7 +5967,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 Le détail de chaque altération, stade par stade, est dans {{liste-des-alterations-detat|la liste des altérations d’état}} ; sur la page d’une magie, le nom d’une altération montre ses effets au survol.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/attaque-et-defense', 'guide', 'attaque-et-defense', 'Se défendre', 'se-defendre', 'La parade et l’esquive, la défense partielle qui divise les dégâts par deux, les critiques en défense, le nombre de défenses par tour, l’intervention, les attaques qu’on ne peut pas parer et les attaques de zone.', NULL, 'Quand un coup est porté (voir {{attaquer-et-se-defendre}}), la cible peut se défendre si sa {{posture|posture}} le permet et s’il lui reste des défenses pour le tour. Cette page dit comment, et ce qu’il en coûte.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/attaque-et-defense', 'guide', 'attaque-et-defense', 'Se défendre', 'se-defendre', 'La parade et l’esquive, la défense partielle qui divise les dégâts par deux, les critiques en défense, le nombre de défenses par tour, l’intervention, les attaques qu’on ne peut pas parer et les attaques de zone.', NULL, 'Quand un coup est porté (voir {{attaquer}}), la cible peut se défendre si sa {{posture|posture}} le permet et s’il lui reste des défenses pour le tour. Cette page dit comment, et ce qu’il en coûte.
 
 ## Parer ou esquiver {#parer-ou-esquiver}
 
@@ -5991,7 +5991,7 @@ C’est son {{jet-de-defense|jet de défense}}, un {{des|D100}}. Pour bloquer en
 - **Contre une {{reussite-critique|réussite critique}} de l’attaquant**, seule une réussite critique de la défense compte : un résultat critique égal ou inférieur à celui de l’attaquant bloque entièrement le coup ; un résultat critique supérieur à celui de l’attaquant donne une {{defense-partielle|défense partielle}} ; tout autre résultat est un échec, avec des dégâts entiers, même si le jet est réussi.
 
   *Exemple : l’attaquant fait une réussite critique sur 3, et la plage de réussite critique de la défense va de 1 à 5. Sur 1, 2 ou 3, le coup est entièrement bloqué ; sur 4 ou 5 (ou plus si sa plage de critique est plus large), défense partielle ; au-delà, la défense échoue.*
-- **Réussite critique en défense** : une contre-attaque est possible (dans la mesure du possible), ou désarmer l’adversaire ; le {{maitre-du-jeu|MJ}} peut aussi imaginer autre chose. La {{posture|posture défensive}} l’élargit, jamais au-delà de 1 à 15 (voir {{posture|Les postures}} et {{reussites-echecs-et-critiques}}).
+- **Réussite critique en défense** : une contre-attaque est possible (dans la mesure du possible), ou désarmer l’adversaire ; le {{maitre-du-jeu|MJ}} peut aussi imaginer autre chose. La {{posture|posture défensive}} l’élargit, jamais au-delà de 1 à 15 (voir {{posture|Les postures}} et {{reussites-echecs-critiques}}).
 - **{{echec-critique}} en défense** : l’{{armure-physique|AP}} et l’{{armure-magique|AM}} de la cible ne comptent pas, et l’attaquant ajoute +8 à ses dégâts (ou autre chose, au choix du MJ).
 
 ## Combien de défenses par tour ? {#defenses-par-tour}
@@ -6006,7 +6006,7 @@ Les {{boss|boss}}, pensés pour affronter une équipe de quatre joueurs, ont plu
 
 - **L’{{attaque-dopportunite|attaque d’opportunité}}** : sa victime ne peut ni parer ni esquiver, sauf en posture défensive.
 - **L’{{embuscade|embuscade}}** : contrairement aux autres attaques d’opportunité, sa victime peut parer ou esquiver ; et la posture de vigilance déjoue l’embuscade.
-- **Ce qui gêne la défense** : un coup réussi à la dague (−10 % au jet de défense, −20 % avec la lame secrète) et la {{tenaille|prise en tenaille}} à quatre (−10 % au jet de défense de la cible) ; voir {{attaquer-et-se-defendre}}.
+- **Ce qui gêne la défense** : un coup réussi à la dague (−10 % au jet de défense, −20 % avec la lame secrète) et la {{tenaille|prise en tenaille}} à quatre (−10 % au jet de défense de la cible) ; voir {{attaquer}}.
 
 ## Les attaques de zone {#attaques-de-zone}
 
@@ -6014,7 +6014,7 @@ Les {{boss|boss}}, pensés pour affronter une équipe de quatre joueurs, ont plu
 - La parade n’est pas concernée.
 - Quand deux personnages sont pris dans la même zone, l’un ne peut pas protéger l’autre, même en posture défensive.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/attaquer-et-se-defendre', 'guide', 'attaquer-et-se-defendre', 'Attaquer', 'attaquer', 'Le jet d’attaque et la compétence qui le porte, la réussite et l’échec critiques, une arme dans chaque main, les armes à part, les coups visés et les situations qui renforcent une attaque.', NULL, 'Une attaque se joue en deux jets de {{des|D100}} : celui de l’attaquant, qui fait l’objet de cette page, puis, si sa {{posture|posture}} le lui permet, celui de la cible pour se défendre (voir {{attaque-et-defense}}). Si le coup passe, il reste à compter les dégâts (voir {{degats|Les dégâts}}).
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/attaquer-et-se-defendre', 'guide', 'attaquer-et-se-defendre', 'Attaquer', 'attaquer', 'Le jet d’attaque et la compétence qui le porte, la réussite et l’échec critiques, une arme dans chaque main, les armes à part, les coups visés et les situations qui renforcent une attaque.', NULL, 'Une attaque se joue en deux jets de {{des|D100}} : celui de l’attaquant, qui fait l’objet de cette page, puis, si sa {{posture|posture}} le lui permet, celui de la cible pour se défendre (voir {{se-defendre}}). Si le coup passe, il reste à compter les dégâts (voir {{degats|Les dégâts}}).
 
 ## Le jet d’attaque {#jet-d-attaque}
 
@@ -6029,7 +6029,7 @@ La posture de l’attaquant joue aussi sur son jet et sur ses dégâts (voir {{p
 
 Deux résultats sortent de l’ordinaire :
 
-- **{{reussite-critique}} (1 à 5)** : les dégâts de l’attaque, bonus compris, sont doublés, et seule une réussite critique de la cible peut alors arrêter le coup, entièrement ou en partie (voir {{attaque-et-defense}}). La {{posture|posture offensive}} l’élargit à 1 à 10 sur les six jets d’attaque, *Concentration* comprise ; d’autres bonus (un score au-delà de 95 %, un don, un sort, la tenaille…) l’élargissent encore, sans jamais dépasser 1 à 15 (voir {{reussir-une-action}}).
+- **{{reussite-critique}} (1 à 5)** : les dégâts de l’attaque, bonus compris, sont doublés, et seule une réussite critique de la cible peut alors arrêter le coup, entièrement ou en partie (voir {{se-defendre}}). La {{posture|posture offensive}} l’élargit à 1 à 10 sur les six jets d’attaque, *Concentration* comprise ; d’autres bonus (un score au-delà de 95 %, un don, un sort, la tenaille…) l’élargissent encore, sans jamais dépasser 1 à 15 (voir {{reussir-une-action}}).
 - **{{echec-critique}} (96 à 100)** : la cible bénéficie d’une {{attaque-dopportunite|attaque d’opportunité}}, ou peut désarmer l’attaquant si c’est possible ; le {{maitre-du-jeu|MJ}} peut aussi en décider autrement.
 
 ## Une arme dans chaque main {#une-arme-dans-chaque-main}
@@ -6071,13 +6071,13 @@ Viser la tête, un bras ou une jambe plutôt que le corps est plus difficile : c
 Le détail de chacune est dans {{tenaille|La prise en tenaille et zone d’influence}}, {{attaque-dopportunite|Les attaques d''opportunité}}, {{attaque-discrete|Les attaques discrètes}} et {{embuscade|L’embuscade}}.
 
 - **La prise en tenaille.** Un ennemi encerclé au corps à corps par des alliés placés sur des cases opposées (devant et derrière, ou à gauche et à droite) est en tenaille : à deux, +4 aux dégâts ; à trois, encore +4 ; à quatre, en plus, +5 % de réussite critique pour les alliés (jamais au-delà de 1 à 15) et −10 % au jet de défense de la cible. Les effets se cumulent.
-- **L’attaque d’opportunité.** Une attaque offerte quand un adversaire rate son attaque contre vous sur un échec critique, quand il sort de votre {{zone-dinfluence|zone d’influence}} (sauf si c’est vous qui l’y forcez), ou quand un don de votre classe le permet. Une seule par tour et par joueur, sauf don qui en permet plus. Ce doit être une action simple : un coup avec une arme déjà dégainée et à portée, ou un sort d’attaque ; pas de sort qui n’attaque pas, de sort de niveau 5, de déplacement, de potion ni d’arme à dégainer. Pour la défense de sa victime, voir {{attaque-et-defense}}.
-- **L’attaque discrète.** Frapper une cible qui ne vous voit pas venir ajoute un dé aux dégâts (2d6 à la dague deviennent 3d6). Il faut passer en mode discret (trois {{action-rapide|actions rapides}}, deux pour un {{voleur|voleur}}), réussir un jet de {{ruse}}, et qu’aucun ennemi ne vous voie clairement. La cible tente alors un jet d’{{observation}} ou de {{distinction}} : si elle fait mieux que votre jet de discrétion, la discrétion est perdue, et le dé en plus avec elle. À ne pas confondre avec l’attaque sournoise, qui vient d’une classe.
-- **L’embuscade.** Vous consommez l’{{action|action}} de votre tour pour attendre un ennemi, et lui porter une attaque d’opportunité dès qu’il entre dans la zone voulue : à une distance égale à la {{vitesse|vitesse}} divisée par 2 avec une arme de corps à corps (on fonce alors sur lui), à la {{portee|portée}} de l’arme avec une arme à distance, à la portée du sort avec la magie. Posture, déplacement et actions rapides restent possibles pendant ce tour. Ce que peut faire la victime est dans {{attaque-et-defense}}.
+- **L’attaque d’opportunité.** Une attaque offerte quand un adversaire rate son attaque contre vous sur un échec critique, quand il sort de votre {{zone-dinfluence|zone d’influence}} (sauf si c’est vous qui l’y forcez), ou quand un don de votre classe le permet. Une seule par tour et par joueur, sauf don qui en permet plus. Ce doit être une action simple : un coup avec une arme déjà dégainée et à portée, ou un sort d’attaque ; pas de sort qui n’attaque pas, de sort de niveau 5, de déplacement, de potion ni d’arme à dégainer. Pour la défense de sa victime, voir {{se-defendre}}.
+- **L’attaque discrète.** Frapper une cible qui ne vous voit pas venir ajoute un dé aux dégâts (2d6 à la dague deviennent 3d6). Il faut passer en mode discret (trois {{instant-cast|actions rapides}}, deux pour un {{voleur|voleur}}), réussir un jet de {{ruse}}, et qu’aucun ennemi ne vous voie clairement. La cible tente alors un jet d’{{observation}} ou de {{distinction}} : si elle fait mieux que votre jet de discrétion, la discrétion est perdue, et le dé en plus avec elle. À ne pas confondre avec l’attaque sournoise, qui vient d’une classe.
+- **L’embuscade.** Vous consommez l’{{action|action}} de votre tour pour attendre un ennemi, et lui porter une attaque d’opportunité dès qu’il entre dans la zone voulue : à une distance égale à la {{vitesse|vitesse}} divisée par 2 avec une arme de corps à corps (on fonce alors sur lui), à la {{portee|portée}} de l’arme avec une arme à distance, à la portée du sort avec la magie. Posture, déplacement et actions rapides restent possibles pendant ce tour. Ce que peut faire la victime est dans {{se-defendre}}.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/bienvenue', 'guide', 'bienvenue', 'Bienvenue dans Maverick', 'bienvenue-dans-maverick', 'MaverickJDR en quelques mots, puis le jeu de rôle pour qui le découvre : qui fait quoi, comment avance une partie, comment lire les dés.', NULL, '## MaverickJDR ?
 
-C’est un univers médiéval-fantasy où la magie est omniprésente. On y retrouve des figures familières comme les {{humain|humains}}, les elfes ou les {{nain|nains}}… mais aussi des peuples plus exotiques tels que les {{orios}}, les {{drassahthac|Drassah’thac}} ou encore les {{drakos}}.
+C’est un univers médiéval-fantasy où la magie est omniprésente. On y retrouve des figures familières comme les {{humain|humains}}, les elfes ou les {{nain|nains}}… mais aussi des peuples plus exotiques tels que les {{orios-race}}, les {{drassahthac|Drassah’thac}} ou encore les {{drakos}}.
 
 Vous incarnez les personnages centraux de fabuleuses histoires, et surtout, vos actions ont un véritable impact sur le monde qui vous entoure. Les dangers seront nombreux, mais vous aurez les moyens et le courage de les affronter !
 
@@ -6988,7 +6988,7 @@ Le MJ peut déployer la carte mais il peut ne pas la déployer si jamais il juge
 - *{{formule-des-degats}}*
 - *Les Actions et mouvements*
 - *{{les-actions-et-mouvements|IC ou Action rapide}}*
-- *{{attaque-et-defense|Attaque et défense}}*
+- *{{se-defendre|Attaque et défense}}*
 - *{{la-vitesse-et-la-portee|La vitesse}}*
 - *La portée*
 - *{{posture|Postures}}*
@@ -7001,7 +7001,7 @@ Le MJ peut déployer la carte mais il peut ne pas la déployer si jamais il juge
 - *{{donjon-pas-bon|Donjon pas bon}}*
 - *{{alignement}}*
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/initiative', 'guide', 'initiative', 'Initiative', 'initiative', 'Quelques effets changent l’initiative : la posture de vigilance donne un bonus d’initiative au début de chaque tour (voir Les postures), et un coup reçu à la jambe gauche en fait perdre au tour suivant (voir le tableau « Localisation des dégâts » de Attaquer).', NULL, 'Quelques effets changent l’initiative : la posture de vigilance donne un bonus d’initiative au début de chaque tour (voir {{posture|Les postures}}), et un coup reçu à la jambe gauche en fait perdre au tour suivant (voir le tableau « Localisation des dégâts » de {{attaquer-et-se-defendre}}). Les boss, eux, ont deux initiatives par tour : on lance deux D20 pour eux.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/initiative', 'guide', 'initiative', 'Initiative', 'initiative', 'Quelques effets changent l’initiative : la posture de vigilance donne un bonus d’initiative au début de chaque tour (voir Les postures), et un coup reçu à la jambe gauche en fait perdre au tour suivant (voir le tableau « Localisation des dégâts » de Attaquer).', NULL, 'Quelques effets changent l’initiative : la posture de vigilance donne un bonus d’initiative au début de chaque tour (voir {{posture|Les postures}}), et un coup reçu à la jambe gauche en fait perdre au tour suivant (voir le tableau « Localisation des dégâts » de {{attaquer}}). Les boss, eux, ont deux initiatives par tour : on lance deux D20 pour eux.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/jet-de-des', 'guide', 'jet-de-des', 'Jet de dés', 'jet-de-des', 'Le jeu de rôle et notamment celui-ci c''est beaucoup de jets de dés, il existe plusieurs façons de procéder à ça.', NULL, 'Le jeu de rôle et notamment celui-ci c''est beaucoup de jets de dés, il existe plusieurs façons de procéder à ça :
 
@@ -7119,7 +7119,7 @@ Le prix d’une arme forgée additionne le coût de l’arme, une unité de son 
 - À 0, l’arme est cassée : inutilisable jusqu’à sa réparation. Un kit de réparation d’arme lui rend un cran de solidité (usage unique).
 - Se battre en {{mordhau}} (l’arme prise par la lame, on frappe avec le manche) permet à certaines armes, notamment les épées, de faire des dégâts de frappe, mais l’arme a alors 30 % de risque de s’abîmer : au-delà de 70 au jet d’attaque, elle perd un cran de solidité.
 
-Pour se battre avec une arme dans chaque main, voir {{attaquer-et-se-defendre}}.
+Pour se battre avec une arme dans chaque main, voir {{attaquer}}.
 
 ## L’armure
 
@@ -7202,7 +7202,7 @@ Une arme devient l’arme élémentaire de sa famille et de la magie (tout arc e
 
 - Un bouclier, c’est **une forme et une matière**. La forme est sa classe, de 1 à 5 : Bocle, Targe, Bouclier Rond, Écu et Pavois. La matière donne sa {{solidite|solidité}}.
 - La plupart des classes de personnage disent, dans leur maîtrise d’armures, jusqu’à quelle classe de bouclier elles savent porter ; d’autres n’en citent aucune.
-- Ses AP et son AM s’ajoutent à ceux de l’armure, mais **seulement lors d’une parade partielle** (voir {{attaque-et-defense}}).
+- Ses AP et son AM s’ajoutent à ceux de l’armure, mais **seulement lors d’une parade partielle** (voir {{se-defendre}}).
 - Son **poids** demande une Force minimum : 1 pour un bouclier léger, 2 pour un moyen, 3 pour un lourd, 4 pour un très lourd. Il faut au moins ce score de Force pour le porter.
 - Il s’améliore de +1 à +5 : l’AP du niveau choisi, de +2 au +1 à +10 au +5, un cran de solidité dès le +1 et un second au +5.
 - À 0 de {{solidite|solidité}}, le bouclier est cassé : ses AP et son AM ne comptent plus.
@@ -7295,7 +7295,7 @@ Certaines magies ont aussi leurs propres règles, dans la section « Explication
 
 Lancer un sort, c’est un jet de D100 dans la compétence *Magie* (Intelligence) : réussi si le résultat est égal ou inférieur à son score (voir {{reussir-une-action}}). Les mages rouge, bleu et vert lancent les leurs avec *Concentration* (Volonté).
 
-- **Réussite critique** : un sort d’attaque double ses dégâts, et seule une réussite critique de la cible peut l’arrêter, entièrement ou en partie (voir {{attaque-et-defense}}) ; un sort d’amplification, de soin, d’entrave ou de protection double sa durée ou son effet.
+- **Réussite critique** : un sort d’attaque double ses dégâts, et seule une réussite critique de la cible peut l’arrêter, entièrement ou en partie (voir {{se-defendre}}) ; un sort d’amplification, de soin, d’entrave ou de protection double sa durée ou son effet.
 - **Échec critique** : le sort coûte le double, et le MJ peut ajouter d’autres ennuis : le sort profite à l’ennemi, le personnage se trompe de sort, l’attaque se retourne contre lui…
 
 ### Le sort préparé
@@ -7569,7 +7569,7 @@ On passe au suivant.
 
 Ce n’est pas parce que ce n’est pas son tour qu’un personnage ne peut rien faire. Il peut :
 
-- se défendre contre les attaques, autant de fois que sa posture le lui permet (voir {{attaque-et-defense}}) ;
+- se défendre contre les attaques, autant de fois que sa posture le lui permet (voir {{se-defendre}}) ;
 - utiliser un don de type *Réaction*, un don qui se joue justement en dehors de son tour ;
 - profiter d’une attaque d’opportunité, quand l’occasion se présente ;
 - ou réagir autrement, si la situation le permet.
@@ -7637,7 +7637,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 À noter que lors d''une attaque discrète, la cible doit effectuer un jet d’Observation ou de Distinction. Si elle réussit à faire mieux que le jet de discrétion précédent, la discrétion est annulée et donc les dégâts bonus aussi. Concernant la zone de vision d’un ennemi, on peut utiliser leur perception comme échelle (1 point de Perception = 2 cases pour repérer quelqu’un de caché)
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/les-degats', 'guide', 'les-degats', 'Les dégâts', 'les-degats', 'Ce que perd la cible d’un coup réussi : la formule des dégâts étape par étape, l’armure, et trois exemples.', NULL, 'Un coup a touché, et la cible n’a pas su l’arrêter entièrement (voir {{attaque-et-defense}}). Reste à savoir ce qu’il lui coûte. Arme ou sort, le calcul se fait toujours dans le même ordre.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/les-degats', 'guide', 'les-degats', 'Les dégâts', 'les-degats', 'Ce que perd la cible d’un coup réussi : la formule des dégâts étape par étape, l’armure, et trois exemples.', NULL, 'Un coup a touché, et la cible n’a pas su l’arrêter entièrement (voir {{se-defendre}}). Reste à savoir ce qu’il lui coûte. Arme ou sort, le calcul se fait toujours dans le même ordre.
 
 ## La formule
 
@@ -7697,7 +7697,7 @@ D’autres règles ajoutent des dégâts à l’attaque. Ils comptent avec les d
 - **le Mode Hyper** : +15 aux dégâts physiques, et +15 aux dégâts de la magie (+7 pour un personnage à deux magies) ;
 - **la symbiose** : un bonus aux dégâts des sorts de sa magie.
 
-Le détail est dans {{attaquer-et-se-defendre}}, {{mode-hyper|Le Mode Hyper}} et {{posture|Les postures}}.
+Le détail est dans {{attaquer}}, {{mode-hyper|Le Mode Hyper}} et {{posture|Les postures}}.
 
 ## Et la barrière ?
 
@@ -8726,7 +8726,7 @@ La situation peut rendre une action plus facile ou plus difficile : le score gag
 
 - **une serrure (ou un coffre) à crocheter** : −3 % par niveau de la serrure, qui va jusqu’au niveau 20 ;
 - **une porte à enfoncer**, avec l’*Athlétisme* : par niveau de la porte, −1 % en bois, −3 % en fer, −4 % en pierre ;
-- **viser la tête, un bras ou une jambe** plutôt que le corps : un malus pour toucher, propre à la zone visée (voir le tableau « Localisation des dégâts » de {{attaquer-et-se-defendre}}) ;
+- **viser la tête, un bras ou une jambe** plutôt que le corps : un malus pour toucher, propre à la zone visée (voir le tableau « Localisation des dégâts » de {{attaquer}}) ;
 - **une croix sous une caractéristique** : un malus à tous les jets de cette caractéristique (voir « Les croix » plus bas) ;
 - **la posture de combat** : certaines donnent un bonus à des jets, d’autres un malus pour toucher (voir {{posture|Les postures}}).
 
@@ -8741,7 +8741,7 @@ Une blessure grave, un traumatisme, une maladie ou même une mauvaise nuit peuve
 
 ## Pour aller plus loin
 
-- Les coups visés et les attaques : {{attaquer-et-se-defendre}} ; la défense : {{attaque-et-defense}}.
+- Les coups visés et les attaques : {{attaquer}} ; la défense : {{se-defendre}}.
 - Les réussites et les échecs critiques du point de vue du MJ : {{des|Jet de dés}}.
 - Serrures, portes et herses : {{les-portes}}.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
@@ -8751,7 +8751,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 L’action réussit de façon exceptionnelle, et mérite une récompense à sa mesure :
 
-- **en attaque**, les dégâts de base sont doublés, et seule une réussite critique de la cible peut alors arrêter le coup, entièrement ou en partie (voir {{attaque-et-defense}}) ;
+- **en attaque**, les dégâts de base sont doublés, et seule une réussite critique de la cible peut alors arrêter le coup, entièrement ou en partie (voir {{se-defendre}}) ;
 - **pour une amplification, un soin, une entrave ou une protection**, la durée ou l’effet est doublé ;
 - **en défense**, le personnage peut contre-attaquer ou désarmer son adversaire ;
 - **hors combat**, le MJ décide de ce qu’elle apporte : les situations sont trop nombreuses pour une règle.

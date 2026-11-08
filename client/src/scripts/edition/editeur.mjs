@@ -438,8 +438,8 @@ export function demarrer(racine, etatService) {
   // --- Formulaire de création (dialog) ---------------------------------------------------------------------------------------------------------
   /**
    * Les champs de formulaire à part (lib/edition-modele.mjs) : { element, lire() } ; `lire` rend la valeur à envoyer, ou lève une erreur (affichée).
-   *   categories plusieurs catégories de la chronologie (`c.choix`, sinon `ed.listes.categoriesChronologie`) : une case à cocher chacune ; une catégorie
-   *              se crée par le bouton « Catégories » de la chronologie ; rend la liste des ids cochés
+   *   categories plusieurs catégories (`c.choix` : celles des mots-clés, sur le Glossaire ; sinon `ed.listes.categoriesChronologie`) : une case à cocher
+   *              chacune ; sans catégorie, le texte `c.vide` (par défaut : le bouton « Catégories » de la chronologie) ; rend la liste des ids cochés
    *   page       une page du wiki (GET /api/edition/pages/, lue à la première saisie), saisie à suggestions ; rend son id, ou '' (aucune)
    *   couleur    une couleur (controleDeCouleur) : la liste des couleurs du site et le cercle ; rend « famille:id », « #rrggbb » ou ''
    */
@@ -499,7 +499,7 @@ export function demarrer(racine, etatService) {
     if (!categories.length) {
       const p = document.createElement('p');
       p.className = 'ed-aide';
-      p.textContent = 'Aucune catégorie pour l’instant : bouton « Catégories » de la chronologie.';
+      p.textContent = c.vide ?? 'Aucune catégorie pour l’instant : bouton « Catégories » de la chronologie.';
       element.append(p);
     }
     return { element, lire: () => [...element.querySelectorAll('input[type="checkbox"]:checked')].map((i) => i.value) };

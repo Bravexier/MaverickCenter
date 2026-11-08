@@ -10,25 +10,27 @@
 //   node --test test/mots-cles-r223.test.mjs
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { marqueursDuLot, marqueursDuResume, neutraliserLeMarqueur, separerLeMarqueur, suppressionsForceesDuResume } from '../serveur/edition.mjs';
+import { marqueursDuLot, marqueursDuResume, neutraliserLeMarqueur, registreDes0113, separerLeMarqueur, suppressionsForceesDuResume } from '../serveur/edition.mjs';
 import { lireBalises, motCleDeLaRef, remplacerParLeTexteAffiche, texteQuiRemplaceLaBalise, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { rendreLeMarkdown } from './aide-rendu-du-site.mjs';
 import { texteAffiche } from './aide-texte-affiche.mjs';
 
-const essai = (libelle, abreviation = null) => ({ id: 'essai-r223', libelle, libelle_cle: 'essai-r223', description: 'Définition d’essai.', abreviation });
-const autre = { id: 'autre-r223', libelle: 'Autre R223', libelle_cle: 'autre-r223', description: '' };
+// des mots-clés d'essai à id entier et à clé (migration 0113), l'un avec un synonyme (migration 0115 : l'ancienne abréviation en est un)
+const essai = (libelle, synonyme = null) => ({ id: 9201, libelle, cle: 'essai-r223', description: 'Définition d’essai.', synonymes: synonyme ? [synonyme] : [] });
+const autre = { id: 9202, libelle: 'Autre R223', cle: 'autre-r223', description: '' };
 const vocabulaire = (m) => vocabulaireDesMotsCles([m, autre]);
 const citeEncore = (texte, m, o) => lireBalises(texte, o).some((b) => motCleDeLaRef(vocabulaire(m), b.ref)?.id === m.id);
 
 test('R223 (2), « Le texte affiché » : texteQuiRemplaceLaBalise rend le libellé pour {{x}} et {{x:}}, le texte écrit pour {{x|texte}}', () => {
   const m = essai('Essai R223', 'ER3');
-  const [simple, ecrit, complet, parLibelle, parAbreviation, autreCasse] = lireBalises('{{essai-r223}} {{essai-r223|autre texte}} {{essai-r223:}} {{Essai R223}} {{er3}} {{essai r223}}');
+  const [simple, ecrit, complet, parLibelle, parSynonyme, autreCasse] = lireBalises('{{essai-r223}} {{essai-r223|autre texte}} {{essai-r223:}} {{Essai R223}} {{er3}} {{essai r223}}');
   assert.equal(texteQuiRemplaceLaBalise(simple, m), m.libelle);
   assert.equal(texteQuiRemplaceLaBalise(ecrit, m), 'autre texte');
   assert.equal(texteQuiRemplaceLaBalise(complet, m), m.libelle, 'le mode complet : le libellé seul');
   assert.equal(texteQuiRemplaceLaBalise(parLibelle, m), m.libelle);
-  assert.equal(texteQuiRemplaceLaBalise(parAbreviation, m), m.abreviation, 'une abréviation : telle que la base l’écrit, ce qu’elle affichait');
-  assert.equal(texteQuiRemplaceLaBalise(autreCasse, m), 'essai r223', 'une autre écriture : telle qu’écrite');
+  // R233 (10) : « Garder la casse tapée, incluant les synonymes et abréviations » : ce que la balise affichait
+  assert.equal(texteQuiRemplaceLaBalise(parSynonyme, m), 'er3', 'un synonyme : tel que tapé');
+  assert.equal(texteQuiRemplaceLaBalise(autreCasse, m), 'essai r223', 'une autre écriture : telle que tapée');
 });
 
 test('R223 (2) : chaque balise du mot-clé devient son texte affiché, dans un texte mis en forme comme dans un texte de case ; les autres balises restent', () => {
@@ -95,4 +97,19 @@ test('R223 (6) : les marqueurs des suppressions forcées et des fusions, en têt
   assert.equal(reste, 'Mot-clé supprimé en forçant (décision R223) : Essai');
   assert.deepEqual([...suppressionsForceesDuResume(`${entete}Résolution du conflit du lot x : ${reste}`)], ['essai-r223', 'autre-r223']);
   assert.deepEqual(separerLeMarqueur('Sans marqueur'), { entete: '', reste: 'Sans marqueur' });
+});
+
+test('R223 (6), migration 0113 : le marqueur d’un lot d’avant se traduit par la correspondance de la migration, même un ancien id fait de chiffres', () => {
+  const registre = registreDes0113();
+  assert.ok(registre, 'la correspondance de la 0113');
+  // un ancien id fait de chiffres, dont l'id entier n'est pas lui-même (s'il en existe un dans la correspondance), et un ancien id quelconque
+  const [chiffres, entierDesChiffres] = [...registre].find(([ancien, id]) => /^\d+$/.test(ancien) && String(id) !== ancien) ?? [];
+  const [lettres, entierDesLettres] = [...registre].find(([ancien]) => !/^\d+$/.test(ancien));
+  const marqueur = marqueursDuLot({ forcees: [lettres, ...(chiffres ? [chiffres] : [])], fusions: [[lettres, 'cree-par-le-journal']] });
+  const avant = marqueursDuResume(marqueur, { avant0113: true });
+  assert.deepEqual([...avant.forcees], [entierDesLettres, ...(chiffres ? [entierDesChiffres] : [])]);
+  assert.deepEqual([...avant.fusions], [[entierDesLettres, 'cree-par-le-journal']], 'un id absent de la correspondance reste texte');
+  // un lot d'après : des ids entiers, relus en nombres
+  assert.deepEqual([...marqueursDuResume(marqueursDuLot({ forcees: [400], fusions: [[12, 34]] })).forcees], [400]);
+  assert.deepEqual([...marqueursDuResume(marqueursDuLot({ fusions: [[12, 34]] })).fusions], [[12, 34]]);
 });

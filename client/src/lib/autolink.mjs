@@ -1,6 +1,6 @@
 // Maillage automatique : transforme les mentions d'un mot-clé à adresse (son libellé, ou le titre ou un alias de la page où il mène) en balises de ce
 // mot-clé. Depuis la migration 0098 (décision du propriétaire : « tous les liens deviendront des mots-clés et tous les mots-clés deviendront des
-// liens »), un lien est la balise d'un mot-clé dont `mot_cle.url` porte l'adresse : « {{id}} » quand le texte est son libellé, « {{id|texte}} » sinon
+// liens »), un lien est la balise d'un mot-clé dont `mot_cle.url` porte l'adresse : « {{clé}} » quand le texte est son libellé, « {{clé|texte}} » sinon
 // (forme canonique d'un texte mis en forme, lib/mots-cles-balises.mjs#formeCanonique) ; jamais un [[lien]], que db:check refuse. Le maillage ne crée
 // jamais de mot-clé : une page sans mot-clé qui y mène n'est pas une cible (ciblesDuVocabulaire).
 // Fonctions pures, sans accès disque : le script client/scripts/autolink.mjs lit et écrit les fichiers.
@@ -52,7 +52,7 @@ export const aMailler = (page) => !TYPES_SANS_MAILLAGE.has(page.type ?? String(p
  * @param {{ id: string, libelle: string, url?: string|null }[]} motsCles
  * @param {{ id: string, title: string, aliases?: string[] }[]} pages
  * @param {Map<string, string|null>} pageDuMotCle
- * @returns {{ cibles: { id: string, libelle: string, page: string|null, termes: string[] }[], sansMotCle: string[] }}
+ * @returns {{ cibles: { id: number, cle?: string, libelle: string, page: string|null, termes: string[] }[], sansMotCle: string[] }}
  */
 export function ciblesDuVocabulaire(motsCles, pages, pageDuMotCle) {
   const avecUrl = motsCles.filter((m) => typeof m?.url === 'string' && m.url);
@@ -65,7 +65,8 @@ export function ciblesDuVocabulaire(motsCles, pages, pageDuMotCle) {
   const cibles = avecUrl.map((m) => {
     const page = pageDuMotCle.get(m.id) ?? null;
     const p = page && parPage.get(page).length === 1 ? pagesParId.get(page) : null;
-    return { id: m.id, libelle: m.libelle, page, termes: p ? [p.title, ...(p.aliases ?? [])] : [] };
+    // `cle` : celle que cite la balise (décision R232 (3) ; l'id entier n'est jamais écrit dans un texte)
+    return { id: m.id, ...(m.cle ? { cle: m.cle } : {}), libelle: m.libelle, page, termes: p ? [p.title, ...(p.aliases ?? [])] : [] };
   });
   return { cibles, sansMotCle: pages.filter((p) => !parPage.has(p.id)).map((p) => p.id) };
 }
@@ -163,7 +164,8 @@ export function autolink(body, terms, self, { maxLinks = 25 } = {}) {
     let pos = 0;
     for (const m of kept) {
       out += text.slice(pos, m.start);
-      out += m.surface === m.t.libelle ? `{{${m.t.id}}}` : `{{${m.t.id}|${m.surface}}}`;
+      const ref = m.t.cle ?? m.t.id;
+      out += m.surface === m.t.libelle ? `{{${ref}}}` : `{{${ref}|${m.surface}}}`;
       links.push({ id: m.t.id, page: m.t.page, libelle: m.t.libelle, text: m.surface, line: lineNumber });
       pos = m.end;
     }

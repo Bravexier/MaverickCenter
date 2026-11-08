@@ -1,34 +1,36 @@
-/* Le Glossaire (/regles/glossaire/) : le filtre, puis un mot-clé par ligne — la pastille de sa couleur, son libellé (un lien vers sa page quand il en a
-   une), son abréviation, le nombre de ses pages (un lien vers leur liste sur /recherche/), puis sa définition. Inséré par pages/regles/glossaire.astro
-   (?raw). La pastille lit la couleur de la classe du mot-clé (`couleur-…` : --couleur, lib/palette-css.mjs), posée sur elle seule ; sans couleur, un
-   cercle vide. Aucune couleur écrite (skill ui-couleurs). */
+/* Le Glossaire (/regles/glossaire/) : les filtres (texte, catégorie : décision R234 (4)), puis le tableau des mots-clés, au gabarit commun
+   (styles/global/tableaux.css : décision R234 (1), « dans le même style que les autres »). Un mot-clé : un <tbody> de deux lignes
+   (lib/mots-cles-balises.mjs#htmlDeLaLigneDuGlossaire) — ses noms, ses catégories, son lien, le menu des pages qui le mentionnent ; puis sa définition,
+   sur toute la largeur (réponse T3 : « dans une ligne en plus au sein de la ligne du tableau »), sans filet entre les deux. Un mot-clé coloré : ses deux
+   lignes sont des lignes colorées du gabarit (`ligne-couleur`), le fond à peine teinté, le liseré de sa couleur (comme les matériaux des armes) ; la
+   couleur est celle de sa classe (`couleur-…` : --couleur, --couleur-texte, lib/palette-css.mjs). Survolées ensemble. Inséré par
+   pages/regles/glossaire.astro (?raw). Aucune couleur écrite (skill ui-couleurs). */
 .glossaire-intro { max-width: 46rem; }
-.glossaire-filtre { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.8rem; margin: 0.8rem 0 0.4rem; }
+.glossaire-filtre { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.8rem; margin: 0.8rem 0 0.6rem; }
 .glossaire-filtre input { flex: 1 1 16rem; max-width: 32rem; }
-.glossaire-liste { list-style: none; padding: 0; margin: 0.6rem 0; max-width: 52rem; }
-.glossaire-liste li[hidden] { display: none; }
-.glossaire-mot {
-  display: grid;
-  grid-template-columns: 1rem 1fr;
-  grid-template-areas: 'pastille tete' '. definition';
-  align-items: baseline;
-  gap: 0.15rem 0.6rem;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid var(--border);
-}
-.glossaire-mot__pastille {
-  grid-area: pastille;
-  align-self: center;
-  inline-size: 0.8rem;
-  block-size: 0.8rem;
-  border: 1px solid var(--border);
-  border-radius: 50%;
-}
-.glossaire-mot__pastille[class*='couleur-'] { border-color: var(--couleur); background: var(--couleur); }
-.glossaire-mot__tete { grid-area: tete; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.6rem; }
-.glossaire-mot__nom { font-weight: 700; }
-.glossaire-mot__abreviation { padding: 0 0.4rem; border: 1px solid var(--border); border-radius: var(--radius-pill); font-size: var(--fs-sm); color: var(--muted); }
-.glossaire-mot__pages { margin-left: auto; font-size: var(--fs-sm); color: var(--muted); }
-.glossaire-mot__definition { grid-area: definition; display: block; white-space: pre-line; }
+.glossaire-filtre select { max-width: 100%; font: inherit; }
+.glossaire-table > tbody[hidden] { display: none; }
+.glossaire-table > thead th:nth-child(1) { width: 1%; }
+.glossaire-table > thead th:nth-child(2) { width: 30%; }
+.glossaire-table > thead th:nth-child(3) { width: 20%; }
+.glossaire-table > thead th:nth-child(4) { width: 22%; }
+/* l'icône du mot-clé, seule, dans sa colonne étroite, en premier (décision R235 (2)) */
+.glossaire-mot__icone { width: 1%; white-space: nowrap; text-align: center; }
+.glossaire-mot > tr { --ligne-fond: var(--couleur); --ligne-texte: var(--couleur-texte); }
+/* la ligne de la définition prolonge celle du mot-clé : pas de filet entre elles */
+.glossaire-table .glossaire-mot__ligne > * { border-bottom: 0; }
+.glossaire-table .glossaire-mot__suite > * { border-top: 0; padding-top: 0; }
+.glossaire-table .glossaire-mot:hover > tr.ligne-couleur > * { background: color-mix(in srgb, var(--ligne-fond) 20%, var(--surface)); }
+.glossaire-mot__nom { display: block; font-weight: 700; }
+.glossaire-mot__synonymes { display: block; font-size: var(--fs-sm); font-weight: 400; color: var(--muted); }
+.glossaire-mot__vide { color: var(--muted); }
+.glossaire-mot__lien a { overflow-wrap: anywhere; }
+.glossaire-mot__adresse { font-size: var(--fs-sm); }
+/* le menu des pages qui mentionnent le mot-clé (R234 (3)) : sa liste ouverte défile au-delà d'une hauteur (la molette passe à la page au bout : pas
+   d'overscroll-behavior, skill ui-defilement) */
+.glossaire-mot__menu > summary { cursor: pointer; color: var(--muted); white-space: nowrap; }
+.glossaire-mot__menu > ul { max-height: 14rem; overflow: auto; margin: 0.2rem 0 0; padding-left: 1.1rem; font-size: var(--fs-md); }
+.glossaire-mot__menu li[data-exemple] { font-style: italic; }
+.glossaire-mot__definition { white-space: pre-line; font-size: var(--fs-md); }
 .glossaire-mot__definition--vide { color: var(--muted); font-style: italic; }
 .glossaire-voir-aussi { margin-top: 1.5rem; }

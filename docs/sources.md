@@ -133,11 +133,17 @@ de `guide/liste-des-effets-mode-hyper`, décision R187 : l'importeur ignore l'on
 en base), exclues de l'import par la décision R183 (11). Test :
 `client/test/importeurs-etiquettes.test.mjs`, qui rejoue les trois extracteurs sur les instantanés de `sources/raw/classeurs/`.
 
-**Les mots-clés dont le site se sert** (`client/src/lib/mots-cles.mjs#MOTS_CLES_PROTEGES`, par id : catégories et colonnes de classe, `classe`,
+**Les mots-clés dont le site se sert** (`client/src/lib/mots-cles.mjs#MOTS_CLES_PROTEGES` : catégories et colonnes de classe, `classe`,
 `capacite-de-classe`, `race`, `metier`, `codex`, étiquettes de sort…) se posent par leur id, jamais par leur écriture, qu'un autre mot-clé pourrait
-prendre : l'extracteur écrit dans `tags:` le libellé courant du mot-clé de cet id (`tools/db/maverick.py#libelle_protege`, vocabulaire
-`data/rows/mot_cle.sql`, option `--vocabulaire` de `classes.py`, `races.py` et `relations-races.py` ; `Vocabulaire.protege` de `codex.py`), qui ne mène
-qu'à lui (`libelle_cle` unique), et rien s'il n'est pas au vocabulaire. `maverick.py#mot_cle`, lui, garde l'écriture d'abord : `db:sync-pages` relit
+prendre. Depuis la migration 0113 (R232), l'id d'un mot-clé est un entier figé ; sa clé (`mot_cle.cle`, celle que citent les balises `{{…}}` et les
+adresses) est recalculée à chaque renommage ou changement de catégorie (le slug du libellé, suivi des catégories qui distinguent un homonyme) ; le
+libellé n'est plus unique, et une écriture que portent plusieurs homonymes est ambiguë (il faut écrire la clé). Les synonymes d'un mot-clé
+(`mot_cle_synonyme`, migration 0115, R233 ; l'ancienne abréviation en est un) mènent aussi à lui. `tools/db/maverick.py#MOTS_CLES_PROTEGES` donne à
+chaque protégé l'id entier de son mot-clé, et l'extracteur écrit dans `tags:` l'écriture courante du mot-clé de cet id : son libellé, ou sa clé s'il a
+des homonymes (`maverick.py#libelle_protege`, vocabulaire `data/rows/mot_cle.sql`, option `--vocabulaire` de `classes.py`, `races.py` et
+`relations-races.py` ; `Vocabulaire.protege` de `codex.py`, qui écrit le libellé). Cette écriture ne mène qu'à lui (la clé est unique, et un libellé
+écrit est la clé de son mot-clé), et rien n'est écrit s'il n'est pas au vocabulaire. `maverick.py#mot_cle`, lui, retrouve un mot-clé par son écriture
+(`trouver_mot_cle` : la clé, le libellé, un synonyme, une clé quittée, puis une écriture que le site de dev a fait quitter) : `db:sync-pages` relit
 aussi les `tags:` qu'écrit `db:export-pages`, où l'écriture d'origine d'un protégé peut être devenue celle d'un autre mot-clé. La liste Python
 (`maverick.py#MOTS_CLES_PROTEGES`) recopie celle du site : `client/test/mots-cles-python.test.mjs` les compare.
 

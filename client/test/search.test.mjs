@@ -35,11 +35,11 @@ test('mots-clés de la page de recherche : tous sans recherche, sinon ceux qui c
   assert.deepEqual(filtrerMotsCles(cles, 'glace'), []);
 });
 
-test('cleDeRecherche : l’écriture d’un mot-clé, suivie de son abréviation normalisée (migration 0090 : « AM » trouve « Armure magique »)', () => {
-  assert.equal(cleDeRecherche({ cle: 'armure-magique', abreviation: 'AM' }), 'armure-magique|am');
-  assert.equal(cleDeRecherche({ cle: 'nature', abreviation: 'Nat.' }), 'nature|nat');
-  assert.equal(cleDeRecherche({ cle: 'feu', abreviation: null }), 'feu');
-  assert.equal(cleDeRecherche({ cle: 'feu' }), 'feu');
-  assert.equal(cleDeRecherche({ cle: 'feu', abreviation: '…' }), 'feu', 'une abréviation sans lettre ni chiffre : rien à chercher');
-  assert.deepEqual(filtrerMotsCles([cleDeRecherche({ cle: 'armure-magique', abreviation: 'AM' }), 'feu'], 'am'), ['armure-magique|am']);
+test('cleDeRecherche : le libellé d’un mot-clé, suivi de ses synonymes normalisés (R233 (1) : « AM » trouve « Armure magique »), jamais sa clé', () => {
+  assert.equal(cleDeRecherche({ libelle: 'Armure magique', cle: 'armure-magique', synonymes: ['AM'] }), 'armure-magique|am');
+  assert.equal(cleDeRecherche({ libelle: 'Nature', synonymes: ['Nat.', 'Naturel'] }), 'nature|nat|naturel');
+  assert.equal(cleDeRecherche({ libelle: 'Namazu', cle: 'namazu-race', synonymes: [] }), 'namazu', 'la clé d’un homonyme (ses catégories) n’est pas cherchée');
+  assert.equal(cleDeRecherche({ cle: 'feu' }), 'feu', 'sans libellé : la clé');
+  assert.equal(cleDeRecherche({ libelle: 'Feu', synonymes: ['…'] }), 'feu', 'un synonyme sans lettre ni chiffre : rien à chercher');
+  assert.deepEqual(filtrerMotsCles([cleDeRecherche({ libelle: 'Armure magique', synonymes: ['AM'] }), 'feu'], 'am'), ['armure-magique|am']);
 });

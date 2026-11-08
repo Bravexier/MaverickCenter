@@ -28,7 +28,7 @@ user-invocable: false
   - saute la section 15 quand il balaie tout le texte de la base (`lib/notes-de-version.mjs#TABLES_DES_NOTES`).
 - **Site construit.** Les tests `*-html.test.mjs` contrôlent le site construit (`dist/`). Ils se sautent sans `dist/`, et la CI les lance après le build : `tech-qualite` lance `npm run build` avant eux, en fin de lot, quand le rendu change (l'auteur n'en lance pas pour ses tests).
 - **Textes balisés.** Un test qui compare un texte « tel qu'écrit » à une sortie qui retire les balises du glossaire lit ce texte sans elles (`texteSansBalises`), ou rend ses balises comme le middleware (`htmlAvecMotsCles`) (`zone-mots-cles`).
-- **Vocabulaire.** Les tests du vocabulaire créent leurs mots-clés d'essai (`test/aide-mots-cles.mjs`).
+- **Vocabulaire.** Les tests du vocabulaire créent leurs mots-clés d'essai, ids 9001 et suivants (`test/aide-mots-cles.mjs#idDEssai`). Un mot-clé réel se cherche par son id entier figé : `aide-mots-cles.mjs#idDuMotCleNomme('<ancien id texte>')` (registre de la 0113), ou `IDS_DES_MOTS_CLES_PROTEGES` / `idDuProtege` pour un protégé ; jamais par sa clé ni par son libellé, que le site de dev change (R232 (2)).
 - **Base d'essai.** Un test écrit dans une copie de la base, jamais dans `var/maverick.db` ni dans `data/rows`.
 - **Dossiers temporaires.** Un test fait le ménage quand il a fini, même en cas d'échec (demande du propriétaire, 2026-10-23). Ses dossiers et fichiers temporaires (copies de base, exports, faux dépôts) viennent de `test/aide-dossier-temporaire.mjs` :
   - `dossierTemporaire(prefixe, { t })` le supprime à la fin du test `t` (contexte d'un test, ou de `beforeEach` pour un dossier par cas) ;

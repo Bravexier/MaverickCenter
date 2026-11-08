@@ -58,11 +58,12 @@ function motsClesVers(base, cible) {
 }
 /**
  * Les écritures d'un lien vers `cible` au texte affiché `texte` : le « [[cible|texte]] » que la 0096 a écrit, ou la balise d'un mot-clé qui y mène
- * (« {{id|texte}} », « {{id}} » quand le texte est son libellé), que la 0098 en a faite.
+ * (« {{clé|texte}} », « {{clé}} » quand le texte est son libellé), que la 0098 en a faite ; la clé (mot_cle.cle), que citent les balises depuis la
+ * migration 0113, jamais l'id entier.
  */
 function ecrituresDuLien(base, cible, texte) {
   const formes = [`[[${cible}|${texte}]]`];
-  for (const m of motsClesVers(base, cible)) formes.push(`{{${m.id}|${texte}}}`, ...(m.libelle === texte ? [`{{${m.id}}}`] : []));
+  for (const m of motsClesVers(base, cible)) formes.push(`{{${m.cle}|${texte}}}`, ...(m.libelle === texte ? [`{{${m.cle}}}`] : []));
   return formes;
 }
 /** Le texte `avant`, un lien vers `cible` au texte affiché `texte`, puis `apres`, sous chacune de ses écritures dans `base`. */
@@ -70,11 +71,13 @@ const phrasesDuLien = (base, { avant, cible, texte, apres }) => ecrituresDuLien(
 /** Les liens écrits vers `cible` dans un corps (les [[…]] et les balises d'un mot-clé qui y mène), par leur texte affiché, dans l'ordre de la table lien. */
 function liensEcritsVers(base, corps, cible) {
   const wiki = extractLinks(corps).filter((l) => l.target === cible).map((l) => l.label);
-  const vers = new Set(motsClesVers(base, cible).map((m) => m.id));
+  const motsCles = motsClesVers(base, cible);
+  const vers = new Set(motsCles.map((m) => m.id));
   const vocabulaire = vocabulaireDesMotsCles(motsClesDeLaBase(base));
   const balises = lireBalises(corps, { markdown: true }).filter((b) => vers.has(motCleDeLaRef(vocabulaire, b.ref)?.id))
     .map((b) => texteDeLaBalise(b, vocabulaire, { definitions: false }));
-  return { wiki, balises, ids: [...vers] };
+  // lien.cible d'une balise : la clé du mot-clé (scripts/db-derive.mjs, migration 0113)
+  return { wiki, balises, cles: motsCles.map((m) => m.cle) };
 }
 
 // Les quatre liens des pages (le cinquième est dans la description de Vigueur) : où, la page visée, le texte qui l'entoure tel que la migration l'a
@@ -129,11 +132,11 @@ test('0096 : les quatre liens des pages visent la page de leur sujet, texte affi
       assert.ok(supprimeeParLeSite(id), `${id} absente sans que le site l'ait supprimée`);
       continue;
     }
-    const { wiki, balises, ids } = liensEcritsVers(db, corps, cible);
+    const { wiki, balises, cles } = liensEcritsVers(db, corps, cible);
     const lignes = (cibles) => (cibles.length ? db.prepare(`SELECT ancre, etat, cible_page_id FROM lien WHERE page_id = ? AND cible IN (${cibles.map(() => '?').join(', ')}) ORDER BY position`)
       .all(id, ...cibles).map((r) => ({ ...r })) : []);
     const parWiki = lignes([cible]);
-    const parBalise = lignes(ids);
+    const parBalise = lignes(cles);
     assert.deepEqual(parWiki.map((l) => l.ancre), wiki, `${id} : les liens suivent le texte`);
     assert.deepEqual(parBalise.map((l) => l.ancre), balises, `${id} : les balises qui mènent à la page suivent le texte`);
     if (!supprimeeParLeSite(cible)) {

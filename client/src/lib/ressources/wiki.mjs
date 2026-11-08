@@ -157,31 +157,33 @@ export const RESSOURCES = [
     nom: 'Mot-clé',
     noms: 'Mots-clés',
     description:
-      'Le glossaire des mots-clés (migrations 0043 et 0056, demandes du propriétaire) : un libellé, une définition (`description`, NULL tant qu’il ' +
-      'n’est pas décrit) et une abréviation (`abreviation`, migration 0090 : « AM », « Nat. » ; NULL sans abréviation), cités dans les textes par une ' +
-      'balise (« {{id}} », « {{id|texte}} », « {{id:}} » ; la ref saisie peut être l’id, l’écriture ou l’abréviation, quelle que soit la casse : ' +
-      '« {{AM}} » ; enregistrée sous sa forme canonique, l’id ' +
-      'seul dans un texte mis en forme, « {{id|texte}} » toujours dans un texte de case, où le mode complet est refusé ; une balise qui ne cite aucun ' +
-      'mot-clé, ou dont la ref vise deux mots-clés (l’id de l’un, l’écriture ou l’abréviation d’un autre), refusée en 400), posés sur quelques pages et listés sur ' +
-      '/recherche/ (?mot-cle=<id>) : ' +
-      'identifiant tiré une fois du libellé (normalize, suffixé -2… s’il est pris ou a déjà servi), figé et jamais réutilisé ; deux mots-clés ne ' +
-      's’écrivent jamais de la même façon (`libelle_cle`) ; renommer ne réécrit aucun texte (une case garde le texte écrit de ses balises, un texte mis ' +
-      'en forme montre le nouveau libellé), vers l’écriture d’un autre mot-clé : refusé (409, avec ' +
-      'l’action qui fusionne les deux) ; l’abréviation ne s’écrit ni avec « { », « } », « | », ni avec un « : » final, ni comme le mot-clé lui-même ' +
-      '(400), ni comme l’id, l’écriture ou l’abréviation d’un autre mot-clé (409, `mot_cle` : cet autre), et un mot-clé ne se crée ni ne se renomme ' +
-      'vers l’abréviation d’un autre (409) ; la fusion (action « fusion », opération `fusionner_mots_cles`) verse ses pages dans l’autre mot-clé (une page ' +
+      'Le glossaire des mots-clés (migrations 0043, 0056 et 0113 à 0115, demandes du propriétaire) : un identifiant entier (`id`, attribué à la ' +
+      'création, figé, jamais réutilisé), un libellé (pas unique : des homonymes), une clé (`cle`, en lecture seule : le slug du libellé, suivi pour un ' +
+      'homonyme des slugs de ses catégories qui ne sont pas communes à tous ses homonymes ; recalculée à chaque renommage, changement de catégorie, ' +
+      'homonyme qui apparaît ou disparaît et catégorie renommée, décision R232), une définition (`description`, NULL tant qu’il n’est pas décrit), ses ' +
+      'catégories (sous-ressource `categories`) et ses synonymes (sous-ressource `synonymes`, décision R233 : l’ancienne abréviation en est un). Les ' +
+      'textes le citent par une balise (« {{cle}} », « {{cle|texte}} », « {{cle:}} » ; la ref saisie peut être la clé, le libellé quand un seul ' +
+      'mot-clé le porte, ou un synonyme, quelle que soit la casse : « {{am}} » s’enregistre « {{armure-magique|am}} », la casse tapée gardée ; un ' +
+      'libellé que portent plusieurs homonymes est ambigu, refusé en 400 : il faut écrire la clé ; une balise qui ne cite aucun mot-clé, refusée en ' +
+      '400 ; le mode complet refusé dans un texte de case) ; listés sur /recherche/ (?mot-cle=<clé>). Quand la clé change, chaque balise qui la cite ' +
+      'est réécrite et la clé quittée mène encore au mot-clé (sous-ressource `anciennes-cles`). Refusés (409, `champ`) : un homonyme sans catégorie ' +
+      'qui le distingue de chacun des autres (`categories`), une clé déjà prise (`libelle`), un libellé qui s’écrit comme le synonyme d’un autre ' +
+      'mot-clé (`libelle`). La création (POST) accepte `categories` (identifiants) et `synonymes` (écritures). ' +
+      'La fusion (action « fusion », opération `fusionner_mots_cles`) verse ses pages dans l’autre mot-clé (une page ' +
       'qui avait les deux perd seulement l’ancien) et y recible ses balises, puis le retire du vocabulaire ; un mot-clé créé n’a pas de page ; il ne se ' +
       'supprime que si rien ne le mentionne (décision R196) : une page qui le porte ou une balise qui le cite, pages d’exemple comprises, refusent la ' +
       'suppression (409, `mentions` : la liste des endroits, page, ou table et ligne ; `refus_du_forcage` : null si la suppression forcée passerait, ' +
       'sinon sa raison), aucun texte n’est réécrit ; DELETE `?forcer=1` (ou le corps `{ "forcer": true }`) la force (décision R223) : dans le même lot, ' +
-      'chaque balise qui le cite devient son texte affiché (le libellé, ou le texte écrit de « {{id|texte}} ») en texte simple et chaque étiquette de page est retirée ; le forçage reste refusé (409, avant ' +
+      'chaque balise qui le cite devient son texte affiché (le libellé, ou le texte écrit de « {{cle|texte}} ») en texte simple et chaque étiquette de page est retirée ; le forçage reste refusé (409, avant ' +
       'toute écriture) pour un mot-clé verrouillé, qui étiquette un sort, cité par la définition d’un mot-clé verrouillé (`mots_cles_verrouilles`), ' +
       'dont le lien mène sans ancre à une page de la base (une ancre, une route sans page ou une rubrique sont épargnées, R223 (7)), ou mentionné là où le site ne sait pas remplacer la balise ' +
       '(`mentions_bloquantes`). Le verrou (`verrou`, migration 0110, ' +
       'décisions R218 et R219 ; en lecture seule : aucune route ne l’écrit, un POST ou un PATCH qui le porte est refusé en 400) : un mot-clé verrouillé ' +
       '(1 : ceux qui mènent à une page, ceux des monnaies et ceux dont le site se sert pour ranger ses pages ou reconnaître un sort) ne se modifie ' +
-      'pas (409, quel que soit le champ), ne se supprime pas, même sans mention (409), et ne se fusionne pas dans un autre (409) ; il se pose encore ' +
-      'sur une page, se cite par une balise et reçoit la fusion d’un autre mot-clé ; un mot-clé créé n’est pas verrouillé (0), même avec un lien. ' +
+      'pas (409, quel que soit le champ, synonymes compris), ne se supprime pas, même sans mention (409), et ne se fusionne pas dans un autre (409) ; il se pose encore ' +
+      'sur une page, se cite par une balise, reçoit la fusion d’un autre mot-clé, et ses catégories se posent et se retirent (R232 (11)) ; sa clé suit ' +
+      'son libellé et ses catégories ; un mot-clé créé n’est pas verrouillé (0), même avec un lien. `monnaie_id` (lecture seule) : la monnaie dont c’est ' +
+      'le mot-clé. ' +
       'Un mot-clé non verrouillé se modifie entièrement (décision R195 : le site reconnaît ceux dont il se sert à leur id, jamais à leur écriture). ' +
       'Un mot-clé qui étiquette un sort (sous-ressource `mots-cles` des sorts, migrations 0067 et 0079) ne ' +
       'se supprime ni ne se fusionne (409). Un lien (`url`, migration 0098 : les liens des textes devenus des balises) : une adresse interne, relative ' +
@@ -189,8 +191,12 @@ export const RESSOURCES = [
       'une rubrique ou une route fixe (400 sinon ; l’ancre et la requête ne sont pas vérifiées) ; une balise du mot-clé mène à cette adresse, et un ' +
       'lien `[[…]]` ou `[texte](/…)` saisi dans un texte devient la balise du seul mot-clé qui mène à sa page (400 s’il n’y en a aucun ou plusieurs). ' +
       'Une couleur (`couleur`) : « #rrggbb » (minuscules) ou « <famille>:<id> » d’une couleur de la palette du site (« classe:melee », 400 sinon). ' +
-      'Les deux se modifient pour tout mot-clé non verrouillé ; vidés, NULL. Une fusion garde le lien et la couleur de la cible, et lui donne ' +
-      'ceux de la source qu’elle n’a pas, sauf à une cible verrouillée, qui garde les siens.',
+      'Une icône (`icone`, migration 0116, décision R235) : NULL, ou « <famille>:<id> » d’une icône de la liste du site (pour l’instant les trois ' +
+      'monnaies : « monnaie:rf », « monnaie:ro », « monnaie:pp » ; la liste `icones` de GET /api/edition/listes/ ; 400 sinon, `champ: icone`). ' +
+      'Les trois se modifient pour tout mot-clé non verrouillé ; vidés, NULL. Une fusion garde le lien, la couleur et l’icône de la cible, et lui donne ' +
+      'ceux de la source qu’elle n’a pas, sauf à une cible verrouillée, qui garde les siens ; elle lui transmet aussi les synonymes de la source (sauf ' +
+      'ceux que R233 (4) refuse) et sa clé, qui mène désormais à la cible (R233 (11)) ; une source qui a des synonymes ne se fusionne pas dans une ' +
+      'cible verrouillée (409, `champ: synonymes`).',
     table: 'mot_cle',
     libelle: 'libelle',
     enfants: [
@@ -205,22 +211,77 @@ export const RESSOURCES = [
           'Les pages qui portent le mot-clé, avec son rang dans leur liste `tags:` (un mot-clé supprimé laisse un trou : l’ordre des autres ne change ' +
           'pas) ; aucune opération du site ne pose ni ne retire un mot-clé sur une page : en lecture seule.',
       },
+      {
+        cle: 'categories',
+        nom: 'Catégorie du mot-clé',
+        noms: 'Catégories du mot-clé',
+        table: 'mot_cle_categorie',
+        parent: { mot_cle_id: 'id' },
+        tri: 'categorie_id',
+        description:
+          'Les catégories que porte le mot-clé (décision R232 : aucune, une ou plusieurs ; un homonyme en porte au moins une qui le distingue de chacun ' +
+          'des autres) ; une catégorie se pose (POST, `categorie_id`) ou se retire (DELETE) par l’opération `categories_mot_cle` du site de dev, permise ' +
+          'sur un mot-clé verrouillé (R232 (11)) ; la clé est recalculée et les textes qui la citent réécrits.',
+        operations: { POST: 'categories_mot_cle', DELETE: 'categories_mot_cle' },
+      },
+      {
+        cle: 'synonymes',
+        nom: 'Synonyme du mot-clé',
+        noms: 'Synonymes du mot-clé',
+        table: 'mot_cle_synonyme',
+        parent: { mot_cle_id: 'id' },
+        tri: 'ordre',
+        description:
+          'Les synonymes du mot-clé, dans l’ordre (décision R233 : ils servent à la saisie d’une balise, à la recherche et à l’affichage ; l’ancienne ' +
+          'abréviation en est un) ; un synonyme s’ajoute à la fin (POST, `libelle`) ou se retire (DELETE) par l’opération `synonymes_mot_cle`, refusée ' +
+          'sur un mot-clé verrouillé (409, R233 (6)) ; un synonyme mal écrit (400) ou qui s’écrit comme le libellé, un synonyme ou la clé d’un autre ' +
+          'mot-clé, ou comme son propre libellé, est refusé (409 ou 400, `champ: synonymes`).',
+        operations: { POST: 'synonymes_mot_cle', DELETE: 'synonymes_mot_cle' },
+      },
+      {
+        cle: 'anciennes-cles',
+        nom: 'Ancienne clé du mot-clé',
+        noms: 'Anciennes clés du mot-clé',
+        table: 'mot_cle_ancienne_cle',
+        parent: { mot_cle_id: 'id' },
+        tri: 'cle',
+        lectureSeule: true,
+        description:
+          'Les clés que le mot-clé a quittées (un renommage, une catégorie changée, son ancien identifiant texte d’avant la migration 0113) : une ' +
+          'ancienne balise ou une ancienne adresse /recherche/?mot-cle=<clé> mène encore à lui ; tenues par le service : en lecture seule.',
+      },
     ],
-    liste: ['id', 'libelle', 'libelle_cle', 'description', 'abreviation', 'url', 'couleur', 'verrou'],
-    recherche: ['libelle', 'description', 'abreviation', 'url'],
-    tri: 'libelle_cle',
+    liste: ['id', 'libelle', 'cle', 'description', 'url', 'couleur', 'icone', 'verrou', 'monnaie_id'],
+    recherche: ['libelle', 'cle', 'description', 'url'],
+    tri: 'cle',
     ecriture: { creer: 'mot_cle', supprimer: 'mot_cle' },
     actions: [
       {
         cle: 'fusion',
         nom: 'Fusionner dans un autre mot-clé',
         description:
-          'Le mot-clé rejoint `dans` (l’identifiant d’un autre mot-clé) : ses pages passent à `dans` (une page qui avait les deux perd seulement ' +
+          'Le mot-clé rejoint `dans` (l’identifiant entier d’un autre mot-clé) : ses pages passent à `dans` (une page qui avait les deux perd seulement ' +
           'l’ancien), puis il quitte le vocabulaire ; le mot-clé fusionné ne peut pas être verrouillé (décisions R218, R219 : 409), `dans` le peut ' +
           '(il garde alors son lien et sa couleur) ; ni l’un ni l’autre ne peut étiqueter un sort (409).',
         op: 'fusionner_mots_cles',
       },
     ],
+  },
+  {
+    cle: 'categories-de-mots-cles',
+    nom: 'Catégorie de mots-clés',
+    noms: 'Catégories de mots-clés',
+    description:
+      'Les catégories possibles des mots-clés (migration 0113, décision R232 (5)) : un identifiant entier (attribué à la création, figé, jamais ' +
+      'réutilisé) et un libellé unique (deux catégories ne s’écrivent jamais de la même façon : 409) ; elles s’ajoutent, se renomment (la clé des ' +
+      'mots-clés homonymes qui la portent est recalculée, et leurs balises réécrites) et se suppriment si elles sont vides (409 sinon, `mots_cles` : ceux ' +
+      'qui la portent).',
+    table: 'categorie_mot_cle',
+    libelle: 'libelle',
+    liste: ['id', 'libelle', 'libelle_cle'],
+    recherche: ['libelle'],
+    tri: 'id',
+    ecriture: { creer: 'categorie_mot_cle', supprimer: 'categorie_mot_cle' },
   },
   {
     cle: 'sources',

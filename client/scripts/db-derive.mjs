@@ -2,7 +2,8 @@
 // à partir des tables de base. Réutilise le code du site (wikilinks.mjs, text.mjs) : les règles de résolution ne sont écrites qu'une fois.
 // Les liens d'une page (table `lien`, vue `lien_page`) : ses `[[…]]` (il n'en reste que sur les pages d'exemple), puis, depuis la migration 0098 (les
 // liens devenus des balises), chaque balise du glossaire dont le mot-clé a une adresse qui mène à une page (lib/adresses-db.mjs#pageDeLAdresse ; une
-// rubrique ou une route sans page n'est pas un lien de page) : `cible` = l'id du mot-clé, `ancre` = le texte affiché, `etat` = 'resolu'.
+// rubrique ou une route sans page n'est pas un lien de page) : `cible` = la clé du mot-clé (mot_cle.cle, migration 0113), `ancre` = le texte
+// affiché, `etat` = 'resolu'.
 //
 //   node scripts/db-derive.mjs [<base.db>] [--sans-exemples] [--derive-sql <chemin>]     (défauts : var/maverick.db, data/derive.sql)
 //
@@ -74,7 +75,7 @@ try {
   for (const a of alias) {
     if (normalize(a.texte) !== a.cle) problemes.push(`alias ${a.page_id} ${JSON.stringify(a.texte)} : cle=${JSON.stringify(a.cle)} != normalize(texte)`);
   }
-  // Toute colonne `X_cle` (24 colonnes, dont mot_cle.libelle_cle) vaut normalize(X) : même garde pour toutes (la copie Python de normalize ne peut pas dériver en silence).
+  // Toute colonne `X_cle` (dont mot_cle_synonyme.libelle_cle et categorie_mot_cle.libelle_cle) vaut normalize(X) : même garde pour toutes (la copie Python de normalize ne peut pas dériver en silence).
   const cles = controleNomCle(db, db.prepare("SELECT name, sql FROM sqlite_master WHERE type = 'table'").all(), normalize);
   problemes.push(...cles.problemes);
   bilan.colonnesCle = cles.colonnesVerifiees;
@@ -106,7 +107,7 @@ try {
       const m = motCleDeLaRef(vocabulaire, b.ref);
       const cible = m ? pageDuMotCle.get(m.id) ?? null : null;
       if (!cible) continue;
-      insLien.run(p.id, position, m.id, texteDeLaBalise(b, vocabulaire, { definitions: false }), 'resolu', cible);
+      insLien.run(p.id, position, m.cle, texteDeLaBalise(b, vocabulaire, { definitions: false }), 'resolu', cible);
       position += 1;
       etats.resolu += 1;
       balises += 1;

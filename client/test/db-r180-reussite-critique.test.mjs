@@ -20,6 +20,8 @@ import { baseDImport, texteDImport } from './aide-base-d-import.mjs';
 const db = ouvrirBase({ sansExemples: false });
 const corps = (id) => db.prepare('SELECT corps_md FROM page WHERE id = ?').get(id).corps_md;
 const corpsDImport = (id) => texteDImport('page', { id }, 'corps_md');
+// un mot-clé se cherche par sa clé dans l'état d'import (migration 0113 : l'id est un entier, la clé suit le libellé ; à l'import, elle est fixe)
+const motCleDImport = (cle) => ({ id: baseDImport().prepare('SELECT id FROM mot_cle WHERE cle = ?').get(cle)?.id });
 
 const AFFUTAGE = 'magies/magie-de-la-foudre#sort:affutage';
 const PRENDS_CA = 'capacites/moine-prend-ca';
@@ -135,8 +137,8 @@ test('R180 : le guide et le mot-clé « Réussite critique » rappellent le plaf
   for (const id of ['guide/reussites-echecs-et-critiques', 'guide/les-postures', 'guide/attaquer-et-se-defendre', 'guide/prise-en-tenaille-et-zone-d-influence']) {
     assert.match(corpsDImport(id), PLAFOND, id);
   }
-  // le Lexique est devenu des mots-clés (migration 0090) : sa phrase est la définition du mot-clé `reussite-critique` (abréviation RC)
-  assert.match(texteDImport('mot_cle', { id: 'reussite-critique' }, 'description') ?? '', PLAFOND, 'mot_cle reussite-critique');
+  // le Lexique est devenu des mots-clés (migration 0090) : sa phrase est la définition du mot-clé de clé `reussite-critique` (synonyme RC, 0115)
+  assert.match(texteDImport('mot_cle', motCleDImport('reussite-critique'), 'description') ?? '', PLAFOND, 'mot_cle reussite-critique');
   const reussir = corpsDImport('guide/reussir-une-action');
   assert.ok(reussir.includes('Au-delà de 95 %, le surplus élargit la réussite critique : de 96 à 102 %, +2 % ; à partir de 103 %, +5 % au total.'));
   assert.ok(reussir.includes('Le score compté est celui du moment, posture comprise, et ce bonus vaut sur tout jet, quelle que soit la posture.'));

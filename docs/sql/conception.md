@@ -57,6 +57,7 @@ Le propriétaire n'aime pas que la donnée des magies « soit un script » : la 
 | Sous-entité d'une page | `<id de la page>#<sorte>:<slug>` | `magies/magie-du-sang#sort:annulation` |
 | Référentiel | clé courte | `force`, `ro`, `epee` |
 | Clé naturelle numérique | le nombre | `niveau_global.niveau` |
+| Mot-clé, catégorie de mot-clé, synonyme d'un mot-clé (exception, décision du propriétaire, migrations 0113 et 0115) | entier attribué à la création, jamais réutilisé ; balises et adresses citent `mot_cle.cle`, qui suit le libellé et les catégories (clé quittée : `mot_cle_ancienne_cle` ; catégories assignées aux mots-clés existants : migration 0114, R232 (7)) ; un synonyme (`mot_cle_synonyme`, R233) n'entre pas dans la clé | `mot_cle.id` = 66, `cle` = `classe` |
 | Clé composite (54 tables) | colonnes de la clé primaire ; **dans les adresses génériques** (`entite_id`) elles sont jointes par `\|` | `seuil_niveau` : `puissance_magique_max\|17` |
 
 Limite assumée : un identifiant contient un nom (slug). Renommer dans la source change l'identifiant. Cas réel : la correction « Chasseur prime » → « Chasseur de primes »
@@ -178,7 +179,7 @@ un réimport incomplet est refusé et rien ne bouge.
 | `page_fts` | `db-derive.mjs` | titre, alias, mots-clés, résumé, corps |
 | `entite_fts` | `data/derive.sql` (SQL pur, idempotent) | 33 types d'entités typées |
 
-`db-derive.mjs` refuse de calculer si une clé stockée (`titre_cle`, `alias.cle`, `mot_cle.libelle_cle`, les `*_cle` des entités typées) diffère de `normalize()` du site : la copie Python ne peut pas dériver en silence. Option `--sans-exemples` : voir §8.2.
+`db-derive.mjs` refuse de calculer si une clé stockée (`titre_cle`, `alias.cle`, `categorie_mot_cle.libelle_cle`, `mot_cle_synonyme.libelle_cle`, les `*_cle` des entités typées ; `mot_cle.cle` suit sa propre règle, `tools/db/maverick.py#cles_des_mots_cles`, que `db:check` vérifie) diffère de `normalize()` du site : la copie Python ne peut pas dériver en silence. Option `--sans-exemples` : voir §8.2.
 
 ### 4.4 Corrections orthographiques
 

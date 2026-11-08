@@ -228,13 +228,14 @@ import unicodedata
 
 CATEGORY = "races"
 STATUS = "draft"
-TAG_RACE = "race"   # id du mot-clé protégé posé sur chaque page de race (protected_tag)
+TAG_RACE = "race"   # le mot-clé protégé (clé de maverick.py#MOTS_CLES_PROTEGES) posé sur chaque page de race (protected_tag)
 VOCABULAIRE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "data", "rows", "mot_cle.sql")   # --vocabulaire
 
 
 def protected_tag(ident):
-    """L'écriture de `tags:` du mot-clé protégé d'id `ident` (client/src/lib/mots-cles.mjs#MOTS_CLES_PROTEGES : posé par son id, jamais par son
-    écriture, qu'un autre mot-clé pourrait prendre sur le site de dev) : son libellé courant dans le vocabulaire (VOCABULAIRE, --vocabulaire), ou None
+    """L'écriture de `tags:` du mot-clé protégé `ident` (une clé de tools/db/maverick.py#MOTS_CLES_PROTEGES, copie de
+    client/src/lib/mots-cles.mjs : posé par l'id entier qu'elle lui donne, migration 0113, jamais par son écriture, qu'un autre mot-clé pourrait
+    prendre sur le site de dev) : son libellé courant dans le vocabulaire (VOCABULAIRE, --vocabulaire ; sa clé s'il a des homonymes), ou None
     s'il n'y est pas (non écrit : un import ne crée jamais de mot-clé). tools/db/maverick.py#libelle_protege, chargé par son chemin : `python3 -I`
     n'ajoute pas tools/db à sys.path."""
     dossier = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "db")

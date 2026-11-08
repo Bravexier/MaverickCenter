@@ -23,7 +23,7 @@ const TYPE_DE_COLONNE = { INTEGER: 'integer', REAL: 'number', TEXT: 'string', BL
 /** Le type JSON Schema d'un champ de saisie (lib/edition-modele.mjs). */
 const TYPE_DE_CHAMP = {
   ligne: 'string', texte: 'string', markdown: 'string', choix: 'string', entier: 'integer', reel: 'number', categories: 'array', image: 'string', adresse: 'string',
-  couleur: 'string',
+  couleur: 'string', ids: 'array', ecritures: 'array',
 };
 
 /** La condition `si` d'un champ ou d'une colonne figés, en texte (« tableau = produit:ANIMAUX ou produit:AUTRES »). */
@@ -47,7 +47,8 @@ function schemaDuChamp(c, { figee = null } = {}) {
     description: `${c.libelle}${c.aide ? ` — ${c.aide}` : ''}${c.type === 'image' ? ' (data URL WebP, JPEG ou PNG)' : ''}${DIT_DU_TYPE[c.type] ?? ''}${c.exige ? ` — exigé, ${c.exige}` : ''}${refus
       ? ` — refusé si ${texteDeCondition(refus.si)} : ${refus.raison}` : ''}`,
   };
-  if (c.type === 'categories') s.items = { type: 'string' };
+  if (c.type === 'categories' || c.type === 'ecritures') s.items = { type: 'string' };
+  if (c.type === 'ids') s.items = { type: 'integer' };
   if (c.valeurs?.length) s.enum = [...c.valeurs.map((v) => v.valeur), ...(c.requis ? [] : [null])];
   if (c.min !== undefined) s.minimum = c.min;
   if (c.max !== undefined) s.maximum = c.max;
@@ -67,7 +68,7 @@ function exempleDuChamp(c, ids = {}, { limite = null, quoi = '' } = {}) {
   // une liste du service encore vide (aucune catégorie de la chronologie…) : pas de valeur à proposer
   if (c.liste) return undefined;
   if (c.type === 'entier' || c.type === 'reel') return c.min ?? 0;
-  if (c.type === 'categories') return [];
+  if (c.type === 'categories' || c.type === 'ids' || c.type === 'ecritures') return [];
   return quoi ? `Essai de l’API (${quoi})` : 'Essai de l’API';
 }
 
@@ -457,7 +458,7 @@ function cheminsDuService() {
     '/edition/listes/': lectureDuService('edition_listes', 'Listes des formulaires', `Compétences, catégories de classe, races hybrides, espèces de monstres…${SITE_DE_DEV}`),
     '/edition/pages/': lectureDuService('edition_pages', 'Pages du wiki', `Les pages (id, titre) : cibles d’un lien posé dans un texte.${SITE_DE_DEV}`),
     '/edition/mots-cles/': lectureDuService('edition_mots_cles', 'Vocabulaire des mots-clés',
-      `Les mots-clés (\`motsCles\`), leurs pages et ceux dont le site se sert, avec leur lien, leur couleur et sa classe (migration 0098), et la feuille de ces classes (\`css\`).${SITE_DE_DEV}`),
+      `Les mots-clés (\`motsCles\` : id entier, clé, libellé, synonymes, catégories, clés quittées, lien, couleur et sa classe, icône, verrou, mentions, refus de la suppression forcée), les catégories des mots-clés (\`categories\`, R232), les icônes proposées (\`icones\`, R235) et la feuille des classes de couleur (\`css\`).${SITE_DE_DEV}`),
     '/edition/chronologie/': lectureDuService('edition_chronologie', 'Chronologie vivante', `Les événements dans l’ordre de lecture avec leurs catégories, et les catégories.${SITE_DE_DEV}`),
     '/edition/plan/': lectureDuService('edition_plan', 'Plan vivant des Règles', `Les onglets des Règles et les entrées de leurs menus (pour chaque page : sa protection, ses citations, supprimable ou non), et les races par groupe dans l’ordre de leur liste.${SITE_DE_DEV}`),
     '/edition/race/': ecritureDuService('edition_race', 'Données d’une race', `{ race } → magies innées et relations de la race (lecture).${SITE_DE_DEV}`, { race: 'races/humain' }),
@@ -465,7 +466,7 @@ function cheminsDuService() {
     '/edition/bestiaire/': ecritureDuService('edition_bestiaire', 'Lignes du bestiaire', `{ connues, logo } → l’ordre des lignes du tableau des monstres, et la ligne et la carte de celles que la page n’a pas (lecture).${SITE_DE_DEV}`, { connues: [], logo: '' }),
     '/edition/evenement/': ecritureDuService('edition_evenement', 'Un événement de la chronologie', `{ evenement } → l’événement, ses blocs et ses catégories (lecture).${SITE_DE_DEV}`, { evenement: '<identifiant>' }, { 404: ref('responses', 'Introuvable') }),
     '/edition/portrait/': ecritureDuService('edition_portrait', 'Portrait d’une carte ou d’une espèce', `{ table, cle } → le portrait en entier et son cadrage (lecture).${SITE_DE_DEV}`, { table: 'monstre', cle: { id: '<identifiant>' } }),
-    '/edition/': ecritureDuService('edition_lot', 'Enregistrer un lot de modifications', `{ page, operations } → applique un lot d’un bloc et le note au journal (opérations : modifier, creer, supprimer, relations, magies_innees, categories, fusionner_mots_cles, valeurs_de_capacite, ordonner).${SITE_DE_DEV}`,
+    '/edition/': ecritureDuService('edition_lot', 'Enregistrer un lot de modifications', `{ page, operations } → applique un lot d’un bloc et le note au journal (opérations : modifier, creer, supprimer, relations, magies_innees, categories, fusionner_mots_cles, categories_mot_cle, synonymes_mot_cle, valeurs_de_capacite, ordonner).${SITE_DE_DEV}`,
       { page: 'api/debug', operations: [{ op: 'modifier', table: 'metier', cle: { id: '<identifiant>' }, valeurs: { description: '…' } }] }, { 404: ref('responses', 'Introuvable'), 409: ref('responses', 'Conflit'), 422: ref('responses', 'Refusee') }),
     '/edition/journal/': lectureDuService('edition_journal', 'Journal des modifications en attente', `Le journal à rapatrier dans data/rows (npm run db:appliquer-edition), en pièce jointe.${SITE_DE_DEV}`),
     '/mise-a-jour/': lectureDuService('mise_a_jour', 'Note en préparation', `Modifications production → dev (calculées), brouillon, état du lancement.${SITE_DE_DEV}`),
@@ -597,7 +598,7 @@ const COMPOSANTS = {
     IfMatch: { name: 'If-Match', in: 'header', required: false, description: 'La version lue (ETag : toute la représentation, sous-ressources et tables dérivées comprises) : refus 409 si elle a changé depuis.', schema: { type: 'string' } },
     forcer: {
       name: 'forcer', in: 'query', required: false,
-      description: 'Mot-clé mentionné (décision R223) : 1 (ou true) supprime en forçant — chaque balise qui le cite devient son texte affiché (le libellé pour {{id}} et {{id:}}, le texte écrit pour {{id|texte}}), en texte simple, '
+      description: 'Mot-clé mentionné (décision R223) : 1 (ou true) supprime en forçant — chaque balise qui le cite devient son texte affiché (le libellé pour {{clé}} et {{clé:}}, le texte écrit pour {{clé|texte}}), en texte simple, '
         + 'chaque étiquette de page est retirée, dans le même lot ; sans forçage, 409 avec `mentions` (décision R196) et `refus_du_forcage`. Refusé '
         + 'quand même (409, avant toute écriture) : un mot-clé verrouillé, qui étiquette un sort, cité par la définition d’un mot-clé verrouillé '
         + '(`mots_cles_verrouilles`), dont le lien mène sans ancre à une page de la base (une ancre, une route sans page ou une rubrique sont épargnées), ou mentionné là où le site ne sait pas '

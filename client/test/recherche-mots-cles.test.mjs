@@ -7,13 +7,13 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import {
-  adresseAvecMotCle, comptesDesMotsCles, elementsDuMotCle, motCleDeLAdresse, motsClesAffiches, motsClesDeLElement, PARAMETRE_MOT_CLE, vueDuMotCle,
+  adresseAvecMotCle, comptesDesMotsCles, idDeLaCle, elementsDuMotCle, motCleDeLAdresse, motsClesAffiches, motsClesDeLElement, PARAMETRE_MOT_CLE, vueDuMotCle,
 } from '../src/lib/recherche-mots-cles.mjs';
 import {
   cibleSaisie, ciblesDeFusion, compteDesElements, confirmationDesRetraits, erreurDesRetraits, examinerLesRenommages, operationsDuVocabulaire,
 } from '../src/lib/mots-cles-edition.mjs';
 import { chargerVocabulaire, idDuMotCle } from '../src/lib/mots-cles-db.mjs';
-import { MOTS_CLES_PROTEGES } from '../src/lib/mots-cles.mjs';
+import { MOTS_CLES_PROTEGES, RAISONS_DES_MOTS_CLES_PROTEGES } from '../src/lib/mots-cles.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { normalize } from '../src/lib/text.mjs';
 
@@ -53,55 +53,61 @@ test('élément ↔ mot-clé : les pages portent leurs mots-clés ; un événeme
   assert.deepEqual(elementsDuMotCle(index, 'sans-categorie'), [], 'plus de valeur réservée');
 });
 
-test('vue d’un mot-clé : son libellé et ses pages ; un id que le vocabulaire n’a pas « n’existe plus »', () => {
+test('vue d’un mot-clé : son libellé, ses synonymes et ses pages ; un id que le vocabulaire n’a pas « n’existe plus »', () => {
   const libelles = new Map([['peuple', 'Peuple'], ['magie', 'magie'], ['vide', 'Vide']]);
   const v = vueDuMotCle(index, 'peuple', libelles);
-  assert.deepEqual(Object.keys(v).sort(), ['abreviation', 'definition', 'existe', 'libelle', 'pages']);
+  assert.deepEqual(Object.keys(v).sort(), ['definition', 'existe', 'libelle', 'pages', 'synonymes']);
   assert.equal(v.existe, true);
   assert.equal(v.libelle, 'Peuple');
   assert.deepEqual(v.pages.map((e) => e.title), ['Elfe', 'Nain']);
   assert.deepEqual(vueDuMotCle(index, 'supprime', libelles), { existe: false }, 'supprimé ou fusionné depuis');
   assert.deepEqual(vueDuMotCle(index, 'sans-categorie', libelles), { existe: false }, '« Sans catégorie » n’est plus un choix de la recherche');
-  assert.deepEqual(vueDuMotCle(index, 'vide', libelles), { existe: true, libelle: 'Vide', abreviation: null, definition: '', pages: [] }, 'un mot-clé sans page visible existe');
+  assert.deepEqual(vueDuMotCle(index, 'vide', libelles), { existe: true, libelle: 'Vide', synonymes: [], definition: '', pages: [] }, 'un mot-clé sans page visible existe');
   // le glossaire (migration 0056) : la définition avec le libellé
   const glossaire = new Map([['vide', { libelle: 'Vide', definition: 'Rien dedans.' }], ['peuple', { libelle: 'Peuple', definition: null }]]);
-  assert.deepEqual(vueDuMotCle(index, 'vide', glossaire), { existe: true, libelle: 'Vide', abreviation: null, definition: 'Rien dedans.', pages: [] });
+  assert.deepEqual(vueDuMotCle(index, 'vide', glossaire), { existe: true, libelle: 'Vide', synonymes: [], definition: 'Rien dedans.', pages: [] });
   assert.equal(vueDuMotCle(index, 'peuple', glossaire).definition, '', 'pas encore décrit');
-  // l'abréviation (migration 0090, « Modifiable et affichée ») ; son nom affiché vient de la page construite (lib/mots-cles-balises.mjs#htmlDeLaPastille)
-  const abreges = new Map([['armure-magique', { libelle: 'Armure magique', abreviation: 'AM', definition: 'x' }], ['vide', { libelle: 'Vide', abreviation: '' }]]);
-  assert.deepEqual(vueDuMotCle(index, 'armure-magique', abreges), { existe: true, libelle: 'Armure magique', abreviation: 'AM', definition: 'x', pages: [] });
-  assert.equal(vueDuMotCle(index, 'vide', abreges).abreviation, null, 'une abréviation vide : aucune');
+  // les synonymes (migration 0115, R233 : « Aussi appelé ») ; le nom affiché vient de la page construite (lib/mots-cles-balises.mjs#htmlDeLaPastille)
+  const synonymes = new Map([['armure-magique', { libelle: 'Armure magique', synonymes: ['AM'], definition: 'x' }]]);
+  assert.deepEqual(vueDuMotCle(index, 'armure-magique', synonymes), { existe: true, libelle: 'Armure magique', synonymes: ['AM'], definition: 'x', pages: [] });
 });
 
-test('liste des mots-clés : filtrée par l’écriture (pas l’id), sans ceux qui n’ont aucun élément visible, sauf en mode modification', () => {
+test('adresse : une clé, ou une clé quittée, mène à l’id du mot-clé (R232 (3) : idDeLaCle)', () => {
+  const motsCles = [{ id: 14, cle: 'orios-race', anciennes_cles: ['orios'] }, { id: 15, cle: 'orios-classe' }];
+  assert.equal(idDeLaCle(motsCles, 'orios-race'), 14);
+  assert.equal(idDeLaCle(motsCles, 'orios'), 14, 'une clé quittée');
+  assert.equal(idDeLaCle(motsCles, 'orios-classe'), 15);
+  assert.equal(idDeLaCle(motsCles, 'absente'), null);
+  assert.equal(idDeLaCle(motsCles, null), null);
+});
+
+test('liste des mots-clés : filtrée par le libellé et les synonymes (pas l’id ni la clé), sans ceux qui n’ont aucun élément visible, sauf en mode modification', () => {
   const motsCles = [
-    { id: 'feu', cle: 'feu', n: 3 },
-    { id: 'magie-du-feu', cle: 'magie-du-feu', n: 1 },
-    { id: 'demo', cle: 'demo', n: 0 },
-    { id: 'aide', cle: 'aide-de-jeu', n: 2 }, // renommé : l'id reste, l'écriture change
+    { id: 1, libelle: 'Feu', n: 3 },
+    { id: 2, libelle: 'Magie du feu', n: 1 },
+    { id: 3, libelle: 'Démo', n: 0 },
+    { id: 4, libelle: 'Aide de jeu', n: 2 },
   ];
   const ids = (liste) => liste.map((m) => m.id);
-  assert.deepEqual(ids(motsClesAffiches(motsCles, '')), ['feu', 'magie-du-feu', 'aide']);
-  assert.deepEqual(ids(motsClesAffiches(motsCles, '', { tous: true })), ['feu', 'magie-du-feu', 'demo', 'aide']);
-  assert.deepEqual(ids(motsClesAffiches(motsCles, 'FEU')), ['feu', 'magie-du-feu']);
-  assert.deepEqual(ids(motsClesAffiches(motsCles, 'jeu')), ['aide'], 'l’écriture');
-  assert.deepEqual(ids(motsClesAffiches(motsCles, 'aide de')), ['aide']);
+  assert.deepEqual(ids(motsClesAffiches(motsCles, '')), [1, 2, 4]);
+  assert.deepEqual(ids(motsClesAffiches(motsCles, '', { tous: true })), [1, 2, 3, 4]);
+  assert.deepEqual(ids(motsClesAffiches(motsCles, 'FEU')), [1, 2]);
+  assert.deepEqual(ids(motsClesAffiches(motsCles, 'jeu')), [4], 'le libellé');
+  assert.deepEqual(ids(motsClesAffiches(motsCles, 'aide de')), [4]);
   assert.deepEqual(ids(motsClesAffiches(motsCles, 'demo')), []);
-  assert.deepEqual(ids(motsClesAffiches(motsCles, 'démo', { tous: true })), ['demo']);
-  // l'abréviation (migration 0090) : « AM » trouve « Armure magique », quelle que soit la casse ; un mot cherché ne se lit pas à cheval sur l'écriture et
-  // l'abréviation
-  const abreges = [...motsCles, { id: 'armure-magique', cle: 'armure-magique', abreviation: 'AM', n: 0 }, { id: 'nature', cle: 'nature', abreviation: 'Nat.', n: 1 }];
-  assert.deepEqual(ids(motsClesAffiches(abreges, 'AM', { tous: true })), ['armure-magique']);
-  assert.deepEqual(ids(motsClesAffiches(abreges, 'am', { tous: true })), ['armure-magique']);
-  assert.deepEqual(ids(motsClesAffiches(abreges, 'am')), [], 'sans page visible : hors du mode modification');
-  assert.deepEqual(ids(motsClesAffiches(abreges, 'nat.')), ['nature']);
-  assert.deepEqual(ids(motsClesAffiches(abreges, 'armure')), [], 'par l’écriture, sans page visible : absent');
-  assert.deepEqual(ids(motsClesAffiches(abreges, 'armure', { tous: true })), ['armure-magique'], 'par l’écriture, toujours');
-  assert.deepEqual(ids(motsClesAffiches(abreges, 'magique am', { tous: true })), ['armure-magique'], 'un mot dans l’écriture, l’autre dans l’abréviation');
-  assert.deepEqual(ids(motsClesAffiches(abreges, 'equeam', { tous: true })), [], 'jamais à cheval');
+  assert.deepEqual(ids(motsClesAffiches(motsCles, 'démo', { tous: true })), [3]);
+  // les synonymes (R233 (1)) : « AM » trouve « Armure magique », quelle que soit la casse ; un mot cherché ne se lit pas à cheval sur deux écritures
+  const avecSynonymes = [...motsCles, { id: 5, libelle: 'Armure magique', synonymes: ['AM'], n: 0 }, { id: 6, libelle: 'Nature', synonymes: ['Nat.'], n: 1 },
+    { id: 7, libelle: 'Orios', cle: 'orios-race', synonymes: [], n: 1 }];
+  assert.deepEqual(ids(motsClesAffiches(avecSynonymes, 'AM', { tous: true })), [5]);
+  assert.deepEqual(ids(motsClesAffiches(avecSynonymes, 'am')), [], 'sans page visible : hors du mode modification');
+  assert.deepEqual(ids(motsClesAffiches(avecSynonymes, 'nat.')), [6]);
+  assert.deepEqual(ids(motsClesAffiches(avecSynonymes, 'magique am', { tous: true })), [5], 'un mot dans le libellé, l’autre dans un synonyme');
+  assert.deepEqual(ids(motsClesAffiches(avecSynonymes, 'equeam', { tous: true })), [], 'jamais à cheval');
+  assert.deepEqual(ids(motsClesAffiches(avecSynonymes, 'race', { tous: true })), [], 'la clé d’un homonyme n’est pas cherchée');
 });
 
-test('le vocabulaire de la base : chaque mot-clé des pages y a son id, retrouvé par son écriture', () => {
+test('le vocabulaire de la base : chaque mot-clé des pages y a son id, retrouvé par son libellé (s’il est seul à le porter) ou par sa clé', () => {
   const db = ouvrirBase();
   const vocabulaire = chargerVocabulaire(db);
   // depuis la migration 0056, un glossaire : les mots-clés dont le site se sert et ceux du glossaire, chacun avec sa définition (NULL : pas encore
@@ -109,14 +115,15 @@ test('le vocabulaire de la base : chaque mot-clé des pages y a son id, retrouv�
   assert.ok(vocabulaire.length > 0, `${vocabulaire.length} mots-clés`);
   assert.ok(vocabulaire.every((m) => m.description === null || (typeof m.description === 'string' && m.description !== '')), 'une définition, ou NULL, pour chacun');
   assert.ok(vocabulaire.some((m) => m.description === null), 'un mot-clé pas encore décrit : NULL');
-  assert.deepEqual(vocabulaire.map((m) => m.libelle_cle), vocabulaire.map((m) => normalize(m.libelle)), 'libelle_cle = normalize(libelle)');
-  const ids = new Set(vocabulaire.map((m) => m.id));
-  const tags = db.prepare('SELECT m.libelle, m.id FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id').all();
+  assert.ok(vocabulaire.every((m) => Number.isInteger(m.id) && typeof m.cle === 'string'), 'un id entier et une clé (migration 0113)');
+  const homonymes = (libelle) => vocabulaire.filter((m) => normalize(m.libelle) === normalize(libelle)).length > 1;
+  const tags = db.prepare('SELECT m.libelle, m.cle, m.id FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id').all();
   assert.ok(tags.length > 0, 'des pages portent encore des mots-clés (ceux dont le site se sert)');
-  for (const t of tags) assert.equal(idDuMotCle(db, t.libelle), t.id, t.libelle);
-  for (const t of tags) assert.equal(idDuMotCle(db, t.libelle.toUpperCase()), t.id, 'même écriture, sans la casse');
-  assert.ok(ids.has(idDuMotCle(db, vocabulaire[0].libelle)));
-  assert.equal(idDuMotCle(db, 'Écriture absente du vocabulaire'), 'ecriture-absente-du-vocabulaire', 'à défaut : l’ancienne clé');
+  for (const t of tags) {
+    assert.equal(idDuMotCle(db, t.cle), t.id, t.cle);
+    assert.equal(idDuMotCle(db, t.libelle.toUpperCase()), homonymes(t.libelle) ? null : t.id, `${t.libelle} : sans la casse ; ambigu pour des homonymes`);
+  }
+  assert.equal(idDuMotCle(db, 'Écriture absente du vocabulaire'), null, 'une écriture inconnue : aucun');
 });
 
 // --- Mode modification (lib/mots-cles-edition.mjs) ----------------------------------------------------------------------------------------------
@@ -242,8 +249,9 @@ test('fusions et suppressions : un mot-clé qui reçoit une fusion n’est pas s
   assert.deepEqual(ids(ops), ['aide⇒guide', 'peuple⇒guide', 'guide⇒feu'], '« guide » reçoit les autres avant de partir');
 });
 
-test('mots-clés protégés : la liste de lib/mots-cles.mjs est faite d’ids (la forme normalize, celle de leur écriture d’origine ; décision R195)', () => {
-  for (const cle of MOTS_CLES_PROTEGES.keys()) assert.equal(cle, normalize(cle));
+test('mots-clés protégés : la liste de lib/mots-cles.mjs est faite d’ids entiers (migration 0113 ; décision R195), leurs noms de la forme normalize', () => {
+  for (const id of MOTS_CLES_PROTEGES.keys()) assert.ok(Number.isInteger(id), String(id));
+  for (const nom of RAISONS_DES_MOTS_CLES_PROTEGES.keys()) assert.equal(nom, normalize(nom));
 });
 
 // --- Scripts de page --------------------------------------------------------------------------------------------------------------------------------

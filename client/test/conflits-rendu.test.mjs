@@ -310,7 +310,7 @@ test('un vrai nom partout (demande du 2026-10-23) : aucun nom de table ni de col
   }
   assert.deepEqual(tablesDans('sort_mot_cle : clé étrangère rompue vers Mot-clé ; invocation, lien'), ['sort_mot_cle', 'invocation', 'lien'], 'la garde les voit');
   // la rupture « enfant » (la table qui cite, par son nom) et le renommage des deux bords (sans la clé normalisée)
-  assert.match(texte(html), /Étiquette du sort : clé étrangère rompue vers Mot-clé essai-conflits-etiquette/);
+  assert.match(texte(html), /Étiquette du sort : clé étrangère rompue vers Mot-clé \d+/);
   assert.match(texte(html), /Au rejeu : Métier « Acrobate des règles \(essai des conflits\) » : les règles ont changé « Nom » autrement/);
   // chaque version faite d'une ligne : ses colonnes par le nom que donne le service, jamais leur nom technique devant « : »
   assert.ok(VERSIONS_EN_LIGNES.some(([, c]) => c.table === 'alias') && VERSIONS_EN_LIGNES.some(([, c]) => c.table === 'monstre_capacite'), 'les lignes du scénario');

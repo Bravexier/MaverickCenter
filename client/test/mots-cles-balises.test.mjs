@@ -23,22 +23,25 @@ import { avecLesValeurs, emplacements } from '../src/lib/monstre-champs.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import {
   ambiguiteDe, avecLeursBalises, formeCanonique, formesNonCanoniques, htmlAvecMotsCles, htmlDeLaBalise, htmlDeLaBulle, htmlDeLaDefinition, htmlDeLaPastille,
-  htmlDuNomDuMotCle, lireBalises, lireUneBalise, motCleDeLaRef,
+  htmlAussiAppele, htmlDeLIcone, htmlDuNomDuMotCle, lireBalises, lireUneBalise, motCleDeLaRef, synonymesAffiches,
   motsClesCites, pageAvecMotsCles, reciblerLeMotCle, retirerLeMotCle, texteSansBalises, vocabulaireDesMotsCles, zonesDeCode,
 } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
+import { IDS_DES_MOTS_CLES_PROTEGES } from '../src/lib/mots-cles-proteges.mjs';
 import { comptesDesMotsCles, elementsDuMotCle } from '../src/lib/recherche-mots-cles.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
+// des mots-clés d'essai : un id entier (figé, migration 0113) et une clé (celle que citent les balises, R232 (3)) ; le libellé n'est pas unique
 const VOCABULAIRE = [
-  { id: 'recharge-longue', libelle: 'Recharge longue', description: 'Doit utiliser son action ou son mouvement pour recharger.' },
-  { id: 'non-mort', libelle: 'Non-mort', description: 'Une créature revenue de la mort.' },
-  { id: 'mordhau', libelle: 'Mordhau', description: null },
-  { id: 'glossaire', libelle: 'Glossaire', description: 'Voir {{non-mort:}} et {{recharge-longue}}.' },
+  { id: 1, cle: 'recharge-longue', libelle: 'Recharge longue', description: 'Doit utiliser son action ou son mouvement pour recharger.' },
+  { id: 2, cle: 'non-mort', libelle: 'Non-mort', description: 'Une créature revenue de la mort.' },
+  { id: 3, cle: 'mordhau', libelle: 'Mordhau', description: null },
+  { id: 4, cle: 'glossaire', libelle: 'Glossaire', description: 'Voir {{non-mort:}} et {{recharge-longue}}.' },
 ];
 const V = vocabulaireDesMotsCles(VOCABULAIRE);
+const ID = Object.fromEntries(VOCABULAIRE.map((m) => [m.cle, m.id]));
 
 // --- Syntaxe ------------------------------------------------------------------------------------------------------------------------------------
 
@@ -53,9 +56,9 @@ test('syntaxe : {{ref}}, {{ref|texte}} (« \\| » dans une case de tableau), {{r
   assert.deepEqual(lireBalises('{N} des capacités, {couleur:x} des cases, {{ }}'), [], 'ni les valeurs des capacités communes, ni les couleurs de case');
   assert.equal(lireUneBalise('{{mordhau:}}').complet, true);
   assert.equal(lireUneBalise('texte {{mordhau}}'), null, 'une balise écrite seule');
-  // une ref : l'id, ou l'écriture du libellé (normalize)
-  assert.equal(motCleDeLaRef(V, 'recharge-longue').id, 'recharge-longue');
-  assert.equal(motCleDeLaRef(V, 'Recharge  LONGUE').id, 'recharge-longue');
+  // une ref : la clé, ou l'écriture du libellé (normalize)
+  assert.equal(motCleDeLaRef(V, 'recharge-longue').id, ID['recharge-longue']);
+  assert.equal(motCleDeLaRef(V, 'Recharge  LONGUE').id, ID['recharge-longue']);
   assert.equal(motCleDeLaRef(V, 'inconnu'), null);
 });
 
@@ -73,13 +76,13 @@ test('forme canonique d’un texte de case (D2) : « {{id|texte}} » toujours (l
   assert.deepEqual(formeCanonique('{{Recharge longue}}, {{non-mort|non-morts}}, {{Mordhau:}}, {{Absent}}', V), {
     texte: '{{recharge-longue|Recharge longue}}, {{non-mort|non-morts}}, {{mordhau:}}, {{Absent}}', inconnues: ['Absent'], ambigues: [], complets: ['Mordhau'],
   });
-  assert.equal(formeCanonique('{{x\\|y}}', vocabulaireDesMotsCles([{ id: 'x', libelle: 'X' }])).texte, '{{x|y}}', 'un « \\| » devient « | » (une case n’est pas du Markdown)');
+  assert.equal(formeCanonique('{{x\\|y}}', vocabulaireDesMotsCles([{ id: 9, cle: 'x', libelle: 'X' }])).texte, '{{x|y}}', 'un « \\| » devient « | » (une case n’est pas du Markdown)');
   const canonique = formeCanonique('a {{non-mort}}', V).texte;
   assert.equal(canonique, 'a {{non-mort|Non-mort}}');
   assert.equal(formeCanonique(canonique, V).texte, canonique, 'stable');
   assert.equal(texteSansBalises(canonique), 'a Non-mort', 'se lit sans le vocabulaire');
   assert.equal(formeCanonique('{{Mordhau :}}', V).complets[0], 'Mordhau', '« {{ref :}} » (une espace avant les deux-points) : le mode complet aussi');
-  assert.deepEqual(motsClesCites('{{non-mort}} {{Non mort|x}} {{recharge-longue:}} {{absent}}', V), ['non-mort', 'recharge-longue']);
+  assert.deepEqual(motsClesCites('{{non-mort}} {{Non mort|x}} {{recharge-longue:}} {{absent}}', V), [ID['non-mort'], ID['recharge-longue']], 'leurs ids entiers');
 });
 
 test('forme canonique d’un texte mis en forme (D2) : « {{id}} » (sans texte, ou le libellé pour texte), « {{id|texte}} » pour un autre, « {{id:}} » ; « \\| » sur une ligne de tableau ; un code reste tel quel', () => {
@@ -95,7 +98,7 @@ test('forme canonique d’un texte mis en forme (D2) : « {{id}} » (sans texte,
   assert.deepEqual(md('Écrire `{{Absent}}` ou\n```\n{{Recharge longue}}\n```\npuis {{Recharge longue}}.'), {
     texte: 'Écrire `{{Absent}}` ou\n```\n{{Recharge longue}}\n```\npuis {{recharge-longue}}.', inconnues: [], ambigues: [], complets: [],
   });
-  assert.deepEqual(motsClesCites('`{{non-mort}}` {{mordhau}}', V, { markdown: true }), ['mordhau'], 'cité hors des codes seulement');
+  assert.deepEqual(motsClesCites('`{{non-mort}}` {{mordhau}}', V, { markdown: true }), [ID.mordhau], 'cité hors des codes seulement');
   assert.equal(texteSansBalises('`{{non-mort}}` {{mordhau}}', V, { markdown: true }), '`{{non-mort}}` Mordhau');
   const stable = md('Voir {{non-mort|morts}} et {{mordhau:}}').texte;
   assert.equal(md(stable).texte, stable, 'stable');
@@ -139,30 +142,56 @@ test('forme canonique (relecture SQL) : formesNonCanoniques suit la règle de fo
   assert.deepEqual(relevees('{{non-mort|x}} {{non-mort\\|x}} {{ non-mort|x}} {{non-mort}} {{mordhau:}}', false), [
     ['{{non-mort\\|x}}', 'sa forme canonique est « {{non-mort|x}} »'],
     ['{{ non-mort|x}}', 'sa forme canonique est « {{non-mort|x}} »'],
-    ['{{non-mort}}', 'un texte de case porte le texte de sa balise (« {{id|texte}} »)'],
+    ['{{non-mort}}', 'un texte de case porte le texte de sa balise (« {{cle|texte}} »)'],
     ['{{mordhau:}}', 'le mode complet ne s’écrit que dans un texte mis en forme'],
   ]);
 });
 
-test('ref ambiguë : l’id d’un mot-clé et l’écriture d’un autre — relevée, lue par l’id ; les zones de code d’un Markdown', () => {
-  // « X » renommé « Y » (id « x » gardé), puis un mot-clé « X » créé (id « x-2 ») : « {{x}} » est l’id de l’un et l’écriture de l’autre
-  const v = vocabulaireDesMotsCles([{ id: 'x', libelle: 'Y' }, { id: 'x-2', libelle: 'X' }]);
-  assert.deepEqual(ambiguiteDe(v, 'x'), { parId: v.parId.get('x'), parEcriture: v.parId.get('x-2'), chemins: ['id', 'ecriture'] });
-  assert.equal(ambiguiteDe(v, 'X-2'), null);
-  assert.equal(ambiguiteDe(v, 'y'), null);
-  assert.deepEqual(formeCanonique('{{x}} {{x-2}}', v), { texte: '{{x|Y}} {{x-2|X}}', inconnues: [], ambigues: ['x'], complets: [] });
+test('R232 (4) : un libellé que portent des homonymes est une ref ambiguë (relevée, la balise gardée) ; leur clé les désigne ; les zones de code d’un Markdown', () => {
+  // deux homonymes distingués par leurs catégories (R232 (2) : « orios-race », « orios-classe ») ; une clé quittée (« orios ») s'écrit comme leur libellé
+  const v = vocabulaireDesMotsCles([
+    { id: 11, cle: 'orios-race', libelle: 'Orios', categories: [3], anciennes_cles: ['orios'] },
+    { id: 12, cle: 'orios-classe', libelle: 'Orios', categories: [6] },
+  ]);
+  assert.deepEqual(ambiguiteDe(v, 'Orios')?.homonymes.map((m) => m.id), [11, 12]);
+  assert.deepEqual(ambiguiteDe(v, 'orios')?.homonymes.map((m) => m.id), [11, 12], 'le libellé passe avant une clé quittée');
+  assert.equal(ambiguiteDe(v, 'orios-classe'), null);
+  assert.equal(motCleDeLaRef(v, 'Orios'), null, 'ambiguë : aucun mot-clé');
+  assert.equal(motCleDeLaRef(v, 'ORIOS-CLASSE').id, 12, 'la clé, sans égard à la casse');
+  assert.deepEqual(formeCanonique('{{Orios}} {{orios-classe}}', v), { texte: '{{Orios}} {{orios-classe|Orios}}', inconnues: [], ambigues: ['Orios'], complets: [] });
+  assert.deepEqual(formesNonCanoniques('{{Orios}}', v).map((f) => f.raison), ['sa ref est un libellé que portent plusieurs mots-clés : elle s’écrit par la clé']);
   assert.deepEqual(zonesDeCode('a `b` ``c`d`` \\`e` f\n\n`g\n\nh` ~~~\n~~~x\n{{y}}\n~~~\n'), [[2, 5], [6, 13], [33, 47]],
     'code en ligne (un accent grave échappé n’ouvre rien, une ligne vide ferme le paragraphe), bloc ~~~ (une ligne qui commence par lui)');
 });
 
+test('R233 (1), (2), (10) : une balise saisie par un synonyme (l’ancienne abréviation comprise) ou dans une autre casse est reconnue, sans égard à la casse, et enregistrée avec le texte tapé ; la clé ou le libellé exact montrent le libellé ; une clé quittée mène au mot-clé', () => {
+  const v = vocabulaireDesMotsCles([
+    { id: 10, cle: 'instant-cast', libelle: 'Instant Cast', description: 'Agir vite.', synonymes: ['IC', 'Action rapide'], anciennes_cles: ['ancienne-cle'] },
+    ...VOCABULAIRE,
+  ]);
+  const md = (t) => formeCanonique(t, v, { markdown: true }).texte;
+  // « Garder la casse tapée, incluant les synonymes et abréviations » : « {{ic}} » s'enregistre « {{instant-cast|ic}} »
+  assert.equal(md('{{ic}} {{IC}} {{Action rapide}} {{action rapide}} {{instant cast}} {{Instant Cast}} {{instant-cast}} {{ancienne-cle}}'),
+    '{{instant-cast|ic}} {{instant-cast|IC}} {{instant-cast|Action rapide}} {{instant-cast|action rapide}} {{instant-cast|instant cast}} {{instant-cast}} {{instant-cast}} {{instant-cast}}');
+  assert.equal(formeCanonique('{{ic}} et {{instant-cast}}', v).texte, '{{instant-cast|ic}} et {{instant-cast|Instant Cast}}', 'un texte de case porte toujours son texte');
+  assert.equal(formeCanonique('{{solidité}}', vocabulaireDesMotsCles([{ id: 5, cle: 'solidite', libelle: 'Solidité' }]), { markdown: true }).texte, '{{solidite|solidité}}');
+  for (const t of ['{{ic}}', '{{Action rapide}}', '{{instant cast}}']) {
+    assert.equal(md(md(t)), md(t), `${t} : stable`);
+    assert.deepEqual(formesNonCanoniques(md(t), v, { markdown: true }), [], `${t} : ce qu’elle écrit passe db:check`);
+  }
+  assert.deepEqual(motsClesCites('{{IC}} {{action rapide}}', v), [10]);
+  assert.equal(texteSansBalises('{{instant-cast|ic}}, {{instant-cast}}', v), 'ic, Instant Cast');
+  assert.match(htmlAvecMotsCles('<p>{{instant-cast|IC}}</p>', v).html, /<strong class="mot-cle" data-mot-cle="instant-cast"[^>]*>IC<\/strong>/, 'le synonyme affiché, la clé citée');
+});
+
 test('retirer un mot-clé (son texte simple, « Libellé : définition » pour le mode complet) et recibler ses balises (fusion), le texte écrit gardé', () => {
   const t = '{{non-mort|morts-vivants}}, {{non-mort}}, {{non-mort:}} et {{recharge-longue}}';
-  assert.equal(retirerLeMotCle(t, V, 'non-mort'), 'morts-vivants, Non-mort, Non-mort : Une créature revenue de la mort. et {{recharge-longue}}');
-  assert.equal(retirerLeMotCle('| {{non-mort|a*b}} |', V, 'non-mort', { markdown: true }), '| a\\*b |', 'échappé pour du Markdown');
-  assert.equal(retirerLeMotCle('`{{non-mort}}` {{non-mort}}', V, 'non-mort', { markdown: true }), '`{{non-mort}}` Non-mort', 'un code garde son écriture');
+  assert.equal(retirerLeMotCle(t, V, ID['non-mort']), 'morts-vivants, Non-mort, Non-mort : Une créature revenue de la mort. et {{recharge-longue}}');
+  assert.equal(retirerLeMotCle('| {{non-mort|a*b}} |', V, ID['non-mort'], { markdown: true }), '| a\\*b |', 'échappé pour du Markdown');
+  assert.equal(retirerLeMotCle('`{{non-mort}}` {{non-mort}}', V, ID['non-mort'], { markdown: true }), '`{{non-mort}}` Non-mort', 'un code garde son écriture');
   // un texte de case garde le texte qu'il montrait (le libellé de la source pour une balise sans texte) ; un texte mis en forme suivra la cible
-  assert.equal(reciblerLeMotCle(t, V, 'non-mort', 'mordhau'), '{{mordhau|morts-vivants}}, {{mordhau|Non-mort}}, {{mordhau:}} et {{recharge-longue}}');
-  assert.equal(reciblerLeMotCle(t, V, 'non-mort', 'mordhau', { markdown: true }), '{{mordhau|morts-vivants}}, {{mordhau}}, {{mordhau:}} et {{recharge-longue}}');
+  assert.equal(reciblerLeMotCle(t, V, ID['non-mort'], ID.mordhau), '{{mordhau|morts-vivants}}, {{mordhau|Non-mort}}, {{mordhau:}} et {{recharge-longue}}');
+  assert.equal(reciblerLeMotCle(t, V, ID['non-mort'], ID.mordhau, { markdown: true }), '{{mordhau|morts-vivants}}, {{mordhau}}, {{mordhau:}} et {{recharge-longue}}', 'la clé de la cible');
 });
 
 // --- HTML ---------------------------------------------------------------------------------------------------------------------------------------
@@ -174,7 +203,7 @@ test('HTML : un mot-clé décrit en gras avec sa bulle (focus clavier, pas dans 
     + '<strong class="mot-cle" data-mot-cle="mordhau" data-balise="{{mordhau}}">Mordhau</strong>, '
     + '<span class="mot-cle-definition" data-mot-cle="non-mort" data-balise="{{non-mort:}}"><strong class="mot-cle-definition__nom">Non-mort</strong> : <span class="mot-cle-definition__texte">Une créature revenue de la mort.</span></span> '
     + 'et ancien.</p>');
-  assert.deepEqual(employes, ['recharge-longue', 'non-mort'], 'les mots-clés décrits, dans l’ordre');
+  assert.deepEqual(employes, [ID['recharge-longue'], ID['non-mort']], 'les mots-clés décrits (leurs ids), dans l’ordre');
   // le texte d'une balise, échappé (HTML) et relu tel qu'écrit
   assert.match(htmlAvecMotsCles('<p>{{non-mort|l&#39;&quot;un&quot; &amp; l&lt;autre}}</p>', V).html, /data-balise="\{\{non-mort\|l&#39;&quot;un&quot; &amp; l&lt;autre\}\}">l&#39;&quot;un&quot; &amp; l&lt;autre<\/strong>/);
 });
@@ -216,66 +245,74 @@ test('une bulle par mot-clé employé et par page, avant </body> (hors de toute 
   assert.equal(htmlDeLaBalise(lireUneBalise('{{perdu:}}'), V).html, 'perdu', 'mode complet d’un mot-clé inconnu : sa ref');
 });
 
-test('décision du propriétaire (2026-11-05, « Modifiable et affichée ») : la bulle d’un mot-clé abrégé a pour titre « Libellé (ABR) » ; sans abréviation, le libellé seul', () => {
-  const vocabulaire = [...VOCABULAIRE, { id: 'armure-magique', libelle: 'Armure magique', description: 'Protège des sorts.', abreviation: 'AM' }];
-  assert.equal(htmlDeLaBulle('armure-magique', vocabulaire),
-    '<span class="bulle" role="tooltip" id="mot-cle-armure-magique" hidden><strong class="bulle__titre">Armure magique (AM)</strong><span class="bulle__texte">Protège des sorts.</span></span>');
-  assert.match(htmlDeLaBulle('non-mort', vocabulaire), /<strong class="bulle__titre">Non-mort<\/strong>/, 'sans abréviation : comme avant');
-  // la balise « {{AM}} » montre l'abréviation écrite ; sa bulle, ce qu'elle abrège
+test('R233 (8), (9) : le titre de la bulle est le libellé seul, ses synonymes (l’ancienne abréviation comprise) en « Aussi appelé » ; sans synonyme, rien de plus', () => {
+  const vocabulaire = [...VOCABULAIRE, { id: 20, cle: 'armure-magique', libelle: 'Armure magique', description: 'Protège des sorts.', synonymes: ['AM', 'Bouclier de mana'] }];
+  assert.equal(htmlDeLaBulle(20, vocabulaire),
+    '<span class="bulle" role="tooltip" id="mot-cle-armure-magique" hidden><strong class="bulle__titre">Armure magique</strong>'
+    + '<span class="bulle__aussi">Aussi appelé : AM, Bouclier de mana</span><span class="bulle__texte">Protège des sorts.</span></span>');
+  assert.doesNotMatch(htmlDeLaBulle(ID['non-mort'], vocabulaire), /bulle__aussi/, 'sans synonyme : le titre et la définition');
+  assert.match(htmlDeLaBulle(ID['non-mort'], vocabulaire), /<strong class="bulle__titre">Non-mort<\/strong><span class="bulle__texte">/);
+  assert.equal(synonymesAffiches({ synonymes: ['A & <b>'] })[0], 'A & <b>');
+  assert.match(htmlAussiAppele({ synonymes: ['A & <b>', 'c'] }, 'x'), /^<span class="x">Aussi appelé : A &amp; &lt;b&gt;, c<\/span>$/, 'échappé');
+  // la balise « {{AM}} » montre le synonyme écrit ; sa bulle, ce qu'il désigne
   const page = pageAvecMotsCles('<html><body><p>{{AM}} et {{armure-magique}}</p></body></html>', vocabulaireDesMotsCles(vocabulaire));
   assert.match(page, /<strong class="mot-cle" data-mot-cle="armure-magique"[^>]*>AM<\/strong> et <strong class="mot-cle" data-mot-cle="armure-magique"[^>]*>Armure magique<\/strong>/);
-  assert.equal((page.match(/<strong class="bulle__titre">Armure magique \(AM\)<\/strong>/g) ?? []).length, 1, 'une bulle par mot-clé et par page');
+  assert.equal((page.match(/<strong class="bulle__titre">Armure magique<\/strong>/g) ?? []).length, 1, 'une bulle par mot-clé et par page');
 });
 
-test('réponses du propriétaire (2026-11-05) : le nom d’un mot-clé « Libellé (ABR) », une monnaie « Libellé + icône » (R63) ; la pastille de /recherche/ « Armure magique (AM) · 3 »', () => {
-  assert.equal(htmlDuNomDuMotCle({ libelle: 'Armure magique', abreviation: 'AM' }), 'Armure magique (AM)');
-  assert.equal(htmlDuNomDuMotCle({ libelle: 'Feu', abreviation: null }), 'Feu');
+test('R233 (9), R235 (3) : le nom d’un mot-clé est son libellé seul, suivi de son icône quand il en a une (une monnaie « Libellé + icône », R63) ; la pastille de /recherche/ « Armure magique · 3 »', () => {
+  assert.equal(htmlDuNomDuMotCle({ libelle: 'Armure magique', synonymes: ['AM'] }), 'Armure magique');
   assert.equal(htmlDuNomDuMotCle({ libelle: 'Feu' }), 'Feu');
-  assert.equal(htmlDuNomDuMotCle({ libelle: 'Nature', abreviation: 'Nat.' }), 'Nature (Nat.)');
-  assert.equal(htmlDuNomDuMotCle({ libelle: 'A & <b>', abreviation: '"x"' }), 'A &amp; &lt;b&gt; (&quot;x&quot;)', 'échappé');
-  // une monnaie (R183 : les mots-clés rf, ro, pp) : son libellé, puis l'icône de lib/monnaies.mjs, jamais « (RO) »
-  for (const [id, libelle, abr] of [['rf', 'Ricken de fer', 'RF'], ['ro', 'Ricken d’or', 'RO'], ['pp', 'Pierre précieuse', 'PP']]) {
-    assert.equal(htmlDuNomDuMotCle({ id, libelle, abreviation: abr }), `${libelle} ${htmlDePiece(abr)}`, abr);
-    assert.doesNotMatch(htmlDuNomDuMotCle({ id, libelle, abreviation: abr }).replace(/<[^>]+>/g, ''), new RegExp(`\\b${abr}\\b`), `${abr} : pas d’abréviation visible`);
+  assert.equal(htmlDuNomDuMotCle({ libelle: 'A & <b>' }), 'A &amp; &lt;b&gt;', 'échappé');
+  // l'icône (mot_cle.icone, migration 0116 ; R235 : le RF, le RO et la PP l'ont reçue) : son libellé, puis le dessin de lib/monnaies.mjs, jamais « (RO) »
+  for (const [monnaie, libelle, abr] of [['rf', 'Ricken de fer', 'RF'], ['ro', 'Ricken d’or', 'RO'], ['pp', 'Pierre précieuse', 'PP']]) {
+    assert.equal(htmlDeLIcone(`monnaie:${monnaie}`), htmlDePiece(abr), `${abr} : le même dessin que dans le texte`);
+    assert.equal(htmlDuNomDuMotCle({ libelle, icone: `monnaie:${monnaie}` }), `${libelle} ${htmlDePiece(abr)}`, abr);
+    assert.doesNotMatch(htmlDuNomDuMotCle({ libelle, icone: `monnaie:${monnaie}` }).replace(/<[^>]+>/g, ''), new RegExp(`\\b${abr}\\b`), `${abr} : pas d’abréviation visible`);
   }
-  assert.equal(htmlDeLaPastille({ libelle: 'Armure magique', abreviation: 'AM', n: 3 }), '<span class="recherche-nom">Armure magique (AM)</span> · 3');
-  assert.equal(htmlDeLaPastille({ libelle: 'Armure magique', abreviation: 'AM', n: 0 }), '<span class="recherche-nom">Armure magique (AM)</span>', 'sans page : pas de nombre');
-  assert.equal(htmlDeLaPastille({ libelle: 'Feu', abreviation: null, n: 2 }), '<span class="recherche-nom">Feu</span> · 2', 'sans abréviation : « Feu · 2 »');
-  assert.equal(htmlDeLaPastille({ id: 'ro', libelle: 'Ricken d’or', abreviation: 'RO', n: 1 }), `<span class="recherche-nom">Ricken d’or ${htmlDePiece('RO')}</span> · 1`);
-  // la bulle : le même nom en titre
-  const bulle = htmlDeLaBulle('ro', [{ id: 'ro', libelle: 'Ricken d’or', abreviation: 'RO', description: '1 RO = 100 RF.' }]);
-  assert.ok(bulle.includes(`<strong class="bulle__titre">Ricken d’or ${htmlDePiece('RO')}</strong>`), bulle);
+  assert.equal(htmlDuNomDuMotCle({ libelle: 'Ricken d’or', monnaie_id: 'ro' }), 'Ricken d’or', 'l’affichage passe par `icone`, plus par `monnaie_id`');
+  assert.equal(htmlDeLIcone('monnaie:inconnue'), '', 'une icône que la liste n’a pas : rien');
+  assert.equal(htmlDeLIcone(null), '');
+  assert.equal(htmlDeLaPastille({ libelle: 'Armure magique', n: 3 }), '<span class="recherche-nom">Armure magique</span> · 3');
+  assert.equal(htmlDeLaPastille({ libelle: 'Armure magique', n: 0 }), '<span class="recherche-nom">Armure magique</span>', 'sans page : pas de nombre');
+  assert.equal(htmlDeLaPastille({ libelle: 'Ricken d’or', icone: 'monnaie:ro', n: 1 }), `<span class="recherche-nom">Ricken d’or ${htmlDePiece('RO')}</span> · 1`);
+  // la bulle : le même nom en titre ; l'abréviation de sa propre monnaie n'est pas un « Aussi appelé » (R63 : son icône est déjà là)
+  const bulle = htmlDeLaBulle(30, [{ id: 30, cle: 'ricken-dor', libelle: 'Ricken d’or', monnaie_id: 'ro', icone: 'monnaie:ro', synonymes: ['RO', 'Ro d’or'], description: '1 RO = 100 RF.' }]);
+  assert.ok(bulle.includes(`<strong class="bulle__titre">Ricken d’or ${htmlDePiece('RO')}</strong><span class="bulle__aussi">Aussi appelé : Ro d’or</span>`), bulle);
+  assert.deepEqual(synonymesAffiches({ monnaie_id: 'ro', synonymes: ['ro'] }), []);
   // la définition de la vue : monnaies en icônes, balises gardées (le middleware les rend ensuite)
   assert.equal(htmlDeLaDefinition('Voir {{non-mort}} : 10 RO.'), htmlAvecMonnaies('Voir {{non-mort}} : 10 RO.'));
   assert.match(htmlDeLaDefinition('Voir {{non-mort}} : 10 RO.'), /^Voir \{\{non-mort\}\} : <span class="montant"/);
   assert.equal(htmlDeLaDefinition(null), '');
 });
 
-test('R4 (relecture) : un mot-clé de monnaie se reconnaît à son id, figé, celui de la table `monnaie` — pas à son abréviation, qui se modifie', () => {
-  // l'abréviation changée (« R.O. »), ou vidée : toujours le libellé et l'icône du Ricken d'or, jamais « (R.O.) »
-  for (const abreviation of ['RO', 'R.O.', null, '']) {
-    assert.equal(htmlDuNomDuMotCle({ id: 'ro', libelle: 'Ricken d’or', abreviation }), `Ricken d’or ${htmlDePiece('RO')}`, String(abreviation));
+test('R4 (relecture), migrations 0113 et 0116 : le mot-clé d’une monnaie se reconnaît à `monnaie_id` (l’id de la table `monnaie`, figé), son icône à `icone` (R235) — ni à son id, ni à un synonyme, qui se modifient', () => {
+  for (const synonymes of [['RO'], ['R.O.'], []]) {
+    assert.equal(htmlDuNomDuMotCle({ id: 7, libelle: 'Ricken d’or', monnaie_id: 'ro', icone: 'monnaie:ro', synonymes }), `Ricken d’or ${htmlDePiece('RO')}`, String(synonymes));
   }
-  // une abréviation de monnaie sur un autre mot-clé : une abréviation comme une autre
-  assert.equal(htmlDuNomDuMotCle({ id: 'rouge', libelle: 'Rouge', abreviation: 'RO' }), 'Rouge (RO)');
+  // un synonyme « RO » sur un autre mot-clé : un synonyme comme un autre
+  assert.equal(htmlDuNomDuMotCle({ id: 8, libelle: 'Rouge', synonymes: ['RO'] }), 'Rouge');
+  assert.deepEqual(synonymesAffiches({ id: 8, libelle: 'Rouge', synonymes: ['RO'] }), ['RO']);
   // la correspondance, à l'import (le libellé d'un mot-clé se modifie sur le site de dev, le nom d'une monnaie est figé : R193) : les ids de
-  // MONNAIES_DU_JEU sont ceux de la table `monnaie`, et chacun est le mot-clé de sa monnaie (R183), du même nom
+  // MONNAIES_DU_JEU sont ceux de la table `monnaie`, et chacun a son mot-clé (R183), du même nom, par `monnaie_id`
   const importee = baseDImport();
   const monnaies = importee.prepare('SELECT id, nom, abreviation FROM monnaie ORDER BY id').all();
   assert.deepEqual(monnaies.map((m) => [m.id, m.abreviation]), Object.entries(MONNAIES_DU_JEU).map(([abr, m]) => [m.id, abr]).sort());
   for (const m of monnaies) {
-    const motCle = importee.prepare('SELECT libelle FROM mot_cle WHERE id = ?').get(m.id);
+    const motCle = importee.prepare('SELECT libelle, icone FROM mot_cle WHERE monnaie_id = ?').get(m.id);
     assert.ok(motCle, `${m.id} : le mot-clé de sa monnaie`);
+    assert.equal(motCle.icone, `monnaie:${m.id}`, `${m.id} : son icône, dès la migration 0116 (R235 (1))`);
     assert.equal(normalize(motCle.libelle), normalize(m.nom), `${m.id} : le nom de sa monnaie`);
   }
   // aujourd'hui : l'abréviation d'une monnaie, celles du RF, du RO et de la PP comprises, se modifie sur le site de dev (décision R195 (2) : elle ne
   // change pas dans les règles, R61, mais le site ne l'empêche pas ; serveur/edition-composants.mjs#MONNAIE) ; restent une seule unité, que le site ne
-  // supprime pas, et deux monnaies qui ne s'écrivent pas de la même façon, sans égard à la casse
+  // supprime pas, et deux monnaies qui ne s'écrivent pas de la même façon, sans égard à la casse ; chaque monnaie a au plus un mot-clé
   const db = new DatabaseSync(cheminBase(), { readOnly: true });
   try {
     const abreviations = db.prepare('SELECT abreviation FROM monnaie').all().map((m) => m.abreviation.toLowerCase());
     assert.equal(new Set(abreviations).size, abreviations.length, 'des abréviations distinctes');
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM monnaie WHERE valeur_rf = 1').get().n, 1, 'une seule unité, que le site ne supprime pas');
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM (SELECT monnaie_id FROM mot_cle WHERE monnaie_id IS NOT NULL GROUP BY monnaie_id HAVING count(*) > 1)').get().n, 0);
   } finally {
     db.close();
   }
@@ -284,17 +321,17 @@ test('R4 (relecture) : un mot-clé de monnaie se reconnaît à son id, figé, ce
 test('décisions R63, R183 (9) (« R63 est respectée partout ») et R183 (12) (« Décomposer comme ailleurs ») : le texte d’une balise et la définition du mode complet montrent les monnaies en icônes ; un montant écrit dans une balise se décompose', () => {
   const v = vocabulaireDesMotsCles([
     ...VOCABULAIRE,
-    { id: 'ro', libelle: 'Ricken d’or', abreviation: 'RO', description: 'Le Ricken d’or (RO). 1 RO = 100 RF.' },
-    { id: 'prix-fixe', libelle: 'Prix fixe', description: 'Un prix qui ne se marchande pas.' },
+    { id: 40, cle: 'ricken-dor', libelle: 'Ricken d’or', monnaie_id: 'ro', icone: 'monnaie:ro', synonymes: ['RO'], description: 'Le Ricken d’or (RO). 1 RO = 100 RF.' },
+    { id: 41, cle: 'prix-fixe', libelle: 'Prix fixe', description: 'Un prix qui ne se marchande pas.' },
   ]);
   const html = (t) => htmlAvecMotsCles(t, v).html;
   const visible = (h) => h.replace(/<span class="bulle"[\s\S]*$/, '').replace(/<[^>]+>/g, '');
-  // « {{RO}} » (forme canonique : « {{ro|RO}} ») : l'icône, pas « RO »
-  const ro = html('Payer en {{ro|RO}}.');
-  assert.match(ro, /<strong class="mot-cle" data-mot-cle="ro"[^>]*data-balise="\{\{ro\|RO\}\}"><span class="piece piece--ro"[^>]*><\/span><\/strong>/);
+  // « {{RO}} » (forme canonique : « {{ricken-dor|RO}} ») : l'icône, pas « RO »
+  const ro = html('Payer en {{ricken-dor|RO}}.');
+  assert.match(ro, /<strong class="mot-cle" data-mot-cle="ricken-dor"[^>]*data-balise="\{\{ricken-dor\|RO\}\}"><span class="piece piece--ro"[^>]*><\/span><\/strong>/);
   assert.doesNotMatch(visible(ro), /\bRO\b/);
   // le mode complet : « Ricken d’or : » puis la définition, ses monnaies en icônes (comme sa bulle)
-  const complet = html('{{ro:}}');
+  const complet = html('{{ricken-dor:}}');
   assert.match(complet, /<span class="mot-cle-definition__texte">Le Ricken d’or \(<span class="piece piece--ro"/);
   assert.doesNotMatch(visible(complet), /\bR[OF]\b/);
   // un montant écrit dans la balise (R183 (12), « Décomposer comme ailleurs ») : décomposé comme dans le texte courant, « 1 [PP] 245 [RO] 50 [RF] »,
@@ -319,14 +356,29 @@ test('décisions R63, R183 (9) (« R63 est respectée partout ») et R183 (12) (
   assert.match(html('{{glossaire:}}'), /<span class="mot-cle-definition__texte">Voir Non-mort et Recharge longue\.<\/span>/, 'une définition sans monnaie : telle qu’avant');
 });
 
+test('R235 (3) : l’icône d’un mot-clé s’affiche partout où il apparaît dans un texte — après son texte affiché (sauf s’il montre déjà ce dessin), après le nom du mode complet, dans le titre de sa bulle ; un attribut garde le texte simple', () => {
+  const v = vocabulaireDesMotsCles([...VOCABULAIRE,
+    { id: 60, cle: 'ricken-dor', libelle: 'Ricken d’or', icone: 'monnaie:ro', synonymes: ['RO'], description: 'Une pièce.' },
+    { id: 61, cle: 'sans-icone', libelle: 'Sans icône', description: 'Rien.' }]);
+  const piece = htmlDePiece('RO');
+  const html = (t) => htmlAvecMotsCles(t, v).html;
+  assert.match(html('<p>{{ricken-dor}}</p>'), new RegExp(`data-balise="\\{\\{ricken-dor\\}\\}">Ricken d’or ${piece.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}</strong>`), 'le libellé, puis l’icône');
+  assert.match(html('<p>{{ricken-dor|la pièce}}</p>'), /data-balise="\{\{ricken-dor\|la pièce\}\}">la pièce <span class="piece piece--ro"/, 'un texte écrit, puis l’icône');
+  assert.equal((html('<p>{{ricken-dor|RO}}</p>').match(/piece--ro/g) ?? []).length, 1, 'le texte est déjà l’icône : une seule fois');
+  assert.match(html('<p>{{ricken-dor:}}</p>'), /<strong class="mot-cle-definition__nom">Ricken d’or <span class="piece piece--ro"[^>]*><\/span><\/strong> : /, 'le mode complet');
+  assert.ok(htmlDeLaBulle(60, v).includes(`<strong class="bulle__titre">Ricken d’or ${piece}</strong>`), 'le titre de la bulle');
+  assert.match(html('<p title="{{ricken-dor}}">x</p>'), /title="Ricken d’or"/, 'un attribut : le texte simple');
+  assert.match(html('<p>{{sans-icone}}</p>'), />Sans icône<\/strong>/, 'sans icône : rien de plus');
+});
+
 test('décision R63 : les monnaies d’une définition s’affichent en icônes dans la bulle de son mot-clé, comme dans tout texte courant (« Monnaies », migration 0090)', () => {
-  const vocabulaire = [{ id: 'monnaies', libelle: 'Monnaies', description: 'le Ricken de fer (RF) et le Ricken d’or (RO). 1 RO = 100 RF.' }];
-  const bulle = htmlDeLaBulle('monnaies', vocabulaire);
+  const vocabulaire = [{ id: 50, cle: 'monnaies', libelle: 'Monnaies', description: 'le Ricken de fer (RF) et le Ricken d’or (RO). 1 RO = 100 RF.' }];
+  const bulle = htmlDeLaBulle(50, vocabulaire);
   const texte = bulle.match(/<span class="bulle__texte">([\s\S]*)<\/span><\/span>$/)[1];
   assert.equal(texte, htmlAvecMonnaies('le Ricken de fer (RF) et le Ricken d’or (RO). 1 RO = 100 RF.'));
   assert.match(texte, /class="piece piece--rf"/);
   assert.doesNotMatch(texte.replace(/<[^>]+>/g, ''), /(?<![\p{L}\p{N}])R[OF](?![\p{L}\p{N}])/u, 'plus d’abréviation visible');
-  assert.match(htmlDeLaBulle('non-mort', VOCABULAIRE), /<span class="bulle__texte">Une créature revenue de la mort\.<\/span>/, 'sans monnaie : le texte tel quel');
+  assert.match(htmlDeLaBulle(ID['non-mort'], VOCABULAIRE), /<span class="bulle__texte">Une créature revenue de la mort\.<\/span>/, 'sans monnaie : le texte tel quel');
 });
 
 test('HTML : dans une bulle, le gras seul ; dans un élément qui a le focus, sans tabindex ; dans un bouton ou un résumé, sans bulle ; un élément exclu garde ses attributs', () => {
@@ -335,7 +387,7 @@ test('HTML : dans une bulle, le gras seul ; dans un élément qui a le focus, sa
   assert.match(bulle.html, /<span class="bulle__texte"><strong class="mot-cle" data-mot-cle="recharge-longue" data-balise="\{\{recharge-longue\}\}">Recharge longue<\/strong>/,
     'dans une bulle : ni bulle ni tabindex');
   assert.match(bulle.html, /<span class="bulle-zone"><strong class="mot-cle" data-mot-cle="non-mort" data-bulle="mot-cle-non-mort"[^>]* tabindex="0"/, '« bulle-zone » n’est pas une bulle');
-  assert.deepEqual(bulle.employes, ['non-mort'], 'la bulle d’un mot-clé cité dans une bulle n’est pas posée');
+  assert.deepEqual(bulle.employes, [ID['non-mort']], 'la bulle d’un mot-clé cité dans une bulle n’est pas posée');
   for (const [html, raison] of [['<label>{{non-mort}}</label>', 'label'], ['<select><optgroup label="x"></optgroup></select><div tabindex="0">{{non-mort}}</div>', '[tabindex]'],
     ['<a href="/x/">{{non-mort}}</a>', 'lien']]) {
     const r = rendu(html).html;
@@ -417,7 +469,7 @@ test('middleware : une réponse HTML rendue avec le vocabulaire (statut, en-têt
 test('middleware : le vocabulaire de la base construite (lu une fois), sur une vraie réponse', async () => {
   const r = await reponseAvecMotsCles(async () => new Response('<html><body>{{mordhau}}</body></html>', { headers: { 'content-type': 'text/html' } }));
   const db = new DatabaseSync(cheminBase(), { readOnly: true });
-  const mordhau = db.prepare("SELECT libelle, description FROM mot_cle WHERE id = 'mordhau'").get();
+  const mordhau = db.prepare("SELECT libelle, description FROM mot_cle WHERE cle = 'mordhau'").get();
   db.close();
   const html = await r.text();
   if (mordhau) assert.match(html, new RegExp(`data-mot-cle="mordhau"[^>]*>${mordhau.libelle}</strong>`));
@@ -429,13 +481,13 @@ test('middleware : le vocabulaire de la base construite (lu une fois), sur une v
 test('recherche : une page cite un mot-clé du glossaire par ses balises (lib/recherche-index.ts) : il compte, et sa vue la liste', () => {
   const corps = 'Arbalète : {{recharge-longue|Recharge longue}}. Voir {{non-mort:}}.';
   const index = [
-    { title: 'Armes', motsCles: [...new Set(['metier', ...motsClesCites(corps, V)])], text: texteSansBalises(corps, V) },
+    { title: 'Armes', motsCles: [...new Set([99, ...motsClesCites(corps, V)])], text: texteSansBalises(corps, V) },
     { title: 'Autre', motsCles: [] },
   ];
-  assert.deepEqual(index[0].motsCles, ['metier', 'recharge-longue', 'non-mort']);
+  assert.deepEqual(index[0].motsCles, [99, ID['recharge-longue'], ID['non-mort']], 'l’étiquette (un id entier), puis les mots-clés cités');
   assert.equal(index[0].text, 'Arbalète : Recharge longue. Voir Non-mort : Une créature revenue de la mort..');
-  assert.deepEqual([...comptesDesMotsCles(index)], [['metier', 1], ['recharge-longue', 1], ['non-mort', 1]]);
-  assert.deepEqual(elementsDuMotCle(index, 'non-mort').map((e) => e.title), ['Armes']);
+  assert.deepEqual([...comptesDesMotsCles(index)], [[99, 1], [ID['recharge-longue'], 1], [ID['non-mort'], 1]]);
+  assert.deepEqual(elementsDuMotCle(index, ID['non-mort']).map((e) => e.title), ['Armes']);
 });
 
 // --- Découpages ---------------------------------------------------------------------------------------------------------------------------------
@@ -454,12 +506,13 @@ test('découpage d’un effet d’arme : une balise ne change rien (« Recharge 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 const dossier = dossierTemporaire('mots-cles-balises');
 
-test('db:check (D1, D2) : toute balise de toutes les colonnes de texte vise un mot-clé par son id, sous la forme canonique de sa colonne ; un code est ignoré', () => {
+test('db:check (D1, D2) : toute balise de toutes les colonnes de texte vise un mot-clé par sa clé (R232 (3)), sous la forme canonique de sa colonne ; un code est ignoré', () => {
   const copie = join(dossier, 'check.db');
   cpSync(cheminBase(), copie);
   const d = new DatabaseSync(copie);
   const page = d.prepare("SELECT id FROM page WHERE type = 'guide' ORDER BY id LIMIT 1").get().id;
-  const cite = d.prepare('SELECT id, libelle FROM mot_cle ORDER BY id LIMIT 1').get();
+  const { cle, libelle } = d.prepare('SELECT cle, libelle FROM mot_cle ORDER BY id LIMIT 1').get();
+  const cite = { id: cle, libelle };
   const arme = d.prepare("SELECT id FROM arme WHERE effet IS NOT NULL AND effet NOT LIKE '%{{%' ORDER BY id LIMIT 1").get().id;
   // un texte mis en forme (le corps d'une page) : l'id seul, un autre texte, le mode complet, « \\| » dans une case ; un code : une écriture littérale
   d.prepare('UPDATE page SET corps_md = corps_md || ? WHERE id = ?')
@@ -482,7 +535,7 @@ test('db:check (D1, D2) : toute balise de toutes les colonnes de texte vise un m
   const echapper = (t) => t.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&');
   const attendu = (table, cle, balise, raison) => assert.ok(problemes.some((p) => p.startsWith(`${table} ${cle} : la balise « ${balise} »`) && new RegExp(raison).test(p)),
     `${table} ${balise} : ${problemes.join(' / ')}`);
-  if (cite.libelle !== cite.id) attendu('page.corps_md', page, `{{${cite.libelle}|écrit}}`, 'une écriture ou une abréviation, pas l’id');
+  if (cite.libelle !== cite.id) attendu('page.corps_md', page, `{{${cite.libelle}|écrit}}`, 'sa ref n’est pas la clé du mot-clé|libellé que portent plusieurs mots-clés');
   attendu('page.corps_md', page, '{{balise-orpheline-d-essai|texte}}', 'ne vise aucun mot-clé');
   attendu('page.corps_md', page, `{{${cite.id}|y}}`, echapper('« \\| »'));
   attendu('arme.effet', arme, `{{${cite.id}}}`, 'porte le texte de sa balise');
@@ -505,13 +558,21 @@ function service() {
     assert.equal(r.statut, 200, JSON.stringify(r.corps));
     return r.corps;
   };
+  // une écriture qu'aucun mot-clé ne prend (ni libellé, ni clé, ni synonyme, ni clé quittée : R232, R233 (4))
+  const prise = (t) => {
+    const k = normalize(t);
+    return db.prepare('SELECT libelle FROM mot_cle').all().some((m) => normalize(m.libelle) === k)
+      || Boolean(db.prepare('SELECT 1 FROM mot_cle WHERE cle = ? UNION ALL SELECT 1 FROM mot_cle_synonyme WHERE libelle_cle = ? UNION ALL SELECT 1 FROM mot_cle_ancienne_cle WHERE cle = ?').get(k, k, k));
+  };
   const libre = (base) => {
     let t = base;
-    for (let i = 2; db.prepare('SELECT 1 FROM mot_cle WHERE libelle_cle = ? OR id = ?').get(normalize(t), normalize(t)); i += 1) t = `${base} ${i}`;
+    for (let i = 2; prise(t); i += 1) t = `${base} ${i}`;
     return t;
   };
-  const creerMotCle = (libelle, description = null) => ok([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle, ...(description === null ? {} : { description }) } }]).crees[0].id;
-  return { db, lot, ok, libre, creerMotCle, ligne: (sql, ...p) => db.prepare(sql).get(...p), appel: (methode, chemin) => traiter({ methode, chemin, entetes: {} }, s) };
+  const creerMotCle = (libelle, description = null, autres = {}) => ok([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle, ...(description === null ? {} : { description }), ...autres } }]).crees[0].id;
+  /** La clé du mot-clé `id`, telle que la base la porte maintenant (elle suit le libellé et les homonymes : R232 (2)). */
+  const cle = (id) => db.prepare('SELECT cle FROM mot_cle WHERE id = ?').get(id)?.cle;
+  return { db, lot, ok, libre, creerMotCle, cle, ligne: (sql, ...p) => db.prepare(sql).get(...p), appel: (methode, chemin) => traiter({ methode, chemin, entetes: {} }, s) };
 }
 
 /** Une arme du tableau dont l'effet n'écrit pas de recharge (lue dans l'état courant). */
@@ -522,11 +583,14 @@ test('service : un texte enregistré sous sa forme canonique (journal compris), 
   const s = service();
   const libelle = s.libre('Essai recharge');
   const id = s.creerMotCle(libelle, 'Définition d’essai.');
+  assert.ok(Number.isInteger(id), 'un id entier (migration 0113)');
+  const cle = s.cle(id);
+  assert.equal(cle, normalize(libelle), 'sans homonyme, la clé est le slug du libellé (R232 (2))');
   const arme = armeSansRecharge(s);
   const effet = `${arme.effet}, {{${libelle}|Recharge longue}}`;
   s.ok([{ op: 'modifier', table: 'arme', cle: { id: arme.id }, valeurs: { effet }, avant: { effet: arme.effet } }], 'ressources/armes/');
   const apres = s.ligne('SELECT effet, recharge FROM arme WHERE id = ?', arme.id);
-  assert.equal(apres.effet, `${arme.effet}, {{${id}|Recharge longue}}`, 'la forme canonique : l’id');
+  assert.equal(apres.effet, `${arme.effet}, {{${cle}|Recharge longue}}`, 'la forme canonique : la clé');
   assert.equal(apres.recharge, 'longue', 'le découpage lit le texte sans balise');
   const note = s.ligne("SELECT apres FROM modification WHERE table_nom = 'arme' AND json_extract(cle, '$.id') = ? ORDER BY lot_id DESC, rang DESC LIMIT 1", arme.id);
   assert.equal(JSON.parse(note.apres).effet, apres.effet, 'le journal note la forme canonique');
@@ -541,38 +605,44 @@ test('service : un texte enregistré sous sa forme canonique (journal compris), 
     'une ref inconnue ajoutée reste refusée');
   // une création : la description d'un événement (un texte mis en forme) : l'id seul quand le texte est le libellé, un autre texte gardé
   const titre = `Essai glossaire ${process.pid}`;
-  const description = `Le {{${libelle}}} du jour, {{${id}|${libelle}}}, {{${id}|un autre}} et {{${libelle}:}} ; \`{{absent-d-essai}}\` en code.`;
+  const description = `Le {{${libelle}}} du jour, {{${cle}|${libelle}}}, {{${cle}|un autre}} et {{${libelle}:}} ; \`{{absent-d-essai}}\` en code.`;
   const evenement = s.ok([{ op: 'creer', entite: 'evenement', valeurs: { epoque: 'inconnue', titre, description } }], 'chronologie/').crees[0].id;
   assert.equal(s.ligne('SELECT texte FROM evenement_extrait WHERE evenement_id = ?', evenement).texte,
-    `Le {{${id}}} du jour, {{${id}}}, {{${id}|un autre}} et {{${id}:}} ; \`{{absent-d-essai}}\` en code.`, 'le code reste tel quel, sans refus');
+    `Le {{${cle}}} du jour, {{${cle}}}, {{${cle}|un autre}} et {{${cle}:}} ; \`{{absent-d-essai}}\` en code.`, 'le code reste tel quel, sans refus');
   assert.equal(s.lot([{ op: 'creer', entite: 'evenement', valeurs: { epoque: 'inconnue', titre: `${titre} bis`, description: '{{absent-d-essai}}' } }], 'chronologie/').statut, 400);
 });
 
-test('service (D2) : le mode complet refusé dans un texte de case (message clair), accepté dans un texte mis en forme ; une ref ambiguë refusée, sauf déjà là', () => {
+test('service (D2) : le mode complet refusé dans un texte de case (message clair), accepté dans un texte mis en forme ; R232 (4) : le libellé de deux homonymes, une ref ambiguë refusée (refs, homonymes), sauf déjà là', () => {
   const s = service();
   const libelle = s.libre('Essai complet');
   const id = s.creerMotCle(libelle, 'Sa définition.');
+  const cle = s.cle(id);
   const arme = armeSansRecharge(s);
-  const refus = s.lot([{ op: 'modifier', table: 'arme', cle: { id: arme.id }, valeurs: { effet: `${arme.effet}, {{${id}:}}` } }], 'ressources/armes/');
+  const refus = s.lot([{ op: 'modifier', table: 'arme', cle: { id: arme.id }, valeurs: { effet: `${arme.effet}, {{${cle}:}}` } }], 'ressources/armes/');
   assert.equal(refus.statut, 400);
   assert.match(refus.corps.erreur, /le mode complet ne s’écrit que dans un texte mis en forme \(guide, Codex, chronologie, panneaux de règles\)/);
-  assert.equal(s.lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: s.libre('Essai complet bis'), description: `Voir {{${id}:}}.` } }]).statut, 400, 'une définition est un texte de case');
-  const ok = s.ok([{ op: 'creer', entite: 'evenement', valeurs: { epoque: 'inconnue', titre: `Essai complet ${process.pid}`, description: `{{${id}:}}` } }], 'chronologie/');
-  assert.equal(s.ligne('SELECT texte FROM evenement_extrait WHERE evenement_id = ?', ok.crees[0].id).texte, `{{${id}:}}`);
-  // ambiguïté : le mot-clé renommé garde son id, un autre prend l'ancienne écriture (son id : « -2 »)
-  const ancien = s.creerMotCle(s.libre('Essai ambigu'), 'L’ancien.');
-  const effet = `${arme.effet}, {{${ancien}|cité avant}}`;
+  assert.equal(s.lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: s.libre('Essai complet bis'), description: `Voir {{${cle}:}}.` } }]).statut, 400, 'une définition est un texte de case');
+  const ok = s.ok([{ op: 'creer', entite: 'evenement', valeurs: { epoque: 'inconnue', titre: `Essai complet ${process.pid}`, description: `{{${cle}:}}` } }], 'chronologie/');
+  assert.equal(s.ligne('SELECT texte FROM evenement_extrait WHERE evenement_id = ?', ok.crees[0].id).texte, `{{${cle}:}}`);
+  // deux homonymes, distingués par une catégorie chacun (R232 (9)) : leur libellé, écrit seul, est ambigu ; leurs clés les désignent
+  const [c1, c2] = s.db.prepare('SELECT id FROM categorie_mot_cle ORDER BY id LIMIT 2').all().map((c) => c.id);
+  const homonyme = s.libre('Essai ambigu');
+  const a = s.creerMotCle(homonyme, 'Le premier.', { categories: [c1] });
+  const effet = `${arme.effet}, {{${s.cle(a)}|cité avant}}`;
   s.ok([{ op: 'modifier', table: 'arme', cle: { id: arme.id }, valeurs: { effet } }], 'ressources/armes/');
-  s.ok([{ op: 'modifier', table: 'mot_cle', cle: { id: ancien }, valeurs: { libelle: s.libre('Essai renommé') } }]);
-  const nouveau = s.creerMotCle(s.ligne('SELECT libelle FROM mot_cle WHERE id = ?', ancien) ? ancien.replace(/-/g, ' ') : ancien, 'Le nouveau.');
-  assert.notEqual(nouveau, ancien);
-  const douteux = s.lot([{ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { description: `Voir {{${ancien}|lequel}}.` } }]);
+  const b = s.creerMotCle(homonyme, 'Le second.', { categories: [c2] });
+  assert.notEqual(s.cle(a), s.cle(b));
+  const recrit = s.ligne('SELECT effet FROM arme WHERE id = ?', arme.id).effet;
+  assert.equal(recrit, `${arme.effet}, {{${s.cle(a)}|cité avant}}`, 'la clé du premier a changé (un homonyme est apparu) : sa balise suit (R232 (3))');
+  const douteux = s.lot([{ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { description: `Voir {{${homonyme}|lequel}}.` } }]);
   assert.equal(douteux.statut, 400);
-  assert.match(douteux.corps.erreur, new RegExp(`« \\{\\{${ancien}\\}\\} » est l’identifiant du mot-clé .* et l’écriture du mot-clé .*\\{\\{${nouveau}\\}\\}.*précisez l’identifiant`));
-  // déjà dans le texte avant l'ambiguïté : il se modifie encore (la balise reste lue par l'id)
-  s.ok([{ op: 'modifier', table: 'arme', cle: { id: arme.id }, valeurs: { effet: `${effet} (modifié)` } }], 'ressources/armes/');
-  assert.equal(s.ligne('SELECT effet FROM arme WHERE id = ?', arme.id).effet, `${effet} (modifié)`);
-  s.ok([{ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { description: `Voir {{${nouveau}|celui-ci}}.` } }]);
+  assert.deepEqual(douteux.corps.refs, [homonyme]);
+  assert.deepEqual([...douteux.corps.homonymes[0]].sort(), [s.cle(a), s.cle(b)].sort());
+  assert.match(douteux.corps.erreur, /R232 \(4\)/);
+  // déjà dans le texte : il se modifie encore ; la clé de l'un ou de l'autre passe
+  s.db.prepare('UPDATE mot_cle SET description = ? WHERE id = ?').run(`Voir {{${homonyme}|lequel}}.`, id);
+  s.ok([{ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { description: `Voir {{${homonyme}|lequel}}, modifié.` } }]);
+  s.ok([{ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { description: `Voir {{${s.cle(b)}|celui-ci}}.` } }]);
 });
 
 test('service : la définition d’un mot-clé non verrouillé se modifie, son libellé aussi (R195) ; vidée : pas encore décrit ; celle d’un mot-clé verrouillé, non (R218, R219) ; GET /api/edition/mots-cles/ la rend', () => {
@@ -588,12 +658,12 @@ test('service : la définition d’un mot-clé non verrouillé se modifie, son l
   s.ok([{ op: 'modifier', table: 'mot_cle', cle: { id: libre.id }, valeurs: { description: '' } }]);
   assert.equal(s.ligne('SELECT description FROM mot_cle WHERE id = ?', libre.id).description, null, 'NULL : pas encore décrit');
   // un mot-clé dont le site se sert est verrouillé (R219 (2)) : ni sa définition ni son libellé ne se modifient
-  const magique = s.ligne("SELECT * FROM mot_cle WHERE id = 'magique'");
+  const magique = s.ligne('SELECT * FROM mot_cle WHERE id = ?', IDS_DES_MOTS_CLES_PROTEGES.magique);
   for (const valeurs of [{ description: 'Une classe magique.' }, { libelle: s.libre('Magie') }]) {
     const r = s.lot([{ op: 'modifier', table: 'mot_cle', cle: { id: magique.id }, valeurs }]);
     assert.equal(r.statut, 409, JSON.stringify(r.corps));
   }
-  assert.deepEqual(s.ligne("SELECT * FROM mot_cle WHERE id = 'magique'"), magique);
+  assert.deepEqual(s.ligne('SELECT * FROM mot_cle WHERE id = ?', magique.id), magique);
   const id = s.creerMotCle(s.libre('Essai décrit'), 'Ce qu’il veut dire.');
   const sans = s.creerMotCle(s.libre('Essai sans définition'));
   const v = s.appel('GET', '/api/edition/mots-cles/');
@@ -611,9 +681,11 @@ test('service (R196) : un mot-clé cité par une balise ne se supprime pas (409,
   const s = service();
   const libelleA = s.libre('Essai suppression');
   const libelleB = s.libre('Essai fusion source');
-  const a = s.creerMotCle(libelleA, 'A.');
-  const b = s.creerMotCle(libelleB, 'B.');
-  const c = s.creerMotCle(s.libre('Essai fusion cible'), 'C.');
+  const idA = s.creerMotCle(libelleA, 'A.');
+  const idB = s.creerMotCle(libelleB, 'B.');
+  const idC = s.creerMotCle(s.libre('Essai fusion cible'), 'C.');
+  // les balises citent les clés (R232 (3))
+  const [a, b, c] = [idA, idB, idC].map(s.cle);
   const temoin = s.creerMotCle(s.libre('Essai témoin'), `Voir {{${a}|le A}}, {{${b}|la source}} et {{${b}}}.`);
   // un texte mis en forme : le mode complet et une balise sans texte
   const evenement = s.ok([{ op: 'creer', entite: 'evenement', valeurs: { epoque: 'inconnue', titre: `Essai témoin ${process.pid}`, description: `Le {{${a}:}}, {{${a}}} et {{${b}}}.` } }], 'chronologie/').crees[0].id;
@@ -626,32 +698,32 @@ test('service (R196) : un mot-clé cité par une balise ne se supprime pas (409,
   const definitionDuTemoin = s.ligne('SELECT description FROM mot_cle WHERE id = ?', temoin).description;
   assert.equal(definitionDuTemoin, `Voir {{${a}|le A}}, {{${b}|la source}} et {{${b}|${libelleB}}}.`, 'forme canonique d’un texte de case');
   // suppression refusée : la liste des endroits, rien d'écrit (la cascade d'avant R196 est abandonnée)
-  const refus = s.lot([{ op: 'supprimer', entite: 'mot_cle', cle: { id: a } }]);
+  const refus = s.lot([{ op: 'supprimer', entite: 'mot_cle', cle: { id: idA } }]);
   assert.equal(refus.statut, 409, JSON.stringify(refus.corps));
   assert.match(refus.corps.erreur, /R196/);
   const endroits = new Set(refus.corps.mentions.map((m) => `${m.table}.${m.colonne}`));
   for (const e of ['arme.effet', 'mot_cle.description', 'evenement_extrait.texte']) assert.ok(endroits.has(e), `${e} dans ${[...endroits]}`);
   assert.ok(refus.corps.mentions.some((m) => m.table === 'mot_cle' && m.cle.id === temoin), 'la définition qui le cite');
-  assert.ok(s.ligne('SELECT 1 FROM mot_cle WHERE id = ?', a));
+  assert.ok(s.ligne('SELECT 1 FROM mot_cle WHERE id = ?', idA));
   assert.deepEqual({ ...s.ligne('SELECT effet, recharge FROM arme WHERE id = ?', arme.id) }, { effet: `${arme.effet}, {{${a}|Recharge longue}}`, recharge: 'longue' });
   assert.equal(s.ligne('SELECT description FROM mot_cle WHERE id = ?', temoin).description, definitionDuTemoin);
   assert.equal(description(), `Le {{${a}:}}, {{${a}}} et {{${b}}}.`);
   // fusion : les balises de la source citent la cible, leur texte gardé
-  s.ok([{ op: 'fusionner_mots_cles', mot_cle: b, dans: c }]);
+  s.ok([{ op: 'fusionner_mots_cles', mot_cle: idB, dans: idC }]);
   assert.equal(s.ligne('SELECT description FROM mot_cle WHERE id = ?', temoin).description, `Voir {{${a}|le A}}, {{${c}|la source}} et {{${c}|${libelleB}}}.`,
     'un texte de case garde le texte qu’il montrait');
   assert.equal(description(), `Le {{${a}:}}, {{${a}}} et {{${c}}}.`, 'un texte mis en forme suit la cible');
-  assert.equal(s.ligne('SELECT 1 FROM mot_cle WHERE id = ?', b), undefined);
+  assert.equal(s.ligne('SELECT 1 FROM mot_cle WHERE id = ?', idB), undefined);
   // ses balises retirées par la personne (la définition réécrite, l'effet remis, l'événement supprimé) : la liste est vide, il se supprime
   s.ok([{ op: 'modifier', table: 'mot_cle', cle: { id: temoin }, valeurs: { description: `Voir {{${c}|la source}}.` } }]);
   s.ok([{ op: 'modifier', table: 'arme', cle: { id: arme.id }, valeurs: { effet: arme.effet } }], 'ressources/armes/');
   s.ok([{ op: 'supprimer', entite: 'evenement', cle: { id: evenement } }], 'chronologie/');
-  s.ok([{ op: 'supprimer', entite: 'mot_cle', cle: { id: a } }]);
-  assert.equal(s.ligne('SELECT 1 FROM mot_cle WHERE id = ?', a), undefined);
+  s.ok([{ op: 'supprimer', entite: 'mot_cle', cle: { id: idA } }]);
+  assert.equal(s.ligne('SELECT 1 FROM mot_cle WHERE id = ?', idA), undefined);
   assert.ok(!pageDesArmes().includes(`{{${a}`), 'ni dans le corps de la page des armes');
   // plus aucune balise orpheline dans la base
   const orphelines = [];
-  const vocabulaire = vocabulaireDesMotsCles(s.db.prepare('SELECT id, libelle FROM mot_cle').all());
+  const vocabulaire = vocabulaireDesMotsCles(chargerVocabulaire(s.db));
   for (const t of ['arme', 'mot_cle', 'page', 'evenement_extrait']) {
     for (const l of s.db.prepare(`SELECT * FROM "${t}"`).all()) {
       for (const v of Object.values(l)) if (typeof v === 'string') for (const x of lireBalises(v)) if (!motCleDeLaRef(vocabulaire, x.ref)) orphelines.push(`${t} ${x.brut}`);
@@ -669,7 +741,8 @@ test('service : une page créée depuis le site ne porte que les mots-clés dont
   const don = s.ok([{ op: 'creer', entite: 'capacite', valeurs: { classe_id: classe, niveau: '1', nom: 'Don du glossaire', type: 'Passif' } }], classe).crees[0].id;
   // par leur id : leur libellé se modifie sur le site de dev (R183 (8) : « Classe » ; décision R195)
   const tags = (page) => s.db.prepare('SELECT tag_id FROM page_tag WHERE page_id = ? ORDER BY ordre').all(page).map((m) => m.tag_id);
-  assert.deepEqual(tags(don), ['capacite-de-classe']);
-  assert.deepEqual(tags(classe).sort(), ['classe', 'magique']);
+  const P = IDS_DES_MOTS_CLES_PROTEGES;
+  assert.deepEqual(tags(don), [P['capacite-de-classe']]);
+  assert.deepEqual(tags(classe).sort((x, y) => x - y), [P.classe, P.magique].sort((x, y) => x - y));
   assert.deepEqual(s.db.prepare('SELECT id FROM mot_cle ORDER BY id').all().map((m) => m.id), avant);
 });

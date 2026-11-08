@@ -44,7 +44,8 @@ const BONUS_DU_SITE = '+3% Esquive';
 const BONUS_DES_REGLES = '+5% Parade';
 const DESCRIPTION_DU_SITE = 'Description du forgeron écrite sur le site de dev (essai des conflits).';
 // une étiquette rompue : un mot-clé d'essai (absent de la base) supprimé sur le site de dev, que les règles livrées posent sur un sort (sort_mot_cle)
-const ETIQUETTE = { id: 'essai-conflits-etiquette', libelle: 'Essai conflits étiquette' };
+// (un id entier, migration 0113, loin des ids de data/rows)
+const ETIQUETTE = { id: 9301, cle: 'essai-conflits-etiquette', libelle: 'Essai conflits étiquette' };
 const SORT_ETIQUETE = 'magies/magie-de-la-corruption#sort:aiguisage-magique';
 // un renommage des deux bords : le site de dev et les règles livrées renomment le même métier (nom et sa clé normalisée nom_cle)
 const ACROBATE = 'metiers/acrobate';
@@ -86,8 +87,8 @@ before(() => {
   remettreDepuisLImport(r0db, 'monstre_capacite', S.capaciteAncienne);
   // les deux métiers du scénario (le site de dev supprime des métiers) : leur ligne, leur page et ce qui les compose
   for (const id of [FORGERON, ACROBATE]) remettreDepuisLImport(r0db, 'metier', { id });
-  r0db.prepare('INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES (?, ?, ?, ?)')
-    .run(ETIQUETTE.id, ETIQUETTE.libelle, normalize(ETIQUETTE.libelle), 'Mot-clé d’essai des conflits (test/serveur-edition-conflits.test.mjs).');
+  r0db.prepare('INSERT INTO mot_cle (id, libelle, cle, description) VALUES (?, ?, ?, ?)')
+    .run(ETIQUETTE.id, ETIQUETTE.libelle, ETIQUETTE.cle, 'Mot-clé d’essai des conflits (test/serveur-edition-conflits.test.mjs).');
   r0db.close();
   S.dossier = chemin('scenario');
   const { chemin: vivante } = preparerBaseVivante({ regles: r0, dossier: S.dossier });
@@ -578,7 +579,7 @@ test('une rupture « enfant » : le mot-clé supprimé sur le site de dev, que l
   assert.equal(d.conflits.length, 1);
   const [c] = d.conflits;
   assert.deepEqual([c.table, c.operation, c.genre, c.choix_possibles], ['mot_cle', 'supprimer', 'sans_valeur', [2]]);
-  assert.equal(c.raison, `sort_mot_cle : clé étrangère rompue vers mot_cle (mot_cle_id = "${ETIQUETTE.id}")`, 'la trace');
+  assert.equal(c.raison, `sort_mot_cle : clé étrangère rompue vers mot_cle (mot_cle_id = ${ETIQUETTE.id})`, 'la trace');
   assert.equal(c.raison_lisible, `Étiquette du sort : clé étrangère rompue vers Mot-clé ${ETIQUETTE.id}`);
   assert.equal(c.libelle, `Mot-clé « ${ETIQUETTE.libelle} »`);
   assert.match(d.detail, /: sort_mot_cle : clé étrangère rompue vers mot_cle$/, 'la trace du rejeu');

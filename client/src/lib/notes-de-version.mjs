@@ -82,8 +82,9 @@ export const TABLES_LUES = [
   'monstre_capacite_commune', 'monstre_capacite', 'monstre_capacite_valeur',
   'arme', 'arme_famille', 'arme_type', 'materiau_arme', 'ressource', 'amelioration_equipement', 'gemme', 'bois', 'ingredient_alchimie', 'monnaie', 'materiau',
   'armure', 'armure_emplacement', 'bouclier_classe', 'bouclier', 'bouclier_poids',
-  'evenement', 'evenement_extrait', 'evenement_categorie', 'categorie_chronologie', 'mot_cle', 'panneau_regles', 'panneau_regles_bloc', 'composant_onglet',
-  'potion', 'niveau_alchimie', 'annonce', 'regles_onglet', 'regles_onglet_entree',
+  'evenement', 'evenement_extrait', 'evenement_categorie', 'categorie_chronologie', 'mot_cle', 'categorie_mot_cle', 'mot_cle_synonyme', 'mot_cle_categorie',
+  'panneau_regles', 'panneau_regles_bloc',
+  'composant_onglet', 'potion', 'niveau_alchimie', 'annonce', 'regles_onglet', 'regles_onglet_entree',
 ];
 
 /** Les ressources de la page des composants, par genre (dans l'ordre de la page), et leur groupe dans la note. */
@@ -420,10 +421,16 @@ const DEFINITIONS = [
     table: 'categorie_chronologie', domaine: 'chronologie', cle: ['id'], colonnes: colonnesDe('categorie_chronologie'), genre: 'Catégorie',
     groupe: () => 'Catégories', entite: (r) => r.libelle, ordre: (r) => [-1, r.libelle_cle], resume: (n) => `${n} catégories de la chronologie`,
   },
-  // le vocabulaire des mots-clés (migration 0043, /recherche/ sur le site de dev) : ajouté, renommé, retiré (de toutes les pages)
+  // le vocabulaire des mots-clés (migration 0043, le Glossaire sur le site de dev) : ajouté, renommé, retiré (de toutes les pages) ; ordonné par clé
+  // (migration 0113 : le libellé n'est plus unique)
   {
     table: 'mot_cle', domaine: 'mots-cles', cle: ['id'], colonnes: colonnesDe('mot_cle'), genre: 'Mot-clé',
-    groupe: () => null, entite: (r) => r.libelle, ordre: (r) => [r.libelle_cle], resume: (n) => `${n} mots-clés`,
+    groupe: () => null, entite: (r) => r.libelle, ordre: (r) => [r.cle ?? r.libelle_cle ?? ''], resume: (n) => `${n} mots-clés`,
+  },
+  // les catégories des mots-clés (migration 0113, décision R232 (5)) : ajoutée, renommée, retirée
+  {
+    table: 'categorie_mot_cle', domaine: 'mots-cles', cle: ['id'], colonnes: colonnesDe('categorie_mot_cle'), genre: 'Catégorie',
+    groupe: () => 'Catégories', entite: (r) => r.libelle, ordre: (r) => [-1, r.libelle_cle], resume: (n) => `${n} catégories de mots-clés`,
   },
 ];
 
@@ -488,7 +495,7 @@ const ordreDEvenement = (e) => [EPOQUES_SAISIE.findIndex((x) => x.valeur === e.e
 function contexte(ref, dev) {
   const index = (base) => ({
     ...Object.fromEntries(['magie', 'classe', 'specialite', 'race', 'categorie_classe', 'peuple', 'caracteristique', 'monstre_espece', 'monstre',
-      'arme_famille', 'arme_type', 'ressource', 'evenement', 'categorie_chronologie', 'mot_cle', 'page', 'monstre_capacite_commune', 'bouclier_classe',
+      'arme_famille', 'arme_type', 'ressource', 'evenement', 'categorie_chronologie', 'mot_cle', 'categorie_mot_cle', 'page', 'monstre_capacite_commune', 'bouclier_classe',
       'bouclier_poids', 'panneau_regles', 'niveau_alchimie']
       .map((t) => [t, parId(lignesDe(base, t))])),
     // la ligne de potion d'une ressource (consommables de l'onglet Ceinture) : clé ressource_id
@@ -507,7 +514,7 @@ function contexte(ref, dev) {
   }
   // les mots-clés des deux bases (dev d'abord), sans leurs définitions : une balise du glossaire se lit par son texte ou son libellé (nomDuBloc)
   const vocabulaire = vocabulaireDesMotsCles([...d.mot_cle.values(), ...[...r.mot_cle.values()].filter((m) => !d.mot_cle.has(m.id))]
-    .map((m) => ({ id: m.id, libelle: m.libelle, libelle_cle: m.libelle_cle, description: '' })));
+    .map((m) => ({ id: m.id, libelle: m.libelle, cle: m.cle ?? m.libelle_cle, description: '' })));
   const entetes = (base) => indexer(lignesDe(base, 'race_don_tableau_colonne'), ['race_id', 'rang']);
   const cellules = (base) => indexer(lignesDe(base, 'race_don_tableau_cellule'), ['race_id', 'ligne', 'colonne']);
   const tetes = [entetes(dev), entetes(ref)];
@@ -686,6 +693,43 @@ function comparerCategoriesDesEvenements(ref, dev, x) {
       def: { table: 'evenement_categorie' }, domaine: 'chronologie', groupe: null, entite: e.titre, ordre: [...ordreDEvenement(e), 2], champ: 'Catégories',
       colonne: null, nature: v1 ? (v2 ? 'modifie' : 'retire') : 'ajoute', avant: v1, apres: v2, cle: { evenement_id: id },
     }));
+  }
+  return sortie;
+}
+
+/**
+ * Les synonymes et les catégories d'un mot-clé (migrations 0113, 0115 ; décisions R232, R233), dits en une ligne chacun par mot-clé présent des deux
+ * côtés quand ils changent : « Synonymes : IC, Action bonus → IC » (dans leur ordre), « Catégories : Règles → Règles, Combat » (par leur nom, dans l'ordre
+ * de leur id). Un mot-clé ajouté ou retiré est dit par la table mot_cle. Neutre (R29 : un texte libre, un classement).
+ */
+function comparerSynonymesEtCategoriesDesMotsCles(ref, dev, x) {
+  const sortie = [];
+  const listes = [
+    { table: 'mot_cle_synonyme', champ: 'Synonymes', lire: (rows) => [...rows].sort((p, q) => p.ordre - q.ordre || p.id - q.id).map((l) => [l.mot_cle_id, l.libelle]) },
+    { table: 'mot_cle_categorie', champ: 'Catégories', lire: (rows) => [...rows].sort((p, q) => p.categorie_id - q.categorie_id).map((l) => [l.mot_cle_id, x.nom('categorie_mot_cle', l.categorie_id)]) },
+  ];
+  for (const { table, champ, lire } of listes) {
+    const a = lignesDe(ref, table);
+    const b = lignesDe(dev, table);
+    if (!a || !b) continue;
+    const parMotCle = (rows) => {
+      const m = new Map();
+      for (const [id, nom] of lire(rows)) (m.get(id) ?? m.set(id, []).get(id)).push(nom);
+      return m;
+    };
+    const avant = parMotCle(a);
+    const apres = parMotCle(b);
+    for (const id of new Set([...avant.keys(), ...apres.keys()])) {
+      if (!x.dans('ref', 'mot_cle', id) || !x.dans('dev', 'mot_cle', id)) continue;
+      const v1 = avant.get(id)?.join(', ') || null;
+      const v2 = apres.get(id)?.join(', ') || null;
+      if (v1 === v2) continue;
+      const m = x.ligne('mot_cle', id);
+      sortie.push(ligneDeNote({
+        def: { table }, domaine: 'mots-cles', groupe: null, entite: m.libelle, ordre: [m.cle ?? '', champ], champ, colonne: null,
+        nature: v1 ? (v2 ? 'modifie' : 'retire') : 'ajoute', avant: v1, apres: v2, cle: { mot_cle_id: id },
+      }));
+    }
   }
   return sortie;
 }
@@ -878,6 +922,7 @@ export function comparerBases(ref, dev) {
     ...comparerMagiesInnees(ref, dev, x),
     ...comparerRelations(ref, dev, x),
     ...comparerCategoriesDesEvenements(ref, dev, x),
+    ...comparerSynonymesEtCategoriesDesMotsCles(ref, dev, x),
     ...comparerOrdreDesBlocs(ref, dev, x),
     ...comparerPlanDesRegles(ref, dev, x),
     ...comparerOrdreDesRaces(ref, dev),

@@ -8,7 +8,8 @@
 --   * Noms en français, singulier, snake_case, ASCII sans accent (termes universels en anglais : id, slug). `nom` = libellé court, `titre` = titre de page.
 --   * Clés primaires TEXT lisibles et STABLES entre deux imports (jamais d'auto-incrément) : une page = '<type>/<slug>' ; une entité qui a SA page
 --     réutilise l'id de la page ; une sous-entité = '<id de la page>#<sorte>:<slug>' ; un référentiel garde sa clé courte ('force', 'ro', 'epee').
---     Exceptions assumées : clés numériques naturelles (niveau_global.niveau, initiative_agilite.agilite…) : le nombre EST la clé.
+--     Exceptions assumées : clés numériques naturelles (niveau_global.niveau, initiative_agilite.agilite…) : le nombre EST la clé ; les mots-clés
+--     et leurs catégories (mot_cle.id, categorie_mot_cle.id : entier attribué à la création, décision du propriétaire, migration 0113).
 --   * Tables STRICT, clés étrangères (PRAGMA foreign_keys = ON à CHAQUE connexion : SQLite ne le mémorise pas), CHECK pour les énumérations,
 --     index sur toute colonne servant de filtre.
 --   * Absent = NULL. Jamais de valeur par défaut inventée : l'importeur écrit toujours explicitement ce qu'il sait.
@@ -22,7 +23,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 112;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 116;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -113,13 +114,14 @@ CREATE INDEX alias_cle   ON alias (cle);
 -- (corps d'une page, bloc d'un panneau de règles, définition…), le mot-clé n'est jamais repéré tout seul : une balise explicite le cite, « {{<ref>}} » (le mot-clé en gras, sa définition en infobulle),
 -- « {{<ref>|<texte>}} » (un autre texte affiché) ou « {{<ref>:}} » (« mode complet » : le libellé, « : », la définition) ; <ref> est l'id ou
 -- l'écriture du mot-clé, le service enregistre la forme canonique par l'id (« {{<id>|<texte>}} », « {{<id>:}} ») ; le rendu est celui du site.
+-- Depuis la migration 0113, la forme canonique cite la clé (mot_cle.cle) ; depuis la 0115, <ref> peut aussi être un synonyme (mot_cle_synonyme).
 -- Ces balises ne sont PAS des clés étrangères : à la suppression d'un mot-clé, le service les retire des textes (à la fusion, il les recible vers
 -- le mot-clé qui reçoit) par le chemin normal d'une modification, et db:check contrôle qu'aucune ne vise un mot-clé absent (règle du site).
 -- Depuis 0056, le vocabulaire ne garde que les mots-clés dont le site se sert pour ranger ses pages (client/src/lib/mots-cles.mjs#MOTS_CLES_PROTEGES)
 -- et ceux du glossaire ; les autres ont été retirés des pages. Un mot-clé existe ici même sans page (créé sur le site de dev). Il est posé sur les
 -- pages (page_tag) et, en étiquette, sur les sorts (sort_mot_cle, migration 0067 : décision R114 ; sans cascade : un mot-clé qui étiquette un sort
--- ne se supprime pas) ; les événements de la chronologie ont leurs catégories (categorie_chronologie). id = normalize(libelle) à la création, puis
--- FIGÉ : un renommage ne change que `libelle` (et `libelle_cle`), les liens restent ; un id n'est jamais réutilisé (historique du site), sauf ceux
+-- ne se supprime pas) ; les événements de la chronologie ont leurs catégories (categorie_chronologie). Jusqu'à la migration 0113 (plus bas) :
+-- id = normalize(libelle) à la création, puis FIGÉ : un renommage ne change que `libelle` (et `libelle_cle`), les liens restent ; un id n'est jamais réutilisé (historique du site), sauf ceux
 -- des 400 mots-clés que la migration 0056 a retirés, qui peuvent resservir (une nouvelle entrée du glossaire « Feu » reprend `feu`, et l'ancienne
 -- adresse /recherche/?mot-cle=feu mène à elle : voulu). libelle_cle = normalize(libelle) : les écritures « espace/temps », « espace temps » et
 -- « espace-temps » sont UN seul mot-clé. Pas de provenance : dictionnaire partagé (comme `source`).
@@ -129,8 +131,9 @@ CREATE INDEX alias_cle   ON alias (cle);
 -- fusionnée ou supprimée (historique_modification : tools/db/maverick.py#mot_cle). Le 2026-11-05, le Lexique du guide (page « Lexique », retirée)
 -- est devenu des mots-clés (migration 0090, demande du propriétaire : « Toutes les informations comprises dedans doivent être converties en
 -- mot-clés ») : une entrée = un mot-clé, un doublon fusionné dans le mot-clé existant (id gardé), un renvoi (« voir … ») = une définition qui cite
--- l'autre mot-clé ; l'abréviation que l'entrée écrivait (« AM », « INI ») est la colonne `abreviation`. « CR » y a rejoint « Corruption » (réponse du
--- propriétaire : « Fusionner dans Corruption ») : l'id `cr` n'existe plus, « CR » est l'abréviation de `corruption`.
+-- l'autre mot-clé ; l'abréviation que l'entrée écrivait (« AM », « INI ») était la colonne `abreviation`, devenue un synonyme (migration 0115,
+-- R233 (7) : mot_cle_synonyme). « CR » y a rejoint « Corruption » (réponse du propriétaire : « Fusionner dans Corruption ») : l'id `cr` n'existe
+-- plus, « CR » est un synonyme de `corruption`.
 -- Le 2026-11-06, les liens des textes sont devenus des balises (migration 0098, générée par client/scripts/liens-en-mots-cles.mjs ; réponses du
 -- propriétaire : `couleur` et `url`, « NULL par défaut, ajoutées en dernier », « URL interne seulement » ; les [[…]] et les liens Markdown internes
 -- [texte](/…) deviennent des balises ; un mot-clé par page visée, libellé = titre de la page, url = son adresse, sans définition ni abréviation ; un
@@ -139,22 +142,35 @@ CREATE INDEX alias_cle   ON alias (cle);
 -- les balises gardant le texte affiché (« Fusionner dans l'existant » : « posture », « mode-hyper », « classe », « race », « metier », « tenaille »,
 -- « des »… : client/scripts/liens-en-mots-cles.mjs#FUSIONS_DANS_L_EXISTANT) ; « il ne faut pas de changement par rapport à avant en terme de résultat. Tu feras donc en sorte
 -- que le mot clé reprenne la couleur de la page d'avant » ; « Un mot-clé par page colorée » ; une route sans page (/fiche/, /magies/…) a le mot-clé
--- du libellé de son menu ; homonymes race/classe : « La race garde le nom », la classe s'écrit « <Nom> (classe) »).
+-- du libellé de son menu ; homonymes race/classe : « La race garde le nom », la classe prenait le suffixe de classe, retiré par R232 (4)).
 -- Les pages d'exemple gardent leurs liens ; lib/liens-en-mots-cles.mjs#convertirLesLiens convertit un texte avec la table du registre de la migration.
+-- Le 2026-11-08, identifiant entier, clé et catégories (migration 0113, demande du propriétaire : « ID devrait être un nombre ou un GUID », « Libelle
+-- ne devrai pas être unique », « Libelle_cle devrai être renommée Key », « la table Keyword_category qui liste toutes les catégories possibles de
+-- mots clés » ; réponses : un entier auto-incrémenté ; noms français mot_cle, categorie_mot_cle, cle ; les 13 classes raciales suffixées de R191
+-- redeviennent « X » avec la catégorie Classe). `id` est un entier attribué à la création, jamais réutilisé ni changé ; les 407 mots-clés d'avant ont reçu 1 à 407
+-- dans l'ordre de leur ancien id texte, les 40 ajoutés par les migrations 0111 et 0112 de dev après les autres (registre
+-- data/migrations/0113-mots-cles-id-entier.json). `cle` remplace libelle_cle : c'est ce que citent les
+-- balises « {{<cle>}} » et l'adresse /recherche/?mot-cle=<cle>, et elle SUIT le libellé et les catégories (réponse du propriétaire : chaque renommage
+-- ou changement de catégorie réécrit les textes qui citent le mot-clé). Règle (réponse du propriétaire) : sans homonyme, cle = normalize(libelle) ;
+-- des homonymes (même normalize(libelle)) ont chacun au moins une catégorie propre face à chacun des autres (refusés : un homonyme sans catégorie,
+-- ou dont les catégories sont incluses dans celles d'un autre), et chacun a pour clé normalize(libelle) suivi, après un tiret, du normalize du
+-- libellé de chacune de SES catégories qui n'est pas commune à tous ses homonymes, dans l'ordre croissant de l'id de catégorie (« namazu-race »,
+-- « namazu-classe ») ; une clé déjà prise est refusée. Refus du service et de db:check ; référence de la règle :
+-- tools/db/maverick.py#cles_des_mots_cles. Aucun écart admis depuis la migration 0114 (catégories assignées, R232 (7) : les 13 races homonymes
+-- des classes raciales, sans catégorie à la 0113, ont reçu Race et la clé « x-race », la classe garde « x-classe »). Le libellé
+-- n'est plus unique : une écriture que portent plusieurs homonymes est ambiguë, la saisie écrit alors la clé. Une clé quittée (renommage,
+-- catégorie changée, ancien id texte) mène encore au mot-clé par mot_cle_ancienne_cle.
 CREATE TABLE mot_cle (
-  id          TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0 AND id NOT GLOB '*[^a-z0-9-]*' AND id NOT GLOB '*--*' AND id NOT GLOB '-*' AND id NOT GLOB '*-'),
-  libelle     TEXT    NOT NULL CHECK (length(libelle) > 0),      -- l'écriture affichée partout (pages, /recherche/, balises du glossaire)
-  libelle_cle TEXT    NOT NULL UNIQUE CHECK (length(libelle_cle) > 0 AND libelle_cle NOT GLOB '*[^a-z0-9-]*' AND libelle_cle NOT GLOB '*--*' AND libelle_cle NOT GLOB '-*' AND libelle_cle NOT GLOB '*-'),
-                                                                 -- normalize(libelle) ; client/scripts/db-check.mjs le vérifie
+  id          INTEGER NOT NULL PRIMARY KEY CHECK (id >= 1),             -- entier attribué à la création (le suivant), FIGÉ, jamais réutilisé (migration 0113)
+  libelle     TEXT    NOT NULL CHECK (length(libelle) > 0),      -- l'écriture affichée partout (pages, /recherche/, balises du glossaire) ; pas unique (0113)
+  cle         TEXT    NOT NULL UNIQUE CHECK (length(cle) > 0 AND cle NOT GLOB '*[^a-z0-9-]*' AND cle NOT GLOB '*--*' AND cle NOT GLOB '-*' AND cle NOT GLOB '*-'),
+                                                                 -- la clé citée par les balises et les adresses : normalize(libelle), suivi des
+                                                                 -- catégories qui distinguent un homonyme (règle plus haut) ; recalculée à chaque
+                                                                 -- renommage ou changement de catégorie ; client/scripts/db-check.mjs la vérifie.
+                                                                 -- Migration 0113 (remplace libelle_cle, à sa place)
   description TEXT    CHECK (description IS NULL OR length(description) > 0),  -- la définition du glossaire : texte simple, balises du glossaire
                                                                  -- comprises (forme canonique) ; NULL : pas encore décrit (absent = NULL) ;
                                                                  -- migration 0056, ajoutée en dernier
-  abreviation TEXT    CHECK (abreviation IS NULL OR length(abreviation) > 0),  -- l'abréviation du mot-clé, telle qu'écrite (« AM », « Nat. ») ; NULL : aucune.
-                                                                 -- Une seule par mot-clé, que la ref d'une balise peut citer comme l'id ou
-                                                                 -- l'écriture : normalize(abreviation) n'est ni l'id, ni le libelle_cle, ni
-                                                                 -- l'abréviation d'un autre mot-clé (client/scripts/db-check.mjs le vérifie : la
-                                                                 -- règle passe par normalize, qu'un CHECK ne lit pas). Migration 0090 (le Lexique
-                                                                 -- converti en mots-clés), ajoutée en dernier
   couleur     TEXT    CHECK (couleur IS NULL OR couleur GLOB '#[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]' OR (couleur GLOB '[a-z]*:[a-z0-9]*' AND couleur NOT GLOB '*[^a-z0-9:-]*' AND couleur NOT GLOB '*[^a-z]*:*' AND couleur NOT GLOB '*:*:*' AND couleur NOT GLOB '*--*' AND couleur NOT GLOB '*-')),
                                                                  -- la couleur du mot-clé : une référence « <famille>:<id> » d'une couleur de la palette
                                                                  -- (lib/palette-css.mjs#FAMILLES_DE_LA_PALETTE ; id = celui de sa classe CSS,
@@ -166,13 +182,93 @@ CREATE TABLE mot_cle (
                                                                  -- préfixe de déploiement (« /races/humain/ », « /metiers/#metier-mineur », « /fiche/ ») ;
                                                                  -- ni « //hôte », ni espace, ni caractère hors ASCII imprimable, ni « \ ». NULL : aucune.
                                                                  -- Migration 0098, ajoutée en dernier
-  verrou      INTEGER NOT NULL DEFAULT 0 CHECK (verrou IN (0,1))  -- 1 : le mot-clé est verrouillé (décisions R218, R219) ; le site de dev n'en modifie aucun champ
-                                                                 -- (libellé, définition, abréviation, adresse, couleur) et ne le supprime pas, ni par
+  verrou      INTEGER NOT NULL DEFAULT 0 CHECK (verrou IN (0,1)),  -- 1 : le mot-clé est verrouillé (décisions R218, R219) ; le site de dev n'en modifie aucun champ
+                                                                 -- (libellé, définition, synonymes (R233 (6)), adresse, couleur) et ne le supprime pas, ni par
                                                                  -- fusion dans un autre ; il se pose, se cite et reçoit une fusion. Aucune route n'écrit
                                                                  -- verrou : il ne change que par une migration (« seul un admin », à venir). 0 par défaut :
                                                                  -- un mot-clé créé plus tard n'est pas verrouillé (R219 (5)), sauf race-hybride (R220 (2)).
                                                                  -- Le rejeu du journal ne le contrôle pas (R219 (6)). Migration 0110, ajoutée en dernier
+  monnaie_id  TEXT    UNIQUE REFERENCES monnaie(id) ON DELETE SET NULL,
+                                                                 -- la monnaie dont c'est le mot-clé (« ricken-de-fer » -> 'rf') ; NULL : aucune. Avant la
+                                                                 -- 0113, un mot-clé de monnaie avait pour id celui de sa monnaie (R183 : reconnu à cet
+                                                                 -- id, jamais à son abréviation) : ce lien est cette colonne. Aucune route ne l'écrit.
+                                                                 -- Supprimer la monnaie (le rejeu d'un ancien lot, R220 (1)) garde le mot-clé, qui n'est
+                                                                 -- plus celui d'une monnaie (SET NULL). Migration 0113, ajoutée en dernier
+  icone       TEXT    CHECK (icone IS NULL OR (icone GLOB '[a-z]*:[a-z0-9]*' AND icone NOT GLOB '*[^a-z0-9:-]*' AND icone NOT GLOB '*[^a-z]*:*' AND icone NOT GLOB '*:*:*' AND icone NOT GLOB '*--*' AND icone NOT GLOB '*-'))
+                                                                 -- l'icône du mot-clé (demande du propriétaire, 2026-11-08 : « tu peux mettre une colonne
+                                                                 -- supplémentaire avec "icone" […] Pour le moment, seul les monnaies vont l'utiliser ») :
+                                                                 -- une référence « <famille>:<id> » d'une icône du site, sur le modèle de `couleur` ;
+                                                                 -- famille « monnaie », id = celui de la monnaie dans MONNAIES_DU_JEU
+                                                                 -- (lib/monnaies.mjs#MONNAIES_DU_JEU : 'monnaie:rf', 'monnaie:ro', 'monnaie:pp', dessin
+                                                                 -- de la classe piece--<id>, styles/global/monnaies.css) ; NULL : aucune. Choisie sur le
+                                                                 -- site de dev dans la liste des icônes du site ; le CHECK ne lit que la forme, que la
+                                                                 -- référence nomme une icône du site se vérifie par client/scripts/db-check.mjs et le
+                                                                 -- service. C'est un dessin, pas une donnée : une monnaie supprimée ne la vide pas.
+                                                                 -- Affichée avec le libellé (glossaire, infobulle, balises), comme les monnaies (R63).
+                                                                 -- Migration 0116 (remplie pour les trois mots-clés de monnaie), ajoutée en dernier
 ) STRICT;
+
+
+-- Les catégories des mots-clés (migration 0113, demande du propriétaire : « la table Keyword_category qui liste toutes les catégories possibles de
+-- mots clés (ID + libelle) », « Il sera possible d'en ajouter par la suite ») : un vocabulaire géré sur le site de dev (ajout, renommage, suppression
+-- d'une catégorie vide). Les 11 premières, dans l'ordre des réponses du propriétaire (ids 1 à 11) : Règles, Magie, Race, Combat, Fiche de personnage,
+-- Classe, Équipement, Événement, Objet légendaire, puis Métier et Bestiaire. id entier attribué à la création, figé, jamais réutilisé. Deux catégories n'ont jamais la même
+-- écriture (libelle_cle, comme categorie_chronologie) : le normalize du libellé entre dans la clé d'un mot-clé homonyme (mot_cle.cle).
+CREATE TABLE categorie_mot_cle (
+  id          INTEGER NOT NULL PRIMARY KEY CHECK (id >= 1),
+  libelle     TEXT    NOT NULL UNIQUE CHECK (length(libelle) > 0),
+  libelle_cle TEXT    NOT NULL UNIQUE CHECK (length(libelle_cle) > 0 AND libelle_cle NOT GLOB '*[^a-z0-9-]*' AND libelle_cle NOT GLOB '*--*' AND libelle_cle NOT GLOB '-*' AND libelle_cle NOT GLOB '*-')
+                                                     -- normalize(libelle) ; client/scripts/db-check.mjs le vérifie
+) STRICT;
+
+-- Les catégories d'un mot-clé (« La colonne Category des Keyword serai une liste des ID » ; table de liaison, choix du leader-technique). Un mot-clé
+-- supprimé retire ses lignes (ON DELETE CASCADE) ; une catégorie qui range encore un mot-clé ne se supprime pas (RESTRICT). Pas d'ordre : la clé d'un
+-- homonyme lit ses catégories dans l'ordre de leur id. À la migration 0113, seules les 13 classes raciales ont la catégorie Classe ; la migration
+-- 0114 a assigné celles des mots-clés existants (R232 (7) : « l'équipe viens en assigner en fonction de la pertinence » ; liste de game-design et de
+-- worldbuilding, registre data/migrations/0114-mots-cles-categories-assignees.json).
+CREATE TABLE mot_cle_categorie (
+  mot_cle_id   INTEGER NOT NULL REFERENCES mot_cle(id) ON DELETE CASCADE,
+  categorie_id INTEGER NOT NULL REFERENCES categorie_mot_cle(id) ON DELETE RESTRICT,
+  PRIMARY KEY (mot_cle_id, categorie_id)
+) STRICT, WITHOUT ROWID;
+CREATE INDEX mot_cle_categorie_categorie ON mot_cle_categorie (categorie_id);   -- les mots-clés d'une catégorie ; contrôle du RESTRICT
+
+-- Les clés qu'un mot-clé a quittées (migration 0113 ; « une correspondance des anciennes clés est bienvenue ») : une balise d'un ancien lot du journal
+-- ou une ancienne adresse /recherche/?mot-cle=<clé> mène encore à lui. La clé courante (mot_cle.cle) se cherche d'abord, puis celle-ci. À la migration,
+-- les anciens ids texte qui ne sont pas la nouvelle clé : 'pp', 'rf', 'ro', 'attaque-et-defense', 'attaquer-et-se-defendre',
+-- 'reussites-echecs-et-critiques' (la clé suit le libellé : « pierre-precieuse », « se-defendre »…) ; à la 0114, les
+-- 13 clés des races devenues « x-race » (« orios »…) ; le service y ajoute la
+-- clé quittée à chaque renommage ou changement de catégorie, et retire celle qui redevient la clé courante d'un mot-clé. Supprimer le mot-clé retire
+-- ses lignes (ON DELETE CASCADE). La correspondance figée des 407 anciens ids, pour le rejeu des lots d'avant la 0113, est le registre
+-- data/migrations/0113-mots-cles-id-entier.json.
+CREATE TABLE mot_cle_ancienne_cle (
+  cle        TEXT    NOT NULL PRIMARY KEY CHECK (length(cle) > 0 AND cle NOT GLOB '*[^a-z0-9-]*' AND cle NOT GLOB '*--*' AND cle NOT GLOB '-*' AND cle NOT GLOB '*-'),
+  mot_cle_id INTEGER NOT NULL REFERENCES mot_cle(id) ON DELETE CASCADE
+) STRICT, WITHOUT ROWID;
+CREATE INDEX mot_cle_ancienne_cle_mot_cle ON mot_cle_ancienne_cle (mot_cle_id);
+
+-- Les synonymes d'un mot-clé (décision R233, migration 0115 ; demande du propriétaire : « Il faudra aussi prévoir plieurs labelles secondaires pour
+-- les cas des tages avec des synonymes (exemple : Action bonus / Action rapide / Instant Cast) ») : ses libellés secondaires (aucun, un ou
+-- plusieurs). Ils servent à la saisie d'une balise, à la recherche et à l'affichage (« Aussi appelé », R233 (8)) ; la clé du mot-clé n'en dépend
+-- pas (R232 (2)). Une balise saisie par un synonyme s'enregistre « {{<clé>|<synonyme>}} » et affiche le synonyme (R233 (2)) ; le libellé principal
+-- reste celui de l'infobulle, du Glossaire et des étiquettes (R233 (3)). L'abréviation (colonne mot_cle.abreviation, migrations 0090 à 0114,
+-- R183 (2)) est un synonyme parmi d'autres (R233 (7)) : ses 20 valeurs sont devenues le premier synonyme (ordre 0) de leur mot-clé ; la table
+-- monnaie garde la sienne. « Action bonus » et « Action rapide », mots-clés qui renvoyaient à « Instant Cast », y sont fondus et en sont les
+-- synonymes, après « IC » (R233 (5)) ; leurs clés mènent à lui par mot_cle_ancienne_cle. Le verrou du mot-clé (R218) couvre ses synonymes
+-- (R233 (6)). Unicité (R233 (4)) : deux synonymes, du même mot-clé ou de deux, n'ont jamais la même écriture normalisée (libelle_cle UNIQUE) ;
+-- le reste de la règle (un synonyme n'égale, après normalize, ni le libellé ni la clé d'un autre mot-clé, ni le libellé de son propre mot-clé)
+-- compare au libellé d'un mot-clé, qui n'a pas de colonne normalisée : client/scripts/db-check.mjs et le service le vérifient. Supprimer le
+-- mot-clé retire ses synonymes (ON DELETE CASCADE).
+CREATE TABLE mot_cle_synonyme (
+  id          INTEGER NOT NULL PRIMARY KEY CHECK (id >= 1),          -- entier attribué à la création, figé
+  mot_cle_id  INTEGER NOT NULL REFERENCES mot_cle(id) ON DELETE CASCADE,
+  libelle     TEXT    NOT NULL CHECK (length(libelle) > 0),          -- l'écriture telle qu'enregistrée (« AM », « Nat. », « Action bonus »)
+  libelle_cle TEXT    NOT NULL UNIQUE CHECK (length(libelle_cle) > 0 AND libelle_cle NOT GLOB '*[^a-z0-9-]*' AND libelle_cle NOT GLOB '*--*' AND libelle_cle NOT GLOB '-*' AND libelle_cle NOT GLOB '*-'),
+                                                     -- normalize(libelle) ; client/scripts/db-check.mjs le vérifie
+  ordre       INTEGER NOT NULL CHECK (ordre >= 0)    -- rang parmi les synonymes du mot-clé (0 = premier) ; sans UNIQUE, pour échanger deux places
+                                                     -- dans un même lot : à égalité, l'id départage
+) STRICT;
+CREATE INDEX mot_cle_synonyme_mot_cle ON mot_cle_synonyme (mot_cle_id, ordre);   -- les synonymes d'un mot-clé, dans l'ordre ; contrôle de la cascade
 
 -- Mots-clés d'une page (frontmatter `tags`, dans l'ordre) : l'écriture est celle du vocabulaire (mot_cle.libelle ; jusqu'à la migration 0043, chaque page
 -- gardait la sienne). Supprimer un mot-clé retire ses lignes (ON DELETE CASCADE : le service les note une à une ; au rejeu du journal, clés coupées, la
@@ -181,12 +277,12 @@ CREATE TABLE mot_cle (
 CREATE TABLE page_tag (
   page_id TEXT    NOT NULL REFERENCES page(id) ON DELETE CASCADE,
   ordre   INTEGER NOT NULL CHECK (ordre >= 0),       -- rang dans la liste `tags:` (un mot-clé supprimé laisse un trou : l'ordre des autres ne change pas)
-  tag_id  TEXT    NOT NULL REFERENCES mot_cle(id) ON DELETE CASCADE,
+  tag_id  INTEGER NOT NULL REFERENCES mot_cle(id) ON DELETE CASCADE,   -- mot_cle.id (entier depuis la migration 0113)
   PRIMARY KEY (page_id, ordre),
   UNIQUE (page_id, tag_id)
 ) STRICT;
 
-CREATE INDEX page_tag_tag ON page_tag (tag_id);      -- /recherche/?mot-cle=<id> : toutes les pages d'un mot-clé
+CREATE INDEX page_tag_tag ON page_tag (tag_id);      -- /recherche/?mot-cle=<cle> : toutes les pages d'un mot-clé
 
 -- Provenance au niveau de la page : une entrée de frontmatter `sources` = une ligne (texte exact).
 -- Deux natures : une URL (https://docs.google.com/…) ou un libellé (« Google Sheet « Invocation », onglet « Appel aux golems » »).
@@ -898,7 +994,7 @@ CREATE INDEX sort_etat_etat ON sort_etat (etat_id, relation);
 -- et « Sort fer » (décision R164), dont il se sert (client/src/lib/mots-cles.mjs#MOTS_CLES_PROTEGES).
 CREATE TABLE sort_mot_cle (
   sort_id     TEXT NOT NULL REFERENCES sort(id),
-  mot_cle_id  TEXT NOT NULL REFERENCES mot_cle(id),
+  mot_cle_id  INTEGER NOT NULL REFERENCES mot_cle(id),   -- mot_cle.id (entier depuis la migration 0113)
   PRIMARY KEY (sort_id, mot_cle_id)
 ) STRICT, WITHOUT ROWID;
 
@@ -3871,12 +3967,13 @@ CREATE VIEW lien_a_creer AS
   SELECT page_id, position, cible, ancre, etat FROM lien WHERE etat <> 'resolu';
 
 -- Le vocabulaire des mots-clés et les pages qui les portent (page Glossaire du site de dev, /regles/glossaire/ : un mot-clé supprimé est retiré de
--- nb_pages pages), avec sa définition (glossaire, migration 0056), son abréviation (migration 0090), sa couleur et son adresse (migration 0098).
+-- nb_pages pages), avec sa définition (glossaire, migration 0056), sa couleur et son adresse (migration 0098) ; id entier et clé (migration 0113 :
+-- `cle` remplace libelle_cle ; les catégories sont dans mot_cle_categorie) ; sans l'abréviation (migration 0115 : devenue un synonyme,
+-- mot_cle_synonyme).
 CREATE VIEW v_mot_cle AS
-  SELECT m.id, m.libelle, m.libelle_cle,
+  SELECT m.id, m.libelle, m.cle,
     (SELECT count(*) FROM page_tag t WHERE t.tag_id = m.id) AS nb_pages,
     m.description,                                                         -- la définition du glossaire (migration 0056 ; NULL : pas encore décrit)
-    m.abreviation,                                                         -- l'abréviation (migration 0090 ; NULL : aucune)
     m.couleur,                                                             -- la référence de couleur (migration 0098 ; NULL : aucune)
     m.url                                                                  -- l'adresse interne où mène le mot-clé (migration 0098 ; NULL : aucune)
   FROM mot_cle m;

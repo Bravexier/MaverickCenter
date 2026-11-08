@@ -245,14 +245,12 @@ test('fil d’Ariane d’une classe : sa catégorie, avec l’ancre de sa colonn
   assert.match(page('archer'), /Classes<\/a> › <a href="[^"]*\/classes\/#distance">Physiques Distance<\/a>/);
 });
 
-// R191 : « « (classe) » est admis dans le libellé des mots-clés et sur trois pages : Glossaire, Recherche et Données (`/regles/glossaire/`, `/recherche/`,
-// `/donnees/`). Ailleurs, il reste interdit, comme le veut la 0009. » ; hors de ces pages, le mot-clé d'une classe raciale s'affiche sous le nom seul,
-// titre de sa bulle compris (seconde réponse : « « Orios » (Recommandé) ») : le fichier entier est lu, bulles et attributs compris.
-/** Les pages où R191 admet « (classe) » : le Glossaire, la Recherche, Données et ses sous-pages (chemins relatifs à dist/). */
-const admiseParR191 = (relatif) => ['regles/glossaire/index.html', 'recherche/index.html'].includes(relatif) || relatif.startsWith('donnees/');
+// R232 (4), qui remplace R191 : le mot-clé d'une classe raciale s'écrit comme sa race (« Orios »), sur toutes les pages ; plus aucune page n'admet
+// « (classe) » (ni le Glossaire, ni la Recherche, ni Données, que R191 exceptait) : le fichier entier est lu, bulles et attributs compris.
 
 // R191 étendue (réponse du propriétaire, « Rubrique Mots-clés (Recommandé) ») : « « Orios (classe) » est admis dans la rubrique « Mots-clés » des
-// notes de version uniquement. C'est l'historique de la base, comme la page Données. R191 est étendue à ce seul endroit. » Sur /mise-a-jour/, seuls
+// notes de version uniquement. C'est l'historique de la base, comme la page Données. R191 est étendue à ce seul endroit. » ; R232 (12) le garde : une
+// note publiée reste telle quelle, elle garde le libellé qu'avait le mot-clé à sa publication. Sur /mise-a-jour/, seuls
 // les blocs `details.nv-domaine[data-domaine="mots-cles"]` (lib/notes-de-version-rendu.mjs#htmlDeLaListe, de toute note rendue dans la page) sont
 // retirés avant la recherche ; « (classe) » partout ailleurs sur la page reste une faute.
 const NOTES_DE_VERSION = 'mise-a-jour/index.html';
@@ -289,7 +287,7 @@ test('R191 étendue aux notes de version : « (classe) » admis dans la rubrique
   assert.equal(ecritClasse('classes/orios/index.html', motsCles), true, 'la rubrique n’est admise que sur la page des notes de version');
 });
 
-test('« (classe) » supprimé de partout (migration 0009), sauf sur le Glossaire, la Recherche, Données et la rubrique « Mots-clés » des notes de version (R191) : aucune autre page construite ne l’écrit, bulles comprises ; la classe raciale porte le nom de sa race', options, () => {
+test('« (classe) » supprimé de partout (migration 0009 ; R232 (4), qui remplace R191), sauf dans la rubrique « Mots-clés » des notes de version (R232 (12)) : aucune page construite ne l’écrit, Glossaire, Recherche et Données compris, bulles comprises ; la classe raciale porte le nom de sa race', options, () => {
   const wiki = join(dossier, '..');
   const fautives = [];
   const parcourir = (d) => {
@@ -297,12 +295,12 @@ test('« (classe) » supprimé de partout (migration 0009), sauf sur le Glossair
       const chemin = join(d, e.name);
       const relatif = chemin.slice(wiki.length).replace(/^[\\/]+/, '').split(/[\\/]/).join('/');
       if (e.isDirectory()) parcourir(chemin);
-      else if (e.name.endsWith('.html') && !admiseParR191(relatif) && ecritClasse(relatif, readFileSync(chemin, 'utf8'))) fautives.push(relatif);
+      else if (e.name.endsWith('.html') && ecritClasse(relatif, readFileSync(chemin, 'utf8'))) fautives.push(relatif);
     }
   };
   parcourir(wiki);
   assert.deepEqual(fautives, []);
-  assert.ok(['regles/glossaire/index.html', 'recherche/index.html'].every((f) => existsSync(join(wiki, f))), 'les pages admises existent (le test ne passe pas à vide)');
+  assert.ok(['regles/glossaire/index.html', 'recherche/index.html', 'donnees/index.html'].every((f) => existsSync(join(wiki, f))), 'les pages qu’exceptait R191 sont lues (le test ne passe pas à vide)');
   assert.match(page('orios'), /<h1[^>]*>\s*Orios\s*<\/h1>/);
 });
 
