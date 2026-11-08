@@ -27,7 +27,8 @@
 // recherche, et emporté par la chaîne de l'édition du navigateur avec le reste du module.
 // Les identifiants de page ne changent pas (« guide/le-tour-de-jeu ») : seules leurs adresses viennent d'ici (lib/metiers.mjs#adresseDePage, puis
 // cheminDePage, entryHref, pageHref, entryUrl, l'index de la recherche) ; les anciennes adresses mènent aux nouvelles par la page 404
-// (lib/metiers.mjs#renvoisDuGuide, PAGES_ECLATEES_DU_GUIDE).
+// (lib/metiers.mjs#renvoisDuGuide, PAGES_ECLATEES_DU_GUIDE). Une adresse se tire de l'id, sauf exception voulue par le propriétaire
+// (ADRESSES_RENOMMEES_DU_GUIDE, R228).
 // Sans aucun import : lu par lib/metiers.mjs (chaîne de l'édition du navigateur comprise), lib/guide.mjs, lib/notes-de-version.mjs (service),
 // lib/wiki.ts, les composants et les tests.
 
@@ -245,14 +246,33 @@ export function adresseDeLaPageRetiree(chemin, { existe = () => false } = {}) {
 /**
  * L'adresse d'une page `guide/<slug>`, relative à la racine du site, sans le plan des onglets (la chaîne de l'édition du navigateur la calcule aussi) :
  * Bienvenue à /decouvrir/, L'univers à `decouvrir/<slug>/`, une page du Guide du MJ à `mj/<slug>/`, toute autre page `guide/…` à `regles/<slug>/` (les
- * pages des onglets, « adresses à plat » ; la fixture `guide/utiliser-ce-wiki` aussi, sans entrée de menu).
+ * pages des onglets, « adresses à plat » ; la fixture `guide/utiliser-ce-wiki` aussi, sans entrée de menu). Le slug est celui de l'id, sauf pour une
+ * page de ADRESSES_RENOMMEES_DU_GUIDE (R228 : guide/liste-des-effets-mode-super à regles/mode-super/).
  */
 export function adresseDuGuide(id) {
   if (id === DECOUVRIR.accueil) return DECOUVRIR.chemin;
-  if (estDansDecouvrir(id)) return `${DECOUVRIR.chemin}${slugDe(id)}/`;
-  if (estDuGuideDuMj(id)) return `${GUIDE_DU_MJ.chemin}${slugDe(id)}/`;
-  return `${CHEMIN_DES_REGLES}${slugDe(id)}/`;
+  if (estDansDecouvrir(id)) return `${DECOUVRIR.chemin}${slugDAdresse(id)}/`;
+  if (estDuGuideDuMj(id)) return `${GUIDE_DU_MJ.chemin}${slugDAdresse(id)}/`;
+  return `${CHEMIN_DES_REGLES}${slugDAdresse(id)}/`;
 }
+
+/**
+ * Les pages du guide dont l'adresse ne se tire pas de l'identifiant : id → dernier segment de son adresse. Exceptions voulues par le propriétaire à la
+ * règle des adresses figées (CLAUDE.md, « Identifiants figés ») ; l'identifiant reste, lu par les tables (mode_texte.page_id, regles_onglet_entree,
+ * alias, historique_modification…). Liste figée : adresseDuGuide la lit, pageDuGuideALAdresse la lit à l'envers ; l'ancienne adresse de chaque page est
+ * dans ADRESSES_DU_PLAN_PRECEDENT (page 404, liens écrits) ; aucune autre page ne prend la nouvelle (verifierLePlan, serveur/edition-plan.mjs#idPris).
+ *   - R228 (2026-11-08 : « https://dev.maverick-jdr.com/regles/liste-des-effets-mode-super/ à changer en https://dev.maverick-jdr.com/regles/mode-super/
+ *     (et le titre aussi) ») : la page du Mode Super, guide/liste-des-effets-mode-super, est servie à /regles/mode-super/.
+ */
+export const ADRESSES_RENOMMEES_DU_GUIDE = Object.freeze({
+  'guide/liste-des-effets-mode-super': 'mode-super',
+});
+
+/** Le dernier segment de l'adresse d'une page `guide/<slug>` : son slug, ou celui que lui donne ADRESSES_RENOMMEES_DU_GUIDE. */
+export const slugDAdresse = (id) => (Object.hasOwn(ADRESSES_RENOMMEES_DU_GUIDE, id) ? ADRESSES_RENOMMEES_DU_GUIDE[id] : slugDe(id));
+
+/** La page d'un segment d'adresse renommé (ADRESSES_RENOMMEES_DU_GUIDE lue à l'envers) : « mode-super » → guide/liste-des-effets-mode-super. */
+const PAGES_DES_ADRESSES_RENOMMEES = new Map(Object.entries(ADRESSES_RENOMMEES_DU_GUIDE).map(([id, slug]) => [slug, id]));
 
 /**
  * Les pages qui étaient dans les Règles avancées (/regles/avancees/<slug>/, du 2026-11-05 à R184), sauf les pages supprimées (PAGES_SUPPRIMEES : la
@@ -281,7 +301,9 @@ const ETAPES_DE_LA_CREATION = PAGES_DE_LA_CREATION.pages.slice(1);
  *   - « Le jeu de rôle, comment ça marche ? » (/decouvrir/le-jeu-de-role/), fusionnée dans Bienvenue ;
  *   - les six étapes de la création (/decouvrir/<étape>/), de nouveau des pages (R184) ;
  *   - les Règles avancées (R184 : plus de rubrique) : /regles/avancees/ mène au Mode Hyper, sa page d'ouverture, et chacune de ses pages
- *     (ANCIENNES_REGLES_AVANCEES) à sa nouvelle adresse.
+ *     (ANCIENNES_REGLES_AVANCEES) à sa nouvelle adresse ;
+ *   - une page dont l'adresse a changé sans son identifiant (ADRESSES_RENOMMEES_DU_GUIDE) : son adresse tirée de l'identifiant, /regles/<slug>/ (R228 :
+ *     /regles/liste-des-effets-mode-super/ mène à /regles/mode-super/).
  * « Créer son personnage » (/decouvrir/creer-son-personnage/), découpée, et « Les situations avancées » sont dans PAGES_ECLATEES_DU_GUIDE. La page
  * « Liens » (/decouvrir/liens/), supprimée le 2026-10-22, n'est plus renvoyée nulle part (réponse du propriétaire du 2026-10-23 : « supprimer ce lien »).
  */
@@ -291,6 +313,7 @@ export const ADRESSES_DU_PLAN_PRECEDENT = Object.freeze({
   ...Object.fromEntries(ETAPES_DE_LA_CREATION.map((id) => [`decouvrir/${slugDe(id)}/`, id])),
   'regles/avancees/': 'guide/le-mode-hyper',
   ...Object.fromEntries(ANCIENNES_REGLES_AVANCEES.filter((slug) => slug !== 'situations-avancees').map((slug) => [`regles/avancees/${slug}/`, `guide/${slug}`])),
+  ...Object.fromEntries(Object.keys(ADRESSES_RENOMMEES_DU_GUIDE).map((id) => [`${CHEMIN_DES_REGLES}${slugDe(id)}/`, id])),
 });
 
 /**
@@ -344,13 +367,17 @@ export const PAGES_ECLATEES_DU_GUIDE = gele({
 
 /**
  * La page `guide/…` servie à une adresse du guide, relative à la racine du site (« regles/l-embuscade/ », « regles/<slug>/#ancre », « decouvrir/ ») ; la
- * requête et l'ancre ne comptent pas : l'inverse d'adresseDuGuide. null pour toute autre adresse.
+ * requête et l'ancre ne comptent pas : l'inverse d'adresseDuGuide, ADRESSES_RENOMMEES_DU_GUIDE comprises (« regles/mode-super/ » :
+ * guide/liste-des-effets-mode-super ; son ancienne adresse, « regles/liste-des-effets-mode-super/ », ne sert plus aucune page). null pour toute autre
+ * adresse.
  */
 export function pageDuGuideALAdresse(adresse) {
   const chemin = String(adresse).replace(/[?#].*$/, '');
   if (chemin === DECOUVRIR.chemin) return DECOUVRIR.accueil;
   const m = chemin.match(/^(?:decouvrir|regles|mj)\/([a-z0-9]+(?:-[a-z0-9]+)*)\/$/);
-  return m ? `guide/${m[1]}` : null;
+  if (!m) return null;
+  if (PAGES_DES_ADRESSES_RENOMMEES.has(m[1])) return PAGES_DES_ADRESSES_RENOMMEES.get(m[1]);
+  return Object.hasOwn(ADRESSES_RENOMMEES_DU_GUIDE, `guide/${m[1]}`) ? null : `guide/${m[1]}`;
 }
 
 /**
@@ -542,6 +569,7 @@ export function filDAriane(id) {
  *   - chaque page nommée (Découvrir, les onglets, le Guide du MJ) existe, n'est pas une page d'exemple, est une page `guide/…`, n'est nommée qu'une fois ;
  *   - toute page `guide/…` chargée qui n'est pas d'exemple est rangée (Découvrir, un onglet, le Guide du MJ) : pas d'onglet « Autre » (R185, P7) ;
  *   - aucune page des onglets ne prend un nom réservé (nomsReserves), aucune entrée lien ne mène sous /guide/ ;
+ *   - aucune page ne prend l'adresse d'une page renommée (ADRESSES_RENOMMEES_DU_GUIDE : guide/mode-super cacherait guide/liste-des-effets-mode-super) ;
  *   - aucune page absorbée, retirée ou supprimée n'est revenue, et chaque page qui en absorbe une est rangée.
  * La cible d'un renvoi figé d'une ancienne adresse (ADRESSES_DU_PLAN_PRECEDENT, PAGES_ECLATEES_DU_GUIDE) n'a pas à exister : une page des Règles
  * supprimée sur le site de dev peut l'être ; l'ancienne adresse mène alors à la 404 (R185 (6) ; lib/metiers.mjs#renvoisDuGuide, pagesEclateesDuGuide,
@@ -568,7 +596,7 @@ export function verifierLePlan(entries) {
   for (const o of onglets) {
     if (NOMS_RESERVES.includes(o.id)) throw new Error(`plan du guide : l'onglet ${o.id} prend un nom réservé (${NOMS_RESERVES.join(', ')})`);
     for (const e of o.entrees) {
-      if (e.page && reserves.includes(slugDe(e.page))) throw new Error(`plan du guide : ${e.page} prend un nom réservé (${reserves.join(', ')})`);
+      if (e.page && reserves.includes(slugDAdresse(e.page))) throw new Error(`plan du guide : ${e.page} prend un nom réservé (${reserves.join(', ')})`);
       if (e.adresse?.startsWith('guide/')) throw new Error(`plan du guide : l'entrée « ${e.libelle} » de « ${o.titre} » mène sous /guide/`);
     }
   }
@@ -581,6 +609,10 @@ export function verifierLePlan(entries) {
   }
   for (const supprimee of PAGES_SUPPRIMEES) {
     if (parId.has(supprimee) && !vues.has(supprimee)) throw new Error(`plan du guide : ${supprimee}, supprimée (R184), est revenue sans place dans le plan`);
+  }
+  for (const [id, slug] of Object.entries(ADRESSES_RENOMMEES_DU_GUIDE)) {
+    const autre = `guide/${slug}`;
+    if (parId.has(autre)) throw new Error(`plan du guide : ${autre} prendrait l'adresse /${adresseDuGuide(id)}, celle de ${id} (ADRESSES_RENOMMEES_DU_GUIDE)`);
   }
   for (const e of entries) {
     if (e.id.startsWith('guide/') && e.data?.status !== 'example' && !vues.has(e.id)) {

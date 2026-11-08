@@ -27,6 +27,8 @@ export const LIBELLES_DES_CONTROLES = Object.freeze({
   metier_bonus_hors_choix: 'Bonus de métier choisi qui n’est pas une option du métier',
   metier_bonus_manquant: 'Bonus de métier à choisir',
   gains_niveau: 'Gains de niveau (santé + chakra) hors du total à saisir',
+  // décision R225 : le détail donne la santé et son plafond calculé (« santé / plafond ») ; la règle elle-même est une donnée, jamais écrite ici
+  gains_sante_potentiel: 'Santé gagnée au-delà du plafond du Potentiel Illimité',
   classe_2_manquante: 'Seconde classe à choisir',
   classe_2_en_trop: 'Seconde classe sans niveau',
   classe_1_manquante: 'Classe à choisir',

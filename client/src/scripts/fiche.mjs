@@ -2531,6 +2531,22 @@ function construireProgression() {
   total.toggleAttribute('data-hors', g.hors);
   total.title = g.hors ? `Hors du total à saisir au niveau ${g.niveau} : santé ${g.sante} + chakra ${g.chakra} = ${g.total}` : '';
   $('progression-aide').textContent = aideDesGains(g);
+  // décision R225 : un Potentiel Illimité inné a un plafond de santé (gainsDeNiveau().potentiel, calculé depuis la donnée et les niveaux, le même que la
+  // règle gains_sante_potentiel de la base, qui le signale à l'enregistrement) ; en rouge au-delà, sans rien bloquer. Caché pour toute autre magie innée
+  const potentiel = $('gains-sante-potentiel');
+  potentiel.hidden = !g.potentiel;
+  potentiel.toggleAttribute('data-hors', Boolean(g.potentiel?.depasse));
+  if (g.potentiel) {
+    const p = g.potentiel;
+    const magie = trouver(regles.magies, fiche.magie_innee_id)?.nom ?? fiche.magie_innee_id;
+    potentiel.textContent = `Santé attribuée : ${g.sante} / au plus : ${p.plafond}`;
+    const detail = `${magie} au niveau ${g.niveau} : au plus ${p.parNiveau} santé par niveau sur les points d’attributs (${p.niveaux} niveau${p.niveaux > 1 ? 'x' : ''})`
+      + `${p.de ? `, plus ${p.de} pour le dé bonus` : ''}, soit ${p.plafond}`;
+    potentiel.title = p.depasse ? `Au-delà du plafond de santé. ${detail}` : detail;
+  } else {
+    potentiel.textContent = '';
+    potentiel.title = '';
+  }
 
   const dons = donsAChoisir(regles, fiche);
   reconstruire($('dons'), JSON.stringify(dons.map((d) => [d.rang, d.classe.id, d.groupes.map((g) => g.options[0].id)])), () => {

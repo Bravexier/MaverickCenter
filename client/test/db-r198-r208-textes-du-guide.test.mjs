@@ -9,12 +9,19 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { cheminDePage } from '../src/lib/metiers.mjs';
 import { baseDImport, lotsAvant } from './aide-base-d-import.mjs';
+import { textesReecrits } from './aide-textes-reecrits.mjs';
 
 const registre = JSON.parse(readFileSync(new URL('../../data/migrations/0104-r198-r208-textes-du-guide.json', import.meta.url), 'utf8'));
 const apresLa0104 = () => baseDImport({ garder: lotsAvant('0104') });
 const registre0107 = JSON.parse(readFileSync(new URL('../../data/migrations/0107-r198-r200-posture-et-mode-hyper.json', import.meta.url), 'utf8'));
 const apresLa0107 = () => baseDImport({ garder: lotsAvant('0107') });
 const valeur = (db, t) => db.prepare(`SELECT "${t.col}" AS v FROM "${t.table}" WHERE id = ?`).get(t.cle.id)?.v;
+// La migration 0111 (relecture des Règles contre les décisions), postérieure, réécrit des fragments que la 0104 a écrits (C20, R226 (2) : la Vigilance
+// anticipe en action rapide) : le fragment de la 0104 est admis tel quel ou tel que la 0111 l'a réécrit (registre `textes`, test/aide-textes-reecrits.mjs)
+const REECRITS_PAR_0111 = textesReecrits('0111-relecture-des-regles-contre-les-decisions');
+const memeCellule = (a, b) => a.table === b.table && a.col === b.col && JSON.stringify(a.cle) === JSON.stringify(b.cle);
+const apresOuReecrit = (t, v) => v.includes(t.apres)
+  || v.includes(REECRITS_PAR_0111.filter((x) => memeCellule(x, t)).reduce((s, x) => (s.includes(x.avant) ? s.replace(x.avant, () => x.apres) : s), t.apres));
 
 // Les copies de source ne se réécrivent pas (R198 à R200, « les copies de source restent ») ; seule exception, voulue par le propriétaire : « Prouesse »
 // devient « Calme » dans la page copiée des compétences (R204).
@@ -42,7 +49,7 @@ test('0104 : chaque remplacement est en place dans l’état de la migration (le
   for (const t of registre.textes) {
     const v = valeur(imp, t);
     assert.equal(typeof v, 'string', `${t.cle.id} présent`);
-    if (t.apres) assert.ok(v.includes(t.apres), `${t.cle.id} (${t.decision}) : « ${t.apres.slice(0, 60)}… »`);
+    if (t.apres) assert.ok(apresOuReecrit(t, v), `${t.cle.id} (${t.decision}) : « ${t.apres.slice(0, 60)}… »`);
     if (!t.apres.includes(t.avant)) assert.ok(!v.includes(t.avant), `${t.cle.id} (${t.decision}) : l’ancien fragment reste`);
   }
 });

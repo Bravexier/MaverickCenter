@@ -343,12 +343,14 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
                 <button type="button" id="xp-annuler">Annuler</button>
               </form>
             </div>
-            {/* gains de niveau (décision R73) : deux totaux, santé et chakra ; le total attribué et le total à saisir, l'aide (src/scripts/fiche.mjs#construireProgression) */}
+            {/* gains de niveau (décision R73) : deux totaux, santé et chakra ; le total attribué et le total à saisir, l'aide (src/scripts/fiche.mjs#construireProgression) ;
+                 pour un Potentiel Illimité inné seulement, la santé attribuée et son plafond (décision R225 : `gains-sante-potentiel`, caché sinon) */}
             <div><h4 class="fiche-sous-titre">Gains de niveau</h4><p class="fiche-aide" id="progression-aide"></p>
               <div id="progression" class="gains">
                 <label class="gains__champ gains__champ--sante"><span>Santé</span><input type="number" min="0" step="1" inputmode="numeric" data-champ="gains_sante" data-entier id="gains-sante" /></label>
                 <label class="gains__champ gains__champ--chakra"><span>Chakra</span><input type="number" min="0" step="1" inputmode="numeric" data-champ="gains_chakra" data-entier id="gains-chakra" /></label>
                 <output class="gains__total" id="gains-total" for="gains-sante gains-chakra"></output>
+                <output class="gains__total" id="gains-sante-potentiel" for="gains-sante" hidden></output>
               </div>
             </div>
           </div>

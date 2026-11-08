@@ -1,0 +1,912 @@
+{
+ "migration": "0111-relecture-des-regles-contre-les-decisions",
+ "decisions": [
+  "R1",
+  "R26",
+  "R41",
+  "R49",
+  "R78",
+  "R88",
+  "R89",
+  "R93",
+  "R95",
+  "R96",
+  "R100",
+  "R104",
+  "R111",
+  "R112",
+  "R131",
+  "R149",
+  "R154",
+  "R156",
+  "R167",
+  "R175",
+  "R180",
+  "R182",
+  "R184",
+  "R187",
+  "R188",
+  "R189",
+  "R198",
+  "R199",
+  "R200",
+  "R201",
+  "R202",
+  "R203",
+  "R208",
+  "R224",
+  "R225",
+  "R226",
+  "R227",
+  "R228",
+  "R229"
+ ],
+ "reponses": [
+  "G43"
+ ],
+ "description": "Relecture des pages des Règles contre les décisions (cahier de game-design, C1 à C25 ; R224 à R227), suite des 0104 et 0107 (même méthode). `textes` : une entrée par remplacement ; `avant` et `apres` sont le fragment qui change (présent une seule fois dans la valeur d'avant) ; `correction` : le numéro du cahier ; `decision` : la décision ou la réponse du propriétaire qui la fonde (null : correction du cahier sans numéro de décision). `titres` et `alias` : C23. `mots_cles_crees` : le mot-clé du lien de guide/attaque-et-defense. `mots_cles` : l'adresse du mot-clé mode-super (R228). `constantes` : R225. Pas sous `corrections` : ce ne sont pas des corrections d'un classeur (tools/sources/rapprocher.mjs lit `corrections`). La valeur AP/AM de C15 (9 et 9) est celle de la ligne armure « Armure Bois/Écailles » en base version 110.",
+ "textes": [
+  {
+   "correction": "C1",
+   "table": "page",
+   "cle": {
+    "id": "guide/les-postures"
+   },
+   "col": "resume",
+   "decision": "R198 (6)",
+   "avant": "à déclarer au début de chaque tour",
+   "apres": "que l’on prend ou change au début de son tour et que l’on garde tant qu’on n’en change pas"
+  },
+  {
+   "correction": "C2",
+   "table": "page",
+   "cle": {
+    "id": "guide/les-postures"
+   },
+   "col": "corps_md",
+   "decision": "R111",
+   "avant": "avec deux magies, l’autre est désactivée le temps de la posture, et tous ses avantages et ses inconvénients avec elle.",
+   "apres": "avec deux magies, l’autre est désactivée le temps de la posture : elle perd ses sorts et ses résistances et faiblesses, et rien d’autre (son effet de Mode Hyper, sa ressource propre, la santé et le chakra qu’elle offre et le +1 de caractéristique de la magie innée restent)."
+  },
+  {
+   "correction": "C3",
+   "table": "page",
+   "cle": {
+    "id": "guide/les-postures"
+   },
+   "col": "corps_md",
+   "decision": "G43",
+   "avant": "- Exception (décision R167) :",
+   "apres": "- Exception :"
+  },
+  {
+   "correction": "C3",
+   "table": "page",
+   "cle": {
+    "id": "guide/les-postures"
+   },
+   "col": "corps_md",
+   "decision": "G43",
+   "avant": "les autres armes restent interdites (décision R112).",
+   "apres": "les autres armes restent interdites."
+  },
+  {
+   "correction": "C3",
+   "table": "page",
+   "cle": {
+    "id": "guide/l-equipement"
+   },
+   "col": "corps_md",
+   "decision": "G43",
+   "avant": "son matériau et son amélioration (décision R167).",
+   "apres": "son matériau et son amélioration."
+  },
+  {
+   "correction": "C3",
+   "table": "page",
+   "cle": {
+    "id": "guide/l-equipement"
+   },
+   "col": "corps_md",
+   "decision": "G43",
+   "avant": "6 au +10 (décision R167).",
+   "apres": "6 au +10."
+  },
+  {
+   "correction": "C4",
+   "table": "page",
+   "cle": {
+    "id": "guide/les-degats"
+   },
+   "col": "corps_md",
+   "decision": "R184 (2)",
+   "avant": "{{blessure-et-mort|Blessures et états}}",
+   "apres": "{{blessure-et-mort}}"
+  },
+  {
+   "correction": "C4",
+   "table": "page",
+   "cle": {
+    "id": "guide/le-mode-hyper"
+   },
+   "col": "corps_md",
+   "decision": "R184 (2)",
+   "avant": "{{blessure-et-mort|Blessures et états}}",
+   "apres": "{{blessure-et-mort}}"
+  },
+  {
+   "correction": "C4",
+   "table": "page",
+   "cle": {
+    "id": "guide/la-magie-en-jeu"
+   },
+   "col": "corps_md",
+   "decision": "R184 (2)",
+   "avant": "{{blessure-et-mort|Blessures et états}}",
+   "apres": "{{blessure-et-mort}}"
+  },
+  {
+   "correction": "C5",
+   "table": "page",
+   "cle": {
+    "id": "guide/le-tour-de-jeu"
+   },
+   "col": "corps_md",
+   "decision": "R184 (5)",
+   "avant": "{{alteration-detat|Blessures et états}}",
+   "apres": "{{alteration-detat|Altérations d’états}}"
+  },
+  {
+   "correction": "C6",
+   "table": "page",
+   "cle": {
+    "id": "guide/le-tour-de-jeu"
+   },
+   "col": "corps_md",
+   "decision": null,
+   "avant": "{{etape-6-finaliser-son-personnage|Créer son personnage}}",
+   "apres": "{{etape-6-finaliser-son-personnage}}"
+  },
+  {
+   "correction": "C6",
+   "table": "page",
+   "cle": {
+    "id": "guide/la-magie-en-jeu"
+   },
+   "col": "corps_md",
+   "decision": null,
+   "avant": "{{etape-5-choisir-ses-premiers-sorts|Créer son personnage}}",
+   "apres": "{{etape-5-choisir-ses-premiers-sorts}}"
+  },
+  {
+   "correction": "C6",
+   "table": "page",
+   "cle": {
+    "id": "guide/la-montee-de-niveau"
+   },
+   "col": "corps_md",
+   "decision": null,
+   "avant": "(voir l’étape 4 de {{etape-4-repartir-caracteristiques-et-competences|Créer son personnage}})",
+   "apres": "(voir {{etape-4-repartir-caracteristiques-et-competences}})"
+  },
+  {
+   "correction": "C6",
+   "table": "page",
+   "cle": {
+    "id": "guide/la-montee-de-niveau"
+   },
+   "col": "corps_md",
+   "decision": null,
+   "avant": "{{etape-3-choisir-sa-classe|Créer son personnage}}",
+   "apres": "{{etape-3-choisir-sa-classe}}"
+  },
+  {
+   "correction": "C6",
+   "table": "page",
+   "cle": {
+    "id": "guide/reussir-une-action"
+   },
+   "col": "corps_md",
+   "decision": null,
+   "avant": "{{etape-4-repartir-caracteristiques-et-competences|Créer son personnage}}",
+   "apres": "{{etape-4-repartir-caracteristiques-et-competences}}"
+  },
+  {
+   "correction": "C7",
+   "table": "page",
+   "cle": {
+    "id": "guide/finaliser-son-personnage"
+   },
+   "col": "corps_md",
+   "decision": "R184 (2), R184 (11)",
+   "avant": "{{sentrainer|S’entraîner et exercer un métier}}",
+   "apres": "{{sentrainer}}"
+  },
+  {
+   "correction": "C7",
+   "table": "page",
+   "cle": {
+    "id": "guide/la-montee-de-niveau"
+   },
+   "col": "corps_md",
+   "decision": "R184 (2), R184 (11)",
+   "avant": "{{sentrainer|S’entraîner et exercer un métier}}",
+   "apres": "{{sentrainer}}"
+  },
+  {
+   "correction": "C7",
+   "table": "page",
+   "cle": {
+    "id": "guide/reussir-une-action"
+   },
+   "col": "corps_md",
+   "decision": "R184 (2), R184 (11)",
+   "avant": "{{sentrainer|S’entraîner et exercer un métier}}",
+   "apres": "{{sentrainer}}"
+  },
+  {
+   "correction": "C8",
+   "table": "page",
+   "cle": {
+    "id": "guide/la-montee-de-niveau"
+   },
+   "col": "corps_md",
+   "decision": "R187 (1), R184 (2)",
+   "avant": "{{mode-hyper|Le Mode Hyper et le Mode Super}}",
+   "apres": "{{mode-hyper|Le Mode Hyper}}"
+  },
+  {
+   "correction": "C9",
+   "table": "page",
+   "cle": {
+    "id": "guide/s-entrainer-et-exercer-un-metier"
+   },
+   "col": "corps_md",
+   "decision": "R184 (1), R104",
+   "avant": "un seul par sort (voir {{la-magie-en-jeu}}) ;",
+   "apres": "un seul par sort (voir {{la-magie-en-jeu}}) ;\n- en texte libre, les **dons évènementiels** et ce que le MJ accorde."
+  },
+  {
+   "correction": "C10",
+   "table": "page",
+   "cle": {
+    "id": "guide/premiers-sorts"
+   },
+   "col": "corps_md",
+   "decision": "R189",
+   "avant": "2. avoir une magie acquise ;",
+   "apres": "2. avoir une magie acquise, ou le don « Grimoire » de l’Archimage, qui compte comme elle sans donner de seconde magie ;"
+  },
+  {
+   "correction": "C10",
+   "table": "page",
+   "cle": {
+    "id": "guide/la-montee-de-niveau"
+   },
+   "col": "corps_md",
+   "decision": "R189",
+   "avant": "(avoir une magie innée, une magie acquise, une classe magique, une seconde classe magique)",
+   "apres": "(avoir une magie innée, une magie acquise ou le don « Grimoire » de l’Archimage, une classe magique, une seconde classe magique)"
+  },
+  {
+   "correction": "C11",
+   "table": "page",
+   "cle": {
+    "id": "guide/la-montee-de-niveau"
+   },
+   "col": "corps_md",
+   "decision": "R188 (1), R188 (2)",
+   "avant": "les emplacements de ce palier, eux, s’ouvrent quand même.",
+   "apres": "les emplacements de ce palier, eux, s’ouvrent quand même.\n- **Avec le {{potentiel-illimite|Potentiel Illimité}}** en magie innée, le choix des sorts a de plus son propre plafond, donné sur la page de sa magie et relevé par le don « Semi-complet » de l’Archimage, jamais avant le niveau où la puissance magique l’ouvre ; ce plafond ne change pas le nombre d’emplacements."
+  },
+  {
+   "correction": "C12",
+   "table": "page",
+   "cle": {
+    "id": "guide/la-magie-en-jeu"
+   },
+   "col": "corps_md",
+   "decision": "R154, R26",
+   "avant": "Un NM s’obtient de trois façons :",
+   "apres": "Un NM s’obtient de quatre façons :"
+  },
+  {
+   "correction": "C12",
+   "table": "page",
+   "cle": {
+    "id": "guide/la-magie-en-jeu"
+   },
+   "col": "corps_md",
+   "decision": "R154, R26",
+   "avant": "- **en cadeau du MJ**.",
+   "apres": "- **en cadeau du MJ** ;\n- **par un don** : « Maîtrise » de l’Ocultomancien (niveau de classe 20) donne 4 NM gagnés, qui s’ajoutent à ceux des niveaux ; ce ne sont pas des NM du MJ."
+  },
+  {
+   "correction": "C13",
+   "table": "page",
+   "cle": {
+    "id": "guide/resistances-et-faiblesses"
+   },
+   "col": "corps_md",
+   "decision": null,
+   "avant": "le Potentiel Illimité n’a ni résistance ni vulnérabilité.",
+   "apres": "le Potentiel Illimité n’a ni résistance ni vulnérabilité à une magie (sa Surtension corporelle, qui touche les dégâts physiques, est décrite plus bas)."
+  },
+  {
+   "correction": "C14",
+   "table": "page",
+   "cle": {
+    "id": "guide/choisir-sa-classe"
+   },
+   "col": "corps_md",
+   "decision": null,
+   "avant": "**maîtrises d’armes** : les armes que le personnage sait manier dès le départ",
+   "apres": "**maîtrises d’armes** : des points de maîtrise par famille d’armes, qui ajoutent des dés de dégâts aux armes de ces familles"
+  },
+  {
+   "correction": "C15",
+   "table": "page",
+   "cle": {
+    "id": "guide/l-equipement"
+   },
+   "col": "corps_md",
+   "decision": null,
+   "avant": "écailles et bois 8 AP et 1 AM.",
+   "apres": "écailles et bois 9 AP et 9 AM."
+  },
+  {
+   "correction": "C16",
+   "table": "page",
+   "cle": {
+    "id": "guide/l-equipement"
+   },
+   "col": "corps_md",
+   "decision": null,
+   "avant": "est de **4 crans**, plus un au +4 et un autre au +5.",
+   "apres": "est de **4 crans**, 5 au +4 et au +5 (la ligne d’amélioration donne le total)."
+  },
+  {
+   "correction": "C17",
+   "table": "page",
+   "cle": {
+    "id": "guide/l-equipement"
+   },
+   "col": "corps_md",
+   "decision": null,
+   "avant": "est sur la page {{armes|Équipement}} : les armes, les armures, les boucliers, les objets de ceinture et les accessoires,",
+   "apres": "est dans la rubrique Équipement du menu, une page par catégorie : les {{armes|armes}}, les {{armures|armures}}, les {{bouclier|boucliers}}, les objets de {{ceinture|ceinture}} et les {{accessoires|accessoires}},"
+  },
+  {
+   "correction": "C17",
+   "table": "page",
+   "cle": {
+    "id": "guide/equipement-et-butin"
+   },
+   "col": "corps_md",
+   "decision": null,
+   "avant": "est sur la page {{armes|Équipement}}.",
+   "apres": "est dans la rubrique Équipement du menu : {{armes|armes}}, {{armures|armures}}, {{bouclier|boucliers}}, {{ceinture|ceinture}} et {{accessoires|accessoires}}."
+  },
+  {
+   "correction": "C17",
+   "table": "page",
+   "cle": {
+    "id": "guide/l-equipement"
+   },
+   "col": "corps_md",
+   "decision": null,
+   "avant": "La grille de l’onglet {{armures}}",
+   "apres": "La grille de la page {{armures}}"
+  },
+  {
+   "correction": "C17",
+   "table": "page",
+   "cle": {
+    "id": "guide/l-equipement"
+   },
+   "col": "corps_md",
+   "decision": null,
+   "avant": "Les prix sont dans l’onglet Armures.",
+   "apres": "Les prix sont sur la page {{armures}}."
+  },
+  {
+   "correction": "C17",
+   "table": "page",
+   "cle": {
+    "id": "guide/l-equipement"
+   },
+   "col": "corps_md",
+   "decision": null,
+   "avant": "sont dans l’onglet {{bouclier|Boucliers}}.",
+   "apres": "sont sur la page {{bouclier|Boucliers}}."
+  },
+  {
+   "correction": "C17",
+   "table": "page",
+   "cle": {
+    "id": "guide/l-equipement"
+   },
+   "col": "corps_md",
+   "decision": null,
+   "avant": "le générateur de l’onglet {{accessoires}}",
+   "apres": "le générateur de la page {{accessoires}}"
+  },
+  {
+   "correction": "C17",
+   "table": "page",
+   "cle": {
+    "id": "guide/les-degats"
+   },
+   "col": "corps_md",
+   "decision": null,
+   "avant": "L’onglet {{armures}}",
+   "apres": "La page {{armures}}"
+  },
+  {
+   "correction": "C18",
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-personnage"
+   },
+   "col": "corps_md",
+   "decision": "R1",
+   "avant": "parmi les 23 disponibles",
+   "apres": "parmi les 27 disponibles"
+  },
+  {
+   "correction": "C18",
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-personnage"
+   },
+   "col": "corps_md",
+   "decision": "R202 (7)",
+   "avant": "ainsi que le score d'alignement (gauche = score Loyal/Chaos, droite = score Bon/Mauvais)",
+   "apres": "ainsi que les quatre scores d'alignement : Loyal (L), Chaos (C), Bon (B) et Mauvais (M)"
+  },
+  {
+   "correction": "C18",
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-attributs"
+   },
+   "col": "corps_md",
+   "decision": "R202 (4)",
+   "avant": "ainsi que de la Magie du Sang (si jamais vous avez cette magie)",
+   "apres": "ainsi que de la Magie du Sang ou de la Nécromancie (si jamais vous avez l'une de ces magies)"
+  },
+  {
+   "correction": "C18",
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-attributs"
+   },
+   "col": "corps_md",
+   "decision": "R201, R175",
+   "avant": "[{{chakra}} total divisé par 2 = {{barriere}} totale]",
+   "apres": "[{{chakra}} total divisé par 2, arrondi à l’inférieur = {{barriere}} totale]"
+  },
+  {
+   "correction": "C18",
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-caracteristiques"
+   },
+   "col": "corps_md",
+   "decision": "R202 (5)",
+   "avant": "Le Potentiel Illimité détermine aléatoirement le bonus.",
+   "apres": "Pour le Potentiel Illimité, le joueur choisit le bonus ou le tire au hasard."
+  },
+  {
+   "correction": "C18",
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-competences"
+   },
+   "col": "corps_md",
+   "decision": "R41",
+   "avant": "dans la limite de 5 par point de caractéristique de base =",
+   "apres": "dans la limite de 5 par point de la caractéristique totale (le +1 de la magie innée compris) ="
+  },
+  {
+   "correction": "C18",
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-tableau-magie"
+   },
+   "col": "corps_md",
+   "decision": "R189",
+   "avant": "- Avoir une magie acquise.",
+   "apres": "- Avoir une magie acquise, ou le don « Grimoire » de l’Archimage, qui compte comme elle sans donner de seconde magie."
+  },
+  {
+   "correction": "C18",
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-tableau-posture"
+   },
+   "col": "corps_md",
+   "decision": "R198 (1)",
+   "avant": "MAIS chaque coup va diminuer la réussite de la prochaine parade/esquive de 10%.",
+   "apres": "MAIS au-delà de deux parades ou esquives, chaque coup va diminuer la réussite de la prochaine parade/esquive de 10%."
+  },
+  {
+   "correction": "C18",
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-tableau-posture"
+   },
+   "col": "corps_md",
+   "decision": "R198 (2)",
+   "avant": "d'un bon dialogue et d'un jet de diplomatie",
+   "apres": "d'un bon dialogue ou d'un jet de diplomatie"
+  },
+  {
+   "correction": "C18",
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-tableau-posture"
+   },
+   "col": "corps_md",
+   "decision": "R198 (3)",
+   "avant": "Permet grâce un jet d'observation/distinction d'avoir",
+   "apres": "Permet grâce un jet d'observation d'avoir"
+  },
+  {
+   "correction": "C18",
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-tableau-posture"
+   },
+   "col": "corps_md",
+   "decision": "R198 (3)",
+   "avant": "détecter une résistance ou vulnérabilité aléatoire de l’ennemi.",
+   "apres": "détecter 1d4 résistances ou vulnérabilités de l’ennemi."
+  },
+  {
+   "correction": "C18",
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-tableau-posture"
+   },
+   "col": "corps_md",
+   "decision": "R100",
+   "avant": "bonus de dégâts de +6 ou alors",
+   "apres": "bonus de dégâts de +5 ou alors"
+  },
+  {
+   "correction": "C18",
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-tableau-posture"
+   },
+   "col": "corps_md",
+   "decision": "R112, R167, R198 (4)",
+   "avant": "- **Impossible d'utiliser les objets et armes (sauf forgemagie) :** Vous êtes quasiment un élémentaire, les armes physiques et les objets ne sont pas dans votre optique (la forgemagie est un sort qui permet de créer des armes faites de magie, donc c'est bon)",
+   "apres": "- **Ni armes ni objets, on ne peut que lancer des sorts :** Vous êtes quasiment un élémentaire : la Forgemagie (qui crée des armes faites de magie) et la « Forge de ses morts » en sont. Les parchemins restent permis, et les effets passifs restent actifs : accessoires, bâtons magiques, armure et bouclier portés. L’arme élémentaire de la magie de la symbiose reste utilisable et reçoit le bonus de dégâts de la posture ; les autres armes restent interdites."
+  },
+  {
+   "correction": "C18",
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-tableau-posture"
+   },
+   "col": "corps_md",
+   "decision": "R111",
+   "avant": ", ainsi tous ses avantages et inconvénients sont annulés également.",
+   "apres": " : elle perd ses sorts et ses résistances et faiblesses, et rien d’autre (son effet de Mode Hyper, sa ressource propre, la santé et le chakra qu’elle offre et le +1 de caractéristique de la magie innée restent)."
+  },
+  {
+   "correction": "C18",
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-maitrise-darme-et-armes"
+   },
+   "col": "corps_md",
+   "decision": "R149",
+   "avant": "1 point de maîtrise = 2d de dégâts, etc....",
+   "apres": "1 point de maîtrise = 2d de dégâts, jusqu’à 4 points au plus par catégorie, donc 5 dés."
+  },
+  {
+   "correction": "C18",
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-maitrise-darme-et-armes"
+   },
+   "col": "corps_md",
+   "decision": "R49",
+   "avant": "Chaque catégorie d'arme possède son dé de dégâts, toutes les dagues feront le D6 et ainsi de suite.",
+   "apres": "Chaque arme possède son dé de dégâts, le plus souvent celui de sa catégorie : la plupart des dagues feront le D6 et ainsi de suite."
+  },
+  {
+   "correction": "C18",
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-armure-defense-bouclier"
+   },
+   "col": "corps_md",
+   "decision": "R93, R95",
+   "avant": "L'armure est divisée en 6 morceaux :",
+   "apres": "L'armure est une armure complète, divisée en 6 parties :"
+  },
+  {
+   "correction": "C18",
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-armure-defense-bouclier"
+   },
+   "col": "corps_md",
+   "decision": "R95, R156",
+   "avant": "Elle possède également une Dur. ({{solidite|solidité}} comme pour les armes)",
+   "apres": "Chaque partie possède sa {{solidite|solidité}} (comme pour les armes), sauf une armure à cran de solidité uni, qui n’en a qu’une pour toute l’armure."
+  },
+  {
+   "correction": "C18",
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-armure-defense-bouclier"
+   },
+   "col": "corps_md",
+   "decision": "R78, R96",
+   "avant": "Il peut être de différentes compositions,",
+   "apres": "Il est fait d’une forme et d’une matière,"
+  },
+  {
+   "correction": "C18",
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-accessoires-et-ceinture"
+   },
+   "col": "corps_md",
+   "decision": "R89, R131",
+   "avant": "ne peuvent pas dépasser le nombre de 3 (impossible",
+   "apres": "ne peuvent pas dépasser 3 exemplaires du même objet par emplacement, 4 avec le don « Organisé » du Mercenaire (impossible"
+  },
+  {
+   "correction": "C18",
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-inventaire-sac-a-dos"
+   },
+   "col": "corps_md",
+   "decision": "R88, R227 (2)",
+   "avant": "Par défaut, votre personnage commence avec un sac à dos normal, ce qui correspond à deux colonnes complètes d’inventaire mais il existe d’autres sacs à dos.\n\n- Grand sac à dos, permet d’avoir 4 emplacements supplémentaires |Demande 2 de Force.\n- Super sac à dos, permet d’avoir 8 emplacements supplémentaires |Demande 3 de Force.\n- Méga sac à dos, permet d’avoir 12 emplacements supplémentaires |Demande 4 de Force.\n- Ultra sac à dos, permet d’avoir tout l’inventaire |Demande 5 de Force.",
+   "apres": "La place de l’inventaire est donnée par la Force de votre personnage, sans sac à dos à choisir ; un sac à dos reste un objet possible de l’inventaire."
+  },
+  {
+   "correction": "C18",
+   "table": "page",
+   "cle": {
+    "id": "metiers/regles-des-metiers"
+   },
+   "col": "corps_md",
+   "decision": "R208 (4)",
+   "avant": "Pour fabriquer un soin, un remède ou un philtre : il faut être alchimiste.",
+   "apres": "Pour fabriquer un soin ou un remède : il faut être apothicaire. Pour fabriquer un philtre : il faut être alchimiste."
+  },
+  {
+   "correction": "C18",
+   "table": "page",
+   "cle": {
+    "id": "metiers/regles-des-metiers"
+   },
+   "col": "corps_md",
+   "decision": "R208 (7)",
+   "avant": "j’ai un bonus de 3% en Connaissance et 3% en Distinction.",
+   "apres": "j’ai un bonus de 3% en Connaissance et 3% en Orientation."
+  },
+  {
+   "correction": "C18",
+   "table": "page",
+   "cle": {
+    "id": "metiers/regles-des-metiers"
+   },
+   "col": "corps_md",
+   "decision": "R208 (7)",
+   "avant": "je commence avec une pelle en acier.",
+   "apres": "je commence avec une pelle en acier ou une faucille en acier."
+  },
+  {
+   "correction": "C18",
+   "table": "page",
+   "cle": {
+    "id": "guide/attaque-et-defense"
+   },
+   "col": "corps_md",
+   "decision": "R180, R182, R203",
+   "avant": "(score au dé = 1 - 5)",
+   "apres": "(score au dé dans la plage de base, voir {{reussites-echecs-et-critiques}})"
+  },
+  {
+   "correction": "C18",
+   "table": "page",
+   "cle": {
+    "id": "guide/attaque-et-defense"
+   },
+   "col": "corps_md",
+   "decision": "R226 (1)",
+   "avant": "La défense doit faire une réussite critique supérieure",
+   "apres": "La défense doit faire une réussite critique égale ou plus basse"
+  },
+  {
+   "correction": "C18",
+   "table": "page",
+   "cle": {
+    "id": "guide/attaque-et-defense"
+   },
+   "col": "corps_md",
+   "decision": "R199 (1), R226 (1)",
+   "avant": "doit faire un score égal ou meilleur que celui de l'attaquant",
+   "apres": "doit faire un résultat égal ou plus bas que celui de l'attaquant"
+  },
+  {
+   "correction": "C18",
+   "table": "page",
+   "cle": {
+    "id": "guide/formule-des-degats"
+   },
+   "col": "corps_md",
+   "decision": "R100, R199 (4)",
+   "avant": "Dégâts du lanceur x Réussite critique (donc par 2) - Armure",
+   "apres": "(Dégâts du lanceur + bonus fixes) x Réussite critique (donc par 2) ÷ Posture défensive de l'attaquant (donc par 2) - Armure"
+  },
+  {
+   "correction": "C18",
+   "table": "page",
+   "cle": {
+    "id": "guide/les-attaques-discretes"
+   },
+   "col": "corps_md",
+   "decision": "R224 (1)",
+   "avant": "si vous êtes en posture discrète",
+   "apres": "si vous êtes en mode discret"
+  },
+  {
+   "correction": "C18",
+   "table": "page",
+   "cle": {
+    "id": "guide/les-portes"
+   },
+   "col": "corps_md",
+   "decision": "R224 (3)",
+   "avant": "Une porte de pierre de niveau 12 aura 240 santé.",
+   "apres": "Une porte de pierre de niveau 12 aura 480 santé."
+  },
+  {
+   "correction": "C19",
+   "table": "page",
+   "cle": {
+    "id": "guide/alignement"
+   },
+   "col": "corps_md",
+   "decision": "R224 (2)",
+   "avant": "maintenant on va expliquer les 9 combinaisons possibles.",
+   "apres": "les 9 combinaisons possibles sont expliquées dans {{les-neuf-alignements}}."
+  },
+  {
+   "correction": "C19",
+   "table": "page",
+   "cle": {
+    "id": "guide/jet-de-des"
+   },
+   "col": "corps_md",
+   "decision": "R229",
+   "avant": "Comme expliqué plus haut, le jeu de rôle",
+   "apres": "Le jeu de rôle"
+  },
+  {
+   "correction": "C19",
+   "table": "page",
+   "cle": {
+    "id": "guide/jet-de-des"
+   },
+   "col": "resume",
+   "decision": "R229",
+   "avant": "Comme expliqué plus haut, le jeu de rôle",
+   "apres": "Le jeu de rôle"
+  },
+  {
+   "correction": "C20",
+   "table": "page",
+   "cle": {
+    "id": "guide/les-postures"
+   },
+   "col": "corps_md",
+   "decision": "R226 (2)",
+   "avant": "- **Anticiper l’adversaire** : un jet d’*Observation* donne",
+   "apres": "- **Anticiper l’adversaire** : en action rapide (IC), un jet d’*Observation* donne"
+  },
+  {
+   "correction": "C21",
+   "table": "page",
+   "cle": {
+    "id": "guide/attaquer-et-se-defendre"
+   },
+   "col": "corps_md",
+   "decision": "R226 (1)",
+   "avant": "par une réussite critique meilleure que celle de l’attaquant",
+   "apres": "par une réussite critique égale ou plus basse que celle de l’attaquant"
+  },
+  {
+   "correction": "C22",
+   "table": "page",
+   "cle": {
+    "id": "guide/le-mode-hyper"
+   },
+   "col": "corps_md",
+   "decision": "R226 (3), R200 (3)",
+   "avant": "quand la réserve de {{chakra|chakra}} est épuisée ou que les tours sont passés.",
+   "apres": "quand les tours de sa durée sont passés (le {{chakra|chakra}} épuisé, lui, se paie en santé et ne fait pas compter de tour en trop)."
+  },
+  {
+   "correction": "C24",
+   "table": "page",
+   "cle": {
+    "id": "guide/equipement-et-butin"
+   },
+   "col": "corps_md",
+   "decision": "R227 (1)",
+   "avant": "{{forgeron|forgeron}} pour les armes, les armures lourdes et les boucliers ;",
+   "apres": "{{forgeron|forgeron}} pour les armes ; {{armurier|armurier}} pour les armures lourdes et les boucliers ;"
+  },
+  {
+   "correction": "C25",
+   "table": "page",
+   "cle": {
+    "id": "guide/la-montee-de-niveau"
+   },
+   "col": "corps_md",
+   "decision": "R225",
+   "avant": "entre la **santé** et le **{{chakra|chakra}}**.",
+   "apres": "entre la **santé** et le **{{chakra|chakra}}** (avec le {{potentiel-illimite|Potentiel Illimité}} en magie innée, 5 santé au plus par niveau sur ces points, le dé bonus en plus)."
+  }
+ ],
+ "titres": [
+  {
+   "correction": "C23",
+   "decision": "R226 (4)",
+   "cle": {
+    "id": "guide/liste-des-effets-mode-super"
+   },
+   "avant": "Liste des effets mode super",
+   "apres": "Mode Super"
+  }
+ ],
+ "alias": [
+  {
+   "correction": "C23",
+   "decision": "R226 (4)",
+   "page_id": "guide/liste-des-effets-mode-super",
+   "texte": "Liste des effets mode super",
+   "cle": "liste-des-effets-mode-super"
+  }
+ ],
+ "mots_cles": [
+  {
+   "id": "mode-super",
+   "col": "url",
+   "decision": "R228",
+   "avant": null,
+   "apres": "/regles/mode-super/",
+   "page": "guide/liste-des-effets-mode-super",
+   "verrou": 1
+  }
+ ],
+ "mots_cles_crees": [
+  {
+   "id": "reussites-echecs-et-critiques",
+   "libelle": "Réussites / échecs / critiques",
+   "url": "/regles/reussites-echecs-et-critiques/",
+   "page": "guide/reussites-echecs-et-critiques",
+   "verrou": 1
+  }
+ ],
+ "constantes": [
+  {
+   "id": "potentiel_illimite.sante_max_par_niveau",
+   "valeur": 5,
+   "decision": "R225",
+   "regle": "gains_sante_potentiel"
+  }
+ ]
+}

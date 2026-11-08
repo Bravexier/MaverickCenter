@@ -27,6 +27,7 @@ import { cleDeLigne, historiqueSite } from '../src/lib/historique-site.mjs';
 import { buildIndex, entryUrl, splitFrontmatter } from '../src/lib/wikilinks.mjs';
 import { baseDImport, lotsAvant, texteDImport } from './aide-base-d-import.mjs';
 import { ecrituresDuLien } from './aide-ecritures-du-lien.mjs';
+import { ecrituresReecrites } from './aide-textes-reecrits.mjs';
 
 const PREMIER = 'guide/bienvenue';
 
@@ -293,9 +294,13 @@ test('décisions R18 et R186 : à court de chakra, chaque point qui manque coût
   assert.match(cent, /cela lui coûte \*\*75 % de son \{\{chakra\|chakra\}\} maximum\*\*\. S’il ne les a plus en réserve, il paie ce qui manque avec sa santé, comme toujours : \*\*3 points de santé pour 1 point de \{\{chakra\|chakra\}\}\*\*\./);
   assert.match(cent, /S’il ne lui en reste que 40, les 20 qui manquent lui coûtent 60 points de santé\./);
   // R186 élargie, dans « Et la barrière ? » de Les dégâts, juste après la phrase des coups
-  // le renvoi : le lien de la 0093, ou la balise que la migration 0098 en a faite (test/aide-ecritures-du-lien.mjs), sans figer celle de la 0098
+  // le renvoi : le lien de la 0093, ou la balise que la migration 0098 en a faite (test/aide-ecritures-du-lien.mjs), sans figer celle de la 0098 ; la
+  // migration 0111, postérieure, lui donne le titre de la page (R184 (2)) : chacune de ces écritures, ou celle que le registre de la 0111 en fait
+  // (test/aide-textes-reecrits.mjs)
   const echapper = (t) => t.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
-  const renvoi = ecrituresDuLien(baseDImport({ garder: lotsAvant('0093') }), 'guide/blessures-et-etats', 'Blessures et états').map(echapper).join('|');
+  const par0111 = ecrituresReecrites('0111-relecture-des-regles-contre-les-decisions');
+  const renvoi = [...new Set(ecrituresDuLien(baseDImport({ garder: lotsAvant('0093') }), 'guide/blessures-et-etats', 'Blessures et états')
+    .flatMap((f) => par0111('page', { id: 'guide/les-degats' }, 'corps_md', f)))].map(echapper).join('|');
   assert.match(corps('guide/les-degats'), new RegExp(`Elle prend les coups avant la santé, sauf contre-indication : [^\\n]*\\(voir (?:${renvoi})\\)\\. ${
     echapper('Un coût payé en santé ({{chakra|chakra}} manquant, coût d’un sort ou d’un don) ne passe pas par elle, sauf si un texte le précise.')}`));
   const chakra = valeurDe0093('mot_cle', { id: 'chakra' }, 'description');

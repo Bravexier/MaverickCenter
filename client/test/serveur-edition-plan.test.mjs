@@ -15,6 +15,7 @@ import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { rangsReordonnes } from '../serveur/edition-plan.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
+import { slugDAdresse } from '../src/lib/livres.mjs';
 import { chargerRaces, comparerRangsDeListe, racesParNature } from '../src/lib/races-db.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
@@ -163,7 +164,7 @@ test('GET /api/edition/plan/ : onglets dans l’ordre, entrées du menu avec leu
       assert.deepEqual(Object.keys(e), ['id', 'sorte', 'rang', 'page_id', 'titre', 'libelle', 'adresse', 'protection', 'citations', 'supprimable'], e.id);
       if (e.sorte === 'page') {
         assert.equal(e.titre, db.prepare('SELECT titre FROM page WHERE id = ?').get(e.page_id).titre);
-        assert.equal(e.adresse, `regles/${e.page_id.slice('guide/'.length)}/`);
+        assert.equal(e.adresse, `regles/${slugDAdresse(e.page_id)}/`); // le slug de l'id, sauf une adresse renommée (R228 : regles/mode-super/)
         assert.ok(Array.isArray(e.protection) && Array.isArray(e.citations));
         assert.equal(e.supprimable, !e.protection.length && !e.citations.some((c) => !c.exemple));
       } else {

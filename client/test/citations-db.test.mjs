@@ -10,6 +10,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { citationsBloquantes, citationsDe, citationsDesPages } from '../src/lib/citations-db.mjs';
 import { adresseDeLaPage } from '../src/lib/adresses-db.mjs';
+import { ADRESSES_RENOMMEES_DU_GUIDE } from '../src/lib/livres.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 
 /** Une base au schéma de data/schema.sql (clés étrangères non contrôlées : seules les lignes utiles à l'essai). */
@@ -92,6 +93,20 @@ test('migration 0098 : la balise d’un mot-clé qui mène à la page la cite (t
   // l'adresse du mot-clé n'est pas lue comme une adresse écrite dans un texte ; un mot-clé vers une route sans page ne cite rien
   assert.ok(!citations.some((c) => c.table === 'mot_cle' && c.cle.id === 'la-cible' && c.comment === 'adresse'));
   assert.deepEqual(citationsBloquantes(citations).filter((c) => c.comment === 'balise').length, 2);
+  db.close();
+});
+
+test('R228 : une page dont l’adresse ne se tire pas de l’id (ADRESSES_RENOMMEES_DU_GUIDE) est citée par sa nouvelle adresse, sous /regles/ seulement, et par l’ancienne', () => {
+  const db = baseDEssai();
+  const page = db.prepare("INSERT INTO page (id, type, slug, titre, titre_cle, resume, corps_md, statut, origine) VALUES (?, 'guide', ?, ?, ?, NULL, ?, 'draft', 'docs')");
+  const [[id, slug]] = Object.entries(ADRESSES_RENOMMEES_DU_GUIDE);
+  const ancien = id.slice('guide/'.length);
+  page.run(id, ancien, 'Renommée', 'renommee', 'Rien ici.');
+  page.run('guide/par-la-nouvelle', 'par-la-nouvelle', 'Par la nouvelle', 'par-la-nouvelle', `Voir /regles/${slug}/#une-ancre.`);
+  page.run('guide/par-l-ancienne', 'par-l-ancienne', 'Par l’ancienne', 'par-l-ancienne', `Voir /regles/${ancien}/ et /regles/avancees/${ancien}/.`);
+  page.run('guide/sous-guide', 'sous-guide', 'Sous guide', 'sous-guide', `Pas elle : guide/${slug}, /regles/avancees/${slug}/.`);
+  assert.equal(adresseDeLaPage(id), `/regles/${slug}/`);
+  assert.deepEqual(citationsDe(db, id).map((c) => `${c.cle.id} ${c.comment}`).sort(), ['guide/par-l-ancienne adresse', 'guide/par-la-nouvelle adresse']);
   db.close();
 });
 

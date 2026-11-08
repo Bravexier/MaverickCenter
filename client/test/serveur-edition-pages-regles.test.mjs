@@ -23,7 +23,7 @@ import { A_COMPLETER, ErreurEdition, FAMILLE_DES_PAGES_DU_SITE, supprimerPage } 
 import { journalExporte, nouveauLot, ouvrirLot } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { ENTITES } from '../src/lib/edition-modele.mjs';
-import { installerLePlan, NOMS_RESERVES, PAGES_SUPPRIMEES, verifierLePlan } from '../src/lib/livres.mjs';
+import { ADRESSES_RENOMMEES_DU_GUIDE, installerLePlan, NOMS_RESERVES, PAGES_SUPPRIMEES, verifierLePlan } from '../src/lib/livres.mjs';
 import { emettrePage, lirePages } from '../src/lib/pages-db.mjs';
 import { cheminDePage } from '../src/lib/metiers.mjs';
 import { chargerPlanDesRegles } from '../src/lib/plan-des-regles-db.mjs';
@@ -125,6 +125,18 @@ test('créer : un identifiant déjà employé (journal, page supprimée par le p
     ok(lot([{ op: 'supprimer', entite: 'page_des_regles', cle: { id } }]));
     const deNouveau = ok(creer(lot, { titre, onglet_id: 'exploration', resume: 'Essai.' })).crees[0].id;
     assert.notEqual(deNouveau, id, `${titre} : un identifiant jamais redonné`);
+  }
+  // R228 : le slug d'une adresse renommée (/regles/mode-super/, la page guide/liste-des-effets-mode-super) est pris, même quand aucune page n'en porte la
+  // clé (titre et alias changés sur le site de dev : ici, dans la copie) ; guide/mode-super serait servie à la même adresse
+  for (const [page, slug] of Object.entries(ADRESSES_RENOMMEES_DU_GUIDE)) {
+    if (!db.prepare('SELECT 1 FROM page WHERE id = ?').get(page)) continue; // supprimée sur le site de dev : son adresse ne sert plus rien
+    db.prepare('UPDATE page SET titre = ?, titre_cle = ? WHERE id = ?').run('Essai R228', 'essai-r228', page);
+    db.prepare('DELETE FROM alias WHERE cle = ?').run(slug);
+    assert.equal(db.prepare('SELECT 1 FROM cle_page WHERE cle = ?').get(slug), undefined, `${slug} : plus aucune clé de page`);
+    const titre = slug.split('-').map((m, i) => (i ? m : m[0].toUpperCase() + m.slice(1))).join(' ');
+    const id = ok(creer(lot, { titre, onglet_id: 'exploration', resume: 'Essai.' })).crees[0].id;
+    assert.match(id, new RegExp(`^guide/${slug}-\\d+$`), titre);
+    assert.notEqual(cheminDePage(id), cheminDePage(page));
   }
   // renommée, la page garde son adresse ; l'ancien titre, qui est son slug, la nomme toujours (cle_page)
   const titre = titreLibre(db, 'Page renommée d’essai');

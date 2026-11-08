@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 223 décisions, de R1 à R223, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 229 décisions, de R1 à R229, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
 
 | Réf. | Sujet | Décision |
 | --- | --- | --- |
@@ -229,3 +229,9 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R221 | Suite de R219 : une page vers laquelle mène un mot-clé verrouillé (lot « m… | Une page vers laquelle mène un mot-clé verrouillé ne s… |
 | R222 | Suite de R219 : la fusion d'un mot-clé cité dans une définition verrouillé… | (1) La fusion d'un mot-clé est refusée tant que la déf… |
 | R223 | Suite de R196 : forcer la suppression d'un mot-clé mentionné (demande du p… | (1) Sans forçage, rien ne change : la suppression d'un… |
+| R224 | Relecture des pages des Règles contre les décisions (demande du propriétai… | (1) V1 : les copies de source sont corrigées là où ell… |
+| R225 | Potentiel Illimité : santé au passage de niveau (question V5 de `docs/sql/… | Un personnage dont la magie innée est le Potentiel Ill… |
+| R226 | Combat, postures, Mode Hyper et Mode Super (questions V6 à V9 de `docs/sql… | (1) V6 : en défense, le résultat le plus bas l'emporte… |
+| R227 | Métiers et objets (questions V10 à V12 de `docs/sql/a-valider.md` §10) : (… | (1) V10 : Forgeron pour les armes ; Armurier pour les… |
+| R228 | Adresse de la page du Mode Super (suite de R187 (1) et R226 (4) ; 2026-11-… | La page est servie à `/regles/mode-super/`, exception… |
+| R229 | Renvoi « plus haut » de `guide/jet-de-des` (suite de R224 (2) ; question V… | « Comme expliqué plus haut, » est retiré : la phrase d… |

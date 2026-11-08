@@ -91,6 +91,8 @@ const CONSTANTES = [
   // et son plancher (décision R203, migration 0101 : la plage ne descend jamais sous « 1 à 1 », le bonus total y est ramené)
   'critique.base', 'critique.palier_1_score_min', 'critique.palier_1_bonus', 'critique.palier_2_score_min', 'critique.palier_2_bonus', 'critique.plafond',
   'critique.plancher',
+  // la santé au plus par niveau d'un Potentiel Illimité inné (décision R225, migration 0111 : lib/fiche-moteur.mjs#santeDuPotentiel)
+  'potentiel_illimite.sante_max_par_niveau',
 ];
 
 /** @param {import('node:sqlite').DatabaseSync} db */

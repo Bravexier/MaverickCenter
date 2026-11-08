@@ -43,12 +43,15 @@ const apres0098 = () => baseDImport({ garder: lotsAvant('0098') });
 const texteApres0098 = (table, colonne, id) => apres0098().prepare(`SELECT "${colonne}" AS v FROM "${table}" WHERE id = ?`).get(id)?.v;
 // Les fragments qu'une migration postérieure à la 0098 a réécrits dans ses textes (registres `textes` : une entrée par remplacement, `avant` présent une
 // fois dans la valeur d'avant). R198 retire l'attribution au Doc « Guide pour MJ » : la 0104 ôte la balise {{guide-pour-mj-maverick|Doc « Guide pour MJ »}}
-// que la 0098 avait posée dans guide/attaquer-et-se-defendre et guide/les-postures ; la 0107 en est la suite. `intacte` ne voit que les lots du site.
-const REECRITURES_APRES_0098 = ['0104-r198-r208-textes-du-guide', '0107-r198-r200-posture-et-mode-hyper']
-  .flatMap((nom) => JSON.parse(readFileSync(new URL(`../../data/migrations/${nom}.json`, import.meta.url), 'utf8')).textes);
-/** Les réécritures postérieures qui retirent la balise `r.balise` de sa cellule (leur `avant` la contient, pas leur `apres`). */
-const retiresPar = (r) => REECRITURES_APRES_0098.filter((t) => t.table === r.table && t.col === r.colonne && JSON.stringify(t.cle) === JSON.stringify(r.cle)
-  && t.avant.includes(r.balise) && !t.apres.includes(r.balise));
+// que la 0098 avait posée dans guide/attaquer-et-se-defendre et guide/les-postures ; la 0107 en est la suite. La 0111 (relecture des Règles contre les
+// décisions) donne à des liens le titre de leur page (R184 (2), (5), (11), R187 (1)) et renvoie aux pages de la rubrique Équipement au lieu de
+// {{armes|Équipement}}. `intacte` ne voit que les lots du site.
+const textesDe = (...noms) => noms.flatMap((nom) => JSON.parse(readFileSync(new URL(`../../data/migrations/${nom}.json`, import.meta.url), 'utf8')).textes);
+const REECRITURES_R198 = textesDe('0104-r198-r208-textes-du-guide', '0107-r198-r200-posture-et-mode-hyper');
+const REECRITURES_APRES_0098 = [...REECRITURES_R198, ...textesDe('0111-relecture-des-regles-contre-les-decisions')];
+/** Les réécritures postérieures (`parmi`) qui retirent la balise `r.balise` de sa cellule (leur `avant` la contient, pas leur `apres`). */
+const retiresPar = (r, parmi = REECRITURES_APRES_0098) => parmi.filter((t) => t.table === r.table && t.col === r.colonne
+  && JSON.stringify(t.cle) === JSON.stringify(r.cle) && t.avant.includes(r.balise) && !t.apres.includes(r.balise));
 /** La balise de la 0098 est dans `v`, ou une migration postérieure l'a retirée et son `apres` est dans `v` : l'une ou l'autre écriture. */
 const baliseOuReecriture = (r, v) => v.includes(r.balise) || retiresPar(r).some((t) => v.includes(t.apres));
 
@@ -237,7 +240,7 @@ test('0098 : plus aucun lien interne hors pages d’exemple, codes et section 15
   }
   assert.deepEqual(restes, []);
   // R198 : les deux balises du Doc « Guide pour MJ » que la 0104 a retirées sont bien dans son registre (l'écriture d'avant ou d'après est admise)
-  assert.deepEqual(REGISTRE.remplacements.filter((r) => retiresPar(r).length).map((r) => r.cle.id).sort(), ['guide/attaquer-et-se-defendre', 'guide/les-postures']);
+  assert.deepEqual(REGISTRE.remplacements.filter((r) => retiresPar(r, REECRITURES_R198).length).map((r) => r.cle.id).sort(), ['guide/attaquer-et-se-defendre', 'guide/les-postures']);
   for (const r of REGISTRE.remplacements) {
     if (!intacte(r.table, r.cle)) continue;
     const v = texte(r.table, r.colonne, r.cle.id);
