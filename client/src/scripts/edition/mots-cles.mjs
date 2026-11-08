@@ -6,9 +6,9 @@
 //   - au chargement (surcouche) : le tableau relu dans la base vivante (GET /api/edition/mots-cles/ : le site construit est en retard sur le site de dev),
 //     définitions, bulles et feuille des couleurs comprises (mots-cles-vivants.mjs suit le vocabulaire relu et réécrit la feuille avec `css`) ;
 //   - au crayon (debut) : le tableau de gestion, une ligne (un <tbody>) par mot-clé, dans les colonnes du tableau — ses noms : la balise à copier
-//     (« {{clé}} »), son libellé (mot_cle.libelle ; décision R195 : modifiable pour tout mot-clé non verrouillé) et ses synonymes (R233 : une liste
-//     ordonnée, une écriture par ligne ; ni pour un mot-clé verrouillé, R233 (6)), précédés de son icône (R235 : un choix dans la liste des icônes du
-//     site, en première colonne ; désactivé sur un mot-clé verrouillé) ; ses catégories (R232 (5) : une case à cocher par catégorie, choix
+//     (« {{clé}} »), son libellé (mot_cle.libelle ; décision R195 : modifiable pour tout mot-clé) et ses synonymes (R233 : une liste
+//     ordonnée, une écriture par ligne), précédés de son icône (R235 : un choix dans la liste des icônes du
+//     site, en première colonne) ; ses catégories (R232 (5) : une case à cocher par catégorie, choix
 //     multiple ; aussi pour un mot-clé verrouillé, R232 (11)) ; son adresse (mot_cle.url, migration 0098 : une balise de ce mot-clé est un lien vers elle ;
 //     vidée, NULL) ; le menu déroulant des endroits qui le mentionnent (décision R196 (2), `mentions` du service : lib/mentions-des-mots-cles.mjs) et ses
 //     outils, « Fusionner dans… » et « Supprimer » (mis en file, envoyés avec « Enregistrer » ; « Supprimer » seulement quand rien ne le mentionne,
@@ -16,12 +16,12 @@
 //     qu'il remplace), sauf quand le service prévoit de refuser le forçage (`refus_du_forcage`) : une note « Suppression forcée impossible » dit pourquoi
 //     (en infobulle, et au bas du menu des mentions) ; puis, dans la ligne de dessous, sa couleur (mot_cle.couleur : la liste des couleurs du site,
 //     groupées par famille, et le cercle d'une autre couleur, editeur.mjs#controleDeCouleur ; réponses Q3, Q4) et sa définition (mot_cle.description) ;
-//     un mot-clé verrouillé (mot_cle.verrou = 1, migration 0110 ; décisions R218, R219 (7) : « un cadenas sur la ligne, champs désactivés, la raison en
-//     infobulle ») a son cadenas, ses champs et ses synonymes désactivés, ni « Supprimer » ni « Fusionner dans… », mais garde ses catégories, reste une
+//     un mot-clé verrouillé (mot_cle.verrou = 1, migration 0110 ; décisions R218, R219 (7)) a son cadenas, la raison en infobulle, ni « Supprimer » ni
+//     « Fusionner dans… » ; tous ses champs restent modifiables (demande du propriétaire : « Seule leur suppression est bloquée. »), il reste une
 //     cible de fusion et garde son menu des mentions ; au-dessus du tableau, « + Ajouter un mot-clé » (créé tout de suite, non verrouillé, R219 (5), avec
 //     sa définition, son adresse, sa couleur, ses catégories et ses synonymes : ENTITES.mot_cle) et la gestion des catégories (R232 (5) : chacune
 //     renommable, « Supprimer » pour une catégorie vide, mis en file ; « + Ajouter une catégorie », créée tout de suite) ; ce que le service refuse (400 :
-//     synonyme, adresse ou couleur mal écrite ; 409 : homonyme sans catégorie distinctive, clé ou synonyme déjà pris, mot-clé verrouillé, mot-clé
+//     synonyme, adresse ou couleur mal écrite ; 409 : homonyme sans catégorie distinctive, clé ou synonyme déjà pris, suppression d'un mot-clé verrouillé, mot-clé
 //     mentionné, refus du forçage, catégorie non vide ; `champ`) l'est comme tout refus du lot ;
 //   - à l'enregistrement (verifier) : ce que le service ne pourrait pas jouer est refusé avant toute question (noms échangés en boucle, mot-clé qui reçoit
 //     une fusion et serait supprimé) ; un renommage vers l'écriture d'un mot-clé gardé, sans catégorie qui les distingue (R232 (9)), propose la fusion ;
@@ -247,19 +247,6 @@ function menuDesMentions(ed, m) {
 }
 
 /**
- * Un mot-clé verrouillé (décisions R218, R219 (7), R233 (6)) : ses saisies montées par l'éditeur et ses synonymes désactivés (leur valeur ne change pas :
- * aucune opération ne part), la raison en infobulle sur chaque champ (la saisie désactivée ne reçoit pas le pointeur : styles/edition/edition.css) ; ses
- * catégories restent libres (R232 (11)).
- */
-function verrouiller(t) {
-  if (!t.hasAttribute('data-verrou')) return;
-  for (const champ of t.querySelectorAll('[data-ed], .ed-mot-cle__synonymes')) {
-    champ.title = INFOBULLE_DU_VERROU;
-    for (const saisie of champ.querySelectorAll('textarea, input, select, button')) saisie.disabled = true;
-  }
-}
-
-/**
  * Met en file (ou retire de la file) la suppression du mot-clé `m`, forcée ou non (`file` : suppressions ou forcages) ; un mot-clé qui doit recevoir une
  * fusion en attente ne se supprime pas.
  */
@@ -319,7 +306,7 @@ function ligneDeGestion(ed, m) {
     return span;
   };
   const ligne = element('tr', 'ed-mot-cle__ligne');
-  // l'icône (décision R235 : un choix dans la liste des icônes du site, ed.listes.icones ; vidée, NULL ; désactivée sur un mot-clé verrouillé, R235 (5))
+  // l'icône (décision R235 : un choix dans la liste des icônes du site, ed.listes.icones ; vidée, NULL ; modifiable aussi sur un mot-clé verrouillé)
   const icone = element('td', 'ed-mot-cle__icone-case');
   icone.append(champ('ed-mot-cle__icone', 'icone', m.icone));
   const noms = element('th', 'ed-mot-cle__noms');
@@ -420,7 +407,6 @@ function dessinerLaGestion(ed) {
   const corps = vocabulaire.map((m) => ligneDeGestion(ed, m));
   remplacerLesLignes({ corps });
   ed.monterChamps(t);
-  for (const x of corps) verrouiller(x);
   dessinerLesCategories(ed);
   etatDesLignes();
   annoncerLeTableau(true);
@@ -498,7 +484,6 @@ function ajouter(ed, ligne, valeurs = {}) {
   const suivant = vocabulaire[vocabulaire.indexOf(m) + 1];
   t.insertBefore(corps, suivant ? ligneDe(suivant.id) : null);
   ed.monterChamps(corps);
-  verrouiller(corps);
   annoncerLeTableau(true);
   return corps;
 }

@@ -373,7 +373,7 @@ test('R211 : un mot-clé que vise le rejeu des migrations 0090 (cible d’une fu
   base.close();
 });
 
-test('mots-clés dont le site se sert : verrouillés (R219 (2)), ni modifiés, ni supprimés, ni fusionnés dans un autre ; un autre se fusionne dans eux (R219 (4))', () => {
+test('mots-clés dont le site se sert : verrouillés (R219 (2)), ni supprimés, ni fusionnés dans un autre (leurs champs, eux, se modifient) ; un autre se fusionne dans eux (R219 (4))', () => {
   const magique = ligne(`SELECT * FROM mot_cle WHERE id = ${ID.magique}`);
   const codex = ligne(`SELECT * FROM mot_cle WHERE id = ${ID.codex}`);
   assert.deepEqual([magique.verrou, codex.verrou], [1, 1], 'le verrou remplace leur protection (migration 0110)');
@@ -381,8 +381,7 @@ test('mots-clés dont le site se sert : verrouillés (R219 (2)), ni modifiés, n
   for (const operation of [
     { op: 'supprimer', entite: 'mot_cle', cle: { id: codex.id } },
     { op: 'fusionner_mots_cles', mot_cle: codex.id, dans: libre },
-    { op: 'modifier', table: 'mot_cle', cle: { id: magique.id }, valeurs: { libelle: motLibre('Magie de classe') }, avant: { libelle: magique.libelle } },
-    { op: 'modifier', table: 'mot_cle', cle: { id: magique.id }, valeurs: { libelle: magique.libelle.toUpperCase() } },
+    { op: 'supprimer', entite: 'mot_cle', cle: { id: magique.id } },
   ]) {
     const r = enregistrer([operation]);
     assert.equal(r.statut, 409, JSON.stringify(r.corps));
@@ -436,7 +435,7 @@ test('mots-clés qui étiquettent un sort (sort_mot_cle, migration 0067, décisi
     assert.deepEqual(etiquettes(), [...ETIQUETTE_D_ESSAI.sorts].sort(), `${quoi} : les étiquettes restent`);
   }
   // le libellé et la définition se modifient (les sorts citent l'id) ; « Sort grenade », lui, est verrouillé (R219 (2) : la fiche le lit, R114) : ni
-  // supprimé ni fusionné dans un autre (le verrou), ni cible d'une fusion (il étiquette des sorts), ni renommé
+  // supprimé ni fusionné dans un autre (le verrou), ni cible d'une fusion (il étiquette des sorts) ; ses champs, eux, se modifient (demande du propriétaire : seule la suppression est bloquée)
   const nouveau = motLibre(`${etiquette.libelle} renommée`);
   ok(enregistrer([{ op: 'modifier', table: 'mot_cle', cle: { id: etiquette.id }, valeurs: { libelle: nouveau, description: 'Autre définition.' }, avant: { libelle: etiquette.libelle } }]));
   assert.deepEqual(etiquettes(), [...ETIQUETTE_D_ESSAI.sorts].sort(), 'renommé : ses étiquettes restent');
@@ -447,7 +446,6 @@ test('mots-clés qui étiquettent un sort (sort_mot_cle, migration 0067, décisi
     [{ op: 'supprimer', entite: 'mot_cle', cle: { id: grenade.id } }, /est verrouillé.*\(décisions R218, R219\)/],
     [{ op: 'fusionner_mots_cles', mot_cle: grenade.id, dans: libre }, /est verrouillé : il ne se fusionne pas dans un autre/],
     [{ op: 'fusionner_mots_cles', mot_cle: libre, dans: grenade.id }, / ne se fusionne pas depuis le site : il étiquette 14 sorts/],
-    [{ op: 'modifier', table: 'mot_cle', cle: { id: grenade.id }, valeurs: { libelle: motLibre('Sort explosif') }, avant: { libelle: grenade.libelle } }, /est verrouillé/],
   ]) {
     const r = enregistrer([operation]);
     assert.equal(r.statut, 409, JSON.stringify(r.corps));
@@ -473,7 +471,7 @@ test('mots-clés qui étiquettent un sort (sort_mot_cle, migration 0067, décisi
   }
 });
 
-test('R164 : « Sort fer » (migration 0079) est verrouillé (R219 (2)) : ni supprimé, ni fusionné (dans un sens ou l’autre), ni modifié, 409 avec sa raison', () => {
+test('R164 : « Sort fer » (migration 0079) est verrouillé (R219 (2)) : ni supprimé, ni fusionné (dans un sens ou l’autre), 409 avec sa raison', () => {
   const fer = ligne(`SELECT * FROM mot_cle WHERE id = ${ID['sort-fer']}`);
   assert.ok(fer, 'le mot-clé de la migration 0079');
   assert.match(MOTS_CLES_PROTEGES.get(fer.id), /^étiquette les sorts fer, que la fiche de personnage reconnaît par lui \(décision R164/);
@@ -486,8 +484,6 @@ test('R164 : « Sort fer » (migration 0079) est verrouillé (R219 (2)) : ni sup
     [{ op: 'fusionner_mots_cles', mot_cle: fer.id, dans: libre }, /est verrouillé : il ne se fusionne pas dans un autre/],
     // la cible verrouillée reçoit une fusion (R219 (4)), mais une étiquette de sort, jamais (R164)
     [{ op: 'fusionner_mots_cles', mot_cle: libre, dans: fer.id }, / ne se fusionne pas depuis le site : il étiquette 13 sorts/],
-    [{ op: 'modifier', table: 'mot_cle', cle: { id: fer.id }, valeurs: { description: 'Autre définition.' } }, /est verrouillé/],
-    [{ op: 'modifier', table: 'mot_cle', cle: { id: fer.id }, valeurs: { libelle: motLibre('Sort de fer') }, avant: { libelle: fer.libelle } }, /est verrouillé/],
   ]) {
     const r = enregistrer([operation]);
     assert.equal(r.statut, 409, JSON.stringify(r.corps));

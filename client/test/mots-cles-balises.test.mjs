@@ -645,25 +645,23 @@ test('service (D2) : le mode complet refusé dans un texte de case (message clai
   s.ok([{ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { description: `Voir {{${s.cle(b)}|celui-ci}}.` } }]);
 });
 
-test('service : la définition d’un mot-clé non verrouillé se modifie, son libellé aussi (R195) ; vidée : pas encore décrit ; celle d’un mot-clé verrouillé, non (R218, R219) ; GET /api/edition/mots-cles/ la rend', () => {
+test('service : la définition d’un mot-clé non verrouillé se modifie, son libellé aussi (R195) ; vidée : pas encore décrit ; celle d’un mot-clé verrouillé aussi (seule sa suppression est bloquée) ; GET /api/edition/mots-cles/ la rend', () => {
   const s = service();
   // un mot-clé des règles non verrouillé, décrit (le site de dev a pu le vider : on en prend un qui l'est)
   const libre = s.ligne('SELECT * FROM mot_cle WHERE verrou = 0 AND description IS NOT NULL ORDER BY id LIMIT 1');
   s.ok([{ op: 'modifier', table: 'mot_cle', cle: { id: libre.id }, valeurs: { description: 'Une définition d’essai.' }, avant: { description: libre.description } }]);
   assert.equal(s.ligne('SELECT description FROM mot_cle WHERE id = ?', libre.id).description, 'Une définition d’essai.');
-  // décision R195 : « Un mot clé peut toujours être changé [dans] tous les champs (sauf l'id technique clé primaire) », s'il n'est pas verrouillé
+  // décision R195 : « Un mot clé peut toujours être changé [dans] tous les champs (sauf l'id technique clé primaire) », verrouillé ou non
   const renomme = s.libre('Essai renommé R195');
   s.ok([{ op: 'modifier', table: 'mot_cle', cle: { id: libre.id }, valeurs: { libelle: renomme } }]);
   assert.equal(s.ligne('SELECT libelle FROM mot_cle WHERE id = ?', libre.id).libelle, renomme, 'le libellé se modifie (R195)');
   s.ok([{ op: 'modifier', table: 'mot_cle', cle: { id: libre.id }, valeurs: { description: '' } }]);
   assert.equal(s.ligne('SELECT description FROM mot_cle WHERE id = ?', libre.id).description, null, 'NULL : pas encore décrit');
-  // un mot-clé dont le site se sert est verrouillé (R219 (2)) : ni sa définition ni son libellé ne se modifient
+  // un mot-clé dont le site se sert est verrouillé (R219 (2)) : sa définition se modifie quand même (demande du propriétaire : seule sa suppression est
+  // bloquée), le verrou reste
   const magique = s.ligne('SELECT * FROM mot_cle WHERE id = ?', IDS_DES_MOTS_CLES_PROTEGES.magique);
-  for (const valeurs of [{ description: 'Une classe magique.' }, { libelle: s.libre('Magie') }]) {
-    const r = s.lot([{ op: 'modifier', table: 'mot_cle', cle: { id: magique.id }, valeurs }]);
-    assert.equal(r.statut, 409, JSON.stringify(r.corps));
-  }
-  assert.deepEqual(s.ligne('SELECT * FROM mot_cle WHERE id = ?', magique.id), magique);
+  s.ok([{ op: 'modifier', table: 'mot_cle', cle: { id: magique.id }, valeurs: { description: 'Une classe magique.' } }]);
+  assert.deepEqual({ ...s.ligne('SELECT * FROM mot_cle WHERE id = ?', magique.id) }, { ...magique, description: 'Une classe magique.' });
   const id = s.creerMotCle(s.libre('Essai décrit'), 'Ce qu’il veut dire.');
   const sans = s.creerMotCle(s.libre('Essai sans définition'));
   const v = s.appel('GET', '/api/edition/mots-cles/');

@@ -145,9 +145,10 @@ test('R232 (11) : les catégories d’un mot-clé verrouillé se posent ; sa cl�
   assert.equal(motCle(cible.id).verrou, 1);
   assert.deepEqual(textesQuiCitent(db, cible.cle), [], 'plus aucune balise ne cite la clé quittée');
   verifierLaBase(db);
-  // ce que le verrou protège reste refusé : son libellé, ses synonymes
-  refuse(lot([{ op: 'modifier', table: 'mot_cle', cle: { id: cible.id }, valeurs: { libelle: `${cible.libelle} zq` } }]), 409, null);
-  refuse(lot([{ op: 'synonymes_mot_cle', mot_cle: cible.id, synonymes: ['Essai zq verrou'] }]), 409, 'synonymes');
+  // son libellé et ses synonymes se modifient aussi (demande du propriétaire : seule sa suppression est bloquée), le verrou reste
+  ok(lot([{ op: 'modifier', table: 'mot_cle', cle: { id: cible.id }, valeurs: { libelle: `${cible.libelle} zq` } }]));
+  ok(lot([{ op: 'synonymes_mot_cle', mot_cle: cible.id, synonymes: ['Essai zq verrou'] }]));
+  assert.equal(motCle(cible.id).verrou, 1);
 });
 
 test('R233 (10) : un synonyme ou un libellé se saisit sans égard à la casse, et le texte tapé est gardé tel quel (« Garder la casse tapée ») ; la clé montre le libellé', () => {
@@ -163,7 +164,7 @@ test('R233 (10) : un synonyme ou un libellé se saisit sans égard à la casse, 
   assert.ok(texte.endsWith(`Essai : {{${A.cle}}}, {{${A.cle}}}, {{${A.cle}|zQe}}.`), texte.slice(-120));
 });
 
-test('R233 (4), (6) : un synonyme en conflit est refusé (libellé, synonyme, clé d’un autre mot-clé, son propre libellé) ; ceux d’un verrouillé ne se modifient pas', () => {
+test('R233 (4), (6) : un synonyme en conflit est refusé (libellé, synonyme, clé d’un autre mot-clé, son propre libellé) ; ceux d’un verrouillé se modifient (demande du propriétaire : seule sa suppression est bloquée)', () => {
   const { db, lot, motCle } = base();
   const autreSynonyme = db.prepare('SELECT s.libelle, s.mot_cle_id FROM mot_cle_synonyme s ORDER BY s.id LIMIT 1').get();
   refuse(lot([{ op: 'synonymes_mot_cle', mot_cle: A.id, synonymes: [C.libelle.toLowerCase()] }]), 409, 'synonymes');
@@ -175,10 +176,11 @@ test('R233 (4), (6) : un synonyme en conflit est refusé (libellé, synonyme, cl
   ok(lot([{ op: 'synonymes_mot_cle', mot_cle: A.id, synonymes: ['Zq synonyme'] }]));
   refuse(lot([{ op: 'modifier', table: 'mot_cle', cle: { id: C.id }, valeurs: { libelle: 'ZQ Synonyme' } }]), 409, 'libelle');
   refuse(lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: 'zq-synonyme' } }]), 409, 'libelle');
-  // ceux d'un mot-clé verrouillé (R233 (6))
-  const verrouille = db.prepare('SELECT m.id FROM mot_cle m JOIN mot_cle_synonyme s ON s.mot_cle_id = m.id WHERE m.verrou = 1 LIMIT 1').get()
-    ?? db.prepare('SELECT id FROM mot_cle WHERE verrou = 1 LIMIT 1').get();
-  refuse(lot([{ op: 'synonymes_mot_cle', mot_cle: verrouille.id, synonymes: [] }]), 409, 'synonymes');
+  // ceux d'un mot-clé verrouillé : modifiables, le verrou reste
+  const verrouille = db.prepare('SELECT id FROM mot_cle WHERE verrou = 1 ORDER BY id LIMIT 1').get();
+  ok(lot([{ op: 'synonymes_mot_cle', mot_cle: verrouille.id, synonymes: ['Zq synonyme verrouillé'] }]));
+  assert.deepEqual(db.prepare('SELECT libelle FROM mot_cle_synonyme WHERE mot_cle_id = ?').all(verrouille.id).map((s) => s.libelle), ['Zq synonyme verrouillé']);
+  assert.equal(motCle(verrouille.id).verrou, 1);
   verifierLaBase(db);
 });
 

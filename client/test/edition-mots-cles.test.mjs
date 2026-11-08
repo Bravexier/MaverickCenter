@@ -4,8 +4,8 @@
 // décision R234), le tableau de gestion (R234 (5) : l'édition dans la ligne ; libellé modifiable, synonymes en liste ordonnée, catégories à cocher,
 // suppression et fusion en file), la création immédiate, les confirmations et l'ordre des opérations du lot, le retour au tableau de lecture ; la
 // définition de chaque mot-clé (saisie commune), sa balise à copier (sa clé, R232 (3)) ; son adresse et sa couleur (migration 0098) ; un mot-clé verrouillé
-// (décisions R218, R219 (7), R233 (6)) : un cadenas, ses champs et ses synonymes désactivés, ses catégories libres (R232 (11)), ni suppression ni fusion
-// depuis lui, mais une cible de fusion ; rien de tout cela hors du mode modification ; le menu des endroits qui le mentionnent, « Supprimer » pour une
+// (décisions R218, R219 (7)) : un cadenas, ses champs, ses synonymes et ses catégories modifiables (demande du propriétaire : seule sa suppression est
+// bloquée), ni suppression ni fusion depuis lui, mais une cible de fusion ; rien de tout cela hors du mode modification ; le menu des endroits qui le mentionnent, « Supprimer » pour une
 // liste vide seulement (R196 (2)) ; « Forcer la suppression » pour un mot-clé mentionné, sauf verrouillé ou refus prévu par le service (R223) ; la
 // gestion des catégories (R232 (5) : renommer, supprimer une catégorie vide, ajouter). Puis, de bout en bout contre le vrai service (serveur/api.mjs sur
 // une copie de la base) : renommages en rotation, en chaîne, noms échangés, homonymes distingués par leurs catégories (R232 (9)), fusions en chaîne,
@@ -191,7 +191,7 @@ test('R234 (2), réponse T5 : la colonne Lien montre le titre de la page que don
   assert.equal(lien('guide'), null, 'sans adresse : pas de lien');
 });
 
-test('au crayon : le tableau de gestion ; décisions R218, R219 (7), R233 (6), R232 (11) : un mot-clé verrouillé a son cadenas, ses champs et ses synonymes désactivés, ses catégories libres, aucun bouton ; « + Ajouter » crée tout de suite', async () => {
+test('au crayon : le tableau de gestion ; décisions R218, R219 (7) : un mot-clé verrouillé a son cadenas, ses champs, ses synonymes et ses catégories modifiables, aucun bouton ; « + Ajouter » crée tout de suite', async () => {
   const p = await monter();
   await p.motsCles.surcouche(p.ed, []);
   p.ed.enEdition = true;
@@ -230,13 +230,10 @@ test('au crayon : le tableau de gestion ; décisions R218, R219 (7), R233 (6), R
   assert.equal(cadenas.getAttribute('aria-label'), INFOBULLE_DU_VERROU);
   assert.equal(cadenas.title, INFOBULLE_DU_VERROU, 'la raison en infobulle');
   const champs = [...p.editeurs].filter(([c]) => c.closest('tbody') === magique);
-  assert.deepEqual(champs.map(([, e]) => e.info.colonne).sort(), ['couleur', 'description', 'icone', 'libelle', 'url'], 'tous ses champs, montés (l’icône comprise, R235 (5))');
-  for (const [c, e] of champs) {
-    assert.equal(e.controle.disabled, true, `${e.info.colonne} : désactivé`);
-    assert.equal(c.title, INFOBULLE_DU_VERROU, `${e.info.colonne} : la raison en infobulle`);
-  }
-  assert.equal(synonymes(magique).disabled, true, 'ses synonymes : désactivés (R233 (6))');
-  assert.equal(magique.querySelector('.ed-mot-cle__synonymes').title, INFOBULLE_DU_VERROU);
+  assert.deepEqual(champs.map(([, e]) => e.info.colonne).sort(), ['couleur', 'description', 'icone', 'libelle', 'url'], 'tous ses champs, montés');
+  // demande du propriétaire : « Seule leur suppression est bloquée » — ses champs, ses synonymes et ses catégories se modifient
+  for (const [, e] of champs) assert.equal(e.controle.disabled, false, `${e.info.colonne} : modifiable`);
+  assert.equal(synonymes(magique).disabled, false, 'ses synonymes : modifiables');
   assert.ok(cases(magique).every((c) => !c.disabled), 'ses catégories : libres (R232 (11))');
   assert.equal(magique.querySelector('button'), null, 'verrouillé : ni « Supprimer » ni « Fusionner dans… »');
   // création immédiate, à sa place dans le tableau, avec ses catégories (cases) et ses synonymes (un par ligne)
@@ -451,8 +448,8 @@ test('fonctions pures : catégories distinctes (R232 (9)), renommages examinés 
     new Map([[1, { categories: [2], synonymes: ['y'] }], [2, { categories: [3, 1], synonymes: [] }]]));
   assert.deepEqual(listes, {
     categories: [{ op: 'categories_mot_cle', mot_cle: 2, categories: [1, 3], avant: [] }],
-    synonymes: [],
-  }, 'un verrouillé : jamais ses synonymes (R233 (6)) ; des catégories triées');
+    synonymes: [{ op: 'synonymes_mot_cle', mot_cle: 1, synonymes: ['y'], avant: ['x'] }],
+  }, 'un verrouillé : ses synonymes aussi (seule sa suppression est bloquée) ; des catégories triées');
   assert.equal(suppressionDeCategorieOfferte({ mots_cles: 0 }), true);
   assert.equal(suppressionDeCategorieOfferte({ mots_cles: 2 }), false);
 });
@@ -725,11 +722,11 @@ test('R233 (8), R235 : les synonymes en « Aussi appelé » dans la ligne et en 
   p.motsCles.debut(p.ed);
   await attendre();
   assert.equal(p.icone('ricken-dor').controle.value, 'monnaie:ro', 'la saisie part de la base vivante');
-  assert.equal(p.icone('ricken-dor').controle.disabled, true, 'verrouillé : son icône ne se change pas (R235 (5))');
+  assert.equal(p.icone('ricken-dor').controle.disabled, false, 'verrouillé : son icône se change (seule sa suppression est bloquée)');
   assert.equal(p.icone('armure-magique').controle.disabled, false);
 });
 
-test('migration 0098 : la lecture (le lien en colonne Lien, le liseré de la couleur) ; au crayon, l’adresse et la couleur de chaque mot-clé, saisies communes (désactivées pour un mot-clé verrouillé), parties de la base vivante', async () => {
+test('migration 0098 : la lecture (le lien en colonne Lien, le liseré de la couleur) ; au crayon, l’adresse et la couleur de chaque mot-clé, saisies communes (modifiables aussi pour un mot-clé verrouillé), parties de la base vivante', async () => {
   const colores = [{ ...v(30, 'Elfe', 4, 0, 'Un peuple.'), url: '/races/elfe/', couleur: 'race:pure' }, ...VIVANT];
   const p = await monter({ vocabulaire: colores });
   await p.motsCles.surcouche(p.ed, []);
@@ -748,7 +745,7 @@ test('migration 0098 : la lecture (le lien en colonne Lien, le liseré de la cou
   assert.deepEqual([p.adresse('elfe').controle.value, p.couleur('elfe').controle.value], ['/races/elfe/', 'race:pure'], 'la saisie part de la base vivante');
   assert.deepEqual([p.adresse('feu').controle.value, p.couleur('feu').controle.value], ['', ''], 'sans adresse ni couleur : vides');
   assert.ok(p.adresse('magique') && p.couleur('magique'), 'verrouillé : son adresse et sa couleur montrées…');
-  assert.ok(p.adresse('magique').controle.disabled && p.couleur('magique').controle.disabled, '… et désactivées (R218 (3))');
+  assert.ok(!p.adresse('magique').controle.disabled && !p.couleur('magique').controle.disabled, '… et modifiables (seule sa suppression est bloquée)');
   const lue = p.ed.lignes.get(cleDeLigne('mot_cle', { id: I.feu }));
   assert.deepEqual([lue.url, lue.couleur], [null, null], 'NULL tel qu’enregistré');
 });
@@ -864,7 +861,7 @@ test('décision R196 (2), au crayon : chaque mot-clé a le menu de ses mentions 
   assert.ok(bouton(cree, 'ed-mot-cle__supprimer') && !p.saisie('bestiaire').controle.disabled);
 });
 
-test('décisions R218, R219 (4), contre le service : un mot-clé verrouillé (verrou = 1 dans la copie) est désactivé sur la page et reçoit la fusion d’un autre', async () => {
+test('décisions R218, R219 (4), contre le service : un mot-clé verrouillé (verrou = 1 dans la copie) garde ses champs modifiables sur la page (seule sa suppression est bloquée) et reçoit la fusion d’un autre', async () => {
   const s = await surLeService({ A: 'Essai verrou aa', B: 'Essai verrou zz' }, {});
   const { A, B } = s.mots;
   // A verrouillé dans la copie (aucune route n'écrit `verrou` : seule une migration le fait), la page relue au crayon
@@ -873,7 +870,7 @@ test('décisions R218, R219 (4), contre le service : un mot-clé verrouillé (ve
   const a = ligne(s.liste, A.id);
   assert.ok(a.hasAttribute('data-verrou'), 'le verrou lu dans GET /api/edition/mots-cles/');
   assert.equal(a.querySelector('button'), null);
-  assert.equal(s.saisie(A.id).controle.disabled, true);
+  assert.equal(s.saisie(A.id).controle.disabled, false);
   // B fusionné dans A : A est proposé, le lot passe, A garde son id et son libellé
   cliquer(bouton(ligne(s.liste, B.id), 'ed-mot-cle__fusionner'));
   const boite = s.document.body.querySelector('dialog');

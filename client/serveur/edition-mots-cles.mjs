@@ -1,7 +1,7 @@
 // Le vocabulaire des mots-clés au service du site de dev, depuis les migrations 0113 à 0115 : l'id entier d'un mot-clé créé, sa clé recalculée et
 // réécrite dans les textes, ses catégories, ses synonymes et la gestion des catégories (décisions R232, R233). Les opérations du lot qu'il ajoute :
 //   { op: 'categories_mot_cle', mot_cle, categories: [ids], avant?: [ids] }   les catégories d'un mot-clé (permis sur un mot-clé verrouillé : R232 (11))
-//   { op: 'synonymes_mot_cle', mot_cle, synonymes: [écritures], avant?: [écritures] }   ses synonymes, dans l'ordre (refusé sur un verrouillé : R233 (6))
+//   { op: 'synonymes_mot_cle', mot_cle, synonymes: [écritures], avant?: [écritures] }   ses synonymes, dans l'ordre (permis sur un verrouillé : seule sa suppression est refusée)
 // et le domaine de la table categorie_mot_cle (création, renommage, suppression d'une catégorie vide : R232 (5)). serveur/edition.mjs les branche
 // (OPERATIONS, DOMAINES) ; serveur/edition-chronologie.mjs (le domaine mot_cle : création, renommage, fusion, suppression) appelle recalculerLesCles.
 // Règle de la clé (R232 (2), (9), (10)) : lib/mots-cles-cles.mjs#clesDesMotsCles, la jumelle de tools/db/maverick.py#cles_des_mots_cles. Elle est
@@ -14,7 +14,7 @@
 import { clesDesMotsCles, HomonymesRefuses } from '../src/lib/mots-cles-cles.mjs';
 import { fautesDuSynonyme, reciblerLaCle, synonymesPris, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { categoriesDesMotsCles, motsClesDeLaBase, textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
-import { estVerrouille, RAISON_DU_VERROU } from '../src/lib/mots-cles.mjs';
+import { estVerrouille } from '../src/lib/mots-cles.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { lireLigne } from './edition-journal.mjs';
 
@@ -319,14 +319,13 @@ export function outilsDesMotsCles({ ErreurEdition }) {
 
   /**
    * `{ op: 'synonymes_mot_cle', mot_cle, synonymes: [écritures], avant?: [écritures] }` : les synonymes d'un mot-clé, dans l'ordre (décision R233 ;
-   * `avant` : ceux que la page a lus, dans l'ordre, 409 s'ils ont changé entre-temps). Refusé sur un mot-clé verrouillé (R233 (6) : 409, sauf au rejeu,
-   * `ctx.gel` faux), et pour un synonyme qui ne convient pas (refuserLesSynonymes).
+   * `avant` : ceux que la page a lus, dans l'ordre, 409 s'ils ont changé entre-temps). Permis sur un mot-clé verrouillé (demande du propriétaire : seule sa suppression
+   * reste refusée, ce qui lève R233 (6) hors fusion) ; refusé pour un synonyme qui ne convient pas (refuserLesSynonymes).
    */
   function synonymesMotCle(ctx, op) {
     const { db } = ctx;
     const m = motCle(db, op.mot_cle);
     if (!tableExiste(db, 'mot_cle_synonyme')) throw refus('Les synonymes des mots-clés n’existent pas dans cette base (migration 0115).');
-    if (estVerrouille(m) && ctx.gel !== false) throw new ErreurEdition(409, `Le mot-clé ${nom(m)} est verrouillé : ${RAISON_DU_VERROU}.`, { champ: 'synonymes' });
     if (!Array.isArray(op.synonymes) || !op.synonymes.every((s) => typeof s === 'string')) throw refus(`Mot-clé ${nom(m)} : liste de synonymes attendue.`, { champ: 'synonymes' });
     const synonymes = [];
     for (const s of op.synonymes.map((x) => x.replace(/\s+/g, ' ').trim()).filter(Boolean)) if (!synonymes.includes(s)) synonymes.push(s);
