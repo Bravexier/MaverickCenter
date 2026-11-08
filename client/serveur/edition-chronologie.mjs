@@ -322,7 +322,7 @@ export function domainesDeLaChronologie({
 
   /**
    * Refus pour un mot-clé verrouillé (mot_cle.verrou = 1, migration 0110 ; décisions R218, R219) : il ne se supprime pas, même sans mention, ni ne se
-   * fusionne dans un autre (la fusion le supprimerait) ; ses champs, eux, sont refusés par serveur/edition.mjs#raisonDuGel. Les mots-clés dont le site
+   * fusionne dans un autre (la fusion le supprimerait) ; ses champs, eux, se modifient (demande du propriétaire : seule la suppression est bloquée). Les mots-clés dont le site
    * se sert (lib/mots-cles.mjs#MOTS_CLES_PROTEGES) sont verrouillés : le verrou remplace leur refus propre (R219 (2)).
    */
   function verifierNonVerrouille(ctx, m, action) {
@@ -354,8 +354,8 @@ export function domainesDeLaChronologie({
 
   const MOT_CLE = {
     // tous les champs d'un mot-clé non verrouillé se modifient, libellé compris (décision R195 : seul l'id reste figé ; le site reconnaît les mots-clés
-    // dont il se sert à leur id, un renommage ne déplace aucune page ni ne change aucun calcul) ; ceux d'un mot-clé verrouillé, aucun (décisions R218,
-    // R219 : serveur/edition.mjs#raisonDuGel, 409 avant ce domaine ; `verrou` n'est pas une colonne de TABLES, aucune route ne l'écrit) ; la définition : vidée, NULL ; renommer ne
+    // dont il se sert à leur id, un renommage ne déplace aucune page ni ne change aucun calcul) ; ceux d'un mot-clé verrouillé aussi (demande du propriétaire :
+    // seule sa suppression est bloquée ; `verrou` n'est pas une colonne de TABLES, aucune route ne l'écrit) ; la définition : vidée, NULL ; renommer ne
     // recalcule la clé (décision R232 (2) : elle suit le libellé ; un homonyme qui apparaît ou disparaît change aussi celle des autres) et réécrit les
     // balises qui citent une clé quittée (deriver, serveur/edition-mots-cles.mjs#recalculerLesCles) : une balise d'un texte de case garde le texte écrit,
     // une balise d'un texte mis en forme montre le nouveau libellé ; vers le libellé d'un autre mot-clé, permis si chacun a une catégorie qui le

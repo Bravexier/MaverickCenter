@@ -4,8 +4,8 @@
 // cle, description, url, couleur, pages, verrou, monnaie_id, synonymes, categories, anciennes_cles, mentions, refus_du_forcage }], `pages` = le nombre
 // de pages qui le portent ; `cle` : la clé que citent les balises, recalculée par le service (décision R232) ; `synonymes` : ses écritures secondaires,
 // dans l'ordre (R233) ; `categories` : les ids de ses catégories (R232 (5)) ;
-// `verrou` = 1 pour un mot-clé verrouillé, migration 0110, décisions R218, R219 : ni ses champs ni sa suppression ni sa fusion dans un autre ne se font
-// depuis le site, mais il reçoit la fusion d'un autre ; `mentions` = les endroits qui le mentionnent, lib/mentions-des-mots-cles.mjs, décision R196 ;
+// `verrou` = 1 pour un mot-clé verrouillé, migration 0110, décisions R218, R219 : ni sa suppression ni sa fusion dans un autre ne se font depuis le site
+// (ses champs, eux, se modifient : demande du propriétaire, « seule leur suppression est bloquée »), et il reçoit la fusion d'un autre ; `mentions` = les endroits qui le mentionnent, lib/mentions-des-mots-cles.mjs, décision R196 ;
 // `refus_du_forcage` = null si sa suppression forcée passerait, sinon la raison du refus, décision R223). Un mot-clé ne se supprime que si rien ne le
 // mentionne (R196 : la cascade de la demande d'origine, « Une suppression d'un mot clé le supprimera de tous les endroits qui le référencent », est
 // abandonnée), sauf en forçant (R223 : chaque citation garde son texte affiché, sans lien, et les étiquettes des pages sont retirées ; jamais pour un
@@ -22,11 +22,11 @@ const nombre = (n, un, plusieurs) => `${n} ${n > 1 ? plusieurs : un}`;
 export const compteDesElements = ({ pages = 0 } = {}) => nombre(pages, 'page', 'pages');
 
 /**
- * L'infobulle du cadenas et des champs désactivés d'un mot-clé verrouillé, en mode modification (décision R219 (7) : « un cadenas sur la ligne, champs
- * désactivés, la raison en infobulle » ; texte fixé par le leader-technique d'après R218 (3), « empêche purement et simplement toute suppression ou
- * modification du site »).
+ * L'infobulle du cadenas d'un mot-clé verrouillé, en mode modification (décision R219 (7) : « un cadenas sur la ligne […], la raison en infobulle ») ;
+ * ses champs restent modifiables (demande du propriétaire : « Retire le fait de bloquer toute modification des mots clés vérouillés. Seule leur
+ * suppression est bloquée. »).
  */
-export const INFOBULLE_DU_VERROU = 'Verrouillé : ni modification ni suppression sur le site (R218).';
+export const INFOBULLE_DU_VERROU = 'Verrouillé : ne se supprime pas sur le site (R218).';
 
 /**
  * Les endroits qui mentionnent un mot-clé (décision R196 (2) : « un menu déroulant qui liste toutes les pages qui mentionne le mot clé en question »),
@@ -294,8 +294,8 @@ export function synonymesSaisis(texte) {
 /**
  * Les opérations des catégories et des synonymes que le lot change (décisions R232 (5), R233 ; réponse T6) : `saisies` = Map(id → { categories?: [ids],
  * synonymes?: [écritures] }) lues dans la liste de gestion ; `{ op: 'categories_mot_cle', mot_cle, categories, avant }` pour des catégories qui changent
- * (même sur un mot-clé verrouillé : R232 (11)), `{ op: 'synonymes_mot_cle', mot_cle, synonymes, avant }` pour des synonymes qui changent (jamais pour un
- * mot-clé verrouillé : R233 (6), sa liste est désactivée) ; rien pour un mot-clé que le lot retire (`retires`). `avant` : la liste lue (le service
+ * (même sur un mot-clé verrouillé : R232 (11)), `{ op: 'synonymes_mot_cle', mot_cle, synonymes, avant }` pour des synonymes qui changent (aussi pour un
+ * mot-clé verrouillé : seule sa suppression est bloquée) ; rien pour un mot-clé que le lot retire (`retires`). `avant` : la liste lue (le service
  * refuse si elle a changé entre-temps). Rend { categories: [op…], synonymes: [op…] }.
  */
 export function operationsDesListes(vocabulaire, saisies, { retires = new Set() } = {}) {
@@ -309,7 +309,7 @@ export function operationsDesListes(vocabulaire, saisies, { retires = new Set() 
       if (cats.join(',') !== avantCats.join(',')) sortie.categories.push({ op: 'categories_mot_cle', mot_cle: m.id, categories: cats, avant: avantCats });
     }
     const avantSyn = [...(m.synonymes ?? [])].map((x) => (typeof x === 'string' ? x : x?.libelle));
-    if (Array.isArray(s.synonymes) && !estVerrouille(m) && s.synonymes.join('\u0000') !== avantSyn.join('\u0000')) {
+    if (Array.isArray(s.synonymes) && s.synonymes.join('\u0000') !== avantSyn.join('\u0000')) {
       sortie.synonymes.push({ op: 'synonymes_mot_cle', mot_cle: m.id, synonymes: [...s.synonymes], avant: avantSyn });
     }
   }

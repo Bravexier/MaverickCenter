@@ -966,7 +966,7 @@ function modifier(db, service, vue, ligne, corps, etiquettes, parent, adresse) {
   if (t) return ecrireParOperation(db, service, vue, 'PATCH', { t, corps, ligne, parent, adresse, etiquettes });
   const valeurs = objetAttendu(corps, `Modifier ${vue.objet.nom.toLowerCase()}`);
   if (!Object.keys(valeurs).length) throw new ErreurApi(400, 'Aucune colonne à modifier.');
-  // une ligne gelée (une monnaie, décision R219 (3) ; un mot-clé verrouillé, R218, R219) : 409 quelle que soit la colonne, comme le service le refuse
+  // une ligne gelée (une monnaie, décision R219 (3) ; un mot-clé verrouillé ne l'est plus : seule sa suppression est refusée) : 409 quelle que soit la colonne, comme le service le refuse
   // (serveur/edition.mjs#raisonDuGel) ; avant le contrôle des colonnes, qui dirait 400 pour une colonne hors de TABLES (le nom d'une monnaie, `verrou`)
   const gelee = vue.enfant ? null : raisonDuGel(vue.table, ligne);
   if (gelee) throw new ErreurApi(409, gelee);

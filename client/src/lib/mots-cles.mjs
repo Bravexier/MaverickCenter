@@ -17,7 +17,7 @@ import { TAG_RACE_HYBRIDE } from './race-kinds.mjs';
  * reconnaît à leur id entier (lib/mots-cles-proteges.mjs#IDS_DES_MOTS_CLES_PROTEGES, migration 0113), jamais à leur écriture (décision R195 :
  * lib/class-groups.mjs, lib/race-kinds.mjs, lib/classe-magique.mjs, lib/races-db.mjs, lib/pages-db.mjs#motsClesDesPages, serveur/edition.mjs#motCleDe) ;
  * ils sont verrouillés (mot_cle.verrou = 1, migration 0110 : décision R219 (2), « le verrou remplace leur protection actuelle » ; `race-hybride`,
- * absent de la base, est créé verrouillé avec la première race hybride : R220 (2)) : c'est le verrou qui refuse de les modifier, supprimer ou fusionner
+ * absent de la base, est créé verrouillé avec la première race hybride : R220 (2)) : c'est le verrou qui refuse de les supprimer ou de les fusionner
  * dans un autre (serveur/edition.mjs#raisonDuGel). Une page créée par le service ne reçoit que ces mots-clés (motCleDe).
  */
 export const RAISONS_DES_MOTS_CLES_PROTEGES = new Map([
@@ -50,16 +50,16 @@ export const MOTS_CLES_PROTEGES = new Map([...RAISONS_DES_MOTS_CLES_PROTEGES]
 export const estProtege = (m) => nomDuProtege(m) !== null;
 
 /**
- * Un mot-clé verrouillé (mot_cle.verrou = 1, migration 0110 ; décisions R218, R219) : le site de dev n'en modifie aucun champ (libellé, définition,
- * synonymes (R233 (6)), adresse, couleur ; ses catégories, elles, se posent et se retirent : R232 (11)) et ne le supprime pas, même sans mention, ni par sa fusion dans un autre ; il se pose encore sur une page et s'en
- * retire, se cite par une balise et reçoit la fusion d'un autre mot-clé (sans en prendre l'adresse ni la couleur). Aucune route n'écrit `verrou` : il
+ * Un mot-clé verrouillé (mot_cle.verrou = 1, migration 0110 ; décisions R218, R219) : le site de dev ne le supprime pas, même sans mention, ni par
+ * sa fusion dans un autre ; ses champs, eux, se modifient (libellé, définition, synonymes, icône, adresse, couleur, catégories : demande du
+ * propriétaire, « seule leur suppression est bloquée », qui lève le gel de ses champs). Il se pose encore sur une page et s'en retire, se cite par une balise et reçoit la fusion d'un autre mot-clé (sans en prendre l'adresse ni la couleur). Aucune route n'écrit `verrou` : il
  * ne change que par une migration (R218 (4)). Le rejeu du journal ne le contrôle pas (R219 (6)). `m` : une ligne de mot_cle (ou du vocabulaire du
  * service, GET /api/edition/mots-cles/), dont `verrou` vaut 0 ou 1 ; absent (base d'avant la 0110) : non verrouillé.
  */
 export const estVerrouille = (m) => m?.verrou === 1;
 
 /** Ce que le verrou empêche, tel que le refus du service le dit après « Le mot-clé « X » est verrouillé : » (et l'infobulle du Glossaire peut le reprendre). */
-export const RAISON_DU_VERROU = 'ses champs ne se modifient pas et il ne se supprime pas depuis le site (décisions R218, R219) ; il se pose encore sur une page, se cite par une balise et reçoit la fusion d’un autre mot-clé';
+export const RAISON_DU_VERROU = 'il ne se supprime pas depuis le site (décisions R218, R219) ; ses champs se modifient, il se pose encore sur une page, se cite par une balise et reçoit la fusion d’un autre mot-clé';
 
 /** Mots-clés triés par libellé, à la française (pastilles d'un événement, listes) ; à libellé égal (des homonymes), par clé, puis par id. */
 export const parLibelle = (a, b) => a.libelle.localeCompare(b.libelle, 'fr', { sensitivity: 'base' })

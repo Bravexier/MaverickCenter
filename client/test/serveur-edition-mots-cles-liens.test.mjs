@@ -2,8 +2,8 @@
 // « url », « URL interne seulement » ; les [[…]] et les liens Markdown internes deviennent des balises) :
 //   - le modèle : `url` (type « adresse ») et `couleur` (type « couleur ») dans TABLES et ENTITES, hors CHAMPS_DE_TEXTE ; une couleur écrite en minuscules ;
 //   - GET /api/edition/mots-cles/ : url, couleur, classe de chaque mot-clé, et la feuille de leurs classes (`css`) ;
-//   - création (url et couleur écrites seulement si elles sont données), modification (d'un mot-clé non verrouillé : un verrouillé, 409, décisions
-//     R218, R219), refus 400 { champ } (jamais 409) : forme,
+//   - création (url et couleur écrites seulement si elles sont données), modification (d'un mot-clé verrouillé aussi : seule sa suppression est
+//     bloquée), refus 400 { champ } (jamais 409) : forme,
 //     page inexistante, couleur inconnue ; l'existence de la page se lit dans la base vivante, ancre et requête non vérifiées ;
 //   - fusion : la cible garde son lien et sa couleur, prend ceux de la source qu'elle n'a pas (noté au journal), et le résumé dit ce qu'elle garde ;
 //   - un lien saisi dans un texte (CHAMPS_DE_TEXTE) : `[[…]]` et `[texte](/…)` ajoutés deviennent la balise du seul mot-clé qui mène à leur page, sinon
@@ -116,7 +116,7 @@ test('créer un mot-clé avec un lien et une couleur ; sans eux, rien n’est é
   assert.equal(nombre(), avant, 'rien d’écrit');
 });
 
-test('modifier le lien et la couleur : vidés (NULL), changés ; 400 { champ } jamais 409 ; inchangés, pas contrôlés ; ceux d’un mot-clé verrouillé, non (409)', () => {
+test('modifier le lien et la couleur : vidés (NULL), changés ; 400 { champ } jamais 409 ; inchangés, pas contrôlés ; ceux d’un mot-clé verrouillé aussi', () => {
   const { db, lot, motCle, nombre, motLibre } = nouvelle();
   const modifier = (id, valeurs) => lot([{ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs }]);
   // un mot-clé créé (non verrouillé, même avec une adresse : décision R219 (5))
@@ -135,12 +135,13 @@ test('modifier le lien et la couleur : vidés (NULL), changés ; 400 { champ } j
   assert.equal(nombre(), avant);
   // une adresse en place, que la règle refuserait, ne bloque pas une autre modification (elle n'est contrôlée que si elle change)
   ok(modifier(id, { description: 'Essai.', url: '/races/drakos/' }));
-  // un mot-clé à adresse des règles, un mot-clé dont le site se sert : verrouillés (migration 0110), ni lien ni couleur ne se modifient
+  // un mot-clé à adresse des règles, un mot-clé dont le site se sert : verrouillés (migration 0110), leur lien et leur couleur se modifient quand même
+  // (demande du propriétaire : seule leur suppression est bloquée), le verrou reste
   for (const verrouille of ['drakos', 'codex'].map((cle) => db.prepare('SELECT id FROM mot_cle WHERE cle = ?').get(cle).id)) {
-    const lu = motCle(verrouille);
-    assert.equal(lu.verrou, 1, verrouille);
-    for (const valeurs of [{ url: '' }, { couleur: '#00aa00' }]) assert.equal(modifier(verrouille, valeurs).statut, 409, `${verrouille} ${JSON.stringify(valeurs)}`);
-    assert.deepEqual(motCle(verrouille), lu);
+    assert.equal(motCle(verrouille).verrou, 1, verrouille);
+    ok(modifier(verrouille, { couleur: '#00aa00' }));
+    assert.equal(motCle(verrouille).couleur, '#00aa00');
+    assert.equal(motCle(verrouille).verrou, 1, verrouille);
   }
 });
 

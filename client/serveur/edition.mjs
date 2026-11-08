@@ -67,7 +67,7 @@ import {
 } from '../src/lib/classe-champs.mjs';
 import { HYBRIDES_SANS_CLASSE_RACIALE, TAG_RACE_HYBRIDE } from '../src/lib/race-kinds.mjs';
 import { morceauxDuChapitre } from '../src/lib/guide.mjs';
-import { estVerrouille, parLibelle, RAISON_DU_VERROU, RAISONS_DES_MOTS_CLES_PROTEGES } from '../src/lib/mots-cles.mjs';
+import { parLibelle, RAISONS_DES_MOTS_CLES_PROTEGES } from '../src/lib/mots-cles.mjs';
 import { idDuProtege } from '../src/lib/mots-cles-proteges.mjs';
 import { clesDesMotsCles, HomonymesRefuses, REGISTRE_DES_IDS_DE_MOTS_CLES } from '../src/lib/mots-cles-cles.mjs';
 import { idSuivant, outilsDesMotsCles, TABLES_DES_FILLES_DU_MOT_CLE } from './edition-mots-cles.mjs';
@@ -3375,14 +3375,12 @@ function separerLesAnnexes(table, valeurs) {
 }
 
 /**
- * La raison qui gèle une ligne depuis le site de dev, ou null : un mot-clé verrouillé (mot_cle.verrou = 1, décisions R218, R219 :
- * lib/mots-cles.mjs#estVerrouille), dont aucun champ ne se modifie et qui ne se supprime pas (serveur/edition-chronologie.mjs : MOT_CLE.supprimer, la
- * fusion dont il est la source) ; une ligne d'une table figée (lib/edition-modele.mjs#TABLES_FIGEES : les monnaies, R219 (3)), qui ne se crée, ne se
- * modifie ni ne se supprime. Ce qui la cite (une page qui porte le mot-clé, une balise, la fusion d'un autre dans lui) n'est pas visé. Le rejeu du
- * journal ne la lit pas (R219 (6), R220 (1)).
+ * La raison qui gèle une ligne depuis le site de dev, ou null : une ligne d'une table figée (lib/edition-modele.mjs#TABLES_FIGEES : les monnaies,
+ * R219 (3)), qui ne se crée, ne se modifie ni ne se supprime. Un mot-clé verrouillé n'est pas gelé : ses champs se modifient (demande du propriétaire,
+ * lot « mots-clés verrouillés modifiables », qui lève cette partie de R218, R219) ; seule sa suppression est refusée (serveur/edition-chronologie.mjs :
+ * MOT_CLE.supprimer, la fusion dont il est la source). Le rejeu du journal ne la lit pas (R219 (6), R220 (1)).
  */
 export function raisonDuGel(table, ligne) {
-  if (table === 'mot_cle' && estVerrouille(ligne)) return `Le mot-clé « ${ligne.libelle} » est verrouillé : ${RAISON_DU_VERROU}.`;
   if (TABLES_FIGEES[table]) return `${TABLES[table]?.libelle ?? table} « ${ligne.nom ?? ligne.id} » : ${TABLES_FIGEES[table]}.`;
   return null;
 }

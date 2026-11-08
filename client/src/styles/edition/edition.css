@@ -344,7 +344,7 @@ body.ed-glisse-en-cours, body.ed-glisse-en-cours * { cursor: grabbing !important
 /* Mots-clés (/regles/glossaire/, src/scripts/edition/mots-cles.mjs) : le tableau de gestion du glossaire, dans les colonnes du tableau de lecture
    (décision R234 (5) : l'édition dans la ligne) — ses noms (la balise à copier, le libellé, ses synonymes un par ligne), ses catégories (cases à cocher),
    son lien, ce qui le porte et ses outils (le menu des endroits qui le mentionnent, R196 (2) ; les boutons, ou le cadenas d'un mot-clé verrouillé,
-   R219 (7)) ; dessous, sur toute la largeur, sa couleur puis sa définition. Au-dessus du tableau, la gestion des catégories (R232 (5)). */
+   R219 (7), qui ne se supprime pas) ; dessous, sur toute la largeur, sa couleur puis sa définition. Au-dessus du tableau, la gestion des catégories (R232 (5)). */
 .glossaire-table[data-gestion] > tbody > tr > * { vertical-align: top; }
 .ed-mot-cle__noms { display: grid; gap: 0.3rem; font-weight: 400; }
 .ed-mot-cle__icone-case { width: 1%; }
@@ -354,7 +354,10 @@ body.ed-glisse-en-cours, body.ed-glisse-en-cours * { cursor: grabbing !important
 .ed-mot-cle__synonymes-saisie { inline-size: 100%; font: inherit; resize: vertical; }
 .ed-mot-cle__categories-choix { display: flex; flex-wrap: wrap; gap: 0.1rem 0.6rem; margin: 0; padding: 0; border: 0; font-size: var(--fs-sm); }
 .ed-mot-cle__categorie { white-space: nowrap; }
-.ed-mot-cle__suite-case { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.3rem; }
+/* la case reste une cellule de tableau (un `display: grid` sur le td lui ferait perdre son colspan : la définition tenait dans la première colonne) ;
+   ses champs, l'un sous l'autre, sur toute sa largeur */
+.ed-mot-cle__suite-case > * { display: block; }
+.ed-mot-cle__suite-case > * + * { margin-top: 0.3rem; }
 .ed-mot-cle__suite > .ed-mot-cle__suite-case { border-top: 0; padding-top: 0; }
 .ed-mot-cle__ligne > * { border-bottom: 0; }
 .ed-categories-mots-cles { flex-basis: 100%; }
@@ -384,11 +387,9 @@ body.ed-glisse-en-cours, body.ed-glisse-en-cours * { cursor: grabbing !important
 /* le forçage que le service refuserait (R223, `refus_du_forcage`) : une note à la place du bouton, la raison en infobulle et au bas du menu des mentions */
 .ed-mot-cle__sans-forcage { align-self: center; font-size: var(--fs-sm); color: var(--muted); cursor: help; }
 .ed-mot-cle__sans-forcage-raison { margin: 0.3rem 0 0; font-size: var(--fs-sm); color: var(--muted); }
-/* un mot-clé verrouillé (R219 (7)) : le cadenas, ses saisies désactivées ; le pointeur passe au champ, qui porte l'infobulle */
+/* un mot-clé verrouillé (R219 (7)) : le cadenas à la place des boutons de suppression et de fusion ; ses champs restent modifiables */
 .ed-mot-cle__verrou { display: inline-flex; inline-size: 1.25rem; block-size: 1.25rem; color: var(--muted); }
 .ed-mot-cle__verrou svg { inline-size: 100%; block-size: 100%; }
-.ed-mot-cle--verrouille .ed-champ { cursor: not-allowed; }
-.ed-mot-cle--verrouille :is(textarea, input, select):disabled { pointer-events: none; opacity: 0.6; }
 .ed-fusionne { opacity: 0.55; }
 .ed-fusionne .ed-mot-cle__fusionner { opacity: 1; }
 .ed-mot-cle__fusionner[aria-pressed='true'] { color: var(--surface); background: var(--accent); }

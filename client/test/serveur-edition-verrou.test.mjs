@@ -1,13 +1,14 @@
 // Le verrou des mots-clés et le gel de l'onglet Monnaie (décisions R218, R219, R220 ; migration 0110, `mot_cle.verrou`) :
 //   - état d'import : verrou = 1 exactement pour les mots-clés à adresse, ceux des monnaies (ids de la table monnaie) et ceux dont le site se sert
 //     (lib/mots-cles.mjs#MOTS_CLES_PROTEGES) présents (R219 (1), (2)) ;
-//   - service et API v1 : un mot-clé verrouillé ne se modifie (aucun champ), ne se supprime (même sans mention) ni ne se fusionne dans un autre (409, la
-//     raison cite R218 et R219) ; il se pose sur une page et s'en retire, se cite par une balise, reçoit la fusion d'un autre sans en prendre l'adresse
+//   - service et API v1 : un mot-clé verrouillé ne se supprime (même sans mention) ni ne se fusionne dans un autre (409, la raison cite R218 et
+//     R219) ; ses champs, eux, se modifient (demande du propriétaire : « Seule leur suppression est bloquée. ») ; il se pose sur une page et s'en retire, se cite par une balise, reçoit la fusion d'un autre sans en prendre l'adresse
 //     ni la couleur (R219 (4)) ; aucune route n'écrit `verrou` ; un mot-clé créé vaut 0, même avec une adresse (R219 (5)), sauf `race-hybride`, créé
 //     verrouillé avec la première race hybride (R220 (2)), au rejeu aussi ; chaque race, magie et classe a son mot-clé verrouillé (R218) ;
 //   - R222 (1) : la fusion d'un mot-clé que cite une balise de la définition d'un mot-clé verrouillé est refusée (le rejeu, lui, la fait) ;
 //   - R221 : une page vers laquelle mène un mot-clé verrouillé ne se supprime pas, l'adresse du mot-clé reste ;
-//   - page Mise à jour : un conflit sur une ligne gelée n'offre pas le choix 3 (une valeur saisie), refusé en 409 (R218 (3), R219 (6), R220 (1)) ;
+//   - page Mise à jour : un conflit sur une monnaie n'offre pas le choix 3 (une valeur saisie), refusé en 409 (R219 (6), R220 (1)) ; sur un mot-clé
+//     verrouillé, il l'offre (ses champs se modifient) ;
 //   - les monnaies : ni création, ni modification, ni suppression (409 qui cite R219), service et API v1 ; les lectures restent (R219 (3)) ;
 //   - GET /api/edition/mots-cles/ : `verrou` et `mentions` de chaque mot-clé (R196 (2), la forme du 409 d'une suppression) ;
 //   - rejeu : un lot ancien qui modifie ou supprime un mot-clé verrouillé passe (R219 (6)) ; un lot ancien qui crée, modifie (abréviation, remarque) ou
@@ -108,23 +109,26 @@ test('R218 (4), état courant : chaque mot-clé dont le site se sert est verroui
   s.db.close();
 });
 
-test('R218, R219 : un mot-clé verrouillé — chaque champ, la suppression (même sans mention), sa fusion dans un autre : 409 ; rien n’est écrit', () => {
+test('R218, R219 : un mot-clé verrouillé — sa suppression (même sans mention) et sa fusion dans un autre : 409, rien n’est écrit ; ses champs se modifient (demande du propriétaire)', () => {
   const s = nouvelle();
   const id = verrouilleDEssai(s);
   assert.deepEqual(mentionsDe(s.db, id), [], 'mentionné nulle part');
-  const avant = s.ligne('SELECT * FROM mot_cle WHERE id = ?', id);
   const autre = s.creer({ libelle: 'Essai cible' });
-  for (const [quoi, op] of [
-    ['libellé', { op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { libelle: s.libre('Essai renommé') } }],
-    ['définition', { op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { description: 'Autre.' } }],
-    ['synonymes', { op: 'synonymes_mot_cle', mot_cle: id, synonymes: [`ZQV${process.pid}`] }],
-    ['adresse', { op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { url: '/races/' } }],
-    ['couleur', { op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { couleur: '#123456' } }],
-    ['verrou', { op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { verrou: 0 } }],
-    ['suppression', { op: 'supprimer', entite: 'mot_cle', cle: { id } }],
-  ]) refuse(s.lot([op]), VERROU, quoi);
+  // ses champs : acceptés (« Seule leur suppression est bloquée »), le verrou reste
+  const libelle = s.libre('Essai renommé');
+  ok(s.lot([{ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { libelle, description: 'Autre.' } }]));
+  ok(s.lot([{ op: 'synonymes_mot_cle', mot_cle: id, synonymes: [`ZQV${process.pid}`] }]));
+  const apres = s.ligne('SELECT * FROM mot_cle WHERE id = ?', id);
+  assert.equal(apres.libelle, libelle);
+  assert.equal(apres.description, 'Autre.');
+  assert.equal(apres.verrou, 1, 'toujours verrouillé');
+  assert.deepEqual(s.db.prepare('SELECT libelle FROM mot_cle_synonyme WHERE mot_cle_id = ?').all(id).map((x) => x.libelle), [`ZQV${process.pid}`]);
+  // `verrou` ne s'écrit par aucune route
+  assert.equal(s.lot([{ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { verrou: 0 } }]).statut, 400);
+  // sa suppression et sa fusion dans un autre : refusées
+  refuse(s.lot([{ op: 'supprimer', entite: 'mot_cle', cle: { id } }]), VERROU, 'suppression');
   refuse(s.lot([{ op: 'fusionner_mots_cles', mot_cle: id, dans: autre }]), /est verrouillé : il ne se fusionne pas dans un autre.*R218, R219/, 'fusion depuis lui');
-  assert.deepEqual(s.ligne('SELECT * FROM mot_cle WHERE id = ?', id), avant);
+  assert.deepEqual(s.ligne('SELECT * FROM mot_cle WHERE id = ?', id), apres);
   assert.ok(s.ligne('SELECT 1 FROM mot_cle WHERE id = ?', autre));
   s.db.close();
 });
@@ -271,7 +275,7 @@ test('R218 (4), R219 (5) : aucune route n’écrit `verrou` ; un mot-clé créé
   s.db.close();
 });
 
-test('R218, R219, API v1 : `verrou` se lit (liste, détail, catalogue en lecture seule) ; PATCH, DELETE et fusion depuis un mot-clé verrouillé : 409', () => {
+test('R218, R219, API v1 : `verrou` se lit (liste, détail, catalogue en lecture seule) ; PATCH accepté (sauf `verrou`) ; DELETE et fusion depuis un mot-clé verrouillé : 409', () => {
   const s = nouvelle();
   const id = verrouilleDEssai(s);
   const adresse = `/api/v1/mots-cles/${encodeURIComponent(id)}/`;
@@ -279,8 +283,10 @@ test('R218, R219, API v1 : `verrou` se lit (liste, détail, catalogue en lecture
   assert.ok(ok(s.appel('GET', '/api/v1/mots-cles/?limite=5')).elements.every((e) => e.verrou === 0 || e.verrou === 1));
   const colonne = ok(s.appel('GET', '/api/v1/')).ressources.find((r) => r.cle === 'mots-cles').colonnes.find((c) => c.nom === 'verrou');
   assert.equal(colonne.modifiable, false);
-  refuse(s.appel('PATCH', adresse, { description: 'Autre.' }), VERROU, 'PATCH');
-  refuse(s.appel('PATCH', adresse, { verrou: 0 }), VERROU, 'PATCH du verrou');
+  ok(s.appel('PATCH', adresse, { description: 'Autre.' }));
+  assert.equal(s.ligne('SELECT description FROM mot_cle WHERE id = ?', id).description, 'Autre.');
+  assert.equal(s.appel('PATCH', adresse, { verrou: 0 }).statut, 400, 'PATCH du verrou');
+  assert.equal(s.ligne('SELECT verrou FROM mot_cle WHERE id = ?', id).verrou, 1);
   refuse(s.appel('DELETE', adresse), VERROU, 'DELETE');
   const autre = s.creer({ libelle: 'Essai cible API' });
   refuse(s.appel('POST', `${adresse}fusion/`, { dans: autre }), /est verrouillé : il ne se fusionne pas/, 'fusion');
@@ -288,7 +294,7 @@ test('R218, R219, API v1 : `verrou` se lit (liste, détail, catalogue en lecture
   s.db.close();
 });
 
-test('R220 (2) : la première race hybride crée le mot-clé « race hybride » verrouillé (noté au journal) ; il ne se modifie plus', () => {
+test('R220 (2) : la première race hybride crée le mot-clé « race hybride » verrouillé (noté au journal) ; ses champs se modifient, le verrou reste', () => {
   const s = nouvelle();
   // le site de dev a pu le créer déjà : la copie repart sans lui
   // le mot-clé « race hybride » n'a pas d'id fixe (lib/mots-cles-proteges.mjs) : il se reconnaît par sa clé
@@ -302,7 +308,8 @@ test('R220 (2) : la première race hybride crée le mot-clé « race hybride » 
   assert.equal(m.libelle, MOT_CLE_RACE_HYBRIDE);
   const note = s.ligne("SELECT apres FROM modification WHERE table_nom = 'mot_cle' AND operation = 'inserer' AND json_extract(cle, '$.id') = ?", m.id);
   assert.equal(JSON.parse(note.apres).verrou, 1, 'le rejeu le recrée verrouillé');
-  refuse(s.lot([{ op: 'modifier', table: 'mot_cle', cle: { id: m.id }, valeurs: { description: 'Autre.' } }]), VERROU, 'modifié');
+  ok(s.lot([{ op: 'modifier', table: 'mot_cle', cle: { id: m.id }, valeurs: { description: 'Autre.' } }]));
+  assert.equal(s.ligne('SELECT verrou FROM mot_cle WHERE id = ?', m.id).verrou, 1);
   s.db.close();
 });
 
@@ -397,18 +404,18 @@ test('R219 (6), R220 (1), rejeu : un lot ancien qui modifie ou supprime un mot-c
   assert.deepEqual({ ...db.prepare("SELECT abreviation, remarque FROM monnaie WHERE id = 'ro'").get() }, { abreviation: `RX${process.pid}`, remarque: 'Essai.' });
   assert.equal(db.prepare('SELECT 1 FROM monnaie WHERE id = ?').get(creee.id), undefined);
   assert.equal(db.prepare("SELECT nom FROM monnaie WHERE id = 'pp'").get().nom, pp.nom);
-  // le verrou ne tient pas au rejeu, mais il reste en place après : le service refuse encore le mot-clé modifié
-  refuse(s.lot([{ op: 'modifier', table: 'mot_cle', cle: { id: modifie.id }, valeurs: { description: 'Autre.' } }]), VERROU, 'après le rejeu');
+  // le verrou ne tient pas au rejeu, mais il reste en place après
+  assert.equal(db.prepare('SELECT verrou FROM mot_cle WHERE id = ?').get(modifie.id).verrou, 1, 'après le rejeu');
   db.close();
 });
 
 test('un lot écrit comme avant le verrou (`gel` faux, réservé aux tests qui reproduisent un lot ancien) passe ; aucune route ne le donne', () => {
   const s = nouvelle();
   const id = verrouilleDEssai(s);
-  enregistrerSansRoute(s.db, { page: 'regles/glossaire/', operations: [{ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { description: 'Avant le verrou.' } }] }, { gel: false });
-  assert.equal(s.ligne('SELECT description FROM mot_cle WHERE id = ?', id).description, 'Avant le verrou.');
-  // le corps d'une requête ne le porte pas : `gel` n'est pas une clé du lot
-  refuse(s.appel('POST', '/api/edition/', { page: 'regles/glossaire/', gel: false, operations: [{ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { description: 'Autre.' } }] }), VERROU, 'gel dans le corps');
+  // le corps d'une requête ne le porte pas : `gel` n'est pas une clé du lot (la suppression d'un verrouillé reste refusée)
+  refuse(s.appel('POST', '/api/edition/', { page: 'regles/glossaire/', gel: false, operations: [{ op: 'supprimer', entite: 'mot_cle', cle: { id } }] }), VERROU, 'gel dans le corps');
+  enregistrerSansRoute(s.db, { page: 'regles/glossaire/', operations: [{ op: 'supprimer', entite: 'mot_cle', cle: { id } }] }, { gel: false });
+  assert.equal(s.ligne('SELECT 1 FROM mot_cle WHERE id = ?', id), undefined, 'supprimé : le lot ancien ne lit pas le verrou');
   s.db.close();
 });
 
@@ -439,7 +446,7 @@ test('R218, R219 (1) : chaque race, magie et classe a son mot-clé (adresse « /
   }
 });
 
-test('R218 (3), R219 (6), R220 (1), page Mise à jour : un conflit sur un mot-clé verrouillé ou une monnaie n’offre que les choix 1 et 2 ; un choix 3 envoyé quand même : 409', () => {
+test('R219 (6), R220 (1), page Mise à jour : un conflit sur une monnaie n’offre que les choix 1 et 2 (un choix 3 envoyé quand même : 409) ; sur un mot-clé verrouillé, le choix 3 aussi', () => {
   const s = nouvelle();
   const db = s.db;
   const m = db.prepare('SELECT * FROM mot_cle WHERE verrou = 1 ORDER BY id LIMIT 1').get();
@@ -460,16 +467,17 @@ test('R218 (3), R219 (6), R220 (1), page Mise à jour : un conflit sur un mot-cl
   assert.ok(d, 'le lot est en conflit');
   const champs = d.conflits.filter((c) => c.genre === 'champ');
   assert.deepEqual(champs.map((c) => c.table).sort(), ['monnaie', 'mot_cle']);
-  for (const c of champs) {
+  const [cm] = champs.filter((c) => c.table === 'mot_cle');
+  assert.ok(cm.choix_possibles.includes(3) && cm.refus_3 === undefined, 'mot-clé verrouillé : ses champs se modifient');
+  for (const c of champs.filter((x) => x.table === 'monnaie')) {
     // le choix 1 reste, sauf si l'éditeur refuse la valeur du lot (l'abréviation du RF, du RO et de la PP : R61, `refus_1`) ; le 2 toujours
     assert.deepEqual(c.choix_possibles, c.refus_1 ? [2] : [1, 2], c.id);
-    if (c.table === 'mot_cle') assert.equal(c.refus_1, undefined);
     assert.equal(c.saisie, null, c.id);
-    assert.match(c.refus_3, c.table === 'mot_cle' ? VERROU : /décision R219/, c.id);
+    assert.match(c.refus_3, /décision R219/, c.id);
   }
   // le meilleur choix permis de chaque conflit, sauf `trois` : le 3 envoyé quand même
   const choix = (trois) => Object.fromEntries(champs.map((c) => [c.id, c.id === trois ? { choix: 3, valeur: 'Autre.' } : { choix: c.choix_possibles[0] }]));
-  for (const c of champs) {
+  for (const c of champs.filter((x) => x.table === 'monnaie')) {
     assert.throws(() => resoudreLeConflit(db, { lot: l.id, empreinte: d.empreinte, choix: choix(c.id) }), (e) => e.statut === 409 && e.message.includes(c.refus_3), c.id);
   }
   assert.equal(db.prepare('SELECT description FROM mot_cle WHERE id = ?').get(m.id).description, m.description, 'rien d’écrit');

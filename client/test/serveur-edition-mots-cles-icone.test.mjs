@@ -1,6 +1,6 @@
 // L'icône d'un mot-clé (mot_cle.icone, migration 0116 ; décision R235) : la seule liste des icônes du site (lib/icones.mjs#ICONES, les monnaies du jeu
 // pour l'instant), que lisent db:check, le service et le menu du site de dev ; le service la refuse hors de la liste (400, `champ: 'icone'`), la vide
-// en NULL, la protège par le verrou (R235 (5)), la rend avec le vocabulaire (GET /api/edition/mots-cles/ : `icone` et la liste `icones`) et dans les
+// en NULL, la laisse modifiable sur un mot-clé verrouillé (seule sa suppression est bloquée), la rend avec le vocabulaire (GET /api/edition/mots-cles/ : `icone` et la liste `icones`) et dans les
 // listes de l'édition ; une fusion la donne à une cible qui n'en a pas. Mots-clés d'essai (test/aide-mots-cles.mjs) ; un mot-clé verrouillé choisi par
 // requête, jamais par son texte.
 import assert from 'node:assert/strict';
@@ -49,7 +49,7 @@ test('R235 : une seule liste des icônes (une par monnaie du jeu, « monnaie:<id
   db.close();
 });
 
-test('R235 : l’icône se choisit dans la liste (400 hors de la liste, champ icone), se vide en NULL, se pose à la création ; le verrou la protège (R235 (5))', () => {
+test('R235 : l’icône se choisit dans la liste (400 hors de la liste, champ icone), se vide en NULL, se pose à la création ; celle d’un mot-clé verrouillé se change aussi (seule sa suppression est bloquée)', () => {
   const { db, appel, lot, iconeDe } = base();
   const [premiere, seconde] = ICONES.map((i) => i.valeur);
   ok(lot(modifier(A.id, premiere)));
@@ -64,11 +64,11 @@ test('R235 : l’icône se choisit dans la liste (400 hors de la liste, champ ic
   ok(cree);
   assert.equal(iconeDe(cree.corps.crees[0].id), seconde);
   assert.equal(lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: 'Essai icône zq bis', icone: 'x:y' } }]).corps.champ, 'icone');
-  // un mot-clé verrouillé (R218, R219) : son icône ne change pas sur le site (409)
+  // un mot-clé verrouillé (R218, R219) : son icône se change (demande du propriétaire : seule sa suppression est bloquée)
   const verrouille = db.prepare('SELECT id, icone FROM mot_cle WHERE verrou = 1 ORDER BY id').get();
   const autre = ICONES.map((i) => i.valeur).find((v) => v !== verrouille.icone);
-  assert.equal(lot(modifier(verrouille.id, autre)).statut, 409);
-  assert.equal(iconeDe(verrouille.id), verrouille.icone);
+  ok(lot(modifier(verrouille.id, autre)));
+  assert.equal(iconeDe(verrouille.id), autre);
   // GET /api/edition/mots-cles/ : l'icône de chaque mot-clé et la liste proposée ; GET /api/edition/listes/ : la même liste, pour le menu
   const vocabulaire = appel('GET', '/api/edition/mots-cles/');
   ok(vocabulaire);
