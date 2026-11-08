@@ -12,7 +12,9 @@ INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/actions-et-mouveme
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/actions-et-mouvements', 2, 'Action rapide', 'action-rapide');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/alignement', 0, 'Faire évoluer les scores', 'faire-evoluer-les-scores');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/alignement', 1, 'Les 4 tendances', 'les-4-tendances');
-INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/attaque-et-defense', 0, 'Localisation des dégâts', 'localisation-des-degats');
+INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/attaque-et-defense', 0, 'Attaque et Défense', 'attaque-et-defense');
+INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/attaquer-et-se-defendre', 0, 'Attaquer et se défendre', 'attaquer-et-se-defendre');
+INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/attaquer-et-se-defendre', 1, 'Localisation des dégâts', 'localisation-des-degats');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/bienvenue', 0, 'Guide du joueur', 'guide-du-joueur');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/blessures-et-etats', 0, 'Blessures et états', 'blessures-et-etats');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/deplacement-ou-sortie-de-la-zone-d-influence', 0, 'Le déplacement ou la sortie de la zone d''influence', 'le-deplacement-ou-la-sortie-de-la-zone-dinfluence');

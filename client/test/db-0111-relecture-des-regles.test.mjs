@@ -21,6 +21,7 @@ import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { baseDImport, cheminDImport, lotsAvant } from './aide-base-d-import.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { casDeSantePotentiel, CONSTANTE_SANTE_POTENTIEL, MAGIE_POTENTIEL, plafondDeSantePotentiel } from './aide-sante-potentiel.mjs';
+import { textesReecrits } from './aide-textes-reecrits.mjs';
 
 const NOM = '0111-relecture-des-regles-contre-les-decisions';
 const registre = JSON.parse(readFileSync(new URL(`../../data/migrations/${NOM}.json`, import.meta.url), 'utf8'));
@@ -81,6 +82,9 @@ test('0111 : chaque remplacement est en place dans l’état de la migration (le
   for (const t of registre.textes) {
     const v = valeur(imp, t);
     assert.equal(typeof v, 'string', `${t.cle.id} présent`);
+    // R231 (migration 0112) réécrit en entier « Attaquer » et « Se défendre » : le fragment est admis remplacé par son `avant`, l'`apres` en place
+    if (textesReecrits('0112-r231-attaquer-et-se-defendre').some((r) => r.table === t.table && r.col === t.col && JSON.stringify(r.cle) === JSON.stringify(t.cle)
+      && r.avant.includes(t.apres) && !r.apres.includes(t.apres) && v.includes(r.apres))) continue;
     assert.ok(v.includes(t.apres), `${t.correction} ${t.cle.id} : « ${t.apres.slice(0, 60)}… »`);
     if (!t.apres.includes(t.avant)) assert.ok(!v.includes(t.avant), `${t.correction} ${t.cle.id} : l’ancien fragment reste`);
   }

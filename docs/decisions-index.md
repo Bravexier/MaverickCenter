@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 230 décisions, de R1 à R230, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 231 décisions, de R1 à R231, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
 
 | Réf. | Sujet | Décision |
 | --- | --- | --- |
@@ -236,3 +236,4 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R228 | Adresse de la page du Mode Super (suite de R187 (1) et R226 (4) ; 2026-11-… | La page est servie à `/regles/mode-super/`, exception… |
 | R229 | Renvoi « plus haut » de `guide/jet-de-des` (suite de R224 (2) ; question V… | « Comme expliqué plus haut, » est retiré : la phrase d… |
 | R230 | Suite de R227 (3) et de R225 (2026-11-08). (1) Le texte du Bijoutier dans… | (1) Le texte du Bijoutier est aligné sur R227 (3) : il… |
+| R231 | Réécriture des pages « Attaquer et se défendre » et « Attaque et Défense »… | (1) Partage. `guide/attaquer-et-se-defendre` porte tou… |

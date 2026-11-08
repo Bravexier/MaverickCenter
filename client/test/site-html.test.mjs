@@ -468,9 +468,10 @@ test('glossaire des mots-clés : aucune balise brute sur le site construit (le m
   assert.deepEqual(visibles, [], 'aucune balise brute dans le texte visible');
   assert.equal(texteVisible('<p title="a">b</p><code>{{x}}</code><div data-mots-cles-bruts><p>{{y}}</p></div><strong data-balise="{{z}}">Z</strong><title>T</title>'),
     '\na\nb\n\n\n\nZ\n\nT\n\n', 'l’aide du test : ni code, ni zone brute, ni data-balise');
-  // « mot-cle-<id> » : l'id des bulles du glossaire, de nul autre élément (une page qui en aurait un autre le confondrait avec la bulle d'un mot-clé)
+  // « mot-cle-<id> » : l'id des bulles du glossaire, de nul autre élément (une page qui en aurait un autre le confondrait avec la bulle d'un mot-clé) ;
+  // la bulle d'un mot-clé coloré et décrit porte aussi sa classe de couleur (lib/mots-cles-balises.mjs#htmlDeLaBulle ; R231, migration 0112)
   const autres = pages.flatMap((f) => [...readFileSync(f, 'utf8').matchAll(/<([a-z]+)([^>]*) id="mot-cle-[^"]*"/g)]
-    .filter((m) => !(m[1] === 'span' && / class="bulle"/.test(m[2]))).map((m) => `${relative(dist, f)} : ${m[0]}`));
+    .filter((m) => !(m[1] === 'span' && / class="bulle(?: [^"]+)?"/.test(m[2]))).map((m) => `${relative(dist, f)} : ${m[0]}`));
   assert.deepEqual(autres, []);
   // les blocs des panneaux de règles écrivent des balises (migration 0056) : la table brute les garde
   const brute = 'donnees/panneau_regles_bloc/index.html';

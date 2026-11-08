@@ -400,6 +400,8 @@ La page est supprimée (migration `0096-retrait-alterations-d-etats-et-mode-hype
 
 #### guide/attaque-et-defense
 
+La page est réécrite (migration `0112-r231-attaquer-et-se-defendre`, décision R231) : le numéro de ligne est celui de l'ancienne page. La phrase est passée dans `guide/attaquer-et-se-defendre`, réécrite par game-design (« la « tête » correspondait à sa **queue**, et donc le malus et l’effet s’y appliquaient ») : l'imparfait reste à trancher.
+
 - **L46** — « la « tête » correspondait à sa **queue**, et donc le malus/effet s’y appliquaient » — Exemple hypothétique à l'imparfait (conditionnel attendu) et verbe pluriel pour « le malus/effet » : choix de lecture. → la « tête » correspondrait à sa **queue**, et donc le malus/effet s’y appliquerait
 
 #### guide/campagne-ou-scenario-one-shot
