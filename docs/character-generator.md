@@ -610,6 +610,14 @@ bouton (au-dessus quand la place manque), bornée à l'écran, téléphone compr
   bornes que la règle `gains_niveau` de la base : `test/fiche-moteur.test.mjs` les compare aux niveaux 1 à 20) ; au-dessus, d'où vient le total : les points
   par niveau et les dés atteints, leur texte et ce que chacun ajoute (`gainsAttendus`, tout lu dans `regles.niveaux`). Visible dès le niveau 1 (rien à
   saisir) ; pas dans les choix à faire.
+  - **Santé du Potentiel Illimité** (décision R225) : quand la magie innée est le Potentiel Illimité (repéré par son id, `magies/potentiel-illimite`),
+    un second total, « Santé attribuée : S / au plus : P », sous le premier (`#gains-sante-potentiel`, caché pour toute autre magie innée), en rouge
+    au-delà de P, avec en infobulle le calcul. P = N × les niveaux atteints qui donnent des points d'attributs (`niveau_global.points_attributs`
+    renseigné) + le plus grand résultat cumulé des dés bonus atteints (`v_niveau.de_attributs_max_cumul` : le dé s'ajoute en plus, V5 bis). N est la
+    donnée `regle_constante` `potentiel_illimite.sante_max_par_niveau` (`regles.constantes`), jamais écrite dans le code. La fiche n'a que deux totaux
+    (R73) : le contrôle porte sur la santé gagnée. Il s'ajoute à la plage de `gains_niveau`, qui ne change pas ; il signale sans rien bloquer, et
+    les fiches existantes ne sont pas réécrites (`santeDuPotentiel`, rendu par `gainsDeNiveau().potentiel` ; la même que la règle
+    `gains_sante_potentiel` de la base, détail « santé / plafond » : `test/fiche-sante-potentiel.test.mjs` les compare aux niveaux 1, 4 et 5).
 - **Couleurs des cadres** : la bordure et le bandeau du titre de chaque bloc, le portrait et le médaillon du niveau prennent la couleur de la magie innée, en dégradé vers celle de
   la magie acquise (demande du propriétaire) ; sans magie innée, celle de la partie du guide. Seuls les cadres changent : caractéristiques, attributs,
   pastilles et curseurs gardent leurs couleurs. Les couleurs des magies sont des classes de la palette du site, jamais un style (`docs/content-guide.md`,
@@ -1025,7 +1033,9 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
     sans gains (race, ethnie, magies, classes, accessoires : `gainsDesMaximums`) ; une remarque dit la déduction (« Gains de niveau déduits des
     maximums du classeur (santé 60, chakra 150) : santé 41, chakra 121 »), « à vérifier » quand un maximum est sous ce calcul (ramené à 0) ou que le
     total sort de ce que donnent les niveaux atteints (« : hors du total à saisir (152 à 166), à vérifier » : `gainsDeNiveau`, la règle
-    `gains_niveau`) ;
+    `gains_niveau`) ; d'un Potentiel Illimité inné, aussi quand la santé déduite passe son plafond (R225, R230 (2) : « santé au-delà du plafond de
+    Potentiel Illimité (S / au plus P), à vérifier », `gainsDeNiveau().potentiel`, le calcul du moteur et de la règle `gains_sante_potentiel`), sans
+    rien refuser ni réécrire ;
   - **NM** : une fiche auto ne dit pas lesquels viennent d'un livre ou du MJ (R26, R118) : tous comptés, et dit si cela dépasse les NM gagnés ;
   - **maîtrises d'armes** (R148, R152, R153) : les choix se relisent dans les lignes « Maîtrise d'arme au choix » de la note (la source par son titre
     parmi celles de la fiche, chaque famille parmi les options de son point ; un point que la source n'a pas, une famille qu'elle ne propose pas : dits),
@@ -1199,7 +1209,8 @@ pas, et la note datée est le seul signal.
   hors des options du métier ou rang à choix sans choix (R33), maîtrises d'armes (R148 à R151 : `maitrise_a_choisir` « source = points à choisir »,
   `maitrise_hors_choix` et `maitrise_source_perdue` « source : point = famille », `maitrise_meme_famille` « source : famille = points / limite » pour les seules limites
   écrites, `maitrise_plafond` « famille = points / 4 », `maitrise_arme_exclue` sur ARME DE MONSTRES, R45 ; l'accessoire a pour source `accessoire:<emplacement>`), gains de niveau (`gains_niveau`, R73 : santé + chakra gagnés = 15 points par niveau à partir du 2,
-  plus 1 à 8 par dé atteint, `niveau_global.de_attributs_min` et `de_attributs_max` ; détail « total / à saisir » ou « total / minimum à maximum »), 2ᵉ classe, spécialité
+  plus 1 à 8 par dé atteint, `niveau_global.de_attributs_min` et `de_attributs_max` ; détail « total / à saisir » ou « total / minimum à maximum »), santé gagnée d'un Potentiel Illimité inné au-delà de son plafond (`gains_sante_potentiel`, R225 :
+  N santé par niveau qui donne des points d'attributs, `regle_constante` `potentiel_illimite.sante_max_par_niveau`, plus le plus grand résultat des dés atteints ; détail « santé / plafond »), 2ᵉ classe, spécialité
   avant le niveau de classe 10, dons hors classe ou exclusifs, sorts (magie du personnage, toutes pour le Potentiel Illimité ; NPM au plus la puissance magique
   du niveau, la 5 au niveau 16 et sans magie acquise, R16 ; pour une magie innée qui a un plafond, `magie_npm_plafond` (le Potentiel Illimité, 3), au plus
   aussi ce plafond, relevé par un don acquis de `capacite_npm_plafond` (« Semi-complet », 4), comme `npmDesSorts` du moteur, R188 ; 3 NM au plus sur un sort ; NM d'un sort sans celui de son livre au plus niveau global − 1 plus les NM du MJ de la fiche, et en tout au plus ceux gagnés — par les niveaux et par les dons acquis qui l'écrivent, `capacite_nm_gagne`, R154 — plus ceux du MJ, R24, R26, R118), bouclier (forme et matière : R96), armure (R95, R165 : une armure, de base ou élémentaire, jamais les deux, `armure_double` ; une amélioration sans son armure, `armure_manquante` ; une armure « Familier », `armure_familier` ; une armure élémentaire d'une magie que le personnage n'a pas, `armure_magie_absente` ; une partie que l'armure n'a pas, `armure_partie_hors_armure`, une armure élémentaire ayant ses six parties ; le poids portable est au moteur), améliorations (celle d'une arme, du catalogue ou élémentaire : cible `arme`, R167), arme élémentaire d'une magie que le personnage n'a ni en innée ni en acquise (`arme_elementaire_hors_magie` « rang : arme élémentaire », R167 ; le Potentiel Illimité n'en ouvre aucune), valeur d'un

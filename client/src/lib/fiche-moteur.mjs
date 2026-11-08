@@ -1112,10 +1112,33 @@ export function gainsAttendus(regles, niveau) {
   };
 }
 
+/** La donnée de la décision R225 (regle_constante, lue par lib/fiche-regles.mjs) : la santé au plus par niveau d'un Potentiel Illimité inné. */
+const CONSTANTE_SANTE_POTENTIEL = 'potentiel_illimite.sante_max_par_niveau';
+
+/**
+ * La santé gagnée au plus par un personnage dont la magie innée est le Potentiel Illimité (décision R225 : « 5 santé max/niveau » sur les points
+ * d'attributs à répartir ; V5 bis : « Non, le dé en plus ») : N (regles.constantes, jamais écrit ici) × les niveaux atteints qui donnent des points
+ * d'attributs (niveau_global.points_attributs renseigné, toujours > 0 par son CHECK), plus le plus grand résultat cumulé des dés bonus atteints
+ * (v_niveau.de_attributs_max_cumul) — le même calcul que la règle gains_sante_potentiel de v_personnage_controle (test/fiche-sante-potentiel.test.mjs).
+ * La fiche n'a que deux totaux (R73) : le contrôle porte sur gains_sante. null pour une autre magie innée (ou sans la donnée).
+ *   { parNiveau (N), niveaux (ceux qui donnent des points), de (le dé bonus au plus), plafond, depasse (santé > plafond) }
+ */
+export function santeDuPotentiel(regles, fiche) {
+  if (fiche.magie_innee_id !== POTENTIEL_ILLIMITE_INNE) return null;
+  const parNiveau = regles.constantes?.[CONSTANTE_SANTE_POTENTIEL];
+  if (parNiveau === undefined || parNiveau === null) return null;
+  const niveau = niveauGlobal(regles, fiche.xp);
+  const niveaux = regles.niveaux.filter((n) => n.niveau <= niveau && n.points_attributs !== null && n.points_attributs !== undefined).length;
+  const de = entier(ligneDeNiveau(regles, niveau)?.de_attributs_max_cumul);
+  const plafond = parNiveau * niveaux + de;
+  return { parNiveau, niveaux, de, plafond, depasse: entier(fiche.gains_sante) > plafond };
+}
+
 /**
  * Les gains de niveau de la fiche (décision R73) : santé et chakra gagnés (personnage.gains_sante, gains_chakra ; une valeur absente ou illisible compte 0),
  * leur total, ce qu'il faut saisir au niveau atteint (gainsAttendus) et `hors` : le total sort de la plage — exactement quand la base ajoute la ligne
- * gains_niveau à v_personnage_controle. { sante, chakra, total, niveau, points, parNiveau, depuis, des, min, max, hors }.
+ * gains_niveau à v_personnage_controle. `potentiel` : le plafond de santé d'un Potentiel Illimité inné (décision R225, santeDuPotentiel ; null sinon),
+ * qui s'ajoute à la plage sans la changer. { sante, chakra, total, niveau, points, parNiveau, depuis, des, min, max, hors, potentiel }.
  */
 export function gainsDeNiveau(regles, fiche) {
   const sante = entier(fiche.gains_sante);
@@ -1123,7 +1146,7 @@ export function gainsDeNiveau(regles, fiche) {
   const total = sante + chakra;
   const niveau = niveauGlobal(regles, fiche.xp);
   const attendus = gainsAttendus(regles, niveau);
-  return { sante, chakra, total, niveau, ...attendus, hors: total < attendus.min || total > attendus.max };
+  return { sante, chakra, total, niveau, ...attendus, hors: total < attendus.min || total > attendus.max, potentiel: santeDuPotentiel(regles, fiche) };
 }
 
 /**

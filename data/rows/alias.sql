@@ -43,6 +43,7 @@ INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/les-pieges', 1, 'D
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/les-portes', 0, 'Les herses', 'les-herses');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/les-portes', 1, 'Les portes magiques', 'les-portes-magiques');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/les-postures', 0, 'Postures', 'postures');
+INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/liste-des-effets-mode-super', 0, 'Liste des effets mode super', 'liste-des-effets-mode-super');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/mordhau-ou-demi-epee', 0, 'Mordhau ou Demi épée', 'mordhau-ou-demi-epee');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/prise-en-tenaille-et-zone-d-influence', 0, 'La prise en tenaille', 'la-prise-en-tenaille');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/prise-en-tenaille-et-zone-d-influence', 1, 'Les situations avancées', 'les-situations-avancees');

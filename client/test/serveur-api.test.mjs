@@ -736,7 +736,9 @@ test('repli sur une base vivante d’avant la migration 0045 (sa reconstruction 
         PRIMARY KEY (personnage_id, niveau),
         CHECK ((de_choix IS NULL) = (de_resultat IS NULL))
       ) STRICT, WITHOUT ROWID;
-      ${vue.replaceAll(totaux, '(SELECT coalesce(sum(g.points_sante + g.points_chakra), 0) FROM personnage_progression g WHERE g.personnage_id = p.id)')};`);
+      ${vue.replaceAll(totaux, '(SELECT coalesce(sum(g.points_sante + g.points_chakra), 0) FROM personnage_progression g WHERE g.personnage_id = p.id)')
+    // la santé seule (règle gains_sante_potentiel, R225, migration 0111)
+    .replaceAll('p.gains_sante', '(SELECT coalesce(sum(g.points_sante), 0) FROM personnage_progression g WHERE g.personnage_id = p.id)')};`);
   } finally {
     r.close();
   }

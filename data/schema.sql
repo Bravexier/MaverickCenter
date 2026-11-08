@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 110;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 111;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -4901,8 +4901,8 @@ CREATE VIEW v_groupe_controle AS
 
 -- Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi.
 -- Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45, R73, R95, R96,
--- R100, R104, R118, les maîtrises d'armes de R148 à R151, R154, l'armure de R165, les armes élémentaires de R167, les dons « Variable » de R181 et le plafond
--- de NPM de R188) ; ce qui demande le moteur (bonus de classe, d'équipement, nombre de sorts, poids d'armure portable de R165) n'est pas ici. Toute fiche est
+-- R100, R104, R118, les maîtrises d'armes de R148 à R151, R154, l'armure de R165, les armes élémentaires de R167, les dons « Variable » de R181, le plafond
+-- de NPM de R188 et la santé du Potentiel Illimité de R225) ; ce qui demande le moteur (bonus de classe, d'équipement, nombre de sorts, poids d'armure portable de R165) n'est pas ici. Toute fiche est
 -- contrôlée, même inachevée : il n'y a plus de statut (demande du propriétaire, migration 0038) ; une ligne signale, elle n'empêche pas d'enregistrer.
 CREATE VIEW v_personnage_controle AS
   -- Race : classe accessible (matrice « Accessibilité de Classe », décision R8)
@@ -5046,6 +5046,20 @@ CREATE VIEW v_personnage_controle AS
   JOIN v_niveau v ON v.niveau = n.niveau_global
   WHERE p.gains_sante + p.gains_chakra NOT BETWEEN v.points_attributs_cumul + v.de_attributs_min_cumul
                                                AND v.points_attributs_cumul + v.de_attributs_max_cumul
+  UNION ALL
+  -- Santé du Potentiel Illimité (décision R225, migration 0111) : avec le Potentiel Illimité en magie innée, au plus N santé par niveau sur les points
+  -- d'attributs (regle_constante potentiel_illimite.sante_max_par_niveau ; les niveaux atteints dont niveau_global.points_attributs est renseigné), le
+  -- dé bonus des niveaux qui en donnent un en plus, à son plus grand résultat (v_niveau.de_attributs_max_cumul). Signalé, jamais rogné ; la somme
+  -- reste la règle gains_niveau. Détail : « santé / plafond »
+  SELECT n.personnage_id, 'gains_sante_potentiel', p.gains_sante || ' / ' || (r.valeur * (SELECT count(*) FROM niveau_global g
+           WHERE g.niveau <= n.niveau_global AND g.points_attributs IS NOT NULL) + v.de_attributs_max_cumul)
+  FROM v_personnage_niveau n
+  JOIN personnage p ON p.id = n.personnage_id
+  JOIN v_niveau v ON v.niveau = n.niveau_global
+  JOIN regle_constante r ON r.id = 'potentiel_illimite.sante_max_par_niveau'
+  WHERE p.magie_innee_id = 'magies/potentiel-illimite'
+    AND p.gains_sante > r.valeur * (SELECT count(*) FROM niveau_global g WHERE g.niveau <= n.niveau_global AND g.points_attributs IS NOT NULL)
+                        + v.de_attributs_max_cumul
   UNION ALL
   -- Classes : la 2e existe exactement quand elle a des niveaux (R2) ; une spécialité se choisit au niveau de classe 10 (BDD!I2, J2)
   SELECT n.personnage_id, 'classe_2_manquante', CAST(n.niveau_classe_2 AS TEXT)

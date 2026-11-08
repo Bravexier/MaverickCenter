@@ -5954,7 +5954,7 @@ Les plus extrêmes peuvent au contraire prendre plaisir à la souffrance, à la 
 
 Le Mal ne signifie donc pas nécessairement être violent ou cruel en permanence. Il se manifeste avant tout par la valeur que le personnage accorde aux autres lorsque leurs intérêts entrent en conflit avec les siens.
 
-Bien, maintenant que nous avons vu les 4 tendances, maintenant on va expliquer les 9 combinaisons possibles.
+Bien, maintenant que nous avons vu les 4 tendances, les 9 combinaisons possibles sont expliquées dans {{les-neuf-alignements}}.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/alterations-d-etats', 'guide', 'alterations-d-etats', 'Altérations d’états', 'alterations-detats', 'Une altération d’état change la condition d’un personnage : poison, brûlure, peur, paralysie…', NULL, 'Une **altération d’état** change la condition d’un personnage : poison, brûlure, peur, paralysie… Elle lui inflige des malus, et il a tout intérêt à s’en débarrasser vite.
 
@@ -5973,13 +5973,13 @@ Quand une attaque est prodiguée, un jet de D100 est nécessaire pour réussir l
 
 **Cas particuliers :**
 
-Lors d''une réussite critique (score au dé = 1 - 5), les dégâts de base seront doublés ! La défense doit faire une réussite critique supérieure pour réussir à bloquer un tel coup.
+Lors d''une réussite critique (score au dé = 1 - 5 de base, voir {{reussites-echecs-et-critiques}}), les dégâts de base seront doublés ! La défense doit faire une réussite critique égale ou plus basse pour réussir à bloquer un tel coup.
 
 Lors d''un échec critique (score au dé = 96 - 100), la cible bénéficie d''une attaque d''opportunité ou bien peut désarmer la cible (si c’est possible), ou autre idée du mj.
 
 ## Défense
 
-Lors d''une parade ou esquive, un jet de D100 est nécessaire pour réussir l''action mais deux conditions doivent être réunies pour bloquer totalement l''attaque : doit réussir son jet de parade ou esquive ET doit faire un score égal ou meilleur que celui de l''attaquant !
+Lors d''une parade ou esquive, un jet de D100 est nécessaire pour réussir l''action mais deux conditions doivent être réunies pour bloquer totalement l''attaque : doit réussir son jet de parade ou esquive ET doit faire un résultat égal ou plus bas que celui de l''attaquant !
 
 Si le test de parade/esquive est réussi mais le score n''est pas meilleur que celui de l''attaquant : les dégâts finaux sont divisés par 2. Si jamais une parade est faite avec un bouclier, les AP ou AM du bouclier s''appliquent à ce moment-là.
 
@@ -6027,7 +6027,7 @@ L’attaquant lance un D100 et doit faire son score ou moins dans la compétence
 
 Deux résultats sortent de l’ordinaire :
 
-- **Réussite critique (1 à 5)** : les dégâts de l’attaque, bonus compris, sont doublés, et la cible ne peut bloquer le coup que par une réussite critique meilleure que celle de l’attaquant. La posture offensive l’élargit à 1 à 10 sur les six jets d’attaque, *Concentration* comprise ; d’autres bonus (un score au-delà de 95 %, un don, un sort, la tenaille…) l’élargissent encore, sans jamais dépasser 1 à 15 (voir {{reussir-une-action}}).
+- **Réussite critique (1 à 5)** : les dégâts de l’attaque, bonus compris, sont doublés, et la cible ne peut bloquer le coup que par une réussite critique égale ou plus basse que celle de l’attaquant. La posture offensive l’élargit à 1 à 10 sur les six jets d’attaque, *Concentration* comprise ; d’autres bonus (un score au-delà de 95 %, un don, un sort, la tenaille…) l’élargissent encore, sans jamais dépasser 1 à 15 (voir {{reussir-une-action}}).
 - **Échec critique (96 à 100)** : la cible peut riposter par une attaque d’opportunité, ou désarmer l’attaquant si c’est possible ; le MJ peut aussi en décider autrement.
 
 ### Une arme dans chaque main
@@ -6318,7 +6318,7 @@ Plus le personnage maîtrise une catégorie d’arme, plus il fait de dégâts a
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/choisir-sa-classe', 'guide', 'choisir-sa-classe', 'Étape 3 : choisir sa classe', 'etape-3-choisir-sa-classe', 'La classe, c’est la façon de se battre du personnage.', NULL, 'La classe, c’est la façon de se battre du personnage. Les {{classe|classes}} se rangent en cinq catégories : physiques au corps à corps, physiques à distance, magiques, raciales et spéciales. Une classe donne :
 
 - de la **santé**, du **{{chakra|chakra}}** et de la **{{barriere|barrière}}** de départ ;
-- des **maîtrises d’armes** : les armes que le personnage sait manier dès le départ, nommées par la classe ou à choisir ;
+- des **maîtrises d’armes** : des points de maîtrise par famille d’armes, qui ajoutent des dés de dégâts aux armes de ces familles, nommées par la classe ou à choisir ;
 - les **armures** et les **boucliers** qu’il sait porter ;
 - son **équipement de départ** : des armes, le plus souvent une armure, parfois un bouclier, et un inventaire de cinq objets, que donne la page de la classe ;
 - des **dons**, gagnés aux niveaux 1, 5, 10, 15 et 20 de la classe. Au niveau 10, on choisit aussi une **spécialité**, un embranchement de la classe.
@@ -6491,9 +6491,9 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 Tout ceci ne sont que des exemples, n’hésitez pas à être créatif !
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/equipement-et-butin', 'guide', 'equipement-et-butin', 'Équipement et butin', 'equipement-et-butin', 'Votre personnage peut équiper deux armes, une armure, qui se porte entière, du casque aux jambes, un bouclier, selon sa classe, six accessoires (le chef, le collier, deux bracelets et deux bagues) et, à sa ceinture, trois objets rapides ; le reste va dans son sac.', NULL, '## L''équipement
-Votre personnage peut équiper **deux armes**, **une armure**, qui se porte entière, du casque aux jambes, **un bouclier**, selon sa classe, **six accessoires** (le chef, le collier, deux bracelets et deux bagues) et, à sa **ceinture**, trois objets rapides ; le reste va dans son **sac**. Chacun a ses règles dans {{lequipement|L''équipement}}, et tout l''équipement du jeu, avec ses prix, est sur la page {{armes|Équipement}}.
+Votre personnage peut équiper **deux armes**, **une armure**, qui se porte entière, du casque aux jambes, **un bouclier**, selon sa classe, **six accessoires** (le chef, le collier, deux bracelets et deux bagues) et, à sa **ceinture**, trois objets rapides ; le reste va dans son **sac**. Chacun a ses règles dans {{lequipement|L''équipement}}, et tout l''équipement du jeu, avec ses prix, est dans la rubrique Équipement du menu : {{armes|armes}}, {{armures|armures}}, {{bouclier|boucliers}}, {{ceinture|ceinture}} et {{accessoires|accessoires}}.
 
-Une pièce d''équipement s''achète, se trouve dans un butin, ou se fait fabriquer. Un forgeron, un PNJ, peut la fabriquer pour vous. Un personnage peut aussi la fabriquer lui-même s''il a le bon métier : {{forgeron|forgeron}} pour les armes, les armures lourdes et les boucliers ; {{maroquinier|maroquinier}} ou {{couturier|couturier}} pour les armures plus légères, selon leurs matériaux (voir {{artisanat}}).
+Une pièce d''équipement s''achète, se trouve dans un butin, ou se fait fabriquer. Un forgeron, un PNJ, peut la fabriquer pour vous. Un personnage peut aussi la fabriquer lui-même s''il a le bon métier : {{forgeron|forgeron}} pour les armes ; {{armurier|armurier}} pour les armures lourdes et les boucliers ; {{maroquinier|maroquinier}} ou {{couturier|couturier}} pour les armures plus légères, selon leurs matériaux (voir {{artisanat}}).
 
 ## Le butin
 Quand un joueur fouille un ennemi vaincu, ou cherche quelque chose dans un lieu, un coffre…, le MJ lui demande un jet de butin. Le butin se joue sur le résultat de **3D100**, les trois dés additionnés : plus le total est bas, plus la découverte est fabuleuse. On peut y trouver une pièce d''équipement, un {{composants|matériau}}, ou autre chose. Dans le {{bestiaire|bestiaire}}, la carte de chaque monstre donne son butin possible par tranche de score, selon que l''ennemi est simple, mini-boss ou boss. Ce tableau n''est qu''une indication : le MJ peut réarranger le butin à sa guise.
@@ -6555,7 +6555,7 @@ Voyez avec votre mj pour voir quel objet pourrait se mettre sur votre ceinture, 
 
 Certains objets ne peuvent pas se mettre comme les armes (ils ont leur emplacement dédié)
 
-Les objets sont dans la ceinture ne peuvent pas dépasser le nombre de 3 (impossible de cumuler les objets à l''infini)
+Les objets sont dans la ceinture ne peuvent pas dépasser 3 exemplaires du même objet par emplacement, 4 avec le don « Organisé » du Mercenaire (impossible de cumuler les objets à l''infini)
 
 Les carquois, sac de bombe ou sac de pierre DOIVENT être mis dans la ceinture pour être utilisés, vous pouvez mettre le nombre de flèches que peut contenir le carquois maximum
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
@@ -6565,7 +6565,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 **AM base** : Il s’agit de l’armure magique que possède naturellement un personnage, elle est principalement déterminée si le personnage possède des classes magiques ou non. Chaque classe magique donne 4 AM. Certaines races peuvent en donner comme les Drakos ou les Marcass, ou alors certains objets magiques.
 
-L''armure est divisée en 6 morceaux :
+L''armure est une armure complète, divisée en 6 parties :
 
 - T = Tête
 - C = Corps
@@ -6574,13 +6574,13 @@ L''armure est divisée en 6 morceaux :
 - JG = Jambe Gauche
 - JD = Jambe Droite
 
-Elle possède également une Dur. ({{solidite|solidité}} comme pour les armes)
+Chaque partie possède sa {{solidite|solidité}} (comme pour les armes), sauf une armure à cran de solidité uni, qui n’en a qu’une pour toute l’armure.
 
 **Bonus/Malus** : Cela correspond à des particularités, effets secondaires de l’armure mais aussi de son comportement contre les dégâts physiques (Estoc, Taille, Frappe), allez dans le document [Ressources et Craft](https://docs.google.com/spreadsheets/u/0/d/1KkOG6FYjIf62Y_xLQxIE8aQTZFLlKPXmCB9e7XU3-vw/edit), et dans Armures pour plus d''informations.
 
-Le Bouclier permet d’avoir des AP et AM en plus de votre armure mais pour qu’ils soient comptés, ça implique une “Parade partielle”. Il peut être de différentes compositions, allez [ici](https://docs.google.com/spreadsheets/u/0/d/1KkOG6FYjIf62Y_xLQxIE8aQTZFLlKPXmCB9e7XU3-vw/edit) pour plus d''informations.
+Le Bouclier permet d’avoir des AP et AM en plus de votre armure mais pour qu’ils soient comptés, ça implique une “Parade partielle”. Il est fait d’une forme et d’une matière, allez [ici](https://docs.google.com/spreadsheets/u/0/d/1KkOG6FYjIf62Y_xLQxIE8aQTZFLlKPXmCB9e7XU3-vw/edit) pour plus d''informations.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-attributs', 'guide', 'fiche-attributs', 'Fiche de personnage : Attributs', 'fiche-de-personnage-attributs', 'Santé : Il s''agit du nombre de points de vie que possède le personnage.', NULL, '**Santé** : Il s''agit du nombre de points de vie que possède le personnage, si ce score atteint 0 ou moins le personnage est considéré comme dans le coma et doit faire des jets de survie. Si jamais 3 jets de survie échouent, le personnage meurt. Un seul jet de survie réussi suffit à stabiliser le personnage. La santé est déterminée par plusieurs choses => La Race, la ou les Classes ainsi que de la Magie du Sang (si jamais vous avez cette magie)
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-attributs', 'guide', 'fiche-attributs', 'Fiche de personnage : Attributs', 'fiche-de-personnage-attributs', 'Santé : Il s''agit du nombre de points de vie que possède le personnage.', NULL, '**Santé** : Il s''agit du nombre de points de vie que possède le personnage, si ce score atteint 0 ou moins le personnage est considéré comme dans le coma et doit faire des jets de survie. Si jamais 3 jets de survie échouent, le personnage meurt. Un seul jet de survie réussi suffit à stabiliser le personnage. La santé est déterminée par plusieurs choses => La Race, la ou les Classes ainsi que de la Magie du Sang ou de la Nécromancie (si jamais vous avez l''une de ces magies)
 
 **Âme/Sang** : Appelée aussi la 4ème barre, il s''agit d''un attribut qui ne concerne que les utilisateurs de la Nécromancie et de la Magie du Sang . Il s''agit d''une réserve qui doit être utilisée lors de l''utilisation de certains sortilèges. Cet attribut se recharge de 1 point par tour dans les combats. Il est fixé à 10 pour les deux.
 
@@ -6596,7 +6596,7 @@ Pour résumer : Vous avez par exemple 25 de {{chakra|chakra}} maximum, si jamais
 
 ***PS : Seuls ceux qui ont la corruption en magie innée ou acquise ne meurent pas au seuil maximum, mais la corruption prend aussi la place de leur chakra. Le Potentiel Illimité, même s''il peut l''utiliser, peut en mourir s''il en cumule trop.***
 
-**{{barriere}}** : Il s''agit d''une seconde peau magique qui permet de protéger la chair. La {{barriere|barrière}} est en quelque sorte de la santé magique, son taux est déterminé par le total de {{chakra|chakra}} : [{{chakra}} total divisé par 2 = {{barriere}} totale] (exemple : 20 {{chakra}} = 10 {{barriere}}). Il existe certaines classes/races qui offrent de la {{barriere|barrière}}. Par logique, plus vous avez de {{chakra|chakra}}, plus vous aurez de {{barriere|barrière}}. Ce qui fait que les mages ont des {{barriere|barrières}} colossales MAIS ... il existe des matériaux pour les armes qui sont capables de contrer cette peau magique comme le Mythril qui est capable de passer à travers la {{barriere|barrière}}, mais aussi le Maverium, qui lui, casse la {{barriere|barrière}} à son contact (donc un simple coup d''une arme de Maverium est capable de détruire instantanément la plus colossale des {{barriere|barrières}})
+**{{barriere}}** : Il s''agit d''une seconde peau magique qui permet de protéger la chair. La {{barriere|barrière}} est en quelque sorte de la santé magique, son taux est déterminé par le total de {{chakra|chakra}} : [{{chakra}} total divisé par 2, arrondi à l’inférieur = {{barriere}} totale] (exemple : 20 {{chakra}} = 10 {{barriere}}). Il existe certaines classes/races qui offrent de la {{barriere|barrière}}. Par logique, plus vous avez de {{chakra|chakra}}, plus vous aurez de {{barriere|barrière}}. Ce qui fait que les mages ont des {{barriere|barrières}} colossales MAIS ... il existe des matériaux pour les armes qui sont capables de contrer cette peau magique comme le Mythril qui est capable de passer à travers la {{barriere|barrière}}, mais aussi le Maverium, qui lui, casse la {{barriere|barrière}} à son contact (donc un simple coup d''une arme de Maverium est capable de détruire instantanément la plus colossale des {{barriere|barrières}})
 
 **Vitesse** : Il s''agit de l''attribut qui détermine le nombre de cases qu''un personnage peut parcourir le tour où il joue (plus détail [ici](https://maverick-jdr.fandom.com/fr/wiki/Combat))
 
@@ -6657,7 +6657,7 @@ La magie est tellement omniprésente dans Maverick qu’elle influence grande le
 - INTELLIGENCE : Arcanique, Glace, Temps/Espace, Corruption
 - AGILITÉ : Vent, Foudre
 
-Le Potentiel Illimité détermine aléatoirement le bonus.
+Pour le Potentiel Illimité, le joueur choisit le bonus ou le tire au hasard.
 
 Le point donné par la magie permet d’atteindre 5 dans la caractéristique associée et un minimum de 2 dans la caractéristique associée. Il se note derrière en cochant la petite case bleu clair.
 
@@ -6689,7 +6689,7 @@ Les compétences sont des bonus aux caractéristiques qui viennent s''ajouter au
 
 À la création d''un personnage, il y a 100 points à répartir dans les compétences et 20 points à chaque niveau supplémentaire, sauf les niveaux 5, 10, 15 et 20 où ce sera 40 points à répartir. 20 points peuvent être attribués à la compétence au choix parmi les 30 disponibles (au maximum) et vont dans la case Nat ou Naturel. Ce maximum augmente à 30 au niveau 5 global et maximum 40 au niveau 10 global.
 
-Les bonus de race/classe/don/équipement vont dans la case Acquis (dans la limite de 5 par point de caractéristique de base = exemple si 5 de force, l’acquis maximum sera de 25)
+Les bonus de race/classe/don/équipement vont dans la case Acquis (dans la limite de 5 par point de la caractéristique totale (le +1 de la magie innée compris) = exemple si 5 de force, l’acquis maximum sera de 25)
 
 Voici les compétences qui existent avec leurs caractéristiques associées :
 
@@ -6782,12 +6782,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-inventaire-sac-a-dos', 'guide', 'fiche-inventaire-sac-a-dos', 'Fiche de personnage : Inventaire/Sac à dos', 'fiche-de-personnage-inventaire-sac-a-dos', 'L''inventaire est un peu votre sac à dos, le nombre d''emplacements est déterminé par la Force de votre personnage.', NULL, 'L''inventaire est un peu votre sac à dos, le nombre d''emplacements est déterminé par la Force de votre personnage.
 
-Par défaut, votre personnage commence avec un sac à dos normal, ce qui correspond à deux colonnes complètes d’inventaire mais il existe d’autres sacs à dos.
-
-- Grand sac à dos, permet d’avoir 4 emplacements supplémentaires |Demande 2 de Force.
-- Super sac à dos, permet d’avoir 8 emplacements supplémentaires |Demande 3 de Force.
-- Méga sac à dos, permet d’avoir 12 emplacements supplémentaires |Demande 4 de Force.
-- Ultra sac à dos, permet d’avoir tout l’inventaire |Demande 5 de Force.
+La place de l’inventaire est donnée par la Force de votre personnage, sans sac à dos à choisir ; un sac à dos reste un objet possible de l’inventaire.
 
 L''inventaire de départ est déterminé par la Classe, allez voir directement les classes pour connaître votre inventaire de départ. Si jamais vous commencez avec 2 classes, prenez 5 objets parmi les 10 disponibles.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
@@ -6797,7 +6792,7 @@ Ce tableau correspond à ce que votre personnage maîtrise comme armes, plus il 
 
 Les maîtrises d’armes augmentent
 
-Concrètement : Aucune maîtrise d''arme = 1d de dégâts, 1 point de maîtrise = 2d de dégâts, etc.... Chaque catégorie d''arme possède son dé de dégâts, toutes les dagues feront le D6 et ainsi de suite. Plus de détails sur les armes [ici](https://docs.google.com/spreadsheets/u/0/d/1KkOG6FYjIf62Y_xLQxIE8aQTZFLlKPXmCB9e7XU3-vw/edit).
+Concrètement : Aucune maîtrise d''arme = 1d de dégâts, 1 point de maîtrise = 2d de dégâts, jusqu’à 4 points au plus par catégorie, donc 5 dés. Chaque arme possède son dé de dégâts, le plus souvent celui de sa catégorie : la plupart des dagues feront le D6 et ainsi de suite. Plus de détails sur les armes [ici](https://docs.google.com/spreadsheets/u/0/d/1KkOG6FYjIf62Y_xLQxIE8aQTZFLlKPXmCB9e7XU3-vw/edit).
 
 ## Armes
 
@@ -6816,9 +6811,9 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 Le sommet de la fiche contient le carré "Personnage" il s''agit, ni plus ni moins, des informations générales de votre personnage, il se décompose comme ceci :
 
 - **Nom** : Le nom complet de votre personnage.
-- **Race** : La race de votre personnage parmi les 23 disponibles. Il faut également préciser l''ethnie de votre [race](https://docs.google.com/spreadsheets/u/0/d/150Q6SJi4ft0oROtwT6snMAZUdWMVtkblxwYY9TqxV4Q/edit) (s''il y en a)
+- **Race** : La race de votre personnage parmi les 27 disponibles. Il faut également préciser l''ethnie de votre [race](https://docs.google.com/spreadsheets/u/0/d/150Q6SJi4ft0oROtwT6snMAZUdWMVtkblxwYY9TqxV4Q/edit) (s''il y en a)
 - **Origine** : Le lieu de naissance du personnage.
-- **{{alignement}}** : C''est ici qu''on note l''alignement ainsi que le score d''alignement (gauche = score Loyal/Chaos, droite = score Bon/Mauvais). Vous pouvez retrouver plus d''informations [ici](https://docs.google.com/document/u/0/d/17VxGUwjzEZWElwIYVaXvaaumqFM4yKnO1C7uhVyc9iM/edit).
+- **{{alignement}}** : C''est ici qu''on note l''alignement ainsi que les quatre scores d''alignement : Loyal (L), Chaos (C), Bon (B) et Mauvais (M). Vous pouvez retrouver plus d''informations [ici](https://docs.google.com/document/u/0/d/17VxGUwjzEZWElwIYVaXvaaumqFM4yKnO1C7uhVyc9iM/edit).
 - **Surnom** : Le surnom de votre personnage, souvent utilisé pour les noms de scène.
 - **Magie innée** : C’est ici qu’on indique la magie innée du personnage, tout le monde en possède une. Certaines races possèdent des interdits au niveau des magies, donc prudence.
 - **Magie acquise** : C’est ici qu’on note la seconde magie que possède le personnage, avoir une magie acquise n’est pas obligatoire contrairement à la magie innée. Attention, certaines magies ne peuvent pas se mélanger entre elles, aller [ici](https://docs.google.com/spreadsheets/u/0/d/1fF2buZjbCm3xdQ-Qa8vRecxj03do3hsE8_k_cfYnIR0/edit) pour plus d’info.
@@ -6829,7 +6824,7 @@ Le sommet de la fiche contient le carré "Personnage" il s''agit, ni plus ni moi
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-tableau-magie', 'guide', 'fiche-tableau-magie', 'Fiche de personnage : Tableau magie', 'fiche-de-personnage-tableau-magie', 'Plutôt simple, vous multipliez le nombre de conditions remplies par votre niveau de puissance magique de votre personnage et vous avez le nombre d’emplacements de sorts que votre personnage possède.', NULL, 'Et voici là où vous inscrivez votre (vos) magie(s), cet espace semble vide d’indication mais laissez-moi vous expliquer comment ça marche - Pour avoir des sorts il faut remplir certaines conditions qui sont au nombre de 4 :
 
 - Avoir une magie innée. (condition par défaut remplie car vous en avez forcément une)
-- Avoir une magie acquise.
+- Avoir une magie acquise, ou le don « Grimoire » de l’Archimage, qui compte comme elle sans donner de seconde magie.
 - Avoir une classe magique.
 - Avoir une seconde classe magique.
 
@@ -6862,8 +6857,8 @@ C''est la posture d''attaque par excellence, si on veut taper et faire beaucoup 
 En opposition avec la posture offensive, la posture défensive est faite pour quelqu''un qui souhaite couvrir ses alliés ou bien se protéger de multiples assauts. Ses effets sont :
 
 - **+2AP/AM :** L’armure physique et magique augmente quand cette posture est prise. Cela augmente de +2 tous les 4 niveaux globaux du personnage.
-- **Parade/Esquive illimitée :** Permet d''esquiver ou de parer tous les coups dans un tour MAIS chaque coup va diminuer la réussite de la prochaine parade/esquive de 10%.
-- **Provocation :** Permet en échange d''un bon dialogue et d''un jet de diplomatie, intimidation ou manipulation réussi, d''obliger un adversaire à venir vous attaquer que vous pendant 1 tour.
+- **Parade/Esquive illimitée :** Permet d''esquiver ou de parer tous les coups dans un tour MAIS au-delà de deux parades ou esquives, chaque coup va diminuer la réussite de la prochaine parade/esquive de 10%.
+- **Provocation :** Permet en échange d''un bon dialogue ou d''un jet de diplomatie, intimidation ou manipulation réussi, d''obliger un adversaire à venir vous attaquer que vous pendant 1 tour.
 - **Intervention :** Permet de parer/esquiver le coup à la place d''un allié adjacent.
 - **+5% à la réussite critique avec une défense :** La réussite critique (ou coup critique) est de base à 5 ou moins, grâce à la posture défensive, cette réussite critique monte à 10 ou moins quand on esquive ou pare une attaque.
 - **Divise les dégâts par 2 infligés :** Armes ou Magie, les dégâts infligés seront divisés par 2, cette division intervient AVANT le calcul de l’armure.
@@ -6890,21 +6885,21 @@ Cette posture permet d''être bien plus attentif à ce qu''il se passe autour de
 
 - **+5% pour un jet de Perception :** Permet d''avoir un bonus de 5% à tout jet impliquant la caractéristique Perception.
 - **+2 Initiative :** Permet d''avoir un bonus d''initiative de +2 lors du début de chaque tour.
-- **Peut anticiper les actions adverses :** Permet grâce un jet d''observation/distinction d''avoir une info intéressante sur la prochaine action de l''adversaire, voir le mj pour ça.
+- **Peut anticiper les actions adverses :** Permet grâce un jet d''observation d''avoir une info intéressante sur la prochaine action de l''adversaire, voir le mj pour ça.
 - **Repérer un adversaire invisible devient un IC :** Permet à l’action “estimer la position d’un ennemi invisible ou discret” de devenir un IC.
-- **Peut repérer 1d4 résistance/vulnérabilité :** Permet d’utiliser un IC pour détecter une résistance ou vulnérabilité aléatoire de l’ennemi.
+- **Peut repérer 1d4 résistance/vulnérabilité :** Permet d’utiliser un IC pour détecter 1d4 résistances ou vulnérabilités de l’ennemi.
 - **Une seule parade/esquive par tour :** Permet d''esquiver ou de parer une fois par tour.
 
 ## Symbiose
 
 Cette posture étrange permet d''être en parfaite fusion avec sa magie, dans cette posture vous êtes presque comme un élémentaire. Il faut savoir que cette posture permet d''être meilleur avec sa magie mais dans le cas où vous êtes bi-magie, vous devez choisir une magie avec qui faire équipe et délaisser l''autre le temps de la posture. Ses effets sont :
 
-- **+5 dégâts/soin avec une magie :** Permet d''infliger un bonus de dégâts de +6 ou alors un bonus de +5 avec un sort de soin. Cela augmente de +2 tous les niveaux de puissance magique (le premier niveau ne compte pas)
+- **+5 dégâts/soin avec une magie :** Permet d''infliger un bonus de dégâts de +5 ou alors un bonus de +5 avec un sort de soin. Cela augmente de +2 tous les niveaux de puissance magique (le premier niveau ne compte pas)
 - **+4 AM :** Permet d''avoir une plus grande armure magique dans cette posture. Cela augmente de +2 tous les niveaux de puissance magique (le premier niveau ne compte pas)
 - **Immunité à la magie de la symbiose :** La magie avec laquelle vous avez fait la symbiose vous envahit et vous devenez totalement immunisé à celle-ci.
 - **Une seule parade/esquive par tour :** Permet d''esquiver ou de parer une fois par tour.
-- **Impossible d''utiliser les objets et armes (sauf forgemagie) :** Vous êtes quasiment un élémentaire, les armes physiques et les objets ne sont pas dans votre optique (la forgemagie est un sort qui permet de créer des armes faites de magie, donc c''est bon)
-- **Une seule magie active :** Quand vous avez 2 magies, 1 de ces magies doit être désactivée temporairement, ainsi tous ses avantages et inconvénients sont annulés également.
+- **Ni armes ni objets, on ne peut que lancer des sorts :** Vous êtes quasiment un élémentaire : la Forgemagie (qui crée des armes faites de magie) et la « Forge de ses morts » sont des sorts. Les parchemins restent permis, et les effets passifs restent actifs : accessoires, bâtons magiques, armure et bouclier portés. L’arme élémentaire de la magie de la symbiose reste utilisable et reçoit le bonus de dégâts de la posture ; les autres armes restent interdites.
+- **Une seule magie active :** Quand vous avez 2 magies, 1 de ces magies doit être désactivée temporairement : elle perd ses sorts et ses résistances et faiblesses, et rien d’autre (son effet de Mode Hyper, sa ressource propre, la santé et le chakra qu’elle offre et le +1 de caractéristique de la magie innée restent).
 
 ## Mode Hyper
 
@@ -6942,7 +6937,7 @@ La fiche range les dons du personnage dans plusieurs cases :
 - **Base** : *Méditation* ou *Repos*, donné par la race ;
 - **Race** : le don de race ;
 - **Métier** : un {{metier|métier}} se choisit à la création ou plus tard dans l’aventure, et donne des bonus ({{regles-des-metiers}}) ;
-- **Entraînement** : les compétences que le personnage fait progresser en s’entraînant, au fil du jeu ({{sentrainer|S’entraîner et exercer un métier}}) ;
+- **Entraînement** : les compétences que le personnage fait progresser en s’entraînant, au fil du jeu ({{sentrainer}}) ;
 - **Classes** : les dons gagnés aux niveaux de classe ;
 - **Événements** : des dons, bons ou mauvais, qui peuvent arriver sans prévenir.
 
@@ -6967,7 +6962,7 @@ L’alignement décrit la morale du personnage. Il n’est pas choisi une fois p
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/formule-des-degats', 'guide', 'formule-des-degats', 'Formule des dégâts', 'formule-des-degats', 'Il est important de bien prendre en compte cette formule lors du calcul des dégâts.', NULL, 'Il est important de bien prendre en compte cette formule lors du calcul des dégâts :
 
-Dégâts finaux = **`[[[Dégâts du lanceur x Réussite critique (donc par 2) - Armure physique/Armure magique de la cible] ÷ Parade/Esquive partiel (donc par 2)]] ÷ Don qui divise les dégâts] x Résistance ou Faiblesse magique/physique`**
+Dégâts finaux = **`[[[(Dégâts du lanceur + bonus fixes) x Réussite critique (donc par 2) ÷ Posture défensive de l''attaquant (donc par 2) - Armure physique/Armure magique de la cible] ÷ Parade/Esquive partiel (donc par 2)]] ÷ Don qui divise les dégâts] x Résistance ou Faiblesse magique/physique`**
 
 ## Exemple 1
 
@@ -7034,7 +7029,7 @@ Le MJ peut déployer la carte mais il peut ne pas la déployer si jamais il juge
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/initiative', 'guide', 'initiative', 'Initiative', 'initiative', 'Quelques effets changent l’initiative : la posture de vigilance donne un bonus d’initiative au début de chaque tour (voir Les postures), et un coup reçu à la jambe gauche en fait perdre au tour suivant (voir le tableau « Localisation des dégâts » de Attaque et Défense).', NULL, 'Quelques effets changent l’initiative : la posture de vigilance donne un bonus d’initiative au début de chaque tour (voir {{posture|Les postures}}), et un coup reçu à la jambe gauche en fait perdre au tour suivant (voir le tableau « Localisation des dégâts » de {{attaque-et-defense}}). Les boss, eux, ont deux initiatives par tour : on lance deux D20 pour eux.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/jet-de-des', 'guide', 'jet-de-des', 'Jet de dés', 'jet-de-des', 'Comme expliqué plus haut, le jeu de rôle et notamment celui-ci c''est beaucoup de jets de dés, il existe plusieurs façons de procéder à ça.', NULL, 'Comme expliqué plus haut, le jeu de rôle et notamment celui-ci c''est beaucoup de jets de dés, il existe plusieurs façons de procéder à ça :
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/jet-de-des', 'guide', 'jet-de-des', 'Jet de dés', 'jet-de-des', 'Le jeu de rôle et notamment celui-ci c''est beaucoup de jets de dés, il existe plusieurs façons de procéder à ça.', NULL, 'Le jeu de rôle et notamment celui-ci c''est beaucoup de jets de dés, il existe plusieurs façons de procéder à ça :
 
 - Le maître du jeu gère tous les jets de dé y compris ceux des joueurs.
 - Chacun gère ses propres jets, en sachant que les jets des joueurs sont toujours ouverts.
@@ -7113,7 +7108,7 @@ La posture de vigilance permet de contrer l’embuscade. Si la victime est en vi
 
 Pour activer l’embuscade, il faut consommer son action. La posture, le déplacement et les ic sont possibles.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/l-equipement', 'guide', 'l-equipement', 'L’équipement', 'lequipement', 'Les armes et leurs dégâts, l’armure et sa solidité, le bouclier, les accessoires, la ceinture et le sac : ce que porte votre personnage et comment s’en servir.', NULL, 'Tout l’équipement du jeu est sur la page {{armes|Équipement}} : les armes, les armures, les boucliers, les objets de ceinture et les accessoires, avec leurs prix, leurs matériaux et leurs améliorations. Les matériaux eux-mêmes sont sur la page {{composants}}. Cette page explique comment se servir de tout cela.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/l-equipement', 'guide', 'l-equipement', 'L’équipement', 'lequipement', 'Les armes et leurs dégâts, l’armure et sa solidité, le bouclier, les accessoires, la ceinture et le sac : ce que porte votre personnage et comment s’en servir.', NULL, 'Tout l’équipement du jeu est dans la rubrique Équipement du menu, une page par catégorie : les {{armes|armes}}, les {{armures|armures}}, les {{bouclier|boucliers}}, les objets de {{ceinture|ceinture}} et les {{accessoires|accessoires}}, avec leurs prix, leurs matériaux et leurs améliorations. Les matériaux eux-mêmes sont sur la page {{composants}}. Cette page explique comment se servir de tout cela.
 
 ## Les armes
 
@@ -7172,7 +7167,7 @@ Le bouclier compte à part (voir plus bas), et la posture défensive ajoute de l
 ### Une armure, deux matériaux
 
 - Une armure se fabrique et se porte **entière** : on ne la fabrique plus pièce par pièce.
-- Elle est faite de deux matériaux, dont les bonus s’additionnent : cuir et cuir donnent 4 AP, écailles et bois 8 AP et 1 AM. La grille de l’onglet {{armures}} donne chaque combinaison : sa catégorie (léger, intermédiaire ou lourd), son AP et son AM, sa {{solidite|solidité}}, et les coups auxquels elle résiste ou contre lesquels elle est faible.
+- Elle est faite de deux matériaux, dont les bonus s’additionnent : cuir et cuir donnent 4 AP, écailles et bois 9 AP et 9 AM. La grille de la page {{armures}} donne chaque combinaison : sa catégorie (léger, intermédiaire ou lourd), son AP et son AM, sa {{solidite|solidité}}, et les coups auxquels elle résiste ou contre lesquels elle est faible.
 - Son prix : 10 RO de fabrication, plus 6 unités de chacun de ses deux matériaux, au prix de la page Composants (12 unités pour une armure d’un seul matériau). *Exemple : l’armure Cuir/Peau coûte 10 + 6 × 2 + 6 × 1 = 28 RO.* Avec ses propres matériaux, il ne reste que les 10 RO.
 - Les armures particulières (vêtements, cottes de mailles, armures de familiers…) ont leur propre prix, pour l’armure entière, et s’améliorent comme les autres.
 - Une armure de la catégorie *Lourd* retire 1 point de vitesse et rend la vitesse de nage nulle.
@@ -7209,7 +7204,7 @@ Chaque armure se comporte à sa façon contre les trois types de dégâts physiq
 
 ### Améliorer son armure
 
-Une armure s’améliore de +1 à +5, toujours entière, une étape après l’autre. Chaque niveau donne l’AP et l’AM qu’il écrit, +2 au +1, jusqu’à +10 au +5, et un cran de solidité de plus à partir du +4. Les prix sont dans l’onglet Armures.
+Une armure s’améliore de +1 à +5, toujours entière, une étape après l’autre. Chaque niveau donne l’AP et l’AM qu’il écrit, +2 au +1, jusqu’à +10 au +5, et un cran de solidité de plus à partir du +4. Les prix sont sur la page {{armures}}.
 
 ## Les pièces élémentaires
 
@@ -7220,14 +7215,14 @@ Posée sur une arme, une armure ou un vêtement, une {{piece-elementaire|pièce 
 - Quels que soient son matériau, son amélioration et son état, cassée ou non, l’armure **devient l’armure élémentaire** de la magie de la pièce et de son poids : *Vêtement*, *Léger*, *Intermédiaire* ou *Lourd*. Seul le poids compte. Chacune des 14 magies a ses quatre armures élémentaires ; le Potentiel Illimité n’a pas de pièce élémentaire.
 - Elle perd tout ce qu’elle avait : l’AP, l’AM, les résistances ou faiblesses aux coups de l’armure d’origine, et son amélioration. Elle **repart sans amélioration** : seuls comptent l’AP, l’AM et les effets de l’armure élémentaire, puis ceux de sa nouvelle amélioration.
 - Elle s’améliore de +1 à +5, avec les gemmes de sa magie (le rubis pour le Feu, le saphir pour l’Eau…), selon le tableau de la page {{piece-elementaire|Pièces élémentaires}} : +2 AP et AM au +1, jusqu’à +10 au +5. Chaque étape se paie à son tour : passer de 0 à +2 coûte 2 gemmes communes, puis 2 gemmes raffinées.
-- Sa {{solidite|solidité}} est de **4 crans**, plus un au +4 et un autre au +5. Elle se compte sur les **six parties**, comme celle de toute armure : chacune de 0 au maximum.
+- Sa {{solidite|solidité}} est de **4 crans**, 5 au +4 et au +5 (la ligne d’amélioration donne le total). Elle se compte sur les **six parties**, comme celle de toute armure : chacune de 0 au maximum.
 - Il faut posséder sa magie pour la porter : la fiche ne propose que les armures élémentaires de la magie innée et de la magie acquise du personnage, dans la même liste que les autres armures et jusqu’à son poids portable, avec l’amélioration qu’elles ont déjà. Une armure élémentaire dont le personnage n’a plus la magie est retirée de la fiche et notée, datée, dans ses notes.
 - Portée, elle donne le **cran de résistance** qu’écrivent ses effets : +1 cran à sa magie, tel qu’écrit (l’armure de l’Arcane le donne à la Corruption, celle de la Corruption à l’Arcane) ; le Vêtement de Glace, *Tissu du froid*, donne aussi +1 cran au Feu et l’immunité à la Brûlure. La fiche les compte dans son tableau « Résistances et faiblesses » : ils s’additionnent aux crans des magies du personnage et à ceux de ses accessoires, et une immunité écrite l’emporte. Seule l’armure portée compte ; elle les donne même quand ses parties sont à 0, et même quand sa magie est celle que la posture de symbiose laisse inactive. Ses autres effets (sur les ennemis, pour un temps, selon la situation) et son amélioration ne donnent aucune résistance.
 - Les armures de familier ne se transforment pas.
 
 ### L’arme transformée
 
-Une arme devient l’arme élémentaire de sa famille et de la magie (tout arc et le Sang donnent l’Arc de Sang) : elle a le dé et la portée de son type et +8 aux dégâts, et elle perd tout le reste, son bonus, son dé, sa portée, son matériau et son amélioration (décision R167). Une arme élémentaire a une {{solidite|solidité}} de 4 crans, plus les crans de la ligne d’amélioration choisie : 5 du +5 au +9, 6 au +10 (décision R167).
+Une arme devient l’arme élémentaire de sa famille et de la magie (tout arc et le Sang donnent l’Arc de Sang) : elle a le dé et la portée de son type et +8 aux dégâts, et elle perd tout le reste, son bonus, son dé, sa portée, son matériau et son amélioration. Une arme élémentaire a une {{solidite|solidité}} de 4 crans, plus les crans de la ligne d’amélioration choisie : 5 du +5 au +9, 6 au +10.
 
 ## Le bouclier
 
@@ -7239,12 +7234,12 @@ Une arme devient l’arme élémentaire de sa famille et de la magie (tout arc e
 - À 0 de {{solidite|solidité}}, le bouclier est cassé : ses AP et son AM ne comptent plus.
 - Le bouclier ne va pas à la ceinture : il a son emplacement dans l’armure.
 
-Tous les boucliers, avec leur poids et leur prix, sont dans l’onglet {{bouclier|Boucliers}}.
+Tous les boucliers, avec leur poids et leur prix, sont sur la page {{bouclier|Boucliers}}.
 
 ## Les accessoires
 
 - Un personnage a **six emplacements** d’accessoires : le chef (la tête), le collier, deux bracelets et deux bagues.
-- Chaque accessoire porte un effet de la table des accessoires : le générateur de l’onglet {{accessoires}} en tire un aux dés, étape par étape. Deux accessoires ne peuvent pas avoir le même effet.
+- Chaque accessoire porte un effet de la table des accessoires : le générateur de la page {{accessoires}} en tire un aux dés, étape par étape. Deux accessoires ne peuvent pas avoir le même effet.
 - La fiche compte leurs effets : un point de caractéristique (sans dépasser 4 ni les limites de la race), des points acquis dans une compétence au choix de la caractéristique visée, des dégâts, de l’armure…
 - Un accessoire **maudit** a l’effet contraire de celui qui est écrit : +1 en Force devient −1 en Force. Il ne peut être retiré que par un enchanteur, contre le prix que l’accessoire devrait coûter. Une malédiction qui tombe en tirant un accessoire le rend maudit, et l’on refait le tirage à partir de l’étape 2, au même emplacement ; une seconde malédiction le détruit.
 
@@ -7309,7 +7304,7 @@ Les périls et les intrigues ne manquent pas non plus : sectes dissidentes comme
 
 Reste à créer votre héros : voir {{creer-son-personnage}}, et le {{glossaire|glossaire}} pour les termes du jeu.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/la-magie-en-jeu', 'guide', 'la-magie-en-jeu', 'La magie en jeu', 'la-magie-en-jeu', 'Lancer un sort et ce qu’il coûte, même raté ; payer sans chakra ; les sorts IC, les sorts de niveau 5 qui se chargent, les niveaux de maîtrise (NM) et ce qui renforce vos sorts.', NULL, 'Tout personnage a au moins une magie, et donc au moins un sort : comment les choisir est expliqué dans {{etape-5-choisir-ses-premiers-sorts|Créer son personnage}}. Cette page explique comment s’en servir en partie.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/la-magie-en-jeu', 'guide', 'la-magie-en-jeu', 'La magie en jeu', 'la-magie-en-jeu', 'Lancer un sort et ce qu’il coûte, même raté ; payer sans chakra ; les sorts IC, les sorts de niveau 5 qui se chargent, les niveaux de maîtrise (NM) et ce qui renforce vos sorts.', NULL, 'Tout personnage a au moins une magie, et donc au moins un sort : comment les choisir est expliqué dans {{etape-5-choisir-ses-premiers-sorts}}. Cette page explique comment s’en servir en partie.
 
 ## Lire un sort
 
@@ -7361,7 +7356,7 @@ La Nécromancie et la magie du Sang ont une réserve à elles, la **quatrième b
 
 ### La corruption
 
-Pour la plupart des personnages, la {{corruption|corruption}} est un poison mortel ; pour tous, chaque point prend la place d’un point de {{chakra|chakra}} (voir {{blessure-et-mort|Blessures et états}}).
+Pour la plupart des personnages, la {{corruption|corruption}} est un poison mortel ; pour tous, chaque point prend la place d’un point de {{chakra|chakra}} (voir {{blessure-et-mort}}).
 
 Les mages de la Corruption s’en servent au contraire comme d’une réserve. À chaque sort, son coût en {{chakra|chakra}} passe dans leur {{corruption|corruption}} : un sort qui coûte 4 leur donne 4 de {{corruption|corruption}}. Ils peuvent ensuite puiser dans cette réserve pour lancer les mêmes sorts avec des effets en plus, en payant le double du coût en {{corruption|corruption}} (8 pour un sort à 4). Les effets marqués « Si {{corruption|CR}} » sont ceux d’un sort lancé ainsi, en utilisant la {{corruption|corruption}}. Ailleurs, dans les dégâts, soins ou {{barriere|barrière}} d’un sort (D/S/B) ou dans ses effets, « N {{corruption|CR}} » fait monter la {{corruption|corruption}} de la cible, sauf le sort de soin Retrait, qui en retire ; dans un coût, c’est la {{corruption|corruption}} à dépenser. L’inverse ne marche pas : la {{corruption|corruption}} ne redonne jamais de {{chakra|chakra}}. Et, comme pour tous, chaque point de {{corruption|corruption}} empêche de récupérer un point de {{chakra|chakra}} : c’est en gros la même réserve, remplie avec autre chose ; seule la mort au maximum leur est épargnée, s’ils ont la Corruption en magie innée ou acquise. Le Potentiel Illimité, même s’il peut s’en servir, peut en mourir s’il en cumule trop.
 
@@ -7391,11 +7386,12 @@ Un sort se renforce avec ses **niveaux de maîtrise**, de 0 à 3. Ce que chaque 
 
 ### Gagner des NM
 
-Un NM s’obtient de trois façons :
+Un NM s’obtient de quatre façons :
 
 - **par niveau** : à chaque niveau, à partir du niveau 2, le personnage gagne un NM à placer sur le sort de son choix, et il peut le réaffecter librement ;
 - **par la lecture d’un livre de sort** : le livre donne un NM à un sort précis, qui lui reste lié ; si le personnage retire ce sort de sa liste, le NM attend qu’il le reprenne. Lire le livre demande un jet par niveau de puissance du sort, un par jour au plus (voir {{livre-parchemin|Livres et parchemins}}) ;
-- **en cadeau du MJ**.
+- **en cadeau du MJ** ;
+- **par un don** : « Maîtrise » de l’Ocultomancien (niveau de classe 20) donne 4 NM gagnés, qui s’ajoutent à ceux des niveaux ; ce ne sont pas des NM du MJ.
 
 Un sort a au plus **3 NM**, quelle que soit leur origine :
 
@@ -7445,17 +7441,17 @@ Une compétence ne reçoit pas plus de **20 points naturels**. Ce **maximum natu
 
 ### Un point de caractéristique de plus
 
-Aux niveaux où la colonne « Et aussi » indique une caractéristique à répartir, le personnage gagne un point de caractéristique de plus, à répartir dans les limites habituelles des caractéristiques (voir l’étape 4 de {{etape-4-repartir-caracteristiques-et-competences|Créer son personnage}}). Le total de ses caractéristiques, 14 à la création, augmente d’autant ; le point offert par la magie innée n’y est pas compté. Comme à la création, ce total doit tomber juste.
+Aux niveaux où la colonne « Et aussi » indique une caractéristique à répartir, le personnage gagne un point de caractéristique de plus, à répartir dans les limites habituelles des caractéristiques (voir {{etape-4-repartir-caracteristiques-et-competences}}). Le total de ses caractéristiques, 14 à la création, augmente d’autant ; le point offert par la magie innée n’y est pas compté. Comme à la création, ce total doit tomber juste.
 
 ### De la santé et du chakra
 
-Chaque nouveau niveau donne des **points d’attributs** (colonne « Points d’attributs »), à répartir comme vous le voulez entre la **santé** et le **{{chakra|chakra}}**. À certains niveaux s’y ajoute un **dé d’attributs bonus**, que la colonne « Et aussi » décrit.
+Chaque nouveau niveau donne des **points d’attributs** (colonne « Points d’attributs »), à répartir comme vous le voulez entre la **santé** et le **{{chakra|chakra}}** (avec le {{potentiel-illimite|Potentiel Illimité}} en magie innée, 5 santé au plus par niveau sur ces points, le dé bonus en plus). À certains niveaux s’y ajoute un **dé d’attributs bonus**, que la colonne « Et aussi » décrit.
 
 Sur la fiche du site, ces gains se notent en **deux totaux** : la santé gagnée et le {{chakra|chakra}} gagné depuis le niveau 1. À côté, la fiche rappelle le **total à saisir** : la somme des points d’attributs des niveaux atteints, et, dès qu’un dé bonus a été atteint, la plage de ce que les dés peuvent donner en plus. Un total qui n’y correspond pas est signalé.
 
 ### Des niveaux de classe
 
-Chaque classe a son propre niveau, qui suit le niveau global. Tout dépend du choix fait à la création (section « Une ou deux classes : le biclassage » de {{etape-3-choisir-sa-classe|Créer son personnage}}) :
+Chaque classe a son propre niveau, qui suit le niveau global. Tout dépend du choix fait à la création (section « Une ou deux classes : le biclassage » de {{etape-3-choisir-sa-classe}}) :
 
 - **Une seule classe** : elle commence au niveau 2 et gagne **2 niveaux** à chaque niveau global. Elle atteint donc le niveau 20 au niveau global 10 et s’y arrête. Au niveau global 11, le personnage prend automatiquement une **seconde classe**, qui reçoit la suite : elle commence au niveau 2 et gagne à son tour 2 niveaux à chaque niveau global.
 - **Deux classes** : elles commencent chacune au niveau 1, et gagnent chacune **1 niveau** à chaque niveau global.
@@ -7469,18 +7465,19 @@ Les dons d’une classe se gagnent aux niveaux **1, 5, 10, 15 et 20 de cette cla
 ### Des progrès en magie
 
 - **Des niveaux de maîtrise (NM)**, aux niveaux qu’indique la colonne « Niveau de maîtrise d’un sort » : chacun se place sur l’un de ses sorts pour le renforcer (ce qu’apporte un NM est écrit sur chaque sort). Un sort n’a jamais plus de **3 NM**, quelle que soit leur origine : les livres de sort et le MJ peuvent aussi en donner (voir {{la-magie-en-jeu}}).
-- **La puissance magique**, qui augmente aux niveaux qu’indique la colonne « Et aussi ». Elle dit jusqu’à quel niveau de sort (NPM) le personnage peut lancer, et elle multiplie ses emplacements de sorts : chaque condition remplie (avoir une magie innée, une magie acquise, une classe magique, une seconde classe magique) donne autant d’emplacements que la puissance magique.
+- **La puissance magique**, qui augmente aux niveaux qu’indique la colonne « Et aussi ». Elle dit jusqu’à quel niveau de sort (NPM) le personnage peut lancer, et elle multiplie ses emplacements de sorts : chaque condition remplie (avoir une magie innée, une magie acquise ou le don « Grimoire » de l’Archimage, une classe magique, une seconde classe magique) donne autant d’emplacements que la puissance magique.
 - **Avec une magie acquise**, les sorts de NPM 5 restent fermés ; les emplacements de ce palier, eux, s’ouvrent quand même.
+- **Avec le {{potentiel-illimite|Potentiel Illimité}}** en magie innée, le choix des sorts a de plus son propre plafond, donné sur la page de sa magie et relevé par le don « Semi-complet » de l’Archimage, jamais avant le niveau où la puissance magique l’ouvre ; ce plafond ne change pas le nombre d’emplacements.
 
 *Exemple : avec une magie innée et une classe magique, deux conditions sont remplies : le personnage a deux fois autant d’emplacements de sorts que sa puissance magique, soit 6 emplacements à la puissance magique 3. Il n’y a jamais d’emplacement en plus.*
 
 ### Le Mode Hyper, la Méditation et le Repos
 
-La colonne « Et aussi » dit encore quand s’ouvrent le **Mode Hyper** et le **Mode Hyper 100 %** (voir {{mode-hyper|Le Mode Hyper et le Mode Super}}), et quand le don de base, **Méditation** ou **Repos**, rend davantage, avec ses dés.
+La colonne « Et aussi » dit encore quand s’ouvrent le **Mode Hyper** et le **Mode Hyper 100 %** (voir {{mode-hyper|Le Mode Hyper}}), et quand le don de base, **Méditation** ou **Repos**, rend davantage, avec ses dés.
 
 ## Pour aller plus loin
 
-- Gagner des points d’acquis sans attendre le niveau suivant : {{sentrainer|S’entraîner et exercer un métier}}.
+- Gagner des points d’acquis sans attendre le niveau suivant : {{sentrainer}}.
 - Le tableau tel que l’écrit le document des règles : {{fiche-de-personnage-experience-niveau-global}}.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/le-mode-hyper', 'guide', 'le-mode-hyper', 'Le Mode Hyper', 'le-mode-hyper', 'L’état de surpuissance qui s’ouvre au niveau 2 : ce qu’il donne, ce qu’il coûte, et ce qui arrive quand on le pousse au-delà de ses limites.', NULL, '> « Ne plus faire qu’un avec soi-même. »
@@ -7531,12 +7528,12 @@ La page de chaque magie et de chaque race donne l’effet écrit dans son onglet
 
 ## Au-delà des limites
 
-On peut garder son Mode Hyper au-delà de ses limites, quand la réserve de {{chakra|chakra}} est épuisée ou que les tours sont passés. Mais le corps et l’esprit le paient, une fois le mode relâché. Selon le nombre de tours en trop :
+On peut garder son Mode Hyper au-delà de ses limites, quand les tours de sa durée sont passés (le {{chakra|chakra}} épuisé, lui, se paie en santé et ne fait pas compter de tour en trop). Mais le corps et l’esprit le paient, une fois le mode relâché. Selon le nombre de tours en trop :
 
 1. **1 tour** : ses résistances magiques sont brisées pendant 24 h.
 2. **2 tours** : ses vulnérabilités sont accentuées pendant 24 h (pour les magies de l’Arcane, de la Corruption et du Potentiel Illimité : 2 faiblesses aléatoires).
 3. **3 tours** : 3 croix sur des caractéristiques tirées au hasard, pendant 24 h (une croix retire 20 % aux jets de sa caractéristique ; voir {{reussir-une-action}}).
-4. **4 tours** : il tombe dans le coma, et perd toute sa santé (voir {{blessure-et-mort|Blessures et états}}).
+4. **4 tours** : il tombe dans le coma, et perd toute sa santé (voir {{blessure-et-mort}}).
 5. **5 tours** : le Mode Hyper se désactive, et il a une chance sur deux de mourir.
 
 ## Sur la fiche du site
@@ -7564,11 +7561,11 @@ Au début du combat, le MJ prépare de quoi noter les initiatives de tous, joueu
 
 ### 1. L’initiative
 
-Le MJ annonce le début du tour. Chaque joueur lance 1D20 et ajoute le bonus d’initiative de son personnage, qui vient de son Agilité (le tableau est dans {{etape-6-finaliser-son-personnage|Créer son personnage}}) ; le MJ fait de même pour les PNJ et les ennemis. On joue du plus haut résultat au plus bas. Les initiatives se relancent **à chaque tour**.
+Le MJ annonce le début du tour. Chaque joueur lance 1D20 et ajoute le bonus d’initiative de son personnage, qui vient de son Agilité (le tableau est dans {{etape-6-finaliser-son-personnage}}) ; le MJ fait de même pour les PNJ et les ennemis. On joue du plus haut résultat au plus bas. Les initiatives se relancent **à chaque tour**.
 
 ### 2. Les effets de début de tour
 
-Avant de faire quoi que ce soit, le personnage dont c’est le tour subit ce qui le frappe en début de tour : poison, brûlure… (voir {{alteration-detat|Blessures et états}}).
+Avant de faire quoi que ce soit, le personnage dont c’est le tour subit ce qui le frappe en début de tour : poison, brûlure… (voir {{alteration-detat|Altérations d’états}}).
 
 ### 3. La posture
 
@@ -7662,7 +7659,7 @@ En clair, les attaques d''opportunités sont des occasions rares mais qui peuven
 
 La victime de l’attaque d’opportunité ne peut pas parer ou esquiver, **à moins d’être en posture défensive**.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/les-attaques-discretes', 'guide', 'les-attaques-discretes', 'Les attaques discrètes', 'les-attaques-discretes', 'Selon comment une situation évolue, il vous est peut-être venu à l''idée d''occire une cible discrètement, sans même qu''elle voie la mort arriver.', NULL, 'Selon comment une situation évolue, il vous est peut-être venu à l''idée d''occire une cible discrètement, sans même qu''elle voie la mort arriver. C''est ce que l''on appelle une attaque discrète (à ne pas confondre avec **l’attaque sournoise** qui vient d’une classe). Cela se traduit par un dé supplémentaire lors de votre jet de dégâts si et seulement si vous êtes en posture discrète (par exemple, au lieu de faire 2d6 avec votre dague, on passe à 3d6). Il est nécessaire de réussir un jet de ruse et qu’aucun ennemi ne vous voie clairement (voir avec le mj). Le fait de passer en mode discret consomme 3IC (2 si le joueur est voleur).
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/les-attaques-discretes', 'guide', 'les-attaques-discretes', 'Les attaques discrètes', 'les-attaques-discretes', 'Selon comment une situation évolue, il vous est peut-être venu à l''idée d''occire une cible discrètement, sans même qu''elle voie la mort arriver.', NULL, 'Selon comment une situation évolue, il vous est peut-être venu à l''idée d''occire une cible discrètement, sans même qu''elle voie la mort arriver. C''est ce que l''on appelle une attaque discrète (à ne pas confondre avec **l’attaque sournoise** qui vient d’une classe). Cela se traduit par un dé supplémentaire lors de votre jet de dégâts si et seulement si vous êtes en mode discret (par exemple, au lieu de faire 2d6 avec votre dague, on passe à 3d6). Il est nécessaire de réussir un jet de ruse et qu’aucun ennemi ne vous voie clairement (voir avec le mj). Le fait de passer en mode discret consomme 3IC (2 si le joueur est voleur).
 
 À noter que lors d''une attaque discrète, la cible doit effectuer un jet d’Observation ou de Distinction. Si elle réussit à faire mieux que le jet de discrétion précédent, la discrétion est annulée et donc les dégâts bonus aussi. Concernant la zone de vision d’un ennemi, on peut utiliser leur perception comme échelle (1 point de Perception = 2 cases pour repérer quelqu’un de caché)
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
@@ -7692,7 +7689,7 @@ L’AP et l’AM d’un personnage additionnent sa base (race, ethnie, 4 AM par 
 - **son bouclier** : ses AP et son AM ne comptent que sur une parade partielle faite avec lui ;
 - **un échec critique en défense** : son AP et son AM ne comptent pas du tout, et l’attaquant ajoute +8 à ses dégâts (ou autre chose, au choix du MJ).
 
-Contre un coup physique, l’armure portée réagit aussi à son type, **estoc**, **taille** ou **frappe** : contre un type auquel elle résiste, ses AP comptent double ; contre un type auquel elle est faible, ils comptent moitié ; un « x2 » double cet effet (quatre fois, ou un quart). L’onglet {{armures}} donne les résistances et les faiblesses de chaque armure. Une armure transformée par une pièce élémentaire perd celles de l’armure d’origine.
+Contre un coup physique, l’armure portée réagit aussi à son type, **estoc**, **taille** ou **frappe** : contre un type auquel elle résiste, ses AP comptent double ; contre un type auquel elle est faible, ils comptent moitié ; un « x2 » double cet effet (quatre fois, ou un quart). La page {{armures}} donne les résistances et les faiblesses de chaque armure. Une armure transformée par une pièce élémentaire perd celles de l’armure d’origine.
 
 ## Trois exemples
 
@@ -7732,7 +7729,7 @@ Le détail est dans {{attaquer-et-se-defendre}}, {{mode-hyper|Le Mode Hyper}} et
 
 La {{barriere|barrière}} est une seconde peau magique qui protège la chair : une sorte de santé magique, qui vaut la moitié du {{chakra|chakra}} total, arrondie à l’inférieur (plus ce qu’offrent certaines races et classes). Plus un personnage a de {{chakra|chakra}}, plus sa {{barriere|barrière}} est grande ; mais certains matériaux d’arme la contrent, comme le **Mythril**, qui passe à travers, ou le **Maverium**, qui la brise à son contact, si colossale soit-elle. Une arme de **Laiton**, elle, fait des dégâts doublés contre la {{barriere|barrière}} (voir l’onglet {{composants|Matériaux}} des composants).
 
-Elle prend les coups avant la santé, sauf contre-indication : une fois qu’elle est vide, ce qui reste des dégâts baisse la santé, qui peut alors devenir négative (voir {{blessure-et-mort|Blessures et états}}). Un coût payé en santé ({{chakra|chakra}} manquant, coût d’un sort ou d’un don) ne passe pas par elle, sauf si un texte le précise. Deux dons du Médusain la rendent moins touchée : « La barrière prend deux fois moins de dégâts physiques » (Barrière résistante) et « … magiques » (Barrière isolante). Contre une arme de Laiton, ces deux effets se compensent ; une arme de Maverium, elle, casse la barrière sans tenir compte du Médusain.
+Elle prend les coups avant la santé, sauf contre-indication : une fois qu’elle est vide, ce qui reste des dégâts baisse la santé, qui peut alors devenir négative (voir {{blessure-et-mort}}). Un coût payé en santé ({{chakra|chakra}} manquant, coût d’un sort ou d’un don) ne passe pas par elle, sauf si un texte le précise. Deux dons du Médusain la rendent moins touchée : « La barrière prend deux fois moins de dégâts physiques » (Barrière résistante) et « … magiques » (Barrière isolante). Contre une arme de Laiton, ces deux effets se compensent ; une arme de Maverium, elle, casse la barrière sans tenir compte du Médusain.
 
 ## La fiche fait le calcul
 
@@ -7984,7 +7981,7 @@ Encore une fois, on reprend le principe de niveau de porte ainsi que la matière
 
 - *Une porte en bois de niveau 15 aura 150 santé.*
 - *Une porte de fer de niveau 7 aura 140 santé.*
-- *Une porte de pierre de niveau 12 aura 240 santé.*
+- *Une porte de pierre de niveau 12 aura 480 santé.*
 
 ## Les herses
 
@@ -8000,7 +7997,7 @@ Ces obstacles ne peuvent pas être enfoncés, cet obstacle répond magiquement �
 
 Les portes magiques peuvent être crochetées ou détruites.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/les-postures', 'guide', 'les-postures', 'Les postures', 'les-postures', 'Les six postures de combat, à déclarer au début de chaque tour : ce que chacune apporte, ce qu’elle coûte, et ce qu’elle change à vos défenses.', NULL, 'Une **posture** est l’état dans lequel votre personnage aborde le combat. Il en existe six, et chacune a ses avantages et ses inconvénients : frapper plus fort, mieux se protéger, servir sa magie…
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/les-postures', 'guide', 'les-postures', 'Les postures', 'les-postures', 'Les six postures de combat, que l’on prend ou change au début de son tour et que l’on garde tant qu’on n’en change pas : ce que chacune apporte, ce qu’elle coûte, et ce qu’elle change à vos défenses.', NULL, 'Une **posture** est l’état dans lequel votre personnage aborde le combat. Il en existe six, et chacune a ses avantages et ses inconvénients : frapper plus fort, mieux se protéger, servir sa magie…
 
 ## Déclarer sa posture
 
@@ -8059,7 +8056,7 @@ L’attention : pour voir venir, autour de soi comme dans le combat.
 
 - **+5 % aux jets de Perception**.
 - **+2 à l’initiative**, au début de chaque tour.
-- **Anticiper l’adversaire** : un jet d’*Observation* donne une information utile sur sa prochaine action ; voyez avec le MJ.
+- **Anticiper l’adversaire** : en action rapide (IC), un jet d’*Observation* donne une information utile sur sa prochaine action ; voyez avec le MJ.
 - **Repérer un ennemi invisible** : estimer la position d’un ennemi invisible ou discret devient une action rapide (IC).
 - **Repérer 1d4 résistances ou vulnérabilités** : une action rapide (IC) permet de détecter 1d4 résistances ou vulnérabilités de l’ennemi.
 - **Déjouer une embuscade** : un personnage en vigilance qui entre dans la zone d’une embuscade l’annule (voir {{embuscade|L''embuscade}}).
@@ -8073,9 +8070,9 @@ Une posture étrange : le personnage fusionne avec sa magie et devient presque u
 - **+4 AM**, et 2 de plus par niveau de puissance magique au-delà du premier : +4, puis +6, +8, +10 et +12.
 - **Immunité à la magie de la symbiose** : elle vous envahit, et vous y devenez totalement immunisé.
 - *Inconvénient* : **ni armes ni objets** : on ne peut que lancer des sorts, et la Forgemagie (qui crée des armes faites de magie) et la « Forge de ses morts » en sont. Les parchemins restent permis, et les effets passifs restent actifs : accessoires, bâtons magiques, armure et bouclier portés.
-- Exception (décision R167) : l’arme élémentaire de la magie de la symbiose reste utilisable et reçoit le bonus de dégâts de la posture ; les autres armes restent interdites (décision R112).
+- Exception : l’arme élémentaire de la magie de la symbiose reste utilisable et reçoit le bonus de dégâts de la posture ; les autres armes restent interdites.
 - *Inconvénient* : **une seule parade ou esquive par tour**.
-- *Inconvénient* : **une seule magie active** : avec deux magies, l’autre est désactivée le temps de la posture, et tous ses avantages et ses inconvénients avec elle.
+- *Inconvénient* : **une seule magie active** : avec deux magies, l’autre est désactivée le temps de la posture : elle perd ses sorts et ses résistances et faiblesses, et rien d’autre (son effet de Mode Hyper, sa ressource propre, la santé et le chakra qu’elle offre et le +1 de caractéristique de la magie innée restent).
 
 ## Les boss
 
@@ -8375,7 +8372,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | --- |
 | Impossible de se défendre et demande un tour complet pour le retirer.<br>Les coups portés sur lui seront automatiquement des coups critiques. |
 ', 'draft', 'annexes', 'Google Sheet « Magie Maverick V8 », onglet « Altération détats »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/liste-des-effets-mode-super', 'guide', 'liste-des-effets-mode-super', 'Liste des effets mode super', 'liste-des-effets-mode-super', 'C''est un équivalent du mode hyper mais en moins puissant.', NULL, '"Ne faire plus qu''un avec son objet"
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/liste-des-effets-mode-super', 'guide', 'liste-des-effets-mode-super', 'Mode Super', 'mode-super', 'C''est un équivalent du mode hyper mais en moins puissant.', NULL, '"Ne faire plus qu''un avec son objet"
 
 ## Qu''est-ce que c''est ?
 
@@ -8662,7 +8659,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 Chacune de ces quatre conditions donne un emplacement de sort :
 
 1. avoir une magie innée (toujours remplie) ;
-2. avoir une magie acquise ;
+2. avoir une magie acquise, ou le don « Grimoire » de l’Archimage, qui compte comme elle sans donner de seconde magie ;
 3. avoir une classe magique ;
 4. avoir une seconde classe magique.
 
@@ -8708,7 +8705,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 Les résistances et les faiblesses se comptent en crans, qui s’additionnent : chaque résistance à une magie en ajoute un, chaque faiblesse en retire un. Un personnage à deux magies cumule ainsi celles de ses deux magies : deux résistances à la même magie font une grande résistance, deux faiblesses une grande vulnérabilité, et une résistance et une faiblesse s’annulent. L’Arcane et la Corruption résistent l’une à l’autre. Certains objets et équipements changent aussi ces crans : un accessoire de résistance, ou l’armure élémentaire portée, qui donne un cran de résistance à sa magie (voir {{lequipement}}).
 
-L’Arcane et la Corruption ne sont vulnérables à aucune magie, et leur seule résistance à une magie est l’une contre l’autre ; le Potentiel Illimité n’a ni résistance ni vulnérabilité.
+L’Arcane et la Corruption ne sont vulnérables à aucune magie, et leur seule résistance à une magie est l’une contre l’autre ; le Potentiel Illimité n’a ni résistance ni vulnérabilité à une magie (sa Surtension corporelle, qui touche les dégâts physiques, est décrite plus bas).
 
 Chaque magie possède ses efficacités, ses résistances et ses vulnérabilités propres d''une manière générale mais il faut savoir :
 
@@ -8740,8 +8737,8 @@ Chaque compétence a un **score**, en pourcentage, noté sur la fiche de personn
 > **Score = 10 × la caractéristique + les points naturels + les points acquis**
 
 - **La caractéristique.** Chaque compétence dépend de l’une des six caractéristiques : Force, Volonté, Intelligence, Perception, Social ou Agilité. Une caractéristique vaut de 1 à 4 en règle générale ; le point offert par la magie innée s’y ajoute et permet d’atteindre 5.
-- **Les points naturels.** Ce sont ceux que vous répartissez vous-même entre les compétences, à la création du personnage puis à chaque niveau (voir {{etape-4-repartir-caracteristiques-et-competences|Créer son personnage}} et {{la-montee-de-niveau}}).
-- **Les points acquis.** Ils ne se répartissent pas, ils se gagnent : par l’entraînement, par les dons de la race, de l’ethnie et de la classe, par l’armure portée, le métier et les accessoires (voir {{sentrainer|S’entraîner et exercer un métier}}). La {{fiche-de-personnage|fiche de personnage}} du site les additionne pour vous. En règle générale, ils ne dépassent pas **5 par point de la caractéristique**, le point de la magie innée compris : avec 5 en Volonté, pas plus de 25 points acquis dans une compétence de Volonté. Un don peut relever ce plafond.
+- **Les points naturels.** Ce sont ceux que vous répartissez vous-même entre les compétences, à la création du personnage puis à chaque niveau (voir {{etape-4-repartir-caracteristiques-et-competences}} et {{la-montee-de-niveau}}).
+- **Les points acquis.** Ils ne se répartissent pas, ils se gagnent : par l’entraînement, par les dons de la race, de l’ethnie et de la classe, par l’armure portée, le métier et les accessoires (voir {{sentrainer}}). La {{fiche-de-personnage|fiche de personnage}} du site les additionne pour vous. En règle générale, ils ne dépassent pas **5 par point de la caractéristique**, le point de la magie innée compris : avec 5 en Volonté, pas plus de 25 points acquis dans une compétence de Volonté. Un don peut relever ce plafond.
 
 *Exemple : un personnage a 3 en Perception, 15 points naturels et 5 points acquis en Observation. Son score d’Observation est de 3 × 10 + 15 + 5 = 50 % : il réussit sur un résultat de 50 ou moins.*
 
@@ -8831,6 +8828,7 @@ Comme tout l’acquis, ces points comptent dans le score de la compétence (voir
 Sur la {{fiche-de-personnage|fiche de personnage}} du site, chaque entraînement est une ligne du bloc « Entraînement », parmi les dons : une compétence et ses points, de 0 à 10. La fiche les ajoute d’elle-même à l’acquis de la compétence, et signale, sans rien bloquer, ce qui dépasse les limites. Le même bloc garde aussi :
 
 - les **livres de sort** lus : chacun donne un niveau de maîtrise (NM) au sort qu’il enseigne, un seul par sort (voir {{la-magie-en-jeu}}) ;
+- en texte libre, les **dons évènementiels** et ce que le MJ accorde.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/un-maitre-du-jeu', 'guide', 'un-maitre-du-jeu', 'Un maître du Jeu', 'un-maitre-du-jeu', 'Incarner et jouer un personnage dans une partie de jeu de rôle c''est une chose, mais être le maître du jeu est une autre paire de manches.', NULL, 'Incarner et jouer un personnage dans une partie de jeu de rôle c''est une chose, mais être le maître du jeu est une autre paire de manches. C''est bien plus de travail en amont et au sein même de l''action mais ça peut être très gratifiant, surtout pour ceux qui ont soif de création.
 
@@ -19906,7 +19904,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 **Bonus :** +3% Distinction
 
-**Artisanat possible :** Peut fabriquer les accessoires ou les désenchanter \[VOLONTÉ + PERCEPTION\]
+**Artisanat possible :** Peut fabriquer les accessoires ou les désenchanter, sauf un accessoire maudit, que seul un Enchanteur retire \[VOLONTÉ + PERCEPTION\]
 
 **Équipement supplémentaire possible :** Rien
 
@@ -20444,15 +20442,15 @@ Les bonus que peut apporter un métier peuvent varier selon le métier en questi
 
   *Exemple : Un sculpteur (Force + Intelligence) qui a 3 en Force et 2 en Intelligence a 3 × 10 + 2 × 10 = 50 % ; un joaillier (Perception + Intelligence) qui a 5 en Intelligence et 4 en Perception a 5 × 10 + 4 × 10 = 90 %.*
 
-  *Exemple : Pour fabriquer une épée : il faut être forgeron. Pour fabriquer un soin, un remède ou un philtre : il faut être alchimiste. (Les métiers qui peuvent fabriquer les objets seront indiqués et avec les objets)*
+  *Exemple : Pour fabriquer une épée : il faut être forgeron. Pour fabriquer un soin ou un remède : il faut être apothicaire. Pour fabriquer un philtre : il faut être alchimiste. (Les métiers qui peuvent fabriquer les objets seront indiqués et avec les objets)*
 
 - Vous pouvez donner des bonus compétences, un total de 6% d’acquis à répartir mais pas plus de 3% dans une même compétence. Il est possible de mettre un peu plus si jamais le métier ne donne rien d’autre, 3% de plus pour atteindre un maximum de 9%. Rester dans la cohérence du métier pour savoir où les mettre, le joueur et le mj peuvent en discuter mais n’oubliez jamais … le mj a toujours raison.
 
-  *Exemple : Je suis archéologue et j’ai un bonus de 3% en Connaissance et 3% en Distinction.*
+  *Exemple : Je suis archéologue et j’ai un bonus de 3% en Connaissance et 3% en Orientation.*
 
 - Vous pouvez donner des objets en plus pour l’inventaire voire des armes.
 
-  *Exemple : Je suis fossoyeur et je commence avec une pelle en acier.*
+  *Exemple : Je suis fossoyeur et je commence avec une pelle en acier ou une faucille en acier.*
 
 - Certains métiers de par leur nature peuvent donner des bonus dans des attributs.
 

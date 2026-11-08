@@ -27,7 +27,8 @@ import {
 } from '../src/lib/fiche-tableur-export.mjs';
 import { entrainementEnLignes, ficheVide, ligneDeRetrait, PREFIXE_DE_RETRAIT, sansPartiesRetirees } from '../src/lib/fiche-format.mjs';
 import { analyserXml, enfantNomme, enfantsNommes, texteDe } from '../src/lib/xml-mini.mjs';
-import { reglesDImport } from './aide-base-d-import.mjs';
+import { baseDImport, reglesDImport } from './aide-base-d-import.mjs';
+import { casDeSantePotentiel, MAGIE_POTENTIEL } from './aide-sante-potentiel.mjs';
 
 // les fiches auto (Lucien, Louise) et les classeurs écrits ici nomment dons, sorts, armes et matériaux tels que l'import les a nommés, et le moteur lit
 // ses règles dans les textes : la lecture s'épingle sur l'état d'import de la base (le site de dev réécrit librement noms, textes et valeurs ;
@@ -1424,6 +1425,50 @@ test('gains de niveau d’un classeur qui ne les écrit pas (décision R73) : ma
   assert.equal(M.gainsDeNiveau(regles, r.fiche).hors, false);
   const page = ficheDuClasseur(regles, ordinateur({ ...humain, D14: `10 / ${sansO.sante + 40}`, K14: `${sansO.chakra + 21} / ${sansO.chakra + 21}`, BA54: `${MARQUEUR_DES_NOTES}\nBi-classé : non` }));
   assert.deepEqual([page.fiche.gains_sante, page.fiche.gains_chakra, page.remarques], [0, 0, []], 'un classeur de la page sans ligne de gains : aucun');
+});
+
+test('R225, R230 (2) : gains déduits d’un tableur de Potentiel Illimité inné au-delà du plafond de santé : dits « à vérifier », ni refusés ni réécrits ; à la limite, ou pour une autre magie innée, rien', () => {
+  // le plafond et les cas (sous, à la limite, au-dessus ; niveaux 1, 4 et 5) se lisent dans la base d'import (test/aide-sante-potentiel.mjs : la donnée
+  // potentiel_illimite.sante_max_par_niveau, les niveaux et les dés) ; le moteur (santeDuPotentiel) les suit (test/fiche-sante-potentiel.test.mjs)
+  const cas = casDeSantePotentiel(baseDImport());
+  assert.ok(cas.some((c) => c.signale) && cas.some((c) => !c.signale && c.gains_sante === c.plafond), 'des cas au-dessus et à la limite');
+  const pi = trouver(regles.magies, MAGIE_POTENTIEL);
+  const autre = regles.magies.find((m) => m.id !== MAGIE_POTENTIEL);
+  const MARQUE = 'au-delà du plafond de';
+  const importe = (magieInnee, c) => {
+    // modèle ordinateur fait à la main (sans le marqueur de la page : les gains se déduisent des maximums), au niveau du cas
+    const cases = { I2: 'Humain', S2: magieInnee.nom, A9: classe('Mage').nom, G9: 10, W8: 5, S11: String(c.xp) };
+    const lu = ficheDuClasseur(regles, ordinateur(cases)).fiche;
+    const sans = attributsDe(regles, { ...lu, gains_sante: 0, gains_chakra: 0 });
+    // le chakra complète la santé jusqu'au total à saisir quand il le peut : le seul écart qui reste est celui du plafond
+    const chakra = Math.max(0, M.gainsDeNiveau(regles, { ...lu, gains_sante: 0, gains_chakra: 0 }).min - c.gains_sante);
+    const r = ficheDuClasseur(regles, ordinateur({ ...cases, D14: `1 / ${sans.sante + c.gains_sante}`, K14: `${sans.chakra + chakra} / ${sans.chakra + chakra}` }));
+    const remarque = r.remarques.filter((x) => x.startsWith('Gains de niveau déduits des maximums du classeur'));
+    assert.equal(remarque.length, 1, r.remarques.join('\n'));
+    return { r, remarque: remarque[0] };
+  };
+  for (const c of cas) {
+    const quoi = `niveau ${c.niveau}, santé ${c.gains_sante} (plafond ${c.plafond})`;
+    const { r, remarque } = importe(pi, c);
+    assert.equal(r.fiche.magie_innee_id, MAGIE_POTENTIEL, quoi);
+    assert.deepEqual([r.fiche.gains_sante, M.gainsDeNiveau(regles, r.fiche).niveau], [c.gains_sante, c.niveau], `${quoi} : repris tel quel`);
+    const signalement = `santé ${MARQUE} ${pi.nom} (${c.gains_sante} / au plus ${c.plafond})`;
+    assert.equal(remarque.includes(signalement), c.signale, `${quoi} : ${remarque}`);
+    assert.equal(remarque.includes(MARQUE), c.signale, `${quoi} : ${remarque}`);
+    if (c.signale) assert.ok(remarque.endsWith(`${signalement}, à vérifier`), remarque);
+    // la plage des deux totaux (R73) reste dite à part, et seulement quand elle est dépassée
+    assert.equal(remarque.includes('hors du total à saisir'), M.gainsDeNiveau(regles, r.fiche).hors, `${quoi} : ${remarque}`);
+    // une autre magie innée, au-dessus du plafond du Potentiel Illimité : rien
+    const a = importe(autre, c);
+    assert.deepEqual([a.r.fiche.magie_innee_id, a.r.fiche.gains_sante], [autre.id, c.gains_sante], quoi);
+    assert.ok(!a.remarque.includes(MARQUE), `${autre.nom}, ${quoi} : ${a.remarque}`);
+  }
+  // le même verdict que le moteur, appelé directement (gainsDesMaximums suit gainsDeNiveau().potentiel)
+  const c = cas.find((x) => x.signale && x.niveau > 1);
+  const f = { ...importe(pi, c).r.fiche, gains_sante: 0, gains_chakra: 0 };
+  const sans = attributsDe(regles, f);
+  assert.ok(gainsDesMaximums(regles, f, sans.sante + c.plafond + 1, sans.chakra).remarque.includes(`(${c.plafond + 1} / au plus ${c.plafond})`));
+  assert.ok(!gainsDesMaximums(regles, f, sans.sante + c.plafond, sans.chakra).remarque.includes(MARQUE));
 });
 
 test('cases de 32 767 caractères faites surtout d’espaces : l’import reste linéaire (moins de 5 s pour une dizaine de cases)', () => {

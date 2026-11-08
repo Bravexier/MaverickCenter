@@ -12,7 +12,7 @@
 // Les onglets eux-mêmes (regles_onglet) ne changent jamais ici. Les outils communs du service (refus, ErreurEdition, creerPage, supprimerPage,
 // idDejaEmploye, A_COMPLETER) sont donnés par serveur/edition.mjs, sans import en retour. Node seulement (node:sqlite), sans dépendance.
 import { citationsBloquantes, citationsDe, citationsDesPages, motsClesVerrouillesQuiYMenent, refusDuMotCleVerrouille } from '../src/lib/citations-db.mjs';
-import { adresseDuGuide, NOMS_RESERVES, PAGES_ABSORBEES, PAGES_RETIREES, PAGES_SUPPRIMEES } from '../src/lib/livres.mjs';
+import { ADRESSES_RENOMMEES_DU_GUIDE, adresseDuGuide, NOMS_RESERVES, PAGES_ABSORBEES, PAGES_RETIREES, PAGES_SUPPRIMEES } from '../src/lib/livres.mjs';
 import { raisonsDeProtection } from '../src/lib/pages-protegees.mjs';
 import { racesParNature } from '../src/lib/races-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
@@ -117,11 +117,15 @@ export function domainesDuPlan({ refus, ErreurEdition, creerPage, supprimerPage,
     },
   };
 
-  /** L'identifiant d'une page des Règles est-il pris ou réservé (le slug `slug`) ? Voir creer. */
+  /**
+   * L'identifiant d'une page des Règles est-il pris ou réservé (le slug `slug`) ? Voir creer. Le slug de l'adresse d'une page renommée
+   * (lib/livres.mjs#ADRESSES_RENOMMEES_DU_GUIDE, R228 : « mode-super ») est pris : guide/<slug> serait servie à la même adresse.
+   */
   function idPris(db, slug, onglets) {
     const id = `guide/${slug}`;
     return Boolean(lireLigne(db, 'page', { id }) || idDejaEmploye(db, ['page'], id) || PAGES_SUPPRIMEES.includes(id) || Object.hasOwn(PAGES_ABSORBEES, id)
       || Object.hasOwn(PAGES_RETIREES, id) || NOMS_RESERVES.includes(slug) || onglets.includes(slug)
+      || Object.values(ADRESSES_RENOMMEES_DU_GUIDE).includes(slug)
       || db.prepare('SELECT 1 FROM cle_page WHERE cle = ?').get(slug));
   }
 

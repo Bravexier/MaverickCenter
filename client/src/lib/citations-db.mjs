@@ -3,7 +3,8 @@
 // build, périmée sur le site de dev dès qu'un texte change) :
 //   - un lien du wiki `[[…]]` (résolu comme le site : lib/wikilinks-resolution.mjs, index des titres, slugs et alias de toutes les pages ; un lien
 //     ambigu dont la page est une candidate compte aussi : la supprimer changerait sa cible) ;
-//   - un lien écrit vers son adresse, `/regles/<slug>/` (ou l'ancienne `/regles/avancees/<slug>/`), ou vers son identifiant `guide/<slug>` ;
+//   - un lien écrit vers son adresse, `/regles/<slug>/` (ou l'ancienne `/regles/avancees/<slug>/`), ou vers son identifiant `guide/<slug>` ; une page
+//     dont l'adresse ne se tire pas de l'id (lib/livres.mjs#ADRESSES_RENOMMEES_DU_GUIDE, R228) est citée aussi par sa nouvelle adresse (`/regles/mode-super/`) ;
 //   - un bloc de description de la chronologie qui la cite pour légende (evenement_extrait.page_id) ;
 //   - depuis la migration 0098 (les liens devenus des balises du glossaire) : une balise dont le mot-clé a une adresse qui mène à la page
 //     (lib/adresses-db.mjs#pageDeLAdresse ; la supprimer laisserait la balise sans page), et le mot-clé lui-même, dont l'adresse mènerait nulle part
@@ -16,12 +17,13 @@
 // Pur, sans dépendance navigateur ni Astro : la base est passée par l'appelant (la base vivante du service, une copie dans les tests).
 import { indexDesAdresses, pageDeLAdresse } from './adresses-db.mjs';
 import { nomDeTable } from './libelles-de-la-base.mjs';
+import { slugDAdresse } from './livres.mjs';
 import { lireBalises, motCleDeLaRef, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
 import { motsClesDeLaBase, textesDeLaBase } from './mots-cles-db.mjs';
 import { buildIndex, extractLinks, resolve } from './wikilinks-resolution.mjs';
 
 /** Un lien écrit vers une page des onglets (/regles/<slug>/, /regles/avancees/<slug>/) ou vers son identifiant (guide/<slug>) : le slug. */
-const ADRESSE_ECRITE = /(?<![a-z0-9_-])(?:regles\/(?:avancees\/)?|guide\/)([a-z0-9]+(?:-[a-z0-9]+)*)(?![a-z0-9_-])/g;
+const ADRESSE_ECRITE = /(?<![a-z0-9_-])(regles\/(?:avancees\/)?|guide\/)([a-z0-9]+(?:-[a-z0-9]+)*)(?![a-z0-9_-])/g;
 
 /** Les colonnes de mot_cle qui ne sont pas un texte (migration 0098) : l'adresse et la couleur. */
 const COLONNES_DU_LIEN = ['url', 'couleur'];
@@ -63,6 +65,8 @@ export function citationsDesPages(db, ids, { absentes = [] } = {}) {
   ]);
   // les slugs des pages demandées que les adresses écrites désignent (guide/<slug> et /regles/<slug>/ : les pages du guide)
   const parSlug = new Map([...voulues].filter((id) => id.startsWith('guide/')).map((id) => [id.slice('guide/'.length), id]));
+  // sous /regles/ seulement, le slug d'une adresse renommée (lib/livres.mjs#ADRESSES_RENOMMEES_DU_GUIDE : « regles/mode-super/ », R228)
+  const parAdresse = new Map([...parSlug.values()].filter((id) => slugDAdresse(id) !== id.slice('guide/'.length)).map((id) => [slugDAdresse(id), id]));
   const vues = new Set();
   const ajouter = (id, { table, cle, colonne, comment, ligne = null }) => {
     if (!voulues.has(id)) return;
@@ -115,7 +119,10 @@ export function citationsDesPages(db, ids, { absentes = [] } = {}) {
           }
         }
         if (parSlug.size && (v.includes('regles/') || v.includes('guide/'))) {
-          for (const m of v.matchAll(ADRESSE_ECRITE)) if (parSlug.has(m[1])) ajouter(parSlug.get(m[1]), { table, cle, colonne, comment: 'adresse' });
+          for (const m of v.matchAll(ADRESSE_ECRITE)) {
+            const id = parSlug.get(m[2]) ?? (m[1] === 'regles/' ? parAdresse.get(m[2]) : undefined);
+            if (id) ajouter(id, { table, cle, colonne, comment: 'adresse' });
+          }
         }
         if (pageDuMotCle.size && v.includes('{{')) {
           for (const b of lireBalises(v, { markdown: markdown.get(colonne) })) {

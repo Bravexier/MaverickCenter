@@ -1346,7 +1346,9 @@ dev (un commit la change) ni cherchée par la recherche.
   et une fonction qui a besoin du plan (`ongletsDesRegles`, `ongletDe`, `menuLateralDe`, `filDAriane`, `placeDansLeGuide`, `verifierLePlan`) lève
   une erreur claire s'il n'est pas installé. **Adresses à plat** : toute page d'un onglet est à `/regles/<slug>/` (les pages des anciennes Bases
   gardent la leur) ; l'adresse ne dépend pas du plan (`adresseDuGuide` : la chaîne de l'édition du navigateur, qui ne le reçoit pas, la calcule
-  aussi). Chaque onglet est à `/regles/<onglet>/` (`pages/regles/[...page].astro`), qui montre sa page d'ouverture sous le titre de l'onglet, avec
+  aussi). Le `<slug>` est celui de l'id, sauf exception voulue par le propriétaire, figée dans `ADRESSES_RENOMMEES_DU_GUIDE` (id inchangé) : R228,
+  `guide/liste-des-effets-mode-super` à `/regles/mode-super/` ; aucune page ne prend cette adresse (`verifierLePlan`, et le service ne crée pas
+  `guide/mode-super`). Chaque onglet est à `/regles/<onglet>/` (`pages/regles/[...page].astro`), qui montre sa page d'ouverture sous le titre de l'onglet, avec
   un `<link rel="canonical">` vers `/regles/<slug>/` ; `/regles/` (`pages/regles/index.astro`) montre celle du premier onglet. Les ids des onglets,
   `artisanat`, `avancees` et `glossaire` (la page du Glossaire) sont des noms réservés (`nomsReserves`) : aucune page ne les prend. Chaque page est à côté du **menu latéral** de son
   onglet, sur le modèle de la chronologie (demande du propriétaire du 2026-11-05 pour Les bases : « Pour la présation je préfèrera un menu latéral
@@ -1478,7 +1480,8 @@ dev (un commit la change) ni cherchée par la recherche.
 - **Les anciennes adresses** mènent aux nouvelles par la page 404, requête et ancre gardées, d'après des **listes figées** (pas de préfixe deviné) :
   `/guide/` et `/guide/<slug>/` (renvois calculés au build, `lib/metiers.mjs#renvoisDuGuide`) ; les adresses des plans précédents
   (`ADRESSES_DU_PLAN_PRECEDENT` : `/decouvrir/<étape>/` des six étapes, `/decouvrir/le-jeu-de-role/`, `/decouvrir/campagne-ou-scenario-one-shot/`,
-  `/regles/avancees/`, qui mène au Mode Hyper, et chaque `/regles/avancees/<slug>/` relevée au commit 92a123d) ; les pages découpées en plusieurs,
+  `/regles/avancees/`, qui mène au Mode Hyper, chaque `/regles/avancees/<slug>/` relevée au commit 92a123d, et l'adresse tirée de l'id d'une page
+  de `ADRESSES_RENOMMEES_DU_GUIDE` : `/regles/liste-des-effets-mode-super/` mène à `/regles/mode-super/`, R228) ; les pages découpées en plusieurs,
   selon l'ancre (`PAGES_ECLATEES_DU_GUIDE`, au format des pages éclatées de l'équipement, passées à la page 404 par `data-eclatees` sans leurs cibles
   absentes, `pagesEclateesDuGuide` : une ancienne ancre dont la page manque mène à la page qui garde le reste, une page éclatée dont cette page manque
   donne la 404) :

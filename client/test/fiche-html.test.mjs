@@ -212,6 +212,8 @@ test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options
   assert.match(gains, /<label class="gains__champ gains__champ--sante"><span>Santé<\/span><input type="number" min="0" step="1" inputmode="numeric" data-champ="gains_sante" data-entier id="gains-sante"><\/label>/);
   assert.match(gains, /<label class="gains__champ gains__champ--chakra"><span>Chakra<\/span><input type="number" min="0" step="1" inputmode="numeric" data-champ="gains_chakra" data-entier id="gains-chakra"><\/label>/);
   assert.match(gains, /<output class="gains__total" id="gains-total" for="gains-sante gains-chakra"><\/output>/);
+  // décision R225 : la santé et son plafond d'un Potentiel Illimité inné, cachés au chargement (le script les montre pour cette magie innée seulement)
+  assert.match(gains, /<output class="gains__total" id="gains-sante-potentiel" for="gains-sante" hidden><\/output>/);
   assert.ok(progression.indexOf('id="progression-aide"') < progression.indexOf('id="progression"'), 'l’aide au-dessus des deux champs');
   assert.equal([...html.matchAll(/data-champ="gains_(sante|chakra)"/g)].length, 2, 'un champ chacun, pas un par niveau');
   const choix = bloc('choix');

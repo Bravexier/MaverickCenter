@@ -11,14 +11,15 @@ import GithubSlugger from 'github-slugger';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import {
-  ACCUEIL_DU_GUIDE, ADRESSES_DU_PLAN_PRECEDENT, adresseDeLaPageAbsorbee, adresseDeLaPageRetiree, ANCRES_DES_PAGES_ABSORBEES, ARTISANAT, adresseDuGuide, CHEMIN_DES_REGLES,
+  ACCUEIL_DU_GUIDE, ADRESSES_DU_PLAN_PRECEDENT, ADRESSES_RENOMMEES_DU_GUIDE, adresseDeLaPageAbsorbee, adresseDeLaPageRetiree, ANCRES_DES_PAGES_ABSORBEES, ARTISANAT, adresseDuGuide, CHEMIN_DES_REGLES,
   DECOUVRIR, entreesDuMenuLateral, estDansDecouvrir, estDesOnglets, estDuGuideDuMj, filDAriane, GUIDE_DU_MJ, installerLePlan, LIENS_ET_RENCONTRE, menuLateralDe,
   nomsReserves, NOMS_RESERVES, ongletDe, ongletDuLien, ongletsDesRegles, PAGES_ABSORBEES, PAGES_DE_LA_CREATION, PAGES_ECLATEES_DU_GUIDE, PAGES_RETIREES,
-  PAGES_SUPPRIMEES, PAR_OU_COMMENCER, PARTIES, pagesDeLaRubrique, partieDeLaPage, placeDansLeGuide, planInstalle, RUBRIQUES_SOUS_LA_PAGE, verifierLePlan,
+  PAGES_SUPPRIMEES, PAR_OU_COMMENCER, PARTIES, pagesDeLaRubrique, partieDeLaPage, placeDansLeGuide, planInstalle, RUBRIQUES_SOUS_LA_PAGE, slugDAdresse,
+  verifierLePlan,
 } from '../src/lib/livres.mjs';
 import * as Guide from '../src/lib/guide.mjs';
 import { COULEURS_DES_PARTIES } from '../src/lib/parties-couleurs.mjs';
-import { cheminDePage, estServieASonId, renvoisDuGuide } from '../src/lib/metiers.mjs';
+import { adresseDePage, cheminDePage, estServieASonId, renvoisDuGuide } from '../src/lib/metiers.mjs';
 import { adresseComplete, adresseDeRenvoi, adresseEclatee, cheminVersUnePageEclatee, NAV, activeGroup, nouvelleAdresse } from '../src/lib/nav.mjs';
 import { RENVOIS_DES_PAGES_ECLATEES } from '../src/lib/equipement.mjs';
 import { chargerPlanDesRegles } from '../src/lib/plan-des-regles-db.mjs';
@@ -192,7 +193,8 @@ test('chaque page `guide/…` de la base a une adresse à elle, jamais sous /gui
     assert.equal(estServieASonId(id), false, `${id} : la route des pages du wiki ne la sert pas`);
     const places = [estDansDecouvrir(id), estDuGuideDuMj(id), estDesOnglets(id)].filter(Boolean).length;
     assert.equal(places, id === FIXTURE ? 0 : 1, `${id} : une place et une seule`);
-    if (estDesOnglets(id)) assert.equal(chemins[i], `regles/${id.slice('guide/'.length)}/`, `${id} : adresse à plat`);
+    // le slug de l'id, sauf une adresse renommée par le propriétaire (ADRESSES_RENOMMEES_DU_GUIDE, R228 : test plus bas)
+    if (estDesOnglets(id)) assert.equal(chemins[i], `regles/${slugDAdresse(id)}/`, `${id} : adresse à plat`);
   }
   assert.equal(cheminDePage('guide/bienvenue'), 'decouvrir/', 'Bienvenue à l’adresse de Découvrir');
   assert.equal(cheminDePage('guide/l-univers'), 'decouvrir/l-univers/');
@@ -210,7 +212,7 @@ test('les adresses du plan n’entrent en conflit ni avec un type de page, ni av
   // le Glossaire (pages/regles/glossaire.astro, migration 0098) : aucune page des onglets ne prend son adresse
   assert.deepEqual(NOMS_RESERVES, ['artisanat', 'avancees', 'glossaire']);
   assert.deepEqual(nomsReserves(), ['artisanat', 'avancees', 'glossaire', 'fiche-de-personnage', 'mecaniques-generales', 'combats', 'exploration']);
-  const slugs = ids.filter((id) => cheminDePage(id).startsWith('regles/')).map((id) => id.slice('guide/'.length));
+  const slugs = ids.filter((id) => cheminDePage(id).startsWith('regles/')).map((id) => cheminDePage(id).slice('regles/'.length, -1));
   for (const nom of nomsReserves()) assert.ok(!slugs.includes(nom), `${nom} : une page prendrait l’adresse réservée /regles/${nom}/`);
   // les pages Astro écrites à côté des pages du plan : les routes, l'Artisanat, le Glossaire, /regles/ (plus de Règles avancées) ; rien d'autre sous ces chemins
   const pages = new URL('../src/pages/', import.meta.url);
@@ -577,6 +579,51 @@ test('R184, R185 : les anciennes adresses figées mènent à la nouvelle adresse
   assert.equal(lienEcrit('regles/avancees/mode-hyper-magie/'), 'regles/avancees/mode-hyper-magie/', 'une page supprimée : telle qu’écrite (la 404)');
   assert.equal(lienEcrit('regles/avancees/postures/'), 'regles/avancees/postures/', 'une page supprimée (0094) : telle qu’écrite (la 404)');
   assert.equal(adresseEclatee('regles/creer-son-personnage/', eclatees), null, 'la nouvelle adresse n’est pas éclatée');
+});
+
+// R228 (2026-11-08 : « https://dev.maverick-jdr.com/regles/liste-des-effets-mode-super/ à changer en https://dev.maverick-jdr.com/regles/mode-super/ (et
+// le titre aussi) ») : exception voulue aux adresses figées. L'identifiant reste (lu par les tables), seule l'adresse change (ADRESSES_RENOMMEES_DU_GUIDE,
+// une liste du code, que le site de dev ne modifie pas) ; l'ancienne adresse mène à la nouvelle comme les autres anciennes adresses. Aucun texte lu.
+test('R228 : la page du Mode Super est servie à /regles/mode-super/ (id inchangé) ; /regles/liste-des-effets-mode-super/ y mène, requête et ancre gardées', () => {
+  const id = 'guide/liste-des-effets-mode-super';
+  assert.deepEqual(ADRESSES_RENOMMEES_DU_GUIDE, { [id]: 'mode-super' });
+  assert.ok(ids.includes(id), `${id} : une page de la base, sous son id`);
+  assert.ok(estDesOnglets(id), `${id} : rangée dans un onglet des Règles`);
+  // la nouvelle adresse : la route des Règles (cheminDePage, par pagesSous), le menu latéral et le fil d'Ariane (entryHref), la recherche (adresseDePage)
+  assert.equal(adresseDuGuide(id), 'regles/mode-super/');
+  assert.equal(cheminDePage(id), 'regles/mode-super/');
+  assert.deepEqual(adresseDePage(id), { chemin: 'regles/mode-super/', ancre: '' });
+  assert.deepEqual(filDAriane(id), [{ titre: ongletDe(id).titre, chemin: ongletDe(id).chemin }]);
+  // l'inverse : la nouvelle adresse sert la page, l'ancienne ne sert plus rien ; aucune autre page à l'une ou l'autre
+  assert.equal(Livres.pageDuGuideALAdresse('regles/mode-super/?q=1#objets'), id);
+  assert.equal(Livres.pageDuGuideALAdresse('regles/liste-des-effets-mode-super/'), null);
+  assert.equal(Livres.pageDuGuideALAdresse('regles/meteo/'), 'guide/meteo', 'les autres pages : le slug de l’id');
+  assert.deepEqual(ids.filter((i) => cheminDePage(i) === 'regles/mode-super/'), [id]);
+  assert.deepEqual(ids.filter((i) => cheminDePage(i) === 'regles/liste-des-effets-mode-super/'), []);
+  assert.ok(!ids.includes('guide/mode-super'));
+  assert.ok(!nomsReserves().includes('mode-super'), 'pas un nom réservé');
+  // « Le Mode Super », page supprimée (0094, PAGES_SUPPRIMEES) : un autre segment d'adresse, toujours la 404
+  assert.ok(PAGES_SUPPRIMEES.includes('guide/le-mode-super'));
+  assert.equal(renvoi('/regles/le-mode-super/'), null);
+  // l'ancienne adresse (page 404 et lien écrit) ; celles d'avant qui menaient à la page y mènent toujours
+  assert.equal(ADRESSES_DU_PLAN_PRECEDENT['regles/liste-des-effets-mode-super/'], id);
+  for (const ancienne of ['/regles/liste-des-effets-mode-super/', '/regles/liste-des-effets-mode-super', '/regles/avancees/liste-des-effets-mode-super/', `/${id}/`]) {
+    assert.equal(renvoi(ancienne, { search: '?q=1', hash: '#objets' }), '/regles/mode-super/?q=1#objets', ancienne);
+  }
+  assert.equal(renvoi('/MaverickCenter/regles/liste-des-effets-mode-super/', { base: '/MaverickCenter/' }), '/MaverickCenter/regles/mode-super/', 'sous un sous-chemin');
+  assert.equal(renvoi('/regles/mode-super/'), null, 'la nouvelle adresse est servie, jamais renvoyée');
+  const options = { cheminDe: cheminDePage, existe: (i) => ids.includes(i), accueil: ACCUEIL_DU_GUIDE };
+  assert.equal(Guide.adresseDesAnciensLiens('regles/liste-des-effets-mode-super/#objets', options), 'regles/mode-super/#objets');
+  assert.equal(Guide.adresseDesAnciensLiens('regles/avancees/liste-des-effets-mode-super/', options), 'regles/mode-super/');
+  assert.equal(Guide.adresseDesAnciensLiens('guide/liste-des-effets-mode-super/?a=1', options), 'regles/mode-super/?a=1');
+  assert.equal(Guide.adresseDesAnciensLiens('regles/mode-super/', options), 'regles/mode-super/', 'la nouvelle adresse, telle qu’écrite');
+  // supprimée sur le site de dev : l'ancienne adresse donne la 404 (R185 (6)), un lien écrit reste tel quel
+  const sansLaPage = ids.filter((i) => i !== id);
+  assert.equal(adresseDeRenvoi('/regles/liste-des-effets-mode-super/', { base: '/', renvois: renvoisDuGuide(sansLaPage), eclatees: {} }), null);
+  assert.equal(Guide.adresseDesAnciensLiens('regles/liste-des-effets-mode-super/', { ...options, existe: (i) => sansLaPage.includes(i) }), 'regles/liste-des-effets-mode-super/');
+  // le plan est contrôlé au build : une page guide/mode-super prendrait l'adresse de la page du Mode Super
+  assert.throws(() => verifierLePlan([...pagesDuGuide, { id: 'guide/mode-super', data: { title: 'x', status: 'draft' } }]),
+    /guide\/mode-super prendrait l'adresse \/regles\/mode-super\/, celle de guide\/liste-des-effets-mode-super/);
 });
 
 test('aujourd’hui (la base courante : pages, titres, intertitres et menus modifiés, créés ou supprimés sur le site de dev) : le plan s’installe et tient ; chaque page a une place ; chaque renvoi figé mène à une page servie, ou à la 404', () => {
