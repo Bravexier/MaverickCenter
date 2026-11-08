@@ -21,6 +21,7 @@ import { attributEd } from '../src/lib/edition-modele.mjs';
 import { chargerPanneau } from '../src/lib/panneaux-regles-db.mjs';
 import { baseDImport, texteDImport } from './aide-base-d-import.mjs';
 import { avecLesMotsCles, verifierLeTexteDuPanneau } from './aide-texte-affiche.mjs';
+import { idDuMotCleNomme } from './aide-mots-cles.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 // les pages Armures et Boucliers (une chacune depuis le 2026-10-29, « Cinq pages séparées ») : le même composant, un panneau chacune
@@ -138,10 +139,13 @@ test('armures : les armures particulières en premier puis la liste par type, un
   // son texte : la balise rendue comme au build avec le vocabulaire de la base (le site de dev renomme le mot-clé ; il n'est pas protégé : supprimé, la
   // balise reste écrite dans le gabarit et le build la rend en texte, ce cas se vérifie explicitement)
   const solidite = avecLesMotsCles('{{solidite}}', db).replace(/<[^>]+>/g, '');
-  if (db.prepare("SELECT 1 FROM mot_cle WHERE id = 'solidite'").get()) {
-    assert.ok(listes.includes(`<th scope="col"><strong class="mot-cle" data-mot-cle="solidite"`), 'la définition de la solidité en infobulle');
+  // le mot-clé « Solidité », par son id entier, figé (migration 0113) ; sa clé suit son libellé (R232)
+  const idSolidite = idDuMotCleNomme('solidite');
+  const motSolidite = db.prepare('SELECT cle FROM mot_cle WHERE id = ?').get(idSolidite);
+  if (motSolidite) {
+    assert.ok(listes.includes(`<th scope="col"><strong class="mot-cle" data-mot-cle="${motSolidite.cle}"`), 'la définition de la solidité en infobulle');
   } else {
-    assert.ok(historiqueSite(db).supprimee('mot_cle', { id: 'solidite' }), 'le mot-clé « solidite » manque sans que le site de dev l’ait supprimé');
+    assert.ok(historiqueSite(db).supprimee('mot_cle', { id: idSolidite }), 'le mot-clé « solidite » manque sans que le site de dev l’ait supprimé');
   }
   assert.ok(entetes.every((e) => e.includes(solidite)), `l’en-tête « ${solidite} » dans chaque liste`);
   assert.deepEqual(entetes[0], ['Nom', 'Type', 'AP', 'AM', solidite, 'Effet', 'Prix'], 'armures particulières');
@@ -342,11 +346,11 @@ test('R165 (2) : le tableau d’amélioration des armures élémentaires — Auc
   // libellé et adresse lus dans la base : le site de dev les modifie)
   const note = /<p class="tableau__note[^"]*">[\s\S]*?<\/p>/.exec(p.slice(debut, p.indexOf('<table', debut)))?.[0];
   assert.ok(note, 'la note du tableau');
-  const armurier = db.prepare("SELECT libelle, url FROM mot_cle WHERE id = 'armurier'").get();
+  const armurier = db.prepare('SELECT libelle, url, cle FROM mot_cle WHERE id = ?').get(idDuMotCleNomme('armurier'));
   assert.ok(armurier, 'le mot-clé armurier (migration 0104)');
   assert.match(note, armurier.url
-    ? new RegExp(`<a class="mot-cle[^"]*" href="[^"]*${armurier.url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}" data-mot-cle="armurier"`)
-    : /<strong class="mot-cle[^"]*" data-mot-cle="armurier"/);
+    ? new RegExp(`<a class="mot-cle[^"]*" href="[^"]*${armurier.url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}" data-mot-cle="${armurier.cle}"`)
+    : new RegExp(`<strong class="mot-cle[^"]*" data-mot-cle="${armurier.cle}"`));
   assert.ok(note.includes(`>${echapper(armurier.libelle)}</`), 'son libellé');
 });
 

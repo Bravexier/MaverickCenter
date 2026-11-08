@@ -44,8 +44,9 @@ Carte & lieux reste « bientôt » (E6 de la [feuille de route](feuille-de-route
 - Le renvoi « Voir “Temple du Vent” » (Mrode) devient un lien vers « Temple de Vent », le titre de la section des temples.
 - **Les liens sont des balises de mots-clés** (migration 0098 : « tous les liens deviendront des mots-clés et tous les mots-clés deviendront des liens »).
   Un renvoi (sommaires, « Voir aussi », renvoi du document) s'écrit avec la balise du mot-clé dont l'adresse (`mot_cle.url`) mène à la page visée,
-  `/lore/<slug>/` sans ancre : `{{id}}` quand le texte affiché est son libellé d'import (celui d'avant un renommage sur le site, qui ne réécrit aucun
-  texte : la page redonnée reste la même), `{{id|texte}}` sinon (`{{temple-de-vent|Temple du Vent}}`) ; jamais un
+  `/lore/<slug>/` sans ancre, citée par sa clé (`mot_cle.cle`, migration 0113) : `{{clé}}` quand le texte affiché est son libellé d'import (celui
+  d'avant un renommage sur le site ; un renommage réécrit les balises qui le citent, journal compris, R232 (3) : ces pages sont contrôlées dans leur
+  état d'import), `{{clé|texte}}` sinon (`{{temple-de-vent|Temple du Vent}}`) ; jamais un
   `[[…]]`, que `db:check` refuse. Un import ne crée jamais de mot-clé : sans **exactement un** mot-clé pour la page, le renvoi est écrit en texte simple
   et le script le signale (« renvoi sans mot-clé, écrit en texte simple », à l'écriture et au `--verifier`) ; il se répare en donnant l'adresse à un
   mot-clé sur le site de dev, puis en relançant le script (`Codex.lien`). Le mot-clé d'une page (« Mrode », « Erisia », « Glossaire », créés par la
@@ -73,8 +74,9 @@ vocabulaire géré sur le site (migration 0043, page Recherche) : une page dont 
 modifiée (gardée telle quelle à l'écriture, ses mots-clés non comparés au document : sinon l'ancienne écriture reviendrait). Depuis la migration 0056
 (glossaire), un import ne crée jamais de mot-clé : le script n'écrit que les mots-clés du vocabulaire (`data/rows/mot_cle.sql`, option `--vocabulaire` ;
 `vocabulaire()` → `Vocabulaire`, même règle que `tools/db/maverick.py#mot_cle`), dans son écriture ; les étiquettes de partie (« divinité », « faction »…) ne sont plus
-dans le vocabulaire, chaque page ne porte que « codex », posé par son id (`MOT_CLE_DU_CODEX`, `Vocabulaire.protege` : son libellé courant, jamais le
-mot-clé qui aurait pris l'écriture « codex » ; `docs/sources.md`). `--verifier` refait le découpage attendu avec le vocabulaire **de l'état d'import**
+dans le vocabulaire, chaque page ne porte que « codex », posé par son id (`MOT_CLE_DU_CODEX`, `Vocabulaire.protege` : l'id entier que lui donne
+`tools/db/maverick.py#MOTS_CLES_PROTEGES`, migration 0113, écrit avec son libellé courant, jamais le mot-clé qui aurait pris l'écriture « codex » ;
+`docs/sources.md`). `--verifier` refait le découpage attendu avec le vocabulaire **de l'état d'import**
 (`Vocabulaire(…, etat_d_import=True)` : l'historique du site rejoué à l'envers sur `mot_cle`) : un mot-clé que le site a supprimé (R196 : seulement
 s'il n'est mentionné nulle part), créé ou déplacé (adresse changée) ne change pas les renvois que l'import a écrits (par ex. deux mots-clés pour une
 page, renvoi en texte simple, dont l'un est supprimé). L'écriture des pages garde le vocabulaire courant (une balise ne cite qu'un mot-clé qui existe).

@@ -6,6 +6,7 @@ import { cpSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
+import { IDS_DES_MOTS_CLES_PROTEGES } from '../src/lib/mots-cles-proteges.mjs';
 import { classeDeCaracteristique, classeDePosture } from '../src/lib/palette-css.mjs';
 import { CLASS_COLORS } from '../src/lib/class-groups.mjs';
 import {
@@ -507,7 +508,8 @@ test('armes élémentaires (décision R167, migration 0081) : chaque arme élém
 
   // les sorts « Fer » : l'étiquette « Sort fer » (sort_mot_cle 'sort-fer', comme « Sort grenade » de R114), jamais le nom ; chacun d'une magie qui a ses
   // armes élémentaires
-  const fer = db.prepare("SELECT sort_id FROM sort_mot_cle WHERE mot_cle_id = 'sort-fer' ORDER BY sort_id").all().map((r) => r.sort_id);
+  // (par l'id entier du mot-clé protégé, migration 0113 : lib/mots-cles-proteges.mjs ; regles.json en donne le nom protégé)
+  const fer = db.prepare('SELECT sort_id FROM sort_mot_cle WHERE mot_cle_id = ? ORDER BY sort_id').all(IDS_DES_MOTS_CLES_PROTEGES['sort-fer']).map((r) => r.sort_id);
   assert.ok(fer.length > 0);
   assert.deepEqual(regles.sorts.filter((x) => x.fer).map((x) => x.id).sort(), fer);
   assert.ok(regles.sorts.filter((x) => x.fer).every((x) => x.mots_cles.includes('sort-fer')));
@@ -569,14 +571,15 @@ test('glossaire des mots-clés (D2) : les règles de la fiche lisent les textes 
     const chemin = join(dossier, 'maverick.db');
     cpSync(cheminBase({ sansExemples: false }), chemin);
     const copie = new DatabaseSync(chemin);
-    const motCle = copie.prepare('SELECT id, libelle FROM mot_cle ORDER BY id LIMIT 1').get();
+    const motCle = copie.prepare('SELECT id, cle, libelle FROM mot_cle ORDER BY id LIMIT 1').get();
     const DEFINITION = 'Définition d’essai, que la fiche ne montre jamais.';
     copie.prepare('UPDATE mot_cle SET description = ? WHERE id = ?').run(DEFINITION, motCle.id);
-    // un texte de case (l'effet d'un don) : sa forme canonique « {{id|texte}} » ; et, hors forme canonique, une balise sans texte et le mode complet
+    // un texte de case (l'effet d'un don) : sa forme canonique « {{clé|texte}} » (la clé, R232 (3)) ; et, hors forme canonique, une balise sans texte et
+    // le mode complet
     const don = copie.prepare("SELECT id, effet FROM capacite WHERE effet IS NOT NULL AND instr(effet, '{{') = 0 ORDER BY id LIMIT 1").get();
-    copie.prepare('UPDATE capacite SET effet = ? WHERE id = ?').run(`${don.effet} Essai {{${motCle.id}|texte écrit}}, {{${motCle.id}}} et {{${motCle.id}:}}.`, don.id);
+    copie.prepare('UPDATE capacite SET effet = ? WHERE id = ?').run(`${don.effet} Essai {{${motCle.cle}|texte écrit}}, {{${motCle.cle}}} et {{${motCle.cle}:}}.`, don.id);
     const sort = copie.prepare("SELECT id FROM sort WHERE remarque IS NULL ORDER BY id LIMIT 1").get();
-    copie.prepare('UPDATE sort SET remarque = ? WHERE id = ?').run(`Voir {{${motCle.id}|la remarque}}.`, sort.id);
+    copie.prepare('UPDATE sort SET remarque = ? WHERE id = ?').run(`Voir {{${motCle.cle}|la remarque}}.`, sort.id);
     const lues = chargerReglesDeFiche(copie);
     copie.close();
     const json = JSON.stringify(lues);

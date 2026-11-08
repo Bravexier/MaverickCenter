@@ -47,8 +47,9 @@ test('defaireLeSite : chaque opération est défaite, de la dernière à la prem
   // lot 1 : deux définitions réécrites, un mot-clé créé ; lot 2 : la première réécrite encore, un autre nom de page supprimé
   noter(db, { lot: LOT1, rang: 1, faitLe: '2026-11-01T10:00:00Z', table: 'mot_cle', cle: { id: a.id }, operation: 'modifier', avant: { description: a.description }, apres: { description: 'Plif.' } });
   noter(db, { lot: LOT1, rang: 2, faitLe: '2026-11-01T10:00:00Z', table: 'mot_cle', cle: { id: b.id }, operation: 'modifier', avant: { description: b.description }, apres: { description: 'Plouf.' } });
-  noter(db, { lot: LOT1, rang: 3, faitLe: '2026-11-01T10:00:00Z', table: 'mot_cle', cle: { id: 'essai-import' }, operation: 'inserer',
-    apres: { id: 'essai-import', libelle: 'Essai import', libelle_cle: 'essai-import', description: null, abreviation: null } });
+  // un mot-clé d'essai (id entier, migration 0113 ; 9001 et suivants : test/aide-mots-cles.mjs#idDEssai)
+  noter(db, { lot: LOT1, rang: 3, faitLe: '2026-11-01T10:00:00Z', table: 'mot_cle', cle: { id: 9001 }, operation: 'inserer',
+    apres: { id: 9001, libelle: 'Essai import', cle: 'essai-import', description: null } });
   noter(db, { lot: LOT2, rang: 1, faitLe: '2026-11-02T10:00:00Z', table: 'mot_cle', cle: { id: a.id }, operation: 'modifier', avant: { description: 'Plif.' }, apres: { description: 'Plif plof.' } });
   noter(db, { lot: LOT2, rang: 2, faitLe: '2026-11-02T10:00:00Z', table: 'alias', cle: { page_id: alias.page_id, ordre: alias.ordre }, operation: 'supprimer', avant: alias });
   // une migration passée depuis réécrit la seconde définition : sa valeur d'import n'existe plus, la migration a le dernier mot
@@ -57,7 +58,7 @@ test('defaireLeSite : chaque opération est défaite, de la dernière à la prem
   assert.deepEqual(defaireLeSite(db), []);
   assert.equal(ligne(db, 'SELECT description FROM mot_cle WHERE id = ?', a.id).description, a.description, 'deux lots défaits : la valeur d’import');
   assert.equal(ligne(db, 'SELECT description FROM mot_cle WHERE id = ?', b.id).description, 'Texte de la migration.', 'réécrite par une migration : gardée');
-  assert.equal(ligne(db, "SELECT id FROM mot_cle WHERE id = 'essai-import'"), undefined, 'la ligne insérée par le site est retirée');
+  assert.equal(ligne(db, 'SELECT id FROM mot_cle WHERE id = 9001'), undefined, 'la ligne insérée par le site est retirée');
   assert.deepEqual(ligne(db, 'SELECT * FROM alias WHERE page_id = ? AND ordre = ?', alias.page_id, alias.ordre), alias, 'la ligne supprimée est remise');
   assert.equal(db.prepare('SELECT count(*) AS n FROM historique_modification').get().n, 0, 'les lots défaits quittent l’historique');
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
@@ -70,11 +71,11 @@ test('defaireLeSite { garder } : l’état d’après une migration — les lots
   const APRES = '2026-11-03T10:00:00.000Z-apres';
   noter(db, { lot: GARDE, rang: 1, faitLe: '2026-11-01T10:00:00Z', table: 'mot_cle', cle: { id: a.id }, operation: 'modifier', avant: { description: a.description }, apres: { description: 'Écrit par une décision.' } });
   noter(db, { lot: APRES, rang: 1, faitLe: '2026-11-03T10:00:00Z', table: 'mot_cle', cle: { id: a.id }, operation: 'modifier', avant: { description: 'Écrit par une décision.' }, apres: { description: 'Plif.' } });
-  noter(db, { lot: APRES, rang: 2, faitLe: '2026-11-03T10:00:00Z', table: 'mot_cle', cle: { id: 'essai-apres' }, operation: 'inserer',
-    apres: { id: 'essai-apres', libelle: 'Essai après', libelle_cle: 'essai-apres', description: null, abreviation: null } });
+  noter(db, { lot: APRES, rang: 2, faitLe: '2026-11-03T10:00:00Z', table: 'mot_cle', cle: { id: 9002 }, operation: 'inserer',
+    apres: { id: 9002, libelle: 'Essai après', cle: 'essai-apres', description: null } });
   assert.deepEqual(defaireLeSite(db, { garder: new Set([GARDE]) }), []);
   assert.equal(ligne(db, 'SELECT description FROM mot_cle WHERE id = ?', a.id).description, 'Écrit par une décision.');
-  assert.equal(ligne(db, "SELECT id FROM mot_cle WHERE id = 'essai-apres'"), undefined);
+  assert.equal(ligne(db, 'SELECT id FROM mot_cle WHERE id = 9002'), undefined);
   assert.deepEqual(db.prepare('SELECT DISTINCT lot_id FROM historique_modification').all().map((r) => r.lot_id), [GARDE]);
 });
 

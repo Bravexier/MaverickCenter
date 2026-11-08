@@ -14,6 +14,7 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
 import { ENTITES, TABLES } from '../src/lib/edition-modele.mjs';
 import { capacitesDe, defautsDuRegistre, HORS_RESSOURCE, MODULES, OPERATIONS_DU_LOT, RESSOURCES, TABLES_SANS_ECRITURE_DIRECTE, tablesDe, tablesModifiables } from '../src/lib/ressources.mjs';
+import { outilsDesMotsCles } from '../serveur/edition-mots-cles.mjs';
 import { domainesDeLaChronologie } from '../serveur/edition-chronologie.mjs';
 import { operationsDuBestiaire } from '../serveur/edition-bestiaire.mjs';
 
@@ -155,11 +156,12 @@ test('registre : tout ce que le site de dev sait déjà écrire est joignable pa
   assert.ok(declaration, 'const OPERATIONS = { … }; sur une ligne de serveur/edition.mjs');
   const morceaux = declaration.split(/,(?![^(]*\))/).map((m) => m.trim()).filter(Boolean);
   const etalees = morceaux.filter((m) => m.startsWith('...'));
-  assert.deepEqual(etalees, ['...CHRONOLOGIE.operations', '...operationsDuBestiaire({ refus, ErreurEdition, provenance })'], 'une autre source d’opérations : à lire ici');
+  assert.deepEqual(etalees, ['...CHRONOLOGIE.operations', '...MOTS_CLES.operations', '...operationsDuBestiaire({ refus, ErreurEdition, provenance })'], 'une autre source d’opérations : à lire ici');
   const outils = { refus: () => {}, ErreurEdition: Error, provenance: () => '', idDejaEmploye: () => false, motCleDe: () => null };
   const operations = [
     ...morceaux.filter((m) => !m.startsWith('...')).map((m) => m.split(':')[0].trim()),
     ...Object.keys(domainesDeLaChronologie(outils).operations),
+    ...Object.keys(outilsDesMotsCles(outils).operations),
     ...Object.keys(operationsDuBestiaire(outils)),
   ];
   assert.deepEqual(operations.filter((o) => !['modifier', 'creer', 'supprimer'].includes(o)).sort(), [...OPERATIONS_DU_LOT].sort(), 'OPERATIONS_DU_LOT = les opérations du service hors TABLES et ENTITES');

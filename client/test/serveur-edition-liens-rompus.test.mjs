@@ -39,12 +39,18 @@ function titreLibre(db, base) {
     if (!db.prepare('SELECT 1 FROM cle_page WHERE cle = ?').get(normalize(titre))) return titre;
   }
 }
-/** Un libellé de mot-clé qu'aucun mot-clé ne porte (id et libellé normalisés libres). */
+/** Un libellé de mot-clé qu'aucun mot-clé ne porte (sa clé, normalize, libre ; aucun homonyme). */
 function motCleLibre(db, base) {
   for (let i = 1; ; i += 1) {
     const libelle = `${base} ${process.pid}${i === 1 ? '' : ` ${i}`}`;
-    if (!db.prepare('SELECT 1 FROM mot_cle WHERE id = ? OR libelle_cle = ?').get(normalize(libelle), normalize(libelle))) return libelle;
+    if (!db.prepare('SELECT 1 FROM mot_cle WHERE cle = ?').get(normalize(libelle))) return libelle;
   }
+}
+/** Un mot-clé écrit directement dans la base (les règles d'un essai) : l'id suivant (migration 0113) et sa clé ; rend son id. */
+function insererMotCle(db, libelle, url) {
+  const id = db.prepare('SELECT coalesce(max(id), 0) + 1 AS n FROM mot_cle').get().n;
+  db.prepare('INSERT INTO mot_cle (id, libelle, cle, url) VALUES (?, ?, ?, ?)').run(id, libelle, normalize(libelle), url);
+  return id;
 }
 const creer = (lot, titre) => ok(lot([{ op: 'creer', entite: 'page_des_regles', valeurs: { titre, onglet_id: 'combats', resume: 'Essai.' } }])).crees[0].id;
 const corpsDe = (db, id) => db.prepare('SELECT corps_md FROM page WHERE id = ?').get(id)?.corps_md;
@@ -94,9 +100,8 @@ test('liensRompusParLeLot : la page retirée garde son titre et ses alias pour l
       assert.deepEqual(liensRompusParLeLot(db, lotDeRetrait), []);
       // depuis la migration 0098 : un mot-clé dont l'adresse mène à la page retirée (avec ou sans ancre), et ses balises, la citent encore
       const libelle = motCleLibre(db, 'Essai lien rompu');
-      const mot = normalize(libelle);
-      db.prepare('INSERT INTO mot_cle (id, libelle, libelle_cle, url) VALUES (?, ?, ?, ?)').run(mot, libelle, mot, adresseDeLaPage(cible));
-      db.prepare('UPDATE page SET corps_md = ? WHERE id = ?').run(`Voir {{${mot}}}.`, citante);
+      const mot = insererMotCle(db, libelle, adresseDeLaPage(cible));
+      db.prepare('UPDATE page SET corps_md = ? WHERE id = ?').run(`Voir {{${normalize(libelle)}}}.`, citante);
       for (const url of [adresseDeLaPage(cible), `${adresseDeLaPage(cible)}#ancre-d-essai`]) {
         db.prepare('UPDATE mot_cle SET url = ? WHERE id = ?').run(url, mot);
         const rompus = liensRompusParLeLot(db, lotDeRetrait);
@@ -199,7 +204,8 @@ test('rejeu : une page citée par un mot-clé à adresse et ses balises (migrati
     cible = creer(site.lot, titre);
     citante = creer(site.lot, titreLibre(site.db, 'Guide à balise d’essai'));
     mot = ok(site.lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: motCleLibre(site.db, 'Essai adresse rompue'), url: adresseDeLaPage(cible) } }])).crees[0].id;
-    ok(site.lot([{ op: 'modifier', table: 'page', cle: { id: citante }, valeurs: { corps_md: `Voir {{${mot}}}.` } }]));
+    const cleDuMot = site.db.prepare('SELECT cle FROM mot_cle WHERE id = ?').get(mot).cle;
+    ok(site.lot([{ op: 'modifier', table: 'page', cle: { id: citante }, valeurs: { corps_md: `Voir {{${cleDuMot}}}.` } }]));
     // le garde-fou direct (serveur/edition-plan.mjs : citationsDe sur la base où la page est encore) voit le mot-clé et sa balise
     const refus = site.lot([{ op: 'supprimer', entite: 'page_des_regles', cle: { id: cible } }]);
     assert.equal(refus.statut, 409, JSON.stringify(refus.corps));
@@ -286,8 +292,7 @@ test('rejeu : un don ou un métier supprimé sur le site, dont la fiche ou l’a
     for (const c of cas) {
       c.titre = db.prepare('SELECT titre FROM page WHERE id = ?').get(c.id).titre;
       const libelle = motCleLibre(db, 'Essai adresse de fiche');
-      c.mot = normalize(libelle);
-      db.prepare('INSERT INTO mot_cle (id, libelle, libelle_cle, url) VALUES (?, ?, ?, ?)').run(c.mot, libelle, c.mot, adresseDeLaPage(c.id));
+      c.mot = insererMotCle(db, libelle, adresseDeLaPage(c.id));
     }
     db.exec('COMMIT');
     db.exec('BEGIN');

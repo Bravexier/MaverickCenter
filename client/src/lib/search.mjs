@@ -37,8 +37,8 @@ export function searchIndex(index, query) {
 }
 
 /**
- * Mots-clés qui correspondent à la recherche (page /recherche/, où la liste des mots-clés est mêlée à la recherche) : ceux dont la clé (`normalize`
- * du libellé : son écriture, `mot_cle.libelle_cle`, pas son id) contient chaque mot cherché. Recherche vide : tous. Garde l'ordre reçu.
+ * Mots-clés qui correspondent à la recherche (page /recherche/, où la liste des mots-clés est mêlée à la recherche) : ceux dont la clé de recherche
+ * (cleDeRecherche : les écritures normalisées du mot-clé) contient chaque mot cherché. Recherche vide : tous. Garde l'ordre reçu.
  * @param {string[]} cles
  */
 export function filtrerMotsCles(cles, query) {
@@ -47,12 +47,13 @@ export function filtrerMotsCles(cles, query) {
 }
 
 /**
- * Ce que filtrerMotsCles cherche dans un mot-clé de /recherche/ : son écriture (`cle`), suivie de son abréviation normalisée quand il en a une
- * (mot_cle.abreviation, migration 0090 : « AM » trouve « Armure magique »), séparées par « | », que normalize ne produit pas (un mot cherché ne se lit
- * jamais à cheval sur les deux).
- * @param {{ cle: string, abreviation?: string | null }} motCle
+ * Ce que filtrerMotsCles cherche dans un mot-clé de /recherche/ : son libellé normalisé (sinon `cle`, pour un appelant qui ne donne qu'elle), suivi de
+ * chacun de ses synonymes normalisés (décision R233 (1) : « Saisie d'une balise, Recherche, Affichage » ; l'ancienne abréviation en est un : « AM »
+ * trouve « Armure magique »), séparés par « | », que normalize ne produit pas (un mot cherché ne se lit jamais à cheval sur deux écritures). La clé d'un
+ * homonyme (« namazu-race ») n'y entre pas : ses catégories ne sont pas son nom.
+ * @param {{ libelle?: string, cle?: string, synonymes?: string[] }} motCle
  */
-export function cleDeRecherche({ cle, abreviation }) {
-  const abr = abreviation ? normalize(abreviation) : '';
-  return abr ? `${cle}|${abr}` : cle;
+export function cleDeRecherche({ libelle, cle, synonymes = [] }) {
+  const ecritures = [libelle !== undefined && libelle !== null ? normalize(libelle) : cle, ...(synonymes ?? []).map((s) => normalize(s))].filter(Boolean);
+  return [...new Set(ecritures)].join('|');
 }

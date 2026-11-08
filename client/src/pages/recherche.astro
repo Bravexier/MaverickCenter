@@ -9,29 +9,32 @@ import { chargerVocabulaire } from '../lib/mots-cles-db.mjs';
 import { ouvrirBase } from '../lib/donnees.mjs';
 
 // Recherche (menu Outils) : plus de barre de recherche dans l'en-tête, la recherche est cette page, mêlée aux mots-clés (demande du propriétaire).
-// Sans recherche, tous les mots-clés ; en tapant, les mots-clés dont l'écriture ou l'abréviation correspond puis les pages et les événements trouvés (lib/search.mjs ; un
+// Sans recherche, tous les mots-clés ; en tapant, les mots-clés dont le libellé ou un synonyme correspond puis les pages et les événements trouvés (lib/search.mjs ; un
 // événement de la chronologie se trouve par son texte et par les libellés de ses catégories : lib/recherche-index.ts).
 // Les mots-clés sont le glossaire de la base (table mot_cle, migrations 0043 et 0056 ; demande du propriétaire du 2026-10-16 : « Le mot-clé devra désormais
 // servir un peu comme un glossaire ») : TOUS, même ceux qu'aucune page ne porte, chacun avec le nombre de pages visibles qui le portent ou le citent (pages
 // du wiki et événements de l'index : étiquettes et balises, lib/recherche-index.ts), et l'infobulle de sa définition quand il en a une (data-bulle
-// « mot-cle-<id> » : le middleware pose la bulle, src/middleware.mjs). Les événements de la chronologie ont aussi des catégories, filtre de la frise
-// (/chronologie/). Un mot-clé est un lien /recherche/?mot-cle=<id> (son id, figé) : le script de la page (src/scripts/recherche.mjs) y affiche son libellé,
+// « mot-cle-<clé> » : le middleware pose la bulle, src/middleware.mjs). Les événements de la chronologie ont aussi des catégories, filtre de la frise
+// (/chronologie/). Un mot-clé est un lien /recherche/?mot-cle=<clé> (sa clé, décision R232 (3) ; une clé qu'il a quittée y mène encore :
+// lib/recherche-mots-cles.mjs#idDeLaCle) : le script de la page (src/scripts/recherche.mjs) y affiche son libellé,
 // sa définition, puis les pages qui le portent ou le citent (demande du propriétaire : « cliquer sur un mot clé lance une recherche sur ce mot clé et
 // liste les éléments qui ont ce mot clé ») ; les pastilles des pages du wiki y mènent, et les anciennes adresses /tags/<clé>/ aussi (page 404,
 // lib/nav.mjs#nouvelleAdresse).
 // Le vocabulaire se modifie sur le Glossaire (/regles/glossaire/, en mode modification sur le site de dev : src/scripts/edition/mots-cles.mjs ; réponses
 // du propriétaire du 2026-11-06) : cette page ne fait plus que chercher, et liste toujours les mots-clés ; leurs pastilles mènent toujours à la liste de
-// leurs pages (?mot-cle=<id>), jamais à l'adresse du mot-clé (réponse Q12). CSS : styles/recherche/, inséré ici (?raw). Aucun id de la page ne commence
-// par « mot-cle- » : c'est celui des bulles du glossaire (« mot-cle-<id> », lib/mots-cles-balises.mjs#idDeBulle).
+// leurs pages (?mot-cle=<clé>), jamais à l'adresse du mot-clé (réponse Q12). CSS : styles/recherche/, inséré ici (?raw). Aucun id de la page ne commence
+// par « mot-cle- » : c'est celui des bulles du glossaire (« mot-cle-<clé> », lib/mots-cles-balises.mjs#idDeBulle).
 const index = await indexDeRecherche();
 const comptes = comptesDesMotsCles(index);
-// L'abréviation d'un mot-clé (migration 0090 ; réponse du propriétaire du 2026-11-05 : « Modifiable et affichée ») suit son libellé dans sa pastille,
-// « Armure magique (AM) · 3 » (une monnaie : « Ricken d’or » et son icône, R63 ; lib/mots-cles-balises.mjs#htmlDeLaPastille, le même HTML que l'extension
-// de l'éditeur), et la recherche le trouve par elle (data-abreviation). La définition de chaque mot-clé décrit est rendue ici, monnaies en icônes (R63) et
-// balises rendues par le middleware (#definitions-des-mots-cles, [data-definition-de] : htmlDeLaDefinition) : la vue d'un mot-clé la recopie, son
-// script ne lit aucune monnaie (il n'importe pas lib/monnaies.mjs : skill site-version-portable).
+// La pastille d'un mot-clé montre son libellé seul (décision R233 (9) : « Armure magique · 3 » ; une monnaie : « Ricken d’or » et son icône, R63 ;
+// lib/mots-cles-balises.mjs#htmlDeLaPastille), et la recherche le trouve aussi par ses synonymes (R233 (1), data-synonymes ; l'ancienne abréviation en
+// est un). La définition de chaque mot-clé décrit est rendue ici, monnaies en icônes (R63) et balises rendues par le middleware
+// (#definitions-des-mots-cles, [data-definition-de] : htmlDeLaDefinition, par l'id du mot-clé) : la vue d'un mot-clé la recopie, son script ne lit aucune
+// monnaie (il n'importe pas lib/monnaies.mjs : skill site-version-portable).
+const json = (liste) => (liste?.length ? JSON.stringify(liste) : undefined);
 const motsCles = chargerVocabulaire(ouvrirBase()).map((m) => ({
-  id: m.id, libelle: m.libelle, abreviation: m.abreviation || null, cle: m.libelle_cle, definition: m.description, n: comptes.get(m.id) ?? 0,
+  id: m.id, libelle: m.libelle, cle: m.cle, icone: m.icone ?? null, synonymes: json(m.synonymes), anciennes: json(m.anciennes_cles),
+  definition: m.description, n: comptes.get(m.id) ?? 0,
 }));
 const lienDuMotCle = `${url('recherche/')}?${PARAMETRE_MOT_CLE}=`;
 ---
@@ -52,9 +55,9 @@ const lienDuMotCle = `${url('recherche/')}?${PARAMETRE_MOT_CLE}=`;
       <ul class="tags" id="liste-mots-cles">
         {
           motsCles.map((m) => (
-            <li data-id={m.id} data-cle={m.cle} data-n={m.n} data-libelle={m.libelle} data-abreviation={m.abreviation ?? undefined} data-definition={m.definition || undefined}>
-              <a class="badge" href={`${lienDuMotCle}${encodeURIComponent(m.id)}`} data-bulle={m.definition ? `mot-cle-${m.id}` : undefined}
-                aria-describedby={m.definition ? `mot-cle-${m.id}` : undefined} set:html={htmlDeLaPastille(m)} />
+            <li data-id={m.id} data-cle={m.cle} data-n={m.n} data-libelle={m.libelle} data-synonymes={m.synonymes} data-anciennes-cles={m.anciennes} data-definition={m.definition || undefined}>
+              <a class="badge" href={`${lienDuMotCle}${encodeURIComponent(m.cle)}`} data-bulle={m.definition ? `mot-cle-${m.cle}` : undefined}
+                aria-describedby={m.definition ? `mot-cle-${m.cle}` : undefined} set:html={htmlDeLaPastille(m)} />
             </li>
           ))
         }

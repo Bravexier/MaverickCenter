@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { idDuProtege } from '../src/lib/mots-cles-proteges.mjs';
 import {
   analyserTypeDeDon, bouclierMax, decouperInventaire, decouperMaitriseArme, decouperMaitriseArmure, MOT_CLE_DE_CATEGORIE,
 } from '../src/lib/classe-champs.mjs';
@@ -47,8 +48,9 @@ test('type d’un don : type et limite de capacite pour les 660 dons', () => {
 
 test('mot-clé de page de chaque catégorie : celui des classes en place', () => {
   for (const c of classes) {
-    // par son id (décision R195 : son libellé se modifie sur le site de dev)
+    // par son id (décision R195 : son libellé se modifie sur le site de dev) : l'id entier du mot-clé protégé que nomme la catégorie (migration 0113,
+    // lib/mots-cles-proteges.mjs#idDuProtege)
     const tag = db.prepare('SELECT tag_id FROM page_tag WHERE page_id = ? AND ordre = 1').get(c.id)?.tag_id;
-    assert.equal(MOT_CLE_DE_CATEGORIE[c.categorie_id], tag, c.id);
+    assert.equal(idDuProtege(MOT_CLE_DE_CATEGORIE[c.categorie_id]), tag, c.id);
   }
 });

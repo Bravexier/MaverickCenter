@@ -1,0 +1,239 @@
+{
+  "migration": "0115-mots-cles-synonymes",
+  "decision": "R233",
+  "description": "Les synonymes créés par la migration (R233) : `synonymes`, un par ligne de mot_cle_synonyme (id figé, mot-clé, écriture, écriture normalisée, ordre ; `origine` « abreviation » : l'ancienne valeur de mot_cle.abreviation, R233 (7) ; « fusion » : le libellé d'un mot-clé fondu, R233 (5), avec son id `ancienMotCleId`). `fusions` : la fiche entière des deux mots-clés fondus dans « Instant Cast » (id 163) à la version 114, pour le rejeu des lots du journal d'avant la 0115 (une balise ou une étiquette qui les cite vise désormais 163 ; leur clé est dans mot_cle_ancienne_cle) ; ce qui a été reporté sur la cible : étiquettes de page et de sort, catégories (aucune), balises (`balises` : leur nombre).  `textes` : les balises reciblées vers Instant Cast (« {{x}} » affiche le synonyme, R233 (2)).",
+  "synonymes": [
+    {
+      "id": 1,
+      "motCleId": 21,
+      "libelle": "AM",
+      "libelleCle": "am",
+      "ordre": 0,
+      "origine": "abreviation"
+    },
+    {
+      "id": 2,
+      "motCleId": 22,
+      "libelle": "AP",
+      "libelleCle": "ap",
+      "ordre": 0,
+      "origine": "abreviation"
+    },
+    {
+      "id": 3,
+      "motCleId": 37,
+      "libelle": "BA",
+      "libelleCle": "ba",
+      "ordre": 0,
+      "origine": "abreviation"
+    },
+    {
+      "id": 4,
+      "motCleId": 60,
+      "libelle": "CK",
+      "libelleCle": "ck",
+      "ordre": 0,
+      "origine": "abreviation"
+    },
+    {
+      "id": 5,
+      "motCleId": 78,
+      "libelle": "CR",
+      "libelleCle": "cr",
+      "ordre": 0,
+      "origine": "abreviation"
+    },
+    {
+      "id": 6,
+      "motCleId": 105,
+      "libelle": "EP",
+      "libelleCle": "ep",
+      "ordre": 0,
+      "origine": "abreviation"
+    },
+    {
+      "id": 7,
+      "motCleId": 162,
+      "libelle": "INI",
+      "libelleCle": "ini",
+      "ordre": 0,
+      "origine": "abreviation"
+    },
+    {
+      "id": 8,
+      "motCleId": 163,
+      "libelle": "IC",
+      "libelleCle": "ic",
+      "ordre": 0,
+      "origine": "abreviation"
+    },
+    {
+      "id": 9,
+      "motCleId": 225,
+      "libelle": "MJ",
+      "libelleCle": "mj",
+      "ordre": 0,
+      "origine": "abreviation"
+    },
+    {
+      "id": 10,
+      "motCleId": 258,
+      "libelle": "Nat.",
+      "libelleCle": "nat",
+      "ordre": 0,
+      "origine": "abreviation"
+    },
+    {
+      "id": 11,
+      "motCleId": 261,
+      "libelle": "NM",
+      "libelleCle": "nm",
+      "ordre": 0,
+      "origine": "abreviation"
+    },
+    {
+      "id": 12,
+      "motCleId": 262,
+      "libelle": "NPM",
+      "libelleCle": "npm",
+      "ordre": 0,
+      "origine": "abreviation"
+    },
+    {
+      "id": 13,
+      "motCleId": 282,
+      "libelle": "PJ",
+      "libelleCle": "pj",
+      "ordre": 0,
+      "origine": "abreviation"
+    },
+    {
+      "id": 14,
+      "motCleId": 283,
+      "libelle": "PNJ",
+      "libelleCle": "pnj",
+      "ordre": 0,
+      "origine": "abreviation"
+    },
+    {
+      "id": 15,
+      "motCleId": 288,
+      "libelle": "XP",
+      "libelleCle": "xp",
+      "ordre": 0,
+      "origine": "abreviation"
+    },
+    {
+      "id": 16,
+      "motCleId": 289,
+      "libelle": "PO",
+      "libelleCle": "po",
+      "ordre": 0,
+      "origine": "abreviation"
+    },
+    {
+      "id": 17,
+      "motCleId": 292,
+      "libelle": "PP",
+      "libelleCle": "pp",
+      "ordre": 0,
+      "origine": "abreviation"
+    },
+    {
+      "id": 18,
+      "motCleId": 311,
+      "libelle": "RC",
+      "libelleCle": "rc",
+      "ordre": 0,
+      "origine": "abreviation"
+    },
+    {
+      "id": 19,
+      "motCleId": 312,
+      "libelle": "RF",
+      "libelleCle": "rf",
+      "ordre": 0,
+      "origine": "abreviation"
+    },
+    {
+      "id": 20,
+      "motCleId": 313,
+      "libelle": "RO",
+      "libelleCle": "ro",
+      "ordre": 0,
+      "origine": "abreviation"
+    },
+    {
+      "id": 21,
+      "motCleId": 163,
+      "libelle": "Action bonus",
+      "libelleCle": "action-bonus",
+      "ordre": 1,
+      "origine": "fusion",
+      "ancienMotCleId": 6
+    },
+    {
+      "id": 22,
+      "motCleId": 163,
+      "libelle": "Action rapide",
+      "libelleCle": "action-rapide",
+      "ordre": 2,
+      "origine": "fusion",
+      "ancienMotCleId": 7
+    }
+  ],
+  "fusions": [
+    {
+      "id": 6,
+      "ancienId": "action-bonus",
+      "libelle": "Action bonus",
+      "cle": "action-bonus",
+      "description": "Voir {{instant-cast|IC}}.",
+      "abreviation": null,
+      "couleur": null,
+      "url": null,
+      "verrou": 0,
+      "monnaie_id": null,
+      "cible": {
+        "id": 163,
+        "cle": "instant-cast"
+      },
+      "pageTag": [],
+      "sortMotCle": [],
+      "categories": [],
+      "balises": 0
+    },
+    {
+      "id": 7,
+      "ancienId": "action-rapide",
+      "libelle": "Action rapide",
+      "cle": "action-rapide",
+      "description": "Voir {{instant-cast|IC}}.",
+      "abreviation": null,
+      "couleur": null,
+      "url": null,
+      "verrou": 0,
+      "monnaie_id": null,
+      "cible": {
+        "id": 163,
+        "cle": "instant-cast"
+      },
+      "pageTag": [],
+      "sortMotCle": [],
+      "categories": [],
+      "balises": 1
+    }
+  ],
+  "textes": [
+    {
+      "table": "page",
+      "cle": {
+        "id": "guide/attaquer-et-se-defendre"
+      },
+      "col": "corps_md",
+      "avant": "{{action-rapide|",
+      "apres": "{{instant-cast|",
+      "compte": 1
+    }
+  ]
+}

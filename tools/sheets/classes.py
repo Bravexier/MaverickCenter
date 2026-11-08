@@ -222,7 +222,8 @@ FILE_ID = "1Pyg4GSUlFrvNaTg3bi6uXlehg1MuRHmkyfPO6s5K72I"
 URL = "https://docs.google.com/spreadsheets/d/%s/edit" % FILE_ID
 CATEGORY = "classes"
 CAP_CATEGORY = "capacites"
-# Mots-clés protégés (client/src/lib/mots-cles.mjs#MOTS_CLES_PROTEGES) : posés par leur id, écrits dans `tags:` avec leur libellé courant
+# Mots-clés protégés (clés de tools/db/maverick.py#MOTS_CLES_PROTEGES, copie de client/src/lib/mots-cles.mjs) : posés par l'id entier que ce
+# dictionnaire leur donne (migration 0113), écrits dans `tags:` avec leur libellé courant (leur clé s'ils ont des homonymes)
 # (protected_tag : tools/db/maverick.py#libelle_protege), jamais par leur écriture, qu'un autre mot-clé pourrait prendre sur le site de dev.
 CAP_TAG = "capacite-de-classe"   # chaque fiche de capacité
 CLASS_TAG = "classe"             # chaque page de classe
@@ -257,7 +258,8 @@ VOCABULAIRE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..
 
 
 def protected_tag(ident):
-    """L'écriture de `tags:` du mot-clé protégé d'id `ident` : son libellé courant dans le vocabulaire (VOCABULAIRE, --vocabulaire), ou None s'il n'y
+    """L'écriture de `tags:` du mot-clé protégé `ident` (une clé de MOTS_CLES_PROTEGES, posé par son id entier) : son libellé courant dans le
+    vocabulaire (VOCABULAIRE, --vocabulaire ; sa clé s'il a des homonymes), ou None s'il n'y
     est pas (non écrit : un import ne crée jamais de mot-clé). tools/db/maverick.py, chargé par son chemin : `python3 -I` n'ajoute pas tools/db à
     sys.path."""
     dossier = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "db")

@@ -1,7 +1,8 @@
 // L'index de la recherche (pages/search-index.json.ts, lu par le script de /recherche/) : les pages du wiki (loadWiki : sans les pages d'exemple sous
-// HIDE_EXAMPLES) puis les événements de la chronologie (tables evenement, lib/chronologie-db.mjs), dans l'ordre de la frise. Une page porte les ids de ses
-// mots-clés (`motsCles` : vocabulaire mot_cle, lib/mots-cles-db.mjs) — ses étiquettes (`tags`, cherchées comme le texte) puis les mots-clés du glossaire
-// que ses balises citent hors des codes (« {{recharge-longue}} » : /recherche/?mot-cle=<id> liste les pages qui l'emploient) — et son texte sans balises (le libellé ou
+// HIDE_EXAMPLES) puis les événements de la chronologie (tables evenement, lib/chronologie-db.mjs), dans l'ordre de la frise. Une page porte les ids entiers
+// de ses mots-clés (`motsCles` : vocabulaire mot_cle, lib/mots-cles-db.mjs, migration 0113) — ses étiquettes (`tags`, cherchées comme le texte) puis les
+// mots-clés du glossaire que ses balises citent hors des codes (« {{recharge-longue}} » : /recherche/?mot-cle=<clé> liste les pages qui l'emploient,
+// lib/recherche-mots-cles.mjs#idDeLaCle) — et son texte sans balises (le libellé ou
 // le texte écrit, « Libellé : définition » pour le mode complet : lib/mots-cles-balises.mjs#texteSansBalises). Un événement (type « Événement ») n'a pas
 // d'étiquette : il a des catégories (categorie_chronologie, filtre de la frise), dont les libellés sont ses `tags`, cherchés comme le texte ; ses
 // `motsCles` ne sont que ceux que citent les balises de ses descriptions. La page /recherche/ en tire aussi le nombre de pages de chaque mot-clé, par le
@@ -31,8 +32,8 @@ export interface ElementDeRecherche {
   summary: string;
   aliases: string[];
   tags: string[];
-  /** ids des mots-clés (mot_cle.id) : les étiquettes de la page, puis ceux que ses balises citent (un événement : ces derniers seulement) */
-  motsCles: string[];
+  /** ids entiers des mots-clés (mot_cle.id) : les étiquettes de la page, puis ceux que ses balises citent (un événement : ces derniers seulement) */
+  motsCles: number[];
   text: string;
 }
 
@@ -84,7 +85,8 @@ async function construire(): Promise<ElementDeRecherche[]> {
       summary: sans(entry.data.summary ?? ''),
       aliases: entry.data.aliases,
       tags: entry.data.tags,
-      motsCles: [...new Set([...entry.data.tags.map((libelle: string) => idDuMotCle(db, libelle)), ...motsClesCites(texte, vocabulaire, { markdown: true })])],
+      motsCles: [...new Set([...entry.data.tags.map((ecriture: string) => idDuMotCle(db, ecriture)).filter((id: number | null) => id !== null),
+        ...motsClesCites(texte, vocabulaire, { markdown: true })])],
       text: plainText(texte),
     };
   });

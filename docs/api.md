@@ -139,7 +139,7 @@ pour recommencer.
 | `evenements/<événement>/categories/` | `POST`, `DELETE` | `categories` | Pose une catégorie sur l'événement (`categorie_id`), l'en retire |
 | `monstres/<carte>/valeurs-de-capacites/` | `POST`, `PATCH`, `DELETE` | `valeurs_de_capacite` | Pose une valeur propre (`rang`, `numero`, `valeur`), la change, l'efface (R69) ; la valeur commune (ou `null`) n'est jamais écrite : elle efface la valeur propre (`element: null` dans la réponse) |
 | `onglets-des-regles/<onglet>/ordre/` | `POST` | `ordonner` | L'ordre du menu latéral de l'onglet, d'un bloc : `ids`, tous les identifiants de ses entrées dans le nouvel ordre (`409` si la liste n'est pas exactement celle du menu) ; les rangs qu'occupait le menu sont redonnés, seules les entrées qui changent de place sont écrites |
-| `mots-cles/<mot-clé>/fusion/` | `POST` | `fusionner_mots_cles` | Verse les pages du mot-clé dans `dans`, y recible ses balises (« {{id}} » des textes), puis le retire du vocabulaire (`409` tant que la définition d'un mot-clé verrouillé le cite : R222) ; un `PATCH` qui renomme vers l'écriture d'un autre mot-clé répond `409` avec cette action toute prête (`action: { methode, adresse, corps }`) |
+| `mots-cles/<mot-clé>/fusion/` | `POST` | `fusionner_mots_cles` | Verse les pages du mot-clé dans `dans` (l'id entier d'un autre), y recible ses balises (« {{cle}} » des textes), puis le retire du vocabulaire (`409` tant que la définition d'un mot-clé verrouillé le cite : R222) ; les clés sont recalculées (un homonyme disparu) ; `dans` reçoit ses synonymes (sauf ceux que R233 (4) refuse ; un mot-clé qui a des synonymes ne se fusionne pas dans un `dans` verrouillé : `409`, `champ: "synonymes"`) et sa clé et ses clés quittées deviennent des clés quittées de `dans` (R233 (11)) |
 
 Les références « @i » d'un lot à plusieurs opérations (créer une spécialité puis son don dans la même requête) restent sur `POST /api/edition/`.
 
@@ -153,11 +153,11 @@ adaptées, jamais leurs noms ; le lot porte la page `api/v1/<ressource>[/<sous-r
 | --- | --- |
 | `200` `201` | Lu, modifié, supprimé ; créé (`Location`) |
 | `304` | `If-None-Match` égal à la version (détail) |
-| `400` | Corps illisible ou qui n'est pas un objet JSON, rien à modifier, colonne ou paramètre inconnu, valeur refusée par le service d'édition (type, bornes, champ obligatoire, balise du glossaire qui ne cite aucun mot-clé : `refs`, abréviation d'un mot-clé mal écrite : `champ: "abreviation"`, lien ou couleur d'un mot-clé refusés : `champ: "url"`, `champ: "couleur"`, lien saisi qu'aucun mot-clé ne porte : `champ`, `liens`), `limite` hors bornes, `forcer` mal écrit ou hors d'un mot-clé (R223) |
+| `400` | Corps illisible ou qui n'est pas un objet JSON, rien à modifier, colonne ou paramètre inconnu, valeur refusée par le service d'édition (type, bornes, champ obligatoire, balise du glossaire qui ne cite aucun mot-clé : `refs`, ou un libellé de plusieurs homonymes : `refs`, `homonymes` ; synonyme d'un mot-clé mal écrit : `champ: "synonymes"`, lien ou couleur d'un mot-clé refusés : `champ: "url"`, `champ: "couleur"`, lien saisi qu'aucun mot-clé ne porte : `champ`, `liens`), `limite` hors bornes, `forcer` mal écrit ou hors d'un mot-clé (R223) |
 | `403` | Hors du site de dev (tout `/api/v1/`) ; écriture qui vient d'un autre site (`Sec-Fetch-Site`) |
 | `404` | Ressource, sous-ressource ou ligne inconnue (ou hors de la ressource) ; extension absente au `PATCH` |
 | `405` | Méthode que la ressource n'a pas : `Allow` donne la liste exacte, le corps la raison (lecture seule ; ni le service d'édition ni une opération du lot ne le font, et par quelles méthodes la ressource s'écrit) et les `capacites` |
-| `409` | `If-Match` périmé ; refus du service d'édition (élément cité par d'autres règles, mot-clé protégé, dernier bloc d'un événement, maîtrise d'arme illisible dans une classe ou un don, don à plus d'une part de maîtrise à choisir, nom de famille d'armes déjà pris ou qui changerait une maîtrise existante, avec la liste dans `sources` : décision R159 ; abréviation d'un mot-clé qui est l'id, l'écriture ou l'abréviation d'un autre, ou mot-clé créé ou renommé vers l'abréviation d'un autre : `champ: "abreviation"`, `mot_cle` : l'autre ; mot-clé mentionné : `mentions`, `refus_du_forcage` ; suppression forcée refusée : `mots_cles_verrouilles`, `url` ou `mentions_bloquantes`…) |
+| `409` | `If-Match` périmé ; refus du service d'édition (élément cité par d'autres règles, mot-clé protégé, dernier bloc d'un événement, maîtrise d'arme illisible dans une classe ou un don, don à plus d'une part de maîtrise à choisir, nom de famille d'armes déjà pris ou qui changerait une maîtrise existante, avec la liste dans `sources` : décision R159 ; synonyme d'un mot-clé qui est le libellé, un synonyme ou la clé d'un autre, ou mot-clé créé ou renommé vers le synonyme d'un autre : `champ: "synonymes"` ou `"libelle"`, `mot_cle` : l'autre ; homonyme sans catégorie distinctive ou clé déjà prise (R232) : `champ: "categories"` ou `"libelle"`, `mots_cles` ; catégorie de mots-clés non vide : `mots_cles` ; mot-clé mentionné : `mentions`, `refus_du_forcage` ; suppression forcée refusée : `mots_cles_verrouilles`, `url` ou `mentions_bloquantes`…) |
 | `413` | Corps de plus de 1 Mio |
 | `415` | Écriture sans `Content-Type: application/json` |
 | `422` | Refusé par la base (contrainte CHECK, UNIQUE, NOT NULL, clé étrangère) ou valeur que les importeurs ne sauraient pas relire ; une gemme ou un bois du Potentiel Illimité (`POST /api/v1/gemmes/`, `POST /api/v1/bois/`) : « Le Potentiel Illimité n’a ni gemme, ni bois, ni bâton magique, ni pièce élémentaire (décision R160). » |
@@ -329,7 +329,8 @@ la ressource ne prend que les lignes de la table qui passent sa condition.
 | `annonces/` | Annonces | `annonce` | modifier | — |
 | `onglets-des-regles/` | Onglets des Règles | `regles_onglet` | lecture seule | `entrees` |
 | `alias-des-pages/` | Alias des pages | `alias` | lecture seule | — |
-| `mots-cles/` | Mots-clés | `mot_cle` | créer, modifier, supprimer | `pages` |
+| `mots-cles/` | Mots-clés | `mot_cle` | créer, modifier, supprimer | `pages`, `categories` (créer, supprimer), `synonymes` (créer, supprimer), `anciennes-cles` |
+| `categories-de-mots-cles/` | Catégories de mots-clés | `categorie_mot_cle` | créer, modifier, supprimer | — |
 | `sources/` | Sources | `source` | lecture seule | `pages` |
 | `entites-des-pages/` | Entités des pages | `page_entite` | lecture seule | — |
 | `types-de-page/` | Rubriques du wiki | `type_page` | lecture seule | — |
@@ -351,18 +352,33 @@ l'ordre d'un menu passe par l'action `ordre` de l'onglet, et une entrée naît e
 page protégée, avec `raisons`, ou citée, avec `citations` ; `400` pour une page de Découvrir ou du Guide du MJ). Le site lit le plan au build par
 `client/src/lib/plan-des-regles-db.mjs`. Le résumé d'une page du guide (`resume`) se modifie par `PATCH pages-du-guide/<page>/`.
 
-`mots-cles/` liste et cherche (`?q=`) aussi l'abréviation (`abreviation`, migration 0090 : « AM », `NULL` sans), qui se donne à la création et se
-modifie par `PATCH` ; la ref d'une balise du glossaire peut être l'id, l'écriture ou l'abréviation du mot-clé (enregistrée sous l'id :
-[`content-guide.md`](content-guide.md), « Mots-clés (glossaire) »). Elle liste aussi le lien et la couleur (`url`, `couleur`, migration 0098 ; `?q=`
+`mots-cles/` (migrations 0113 à 0115, décisions R232 et R233) : l'identifiant est un entier (`/api/v1/mots-cles/163/`), attribué à la création
+(le suivant, jamais réutilisé) ; la clé (`cle`, en lecture seule) est calculée : le slug du libellé, suivi pour un homonyme des slugs de ses
+catégories qui ne sont pas communes à tous ses homonymes ; elle est recalculée à chaque renommage, changement de catégorie, homonyme qui apparaît ou
+disparaît et catégorie renommée, et chaque balise qui la cite est alors réécrite (`anciennes-cles` : les clés quittées, qui mènent encore au
+mot-clé). Le libellé n'est plus unique. `synonymes` remplace l'abréviation : la sous-ressource `synonymes/` les liste dans l'ordre, `POST`
+(`libelle`) en ajoute un à la fin, `DELETE` en retire un (opération `synonymes_mot_cle` ; `409` sur un mot-clé verrouillé, R233 (6)) ; un synonyme
+qui s'écrit comme le libellé, un synonyme ou la clé d'un autre mot-clé est refusé en `409`, comme son propre libellé ou une écriture qui couperait
+une balise en `400` (`champ: "synonymes"`). La sous-ressource `categories/` pose (`POST`, `categorie_id`) ou retire (`DELETE`) une catégorie
+(opération `categories_mot_cle`, permise sur un mot-clé verrouillé, R232 (11)). La création (`POST mots-cles/`) accepte `categories` (identifiants)
+et `synonymes` (écritures). Refusés en `409` : un homonyme sans catégorie qui le distingue de chacun des autres (`champ: "categories"`), une clé
+déjà prise ou un libellé qui s'écrit comme le synonyme d'un autre mot-clé (`champ: "libelle"`). `categories-de-mots-cles/` : une catégorie se crée,
+se renomme (`PATCH`, `libelle` unique, sinon `409`) et ne se supprime que vide (`409` avec `mots_cles` sinon). La ref d'une balise du glossaire peut
+être la clé, le libellé que porte un seul mot-clé, ou un synonyme, quelle que soit la casse (un libellé de plusieurs homonymes : `400`, `refs` et
+`homonymes`) ; elle s'enregistre par la clé, le texte tapé gardé tel quel (« {{ic}} » → « {{instant-cast|ic}} », R233 (10) :
+[`content-guide.md`](content-guide.md), « Mots-clés (glossaire) »). `mots-cles/` liste aussi le lien et la couleur (`url`, `couleur`, migration 0098 ; `?q=`
 cherche dans le lien), qui se donnent à la création et se modifient par `PATCH` (sauf ceux d'un mot-clé verrouillé, plus bas) : le lien, une adresse
 interne relative à la racine du site, sans le préfixe de déploiement, dont le chemin mène à une page du site (`/races/drakos/`,
 `/metiers/#metier-mineur` ; l'ancre et la requête ne sont pas vérifiées) ; la couleur, `#rrggbb` ou `<famille>:<id>` d'une couleur de la palette
-(`classe:melee`) ; refusés en `400` avec `champ: "url"` ou `champ: "couleur"`. Un lien `[[…]]` ou `[texte](/…)` saisi dans un texte devient la balise
+(`classe:melee`) ; refusés en `400` avec `champ: "url"` ou `champ: "couleur"`. L'icône (`icone`, migration 0116, décision R235) se lit, se donne à
+la création et se modifie de même : `null`, ou `<famille>:<id>` d'une icône de la liste du site (`lib/icones.mjs#ICONES` : pour l'instant
+`monnaie:rf`, `monnaie:ro`, `monnaie:pp` ; le catalogue en donne les `valeurs`, la liste `icones` de `GET /api/edition/listes/`), sinon `400` avec
+`champ: "icone"`. Un lien `[[…]]` ou `[texte](/…)` saisi dans un texte devient la balise
 du seul mot-clé qui mène à sa page (sinon `400` avec `champ` et `liens`, [`serveur.md`](serveur.md), « Édition des règles »). Le verrou d'un mot-clé
 (`verrou`, migration 0110, décisions R218 et R219) se lit dans la liste, le détail et le catalogue (colonne non modifiable) ; aucune route ne l'écrit
 (`400` dans un `POST` ou un `PATCH`). Un mot-clé verrouillé (`1` : ceux qui mènent à une page, ceux des monnaies, ceux dont le site se sert) ne se
 modifie pas par `PATCH`, quel que soit le champ, ne se supprime pas par `DELETE`, même sans mention, et ne se fusionne pas dans un autre (action
-`fusion`) : `409`, avec une raison qui cite R218 et R219 ; un autre mot-clé se fusionne dans lui (il garde son lien et sa couleur), sauf quand la
+`fusion`) : `409`, avec une raison qui cite R218 et R219 ; un autre mot-clé se fusionne dans lui (il garde son lien, sa couleur et son icône ; refusé en `409`, `champ: "synonymes"`, si cet autre a des synonymes), sauf quand la
 définition d'un mot-clé verrouillé (la sienne comprise) cite cet autre par une balise : la fusion est alors refusée en `409`, avant toute écriture,
 avec `mots_cles_verrouilles` (décision R222 ; le rejeu, lui, la fait). Une page vers laquelle mène un mot-clé verrouillé (un métier par son ancre, la
 fiche d'un don, une page des Règles) ne se supprime pas : `DELETE` rend `409` avec `mots_cles_verrouilles` (décision R221). Un mot-clé créé vaut `0`,

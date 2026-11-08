@@ -56,10 +56,91 @@ def normalize(value):
     return s.strip('-')
 
 
+class HomonymesRefuses(ValueError):
+    """Des homonymes que la règle de la clé refuse (cles_des_mots_cles) : `fautes` = [(normalize du libellé, ids, raison)]."""
+
+    def __init__(self, fautes):
+        self.fautes = fautes
+        super().__init__('; '.join(f'{base} {sorted(ids)} : {raison}' for base, ids, raison in fautes))
+
+
+def cles_des_mots_cles(mots_cles, categories, strict=True):
+    """La clé de chaque mot-clé (mot_cle.cle, migration 0113) : {id: clé}. Référence de la règle (réponses du propriétaire, 2026-11-08) ; le
+    JavaScript du service et de db:check la reprend.
+    `mots_cles` : [(id, libellé, ids de ses catégories)] ; `categories` : {id de catégorie: libellé}.
+      * Sans homonyme (aucun autre mot-clé de même normalize(libellé)) : normalize(libellé).
+      * Des homonymes : normalize(libellé), puis, chacune précédée d'un tiret, le normalize du libellé de chacune de SES catégories qui n'est pas
+        commune à tous ses homonymes, dans l'ordre croissant de l'id de catégorie (« namazu-race », « namazu-classe » ; avec trois homonymes ou
+        plus, de même).
+    Refus (`strict`, HomonymesRefuses) : un homonyme sans catégorie, ou dont les catégories sont incluses dans celles d'un autre (il n'a pas au
+    moins une catégorie propre face à chacun des autres ; mêmes catégories comprises) ; deux mots-clés de même clé (« Namazu race » face à
+    namazu-race). Sans `strict` (l'état intermédiaire de la migration 0113, que la 0114 a rendu conforme : les 13 races homonymes des classes
+    raciales, sans catégorie ; la base n'a plus d'écart depuis), un homonyme sans catégorie propre prend normalize(libellé) seul ; deux clés égales
+    restent refusées (mot_cle.cle est UNIQUE)."""
+    groupes = {}
+    for ident, libelle, cats in mots_cles:
+        groupes.setdefault(normalize(libelle), []).append((ident, frozenset(cats)))
+    cles, fautes = {}, []
+    for base, membres in groupes.items():
+        if not base:
+            raise ValueError(f'mot-clé sans lettre ni chiffre : {[i for i, _ in membres]}')
+        if len(membres) == 1:
+            cles[membres[0][0]] = base
+            continue
+        communes = frozenset.intersection(*(c for _, c in membres))
+        for ident, cats in membres:
+            if not cats:
+                fautes.append((base, [ident], 'homonyme sans catégorie'))
+            else:
+                for autre, cats_autre in membres:
+                    if autre != ident and cats <= cats_autre:
+                        fautes.append((base, [ident, autre], 'aucune catégorie propre face à un homonyme (catégories incluses ou égales)'))
+            propres = sorted(cats - communes)
+            cles[ident] = '-'.join([base] + [normalize(categories[c]) for c in propres])
+    par_cle = {}
+    for ident, cle in cles.items():
+        par_cle.setdefault(cle, []).append(ident)
+    doubles = [(cle, ids, 'clé déjà prise') for cle, ids in par_cle.items() if len(ids) > 1]
+    if doubles or (strict and fautes):
+        raise HomonymesRefuses(doubles + (fautes if strict else []))
+    return cles
+
+
+def _id_de_trace(db, valeur):
+    """L'id entier d'un mot-clé nommé dans une trace (historique_modification) : l'entier tel quel ; un ancien id texte (trace d'avant la migration
+    0113 que celle-ci n'a pas traduite, celle d'un mot-clé déjà absent : « cr ») par sa clé courante, puis mot_cle_ancienne_cle ; sinon None."""
+    if isinstance(valeur, int) or valeur is None:
+        return valeur
+    trouve = db.execute('SELECT id FROM mot_cle WHERE cle = ?', (valeur,)).fetchone()
+    return trouve[0] if trouve else _cle_quittee(db, valeur)
+
+
+def _table_existe(db, nom):
+    return db.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", (nom,)).fetchone() is not None
+
+
+def _cle_quittee(db, cle):
+    """L'id du mot-clé qui a quitté la clé `cle` (mot_cle_ancienne_cle, migration 0113), ou None ; None aussi pour une base de travail sans
+    cette table (un vocabulaire chargé seul : tools/docs/codex.py)."""
+    if not _table_existe(db, 'mot_cle_ancienne_cle'):
+        return None
+    trouve = db.execute('SELECT mot_cle_id FROM mot_cle_ancienne_cle WHERE cle = ?', (cle,)).fetchone()
+    return trouve[0] if trouve else None
+
+
+def _synonyme(db, cle):
+    """L'id du mot-clé dont un synonyme s'écrit `cle` une fois normalisé (mot_cle_synonyme.libelle_cle, unique : migration 0115, R233 ; sans égard à
+    la casse, « cr » = « CR »), ou None ; None aussi pour une base de travail sans cette table (un vocabulaire chargé seul : tools/docs/codex.py)."""
+    if not _table_existe(db, 'mot_cle_synonyme'):
+        return None
+    trouve = db.execute('SELECT mot_cle_id FROM mot_cle_synonyme WHERE libelle_cle = ?', (cle,)).fetchone()
+    return trouve[0] if trouve else None
+
+
 def _vocabulaire_du_site(db):
     """Ce que le site de dev a fait du vocabulaire (historique_modification, lignes mot_cle et page_tag) : (ecritures, supprimes).
     ecritures : écriture quittée (normalize de l'ancien libellé d'un mot-clé renommé ou supprimé) -> son id ; supprimes : id d'un mot-clé supprimé ->
-    l'id du mot-clé où ses pages sont passées (fusion : les page_tag modifiées du même lot), ou None.
+    l'id du mot-clé où ses pages sont passées (fusion : les page_tag modifiées du même lot), ou None. Ids entiers (migration 0113).
     Le journal ne note d'une fusion que ce qu'elle change : quand aucune page n'est passée de l'un à l'autre (toutes portaient déjà le second, ou le
     premier n'en avait aucune sur le site de dev), elle ne se distingue pas d'une suppression (None)."""
     ecritures, supprimes = {}, {}
@@ -87,72 +168,109 @@ def _vocabulaire_du_site(db):
     return ecritures, supprimes
 
 
-def mot_cle(db, libelle):
-    """L'id du mot-clé du vocabulaire qui s'écrit `libelle` (même clé normalize : « espace temps » = « espace/temps »), ou None : un import ne CRÉE
-    jamais de mot-clé (migration 0056 : le vocabulaire, devenu un glossaire, est celui du site de dev ; avant, un mot-clé qui manquait était créé).
-    Le site de dev est la source du vocabulaire (historique_modification) : une écriture qu'un mot-clé a quittée (renommé) mène à lui ; celle d'un
-    mot-clé fusionné, au mot-clé qui l'a reçu (quand une page est passée de l'un à l'autre : _vocabulaire_du_site) ; celle d'un mot-clé supprimé, et
-    toute écriture inconnue du vocabulaire, ne mènent à rien : None (l'appelant ne pose pas le mot-clé). Un import ne supprime jamais un mot-clé ;
-    l'écriture d'un mot-clé existant ne change pas (elle se change sur /recherche/ du site de dev). Un importeur pose un mot-clé protégé par son id
-    (libelle_protege), pas par son écriture."""
-    cle = normalize(libelle)
+_NORMALISES = {}   # libellé -> normalize(libellé) : le vocabulaire se relit à chaque écriture cherchée
+
+
+def _normalise(libelle):
+    if libelle not in _NORMALISES:
+        _NORMALISES[libelle] = normalize(libelle)
+    return _NORMALISES[libelle]
+
+
+def trouver_mot_cle(db, ecriture):
+    """Le mot-clé qu'une écriture désigne (migration 0113 : le libellé n'est plus unique) -> (id, homonymes) : (id, []) trouvé ; (None, [clés]) :
+    écriture ambiguë, que portent plusieurs homonymes (non posée : il faut écrire la clé) ; (None, []) : inconnue.
+    Ordre : la clé courante (mot_cle.cle = normalize(écriture) ; une clé est unique, jamais ambiguë), puis le libellé (même normalize : « espace
+    temps » = « espace/temps »), puis un synonyme (mot_cle_synonyme, migration 0115, R233 : même normalize, sans égard à la casse ; l'ancienne
+    abréviation en est un : « CR », « Nat. » ; unique, jamais ambigu), puis une clé quittée (mot_cle_ancienne_cle : ancien id texte, renommage,
+    mot-clé fondu par une migration : « action-bonus »), puis une écriture que le site de dev a fait quitter à un mot-clé (historique_modification :
+    _vocabulaire_du_site). Un import ne CRÉE jamais de mot-clé (migration 0056)."""
+    cle = normalize(ecriture)
     if not cle:
-        raise ValueError(f'mot-clé sans lettre ni chiffre : {libelle!r}')
-    trouve = db.execute('SELECT id FROM mot_cle WHERE libelle_cle = ?', (cle,)).fetchone()
+        raise ValueError(f'mot-clé sans lettre ni chiffre : {ecriture!r}')
+    trouve = db.execute('SELECT id FROM mot_cle WHERE cle = ?', (cle,)).fetchone()
     if trouve:
-        return trouve[0]
+        return trouve[0], []
+    homonymes = [(i, c) for i, libelle, c in db.execute('SELECT id, libelle, cle FROM mot_cle ORDER BY id') if _normalise(libelle) == cle]
+    if len(homonymes) == 1:
+        return homonymes[0][0], []
+    if homonymes:
+        return None, [c for _, c in homonymes]
+    for chercher in (_synonyme, _cle_quittee):
+        trouve = chercher(db, cle)
+        if trouve is not None:
+            return trouve, []
     ecritures, supprimes = _vocabulaire_du_site(db)
     ident, vus = ecritures.get(cle), set()
     while ident is not None and ident not in vus:
-        if db.execute('SELECT 1 FROM mot_cle WHERE id = ?', (ident,)).fetchone():
-            return ident
+        trouve = _id_de_trace(db, ident)
+        if trouve is not None and db.execute('SELECT 1 FROM mot_cle WHERE id = ?', (trouve,)).fetchone():
+            return trouve, []
         vus.add(ident)
         ident = supprimes.get(ident)
-    return None
+    return None, []
+
+
+def mot_cle(db, libelle):
+    """L'id (entier, migration 0113) du mot-clé du vocabulaire que désigne l'écriture `libelle` (sa clé, ou son libellé : même clé normalize), ou
+    None : un import ne CRÉE jamais de mot-clé (migration 0056 : le vocabulaire, devenu un glossaire, est celui du site de dev). None aussi pour une
+    écriture ambiguë (plusieurs homonymes la portent : trouver_mot_cle les nomme ; il faut écrire la clé). Le site de dev est la source du
+    vocabulaire (historique_modification) : une écriture qu'un mot-clé a quittée (renommé) mène à lui ; celle d'un mot-clé fusionné, au mot-clé
+    qui l'a reçu (quand une page est passée de l'un à l'autre : _vocabulaire_du_site) ; celle d'un mot-clé supprimé, et toute écriture inconnue,
+    ne mènent à rien. Un import ne supprime jamais un mot-clé ; l'écriture d'un mot-clé existant ne change pas (elle se change sur le site de
+    dev). Un importeur pose un mot-clé protégé par sa clé (libelle_protege), pas par son écriture."""
+    return trouver_mot_cle(db, libelle)[0]
 
 
 def mots_cles_poses(db, libelles):
-    """Les mots-clés que poserait une liste `tags:` : [(ordre, id)] dans l'ordre de `libelles` (mot_cle : une écriture inconnue ou d'un mot-clé que le
-    site a supprimé n'est pas posée, une écriture qui mène à un mot-clé déjà posé non plus ; l'ordre garde sa place), et les écritures inconnues
-    (non posées faute de mot-clé)."""
-    poses, vus, inconnues = [], set(), []
+    """Les mots-clés que poserait une liste `tags:` -> (poses, inconnues, ambigues) : poses = [(ordre, id)] dans l'ordre de `libelles` (une
+    écriture qui mène à un mot-clé déjà posé n'est pas posée ; l'ordre garde sa place) ; inconnues = les écritures sans mot-clé (inconnues ou
+    d'un mot-clé que le site a supprimé) ; ambigues = [(écriture, [clés des homonymes])], non posées (il faut écrire la clé)."""
+    poses, vus, inconnues, ambigues = [], set(), [], []
     for i, libelle in enumerate(libelles):
-        ident = mot_cle(db, libelle)
-        if ident is None:
+        ident, homonymes = trouver_mot_cle(db, libelle)
+        if homonymes:
+            ambigues.append((libelle, homonymes))
+        elif ident is None:
             inconnues.append(libelle)
         elif ident not in vus:
             vus.add(ident)
             poses.append((i, ident))
-    return poses, inconnues
+    return poses, inconnues, ambigues
 
 
 def poser_les_mots_cles(db, page_id, libelles):
-    """Les lignes page_tag d'une page, dans l'ordre de `libelles` (mots_cles_poses) -> les écritures non posées faute de mot-clé du vocabulaire
-    (inconnues ou supprimées par le site de dev), pour que l'appelant les signale."""
-    poses, inconnues = mots_cles_poses(db, libelles)
+    """Les lignes page_tag d'une page, dans l'ordre de `libelles` (mots_cles_poses) -> les écritures non posées, pour que l'appelant les signale :
+    faute de mot-clé du vocabulaire (inconnues ou supprimées par le site de dev), puis ambiguës (homonymes : signaler_mots_cles_ignores)."""
+    poses, inconnues, ambigues = mots_cles_poses(db, libelles)
     for i, ident in poses:
         db.execute('INSERT INTO page_tag (page_id, ordre, tag_id) VALUES (?,?,?)', (page_id, i, ident))
-    return inconnues
+    return inconnues + [e for e, _ in ambigues]
 
 
 # --------------------------------------------------------------------------------------------------------------------
-# Mots-clés protégés : ceux que le site lit par leur id ; un importeur les pose par leur id, jamais par leur écriture
+# Mots-clés protégés : ceux que le site lit ; un importeur les pose par leur id, jamais par leur écriture
 # --------------------------------------------------------------------------------------------------------------------
-# Copie des clés de client/src/lib/mots-cles.mjs#MOTS_CLES_PROTEGES (la source : catégories de classe, colonnes de /classes/, race hybride, don de classe,
-# classe, race, métier, codex, étiquettes de sort ; décision R195 : le site les reconnaît à leur id). Test : client/test/mots-cles-python.test.mjs.
-MOTS_CLES_PROTEGES = frozenset({
-    'cac', 'distance', 'magique', 'hybride', 'hybride-animal', 'speciale', 'race-hybride', 'capacite-de-classe', 'classe', 'race', 'metier', 'codex',
-    'sort-grenade', 'sort-fer'})
+# Les clés de client/src/lib/mots-cles.mjs#MOTS_CLES_PROTEGES (la source : catégories de classe, colonnes de /classes/, race hybride, don de classe,
+# classe, race, métier, codex, étiquettes de sort ; décision R195 : le site les reconnaît à leur ancien id texte), chacune avec l'id entier que la
+# migration 0113 a donné à son mot-clé (registre data/migrations/0113-mots-cles-id-entier.json ; un id est figé, la clé suit le libellé) ; None :
+# absent de la base à la migration (race-hybride, protégé, que le service crée : tant qu'il n'existe pas, il se reconnaît par sa clé
+# « race-hybride » ; s'il est créé un jour, c'est son id entier qui compte, à reporter ici et dans la liste de JS ; réponse du leader-technique,
+# 2026-11-08). Test : client/test/mots-cles-python.test.mjs.
+MOTS_CLES_PROTEGES = {
+    'cac': 51, 'distance': 92, 'magique': 224, 'hybride': 160, 'hybride-animal': 161, 'speciale': 334, 'race-hybride': None, 'capacite-de-classe': 54,
+    'classe': 66, 'race': 298, 'metier': 240, 'codex': 71, 'sort-grenade': 333, 'sort-fer': 332}
 
 VOCABULAIRE = os.path.join(HERE, '..', '..', 'data', 'rows', 'mot_cle.sql')   # le vocabulaire courant (export de la table mot_cle)
-_LIBELLES = {}   # chemin du vocabulaire -> {id: libellé courant}
+_VOCABULAIRES = {}   # chemin du vocabulaire -> {id: (clé, écriture qui mène au mot-clé)}
 
 
-def libelles_du_vocabulaire(chemin=VOCABULAIRE, schema=SCHEMA):
-    """{id: libellé courant} des mots-clés d'un export de la table mot_cle (data/rows/mot_cle.sql par défaut) ; {} s'il n'existe pas."""
+def vocabulaire_des_mots_cles(chemin=VOCABULAIRE, schema=SCHEMA):
+    """{id: (clé, écriture)} des mots-clés d'un export de la table mot_cle (data/rows/mot_cle.sql par défaut) ; {} s'il n'existe pas. L'écriture est
+    le libellé courant quand il mène au mot-clé (sa clé est normalize(libellé)), sinon la clé (un homonyme, migration 0113 : son libellé est ambigu)."""
     cle = (os.path.abspath(chemin), os.path.abspath(schema))
-    if cle not in _LIBELLES:
-        libelles = {}
+    if cle not in _VOCABULAIRES:
+        vocabulaire = {}
         if os.path.exists(chemin):
             with open(schema, encoding='utf-8') as f:
                 table = re.search(r'CREATE TABLE mot_cle \([\s\S]*?\) STRICT;', f.read()).group(0)
@@ -160,21 +278,25 @@ def libelles_du_vocabulaire(chemin=VOCABULAIRE, schema=SCHEMA):
             db.execute(table)
             with open(chemin, encoding='utf-8') as f:
                 db.executescript(f.read())
-            libelles = dict(db.execute('SELECT id, libelle FROM mot_cle'))
+            vocabulaire = {i: (c, libelle if normalize(libelle) == c else c) for i, c, libelle in db.execute('SELECT id, cle, libelle FROM mot_cle')}
             db.close()
-        _LIBELLES[cle] = libelles
-    return _LIBELLES[cle]
+        _VOCABULAIRES[cle] = vocabulaire
+    return _VOCABULAIRES[cle]
 
 
 def libelle_protege(ident, chemin=VOCABULAIRE, schema=SCHEMA):
-    """L'écriture à mettre dans le `tags:` d'une page pour y poser le mot-clé protégé d'id `ident` : son libellé courant (vocabulaire `chemin`), ou None
-    s'il n'est pas au vocabulaire (l'importeur ne l'écrit pas : un import ne crée jamais de mot-clé, migration 0056). ValueError pour un id non protégé.
-    Le libellé courant mène à son mot-clé et à lui seul (libelle_cle unique, que mot_cle() cherche d'abord) : un autre mot-clé qui prendrait l'écriture
-    d'origine d'un protégé (« codex ») ne reçoit pas ses pages. mot_cle() ne résout pas l'id d'un protégé avant le libellé : db:sync-pages relit aussi
-    les `tags:` qu'écrit db:export-pages (libellés courants), où cette écriture serait celle de l'autre mot-clé."""
+    """L'écriture à mettre dans le `tags:` d'une page pour y poser le mot-clé protégé `ident` (une clé de MOTS_CLES_PROTEGES) : celle de son id
+    entier dans le vocabulaire `chemin` (vocabulaire_des_mots_cles : son libellé courant, ou sa clé s'il a des homonymes), ou None s'il n'y est pas
+    (l'importeur ne l'écrit pas : un import ne crée jamais de mot-clé, migration 0056). Sans id (race-hybride) : le mot-clé de clé `ident`.
+    ValueError pour une clé non protégée. Cette écriture mène à lui et à lui seul (mot_cle() cherche d'abord la clé, et un libellé écrit est la
+    clé de son mot-clé) : un autre mot-clé qui aurait pris l'écriture d'origine d'un protégé (« codex ») ne reçoit pas ses pages."""
     if ident not in MOTS_CLES_PROTEGES:
         raise ValueError(f'{ident!r} : pas un mot-clé protégé (client/src/lib/mots-cles.mjs#MOTS_CLES_PROTEGES)')
-    return libelles_du_vocabulaire(chemin, schema).get(ident)
+    vocabulaire = vocabulaire_des_mots_cles(chemin, schema)
+    numero = MOTS_CLES_PROTEGES[ident]
+    if numero is None:
+        return next((e for c, e in vocabulaire.values() if c == ident), None)
+    return vocabulaire[numero][1] if numero in vocabulaire else None
 
 
 def lire_schema(chemin=SCHEMA):
@@ -467,10 +589,12 @@ def session(*familles, rows, schema=SCHEMA, heritees=None):
 
 
 def signaler_mots_cles_ignores(ignores, exemples=10):
-    """Le message d'un import qui n'a pas posé des mots-clés absents du vocabulaire : [(page_id, écriture)] -> une ligne de résumé et des exemples."""
+    """Le message d'un import qui n'a pas posé des mots-clés : [(page_id, écriture)] -> une ligne de résumé et des exemples. Une écriture est
+    absente du vocabulaire, ou ambiguë (plusieurs homonymes la portent, migration 0113 : écrire la clé du mot-clé voulu)."""
     ecritures = sorted({e for _, e in ignores}, key=normalize)
-    lignes = [f'{len(ignores)} mot(s)-clé(s) non posé(s) sur les pages ({len(ecritures)} écriture(s)) : absents du vocabulaire du site de dev, '
-              "un import n'en crée pas (migration 0056) ; à créer sur /recherche/ du site de dev s'ils doivent l'être"]
+    lignes = [f'{len(ignores)} mot(s)-clé(s) non posé(s) sur les pages ({len(ecritures)} écriture(s)) : absents du vocabulaire du site de dev '
+              "(un import n'en crée pas, migration 0056 : à créer sur le site de dev s'ils doivent l'être), ou ambigus (plusieurs homonymes : "
+              "écrire la clé du mot-clé voulu, migration 0113)"]
     lignes += [f'    {e!r}' for e in ecritures[:exemples]]
     if len(ecritures) > exemples:
         lignes.append(f'    … {len(ecritures) - exemples} autre(s)')

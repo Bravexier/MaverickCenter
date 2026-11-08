@@ -203,7 +203,9 @@ test('supprimer une page des Règles : 404, 400 hors des onglets, 409 protégée
   assert.equal(lot([{ op: 'modifier', table: 'page', cle: { id: citante }, valeurs: { corps_md: `Voir [[${titreCible}]].` } }]).statut, 400, 'aucun mot-clé ne mène à la page');
   const motCle = ok(lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: titreLibre(db, 'Mot-clé de la page citée'), url: `/${cheminDePage(cible)}` } }])).crees[0].id;
   ok(lot([{ op: 'modifier', table: 'page', cle: { id: citante }, valeurs: { corps_md: `Voir [[${titreCible}]].` } }]));
-  assert.equal(db.prepare('SELECT corps_md FROM page WHERE id = ?').get(citante).corps_md, `Voir {{${motCle}|${titreCible}}}.\n`, 'le lien devenu la balise du mot-clé');
+  // la balise cite la clé du mot-clé (migration 0113, décision R232 (3))
+  const cleDuMotCle = db.prepare('SELECT cle FROM mot_cle WHERE id = ?').get(motCle).cle;
+  assert.equal(db.prepare('SELECT corps_md FROM page WHERE id = ?').get(citante).corps_md, `Voir {{${cleDuMotCle}|${titreCible}}}.\n`, 'le lien devenu la balise du mot-clé');
   const avantRefus = nombre();
   const citee = supprimer(cible);
   assert.equal(citee.statut, 409, JSON.stringify(citee.corps));

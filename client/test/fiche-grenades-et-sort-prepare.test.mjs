@@ -13,6 +13,7 @@ import * as M from '../src/lib/fiche-moteur.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { corpsDeDon, resumeDeDon } from '../src/lib/corps-classes.mjs';
 import { MOTS_CLES_PROTEGES } from '../src/lib/mots-cles.mjs';
+import { IDS_DES_MOTS_CLES_PROTEGES } from '../src/lib/mots-cles-proteges.mjs';
 import { bonusDeSortsEcrits, ETIQUETTES_DES_SORTS, preparationEcrite } from '../src/lib/sort-bonus-texte.mjs';
 import { valeurAuNm } from '../src/lib/sort-maitrise.mjs';
 import { baseDImport, reglesDImport } from './aide-base-d-import.mjs';
@@ -37,7 +38,8 @@ const PARDON = { nom: 'Pardon ?!? (Grenadier)', valeur: 11 };
 // ------------------------------------------------------------------ R114 : les sorts grenades
 
 test('R114 : « Sort grenade » étiquette les 14 sorts « Grenade… » (sort_mot_cle), emportés dans regles.json ; le mot-clé est protégé ; aucun autre sort n’a cette étiquette', () => {
-  const etiquetes = lignes("SELECT sort_id FROM sort_mot_cle WHERE mot_cle_id = 'sort-grenade' ORDER BY sort_id").map((l) => l.sort_id);
+  // le mot-clé par son id entier (migration 0113 : lib/mots-cles-proteges.mjs), la fiche par son nom
+  const etiquetes = lignes('SELECT sort_id FROM sort_mot_cle WHERE mot_cle_id = ? ORDER BY sort_id', IDS_DES_MOTS_CLES_PROTEGES['sort-grenade']).map((l) => l.sort_id);
   assert.equal(etiquetes.length, 14);
   assert.equal(new Set(etiquetes.map((id) => sortDe(id).magie_id)).size, 14, 'un dans chaque magie');
   assert.ok(etiquetes.every((id) => /^Grenade /i.test(sortDe(id).nom)), 'les sorts « Grenade… » de la décision');
@@ -50,8 +52,10 @@ test('R114 : « Sort grenade » étiquette les 14 sorts « Grenade… » (sort_m
   const LIBELLES = { 'sort-grenade': 'Sort grenade', 'sort-fer': 'Sort fer' };
   assert.deepEqual(ETIQUETTES_DES_SORTS.map(([id]) => id), Object.keys(LIBELLES));
   for (const [id] of ETIQUETTES_DES_SORTS) {
-    assert.ok(MOTS_CLES_PROTEGES.has(id), `${id} : protégé`);
-    assert.deepEqual(lignes('SELECT id, libelle, libelle_cle FROM mot_cle WHERE id = ?', id), [{ id, libelle: LIBELLES[id], libelle_cle: id }]);
+    const numero = IDS_DES_MOTS_CLES_PROTEGES[id];
+    assert.ok(MOTS_CLES_PROTEGES.has(numero), `${id} : protégé`);
+    // verrouillé (R219 (2)) : son libellé ne se modifie pas sur le site
+    assert.deepEqual(lignes('SELECT id, libelle, cle, verrou FROM mot_cle WHERE id = ?', numero), [{ id: numero, libelle: LIBELLES[id], cle: id, verrou: 1 }]);
   }
 });
 

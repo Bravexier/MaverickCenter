@@ -26,6 +26,10 @@ export const NOMS_DES_TABLES = Object.freeze({
   page_entite: 'Entité d’une page',
   page_source: 'Source de la page',
   page_tag: 'Mot-clé de la page',
+  // les catégories, les synonymes et les clés quittées d'un mot-clé (migrations 0113 à 0115, décisions R232, R233) : les noms de leurs sous-ressources
+  mot_cle_categorie: 'Catégorie du mot-clé',
+  mot_cle_synonyme: 'Synonyme du mot-clé',
+  mot_cle_ancienne_cle: 'Ancienne clé du mot-clé',
   source: 'Source',
   // magies et sorts (section 3)
   sort_bonus_maitrise: 'Bonus de maîtrise du sort',
@@ -215,6 +219,7 @@ export const COLONNES_COMMUNES = Object.freeze({
   source_id: 'Source',
   specialite_id: 'Spécialité',
   tag_id: 'Mot-clé',
+  mot_cle_id: 'Mot-clé',
 });
 
 /** Un registre à deux niveaux, gelé en entier. */
@@ -308,7 +313,9 @@ export const NOMS_DES_COLONNES = geler({
   monstre_espece_lieu: { lieu: 'Lieu' },
   monstre_rubrique: { rubrique: 'Rubrique' },
   // le verrou d'un mot-clé (migration 0110, décisions R218, R219) : hors de TABLES, aucune route ne l'écrit ; un lot ancien peut le porter
-  mot_cle: { verrou: 'Verrou' },
+  mot_cle: { verrou: 'Verrou', cle: 'Clé', monnaie_id: 'Monnaie' },
+  mot_cle_synonyme: { libelle: 'Synonyme', ordre: 'Rang' },
+  mot_cle_ancienne_cle: { cle: 'Ancienne clé' },
   note_cellule: { cellule: 'Cellule', repond_a: 'Répond à' },
   page: { type: 'Rubrique du wiki', slug: 'Adresse', donnees: 'Données', statut: 'Statut' },
   page_entite: { principale: 'Page principale' },

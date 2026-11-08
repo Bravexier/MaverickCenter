@@ -28,6 +28,7 @@ import { createHash } from 'node:crypto';
 import { ErreurJournal, lireLigne, modifierSansNoter, nouveauLot, ouvrirLot, parcourirUnLot, rompuesDuLot, rupturesEnPlace, structure } from './edition-journal.mjs';
 import { ErreurEdition, OUTILS_DE_RESOLUTION as OUTILS, TABLES_DES_REGLES_DU_DON, adaptateurDuJournal, colonneDerivee, messageSqlite, raisonDuGel, recalculerLesPages } from './edition.mjs';
 import { TABLES_DES_SOURCES, sourcesAvantLaSuppression, sourcesRefaitesParLaResolution } from './edition-maitrises.mjs';
+import { retirerLesFillesDuMotCle } from './edition-mots-cles.mjs';
 import {
   detacherDesFiches, magiesDesDonsVariables, noterLesRetraits, nouveauxRetraitsDeFiches, retirerDesFiches, retirerLesChoixDesDonsChanges,
 } from './fiches-retraits.mjs';
@@ -97,11 +98,13 @@ const lignesEnConflit = (db, id) => db.prepare("SELECT * FROM modification WHERE
 /**
  * Ce que les fiches perdent quand une ligne de règle part (R42, R52 ; une ressource : R60), avant sa suppression : comme les domaines de l'édition ; et
  * les sources de maîtrise d'arme d'un don ou d'une ligne de classe_maitrise_arme, et les règles en données d'un don (edition.mjs#retirerLesReglesDuDon :
- * celles qu'un lot noté avant ne retirait pas lui-même), notées avant elle (pas par la cascade du schéma).
+ * celles qu'un lot noté avant ne retirait pas lui-même), et les lignes filles d'un mot-clé (ses catégories, synonymes et clés quittées :
+ * edition-mots-cles.mjs#retirerLesFillesDuMotCle), notées avant elle (pas par la cascade du schéma).
  */
 const RETRAITS_PAR_TABLE = Object.freeze({ metier: 'metiers', specialite: 'specialites', capacite: 'capacites', sort: 'sorts', arme: 'armes' });
 function avantLaSuppression(ctx, table, cle) {
   sourcesAvantLaSuppression(ctx.db, ctx.w, table, cle);
+  if (table === 'mot_cle' && Number.isInteger(cle?.id)) retirerLesFillesDuMotCle(ctx.db, ctx.w, cle.id);
   if (typeof cle?.id !== 'string') return;
   if (table === 'capacite') OUTILS.retirerLesReglesDuDon(ctx.db, ctx.w, cle.id);
   if (RETRAITS_PAR_TABLE[table]) retirerDesFiches(ctx.db, { [RETRAITS_PAR_TABLE[table]]: [cle.id] }, ctx.retraits);

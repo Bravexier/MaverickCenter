@@ -222,29 +222,53 @@ const iTypes = process.argv.indexOf('--types');
   bilan.types_page = reels.length;
 }
 
-// Glossaire des mots-clés (migration 0056, lib/mots-cles-balises.mjs) : la base ne garde que des ids. Toute balise « {{…}} » d'un texte de la base vise
-// un mot-clé du vocabulaire PAR SON ID (aucune orpheline : un mot-clé supprimé quitte les textes qui le citent, serveur/edition.mjs ; aucune écriture : le
-// service met chaque texte en forme canonique) et est écrite comme formeCanonique l'écrirait pour sa colonne (formesNonCanoniques, la même règle :
-// dans un texte de case, son texte écrit, « | », jamais le mode complet ; dans un texte mis en forme, « \| » sur une ligne de tableau et « | »
-// ailleurs, ni espace autour de la ref ou du texte ; une seule tolérance, le libellé écrit en texte dans un texte mis en forme, « {{id|Libellé}} »,
-// que formeCanonique ramène à « {{id}} » : le corps d'une page typée l'écrit, un renommage peut en faire un) — toutes les colonnes de texte des règles et des pages
-// (lib/mots-cles-db.mjs#textesDeLaBase : ni les sections 13 à 15, ni les tables dérivées, ni les traces gardées telles quelles, ni la recherche plein
-// texte ; lib/tables-de-la-base.mjs). Une balise dans un code d'un texte mis en forme est une écriture littérale : ni lue ni contrôlée.
-// L'abréviation d'un mot-clé (migration 0090), qu'une ref peut citer comme son écriture, est sans ambiguïté : la règle de
-// lib/mots-cles-balises.mjs#fautesDeLAbreviation, la même que celle du service (normalize non vide, ni espace autour, ni « { », « } », « | », saut de
-// ligne, ni « : » final ; normalize(abreviation) n'est ni l'écriture du mot-clé lui-même, ni l'id, l'écriture ou l'abréviation d'un autre).
+// Glossaire des mots-clés (migration 0056, lib/mots-cles-balises.mjs) : la base ne garde que des clés (mot_cle.cle, migration 0113). Toute balise
+// « {{…}} » d'un texte de la base vise un mot-clé du vocabulaire PAR SA CLÉ (aucune orpheline : un mot-clé supprimé quitte les textes qui le citent,
+// serveur/edition.mjs ; aucune écriture, aucun synonyme : le service met chaque texte en forme canonique) et est écrite comme formeCanonique
+// l'écrirait pour sa colonne (formesNonCanoniques, la même règle : dans un texte de case, son texte écrit, « | », jamais le mode complet ; dans un
+// texte mis en forme, « \| » sur une ligne de tableau et « | » ailleurs, ni espace autour de la ref ou du texte ; une seule tolérance, le libellé
+// écrit en texte dans un texte mis en forme, « {{cle|Libellé}} », que formeCanonique ramène à « {{cle}} » : le corps d'une page typée l'écrit, un
+// renommage peut en faire un) — toutes les colonnes de texte des règles et des pages (lib/mots-cles-db.mjs#textesDeLaBase : ni les sections 13 à 15,
+// ni les tables dérivées, ni les traces gardées telles quelles, ni la recherche plein texte ; lib/tables-de-la-base.mjs). Une balise dans un code
+// d'un texte mis en forme est une écriture littérale : ni lue ni contrôlée.
+// La clé de chaque mot-clé est celle de la règle (décision R232 (2), (9), (10) : lib/mots-cles-cles.mjs#clesDesMotsCles, la jumelle de
+// tools/db/maverick.py#cles_des_mots_cles, stricte : aucun homonyme sans catégorie propre, aucune clé prise deux fois) ; une clé quittée
+// (mot_cle_ancienne_cle) n'est la clé courante d'aucun mot-clé. Les synonymes (migration 0115, décision R233 (4)) : libelle_cle = normalize(libelle)
+// (aussi gardé par db-derive), et la règle de lib/mots-cles-balises.mjs#fautesDuSynonyme, la même que celle du service (normalize non vide, ni espace
+// autour, ni « { », « } », « | », saut de ligne, ni « : » final ; ni le libellé de son propre mot-clé, ni le libellé, un synonyme ou la clé d'un autre).
 if (noms.has('mot_cle')) {
-  const { fautesDeLAbreviation, formesNonCanoniques, lireBalises, vocabulaireDesMotsCles } = await import(pathToFileURL(`${LIB}/mots-cles-balises.mjs`).href);
-  const { motsClesDeLaBase, textesDeLaBase } = await import(pathToFileURL(`${LIB}/mots-cles-db.mjs`).href);
+  const { fautesDuSynonyme, formesNonCanoniques, lireBalises, vocabulaireDesMotsCles } = await import(pathToFileURL(`${LIB}/mots-cles-balises.mjs`).href);
+  const { categoriesDesMotsCles, motsClesDeLaBase, textesDeLaBase } = await import(pathToFileURL(`${LIB}/mots-cles-db.mjs`).href);
+  const { clesDesMotsCles, HomonymesRefuses, RAISONS } = await import(pathToFileURL(`${LIB}/mots-cles-cles.mjs`).href);
+  const { normalize } = await import(pathToFileURL(`${LIB}/text.mjs`).href);
   const motsCles = motsClesDeLaBase(db);
   const vocabulaire = vocabulaireDesMotsCles(motsCles);
-  let abreviations = 0;
-  for (const m of motsCles) {
-    if (m.abreviation === null) continue;
-    abreviations += 1;
-    for (const f of fautesDeLAbreviation(vocabulaire, m)) problemes.push(`mot_cle ${m.id} : l'abréviation « ${m.abreviation} » ne convient pas (${f.raison})`);
+  if (noms.has('categorie_mot_cle')) {
+    try {
+      const cles = clesDesMotsCles(motsCles, new Map(categoriesDesMotsCles(db).map((c) => [c.id, c.libelle])));
+      for (const m of motsCles) {
+        if (cles.get(m.id) !== m.cle) problemes.push(`mot_cle ${m.id} : la clé « ${m.cle} » n'est pas celle de la règle (« ${cles.get(m.id)} », décision R232)`);
+      }
+    } catch (e) {
+      if (!(e instanceof HomonymesRefuses)) throw e;
+      for (const f of e.fautes) problemes.push(`mot_cle ${f.ids.join(', ')} (« ${f.base} ») : ${RAISONS[f.raison]} (décision R232)`);
+    }
+    const courantes = new Set(motsCles.map((m) => m.cle));
+    for (const m of motsCles) for (const a of m.anciennes_cles) if (courantes.has(a)) problemes.push(`mot_cle_ancienne_cle « ${a} » (mot-clé ${m.id}) : c'est la clé courante d'un mot-clé`);
   }
-  bilan.abreviations_mots_cles = abreviations;
+  let synonymes = 0;
+  if (noms.has('mot_cle_synonyme')) {
+    for (const s of db.prepare('SELECT id, mot_cle_id, libelle, libelle_cle FROM mot_cle_synonyme ORDER BY id').all()) {
+      if (normalize(s.libelle) !== s.libelle_cle) problemes.push(`mot_cle_synonyme ${s.id} : libelle_cle « ${s.libelle_cle} » n'est pas normalize(« ${s.libelle} »)`);
+    }
+    for (const m of motsCles) {
+      m.synonymes.forEach((x, i) => {
+        synonymes += 1;
+        for (const f of fautesDuSynonyme(vocabulaire, m, x, { autres: m.synonymes.slice(0, i) })) problemes.push(`mot_cle ${m.id} : le synonyme « ${x} » ne convient pas (${f.raison})`);
+      });
+    }
+  }
+  bilan.synonymes_mots_cles = synonymes;
   const q = (c) => (c === 'rowid' ? 'rowid' : `"${c}"`);
   let balises = 0;
   let colonnesLues = 0;
@@ -302,6 +326,20 @@ if (noms.has('mot_cle')) {
       }
     }
     if (liensRestes > 20) problemes.push(`liens : ${liensRestes} liens à écrire en balises au total`);
+  }
+
+  // L'icône d'un mot-clé (migration 0116, décision R235) : NULL, ou une icône de la liste du site (lib/icones.mjs#ICONES, la seule liste ; la règle du
+  // service, serveur/edition.mjs#refuserLIcone : fauteDeLIcone) ; le CHECK de la colonne ne lit que la forme « famille:id ».
+  if (colonnes('mot_cle').some((c) => c.name === 'icone')) {
+    const { fauteDeLIcone } = await import(pathToFileURL(`${LIB}/icones.mjs`).href);
+    let icones = 0;
+    for (const m of motsCles) {
+      if (m.icone === null) continue;
+      icones += 1;
+      const faute = fauteDeLIcone(m.icone);
+      if (faute) problemes.push(`mot_cle ${m.id} : l’icône « ${m.icone} » ne convient pas (${faute})`);
+    }
+    bilan.icones_mots_cles = icones;
   }
 }
 

@@ -7,6 +7,7 @@
 // Les noms, les effets, les définitions et les textes balisés sont modifiables sur le site de dev, source de ce qu'il modifie : ce que la décision a
 // écrit se lit dans l'état d'import ou d'après la migration (test/aide-base-d-import.mjs), comme le D/S/B, le type, le coût et la portée des 13 sorts
 // (modifiables aussi) ; l'état courant garde l'étiquette (sort_mot_cle, que le site ne modifie pas) et l'accord de la page de chaque magie avec ses lignes.
+import { IDS_DES_MOTS_CLES_PROTEGES } from '../src/lib/mots-cles-proteges.mjs';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
@@ -70,14 +71,16 @@ const valeur = ({ table, cle, colonne }) => {
 
 test('R164 : « Sort fer » étiquette les 13 sorts « Fer… » (sort_mot_cle, migration 0079), Fer corrompu compris, et aucun autre sort', () => {
   // le mot-clé (id figé) ; son libellé et sa définition à l'import
-  assert.equal(lignes("SELECT id FROM mot_cle WHERE id = 'sort-fer'").length, 1);
-  assert.deepEqual(lignesDImport("SELECT id, libelle, libelle_cle, description FROM mot_cle WHERE id = 'sort-fer'"),
-    [{ id: 'sort-fer', libelle: 'Sort fer', libelle_cle: 'sort-fer', description: "Type de sort d'amélioration qui s'applique sur une arme." }]);
-  const etiquetes = lignes("SELECT sort_id FROM sort_mot_cle WHERE mot_cle_id = 'sort-fer' ORDER BY sort_id").map((l) => l.sort_id);
+  // son id entier (migration 0113 : lib/mots-cles-proteges.mjs)
+  const fer = IDS_DES_MOTS_CLES_PROTEGES['sort-fer'];
+  assert.equal(lignes('SELECT id FROM mot_cle WHERE id = ?', fer).length, 1);
+  assert.deepEqual(lignesDImport('SELECT id, libelle, cle, description FROM mot_cle WHERE id = ?', fer),
+    [{ id: fer, libelle: 'Sort fer', cle: 'sort-fer', description: "Type de sort d'amélioration qui s'applique sur une arme." }]);
+  const etiquetes = lignes('SELECT sort_id FROM sort_mot_cle WHERE mot_cle_id = ? ORDER BY sort_id', fer).map((l) => l.sort_id);
   assert.deepEqual(etiquetes, Object.keys(EFFETS).sort());
   // les sorts « Fer… » de la base à l'import (leurs noms sont modifiables), un par magie sauf l'Arcane et le Potentiel Illimité
   assert.deepEqual(lignesDImport("SELECT id FROM sort WHERE nom LIKE 'Fer %' ORDER BY id").map((l) => l.id), etiquetes);
-  const magies = lignes("SELECT DISTINCT s.magie_id FROM sort_mot_cle e JOIN sort s ON s.id = e.sort_id WHERE e.mot_cle_id = 'sort-fer'").map((l) => l.magie_id);
+  const magies = lignes('SELECT DISTINCT s.magie_id FROM sort_mot_cle e JOIN sort s ON s.id = e.sort_id WHERE e.mot_cle_id = ?', fer).map((l) => l.magie_id);
   assert.equal(magies.length, 13, 'un par magie');
   assert.ok(!magies.includes('magies/magie-de-larcane') && !magies.includes('magies/potentiel-illimite'));
 });

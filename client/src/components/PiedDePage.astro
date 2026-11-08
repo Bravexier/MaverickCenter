@@ -1,8 +1,7 @@
 ---
 import { url, type WikiEntry } from '../lib/wiki';
 import { ouvrirBase } from '../lib/donnees.mjs';
-import { libelleAffiche } from '../lib/mots-cles-balises.mjs';
-import { idDuMotCle } from '../lib/mots-cles-db.mjs';
+import { chargerVocabulaire, idDuMotCle } from '../lib/mots-cles-db.mjs';
 import { PARAMETRE_MOT_CLE } from '../lib/recherche-mots-cles.mjs';
 
 // Le pied d'une page du wiki (pages/[type]/[slug].astro, components/guide/PageDuGuide.astro) : ses mots-clés, rien d'autre.
@@ -14,14 +13,21 @@ interface Props {
   entry: WikiEntry;
 }
 const { entry } = Astro.props;
+// chaque écriture du `tags:` (le libellé, ou la clé d'un homonyme : lib/mots-cles-db.mjs) mène au mot-clé qu'elle désigne : sa clé dans l'adresse, son
+// libellé à l'écran (décision R232 (4) : plus de suffixe « (classe) », R191 remplacée) ; une écriture que le vocabulaire n'a pas reste telle quelle
+const db = ouvrirBase();
+const parId = new Map(chargerVocabulaire(db).map((m) => [m.id, m]));
+const etiquettes = entry.data.tags.map((tag: string) => {
+  const m = parId.get(idDuMotCle(db, tag));
+  return { cle: m?.cle ?? tag, libelle: m?.libelle ?? tag };
+});
 ---
 
 {
-  /* Chaque mot-clé mène à la liste de ses pages et événements sur /recherche/ (?mot-cle=<id> : l'id figé du vocabulaire, lib/mots-cles-db.mjs) ;
-     son libellé sans le suffixe « (classe) » (R191 : une page du wiki n'est ni le Glossaire, ni la Recherche, ni Données) */
-  entry.data.tags.length > 0 && (
+  /* Chaque mot-clé mène à la liste de ses pages et événements sur /recherche/ (?mot-cle=<clé> : décision R232 (3), lib/recherche-mots-cles.mjs) */
+  etiquettes.length > 0 && (
     <ul class="tags" aria-label="Mots-clés">
-      {entry.data.tags.map((tag) => <li><a class="badge" href={`${url('recherche/')}?${PARAMETRE_MOT_CLE}=${encodeURIComponent(idDuMotCle(ouvrirBase(), tag))}`}>{libelleAffiche({ libelle: tag })}</a></li>)}
+      {etiquettes.map((t) => <li><a class="badge" href={`${url('recherche/')}?${PARAMETRE_MOT_CLE}=${encodeURIComponent(t.cle)}`}>{t.libelle}</a></li>)}
     </ul>
   )
 }

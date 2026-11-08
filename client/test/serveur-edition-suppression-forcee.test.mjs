@@ -22,9 +22,11 @@ import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.
 import { colonneDerivee, enregistrer, rejouerLeJournal } from '../serveur/edition.mjs';
 import { examinerLeLot, lotsResolus, resoudreLeConflit } from '../serveur/edition-conflits.mjs';
 import { adresseDeLaPage, indexDesAdresses, pageDeLAdresse } from '../src/lib/adresses-db.mjs';
+import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { mentionsDe } from '../src/lib/mentions-des-mots-cles.mjs';
 import { formesNonCanoniques, lireBalises, motCleDeLaRef, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { baseDImport, remettreDepuisLImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { ETIQUETTE_D_ESSAI, reglesAvecDesMotsClesDEssai } from './aide-mots-cles.mjs';
 
@@ -57,19 +59,20 @@ function nouvelle(db = vivante()) {
     const l = db.prepare(sql).get(...p);
     return l ? { ...l } : undefined;
   };
-  /** Un libellé qu'aucun mot-clé (id, écriture, abréviation) ni aucune page n'a. */
+  /** Un libellé qu'aucun mot-clé (clé, libellé, synonyme) ni aucune page n'a. */
   const libre = (base) => {
     let t = `${base} ${process.pid}`;
-    for (let i = 2; ligne('SELECT 1 FROM mot_cle WHERE libelle_cle = ? OR id = ? OR lower(abreviation) = lower(?)', normalize(t), normalize(t), t)
-      || ligne('SELECT 1 FROM page WHERE titre_cle = ?', normalize(t)); i += 1) t = `${base} ${process.pid} ${i}`;
+    const prise = (x) => motsClesDeLaBase(db).some((m) => normalize(m.libelle) === x || m.cle === x || m.synonymes.some((y) => normalize(y) === x));
+    for (let i = 2; prise(normalize(t)) || ligne('SELECT 1 FROM page WHERE titre_cle = ?', normalize(t)); i += 1) t = `${base} ${process.pid} ${i}`;
     return t;
   };
   const creer = (valeurs) => ok(lot([{ op: 'creer', entite: 'mot_cle', valeurs: { ...valeurs, libelle: libre(valeurs.libelle) } }])).crees[0].id;
   /** Un mot-clé posé dans la copie, comme une migration le ferait (`verrou` : 1 pour un verrouillé). */
-  const poser = (libelle, { verrou = 0, description = 'Définition d’essai (R223).' } = {}) => {
+  const poser = (libelle, { verrou = 0, description = 'Définition d’essai (R223).', id = null } = {}) => {
     const l = libre(libelle);
-    db.prepare('INSERT INTO mot_cle (id, libelle, libelle_cle, description, verrou) VALUES (?, ?, ?, ?, ?)').run(normalize(l), l, normalize(l), description, verrou);
-    return normalize(l);
+    const numero = id ?? ligne('SELECT max(id) + 1 AS n FROM mot_cle').n;
+    db.prepare('INSERT INTO mot_cle (id, libelle, cle, description, verrou) VALUES (?, ?, ?, ?, ?)').run(numero, l, normalize(l), description, verrou);
+    return numero;
   };
   const etiqueter = (pageId, tagId) => {
     const ordre = ligne('SELECT coalesce(max(ordre) + 1, 0) AS n FROM page_tag WHERE page_id = ?', pageId).n;
@@ -79,7 +82,14 @@ function nouvelle(db = vivante()) {
   const ajouterAuCorps = (pageId, texte) => db.prepare('UPDATE page SET corps_md = corps_md || ? WHERE id = ?').run(texte, pageId);
   const nombreDeModifications = () => ligne('SELECT count(*) AS n FROM modification').n;
   const motCle = (id) => ligne('SELECT * FROM mot_cle WHERE id = ?', id);
-  return { db, appel, lot, ligne, libre, creer, poser, etiqueter, ajouterAuCorps, nombreDeModifications, motCle };
+  /** La clé d'un mot-clé (migration 0113 : ce que citent les balises). */
+  const cle = (id) => motCle(id)?.cle;
+  return { db, appel, lot, ligne, libre, creer, poser, etiqueter, ajouterAuCorps, nombreDeModifications, motCle, cle };
+}
+
+/** Un id entier libre dans les deux bases (le site de dev et les règles livrées partent des mêmes règles : un même mot-clé, un même id). */
+function idLibre(...bases) {
+  return Math.max(...bases.map((s) => s.ligne('SELECT max(id) AS n FROM mot_cle').n)) + 1;
 }
 
 /** Les pages du scénario, choisies par leur type et leur statut : une page du guide, une page d'exemple du guide, une page d'exemple typée, une page du Codex. */
@@ -102,16 +112,18 @@ const citeEncore = (texte, m, markdown) => lireBalises(texte, { markdown }).some
 test('R223 : sans forçage, 409 de R196 (mentions, rien d’écrit) ; forcée, chaque balise devient son texte affiché (toute forme, toute écriture de la ref, texte mis en forme, tableau, texte de case, pages d’exemple) et les étiquettes partent, dans un lot', () => {
   const s = nouvelle();
   const p = pagesDe(s);
-  const k = s.creer({ libelle: 'Essai forcé', abreviation: `EF${process.pid}` });
+  const synonyme = `EF${process.pid}`;
+  const k = s.creer({ libelle: 'Essai forcé', synonymes: [synonyme] });
   const m = s.motCle(k);
-  // un texte de case (la définition d'un autre mot-clé, enregistrée par le service sous sa forme canonique « {{id|texte}} »)
-  const cite = s.creer({ libelle: 'Essai qui cite', description: `Voir {{${k}|Essai}}.` });
-  assert.equal(s.motCle(cite).description, `Voir {{${k}|Essai}}.`);
-  // textes mis en forme : chaque forme de balise, la ref par id, par écriture, par abréviation, une ligne de tableau, un code gardé
-  const corps = `\n\nEssai R223 : {{${k}}}, {{${k}|autre texte}}, {{${m.libelle}}}, {{${m.abreviation}}} ; \`{{${k}}}\` reste.\n\n{{${k}:}}\n\n| A | B |\n| --- | --- |\n| {{${k}\\|x}} | b |\n`;
+  const ck = m.cle;
+  // un texte de case (la définition d'un autre mot-clé, enregistrée par le service sous sa forme canonique « {{cle|texte}} »)
+  const cite = s.creer({ libelle: 'Essai qui cite', description: `Voir {{${ck}|Essai}}.` });
+  assert.equal(s.motCle(cite).description, `Voir {{${ck}|Essai}}.`);
+  // textes mis en forme : chaque forme de balise, la ref par clé, par écriture, par synonyme, une ligne de tableau, un code gardé
+  const corps = `\n\nEssai R223 : {{${ck}}}, {{${ck}|autre texte}}, {{${m.libelle}}}, {{${synonyme}}} ; \`{{${ck}}}\` reste.\n\n{{${ck}:}}\n\n| A | B |\n| --- | --- |\n| {{${ck}\\|x}} | b |\n`;
   s.ajouterAuCorps(p.guide, corps);
-  s.ajouterAuCorps(p.guideExemple, `\n\nExemple : {{${k}}}.\n`);
-  s.ajouterAuCorps(p.deriveeExemple, `\n\nDérivé : {{${k}}}.\n`);
+  s.ajouterAuCorps(p.guideExemple, `\n\nExemple : {{${ck}}}.\n`);
+  s.ajouterAuCorps(p.deriveeExemple, `\n\nDérivé : {{${ck}}}.\n`);
   const etiquettes = [s.etiqueter(p.lore, k), s.etiqueter(p.deriveeExemple, k)];
   const mentions = mentionsDe(s.db, k);
   assert.equal(mentions.length, 6, JSON.stringify(mentions));
@@ -132,7 +144,7 @@ test('R223 : sans forçage, 409 de R196 (mentions, rien d’écrit) ; forcée, c
   assert.equal(s.motCle(k), undefined, 'le mot-clé est supprimé');
   const corpsDe = (id) => s.ligne('SELECT corps_md FROM page WHERE id = ?', id).corps_md;
   const L = m.libelle;
-  assert.ok(corpsDe(p.guide).endsWith(`\n\nEssai R223 : ${L}, autre texte, ${L}, ${m.abreviation} ; \`{{${k}}}\` reste.\n\n${L}\n\n| A | B |\n| --- | --- |\n| x | b |\n`), corpsDe(p.guide).slice(-300));
+  assert.ok(corpsDe(p.guide).endsWith(`\n\nEssai R223 : ${L}, autre texte, ${L}, ${synonyme} ; \`{{${ck}}}\` reste.\n\n${L}\n\n| A | B |\n| --- | --- |\n| x | b |\n`), corpsDe(p.guide).slice(-300));
   assert.ok(corpsDe(p.guideExemple).endsWith(`\n\nExemple : ${L}.\n`), 'page d’exemple du guide');
   assert.ok(corpsDe(p.deriveeExemple).endsWith(`\n\nDérivé : ${L}.\n`), 'corps dérivé d’une page d’exemple');
   assert.equal(s.motCle(cite).description, 'Voir Essai.', 'texte de case : le texte écrit');
@@ -178,10 +190,11 @@ test('R223 (4), (5), lot 1 : le forçage refusé avant toute écriture — verro
   rienDEcrit('sort', () => refuse(forcer(ETIQUETTE_D_ESSAI.id), /étiquette \d+ sorts?/, 'étiquette de sort'));
 
   // cité par la définition d'un mot-clé verrouillé, par son id, son écriture ou son abréviation (R222 (1)) : la définition n'est jamais réécrite
-  const k = s.creer({ libelle: 'Essai cité verrouillé', abreviation: `ECV${process.pid}` });
+  const synonyme = `ECV${process.pid}`;
+  const k = s.creer({ libelle: 'Essai cité verrouillé', synonymes: [synonyme] });
   const m = s.motCle(k);
   s.etiqueter(p.lore, k);
-  const definitions = [`Voir {{${k}|x}}.`, `Voir {{${m.libelle}}}.`, `Voir {{${m.abreviation}}}.`];
+  const definitions = [`Voir {{${m.cle}|x}}.`, `Voir {{${m.libelle}}}.`, `Voir {{${synonyme}}}.`];
   const citants = definitions.map((d, i) => s.poser(`Essai définition verrouillée ${i}`, { verrou: 1, description: d }));
   const c = rienDEcrit('définition verrouillée', () => refuse(forcer(k), /définitions des mots-clés verrouillés .* le citent.*\(décisions R222, R223\)/, 'définition verrouillée'));
   assert.deepEqual(c.mots_cles_verrouilles.map((x) => x.id).sort(), [...citants].sort());
@@ -225,7 +238,7 @@ test('R223, statu quo : une mention que le site ne sait pas remplacer (une colon
   s.etiqueter(p.lore, k);
   // le texte brut de l'artisanat d'un métier n'est pas une colonne du modèle : il se tire de artisanat_texte, qui ne cite pas le mot-clé ici
   const metier = s.ligne('SELECT id, artisanat_brut FROM metier ORDER BY id LIMIT 1');
-  s.db.prepare('UPDATE metier SET artisanat_brut = ? WHERE id = ?').run(`${metier.artisanat_brut ?? ''} {{${k}|Essai}}`, metier.id);
+  s.db.prepare('UPDATE metier SET artisanat_brut = ? WHERE id = ?').run(`${metier.artisanat_brut ?? ''} {{${s.cle(k)}|Essai}}`, metier.id);
   const avant = s.nombreDeModifications();
   const r = refuse(s.lot([{ op: 'supprimer', entite: 'mot_cle', cle: { id: k }, forcer: true }]), /le site ne sait pas remplacer.*décision R223/, 'colonne hors du modèle');
   assert.deepEqual(r.mentions_bloquantes.map((x) => [x.table, x.cle, x.colonne]), [['metier', { id: metier.id }, 'artisanat_brut']]);
@@ -300,23 +313,27 @@ test('R223 (6), rejeu : une suppression forcée se rejoue forcée (mentions appa
   const p = pagesDe(livraison);
   const bloc = site.ligne("SELECT panneau_id, rang, texte FROM panneau_regles_bloc WHERE instr(texte, '{{') = 0 ORDER BY panneau_id, rang LIMIT 1");
   const autreBloc = livraison.ligne("SELECT panneau_id, rang, texte FROM panneau_regles_bloc WHERE instr(texte, '{{') = 0 AND NOT (panneau_id = ? AND rang = ?) ORDER BY panneau_id, rang LIMIT 1", bloc.panneau_id, bloc.rang);
+  // les ids (entiers, les mêmes dans les deux bases) et les clés (ce que citent les balises)
   const ids = {};
+  const cles = {};
   for (const [nom, verrou] of [['forcee', 0], ['forceeVerrouillee', 1], ['ordinaire', 0]]) {
     const libelle = site.libre(`Essai rejeu ${nom}`);
-    ids[nom] = normalize(libelle);
-    for (const s of [site, livraison]) s.db.prepare('INSERT INTO mot_cle (id, libelle, libelle_cle, description, verrou) VALUES (?, ?, ?, ?, ?)').run(ids[nom], libelle, ids[nom], 'Définition d’essai (R223).', verrou);
+    ids[nom] = idLibre(site, livraison);
+    cles[nom] = normalize(libelle);
+    for (const s of [site, livraison]) s.db.prepare('INSERT INTO mot_cle (id, libelle, cle, description, verrou) VALUES (?, ?, ?, ?, ?)').run(ids[nom], libelle, cles[nom], 'Définition d’essai (R223).', verrou);
   }
   const ligneDe = (s, id) => s.motCle(id);
   const avantSuppression = Object.fromEntries(Object.entries(ids).map(([nom, id]) => [nom, ligneDe(site, id)]));
   // mentions d'origine (dans les deux) : la forcée est citée par un bloc de panneau et portée par une page ; la verrouillée par la définition d'un
   // mot-clé verrouillé ; l'ordinaire, par rien
-  const texteDuBloc = `${bloc.texte} Voir {{${ids.forcee}}}.`;
+  const texteDuBloc = `${bloc.texte} Voir {{${cles.forcee}}}.`;
   const verrouilleCitant = site.libre('Essai rejeu définition');
+  const idCitant = idLibre(site, livraison);
   for (const s of [site, livraison]) {
     s.db.prepare('UPDATE panneau_regles_bloc SET texte = ? WHERE panneau_id = ? AND rang = ?').run(texteDuBloc, bloc.panneau_id, bloc.rang);
     s.etiqueter(p.lore, ids.forcee);
-    s.db.prepare('INSERT INTO mot_cle (id, libelle, libelle_cle, description, verrou) VALUES (?, ?, ?, ?, 1)')
-      .run(normalize(verrouilleCitant), verrouilleCitant, normalize(verrouilleCitant), `Voir {{${ids.forceeVerrouillee}|x}}.`);
+    s.db.prepare('INSERT INTO mot_cle (id, libelle, cle, description, verrou) VALUES (?, ?, ?, ?, 1)')
+      .run(idCitant, verrouilleCitant, normalize(verrouilleCitant), `Voir {{${cles.forceeVerrouillee}|x}}.`);
   }
   // le site de dev : la forcée par le service ; la verrouillée comme un lot noté avant le verrou (gel faux : R219 (6)) ; l'ordinaire, sans mention
   ok(site.lot([{ op: 'supprimer', entite: 'mot_cle', cle: { id: ids.forcee }, forcer: true }]));
@@ -326,10 +343,10 @@ test('R223 (6), rejeu : une suppression forcée se rejoue forcée (mentions appa
 
   // les règles livrées ensuite les mentionnent ailleurs : un autre bloc, une page d'exemple (absente du site de dev), une autre définition verrouillée
   livraison.db.prepare('UPDATE panneau_regles_bloc SET texte = ? WHERE panneau_id = ? AND rang = ?')
-    .run(`${autreBloc.texte} Aussi {{${ids.forcee}|ailleurs}} et {{${ids.ordinaire}}}.`, autreBloc.panneau_id, autreBloc.rang);
-  livraison.ajouterAuCorps(p.deriveeExemple, `\n\nRejeu : {{${ids.forcee}}}.\n`);
-  livraison.ajouterAuCorps(p.guideExemple, `\n\nRejeu : {{${ids.forcee}:}}.\n`);
-  const verrouilleRecu = livraison.poser('Essai rejeu définition reçue', { verrou: 1, description: `Voir {{${ids.forceeVerrouillee}|y}}.` });
+    .run(`${autreBloc.texte} Aussi {{${cles.forcee}|ailleurs}} et {{${cles.ordinaire}}}.`, autreBloc.panneau_id, autreBloc.rang);
+  livraison.ajouterAuCorps(p.deriveeExemple, `\n\nRejeu : {{${cles.forcee}}}.\n`);
+  livraison.ajouterAuCorps(p.guideExemple, `\n\nRejeu : {{${cles.forcee}:}}.\n`);
+  const verrouilleRecu = livraison.poser('Essai rejeu définition reçue', { verrou: 1, description: `Voir {{${cles.forceeVerrouillee}|y}}.` });
 
   const conflits = rejouerSur(livraison.db, site.db);
   site.db.close();
@@ -343,12 +360,12 @@ test('R223 (6), rejeu : une suppression forcée se rejoue forcée (mentions appa
   assert.equal(livraison.motCle(ids.forceeVerrouillee), undefined, 'verrouillée dans les règles : le rejeu ne contrôle pas le verrou');
   assert.equal(livraison.ligne('SELECT texte FROM panneau_regles_bloc WHERE panneau_id = ? AND rang = ?', bloc.panneau_id, bloc.rang).texte, `${bloc.texte} Voir ${L}.`, 'la réécriture du lot');
   assert.equal(livraison.ligne('SELECT texte FROM panneau_regles_bloc WHERE panneau_id = ? AND rang = ?', autreBloc.panneau_id, autreBloc.rang).texte,
-    `${autreBloc.texte} Aussi ailleurs et {{${ids.ordinaire}}}.`, 'une mention apparue depuis : son texte affiché');
+    `${autreBloc.texte} Aussi ailleurs et {{${cles.ordinaire}}}.`, 'une mention apparue depuis : son texte affiché');
   const corpsDe = (id) => livraison.ligne('SELECT corps_md FROM page WHERE id = ?', id).corps_md;
   assert.ok(corpsDe(p.deriveeExemple).includes(`\n\nRejeu : ${L}.\n`), 'corps dérivé d’une page d’exemple');
   assert.ok(corpsDe(p.guideExemple).endsWith(`\n\nRejeu : ${L}.\n`), 'page d’exemple du guide');
   assert.equal(livraison.ligne('SELECT 1 FROM page_tag WHERE tag_id = ?', ids.forcee), undefined, 'étiquettes retirées');
-  assert.equal(livraison.motCle(normalize(verrouilleCitant)).description, 'Voir x.', 'la définition verrouillée réécrite par le lot rejoué');
+  assert.equal(livraison.motCle(idCitant).description, 'Voir x.', 'la définition verrouillée réécrite par le lot rejoué');
   assert.equal(livraison.motCle(verrouilleRecu).description, 'Voir y.', 'une définition verrouillée reçue depuis : réécrite aussi');
   assert.deepEqual(livraison.db.prepare('PRAGMA foreign_key_check').all(), []);
   livraison.db.close();
@@ -358,15 +375,28 @@ test('R223 (6), rejeu au marqueur du résumé : une fusion par étiquettes seule
   const site = nouvelle(vivante({ sansExemples: true }));
   const livraison = nouvelle(vivante());
   const p = pagesDe(livraison);
-  const blocs = site.db.prepare("SELECT panneau_id, rang, texte FROM panneau_regles_bloc WHERE instr(texte, '{{') = 0 ORDER BY panneau_id, rang LIMIT 7").all().map((b) => ({ ...b }));
+  // sept blocs de panneau sans balise, choisis dans l'état d'import et remis dans les deux bases s'ils manquent (le site de dev peut en supprimer :
+  // tests-conventions) ; un bloc que le site a réécrit avec une balise est passé
+  const dImport = baseDImport();
+  const blocs = [];
+  for (const b of dImport.prepare("SELECT panneau_id, rang FROM panneau_regles_bloc WHERE instr(texte, '{{') = 0 ORDER BY panneau_id, rang").all()) {
+    const cle = { panneau_id: b.panneau_id, rang: b.rang };
+    for (const s of [site, livraison]) remettreDepuisLImport(s.db, 'panneau_regles_bloc', cle, { dImport });
+    const textes = [site, livraison].map((s) => s.ligne('SELECT texte FROM panneau_regles_bloc WHERE panneau_id = ? AND rang = ?', b.panneau_id, b.rang).texte);
+    if (textes[0] !== textes[1] || textes[0].includes('{{')) continue;
+    blocs.push({ ...cle, texte: textes[0] });
+    if (blocs.length === 7) break;
+  }
   assert.equal(blocs.length, 7, 'sept blocs de panneau sans balise');
   const ecrireBloc = (s, b, texte) => s.db.prepare('UPDATE panneau_regles_bloc SET texte = ? WHERE panneau_id = ? AND rang = ?').run(texte, b.panneau_id, b.rang);
   const texteDuBloc = (b) => livraison.ligne('SELECT texte FROM panneau_regles_bloc WHERE panneau_id = ? AND rang = ?', b.panneau_id, b.rang).texte;
   const ids = {};
+  const cles = {};
   for (const nom of ['source', 'cible', 'cascade', 'cascadeEtiquette', 'forceeSansMention', 'forceeEnConflit']) {
     const libelle = site.libre(`Essai marqueur ${nom}`);
-    ids[nom] = normalize(libelle);
-    for (const s of [site, livraison]) s.db.prepare('INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES (?, ?, ?, ?)').run(ids[nom], libelle, ids[nom], 'Définition d’essai (R223).');
+    ids[nom] = idLibre(site, livraison);
+    cles[nom] = normalize(libelle);
+    for (const s of [site, livraison]) s.db.prepare('INSERT INTO mot_cle (id, libelle, cle, description) VALUES (?, ?, ?, ?)').run(ids[nom], libelle, cles[nom], 'Définition d’essai (R223).');
   }
   const libelleDe = (id) => site.motCle(id).libelle;
   const L = libelleDe(ids.forceeSansMention);
@@ -377,13 +407,13 @@ test('R223 (6), rejeu au marqueur du résumé : une fusion par étiquettes seule
     etiquettes.source = s.etiqueter(p.lore, ids.source);
     etiquettes.cascade = s.etiqueter(p.lore, ids.cascade);
     etiquettes.cascadeEtiquette = s.etiqueter(p.lore, ids.cascadeEtiquette);
-    ecrireBloc(s, blocs[0], `${blocs[0].texte} Voir {{${ids.cascade}}}.`);
-    ecrireBloc(s, blocs[5], `${blocs[5].texte} Voir {{${ids.forceeEnConflit}}}.`);
+    ecrireBloc(s, blocs[0], `${blocs[0].texte} Voir {{${cles.cascade}}}.`);
+    ecrireBloc(s, blocs[5], `${blocs[5].texte} Voir {{${cles.forceeEnConflit}}}.`);
   }
   // le site de dev : la fusion (le lot ne note que l'étiquette retirée et la ligne de mot_cle) ; la suppression forcée sans mention
   const fusion = ok(site.lot([{ op: 'fusionner_mots_cles', mot_cle: ids.source, dans: ids.cible }]));
   assert.deepEqual(site.db.prepare('SELECT table_nom, operation FROM modification WHERE lot_id = ? ORDER BY rang').all(fusion.lot).map((m) => `${m.table_nom} ${m.operation}`),
-    ['page_tag supprimer', 'mot_cle supprimer'], 'une fusion par étiquettes seules');
+    ['page_tag supprimer', 'mot_cle supprimer', 'mot_cle_ancienne_cle inserer'], 'une fusion par étiquettes seules (sa clé passe à la cible : R233 (11))');
   ok(site.lot([{ op: 'supprimer', entite: 'mot_cle', cle: { id: ids.forceeSansMention }, forcer: true }]));
   // une suppression forcée dont la réécriture sera en conflit (les règles livrées changent le même bloc) : son marqueur reste au journal
   const lotEnConflit = ok(site.lot([{ op: 'supprimer', entite: 'mot_cle', cle: { id: ids.forceeEnConflit }, forcer: true }])).lot;
@@ -399,7 +429,7 @@ test('R223 (6), rejeu au marqueur du résumé : une fusion par étiquettes seule
   const etiquette = (e, id) => ['page_tag', e, 'supprimer', { ...e, tag_id: id }, null];
   lotAncien(1, [
     etiquette(etiquettes.cascade, ids.cascade),
-    ['panneau_regles_bloc', { panneau_id: blocs[0].panneau_id, rang: blocs[0].rang }, 'modifier', { texte: `${blocs[0].texte} Voir {{${ids.cascade}}}.` }, { texte: `${blocs[0].texte} Voir ${libelleDe(ids.cascade)}.` }],
+    ['panneau_regles_bloc', { panneau_id: blocs[0].panneau_id, rang: blocs[0].rang }, 'modifier', { texte: `${blocs[0].texte} Voir {{${cles.cascade}}}.` }, { texte: `${blocs[0].texte} Voir ${libelleDe(ids.cascade)}.` }],
     ['mot_cle', { id: ids.cascade }, 'supprimer', motCleEntier(ids.cascade), null],
   ]);
   lotAncien(2, [etiquette(etiquettes.cascadeEtiquette, ids.cascadeEtiquette), ['mot_cle', { id: ids.cascadeEtiquette }, 'supprimer', motCleEntier(ids.cascadeEtiquette), null]]);
@@ -407,8 +437,8 @@ test('R223 (6), rejeu au marqueur du résumé : une fusion par étiquettes seule
 
   // les règles livrées ensuite les citent toutes ailleurs
   const recus = { source: blocs[1], cascade: blocs[2], cascadeEtiquette: blocs[3], forceeSansMention: blocs[4] };
-  for (const [nom, b] of Object.entries(recus)) ecrireBloc(livraison, b, `${b.texte} Aussi {{${ids[nom]}}}.`);
-  ecrireBloc(livraison, blocs[5], `${blocs[5].texte} Voir {{${ids.forceeEnConflit}}}, autrement.`);
+  for (const [nom, b] of Object.entries(recus)) ecrireBloc(livraison, b, `${b.texte} Aussi {{${cles[nom]}}}.`);
+  ecrireBloc(livraison, blocs[5], `${blocs[5].texte} Voir {{${cles.forceeEnConflit}}}, autrement.`);
 
   const tous = rejouerSur(livraison.db, site.db);
   site.db.close();
@@ -427,7 +457,7 @@ test('R223 (6), rejeu au marqueur du résumé : une fusion par étiquettes seule
   for (const id of [ids.cascade, ids.cascadeEtiquette]) assert.ok(livraison.motCle(id), `${id} reste (conflit)`);
   // la fusion : la source partie, sa balise reçue depuis cite la cible
   assert.equal(livraison.motCle(ids.source), undefined);
-  assert.equal(texteDuBloc(recus.source), `${recus.source.texte} Aussi {{${ids.cible}}}.`, 'reciblée, pas remplacée par du texte');
+  assert.equal(texteDuBloc(recus.source), `${recus.source.texte} Aussi {{${cles.cible}}}.`, 'reciblée, pas remplacée par du texte');
   // la suppression forcée sans mention : rejouée forcée, la mention apparue depuis devient son texte affiché
   assert.equal(livraison.motCle(ids.forceeSansMention), undefined);
   assert.equal(texteDuBloc(recus.forceeSansMention), `${recus.forceeSansMention.texte} Aussi ${L}.`);

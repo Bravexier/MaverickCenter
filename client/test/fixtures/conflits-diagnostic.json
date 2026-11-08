@@ -114,13 +114,13 @@
    ]
   },
   {
-   "lot": "2026-11-07T18:22:12.780Z-000000-8ffa256b-ab3a-4187-b9ef-00fd3474e037",
-   "fait_le": "2026-11-07T18:22:12Z",
+   "lot": "2026-11-08T10:23:26.570Z-000000-8e2815b6-a0c4-4fc4-9332-9b96820b2389",
+   "fait_le": "2026-11-08T10:23:26Z",
    "page_id": "guide/la-magie-en-jeu",
    "resume": "Page La magie en jeu : Texte ; Métier Forgeron : Description",
-   "detail": "lot 2026-11-07T18:22:12.780Z-000000-8ffa256b-ab3a-4187-b9ef-00fd3474e037 : page {\"id\":\"guide/la-magie-en-jeu\"} : les règles ont changé corps_md autrement",
+   "detail": "lot 2026-11-08T10:23:26.570Z-000000-8e2815b6-a0c4-4fc4-9332-9b96820b2389 : page {\"id\":\"guide/la-magie-en-jeu\"} : les règles ont changé corps_md autrement",
    "detail_lisible": "Page « La magie en jeu » : les règles ont changé « Texte » autrement",
-   "empreinte": "e8a9a2a048879ad41c503a7852479b7b",
+   "empreinte": "87c606fdcf7889fb43f5c85522329714",
    "saines": [
     {
      "rang": 2,
@@ -187,13 +187,13 @@
    ]
   },
   {
-   "lot": "2026-11-07T18:22:12.806Z-000000-266eb106-0784-4c32-aeb8-544deeae5ca0",
-   "fait_le": "2026-11-07T18:22:12Z",
+   "lot": "2026-11-08T10:23:26.606Z-000000-e93f8f44-5c4b-4e93-a582-d96c9a165cb1",
+   "fait_le": "2026-11-08T10:23:26Z",
    "page_id": "guide/le-mode-hyper",
    "resume": "Page Le Mode Hyper : Texte",
-   "detail": "lot 2026-11-07T18:22:12.806Z-000000-266eb106-0784-4c32-aeb8-544deeae5ca0 : page {\"id\":\"guide/le-mode-hyper\"} : la ligne n’existe plus dans les règles",
+   "detail": "lot 2026-11-08T10:23:26.606Z-000000-e93f8f44-5c4b-4e93-a582-d96c9a165cb1 : page {\"id\":\"guide/le-mode-hyper\"} : la ligne n’existe plus dans les règles",
    "detail_lisible": "Page guide/le-mode-hyper : la ligne n’existe plus dans les règles",
-   "empreinte": "7a0a07a1a00f09f8ab73182030139ec0",
+   "empreinte": "f5ed57eb0ffc8644191872e32fe96602",
    "saines": [],
    "conflits": [
     {
@@ -219,7 +219,7 @@
      "version_1": {
       "genre": "valeurs",
       "valeur": {
-       "corps_md": "> « Ne plus faire qu’un avec soi-même. »\n\nLe **Mode Hyper** est un état de surpuissance, qui s’ouvre au **niveau 2** du personnage. Le personnage libère alors la puissance cachée en lui : sa magie ne fait plus qu’un avec lui, son aura magique déferle, et son apparence change profondément sous l’effe\n…\niste ne compte pas, ce sont les valeurs données plus haut (+15, et +7 avec deux magies) qui valent.\n\nParagraphe ajouté sur le site de dev (essai des conflits).\n"
+       "corps_md": "> « Ne plus faire qu’un avec soi-même. »\n\nLe **Mode Hyper** est un état de surpuissance, qui s’ouvre au **niveau 2** du personnage. Le personnage libère alors la puissance cachée en lui : sa magie ne fait plus qu’un avec lui, son aura magique déferle, et son apparence change profondément sous l’effe\n…\nhaque tour et celui de la sortie du Mode Hyper 100 %, et un compteur garde son usage de la semaine.\n\nParagraphe ajouté sur le site de dev (essai des conflits).\n"
       },
       "libelles": {
        "corps_md": "Texte"
@@ -236,13 +236,13 @@
    ]
   },
   {
-   "lot": "2026-11-07T18:22:12.810Z-000000-8ecbd726-b54b-42e5-9b18-caee86a20b72",
-   "fait_le": "2026-11-07T18:22:12Z",
+   "lot": "2026-11-08T10:23:26.614Z-000000-d10aa084-7fe5-44b0-a128-cf1fbca08a35",
+   "fait_le": "2026-11-08T10:23:26Z",
    "page_id": "guide/s-entrainer-et-exercer-un-metier",
    "resume": "Page S’entraîner : Texte",
-   "detail": "lot 2026-11-07T18:22:12.810Z-000000-8ecbd726-b54b-42e5-9b18-caee86a20b72 : page {\"id\":\"guide/s-entrainer-et-exercer-un-metier\"} : les règles ont changé corps_md autrement",
+   "detail": "lot 2026-11-08T10:23:26.614Z-000000-d10aa084-7fe5-44b0-a128-cf1fbca08a35 : page {\"id\":\"guide/s-entrainer-et-exercer-un-metier\"} : les règles ont changé corps_md autrement",
    "detail_lisible": "Page « S’entraîner » : les règles ont changé « Texte » autrement",
-   "empreinte": "219b8f62182ba82c50dcdabb88c6099b",
+   "empreinte": "c7a753b33652b40c75f89583ee9703ff",
    "saines": [],
    "conflits": [
     {
@@ -289,13 +289,13 @@
    ]
   },
   {
-   "lot": "2026-11-07T18:22:12.813Z-000000-51127456-210c-41b2-bef8-f848e6b4df62",
-   "fait_le": "2026-11-07T18:22:12Z",
+   "lot": "2026-11-08T10:23:26.619Z-000000-dfa228bd-09f9-4cc9-a84f-1a51714e2c99",
+   "fait_le": "2026-11-08T10:23:26Z",
    "page_id": "metiers/forgeron",
    "resume": "Métier Forgeron : Bonus",
-   "detail": "lot 2026-11-07T18:22:12.813Z-000000-51127456-210c-41b2-bef8-f848e6b4df62 : metier {\"id\":\"metiers/forgeron\"} : les règles ont changé bonus_brut autrement",
+   "detail": "lot 2026-11-08T10:23:26.619Z-000000-dfa228bd-09f9-4cc9-a84f-1a51714e2c99 : metier {\"id\":\"metiers/forgeron\"} : les règles ont changé bonus_brut autrement",
    "detail_lisible": "Métier « Forgeron » : les règles ont changé « Bonus » autrement",
-   "empreinte": "affd3cc7074d2861aaa43363e7fc588a",
+   "empreinte": "5104e74ada7c619a57e400860484ac74",
    "saines": [
     {
      "rang": 2,
@@ -374,25 +374,25 @@
    ]
   },
   {
-   "lot": "2026-11-07T18:22:12.819Z-000000-65e5e92f-e9b7-497c-9af2-8e5f77549d40",
-   "fait_le": "2026-11-07T18:22:12Z",
+   "lot": "2026-11-08T10:23:26.629Z-000000-57d830de-6c4d-4fd2-8502-e74059b49df3",
+   "fait_le": "2026-11-08T10:23:26Z",
    "page_id": "recherche/",
    "resume": "Mot-clé supprimé : Essai conflits étiquette",
-   "detail": "lot 2026-11-07T18:22:12.819Z-000000-65e5e92f-e9b7-497c-9af2-8e5f77549d40 : sort_mot_cle : clé étrangère rompue vers mot_cle",
+   "detail": "lot 2026-11-08T10:23:26.629Z-000000-57d830de-6c4d-4fd2-8502-e74059b49df3 : sort_mot_cle : clé étrangère rompue vers mot_cle",
    "detail_lisible": "Étiquette du sort : clé étrangère rompue vers Mot-clé",
-   "empreinte": "5cccd6fe3ba7b3bbb51786dc8d2b26a2",
+   "empreinte": "e0fbc0b42ef369f9d4ff905ddb674ad5",
    "saines": [],
    "conflits": [
     {
      "rang": 1,
      "table": "mot_cle",
      "cle": {
-      "id": "essai-conflits-etiquette"
+      "id": 9301
      },
      "operation": "supprimer",
      "libelle": "Mot-clé « Essai conflits étiquette »",
-     "raison": "sort_mot_cle : clé étrangère rompue vers mot_cle (mot_cle_id = \"essai-conflits-etiquette\")",
-     "raison_lisible": "Étiquette du sort : clé étrangère rompue vers Mot-clé essai-conflits-etiquette",
+     "raison": "sort_mot_cle : clé étrangère rompue vers mot_cle (mot_cle_id = 9301)",
+     "raison_lisible": "Étiquette du sort : clé étrangère rompue vers Mot-clé 9301",
      "colonne": null,
      "colonne_libelle": null,
      "avant": null,
@@ -403,43 +403,51 @@
      "version_1": {
       "genre": "suppression",
       "valeur": {
-       "id": "essai-conflits-etiquette",
+       "id": 9301,
        "libelle": "Essai conflits étiquette",
+       "cle": "essai-conflits-etiquette",
        "description": "Mot-clé d’essai des conflits (test/serveur-edition-conflits.test.mjs).",
-       "abreviation": null,
        "couleur": null,
        "url": null,
-       "verrou": 0
+       "verrou": 0,
+       "monnaie_id": null,
+       "icone": null
       },
       "libelles": {
        "id": "Identifiant",
        "libelle": "Mot-clé",
+       "cle": "Clé",
        "description": "Définition",
-       "abreviation": "Abréviation",
        "couleur": "Couleur",
        "url": "Lien",
-       "verrou": "Verrou"
+       "verrou": "Verrou",
+       "monnaie_id": "Monnaie",
+       "icone": "Icône"
       }
      },
      "version_2": {
       "genre": "ligne",
       "valeur": {
-       "id": "essai-conflits-etiquette",
+       "id": 9301,
        "libelle": "Essai conflits étiquette",
+       "cle": "essai-conflits-etiquette",
        "description": "Mot-clé d’essai des conflits (test/serveur-edition-conflits.test.mjs).",
-       "abreviation": null,
        "couleur": null,
        "url": null,
-       "verrou": 0
+       "verrou": 0,
+       "monnaie_id": null,
+       "icone": null
       },
       "libelles": {
        "id": "Identifiant",
        "libelle": "Mot-clé",
+       "cle": "Clé",
        "description": "Définition",
-       "abreviation": "Abréviation",
        "couleur": "Couleur",
        "url": "Lien",
-       "verrou": "Verrou"
+       "verrou": "Verrou",
+       "monnaie_id": "Monnaie",
+       "icone": "Icône"
       }
      },
      "choix_possibles": [
@@ -449,13 +457,13 @@
    ]
   },
   {
-   "lot": "2026-11-07T18:22:12.872Z-000000-e9754b55-8eb6-49e8-b302-89b4fc2bb400",
-   "fait_le": "2026-11-07T18:22:12Z",
+   "lot": "2026-11-08T10:23:26.698Z-000000-3b1bfeb3-66b2-4d14-9bbe-e11318f3e024",
+   "fait_le": "2026-11-08T10:23:26Z",
    "page_id": "metiers/acrobate",
    "resume": "Métier Acrobate : Nom",
-   "detail": "lot 2026-11-07T18:22:12.872Z-000000-e9754b55-8eb6-49e8-b302-89b4fc2bb400 : metier {\"id\":\"metiers/acrobate\"} : les règles ont changé nom, nom_cle autrement",
+   "detail": "lot 2026-11-08T10:23:26.698Z-000000-3b1bfeb3-66b2-4d14-9bbe-e11318f3e024 : metier {\"id\":\"metiers/acrobate\"} : les règles ont changé nom, nom_cle autrement",
    "detail_lisible": "Métier « Acrobate des règles (essai des conflits) » : les règles ont changé « Nom » autrement",
-   "empreinte": "99ed6e00ac63f3fa201059b4d40e5d45",
+   "empreinte": "f1708aceef334991535656f427fc97c8",
    "saines": [],
    "conflits": [
     {

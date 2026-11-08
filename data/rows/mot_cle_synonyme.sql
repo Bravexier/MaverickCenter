@@ -1,0 +1,23 @@
+-- data/rows/mot_cle_synonyme.sql : export déterministe, une instruction par ligne, triée par (id). NE PAS ÉDITER À LA MAIN.
+INSERT INTO mot_cle_synonyme (id, mot_cle_id, libelle, libelle_cle, ordre) VALUES (1, 21, 'AM', 'am', 0);
+INSERT INTO mot_cle_synonyme (id, mot_cle_id, libelle, libelle_cle, ordre) VALUES (2, 22, 'AP', 'ap', 0);
+INSERT INTO mot_cle_synonyme (id, mot_cle_id, libelle, libelle_cle, ordre) VALUES (3, 37, 'BA', 'ba', 0);
+INSERT INTO mot_cle_synonyme (id, mot_cle_id, libelle, libelle_cle, ordre) VALUES (4, 60, 'CK', 'ck', 0);
+INSERT INTO mot_cle_synonyme (id, mot_cle_id, libelle, libelle_cle, ordre) VALUES (5, 78, 'CR', 'cr', 0);
+INSERT INTO mot_cle_synonyme (id, mot_cle_id, libelle, libelle_cle, ordre) VALUES (6, 105, 'EP', 'ep', 0);
+INSERT INTO mot_cle_synonyme (id, mot_cle_id, libelle, libelle_cle, ordre) VALUES (7, 162, 'INI', 'ini', 0);
+INSERT INTO mot_cle_synonyme (id, mot_cle_id, libelle, libelle_cle, ordre) VALUES (8, 163, 'IC', 'ic', 0);
+INSERT INTO mot_cle_synonyme (id, mot_cle_id, libelle, libelle_cle, ordre) VALUES (9, 225, 'MJ', 'mj', 0);
+INSERT INTO mot_cle_synonyme (id, mot_cle_id, libelle, libelle_cle, ordre) VALUES (10, 258, 'Nat.', 'nat', 0);
+INSERT INTO mot_cle_synonyme (id, mot_cle_id, libelle, libelle_cle, ordre) VALUES (11, 261, 'NM', 'nm', 0);
+INSERT INTO mot_cle_synonyme (id, mot_cle_id, libelle, libelle_cle, ordre) VALUES (12, 262, 'NPM', 'npm', 0);
+INSERT INTO mot_cle_synonyme (id, mot_cle_id, libelle, libelle_cle, ordre) VALUES (13, 282, 'PJ', 'pj', 0);
+INSERT INTO mot_cle_synonyme (id, mot_cle_id, libelle, libelle_cle, ordre) VALUES (14, 283, 'PNJ', 'pnj', 0);
+INSERT INTO mot_cle_synonyme (id, mot_cle_id, libelle, libelle_cle, ordre) VALUES (15, 288, 'XP', 'xp', 0);
+INSERT INTO mot_cle_synonyme (id, mot_cle_id, libelle, libelle_cle, ordre) VALUES (16, 289, 'PO', 'po', 0);
+INSERT INTO mot_cle_synonyme (id, mot_cle_id, libelle, libelle_cle, ordre) VALUES (17, 292, 'PP', 'pp', 0);
+INSERT INTO mot_cle_synonyme (id, mot_cle_id, libelle, libelle_cle, ordre) VALUES (18, 311, 'RC', 'rc', 0);
+INSERT INTO mot_cle_synonyme (id, mot_cle_id, libelle, libelle_cle, ordre) VALUES (19, 312, 'RF', 'rf', 0);
+INSERT INTO mot_cle_synonyme (id, mot_cle_id, libelle, libelle_cle, ordre) VALUES (20, 313, 'RO', 'ro', 0);
+INSERT INTO mot_cle_synonyme (id, mot_cle_id, libelle, libelle_cle, ordre) VALUES (21, 163, 'Action bonus', 'action-bonus', 1);
+INSERT INTO mot_cle_synonyme (id, mot_cle_id, libelle, libelle_cle, ordre) VALUES (22, 163, 'Action rapide', 'action-rapide', 2);

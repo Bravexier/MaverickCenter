@@ -4,10 +4,10 @@
 // (décision R223 : serveur/edition.mjs#remplacerLesMentions ; vide à la fin, sinon le lot est annulé).
 // Un mot-clé est mentionné (lecture de game-design, R196) :
 //   - par une page qui le porte (page_tag) : `comment: 'etiquette'` ;
-//   - par une balise {{id}} (lib/mots-cles-balises.mjs#lireBalises, l'id, le libellé ou l'abréviation : motCleDeLaRef) dans un texte de la base
+//   - par une balise {{clé}} (lib/mots-cles-balises.mjs#lireBalises ; sa clé, son libellé, un synonyme ou une clé quittée : motCleDeLaRef) dans un texte de la base
 //     (lib/mots-cles-db.mjs#textesDeLaBase : corps d'une page, effet d'un don, description d'une compétence, définition d'un autre mot-clé, bloc d'un
 //     événement…) : `comment: 'balise'`, nommée par la page qui montre ce texte (la page elle-même ; la page de la ligne, page_entite ou l'id de la
-//     ligne ; « Chronologie › <événement> »), sinon par sa table et sa ligne.
+//     ligne ; « Chronologie › <événement> » ; « Mot-clé « <libellé> » » pour la définition d'un autre mot-clé), sinon par sa table et sa ligne.
 // Les pages d'exemple comptent (marquées `exemple`) ; la définition du mot-clé lui-même, son adresse et sa couleur ne sont pas des mentions ; un prix
 // (« 100 RO ») n'est pas une balise et ne mentionne pas le mot-clé `ro`.
 // Pur, sans dépendance navigateur ni Astro : la base est passée par l'appelant.
@@ -70,6 +70,8 @@ export function mentionsDesMotsCles(db, ids) {
         let page = null;
         let libelle = null;
         if (table === 'page') page = cleDeLigne.id;
+        // la définition d'un autre mot-clé : nommée par son libellé (son id est un entier depuis la migration 0113, il ne dit rien)
+        else if (table === 'mot_cle') libelle = `Mot-clé « ${vocabulaire.parId.get(cleDeLigne.id)?.libelle ?? cleDeLigne.id} »`;
         else if (table === 'evenement' || table === 'evenement_extrait') {
           const evenement = cleDeLigne.evenement_id ?? cleDeLigne.id;
           libelle = `Chronologie › ${evenements.get(evenement) ?? evenement}`;

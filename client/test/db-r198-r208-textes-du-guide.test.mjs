@@ -17,7 +17,12 @@ const registre = JSON.parse(readFileSync(new URL('../../data/migrations/0104-r19
 const apresLa0104 = () => baseDImport({ garder: lotsAvant('0104') });
 const registre0107 = JSON.parse(readFileSync(new URL('../../data/migrations/0107-r198-r200-posture-et-mode-hyper.json', import.meta.url), 'utf8'));
 const apresLa0107 = () => baseDImport({ garder: lotsAvant('0107') });
-const valeur = (db, t) => db.prepare(`SELECT "${t.col}" AS v FROM "${t.table}" WHERE id = ?`).get(t.cle.id)?.v;
+// Les registres nomment un mot-clé par son id texte d'alors ; depuis la migration 0113, son id est un entier figé, que donne le registre de la 0113
+// (ancien id texte -> id entier, jamais réécrit).
+const ID_ENTIER = new Map(JSON.parse(readFileSync(new URL('../../data/migrations/0113-mots-cles-id-entier.json', import.meta.url), 'utf8')).motsCles
+  .map((e) => [e.ancienId, e.id]));
+const idDe = (table, id) => (table === 'mot_cle' ? ID_ENTIER.get(id) : id);
+const valeur = (db, t) => db.prepare(`SELECT "${t.col}" AS v FROM "${t.table}" WHERE id = ?`).get(idDe(t.table, t.cle.id))?.v;
 // La migration 0111 (relecture des Règles contre les décisions), postérieure, réécrit des fragments que la 0104 a écrits (C20, R226 (2) : la Vigilance
 // anticipe en action rapide) : le fragment de la 0104 est admis tel quel ou tel que la 0111 l'a réécrit (registre `textes`, test/aide-textes-reecrits.mjs)
 const REECRITS_PAR_0111 = textesReecrits('0111-relecture-des-regles-contre-les-decisions');
@@ -27,7 +32,11 @@ const selonLa0111 = (t) => REECRITS_PAR_0111.filter((x) => memeCellule(x, t)).re
 // ou la 0111 l'a laissé), pas son `apres`, qui est dans `v`. L'une ou l'autre écriture est admise.
 const REECRITS_PAR_0112 = textesReecrits('0112-r231-attaquer-et-se-defendre');
 const reecritPar0112 = (t, fragment) => REECRITS_PAR_0112.filter((r) => memeCellule(r, t) && r.avant.includes(fragment) && !r.apres.includes(fragment));
-const apresOuReecrit = (t, v) => [t.apres, selonLa0111(t)].some((f) => v.includes(f) || reecritPar0112(t, f).some((r) => v.includes(r.apres)));
+// Puis la 0113 et la 0115 (R232, R233 (5)) font citer la clé aux balises d'un ancien id qui n'en est plus une : ce sont des fragments du texte.
+const BALISES_REECRITES = textesReecrits('0113-mots-cles-id-entier', '0115-mots-cles-synonymes');
+const selonLesCles = (t, f) => BALISES_REECRITES.filter((x) => memeCellule(x, t)).reduce((s, x) => s.split(x.avant).join(x.apres), f);
+const apresOuReecrit = (t, v) => [t.apres, selonLa0111(t)].some((f) => v.includes(f) || v.includes(selonLesCles(t, f))
+  || reecritPar0112(t, f).some((r) => v.includes(r.apres) || v.includes(selonLesCles(t, r.apres))));
 
 // Les copies de source ne se réécrivent pas (R198 à R200, « les copies de source restent ») ; seule exception, voulue par le propriétaire : « Prouesse »
 // devient « Calme » dans la page copiée des compétences (R204). guide/attaque-et-defense n'en est plus une depuis R231 (1) (« Se défendre », réécrite par
@@ -64,13 +73,13 @@ test('0104 : chaque remplacement est en place dans l’état de la migration (le
 test('R199 (3) : plus aucune « attaque gratuite » dans les pages du guide ; le mot-clé attaque-gratuite garde son identifiant et renvoie à l’attaque d’opportunité, sans adresse', () => {
   const imp = apresLa0104();
   assert.deepEqual(imp.prepare("SELECT id FROM page WHERE id LIKE 'guide/%' AND corps_md LIKE '%attaque gratuite%'").all(), []);
-  const m = imp.prepare("SELECT url, description FROM mot_cle WHERE id = 'attaque-gratuite'").get();
+  const m = imp.prepare('SELECT url, description FROM mot_cle WHERE id = ?').get(ID_ENTIER.get('attaque-gratuite'));
   assert.ok(m, 'identifiant figé : le mot-clé reste');
   // une seconde adresse vers la page des attaques d'opportunité rendrait ambigu un lien saisi vers elle (lib/mots-cles-liens.mjs#motsClesDeLAdresse)
   assert.equal(m.url, null);
   assert.match(m.description, /\{\{attaque-dopportunite(\|[^}]*)?\}\}/);
   // aucune balise ni étiquette ne l'employait
-  assert.equal(imp.prepare("SELECT count(*) AS n FROM page_tag WHERE tag_id = 'attaque-gratuite'").get().n, 0);
+  assert.equal(imp.prepare('SELECT count(*) AS n FROM page_tag WHERE tag_id = ?').get(ID_ENTIER.get('attaque-gratuite')).n, 0);
   assert.equal(imp.prepare("SELECT count(*) AS n FROM page WHERE instr(corps_md, '{{attaque-gratuite') > 0").get().n, 0);
 });
 
@@ -90,7 +99,7 @@ test('R207 : les mots-clés maroquinier et armurier mènent à leur métier, com
   const imp = apresLa0104();
   assert.deepEqual(registre.mots_cles_crees.map((m) => m.id).sort(), ['armurier', 'maroquinier']);
   for (const { id, page } of [...registre.mots_cles_crees, { id: 'forgeron', page: 'metiers/forgeron' }, { id: 'couturier', page: 'metiers/couturier' }]) {
-    const m = imp.prepare('SELECT url FROM mot_cle WHERE id = ?').get(id);
+    const m = imp.prepare('SELECT url FROM mot_cle WHERE id = ?').get(ID_ENTIER.get(id));
     assert.ok(m, id);
     assert.ok(imp.prepare('SELECT 1 FROM page WHERE id = ?').get(page), `${page} existe`);
     assert.equal(m.url, `/${cheminDePage(page)}`, id);

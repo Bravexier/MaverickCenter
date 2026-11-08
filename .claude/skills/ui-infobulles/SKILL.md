@@ -31,7 +31,7 @@ Toutes les infobulles sont habillées comme le reste du site (demande du propri�
 - Ne pas ajouter d'autre script de bulles ni d'infobulle en CSS.
 - Sans `data-bulle-champs`, une bulle riche se ferme dès que son déclencheur perd le focus ou que le pointeur la quitte, Échap ne déplace pas le focus et le déclencheur n'a pas d'`aria-expanded` (`test/infobulles.test.mjs`) : l'attribut ne change que sa bulle.
 - Une bulle ne s'ouvre au clavier que sur l'élément focalisé, jamais sur un `aria-activedescendant` : les options d'une liste du site (`scripts/liste-choix.mjs`) ont le focus réel, `data-placement="cote"` et leur `data-infobulle` posé à la création.
-- Les bulles `mot-cle-<id>` du glossaire sont posées par le middleware en fin de page, jamais à la main : skill `zone-mots-cles`. Celle d'un mot-clé coloré porte sa classe et prend sa teinte (`.bulle[id^='mot-cle-'][class*='couleur-']` de `styles/global/mots-cles.css` pose `--bulle-teinte` ; réponse Q13 du propriétaire, skill `zone-mots-cles-liens`).
+- Les bulles `mot-cle-<clé>` du glossaire (la clé du mot-clé, R232 (3)) sont posées par le middleware en fin de page, jamais à la main : skill `zone-mots-cles`. Sous leur titre, « Aussi appelé : … » (`.bulle__aussi`, R233 (8)). Celle d'un mot-clé coloré porte sa classe et prend sa teinte (`.bulle[id^='mot-cle-'][class*='couleur-']` de `styles/global/mots-cles.css` pose `--bulle-teinte` ; réponse Q13 du propriétaire, skill `zone-mots-cles-liens`).
 
 ## Tests
 - `client/test/infobulles.test.mjs` : faux navigateur (`title` déplacés, délais, clavier, toucher, `data-placement="cote"`, bulles riches, bulle à champs et non-régression sans l'attribut, mots-clés), puis site construit (script unique, en ligne ; habillage commun).

@@ -1,0 +1,3436 @@
+{
+  "migration": "0114-mots-cles-categories-assignees",
+  "decision": "R232 (7)",
+  "description": "Les catégories assignées aux mots-clés existants (R232 (7) : « Vide au départ, et l'équipe viens en assigner en fonction de la pertinence »), une ligne par mot-clé : son id (figé), son ancien id texte (registre 0113), son libellé et sa clé après la migration, ses catégories (id et libellé, dans l'ordre de l'id) et l'équipe qui les a proposées (game-design ou worldbuilding). Les 13 classes raciales gardent la catégorie Classe que leur a donnée la migration 0113 et n'en reçoivent pas d'autre. « Action bonus » et « Action rapide » n'en reçoivent pas : la migration 0115 les fond dans « Instant Cast » (R233 (5)). `cles` : les clés recalculées par la règle (tools/db/maverick.py#cles_des_mots_cles, strict) qui changent ; la clé quittée va dans mot_cle_ancienne_cle. `textes` : les balises réécrites vers la nouvelle clé.",
+  "assignations": [
+    {
+      "id": 1,
+      "ancienId": "400",
+      "libelle": "400",
+      "cle": "400",
+      "categories": [
+        {
+          "id": 9,
+          "libelle": "Objet légendaire"
+        }
+      ],
+      "auteur": "worldbuilding"
+    },
+    {
+      "id": 3,
+      "ancienId": "accessoires",
+      "libelle": "Accessoires",
+      "cle": "accessoires",
+      "categories": [
+        {
+          "id": 7,
+          "libelle": "Équipement"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 4,
+      "ancienId": "acquis",
+      "libelle": "Acquis",
+      "cle": "acquis",
+      "categories": [
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 5,
+      "ancienId": "action",
+      "libelle": "Action",
+      "cle": "action",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 8,
+      "ancienId": "alchimie",
+      "libelle": "Alchimie",
+      "cle": "alchimie",
+      "categories": [
+        {
+          "id": 7,
+          "libelle": "Équipement"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 9,
+      "ancienId": "alchimie-primitive",
+      "libelle": "Alchimie primitive",
+      "cle": "alchimie-primitive",
+      "categories": [
+        {
+          "id": 7,
+          "libelle": "Équipement"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 10,
+      "ancienId": "alignement",
+      "libelle": "Alignement",
+      "cle": "alignement",
+      "categories": [
+        {
+          "id": 1,
+          "libelle": "Règles"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 11,
+      "ancienId": "alteration-detat",
+      "libelle": "Altération d’état",
+      "cle": "alteration-detat",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 12,
+      "ancienId": "ame",
+      "libelle": "Âme",
+      "cle": "ame",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 13,
+      "ancienId": "amelioration",
+      "libelle": "Amélioration",
+      "cle": "amelioration",
+      "categories": [
+        {
+          "id": 7,
+          "libelle": "Équipement"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 14,
+      "ancienId": "anansi",
+      "libelle": "Anansi",
+      "cle": "anansi-race",
+      "categories": [
+        {
+          "id": 3,
+          "libelle": "Race"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 17,
+      "ancienId": "arbaletrier",
+      "libelle": "Arbalétrier",
+      "cle": "arbaletrier",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 18,
+      "ancienId": "archer",
+      "libelle": "Archer",
+      "cle": "archer",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 19,
+      "ancienId": "archimage",
+      "libelle": "Archimage",
+      "cle": "archimage",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 20,
+      "ancienId": "armes",
+      "libelle": "Armes",
+      "cle": "armes",
+      "categories": [
+        {
+          "id": 7,
+          "libelle": "Équipement"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 21,
+      "ancienId": "armure-magique",
+      "libelle": "Armure magique",
+      "cle": "armure-magique",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        },
+        {
+          "id": 7,
+          "libelle": "Équipement"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 22,
+      "ancienId": "armure-physique",
+      "libelle": "Armure physique",
+      "cle": "armure-physique",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        },
+        {
+          "id": 7,
+          "libelle": "Équipement"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 23,
+      "ancienId": "armures",
+      "libelle": "Armures",
+      "cle": "armures",
+      "categories": [
+        {
+          "id": 7,
+          "libelle": "Équipement"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 24,
+      "ancienId": "armurier",
+      "libelle": "Armurier",
+      "cle": "armurier",
+      "categories": [
+        {
+          "id": 10,
+          "libelle": "Métier"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 25,
+      "ancienId": "artisanat",
+      "libelle": "Artisanat",
+      "cle": "artisanat",
+      "categories": [
+        {
+          "id": 7,
+          "libelle": "Équipement"
+        },
+        {
+          "id": 10,
+          "libelle": "Métier"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 26,
+      "ancienId": "attaque-discrete",
+      "libelle": "Attaque discrète",
+      "cle": "attaque-discrete",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 27,
+      "ancienId": "attaque-dopportunite",
+      "libelle": "Attaque d’opportunité",
+      "cle": "attaque-dopportunite",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 28,
+      "ancienId": "attaque-et-defense",
+      "libelle": "Se défendre",
+      "cle": "se-defendre",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 29,
+      "ancienId": "attaque-gratuite",
+      "libelle": "Attaque gratuite",
+      "cle": "attaque-gratuite",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 30,
+      "ancienId": "attaquer-et-se-defendre",
+      "libelle": "Attaquer",
+      "cle": "attaquer",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 31,
+      "ancienId": "attributs",
+      "libelle": "Attributs",
+      "cle": "attributs",
+      "categories": [
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 34,
+      "ancienId": "barde",
+      "libelle": "Barde",
+      "cle": "barde",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 35,
+      "ancienId": "bardiche-du-bourreau-dechire",
+      "libelle": "Bardiche du Bourreau déchiré",
+      "cle": "bardiche-du-bourreau-dechire",
+      "categories": [
+        {
+          "id": 9,
+          "libelle": "Objet légendaire"
+        }
+      ],
+      "auteur": "worldbuilding"
+    },
+    {
+      "id": 37,
+      "ancienId": "barriere",
+      "libelle": "Barrière",
+      "cle": "barriere",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        },
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 38,
+      "ancienId": "baton-de-la-destruction",
+      "libelle": "Bâton de la destruction",
+      "cle": "baton-de-la-destruction",
+      "categories": [
+        {
+          "id": 9,
+          "libelle": "Objet légendaire"
+        }
+      ],
+      "auteur": "worldbuilding"
+    },
+    {
+      "id": 39,
+      "ancienId": "baton-magique",
+      "libelle": "Bâton magique",
+      "cle": "baton-magique",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        },
+        {
+          "id": 7,
+          "libelle": "Équipement"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 40,
+      "ancienId": "battlemap",
+      "libelle": "Battlemap",
+      "cle": "battlemap",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 42,
+      "ancienId": "bestiaire",
+      "libelle": "Bestiaire",
+      "cle": "bestiaire",
+      "categories": [
+        {
+          "id": 11,
+          "libelle": "Bestiaire"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 43,
+      "ancienId": "biclassage",
+      "libelle": "Biclassage",
+      "cle": "biclassage",
+      "categories": [
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        },
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 44,
+      "ancienId": "bienvenue-dans-maverick",
+      "libelle": "Bienvenue dans Maverick",
+      "cle": "bienvenue-dans-maverick",
+      "categories": [
+        {
+          "id": 1,
+          "libelle": "Règles"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 45,
+      "ancienId": "bimane",
+      "libelle": "Bimane",
+      "cle": "bimane",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 46,
+      "ancienId": "blessure-et-mort",
+      "libelle": "Blessure et mort",
+      "cle": "blessure-et-mort",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 48,
+      "ancienId": "boss",
+      "libelle": "Boss",
+      "cle": "boss",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        },
+        {
+          "id": 11,
+          "libelle": "Bestiaire"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 49,
+      "ancienId": "bouclier",
+      "libelle": "Bouclier",
+      "cle": "bouclier",
+      "categories": [
+        {
+          "id": 7,
+          "libelle": "Équipement"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 51,
+      "ancienId": "cac",
+      "libelle": "càc",
+      "cle": "cac",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 53,
+      "ancienId": "campagne",
+      "libelle": "Campagne",
+      "cle": "campagne",
+      "categories": [
+        {
+          "id": 1,
+          "libelle": "Règles"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 54,
+      "ancienId": "capacite-de-classe",
+      "libelle": "capacité de classe",
+      "cle": "capacite-de-classe",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 56,
+      "ancienId": "caracteristiques",
+      "libelle": "Caractéristiques",
+      "cle": "caracteristiques",
+      "categories": [
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 57,
+      "ancienId": "carte-de-combat",
+      "libelle": "Carte de combat",
+      "cle": "carte-de-combat",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 58,
+      "ancienId": "ceinture",
+      "libelle": "Ceinture",
+      "cle": "ceinture",
+      "categories": [
+        {
+          "id": 7,
+          "libelle": "Équipement"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 60,
+      "ancienId": "chakra",
+      "libelle": "Chakra",
+      "cle": "chakra",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        },
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 61,
+      "ancienId": "champicer",
+      "libelle": "Champicer",
+      "cle": "champicer",
+      "categories": [
+        {
+          "id": 9,
+          "libelle": "Objet légendaire"
+        }
+      ],
+      "auteur": "worldbuilding"
+    },
+    {
+      "id": 64,
+      "ancienId": "chargement-mage-vert",
+      "libelle": "Chargement (Mage Vert)",
+      "cle": "chargement-mage-vert",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 66,
+      "ancienId": "classe",
+      "libelle": "Classe",
+      "cle": "classe",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 67,
+      "ancienId": "classe-magique",
+      "libelle": "Classe magique",
+      "cle": "classe-magique",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 68,
+      "ancienId": "classe-raciale",
+      "libelle": "Classe raciale",
+      "cle": "classe-raciale",
+      "categories": [
+        {
+          "id": 3,
+          "libelle": "Race"
+        },
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 69,
+      "ancienId": "clerc",
+      "libelle": "Clerc",
+      "cle": "clerc",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 73,
+      "ancienId": "coma",
+      "libelle": "Coma",
+      "cle": "coma",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 75,
+      "ancienId": "competence",
+      "libelle": "Compétence",
+      "cle": "competence",
+      "categories": [
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 76,
+      "ancienId": "composants",
+      "libelle": "Composants",
+      "cle": "composants",
+      "categories": [
+        {
+          "id": 7,
+          "libelle": "Équipement"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 78,
+      "ancienId": "corruption",
+      "libelle": "Corruption",
+      "cle": "corruption",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 79,
+      "ancienId": "cout-secondaire",
+      "libelle": "Coût secondaire",
+      "cle": "cout-secondaire",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 80,
+      "ancienId": "couturier",
+      "libelle": "Couturier",
+      "cle": "couturier",
+      "categories": [
+        {
+          "id": 10,
+          "libelle": "Métier"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 81,
+      "ancienId": "creature-invoquee",
+      "libelle": "Créature invoquée",
+      "cle": "creature-invoquee",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 82,
+      "ancienId": "creer-son-personnage",
+      "libelle": "Créer son personnage",
+      "cle": "creer-son-personnage",
+      "categories": [
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 83,
+      "ancienId": "croc-du-volcan",
+      "libelle": "Croc du Volcan",
+      "cle": "croc-du-volcan",
+      "categories": [
+        {
+          "id": 9,
+          "libelle": "Objet légendaire"
+        }
+      ],
+      "auteur": "worldbuilding"
+    },
+    {
+      "id": 84,
+      "ancienId": "croix",
+      "libelle": "Croix",
+      "cle": "croix",
+      "categories": [
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 85,
+      "ancienId": "cuirasse",
+      "libelle": "Cuirassé",
+      "cle": "cuirasse",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 86,
+      "ancienId": "defense-partielle",
+      "libelle": "Défense partielle",
+      "cle": "defense-partielle",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 87,
+      "ancienId": "degats",
+      "libelle": "Dégâts",
+      "cle": "degats",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 88,
+      "ancienId": "des",
+      "libelle": "Dés",
+      "cle": "des",
+      "categories": [
+        {
+          "id": 1,
+          "libelle": "Règles"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 89,
+      "ancienId": "dieu-choisi",
+      "libelle": "Dieu choisi",
+      "cle": "dieu-choisi",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 90,
+      "ancienId": "dieu-inne",
+      "libelle": "Dieu inné",
+      "cle": "dieu-inne",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 92,
+      "ancienId": "distance",
+      "libelle": "distance",
+      "cle": "distance",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 94,
+      "ancienId": "don",
+      "libelle": "Don",
+      "cle": "don",
+      "categories": [
+        {
+          "id": 3,
+          "libelle": "Race"
+        },
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 95,
+      "ancienId": "don-de-base",
+      "libelle": "Don de base",
+      "cle": "don-de-base",
+      "categories": [
+        {
+          "id": 3,
+          "libelle": "Race"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 96,
+      "ancienId": "donjon-pas-bon",
+      "libelle": "Donjon Pas bon",
+      "cle": "donjon-pas-bon",
+      "categories": [
+        {
+          "id": 1,
+          "libelle": "Règles"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 97,
+      "ancienId": "double-coup-mage-rouge",
+      "libelle": "Double coup (Mage Rouge)",
+      "cle": "double-coup-mage-rouge",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 98,
+      "ancienId": "double-coup-mage-vert",
+      "libelle": "Double coup (Mage Vert)",
+      "cle": "double-coup-mage-vert",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 100,
+      "ancienId": "drakos",
+      "libelle": "Drakos",
+      "cle": "drakos",
+      "categories": [
+        {
+          "id": 3,
+          "libelle": "Race"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 102,
+      "ancienId": "drassahthac",
+      "libelle": "Drassah'thac",
+      "cle": "drassahthac",
+      "categories": [
+        {
+          "id": 3,
+          "libelle": "Race"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 104,
+      "ancienId": "echec-critique",
+      "libelle": "Échec critique",
+      "cle": "echec-critique",
+      "categories": [
+        {
+          "id": 1,
+          "libelle": "Règles"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 105,
+      "ancienId": "echelle-de-puissance",
+      "libelle": "Échelle de puissance",
+      "cle": "echelle-de-puissance",
+      "categories": [
+        {
+          "id": 11,
+          "libelle": "Bestiaire"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 108,
+      "ancienId": "elfe-argente",
+      "libelle": "Elfe argenté",
+      "cle": "elfe-argente",
+      "categories": [
+        {
+          "id": 3,
+          "libelle": "Race"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 109,
+      "ancienId": "elfe-dore",
+      "libelle": "Elfe doré",
+      "cle": "elfe-dore",
+      "categories": [
+        {
+          "id": 3,
+          "libelle": "Race"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 110,
+      "ancienId": "elfe-forestier",
+      "libelle": "Elfe forestier",
+      "cle": "elfe-forestier",
+      "categories": [
+        {
+          "id": 3,
+          "libelle": "Race"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 111,
+      "ancienId": "elfe-noir",
+      "libelle": "Elfe noir",
+      "cle": "elfe-noir",
+      "categories": [
+        {
+          "id": 3,
+          "libelle": "Race"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 112,
+      "ancienId": "embuscade",
+      "libelle": "Embuscade",
+      "cle": "embuscade",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 115,
+      "ancienId": "emplacement-de-sort",
+      "libelle": "Emplacement de sort",
+      "cle": "emplacement-de-sort",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        },
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 116,
+      "ancienId": "entrainement",
+      "libelle": "Entraînement",
+      "cle": "entrainement",
+      "categories": [
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 120,
+      "ancienId": "esquive",
+      "libelle": "Esquive",
+      "cle": "esquive",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 121,
+      "ancienId": "etape-1-imaginer-son-personnage-et-choisir-sa-race",
+      "libelle": "Étape 1 : imaginer son personnage et choisir sa race",
+      "cle": "etape-1-imaginer-son-personnage-et-choisir-sa-race",
+      "categories": [
+        {
+          "id": 3,
+          "libelle": "Race"
+        },
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 122,
+      "ancienId": "etape-2-choisir-ses-magies",
+      "libelle": "Étape 2 : choisir ses magies",
+      "cle": "etape-2-choisir-ses-magies",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        },
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 123,
+      "ancienId": "etape-3-choisir-sa-classe",
+      "libelle": "Étape 3 : choisir sa classe",
+      "cle": "etape-3-choisir-sa-classe",
+      "categories": [
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        },
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 124,
+      "ancienId": "etape-4-repartir-caracteristiques-et-competences",
+      "libelle": "Étape 4 : répartir caractéristiques et compétences",
+      "cle": "etape-4-repartir-caracteristiques-et-competences",
+      "categories": [
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 125,
+      "ancienId": "etape-5-choisir-ses-premiers-sorts",
+      "libelle": "Étape 5 : choisir ses premiers sorts",
+      "cle": "etape-5-choisir-ses-premiers-sorts",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        },
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 126,
+      "ancienId": "etape-6-finaliser-son-personnage",
+      "libelle": "Étape 6 : finaliser son personnage",
+      "cle": "etape-6-finaliser-son-personnage",
+      "categories": [
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 127,
+      "ancienId": "ethnie",
+      "libelle": "Ethnie",
+      "cle": "ethnie",
+      "categories": [
+        {
+          "id": 3,
+          "libelle": "Race"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 129,
+      "ancienId": "excalibur",
+      "libelle": "Excalibur",
+      "cle": "excalibur",
+      "categories": [
+        {
+          "id": 9,
+          "libelle": "Objet légendaire"
+        }
+      ],
+      "auteur": "worldbuilding"
+    },
+    {
+      "id": 130,
+      "ancienId": "faiblesse",
+      "libelle": "Faiblesse",
+      "cle": "faiblesse",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        },
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 131,
+      "ancienId": "farfadet",
+      "libelle": "Farfadet",
+      "cle": "farfadet",
+      "categories": [
+        {
+          "id": 3,
+          "libelle": "Race"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 132,
+      "ancienId": "felfe",
+      "libelle": "Felfe",
+      "cle": "felfe",
+      "categories": [
+        {
+          "id": 3,
+          "libelle": "Race"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 133,
+      "ancienId": "fenrir",
+      "libelle": "Fenrir",
+      "cle": "fenrir-race",
+      "categories": [
+        {
+          "id": 3,
+          "libelle": "Race"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 135,
+      "ancienId": "fiche-de-personnage",
+      "libelle": "Fiche de personnage",
+      "cle": "fiche-de-personnage",
+      "categories": [
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 136,
+      "ancienId": "fiche-de-personnage-accessoires-et-ceinture",
+      "libelle": "Fiche de personnage : Accessoires et Ceinture",
+      "cle": "fiche-de-personnage-accessoires-et-ceinture",
+      "categories": [
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        },
+        {
+          "id": 7,
+          "libelle": "Équipement"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 137,
+      "ancienId": "fiche-de-personnage-armure-defense-bouclier",
+      "libelle": "Fiche de personnage : Armure/Défense/Bouclier",
+      "cle": "fiche-de-personnage-armure-defense-bouclier",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        },
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        },
+        {
+          "id": 7,
+          "libelle": "Équipement"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 138,
+      "ancienId": "fiche-de-personnage-experience-niveau-global",
+      "libelle": "Fiche de personnage : Expérience/Niveau global",
+      "cle": "fiche-de-personnage-experience-niveau-global",
+      "categories": [
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 139,
+      "ancienId": "fiche-de-personnage-inventaire-sac-a-dos",
+      "libelle": "Fiche de personnage : Inventaire/Sac à dos",
+      "cle": "fiche-de-personnage-inventaire-sac-a-dos",
+      "categories": [
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        },
+        {
+          "id": 7,
+          "libelle": "Équipement"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 140,
+      "ancienId": "fiche-de-personnage-maitrise-darme-et-armes",
+      "libelle": "Fiche de personnage : Maîtrise d’arme et Armes",
+      "cle": "fiche-de-personnage-maitrise-darme-et-armes",
+      "categories": [
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        },
+        {
+          "id": 7,
+          "libelle": "Équipement"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 141,
+      "ancienId": "fiche-de-personnage-tableau-posture",
+      "libelle": "Fiche de personnage : Tableau Posture",
+      "cle": "fiche-de-personnage-tableau-posture",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        },
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 142,
+      "ancienId": "flagelleur",
+      "libelle": "Flagelleur",
+      "cle": "flagelleur",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 145,
+      "ancienId": "forgeron",
+      "libelle": "Forgeron",
+      "cle": "forgeron",
+      "categories": [
+        {
+          "id": 10,
+          "libelle": "Métier"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 146,
+      "ancienId": "formule-des-degats",
+      "libelle": "Formule des dégâts",
+      "cle": "formule-des-degats",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 147,
+      "ancienId": "foudre-etincelante",
+      "libelle": "Foudre étincelante",
+      "cle": "foudre-etincelante",
+      "categories": [
+        {
+          "id": 9,
+          "libelle": "Objet légendaire"
+        }
+      ],
+      "auteur": "worldbuilding"
+    },
+    {
+      "id": 148,
+      "ancienId": "frappeur",
+      "libelle": "Frappeur",
+      "cle": "frappeur",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 150,
+      "ancienId": "goleois",
+      "libelle": "Goleois",
+      "cle": "goleois-race",
+      "categories": [
+        {
+          "id": 3,
+          "libelle": "Race"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 153,
+      "ancienId": "grenadier",
+      "libelle": "Grenadier",
+      "cle": "grenadier",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 155,
+      "ancienId": "guerrier",
+      "libelle": "Guerrier",
+      "cle": "guerrier",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 156,
+      "ancienId": "guide-pour-mj-maverick",
+      "libelle": "Guide pour MJ - Maverick",
+      "cle": "guide-pour-mj-maverick",
+      "categories": [
+        {
+          "id": 1,
+          "libelle": "Règles"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 157,
+      "ancienId": "hache-du-bourreau-dechire",
+      "libelle": "Hache du Bourreau déchiré",
+      "cle": "hache-du-bourreau-dechire",
+      "categories": [
+        {
+          "id": 9,
+          "libelle": "Objet légendaire"
+        }
+      ],
+      "auteur": "worldbuilding"
+    },
+    {
+      "id": 158,
+      "ancienId": "hujin",
+      "libelle": "Hujin",
+      "cle": "hujin",
+      "categories": [
+        {
+          "id": 3,
+          "libelle": "Race"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 159,
+      "ancienId": "humain",
+      "libelle": "Humain",
+      "cle": "humain",
+      "categories": [
+        {
+          "id": 3,
+          "libelle": "Race"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 160,
+      "ancienId": "hybride",
+      "libelle": "hybride",
+      "cle": "hybride",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 161,
+      "ancienId": "hybride-animal",
+      "libelle": "hybride animal",
+      "cle": "hybride-animal",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 162,
+      "ancienId": "initiative",
+      "libelle": "Initiative",
+      "cle": "initiative",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 163,
+      "ancienId": "instant-cast",
+      "libelle": "Instant Cast",
+      "cle": "instant-cast",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 164,
+      "ancienId": "intervention",
+      "libelle": "Intervention",
+      "cle": "intervention",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 165,
+      "ancienId": "jackalope",
+      "libelle": "Jackalope",
+      "cle": "jackalope-race",
+      "categories": [
+        {
+          "id": 3,
+          "libelle": "Race"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 167,
+      "ancienId": "kitsune",
+      "libelle": "Kitsune",
+      "cle": "kitsune-race",
+      "categories": [
+        {
+          "id": 3,
+          "libelle": "Race"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 170,
+      "ancienId": "la-magie-en-jeu",
+      "libelle": "La magie en jeu",
+      "cle": "la-magie-en-jeu",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 172,
+      "ancienId": "la-montee-de-niveau",
+      "libelle": "La montée de niveau",
+      "cle": "la-montee-de-niveau",
+      "categories": [
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 174,
+      "ancienId": "la-vitesse-et-la-portee",
+      "libelle": "La Vitesse et la Portée",
+      "cle": "la-vitesse-et-la-portee",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 175,
+      "ancienId": "lame-seuil",
+      "libelle": "Lame-Seuil",
+      "cle": "lame-seuil",
+      "categories": [
+        {
+          "id": 9,
+          "libelle": "Objet légendaire"
+        }
+      ],
+      "auteur": "worldbuilding"
+    },
+    {
+      "id": 176,
+      "ancienId": "lamia",
+      "libelle": "Lamia",
+      "cle": "lamia",
+      "categories": [
+        {
+          "id": 3,
+          "libelle": "Race"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 177,
+      "ancienId": "lance-du-bourreau-dechire",
+      "libelle": "Lance du Bourreau déchiré",
+      "cle": "lance-du-bourreau-dechire",
+      "categories": [
+        {
+          "id": 9,
+          "libelle": "Objet légendaire"
+        }
+      ],
+      "auteur": "worldbuilding"
+    },
+    {
+      "id": 178,
+      "ancienId": "lanceur",
+      "libelle": "Lanceur",
+      "cle": "lanceur",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 179,
+      "ancienId": "lancier",
+      "libelle": "Lancier",
+      "cle": "lancier",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 180,
+      "ancienId": "le-tour-de-jeu",
+      "libelle": "Le tour de jeu",
+      "cle": "le-tour-de-jeu",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 181,
+      "ancienId": "lequipement",
+      "libelle": "L’équipement",
+      "cle": "lequipement",
+      "categories": [
+        {
+          "id": 7,
+          "libelle": "Équipement"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 182,
+      "ancienId": "les-actions-et-mouvements",
+      "libelle": "Les Actions et mouvements",
+      "cle": "les-actions-et-mouvements",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 189,
+      "ancienId": "les-guerisseurs",
+      "libelle": "Les Guérisseurs",
+      "cle": "les-guerisseurs",
+      "categories": [
+        {
+          "id": 9,
+          "libelle": "Objet légendaire"
+        }
+      ],
+      "auteur": "worldbuilding"
+    },
+    {
+      "id": 192,
+      "ancienId": "les-neuf-alignements",
+      "libelle": "Les neuf alignements",
+      "cle": "les-neuf-alignements",
+      "categories": [
+        {
+          "id": 1,
+          "libelle": "Règles"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 194,
+      "ancienId": "les-pieges",
+      "libelle": "Les pièges",
+      "cle": "les-pieges",
+      "categories": [
+        {
+          "id": 1,
+          "libelle": "Règles"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 195,
+      "ancienId": "les-portes",
+      "libelle": "Les portes",
+      "cle": "les-portes",
+      "categories": [
+        {
+          "id": 1,
+          "libelle": "Règles"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 197,
+      "ancienId": "liste-des-alterations-detat",
+      "libelle": "Liste des altérations d'état",
+      "cle": "liste-des-alterations-detat",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 198,
+      "ancienId": "livre-parchemin",
+      "libelle": "Livre/Parchemin",
+      "cle": "livre-parchemin",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        },
+        {
+          "id": 7,
+          "libelle": "Équipement"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 202,
+      "ancienId": "maclier",
+      "libelle": "Maclier",
+      "cle": "maclier",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 203,
+      "ancienId": "mage",
+      "libelle": "Mage",
+      "cle": "mage",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 204,
+      "ancienId": "mage-bleu",
+      "libelle": "Mage Bleu",
+      "cle": "mage-bleu",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 205,
+      "ancienId": "mage-rouge",
+      "libelle": "Mage Rouge",
+      "cle": "mage-rouge",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 206,
+      "ancienId": "mage-vert",
+      "libelle": "Mage Vert",
+      "cle": "mage-vert",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 207,
+      "ancienId": "magie-acquise",
+      "libelle": "Magie acquise",
+      "cle": "magie-acquise",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 208,
+      "ancienId": "magie-de-la-corruption",
+      "libelle": "Magie de la Corruption",
+      "cle": "magie-de-la-corruption",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 209,
+      "ancienId": "magie-de-la-foudre",
+      "libelle": "Magie de la Foudre",
+      "cle": "magie-de-la-foudre",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 210,
+      "ancienId": "magie-de-la-glace",
+      "libelle": "Magie de la Glace",
+      "cle": "magie-de-la-glace",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 211,
+      "ancienId": "magie-de-la-lumiere",
+      "libelle": "Magie de la Lumière",
+      "cle": "magie-de-la-lumiere",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 212,
+      "ancienId": "magie-de-la-necromancie",
+      "libelle": "Magie de la Nécromancie",
+      "cle": "magie-de-la-necromancie",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 213,
+      "ancienId": "magie-de-la-terre",
+      "libelle": "Magie de la Terre",
+      "cle": "magie-de-la-terre",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 214,
+      "ancienId": "magie-de-larcane",
+      "libelle": "Magie de l'Arcane",
+      "cle": "magie-de-larcane",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 215,
+      "ancienId": "magie-de-leau",
+      "libelle": "Magie de l'Eau",
+      "cle": "magie-de-leau",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 216,
+      "ancienId": "magie-de-lespace-temps",
+      "libelle": "Magie de l'Espace/Temps",
+      "cle": "magie-de-lespace-temps",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 217,
+      "ancienId": "magie-de-lombre",
+      "libelle": "Magie de l'Ombre",
+      "cle": "magie-de-lombre",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 218,
+      "ancienId": "magie-du-feu",
+      "libelle": "Magie du Feu",
+      "cle": "magie-du-feu",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 219,
+      "ancienId": "magie-du-sang",
+      "libelle": "Magie du Sang",
+      "cle": "magie-du-sang",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 220,
+      "ancienId": "magie-du-vent",
+      "libelle": "Magie du Vent",
+      "cle": "magie-du-vent",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 221,
+      "ancienId": "magie-du-vide",
+      "libelle": "Magie du Vide",
+      "cle": "magie-du-vide",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 222,
+      "ancienId": "magie-innee",
+      "libelle": "Magie innée",
+      "cle": "magie-innee",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        },
+        {
+          "id": 3,
+          "libelle": "Race"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 223,
+      "ancienId": "magies",
+      "libelle": "Magies",
+      "cle": "magies",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 224,
+      "ancienId": "magique",
+      "libelle": "magique",
+      "cle": "magique",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 225,
+      "ancienId": "maitre-du-jeu",
+      "libelle": "Maître du jeu",
+      "cle": "maitre-du-jeu",
+      "categories": [
+        {
+          "id": 1,
+          "libelle": "Règles"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 226,
+      "ancienId": "maitrise-darme",
+      "libelle": "Maîtrise d’arme",
+      "cle": "maitrise-darme",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        },
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 227,
+      "ancienId": "majin",
+      "libelle": "Majin",
+      "cle": "majin",
+      "categories": [
+        {
+          "id": 3,
+          "libelle": "Race"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 228,
+      "ancienId": "maladie",
+      "libelle": "Maladie",
+      "cle": "maladie",
+      "categories": [
+        {
+          "id": 1,
+          "libelle": "Règles"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 231,
+      "ancienId": "marcass",
+      "libelle": "Marcass",
+      "cle": "marcass-race",
+      "categories": [
+        {
+          "id": 3,
+          "libelle": "Race"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 233,
+      "ancienId": "maroquinier",
+      "libelle": "Maroquinier",
+      "cle": "maroquinier",
+      "categories": [
+        {
+          "id": 10,
+          "libelle": "Métier"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 234,
+      "ancienId": "martiale",
+      "libelle": "Martiale",
+      "cle": "martiale",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 236,
+      "ancienId": "medusain",
+      "libelle": "Médusain",
+      "cle": "medusain-race",
+      "categories": [
+        {
+          "id": 3,
+          "libelle": "Race"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 238,
+      "ancienId": "mercenaire",
+      "libelle": "Mercenaire",
+      "cle": "mercenaire",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 239,
+      "ancienId": "meteo",
+      "libelle": "Météo",
+      "cle": "meteo",
+      "categories": [
+        {
+          "id": 1,
+          "libelle": "Règles"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 240,
+      "ancienId": "metier",
+      "libelle": "Métier",
+      "cle": "metier",
+      "categories": [
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        },
+        {
+          "id": 10,
+          "libelle": "Métier"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 241,
+      "ancienId": "mineur",
+      "libelle": "Mineur",
+      "cle": "mineur",
+      "categories": [
+        {
+          "id": 10,
+          "libelle": "Métier"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 242,
+      "ancienId": "minotaure",
+      "libelle": "Minotaure",
+      "cle": "minotaure-race",
+      "categories": [
+        {
+          "id": 3,
+          "libelle": "Race"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 245,
+      "ancienId": "mode-hyper",
+      "libelle": "Mode Hyper",
+      "cle": "mode-hyper",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 246,
+      "ancienId": "mode-super",
+      "libelle": "Mode Super",
+      "cle": "mode-super",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 247,
+      "ancienId": "moine",
+      "libelle": "Moine",
+      "cle": "moine",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 251,
+      "ancienId": "mordhau",
+      "libelle": "Mordhau",
+      "cle": "mordhau",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 253,
+      "ancienId": "mort-vivant",
+      "libelle": "Mort-vivant",
+      "cle": "mort-vivant",
+      "categories": [
+        {
+          "id": 3,
+          "libelle": "Race"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 255,
+      "ancienId": "nain",
+      "libelle": "Nain",
+      "cle": "nain",
+      "categories": [
+        {
+          "id": 3,
+          "libelle": "Race"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 256,
+      "ancienId": "namazu",
+      "libelle": "Namazu",
+      "cle": "namazu-race",
+      "categories": [
+        {
+          "id": 3,
+          "libelle": "Race"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 258,
+      "ancienId": "naturel",
+      "libelle": "Naturel",
+      "cle": "naturel",
+      "categories": [
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 259,
+      "ancienId": "negatif-maximal",
+      "libelle": "Négatif maximal",
+      "cle": "negatif-maximal",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 260,
+      "ancienId": "niveau-de-classe",
+      "libelle": "Niveau de classe",
+      "cle": "niveau-de-classe",
+      "categories": [
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        },
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 261,
+      "ancienId": "niveau-de-maitrise",
+      "libelle": "Niveau de maîtrise",
+      "cle": "niveau-de-maitrise",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 262,
+      "ancienId": "niveau-de-puissance-magique",
+      "libelle": "Niveau de puissance magique",
+      "cle": "niveau-de-puissance-magique",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 263,
+      "ancienId": "niveau-global",
+      "libelle": "Niveau global",
+      "cle": "niveau-global",
+      "categories": [
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 266,
+      "ancienId": "ocultomancien",
+      "libelle": "Ocultomancien",
+      "cle": "ocultomancien",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 267,
+      "ancienId": "olwman",
+      "libelle": "Olwman",
+      "cle": "olwman-race",
+      "categories": [
+        {
+          "id": 3,
+          "libelle": "Race"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 269,
+      "ancienId": "one-shot",
+      "libelle": "One shot",
+      "cle": "one-shot",
+      "categories": [
+        {
+          "id": 1,
+          "libelle": "Règles"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 277,
+      "ancienId": "origine-du-monde",
+      "libelle": "Origine du monde",
+      "cle": "origine-du-monde",
+      "categories": [
+        {
+          "id": 8,
+          "libelle": "Événement"
+        }
+      ],
+      "auteur": "worldbuilding"
+    },
+    {
+      "id": 278,
+      "ancienId": "orios",
+      "libelle": "Orios",
+      "cle": "orios-race",
+      "categories": [
+        {
+          "id": 3,
+          "libelle": "Race"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 280,
+      "ancienId": "parade",
+      "libelle": "Parade",
+      "cle": "parade",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 281,
+      "ancienId": "parleur",
+      "libelle": "Parleur",
+      "cle": "parleur",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 282,
+      "ancienId": "personnage-joueur",
+      "libelle": "Personnage joueur",
+      "cle": "personnage-joueur",
+      "categories": [
+        {
+          "id": 1,
+          "libelle": "Règles"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 283,
+      "ancienId": "personnage-non-joueur",
+      "libelle": "Personnage non joueur",
+      "cle": "personnage-non-joueur",
+      "categories": [
+        {
+          "id": 1,
+          "libelle": "Règles"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 284,
+      "ancienId": "piece-elementaire",
+      "libelle": "Pièce élémentaire",
+      "cle": "piece-elementaire",
+      "categories": [
+        {
+          "id": 7,
+          "libelle": "Équipement"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 288,
+      "ancienId": "points-dexperience",
+      "libelle": "Points d’expérience",
+      "cle": "points-dexperience",
+      "categories": [
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 289,
+      "ancienId": "portee",
+      "libelle": "Portée",
+      "cle": "portee",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 290,
+      "ancienId": "posture",
+      "libelle": "Posture",
+      "cle": "posture",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 291,
+      "ancienId": "potentiel-illimite",
+      "libelle": "Potentiel illimité",
+      "cle": "potentiel-illimite",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 293,
+      "ancienId": "preparation-mage-rouge",
+      "libelle": "Préparation (Mage Rouge)",
+      "cle": "preparation-mage-rouge",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 294,
+      "ancienId": "pretire",
+      "libelle": "Prétiré",
+      "cle": "pretire",
+      "categories": [
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 295,
+      "ancienId": "prise-en-tenaille",
+      "libelle": "Prise en tenaille",
+      "cle": "prise-en-tenaille",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 296,
+      "ancienId": "pugiliste",
+      "libelle": "Pugiliste",
+      "cle": "pugiliste",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 297,
+      "ancienId": "puissance-magique",
+      "libelle": "Puissance magique",
+      "cle": "puissance-magique",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        },
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 298,
+      "ancienId": "race",
+      "libelle": "race",
+      "cle": "race",
+      "categories": [
+        {
+          "id": 3,
+          "libelle": "Race"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 299,
+      "ancienId": "race-pure",
+      "libelle": "Race pure",
+      "cle": "race-pure",
+      "categories": [
+        {
+          "id": 3,
+          "libelle": "Race"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 300,
+      "ancienId": "rater-ses-sortileges",
+      "libelle": "Rater ses sortilèges",
+      "cle": "rater-ses-sortileges",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 301,
+      "ancienId": "recharge-longue",
+      "libelle": "Recharge longue",
+      "cle": "recharge-longue",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        },
+        {
+          "id": 7,
+          "libelle": "Équipement"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 302,
+      "ancienId": "recharge-tres-longue",
+      "libelle": "Recharge très longue",
+      "cle": "recharge-tres-longue",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        },
+        {
+          "id": 7,
+          "libelle": "Équipement"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 303,
+      "ancienId": "regles-des-metiers",
+      "libelle": "Règles des métiers",
+      "cle": "regles-des-metiers",
+      "categories": [
+        {
+          "id": 10,
+          "libelle": "Métier"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 305,
+      "ancienId": "remede",
+      "libelle": "Remède",
+      "cle": "remede",
+      "categories": [
+        {
+          "id": 7,
+          "libelle": "Équipement"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 308,
+      "ancienId": "resistance",
+      "libelle": "Résistance",
+      "cle": "resistance",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        },
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 309,
+      "ancienId": "resistances-et-faiblesses",
+      "libelle": "Résistances et faiblesses",
+      "cle": "resistances-et-faiblesses",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        },
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 310,
+      "ancienId": "reussir-une-action",
+      "libelle": "Réussir une action",
+      "cle": "reussir-une-action",
+      "categories": [
+        {
+          "id": 1,
+          "libelle": "Règles"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 311,
+      "ancienId": "reussite-critique",
+      "libelle": "Réussite critique",
+      "cle": "reussite-critique",
+      "categories": [
+        {
+          "id": 1,
+          "libelle": "Règles"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 314,
+      "ancienId": "rokh",
+      "libelle": "Rokh",
+      "cle": "rokh-race",
+      "categories": [
+        {
+          "id": 3,
+          "libelle": "Race"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 317,
+      "ancienId": "sang",
+      "libelle": "Sang",
+      "cle": "sang",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 318,
+      "ancienId": "sante",
+      "libelle": "Santé",
+      "cle": "sante",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        },
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 319,
+      "ancienId": "satyre",
+      "libelle": "Satyre",
+      "cle": "satyre-race",
+      "categories": [
+        {
+          "id": 3,
+          "libelle": "Race"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 322,
+      "ancienId": "scenario-one-shot",
+      "libelle": "Scénario one shot",
+      "cle": "scenario-one-shot",
+      "categories": [
+        {
+          "id": 1,
+          "libelle": "Règles"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 323,
+      "ancienId": "score",
+      "libelle": "Score",
+      "cle": "score",
+      "categories": [
+        {
+          "id": 1,
+          "libelle": "Règles"
+        },
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 324,
+      "ancienId": "selcalibur",
+      "libelle": "Selcalibur",
+      "cle": "selcalibur",
+      "categories": [
+        {
+          "id": 9,
+          "libelle": "Objet légendaire"
+        }
+      ],
+      "auteur": "worldbuilding"
+    },
+    {
+      "id": 325,
+      "ancienId": "sentrainer",
+      "libelle": "S’entraîner",
+      "cle": "sentrainer",
+      "categories": [
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        },
+        {
+          "id": 10,
+          "libelle": "Métier"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 330,
+      "ancienId": "soir-matin",
+      "libelle": "Soir-matin",
+      "cle": "soir-matin",
+      "categories": [
+        {
+          "id": 9,
+          "libelle": "Objet légendaire"
+        }
+      ],
+      "auteur": "worldbuilding"
+    },
+    {
+      "id": 331,
+      "ancienId": "solidite",
+      "libelle": "Solidité",
+      "cle": "solidite",
+      "categories": [
+        {
+          "id": 7,
+          "libelle": "Équipement"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 332,
+      "ancienId": "sort-fer",
+      "libelle": "Sort fer",
+      "cle": "sort-fer",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 333,
+      "ancienId": "sort-grenade",
+      "libelle": "Sort grenade",
+      "cle": "sort-grenade",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 334,
+      "ancienId": "speciale",
+      "libelle": "spéciale",
+      "cle": "speciale",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 335,
+      "ancienId": "specialite",
+      "libelle": "Spécialité",
+      "cle": "specialite",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 336,
+      "ancienId": "sprint",
+      "libelle": "Sprint",
+      "cle": "sprint",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 337,
+      "ancienId": "super-gemme",
+      "libelle": "Super Gemme",
+      "cle": "super-gemme",
+      "categories": [
+        {
+          "id": 9,
+          "libelle": "Objet légendaire"
+        }
+      ],
+      "auteur": "worldbuilding"
+    },
+    {
+      "id": 350,
+      "ancienId": "tenaille",
+      "libelle": "Tenaille",
+      "cle": "tenaille",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 355,
+      "ancienId": "tour",
+      "libelle": "Tour",
+      "cle": "tour",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 356,
+      "ancienId": "tour-de-charge",
+      "libelle": "Tour de charge",
+      "cle": "tour-de-charge",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        },
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 357,
+      "ancienId": "tueur",
+      "libelle": "Tueur",
+      "cle": "tueur",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 359,
+      "ancienId": "un-maitre-du-jeu",
+      "libelle": "Un maître du Jeu",
+      "cle": "un-maitre-du-jeu",
+      "categories": [
+        {
+          "id": 1,
+          "libelle": "Règles"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 362,
+      "ancienId": "vitesse",
+      "libelle": "Vitesse",
+      "cle": "vitesse",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        },
+        {
+          "id": 5,
+          "libelle": "Fiche de personnage"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 363,
+      "ancienId": "voleur",
+      "libelle": "Voleur",
+      "cle": "voleur",
+      "categories": [
+        {
+          "id": 6,
+          "libelle": "Classe"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 365,
+      "ancienId": "vulnerabilite",
+      "libelle": "Vulnérabilité",
+      "cle": "vulnerabilite",
+      "categories": [
+        {
+          "id": 2,
+          "libelle": "Magie"
+        },
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    },
+    {
+      "id": 367,
+      "ancienId": "zone-dinfluence",
+      "libelle": "Zone d’influence",
+      "cle": "zone-dinfluence",
+      "categories": [
+        {
+          "id": 4,
+          "libelle": "Combat"
+        }
+      ],
+      "auteur": "game-design"
+    }
+  ],
+  "cles": [
+    {
+      "id": 14,
+      "libelle": "Anansi",
+      "avant": "anansi",
+      "apres": "anansi-race"
+    },
+    {
+      "id": 133,
+      "libelle": "Fenrir",
+      "avant": "fenrir",
+      "apres": "fenrir-race"
+    },
+    {
+      "id": 150,
+      "libelle": "Goleois",
+      "avant": "goleois",
+      "apres": "goleois-race"
+    },
+    {
+      "id": 165,
+      "libelle": "Jackalope",
+      "avant": "jackalope",
+      "apres": "jackalope-race"
+    },
+    {
+      "id": 167,
+      "libelle": "Kitsune",
+      "avant": "kitsune",
+      "apres": "kitsune-race"
+    },
+    {
+      "id": 231,
+      "libelle": "Marcass",
+      "avant": "marcass",
+      "apres": "marcass-race"
+    },
+    {
+      "id": 236,
+      "libelle": "Médusain",
+      "avant": "medusain",
+      "apres": "medusain-race"
+    },
+    {
+      "id": 242,
+      "libelle": "Minotaure",
+      "avant": "minotaure",
+      "apres": "minotaure-race"
+    },
+    {
+      "id": 256,
+      "libelle": "Namazu",
+      "avant": "namazu",
+      "apres": "namazu-race"
+    },
+    {
+      "id": 267,
+      "libelle": "Olwman",
+      "avant": "olwman",
+      "apres": "olwman-race"
+    },
+    {
+      "id": 278,
+      "libelle": "Orios",
+      "avant": "orios",
+      "apres": "orios-race"
+    },
+    {
+      "id": 314,
+      "libelle": "Rokh",
+      "avant": "rokh",
+      "apres": "rokh-race"
+    },
+    {
+      "id": 319,
+      "libelle": "Satyre",
+      "avant": "satyre",
+      "apres": "satyre-race"
+    }
+  ],
+  "textes": [
+    {
+      "table": "page",
+      "cle": {
+        "id": "guide/bienvenue"
+      },
+      "col": "corps_md",
+      "avant": "{{orios}}",
+      "apres": "{{orios-race}}",
+      "compte": 1
+    }
+  ]
+}

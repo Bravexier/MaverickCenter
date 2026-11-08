@@ -838,3 +838,26 @@ test('équipement : les consommables de l’onglet Ceinture (2026-10-17) — nom
   dev.tables.ressource[0].description = 'Jamais montrée.';
   assert.equal(comparerBases(ref, dev).length, 4);
 });
+
+test('mots-clés (R232, R233) : les synonymes et les catégories d’un mot-clé changés sur le site de dev, une ligne chacun, neutre ; un mot-clé ajouté les dit lui-même', () => {
+  const motCle = (id, libelle, cle) => ({ id, libelle, cle, description: null, url: null, couleur: null, verrou: 0, monnaie_id: null });
+  const ref = { tables: {
+    mot_cle: [motCle(1, 'Instant Cast', 'instant-cast'), motCle(2, 'Feu', 'feu')],
+    categorie_mot_cle: [{ id: 1, libelle: 'Règles', libelle_cle: 'regles' }, { id: 4, libelle: 'Combat', libelle_cle: 'combat' }],
+    mot_cle_synonyme: [{ id: 1, mot_cle_id: 1, libelle: 'IC', libelle_cle: 'ic', ordre: 0 }, { id: 2, mot_cle_id: 1, libelle: 'Action bonus', libelle_cle: 'action-bonus', ordre: 1 }],
+    mot_cle_categorie: [{ mot_cle_id: 1, categorie_id: 1 }],
+  } };
+  const dev = structuredClone(ref);
+  dev.tables.mot_cle_synonyme = [{ id: 1, mot_cle_id: 1, libelle: 'IC', libelle_cle: 'ic', ordre: 0 }];
+  dev.tables.mot_cle_categorie = [{ mot_cle_id: 1, categorie_id: 4 }, { mot_cle_id: 1, categorie_id: 1 }, { mot_cle_id: 2, categorie_id: 4 }];
+  dev.tables.mot_cle.push(motCle(3, 'Glace', 'glace'));
+  dev.tables.mot_cle_synonyme.push({ id: 3, mot_cle_id: 3, libelle: 'GL', libelle_cle: 'gl', ordre: 0 });
+  const lignes = comparerBases(ref, dev).filter((l) => l.domaine === 'mots-cles');
+  const vue = (l) => [l.entite, l.champ, l.nature, l.avant, l.apres, l.sens];
+  assert.deepEqual(lignes.filter((l) => l.champ === 'Synonymes').map(vue), [['Instant Cast', 'Synonymes', 'modifie', 'IC, Action bonus', 'IC', 'neutre']]);
+  assert.deepEqual(lignes.filter((l) => l.champ === 'Catégories').map(vue).sort(), [
+    ['Feu', 'Catégories', 'ajoute', null, 'Combat', 'neutre'], ['Instant Cast', 'Catégories', 'modifie', 'Règles', 'Règles, Combat', 'neutre'],
+  ]);
+  assert.ok(lignes.some((l) => l.entite === 'Glace' && l.nature === 'ajoute' && l.champ === null), 'le mot-clé ajouté');
+  assert.ok(!lignes.some((l) => l.entite === 'Glace' && l.champ === 'Synonymes'), 'ses synonymes ne sont pas dits à part');
+});

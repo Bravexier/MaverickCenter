@@ -32,6 +32,8 @@ import {
 import { normalize } from './text.mjs';
 import { valeursDAvant } from './historique-site.mjs';
 import { chargerVocabulaire } from './mots-cles-db.mjs';
+import { nomDuProtege } from './mots-cles-proteges.mjs';
+import { motsClesDesPages } from './pages-db.mjs';
 import { texteSansBalises, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
 import { valeurDuPoids } from './fiche-format.mjs';
 import { CHAMPS_DU_CORPS } from './corps-metiers.mjs';
@@ -59,11 +61,12 @@ const parCle = (rows, cle, valeur = (r) => r) => {
 };
 
 /**
- * Entrées minimales (id, titre, mots-clés par id) des pages de races et de classes : pour réutiliser raceKind et la couleur de la catégorie
- * (classeDUneClasse), comme /races/ et /classes/ ; les mots-clés lus par leur id (page_tag.tag_id : décision R195, un renommage ne change rien).
+ * Entrées minimales (id, titre, noms des mots-clés protégés) des pages de races et de classes : pour réutiliser raceKind et la couleur de la catégorie
+ * (classeDUneClasse), comme /races/ et /classes/ ; les mots-clés reconnus par leur id (lib/pages-db.mjs#motsClesDesPages : décision R195, un renommage
+ * ne change rien).
  */
 function entreesDesPages(db) {
-  const motsCles = parCle(lignes(db, "SELECT page_id, tag_id FROM page_tag WHERE page_id LIKE 'classes/%' OR page_id LIKE 'races/%' ORDER BY page_id, ordre"), 'page_id', (r) => r.tag_id);
+  const motsCles = motsClesDesPages(db);
   return lignes(db, "SELECT id, titre FROM page WHERE type IN ('classes', 'races')").map((p) => ({ id: p.id, data: { title: p.titre, mots_cles: motsCles.get(p.id) ?? [] } }));
 }
 
@@ -555,10 +558,12 @@ function reglesDeLaBase(db) {
   const attaques = new Set(lignes(db, "SELECT DISTINCT sort_id FROM sort_type WHERE type = 'attaque'").map((t) => t.sort_id));
   // ses types (sort_type : attaque, soin, amplification, protection…), pour les bonus du moment qui n'en visent que certains (décisions R101, R102)
   const typesDesSorts = parCle(lignes(db, 'SELECT sort_id, type FROM sort_type ORDER BY sort_id, type'), 'sort_id', (t) => t.type);
-  // ses étiquettes (sort_mot_cle, migration 0067 : décision R114, « Sort grenade » ; migration 0079 : décision R164, « Sort fer »), dans l'ordre de leur libellé normalisé (`libelle_cle`) : les bonus écrits pour « les sorts
-  // "grenades" » visent les sorts qui la portent, jamais un sort par son nom (lib/sort-bonus-texte.mjs#ETIQUETTES_DES_SORTS)
-  const etiquettesDesSorts = parCle(lignes(db, `SELECT e.sort_id, e.mot_cle_id FROM sort_mot_cle e JOIN mot_cle m ON m.id = e.mot_cle_id
-    ORDER BY e.sort_id, m.libelle_cle, e.mot_cle_id`), 'sort_id', (e) => e.mot_cle_id);
+  // ses étiquettes (sort_mot_cle, migration 0067 : décision R114, « Sort grenade » ; migration 0079 : décision R164, « Sort fer »), par leur nom de
+  // mot-clé protégé (lib/mots-cles-proteges.mjs : reconnu à son id entier, migration 0113 ; l'id d'un mot-clé que le site ne lit pas), dans l'ordre de
+  // leur clé : les bonus écrits pour « les sorts "grenades" » visent les sorts qui la portent, jamais un sort par son nom
+  // (lib/sort-bonus-texte.mjs#ETIQUETTES_DES_SORTS)
+  const etiquettesDesSorts = parCle(lignes(db, `SELECT e.sort_id, e.mot_cle_id AS id, m.cle FROM sort_mot_cle e JOIN mot_cle m ON m.id = e.mot_cle_id
+    ORDER BY e.sort_id, m.cle, e.mot_cle_id`), 'sort_id', (e) => nomDuProtege(e) ?? e.id);
   const sorts = lignes(db, 'SELECT id, magie_id, nom, niveau, type_brut, cout_brut, cout_secondaire, portee_brut, zone_brut, dsb_brut, effets, remarque FROM sort ORDER BY magie_id, niveau, ordre')
     .map((s) => ({
       id: s.id, magie_id: s.magie_id, nom: s.nom, niveau: s.niveau, type: s.type_brut, cout: s.cout_brut, portee: s.portee_brut, zone: s.zone_brut, dsb: s.dsb_brut, effets: s.effets, remarque: s.remarque,

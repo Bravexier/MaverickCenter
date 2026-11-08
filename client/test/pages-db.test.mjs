@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
@@ -101,4 +102,34 @@ test('db-export-pages : la base temporaire est supprimée quelle que soit la sor
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+// Migration 0113 (décision R232 (4)) : le libellé d'un homonyme est ambigu ; le `tags:` écrit alors sa clé, que tools/db/maverick.py#trouver_mot_cle (db:sync-pages)
+// cherche d'abord : l'aller-retour repose chaque étiquette sur son mot-clé. Un vocabulaire d'essai (libellés et clés de la règle, pas ceux de la base).
+const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
+test('tags : le libellé d’un mot-clé, la clé d’un homonyme ; db:sync-pages (maverick.py#trouver_mot_cle) relit chacun sur son mot-clé', { skip: sansPython }, (t) => {
+  const fichier = join(dossierTemporaire('tags-homonymes', { t }), 'essai.db');
+  const base = new DatabaseSync(fichier);
+  base.exec(`
+    CREATE TABLE mot_cle (id INTEGER PRIMARY KEY, libelle TEXT NOT NULL, cle TEXT NOT NULL UNIQUE);
+    CREATE TABLE page (id TEXT PRIMARY KEY, type TEXT, slug TEXT, titre TEXT, resume TEXT, donnees TEXT, corps_md TEXT, statut TEXT, origine TEXT);
+    CREATE TABLE page_tag (page_id TEXT, ordre INTEGER, tag_id INTEGER, PRIMARY KEY (page_id, ordre));
+    CREATE TABLE alias (page_id TEXT, ordre INTEGER, texte TEXT);
+    CREATE TABLE source (id TEXT PRIMARY KEY, texte TEXT);
+    CREATE TABLE page_source (page_id TEXT, ordre INTEGER, source_id TEXT);
+    INSERT INTO mot_cle VALUES (1, 'Essai zq', 'essai-zq-race'), (2, 'Essai zq', 'essai-zq-classe'), (3, 'Autre zq', 'autre-zq');
+    INSERT INTO page VALUES ('lore/essai', 'lore', 'essai', 'Essai', NULL, NULL, 'x', 'canon', 'docs');
+    INSERT INTO page_tag VALUES ('lore/essai', 0, 2), ('lore/essai', 1, 3), ('lore/essai', 2, 1);
+  `);
+  const [page] = lirePages(base);
+  base.close();
+  assert.deepEqual(page.tags, ['essai-zq-classe', 'Autre zq', 'essai-zq-race'], 'la clé des homonymes, le libellé sinon');
+  const p = spawnSync('python3', ['-I', '-c', `
+import json, sqlite3, sys
+sys.path.insert(0, ${JSON.stringify(join(client, '..', 'tools', 'db'))})
+import maverick as T
+db = sqlite3.connect(${JSON.stringify(fichier)})
+print(json.dumps([T.trouver_mot_cle(db, e) for e in ${JSON.stringify(page.tags)}] + [T.trouver_mot_cle(db, 'Essai zq')]))`], { encoding: 'utf8' });
+  assert.equal(p.status, 0, p.stderr);
+  assert.deepEqual(JSON.parse(p.stdout), [[2, []], [3, []], [1, []], [null, ['essai-zq-race', 'essai-zq-classe']]], 'chacun relu sur son mot-clé ; le libellé seul serait ambigu');
 });

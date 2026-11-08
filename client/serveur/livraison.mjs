@@ -5,13 +5,15 @@
 // Hors de ses modules, le service emporte aussi les fichiers de FICHIERS_JOINTS : l'instantané de la partie « Bienvenue » de Tipeee (premier repli
 // de GET /api/tipeee/, serveur/tipeee.mjs), versionné dans sources/ à la racine du dépôt et copié dans _serveur/sources/ ; absent, il n'est pas copié
 // (le service le dit à son démarrage) ; il compte dans l'empreinte du code. Et le registre de la migration 0098 (data/migrations/, copié dans
-// _serveur/data/migrations/) : le rejeu d'un lot d'avant la migration y lit la conversion de ses liens en balises (serveur/edition.mjs#tableDesLiensDeLa0098).
+// _serveur/data/migrations/) : le rejeu d'un lot d'avant la migration y lit la conversion de ses liens en balises (serveur/edition.mjs#tableDesLiensDeLa0098) ;
+// de même celui de la migration 0113 (ancien id texte d'un mot-clé → id entier : serveur/edition.mjs#registreDes0113).
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CHEMIN_INSTANTANE } from '../src/lib/tipeee.mjs';
 import { REGISTRE_DES_LIENS } from '../src/lib/mots-cles-liens.mjs';
+import { REGISTRE_DES_IDS_DE_MOTS_CLES } from '../src/lib/mots-cles-cles.mjs';
 
 export const CLIENT = fileURLToPath(new URL('..', import.meta.url));
 /** Dossier du service dans le site construit, et son point d'entrée (chemin relatif à client/, gardé tel quel dans ce dossier). */
@@ -22,6 +24,7 @@ export const ENTREE = 'serveur/index.mjs';
 export const FICHIERS_JOINTS = Object.freeze([
   Object.freeze({ source: `../${CHEMIN_INSTANTANE}`, cible: CHEMIN_INSTANTANE }),
   Object.freeze({ source: `../${REGISTRE_DES_LIENS}`, cible: REGISTRE_DES_LIENS }),
+  Object.freeze({ source: `../${REGISTRE_DES_IDS_DE_MOTS_CLES}`, cible: REGISTRE_DES_IDS_DE_MOTS_CLES }),
 ]);
 
 const IMPORTS = /\b(?:import|export)\s+(?:[^'"`;]*?\s+from\s+)?['"]([^'"]+)['"]|\bimport\(\s*['"]([^'"]+)['"]\s*\)/g;

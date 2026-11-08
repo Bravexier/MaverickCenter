@@ -207,7 +207,7 @@ FAMILLES_SANS_IMPORTEUR = {'docs', 'exemple'}
 def rafraichir_pages(rows, wiki=None, mots_cles_ignores=None):
     """Remet à jour dans `data/rows` le CONTENU des pages (titre, résumé, corps, statut, champs structurés, alias, mots-clés, sources) qui ont changé dans les .md,
     pour TOUTES les familles. Les lignes typées qui se rattachent à une page (`page_entite`, capacités, sorts…) ne sont pas touchées : l'identifiant d'une page ne
-    change jamais ici. Un mot-clé de `tags:` absent du vocabulaire n'est pas posé (un import n'en crée pas : migration 0056) : (page, écriture), pour
+    change jamais ici. Un mot-clé de `tags:` absent du vocabulaire, ou ambigu (homonymes, migration 0113 : écrire la clé), n'est pas posé (un import n'en crée pas : migration 0056) : (page, écriture), pour
     toutes les pages des .md, va dans la liste `mots_cles_ignores` si elle est donnée (main les signale). Une page peut être AJOUTÉE ou RETIRÉE seulement si elle est de la famille `docs` ou `exemple` (pas d'importeur typé : leur texte est la source) ;
     pour toute autre famille, c'est l'importeur de la famille qui crée ou retire ses pages. Refuse aussi une page dont la provenance (famille) a changé.
     -> ids des pages mises à jour, ajoutées ou retirées (liste vide : rien à faire, aucun fichier réécrit)."""
@@ -216,7 +216,8 @@ def rafraichir_pages(rows, wiki=None, mots_cles_ignores=None):
     if mots_cles_ignores is not None:
         # toutes les pages, changées ou non : une écriture inconnue ne change rien à data/rows (pages_differentes ne la compte pas), elle se signale
         for pid in sorted(md):
-            mots_cles_ignores.extend((pid, libelle) for libelle in T.mots_cles_poses(db, md[pid]['tags'])[1])
+            _, inconnues, ambigues = T.mots_cles_poses(db, md[pid]['tags'])
+            mots_cles_ignores.extend((pid, libelle) for libelle in inconnues + [e for e, _ in ambigues])
     base = dict(db.execute('SELECT id, origine FROM page'))
     ajoutees, retirees = sorted(set(md) - set(base)), sorted(set(base) - set(md))
     interdites = [pid for pid in ajoutees if md[pid]['origine'] not in FAMILLES_SANS_IMPORTEUR] + [pid for pid in retirees if base[pid] not in FAMILLES_SANS_IMPORTEUR]

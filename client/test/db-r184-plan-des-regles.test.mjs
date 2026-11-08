@@ -243,9 +243,12 @@ test('R184, R185 : les pages absorbées et les pages retitrées gardent leurs an
   }
   // le mot-clé de la page (après la 0091 ; aujourd'hui, sauf si le site de dev a supprimé la page ou le mot-clé, qui n'est pas protégé)
   const tagsDe = (base) => base.prepare("SELECT tag_id FROM page_tag WHERE page_id = 'guide/mordhau-ou-demi-epee'").all().map((r) => r.tag_id);
-  assert.deepEqual(tagsDe(apres0091()), ['mordhau']);
-  if (page('guide/mordhau-ou-demi-epee') && db.prepare("SELECT 1 FROM mot_cle WHERE id = 'mordhau'").get()) assert.deepEqual(tagsDe(db), ['mordhau']);
-  else assert.ok(historique.supprimee('page', { id: 'guide/mordhau-ou-demi-epee' }) || historique.supprimee('mot_cle', { id: 'mordhau' }), 'mordhau : ni page ni mot-clé supprimés par le site');
+  // migration 0113 : l'id d'un mot-clé est un entier figé ; celui de « mordhau » se lit par sa clé dans l'état d'après la migration
+  const mordhau = apres0091().prepare("SELECT id FROM mot_cle WHERE cle = 'mordhau'").get()?.id;
+  assert.ok(Number.isInteger(mordhau));
+  assert.deepEqual(tagsDe(apres0091()), [mordhau]);
+  if (page('guide/mordhau-ou-demi-epee') && db.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(mordhau)) assert.deepEqual(tagsDe(db), [mordhau]);
+  else assert.ok(historique.supprimee('page', { id: 'guide/mordhau-ou-demi-epee' }) || historique.supprimee('mot_cle', { id: mordhau }), 'mordhau : ni page ni mot-clé supprimés par le site');
 });
 
 test('R184 : les pages nouvelles, famille docs, résumées par la première phrase de leur texte (réponse du propriétaire), et les blocs suivent leur texte', () => {

@@ -29,7 +29,8 @@ Découpage (une page = une section du document) :
 et une page de sommaire par partie qui en a plusieurs, plus `lore/codex` (sommaire du document). Une section vide du document n'a pas de page.
 
 Renvois (sommaires, « Voir aussi », renvoi « Voir “X” … » du document) : la balise du mot-clé qui mène à la page visée (mot_cle.url, migration 0098 :
-les liens sont devenus des mots-clés), « {{id}} » quand le texte affiché est son libellé, « {{id|texte}} » sinon ; jamais un [[lien]]. Un import ne
+les liens sont devenus des mots-clés), « {{clé}} » quand le texte affiché est son libellé, « {{clé|texte}} » sinon (mot_cle.cle, migration 0113) ;
+jamais un [[lien]]. Un import ne
 crée jamais de mot-clé : sans exactement un mot-clé pour la page, le texte simple, signalé « renvoi sans mot-clé » (Codex.lien). Une étiquette de
 partie (PARTIES, continent, magie) n'est jamais le mot-clé d'une page (Vocabulaire.etiquette).
 
@@ -71,8 +72,9 @@ VOCABULAIRE = os.path.join(RACINE, 'data', 'rows', 'mot_cle.sql')
 
 # Mots-clés : une étiquette de navigation par partie (ce ne sont pas des faits du lore). Une page ne porte que ceux du vocabulaire du site de dev
 # (migration 0056 : un import ne crée jamais de mot-clé, ceux qui manquent ne sont pas écrits : vocabulaire()) ; depuis 0056, « codex » seul.
-# MOT_CLE_DU_CODEX : l'id du mot-clé posé sur chaque page (protégé, client/src/lib/mots-cles.mjs#MOTS_CLES_PROTEGES) : posé par son id, écrit avec
-# son libellé courant (Vocabulaire.protege), jamais retrouvé par son écriture (un autre mot-clé pourrait la prendre).
+# MOT_CLE_DU_CODEX : le mot-clé posé sur chaque page (protégé, client/src/lib/mots-cles.mjs#MOTS_CLES_PROTEGES ; sa clé du dictionnaire
+# tools/db/maverick.py#MOTS_CLES_PROTEGES) : posé par l'id entier que ce dictionnaire lui donne (migration 0113), écrit avec son libellé courant
+# (Vocabulaire.protege), jamais retrouvé par son écriture (un autre mot-clé pourrait la prendre).
 MOT_CLE_DU_CODEX = 'codex'
 PARTIES = {
     'Au début …': 'histoire',
@@ -292,8 +294,8 @@ class Codex:
 
     def lien(self, titre, texte=None):
         """Le renvoi vers la page `titre` du Codex (lore/<normalize(titre)>), affiché `texte` (le titre par défaut) : la balise du mot-clé qui mène à
-        cette page (migration 0098 : les liens sont devenus des mots-clés, mot_cle.url), « {{id}} » quand le texte affiché est son libellé,
-        « {{id|texte}} » sinon (lib/liens-en-mots-cles.mjs#baliseDuLien, la forme canonique d'un texte mis en forme). Un import ne crée jamais de
+        cette page (migration 0098 : les liens sont devenus des mots-clés, mot_cle.url), « {{clé}} » quand le texte affiché est son libellé,
+        « {{clé|texte}} » sinon (mot_cle.cle, migration 0113) (lib/liens-en-mots-cles.mjs#baliseDuLien, la forme canonique d'un texte mis en forme). Un import ne crée jamais de
         mot-clé : s'il n'y en a pas exactement un pour cette page (ou si le texte ne peut pas être celui d'une balise), le texte simple, signalé
         (self.sans_lien)."""
         texte = titre if texte is None else texte
@@ -302,12 +304,12 @@ class Codex:
         if len(mots) != 1:
             self.sans_lien.setdefault(titre, f'{len(mots)} mot(s)-clé(s) à l’adresse {adresse}' + (f' ({", ".join(i for i, _ in mots)})' if mots else ''))
             return texte
-        ident, libelle = mots[0]
+        cle, libelle = mots[0]
         affiche = texte_affiche(texte)
         if not affiche or re.search(r'[{}|\n\r]', affiche):
             self.sans_lien.setdefault(titre, f'texte « {texte} » impossible dans une balise')
             return texte
-        return f'{{{{{ident}}}}}' if affiche == libelle else f'{{{{{ident}|{texte}}}}}'
+        return f'{{{{{cle}}}}}' if affiche == libelle else f'{{{{{cle}|{texte}}}}}'
 
     def entite(self, noeud, tags, niveau=2, voir_aussi=()):
         """Une page pour une section : titre = le nom ; le reste du titre (sous-titre, parenthèse) en italique en tête de page."""
@@ -529,17 +531,19 @@ def decouper_adresse(adresse):
 
 class Vocabulaire:
     """Les mots-clés du vocabulaire (data/rows/mot_cle.sql, historique du site de dev compris). Un import ne crée jamais de mot-clé (migration 0056).
-    - protege(id) : le libellé courant du mot-clé protégé de cet id, ou None (un protégé se pose par son id) ;
+    - protege(clé) : le libellé courant du mot-clé protégé de cette clé de maverick.py#MOTS_CLES_PROTEGES, ou None (un protégé se pose par l'id
+      entier que lui donne ce dictionnaire) ;
     - appelé (écriture) : le libellé du mot-clé qu'elle désigne, ou None ; même règle que l'import des pages (tools/db/maverick.py#mot_cle : une
       écriture qu'un mot-clé renommé a quittée mène à lui), db:sync-pages ne poserait pas une écriture inconnue ;
     - etiquette(écriture) : de même, mais None pour le mot-clé d'une page (mot_cle.url, migration 0098 : « Mrode », « Erisia », « Glossaire ») : une
       étiquette de partie du Codex (PARTIES, continent, magie) n'en est jamais un, ses pages ne portaient que « codex » ;
-    - mots_cles_de_l_adresse(adresse) : [(id, libellé d'import)] des mots-clés qui mènent à cette adresse (« /lore/mrode/ ») : leur url, requête
-      ignorée et sans ancre, a le même chemin (lib/mots-cles-liens.mjs#motsClesDeLAdresse) ;
-    - libelle_de(id) : le libellé du mot-clé d'id `id` (son libellé d'import), ou None.
-    Le libellé d'import : celui d'avant la première modification du libellé par le site de dev (historique_modification), sinon le libellé courant. Un
-    mot-clé renommé sur le site garde ainsi ses balises « {{id}} » (renommer ne réécrit aucun texte, la balise suit le libellé) : l'écriture des pages
-    redonne la même page, et --verifier la compare au document.
+    - mots_cles_de_l_adresse(adresse) : [(clé, libellé d'import)] des mots-clés qui mènent à cette adresse (« /lore/mrode/ ») : leur url, requête
+      ignorée et sans ancre, a le même chemin (lib/mots-cles-liens.mjs#motsClesDeLAdresse) ; la clé (mot_cle.cle, migration 0113) est celle que
+      citent les balises ;
+    - libelle_de(clé) : le libellé (d'import) du mot-clé de cette clé, celle qu'une balise cite, ou None.
+    Les ids sont des entiers (migration 0113), figés ; la clé suit le libellé et les catégories (R232 (2)), et un renommage sur le site réécrit les
+    balises qui citent le mot-clé, journal compris (R232 (3)). Le libellé d'import : celui d'avant la première modification du libellé par le site
+    de dev (historique_modification), sinon le libellé courant ; --verifier compare au document avec lui.
     `etat_d_import` (--verifier) : le vocabulaire entier tel que l'import l'a laissé, l'historique du site rejoué à l'envers (lignes créées retirées,
     supprimées remises, colonnes modifiées rendues ; même lecture que client/src/lib/historique-site.mjs#lignesDImport) : les pages sur disque ont été
     écrites avec lui."""
@@ -556,7 +560,7 @@ class Vocabulaire:
                     self.db.executescript(f.read())
         if etat_d_import:
             self.defaire_le_site()
-        self.d_import = {}   # id -> libellé d'avant la première modification de son libellé par le site
+        self.d_import = {}   # id (entier) -> libellé d'avant la première modification de son libellé par le site
         for cle, avant, apres in self.db.execute(
                 "SELECT cle, avant, apres FROM historique_modification WHERE table_nom = 'mot_cle' ORDER BY fait_le, lot_id, rang"):
             ident = json.loads(cle).get('id')
@@ -564,10 +568,10 @@ class Vocabulaire:
             if ident not in self.d_import and ('libelle' in avant or 'libelle' in apres):
                 self.d_import[ident] = avant.get('libelle', apres.get('libelle'))
         self.par_chemin = {}
-        for ident, url in self.db.execute('SELECT id, url FROM mot_cle WHERE url IS NOT NULL ORDER BY id'):
+        for ident, cle, url in self.db.execute('SELECT id, cle, url FROM mot_cle WHERE url IS NOT NULL ORDER BY id'):
             chemin_url, _, ancre = decouper_adresse(url)
             if not ancre:
-                self.par_chemin.setdefault(chemin_url, []).append((ident, self.libelle_de(ident)))
+                self.par_chemin.setdefault(chemin_url, []).append((cle, self.libelle_d_import(ident)))
 
     def defaire_le_site(self):
         """Ramène la table mot_cle à son état d'import : chaque ligne touchée par le site, son historique rejoué à l'envers (historique-site.mjs#versLImport)."""
@@ -602,11 +606,15 @@ class Vocabulaire:
         return self.libelle(T.mot_cle(self.db, ecriture))
 
     def protege(self, ident):
-        """Le libellé courant du mot-clé protégé d'id `ident` (tools/db/maverick.py#MOTS_CLES_PROTEGES), ou None s'il n'est pas au vocabulaire : un
-        importeur pose un protégé par son id, jamais par son écriture (que le site pourrait donner à un autre mot-clé)."""
+        """Le libellé courant du mot-clé protégé `ident` (une clé de tools/db/maverick.py#MOTS_CLES_PROTEGES : « codex »), cherché par l'id entier
+        que ce dictionnaire lui donne (migration 0113), ou None s'il n'est pas au vocabulaire : un importeur pose un protégé par son id, jamais par
+        son écriture (que le site pourrait donner à un autre mot-clé). ValueError pour une clé non protégée."""
         if ident not in T.MOTS_CLES_PROTEGES:
             raise ValueError(f'{ident!r} : pas un mot-clé protégé')
-        trouve = self.db.execute('SELECT libelle FROM mot_cle WHERE id = ?', (ident,)).fetchone()
+        numero = T.MOTS_CLES_PROTEGES[ident]
+        # sans id (race-hybride, absent à la migration 0113) : le mot-clé de cette clé (maverick.py#libelle_protege, de même)
+        trouve = self.db.execute('SELECT libelle FROM mot_cle WHERE id = ?' if numero is not None else 'SELECT libelle FROM mot_cle WHERE cle = ?',
+                                 (numero if numero is not None else ident,)).fetchone()
         return trouve[0] if trouve else None
 
     def etiquette(self, ecriture):
@@ -618,9 +626,15 @@ class Vocabulaire:
     def mots_cles_de_l_adresse(self, adresse):
         return list(self.par_chemin.get(decouper_adresse(adresse)[0], []))
 
-    def libelle_de(self, ident):
+    def libelle_d_import(self, ident):
+        """Le libellé d'import du mot-clé d'id `ident` (entier), ou None."""
         trouve = self.db.execute('SELECT libelle FROM mot_cle WHERE id = ?', (ident,)).fetchone()
         return (self.d_import.get(ident) or trouve[0]) if trouve else None
+
+    def libelle_de(self, cle):
+        """Le libellé d'import du mot-clé que cite la balise « {{cle}} » (mot_cle.cle, migration 0113), ou None."""
+        trouve = self.db.execute('SELECT id FROM mot_cle WHERE cle = ?', (cle,)).fetchone()
+        return self.libelle_d_import(trouve[0]) if trouve else None
 
 
 def vocabulaire(chemin=VOCABULAIRE, historique=HISTORIQUE, schema=SCHEMA, etat_d_import=False):
@@ -727,13 +741,13 @@ def ecrire(codex, out, site):
         print(f'  orpheline (plus produite, non supprimée) : {TYPE}/{slug}')
 
 
-BALISE = re.compile(r'\{\{([a-z0-9-]+)(?:(\\?\|)([^{}]*?)|(:))?\}\}')   # une balise du glossaire : {{id}}, {{id|texte}}, {{id\|texte}}, {{id:}}
+BALISE = re.compile(r'\{\{([a-z0-9-]+)(?:(\\?\|)([^{}]*?)|(:))?\}\}')   # une balise du glossaire : {{clé}}, {{clé|texte}}, {{clé\|texte}}, {{clé:}}
 WIKILIEN = re.compile(r'\[\[([^\[\]|]+?)(?:\|([^\[\]]+?))?\]\]')         # un lien [[cible]], [[cible|texte]] (lib/wikilinks-resolution.mjs)
 
 
 def normaliser(texte, libelle_de=None):
     """Le texte comparé ligne à ligne au document : les renvois réduits au texte qu'ils affichent (une balise sans texte, au libellé de son mot-clé,
-    `libelle_de` : id -> libellé), sans échappement, emphase ni titre Markdown, les blancs réduits."""
+    `libelle_de` : clé -> libellé), sans échappement, emphase ni titre Markdown, les blancs réduits."""
     t = BALISE.sub(lambda m: m.group(3) if m.group(2) else ((libelle_de and libelle_de(m.group(1))) or m.group(1)), texte)
     t = t.replace('\\', '')
     t = re.sub(r'\[\[(?:[^\]|]*\|)?([^\]]*)\]\]', r'\1', t)

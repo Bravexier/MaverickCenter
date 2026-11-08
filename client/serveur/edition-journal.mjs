@@ -211,8 +211,11 @@ function tablesQuiCitent(db, table) {
   return [...(carte.get(table) ?? [])];
 }
 
-const cascadesParBase = new WeakMap(); // db -> Map(table visée -> [{ enfant, de: [colonnes], vers: [colonnes] }])
-/** Les clés étrangères ON DELETE CASCADE qui visent `table` : la table qui cite, ses colonnes, les colonnes visées (la clé primaire si non dites). */
+const cascadesParBase = new WeakMap(); // db -> Map(table visée -> [{ enfant, de: [colonnes], vers: [colonnes], action }])
+/**
+ * Les clés étrangères ON DELETE CASCADE ou SET NULL qui visent `table` : la table qui cite, ses colonnes, les colonnes visées (la clé primaire si non
+ * dites), `action` : 'CASCADE' ou 'SET NULL' (mot_cle.monnaie_id, migration 0113).
+ */
 function cascadesVers(db, table) {
   let carte = cascadesParBase.get(db);
   if (!carte) {
@@ -226,15 +229,16 @@ function cascadesVers(db, table) {
       }
       const parId = new Map();
       for (const f of liens) {
-        if (String(f.on_delete).toUpperCase() !== 'CASCADE') continue;
-        if (!parId.has(f.id)) parId.set(f.id, { enfant: name, parent: f.table, colonnes: [] });
+        const action = String(f.on_delete).toUpperCase();
+        if (action !== 'CASCADE' && action !== 'SET NULL') continue;
+        if (!parId.has(f.id)) parId.set(f.id, { enfant: name, parent: f.table, colonnes: [], action });
         parId.get(f.id).colonnes.push(f);
       }
-      for (const { enfant, parent, colonnes } of parId.values()) {
+      for (const { enfant, parent, colonnes, action } of parId.values()) {
         colonnes.sort((a, b) => a.seq - b.seq);
         const vers = colonnes.every((c) => c.to) ? colonnes.map((c) => c.to) : structure(db, parent).cle;
         if (!carte.has(parent)) carte.set(parent, []);
-        carte.get(parent).push({ enfant, de: colonnes.map((c) => c.from), vers });
+        carte.get(parent).push({ enfant, de: colonnes.map((c) => c.from), vers, action });
       }
     }
     cascadesParBase.set(db, carte);
@@ -243,15 +247,20 @@ function cascadesVers(db, table) {
 }
 
 /**
- * Applique les ON DELETE CASCADE du schéma avant de supprimer `ligne` de `table`, quand les clés étrangères sont coupées (PRAGMA foreign_keys = 0 :
- * base vivante refaite par une livraison, mise à jour des règles) : SQLite ne les applique alors pas. Récursif ; les lignes ainsi retirées (les
- * [[liens]] d'une page : lien, lien_candidat, tables dérivées) ne sont pas notées, comme les cascades de SQLite dans la base vivante.
+ * Applique les ON DELETE CASCADE et SET NULL du schéma avant de supprimer `ligne` de `table`, quand les clés étrangères sont coupées (PRAGMA
+ * foreign_keys = 0 : base vivante refaite par une livraison, mise à jour des règles) : SQLite ne les applique alors pas. CASCADE : la ligne qui cite
+ * est retirée (récursif) ; SET NULL : ses colonnes qui citent passent à NULL, la ligne reste (une monnaie supprimée : mot_cle.monnaie_id, migration
+ * 0113). Rien n'est noté, comme les actions de SQLite dans la base vivante (les [[liens]] d'une page : lien, lien_candidat, tables dérivées).
  */
 function supprimerLesCascades(db, table, ligne) {
-  for (const { enfant, de, vers } of cascadesVers(db, table)) {
+  for (const { enfant, de, vers, action } of cascadesVers(db, table)) {
     const valeurs = vers.map((c) => ligne[c]);
     if (valeurs.some((v) => v === null || v === undefined)) continue;
     const ou = de.map((c) => `${guillemets(c)} = ?`).join(' AND ');
+    if (action === 'SET NULL') {
+      db.prepare(`UPDATE "${enfant}" SET ${de.map((c) => `${guillemets(c)} = NULL`).join(', ')} WHERE ${ou}`).run(...valeurs);
+      continue;
+    }
     for (const e of db.prepare(`SELECT * FROM "${enfant}" WHERE ${ou}`).all(...valeurs)) supprimerLesCascades(db, enfant, e);
     db.prepare(`DELETE FROM "${enfant}" WHERE ${ou}`).run(...valeurs);
   }

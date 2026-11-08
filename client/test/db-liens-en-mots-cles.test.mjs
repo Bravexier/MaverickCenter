@@ -28,6 +28,8 @@ import { normalize } from '../src/lib/text.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const REGISTRE = JSON.parse(readFileSync(new URL('../../data/migrations/0098-liens-en-mots-cles.json', import.meta.url), 'utf8'));
+/** La correspondance de la migration 0113 (ancien id texte → { id entier, clé et libellé à la migration, `libelleAvant` des 13 classes raciales }). */
+const REGISTRE_0113 = new Map(JSON.parse(readFileSync(new URL('../../data/migrations/0113-mots-cles-id-entier.json', import.meta.url), 'utf8')).motsCles.map((m) => [m.ancienId, m]));
 const MIGRATION = readFileSync(new URL('../../data/migrations/0098-liens-en-mots-cles.sql', import.meta.url), 'utf8');
 const SCHEMA = readFileSync(new URL('../../data/schema.sql', import.meta.url), 'utf8');
 const LOTS_AVANT_0098 = new Set(JSON.parse(readFileSync(new URL('./fixtures/lots-avant-0098.json', import.meta.url), 'utf8')).lots);
@@ -46,35 +48,43 @@ const texteApres0098 = (table, colonne, id) => apres0098().prepare(`SELECT "${co
 // que la 0098 avait posée dans guide/attaquer-et-se-defendre et guide/les-postures ; la 0107 en est la suite. La 0111 (relecture des Règles contre les
 // décisions) donne à des liens le titre de leur page (R184 (2), (5), (11), R187 (1)) et renvoie aux pages de la rubrique Équipement au lieu de
 // {{armes|Équipement}}. La 0112 (R231) réécrit les pages « Attaquer » et « Se défendre » en entier et les renvois des autres pages vers elles.
-// `intacte` ne voit que les lots du site.
+// La 0113 et la 0115 réécrivent les balises d'un ancien id qui n'est plus une clé (R232, R233 (5)) ; la 0114 (R232 (7)), celles des 13 races
+// devenues « x-race » (« {{orios}} » de guide/bienvenue). `intacte` ne voit que les lots du site.
 const textesDe = (...noms) => noms.flatMap((nom) => JSON.parse(readFileSync(new URL(`../../data/migrations/${nom}.json`, import.meta.url), 'utf8')).textes);
 const REECRITURES_R198 = textesDe('0104-r198-r208-textes-du-guide', '0107-r198-r200-posture-et-mode-hyper');
-const REECRITURES_APRES_0098 = [...REECRITURES_R198, ...textesDe('0111-relecture-des-regles-contre-les-decisions', '0112-r231-attaquer-et-se-defendre')];
+const REECRITURES_APRES_0098 = [...REECRITURES_R198, ...textesDe('0111-relecture-des-regles-contre-les-decisions', '0112-r231-attaquer-et-se-defendre',
+  '0113-mots-cles-id-entier', '0114-mots-cles-categories-assignees', '0115-mots-cles-synonymes')];
 /** Les réécritures postérieures (de `parmi`) qui retirent la balise `r.balise` de sa cellule (leur `avant` la contient, pas leur `apres`). */
 const retiresPar = (r, parmi = REECRITURES_APRES_0098) => parmi.filter((t) => t.table === r.table && t.col === r.colonne
   && JSON.stringify(t.cle) === JSON.stringify(r.cle) && t.avant.includes(r.balise) && !t.apres.includes(r.balise));
 /** `fragment` (de la cellule de `r`) est dans `v`, ou une réécriture postérieure l'a remplacé et son `apres` y est, de proche en proche (la 0112
  * réécrit en entier une page dont la 0104 ou la 0111 avait déjà réécrit un fragment). */
-const ecritOuReecrit = (r, fragment, v, vues = new Set()) => v.includes(fragment) || retiresPar({ ...r, balise: fragment })
-  .filter((t) => !vues.has(t)).some((t) => ecritOuReecrit(r, t.apres, v, new Set([...vues, t])));
+const ecritOuReecrit = (r, fragment, v, vues = new Set()) => v.includes(fragment) || v.includes(selonLesClesDe0113(r, fragment))
+  || retiresPar({ ...r, balise: fragment }).filter((t) => !vues.has(t)).some((t) => ecritOuReecrit(r, t.apres, v, new Set([...vues, t])));
+/** `fragment` où chaque balise que la 0113, la 0114 ou la 0115 a réécrite dans la cellule de `r` (un ancien id devenu clé quittée, R232, R233 (5)) cite
+ * la clé : ces migrations réécrivent des balises, pas la valeur entière qu'une migration antérieure (la 0112) avait écrite. */
+const BALISES_REECRITES = textesDe('0113-mots-cles-id-entier', '0114-mots-cles-categories-assignees', '0115-mots-cles-synonymes');
+const selonLesClesDe0113 = (r, fragment) => BALISES_REECRITES.filter((t) => t.table === r.table && t.col === r.colonne && JSON.stringify(t.cle) === JSON.stringify(r.cle))
+  .reduce((f, t) => f.split(t.avant).join(t.apres), fragment);
 /** La balise de la 0098 est dans `v`, ou une migration postérieure l'a retirée et son `apres` est dans `v` : l'une ou l'autre écriture. */
 const baliseOuReecriture = (r, v) => ecritOuReecrit(r, r.balise, v);
 
 test('0098 : couleur et url en dernier dans mot_cle et dans v_mot_cle', () => {
-  // les colonnes ajoutées après la 0098 viennent ensuite (`verrou`, 0110 : décisions R218, R219)
-  const AJOUTEES_APRES_0098 = new Set(['verrou']);
-  assert.deepEqual(db.prepare('PRAGMA table_info(mot_cle)').all().map((c) => c.name).filter((c) => !AJOUTEES_APRES_0098.has(c)).slice(-3), ['abreviation', 'couleur', 'url']);
-  assert.deepEqual(db.prepare('PRAGMA table_info(v_mot_cle)').all().map((c) => c.name).slice(-3), ['abreviation', 'couleur', 'url']);
+  // les colonnes ajoutées après la 0098 viennent ensuite (`verrou`, 0110 : décisions R218, R219 ; `monnaie_id`, 0113 ; `icone`, 0116) ;
+  // l'abréviation, qui les précédait, est devenue un synonyme (migration 0115)
+  const AJOUTEES_APRES_0098 = new Set(['verrou', 'monnaie_id', 'icone']);
+  assert.deepEqual(db.prepare('PRAGMA table_info(mot_cle)').all().map((c) => c.name).filter((c) => !AJOUTEES_APRES_0098.has(c)).slice(-2), ['couleur', 'url']);
+  assert.deepEqual(db.prepare('PRAGMA table_info(v_mot_cle)').all().map((c) => c.name).slice(-2), ['couleur', 'url']);
   assert.equal(db.prepare('PRAGMA user_version').get().user_version >= 98, true);
 });
 
 test('0098 : la base refuse une couleur qui n’est ni « famille:id » ni « #rrggbb », et une adresse externe', () => {
   const m = new DatabaseSync(':memory:');
   m.exec(SCHEMA);
-  const poser = (couleur, url) => m.prepare("INSERT INTO mot_cle (id, libelle, libelle_cle, couleur, url) VALUES ('x', 'X', 'x', ?, ?)").run(couleur, url);
+  const poser = (couleur, url) => m.prepare("INSERT INTO mot_cle (id, libelle, cle, couleur, url) VALUES (1, 'X', 'x', ?, ?)").run(couleur, url);
   for (const [couleur, url] of [['magie:sang', '/magies/magie-du-sang/'], ['#a1b2c3', null], ['magie:espace-temps', '/metiers/#metier-mineur'], [null, null]]) {
     poser(couleur, url);
-    m.exec("DELETE FROM mot_cle WHERE id = 'x'");
+    m.exec('DELETE FROM mot_cle WHERE id = 1');
   }
   for (const couleur of ['Magie:sang', 'magie:', 'ma-gie:x', 'magie:x:y', 'magie:x-', '#A1B2C3', '#abc', 'rouge']) assert.throws(() => poser(couleur, null), /CHECK/, couleur);
   for (const url of ['//hote/', 'https://exemple.org/', 'magies/', '/a b/', '/\\hote', '/é/']) assert.throws(() => poser(null, url), /CHECK/, url);
@@ -100,19 +110,24 @@ test('0098 : les mots-clés du registre (Q1, Q8, Q10) — comptes, libellés, ad
       assert.equal(r.url, `/${cheminDePage(r.page)}`, r.id);
       assert.ok(!pageExemple.has(r.page), `${r.id} : aucun mot-clé vers une page d'exemple`);
     }
-    if (!intacte('mot_cle', { id: r.id })) continue;
-    const m = motCle(r.id);
+    // le mot-clé par son id entier (migration 0113) ; son libellé et sa clé tels que la 0113 les a trouvés (le libellé d'avant pour les 13 classes
+    // raciales, que la 0113 a renommées « X »)
+    const entree = REGISTRE_0113.get(r.id);
+    assert.ok(entree, `${r.id} : dans la correspondance de la 0113`);
+    if (!intacte('mot_cle', { id: entree.id })) continue;
+    const m = motCle(entree.id);
     assert.ok(m, r.id);
     assert.equal(m.url, r.url, r.id);
     assert.equal(m.couleur, r.couleur, r.id);
     if (r.origine !== 'existant') {
-      // le libellé de la 0098, ou celui qu'une migration postérieure a écrit (R231, 0112 : le mot-clé d'une page retitrée suit son titre)
+      // le libellé de la 0098, ou celui qu'une migration postérieure a écrit (R231, 0112 : le mot-clé d'une page retitrée suit son titre), tel que la
+      // 0113 l'a trouvé (le libellé d'avant pour les 13 classes raciales)
       const libelles = [r.libelle, ...REECRITURES_APRES_0098.filter((t) => t.table === 'mot_cle' && t.col === 'libelle' && t.cle.id === r.id && t.avant === r.libelle)
         .map((t) => t.apres)];
-      assert.ok(libelles.includes(m.libelle), `${r.id} : ${m.libelle} (attendu : ${libelles.join(' ou ')})`);
-      assert.equal(m.id, normalize(r.libelle), `${r.id} : id = normalize(libellé)`);
+      const trouve = entree.libelleAvant ?? entree.libelle;
+      assert.ok(libelles.includes(trouve), `${r.id} : ${trouve} (attendu : ${libelles.join(' ou ')})`);
+      assert.equal(entree.ancienId, normalize(r.libelle), `${r.id} : id = normalize(libellé)`);
       assert.equal(m.description, null, `${r.id} : aucune définition inventée`);
-      assert.equal(m.abreviation, null, r.id);
     }
   }
   assert.ok(!REGISTRE.motsCles.some((m) => m.id === 'cr'), 'un id retiré n’est jamais réutilisé');
@@ -249,6 +264,8 @@ test('0098 : plus aucun lien interne hors pages d’exemple, codes et section 15
   assert.deepEqual(restes, []);
   // R198 : les deux balises du Doc « Guide pour MJ » que la 0104 a retirées sont bien dans son registre (l'écriture d'avant ou d'après est admise)
   assert.deepEqual(REGISTRE.remplacements.filter((r) => retiresPar(r, REECRITURES_R198).length).map((r) => r.cle.id).sort(), ['guide/attaquer-et-se-defendre', 'guide/les-postures']);
+  // R232 (7) : la 0114 a réécrit « {{orios}} » de guide/bienvenue (la race, devenue « orios-race »)
+  assert.deepEqual(REGISTRE.remplacements.filter((r) => retiresPar(r, textesDe('0114-mots-cles-categories-assignees')).length).map((r) => r.cle.id), ['guide/bienvenue']);
   for (const r of REGISTRE.remplacements) {
     if (!intacte(r.table, r.cle)) continue;
     const v = texte(r.table, r.colonne, r.cle.id);

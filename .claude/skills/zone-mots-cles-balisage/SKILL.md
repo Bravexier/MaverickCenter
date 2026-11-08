@@ -18,7 +18,8 @@ user-invocable: false
 - « Sort fer » (R164, « Oui, tous ») : dans les huit textes qui parlent des sorts fer, jamais sur le nom d'un des 13 sorts. Une expression de deux mots se balise entière, guillemets compris (`{{sort-fer|sorts "fer"}}`, `{{sort-fer|sort “fer”}}`, `{{sort-fer|sorts de Fer Élémentaire}}`), comme `{{recharge-longue|recharge longue}}`.
 
 ## Invariants
-- L'entrée « CR » de `corruption.json` vise `corruption` par `"libelle": "Corruption"` : une entrée de libellé « CR » recréerait `cr`, fondu dans `corruption` (R183 (3)).
+- L'outil retrouve le mot-clé d'une entrée par la règle d'une balise (`motCleDeLaRef` : clé, libellé d'un seul mot-clé, synonyme), le crée sinon, et écrit sa clé dans les balises (`{{clé}}`, `{{clé|texte}}`).
+- L'entrée « CR » de `corruption.json` vise `corruption` par `"libelle": "Corruption"` (`cr` y est fondu, R183 (3) ; « CR » en est un synonyme).
 - `sort-fer.json` pose les cinq textes que le site de dev modifie ; les trois autres (« Immatériel » du Fantôme et du Golem d'arcane, page « Pièces élémentaires ») viennent de la migration 0079 (registre `corrections` de `0079-r164-sorts-fer.json`).
 - L'outil passe par le service du site de dev ; le journal est rapatrié (`historique_modification` : l'import reste lisible).
 - Les balises déjà posées du mot, celles de la main comprises, sont retirées puis reposées (`sansLesBalisesDuMot`) ; le rapport liste chaque balise retirée ou nouvelle.

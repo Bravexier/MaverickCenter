@@ -6,6 +6,14 @@
 // Node seulement (la base est ouverte par lib/donnees.mjs au build). Une requête par table, puis assemblage en mémoire.
 import { celluleDeNoteDuDon } from './corps-races.mjs';
 import { HYBRIDES_SANS_CLASSE_RACIALE, TAG_RACE_HYBRIDE } from './race-kinds.mjs';
+import { nomDuProtege } from './mots-cles-proteges.mjs';
+import { etiquettesDesPages } from './pages-db.mjs';
+
+/**
+ * Les pages qui portent le mot-clé « race hybride » (TAG_RACE_HYBRIDE), reconnu par son id, ou par sa clé tant qu'il n'en a pas
+ * (lib/mots-cles-proteges.mjs#nomDuProtege ; décision R195 : jamais par son écriture) : Set de page_id.
+ */
+export const pagesDeLaRaceHybride = (db) => new Set(etiquettesDesPages(db).filter((t) => nomDuProtege(t) === TAG_RACE_HYBRIDE).map((t) => t.page_id));
 import { blocsDeTexte } from './sort-format.mjs';
 
 const apres = (id, separateur) => id.slice(id.indexOf(separateur) + separateur.length);
@@ -46,7 +54,7 @@ export function chargerRaces(db) {
   );
   const onglets = new Map(all('SELECT * FROM race_onglet').map((o) => [o.race_id, o]));
   // races créées hybrides depuis le site de dev, avant leur classe raciale (même règle que lib/race-kinds.mjs#raceKind : le mot-clé par son id, R195)
-  const marqueesHybrides = new Set(db.prepare('SELECT page_id FROM page_tag WHERE tag_id = ?').all(TAG_RACE_HYBRIDE).map((t) => t.page_id));
+  const marqueesHybrides = pagesDeLaRaceHybride(db);
 
   const races = new Map();
   for (const r of all('SELECT * FROM race ORDER BY ordre')) {
@@ -151,7 +159,7 @@ export const comparerRangsDeListe = (a, b) =>
 export function racesParNature(db) {
   const avecRang = db.prepare('PRAGMA table_info(race)').all().some((c) => c.name === 'rang_liste');
   const raciales = new Set(db.prepare("SELECT nom_cle FROM classe WHERE categorie_id = 'classe-hybride-animal'").all().map((c) => c.nom_cle));
-  const marquees = new Set(db.prepare('SELECT page_id FROM page_tag WHERE tag_id = ?').all(TAG_RACE_HYBRIDE).map((t) => t.page_id));
+  const marquees = pagesDeLaRaceHybride(db);
   const groupes = { pures: [], hybrides: [] };
   for (const r of db.prepare(`SELECT id, nom, ${avecRang ? 'rang_liste' : 'NULL AS rang_liste'} FROM race`).all()) {
     const hybride = raciales.has(apres(r.id, '/')) || HYBRIDES_SANS_CLASSE_RACIALE.has(r.id) || marquees.has(r.id);

@@ -10,13 +10,11 @@ import { HYBRIDES_SANS_CLASSE_RACIALE } from '../src/lib/race-kinds.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 
-// « (classe) » admis dans le libellé des mots-clés (réponse du propriétaire du 2026-11-07 : « Oui, admis là » — « « (classe) » est admis dans le
-// libellé des mots-clés et sur ces trois pages (Glossaire, Recherche, Données). Ailleurs (titres, pages des classes), il reste interdit, comme le veut
-// la 0009. ») : la migration 0098 nomme « <Nom> (classe) » le mot-clé d'une classe homonyme d'une race (Q14, skill zone-mots-cles-liens). Seule cette
-// colonne est admise (la vue v_mot_cle, qui la recopie, n'est pas une table : non balayée ici).
-const ADMISES = new Set(['mot_cle.libelle']);
+// Plus aucune exception : R191 admettait « (classe) » dans le libellé des mots-clés ; la décision R232 (4) la remplace (les 13 mots-clés « X (classe) »
+// redeviennent « X », avec la catégorie Classe ; leur clé, « x-classe », les distingue de leur race). Aucune colonne n'est admise.
+const ADMISES = new Set();
 
-test('aucune colonne de texte d’aucune table ne contient « (classe) », hors du libellé des mots-clés', () => {
+test('R232 (4) : aucune colonne de texte d’aucune table ne contient « (classe) », libellé des mots-clés compris', () => {
   // hors section 15 (notes de version, historique des modifications du site) : des traces, qui citent la production d'avant la livraison (master
   // peut précéder la migration 0009) et les valeurs au moment de chaque modification (lib/notes-de-version.mjs#TABLES_DES_NOTES)
   const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT GLOB '*_fts*'").all().map((r) => r.name)

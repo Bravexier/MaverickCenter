@@ -36,7 +36,7 @@ function baseDEssai() {
   p('guide/ambigu', 'Ambigu', 'Voir [[Doublon]].');
   db.prepare("INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/la-cible', 0, 'Autre nom', 'autre-nom')").run();
   // un autre texte de la base (la définition d'un mot-clé) et une colonne de clé qui porte l'identifiant (jamais lue comme un texte)
-  db.prepare("INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES ('essai', 'Essai', 'essai', 'Voir guide/la-cible.')").run();
+  db.prepare("INSERT INTO mot_cle (id, libelle, cle, description) VALUES (9001, 'Essai', 'essai', 'Voir guide/la-cible.')").run();
   db.prepare("INSERT INTO page_entite (entite_table, entite_id, page_id, principale, origine) VALUES ('race', 'guide/la-cible', 'guide/la-cible', 0, 'docs')").run();
   // la légende d'un bloc de la chronologie
   db.prepare("INSERT INTO evenement (id, rang, titre, titre_cle, epoque, origine, source_ref) VALUES ('fondation', 1, 'La fondation', 'la-fondation', 'debut', 'chronologie', 'essai')").run();
@@ -50,7 +50,7 @@ test('citationsDe : lien du wiki (titre, alias, identifiant, résumé), adresse 
   const vues = citations.map((c) => `${c.table} ${JSON.stringify(c.cle)} ${c.colonne} ${c.comment}${c.exemple ? ' (exemple)' : ''}`);
   assert.deepEqual(vues.sort(), [
     'evenement_extrait {"evenement_id":"fondation","rang":1} page_id chronologie',
-    'mot_cle {"id":"essai"} description adresse',
+    'mot_cle {"id":9001} description adresse',
     'page {"id":"guide/par-l-adresse"} corps_md adresse',
     'page {"id":"guide/par-l-alias"} corps_md lien',
     'page {"id":"guide/par-l-id"} corps_md lien',
@@ -64,7 +64,7 @@ test('citationsDe : lien du wiki (titre, alias, identifiant, résumé), adresse 
   assert.equal(citations.find((c) => c.cle.id === 'guide/par-le-titre').libelle, 'Par le titre');
   assert.deepEqual(citations.find((c) => c.cle.id === 'guide/par-le-titre').page, { id: 'guide/par-le-titre', titre: 'Par le titre' });
   assert.equal(citations.find((c) => c.table === 'evenement_extrait').libelle, 'Chronologie › La fondation');
-  assert.equal(citations.find((c) => c.table === 'mot_cle').libelle, 'Mot-clé essai');
+  assert.equal(citations.find((c) => c.table === 'mot_cle').libelle, 'Mot-clé 9001');
   // la page d'exemple en dernier, et elle seule ne bloque pas
   assert.equal(citations.at(-1).exemple, true);
   assert.equal(citationsBloquantes(citations).length, citations.length - 1);
@@ -74,9 +74,9 @@ test('citationsDe : lien du wiki (titre, alias, identifiant, résumé), adresse 
 test('migration 0098 : la balise d’un mot-clé qui mène à la page la cite (texte mis en forme ou de case, hors code), et le mot-clé lui-même par son lien', () => {
   const db = baseDEssai();
   const page = db.prepare("INSERT INTO page (id, type, slug, titre, titre_cle, resume, corps_md, statut, origine) VALUES (?, ?, ?, ?, ?, NULL, ?, ?, 'docs')");
-  db.prepare('INSERT INTO mot_cle (id, libelle, libelle_cle, url) VALUES (?, ?, ?, ?)').run('la-cible', 'La cible', 'la-cible', `${adresseDeLaPage('guide/la-cible')}#une-ancre`);
-  db.prepare("INSERT INTO mot_cle (id, libelle, libelle_cle, url) VALUES ('route', 'Route', 'route', '/fiche/')").run();
-  db.prepare("INSERT INTO mot_cle (id, libelle, libelle_cle) VALUES ('sans-lien', 'Sans lien', 'sans-lien')").run();
+  db.prepare('INSERT INTO mot_cle (id, libelle, cle, url) VALUES (?, ?, ?, ?)').run(9002, 'La cible', 'la-cible', `${adresseDeLaPage('guide/la-cible')}#une-ancre`);
+  db.prepare("INSERT INTO mot_cle (id, libelle, cle, url) VALUES (9003, 'Route', 'route', '/fiche/')").run();
+  db.prepare("INSERT INTO mot_cle (id, libelle, cle) VALUES (9004, 'Sans lien', 'sans-lien')").run();
   page.run('guide/par-balise', 'guide', 'par-balise', 'Par balise', 'par-balise', 'Voir {{la-cible}}, {{route}} et {{sans-lien}}.', 'draft');
   page.run('guide/balise-en-code', 'guide', 'balise-en-code', 'Balise en code', 'balise-en-code', 'Pas une balise : `{{la-cible}}`.', 'draft');
   page.run('lore/exemple-balise', 'lore', 'exemple-balise', 'Exemple balise', 'exemple-balise', 'Voir {{la-cible|ici}}.', 'example');
@@ -85,13 +85,13 @@ test('migration 0098 : la balise d’un mot-clé qui mène à la page la cite (t
   const nouvelles = citations.filter((c) => ['balise', 'mot-cle'].includes(c.comment)).map((c) => `${c.table} ${JSON.stringify(c.cle)} ${c.colonne} ${c.comment}${c.exemple ? ' (exemple)' : ''}`);
   assert.deepEqual(nouvelles.sort(), [
     'evenement_extrait {"evenement_id":"fondation","rang":2} texte balise',
-    'mot_cle {"id":"la-cible"} url mot-cle',
+    'mot_cle {"id":9002} url mot-cle',
     'page {"id":"guide/par-balise"} corps_md balise',
     'page {"id":"lore/exemple-balise"} corps_md balise (exemple)',
   ].sort());
   assert.equal(citations.find((c) => c.comment === 'mot-cle').libelle, 'Mot-clé « La cible » (son lien)');
   // l'adresse du mot-clé n'est pas lue comme une adresse écrite dans un texte ; un mot-clé vers une route sans page ne cite rien
-  assert.ok(!citations.some((c) => c.table === 'mot_cle' && c.cle.id === 'la-cible' && c.comment === 'adresse'));
+  assert.ok(!citations.some((c) => c.table === 'mot_cle' && c.cle.id === 9002 && c.comment === 'adresse'));
   assert.deepEqual(citationsBloquantes(citations).filter((c) => c.comment === 'balise').length, 2);
   db.close();
 });

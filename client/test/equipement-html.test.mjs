@@ -28,7 +28,7 @@ import { pagesEclateesDuGuide } from '../src/lib/livres.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
 import { chargerPanneau } from '../src/lib/panneaux-regles-db.mjs';
-import { adresseDuMotCle, motsClesCites, texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
+import { adresseDuMotCle, htmlDuNomDuMotCle, motsClesCites, texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { ancreDuPanneau } from '../src/lib/panneaux-regles-rendu.mjs';
 import { texteDesPiecesElementaires } from '../src/lib/pieces-elementaires.mjs';
@@ -160,7 +160,8 @@ test('panneau des armes : les huit blocs de l’import dans l’ordre (tant que 
 });
 
 test('panneaux de règles : leurs balises du glossaire rendues (mode complet « Libellé : définition », gras), aucune brute hors de `data-balise`', options, () => {
-  const motsCles = new Map(base.prepare('SELECT id, libelle, description FROM mot_cle').all().map((m) => [m.id, m]));
+  // par leur clé : celle que citent les balises (décision R232 (3))
+  const motsCles = new Map(base.prepare('SELECT id, cle, libelle, description, icone FROM mot_cle').all().map((m) => [m.cle, m]));
   let completes = 0;
   for (const o of PAGES_SERVIES_PAR_L_EQUIPEMENT) {
     const m = main[pageDuPanneau(o.ancre)];
@@ -172,7 +173,8 @@ test('panneaux de règles : leurs balises du glossaire rendues (mode complet « 
       for (const [, id] of b.texte.matchAll(/\{\{([a-z0-9-]+):\}\}/g)) {
         const mc = motsCles.get(id);
         assert.ok(mc, `${o.ancre} : ${id} est un mot-clé`);
-        const attendu = `<strong class="mot-cle-definition__nom">${echapper(mc.libelle)}</strong> : <span class="mot-cle-definition__texte">`;
+        // le nom : le libellé, suivi de son icône (htmlDuNomDuMotCle, R235 (3))
+        const attendu = `<strong class="mot-cle-definition__nom">${htmlDuNomDuMotCle(mc)}</strong> : <span class="mot-cle-definition__texte">`;
         assert.ok(m.includes(`data-mot-cle="${id}"`) && m.includes(attendu), `${o.ancre} : ${id} en mode complet`);
         completes += 1;
       }

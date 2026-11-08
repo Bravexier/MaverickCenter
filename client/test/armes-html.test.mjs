@@ -28,6 +28,7 @@ import { chargerPanneau } from '../src/lib/panneaux-regles-db.mjs';
 import { htmlAvecMotsCles, texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
+import { idDuMotCleNomme } from './aide-mots-cles.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const fichier = join(dist, 'ressources', 'armes', 'index.html');
@@ -139,10 +140,13 @@ test('colonnes : Nom, Compétence, Type, Dégâts, Type de dégâts, Portée, So
   // balise reste écrite dans le gabarit et le build la rend en texte, ce cas se vérifie explicitement)
   const solidite = htmlAvecMotsCles('{{solidite}}', chargerVocabulaire(base)).html.replace(/<[^>]+>/g, '');
   assert.deepEqual(colonnes.slice(0, 8), ['Nom', 'Compétence', 'Type', 'Dégâts', 'Type de dégâts', 'Portée', solidite, 'Origine']);
-  if (base.prepare("SELECT 1 FROM mot_cle WHERE id = 'solidite'").get()) {
-    assert.ok(tete.includes(`<th scope="col"><strong class="mot-cle" data-mot-cle="solidite" data-bulle="mot-cle-solidite"`));
+  // le mot-clé « Solidité », par son id entier, figé (migration 0113) : sa clé, que citent data-mot-cle et sa bulle, suit son libellé (R232)
+  const idSolidite = idDuMotCleNomme('solidite');
+  const motSolidite = base.prepare('SELECT cle FROM mot_cle WHERE id = ?').get(idSolidite);
+  if (motSolidite) {
+    assert.ok(tete.includes(`<th scope="col"><strong class="mot-cle" data-mot-cle="${motSolidite.cle}" data-bulle="mot-cle-${motSolidite.cle}"`));
   } else {
-    assert.ok(historiqueSite(base).supprimee('mot_cle', { id: 'solidite' }), 'le mot-clé « solidite » manque sans que le site de dev l’ait supprimé');
+    assert.ok(historiqueSite(base).supprimee('mot_cle', { id: idSolidite }), 'le mot-clé « solidite » manque sans que le site de dev l’ait supprimé');
   }
   assert.ok(!/durabilit/i.test(main.replace(/data-[\w-]*durabilite[\w-]*(="[^"]*")?|arme-bulle-durabilite|arme__durabilite|arme-durabilite/g, '')), 'plus de « durabilité » affichée');
   assert.equal(colonnes.length - 5, COLONNES_D_UNE_ARME);
@@ -465,11 +469,11 @@ test('R167 : le tableau des améliorations a ses deux colonnes de coût (matéri
   assert.ok(note, 'la note de l’arme élémentaire');
   // décision R207 (4), Q58 : l'amélioration revient au Forgeron, le mot-clé `forgeron` (sa section de /metiers/ quand il a une adresse, libellé et
   // adresse lus dans la base : le site de dev les modifie)
-  const forgeron = base.prepare("SELECT libelle, url FROM mot_cle WHERE id = 'forgeron'").get();
+  const forgeron = base.prepare('SELECT libelle, url, cle FROM mot_cle WHERE id = ?').get(idDuMotCleNomme('forgeron'));
   assert.ok(forgeron, 'le mot-clé forgeron (migration 0104)');
   assert.match(note, forgeron.url
-    ? new RegExp(`<a class="mot-cle[^"]*" href="[^"]*${forgeron.url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}" data-mot-cle="forgeron"`)
-    : /<strong class="mot-cle[^"]*" data-mot-cle="forgeron"/);
+    ? new RegExp(`<a class="mot-cle[^"]*" href="[^"]*${forgeron.url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}" data-mot-cle="${forgeron.cle}"`)
+    : new RegExp(`<strong class="mot-cle[^"]*" data-mot-cle="${forgeron.cle}"`));
   assert.ok(note.includes(`>${echapper(forgeron.libelle)}</`), 'son libellé');
   assert.ok(!note.includes('Métier à définir'));
   assert.match(main, /<p class="tableau__note armes-famille__note js-seul armes-materiaux__note-elementaire">Une arme élémentaire n’a pas de matériau\.<\/p>/);

@@ -26,6 +26,7 @@ import { ENTITES, TABLES, typeDeTexte } from '../src/lib/edition-modele.mjs';
 import { RESSOURCES } from '../src/lib/ressources.mjs';
 import { installerLePlan, LIENS_ET_RENCONTRE } from '../src/lib/livres.mjs';
 import { chargerPlanDesRegles } from '../src/lib/plan-des-regles-db.mjs';
+import { normalize } from '../src/lib/text.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { copieSansNoteEnAttente, versionALaRevision } from './aide-mise-a-jour.mjs';
 import { cheminDImport } from './aide-base-d-import.mjs';
@@ -84,10 +85,11 @@ test('le texte de l’annonce : Markdown sûr (ni HTML brut ni lien non sûr), b
   assert.equal(modifier({ texte: '[lien](javascript:alert(1))' }).statut, 400, 'lien non sûr');
   assert.equal(modifier({ texte: 'Autre' }, { texte: avant }).statut, 409, 'changé entre-temps');
   assert.equal(lire().texte, texte, 'rien n’a changé après les refus');
-  // une balise du glossaire, écrite par son libellé : l'id seul dans la base (un texte mis en forme)
-  const motCle = db.prepare('SELECT id, libelle FROM mot_cle WHERE id = ?').get('chakra') ?? db.prepare('SELECT id, libelle FROM mot_cle ORDER BY id LIMIT 1').get();
+  // une balise du glossaire, écrite par son libellé tel quel : la clé seule dans la base (un texte mis en forme ; migration 0113, décision R232 (3)) —
+  // un mot-clé sans homonyme (sa clé est celle de son libellé)
+  const motCle = db.prepare('SELECT id, libelle, cle FROM mot_cle ORDER BY id').all().find((m) => normalize(m.libelle) === m.cle);
   ok(modifier({ texte: `Une balise : {{${motCle.libelle}}}.` }));
-  assert.equal(lire().texte, `Une balise : {{${motCle.id}}}.`);
+  assert.equal(lire().texte, `Une balise : {{${motCle.cle}}}.`);
   assert.equal(modifier({ texte: 'Une balise : {{mot-cle-qui-n-existe-pas}}.' }).statut, 400, 'une balise qui ne cite aucun mot-clé');
   // vidée : NULL, le texte d'attente revient
   ok(modifier({ texte: '' }));

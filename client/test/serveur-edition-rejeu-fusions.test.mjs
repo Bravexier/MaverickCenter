@@ -8,7 +8,7 @@
 //   node --test test/serveur-edition-rejeu-fusions.test.mjs
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync } from 'node:fs';
+import { cpSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
@@ -22,7 +22,7 @@ import { formesNonCanoniques, vocabulaireDesMotsCles } from '../src/lib/mots-cle
 import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { baseDImport, lotsAvant, remettreDepuisLImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
-import { reglesAvecDesMotsClesDEssai } from './aide-mots-cles.mjs';
+import { idDEssai, reglesAvecDesMotsClesDEssai } from './aide-mots-cles.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
@@ -40,7 +40,7 @@ const reglesOuLaCible = ({ cible }) => {
   const chemin = join(dossier, `copie-${(n += 1)}.db`);
   cpSync(regles.base, chemin);
   const db = new DatabaseSync(chemin);
-  const { cible: id } = FUSIONS_DE_MIGRATION[0];
+  const id = CORRUPTION;
   if (cible) {
     db.exec('PRAGMA foreign_keys = ON');
     remettreDepuisLImport(db, 'mot_cle', { id }, { dImport: dImport0090() });
@@ -57,16 +57,26 @@ const SORT = 'magies/magie-de-la-corruption#sort:aiguisage-magique';
 const AJOUT_PAGE = '\n\nEssai de rejeu : {{corruption|CR}}, {{corruption:}} et {{corruption|la CR}}.\n\n| a | b |\n| --- | --- |\n| x | {{corruption\\|CR}} |\n';
 /** Le même ajout, tel qu'un lot d'avant 0090 l'a noté (forme canonique d'alors : « {{cr}} » dans un texte mis en forme montrait « CR »). */
 const AJOUT_PAGE_AVANT_0090 = '\n\nEssai de rejeu : {{cr}}, {{cr :}} et {{cr|la CR}}.\n\n| a | b |\n| --- | --- |\n| x | {{cr\\|CR}} |\n';
+// les mots-clés par leur id entier (migration 0113 : le registre de la migration traduit les anciens ids texte des lots ; mots-clés d'essai :
+// test/aide-mots-cles.mjs) ; les lots d'avant la 0090 les écrivent par leur ancien id texte
+const REGISTRE_0113 = new Map(JSON.parse(readFileSync(join(RACINE, 'data/migrations/0113-mots-cles-id-entier.json'), 'utf8')).motsCles.map((m) => [m.ancienId, m.id]));
+const CORRUPTION = REGISTRE_0113.get(FUSIONS_DE_MIGRATION[0].cible);
+const ESSAI_C = idDEssai('essai-glossaire-c');
 const avant0090 = (t) => (typeof t === 'string' ? t.replaceAll('{{corruption|', '{{cr|') : t);
 const ligneAvant0090 = (l) => (l && typeof l === 'object' ? Object.fromEntries(Object.entries(l).map(([c, v]) => [c, avant0090(v)])) : l);
 
 test('FUSIONS_DE_MIGRATION : « CR » dans « Corruption » (migration 0090, R183 (3)) ; les règles n’ont plus `cr`', () => {
-  assert.deepEqual(FUSIONS_DE_MIGRATION.map((f) => ({ ...f })), [{ source: 'cr', cible: 'corruption', texte: 'CR', migration: '0090' }]);
+  assert.deepEqual(FUSIONS_DE_MIGRATION[0], { source: 'cr', cible: 'corruption', texte: 'CR', migration: '0090' });
+  // les fusions de la 0115 (R233 (5)) : leurs sources absentes des règles, leur cible, Instant Cast, présente
+  assert.deepEqual(FUSIONS_DE_MIGRATION.slice(1).map((f) => [f.source, f.cible, f.migration]), [['action-bonus', 'instant-cast', '0115'], ['action-rapide', 'instant-cast', '0115']]);
   const db = new DatabaseSync(regles.base, { readOnly: true });
-  assert.equal(db.prepare("SELECT 1 FROM mot_cle WHERE id = 'cr'").get(), undefined);
+  assert.equal(REGISTRE_0113.get('cr'), undefined, '`cr` n’existait plus à la 0113');
+  for (const f of FUSIONS_DE_MIGRATION.slice(1)) assert.equal(db.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(REGISTRE_0113.get(f.source)), undefined, f.source);
   db.close();
-  // l'abréviation, telle que la migration l'a écrite (elle se modifie sur le site de dev)
-  assert.equal(dImport0090().prepare("SELECT abreviation FROM mot_cle WHERE id = 'corruption'").get().abreviation, 'CR');
+  // la cible, Instant Cast, lue à l'import (le site de dev peut l'avoir supprimée depuis : tests-conventions)
+  assert.ok(baseDImport().prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(REGISTRE_0113.get('instant-cast')));
+  // l'abréviation de la 0090, devenue un synonyme (migration 0115), telle que la migration l'a écrite
+  assert.ok(dImport0090().prepare('SELECT libelle FROM mot_cle_synonyme WHERE mot_cle_id = ?').all(CORRUPTION).some((x) => x.libelle === 'CR'));
 });
 
 test('adaptateur : balises (avant et apres, toute table), étiquettes de page et de sort (clé comprise, sans doublon) ; la ligne `cr` elle-même inchangée', () => {
@@ -77,12 +87,12 @@ test('adaptateur : balises (avant et apres, toute table), étiquettes de page et
   assert.deepEqual(JSON.parse(texte.avant), { effets: 'a {{corruption|CR}} b' });
   assert.deepEqual(JSON.parse(texte.apres), { effets: '{{corruption|CR}} {{corruption:}} {{corruption:}} {{corruption\\|x}} {{crane|y}} {{corruption|CR}}' });
   // une page sans étiquette de corruption : reciblée ; une page qui l'a déjà : l'insertion est sans effet
-  const sans = db.prepare("SELECT id FROM page WHERE id NOT IN (SELECT page_id FROM page_tag WHERE tag_id = 'corruption') ORDER BY id LIMIT 1").get().id;
+  const sans = db.prepare('SELECT id FROM page WHERE id NOT IN (SELECT page_id FROM page_tag WHERE tag_id = ?) ORDER BY id LIMIT 1').get(CORRUPTION).id;
   const pose = adapter(m('page_tag', 'inserer', { page_id: sans, ordre: 9 }, null, { page_id: sans, ordre: 9, tag_id: 'cr' }));
   assert.deepEqual([JSON.parse(pose.apres).tag_id, pose.sansEffet ?? false], ['corruption', false]);
   const fusion = adapter(m('page_tag', 'modifier', { page_id: sans, ordre: 0 }, { tag_id: 'essai-glossaire-c' }, { tag_id: 'cr' }));
   assert.deepEqual([JSON.parse(fusion.avant).tag_id, JSON.parse(fusion.apres).tag_id], ['essai-glossaire-c', 'corruption']);
-  const avecCorruption = db.prepare("SELECT page_id FROM page_tag WHERE tag_id = 'corruption' ORDER BY page_id LIMIT 1").get();
+  const avecCorruption = db.prepare('SELECT page_id FROM page_tag WHERE tag_id = ? ORDER BY page_id LIMIT 1').get(CORRUPTION);
   if (avecCorruption) {
     const double = adapter(m('page_tag', 'inserer', { page_id: avecCorruption.page_id, ordre: 99 }, null, { page_id: avecCorruption.page_id, ordre: 99, tag_id: 'cr' }));
     assert.equal(double.sansEffet, true, 'la page a déjà l’étiquette');
@@ -132,9 +142,9 @@ test('R211 : la cible supprimée depuis, l’adaptateur écrit du texte simple (
 test('R211, rejeu : un lot d’avant 0090 rejoué sur des règles sans la cible n’écrit aucune balise vers elle ni vers `cr`, sans conflit', () => {
   // le lot, fait par le service sur une base qui a la cible, puis récrit dans le journal comme le site de dev le notait avant la 0090
   const site = vivante();
-  if (!site.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(FUSIONS_DE_MIGRATION[0].cible)) {
+  if (!site.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(CORRUPTION)) {
     site.exec('PRAGMA foreign_keys = ON');
-    remettreDepuisLImport(site, 'mot_cle', { id: FUSIONS_DE_MIGRATION[0].cible }, { dImport: dImport0090() });
+    remettreDepuisLImport(site, 'mot_cle', { id: CORRUPTION }, { dImport: dImport0090() });
   }
   const page = site.prepare("SELECT id, corps_md FROM page WHERE type = 'guide' AND statut <> 'example' AND instr(corps_md, '{{') = 0 ORDER BY id LIMIT 1").get();
   const r = traiter({ methode: 'POST', chemin: '/api/edition/', entetes: { 'content-type': 'application/json' },
@@ -150,7 +160,7 @@ test('R211, rejeu : un lot d’avant 0090 rejoué sur des règles sans la cible 
   const neuve = vivante();
   neuve.exec('PRAGMA foreign_keys = OFF');
   for (const sql of ['DELETE FROM sort_mot_cle WHERE mot_cle_id = ?', 'DELETE FROM page_tag WHERE tag_id = ?', 'DELETE FROM mot_cle WHERE id = ?']) {
-    neuve.prepare(sql).run(FUSIONS_DE_MIGRATION[0].cible);
+    neuve.prepare(sql).run(CORRUPTION);
   }
   neuve.exec('BEGIN');
   chargerJournal(neuve, journal);
@@ -178,7 +188,7 @@ test('rejeu et db:appliquer-edition d’un lot d’avant 0090 : pas de faux conf
   lot([{ op: 'modifier', table: 'sort', cle: { id: SORT }, valeurs: { effets: `${effets} {{corruption|CR}} (essai)` }, avant: { effets } }], 'magies/magie-de-la-corruption/');
   const page = site.prepare("SELECT id, corps_md FROM page WHERE type = 'guide' AND statut <> 'example' AND instr(corps_md, '{{') = 0 ORDER BY id LIMIT 1").get();
   lot([{ op: 'modifier', table: 'page', cle: { id: page.id }, valeurs: { corps_md: `${page.corps_md}${AJOUT_PAGE}` } }], `${page.id}/`);
-  lot([{ op: 'fusionner_mots_cles', mot_cle: 'essai-glossaire-c', dans: 'corruption' }], 'recherche/');
+  lot([{ op: 'fusionner_mots_cles', mot_cle: ESSAI_C, dans: CORRUPTION }], 'recherche/');
   const journal = journalExporte(site);
   site.close();
   assert.equal(journal.lots.length, 3);
@@ -189,7 +199,7 @@ test('rejeu et db:appliquer-edition d’un lot d’avant 0090 : pas de faux conf
   }
   // la fusion d'alors : dans `cr` (ses étiquettes vers `cr`)
   for (const m of lotFusion.modifications) {
-    if (m.table === 'page_tag' && m.apres?.tag_id === 'corruption') m.apres.tag_id = 'cr';
+    if (m.table === 'page_tag' && m.apres?.tag_id === CORRUPTION) m.apres.tag_id = 'cr';
   }
   assert.ok(lotFusion.modifications.some((m) => m.table === 'page_tag' && m.apres?.tag_id === 'cr'), 'la fusion déplace une étiquette');
   // une écriture sur la ligne `cr` elle-même (sa définition), dans un lot à part
@@ -198,9 +208,8 @@ test('rejeu et db:appliquer-edition d’un lot d’avant 0090 : pas de faux conf
   const verifier = (base, { avecConflit }) => {
     assert.equal(base.prepare('SELECT effets FROM sort WHERE id = ?').get(SORT).effets, `${effets} {{corruption|CR}} (essai)`, 'aucun faux conflit, la balise reciblée');
     assert.equal(base.prepare('SELECT corps_md FROM page WHERE id = ?').get(page.id).corps_md, `${page.corps_md}${AJOUT_PAGE}`, 'les balises de la migration');
-    assert.equal(base.prepare("SELECT count(*) AS n FROM page_tag WHERE tag_id = 'essai-glossaire-c'").get().n, 0);
-    assert.ok(base.prepare("SELECT 1 FROM page_tag WHERE page_id = 'lore/balogne' AND tag_id = 'corruption'").get(), 'l’étiquette suit la fusion, vers corruption');
-    assert.equal(base.prepare("SELECT 1 FROM mot_cle WHERE id = 'cr'").get(), undefined);
+    assert.equal(base.prepare('SELECT count(*) AS n FROM page_tag WHERE tag_id = ?').get(ESSAI_C).n, 0);
+    assert.ok(base.prepare("SELECT 1 FROM page_tag WHERE page_id = 'lore/balogne' AND tag_id = ?").get(CORRUPTION), 'l’étiquette suit la fusion, vers corruption');
     const vocabulaire = vocabulaireDesMotsCles(motsClesDeLaBase(base));
     assert.deepEqual(formesNonCanoniques(base.prepare('SELECT effets FROM sort WHERE id = ?').get(SORT).effets, vocabulaire), []);
     assert.deepEqual(formesNonCanoniques(base.prepare('SELECT corps_md FROM page WHERE id = ?').get(page.id).corps_md, vocabulaire, { markdown: true }), []);

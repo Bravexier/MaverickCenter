@@ -1,12 +1,13 @@
-// Le Glossaire (/regles/glossaire/ ; réponses du propriétaire du 2026-11-06, Q6 et Q7) : le filtre de sa liste (lib/glossaire-filtre.mjs, dont la
-// normalisation est celle de lib/text.mjs#normalize, recopiée : le script de la page n'importe que ce module), son script dans un faux navigateur
-// (src/scripts/glossaire.mjs : saisie, ?q=, liste redessinée par l'éditeur), les couleurs proposées à un mot-clé (lib/glossaire-couleurs.mjs : toutes
-// les familles de la palette, Q3 et Q4) et leurs options (lib/mots-cles-edition.mjs).
+// Le Glossaire (/regles/glossaire/ ; réponses du propriétaire du 2026-11-06, Q6 et Q7) : les filtres de son tableau (décision R234 (4) : un filtre texte,
+// qui lit le libellé, les synonymes et la définition, et un filtre par catégorie ; lib/glossaire-filtre.mjs, dont la normalisation est celle de
+// lib/text.mjs#normalize, recopiée : le script de la page n'importe que ce module), son script dans un faux navigateur (src/scripts/glossaire.mjs :
+// saisie, catégorie, ?q=, tableau redessiné par l'éditeur, liste des catégories refaite), les couleurs proposées à un mot-clé (lib/glossaire-couleurs.mjs :
+// toutes les familles de la palette, Q3 et Q4) et leurs options (lib/mots-cles-edition.mjs).
 //   node --test test/glossaire-filtre.test.mjs
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { compteDuFiltre, correspond, normaliser, sansBalises, texteDuMotCle } from '../src/lib/glossaire-filtre.mjs';
+import { categorieChoisie, compteDuFiltre, correspond, motCleDeLaLigne, normaliser, SANS_CATEGORIE, sansBalises, texteDuMotCle } from '../src/lib/glossaire-filtre.mjs';
 import { choixDesCouleurs, libelleDeCle, NOMS_DES_FAMILLES } from '../src/lib/glossaire-couleurs.mjs';
 import { couleurDuCercle, optionsDeCouleur, valeurDeCouleur } from '../src/lib/mots-cles-edition.mjs';
 import { lireLaCouleur } from '../src/lib/mots-cles-liens.mjs';
@@ -26,46 +27,102 @@ test('normaliser est lib/text.mjs#normalize (recopiée : le script de la page n�
     ['../lib/glossaire-filtre.mjs'], 'le script de la page : ce module seul');
 });
 
-test('un mot-clé correspond par son libellé, son abréviation ou sa définition (balises lues comme leur texte), sans casse ni accents', () => {
-  const am = { libelle: 'Armure magique', abreviation: 'AM', definition: 'Protège des {{sort|sorts}} et du {{mana:}}.' };
+test('R234 (4), R233 (1) : un mot-clé correspond par son libellé, l’un de ses synonymes ou sa définition (balises lues comme leur texte), sans casse ni accents', () => {
+  const am = { libelle: 'Armure magique', synonymes: ['AM', 'Bouclier de mana'], definition: 'Protège des {{sort|sorts}} et du {{mana:}}.' };
   assert.equal(sansBalises(am.definition), 'Protège des sorts et du mana.');
   assert.equal(sansBalises('{{elfe}} et {{feu\\|Feu}}'), 'elfe et Feu', 'une case de tableau (« \\| »)');
-  assert.equal(texteDuMotCle(am), 'armure-magique-am-protege-des-sorts-et-du-mana');
-  for (const q of ['', '  ', 'armure', 'MAGIQUE', 'am', 'protège', 'protege des', 'sorts', 'mana']) assert.equal(correspond(am, q), true, q);
-  for (const q of ['feu', 'sort:', 'armures']) assert.equal(correspond(am, q), q === 'sort:', q);
-  assert.equal(correspond({ libelle: 'Feu' }, 'feu'), true, 'sans abréviation ni définition');
+  assert.equal(texteDuMotCle(am), 'armure-magique|am|bouclier-de-mana|protege-des-sorts-et-du-mana');
+  for (const q of ['', '  ', 'armure', 'MAGIQUE', 'am', 'bouclier', 'de mana', 'protège', 'protege des', 'sorts', 'mana']) assert.equal(correspond(am, q), true, q);
+  for (const q of ['feu', 'armures', 'magique am']) assert.equal(correspond(am, q), false, q);
+  assert.equal(correspond({ libelle: 'Feu' }, 'feu'), true, 'sans synonyme ni définition');
   assert.deepEqual([compteDuFiltre(379, 379, ''), compteDuFiltre(1, 1, ' '), compteDuFiltre(3, 379, 'am')], ['379 mots-clés', '1 mot-clé', '3 sur 379']);
 });
 
-test('le script de la page : la saisie filtre la liste (compte, « aucun »), ?q= la remplit, la liste redessinée par l’éditeur est relue', async () => {
-  const li = (id, libelle, extra = {}) => el('li', { 'data-id': id, 'data-libelle': libelle, ...extra });
-  const liste = el('ul', { id: 'liste-mots-cles' }, li('am', 'Armure magique', { 'data-abreviation': 'AM' }), li('feu', 'Feu', { 'data-definition': 'Ce qui {{brule|brûle}}.' }), li('nain', 'Nain'));
+test('R234 (4) : le filtre par catégorie — un mot-clé qui la porte (R232 (5) : ses catégories, des ids) ; aucune choisie : tous ; il se combine au filtre texte', () => {
+  const m = { libelle: 'Orios', categories: [3, 6] };
+  assert.equal(categorieChoisie(''), null);
+  assert.equal(categorieChoisie('6'), 6);
+  assert.equal(categorieChoisie('x'), null);
+  assert.equal(correspond(m, '', { categorie: 6 }), true);
+  assert.equal(correspond(m, '', { categorie: 1 }), false);
+  assert.equal(correspond({ libelle: 'Sans catégorie' }, '', { categorie: 1 }), false);
+  assert.equal(correspond(m, 'ori', { categorie: 3 }), true);
+  assert.equal(correspond(m, 'feu', { categorie: 3 }), false, 'les deux filtres');
+  assert.equal(correspond(m, 'ori', { categorie: null }), true);
+  assert.equal(compteDuFiltre(4, 379, '', { categorie: 2 }), '4 sur 379', 'une catégorie choisie : le compte filtré');
+  // « Sans catégorie » (réponse du propriétaire) : les mots-clés à classer
+  assert.equal(categorieChoisie('sans'), SANS_CATEGORIE);
+  assert.equal(correspond({ libelle: 'À classer' }, '', { categorie: SANS_CATEGORIE }), true);
+  assert.equal(correspond({ libelle: 'À classer', categories: [] }, 'class', { categorie: SANS_CATEGORIE }), true);
+  assert.equal(correspond(m, '', { categorie: SANS_CATEGORIE }), false);
+  assert.equal(compteDuFiltre(2, 379, '', { categorie: SANS_CATEGORIE }), '2 sur 379');
+  // la ligne du tableau (data-*, lib/mots-cles-balises.mjs#htmlDeLaLigneDuGlossaire) : ses listes en JSON
+  assert.deepEqual(motCleDeLaLigne({ libelle: 'Orios', synonymes: '["Orio"]', categories: '[3,6]', definition: 'Une race.' }),
+    { libelle: 'Orios', synonymes: ['Orio'], definition: 'Une race.', categories: [3, 6] });
+  assert.deepEqual(motCleDeLaLigne({ libelle: 'X', synonymes: 'pas du JSON' }), { libelle: 'X', synonymes: [], definition: '', categories: [] });
+});
+
+test('le script de la page : la saisie et la catégorie filtrent le tableau (compte, « aucun »), ?q= la remplit, le tableau redessiné par l’éditeur est relu, la liste des catégories refaite', async () => {
+  const ligne = (id, libelle, extra = {}) => el('tbody', { 'data-id': id, 'data-libelle': libelle, ...extra }, el('tr', {}, el('th', {}, libelle)));
+  const tableau = el('table', { id: 'liste-mots-cles' }, el('thead', {}),
+    ligne('1', 'Armure magique', { 'data-synonymes': '["AM"]', 'data-categories': '[2,4]' }),
+    ligne('2', 'Feu', { 'data-definition': 'Ce qui {{brule|brûle}}.', 'data-categories': '[2]' }),
+    ligne('3', 'Nain', { 'data-categories': '[3]' }));
   const champ = el('input', { id: 'filtre-glossaire' });
-  const document = fauxDocument(el('form', {}, champ, el('span', { id: 'glossaire-compte' })), liste, el('p', { id: 'aucun-mot-cle', hidden: '' }));
+  const categorie = el('select', { id: 'filtre-categorie' }, el('option', { value: '' }, 'Toutes les catégories'), el('option', { value: 'sans' }, 'Sans catégorie'),
+    el('option', { value: '2' }, 'Magie'),
+    el('option', { value: '3' }, 'Race'));
+  const document = fauxDocument(el('form', {}, champ, categorie, el('span', { id: 'glossaire-compte' })), tableau, el('p', { id: 'aucun-mot-cle', hidden: '' }));
   Object.assign(globalThis, { document, location: { search: '?q=brûle' } });
   await import('../src/scripts/glossaire.mjs');
-  const visibles = () => liste.children.filter((x) => !x.hidden).map((x) => x.dataset.id);
+  const visibles = () => tableau.children.filter((x) => x.tagName === 'TBODY' && !x.hidden).map((x) => x.dataset.id);
   assert.equal(champ.value, 'brûle', '?q= dans l’adresse');
-  assert.deepEqual(visibles(), ['feu']);
+  assert.deepEqual(visibles(), ['2']);
   assert.equal(document.getElementById('glossaire-compte').textContent, '1 sur 3');
   champ.value = 'am';
   champ.dispatchEvent(new Event('input'));
-  assert.deepEqual(visibles(), ['am']);
+  assert.deepEqual(visibles(), ['1'], 'par un synonyme');
   champ.value = 'zzz';
   champ.dispatchEvent(new Event('input'));
   assert.deepEqual(visibles(), []);
   assert.equal(document.getElementById('aucun-mot-cle').hidden, false);
   champ.value = '';
   champ.dispatchEvent(new Event('input'));
-  assert.deepEqual(visibles(), ['am', 'feu', 'nain']);
+  assert.deepEqual(visibles(), ['1', '2', '3']);
   assert.equal(document.getElementById('glossaire-compte').textContent, '3 mots-clés');
-  // l'éditeur redessine la liste (site de dev) : relue et filtrée comme avant
-  liste.append(li('elfe', 'Elfe'));
-  champ.value = 'elf';
+  // la catégorie
+  categorie.value = '2';
+  categorie.dispatchEvent(new Event('change'));
+  assert.deepEqual(visibles(), ['1', '2']);
+  assert.equal(document.getElementById('glossaire-compte').textContent, '2 sur 3');
+  champ.value = 'feu';
+  champ.dispatchEvent(new Event('input'));
+  assert.deepEqual(visibles(), ['2'], 'les deux filtres ensemble');
+  champ.value = '';
+  champ.dispatchEvent(new Event('input'));
+  // « Sans catégorie » : les mots-clés à classer
+  tableau.append(ligne('5', 'À classer'));
   document.dispatchEvent(new CustomEvent('glossaire:mots-cles', { detail: { gestion: false } }));
+  categorie.value = 'sans';
+  categorie.dispatchEvent(new Event('change'));
+  assert.deepEqual(visibles(), ['5']);
+  categorie.value = '2';
+  categorie.dispatchEvent(new Event('change'));
+  // l'éditeur redessine le tableau (site de dev) et donne les catégories (une créée, une renommée) : relu, liste refaite, la catégorie choisie gardée
+  tableau.append(ligne('4', 'Elfe', { 'data-categories': '[2,9]' }));
+  document.dispatchEvent(new CustomEvent('glossaire:mots-cles', {
+    detail: { gestion: false, categories: [{ id: 2, libelle: 'Magies' }, { id: 3, libelle: 'Race' }, { id: 9, libelle: 'Nouvelle' }] },
+  }));
   await attendre();
-  assert.deepEqual(visibles(), ['elfe']);
-  assert.equal(document.getElementById('glossaire-compte').textContent, '1 sur 4');
+  assert.deepEqual(categorie.children.map((o) => [o.value || o.getAttribute('value'), o.textContent]), [['', 'Toutes les catégories'], ['sans', 'Sans catégorie'], ['2', 'Magies'], ['3', 'Race'], ['9', 'Nouvelle']], '« Toutes » et « Sans catégorie » gardées en tête');
+  assert.equal(categorie.value, '2');
+  assert.deepEqual(visibles(), ['1', '2', '4']);
+  assert.equal(document.getElementById('glossaire-compte').textContent, '3 sur 5');
+  // une catégorie supprimée entre-temps : « toutes »
+  document.dispatchEvent(new CustomEvent('glossaire:mots-cles', { detail: { gestion: false, categories: [{ id: 3, libelle: 'Race' }] } }));
+  await attendre();
+  assert.equal(categorie.value, '');
+  assert.deepEqual(visibles(), ['1', '2', '3', '5', '4']);
 });
 
 test('Q3, Q4 : les couleurs proposées — toutes les familles de la palette (techniques et « par défaut » comprises), groupées, chaque couleur nommée par son élément', () => {

@@ -244,7 +244,9 @@ export function verifierSimulation(donnees, essai) {
  * (serveur/edition-maitrises.mjs#sourcesRefaitesParLeLot : TABLES_DES_SOURCES) ; un don supprimé par un lot noté avant que ses règles en données ne
  * le soient (serveur/edition.mjs#retirerLesReglesDuDon) les retire par la cascade de son schéma (TABLES_DES_REGLES_DU_DON) ; un lot qui écrit une entrée
  * du calcul des armures et des boucliers (décision R207 (1) : TABLES_DES_ENTREES_DU_CALCUL) peut réécrire armures, boucliers et pages
- * (TABLES_DES_VALEURS_CALCULEES).
+ * (TABLES_DES_VALEURS_CALCULEES). Un mot-clé supprimé ou fusionné par un lot noté avant que le service ne note ses lignes filles retire aussi, par la
+ * cascade, ses catégories, synonymes et clés quittées (TABLES_DES_FILLES_DU_MOT_CLE) ; une monnaie supprimée vide mot_cle.monnaie_id (ON DELETE SET
+ * NULL, migration 0113).
  */
 // serveur/edition-maitrises.mjs#TABLES_DES_SOURCES, recopiée (test/mise-a-jour-github.test.mjs les compare)
 export const TABLES_DES_SOURCES_DE_MAITRISE = Object.freeze(['maitrise_arme_part', 'maitrise_arme_part_famille', 'capacite_nm_gagne']);
@@ -257,6 +259,8 @@ export const TABLES_DES_ENTREES_DU_CALCUL = Object.freeze([
   'ressource', 'materiau', 'materiau_armure', 'materiau_bouclier', 'armure_emplacement', 'bouclier_classe', 'constante_equipement',
 ]);
 export const TABLES_DES_VALEURS_CALCULEES = Object.freeze(['armure', 'bouclier', 'page']);
+// serveur/edition-mots-cles.mjs#TABLES_DES_FILLES_DU_MOT_CLE, recopiée (test/mise-a-jour-github.test.mjs les compare)
+export const TABLES_DES_FILLES_DU_MOT_CLE = Object.freeze(['mot_cle_categorie', 'mot_cle_synonyme', 'mot_cle_ancienne_cle']);
 // serveur/edition.mjs#TABLES_DES_REGLES_DU_DON, recopiée (test/serveur-edition-regles-du-don.test.mjs les compare)
 export const TABLES_DES_REGLES_DU_DON = Object.freeze(['capacite_condition_emplacements', 'capacite_npm_plafond', 'capacite_variable']);
 
@@ -269,9 +273,10 @@ export function tablesDuLot(donnees, { tablesAvecBalises: balises = [] } = {}) {
       if (typeof m.table !== 'string' || !/^[A-Za-z0-9_]+$/.test(m.table)) throw echec('lot', 'lot illisible (nom de table invalide dans le journal)');
       tables.add(m.table);
       if (m.table === 'mot_cle' && m.operation === 'supprimer') {
-        tables.add('page_tag');
+        for (const t of ['page_tag', ...TABLES_DES_FILLES_DU_MOT_CLE]) tables.add(t);
         motCleRetire = true;
       }
+      if (m.table === 'monnaie' && m.operation === 'supprimer') tables.add('mot_cle');
       if (m.table === 'page_tag' && (ancienne(m.avant) || ancienne(m.apres))) tables.add('mot_cle');
       if (['classe', 'classe_maitrise_arme', 'capacite', 'arme_famille'].includes(m.table)) for (const t of TABLES_DES_SOURCES_DE_MAITRISE) tables.add(t);
       if (m.table === 'capacite' && m.operation === 'supprimer') for (const t of TABLES_DES_REGLES_DU_DON) tables.add(t);

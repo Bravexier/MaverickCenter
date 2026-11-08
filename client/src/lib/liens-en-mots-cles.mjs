@@ -93,8 +93,10 @@ export function motCleDuLien(table, lien) {
 export function baliseDuLien(lien, m, { markdown = false, tableau = false } = {}) {
   const texte = lien.texte;
   if (!texte || /[{}|\n\r]/.test(texteAffiche(texte))) return null;
-  if (markdown) return texteAffiche(texte) === m.libelle ? `{{${m.id}}}` : `{{${m.id}${tableau ? '\\|' : '|'}${texte}}}`;
-  return `{{${m.id}|${texte}}}`;
+  // la ref : la clé du mot-clé (migration 0113) ; le registre de la 0098, d'avant elle, n'a que l'id texte, qui était alors la clé
+  const ref = m.cle ?? m.id;
+  if (markdown) return texteAffiche(texte) === m.libelle ? `{{${ref}}}` : `{{${ref}${tableau ? '\\|' : '|'}${texte}}}`;
+  return `{{${ref}|${texte}}}`;
 }
 
 /**

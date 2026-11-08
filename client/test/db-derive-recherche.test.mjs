@@ -23,15 +23,17 @@ test('page_fts : une page qui cite {{orios}} est trouvée par « Orios » ; une 
   const base = join(dossierTemporaire('derive-recherche', { t }), 'regles.db');
   lancer('db-build.mjs', ['--out', base]);
   const db = new DatabaseSync(base);
-  assert.equal(db.prepare("SELECT libelle FROM mot_cle WHERE id = 'orios'").get()?.libelle, 'Orios', 'le mot-clé de la race (migration 0098)');
-  // un mot-clé d'essai dont l'id ne partage aucun mot avec son libellé, et un autre en mode complet (sa définition s'affiche)
-  const insMotCle = db.prepare('INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES (?, ?, ?, ?)');
-  insMotCle.run('qxwv-lien', 'Zorglubienne écarlate', normalize('Zorglubienne écarlate'), null);
-  insMotCle.run('qxwv-complet', 'Essai complet', normalize('Essai complet'), 'Définition qui cite la Brumolithe.');
+  // le mot-clé de la race (migration 0098 : celui qui mène à sa page ; verrouillé, son libellé ne change pas sur le site), cité par sa clé (0113)
+  const orios = db.prepare("SELECT cle, libelle FROM mot_cle WHERE url = '/races/orios/'").get();
+  assert.equal(orios?.libelle, 'Orios', 'le mot-clé de la race');
+  // un mot-clé d'essai dont la clé ne partage aucun mot avec son libellé, et un autre en mode complet (sa définition s'affiche)
+  const insMotCle = db.prepare('INSERT INTO mot_cle (id, libelle, cle, description) VALUES (?, ?, ?, ?)');
+  insMotCle.run(9101, 'Zorglubienne écarlate', 'qxwv-lien', null);
+  insMotCle.run(9102, 'Essai complet', 'qxwv-complet', 'Définition qui cite la Brumolithe.');
   const page = db.prepare("SELECT id FROM page WHERE statut <> 'example' ORDER BY id LIMIT 1").get().id;
   db.prepare('UPDATE page SET titre = ?, titre_cle = ?, resume = ?, corps_md = ? WHERE id = ?').run(
     'Page d’essai', normalize('Page d’essai'), 'Résumé qui cite {{qxwv-lien|la Fulgurance}}.',
-    'Rencontre avec {{orios}}, puis {{qxwv-lien}} et {{qxwv-complet:}}. En code : `{{qxwvcode}}`.', page);
+    `Rencontre avec {{${orios.cle}}}, puis {{qxwv-lien}} et {{qxwv-complet:}}. En code : \`{{qxwvcode}}\`.`, page);
   db.close();
   lancer('db-derive.mjs', [base]);
 

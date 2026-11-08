@@ -13,10 +13,14 @@ const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 const ROWS = join(RACINE, 'data', 'rows');
 export const DEFINITION_D_ESSAI = 'Mot-clé d’essai des tests (test/aide-mots-cles.mjs).';
 
+/** Le premier id entier des mots-clés d'essai (migration 0113 : un id entier ; loin après ceux de data/rows, que le site de dev ne rejoint pas). */
+export const PREMIER_ID_D_ESSAI = 9001;
+
 /**
- * Les mots-clés d'essai (id → { libelle, pages }) : sur des pages du Codex (vraies pages, au site de dev comme dans data/rows) et sur des pages d'exemple
- * (absentes du site de dev construit sans exemples). C et D partagent une page ; « démo » n'est que sur des exemples ; « personnage », « magie » et « aide »
- * sur une vraie page et des exemples.
+ * Les mots-clés d'essai (clé → { id, cle, libelle, pages } ; `id` : l'entier, à partir de PREMIER_ID_D_ESSAI ; `cle` : normalize du libellé, sans
+ * homonyme) : sur des pages du Codex (vraies pages, au site de dev comme dans data/rows) et sur des pages d'exemple (absentes du site de dev construit
+ * sans exemples). C et D partagent une page ; « démo » n'est que sur des exemples ; « personnage », « magie » et « aide » sur une vraie page et des
+ * exemples.
  */
 export const MOTS_CLES_D_ESSAI = Object.fromEntries([
   ['Essai glossaire A', ['lore/400', 'lore/academie-de-larcane', 'lore/anna']],
@@ -27,7 +31,7 @@ export const MOTS_CLES_D_ESSAI = Object.fromEntries([
   ['Essai magie', ['magies/exemple-magie', 'lore/aurora']],
   ['Essai aide', ['races/exemple-race', 'lore/anna']],
   ['Essai guide', ['lore/barrage-argente']],
-].map(([libelle, pages]) => [normalize(libelle), { libelle, pages }]));
+].map(([libelle, pages], i) => [normalize(libelle), { id: PREMIER_ID_D_ESSAI + i, cle: normalize(libelle), libelle, pages }]));
 
 /**
  * Un mot-clé d'essai qui étiquette des sorts (sort_mot_cle, migration 0067 : décision R114), sans être un mot-clé dont le site se sert : il ne se supprime ni
@@ -35,10 +39,13 @@ export const MOTS_CLES_D_ESSAI = Object.fromEntries([
  * mots-clés parmi ceux des pages).
  */
 export const ETIQUETTE_D_ESSAI = Object.freeze({
-  id: normalize('Essai étiquette de sort'), libelle: 'Essai étiquette de sort', pages: [],
+  id: PREMIER_ID_D_ESSAI + Object.keys(MOTS_CLES_D_ESSAI).length, cle: normalize('Essai étiquette de sort'), libelle: 'Essai étiquette de sort', pages: [],
   sorts: ['magies/magie-du-feu#sort:boule-de-feu', 'magies/magie-du-feu#sort:cauterisation'],
 });
-const TOUS_LES_MOTS_CLES_D_ESSAI = { ...MOTS_CLES_D_ESSAI, [ETIQUETTE_D_ESSAI.id]: { libelle: ETIQUETTE_D_ESSAI.libelle, pages: ETIQUETTE_D_ESSAI.pages } };
+const TOUS_LES_MOTS_CLES_D_ESSAI = { ...MOTS_CLES_D_ESSAI, [ETIQUETTE_D_ESSAI.cle]: ETIQUETTE_D_ESSAI };
+
+/** L'id entier du mot-clé d'essai de clé `cle` (MOTS_CLES_D_ESSAI, ETIQUETTE_D_ESSAI). */
+export const idDEssai = (cle) => TOUS_LES_MOTS_CLES_D_ESSAI[cle]?.id;
 
 const sql = (v) => `'${String(v).replace(/'/g, "''")}'`;
 
@@ -59,21 +66,21 @@ export function ajouterLesMotsClesDEssai(rows) {
     writeFileSync(join(rows, `${table}.sql`), `${[tete, ...corps].join('\n')}\n`);
   };
   const motsCles = lire('mot_cle');
-  for (const [id, { libelle }] of Object.entries(TOUS_LES_MOTS_CLES_D_ESSAI)) {
-    motsCles.push(`INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES (${sql(id)}, ${sql(libelle)}, ${sql(id)}, ${sql(DEFINITION_D_ESSAI)});`);
+  for (const { id, cle, libelle } of Object.values(TOUS_LES_MOTS_CLES_D_ESSAI)) {
+    motsCles.push(`INSERT INTO mot_cle (id, libelle, cle, description) VALUES (${id}, ${sql(libelle)}, ${sql(cle)}, ${sql(DEFINITION_D_ESSAI)});`);
   }
-  ecrire('mot_cle', motsCles, (l) => [/VALUES \('((?:[^']|'')*)'/.exec(l)[1]]);
+  ecrire('mot_cle', motsCles, (l) => [Number(/VALUES \((\d+),/.exec(l)[1])]);
   const tags = lire('page_tag');
   const ordres = new Map();
   for (const l of tags) {
     const m = /VALUES \('((?:[^']|'')*)', (\d+),/.exec(l);
     if (m) ordres.set(m[1], Math.max(ordres.get(m[1]) ?? -1, Number(m[2])));
   }
-  for (const [id, { pages }] of Object.entries(TOUS_LES_MOTS_CLES_D_ESSAI)) {
+  for (const { id, pages } of Object.values(TOUS_LES_MOTS_CLES_D_ESSAI)) {
     for (const page of pages) {
       const ordre = (ordres.get(page) ?? -1) + 1;
       ordres.set(page, ordre);
-      tags.push(`INSERT INTO page_tag (page_id, ordre, tag_id) VALUES (${sql(page)}, ${ordre}, ${sql(id)});`);
+      tags.push(`INSERT INTO page_tag (page_id, ordre, tag_id) VALUES (${sql(page)}, ${ordre}, ${id});`);
     }
   }
   ecrire('page_tag', tags, (l) => {
@@ -81,8 +88,11 @@ export function ajouterLesMotsClesDEssai(rows) {
     return [m[1], Number(m[2])];
   });
   const etiquettes = lire('sort_mot_cle');
-  for (const sort of ETIQUETTE_D_ESSAI.sorts) etiquettes.push(`INSERT INTO sort_mot_cle (sort_id, mot_cle_id) VALUES (${sql(sort)}, ${sql(ETIQUETTE_D_ESSAI.id)});`);
-  ecrire('sort_mot_cle', etiquettes, (l) => [...(/VALUES \('((?:[^']|'')*)', '((?:[^']|'')*)'\)/.exec(l) ?? []).slice(1, 3)]);
+  for (const sort of ETIQUETTE_D_ESSAI.sorts) etiquettes.push(`INSERT INTO sort_mot_cle (sort_id, mot_cle_id) VALUES (${sql(sort)}, ${ETIQUETTE_D_ESSAI.id});`);
+  ecrire('sort_mot_cle', etiquettes, (l) => {
+    const m = /VALUES \('((?:[^']|'')*)', (\d+)\)/.exec(l);
+    return m ? [m[1], Number(m[2])] : [];
+  });
 }
 
 /**
@@ -100,4 +110,32 @@ export function reglesAvecDesMotsClesDEssai(dossier, { sansExemples = false } = 
     if (r.status !== 0) throw new Error(`${script} a échoué : ${r.stderr || r.stdout}`);
   }
   return { rows, base };
+}
+
+/** Le registre figé de la migration 0113 (ancien id texte → id entier, lib/mots-cles-cles.mjs#REGISTRE_DES_IDS_DE_MOTS_CLES), lu une fois. */
+let registre0113 = null;
+/**
+ * L'id entier, figé, du mot-clé dont l'ancien id texte était `ancienId` (« solidite », « recharge-longue » : registre de la migration 0113) ; undefined
+ * pour un id que le registre n'a pas. Un test cherche un mot-clé par cet id (figé), jamais par son libellé ni par sa clé, que le site de dev change
+ * (décision R232 (2) ; skill tests-conventions).
+ */
+export function idDuMotCleNomme(ancienId) {
+  registre0113 ??= new Map(JSON.parse(readFileSync(join(RACINE, 'data', 'migrations', '0113-mots-cles-id-entier.json'), 'utf8')).motsCles.map((m) => [m.ancienId, m.id]));
+  return registre0113.get(ancienId);
+}
+
+/**
+ * `texte`, écrit avant la migration 0113 (ses balises citent l'ancien id texte d'un mot-clé), tel que la base `db` l'écrit : chaque ref qui est un
+ * ancien id du registre de la 0113 devient la clé courante de son mot-clé dans `db` (les migrations 0113 à 0115 ont réécrit ces balises : R232 (3),
+ * R233 (5)) ; celle d'un mot-clé fondu depuis, la clé du mot-clé qui l'a reçu (`mot_cle_ancienne_cle`). Le texte affiché ne change pas ; une ref que
+ * le registre ignore reste telle quelle. Pont entre l'état d'une migration d'avant la 0113 (registres, fragments) et la base d'aujourd'hui.
+ */
+export function avecLesClesDe(db, texte) {
+  return texte.replace(/\{\{([^{}|\\\n]+?)(\}\}|:\}\}|\\?\|)/g, (tout, ref, fin) => {
+    const id = idDuMotCleNomme(ref.trim());
+    if (id === undefined) return tout;
+    const cle = db.prepare('SELECT cle FROM mot_cle WHERE id = ?').get(id)?.cle
+      ?? db.prepare('SELECT m.cle FROM mot_cle_ancienne_cle a JOIN mot_cle m ON m.id = a.mot_cle_id WHERE a.cle = ?').get(ref.trim())?.cle;
+    return cle ? `{{${cle}${fin}` : tout;
+  });
 }

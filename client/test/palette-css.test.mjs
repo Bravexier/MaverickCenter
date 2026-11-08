@@ -879,7 +879,8 @@ test('les classes de ce lot posées par les pages, l’éditeur et la fiche : de
   assert.match(lire('src/components/race/RacePage.astro'), /const couleur = classeDeLaPageDuSite\(entryHref\(entry\), classeDeRace\(hybride \? 'hybride' : 'pure'\), \{ base: import\.meta\.env\.BASE_URL \}\);[^]*<div class=\{`race race--\$\{hybride \? 'hybride' : 'pure'\} \$\{couleur\}`\}>/);
   const nouvelles = lire('src/scripts/edition/nouvelles.mjs');
   assert.ok(nouvelles.includes(`<div class="race race--\${hybride ? 'hybride' : 'pure'} \${classeDeRace(hybride ? 'hybride' : 'pure')}">`), 'race créée');
-  assert.ok(nouvelles.includes('const couleur = classeDUneClasse({ id, data: { mots_cles: motsCles.map((m) => m.id) } });') && nouvelles.includes('<div class="classe ${couleur}" data-ed-classe='), 'classe créée');
+  // la catégorie d'une classe créée se lit par les noms protégés de ses mots-clés (lib/mots-cles-proteges.mjs#nomDuProtege : migration 0113, ids entiers)
+  assert.ok(nouvelles.includes('const couleur = classeDUneClasse({ id, data: { mots_cles: motsCles.map((m) => m.nom).filter(Boolean) } });') && nouvelles.includes('<div class="classe ${couleur}" data-ed-classe='), 'classe créée');
   // le script de la fiche : chaque pastille, groupe et choix fait pose une classe (teinteDe), jamais `--c` en style ni une couleur reçue ou écrite
   const fiche = lire('src/scripts/fiche.mjs');
   assert.doesNotMatch(fiche, /style: `--c|--texte-sur-c: \$\{|\bcouleur: (?:'#|r\.couleur|race|k\.couleur|c\.classe)|\.couleur \?\?|#6b5a45|#8a7a66/, 'aucune couleur de race, de classe ni de neutre');
@@ -2141,13 +2142,14 @@ test('mots-clés colorés (migration 0098) : la feuille de chaque page, d’un p
     'src/pages/regles/glossaire.astro', 'src/scripts/glossaire.mjs', 'src/lib/glossaire-filtre.mjs']) {
     assert.deepEqual(couleursDuFichier(f), [], f);
   }
-  // la couleur lue sur l'élément qui porte la classe du mot-clé : sa balise, la tuile du mode complet, sa bulle, la pastille du Glossaire, <main> d'une page
+  // la couleur lue sur l'élément qui porte la classe du mot-clé : sa balise, la tuile du mode complet, sa bulle, les lignes du Glossaire, <main> d'une page
   const mots = lire('src/styles/global/mots-cles.css');
   for (const selecteur of [":is(.mot-cle, .mot-cle-definition)[class*='couleur-']", ".mot-cle-definition[class*='couleur-']", ".bulle[id^='mot-cle-'][class*='couleur-']", 'main.page-coloree']) {
     assert.ok(regleDe(mots, selecteur).includes('var(--couleur)'), selecteur);
   }
   assert.ok(regleDe(mots, ':where(main.page-coloree) > *').includes('--couleur: initial; --couleur-texte: initial;'), 'les enfants de <main> n’en héritent pas');
-  assert.ok(regleDe(lire('src/styles/glossaire/glossaire.css'), ".glossaire-mot__pastille[class*='couleur-']").includes('background: var(--couleur);'));
+  // le tableau du Glossaire (décision R234 (1)) : la ligne colorée du gabarit, tirée de la classe du mot-clé
+  assert.ok(regleDe(lire('src/styles/glossaire/glossaire.css'), '.glossaire-mot > tr').includes('--ligne-fond: var(--couleur); --ligne-texte: var(--couleur-texte);'));
   // le script du Glossaire n'importe pas la palette : la page lui donne la liste des couleurs (data-couleurs) et émet les feuilles des familles
   assert.doesNotMatch(lire('src/scripts/glossaire.mjs'), /palette-css|glossaire-couleurs/);
   assert.match(lire('src/pages/regles/glossaire.astro'), /<style is:inline set:html=\{cssDesFamilles\(FAMILLES_DES_ZONES\)\}><\/style>/);
@@ -2164,7 +2166,11 @@ test('mots-clés colorés (migration 0098) : « rendu identique » — chaque pa
   // la couleur que chaque page avait avant la migration 0098 (celle que son gabarit posait)
   const avant = [];
   for (const m of db.prepare('SELECT id, nom FROM magie').all()) avant.push([m.id, classeDeMagie(m.nom)]);
-  const motsCles = (id) => db.prepare('SELECT tag_id FROM page_tag WHERE page_id = ? ORDER BY ordre').all(id).map((r) => r.tag_id);
+  // les noms protégés des mots-clés de la page (lib/mots-cles-proteges.mjs#nomDuProtege : ids entiers depuis la migration 0113), comme
+  // lib/pages-db.mjs#motsClesDesPages les donne aux gabarits
+  const { nomDuProtege } = await import('../src/lib/mots-cles-proteges.mjs');
+  const motsCles = (id) => db.prepare('SELECT t.tag_id AS id, m.cle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE t.page_id = ? ORDER BY t.ordre').all(id)
+    .map(nomDuProtege).filter(Boolean);
   for (const p of db.prepare("SELECT id, titre FROM page WHERE type = 'classes' AND statut != 'example'").all()) {
     avant.push([p.id, classeDUneClasse({ id: p.id, data: { mots_cles: motsCles(p.id), title: p.titre } })]);
   }

@@ -202,6 +202,49 @@ export const TRADUCTIONS = {
       },
     },
   },
+  // les catégories d'un mot-clé (décision R232 ; permis sur un mot-clé verrouillé, R232 (11)) : la liste réécrite par l'opération `categories_mot_cle`,
+  // qui recalcule les clés et réécrit les textes
+  categories_mot_cle: {
+    POST: {
+      table: 'mot_cle_categorie',
+      champs: { categorie_id: { type: 'entier', libelle: 'Catégorie posée sur le mot-clé (son identifiant)', requis: true, min: 1 } },
+      traduire({ db, parent, valeurs }) {
+        const motCle = parent.ligne.id;
+        const avant = selectionner(db, 'SELECT categorie_id FROM mot_cle_categorie WHERE mot_cle_id = ?', motCle).map((l) => l.categorie_id);
+        if (avant.includes(valeurs.categorie_id)) throw new ErreurApi(409, 'Le mot-clé porte déjà cette catégorie.');
+        return { operations: [{ op: 'categories_mot_cle', mot_cle: motCle, categories: [...avant, valeurs.categorie_id], avant }], cle: { categorie_id: valeurs.categorie_id } };
+      },
+    },
+    DELETE: {
+      table: 'mot_cle_categorie',
+      traduire({ db, parent, ligne }) {
+        const motCle = parent.ligne.id;
+        const avant = selectionner(db, 'SELECT categorie_id FROM mot_cle_categorie WHERE mot_cle_id = ?', motCle).map((l) => l.categorie_id);
+        return { operations: [{ op: 'categories_mot_cle', mot_cle: motCle, categories: avant.filter((c) => c !== ligne.categorie_id), avant }] };
+      },
+    },
+  },
+  // les synonymes d'un mot-clé (décision R233 ; refusés sur un mot-clé verrouillé, R233 (6)) : la liste réécrite par l'opération `synonymes_mot_cle` ;
+  // un synonyme ajouté vient à la fin
+  synonymes_mot_cle: {
+    POST: {
+      table: 'mot_cle_synonyme',
+      champs: { libelle: { type: 'ligne', libelle: 'Synonyme ajouté (à la fin)', requis: true } },
+      traduire({ db, parent, valeurs }) {
+        const motCle = parent.ligne.id;
+        const avant = selectionner(db, 'SELECT libelle FROM mot_cle_synonyme WHERE mot_cle_id = ? ORDER BY ordre, id', motCle).map((l) => l.libelle);
+        return { operations: [{ op: 'synonymes_mot_cle', mot_cle: motCle, synonymes: [...avant, valeurs.libelle], avant }] };
+      },
+    },
+    DELETE: {
+      table: 'mot_cle_synonyme',
+      traduire({ db, parent, ligne }) {
+        const motCle = parent.ligne.id;
+        const avant = selectionner(db, 'SELECT libelle FROM mot_cle_synonyme WHERE mot_cle_id = ? ORDER BY ordre, id', motCle).map((l) => l.libelle);
+        return { operations: [{ op: 'synonymes_mot_cle', mot_cle: motCle, synonymes: avant.filter((s) => s !== ligne.libelle), avant }] };
+      },
+    },
+  },
   valeurs_de_capacite: {
     // décision R69 : seule une valeur qui n'est pas la valeur commune de l'emplacement s'écrit ; la valeur commune (ou rien) retire la ligne
     POST: {
@@ -234,7 +277,7 @@ export const TRADUCTIONS = {
   fusionner_mots_cles: {
     ACTION: {
       table: 'mot_cle',
-      champs: { dans: { type: 'ligne', libelle: 'Le mot-clé qui reçoit les pages (son identifiant)', requis: true } },
+      champs: { dans: { type: 'entier', libelle: 'Le mot-clé qui reçoit les pages (son identifiant entier, migration 0113)', requis: true, min: 1 } },
       traduire({ ligne, valeurs }) {
         return { operations: [{ op: 'fusionner_mots_cles', mot_cle: ligne.id, dans: valeurs.dans }] };
       },
